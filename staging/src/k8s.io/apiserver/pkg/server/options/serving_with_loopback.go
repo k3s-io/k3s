@@ -75,5 +75,11 @@ func (s *SecureServingOptionsWithLoopback) ApplyTo(c *server.Config) error {
 		c.SecureServing.SNICerts[server.LoopbackClientServerNameOverride] = &tlsCert
 	}
 
+	if s.PublicIP != nil {
+		c.PublicAddress = *s.PublicIP
+	}
+	if s.PublicPort > 0 {
+		c.ReadWritePort = s.PublicPort
+	}
 	return nil
 }

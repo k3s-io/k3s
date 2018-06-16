@@ -86,17 +86,6 @@ func BuildAuthz(client authorizationclient.SubjectAccessReviewInterface, authz k
 	case kubeletconfig.KubeletAuthorizationModeAlwaysAllow:
 		return authorizerfactory.NewAlwaysAllowAuthorizer(), nil
 
-	case kubeletconfig.KubeletAuthorizationModeWebhook:
-		if client == nil {
-			return nil, errors.New("no client provided, cannot use webhook authorization")
-		}
-		authorizerConfig := authorizerfactory.DelegatingAuthorizerConfig{
-			SubjectAccessReviewClient: client,
-			AllowCacheTTL:             authz.Webhook.CacheAuthorizedTTL.Duration,
-			DenyCacheTTL:              authz.Webhook.CacheUnauthorizedTTL.Duration,
-		}
-		return authorizerConfig.New()
-
 	case "":
 		return nil, fmt.Errorf("No authorization mode specified")
 
