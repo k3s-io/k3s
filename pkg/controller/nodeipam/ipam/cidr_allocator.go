@@ -45,15 +45,6 @@ const (
 	// RangeAllocatorType is the allocator that uses an internal CIDR
 	// range allocator to do node CIDR range allocations.
 	RangeAllocatorType CIDRAllocatorType = "RangeAllocator"
-	// CloudAllocatorType is the allocator that uses cloud platform
-	// support to do node CIDR range allocations.
-	CloudAllocatorType CIDRAllocatorType = "CloudAllocator"
-	// IPAMFromClusterAllocatorType uses the ipam controller sync'ing the node
-	// CIDR range allocations from the cluster to the cloud.
-	IPAMFromClusterAllocatorType = "IPAMFromCluster"
-	// IPAMFromCloudAllocatorType uses the ipam controller sync'ing the node
-	// CIDR range allocations from the cloud to the cluster.
-	IPAMFromCloudAllocatorType = "IPAMFromCloud"
 )
 
 // TODO: figure out the good setting for those constants.
@@ -100,8 +91,6 @@ func New(kubeClient clientset.Interface, cloud cloudprovider.Interface, nodeInfo
 	switch allocatorType {
 	case RangeAllocatorType:
 		return NewCIDRRangeAllocator(kubeClient, nodeInformer, clusterCIDR, serviceCIDR, nodeCIDRMaskSize, nodeList)
-	case CloudAllocatorType:
-		return NewCloudCIDRAllocator(kubeClient, cloud, nodeInformer)
 	default:
 		return nil, fmt.Errorf("Invalid CIDR allocator type: %v", allocatorType)
 	}

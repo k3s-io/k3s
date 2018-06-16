@@ -18,9 +18,7 @@ package nodeipam
 
 import (
 	"net"
-	"time"
-
-	"github.com/golang/glog"
+		"github.com/golang/glog"
 
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 
@@ -35,26 +33,13 @@ import (
 	"k8s.io/kubernetes/pkg/cloudprovider"
 	"k8s.io/kubernetes/pkg/controller"
 	"k8s.io/kubernetes/pkg/controller/nodeipam/ipam"
-	nodesync "k8s.io/kubernetes/pkg/controller/nodeipam/ipam/sync"
-	"k8s.io/kubernetes/pkg/util/metrics"
+		"k8s.io/kubernetes/pkg/util/metrics"
 )
 
 func init() {
 	// Register prometheus metrics
 	Register()
 }
-
-const (
-	// ipamResyncInterval is the amount of time between when the cloud and node
-	// CIDR range assignments are synchronized.
-	ipamResyncInterval = 30 * time.Second
-	// ipamMaxBackoff is the maximum backoff for retrying synchronization of a
-	// given in the error state.
-	ipamMaxBackoff = 10 * time.Second
-	// ipamInitialRetry is the initial retry interval for retrying synchronization of a
-	// given in the error state.
-	ipamInitialBackoff = 250 * time.Millisecond
-)
 
 // Controller is the controller that manages node ipam state.
 type Controller struct {
@@ -123,33 +108,11 @@ func NewNodeIpamController(
 		allocatorType: allocatorType,
 	}
 
-	// TODO: Abstract this check into a generic controller manager should run method.
-	if ic.allocatorType == ipam.IPAMFromClusterAllocatorType || ic.allocatorType == ipam.IPAMFromCloudAllocatorType {
-		cfg := &ipam.Config{
-			Resync:       ipamResyncInterval,
-			MaxBackoff:   ipamMaxBackoff,
-			InitialRetry: ipamInitialBackoff,
-		}
-		switch ic.allocatorType {
-		case ipam.IPAMFromClusterAllocatorType:
-			cfg.Mode = nodesync.SyncFromCluster
-		case ipam.IPAMFromCloudAllocatorType:
-			cfg.Mode = nodesync.SyncFromCloud
-		}
-		ipamc, err := ipam.NewController(cfg, kubeClient, cloud, clusterCIDR, serviceCIDR, nodeCIDRMaskSize)
-		if err != nil {
-			glog.Fatalf("Error creating ipam controller: %v", err)
-		}
-		if err := ipamc.Start(nodeInformer); err != nil {
-			glog.Fatalf("Error trying to Init(): %v", err)
-		}
-	} else {
-		var err error
-		ic.cidrAllocator, err = ipam.New(
-			kubeClient, cloud, nodeInformer, ic.allocatorType, ic.clusterCIDR, ic.serviceCIDR, nodeCIDRMaskSize)
-		if err != nil {
-			return nil, err
-		}
+	var err error
+	ic.cidrAllocator, err = ipam.New(
+		kubeClient, cloud, nodeInformer, ic.allocatorType, ic.clusterCIDR, ic.serviceCIDR, nodeCIDRMaskSize)
+	if err != nil {
+		return nil, err
 	}
 
 	ic.nodeLister = nodeInformer.Lister()
@@ -169,9 +132,7 @@ func (nc *Controller) Run(stopCh <-chan struct{}) {
 		return
 	}
 
-	if nc.allocatorType != ipam.IPAMFromClusterAllocatorType && nc.allocatorType != ipam.IPAMFromCloudAllocatorType {
-		go nc.cidrAllocator.Run(stopCh)
-	}
+	go nc.cidrAllocator.Run(stopCh)
 
 	<-stopCh
 }

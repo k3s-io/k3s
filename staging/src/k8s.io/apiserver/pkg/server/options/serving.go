@@ -39,6 +39,9 @@ type SecureServingOptions struct {
 	// BindNetwork is the type of network to bind to - defaults to "tcp", accepts "tcp",
 	// "tcp4", and "tcp6".
 	BindNetwork string
+	
+	PublicIP *net.IP
+	PublicPort int
 
 	// Listener is the secure server network listener.
 	// either Listener or BindAddress/BindPort/BindNetwork is set,
