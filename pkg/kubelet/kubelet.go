@@ -23,7 +23,6 @@ import (
 	"math"
 	"net"
 	"net/http"
-	"net/url"
 	"os"
 	"path"
 	"sort"
@@ -65,12 +64,9 @@ import (
 	"k8s.io/kubernetes/pkg/kubelet/config"
 	"k8s.io/kubernetes/pkg/kubelet/configmap"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
-	"k8s.io/kubernetes/pkg/kubelet/dockershim"
-	dockerremote "k8s.io/kubernetes/pkg/kubelet/dockershim/remote"
 	"k8s.io/kubernetes/pkg/kubelet/events"
 	"k8s.io/kubernetes/pkg/kubelet/eviction"
 	"k8s.io/kubernetes/pkg/kubelet/gpu"
-	"k8s.io/kubernetes/pkg/kubelet/gpu/nvidia"
 	"k8s.io/kubernetes/pkg/kubelet/images"
 	"k8s.io/kubernetes/pkg/kubelet/kubeletconfig"
 	"k8s.io/kubernetes/pkg/kubelet/kuberuntime"
@@ -86,11 +82,9 @@ import (
 	"k8s.io/kubernetes/pkg/kubelet/prober"
 	proberesults "k8s.io/kubernetes/pkg/kubelet/prober/results"
 	"k8s.io/kubernetes/pkg/kubelet/remote"
-	"k8s.io/kubernetes/pkg/kubelet/rkt"
 	"k8s.io/kubernetes/pkg/kubelet/secret"
 	"k8s.io/kubernetes/pkg/kubelet/server"
 	serverstats "k8s.io/kubernetes/pkg/kubelet/server/stats"
-	"k8s.io/kubernetes/pkg/kubelet/server/streaming"
 	"k8s.io/kubernetes/pkg/kubelet/stats"
 	"k8s.io/kubernetes/pkg/kubelet/status"
 	"k8s.io/kubernetes/pkg/kubelet/sysctl"
@@ -234,7 +228,6 @@ type Dependencies struct {
 	CAdvisorInterface       cadvisor.Interface
 	Cloud                   cloudprovider.Interface
 	ContainerManager        cm.ContainerManager
-	DockerClientConfig      *dockershim.ClientConfig
 	EventClient             v1core.EventsGetter
 	HeartbeatClient         v1core.CoreV1Interface
 	OnHeartbeatFailure      func()
@@ -583,30 +576,8 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 		}
 	}
 
-	// TODO: These need to become arguments to a standalone docker shim.
-	pluginSettings := dockershim.NetworkPluginSettings{
-		HairpinMode:       hairpinMode,
-		NonMasqueradeCIDR: nonMasqueradeCIDR,
-		PluginName:        crOptions.NetworkPluginName,
-		PluginConfDir:     crOptions.CNIConfDir,
-		PluginBinDir:      crOptions.CNIBinDir,
-		MTU:               int(crOptions.NetworkPluginMTU),
-	}
-
 	klet.resourceAnalyzer = serverstats.NewResourceAnalyzer(klet, kubeCfg.VolumeStatsAggPeriod.Duration)
 
-	// Remote runtime shim just cannot talk back to kubelet, so it doesn't
-	// support bandwidth shaping or hostports till #35457. To enable legacy
-	// features, replace with networkHost.
-	var nl *NoOpLegacyHost
-	pluginSettings.LegacyRuntimeHost = nl
-
-	if containerRuntime == kubetypes.RktContainerRuntime {
-		glog.Warningln("rktnetes has been deprecated in favor of rktlet. Please see https://github.com/kubernetes-incubator/rktlet for more information.")
-	}
-
-	// rktnetes cannot be run with CRI.
-	if containerRuntime != kubetypes.RktContainerRuntime {
 		// kubelet defers to the runtime shim to setup networking. Setting
 		// this to nil will prevent it from trying to invoke the plugin.
 		// It's easier to always probe and initialize plugins till cri
@@ -616,38 +587,6 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 		var legacyLogProvider kuberuntime.LegacyLogProvider
 
 		switch containerRuntime {
-		case kubetypes.DockerContainerRuntime:
-			// Create and start the CRI shim running as a grpc server.
-			streamingConfig := getStreamingConfig(kubeCfg, kubeDeps)
-			ds, err := dockershim.NewDockerService(kubeDeps.DockerClientConfig, crOptions.PodSandboxImage, streamingConfig,
-				&pluginSettings, runtimeCgroups, kubeCfg.CgroupDriver, crOptions.DockershimRootDirectory,
-				crOptions.DockerDisableSharedPID)
-			if err != nil {
-				return nil, err
-			}
-			// For now, the CRI shim redirects the streaming requests to the
-			// kubelet, which handles the requests using DockerService..
-			klet.criHandler = ds
-
-			// The unix socket for kubelet <-> dockershim communication.
-			glog.V(5).Infof("RemoteRuntimeEndpoint: %q, RemoteImageEndpoint: %q",
-				remoteRuntimeEndpoint,
-				remoteImageEndpoint)
-			glog.V(2).Infof("Starting the GRPC server for the docker CRI shim.")
-			server := dockerremote.NewDockerServer(remoteRuntimeEndpoint, ds)
-			if err := server.Start(); err != nil {
-				return nil, err
-			}
-
-			// Create dockerLegacyService when the logging driver is not supported.
-			supported, err := ds.IsCRISupportedLogDriver()
-			if err != nil {
-				return nil, err
-			}
-			if !supported {
-				klet.dockerLegacyService = ds
-				legacyLogProvider = ds
-			}
 		case kubetypes.RemoteContainerRuntime:
 			// No-op.
 			break
@@ -702,45 +641,6 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 				imageService,
 				stats.NewLogMetricsService())
 		}
-	} else {
-		// rkt uses the legacy, non-CRI, integration. Configure it the old way.
-		// TODO: Include hairpin mode settings in rkt?
-		conf := &rkt.Config{
-			Path:            crOptions.RktPath,
-			Stage1Image:     crOptions.RktStage1Image,
-			InsecureOptions: "image,ondisk",
-		}
-		runtime, err := rkt.New(
-			crOptions.RktAPIEndpoint,
-			conf,
-			klet,
-			kubeDeps.Recorder,
-			containerRefManager,
-			klet,
-			klet.livenessManager,
-			httpClient,
-			klet.networkPlugin,
-			hairpinMode == kubeletconfiginternal.HairpinVeth,
-			utilexec.New(),
-			kubecontainer.RealOS{},
-			imageBackOff,
-			kubeCfg.SerializeImagePulls,
-			float32(kubeCfg.RegistryPullQPS),
-			int(kubeCfg.RegistryBurst),
-			kubeCfg.RuntimeRequestTimeout.Duration,
-		)
-		if err != nil {
-			return nil, err
-		}
-		klet.containerRuntime = runtime
-		klet.runner = kubecontainer.DirectStreamingRunner(runtime)
-		klet.StatsProvider = stats.NewCadvisorStatsProvider(
-			klet.cadvisor,
-			klet.resourceAnalyzer,
-			klet.podManager,
-			klet.runtimeCache,
-			klet.containerRuntime)
-	}
 
 	klet.pleg = pleg.NewGenericPLEG(klet.containerRuntime, plegChannelCapacity, plegRelistPeriod, klet.podCache, clock.RealClock{})
 	klet.runtimeState = newRuntimeState(maxWaitForContainerRuntime)
@@ -902,14 +802,7 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 	klet.softAdmitHandlers.AddPodAdmitHandler(lifecycle.NewAppArmorAdmitHandler(klet.appArmorValidator))
 	klet.softAdmitHandlers.AddPodAdmitHandler(lifecycle.NewNoNewPrivsAdmitHandler(klet.containerRuntime))
 	if utilfeature.DefaultFeatureGate.Enabled(features.Accelerators) {
-		if containerRuntime == kubetypes.DockerContainerRuntime {
-			glog.Warningln("Accelerators feature is deprecated and will be removed in v1.11. Please use device plugins instead. They can be enabled using the DevicePlugins feature gate.")
-			if klet.gpuManager, err = nvidia.NewNvidiaGPUManager(klet, kubeDeps.DockerClientConfig); err != nil {
-				return nil, err
-			}
-		} else {
-			glog.Errorf("Accelerators feature is supported with docker runtime only. Disabling this feature internally.")
-		}
+		glog.Errorf("Accelerators feature is supported with docker runtime only. Disabling this feature internally.")
 	}
 	// Set GPU manager to a stub implementation if it is not enabled or cannot be supported.
 	if klet.gpuManager == nil {
@@ -1192,10 +1085,6 @@ type Kubelet struct {
 
 	// GPU Manager
 	gpuManager gpu.GPUManager
-
-	// dockerLegacyService contains some legacy methods for backward compatibility.
-	// It should be set only when docker is using non json-file logging driver.
-	dockerLegacyService dockershim.DockerLegacyService
 
 	// StatsProvider provides the node and the container stats.
 	*stats.StatsProvider
@@ -2114,9 +2003,6 @@ func (kl *Kubelet) updateRuntimeUp() {
 		glog.Errorf("Container runtime sanity check failed: %v", err)
 		return
 	}
-	// rkt uses the legacy, non-CRI integration. Don't check the runtime
-	// conditions for it.
-	if kl.containerRuntimeName != kubetypes.RktContainerRuntime {
 		if s == nil {
 			glog.Errorf("Container runtime status is nil")
 			return
@@ -2142,7 +2028,6 @@ func (kl *Kubelet) updateRuntimeUp() {
 			glog.Errorf("Container runtime not ready: %v", runtimeReady)
 			return
 		}
-	}
 	kl.oneTimeInitializer.Do(kl.initializeRuntimeDependentModules)
 	kl.runtimeState.setRuntimeSync(kl.clock.Now())
 }
@@ -2212,20 +2097,3 @@ func isSyncPodWorthy(event *pleg.PodLifecycleEvent) bool {
 	return event.Type != pleg.ContainerRemoved
 }
 
-// Gets the streaming server configuration to use with in-process CRI shims.
-func getStreamingConfig(kubeCfg *kubeletconfiginternal.KubeletConfiguration, kubeDeps *Dependencies) *streaming.Config {
-	config := &streaming.Config{
-		// Use a relative redirect (no scheme or host).
-		BaseURL: &url.URL{
-			Path: "/cri/",
-		},
-		StreamIdleTimeout:               kubeCfg.StreamingConnectionIdleTimeout.Duration,
-		StreamCreationTimeout:           streaming.DefaultConfig.StreamCreationTimeout,
-		SupportedRemoteCommandProtocols: streaming.DefaultConfig.SupportedRemoteCommandProtocols,
-		SupportedPortForwardProtocols:   streaming.DefaultConfig.SupportedPortForwardProtocols,
-	}
-	if kubeDeps.TLSOptions != nil {
-		config.TLSConfig = kubeDeps.TLSOptions.Config
-	}
-	return config
-}

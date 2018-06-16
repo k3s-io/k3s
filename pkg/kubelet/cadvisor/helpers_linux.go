@@ -36,10 +36,6 @@ type imageFsInfoProvider struct {
 // For remote runtimes, it handles additional runtimes natively understood by cAdvisor.
 func (i *imageFsInfoProvider) ImageFsInfoLabel() (string, error) {
 	switch i.runtime {
-	case types.DockerContainerRuntime:
-		return cadvisorfs.LabelDockerImages, nil
-	case types.RktContainerRuntime:
-		return cadvisorfs.LabelRktImages, nil
 	case types.RemoteContainerRuntime:
 		// This is a temporary workaround to get stats for cri-o from cadvisor
 		// and should be removed.
