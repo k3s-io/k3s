@@ -44,7 +44,6 @@ type ServerRunOptions struct {
 	Etcd                    *genericoptions.EtcdOptions
 	SecureServing           *genericoptions.SecureServingOptionsWithLoopback
 	InsecureServing         *kubeoptions.InsecureServingOptions
-	Audit                   *genericoptions.AuditOptions
 	Features                *genericoptions.FeatureOptions
 	Admission               *kubeoptions.AdmissionOptions
 	Authentication          *kubeoptions.BuiltInAuthenticationOptions
@@ -82,7 +81,6 @@ func NewServerRunOptions() *ServerRunOptions {
 		Etcd:                 genericoptions.NewEtcdOptions(storagebackend.NewDefaultConfig(kubeoptions.DefaultEtcdPathPrefix, nil)),
 		SecureServing:        kubeoptions.NewSecureServingOptions(),
 		InsecureServing:      kubeoptions.NewInsecureServingOptions(),
-		Audit:                genericoptions.NewAuditOptions(),
 		Features:             genericoptions.NewFeatureOptions(),
 		Admission:            kubeoptions.NewAdmissionOptions(),
 		Authentication:       kubeoptions.NewBuiltInAuthenticationOptions().WithAll(),
@@ -118,7 +116,7 @@ func NewServerRunOptions() *ServerRunOptions {
 	s.ServiceClusterIPRange = kubeoptions.DefaultServiceIPCIDR
 
 	// Overwrite the default for storage data format.
-	s.Etcd.DefaultStorageMediaType = "application/vnd.kubernetes.protobuf"
+	//s.Etcd.DefaultStorageMediaType = "application/vnd.kubernetes.protobuf"
 
 	return &s
 }
@@ -131,7 +129,6 @@ func (s *ServerRunOptions) AddFlags(fs *pflag.FlagSet) {
 	s.SecureServing.AddFlags(fs)
 	s.InsecureServing.AddFlags(fs)
 	s.InsecureServing.AddDeprecatedFlags(fs)
-	s.Audit.AddFlags(fs)
 	s.Features.AddFlags(fs)
 	s.Authentication.AddFlags(fs)
 	s.Authorization.AddFlags(fs)
