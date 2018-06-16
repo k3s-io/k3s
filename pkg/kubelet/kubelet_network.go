@@ -26,7 +26,6 @@ import (
 	"k8s.io/kubernetes/pkg/kubelet/apis/kubeletconfig"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
 	"k8s.io/kubernetes/pkg/kubelet/network"
-	kubetypes "k8s.io/kubernetes/pkg/kubelet/types"
 	utiliptables "k8s.io/kubernetes/pkg/util/iptables"
 )
 
@@ -128,17 +127,8 @@ func effectiveHairpinMode(hairpinMode kubeletconfig.HairpinMode, containerRuntim
 	// - It's set to "none".
 	if hairpinMode == kubeletconfig.PromiscuousBridge || hairpinMode == kubeletconfig.HairpinVeth {
 		// Only on docker.
-		if containerRuntime != kubetypes.DockerContainerRuntime {
 			glog.Warningf("Hairpin mode set to %q but container runtime is %q, ignoring", hairpinMode, containerRuntime)
 			return kubeletconfig.HairpinNone, nil
-		}
-		if hairpinMode == kubeletconfig.PromiscuousBridge && networkPlugin != "kubenet" {
-			// This is not a valid combination, since promiscuous-bridge only works on kubenet. Users might be using the
-			// default values (from before the hairpin-mode flag existed) and we
-			// should keep the old behavior.
-			glog.Warningf("Hairpin mode set to %q but kubenet is not enabled, falling back to %q", hairpinMode, kubeletconfig.HairpinVeth)
-			return kubeletconfig.HairpinVeth, nil
-		}
 	} else if hairpinMode != kubeletconfig.HairpinNone {
 		return "", fmt.Errorf("unknown value: %q", hairpinMode)
 	}

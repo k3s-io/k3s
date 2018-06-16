@@ -48,7 +48,7 @@ func NewContainerRuntimeOptions() *config.ContainerRuntimeOptions {
 	}
 
 	return &config.ContainerRuntimeOptions{
-		ContainerRuntime:          kubetypes.DockerContainerRuntime,
+		ContainerRuntime:          kubetypes.RemoteContainerRuntime,
 		DockerEndpoint:            dockerEndpoint,
 		DockershimRootDirectory:   "/var/lib/dockershim",
 		DockerDisableSharedPID:    true,
