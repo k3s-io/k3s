@@ -32,6 +32,7 @@ import (
 	"github.com/opencontainers/runc/libcontainer/cgroups"
 	"github.com/opencontainers/runc/libcontainer/cgroups/fs"
 	"github.com/opencontainers/runc/libcontainer/configs"
+	libcontainersystem "github.com/opencontainers/runc/libcontainer/system"
 	"k8s.io/klog"
 
 	v1 "k8s.io/api/core/v1"
@@ -399,7 +400,11 @@ func setupKernelTunables(option KernelTunableBehavior) error {
 			klog.V(2).Infof("Updating kernel flag: %v, expected value: %v, actual value: %v", flag, expectedValue, val)
 			err = sysctl.SetSysctl(flag, expectedValue)
 			if err != nil {
-				errList = append(errList, err)
+				if libcontainersystem.RunningInUserNS() {
+					klog.Warningf("Updating kernel flag failed: %v: %v (running in UserNS)", flag, err)
+				} else {
+					errList = append(errList, err)
+				}
 			}
 		}
 	}
