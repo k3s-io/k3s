@@ -27,6 +27,7 @@ import (
 
 	"github.com/opencontainers/runc/libcontainer/cgroups/fs"
 	"github.com/opencontainers/runc/libcontainer/configs"
+	rsystem "github.com/opencontainers/runc/libcontainer/system"
 	utilversion "k8s.io/apimachinery/pkg/util/version"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog"
@@ -95,7 +96,10 @@ func (m *containerManager) doWork() {
 	//   1. Ensure processes run in the cgroups if m.cgroupsManager is not nil.
 	//   2. Ensure processes have the OOM score applied.
 	if err := kubecm.EnsureDockerInContainer(version, dockerOOMScoreAdj, m.cgroupsManager); err != nil {
-		klog.Errorf("Unable to ensure the docker processes run in the desired containers: %v", err)
+		// if we are in userns, the operation is likely to fail, unless cgroupfs is properly chown-ed.
+		if !rsystem.RunningInUserNS() {
+			klog.Errorf("Unable to ensure the docker processes run in the desired containers: %v", err)
+		}
 	}
 }
 
