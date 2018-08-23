@@ -47,6 +47,7 @@ import (
 	utilnode "k8s.io/kubernetes/pkg/util/node"
 	utilsysctl "k8s.io/kubernetes/pkg/util/sysctl"
 	"k8s.io/utils/exec"
+	rsystem "github.com/opencontainers/runc/libcontainer/system"
 
 	"k8s.io/klog"
 )
@@ -230,6 +231,12 @@ func newProxyServer(
 
 	iptInterface.AddReloadFunc(proxier.Sync)
 
+	var connTracker Conntracker
+	if !rsystem.RunningInUserNS(){
+		// if we are in userns, sysctl does not work and connTracker should be kept nil
+		connTracker = &realConntracker{}
+	}
+
 	return &ProxyServer{
 		Client:                 client,
 		EventClient:            eventClient,
@@ -241,7 +248,7 @@ func newProxyServer(
 		Broadcaster:            eventBroadcaster,
 		Recorder:               recorder,
 		ConntrackConfiguration: config.Conntrack,
-		Conntracker:            &realConntracker{},
+		Conntracker:            connTracker,
 		ProxyMode:              proxyMode,
 		NodeRef:                nodeRef,
 		MetricsBindAddress:     config.MetricsBindAddress,
