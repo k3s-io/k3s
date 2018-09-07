@@ -186,11 +186,6 @@ func (s *DelegatingAuthenticationOptions) ApplyTo(c *server.AuthenticationInfo, 
 		return fmt.Errorf("failed to get delegated authentication kubeconfig: %v", err)
 	}
 
-	// configure token review
-	if client != nil {
-		cfg.TokenAccessReviewClient = client.AuthenticationV1beta1().TokenReviews()
-	}
-
 	// look into configmaps/external-apiserver-authentication for missing authn info
 	if !s.SkipInClusterLookup {
 		err := s.lookupMissingConfigInCluster(client)
