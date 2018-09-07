@@ -25,7 +25,6 @@ import (
 	appsv1beta2 "k8s.io/api/apps/v1beta2"
 	auditregistrationv1alpha1 "k8s.io/api/auditregistration/v1alpha1"
 	authenticationv1 "k8s.io/api/authentication/v1"
-	authenticationv1beta1 "k8s.io/api/authentication/v1beta1"
 	authorizationv1 "k8s.io/api/authorization/v1"
 	authorizationv1beta1 "k8s.io/api/authorization/v1beta1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
@@ -72,7 +71,6 @@ var localSchemeBuilder = runtime.SchemeBuilder{
 	appsv1beta2.AddToScheme,
 	auditregistrationv1alpha1.AddToScheme,
 	authenticationv1.AddToScheme,
-	authenticationv1beta1.AddToScheme,
 	authorizationv1.AddToScheme,
 	authorizationv1beta1.AddToScheme,
 	autoscalingv1.AddToScheme,
