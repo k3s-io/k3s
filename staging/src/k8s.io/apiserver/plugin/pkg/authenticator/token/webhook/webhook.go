@@ -21,14 +21,14 @@ import (
 	"context"
 	"time"
 
-	authentication "k8s.io/api/authentication/v1beta1"
+	authentication "k8s.io/api/authentication/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 	"k8s.io/apiserver/pkg/authentication/user"
 	"k8s.io/apiserver/pkg/util/webhook"
 	"k8s.io/client-go/kubernetes/scheme"
-	authenticationclient "k8s.io/client-go/kubernetes/typed/authentication/v1beta1"
+	authenticationclient "k8s.io/client-go/kubernetes/typed/authentication/v1"
 	"k8s.io/klog"
 )
 
