@@ -19,7 +19,6 @@ limitations under the License.
 package scheme
 
 import (
-	admissionregistrationv1alpha1 "k8s.io/api/admissionregistration/v1alpha1"
 	admissionregistrationv1beta1 "k8s.io/api/admissionregistration/v1beta1"
 	appsv1 "k8s.io/api/apps/v1"
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
@@ -77,7 +76,6 @@ func init() {
 // After this, RawExtensions in Kubernetes types will serialize kube-aggregator types
 // correctly.
 func AddToScheme(scheme *runtime.Scheme) {
-	admissionregistrationv1alpha1.AddToScheme(scheme)
 	admissionregistrationv1beta1.AddToScheme(scheme)
 	appsv1beta1.AddToScheme(scheme)
 	appsv1beta2.AddToScheme(scheme)

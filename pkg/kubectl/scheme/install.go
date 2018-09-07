@@ -18,7 +18,6 @@ package scheme
 
 import (
 	admissionv1alpha1 "k8s.io/api/admission/v1beta1"
-	admissionregistrationv1alpha1 "k8s.io/api/admissionregistration/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	appsv1beta2 "k8s.io/api/apps/v1beta2"
@@ -100,20 +99,6 @@ func init() {
 		},
 		announced.VersionToSchemeFunc{
 			admissionv1alpha1.SchemeGroupVersion.Version: admissionv1alpha1.AddToScheme,
-		},
-	).Announce(GroupFactoryRegistry).RegisterAndEnable(Registry, Scheme); err != nil {
-		panic(err)
-	}
-
-	Versions = append(Versions, admissionregistrationv1alpha1.SchemeGroupVersion)
-	if err := announced.NewGroupMetaFactory(
-		&announced.GroupMetaFactoryArgs{
-			GroupName:              admissionregistrationv1alpha1.GroupName,
-			RootScopedKinds:        sets.NewString("InitializerConfiguration", "ValidatingWebhookConfiguration", "MutatingWebhookConfiguration"),
-			VersionPreferenceOrder: []string{admissionregistrationv1alpha1.SchemeGroupVersion.Version},
-		},
-		announced.VersionToSchemeFunc{
-			admissionregistrationv1alpha1.SchemeGroupVersion.Version: admissionregistrationv1alpha1.AddToScheme,
 		},
 	).Announce(GroupFactoryRegistry).RegisterAndEnable(Registry, Scheme); err != nil {
 		panic(err)
