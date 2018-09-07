@@ -21,8 +21,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	appsv1beta2 "k8s.io/api/apps/v1beta2"
-	authenticationv1 "k8s.io/api/authentication/v1"
-	authenticationv1beta1 "k8s.io/api/authentication/v1beta1"
 	authorizationv1 "k8s.io/api/authorization/v1"
 	authorizationv1beta1 "k8s.io/api/authorization/v1beta1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
@@ -114,21 +112,6 @@ func init() {
 			appsv1beta1.SchemeGroupVersion.Version: appsv1beta1.AddToScheme,
 			appsv1beta2.SchemeGroupVersion.Version: appsv1beta2.AddToScheme,
 			appsv1.SchemeGroupVersion.Version:      appsv1.AddToScheme,
-		},
-	).Announce(GroupFactoryRegistry).RegisterAndEnable(Registry, Scheme); err != nil {
-		panic(err)
-	}
-
-	Versions = append(Versions, authenticationv1.SchemeGroupVersion, authenticationv1beta1.SchemeGroupVersion)
-	if err := announced.NewGroupMetaFactory(
-		&announced.GroupMetaFactoryArgs{
-			GroupName:              authenticationv1beta1.GroupName,
-			VersionPreferenceOrder: []string{authenticationv1.SchemeGroupVersion.Version, authenticationv1beta1.SchemeGroupVersion.Version},
-			RootScopedKinds:        sets.NewString("TokenReview"),
-		},
-		announced.VersionToSchemeFunc{
-			authenticationv1beta1.SchemeGroupVersion.Version: authenticationv1beta1.AddToScheme,
-			authenticationv1.SchemeGroupVersion.Version:      authenticationv1.AddToScheme,
 		},
 	).Announce(GroupFactoryRegistry).RegisterAndEnable(Registry, Scheme); err != nil {
 		panic(err)
