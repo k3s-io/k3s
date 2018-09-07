@@ -25,7 +25,6 @@ import (
 	appsv1beta2 "k8s.io/api/apps/v1beta2"
 	authenticationv1 "k8s.io/api/authentication/v1"
 	authorizationv1 "k8s.io/api/authorization/v1"
-	authorizationv1beta1 "k8s.io/api/authorization/v1beta1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	autoscalingv2beta1 "k8s.io/api/autoscaling/v2beta1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -81,7 +80,6 @@ func AddToScheme(scheme *runtime.Scheme) {
 	appsv1.AddToScheme(scheme)
 	authenticationv1.AddToScheme(scheme)
 	authorizationv1.AddToScheme(scheme)
-	authorizationv1beta1.AddToScheme(scheme)
 	autoscalingv1.AddToScheme(scheme)
 	autoscalingv2beta1.AddToScheme(scheme)
 	batchv1.AddToScheme(scheme)

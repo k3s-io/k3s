@@ -63,7 +63,6 @@ apps/v1beta2 \
 apps/v1 \
 authentication.k8s.io/v1 \
 authorization.k8s.io/v1 \
-authorization.k8s.io/v1beta1 \
 autoscaling/v1 \
 autoscaling/v2beta1 \
 batch/v1 \
