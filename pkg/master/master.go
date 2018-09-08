@@ -34,7 +34,6 @@ import (
 	autoscalingapiv2beta1 "k8s.io/api/autoscaling/v2beta1"
 	batchapiv1 "k8s.io/api/batch/v1"
 	batchapiv1beta1 "k8s.io/api/batch/v1beta1"
-	certificatesapiv1beta1 "k8s.io/api/certificates/v1beta1"
 	apiv1 "k8s.io/api/core/v1"
 	eventsv1beta1 "k8s.io/api/events/v1beta1"
 	extensionsapiv1beta1 "k8s.io/api/extensions/v1beta1"
@@ -76,7 +75,6 @@ import (
 	authorizationrest "k8s.io/kubernetes/pkg/registry/authorization/rest"
 	autoscalingrest "k8s.io/kubernetes/pkg/registry/autoscaling/rest"
 	batchrest "k8s.io/kubernetes/pkg/registry/batch/rest"
-	certificatesrest "k8s.io/kubernetes/pkg/registry/certificates/rest"
 	corerest "k8s.io/kubernetes/pkg/registry/core/rest"
 	eventsrest "k8s.io/kubernetes/pkg/registry/events/rest"
 	extensionsrest "k8s.io/kubernetes/pkg/registry/extensions/rest"
@@ -338,7 +336,6 @@ func (c completedConfig) New(delegationTarget genericapiserver.DelegationTarget)
 		authorizationrest.RESTStorageProvider{Authorizer: c.GenericConfig.Authorization.Authorizer, RuleResolver: c.GenericConfig.RuleResolver},
 		autoscalingrest.RESTStorageProvider{},
 		batchrest.RESTStorageProvider{},
-		certificatesrest.RESTStorageProvider{},
 		extensionsrest.RESTStorageProvider{},
 		networkingrest.RESTStorageProvider{},
 		policyrest.RESTStorageProvider{},
@@ -475,7 +472,6 @@ func DefaultAPIResourceConfigSource() *serverstorage.ResourceConfig {
 		rbacv1beta1.SchemeGroupVersion,
 		storageapiv1.SchemeGroupVersion,
 		storageapiv1beta1.SchemeGroupVersion,
-		certificatesapiv1beta1.SchemeGroupVersion,
 		authorizationapiv1.SchemeGroupVersion,
 		networkingapiv1.SchemeGroupVersion,
 		eventsv1beta1.SchemeGroupVersion,

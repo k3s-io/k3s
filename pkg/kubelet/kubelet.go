@@ -18,7 +18,6 @@ package kubelet
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
 	"math"
 	"net"
@@ -51,7 +50,6 @@ import (
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/client-go/util/certificate"
 	"k8s.io/client-go/util/flowcontrol"
 	"k8s.io/client-go/util/integer"
 	api "k8s.io/kubernetes/pkg/apis/core"
@@ -60,7 +58,6 @@ import (
 	internalapi "k8s.io/kubernetes/pkg/kubelet/apis/cri"
 	kubeletconfiginternal "k8s.io/kubernetes/pkg/kubelet/apis/kubeletconfig"
 	"k8s.io/kubernetes/pkg/kubelet/cadvisor"
-	kubeletcertificate "k8s.io/kubernetes/pkg/kubelet/certificate"
 	"k8s.io/kubernetes/pkg/kubelet/cm"
 	"k8s.io/kubernetes/pkg/kubelet/config"
 	"k8s.io/kubernetes/pkg/kubelet/configmap"
@@ -370,8 +367,6 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 	hostname := nodeutil.GetHostname(hostnameOverride)
 	// Query the cloud provider for our node name, default to hostname
 	nodeName := types.NodeName(hostname)
-	cloudIPs := []net.IP{}
-	cloudNames := []string{}
 	if kubeDeps.Cloud != nil {
 		var err error
 		instances, ok := kubeDeps.Cloud.Instances()
@@ -385,25 +380,6 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 		}
 
 		glog.V(2).Infof("cloud provider determined current node name to be %s", nodeName)
-
-		if utilfeature.DefaultFeatureGate.Enabled(features.RotateKubeletServerCertificate) {
-			nodeAddresses, err := instances.NodeAddresses(context.TODO(), nodeName)
-			if err != nil {
-				return nil, fmt.Errorf("failed to get the addresses of the current instance from the cloud provider: %v", err)
-			}
-			for _, nodeAddress := range nodeAddresses {
-				switch nodeAddress.Type {
-				case v1.NodeExternalIP, v1.NodeInternalIP:
-					ip := net.ParseIP(nodeAddress.Address)
-					if ip != nil && !ip.IsLoopback() {
-						cloudIPs = append(cloudIPs, ip)
-					}
-				case v1.NodeExternalDNS, v1.NodeInternalDNS, v1.NodeHostName:
-					cloudNames = append(cloudNames, nodeAddress.Address)
-				}
-			}
-		}
-
 	}
 
 	if kubeDeps.PodConfig == nil {
@@ -779,34 +755,6 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 
 	klet.statusManager = status.NewManager(klet.kubeClient, klet.podManager, klet)
 
-	if utilfeature.DefaultFeatureGate.Enabled(features.RotateKubeletServerCertificate) && kubeDeps.TLSOptions != nil {
-		var ips []net.IP
-		cfgAddress := net.ParseIP(kubeCfg.Address)
-		if cfgAddress == nil || cfgAddress.IsUnspecified() {
-			localIPs, err := allLocalIPsWithoutLoopback()
-			if err != nil {
-				return nil, err
-			}
-			ips = localIPs
-		} else {
-			ips = []net.IP{cfgAddress}
-		}
-
-		ips = append(ips, cloudIPs...)
-		names := append([]string{klet.GetHostname(), hostnameOverride}, cloudNames...)
-		klet.serverCertificateManager, err = kubeletcertificate.NewKubeletServerCertificateManager(klet.kubeClient, kubeCfg, klet.nodeName, ips, names, certDirectory)
-		if err != nil {
-			return nil, fmt.Errorf("failed to initialize certificate manager: %v", err)
-		}
-		kubeDeps.TLSOptions.Config.GetCertificate = func(*tls.ClientHelloInfo) (*tls.Certificate, error) {
-			cert := klet.serverCertificateManager.Current()
-			if cert == nil {
-				return nil, fmt.Errorf("no serving certificate available for the kubelet")
-			}
-			return cert, nil
-		}
-	}
-
 	klet.probeManager = prober.NewManager(
 		klet.statusManager,
 		klet.livenessManager,
@@ -1029,9 +977,6 @@ type Kubelet struct {
 
 	//Cached RootFsInfo returned by cadvisor
 	rootfsInfo *cadvisorapiv2.FsInfo
-
-	// Handles certificate rotations.
-	serverCertificateManager certificate.Manager
 
 	// Syncs pods statuses with apiserver; also used as a cache of statuses.
 	statusManager status.Manager
@@ -1314,11 +1259,6 @@ func (kl *Kubelet) initializeModules() error {
 
 	// Start the image manager.
 	kl.imageManager.Start()
-
-	// Start the certificate manager.
-	if utilfeature.DefaultFeatureGate.Enabled(features.RotateKubeletServerCertificate) {
-		kl.serverCertificateManager.Start()
-	}
 
 	// Start out of memory watcher.
 	if err := kl.oomWatcher.Start(kl.nodeRef); err != nil {

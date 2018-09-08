@@ -27,7 +27,6 @@ import (
 	apps "k8s.io/kubernetes/pkg/apis/apps"
 	autoscaling "k8s.io/kubernetes/pkg/apis/autoscaling"
 	batch "k8s.io/kubernetes/pkg/apis/batch"
-	certificates "k8s.io/kubernetes/pkg/apis/certificates"
 	core "k8s.io/kubernetes/pkg/apis/core"
 	extensions "k8s.io/kubernetes/pkg/apis/extensions"
 	networking "k8s.io/kubernetes/pkg/apis/networking"
@@ -87,10 +86,6 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Batch().InternalVersion().CronJobs().Informer()}, nil
 	case batch.SchemeGroupVersion.WithResource("jobs"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Batch().InternalVersion().Jobs().Informer()}, nil
-
-		// Group=certificates.k8s.io, Version=internalVersion
-	case certificates.SchemeGroupVersion.WithResource("certificatesigningrequests"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Certificates().InternalVersion().CertificateSigningRequests().Informer()}, nil
 
 		// Group=core, Version=internalVersion
 	case core.SchemeGroupVersion.WithResource("componentstatuses"):

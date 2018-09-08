@@ -76,21 +76,6 @@ const (
 	// to take advantage of NoExecute Taints and Tolerations.
 	TaintBasedEvictions utilfeature.Feature = "TaintBasedEvictions"
 
-	// owner: @jcbsmpsn
-	// alpha: v1.7
-	//
-	// Gets a server certificate for the kubelet from the Certificate Signing
-	// Request API instead of generating one self signed and auto rotates the
-	// certificate as expiration approaches.
-	RotateKubeletServerCertificate utilfeature.Feature = "RotateKubeletServerCertificate"
-
-	// owner: @jcbsmpsn
-	// alpha: v1.7
-	//
-	// Automatically renews the client certificate used for communicating with
-	// the API server as the certificate approaches expiration.
-	RotateKubeletClientCertificate utilfeature.Feature = "RotateKubeletClientCertificate"
-
 	// owner: @msau42
 	// alpha: v1.7
 	//
@@ -291,8 +276,6 @@ var defaultKubernetesFeatureGates = map[utilfeature.Feature]utilfeature.FeatureS
 	Accelerators:                                {Default: false, PreRelease: utilfeature.Alpha},
 	DevicePlugins:                               {Default: true, PreRelease: utilfeature.Beta},
 	TaintBasedEvictions:                         {Default: false, PreRelease: utilfeature.Alpha},
-	RotateKubeletServerCertificate:              {Default: false, PreRelease: utilfeature.Alpha},
-	RotateKubeletClientCertificate:              {Default: true, PreRelease: utilfeature.Beta},
 	PersistentLocalVolumes:                      {Default: true, PreRelease: utilfeature.Beta},
 	LocalStorageCapacityIsolation:               {Default: true, PreRelease: utilfeature.Beta},
 	HugePages:                                   {Default: true, PreRelease: utilfeature.Beta},

@@ -52,10 +52,8 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
 	restclient "k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/record"
 	certutil "k8s.io/client-go/util/cert"
-	"k8s.io/client-go/util/certificate"
 	"k8s.io/kubernetes/cmd/kubelet/app/options"
 	"k8s.io/kubernetes/pkg/api/legacyscheme"
 	api "k8s.io/kubernetes/pkg/apis/core"
@@ -69,8 +67,6 @@ import (
 	kubeletscheme "k8s.io/kubernetes/pkg/kubelet/apis/kubeletconfig/scheme"
 	kubeletconfigv1beta1 "k8s.io/kubernetes/pkg/kubelet/apis/kubeletconfig/v1beta1"
 	"k8s.io/kubernetes/pkg/kubelet/cadvisor"
-	kubeletcertificate "k8s.io/kubernetes/pkg/kubelet/certificate"
-	"k8s.io/kubernetes/pkg/kubelet/certificate/bootstrap"
 	"k8s.io/kubernetes/pkg/kubelet/cm"
 	"k8s.io/kubernetes/pkg/kubelet/config"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
@@ -502,12 +498,6 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies) (err error) {
 		return err
 	}
 
-	if s.BootstrapKubeconfig != "" {
-		if err := bootstrap.LoadClientCert(s.KubeConfig, s.BootstrapKubeconfig, s.CertDirectory, nodeName); err != nil {
-			return err
-		}
-	}
-
 	// if in standalone mode, indicate as much by setting all clients to nil
 	if standaloneMode {
 		kubeDeps.KubeClient = nil
@@ -527,28 +517,10 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies) (err error) {
 			return fmt.Errorf("invalid kubeconfig: %v", err)
 		}
 
-		var clientCertificateManager certificate.Manager
-		if s.RotateCertificates && utilfeature.DefaultFeatureGate.Enabled(features.RotateKubeletClientCertificate) {
-			clientCertificateManager, err = kubeletcertificate.NewKubeletClientCertificateManager(s.CertDirectory, nodeName, clientConfig.CertData, clientConfig.KeyData, clientConfig.CertFile, clientConfig.KeyFile)
-			if err != nil {
-				return err
-			}
-		}
-		// we set exitAfter to five minutes because we use this client configuration to request new certs - if we are unable
-		// to request new certs, we will be unable to continue normal operation. Exiting the process allows a wrapper
-		// or the bootstrapping credentials to potentially lay down new initial config.
-		closeAllConns, err := kubeletcertificate.UpdateTransport(wait.NeverStop, clientConfig, clientCertificateManager, 5*time.Minute)
-		if err != nil {
-			return err
-		}
 
 		kubeClient, err = clientset.NewForConfig(clientConfig)
 		if err != nil {
 			glog.Warningf("New kubeClient from clientConfig error: %v", err)
-		} else if kubeClient.CertificatesV1beta1() != nil && clientCertificateManager != nil {
-			glog.V(2).Info("Starting client certificate rotation.")
-			clientCertificateManager.SetCertificateSigningRequestClient(kubeClient.CertificatesV1beta1().CertificateSigningRequests())
-			clientCertificateManager.Start()
 		}
 		externalKubeClient, err = clientset.NewForConfig(clientConfig)
 		if err != nil {
@@ -577,7 +549,6 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies) (err error) {
 		kubeDeps.ExternalKubeClient = externalKubeClient
 		if heartbeatClient != nil {
 			kubeDeps.HeartbeatClient = heartbeatClient
-			kubeDeps.OnHeartbeatFailure = closeAllConns
 		}
 		if eventClient != nil {
 			kubeDeps.EventClient = eventClient
@@ -737,7 +708,7 @@ func getNodeName(cloud cloudprovider.Interface, hostname string) (types.NodeName
 // InitializeTLS checks for a configured TLSCertFile and TLSPrivateKeyFile: if unspecified a new self-signed
 // certificate and key file are generated. Returns a configured server.TLSOptions object.
 func InitializeTLS(kf *options.KubeletFlags, kc *kubeletconfiginternal.KubeletConfiguration) (*server.TLSOptions, error) {
-	if !utilfeature.DefaultFeatureGate.Enabled(features.RotateKubeletServerCertificate) && kc.TLSCertFile == "" && kc.TLSPrivateKeyFile == "" {
+	if kc.TLSCertFile == "" && kc.TLSPrivateKeyFile == "" {
 		kc.TLSCertFile = path.Join(kf.CertDirectory, "kubelet.crt")
 		kc.TLSPrivateKeyFile = path.Join(kf.CertDirectory, "kubelet.key")
 
@@ -796,21 +767,10 @@ func InitializeTLS(kf *options.KubeletFlags, kc *kubeletconfiginternal.KubeletCo
 	return tlsOptions, nil
 }
 
-func kubeconfigClientConfig(s *options.KubeletServer) (*restclient.Config, error) {
-	return clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
-		&clientcmd.ClientConfigLoadingRules{ExplicitPath: s.KubeConfig},
-		&clientcmd.ConfigOverrides{},
-	).ClientConfig()
-}
-
 // createClientConfig creates a client configuration from the command line arguments.
 // If --kubeconfig is explicitly set, it will be used.
 func createClientConfig(s *options.KubeletServer) (*restclient.Config, error) {
-	if s.BootstrapKubeconfig != "" || len(s.KubeConfig) > 0 {
-		return kubeconfigClientConfig(s)
-	} else {
-		return nil, fmt.Errorf("createClientConfig called in standalone mode")
-	}
+	return nil, fmt.Errorf("createClientConfig called in standalone mode")
 }
 
 // createAPIServerClientConfig generates a client.Config from command line flags

@@ -316,15 +316,6 @@ func buildControllerRoles() ([]rbac.ClusterRole, []rbac.ClusterRoleBinding) {
 		},
 	})
 	addControllerRole(&controllerRoles, &controllerRoleBindings, rbac.ClusterRole{
-		ObjectMeta: metav1.ObjectMeta{Name: saRolePrefix + "certificate-controller"},
-		Rules: []rbac.PolicyRule{
-			rbac.NewRule("get", "list", "watch", "delete").Groups(certificatesGroup).Resources("certificatesigningrequests").RuleOrDie(),
-			rbac.NewRule("update").Groups(certificatesGroup).Resources("certificatesigningrequests/status", "certificatesigningrequests/approval").RuleOrDie(),
-			rbac.NewRule("create").Groups(authorizationGroup).Resources("subjectaccessreviews").RuleOrDie(),
-			eventsRule(),
-		},
-	})
-	addControllerRole(&controllerRoles, &controllerRoleBindings, rbac.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{Name: saRolePrefix + "pvc-protection-controller"},
 		Rules: []rbac.PolicyRule{
 			rbac.NewRule("get", "list", "watch", "update").Groups(legacyGroup).Resources("persistentvolumeclaims").RuleOrDie(),

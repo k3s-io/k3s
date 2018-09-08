@@ -30,7 +30,6 @@ import (
 	autoscalingv2beta1 "k8s.io/api/autoscaling/v2beta1"
 	batchv1 "k8s.io/api/batch/v1"
 	batchv1beta1 "k8s.io/api/batch/v1beta1"
-	certificatesv1beta1 "k8s.io/api/certificates/v1beta1"
 	apiv1 "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	rbacv1beta1 "k8s.io/api/rbac/v1beta1"
@@ -47,7 +46,6 @@ import (
 	"k8s.io/kubernetes/pkg/apis/apps"
 	"k8s.io/kubernetes/pkg/apis/autoscaling"
 	"k8s.io/kubernetes/pkg/apis/batch"
-	"k8s.io/kubernetes/pkg/apis/certificates"
 	api "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/apis/core/helper"
 	"k8s.io/kubernetes/pkg/apis/extensions"
@@ -382,15 +380,6 @@ func AddHandlers(h printers.PrintHandler) {
 	}
 	h.TableHandler(clusterRoleBindingsColumnDefinitions, printClusterRoleBinding)
 	h.TableHandler(clusterRoleBindingsColumnDefinitions, printClusterRoleBindingList)
-
-	certificateSigningRequestColumnDefinitions := []metav1beta1.TableColumnDefinition{
-		{Name: "Name", Type: "string", Format: "name", Description: metav1.ObjectMeta{}.SwaggerDoc()["name"]},
-		{Name: "Age", Type: "string", Description: metav1.ObjectMeta{}.SwaggerDoc()["creationTimestamp"]},
-		{Name: "Requestor", Type: "string", Description: certificatesv1beta1.CertificateSigningRequestSpec{}.SwaggerDoc()["request"]},
-		{Name: "Condition", Type: "string", Description: certificatesv1beta1.CertificateSigningRequestStatus{}.SwaggerDoc()["conditions"]},
-	}
-	h.TableHandler(certificateSigningRequestColumnDefinitions, printCertificateSigningRequest)
-	h.TableHandler(certificateSigningRequestColumnDefinitions, printCertificateSigningRequestList)
 
 	storageClassColumnDefinitions := []metav1beta1.TableColumnDefinition{
 		{Name: "Name", Type: "string", Format: "name", Description: metav1.ObjectMeta{}.SwaggerDoc()["name"]},
@@ -1346,57 +1335,6 @@ func printClusterRoleBindingList(list *rbac.ClusterRoleBindingList, options prin
 	rows := make([]metav1beta1.TableRow, 0, len(list.Items))
 	for i := range list.Items {
 		r, err := printClusterRoleBinding(&list.Items[i], options)
-		if err != nil {
-			return nil, err
-		}
-		rows = append(rows, r...)
-	}
-	return rows, nil
-}
-
-func printCertificateSigningRequest(obj *certificates.CertificateSigningRequest, options printers.PrintOptions) ([]metav1beta1.TableRow, error) {
-	row := metav1beta1.TableRow{
-		Object: runtime.RawExtension{Object: obj},
-	}
-	status, err := extractCSRStatus(obj)
-	if err != nil {
-		return nil, err
-	}
-	row.Cells = append(row.Cells, obj.Name, translateTimestamp(obj.CreationTimestamp), obj.Spec.Username, status)
-	return []metav1beta1.TableRow{row}, nil
-}
-
-func extractCSRStatus(csr *certificates.CertificateSigningRequest) (string, error) {
-	var approved, denied bool
-	for _, c := range csr.Status.Conditions {
-		switch c.Type {
-		case certificates.CertificateApproved:
-			approved = true
-		case certificates.CertificateDenied:
-			denied = true
-		default:
-			return "", fmt.Errorf("unknown csr condition %q", c)
-		}
-	}
-	var status string
-	// must be in order of presidence
-	if denied {
-		status += "Denied"
-	} else if approved {
-		status += "Approved"
-	} else {
-		status += "Pending"
-	}
-	if len(csr.Status.Certificate) > 0 {
-		status += ",Issued"
-	}
-	return status, nil
-}
-
-func printCertificateSigningRequestList(list *certificates.CertificateSigningRequestList, options printers.PrintOptions) ([]metav1beta1.TableRow, error) {
-	rows := make([]metav1beta1.TableRow, 0, len(list.Items))
-	for i := range list.Items {
-		r, err := printCertificateSigningRequest(&list.Items[i], options)
 		if err != nil {
 			return nil, err
 		}

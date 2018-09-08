@@ -21,14 +21,11 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	appsv1beta2 "k8s.io/api/apps/v1beta2"
-	authorizationv1 "k8s.io/api/authorization/v1"
-	authorizationv1beta1 "k8s.io/api/authorization/v1beta1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	autoscalingv2beta1 "k8s.io/api/autoscaling/v2beta1"
 	batchv1 "k8s.io/api/batch/v1"
 	batchv1beta1 "k8s.io/api/batch/v1beta1"
 	batchv2alpha1 "k8s.io/api/batch/v2alpha1"
-	certificatesv1beta1 "k8s.io/api/certificates/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	imagepolicyv1alpha1 "k8s.io/api/imagepolicy/v1alpha1"
@@ -117,21 +114,6 @@ func init() {
 		panic(err)
 	}
 
-	Versions = append(Versions, authorizationv1.SchemeGroupVersion, authorizationv1beta1.SchemeGroupVersion)
-	if err := announced.NewGroupMetaFactory(
-		&announced.GroupMetaFactoryArgs{
-			GroupName:              authorizationv1.GroupName,
-			VersionPreferenceOrder: []string{authorizationv1.SchemeGroupVersion.Version, authorizationv1beta1.SchemeGroupVersion.Version},
-			RootScopedKinds:        sets.NewString("SubjectAccessReview", "SelfSubjectAccessReview", "SelfSubjectRulesReview"),
-		},
-		announced.VersionToSchemeFunc{
-			authorizationv1beta1.SchemeGroupVersion.Version: authorizationv1beta1.AddToScheme,
-			authorizationv1.SchemeGroupVersion.Version:      authorizationv1.AddToScheme,
-		},
-	).Announce(GroupFactoryRegistry).RegisterAndEnable(Registry, Scheme); err != nil {
-		panic(err)
-	}
-
 	Versions = append(Versions, autoscalingv1.SchemeGroupVersion, autoscalingv2beta1.SchemeGroupVersion)
 	if err := announced.NewGroupMetaFactory(
 		&announced.GroupMetaFactoryArgs{
@@ -156,20 +138,6 @@ func init() {
 			batchv1.SchemeGroupVersion.Version:       batchv1.AddToScheme,
 			batchv1beta1.SchemeGroupVersion.Version:  batchv1beta1.AddToScheme,
 			batchv2alpha1.SchemeGroupVersion.Version: batchv2alpha1.AddToScheme,
-		},
-	).Announce(GroupFactoryRegistry).RegisterAndEnable(Registry, Scheme); err != nil {
-		panic(err)
-	}
-
-	Versions = append(Versions, certificatesv1beta1.SchemeGroupVersion)
-	if err := announced.NewGroupMetaFactory(
-		&announced.GroupMetaFactoryArgs{
-			GroupName:              certificatesv1beta1.GroupName,
-			VersionPreferenceOrder: []string{certificatesv1beta1.SchemeGroupVersion.Version},
-			RootScopedKinds:        sets.NewString("CertificateSigningRequest"),
-		},
-		announced.VersionToSchemeFunc{
-			certificatesv1beta1.SchemeGroupVersion.Version: certificatesv1beta1.AddToScheme,
 		},
 	).Announce(GroupFactoryRegistry).RegisterAndEnable(Registry, Scheme); err != nil {
 		panic(err)

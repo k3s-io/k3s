@@ -30,7 +30,6 @@ import (
 	batch_v1 "k8s.io/api/batch/v1"
 	batch_v1beta1 "k8s.io/api/batch/v1beta1"
 	v2alpha1 "k8s.io/api/batch/v2alpha1"
-	certificates_v1beta1 "k8s.io/api/certificates/v1beta1"
 	core_v1 "k8s.io/api/core/v1"
 	events_v1beta1 "k8s.io/api/events/v1beta1"
 	extensions_v1beta1 "k8s.io/api/extensions/v1beta1"
@@ -131,10 +130,6 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		// Group=batch, Version=v2alpha1
 	case v2alpha1.SchemeGroupVersion.WithResource("cronjobs"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Batch().V2alpha1().CronJobs().Informer()}, nil
-
-		// Group=certificates.k8s.io, Version=v1beta1
-	case certificates_v1beta1.SchemeGroupVersion.WithResource("certificatesigningrequests"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Certificates().V1beta1().CertificateSigningRequests().Informer()}, nil
 
 		// Group=core, Version=v1
 	case core_v1.SchemeGroupVersion.WithResource("componentstatuses"):
