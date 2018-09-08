@@ -39,8 +39,6 @@ import (
 	fakebatchinternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/batch/internalversion/fake"
 	coreinternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/internalversion"
 	fakecoreinternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/internalversion/fake"
-	eventsinternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/events/internalversion"
-	fakeeventsinternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/events/internalversion/fake"
 	extensionsinternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/extensions/internalversion"
 	fakeextensionsinternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/extensions/internalversion/fake"
 	networkinginternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/networking/internalversion"
@@ -131,11 +129,6 @@ func (c *Clientset) Autoscaling() autoscalinginternalversion.AutoscalingInterfac
 // Batch retrieves the BatchClient
 func (c *Clientset) Batch() batchinternalversion.BatchInterface {
 	return &fakebatchinternalversion.FakeBatch{Fake: &c.Fake}
-}
-
-// Events retrieves the EventsClient
-func (c *Clientset) Events() eventsinternalversion.EventsInterface {
-	return &fakeeventsinternalversion.FakeEvents{Fake: &c.Fake}
 }
 
 // Extensions retrieves the ExtensionsClient

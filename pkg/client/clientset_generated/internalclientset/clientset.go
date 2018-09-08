@@ -30,7 +30,6 @@ import (
 	autoscalinginternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/autoscaling/internalversion"
 	batchinternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/batch/internalversion"
 	coreinternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/internalversion"
-	eventsinternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/events/internalversion"
 	extensionsinternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/extensions/internalversion"
 	networkinginternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/networking/internalversion"
 	policyinternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/policy/internalversion"
@@ -49,7 +48,6 @@ type Interface interface {
 	Authorization() authorizationinternalversion.AuthorizationInterface
 	Autoscaling() autoscalinginternalversion.AutoscalingInterface
 	Batch() batchinternalversion.BatchInterface
-	Events() eventsinternalversion.EventsInterface
 	Extensions() extensionsinternalversion.ExtensionsInterface
 	Networking() networkinginternalversion.NetworkingInterface
 	Policy() policyinternalversion.PolicyInterface
@@ -70,7 +68,6 @@ type Clientset struct {
 	authorization         *authorizationinternalversion.AuthorizationClient
 	autoscaling           *autoscalinginternalversion.AutoscalingClient
 	batch                 *batchinternalversion.BatchClient
-	events                *eventsinternalversion.EventsClient
 	extensions            *extensionsinternalversion.ExtensionsClient
 	networking            *networkinginternalversion.NetworkingClient
 	policy                *policyinternalversion.PolicyClient
@@ -113,11 +110,6 @@ func (c *Clientset) Autoscaling() autoscalinginternalversion.AutoscalingInterfac
 // Batch retrieves the BatchClient
 func (c *Clientset) Batch() batchinternalversion.BatchInterface {
 	return c.batch
-}
-
-// Events retrieves the EventsClient
-func (c *Clientset) Events() eventsinternalversion.EventsInterface {
-	return c.events
 }
 
 // Extensions retrieves the ExtensionsClient
@@ -199,10 +191,6 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 	if err != nil {
 		return nil, err
 	}
-	cs.events, err = eventsinternalversion.NewForConfig(&configShallowCopy)
-	if err != nil {
-		return nil, err
-	}
 	cs.extensions, err = extensionsinternalversion.NewForConfig(&configShallowCopy)
 	if err != nil {
 		return nil, err
@@ -251,7 +239,6 @@ func NewForConfigOrDie(c *rest.Config) *Clientset {
 	cs.authorization = authorizationinternalversion.NewForConfigOrDie(c)
 	cs.autoscaling = autoscalinginternalversion.NewForConfigOrDie(c)
 	cs.batch = batchinternalversion.NewForConfigOrDie(c)
-	cs.events = eventsinternalversion.NewForConfigOrDie(c)
 	cs.extensions = extensionsinternalversion.NewForConfigOrDie(c)
 	cs.networking = networkinginternalversion.NewForConfigOrDie(c)
 	cs.policy = policyinternalversion.NewForConfigOrDie(c)
@@ -274,7 +261,6 @@ func New(c rest.Interface) *Clientset {
 	cs.authorization = authorizationinternalversion.New(c)
 	cs.autoscaling = autoscalinginternalversion.New(c)
 	cs.batch = batchinternalversion.New(c)
-	cs.events = eventsinternalversion.New(c)
 	cs.extensions = extensionsinternalversion.New(c)
 	cs.networking = networkinginternalversion.New(c)
 	cs.policy = policyinternalversion.New(c)

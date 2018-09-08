@@ -35,7 +35,6 @@ import (
 	batchapiv1 "k8s.io/api/batch/v1"
 	batchapiv1beta1 "k8s.io/api/batch/v1beta1"
 	apiv1 "k8s.io/api/core/v1"
-	eventsv1beta1 "k8s.io/api/events/v1beta1"
 	extensionsapiv1beta1 "k8s.io/api/extensions/v1beta1"
 	networkingapiv1 "k8s.io/api/networking/v1"
 	policyapiv1beta1 "k8s.io/api/policy/v1beta1"
@@ -474,7 +473,6 @@ func DefaultAPIResourceConfigSource() *serverstorage.ResourceConfig {
 		storageapiv1beta1.SchemeGroupVersion,
 		authorizationapiv1.SchemeGroupVersion,
 		networkingapiv1.SchemeGroupVersion,
-		eventsv1beta1.SchemeGroupVersion,
 		admissionregistrationv1beta1.SchemeGroupVersion,
 	)
 

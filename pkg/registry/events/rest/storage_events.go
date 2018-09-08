@@ -19,13 +19,13 @@ package rest
 import (
 	"time"
 
-	eventsapiv1beta1 "k8s.io/api/events/v1beta1"
+	eventsapiv1beta1 "k8s.io/api/core/v1"
 	"k8s.io/apiserver/pkg/registry/generic"
 	"k8s.io/apiserver/pkg/registry/rest"
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	serverstorage "k8s.io/apiserver/pkg/server/storage"
 	"k8s.io/kubernetes/pkg/api/legacyscheme"
-	"k8s.io/kubernetes/pkg/apis/events"
+	"k8s.io/kubernetes/pkg/apis/core"
 	eventstore "k8s.io/kubernetes/pkg/registry/core/event/storage"
 )
 
@@ -34,7 +34,7 @@ type RESTStorageProvider struct {
 }
 
 func (p RESTStorageProvider) NewRESTStorage(apiResourceConfigSource serverstorage.APIResourceConfigSource, restOptionsGetter generic.RESTOptionsGetter) (genericapiserver.APIGroupInfo, bool) {
-	apiGroupInfo := genericapiserver.NewDefaultAPIGroupInfo(events.GroupName, legacyscheme.Registry, legacyscheme.Scheme, legacyscheme.ParameterCodec, legacyscheme.Codecs)
+	apiGroupInfo := genericapiserver.NewDefaultAPIGroupInfo(core.GroupName, legacyscheme.Registry, legacyscheme.Scheme, legacyscheme.ParameterCodec, legacyscheme.Codecs)
 	// If you add a version here, be sure to add an entry in `k8s.io/kubernetes/cmd/kube-apiserver/app/aggregator.go with specific priorities.
 	// TODO refactor the plumbing to provide the information in the APIGroupInfo
 
@@ -56,5 +56,5 @@ func (p RESTStorageProvider) v1beta1Storage(apiResourceConfigSource serverstorag
 }
 
 func (p RESTStorageProvider) GroupName() string {
-	return events.GroupName
+	return core.GroupName
 }

@@ -33,7 +33,6 @@ import (
 	batchv1beta1 "k8s.io/client-go/kubernetes/typed/batch/v1beta1"
 	batchv2alpha1 "k8s.io/client-go/kubernetes/typed/batch/v2alpha1"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
-	eventsv1beta1 "k8s.io/client-go/kubernetes/typed/events/v1beta1"
 	extensionsv1beta1 "k8s.io/client-go/kubernetes/typed/extensions/v1beta1"
 	networkingv1 "k8s.io/client-go/kubernetes/typed/networking/v1"
 	policyv1beta1 "k8s.io/client-go/kubernetes/typed/policy/v1beta1"
@@ -77,9 +76,6 @@ type Interface interface {
 	CoreV1() corev1.CoreV1Interface
 	// Deprecated: please explicitly pick a version if possible.
 	Core() corev1.CoreV1Interface
-	EventsV1beta1() eventsv1beta1.EventsV1beta1Interface
-	// Deprecated: please explicitly pick a version if possible.
-	Events() eventsv1beta1.EventsV1beta1Interface
 	ExtensionsV1beta1() extensionsv1beta1.ExtensionsV1beta1Interface
 	// Deprecated: please explicitly pick a version if possible.
 	Extensions() extensionsv1beta1.ExtensionsV1beta1Interface
@@ -123,7 +119,6 @@ type Clientset struct {
 	batchV1beta1                 *batchv1beta1.BatchV1beta1Client
 	batchV2alpha1                *batchv2alpha1.BatchV2alpha1Client
 	coreV1                       *corev1.CoreV1Client
-	eventsV1beta1                *eventsv1beta1.EventsV1beta1Client
 	extensionsV1beta1            *extensionsv1beta1.ExtensionsV1beta1Client
 	networkingV1                 *networkingv1.NetworkingV1Client
 	policyV1beta1                *policyv1beta1.PolicyV1beta1Client
@@ -237,17 +232,6 @@ func (c *Clientset) CoreV1() corev1.CoreV1Interface {
 // Please explicitly pick a version.
 func (c *Clientset) Core() corev1.CoreV1Interface {
 	return c.coreV1
-}
-
-// EventsV1beta1 retrieves the EventsV1beta1Client
-func (c *Clientset) EventsV1beta1() eventsv1beta1.EventsV1beta1Interface {
-	return c.eventsV1beta1
-}
-
-// Deprecated: Events retrieves the default version of EventsClient.
-// Please explicitly pick a version.
-func (c *Clientset) Events() eventsv1beta1.EventsV1beta1Interface {
-	return c.eventsV1beta1
 }
 
 // ExtensionsV1beta1 retrieves the ExtensionsV1beta1Client
@@ -411,10 +395,6 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 	if err != nil {
 		return nil, err
 	}
-	cs.eventsV1beta1, err = eventsv1beta1.NewForConfig(&configShallowCopy)
-	if err != nil {
-		return nil, err
-	}
 	cs.extensionsV1beta1, err = extensionsv1beta1.NewForConfig(&configShallowCopy)
 	if err != nil {
 		return nil, err
@@ -484,7 +464,6 @@ func NewForConfigOrDie(c *rest.Config) *Clientset {
 	cs.batchV1beta1 = batchv1beta1.NewForConfigOrDie(c)
 	cs.batchV2alpha1 = batchv2alpha1.NewForConfigOrDie(c)
 	cs.coreV1 = corev1.NewForConfigOrDie(c)
-	cs.eventsV1beta1 = eventsv1beta1.NewForConfigOrDie(c)
 	cs.extensionsV1beta1 = extensionsv1beta1.NewForConfigOrDie(c)
 	cs.networkingV1 = networkingv1.NewForConfigOrDie(c)
 	cs.policyV1beta1 = policyv1beta1.NewForConfigOrDie(c)
@@ -516,7 +495,6 @@ func New(c rest.Interface) *Clientset {
 	cs.batchV1beta1 = batchv1beta1.New(c)
 	cs.batchV2alpha1 = batchv2alpha1.New(c)
 	cs.coreV1 = corev1.New(c)
-	cs.eventsV1beta1 = eventsv1beta1.New(c)
 	cs.extensionsV1beta1 = extensionsv1beta1.New(c)
 	cs.networkingV1 = networkingv1.New(c)
 	cs.policyV1beta1 = policyv1beta1.New(c)

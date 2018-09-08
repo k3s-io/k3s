@@ -34,7 +34,6 @@ import (
 	autoscaling "k8s.io/kubernetes/pkg/apis/autoscaling/install"
 	batch "k8s.io/kubernetes/pkg/apis/batch/install"
 	core "k8s.io/kubernetes/pkg/apis/core/install"
-	events "k8s.io/kubernetes/pkg/apis/events/install"
 	extensions "k8s.io/kubernetes/pkg/apis/extensions/install"
 	networking "k8s.io/kubernetes/pkg/apis/networking/install"
 	policy "k8s.io/kubernetes/pkg/apis/policy/install"
@@ -65,7 +64,6 @@ func Install(groupFactoryRegistry announced.APIGroupFactoryRegistry, registry *r
 	authorization.Install(groupFactoryRegistry, registry, scheme)
 	autoscaling.Install(groupFactoryRegistry, registry, scheme)
 	batch.Install(groupFactoryRegistry, registry, scheme)
-	events.Install(groupFactoryRegistry, registry, scheme)
 	extensions.Install(groupFactoryRegistry, registry, scheme)
 	networking.Install(groupFactoryRegistry, registry, scheme)
 	policy.Install(groupFactoryRegistry, registry, scheme)
