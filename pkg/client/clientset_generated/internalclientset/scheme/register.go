@@ -29,7 +29,6 @@ import (
 	authorization "k8s.io/kubernetes/pkg/apis/authorization/install"
 	autoscaling "k8s.io/kubernetes/pkg/apis/autoscaling/install"
 	batch "k8s.io/kubernetes/pkg/apis/batch/install"
-	certificates "k8s.io/kubernetes/pkg/apis/certificates/install"
 	coordination "k8s.io/kubernetes/pkg/apis/coordination/install"
 	core "k8s.io/kubernetes/pkg/apis/core/install"
 	events "k8s.io/kubernetes/pkg/apis/events/install"
@@ -60,7 +59,6 @@ func Install(scheme *runtime.Scheme) {
 	authorization.Install(scheme)
 	autoscaling.Install(scheme)
 	batch.Install(scheme)
-	certificates.Install(scheme)
 	coordination.Install(scheme)
 	events.Install(scheme)
 	extensions.Install(scheme)

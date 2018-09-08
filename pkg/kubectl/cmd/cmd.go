@@ -433,7 +433,6 @@ func NewKubectlCommand(in io.Reader, out, err io.Writer) *cobra.Command {
 		{
 			Message: "Cluster Management Commands:",
 			Commands: []*cobra.Command{
-				NewCmdCertificate(f, ioStreams),
 				NewCmdClusterInfo(f, ioStreams),
 				NewCmdTop(f, ioStreams),
 				NewCmdCordon(f, ioStreams),

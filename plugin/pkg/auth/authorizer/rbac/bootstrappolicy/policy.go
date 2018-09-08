@@ -44,7 +44,6 @@ const (
 	authorizationGroup  = "authorization.k8s.io"
 	autoscalingGroup    = "autoscaling"
 	batchGroup          = "batch"
-	certificatesGroup   = "certificates.k8s.io"
 	extensionsGroup     = "extensions"
 	policyGroup         = "policy"
 	rbacGroup           = "rbac.authorization.k8s.io"
@@ -136,9 +135,6 @@ func NodeRules() []rbacv1.PolicyRule {
 		// TODO: add to the Node authorizer and restrict to endpoints referenced by pods or PVs bound to the node
 		// Needed for glusterfs volumes
 		rbacv1helpers.NewRule("get").Groups(legacyGroup).Resources("endpoints").RuleOrDie(),
-		// Used to create a certificatesigningrequest for a node-specific client certificate, and watch
-		// for it to be signed. This allows the kubelet to rotate it's own certificate.
-		rbacv1helpers.NewRule("create", "get", "list", "watch").Groups(certificatesGroup).Resources("certificatesigningrequests").RuleOrDie(),
 	}
 
 	if utilfeature.DefaultFeatureGate.Enabled(features.ExpandPersistentVolumes) {
@@ -370,14 +366,6 @@ func ClusterRoles() []rbacv1.ClusterRole {
 			},
 		},
 		{
-			// a role to use for bootstrapping a node's client certificates
-			ObjectMeta: metav1.ObjectMeta{Name: "system:node-bootstrapper"},
-			Rules: []rbacv1.PolicyRule{
-				// used to create a certificatesigningrequest for a node-specific client certificate, and watch for it to be signed
-				rbacv1helpers.NewRule("create", "get", "list", "watch").Groups(certificatesGroup).Resources("certificatesigningrequests").RuleOrDie(),
-			},
-		},
-		{
 			// a role to use for allowing authentication and authorization delegation
 			ObjectMeta: metav1.ObjectMeta{Name: "system:auth-delegator"},
 			Rules: []rbacv1.PolicyRule{
@@ -472,20 +460,6 @@ func ClusterRoles() []rbacv1.ClusterRole {
 			Rules: []rbacv1.PolicyRule{
 				rbacv1helpers.NewRule("get", "patch").Groups(legacyGroup).Resources("nodes").RuleOrDie(),
 				eventsRule(),
-			},
-		},
-		{
-			// a role making the csrapprover controller approve a node client CSR
-			ObjectMeta: metav1.ObjectMeta{Name: "system:certificates.k8s.io:certificatesigningrequests:nodeclient"},
-			Rules: []rbacv1.PolicyRule{
-				rbacv1helpers.NewRule("create").Groups(certificatesGroup).Resources("certificatesigningrequests/nodeclient").RuleOrDie(),
-			},
-		},
-		{
-			// a role making the csrapprover controller approve a node client CSR requested by the node itself
-			ObjectMeta: metav1.ObjectMeta{Name: "system:certificates.k8s.io:certificatesigningrequests:selfnodeclient"},
-			Rules: []rbacv1.PolicyRule{
-				rbacv1helpers.NewRule("create").Groups(certificatesGroup).Resources("certificatesigningrequests/selfnodeclient").RuleOrDie(),
 			},
 		},
 	}
