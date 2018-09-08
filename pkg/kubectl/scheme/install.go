@@ -28,7 +28,6 @@ import (
 	batchv2alpha1 "k8s.io/api/batch/v2alpha1"
 	corev1 "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
-	imagepolicyv1alpha1 "k8s.io/api/imagepolicy/v1alpha1"
 	networkingv1 "k8s.io/api/networking/v1"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -152,20 +151,6 @@ func init() {
 		},
 		announced.VersionToSchemeFunc{
 			extensionsv1beta1.SchemeGroupVersion.Version: extensionsv1beta1.AddToScheme,
-		},
-	).Announce(GroupFactoryRegistry).RegisterAndEnable(Registry, Scheme); err != nil {
-		panic(err)
-	}
-
-	Versions = append(Versions, imagepolicyv1alpha1.SchemeGroupVersion)
-	if err := announced.NewGroupMetaFactory(
-		&announced.GroupMetaFactoryArgs{
-			GroupName:              imagepolicyv1alpha1.GroupName,
-			VersionPreferenceOrder: []string{imagepolicyv1alpha1.SchemeGroupVersion.Version},
-			RootScopedKinds:        sets.NewString("ImageReview"),
-		},
-		announced.VersionToSchemeFunc{
-			imagepolicyv1alpha1.SchemeGroupVersion.Version: imagepolicyv1alpha1.AddToScheme,
 		},
 	).Announce(GroupFactoryRegistry).RegisterAndEnable(Registry, Scheme); err != nil {
 		panic(err)

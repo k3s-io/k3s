@@ -69,7 +69,6 @@ batch/v1 \
 batch/v1beta1 \
 batch/v2alpha1 \
 extensions/v1beta1 \
-imagepolicy.k8s.io/v1alpha1 \
 networking.k8s.io/v1 \
 policy/v1beta1 \
 rbac.authorization.k8s.io/v1 \
@@ -88,7 +87,6 @@ KUBE_NONSERVER_GROUP_VERSIONS="
  abac.authorization.kubernetes.io/v0 \
  abac.authorization.kubernetes.io/v1beta1 \
  componentconfig/v1alpha1 \
- imagepolicy.k8s.io/v1alpha1\
  admission.k8s.io/v1beta1\
 "
 
