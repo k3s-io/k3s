@@ -34,7 +34,6 @@ import (
 	certificates "k8s.io/client-go/informers/certificates"
 	coordination "k8s.io/client-go/informers/coordination"
 	core "k8s.io/client-go/informers/core"
-	events "k8s.io/client-go/informers/events"
 	extensions "k8s.io/client-go/informers/extensions"
 	internalinterfaces "k8s.io/client-go/informers/internalinterfaces"
 	networking "k8s.io/client-go/informers/networking"
@@ -195,7 +194,6 @@ type SharedInformerFactory interface {
 	Certificates() certificates.Interface
 	Coordination() coordination.Interface
 	Core() core.Interface
-	Events() events.Interface
 	Extensions() extensions.Interface
 	Networking() networking.Interface
 	Policy() policy.Interface
@@ -235,10 +233,6 @@ func (f *sharedInformerFactory) Coordination() coordination.Interface {
 
 func (f *sharedInformerFactory) Core() core.Interface {
 	return core.New(f, f.namespace, f.tweakListOptions)
-}
-
-func (f *sharedInformerFactory) Events() events.Interface {
-	return events.New(f, f.namespace, f.tweakListOptions)
 }
 
 func (f *sharedInformerFactory) Extensions() extensions.Interface {
