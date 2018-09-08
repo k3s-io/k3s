@@ -18,7 +18,6 @@ package internalversion
 
 import (
 	"bytes"
-	"crypto/x509"
 	"fmt"
 	"io"
 	"net"
@@ -31,7 +30,6 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-
 	"github.com/fatih/camelcase"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -57,7 +55,6 @@ import (
 	"k8s.io/kubernetes/pkg/apis/apps"
 	"k8s.io/kubernetes/pkg/apis/autoscaling"
 	"k8s.io/kubernetes/pkg/apis/batch"
-	"k8s.io/kubernetes/pkg/apis/certificates"
 	api "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/apis/core/helper"
 	"k8s.io/kubernetes/pkg/apis/core/helper/qos"
@@ -166,7 +163,6 @@ func describerMap(clientConfig *rest.Config) (map[schema.GroupKind]printers.Desc
 		apps.Kind("Deployment"):                        &DeploymentDescriber{c, externalclient},
 		apps.Kind("DaemonSet"):                         &DaemonSetDescriber{c},
 		apps.Kind("ReplicaSet"):                        &ReplicaSetDescriber{c},
-		certificates.Kind("CertificateSigningRequest"): &CertificateSigningRequestDescriber{c},
 		storage.Kind("StorageClass"):                   &StorageClassDescriber{c},
 		policy.Kind("PodDisruptionBudget"):             &PodDisruptionBudgetDescriber{c},
 		rbac.Kind("Role"):                              &RoleDescriber{externalclient},
@@ -2896,82 +2892,6 @@ func describeStatefulSet(ps *apps.StatefulSet, selector labels.Selector, events 
 		w.Write(LEVEL_0, "Pods Status:\t%d Running / %d Waiting / %d Succeeded / %d Failed\n", running, waiting, succeeded, failed)
 		DescribePodTemplate(&ps.Spec.Template, w)
 		describeVolumeClaimTemplates(ps.Spec.VolumeClaimTemplates, w)
-		if events != nil {
-			DescribeEvents(events, w)
-		}
-
-		return nil
-	})
-}
-
-type CertificateSigningRequestDescriber struct {
-	client clientset.Interface
-}
-
-func (p *CertificateSigningRequestDescriber) Describe(namespace, name string, describerSettings printers.DescriberSettings) (string, error) {
-	csr, err := p.client.Certificates().CertificateSigningRequests().Get(name, metav1.GetOptions{})
-	if err != nil {
-		return "", err
-	}
-
-	cr, err := certificates.ParseCSR(csr)
-	if err != nil {
-		return "", fmt.Errorf("Error parsing CSR: %v", err)
-	}
-	status, err := extractCSRStatus(csr)
-	if err != nil {
-		return "", err
-	}
-
-	var events *api.EventList
-	if describerSettings.ShowEvents {
-		events, _ = p.client.Core().Events(namespace).Search(legacyscheme.Scheme, csr)
-	}
-
-	return describeCertificateSigningRequest(csr, cr, status, events)
-}
-
-func describeCertificateSigningRequest(csr *certificates.CertificateSigningRequest, cr *x509.CertificateRequest, status string, events *api.EventList) (string, error) {
-	printListHelper := func(w PrefixWriter, prefix, name string, values []string) {
-		if len(values) == 0 {
-			return
-		}
-		w.Write(LEVEL_0, prefix+name+":\t")
-		w.Write(LEVEL_0, strings.Join(values, "\n"+prefix+"\t"))
-		w.Write(LEVEL_0, "\n")
-	}
-
-	return tabbedString(func(out io.Writer) error {
-		w := NewPrefixWriter(out)
-		w.Write(LEVEL_0, "Name:\t%s\n", csr.Name)
-		w.Write(LEVEL_0, "Labels:\t%s\n", labels.FormatLabels(csr.Labels))
-		w.Write(LEVEL_0, "Annotations:\t%s\n", labels.FormatLabels(csr.Annotations))
-		w.Write(LEVEL_0, "CreationTimestamp:\t%s\n", csr.CreationTimestamp.Time.Format(time.RFC1123Z))
-		w.Write(LEVEL_0, "Requesting User:\t%s\n", csr.Spec.Username)
-		w.Write(LEVEL_0, "Status:\t%s\n", status)
-
-		w.Write(LEVEL_0, "Subject:\n")
-		w.Write(LEVEL_0, "\tCommon Name:\t%s\n", cr.Subject.CommonName)
-		w.Write(LEVEL_0, "\tSerial Number:\t%s\n", cr.Subject.SerialNumber)
-		printListHelper(w, "\t", "Organization", cr.Subject.Organization)
-		printListHelper(w, "\t", "Organizational Unit", cr.Subject.OrganizationalUnit)
-		printListHelper(w, "\t", "Country", cr.Subject.Country)
-		printListHelper(w, "\t", "Locality", cr.Subject.Locality)
-		printListHelper(w, "\t", "Province", cr.Subject.Province)
-		printListHelper(w, "\t", "StreetAddress", cr.Subject.StreetAddress)
-		printListHelper(w, "\t", "PostalCode", cr.Subject.PostalCode)
-
-		if len(cr.DNSNames)+len(cr.EmailAddresses)+len(cr.IPAddresses) > 0 {
-			w.Write(LEVEL_0, "Subject Alternative Names:\n")
-			printListHelper(w, "\t", "DNS Names", cr.DNSNames)
-			printListHelper(w, "\t", "Email Addresses", cr.EmailAddresses)
-			var ipaddrs []string
-			for _, ipaddr := range cr.IPAddresses {
-				ipaddrs = append(ipaddrs, ipaddr.String())
-			}
-			printListHelper(w, "\t", "IP Addresses", ipaddrs)
-		}
-
 		if events != nil {
 			DescribeEvents(events, w)
 		}

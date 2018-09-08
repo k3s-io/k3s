@@ -30,7 +30,6 @@ import (
 	authorizationinternalversion "k8s.io/kubernetes/pkg/apis/authorization"
 	autoscalinginternalversion "k8s.io/kubernetes/pkg/apis/autoscaling"
 	batchinternalversion "k8s.io/kubernetes/pkg/apis/batch"
-	certificatesinternalversion "k8s.io/kubernetes/pkg/apis/certificates"
 	coordinationinternalversion "k8s.io/kubernetes/pkg/apis/coordination"
 	coreinternalversion "k8s.io/kubernetes/pkg/apis/core"
 	eventsinternalversion "k8s.io/kubernetes/pkg/apis/events"
@@ -54,7 +53,6 @@ var localSchemeBuilder = runtime.SchemeBuilder{
 	authorizationinternalversion.AddToScheme,
 	autoscalinginternalversion.AddToScheme,
 	batchinternalversion.AddToScheme,
-	certificatesinternalversion.AddToScheme,
 	coordinationinternalversion.AddToScheme,
 	eventsinternalversion.AddToScheme,
 	extensionsinternalversion.AddToScheme,
