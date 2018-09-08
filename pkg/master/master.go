@@ -37,7 +37,6 @@ import (
 	batchapiv2alpha1 "k8s.io/api/batch/v2alpha1"
 	coordinationapiv1beta1 "k8s.io/api/coordination/v1beta1"
 	apiv1 "k8s.io/api/core/v1"
-	eventsv1beta1 "k8s.io/api/events/v1beta1"
 	extensionsapiv1beta1 "k8s.io/api/extensions/v1beta1"
 	networkingapiv1 "k8s.io/api/networking/v1"
 	policyapiv1beta1 "k8s.io/api/policy/v1beta1"
@@ -84,7 +83,6 @@ import (
 	batchrest "k8s.io/kubernetes/pkg/registry/batch/rest"
 	coordinationrest "k8s.io/kubernetes/pkg/registry/coordination/rest"
 	corerest "k8s.io/kubernetes/pkg/registry/core/rest"
-	eventsrest "k8s.io/kubernetes/pkg/registry/events/rest"
 	extensionsrest "k8s.io/kubernetes/pkg/registry/extensions/rest"
 	networkingrest "k8s.io/kubernetes/pkg/registry/networking/rest"
 	policyrest "k8s.io/kubernetes/pkg/registry/policy/rest"
@@ -356,7 +354,6 @@ func (c completedConfig) New(delegationTarget genericapiserver.DelegationTarget)
 		// See https://github.com/kubernetes/kubernetes/issues/42392
 		appsrest.RESTStorageProvider{},
 		admissionregistrationrest.RESTStorageProvider{},
-		eventsrest.RESTStorageProvider{TTL: c.ExtraConfig.EventTTL},
 	}
 	m.InstallAPIs(c.ExtraConfig.APIResourceConfigSource, c.GenericConfig.RESTOptionsGetter, restStorageProviders...)
 
@@ -482,7 +479,6 @@ func DefaultAPIResourceConfigSource() *serverstorage.ResourceConfig {
 		batchapiv1.SchemeGroupVersion,
 		batchapiv1beta1.SchemeGroupVersion,
 		coordinationapiv1beta1.SchemeGroupVersion,
-		eventsv1beta1.SchemeGroupVersion,
 		extensionsapiv1beta1.SchemeGroupVersion,
 		networkingapiv1.SchemeGroupVersion,
 		policyapiv1beta1.SchemeGroupVersion,
