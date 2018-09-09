@@ -55,8 +55,6 @@ import (
 	fakerbacinternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/rbac/internalversion/fake"
 	schedulinginternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/scheduling/internalversion"
 	fakeschedulinginternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/scheduling/internalversion/fake"
-	settingsinternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/settings/internalversion"
-	fakesettingsinternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/settings/internalversion/fake"
 	storageinternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/storage/internalversion"
 	fakestorageinternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/storage/internalversion/fake"
 )
@@ -176,11 +174,6 @@ func (c *Clientset) Rbac() rbacinternalversion.RbacInterface {
 // Scheduling retrieves the SchedulingClient
 func (c *Clientset) Scheduling() schedulinginternalversion.SchedulingInterface {
 	return &fakeschedulinginternalversion.FakeScheduling{Fake: &c.Fake}
-}
-
-// Settings retrieves the SettingsClient
-func (c *Clientset) Settings() settingsinternalversion.SettingsInterface {
-	return &fakesettingsinternalversion.FakeSettings{Fake: &c.Fake}
 }
 
 // Storage retrieves the StorageClient

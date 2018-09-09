@@ -39,7 +39,6 @@ import (
 	policyinternalversion "k8s.io/kubernetes/pkg/apis/policy"
 	rbacinternalversion "k8s.io/kubernetes/pkg/apis/rbac"
 	schedulinginternalversion "k8s.io/kubernetes/pkg/apis/scheduling"
-	settingsinternalversion "k8s.io/kubernetes/pkg/apis/settings"
 	storageinternalversion "k8s.io/kubernetes/pkg/apis/storage"
 )
 
@@ -62,7 +61,6 @@ var localSchemeBuilder = runtime.SchemeBuilder{
 	policyinternalversion.AddToScheme,
 	rbacinternalversion.AddToScheme,
 	schedulinginternalversion.AddToScheme,
-	settingsinternalversion.AddToScheme,
 	storageinternalversion.AddToScheme,
 }
 

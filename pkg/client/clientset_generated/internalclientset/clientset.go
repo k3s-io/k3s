@@ -37,7 +37,6 @@ import (
 	policyinternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/policy/internalversion"
 	rbacinternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/rbac/internalversion"
 	schedulinginternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/scheduling/internalversion"
-	settingsinternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/settings/internalversion"
 	storageinternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/storage/internalversion"
 )
 
@@ -58,7 +57,6 @@ type Interface interface {
 	Policy() policyinternalversion.PolicyInterface
 	Rbac() rbacinternalversion.RbacInterface
 	Scheduling() schedulinginternalversion.SchedulingInterface
-	Settings() settingsinternalversion.SettingsInterface
 	Storage() storageinternalversion.StorageInterface
 }
 
@@ -81,7 +79,6 @@ type Clientset struct {
 	policy                *policyinternalversion.PolicyClient
 	rbac                  *rbacinternalversion.RbacClient
 	scheduling            *schedulinginternalversion.SchedulingClient
-	settings              *settingsinternalversion.SettingsClient
 	storage               *storageinternalversion.StorageClient
 }
 
@@ -158,11 +155,6 @@ func (c *Clientset) Rbac() rbacinternalversion.RbacInterface {
 // Scheduling retrieves the SchedulingClient
 func (c *Clientset) Scheduling() schedulinginternalversion.SchedulingInterface {
 	return c.scheduling
-}
-
-// Settings retrieves the SettingsClient
-func (c *Clientset) Settings() settingsinternalversion.SettingsInterface {
-	return c.settings
 }
 
 // Storage retrieves the StorageClient
@@ -246,10 +238,6 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 	if err != nil {
 		return nil, err
 	}
-	cs.settings, err = settingsinternalversion.NewForConfig(&configShallowCopy)
-	if err != nil {
-		return nil, err
-	}
 	cs.storage, err = storageinternalversion.NewForConfig(&configShallowCopy)
 	if err != nil {
 		return nil, err
@@ -281,7 +269,6 @@ func NewForConfigOrDie(c *rest.Config) *Clientset {
 	cs.policy = policyinternalversion.NewForConfigOrDie(c)
 	cs.rbac = rbacinternalversion.NewForConfigOrDie(c)
 	cs.scheduling = schedulinginternalversion.NewForConfigOrDie(c)
-	cs.settings = settingsinternalversion.NewForConfigOrDie(c)
 	cs.storage = storageinternalversion.NewForConfigOrDie(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClientForConfigOrDie(c)
@@ -306,7 +293,6 @@ func New(c rest.Interface) *Clientset {
 	cs.policy = policyinternalversion.New(c)
 	cs.rbac = rbacinternalversion.New(c)
 	cs.scheduling = schedulinginternalversion.New(c)
-	cs.settings = settingsinternalversion.New(c)
 	cs.storage = storageinternalversion.New(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClient(c)
