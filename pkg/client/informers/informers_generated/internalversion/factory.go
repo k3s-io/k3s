@@ -40,7 +40,6 @@ import (
 	policy "k8s.io/kubernetes/pkg/client/informers/informers_generated/internalversion/policy"
 	rbac "k8s.io/kubernetes/pkg/client/informers/informers_generated/internalversion/rbac"
 	scheduling "k8s.io/kubernetes/pkg/client/informers/informers_generated/internalversion/scheduling"
-	settings "k8s.io/kubernetes/pkg/client/informers/informers_generated/internalversion/settings"
 	storage "k8s.io/kubernetes/pkg/client/informers/informers_generated/internalversion/storage"
 )
 
@@ -195,7 +194,6 @@ type SharedInformerFactory interface {
 	Policy() policy.Interface
 	Rbac() rbac.Interface
 	Scheduling() scheduling.Interface
-	Settings() settings.Interface
 	Storage() storage.Interface
 }
 
@@ -241,10 +239,6 @@ func (f *sharedInformerFactory) Rbac() rbac.Interface {
 
 func (f *sharedInformerFactory) Scheduling() scheduling.Interface {
 	return scheduling.New(f, f.namespace, f.tweakListOptions)
-}
-
-func (f *sharedInformerFactory) Settings() settings.Interface {
-	return settings.New(f, f.namespace, f.tweakListOptions)
 }
 
 func (f *sharedInformerFactory) Storage() storage.Interface {
