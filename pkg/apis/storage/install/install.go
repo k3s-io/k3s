@@ -26,7 +26,6 @@ import (
 	"k8s.io/kubernetes/pkg/api/legacyscheme"
 	"k8s.io/kubernetes/pkg/apis/storage"
 	"k8s.io/kubernetes/pkg/apis/storage/v1"
-	"k8s.io/kubernetes/pkg/apis/storage/v1alpha1"
 	"k8s.io/kubernetes/pkg/apis/storage/v1beta1"
 )
 
@@ -39,7 +38,7 @@ func Install(groupFactoryRegistry announced.APIGroupFactoryRegistry, registry *r
 	if err := announced.NewGroupMetaFactory(
 		&announced.GroupMetaFactoryArgs{
 			GroupName:              storage.GroupName,
-			VersionPreferenceOrder: []string{v1.SchemeGroupVersion.Version, v1beta1.SchemeGroupVersion.Version, v1alpha1.SchemeGroupVersion.Version},
+			VersionPreferenceOrder: []string{v1.SchemeGroupVersion.Version, v1beta1.SchemeGroupVersion.Version},
 			RootScopedKinds: sets.NewString(
 				"StorageClass",
 				"VolumeAttachment",
@@ -49,7 +48,6 @@ func Install(groupFactoryRegistry announced.APIGroupFactoryRegistry, registry *r
 		announced.VersionToSchemeFunc{
 			v1.SchemeGroupVersion.Version:       v1.AddToScheme,
 			v1beta1.SchemeGroupVersion.Version:  v1beta1.AddToScheme,
-			v1alpha1.SchemeGroupVersion.Version: v1alpha1.AddToScheme,
 		},
 	).Announce(groupFactoryRegistry).RegisterAndEnable(registry, scheme); err != nil {
 		panic(err)
