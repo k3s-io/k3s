@@ -49,7 +49,6 @@ import (
 	schedulingv1beta1 "k8s.io/api/scheduling/v1beta1"
 	settingsv1alpha1 "k8s.io/api/settings/v1alpha1"
 	storagev1 "k8s.io/api/storage/v1"
-	storagev1alpha1 "k8s.io/api/storage/v1alpha1"
 	storagev1beta1 "k8s.io/api/storage/v1beta1"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	cache "k8s.io/client-go/tools/cache"
@@ -268,10 +267,6 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Storage().V1().StorageClasses().Informer()}, nil
 	case storagev1.SchemeGroupVersion.WithResource("volumeattachments"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Storage().V1().VolumeAttachments().Informer()}, nil
-
-		// Group=storage.k8s.io, Version=v1alpha1
-	case storagev1alpha1.SchemeGroupVersion.WithResource("volumeattachments"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Storage().V1alpha1().VolumeAttachments().Informer()}, nil
 
 		// Group=storage.k8s.io, Version=v1beta1
 	case storagev1beta1.SchemeGroupVersion.WithResource("csidrivers"):

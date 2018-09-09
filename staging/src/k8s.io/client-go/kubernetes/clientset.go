@@ -50,7 +50,6 @@ import (
 	schedulingv1beta1 "k8s.io/client-go/kubernetes/typed/scheduling/v1beta1"
 	settingsv1alpha1 "k8s.io/client-go/kubernetes/typed/settings/v1alpha1"
 	storagev1 "k8s.io/client-go/kubernetes/typed/storage/v1"
-	storagev1alpha1 "k8s.io/client-go/kubernetes/typed/storage/v1alpha1"
 	storagev1beta1 "k8s.io/client-go/kubernetes/typed/storage/v1beta1"
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"
@@ -89,7 +88,6 @@ type Interface interface {
 	SettingsV1alpha1() settingsv1alpha1.SettingsV1alpha1Interface
 	StorageV1beta1() storagev1beta1.StorageV1beta1Interface
 	StorageV1() storagev1.StorageV1Interface
-	StorageV1alpha1() storagev1alpha1.StorageV1alpha1Interface
 }
 
 // Clientset contains the clients for groups. Each group has exactly one
@@ -127,7 +125,6 @@ type Clientset struct {
 	settingsV1alpha1             *settingsv1alpha1.SettingsV1alpha1Client
 	storageV1beta1               *storagev1beta1.StorageV1beta1Client
 	storageV1                    *storagev1.StorageV1Client
-	storageV1alpha1              *storagev1alpha1.StorageV1alpha1Client
 }
 
 // AdmissionregistrationV1beta1 retrieves the AdmissionregistrationV1beta1Client
@@ -285,11 +282,6 @@ func (c *Clientset) StorageV1() storagev1.StorageV1Interface {
 	return c.storageV1
 }
 
-// StorageV1alpha1 retrieves the StorageV1alpha1Client
-func (c *Clientset) StorageV1alpha1() storagev1alpha1.StorageV1alpha1Interface {
-	return c.storageV1alpha1
-}
-
 // Discovery retrieves the DiscoveryClient
 func (c *Clientset) Discovery() discovery.DiscoveryInterface {
 	if c == nil {
@@ -430,10 +422,6 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 	if err != nil {
 		return nil, err
 	}
-	cs.storageV1alpha1, err = storagev1alpha1.NewForConfig(&configShallowCopy)
-	if err != nil {
-		return nil, err
-	}
 
 	cs.DiscoveryClient, err = discovery.NewDiscoveryClientForConfig(&configShallowCopy)
 	if err != nil {
@@ -477,7 +465,6 @@ func NewForConfigOrDie(c *rest.Config) *Clientset {
 	cs.settingsV1alpha1 = settingsv1alpha1.NewForConfigOrDie(c)
 	cs.storageV1beta1 = storagev1beta1.NewForConfigOrDie(c)
 	cs.storageV1 = storagev1.NewForConfigOrDie(c)
-	cs.storageV1alpha1 = storagev1alpha1.NewForConfigOrDie(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClientForConfigOrDie(c)
 	return &cs
@@ -517,7 +504,6 @@ func New(c rest.Interface) *Clientset {
 	cs.settingsV1alpha1 = settingsv1alpha1.New(c)
 	cs.storageV1beta1 = storagev1beta1.New(c)
 	cs.storageV1 = storagev1.New(c)
-	cs.storageV1alpha1 = storagev1alpha1.New(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClient(c)
 	return &cs
