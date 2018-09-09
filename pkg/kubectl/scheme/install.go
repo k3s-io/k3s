@@ -31,7 +31,6 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	schedulingv1alpha1 "k8s.io/api/scheduling/v1alpha1"
-	settingsv1alpha1 "k8s.io/api/settings/v1alpha1"
 	storagev1 "k8s.io/api/storage/v1"
 	storagev1beta1 "k8s.io/api/storage/v1beta1"
 	"k8s.io/apimachinery/pkg/apimachinery/announced"
@@ -188,19 +187,6 @@ func init() {
 		},
 		announced.VersionToSchemeFunc{
 			schedulingv1alpha1.SchemeGroupVersion.Version: schedulingv1alpha1.AddToScheme,
-		},
-	).Announce(GroupFactoryRegistry).RegisterAndEnable(Registry, Scheme); err != nil {
-		panic(err)
-	}
-
-	Versions = append(Versions, settingsv1alpha1.SchemeGroupVersion)
-	if err := announced.NewGroupMetaFactory(
-		&announced.GroupMetaFactoryArgs{
-			GroupName:              settingsv1alpha1.GroupName,
-			VersionPreferenceOrder: []string{settingsv1alpha1.SchemeGroupVersion.Version},
-		},
-		announced.VersionToSchemeFunc{
-			settingsv1alpha1.SchemeGroupVersion.Version: settingsv1alpha1.AddToScheme,
 		},
 	).Announce(GroupFactoryRegistry).RegisterAndEnable(Registry, Scheme); err != nil {
 		panic(err)

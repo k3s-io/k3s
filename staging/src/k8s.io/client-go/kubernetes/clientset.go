@@ -38,7 +38,6 @@ import (
 	policyv1beta1 "k8s.io/client-go/kubernetes/typed/policy/v1beta1"
 	rbacv1 "k8s.io/client-go/kubernetes/typed/rbac/v1"
 	schedulingv1alpha1 "k8s.io/client-go/kubernetes/typed/scheduling/v1alpha1"
-	settingsv1alpha1 "k8s.io/client-go/kubernetes/typed/settings/v1alpha1"
 	storagev1 "k8s.io/client-go/kubernetes/typed/storage/v1"
 	storagev1beta1 "k8s.io/client-go/kubernetes/typed/storage/v1beta1"
 	rest "k8s.io/client-go/rest"
@@ -88,9 +87,6 @@ type Interface interface {
 	SchedulingV1alpha1() schedulingv1alpha1.SchedulingV1alpha1Interface
 	// Deprecated: please explicitly pick a version if possible.
 	Scheduling() schedulingv1alpha1.SchedulingV1alpha1Interface
-	SettingsV1alpha1() settingsv1alpha1.SettingsV1alpha1Interface
-	// Deprecated: please explicitly pick a version if possible.
-	Settings() settingsv1alpha1.SettingsV1alpha1Interface
 	StorageV1beta1() storagev1beta1.StorageV1beta1Interface
 	StorageV1() storagev1.StorageV1Interface
 	// Deprecated: please explicitly pick a version if possible.
@@ -118,7 +114,6 @@ type Clientset struct {
 	policyV1beta1                *policyv1beta1.PolicyV1beta1Client
 	rbacV1                       *rbacv1.RbacV1Client
 	schedulingV1alpha1           *schedulingv1alpha1.SchedulingV1alpha1Client
-	settingsV1alpha1             *settingsv1alpha1.SettingsV1alpha1Client
 	storageV1beta1               *storagev1beta1.StorageV1beta1Client
 	storageV1                    *storagev1.StorageV1Client
 }
@@ -280,17 +275,6 @@ func (c *Clientset) Scheduling() schedulingv1alpha1.SchedulingV1alpha1Interface 
 	return c.schedulingV1alpha1
 }
 
-// SettingsV1alpha1 retrieves the SettingsV1alpha1Client
-func (c *Clientset) SettingsV1alpha1() settingsv1alpha1.SettingsV1alpha1Interface {
-	return c.settingsV1alpha1
-}
-
-// Deprecated: Settings retrieves the default version of SettingsClient.
-// Please explicitly pick a version.
-func (c *Clientset) Settings() settingsv1alpha1.SettingsV1alpha1Interface {
-	return c.settingsV1alpha1
-}
-
 // StorageV1beta1 retrieves the StorageV1beta1Client
 func (c *Clientset) StorageV1beta1() storagev1beta1.StorageV1beta1Interface {
 	return c.storageV1beta1
@@ -391,10 +375,6 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 	if err != nil {
 		return nil, err
 	}
-	cs.settingsV1alpha1, err = settingsv1alpha1.NewForConfig(&configShallowCopy)
-	if err != nil {
-		return nil, err
-	}
 	cs.storageV1beta1, err = storagev1beta1.NewForConfig(&configShallowCopy)
 	if err != nil {
 		return nil, err
@@ -433,7 +413,6 @@ func NewForConfigOrDie(c *rest.Config) *Clientset {
 	cs.policyV1beta1 = policyv1beta1.NewForConfigOrDie(c)
 	cs.rbacV1 = rbacv1.NewForConfigOrDie(c)
 	cs.schedulingV1alpha1 = schedulingv1alpha1.NewForConfigOrDie(c)
-	cs.settingsV1alpha1 = settingsv1alpha1.NewForConfigOrDie(c)
 	cs.storageV1beta1 = storagev1beta1.NewForConfigOrDie(c)
 	cs.storageV1 = storagev1.NewForConfigOrDie(c)
 
@@ -461,7 +440,6 @@ func New(c rest.Interface) *Clientset {
 	cs.policyV1beta1 = policyv1beta1.New(c)
 	cs.rbacV1 = rbacv1.New(c)
 	cs.schedulingV1alpha1 = schedulingv1alpha1.New(c)
-	cs.settingsV1alpha1 = settingsv1alpha1.New(c)
 	cs.storageV1beta1 = storagev1beta1.New(c)
 	cs.storageV1 = storagev1.New(c)
 

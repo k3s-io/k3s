@@ -80,7 +80,6 @@ import (
 	policyrest "k8s.io/kubernetes/pkg/registry/policy/rest"
 	rbacrest "k8s.io/kubernetes/pkg/registry/rbac/rest"
 	schedulingrest "k8s.io/kubernetes/pkg/registry/scheduling/rest"
-	settingsrest "k8s.io/kubernetes/pkg/registry/settings/rest"
 	storagerest "k8s.io/kubernetes/pkg/registry/storage/rest"
 )
 
@@ -339,7 +338,6 @@ func (c completedConfig) New(delegationTarget genericapiserver.DelegationTarget)
 		policyrest.RESTStorageProvider{},
 		rbacrest.RESTStorageProvider{Authorizer: c.GenericConfig.Authorization.Authorizer},
 		schedulingrest.RESTStorageProvider{},
-		settingsrest.RESTStorageProvider{},
 		storagerest.RESTStorageProvider{},
 		// keep apps after extensions so legacy clients resolve the extensions versions of shared resource names.
 		// See https://github.com/kubernetes/kubernetes/issues/42392

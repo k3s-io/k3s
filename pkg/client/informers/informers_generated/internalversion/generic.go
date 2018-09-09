@@ -33,7 +33,6 @@ import (
 	policy "k8s.io/kubernetes/pkg/apis/policy"
 	rbac "k8s.io/kubernetes/pkg/apis/rbac"
 	scheduling "k8s.io/kubernetes/pkg/apis/scheduling"
-	settings "k8s.io/kubernetes/pkg/apis/settings"
 	storage "k8s.io/kubernetes/pkg/apis/storage"
 )
 
@@ -154,10 +153,6 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		// Group=scheduling.k8s.io, Version=internalVersion
 	case scheduling.SchemeGroupVersion.WithResource("priorityclasses"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Scheduling().InternalVersion().PriorityClasses().Informer()}, nil
-
-		// Group=settings.k8s.io, Version=internalVersion
-	case settings.SchemeGroupVersion.WithResource("podpresets"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Settings().InternalVersion().PodPresets().Informer()}, nil
 
 		// Group=storage.k8s.io, Version=internalVersion
 	case storage.SchemeGroupVersion.WithResource("storageclasses"):

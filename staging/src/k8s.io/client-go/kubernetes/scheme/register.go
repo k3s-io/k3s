@@ -36,7 +36,6 @@ import (
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	schedulingv1alpha1 "k8s.io/api/scheduling/v1alpha1"
-	settingsv1alpha1 "k8s.io/api/settings/v1alpha1"
 	storagev1 "k8s.io/api/storage/v1"
 	storagev1beta1 "k8s.io/api/storage/v1beta1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -86,7 +85,6 @@ func AddToScheme(scheme *runtime.Scheme) {
 	policyv1beta1.AddToScheme(scheme)
 	rbacv1.AddToScheme(scheme)
 	schedulingv1alpha1.AddToScheme(scheme)
-	settingsv1alpha1.AddToScheme(scheme)
 	storagev1beta1.AddToScheme(scheme)
 	storagev1.AddToScheme(scheme)
 }

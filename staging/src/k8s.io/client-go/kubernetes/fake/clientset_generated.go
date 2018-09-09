@@ -58,8 +58,6 @@ import (
 	fakerbacv1 "k8s.io/client-go/kubernetes/typed/rbac/v1/fake"
 	schedulingv1alpha1 "k8s.io/client-go/kubernetes/typed/scheduling/v1alpha1"
 	fakeschedulingv1alpha1 "k8s.io/client-go/kubernetes/typed/scheduling/v1alpha1/fake"
-	settingsv1alpha1 "k8s.io/client-go/kubernetes/typed/settings/v1alpha1"
-	fakesettingsv1alpha1 "k8s.io/client-go/kubernetes/typed/settings/v1alpha1/fake"
 	storagev1 "k8s.io/client-go/kubernetes/typed/storage/v1"
 	fakestoragev1 "k8s.io/client-go/kubernetes/typed/storage/v1/fake"
 	storagev1beta1 "k8s.io/client-go/kubernetes/typed/storage/v1beta1"
@@ -251,16 +249,6 @@ func (c *Clientset) SchedulingV1alpha1() schedulingv1alpha1.SchedulingV1alpha1In
 // Scheduling retrieves the SchedulingV1alpha1Client
 func (c *Clientset) Scheduling() schedulingv1alpha1.SchedulingV1alpha1Interface {
 	return &fakeschedulingv1alpha1.FakeSchedulingV1alpha1{Fake: &c.Fake}
-}
-
-// SettingsV1alpha1 retrieves the SettingsV1alpha1Client
-func (c *Clientset) SettingsV1alpha1() settingsv1alpha1.SettingsV1alpha1Interface {
-	return &fakesettingsv1alpha1.FakeSettingsV1alpha1{Fake: &c.Fake}
-}
-
-// Settings retrieves the SettingsV1alpha1Client
-func (c *Clientset) Settings() settingsv1alpha1.SettingsV1alpha1Interface {
-	return &fakesettingsv1alpha1.FakeSettingsV1alpha1{Fake: &c.Fake}
 }
 
 // StorageV1beta1 retrieves the StorageV1beta1Client
