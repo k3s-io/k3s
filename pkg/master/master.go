@@ -41,8 +41,6 @@ import (
 	networkingapiv1 "k8s.io/api/networking/v1"
 	policyapiv1beta1 "k8s.io/api/policy/v1beta1"
 	rbacv1 "k8s.io/api/rbac/v1"
-	rbacv1alpha1 "k8s.io/api/rbac/v1alpha1"
-	rbacv1beta1 "k8s.io/api/rbac/v1beta1"
 	schedulingv1alpha1 "k8s.io/api/scheduling/v1alpha1"
 	schedulingapiv1beta1 "k8s.io/api/scheduling/v1beta1"
 	settingsv1alpha1 "k8s.io/api/settings/v1alpha1"
@@ -483,7 +481,6 @@ func DefaultAPIResourceConfigSource() *serverstorage.ResourceConfig {
 		networkingapiv1.SchemeGroupVersion,
 		policyapiv1beta1.SchemeGroupVersion,
 		rbacv1.SchemeGroupVersion,
-		rbacv1beta1.SchemeGroupVersion,
 		storageapiv1.SchemeGroupVersion,
 		storageapiv1beta1.SchemeGroupVersion,
 		schedulingapiv1beta1.SchemeGroupVersion,
@@ -491,7 +488,6 @@ func DefaultAPIResourceConfigSource() *serverstorage.ResourceConfig {
 	// disable alpha versions explicitly so we have a full list of what's possible to serve
 	ret.DisableVersions(
 		batchapiv2alpha1.SchemeGroupVersion,
-		rbacv1alpha1.SchemeGroupVersion,
 		schedulingv1alpha1.SchemeGroupVersion,
 		settingsv1alpha1.SchemeGroupVersion,
 		storageapiv1alpha1.SchemeGroupVersion,

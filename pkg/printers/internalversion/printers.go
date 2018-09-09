@@ -32,7 +32,7 @@ import (
 	coordinationv1beta1 "k8s.io/api/coordination/v1beta1"
 	apiv1 "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
-	rbacv1beta1 "k8s.io/api/rbac/v1beta1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -364,7 +364,7 @@ func AddHandlers(h printers.PrintHandler) {
 	roleBindingsColumnDefinitions := []metav1beta1.TableColumnDefinition{
 		{Name: "Name", Type: "string", Format: "name", Description: metav1.ObjectMeta{}.SwaggerDoc()["name"]},
 		{Name: "Age", Type: "string", Description: metav1.ObjectMeta{}.SwaggerDoc()["creationTimestamp"]},
-		{Name: "Role", Type: "string", Priority: 1, Description: rbacv1beta1.RoleBinding{}.SwaggerDoc()["roleRef"]},
+		{Name: "Role", Type: "string", Priority: 1, Description: rbacv1.RoleBinding{}.SwaggerDoc()["roleRef"]},
 		{Name: "Users", Type: "string", Priority: 1, Description: "Users in the roleBinding"},
 		{Name: "Groups", Type: "string", Priority: 1, Description: "Gruops in the roleBinding"},
 		{Name: "ServiceAccounts", Type: "string", Priority: 1, Description: "ServiceAccounts in the roleBinding"},
@@ -375,7 +375,7 @@ func AddHandlers(h printers.PrintHandler) {
 	clusterRoleBindingsColumnDefinitions := []metav1beta1.TableColumnDefinition{
 		{Name: "Name", Type: "string", Format: "name", Description: metav1.ObjectMeta{}.SwaggerDoc()["name"]},
 		{Name: "Age", Type: "string", Description: metav1.ObjectMeta{}.SwaggerDoc()["creationTimestamp"]},
-		{Name: "Role", Type: "string", Priority: 1, Description: rbacv1beta1.ClusterRoleBinding{}.SwaggerDoc()["roleRef"]},
+		{Name: "Role", Type: "string", Priority: 1, Description: rbacv1.ClusterRoleBinding{}.SwaggerDoc()["roleRef"]},
 		{Name: "Users", Type: "string", Priority: 1, Description: "Users in the roleBinding"},
 		{Name: "Groups", Type: "string", Priority: 1, Description: "Gruops in the roleBinding"},
 		{Name: "ServiceAccounts", Type: "string", Priority: 1, Description: "ServiceAccounts in the roleBinding"},
