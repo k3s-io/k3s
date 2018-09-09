@@ -36,7 +36,6 @@ import (
 	policy "k8s.io/kubernetes/pkg/apis/policy/install"
 	rbac "k8s.io/kubernetes/pkg/apis/rbac/install"
 	scheduling "k8s.io/kubernetes/pkg/apis/scheduling/install"
-	settings "k8s.io/kubernetes/pkg/apis/settings/install"
 	storage "k8s.io/kubernetes/pkg/apis/storage/install"
 )
 
@@ -64,6 +63,5 @@ func Install(scheme *runtime.Scheme) {
 	policy.Install(scheme)
 	rbac.Install(scheme)
 	scheduling.Install(scheme)
-	settings.Install(scheme)
 	storage.Install(scheme)
 }
