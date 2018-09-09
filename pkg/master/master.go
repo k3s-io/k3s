@@ -49,7 +49,6 @@ import (
 	schedulingapiv1beta1 "k8s.io/api/scheduling/v1beta1"
 	settingsv1alpha1 "k8s.io/api/settings/v1alpha1"
 	storageapiv1 "k8s.io/api/storage/v1"
-	storageapiv1alpha1 "k8s.io/api/storage/v1alpha1"
 	storageapiv1beta1 "k8s.io/api/storage/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
@@ -482,7 +481,6 @@ func DefaultAPIResourceConfigSource() *serverstorage.ResourceConfig {
 		batchapiv2alpha1.SchemeGroupVersion,
 		schedulingv1alpha1.SchemeGroupVersion,
 		settingsv1alpha1.SchemeGroupVersion,
-		storageapiv1alpha1.SchemeGroupVersion,
 	)
 
 	return ret
