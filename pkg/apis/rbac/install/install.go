@@ -26,8 +26,6 @@ import (
 	"k8s.io/kubernetes/pkg/api/legacyscheme"
 	"k8s.io/kubernetes/pkg/apis/rbac"
 	"k8s.io/kubernetes/pkg/apis/rbac/v1"
-	"k8s.io/kubernetes/pkg/apis/rbac/v1alpha1"
-	"k8s.io/kubernetes/pkg/apis/rbac/v1beta1"
 )
 
 func init() {
@@ -42,14 +40,12 @@ func Install(groupFactoryRegistry announced.APIGroupFactoryRegistry, registry *r
 			// Rollout plan:
 			// 1.10 (once all stored objects are at v1):
 			// * remove v1alpha1 (announced deprecated in 1.8)
-			VersionPreferenceOrder:     []string{v1.SchemeGroupVersion.Version, v1beta1.SchemeGroupVersion.Version, v1alpha1.SchemeGroupVersion.Version},
+			VersionPreferenceOrder:     []string{v1.SchemeGroupVersion.Version},
 			RootScopedKinds:            sets.NewString("ClusterRole", "ClusterRoleBinding"),
 			AddInternalObjectsToScheme: rbac.AddToScheme,
 		},
 		announced.VersionToSchemeFunc{
 			v1.SchemeGroupVersion.Version:       v1.AddToScheme,
-			v1beta1.SchemeGroupVersion.Version:  v1beta1.AddToScheme,
-			v1alpha1.SchemeGroupVersion.Version: v1alpha1.AddToScheme,
 		},
 	).Announce(groupFactoryRegistry).RegisterAndEnable(registry, scheme); err != nil {
 		panic(err)

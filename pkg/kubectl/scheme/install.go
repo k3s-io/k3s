@@ -30,9 +30,6 @@ import (
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	networkingv1 "k8s.io/api/networking/v1"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
-	rbacv1 "k8s.io/api/rbac/v1"
-	rbacv1alpha1 "k8s.io/api/rbac/v1alpha1"
-	rbacv1beta1 "k8s.io/api/rbac/v1beta1"
 	schedulingv1alpha1 "k8s.io/api/scheduling/v1alpha1"
 	settingsv1alpha1 "k8s.io/api/settings/v1alpha1"
 	storagev1 "k8s.io/api/storage/v1"
@@ -177,22 +174,6 @@ func init() {
 		},
 		announced.VersionToSchemeFunc{
 			policyv1beta1.SchemeGroupVersion.Version: policyv1beta1.AddToScheme,
-		},
-	).Announce(GroupFactoryRegistry).RegisterAndEnable(Registry, Scheme); err != nil {
-		panic(err)
-	}
-
-	Versions = append(Versions, rbacv1.SchemeGroupVersion, rbacv1beta1.SchemeGroupVersion, rbacv1alpha1.SchemeGroupVersion)
-	if err := announced.NewGroupMetaFactory(
-		&announced.GroupMetaFactoryArgs{
-			GroupName:              rbacv1.GroupName,
-			VersionPreferenceOrder: []string{rbacv1.SchemeGroupVersion.Version, rbacv1beta1.SchemeGroupVersion.Version, rbacv1alpha1.SchemeGroupVersion.Version},
-			RootScopedKinds:        sets.NewString("ClusterRole", "ClusterRoleBinding"),
-		},
-		announced.VersionToSchemeFunc{
-			rbacv1.SchemeGroupVersion.Version:       rbacv1.AddToScheme,
-			rbacv1beta1.SchemeGroupVersion.Version:  rbacv1beta1.AddToScheme,
-			rbacv1alpha1.SchemeGroupVersion.Version: rbacv1alpha1.AddToScheme,
 		},
 	).Announce(GroupFactoryRegistry).RegisterAndEnable(Registry, Scheme); err != nil {
 		panic(err)
