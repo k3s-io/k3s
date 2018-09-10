@@ -495,7 +495,6 @@ func (rc *reconciler) reconstructVolume(volume podVolume) (*reconstructedVolume,
 	}
 
 	var volumeMapper volumepkg.BlockVolumeMapper
-
 	reconstructedVolume := &reconstructedVolume{
 		volumeName: uniqueVolumeName,
 		podName:    volume.podName,
