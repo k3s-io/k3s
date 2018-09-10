@@ -91,14 +91,6 @@ type KubeletFlags struct {
 	// are provided, this flag will be ignored.
 	CertDirectory string
 
-	// cloudProvider is the provider for cloud services.
-	// +optional
-	CloudProvider string
-
-	// cloudConfigFile is the path to the cloud provider configuration file.
-	// +optional
-	CloudConfigFile string
-
 	// rootDirectory is the directory path to place kubelet files (volume
 	// mounts,etc).
 	RootDirectory string
@@ -394,9 +386,6 @@ func (f *KubeletFlags) AddFlags(mainfs *pflag.FlagSet) {
 
 	fs.StringVar(&f.CertDirectory, "cert-dir", f.CertDirectory, "The directory where the TLS certs are located. "+
 		"If --tls-cert-file and --tls-private-key-file are provided, this flag will be ignored.")
-
-	fs.StringVar(&f.CloudProvider, "cloud-provider", f.CloudProvider, "The provider for cloud services. Specify empty string for running with no cloud provider. If set, the cloud provider determines the name of the node (consult cloud provider documentation to determine if and how the hostname is used).")
-	fs.StringVar(&f.CloudConfigFile, "cloud-config", f.CloudConfigFile, "The path to the cloud provider configuration file.  Empty string for no configuration file.")
 
 	fs.StringVar(&f.RootDirectory, "root-dir", f.RootDirectory, "Directory path for managing kubelet files (volume mounts,etc).")
 

@@ -37,7 +37,6 @@ import (
 	"k8s.io/client-go/tools/record"
 	ref "k8s.io/client-go/tools/reference"
 	"k8s.io/client-go/util/workqueue"
-	cloudprovider "k8s.io/cloud-provider"
 	v1helper "k8s.io/kubernetes/pkg/apis/core/v1/helper"
 	"k8s.io/kubernetes/pkg/controller/volume/events"
 	"k8s.io/kubernetes/pkg/controller/volume/persistentvolume/metrics"
@@ -182,7 +181,6 @@ type PersistentVolumeController struct {
 
 	kubeClient                clientset.Interface
 	eventRecorder             record.EventRecorder
-	cloud                     cloudprovider.Interface
 	volumePluginMgr           vol.VolumePluginMgr
 	enableDynamicProvisioning bool
 	clusterName               string
