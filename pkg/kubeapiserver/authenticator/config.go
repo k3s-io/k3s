@@ -19,8 +19,6 @@ package authenticator
 import (
 	"time"
 
-	"github.com/go-openapi/spec"
-
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 	"k8s.io/apiserver/pkg/authentication/authenticatorfactory"
 	"k8s.io/apiserver/pkg/authentication/group"
@@ -74,11 +72,9 @@ type AuthenticatorConfig struct {
 
 // New returns an authenticator.Request or an error that supports the standard
 // Kubernetes authentication mechanisms.
-func (config AuthenticatorConfig) New() (authenticator.Request, *spec.SecurityDefinitions, error) {
+func (config AuthenticatorConfig) New() (authenticator.Request, error) {
 	var authenticators []authenticator.Request
 	var tokenAuthenticators []authenticator.Token
-	securityDefinitions := spec.SecurityDefinitions{}
-	hasBasicAuth := false
 
 	// front-proxy, BasicAuth methods, local first, then remote
 	// Add the front proxy authenticator if requested
@@ -91,7 +87,7 @@ func (config AuthenticatorConfig) New() (authenticator.Request, *spec.SecurityDe
 			config.RequestHeaderConfig.ExtraHeaderPrefixes,
 		)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		authenticators = append(authenticators, requestHeaderAuthenticator)
 	}
@@ -99,17 +95,16 @@ func (config AuthenticatorConfig) New() (authenticator.Request, *spec.SecurityDe
 	if len(config.BasicAuthFile) > 0 {
 		basicAuth, err := newAuthenticatorFromBasicAuthFile(config.BasicAuthFile)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		authenticators = append(authenticators, basicAuth)
-		hasBasicAuth = true
 	}
 
 	// X509 methods
 	if len(config.ClientCAFile) > 0 {
 		certAuth, err := newAuthenticatorFromClientCAFile(config.ClientCAFile)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		authenticators = append(authenticators, certAuth)
 	}
@@ -118,14 +113,14 @@ func (config AuthenticatorConfig) New() (authenticator.Request, *spec.SecurityDe
 	if len(config.TokenAuthFile) > 0 {
 		tokenAuth, err := newAuthenticatorFromTokenFile(config.TokenAuthFile)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		tokenAuthenticators = append(tokenAuthenticators, tokenAuth)
 	}
 	if len(config.ServiceAccountKeyFiles) > 0 {
 		serviceAccountAuth, err := newLegacyServiceAccountAuthenticator(config.ServiceAccountKeyFiles, config.ServiceAccountLookup, config.ServiceAccountTokenGetter)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		tokenAuthenticators = append(tokenAuthenticators, serviceAccountAuth)
 	}
@@ -133,15 +128,6 @@ func (config AuthenticatorConfig) New() (authenticator.Request, *spec.SecurityDe
 		if config.BootstrapTokenAuthenticator != nil {
 			// TODO: This can sometimes be nil because of
 			tokenAuthenticators = append(tokenAuthenticators, config.BootstrapTokenAuthenticator)
-		}
-	}
-
-	if hasBasicAuth {
-		securityDefinitions["HTTPBasic"] = &spec.SecurityScheme{
-			SecuritySchemeProps: spec.SecuritySchemeProps{
-				Type:        "basic",
-				Description: "HTTP Basic authentication",
-			},
 		}
 	}
 
@@ -153,25 +139,17 @@ func (config AuthenticatorConfig) New() (authenticator.Request, *spec.SecurityDe
 			tokenAuth = tokencache.New(tokenAuth, config.TokenSuccessCacheTTL, config.TokenFailureCacheTTL)
 		}
 		authenticators = append(authenticators, bearertoken.New(tokenAuth), websocket.NewProtocolAuthenticator(tokenAuth))
-		securityDefinitions["BearerToken"] = &spec.SecurityScheme{
-			SecuritySchemeProps: spec.SecuritySchemeProps{
-				Type:        "apiKey",
-				Name:        "authorization",
-				In:          "header",
-				Description: "Bearer Token authentication",
-			},
-		}
 	}
 
 	if len(authenticators) == 0 {
 		if config.Anonymous {
-			return anonymous.NewAuthenticator(), &securityDefinitions, nil
+			return anonymous.NewAuthenticator(), nil
 		}
 	}
 
 	switch len(authenticators) {
 	case 0:
-		return nil, &securityDefinitions, nil
+		return nil, nil
 	}
 
 	authenticator := union.New(authenticators...)
@@ -184,7 +162,7 @@ func (config AuthenticatorConfig) New() (authenticator.Request, *spec.SecurityDe
 		authenticator = union.NewFailOnError(authenticator, anonymous.NewAuthenticator())
 	}
 
-	return authenticator, &securityDefinitions, nil
+	return authenticator, nil
 }
 
 // IsValidServiceAccountKeyFile returns true if a valid public RSA key can be read from the given file

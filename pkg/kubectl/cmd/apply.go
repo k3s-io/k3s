@@ -37,13 +37,11 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/apimachinery/pkg/util/wait"
-	oapi "k8s.io/kube-openapi/pkg/util/proto"
 	api "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	"k8s.io/kubernetes/pkg/kubectl"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
-	"k8s.io/kubernetes/pkg/kubectl/cmd/util/openapi"
 	"k8s.io/kubernetes/pkg/kubectl/resource"
 	"k8s.io/kubernetes/pkg/kubectl/scheme"
 	"k8s.io/kubernetes/pkg/kubectl/util/i18n"
@@ -200,14 +198,6 @@ func RunApply(f cmdutil.Factory, cmd *cobra.Command, out, errOut io.Writer, opti
 		return err
 	}
 
-	var openapiSchema openapi.Resources
-	if cmdutil.GetFlagBool(cmd, "openapi-patch") {
-		openapiSchema, err = f.OpenAPISchema()
-		if err != nil {
-			openapiSchema = nil
-		}
-	}
-
 	cmdNamespace, enforceNamespace, err := f.DefaultNamespace()
 	if err != nil {
 		return err
@@ -327,7 +317,6 @@ func RunApply(f cmdutil.Factory, cmd *cobra.Command, out, errOut io.Writer, opti
 				cascade:       options.Cascade,
 				timeout:       options.Timeout,
 				gracePeriod:   options.GracePeriod,
-				openapiSchema: openapiSchema,
 			}
 
 			patchBytes, patchedObject, err := patcher.patch(info.Object, modified, info.Source, info.Namespace, info.Name, errOut)
@@ -586,8 +575,6 @@ type patcher struct {
 	cascade     bool
 	timeout     time.Duration
 	gracePeriod int
-
-	openapiSchema openapi.Resources
 }
 
 func (p *patcher) patchSimple(obj runtime.Object, modified []byte, source, namespace, name string, errOut io.Writer) ([]byte, runtime.Object, error) {
@@ -606,7 +593,6 @@ func (p *patcher) patchSimple(obj runtime.Object, modified []byte, source, names
 	var patchType types.PatchType
 	var patch []byte
 	var lookupPatchMeta strategicpatch.LookupPatchMeta
-	var schema oapi.Schema
 	createPatchErrFormat := "creating patch with:\noriginal:\n%s\nmodified:\n%s\ncurrent:\n%s\nfor:"
 
 	// Create the versioned struct from the type defined in the restmapping
@@ -630,20 +616,6 @@ func (p *patcher) patchSimple(obj runtime.Object, modified []byte, source, names
 	case err == nil:
 		// Compute a three way strategic merge patch to send to server.
 		patchType = types.StrategicMergePatchType
-
-		// Try to use openapi first if the openapi spec is available and can successfully calculate the patch.
-		// Otherwise, fall back to baked-in types.
-		if p.openapiSchema != nil {
-			if schema = p.openapiSchema.LookupResource(p.mapping.GroupVersionKind); schema != nil {
-				lookupPatchMeta = strategicpatch.PatchMetaFromOpenAPI{Schema: schema}
-				if openapiPatch, err := strategicpatch.CreateThreeWayMergePatch(original, modified, current, lookupPatchMeta, p.overwrite); err != nil {
-					fmt.Fprintf(errOut, "warning: error calculating patch from openapi spec: %v\n", err)
-				} else {
-					patchType = types.StrategicMergePatchType
-					patch = openapiPatch
-				}
-			}
-		}
 
 		if patch == nil {
 			lookupPatchMeta, err = strategicpatch.NewPatchMetaFromStruct(versionedObject)

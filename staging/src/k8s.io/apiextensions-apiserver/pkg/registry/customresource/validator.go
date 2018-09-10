@@ -21,8 +21,6 @@ import (
 	"math"
 	"strings"
 
-	"github.com/go-openapi/validate"
-
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/validation"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -32,14 +30,11 @@ import (
 	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
 
 	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
-	apiservervalidation "k8s.io/apiextensions-apiserver/pkg/apiserver/validation"
 )
 
 type customResourceValidator struct {
-	namespaceScoped       bool
-	kind                  schema.GroupVersionKind
-	schemaValidator       *validate.SchemaValidator
-	statusSchemaValidator *validate.SchemaValidator
+	namespaceScoped bool
+	kind            schema.GroupVersionKind
 }
 
 func (a customResourceValidator) Validate(ctx genericapirequest.Context, obj runtime.Object, scale *apiextensions.CustomResourceSubresourceScale) field.ErrorList {
@@ -64,10 +59,6 @@ func (a customResourceValidator) Validate(ctx genericapirequest.Context, obj run
 		return field.ErrorList{field.Invalid(field.NewPath(""), customResourceObject, fmt.Sprintf("has type %T. Must be a pointer to an Unstructured type", customResourceObject))}
 	}
 	customResource := customResourceObject.UnstructuredContent()
-
-	if err = apiservervalidation.ValidateCustomResource(customResource, a.schemaValidator); err != nil {
-		return field.ErrorList{field.Invalid(field.NewPath(""), customResource, err.Error())}
-	}
 
 	if scale != nil {
 		// validate specReplicas
@@ -136,10 +127,6 @@ func (a customResourceValidator) ValidateUpdate(ctx genericapirequest.Context, o
 	}
 	customResource := customResourceObject.UnstructuredContent()
 
-	if err = apiservervalidation.ValidateCustomResource(customResource, a.schemaValidator); err != nil {
-		return field.ErrorList{field.Invalid(field.NewPath(""), customResource, err.Error())}
-	}
-
 	if scale != nil {
 		// validate specReplicas
 		specReplicasPath := strings.TrimPrefix(scale.SpecReplicasPath, ".") // ignore leading period
@@ -206,12 +193,6 @@ func (a customResourceValidator) ValidateStatusUpdate(ctx genericapirequest.Cont
 		return field.ErrorList{field.Invalid(field.NewPath(""), customResourceObject, fmt.Sprintf("has type %T. Must be a pointer to an Unstructured type", customResourceObject))}
 	}
 	customResource := customResourceObject.UnstructuredContent()
-
-	// validate only the status
-	customResourceStatus := customResource["status"]
-	if err = apiservervalidation.ValidateCustomResource(customResourceStatus, a.statusSchemaValidator); err != nil {
-		return field.ErrorList{field.Invalid(field.NewPath("status"), customResourceStatus, err.Error())}
-	}
 
 	if scale != nil {
 		// validate statusReplicas

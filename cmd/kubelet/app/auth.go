@@ -76,8 +76,7 @@ func BuildAuthn(client authenticationclient.TokenReviewInterface, authn kubeletc
 		authenticatorConfig.TokenAccessReviewClient = client
 	}
 
-	authenticator, _, err := authenticatorConfig.New()
-	return authenticator, err
+	return authenticatorConfig.New()
 }
 
 // BuildAuthz creates an authorizer compatible with the kubelet's needs
@@ -85,17 +84,6 @@ func BuildAuthz(client authorizationclient.SubjectAccessReviewInterface, authz k
 	switch authz.Mode {
 	case kubeletconfig.KubeletAuthorizationModeAlwaysAllow:
 		return authorizerfactory.NewAlwaysAllowAuthorizer(), nil
-
-	case kubeletconfig.KubeletAuthorizationModeWebhook:
-		if client == nil {
-			return nil, errors.New("no client provided, cannot use webhook authorization")
-		}
-		authorizerConfig := authorizerfactory.DelegatingAuthorizerConfig{
-			SubjectAccessReviewClient: client,
-			AllowCacheTTL:             authz.Webhook.CacheAuthorizedTTL.Duration,
-			DenyCacheTTL:              authz.Webhook.CacheUnauthorizedTTL.Duration,
-		}
-		return authorizerConfig.New()
 
 	case "":
 		return nil, fmt.Errorf("No authorization mode specified")

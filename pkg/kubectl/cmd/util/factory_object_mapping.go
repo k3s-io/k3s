@@ -24,7 +24,6 @@ import (
 	"os"
 	"reflect"
 	"sort"
-	"sync"
 	"time"
 
 	"github.com/golang/glog"
@@ -46,8 +45,6 @@ import (
 	"k8s.io/kubernetes/pkg/controller"
 	"k8s.io/kubernetes/pkg/kubectl"
 	"k8s.io/kubernetes/pkg/kubectl/categories"
-	"k8s.io/kubernetes/pkg/kubectl/cmd/util/openapi"
-	openapivalidation "k8s.io/kubernetes/pkg/kubectl/cmd/util/openapi/validation"
 	"k8s.io/kubernetes/pkg/kubectl/resource"
 	"k8s.io/kubernetes/pkg/kubectl/validation"
 	"k8s.io/kubernetes/pkg/printers"
@@ -56,14 +53,6 @@ import (
 
 type ring1Factory struct {
 	clientAccessFactory ClientAccessFactory
-
-	// openAPIGetter loads and caches openapi specs
-	openAPIGetter openAPIGetter
-}
-
-type openAPIGetter struct {
-	once   sync.Once
-	getter openapi.Getter
 }
 
 func NewObjectMappingFactory(clientAccessFactory ClientAccessFactory) ObjectMappingFactory {
@@ -418,34 +407,5 @@ func (f *ring1Factory) AttachablePodForObject(object runtime.Object, timeout tim
 }
 
 func (f *ring1Factory) Validator(validate bool) (validation.Schema, error) {
-	if !validate {
-		return validation.NullSchema{}, nil
-	}
-
-	resources, err := f.OpenAPISchema()
-	if err != nil {
-		return nil, err
-	}
-
-	return validation.ConjunctiveSchema{
-		openapivalidation.NewSchemaValidation(resources),
-		validation.NoDoubleKeySchema{},
-	}, nil
-}
-
-// OpenAPISchema returns metadata and structural information about Kubernetes object definitions.
-func (f *ring1Factory) OpenAPISchema() (openapi.Resources, error) {
-	discovery, err := f.clientAccessFactory.DiscoveryClient()
-	if err != nil {
-		return nil, err
-	}
-
-	// Lazily initialize the OpenAPIGetter once
-	f.openAPIGetter.once.Do(func() {
-		// Create the caching OpenAPIGetter
-		f.openAPIGetter.getter = openapi.NewOpenAPIGetter(discovery)
-	})
-
-	// Delegate to the OpenAPIGetter
-	return f.openAPIGetter.getter.Get()
+	return validation.NullSchema{}, nil
 }

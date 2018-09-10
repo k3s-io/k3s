@@ -25,7 +25,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/go-openapi/validate"
 	"github.com/golang/glog"
 
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -55,7 +54,6 @@ import (
 	"k8s.io/client-go/tools/cache"
 
 	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
-	apiservervalidation "k8s.io/apiextensions-apiserver/pkg/apiserver/validation"
 	informers "k8s.io/apiextensions-apiserver/pkg/client/informers/internalversion/apiextensions/internalversion"
 	listers "k8s.io/apiextensions-apiserver/pkg/client/listers/apiextensions/internalversion"
 	"k8s.io/apiextensions-apiserver/pkg/controller/finalizer"
@@ -393,14 +391,7 @@ func (r *crdHandler) getOrCreateServingInfoFor(crd *apiextensions.CustomResource
 	}
 	creator := unstructuredCreator{}
 
-	validator, _, err := apiservervalidation.NewSchemaValidator(crd.Spec.Validation)
-	if err != nil {
-		return nil, err
-	}
-
 	var statusSpec *apiextensions.CustomResourceSubresourceStatus
-	var statusValidator *validate.SchemaValidator
-
 	var scaleSpec *apiextensions.CustomResourceSubresourceScale
 
 	// TODO: identify how to pass printer specification from the CRD
@@ -416,8 +407,6 @@ func (r *crdHandler) getOrCreateServingInfoFor(crd *apiextensions.CustomResource
 			typer,
 			crd.Spec.Scope == apiextensions.NamespaceScoped,
 			kind,
-			validator,
-			statusValidator,
 			statusSpec,
 			scaleSpec,
 		),

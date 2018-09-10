@@ -71,10 +71,6 @@ func createAggregatorConfig(
 		aggregatorscheme.Scheme,
 		pluginInitializers...)
 
-	// the aggregator doesn't wire these up.  It just delegates them to the kubeapiserver
-	genericConfig.EnableSwaggerUI = false
-	genericConfig.SwaggerConfig = nil
-
 	// copy the etcd options so we don't mutate originals.
 	etcdOptions := *commandOptions.Etcd
 	etcdOptions.StorageConfig.Codec = aggregatorscheme.Codecs.LegacyCodec(v1beta1.SchemeGroupVersion, v1.SchemeGroupVersion)

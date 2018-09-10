@@ -17,8 +17,6 @@ limitations under the License.
 package customresource
 
 import (
-	"github.com/go-openapi/validate"
-
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -46,7 +44,7 @@ type customResourceStrategy struct {
 	scale           *apiextensions.CustomResourceSubresourceScale
 }
 
-func NewStrategy(typer runtime.ObjectTyper, namespaceScoped bool, kind schema.GroupVersionKind, schemaValidator, statusSchemaValidator *validate.SchemaValidator, status *apiextensions.CustomResourceSubresourceStatus, scale *apiextensions.CustomResourceSubresourceScale) customResourceStrategy {
+func NewStrategy(typer runtime.ObjectTyper, namespaceScoped bool, kind schema.GroupVersionKind, status *apiextensions.CustomResourceSubresourceStatus, scale *apiextensions.CustomResourceSubresourceScale) customResourceStrategy {
 	return customResourceStrategy{
 		ObjectTyper:     typer,
 		NameGenerator:   names.SimpleNameGenerator,
@@ -54,10 +52,8 @@ func NewStrategy(typer runtime.ObjectTyper, namespaceScoped bool, kind schema.Gr
 		status:          status,
 		scale:           scale,
 		validator: customResourceValidator{
-			namespaceScoped:       namespaceScoped,
-			kind:                  kind,
-			schemaValidator:       schemaValidator,
-			statusSchemaValidator: statusSchemaValidator,
+			namespaceScoped: namespaceScoped,
+			kind:            kind,
 		},
 	}
 }

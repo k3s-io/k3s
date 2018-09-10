@@ -274,8 +274,6 @@ type KubeletAuthorizationMode string
 const (
 	// KubeletAuthorizationModeAlwaysAllow authorizes all authenticated requests
 	KubeletAuthorizationModeAlwaysAllow KubeletAuthorizationMode = "AlwaysAllow"
-	// KubeletAuthorizationModeWebhook uses the SubjectAccessReview API to determine authorization
-	KubeletAuthorizationModeWebhook KubeletAuthorizationMode = "Webhook"
 )
 
 type KubeletAuthorization struct {

@@ -18,10 +18,6 @@ package tableconvertor
 
 import (
 	"bytes"
-	"fmt"
-	"strings"
-
-	"github.com/go-openapi/spec"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	metatable "k8s.io/apimachinery/pkg/api/meta/table"
@@ -33,13 +29,11 @@ import (
 	"k8s.io/client-go/util/jsonpath"
 )
 
-const printColumnsKey = "x-kubernetes-print-columns"
-
 var swaggerMetadataDescriptions = metav1.ObjectMeta{}.SwaggerDoc()
 
 // New creates a new table convertor for the provided OpenAPI schema. If the printer definition cannot be parsed,
 // error will be returned along with a default table convertor.
-func New(extensions spec.Extensions) (rest.TableConvertor, error) {
+func New(obj interface{}) (rest.TableConvertor, error) {
 	headers := []metav1beta1.TableColumnDefinition{
 		{Name: "Name", Type: "string", Format: "name", Description: swaggerMetadataDescriptions["name"]},
 		{Name: "Created At", Type: "date", Description: swaggerMetadataDescriptions["creationTimestamp"]},
@@ -47,36 +41,6 @@ func New(extensions spec.Extensions) (rest.TableConvertor, error) {
 	c := &convertor{
 		headers: headers,
 	}
-	format, ok := extensions.GetString(printColumnsKey)
-	if !ok {
-		return c, nil
-	}
-	// "x-kubernetes-print-columns": "custom-columns=NAME:.metadata.name,RSRC:.metadata.resourceVersion"
-	parts := strings.SplitN(format, "=", 2)
-	if len(parts) != 2 || parts[0] != "custom-columns" {
-		return c, fmt.Errorf("unrecognized column definition in 'x-kubernetes-print-columns', only support 'custom-columns=NAME=JSONPATH[,NAME=JSONPATH]'")
-	}
-	columnSpecs := strings.Split(parts[1], ",")
-	var columns []*jsonpath.JSONPath
-	for _, spec := range columnSpecs {
-		parts := strings.SplitN(spec, ":", 2)
-		if len(parts) != 2 || len(parts[0]) == 0 || len(parts[1]) == 0 {
-			return c, fmt.Errorf("unrecognized column definition in 'x-kubernetes-print-columns', must specify NAME=JSONPATH: %s", spec)
-		}
-		path := jsonpath.New(parts[0])
-		if err := path.Parse(parts[1]); err != nil {
-			return c, fmt.Errorf("unrecognized column definition in 'x-kubernetes-print-columns': %v", spec)
-		}
-		path.AllowMissingKeys(true)
-		columns = append(columns, path)
-		headers = append(headers, metav1beta1.TableColumnDefinition{
-			Name:        parts[0],
-			Type:        "string",
-			Description: fmt.Sprintf("Custom resource definition column from OpenAPI (in JSONPath format): %s", parts[1]),
-		})
-	}
-	c.columns = columns
-	c.headers = headers
 	return c, nil
 }
 
