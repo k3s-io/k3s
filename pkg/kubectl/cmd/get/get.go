@@ -55,7 +55,6 @@ type GetOptions struct {
 	PrintFlags             *PrintFlags
 	ToPrinter              func(*meta.RESTMapping, bool, bool) (printers.ResourcePrinterFunc, error)
 	IsHumanReadablePrinter bool
-	PrintWithOpenAPICols   bool
 
 	CmdParent string
 
@@ -231,11 +230,6 @@ func (o *GetOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args []stri
 		printFlags := o.PrintFlags.Copy()
 
 		if mapping != nil {
-			if !cmdSpecifiesOutputFmt(cmd) && o.PrintWithOpenAPICols {
-				if apiSchema, err := f.OpenAPISchema(); err == nil {
-					printFlags.UseOpenAPIColumns(apiSchema, mapping)
-				}
-			}
 			printFlags.SetKind(mapping.GroupVersionKind.GroupKind())
 		}
 		if withNamespace {
@@ -401,11 +395,6 @@ func (o *GetOptions) Run(f cmdutil.Factory, cmd *cobra.Command, args []string) e
 		return o.watch(f, cmd, args)
 	}
 
-	// openapi printing is mutually exclusive with server side printing
-	if o.PrintWithOpenAPICols && o.ServerPrint {
-		fmt.Fprintf(o.IOStreams.ErrOut, "warning: --%s requested, --%s will be ignored\n", useOpenAPIPrintColumnFlagLabel, useServerPrintColumns)
-	}
-
 	chunkSize := o.ChunkSize
 	if o.Sort {
 		// TODO(juanvallejo): in the future, we could have the client use chunking
@@ -428,9 +417,6 @@ func (o *GetOptions) Run(f cmdutil.Factory, cmd *cobra.Command, args []string) e
 		Flatten().
 		TransformRequests(func(req *rest.Request) {
 			// We need full objects if printing with openapi columns
-			if o.PrintWithOpenAPICols {
-				return
-			}
 			if !o.ServerPrint || !o.IsHumanReadablePrinter {
 				return
 			}
@@ -548,13 +534,6 @@ func (o *GetOptions) Run(f cmdutil.Factory, cmd *cobra.Command, args []string) e
 			}
 
 			lastMapping = mapping
-		}
-
-		// ensure a versioned object is passed to the custom-columns printer
-		// if we are using OpenAPI columns to print
-		if o.PrintWithOpenAPICols {
-			printer.PrintObj(info.Object, w)
-			continue
 		}
 
 		internalObj, err := legacyscheme.Scheme.ConvertToVersion(info.Object, info.Mapping.GroupVersionKind.GroupKind().WithVersion(runtime.APIVersionInternal).GroupVersion())
@@ -839,7 +818,6 @@ func (o *GetOptions) printGeneric(r *resource.Result) error {
 }
 
 func addOpenAPIPrintColumnFlags(cmd *cobra.Command, opt *GetOptions) {
-	cmd.Flags().BoolVar(&opt.PrintWithOpenAPICols, useOpenAPIPrintColumnFlagLabel, opt.PrintWithOpenAPICols, "If true, use x-kubernetes-print-column metadata (if present) from the OpenAPI schema for displaying a resource.")
 	cmd.Flags().MarkDeprecated(useOpenAPIPrintColumnFlagLabel, "deprecated in favor of server-side printing")
 }
 
@@ -849,10 +827,6 @@ func addServerPrintColumnFlags(cmd *cobra.Command, opt *GetOptions) {
 
 func shouldGetNewPrinterForMapping(printer printers.ResourcePrinter, lastMapping, mapping *meta.RESTMapping) bool {
 	return printer == nil || lastMapping == nil || mapping == nil || mapping.Resource != lastMapping.Resource
-}
-
-func cmdSpecifiesOutputFmt(cmd *cobra.Command) bool {
-	return cmdutil.GetFlagString(cmd, "output") != ""
 }
 
 func maybeWrapSortingPrinter(printer printers.ResourcePrinter, sortBy string) printers.ResourcePrinter {

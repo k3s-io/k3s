@@ -76,8 +76,7 @@ func BuildAuthn(client authenticationclient.TokenReviewInterface, authn kubeletc
 		authenticatorConfig.TokenAccessReviewClient = client
 	}
 
-	authenticator, _, err := authenticatorConfig.New()
-	return authenticator, err
+	return authenticatorConfig.New()
 }
 
 // BuildAuthz creates an authorizer compatible with the kubelet's needs

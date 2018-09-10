@@ -45,11 +45,9 @@ import (
 	"k8s.io/kubernetes/pkg/kubectl/cmd/create"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/delete"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/describe"
-	"k8s.io/kubernetes/pkg/kubectl/cmd/diff"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/drain"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/edit"
 	cmdexec "k8s.io/kubernetes/pkg/kubectl/cmd/exec"
-	"k8s.io/kubernetes/pkg/kubectl/cmd/explain"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/expose"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/get"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/label"
@@ -457,7 +455,6 @@ func NewKubectlCommand(in io.Reader, out, err io.Writer) *cobra.Command {
 		{
 			Message: "Basic Commands (Intermediate):",
 			Commands: []*cobra.Command{
-				explain.NewCmdExplain("kubectl", f, ioStreams),
 				get.NewCmdGet("kubectl", f, ioStreams),
 				edit.NewCmdEdit(f, ioStreams),
 				delete.NewCmdDelete(f, ioStreams),
@@ -500,7 +497,6 @@ func NewKubectlCommand(in io.Reader, out, err io.Writer) *cobra.Command {
 		{
 			Message: "Advanced Commands:",
 			Commands: []*cobra.Command{
-				diff.NewCmdDiff(f, ioStreams),
 				apply.NewCmdApply("kubectl", f, ioStreams),
 				patch.NewCmdPatch(f, ioStreams),
 				replace.NewCmdReplace(f, ioStreams),
