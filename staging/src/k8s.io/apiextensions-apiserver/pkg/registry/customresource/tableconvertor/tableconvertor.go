@@ -33,13 +33,11 @@ import (
 	"k8s.io/client-go/util/jsonpath"
 )
 
-var swaggerMetadataDescriptions = metav1.ObjectMeta{}.SwaggerDoc()
-
 // New creates a new table convertor for the provided CRD column definition. If the printer definition cannot be parsed,
 // error will be returned along with a default table convertor.
 func New(crdColumns []apiextensions.CustomResourceColumnDefinition) (rest.TableConvertor, error) {
 	headers := []metav1beta1.TableColumnDefinition{
-		{Name: "Name", Type: "string", Format: "name", Description: swaggerMetadataDescriptions["name"]},
+		{Name: "Name", Type: "string", Format: "name", Description: ""},
 	}
 	c := &convertor{
 		headers: headers,
