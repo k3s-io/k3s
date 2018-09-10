@@ -69,7 +69,6 @@ import (
 	"k8s.io/kubernetes/pkg/capabilities"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	informers "k8s.io/kubernetes/pkg/client/informers/informers_generated/internalversion"
-	"k8s.io/kubernetes/pkg/cloudprovider"
 	serviceaccountcontroller "k8s.io/kubernetes/pkg/controller/serviceaccount"
 	"k8s.io/kubernetes/pkg/kubeapiserver"
 	kubeapiserveradmission "k8s.io/kubernetes/pkg/kubeapiserver/admission"
@@ -226,15 +225,6 @@ func CreateNodeDialer(s *options.ServerRunOptions) (tunneler.Tunneler, *http.Tra
 	if len(s.SSHUser) > 0 {
 		// Get ssh key distribution func, if supported
 		var installSSHKey tunneler.InstallSSHKey
-		cloud, err := cloudprovider.InitCloudProvider(s.CloudProvider.CloudProvider, s.CloudProvider.CloudConfigFile)
-		if err != nil {
-			return nil, nil, fmt.Errorf("cloud provider could not be initialized: %v", err)
-		}
-		if cloud != nil {
-			if instances, supported := cloud.Instances(); supported {
-				installSSHKey = instances.AddSSHKeyToAllInstances
-			}
-		}
 		if s.KubeletConfig.Port == 0 {
 			return nil, nil, fmt.Errorf("must enable kubelet port if proxy ssh-tunneling is specified")
 		}

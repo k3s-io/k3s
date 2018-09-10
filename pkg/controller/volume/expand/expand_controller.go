@@ -36,7 +36,6 @@ import (
 	corelisters "k8s.io/client-go/listers/core/v1"
 	kcache "k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/kubernetes/pkg/cloudprovider"
 	"k8s.io/kubernetes/pkg/controller"
 	"k8s.io/kubernetes/pkg/controller/volume/expand/cache"
 	"k8s.io/kubernetes/pkg/util/io"
@@ -72,9 +71,6 @@ type expandController struct {
 	pvLister corelisters.PersistentVolumeLister
 	pvSynced kcache.InformerSynced
 
-	// cloud provider used by volume host
-	cloud cloudprovider.Interface
-
 	// volumePluginMgr used to initialize and fetch volume plugins
 	volumePluginMgr volume.VolumePluginMgr
 
@@ -98,12 +94,10 @@ func NewExpandController(
 	kubeClient clientset.Interface,
 	pvcInformer coreinformers.PersistentVolumeClaimInformer,
 	pvInformer coreinformers.PersistentVolumeInformer,
-	cloud cloudprovider.Interface,
 	plugins []volume.VolumePlugin) (ExpandController, error) {
 
 	expc := &expandController{
 		kubeClient: kubeClient,
-		cloud:      cloud,
 		pvcLister:  pvcInformer.Lister(),
 		pvcsSynced: pvcInformer.Informer().HasSynced,
 		pvLister:   pvInformer.Lister(),
@@ -249,10 +243,6 @@ func (expc *expandController) NewWrapperMounter(volName string, spec volume.Spec
 
 func (expc *expandController) NewWrapperUnmounter(volName string, spec volume.Spec, podUID types.UID) (volume.Unmounter, error) {
 	return nil, fmt.Errorf("NewWrapperUnmounter not supported by expand controller's VolumeHost implementation")
-}
-
-func (expc *expandController) GetCloudProvider() cloudprovider.Interface {
-	return expc.cloud
 }
 
 func (expc *expandController) GetMounter(pluginName string) mount.Interface {

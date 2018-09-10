@@ -63,7 +63,6 @@ import (
 
 func startServiceController(ctx ControllerContext) (bool, error) {
 	serviceController, err := servicecontroller.New(
-		ctx.Cloud,
 		ctx.ClientBuilder.ClientOrDie("service-controller"),
 		ctx.InformerFactory.Core().V1().Services(),
 		ctx.InformerFactory.Core().V1().Nodes(),
@@ -103,7 +102,6 @@ func startNodeIpamController(ctx ControllerContext) (bool, error) {
 
 	nodeIpamController, err := nodeipamcontroller.NewNodeIpamController(
 		ctx.InformerFactory.Core().V1().Nodes(),
-		ctx.Cloud,
 		ctx.ClientBuilder.ClientOrDie("node-controller"),
 		clusterCIDR,
 		serviceCIDR,
@@ -122,7 +120,6 @@ func startNodeLifecycleController(ctx ControllerContext) (bool, error) {
 		ctx.InformerFactory.Core().V1().Pods(),
 		ctx.InformerFactory.Core().V1().Nodes(),
 		ctx.InformerFactory.Extensions().V1beta1().DaemonSets(),
-		ctx.Cloud,
 		ctx.ClientBuilder.ClientOrDie("node-controller"),
 		ctx.ComponentConfig.NodeMonitorPeriod.Duration,
 		ctx.ComponentConfig.NodeStartupGracePeriod.Duration,
@@ -146,8 +143,7 @@ func startPersistentVolumeBinderController(ctx ControllerContext) (bool, error) 
 	params := persistentvolumecontroller.ControllerParameters{
 		KubeClient:                ctx.ClientBuilder.ClientOrDie("persistent-volume-binder"),
 		SyncPeriod:                ctx.ComponentConfig.PVClaimBinderSyncPeriod.Duration,
-		VolumePlugins:             ProbeControllerVolumePlugins(ctx.Cloud, ctx.ComponentConfig.VolumeConfiguration),
-		Cloud:                     ctx.Cloud,
+		VolumePlugins:             ProbeControllerVolumePlugins(ctx.ComponentConfig.VolumeConfiguration),
 		ClusterName:               ctx.ComponentConfig.ClusterName,
 		VolumeInformer:            ctx.InformerFactory.Core().V1().PersistentVolumes(),
 		ClaimInformer:             ctx.InformerFactory.Core().V1().PersistentVolumeClaims(),
@@ -174,7 +170,6 @@ func startAttachDetachController(ctx ControllerContext) (bool, error) {
 			ctx.InformerFactory.Core().V1().Nodes(),
 			ctx.InformerFactory.Core().V1().PersistentVolumeClaims(),
 			ctx.InformerFactory.Core().V1().PersistentVolumes(),
-			ctx.Cloud,
 			ProbeAttachableVolumePlugins(),
 			GetDynamicPluginProber(ctx.ComponentConfig.VolumeConfiguration),
 			ctx.ComponentConfig.DisableAttachDetachReconcilerSync,
@@ -194,7 +189,6 @@ func startVolumeExpandController(ctx ControllerContext) (bool, error) {
 			ctx.ClientBuilder.ClientOrDie("expand-controller"),
 			ctx.InformerFactory.Core().V1().PersistentVolumeClaims(),
 			ctx.InformerFactory.Core().V1().PersistentVolumes(),
-			ctx.Cloud,
 			ProbeExpandableVolumePlugins(ctx.ComponentConfig.VolumeConfiguration))
 
 		if expandControllerErr != nil {

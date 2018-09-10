@@ -38,7 +38,6 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
-	"k8s.io/kubernetes/pkg/cloudprovider"
 	"k8s.io/kubernetes/pkg/controller"
 	"k8s.io/kubernetes/pkg/controller/volume/persistentvolume/metrics"
 	"k8s.io/kubernetes/pkg/util/goroutinemap"
@@ -57,7 +56,6 @@ type ControllerParameters struct {
 	KubeClient                clientset.Interface
 	SyncPeriod                time.Duration
 	VolumePlugins             []vol.VolumePlugin
-	Cloud                     cloudprovider.Interface
 	ClusterName               string
 	VolumeInformer            coreinformers.PersistentVolumeInformer
 	ClaimInformer             coreinformers.PersistentVolumeClaimInformer
@@ -78,12 +76,11 @@ func NewController(p ControllerParameters) (*PersistentVolumeController, error) 
 	}
 
 	controller := &PersistentVolumeController{
-		volumes:           newPersistentVolumeOrderedIndex(),
-		claims:            cache.NewStore(cache.DeletionHandlingMetaNamespaceKeyFunc),
-		kubeClient:        p.KubeClient,
-		eventRecorder:     eventRecorder,
-		runningOperations: goroutinemap.NewGoRoutineMap(true /* exponentialBackOffOnError */),
-		cloud:             p.Cloud,
+		volumes:                       newPersistentVolumeOrderedIndex(),
+		claims:                        cache.NewStore(cache.DeletionHandlingMetaNamespaceKeyFunc),
+		kubeClient:                    p.KubeClient,
+		eventRecorder:                 eventRecorder,
+		runningOperations:             goroutinemap.NewGoRoutineMap(true /* exponentialBackOffOnError */),
 		enableDynamicProvisioning:     p.EnableDynamicProvisioning,
 		clusterName:                   p.ClusterName,
 		createProvisionedPVRetryCount: createProvisionedPVRetryCount,

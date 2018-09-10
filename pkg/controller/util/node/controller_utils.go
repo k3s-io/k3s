@@ -17,7 +17,6 @@ limitations under the License.
 package node
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -35,7 +34,6 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	extensionslisters "k8s.io/client-go/listers/extensions/v1beta1"
 	api "k8s.io/kubernetes/pkg/apis/core"
-	"k8s.io/kubernetes/pkg/cloudprovider"
 	"k8s.io/kubernetes/pkg/controller"
 	"k8s.io/kubernetes/pkg/kubelet/util/format"
 	nodepkg "k8s.io/kubernetes/pkg/util/node"
@@ -169,22 +167,6 @@ func MarkAllPodsNotReady(kubeClient clientset.Interface, node *v1.Node) error {
 		return nil
 	}
 	return fmt.Errorf("%v", strings.Join(errMsg, "; "))
-}
-
-// ExistsInCloudProvider returns true if the node exists in the
-// cloud provider.
-func ExistsInCloudProvider(cloud cloudprovider.Interface, nodeName types.NodeName) (bool, error) {
-	instances, ok := cloud.Instances()
-	if !ok {
-		return false, fmt.Errorf("%v", ErrCloudInstance)
-	}
-	if _, err := instances.ExternalID(context.TODO(), nodeName); err != nil {
-		if err == cloudprovider.InstanceNotFound {
-			return false, nil
-		}
-		return false, err
-	}
-	return true, nil
 }
 
 // RecordNodeEvent records a event related to a node.

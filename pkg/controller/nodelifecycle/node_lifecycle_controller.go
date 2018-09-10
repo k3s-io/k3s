@@ -33,7 +33,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	coreinformers "k8s.io/client-go/informers/core/v1"
@@ -46,7 +45,6 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/flowcontrol"
 	v1node "k8s.io/kubernetes/pkg/api/v1/node"
-	"k8s.io/kubernetes/pkg/cloudprovider"
 	"k8s.io/kubernetes/pkg/controller"
 	"k8s.io/kubernetes/pkg/controller/nodelifecycle/scheduler"
 	nodeutil "k8s.io/kubernetes/pkg/controller/util/node"
@@ -124,7 +122,6 @@ type Controller struct {
 	taintManager *scheduler.NoExecuteTaintManager
 
 	podInformerSynced cache.InformerSynced
-	cloud             cloudprovider.Interface
 	kubeClient        clientset.Interface
 
 	// This timestamp is to be used instead of LastProbeTime stored in Condition. We do this
@@ -153,9 +150,8 @@ type Controller struct {
 	daemonSetStore          extensionslisters.DaemonSetLister
 	daemonSetInformerSynced cache.InformerSynced
 
-	nodeLister                corelisters.NodeLister
-	nodeInformerSynced        cache.InformerSynced
-	nodeExistsInCloudProvider func(types.NodeName) (bool, error)
+	nodeLister         corelisters.NodeLister
+	nodeInformerSynced cache.InformerSynced
 
 	recorder record.EventRecorder
 
@@ -207,7 +203,6 @@ type Controller struct {
 func NewNodeLifecycleController(podInformer coreinformers.PodInformer,
 	nodeInformer coreinformers.NodeInformer,
 	daemonSetInformer extensionsinformers.DaemonSetInformer,
-	cloud cloudprovider.Interface,
 	kubeClient clientset.Interface,
 	nodeMonitorPeriod time.Duration,
 	nodeStartupGracePeriod time.Duration,
@@ -233,14 +228,10 @@ func NewNodeLifecycleController(podInformer coreinformers.PodInformer,
 	}
 
 	nc := &Controller{
-		cloud:         cloud,
-		kubeClient:    kubeClient,
-		now:           metav1.Now,
-		knownNodeSet:  make(map[string]*v1.Node),
-		nodeStatusMap: make(map[string]nodeStatusData),
-		nodeExistsInCloudProvider: func(nodeName types.NodeName) (bool, error) {
-			return nodeutil.ExistsInCloudProvider(cloud, nodeName)
-		},
+		kubeClient:                  kubeClient,
+		now:                         metav1.Now,
+		knownNodeSet:                make(map[string]*v1.Node),
+		nodeStatusMap:               make(map[string]nodeStatusData),
 		recorder:                    recorder,
 		nodeMonitorPeriod:           nodeMonitorPeriod,
 		nodeStartupGracePeriod:      nodeStartupGracePeriod,
@@ -676,29 +667,6 @@ func (nc *Controller) monitorNodeStatus() error {
 				nodeutil.RecordNodeStatusChange(nc.recorder, node, "NodeNotReady")
 				if err = nodeutil.MarkAllPodsNotReady(nc.kubeClient, node); err != nil {
 					utilruntime.HandleError(fmt.Errorf("Unable to mark all pods NotReady on node %v: %v", node.Name, err))
-				}
-			}
-
-			// Check with the cloud provider to see if the node still exists. If it
-			// doesn't, delete the node immediately.
-			if currentReadyCondition.Status != v1.ConditionTrue && nc.cloud != nil {
-				exists, err := nc.nodeExistsInCloudProvider(types.NodeName(node.Name))
-				if err != nil {
-					glog.Errorf("Error determining if node %v exists in cloud: %v", node.Name, err)
-					continue
-				}
-				if !exists {
-					glog.V(2).Infof("Deleting node (no longer present in cloud provider): %s", node.Name)
-					nodeutil.RecordNodeEvent(nc.recorder, node.Name, string(node.UID), v1.EventTypeNormal, "DeletingNode", fmt.Sprintf("Deleting Node %v because it's not present according to cloud provider", node.Name))
-					go func(nodeName string) {
-						defer utilruntime.HandleCrash()
-						// Kubelet is not reporting and Cloud Provider says node
-						// is gone. Delete it without worrying about grace
-						// periods.
-						if err := nodeutil.ForcefullyDeleteNode(nc.kubeClient, nodeName); err != nil {
-							glog.Errorf("Unable to forcefully delete node %q: %v", nodeName, err)
-						}
-					}(node.Name)
 				}
 			}
 		}

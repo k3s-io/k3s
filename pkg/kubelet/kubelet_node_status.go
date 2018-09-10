@@ -17,7 +17,6 @@ limitations under the License.
 package kubelet
 
 import (
-	"context"
 	"fmt"
 	"math"
 	"net"
@@ -36,13 +35,11 @@ import (
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	k8s_api_v1 "k8s.io/kubernetes/pkg/apis/core/v1"
 	v1helper "k8s.io/kubernetes/pkg/apis/core/v1/helper"
-	"k8s.io/kubernetes/pkg/cloudprovider"
 	"k8s.io/kubernetes/pkg/features"
 	kubeletapis "k8s.io/kubernetes/pkg/kubelet/apis"
 	"k8s.io/kubernetes/pkg/kubelet/cadvisor"
 	"k8s.io/kubernetes/pkg/kubelet/events"
 	"k8s.io/kubernetes/pkg/kubelet/util"
-	"k8s.io/kubernetes/pkg/scheduler/algorithm"
 	nodeutil "k8s.io/kubernetes/pkg/util/node"
 	"k8s.io/kubernetes/pkg/version"
 	volutil "k8s.io/kubernetes/pkg/volume/util"
@@ -240,15 +237,6 @@ func (kl *Kubelet) initialNode() (*v1.Node, error) {
 		}
 		nodeTaints = append(nodeTaints, taints...)
 	}
-	if kl.externalCloudProvider {
-		taint := v1.Taint{
-			Key:    algorithm.TaintExternalCloudProvider,
-			Value:  "true",
-			Effect: v1.TaintEffectNoSchedule,
-		}
-
-		nodeTaints = append(nodeTaints, taint)
-	}
 	if len(nodeTaints) > 0 {
 		node.Spec.Taints = nodeTaints
 	}
@@ -294,58 +282,7 @@ func (kl *Kubelet) initialNode() (*v1.Node, error) {
 		node.Spec.ProviderID = kl.providerID
 	}
 
-	if kl.cloud != nil {
-		instances, ok := kl.cloud.Instances()
-		if !ok {
-			return nil, fmt.Errorf("failed to get instances from cloud provider")
-		}
-
-		// TODO(roberthbailey): Can we do this without having credentials to talk
-		// to the cloud provider?
-		// TODO: ExternalID is deprecated, we'll have to drop this code
-		externalID, err := instances.ExternalID(context.TODO(), kl.nodeName)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get external ID from cloud provider: %v", err)
-		}
-		node.Spec.ExternalID = externalID
-
-		// TODO: We can't assume that the node has credentials to talk to the
-		// cloudprovider from arbitrary nodes. At most, we should talk to a
-		// local metadata server here.
-		if node.Spec.ProviderID == "" {
-			node.Spec.ProviderID, err = cloudprovider.GetInstanceProviderID(context.TODO(), kl.cloud, kl.nodeName)
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		instanceType, err := instances.InstanceType(context.TODO(), kl.nodeName)
-		if err != nil {
-			return nil, err
-		}
-		if instanceType != "" {
-			glog.Infof("Adding node label from cloud provider: %s=%s", kubeletapis.LabelInstanceType, instanceType)
-			node.ObjectMeta.Labels[kubeletapis.LabelInstanceType] = instanceType
-		}
-		// If the cloud has zone information, label the node with the zone information
-		zones, ok := kl.cloud.Zones()
-		if ok {
-			zone, err := zones.GetZone(context.TODO())
-			if err != nil {
-				return nil, fmt.Errorf("failed to get zone from cloud provider: %v", err)
-			}
-			if zone.FailureDomain != "" {
-				glog.Infof("Adding node label from cloud provider: %s=%s", kubeletapis.LabelZoneFailureDomain, zone.FailureDomain)
-				node.ObjectMeta.Labels[kubeletapis.LabelZoneFailureDomain] = zone.FailureDomain
-			}
-			if zone.Region != "" {
-				glog.Infof("Adding node label from cloud provider: %s=%s", kubeletapis.LabelZoneRegion, zone.Region)
-				node.ObjectMeta.Labels[kubeletapis.LabelZoneRegion] = zone.Region
-			}
-		}
-	} else {
-		node.Spec.ExternalID = kl.hostname
-	}
+	node.Spec.ExternalID = kl.hostname
 	kl.setNodeStatus(node)
 
 	return node, nil
@@ -437,101 +374,45 @@ func (kl *Kubelet) setNodeAddress(node *v1.Node) error {
 		glog.V(2).Infof("Using node IP: %q", kl.nodeIP.String())
 	}
 
-	if kl.externalCloudProvider {
-		if kl.nodeIP != nil {
-			if node.ObjectMeta.Annotations == nil {
-				node.ObjectMeta.Annotations = make(map[string]string)
-			}
-			node.ObjectMeta.Annotations[kubeletapis.AnnotationProvidedIPAddr] = kl.nodeIP.String()
-		}
-		// We rely on the external cloud provider to supply the addresses.
-		return nil
-	}
-	if kl.cloud != nil {
-		instances, ok := kl.cloud.Instances()
-		if !ok {
-			return fmt.Errorf("failed to get instances from cloud provider")
-		}
-		// TODO(roberthbailey): Can we do this without having credentials to talk
-		// to the cloud provider?
-		// TODO(justinsb): We can if CurrentNodeName() was actually CurrentNode() and returned an interface
-		// TODO: If IP addresses couldn't be fetched from the cloud provider, should kubelet fallback on the other methods for getting the IP below?
-		nodeAddresses, err := instances.NodeAddresses(context.TODO(), kl.nodeName)
-		if err != nil {
-			return fmt.Errorf("failed to get node address from cloud provider: %v", err)
-		}
-		if kl.nodeIP != nil {
-			enforcedNodeAddresses := []v1.NodeAddress{}
-			for _, nodeAddress := range nodeAddresses {
-				if nodeAddress.Address == kl.nodeIP.String() {
-					enforcedNodeAddresses = append(enforcedNodeAddresses, v1.NodeAddress{Type: nodeAddress.Type, Address: nodeAddress.Address})
-				}
-			}
-			if len(enforcedNodeAddresses) > 0 {
-				enforcedNodeAddresses = append(enforcedNodeAddresses, v1.NodeAddress{Type: v1.NodeHostName, Address: kl.GetHostname()})
-				node.Status.Addresses = enforcedNodeAddresses
-				return nil
-			}
-			return fmt.Errorf("failed to get node address from cloud provider that matches ip: %v", kl.nodeIP)
-		}
+	var ipAddr net.IP
+	var err error
 
-		// Only add a NodeHostName address if the cloudprovider did not specify one
-		// (we assume the cloudprovider knows best)
-		var addressNodeHostName *v1.NodeAddress
-		for i := range nodeAddresses {
-			if nodeAddresses[i].Type == v1.NodeHostName {
-				addressNodeHostName = &nodeAddresses[i]
-				break
-			}
-		}
-		if addressNodeHostName == nil {
-			hostnameAddress := v1.NodeAddress{Type: v1.NodeHostName, Address: kl.GetHostname()}
-			nodeAddresses = append(nodeAddresses, hostnameAddress)
-		} else {
-			glog.V(2).Infof("Using Node Hostname from cloudprovider: %q", addressNodeHostName.Address)
-		}
-		node.Status.Addresses = nodeAddresses
+	// 1) Use nodeIP if set
+	// 2) If the user has specified an IP to HostnameOverride, use it
+	// 3) Lookup the IP from node name by DNS and use the first valid IPv4 address.
+	//    If the node does not have a valid IPv4 address, use the first valid IPv6 address.
+	// 4) Try to get the IP from the network interface used as default gateway
+	if kl.nodeIP != nil {
+		ipAddr = kl.nodeIP
+	} else if addr := net.ParseIP(kl.hostname); addr != nil {
+		ipAddr = addr
 	} else {
-		var ipAddr net.IP
-		var err error
-
-		// 1) Use nodeIP if set
-		// 2) If the user has specified an IP to HostnameOverride, use it
-		// 3) Lookup the IP from node name by DNS and use the first valid IPv4 address.
-		//    If the node does not have a valid IPv4 address, use the first valid IPv6 address.
-		// 4) Try to get the IP from the network interface used as default gateway
-		if kl.nodeIP != nil {
-			ipAddr = kl.nodeIP
-		} else if addr := net.ParseIP(kl.hostname); addr != nil {
-			ipAddr = addr
-		} else {
-			var addrs []net.IP
-			addrs, _ = net.LookupIP(node.Name)
-			for _, addr := range addrs {
-				if err = validateNodeIP(addr); err == nil {
-					if addr.To4() != nil {
-						ipAddr = addr
-						break
-					}
-					if addr.To16() != nil && ipAddr == nil {
-						ipAddr = addr
-					}
+		var addrs []net.IP
+		addrs, _ = net.LookupIP(node.Name)
+		for _, addr := range addrs {
+			if err = validateNodeIP(addr); err == nil {
+				if addr.To4() != nil {
+					ipAddr = addr
+					break
 				}
-			}
-
-			if ipAddr == nil {
-				ipAddr, err = utilnet.ChooseHostInterface()
+				if addr.To16() != nil && ipAddr == nil {
+					ipAddr = addr
+				}
 			}
 		}
 
 		if ipAddr == nil {
-			// We tried everything we could, but the IP address wasn't fetchable; error out
-			return fmt.Errorf("can't get ip address of node %s. error: %v", node.Name, err)
+			ipAddr, err = utilnet.ChooseHostInterface()
 		}
-		node.Status.Addresses = []v1.NodeAddress{
-			{Type: v1.NodeInternalIP, Address: ipAddr.String()},
-			{Type: v1.NodeHostName, Address: kl.GetHostname()},
-		}
+	}
+
+	if ipAddr == nil {
+		// We tried everything we could, but the IP address wasn't fetchable; error out
+		return fmt.Errorf("can't get ip address of node %s. error: %v", node.Name, err)
+	}
+	node.Status.Addresses = []v1.NodeAddress{
+		{Type: v1.NodeInternalIP, Address: ipAddr.String()},
+		{Type: v1.NodeHostName, Address: kl.GetHostname()},
 	}
 	return nil
 }

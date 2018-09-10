@@ -30,7 +30,6 @@ import (
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/validation"
 	clientset "k8s.io/client-go/kubernetes"
-	"k8s.io/kubernetes/pkg/cloudprovider"
 	"k8s.io/kubernetes/pkg/util/io"
 	"k8s.io/kubernetes/pkg/util/mount"
 	"k8s.io/kubernetes/pkg/volume/util/recyclerclient"
@@ -274,9 +273,6 @@ type VolumeHost interface {
 	// the provided spec.  See comments on NewWrapperMounter for more
 	// context.
 	NewWrapperUnmounter(volName string, spec Spec, podUID types.UID) (Unmounter, error)
-
-	// Get cloud provider from kubelet.
-	GetCloudProvider() cloudprovider.Interface
 
 	// Get mounter interface.
 	GetMounter(pluginName string) mount.Interface

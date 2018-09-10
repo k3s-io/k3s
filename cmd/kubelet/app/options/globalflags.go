@@ -30,8 +30,6 @@ import (
 
 	// ensure libs have a chance to globally register their flags
 	_ "github.com/golang/glog"
-	_ "k8s.io/kubernetes/pkg/credentialprovider/azure"
-	_ "k8s.io/kubernetes/pkg/credentialprovider/gcp"
 )
 
 // AddGlobalFlags explicitly registers flags that libraries (glog, verflag, etc.) register
@@ -40,7 +38,6 @@ import (
 func AddGlobalFlags(fs *pflag.FlagSet) {
 	addGlogFlags(fs)
 	addCadvisorFlags(fs)
-	addCredentialProviderFlags(fs)
 	verflag.AddFlags(fs)
 	logs.AddFlags(fs)
 }
@@ -82,22 +79,6 @@ func registerDeprecated(global *flag.FlagSet, local *pflag.FlagSet, globalName, 
 func pflagRegisterDeprecated(global, local *pflag.FlagSet, globalName, deprecated string) {
 	pflagRegister(global, local, globalName)
 	local.Lookup(normalize(globalName)).Deprecated = deprecated
-}
-
-// addCredentialProviderFlags adds flags from k8s.io/kubernetes/pkg/credentialprovider
-func addCredentialProviderFlags(fs *pflag.FlagSet) {
-	// lookup flags in global flag set and re-register the values with our flagset
-	global := pflag.CommandLine
-	local := pflag.NewFlagSet(os.Args[0], pflag.ExitOnError)
-
-	// Note this is deprecated in the library that provides it, so we just allow that deprecation
-	// notice to pass through our registration here.
-	pflagRegister(global, local, "google-json-key")
-	// TODO(#58034): This is not a static file, so it's not quite as straightforward as --google-json-key.
-	// We need to figure out how ACR users can dynamically provide pull credentials before we can deprecate this.
-	pflagRegister(global, local, "azure-container-registry-config")
-
-	fs.AddFlagSet(local)
 }
 
 // addGlogFlags adds flags from github.com/golang/glog
