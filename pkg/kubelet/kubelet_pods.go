@@ -98,21 +98,7 @@ func (kl *Kubelet) GetActivePods() []*v1.Pod {
 // makeGPUDevices determines the devices for the given container.
 // Experimental.
 func (kl *Kubelet) makeGPUDevices(pod *v1.Pod, container *v1.Container) ([]kubecontainer.DeviceInfo, error) {
-	if container.Resources.Limits.NvidiaGPU().IsZero() {
-		return nil, nil
-	}
-
-	nvidiaGPUPaths, err := kl.gpuManager.AllocateGPU(pod, container)
-	if err != nil {
-		return nil, err
-	}
-	var devices []kubecontainer.DeviceInfo
-	for _, path := range nvidiaGPUPaths {
-		// Devices have to be mapped one to one because of nvidia CUDA library requirements.
-		devices = append(devices, kubecontainer.DeviceInfo{PathOnHost: path, PathInContainer: path, Permissions: "mrw"})
-	}
-
-	return devices, nil
+	return nil, nil
 }
 
 // makeBlockVolumes maps the raw block devices specified in the path of the container
@@ -1216,12 +1202,6 @@ func (kl *Kubelet) GetKubeletContainerLogs(podFullName, containerName string, lo
 		return err
 	}
 
-	if kl.dockerLegacyService != nil {
-		// dockerLegacyService should only be non-nil when we actually need it, so
-		// inject it into the runtimeService.
-		// TODO(random-liu): Remove this hack after deprecating unsupported log driver.
-		return kl.dockerLegacyService.GetContainerLogs(pod, containerID, logOptions, stdout, stderr)
-	}
 	return kl.containerRuntime.GetContainerLogs(pod, containerID, logOptions, stdout, stderr)
 }
 

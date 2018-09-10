@@ -28,7 +28,6 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/pkg/kubelet/configmap"
 	"k8s.io/kubernetes/pkg/kubelet/container"
-	"k8s.io/kubernetes/pkg/kubelet/mountpod"
 	"k8s.io/kubernetes/pkg/kubelet/secret"
 	"k8s.io/kubernetes/pkg/util/io"
 	"k8s.io/kubernetes/pkg/util/mount"
@@ -49,16 +48,11 @@ func NewInitializedVolumePluginMgr(
 	plugins []volume.VolumePlugin,
 	prober volume.DynamicPluginProber) (*volume.VolumePluginMgr, error) {
 
-	mountPodManager, err := mountpod.NewManager(kubelet.getRootDir(), kubelet.podManager)
-	if err != nil {
-		return nil, err
-	}
 	kvh := &kubeletVolumeHost{
 		kubelet:          kubelet,
 		volumePluginMgr:  volume.VolumePluginMgr{},
 		secretManager:    secretManager,
 		configMapManager: configMapManager,
-		mountPodManager:  mountPodManager,
 	}
 
 	if err := kvh.volumePluginMgr.InitPlugins(plugins, prober, kvh); err != nil {
@@ -82,7 +76,6 @@ type kubeletVolumeHost struct {
 	volumePluginMgr  volume.VolumePluginMgr
 	secretManager    secret.Manager
 	configMapManager configmap.Manager
-	mountPodManager  mountpod.Manager
 }
 
 func (kvh *kubeletVolumeHost) GetVolumeDevicePluginDir(pluginName string) string {
