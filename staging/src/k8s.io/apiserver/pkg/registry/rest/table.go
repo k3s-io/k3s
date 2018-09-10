@@ -38,8 +38,6 @@ func NewDefaultTableConvertor(resource schema.GroupResource) TableConvertor {
 	return defaultTableConvertor{qualifiedResource: resource}
 }
 
-var swaggerMetadataDescriptions = metav1.ObjectMeta{}.SwaggerDoc()
-
 func (c defaultTableConvertor) ConvertToTable(ctx context.Context, object runtime.Object, tableOptions runtime.Object) (*metav1beta1.Table, error) {
 	var table metav1beta1.Table
 	fn := func(obj runtime.Object) error {
@@ -74,8 +72,8 @@ func (c defaultTableConvertor) ConvertToTable(ctx context.Context, object runtim
 		}
 	}
 	table.ColumnDefinitions = []metav1beta1.TableColumnDefinition{
-		{Name: "Name", Type: "string", Format: "name", Description: swaggerMetadataDescriptions["name"]},
-		{Name: "Created At", Type: "date", Description: swaggerMetadataDescriptions["creationTimestamp"]},
+		{Name: "Name", Type: "string", Format: "name", Description: ""},
+		{Name: "Created At", Type: "date", Description: ""},
 	}
 	return &table, nil
 }
