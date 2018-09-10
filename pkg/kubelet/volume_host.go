@@ -29,7 +29,6 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/record"
 	csiclientset "k8s.io/csi-api/pkg/client/clientset/versioned"
-	"k8s.io/kubernetes/pkg/cloudprovider"
 	"k8s.io/kubernetes/pkg/kubelet/configmap"
 	"k8s.io/kubernetes/pkg/kubelet/container"
 	"k8s.io/kubernetes/pkg/kubelet/secret"
@@ -144,10 +143,6 @@ func (kvh *kubeletVolumeHost) NewWrapperUnmounter(volName string, spec volume.Sp
 	}
 
 	return plugin.NewUnmounter(spec.Name(), podUID)
-}
-
-func (kvh *kubeletVolumeHost) GetCloudProvider() cloudprovider.Interface {
-	return kvh.kubelet.cloud
 }
 
 func (kvh *kubeletVolumeHost) GetMounter(pluginName string) mount.Interface {

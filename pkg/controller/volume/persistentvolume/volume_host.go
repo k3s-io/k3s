@@ -26,7 +26,6 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/record"
 	csiclientset "k8s.io/csi-api/pkg/client/clientset/versioned"
-	"k8s.io/kubernetes/pkg/cloudprovider"
 	"k8s.io/kubernetes/pkg/util/mount"
 	vol "k8s.io/kubernetes/pkg/volume"
 )
@@ -69,10 +68,6 @@ func (ctrl *PersistentVolumeController) NewWrapperMounter(volName string, spec v
 
 func (ctrl *PersistentVolumeController) NewWrapperUnmounter(volName string, spec vol.Spec, podUID types.UID) (vol.Unmounter, error) {
 	return nil, fmt.Errorf("PersistentVolumeController.NewWrapperMounter is not implemented")
-}
-
-func (ctrl *PersistentVolumeController) GetCloudProvider() cloudprovider.Interface {
-	return ctrl.cloud
 }
 
 func (ctrl *PersistentVolumeController) GetMounter(pluginName string) mount.Interface {

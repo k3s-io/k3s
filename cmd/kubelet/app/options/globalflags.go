@@ -30,8 +30,6 @@ import (
 
 	// ensure libs have a chance to globally register their flags
 	_ "github.com/golang/glog"
-	_ "k8s.io/kubernetes/pkg/credentialprovider/azure"
-	_ "k8s.io/kubernetes/pkg/credentialprovider/gcp"
 )
 
 // AddGlobalFlags explicitly registers flags that libraries (glog, verflag, etc.) register
@@ -40,7 +38,6 @@ import (
 func AddGlobalFlags(fs *pflag.FlagSet) {
 	addGlogFlags(fs)
 	addCadvisorFlags(fs)
-	addCredentialProviderFlags(fs)
 	verflag.AddFlags(fs)
 	logs.AddFlags(fs)
 }
@@ -75,6 +72,12 @@ func pflagRegister(global, local *pflag.FlagSet, globalName string) {
 // registerDeprecated registers the flag with register, and then marks it deprecated
 func registerDeprecated(global *flag.FlagSet, local *pflag.FlagSet, globalName, deprecated string) {
 	register(global, local, globalName)
+	local.Lookup(normalize(globalName)).Deprecated = deprecated
+}
+
+// pflagRegisterDeprecated registers the flag with pflagRegister, and then marks it deprecated
+func pflagRegisterDeprecated(global, local *pflag.FlagSet, globalName, deprecated string) {
+	pflagRegister(global, local, globalName)
 	local.Lookup(normalize(globalName)).Deprecated = deprecated
 }
 
