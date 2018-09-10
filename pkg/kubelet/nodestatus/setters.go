@@ -31,10 +31,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
-	cloudprovider "k8s.io/cloud-provider"
 	v1helper "k8s.io/kubernetes/pkg/apis/core/v1/helper"
 	"k8s.io/kubernetes/pkg/features"
-	kubeletapis "k8s.io/kubernetes/pkg/kubelet/apis"
 	"k8s.io/kubernetes/pkg/kubelet/cadvisor"
 	"k8s.io/kubernetes/pkg/kubelet/cm"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
@@ -59,10 +57,6 @@ type Setter func(node *v1.Node) error
 func NodeAddress(nodeIP net.IP, // typically Kubelet.nodeIP
 	validateNodeIPFunc func(net.IP) error, // typically Kubelet.nodeIPValidator
 	hostname string, // typically Kubelet.hostname
-	hostnameOverridden bool, // was the hostname force set?
-	externalCloudProvider bool, // typically Kubelet.externalCloudProvider
-	cloud cloudprovider.Interface, // typically Kubelet.cloud
-	nodeAddressesFunc func() ([]v1.NodeAddress, error), // typically Kubelet.cloudResourceSyncManager.NodeAddresses
 ) Setter {
 	return func(node *v1.Node) error {
 		if nodeIP != nil {
@@ -72,81 +66,7 @@ func NodeAddress(nodeIP net.IP, // typically Kubelet.nodeIP
 			klog.V(2).Infof("Using node IP: %q", nodeIP.String())
 		}
 
-		if externalCloudProvider {
-			if nodeIP != nil {
-				if node.ObjectMeta.Annotations == nil {
-					node.ObjectMeta.Annotations = make(map[string]string)
-				}
-				node.ObjectMeta.Annotations[kubeletapis.AnnotationProvidedIPAddr] = nodeIP.String()
-			}
-			// We rely on the external cloud provider to supply the addresses.
-			return nil
-		}
-		if cloud != nil {
-			nodeAddresses, err := nodeAddressesFunc()
-			if err != nil {
-				return err
-			}
-			if nodeIP != nil {
-				enforcedNodeAddresses := []v1.NodeAddress{}
-
-				var nodeIPType v1.NodeAddressType
-				for _, nodeAddress := range nodeAddresses {
-					if nodeAddress.Address == nodeIP.String() {
-						enforcedNodeAddresses = append(enforcedNodeAddresses, v1.NodeAddress{Type: nodeAddress.Type, Address: nodeAddress.Address})
-						nodeIPType = nodeAddress.Type
-						break
-					}
-				}
-				if len(enforcedNodeAddresses) > 0 {
-					for _, nodeAddress := range nodeAddresses {
-						if nodeAddress.Type != nodeIPType && nodeAddress.Type != v1.NodeHostName {
-							enforcedNodeAddresses = append(enforcedNodeAddresses, v1.NodeAddress{Type: nodeAddress.Type, Address: nodeAddress.Address})
-						}
-					}
-
-					enforcedNodeAddresses = append(enforcedNodeAddresses, v1.NodeAddress{Type: v1.NodeHostName, Address: hostname})
-					node.Status.Addresses = enforcedNodeAddresses
-					return nil
-				}
-				return fmt.Errorf("failed to get node address from cloud provider that matches ip: %v", nodeIP)
-			}
-
-			switch {
-			case len(nodeAddresses) == 0:
-				// the cloud provider didn't specify any addresses
-				nodeAddresses = append(nodeAddresses, v1.NodeAddress{Type: v1.NodeHostName, Address: hostname})
-
-			case !hasAddressType(nodeAddresses, v1.NodeHostName) && hasAddressValue(nodeAddresses, hostname):
-				// the cloud provider didn't specify an address of type Hostname,
-				// but the auto-detected hostname matched an address reported by the cloud provider,
-				// so we can add it and count on the value being verifiable via cloud provider metadata
-				nodeAddresses = append(nodeAddresses, v1.NodeAddress{Type: v1.NodeHostName, Address: hostname})
-
-			case hostnameOverridden:
-				// the hostname was force-set via flag/config.
-				// this means the hostname might not be able to be validated via cloud provider metadata,
-				// but was a choice by the kubelet deployer we should honor
-				var existingHostnameAddress *v1.NodeAddress
-				for i := range nodeAddresses {
-					if nodeAddresses[i].Type == v1.NodeHostName {
-						existingHostnameAddress = &nodeAddresses[i]
-						break
-					}
-				}
-
-				if existingHostnameAddress == nil {
-					// no existing Hostname address found, add it
-					klog.Warningf("adding overridden hostname of %v to cloudprovider-reported addresses", hostname)
-					nodeAddresses = append(nodeAddresses, v1.NodeAddress{Type: v1.NodeHostName, Address: hostname})
-				} else {
-					// override the Hostname address reported by the cloud provider
-					klog.Warningf("replacing cloudprovider-reported hostname of %v with overridden hostname of %v", existingHostnameAddress.Address, hostname)
-					existingHostnameAddress.Address = hostname
-				}
-			}
-			node.Status.Addresses = nodeAddresses
-		} else {
+		{
 			var ipAddr net.IP
 			var err error
 
@@ -190,23 +110,6 @@ func NodeAddress(nodeIP net.IP, // typically Kubelet.nodeIP
 		}
 		return nil
 	}
-}
-
-func hasAddressType(addresses []v1.NodeAddress, addressType v1.NodeAddressType) bool {
-	for _, address := range addresses {
-		if address.Type == addressType {
-			return true
-		}
-	}
-	return false
-}
-func hasAddressValue(addresses []v1.NodeAddress, addressValue string) bool {
-	for _, address := range addresses {
-		if address.Address == addressValue {
-			return true
-		}
-	}
-	return false
 }
 
 // MachineInfo returns a Setter that updates machine-related information on the node.

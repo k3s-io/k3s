@@ -17,7 +17,6 @@ limitations under the License.
 package kubelet
 
 import (
-	"context"
 	"fmt"
 	"net"
 	goruntime "runtime"
@@ -33,7 +32,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
-	cloudprovider "k8s.io/cloud-provider"
 	k8s_api_v1 "k8s.io/kubernetes/pkg/apis/core/v1"
 	v1helper "k8s.io/kubernetes/pkg/apis/core/v1/helper"
 	"k8s.io/kubernetes/pkg/features"
@@ -247,15 +245,6 @@ func (kl *Kubelet) initialNode() (*v1.Node, error) {
 		}
 	}
 
-	if kl.externalCloudProvider {
-		taint := v1.Taint{
-			Key:    schedulerapi.TaintExternalCloudProvider,
-			Value:  "true",
-			Effect: v1.TaintEffectNoSchedule,
-		}
-
-		nodeTaints = append(nodeTaints, taint)
-	}
 	if len(nodeTaints) > 0 {
 		node.Spec.Taints = nodeTaints
 	}
@@ -299,49 +288,6 @@ func (kl *Kubelet) initialNode() (*v1.Node, error) {
 
 	if kl.providerID != "" {
 		node.Spec.ProviderID = kl.providerID
-	}
-
-	if kl.cloud != nil {
-		instances, ok := kl.cloud.Instances()
-		if !ok {
-			return nil, fmt.Errorf("failed to get instances from cloud provider")
-		}
-
-		// TODO: We can't assume that the node has credentials to talk to the
-		// cloudprovider from arbitrary nodes. At most, we should talk to a
-		// local metadata server here.
-		var err error
-		if node.Spec.ProviderID == "" {
-			node.Spec.ProviderID, err = cloudprovider.GetInstanceProviderID(context.TODO(), kl.cloud, kl.nodeName)
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		instanceType, err := instances.InstanceType(context.TODO(), kl.nodeName)
-		if err != nil {
-			return nil, err
-		}
-		if instanceType != "" {
-			klog.Infof("Adding node label from cloud provider: %s=%s", kubeletapis.LabelInstanceType, instanceType)
-			node.ObjectMeta.Labels[kubeletapis.LabelInstanceType] = instanceType
-		}
-		// If the cloud has zone information, label the node with the zone information
-		zones, ok := kl.cloud.Zones()
-		if ok {
-			zone, err := zones.GetZone(context.TODO())
-			if err != nil {
-				return nil, fmt.Errorf("failed to get zone from cloud provider: %v", err)
-			}
-			if zone.FailureDomain != "" {
-				klog.Infof("Adding node label from cloud provider: %s=%s", kubeletapis.LabelZoneFailureDomain, zone.FailureDomain)
-				node.ObjectMeta.Labels[kubeletapis.LabelZoneFailureDomain] = zone.FailureDomain
-			}
-			if zone.Region != "" {
-				klog.Infof("Adding node label from cloud provider: %s=%s", kubeletapis.LabelZoneRegion, zone.Region)
-				node.ObjectMeta.Labels[kubeletapis.LabelZoneRegion] = zone.Region
-			}
-		}
 	}
 
 	kl.setNodeStatus(node)
@@ -491,17 +437,13 @@ func (kl *Kubelet) getLastObservedNodeAddresses() []v1.NodeAddress {
 // setNodeStatus funcs
 func (kl *Kubelet) defaultNodeStatusFuncs() []func(*v1.Node) error {
 	// if cloud is not nil, we expect the cloud resource sync manager to exist
-	var nodeAddressesFunc func() ([]v1.NodeAddress, error)
-	if kl.cloud != nil {
-		nodeAddressesFunc = kl.cloudResourceSyncManager.NodeAddresses
-	}
 	var validateHostFunc func() error
 	if kl.appArmorValidator != nil {
 		validateHostFunc = kl.appArmorValidator.ValidateHost
 	}
 	var setters []func(n *v1.Node) error
 	setters = append(setters,
-		nodestatus.NodeAddress(kl.nodeIP, kl.nodeIPValidator, kl.hostname, kl.hostnameOverridden, kl.externalCloudProvider, kl.cloud, nodeAddressesFunc),
+		nodestatus.NodeAddress(kl.nodeIP, kl.nodeIPValidator, kl.hostname),
 		nodestatus.MachineInfo(string(kl.nodeName), kl.maxPods, kl.podsPerCore, kl.GetCachedMachineInfo, kl.containerManager.GetCapacity,
 			kl.containerManager.GetDevicePluginResourceCapacity, kl.containerManager.GetNodeAllocatableReservation, kl.recordEvent),
 		nodestatus.VersionInfo(kl.cadvisor.VersionInfo, kl.containerRuntime.Type, kl.containerRuntime.Version),
