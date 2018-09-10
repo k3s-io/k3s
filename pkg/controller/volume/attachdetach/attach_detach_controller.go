@@ -38,7 +38,6 @@ import (
 	kcache "k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
-	cloudprovider "k8s.io/cloud-provider"
 	csiclient "k8s.io/csi-api/pkg/client/clientset/versioned"
 	"k8s.io/klog"
 	"k8s.io/kubernetes/pkg/controller"
@@ -102,7 +101,6 @@ func NewAttachDetachController(
 	nodeInformer coreinformers.NodeInformer,
 	pvcInformer coreinformers.PersistentVolumeClaimInformer,
 	pvInformer coreinformers.PersistentVolumeInformer,
-	cloud cloudprovider.Interface,
 	plugins []volume.VolumePlugin,
 	prober volume.DynamicPluginProber,
 	disableReconciliationSync bool,
@@ -134,7 +132,6 @@ func NewAttachDetachController(
 		podIndexer:  podInformer.Informer().GetIndexer(),
 		nodeLister:  nodeInformer.Lister(),
 		nodesSynced: nodeInformer.Informer().HasSynced,
-		cloud:       cloud,
 		pvcQueue:    workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "pvcs"),
 	}
 
@@ -262,9 +259,6 @@ type attachDetachController struct {
 
 	nodeLister  corelisters.NodeLister
 	nodesSynced kcache.InformerSynced
-
-	// cloud provider used by volume host
-	cloud cloudprovider.Interface
 
 	// volumePluginMgr used to initialize and fetch volume plugins
 	volumePluginMgr volume.VolumePluginMgr
@@ -689,10 +683,6 @@ func (adc *attachDetachController) NewWrapperMounter(volName string, spec volume
 
 func (adc *attachDetachController) NewWrapperUnmounter(volName string, spec volume.Spec, podUID types.UID) (volume.Unmounter, error) {
 	return nil, fmt.Errorf("NewWrapperUnmounter not supported by Attach/Detach controller's VolumeHost implementation")
-}
-
-func (adc *attachDetachController) GetCloudProvider() cloudprovider.Interface {
-	return adc.cloud
 }
 
 func (adc *attachDetachController) GetMounter(pluginName string) mount.Interface {
