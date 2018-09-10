@@ -17,7 +17,6 @@ limitations under the License.
 package node
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -34,7 +33,6 @@ import (
 	"k8s.io/api/core/v1"
 	clientset "k8s.io/client-go/kubernetes"
 	extensionslisters "k8s.io/client-go/listers/extensions/v1beta1"
-	cloudprovider "k8s.io/cloud-provider"
 	api "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/controller"
 	"k8s.io/kubernetes/pkg/kubelet/util/format"
@@ -169,36 +167,6 @@ func MarkAllPodsNotReady(kubeClient clientset.Interface, node *v1.Node) error {
 		return nil
 	}
 	return fmt.Errorf("%v", strings.Join(errMsg, "; "))
-}
-
-// ExistsInCloudProvider returns true if the node exists in the
-// cloud provider.
-func ExistsInCloudProvider(cloud cloudprovider.Interface, nodeName types.NodeName) (bool, error) {
-	instances, ok := cloud.Instances()
-	if !ok {
-		return false, fmt.Errorf("%v", ErrCloudInstance)
-	}
-	if _, err := instances.InstanceID(context.TODO(), nodeName); err != nil {
-		if err == cloudprovider.InstanceNotFound {
-			return false, nil
-		}
-		return false, err
-	}
-	return true, nil
-}
-
-// ShutdownInCloudProvider returns true if the node is shutdowned in
-// cloud provider.
-func ShutdownInCloudProvider(ctx context.Context, cloud cloudprovider.Interface, node *v1.Node) (bool, error) {
-	instances, ok := cloud.Instances()
-	if !ok {
-		return false, fmt.Errorf("%v", ErrCloudInstance)
-	}
-	shutdown, err := instances.InstanceShutdownByProviderID(ctx, node.Spec.ProviderID)
-	if err == cloudprovider.NotImplemented {
-		return false, nil
-	}
-	return shutdown, err
 }
 
 // RecordNodeEvent records a event related to a node.
