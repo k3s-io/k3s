@@ -50,7 +50,6 @@ import (
 	genericcontrollermanager "k8s.io/kubernetes/cmd/controller-manager/app"
 	"k8s.io/kubernetes/cmd/kube-controller-manager/app/config"
 	"k8s.io/kubernetes/cmd/kube-controller-manager/app/options"
-	"k8s.io/kubernetes/pkg/cloudprovider"
 	"k8s.io/kubernetes/pkg/controller"
 	kubectrlmgrconfig "k8s.io/kubernetes/pkg/controller/apis/config"
 	serviceaccountcontroller "k8s.io/kubernetes/pkg/controller/serviceaccount"
@@ -64,13 +63,6 @@ import (
 const (
 	// Jitter used when starting controller managers
 	ControllerStartJitter = 1.0
-)
-
-type ControllerLoopMode int
-
-const (
-	IncludeCloudLoops ControllerLoopMode = iota
-	ExternalLoops
 )
 
 // NewControllerManagerCommand creates a *cobra.Command object with default parameters
@@ -193,7 +185,7 @@ func Run(c *config.CompletedConfig, stopCh <-chan struct{}) error {
 		}
 		saTokenControllerInitFunc := serviceAccountTokenControllerStarter{rootClientBuilder: rootClientBuilder}.startServiceAccountTokenController
 
-		if err := StartControllers(controllerContext, saTokenControllerInitFunc, NewControllerInitializers(controllerContext.LoopMode), unsecuredMux); err != nil {
+		if err := StartControllers(controllerContext, saTokenControllerInitFunc, NewControllerInitializers(), unsecuredMux); err != nil {
 			glog.Fatalf("error starting controllers: %v", err)
 		}
 
@@ -260,15 +252,6 @@ type ControllerContext struct {
 	// AvailableResources is a map listing currently available resources
 	AvailableResources map[schema.GroupVersionResource]bool
 
-	// Cloud is the cloud provider interface for the controllers to use.
-	// It must be initialized and ready to use.
-	Cloud cloudprovider.Interface
-
-	// Control for which control loops to be run
-	// IncludeCloudLoops is for a kube-controller-manager running all loops
-	// ExternalLoops is for a kube-controller-manager running with a cloud-controller-manager
-	LoopMode ControllerLoopMode
-
 	// Stop is the stop channel
 	Stop <-chan struct{}
 
@@ -317,7 +300,7 @@ func IsControllerEnabled(name string, disabledByDefaultControllers sets.String, 
 type InitFunc func(ctx ControllerContext) (debuggingHandler http.Handler, enabled bool, err error)
 
 func KnownControllers() []string {
-	ret := sets.StringKeySet(NewControllerInitializers(IncludeCloudLoops))
+	ret := sets.StringKeySet(NewControllerInitializers())
 
 	// add "special" controllers that aren't initialized normally.  These controllers cannot be initialized
 	// using a normal function.  The only known special case is the SA token controller which *must* be started
@@ -341,7 +324,7 @@ const (
 
 // NewControllerInitializers is a public map of named controller groups (you can start more than one in an init func)
 // paired to their InitFunc.  This allows for structured downstream composition and subdivision.
-func NewControllerInitializers(loopMode ControllerLoopMode) map[string]InitFunc {
+func NewControllerInitializers() map[string]InitFunc {
 	controllers := map[string]InitFunc{}
 	controllers["endpoint"] = startEndpointController
 	controllers["replicationcontroller"] = startReplicationController
@@ -360,11 +343,7 @@ func NewControllerInitializers(loopMode ControllerLoopMode) map[string]InitFunc 
 	controllers["cronjob"] = startCronJobController
 	controllers["ttl"] = startTTLController
 	controllers["nodeipam"] = startNodeIpamController
-	if loopMode == IncludeCloudLoops {
-		controllers["service"] = startServiceController
-		// TODO: volume controller into the IncludeCloudLoops only set.
-		// TODO: Separate cluster in cloud check from node lifecycle controller.
-	}
+	controllers["service"] = startServiceController
 	controllers["nodelifecycle"] = startNodeLifecycleController
 	controllers["persistentvolume-binder"] = startPersistentVolumeBinderController
 	controllers["attachdetach"] = startAttachDetachController
@@ -430,20 +409,12 @@ func CreateControllerContext(s *config.CompletedConfig, rootClientBuilder, clien
 		return ControllerContext{}, err
 	}
 
-	cloud, loopMode, err := createCloudProvider(s.ComponentConfig.KubeCloudShared.CloudProvider.Name, s.ComponentConfig.KubeCloudShared.ExternalCloudVolumePlugin,
-		s.ComponentConfig.KubeCloudShared.CloudProvider.CloudConfigFile, s.ComponentConfig.KubeCloudShared.AllowUntaggedCloud, sharedInformers)
-	if err != nil {
-		return ControllerContext{}, err
-	}
-
 	ctx := ControllerContext{
 		ClientBuilder:      clientBuilder,
 		InformerFactory:    sharedInformers,
 		ComponentConfig:    s.ComponentConfig,
 		RESTMapper:         restMapper,
 		AvailableResources: availableResources,
-		Cloud:              cloud,
-		LoopMode:           loopMode,
 		Stop:               stop,
 		InformersStarted:   make(chan struct{}),
 		ResyncPeriod:       ResyncPeriod(s),
@@ -456,12 +427,6 @@ func StartControllers(ctx ControllerContext, startSATokenController InitFunc, co
 	// If this fails, just return here and fail since other controllers won't be able to get credentials.
 	if _, _, err := startSATokenController(ctx); err != nil {
 		return err
-	}
-
-	// Initialize the cloud provider with a reference to the clientBuilder only after token controller
-	// has started in case the cloud provider uses the client builder.
-	if ctx.Cloud != nil {
-		ctx.Cloud.Initialize(ctx.ClientBuilder)
 	}
 
 	for controllerName, initFn := range controllers {
