@@ -415,7 +415,6 @@ func NewKubectlCommand(in io.Reader, out, err io.Writer) *cobra.Command {
 		{
 			Message: "Basic Commands (Intermediate):",
 			Commands: []*cobra.Command{
-				NewCmdExplain("kubectl", f, ioStreams),
 				get.NewCmdGet("kubectl", f, ioStreams),
 				NewCmdEdit(f, ioStreams),
 				NewCmdDelete(f, ioStreams),

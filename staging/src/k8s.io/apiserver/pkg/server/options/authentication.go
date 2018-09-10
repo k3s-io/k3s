@@ -33,7 +33,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-	openapicommon "k8s.io/kube-openapi/pkg/common"
 )
 
 type RequestHeaderAuthenticationOptions struct {
@@ -162,7 +161,7 @@ func (s *DelegatingAuthenticationOptions) AddFlags(fs *pflag.FlagSet) {
 		"configuration from the cluster.")
 }
 
-func (s *DelegatingAuthenticationOptions) ApplyTo(c *server.AuthenticationInfo, servingInfo *server.SecureServingInfo, openAPIConfig *openapicommon.Config) error {
+func (s *DelegatingAuthenticationOptions) ApplyTo(c *server.AuthenticationInfo, servingInfo *server.SecureServingInfo) error {
 	if s == nil {
 		c.Authenticator = nil
 		return nil
@@ -196,14 +195,11 @@ func (s *DelegatingAuthenticationOptions) ApplyTo(c *server.AuthenticationInfo, 
 	}
 
 	// create authenticator
-	authenticator, securityDefinitions, err := cfg.New()
+	authenticator, err := cfg.New()
 	if err != nil {
 		return err
 	}
 	c.Authenticator = authenticator
-	if openAPIConfig != nil {
-		openAPIConfig.SecurityDefinitions = securityDefinitions
-	}
 	c.SupportsBasicAuth = false
 
 	return nil

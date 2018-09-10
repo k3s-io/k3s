@@ -19,8 +19,6 @@ limitations under the License.
 package util
 
 import (
-	"sync"
-
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -33,21 +31,11 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/kubernetes/pkg/api/legacyscheme"
 	api "k8s.io/kubernetes/pkg/apis/core"
-	"k8s.io/kubernetes/pkg/kubectl/cmd/util/openapi"
-	openapivalidation "k8s.io/kubernetes/pkg/kubectl/cmd/util/openapi/validation"
 	"k8s.io/kubernetes/pkg/kubectl/validation"
 )
 
 type factoryImpl struct {
 	clientGetter genericclioptions.RESTClientGetter
-
-	// openAPIGetter loads and caches openapi specs
-	openAPIGetter openAPIGetter
-}
-
-type openAPIGetter struct {
-	once   sync.Once
-	getter openapi.Getter
 }
 
 func NewFactory(clientGetter genericclioptions.RESTClientGetter) Factory {
@@ -151,32 +139,9 @@ func (f *factoryImpl) Validator(validate bool) (validation.Schema, error) {
 		return validation.NullSchema{}, nil
 	}
 
-	resources, err := f.OpenAPISchema()
-	if err != nil {
-		return nil, err
-	}
-
 	return validation.ConjunctiveSchema{
-		openapivalidation.NewSchemaValidation(resources),
 		validation.NoDoubleKeySchema{},
 	}, nil
-}
-
-// OpenAPISchema returns metadata and structural information about Kubernetes object definitions.
-func (f *factoryImpl) OpenAPISchema() (openapi.Resources, error) {
-	discovery, err := f.clientGetter.ToDiscoveryClient()
-	if err != nil {
-		return nil, err
-	}
-
-	// Lazily initialize the OpenAPIGetter once
-	f.openAPIGetter.once.Do(func() {
-		// Create the caching OpenAPIGetter
-		f.openAPIGetter.getter = openapi.NewOpenAPIGetter(discovery)
-	})
-
-	// Delegate to the OpenAPIGetter
-	return f.openAPIGetter.getter.Get()
 }
 
 // this method exists to help us find the points still relying on internal types.
