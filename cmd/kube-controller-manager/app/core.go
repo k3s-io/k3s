@@ -47,7 +47,6 @@ import (
 	"k8s.io/kubernetes/pkg/controller/podgc"
 	replicationcontroller "k8s.io/kubernetes/pkg/controller/replication"
 	resourcequotacontroller "k8s.io/kubernetes/pkg/controller/resourcequota"
-	routecontroller "k8s.io/kubernetes/pkg/controller/route"
 	servicecontroller "k8s.io/kubernetes/pkg/controller/service"
 	serviceaccountcontroller "k8s.io/kubernetes/pkg/controller/serviceaccount"
 	ttlcontroller "k8s.io/kubernetes/pkg/controller/ttl"
@@ -141,29 +140,6 @@ func startNodeLifecycleController(ctx ControllerContext) (bool, error) {
 		return true, err
 	}
 	go lifecycleController.Run(ctx.Stop)
-	return true, nil
-}
-
-func startRouteController(ctx ControllerContext) (bool, error) {
-	if !ctx.ComponentConfig.AllocateNodeCIDRs || !ctx.ComponentConfig.ConfigureCloudRoutes {
-		glog.Infof("Will not configure cloud provider routes for allocate-node-cidrs: %v, configure-cloud-routes: %v.", ctx.ComponentConfig.AllocateNodeCIDRs, ctx.ComponentConfig.ConfigureCloudRoutes)
-		return false, nil
-	}
-	if ctx.Cloud == nil {
-		glog.Warning("configure-cloud-routes is set, but no cloud provider specified. Will not configure cloud provider routes.")
-		return false, nil
-	}
-	routes, ok := ctx.Cloud.Routes()
-	if !ok {
-		glog.Warning("configure-cloud-routes is set, but cloud provider does not support routes. Will not configure cloud provider routes.")
-		return false, nil
-	}
-	_, clusterCIDR, err := net.ParseCIDR(ctx.ComponentConfig.ClusterCIDR)
-	if err != nil {
-		glog.Warningf("Unsuccessful parsing of cluster CIDR %v: %v", ctx.ComponentConfig.ClusterCIDR, err)
-	}
-	routeController := routecontroller.New(routes, ctx.ClientBuilder.ClientOrDie("route-controller"), ctx.InformerFactory.Core().V1().Nodes(), ctx.ComponentConfig.ClusterName, clusterCIDR)
-	go routeController.Run(ctx.Stop, ctx.ComponentConfig.RouteReconciliationPeriod.Duration)
 	return true, nil
 }
 

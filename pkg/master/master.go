@@ -74,7 +74,6 @@ import (
 	autoscalingrest "k8s.io/kubernetes/pkg/registry/autoscaling/rest"
 	batchrest "k8s.io/kubernetes/pkg/registry/batch/rest"
 	corerest "k8s.io/kubernetes/pkg/registry/core/rest"
-	eventsrest "k8s.io/kubernetes/pkg/registry/events/rest"
 	extensionsrest "k8s.io/kubernetes/pkg/registry/extensions/rest"
 	networkingrest "k8s.io/kubernetes/pkg/registry/networking/rest"
 	policyrest "k8s.io/kubernetes/pkg/registry/policy/rest"
@@ -343,7 +342,6 @@ func (c completedConfig) New(delegationTarget genericapiserver.DelegationTarget)
 		// See https://github.com/kubernetes/kubernetes/issues/42392
 		appsrest.RESTStorageProvider{},
 		admissionregistrationrest.RESTStorageProvider{},
-		eventsrest.RESTStorageProvider{TTL: c.ExtraConfig.EventTTL},
 	}
 	m.InstallAPIs(c.ExtraConfig.APIResourceConfigSource, c.GenericConfig.RESTOptionsGetter, restStorageProviders...)
 
