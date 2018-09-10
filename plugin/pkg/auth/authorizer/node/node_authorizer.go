@@ -108,10 +108,7 @@ func (r *NodeAuthorizer) Authorize(attrs authorizer.Attributes) (authorizer.Deci
 			}
 			return authorizer.DecisionNoOpinion, fmt.Sprintf("disabled by feature gate %s", features.CSIPersistentVolume), nil
 		case svcAcctResource:
-			if r.features.Enabled(features.TokenRequest) {
-				return r.authorizeCreateToken(nodeName, serviceAccountVertexType, attrs)
-			}
-			return authorizer.DecisionNoOpinion, fmt.Sprintf("disabled by feature gate %s", features.TokenRequest), nil
+			return authorizer.DecisionNoOpinion, fmt.Sprintf("disabled by feature gate"), nil
 		}
 	}
 

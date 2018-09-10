@@ -207,50 +207,8 @@ func (sched *Scheduler) schedule(pod *v1.Pod) (string, error) {
 // If it succeeds, it adds the name of the node where preemption has happened to the pod annotations.
 // It returns the node name and an error if any.
 func (sched *Scheduler) preempt(preemptor *v1.Pod, scheduleErr error) (string, error) {
-	if !util.PodPriorityEnabled() {
-		glog.V(3).Infof("Pod priority feature is not enabled. No preemption is performed.")
-		return "", nil
-	}
-	preemptor, err := sched.config.PodPreemptor.GetUpdatedPod(preemptor)
-	if err != nil {
-		glog.Errorf("Error getting the updated preemptor pod object: %v", err)
-		return "", err
-	}
-
-	node, victims, nominatedPodsToClear, err := sched.config.Algorithm.Preempt(preemptor, sched.config.NodeLister, scheduleErr)
-	metrics.PreemptionVictims.Set(float64(len(victims)))
-	if err != nil {
-		glog.Errorf("Error preempting victims to make room for %v/%v.", preemptor.Namespace, preemptor.Name)
-		return "", err
-	}
-	var nodeName = ""
-	if node != nil {
-		nodeName = node.Name
-		err = sched.config.PodPreemptor.SetNominatedNodeName(preemptor, nodeName)
-		if err != nil {
-			glog.Errorf("Error in preemption process. Cannot update pod %v annotations: %v", preemptor.Name, err)
-			return "", err
-		}
-		for _, victim := range victims {
-			if err := sched.config.PodPreemptor.DeletePod(victim); err != nil {
-				glog.Errorf("Error preempting pod %v/%v: %v", victim.Namespace, victim.Name, err)
-				return "", err
-			}
-			sched.config.Recorder.Eventf(victim, v1.EventTypeNormal, "Preempted", "by %v/%v on node %v", preemptor.Namespace, preemptor.Name, nodeName)
-		}
-	}
-	// Clearing nominated pods should happen outside of "if node != nil". Node could
-	// be nil when a pod with nominated node name is eligible to preempt again,
-	// but preemption logic does not find any node for it. In that case Preempt()
-	// function of generic_scheduler.go returns the pod itself for removal of the annotation.
-	for _, p := range nominatedPodsToClear {
-		rErr := sched.config.PodPreemptor.RemoveNominatedNodeName(p)
-		if rErr != nil {
-			glog.Errorf("Cannot remove nominated node annotation of pod: %v", rErr)
-			// We do not return as this error is not critical.
-		}
-	}
-	return nodeName, err
+	glog.V(3).Infof("Pod priority feature is not enabled. No preemption is performed.")
+	return "", nil
 }
 
 // assumeAndBindVolumes will update the volume cache and then asynchronously bind volumes if required.

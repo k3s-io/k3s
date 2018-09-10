@@ -25,12 +25,9 @@ import (
 	extensions "k8s.io/api/extensions/v1beta1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	v1helper "k8s.io/kubernetes/pkg/apis/core/v1/helper"
-	"k8s.io/kubernetes/pkg/features"
 	kubeletapis "k8s.io/kubernetes/pkg/kubelet/apis"
-	kubelettypes "k8s.io/kubernetes/pkg/kubelet/types"
 	"k8s.io/kubernetes/pkg/scheduler/algorithm"
 )
 
@@ -89,16 +86,6 @@ func CreatePodTemplate(template v1.PodTemplateSpec, generation *int64, hash stri
 		Operator: v1.TolerationOpExists,
 		Effect:   v1.TaintEffectNoSchedule,
 	})
-
-	// TODO(#48843) OutOfDisk taints will be removed in 1.10
-	if utilfeature.DefaultFeatureGate.Enabled(features.ExperimentalCriticalPodAnnotation) &&
-		kubelettypes.IsCritical(newTemplate.Namespace, newTemplate.Annotations) {
-		v1helper.AddOrUpdateTolerationInPodSpec(&newTemplate.Spec, &v1.Toleration{
-			Key:      algorithm.TaintNodeOutOfDisk,
-			Operator: v1.TolerationOpExists,
-			Effect:   v1.TaintEffectNoExecute,
-		})
-	}
 
 	if newTemplate.ObjectMeta.Labels == nil {
 		newTemplate.ObjectMeta.Labels = make(map[string]string)

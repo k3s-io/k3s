@@ -39,9 +39,7 @@ import (
 	evictionapi "k8s.io/kubernetes/pkg/kubelet/eviction/api"
 	"k8s.io/kubernetes/pkg/kubelet/lifecycle"
 	"k8s.io/kubernetes/pkg/kubelet/metrics"
-	kubepod "k8s.io/kubernetes/pkg/kubelet/pod"
 	"k8s.io/kubernetes/pkg/kubelet/server/stats"
-	kubelettypes "k8s.io/kubernetes/pkg/kubelet/types"
 	"k8s.io/kubernetes/pkg/kubelet/util/format"
 )
 
@@ -125,11 +123,6 @@ func (m *managerImpl) Admit(attrs *lifecycle.PodAdmitAttributes) lifecycle.PodAd
 	m.RLock()
 	defer m.RUnlock()
 	if len(m.nodeConditions) == 0 {
-		return lifecycle.PodAdmitResult{Admit: true}
-	}
-	// Admit Critical pods even under resource pressure since they are required for system stability.
-	// https://github.com/kubernetes/kubernetes/issues/40573 has more details.
-	if utilfeature.DefaultFeatureGate.Enabled(features.ExperimentalCriticalPodAnnotation) && kubelettypes.IsCriticalPod(attrs.Pod) {
 		return lifecycle.PodAdmitResult{Admit: true}
 	}
 	// the node has memory pressure, admit if not best-effort
@@ -386,13 +379,6 @@ func (m *managerImpl) synchronize(diskInfoProvider DiskInfoProvider, podFunc Act
 	// we kill at most a single pod during each eviction interval
 	for i := range activePods {
 		pod := activePods[i]
-		// If the pod is marked as critical and static, and support for critical pod annotations is enabled,
-		// do not evict such pods. Static pods are not re-admitted after evictions.
-		// https://github.com/kubernetes/kubernetes/issues/40573 has more details.
-		if utilfeature.DefaultFeatureGate.Enabled(features.ExperimentalCriticalPodAnnotation) &&
-			kubelettypes.IsCriticalPod(pod) && kubepod.IsStaticPod(pod) {
-			continue
-		}
 		status := v1.PodStatus{
 			Phase:   v1.PodFailed,
 			Message: fmt.Sprintf(message, resourceToReclaim),
@@ -572,11 +558,6 @@ func (m *managerImpl) containerEphemeralStorageLimitEviction(podStats statsapi.P
 }
 
 func (m *managerImpl) evictPod(pod *v1.Pod, resourceName v1.ResourceName, evictMsg string) bool {
-	if utilfeature.DefaultFeatureGate.Enabled(features.ExperimentalCriticalPodAnnotation) &&
-		kubelettypes.IsCriticalPod(pod) && kubepod.IsStaticPod(pod) {
-		glog.Errorf("eviction manager: cannot evict a critical pod %s", format.Pod(pod))
-		return false
-	}
 	status := v1.PodStatus{
 		Phase:   v1.PodFailed,
 		Message: fmt.Sprintf(message, resourceName),

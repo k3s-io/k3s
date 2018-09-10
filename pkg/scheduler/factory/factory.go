@@ -1294,17 +1294,12 @@ func (c *configFactory) MakeDefaultErrorFunc(backoff *util.PodBackoff, podQueue 
 			}
 			origPod := pod
 
-			// When pod priority is enabled, we would like to place an unschedulable
-			// pod in the unschedulable queue. This ensures that if the pod is nominated
-			// to run on a node, scheduler takes the pod into account when running
-			// predicates for the node.
-			if !util.PodPriorityEnabled() {
-				entry := backoff.GetEntry(podID)
-				if !entry.TryWait(backoff.MaxDuration()) {
-					glog.Warningf("Request for pod %v already in flight, abandoning", podID)
-					return
-				}
+			entry := backoff.GetEntry(podID)
+			if !entry.TryWait(backoff.MaxDuration()) {
+				glog.Warningf("Request for pod %v already in flight, abandoning", podID)
+				return
 			}
+
 			// Get the pod again; it may have changed/been scheduled already.
 			getBackoff := initialGetBackoff
 			for {

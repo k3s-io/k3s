@@ -231,10 +231,8 @@ func UpdatePodCondition(status *api.PodStatus, condition *api.PodCondition) bool
 // DropDisabledAlphaFields removes disabled fields from the pod spec.
 // This should be called from PrepareForCreate/PrepareForUpdate for all resources containing a pod spec.
 func DropDisabledAlphaFields(podSpec *api.PodSpec) {
-	if !utilfeature.DefaultFeatureGate.Enabled(features.PodPriority) {
-		podSpec.Priority = nil
-		podSpec.PriorityClassName = ""
-	}
+	podSpec.Priority = nil
+	podSpec.PriorityClassName = ""
 
 	if !utilfeature.DefaultFeatureGate.Enabled(features.LocalStorageCapacityIsolation) {
 		for i := range podSpec.Volumes {
@@ -244,7 +242,7 @@ func DropDisabledAlphaFields(podSpec *api.PodSpec) {
 		}
 	}
 
-	if !utilfeature.DefaultFeatureGate.Enabled(features.PodShareProcessNamespace) && podSpec.SecurityContext != nil {
+	if podSpec.SecurityContext != nil {
 		podSpec.SecurityContext.ShareProcessNamespace = nil
 	}
 
@@ -263,19 +261,17 @@ func DropDisabledAlphaFields(podSpec *api.PodSpec) {
 // DropDisabledRunAsGroupField removes disabled fields from PodSpec related
 // to RunAsGroup
 func DropDisabledRunAsGroupField(podSpec *api.PodSpec) {
-	if !utilfeature.DefaultFeatureGate.Enabled(features.RunAsGroup) {
-		if podSpec.SecurityContext != nil {
-			podSpec.SecurityContext.RunAsGroup = nil
+	if podSpec.SecurityContext != nil {
+		podSpec.SecurityContext.RunAsGroup = nil
+	}
+	for i := range podSpec.Containers {
+		if podSpec.Containers[i].SecurityContext != nil {
+			podSpec.Containers[i].SecurityContext.RunAsGroup = nil
 		}
-		for i := range podSpec.Containers {
-			if podSpec.Containers[i].SecurityContext != nil {
-				podSpec.Containers[i].SecurityContext.RunAsGroup = nil
-			}
-		}
-		for i := range podSpec.InitContainers {
-			if podSpec.InitContainers[i].SecurityContext != nil {
-				podSpec.InitContainers[i].SecurityContext.RunAsGroup = nil
-			}
+	}
+	for i := range podSpec.InitContainers {
+		if podSpec.InitContainers[i].SecurityContext != nil {
+			podSpec.InitContainers[i].SecurityContext.RunAsGroup = nil
 		}
 	}
 }
@@ -293,12 +289,10 @@ func DropDisabledVolumeMountsAlphaFields(volumeMounts []api.VolumeMount) {
 // DropDisabledVolumeDevicesAlphaFields removes disabled fields from []VolumeDevice.
 // This should be called from PrepareForCreate/PrepareForUpdate for all resources containing a VolumeDevice
 func DropDisabledVolumeDevicesAlphaFields(podSpec *api.PodSpec) {
-	if !utilfeature.DefaultFeatureGate.Enabled(features.BlockVolume) {
-		for i := range podSpec.Containers {
-			podSpec.Containers[i].VolumeDevices = nil
-		}
-		for i := range podSpec.InitContainers {
-			podSpec.InitContainers[i].VolumeDevices = nil
-		}
+	for i := range podSpec.Containers {
+		podSpec.Containers[i].VolumeDevices = nil
+	}
+	for i := range podSpec.InitContainers {
+		podSpec.InitContainers[i].VolumeDevices = nil
 	}
 }

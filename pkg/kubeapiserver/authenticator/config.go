@@ -33,13 +33,9 @@ import (
 	tokencache "k8s.io/apiserver/pkg/authentication/token/cache"
 	"k8s.io/apiserver/pkg/authentication/token/tokenfile"
 	tokenunion "k8s.io/apiserver/pkg/authentication/token/union"
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/apiserver/plugin/pkg/authenticator/password/passwordfile"
 	"k8s.io/apiserver/plugin/pkg/authenticator/request/basicauth"
-	"k8s.io/apiserver/plugin/pkg/authenticator/token/oidc"
-	"k8s.io/apiserver/plugin/pkg/authenticator/token/webhook"
 	certutil "k8s.io/client-go/util/cert"
-	"k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/serviceaccount"
 
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -133,38 +129,11 @@ func (config AuthenticatorConfig) New() (authenticator.Request, *spec.SecurityDe
 		}
 		tokenAuthenticators = append(tokenAuthenticators, serviceAccountAuth)
 	}
-	if utilfeature.DefaultFeatureGate.Enabled(features.TokenRequest) && config.ServiceAccountIssuer != "" {
-		serviceAccountAuth, err := newServiceAccountAuthenticator(config.ServiceAccountIssuer, config.ServiceAccountAPIAudiences, config.ServiceAccountKeyFiles, config.ServiceAccountTokenGetter)
-		if err != nil {
-			return nil, nil, err
-		}
-		tokenAuthenticators = append(tokenAuthenticators, serviceAccountAuth)
-	}
 	if config.BootstrapToken {
 		if config.BootstrapTokenAuthenticator != nil {
 			// TODO: This can sometimes be nil because of
 			tokenAuthenticators = append(tokenAuthenticators, config.BootstrapTokenAuthenticator)
 		}
-	}
-	// NOTE(ericchiang): Keep the OpenID Connect after Service Accounts.
-	//
-	// Because both plugins verify JWTs whichever comes first in the union experiences
-	// cache misses for all requests using the other. While the service account plugin
-	// simply returns an error, the OpenID Connect plugin may query the provider to
-	// update the keys, causing performance hits.
-	if len(config.OIDCIssuerURL) > 0 && len(config.OIDCClientID) > 0 {
-		oidcAuth, err := newAuthenticatorFromOIDCIssuerURL(config.OIDCIssuerURL, config.OIDCClientID, config.OIDCCAFile, config.OIDCUsernameClaim, config.OIDCUsernamePrefix, config.OIDCGroupsClaim, config.OIDCGroupsPrefix, config.OIDCSigningAlgs)
-		if err != nil {
-			return nil, nil, err
-		}
-		tokenAuthenticators = append(tokenAuthenticators, oidcAuth)
-	}
-	if len(config.WebhookTokenAuthnConfigFile) > 0 {
-		webhookTokenAuth, err := newWebhookTokenAuthenticator(config.WebhookTokenAuthnConfigFile, config.WebhookTokenAuthnCacheTTL)
-		if err != nil {
-			return nil, nil, err
-		}
-		tokenAuthenticators = append(tokenAuthenticators, webhookTokenAuth)
 	}
 
 	if hasBasicAuth {
@@ -244,40 +213,6 @@ func newAuthenticatorFromTokenFile(tokenAuthFile string) (authenticator.Token, e
 	return tokenAuthenticator, nil
 }
 
-// newAuthenticatorFromOIDCIssuerURL returns an authenticator.Token or an error.
-func newAuthenticatorFromOIDCIssuerURL(issuerURL, clientID, caFile, usernameClaim, usernamePrefix, groupsClaim, groupsPrefix string, signingAlgs []string) (authenticator.Token, error) {
-	const noUsernamePrefix = "-"
-
-	if usernamePrefix == "" && usernameClaim != "email" {
-		// Old behavior. If a usernamePrefix isn't provided, prefix all claims other than "email"
-		// with the issuerURL.
-		//
-		// See https://github.com/kubernetes/kubernetes/issues/31380
-		usernamePrefix = issuerURL + "#"
-	}
-
-	if usernamePrefix == noUsernamePrefix {
-		// Special value indicating usernames shouldn't be prefixed.
-		usernamePrefix = ""
-	}
-
-	tokenAuthenticator, err := oidc.New(oidc.Options{
-		IssuerURL:            issuerURL,
-		ClientID:             clientID,
-		CAFile:               caFile,
-		UsernameClaim:        usernameClaim,
-		UsernamePrefix:       usernamePrefix,
-		GroupsClaim:          groupsClaim,
-		GroupsPrefix:         groupsPrefix,
-		SupportedSigningAlgs: signingAlgs,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return tokenAuthenticator, nil
-}
-
 // newLegacyServiceAccountAuthenticator returns an authenticator.Token or an error
 func newLegacyServiceAccountAuthenticator(keyfiles []string, lookup bool, serviceAccountGetter serviceaccount.ServiceAccountTokenGetter) (authenticator.Token, error) {
 	allPublicKeys := []interface{}{}
@@ -319,13 +254,4 @@ func newAuthenticatorFromClientCAFile(clientCAFile string) (authenticator.Reques
 	opts.Roots = roots
 
 	return x509.New(opts, x509.CommonNameUserConversion), nil
-}
-
-func newWebhookTokenAuthenticator(webhookConfigFile string, ttl time.Duration) (authenticator.Token, error) {
-	webhookTokenAuthenticator, err := webhook.New(webhookConfigFile, ttl)
-	if err != nil {
-		return nil, err
-	}
-
-	return webhookTokenAuthenticator, nil
 }

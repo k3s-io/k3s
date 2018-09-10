@@ -25,8 +25,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/go-openapi/spec"
-	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/validate"
 	"github.com/golang/glog"
 
@@ -51,7 +49,6 @@ import (
 	"k8s.io/apiserver/pkg/registry/generic"
 	genericregistry "k8s.io/apiserver/pkg/registry/generic/registry"
 	"k8s.io/apiserver/pkg/storage/storagebackend"
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/scale"
 	"k8s.io/client-go/scale/scheme/autoscalingv1"
@@ -62,7 +59,6 @@ import (
 	informers "k8s.io/apiextensions-apiserver/pkg/client/informers/internalversion/apiextensions/internalversion"
 	listers "k8s.io/apiextensions-apiserver/pkg/client/listers/apiextensions/internalversion"
 	"k8s.io/apiextensions-apiserver/pkg/controller/finalizer"
-	apiextensionsfeatures "k8s.io/apiextensions-apiserver/pkg/features"
 	"k8s.io/apiextensions-apiserver/pkg/registry/customresource"
 	"k8s.io/apiextensions-apiserver/pkg/registry/customresource/tableconvertor"
 )
@@ -404,25 +400,8 @@ func (r *crdHandler) getOrCreateServingInfoFor(crd *apiextensions.CustomResource
 
 	var statusSpec *apiextensions.CustomResourceSubresourceStatus
 	var statusValidator *validate.SchemaValidator
-	if utilfeature.DefaultFeatureGate.Enabled(apiextensionsfeatures.CustomResourceSubresources) && crd.Spec.Subresources != nil && crd.Spec.Subresources.Status != nil {
-		statusSpec = crd.Spec.Subresources.Status
-
-		// for the status subresource, validate only against the status schema
-		if crd.Spec.Validation != nil && crd.Spec.Validation.OpenAPIV3Schema != nil && crd.Spec.Validation.OpenAPIV3Schema.Properties != nil {
-			if statusSchema, ok := crd.Spec.Validation.OpenAPIV3Schema.Properties["status"]; ok {
-				openapiSchema := &spec.Schema{}
-				if err := apiservervalidation.ConvertJSONSchemaProps(&statusSchema, openapiSchema); err != nil {
-					return nil, err
-				}
-				statusValidator = validate.NewSchemaValidator(openapiSchema, nil, "", strfmt.Default)
-			}
-		}
-	}
 
 	var scaleSpec *apiextensions.CustomResourceSubresourceScale
-	if utilfeature.DefaultFeatureGate.Enabled(apiextensionsfeatures.CustomResourceSubresources) && crd.Spec.Subresources != nil && crd.Spec.Subresources.Scale != nil {
-		scaleSpec = crd.Spec.Subresources.Scale
-	}
 
 	// TODO: identify how to pass printer specification from the CRD
 	table, err := tableconvertor.New(nil)

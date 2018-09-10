@@ -39,8 +39,9 @@ import (
 	priorityutil "k8s.io/kubernetes/pkg/scheduler/algorithm/priorities/util"
 	"k8s.io/kubernetes/pkg/scheduler/util"
 
-	"github.com/golang/glog"
 	"reflect"
+
+	"github.com/golang/glog"
 )
 
 // SchedulingQueue is an interface for a queue to store pods waiting to be scheduled.
@@ -62,9 +63,6 @@ type SchedulingQueue interface {
 // NewSchedulingQueue initializes a new scheduling queue. If pod priority is
 // enabled a priority queue is returned. If it is disabled, a FIFO is returned.
 func NewSchedulingQueue() SchedulingQueue {
-	if util.PodPriorityEnabled() {
-		return NewPriorityQueue()
-	}
 	return NewFIFO()
 }
 

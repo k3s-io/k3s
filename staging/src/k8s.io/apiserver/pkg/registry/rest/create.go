@@ -27,9 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/apiserver/pkg/admission"
 	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
-	"k8s.io/apiserver/pkg/features"
 	"k8s.io/apiserver/pkg/storage/names"
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
 )
 
 // RESTCreateStrategy defines the minimum validation, accepted input, and
@@ -92,9 +90,7 @@ func BeforeCreate(strategy RESTCreateStrategy, ctx genericapirequest.Context, ob
 	}
 
 	// Ensure Initializers are not set unless the feature is enabled
-	if !utilfeature.DefaultFeatureGate.Enabled(features.Initializers) {
-		objectMeta.SetInitializers(nil)
-	}
+	objectMeta.SetInitializers(nil)
 
 	// ClusterName is ignored and should not be saved
 	objectMeta.SetClusterName("")

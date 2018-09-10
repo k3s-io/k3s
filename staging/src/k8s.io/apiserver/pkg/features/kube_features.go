@@ -43,19 +43,6 @@ const (
 	// audited.
 	AdvancedAuditing utilfeature.Feature = "AdvancedAuditing"
 
-	// owner: @ilackams
-	// alpha: v1.7
-	//
-	// Enables compression of REST responses (GET and LIST only)
-	APIResponseCompression utilfeature.Feature = "APIResponseCompression"
-
-	// owner: @smarterclayton
-	// alpha: v1.7
-	//
-	// Allow asynchronous coordination of object creation.
-	// Auto-enabled by the Initializers admission plugin.
-	Initializers utilfeature.Feature = "Initializers"
-
 	// owner: @smarterclayton
 	// alpha: v1.8
 	// beta: v1.9
@@ -75,7 +62,5 @@ func init() {
 var defaultKubernetesFeatureGates = map[utilfeature.Feature]utilfeature.FeatureSpec{
 	StreamingProxyRedirects: {Default: true, PreRelease: utilfeature.Beta},
 	AdvancedAuditing:        {Default: true, PreRelease: utilfeature.Beta},
-	APIResponseCompression:  {Default: false, PreRelease: utilfeature.Alpha},
-	Initializers:            {Default: false, PreRelease: utilfeature.Alpha},
 	APIListChunking:         {Default: true, PreRelease: utilfeature.Beta},
 }

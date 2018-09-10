@@ -31,9 +31,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	clientset "k8s.io/client-go/kubernetes"
-	"k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/kubelet/config"
 	"k8s.io/kubernetes/pkg/kubelet/volumemanager/cache"
 	utilfile "k8s.io/kubernetes/pkg/util/file"
@@ -496,26 +494,7 @@ func (rc *reconciler) reconstructVolume(volume podVolume) (*reconstructedVolume,
 			newMounterErr)
 	}
 
-	// TODO: remove feature gate check after no longer needed
 	var volumeMapper volumepkg.BlockVolumeMapper
-	if utilfeature.DefaultFeatureGate.Enabled(features.BlockVolume) && volume.volumeMode == v1.PersistentVolumeBlock {
-		var newMapperErr error
-		if mapperPlugin != nil {
-			volumeMapper, newMapperErr = mapperPlugin.NewBlockVolumeMapper(
-				volumeSpec,
-				pod,
-				volumepkg.VolumeOptions{})
-			if newMapperErr != nil {
-				return nil, fmt.Errorf(
-					"reconstructVolume.NewBlockVolumeMapper failed for volume %q (spec.Name: %q) pod %q (UID: %q) with: %v",
-					uniqueVolumeName,
-					volumeSpec.Name(),
-					volume.podName,
-					pod.UID,
-					newMapperErr)
-			}
-		}
-	}
 
 	reconstructedVolume := &reconstructedVolume{
 		volumeName: uniqueVolumeName,
@@ -636,12 +615,6 @@ func getVolumesFromPodDir(podDir string) ([]podVolume, error) {
 		// ex. filesystem volume: /pods/{podUid}/volume/{escapeQualifiedPluginName}/{volumeName}
 		volumesDirs := map[v1.PersistentVolumeMode]string{
 			v1.PersistentVolumeFilesystem: path.Join(podDir, config.DefaultKubeletVolumesDirName),
-		}
-		// TODO: remove feature gate check after no longer needed
-		if utilfeature.DefaultFeatureGate.Enabled(features.BlockVolume) {
-			// Find block volume information
-			// ex. block volume: /pods/{podUid}/volumeDevices/{escapeQualifiedPluginName}/{volumeName}
-			volumesDirs[v1.PersistentVolumeBlock] = path.Join(podDir, config.DefaultKubeletVolumeDevicesDirName)
 		}
 		for volumeMode, volumesDir := range volumesDirs {
 			var volumesDirInfo []os.FileInfo

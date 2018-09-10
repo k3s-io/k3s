@@ -34,7 +34,6 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	appsinformers "k8s.io/client-go/informers/apps/v1"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	clientset "k8s.io/client-go/kubernetes"
@@ -51,8 +50,6 @@ import (
 	v1helper "k8s.io/kubernetes/pkg/apis/core/v1/helper"
 	"k8s.io/kubernetes/pkg/controller"
 	"k8s.io/kubernetes/pkg/controller/daemon/util"
-	"k8s.io/kubernetes/pkg/features"
-	kubelettypes "k8s.io/kubernetes/pkg/kubelet/types"
 	"k8s.io/kubernetes/pkg/scheduler/algorithm"
 	"k8s.io/kubernetes/pkg/scheduler/algorithm/predicates"
 	"k8s.io/kubernetes/pkg/scheduler/schedulercache"
@@ -938,18 +935,8 @@ func (dsc *DaemonSetsController) syncNodes(ds *apps.DaemonSet, podsToDelete, nod
 
 				podTemplate := &template
 
-				if false /*disabled for 1.10*/ && utilfeature.DefaultFeatureGate.Enabled(features.ScheduleDaemonSetPods) {
-					podTemplate = template.DeepCopy()
-					podTemplate.Spec.Affinity = util.ReplaceDaemonSetPodHostnameNodeAffinity(
-						podTemplate.Spec.Affinity, nodesNeedingDaemonPods[ix])
-					podTemplate.Spec.Tolerations = util.AppendNoScheduleTolerationIfNotExist(podTemplate.Spec.Tolerations)
-
-					err = dsc.podControl.CreatePodsWithControllerRef(ds.Namespace, podTemplate,
-						ds, metav1.NewControllerRef(ds, controllerKind))
-				} else {
-					err = dsc.podControl.CreatePodsOnNode(nodesNeedingDaemonPods[ix], ds.Namespace, podTemplate,
-						ds, metav1.NewControllerRef(ds, controllerKind))
-				}
+				err = dsc.podControl.CreatePodsOnNode(nodesNeedingDaemonPods[ix], ds.Namespace, podTemplate,
+					ds, metav1.NewControllerRef(ds, controllerKind))
 
 				if err != nil && errors.IsTimeout(err) {
 					// Pod is created but its initialization has timed out.
@@ -1227,16 +1214,6 @@ func (dsc *DaemonSetsController) simulate(newPod *v1.Pod, node *v1.Node, ds *app
 		Effect:   v1.TaintEffectNoSchedule,
 	})
 
-	// TODO(#48843) OutOfDisk taints will be removed in 1.10
-	if utilfeature.DefaultFeatureGate.Enabled(features.ExperimentalCriticalPodAnnotation) &&
-		kubelettypes.IsCriticalPod(newPod) {
-		v1helper.AddOrUpdateTolerationInPod(newPod, &v1.Toleration{
-			Key:      algorithm.TaintNodeOutOfDisk,
-			Operator: v1.TolerationOpExists,
-			Effect:   v1.TaintEffectNoSchedule,
-		})
-	}
-
 	pods := []*v1.Pod{}
 
 	podList, err := dsc.podLister.List(labels.Everything())
@@ -1401,22 +1378,6 @@ func nodeSelectionPredicates(pod *v1.Pod, meta algorithm.PredicateMetadata, node
 func Predicates(pod *v1.Pod, nodeInfo *schedulercache.NodeInfo) (bool, []algorithm.PredicateFailureReason, error) {
 	var predicateFails []algorithm.PredicateFailureReason
 
-	// If ScheduleDaemonSetPods is enabled, only check nodeSelector and nodeAffinity.
-	if false /*disabled for 1.10*/ && utilfeature.DefaultFeatureGate.Enabled(features.ScheduleDaemonSetPods) {
-		fit, reasons, err := nodeSelectionPredicates(pod, nil, nodeInfo)
-		if err != nil {
-			return false, predicateFails, err
-		}
-		if !fit {
-			predicateFails = append(predicateFails, reasons...)
-		}
-
-		return len(predicateFails) == 0, predicateFails, nil
-	}
-
-	critical := utilfeature.DefaultFeatureGate.Enabled(features.ExperimentalCriticalPodAnnotation) &&
-		kubelettypes.IsCriticalPod(pod)
-
 	fit, reasons, err := predicates.PodToleratesNodeTaints(pod, nil, nodeInfo)
 	if err != nil {
 		return false, predicateFails, err
@@ -1424,13 +1385,7 @@ func Predicates(pod *v1.Pod, nodeInfo *schedulercache.NodeInfo) (bool, []algorit
 	if !fit {
 		predicateFails = append(predicateFails, reasons...)
 	}
-	if critical {
-		// If the pod is marked as critical and support for critical pod annotations is enabled,
-		// check predicates for critical pods only.
-		fit, reasons, err = predicates.EssentialPredicates(pod, nil, nodeInfo)
-	} else {
-		fit, reasons, err = predicates.GeneralPredicates(pod, nil, nodeInfo)
-	}
+	fit, reasons, err = predicates.GeneralPredicates(pod, nil, nodeInfo)
 	if err != nil {
 		return false, predicateFails, err
 	}

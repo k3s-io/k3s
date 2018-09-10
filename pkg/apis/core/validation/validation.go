@@ -1748,7 +1748,7 @@ func ValidatePersistentVolume(pv *core.PersistentVolume) field.ErrorList {
 			allErrs = append(allErrs, field.Invalid(specPath.Child("storageClassName"), pv.Spec.StorageClassName, msg))
 		}
 	}
-	if pv.Spec.VolumeMode != nil && !utilfeature.DefaultFeatureGate.Enabled(features.BlockVolume) {
+	if pv.Spec.VolumeMode != nil {
 		allErrs = append(allErrs, field.Forbidden(specPath.Child("volumeMode"), "PersistentVolume volumeMode is disabled by feature-gate"))
 	} else if pv.Spec.VolumeMode != nil && !supportedVolumeModes.Has(string(*pv.Spec.VolumeMode)) {
 		allErrs = append(allErrs, field.NotSupported(specPath.Child("volumeMode"), *pv.Spec.VolumeMode, supportedVolumeModes.List()))
@@ -1768,10 +1768,6 @@ func ValidatePersistentVolumeUpdate(newPv, oldPv *core.PersistentVolume) field.E
 	}
 
 	newPv.Status = oldPv.Status
-
-	if utilfeature.DefaultFeatureGate.Enabled(features.BlockVolume) {
-		allErrs = append(allErrs, ValidateImmutableField(newPv.Spec.VolumeMode, oldPv.Spec.VolumeMode, field.NewPath("volumeMode"))...)
-	}
 
 	if utilfeature.DefaultFeatureGate.Enabled(features.VolumeScheduling) {
 		// Allow setting NodeAffinity if oldPv NodeAffinity was not set
@@ -1828,7 +1824,7 @@ func ValidatePersistentVolumeClaimSpec(spec *core.PersistentVolumeClaimSpec, fld
 			allErrs = append(allErrs, field.Invalid(fldPath.Child("storageClassName"), *spec.StorageClassName, msg))
 		}
 	}
-	if spec.VolumeMode != nil && !utilfeature.DefaultFeatureGate.Enabled(features.BlockVolume) {
+	if spec.VolumeMode != nil {
 		allErrs = append(allErrs, field.Forbidden(fldPath.Child("volumeMode"), "PersistentVolumeClaim volumeMode is disabled by feature-gate"))
 	} else if spec.VolumeMode != nil && !supportedVolumeModes.Has(string(*spec.VolumeMode)) {
 		allErrs = append(allErrs, field.NotSupported(fldPath.Child("volumeMode"), *spec.VolumeMode, supportedVolumeModes.List()))
@@ -1884,9 +1880,6 @@ func ValidatePersistentVolumeClaimUpdate(newPvc, oldPvc *core.PersistentVolumeCl
 		}
 	}
 
-	if utilfeature.DefaultFeatureGate.Enabled(features.BlockVolume) {
-		allErrs = append(allErrs, ValidateImmutableField(newPvc.Spec.VolumeMode, oldPvc.Spec.VolumeMode, field.NewPath("volumeMode"))...)
-	}
 	return allErrs
 }
 
@@ -2280,7 +2273,7 @@ func ValidateVolumeDevices(devices []core.VolumeDevice, volmounts map[string]str
 	devicepath := sets.NewString()
 	devicename := sets.NewString()
 
-	if devices != nil && !utilfeature.DefaultFeatureGate.Enabled(features.BlockVolume) {
+	if devices != nil {
 		allErrs = append(allErrs, field.Forbidden(fldPath.Child("volumeDevices"), "Container volumeDevices is disabled by feature-gate"))
 		return allErrs
 	}
@@ -2975,14 +2968,6 @@ func ValidatePodSpec(spec *core.PodSpec, fldPath *field.Path) field.ErrorList {
 		allErrs = append(allErrs, ValidateHostAliases(spec.HostAliases, fldPath.Child("hostAliases"))...)
 	}
 
-	if len(spec.PriorityClassName) > 0 {
-		if utilfeature.DefaultFeatureGate.Enabled(features.PodPriority) {
-			for _, msg := range ValidatePriorityClassName(spec.PriorityClassName, false) {
-				allErrs = append(allErrs, field.Invalid(fldPath.Child("priorityClassName"), spec.PriorityClassName, msg))
-			}
-		}
-	}
-
 	return allErrs
 }
 
@@ -3308,11 +3293,7 @@ func ValidatePodSecurityContext(securityContext *core.PodSecurityContext, spec *
 			}
 		}
 		if securityContext.ShareProcessNamespace != nil {
-			if !utilfeature.DefaultFeatureGate.Enabled(features.PodShareProcessNamespace) {
-				allErrs = append(allErrs, field.Forbidden(fldPath.Child("shareProcessNamespace"), "Process Namespace Sharing is disabled by PodShareProcessNamespace feature-gate"))
-			} else if securityContext.HostPID && *securityContext.ShareProcessNamespace {
-				allErrs = append(allErrs, field.Invalid(fldPath.Child("shareProcessNamespace"), *securityContext.ShareProcessNamespace, "ShareProcessNamespace and HostPID cannot both be enabled"))
-			}
+			allErrs = append(allErrs, field.Forbidden(fldPath.Child("shareProcessNamespace"), "Process Namespace Sharing is disabled by PodShareProcessNamespace feature-gate"))
 		}
 	}
 
@@ -3988,7 +3969,7 @@ func ValidateNode(node *core.Node) field.ErrorList {
 	}
 
 	// Only allow Node.Spec.ConfigSource to be set if the DynamicKubeletConfig feature gate is enabled
-	if node.Spec.ConfigSource != nil && !utilfeature.DefaultFeatureGate.Enabled(features.DynamicKubeletConfig) {
+	if node.Spec.ConfigSource != nil {
 		allErrs = append(allErrs, field.Forbidden(field.NewPath("spec", "configSource"), "configSource may only be set if the DynamicKubeletConfig feature gate is enabled)"))
 	}
 
@@ -4089,11 +4070,6 @@ func ValidateNodeUpdate(node, oldNode *core.Node) field.ErrorList {
 		allErrs = append(allErrs, validateNodeTaints(node.Spec.Taints, fldPath.Child("taints"))...)
 	}
 	oldNode.Spec.Taints = node.Spec.Taints
-
-	// Allow updates to Node.Spec.ConfigSource if DynamicKubeletConfig feature gate is enabled
-	if utilfeature.DefaultFeatureGate.Enabled(features.DynamicKubeletConfig) {
-		oldNode.Spec.ConfigSource = node.Spec.ConfigSource
-	}
 
 	// We made allowed changes to oldNode, and now we compare oldNode to node. Any remaining differences indicate changes to protected fields.
 	// TODO: Add a 'real' error type for this error and provide print actual diffs.

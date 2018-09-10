@@ -32,11 +32,9 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/pkg/api/legacyscheme"
 	v1helper "k8s.io/kubernetes/pkg/apis/core/v1/helper"
-	"k8s.io/kubernetes/pkg/features"
 	kubeletapis "k8s.io/kubernetes/pkg/kubelet/apis"
 	"k8s.io/kubernetes/pkg/util/mount"
 	"k8s.io/kubernetes/pkg/volume"
@@ -743,15 +741,6 @@ func GetPersistentVolumeClaimVolumeMode(claim *v1.PersistentVolumeClaim) (v1.Per
 // CheckVolumeModeFilesystem checks VolumeMode.
 // If the mode is Filesystem, return true otherwise return false.
 func CheckVolumeModeFilesystem(volumeSpec *volume.Spec) (bool, error) {
-	if utilfeature.DefaultFeatureGate.Enabled(features.BlockVolume) {
-		volumeMode, err := GetVolumeMode(volumeSpec)
-		if err != nil {
-			return true, err
-		}
-		if volumeMode == v1.PersistentVolumeBlock {
-			return false, nil
-		}
-	}
 	return true, nil
 }
 

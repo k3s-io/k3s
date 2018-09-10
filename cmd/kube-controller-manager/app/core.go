@@ -133,8 +133,7 @@ func startNodeLifecycleController(ctx ControllerContext) (bool, error) {
 		ctx.ComponentConfig.LargeClusterSizeThreshold,
 		ctx.ComponentConfig.UnhealthyZoneThreshold,
 		ctx.ComponentConfig.EnableTaintManager,
-		utilfeature.DefaultFeatureGate.Enabled(features.TaintBasedEvictions),
-		utilfeature.DefaultFeatureGate.Enabled(features.TaintNodesByCondition),
+		false, false,
 	)
 	if err != nil {
 		return true, err

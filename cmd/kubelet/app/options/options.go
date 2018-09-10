@@ -32,7 +32,6 @@ import (
 	"k8s.io/apiserver/pkg/util/flag"
 	"k8s.io/kubernetes/pkg/apis/componentconfig"
 	"k8s.io/kubernetes/pkg/apis/core"
-	"k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/kubelet/apis/kubeletconfig"
 	kubeletscheme "k8s.io/kubernetes/pkg/kubelet/apis/kubeletconfig/scheme"
 	"k8s.io/kubernetes/pkg/kubelet/apis/kubeletconfig/v1beta1"
@@ -250,10 +249,6 @@ func NewKubeletFlags() *KubeletFlags {
 }
 
 func ValidateKubeletFlags(f *KubeletFlags) error {
-	// ensure that nobody sets DynamicConfigDir if the dynamic config feature gate is turned off
-	if f.DynamicConfigDir.Provided() && !utilfeature.DefaultFeatureGate.Enabled(features.DynamicKubeletConfig) {
-		return fmt.Errorf("the DynamicKubeletConfig feature gate must be enabled in order to use the --dynamic-config-dir flag")
-	}
 	if f.CAdvisorPort != 0 && utilvalidation.IsValidPortNum(int(f.CAdvisorPort)) != nil {
 		return fmt.Errorf("invalid configuration: CAdvisorPort (--cadvisor-port) %v must be between 0 and 65535, inclusive", f.CAdvisorPort)
 	}

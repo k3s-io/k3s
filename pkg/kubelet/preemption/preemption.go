@@ -22,18 +22,15 @@ import (
 
 	"github.com/golang/glog"
 	"k8s.io/api/core/v1"
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/kubernetes/pkg/api/v1/resource"
 	v1qos "k8s.io/kubernetes/pkg/apis/core/v1/helper/qos"
-	"k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/kubelet/events"
 	"k8s.io/kubernetes/pkg/kubelet/eviction"
 	"k8s.io/kubernetes/pkg/kubelet/lifecycle"
 	kubetypes "k8s.io/kubernetes/pkg/kubelet/types"
 	"k8s.io/kubernetes/pkg/kubelet/util/format"
 	"k8s.io/kubernetes/pkg/scheduler/algorithm"
-	"k8s.io/kubernetes/pkg/scheduler/algorithm/predicates"
 )
 
 const message = "Preempted in order to admit critical pod"
@@ -64,30 +61,7 @@ func NewCriticalPodAdmissionHandler(getPodsFunc eviction.ActivePodsFunc, killPod
 // HandleAdmissionFailure gracefully handles admission rejection, and, in some cases,
 // to allow admission of the pod despite its previous failure.
 func (c *CriticalPodAdmissionHandler) HandleAdmissionFailure(pod *v1.Pod, failureReasons []algorithm.PredicateFailureReason) (bool, []algorithm.PredicateFailureReason, error) {
-	if !kubetypes.IsCriticalPod(pod) || !utilfeature.DefaultFeatureGate.Enabled(features.ExperimentalCriticalPodAnnotation) {
-		return false, failureReasons, nil
-	}
-	// InsufficientResourceError is not a reason to reject a critical pod.
-	// Instead of rejecting, we free up resources to admit it, if no other reasons for rejection exist.
-	nonResourceReasons := []algorithm.PredicateFailureReason{}
-	resourceReasons := []*admissionRequirement{}
-	for _, reason := range failureReasons {
-		if r, ok := reason.(*predicates.InsufficientResourceError); ok {
-			resourceReasons = append(resourceReasons, &admissionRequirement{
-				resourceName: r.ResourceName,
-				quantity:     r.GetInsufficientAmount(),
-			})
-		} else {
-			nonResourceReasons = append(nonResourceReasons, reason)
-		}
-	}
-	if len(nonResourceReasons) > 0 {
-		// Return only reasons that are not resource related, since critical pods cannot fail admission for resource reasons.
-		return false, nonResourceReasons, nil
-	}
-	err := c.evictPodsToFreeRequests(admissionRequirementList(resourceReasons))
-	// if no error is returned, preemption succeeded and the pod is safe to admit.
-	return err == nil, nil, err
+	return false, failureReasons, nil
 }
 
 // freeRequests takes a list of insufficient resources, and attempts to free them by evicting pods

@@ -31,10 +31,8 @@ import (
 	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
 	apiserverstorage "k8s.io/apiserver/pkg/storage"
 	"k8s.io/apiserver/pkg/storage/names"
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
 
 	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
-	apiextensionsfeatures "k8s.io/apiextensions-apiserver/pkg/features"
 )
 
 // customResourceStrategy implements behavior for CustomResources.
@@ -70,23 +68,13 @@ func (a customResourceStrategy) NamespaceScoped() bool {
 
 // PrepareForCreate clears the status of a CustomResource before creation.
 func (a customResourceStrategy) PrepareForCreate(ctx genericapirequest.Context, obj runtime.Object) {
-	if utilfeature.DefaultFeatureGate.Enabled(apiextensionsfeatures.CustomResourceSubresources) && a.status != nil {
-		customResourceObject := obj.(*unstructured.Unstructured)
-		customResource := customResourceObject.UnstructuredContent()
-
-		// create cannot set status
-		if _, ok := customResource["status"]; ok {
-			delete(customResource, "status")
-		}
-	}
-
 	accessor, _ := meta.Accessor(obj)
 	accessor.SetGeneration(1)
 }
 
 // PrepareForUpdate clears fields that are not allowed to be set by end users on update.
 func (a customResourceStrategy) PrepareForUpdate(ctx genericapirequest.Context, obj, old runtime.Object) {
-	if !utilfeature.DefaultFeatureGate.Enabled(apiextensionsfeatures.CustomResourceSubresources) || a.status == nil {
+	if a.status == nil {
 		return
 	}
 

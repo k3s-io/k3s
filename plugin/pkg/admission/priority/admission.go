@@ -23,15 +23,12 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apiserver/pkg/admission"
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	api "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/apis/scheduling"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	informers "k8s.io/kubernetes/pkg/client/informers/informers_generated/internalversion"
 	schedulinglisters "k8s.io/kubernetes/pkg/client/listers/scheduling/internalversion"
-	"k8s.io/kubernetes/pkg/features"
 	kubeapiserveradmission "k8s.io/kubernetes/pkg/kubeapiserver/admission"
-	kubelettypes "k8s.io/kubernetes/pkg/kubelet/types"
 	schedulerapi "k8s.io/kubernetes/pkg/scheduler/api"
 )
 
@@ -146,41 +143,6 @@ func (p *priorityPlugin) admitPod(a admission.Attributes) error {
 	// Make sure that the client has not set `priority` at the time of pod creation.
 	if operation == admission.Create && pod.Spec.Priority != nil {
 		return admission.NewForbidden(a, fmt.Errorf("the integer value of priority must not be provided in pod spec. Priority admission controller populates the value from the given PriorityClass name"))
-	}
-	if utilfeature.DefaultFeatureGate.Enabled(features.PodPriority) {
-		var priority int32
-		// TODO: @ravig - This is for backwards compatibility to ensure that critical pods with annotations just work fine.
-		// Remove when no longer needed.
-		if len(pod.Spec.PriorityClassName) == 0 &&
-			utilfeature.DefaultFeatureGate.Enabled(features.ExperimentalCriticalPodAnnotation) &&
-			kubelettypes.IsCritical(a.GetNamespace(), pod.Annotations) {
-			pod.Spec.PriorityClassName = schedulerapi.SystemClusterCritical
-		}
-		if len(pod.Spec.PriorityClassName) == 0 {
-			var err error
-			priority, err = p.getDefaultPriority()
-			if err != nil {
-				return fmt.Errorf("failed to get default priority class: %v", err)
-			}
-		} else {
-			// First try to resolve by system priority classes.
-			priority, ok = schedulerapi.SystemPriorityClasses[pod.Spec.PriorityClassName]
-			if !ok {
-				// Now that we didn't find any system priority, try resolving by user defined priority classes.
-				pc, err := p.lister.Get(pod.Spec.PriorityClassName)
-
-				if err != nil {
-					if errors.IsNotFound(err) {
-						return admission.NewForbidden(a, fmt.Errorf("no PriorityClass with name %v was found", pod.Spec.PriorityClassName))
-					}
-
-					return fmt.Errorf("failed to get PriorityClass with name %s: %v", pod.Spec.PriorityClassName, err)
-				}
-
-				priority = pc.Value
-			}
-		}
-		pod.Spec.Priority = &priority
 	}
 	return nil
 }

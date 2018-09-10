@@ -18,16 +18,12 @@ package defaults
 
 import (
 	"k8s.io/apimachinery/pkg/util/sets"
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
 
-	"k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/scheduler/algorithm"
 	"k8s.io/kubernetes/pkg/scheduler/algorithm/predicates"
 	"k8s.io/kubernetes/pkg/scheduler/algorithm/priorities"
 	"k8s.io/kubernetes/pkg/scheduler/core"
 	"k8s.io/kubernetes/pkg/scheduler/factory"
-
-	"github.com/golang/glog"
 )
 
 const (
@@ -178,29 +174,6 @@ func defaultPredicates() sets.String {
 
 // ApplyFeatureGates applies algorithm by feature gates.
 func ApplyFeatureGates() {
-	if utilfeature.DefaultFeatureGate.Enabled(features.TaintNodesByCondition) {
-		// Remove "CheckNodeCondition" predicate
-		factory.RemoveFitPredicate(predicates.CheckNodeConditionPred)
-		// Remove Key "CheckNodeCondition" From All Algorithm Provider
-		// The key will be removed from all providers which in algorithmProviderMap[]
-		// if you just want remove specific provider, call func RemovePredicateKeyFromAlgoProvider()
-		factory.RemovePredicateKeyFromAlgorithmProviderMap(predicates.CheckNodeConditionPred)
-
-		// Fit is determined based on whether a pod can tolerate all of the node's taints
-		factory.RegisterMandatoryFitPredicate(predicates.PodToleratesNodeTaintsPred, predicates.PodToleratesNodeTaints)
-		// Insert Key "PodToleratesNodeTaints" and "CheckNodeUnschedulable" To All Algorithm Provider
-		// The key will insert to all providers which in algorithmProviderMap[]
-		// if you just want insert to specific provider, call func InsertPredicateKeyToAlgoProvider()
-		factory.InsertPredicateKeyToAlgorithmProviderMap(predicates.PodToleratesNodeTaintsPred)
-
-		glog.Warningf("TaintNodesByCondition is enabled, PodToleratesNodeTaints predicate is mandatory")
-	}
-
-	// Prioritizes nodes that satisfy pod's resource limits
-	if utilfeature.DefaultFeatureGate.Enabled(features.ResourceLimitsPriorityFunction) {
-		factory.RegisterPriorityFunction2("ResourceLimitsPriority", priorities.ResourceLimitsPriorityMap, nil, 1)
-	}
-
 }
 
 func registerAlgorithmProvider(predSet, priSet sets.String) {

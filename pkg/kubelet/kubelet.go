@@ -44,7 +44,6 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	clientset "k8s.io/client-go/kubernetes"
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
@@ -54,7 +53,6 @@ import (
 	"k8s.io/client-go/util/integer"
 	api "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/cloudprovider"
-	"k8s.io/kubernetes/pkg/features"
 	internalapi "k8s.io/kubernetes/pkg/kubelet/apis/cri"
 	kubeletconfiginternal "k8s.io/kubernetes/pkg/kubelet/apis/kubeletconfig"
 	"k8s.io/kubernetes/pkg/kubelet/cadvisor"
@@ -67,7 +65,6 @@ import (
 	"k8s.io/kubernetes/pkg/kubelet/events"
 	"k8s.io/kubernetes/pkg/kubelet/eviction"
 	"k8s.io/kubernetes/pkg/kubelet/gpu"
-	"k8s.io/kubernetes/pkg/kubelet/gpu/nvidia"
 	"k8s.io/kubernetes/pkg/kubelet/images"
 	"k8s.io/kubernetes/pkg/kubelet/kubeletconfig"
 	"k8s.io/kubernetes/pkg/kubelet/kuberuntime"
@@ -509,7 +506,6 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 		makeIPTablesUtilChains:                  kubeCfg.MakeIPTablesUtilChains,
 		iptablesMasqueradeBit:                   int(kubeCfg.IPTablesMasqueradeBit),
 		iptablesDropBit:                         int(kubeCfg.IPTablesDropBit),
-		experimentalHostUserNamespaceDefaulting: utilfeature.DefaultFeatureGate.Enabled(features.ExperimentalHostUserNamespaceDefaultingGate),
 		keepTerminatedPodVolumes:                keepTerminatedPodVolumes,
 	}
 
@@ -520,10 +516,6 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 	configMapManager := configmap.NewCachingConfigMapManager(
 		kubeDeps.KubeClient, configmap.GetObjectTTLFromNodeFunc(klet.GetNode))
 	klet.configMapManager = configMapManager
-
-	if klet.experimentalHostUserNamespaceDefaulting {
-		glog.Infof("Experimental host user namespace defaulting is enabled.")
-	}
 
 	hairpinMode, err := effectiveHairpinMode(kubeletconfiginternal.HairpinMode(kubeCfg.HairpinMode), containerRuntime, crOptions.NetworkPluginName)
 	if err != nil {
@@ -738,7 +730,7 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 	}
 	klet.imageManager = imageManager
 
-	if containerRuntime == kubetypes.RemoteContainerRuntime && utilfeature.DefaultFeatureGate.Enabled(features.CRIContainerLogRotation) {
+	if containerRuntime == kubetypes.RemoteContainerRuntime {
 		// setup containerLogManager for CRI container runtime
 		containerLogManager, err := logs.NewContainerLogManager(
 			klet.runtimeService,
@@ -749,8 +741,6 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 			return nil, fmt.Errorf("failed to initialize container log manager: %v", err)
 		}
 		klet.containerLogManager = containerLogManager
-	} else {
-		klet.containerLogManager = logs.NewStubContainerLogManager()
 	}
 
 	klet.statusManager = status.NewManager(klet.kubeClient, klet.podManager, klet)
@@ -849,16 +839,6 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 	klet.appArmorValidator = apparmor.NewValidator(containerRuntime)
 	klet.softAdmitHandlers.AddPodAdmitHandler(lifecycle.NewAppArmorAdmitHandler(klet.appArmorValidator))
 	klet.softAdmitHandlers.AddPodAdmitHandler(lifecycle.NewNoNewPrivsAdmitHandler(klet.containerRuntime))
-	if utilfeature.DefaultFeatureGate.Enabled(features.Accelerators) {
-		if containerRuntime == kubetypes.DockerContainerRuntime {
-			glog.Warningln("Accelerators feature is deprecated and will be removed in v1.11. Please use device plugins instead. They can be enabled using the DevicePlugins feature gate.")
-			if klet.gpuManager, err = nvidia.NewNvidiaGPUManager(klet, kubeDeps.DockerClientConfig); err != nil {
-				return nil, err
-			}
-		} else {
-			glog.Errorf("Accelerators feature is supported with docker runtime only. Disabling this feature internally.")
-		}
-	}
 	// Set GPU manager to a stub implementation if it is not enabled or cannot be supported.
 	if klet.gpuManager == nil {
 		klet.gpuManager = gpu.NewGPUManagerStub()
@@ -1127,13 +1107,6 @@ type Kubelet struct {
 
 	// The handler serving CRI streaming calls (exec/attach/port-forward).
 	criHandler http.Handler
-
-	// experimentalHostUserNamespaceDefaulting sets userns=true when users request host namespaces (pid, ipc, net),
-	// are using non-namespaced capabilities (mknod, sys_time, sys_module), the pod contains a privileged container,
-	// or using host path volumes.
-	// This should only be enabled when the container runtime is performing user remapping AND if the
-	// experimental behavior is desired.
-	experimentalHostUserNamespaceDefaulting bool
 
 	// GPU Manager
 	gpuManager gpu.GPUManager

@@ -650,7 +650,7 @@ func (s *SchedulerServer) SchedulerConfig() (*scheduler.Config, error) {
 		s.InformerFactory.Policy().V1beta1().PodDisruptionBudgets(),
 		storageClassInformer,
 		s.HardPodAffinitySymmetricWeight,
-		utilfeature.DefaultFeatureGate.Enabled(features.EnableEquivalenceClassCache),
+		false,
 	)
 
 	source := s.AlgorithmSource

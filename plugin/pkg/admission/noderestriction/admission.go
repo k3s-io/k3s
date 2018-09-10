@@ -131,9 +131,6 @@ func (c *nodePlugin) Admit(a admission.Attributes) error {
 		}
 
 	case svcacctResource:
-		if c.features.Enabled(features.TokenRequest) {
-			return c.admitServiceAccount(nodeName, a)
-		}
 		return nil
 
 	default:

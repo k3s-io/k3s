@@ -555,12 +555,6 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies) (err error) {
 		}
 	}
 
-	// If the kubelet config controller is available, and dynamic config is enabled, start the config and status sync loops
-	if utilfeature.DefaultFeatureGate.Enabled(features.DynamicKubeletConfig) && len(s.DynamicConfigDir.Value()) > 0 &&
-		kubeDeps.KubeletConfigController != nil && !standaloneMode && !s.RunOnce {
-		kubeDeps.KubeletConfigController.StartSync(kubeDeps.KubeClient, kubeDeps.EventClient, string(nodeName))
-	}
-
 	if kubeDeps.Auth == nil {
 		auth, err := BuildAuth(nodeName, kubeDeps.ExternalKubeClient, s.KubeletConfiguration)
 		if err != nil {
@@ -1038,25 +1032,7 @@ func parseResourceList(m map[string]string) (v1.ResourceList, error) {
 // BootstrapKubeletConfigController constructs and bootstrap a configuration controller
 func BootstrapKubeletConfigController(defaultConfig *kubeletconfiginternal.KubeletConfiguration,
 	dynamicConfigDir string) (*kubeletconfiginternal.KubeletConfiguration, *dynamickubeletconfig.Controller, error) {
-	if !utilfeature.DefaultFeatureGate.Enabled(features.DynamicKubeletConfig) {
-		return nil, nil, fmt.Errorf("failed to bootstrap Kubelet config controller, you must enable the DynamicKubeletConfig feature gate")
-	}
-	if len(dynamicConfigDir) == 0 {
-		return nil, nil, fmt.Errorf("cannot bootstrap Kubelet config controller, --dynamic-config-dir was not provided")
-	}
-
-	// compute absolute path and bootstrap controller
-	dir, err := filepath.Abs(dynamicConfigDir)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get absolute path for --dynamic-config-dir=%s", dynamicConfigDir)
-	}
-	// get the latest KubeletConfiguration checkpoint from disk, or return the default config if no valid checkpoints exist
-	c := dynamickubeletconfig.NewController(defaultConfig, dir)
-	kc, err := c.Bootstrap()
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to determine a valid configuration, error: %v", err)
-	}
-	return kc, c, nil
+	return nil, nil, fmt.Errorf("failed to bootstrap Kubelet config controller, you must enable the DynamicKubeletConfig feature gate")
 }
 
 // RunDockershim only starts the dockershim in current process. This is only used for cri validate testing purpose

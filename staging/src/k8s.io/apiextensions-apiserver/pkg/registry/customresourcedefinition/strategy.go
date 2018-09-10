@@ -59,9 +59,7 @@ func (strategy) PrepareForCreate(ctx genericapirequest.Context, obj runtime.Obje
 	if !utilfeature.DefaultFeatureGate.Enabled(apiextensionsfeatures.CustomResourceValidation) {
 		crd.Spec.Validation = nil
 	}
-	if !utilfeature.DefaultFeatureGate.Enabled(apiextensionsfeatures.CustomResourceSubresources) {
-		crd.Spec.Subresources = nil
-	}
+	crd.Spec.Subresources = nil
 }
 
 // PrepareForUpdate clears fields that are not allowed to be set by end users on update.
@@ -86,10 +84,8 @@ func (strategy) PrepareForUpdate(ctx genericapirequest.Context, obj, old runtime
 		newCRD.Spec.Validation = nil
 		oldCRD.Spec.Validation = nil
 	}
-	if !utilfeature.DefaultFeatureGate.Enabled(apiextensionsfeatures.CustomResourceSubresources) {
-		newCRD.Spec.Subresources = nil
-		oldCRD.Spec.Subresources = nil
-	}
+	newCRD.Spec.Subresources = nil
+	oldCRD.Spec.Subresources = nil
 }
 
 // Validate validates a new CustomResourceDefinition.

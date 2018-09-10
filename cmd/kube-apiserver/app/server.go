@@ -54,11 +54,9 @@ import (
 	"k8s.io/apiserver/pkg/server/options/encryptionconfig"
 	serverstorage "k8s.io/apiserver/pkg/server/storage"
 	"k8s.io/apiserver/pkg/storage/etcd3/preflight"
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	clientgoinformers "k8s.io/client-go/informers"
 	clientgoclientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	certutil "k8s.io/client-go/util/cert"
 	aggregatorapiserver "k8s.io/kube-aggregator/pkg/apiserver"
 	openapi "k8s.io/kube-openapi/pkg/common"
 	"k8s.io/kubernetes/cmd/kube-apiserver/app/options"
@@ -75,8 +73,6 @@ import (
 	informers "k8s.io/kubernetes/pkg/client/informers/informers_generated/internalversion"
 	"k8s.io/kubernetes/pkg/cloudprovider"
 	serviceaccountcontroller "k8s.io/kubernetes/pkg/controller/serviceaccount"
-	"k8s.io/kubernetes/pkg/features"
-	generatedopenapi "k8s.io/kubernetes/pkg/generated/openapi"
 	"k8s.io/kubernetes/pkg/kubeapiserver"
 	kubeapiserveradmission "k8s.io/kubernetes/pkg/kubeapiserver/admission"
 	kubeauthenticator "k8s.io/kubernetes/pkg/kubeapiserver/authenticator"
@@ -89,7 +85,6 @@ import (
 	quotainstall "k8s.io/kubernetes/pkg/quota/install"
 	"k8s.io/kubernetes/pkg/registry/cachesize"
 	rbacrest "k8s.io/kubernetes/pkg/registry/rbac/rest"
-	"k8s.io/kubernetes/pkg/serviceaccount"
 	"k8s.io/kubernetes/pkg/version"
 	"k8s.io/kubernetes/pkg/version/verflag"
 	"k8s.io/kubernetes/plugin/pkg/auth/authenticator/token/bootstrap"
@@ -329,52 +324,16 @@ func CreateKubeAPIServerConfig(
 		return
 	}
 
-	clientCA, lastErr := readCAorNil(s.Authentication.ClientCert.ClientCA)
-	if lastErr != nil {
-		return
-	}
-	requestHeaderProxyCA, lastErr := readCAorNil(s.Authentication.RequestHeader.ClientCAFile)
-	if lastErr != nil {
-		return
-	}
-
-	var issuer serviceaccount.TokenGenerator
-	var apiAudiences []string
 	if s.ServiceAccountSigningKeyFile != "" ||
 		s.Authentication.ServiceAccounts.Issuer != "" ||
 		len(s.Authentication.ServiceAccounts.APIAudiences) > 0 {
-		if !utilfeature.DefaultFeatureGate.Enabled(features.TokenRequest) {
 			lastErr = fmt.Errorf("the TokenRequest feature is not enabled but --service-account-signing-key-file and/or --service-account-issuer-id flags were passed")
 			return
-		}
-		if s.ServiceAccountSigningKeyFile == "" ||
-			s.Authentication.ServiceAccounts.Issuer == "" ||
-			len(s.Authentication.ServiceAccounts.APIAudiences) == 0 ||
-			len(s.Authentication.ServiceAccounts.KeyFiles) == 0 {
-			lastErr = fmt.Errorf("service-account-signing-key-file, service-account-issuer, service-account-api-audiences and service-account-key-file should be specified together")
-			return
-		}
-		sk, err := certutil.PrivateKeyFromFile(s.ServiceAccountSigningKeyFile)
-		if err != nil {
-			lastErr = fmt.Errorf("failed to parse service-account-issuer-key-file: %v", err)
-			return
-		}
-		issuer = serviceaccount.JWTTokenGenerator(s.Authentication.ServiceAccounts.Issuer, sk)
-		apiAudiences = s.Authentication.ServiceAccounts.APIAudiences
 	}
 
 	config = &master.Config{
 		GenericConfig: genericConfig,
 		ExtraConfig: master.ExtraConfig{
-			ClientCARegistrationHook: master.ClientCARegistrationHook{
-				ClientCA:                         clientCA,
-				RequestHeaderUsernameHeaders:     s.Authentication.RequestHeader.UsernameHeaders,
-				RequestHeaderGroupHeaders:        s.Authentication.RequestHeader.GroupHeaders,
-				RequestHeaderExtraHeaderPrefixes: s.Authentication.RequestHeader.ExtraHeaderPrefixes,
-				RequestHeaderCA:                  requestHeaderProxyCA,
-				RequestHeaderAllowedNames:        s.Authentication.RequestHeader.AllowedNames,
-			},
-
 			APIResourceConfigSource: storageFactory.APIResourceConfigSource,
 			StorageFactory:          storageFactory,
 			EnableCoreControllers:   true,
@@ -394,9 +353,6 @@ func CreateKubeAPIServerConfig(
 
 			EndpointReconcilerType: reconcilers.Type(s.EndpointReconcilerType),
 			MasterCount:            s.MasterCount,
-
-			ServiceAccountIssuer:       issuer,
-			ServiceAccountAPIAudiences: apiAudiences,
 		},
 	}
 
@@ -435,9 +391,6 @@ func BuildGenericConfig(
 	if lastErr = s.Authentication.ApplyTo(genericConfig); lastErr != nil {
 		return
 	}
-	if lastErr = s.Audit.ApplyTo(genericConfig); lastErr != nil {
-		return
-	}
 	if lastErr = s.Features.ApplyTo(genericConfig); lastErr != nil {
 		return
 	}
@@ -445,10 +398,6 @@ func BuildGenericConfig(
 		return
 	}
 
-	genericConfig.OpenAPIConfig = genericapiserver.DefaultOpenAPIConfig(generatedopenapi.GetOpenAPIDefinitions, legacyscheme.Scheme)
-	genericConfig.OpenAPIConfig.PostProcessSpec = postProcessOpenAPISpecForBackwardCompatibility
-	genericConfig.OpenAPIConfig.Info.Title = "Kubernetes"
-	genericConfig.SwaggerConfig = genericapiserver.DefaultSwaggerConfig()
 	genericConfig.EnableMetrics = true
 	genericConfig.LongRunningFunc = filters.BasicLongRunningRequestCheck(
 		sets.NewString("watch", "proxy"),
@@ -514,7 +463,7 @@ func BuildGenericConfig(
 	}
 	serviceResolver = aggregatorapiserver.NewLoopbackServiceResolver(serviceResolver, localHost)
 
-	genericConfig.Authentication.Authenticator, genericConfig.OpenAPIConfig.SecurityDefinitions, err = BuildAuthenticator(s, storageFactory, client, clientgoExternalClient, sharedInformers)
+	genericConfig.Authentication.Authenticator, _, err = BuildAuthenticator(s, storageFactory, client, clientgoExternalClient, sharedInformers)
 	if err != nil {
 		lastErr = fmt.Errorf("invalid authentication config: %v", err)
 		return

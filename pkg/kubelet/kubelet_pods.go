@@ -252,13 +252,11 @@ func makeMounts(pod *v1.Pod, podDir string, container *v1.Container, hostName, h
 		}
 		glog.V(5).Infof("Pod %q container %q mount %q has propagation %q", format.Pod(pod), container.Name, mount.Name, propagation)
 
-		mustMountRO := vol.Mounter.GetAttributes().ReadOnly && utilfeature.DefaultFeatureGate.Enabled(features.ReadOnlyAPIDataVolumes)
-
 		mounts = append(mounts, kubecontainer.Mount{
 			Name:           mount.Name,
 			ContainerPath:  containerPath,
 			HostPath:       hostPath,
-			ReadOnly:       mount.ReadOnly || mustMountRO,
+			ReadOnly:       mount.ReadOnly,
 			SELinuxRelabel: relabelVolume,
 			Propagation:    propagation,
 		})
@@ -471,16 +469,6 @@ func (kl *Kubelet) GenerateRunContainerOptions(pod *v1.Pod, container *v1.Contai
 	}
 	opts.Devices = append(opts.Devices, devices...)
 
-	// TODO: remove feature gate check after no longer needed
-	if utilfeature.DefaultFeatureGate.Enabled(features.BlockVolume) {
-		blkutil := volumepathhandler.NewBlockVolumePathHandler()
-		blkVolumes, err := kl.makeBlockVolumes(pod, container, volumes, blkutil)
-		if err != nil {
-			return nil, nil, err
-		}
-		opts.Devices = append(opts.Devices, blkVolumes...)
-	}
-
 	mounts, cleanupAction, err := makeMounts(pod, kl.getPodDir(pod.UID), container, hostname, hostDomainName, podIP, volumes, kl.mounter)
 	if err != nil {
 		return nil, cleanupAction, err
@@ -502,11 +490,6 @@ func (kl *Kubelet) GenerateRunContainerOptions(pod *v1.Pod, container *v1.Contai
 		} else {
 			opts.PodContainerDir = p
 		}
-	}
-
-	// only do this check if the experimental behavior is enabled, otherwise allow it to default to false
-	if kl.experimentalHostUserNamespaceDefaulting {
-		opts.EnableHostUserNamespace = kl.enableHostUserNamespace(pod)
 	}
 
 	return opts, cleanupAction, nil
