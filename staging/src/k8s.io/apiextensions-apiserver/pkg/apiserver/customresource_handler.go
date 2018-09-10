@@ -25,9 +25,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/go-openapi/spec"
-	"github.com/go-openapi/strfmt"
-	"github.com/go-openapi/validate"
 	"github.com/golang/glog"
 
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -58,7 +55,6 @@ import (
 
 	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
 	"k8s.io/apiextensions-apiserver/pkg/apiserver/conversion"
-	apiservervalidation "k8s.io/apiextensions-apiserver/pkg/apiserver/validation"
 	informers "k8s.io/apiextensions-apiserver/pkg/client/informers/internalversion/apiextensions/internalversion"
 	listers "k8s.io/apiextensions-apiserver/pkg/client/listers/apiextensions/internalversion"
 	"k8s.io/apiextensions-apiserver/pkg/controller/establish"
@@ -443,28 +439,7 @@ func (r *crdHandler) getOrCreateServingInfoFor(crd *apiextensions.CustomResource
 		typer := newUnstructuredObjectTyper(parameterScheme)
 		creator := unstructuredCreator{}
 
-		validator, _, err := apiservervalidation.NewSchemaValidator(crd.Spec.Validation)
-		if err != nil {
-			return nil, err
-		}
-
 		var statusSpec *apiextensions.CustomResourceSubresourceStatus
-		var statusValidator *validate.SchemaValidator
-		if utilfeature.DefaultFeatureGate.Enabled(apiextensionsfeatures.CustomResourceSubresources) && crd.Spec.Subresources != nil && crd.Spec.Subresources.Status != nil {
-			statusSpec = crd.Spec.Subresources.Status
-
-			// for the status subresource, validate only against the status schema
-			if crd.Spec.Validation != nil && crd.Spec.Validation.OpenAPIV3Schema != nil && crd.Spec.Validation.OpenAPIV3Schema.Properties != nil {
-				if statusSchema, ok := crd.Spec.Validation.OpenAPIV3Schema.Properties["status"]; ok {
-					openapiSchema := &spec.Schema{}
-					if err := apiservervalidation.ConvertJSONSchemaProps(&statusSchema, openapiSchema); err != nil {
-						return nil, err
-					}
-					statusValidator = validate.NewSchemaValidator(openapiSchema, nil, "", strfmt.Default)
-				}
-			}
-		}
-
 		var scaleSpec *apiextensions.CustomResourceSubresourceScale
 		if utilfeature.DefaultFeatureGate.Enabled(apiextensionsfeatures.CustomResourceSubresources) && crd.Spec.Subresources != nil && crd.Spec.Subresources.Scale != nil {
 			scaleSpec = crd.Spec.Subresources.Scale
@@ -482,8 +457,6 @@ func (r *crdHandler) getOrCreateServingInfoFor(crd *apiextensions.CustomResource
 				typer,
 				crd.Spec.Scope == apiextensions.NamespaceScoped,
 				kind,
-				validator,
-				statusValidator,
 				statusSpec,
 				scaleSpec,
 			),

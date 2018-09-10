@@ -43,12 +43,10 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions/printers"
 	"k8s.io/cli-runtime/pkg/genericclioptions/resource"
 	"k8s.io/client-go/dynamic"
-	oapi "k8s.io/kube-openapi/pkg/util/proto"
 	api "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/kubectl"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
-	"k8s.io/kubernetes/pkg/kubectl/cmd/util/openapi"
 	"k8s.io/kubernetes/pkg/kubectl/scheme"
 	"k8s.io/kubernetes/pkg/kubectl/util/i18n"
 	"k8s.io/kubernetes/pkg/kubectl/validation"
@@ -80,7 +78,6 @@ type ApplyOptions struct {
 	Builder       *resource.Builder
 	Mapper        meta.RESTMapper
 	DynamicClient dynamic.Interface
-	OpenAPISchema openapi.Resources
 
 	Namespace        string
 	EnforceNamespace bool
@@ -218,7 +215,6 @@ func (o *ApplyOptions) Complete(f cmdutil.Factory, cmd *cobra.Command) error {
 	o.DeleteOptions = o.DeleteFlags.ToOptions(dynamicClient, o.IOStreams)
 	o.ShouldIncludeUninitialized = cmdutil.ShouldIncludeUninitialized(cmd, o.Prune)
 
-	o.OpenAPISchema, _ = f.OpenAPISchema()
 	o.Validator, err = f.Validator(cmdutil.GetFlagBool(cmd, "validate"))
 	o.Builder = f.NewBuilder()
 	o.Mapper, err = f.ToRESTMapper()
@@ -288,11 +284,6 @@ func parsePruneResources(mapper meta.RESTMapper, gvks []string) ([]pruneResource
 }
 
 func (o *ApplyOptions) Run() error {
-	var openapiSchema openapi.Resources
-	if o.OpenApiPatch {
-		openapiSchema = o.OpenAPISchema
-	}
-
 	// include the uninitialized objects by default if --prune is true
 	// unless explicitly set --include-uninitialized=false
 	r := o.Builder.
@@ -415,7 +406,6 @@ func (o *ApplyOptions) Run() error {
 				timeout:       o.DeleteOptions.Timeout,
 				gracePeriod:   o.DeleteOptions.GracePeriod,
 				serverDryRun:  o.ServerDryRun,
-				openapiSchema: openapiSchema,
 			}
 
 			patchBytes, patchedObject, err := patcher.patch(info.Object, modified, info.Source, info.Namespace, info.Name, o.ErrOut)
@@ -680,8 +670,6 @@ type patcher struct {
 	timeout      time.Duration
 	gracePeriod  int
 	serverDryRun bool
-
-	openapiSchema openapi.Resources
 }
 
 func (p *patcher) patchSimple(obj runtime.Object, modified []byte, source, namespace, name string, errOut io.Writer) ([]byte, runtime.Object, error) {
@@ -700,7 +688,6 @@ func (p *patcher) patchSimple(obj runtime.Object, modified []byte, source, names
 	var patchType types.PatchType
 	var patch []byte
 	var lookupPatchMeta strategicpatch.LookupPatchMeta
-	var schema oapi.Schema
 	createPatchErrFormat := "creating patch with:\noriginal:\n%s\nmodified:\n%s\ncurrent:\n%s\nfor:"
 
 	// Create the versioned struct from the type defined in the restmapping
@@ -724,20 +711,6 @@ func (p *patcher) patchSimple(obj runtime.Object, modified []byte, source, names
 	case err == nil:
 		// Compute a three way strategic merge patch to send to server.
 		patchType = types.StrategicMergePatchType
-
-		// Try to use openapi first if the openapi spec is available and can successfully calculate the patch.
-		// Otherwise, fall back to baked-in types.
-		if p.openapiSchema != nil {
-			if schema = p.openapiSchema.LookupResource(p.mapping.GroupVersionKind); schema != nil {
-				lookupPatchMeta = strategicpatch.PatchMetaFromOpenAPI{Schema: schema}
-				if openapiPatch, err := strategicpatch.CreateThreeWayMergePatch(original, modified, current, lookupPatchMeta, p.overwrite); err != nil {
-					fmt.Fprintf(errOut, "warning: error calculating patch from openapi spec: %v\n", err)
-				} else {
-					patchType = types.StrategicMergePatchType
-					patch = openapiPatch
-				}
-			}
-		}
 
 		if patch == nil {
 			lookupPatchMeta, err = strategicpatch.NewPatchMetaFromStruct(versionedObject)

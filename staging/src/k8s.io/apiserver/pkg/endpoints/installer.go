@@ -38,10 +38,6 @@ import (
 	"k8s.io/apiserver/pkg/endpoints/handlers/negotiation"
 	"k8s.io/apiserver/pkg/endpoints/metrics"
 	"k8s.io/apiserver/pkg/registry/rest"
-	utilopenapi "k8s.io/apiserver/pkg/util/openapi"
-	openapibuilder "k8s.io/kube-openapi/pkg/builder"
-	openapiutil "k8s.io/kube-openapi/pkg/util"
-	openapiproto "k8s.io/kube-openapi/pkg/util/proto"
 )
 
 const (
@@ -501,10 +497,6 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 	if a.group.MetaGroupVersion != nil {
 		reqScope.MetaGroupVersion = *a.group.MetaGroupVersion
 	}
-	reqScope.OpenAPISchema, err = a.getOpenAPISchema(ws.RootPath(), resource, fqKindToRegister, defaultVersionedObject)
-	if err != nil {
-		return nil, fmt.Errorf("unable to get openapi schema for %v: %v", fqKindToRegister, err)
-	}
 	for _, action := range actions {
 		producedObject := storageMeta.ProducesObject(action.Verb)
 		if producedObject == nil {
@@ -843,24 +835,6 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 	}
 
 	return &apiResource, nil
-}
-
-// getOpenAPISchema builds the openapi schema for a single resource model to be given to each handler. It will
-// return nil if the apiserver doesn't have openapi enabled, or if the specific path should be ignored by openapi.
-func (a *APIInstaller) getOpenAPISchema(rootPath, resource string, kind schema.GroupVersionKind, sampleObject interface{}) (openapiproto.Schema, error) {
-	path := gpath.Join(rootPath, resource)
-	if a.group.OpenAPIConfig == nil {
-		return nil, nil
-	}
-	pathsToIgnore := openapiutil.NewTrie(a.group.OpenAPIConfig.IgnorePrefixes)
-	if pathsToIgnore.HasPrefix(path) {
-		return nil, nil
-	}
-	openAPIDefinitions, err := openapibuilder.BuildOpenAPIDefinitionsForResource(sampleObject, a.group.OpenAPIConfig)
-	if err != nil {
-		return nil, err
-	}
-	return utilopenapi.ToProtoSchema(openAPIDefinitions, kind)
 }
 
 // indirectArbitraryPointer returns *ptrToObject for an arbitrary pointer
