@@ -91,7 +91,7 @@ func (o *RecommendedOptions) ApplyTo(config *server.RecommendedConfig, scheme *r
 	if err := o.SecureServing.ApplyTo(&config.Config.SecureServing, &config.Config.LoopbackClientConfig); err != nil {
 		return err
 	}
-	if err := o.Authentication.ApplyTo(&config.Config.Authentication, config.SecureServing, config.OpenAPIConfig); err != nil {
+	if err := o.Authentication.ApplyTo(&config.Config.Authentication, config.SecureServing); err != nil {
 		return err
 	}
 	if err := o.Authorization.ApplyTo(&config.Config.Authorization); err != nil {
