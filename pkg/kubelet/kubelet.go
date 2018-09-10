@@ -17,7 +17,6 @@ limitations under the License.
 package kubelet
 
 import (
-	"context"
 	"crypto/tls"
 	"fmt"
 	"math"
@@ -61,7 +60,6 @@ import (
 	"k8s.io/kubernetes/pkg/kubelet/cadvisor"
 	kubeletcertificate "k8s.io/kubernetes/pkg/kubelet/certificate"
 	"k8s.io/kubernetes/pkg/kubelet/checkpointmanager"
-	"k8s.io/kubernetes/pkg/kubelet/cloudresource"
 	"k8s.io/kubernetes/pkg/kubelet/cm"
 	"k8s.io/kubernetes/pkg/kubelet/config"
 	"k8s.io/kubernetes/pkg/kubelet/configmap"
@@ -238,7 +236,6 @@ type Dependencies struct {
 	// Injected Dependencies
 	Auth                    server.AuthInterface
 	CAdvisorInterface       cadvisor.Interface
-	Cloud                   cloudprovider.Interface
 	ContainerManager        cm.ContainerManager
 	DockerClientConfig      *dockershim.ClientConfig
 	EventClient             v1core.EventsGetter
@@ -378,20 +375,6 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 	}
 	// Query the cloud provider for our node name, default to hostname
 	nodeName := types.NodeName(hostname)
-	if kubeDeps.Cloud != nil {
-		var err error
-		instances, ok := kubeDeps.Cloud.Instances()
-		if !ok {
-			return nil, fmt.Errorf("failed to get instances from cloud provider")
-		}
-
-		nodeName, err = instances.CurrentNodeName(context.TODO(), hostname)
-		if err != nil {
-			return nil, fmt.Errorf("error fetching current instance name from cloud provider: %v", err)
-		}
-
-		klog.V(2).Infof("cloud provider determined current node name to be %s", nodeName)
-	}
 
 	if kubeDeps.PodConfig == nil {
 		var err error
@@ -502,7 +485,6 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 		streamingConnectionIdleTimeout:          kubeCfg.StreamingConnectionIdleTimeout.Duration,
 		recorder:                                kubeDeps.Recorder,
 		cadvisor:                                kubeDeps.CAdvisorInterface,
-		cloud:                                   kubeDeps.Cloud,
 		externalCloudProvider:                   cloudprovider.IsExternal(cloudProvider),
 		providerID:                              providerID,
 		nodeRef:                                 nodeRef,
@@ -534,10 +516,6 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 		keepTerminatedPodVolumes:                keepTerminatedPodVolumes,
 		nodeStatusMaxImages:                     nodeStatusMaxImages,
 		enablePluginsWatcher:                    utilfeature.DefaultFeatureGate.Enabled(features.KubeletPluginsWatcher),
-	}
-
-	if klet.cloud != nil {
-		klet.cloudResourceSyncManager = cloudresource.NewSyncManager(klet.cloud, nodeName, klet.nodeStatusUpdateFrequency)
 	}
 
 	var secretManager secret.Manager
@@ -1003,11 +981,6 @@ type Kubelet struct {
 	// scheduled on this node and makes it so.
 	volumeManager volumemanager.VolumeManager
 
-	// Cloud provider interface.
-	cloud cloudprovider.Interface
-	// Handles requests to cloud provider with timeout
-	cloudResourceSyncManager cloudresource.SyncManager
-
 	// Indicates that the node initialization happens in an external cloud controller
 	externalCloudProvider bool
 	// Reference to this node.
@@ -1380,11 +1353,6 @@ func (kl *Kubelet) Run(updates <-chan kubetypes.PodUpdate) {
 	}
 	if kl.kubeClient == nil {
 		klog.Warning("No api server defined - no node status update will be sent.")
-	}
-
-	// Start the cloud provider sync manager
-	if kl.cloudResourceSyncManager != nil {
-		go kl.cloudResourceSyncManager.Run(wait.NeverStop)
 	}
 
 	if err := kl.initializeModules(); err != nil {
