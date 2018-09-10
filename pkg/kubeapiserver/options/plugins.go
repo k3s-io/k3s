@@ -42,7 +42,6 @@ import (
 	"k8s.io/kubernetes/plugin/pkg/admission/security/podsecuritypolicy"
 	"k8s.io/kubernetes/plugin/pkg/admission/securitycontext/scdeny"
 	"k8s.io/kubernetes/plugin/pkg/admission/serviceaccount"
-	"k8s.io/kubernetes/plugin/pkg/admission/storage/persistentvolume/label"
 	"k8s.io/kubernetes/plugin/pkg/admission/storage/persistentvolume/resize"
 	"k8s.io/kubernetes/plugin/pkg/admission/storage/storageclass/setdefault"
 	"k8s.io/kubernetes/plugin/pkg/admission/storage/storageobjectinuseprotection"
@@ -78,7 +77,6 @@ var AllOrderedPlugins = []string{
 	exec.DenyExecOnPrivileged,               // DenyExecOnPrivileged
 	eventratelimit.PluginName,               // EventRateLimit
 	extendedresourcetoleration.PluginName,   // ExtendedResourceToleration
-	label.PluginName,                        // PersistentVolumeLabel
 	setdefault.PluginName,                   // DefaultStorageClass
 	storageobjectinuseprotection.PluginName, // StorageObjectInUseProtection
 	gc.PluginName,                           // OwnerReferencesPermissionEnforcement
@@ -106,7 +104,6 @@ func RegisterAllAdmissionPlugins(plugins *admission.Plugins) {
 	exists.Register(plugins)
 	noderestriction.Register(plugins)
 	nodetaint.Register(plugins)
-	label.Register(plugins) // DEPRECATED, future PVs should not rely on labels for zone topology
 	podnodeselector.Register(plugins)
 	podtolerationrestriction.Register(plugins)
 	resourcequota.Register(plugins)

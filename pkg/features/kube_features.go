@@ -20,7 +20,6 @@ import (
 	apiextensionsfeatures "k8s.io/apiextensions-apiserver/pkg/features"
 	genericfeatures "k8s.io/apiserver/pkg/features"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
-	cloudfeatures "k8s.io/cloud-provider/features"
 )
 
 const (
@@ -352,7 +351,6 @@ var defaultKubernetesFeatureGates = map[utilfeature.Feature]utilfeature.FeatureS
 	TokenRequest:                            {Default: true, PreRelease: utilfeature.Beta},
 	TokenRequestProjection:                  {Default: true, PreRelease: utilfeature.Beta},
 	CRIContainerLogRotation:                 {Default: true, PreRelease: utilfeature.Beta},
-	cloudfeatures.GCERegionalPersistentDisk: {Default: true, PreRelease: utilfeature.GA},
 	CSIMigration:                            {Default: false, PreRelease: utilfeature.Alpha},
 	CSIMigrationGCE:                         {Default: false, PreRelease: utilfeature.Alpha},
 	CSIMigrationAWS:                         {Default: false, PreRelease: utilfeature.Alpha},
