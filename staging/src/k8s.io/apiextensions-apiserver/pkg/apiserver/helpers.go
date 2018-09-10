@@ -82,7 +82,7 @@ func serveDefaultColumnsIfEmpty(columns []apiextensions.CustomResourceColumnDefi
 		return columns
 	}
 	return []apiextensions.CustomResourceColumnDefinition{
-		{Name: "Age", Type: "date", Description: swaggerMetadataDescriptions["creationTimestamp"], JSONPath: ".metadata.creationTimestamp"},
+		{Name: "Age", Type: "date", Description: "", JSONPath: ".metadata.creationTimestamp"},
 	}
 }
 

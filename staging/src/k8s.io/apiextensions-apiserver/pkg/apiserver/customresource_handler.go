@@ -411,8 +411,6 @@ func (r *crdHandler) GetCustomResourceListerCollectionDeleter(crd *apiextensions
 	return info.storages[info.storageVersion].CustomResource, nil
 }
 
-var swaggerMetadataDescriptions = metav1.ObjectMeta{}.SwaggerDoc()
-
 func (r *crdHandler) getOrCreateServingInfoFor(crd *apiextensions.CustomResourceDefinition) (*crdInfo, error) {
 	storageMap := r.customStorage.Load().(crdStorageMap)
 	if ret, ok := storageMap[crd.UID]; ok {
