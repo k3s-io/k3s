@@ -50,6 +50,7 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
 	restclient "k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/record"
 	certutil "k8s.io/client-go/util/cert"
 	"k8s.io/kubernetes/cmd/kubelet/app/options"
@@ -716,10 +717,17 @@ func InitializeTLS(kf *options.KubeletFlags, kc *kubeletconfiginternal.KubeletCo
 	return tlsOptions, nil
 }
 
+func kubeconfigClientConfig(s *options.KubeletServer) (*restclient.Config, error) {
+	return clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+		&clientcmd.ClientConfigLoadingRules{ExplicitPath: s.KubeConfig},
+		&clientcmd.ConfigOverrides{},
+	).ClientConfig()
+}
+
 // createClientConfig creates a client configuration from the command line arguments.
 // If --kubeconfig is explicitly set, it will be used.
 func createClientConfig(s *options.KubeletServer) (*restclient.Config, error) {
-	return nil, fmt.Errorf("createClientConfig called in standalone mode")
+	return kubeconfigClientConfig(s)
 }
 
 // createAPIServerClientConfig generates a client.Config from command line flags
