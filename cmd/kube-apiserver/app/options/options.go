@@ -66,8 +66,6 @@ type ServerRunOptions struct {
 	ProxyClientCertFile string
 	ProxyClientKeyFile  string
 
-	EnableAggregatorRouting bool
-
 	MasterCount            int
 	EndpointReconcilerType string
 
@@ -228,9 +226,6 @@ func (s *ServerRunOptions) AddFlags(fs *pflag.FlagSet) {
 		"Private key for the client certificate used to prove the identity of the aggregator or kube-apiserver "+
 		"when it must call out during a request. This includes proxying requests to a user "+
 		"api-server and calling out to webhook admission plugins.")
-
-	fs.BoolVar(&s.EnableAggregatorRouting, "enable-aggregator-routing", s.EnableAggregatorRouting,
-		"Turns on aggregator routing requests to endoints IP rather than cluster IP.")
 
 	fs.StringVar(&s.ServiceAccountSigningKeyFile, "service-account-signing-key-file", s.ServiceAccountSigningKeyFile, ""+
 		"Path to the file that contains the current private key of the service account token issuer. The issuer will sign issued ID tokens with this private key. (Ignored unless alpha TokenRequest is enabled")
