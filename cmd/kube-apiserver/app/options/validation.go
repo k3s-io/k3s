@@ -20,7 +20,6 @@ import (
 	"fmt"
 
 	apiextensionsapiserver "k8s.io/apiextensions-apiserver/pkg/apiserver"
-	aggregatorscheme "k8s.io/kube-aggregator/pkg/apiserver/scheme"
 	"k8s.io/kubernetes/pkg/api/legacyscheme"
 )
 
@@ -82,7 +81,7 @@ func (s *ServerRunOptions) Validate() []error {
 	if s.MasterCount <= 0 {
 		errors = append(errors, fmt.Errorf("--apiserver-count should be a positive number, but value '%d' provided", s.MasterCount))
 	}
-	if errs := s.APIEnablement.Validate(legacyscheme.Scheme, apiextensionsapiserver.Scheme, aggregatorscheme.Scheme); len(errs) > 0 {
+	if errs := s.APIEnablement.Validate(legacyscheme.Scheme, apiextensionsapiserver.Scheme); len(errs) > 0 {
 		errors = append(errors, errs...)
 	}
 

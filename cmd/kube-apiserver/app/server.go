@@ -40,7 +40,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	utilwait "k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/admission"
-	webhookinit "k8s.io/apiserver/pkg/admission/plugin/webhook/initializer"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 	"k8s.io/apiserver/pkg/authorization/authorizer"
 	genericapiserver "k8s.io/apiserver/pkg/server"
@@ -57,7 +56,6 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
 	certutil "k8s.io/client-go/util/cert"
-	aggregatorapiserver "k8s.io/kube-aggregator/pkg/apiserver"
 	"k8s.io/kubernetes/cmd/kube-apiserver/app/options"
 	"k8s.io/kubernetes/pkg/api/legacyscheme"
 	"k8s.io/kubernetes/pkg/capabilities"
@@ -70,7 +68,6 @@ import (
 	kubeauthenticator "k8s.io/kubernetes/pkg/kubeapiserver/authenticator"
 	"k8s.io/kubernetes/pkg/kubeapiserver/authorizer/modes"
 	kubeoptions "k8s.io/kubernetes/pkg/kubeapiserver/options"
-	kubeserver "k8s.io/kubernetes/pkg/kubeapiserver/server"
 	"k8s.io/kubernetes/pkg/master"
 	"k8s.io/kubernetes/pkg/master/reconcilers"
 	"k8s.io/kubernetes/pkg/master/tunneler"
@@ -159,7 +156,7 @@ func CreateServerChain(completedOptions completedServerRunOptions, stopCh <-chan
 		return nil, err
 	}
 
-	kubeAPIServerConfig, insecureServingInfo, serviceResolver, pluginInitializer, admissionPostStartHook, err := CreateKubeAPIServerConfig(completedOptions, nodeTunneler, proxyTransport)
+	kubeAPIServerConfig, _, pluginInitializer, admissionPostStartHook, err := CreateKubeAPIServerConfig(completedOptions, nodeTunneler, proxyTransport)
 	if err != nil {
 		return nil, err
 	}
@@ -179,32 +176,10 @@ func CreateServerChain(completedOptions completedServerRunOptions, stopCh <-chan
 		return nil, err
 	}
 
-	// otherwise go down the normal path of standing the aggregator up in front of the API server
-	// this wires up openapi
-	kubeAPIServer.GenericAPIServer.PrepareRun()
-
 	// This will wire up openapi for extension api server
 	apiExtensionsServer.GenericAPIServer.PrepareRun()
 
-	// aggregator comes last in the chain
-	aggregatorConfig, err := createAggregatorConfig(*kubeAPIServerConfig.GenericConfig, completedOptions.ServerRunOptions, kubeAPIServerConfig.ExtraConfig.VersionedInformers, serviceResolver, proxyTransport, pluginInitializer)
-	if err != nil {
-		return nil, err
-	}
-	aggregatorServer, err := createAggregatorServer(aggregatorConfig, kubeAPIServer.GenericAPIServer, apiExtensionsServer.Informers)
-	if err != nil {
-		// we don't need special handling for innerStopCh because the aggregator server doesn't create any go routines
-		return nil, err
-	}
-
-	if insecureServingInfo != nil {
-		insecureHandlerChain := kubeserver.BuildInsecureHandlerChain(aggregatorServer.GenericAPIServer.UnprotectedHandler(), kubeAPIServerConfig.GenericConfig)
-		if err := insecureServingInfo.Serve(insecureHandlerChain, kubeAPIServerConfig.GenericConfig.RequestTimeout, stopCh); err != nil {
-			return nil, err
-		}
-	}
-
-	return aggregatorServer.GenericAPIServer, nil
+	return kubeAPIServer.GenericAPIServer, nil
 }
 
 // CreateKubeAPIServer creates and wires a workable kube-apiserver
@@ -263,7 +238,6 @@ func CreateKubeAPIServerConfig(
 ) (
 	config *master.Config,
 	insecureServingInfo *genericapiserver.DeprecatedInsecureServingInfo,
-	serviceResolver aggregatorapiserver.ServiceResolver,
 	pluginInitializers []admission.PluginInitializer,
 	admissionPostStartHook genericapiserver.PostStartHookFunc,
 	lastErr error,
@@ -272,7 +246,7 @@ func CreateKubeAPIServerConfig(
 	var storageFactory *serverstorage.DefaultStorageFactory
 	var sharedInformers informers.SharedInformerFactory
 	var versionedInformers clientgoinformers.SharedInformerFactory
-	genericConfig, sharedInformers, versionedInformers, insecureServingInfo, serviceResolver, pluginInitializers, admissionPostStartHook, storageFactory, lastErr = buildGenericConfig(s.ServerRunOptions, proxyTransport)
+	genericConfig, sharedInformers, versionedInformers, insecureServingInfo, pluginInitializers, admissionPostStartHook, storageFactory, lastErr = buildGenericConfig(s.ServerRunOptions, proxyTransport)
 	if lastErr != nil {
 		return
 	}
@@ -410,7 +384,6 @@ func buildGenericConfig(
 	sharedInformers informers.SharedInformerFactory,
 	versionedInformers clientgoinformers.SharedInformerFactory,
 	insecureServingInfo *genericapiserver.DeprecatedInsecureServingInfo,
-	serviceResolver aggregatorapiserver.ServiceResolver,
 	pluginInitializers []admission.PluginInitializer,
 	admissionPostStartHook genericapiserver.PostStartHookFunc,
 	storageFactory *serverstorage.DefaultStorageFactory,
@@ -486,24 +459,6 @@ func buildGenericConfig(
 	}
 	versionedInformers = clientgoinformers.NewSharedInformerFactory(clientgoExternalClient, 10*time.Minute)
 
-	if s.EnableAggregatorRouting {
-		serviceResolver = aggregatorapiserver.NewEndpointServiceResolver(
-			versionedInformers.Core().V1().Services().Lister(),
-			versionedInformers.Core().V1().Endpoints().Lister(),
-		)
-	} else {
-		serviceResolver = aggregatorapiserver.NewClusterIPServiceResolver(
-			versionedInformers.Core().V1().Services().Lister(),
-		)
-	}
-	// resolve kubernetes.default.svc locally
-	localHost, err := url.Parse(genericConfig.LoopbackClientConfig.Host)
-	if err != nil {
-		lastErr = err
-		return
-	}
-	serviceResolver = aggregatorapiserver.NewLoopbackServiceResolver(serviceResolver, localHost)
-
 	genericConfig.Authentication.Authenticator, err = BuildAuthenticator(s, clientgoExternalClient, sharedInformers)
 	if err != nil {
 		lastErr = fmt.Errorf("invalid authentication config: %v", err)
@@ -546,7 +501,6 @@ func buildGenericConfig(
 		s,
 		client,
 		sharedInformers,
-		serviceResolver,
 		webhookAuthResolverWrapper,
 	)
 	if err != nil {
@@ -572,7 +526,6 @@ func BuildAdmissionPluginInitializers(
 	s *options.ServerRunOptions,
 	client internalclientset.Interface,
 	sharedInformers informers.SharedInformerFactory,
-	serviceResolver aggregatorapiserver.ServiceResolver,
 	webhookAuthWrapper webhook.AuthenticationInfoResolverWrapper,
 ) ([]admission.PluginInitializer, genericapiserver.PostStartHookFunc, error) {
 	var cloudConfig []byte
@@ -599,9 +552,8 @@ func BuildAdmissionPluginInitializers(
 	quotaConfiguration := quotainstall.NewQuotaConfigurationForAdmission()
 
 	kubePluginInitializer := kubeapiserveradmission.NewPluginInitializer(client, sharedInformers, cloudConfig, discoveryRESTMapper, quotaConfiguration)
-	webhookPluginInitializer := webhookinit.NewPluginInitializer(webhookAuthWrapper, serviceResolver)
 
-	return []admission.PluginInitializer{webhookPluginInitializer, kubePluginInitializer}, admissionPostStartHook, nil
+	return []admission.PluginInitializer{kubePluginInitializer}, admissionPostStartHook, nil
 }
 
 // BuildAuthenticator constructs the authenticator
