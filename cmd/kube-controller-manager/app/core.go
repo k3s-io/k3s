@@ -45,7 +45,6 @@ import (
 	"k8s.io/kubernetes/pkg/controller/nodeipam/ipam"
 	lifecyclecontroller "k8s.io/kubernetes/pkg/controller/nodelifecycle"
 	"k8s.io/kubernetes/pkg/controller/podgc"
-	replicationcontroller "k8s.io/kubernetes/pkg/controller/replication"
 	resourcequotacontroller "k8s.io/kubernetes/pkg/controller/resourcequota"
 	servicecontroller "k8s.io/kubernetes/pkg/controller/service"
 	serviceaccountcontroller "k8s.io/kubernetes/pkg/controller/serviceaccount"
@@ -207,16 +206,6 @@ func startEndpointController(ctx ControllerContext) (bool, error) {
 		ctx.InformerFactory.Core().V1().Endpoints(),
 		ctx.ClientBuilder.ClientOrDie("endpoint-controller"),
 	).Run(int(ctx.ComponentConfig.ConcurrentEndpointSyncs), ctx.Stop)
-	return true, nil
-}
-
-func startReplicationController(ctx ControllerContext) (bool, error) {
-	go replicationcontroller.NewReplicationManager(
-		ctx.InformerFactory.Core().V1().Pods(),
-		ctx.InformerFactory.Core().V1().ReplicationControllers(),
-		ctx.ClientBuilder.ClientOrDie("replication-controller"),
-		replicationcontroller.BurstReplicas,
-	).Run(int(ctx.ComponentConfig.ConcurrentRCSyncs), ctx.Stop)
 	return true, nil
 }
 
