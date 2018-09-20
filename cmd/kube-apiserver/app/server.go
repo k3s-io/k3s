@@ -20,14 +20,10 @@ limitations under the License.
 package app
 
 import (
-	"crypto/tls"
 	"fmt"
 	"io/ioutil"
 	"net"
-	"net/http"
-	"net/url"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -72,7 +68,6 @@ import (
 	kubeserver "k8s.io/kubernetes/pkg/kubeapiserver/server"
 	"k8s.io/kubernetes/pkg/master"
 	"k8s.io/kubernetes/pkg/master/reconcilers"
-	"k8s.io/kubernetes/pkg/master/tunneler"
 	quotainstall "k8s.io/kubernetes/pkg/quota/install"
 	"k8s.io/kubernetes/pkg/registry/cachesize"
 	rbacrest "k8s.io/kubernetes/pkg/registry/rbac/rest"
@@ -131,12 +126,9 @@ func Run(runOptions *options.ServerRunOptions, stopCh <-chan struct{}) error {
 
 // CreateServerChain creates the apiservers connected via delegation.
 func CreateServerChain(runOptions *options.ServerRunOptions, stopCh <-chan struct{}) (*master.Config, *genericapiserver.GenericAPIServer, error) {
-	nodeTunneler, proxyTransport, err := CreateNodeDialer(runOptions)
-	if err != nil {
-		return nil, nil, err
-	}
+	runOptions.KubeletConfig.Dial = DefaultProxyDialerFn
 
-	kubeAPIServerConfig, sharedInformers, versionedInformers, _, pluginInitializer, err := CreateKubeAPIServerConfig(runOptions, nodeTunneler, proxyTransport)
+	kubeAPIServerConfig, sharedInformers, versionedInformers, _, pluginInitializer, err := CreateKubeAPIServerConfig(runOptions)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -179,50 +171,9 @@ func CreateKubeAPIServer(kubeAPIServerConfig *master.Config, delegateAPIServer g
 	return kubeAPIServer, nil
 }
 
-// CreateNodeDialer creates the dialer infrastructure to connect to the nodes.
-func CreateNodeDialer(s *options.ServerRunOptions) (tunneler.Tunneler, *http.Transport, error) {
-	// Setup nodeTunneler if needed
-	var nodeTunneler tunneler.Tunneler
-	proxyDialerFn := DefaultProxyDialerFn
-	if len(s.SSHUser) > 0 {
-		// Get ssh key distribution func, if supported
-		var installSSHKey tunneler.InstallSSHKey
-		if s.KubeletConfig.Port == 0 {
-			return nil, nil, fmt.Errorf("must enable kubelet port if proxy ssh-tunneling is specified")
-		}
-		if s.KubeletConfig.ReadOnlyPort == 0 {
-			return nil, nil, fmt.Errorf("must enable kubelet readonly port if proxy ssh-tunneling is specified")
-		}
-		// Set up the nodeTunneler
-		// TODO(cjcullen): If we want this to handle per-kubelet ports or other
-		// kubelet listen-addresses, we need to plumb through options.
-		healthCheckPath := &url.URL{
-			Scheme: "http",
-			Host:   net.JoinHostPort("127.0.0.1", strconv.FormatUint(uint64(s.KubeletConfig.ReadOnlyPort), 10)),
-			Path:   "healthz",
-		}
-		nodeTunneler = tunneler.New(s.SSHUser, s.SSHKeyfile, healthCheckPath, installSSHKey)
-
-		// Use the nodeTunneler's dialer when proxying to pods, services, and nodes
-		proxyDialerFn = nodeTunneler.Dial
-	}
-	// Proxying to pods and services is IP-based... don't expect to be able to verify the hostname
-	proxyTLSClientConfig := &tls.Config{InsecureSkipVerify: true}
-	proxyTransport := utilnet.SetTransportDefaults(&http.Transport{
-		Dial:            proxyDialerFn,
-		TLSClientConfig: proxyTLSClientConfig,
-	})
-	if s.KubeletConfig.Dial == nil {
-		s.KubeletConfig.Dial = proxyDialerFn
-	}
-	return nodeTunneler, proxyTransport, nil
-}
-
 // CreateKubeAPIServerConfig creates all the resources for running the API server, but runs none of them
 func CreateKubeAPIServerConfig(
 	s *options.ServerRunOptions,
-	nodeTunneler tunneler.Tunneler,
-	proxyTransport *http.Transport,
 ) (
 	config *master.Config,
 	sharedInformers informers.SharedInformerFactory,
@@ -243,7 +194,7 @@ func CreateKubeAPIServerConfig(
 	}
 
 	var genericConfig *genericapiserver.Config
-	genericConfig, sharedInformers, versionedInformers, insecureServingInfo, pluginInitializers, lastErr = BuildGenericConfig(s, proxyTransport)
+	genericConfig, sharedInformers, versionedInformers, insecureServingInfo, pluginInitializers, lastErr = BuildGenericConfig(s)
 	if lastErr != nil {
 		return
 	}
@@ -278,9 +229,6 @@ func CreateKubeAPIServerConfig(
 			EventTTL:                s.EventTTL,
 			KubeletClientConfig:     s.KubeletConfig,
 			EnableLogsSupport:       s.EnableLogsHandler,
-			ProxyTransport:          proxyTransport,
-
-			Tunneler: nodeTunneler,
 
 			ServiceIPRange:       serviceIPRange,
 			APIServerServiceIP:   apiServerServiceIP,
@@ -294,18 +242,12 @@ func CreateKubeAPIServerConfig(
 		},
 	}
 
-	if nodeTunneler != nil {
-		// Use the nodeTunneler's dialer to connect to the kubelet
-		config.ExtraConfig.KubeletClientConfig.Dial = nodeTunneler.Dial
-	}
-
 	return
 }
 
 // BuildGenericConfig takes the master server options and produces the genericapiserver.Config associated with it
 func BuildGenericConfig(
 	s *options.ServerRunOptions,
-	proxyTransport *http.Transport,
 ) (
 	genericConfig *genericapiserver.Config,
 	sharedInformers informers.SharedInformerFactory,
@@ -412,9 +354,6 @@ func BuildGenericConfig(
 				ret, err := delegate.ClientConfigForService(serviceName, serviceNamespace)
 				if err != nil {
 					return nil, err
-				}
-				if proxyTransport != nil && proxyTransport.Dial != nil {
-					ret.Dial = proxyTransport.Dial
 				}
 				return ret, err
 			},
