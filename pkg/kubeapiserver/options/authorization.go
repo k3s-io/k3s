@@ -18,7 +18,6 @@ package options
 
 import (
 	"strings"
-	"time"
 
 	"github.com/spf13/pflag"
 
@@ -29,18 +28,12 @@ import (
 )
 
 type BuiltInAuthorizationOptions struct {
-	Mode                        string
-	PolicyFile                  string
-	WebhookConfigFile           string
-	WebhookCacheAuthorizedTTL   time.Duration
-	WebhookCacheUnauthorizedTTL time.Duration
+	Mode string
 }
 
 func NewBuiltInAuthorizationOptions() *BuiltInAuthorizationOptions {
 	return &BuiltInAuthorizationOptions{
-		Mode: authzmodes.ModeAlwaysAllow,
-		WebhookCacheAuthorizedTTL:   5 * time.Minute,
-		WebhookCacheUnauthorizedTTL: 30 * time.Second,
+		Mode: authzmodes.ModeNode + "," + authzmodes.ModeAlwaysAllow,
 	}
 }
 
@@ -53,21 +46,6 @@ func (s *BuiltInAuthorizationOptions) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&s.Mode, "authorization-mode", s.Mode, ""+
 		"Ordered list of plug-ins to do authorization on secure port. Comma-delimited list of: "+
 		strings.Join(authzmodes.AuthorizationModeChoices, ",")+".")
-
-	fs.StringVar(&s.PolicyFile, "authorization-policy-file", s.PolicyFile, ""+
-		"File with authorization policy in csv format, used with --authorization-mode=ABAC, on the secure port.")
-
-	fs.StringVar(&s.WebhookConfigFile, "authorization-webhook-config-file", s.WebhookConfigFile, ""+
-		"File with webhook configuration in kubeconfig format, used with --authorization-mode=Webhook. "+
-		"The API server will query the remote service to determine access on the API server's secure port.")
-
-	fs.DurationVar(&s.WebhookCacheAuthorizedTTL, "authorization-webhook-cache-authorized-ttl",
-		s.WebhookCacheAuthorizedTTL,
-		"The duration to cache 'authorized' responses from the webhook authorizer.")
-
-	fs.DurationVar(&s.WebhookCacheUnauthorizedTTL,
-		"authorization-webhook-cache-unauthorized-ttl", s.WebhookCacheUnauthorizedTTL,
-		"The duration to cache 'unauthorized' responses from the webhook authorizer.")
 
 	fs.String("authorization-rbac-super-user", "", ""+
 		"If specified, a username which avoids RBAC authorization checks and role binding "+
@@ -86,12 +64,8 @@ func (s *BuiltInAuthorizationOptions) Modes() []string {
 
 func (s *BuiltInAuthorizationOptions) ToAuthorizationConfig(informerFactory informers.SharedInformerFactory, versionedInformerFactory versionedinformers.SharedInformerFactory) authorizer.AuthorizationConfig {
 	return authorizer.AuthorizationConfig{
-		AuthorizationModes:          s.Modes(),
-		PolicyFile:                  s.PolicyFile,
-		WebhookConfigFile:           s.WebhookConfigFile,
-		WebhookCacheAuthorizedTTL:   s.WebhookCacheAuthorizedTTL,
-		WebhookCacheUnauthorizedTTL: s.WebhookCacheUnauthorizedTTL,
-		InformerFactory:             informerFactory,
-		VersionedInformerFactory:    versionedInformerFactory,
+		AuthorizationModes:       s.Modes(),
+		InformerFactory:          informerFactory,
+		VersionedInformerFactory: versionedInformerFactory,
 	}
 }

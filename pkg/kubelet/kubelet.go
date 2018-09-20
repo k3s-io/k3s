@@ -57,7 +57,6 @@ import (
 	"k8s.io/kubernetes/pkg/kubelet/config"
 	"k8s.io/kubernetes/pkg/kubelet/configmap"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
-	"k8s.io/kubernetes/pkg/kubelet/dockershim"
 	"k8s.io/kubernetes/pkg/kubelet/events"
 	"k8s.io/kubernetes/pkg/kubelet/eviction"
 	"k8s.io/kubernetes/pkg/kubelet/images"
@@ -220,7 +219,6 @@ type Dependencies struct {
 	Auth                    server.AuthInterface
 	CAdvisorInterface       cadvisor.Interface
 	ContainerManager        cm.ContainerManager
-	DockerClientConfig      *dockershim.ClientConfig
 	EventClient             v1core.EventsGetter
 	HeartbeatClient         v1core.CoreV1Interface
 	OnHeartbeatFailure      func()
@@ -470,7 +468,6 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 		makeIPTablesUtilChains:         kubeCfg.MakeIPTablesUtilChains,
 		iptablesMasqueradeBit:          int(kubeCfg.IPTablesMasqueradeBit),
 		iptablesDropBit:                int(kubeCfg.IPTablesDropBit),
-		keepTerminatedPodVolumes:       keepTerminatedPodVolumes,
 	}
 
 	secretManager := secret.NewCachingSecretManager(

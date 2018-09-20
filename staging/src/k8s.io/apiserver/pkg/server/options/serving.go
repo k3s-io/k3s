@@ -40,6 +40,9 @@ type SecureServingOptions struct {
 	// "tcp4", and "tcp6".
 	BindNetwork string
 
+	PublicIP *net.IP
+	PublicPort int
+
 	// Listener is the secure server network listener.
 	// either Listener or BindAddress/BindPort/BindNetwork is set,
 	// if Listener is set, use it and omit BindAddress/BindPort/BindNetwork.

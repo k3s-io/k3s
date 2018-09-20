@@ -550,7 +550,7 @@ func createClients(config componentconfig.ClientConnectionConfiguration, masterO
 }
 
 // Run runs the SchedulerServer. This should never exit.
-func (s *SchedulerServer) Run(stop chan struct{}) error {
+func (s *SchedulerServer) Run(stop <-chan struct{}) error {
 	// To help debugging, immediately log version
 	glog.Infof("Version: %+v", version.Get())
 

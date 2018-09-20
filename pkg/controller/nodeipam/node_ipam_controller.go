@@ -18,8 +18,6 @@ package nodeipam
 
 import (
 	"net"
-	"time"
-
 	"github.com/golang/glog"
 
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -41,18 +39,6 @@ func init() {
 	// Register prometheus metrics
 	Register()
 }
-
-const (
-	// ipamResyncInterval is the amount of time between when the cloud and node
-	// CIDR range assignments are synchronized.
-	ipamResyncInterval = 30 * time.Second
-	// ipamMaxBackoff is the maximum backoff for retrying synchronization of a
-	// given in the error state.
-	ipamMaxBackoff = 10 * time.Second
-	// ipamInitialRetry is the initial retry interval for retrying synchronization of a
-	// given in the error state.
-	ipamInitialBackoff = 250 * time.Millisecond
-)
 
 // Controller is the controller that manages node ipam state.
 type Controller struct {
@@ -142,9 +128,7 @@ func (nc *Controller) Run(stopCh <-chan struct{}) {
 		return
 	}
 
-	if nc.allocatorType != ipam.IPAMFromClusterAllocatorType && nc.allocatorType != ipam.IPAMFromCloudAllocatorType {
-		go nc.cidrAllocator.Run(stopCh)
-	}
+	go nc.cidrAllocator.Run(stopCh)
 
 	<-stopCh
 }

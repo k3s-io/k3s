@@ -44,12 +44,6 @@ const (
 	// RangeAllocatorType is the allocator that uses an internal CIDR
 	// range allocator to do node CIDR range allocations.
 	RangeAllocatorType CIDRAllocatorType = "RangeAllocator"
-	// IPAMFromClusterAllocatorType uses the ipam controller sync'ing the node
-	// CIDR range allocations from the cluster to the cloud.
-	IPAMFromClusterAllocatorType = "IPAMFromCluster"
-	// IPAMFromCloudAllocatorType uses the ipam controller sync'ing the node
-	// CIDR range allocations from the cloud to the cluster.
-	IPAMFromCloudAllocatorType = "IPAMFromCloud"
 )
 
 // TODO: figure out the good setting for those constants.

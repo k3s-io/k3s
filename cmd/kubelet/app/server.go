@@ -68,7 +68,6 @@ import (
 	"k8s.io/kubernetes/pkg/kubelet/cm"
 	"k8s.io/kubernetes/pkg/kubelet/config"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
-	"k8s.io/kubernetes/pkg/kubelet/dockershim"
 	"k8s.io/kubernetes/pkg/kubelet/eviction"
 	evictionapi "k8s.io/kubernetes/pkg/kubelet/eviction/api"
 	dynamickubeletconfig "k8s.io/kubernetes/pkg/kubelet/kubeletconfig"
@@ -323,20 +322,10 @@ func UnsecuredDependencies(s *options.KubeletServer) (*kubelet.Dependencies, err
 		writer = &kubeio.NsenterWriter{}
 	}
 
-	var dockerClientConfig *dockershim.ClientConfig
-	if s.ContainerRuntime == kubetypes.DockerContainerRuntime {
-		dockerClientConfig = &dockershim.ClientConfig{
-			DockerEndpoint:            s.DockerEndpoint,
-			RuntimeRequestTimeout:     s.RuntimeRequestTimeout.Duration,
-			ImagePullProgressDeadline: s.ImagePullProgressDeadline.Duration,
-		}
-	}
-
 	return &kubelet.Dependencies{
 		Auth:                nil, // default does not enforce auth[nz]
 		CAdvisorInterface:   nil, // cadvisor.New launches background processes (bg http.ListenAndServe, and some bg cleaners), not set here
 		ContainerManager:    nil,
-		DockerClientConfig:  dockerClientConfig,
 		KubeClient:          nil,
 		HeartbeatClient:     nil,
 		ExternalKubeClient:  nil,
