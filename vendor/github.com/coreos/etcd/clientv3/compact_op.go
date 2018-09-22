@@ -21,7 +21,6 @@ import (
 // CompactOp represents a compact operation.
 type CompactOp struct {
 	revision int64
-	physical bool
 }
 
 // CompactOption configures compact operation.
@@ -41,11 +40,5 @@ func OpCompact(rev int64, opts ...CompactOption) CompactOp {
 }
 
 func (op CompactOp) toRequest() *pb.CompactionRequest {
-	return &pb.CompactionRequest{Revision: op.revision, Physical: op.physical}
-}
-
-// WithCompactPhysical makes Compact wait until all compacted entries are
-// removed from the etcd server's storage.
-func WithCompactPhysical() CompactOption {
-	return func(op *CompactOp) { op.physical = true }
+	return &pb.CompactionRequest{Revision: op.revision}
 }

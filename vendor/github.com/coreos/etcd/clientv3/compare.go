@@ -66,38 +66,13 @@ func Compare(cmp Cmp, result string, v interface{}) Cmp {
 	return cmp
 }
 
-func Value(key string) Cmp {
-	return Cmp{Key: []byte(key), Target: pb.Compare_VALUE}
-}
-
 func Version(key string) Cmp {
 	return Cmp{Key: []byte(key), Target: pb.Compare_VERSION}
-}
-
-func CreateRevision(key string) Cmp {
-	return Cmp{Key: []byte(key), Target: pb.Compare_CREATE}
 }
 
 func ModRevision(key string) Cmp {
 	return Cmp{Key: []byte(key), Target: pb.Compare_MOD}
 }
-
-// KeyBytes returns the byte slice holding with the comparison key.
-func (cmp *Cmp) KeyBytes() []byte { return cmp.Key }
-
-// WithKeyBytes sets the byte slice for the comparison key.
-func (cmp *Cmp) WithKeyBytes(key []byte) { cmp.Key = key }
-
-// ValueBytes returns the byte slice holding the comparison value, if any.
-func (cmp *Cmp) ValueBytes() []byte {
-	if tu, ok := cmp.TargetUnion.(*pb.Compare_Value); ok {
-		return tu.Value
-	}
-	return nil
-}
-
-// WithValueBytes sets the byte slice for the comparison's value.
-func (cmp *Cmp) WithValueBytes(v []byte) { cmp.TargetUnion.(*pb.Compare_Value).Value = v }
 
 // mustInt64 panics if val isn't an int or int64. It returns an int64 otherwise.
 func mustInt64(val interface{}) int64 {
@@ -108,13 +83,4 @@ func mustInt64(val interface{}) int64 {
 		return int64(v)
 	}
 	panic("bad value")
-}
-
-// mustInt64orLeaseID panics if val isn't a LeaseID, int or int64. It returns an
-// int64 otherwise.
-func mustInt64orLeaseID(val interface{}) int64 {
-	if v, ok := val.(LeaseID); ok {
-		return int64(v)
-	}
-	return mustInt64(val)
 }

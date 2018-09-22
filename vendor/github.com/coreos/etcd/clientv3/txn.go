@@ -15,25 +15,15 @@
 package clientv3
 
 import (
+	"fmt"
 	"sync"
+	"time"
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-
 	"golang.org/x/net/context"
-	"google.golang.org/grpc"
+	utiltrace "k8s.io/apiserver/pkg/util/trace"
 )
 
-// Txn is the interface that wraps mini-transactions.
-//
-//	 Txn(context.TODO()).If(
-//	  Compare(Value(k1), ">", v1),
-//	  Compare(Version(k1), "=", 2)
-//	 ).Then(
-//	  OpPut(k2,v2), OpPut(k3,v3)
-//	 ).Else(
-//	  OpPut(k4,v4), OpPut(k5,v5)
-//	 ).Commit()
-//
 type Txn interface {
 	// If takes a list of comparison. If all comparisons passed in succeed,
 	// the operations passed into Then() will be executed. Or the operations
@@ -61,14 +51,10 @@ type txn struct {
 	cthen bool
 	celse bool
 
-	isWrite bool
-
 	cmps []*pb.Compare
 
-	sus []*pb.RequestOp
-	fas []*pb.RequestOp
-
-	callOpts []grpc.CallOption
+	sus []Op
+	fas []Op
 }
 
 func (txn *txn) If(cs ...Cmp) Txn {
@@ -110,8 +96,7 @@ func (txn *txn) Then(ops ...Op) Txn {
 	txn.cthen = true
 
 	for _, op := range ops {
-		txn.isWrite = txn.isWrite || op.isWrite()
-		txn.sus = append(txn.sus, op.toRequestOp())
+		txn.sus = append(txn.sus, op)
 	}
 
 	return txn
@@ -128,24 +113,112 @@ func (txn *txn) Else(ops ...Op) Txn {
 	txn.celse = true
 
 	for _, op := range ops {
-		txn.isWrite = txn.isWrite || op.isWrite()
-		txn.fas = append(txn.fas, op.toRequestOp())
+		txn.fas = append(txn.fas, op)
 	}
 
 	return txn
 }
 
-func (txn *txn) Commit() (*TxnResponse, error) {
-	txn.mu.Lock()
-	defer txn.mu.Unlock()
-
-	r := &pb.TxnRequest{Compare: txn.cmps, Success: txn.sus, Failure: txn.fas}
-
-	var resp *pb.TxnResponse
-	var err error
-	resp, err = txn.kv.remote.Txn(txn.ctx, r, txn.callOpts...)
-	if err != nil {
-		return nil, toErr(txn.ctx, err)
+func (txn *txn) do(op Op) (*pb.ResponseOp, error) {
+	switch op.t {
+	case tRange:
+		r, err := txn.kv.opGet(txn.ctx, op)
+		if err != nil {
+			return nil, err
+		}
+		return &pb.ResponseOp{
+			Response: &pb.ResponseOp_ResponseRange{
+				ResponseRange: (*pb.RangeResponse)(r),
+			},
+		}, nil
+	case tPut:
+		r, err := txn.kv.opPut(txn.ctx, op)
+		if err != nil {
+			return nil, err
+		}
+		return &pb.ResponseOp{
+			Response: &pb.ResponseOp_ResponsePut{
+				ResponsePut: (*pb.PutResponse)(r),
+			},
+		}, nil
+	case tDeleteRange:
+		r, err := txn.kv.opDelete(txn.ctx, op)
+		if err != nil {
+			return nil, err
+		}
+		return &pb.ResponseOp{
+			Response: &pb.ResponseOp_ResponseDeleteRange{
+				ResponseDeleteRange: (*pb.DeleteRangeResponse)(r),
+			},
+		}, nil
+	default:
+		return nil, fmt.Errorf("unknown op in txn: %#v", op)
 	}
-	return (*TxnResponse)(resp), nil
+}
+
+func (txn *txn) Commit() (*TxnResponse, error) {
+	trace := utiltrace.New("SQL Commit")
+	defer trace.LogIfLong(500 * time.Millisecond)
+
+	locks := map[string]bool{}
+	resp := &TxnResponse{
+		Header: &pb.ResponseHeader{},
+	}
+
+	good := true
+	for _, c := range txn.cmps {
+		k := string(c.Key)
+		if !locks[k] {
+			txn.kv.l.Lock(k)
+			trace.Step(fmt.Sprintf("lock acquired: %s", k))
+			locks[k] = true
+			defer txn.kv.l.Unlock(k)
+		}
+		gr, err := txn.kv.Get(txn.ctx, k)
+		if err != nil {
+			return nil, err
+		}
+
+		switch c.Target {
+		case pb.Compare_VERSION:
+			ver := int64(0)
+			if len(gr.Kvs) > 0 {
+				ver = gr.Kvs[0].Version
+			}
+			cv, _ := c.TargetUnion.(*pb.Compare_Version)
+			if ver != cv.Version {
+				good = false
+			}
+		case pb.Compare_MOD:
+			mod := int64(0)
+			if len(gr.Kvs) > 0 {
+				mod = gr.Kvs[0].ModRevision
+			}
+			cv, _ := c.TargetUnion.(*pb.Compare_ModRevision)
+			if mod != cv.ModRevision {
+				good = false
+			}
+		default:
+			return nil, fmt.Errorf("unknown txn target %v", c.Target)
+		}
+
+		trace.Step(fmt.Sprintf("condition key %s good %v", k, good))
+	}
+
+	resp.Succeeded = good
+	ops := txn.sus
+	if !good {
+		ops = txn.fas
+	}
+
+	for _, op := range ops {
+		r, err := txn.do(op)
+		if err != nil {
+			return nil, err
+		}
+		resp.Responses = append(resp.Responses, r)
+		trace.Step(fmt.Sprintf("op key %s op %v", op.key, op.t))
+	}
+
+	return resp, nil
 }

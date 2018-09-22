@@ -15,10 +15,16 @@
 package clientv3
 
 import (
-	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"bytes"
+	"sync"
 
+	"github.com/coreos/etcd/clientv3/driver"
+	"github.com/coreos/etcd/clientv3/driver/sqlite"
+	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/mvcc/mvccpb"
+	"github.com/docker/docker/pkg/locker"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
-	"google.golang.org/grpc"
 )
 
 type (
@@ -27,6 +33,11 @@ type (
 	GetResponse     pb.RangeResponse
 	DeleteResponse  pb.DeleteRangeResponse
 	TxnResponse     pb.TxnResponse
+)
+
+var (
+	connection *kv
+	dbOnce     sync.Once
 )
 
 type KV interface {
@@ -52,125 +63,173 @@ type KV interface {
 	// Compact compacts etcd KV history before the given rev.
 	Compact(ctx context.Context, rev int64, opts ...CompactOption) (*CompactResponse, error)
 
-	// Do applies a single Op on KV without a transaction.
-	// Do is useful when creating arbitrary operations to be issued at a
-	// later time; the user can range over the operations, calling Do to
-	// execute them. Get/Put/Delete, on the other hand, are best suited
-	// for when the operation should be issued at the time of declaration.
-	Do(ctx context.Context, op Op) (OpResponse, error)
-
 	// Txn creates a transaction.
 	Txn(ctx context.Context) Txn
 }
 
-type OpResponse struct {
-	put *PutResponse
-	get *GetResponse
-	del *DeleteResponse
-	txn *TxnResponse
-}
-
-func (op OpResponse) Put() *PutResponse    { return op.put }
-func (op OpResponse) Get() *GetResponse    { return op.get }
-func (op OpResponse) Del() *DeleteResponse { return op.del }
-func (op OpResponse) Txn() *TxnResponse    { return op.txn }
-
-func (resp *PutResponse) OpResponse() OpResponse {
-	return OpResponse{put: resp}
-}
-func (resp *GetResponse) OpResponse() OpResponse {
-	return OpResponse{get: resp}
-}
-func (resp *DeleteResponse) OpResponse() OpResponse {
-	return OpResponse{del: resp}
-}
-func (resp *TxnResponse) OpResponse() OpResponse {
-	return OpResponse{txn: resp}
-}
-
 type kv struct {
-	remote   pb.KVClient
-	callOpts []grpc.CallOption
+	l locker.Locker
+	d driver.Driver
 }
 
-func NewKV(c *Client) KV {
-	api := &kv{remote: RetryKVClient(c)}
-	if c != nil {
-		api.callOpts = c.callOpts
-	}
-	return api
+func newKV() *kv {
+	dbOnce.Do(func() {
+		var err error
+		db, err := sqlite.Open()
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		d := sqlite.NewSQLite()
+		if err := d.Start(context.TODO(), db); err != nil {
+			panic(err)
+		}
+
+		connection = &kv{
+			d: d,
+		}
+	})
+
+	return connection
 }
 
-func NewKVFromKVClient(remote pb.KVClient, c *Client) KV {
-	api := &kv{remote: remote}
-	if c != nil {
-		api.callOpts = c.callOpts
-	}
-	return api
+func (k *kv) Put(ctx context.Context, key, val string, opts ...OpOption) (*PutResponse, error) {
+	//trace := utiltrace.New(fmt.Sprintf("SQL Put key: %s", key))
+	//defer trace.LogIfLong(500 * time.Millisecond)
+	k.l.Lock(key)
+	defer k.l.Unlock(key)
+
+	op := OpPut(key, val, opts...)
+	return k.opPut(ctx, op)
 }
 
-func (kv *kv) Put(ctx context.Context, key, val string, opts ...OpOption) (*PutResponse, error) {
-	r, err := kv.Do(ctx, OpPut(key, val, opts...))
-	return r.put, toErr(ctx, err)
-}
-
-func (kv *kv) Get(ctx context.Context, key string, opts ...OpOption) (*GetResponse, error) {
-	r, err := kv.Do(ctx, OpGet(key, opts...))
-	return r.get, toErr(ctx, err)
-}
-
-func (kv *kv) Delete(ctx context.Context, key string, opts ...OpOption) (*DeleteResponse, error) {
-	r, err := kv.Do(ctx, OpDelete(key, opts...))
-	return r.del, toErr(ctx, err)
-}
-
-func (kv *kv) Compact(ctx context.Context, rev int64, opts ...CompactOption) (*CompactResponse, error) {
-	resp, err := kv.remote.Compact(ctx, OpCompact(rev, opts...).toRequest(), kv.callOpts...)
+func (k *kv) opPut(ctx context.Context, op Op) (*PutResponse, error) {
+	oldR, r, err := k.d.Update(ctx, op.key, op.val, op.rev, int64(op.leaseID))
 	if err != nil {
-		return nil, toErr(ctx, err)
+		return nil, err
 	}
-	return (*CompactResponse)(resp), err
+	return getPutResponse(oldR, r), nil
 }
 
-func (kv *kv) Txn(ctx context.Context) Txn {
+func (k *kv) Get(ctx context.Context, key string, opts ...OpOption) (*GetResponse, error) {
+	//trace := utiltrace.New(fmt.Sprintf("SQL Get key: %s", key))
+	//defer trace.LogIfLong(500 * time.Millisecond)
+	op := OpGet(key, opts...)
+	return k.opGet(ctx, op)
+}
+
+func (k *kv) opGet(ctx context.Context, op Op) (*GetResponse, error) {
+	var (
+		rangeKey string
+		startKey string
+	)
+
+	if op.boundingKey == "" {
+		rangeKey = op.key
+		startKey = ""
+	} else {
+		rangeKey = op.boundingKey
+		startKey = string(bytes.SplitN([]byte(op.key), []byte{'\x00'}, -1)[0])
+	}
+
+	kvs, rev, err := k.d.List(ctx, op.rev, op.limit, rangeKey, startKey)
+	if err != nil {
+		return nil, err
+	}
+
+	return getResponse(kvs, rev, op.limit, op.countOnly), nil
+}
+
+func getPutResponse(oldValue *driver.KeyValue, value *driver.KeyValue) *PutResponse {
+	return &PutResponse{
+		Header: &pb.ResponseHeader{
+			Revision: value.Revision,
+		},
+		PrevKv: toKeyValue(oldValue),
+	}
+}
+
+func toKeyValue(v *driver.KeyValue) *mvccpb.KeyValue {
+	if v == nil {
+		return nil
+	}
+
+	return &mvccpb.KeyValue{
+		Key:            []byte(v.Key),
+		CreateRevision: v.CreateRevision,
+		ModRevision:    v.Revision,
+		Version:        v.Version,
+		Value:          v.Value,
+		Lease:          v.TTL,
+	}
+}
+
+func getDeleteResponse(values []*driver.KeyValue) *DeleteResponse {
+	gr := getResponse(values, 0, 0, false)
+	return &DeleteResponse{
+		Header: &pb.ResponseHeader{
+			Revision: gr.Header.Revision,
+		},
+		PrevKvs: gr.Kvs,
+	}
+}
+
+func getResponse(values []*driver.KeyValue, revision, limit int64, count bool) *GetResponse {
+	gr := &GetResponse{
+		Header: &pb.ResponseHeader{
+			Revision: revision,
+		},
+	}
+
+	for _, v := range values {
+		kv := toKeyValue(v)
+		if kv.ModRevision > gr.Header.Revision {
+			gr.Header.Revision = kv.ModRevision
+		}
+
+		gr.Kvs = append(gr.Kvs, kv)
+	}
+
+	gr.Count = int64(len(gr.Kvs))
+	if limit > 0 && gr.Count > limit {
+		gr.Kvs = gr.Kvs[:limit]
+		gr.More = true
+	}
+
+	if count {
+		gr.Kvs = nil
+	}
+
+	return gr
+}
+
+func (k *kv) Delete(ctx context.Context, key string, opts ...OpOption) (*DeleteResponse, error) {
+	//trace := utiltrace.New(fmt.Sprintf("SQL Delete key: %s", key))
+	//defer trace.LogIfLong(500 * time.Millisecond)
+	k.l.Lock(key)
+	defer k.l.Unlock(key)
+
+	op := OpDelete(key, opts...)
+	return k.opDelete(ctx, op)
+}
+
+func (k *kv) opDelete(ctx context.Context, op Op) (*DeleteResponse, error) {
+	r, err := k.d.Delete(ctx, op.key, op.rev)
+	if err != nil {
+		return nil, err
+	}
+	return getDeleteResponse(r), nil
+}
+
+func (k *kv) Compact(ctx context.Context, rev int64, opts ...CompactOption) (*CompactResponse, error) {
+	return &CompactResponse{
+		Header: &pb.ResponseHeader{},
+	}, nil
+}
+
+func (k *kv) Txn(ctx context.Context) Txn {
 	return &txn{
-		kv:       kv,
-		ctx:      ctx,
-		callOpts: kv.callOpts,
+		kv:  k,
+		ctx: ctx,
 	}
-}
-
-func (kv *kv) Do(ctx context.Context, op Op) (OpResponse, error) {
-	var err error
-	switch op.t {
-	case tRange:
-		var resp *pb.RangeResponse
-		resp, err = kv.remote.Range(ctx, op.toRangeRequest(), kv.callOpts...)
-		if err == nil {
-			return OpResponse{get: (*GetResponse)(resp)}, nil
-		}
-	case tPut:
-		var resp *pb.PutResponse
-		r := &pb.PutRequest{Key: op.key, Value: op.val, Lease: int64(op.leaseID), PrevKv: op.prevKV, IgnoreValue: op.ignoreValue, IgnoreLease: op.ignoreLease}
-		resp, err = kv.remote.Put(ctx, r, kv.callOpts...)
-		if err == nil {
-			return OpResponse{put: (*PutResponse)(resp)}, nil
-		}
-	case tDeleteRange:
-		var resp *pb.DeleteRangeResponse
-		r := &pb.DeleteRangeRequest{Key: op.key, RangeEnd: op.end, PrevKv: op.prevKV}
-		resp, err = kv.remote.DeleteRange(ctx, r, kv.callOpts...)
-		if err == nil {
-			return OpResponse{del: (*DeleteResponse)(resp)}, nil
-		}
-	case tTxn:
-		var resp *pb.TxnResponse
-		resp, err = kv.remote.Txn(ctx, op.toTxnRequest(), kv.callOpts...)
-		if err == nil {
-			return OpResponse{txn: (*TxnResponse)(resp)}, nil
-		}
-	default:
-		panic("Unknown op")
-	}
-	return OpResponse{}, toErr(ctx, err)
 }
