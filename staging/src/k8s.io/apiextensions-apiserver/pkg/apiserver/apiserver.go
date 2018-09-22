@@ -180,6 +180,7 @@ func (c completedConfig) New(delegationTarget genericapiserver.DelegationTarget)
 		delegate:  delegateHandler,
 	}
 	crdHandler := NewCustomResourceDefinitionHandler(
+		s.GenericAPIServer,
 		versionDiscoveryHandler,
 		groupDiscoveryHandler,
 		s.GenericAPIServer.RequestContextMapper(),

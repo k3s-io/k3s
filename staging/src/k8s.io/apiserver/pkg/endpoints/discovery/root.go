@@ -19,7 +19,10 @@ package discovery
 import (
 	"errors"
 	"net/http"
+	"strings"
 	"sync"
+
+	"k8s.io/apiserver/pkg/server/routes"
 
 	restful "github.com/emicklei/go-restful"
 
@@ -35,6 +38,8 @@ import (
 // GroupManager is an interface that allows dynamic mutation of the existing webservice to handle
 // API groups being added or removed.
 type GroupManager interface {
+	routes.ListedPathProvider
+
 	AddGroup(apiGroup metav1.APIGroup)
 	RemoveGroup(groupName string)
 
@@ -71,6 +76,22 @@ func NewRootAPIsHandler(addresses Addresses, serializer runtime.NegotiatedSerial
 		apiGroups:     map[string]metav1.APIGroup{},
 		contextMapper: contextMapper,
 	}
+}
+
+func (s *rootAPIsHandler) ListedPaths() []string {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+
+	var result []string
+	for name, group := range s.apiGroups {
+		if strings.Contains(name, ".") {
+			for _, ver := range group.Versions {
+				result = append(result, "/apis/"+ver.GroupVersion)
+			}
+		}
+	}
+
+	return result
 }
 
 func (s *rootAPIsHandler) AddGroup(apiGroup metav1.APIGroup) {

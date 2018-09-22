@@ -157,6 +157,8 @@ func CreateServerChain(runOptions *options.ServerRunOptions, stopCh <-chan struc
 		return nil, nil, err
 	}
 
+	apiExtensionsServer.GenericAPIServer.DiscoveryGroupManager = kubeAPIServer.GenericAPIServer.DiscoveryGroupManager
+
 	// This will wire up openapi for extension api server
 	apiExtensionsServer.GenericAPIServer.PrepareRun()
 
@@ -438,7 +440,6 @@ func BuildGenericConfig(
 	if err != nil {
 		lastErr = fmt.Errorf("failed to initialize admission: %v", err)
 	}
-
 	return
 }
 
