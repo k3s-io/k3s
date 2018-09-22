@@ -25,6 +25,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"k8s.io/apiserver/pkg/server"
+
 	"github.com/golang/glog"
 
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -89,6 +91,9 @@ type crdHandler struct {
 	// MasterCount is used to implement sleep to improve
 	// CRD establishing process for HA clusters.
 	masterCount int
+
+	genericAPIServer *server.GenericAPIServer
+	addRoot          sync.Once
 }
 
 // crdInfo stores enough information to serve the storage for the custom resource
@@ -118,6 +123,7 @@ type crdInfo struct {
 type crdStorageMap map[types.UID]*crdInfo
 
 func NewCustomResourceDefinitionHandler(
+	genericAPIServer *server.GenericAPIServer,
 	versionDiscoveryHandler *versionDiscoveryHandler,
 	groupDiscoveryHandler *groupDiscoveryHandler,
 	crdInformer informers.CustomResourceDefinitionInformer,
@@ -127,6 +133,7 @@ func NewCustomResourceDefinitionHandler(
 	establishingController *establish.EstablishingController,
 	masterCount int) *crdHandler {
 	ret := &crdHandler{
+		genericAPIServer:        genericAPIServer,
 		versionDiscoveryHandler: versionDiscoveryHandler,
 		groupDiscoveryHandler:   groupDiscoveryHandler,
 		customStorage:           atomic.Value{},
@@ -138,13 +145,26 @@ func NewCustomResourceDefinitionHandler(
 		masterCount:             masterCount,
 	}
 	crdInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		UpdateFunc: ret.updateCustomResourceDefinition,
+		AddFunc: func(obj interface{}) {
+			ret.updateAPI(obj, false)
+		},
+		UpdateFunc: func(oldObj, newObj interface{}) {
+			ret.updateCustomResourceDefinition(oldObj, newObj)
+			ret.updateAPI(newObj, false)
+		},
 		DeleteFunc: func(obj interface{}) {
+			ret.updateAPI(obj, true)
 			ret.removeDeadStorage()
 		},
 	})
 
 	ret.customStorage.Store(crdStorageMap{})
+
+	go func() {
+		// pretty hacky, but this will install the CRD api group if no CRDs exist
+		time.Sleep(5 * time.Second)
+		ret.updateAPI(nil, false)
+	}()
 
 	return ret
 }
@@ -302,6 +322,44 @@ func (r *crdHandler) serveScale(w http.ResponseWriter, req *http.Request, reques
 		http.Error(w, fmt.Sprintf("unhandled verb %q", requestInfo.Verb), http.StatusMethodNotAllowed)
 		return nil
 	}
+}
+
+func (r *crdHandler) updateAPI(obj interface{}, del bool) {
+	if r.genericAPIServer.DiscoveryGroupManager == nil {
+		return
+	}
+
+	r.addRoot.Do(func() {
+		ver := metav1.GroupVersionForDiscovery{
+			Version:      "v1beta1",
+			GroupVersion: fmt.Sprintf("apiextensions.k8s.io/v1beta1"),
+		}
+		r.genericAPIServer.DiscoveryGroupManager.AddGroup(metav1.APIGroup{
+			Name:             "apiextensions.k8s.io",
+			Versions:         []metav1.GroupVersionForDiscovery{ver},
+			PreferredVersion: ver,
+		})
+	})
+
+	newCRD, ok := obj.(*apiextensions.CustomResourceDefinition)
+	if !ok {
+		return
+	}
+
+	if del {
+		r.genericAPIServer.DiscoveryGroupManager.RemoveGroup(newCRD.Spec.Group)
+		return
+	}
+
+	ver := metav1.GroupVersionForDiscovery{
+		Version:      newCRD.Spec.Version,
+		GroupVersion: fmt.Sprintf("%s/%s", newCRD.Spec.Group, newCRD.Spec.Version),
+	}
+	r.genericAPIServer.DiscoveryGroupManager.AddGroup(metav1.APIGroup{
+		Name:             newCRD.Spec.Group,
+		Versions:         []metav1.GroupVersionForDiscovery{ver},
+		PreferredVersion: ver,
+	})
 }
 
 func (r *crdHandler) updateCustomResourceDefinition(oldObj, newObj interface{}) {
