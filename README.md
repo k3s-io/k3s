@@ -1,86 +1,51 @@
 # Kubernetes
 
-[![Submit Queue Widget]][Submit Queue] [![GoDoc Widget]][GoDoc] [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/569/badge)](https://bestpractices.coreinfrastructure.org/projects/569)
-
 <img src="https://github.com/kubernetes/kubernetes/raw/master/logo/logo.png" width="100">
 
 ----
 
-Kubernetes is an open source system for managing [containerized applications]
-across multiple hosts; providing basic mechanisms for deployment, maintenance,
-and scaling of applications.
+Kubernetes without the features I don't care about.
 
-Kubernetes builds upon a decade and a half of experience at Google running
-production workloads at scale using a system called [Borg],
-combined with best-of-breed ideas and practices from the community.
+Build
+-----
 
-Kubernetes is hosted by the Cloud Native Computing Foundation ([CNCF]).
-If you are a company that wants to help shape the evolution of
-technologies that are container-packaged, dynamically-scheduled
-and microservices-oriented, consider joining the CNCF.
-For details about who's involved and how Kubernetes plays a role,
-read the CNCF [announcement].
+    # First have sane GOPATH, hopefully you know how to do that
+    go build -o k3s
+    go build -o kubectl ./cmd/kubectl
 
-----
+Run
+---
 
-## To start using Kubernetes
+Run containerd
 
-See our documentation on [kubernetes.io].
+```bash
+# Download and install containerd and runc
+sudo curl -fL -o /usr/local/bin/runc https://github.com/opencontainers/runc/releases/download/v1.0.0-rc5/runc.amd64
+sudo chmod +x /usr/local/bin/runc
 
-Try our [interactive tutorial].
+curl -fsL https://github.com/containerd/containerd/releases/download/v1.1.1/containerd-1.1.1.linux-amd64.tar.gz | sudo tar xvf /usr/src/containerd.tgz -C /usr/local/bin bin/ --strip-components=1
 
-Take a free course on [Scalable Microservices with Kubernetes].
+# Some CNI
+sudo mkdir -p /opt/cni/bin
+curl -fsL https://github.com/containernetworking/plugins/releases/download/v0.7.1/cni-plugins-amd64-v0.7.1.tgz  | sudo tar xvzf - -C /opt/cni/bin ./loopback
 
-## To start developing Kubernetes
-
-The [community repository] hosts all information about
-building Kubernetes from source, how to contribute code
-and documentation, who to contact about what, etc.
-
-If you want to build Kubernetes right away there are two options:
-
-##### You have a working [Go environment].
-
-```
-$ go get -d k8s.io/kubernetes
-$ cd $GOPATH/src/k8s.io/kubernetes
-$ make
+sudo containerd &
 ```
 
-##### You have a working [Docker environment].
+Run Kubernetes
 
+```bash
+# Server
+./k3s
+
+# Agent (If doing this on another host copy the ./data folder)
+sudo ./k3s agent
+
+# Install Networking
+export KUBECONFIG=./data/cred/kubeconfig.yaml
+curl -s "https://cloud.weave.works/k8s/net?k8s-version=$(./kubectl version | base64 | tr -d '\n')" | sed 's!rbac.authorization.k8s.io/v1beta1!rbac.authorization.k8s.io/v1!g' | ./kubectl apply -f -
 ```
-$ git clone https://github.com/kubernetes/kubernetes
-$ cd kubernetes
-$ make quick-release
-```
 
-For the full story, head over to the [developer's documentation].
+Your kubeconfig file is in `./data/cred/kubeconfig.yaml`
 
-## Support
-
-If you need support, start with the [troubleshooting guide],
-and work your way through the process that we've outlined.
-
-That said, if you have questions, reach out to us
-[one way or another][communication].
-
-[announcement]: https://cncf.io/news/announcement/2015/07/new-cloud-native-computing-foundation-drive-alignment-among-container
-[Borg]: https://research.google.com/pubs/pub43438.html
-[CNCF]: https://www.cncf.io/about
-[communication]: https://git.k8s.io/community/communication
-[community repository]: https://git.k8s.io/community
-[containerized applications]: https://kubernetes.io/docs/concepts/overview/what-is-kubernetes/
-[developer's documentation]: https://git.k8s.io/community/contributors/devel#readme
-[Docker environment]: https://docs.docker.com/engine
-[Go environment]: https://golang.org/doc/install
-[GoDoc]: https://godoc.org/k8s.io/kubernetes
-[GoDoc Widget]: https://godoc.org/k8s.io/kubernetes?status.svg
-[interactive tutorial]: http://kubernetes.io/docs/tutorials/kubernetes-basics
-[kubernetes.io]: http://kubernetes.io
-[Scalable Microservices with Kubernetes]: https://www.udacity.com/course/scalable-microservices-with-kubernetes--ud615
-[Submit Queue]: http://submit-queue.k8s.io/#/ci
-[Submit Queue Widget]: http://submit-queue.k8s.io/health.svg?v=1
-[troubleshooting guide]: https://kubernetes.io/docs/tasks/debug-application-cluster/troubleshooting/
-
-[![Analytics](https://kubernetes-site.appspot.com/UA-36037335-10/GitHub/README.md?pixel)]()
+Enjoy.
