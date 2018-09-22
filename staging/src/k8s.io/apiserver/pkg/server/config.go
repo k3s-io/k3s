@@ -388,7 +388,7 @@ func (c completedConfig) New(name string, delegationTarget DelegationTarget) (*G
 		s.healthzChecks = append(s.healthzChecks, delegateCheck)
 	}
 
-	s.listedPathProvider = routes.ListedPathProviders{s.listedPathProvider, delegationTarget}
+	s.listedPathProvider = routes.ListedPathProviders{s.listedPathProvider, delegationTarget, s.DiscoveryGroupManager}
 
 	installAPI(s, c.Config)
 
