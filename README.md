@@ -6,6 +6,96 @@
 
 Kubernetes without the features I don't care about.
 
+Some of the removed features
+
+* OpenAPI/Swagger
+* cloud-controller-manager
+* kube aggregation
+* APIs (NOTE: most of these are old APIs that have been replaced)
+  * admissionregistration/v1alpha1
+  * authentication/v1beta1
+  * authorization/v1beta1
+  * certificates/v1beta1
+  * events/v1beta1
+  * imagepolicy/v1alpha1
+  * rbac/v1alpha1
+  * rbac/v1beta1
+  * settings/v1alpha1
+  * storage/v1alpha1
+* Authentication
+  * bootstrap token
+  * oidc
+  * webhook
+* Authorization
+  * ABAC
+* Cloud Providers (all of them)
+* Controllers
+  * Bootstrap
+  * Certificates
+  * Cloud
+  * Cluster Role Aggregation
+  * Cloud based node IPAM
+  * Replication
+  * Route
+* Credential Providers AWS/GCP/Azure/Rancher
+* Kubelet
+  * Device Plugin
+  * Certificates
+  * Checkpoint
+  * Device Manager
+  * Custom Metrics
+  * Dockershim
+  * GPU
+  * Mount Pod
+  * Network
+    * Hairpin
+    * Kubenet
+  * rkt
+* Volume Drivers
+  * aws_ebs
+  * azure_dd
+  * azure_file
+  * cephfs
+  * cinder
+  * fc
+  * flocker
+  * gce_pd
+  * glusterfs
+  * iscsi
+  * photon_pd
+  * portworx
+  * quobyte
+  * rbd
+  * scaleio
+  * storageos
+  * vsphere_volume
+* Admission Controllers
+  * admin
+  * alwayspullimages
+  * antiaffinity
+  * defaulttolerationseconds
+  * deny
+  * eventratelimit
+  * exec
+  * extendedresourcetoleration
+  * gc
+  * imagepolicy
+  * initialreosurces
+  * limitranger
+  * namespace
+  * noderestriction
+  * persistentvolume
+  * podnodeselector
+  * podpreset
+  * podtolerationrestriction
+  * priority
+  * resourcequota
+  * security
+  * securitycontext
+  * storageobjectinuseprotection
+* etcd (yeah, i'm using sqlite3)
+
+
 Build
 -----
 
