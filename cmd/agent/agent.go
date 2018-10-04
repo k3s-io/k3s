@@ -17,6 +17,7 @@ type AgentConfig struct {
 	NodeName      string
 	ClusterCIDR   net.IPNet
 	KubeConfig    string
+	NodeIP        string
 	RuntimeSocket string
 	ListenAddress string
 	CACertPath    string
@@ -74,6 +75,7 @@ func kubelet(config *AgentConfig) {
 		"--eviction-hard", "imagefs.available<5%,nodefs.available<5%",
 		"--eviction-minimum-reclaim", "imagefs.available=10%,nodefs.available=10%",
 		"--feature-gates=MountPropagation=true",
+		"--node-ip", config.NodeIP,
 		"--fail-swap-on=false",
 		"--cgroup-root", "/k3s",
 		"--cgroup-driver", "cgroupfs",
