@@ -92,11 +92,6 @@ const (
 	// Ability to Expand persistent volumes
 	ExpandPersistentVolumes utilfeature.Feature = "ExpandPersistentVolumes"
 
-	// owner: @mlmhl
-	// alpha: v1.11
-	// Ability to expand persistent volumes' file system without unmounting volumes.
-	ExpandInUsePersistentVolumes utilfeature.Feature = "ExpandInUsePersistentVolumes"
-
 	// owner: @verb
 	// beta: v1.12
 	//
@@ -368,8 +363,8 @@ func init() {
 // To add a new feature, define a key for it above and add it here. The features will be
 // available throughout Kubernetes binaries.
 var defaultKubernetesFeatureGates = map[utilfeature.Feature]utilfeature.FeatureSpec{
-	AppArmor:             {Default: true, PreRelease: utilfeature.Beta},
-	DynamicKubeletConfig: {Default: true, PreRelease: utilfeature.Beta},
+	AppArmor:                                    {Default: true, PreRelease: utilfeature.Beta},
+	DynamicKubeletConfig:                        {Default: true, PreRelease: utilfeature.Beta},
 	ExperimentalHostUserNamespaceDefaultingGate: {Default: false, PreRelease: utilfeature.Beta},
 	DevicePlugins:                               {Default: true, PreRelease: utilfeature.Beta},
 	TaintBasedEvictions:                         {Default: true, PreRelease: utilfeature.Beta},
@@ -384,7 +379,6 @@ var defaultKubernetesFeatureGates = map[utilfeature.Feature]utilfeature.FeatureS
 	TaintNodesByCondition:                       {Default: true, PreRelease: utilfeature.Beta},
 	MountPropagation:                            {Default: true, PreRelease: utilfeature.GA},
 	ExpandPersistentVolumes:                     {Default: true, PreRelease: utilfeature.Beta},
-	ExpandInUsePersistentVolumes:                {Default: false, PreRelease: utilfeature.Alpha},
 	AttachVolumeLimit:                           {Default: true, PreRelease: utilfeature.Beta},
 	CPUManager:                                  {Default: true, PreRelease: utilfeature.Beta},
 	CPUCFSQuotaPeriod:                           {Default: false, PreRelease: utilfeature.Alpha},
