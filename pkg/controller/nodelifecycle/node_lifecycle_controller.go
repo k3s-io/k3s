@@ -24,14 +24,11 @@ package nodelifecycle
 import (
 	"context"
 	"fmt"
-	"hash/fnv"
-	"io"
 	"sync"
 	"time"
 
 	"k8s.io/klog"
 
-	coordv1beta1 "k8s.io/api/coordination/v1beta1"
 	"k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -40,26 +37,22 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
-	coordinformers "k8s.io/client-go/informers/coordination/v1beta1"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	extensionsinformers "k8s.io/client-go/informers/extensions/v1beta1"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
-	coordlisters "k8s.io/client-go/listers/coordination/v1beta1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	extensionslisters "k8s.io/client-go/listers/extensions/v1beta1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/flowcontrol"
 	"k8s.io/client-go/util/workqueue"
-	cloudprovider "k8s.io/cloud-provider"
+	"k8s.io/cloud-provider"
 	v1node "k8s.io/kubernetes/pkg/api/v1/node"
 	"k8s.io/kubernetes/pkg/controller"
 	"k8s.io/kubernetes/pkg/controller/nodelifecycle/scheduler"
 	nodeutil "k8s.io/kubernetes/pkg/controller/util/node"
-	"k8s.io/kubernetes/pkg/features"
 	schedulerapi "k8s.io/kubernetes/pkg/scheduler/api"
 	"k8s.io/kubernetes/pkg/util/metrics"
 	utilnode "k8s.io/kubernetes/pkg/util/node"
@@ -142,7 +135,6 @@ type nodeHealthData struct {
 	probeTimestamp           metav1.Time
 	readyTransitionTimestamp metav1.Time
 	status                   *v1.NodeStatus
-	lease                    *coordv1beta1.Lease
 }
 
 // Controller is the controller that manages node's life cycle.
@@ -179,8 +171,6 @@ type Controller struct {
 	daemonSetStore          extensionslisters.DaemonSetLister
 	daemonSetInformerSynced cache.InformerSynced
 
-	leaseLister                 coordlisters.LeaseLister
-	leaseInformerSynced         cache.InformerSynced
 	nodeLister                  corelisters.NodeLister
 	nodeInformerSynced          cache.InformerSynced
 	nodeExistsInCloudProvider   func(types.NodeName) (bool, error)
@@ -243,7 +233,6 @@ type Controller struct {
 
 // NewNodeLifecycleController returns a new taint controller.
 func NewNodeLifecycleController(
-	leaseInformer coordinformers.LeaseInformer,
 	podInformer coreinformers.PodInformer,
 	nodeInformer coreinformers.NodeInformer,
 	daemonSetInformer extensionsinformers.DaemonSetInformer,
@@ -399,14 +388,6 @@ func NewNodeLifecycleController(
 		}),
 	})
 
-	nc.leaseLister = leaseInformer.Lister()
-	if utilfeature.DefaultFeatureGate.Enabled(features.NodeLease) {
-		nc.leaseInformerSynced = leaseInformer.Informer().HasSynced
-	} else {
-		// Always indicate that lease is synced to prevent syncing lease.
-		nc.leaseInformerSynced = func() bool { return true }
-	}
-
 	nc.nodeLister = nodeInformer.Lister()
 	nc.nodeInformerSynced = nodeInformer.Informer().HasSynced
 
@@ -423,7 +404,7 @@ func (nc *Controller) Run(stopCh <-chan struct{}) {
 	klog.Infof("Starting node controller")
 	defer klog.Infof("Shutting down node controller")
 
-	if !controller.WaitForCacheSync("taint", stopCh, nc.leaseInformerSynced, nc.nodeInformerSynced, nc.podInformerSynced, nc.daemonSetInformerSynced) {
+	if !controller.WaitForCacheSync("taint", stopCh, nc.nodeInformerSynced, nc.podInformerSynced, nc.daemonSetInformerSynced) {
 		return
 	}
 
@@ -885,10 +866,8 @@ func (nc *Controller) tryUpdateNodeHealth(node *v1.Node) (time.Duration, v1.Node
 	//   - currently only correct Ready State transition outside of Node Controller is marking it ready by Kubelet, we don't check
 	//     if that's the case, but it does not seem necessary.
 	var savedCondition *v1.NodeCondition
-	var savedLease *coordv1beta1.Lease
 	if found {
 		_, savedCondition = v1node.GetNodeCondition(savedNodeHealth.status, v1.NodeReady)
-		savedLease = savedNodeHealth.lease
 	}
 	_, observedCondition := v1node.GetNodeCondition(&node.Status, v1.NodeReady)
 	if !found {
@@ -932,18 +911,6 @@ func (nc *Controller) tryUpdateNodeHealth(node *v1.Node) (time.Duration, v1.Node
 			status:                   &node.Status,
 			probeTimestamp:           nc.now(),
 			readyTransitionTimestamp: transitionTime,
-		}
-	}
-	var observedLease *coordv1beta1.Lease
-	if utilfeature.DefaultFeatureGate.Enabled(features.NodeLease) {
-		// Always update the probe time if node lease is renewed.
-		// Note: If kubelet never posted the node status, but continues renewing the
-		// heartbeat leases, the node controller will assume the node is healthy and
-		// take no action.
-		observedLease, _ = nc.leaseLister.Leases(v1.NamespaceNodeLease).Get(node.Name)
-		if observedLease != nil && (savedLease == nil || savedLease.Spec.RenewTime.Before(observedLease.Spec.RenewTime)) {
-			savedNodeHealth.lease = observedLease
-			savedNodeHealth.probeTimestamp = nc.now()
 		}
 	}
 	nc.nodeHealthMap[node.Name] = savedNodeHealth
@@ -1019,7 +986,6 @@ func (nc *Controller) tryUpdateNodeHealth(node *v1.Node) (time.Duration, v1.Node
 				status:                   &node.Status,
 				probeTimestamp:           nc.nodeHealthMap[node.Name].probeTimestamp,
 				readyTransitionTimestamp: nc.now(),
-				lease:                    observedLease,
 			}
 			return gracePeriod, observedReadyCondition, currentReadyCondition, nil
 		}
@@ -1302,10 +1268,4 @@ func (nc *Controller) ComputeZoneState(nodeReadyConditions []*v1.NodeCondition) 
 	default:
 		return notReadyNodes, stateNormal
 	}
-}
-
-func hash(val string, max int) int {
-	hasher := fnv.New32a()
-	io.WriteString(hasher, val)
-	return int(hasher.Sum32()) % max
 }

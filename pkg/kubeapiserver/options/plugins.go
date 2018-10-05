@@ -36,7 +36,6 @@ import (
 	"k8s.io/kubernetes/plugin/pkg/admission/limitranger"
 	"k8s.io/kubernetes/plugin/pkg/admission/namespace/autoprovision"
 	"k8s.io/kubernetes/plugin/pkg/admission/namespace/exists"
-	"k8s.io/kubernetes/plugin/pkg/admission/noderestriction"
 	"k8s.io/kubernetes/plugin/pkg/admission/podnodeselector"
 	"k8s.io/kubernetes/plugin/pkg/admission/podtolerationrestriction"
 	podpriority "k8s.io/kubernetes/plugin/pkg/admission/priority"
@@ -68,7 +67,6 @@ var AllOrderedPlugins = []string{
 	antiaffinity.PluginName,                 // LimitPodHardAntiAffinityTopology
 	limitranger.PluginName,                  // LimitRanger
 	serviceaccount.PluginName,               // ServiceAccount
-	noderestriction.PluginName,              // NodeRestriction
 	alwayspullimages.PluginName,             // AlwaysPullImages
 	podsecuritypolicy.PluginName,            // PodSecurityPolicy
 	podnodeselector.PluginName,              // PodNodeSelector
@@ -105,7 +103,6 @@ func RegisterAllAdmissionPlugins(plugins *admission.Plugins) {
 	limitranger.Register(plugins)
 	autoprovision.Register(plugins)
 	exists.Register(plugins)
-	noderestriction.Register(plugins)
 	label.Register(plugins) // DEPRECATED in favor of NewPersistentVolumeLabelController in CCM
 	podnodeselector.Register(plugins)
 	podtolerationrestriction.Register(plugins)
