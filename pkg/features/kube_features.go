@@ -148,11 +148,6 @@ const (
 	// Enable mount/attachment of Container Storage Interface (CSI) backed PVs
 	CSIPersistentVolume utilfeature.Feature = "CSIPersistentVolume"
 
-	// owner: @saad-ali
-	// alpha: v1.12
-	// Enable all logic related to the CSIDriver API object in csi.storage.k8s.io
-	CSIDriverRegistry utilfeature.Feature = "CSIDriverRegistry"
-
 	// owner: @verult
 	// alpha: v1.12
 	// Enable all logic related to the CSINodeInfo API object in csi.storage.k8s.io
@@ -365,7 +360,6 @@ var defaultKubernetesFeatureGates = map[utilfeature.Feature]utilfeature.FeatureS
 	CPUManager:                                  {Default: true, PreRelease: utilfeature.Beta},
 	VolumeScheduling:                            {Default: true, PreRelease: utilfeature.GA},
 	CSIPersistentVolume:                         {Default: true, PreRelease: utilfeature.GA},
-	CSIDriverRegistry:                           {Default: false, PreRelease: utilfeature.Alpha},
 	CSINodeInfo:                                 {Default: false, PreRelease: utilfeature.Alpha},
 	CustomPodDNS:                                {Default: true, PreRelease: utilfeature.Beta},
 	BlockVolume:                                 {Default: true, PreRelease: utilfeature.Beta},
