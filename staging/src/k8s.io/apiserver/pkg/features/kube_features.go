@@ -45,13 +45,6 @@ const (
 	AdvancedAuditing utilfeature.Feature = "AdvancedAuditing"
 
 	// owner: @smarterclayton
-	// alpha: v1.7
-	//
-	// Allow asynchronous coordination of object creation.
-	// Auto-enabled by the Initializers admission plugin.
-	Initializers utilfeature.Feature = "Initializers"
-
-	// owner: @smarterclayton
 	// alpha: v1.8
 	// beta: v1.9
 	//
@@ -78,7 +71,6 @@ func init() {
 var defaultKubernetesFeatureGates = map[utilfeature.Feature]utilfeature.FeatureSpec{
 	StreamingProxyRedirects: {Default: true, PreRelease: utilfeature.Beta},
 	AdvancedAuditing:        {Default: true, PreRelease: utilfeature.GA},
-	Initializers:            {Default: false, PreRelease: utilfeature.Alpha},
 	APIListChunking:         {Default: true, PreRelease: utilfeature.Beta},
 	DryRun:                  {Default: false, PreRelease: utilfeature.Alpha},
 }
