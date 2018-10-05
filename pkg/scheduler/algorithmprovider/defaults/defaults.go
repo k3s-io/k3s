@@ -209,12 +209,6 @@ func ApplyFeatureGates() {
 
 		glog.Warningf("TaintNodesByCondition is enabled, PodToleratesNodeTaints predicate is mandatory")
 	}
-
-	// Prioritizes nodes that satisfy pod's resource limits
-	if utilfeature.DefaultFeatureGate.Enabled(features.ResourceLimitsPriorityFunction) {
-		factory.RegisterPriorityFunction2("ResourceLimitsPriority", priorities.ResourceLimitsPriorityMap, nil, 1)
-	}
-
 }
 
 func registerAlgorithmProvider(predSet, priSet sets.String) {
