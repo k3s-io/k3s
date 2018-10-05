@@ -24,11 +24,8 @@ import (
 	"k8s.io/api/core/v1"
 	extensions "k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	v1helper "k8s.io/kubernetes/pkg/apis/core/v1/helper"
-	"k8s.io/kubernetes/pkg/features"
-	kubelettypes "k8s.io/kubernetes/pkg/kubelet/types"
 	schedulerapi "k8s.io/kubernetes/pkg/scheduler/api"
 )
 
@@ -120,11 +117,7 @@ func AddOrUpdateDaemonPodTolerations(spec *v1.PodSpec, isCritical bool) {
 func CreatePodTemplate(ns string, template v1.PodTemplateSpec, generation *int64, hash string) v1.PodTemplateSpec {
 	newTemplate := *template.DeepCopy()
 
-	// TODO(k82cn): when removing CritialPod feature, also remove 'ns' parameter.
-	isCritical := utilfeature.DefaultFeatureGate.Enabled(features.ExperimentalCriticalPodAnnotation) &&
-		kubelettypes.IsCritical(ns, newTemplate.Annotations)
-
-	AddOrUpdateDaemonPodTolerations(&newTemplate.Spec, isCritical)
+	AddOrUpdateDaemonPodTolerations(&newTemplate.Spec, false)
 
 	if newTemplate.ObjectMeta.Labels == nil {
 		newTemplate.ObjectMeta.Labels = make(map[string]string)
