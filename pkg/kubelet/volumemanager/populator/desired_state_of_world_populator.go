@@ -183,17 +183,6 @@ func (dswp *desiredStateOfWorldPopulator) isPodTerminated(pod *v1.Pod) bool {
 func (dswp *desiredStateOfWorldPopulator) findAndAddNewPods() {
 	// Map unique pod name to outer volume name to MountedVolume.
 	mountedVolumesForPod := make(map[volumetypes.UniquePodName]map[string]cache.MountedVolume)
-	if utilfeature.DefaultFeatureGate.Enabled(features.ExpandInUsePersistentVolumes) {
-		for _, mountedVolume := range dswp.actualStateOfWorld.GetMountedVolumes() {
-			mountedVolumes, exist := mountedVolumesForPod[mountedVolume.PodName]
-			if !exist {
-				mountedVolumes = make(map[string]cache.MountedVolume)
-				mountedVolumesForPod[mountedVolume.PodName] = mountedVolumes
-			}
-			mountedVolumes[mountedVolume.OuterVolumeSpecName] = mountedVolume
-		}
-	}
-
 	processedVolumesForFSResize := sets.NewString()
 	for _, pod := range dswp.podManager.GetPods() {
 		if dswp.isPodTerminated(pod) {
@@ -290,7 +279,7 @@ func (dswp *desiredStateOfWorldPopulator) processPodVolumes(
 
 	// Process volume spec for each volume defined in pod
 	for _, podVolume := range pod.Spec.Volumes {
-		pvc, volumeSpec, volumeGidValue, err :=
+		_, volumeSpec, volumeGidValue, err :=
 			dswp.createVolumeSpec(podVolume, pod.Name, pod.Namespace, mountsMap, devicesMap)
 		if err != nil {
 			klog.Errorf(
@@ -320,11 +309,6 @@ func (dswp *desiredStateOfWorldPopulator) processPodVolumes(
 			podVolume.Name,
 			volumeSpec.Name(),
 			uniquePodName)
-
-		if utilfeature.DefaultFeatureGate.Enabled(features.ExpandInUsePersistentVolumes) {
-			dswp.checkVolumeFSResize(pod, podVolume, pvc, volumeSpec,
-				uniquePodName, mountedVolumesForPod, processedVolumesForFSResize)
-		}
 	}
 
 	// some of the volume additions may have failed, should not mark this pod as fully processed
