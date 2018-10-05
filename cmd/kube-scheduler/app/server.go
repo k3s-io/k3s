@@ -302,7 +302,6 @@ func NewSchedulerConfig(s schedulerserverconfig.CompletedConfig) (*scheduler.Con
 		PdbInformer:                    s.InformerFactory.Policy().V1beta1().PodDisruptionBudgets(),
 		StorageClassInformer:           storageClassInformer,
 		HardPodAffinitySymmetricWeight: s.ComponentConfig.HardPodAffinitySymmetricWeight,
-		EnableEquivalenceClassCache:    utilfeature.DefaultFeatureGate.Enabled(features.EnableEquivalenceClassCache),
 		DisablePreemption:              s.ComponentConfig.DisablePreemption,
 		PercentageOfNodesToScore:       s.ComponentConfig.PercentageOfNodesToScore,
 		BindTimeoutSeconds:             *s.ComponentConfig.BindTimeoutSeconds,
