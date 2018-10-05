@@ -18,11 +18,6 @@ limitations under the License.
 
 package apis
 
-import (
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
-	"k8s.io/kubernetes/pkg/features"
-)
-
 const (
 	// HypervIsolationAnnotationKey and HypervIsolationValue are used to run windows containers with hyperv isolation.
 	// Refer https://aka.ms/hyperv-container.
@@ -32,10 +27,5 @@ const (
 
 // ShouldIsolatedByHyperV returns true if a windows container should be run with hyperv isolation.
 func ShouldIsolatedByHyperV(annotations map[string]string) bool {
-	if !utilfeature.DefaultFeatureGate.Enabled(features.HyperVContainer) {
-		return false
-	}
-
-	v, ok := annotations[HypervIsolationAnnotationKey]
-	return ok && v == HypervIsolationValue
+	return false
 }
