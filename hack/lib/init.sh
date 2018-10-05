@@ -65,7 +65,6 @@ auditregistration.k8s.io/v1alpha1 \
 authentication.k8s.io/v1 \
 authorization.k8s.io/v1 \
 autoscaling/v1 \
-autoscaling/v2beta1 \
 autoscaling/v2beta2 \
 batch/v1 \
 batch/v1beta1 \
