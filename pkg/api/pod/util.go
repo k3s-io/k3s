@@ -350,7 +350,7 @@ func dropDisabledFields(
 		}
 	}
 
-	if (!utilfeature.DefaultFeatureGate.Enabled(features.VolumeSubpath) || !utilfeature.DefaultFeatureGate.Enabled(features.VolumeSubpathEnvExpansion)) && !subpathExprInUse(oldPodSpec) {
+	if !subpathExprInUse(oldPodSpec) {
 		// drop subpath env expansion from the pod if either of the subpath features is disabled and the old spec did not specify subpath env expansion
 		for i := range podSpec.Containers {
 			for j := range podSpec.Containers[i].VolumeMounts {
