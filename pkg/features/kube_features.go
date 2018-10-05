@@ -141,12 +141,6 @@ const (
 	// Enable pods to set sysctls on a pod
 	Sysctls utilfeature.Feature = "Sysctls"
 
-	// owner: @jsafrane
-	// alpha: v1.9
-	//
-	// Enable running mount utilities in containers.
-	MountContainers utilfeature.Feature = "MountContainers"
-
 	// owner: @msau42
 	// GA: v1.13
 	//
@@ -422,7 +416,6 @@ var defaultKubernetesFeatureGates = map[utilfeature.Feature]utilfeature.FeatureS
 	ExpandCSIVolumes:                        {Default: false, PreRelease: utilfeature.Alpha},
 	AttachVolumeLimit:                       {Default: true, PreRelease: utilfeature.Beta},
 	CPUManager:                              {Default: true, PreRelease: utilfeature.Beta},
-	MountContainers:                         {Default: false, PreRelease: utilfeature.Alpha},
 	VolumeScheduling:                        {Default: true, PreRelease: utilfeature.GA, LockToDefault: true}, // remove in 1.16
 	CSIPersistentVolume:                     {Default: true, PreRelease: utilfeature.GA, LockToDefault: true}, // remove in 1.16
 	CSIDriverRegistry:                       {Default: true, PreRelease: utilfeature.Beta},
