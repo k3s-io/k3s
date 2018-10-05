@@ -34,7 +34,6 @@ import (
 	batchv1beta1 "k8s.io/client-go/kubernetes/typed/batch/v1beta1"
 	batchv2alpha1 "k8s.io/client-go/kubernetes/typed/batch/v2alpha1"
 	certificatesv1beta1 "k8s.io/client-go/kubernetes/typed/certificates/v1beta1"
-	coordinationv1beta1 "k8s.io/client-go/kubernetes/typed/coordination/v1beta1"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	extensionsv1beta1 "k8s.io/client-go/kubernetes/typed/extensions/v1beta1"
 	networkingv1 "k8s.io/client-go/kubernetes/typed/networking/v1"
@@ -81,9 +80,6 @@ type Interface interface {
 	CertificatesV1beta1() certificatesv1beta1.CertificatesV1beta1Interface
 	// Deprecated: please explicitly pick a version if possible.
 	Certificates() certificatesv1beta1.CertificatesV1beta1Interface
-	CoordinationV1beta1() coordinationv1beta1.CoordinationV1beta1Interface
-	// Deprecated: please explicitly pick a version if possible.
-	Coordination() coordinationv1beta1.CoordinationV1beta1Interface
 	CoreV1() corev1.CoreV1Interface
 	// Deprecated: please explicitly pick a version if possible.
 	Core() corev1.CoreV1Interface
@@ -128,7 +124,6 @@ type Clientset struct {
 	batchV1beta1                 *batchv1beta1.BatchV1beta1Client
 	batchV2alpha1                *batchv2alpha1.BatchV2alpha1Client
 	certificatesV1beta1          *certificatesv1beta1.CertificatesV1beta1Client
-	coordinationV1beta1          *coordinationv1beta1.CoordinationV1beta1Client
 	coreV1                       *corev1.CoreV1Client
 	extensionsV1beta1            *extensionsv1beta1.ExtensionsV1beta1Client
 	networkingV1                 *networkingv1.NetworkingV1Client
@@ -257,17 +252,6 @@ func (c *Clientset) CertificatesV1beta1() certificatesv1beta1.CertificatesV1beta
 // Please explicitly pick a version.
 func (c *Clientset) Certificates() certificatesv1beta1.CertificatesV1beta1Interface {
 	return c.certificatesV1beta1
-}
-
-// CoordinationV1beta1 retrieves the CoordinationV1beta1Client
-func (c *Clientset) CoordinationV1beta1() coordinationv1beta1.CoordinationV1beta1Interface {
-	return c.coordinationV1beta1
-}
-
-// Deprecated: Coordination retrieves the default version of CoordinationClient.
-// Please explicitly pick a version.
-func (c *Clientset) Coordination() coordinationv1beta1.CoordinationV1beta1Interface {
-	return c.coordinationV1beta1
 }
 
 // CoreV1 retrieves the CoreV1Client
@@ -434,10 +418,6 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 	if err != nil {
 		return nil, err
 	}
-	cs.coordinationV1beta1, err = coordinationv1beta1.NewForConfig(&configShallowCopy)
-	if err != nil {
-		return nil, err
-	}
 	cs.coreV1, err = corev1.NewForConfig(&configShallowCopy)
 	if err != nil {
 		return nil, err
@@ -504,7 +484,6 @@ func NewForConfigOrDie(c *rest.Config) *Clientset {
 	cs.batchV1beta1 = batchv1beta1.NewForConfigOrDie(c)
 	cs.batchV2alpha1 = batchv2alpha1.NewForConfigOrDie(c)
 	cs.certificatesV1beta1 = certificatesv1beta1.NewForConfigOrDie(c)
-	cs.coordinationV1beta1 = coordinationv1beta1.NewForConfigOrDie(c)
 	cs.coreV1 = corev1.NewForConfigOrDie(c)
 	cs.extensionsV1beta1 = extensionsv1beta1.NewForConfigOrDie(c)
 	cs.networkingV1 = networkingv1.NewForConfigOrDie(c)
@@ -537,7 +516,6 @@ func New(c rest.Interface) *Clientset {
 	cs.batchV1beta1 = batchv1beta1.New(c)
 	cs.batchV2alpha1 = batchv2alpha1.New(c)
 	cs.certificatesV1beta1 = certificatesv1beta1.New(c)
-	cs.coordinationV1beta1 = coordinationv1beta1.New(c)
 	cs.coreV1 = corev1.New(c)
 	cs.extensionsV1beta1 = extensionsv1beta1.New(c)
 	cs.networkingV1 = networkingv1.New(c)
