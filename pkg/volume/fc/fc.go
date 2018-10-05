@@ -26,8 +26,6 @@ import (
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
-	"k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/util/mount"
 	utilstrings "k8s.io/kubernetes/pkg/util/strings"
 	"k8s.io/kubernetes/pkg/volume"
@@ -130,22 +128,6 @@ func (plugin *fcPlugin) newMounterInternal(spec *volume.Spec, podUID types.UID, 
 		manager: manager,
 		io:      &osIOHandler{},
 		plugin:  plugin,
-	}
-	// TODO: remove feature gate check after no longer needed
-	if utilfeature.DefaultFeatureGate.Enabled(features.BlockVolume) {
-		volumeMode, err := util.GetVolumeMode(spec)
-		if err != nil {
-			return nil, err
-		}
-		glog.V(5).Infof("fc: newMounterInternal volumeMode %s", volumeMode)
-		return &fcDiskMounter{
-			fcDisk:     fcDisk,
-			fsType:     fc.FSType,
-			volumeMode: volumeMode,
-			readOnly:   readOnly,
-			mounter:    &mount.SafeFormatAndMount{Interface: mounter, Exec: exec},
-			deviceUtil: util.NewDeviceHandler(util.NewIOHandler()),
-		}, nil
 	}
 	return &fcDiskMounter{
 		fcDisk:     fcDisk,
