@@ -84,7 +84,6 @@ import (
 	"k8s.io/kubernetes/pkg/kubelet/prober"
 	proberesults "k8s.io/kubernetes/pkg/kubelet/prober/results"
 	"k8s.io/kubernetes/pkg/kubelet/remote"
-	"k8s.io/kubernetes/pkg/kubelet/runtimeclass"
 	"k8s.io/kubernetes/pkg/kubelet/secret"
 	"k8s.io/kubernetes/pkg/kubelet/server"
 	serverstats "k8s.io/kubernetes/pkg/kubelet/server/stats"
@@ -653,10 +652,6 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 	}
 	klet.runtimeService = runtimeService
 
-	if utilfeature.DefaultFeatureGate.Enabled(features.RuntimeClass) && kubeDeps.DynamicKubeClient != nil {
-		klet.runtimeClassManager = runtimeclass.NewManager(kubeDeps.DynamicKubeClient)
-	}
-
 	runtime, err := kuberuntime.NewKubeGenericRuntimeManager(
 		kubecontainer.FilterEventRecorder(kubeDeps.Recorder),
 		klet.livenessManager,
@@ -677,7 +672,6 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 		imageService,
 		kubeDeps.ContainerManager.InternalContainerLifecycle(),
 		legacyLogProvider,
-		klet.runtimeClassManager,
 	)
 	if err != nil {
 		return nil, err
@@ -1173,9 +1167,6 @@ type Kubelet struct {
 
 	//  This flag indicates that kubelet should start plugin watcher utility server for discovering Kubelet plugins
 	enablePluginsWatcher bool
-
-	// Handles RuntimeClass objects for the Kubelet.
-	runtimeClassManager *runtimeclass.Manager
 }
 
 func allGlobalUnicastIPs() ([]net.IP, error) {
@@ -1385,11 +1376,6 @@ func (kl *Kubelet) Run(updates <-chan kubetypes.PodUpdate) {
 	// Start component sync loops.
 	kl.statusManager.Start()
 	kl.probeManager.Start()
-
-	// Start syncing RuntimeClasses if enabled.
-	if kl.runtimeClassManager != nil {
-		go kl.runtimeClassManager.Run(wait.NeverStop)
-	}
 
 	// Start the pod lifecycle event generator.
 	kl.pleg.Start()
