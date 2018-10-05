@@ -141,12 +141,6 @@ const (
 	// Enable pods to set sysctls on a pod
 	Sysctls utilfeature.Feature = "Sysctls"
 
-	// owner @brendandburns
-	// alpha: v1.9
-	//
-	// Enable nodes to exclude themselves from service load balancers
-	ServiceNodeExclusion utilfeature.Feature = "ServiceNodeExclusion"
-
 	// owner: @jsafrane
 	// alpha: v1.9
 	//
@@ -428,7 +422,6 @@ var defaultKubernetesFeatureGates = map[utilfeature.Feature]utilfeature.FeatureS
 	ExpandCSIVolumes:                        {Default: false, PreRelease: utilfeature.Alpha},
 	AttachVolumeLimit:                       {Default: true, PreRelease: utilfeature.Beta},
 	CPUManager:                              {Default: true, PreRelease: utilfeature.Beta},
-	ServiceNodeExclusion:                    {Default: false, PreRelease: utilfeature.Alpha},
 	MountContainers:                         {Default: false, PreRelease: utilfeature.Alpha},
 	VolumeScheduling:                        {Default: true, PreRelease: utilfeature.GA, LockToDefault: true}, // remove in 1.16
 	CSIPersistentVolume:                     {Default: true, PreRelease: utilfeature.GA, LockToDefault: true}, // remove in 1.16
