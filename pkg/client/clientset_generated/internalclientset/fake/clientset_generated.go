@@ -41,8 +41,6 @@ import (
 	fakebatchinternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/batch/internalversion/fake"
 	certificatesinternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/certificates/internalversion"
 	fakecertificatesinternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/certificates/internalversion/fake"
-	coordinationinternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/coordination/internalversion"
-	fakecoordinationinternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/coordination/internalversion/fake"
 	coreinternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/internalversion"
 	fakecoreinternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/internalversion/fake"
 	extensionsinternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/extensions/internalversion"
@@ -144,11 +142,6 @@ func (c *Clientset) Batch() batchinternalversion.BatchInterface {
 // Certificates retrieves the CertificatesClient
 func (c *Clientset) Certificates() certificatesinternalversion.CertificatesInterface {
 	return &fakecertificatesinternalversion.FakeCertificates{Fake: &c.Fake}
-}
-
-// Coordination retrieves the CoordinationClient
-func (c *Clientset) Coordination() coordinationinternalversion.CoordinationInterface {
-	return &fakecoordinationinternalversion.FakeCoordination{Fake: &c.Fake}
 }
 
 // Extensions retrieves the ExtensionsClient
