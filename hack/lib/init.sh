@@ -73,7 +73,6 @@ extensions/v1beta1 \
 networking.k8s.io/v1 \
 policy/v1beta1 \
 rbac.authorization.k8s.io/v1 \
-scheduling.k8s.io/v1alpha1 \
 scheduling.k8s.io/v1beta1 \
 storage.k8s.io/v1beta1 \
 storage.k8s.io/v1 \
