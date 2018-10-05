@@ -60,12 +60,6 @@ const (
 	// AuditSink API object.
 	DynamicAuditing utilfeature.Feature = "DynamicAuditing"
 
-	// owner: @ilackams
-	// alpha: v1.7
-	//
-	// Enables compression of REST responses (GET and LIST only)
-	APIResponseCompression utilfeature.Feature = "APIResponseCompression"
-
 	// owner: @smarterclayton
 	// alpha: v1.8
 	// beta: v1.9
@@ -121,7 +115,6 @@ var defaultKubernetesFeatureGates = map[utilfeature.Feature]utilfeature.FeatureS
 	ValidateProxyRedirects:  {Default: true, PreRelease: utilfeature.Beta},
 	AdvancedAuditing:        {Default: true, PreRelease: utilfeature.GA},
 	DynamicAuditing:         {Default: false, PreRelease: utilfeature.Alpha},
-	APIResponseCompression:  {Default: false, PreRelease: utilfeature.Alpha},
 	APIListChunking:         {Default: true, PreRelease: utilfeature.Beta},
 	DryRun:                  {Default: true, PreRelease: utilfeature.Beta},
 	ServerSideApply:         {Default: false, PreRelease: utilfeature.Alpha},
