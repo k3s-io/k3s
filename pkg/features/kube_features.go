@@ -296,12 +296,6 @@ const (
 	// (Kube) Node Lifecycle Controller uses these heartbeats as a node health signal.
 	NodeLease utilfeature.Feature = "NodeLease"
 
-	// owner: @janetkuo
-	// alpha: v1.12
-	//
-	// Allow TTL controller to clean up Pods and Jobs after they finish.
-	TTLAfterFinished utilfeature.Feature = "TTLAfterFinished"
-
 	// owner: @dashpole
 	// alpha: v1.13
 	//
@@ -400,7 +394,6 @@ var defaultKubernetesFeatureGates = map[utilfeature.Feature]utilfeature.FeatureS
 	CSIInlineVolume:                         {Default: false, PreRelease: utilfeature.Alpha},
 	RuntimeClass:                            {Default: true, PreRelease: utilfeature.Beta},
 	NodeLease:                               {Default: true, PreRelease: utilfeature.Beta},
-	TTLAfterFinished:                        {Default: false, PreRelease: utilfeature.Alpha},
 	KubeletPodResources:                     {Default: false, PreRelease: utilfeature.Alpha},
 	WindowsGMSA:                             {Default: false, PreRelease: utilfeature.Alpha},
 

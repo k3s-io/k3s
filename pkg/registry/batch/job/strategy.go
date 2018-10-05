@@ -33,13 +33,11 @@ import (
 	"k8s.io/apiserver/pkg/registry/rest"
 	"k8s.io/apiserver/pkg/storage"
 	"k8s.io/apiserver/pkg/storage/names"
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/kubernetes/pkg/api/legacyscheme"
 	"k8s.io/kubernetes/pkg/api/pod"
 	"k8s.io/kubernetes/pkg/apis/batch"
 	"k8s.io/kubernetes/pkg/apis/batch/validation"
 	corevalidation "k8s.io/kubernetes/pkg/apis/core/validation"
-	"k8s.io/kubernetes/pkg/features"
 )
 
 // jobStrategy implements verification logic for Replication Controllers.
@@ -76,10 +74,7 @@ func (jobStrategy) NamespaceScoped() bool {
 func (jobStrategy) PrepareForCreate(ctx context.Context, obj runtime.Object) {
 	job := obj.(*batch.Job)
 	job.Status = batch.JobStatus{}
-
-	if !utilfeature.DefaultFeatureGate.Enabled(features.TTLAfterFinished) {
-		job.Spec.TTLSecondsAfterFinished = nil
-	}
+	job.Spec.TTLSecondsAfterFinished = nil
 
 	pod.DropDisabledTemplateFields(&job.Spec.Template, nil)
 }
@@ -90,7 +85,7 @@ func (jobStrategy) PrepareForUpdate(ctx context.Context, obj, old runtime.Object
 	oldJob := old.(*batch.Job)
 	newJob.Status = oldJob.Status
 
-	if !utilfeature.DefaultFeatureGate.Enabled(features.TTLAfterFinished) && oldJob.Spec.TTLSecondsAfterFinished == nil {
+	if oldJob.Spec.TTLSecondsAfterFinished == nil {
 		newJob.Spec.TTLSecondsAfterFinished = nil
 	}
 
