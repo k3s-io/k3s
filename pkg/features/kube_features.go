@@ -251,12 +251,6 @@ const (
 	// Enable resource quota scope selectors
 	ResourceQuotaScopeSelectors utilfeature.Feature = "ResourceQuotaScopeSelectors"
 
-	// owner: @janetkuo
-	// alpha: v1.12
-	//
-	// Allow TTL controller to clean up Pods and Jobs after they finish.
-	TTLAfterFinished utilfeature.Feature = "TTLAfterFinished"
-
 	// owner: @dashpole
 	// alpha: v1.13
 	//
@@ -307,7 +301,6 @@ var defaultKubernetesFeatureGates = map[utilfeature.Feature]utilfeature.FeatureS
 	PodReadinessGates:                           {Default: true, PreRelease: utilfeature.Beta},
 	KubeletPluginsWatcher:                       {Default: true, PreRelease: utilfeature.GA},
 	ResourceQuotaScopeSelectors:                 {Default: true, PreRelease: utilfeature.Beta},
-	TTLAfterFinished:                            {Default: false, PreRelease: utilfeature.Alpha},
 	KubeletPodResources:                         {Default: false, PreRelease: utilfeature.Alpha},
 
 	// inherited features from generic apiserver, relisted here to get a conflict if it is changed
