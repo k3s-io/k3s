@@ -33,7 +33,6 @@ import (
 	api "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/apis/scheduling"
 	"k8s.io/kubernetes/pkg/features"
-	kubelettypes "k8s.io/kubernetes/pkg/kubelet/types"
 )
 
 const (
@@ -179,13 +178,6 @@ func (p *priorityPlugin) admitPod(a admission.Attributes) error {
 
 	if operation == admission.Create {
 		var priority int32
-		// TODO: @ravig - This is for backwards compatibility to ensure that critical pods with annotations just work fine.
-		// Remove when no longer needed.
-		if len(pod.Spec.PriorityClassName) == 0 &&
-			utilfeature.DefaultFeatureGate.Enabled(features.ExperimentalCriticalPodAnnotation) &&
-			kubelettypes.IsCritical(a.GetNamespace(), pod.Annotations) {
-			pod.Spec.PriorityClassName = scheduling.SystemClusterCritical
-		}
 		if len(pod.Spec.PriorityClassName) == 0 {
 			var err error
 			var pcName string
