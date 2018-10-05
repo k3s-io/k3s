@@ -409,12 +409,11 @@ func (kl *Kubelet) tryUpdateNodeStatus(tryNumber int) error {
 		return fmt.Errorf("nil %q node object", kl.nodeName)
 	}
 
-	podCIDRChanged := false
 	if node.Spec.PodCIDR != "" {
 		// Pod CIDR could have been updated before, so we cannot rely on
 		// node.Spec.PodCIDR being non-empty. We also need to know if pod CIDR is
 		// actually changed.
-		if podCIDRChanged, err = kl.updatePodCIDR(node.Spec.PodCIDR); err != nil {
+		if _, err = kl.updatePodCIDR(node.Spec.PodCIDR); err != nil {
 			klog.Errorf(err.Error())
 		}
 	}
@@ -422,11 +421,6 @@ func (kl *Kubelet) tryUpdateNodeStatus(tryNumber int) error {
 	kl.setNodeStatus(node)
 
 	now := kl.clock.Now()
-	if utilfeature.DefaultFeatureGate.Enabled(features.NodeLease) && now.Before(kl.lastStatusReportTime.Add(kl.nodeStatusReportFrequency)) {
-		if !podCIDRChanged && !nodeStatusHasChanged(&originalNode.Status, &node.Status) {
-			return nil
-		}
-	}
 
 	// Patch the current status on the API server
 	updatedNode, _, err := nodeutil.PatchNodeStatus(kl.heartbeatClient.CoreV1(), types.NodeName(kl.nodeName), originalNode, node)
