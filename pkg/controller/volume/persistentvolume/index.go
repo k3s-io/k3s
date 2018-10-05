@@ -256,20 +256,8 @@ func findMatchingVolume(
 // enabled.
 // This is Alpha and could change in the future.
 func checkVolumeModeMisMatches(pvcSpec *v1.PersistentVolumeClaimSpec, pvSpec *v1.PersistentVolumeSpec) (bool, error) {
-	if utilfeature.DefaultFeatureGate.Enabled(features.BlockVolume) {
-		if pvSpec.VolumeMode != nil && pvcSpec.VolumeMode != nil {
-			requestedVolumeMode := *pvcSpec.VolumeMode
-			pvVolumeMode := *pvSpec.VolumeMode
-			return requestedVolumeMode != pvVolumeMode, nil
-		} else {
-			// This also should retrun an error, this means that
-			// the defaulting has failed.
-			return true, fmt.Errorf("api defaulting for volumeMode failed")
-		}
-	} else {
-		// feature gate is disabled
-		return false, nil
-	}
+	// feature gate is disabled
+	return false, nil
 }
 
 // findBestMatchForClaim is a convenience method that finds a volume by the claim's AccessModes and requests for Storage

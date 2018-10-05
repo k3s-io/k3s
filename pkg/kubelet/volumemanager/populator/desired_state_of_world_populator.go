@@ -501,31 +501,6 @@ func (dswp *desiredStateOfWorldPopulator) createVolumeSpec(
 			pvcSource.ClaimName,
 			pvcUID)
 
-		// TODO: remove feature gate check after no longer needed
-		if utilfeature.DefaultFeatureGate.Enabled(features.BlockVolume) {
-			volumeMode, err := util.GetVolumeMode(volumeSpec)
-			if err != nil {
-				return nil, nil, "", err
-			}
-			// Error if a container has volumeMounts but the volumeMode of PVC isn't Filesystem
-			if mountsMap[podVolume.Name] && volumeMode != v1.PersistentVolumeFilesystem {
-				return nil, nil, "", fmt.Errorf(
-					"Volume %q has volumeMode %q, but is specified in volumeMounts for pod %q/%q",
-					podVolume.Name,
-					volumeMode,
-					podNamespace,
-					podName)
-			}
-			// Error if a container has volumeDevices but the volumeMode of PVC isn't Block
-			if devicesMap[podVolume.Name] && volumeMode != v1.PersistentVolumeBlock {
-				return nil, nil, "", fmt.Errorf(
-					"Volume %q has volumeMode %q, but is specified in volumeDevices for pod %q/%q",
-					podVolume.Name,
-					volumeMode,
-					podNamespace,
-					podName)
-			}
-		}
 		return pvc, volumeSpec, volumeGidValue, nil
 	}
 
@@ -620,13 +595,6 @@ func (dswp *desiredStateOfWorldPopulator) makeVolumeMap(containers []v1.Containe
 		if container.VolumeMounts != nil {
 			for _, mount := range container.VolumeMounts {
 				volumeMountsMap[mount.Name] = true
-			}
-		}
-		// TODO: remove feature gate check after no longer needed
-		if utilfeature.DefaultFeatureGate.Enabled(features.BlockVolume) &&
-			container.VolumeDevices != nil {
-			for _, device := range container.VolumeDevices {
-				volumeDevicesMap[device.Name] = true
 			}
 		}
 	}
