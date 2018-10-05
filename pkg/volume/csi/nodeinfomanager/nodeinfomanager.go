@@ -91,10 +91,6 @@ func (nim *nodeInfoManager) AddNodeInfo(driverName string, driverNodeID string, 
 		updateNodeIDInNode(driverName, driverNodeID),
 	}
 
-	if utilfeature.DefaultFeatureGate.Enabled(features.CSINodeInfo) {
-		nodeUpdateFuncs = append(nodeUpdateFuncs, updateTopologyLabels(topology))
-	}
-
 	if utilfeature.DefaultFeatureGate.Enabled(features.AttachVolumeLimit) {
 		nodeUpdateFuncs = append(nodeUpdateFuncs, updateMaxAttachLimit(driverName, maxAttachLimit))
 	}
@@ -104,12 +100,6 @@ func (nim *nodeInfoManager) AddNodeInfo(driverName string, driverNodeID string, 
 		return fmt.Errorf("error updating Node object with CSI driver node info: %v", err)
 	}
 
-	if utilfeature.DefaultFeatureGate.Enabled(features.CSINodeInfo) {
-		err = nim.updateCSINodeInfo(driverName, driverNodeID, topology)
-		if err != nil {
-			return fmt.Errorf("error updating CSINodeInfo object with CSI driver node info: %v", err)
-		}
-	}
 	return nil
 }
 
@@ -290,57 +280,6 @@ func removeNodeIDFromNode(csiDriverName string) nodeUpdateFunc {
 
 		return node, true, nil
 	}
-}
-
-// updateTopologyLabels returns a function that updates labels of a Node object with the given
-// topology information.
-func updateTopologyLabels(topology *csipb.Topology) nodeUpdateFunc {
-	return func(node *v1.Node) (*v1.Node, bool, error) {
-		if topology == nil || len(topology.Segments) == 0 {
-			return node, false, nil
-		}
-
-		for k, v := range topology.Segments {
-			if curVal, exists := node.Labels[k]; exists && curVal != v {
-				return nil, false, fmt.Errorf("detected topology value collision: driver reported %q:%q but existing label is %q:%q", k, v, k, curVal)
-			}
-		}
-
-		if node.Labels == nil {
-			node.Labels = make(map[string]string)
-		}
-		for k, v := range topology.Segments {
-			node.Labels[k] = v
-		}
-		return node, true, nil
-	}
-}
-
-func (nim *nodeInfoManager) updateCSINodeInfo(
-	driverName string,
-	driverNodeID string,
-	topology *csipb.Topology) error {
-
-	csiKubeClient := nim.volumeHost.GetCSIClient()
-	if csiKubeClient == nil {
-		return fmt.Errorf("error getting CSI client")
-	}
-
-	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		nodeInfo, err := csiKubeClient.CsiV1alpha1().CSINodeInfos().Get(string(nim.nodeName), metav1.GetOptions{})
-		if nodeInfo == nil || errors.IsNotFound(err) {
-			return nim.createNodeInfoObject(driverName, driverNodeID, topology)
-		}
-		if err != nil {
-			return err // do not wrap error
-		}
-
-		return nim.updateNodeInfoObject(nodeInfo, driverName, driverNodeID, topology)
-	})
-	if retryErr != nil {
-		return fmt.Errorf("CSINodeInfo update failed: %v", retryErr)
-	}
-	return nil
 }
 
 func (nim *nodeInfoManager) createNodeInfoObject(
