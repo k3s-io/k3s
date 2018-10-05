@@ -296,12 +296,6 @@ const (
 	// (Kube) Node Lifecycle Controller uses these heartbeats as a node health signal.
 	NodeLease utilfeature.Feature = "NodeLease"
 
-	// owner: @janosi
-	// alpha: v1.12
-	//
-	// Enables SCTP as new protocol for Service ports, NetworkPolicy, and ContainerPort in Pod/Containers definition
-	SCTPSupport utilfeature.Feature = "SCTPSupport"
-
 	// owner: @xing-yang
 	// alpha: v1.12
 	//
@@ -418,7 +412,6 @@ var defaultKubernetesFeatureGates = map[utilfeature.Feature]utilfeature.FeatureS
 	CSIInlineVolume:                         {Default: false, PreRelease: utilfeature.Alpha},
 	RuntimeClass:                            {Default: true, PreRelease: utilfeature.Beta},
 	NodeLease:                               {Default: true, PreRelease: utilfeature.Beta},
-	SCTPSupport:                             {Default: false, PreRelease: utilfeature.Alpha},
 	VolumeSnapshotDataSource:                {Default: false, PreRelease: utilfeature.Alpha},
 	ProcMountType:                           {Default: false, PreRelease: utilfeature.Alpha},
 	TTLAfterFinished:                        {Default: false, PreRelease: utilfeature.Alpha},
