@@ -296,12 +296,6 @@ const (
 	// (Kube) Node Lifecycle Controller uses these heartbeats as a node health signal.
 	NodeLease utilfeature.Feature = "NodeLease"
 
-	// owner: @jessfraz
-	// alpha: v1.12
-	//
-	// Enables control over ProcMountType for containers.
-	ProcMountType utilfeature.Feature = "ProcMountType"
-
 	// owner: @janetkuo
 	// alpha: v1.12
 	//
@@ -406,7 +400,6 @@ var defaultKubernetesFeatureGates = map[utilfeature.Feature]utilfeature.FeatureS
 	CSIInlineVolume:                         {Default: false, PreRelease: utilfeature.Alpha},
 	RuntimeClass:                            {Default: true, PreRelease: utilfeature.Beta},
 	NodeLease:                               {Default: true, PreRelease: utilfeature.Beta},
-	ProcMountType:                           {Default: false, PreRelease: utilfeature.Alpha},
 	TTLAfterFinished:                        {Default: false, PreRelease: utilfeature.Alpha},
 	KubeletPodResources:                     {Default: false, PreRelease: utilfeature.Alpha},
 	WindowsGMSA:                             {Default: false, PreRelease: utilfeature.Alpha},

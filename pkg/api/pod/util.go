@@ -402,7 +402,7 @@ func dropDisabledRunAsGroupField(podSpec, oldPodSpec *api.PodSpec) {
 // dropDisabledProcMountField removes disabled fields from PodSpec related
 // to ProcMount only if it is not already used by the old spec
 func dropDisabledProcMountField(podSpec, oldPodSpec *api.PodSpec) {
-	if !utilfeature.DefaultFeatureGate.Enabled(features.ProcMountType) && !procMountInUse(oldPodSpec) {
+	if !procMountInUse(oldPodSpec) {
 		defaultProcMount := api.DefaultProcMount
 		for i := range podSpec.Containers {
 			if podSpec.Containers[i].SecurityContext != nil {
