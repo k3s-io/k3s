@@ -26,14 +26,12 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/wait"
 
-	units "github.com/docker/go-units"
+	"github.com/docker/go-units"
 	cgroupfs "github.com/opencontainers/runc/libcontainer/cgroups/fs"
 	rsystem "github.com/opencontainers/runc/libcontainer/system"
-	"k8s.io/api/core/v1"
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/kubernetes/pkg/api/v1/resource"
 	v1qos "k8s.io/kubernetes/pkg/apis/core/v1/helper/qos"
-	kubefeatures "k8s.io/kubernetes/pkg/features"
 )
 
 const (
@@ -293,37 +291,6 @@ func (m *qosContainerManagerImpl) UpdateCgroups() error {
 	// update the qos level cgroup settings for huge pages (ensure they remain unbounded)
 	if err := m.setHugePagesConfig(qosConfigs); err != nil {
 		return err
-	}
-
-	if utilfeature.DefaultFeatureGate.Enabled(kubefeatures.QOSReserved) {
-		for resource, percentReserve := range m.qosReserved {
-			switch resource {
-			case v1.ResourceMemory:
-				m.setMemoryReserve(qosConfigs, percentReserve)
-			}
-		}
-
-		updateSuccess := true
-		for _, config := range qosConfigs {
-			err := m.cgroupManager.Update(config)
-			if err != nil {
-				updateSuccess = false
-			}
-		}
-		if updateSuccess {
-			klog.V(4).Infof("[ContainerManager]: Updated QoS cgroup configuration")
-			return nil
-		}
-
-		// If the resource can adjust the ResourceConfig to increase likelihood of
-		// success, call the adjustment function here.  Otherwise, the Update() will
-		// be called again with the same values.
-		for resource, percentReserve := range m.qosReserved {
-			switch resource {
-			case v1.ResourceMemory:
-				m.retrySetMemoryReserve(qosConfigs, percentReserve)
-			}
-		}
 	}
 
 	updateSuccess := true
