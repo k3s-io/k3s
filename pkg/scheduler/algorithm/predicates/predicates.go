@@ -519,12 +519,6 @@ func (c *MaxPDVolumeCountChecker) predicate(pod *v1.Pod, meta PredicateMetadata,
 		// violates MaxEBSVolumeCount or MaxGCEPDVolumeCount
 		return false, []PredicateFailureReason{ErrMaxVolumeCountExceeded}, nil
 	}
-	if nodeInfo != nil && nodeInfo.TransientInfo != nil && utilfeature.DefaultFeatureGate.Enabled(features.BalanceAttachedNodeVolumes) {
-		nodeInfo.TransientInfo.TransientLock.Lock()
-		defer nodeInfo.TransientInfo.TransientLock.Unlock()
-		nodeInfo.TransientInfo.TransNodeInfo.AllocatableVolumesCount = maxAttachLimit - numExistingVolumes
-		nodeInfo.TransientInfo.TransNodeInfo.RequestedVolumes = numNewVolumes
-	}
 	return true, nil, nil
 }
 
