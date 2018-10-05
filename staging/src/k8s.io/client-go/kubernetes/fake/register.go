@@ -31,7 +31,6 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	batchv1beta1 "k8s.io/api/batch/v1beta1"
 	batchv2alpha1 "k8s.io/api/batch/v2alpha1"
-	coordinationv1beta1 "k8s.io/api/coordination/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -65,7 +64,6 @@ var localSchemeBuilder = runtime.SchemeBuilder{
 	batchv1.AddToScheme,
 	batchv1beta1.AddToScheme,
 	batchv2alpha1.AddToScheme,
-	coordinationv1beta1.AddToScheme,
 	corev1.AddToScheme,
 	extensionsv1beta1.AddToScheme,
 	networkingv1.AddToScheme,
