@@ -22,9 +22,7 @@ import (
 
 	"k8s.io/api/core/v1"
 	kubetypes "k8s.io/apimachinery/pkg/types"
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/klog"
-	"k8s.io/kubernetes/pkg/features"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
 	"k8s.io/kubernetes/pkg/kubelet/types"
 	"k8s.io/kubernetes/pkg/kubelet/util/format"
@@ -103,9 +101,6 @@ func newContainerLabels(container *v1.Container, pod *v1.Pod, containerType kube
 	labels[types.KubernetesPodNamespaceLabel] = pod.Namespace
 	labels[types.KubernetesPodUIDLabel] = string(pod.UID)
 	labels[types.KubernetesContainerNameLabel] = container.Name
-	if utilfeature.DefaultFeatureGate.Enabled(features.DebugContainers) {
-		labels[types.KubernetesContainerTypeLabel] = string(containerType)
-	}
 
 	return labels
 }
@@ -182,9 +177,6 @@ func getPodSandboxInfoFromAnnotations(annotations map[string]string) *annotatedP
 // getContainerInfoFromLabels gets labeledContainerInfo from labels.
 func getContainerInfoFromLabels(labels map[string]string) *labeledContainerInfo {
 	var containerType kubecontainer.ContainerType
-	if utilfeature.DefaultFeatureGate.Enabled(features.DebugContainers) {
-		containerType = kubecontainer.ContainerType(getStringValueFromLabel(labels, types.KubernetesContainerTypeLabel))
-	}
 	return &labeledContainerInfo{
 		PodName:       getStringValueFromLabel(labels, types.KubernetesPodNameLabel),
 		PodNamespace:  getStringValueFromLabel(labels, types.KubernetesPodNamespaceLabel),
