@@ -296,37 +296,6 @@ func (m *qosContainerManagerImpl) UpdateCgroups() error {
 		}
 	}
 
-	if utilfeature.DefaultFeatureGate.Enabled(kubefeatures.QOSReserved) {
-		for resource, percentReserve := range m.qosReserved {
-			switch resource {
-			case v1.ResourceMemory:
-				m.setMemoryReserve(qosConfigs, percentReserve)
-			}
-		}
-
-		updateSuccess := true
-		for _, config := range qosConfigs {
-			err := m.cgroupManager.Update(config)
-			if err != nil {
-				updateSuccess = false
-			}
-		}
-		if updateSuccess {
-			klog.V(4).Infof("[ContainerManager]: Updated QoS cgroup configuration")
-			return nil
-		}
-
-		// If the resource can adjust the ResourceConfig to increase likelihood of
-		// success, call the adjustment function here.  Otherwise, the Update() will
-		// be called again with the same values.
-		for resource, percentReserve := range m.qosReserved {
-			switch resource {
-			case v1.ResourceMemory:
-				m.retrySetMemoryReserve(qosConfigs, percentReserve)
-			}
-		}
-	}
-
 	for _, config := range qosConfigs {
 		err := m.cgroupManager.Update(config)
 		if err != nil {

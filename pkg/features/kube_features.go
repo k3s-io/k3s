@@ -123,13 +123,6 @@ const (
 	// Enable mount propagation of volumes.
 	MountPropagation utilfeature.Feature = "MountPropagation"
 
-	// owner: @sjenning
-	// alpha: v1.11
-	//
-	// Allows resource reservations at the QoS level preventing pods at lower QoS levels from
-	// bursting into resources requested at higher QoS levels (memory only for now)
-	QOSReserved utilfeature.Feature = "QOSReserved"
-
 	// owner: @ConnorDoyle
 	// alpha: v1.8
 	//
@@ -390,7 +383,6 @@ var defaultKubernetesFeatureGates = map[utilfeature.Feature]utilfeature.FeatureS
 	PodPriority:                                 {Default: true, PreRelease: utilfeature.Beta},
 	TaintNodesByCondition:                       {Default: true, PreRelease: utilfeature.Beta},
 	MountPropagation:                            {Default: true, PreRelease: utilfeature.GA},
-	QOSReserved:                                 {Default: false, PreRelease: utilfeature.Alpha},
 	ExpandPersistentVolumes:                     {Default: true, PreRelease: utilfeature.Beta},
 	ExpandInUsePersistentVolumes:                {Default: false, PreRelease: utilfeature.Alpha},
 	AttachVolumeLimit:                           {Default: true, PreRelease: utilfeature.Beta},
