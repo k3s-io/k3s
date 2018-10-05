@@ -28,7 +28,7 @@ func DropDisabledFields(pvcSpec, oldPVCSpec *core.PersistentVolumeClaimSpec) {
 	if !utilfeature.DefaultFeatureGate.Enabled(features.BlockVolume) && !volumeModeInUse(oldPVCSpec) {
 		pvcSpec.VolumeMode = nil
 	}
-	if !utilfeature.DefaultFeatureGate.Enabled(features.VolumeSnapshotDataSource) && !volumeSnapshotDataSourceInUse(oldPVCSpec) {
+	if !volumeSnapshotDataSourceInUse(oldPVCSpec) {
 		pvcSpec.DataSource = nil
 	}
 }
