@@ -157,10 +157,6 @@ func NodeRules() []rbacv1.PolicyRule {
 		nodePolicyRules = append(nodePolicyRules, volAttachRule)
 	}
 
-	// RuntimeClass
-	if utilfeature.DefaultFeatureGate.Enabled(features.RuntimeClass) {
-		nodePolicyRules = append(nodePolicyRules, rbacv1helpers.NewRule("get", "list", "watch").Groups("node.k8s.io").Resources("runtimeclasses").RuleOrDie())
-	}
 	return nodePolicyRules
 }
 
