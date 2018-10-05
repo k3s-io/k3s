@@ -24,7 +24,7 @@ import (
 	"k8s.io/klog"
 
 	authenticationv1 "k8s.io/api/authentication/v1"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
@@ -37,7 +37,6 @@ import (
 	"k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/kubelet/configmap"
 	"k8s.io/kubernetes/pkg/kubelet/container"
-	"k8s.io/kubernetes/pkg/kubelet/mountpod"
 	"k8s.io/kubernetes/pkg/kubelet/secret"
 	"k8s.io/kubernetes/pkg/kubelet/token"
 	"k8s.io/kubernetes/pkg/util/mount"
@@ -78,17 +77,12 @@ func NewInitializedVolumePluginMgr(
 		}
 	}
 
-	mountPodManager, err := mountpod.NewManager(kubelet.getRootDir(), kubelet.podManager)
-	if err != nil {
-		return nil, err
-	}
 	kvh := &kubeletVolumeHost{
 		kubelet:          kubelet,
 		volumePluginMgr:  volume.VolumePluginMgr{},
 		secretManager:    secretManager,
 		configMapManager: configMapManager,
 		tokenManager:     tokenManager,
-		mountPodManager:  mountPodManager,
 		informerFactory:  informerFactory,
 		csiDriverLister:  csiDriverLister,
 		csiDriversSynced: csiDriversSynced,
@@ -117,7 +111,6 @@ type kubeletVolumeHost struct {
 	secretManager    secret.Manager
 	tokenManager     *token.Manager
 	configMapManager configmap.Manager
-	mountPodManager  mountpod.Manager
 	informerFactory  informers.SharedInformerFactory
 	csiDriverLister  storagelisters.CSIDriverLister
 	csiDriversSynced cache.InformerSynced
@@ -298,26 +291,7 @@ func (kvh *kubeletVolumeHost) GetExec(pluginName string) mount.Exec {
 // utilities. It returns nil,nil when there is no such pod and default mounter /
 // os.Exec should be used.
 func (kvh *kubeletVolumeHost) getMountExec(pluginName string) (mount.Exec, error) {
-	if !utilfeature.DefaultFeatureGate.Enabled(features.MountContainers) {
-		klog.V(5).Infof("using default mounter/exec for %s", pluginName)
-		return nil, nil
-	}
-
-	pod, container, err := kvh.mountPodManager.GetMountPod(pluginName)
-	if err != nil {
-		return nil, err
-	}
-	if pod == nil {
-		// Use default mounter/exec for this plugin
-		klog.V(5).Infof("using default mounter/exec for %s", pluginName)
-		return nil, nil
-	}
-	klog.V(5).Infof("using container %s/%s/%s to execute mount utilities for %s", pod.Namespace, pod.Name, container, pluginName)
-	return &containerExec{
-		pod:           pod,
-		containerName: container,
-		kl:            kvh.kubelet,
-	}, nil
+	return nil, nil
 }
 
 // containerExec is implementation of mount.Exec that executes commands in given
