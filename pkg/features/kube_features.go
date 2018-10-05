@@ -213,12 +213,6 @@ const (
 	// Enable resource quota scope selectors
 	ResourceQuotaScopeSelectors utilfeature.Feature = "ResourceQuotaScopeSelectors"
 
-	// owner: @xing-yang
-	// alpha: v1.12
-	//
-	// Enable volume snapshot data source support.
-	VolumeSnapshotDataSource utilfeature.Feature = "VolumeSnapshotDataSource"
-
 	// owner: @jessfraz
 	// alpha: v1.12
 	//
@@ -270,7 +264,6 @@ var defaultKubernetesFeatureGates = map[utilfeature.Feature]utilfeature.FeatureS
 	PodReadinessGates:                           {Default: true, PreRelease: utilfeature.Beta},
 	KubeletPluginsWatcher:                       {Default: true, PreRelease: utilfeature.Beta},
 	ResourceQuotaScopeSelectors:                 {Default: true, PreRelease: utilfeature.Beta},
-	VolumeSnapshotDataSource:                    {Default: false, PreRelease: utilfeature.Alpha},
 	ProcMountType:                               {Default: false, PreRelease: utilfeature.Alpha},
 	TTLAfterFinished:                            {Default: false, PreRelease: utilfeature.Alpha},
 
