@@ -197,12 +197,6 @@ const (
 	// Implement support for limiting pids in pods
 	SupportPodPidsLimit utilfeature.Feature = "SupportPodPidsLimit"
 
-	// owner: @feiskyer
-	// alpha: v1.10
-	//
-	// Enable Hyper-V containers on Windows
-	HyperVContainer utilfeature.Feature = "HyperVContainer"
-
 	// owner: @k82cn
 	// beta: v1.12
 	//
@@ -420,7 +414,6 @@ var defaultKubernetesFeatureGates = map[utilfeature.Feature]utilfeature.FeatureS
 	SupportIPVSProxyMode:                    {Default: true, PreRelease: utilfeature.GA},
 	SupportPodPidsLimit:                     {Default: true, PreRelease: utilfeature.Beta},
 	SupportNodePidsLimit:                    {Default: false, PreRelease: utilfeature.Alpha},
-	HyperVContainer:                         {Default: false, PreRelease: utilfeature.Alpha},
 	ScheduleDaemonSetPods:                   {Default: true, PreRelease: utilfeature.Beta},
 	TokenRequest:                            {Default: true, PreRelease: utilfeature.Beta},
 	TokenRequestProjection:                  {Default: true, PreRelease: utilfeature.Beta},
