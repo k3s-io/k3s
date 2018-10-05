@@ -193,14 +193,6 @@ const (
 	// volume limits
 	AttachVolumeLimit utilfeature.Feature = "AttachVolumeLimit"
 
-	// owner: @ravig
-	// alpha: v1.11
-	//
-	// Include volume count on node to be considered for balanced resource allocation while scheduling.
-	// A node which has closer cpu,memory utilization and volume count is favoured by scheduler
-	// while making decisions.
-	BalanceAttachedNodeVolumes utilfeature.Feature = "BalanceAttachedNodeVolumes"
-
 	// owner @freehan
 	// beta: v1.11
 	//
@@ -300,7 +292,6 @@ var defaultKubernetesFeatureGates = map[utilfeature.Feature]utilfeature.FeatureS
 	GCERegionalPersistentDisk:                   {Default: true, PreRelease: utilfeature.Beta},
 	RunAsGroup:                                  {Default: true, PreRelease: utilfeature.Beta},
 	VolumeSubpath:                               {Default: true, PreRelease: utilfeature.GA},
-	BalanceAttachedNodeVolumes:                  {Default: false, PreRelease: utilfeature.Alpha},
 	PodReadinessGates:                           {Default: true, PreRelease: utilfeature.Beta},
 	VolumeSubpathEnvExpansion:                   {Default: false, PreRelease: utilfeature.Alpha},
 	KubeletPluginsWatcher:                       {Default: true, PreRelease: utilfeature.Beta},
