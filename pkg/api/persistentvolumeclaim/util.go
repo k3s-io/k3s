@@ -17,15 +17,11 @@ limitations under the License.
 package persistentvolumeclaim
 
 import (
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/kubernetes/pkg/apis/core"
-	"k8s.io/kubernetes/pkg/features"
 )
 
 // DropDisabledAlphaFields removes disabled fields from the pvc spec.
 // This should be called from PrepareForCreate/PrepareForUpdate for all resources containing a pvc spec.
 func DropDisabledAlphaFields(pvcSpec *core.PersistentVolumeClaimSpec) {
-	if !utilfeature.DefaultFeatureGate.Enabled(features.BlockVolume) {
-		pvcSpec.VolumeMode = nil
-	}
+	pvcSpec.VolumeMode = nil
 }

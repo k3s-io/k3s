@@ -317,12 +317,10 @@ func DropDisabledVolumeMountsAlphaFields(volumeMounts []api.VolumeMount) {
 // DropDisabledVolumeDevicesAlphaFields removes disabled fields from []VolumeDevice.
 // This should be called from PrepareForCreate/PrepareForUpdate for all resources containing a VolumeDevice
 func DropDisabledVolumeDevicesAlphaFields(podSpec *api.PodSpec) {
-	if !utilfeature.DefaultFeatureGate.Enabled(features.BlockVolume) {
-		for i := range podSpec.Containers {
-			podSpec.Containers[i].VolumeDevices = nil
-		}
-		for i := range podSpec.InitContainers {
-			podSpec.InitContainers[i].VolumeDevices = nil
-		}
+	for i := range podSpec.Containers {
+		podSpec.Containers[i].VolumeDevices = nil
+	}
+	for i := range podSpec.InitContainers {
+		podSpec.InitContainers[i].VolumeDevices = nil
 	}
 }
