@@ -173,12 +173,6 @@ const (
 	// Implement IPVS-based in-cluster service load balancing
 	SupportIPVSProxyMode utilfeature.Feature = "SupportIPVSProxyMode"
 
-	// owner: @feiskyer
-	// alpha: v1.10
-	//
-	// Enable Hyper-V containers on Windows
-	HyperVContainer utilfeature.Feature = "HyperVContainer"
-
 	// owner: @k82cn
 	// beta: v1.12
 	//
@@ -347,7 +341,6 @@ var defaultKubernetesFeatureGates = map[utilfeature.Feature]utilfeature.FeatureS
 	BlockVolume:                                 {Default: true, PreRelease: utilfeature.Beta},
 	StorageObjectInUseProtection:                {Default: true, PreRelease: utilfeature.GA},
 	SupportIPVSProxyMode:                        {Default: true, PreRelease: utilfeature.GA},
-	HyperVContainer:                             {Default: false, PreRelease: utilfeature.Alpha},
 	ScheduleDaemonSetPods:                       {Default: true, PreRelease: utilfeature.Beta},
 	TokenRequest:                                {Default: true, PreRelease: utilfeature.Beta},
 	TokenRequestProjection:                      {Default: true, PreRelease: utilfeature.Beta},
