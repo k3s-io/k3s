@@ -51,7 +51,6 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
-	"k8s.io/kubernetes/pkg/apis/core/helper"
 	"k8s.io/kubernetes/pkg/features"
 	kubeletapis "k8s.io/kubernetes/pkg/kubelet/apis"
 	"k8s.io/kubernetes/pkg/scheduler/algorithm"
@@ -59,7 +58,6 @@ import (
 	schedulerapi "k8s.io/kubernetes/pkg/scheduler/api"
 	"k8s.io/kubernetes/pkg/scheduler/api/validation"
 	"k8s.io/kubernetes/pkg/scheduler/core"
-	"k8s.io/kubernetes/pkg/scheduler/core/equivalence"
 	schedulerinternalcache "k8s.io/kubernetes/pkg/scheduler/internal/cache"
 	cachedebugger "k8s.io/kubernetes/pkg/scheduler/internal/cache/debugger"
 	internalqueue "k8s.io/kubernetes/pkg/scheduler/internal/queue"
@@ -97,9 +95,6 @@ type Config struct {
 	// It is expected that changes made via SchedulerCache will be observed
 	// by NodeLister and Algorithm.
 	SchedulerCache schedulerinternalcache.Cache
-	// Ecache is used for optimistically invalid affected cache items after
-	// successfully binding a pod
-	Ecache     *equivalence.Cache
 	NodeLister algorithm.NodeLister
 	Algorithm  algorithm.ScheduleAlgorithm
 	GetBinder  func(pod *v1.Pod) Binder
@@ -219,12 +214,6 @@ type configFactory struct {
 	// HardPodAffinitySymmetricWeight represents the weight of implicit PreferredDuringScheduling affinity rule, in the range 0-100.
 	hardPodAffinitySymmetricWeight int32
 
-	// Equivalence class cache
-	equivalencePodCache *equivalence.Cache
-
-	// Enable equivalence class cache
-	enableEquivalenceClassCache bool
-
 	// Handles volume binding decisions
 	volumeBinder *volumebinder.VolumeBinder
 
@@ -253,7 +242,6 @@ type ConfigFactoryArgs struct {
 	PdbInformer                    policyinformers.PodDisruptionBudgetInformer
 	StorageClassInformer           storageinformers.StorageClassInformer
 	HardPodAffinitySymmetricWeight int32
-	EnableEquivalenceClassCache    bool
 	DisablePreemption              bool
 	PercentageOfNodesToScore       int32
 	BindTimeoutSeconds             int64
@@ -291,7 +279,6 @@ func NewConfigFactory(args *ConfigFactoryArgs) Configurator {
 		StopEverything:                 stopEverything,
 		schedulerName:                  args.SchedulerName,
 		hardPodAffinitySymmetricWeight: args.HardPodAffinitySymmetricWeight,
-		enableEquivalenceClassCache:    args.EnableEquivalenceClassCache,
 		disablePreemption:              args.DisablePreemption,
 		percentageOfNodesToScore:       args.PercentageOfNodesToScore,
 	}
@@ -480,14 +467,6 @@ func (c *configFactory) skipPodUpdate(pod *v1.Pod) bool {
 }
 
 func (c *configFactory) onPvAdd(obj interface{}) {
-	if c.enableEquivalenceClassCache {
-		pv, ok := obj.(*v1.PersistentVolume)
-		if !ok {
-			klog.Errorf("cannot convert to *v1.PersistentVolume: %v", obj)
-			return
-		}
-		c.invalidatePredicatesForPv(pv)
-	}
 	// Pods created when there are no PVs available will be stuck in
 	// unschedulable queue. But unbound PVs created for static provisioning and
 	// delay binding storage class are skipped in PV controller dynamic
@@ -498,19 +477,6 @@ func (c *configFactory) onPvAdd(obj interface{}) {
 }
 
 func (c *configFactory) onPvUpdate(old, new interface{}) {
-	if c.enableEquivalenceClassCache {
-		newPV, ok := new.(*v1.PersistentVolume)
-		if !ok {
-			klog.Errorf("cannot convert to *v1.PersistentVolume: %v", new)
-			return
-		}
-		oldPV, ok := old.(*v1.PersistentVolume)
-		if !ok {
-			klog.Errorf("cannot convert to *v1.PersistentVolume: %v", old)
-			return
-		}
-		c.invalidatePredicatesForPvUpdate(oldPV, newPV)
-	}
 	// Scheduler.bindVolumesWorker may fail to update assumed pod volume
 	// bindings due to conflicts if PVs are updated by PV controller or other
 	// parties, then scheduler will add pod back to unschedulable queue. We
@@ -534,7 +500,6 @@ func (c *configFactory) invalidatePredicatesForPvUpdate(oldPV, newPV *v1.Persist
 			break
 		}
 	}
-	c.equivalencePodCache.InvalidatePredicates(invalidPredicates)
 }
 
 // isZoneRegionLabel check if given key of label is zone or region label.
@@ -543,24 +508,6 @@ func isZoneRegionLabel(k string) bool {
 }
 
 func (c *configFactory) onPvDelete(obj interface{}) {
-	if c.enableEquivalenceClassCache {
-		var pv *v1.PersistentVolume
-		switch t := obj.(type) {
-		case *v1.PersistentVolume:
-			pv = t
-		case cache.DeletedFinalStateUnknown:
-			var ok bool
-			pv, ok = t.Obj.(*v1.PersistentVolume)
-			if !ok {
-				klog.Errorf("cannot convert to *v1.PersistentVolume: %v", t.Obj)
-				return
-			}
-		default:
-			klog.Errorf("cannot convert to *v1.PersistentVolume: %v", t)
-			return
-		}
-		c.invalidatePredicatesForPv(pv)
-	}
 }
 
 func (c *configFactory) invalidatePredicatesForPv(pv *v1.PersistentVolume) {
@@ -595,19 +542,9 @@ func (c *configFactory) invalidatePredicatesForPv(pv *v1.PersistentVolume) {
 		// Add/delete impacts the available PVs to choose from
 		invalidPredicates.Insert(predicates.CheckVolumeBindingPred)
 	}
-
-	c.equivalencePodCache.InvalidatePredicates(invalidPredicates)
 }
 
 func (c *configFactory) onPvcAdd(obj interface{}) {
-	if c.enableEquivalenceClassCache {
-		pvc, ok := obj.(*v1.PersistentVolumeClaim)
-		if !ok {
-			klog.Errorf("cannot convert to *v1.PersistentVolumeClaim: %v", obj)
-			return
-		}
-		c.invalidatePredicatesForPvc(pvc)
-	}
 	c.podQueue.MoveAllToActiveQueue()
 }
 
@@ -616,41 +553,10 @@ func (c *configFactory) onPvcUpdate(old, new interface{}) {
 		return
 	}
 
-	if c.enableEquivalenceClassCache {
-		newPVC, ok := new.(*v1.PersistentVolumeClaim)
-		if !ok {
-			klog.Errorf("cannot convert to *v1.PersistentVolumeClaim: %v", new)
-			return
-		}
-		oldPVC, ok := old.(*v1.PersistentVolumeClaim)
-		if !ok {
-			klog.Errorf("cannot convert to *v1.PersistentVolumeClaim: %v", old)
-			return
-		}
-		c.invalidatePredicatesForPvcUpdate(oldPVC, newPVC)
-	}
 	c.podQueue.MoveAllToActiveQueue()
 }
 
 func (c *configFactory) onPvcDelete(obj interface{}) {
-	if c.enableEquivalenceClassCache {
-		var pvc *v1.PersistentVolumeClaim
-		switch t := obj.(type) {
-		case *v1.PersistentVolumeClaim:
-			pvc = t
-		case cache.DeletedFinalStateUnknown:
-			var ok bool
-			pvc, ok = t.Obj.(*v1.PersistentVolumeClaim)
-			if !ok {
-				klog.Errorf("cannot convert to *v1.PersistentVolumeClaim: %v", t.Obj)
-				return
-			}
-		default:
-			klog.Errorf("cannot convert to *v1.PersistentVolumeClaim: %v", t)
-			return
-		}
-		c.invalidatePredicatesForPvc(pvc)
-	}
 }
 
 func (c *configFactory) invalidatePredicatesForPvc(pvc *v1.PersistentVolumeClaim) {
@@ -670,7 +576,6 @@ func (c *configFactory) invalidatePredicatesForPvc(pvc *v1.PersistentVolumeClaim
 		// Add/delete impacts the available PVs to choose from
 		invalidPredicates.Insert(predicates.CheckVolumeBindingPred)
 	}
-	c.equivalencePodCache.InvalidatePredicates(invalidPredicates)
 }
 
 func (c *configFactory) invalidatePredicatesForPvcUpdate(old, new *v1.PersistentVolumeClaim) {
@@ -688,8 +593,6 @@ func (c *configFactory) invalidatePredicatesForPvcUpdate(old, new *v1.Persistent
 			invalidPredicates.Insert(predicates.MaxCSIVolumeCountPred)
 		}
 	}
-
-	c.equivalencePodCache.InvalidatePredicates(invalidPredicates)
 }
 
 func (c *configFactory) onStorageClassAdd(obj interface{}) {
@@ -711,24 +614,6 @@ func (c *configFactory) onStorageClassAdd(obj interface{}) {
 }
 
 func (c *configFactory) onStorageClassDelete(obj interface{}) {
-	if c.enableEquivalenceClassCache {
-		var sc *storagev1.StorageClass
-		switch t := obj.(type) {
-		case *storagev1.StorageClass:
-			sc = t
-		case cache.DeletedFinalStateUnknown:
-			var ok bool
-			sc, ok = t.Obj.(*storagev1.StorageClass)
-			if !ok {
-				klog.Errorf("cannot convert to *storagev1.StorageClass: %v", t.Obj)
-				return
-			}
-		default:
-			klog.Errorf("cannot convert to *storagev1.StorageClass: %v", t)
-			return
-		}
-		c.invalidatePredicatesForStorageClass(sc)
-	}
 }
 
 func (c *configFactory) invalidatePredicatesForStorageClass(sc *storagev1.StorageClass) {
@@ -741,33 +626,17 @@ func (c *configFactory) invalidatePredicatesForStorageClass(sc *storagev1.Storag
 			invalidPredicates.Insert(predicates.NoVolumeZoneConflictPred)
 		}
 	}
-
-	c.equivalencePodCache.InvalidatePredicates(invalidPredicates)
 }
 
 func (c *configFactory) onServiceAdd(obj interface{}) {
-	if c.enableEquivalenceClassCache {
-		c.equivalencePodCache.InvalidatePredicates(serviceAffinitySet)
-	}
 	c.podQueue.MoveAllToActiveQueue()
 }
 
 func (c *configFactory) onServiceUpdate(oldObj interface{}, newObj interface{}) {
-	if c.enableEquivalenceClassCache {
-		// TODO(resouer) We may need to invalidate this for specified group of pods only
-		oldService := oldObj.(*v1.Service)
-		newService := newObj.(*v1.Service)
-		if !reflect.DeepEqual(oldService.Spec.Selector, newService.Spec.Selector) {
-			c.equivalencePodCache.InvalidatePredicates(serviceAffinitySet)
-		}
-	}
 	c.podQueue.MoveAllToActiveQueue()
 }
 
 func (c *configFactory) onServiceDelete(obj interface{}) {
-	if c.enableEquivalenceClassCache {
-		c.equivalencePodCache.InvalidatePredicates(serviceAffinitySet)
-	}
 	c.podQueue.MoveAllToActiveQueue()
 }
 
@@ -878,24 +747,6 @@ func (c *configFactory) deletePodFromSchedulingQueue(obj interface{}) {
 }
 
 func (c *configFactory) invalidateCachedPredicatesOnUpdatePod(newPod *v1.Pod, oldPod *v1.Pod) {
-	if c.enableEquivalenceClassCache {
-		// if the pod does not have bound node, updating equivalence cache is meaningless;
-		// if pod's bound node has been changed, that case should be handled by pod add & delete.
-		if len(newPod.Spec.NodeName) != 0 && newPod.Spec.NodeName == oldPod.Spec.NodeName {
-			if !reflect.DeepEqual(oldPod.GetLabels(), newPod.GetLabels()) {
-				// MatchInterPodAffinity need to be reconsidered for this node,
-				// as well as all nodes in its same failure domain.
-				c.equivalencePodCache.InvalidatePredicates(
-					matchInterPodAffinitySet)
-			}
-			// if requested container resource changed, invalidate GeneralPredicates of this node
-			if !reflect.DeepEqual(predicates.GetResourceRequest(newPod),
-				predicates.GetResourceRequest(oldPod)) {
-				c.equivalencePodCache.InvalidatePredicatesOnNode(
-					newPod.Spec.NodeName, generalPredicatesSets)
-			}
-		}
-	}
 }
 
 func (c *configFactory) deletePodFromCache(obj interface{}) {
@@ -928,24 +779,6 @@ func (c *configFactory) deletePodFromCache(obj interface{}) {
 }
 
 func (c *configFactory) invalidateCachedPredicatesOnDeletePod(pod *v1.Pod) {
-	if c.enableEquivalenceClassCache {
-		// part of this case is the same as pod add.
-		c.equivalencePodCache.InvalidateCachedPredicateItemForPodAdd(pod, pod.Spec.NodeName)
-		// MatchInterPodAffinity need to be reconsidered for this node,
-		// as well as all nodes in its same failure domain.
-		// TODO(resouer) can we just do this for nodes in the same failure domain
-		c.equivalencePodCache.InvalidatePredicates(
-			matchInterPodAffinitySet)
-
-		// if this pod have these PV, cached result of disk conflict will become invalid.
-		for _, volume := range pod.Spec.Volumes {
-			if volume.GCEPersistentDisk != nil || volume.AWSElasticBlockStore != nil ||
-				volume.RBD != nil || volume.ISCSI != nil {
-				c.equivalencePodCache.InvalidatePredicatesOnNode(
-					pod.Spec.NodeName, noDiskConflictSet)
-			}
-		}
-	}
 }
 
 func (c *configFactory) addNodeToCache(obj interface{}) {
@@ -955,12 +788,6 @@ func (c *configFactory) addNodeToCache(obj interface{}) {
 		return
 	}
 
-	// NOTE: Because the scheduler uses equivalence cache for nodes, we need
-	// to create it before adding node into scheduler cache.
-	if c.enableEquivalenceClassCache {
-		// GetNodeCache() will lazily create NodeCache for given node if it does not exist.
-		c.equivalencePodCache.GetNodeCache(node.GetName())
-	}
 
 	if err := c.schedulerCache.AddNode(node); err != nil {
 		klog.Errorf("scheduler cache AddNode failed: %v", err)
@@ -1003,72 +830,6 @@ func (c *configFactory) updateNodeInCache(oldObj, newObj interface{}) {
 }
 
 func (c *configFactory) invalidateCachedPredicatesOnNodeUpdate(newNode *v1.Node, oldNode *v1.Node) {
-	if c.enableEquivalenceClassCache {
-		// Begin to update equivalence cache based on node update
-		// TODO(resouer): think about lazily initialize this set
-		invalidPredicates := sets.NewString()
-
-		if !reflect.DeepEqual(oldNode.Status.Allocatable, newNode.Status.Allocatable) {
-			invalidPredicates.Insert(predicates.GeneralPred) // "PodFitsResources"
-		}
-		if !reflect.DeepEqual(oldNode.GetLabels(), newNode.GetLabels()) {
-			invalidPredicates.Insert(predicates.GeneralPred, predicates.CheckServiceAffinityPred) // "PodSelectorMatches"
-			for k, v := range oldNode.GetLabels() {
-				// any label can be topology key of pod, we have to invalidate in all cases
-				if v != newNode.GetLabels()[k] {
-					invalidPredicates.Insert(predicates.MatchInterPodAffinityPred)
-				}
-				// NoVolumeZoneConflict will only be affected by zone related label change
-				if isZoneRegionLabel(k) {
-					if v != newNode.GetLabels()[k] {
-						invalidPredicates.Insert(predicates.NoVolumeZoneConflictPred)
-					}
-				}
-			}
-		}
-
-		oldTaints, oldErr := helper.GetTaintsFromNodeAnnotations(oldNode.GetAnnotations())
-		if oldErr != nil {
-			klog.Errorf("Failed to get taints from old node annotation for equivalence cache")
-		}
-		newTaints, newErr := helper.GetTaintsFromNodeAnnotations(newNode.GetAnnotations())
-		if newErr != nil {
-			klog.Errorf("Failed to get taints from new node annotation for equivalence cache")
-		}
-		if !reflect.DeepEqual(oldTaints, newTaints) ||
-			!reflect.DeepEqual(oldNode.Spec.Taints, newNode.Spec.Taints) {
-			invalidPredicates.Insert(predicates.PodToleratesNodeTaintsPred)
-		}
-
-		if !reflect.DeepEqual(oldNode.Status.Conditions, newNode.Status.Conditions) {
-			oldConditions := make(map[v1.NodeConditionType]v1.ConditionStatus)
-			newConditions := make(map[v1.NodeConditionType]v1.ConditionStatus)
-			for _, cond := range oldNode.Status.Conditions {
-				oldConditions[cond.Type] = cond.Status
-			}
-			for _, cond := range newNode.Status.Conditions {
-				newConditions[cond.Type] = cond.Status
-			}
-			if oldConditions[v1.NodeMemoryPressure] != newConditions[v1.NodeMemoryPressure] {
-				invalidPredicates.Insert(predicates.CheckNodeMemoryPressurePred)
-			}
-			if oldConditions[v1.NodeDiskPressure] != newConditions[v1.NodeDiskPressure] {
-				invalidPredicates.Insert(predicates.CheckNodeDiskPressurePred)
-			}
-			if oldConditions[v1.NodePIDPressure] != newConditions[v1.NodePIDPressure] {
-				invalidPredicates.Insert(predicates.CheckNodePIDPressurePred)
-			}
-			if oldConditions[v1.NodeReady] != newConditions[v1.NodeReady] ||
-				oldConditions[v1.NodeOutOfDisk] != newConditions[v1.NodeOutOfDisk] ||
-				oldConditions[v1.NodeNetworkUnavailable] != newConditions[v1.NodeNetworkUnavailable] {
-				invalidPredicates.Insert(predicates.CheckNodeConditionPred)
-			}
-		}
-		if newNode.Spec.Unschedulable != oldNode.Spec.Unschedulable {
-			invalidPredicates.Insert(predicates.CheckNodeConditionPred)
-		}
-		c.equivalencePodCache.InvalidatePredicatesOnNode(newNode.GetName(), invalidPredicates)
-	}
 }
 
 func nodeSchedulingPropertiesChanged(newNode *v1.Node, oldNode *v1.Node) bool {
@@ -1141,9 +902,6 @@ func (c *configFactory) deleteNodeFromCache(obj interface{}) {
 	// cache with stale information which is based on snapshot of old cache.
 	if err := c.schedulerCache.RemoveNode(node); err != nil {
 		klog.Errorf("scheduler cache RemoveNode failed: %v", err)
-	}
-	if c.enableEquivalenceClassCache {
-		c.equivalencePodCache.InvalidateAllPredicatesOnNode(node.GetName())
 	}
 }
 
@@ -1279,15 +1037,8 @@ func (c *configFactory) CreateFromKeys(predicateKeys, priorityKeys sets.String, 
 		return nil, err
 	}
 
-	// Init equivalence class cache
-	if c.enableEquivalenceClassCache {
-		c.equivalencePodCache = equivalence.NewCache(predicates.Ordering())
-		klog.Info("Created equivalence class cache")
-	}
-
 	algo := core.NewGenericScheduler(
 		c.schedulerCache,
-		c.equivalencePodCache,
 		c.podQueue,
 		predicateFuncs,
 		predicateMetaProducer,
@@ -1305,7 +1056,6 @@ func (c *configFactory) CreateFromKeys(predicateKeys, priorityKeys sets.String, 
 	podBackoff := util.CreateDefaultPodBackoff()
 	return &Config{
 		SchedulerCache: c.schedulerCache,
-		Ecache:         c.equivalencePodCache,
 		// The scheduler only needs to consider schedulable nodes.
 		NodeLister:          &nodeLister{c.nodeLister},
 		Algorithm:           algo,
@@ -1509,10 +1259,6 @@ func (c *configFactory) MakeDefaultErrorFunc(backoff *util.PodBackoff, podQueue 
 						// snapshotted before updates are written, we would update equivalence
 						// cache with stale information which is based on snapshot of old cache.
 						c.schedulerCache.RemoveNode(&node)
-						// invalidate cached predicate for the node
-						if c.enableEquivalenceClassCache {
-							c.equivalencePodCache.InvalidateAllPredicatesOnNode(nodeName)
-						}
 					}
 				}
 			} else {
