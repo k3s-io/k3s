@@ -71,7 +71,6 @@ batch/v1 \
 batch/v1beta1 \
 batch/v2alpha1 \
 certificates.k8s.io/v1beta1 \
-coordination.k8s.io/v1beta1 \
 extensions/v1beta1 \
 networking.k8s.io/v1 \
 policy/v1beta1 \

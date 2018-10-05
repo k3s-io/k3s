@@ -26,7 +26,6 @@ import (
 	"k8s.io/apiserver/pkg/authorization/authorizer"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	csiv1alpha1 "k8s.io/csi-api/pkg/apis/csi/v1alpha1"
-	coordapi "k8s.io/kubernetes/pkg/apis/coordination"
 	api "k8s.io/kubernetes/pkg/apis/core"
 	storageapi "k8s.io/kubernetes/pkg/apis/storage"
 	"k8s.io/kubernetes/pkg/auth/nodeidentifier"
@@ -74,7 +73,6 @@ var (
 	pvResource          = api.Resource("persistentvolumes")
 	vaResource          = storageapi.Resource("volumeattachments")
 	svcAcctResource     = api.Resource("serviceaccounts")
-	leaseResource       = coordapi.Resource("leases")
 	csiNodeInfoResource = csiv1alpha1.Resource("csinodeinfos")
 )
 
@@ -117,11 +115,6 @@ func (r *NodeAuthorizer) Authorize(attrs authorizer.Attributes) (authorizer.Deci
 				return r.authorizeCreateToken(nodeName, serviceAccountVertexType, attrs)
 			}
 			return authorizer.DecisionNoOpinion, fmt.Sprintf("disabled by feature gate %s", features.TokenRequest), nil
-		case leaseResource:
-			if r.features.Enabled(features.NodeLease) {
-				return r.authorizeLease(nodeName, attrs)
-			}
-			return authorizer.DecisionNoOpinion, fmt.Sprintf("disabled by feature gate %s", features.NodeLease), nil
 		case csiNodeInfoResource:
 			if r.features.Enabled(features.KubeletPluginsWatcher) && r.features.Enabled(features.CSINodeInfo) {
 				return r.authorizeCSINodeInfo(nodeName, attrs)

@@ -1,7 +1,0 @@
-approvers:
-- sig-auth-node-isolation-approvers
-reviewers:
-- sig-auth-node-isolation-reviewers
-labels:
-- sig/auth
-
