@@ -128,12 +128,6 @@ const (
 	// Alternative container-level CPU affinity policies.
 	CPUManager utilfeature.Feature = "CPUManager"
 
-	// owner: @szuecs
-	// alpha: v1.12
-	//
-	// Enable nodes to change CPUCFSQuotaPeriod
-	CPUCFSQuotaPeriod utilfeature.Feature = "CustomCPUCFSQuotaPeriod"
-
 	// owner: @derekwaynecarr
 	// beta: v1.10
 	// GA: v1.14
@@ -434,7 +428,6 @@ var defaultKubernetesFeatureGates = map[utilfeature.Feature]utilfeature.FeatureS
 	ExpandCSIVolumes:                        {Default: false, PreRelease: utilfeature.Alpha},
 	AttachVolumeLimit:                       {Default: true, PreRelease: utilfeature.Beta},
 	CPUManager:                              {Default: true, PreRelease: utilfeature.Beta},
-	CPUCFSQuotaPeriod:                       {Default: false, PreRelease: utilfeature.Alpha},
 	ServiceNodeExclusion:                    {Default: false, PreRelease: utilfeature.Alpha},
 	MountContainers:                         {Default: false, PreRelease: utilfeature.Alpha},
 	VolumeScheduling:                        {Default: true, PreRelease: utilfeature.GA, LockToDefault: true}, // remove in 1.16
