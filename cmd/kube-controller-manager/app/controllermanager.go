@@ -372,7 +372,6 @@ func NewControllerInitializers(loopMode ControllerLoopMode) map[string]InitFunc 
 	controllers["clusterrole-aggregation"] = startClusterRoleAggregrationController
 	controllers["pvc-protection"] = startPVCProtectionController
 	controllers["pv-protection"] = startPVProtectionController
-	controllers["ttl-after-finished"] = startTTLAfterFinishedController
 
 	return controllers
 }
