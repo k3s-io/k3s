@@ -25,8 +25,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
-	"k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/scheduler/algorithm"
 	schedulercache "k8s.io/kubernetes/pkg/scheduler/cache"
 
@@ -129,10 +127,6 @@ func (cache *schedulerCache) UpdateNodeNameToInfoMap(nodeNameToInfo map[string]*
 	defer cache.mu.Unlock()
 
 	for name, info := range cache.nodes {
-		if utilfeature.DefaultFeatureGate.Enabled(features.BalanceAttachedNodeVolumes) && info.TransientInfo != nil {
-			// Transient scheduler info is reset here.
-			info.TransientInfo.ResetTransientSchedulerInfo()
-		}
 		if current, ok := nodeNameToInfo[name]; !ok || current.GetGeneration() != info.GetGeneration() {
 			nodeNameToInfo[name] = info.Clone()
 		}
