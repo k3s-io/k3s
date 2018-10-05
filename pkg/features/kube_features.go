@@ -126,13 +126,6 @@ const (
 	// 'MemoryPressure', 'PIDPressure' and 'DiskPressure'.
 	TaintNodesByCondition utilfeature.Feature = "TaintNodesByCondition"
 
-	// owner: @sjenning
-	// alpha: v1.11
-	//
-	// Allows resource reservations at the QoS level preventing pods at lower QoS levels from
-	// bursting into resources requested at higher QoS levels (memory only for now)
-	QOSReserved utilfeature.Feature = "QOSReserved"
-
 	// owner: @ConnorDoyle
 	// alpha: v1.8
 	// beta: v1.10
@@ -442,7 +435,6 @@ var defaultKubernetesFeatureGates = map[utilfeature.Feature]utilfeature.FeatureS
 	PodShareProcessNamespace:                {Default: true, PreRelease: utilfeature.Beta},
 	PodPriority:                             {Default: true, PreRelease: utilfeature.GA},
 	TaintNodesByCondition:                   {Default: true, PreRelease: utilfeature.Beta},
-	QOSReserved:                             {Default: false, PreRelease: utilfeature.Alpha},
 	ExpandPersistentVolumes:                 {Default: true, PreRelease: utilfeature.Beta},
 	ExpandInUsePersistentVolumes:            {Default: false, PreRelease: utilfeature.Alpha},
 	ExpandCSIVolumes:                        {Default: false, PreRelease: utilfeature.Alpha},
