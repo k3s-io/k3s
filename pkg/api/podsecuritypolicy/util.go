@@ -17,15 +17,11 @@ limitations under the License.
 package podsecuritypolicy
 
 import (
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/kubernetes/pkg/apis/policy"
-	"k8s.io/kubernetes/pkg/features"
 )
 
 // DropDisabledAlphaFields removes disabled fields from the pod security policy spec.
 // This should be called from PrepareForCreate/PrepareForUpdate for all resources containing a od security policy spec.
 func DropDisabledAlphaFields(pspSpec *policy.PodSecurityPolicySpec) {
-	if !utilfeature.DefaultFeatureGate.Enabled(features.ProcMountType) {
-		pspSpec.AllowedProcMountTypes = nil
-	}
+	pspSpec.AllowedProcMountTypes = nil
 }
