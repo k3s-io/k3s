@@ -81,10 +81,6 @@ type APIGroupVersion struct {
 
 	MinRequestTimeout time.Duration
 
-	// EnableAPIResponseCompression indicates whether API Responses should support compression
-	// if the client requests it via Accept-Encoding
-	EnableAPIResponseCompression bool
-
 	// OpenAPIConfig lets the individual handlers build a subset of the OpenAPI schema before they are installed.
 	OpenAPIConfig *openapicommon.Config
 }
@@ -98,7 +94,6 @@ func (g *APIGroupVersion) InstallREST(container *restful.Container) error {
 		group:                        g,
 		prefix:                       prefix,
 		minRequestTimeout:            g.MinRequestTimeout,
-		enableAPIResponseCompression: g.EnableAPIResponseCompression,
 	}
 
 	apiResources, ws, registrationErrors := installer.Install()
