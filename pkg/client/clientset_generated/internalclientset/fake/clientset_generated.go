@@ -37,8 +37,6 @@ import (
 	fakeautoscalinginternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/autoscaling/internalversion/fake"
 	batchinternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/batch/internalversion"
 	fakebatchinternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/batch/internalversion/fake"
-	coordinationinternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/coordination/internalversion"
-	fakecoordinationinternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/coordination/internalversion/fake"
 	coreinternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/internalversion"
 	fakecoreinternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/internalversion/fake"
 	extensionsinternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/extensions/internalversion"
@@ -130,11 +128,6 @@ func (c *Clientset) Autoscaling() autoscalinginternalversion.AutoscalingInterfac
 // Batch retrieves the BatchClient
 func (c *Clientset) Batch() batchinternalversion.BatchInterface {
 	return &fakebatchinternalversion.FakeBatch{Fake: &c.Fake}
-}
-
-// Coordination retrieves the CoordinationClient
-func (c *Clientset) Coordination() coordinationinternalversion.CoordinationInterface {
-	return &fakecoordinationinternalversion.FakeCoordination{Fake: &c.Fake}
 }
 
 // Extensions retrieves the ExtensionsClient
