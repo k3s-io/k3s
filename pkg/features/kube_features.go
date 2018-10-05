@@ -251,12 +251,6 @@ const (
 	// Enable resource quota scope selectors
 	ResourceQuotaScopeSelectors utilfeature.Feature = "ResourceQuotaScopeSelectors"
 
-	// owner: @janosi
-	// alpha: v1.12
-	//
-	// Enables SCTP as new protocol for Service ports, NetworkPolicy, and ContainerPort in Pod/Containers definition
-	SCTPSupport utilfeature.Feature = "SCTPSupport"
-
 	// owner: @xing-yang
 	// alpha: v1.12
 	//
@@ -325,7 +319,6 @@ var defaultKubernetesFeatureGates = map[utilfeature.Feature]utilfeature.FeatureS
 	PodReadinessGates:                           {Default: true, PreRelease: utilfeature.Beta},
 	KubeletPluginsWatcher:                       {Default: true, PreRelease: utilfeature.GA},
 	ResourceQuotaScopeSelectors:                 {Default: true, PreRelease: utilfeature.Beta},
-	SCTPSupport:                                 {Default: false, PreRelease: utilfeature.Alpha},
 	VolumeSnapshotDataSource:                    {Default: false, PreRelease: utilfeature.Alpha},
 	ProcMountType:                               {Default: false, PreRelease: utilfeature.Alpha},
 	TTLAfterFinished:                            {Default: false, PreRelease: utilfeature.Alpha},
