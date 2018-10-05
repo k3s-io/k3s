@@ -296,12 +296,6 @@ const (
 	// (Kube) Node Lifecycle Controller uses these heartbeats as a node health signal.
 	NodeLease utilfeature.Feature = "NodeLease"
 
-	// owner: @xing-yang
-	// alpha: v1.12
-	//
-	// Enable volume snapshot data source support.
-	VolumeSnapshotDataSource utilfeature.Feature = "VolumeSnapshotDataSource"
-
 	// owner: @jessfraz
 	// alpha: v1.12
 	//
@@ -412,7 +406,6 @@ var defaultKubernetesFeatureGates = map[utilfeature.Feature]utilfeature.FeatureS
 	CSIInlineVolume:                         {Default: false, PreRelease: utilfeature.Alpha},
 	RuntimeClass:                            {Default: true, PreRelease: utilfeature.Beta},
 	NodeLease:                               {Default: true, PreRelease: utilfeature.Beta},
-	VolumeSnapshotDataSource:                {Default: false, PreRelease: utilfeature.Alpha},
 	ProcMountType:                           {Default: false, PreRelease: utilfeature.Alpha},
 	TTLAfterFinished:                        {Default: false, PreRelease: utilfeature.Alpha},
 	KubeletPodResources:                     {Default: false, PreRelease: utilfeature.Alpha},
