@@ -51,14 +51,6 @@ const (
 	// Allow API clients to retrieve resource lists in chunks rather than
 	// all at once.
 	APIListChunking utilfeature.Feature = "APIListChunking"
-
-	// owner: @apelisse
-	// alpha: v1.12
-	//
-	// Allow requests to be processed but not stored, so that
-	// validation, merging, mutation can be tested without
-	// committing.
-	DryRun utilfeature.Feature = "DryRun"
 )
 
 func init() {
@@ -72,5 +64,4 @@ var defaultKubernetesFeatureGates = map[utilfeature.Feature]utilfeature.FeatureS
 	StreamingProxyRedirects: {Default: true, PreRelease: utilfeature.Beta},
 	AdvancedAuditing:        {Default: true, PreRelease: utilfeature.GA},
 	APIListChunking:         {Default: true, PreRelease: utilfeature.Beta},
-	DryRun:                  {Default: false, PreRelease: utilfeature.Alpha},
 }
