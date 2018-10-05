@@ -106,12 +106,6 @@ const (
 	ExpandCSIVolumes utilfeature.Feature = "ExpandCSIVolumes"
 
 	// owner: @verb
-	// alpha: v1.10
-	//
-	// Allows running a "debug container" in a pod namespaces to troubleshoot a running pod.
-	DebugContainers utilfeature.Feature = "DebugContainers"
-
-	// owner: @verb
 	// beta: v1.12
 	//
 	// Allows all containers in a pod to share a process namespace.
@@ -445,7 +439,6 @@ var defaultKubernetesFeatureGates = map[utilfeature.Feature]utilfeature.FeatureS
 	LocalStorageCapacityIsolation:               {Default: true, PreRelease: utilfeature.Beta},
 	HugePages:                                   {Default: true, PreRelease: utilfeature.GA, LockToDefault: true}, // remove in 1.16
 	Sysctls:                                     {Default: true, PreRelease: utilfeature.Beta},
-	DebugContainers:                             {Default: false, PreRelease: utilfeature.Alpha},
 	PodShareProcessNamespace:                    {Default: true, PreRelease: utilfeature.Beta},
 	PodPriority:                                 {Default: true, PreRelease: utilfeature.GA},
 	TaintNodesByCondition:                       {Default: true, PreRelease: utilfeature.Beta},
