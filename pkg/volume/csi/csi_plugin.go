@@ -34,9 +34,7 @@ import (
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	utilversion "k8s.io/apimachinery/pkg/util/version"
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	clientset "k8s.io/client-go/kubernetes"
-	"k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/volume"
 	"k8s.io/kubernetes/pkg/volume/csi/nodeinfomanager"
 )
@@ -53,23 +51,16 @@ const (
 	volNameSep      = "^"
 	volDataFileName = "vol_data.json"
 	fsTypeBlockName = "block"
-
-	// TODO: increase to something useful
-	csiResyncPeriod = time.Minute
 )
 
-var deprecatedSocketDirVersions = []string{"0.1.0", "0.2.0", "0.3.0", "0.4.0"}
-
 type csiPlugin struct {
-	host              volume.VolumeHost
-	blockEnabled      bool
+	host volume.VolumeHost
 }
 
 // ProbeVolumePlugins returns implemented plugins
 func ProbeVolumePlugins() []volume.VolumePlugin {
 	p := &csiPlugin{
-		host:         nil,
-		blockEnabled: utilfeature.DefaultFeatureGate.Enabled(features.CSIBlockVolume),
+		host: nil,
 	}
 	return []volume.VolumePlugin{p}
 }
@@ -447,133 +438,15 @@ func (p *csiPlugin) GetDeviceMountRefs(deviceMountPath string) ([]string, error)
 var _ volume.BlockVolumePlugin = &csiPlugin{}
 
 func (p *csiPlugin) NewBlockVolumeMapper(spec *volume.Spec, podRef *api.Pod, opts volume.VolumeOptions) (volume.BlockVolumeMapper, error) {
-	if !p.blockEnabled {
-		return nil, errors.New("CSIBlockVolume feature not enabled")
-	}
-
-	pvSource, err := getCSISourceFromSpec(spec)
-	if err != nil {
-		return nil, err
-	}
-	readOnly, err := getReadOnlyFromSpec(spec)
-	if err != nil {
-		return nil, err
-	}
-
-	klog.V(4).Info(log("setting up block mapper for [volume=%v,driver=%v]", pvSource.VolumeHandle, pvSource.Driver))
-
-	k8s := p.host.GetKubeClient()
-	if k8s == nil {
-		klog.Error(log("failed to get a kubernetes client"))
-		return nil, errors.New("failed to get a Kubernetes client")
-	}
-
-	mapper := &csiBlockMapper{
-		k8s:        k8s,
-		plugin:     p,
-		volumeID:   pvSource.VolumeHandle,
-		driverName: csiDriverName(pvSource.Driver),
-		readOnly:   readOnly,
-		spec:       spec,
-		specName:   spec.Name(),
-		podUID:     podRef.UID,
-	}
-	mapper.csiClientGetter.driverName = csiDriverName(pvSource.Driver)
-
-	// Save volume info in pod dir
-	dataDir := getVolumeDeviceDataDir(spec.Name(), p.host)
-
-	if err := os.MkdirAll(dataDir, 0750); err != nil {
-		klog.Error(log("failed to create data dir %s:  %v", dataDir, err))
-		return nil, err
-	}
-	klog.V(4).Info(log("created path successfully [%s]", dataDir))
-
-	// persist volume info data for teardown
-	node := string(p.host.GetNodeName())
-	attachID := getAttachmentName(pvSource.VolumeHandle, pvSource.Driver, node)
-	volData := map[string]string{
-		volDataKey.specVolID:    spec.Name(),
-		volDataKey.volHandle:    pvSource.VolumeHandle,
-		volDataKey.driverName:   pvSource.Driver,
-		volDataKey.nodeName:     node,
-		volDataKey.attachmentID: attachID,
-	}
-
-	if err := saveVolumeData(dataDir, volDataFileName, volData); err != nil {
-		klog.Error(log("failed to save volume info data: %v", err))
-		if err := os.RemoveAll(dataDir); err != nil {
-			klog.Error(log("failed to remove dir after error [%s]: %v", dataDir, err))
-			return nil, err
-		}
-		return nil, err
-	}
-
-	return mapper, nil
+	return nil, errors.New("CSIBlockVolume feature not enabled")
 }
 
 func (p *csiPlugin) NewBlockVolumeUnmapper(volName string, podUID types.UID) (volume.BlockVolumeUnmapper, error) {
-	if !p.blockEnabled {
-		return nil, errors.New("CSIBlockVolume feature not enabled")
-	}
-
-	klog.V(4).Infof(log("setting up block unmapper for [Spec=%v, podUID=%v]", volName, podUID))
-	unmapper := &csiBlockMapper{
-		plugin:   p,
-		podUID:   podUID,
-		specName: volName,
-	}
-
-	// load volume info from file
-	dataDir := getVolumeDeviceDataDir(unmapper.specName, p.host)
-	data, err := loadVolumeData(dataDir, volDataFileName)
-	if err != nil {
-		klog.Error(log("unmapper failed to load volume data file [%s]: %v", dataDir, err))
-		return nil, err
-	}
-	unmapper.driverName = csiDriverName(data[volDataKey.driverName])
-	unmapper.volumeID = data[volDataKey.volHandle]
-	unmapper.csiClientGetter.driverName = unmapper.driverName
-	if err != nil {
-		return nil, err
-	}
-
-	return unmapper, nil
+	return nil, errors.New("CSIBlockVolume feature not enabled")
 }
 
 func (p *csiPlugin) ConstructBlockVolumeSpec(podUID types.UID, specVolName, mapPath string) (*volume.Spec, error) {
-	if !p.blockEnabled {
-		return nil, errors.New("CSIBlockVolume feature not enabled")
-	}
-
-	klog.V(4).Infof("plugin.ConstructBlockVolumeSpec [podUID=%s, specVolName=%s, path=%s]", string(podUID), specVolName, mapPath)
-
-	dataDir := getVolumeDeviceDataDir(specVolName, p.host)
-	volData, err := loadVolumeData(dataDir, volDataFileName)
-	if err != nil {
-		klog.Error(log("plugin.ConstructBlockVolumeSpec failed loading volume data using [%s]: %v", mapPath, err))
-		return nil, err
-	}
-
-	klog.V(4).Info(log("plugin.ConstructBlockVolumeSpec extracted [%#v]", volData))
-
-	blockMode := api.PersistentVolumeBlock
-	pv := &api.PersistentVolume{
-		ObjectMeta: meta.ObjectMeta{
-			Name: volData[volDataKey.specVolID],
-		},
-		Spec: api.PersistentVolumeSpec{
-			PersistentVolumeSource: api.PersistentVolumeSource{
-				CSI: &api.CSIPersistentVolumeSource{
-					Driver:       volData[volDataKey.driverName],
-					VolumeHandle: volData[volDataKey.volHandle],
-				},
-			},
-			VolumeMode: &blockMode,
-		},
-	}
-
-	return volume.NewSpecFromPersistentVolume(pv, false), nil
+	return nil, errors.New("CSIBlockVolume feature not enabled")
 }
 
 func (p *csiPlugin) skipAttach(driver string) (bool, error) {
@@ -674,13 +547,4 @@ func isV0Version(version string) bool {
 	}
 
 	return parsedVersion.Major() == 0
-}
-
-func isV1Version(version string) bool {
-	parsedVersion, err := utilversion.ParseGeneric(version)
-	if err != nil {
-		return false
-	}
-
-	return parsedVersion.Major() == 1
 }
