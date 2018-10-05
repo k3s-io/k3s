@@ -25,9 +25,7 @@ import (
 // DropDisabledAlphaFields removes disabled fields from the pod security policy spec.
 // This should be called from PrepareForCreate/PrepareForUpdate for all resources containing a od security policy spec.
 func DropDisabledAlphaFields(pspSpec *policy.PodSecurityPolicySpec) {
-	if !utilfeature.DefaultFeatureGate.Enabled(features.ProcMountType) {
-		pspSpec.AllowedProcMountTypes = nil
-	}
+	pspSpec.AllowedProcMountTypes = nil
 	if !utilfeature.DefaultFeatureGate.Enabled(features.RunAsGroup) {
 		pspSpec.RunAsGroup = nil
 	}
