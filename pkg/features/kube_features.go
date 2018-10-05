@@ -347,7 +347,7 @@ var defaultKubernetesFeatureGates = map[utilfeature.Feature]utilfeature.FeatureS
 	BoundServiceAccountTokenVolume:              {Default: false, PreRelease: utilfeature.Alpha},
 	CRIContainerLogRotation:                     {Default: true, PreRelease: utilfeature.Beta},
 	GCERegionalPersistentDisk:                   {Default: true, PreRelease: utilfeature.GA},
-	RunAsGroup:                                  {Default: false, PreRelease: utilfeature.Alpha},
+	RunAsGroup:                                  {Default: true, PreRelease: utilfeature.Beta},
 	VolumeSubpath:                               {Default: true, PreRelease: utilfeature.GA},
 	BalanceAttachedNodeVolumes:                  {Default: false, PreRelease: utilfeature.Alpha},
 	PodReadinessGates:                           {Default: true, PreRelease: utilfeature.Beta},
