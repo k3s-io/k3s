@@ -251,12 +251,6 @@ const (
 	// Enable resource quota scope selectors
 	ResourceQuotaScopeSelectors utilfeature.Feature = "ResourceQuotaScopeSelectors"
 
-	// owner: @vladimirvivien
-	// alpha: v1.11
-	//
-	// Enables CSI to use raw block storage volumes
-	CSIBlockVolume utilfeature.Feature = "CSIBlockVolume"
-
 	// owner: @tallclair
 	// alpha: v1.12
 	//
@@ -337,7 +331,6 @@ var defaultKubernetesFeatureGates = map[utilfeature.Feature]utilfeature.FeatureS
 	PodReadinessGates:                           {Default: true, PreRelease: utilfeature.Beta},
 	KubeletPluginsWatcher:                       {Default: true, PreRelease: utilfeature.GA},
 	ResourceQuotaScopeSelectors:                 {Default: true, PreRelease: utilfeature.Beta},
-	CSIBlockVolume:                              {Default: false, PreRelease: utilfeature.Alpha},
 	RuntimeClass:                                {Default: false, PreRelease: utilfeature.Alpha},
 	SCTPSupport:                                 {Default: false, PreRelease: utilfeature.Alpha},
 	VolumeSnapshotDataSource:                    {Default: false, PreRelease: utilfeature.Alpha},

@@ -28,7 +28,6 @@ import (
 
 	"k8s.io/api/core/v1"
 	storage "k8s.io/api/storage/v1beta1"
-	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	kstrings "k8s.io/kubernetes/pkg/util/strings"
@@ -207,59 +206,7 @@ func (m *csiBlockMapper) publishVolumeForBlock(
 
 // SetUpDevice ensures the device is attached returns path where the device is located.
 func (m *csiBlockMapper) SetUpDevice() (string, error) {
-	if !m.plugin.blockEnabled {
-		return "", errors.New("CSIBlockVolume feature not enabled")
-	}
-	klog.V(4).Infof(log("blockMapper.SetUpDevice called"))
-
-	// Get csiSource from spec
-	if m.spec == nil {
-		klog.Error(log("blockMapper.SetUpDevice spec is nil"))
-		return "", fmt.Errorf("spec is nil")
-	}
-
-	csiSource, err := getCSISourceFromSpec(m.spec)
-	if err != nil {
-		klog.Error(log("blockMapper.SetUpDevice failed to get CSI persistent source: %v", err))
-		return "", err
-	}
-
-	// Search for attachment by VolumeAttachment.Spec.Source.PersistentVolumeName
-	nodeName := string(m.plugin.host.GetNodeName())
-	attachID := getAttachmentName(csiSource.VolumeHandle, csiSource.Driver, nodeName)
-	attachment, err := m.k8s.StorageV1beta1().VolumeAttachments().Get(attachID, meta.GetOptions{})
-	if err != nil {
-		klog.Error(log("blockMapper.SetupDevice failed to get volume attachment [id=%v]: %v", attachID, err))
-		return "", err
-	}
-
-	if attachment == nil {
-		klog.Error(log("blockMapper.SetupDevice unable to find VolumeAttachment [id=%s]", attachID))
-		return "", errors.New("no existing VolumeAttachment found")
-	}
-
-	//TODO (vladimirvivien) implement better AccessModes mapping between k8s and CSI
-	accessMode := v1.ReadWriteOnce
-	if m.spec.PersistentVolume.Spec.AccessModes != nil {
-		accessMode = m.spec.PersistentVolume.Spec.AccessModes[0]
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), csiTimeout)
-	defer cancel()
-
-	// Call NodeStageVolume
-	stagingPath, err := m.stageVolumeForBlock(ctx, m.csiClient, accessMode, csiSource, attachment)
-	if err != nil {
-		return "", err
-	}
-
-	// Call NodePublishVolume
-	publishPath, err := m.publishVolumeForBlock(ctx, m.csiClient, accessMode, csiSource, attachment, stagingPath)
-	if err != nil {
-		return "", err
-	}
-
-	return publishPath, nil
+	return "", errors.New("CSIBlockVolume feature not enabled")
 }
 
 func (m *csiBlockMapper) MapDevice(devicePath, globalMapPath, volumeMapPath, volumeMapName string, podUID types.UID) error {
@@ -317,44 +264,5 @@ func (m *csiBlockMapper) unstageVolumeForBlock(ctx context.Context, csi csiClien
 
 // TearDownDevice removes traces of the SetUpDevice.
 func (m *csiBlockMapper) TearDownDevice(globalMapPath, devicePath string) error {
-	if !m.plugin.blockEnabled {
-		return errors.New("CSIBlockVolume feature not enabled")
-	}
-
-	klog.V(4).Infof(log("unmapper.TearDownDevice(globalMapPath=%s; devicePath=%s)", globalMapPath, devicePath))
-
-	ctx, cancel := context.WithTimeout(context.Background(), csiTimeout)
-	defer cancel()
-
-	// Call NodeUnpublishVolume
-	publishPath := m.getPublishPath()
-	if _, err := os.Stat(publishPath); err != nil {
-		if os.IsNotExist(err) {
-			klog.V(4).Infof(log("blockMapper.TearDownDevice publishPath(%s) has already been deleted, skip calling NodeUnpublishVolume", publishPath))
-		} else {
-			return err
-		}
-	} else {
-		err := m.unpublishVolumeForBlock(ctx, m.csiClient, publishPath)
-		if err != nil {
-			return err
-		}
-	}
-
-	// Call NodeUnstageVolume
-	stagingPath := m.getStagingPath()
-	if _, err := os.Stat(stagingPath); err != nil {
-		if os.IsNotExist(err) {
-			klog.V(4).Infof(log("blockMapper.TearDownDevice stagingPath(%s) has already been deleted, skip calling NodeUnstageVolume", stagingPath))
-		} else {
-			return err
-		}
-	} else {
-		err := m.unstageVolumeForBlock(ctx, m.csiClient, stagingPath)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return errors.New("CSIBlockVolume feature not enabled")
 }
