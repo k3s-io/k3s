@@ -52,13 +52,6 @@ const (
 	// Enables support for Device Plugins
 	DevicePlugins utilfeature.Feature = "DevicePlugins"
 
-	// owner: @gmarek
-	// alpha: v1.6
-	//
-	// Changes the logic behind evicting Pods from not ready Nodes
-	// to take advantage of NoExecute Taints and Tolerations.
-	TaintBasedEvictions utilfeature.Feature = "TaintBasedEvictions"
-
 	// owner: @msau42
 	// alpha: v1.7
 	//
@@ -360,7 +353,6 @@ var defaultKubernetesFeatureGates = map[utilfeature.Feature]utilfeature.FeatureS
 	DynamicKubeletConfig:                        {Default: true, PreRelease: utilfeature.Beta},
 	ExperimentalHostUserNamespaceDefaultingGate: {Default: false, PreRelease: utilfeature.Beta},
 	DevicePlugins:                               {Default: true, PreRelease: utilfeature.Beta},
-	TaintBasedEvictions:                         {Default: false, PreRelease: utilfeature.Alpha},
 	PersistentLocalVolumes:                      {Default: true, PreRelease: utilfeature.Beta},
 	LocalStorageCapacityIsolation:               {Default: true, PreRelease: utilfeature.Beta},
 	HugePages:                                   {Default: true, PreRelease: utilfeature.Beta},
