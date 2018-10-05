@@ -237,13 +237,6 @@ const (
 	// Support Pod Ready++
 	PodReadinessGates utilfeature.Feature = "PodReadinessGates"
 
-	// owner: @kevtaylor
-	// alpha: v1.11
-	//
-	// Allow subpath environment variable substitution
-	// Only applicable if the VolumeSubpath feature is also enabled
-	VolumeSubpathEnvExpansion utilfeature.Feature = "VolumeSubpathEnvExpansion"
-
 	// owner: @vikaschoudhary16
 	// GA: v1.13
 	//
@@ -342,7 +335,6 @@ var defaultKubernetesFeatureGates = map[utilfeature.Feature]utilfeature.FeatureS
 	RunAsGroup:                                  {Default: true, PreRelease: utilfeature.Beta},
 	VolumeSubpath:                               {Default: true, PreRelease: utilfeature.GA},
 	PodReadinessGates:                           {Default: true, PreRelease: utilfeature.Beta},
-	VolumeSubpathEnvExpansion:                   {Default: false, PreRelease: utilfeature.Alpha},
 	KubeletPluginsWatcher:                       {Default: true, PreRelease: utilfeature.GA},
 	ResourceQuotaScopeSelectors:                 {Default: true, PreRelease: utilfeature.Beta},
 	CSIBlockVolume:                              {Default: false, PreRelease: utilfeature.Alpha},

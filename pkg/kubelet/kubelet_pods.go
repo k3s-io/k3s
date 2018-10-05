@@ -164,11 +164,6 @@ func makeMounts(pod *v1.Pod, podDir string, container *v1.Container, hostName, h
 				return nil, cleanupAction, fmt.Errorf("volume subpaths are disabled")
 			}
 
-			// Expand subpath variables
-			if utilfeature.DefaultFeatureGate.Enabled(features.VolumeSubpathEnvExpansion) {
-				mount.SubPath = kubecontainer.ExpandContainerVolumeMounts(mount, expandEnvs)
-			}
-
 			if filepath.IsAbs(mount.SubPath) {
 				return nil, cleanupAction, fmt.Errorf("error SubPath `%s` must not be an absolute path", mount.SubPath)
 			}
