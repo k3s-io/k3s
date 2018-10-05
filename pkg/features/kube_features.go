@@ -251,12 +251,6 @@ const (
 	// Enable resource quota scope selectors
 	ResourceQuotaScopeSelectors utilfeature.Feature = "ResourceQuotaScopeSelectors"
 
-	// owner: @tallclair
-	// alpha: v1.12
-	//
-	// Enables RuntimeClass, for selecting between multiple runtimes to run a pod.
-	RuntimeClass utilfeature.Feature = "RuntimeClass"
-
 	// owner: @janosi
 	// alpha: v1.12
 	//
@@ -331,7 +325,6 @@ var defaultKubernetesFeatureGates = map[utilfeature.Feature]utilfeature.FeatureS
 	PodReadinessGates:                           {Default: true, PreRelease: utilfeature.Beta},
 	KubeletPluginsWatcher:                       {Default: true, PreRelease: utilfeature.GA},
 	ResourceQuotaScopeSelectors:                 {Default: true, PreRelease: utilfeature.Beta},
-	RuntimeClass:                                {Default: false, PreRelease: utilfeature.Alpha},
 	SCTPSupport:                                 {Default: false, PreRelease: utilfeature.Alpha},
 	VolumeSnapshotDataSource:                    {Default: false, PreRelease: utilfeature.Alpha},
 	ProcMountType:                               {Default: false, PreRelease: utilfeature.Alpha},
