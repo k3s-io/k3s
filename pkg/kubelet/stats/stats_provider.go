@@ -44,18 +44,6 @@ func NewCRIStatsProvider(
 	return newStatsProvider(cadvisor, podManager, runtimeCache, newCRIStatsProvider(cadvisor, resourceAnalyzer, runtimeService, imageService, logMetricsService))
 }
 
-// NewCadvisorStatsProvider returns a containerStatsProvider that provides both
-// the node and the container stats from cAdvisor.
-func NewCadvisorStatsProvider(
-	cadvisor cadvisor.Interface,
-	resourceAnalyzer stats.ResourceAnalyzer,
-	podManager kubepod.Manager,
-	runtimeCache kubecontainer.RuntimeCache,
-	imageService kubecontainer.ImageService,
-) *StatsProvider {
-	return newStatsProvider(cadvisor, podManager, runtimeCache, newCadvisorStatsProvider(cadvisor, resourceAnalyzer, imageService))
-}
-
 // newStatsProvider returns a new StatsProvider that provides node stats from
 // cAdvisor and the container stats using the containerStatsProvider.
 func newStatsProvider(

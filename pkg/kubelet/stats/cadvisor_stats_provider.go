@@ -18,132 +18,18 @@ package stats
 
 import (
 	"fmt"
-	"path"
-	"sort"
-	"strings"
-
 	"github.com/golang/glog"
 	cadvisorapiv2 "github.com/google/cadvisor/info/v2"
+	"path"
+	"sort"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	statsapi "k8s.io/kubernetes/pkg/kubelet/apis/stats/v1alpha1"
 	"k8s.io/kubernetes/pkg/kubelet/cadvisor"
 	"k8s.io/kubernetes/pkg/kubelet/cm"
-	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
-	"k8s.io/kubernetes/pkg/kubelet/leaky"
-	"k8s.io/kubernetes/pkg/kubelet/server/stats"
 	kubetypes "k8s.io/kubernetes/pkg/kubelet/types"
 )
-
-// cadvisorStatsProvider implements the containerStatsProvider interface by
-// getting the container stats from cAdvisor. This is needed by docker and rkt
-// integrations since they do not provide stats from CRI.
-type cadvisorStatsProvider struct {
-	// cadvisor is used to get the stats of the cgroup for the containers that
-	// are managed by pods.
-	cadvisor cadvisor.Interface
-	// resourceAnalyzer is used to get the volume stats of the pods.
-	resourceAnalyzer stats.ResourceAnalyzer
-	// imageService is used to get the stats of the image filesystem.
-	imageService kubecontainer.ImageService
-}
-
-// newCadvisorStatsProvider returns a containerStatsProvider that provides
-// container stats from cAdvisor.
-func newCadvisorStatsProvider(
-	cadvisor cadvisor.Interface,
-	resourceAnalyzer stats.ResourceAnalyzer,
-	imageService kubecontainer.ImageService,
-) containerStatsProvider {
-	return &cadvisorStatsProvider{
-		cadvisor:         cadvisor,
-		resourceAnalyzer: resourceAnalyzer,
-		imageService:     imageService,
-	}
-}
-
-// ListPodStats returns the stats of all the pod-managed containers.
-func (p *cadvisorStatsProvider) ListPodStats() ([]statsapi.PodStats, error) {
-	// Gets node root filesystem information and image filesystem stats, which
-	// will be used to populate the available and capacity bytes/inodes in
-	// container stats.
-	rootFsInfo, err := p.cadvisor.RootFsInfo()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get rootFs info: %v", err)
-	}
-	imageFsInfo, err := p.cadvisor.ImagesFsInfo()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get imageFs info: %v", err)
-	}
-	infos, err := getCadvisorContainerInfo(p.cadvisor)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get container info from cadvisor: %v", err)
-	}
-	// removeTerminatedContainerInfo will also remove pod level cgroups, so save the infos into allInfos first
-	allInfos := infos
-	infos = removeTerminatedContainerInfo(infos)
-	// Map each container to a pod and update the PodStats with container data.
-	podToStats := map[statsapi.PodReference]*statsapi.PodStats{}
-	for key, cinfo := range infos {
-		// On systemd using devicemapper each mount into the container has an
-		// associated cgroup. We ignore them to ensure we do not get duplicate
-		// entries in our summary. For details on .mount units:
-		// http://man7.org/linux/man-pages/man5/systemd.mount.5.html
-		if strings.HasSuffix(key, ".mount") {
-			continue
-		}
-		// Build the Pod key if this container is managed by a Pod
-		if !isPodManagedContainer(&cinfo) {
-			continue
-		}
-		ref := buildPodRef(cinfo.Spec.Labels)
-
-		// Lookup the PodStats for the pod using the PodRef. If none exists,
-		// initialize a new entry.
-		podStats, found := podToStats[ref]
-		if !found {
-			podStats = &statsapi.PodStats{PodRef: ref}
-			podToStats[ref] = podStats
-		}
-
-		// Update the PodStats entry with the stats from the container by
-		// adding it to podStats.Containers.
-		containerName := kubetypes.GetContainerName(cinfo.Spec.Labels)
-		if containerName == leaky.PodInfraContainerName {
-			// Special case for infrastructure container which is hidden from
-			// the user and has network stats.
-			podStats.Network = cadvisorInfoToNetworkStats("pod:"+ref.Namespace+"_"+ref.Name, &cinfo)
-			podStats.StartTime = metav1.NewTime(cinfo.Spec.CreationTime)
-		} else {
-			podStats.Containers = append(podStats.Containers, *cadvisorInfoToContainerStats(containerName, &cinfo, &rootFsInfo, &imageFsInfo))
-		}
-	}
-
-	// Add each PodStats to the result.
-	result := make([]statsapi.PodStats, 0, len(podToStats))
-	for _, podStats := range podToStats {
-		// Lookup the volume stats for each pod.
-		podUID := types.UID(podStats.PodRef.UID)
-		var ephemeralStats []statsapi.VolumeStats
-		if vstats, found := p.resourceAnalyzer.GetPodVolumeStats(podUID); found {
-			ephemeralStats = make([]statsapi.VolumeStats, len(vstats.EphemeralVolumes))
-			copy(ephemeralStats, vstats.EphemeralVolumes)
-			podStats.VolumeStats = append(vstats.EphemeralVolumes, vstats.PersistentVolumes...)
-		}
-		podStats.EphemeralStorage = calcEphemeralStorage(podStats.Containers, ephemeralStats, &rootFsInfo)
-		// Lookup the pod-level cgroup's CPU and memory stats
-		podInfo := getCadvisorPodInfoFromPodUID(podUID, allInfos)
-		if podInfo != nil {
-			cpu, memory := cadvisorInfoToCPUandMemoryStats(podInfo)
-			podStats.CPU = cpu
-			podStats.Memory = memory
-		}
-		result = append(result, *podStats)
-	}
-
-	return result, nil
-}
 
 func calcEphemeralStorage(containers []statsapi.ContainerStats, volumes []statsapi.VolumeStats, rootFsInfo *cadvisorapiv2.FsInfo) *statsapi.FsStats {
 	result := &statsapi.FsStats{
@@ -190,44 +76,6 @@ func addUsage(first, second *uint64) *uint64 {
 	}
 	total := *first + *second
 	return &total
-}
-
-// ImageFsStats returns the stats of the filesystem for storing images.
-func (p *cadvisorStatsProvider) ImageFsStats() (*statsapi.FsStats, error) {
-	imageFsInfo, err := p.cadvisor.ImagesFsInfo()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get imageFs info: %v", err)
-	}
-	imageStats, err := p.imageService.ImageStats()
-	if err != nil || imageStats == nil {
-		return nil, fmt.Errorf("failed to get image stats: %v", err)
-	}
-
-	var imageFsInodesUsed *uint64
-	if imageFsInfo.Inodes != nil && imageFsInfo.InodesFree != nil {
-		imageFsIU := *imageFsInfo.Inodes - *imageFsInfo.InodesFree
-		imageFsInodesUsed = &imageFsIU
-	}
-
-	return &statsapi.FsStats{
-		Time:           metav1.NewTime(imageFsInfo.Timestamp),
-		AvailableBytes: &imageFsInfo.Available,
-		CapacityBytes:  &imageFsInfo.Capacity,
-		UsedBytes:      &imageStats.TotalStorageBytes,
-		InodesFree:     imageFsInfo.InodesFree,
-		Inodes:         imageFsInfo.Inodes,
-		InodesUsed:     imageFsInodesUsed,
-	}, nil
-}
-
-// ImageFsDevice returns name of the device where the image filesystem locates,
-// e.g. /dev/sda1.
-func (p *cadvisorStatsProvider) ImageFsDevice() (string, error) {
-	imageFsInfo, err := p.cadvisor.ImagesFsInfo()
-	if err != nil {
-		return "", err
-	}
-	return imageFsInfo.Device, nil
 }
 
 // buildPodRef returns a PodReference that identifies the Pod managing cinfo
