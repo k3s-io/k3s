@@ -22,7 +22,6 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/resource"
 	internalapi "k8s.io/kubernetes/pkg/kubelet/apis/cri"
-	"k8s.io/kubernetes/pkg/kubelet/cm/cpumanager"
 	"k8s.io/kubernetes/pkg/kubelet/config"
 	"k8s.io/kubernetes/pkg/kubelet/lifecycle"
 	"k8s.io/kubernetes/pkg/kubelet/status"
@@ -84,7 +83,7 @@ func (cm *containerManagerStub) UpdatePluginResources(*schedulercache.NodeInfo, 
 }
 
 func (cm *containerManagerStub) InternalContainerLifecycle() InternalContainerLifecycle {
-	return &internalContainerLifecycleImpl{cpumanager.NewFakeManager()}
+	return &internalContainerLifecycleImpl{}
 }
 
 func (cm *containerManagerStub) GetPodCgroupRoot() string {

@@ -88,12 +88,6 @@ const (
 	// Enable mount propagation of volumes.
 	MountPropagation utilfeature.Feature = "MountPropagation"
 
-	// owner: @ConnorDoyle
-	// alpha: v1.8
-	//
-	// Alternative container-level CPU affinity policies.
-	CPUManager utilfeature.Feature = "CPUManager"
-
 	// owner: @derekwaynecarr
 	// beta: v1.10
 	//
@@ -222,7 +216,6 @@ var defaultKubernetesFeatureGates = map[utilfeature.Feature]utilfeature.FeatureS
 	MountPropagation:                            {Default: true, PreRelease: utilfeature.GA},
 	ExpandPersistentVolumes:                     {Default: true, PreRelease: utilfeature.Beta},
 	AttachVolumeLimit:                           {Default: true, PreRelease: utilfeature.Beta},
-	CPUManager:                                  {Default: true, PreRelease: utilfeature.Beta},
 	VolumeScheduling:                            {Default: true, PreRelease: utilfeature.Beta},
 	CSIPersistentVolume:                         {Default: true, PreRelease: utilfeature.Beta},
 	CustomPodDNS:                                {Default: true, PreRelease: utilfeature.Beta},
