@@ -26,8 +26,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/kubernetes/pkg/kubelet/checkpoint"
-	"k8s.io/kubernetes/pkg/kubelet/checkpointmanager"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
 	"k8s.io/kubernetes/pkg/kubelet/events"
 	kubetypes "k8s.io/kubernetes/pkg/kubelet/types"
@@ -65,7 +63,6 @@ type PodConfig struct {
 	// contains the list of all configured sources
 	sourcesLock       sync.Mutex
 	sources           sets.String
-	checkpointManager checkpointmanager.CheckpointManager
 }
 
 // NewPodConfig creates an object that can merge many configuration sources into a stream
@@ -113,19 +110,6 @@ func (c *PodConfig) Sync() {
 
 // Restore restores pods from the checkpoint path, *once*
 func (c *PodConfig) Restore(path string, updates chan<- interface{}) error {
-	if c.checkpointManager != nil {
-		return nil
-	}
-	var err error
-	c.checkpointManager, err = checkpointmanager.NewCheckpointManager(path)
-	if err != nil {
-		return err
-	}
-	pods, err := checkpoint.LoadPods(c.checkpointManager)
-	if err != nil {
-		return err
-	}
-	updates <- kubetypes.PodUpdate{Pods: pods, Op: kubetypes.RESTORE, Source: kubetypes.ApiserverSource}
 	return nil
 }
 
