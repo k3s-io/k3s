@@ -46,12 +46,6 @@ const (
 	// SYS_TIME). This should only be enabled if user namespace remapping is enabled in the docker daemon.
 	ExperimentalHostUserNamespaceDefaultingGate utilfeature.Feature = "ExperimentalHostUserNamespaceDefaulting"
 
-	// owner: @jiayingz
-	// beta: v1.10
-	//
-	// Enables support for Device Plugins
-	DevicePlugins utilfeature.Feature = "DevicePlugins"
-
 	// owner: @msau42
 	// alpha: v1.7
 	//
@@ -200,13 +194,6 @@ const (
 	PodReadinessGates utilfeature.Feature = "PodReadinessGates"
 
 	// owner: @vikaschoudhary16
-	// alpha: v1.11
-	//
-	//
-	// Enable probe based plugin watcher utility for discovering Kubelet plugins
-	KubeletPluginsWatcher utilfeature.Feature = "KubeletPluginsWatcher"
-
-	// owner: @vikaschoudhary16
 	// beta: v1.12
 	//
 	//
@@ -225,7 +212,6 @@ var defaultKubernetesFeatureGates = map[utilfeature.Feature]utilfeature.FeatureS
 	AppArmor:             {Default: true, PreRelease: utilfeature.Beta},
 	DynamicKubeletConfig: {Default: true, PreRelease: utilfeature.Beta},
 	ExperimentalHostUserNamespaceDefaultingGate: {Default: false, PreRelease: utilfeature.Beta},
-	DevicePlugins:                               {Default: true, PreRelease: utilfeature.Beta},
 	PersistentLocalVolumes:                      {Default: true, PreRelease: utilfeature.Beta},
 	LocalStorageCapacityIsolation:               {Default: true, PreRelease: utilfeature.Beta},
 	HugePages:                                   {Default: true, PreRelease: utilfeature.Beta},
@@ -250,7 +236,6 @@ var defaultKubernetesFeatureGates = map[utilfeature.Feature]utilfeature.FeatureS
 	RunAsGroup:                                  {Default: true, PreRelease: utilfeature.Beta},
 	VolumeSubpath:                               {Default: true, PreRelease: utilfeature.GA},
 	PodReadinessGates:                           {Default: true, PreRelease: utilfeature.Beta},
-	KubeletPluginsWatcher:                       {Default: true, PreRelease: utilfeature.Beta},
 	ResourceQuotaScopeSelectors:                 {Default: true, PreRelease: utilfeature.Beta},
 
 	// inherited features from generic apiserver, relisted here to get a conflict if it is changed

@@ -27,8 +27,6 @@ import (
 	"github.com/golang/glog"
 	"google.golang.org/grpc"
 	api "k8s.io/api/core/v1"
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
-	"k8s.io/kubernetes/pkg/features"
 )
 
 type csiClient interface {
@@ -295,14 +293,6 @@ func newGrpcConn(driverName string) (*grpc.ClientConn, error) {
 		return nil, fmt.Errorf("driver name is empty")
 	}
 	addr := fmt.Sprintf(csiAddrTemplate, driverName)
-	// TODO once KubeletPluginsWatcher graduates to beta, remove FeatureGate check
-	if utilfeature.DefaultFeatureGate.Enabled(features.KubeletPluginsWatcher) {
-		driver, ok := csiDrivers.driversMap[driverName]
-		if !ok {
-			return nil, fmt.Errorf("driver name %s not found in the list of registered CSI drivers", driverName)
-		}
-		addr = driver.driverEndpoint
-	}
 	network := "unix"
 	glog.V(4).Infof(log("creating new gRPC connection for [%s://%s]", network, addr))
 
