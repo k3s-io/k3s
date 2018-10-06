@@ -101,7 +101,7 @@ func containerLabels(c *cadvisorapi.ContainerInfo) map[string]string {
 }
 
 // New creates a cAdvisor and exports its API on the specified port if port > 0.
-func New(imageFsInfoProvider ImageFsInfoProvider, rootPath string, usingLegacyStats bool) (Interface, error) {
+func New(imageFsInfoProvider ImageFsInfoProvider, rootPath string) (Interface, error) {
 	sysFs := sysfs.NewRealSysFs()
 
 	includedMetrics := cadvisormetrics.MetricSet{
@@ -112,9 +112,6 @@ func New(imageFsInfoProvider ImageFsInfoProvider, rootPath string, usingLegacySt
 		cadvisormetrics.NetworkUsageMetrics:     struct{}{},
 		cadvisormetrics.AcceleratorUsageMetrics: struct{}{},
 		cadvisormetrics.AppMetrics:              struct{}{},
-	}
-	if usingLegacyStats {
-		includedMetrics[cadvisormetrics.DiskUsageMetrics] = struct{}{}
 	}
 
 	// collect metrics for all cgroups
