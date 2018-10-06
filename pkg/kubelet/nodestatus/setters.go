@@ -131,7 +131,6 @@ func MachineInfo(nodeName string,
 	podsPerCore int,
 	machineInfoFunc func() (*cadvisorapiv1.MachineInfo, error), // typically Kubelet.GetCachedMachineInfo
 	capacityFunc func() v1.ResourceList, // typically Kubelet.containerManager.GetCapacity
-	devicePluginResourceCapacityFunc func() (v1.ResourceList, v1.ResourceList, []string), // typically Kubelet.containerManager.GetDevicePluginResourceCapacity
 	nodeAllocatableReservationFunc func() v1.ResourceList, // typically Kubelet.containerManager.GetNodeAllocatableReservation
 	recordEventFunc func(eventType, event, message string), // typically Kubelet.recordEvent
 ) Setter {
@@ -190,7 +189,6 @@ func MachineInfo(nodeName string,
 				}
 			}
 
-			devicePluginCapacity, devicePluginAllocatable, removedDevicePlugins = devicePluginResourceCapacityFunc()
 			if devicePluginCapacity != nil {
 				for k, v := range devicePluginCapacity {
 					if old, ok := node.Status.Capacity[k]; !ok || old.Value() != v.Value() {
