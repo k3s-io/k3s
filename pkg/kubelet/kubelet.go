@@ -63,8 +63,6 @@ import (
 	"k8s.io/kubernetes/pkg/kubelet/config"
 	"k8s.io/kubernetes/pkg/kubelet/configmap"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
-	"k8s.io/kubernetes/pkg/kubelet/dockershim"
-	dockerremote "k8s.io/kubernetes/pkg/kubelet/dockershim/remote"
 	"k8s.io/kubernetes/pkg/kubelet/events"
 	"k8s.io/kubernetes/pkg/kubelet/eviction"
 	"k8s.io/kubernetes/pkg/kubelet/images"
@@ -232,7 +230,6 @@ type Dependencies struct {
 	Auth                    server.AuthInterface
 	CAdvisorInterface       cadvisor.Interface
 	ContainerManager        cm.ContainerManager
-	DockerClientConfig      *dockershim.ClientConfig
 	EventClient             v1core.EventsGetter
 	HeartbeatClient         clientset.Interface
 	OnHeartbeatFailure      func()
@@ -565,16 +562,6 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 		}
 	}
 
-	// TODO: These need to become arguments to a standalone docker shim.
-	pluginSettings := dockershim.NetworkPluginSettings{
-		HairpinMode:        kubeletconfiginternal.HairpinMode(kubeCfg.HairpinMode),
-		NonMasqueradeCIDR:  nonMasqueradeCIDR,
-		PluginName:         crOptions.NetworkPluginName,
-		PluginConfDir:      crOptions.CNIConfDir,
-		PluginBinDirString: crOptions.CNIBinDir,
-		MTU:                int(crOptions.NetworkPluginMTU),
-	}
-
 	klet.resourceAnalyzer = serverstats.NewResourceAnalyzer(klet, kubeCfg.VolumeStatsAggPeriod.Duration)
 
 	if containerRuntime == "rkt" {
@@ -585,37 +572,6 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 	var legacyLogProvider kuberuntime.LegacyLogProvider
 
 	switch containerRuntime {
-	case kubetypes.DockerContainerRuntime:
-		// Create and start the CRI shim running as a grpc server.
-		streamingConfig := getStreamingConfig(kubeCfg, kubeDeps, crOptions)
-		ds, err := dockershim.NewDockerService(kubeDeps.DockerClientConfig, crOptions.PodSandboxImage, streamingConfig,
-			&pluginSettings, runtimeCgroups, kubeCfg.CgroupDriver, crOptions.DockershimRootDirectory, !crOptions.RedirectContainerStreaming)
-		if err != nil {
-			return nil, err
-		}
-		if crOptions.RedirectContainerStreaming {
-			klet.criHandler = ds
-		}
-
-		// The unix socket for kubelet <-> dockershim communication.
-		glog.V(5).Infof("RemoteRuntimeEndpoint: %q, RemoteImageEndpoint: %q",
-			remoteRuntimeEndpoint,
-			remoteImageEndpoint)
-		glog.V(2).Infof("Starting the GRPC server for the docker CRI shim.")
-		server := dockerremote.NewDockerServer(remoteRuntimeEndpoint, ds)
-		if err := server.Start(); err != nil {
-			return nil, err
-		}
-
-		// Create dockerLegacyService when the logging driver is not supported.
-		supported, err := ds.IsCRISupportedLogDriver()
-		if err != nil {
-			return nil, err
-		}
-		if !supported {
-			klet.dockerLegacyService = ds
-			legacyLogProvider = ds
-		}
 	case kubetypes.RemoteContainerRuntime:
 		// No-op.
 		break
@@ -1114,10 +1070,6 @@ type Kubelet struct {
 	// This should only be enabled when the container runtime is performing user remapping AND if the
 	// experimental behavior is desired.
 	experimentalHostUserNamespaceDefaulting bool
-
-	// dockerLegacyService contains some legacy methods for backward compatibility.
-	// It should be set only when docker is using non json-file logging driver.
-	dockerLegacyService dockershim.DockerLegacyService
 
 	// StatsProvider provides the node and the container stats.
 	*stats.StatsProvider
