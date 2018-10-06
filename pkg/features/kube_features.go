@@ -69,12 +69,6 @@ const (
 	// Allows all containers in a pod to share a process namespace.
 	PodShareProcessNamespace utilfeature.Feature = "PodShareProcessNamespace"
 
-	// owner: @bsalamat
-	// alpha: v1.8
-	//
-	// Add priority to pods. Priority affects scheduling and preemption of pods.
-	PodPriority utilfeature.Feature = "PodPriority"
-
 	// owner: @k82cn
 	// beta: v1.12
 	//
@@ -211,7 +205,6 @@ var defaultKubernetesFeatureGates = map[utilfeature.Feature]utilfeature.FeatureS
 	HugePages:                                   {Default: true, PreRelease: utilfeature.Beta},
 	Sysctls:                                     {Default: true, PreRelease: utilfeature.Beta},
 	PodShareProcessNamespace:                    {Default: true, PreRelease: utilfeature.Beta},
-	PodPriority:                                 {Default: true, PreRelease: utilfeature.Beta},
 	TaintNodesByCondition:                       {Default: true, PreRelease: utilfeature.Beta},
 	MountPropagation:                            {Default: true, PreRelease: utilfeature.GA},
 	ExpandPersistentVolumes:                     {Default: true, PreRelease: utilfeature.Beta},
