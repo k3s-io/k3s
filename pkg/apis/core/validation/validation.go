@@ -3025,14 +3025,6 @@ func ValidatePodSpec(spec *core.PodSpec, fldPath *field.Path) field.ErrorList {
 		allErrs = append(allErrs, ValidateHostAliases(spec.HostAliases, fldPath.Child("hostAliases"))...)
 	}
 
-	if len(spec.PriorityClassName) > 0 {
-		if utilfeature.DefaultFeatureGate.Enabled(features.PodPriority) {
-			for _, msg := range ValidatePriorityClassName(spec.PriorityClassName, false) {
-				allErrs = append(allErrs, field.Invalid(fldPath.Child("priorityClassName"), spec.PriorityClassName, msg))
-			}
-		}
-	}
-
 	return allErrs
 }
 

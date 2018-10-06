@@ -21,9 +21,7 @@ import (
 
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/kubernetes/pkg/apis/scheduling"
-	"k8s.io/kubernetes/pkg/features"
 )
 
 const (
@@ -144,11 +142,6 @@ func (sp SyncPodType) String() string {
 // or equal to SystemCriticalPriority. Both the default scheduler and the kubelet use this function
 // to make admission and scheduling decisions.
 func IsCriticalPod(pod *v1.Pod) bool {
-	if utilfeature.DefaultFeatureGate.Enabled(features.PodPriority) {
-		if pod.Spec.Priority != nil && IsCriticalPodBasedOnPriority(*pod.Spec.Priority) {
-			return true
-		}
-	}
 	return false
 }
 
@@ -157,12 +150,6 @@ func IsCriticalPod(pod *v1.Pod) bool {
 func Preemptable(preemptor, preemptee *v1.Pod) bool {
 	if IsCriticalPod(preemptor) && !IsCriticalPod(preemptee) {
 		return true
-	}
-	if utilfeature.DefaultFeatureGate.Enabled(features.PodPriority) {
-		if (preemptor != nil && preemptor.Spec.Priority != nil) &&
-			(preemptee != nil && preemptee.Spec.Priority != nil) {
-			return *(preemptor.Spec.Priority) > *(preemptee.Spec.Priority)
-		}
 	}
 
 	return false

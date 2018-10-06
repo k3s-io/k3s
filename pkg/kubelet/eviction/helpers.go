@@ -31,7 +31,6 @@ import (
 	statsapi "k8s.io/kubernetes/pkg/kubelet/apis/stats/v1alpha1"
 	evictionapi "k8s.io/kubernetes/pkg/kubelet/eviction/api"
 	kubetypes "k8s.io/kubernetes/pkg/kubelet/types"
-	schedulerutils "k8s.io/kubernetes/pkg/scheduler/util"
 )
 
 const (
@@ -519,19 +518,7 @@ func (ms *multiSorter) Less(i, j int) bool {
 
 // priority compares pods by Priority, if priority is enabled.
 func priority(p1, p2 *v1.Pod) int {
-	if !utilfeature.DefaultFeatureGate.Enabled(features.PodPriority) {
-		// If priority is not enabled, all pods are equal.
-		return 0
-	}
-	priority1 := schedulerutils.GetPodPriority(p1)
-	priority2 := schedulerutils.GetPodPriority(p2)
-	if priority1 == priority2 {
-		return 0
-	}
-	if priority1 > priority2 {
-		return 1
-	}
-	return -1
+	return 0
 }
 
 // exceedMemoryRequests compares whether or not pods' memory usage exceeds their requests
