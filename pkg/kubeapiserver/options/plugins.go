@@ -21,88 +21,28 @@ package options
 // given binary target.
 import (
 	// Admission policies
-	"k8s.io/kubernetes/plugin/pkg/admission/admit"
-	"k8s.io/kubernetes/plugin/pkg/admission/alwayspullimages"
-	"k8s.io/kubernetes/plugin/pkg/admission/antiaffinity"
-	"k8s.io/kubernetes/plugin/pkg/admission/defaulttolerationseconds"
-	"k8s.io/kubernetes/plugin/pkg/admission/deny"
-	"k8s.io/kubernetes/plugin/pkg/admission/eventratelimit"
-	"k8s.io/kubernetes/plugin/pkg/admission/exec"
-	"k8s.io/kubernetes/plugin/pkg/admission/extendedresourcetoleration"
-	"k8s.io/kubernetes/plugin/pkg/admission/gc"
-	"k8s.io/kubernetes/plugin/pkg/admission/limitranger"
-	"k8s.io/kubernetes/plugin/pkg/admission/namespace/autoprovision"
-	"k8s.io/kubernetes/plugin/pkg/admission/namespace/exists"
-	"k8s.io/kubernetes/plugin/pkg/admission/podnodeselector"
-	"k8s.io/kubernetes/plugin/pkg/admission/podtolerationrestriction"
-	podpriority "k8s.io/kubernetes/plugin/pkg/admission/priority"
-	"k8s.io/kubernetes/plugin/pkg/admission/resourcequota"
-	"k8s.io/kubernetes/plugin/pkg/admission/security/podsecuritypolicy"
-	"k8s.io/kubernetes/plugin/pkg/admission/securitycontext/scdeny"
 	"k8s.io/kubernetes/plugin/pkg/admission/serviceaccount"
-	"k8s.io/kubernetes/plugin/pkg/admission/storage/persistentvolume/resize"
 	"k8s.io/kubernetes/plugin/pkg/admission/storage/storageclass/setdefault"
 	"k8s.io/kubernetes/plugin/pkg/admission/storage/storageobjectinuseprotection"
 
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apiserver/pkg/admission"
 	"k8s.io/apiserver/pkg/admission/plugin/namespace/lifecycle"
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
-	"k8s.io/kubernetes/pkg/features"
 )
 
 // AllOrderedPlugins is the list of all the plugins in order.
 var AllOrderedPlugins = []string{
-	admit.PluginName,                        // AlwaysAdmit
-	autoprovision.PluginName,                // NamespaceAutoProvision
 	lifecycle.PluginName,                    // NamespaceLifecycle
-	exists.PluginName,                       // NamespaceExists
-	scdeny.PluginName,                       // SecurityContextDeny
-	antiaffinity.PluginName,                 // LimitPodHardAntiAffinityTopology
-	limitranger.PluginName,                  // LimitRanger
 	serviceaccount.PluginName,               // ServiceAccount
-	alwayspullimages.PluginName,             // AlwaysPullImages
-	podsecuritypolicy.PluginName,            // PodSecurityPolicy
-	podnodeselector.PluginName,              // PodNodeSelector
-	podpriority.PluginName,                  // Priority
-	defaulttolerationseconds.PluginName,     // DefaultTolerationSeconds
-	podtolerationrestriction.PluginName,     // PodTolerationRestriction
-	exec.DenyEscalatingExec,                 // DenyEscalatingExec
-	exec.DenyExecOnPrivileged,               // DenyExecOnPrivileged
-	eventratelimit.PluginName,               // EventRateLimit
-	extendedresourcetoleration.PluginName,   // ExtendedResourceToleration
 	setdefault.PluginName,                   // DefaultStorageClass
 	storageobjectinuseprotection.PluginName, // StorageObjectInUseProtection
-	gc.PluginName,                           // OwnerReferencesPermissionEnforcement
-	resize.PluginName,                       // PersistentVolumeClaimResize
-	resourcequota.PluginName,                // ResourceQuota
-	deny.PluginName,                         // AlwaysDeny
 }
 
 // RegisterAllAdmissionPlugins registers all admission plugins and
 // sets the recommended plugins order.
 func RegisterAllAdmissionPlugins(plugins *admission.Plugins) {
-	admit.Register(plugins) // DEPRECATED as no real meaning
-	alwayspullimages.Register(plugins)
-	antiaffinity.Register(plugins)
-	defaulttolerationseconds.Register(plugins)
-	deny.Register(plugins) // DEPRECATED as no real meaning
-	eventratelimit.Register(plugins)
-	exec.Register(plugins)
-	extendedresourcetoleration.Register(plugins)
-	gc.Register(plugins)
-	limitranger.Register(plugins)
-	autoprovision.Register(plugins)
-	exists.Register(plugins)
-	podnodeselector.Register(plugins)
-	podtolerationrestriction.Register(plugins)
-	resourcequota.Register(plugins)
-	podsecuritypolicy.Register(plugins)
-	podpriority.Register(plugins)
-	scdeny.Register(plugins)
 	serviceaccount.Register(plugins)
 	setdefault.Register(plugins)
-	resize.Register(plugins)
 	storageobjectinuseprotection.Register(plugins)
 }
 
@@ -110,17 +50,9 @@ func RegisterAllAdmissionPlugins(plugins *admission.Plugins) {
 func DefaultOffAdmissionPlugins() sets.String {
 	defaultOnPlugins := sets.NewString(
 		lifecycle.PluginName,                //NamespaceLifecycle
-		limitranger.PluginName,              //LimitRanger
 		serviceaccount.PluginName,           //ServiceAccount
 		setdefault.PluginName,               //DefaultStorageClass
-		resize.PluginName,                   //PersistentVolumeClaimResize
-		defaulttolerationseconds.PluginName, //DefaultTolerationSeconds
-		resourcequota.PluginName,            //ResourceQuota
 	)
-
-	if utilfeature.DefaultFeatureGate.Enabled(features.PodPriority) {
-		defaultOnPlugins.Insert(podpriority.PluginName) //PodPriority
-	}
 
 	return sets.NewString(AllOrderedPlugins...).Difference(defaultOnPlugins)
 }
