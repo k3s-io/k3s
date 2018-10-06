@@ -45,15 +45,10 @@ import (
 	internalapi "k8s.io/kubernetes/pkg/kubelet/apis/cri"
 	"k8s.io/kubernetes/pkg/kubelet/cadvisor"
 	"k8s.io/kubernetes/pkg/kubelet/cm/cpumanager"
-	"k8s.io/kubernetes/pkg/kubelet/cm/devicemanager"
 	cmutil "k8s.io/kubernetes/pkg/kubelet/cm/util"
 	"k8s.io/kubernetes/pkg/kubelet/config"
-	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
-	"k8s.io/kubernetes/pkg/kubelet/lifecycle"
 	"k8s.io/kubernetes/pkg/kubelet/qos"
 	"k8s.io/kubernetes/pkg/kubelet/status"
-	"k8s.io/kubernetes/pkg/kubelet/util/pluginwatcher"
-	schedulercache "k8s.io/kubernetes/pkg/scheduler/cache"
 	utilfile "k8s.io/kubernetes/pkg/util/file"
 	"k8s.io/kubernetes/pkg/util/mount"
 	"k8s.io/kubernetes/pkg/util/oom"
@@ -129,8 +124,6 @@ type containerManagerImpl struct {
 	recorder record.EventRecorder
 	// Interface for QoS cgroup management
 	qosContainerManager QOSContainerManager
-	// Interface for exporting and allocating devices reported by device plugins.
-	deviceManager devicemanager.Manager
 	// Interface for CPU affinity management.
 	cpuManager cpumanager.Manager
 }
@@ -195,7 +188,7 @@ func validateSystemRequirements(mountUtil mount.Interface) (features, error) {
 // TODO(vmarmol): Add limits to the system containers.
 // Takes the absolute name of the specified containers.
 // Empty container name disables use of the specified container.
-func NewContainerManager(mountUtil mount.Interface, cadvisorInterface cadvisor.Interface, nodeConfig NodeConfig, failSwapOn bool, devicePluginEnabled bool, recorder record.EventRecorder) (ContainerManager, error) {
+func NewContainerManager(mountUtil mount.Interface, cadvisorInterface cadvisor.Interface, nodeConfig NodeConfig, failSwapOn bool, recorder record.EventRecorder) (ContainerManager, error) {
 	subsystems, err := GetCgroupSubsystems()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get mounted cgroup subsystems: %v", err)
@@ -266,16 +259,6 @@ func NewContainerManager(mountUtil mount.Interface, cadvisorInterface cadvisor.I
 		cgroupRoot:          cgroupRoot,
 		recorder:            recorder,
 		qosContainerManager: qosContainerManager,
-	}
-
-	glog.Infof("Creating device plugin manager: %t", devicePluginEnabled)
-	if devicePluginEnabled {
-		cm.deviceManager, err = devicemanager.NewManagerImpl()
-	} else {
-		cm.deviceManager, err = devicemanager.NewManagerStub()
-	}
-	if err != nil {
-		return nil, err
 	}
 
 	// Initialize CPU manager
@@ -597,38 +580,7 @@ func (cm *containerManagerImpl) Start(node *v1.Node,
 		}, 5*time.Minute, wait.NeverStop)
 	}
 
-	// Starts device manager.
-	if err := cm.deviceManager.Start(devicemanager.ActivePodsFunc(activePods), sourcesReady); err != nil {
-		return err
-	}
-
 	return nil
-}
-
-func (cm *containerManagerImpl) GetPluginRegistrationHandler() pluginwatcher.PluginHandler {
-	return cm.deviceManager.GetWatcherHandler()
-}
-
-// TODO: move the GetResources logic to PodContainerManager.
-func (cm *containerManagerImpl) GetResources(pod *v1.Pod, container *v1.Container) (*kubecontainer.RunContainerOptions, error) {
-	opts := &kubecontainer.RunContainerOptions{}
-	// Allocate should already be called during predicateAdmitHandler.Admit(),
-	// just try to fetch device runtime information from cached state here
-	devOpts, err := cm.deviceManager.GetDeviceRunContainerOptions(pod, container)
-	if err != nil {
-		return nil, err
-	} else if devOpts == nil {
-		return opts, nil
-	}
-	opts.Devices = append(opts.Devices, devOpts.Devices...)
-	opts.Mounts = append(opts.Mounts, devOpts.Mounts...)
-	opts.Envs = append(opts.Envs, devOpts.Envs...)
-	opts.Annotations = append(opts.Annotations, devOpts.Annotations...)
-	return opts, nil
-}
-
-func (cm *containerManagerImpl) UpdatePluginResources(node *schedulercache.NodeInfo, attrs *lifecycle.PodAdmitAttributes) error {
-	return cm.deviceManager.Allocate(node, attrs)
 }
 
 func (cm *containerManagerImpl) SystemCgroupsLimit() v1.ResourceList {
@@ -701,34 +653,6 @@ func getPidsForProcess(name, pidFile string) ([]int, error) {
 	// and is the real source of the problem.
 	glog.V(4).Infof("unable to get pid from %s: %v", pidFile, err)
 	return []int{}, err
-}
-
-// Ensures that the Docker daemon is in the desired container.
-// Temporarily export the function to be used by dockershim.
-// TODO(yujuhong): Move this function to dockershim once kubelet migrates to
-// dockershim as the default.
-func EnsureDockerInContainer(dockerAPIVersion *utilversion.Version, oomScoreAdj int, manager *fs.Manager) error {
-	type process struct{ name, file string }
-	dockerProcs := []process{{dockerProcessName, dockerPidFile}}
-	if dockerAPIVersion.AtLeast(containerdAPIVersion) {
-		dockerProcs = append(dockerProcs, process{containerdProcessName, containerdPidFile})
-	}
-	var errs []error
-	for _, proc := range dockerProcs {
-		pids, err := getPidsForProcess(proc.name, proc.file)
-		if err != nil {
-			errs = append(errs, fmt.Errorf("failed to get pids for %q: %v", proc.name, err))
-			continue
-		}
-
-		// Move if the pid is not already in the desired container.
-		for _, pid := range pids {
-			if err := ensureProcessInContainerWithOOMScore(pid, oomScoreAdj, manager); err != nil {
-				errs = append(errs, fmt.Errorf("errors moving %q pid: %v", proc.name, err))
-			}
-		}
-	}
-	return utilerrors.NewAggregate(errs)
 }
 
 func ensureProcessInContainerWithOOMScore(pid int, oomScoreAdj int, manager *fs.Manager) error {
@@ -873,8 +797,4 @@ func isKernelPid(pid int) bool {
 
 func (cm *containerManagerImpl) GetCapacity() v1.ResourceList {
 	return cm.capacity
-}
-
-func (cm *containerManagerImpl) GetDevicePluginResourceCapacity() (v1.ResourceList, v1.ResourceList, []string) {
-	return cm.deviceManager.GetCapacity()
 }

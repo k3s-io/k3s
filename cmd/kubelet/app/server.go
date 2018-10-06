@@ -613,8 +613,6 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 			return err
 		}
 
-		devicePluginEnabled := utilfeature.DefaultFeatureGate.Enabled(features.DevicePlugins)
-
 		kubeDeps.ContainerManager, err = cm.NewContainerManager(
 			kubeDeps.Mounter,
 			kubeDeps.CAdvisorInterface,
@@ -644,7 +642,6 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 				CPUCFSQuotaPeriod:                     s.CPUCFSQuotaPeriod.Duration,
 			},
 			s.FailSwapOn,
-			devicePluginEnabled,
 			kubeDeps.Recorder)
 
 		if err != nil {

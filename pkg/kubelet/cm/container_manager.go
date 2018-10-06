@@ -20,18 +20,13 @@ import (
 	"time"
 
 	"k8s.io/apimachinery/pkg/util/sets"
+	"fmt"
 	// TODO: Migrate kubelet to either use its own internal objects or client library.
 	"k8s.io/api/core/v1"
 	internalapi "k8s.io/kubernetes/pkg/kubelet/apis/cri"
 	"k8s.io/kubernetes/pkg/kubelet/config"
-	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
 	evictionapi "k8s.io/kubernetes/pkg/kubelet/eviction/api"
-	"k8s.io/kubernetes/pkg/kubelet/lifecycle"
 	"k8s.io/kubernetes/pkg/kubelet/status"
-	"k8s.io/kubernetes/pkg/kubelet/util/pluginwatcher"
-	schedulercache "k8s.io/kubernetes/pkg/scheduler/cache"
-
-	"fmt"
 	"strconv"
 	"strings"
 )
@@ -71,35 +66,14 @@ type ContainerManager interface {
 	// GetCapacity returns the amount of compute resources tracked by container manager available on the node.
 	GetCapacity() v1.ResourceList
 
-	// GetDevicePluginResourceCapacity returns the node capacity (amount of total device plugin resources),
-	// node allocatable (amount of total healthy resources reported by device plugin),
-	// and inactive device plugin resources previously registered on the node.
-	GetDevicePluginResourceCapacity() (v1.ResourceList, v1.ResourceList, []string)
-
 	// UpdateQOSCgroups performs housekeeping updates to ensure that the top
 	// level QoS containers have their desired state in a thread-safe way
 	UpdateQOSCgroups() error
-
-	// GetResources returns RunContainerOptions with devices, mounts, and env fields populated for
-	// extended resources required by container.
-	GetResources(pod *v1.Pod, container *v1.Container) (*kubecontainer.RunContainerOptions, error)
-
-	// UpdatePluginResources calls Allocate of device plugin handler for potential
-	// requests for device plugin resources, and returns an error if fails.
-	// Otherwise, it updates allocatableResource in nodeInfo if necessary,
-	// to make sure it is at least equal to the pod's requested capacity for
-	// any registered device plugin resource
-	UpdatePluginResources(*schedulercache.NodeInfo, *lifecycle.PodAdmitAttributes) error
 
 	InternalContainerLifecycle() InternalContainerLifecycle
 
 	// GetPodCgroupRoot returns the cgroup which contains all pods.
 	GetPodCgroupRoot() string
-
-	// GetPluginRegistrationHandler returns a plugin registration handler
-	// The pluginwatcher's Handlers allow to have a single module for handling
-	// registration.
-	GetPluginRegistrationHandler() pluginwatcher.PluginHandler
 }
 
 type NodeConfig struct {
