@@ -82,7 +82,6 @@ import (
 	"k8s.io/kubernetes/pkg/util/flock"
 	"k8s.io/kubernetes/pkg/util/mount"
 	nodeutil "k8s.io/kubernetes/pkg/util/node"
-	"k8s.io/kubernetes/pkg/util/nsenter"
 	"k8s.io/kubernetes/pkg/util/oom"
 	"k8s.io/kubernetes/pkg/util/rlimit"
 	"k8s.io/kubernetes/pkg/version"
@@ -344,16 +343,6 @@ func UnsecuredDependencies(s *options.KubeletServer) (*kubelet.Dependencies, err
 
 	mounter := mount.New(s.ExperimentalMounterPath)
 	var pluginRunner = exec.New()
-	if s.Containerized {
-		glog.V(2).Info("Running kubelet in containerized mode")
-		ne, err := nsenter.NewNsenter(nsenter.DefaultHostRootFsPath, exec.New())
-		if err != nil {
-			return nil, err
-		}
-		mounter = mount.NewNsenterMounter(s.RootDirectory, ne)
-		// an exec interface which can use nsenter for flex plugin calls
-		pluginRunner = nsenter.NewNsenterExecutor(nsenter.DefaultHostRootFsPath, exec.New())
-	}
 
 	return &kubelet.Dependencies{
 		Auth:                nil, // default does not enforce auth[nz]
