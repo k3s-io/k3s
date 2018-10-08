@@ -348,7 +348,7 @@ func startGarbageCollectorController(ctx ControllerContext) (http.Handler, bool,
 	// the garbage collector.
 	go garbageCollector.Sync(gcClientset.Discovery(), 30*time.Second, ctx.Stop)
 
-	return garbagecollector.NewDebugHandler(garbageCollector), true, nil
+	return nil, true, nil
 }
 
 func startPVCProtectionController(ctx ControllerContext) (http.Handler, bool, error) {
