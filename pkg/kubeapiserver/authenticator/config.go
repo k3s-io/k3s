@@ -36,8 +36,6 @@ import (
 	certutil "k8s.io/client-go/util/cert"
 	"k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/serviceaccount"
-
-	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
 
 type AuthenticatorConfig struct {
