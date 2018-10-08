@@ -58,8 +58,6 @@ import (
 	"k8s.io/apiserver/pkg/util/logs"
 	"k8s.io/client-go/informers"
 	restclient "k8s.io/client-go/rest"
-	certutil "k8s.io/client-go/util/cert"
-
 	// install apis
 	_ "k8s.io/apiserver/pkg/apis/apiserver/install"
 )
@@ -282,25 +280,6 @@ func NewRecommendedConfig(codecs serializer.CodecFactory) *RecommendedConfig {
 	return &RecommendedConfig{
 		Config: *NewConfig(codecs),
 	}
-}
-
-func (c *AuthenticationInfo) ApplyClientCert(clientCAFile string, servingInfo *SecureServingInfo) error {
-	if servingInfo != nil {
-		if len(clientCAFile) > 0 {
-			clientCAs, err := certutil.CertsFromFile(clientCAFile)
-			if err != nil {
-				return fmt.Errorf("unable to load client CA file: %v", err)
-			}
-			if servingInfo.ClientCA == nil {
-				servingInfo.ClientCA = x509.NewCertPool()
-			}
-			for _, cert := range clientCAs {
-				servingInfo.ClientCA.AddCert(cert)
-			}
-		}
-	}
-
-	return nil
 }
 
 type completedConfig struct {

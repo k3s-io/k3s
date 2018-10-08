@@ -90,8 +90,6 @@ const (
 )
 
 type ExtraConfig struct {
-	ClientCARegistrationHook ClientCARegistrationHook
-
 	APIResourceConfigSource  serverstorage.APIResourceConfigSource
 	StorageFactory           serverstorage.StorageFactory
 	EndpointReconcilerConfig EndpointReconcilerConfig
@@ -176,8 +174,6 @@ type EndpointReconcilerConfig struct {
 // Master contains state for a Kubernetes cluster master/api server.
 type Master struct {
 	GenericAPIServer *genericapiserver.GenericAPIServer
-
-	ClientCARegistrationHook ClientCARegistrationHook
 }
 
 func (c *Config) createMasterCountReconciler() reconcilers.EndpointReconciler {
@@ -331,8 +327,6 @@ func (c completedConfig) New(delegationTarget genericapiserver.DelegationTarget)
 		admissionregistrationrest.RESTStorageProvider{},
 	}
 	m.InstallAPIs(c.ExtraConfig.APIResourceConfigSource, c.GenericConfig.RESTOptionsGetter, restStorageProviders...)
-
-	m.GenericAPIServer.AddPostStartHookOrDie("ca-registration", c.ExtraConfig.ClientCARegistrationHook.PostStartHook)
 
 	return m, nil
 }
