@@ -35,7 +35,6 @@ type BuiltInAuthenticationOptions struct {
 	Anonymous       *AnonymousAuthenticationOptions
 	PasswordFile    *PasswordFileAuthenticationOptions
 	ServiceAccounts *ServiceAccountAuthenticationOptions
-	TokenFile       *TokenFileAuthenticationOptions
 	WebHook         *WebHookAuthenticationOptions
 
 	TokenSuccessCacheTTL time.Duration
@@ -58,10 +57,6 @@ type ServiceAccountAuthenticationOptions struct {
 	MaxExpiration time.Duration
 }
 
-type TokenFileAuthenticationOptions struct {
-	TokenFile string
-}
-
 type WebHookAuthenticationOptions struct {
 	ConfigFile string
 	CacheTTL   time.Duration
@@ -79,7 +74,6 @@ func (s *BuiltInAuthenticationOptions) WithAll() *BuiltInAuthenticationOptions {
 		WithAnonymous().
 		WithPasswordFile().
 		WithServiceAccounts().
-		WithTokenFile().
 		WithWebHook()
 }
 
@@ -95,11 +89,6 @@ func (s *BuiltInAuthenticationOptions) WithPasswordFile() *BuiltInAuthentication
 
 func (s *BuiltInAuthenticationOptions) WithServiceAccounts() *BuiltInAuthenticationOptions {
 	s.ServiceAccounts = &ServiceAccountAuthenticationOptions{Lookup: true}
-	return s
-}
-
-func (s *BuiltInAuthenticationOptions) WithTokenFile() *BuiltInAuthenticationOptions {
-	s.TokenFile = &TokenFileAuthenticationOptions{}
 	return s
 }
 
@@ -161,12 +150,6 @@ func (s *BuiltInAuthenticationOptions) AddFlags(fs *pflag.FlagSet) {
 			"TokenRequest with a validity duration larger than this value is requested, a token will be issued with a validity duration of this value.")
 	}
 
-	if s.TokenFile != nil {
-		fs.StringVar(&s.TokenFile.TokenFile, "token-auth-file", s.TokenFile.TokenFile, ""+
-			"If set, the file that will be used to secure the secure port of the API server "+
-			"via token authentication.")
-	}
-
 	if s.WebHook != nil {
 		fs.StringVar(&s.WebHook.ConfigFile, "authentication-token-webhook-config-file", s.WebHook.ConfigFile, ""+
 			"File with webhook configuration for token authentication in kubeconfig format. "+
@@ -196,10 +179,6 @@ func (s *BuiltInAuthenticationOptions) ToAuthenticationConfig() authenticator.Au
 		ret.ServiceAccountLookup = s.ServiceAccounts.Lookup
 		ret.ServiceAccountIssuer = s.ServiceAccounts.Issuer
 		ret.ServiceAccountAPIAudiences = s.ServiceAccounts.APIAudiences
-	}
-
-	if s.TokenFile != nil {
-		ret.TokenAuthFile = s.TokenFile.TokenFile
 	}
 
 	if s.WebHook != nil {
