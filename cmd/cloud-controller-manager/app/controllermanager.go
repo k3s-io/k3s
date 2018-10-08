@@ -274,6 +274,5 @@ func newControllerInitializers() map[string]initFunc {
 	controllers["cloud-node"] = startCloudNodeController
 	controllers["cloud-node-lifecycle"] = startCloudNodeLifecycleController
 	controllers["service"] = startServiceController
-	controllers["route"] = startRouteController
 	return controllers
 }

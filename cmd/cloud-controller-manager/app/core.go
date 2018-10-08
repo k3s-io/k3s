@@ -21,16 +21,12 @@ limitations under the License.
 package app
 
 import (
-	"net"
-	"net/http"
-	"strings"
-
-	cloudprovider "k8s.io/cloud-provider"
+	"k8s.io/cloud-provider"
 	"k8s.io/klog"
 	cloudcontrollerconfig "k8s.io/kubernetes/cmd/cloud-controller-manager/app/config"
 	cloudcontrollers "k8s.io/kubernetes/pkg/controller/cloud"
-	routecontroller "k8s.io/kubernetes/pkg/controller/route"
 	servicecontroller "k8s.io/kubernetes/pkg/controller/service"
+	"net/http"
 )
 
 func startCloudNodeController(ctx *cloudcontrollerconfig.CompletedConfig, cloud cloudprovider.Interface, stopCh <-chan struct{}) (http.Handler, bool, error) {
@@ -82,39 +78,6 @@ func startServiceController(ctx *cloudcontrollerconfig.CompletedConfig, cloud cl
 	}
 
 	go serviceController.Run(stopCh, int(ctx.ComponentConfig.ServiceController.ConcurrentServiceSyncs))
-
-	return nil, true, nil
-}
-
-func startRouteController(ctx *cloudcontrollerconfig.CompletedConfig, cloud cloudprovider.Interface, stopCh <-chan struct{}) (http.Handler, bool, error) {
-	if !ctx.ComponentConfig.KubeCloudShared.AllocateNodeCIDRs || !ctx.ComponentConfig.KubeCloudShared.ConfigureCloudRoutes {
-		klog.Infof("Will not configure cloud provider routes for allocate-node-cidrs: %v, configure-cloud-routes: %v.", ctx.ComponentConfig.KubeCloudShared.AllocateNodeCIDRs, ctx.ComponentConfig.KubeCloudShared.ConfigureCloudRoutes)
-		return nil, false, nil
-	}
-
-	// If CIDRs should be allocated for pods and set on the CloudProvider, then start the route controller
-	routes, ok := cloud.Routes()
-	if !ok {
-		klog.Warning("configure-cloud-routes is set, but cloud provider does not support routes. Will not configure cloud provider routes.")
-		return nil, false, nil
-	}
-	var clusterCIDR *net.IPNet
-	var err error
-	if len(strings.TrimSpace(ctx.ComponentConfig.KubeCloudShared.ClusterCIDR)) != 0 {
-		_, clusterCIDR, err = net.ParseCIDR(ctx.ComponentConfig.KubeCloudShared.ClusterCIDR)
-		if err != nil {
-			klog.Warningf("Unsuccessful parsing of cluster CIDR %v: %v", ctx.ComponentConfig.KubeCloudShared.ClusterCIDR, err)
-		}
-	}
-
-	routeController := routecontroller.New(
-		routes,
-		ctx.ClientBuilder.ClientOrDie("route-controller"),
-		ctx.SharedInformers.Core().V1().Nodes(),
-		ctx.ComponentConfig.KubeCloudShared.ClusterName,
-		clusterCIDR,
-	)
-	go routeController.Run(stopCh, ctx.ComponentConfig.KubeCloudShared.RouteReconciliationPeriod.Duration)
 
 	return nil, true, nil
 }
