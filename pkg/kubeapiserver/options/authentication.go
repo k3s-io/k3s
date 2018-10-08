@@ -25,16 +25,13 @@ import (
 	"github.com/spf13/pflag"
 	"k8s.io/klog"
 
-	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	kubeauthenticator "k8s.io/kubernetes/pkg/kubeapiserver/authenticator"
-	authzmodes "k8s.io/kubernetes/pkg/kubeapiserver/authorizer/modes"
 )
 
 type BuiltInAuthenticationOptions struct {
 	APIAudiences    []string
-	Anonymous       *AnonymousAuthenticationOptions
 	PasswordFile    *PasswordFileAuthenticationOptions
 	ServiceAccounts *ServiceAccountAuthenticationOptions
 	TokenFile       *TokenFileAuthenticationOptions
@@ -42,10 +39,6 @@ type BuiltInAuthenticationOptions struct {
 
 	TokenSuccessCacheTTL time.Duration
 	TokenFailureCacheTTL time.Duration
-}
-
-type AnonymousAuthenticationOptions struct {
-	Allow bool
 }
 
 type PasswordFileAuthenticationOptions struct {
@@ -77,16 +70,10 @@ func NewBuiltInAuthenticationOptions() *BuiltInAuthenticationOptions {
 
 func (s *BuiltInAuthenticationOptions) WithAll() *BuiltInAuthenticationOptions {
 	return s.
-		WithAnonymous().
 		WithPasswordFile().
 		WithServiceAccounts().
 		WithTokenFile().
 		WithWebHook()
-}
-
-func (s *BuiltInAuthenticationOptions) WithAnonymous() *BuiltInAuthenticationOptions {
-	s.Anonymous = &AnonymousAuthenticationOptions{Allow: true}
-	return s
 }
 
 func (s *BuiltInAuthenticationOptions) WithPasswordFile() *BuiltInAuthenticationOptions {
@@ -130,13 +117,6 @@ func (s *BuiltInAuthenticationOptions) AddFlags(fs *pflag.FlagSet) {
 		"tokens used against the API are bound to at least one of these audiences. If the "+
 		"--service-account-issuer flag is configured and this flag is not, this field "+
 		"defaults to a single element list containing the issuer URL .")
-
-	if s.Anonymous != nil {
-		fs.BoolVar(&s.Anonymous.Allow, "anonymous-auth", s.Anonymous.Allow, ""+
-			"Enables anonymous requests to the secure port of the API server. "+
-			"Requests that are not rejected by another authentication method are treated as anonymous requests. "+
-			"Anonymous requests have a username of system:anonymous, and a group name of system:unauthenticated.")
-	}
 
 	if s.PasswordFile != nil {
 		fs.StringVar(&s.PasswordFile.BasicAuthFile, "basic-auth-file", s.PasswordFile.BasicAuthFile, ""+
@@ -192,10 +172,6 @@ func (s *BuiltInAuthenticationOptions) ToAuthenticationConfig() kubeauthenticato
 		TokenFailureCacheTTL: s.TokenFailureCacheTTL,
 	}
 
-	if s.Anonymous != nil {
-		ret.Anonymous = s.Anonymous.Allow
-	}
-
 	if s.PasswordFile != nil {
 		ret.BasicAuthFile = s.PasswordFile.BasicAuthFile
 	}
@@ -249,14 +225,7 @@ func (o *BuiltInAuthenticationOptions) ApplyTo(c *genericapiserver.Config) error
 
 // ApplyAuthorization will conditionally modify the authentication options based on the authorization options
 func (o *BuiltInAuthenticationOptions) ApplyAuthorization(authorization *BuiltInAuthorizationOptions) {
-	if o == nil || authorization == nil || o.Anonymous == nil {
+	if o == nil || authorization == nil {
 		return
-	}
-
-	// authorization ModeAlwaysAllow cannot be combined with AnonymousAuth.
-	// in such a case the AnonymousAuth is stomped to false and you get a message
-	if o.Anonymous.Allow && sets.NewString(authorization.Modes...).Has(authzmodes.ModeAlwaysAllow) {
-		klog.Warningf("AnonymousAuth is not allowed with the AlwaysAllow authorizer. Resetting AnonymousAuth to false. You should use a different authorizer")
-		o.Anonymous.Allow = false
 	}
 }
