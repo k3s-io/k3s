@@ -142,9 +142,7 @@ func (nc *Controller) Run(stopCh <-chan struct{}) {
 		return
 	}
 
-	if nc.allocatorType != ipam.IPAMFromClusterAllocatorType && nc.allocatorType != ipam.IPAMFromCloudAllocatorType {
-		go nc.cidrAllocator.Run(stopCh)
-	}
+	go nc.cidrAllocator.Run(stopCh)
 
 	<-stopCh
 }
