@@ -49,7 +49,6 @@ import (
 type Config struct {
 	Anonymous                   bool
 	BasicAuthFile               string
-	BootstrapToken              bool
 	ClientCAFile                string
 	TokenAuthFile               string
 	OIDCIssuerURL               string
@@ -75,7 +74,6 @@ type Config struct {
 
 	// TODO, this is the only non-serializable part of the entire config.  Factor it out into a clientconfig
 	ServiceAccountTokenGetter   serviceaccount.ServiceAccountTokenGetter
-	BootstrapTokenAuthenticator authenticator.Token
 }
 
 // New returns an authenticator.Request or an error that supports the standard
@@ -139,12 +137,6 @@ func (config Config) New() (authenticator.Request, error) {
 			return nil, err
 		}
 		tokenAuthenticators = append(tokenAuthenticators, serviceAccountAuth)
-	}
-	if config.BootstrapToken {
-		if config.BootstrapTokenAuthenticator != nil {
-			// TODO: This can sometimes be nil because of
-			tokenAuthenticators = append(tokenAuthenticators, authenticator.WrapAudienceAgnosticToken(config.APIAudiences, config.BootstrapTokenAuthenticator))
-		}
 	}
 	// NOTE(ericchiang): Keep the OpenID Connect after Service Accounts.
 	//
