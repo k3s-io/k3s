@@ -65,6 +65,8 @@ type SecureServingOptions struct {
 	// HTTP2MaxStreamsPerConnection is the limit that the api server imposes on each client.
 	// A value of zero means to use the default provided by golang's HTTP/2 support.
 	HTTP2MaxStreamsPerConnection int
+
+	AdvertisePort int
 }
 
 type CertKey struct {
@@ -251,6 +253,8 @@ func (s *SecureServingOptions) ApplyTo(config **server.SecureServingInfo) error 
 	if err != nil {
 		return err
 	}
+
+	c.AdvertisePort = s.AdvertisePort
 
 	return nil
 }
