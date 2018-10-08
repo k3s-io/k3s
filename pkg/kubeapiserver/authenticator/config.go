@@ -20,11 +20,9 @@ import (
 	"time"
 
 	"k8s.io/apiserver/pkg/authentication/authenticator"
-	"k8s.io/apiserver/pkg/authentication/authenticatorfactory"
 	"k8s.io/apiserver/pkg/authentication/group"
 	"k8s.io/apiserver/pkg/authentication/request/anonymous"
 	"k8s.io/apiserver/pkg/authentication/request/bearertoken"
-	"k8s.io/apiserver/pkg/authentication/request/headerrequest"
 	"k8s.io/apiserver/pkg/authentication/request/union"
 	"k8s.io/apiserver/pkg/authentication/request/websocket"
 	"k8s.io/apiserver/pkg/authentication/request/x509"
@@ -58,8 +56,6 @@ type Config struct {
 	TokenSuccessCacheTTL time.Duration
 	TokenFailureCacheTTL time.Duration
 
-	RequestHeaderConfig *authenticatorfactory.RequestHeaderConfig
-
 	// TODO, this is the only non-serializable part of the entire config.  Factor it out into a clientconfig
 	ServiceAccountTokenGetter   serviceaccount.ServiceAccountTokenGetter
 }
@@ -69,22 +65,6 @@ type Config struct {
 func (config Config) New() (authenticator.Request, error) {
 	var authenticators []authenticator.Request
 	var tokenAuthenticators []authenticator.Token
-
-	// front-proxy, BasicAuth methods, local first, then remote
-	// Add the front proxy authenticator if requested
-	if config.RequestHeaderConfig != nil {
-		requestHeaderAuthenticator, err := headerrequest.NewSecure(
-			config.RequestHeaderConfig.ClientCA,
-			config.RequestHeaderConfig.AllowedClientNames,
-			config.RequestHeaderConfig.UsernameHeaders,
-			config.RequestHeaderConfig.GroupHeaders,
-			config.RequestHeaderConfig.ExtraHeaderPrefixes,
-		)
-		if err != nil {
-			return nil, err
-		}
-		authenticators = append(authenticators, authenticator.WrapAudienceAgnosticRequest(config.APIAudiences, requestHeaderAuthenticator))
-	}
 
 	// basic auth
 	if len(config.BasicAuthFile) > 0 {
