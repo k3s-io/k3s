@@ -25,24 +25,17 @@ import (
 	"github.com/golang/glog"
 	"github.com/spf13/pflag"
 
-	"k8s.io/apimachinery/pkg/util/sets"
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	"k8s.io/kubernetes/pkg/kubeapiserver/authenticator"
-	authzmodes "k8s.io/kubernetes/pkg/kubeapiserver/authorizer/modes"
 )
 
 type BuiltInAuthenticationOptions struct {
-	Anonymous       *AnonymousAuthenticationOptions
 	PasswordFile    *PasswordFileAuthenticationOptions
 	ServiceAccounts *ServiceAccountAuthenticationOptions
 	WebHook         *WebHookAuthenticationOptions
 
 	TokenSuccessCacheTTL time.Duration
 	TokenFailureCacheTTL time.Duration
-}
-
-type AnonymousAuthenticationOptions struct {
-	Allow bool
 }
 
 type PasswordFileAuthenticationOptions struct {
@@ -71,15 +64,9 @@ func NewBuiltInAuthenticationOptions() *BuiltInAuthenticationOptions {
 
 func (s *BuiltInAuthenticationOptions) WithAll() *BuiltInAuthenticationOptions {
 	return s.
-		WithAnonymous().
 		WithPasswordFile().
 		WithServiceAccounts().
 		WithWebHook()
-}
-
-func (s *BuiltInAuthenticationOptions) WithAnonymous() *BuiltInAuthenticationOptions {
-	s.Anonymous = &AnonymousAuthenticationOptions{Allow: true}
-	return s
 }
 
 func (s *BuiltInAuthenticationOptions) WithPasswordFile() *BuiltInAuthenticationOptions {
@@ -113,13 +100,6 @@ func (s *BuiltInAuthenticationOptions) Validate() []error {
 }
 
 func (s *BuiltInAuthenticationOptions) AddFlags(fs *pflag.FlagSet) {
-	if s.Anonymous != nil {
-		fs.BoolVar(&s.Anonymous.Allow, "anonymous-auth", s.Anonymous.Allow, ""+
-			"Enables anonymous requests to the secure port of the API server. "+
-			"Requests that are not rejected by another authentication method are treated as anonymous requests. "+
-			"Anonymous requests have a username of system:anonymous, and a group name of system:unauthenticated.")
-	}
-
 	if s.PasswordFile != nil {
 		fs.StringVar(&s.PasswordFile.BasicAuthFile, "basic-auth-file", s.PasswordFile.BasicAuthFile, ""+
 			"If set, the file that will be used to admit requests to the secure port of the API server "+
@@ -166,10 +146,6 @@ func (s *BuiltInAuthenticationOptions) ToAuthenticationConfig() authenticator.Au
 		TokenFailureCacheTTL: s.TokenFailureCacheTTL,
 	}
 
-	if s.Anonymous != nil {
-		ret.Anonymous = s.Anonymous.Allow
-	}
-
 	if s.PasswordFile != nil {
 		ret.BasicAuthFile = s.PasswordFile.BasicAuthFile
 	}
@@ -210,14 +186,7 @@ func (o *BuiltInAuthenticationOptions) ApplyTo(c *genericapiserver.Config) error
 
 // ApplyAuthorization will conditionally modify the authentication options based on the authorization options
 func (o *BuiltInAuthenticationOptions) ApplyAuthorization(authorization *BuiltInAuthorizationOptions) {
-	if o == nil || authorization == nil || o.Anonymous == nil {
+	if o == nil || authorization == nil {
 		return
-	}
-
-	// authorization ModeAlwaysAllow cannot be combined with AnonymousAuth.
-	// in such a case the AnonymousAuth is stomped to false and you get a message
-	if o.Anonymous.Allow && sets.NewString(authorization.Modes...).Has(authzmodes.ModeAlwaysAllow) {
-		glog.Warningf("AnonymousAuth is not allowed with the AlwaysAllow authorizer. Resetting AnonymousAuth to false. You should use a different authorizer")
-		o.Anonymous.Allow = false
 	}
 }
