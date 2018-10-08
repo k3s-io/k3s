@@ -29,7 +29,6 @@ import (
 	"k8s.io/apiserver/pkg/authentication/request/websocket"
 	"k8s.io/apiserver/pkg/authentication/request/x509"
 	tokencache "k8s.io/apiserver/pkg/authentication/token/cache"
-	"k8s.io/apiserver/pkg/authentication/token/tokenfile"
 	tokenunion "k8s.io/apiserver/pkg/authentication/token/union"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/apiserver/plugin/pkg/authenticator/password/passwordfile"
@@ -46,7 +45,6 @@ type AuthenticatorConfig struct {
 	Anonymous                   bool
 	BasicAuthFile               string
 	ClientCAFile                string
-	TokenAuthFile               string
 	ServiceAccountKeyFiles      []string
 	ServiceAccountLookup        bool
 	ServiceAccountIssuer        string
@@ -103,14 +101,6 @@ func (config AuthenticatorConfig) New() (authenticator.Request, error) {
 		authenticators = append(authenticators, certAuth)
 	}
 
-	// Bearer token methods, local first, then remote
-	if len(config.TokenAuthFile) > 0 {
-		tokenAuth, err := newAuthenticatorFromTokenFile(config.TokenAuthFile)
-		if err != nil {
-			return nil, err
-		}
-		tokenAuthenticators = append(tokenAuthenticators, tokenAuth)
-	}
 	if len(config.ServiceAccountKeyFiles) > 0 {
 		serviceAccountAuth, err := newLegacyServiceAccountAuthenticator(config.ServiceAccountKeyFiles, config.ServiceAccountLookup, config.ServiceAccountTokenGetter)
 		if err != nil {
@@ -177,16 +167,6 @@ func newAuthenticatorFromBasicAuthFile(basicAuthFile string) (authenticator.Requ
 	}
 
 	return basicauth.New(basicAuthenticator), nil
-}
-
-// newAuthenticatorFromTokenFile returns an authenticator.Token or an error
-func newAuthenticatorFromTokenFile(tokenAuthFile string) (authenticator.Token, error) {
-	tokenAuthenticator, err := tokenfile.NewCSV(tokenAuthFile)
-	if err != nil {
-		return nil, err
-	}
-
-	return tokenAuthenticator, nil
 }
 
 // newLegacyServiceAccountAuthenticator returns an authenticator.Token or an error
