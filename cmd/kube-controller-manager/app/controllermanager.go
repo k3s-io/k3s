@@ -385,7 +385,6 @@ func NewControllerInitializers(loopMode ControllerLoopMode) map[string]InitFunc 
 	controllers["nodeipam"] = startNodeIpamController
 	if loopMode == IncludeCloudLoops {
 		controllers["service"] = startServiceController
-		controllers["route"] = startRouteController
 		// TODO: volume controller into the IncludeCloudLoops only set.
 		// TODO: Separate cluster in cloud check from node lifecycle controller.
 	}
