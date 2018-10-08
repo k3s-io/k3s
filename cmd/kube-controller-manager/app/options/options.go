@@ -83,7 +83,6 @@ type KubeControllerManagerOptions struct {
 	// TODO: remove insecure serving mode
 	InsecureServing *apiserveroptions.DeprecatedInsecureServingOptionsWithLoopback
 	Authentication  *apiserveroptions.DelegatingAuthenticationOptions
-	Authorization   *apiserveroptions.DelegatingAuthorizationOptions
 
 	Master     string
 	Kubeconfig string
@@ -183,12 +182,9 @@ func NewKubeControllerManagerOptions() (*KubeControllerManagerOptions, error) {
 			BindNetwork: "tcp",
 		}).WithLoopback(),
 		Authentication: apiserveroptions.NewDelegatingAuthenticationOptions(),
-		Authorization:  apiserveroptions.NewDelegatingAuthorizationOptions(),
 	}
 
 	s.Authentication.RemoteKubeConfigFileOptional = true
-	s.Authorization.RemoteKubeConfigFileOptional = true
-	s.Authorization.AlwaysAllowPaths = []string{"/healthz"}
 
 	s.SecureServing.ServerCert.CertDirectory = "/var/run/kubernetes"
 	s.SecureServing.ServerCert.PairName = "kube-controller-manager"
@@ -235,7 +231,6 @@ func (s *KubeControllerManagerOptions) Flags(allControllers []string, disabledBy
 	s.SecureServing.AddFlags(fss.FlagSet("secure serving"))
 	s.InsecureServing.AddUnqualifiedFlags(fss.FlagSet("insecure serving"))
 	s.Authentication.AddFlags(fss.FlagSet("authentication"))
-	s.Authorization.AddFlags(fss.FlagSet("authorization"))
 
 	s.AttachDetachController.AddFlags(fss.FlagSet("attachdetach controller"))
 	s.CSRSigningController.AddFlags(fss.FlagSet("csrsigning controller"))
@@ -346,9 +341,6 @@ func (s *KubeControllerManagerOptions) ApplyTo(c *kubecontrollerconfig.Config) e
 		if err := s.Authentication.ApplyTo(&c.Authentication, c.SecureServing); err != nil {
 			return err
 		}
-		if err := s.Authorization.ApplyTo(&c.Authorization); err != nil {
-			return err
-		}
 	}
 
 	// sync back to component config
@@ -388,7 +380,6 @@ func (s *KubeControllerManagerOptions) Validate(allControllers []string, disable
 	errs = append(errs, s.SecureServing.Validate()...)
 	errs = append(errs, s.InsecureServing.Validate()...)
 	errs = append(errs, s.Authentication.Validate()...)
-	errs = append(errs, s.Authorization.Validate()...)
 
 	// TODO: validate component config, master and kubeconfig
 
