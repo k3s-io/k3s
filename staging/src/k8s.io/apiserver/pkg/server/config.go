@@ -206,6 +206,8 @@ type SecureServingInfo struct {
 	// HTTP2MaxStreamsPerConnection is the limit that the api server imposes on each client.
 	// A value of zero means to use the default provided by golang's HTTP/2 support.
 	HTTP2MaxStreamsPerConnection int
+
+	AdvertisePort int
 }
 
 type AuthenticationInfo struct {
@@ -476,6 +478,9 @@ func (s *SecureServingInfo) HostPort() (string, int, error) {
 	port, err := strconv.Atoi(portStr)
 	if err != nil {
 		return "", 0, fmt.Errorf("invalid non-numeric port %q", portStr)
+	}
+	if s.AdvertisePort != 0 {
+		port = s.AdvertisePort
 	}
 	return host, port, nil
 }
