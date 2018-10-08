@@ -29,7 +29,6 @@ import (
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	genericoptions "k8s.io/apiserver/pkg/server/options"
-	"k8s.io/apiserver/pkg/util/flag"
 	kubeauthenticator "k8s.io/kubernetes/pkg/kubeapiserver/authenticator"
 	authzmodes "k8s.io/kubernetes/pkg/kubeapiserver/authorizer/modes"
 )
@@ -38,7 +37,6 @@ type BuiltInAuthenticationOptions struct {
 	APIAudiences    []string
 	Anonymous       *AnonymousAuthenticationOptions
 	ClientCert      *genericoptions.ClientCertAuthenticationOptions
-	OIDC            *OIDCAuthenticationOptions
 	PasswordFile    *PasswordFileAuthenticationOptions
 	RequestHeader   *genericoptions.RequestHeaderAuthenticationOptions
 	ServiceAccounts *ServiceAccountAuthenticationOptions
@@ -51,18 +49,6 @@ type BuiltInAuthenticationOptions struct {
 
 type AnonymousAuthenticationOptions struct {
 	Allow bool
-}
-
-type OIDCAuthenticationOptions struct {
-	CAFile         string
-	ClientID       string
-	IssuerURL      string
-	UsernameClaim  string
-	UsernamePrefix string
-	GroupsClaim    string
-	GroupsPrefix   string
-	SigningAlgs    []string
-	RequiredClaims map[string]string
 }
 
 type PasswordFileAuthenticationOptions struct {
@@ -96,7 +82,6 @@ func (s *BuiltInAuthenticationOptions) WithAll() *BuiltInAuthenticationOptions {
 	return s.
 		WithAnonymous().
 		WithClientCert().
-		WithOIDC().
 		WithPasswordFile().
 		WithRequestHeader().
 		WithServiceAccounts().
@@ -111,11 +96,6 @@ func (s *BuiltInAuthenticationOptions) WithAnonymous() *BuiltInAuthenticationOpt
 
 func (s *BuiltInAuthenticationOptions) WithClientCert() *BuiltInAuthenticationOptions {
 	s.ClientCert = &genericoptions.ClientCertAuthenticationOptions{}
-	return s
-}
-
-func (s *BuiltInAuthenticationOptions) WithOIDC() *BuiltInAuthenticationOptions {
-	s.OIDC = &OIDCAuthenticationOptions{}
 	return s
 }
 
@@ -150,10 +130,6 @@ func (s *BuiltInAuthenticationOptions) WithWebHook() *BuiltInAuthenticationOptio
 func (s *BuiltInAuthenticationOptions) Validate() []error {
 	allErrors := []error{}
 
-	if s.OIDC != nil && (len(s.OIDC.IssuerURL) > 0) != (len(s.OIDC.ClientID) > 0) {
-		allErrors = append(allErrors, fmt.Errorf("oidc-issuer-url and oidc-client-id should be specified together"))
-	}
-
 	if s.ServiceAccounts != nil && len(s.ServiceAccounts.Issuer) > 0 && strings.Contains(s.ServiceAccounts.Issuer, ":") {
 		if _, err := url.Parse(s.ServiceAccounts.Issuer); err != nil {
 			allErrors = append(allErrors, fmt.Errorf("service-account-issuer contained a ':' but was not a valid URL: %v", err))
@@ -179,48 +155,6 @@ func (s *BuiltInAuthenticationOptions) AddFlags(fs *pflag.FlagSet) {
 
 	if s.ClientCert != nil {
 		s.ClientCert.AddFlags(fs)
-	}
-
-	if s.OIDC != nil {
-		fs.StringVar(&s.OIDC.IssuerURL, "oidc-issuer-url", s.OIDC.IssuerURL, ""+
-			"The URL of the OpenID issuer, only HTTPS scheme will be accepted. "+
-			"If set, it will be used to verify the OIDC JSON Web Token (JWT).")
-
-		fs.StringVar(&s.OIDC.ClientID, "oidc-client-id", s.OIDC.ClientID,
-			"The client ID for the OpenID Connect client, must be set if oidc-issuer-url is set.")
-
-		fs.StringVar(&s.OIDC.CAFile, "oidc-ca-file", s.OIDC.CAFile, ""+
-			"If set, the OpenID server's certificate will be verified by one of the authorities "+
-			"in the oidc-ca-file, otherwise the host's root CA set will be used.")
-
-		fs.StringVar(&s.OIDC.UsernameClaim, "oidc-username-claim", "sub", ""+
-			"The OpenID claim to use as the user name. Note that claims other than the default ('sub') "+
-			"is not guaranteed to be unique and immutable. This flag is experimental, please see "+
-			"the authentication documentation for further details.")
-
-		fs.StringVar(&s.OIDC.UsernamePrefix, "oidc-username-prefix", "", ""+
-			"If provided, all usernames will be prefixed with this value. If not provided, "+
-			"username claims other than 'email' are prefixed by the issuer URL to avoid "+
-			"clashes. To skip any prefixing, provide the value '-'.")
-
-		fs.StringVar(&s.OIDC.GroupsClaim, "oidc-groups-claim", "", ""+
-			"If provided, the name of a custom OpenID Connect claim for specifying user groups. "+
-			"The claim value is expected to be a string or array of strings. This flag is experimental, "+
-			"please see the authentication documentation for further details.")
-
-		fs.StringVar(&s.OIDC.GroupsPrefix, "oidc-groups-prefix", "", ""+
-			"If provided, all groups will be prefixed with this value to prevent conflicts with "+
-			"other authentication strategies.")
-
-		fs.StringSliceVar(&s.OIDC.SigningAlgs, "oidc-signing-algs", []string{"RS256"}, ""+
-			"Comma-separated list of allowed JOSE asymmetric signing algorithms. JWTs with a "+
-			"'alg' header value not in this list will be rejected. "+
-			"Values are defined by RFC 7518 https://tools.ietf.org/html/rfc7518#section-3.1.")
-
-		fs.Var(flag.NewMapStringStringNoSplit(&s.OIDC.RequiredClaims), "oidc-required-claim", ""+
-			"A key=value pair that describes a required claim in the ID Token. "+
-			"If set, the claim is verified to be present in the ID Token with a matching value. "+
-			"Repeat this flag to specify multiple claims.")
 	}
 
 	if s.PasswordFile != nil {
@@ -287,18 +221,6 @@ func (s *BuiltInAuthenticationOptions) ToAuthenticationConfig() kubeauthenticato
 
 	if s.ClientCert != nil {
 		ret.ClientCAFile = s.ClientCert.ClientCA
-	}
-
-	if s.OIDC != nil {
-		ret.OIDCCAFile = s.OIDC.CAFile
-		ret.OIDCClientID = s.OIDC.ClientID
-		ret.OIDCGroupsClaim = s.OIDC.GroupsClaim
-		ret.OIDCGroupsPrefix = s.OIDC.GroupsPrefix
-		ret.OIDCIssuerURL = s.OIDC.IssuerURL
-		ret.OIDCUsernameClaim = s.OIDC.UsernameClaim
-		ret.OIDCUsernamePrefix = s.OIDC.UsernamePrefix
-		ret.OIDCSigningAlgs = s.OIDC.SigningAlgs
-		ret.OIDCRequiredClaims = s.OIDC.RequiredClaims
 	}
 
 	if s.PasswordFile != nil {
