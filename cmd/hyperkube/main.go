@@ -35,7 +35,6 @@ import (
 	"k8s.io/apiserver/pkg/server"
 	utilflag "k8s.io/apiserver/pkg/util/flag"
 	"k8s.io/apiserver/pkg/util/logs"
-	cloudcontrollermanager "k8s.io/kubernetes/cmd/cloud-controller-manager/app"
 	kubeapiserver "k8s.io/kubernetes/cmd/kube-apiserver/app"
 	kubecontrollermanager "k8s.io/kubernetes/cmd/kube-controller-manager/app"
 	kubeproxy "k8s.io/kubernetes/cmd/kube-proxy/app"
@@ -113,7 +112,6 @@ func NewHyperKubeCommand(stopCh <-chan struct{}) (*cobra.Command, []func() *cobr
 	}
 	kubectlCmd := func() *cobra.Command { return kubectl.NewDefaultKubectlCommand() }
 	kubelet := func() *cobra.Command { return kubelet.NewKubeletCommand(stopCh) }
-	cloudController := func() *cobra.Command { return cloudcontrollermanager.NewCloudControllerManagerCommand() }
 
 	commandFns := []func() *cobra.Command{
 		apiserver,
@@ -122,7 +120,6 @@ func NewHyperKubeCommand(stopCh <-chan struct{}) (*cobra.Command, []func() *cobr
 		scheduler,
 		kubectlCmd,
 		kubelet,
-		cloudController,
 	}
 
 	makeSymlinksFlag := false
