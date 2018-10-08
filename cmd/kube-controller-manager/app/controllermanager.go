@@ -380,8 +380,6 @@ func NewControllerInitializers(loopMode ControllerLoopMode) map[string]InitFunc 
 	controllers["csrapproving"] = startCSRApprovingController
 	controllers["csrcleaner"] = startCSRCleanerController
 	controllers["ttl"] = startTTLController
-	controllers["bootstrapsigner"] = startBootstrapSignerController
-	controllers["tokencleaner"] = startTokenCleanerController
 	controllers["nodeipam"] = startNodeIpamController
 	if loopMode == IncludeCloudLoops {
 		controllers["service"] = startServiceController
