@@ -28,7 +28,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 	genericapiserver "k8s.io/apiserver/pkg/server"
-	genericoptions "k8s.io/apiserver/pkg/server/options"
 	kubeauthenticator "k8s.io/kubernetes/pkg/kubeapiserver/authenticator"
 	authzmodes "k8s.io/kubernetes/pkg/kubeapiserver/authorizer/modes"
 )
@@ -36,9 +35,7 @@ import (
 type BuiltInAuthenticationOptions struct {
 	APIAudiences    []string
 	Anonymous       *AnonymousAuthenticationOptions
-	ClientCert      *genericoptions.ClientCertAuthenticationOptions
 	PasswordFile    *PasswordFileAuthenticationOptions
-	RequestHeader   *genericoptions.RequestHeaderAuthenticationOptions
 	ServiceAccounts *ServiceAccountAuthenticationOptions
 	TokenFile       *TokenFileAuthenticationOptions
 	WebHook         *WebHookAuthenticationOptions
@@ -81,9 +78,7 @@ func NewBuiltInAuthenticationOptions() *BuiltInAuthenticationOptions {
 func (s *BuiltInAuthenticationOptions) WithAll() *BuiltInAuthenticationOptions {
 	return s.
 		WithAnonymous().
-		WithClientCert().
 		WithPasswordFile().
-		WithRequestHeader().
 		WithServiceAccounts().
 		WithTokenFile().
 		WithWebHook()
@@ -94,18 +89,8 @@ func (s *BuiltInAuthenticationOptions) WithAnonymous() *BuiltInAuthenticationOpt
 	return s
 }
 
-func (s *BuiltInAuthenticationOptions) WithClientCert() *BuiltInAuthenticationOptions {
-	s.ClientCert = &genericoptions.ClientCertAuthenticationOptions{}
-	return s
-}
-
 func (s *BuiltInAuthenticationOptions) WithPasswordFile() *BuiltInAuthenticationOptions {
 	s.PasswordFile = &PasswordFileAuthenticationOptions{}
-	return s
-}
-
-func (s *BuiltInAuthenticationOptions) WithRequestHeader() *BuiltInAuthenticationOptions {
-	s.RequestHeader = &genericoptions.RequestHeaderAuthenticationOptions{}
 	return s
 }
 
@@ -153,18 +138,10 @@ func (s *BuiltInAuthenticationOptions) AddFlags(fs *pflag.FlagSet) {
 			"Anonymous requests have a username of system:anonymous, and a group name of system:unauthenticated.")
 	}
 
-	if s.ClientCert != nil {
-		s.ClientCert.AddFlags(fs)
-	}
-
 	if s.PasswordFile != nil {
 		fs.StringVar(&s.PasswordFile.BasicAuthFile, "basic-auth-file", s.PasswordFile.BasicAuthFile, ""+
 			"If set, the file that will be used to admit requests to the secure port of the API server "+
 			"via http basic authentication.")
-	}
-
-	if s.RequestHeader != nil {
-		s.RequestHeader.AddFlags(fs)
 	}
 
 	if s.ServiceAccounts != nil {
@@ -219,19 +196,12 @@ func (s *BuiltInAuthenticationOptions) ToAuthenticationConfig() kubeauthenticato
 		ret.Anonymous = s.Anonymous.Allow
 	}
 
-	if s.ClientCert != nil {
-		ret.ClientCAFile = s.ClientCert.ClientCA
-	}
-
 	if s.PasswordFile != nil {
 		ret.BasicAuthFile = s.PasswordFile.BasicAuthFile
 	}
 
-	if s.RequestHeader != nil {
-		ret.RequestHeaderConfig = s.RequestHeader.ToAuthenticationRequestHeaderConfig()
-	}
-
 	ret.APIAudiences = s.APIAudiences
+
 	if s.ServiceAccounts != nil {
 		if s.ServiceAccounts.Issuer != "" && len(s.APIAudiences) == 0 {
 			ret.APIAudiences = authenticator.Audiences{s.ServiceAccounts.Issuer}
@@ -265,18 +235,6 @@ func (s *BuiltInAuthenticationOptions) ToAuthenticationConfig() kubeauthenticato
 func (o *BuiltInAuthenticationOptions) ApplyTo(c *genericapiserver.Config) error {
 	if o == nil {
 		return nil
-	}
-
-	var err error
-	if o.ClientCert != nil {
-		if err = c.Authentication.ApplyClientCert(o.ClientCert.ClientCA, c.SecureServing); err != nil {
-			return fmt.Errorf("unable to load client CA file: %v", err)
-		}
-	}
-	if o.RequestHeader != nil {
-		if err = c.Authentication.ApplyClientCert(o.RequestHeader.ClientCAFile, c.SecureServing); err != nil {
-			return fmt.Errorf("unable to load client CA file: %v", err)
-		}
 	}
 
 	c.Authentication.SupportsBasicAuth = o.PasswordFile != nil && len(o.PasswordFile.BasicAuthFile) > 0
