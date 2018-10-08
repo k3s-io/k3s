@@ -19,9 +19,7 @@ package app
 import (
 	"context"
 	"fmt"
-	"net"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -42,7 +40,6 @@ import (
 	genericcontrollermanager "k8s.io/kubernetes/cmd/controller-manager/app"
 	cmoptions "k8s.io/kubernetes/cmd/controller-manager/app/options"
 	cloudcontrollers "k8s.io/kubernetes/pkg/controller/cloud"
-	routecontroller "k8s.io/kubernetes/pkg/controller/route"
 	servicecontroller "k8s.io/kubernetes/pkg/controller/service"
 	"k8s.io/kubernetes/pkg/util/configz"
 	utilflag "k8s.io/kubernetes/pkg/util/flag"
@@ -250,27 +247,6 @@ func startControllers(c *cloudcontrollerconfig.CompletedConfig, stop <-chan stru
 	} else {
 		go serviceController.Run(stop, int(c.ComponentConfig.ServiceController.ConcurrentServiceSyncs))
 		time.Sleep(wait.Jitter(c.ComponentConfig.Generic.ControllerStartInterval.Duration, ControllerStartJitter))
-	}
-
-	// If CIDRs should be allocated for pods and set on the CloudProvider, then start the route controller
-	if c.ComponentConfig.KubeCloudShared.AllocateNodeCIDRs && c.ComponentConfig.KubeCloudShared.ConfigureCloudRoutes {
-		if routes, ok := cloud.Routes(); !ok {
-			klog.Warning("configure-cloud-routes is set, but cloud provider does not support routes. Will not configure cloud provider routes.")
-		} else {
-			var clusterCIDR *net.IPNet
-			if len(strings.TrimSpace(c.ComponentConfig.KubeCloudShared.ClusterCIDR)) != 0 {
-				_, clusterCIDR, err = net.ParseCIDR(c.ComponentConfig.KubeCloudShared.ClusterCIDR)
-				if err != nil {
-					klog.Warningf("Unsuccessful parsing of cluster CIDR %v: %v", c.ComponentConfig.KubeCloudShared.ClusterCIDR, err)
-				}
-			}
-
-			routeController := routecontroller.New(routes, client("route-controller"), c.SharedInformers.Core().V1().Nodes(), c.ComponentConfig.KubeCloudShared.ClusterName, clusterCIDR)
-			go routeController.Run(stop, c.ComponentConfig.KubeCloudShared.RouteReconciliationPeriod.Duration)
-			time.Sleep(wait.Jitter(c.ComponentConfig.Generic.ControllerStartInterval.Duration, ControllerStartJitter))
-		}
-	} else {
-		klog.Infof("Will not configure cloud provider routes for allocate-node-cidrs: %v, configure-cloud-routes: %v.", c.ComponentConfig.KubeCloudShared.AllocateNodeCIDRs, c.ComponentConfig.KubeCloudShared.ConfigureCloudRoutes)
 	}
 
 	// If apiserver is not running we should wait for some time and fail only then. This is particularly
