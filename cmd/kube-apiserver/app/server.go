@@ -129,45 +129,57 @@ cluster's shared state through which all other components interact.`,
 	return cmd
 }
 
+type startupConfig struct {
+	Handler       http.Handler
+	Authenticator authenticator.Request
+}
+
+var StartupConfig = make(chan startupConfig, 1)
+
 // Run runs the specified APIServer.  This should never exit.
 func Run(completeOptions completedServerRunOptions, stopCh <-chan struct{}) error {
 	// To help debugging, immediately log version
 	klog.Infof("Version: %+v", version.Get())
 
-	server, err := CreateServerChain(completeOptions, stopCh)
+	config, server, err := CreateServerChain(completeOptions, stopCh)
 	if err != nil {
 		return err
+	}
+
+	StartupConfig <- startupConfig{
+		Handler:       server.Handler,
+		Authenticator: config.GenericConfig.Authentication.Authenticator,
 	}
 
 	return server.PrepareRun().Run(stopCh)
 }
 
 // CreateServerChain creates the apiservers connected via delegation.
-func CreateServerChain(completedOptions completedServerRunOptions, stopCh <-chan struct{}) (*genericapiserver.GenericAPIServer, error) {
+func CreateServerChain(completedOptions completedServerRunOptions, stopCh <-chan struct{}) (*master.Config, *genericapiserver.GenericAPIServer, error) {
 	proxyTransport, err := CreateNodeDialer(completedOptions)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	kubeAPIServerConfig, insecureServingInfo, serviceResolver, pluginInitializer, admissionPostStartHook, err := CreateKubeAPIServerConfig(completedOptions, proxyTransport)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// If additional API servers are added, they should be gated.
 	apiExtensionsConfig, err := createAPIExtensionsConfig(*kubeAPIServerConfig.GenericConfig, kubeAPIServerConfig.ExtraConfig.VersionedInformers, pluginInitializer, completedOptions.ServerRunOptions, completedOptions.MasterCount,
 		serviceResolver, webhook.NewDefaultAuthenticationInfoResolverWrapper(nil, kubeAPIServerConfig.GenericConfig.LoopbackClientConfig))
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	apiExtensionsServer, err := createAPIExtensionsServer(apiExtensionsConfig, genericapiserver.NewEmptyDelegate())
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	kubeAPIServer, err := CreateKubeAPIServer(kubeAPIServerConfig, apiExtensionsServer.GenericAPIServer, admissionPostStartHook)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// otherwise go down the normal path of standing the aggregator up in front of the API server
@@ -180,22 +192,22 @@ func CreateServerChain(completedOptions completedServerRunOptions, stopCh <-chan
 	// aggregator comes last in the chain
 	aggregatorConfig, err := createAggregatorConfig(*kubeAPIServerConfig.GenericConfig, completedOptions.ServerRunOptions, kubeAPIServerConfig.ExtraConfig.VersionedInformers, serviceResolver, nil, pluginInitializer)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	aggregatorServer, err := createAggregatorServer(aggregatorConfig, kubeAPIServer.GenericAPIServer, apiExtensionsServer.Informers)
 	if err != nil {
 		// we don't need special handling for innerStopCh because the aggregator server doesn't create any go routines
-		return nil, err
+		return nil, nil, err
 	}
 
 	if insecureServingInfo != nil {
 		insecureHandlerChain := kubeserver.BuildInsecureHandlerChain(aggregatorServer.GenericAPIServer.UnprotectedHandler(), kubeAPIServerConfig.GenericConfig)
 		if err := insecureServingInfo.Serve(insecureHandlerChain, kubeAPIServerConfig.GenericConfig.RequestTimeout, stopCh); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 
-	return aggregatorServer.GenericAPIServer, nil
+	return kubeAPIServerConfig, aggregatorServer.GenericAPIServer, nil
 }
 
 // CreateKubeAPIServer creates and wires a workable kube-apiserver
