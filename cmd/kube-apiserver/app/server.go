@@ -40,7 +40,6 @@ import (
 	"k8s.io/apiserver/pkg/server/filters"
 	serveroptions "k8s.io/apiserver/pkg/server/options"
 	serverstorage "k8s.io/apiserver/pkg/server/storage"
-	"k8s.io/apiserver/pkg/storage/etcd3/preflight"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	apiserverflag "k8s.io/apiserver/pkg/util/flag"
 	"k8s.io/apiserver/pkg/util/webhook"
@@ -199,13 +198,6 @@ func CreateKubeAPIServerConfig(
 	genericConfig, sharedInformers, versionedInformers, insecureServingInfo, pluginInitializers, admissionPostStartHook, storageFactory, lastErr = buildGenericConfig(s.ServerRunOptions)
 	if lastErr != nil {
 		return
-	}
-
-	if _, port, err := net.SplitHostPort(s.Etcd.StorageConfig.ServerList[0]); err == nil && port != "0" && len(port) != 0 {
-		if err := utilwait.PollImmediate(etcdRetryInterval, etcdRetryLimit*etcdRetryInterval, preflight.EtcdConnection{ServerList: s.Etcd.StorageConfig.ServerList}.CheckEtcdServers); err != nil {
-			lastErr = fmt.Errorf("error waiting for etcd connection: %v", err)
-			return
-		}
 	}
 
 	capabilities.Initialize(capabilities.Capabilities{
