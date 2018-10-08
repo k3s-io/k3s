@@ -94,7 +94,6 @@ import (
 	"k8s.io/kubernetes/pkg/version/verflag"
 	"k8s.io/kubernetes/pkg/volume/util/subpath"
 	"k8s.io/utils/exec"
-	"k8s.io/utils/nsenter"
 )
 
 const (
@@ -363,21 +362,6 @@ func UnsecuredDependencies(s *options.KubeletServer) (*kubelet.Dependencies, err
 	mounter := mount.New(s.ExperimentalMounterPath)
 	subpather := subpath.New(mounter)
 	var pluginRunner = exec.New()
-	if s.Containerized {
-		klog.V(2).Info("Running kubelet in containerized mode")
-		ne, err := nsenter.NewNsenter(nsenter.DefaultHostRootFsPath, exec.New())
-		if err != nil {
-			return nil, err
-		}
-		mounter = mount.NewNsenterMounter(s.RootDirectory, ne)
-		// NSenter only valid on Linux
-		subpather = subpath.NewNSEnter(mounter, ne, s.RootDirectory)
-		// an exec interface which can use nsenter for flex plugin calls
-		pluginRunner, err = nsenter.NewNsenter(nsenter.DefaultHostRootFsPath, exec.New())
-		if err != nil {
-			return nil, err
-		}
-	}
 
 	var dockerClientConfig *dockershim.ClientConfig
 	if s.ContainerRuntime == kubetypes.DockerContainerRuntime {
