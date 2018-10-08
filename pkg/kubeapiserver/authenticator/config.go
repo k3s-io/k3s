@@ -36,7 +36,6 @@ import (
 	"k8s.io/apiserver/plugin/pkg/authenticator/token/webhook"
 
 	// Initialize all known client auth plugins.
-	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	certutil "k8s.io/client-go/util/cert"
 	"k8s.io/client-go/util/keyutil"
 	"k8s.io/kubernetes/pkg/features"
