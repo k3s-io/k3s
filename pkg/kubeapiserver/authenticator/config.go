@@ -22,7 +22,6 @@ import (
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 	"k8s.io/apiserver/pkg/authentication/authenticatorfactory"
 	"k8s.io/apiserver/pkg/authentication/group"
-	"k8s.io/apiserver/pkg/authentication/request/anonymous"
 	"k8s.io/apiserver/pkg/authentication/request/bearertoken"
 	"k8s.io/apiserver/pkg/authentication/request/headerrequest"
 	"k8s.io/apiserver/pkg/authentication/request/union"
@@ -42,7 +41,6 @@ import (
 )
 
 type AuthenticatorConfig struct {
-	Anonymous                   bool
 	BasicAuthFile               string
 	ClientCAFile                string
 	ServiceAccountKeyFiles      []string
@@ -134,21 +132,12 @@ func (config AuthenticatorConfig) New() (authenticator.Request, error) {
 	}
 
 	if len(authenticators) == 0 {
-		if config.Anonymous {
-			return anonymous.NewAuthenticator(), nil
-		}
 		return nil, nil
 	}
 
 	authenticator := union.New(authenticators...)
 
 	authenticator = group.NewAuthenticatedGroupAdder(authenticator)
-
-	if config.Anonymous {
-		// If the authenticator chain returns an error, return an error (don't consider a bad bearer token
-		// or invalid username/password combination anonymous).
-		authenticator = union.NewFailOnError(authenticator, anonymous.NewAuthenticator())
-	}
 
 	return authenticator, nil
 }
