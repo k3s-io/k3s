@@ -21,12 +21,11 @@ import "k8s.io/apimachinery/pkg/util/sets"
 const (
 	ModeAlwaysAllow string = "AlwaysAllow"
 	ModeAlwaysDeny  string = "AlwaysDeny"
-	ModeWebhook     string = "Webhook"
 	ModeRBAC        string = "RBAC"
 	ModeNode        string = "Node"
 )
 
-var AuthorizationModeChoices = []string{ModeAlwaysAllow, ModeAlwaysDeny, ModeWebhook, ModeRBAC, ModeNode}
+var AuthorizationModeChoices = []string{ModeAlwaysAllow, ModeAlwaysDeny, ModeRBAC, ModeNode}
 
 // IsValidAuthorizationMode returns true if the given authorization mode is a valid one for the apiserver
 func IsValidAuthorizationMode(authzMode string) bool {
