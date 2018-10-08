@@ -66,6 +66,8 @@ type SecureServingOptions struct {
 	// HTTP2MaxStreamsPerConnection is the limit that the api server imposes on each client.
 	// A value of zero means to use the default provided by golang's HTTP/2 support.
 	HTTP2MaxStreamsPerConnection int
+
+	AdvertisePort int
 }
 
 type CertKey struct {
@@ -152,6 +154,8 @@ func (s *SecureServingOptions) AddFlags(fs *pflag.FlagSet) {
 		desc += "If 0, don't serve HTTPS at all."
 	}
 	fs.IntVar(&s.BindPort, "secure-port", s.BindPort, desc)
+
+	fs.IntVar(&s.AdvertisePort, "advertise-port", s.AdvertisePort, "The port that will be advertised as kubernetes endpoints")
 
 	fs.StringVar(&s.ServerCert.CertDirectory, "cert-dir", s.ServerCert.CertDirectory, ""+
 		"The directory where the TLS certs are located. "+
@@ -264,6 +268,8 @@ func (s *SecureServingOptions) ApplyTo(config **server.SecureServingInfo) error 
 	if err != nil {
 		return err
 	}
+
+	c.AdvertisePort = s.AdvertisePort
 
 	return nil
 }
