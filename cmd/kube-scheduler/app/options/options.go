@@ -59,7 +59,6 @@ type Options struct {
 	SecureServing           *apiserveroptions.SecureServingOptions
 	CombinedInsecureServing *CombinedInsecureServingOptions
 	Authentication          *apiserveroptions.DelegatingAuthenticationOptions
-	Authorization           *apiserveroptions.DelegatingAuthorizationOptions
 	Deprecated              *DeprecatedOptions
 
 	// ConfigFile is the location of the scheduler server's configuration file.
@@ -97,7 +96,6 @@ func NewOptions() (*Options, error) {
 			BindAddress: hhost,
 		},
 		Authentication: nil, // TODO: enable with apiserveroptions.NewDelegatingAuthenticationOptions()
-		Authorization:  nil, // TODO: enable with apiserveroptions.NewDelegatingAuthorizationOptions()
 		Deprecated: &DeprecatedOptions{
 			UseLegacyPolicyConfig:    false,
 			PolicyConfigMapNamespace: metav1.NamespaceSystem,
@@ -138,7 +136,6 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	o.SecureServing.AddFlags(fs)
 	o.CombinedInsecureServing.AddFlags(fs)
 	o.Authentication.AddFlags(fs)
-	o.Authorization.AddFlags(fs)
 	o.Deprecated.AddFlags(fs, &o.ComponentConfig)
 
 	leaderelectionconfig.BindFlags(&o.ComponentConfig.LeaderElection.LeaderElectionConfiguration, fs)
@@ -179,7 +176,7 @@ func (o *Options) ApplyTo(c *schedulerappconfig.Config) error {
 	if err := o.Authentication.ApplyTo(&c.Authentication, c.SecureServing); err != nil {
 		return err
 	}
-	return o.Authorization.ApplyTo(&c.Authorization)
+	return nil
 }
 
 // Validate validates all the required options.
@@ -192,7 +189,6 @@ func (o *Options) Validate() []error {
 	errs = append(errs, o.SecureServing.Validate()...)
 	errs = append(errs, o.CombinedInsecureServing.Validate()...)
 	errs = append(errs, o.Authentication.Validate()...)
-	errs = append(errs, o.Authorization.Validate()...)
 	errs = append(errs, o.Deprecated.Validate()...)
 
 	return errs
