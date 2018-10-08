@@ -76,35 +76,7 @@ func NewEtcdOptions(backendConfig *storagebackend.Config) *EtcdOptions {
 }
 
 func (s *EtcdOptions) Validate() []error {
-	if s == nil {
-		return nil
-	}
-
-	allErrors := []error{}
-	if len(s.StorageConfig.ServerList) == 0 {
-		allErrors = append(allErrors, fmt.Errorf("--etcd-servers must be specified"))
-	}
-
-	if s.StorageConfig.Type != storagebackend.StorageTypeUnset && !storageTypes.Has(s.StorageConfig.Type) {
-		allErrors = append(allErrors, fmt.Errorf("--storage-backend invalid, allowed values: %s. If not specified, it will default to 'etcd3'", strings.Join(storageTypes.List(), ", ")))
-	}
-
-	for _, override := range s.EtcdServersOverrides {
-		tokens := strings.Split(override, "#")
-		if len(tokens) != 2 {
-			allErrors = append(allErrors, fmt.Errorf("--etcd-servers-overrides invalid, must be of format: group/resource#servers, where servers are URLs, semicolon separated"))
-			continue
-		}
-
-		apiresource := strings.Split(tokens[0], "/")
-		if len(apiresource) != 2 {
-			allErrors = append(allErrors, fmt.Errorf("--etcd-servers-overrides invalid, must be of format: group/resource#servers, where servers are URLs, semicolon separated"))
-			continue
-		}
-
-	}
-
-	return allErrors
+	return nil
 }
 
 // AddEtcdFlags adds flags related to etcd storage for a specific APIServer to the specified FlagSet
