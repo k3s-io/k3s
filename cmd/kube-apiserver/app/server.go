@@ -246,27 +246,9 @@ func CreateKubeAPIServerConfig(
 		return
 	}
 
-	clientCA, lastErr := readCAorNil(s.Authentication.ClientCert.ClientCA)
-	if lastErr != nil {
-		return
-	}
-	requestHeaderProxyCA, lastErr := readCAorNil(s.Authentication.RequestHeader.ClientCAFile)
-	if lastErr != nil {
-		return
-	}
-
 	config = &master.Config{
 		GenericConfig: genericConfig,
 		ExtraConfig: master.ExtraConfig{
-			ClientCARegistrationHook: master.ClientCARegistrationHook{
-				ClientCA:                         clientCA,
-				RequestHeaderUsernameHeaders:     s.Authentication.RequestHeader.UsernameHeaders,
-				RequestHeaderGroupHeaders:        s.Authentication.RequestHeader.GroupHeaders,
-				RequestHeaderExtraHeaderPrefixes: s.Authentication.RequestHeader.ExtraHeaderPrefixes,
-				RequestHeaderCA:                  requestHeaderProxyCA,
-				RequestHeaderAllowedNames:        s.Authentication.RequestHeader.AllowedNames,
-			},
-
 			APIResourceConfigSource: storageFactory.APIResourceConfigSource,
 			StorageFactory:          storageFactory,
 			EventTTL:                s.EventTTL,
