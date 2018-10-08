@@ -21,7 +21,6 @@ import (
 
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 	"k8s.io/apiserver/pkg/authentication/group"
-	"k8s.io/apiserver/pkg/authentication/request/anonymous"
 	"k8s.io/apiserver/pkg/authentication/request/bearertoken"
 	"k8s.io/apiserver/pkg/authentication/request/union"
 	"k8s.io/apiserver/pkg/authentication/request/websocket"
@@ -42,7 +41,6 @@ import (
 
 // Config contains the data on how to authenticate a request to the Kube API Server
 type Config struct {
-	Anonymous                   bool
 	BasicAuthFile               string
 	ClientCAFile                string
 	TokenAuthFile               string
@@ -125,21 +123,12 @@ func (config Config) New() (authenticator.Request, error) {
 	}
 
 	if len(authenticators) == 0 {
-		if config.Anonymous {
-			return anonymous.NewAuthenticator(), nil
-		}
 		return nil, nil
 	}
 
 	authenticator := union.New(authenticators...)
 
 	authenticator = group.NewAuthenticatedGroupAdder(authenticator)
-
-	if config.Anonymous {
-		// If the authenticator chain returns an error, return an error (don't consider a bad bearer token
-		// or invalid username/password combination anonymous).
-		authenticator = union.NewFailOnError(authenticator, anonymous.NewAuthenticator())
-	}
 
 	return authenticator, nil
 }
