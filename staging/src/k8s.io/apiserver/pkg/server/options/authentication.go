@@ -176,7 +176,6 @@ func (s *DelegatingAuthenticationOptions) ApplyTo(c *server.AuthenticationInfo, 
 	}
 
 	cfg := authenticatorfactory.DelegatingAuthenticatorConfig{
-		Anonymous: true,
 		CacheTTL:  s.CacheTTL,
 	}
 
