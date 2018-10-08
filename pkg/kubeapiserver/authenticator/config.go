@@ -34,7 +34,6 @@ import (
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/apiserver/plugin/pkg/authenticator/password/passwordfile"
 	"k8s.io/apiserver/plugin/pkg/authenticator/request/basicauth"
-	"k8s.io/apiserver/plugin/pkg/authenticator/token/oidc"
 	"k8s.io/apiserver/plugin/pkg/authenticator/token/webhook"
 
 	// Initialize all known client auth plugins.
@@ -51,15 +50,6 @@ type Config struct {
 	BasicAuthFile               string
 	ClientCAFile                string
 	TokenAuthFile               string
-	OIDCIssuerURL               string
-	OIDCClientID                string
-	OIDCCAFile                  string
-	OIDCUsernameClaim           string
-	OIDCUsernamePrefix          string
-	OIDCGroupsClaim             string
-	OIDCGroupsPrefix            string
-	OIDCSigningAlgs             []string
-	OIDCRequiredClaims          map[string]string
 	ServiceAccountKeyFiles      []string
 	ServiceAccountLookup        bool
 	ServiceAccountIssuer        string
@@ -138,30 +128,6 @@ func (config Config) New() (authenticator.Request, error) {
 		}
 		tokenAuthenticators = append(tokenAuthenticators, serviceAccountAuth)
 	}
-	// NOTE(ericchiang): Keep the OpenID Connect after Service Accounts.
-	//
-	// Because both plugins verify JWTs whichever comes first in the union experiences
-	// cache misses for all requests using the other. While the service account plugin
-	// simply returns an error, the OpenID Connect plugin may query the provider to
-	// update the keys, causing performance hits.
-	if len(config.OIDCIssuerURL) > 0 && len(config.OIDCClientID) > 0 {
-		oidcAuth, err := newAuthenticatorFromOIDCIssuerURL(oidc.Options{
-			IssuerURL:            config.OIDCIssuerURL,
-			ClientID:             config.OIDCClientID,
-			APIAudiences:         config.APIAudiences,
-			CAFile:               config.OIDCCAFile,
-			UsernameClaim:        config.OIDCUsernameClaim,
-			UsernamePrefix:       config.OIDCUsernamePrefix,
-			GroupsClaim:          config.OIDCGroupsClaim,
-			GroupsPrefix:         config.OIDCGroupsPrefix,
-			SupportedSigningAlgs: config.OIDCSigningAlgs,
-			RequiredClaims:       config.OIDCRequiredClaims,
-		})
-		if err != nil {
-			return nil, err
-		}
-		tokenAuthenticators = append(tokenAuthenticators, oidcAuth)
-	}
 	if len(config.WebhookTokenAuthnConfigFile) > 0 {
 		webhookTokenAuth, err := newWebhookTokenAuthenticator(config.WebhookTokenAuthnConfigFile, config.WebhookTokenAuthnCacheTTL, config.APIAudiences)
 		if err != nil {
@@ -219,31 +185,6 @@ func newAuthenticatorFromBasicAuthFile(basicAuthFile string) (authenticator.Requ
 // newAuthenticatorFromTokenFile returns an authenticator.Token or an error
 func newAuthenticatorFromTokenFile(tokenAuthFile string) (authenticator.Token, error) {
 	tokenAuthenticator, err := tokenfile.NewCSV(tokenAuthFile)
-	if err != nil {
-		return nil, err
-	}
-
-	return tokenAuthenticator, nil
-}
-
-// newAuthenticatorFromOIDCIssuerURL returns an authenticator.Token or an error.
-func newAuthenticatorFromOIDCIssuerURL(opts oidc.Options) (authenticator.Token, error) {
-	const noUsernamePrefix = "-"
-
-	if opts.UsernamePrefix == "" && opts.UsernameClaim != "email" {
-		// Old behavior. If a usernamePrefix isn't provided, prefix all claims other than "email"
-		// with the issuerURL.
-		//
-		// See https://github.com/kubernetes/kubernetes/issues/31380
-		opts.UsernamePrefix = opts.IssuerURL + "#"
-	}
-
-	if opts.UsernamePrefix == noUsernamePrefix {
-		// Special value indicating usernames shouldn't be prefixed.
-		opts.UsernamePrefix = ""
-	}
-
-	tokenAuthenticator, err := oidc.New(opts)
 	if err != nil {
 		return nil, err
 	}
