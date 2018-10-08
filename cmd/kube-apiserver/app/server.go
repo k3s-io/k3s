@@ -132,7 +132,7 @@ func Run(completeOptions completedServerRunOptions, stopCh <-chan struct{}) erro
 	// To help debugging, immediately log version
 	glog.Infof("Version: %+v", version.Get())
 
-	server, err := CreateServerChain(completeOptions, stopCh)
+	_, server, err := CreateServerChain(completeOptions, stopCh)
 	if err != nil {
 		return err
 	}
@@ -141,26 +141,26 @@ func Run(completeOptions completedServerRunOptions, stopCh <-chan struct{}) erro
 }
 
 // CreateServerChain creates the apiservers connected via delegation.
-func CreateServerChain(completedOptions completedServerRunOptions, stopCh <-chan struct{}) (*genericapiserver.GenericAPIServer, error) {
+func CreateServerChain(completedOptions completedServerRunOptions, stopCh <-chan struct{}) (*master.Config, *genericapiserver.GenericAPIServer, error) {
 
 	kubeAPIServerConfig, _, pluginInitializer, admissionPostStartHook, err := CreateKubeAPIServerConfig(completedOptions)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// If additional API servers are added, they should be gated.
 	apiExtensionsConfig, err := createAPIExtensionsConfig(*kubeAPIServerConfig.GenericConfig, kubeAPIServerConfig.ExtraConfig.VersionedInformers, pluginInitializer, completedOptions.ServerRunOptions, completedOptions.MasterCount)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	apiExtensionsServer, err := createAPIExtensionsServer(apiExtensionsConfig, genericapiserver.NewEmptyDelegate())
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	kubeAPIServer, err := CreateKubeAPIServer(kubeAPIServerConfig, apiExtensionsServer.GenericAPIServer, admissionPostStartHook)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	apiExtensionsServer.GenericAPIServer.DiscoveryGroupManager = kubeAPIServer.GenericAPIServer.DiscoveryGroupManager
@@ -168,7 +168,7 @@ func CreateServerChain(completedOptions completedServerRunOptions, stopCh <-chan
 	// This will wire up openapi for extension api server
 	apiExtensionsServer.GenericAPIServer.PrepareRun()
 
-	return kubeAPIServer.GenericAPIServer, nil
+	return kubeAPIServerConfig, kubeAPIServer.GenericAPIServer, nil
 }
 
 // CreateKubeAPIServer creates and wires a workable kube-apiserver
