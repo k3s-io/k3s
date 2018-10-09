@@ -134,7 +134,7 @@ func Run(c *config.CompletedConfig, stopCh <-chan struct{}) error {
 	// To help debugging, immediately log version
 	glog.Infof("Version: %+v", version.Get())
 
-	if cfgz, err := configz.New("componentconfig"); err == nil {
+	if cfgz, err := configz.New("cm-componentconfig"); err == nil {
 		cfgz.Set(c.ComponentConfig)
 	} else {
 		glog.Errorf("unable to register configz: %c", err)
