@@ -19,7 +19,6 @@ limitations under the License.
 package options
 
 import (
-	"fmt"
 	"net"
 
 	"k8s.io/api/core/v1"
@@ -390,10 +389,6 @@ func (s *KubeControllerManagerOptions) Validate(allControllers []string, disable
 func (s KubeControllerManagerOptions) Config(allControllers []string, disabledByDefaultControllers []string) (*kubecontrollerconfig.Config, error) {
 	if err := s.Validate(allControllers, disabledByDefaultControllers); err != nil {
 		return nil, err
-	}
-
-	if err := s.SecureServing.MaybeDefaultWithSelfSignedCerts("localhost", nil, []net.IP{net.ParseIP("127.0.0.1")}); err != nil {
-		return nil, fmt.Errorf("error creating self-signed certificates: %v", err)
 	}
 
 	kubeconfig, err := clientcmd.BuildConfigFromFlags(s.Master, s.Kubeconfig)
