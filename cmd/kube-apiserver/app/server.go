@@ -76,6 +76,10 @@ import (
 const etcdRetryLimit = 60
 const etcdRetryInterval = 1 * time.Second
 
+var (
+	DefaultProxyDialerFn utilnet.DialFunc
+)
+
 // NewAPIServerCommand creates a *cobra.Command object with default parameters
 func NewAPIServerCommand(stopCh <-chan struct{}) *cobra.Command {
 	s := options.NewServerRunOptions()
@@ -158,6 +162,10 @@ func CreateServerChain(completedOptions completedServerRunOptions, stopCh <-chan
 	proxyTransport, err := CreateNodeDialer(completedOptions)
 	if err != nil {
 		return nil, nil, err
+	}
+
+	if DefaultProxyDialerFn != nil {
+		completedOptions.KubeletConfig.Dial = DefaultProxyDialerFn
 	}
 
 	kubeAPIServerConfig, insecureServingInfo, serviceResolver, pluginInitializer, admissionPostStartHook, err := CreateKubeAPIServerConfig(completedOptions, proxyTransport)
