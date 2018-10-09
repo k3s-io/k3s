@@ -20,17 +20,14 @@ import (
 	"crypto/tls"
 	"fmt"
 	"net"
-	"path"
 	"strconv"
 	"strings"
 
-	"github.com/golang/glog"
 	"github.com/spf13/pflag"
 
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/apiserver/pkg/server"
 	utilflag "k8s.io/apiserver/pkg/util/flag"
-	certutil "k8s.io/client-go/util/cert"
 )
 
 type SecureServingOptions struct {
@@ -255,48 +252,6 @@ func (s *SecureServingOptions) ApplyTo(config **server.SecureServingInfo) error 
 	}
 
 	c.AdvertisePort = s.AdvertisePort
-
-	return nil
-}
-
-func (s *SecureServingOptions) MaybeDefaultWithSelfSignedCerts(publicAddress string, alternateDNS []string, alternateIPs []net.IP) error {
-	if s == nil || (s.BindPort == 0 && s.Listener == nil) {
-		return nil
-	}
-	keyCert := &s.ServerCert.CertKey
-	if len(keyCert.CertFile) != 0 || len(keyCert.KeyFile) != 0 {
-		return nil
-	}
-
-	keyCert.CertFile = path.Join(s.ServerCert.CertDirectory, s.ServerCert.PairName+".crt")
-	keyCert.KeyFile = path.Join(s.ServerCert.CertDirectory, s.ServerCert.PairName+".key")
-
-	canReadCertAndKey, err := certutil.CanReadCertAndKey(keyCert.CertFile, keyCert.KeyFile)
-	if err != nil {
-		return err
-	}
-	if !canReadCertAndKey {
-		// add either the bind address or localhost to the valid alternates
-		bindIP := s.BindAddress.String()
-		if bindIP == "0.0.0.0" {
-			alternateDNS = append(alternateDNS, "localhost")
-		} else {
-			alternateIPs = append(alternateIPs, s.BindAddress)
-		}
-
-		if cert, key, err := certutil.GenerateSelfSignedCertKeyWithFixtures(publicAddress, alternateIPs, alternateDNS, s.ServerCert.FixtureDirectory); err != nil {
-			return fmt.Errorf("unable to generate self signed cert: %v", err)
-		} else {
-			if err := certutil.WriteCert(keyCert.CertFile, cert); err != nil {
-				return err
-			}
-
-			if err := certutil.WriteKey(keyCert.KeyFile, key); err != nil {
-				return err
-			}
-			glog.Infof("Generated self-signed cert (%s, %s)", keyCert.CertFile, keyCert.KeyFile)
-		}
-	}
 
 	return nil
 }

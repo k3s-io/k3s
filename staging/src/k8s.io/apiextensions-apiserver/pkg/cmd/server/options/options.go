@@ -17,9 +17,7 @@ limitations under the License.
 package options
 
 import (
-	"fmt"
 	"io"
-	"net"
 
 	"github.com/spf13/pflag"
 
@@ -77,11 +75,6 @@ func (o *CustomResourceDefinitionsServerOptions) Complete() error {
 
 // Config returns an apiextensions-apiserver configuration.
 func (o CustomResourceDefinitionsServerOptions) Config() (*apiserver.Config, error) {
-	// TODO have a "real" external address
-	if err := o.RecommendedOptions.SecureServing.MaybeDefaultWithSelfSignedCerts("localhost", nil, []net.IP{net.ParseIP("127.0.0.1")}); err != nil {
-		return nil, fmt.Errorf("error creating self-signed certificates: %v", err)
-	}
-
 	serverConfig := genericapiserver.NewRecommendedConfig(apiserver.Codecs)
 	if err := o.RecommendedOptions.ApplyTo(serverConfig, apiserver.Scheme); err != nil {
 		return nil, err
