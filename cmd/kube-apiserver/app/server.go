@@ -22,7 +22,6 @@ package app
 import (
 	"fmt"
 	"io/ioutil"
-	"net"
 	"os"
 	"strings"
 	"time"
@@ -501,14 +500,11 @@ func Complete(s *options.ServerRunOptions) (completedServerRunOptions, error) {
 	if err := kubeoptions.DefaultAdvertiseAddress(s.GenericServerRunOptions, s.InsecureServing.DeprecatedInsecureServingOptions); err != nil {
 		return options, err
 	}
-	serviceIPRange, apiServerServiceIP, err := master.DefaultServiceIPRange(s.ServiceClusterIPRange)
+	serviceIPRange, _, err := master.DefaultServiceIPRange(s.ServiceClusterIPRange)
 	if err != nil {
 		return options, fmt.Errorf("error determining service IP ranges: %v", err)
 	}
 	s.ServiceClusterIPRange = serviceIPRange
-	if err := s.SecureServing.MaybeDefaultWithSelfSignedCerts(s.GenericServerRunOptions.AdvertiseAddress.String(), []string{"kubernetes.default.svc", "kubernetes.default", "kubernetes"}, []net.IP{apiServerServiceIP}); err != nil {
-		return options, fmt.Errorf("error creating self-signed certificates: %v", err)
-	}
 
 	if len(s.GenericServerRunOptions.ExternalHost) == 0 {
 		if len(s.GenericServerRunOptions.AdvertiseAddress) > 0 {
