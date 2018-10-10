@@ -1,7 +1,0 @@
-reviewers:
-  - jpbetz
-  - wenjiaswe
-approvers:
-  - jpbetz
-labels:
-- sig/api-machinery
