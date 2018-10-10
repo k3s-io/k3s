@@ -35,6 +35,7 @@ package unix
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/un.h>
+#include <sys/utsname.h>
 #include <sys/wait.h>
 #include <net/bpf.h>
 #include <net/if.h>
@@ -99,23 +100,6 @@ type _Gid_t C.gid_t
 
 // Files
 
-const ( // Directory mode bits
-	S_IFMT   = C.S_IFMT
-	S_IFIFO  = C.S_IFIFO
-	S_IFCHR  = C.S_IFCHR
-	S_IFDIR  = C.S_IFDIR
-	S_IFBLK  = C.S_IFBLK
-	S_IFREG  = C.S_IFREG
-	S_IFLNK  = C.S_IFLNK
-	S_IFSOCK = C.S_IFSOCK
-	S_ISUID  = C.S_ISUID
-	S_ISGID  = C.S_ISGID
-	S_ISVTX  = C.S_ISVTX
-	S_IRUSR  = C.S_IRUSR
-	S_IWUSR  = C.S_IWUSR
-	S_IXUSR  = C.S_IXUSR
-)
-
 type Stat_t C.struct_stat
 
 type Statfs_t C.struct_statfs
@@ -125,6 +109,12 @@ type Flock_t C.struct_flock
 type Dirent C.struct_dirent
 
 type Fsid C.struct_fsid
+
+// File system limits
+
+const (
+	PathMax = C.PATH_MAX
+)
 
 // Sockets
 
@@ -242,6 +232,8 @@ type BpfHdr C.struct_bpf_hdr
 
 type Termios C.struct_termios
 
+type Winsize C.struct_winsize
+
 // fchmodat-like syscalls.
 
 const (
@@ -265,3 +257,7 @@ const (
 	POLLWRBAND = C.POLLWRBAND
 	POLLWRNORM = C.POLLWRNORM
 )
+
+// Uname
+
+type Utsname C.struct_utsname
