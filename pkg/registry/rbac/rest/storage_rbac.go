@@ -23,7 +23,6 @@ import (
 	"k8s.io/klog"
 
 	rbacapiv1 "k8s.io/api/rbac/v1"
-	rbacapiv1alpha1 "k8s.io/api/rbac/v1alpha1"
 	rbacapiv1beta1 "k8s.io/api/rbac/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -70,9 +69,6 @@ func (p RESTStorageProvider) NewRESTStorage(apiResourceConfigSource serverstorag
 	// If you add a version here, be sure to add an entry in `k8s.io/kubernetes/cmd/kube-apiserver/app/aggregator.go with specific priorities.
 	// TODO refactor the plumbing to provide the information in the APIGroupInfo
 
-	if apiResourceConfigSource.VersionEnabled(rbacapiv1alpha1.SchemeGroupVersion) {
-		apiGroupInfo.VersionedResourcesStorageMap[rbacapiv1alpha1.SchemeGroupVersion.Version] = p.storage(rbacapiv1alpha1.SchemeGroupVersion, apiResourceConfigSource, restOptionsGetter)
-	}
 	if apiResourceConfigSource.VersionEnabled(rbacapiv1beta1.SchemeGroupVersion) {
 		apiGroupInfo.VersionedResourcesStorageMap[rbacapiv1beta1.SchemeGroupVersion.Version] = p.storage(rbacapiv1beta1.SchemeGroupVersion, apiResourceConfigSource, restOptionsGetter)
 	}

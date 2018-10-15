@@ -24,7 +24,6 @@ import (
 	"k8s.io/klog"
 
 	rbacv1 "k8s.io/api/rbac/v1"
-	rbacv1alpha1 "k8s.io/api/rbac/v1alpha1"
 	rbacv1beta1 "k8s.io/api/rbac/v1beta1"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/genericclioptions/printers"
@@ -243,11 +242,7 @@ func (o *ReconcileOptions) RunReconcile() error {
 		case *rbacv1beta1.Role,
 			*rbacv1beta1.RoleBinding,
 			*rbacv1beta1.ClusterRole,
-			*rbacv1beta1.ClusterRoleBinding,
-			*rbacv1alpha1.Role,
-			*rbacv1alpha1.RoleBinding,
-			*rbacv1alpha1.ClusterRole,
-			*rbacv1alpha1.ClusterRoleBinding:
+			*rbacv1beta1.ClusterRoleBinding:
 			return fmt.Errorf("only rbac.authorization.k8s.io/v1 is supported: not %T", t)
 
 		default:

@@ -40,7 +40,6 @@ import (
 	networkingv1 "k8s.io/client-go/kubernetes/typed/networking/v1"
 	policyv1beta1 "k8s.io/client-go/kubernetes/typed/policy/v1beta1"
 	rbacv1 "k8s.io/client-go/kubernetes/typed/rbac/v1"
-	rbacv1alpha1 "k8s.io/client-go/kubernetes/typed/rbac/v1alpha1"
 	rbacv1beta1 "k8s.io/client-go/kubernetes/typed/rbac/v1beta1"
 	schedulingv1alpha1 "k8s.io/client-go/kubernetes/typed/scheduling/v1alpha1"
 	schedulingv1beta1 "k8s.io/client-go/kubernetes/typed/scheduling/v1beta1"
@@ -103,7 +102,6 @@ type Interface interface {
 	// Deprecated: please explicitly pick a version if possible.
 	Rbac() rbacv1.RbacV1Interface
 	RbacV1beta1() rbacv1beta1.RbacV1beta1Interface
-	RbacV1alpha1() rbacv1alpha1.RbacV1alpha1Interface
 	SchedulingV1alpha1() schedulingv1alpha1.SchedulingV1alpha1Interface
 	SchedulingV1beta1() schedulingv1beta1.SchedulingV1beta1Interface
 	// Deprecated: please explicitly pick a version if possible.
@@ -143,7 +141,6 @@ type Clientset struct {
 	policyV1beta1                *policyv1beta1.PolicyV1beta1Client
 	rbacV1                       *rbacv1.RbacV1Client
 	rbacV1beta1                  *rbacv1beta1.RbacV1beta1Client
-	rbacV1alpha1                 *rbacv1alpha1.RbacV1alpha1Client
 	schedulingV1alpha1           *schedulingv1alpha1.SchedulingV1alpha1Client
 	schedulingV1beta1            *schedulingv1beta1.SchedulingV1beta1Client
 	settingsV1alpha1             *settingsv1alpha1.SettingsV1alpha1Client
@@ -341,11 +338,6 @@ func (c *Clientset) RbacV1beta1() rbacv1beta1.RbacV1beta1Interface {
 	return c.rbacV1beta1
 }
 
-// RbacV1alpha1 retrieves the RbacV1alpha1Client
-func (c *Clientset) RbacV1alpha1() rbacv1alpha1.RbacV1alpha1Interface {
-	return c.rbacV1alpha1
-}
-
 // SchedulingV1alpha1 retrieves the SchedulingV1alpha1Client
 func (c *Clientset) SchedulingV1alpha1() schedulingv1alpha1.SchedulingV1alpha1Interface {
 	return c.schedulingV1alpha1
@@ -494,10 +486,6 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 	if err != nil {
 		return nil, err
 	}
-	cs.rbacV1alpha1, err = rbacv1alpha1.NewForConfig(&configShallowCopy)
-	if err != nil {
-		return nil, err
-	}
 	cs.schedulingV1alpha1, err = schedulingv1alpha1.NewForConfig(&configShallowCopy)
 	if err != nil {
 		return nil, err
@@ -555,7 +543,6 @@ func NewForConfigOrDie(c *rest.Config) *Clientset {
 	cs.policyV1beta1 = policyv1beta1.NewForConfigOrDie(c)
 	cs.rbacV1 = rbacv1.NewForConfigOrDie(c)
 	cs.rbacV1beta1 = rbacv1beta1.NewForConfigOrDie(c)
-	cs.rbacV1alpha1 = rbacv1alpha1.NewForConfigOrDie(c)
 	cs.schedulingV1alpha1 = schedulingv1alpha1.NewForConfigOrDie(c)
 	cs.schedulingV1beta1 = schedulingv1beta1.NewForConfigOrDie(c)
 	cs.settingsV1alpha1 = settingsv1alpha1.NewForConfigOrDie(c)
@@ -591,7 +578,6 @@ func New(c rest.Interface) *Clientset {
 	cs.policyV1beta1 = policyv1beta1.New(c)
 	cs.rbacV1 = rbacv1.New(c)
 	cs.rbacV1beta1 = rbacv1beta1.New(c)
-	cs.rbacV1alpha1 = rbacv1alpha1.New(c)
 	cs.schedulingV1alpha1 = schedulingv1alpha1.New(c)
 	cs.schedulingV1beta1 = schedulingv1beta1.New(c)
 	cs.settingsV1alpha1 = settingsv1alpha1.New(c)
