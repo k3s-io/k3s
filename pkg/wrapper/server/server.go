@@ -23,6 +23,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 	apiserveroptions "k8s.io/apiserver/pkg/server/options"
+	"k8s.io/apiserver/pkg/storage/storagebackend"
 	certutil "k8s.io/client-go/util/cert"
 	"k8s.io/kubernetes/cmd/kube-apiserver/app"
 	"k8s.io/kubernetes/cmd/kube-apiserver/app/options"
