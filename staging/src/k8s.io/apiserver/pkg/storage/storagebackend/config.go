@@ -25,6 +25,7 @@ import (
 
 const (
 	StorageTypeUnset = ""
+	StorageTypeKVSQL = "kvsql"
 	StorageTypeETCD2 = "etcd2"
 	StorageTypeETCD3 = "etcd3"
 
