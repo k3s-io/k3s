@@ -19,6 +19,7 @@ package factory
 import (
 	"fmt"
 
+	"github.com/ibuildthecloud/kvsql"
 	"k8s.io/apiserver/pkg/storage"
 	"k8s.io/apiserver/pkg/storage/storagebackend"
 )
@@ -29,7 +30,13 @@ type DestroyFunc func()
 // Create creates a storage backend based on given config.
 func Create(c storagebackend.Config) (storage.Interface, DestroyFunc, error) {
 	switch c.Type {
-	case storagebackend.StorageTypeUnset, storagebackend.StorageTypeETCD3:
+	case storagebackend.StorageTypeUnset, storagebackend.StorageTypeKVSQL:
+		return factory.NewKVSQLStorage(c)
+	case storagebackend.StorageTypeETCD3:
+		// TODO: We have the following features to implement:
+		// - Support secure connection by using key, cert, and CA files.
+		// - Honor "https" scheme to support secure connection in gRPC.
+		// - Support non-quorum read.
 		return newETCD3Storage(c)
 	default:
 		return nil, nil, fmt.Errorf("unknown storage type: %s", c.Type)
@@ -39,7 +46,9 @@ func Create(c storagebackend.Config) (storage.Interface, DestroyFunc, error) {
 // CreateHealthCheck creates a healthcheck function based on given config.
 func CreateHealthCheck(c storagebackend.Config) (func() error, error) {
 	switch c.Type {
-	case storagebackend.StorageTypeUnset, storagebackend.StorageTypeETCD3:
+	case storagebackend.StorageTypeUnset, storagebackend.StorageTypeKVSQL:
+		return factory.NewKVSQLHealthCheck(c)
+	case storagebackend.StorageTypeETCD3:
 		return newETCD3HealthCheck(c)
 	default:
 		return nil, fmt.Errorf("unknown storage type: %s", c.Type)
