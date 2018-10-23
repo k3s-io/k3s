@@ -25,6 +25,7 @@ import (
 
 const (
 	StorageTypeUnset = ""
+	StorageTypeKVSQL = "kvsql"
 	StorageTypeETCD3 = "etcd3"
 
 	DefaultCompactInterval = 5 * time.Minute
