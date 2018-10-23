@@ -8,6 +8,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"k8s.io/kubernetes/pkg/wrapper/agent"
 	"k8s.io/kubernetes/pkg/wrapper/server"
+
+	_ "github.com/mattn/go-sqlite3"
 )
 
 func runAgent() {
