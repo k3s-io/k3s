@@ -1,0 +1,13 @@
+language: go
+
+install:
+  - A=${PWD#*github.com/};A=${A%/ffjson};cd ../..;mv $A pquerna;cd pquerna/ffjson
+  - go get -d -v -t ./...
+
+script: make clean && make lint && make test && make test 
+
+go:
+  - "1.10"
+
+env:
+  - GO15VENDOREXPERIMENT=1

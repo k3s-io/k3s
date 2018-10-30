@@ -1,0 +1,55 @@
+2018-07-26: v0.0.8
+  1.6.x protobuf support
+
+2018-07-24: v0.0.7
+  1.5.x protobuf support
+  operations: new helpers for additional offer operations
+  scheduler/calls: new helpers for ack offer op update AND reconcile offer op
+  extras/scheduler: rule that acks offer op updates
+  master: helpers for teardown and mark-agent-gone
+  additional test cases for new reservation validation
+  operations: support reservation refinements
+  lib: formatting options for resource stringification
+  httpsched: connectivity listener/notification API
+  ci: drop golang 1.7.x, add 1.9.x, 1.10.x
+
+2018-03-12: v0.0.6
+  1.4.x protobuf support
+  mwatch support for framework-{added,updated,removed} events
+  fixes for decoder/framing implementation
+  don't use built-in redirect handle from http stdlib
+  debug log cleanup
+  nil'able ReservationInfo.Type
+  feature-flag opt-in for re-subscribe
+
+2017-09-19: v0.0.5
+  1.3.x protobuf support
+  cmd/msh: fixes and non-terminating detach (CTRL-P, Q)
+  lib/scheduler: refactor Revive/Suppress convenience APIs
+  lib/client,httpcli: ReponseClassNoData for empty response entities
+  lib/httpcli: drain HTTP response body when appropriate
+  lib/executor/calls: support Sender API
+  lib/httpcli/httpexec: initial revision
+  cmd/example-executor: refactor to use httpexec, Sender API
+
+2017-09-13: v0.0.4
+  bumped protos to Mesos 1.2.x (v1 API only), with operator API support
+  api/v1/lib/... API refactoring (client, encoding, httpcli, recordio)
+  api/v1/cmd/... new and updated examples (see msh, mwatch)
+  bumped gogo/protobuf dependency
+
+2017-06-19: v0.0.3
+  Initial support for Mesos v1 HTTP API
+  Mesos 1.1.1 protos (v1 API only)
+  Shuffled packaging to accommodate both Mesos v0 and v1 APIs
+
+2015-09-20: v0.0.2
+  Fixed a bunch of race conditions and most test flakes (#185, #189)
+  Updated Protobufs to Mesos 0.24.0 (#192)
+  Fixed path to executor in example-scheduler (#186)
+  Fixed executor shutdown hang bug (#183)
+  Fixed nil dereference bug (#181)
+
+2015-09-15: v0.0.1
+  First tagged release ever!
+  Mesos 0.24.0 and 0.23.0 compatibility.
