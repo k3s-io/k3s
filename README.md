@@ -49,6 +49,7 @@ What is left? A lot.  Basically all your normal pod/deployment/service stuff is 
 Full Build
 ----------
 
+    # Setup your GOPATH.  Note that this code should be at k8s.io/kubernetes in your GOPATH, not github.com/ibuildthecloud/k3s
     go build -o kubectl ./cmd/kubectl
     go build -o hyperkube ./cmd/hyperkube
 
@@ -58,7 +59,7 @@ Now just run hyperkube as you normally would.
 Super Opinionated Approach that probably won't work for you
 -----------------------------------------------------------
 
-    # First have sane GOPATH, hopefully you know how to do that
+    # Setup your GOPATH.  Note that this code should be at k8s.io/kubernetes in your GOPATH, not github.com/ibuildthecloud/k3s
     go build -o k3s
     go build -o kubectl ./cmd/kubectl
 
