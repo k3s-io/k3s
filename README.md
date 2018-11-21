@@ -95,9 +95,17 @@ Some of the removed features
   * storageobjectinuseprotection
 * etcd (yeah, i'm using sqlite3)
 
+Full Build
+----------
 
-Build
------
+    go build -o kubectl ./cmd/kubectl
+    go build -o hyperkube ./cmd/hyperkube
+
+Now just run hyperkube as you normally would.
+
+
+Super Opinionated Approach that probably won't work for you
+-----------------------------------------------------------
 
     # First have sane GOPATH, hopefully you know how to do that
     go build -o k3s
@@ -133,7 +141,7 @@ sudo ./k3s agent
 
 # Install Networking
 export KUBECONFIG=./data/cred/kubeconfig.yaml
-curl -s "https://cloud.weave.works/k8s/net?k8s-version=$(./kubectl version | base64 | tr -d '\n')" | sed 's!rbac.authorization.k8s.io/v1beta1!rbac.authorization.k8s.io/v1!g' | ./kubectl apply -f -
+curl -s "https://cloud.weave.works/k8s/net?k8s-version=$(./kubectl version | base64 | tr -d '\n')" | ./kubectl apply -f -
 ```
 
 Your kubeconfig file is in `./data/cred/kubeconfig.yaml`
