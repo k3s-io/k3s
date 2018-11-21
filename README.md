@@ -12,30 +12,18 @@ Some of the removed features
 * cloud-controller-manager
 * kube aggregation
 * APIs (NOTE: most of these are old APIs that have been replaced)
-  * admissionregistration/v1alpha1
-  * authentication/v1beta1
-  * authorization/v1beta1
-  * certificates/v1beta1
-  * events/v1beta1
-  * imagepolicy/v1alpha1
-  * rbac/v1alpha1
-  * rbac/v1beta1
-  * settings/v1alpha1
-  * storage/v1alpha1
+  * admissionregistration/v1alpha1, authentication/v1beta1, authorization/v1beta1, certificates/v1beta1, events/v1beta1, imagepolicy/v1alpha1, rbac/v1alpha1, settings/v1alpha1, storage/v1alpha1,
 * Authentication
-  * bootstrap token
-  * oidc
-  * webhook
+  * bootstrap token, oidc
 * Authorization
   * ABAC
+* All alpha features
 * Cloud Providers (all of them)
 * Controllers
   * Bootstrap
   * Certificates
   * Cloud
-  * Cluster Role Aggregation
   * Cloud based node IPAM
-  * Replication
   * Route
 * Credential Providers AWS/GCP/Azure/Rancher
 * Kubelet
@@ -44,7 +32,7 @@ Some of the removed features
   * Checkpoint
   * Device Manager
   * Custom Metrics
-  * Dockershim
+  * Dockershim (IMPORTANT: No docker support, the only runtime that works in containerd)
   * GPU
   * Mount Pod
   * Network
@@ -52,48 +40,11 @@ Some of the removed features
     * Kubenet
   * rkt
 * Volume Drivers
-  * aws_ebs
-  * azure_dd
-  * azure_file
-  * cephfs
-  * cinder
-  * fc
-  * flocker
-  * gce_pd
-  * glusterfs
-  * iscsi
-  * photon_pd
-  * portworx
-  * quobyte
-  * rbd
-  * scaleio
-  * storageos
-  * vsphere_volume
+  * aws_ebs, azure_dd, azure_file, cephfs, cinder, fc, flocker, gce_pd, glusterfs, iscsi, photon_pd, portworx, quobyte, rbd, scaleio, storageos, vsphere_volume
 * Admission Controllers
-  * admin
-  * alwayspullimages
-  * antiaffinity
-  * defaulttolerationseconds
-  * deny
-  * eventratelimit
-  * exec
-  * extendedresourcetoleration
-  * gc
-  * imagepolicy
-  * initialreosurces
-  * limitranger
-  * namespace
-  * noderestriction
-  * persistentvolume
-  * podnodeselector
-  * podpreset
-  * podtolerationrestriction
-  * priority
-  * resourcequota
-  * security
-  * securitycontext
-  * storageobjectinuseprotection
-* etcd (yeah, i'm using sqlite3)
+  * admin, alwayspullimages, antiaffinity, defaulttolerationseconds, deny, eventratelimit, exec, extendedresourcetoleration, gc, imagepolicy, initialreosurces, limitranger, namespace, noderestriction, persistentvolume, podnodeselector, podpreset, podtolerationrestriction, priority, resourcequota, security, securitycontext, storageobjectinuseprotection
+
+What is left? A lot.  Basically all your normal pod/deployment/service stuff is there.  Most apps for kubernetes will run just fine.
 
 Full Build
 ----------
