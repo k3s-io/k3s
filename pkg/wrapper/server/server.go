@@ -299,15 +299,15 @@ func genUsers(config *ServerConfig) error {
 		return nil
 	}
 
-	adminToken, err := getToken()
+	adminToken, err := getToken(true)
 	if err != nil {
 		return err
 	}
-	systemToken, err := getToken()
+	systemToken, err := getToken(false)
 	if err != nil {
 		return err
 	}
-	nodeToken, err := getToken()
+	nodeToken, err := getToken(false)
 	if err != nil {
 		return err
 	}
@@ -342,7 +342,10 @@ func genUsers(config *ServerConfig) error {
 	return ioutil.WriteFile(config.passwdFile, []byte(passwd), 0600)
 }
 
-func getToken() (string, error) {
+func getToken(useEnv bool) (string, error) {
+	if os.Getenv("K3S_ADMIN_TOKEN") != "" && useEnv {
+		return os.Getenv("K3S_ADMIN_TOKEN"), nil
+	}
 	token := make([]byte, 16, 16)
 	_, err := cryptorand.Read(token)
 	if err != nil {
