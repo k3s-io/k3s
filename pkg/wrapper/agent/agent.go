@@ -78,7 +78,6 @@ func kubelet(config *AgentConfig) {
 		"--feature-gates=MountPropagation=true",
 		"--node-ip", config.NodeIP,
 		"--fail-swap-on=false",
-		"--cgroup-root", "/k3s",
 		"--cgroup-driver", "cgroupfs",
 		"--container-runtime-endpoint", config.RuntimeSocket,
 		"--cni-conf-dir", config.CNIConfDir,

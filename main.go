@@ -22,6 +22,7 @@ func runAgent() {
 		KubeConfig:    "./data/cred/kubeconfig-node.yaml",
 		RuntimeSocket: "unix:///run/containerd/containerd.sock",
 		ClusterCIDR:   *ipNet,
+		CACertPath:    "./data/tls/ca.crt",
 	})
 	if err != nil {
 		logrus.Fatal(err)
