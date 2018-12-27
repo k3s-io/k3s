@@ -20,34 +20,19 @@ import (
 	"fmt"
 
 	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
-	apiextensionsfeatures "k8s.io/apiextensions-apiserver/pkg/features"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/apiserver/pkg/util/webhook"
 )
 
 // CRConverterFactory is the factory for all CR converters.
 type CRConverterFactory struct {
-	// webhookConverterFactory is the factory for webhook converters.
-	// This field should not be used if CustomResourceWebhookConversion feature is disabled.
-	webhookConverterFactory *webhookConverterFactory
-	converterMetricFactory  *converterMetricFactory
 }
 
 // NewCRConverterFactory creates a new CRConverterFactory
 func NewCRConverterFactory(serviceResolver webhook.ServiceResolver, authResolverWrapper webhook.AuthenticationInfoResolverWrapper) (*CRConverterFactory, error) {
-	converterFactory := &CRConverterFactory{
-		converterMetricFactory: newConverterMertricFactory(),
-	}
-	if utilfeature.DefaultFeatureGate.Enabled(apiextensionsfeatures.CustomResourceWebhookConversion) {
-		webhookConverterFactory, err := newWebhookConverterFactory(serviceResolver, authResolverWrapper)
-		if err != nil {
-			return nil, err
-		}
-		converterFactory.webhookConverterFactory = webhookConverterFactory
-	}
+	converterFactory := &CRConverterFactory{}
 	return converterFactory, nil
 }
 
@@ -63,17 +48,7 @@ func (m *CRConverterFactory) NewConverter(crd *apiextensions.CustomResourceDefin
 	case apiextensions.NoneConverter:
 		converter = &nopConverter{}
 	case apiextensions.WebhookConverter:
-		if !utilfeature.DefaultFeatureGate.Enabled(apiextensionsfeatures.CustomResourceWebhookConversion) {
-			return nil, nil, fmt.Errorf("webhook conversion is disabled on this cluster")
-		}
-		converter, err = m.webhookConverterFactory.NewWebhookConverter(crd)
-		if err != nil {
-			return nil, nil, err
-		}
-		converter, err = m.converterMetricFactory.addMetrics("webhook", crd.Name, converter)
-		if err != nil {
-			return nil, nil, err
-		}
+		return nil, nil, fmt.Errorf("webhook conversion is disabled on this cluster")
 	default:
 		return nil, nil, fmt.Errorf("unknown conversion strategy %q for CRD %s", crd.Spec.Conversion.Strategy, crd.Name)
 	}
