@@ -161,7 +161,7 @@ func maybeWrapForConnectionUpgrades(restConfig *restclient.Config, rt http.Round
 		return nil, true, err
 	}
 	followRedirects := utilfeature.DefaultFeatureGate.Enabled(genericfeatures.StreamingProxyRedirects)
-	requireSameHostRedirects := utilfeature.DefaultFeatureGate.Enabled(genericfeatures.ValidateProxyRedirects)
+	requireSameHostRedirects := false
 	upgradeRoundTripper := spdy.NewRoundTripper(tlsConfig, followRedirects, requireSameHostRedirects)
 	wrappedRT, err := restclient.HTTPWrappersForConfig(restConfig, upgradeRoundTripper)
 	if err != nil {
