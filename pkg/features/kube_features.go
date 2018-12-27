@@ -215,14 +215,6 @@ const (
 	// Enable ServiceAccountTokenVolumeProjection support in ProjectedVolumes.
 	TokenRequestProjection utilfeature.Feature = "TokenRequestProjection"
 
-	// owner: @mikedanese
-	// alpha: v1.13
-	//
-	// Migrate ServiceAccount volumes to use a projected volume consisting of a
-	// ServiceAccountTokenVolumeProjection. This feature adds new required flags
-	// to the API server.
-	BoundServiceAccountTokenVolume utilfeature.Feature = "BoundServiceAccountTokenVolume"
-
 	// owner: @Random-Liu
 	// beta: v1.11
 	//
@@ -378,7 +370,6 @@ var defaultKubernetesFeatureGates = map[utilfeature.Feature]utilfeature.FeatureS
 	ScheduleDaemonSetPods:                   {Default: true, PreRelease: utilfeature.Beta},
 	TokenRequest:                            {Default: true, PreRelease: utilfeature.Beta},
 	TokenRequestProjection:                  {Default: true, PreRelease: utilfeature.Beta},
-	BoundServiceAccountTokenVolume:          {Default: false, PreRelease: utilfeature.Alpha},
 	CRIContainerLogRotation:                 {Default: true, PreRelease: utilfeature.Beta},
 	cloudfeatures.GCERegionalPersistentDisk: {Default: true, PreRelease: utilfeature.GA},
 	CSIMigration:                            {Default: false, PreRelease: utilfeature.Alpha},

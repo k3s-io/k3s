@@ -21,7 +21,6 @@ import (
 	"io"
 	"math/rand"
 	"strconv"
-	"strings"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -39,7 +38,6 @@ import (
 	corev1listers "k8s.io/client-go/listers/core/v1"
 	podutil "k8s.io/kubernetes/pkg/api/pod"
 	api "k8s.io/kubernetes/pkg/apis/core"
-	kubefeatures "k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/serviceaccount"
 )
 
@@ -431,28 +429,21 @@ func (s *serviceAccount) mountServiceAccountToken(serviceAccount *corev1.Service
 
 	// Find the volume and volume name for the ServiceAccountTokenSecret if it already exists
 	tokenVolumeName := ""
-	hasTokenVolume := false
 	allVolumeNames := sets.NewString()
 	for _, volume := range pod.Spec.Volumes {
 		allVolumeNames.Insert(volume.Name)
-		if (!s.featureGate.Enabled(kubefeatures.BoundServiceAccountTokenVolume) && volume.Secret != nil && volume.Secret.SecretName == serviceAccountToken) ||
-			(s.featureGate.Enabled(kubefeatures.BoundServiceAccountTokenVolume) && strings.HasPrefix(volume.Name, ServiceAccountVolumeName+"-")) {
+		if volume.Secret != nil && volume.Secret.SecretName == serviceAccountToken {
 			tokenVolumeName = volume.Name
-			hasTokenVolume = true
 			break
 		}
 	}
 
 	// Determine a volume name for the ServiceAccountTokenSecret in case we need it
 	if len(tokenVolumeName) == 0 {
-		if s.featureGate.Enabled(kubefeatures.BoundServiceAccountTokenVolume) {
-			tokenVolumeName = s.generateName(ServiceAccountVolumeName + "-")
-		} else {
-			// Try naming the volume the same as the serviceAccountToken, and uniquify if needed
-			tokenVolumeName = serviceAccountToken
-			if allVolumeNames.Has(tokenVolumeName) {
-				tokenVolumeName = s.generateName(fmt.Sprintf("%s-", serviceAccountToken))
-			}
+		// Try naming the volume the same as the serviceAccountToken, and uniquify if needed
+		tokenVolumeName = serviceAccountToken
+		if allVolumeNames.Has(tokenVolumeName) {
+			tokenVolumeName = s.generateName(fmt.Sprintf("%s-", serviceAccountToken))
 		}
 	}
 
@@ -495,56 +486,13 @@ func (s *serviceAccount) mountServiceAccountToken(serviceAccount *corev1.Service
 	}
 
 	// Add the volume if a container needs it
-	if !hasTokenVolume && needsTokenVolume {
+	if needsTokenVolume {
 		pod.Spec.Volumes = append(pod.Spec.Volumes, s.createVolume(tokenVolumeName, serviceAccountToken))
 	}
 	return nil
 }
 
 func (s *serviceAccount) createVolume(tokenVolumeName, secretName string) api.Volume {
-	if s.featureGate.Enabled(kubefeatures.BoundServiceAccountTokenVolume) {
-		return api.Volume{
-			Name: tokenVolumeName,
-			VolumeSource: api.VolumeSource{
-				Projected: &api.ProjectedVolumeSource{
-					Sources: []api.VolumeProjection{
-						{
-							ServiceAccountToken: &api.ServiceAccountTokenProjection{
-								Path:              "token",
-								ExpirationSeconds: 60 * 60,
-							},
-						},
-						{
-							ConfigMap: &api.ConfigMapProjection{
-								LocalObjectReference: api.LocalObjectReference{
-									Name: "kube-root-ca.crt",
-								},
-								Items: []api.KeyToPath{
-									{
-										Key:  "ca.crt",
-										Path: "ca.crt",
-									},
-								},
-							},
-						},
-						{
-							DownwardAPI: &api.DownwardAPIProjection{
-								Items: []api.DownwardAPIVolumeFile{
-									{
-										Path: "namespace",
-										FieldRef: &api.ObjectFieldSelector{
-											APIVersion: "v1",
-											FieldPath:  "metadata.namespace",
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		}
-	}
 	return api.Volume{
 		Name: tokenVolumeName,
 		VolumeSource: api.VolumeSource{
