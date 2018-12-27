@@ -44,7 +44,6 @@ import (
 	"k8s.io/client-go/tools/record"
 	kubefeatures "k8s.io/kubernetes/pkg/features"
 	internalapi "k8s.io/kubernetes/pkg/kubelet/apis/cri"
-	podresourcesapi "k8s.io/kubernetes/pkg/kubelet/apis/podresources/v1alpha1"
 	"k8s.io/kubernetes/pkg/kubelet/cadvisor"
 	"k8s.io/kubernetes/pkg/kubelet/cm/cpumanager"
 	"k8s.io/kubernetes/pkg/kubelet/cm/devicemanager"
@@ -878,8 +877,4 @@ func (cm *containerManagerImpl) GetCapacity() v1.ResourceList {
 
 func (cm *containerManagerImpl) GetDevicePluginResourceCapacity() (v1.ResourceList, v1.ResourceList, []string) {
 	return cm.deviceManager.GetCapacity()
-}
-
-func (cm *containerManagerImpl) GetDevices(podUID, containerName string) []*podresourcesapi.ContainerDevices {
-	return cm.deviceManager.GetDevices(podUID, containerName)
 }
