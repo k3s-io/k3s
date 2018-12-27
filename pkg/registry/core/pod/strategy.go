@@ -27,7 +27,6 @@ import (
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apimachineryvalidation "k8s.io/apimachinery/pkg/apis/meta/v1/validation"
 	"k8s.io/apimachinery/pkg/fields"
@@ -36,11 +35,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	"k8s.io/apiserver/pkg/features"
 	"k8s.io/apiserver/pkg/registry/generic"
 	"k8s.io/apiserver/pkg/storage"
 	"k8s.io/apiserver/pkg/storage/names"
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/kubernetes/pkg/api/legacyscheme"
 	podutil "k8s.io/kubernetes/pkg/api/pod"
 	api "k8s.io/kubernetes/pkg/apis/core"
@@ -102,17 +99,6 @@ func (podStrategy) AllowCreateOnUpdate() bool {
 }
 
 func isUpdatingUninitializedPod(old runtime.Object) (bool, error) {
-	if !utilfeature.DefaultFeatureGate.Enabled(features.Initializers) {
-		return false, nil
-	}
-	oldMeta, err := meta.Accessor(old)
-	if err != nil {
-		return false, err
-	}
-	oldInitializers := oldMeta.GetInitializers()
-	if oldInitializers != nil && len(oldInitializers.Pending) != 0 {
-		return true, nil
-	}
 	return false, nil
 }
 
