@@ -288,12 +288,6 @@ const (
 	// (Kube) Node Lifecycle Controller uses these heartbeats as a node health signal.
 	NodeLease utilfeature.Feature = "NodeLease"
 
-	// owner: @dashpole
-	// alpha: v1.13
-	//
-	// Enables the kubelet's pod resources grpc endpoint
-	KubeletPodResources utilfeature.Feature = "KubeletPodResources"
-
 	// owner: @davidz627
 	// alpha: v1.14
 	//
@@ -385,7 +379,6 @@ var defaultKubernetesFeatureGates = map[utilfeature.Feature]utilfeature.FeatureS
 	CSIInlineVolume:                         {Default: false, PreRelease: utilfeature.Alpha},
 	RuntimeClass:                            {Default: true, PreRelease: utilfeature.Beta},
 	NodeLease:                               {Default: true, PreRelease: utilfeature.Beta},
-	KubeletPodResources:                     {Default: false, PreRelease: utilfeature.Alpha},
 	WindowsGMSA:                             {Default: false, PreRelease: utilfeature.Alpha},
 
 	// inherited features from generic apiserver, relisted here to get a conflict if it is changed
