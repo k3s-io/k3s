@@ -242,12 +242,6 @@ const (
 	//
 	// Enable resource quota scope selectors
 	ResourceQuotaScopeSelectors utilfeature.Feature = "ResourceQuotaScopeSelectors"
-
-	// owner: @dashpole
-	// alpha: v1.13
-	//
-	// Enables the kubelet's pod resources grpc endpoint
-	KubeletPodResources utilfeature.Feature = "KubeletPodResources"
 )
 
 func init() {
@@ -292,7 +286,6 @@ var defaultKubernetesFeatureGates = map[utilfeature.Feature]utilfeature.FeatureS
 	PodReadinessGates:                           {Default: true, PreRelease: utilfeature.Beta},
 	KubeletPluginsWatcher:                       {Default: true, PreRelease: utilfeature.GA},
 	ResourceQuotaScopeSelectors:                 {Default: true, PreRelease: utilfeature.Beta},
-	KubeletPodResources:                         {Default: false, PreRelease: utilfeature.Alpha},
 
 	// inherited features from generic apiserver, relisted here to get a conflict if it is changed
 	// unintentionally on either side:
