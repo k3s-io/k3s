@@ -212,8 +212,7 @@ func dropDisabledFields(crdSpec, oldCrdSpec *apiextensions.CustomResourceDefinit
 	// This is to be consistent with the other built-in types, as the apiserver drops unknown
 	// fields. If the old CRD already uses per-version fields, the CRD is allowed to continue
 	// use per-version fields.
-	if !utilfeature.DefaultFeatureGate.Enabled(apiextensionsfeatures.CustomResourceWebhookConversion) &&
-		!hasPerVersionField(oldCrdSpec) {
+	if !hasPerVersionField(oldCrdSpec) {
 		for i := range crdSpec.Versions {
 			crdSpec.Versions[i].Schema = nil
 			crdSpec.Versions[i].Subresources = nil
@@ -221,8 +220,7 @@ func dropDisabledFields(crdSpec, oldCrdSpec *apiextensions.CustomResourceDefinit
 		}
 	}
 
-	if !utilfeature.DefaultFeatureGate.Enabled(apiextensionsfeatures.CustomResourceWebhookConversion) &&
-		!conversionWebhookInUse(oldCrdSpec) {
+	if !conversionWebhookInUse(oldCrdSpec) {
 		if crdSpec.Conversion != nil {
 			crdSpec.Conversion.WebhookClientConfig = nil
 		}
