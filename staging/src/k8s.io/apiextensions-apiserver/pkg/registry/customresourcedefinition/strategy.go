@@ -67,17 +67,12 @@ func (strategy) PrepareForCreate(ctx context.Context, obj runtime.Object) {
 			crd.Spec.Versions[i].Subresources = nil
 		}
 	}
-	// On CREATE, if the CustomResourceWebhookConversion feature gate is off, we auto-clear
-	// the per-version fields. This is to be consistent with the other built-in types, as the
-	// apiserver drops unknown fields.
-	if !utilfeature.DefaultFeatureGate.Enabled(apiextensionsfeatures.CustomResourceWebhookConversion) {
-		for i := range crd.Spec.Versions {
-			crd.Spec.Versions[i].Schema = nil
-			crd.Spec.Versions[i].Subresources = nil
-			crd.Spec.Versions[i].AdditionalPrinterColumns = nil
-		}
+	for i := range crd.Spec.Versions {
+		crd.Spec.Versions[i].Schema = nil
+		crd.Spec.Versions[i].Subresources = nil
+		crd.Spec.Versions[i].AdditionalPrinterColumns = nil
 	}
-	if !utilfeature.DefaultFeatureGate.Enabled(apiextensionsfeatures.CustomResourceWebhookConversion) && crd.Spec.Conversion != nil {
+	if crd.Spec.Conversion != nil {
 		crd.Spec.Conversion.WebhookClientConfig = nil
 	}
 
@@ -130,20 +125,14 @@ func (strategy) PrepareForUpdate(ctx context.Context, obj, old runtime.Object) {
 		}
 	}
 
-	// On UPDATE, if the CustomResourceWebhookConversion feature gate is off, we auto-clear
-	// the per-version fields if the old CRD doesn't use per-version fields already.
-	// This is to be consistent with the other built-in types, as the apiserver drops unknown
-	// fields. If the old CRD already uses per-version fields, the CRD is allowed to continue
-	// use per-version fields.
-	if !utilfeature.DefaultFeatureGate.Enabled(apiextensionsfeatures.CustomResourceWebhookConversion) &&
-		!hasPerVersionField(oldCRD.Spec.Versions) {
+	if !hasPerVersionField(oldCRD.Spec.Versions) {
 		for i := range newCRD.Spec.Versions {
 			newCRD.Spec.Versions[i].Schema = nil
 			newCRD.Spec.Versions[i].Subresources = nil
 			newCRD.Spec.Versions[i].AdditionalPrinterColumns = nil
 		}
 	}
-	if !utilfeature.DefaultFeatureGate.Enabled(apiextensionsfeatures.CustomResourceWebhookConversion) && newCRD.Spec.Conversion != nil {
+	if newCRD.Spec.Conversion != nil {
 		if oldCRD.Spec.Conversion == nil || newCRD.Spec.Conversion.WebhookClientConfig == nil {
 			newCRD.Spec.Conversion.WebhookClientConfig = nil
 		}

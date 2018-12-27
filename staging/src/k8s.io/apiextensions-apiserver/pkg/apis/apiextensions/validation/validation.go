@@ -244,11 +244,7 @@ func ValidateCustomResourceConversion(conversion *apiextensions.CustomResourceCo
 	allErrs = append(allErrs, validateEnumStrings(fldPath.Child("strategy"), string(conversion.Strategy), []string{string(apiextensions.NoneConverter), string(apiextensions.WebhookConverter)}, true)...)
 	if conversion.Strategy == apiextensions.WebhookConverter {
 		if conversion.WebhookClientConfig == nil {
-			if utilfeature.DefaultFeatureGate.Enabled(apiextensionsfeatures.CustomResourceWebhookConversion) {
-				allErrs = append(allErrs, field.Required(fldPath.Child("webhookClientConfig"), "required when strategy is set to Webhook"))
-			} else {
-				allErrs = append(allErrs, field.Required(fldPath.Child("webhookClientConfig"), "required when strategy is set to Webhook, but not allowed because the CustomResourceWebhookConversion feature is disabled"))
-			}
+			allErrs = append(allErrs, field.Required(fldPath.Child("webhookClientConfig"), "required when strategy is set to Webhook, but not allowed because the CustomResourceWebhookConversion feature is disabled"))
 		} else {
 			cc := conversion.WebhookClientConfig
 			switch {
