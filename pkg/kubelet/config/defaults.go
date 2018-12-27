@@ -25,5 +25,4 @@ const (
 	DefaultKubeletPluginsRegistrationDirName = "plugins_registry"
 	DefaultKubeletContainersDirName          = "containers"
 	DefaultKubeletPluginContainersDirName    = "plugin-containers"
-	DefaultKubeletPodResourcesDirName        = "pod-resources"
 )
