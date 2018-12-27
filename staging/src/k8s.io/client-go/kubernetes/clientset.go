@@ -24,7 +24,6 @@ import (
 	appsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	appsv1beta1 "k8s.io/client-go/kubernetes/typed/apps/v1beta1"
 	appsv1beta2 "k8s.io/client-go/kubernetes/typed/apps/v1beta2"
-	auditregistrationv1alpha1 "k8s.io/client-go/kubernetes/typed/auditregistration/v1alpha1"
 	authenticationv1 "k8s.io/client-go/kubernetes/typed/authentication/v1"
 	authorizationv1 "k8s.io/client-go/kubernetes/typed/authorization/v1"
 	autoscalingv1 "k8s.io/client-go/kubernetes/typed/autoscaling/v1"
@@ -59,7 +58,6 @@ type Interface interface {
 	AppsV1() appsv1.AppsV1Interface
 	AppsV1beta1() appsv1beta1.AppsV1beta1Interface
 	AppsV1beta2() appsv1beta2.AppsV1beta2Interface
-	AuditregistrationV1alpha1() auditregistrationv1alpha1.AuditregistrationV1alpha1Interface
 	AuthenticationV1() authenticationv1.AuthenticationV1Interface
 	AuthorizationV1() authorizationv1.AuthorizationV1Interface
 	AutoscalingV1() autoscalingv1.AutoscalingV1Interface
@@ -94,7 +92,6 @@ type Clientset struct {
 	appsV1                       *appsv1.AppsV1Client
 	appsV1beta1                  *appsv1beta1.AppsV1beta1Client
 	appsV1beta2                  *appsv1beta2.AppsV1beta2Client
-	auditregistrationV1alpha1    *auditregistrationv1alpha1.AuditregistrationV1alpha1Client
 	authenticationV1             *authenticationv1.AuthenticationV1Client
 	authorizationV1              *authorizationv1.AuthorizationV1Client
 	autoscalingV1                *autoscalingv1.AutoscalingV1Client
@@ -139,11 +136,6 @@ func (c *Clientset) AppsV1beta1() appsv1beta1.AppsV1beta1Interface {
 // AppsV1beta2 retrieves the AppsV1beta2Client
 func (c *Clientset) AppsV1beta2() appsv1beta2.AppsV1beta2Interface {
 	return c.appsV1beta2
-}
-
-// AuditregistrationV1alpha1 retrieves the AuditregistrationV1alpha1Client
-func (c *Clientset) AuditregistrationV1alpha1() auditregistrationv1alpha1.AuditregistrationV1alpha1Interface {
-	return c.auditregistrationV1alpha1
 }
 
 // AuthenticationV1 retrieves the AuthenticationV1Client
@@ -298,10 +290,6 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 	if err != nil {
 		return nil, err
 	}
-	cs.auditregistrationV1alpha1, err = auditregistrationv1alpha1.NewForConfig(&configShallowCopy)
-	if err != nil {
-		return nil, err
-	}
 	cs.authenticationV1, err = authenticationv1.NewForConfig(&configShallowCopy)
 	if err != nil {
 		return nil, err
@@ -414,7 +402,6 @@ func NewForConfigOrDie(c *rest.Config) *Clientset {
 	cs.appsV1 = appsv1.NewForConfigOrDie(c)
 	cs.appsV1beta1 = appsv1beta1.NewForConfigOrDie(c)
 	cs.appsV1beta2 = appsv1beta2.NewForConfigOrDie(c)
-	cs.auditregistrationV1alpha1 = auditregistrationv1alpha1.NewForConfigOrDie(c)
 	cs.authenticationV1 = authenticationv1.NewForConfigOrDie(c)
 	cs.authorizationV1 = authorizationv1.NewForConfigOrDie(c)
 	cs.autoscalingV1 = autoscalingv1.NewForConfigOrDie(c)
@@ -451,7 +438,6 @@ func New(c rest.Interface) *Clientset {
 	cs.appsV1 = appsv1.New(c)
 	cs.appsV1beta1 = appsv1beta1.New(c)
 	cs.appsV1beta2 = appsv1beta2.New(c)
-	cs.auditregistrationV1alpha1 = auditregistrationv1alpha1.New(c)
 	cs.authenticationV1 = authenticationv1.New(c)
 	cs.authorizationV1 = authorizationv1.New(c)
 	cs.autoscalingV1 = autoscalingv1.New(c)
