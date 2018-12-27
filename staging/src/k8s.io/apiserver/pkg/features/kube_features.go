@@ -52,13 +52,6 @@ const (
 	// audited.
 	AdvancedAuditing utilfeature.Feature = "AdvancedAuditing"
 
-	// owner: @pbarker
-	// alpha: v1.13
-	//
-	// DynamicAuditing enables configuration of audit policy and webhook backends through an
-	// AuditSink API object.
-	DynamicAuditing utilfeature.Feature = "DynamicAuditing"
-
 	// owner: @smarterclayton
 	// alpha: v1.8
 	// beta: v1.9
@@ -88,7 +81,6 @@ var defaultKubernetesFeatureGates = map[utilfeature.Feature]utilfeature.FeatureS
 	StreamingProxyRedirects: {Default: true, PreRelease: utilfeature.Beta},
 	ValidateProxyRedirects:  {Default: false, PreRelease: utilfeature.Alpha},
 	AdvancedAuditing:        {Default: true, PreRelease: utilfeature.GA},
-	DynamicAuditing:         {Default: false, PreRelease: utilfeature.Alpha},
 	APIListChunking:         {Default: true, PreRelease: utilfeature.Beta},
 	DryRun:                  {Default: true, PreRelease: utilfeature.Beta},
 }
