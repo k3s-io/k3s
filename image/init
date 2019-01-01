@@ -1,0 +1,147 @@
+#!/usr/bin/sh
+set -e
+
+if [ "$ENTER_DEBUG" = true ]; then
+    set -x
+fi
+
+layout()
+{
+    mount --make-rshared /
+
+    mkdir -p /proc
+    mount -t proc -o nodev,nosuid,noexec,relatime none /proc
+
+    for i in cache empty lib local local log opt spool tmp; do
+        mkdir -p /var/$i
+    done
+
+    for i in run dev home mnt media opt root lib/modules lib/firmware var/lib/docker; do
+        if [ -d /.root/$i ]; then
+            mkdir -p /$i
+            mount --rbind /.root/$i /$i
+        fi
+    done
+
+    if [ -L /.root/var/run ]; then
+        ln -sf /run /var/run
+    else
+        mkdir -p /var/run
+        mount --rbind /.root/var/run /var/run
+    fi
+
+    mkdir -p $K3S_DATA_DIR
+    mount --rbind /.root/$K3S_DATA_DIR /$K3S_DATA_DIR
+
+    mkdir -p /run/k3s/containerd
+}
+
+sysfs()
+{
+    mkdir -p /sys
+    mount -t sysfs none /sys
+
+    mount -t securityfs -o noexec,nosuid,nodev none /sys/kernel/security 2>/dev/null|| true
+    mount -t configfs -o noexec,nosuid,nodev none /sys/kernel/config 2>/dev/null || true
+    mount -t fusectl -o noexec,nosuid,nodev none /sys/fs/fuse/connections 2>/dev/null || true
+    mount -t binfmt_misc -o noexec,nosuid,nodev none /proc/sys/fs/binfmt_misc 2>/dev/null || true
+}
+
+cgroups()
+{
+    mount -t tmpfs -o mode=755,size=10m none /sys/fs/cgroup
+    cat /proc/cgroups > /tmp/cgroups
+
+    for i in $(seq 0 20); do
+        t=""
+        l="$(cat /tmp/cgroups | grep '1$' | awk '{print $1 " " $2}' | grep -w $i | awk '{print $1}')"
+        for j in $l; do
+            if [ -z "$t" ]; then
+                t=$j
+            else
+                t="${t},$j"
+            fi
+        done
+
+        if [ -z "$t" ]; then
+            continue
+        fi
+
+        mkdir -p /sys/fs/cgroup/${t}
+        mount -t cgroup -o ${t},noexec,nosuid,nodev none /sys/fs/cgroup/${t}
+        mkdir -p /sys/fs/cgroup/${t}/k3s
+
+        for j in $l; do
+            if [ $j != $t ]; then
+                ln -s $t /sys/fs/cgroup/$j
+            fi
+        done
+    done
+
+    # good ole systemd
+    mkdir -p /sys/fs/cgroup/systemd
+    mount -t cgroup -o none,name=systemd cgroup /sys/fs/cgroup/systemd
+    mkdir -p /sys/fs/cgroup/systemd/k3s
+
+    rm /tmp/cgroups
+}
+
+mketc()
+{
+    mkdir -p /etc
+    cp -rf usr/etc/* /etc/
+    for i in  /.root/usr/lib/os-release /.root/etc/os-release; do
+        if [ -e $i ]; then
+            cp -f $i /etc/os-release
+        fi
+    done
+
+    if [ -e /.root/etc/machine-id ]; then
+        cp -f /.root/etc/machine-id /etc/machine-id
+    fi
+
+    hostname > /etc/hostname
+
+    cat > /etc/hosts << EOF
+127.0.0.1	localhost $NODE_NAME $(hostname)
+::1		localhost ip6-localhost ip6-loopback
+ff02::1		ip6-allnodes
+ff02::2		ip6-allrouters
+EOF
+
+    cat > /etc/resolv.conf << EOF
+nameserver 1.1.1.1
+EOF
+}
+
+nodename()
+{
+    if [ ! -e $K3S_DATA_DIR/id ]; then
+        echo $RANDOM > $K3S_DATA_DIR/id
+    fi
+    export NODE_NAME="$(hostname | cut -f1 -d.)-$(<$K3S_DATA_DIR/id)"
+}
+
+layout
+nodename
+mketc
+sysfs
+cgroups
+
+umount -l .root
+rmdir .root
+
+if [ "$1" = "--" ]; then
+    shift 1
+    exec "$@"
+fi
+
+exec env -i -- \
+    HOME=/root \
+    NODE_NAME=$NODE_NAME \
+    PATH=/sbin:/bin \
+    K3S_DATA_DIR=$K3S_DATA_DIR \
+    K3S_NODE_IP=$K3S_NODE_IP \
+    K3S_TOKEN=$K3S_TOKEN \
+    K3S_URL=$K3S_URL \
+    agent

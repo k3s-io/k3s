@@ -1,0 +1,17 @@
+#!/bin/bash
+set -e
+
+source $(dirname $0)/version
+
+cd $(dirname $0)/../package
+
+TAG=${TAG:-${VERSION}${SUFFIX}}
+REPO=${REPO:-rancher}
+
+cp ../bin/rio ./rio
+
+IMAGE=${REPO}/rio:${TAG}
+docker build -t ${IMAGE} .
+mkdir -p ../dist
+echo ${IMAGE} > ../dist/images
+echo Built ${IMAGE}

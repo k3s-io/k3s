@@ -1,0 +1,29 @@
+FROM golang:1.11-alpine3.8
+
+RUN apk -U --no-cache add bash git gcc musl-dev docker vim less file curl wget ca-certificates jq linux-headers zlib-dev tar zip squashfs-tools npm coreutils \
+    python3 py3-pip python3-dev openssl-dev libffi-dev
+RUN pip3 install 'tox==3.6.0'
+RUN npm install -g 'bats@1.1.0'
+RUN apk -U --no-cache --repository http://dl-3.alpinelinux.org/alpine/edge/main/ add sqlite-dev sqlite-static
+RUN go get -d golang.org/x/lint/golint && \
+    git -C /go/src/golang.org/x/lint/golint checkout -b current 06c8688daad7faa9da5a0c2f163a3d14aac986ca && \
+    go install golang.org/x/lint/golint && \
+    rm -rf /go/src /go/pkg
+RUN go get -d github.com/alecthomas/gometalinter && \
+    git -C /go/src/github.com/alecthomas/gometalinter checkout -b current v2.0.11 && \
+    go install github.com/alecthomas/gometalinter && \
+    gometalinter --install && \
+    rm -rf /go/src /go/pkg
+
+ENV DAPPER_RUN_ARGS --privileged
+ENV DAPPER_ENV REPO TAG DRONE_TAG
+ENV DAPPER_SOURCE /go/src/github.com/rancher/rio/
+ENV DAPPER_OUTPUT ./bin ./dist
+ENV DAPPER_DOCKER_SOCKET true
+ENV HOME ${DAPPER_SOURCE}
+ENV CROSS true
+WORKDIR ${DAPPER_SOURCE}
+
+ENTRYPOINT ["./scripts/entry"]
+CMD ["ci"]
+

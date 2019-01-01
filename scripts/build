@@ -1,0 +1,31 @@
+#!/bin/bash
+set -e
+
+source $(dirname $0)/version
+
+cd $(dirname $0)/..
+
+LDFLAGS="-X github.com/rancher/rio/version.Version=$VERSION -w -s"
+STATIC="-extldflags -static"
+STATIC_SQLITE="-extldflags '-static -lm -ldl -lz -lpthread'"
+
+cross()
+{
+    echo Building windows CLI
+    GOOS=windows GOARCH=amd64 go build -ldflags "$LDFLAGS" -o bin/rio-windows ./cli/main.go
+    echo Building mac CLI
+    GOOS=darwin GOARCH=amd64 go build -ldflags "$LDFLAGS" -o bin/rio-darwin ./cli/main.go
+}
+
+mkdir -p bin
+
+if [ -n "$CROSS" ]; then
+    cross
+fi
+
+echo Building incluster
+GOOS=linux GOARCH=amd64
+CGO_ENABLED=0 go build -ldflags "$LDFLAGS $STATIC" -o bin/rio-incluster
+
+echo Building cli full
+CGO_ENABLED=1 go build -tags "static_build libsqlite3 k8s ctr no_etcd netgo osusergo" -ldflags "$LDFLAGS $STATIC_SQLITE" -o bin/rio-full ./cli/main.go

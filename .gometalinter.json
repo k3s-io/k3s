@@ -1,0 +1,11 @@
+{
+  "EnableAll": false,
+  "Enable": [
+    "golint",
+    "goimports",
+    "misspell",
+    "ineffassign",
+    "errcheck"
+  ],
+  "Deadline": "1m"
+}

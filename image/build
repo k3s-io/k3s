@@ -1,0 +1,19 @@
+#!/bin/bash
+set -e
+
+cd $(dirname $0)
+rm -rf main.squashfs
+
+pushd ..
+mkdir -p build
+echo Copying vendor
+tar chf build/vendor.tar \
+    --exclude vendor/github.com/coreos/etcd/cmd \
+    --exclude vendor/github.com/jteeuwen/go-bindata/testdata \
+    --exclude vendor/github.com/karrick/godirwalk/testdata \
+    vendor
+echo Running agent docker build
+docker build -t bb -f image/Dockerfile .
+popd
+
+docker run --rm bb cat main.squashfs > main.squashfs

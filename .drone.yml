@@ -1,0 +1,55 @@
+---
+pipeline:
+  build:
+    privileged: true
+    image: rancher/dapper:1.11.2
+    volumes:
+    - /var/run/docker.sock:/var/run/docker.sock
+    commands:
+    - dapper ci
+
+  stage-binaries:
+    image: rancher/dapper:1.11.2
+    commands:
+    - cp -f ./bin/rio-incluster ./package/rio
+    when:
+      branch: master
+      event: tag
+
+  publish-image:
+    image: plugins/docker
+    dockerfile: package/Dockerfile
+    repo: rancher/rio
+    context: package/
+    tag: ${DRONE_TAG}
+    secrets: [docker_username, docker_password]
+    when:
+      branch: master
+      event: tag
+
+  github_binary_prerelease:
+    image: plugins/github-release
+    prerelease: true
+    files:
+     - dist/artifacts/*
+    checksum:
+     - sha256
+    secrets: [github_token]
+    when:
+      branch: master
+      event: tag
+      ref:
+        include: [ refs/tags/*rc* ]
+
+  github_binary_release:
+    image: plugins/github-release
+    files:
+     - dist/artifacts/*
+    checksum:
+     - sha256
+    secrets: [github_token]
+    when:
+      branch: master
+      event: tag
+      ref:
+        exclude: [ refs/tags/*rc* ]
