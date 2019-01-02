@@ -26,7 +26,6 @@ import (
 
 	// ensure libs have a chance to globally register their flags
 	_ "github.com/google/cadvisor/container/common"
-	_ "github.com/google/cadvisor/container/containerd"
 	_ "github.com/google/cadvisor/container/docker"
 	_ "github.com/google/cadvisor/container/raw"
 	_ "github.com/google/cadvisor/machine"
