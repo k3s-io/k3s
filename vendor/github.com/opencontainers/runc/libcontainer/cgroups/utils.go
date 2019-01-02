@@ -13,40 +13,50 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/go-units"
+	units "github.com/docker/go-units"
 )
 
 const (
-	cgroupNamePrefix = "name="
+	CgroupNamePrefix = "name="
 	CgroupProcesses  = "cgroup.procs"
 )
 
 // https://www.kernel.org/doc/Documentation/cgroup-v1/cgroups.txt
-func FindCgroupMountpoint(subsystem string) (string, error) {
-	mnt, _, err := FindCgroupMountpointAndRoot("", subsystem)
+func FindCgroupMountpoint(cgroupPath, subsystem string) (string, error) {
+	mnt, _, err := FindCgroupMountpointAndRoot(cgroupPath, subsystem)
 	return mnt, err
 }
 
-func FindCgroupMountpointAndRoot(_, subsystem string) (string, string, error) {
+func FindCgroupMountpointAndRoot(cgroupPath, subsystem string) (string, string, error) {
 	// We are not using mount.GetMounts() because it's super-inefficient,
 	// parsing it directly sped up x10 times because of not using Sscanf.
 	// It was one of two major performance drawbacks in container start.
 	if !isSubsystemAvailable(subsystem) {
 		return "", "", NewNotFoundError(subsystem)
 	}
+
 	f, err := os.Open("/proc/self/mountinfo")
 	if err != nil {
 		return "", "", err
 	}
 	defer f.Close()
 
-	scanner := bufio.NewScanner(f)
+	return findCgroupMountpointAndRootFromReader(f, cgroupPath, subsystem)
+}
+
+func findCgroupMountpointAndRootFromReader(reader io.Reader, cgroupPath, subsystem string) (string, string, error) {
+	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
 		txt := scanner.Text()
-		fields := strings.Split(txt, " ")
-		for _, opt := range strings.Split(fields[len(fields)-1], ",") {
-			if opt == subsystem {
-				return fields[4], fields[3], nil
+		fields := strings.Fields(txt)
+		if len(fields) < 5 {
+			continue
+		}
+		if strings.HasPrefix(fields[4], cgroupPath) {
+			for _, opt := range strings.Split(fields[len(fields)-1], ",") {
+				if opt == subsystem {
+					return fields[4], fields[3], nil
+				}
 			}
 		}
 	}
@@ -103,7 +113,7 @@ func FindCgroupMountpointDir() (string, error) {
 		}
 
 		if postSeparatorFields[0] == "cgroup" {
-			// Check that the mount is properly formated.
+			// Check that the mount is properly formatted.
 			if numPostFields < 3 {
 				return "", fmt.Errorf("Error found less than 3 fields post '-' in %q", text)
 			}
@@ -151,19 +161,20 @@ func getCgroupMountsHelper(ss map[string]bool, mi io.Reader, all bool) ([]Mount,
 			Root:       fields[3],
 		}
 		for _, opt := range strings.Split(fields[len(fields)-1], ",") {
-			if !ss[opt] {
+			seen, known := ss[opt]
+			if !known || (!all && seen) {
 				continue
 			}
-			if strings.HasPrefix(opt, cgroupNamePrefix) {
-				m.Subsystems = append(m.Subsystems, opt[len(cgroupNamePrefix):])
-			} else {
-				m.Subsystems = append(m.Subsystems, opt)
+			ss[opt] = true
+			if strings.HasPrefix(opt, CgroupNamePrefix) {
+				opt = opt[len(CgroupNamePrefix):]
 			}
-			if !all {
-				numFound++
-			}
+			m.Subsystems = append(m.Subsystems, opt)
+			numFound++
 		}
-		res = append(res, m)
+		if len(m.Subsystems) > 0 || all {
+			res = append(res, m)
+		}
 	}
 	if err := scanner.Err(); err != nil {
 		return nil, err
@@ -187,7 +198,7 @@ func GetCgroupMounts(all bool) ([]Mount, error) {
 
 	allMap := make(map[string]bool)
 	for s := range allSubsystems {
-		allMap[s] = true
+		allMap[s] = false
 	}
 	return getCgroupMountsHelper(allMap, f, all)
 }
@@ -262,7 +273,7 @@ func getCgroupPathHelper(subsystem, cgroup string) (string, error) {
 	}
 
 	// This is needed for nested containers, because in /proc/self/cgroup we
-	// see pathes from host, which don't exist in container.
+	// see paths from host, which don't exist in container.
 	relCgroup, err := filepath.Rel(root, cgroup)
 	if err != nil {
 		return "", err
@@ -342,7 +353,7 @@ func getControllerPath(subsystem string, cgroups map[string]string) (string, err
 		return p, nil
 	}
 
-	if p, ok := cgroups[cgroupNamePrefix+subsystem]; ok {
+	if p, ok := cgroups[CgroupNamePrefix+subsystem]; ok {
 		return p, nil
 	}
 
