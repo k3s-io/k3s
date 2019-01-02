@@ -25,7 +25,7 @@ import (
 
 	libcontainercgroups "github.com/opencontainers/runc/libcontainer/cgroups"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/kubernetes/pkg/api/v1/resource"
@@ -241,9 +241,6 @@ func GetPodCgroupNameSuffix(podUID types.UID) string {
 func NodeAllocatableRoot(cgroupRoot, cgroupDriver string) string {
 	root := ParseCgroupfsToCgroupName(cgroupRoot)
 	nodeAllocatableRoot := NewCgroupName(root, defaultNodeAllocatableCgroupName)
-	if libcontainerCgroupManagerType(cgroupDriver) == libcontainerSystemd {
-		return nodeAllocatableRoot.ToSystemd()
-	}
 	return nodeAllocatableRoot.ToCgroupfs()
 }
 
