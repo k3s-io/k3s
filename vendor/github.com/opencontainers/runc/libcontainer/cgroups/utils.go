@@ -23,11 +23,11 @@ const (
 
 // https://www.kernel.org/doc/Documentation/cgroup-v1/cgroups.txt
 func FindCgroupMountpoint(subsystem string) (string, error) {
-	mnt, _, err := FindCgroupMountpointAndRoot(subsystem)
+	mnt, _, err := FindCgroupMountpointAndRoot("", subsystem)
 	return mnt, err
 }
 
-func FindCgroupMountpointAndRoot(subsystem string) (string, string, error) {
+func FindCgroupMountpointAndRoot(_, subsystem string) (string, string, error) {
 	// We are not using mount.GetMounts() because it's super-inefficient,
 	// parsing it directly sped up x10 times because of not using Sscanf.
 	// It was one of two major performance drawbacks in container start.
@@ -256,7 +256,7 @@ func GetInitCgroupPath(subsystem string) (string, error) {
 }
 
 func getCgroupPathHelper(subsystem, cgroup string) (string, error) {
-	mnt, root, err := FindCgroupMountpointAndRoot(subsystem)
+	mnt, root, err := FindCgroupMountpointAndRoot("", subsystem)
 	if err != nil {
 		return "", err
 	}
