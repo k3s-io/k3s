@@ -13,6 +13,5 @@ else
     VERSION="${COMMIT}${DIRTY}"
 fi
 
-if [ -z "$ARCH" ]; then
-    ARCH=amd64
-fi
+ARCH=$(go env GOARCH)
+SUFFIX="-${ARCH}"

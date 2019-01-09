@@ -11,7 +11,7 @@ pipeline:
   stage-binaries:
     image: rancher/dapper:1.11.2
     commands:
-    - cp -f ./bin/rio-incluster ./package/rio
+    - cp -f ./bin/k3s-incluster ./package/k3s
     when:
       branch: master
       event: tag
@@ -19,7 +19,7 @@ pipeline:
   publish-image:
     image: plugins/docker
     dockerfile: package/Dockerfile
-    repo: rancher/rio
+    repo: rancher/k3s
     context: package/
     tag: ${DRONE_TAG}
     secrets: [docker_username, docker_password]

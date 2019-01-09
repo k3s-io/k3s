@@ -1,31 +1,41 @@
 #!/bin/bash
-set -e
+set -e -x
 
 source $(dirname $0)/version
 
 cd $(dirname $0)/..
 
-LDFLAGS="-X github.com/rancher/rio/version.Version=$VERSION -w -s"
-STATIC="-extldflags -static"
+LDFLAGS="-X github.com/rancher/k3s/version.Version=$VERSION -w -s"
+STATIC="-extldflags '-static'"
 STATIC_SQLITE="-extldflags '-static -lm -ldl -lz -lpthread'"
+TAGS="ctrd apparmor seccomp no_btrfs netgo osusergo"
 
-cross()
-{
-    echo Building windows CLI
-    GOOS=windows GOARCH=amd64 go build -ldflags "$LDFLAGS" -o bin/rio-windows ./cli/main.go
-    echo Building mac CLI
-    GOOS=darwin GOARCH=amd64 go build -ldflags "$LDFLAGS" -o bin/rio-darwin ./cli/main.go
-}
+if [ "$STATIC_BUILD" != "true" ]; then
+    STATIC=""
+    STATIC_SQLITE=""
+else
+    TAGS="static_build libsqlite3 $TAGS"
+fi
 
 mkdir -p bin
 
-if [ -n "$CROSS" ]; then
-    cross
-fi
-
-echo Building incluster
-GOOS=linux GOARCH=amd64
-CGO_ENABLED=0 go build -ldflags "$LDFLAGS $STATIC" -o bin/rio-incluster
-
-echo Building cli full
-CGO_ENABLED=1 go build -tags "static_build libsqlite3 k8s ctr no_etcd netgo osusergo" -ldflags "$LDFLAGS $STATIC_SQLITE" -o bin/rio-full ./cli/main.go
+rm -f bin/k3s-agent bin/hyperkube bin/containerd bin/cni ./bin/runc bin/containerd-shim bin/k3s-server bin/kubectl
+# echo Building agent
+# CGO_ENABLED=1 go build -tags "$TAGS" -ldflags "$LDFLAGS $STATIC" -o bin/k3s-agent ./cmd/agent/main.go
+echo Building server
+CGO_ENABLED=1 go build -tags "$TAGS" -ldflags "$LDFLAGS $STATIC_SQLITE" -o bin/containerd ./cmd/server/main.go
+ln -s containerd ./bin/k3s-agent
+ln -s containerd ./bin/k3s-server
+ln -s containerd ./bin/kubectl
+echo Building hyperkube
+CGO_ENABLED=1 go build -tags "$TAGS" -ldflags "$LDFLAGS $STATIC_SQLITE" -o bin/hyperkube ./vendor/k8s.io/kubernetes/cmd/hyperkube/
+# echo Building containerd
+# CGO_ENABLED=0 go build -tags "$TAGS" -ldflags "$LDFLAGS $STATIC" -o bin/containerd ./cmd/containerd/
+echo Building cni
+CGO_ENABLED=0 go build -tags "$TAGS" -ldflags "$LDFLAGS $STATIC" -o bin/cni ./cmd/cni/main.go
+echo Building runc
+make EXTRA_LDFLAGS="-w -s" BUILDTAGS="apparmor seccomp" -C ./vendor/github.com/opencontainers/runc static
+cp -f ./vendor/github.com/opencontainers/runc/runc ./bin/runc
+echo Building containerd-shim
+make -C ./vendor/github.com/containerd/containerd bin/containerd-shim
+cp -f ./vendor/github.com/containerd/containerd/bin/containerd-shim ./bin/containerd-shim

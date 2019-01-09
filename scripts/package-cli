@@ -1,11 +1,42 @@
 #!/bin/bash
-set -e
+set -e -x
+
+ROOT_VERSION=v0.0.1
 
 source $(dirname $0)/version
 
-cd $(dirname $0)/../image
-./build
+cd $(dirname $0)/..
 
-cp ../bin/rio-full ../bin/rio
-echo -n "_sqmagic_" >> ../bin/rio
-cat main.squashfs >> ../bin/rio
+curl --compressed -sfL https://github.com/ibuildthecloud/k3s-root/releases/download/${ROOT_VERSION}/k3s-root-${ARCH}.tar | tar xf -
+
+rm -rf bin/kubectl bin/k3s-agent bin/k3s build/data
+ln -s containerd bin/k3s-agent
+ln -s containerd bin/k3s-server
+ln -s containerd bin/kubectl
+for i in bridge flannel host-local loopback portmap; do
+    if [ -e ./bin/$i ]; then
+        rm -f ./bin/$i
+    fi
+    ln -s cni ./bin/$i
+done
+
+
+mkdir -p build/data
+
+tar cvzf ./build/data.tar.gz --exclude ./bin/hyperkube ./bin
+HASH=$(sha256sum ./build/data.tar.gz | awk '{print $1}')
+
+cp ./build/data.tar.gz ./build/data/${HASH}.tgz
+
+if [ ${ARCH} = amd64 ]; then
+    cp -f ./bin/hyperkube dist/hyperkube
+    CMD_NAME=dist/k3s
+else
+    cp -f ./bin/hyperkube dist/hyperkube-${ARCH}
+    CMD_NAME=dist/k3s-${ARCH}
+fi
+
+go generate
+LDFLAGS="-X github.com/rancher/k3s/version.Version=$VERSION -w -s"
+STATIC="-extldflags '-static'"
+CGO_ENABLED=0 go build -ldflags "$LDFLAGS $STATIC" -o ${CMD_NAME} ./cmd/k3s/main.go

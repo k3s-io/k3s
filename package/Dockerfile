@@ -1,5 +1,16 @@
-FROM alpine:3.8
-RUN apk -U --no-cache add ca-certificates
+FROM alpine:3.8 as base
+RUN apk add -U ca-certificates
+ADD data.tar.gz /image
+RUN mkdir -p /image/etc/ssl/certs /image/run /image/var/run /image/tmp /image/lib/modules /image/lib/firmware && \
+    cp /etc/ssl/certs/ca-certificates.crt /image/etc/ssl/certs/ca-certificates.crt
+RUN cd image/bin && \
+    rm -f k3s && \
+    ln -s k3s-server k3s
 
-COPY rio /
-WORKDIR /var/lib/rancher/rio
+FROM scratch
+COPY --from=base /image /
+VOLUME /var/lib/rancher/k3s 
+VOLUME /var/lib/cni
+VOLUME /var/log
+ENTRYPOINT ["/bin/k3s"]
+CMD ["agent"]

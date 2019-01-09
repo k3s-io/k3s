@@ -6,21 +6,22 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io/ioutil"
+	net2 "net"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/rancher/k3s/pkg/daemons/config"
+	"github.com/rancher/k3s/pkg/daemons/control"
+	"github.com/rancher/k3s/pkg/tls"
+	v1 "github.com/rancher/k3s/types/apis/k3s.cattle.io/v1"
 	"github.com/rancher/norman"
 	"github.com/rancher/norman/pkg/clientaccess"
 	"github.com/rancher/norman/pkg/dynamiclistener"
 	"github.com/rancher/norman/pkg/resolvehome"
 	"github.com/rancher/norman/types"
-	"github.com/rancher/rio/pkg/daemons/config"
-	"github.com/rancher/rio/pkg/daemons/control"
-	"github.com/rancher/rio/pkg/tls"
-	v1 "github.com/rancher/rio/types/apis/k3s.cattle.io/v1"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/net"
 )
@@ -38,25 +39,29 @@ func resolveDataDir(dataDir string) (string, error) {
 	return resolvehome.Resolve(dataDir)
 }
 
-func StartServer(ctx context.Context, config *Config) error {
+func StartServer(ctx context.Context, config *Config) (string, error) {
 	if err := setupDataDirAndChdir(&config.ControlConfig); err != nil {
-		return err
+		return "", err
 	}
 
 	if err := control.Server(ctx, &config.ControlConfig); err != nil {
-		return errors.Wrap(err, "starting kubernetes")
+		return "", errors.Wrap(err, "starting kubernetes")
 	}
 
 	certs, err := startNorman(ctx, &config.TLSConfig, &config.ControlConfig)
 	if err != nil {
-		return errors.Wrap(err, "starting tls server")
+		return "", errors.Wrap(err, "starting tls server")
 	}
 
-	printTokens(certs, config.ControlConfig.NodeConfig.AgentConfig.NodeIP, &config.TLSConfig, &config.ControlConfig)
+	ip, err := net.ChooseHostInterface()
+	if err != nil {
+		ip = net2.ParseIP("127.0.0.1")
+	}
+	printTokens(certs, ip.String(), &config.TLSConfig, &config.ControlConfig)
 
 	writeKubeConfig(certs, &config.TLSConfig, &config.ControlConfig)
 
-	return nil
+	return certs, nil
 }
 
 func startNorman(ctx context.Context, tlsConfig *dynamiclistener.UserConfig, config *config.Control) (string, error) {
@@ -203,7 +208,7 @@ func printToken(httpsPort int, advertiseIP, prefix, file, cmd string) {
 		ip = hostIP.String()
 	}
 
-	logrus.Infof("%s rio %s -s https://%s:%d -t %s", prefix, cmd, ip, httpsPort, token)
+	logrus.Infof("%s k3s %s -s https://%s:%d -t %s", prefix, cmd, ip, httpsPort, token)
 }
 
 func FormatToken(token string, certs string) string {

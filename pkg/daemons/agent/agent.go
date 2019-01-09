@@ -3,10 +3,12 @@ package agent
 import (
 	"context"
 	"math/rand"
+	"path/filepath"
 	"time"
 
-	"github.com/rancher/rio/pkg/daemons/config"
+	"k8s.io/apimachinery/pkg/util/net"
 
+	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apiserver/pkg/util/logs"
 	app2 "k8s.io/kubernetes/cmd/kube-proxy/app"
@@ -18,21 +20,10 @@ import (
 func Agent(config *config.Agent) error {
 	rand.Seed(time.Now().UTC().UnixNano())
 
-	prepare(config)
-
 	kubelet(config)
 	kubeProxy(config)
 
 	return nil
-}
-
-func prepare(config *config.Agent) {
-	if config.CNIBinDir == "" {
-		config.CNIBinDir = "/opt/cni/bin"
-	}
-	if config.CNIConfDir == "" {
-		config.CNIConfDir = "/etc/cni/net.d"
-	}
 }
 
 func kubeProxy(config *config.Agent) {
@@ -52,7 +43,7 @@ func kubeProxy(config *config.Agent) {
 	}()
 }
 
-func kubelet(config *config.Agent) {
+func kubelet(cfg *config.Agent) {
 	command := app.NewKubeletCommand(context.Background().Done())
 	logs.InitLogs()
 	defer logs.FlushLogs()
@@ -62,37 +53,51 @@ func kubelet(config *config.Agent) {
 		"--read-only-port", "0",
 		"--allow-privileged=true",
 		"--cluster-domain", "cluster.local",
-		"--kubeconfig", config.KubeConfig,
+		"--kubeconfig", cfg.KubeConfig,
 		"--eviction-hard", "imagefs.available<5%,nodefs.available<5%",
 		"--eviction-minimum-reclaim", "imagefs.available=10%,nodefs.available=10%",
-		"--feature-gates=MountPropagation=true",
-		"--node-ip", config.NodeIP,
+		"--node-ip", cfg.NodeIP,
 		"--fail-swap-on=false",
-		"--cgroup-root", "/k3s",
+		//"--cgroup-root", "/k3s",
 		"--cgroup-driver", "cgroupfs",
-		"--cni-conf-dir", config.CNIConfDir,
-		"--cni-bin-dir", config.CNIBinDir,
 	}
-	if len(config.ClusterDNS) > 0 {
-		args = append(args, "--cluster-dns", config.ClusterDNS.String())
+	if cfg.RootDir != "" {
+		args = append(args, "--root-dir", cfg.RootDir)
+		args = append(args, "--cert-dir", filepath.Join(cfg.RootDir, "pki"))
+		args = append(args, "--seccomp-profile-root", filepath.Join(cfg.RootDir, "seccomp"))
 	}
-	if config.RuntimeSocket != "" {
-		args = append(args, "--container-runtime-endpoint", config.RuntimeSocket)
+	if cfg.CNIConfDir != "" {
+		args = append(args, "--cni-conf-dir", cfg.CNIConfDir)
 	}
-	if config.ListenAddress != "" {
-		args = append(args, "--address", config.ListenAddress)
+	if cfg.CNIBinDir != "" {
+		args = append(args, "--cni-bin-dir", cfg.CNIBinDir)
 	}
-	if config.CACertPath != "" {
-		args = append(args, "--anonymous-auth=false", "--client-ca-file", config.CACertPath)
+	if len(cfg.ClusterDNS) > 0 {
+		args = append(args, "--cluster-dns", cfg.ClusterDNS.String())
 	}
-	if config.NodeName != "" {
-		args = append(args, "--hostname-override", config.NodeName)
+	if cfg.RuntimeSocket != "" {
+		args = append(args, "--container-runtime", "remote")
+		args = append(args, "--container-runtime-endpoint", cfg.RuntimeSocket)
 	}
-	args = append(args, config.ExtraKubeletArgs...)
+	if cfg.ListenAddress != "" {
+		args = append(args, "--address", cfg.ListenAddress)
+	}
+	if cfg.CACertPath != "" {
+		args = append(args, "--anonymous-auth=false", "--client-ca-file", cfg.CACertPath)
+	}
+	if cfg.NodeName != "" {
+		args = append(args, "--hostname-override", cfg.NodeName)
+	}
+	defaultIP, err := net.ChooseHostInterface()
+	if err != nil || defaultIP.String() != cfg.NodeIP {
+		args = append(args, "--node-ip", cfg.NodeIP)
+	}
+	args = append(args, cfg.ExtraKubeletArgs...)
 
 	command.SetArgs(args)
 
 	go func() {
+		logrus.Infof("Running kubelet %s", config.ArgString(args))
 		logrus.Fatalf("kubelet exited: %v", command.Execute())
 	}()
 }

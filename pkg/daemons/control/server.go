@@ -22,7 +22,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rancher/rio/pkg/daemons/config"
+	"github.com/rancher/k3s/pkg/daemons/config"
 
 	_ "github.com/mattn/go-sqlite3" // sqlite
 	"github.com/sirupsen/logrus"
@@ -93,81 +93,68 @@ func Server(ctx context.Context, cfg *config.Control) error {
 	return nil
 }
 
-func controllerManager(config *config.Control, runtime *config.ControlRuntime) {
+func controllerManager(cfg *config.Control, runtime *config.ControlRuntime) {
 	args := []string{
 		"--kubeconfig", runtime.KubeConfigSystem,
 		"--leader-elect=true",
 		"--service-account-private-key-file", runtime.ServiceKey,
 		"--allocate-node-cidrs",
-		"--cluster-cidr", config.ClusterIPRange.String(),
+		"--cluster-cidr", cfg.ClusterIPRange.String(),
 		"--root-ca-file", runtime.TokenCA,
 		"--port", "0",
 		"--secure-port", "0",
 	}
-	args = append(args, config.ExtraControllerArgs...)
+	args = append(args, cfg.ExtraControllerArgs...)
 	command := cmapp.NewControllerManagerCommand()
 	command.SetArgs(args)
 
 	go func() {
-		logrus.Infof("Running kube-controller-manager %s", argString(args))
+		logrus.Infof("Running kube-controller-manager %s", config.ArgString(args))
 		logrus.Fatalf("controller-manager exited: %v", command.Execute())
 	}()
 }
 
-type argString []string
-
-func (a argString) String() string {
-	b := strings.Builder{}
-	for _, s := range a {
-		if b.Len() > 0 {
-			b.WriteString(" ")
-		}
-		b.WriteString(s)
-	}
-	return b.String()
-}
-
-func scheduler(config *config.Control, runtime *config.ControlRuntime) {
+func scheduler(cfg *config.Control, runtime *config.ControlRuntime) {
 	args := []string{
 		"--kubeconfig", runtime.KubeConfigSystem,
 		"--port", "0",
 		"--secure-port", "0",
 	}
-	args = append(args, config.ExtraSchedulerAPIArgs...)
+	args = append(args, cfg.ExtraSchedulerAPIArgs...)
 	command := sapp.NewSchedulerCommand()
 	command.SetArgs(args)
 
 	go func() {
-		logrus.Infof("Running kube-scheduler %s", argString(args))
+		logrus.Infof("Running kube-scheduler %s", config.ArgString(args))
 		logrus.Fatalf("scheduler exited: %v", command.Execute())
 	}()
 }
 
-func apiServer(ctx context.Context, config *config.Control, runtime *config.ControlRuntime) (authenticator.Request, http.Handler, error) {
+func apiServer(ctx context.Context, cfg *config.Control, runtime *config.ControlRuntime) (authenticator.Request, http.Handler, error) {
 	var args []string
 
-	if len(config.ETCDEndpoints) > 0 {
+	if len(cfg.ETCDEndpoints) > 0 {
 		args = append(args, "--storage-backend", "etcd3")
-		args = append(args, "--etcd-servers", strings.Join(config.ETCDEndpoints, ","))
-		if config.ETCDKeyFile != "" {
-			args = append(args, "--etcd-keyfile", config.ETCDKeyFile)
+		args = append(args, "--etcd-servers", strings.Join(cfg.ETCDEndpoints, ","))
+		if cfg.ETCDKeyFile != "" {
+			args = append(args, "--etcd-keyfile", cfg.ETCDKeyFile)
 		}
-		if config.ETCDCAFile != "" {
-			args = append(args, "--etcd-cafile", config.ETCDCAFile)
+		if cfg.ETCDCAFile != "" {
+			args = append(args, "--etcd-cafile", cfg.ETCDCAFile)
 		}
-		if config.ETCDCertFile != "" {
-			args = append(args, "--etcd-certfile", config.ETCDCertFile)
+		if cfg.ETCDCertFile != "" {
+			args = append(args, "--etcd-certfile", cfg.ETCDCertFile)
 		}
 	}
 
 	args = append(args, "--allow-privileged=true")
 	args = append(args, "--authorization-mode", strings.Join([]string{modes.ModeNode, modes.ModeRBAC}, ","))
 	args = append(args, "--service-account-signing-key-file", runtime.ServiceKey)
-	args = append(args, "--service-cluster-ip-range", config.ServiceIPRange.String())
-	args = append(args, "--advertise-port", strconv.Itoa(config.AdvertisePort))
+	args = append(args, "--service-cluster-ip-range", cfg.ServiceIPRange.String())
+	args = append(args, "--advertise-port", strconv.Itoa(cfg.AdvertisePort))
 	args = append(args, "--advertise-address", localhostIP.String())
 	args = append(args, "--insecure-port", "0")
-	args = append(args, "--secure-port", strconv.Itoa(config.ListenPort))
+	args = append(args, "--secure-port", strconv.Itoa(cfg.ListenPort))
 	args = append(args, "--bind-address", localhostIP.String())
 	args = append(args, "--tls-cert-file", runtime.TLSCert)
 	args = append(args, "--tls-private-key-file", runtime.TLSKey)
@@ -175,15 +162,15 @@ func apiServer(ctx context.Context, config *config.Control, runtime *config.Cont
 	args = append(args, "--service-account-issuer", "k3s")
 	args = append(args, "--api-audiences", "unknown")
 	args = append(args, "--basic-auth-file", runtime.PasswdFile)
-	//args = append(args, "--kubelet-client-certificate", runtime.NodeCert)
-	//args = append(args, "--kubelet-client-key", runtime.NodeKey)
+	args = append(args, "--kubelet-client-certificate", runtime.NodeCert)
+	args = append(args, "--kubelet-client-key", runtime.NodeKey)
 
-	args = append(args, config.ExtraAPIArgs...)
+	args = append(args, cfg.ExtraAPIArgs...)
 	command := app.NewAPIServerCommand(ctx.Done())
 	command.SetArgs(args)
 
 	go func() {
-		logrus.Infof("Running kube-apiserver %s", argString(args))
+		logrus.Infof("Running kube-apiserver %s", config.ArgString(args))
 		logrus.Fatalf("apiserver exited: %v", command.Execute())
 	}()
 
@@ -201,6 +188,10 @@ func defaults(config *config.Control) {
 	if config.ServiceIPRange == nil {
 		_, serviceIPNet, _ := net.ParseCIDR("10.43.0.0/16")
 		config.ServiceIPRange = serviceIPNet
+	}
+
+	if len(config.ClusterDNS) == 0 {
+		config.ClusterDNS = net.ParseIP("10.43.0.10")
 	}
 
 	if config.AdvertisePort == 0 {

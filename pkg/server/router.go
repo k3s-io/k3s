@@ -3,11 +3,9 @@ package server
 import (
 	"net/http"
 
-	"github.com/rancher/rio/pkg/daemons/config"
-
-	"k8s.io/apimachinery/pkg/util/json"
-
 	"github.com/gorilla/mux"
+	"github.com/rancher/k3s/pkg/daemons/config"
+	"k8s.io/apimachinery/pkg/util/json"
 )
 
 type CACertsGetter func() (string, error)

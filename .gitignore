@@ -12,7 +12,8 @@
 /image/agent
 /image/go_build_agent
 /image/main.squashfs
-/package/rio
+/package/k3s
+/pkg/data/zz_generated_bindata.go
 __pycache__
 /tests/.pytest_cache/
 /tests/.tox/

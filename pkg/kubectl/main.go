@@ -7,17 +7,12 @@ import (
 	"os"
 	"time"
 
-	"github.com/docker/docker/pkg/reexec"
-	"github.com/rancher/rio/pkg/server"
+	"github.com/rancher/k3s/pkg/server"
 	"github.com/spf13/pflag"
 	utilflag "k8s.io/apiserver/pkg/util/flag"
 	"k8s.io/apiserver/pkg/util/logs"
 	"k8s.io/kubernetes/pkg/kubectl/cmd"
 )
-
-func init() {
-	reexec.Register("kubectl", Main)
-}
 
 func Main() {
 	kubenv := os.Getenv("KUBECONFIG")

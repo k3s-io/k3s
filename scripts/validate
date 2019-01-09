@@ -5,18 +5,14 @@ cd $(dirname $0)/..
 
 echo Running validation
 
-if grep -r '^[[:space:]]*\[\[.*]][[:space:]]*$' tests; then
-    echo "Add \"|| false\" to bats tests in any place you use [[ ... ]]"
-    exit 1
-fi
-
 PACKAGES="$(go list ./...)"
 
-echo Running: go vet
-go vet ${PACKAGES}
+#echo Running: go vet
+#go vet ${PACKAGES}
 echo Running: gometalinter
 for i in ${PACKAGES}; do
     if [ -n "$(gometalinter $i | \
+        grep -v 'pkg/data/zz_generated_bindata.go' | \
         grep -v 'should have comment.*or be unexported' | \
         grep -v 'cli/cmd.*don.t use underscores in Go name' | \
         grep -v 'cli/cmd.*should be DNS' | \
@@ -26,4 +22,6 @@ for i in ${PACKAGES}; do
 done
 test -z "$failed"
 echo Running: go fmt
-test -z "$(go fmt ${PACKAGES} | tee /dev/stderr)"
+test -z "$(go fmt ${PACKAGES} | \
+        grep -v 'pkg/data/zz_generated_bindata.go' | \
+        tee /dev/stderr)"

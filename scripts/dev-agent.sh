@@ -1,14 +1,18 @@
 #!/bin/bash
 set -e
 
-cd $(dirname $0)/../bin
+cd $(dirname $0)/..
 
 # Prime sudo
-sudo echo Compiling CLI
-go build -tags "k8s no_etcd" -o rio-agent ../cli/main.go
+sudo echo Compiling
 
-echo Building image and agent
-../image/build
+if [ ! -e bin/containerd ]; then
+    ./scripts/build
+    ./scripts/package
+else
+    rm -f ./bin/k3s-agent
+    go build -tags "apparmor seccomp" -o ./bin/k3s-agent ./cmd/agent/main.go
+fi
 
-echo Running
-exec sudo ENTER_ROOT=../image/main.squashfs ./rio-agent --debug agent -s https://localhost:7443 -t $(<${HOME}/.rancher/rio/server/node-token)
+echo Starting agent
+sudo env "PATH=$(pwd)/bin:$PATH" ./bin/k3s-agent agent -s https://localhost:6443 -t $(<${HOME}/.rancher/k3s/server/node-token) "$@"

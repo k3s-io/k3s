@@ -3,6 +3,9 @@ set -e
 
 cd $(dirname $0)
 
+if [ ! -e ../bin/k3s-server ]; then
+    ./build
+fi
+
 ./package-cli
 ./package-image
-./package-tar

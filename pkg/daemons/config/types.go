@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"net"
 	"net/http"
+	"strings"
 
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 )
@@ -11,18 +12,28 @@ import (
 type Node struct {
 	Docker        bool
 	NoFlannel     bool
-	NoCoreDNS     bool
+	FlannelConf   string
 	LocalAddress  string
+	Containerd    Containerd
 	AgentConfig   Agent
 	CACerts       []byte
 	ServerAddress string
 	Certificate   *tls.Certificate
 }
 
+type Containerd struct {
+	Address string
+	Root    string
+	State   string
+	Config  string
+	Opt     string
+}
+
 type Agent struct {
 	NodeName           string
 	ClusterCIDR        net.IPNet
 	ClusterDNS         net.IP
+	RootDir            string
 	KubeConfig         string
 	NodeIP             string
 	RuntimeSocket      string
@@ -39,6 +50,8 @@ type Control struct {
 	ListenPort            int
 	ClusterIPRange        *net.IPNet
 	ServiceIPRange        *net.IPNet
+	ClusterDNS            net.IP
+	NoCoreDNS             bool
 	DataDir               string
 	ETCDEndpoints         []string
 	ETCDKeyFile           string
@@ -48,7 +61,7 @@ type Control struct {
 	ExtraAPIArgs          []string
 	ExtraControllerArgs   []string
 	ExtraSchedulerAPIArgs []string
-	NodeConfig            Node
+	//NodeConfig            Node
 
 	Runtime *ControlRuntime `json:"-"`
 }
@@ -71,4 +84,17 @@ type ControlRuntime struct {
 	Handler       http.Handler
 	Tunnel        http.Handler
 	Authenticator authenticator.Request
+}
+
+type ArgString []string
+
+func (a ArgString) String() string {
+	b := strings.Builder{}
+	for _, s := range a {
+		if b.Len() > 0 {
+			b.WriteString(" ")
+		}
+		b.WriteString(s)
+	}
+	return b.String()
 }
