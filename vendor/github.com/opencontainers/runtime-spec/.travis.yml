@@ -1,0 +1,25 @@
+language: go
+go:
+  - "1.10.x"
+  - "1.9.x"
+
+sudo: required
+
+services:
+  - docker
+
+before_install:
+  - make install.tools
+  - docker pull vbatts/pandoc
+  - go get -d ./schema/...
+
+install: true
+
+script:
+  - env | grep TRAVIS_
+  - make .govet
+  - make .golint
+  - echo "${TRAVIS_COMMIT_RANGE} -> ${TRAVIS_COMMIT_RANGE/.../..} (travis-ci/travis-ci#4596)"
+  - TRAVIS_COMMIT_RANGE="${TRAVIS_COMMIT_RANGE/.../..}" make .gitvalidation
+  - make docs
+  - make -C schema test

@@ -1,0 +1,5 @@
+dist/*.aci
+dist/*.docker
+dist/*.tar.gz
+.git
+vendor

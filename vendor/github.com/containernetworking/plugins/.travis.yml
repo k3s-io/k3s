@@ -1,0 +1,37 @@
+language: go
+sudo: required
+dist: trusty
+
+go:
+  - 1.8.x
+  - 1.9.x
+
+env:
+  global:
+  - PATH=$GOROOT/bin:$GOPATH/bin:$PATH
+  matrix:
+  - TARGET=amd64
+  - TARGET=arm
+  - TARGET=arm64
+  - TARGET=ppc64le
+  - TARGET=s390x
+
+matrix:
+  fast_finish: true
+
+install:
+  - go get github.com/onsi/ginkgo/ginkgo
+
+script:
+ - |
+   if [ "${TARGET}" == "amd64" ]; then
+     GOARCH="${TARGET}" ./test.sh
+   else
+     GOARCH="${TARGET}" ./build.sh
+   fi
+
+notifications:
+  email: false
+
+git:
+  depth: 9999999

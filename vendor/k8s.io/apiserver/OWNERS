@@ -1,0 +1,22 @@
+approvers:
+- lavalamp
+- smarterclayton
+- deads2k
+- sttts
+- liggitt
+reviewers:
+- lavalamp
+- smarterclayton
+- wojtek-t
+- deads2k
+- caesarxuchao
+- liggitt
+- sttts
+- ncdc
+- tallclair
+- enj
+- hzxuzhonghu
+- CaoShuFeng
+labels:
+- sig/api-machinery
+- area/apiserver

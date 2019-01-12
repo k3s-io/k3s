@@ -1,0 +1,13 @@
+approvers:
+- deads2k
+- lavalamp
+- liggitt
+- sttts
+reviewers:
+- deads2k
+- lavalamp
+- liggitt
+- sttts
+labels:
+- sig/api-machinery
+- area/apiserver

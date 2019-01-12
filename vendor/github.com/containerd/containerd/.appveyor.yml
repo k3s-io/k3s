@@ -1,0 +1,44 @@
+version: "{build}"
+
+image: Visual Studio 2017
+
+clone_folder: c:\gopath\src\github.com\containerd\containerd
+
+branches:
+  only:
+    - master
+    - release/1.2
+
+environment:
+  GOPATH: C:\gopath
+  CGO_ENABLED: 1
+  matrix:
+    - GO_VERSION: 1.10
+
+before_build:
+  - choco install -y mingw --version 5.3.0
+  # Install Go
+  - rd C:\Go /s /q
+  - appveyor DownloadFile https://storage.googleapis.com/golang/go%GO_VERSION%.windows-amd64.zip
+  - 7z x go%GO_VERSION%.windows-amd64.zip -oC:\ >nul
+  - go version
+  - choco install codecov
+  # Print host version. TODO: Remove this when containerd has a way to get host version
+  - ps: $psversiontable
+
+build_script:
+  - bash.exe -elc "export PATH=/c/tools/mingw64/bin:/c/gopath/bin:$PATH;
+        script/setup/install-dev-tools;
+        mingw32-make.exe check"
+  - bash.exe -elc "export PATH=/c/tools/mingw64/bin:$PATH ; mingw32-make.exe build binaries"
+
+test_script:
+  # TODO: need an equivalent of TRAVIS_COMMIT_RANGE
+  # - GIT_CHECK_EXCLUDE="./vendor" TRAVIS_COMMIT_RANGE="${TRAVIS_COMMIT_RANGE/.../..}" C:\MinGW\bin\mingw32-make.exe dco
+  - bash.exe -lc "export PATH=/c/tools/mingw64/bin:/c/gopath/src/github.com/containerd/containerd/bin:$PATH ; mingw32-make.exe coverage root-coverage"
+  - bash.exe -elc "export PATH=/c/tools/mingw64/bin:/c/gopath/src/github.com/containerd/containerd/bin:$PATH ; mingw32-make.exe integration"
+  # Run the integration suite a second time. See discussion in github.com/containerd/containerd/pull/1759
+  - bash.exe -elc "export PATH=/c/tools/mingw64/bin:/c/gopath/src/github.com/containerd/containerd/bin:$PATH; TESTFLAGS_PARALLEL=1 mingw32-make.exe integration"
+
+on_success:
+  codecov --flag windows -f coverage.txt

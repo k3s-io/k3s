@@ -1,0 +1,19 @@
+language: go
+go:
+  - 1.8.x
+  - 1.9.x
+  - tip
+  - master
+
+env:
+  global:
+    - BUILDTAGS="selinux"
+
+before_install:
+  - go get -u github.com/golang/lint/golint
+  - go get -u github.com/vbatts/git-validation
+
+script:
+  - git-validation -run DCO,short-subject -v -range ${TRAVIS_COMMIT_RANGE}
+  - GOOS=linux make BUILDTAGS="${BUILDTAGS}" lint test
+  - make BUILDTAGS="" lint test

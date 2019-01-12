@@ -1,0 +1,26 @@
+sudo: required
+
+services:
+    - docker
+
+language: go
+
+env:
+  global:
+    - TOOLS_CMD=golang.org/x/tools/cmd
+    - PATH=$GOROOT/bin:$PATH
+
+install:
+ - go get ${TOOLS_CMD}/cover
+
+script:
+ - make test
+
+after_success:
+  - if [ "$TRAVIS_BRANCH" = "master" ]; then
+    docker login -u="$QUAY_USERNAME" -p="$QUAY_PASSWORD" quay.io;
+    make flannel-git;
+    fi
+
+notifications:
+  email: false

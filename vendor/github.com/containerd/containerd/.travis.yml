@@ -1,0 +1,102 @@
+dist: trusty
+sudo: required
+# setup travis so that we can run containers for integration tests
+services:
+  - docker
+
+language: go
+
+go:
+  - "1.10.x"
+
+go_import_path: github.com/containerd/containerd
+
+addons:
+  apt:
+    packages:
+      - btrfs-tools
+      - libnl-3-dev
+      - libnet-dev
+      - protobuf-c-compiler
+      # - protobuf-compiler
+      - python-minimal
+      - libcap-dev
+      - libaio-dev
+      - libprotobuf-c0-dev
+      - libprotobuf-dev
+      - socat
+
+env:
+  - TRAVIS_GOOS=linux TEST_RUNTIME=io.containerd.runc.v1 TRAVIS_CGO_ENABLED=1
+  - TRAVIS_GOOS=linux TEST_RUNTIME=io.containerd.runtime.v1.linux TRAVIS_CGO_ENABLED=1
+  - TRAVIS_GOOS=darwin TRAVIS_CGO_ENABLED=0
+
+before_install:
+  - uname -r
+  - sudo apt-get -q update
+  - sudo apt-get install -y libseccomp-dev/trusty-backports
+
+install:
+  - sudo PATH=$PATH GOPATH=$GOPATH script/setup/install-protobuf
+  - sudo chmod +x /usr/local/bin/protoc
+  - sudo chmod og+rx /usr/local/include/google /usr/local/include/google/protobuf /usr/local/include/google/protobuf/compiler
+  - sudo chmod -R og+r /usr/local/include/google/protobuf/
+  - protoc --version
+  - go get -u github.com/vbatts/git-validation
+  - go get -u github.com/kunalkushwaha/ltag
+  - go get -u github.com/LK4D4/vndr
+  - if [ "$TRAVIS_GOOS" = "linux" ]; then sudo PATH=$PATH GOPATH=$GOPATH script/setup/install-runc ; fi
+  - if [ "$TRAVIS_GOOS" = "linux" ]; then sudo PATH=$PATH GOPATH=$GOPATH script/setup/install-cni ; fi
+  - if [ "$TRAVIS_GOOS" = "linux" ]; then sudo PATH=$PATH GOPATH=$GOPATH script/setup/install-critools ; fi
+  - if [ "$TRAVIS_GOOS" = "linux" ]; then wget https://github.com/checkpoint-restore/criu/archive/v3.7.tar.gz -O /tmp/criu.tar.gz ; fi
+  - if [ "$TRAVIS_GOOS" = "linux" ]; then tar -C /tmp/ -zxf /tmp/criu.tar.gz ; fi
+  - if [ "$TRAVIS_GOOS" = "linux" ]; then cd /tmp/criu-3.7 && sudo make install-criu ; fi
+  - cd $TRAVIS_BUILD_DIR
+
+before_script:
+  - pushd ..; git clone https://github.com/containerd/project; popd
+
+script:
+  - export GOOS=$TRAVIS_GOOS
+  - export CGO_ENABLED=$TRAVIS_CGO_ENABLED
+  - DCO_VERBOSITY=-q ../project/script/validate/dco
+  - ../project/script/validate/fileheader ../project/
+  - ../project/script/validate/vendor
+  - GOOS=linux script/setup/install-dev-tools
+  - go build -i .
+  - make check
+  - if [ "$GOOS" = "linux" ]; then make check-protos check-api-descriptors; fi
+  - make build
+  - make binaries
+  - if [ "$GOOS" = "linux" ]; then sudo make install ; fi
+  - if [ "$GOOS" = "linux" ]; then make coverage ; fi
+  - if [ "$GOOS" = "linux" ]; then sudo PATH=$PATH GOPATH=$GOPATH make root-coverage ; fi
+  - if [ "$GOOS" = "linux" ]; then sudo PATH=$PATH GOPATH=$GOPATH make integration ; fi
+  # Run the integration suite a second time. See discussion in github.com/containerd/containerd/pull/1759
+  - if [ "$GOOS" = "linux" ]; then sudo PATH=$PATH GOPATH=$GOPATH TESTFLAGS_PARALLEL=1 make integration ; fi
+  - if [ "$GOOS" = "linux" ]; then
+      sudo PATH=$PATH containerd -log-level debug &> /tmp/containerd-cri.log &
+      sudo ctr version ;
+      sudo PATH=$PATH GOPATH=$GOPATH critest --runtime-endpoint=/var/run/containerd/containerd.sock --parallel=8 ;
+      TEST_RC=$? ;
+      test $TEST_RC -ne 0 && cat /tmp/containerd-cri.log ;
+      sudo pkill containerd ;
+      test $TEST_RC -eq 0 || /bin/false ;
+    fi
+
+after_success:
+  - bash <(curl -s https://codecov.io/bash) -F linux
+
+before_deploy:
+  - make release
+
+deploy:
+  provider: releases
+  api_key:
+    secure: HO+WSIVVUMMsbU74x+YyFsTP3ahqnR4xjwKAziedJ5lZXKJszQBhiYTFmcTeVBoouNjTISd07GQzpoLChuGC20U3+1NbT+CkK8xWR/x1ao2D3JY3Ds6AD9ubWRNWRLptt/xOn5Vq3F8xZyUYchwvDMl4zKCuTKxQGVdHKsINb2DehKcP5cVL6MMvqzEdfj2g99vqXAqs8uuo6dOmvxmHV43bfzDaAJSabjZZs6TKlWTqCQMet8uxyx2Dmjl2lxLwdqv12oJdrszacasn41NYuEyHI2bXyef1mhWGYN4n9bU/Y5winctZ8DOSOZvYg/2ziAaUN0+CTn1IESwVesrPz23P2Sy7wdLxu8dSIZ2yUHl7OsA5T5a5rDchAGguRVNBWvoGtuepEhdRacxTQUo1cMFZsEXjgRKKjdfc1emYQPVdN8mBv8GJwndty473ZXdvFt5R0kNVFtvWuYCa6UYJD2cKrsPSAfbZCDC/LiR3FOoTaUPMZUVkR2ACEO7Dn4+KlmBajqT40Osk/A7k1XA/TzVhMIpLtE0Vk2DfPmGsjCv8bC+MFd+R2Sc8SFdE92oEWRdoPQY5SxMYQtGxA+cbKVlT1kSw6y80yEbx5JZsBnT6+NTHwmDO3kVU9ztLdawOozTElKNAK8HoAyFmzIZ3wL64oThuDrv/TUuY8Iyn814=
+  file_glob: true
+  file: releases/*.tar.gz
+  skip_cleanup: true
+  on:
+    repo: containerd/containerd
+    tags: true

@@ -1,0 +1,31 @@
+# This dockerfile is used to test containerd within a container
+#
+# usage:
+# 1.) docker build -t containerd-test -f Dockerfile.test ../
+# 2.) docker run -it --privileged -v /tmp:/tmp --tmpfs /var/lib/containerd-test containerd-test  bash
+# 3.) $ make binaries install test
+#
+
+# Install proto3
+FROM golang:1.10 AS proto3
+RUN apt-get update && apt-get install -y autoconf automake g++ libtool unzip
+COPY script/setup/install-protobuf install-protobuf
+RUN ./install-protobuf
+
+# Install runc
+FROM golang:1.10 AS runc
+RUN apt-get update && apt-get install -y curl libseccomp-dev
+COPY vendor.conf /go/src/github.com/containerd/containerd/vendor.conf
+COPY script/setup/install-runc install-runc
+RUN ./install-runc
+
+FROM golang:1.10
+RUN apt-get update && apt-get install -y btrfs-tools gcc git libseccomp-dev make xfsprogs
+
+COPY --from=proto3 /usr/local/bin/protoc /usr/local/bin/protoc
+COPY --from=proto3 /usr/local/include/google /usr/local/include/google
+
+COPY --from=runc /usr/local/sbin/runc /usr/local/go/bin/runc
+COPY . /go/src/github.com/containerd/containerd
+
+WORKDIR /go/src/github.com/containerd/containerd

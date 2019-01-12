@@ -1,0 +1,49 @@
+git:
+  depth: 150
+
+language: go
+
+sudo: required
+
+services:
+    - docker
+
+cache:
+    directories:
+        - "${HOME}/google-cloud-sdk/"
+
+before_install:
+    # libseccomp in trusty is not new enough, need backports version.
+    - sudo sh -c "echo 'deb http://archive.ubuntu.com/ubuntu trusty-backports main restricted universe multiverse' > /etc/apt/sources.list.d/backports.list"
+    - sudo apt-get update
+
+install:
+    - sudo apt-get install btrfs-tools
+    - sudo apt-get install libseccomp2/trusty-backports
+    - sudo apt-get install libseccomp-dev/trusty-backports
+    - sudo apt-get install socat
+
+before_script:
+    - export PATH=$HOME/gopath/bin:$PATH
+
+jobs:
+  include:
+    - stage: Build
+      script:
+        - make install.tools
+        - make .gitvalidation
+        - make binaries
+      go: "1.10.x"
+    - stage: Test
+      script:
+        - make install.deps
+        - make containerd
+        - sudo PATH=$PATH GOPATH=$GOPATH make install-containerd
+        - make test
+        - make test-integration
+        - make test-cri
+      after_script:
+        # Abuse travis to preserve the log.
+        - cat /tmp/test-integration/containerd.log
+        - cat /tmp/test-cri/containerd.log
+      go: "1.10.x"
