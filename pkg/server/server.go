@@ -9,12 +9,14 @@ import (
 	net2 "net"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/pkg/errors"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/daemons/control"
+	"github.com/rancher/k3s/pkg/deploy"
 	"github.com/rancher/k3s/pkg/tls"
 	v1 "github.com/rancher/k3s/types/apis/k3s.cattle.io/v1"
 	"github.com/rancher/norman"
@@ -89,12 +91,25 @@ func startNorman(ctx context.Context, tlsConfig *dynamiclistener.UserConfig, con
 		CRDs: map[*types.APIVersion][]string{
 			&v1.APIVersion: {
 				v1.ListenerConfigGroupVersionKind.Kind,
+				v1.AddonGroupVersionKind.Kind,
 			},
 		},
 		IgnoredKubeConfigEnv: true,
 		GlobalSetup: func(ctx context.Context) (context.Context, error) {
 			tlsServer, err = tls.NewServer(ctx, v1.ClientsFrom(ctx).ListenerConfig, *tlsConfig)
 			return ctx, err
+		},
+		MasterControllers: []norman.ControllerRegister{
+			func(ctx context.Context) error {
+				dataDir := filepath.Join(config.DataDir, "manifests")
+				if err := deploy.Stage(dataDir); err != nil {
+					return err
+				}
+				if err := deploy.WatchFiles(ctx, config.Skips, dataDir); err != nil {
+					return err
+				}
+				return nil
+			},
 		},
 	}
 
@@ -136,7 +151,7 @@ func printTokens(certs, advertiseIP string, tlsConfig *dynamiclistener.UserConfi
 	}
 
 	if len(nodeFile) > 0 {
-		printToken(tlsConfig.HTTPSPort, advertiseIP, "To join node to cluster:", nodeFile, "agent")
+		printToken(tlsConfig.HTTPSPort, advertiseIP, "To join node to cluster:", "agent")
 	}
 
 }
@@ -151,8 +166,21 @@ func writeKubeConfig(certs string, tlsConfig *dynamiclistener.UserConfig, config
 		def = false
 	}
 
+	if config.KubeConfigOutput != "" {
+		kubeConfig = config.KubeConfigOutput
+	}
+
 	if err = clientaccess.AgentAccessInfoToKubeConfig(kubeConfig, url, clientToken); err != nil {
 		logrus.Errorf("Failed to generate kubeconfig: %v", err)
+	}
+
+	if config.KubeConfigMode != "" {
+		mode, err := strconv.ParseInt(config.KubeConfigMode, 8, 0)
+		if err == nil {
+			os.Chmod(kubeConfig, os.FileMode(mode))
+		} else {
+			logrus.Errorf("failed to set %s to mode %s: %v", kubeConfig, mode, err)
+		}
 	}
 
 	logrus.Infof("Wrote kubeconfig %s", kubeConfig)
@@ -193,12 +221,7 @@ func readTokenFile(file string) (string, error) {
 	return strings.TrimSpace(string(content)), nil
 }
 
-func printToken(httpsPort int, advertiseIP, prefix, file, cmd string) {
-	token, err := readTokenFile(file)
-	if err != nil {
-		logrus.Error(err)
-	}
-
+func printToken(httpsPort int, advertiseIP, prefix, cmd string) {
 	ip := advertiseIP
 	if ip == "" {
 		hostIP, err := net.ChooseHostInterface()
@@ -208,7 +231,7 @@ func printToken(httpsPort int, advertiseIP, prefix, file, cmd string) {
 		ip = hostIP.String()
 	}
 
-	logrus.Infof("%s k3s %s -s https://%s:%d -t %s", prefix, cmd, ip, httpsPort, token)
+	logrus.Infof("%s k3s %s -s https://%s:%d -t ${NODE_TOKEN}", prefix, cmd, ip, httpsPort)
 }
 
 func FormatToken(token string, certs string) string {

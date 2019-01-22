@@ -21,12 +21,14 @@ type Interface interface {
 	controller.Starter
 
 	ListenerConfigsGetter
+	AddonsGetter
 }
 
 type Clients struct {
 	Interface Interface
 
 	ListenerConfig ListenerConfigClient
+	Addon          AddonClient
 }
 
 type Client struct {
@@ -35,6 +37,7 @@ type Client struct {
 	starters   []controller.Starter
 
 	listenerConfigControllers map[string]ListenerConfigController
+	addonControllers          map[string]AddonController
 }
 
 func Factory(ctx context.Context, config rest.Config) (context.Context, controller.Starter, error) {
@@ -73,6 +76,9 @@ func NewClientsFromInterface(iface Interface) *Clients {
 		ListenerConfig: &listenerConfigClient2{
 			iface: iface.ListenerConfigs(""),
 		},
+		Addon: &addonClient2{
+			iface: iface.Addons(""),
+		},
 	}
 }
 
@@ -90,6 +96,7 @@ func NewForConfig(config rest.Config) (Interface, error) {
 		restClient: restClient,
 
 		listenerConfigControllers: map[string]ListenerConfigController{},
+		addonControllers:          map[string]AddonController{},
 	}, nil
 }
 
@@ -112,6 +119,19 @@ type ListenerConfigsGetter interface {
 func (c *Client) ListenerConfigs(namespace string) ListenerConfigInterface {
 	objectClient := objectclient.NewObjectClient(namespace, c.restClient, &ListenerConfigResource, ListenerConfigGroupVersionKind, listenerConfigFactory{})
 	return &listenerConfigClient{
+		ns:           namespace,
+		client:       c,
+		objectClient: objectClient,
+	}
+}
+
+type AddonsGetter interface {
+	Addons(namespace string) AddonInterface
+}
+
+func (c *Client) Addons(namespace string) AddonInterface {
+	objectClient := objectclient.NewObjectClient(namespace, c.restClient, &AddonResource, AddonGroupVersionKind, addonFactory{})
+	return &addonClient{
 		ns:           namespace,
 		client:       c,
 		objectClient: objectClient,

@@ -1,6 +1,7 @@
 package control
 
 import (
+	"bufio"
 	"context"
 	cryptorand "crypto/rand"
 	"crypto/rsa"
@@ -23,8 +24,6 @@ import (
 	"time"
 
 	"github.com/rancher/k3s/pkg/daemons/config"
-
-	_ "github.com/mattn/go-sqlite3" // sqlite
 	"github.com/sirupsen/logrus"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 	certutil "k8s.io/client-go/util/cert"
@@ -96,13 +95,15 @@ func Server(ctx context.Context, cfg *config.Control) error {
 func controllerManager(cfg *config.Control, runtime *config.ControlRuntime) {
 	args := []string{
 		"--kubeconfig", runtime.KubeConfigSystem,
-		"--leader-elect=true",
 		"--service-account-private-key-file", runtime.ServiceKey,
 		"--allocate-node-cidrs",
 		"--cluster-cidr", cfg.ClusterIPRange.String(),
 		"--root-ca-file", runtime.TokenCA,
 		"--port", "0",
 		"--secure-port", "0",
+	}
+	if cfg.NoLeaderElect {
+		args = append(args, "--leader-elect=false")
 	}
 	args = append(args, cfg.ExtraControllerArgs...)
 	command := cmapp.NewControllerManagerCommand()
@@ -119,6 +120,9 @@ func scheduler(cfg *config.Control, runtime *config.ControlRuntime) {
 		"--kubeconfig", runtime.KubeConfigSystem,
 		"--port", "0",
 		"--secure-port", "0",
+	}
+	if cfg.NoLeaderElect {
+		args = append(args, "--leader-elect=false")
 	}
 	args = append(args, cfg.ExtraSchedulerAPIArgs...)
 	command := sapp.NewSchedulerCommand()
@@ -299,9 +303,47 @@ func readTokens(runtime *config.ControlRuntime) error {
 	return nil
 }
 
+func ensureNodeToken(config *config.Control, runtime *config.ControlRuntime) error {
+	if config.ClusterSecret == "" {
+		return nil
+	}
+
+	f, err := os.Open(runtime.PasswdFile)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	buf := &strings.Builder{}
+	scan := bufio.NewScanner(f)
+	for scan.Scan() {
+		line := scan.Text()
+		parts := strings.Split(line, ",")
+		if len(parts) < 4 {
+			continue
+		}
+		if parts[1] == "node" {
+			if parts[0] == config.ClusterSecret {
+				return nil
+			}
+			parts[0] = config.ClusterSecret
+			line = strings.Join(parts, ",")
+		}
+		buf.WriteString(line)
+		buf.WriteString("\n")
+	}
+
+	if scan.Err() != nil {
+		return scan.Err()
+	}
+
+	f.Close()
+	return ioutil.WriteFile(runtime.PasswdFile, []byte(buf.String()), 0600)
+}
+
 func genUsers(config *config.Control, runtime *config.ControlRuntime) error {
 	if s, err := os.Stat(runtime.PasswdFile); err == nil && s.Size() > 0 {
-		return nil
+		return ensureNodeToken(config, runtime)
 	}
 
 	adminToken, err := getToken()
@@ -315,6 +357,10 @@ func genUsers(config *config.Control, runtime *config.ControlRuntime) error {
 	nodeToken, err := getToken()
 	if err != nil {
 		return err
+	}
+
+	if config.ClusterSecret != "" {
+		nodeToken = config.ClusterSecret
 	}
 
 	passwd := fmt.Sprintf(`%s,admin,admin,system:masters

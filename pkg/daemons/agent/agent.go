@@ -1,15 +1,17 @@
 package agent
 
 import (
+	"bufio"
 	"context"
 	"math/rand"
+	"os"
 	"path/filepath"
+	"strings"
 	"time"
-
-	"k8s.io/apimachinery/pkg/util/net"
 
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/sirupsen/logrus"
+	"k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/apiserver/pkg/util/logs"
 	app2 "k8s.io/kubernetes/cmd/kube-proxy/app"
 	"k8s.io/kubernetes/cmd/kubelet/app"
@@ -56,7 +58,6 @@ func kubelet(cfg *config.Agent) {
 		"--kubeconfig", cfg.KubeConfig,
 		"--eviction-hard", "imagefs.available<5%,nodefs.available<5%",
 		"--eviction-minimum-reclaim", "imagefs.available=10%,nodefs.available=10%",
-		"--node-ip", cfg.NodeIP,
 		"--fail-swap-on=false",
 		//"--cgroup-root", "/k3s",
 		"--cgroup-driver", "cgroupfs",
@@ -92,6 +93,10 @@ func kubelet(cfg *config.Agent) {
 	if err != nil || defaultIP.String() != cfg.NodeIP {
 		args = append(args, "--node-ip", cfg.NodeIP)
 	}
+	if !hasCFS() {
+		logrus.Warn("Disabling CPU quotas due to missing cpu.cfs_period_us")
+		args = append(args, "--cpu-cfs-quota=false")
+	}
 	args = append(args, cfg.ExtraKubeletArgs...)
 
 	command.SetArgs(args)
@@ -100,4 +105,31 @@ func kubelet(cfg *config.Agent) {
 		logrus.Infof("Running kubelet %s", config.ArgString(args))
 		logrus.Fatalf("kubelet exited: %v", command.Execute())
 	}()
+}
+
+func hasCFS() bool {
+	f, err := os.Open("/proc/self/cgroup")
+	if err != nil {
+		return false
+	}
+	defer f.Close()
+
+	scan := bufio.NewScanner(f)
+	for scan.Scan() {
+		parts := strings.Split(scan.Text(), ":")
+		if len(parts) < 3 {
+			continue
+		}
+		systems := strings.Split(parts[1], ",")
+		for _, system := range systems {
+			if system == "cpu" {
+				p := filepath.Join("/sys/fs/cgroup", parts[1], parts[2], "cpu.cfs_period_us")
+				if _, err := os.Stat(p); err == nil {
+					return true
+				}
+			}
+		}
+	}
+
+	return false
 }

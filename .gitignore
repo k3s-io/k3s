@@ -13,6 +13,7 @@
 /image/go_build_agent
 /image/main.squashfs
 /package/k3s
+/package/data.tar.gz
 /pkg/data/zz_generated_bindata.go
 __pycache__
 /tests/.pytest_cache/

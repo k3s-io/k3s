@@ -6,8 +6,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/sirupsen/logrus"
-
 	"github.com/rancher/k3s/pkg/agent/config"
 	"github.com/rancher/k3s/pkg/agent/containerd"
 	"github.com/rancher/k3s/pkg/agent/flannel"
@@ -17,6 +15,7 @@ import (
 	"github.com/rancher/k3s/pkg/cli/cmds"
 	"github.com/rancher/k3s/pkg/daemons/agent"
 	"github.com/rancher/norman/pkg/clientaccess"
+	"github.com/sirupsen/logrus"
 )
 
 func run(ctx context.Context, cfg cmds.Agent) error {
@@ -64,6 +63,10 @@ func run(ctx context.Context, cfg cmds.Agent) error {
 
 func Run(ctx context.Context, cfg cmds.Agent) error {
 	cfg.DataDir = filepath.Join(cfg.DataDir, "agent")
+
+	if cfg.ClusterSecret != "" {
+		cfg.Token = "K10node:" + cfg.ClusterSecret
+	}
 
 	for {
 		tmpFile, err := clientaccess.AgentAccessInfoToTempKubeConfig("", cfg.ServerURL, cfg.Token)

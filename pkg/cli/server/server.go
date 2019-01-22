@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/docker/docker/pkg/reexec"
 	"github.com/natefinch/lumberjack"
@@ -15,6 +16,8 @@ import (
 	"github.com/rancher/norman/signal"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
+
+	_ "github.com/mattn/go-sqlite3" // ensure we have sqlite
 )
 
 func setupLogging(app *cli.Context) {
@@ -60,9 +63,22 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	}
 
 	serverConfig := server.Config{}
+	serverConfig.ControlConfig.ClusterSecret = cfg.ClusterSecret
 	serverConfig.ControlConfig.DataDir = cfg.DataDir
+	serverConfig.ControlConfig.KubeConfigOutput = cfg.KubeConfigOutput
+	serverConfig.ControlConfig.KubeConfigMode = cfg.KubeConfigMode
 	serverConfig.TLSConfig.HTTPSPort = cfg.HTTPSPort
 	serverConfig.TLSConfig.HTTPPort = cfg.HTTPPort
+
+	// TODO: support etcd
+	serverConfig.ControlConfig.NoLeaderElect = true
+
+	for _, noDeploy := range app.StringSlice("no-deploy") {
+		if !strings.HasSuffix(noDeploy, ".yaml") {
+			noDeploy = noDeploy + ".yaml"
+		}
+		serverConfig.ControlConfig.Skips = append(serverConfig.ControlConfig.Skips, noDeploy)
+	}
 
 	logrus.Info("Starting k3s ", app.App.Version)
 	ctx := signal.SigTermCancelContext(context.Background())
@@ -82,7 +98,7 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	token := server.FormatToken(serverConfig.ControlConfig.Runtime.NodeToken, certs)
 
 	agentConfig := cmds.AgentConfig
-	agentConfig.DataDir = serverConfig.ControlConfig.DataDir
+	agentConfig.DataDir = filepath.Dir(serverConfig.ControlConfig.DataDir)
 	agentConfig.ServerURL = url
 	agentConfig.Token = token
 

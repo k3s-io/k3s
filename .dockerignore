@@ -1,10 +1,9 @@
 ./bin
+./build
+./pkg/data/zz_generated_bindata.go
+./package/data.tar.gz
 ./.vagrant
 ./.dapper
 ./data-dir
 ./dist
 ./.trash-cache
-./image/root
-./image/agent
-./image/go_build_agent
-./image/main.squashfs

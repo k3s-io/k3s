@@ -9,7 +9,7 @@ cd $(dirname $0)/..
 
 curl --compressed -sfL https://github.com/ibuildthecloud/k3s-root/releases/download/${ROOT_VERSION}/k3s-root-${ARCH}.tar | tar xf -
 
-rm -rf bin/kubectl bin/k3s-agent bin/k3s build/data
+rm -rf bin/kubectl bin/k3s-agent bin/k3s-server bin/kubectl bin/k3s build/data
 ln -s containerd bin/k3s-agent
 ln -s containerd bin/k3s-server
 ln -s containerd bin/kubectl

@@ -24,4 +24,5 @@ test -z "$failed"
 echo Running: go fmt
 test -z "$(go fmt ${PACKAGES} | \
         grep -v 'pkg/data/zz_generated_bindata.go' | \
+        grep -v 'pkg/deploy/zz_generated_bindata.go' | \
         tee /dev/stderr)"

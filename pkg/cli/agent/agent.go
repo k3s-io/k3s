@@ -17,7 +17,7 @@ func Run(ctx *cli.Context) error {
 		return fmt.Errorf("agent must be ran as root")
 	}
 
-	if cmds.AgentConfig.Token == "" {
+	if cmds.AgentConfig.Token == "" && cmds.AgentConfig.ClusterSecret == "" {
 		return fmt.Errorf("--token is required")
 	}
 

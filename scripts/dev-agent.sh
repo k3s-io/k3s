@@ -15,4 +15,4 @@ else
 fi
 
 echo Starting agent
-sudo env "PATH=$(pwd)/bin:$PATH" ./bin/k3s-agent agent -s https://localhost:6443 -t $(<${HOME}/.rancher/k3s/server/node-token) "$@"
+sudo env "PATH=$(pwd)/bin:$PATH" ./bin/k3s-agent --debug agent -s https://localhost:6443 -t $(<${HOME}/.rancher/k3s/server/node-token) "$@"

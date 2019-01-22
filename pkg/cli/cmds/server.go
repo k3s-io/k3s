@@ -5,13 +5,16 @@ import (
 )
 
 type Server struct {
-	Log          string
-	ClusterCIDR  string
-	ServiceCIDR  string
-	HTTPSPort    int
-	HTTPPort     int
-	DataDir      string
-	DisableAgent bool
+	Log              string
+	ClusterCIDR      string
+	ClusterSecret    string
+	ServiceCIDR      string
+	HTTPSPort        int
+	HTTPPort         int
+	DataDir          string
+	DisableAgent     bool
+	KubeConfigOutput string
+	KubeConfigMode   string
 }
 
 var ServerConfig Server
@@ -54,6 +57,28 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Name:        "cluster-cidr",
 				Usage:       "Network CIDR to use for pod IPs",
 				Destination: &ServerConfig.ClusterCIDR,
+			},
+			cli.StringFlag{
+				Name:        "cluster-secret",
+				Usage:       "Shared secret used to bootstrap a cluster",
+				Destination: &ServerConfig.ClusterSecret,
+				EnvVar:      "K3S_CLUSTER_SECRET",
+			},
+			cli.StringSliceFlag{
+				Name:  "no-deploy",
+				Usage: "Do not deploy packaged manifests (example: coredns)",
+			},
+			cli.StringFlag{
+				Name:        "write-kubeconfig,o",
+				Usage:       "Write kubeconfig for admin client to this file",
+				Destination: &ServerConfig.KubeConfigOutput,
+				EnvVar:      "K3S_KUBECONFIG_OUTPUT",
+			},
+			cli.StringFlag{
+				Name:        "write-kubeconfig-mode",
+				Usage:       "Write kubeconfig with this mode",
+				Destination: &ServerConfig.KubeConfigMode,
+				EnvVar:      "K3S_KUBECONFIG_MODE",
 			},
 			NodeIPFlag,
 			NodeNameFlag,

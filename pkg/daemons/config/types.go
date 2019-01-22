@@ -48,11 +48,15 @@ type Agent struct {
 type Control struct {
 	AdvertisePort         int
 	ListenPort            int
+	ClusterSecret         string
 	ClusterIPRange        *net.IPNet
 	ServiceIPRange        *net.IPNet
 	ClusterDNS            net.IP
 	NoCoreDNS             bool
+	KubeConfigOutput      string
+	KubeConfigMode        string
 	DataDir               string
+	Skips                 []string
 	ETCDEndpoints         []string
 	ETCDKeyFile           string
 	ETCDCertFile          string
@@ -61,7 +65,7 @@ type Control struct {
 	ExtraAPIArgs          []string
 	ExtraControllerArgs   []string
 	ExtraSchedulerAPIArgs []string
-	//NodeConfig            Node
+	NoLeaderElect         bool
 
 	Runtime *ControlRuntime `json:"-"`
 }

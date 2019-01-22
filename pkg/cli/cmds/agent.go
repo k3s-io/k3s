@@ -8,14 +8,15 @@ import (
 )
 
 type Agent struct {
-	Token     string
-	ServerURL string
-	DataDir   string
-	NodeIP    string
-	NodeName  string
-	Docker    bool
-	NoFlannel bool
-	Debug     bool
+	Token         string
+	ServerURL     string
+	DataDir       string
+	NodeIP        string
+	NodeName      string
+	ClusterSecret string
+	Docker        bool
+	NoFlannel     bool
+	Debug         bool
 	AgentShared
 }
 
@@ -73,6 +74,12 @@ func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
 				Name:        "no-flannel",
 				Usage:       "Disable embedded flannel",
 				Destination: &AgentConfig.NoFlannel,
+			},
+			cli.StringFlag{
+				Name:        "cluster-secret",
+				Usage:       "Shared secret used to bootstrap a cluster",
+				Destination: &AgentConfig.ClusterSecret,
+				EnvVar:      "K3S_CLUSTER_SECRET",
 			},
 			NodeNameFlag,
 			NodeIPFlag,

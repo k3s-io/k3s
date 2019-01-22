@@ -28,6 +28,22 @@ func main() {
 	if err := bindata.Translate(bc); err != nil {
 		logrus.Fatal(err)
 	}
+
+	bc = &bindata.Config{
+		Input: []bindata.InputConfig{
+			{
+				Path: "manifests",
+			},
+		},
+		Package:    "deploy",
+		NoMetadata: true,
+		Prefix:     "manifests/",
+		Output:     "pkg/deploy/zz_generated_bindata.go",
+	}
+	if err := bindata.Translate(bc); err != nil {
+		logrus.Fatal(err)
+	}
+
 	if err := generator.DefaultGenerate(v1.Schemas, basePackage, false, nil); err != nil {
 		logrus.Fatal(err)
 	}

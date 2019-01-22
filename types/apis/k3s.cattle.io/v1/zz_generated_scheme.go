@@ -35,6 +35,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 
 		&ListenerConfig{},
 		&ListenerConfigList{},
+		&Addon{},
+		&AddonList{},
 	)
 	return nil
 }

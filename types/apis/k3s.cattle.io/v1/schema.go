@@ -13,5 +13,6 @@ var (
 	}
 
 	Schemas = factory.Schemas(&APIVersion).
-		MustImport(&APIVersion, ListenerConfig{})
+		MustImport(&APIVersion, ListenerConfig{}).
+		MustImport(&APIVersion, Addon{})
 )

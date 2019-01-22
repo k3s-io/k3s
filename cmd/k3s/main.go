@@ -72,13 +72,13 @@ func getAssetAndDir(dataDir string) (string, string) {
 }
 
 func extract(asset, dir string) error {
-	logrus.Infof("Asset dir %s", dir)
+	logrus.Debugf("Asset dir %s", dir)
 
 	if _, err := os.Stat(dir); err == nil {
 		return nil
 	}
 
-	logrus.Infof("Staging to dir %s", dir)
+	logrus.Infof("Preparing data dir %s", dir)
 
 	content, err := data.Asset(asset)
 	if err != nil {

@@ -12,8 +12,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1beta1"
-
 	"github.com/pkg/errors"
 	"github.com/rancher/k3s/pkg/cli/cmds"
 	"github.com/rancher/k3s/pkg/daemons/config"
@@ -22,6 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/client-go/util/cert"
+	"k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1beta1"
 )
 
 func Get(ctx context.Context, agent cmds.Agent) *config.Node {
