@@ -2,6 +2,7 @@ package sqlite
 
 import (
 	"database/sql"
+	"os"
 	"strings"
 
 	"github.com/ibuildthecloud/kvsql/clientv3/driver"
@@ -63,7 +64,8 @@ func NewSQLite() *driver.Generic {
 
 func Open(dataSourceName string) (*sql.DB, error) {
 	if dataSourceName == "" {
-		dataSourceName = "./state.db?_journal=WAL&cache=shared"
+		os.MkdirAll("./db", 700)
+		dataSourceName = "./db/state.db?_journal=WAL&cache=shared"
 	}
 	db, err := sql.Open("sqlite3", dataSourceName)
 	if err != nil {
