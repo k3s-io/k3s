@@ -162,7 +162,7 @@ func validateSystemRequirements(mountUtil mount.Interface) (features, error) {
 		return f, fmt.Errorf("%s - %v", localErr, err)
 	}
 
-	expectedCgroups := sets.NewString("cpu", "cpuacct", "cpuset", "memory")
+	expectedCgroups := sets.NewString("cpu", "cpuacct", "memory")
 	for _, mountPoint := range mountPoints {
 		if mountPoint.Type == cgroupMountType {
 			for _, opt := range mountPoint.Opts {
