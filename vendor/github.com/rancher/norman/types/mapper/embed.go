@@ -70,10 +70,11 @@ func (e *Embed) ModifySchema(schema *types.Schema, schemas *types.Schemas) error
 	}
 
 	deleteField := true
+outer:
 	for name, field := range embeddedSchema.ResourceFields {
 		for _, ignore := range e.Ignore {
 			if ignore == name {
-				continue
+				continue outer
 			}
 		}
 

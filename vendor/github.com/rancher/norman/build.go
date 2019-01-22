@@ -185,6 +185,8 @@ func (c *Config) defaults(ctx context.Context, r *Runtime, opts Options) (contex
 		}
 	}
 
+	r.LocalConfig = c.Config
+
 	if c.ClientGetter == nil {
 		cg, err := proxy.NewClientGetterFromConfig(*c.Config)
 		if err != nil {
