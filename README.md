@@ -13,7 +13,7 @@ Great for
 What is this?
 ---
 
-k3s is intended to be a fully compliant Kubernetes cluster with the following changes:
+k3s is intended to be a fully compliant Kubernetes distribution with the following changes:
 
 1. Legacy, alpha, non-default features are removed. Hopefully you shouldn't notice the
    stuff that has been removed.
@@ -88,6 +88,12 @@ of that file as `NODE_TOKEN` and then run the agent as follows
     k3s agent --server https://myserver:6443 --token ${NODE_TOKEN}
     
 That's it.
+
+Auto-deploying manifests
+------------------------
+
+Any file found in `/var/lib/rancher/k3s/server/manifests` will automatically be deployed to
+Kubernetes in a manner similar to `kubectl apply`.
 
 Building from source
 --------------------
