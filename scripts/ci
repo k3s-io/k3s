@@ -3,6 +3,8 @@ set -e
 
 cd $(dirname $0)
 
-./validate
+if [ -z "SKIP_VALIDATE" ]; then
+    ./validate
+fi
 ./build
 ./package

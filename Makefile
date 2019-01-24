@@ -1,4 +1,4 @@
-TARGETS := $(shell ls scripts)
+TARGETS := $(shell ls scripts | grep -v \\.sh)
 
 .dapper:
 	@echo Downloading dapper
@@ -17,6 +17,9 @@ trash-keep: .dapper
 	./.dapper -m bind trash -k
 
 deps: trash
+
+release:
+	./scripts/release.sh
 
 .DEFAULT_GOAL := ci
 

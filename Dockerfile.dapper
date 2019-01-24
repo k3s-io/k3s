@@ -26,6 +26,6 @@ ENV CROSS true
 ENV STATIC_BUILD true
 WORKDIR ${DAPPER_SOURCE}
 
-ENTRYPOINT ["./scripts/entry"]
+ENTRYPOINT ["./scripts/entry.sh"]
 CMD ["ci"]
 

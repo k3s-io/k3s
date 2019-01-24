@@ -1,13 +1,11 @@
 #!/bin/bash
 set -e -x
 
-ROOT_VERSION=v0.0.1
-
-source $(dirname $0)/version
+source $(dirname $0)/version.sh
 
 cd $(dirname $0)/..
 
-curl --compressed -sfL https://github.com/ibuildthecloud/k3s-root/releases/download/${ROOT_VERSION}/k3s-root-${ARCH}.tar | tar xf -
+./scripts/download
 
 rm -rf bin/kubectl bin/k3s-agent bin/k3s-server bin/kubectl bin/k3s build/data
 ln -s containerd bin/k3s-agent
@@ -21,6 +19,7 @@ for i in bridge flannel host-local loopback portmap; do
 done
 
 
+rm -rf build/data
 mkdir -p build/data
 
 tar cvzf ./build/data.tar.gz --exclude ./bin/hyperkube ./bin
@@ -28,13 +27,15 @@ HASH=$(sha256sum ./build/data.tar.gz | awk '{print $1}')
 
 cp ./build/data.tar.gz ./build/data/${HASH}.tgz
 
+BIN_SUFFIX="-${ARCH}"
 if [ ${ARCH} = amd64 ]; then
-    cp -f ./bin/hyperkube dist/hyperkube
-    CMD_NAME=dist/k3s
-else
-    cp -f ./bin/hyperkube dist/hyperkube-${ARCH}
-    CMD_NAME=dist/k3s-${ARCH}
+    BIN_SUFFIX=""
+elif [ ${ARCH} = arm ]; then
+    BIN_SUFFIX="-armhf"
 fi
+
+cp -f ./bin/hyperkube dist/hyperkube${BIN_SUFFIX}
+CMD_NAME=dist/k3s${BIN_SUFFIX}
 
 go generate
 LDFLAGS="-X github.com/rancher/k3s/version.Version=$VERSION -w -s"

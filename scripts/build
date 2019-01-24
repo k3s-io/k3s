@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e -x
 
-source $(dirname $0)/version
+source $(dirname $0)/version.sh
 
 cd $(dirname $0)/..
 
