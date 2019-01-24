@@ -179,7 +179,7 @@ func writeKubeConfig(certs string, tlsConfig *dynamiclistener.UserConfig, config
 		if err == nil {
 			os.Chmod(kubeConfig, os.FileMode(mode))
 		} else {
-			logrus.Errorf("failed to set %s to mode %s: %v", kubeConfig, mode, err)
+			logrus.Errorf("failed to set %s to mode %s: %v", kubeConfig, os.FileMode(mode), err)
 		}
 	}
 
