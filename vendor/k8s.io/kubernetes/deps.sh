@@ -11,7 +11,7 @@ package=k8s.io/kubernetes
 package=k8s.io/kubernetes/cmd/hyperkube
 $(cat ./Godeps/Godeps.json | jq -r '(.Deps | .[] | "\(.ImportPath) \(.Comment) \(.Rev)\n")' | sed 's/null//' | awk '{print $1 " " $2}' | grep -Ev 'github.com/opencontainers/runc|bitbucket.org/ww/goautoneg|github.com/google/cadvisor' | sort -k2,1 | uniq -f1)
 bitbucket.org/ww/goautoneg       a547fc61f48d567d5b4ec6f8aee5573d8efce11d  https://github.com/rancher/goautoneg.git
-github.com/ibuildthecloud/kvsql  8dfe3deb0646c4817567e4a53ed1dea41ea5668f
+github.com/ibuildthecloud/kvsql  57dce9ad58ce9a47cee7fc399cb10e76047ede77
 github.com/google/cadvisor       91dab6eb91496ed68acbef68b02b34b3392ca754  https://github.com/ibuildthecloud/cadvisor.git
 github.com/opencontainers/runc   96ec2177ae841256168fcf76954f7177af9446eb
 EOF

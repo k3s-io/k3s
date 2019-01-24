@@ -64,7 +64,7 @@ func NewSQLite() *driver.Generic {
 
 func Open(dataSourceName string) (*sql.DB, error) {
 	if dataSourceName == "" {
-		os.MkdirAll("./db", 700)
+		os.MkdirAll("./db", 0700)
 		dataSourceName = "./db/state.db?_journal=WAL&cache=shared"
 	}
 	db, err := sql.Open("sqlite3", dataSourceName)
