@@ -199,6 +199,7 @@ Documentation=https://k3s.io
 After=network.target
 
 [Service]
+ExecStartPre=-/sbin/modprobe br_netfilter
 ExecStartPre=-/sbin/modprobe overlay
 ExecStart=/usr/local/bin/k3s server
 KillMode=process
