@@ -1,55 +1,71 @@
 ---
-pipeline:
-  build:
+kind: pipeline
+name: intel
+
+platform:
+  os: linux
+  arch: amd64
+
+steps:
+  - name: build
     privileged: true
-    image: rancher/dapper:1.11.2
+    image: rancher/dapper:v0.4.0
     volumes:
-    - /var/run/docker.sock:/var/run/docker.sock
+    - name: docker
+      path: /var/run/docker.sock
     commands:
     - dapper ci
 
-  stage-binaries:
-    image: rancher/dapper:1.11.2
+volumes:
+  - name: docker
+    host:
+      path: /var/run/docker.sock
+
+---
+kind: pipeline
+name: arm
+
+platform:
+  os: linux
+  arch: arm64
+
+steps:
+  - name: build
+    privileged: true
+    image: rancher/dapper:v0.4.0
+    environment:
+      DAPPER_HOST_ARCH: arm
+    volumes:
+    - name: docker
+      path: /var/run/docker.sock
     commands:
-    - cp -f ./bin/k3s-incluster ./package/k3s
-    when:
-      branch: master
-      event: tag
+    - dapper ci
 
-  publish-image:
-    image: plugins/docker
-    dockerfile: package/Dockerfile
-    repo: rancher/k3s
-    context: package/
-    tag: ${DRONE_TAG}
-    secrets: [docker_username, docker_password]
-    when:
-      branch: master
-      event: tag
+volumes:
+  - name: docker
+    host:
+      path: /var/run/docker.sock
 
-  github_binary_prerelease:
-    image: plugins/github-release
-    prerelease: true
-    files:
-     - dist/artifacts/*
-    checksum:
-     - sha256
-    secrets: [github_token]
-    when:
-      branch: master
-      event: tag
-      ref:
-        include: [ refs/tags/*rc* ]
 
-  github_binary_release:
-    image: plugins/github-release
-    files:
-     - dist/artifacts/*
-    checksum:
-     - sha256
-    secrets: [github_token]
-    when:
-      branch: master
-      event: tag
-      ref:
-        exclude: [ refs/tags/*rc* ]
+---
+kind: pipeline
+name: arm64
+
+platform:
+  os: linux
+  arch: arm64
+
+steps:
+  - name: build
+    privileged: true
+    image: rancher/dapper:v0.4.0
+    volumes:
+    - name: docker
+      path: /var/run/docker.sock
+    commands:
+    - dapper ci
+
+volumes:
+  - name: docker
+    host:
+      path: /var/run/docker.sock
