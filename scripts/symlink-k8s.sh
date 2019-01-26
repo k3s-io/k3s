@@ -13,4 +13,4 @@ done
 rm -rf kubernetes
 mkdir -p kubernetes
 cd kubernetes
-ln -s $1/{cmd,pkg,plugin,third_party} .
+ln -s $1/{cmd,pkg,plugin,third_party,openapi.json,openapi.pb} .

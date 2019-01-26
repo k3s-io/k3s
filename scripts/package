@@ -3,7 +3,7 @@ set -e
 
 cd $(dirname $0)
 
-if [ ! -e ../bin/k3s-server ]; then
+if [ ! -e ../bin/containerd ]; then
     ./build
 fi
 

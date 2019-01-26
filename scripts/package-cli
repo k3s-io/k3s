@@ -21,6 +21,7 @@ done
 
 rm -rf build/data
 mkdir -p build/data
+mkdir -p dist
 
 tar cvzf ./build/data.tar.gz --exclude ./bin/hyperkube ./bin
 HASH=$(sha256sum ./build/data.tar.gz | awk '{print $1}')
