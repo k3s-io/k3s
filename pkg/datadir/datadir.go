@@ -7,12 +7,17 @@ import (
 	"github.com/rancher/norman/pkg/resolvehome"
 )
 
+const (
+	DefaultDataDir     = "/var/lib/rancher/k3s"
+	DefaultHomeDataDir = "${HOME}/.rancher/k3s"
+)
+
 func Resolve(dataDir string) (string, error) {
 	if dataDir == "" {
 		if os.Getuid() == 0 {
-			dataDir = "/var/lib/rancher/k3s"
+			dataDir = DefaultDataDir
 		} else {
-			dataDir = "${HOME}/.rancher/k3s"
+			dataDir = DefaultHomeDataDir
 		}
 	}
 
