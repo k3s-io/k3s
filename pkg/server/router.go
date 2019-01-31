@@ -32,6 +32,7 @@ func router(serverConfig *config.Control, tunnel http.Handler, cacertsGetter CAC
 	router.NotFoundHandler = authed
 	router.Path("/cacerts").Handler(cacerts(cacertsGetter))
 	router.Path("/openapi/v2").Handler(serveOpenapi())
+	router.Path("/ping").Handler(ping())
 
 	return router
 }
@@ -96,6 +97,15 @@ func serveOpenapi() http.Handler {
 		}
 
 		resp.Header().Set("Content-Type", contentType)
+		resp.Header().Set("Content-Length", strconv.Itoa(len(data)))
+		resp.Write(data)
+	})
+}
+
+func ping() http.Handler {
+	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
+		data := []byte("pong")
+		resp.Header().Set("Content-Type", "text/plain")
 		resp.Header().Set("Content-Length", strconv.Itoa(len(data)))
 		resp.Write(data)
 	})
