@@ -99,6 +99,7 @@ func startNorman(ctx context.Context, tlsConfig *dynamiclistener.UserConfig, con
 			tlsServer, err = tls.NewServer(ctx, v1.ClientsFrom(ctx).ListenerConfig, *tlsConfig)
 			return ctx, err
 		},
+		DisableLeaderElection: true,
 		MasterControllers: []norman.ControllerRegister{
 			func(ctx context.Context) error {
 				dataDir := filepath.Join(config.DataDir, "manifests")
