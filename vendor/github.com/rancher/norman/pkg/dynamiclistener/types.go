@@ -26,6 +26,7 @@ type UserConfig struct {
 
 	// Optional fields
 
+	KnownIPs  []string
 	Domains   []string
 	Mode      string
 	NoCACerts bool

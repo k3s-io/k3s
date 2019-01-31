@@ -12,7 +12,7 @@ import (
 	"github.com/rancher/norman/types/convert"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/api/meta"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -133,7 +133,7 @@ func sanitizePatch(patch []byte) ([]byte, error) {
 	return json.Marshal(data)
 }
 
-func applyPatch(client objectclient.GenericClient, debugID, inputID string, oldObject, newObject runtime.Object) (bool, error) {
+func applyPatch(patcher Patcher, client objectclient.GenericClient, debugID, inputID string, oldObject, newObject runtime.Object) (bool, error) {
 	gvk := client.GroupVersionKind()
 
 	oldMetadata, err := meta.Accessor(oldObject)
@@ -173,19 +173,19 @@ func applyPatch(client objectclient.GenericClient, debugID, inputID string, oldO
 		patch, original, modified, current)
 
 	logrus.Debugf("DesiredSet - Updated %s %s/%s for %s -- %s %s", gvk, oldMetadata.GetNamespace(), oldMetadata.GetName(), debugID, patchType, patch)
-	_, err = client.Patch(oldMetadata.GetName(), oldObject, patchType, patch)
+	_, err = patcher(oldMetadata.GetName(), oldObject, patchType, patch)
 
 	return true, err
 }
 
-func (o *DesiredSet) compareObjects(client objectclient.GenericClient, debugID, inputID string, oldObject, newObject runtime.Object, force bool) error {
+func (o *DesiredSet) compareObjects(patcher Patcher, client objectclient.GenericClient, debugID, inputID string, oldObject, newObject runtime.Object, force bool) error {
 	oldMetadata, err := meta.Accessor(oldObject)
 	if err != nil {
 		return err
 	}
 
 	gvk := client.GroupVersionKind()
-	if ran, err := applyPatch(client, debugID, inputID, oldObject, newObject); err != nil {
+	if ran, err := applyPatch(patcher, client, debugID, inputID, oldObject, newObject); err != nil {
 		return err
 	} else if !ran {
 		logrus.Debugf("DesiredSet - No change(2) %s %s/%s for %s", gvk, oldMetadata.GetNamespace(), oldMetadata.GetName(), debugID)

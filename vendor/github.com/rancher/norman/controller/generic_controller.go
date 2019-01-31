@@ -304,7 +304,7 @@ func filterConflictsError(err error) error {
 		var newErrors []error
 		for _, err := range errs.Errors {
 			if !ignoreError(err, true) {
-				newErrors = append(newErrors)
+				newErrors = append(newErrors, err)
 			}
 		}
 		return types.NewErrors(newErrors...)

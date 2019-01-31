@@ -264,7 +264,7 @@ func CheckFieldCriteria(fieldName string, field types.Field, value interface{}) 
 		}
 	}
 
-	if hasStrVal {
+	if hasStrVal || value == "" {
 		if field.MinLength != nil && int64(len(strVal)) < *field.MinLength {
 			return httperror.NewFieldAPIError(httperror.MinLengthExceeded, fieldName, "")
 		}

@@ -187,6 +187,7 @@ func (c *criService) CreateContainer(ctx context.Context, r *runtime.CreateConta
 		opts = append(opts, customopts.WithVolumes(mountMap))
 	}
 	meta.ImageRef = image.ID
+	meta.StopSignal = image.ImageSpec.Config.StopSignal
 
 	// Get container log path.
 	if config.GetLogPath() != "" {

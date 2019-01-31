@@ -555,6 +555,10 @@ func (nw *namespacedWriter) Commit(ctx context.Context, size int64, expected dig
 
 	var innerErr error
 
+	if expected != "" {
+		size = 0
+	}
+
 	if err := update(ctx, nw.db, func(tx *bolt.Tx) error {
 		dgst, err := nw.commit(ctx, tx, size, expected, opts...)
 		if err != nil {
