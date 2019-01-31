@@ -149,7 +149,7 @@ func (g *Generic) List(ctx context.Context, revision, limit int64, rangeKey, sta
 
 	listRevision := atomic.LoadInt64(&g.revision)
 	if !strings.HasSuffix(rangeKey, "%") && revision <= 0 {
-		rows, err = g.QueryContext(ctx, g.GetSQL, rangeKey, limit)
+		rows, err = g.QueryContext(ctx, g.GetSQL, rangeKey, 1)
 	} else if revision <= 0 {
 		rows, err = g.QueryContext(ctx, g.ListSQL, rangeKey, limit)
 	} else if len(startKey) > 0 {

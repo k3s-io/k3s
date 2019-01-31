@@ -24,6 +24,7 @@ import (
 	"golang.org/x/net/context"
 	runtime "k8s.io/kubernetes/pkg/kubelet/apis/cri/runtime/v1alpha2"
 
+	"github.com/containerd/cri/pkg/store"
 	containerstore "github.com/containerd/cri/pkg/store/container"
 )
 
@@ -43,17 +44,20 @@ func (c *criService) ContainerStatus(ctx context.Context, r *runtime.ContainerSt
 	imageRef := container.ImageRef
 	image, err := c.imageStore.Get(imageRef)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to get image %q", imageRef)
-	}
-	repoTags, repoDigests := parseImageReferences(image.References)
-	if len(repoTags) > 0 {
-		// Based on current behavior of dockershim, this field should be
-		// image tag.
-		spec = &runtime.ImageSpec{Image: repoTags[0]}
-	}
-	if len(repoDigests) > 0 {
-		// Based on the CRI definition, this field will be consumed by user.
-		imageRef = repoDigests[0]
+		if err != store.ErrNotExist {
+			return nil, errors.Wrapf(err, "failed to get image %q", imageRef)
+		}
+	} else {
+		repoTags, repoDigests := parseImageReferences(image.References)
+		if len(repoTags) > 0 {
+			// Based on current behavior of dockershim, this field should be
+			// image tag.
+			spec = &runtime.ImageSpec{Image: repoTags[0]}
+		}
+		if len(repoDigests) > 0 {
+			// Based on the CRI definition, this field will be consumed by user.
+			imageRef = repoDigests[0]
+		}
 	}
 	status := toCRIContainerStatus(container, spec, imageRef)
 	info, err := toCRIContainerInfo(ctx, container, r.GetVerbose())

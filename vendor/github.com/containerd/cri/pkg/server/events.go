@@ -32,6 +32,7 @@ import (
 	"golang.org/x/net/context"
 	"k8s.io/apimachinery/pkg/util/clock"
 
+	"github.com/containerd/cri/pkg/constants"
 	ctrdutil "github.com/containerd/cri/pkg/containerd/util"
 	"github.com/containerd/cri/pkg/store"
 	containerstore "github.com/containerd/cri/pkg/store/container"
@@ -83,7 +84,6 @@ type backOffQueue struct {
 // Create new event monitor. New event monitor will start subscribing containerd event. All events
 // happen after it should be monitored.
 func newEventMonitor(c *criService) *eventMonitor {
-	// event subscribe doesn't need namespace.
 	ctx, cancel := context.WithCancel(context.Background())
 	return &eventMonitor{
 		c:       c,
@@ -95,6 +95,8 @@ func newEventMonitor(c *criService) *eventMonitor {
 
 // subscribe starts to subscribe containerd events.
 func (em *eventMonitor) subscribe(subscriber events.Subscriber) {
+	// note: filters are any match, if you want any match but not in namespace foo
+	// then you have to manually filter namespace foo
 	filters := []string{
 		`topic=="/tasks/exit"`,
 		`topic=="/tasks/oom"`,
@@ -142,6 +144,10 @@ func (em *eventMonitor) start() <-chan error {
 			select {
 			case e := <-em.ch:
 				logrus.Debugf("Received containerd event timestamp - %v, namespace - %q, topic - %q", e.Timestamp, e.Namespace, e.Topic)
+				if e.Namespace != constants.K8sContainerdNamespace {
+					logrus.Debugf("Ignoring events in namespace - %q", e.Namespace)
+					break
+				}
 				id, evt, err := convertEvent(e.Event)
 				if err != nil {
 					logrus.WithError(err).Errorf("Failed to convert event %+v", e)

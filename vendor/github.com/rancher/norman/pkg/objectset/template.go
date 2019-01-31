@@ -5,6 +5,7 @@ import (
 	"github.com/rancher/norman/objectclient"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/rest"
 )
@@ -14,6 +15,8 @@ type Client interface {
 	ObjectClient() *objectclient.ObjectClient
 }
 
+type Patcher func(name string, o runtime.Object, patchType types.PatchType, data []byte, subresources ...string) (runtime.Object, error)
+
 type Processor struct {
 	setID         string
 	codeVersion   string
@@ -22,6 +25,7 @@ type Processor struct {
 	allowSlowPath string
 	slowClient    rest.HTTPClient
 	clients       map[schema.GroupVersionKind]Client
+	patchers      map[schema.GroupVersionKind]Patcher
 }
 
 func NewProcessor(setID string) *Processor {
@@ -59,6 +63,14 @@ func (t *Processor) Client(clients ...Client) *Processor {
 	return t
 }
 
+func (t *Processor) Patcher(gvk schema.GroupVersionKind, patcher Patcher) *Processor {
+	if t.patchers == nil {
+		t.patchers = map[schema.GroupVersionKind]Patcher{}
+	}
+	t.patchers[gvk] = patcher
+	return t
+}
+
 func (t Processor) Remove(owner runtime.Object) error {
 	return t.NewDesiredSet(owner, nil).Apply()
 }
@@ -77,6 +89,7 @@ func (t Processor) NewDesiredSet(owner runtime.Object, objs *ObjectSet) *Desired
 		setID:       t.setID,
 		codeVersion: t.codeVersion,
 		clients:     t.clients,
+		patchers:    t.patchers,
 		owner:       owner,
 	}
 }

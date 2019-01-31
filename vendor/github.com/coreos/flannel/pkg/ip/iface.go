@@ -132,11 +132,31 @@ func DirectRouting(ip net.IP) (bool, error) {
 	return false, nil
 }
 
+func linkAddrsAndRemoveLinkLocal(link netlink.Link) ([]netlink.Addr, error) {
+	existingAddrs, err := netlink.AddrList(link, netlink.FAMILY_V4)
+	if err != nil {
+		return nil, err
+	}
+
+	var result []netlink.Addr
+	for _, addr := range existingAddrs {
+		if addr.IP.IsLinkLocalUnicast() {
+			if err := netlink.AddrDel(link, &addr); err != nil {
+				return nil, fmt.Errorf("failed to remove IP address %s from %s: %s", addr.IP.String(), link.Attrs().Name, err)
+			}
+		} else {
+			result = append(result, addr)
+		}
+	}
+
+	return result, nil
+}
+
 // EnsureV4AddressOnLink ensures that there is only one v4 Addr on `link` and it equals `ipn`.
 // If there exist multiple addresses on link, it returns an error message to tell callers to remove additional address.
 func EnsureV4AddressOnLink(ipn IP4Net, link netlink.Link) error {
 	addr := netlink.Addr{IPNet: ipn.ToIPNet()}
-	existingAddrs, err := netlink.AddrList(link, netlink.FAMILY_V4)
+	existingAddrs, err := linkAddrsAndRemoveLinkLocal(link)
 	if err != nil {
 		return err
 	}

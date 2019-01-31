@@ -19,6 +19,7 @@ type DesiredSet struct {
 	objs              *ObjectSet
 	codeVersion       string
 	clients           map[schema.GroupVersionKind]Client
+	patchers          map[schema.GroupVersionKind]Patcher
 	owner             runtime.Object
 	injectors         []injectors.ConfigInjector
 	errs              []error

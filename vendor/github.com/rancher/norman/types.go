@@ -18,20 +18,21 @@ type ClientFactory func(context.Context, rest.Config) (context.Context, controll
 type ControllerRegister func(ctx context.Context) error
 
 type Config struct {
-	Name                 string
-	EnableAPI            bool
-	Schemas              []*types.Schemas
-	CRDs                 map[*types.APIVersion][]string
-	Clients              []ClientFactory
-	ClientGetter         proxy.ClientGetter
-	CRDStorageContext    types.StorageContext
-	K8sClient            kubernetes.Interface
-	APIExtClient         clientset.Interface
-	Config               *rest.Config
-	LeaderLockNamespace  string
-	KubeConfig           string
-	IgnoredKubeConfigEnv bool
-	Threadiness          int
+	Name                  string
+	EnableAPI             bool
+	Schemas               []*types.Schemas
+	CRDs                  map[*types.APIVersion][]string
+	Clients               []ClientFactory
+	ClientGetter          proxy.ClientGetter
+	CRDStorageContext     types.StorageContext
+	K8sClient             kubernetes.Interface
+	APIExtClient          clientset.Interface
+	Config                *rest.Config
+	DisableLeaderElection bool
+	LeaderLockNamespace   string
+	KubeConfig            string
+	IgnoredKubeConfigEnv  bool
+	Threadiness           int
 
 	CustomizeSchemas func(context.Context, proxy.ClientGetter, *types.Schemas) error
 	GlobalSetup      func(context.Context) (context.Context, error)

@@ -45,10 +45,11 @@ type server struct {
 	servers   []*http.Server
 
 	// dynamic config change on refresh
-	activeCert  *tls.Certificate
-	activeCA    *x509.Certificate
-	activeCAKey *rsa.PrivateKey
-	domains     map[string]bool
+	activeCert        *tls.Certificate
+	activeCA          *x509.Certificate
+	activeCAKey       *rsa.PrivateKey
+	activeCAKeyString string
+	domains           map[string]bool
 }
 
 func NewServer(listenConfigStorage ListenerConfigStorage, config UserConfig) (ServerInterface, error) {
@@ -97,6 +98,9 @@ func (s *server) save() {
 	if s.activeCert != nil {
 		return
 	}
+
+	s.Lock()
+	defer s.Unlock()
 
 	changed := false
 	cfg, err := s.listenConfigStorage.Get()
@@ -149,6 +153,7 @@ func (s *server) save() {
 
 		cfg.CACert = string(caCertBuffer.Bytes())
 		cfg.CAKey = string(caKeyBuffer.Bytes())
+		s.activeCAKeyString = cfg.CAKey
 		changed = true
 	}
 
@@ -185,6 +190,13 @@ func (s *server) userConfigure() error {
 		return s.reload()
 	}
 
+	for _, ip := range s.userConfig.KnownIPs {
+		netIP := net.ParseIP(ip)
+		if netIP != nil {
+			s.ips.Add(ip, netIP)
+		}
+	}
+
 	return nil
 }
 
@@ -210,18 +222,20 @@ func (s *server) Update(status *ListenerStatus) error {
 	defer s.getCertificate(&tls.ClientHelloInfo{ServerName: "localhost"})
 	defer s.Unlock()
 
-	if status.CACert != "" && status.CAKey != "" {
+	if status.CACert != "" && status.CAKey != "" && s.activeCAKeyString != status.CAKey {
 		cert, err := tls.X509KeyPair([]byte(status.CACert), []byte(status.CAKey))
 		if err != nil {
 			return err
 		}
 		s.activeCAKey = cert.PrivateKey.(*rsa.PrivateKey)
+		s.activeCAKeyString = status.CAKey
 
 		x509Cert, err := x509.ParseCertificate(cert.Certificate[0])
 		if err != nil {
 			return err
 		}
 		s.activeCA = x509Cert
+		s.certs = map[string]*tls.Certificate{}
 	}
 
 	for ipStr := range status.KnownIPs {
@@ -324,11 +338,11 @@ func (s *server) ipMapKey() string {
 
 func (s *server) getCertificate(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
 	s.Lock()
-	defer s.Unlock()
-
 	if s.activeCert != nil {
+		s.Unlock()
 		return s.activeCert, nil
 	}
+	defer s.Unlock()
 
 	mapKey := hello.ServerName
 	cn := hello.ServerName

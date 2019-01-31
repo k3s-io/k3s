@@ -18,13 +18,18 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	types2 "k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 )
 
 var (
-	deletePolicy = v1.DeletePropagationBackground
+	deletePolicy    = v1.DeletePropagationBackground
+	ErrReplace      = errors.New("replace object with changes")
+	ReplaceOnChange = func(name string, o runtime.Object, patchType types2.PatchType, data []byte, subresources ...string) (runtime.Object, error) {
+		return nil, ErrReplace
+	}
 )
 
 func NewDiscoveredClient(gvk schema.GroupVersionKind, restConfig rest.Config, discovery discovery.DiscoveryInterface) (*objectclient.ObjectClient, error) {
@@ -85,6 +90,11 @@ func (o *DesiredSet) process(inputID, debugID string, set labels.Selector, gvk s
 		return
 	}
 
+	patcher, ok := o.patchers[gvk]
+	if !ok {
+		patcher = objectClient.Patch
+	}
+
 	existing, err := list(controller, objectClient, set)
 	if err != nil {
 		o.err(fmt.Errorf("failed to list %s for %s", gvk, debugID))
@@ -92,12 +102,13 @@ func (o *DesiredSet) process(inputID, debugID string, set labels.Selector, gvk s
 	}
 
 	toCreate, toDelete, toUpdate := compareSets(existing, objs)
-	for _, k := range toCreate {
+
+	createF := func(k objectKey) {
 		obj := objs[k]
 		obj, err := prepareObjectForCreate(inputID, obj)
 		if err != nil {
 			o.err(errors.Wrapf(err, "failed to prepare create %s %s for %s", k, gvk, debugID))
-			continue
+			return
 		}
 
 		_, err = objectClient.Create(obj)
@@ -107,33 +118,47 @@ func (o *DesiredSet) process(inputID, debugID string, set labels.Selector, gvk s
 			if err == nil {
 				toUpdate = append(toUpdate, k)
 				existing[k] = existingObj
-				continue
+				return
 			}
 		}
 		if err != nil {
 			o.err(errors.Wrapf(err, "failed to create %s %s for %s", k, gvk, debugID))
-			continue
+			return
 		}
 		logrus.Debugf("DesiredSet - Created %s %s for %s", gvk, k, debugID)
 	}
 
-	for _, k := range toUpdate {
-		err := o.compareObjects(objectClient, debugID, inputID, existing[k], objs[k], len(toCreate) > 0 || len(toDelete) > 0)
-		if err != nil {
-			o.err(errors.Wrapf(err, "failed to update %s %s for %s", k, gvk, debugID))
-			continue
-		}
-	}
-
-	for _, k := range toDelete {
+	deleteF := func(k objectKey) {
 		err := objectClient.DeleteNamespaced(k.namespace, k.name, &v1.DeleteOptions{
 			PropagationPolicy: &deletePolicy,
 		})
 		if err != nil {
 			o.err(errors.Wrapf(err, "failed to delete %s %s for %s", k, gvk, debugID))
-			continue
+			return
 		}
 		logrus.Debugf("DesiredSet - Delete %s %s for %s", gvk, k, debugID)
+	}
+
+	updateF := func(k objectKey) {
+		err := o.compareObjects(patcher, objectClient, debugID, inputID, existing[k], objs[k], len(toCreate) > 0 || len(toDelete) > 0)
+		if err == ErrReplace {
+			deleteF(k)
+			o.err(fmt.Errorf("DesiredSet - Replace Wait %s %s for %s", gvk, k, debugID))
+		} else if err != nil {
+			o.err(errors.Wrapf(err, "failed to update %s %s for %s", k, gvk, debugID))
+		}
+	}
+
+	for _, k := range toCreate {
+		createF(k)
+	}
+
+	for _, k := range toUpdate {
+		updateF(k)
+	}
+
+	for _, k := range toDelete {
+		deleteF(k)
 	}
 }
 

@@ -133,7 +133,7 @@ func (c *Config) registerControllers(ctx context.Context, controllers []Controll
 }
 
 func (c *Config) masterControllers(ctx context.Context, starters []controller.Starter, r *Runtime) {
-	leader.RunOrDie(ctx, c.LeaderLockNamespace, c.Name, c.K8sClient, func(ctx context.Context) {
+	f := func(ctx context.Context) {
 		var (
 			err error
 		)
@@ -155,7 +155,13 @@ func (c *Config) masterControllers(ctx context.Context, starters []controller.St
 		}
 
 		<-ctx.Done()
-	})
+	}
+
+	if c.DisableLeaderElection {
+		go f(ctx)
+	} else {
+		leader.RunOrDie(ctx, c.LeaderLockNamespace, c.Name, c.K8sClient, f)
+	}
 }
 
 func (c *Config) defaults(ctx context.Context, r *Runtime, opts Options) (context.Context, error) {
