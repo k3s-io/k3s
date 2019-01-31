@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/util/net"
+
 	"github.com/docker/docker/pkg/reexec"
 	"github.com/natefinch/lumberjack"
 	"github.com/rancher/k3s/pkg/agent"
@@ -69,6 +71,7 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	serverConfig.ControlConfig.KubeConfigMode = cfg.KubeConfigMode
 	serverConfig.TLSConfig.HTTPSPort = cfg.HTTPSPort
 	serverConfig.TLSConfig.HTTPPort = cfg.HTTPPort
+	serverConfig.TLSConfig.KnownIPs = knownIPs()
 
 	// TODO: support etcd
 	serverConfig.ControlConfig.NoLeaderElect = true
@@ -103,4 +106,15 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	agentConfig.Token = token
 
 	return agent.Run(ctx, agentConfig)
+}
+
+func knownIPs() []string {
+	ips := []string{
+		"127.0.0.1",
+	}
+	ip, err := net.ChooseHostInterface()
+	if err == nil {
+		ips = append(ips, ip.String())
+	}
+	return ips
 }
