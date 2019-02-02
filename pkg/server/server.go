@@ -17,7 +17,10 @@ import (
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/daemons/control"
 	"github.com/rancher/k3s/pkg/deploy"
+	"github.com/rancher/k3s/pkg/servicelb"
 	"github.com/rancher/k3s/pkg/tls"
+	appsv1 "github.com/rancher/k3s/types/apis/apps/v1"
+	corev1 "github.com/rancher/k3s/types/apis/core/v1"
 	v1 "github.com/rancher/k3s/types/apis/k3s.cattle.io/v1"
 	"github.com/rancher/norman"
 	"github.com/rancher/norman/pkg/clientaccess"
@@ -50,7 +53,7 @@ func StartServer(ctx context.Context, config *Config) (string, error) {
 		return "", errors.Wrap(err, "starting kubernetes")
 	}
 
-	certs, err := startNorman(ctx, &config.TLSConfig, &config.ControlConfig)
+	certs, err := startNorman(ctx, config)
 	if err != nil {
 		return "", errors.Wrap(err, "starting tls server")
 	}
@@ -66,13 +69,15 @@ func StartServer(ctx context.Context, config *Config) (string, error) {
 	return certs, nil
 }
 
-func startNorman(ctx context.Context, tlsConfig *dynamiclistener.UserConfig, config *config.Control) (string, error) {
+func startNorman(ctx context.Context, config *Config) (string, error) {
 	var (
-		err       error
-		tlsServer dynamiclistener.ServerInterface
+		err           error
+		tlsServer     dynamiclistener.ServerInterface
+		tlsConfig     = &config.TLSConfig
+		controlConfig = &config.ControlConfig
 	)
 
-	tlsConfig.Handler = router(config, config.Runtime.Tunnel, func() (string, error) {
+	tlsConfig.Handler = router(controlConfig, controlConfig.Runtime.Tunnel, func() (string, error) {
 		if tlsServer == nil {
 			return "", nil
 		}
@@ -81,9 +86,11 @@ func startNorman(ctx context.Context, tlsConfig *dynamiclistener.UserConfig, con
 
 	normanConfig := &norman.Config{
 		Name:       "k3s",
-		KubeConfig: config.Runtime.KubeConfigSystem,
+		KubeConfig: controlConfig.Runtime.KubeConfigSystem,
 		Clients: []norman.ClientFactory{
 			v1.Factory,
+			appsv1.Factory,
+			corev1.Factory,
 		},
 		Schemas: []*types.Schemas{
 			v1.Schemas,
@@ -102,11 +109,14 @@ func startNorman(ctx context.Context, tlsConfig *dynamiclistener.UserConfig, con
 		DisableLeaderElection: true,
 		MasterControllers: []norman.ControllerRegister{
 			func(ctx context.Context) error {
-				dataDir := filepath.Join(config.DataDir, "manifests")
+				return servicelb.Register(ctx, norman.GetServer(ctx).K8sClient, !config.DisableServiceLB)
+			},
+			func(ctx context.Context) error {
+				dataDir := filepath.Join(controlConfig.DataDir, "manifests")
 				if err := deploy.Stage(dataDir); err != nil {
 					return err
 				}
-				if err := deploy.WatchFiles(ctx, config.Skips, dataDir); err != nil {
+				if err := deploy.WatchFiles(ctx, controlConfig.Skips, dataDir); err != nil {
 					return err
 				}
 				return nil

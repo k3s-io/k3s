@@ -6,7 +6,8 @@ import (
 )
 
 type Config struct {
-	DisableAgent  bool
-	TLSConfig     dynamiclistener.UserConfig
-	ControlConfig config.Control
+	DisableAgent     bool
+	DisableServiceLB bool
+	TLSConfig        dynamiclistener.UserConfig
+	ControlConfig    config.Control
 }

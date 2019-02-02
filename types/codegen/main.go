@@ -5,6 +5,8 @@ import (
 	v1 "github.com/rancher/k3s/types/apis/k3s.cattle.io/v1"
 	"github.com/rancher/norman/generator"
 	"github.com/sirupsen/logrus"
+	v13 "k8s.io/api/apps/v1"
+	v12 "k8s.io/api/core/v1"
 )
 
 var (
@@ -63,6 +65,21 @@ func main() {
 	}
 
 	if err := generator.DefaultGenerate(v1.Schemas, basePackage, false, nil); err != nil {
+		logrus.Fatal(err)
+	}
+
+	if err := generator.ControllersForForeignTypes(basePackage, v12.SchemeGroupVersion, []interface{}{
+		v12.Service{},
+		v12.Pod{},
+	}, []interface{}{
+		v12.Node{},
+	}); err != nil {
+		logrus.Fatal(err)
+	}
+
+	if err := generator.ControllersForForeignTypes(basePackage, v13.SchemeGroupVersion, []interface{}{
+		v13.Deployment{},
+	}, nil); err != nil {
 		logrus.Fatal(err)
 	}
 }

@@ -77,6 +77,11 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	serverConfig.ControlConfig.NoLeaderElect = true
 
 	for _, noDeploy := range app.StringSlice("no-deploy") {
+		if noDeploy == "servicelb" {
+			serverConfig.DisableServiceLB = true
+			continue
+		}
+
 		if !strings.HasSuffix(noDeploy, ".yaml") {
 			noDeploy = noDeploy + ".yaml"
 		}

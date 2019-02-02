@@ -231,6 +231,16 @@ CoreDNS is deployed on start of the agent, to disable add `--no-deploy coredns` 
      
 If you don't install CoreDNS you will need to install a cluster DNS provider yourself.
 
+Service Load Balancer
+---------------------
+
+k3s includes a basic service load balancer that uses available host ports.  If you try to create
+a load balancer that listens on port 80, for example, it will try to find a free host in the cluster
+for port 80.  If no port is available the load balancer will stay in Pending.
+
+To disable the embedded service load balancer (if you wish to use a different implementation like
+MetalLB) just add `--no-deploy=servicelb` to the server on startup.
+
 TODO
 ----
 Currently broken or stuff that needs to be done for this to be considered production quality.
