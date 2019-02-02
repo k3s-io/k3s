@@ -66,7 +66,7 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 			},
 			cli.StringSliceFlag{
 				Name:  "no-deploy",
-				Usage: "Do not deploy packaged manifests (example: coredns)",
+				Usage: "Do not deploy packaged components (valid items: coredns, servicelb)",
 			},
 			cli.StringFlag{
 				Name:        "write-kubeconfig,o",
