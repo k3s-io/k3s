@@ -17,11 +17,14 @@ import (
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/daemons/control"
 	"github.com/rancher/k3s/pkg/deploy"
+	"github.com/rancher/k3s/pkg/helm"
 	"github.com/rancher/k3s/pkg/servicelb"
 	"github.com/rancher/k3s/pkg/tls"
 	appsv1 "github.com/rancher/k3s/types/apis/apps/v1"
+	batchv1 "github.com/rancher/k3s/types/apis/batch/v1"
 	corev1 "github.com/rancher/k3s/types/apis/core/v1"
 	v1 "github.com/rancher/k3s/types/apis/k3s.cattle.io/v1"
+	rbacv1 "github.com/rancher/k3s/types/apis/rbac.authorization.k8s.io/v1"
 	"github.com/rancher/norman"
 	"github.com/rancher/norman/pkg/clientaccess"
 	"github.com/rancher/norman/pkg/dynamiclistener"
@@ -91,6 +94,8 @@ func startNorman(ctx context.Context, config *Config) (string, error) {
 			v1.Factory,
 			appsv1.Factory,
 			corev1.Factory,
+			batchv1.Factory,
+			rbacv1.Factory,
 		},
 		Schemas: []*types.Schemas{
 			v1.Schemas,
@@ -99,6 +104,7 @@ func startNorman(ctx context.Context, config *Config) (string, error) {
 			&v1.APIVersion: {
 				v1.ListenerConfigGroupVersionKind.Kind,
 				v1.AddonGroupVersionKind.Kind,
+				v1.HelmChartGroupVersionKind.Kind,
 			},
 		},
 		IgnoredKubeConfigEnv: true,
@@ -108,6 +114,7 @@ func startNorman(ctx context.Context, config *Config) (string, error) {
 		},
 		DisableLeaderElection: true,
 		MasterControllers: []norman.ControllerRegister{
+			helm.Register,
 			func(ctx context.Context) error {
 				return servicelb.Register(ctx, norman.GetServer(ctx).K8sClient, !config.DisableServiceLB)
 			},
