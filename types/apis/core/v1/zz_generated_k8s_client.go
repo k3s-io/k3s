@@ -21,16 +21,20 @@ type Interface interface {
 	controller.Starter
 
 	NodesGetter
+	ServiceAccountsGetter
 	ServicesGetter
 	PodsGetter
+	ConfigMapsGetter
 }
 
 type Clients struct {
 	Interface Interface
 
-	Node    NodeClient
-	Service ServiceClient
-	Pod     PodClient
+	Node           NodeClient
+	ServiceAccount ServiceAccountClient
+	Service        ServiceClient
+	Pod            PodClient
+	ConfigMap      ConfigMapClient
 }
 
 type Client struct {
@@ -38,9 +42,11 @@ type Client struct {
 	restClient rest.Interface
 	starters   []controller.Starter
 
-	nodeControllers    map[string]NodeController
-	serviceControllers map[string]ServiceController
-	podControllers     map[string]PodController
+	nodeControllers           map[string]NodeController
+	serviceAccountControllers map[string]ServiceAccountController
+	serviceControllers        map[string]ServiceController
+	podControllers            map[string]PodController
+	configMapControllers      map[string]ConfigMapController
 }
 
 func Factory(ctx context.Context, config rest.Config) (context.Context, controller.Starter, error) {
@@ -79,11 +85,17 @@ func NewClientsFromInterface(iface Interface) *Clients {
 		Node: &nodeClient2{
 			iface: iface.Nodes(""),
 		},
+		ServiceAccount: &serviceAccountClient2{
+			iface: iface.ServiceAccounts(""),
+		},
 		Service: &serviceClient2{
 			iface: iface.Services(""),
 		},
 		Pod: &podClient2{
 			iface: iface.Pods(""),
+		},
+		ConfigMap: &configMapClient2{
+			iface: iface.ConfigMaps(""),
 		},
 	}
 }
@@ -101,9 +113,11 @@ func NewForConfig(config rest.Config) (Interface, error) {
 	return &Client{
 		restClient: restClient,
 
-		nodeControllers:    map[string]NodeController{},
-		serviceControllers: map[string]ServiceController{},
-		podControllers:     map[string]PodController{},
+		nodeControllers:           map[string]NodeController{},
+		serviceAccountControllers: map[string]ServiceAccountController{},
+		serviceControllers:        map[string]ServiceController{},
+		podControllers:            map[string]PodController{},
+		configMapControllers:      map[string]ConfigMapController{},
 	}, nil
 }
 
@@ -132,6 +146,19 @@ func (c *Client) Nodes(namespace string) NodeInterface {
 	}
 }
 
+type ServiceAccountsGetter interface {
+	ServiceAccounts(namespace string) ServiceAccountInterface
+}
+
+func (c *Client) ServiceAccounts(namespace string) ServiceAccountInterface {
+	objectClient := objectclient.NewObjectClient(namespace, c.restClient, &ServiceAccountResource, ServiceAccountGroupVersionKind, serviceAccountFactory{})
+	return &serviceAccountClient{
+		ns:           namespace,
+		client:       c,
+		objectClient: objectClient,
+	}
+}
+
 type ServicesGetter interface {
 	Services(namespace string) ServiceInterface
 }
@@ -152,6 +179,19 @@ type PodsGetter interface {
 func (c *Client) Pods(namespace string) PodInterface {
 	objectClient := objectclient.NewObjectClient(namespace, c.restClient, &PodResource, PodGroupVersionKind, podFactory{})
 	return &podClient{
+		ns:           namespace,
+		client:       c,
+		objectClient: objectClient,
+	}
+}
+
+type ConfigMapsGetter interface {
+	ConfigMaps(namespace string) ConfigMapInterface
+}
+
+func (c *Client) ConfigMaps(namespace string) ConfigMapInterface {
+	objectClient := objectclient.NewObjectClient(namespace, c.restClient, &ConfigMapResource, ConfigMapGroupVersionKind, configMapFactory{})
+	return &configMapClient{
 		ns:           namespace,
 		client:       c,
 		objectClient: objectClient,
