@@ -34,8 +34,10 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(SchemeGroupVersion,
 
 		&NodeList{},
+		&ServiceAccountList{},
 		&ServiceList{},
 		&PodList{},
+		&ConfigMapList{},
 	)
 	return nil
 }

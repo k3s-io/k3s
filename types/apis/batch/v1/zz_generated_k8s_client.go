@@ -20,17 +20,13 @@ type Interface interface {
 	RESTClient() rest.Interface
 	controller.Starter
 
-	AddonsGetter
-	HelmChartsGetter
-	ListenerConfigsGetter
+	JobsGetter
 }
 
 type Clients struct {
 	Interface Interface
 
-	Addon          AddonClient
-	HelmChart      HelmChartClient
-	ListenerConfig ListenerConfigClient
+	Job JobClient
 }
 
 type Client struct {
@@ -38,9 +34,7 @@ type Client struct {
 	restClient rest.Interface
 	starters   []controller.Starter
 
-	addonControllers          map[string]AddonController
-	helmChartControllers      map[string]HelmChartController
-	listenerConfigControllers map[string]ListenerConfigController
+	jobControllers map[string]JobController
 }
 
 func Factory(ctx context.Context, config rest.Config) (context.Context, controller.Starter, error) {
@@ -76,14 +70,8 @@ func NewClientsFromInterface(iface Interface) *Clients {
 	return &Clients{
 		Interface: iface,
 
-		Addon: &addonClient2{
-			iface: iface.Addons(""),
-		},
-		HelmChart: &helmChartClient2{
-			iface: iface.HelmCharts(""),
-		},
-		ListenerConfig: &listenerConfigClient2{
-			iface: iface.ListenerConfigs(""),
+		Job: &jobClient2{
+			iface: iface.Jobs(""),
 		},
 	}
 }
@@ -101,9 +89,7 @@ func NewForConfig(config rest.Config) (Interface, error) {
 	return &Client{
 		restClient: restClient,
 
-		addonControllers:          map[string]AddonController{},
-		helmChartControllers:      map[string]HelmChartController{},
-		listenerConfigControllers: map[string]ListenerConfigController{},
+		jobControllers: map[string]JobController{},
 	}, nil
 }
 
@@ -119,39 +105,13 @@ func (c *Client) Start(ctx context.Context, threadiness int) error {
 	return controller.Start(ctx, threadiness, c.starters...)
 }
 
-type AddonsGetter interface {
-	Addons(namespace string) AddonInterface
+type JobsGetter interface {
+	Jobs(namespace string) JobInterface
 }
 
-func (c *Client) Addons(namespace string) AddonInterface {
-	objectClient := objectclient.NewObjectClient(namespace, c.restClient, &AddonResource, AddonGroupVersionKind, addonFactory{})
-	return &addonClient{
-		ns:           namespace,
-		client:       c,
-		objectClient: objectClient,
-	}
-}
-
-type HelmChartsGetter interface {
-	HelmCharts(namespace string) HelmChartInterface
-}
-
-func (c *Client) HelmCharts(namespace string) HelmChartInterface {
-	objectClient := objectclient.NewObjectClient(namespace, c.restClient, &HelmChartResource, HelmChartGroupVersionKind, helmChartFactory{})
-	return &helmChartClient{
-		ns:           namespace,
-		client:       c,
-		objectClient: objectClient,
-	}
-}
-
-type ListenerConfigsGetter interface {
-	ListenerConfigs(namespace string) ListenerConfigInterface
-}
-
-func (c *Client) ListenerConfigs(namespace string) ListenerConfigInterface {
-	objectClient := objectclient.NewObjectClient(namespace, c.restClient, &ListenerConfigResource, ListenerConfigGroupVersionKind, listenerConfigFactory{})
-	return &listenerConfigClient{
+func (c *Client) Jobs(namespace string) JobInterface {
+	objectClient := objectclient.NewObjectClient(namespace, c.restClient, &JobResource, JobGroupVersionKind, jobFactory{})
+	return &jobClient{
 		ns:           namespace,
 		client:       c,
 		objectClient: objectClient,
