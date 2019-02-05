@@ -3,16 +3,12 @@ set -e
 
 source $(dirname $0)/version.sh
 
-cd $(dirname $0)/../package
+cd $(dirname $0)/..
 
 TAG=${TAG:-${VERSION}${SUFFIX}}
 REPO=${REPO:-rancher}
 IMAGE_NAME=${IMAGE_NAME:-k3s}
 
-cp -f ../build/data.tar.gz .
-
 IMAGE=${REPO}/${IMAGE_NAME}:${TAG}
-docker build -t ${IMAGE} .
-mkdir -p ../dist
-echo ${IMAGE} > ../dist/images
+docker build -t ${IMAGE} -f package/Dockerfile .
 echo Built ${IMAGE}
