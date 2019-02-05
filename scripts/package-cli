@@ -20,13 +20,13 @@ done
 
 
 rm -rf build/data
-mkdir -p build/data
-mkdir -p dist
+mkdir -p build/data build/out
+mkdir -p dist/artifacts
 
-tar cvzf ./build/data.tar.gz --exclude ./bin/hyperkube ./bin
-HASH=$(sha256sum ./build/data.tar.gz | awk '{print $1}')
+tar cvzf ./build/out/data.tar.gz --exclude ./bin/hyperkube ./bin
+HASH=$(sha256sum ./build/out/data.tar.gz | awk '{print $1}')
 
-cp ./build/data.tar.gz ./build/data/${HASH}.tgz
+cp ./build/out/data.tar.gz ./build/data/${HASH}.tgz
 
 BIN_SUFFIX="-${ARCH}"
 if [ ${ARCH} = amd64 ]; then
@@ -35,8 +35,8 @@ elif [ ${ARCH} = arm ]; then
     BIN_SUFFIX="-armhf"
 fi
 
-cp -f ./bin/hyperkube dist/hyperkube${BIN_SUFFIX}
-CMD_NAME=dist/k3s${BIN_SUFFIX}
+cp -f ./bin/hyperkube dist/artifacts/hyperkube${BIN_SUFFIX}
+CMD_NAME=dist/artifacts/k3s${BIN_SUFFIX}
 
 go generate
 LDFLAGS="-X github.com/rancher/k3s/version.Version=$VERSION -w -s"
