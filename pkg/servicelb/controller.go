@@ -229,9 +229,23 @@ func (h *handler) resolvePort(svc *core.Service, targetPort core.ServicePort) (i
 
 func (h *handler) newDeployment(svc *core.Service) (*apps.Deployment, error) {
 	name := fmt.Sprintf("svclb-%s", svc.Name)
-	zero := intstr.FromInt(0)
-	one := intstr.FromInt(1)
-	two := int32(2)
+	zeroInt := intstr.FromInt(0)
+	oneInt := intstr.FromInt(1)
+	replicas := int32(0)
+
+	nodes, err := h.nodeCache.List("", labels.Everything())
+	if err != nil {
+		return nil, err
+	}
+
+	for _, node := range nodes {
+		if Ready.IsTrue(node) {
+			replicas += 1
+		}
+		if replicas >= 2 {
+			break
+		}
+	}
 
 	dep := &apps.Deployment{
 		ObjectMeta: meta.ObjectMeta{
@@ -252,7 +266,7 @@ func (h *handler) newDeployment(svc *core.Service) (*apps.Deployment, error) {
 			APIVersion: "apps/v1",
 		},
 		Spec: apps.DeploymentSpec{
-			Replicas: &two,
+			Replicas: &replicas,
 			Selector: &meta.LabelSelector{
 				MatchLabels: map[string]string{
 					"app": name,
@@ -269,8 +283,8 @@ func (h *handler) newDeployment(svc *core.Service) (*apps.Deployment, error) {
 			Strategy: apps.DeploymentStrategy{
 				Type: apps.RollingUpdateDeploymentStrategyType,
 				RollingUpdate: &apps.RollingUpdateDeployment{
-					MaxSurge:       &zero,
-					MaxUnavailable: &one,
+					MaxSurge:       &zeroInt,
+					MaxUnavailable: &oneInt,
 				},
 			},
 		},
