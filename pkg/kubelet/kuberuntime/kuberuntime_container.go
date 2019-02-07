@@ -634,9 +634,14 @@ func (m *kubeGenericRuntimeManager) pruneInitContainersBeforeStart(pod *v1.Pod, 
 	for name := range initContainerNames {
 		count := 0
 		for _, status := range podStatus.ContainerStatuses {
-			if status.Name != name || !initContainerNames.Has(status.Name) || status.State != kubecontainer.ContainerStateExited {
+			if status.Name != name || !initContainerNames.Has(status.Name) ||
+				(status.State != kubecontainer.ContainerStateExited &&
+					status.State != kubecontainer.ContainerStateUnknown) {
 				continue
 			}
+			// Remove init containers in unknown state. It should have
+			// been stopped before pruneInitContainersBeforeStart is
+			// called.
 			count++
 			// keep the first init container for this name
 			if count == 1 {
@@ -691,20 +696,21 @@ func (m *kubeGenericRuntimeManager) purgeInitContainers(pod *v1.Pod, podStatus *
 }
 
 // findNextInitContainerToRun returns the status of the last failed container, the
-// next init container to start, or done if there are no further init containers.
+// index of next init container to start, or done if there are no further init containers.
 // Status is only returned if an init container is failed, in which case next will
 // point to the current container.
-func findNextInitContainerToRun(pod *v1.Pod, podStatus *kubecontainer.PodStatus) (status *kubecontainer.ContainerStatus, next *v1.Container, done bool) {
+// next < 0 if no init container to run.
+func findNextInitContainerToRun(pod *v1.Pod, podStatus *kubecontainer.PodStatus) (status *kubecontainer.ContainerStatus, next int, done bool) {
 	if len(pod.Spec.InitContainers) == 0 {
-		return nil, nil, true
+		return nil, -1, true
 	}
 
 	// If there are failed containers, return the status of the last failed one.
 	for i := len(pod.Spec.InitContainers) - 1; i >= 0; i-- {
 		container := &pod.Spec.InitContainers[i]
 		status := podStatus.FindContainerStatusByName(container.Name)
-		if status != nil && isContainerFailed(status) {
-			return status, container, false
+		if status != nil && isInitContainerFailed(status) {
+			return status, i, false
 		}
 	}
 
@@ -718,21 +724,21 @@ func findNextInitContainerToRun(pod *v1.Pod, podStatus *kubecontainer.PodStatus)
 
 		// container is still running, return not done.
 		if status.State == kubecontainer.ContainerStateRunning {
-			return nil, nil, false
+			return nil, -1, false
 		}
 
 		if status.State == kubecontainer.ContainerStateExited {
 			// all init containers successful
 			if i == (len(pod.Spec.InitContainers) - 1) {
-				return nil, nil, true
+				return nil, -1, true
 			}
 
 			// all containers up to i successful, go to i+1
-			return nil, &pod.Spec.InitContainers[i+1], false
+			return nil, i + 1, false
 		}
 	}
 
-	return nil, &pod.Spec.InitContainers[0], false
+	return nil, 0, false
 }
 
 // GetContainerLogs returns logs of a specific container.
