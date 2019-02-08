@@ -1,0 +1,7 @@
+apiVersion: k3s.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  chart: stable/traefik 
