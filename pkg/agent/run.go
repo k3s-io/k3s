@@ -2,8 +2,11 @@ package agent
 
 import (
 	"context"
+	"errors"
+	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/rancher/k3s/pkg/agent/config"
@@ -62,6 +65,10 @@ func run(ctx context.Context, cfg cmds.Agent) error {
 }
 
 func Run(ctx context.Context, cfg cmds.Agent) error {
+	if err := validate(); err != nil {
+		return err
+	}
+
 	cfg.DataDir = filepath.Join(cfg.DataDir, "agent")
 
 	if cfg.ClusterSecret != "" {
@@ -85,4 +92,23 @@ func Run(ctx context.Context, cfg cmds.Agent) error {
 
 	os.MkdirAll(cfg.DataDir, 0700)
 	return run(ctx, cfg)
+}
+
+func validate() error {
+	cgroups, err := ioutil.ReadFile("/proc/self/cgroup")
+	if err != nil {
+		return err
+	}
+
+	if !strings.Contains(string(cgroups), "cpuset") {
+		logrus.Warn("Failed to find cpuset cgroup, you may need to add \"cgroup_enable=cpuset\" to your linux cmdline (/boot/cmdline.txt on a Raspberry Pi)")
+	}
+
+	if !strings.Contains(string(cgroups), "memory") {
+		msg := "ailed to find memory cgroup, you may need to add \"cgroup_memory=1 cgroup_enable=memory\" to your linux cmdline (/boot/cmdline.txt on a Raspberry Pi)"
+		logrus.Error("F" + msg)
+		return errors.New("f" + msg)
+	}
+
+	return nil
 }
