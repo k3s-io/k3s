@@ -22,6 +22,7 @@ type Interface interface {
 
 	NodesGetter
 	ServiceAccountsGetter
+	EndpointsGetter
 	ServicesGetter
 	PodsGetter
 	ConfigMapsGetter
@@ -32,6 +33,7 @@ type Clients struct {
 
 	Node           NodeClient
 	ServiceAccount ServiceAccountClient
+	Endpoints      EndpointsClient
 	Service        ServiceClient
 	Pod            PodClient
 	ConfigMap      ConfigMapClient
@@ -44,6 +46,7 @@ type Client struct {
 
 	nodeControllers           map[string]NodeController
 	serviceAccountControllers map[string]ServiceAccountController
+	endpointsControllers      map[string]EndpointsController
 	serviceControllers        map[string]ServiceController
 	podControllers            map[string]PodController
 	configMapControllers      map[string]ConfigMapController
@@ -88,6 +91,9 @@ func NewClientsFromInterface(iface Interface) *Clients {
 		ServiceAccount: &serviceAccountClient2{
 			iface: iface.ServiceAccounts(""),
 		},
+		Endpoints: &endpointsClient2{
+			iface: iface.Endpoints(""),
+		},
 		Service: &serviceClient2{
 			iface: iface.Services(""),
 		},
@@ -115,6 +121,7 @@ func NewForConfig(config rest.Config) (Interface, error) {
 
 		nodeControllers:           map[string]NodeController{},
 		serviceAccountControllers: map[string]ServiceAccountController{},
+		endpointsControllers:      map[string]EndpointsController{},
 		serviceControllers:        map[string]ServiceController{},
 		podControllers:            map[string]PodController{},
 		configMapControllers:      map[string]ConfigMapController{},
@@ -153,6 +160,19 @@ type ServiceAccountsGetter interface {
 func (c *Client) ServiceAccounts(namespace string) ServiceAccountInterface {
 	objectClient := objectclient.NewObjectClient(namespace, c.restClient, &ServiceAccountResource, ServiceAccountGroupVersionKind, serviceAccountFactory{})
 	return &serviceAccountClient{
+		ns:           namespace,
+		client:       c,
+		objectClient: objectClient,
+	}
+}
+
+type EndpointsGetter interface {
+	Endpoints(namespace string) EndpointsInterface
+}
+
+func (c *Client) Endpoints(namespace string) EndpointsInterface {
+	objectClient := objectclient.NewObjectClient(namespace, c.restClient, &EndpointsResource, EndpointsGroupVersionKind, endpointsFactory{})
+	return &endpointsClient{
 		ns:           namespace,
 		client:       c,
 		objectClient: objectClient,
