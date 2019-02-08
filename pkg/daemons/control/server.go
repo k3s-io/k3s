@@ -153,6 +153,10 @@ func apiServer(ctx context.Context, cfg *config.Control, runtime *config.Control
 		}
 	}
 
+	certDir := filepath.Join(cfg.DataDir, "tls/temporary-certs")
+	os.MkdirAll(certDir, 0700)
+
+	args = append(args, "--cert-dir", certDir)
 	args = append(args, "--allow-privileged=true")
 	args = append(args, "--authorization-mode", strings.Join([]string{modes.ModeNode, modes.ModeRBAC}, ","))
 	args = append(args, "--service-account-signing-key-file", runtime.ServiceKey)
