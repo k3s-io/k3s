@@ -119,7 +119,7 @@ func (image *Image) Size(ctx context.Context, provider content.Provider, platfor
 		}
 		size += desc.Size
 		return nil, nil
-	}), FilterPlatforms(ChildrenHandler(provider), platform)), image.Target)
+	}), LimitManifests(FilterPlatforms(ChildrenHandler(provider), platform), platform, 1)), image.Target)
 }
 
 type platformManifest struct {
@@ -209,6 +209,9 @@ func Manifest(ctx context.Context, provider content.Provider, image ocispec.Desc
 					descs = append(descs, d)
 				}
 			}
+
+			// mimic behavior of client.Pull which limits to 1 manifest list child
+			descs = limitChildren(descs, platform, 1)
 
 			wasIndex = true
 

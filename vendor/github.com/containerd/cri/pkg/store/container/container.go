@@ -36,7 +36,8 @@ type Container struct {
 	Status StatusStorage
 	// Container is the containerd container client.
 	Container containerd.Container
-	// Container IO
+	// Container IO.
+	// IO could only be nil when the container is in unknown state.
 	IO *cio.ContainerIO
 	// StopCh is used to propagate the stop information of the container.
 	*store.StopCh

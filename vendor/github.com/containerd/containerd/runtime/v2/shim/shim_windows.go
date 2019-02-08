@@ -113,12 +113,11 @@ func serveListener(path string) (net.Listener, error) {
 
 func handleSignals(logger *logrus.Entry, signals chan os.Signal) error {
 	logger.Info("starting signal loop")
+
 	for {
-		select {
-		case s := <-signals:
+		for s := range signals {
 			switch s {
 			case os.Interrupt:
-				break
 			}
 		}
 	}

@@ -338,7 +338,8 @@ func (c *Client) Fetch(ctx context.Context, ref string, opts ...RemoteOpt) (imag
 	}
 	defer done(ctx)
 
-	return c.fetch(ctx, fetchCtx, ref, 0)
+	img, _, err := c.fetch(ctx, fetchCtx, ref, 0)
+	return img, err
 }
 
 // Pull downloads the provided content into containerd's content store
@@ -372,12 +373,12 @@ func (c *Client) Pull(ctx context.Context, ref string, opts ...RemoteOpt) (Image
 	}
 	defer done(ctx)
 
-	img, err := c.fetch(ctx, pullCtx, ref, 1)
+	img, imagePlatforms, err := c.fetch(ctx, pullCtx, ref, 1)
 	if err != nil {
 		return nil, err
 	}
 
-	i := NewImageWithPlatform(c, img, pullCtx.PlatformMatcher)
+	i := NewImageWithPlatform(c, img, imagePlatforms)
 
 	if pullCtx.Unpack {
 		if err := i.Unpack(ctx, pullCtx.Snapshotter); err != nil {
@@ -388,25 +389,36 @@ func (c *Client) Pull(ctx context.Context, ref string, opts ...RemoteOpt) (Image
 	return i, nil
 }
 
-func (c *Client) fetch(ctx context.Context, rCtx *RemoteContext, ref string, limit int) (images.Image, error) {
+func (c *Client) fetch(ctx context.Context, rCtx *RemoteContext, ref string, limit int) (images.Image, platforms.MatchComparer, error) {
+	platformCapture := images.NewPlatformCapture(rCtx.PlatformMatcher)
 	store := c.ContentStore()
 	name, desc, err := rCtx.Resolver.Resolve(ctx, ref)
 	if err != nil {
-		return images.Image{}, errors.Wrapf(err, "failed to resolve reference %q", ref)
+		return images.Image{}, nil, errors.Wrapf(err, "failed to resolve reference %q", ref)
 	}
 
 	fetcher, err := rCtx.Resolver.Fetcher(ctx, name)
 	if err != nil {
-		return images.Image{}, errors.Wrapf(err, "failed to get fetcher for %q", name)
+		return images.Image{}, nil, errors.Wrapf(err, "failed to get fetcher for %q", name)
 	}
 
 	var (
-		schema1Converter *schema1.Converter
-		handler          images.Handler
+		handler images.Handler
+
+		isConvertible bool
+		converterFunc func(context.Context, ocispec.Descriptor) (ocispec.Descriptor, error)
 	)
+
 	if desc.MediaType == images.MediaTypeDockerSchema1Manifest && rCtx.ConvertSchema1 {
-		schema1Converter = schema1.NewConverter(store, fetcher)
+		schema1Converter := schema1.NewConverter(store, fetcher)
+
 		handler = images.Handlers(append(rCtx.BaseHandlers, schema1Converter)...)
+
+		isConvertible = true
+
+		converterFunc = func(ctx context.Context, _ ocispec.Descriptor) (ocispec.Descriptor, error) {
+			return schema1Converter.Convert(ctx)
+		}
 	} else {
 		// Get all the children for a descriptor
 		childrenHandler := images.ChildrenHandler(store)
@@ -419,19 +431,38 @@ func (c *Client) fetch(ctx context.Context, rCtx *RemoteContext, ref string, lim
 			childrenHandler = images.LimitManifests(childrenHandler, rCtx.PlatformMatcher, limit)
 		}
 
+		// Save the platforms that match the PlatformMatcher
+		childrenHandler = platformCapture.Handler(childrenHandler)
+
+		// set isConvertible to true if there is application/octet-stream media type
+		convertibleHandler := images.HandlerFunc(
+			func(_ context.Context, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+				if desc.MediaType == docker.LegacyConfigMediaType {
+					isConvertible = true
+				}
+
+				return []ocispec.Descriptor{}, nil
+			},
+		)
+
 		handler = images.Handlers(append(rCtx.BaseHandlers,
 			remotes.FetchHandler(store, fetcher),
+			convertibleHandler,
 			childrenHandler,
 		)...)
+
+		converterFunc = func(ctx context.Context, desc ocispec.Descriptor) (ocispec.Descriptor, error) {
+			return docker.ConvertManifest(ctx, store, desc)
+		}
 	}
 
 	if err := images.Dispatch(ctx, handler, desc); err != nil {
-		return images.Image{}, err
+		return images.Image{}, nil, err
 	}
-	if schema1Converter != nil {
-		desc, err = schema1Converter.Convert(ctx)
-		if err != nil {
-			return images.Image{}, err
+
+	if isConvertible {
+		if desc, err = converterFunc(ctx, desc); err != nil {
+			return images.Image{}, nil, err
 		}
 	}
 
@@ -445,7 +476,7 @@ func (c *Client) fetch(ctx context.Context, rCtx *RemoteContext, ref string, lim
 	for {
 		if created, err := is.Create(ctx, img); err != nil {
 			if !errdefs.IsAlreadyExists(err) {
-				return images.Image{}, err
+				return images.Image{}, nil, err
 			}
 
 			updated, err := is.Update(ctx, img)
@@ -454,7 +485,7 @@ func (c *Client) fetch(ctx context.Context, rCtx *RemoteContext, ref string, lim
 				if errdefs.IsNotFound(err) {
 					continue
 				}
-				return images.Image{}, err
+				return images.Image{}, nil, err
 			}
 
 			img = updated
@@ -462,7 +493,7 @@ func (c *Client) fetch(ctx context.Context, rCtx *RemoteContext, ref string, lim
 			img = created
 		}
 
-		return img, nil
+		return img, platformCapture.MatchComparer(), nil
 	}
 }
 

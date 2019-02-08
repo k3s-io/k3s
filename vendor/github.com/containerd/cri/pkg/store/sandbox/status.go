@@ -21,16 +21,52 @@ import (
 	"time"
 )
 
+// The sandbox state machine in the CRI plugin:
+//                    +              +
+//                    |              |
+//                    | Create(Run)  | Load
+//                    |              |
+//      Start    +----v----+         |
+//     (failed)  |         |         |
+// +-------------+  INIT   |         +-----------+
+// |             |         |         |           |
+// |             +----+----+         |           |
+// |                  |              |           |
+// |                  | Start(Run)   |           |
+// |                  |              |           |
+// | PortForward +----v----+         |           |
+// |      +------+         |         |           |
+// |      |      |  READY  <---------+           |
+// |      +------>         |         |           |
+// |             +----+----+         |           |
+// |                  |              |           |
+// |                  | Stop/Exit    |           |
+// |                  |              |           |
+// |             +----v----+         |           |
+// |             |         <---------+      +----v----+
+// |             | NOTREADY|                |         |
+// |             |         <----------------+ UNKNOWN |
+// |             +----+----+       Stop     |         |
+// |                  |                     +---------+
+// |                  | Remove
+// |                  v
+// +-------------> DELETED
+
 // State is the sandbox state we use in containerd/cri.
-// It has unknown state defined.
+// It includes init and unknown, which are internal states not defined in CRI.
+// The state mapping from internal states to CRI states:
+// * ready -> ready
+// * not ready -> not ready
+// * init -> not exist
+// * unknown -> not ready
 type State uint32
 
 const (
-	// StateUnknown is unknown state of sandbox. Sandbox
-	// is in unknown state before its corresponding sandbox container
-	// is created. Sandbox in unknown state should be ignored by most
+	// StateInit is init state of sandbox. Sandbox
+	// is in init state before its corresponding sandbox container
+	// is created. Sandbox in init state should be ignored by most
 	// functions, unless the caller needs to update sandbox state.
-	StateUnknown State = iota
+	StateInit State = iota
 	// StateReady is ready state, it means sandbox container
 	// is running.
 	StateReady
@@ -40,6 +76,9 @@ const (
 	// cleanup resources other than sandbox container, e.g. network namespace.
 	// This is an assumption made in CRI.
 	StateNotReady
+	// StateUnknown is unknown state. Sandbox only goes
+	// into unknown state when its status fails to be loaded.
+	StateUnknown
 )
 
 // Status is the status of a sandbox.

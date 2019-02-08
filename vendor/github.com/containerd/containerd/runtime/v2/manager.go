@@ -130,6 +130,16 @@ func (m *TaskManager) Get(ctx context.Context, id string) (runtime.Task, error) 
 	return m.tasks.Get(ctx, id)
 }
 
+// Add a runtime task
+func (m *TaskManager) Add(ctx context.Context, task runtime.Task) error {
+	return m.tasks.Add(ctx, task)
+}
+
+// Delete a runtime task
+func (m *TaskManager) Delete(ctx context.Context, id string) {
+	m.tasks.Delete(ctx, id)
+}
+
 // Tasks lists all tasks
 func (m *TaskManager) Tasks(ctx context.Context, all bool) ([]runtime.Task, error) {
 	return m.tasks.GetAll(ctx, all)

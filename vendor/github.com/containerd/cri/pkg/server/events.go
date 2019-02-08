@@ -112,17 +112,17 @@ func convertEvent(e *gogotypes.Any) (string, interface{}, error) {
 		return "", nil, errors.Wrap(err, "failed to unmarshalany")
 	}
 
-	switch evt.(type) {
+	switch e := evt.(type) {
 	case *eventtypes.TaskExit:
-		id = evt.(*eventtypes.TaskExit).ContainerID
+		id = e.ContainerID
 	case *eventtypes.TaskOOM:
-		id = evt.(*eventtypes.TaskOOM).ContainerID
+		id = e.ContainerID
 	case *eventtypes.ImageCreate:
-		id = evt.(*eventtypes.ImageCreate).Name
+		id = e.Name
 	case *eventtypes.ImageUpdate:
-		id = evt.(*eventtypes.ImageUpdate).Name
+		id = e.Name
 	case *eventtypes.ImageDelete:
-		id = evt.(*eventtypes.ImageDelete).Name
+		id = e.Name
 	default:
 		return "", nil, errors.New("unsupported event")
 	}
@@ -200,13 +200,12 @@ func (em *eventMonitor) handleEvent(any interface{}) error {
 	ctx, cancel := context.WithTimeout(ctx, handleEventTimeout)
 	defer cancel()
 
-	switch any.(type) {
+	switch e := any.(type) {
 	// If containerd-shim exits unexpectedly, there will be no corresponding event.
 	// However, containerd could not retrieve container state in that case, so it's
 	// fine to leave out that case for now.
 	// TODO(random-liu): [P2] Handle containerd-shim exit.
 	case *eventtypes.TaskExit:
-		e := any.(*eventtypes.TaskExit)
 		logrus.Infof("TaskExit event %+v", e)
 		// Use ID instead of ContainerID to rule out TaskExit event for exec.
 		cntr, err := em.c.containerStore.Get(e.ID)
@@ -218,7 +217,7 @@ func (em *eventMonitor) handleEvent(any interface{}) error {
 		} else if err != store.ErrNotExist {
 			return errors.Wrap(err, "can't find container for TaskExit event")
 		}
-		// Use GetAll to include sandbox in unknown state.
+		// Use GetAll to include sandbox in init state.
 		sb, err := em.c.sandboxStore.GetAll(e.ID)
 		if err == nil {
 			if err := handleSandboxExit(ctx, e, sb); err != nil {
@@ -230,7 +229,6 @@ func (em *eventMonitor) handleEvent(any interface{}) error {
 		}
 		return nil
 	case *eventtypes.TaskOOM:
-		e := any.(*eventtypes.TaskOOM)
 		logrus.Infof("TaskOOM event %+v", e)
 		// For TaskOOM, we only care which container it belongs to.
 		cntr, err := em.c.containerStore.Get(e.ContainerID)
@@ -248,15 +246,12 @@ func (em *eventMonitor) handleEvent(any interface{}) error {
 			return errors.Wrap(err, "failed to update container status for TaskOOM event")
 		}
 	case *eventtypes.ImageCreate:
-		e := any.(*eventtypes.ImageCreate)
 		logrus.Infof("ImageCreate event %+v", e)
 		return em.c.updateImage(ctx, e.Name)
 	case *eventtypes.ImageUpdate:
-		e := any.(*eventtypes.ImageUpdate)
 		logrus.Infof("ImageUpdate event %+v", e)
 		return em.c.updateImage(ctx, e.Name)
 	case *eventtypes.ImageDelete:
-		e := any.(*eventtypes.ImageDelete)
 		logrus.Infof("ImageDelete event %+v", e)
 		return em.c.updateImage(ctx, e.Name)
 	}
@@ -269,7 +264,16 @@ func handleContainerExit(ctx context.Context, e *eventtypes.TaskExit, cntr conta
 	// Attach container IO so that `Delete` could cleanup the stream properly.
 	task, err := cntr.Container.Task(ctx,
 		func(*containerdio.FIFOSet) (containerdio.IO, error) {
-			return cntr.IO, nil
+			// We can't directly return cntr.IO here, because
+			// even if cntr.IO is nil, the cio.IO interface
+			// is not.
+			// See https://tour.golang.org/methods/12:
+			//   Note that an interface value that holds a nil
+			//   concrete value is itself non-nil.
+			if cntr.IO != nil {
+				return cntr.IO, nil
+			}
+			return nil, nil
 		},
 	)
 	if err != nil {
@@ -322,13 +326,13 @@ func handleSandboxExit(ctx context.Context, e *eventtypes.TaskExit, sb sandboxst
 		}
 	}
 	err = sb.Status.Update(func(status sandboxstore.Status) (sandboxstore.Status, error) {
-		// NOTE(random-liu): We SHOULD NOT change UNKNOWN state here.
-		// If sandbox state is UNKNOWN when event monitor receives an TaskExit event,
+		// NOTE(random-liu): We SHOULD NOT change INIT state here.
+		// If sandbox state is INIT when event monitor receives an TaskExit event,
 		// it means that sandbox start has failed. In that case, `RunPodSandbox` will
 		// cleanup everything immediately.
-		// Once sandbox state goes out of UNKNOWN, it becomes visable to the user, which
+		// Once sandbox state goes out of INIT, it becomes visable to the user, which
 		// is not what we want.
-		if status.State != sandboxstore.StateUnknown {
+		if status.State != sandboxstore.StateInit {
 			status.State = sandboxstore.StateNotReady
 		}
 		status.Pid = 0

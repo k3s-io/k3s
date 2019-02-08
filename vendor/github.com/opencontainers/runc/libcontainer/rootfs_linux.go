@@ -748,6 +748,41 @@ func pivotRoot(rootfs string) error {
 }
 
 func msMoveRoot(rootfs string) error {
+	mountinfos, err := mount.GetMounts()
+	if err != nil {
+		return err
+	}
+
+	absRootfs, err := filepath.Abs(rootfs)
+	if err != nil {
+		return err
+	}
+
+	for _, info := range mountinfos {
+		p, err := filepath.Abs(info.Mountpoint)
+		if err != nil {
+			return err
+		}
+		// Umount every syfs and proc file systems, except those under the container rootfs
+		if (info.Fstype != "proc" && info.Fstype != "sysfs") || filepath.HasPrefix(p, absRootfs) {
+			continue
+		}
+		// Be sure umount events are not propagated to the host.
+		if err := unix.Mount("", p, "", unix.MS_SLAVE|unix.MS_REC, ""); err != nil {
+			return err
+		}
+		if err := unix.Unmount(p, unix.MNT_DETACH); err != nil {
+			if err != unix.EINVAL && err != unix.EPERM {
+				return err
+			} else {
+				// If we have not privileges for umounting (e.g. rootless), then
+				// cover the path.
+				if err := unix.Mount("tmpfs", p, "tmpfs", 0, ""); err != nil {
+					return err
+				}
+			}
+		}
+	}
 	if err := unix.Mount(rootfs, "/", "", unix.MS_MOVE, ""); err != nil {
 		return err
 	}

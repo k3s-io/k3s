@@ -24,9 +24,12 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/BurntSushi/toml"
+	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/containers"
+	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/runtime/linux/runctypes"
 	runcoptions "github.com/containerd/containerd/runtime/v2/runc/options"
 	"github.com/containerd/typeurl"
@@ -42,7 +45,9 @@ import (
 
 	criconfig "github.com/containerd/cri/pkg/config"
 	"github.com/containerd/cri/pkg/store"
+	containerstore "github.com/containerd/cri/pkg/store/container"
 	imagestore "github.com/containerd/cri/pkg/store/image"
+	sandboxstore "github.com/containerd/cri/pkg/store/sandbox"
 	"github.com/containerd/cri/pkg/util"
 )
 
@@ -495,4 +500,54 @@ func getRuntimeOptions(c containers.Container) (interface{}, error) {
 		return nil, err
 	}
 	return opts, nil
+}
+
+const (
+	// unknownExitCode is the exit code when exit reason is unknown.
+	unknownExitCode = 255
+	// unknownExitReason is the exit reason when exit reason is unknown.
+	unknownExitReason = "Unknown"
+)
+
+// unknownContainerStatus returns the default container status when its status is unknown.
+func unknownContainerStatus() containerstore.Status {
+	return containerstore.Status{
+		CreatedAt:  0,
+		StartedAt:  0,
+		FinishedAt: 0,
+		ExitCode:   unknownExitCode,
+		Reason:     unknownExitReason,
+	}
+}
+
+// unknownSandboxStatus returns the default sandbox status when its status is unknown.
+func unknownSandboxStatus() sandboxstore.Status {
+	return sandboxstore.Status{
+		State: sandboxstore.StateUnknown,
+	}
+}
+
+// unknownExitStatus generates containerd.Status for container exited with unknown exit code.
+func unknownExitStatus() containerd.Status {
+	return containerd.Status{
+		Status:     containerd.Stopped,
+		ExitStatus: unknownExitCode,
+		ExitTime:   time.Now(),
+	}
+}
+
+// getTaskStatus returns status for a given task. It returns unknown exit status if
+// the task is nil or not found.
+func getTaskStatus(ctx context.Context, task containerd.Task) (containerd.Status, error) {
+	if task == nil {
+		return unknownExitStatus(), nil
+	}
+	status, err := task.Status(ctx)
+	if err != nil {
+		if !errdefs.IsNotFound(err) {
+			return containerd.Status{}, err
+		}
+		return unknownExitStatus(), nil
+	}
+	return status, nil
 }
