@@ -445,16 +445,6 @@ func (f *KubeletFlags) AddFlags(mainfs *pflag.FlagSet) {
 func AddKubeletConfigFlags(mainfs *pflag.FlagSet, c *kubeletconfig.KubeletConfiguration) {
 	fs := pflag.NewFlagSet("", pflag.ExitOnError)
 	defer func() {
-		// All KubeletConfiguration flags are now deprecated, and any new flags that point to
-		// KubeletConfiguration fields are deprecated-on-creation. When removing flags at the end
-		// of their deprecation period, be careful to check that they have *actually* been deprecated
-		// members of the KubeletConfiguration for the entire deprecation period:
-		// e.g. if a flag was added after this deprecation function, it may not be at the end
-		// of its lifetime yet, even if the rest are.
-		deprecated := "This parameter should be set via the config file specified by the Kubelet's --config flag. See https://kubernetes.io/docs/tasks/administer-cluster/kubelet-config-file/ for more information."
-		fs.VisitAll(func(f *pflag.Flag) {
-			f.Deprecated = deprecated
-		})
 		mainfs.AddFlagSet(fs)
 	}()
 
