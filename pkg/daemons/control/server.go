@@ -33,6 +33,7 @@ import (
 	_ "k8s.io/kubernetes/pkg/client/metrics/prometheus" // for client metric registration
 	"k8s.io/kubernetes/pkg/kubeapiserver/authorizer/modes"
 	"k8s.io/kubernetes/pkg/master"
+	"k8s.io/kubernetes/pkg/proxy/util"
 	_ "k8s.io/kubernetes/pkg/util/reflector/prometheus" // for reflector metric registration
 	_ "k8s.io/kubernetes/pkg/util/workqueue/prometheus" // for workqueue metric registration
 	_ "k8s.io/kubernetes/pkg/version/prometheus"        // for version metric registration
@@ -74,6 +75,7 @@ func Server(ctx context.Context, cfg *config.Control) error {
 	}
 
 	cfg.Runtime.Tunnel = setupTunnel()
+	util.DisableProxyHostnameCheck = true
 
 	auth, handler, err := apiServer(ctx, cfg, runtime)
 	if err != nil {
