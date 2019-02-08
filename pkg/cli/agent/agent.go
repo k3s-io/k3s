@@ -9,6 +9,7 @@ import (
 	"github.com/rancher/k3s/pkg/cli/cmds"
 	"github.com/rancher/norman/pkg/resolvehome"
 	"github.com/rancher/norman/signal"
+	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 )
 
@@ -25,6 +26,8 @@ func Run(ctx *cli.Context) error {
 		return fmt.Errorf("--server is required")
 	}
 
+	logrus.Infof("Starting k3s agent %s", ctx.App.Version)
+
 	dataDir, err := resolvehome.Resolve(cmds.AgentConfig.DataDir)
 	if err != nil {
 		return err
@@ -35,5 +38,6 @@ func Run(ctx *cli.Context) error {
 	cfg.DataDir = dataDir
 
 	contextCtx := signal.SigTermCancelContext(context.Background())
+
 	return agent.Run(contextCtx, cfg)
 }
