@@ -207,36 +207,6 @@ func (h *handler) deployPod(svc *core.Service) error {
 	return h.processor.NewDesiredSet(svc, objs).Apply()
 }
 
-func (h *handler) resolvePort(svc *core.Service, targetPort core.ServicePort) (int32, error) {
-	if len(svc.Spec.Selector) == 0 {
-		return 0, nil
-	}
-
-	if targetPort.TargetPort.IntVal != 0 {
-		return targetPort.TargetPort.IntVal, nil
-	}
-
-	pods, err := h.podCache.List(svc.Namespace, labels.SelectorFromSet(svc.Spec.Selector))
-	if err != nil {
-		return 0, err
-	}
-
-	for _, pod := range pods {
-		if !Ready.IsTrue(pod) {
-			continue
-		}
-		for _, container := range pod.Spec.Containers {
-			for _, port := range container.Ports {
-				if port.Name == targetPort.TargetPort.StrVal {
-					return port.ContainerPort, nil
-				}
-			}
-		}
-	}
-
-	return 0, nil
-}
-
 func (h *handler) newDeployment(svc *core.Service) (*apps.Deployment, error) {
 	name := fmt.Sprintf("svclb-%s", svc.Name)
 	zeroInt := intstr.FromInt(0)
@@ -300,19 +270,18 @@ func (h *handler) newDeployment(svc *core.Service) (*apps.Deployment, error) {
 		},
 	}
 
-	for _, port := range svc.Spec.Ports {
-		targetPort, err := h.resolvePort(svc, port)
-		if err != nil {
-			return nil, err
+	for i, port := range svc.Spec.Ports {
+		portName := port.Name
+		if portName == "" {
+			portName = fmt.Sprintf("port-%d", i)
 		}
-
 		container := core.Container{
-			Name:            fmt.Sprintf("port-%s", port.Name),
+			Name:            portName,
 			Image:           image,
 			ImagePullPolicy: core.PullIfNotPresent,
 			Ports: []core.ContainerPort{
 				{
-					Name:          port.Name,
+					Name:          portName,
 					ContainerPort: port.Port,
 					HostPort:      port.Port,
 				},
@@ -328,7 +297,7 @@ func (h *handler) newDeployment(svc *core.Service) (*apps.Deployment, error) {
 				},
 				{
 					Name:  "DEST_PORT",
-					Value: strconv.Itoa(int(targetPort)),
+					Value: strconv.Itoa(int(port.Port)),
 				},
 				{
 					Name:  "DEST_IP",
