@@ -23,6 +23,7 @@ type Node struct {
 
 type Containerd struct {
 	Address string
+	Log     string
 	Root    string
 	State   string
 	Config  string
