@@ -19,7 +19,11 @@ fi
 
 mkdir -p bin
 
-rm -f bin/k3s-agent bin/hyperkube bin/containerd bin/cni ./bin/runc bin/containerd-shim bin/k3s-server bin/kubectl
+if [ -z "$GOARM" ] && [ "arm" = "$(go env GOARCH)" ]; then
+    GOARM=7
+fi
+
+rm -f bin/k3s-agent bin/hyperkube bin/containerd bin/cni ./bin/runc bin/containerd-shim bin/k3s-server bin/kubectl bin/crictl
 # echo Building agent
 # CGO_ENABLED=1 go build -tags "$TAGS" -ldflags "$LDFLAGS $STATIC" -o bin/k3s-agent ./cmd/agent/main.go
 echo Building server
@@ -27,8 +31,11 @@ CGO_ENABLED=1 go build -tags "$TAGS" -ldflags "$LDFLAGS $STATIC_SQLITE" -o bin/c
 ln -s containerd ./bin/k3s-agent
 ln -s containerd ./bin/k3s-server
 ln -s containerd ./bin/kubectl
+ln -s containerd ./bin/crictl
 echo Building hyperkube
 CGO_ENABLED=1 go build -tags "$TAGS" -ldflags "$LDFLAGS $STATIC_SQLITE" -o bin/hyperkube ./vendor/k8s.io/kubernetes/cmd/hyperkube/
+#echo Building ctr
+#CGO_ENABLED=1 go build -tags "$TAGS" -ldflags "$LDFLAGS $STATIC_SQLITE" -o bin/ctr ./cmd/ctr/main.go
 # echo Building containerd
 # CGO_ENABLED=0 go build -tags "$TAGS" -ldflags "$LDFLAGS $STATIC" -o bin/containerd ./cmd/containerd/
 echo Building cni

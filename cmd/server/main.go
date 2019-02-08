@@ -5,8 +5,10 @@ import (
 	"path/filepath"
 
 	"github.com/docker/docker/pkg/reexec"
+	crictl2 "github.com/kubernetes-sigs/cri-tools/cmd/crictl"
 	"github.com/rancher/k3s/pkg/cli/agent"
 	"github.com/rancher/k3s/pkg/cli/cmds"
+	"github.com/rancher/k3s/pkg/cli/crictl"
 	"github.com/rancher/k3s/pkg/cli/kubectl"
 	"github.com/rancher/k3s/pkg/cli/server"
 	"github.com/rancher/k3s/pkg/containerd"
@@ -18,6 +20,7 @@ import (
 func init() {
 	reexec.Register("containerd", containerd.Main)
 	reexec.Register("kubectl", kubectl2.Main)
+	reexec.Register("crictl", crictl2.Main)
 }
 
 func main() {
@@ -33,6 +36,7 @@ func main() {
 		cmds.NewServerCommand(server.Run),
 		cmds.NewAgentCommand(agent.Run),
 		cmds.NewKubectlCommand(kubectl.Run),
+		cmds.NewCRICTL(crictl.Run),
 	}
 
 	err := app.Run(os.Args)

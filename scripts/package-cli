@@ -7,10 +7,11 @@ cd $(dirname $0)/..
 
 ./scripts/download
 
-rm -rf bin/kubectl bin/k3s-agent bin/k3s-server bin/kubectl bin/k3s build/data
+rm -rf bin/crictl bin/kubectl bin/k3s-agent bin/k3s-server bin/kubectl bin/k3s build/data
 ln -s containerd bin/k3s-agent
 ln -s containerd bin/k3s-server
 ln -s containerd bin/kubectl
+ln -s containerd bin/crictl
 for i in bridge flannel host-local loopback portmap; do
     if [ -e ./bin/$i ]; then
         rm -f ./bin/$i
