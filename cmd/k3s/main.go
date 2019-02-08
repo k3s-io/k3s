@@ -18,7 +18,7 @@ import (
 )
 
 func main() {
-	if runKubectl() {
+	if runCLIs() {
 		return
 	}
 
@@ -26,7 +26,9 @@ func main() {
 	app.Commands = []cli.Command{
 		cmds.NewServerCommand(wrap("k3s-server", os.Args)),
 		cmds.NewAgentCommand(wrap("k3s-agent", os.Args)),
-		cmds.NewKubectlCommand(kubectlCLI),
+		cmds.NewKubectlCommand(externalCLIAction("kubectl")),
+		//cmds.NewCtrCommand(externalCLIAction("ctr")),
+		cmds.NewCRICTL(externalCLIAction("crictl")),
 	}
 
 	err := app.Run(os.Args)
@@ -35,26 +37,30 @@ func main() {
 	}
 }
 
-func runKubectl() bool {
-	if filepath.Base(os.Args[0]) == "kubectl" {
-		if err := kubectl("", os.Args[1:]); err != nil {
-			logrus.Fatal(err)
+func runCLIs() bool {
+	for _, cmd := range []string{"kubectl", "ctr", "crictl"} {
+		if filepath.Base(os.Args[0]) == cmd {
+			if err := externalCLI(cmd, "", os.Args[1:]); err != nil {
+				logrus.Fatal(err)
+			}
+			return true
 		}
-		return true
 	}
 	return false
 }
 
-func kubectlCLI(cli *cli.Context) error {
-	return kubectl(cli.String("data-dir"), cli.Args())
+func externalCLIAction(cmd string) func(cli *cli.Context) error {
+	return func(cli *cli.Context) error {
+		return externalCLI(cmd, cli.String("data-dir"), cli.Args())
+	}
 }
 
-func kubectl(dataDir string, args []string) error {
+func externalCLI(cli, dataDir string, args []string) error {
 	dataDir, err := datadir.Resolve(dataDir)
 	if err != nil {
 		return err
 	}
-	return stageAndRun(dataDir, "kubectl", append([]string{"kubectl"}, args...))
+	return stageAndRun(dataDir, cli, append([]string{cli}, args...))
 }
 
 func wrap(cmd string, args []string) func(ctx *cli.Context) error {
