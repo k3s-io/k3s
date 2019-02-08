@@ -50,9 +50,10 @@ func Register(ctx context.Context, kubernetes kubernetes.Interface, enabled bool
 
 	clients.Service.OnChange(ctx, "svccontroller", h.onChange)
 	changeset.Watch(ctx, "svccontroller-watcher",
-		h.onPodChange,
+		h.onResourceChange,
 		clients.Service,
-		clients.Pod)
+		clients.Pod,
+		clients.Endpoints)
 
 	return nil
 }
@@ -66,7 +67,16 @@ type handler struct {
 	services     coregetter.ServicesGetter
 }
 
-func (h *handler) onPodChange(name, namespace string, obj runtime.Object) ([]changeset.Key, error) {
+func (h *handler) onResourceChange(name, namespace string, obj runtime.Object) ([]changeset.Key, error) {
+	if ep, ok := obj.(*core.Endpoints); ok {
+		return []changeset.Key{
+			{
+				Name:      ep.Name,
+				Namespace: ep.Namespace,
+			},
+		}, nil
+	}
+
 	pod, ok := obj.(*core.Pod)
 	if !ok {
 		return nil, nil

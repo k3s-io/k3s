@@ -72,6 +72,7 @@ func main() {
 
 	if err := generator.ControllersForForeignTypes(basePackage, corev1.SchemeGroupVersion, []interface{}{
 		corev1.ServiceAccount{},
+		corev1.Endpoints{},
 		corev1.Service{},
 		corev1.Pod{},
 		corev1.ConfigMap{},
