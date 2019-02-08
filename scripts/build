@@ -5,7 +5,7 @@ source $(dirname $0)/version.sh
 
 cd $(dirname $0)/..
 
-LDFLAGS="-X github.com/rancher/k3s/version.Version=$VERSION -w -s"
+LDFLAGS="-X github.com/rancher/k3s/pkg/version.Version=$VERSION -X github.com/rancher/k3s/pkg/version.GitCommit=${COMMIT:0:8} -w -s"
 STATIC="-extldflags '-static'"
 STATIC_SQLITE="-extldflags '-static -lm -ldl -lz -lpthread'"
 TAGS="ctrd apparmor seccomp no_btrfs netgo osusergo"
