@@ -40,6 +40,7 @@ const (
 var (
 	ErrAddressNotAllowed = errors.New("address not allowed")
 	ErrNoAddresses       = errors.New("No addresses for hostname")
+	DisableProxyHostnameCheck = false
 )
 
 func IsZeroCIDR(cidr string) bool {
@@ -72,6 +73,10 @@ type Resolver interface {
 
 // IsProxyableHostname checks if the IP addresses for a given hostname are permitted to be proxied
 func IsProxyableHostname(ctx context.Context, resolv Resolver, hostname string) error {
+	if DisableProxyHostnameCheck {
+		return nil
+	}
+
 	resp, err := resolv.LookupIPAddr(ctx, hostname)
 	if err != nil {
 		return err
