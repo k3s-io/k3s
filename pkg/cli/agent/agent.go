@@ -31,6 +31,7 @@ func Run(ctx *cli.Context) error {
 	}
 
 	cfg := cmds.AgentConfig
+	cfg.Debug = ctx.GlobalBool("debug")
 	cfg.DataDir = dataDir
 
 	contextCtx := signal.SigTermCancelContext(context.Background())

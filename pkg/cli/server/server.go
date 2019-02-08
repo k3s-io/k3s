@@ -8,8 +8,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"k8s.io/apimachinery/pkg/util/net"
-
 	"github.com/docker/docker/pkg/reexec"
 	"github.com/natefinch/lumberjack"
 	"github.com/rancher/k3s/pkg/agent"
@@ -18,6 +16,7 @@ import (
 	"github.com/rancher/norman/signal"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
+	"k8s.io/apimachinery/pkg/util/net"
 
 	_ "github.com/mattn/go-sqlite3" // ensure we have sqlite
 )
@@ -95,17 +94,18 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 		return err
 	}
 
+	logrus.Info("k3s is up and running")
+
 	if cfg.DisableAgent {
 		<-ctx.Done()
 		return nil
 	}
 
-	logFile := filepath.Join(serverConfig.ControlConfig.DataDir, "agent/agent.log")
 	url := fmt.Sprintf("https://localhost:%d", serverConfig.TLSConfig.HTTPSPort)
-	logrus.Infof("Agent starting, logging to %s", logFile)
 	token := server.FormatToken(serverConfig.ControlConfig.Runtime.NodeToken, certs)
 
 	agentConfig := cmds.AgentConfig
+	agentConfig.Debug = app.GlobalBool("bool")
 	agentConfig.DataDir = filepath.Dir(serverConfig.ControlConfig.DataDir)
 	agentConfig.ServerURL = url
 	agentConfig.Token = token

@@ -3,12 +3,14 @@ package containerd
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"strings"
 	"syscall"
 	"time"
 
+	"github.com/natefinch/lumberjack"
 	util2 "github.com/rancher/k3s/pkg/agent/util"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/sirupsen/logrus"
@@ -56,15 +58,30 @@ func Run(ctx context.Context, cfg *config.Node) error {
 		return err
 	}
 
-	if logrus.GetLevel() >= logrus.DebugLevel {
-		args = append(args, "-l", "debug")
+	if os.Getenv("CONTAINERD_LOG_LEVEL") != "" {
+		args = append(args, "-l", "CONTAINERD_LOG_LEVEL")
+	}
+
+	stdOut := io.Writer(os.Stdout)
+	stdErr := io.Writer(os.Stderr)
+
+	if cfg.Containerd.Log != "" {
+		logrus.Infof("Logging containerd to %s", cfg.Containerd.Log)
+		stdOut = &lumberjack.Logger{
+			Filename:   cfg.Containerd.Log,
+			MaxSize:    50,
+			MaxBackups: 3,
+			MaxAge:     28,
+			Compress:   true,
+		}
+		stdErr = stdOut
 	}
 
 	go func() {
 		logrus.Infof("Running containerd %s", config.ArgString(args[1:]))
 		cmd := exec.Command(args[0], args[1:]...)
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
+		cmd.Stdout = stdOut
+		cmd.Stderr = stdErr
 		cmd.SysProcAttr = &syscall.SysProcAttr{
 			Pdeathsig: syscall.SIGKILL,
 		}
