@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"net"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/tools/record"
@@ -46,6 +46,8 @@ var (
 
 	// ErrNoAddresses indicates there are no addresses for the hostname
 	ErrNoAddresses = errors.New("No addresses for hostname")
+
+	DisableProxyHostnameCheck = false
 )
 
 // IsZeroCIDR checks whether the input CIDR string is either
@@ -80,6 +82,10 @@ type Resolver interface {
 
 // IsProxyableHostname checks if the IP addresses for a given hostname are permitted to be proxied
 func IsProxyableHostname(ctx context.Context, resolv Resolver, hostname string) error {
+	if DisableProxyHostnameCheck {
+		return nil
+	}
+
 	resp, err := resolv.LookupIPAddr(ctx, hostname)
 	if err != nil {
 		return err
