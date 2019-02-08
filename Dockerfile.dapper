@@ -16,7 +16,7 @@ RUN rm -rf /go/src /go/pkg
 
 ARG DAPPER_HOST_ARCH
 ENV ARCH $DAPPER_HOST_ARCH
-ENV DAPPER_RUN_ARGS --privileged
+ENV DAPPER_RUN_ARGS --privileged -v k3s-cache:/go/src/github.com/rancher/k3s/.cache
 ENV DAPPER_ENV REPO TAG DRONE_TAG IMAGE_NAME
 ENV DAPPER_SOURCE /go/src/github.com/rancher/k3s/
 ENV DAPPER_OUTPUT ./bin ./dist ./build/out

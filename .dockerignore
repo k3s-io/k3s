@@ -4,6 +4,7 @@
 ./pkg/data/zz_generated_bindata.go
 ./package/data.tar.gz
 ./.vagrant
+./.cache
 ./.dapper
 ./data-dir
 ./dist
