@@ -22,7 +22,7 @@ import (
 
 const (
 	namespace = "kube-system"
-	image     = "rancher/klipper-helm:v0.1.0"
+	image     = "rancher/klipper-helm:v0.1.2"
 	label     = "helm.k3s.cattle.io/chart"
 )
 
@@ -123,6 +123,8 @@ func (h *handler) onRemove(chart *k3s.HelmChart) (runtime.Object, error) {
 }
 
 func job(chart *k3s.HelmChart) (*batch.Job, *core.ConfigMap) {
+	oneThousand := int32(1000)
+
 	action := "install"
 	if chart.DeletionTimestamp != nil {
 		action = "delete"
@@ -140,6 +142,7 @@ func job(chart *k3s.HelmChart) (*batch.Job, *core.ConfigMap) {
 			},
 		},
 		Spec: batch.JobSpec{
+			BackoffLimit: &oneThousand,
 			Template: core.PodTemplateSpec{
 				ObjectMeta: meta.ObjectMeta{
 					Labels: map[string]string{
