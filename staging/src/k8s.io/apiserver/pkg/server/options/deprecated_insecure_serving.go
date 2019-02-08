@@ -74,7 +74,6 @@ func (s *DeprecatedInsecureServingOptions) AddFlags(fs *pflag.FlagSet) {
 
 	fs.IntVar(&s.BindPort, "insecure-port", s.BindPort, ""+
 		"The port on which to serve unsecured, unauthenticated access.")
-	fs.MarkDeprecated("insecure-port", "This flag will be removed in a future version.")
 	fs.Lookup("insecure-port").Hidden = false
 }
 
@@ -90,7 +89,6 @@ func (s *DeprecatedInsecureServingOptions) AddUnqualifiedFlags(fs *pflag.FlagSet
 	fs.Lookup("address").Hidden = false
 
 	fs.IntVar(&s.BindPort, "port", s.BindPort, "The port on which to serve unsecured, unauthenticated access. Set to 0 to disable.")
-	fs.MarkDeprecated("port", "see --secure-port instead.")
 	fs.Lookup("port").Hidden = false
 }
 
