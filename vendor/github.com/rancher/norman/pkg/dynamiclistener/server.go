@@ -220,11 +220,11 @@ func genCA() (*x509.Certificate, *rsa.PrivateKey, error) {
 func (s *server) Update(status *ListenerStatus) error {
 	s.Lock()
 	defer s.getCertificate(&tls.ClientHelloInfo{ServerName: "localhost"})
-	defer s.Unlock()
 
 	if status.CACert != "" && status.CAKey != "" && s.activeCAKeyString != status.CAKey {
 		cert, err := tls.X509KeyPair([]byte(status.CACert), []byte(status.CAKey))
 		if err != nil {
+			s.Unlock()
 			return err
 		}
 		s.activeCAKey = cert.PrivateKey.(*rsa.PrivateKey)
@@ -232,6 +232,7 @@ func (s *server) Update(status *ListenerStatus) error {
 
 		x509Cert, err := x509.ParseCertificate(cert.Certificate[0])
 		if err != nil {
+			s.Unlock()
 			return err
 		}
 		s.activeCA = x509Cert
@@ -252,6 +253,7 @@ func (s *server) Update(status *ListenerStatus) error {
 		}
 	}
 
+	s.Unlock()
 	return s.reload()
 }
 
@@ -342,6 +344,13 @@ func (s *server) getCertificate(hello *tls.ClientHelloInfo) (*tls.Certificate, e
 		s.Unlock()
 		return s.activeCert, nil
 	}
+
+	changed := false
+	defer func() {
+		if changed {
+			s.save()
+		}
+	}()
 	defer s.Unlock()
 
 	mapKey := hello.ServerName
@@ -370,7 +379,7 @@ func (s *server) getCertificate(hello *tls.ClientHelloInfo) (*tls.Certificate, e
 		}
 	}
 
-	defer s.save()
+	changed = true
 
 	if s.activeCA == nil {
 		ca, key, err := genCA()

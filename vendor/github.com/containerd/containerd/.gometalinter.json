@@ -10,7 +10,6 @@
 
   "Enable": [
     "structcheck",
-    "unused",
     "varcheck",
     "staticcheck",
     "unconvert",

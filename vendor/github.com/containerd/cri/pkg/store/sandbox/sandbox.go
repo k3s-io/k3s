@@ -93,7 +93,7 @@ func (s *Store) Get(id string) (Sandbox, error) {
 	if err != nil {
 		return sb, err
 	}
-	if sb.Status.Get().State == StateUnknown {
+	if sb.Status.Get().State == StateInit {
 		return Sandbox{}, store.ErrNotExist
 	}
 	return sb, nil
@@ -123,7 +123,7 @@ func (s *Store) List() []Sandbox {
 	defer s.lock.RUnlock()
 	var sandboxes []Sandbox
 	for _, sb := range s.sandboxes {
-		if sb.Status.Get().State == StateUnknown {
+		if sb.Status.Get().State == StateInit {
 			continue
 		}
 		sandboxes = append(sandboxes, sb)

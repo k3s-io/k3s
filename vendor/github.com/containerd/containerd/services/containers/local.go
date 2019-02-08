@@ -147,9 +147,7 @@ func (l *local) Update(ctx context.Context, req *api.UpdateContainerRequest, _ .
 	if err := l.withStoreUpdate(ctx, func(ctx context.Context, store containers.Store) error {
 		var fieldpaths []string
 		if req.UpdateMask != nil && len(req.UpdateMask.Paths) > 0 {
-			for _, path := range req.UpdateMask.Paths {
-				fieldpaths = append(fieldpaths, path)
-			}
+			fieldpaths = append(fieldpaths, req.UpdateMask.Paths...)
 		}
 
 		updated, err := store.Update(ctx, container, fieldpaths...)

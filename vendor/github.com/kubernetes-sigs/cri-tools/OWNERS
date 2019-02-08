@@ -1,0 +1,15 @@
+# See the OWNERS file documentation:
+#  https://github.com/kubernetes/kubernetes/blob/master/docs/devel/owners.md
+
+approvers:
+  - Random-Liu
+  - dchen1107
+  - euank
+  - feiskyer
+  - heartlock
+  - mrunalp
+  - timstclair
+  - xlgao-zju
+  - yujuhong
+  - runcom
+

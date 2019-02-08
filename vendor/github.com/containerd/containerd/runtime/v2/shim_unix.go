@@ -28,5 +28,5 @@ import (
 )
 
 func openShimLog(ctx context.Context, bundle *Bundle) (io.ReadCloser, error) {
-	return fifo.OpenFifo(ctx, filepath.Join(bundle.Path, "log"), unix.O_RDONLY|unix.O_CREAT|unix.O_NONBLOCK, 0700)
+	return fifo.OpenFifo(ctx, filepath.Join(bundle.Path, "log"), unix.O_RDWR|unix.O_CREAT, 0700)
 }

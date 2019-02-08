@@ -46,8 +46,9 @@ func (c *criService) RemovePodSandbox(ctx context.Context, r *runtime.RemovePodS
 	// Use the full sandbox id.
 	id := sandbox.ID
 
-	// Return error if sandbox container is still running.
-	if sandbox.Status.Get().State == sandboxstore.StateReady {
+	// Return error if sandbox container is still running or unknown.
+	state := sandbox.Status.Get().State
+	if state == sandboxstore.StateReady || state == sandboxstore.StateUnknown {
 		return nil, errors.Errorf("sandbox container %q is not fully stopped", id)
 	}
 

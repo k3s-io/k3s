@@ -222,17 +222,14 @@ func list(controller controller.GenericController, objectClient *objectclient.Ob
 		if !ok {
 			return nil, fmt.Errorf("invalid list type %T", objList)
 		}
-		if err != nil {
-			return nil, err
-		}
 
 		for _, obj := range list.Items {
-			if err := addObjectToMap(objs, obj); err != nil {
+			if err := addObjectToMap(objs, &obj); err != nil {
 				errs = append(errs, err)
 			}
 		}
 
-		return objs, nil
+		return objs, types.NewErrors(errs...)
 	}
 
 	err := cache.ListAllByNamespace(controller.Informer().GetIndexer(), "", selector, func(obj interface{}) {

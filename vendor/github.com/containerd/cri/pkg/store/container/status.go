@@ -28,6 +28,38 @@ import (
 	runtime "k8s.io/kubernetes/pkg/kubelet/apis/cri/runtime/v1alpha2"
 )
 
+// The container state machine in the CRI plugin:
+//
+//                         +              +
+//                         |              |
+//                         | Create       | Load
+//                         |              |
+//                    +----v----+         |
+//                    |         |         |
+//                    | CREATED <---------+-----------+
+//                    |         |         |           |
+//                    +----+-----         |           |
+//                         |              |           |
+//                         | Start        |           |
+//                         |              |           |
+//                    +----v----+         |           |
+//   Exec    +--------+         |         |           |
+//  Attach   |        | RUNNING <---------+           |
+// LogReopen +-------->         |         |           |
+//                    +----+----+         |           |
+//                         |              |           |
+//                         | Stop/Exit    |           |
+//                         |              |           |
+//                    +----v----+         |           |
+//                    |         <---------+      +----v----+
+//                    |  EXITED |                |         |
+//                    |         <----------------+ UNKNOWN |
+//                    +----+----+       Stop     |         |
+//                         |                     +---------+
+//                         | Remove
+//                         v
+//                      DELETED
+
 // statusVersion is current version of container status.
 const statusVersion = "v1" // nolint
 

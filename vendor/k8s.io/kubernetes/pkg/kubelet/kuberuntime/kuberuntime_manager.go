@@ -486,12 +486,22 @@ func (m *kubeGenericRuntimeManager) computePodActions(pod *v1.Pod, podStatus *ku
 	// Check initialization progress.
 	initLastStatus, next, done := findNextInitContainerToRun(pod, podStatus)
 	if !done {
-		if next != nil {
-			initFailed := initLastStatus != nil && isContainerFailed(initLastStatus)
+		if next >= 0 {
+			container := pod.Spec.InitContainers[next]
+			initFailed := initLastStatus != nil && isInitContainerFailed(initLastStatus)
 			if initFailed && !shouldRestartOnFailure(pod) {
 				changes.KillPod = true
 			} else {
-				changes.NextInitContainerToStart = next
+				// Always try to stop containers in unknown state first.
+				if initLastStatus != nil && initLastStatus.State == kubecontainer.ContainerStateUnknown {
+					changes.ContainersToKill[initLastStatus.ID] = containerToKillInfo{
+						name:      container.Name,
+						container: &container,
+						message: fmt.Sprintf("Init container is in %q state, try killing it before restart",
+							initLastStatus.State),
+					}
+				}
+				changes.NextInitContainerToStart = &container
 			}
 		}
 		// Initialization failed or still in progress. Skip inspecting non-init
@@ -522,6 +532,17 @@ func (m *kubeGenericRuntimeManager) computePodActions(pod *v1.Pod, podStatus *ku
 				message := fmt.Sprintf("Container %+v is dead, but RestartPolicy says that we should restart it.", container)
 				klog.V(3).Infof(message)
 				changes.ContainersToStart = append(changes.ContainersToStart, idx)
+				if containerStatus != nil && containerStatus.State == kubecontainer.ContainerStateUnknown {
+					// If container is in unknown state, we don't know whether it
+					// is actually running or not, always try killing it before
+					// restart to avoid having 2 running instances of the same container.
+					changes.ContainersToKill[containerStatus.ID] = containerToKillInfo{
+						name:      containerStatus.Name,
+						container: &pod.Spec.Containers[idx],
+						message: fmt.Sprintf("Container is in %q state, try killing it before restart",
+							containerStatus.State),
+					}
+				}
 			}
 			continue
 		}

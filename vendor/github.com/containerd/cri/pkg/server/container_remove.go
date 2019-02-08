@@ -98,9 +98,12 @@ func (c *criService) RemoveContainer(ctx context.Context, r *runtime.RemoveConta
 // container will not be started or removed again.
 func setContainerRemoving(container containerstore.Container) error {
 	return container.Status.Update(func(status containerstore.Status) (containerstore.Status, error) {
-		// Do not remove container if it's still running.
+		// Do not remove container if it's still running or unknown.
 		if status.State() == runtime.ContainerState_CONTAINER_RUNNING {
-			return status, errors.New("container is still running")
+			return status, errors.New("container is still running, to stop first")
+		}
+		if status.State() == runtime.ContainerState_CONTAINER_UNKNOWN {
+			return status, errors.New("container state is unknown, to stop first")
 		}
 		if status.Removing {
 			return status, errors.New("container is already in removing state")

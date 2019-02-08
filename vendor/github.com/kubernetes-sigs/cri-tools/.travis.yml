@@ -1,0 +1,59 @@
+language: go
+sudo: required
+dist: trusty
+
+go:
+  - 1.11.x
+
+os:
+  - linux
+  - windows
+
+go_import_path: github.com/kubernetes-sigs/cri-tools
+
+services:
+  - docker
+
+before_install:
+  - |
+    (
+      set -Eeuo pipefail
+      if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then
+        choco install -y make mingw
+        export PATH="/c/tools/mingw64/bin:/c/ProgramData/chocolatey/bin;$PATH"
+      fi
+    )
+
+install:
+  - make install.tools
+
+jobs:
+  include:
+    - stage: Static check
+      os: linux # Only need to run on Linux
+      script:
+        - make lint
+        - make gofmt
+    - stage: Build
+      os: linux # Only need to run on Linux
+      script:
+        -  make release
+    - stage: Test
+      os: linux
+      script:
+        - make
+        - hack/install-docker.sh
+        - hack/install-kubelet.sh
+        - sudo env PATH=$PATH GOPATH=$GOPATH hack/run-critest.sh
+    - stage: Test
+      os: windows
+      script:
+        - make windows
+        - powershell -c "Set-ExecutionPolicy Bypass -Scope CURRENTUSER -Force"
+        - powershell hack/install-kubelet.ps1
+        # Skip hack/run-critest.sh temporarily.
+
+stages:
+  - Static check
+  - Build
+  - Test
