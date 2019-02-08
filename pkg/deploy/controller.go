@@ -31,7 +31,8 @@ import (
 )
 
 const (
-	ns = "kube-system"
+	ns       = "kube-system"
+	startKey = "_start_"
 )
 
 func WatchFiles(ctx context.Context, skips []string, bases ...string) error {
@@ -48,10 +49,16 @@ func WatchFiles(ctx context.Context, skips []string, bases ...string) error {
 		clients:    map[schema.GroupVersionKind]*objectclient.ObjectClient{},
 	}
 
-	addons.Enqueue("", "_start_")
+	addons.Enqueue("", startKey)
 	addons.Interface().AddHandler(ctx, "addon-start", func(key string, _ *v1.Addon) (runtime.Object, error) {
-		w.started = true
-		return nil, w.listFiles(true)
+		if key == startKey {
+			if err := w.listFiles(true); err != nil {
+				return nil, err
+			}
+			w.started = true
+			return nil, nil
+		}
+		return nil, nil
 	})
 
 	w.start(ctx)
@@ -144,6 +151,7 @@ func (w *watcher) deploy(path string, compareChecksum bool) error {
 
 	checksum := checksum(content)
 	if compareChecksum && checksum == addon.Spec.Checksum {
+		logrus.Debugf("Skipping existing deployment of %s, check=%v, checksum %s=%s", path, compareChecksum, checksum, addon.Spec.Checksum)
 		return nil
 	}
 
@@ -153,6 +161,10 @@ func (w *watcher) deploy(path string, compareChecksum bool) error {
 	}
 
 	clients, err := w.apply(addon, objectSet)
+	if err != nil {
+		return err
+	}
+
 	if w.clients == nil {
 		w.clients = map[schema.GroupVersionKind]*objectclient.ObjectClient{}
 	}
