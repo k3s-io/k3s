@@ -35,7 +35,7 @@ case $ARCH in
         ;;
     arm*)
         ARCH=arm
-        SUFFIX=-${ARCH}
+        SUFFIX=-${ARCH}hf
         ;;
     *)
         fatal Unknown architecture $ARCH
