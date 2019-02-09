@@ -19,8 +19,6 @@ services:
     tmpfs:
     - /run
     - /var/run
-    volumes:
-    - /var/lib/rancher/k3s
     privileged: true
     environment:
     - K3S_URL=https://server:6443
