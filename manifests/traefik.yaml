@@ -4,4 +4,7 @@ metadata:
   name: traefik
   namespace: kube-system
 spec:
-  chart: stable/traefik 
+  chart: stable/traefik
+  set:
+    rbac.enabled: "true"
+    ssl.enabled: "true"
