@@ -17,7 +17,7 @@ import (
 func Main() {
 	kubenv := os.Getenv("KUBECONFIG")
 	if kubenv == "" {
-		config, err := server.HomeKubeConfig()
+		config, err := server.HomeKubeConfig(false)
 		if _, serr := os.Stat(config); err == nil && serr == nil {
 			os.Setenv("KUBECONFIG", config)
 		}

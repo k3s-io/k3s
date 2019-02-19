@@ -79,6 +79,7 @@ umount `cat /proc/self/mounts | awk '{print $2}' | grep '^/run/k3s'`
 umount `cat /proc/self/mounts | awk '{print $2}' | grep '^/var/lib/rancher/k3s'`
 
 rm -rf /var/lib/rancher/k3s
+rm -rf /etc/rancher/k3s
 
 rm -f /usr/local/bin/k3s-uninstall.sh
 EOF
