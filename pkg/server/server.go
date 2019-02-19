@@ -16,6 +16,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/daemons/control"
+	"github.com/rancher/k3s/pkg/datadir"
 	"github.com/rancher/k3s/pkg/deploy"
 	"github.com/rancher/k3s/pkg/helm"
 	"github.com/rancher/k3s/pkg/servicelb"
@@ -147,8 +148,19 @@ func startNorman(ctx context.Context, config *Config) (string, error) {
 	}
 }
 
-func HomeKubeConfig() (string, error) {
-	return resolvehome.Resolve("${HOME}/.kube/k3s.yaml")
+func HomeKubeConfig(write bool) (string, error) {
+	if write {
+		if os.Getuid() == 0 {
+			return datadir.GlobalConfig, nil
+		}
+		return resolvehome.Resolve(datadir.HomeConfig)
+	}
+
+	if _, err := os.Stat(datadir.GlobalConfig); err == nil {
+		return datadir.GlobalConfig, nil
+	}
+
+	return resolvehome.Resolve(datadir.HomeConfig)
 }
 
 func printTokens(certs, advertiseIP string, tlsConfig *dynamiclistener.UserConfig, config *config.Control) {
@@ -177,7 +189,7 @@ func printTokens(certs, advertiseIP string, tlsConfig *dynamiclistener.UserConfi
 func writeKubeConfig(certs string, tlsConfig *dynamiclistener.UserConfig, config *config.Control) {
 	clientToken := FormatToken(config.Runtime.ClientToken, certs)
 	url := fmt.Sprintf("https://localhost:%d", tlsConfig.HTTPSPort)
-	kubeConfig, err := HomeKubeConfig()
+	kubeConfig, err := HomeKubeConfig(true)
 	def := true
 	if err != nil {
 		kubeConfig = filepath.Join(config.DataDir, "kubeconfig-k3s.yaml")
@@ -199,6 +211,8 @@ func writeKubeConfig(certs string, tlsConfig *dynamiclistener.UserConfig, config
 		} else {
 			logrus.Errorf("failed to set %s to mode %s: %v", kubeConfig, os.FileMode(mode), err)
 		}
+	} else {
+		os.Chmod(kubeConfig, os.FileMode(0644))
 	}
 
 	logrus.Infof("Wrote kubeconfig %s", kubeConfig)

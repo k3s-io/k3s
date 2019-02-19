@@ -37,7 +37,7 @@ Quick Start
 
 ```bash
 sudo k3s server &
-# Kubeconfig is written to /root/.kube/k3s.yaml
+# Kubeconfig is written to /etc/rancher/k3s/k3s.yaml
 sudo k3s kubectl get node
 
 # On a different node run the below. NODE_TOKEN comes from /var/lib/rancher/k3s/server/node-token 
@@ -66,7 +66,7 @@ INFO[2019-01-22T15:16:20.273441984-07:00] Listening on :6443
 INFO[2019-01-22T15:16:20.278383446-07:00] Writing manifest: /var/lib/rancher/k3s/server/manifests/coredns.yaml 
 INFO[2019-01-22T15:16:20.474454524-07:00] Node token is available at /var/lib/rancher/k3s/server/node-token 
 INFO[2019-01-22T15:16:20.474471391-07:00] To join node to cluster: k3s agent -s https://10.20.0.3:6443 -t ${NODE_TOKEN} 
-INFO[2019-01-22T15:16:20.541027133-07:00] Wrote kubeconfig /root/.kube/k3s.yaml        
+INFO[2019-01-22T15:16:20.541027133-07:00] Wrote kubeconfig /etc/rancher/k3s/k3s.yaml
 INFO[2019-01-22T15:16:20.541049100-07:00] Run: k3s kubectl                             
 ```
 
