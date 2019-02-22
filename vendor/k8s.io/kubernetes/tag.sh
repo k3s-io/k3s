@@ -12,7 +12,7 @@ package version
 
 var (
 	gitMajor = "1"
-	gitMinor = "12"
+	gitMinor = "$(echo $1 | cut -f2 -d.)"
 	gitVersion   = "$1"
 	gitCommit    = "$(git rev-parse HEAD)"
 	gitTreeState = "clean" 

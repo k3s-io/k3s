@@ -20,6 +20,7 @@ limitations under the License.
 package app
 
 import (
+	"crypto/tls"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -160,11 +161,16 @@ func Run(completeOptions completedServerRunOptions, stopCh <-chan struct{}) erro
 
 // CreateServerChain creates the apiservers connected via delegation.
 func CreateServerChain(completedOptions completedServerRunOptions, stopCh <-chan struct{}) (*master.Config, *genericapiserver.GenericAPIServer, error) {
+	proxyTransport, err := CreateNodeDialer(completedOptions)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	if DefaultProxyDialerFn != nil {
 		completedOptions.KubeletConfig.Dial = DefaultProxyDialerFn
 	}
 
-	kubeAPIServerConfig, insecureServingInfo, serviceResolver, pluginInitializer, admissionPostStartHook, err := CreateKubeAPIServerConfig(completedOptions)
+	kubeAPIServerConfig, insecureServingInfo, serviceResolver, pluginInitializer, admissionPostStartHook, err := CreateKubeAPIServerConfig(completedOptions, proxyTransport)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -225,9 +231,20 @@ func CreateKubeAPIServer(kubeAPIServerConfig *master.Config, delegateAPIServer g
 	return kubeAPIServer, nil
 }
 
+// CreateNodeDialer creates the dialer infrastructure to connect to the nodes.
+func CreateNodeDialer(s completedServerRunOptions) (*http.Transport, error) {
+	proxyTLSClientConfig := &tls.Config{InsecureSkipVerify: true}
+	proxyTransport := utilnet.SetTransportDefaults(&http.Transport{
+		DialContext:     nil,
+		TLSClientConfig: proxyTLSClientConfig,
+	})
+	return proxyTransport, nil
+}
+
 // CreateKubeAPIServerConfig creates all the resources for running the API server, but runs none of them
 func CreateKubeAPIServerConfig(
 	s completedServerRunOptions,
+	proxyTransport *http.Transport,
 ) (
 	config *master.Config,
 	insecureServingInfo *genericapiserver.DeprecatedInsecureServingInfo,
@@ -239,7 +256,7 @@ func CreateKubeAPIServerConfig(
 	var genericConfig *genericapiserver.Config
 	var storageFactory *serverstorage.DefaultStorageFactory
 	var versionedInformers clientgoinformers.SharedInformerFactory
-	genericConfig, versionedInformers, insecureServingInfo, serviceResolver, pluginInitializers, admissionPostStartHook, storageFactory, lastErr = buildGenericConfig(s.ServerRunOptions)
+	genericConfig, versionedInformers, insecureServingInfo, serviceResolver, pluginInitializers, admissionPostStartHook, storageFactory, lastErr = buildGenericConfig(s.ServerRunOptions, proxyTransport)
 	if lastErr != nil {
 		return
 	}
@@ -269,6 +286,7 @@ func CreateKubeAPIServerConfig(
 			EventTTL:                s.EventTTL,
 			KubeletClientConfig:     s.KubeletConfig,
 			EnableLogsSupport:       s.EnableLogsHandler,
+			ProxyTransport:          proxyTransport,
 
 			ServiceIPRange:       serviceIPRange,
 			APIServerServiceIP:   apiServerServiceIP,
@@ -293,6 +311,7 @@ func CreateKubeAPIServerConfig(
 // BuildGenericConfig takes the master server options and produces the genericapiserver.Config associated with it
 func buildGenericConfig(
 	s *options.ServerRunOptions,
+	proxyTransport *http.Transport,
 ) (
 	genericConfig *genericapiserver.Config,
 	versionedInformers clientgoinformers.SharedInformerFactory,
@@ -385,7 +404,7 @@ func buildGenericConfig(
 	}
 	serviceResolver = buildServiceResolver(s.EnableAggregatorRouting, genericConfig.LoopbackClientConfig.Host, versionedInformers)
 
-	authInfoResolverWrapper := webhook.NewDefaultAuthenticationInfoResolverWrapper(nil, genericConfig.LoopbackClientConfig)
+	authInfoResolverWrapper := webhook.NewDefaultAuthenticationInfoResolverWrapper(proxyTransport, genericConfig.LoopbackClientConfig)
 
 	lastErr = s.Audit.ApplyTo(
 		genericConfig,
@@ -401,7 +420,7 @@ func buildGenericConfig(
 		return
 	}
 
-	pluginInitializers, admissionPostStartHook, err = admissionConfig.New(nil, serviceResolver)
+	pluginInitializers, admissionPostStartHook, err = admissionConfig.New(proxyTransport, serviceResolver)
 	if err != nil {
 		lastErr = fmt.Errorf("failed to create admission plugin initializer: %v", err)
 		return
