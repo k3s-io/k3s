@@ -60,6 +60,6 @@ func (s *SimpleProxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	if s.overrideHostHeader {
 		req.Host = u.Host
 	}
-	httpProxy := proxy.NewUpgradeAwareHandler(&u, s.transport, true, false, er)
+	httpProxy := proxy.NewUpgradeAwareHandler(&u, s.transport, false, false, er)
 	httpProxy.ServeHTTP(rw, req)
 }
