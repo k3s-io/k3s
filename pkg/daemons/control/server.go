@@ -156,6 +156,8 @@ func apiServer(ctx context.Context, cfg *config.Control, runtime *config.Control
 	certDir := filepath.Join(cfg.DataDir, "tls/temporary-certs")
 	os.MkdirAll(certDir, 0700)
 
+	// TODO: sqlite doesn't need the watch cache, but etcd does, so make this dynamic
+	args = append(args, "--watch-cache=false")
 	args = append(args, "--cert-dir", certDir)
 	args = append(args, "--allow-privileged=true")
 	args = append(args, "--authorization-mode", strings.Join([]string{modes.ModeNode, modes.ModeRBAC}, ","))
