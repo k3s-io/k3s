@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-VERSION=v0.1.0-rc3
+VERSION=v0.1.0-rc6
 
 info()
 {
@@ -41,13 +41,13 @@ case $ARCH in
         fatal Unknown architecture $ARCH
 esac
 
-BINURL=https://github.com/ibuildthecloud/k3s/releases/download/${VERSION}/k3s${SUFFIX}
-HASHURL=https://github.com/ibuildthecloud/k3s/releases/download/${VERSION}/sha256sum-${ARCH}.txt
+BINURL=https://github.com/rancher/k3s/releases/download/${VERSION}/k3s${SUFFIX}
+HASHURL=https://github.com/rancher/k3s/releases/download/${VERSION}/sha256sum-${ARCH}.txt
 
 if [ -d /run/systemd ]; then
     SYSTEMD=true
 else
-    fatal "Can not find systemd or Docker to use as a process supervisor for k3s"
+    fatal "Can not find systemd to use as a process supervisor for k3s"
 fi
 
 SUDO=sudo

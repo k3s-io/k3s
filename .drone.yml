@@ -42,7 +42,7 @@ steps:
     dockerfile: package/Dockerfile
     password:
       from_secret: docker_password
-    repo: "ibuildthecloud/k3s"
+    repo: "rancher/k3s"
     tag: "${DRONE_TAG}-amd64"
     username:
       from_secret: docker_username
@@ -104,7 +104,7 @@ steps:
     dockerfile: package/Dockerfile
     password:
       from_secret: docker_password
-    repo: "ibuildthecloud/k3s"
+    repo: "rancher/k3s"
     tag: "${DRONE_TAG}-arm64"
     username:
       from_secret: docker_username
@@ -166,7 +166,7 @@ steps:
     dockerfile: package/Dockerfile
     password:
       from_secret: docker_password
-    repo: "ibuildthecloud/k3s"
+    repo: "rancher/k3s"
     tag: "${DRONE_TAG}-arm"
     username:
       from_secret: docker_username
@@ -204,8 +204,8 @@ steps:
       - linux/amd64
       - linux/arm64
       - linux/arm
-    target: "ibuildthecloud/k3s:${DRONE_TAG}"
-    template: "ibuildthecloud/k3s:${DRONE_TAG}-ARCH"
+    target: "rancher/k3s:${DRONE_TAG}"
+    template: "rancher/k3s:${DRONE_TAG}-ARCH"
   when:
     instance:
     - drone-publish.rancher.io
