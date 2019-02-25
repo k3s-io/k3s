@@ -114,7 +114,7 @@ func extract(dataDir string) (string, error) {
 	asset, dir = getAssetAndDir(dataDir)
 	if _, err := os.Stat(dir); err == nil {
 		logrus.Debugf("Asset dir %s", dir)
-		return "", nil
+		return dir, nil
 	}
 
 	logrus.Infof("Preparing data dir %s", dir)
