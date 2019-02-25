@@ -31,7 +31,7 @@ k3s is intended to be a fully compliant Kubernetes distribution with the followi
     
 Quick Start
 -----------
-1. Download `k3s` from latest [release](https://github.com/ibuildthecloud/k3s/releases/latest), x86_64, armhf, and arm64 are
+1. Download `k3s` from latest [release](https://github.com/rancher/k3s/releases/latest), x86_64, armhf, and arm64 are
    supported
 2. Run server 
 
@@ -100,7 +100,7 @@ Building from source
 
 The clone will be much faster on this repo if you do
 
-    git clone --depth 1 https://github.com/ibuildthecloud/k3s.git
+    git clone --depth 1 https://github.com/rancher/k3s.git
     
 This repo includes all of Kubernetes history so `--depth 1` will avoid most of that.
 
