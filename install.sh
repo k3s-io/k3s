@@ -88,7 +88,6 @@ EOF
     $SUDO mv -f $TMPUNINSTALL /usr/local/bin/k3s-uninstall.sh
 
     CURL=`which curl`
-    WGET=`which wget`
 
     if [ -n "$CURL" ]; then
         TMPHASH=`mktemp -t k3s-install.XXXXXXXXXX`
