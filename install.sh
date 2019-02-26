@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-VERSION=v0.1.0-rc8
+VERSION=v0.1.0
 
 info()
 {
