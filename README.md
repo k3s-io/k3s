@@ -245,8 +245,8 @@ TODO
 ----
 Currently broken or stuff that needs to be done for this to be considered production quality.
 
-1. Metrics API due to kube aggretation not being setup
+1. Metrics API due to kube aggregation not being setup
 2. HA
 3. Work on e2e, sonobouy, CNCF certification.
-4. etcd doesn't actuallly work because args aren't exposed
+4. etcd doesn't actually work because args aren't exposed
     
