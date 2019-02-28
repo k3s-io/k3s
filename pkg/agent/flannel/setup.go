@@ -80,7 +80,7 @@ func Run(ctx context.Context, config *config.Node) error {
 
 	go func() {
 		err := flannel(ctx, config.FlannelConf, config.AgentConfig.KubeConfig)
-		logrus.Fatalf("fannel exited: %v", err)
+		logrus.Fatalf("flannel exited: %v", err)
 	}()
 
 	return err
