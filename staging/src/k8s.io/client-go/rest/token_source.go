@@ -62,6 +62,10 @@ type tokenSourceTransport struct {
 	ort  http.RoundTripper
 }
 
+func (tst *tokenSourceTransport) WrappedRoundTripper() http.RoundTripper {
+	return tst.base
+}
+
 func (tst *tokenSourceTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	// This is to allow --token to override other bearer token providers.
 	if req.Header.Get("Authorization") != "" {
