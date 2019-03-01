@@ -89,10 +89,10 @@ of that file as `NODE_TOKEN` and then run the agent as follows
     
 That's it.
 
-Accessing cluser from outside
+Accessing cluster from outside
 -----------------------------
 
-Copy file `/etc/rancher/k3s/k3s.yaml` your machine located outside the cluster as `~/.kube/config`. Then edit it and replace
+Copy the file `/etc/rancher/k3s/k3s.yaml` on your machine located outside the cluster as `~/.kube/config`. Then edit it and replace
 "localhost" with the IP or name of the k3s server. Now you can use `kubectl` to manage your k3s cluster.
 
 Auto-deploying manifests
