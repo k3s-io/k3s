@@ -10,7 +10,6 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -24,7 +23,7 @@ import (
 	appsv1 "github.com/rancher/k3s/types/apis/apps/v1"
 	batchv1 "github.com/rancher/k3s/types/apis/batch/v1"
 	corev1 "github.com/rancher/k3s/types/apis/core/v1"
-	v1 "github.com/rancher/k3s/types/apis/k3s.cattle.io/v1"
+	"github.com/rancher/k3s/types/apis/k3s.cattle.io/v1"
 	rbacv1 "github.com/rancher/k3s/types/apis/rbac.authorization.k8s.io/v1"
 	"github.com/rancher/norman"
 	"github.com/rancher/norman/pkg/clientaccess"
@@ -242,15 +241,6 @@ func setupDataDirAndChdir(config *config.Control) error {
 	}
 
 	return nil
-}
-
-func readTokenFile(file string) (string, error) {
-	content, err := ioutil.ReadFile(file)
-	if err != nil {
-		return "", err
-	}
-
-	return strings.TrimSpace(string(content)), nil
 }
 
 func printToken(httpsPort int, advertiseIP, prefix, cmd string) {
