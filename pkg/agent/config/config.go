@@ -196,13 +196,6 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 	return nodeConfig, nil
 }
 
-func defString(val, newVal string) string {
-	if val == "" {
-		return newVal
-	}
-	return val
-}
-
 func getConfig(info *clientaccess.Info) (*config.Control, error) {
 	data, err := clientaccess.Get("/v1-k3s/config", info)
 	if err != nil {
