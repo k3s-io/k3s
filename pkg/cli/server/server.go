@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	systemd "github.com/coreos/go-systemd/daemon"
 	"github.com/docker/docker/pkg/reexec"
 	"github.com/natefinch/lumberjack"
 	"github.com/rancher/k3s/pkg/agent"
@@ -17,6 +18,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 	"k8s.io/apimachinery/pkg/util/net"
+	genericapiserver "k8s.io/apiserver/pkg/server"
 
 	_ "github.com/mattn/go-sqlite3" // ensure we have sqlite
 )
@@ -49,6 +51,7 @@ func runWithLogging(app *cli.Context, cfg *cmds.Server) error {
 }
 
 func Run(app *cli.Context) error {
+	genericapiserver.NotifySystemD = false
 	return run(app, &cmds.ServerConfig)
 }
 
@@ -95,6 +98,7 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	}
 
 	logrus.Info("k3s is up and running")
+	go systemd.SdNotify(false, "READY=1")
 
 	if cfg.DisableAgent {
 		<-ctx.Done()
