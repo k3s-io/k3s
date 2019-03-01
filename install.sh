@@ -1,8 +1,6 @@
 #!/bin/sh
 set -e
 
-VERSION=v0.1.0
-
 info()
 {
     echo "[INFO] " "$@"
@@ -13,6 +11,18 @@ fatal()
     echo "[ERROR] " "$@"
     exit 1
 }
+
+if [ -z `which curl || true` ]; then
+    fatal "Can not find curl for downloading files"
+fi
+
+if [ -n "$1" ]; then
+    VERSION=$1
+else
+    info "Finding latest release"
+    VERSION=`curl -w "%{url_effective}" -I -L -s -S https://github.com/rancher/k3s/releases/latest -o /dev/null | sed -e 's|.*/||'`
+fi
+info "Using $VERSION as release"
 
 ARCH=`uname -m`
 
@@ -87,19 +97,14 @@ EOF
     $SUDO chown root:root $TMPUNINSTALL
     $SUDO mv -f $TMPUNINSTALL /usr/local/bin/k3s-uninstall.sh
 
-    CURL=`which curl`
+    TMPHASH=`mktemp -t k3s-install.XXXXXXXXXX`
+    TMPBIN=`mktemp -t k3s-install.XXXXXXXXXX`
 
-    if [ -n "$CURL" ]; then
-        TMPHASH=`mktemp -t k3s-install.XXXXXXXXXX`
-        TMPBIN=`mktemp -t k3s-install.XXXXXXXXXX`
+    info Downloading $HASHURL
+    curl -o $TMPHASH -sfL $HASHURL
 
-        info Downloading $HASHURL
-        $CURL -o $TMPHASH -sfL $HASHURL
-
-        info Downloading $BINURL
-        $CURL -o $TMPBIN -sfL $BINURL
-    fi
-
+    info Downloading $BINURL
+    curl -o $TMPBIN -sfL $BINURL
 
     info Verifying download
     EXPECTED=`grep k3s $TMPHASH | awk '{print $1}'`
