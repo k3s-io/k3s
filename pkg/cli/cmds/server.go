@@ -83,6 +83,8 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 			},
 			NodeIPFlag,
 			NodeNameFlag,
+			DockerFlag,
+			FlannelFlag,
 		},
 	}
 }

@@ -29,14 +29,24 @@ var (
 	AgentConfig Agent
 	NodeIPFlag  = cli.StringFlag{
 		Name:        "node-ip,i",
-		Usage:       "IP address to advertise for node",
+		Usage:       "(agent) IP address to advertise for node",
 		Destination: &AgentConfig.NodeIP,
 	}
 	NodeNameFlag = cli.StringFlag{
 		Name:        "node-name",
-		Usage:       "Node name",
+		Usage:       "(agent) Node name",
 		EnvVar:      "K3S_NODE_NAME",
 		Destination: &AgentConfig.NodeName,
+	}
+	DockerFlag = cli.BoolFlag{
+		Name:        "docker",
+		Usage:       "(agent) Use docker instead of containerd",
+		Destination: &AgentConfig.Docker,
+	}
+	FlannelFlag = cli.BoolFlag{
+		Name:        "no-flannel",
+		Usage:       "(agent) Disable embedded flannel",
+		Destination: &AgentConfig.NoFlannel,
 	}
 )
 
@@ -65,22 +75,14 @@ func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
 				Destination: &AgentConfig.DataDir,
 				Value:       "/var/lib/rancher/k3s",
 			},
-			cli.BoolFlag{
-				Name:        "docker",
-				Usage:       "Use docker instead of containerd",
-				Destination: &AgentConfig.Docker,
-			},
-			cli.BoolFlag{
-				Name:        "no-flannel",
-				Usage:       "Disable embedded flannel",
-				Destination: &AgentConfig.NoFlannel,
-			},
 			cli.StringFlag{
 				Name:        "cluster-secret",
 				Usage:       "Shared secret used to bootstrap a cluster",
 				Destination: &AgentConfig.ClusterSecret,
 				EnvVar:      "K3S_CLUSTER_SECRET",
 			},
+			DockerFlag,
+			FlannelFlag,
 			NodeNameFlag,
 			NodeIPFlag,
 		},
