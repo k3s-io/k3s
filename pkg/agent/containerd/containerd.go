@@ -1,11 +1,16 @@
 package containerd
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"github.com/containerd/containerd"
+	"github.com/containerd/containerd/namespaces"
 	"io"
+	"io/ioutil"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -119,6 +124,42 @@ func Run(ctx context.Context, cfg *config.Node) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-time.After(time.Second):
+		}
+	}
+
+	imageDir := "/var/lib/rancher/k3s/agent/images"
+	fileInfo, err := os.Stat(imageDir)
+	if err != nil {
+		logrus.Infof("Cannot find images in %s: %v", imageDir, err)
+	} else {
+		if fileInfo.IsDir() {
+			fileInfos, err := ioutil.ReadDir(imageDir)
+			if err != nil {
+				logrus.Infof("Cannot read images in %s: %v", imageDir, err)
+			}
+			client, err := containerd.New(cfg.Containerd.Address)
+			if err != nil {
+				return err
+			}
+			defer client.Close()
+
+			ctxContainerD := namespaces.WithNamespace(context.Background(), "k8s.io")
+
+			for _, fileInfo := range fileInfos {
+				if !fileInfo.IsDir() {
+					filePath := filepath.Join(imageDir, fileInfo.Name())
+					fileContent, err := ioutil.ReadFile(filePath)
+					if err != nil {
+						logrus.Errorf("Unable to read %s: %v", filePath, err)
+						continue
+					}
+					logrus.Debugf("Import %s", filePath)
+					_, err = client.Import(ctxContainerD, bytes.NewReader(fileContent))
+					if err != nil {
+						logrus.Errorf("Unable to import %s: %v", filePath, err)
+					}
+				}
+			}
 		}
 	}
 
