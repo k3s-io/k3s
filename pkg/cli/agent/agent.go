@@ -3,7 +3,10 @@ package agent
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"os"
+	"strings"
+	"time"
 
 	"github.com/rancher/k3s/pkg/agent"
 	"github.com/rancher/k3s/pkg/cli/cmds"
@@ -13,9 +16,35 @@ import (
 	"github.com/urfave/cli"
 )
 
+func readToken(path string) (string, error) {
+	if path == "" {
+		return "", nil
+	}
+
+	for {
+		tokenBytes, err := ioutil.ReadFile(path)
+		if err == nil {
+			return strings.TrimSpace(string(tokenBytes)), nil
+		} else if os.IsNotExist(err) {
+			logrus.Infof("Waiting for %s to be available\n", path)
+			time.Sleep(2 * time.Second)
+		} else {
+			return "", err
+		}
+	}
+}
+
 func Run(ctx *cli.Context) error {
 	if os.Getuid() != 0 {
 		return fmt.Errorf("agent must be ran as root")
+	}
+
+	if cmds.AgentConfig.TokenFile != "" {
+		token, err := readToken(cmds.AgentConfig.TokenFile)
+		if err != nil {
+			return err
+		}
+		cmds.AgentConfig.Token = token
 	}
 
 	if cmds.AgentConfig.Token == "" && cmds.AgentConfig.ClusterSecret == "" {

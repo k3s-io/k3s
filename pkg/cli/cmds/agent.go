@@ -9,6 +9,7 @@ import (
 
 type Agent struct {
 	Token         string
+	TokenFile     string
 	ServerURL     string
 	DataDir       string
 	NodeIP        string
@@ -52,6 +53,12 @@ func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
 				Usage:       "Token to use for authentication",
 				EnvVar:      "K3S_TOKEN",
 				Destination: &AgentConfig.Token,
+			},
+			cli.StringFlag{
+				Name:        "token-file",
+				Usage:       "Token file to use for authentication",
+				EnvVar:      "K3S_TOKEN_FILE",
+				Destination: &AgentConfig.TokenFile,
 			},
 			cli.StringFlag{
 				Name:        "server,s",
