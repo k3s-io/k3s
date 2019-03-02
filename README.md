@@ -19,11 +19,17 @@ The below instructions will use the example of rebasing from v1.13.3 to v1.13.4.
 For git commands the remote `rancher` is github.com/rancher/k3s and the remote
 `upstream` refers to github.com/kubernetes/kubernetes
 
+* Configure git for large rebase
+   (for messages like `warning: you may want to set your merge.renameLimit variable to at least XXXX and retry the command`)
+```bash
+git config merge.renameLimit 999999
+```
+
 * Create a branch in github.com/rancher/k3s called k3s-${VERSION} that is branched
    from the upstream tag ${VERSION}.
    
 ```bash
-VERSION=v1.13.4
+VERSION=v1.13.5
 git fetch upstream
 git checkout -b k3s-${VERSION} ${VERSION}
 git push rancher k3s-${VERSION}
@@ -31,8 +37,8 @@ git push rancher k3s-${VERSION}
 
 * Start rebase
 ```bash
-OLD_VERSION=v1.13.3
-VERSION=v1.13.4
+OLD_VERSION=v1.13.4
+VERSION=v1.13.5
 git fetch rancher
 git checkout k3s-${VERSION}
 git reset --hard rancher/k3s-${OLD_VERSION}
@@ -44,8 +50,8 @@ git rebase -i ${VERSION}
 * Run the below to update vendor and apply tag
 
 ```bash
-VERSION=v1.13.4
-./deps && ./tag.sh ${VERSION}-k3s.1
+VERSION=v1.13.5
+./deps.sh && ./tag.sh ${VERSION}-k3s.1
 ```
 
 * Update the README.md with anything that might have changed in the procedure
