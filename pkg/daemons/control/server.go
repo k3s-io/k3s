@@ -101,9 +101,9 @@ func controllerManager(cfg *config.Control, runtime *config.ControlRuntime) {
 		"--allocate-node-cidrs",
 		"--cluster-cidr", cfg.ClusterIPRange.String(),
 		"--root-ca-file", runtime.TokenCA,
-		"--port", "0",
-		"--bind-address", "127.0.0.1",
-		"--secure-port", "10252",
+		"--port", "10252",
+		"--address", "127.0.0.1",
+		"--secure-port", "0",
 	}
 	if cfg.NoLeaderElect {
 		args = append(args, "--leader-elect=false")
@@ -121,9 +121,9 @@ func controllerManager(cfg *config.Control, runtime *config.ControlRuntime) {
 func scheduler(cfg *config.Control, runtime *config.ControlRuntime) {
 	args := []string{
 		"--kubeconfig", runtime.KubeConfigSystem,
-		"--port", "0",
-		"--bind-address", "127.0.0.1",
-		"--secure-port", "10251",
+		"--port", "10251",
+		"--address", "127.0.0.1",
+		"--secure-port", "0",
 	}
 	if cfg.NoLeaderElect {
 		args = append(args, "--leader-elect=false")
