@@ -31,8 +31,7 @@ k3s is intended to be a fully compliant Kubernetes distribution with the followi
     
 Quick Start
 -----------
-1. Download `k3s` from latest [release](https://github.com/rancher/k3s/releases/latest), x86_64, armhf, and arm64 are
-   supported
+1. Download `k3s` from [latest](https://github.com/rancher/k3s/releases/latest) (x86_64, armhf, arm64) or run the install script via `curl -L https://get.k3s.io | sh -`
 2. Run server 
 
 ```bash
