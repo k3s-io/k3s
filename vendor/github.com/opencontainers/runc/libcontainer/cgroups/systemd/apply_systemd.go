@@ -5,7 +5,6 @@ package systemd
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"math"
 	"os"
 	"path/filepath"
@@ -590,15 +589,6 @@ func setKernelMemory(c *configs.Cgroup) error {
 
 	if err := os.MkdirAll(path, 0755); err != nil {
 		return err
-	}
-	// do not try to enable the kernel memory if we already have
-	// tasks in the cgroup.
-	content, err := ioutil.ReadFile(filepath.Join(path, "tasks"))
-	if err != nil {
-		return err
-	}
-	if len(content) > 0 {
-		return nil
 	}
 	return fs.EnableKernelMemoryAccounting(path)
 }
