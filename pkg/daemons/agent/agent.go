@@ -93,9 +93,14 @@ func kubelet(cfg *config.Agent) {
 	if err != nil || defaultIP.String() != cfg.NodeIP {
 		args = append(args, "--node-ip", cfg.NodeIP)
 	}
-	if !hasCFS() {
+	root, hasCFS := checkCgroups()
+	if !hasCFS {
 		logrus.Warn("Disabling CPU quotas due to missing cpu.cfs_period_us")
 		args = append(args, "--cpu-cfs-quota=false")
+	}
+	if root != "" {
+		args = append(args, "--runtime-cgroups", root)
+		args = append(args, "--kubelet-cgroups", root)
 	}
 	args = append(args, cfg.ExtraKubeletArgs...)
 
@@ -107,13 +112,15 @@ func kubelet(cfg *config.Agent) {
 	}()
 }
 
-func hasCFS() bool {
+func checkCgroups() (string, bool) {
 	f, err := os.Open("/proc/self/cgroup")
 	if err != nil {
-		return false
+		return "", false
 	}
 	defer f.Close()
 
+	ret := false
+	root := ""
 	scan := bufio.NewScanner(f)
 	for scan.Scan() {
 		parts := strings.Split(scan.Text(), ":")
@@ -125,11 +132,17 @@ func hasCFS() bool {
 			if system == "cpu" {
 				p := filepath.Join("/sys/fs/cgroup", parts[1], parts[2], "cpu.cfs_period_us")
 				if _, err := os.Stat(p); err == nil {
-					return true
+					ret = true
+				}
+			} else if system == "name=systemd" {
+				last := parts[len(parts)-1]
+				i := strings.LastIndex(last, ".slice")
+				if i > 0 {
+					root = "/systemd" + last[:i+len(".slice")]
 				}
 			}
 		}
 	}
 
-	return false
+	return root, ret
 }
