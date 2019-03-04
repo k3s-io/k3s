@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	net2 "net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,6 +12,7 @@ import (
 	systemd "github.com/coreos/go-systemd/daemon"
 	"github.com/docker/docker/pkg/reexec"
 	"github.com/natefinch/lumberjack"
+	"github.com/pkg/errors"
 	"github.com/rancher/k3s/pkg/agent"
 	"github.com/rancher/k3s/pkg/cli/cmds"
 	"github.com/rancher/k3s/pkg/server"
@@ -56,6 +58,10 @@ func Run(app *cli.Context) error {
 }
 
 func run(app *cli.Context, cfg *cmds.Server) error {
+	var (
+		err error
+	)
+
 	if cfg.Log != "" && os.Getenv("_RIO_REEXEC_") == "" {
 		return runWithLogging(app, cfg)
 	}
@@ -74,6 +80,11 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	serverConfig.TLSConfig.HTTPSPort = cfg.HTTPSPort
 	serverConfig.TLSConfig.HTTPPort = cfg.HTTPPort
 	serverConfig.TLSConfig.KnownIPs = knownIPs()
+
+	_, serverConfig.ControlConfig.ClusterIPRange, err = net2.ParseCIDR(cfg.ClusterCIDR)
+	if err != nil {
+		return errors.Wrapf(err, "Invalid CIDR %s: %v", cfg.ClusterCIDR, err)
+	}
 
 	// TODO: support etcd
 	serverConfig.ControlConfig.NoLeaderElect = true

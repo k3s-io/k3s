@@ -23,6 +23,7 @@ import (
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cmd/ctr/commands"
 	"github.com/containerd/containerd/oci"
+	"github.com/containerd/containerd/runtime/v2/runhcs/options"
 	specs "github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
@@ -100,7 +101,14 @@ func NewContainer(ctx gocontext.Context, client *containerd.Client, context *cli
 	}
 
 	cOpts = append(cOpts, containerd.WithContainerLabels(commands.LabelArgs(context.StringSlice("label"))))
-	cOpts = append(cOpts, containerd.WithRuntime(context.String("runtime"), nil))
+	runtime := context.String("runtime")
+	var runtimeOpts interface{}
+	if runtime == "io.containerd.runhcs.v1" {
+		runtimeOpts = &options.Options{
+			Debug: context.GlobalBool("debug"),
+		}
+	}
+	cOpts = append(cOpts, containerd.WithRuntime(runtime, runtimeOpts))
 
 	var s specs.Spec
 	spec = containerd.WithSpec(&s, opts...)

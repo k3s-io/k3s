@@ -79,6 +79,10 @@ type APIGroupVersion struct {
 	Admit admission.Interface
 
 	MinRequestTimeout time.Duration
+
+	// The limit on the request body size that would be accepted and decoded in a write request.
+	// 0 means no limit.
+	MaxRequestBodyBytes int64
 }
 
 // InstallREST registers the REST handlers (storage, watch, proxy and redirect) into a restful Container.
@@ -87,9 +91,9 @@ type APIGroupVersion struct {
 func (g *APIGroupVersion) InstallREST(container *restful.Container) error {
 	prefix := path.Join(g.Root, g.GroupVersion.Group, g.GroupVersion.Version)
 	installer := &APIInstaller{
-		group:                        g,
-		prefix:                       prefix,
-		minRequestTimeout:            g.MinRequestTimeout,
+		group:             g,
+		prefix:            prefix,
+		minRequestTimeout: g.MinRequestTimeout,
 	}
 
 	apiResources, ws, registrationErrors := installer.Install()

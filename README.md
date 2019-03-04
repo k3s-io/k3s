@@ -15,7 +15,7 @@ What is this?
 
 k3s is intended to be a fully compliant Kubernetes distribution with the following changes:
 
-1. Legacy, alpha, non-default features are removed. Hopefully you shouldn't notice the
+1. Legacy, alpha, non-default features are removed. Hopefully, you shouldn't notice the
    stuff that has been removed.
 2. Removed most in-tree plugins (cloud providers and storage plugins) which can be replaced
    with out of tree addons.
@@ -77,7 +77,7 @@ flag
 
     k3s server --disable-agent
     
-At this point you can run the agent as a separate process or not run it on this node at all.
+At this point, you can run the agent as a separate process or not run it on this node at all.
 
 Joining Nodes
 -------------
@@ -110,7 +110,7 @@ The clone will be much faster on this repo if you do
     
 This repo includes all of Kubernetes history so `--depth 1` will avoid most of that.
 
-For development you just need go 1.11 and a sane GOPATH.  To compile the binaries run
+For development, you just need go 1.11 and a sane GOPATH.  To compile the binaries run
 
 ```bash
 go build -o k3s
@@ -163,7 +163,7 @@ Running in Docker (and docker-compose)
 
 I wouldn't be me if I couldn't run my cluster in Docker.  `rancher/k3s` images are available
 to run k3s server and agent from Docker.  A `docker-compose.yml` is in the root of this repo that
-serves as an example how to run k3s from Docker.  To run from `docker-compose` from this repo run
+serves as an example of how to run k3s from Docker.  To run from `docker-compose` from this repo run
 
     docker-compose up --scale node=3
     # kubeconfig is written to current dir
@@ -254,6 +254,6 @@ Currently broken or stuff that needs to be done for this to be considered produc
 
 1. Metrics API due to kube aggregation not being setup
 2. HA
-3. Work on e2e, sonobouy, CNCF certification.
+3. Work on e2e, sonobouy.
 4. etcd doesn't actually work because args aren't exposed
     
