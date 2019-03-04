@@ -35,3 +35,4 @@ bin/*
 # Editor/IDE specific files.
 *.sublime-project
 *.sublime-workspace
+.idea/*

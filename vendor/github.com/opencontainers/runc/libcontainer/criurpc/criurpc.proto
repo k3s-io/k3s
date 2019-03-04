@@ -111,6 +111,7 @@ message criu_opts {
 	optional bool			lazy_pages		= 48;
 	optional int32			status_fd		= 49;
 	optional bool			orphan_pts_master	= 50;
+	optional string			config_file		= 51;
 }
 
 message criu_dump_resp {

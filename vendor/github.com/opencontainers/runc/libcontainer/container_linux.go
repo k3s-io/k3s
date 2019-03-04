@@ -875,6 +875,32 @@ func waitForCriuLazyServer(r *os.File, status string) error {
 	return nil
 }
 
+func (c *linuxContainer) handleCriuConfigurationFile(rpcOpts *criurpc.CriuOpts) {
+	// CRIU will evaluate a configuration starting with release 3.11.
+	// Settings in the configuration file will overwrite RPC settings.
+	// Look for annotations. The annotation 'org.criu.config'
+	// specifies if CRIU should use a different, container specific
+	// configuration file.
+	_, annotations := utils.Annotations(c.config.Labels)
+	configFile, exists := annotations["org.criu.config"]
+	if exists {
+		// If the annotation 'org.criu.config' exists and is set
+		// to a non-empty string, tell CRIU to use that as a
+		// configuration file. If the file does not exist, CRIU
+		// will just ignore it.
+		if configFile != "" {
+			rpcOpts.ConfigFile = proto.String(configFile)
+		}
+		// If 'org.criu.config' exists and is set to an empty
+		// string, a runc specific CRIU configuration file will
+		// be not set at all.
+	} else {
+		// If the mentioned annotation has not been found, specify
+		// a default CRIU configuration file.
+		rpcOpts.ConfigFile = proto.String("/etc/criu/runc.conf")
+	}
+}
+
 func (c *linuxContainer) Checkpoint(criuOpts *CriuOpts) error {
 	c.m.Lock()
 	defer c.m.Unlock()
@@ -939,6 +965,8 @@ func (c *linuxContainer) Checkpoint(criuOpts *CriuOpts) error {
 		AutoDedup:       proto.Bool(criuOpts.AutoDedup),
 		LazyPages:       proto.Bool(criuOpts.LazyPages),
 	}
+
+	c.handleCriuConfigurationFile(&rpcOpts)
 
 	// If the container is running in a network namespace and has
 	// a path to the network namespace configured, we will dump
@@ -1189,6 +1217,8 @@ func (c *linuxContainer) Restore(process *Process, criuOpts *CriuOpts) error {
 			LazyPages:       proto.Bool(criuOpts.LazyPages),
 		},
 	}
+
+	c.handleCriuConfigurationFile(req.Opts)
 
 	// Same as during checkpointing. If the container has a specific network namespace
 	// assigned to it, this now expects that the checkpoint will be restored in a

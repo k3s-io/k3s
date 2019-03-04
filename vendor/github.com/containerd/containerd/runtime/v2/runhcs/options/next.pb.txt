@@ -1,0 +1,83 @@
+file {
+  name: "github.com/containerd/containerd/runtime/v2/runhcs/options/runhcs.proto"
+  package: "containerd.runhcs.v1"
+  dependency: "gogoproto/gogo.proto"
+  message_type {
+    name: "Options"
+    field {
+      name: "debug"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_BOOL
+      json_name: "debug"
+    }
+    field {
+      name: "debug_type"
+      number: 2
+      label: LABEL_OPTIONAL
+      type: TYPE_ENUM
+      type_name: ".containerd.runhcs.v1.Options.DebugType"
+      json_name: "debugType"
+    }
+    field {
+      name: "registry_root"
+      number: 3
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "registryRoot"
+    }
+    field {
+      name: "sandbox_image"
+      number: 4
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "sandboxImage"
+    }
+    field {
+      name: "sandbox_platform"
+      number: 5
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "sandboxPlatform"
+    }
+    field {
+      name: "sandbox_isolation"
+      number: 6
+      label: LABEL_OPTIONAL
+      type: TYPE_ENUM
+      type_name: ".containerd.runhcs.v1.Options.SandboxIsolation"
+      json_name: "sandboxIsolation"
+    }
+    enum_type {
+      name: "DebugType"
+      value {
+        name: "NPIPE"
+        number: 0
+      }
+      value {
+        name: "FILE"
+        number: 1
+      }
+      value {
+        name: "ETW"
+        number: 2
+      }
+    }
+    enum_type {
+      name: "SandboxIsolation"
+      value {
+        name: "PROCESS"
+        number: 0
+      }
+      value {
+        name: "HYPERVISOR"
+        number: 1
+      }
+    }
+  }
+  options {
+    go_package: "github.com/containerd/containerd/runtime/v2/runhcs/options;options"
+  }
+  weak_dependency: 0
+  syntax: "proto3"
+}
