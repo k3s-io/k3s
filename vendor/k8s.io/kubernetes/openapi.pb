@@ -24551,7 +24551,7 @@ E
 
 401
 
-UnauthorizedRhttpsJÜÎ%
+UnauthorizedRhttpsJøÎ%
 õ
 
 Eio.k8s.api.admissionregistration.v1beta1.MutatingWebhookConfiguration«
@@ -29390,9 +29390,9 @@ runAsGroup”int64"þThe GID to run the entrypoint of the container process. U
 arrayº+
 )
 '#/definitions/io.k8s.api.core.v1.Sysctl
-˜F
-io.k8s.api.core.v1.PodSpecùE""PodSpec is a description of a pod.š
-containersÊÄE
+´F
+io.k8s.api.core.v1.PodSpec•F""PodSpec is a description of a pod.š
+containersÊàE
 ü
 activeDeadlineSecondsâint64"ÌOptional duration in seconds the pod may be active on the node relative to StartTime before the system will actively try to mark it failed and kill associated containers. Value must be a positive integer.²	
 integer
@@ -29418,8 +29418,8 @@ containers­"›List of containers belonging to the pod. Containers cannot curre
 ö
 	dnsPolicyè"ÚSet DNS policy for the pod. Defaults to "ClusterFirst". Valid values are 'ClusterFirstWithHostNet', 'ClusterFirst', 'Default' or 'None'. DNS parameters given in DNSConfig will be merged with the policy selected with DNSPolicy. To have DNS options set along with hostNetwork, you have to specify DNS policy explicitly to 'ClusterFirstWithHostNet'.²
 string
-¿
-enableServiceLinks¨"™EnableServiceLinks indicates whether information about services should be injected into pod's environment variables, matching the syntax of Docker links.²	
+Û
+enableServiceLinksÄ"µEnableServiceLinks indicates whether information about services should be injected into pod's environment variables, matching the syntax of Docker links. Optional: Defaults to true.²	
 boolean
 »
 hostAliases«"›HostAliases is an optional list of hosts and IPs that will be injected into the pod's hosts file if specified. This is only valid for non-hostNetwork pods.²

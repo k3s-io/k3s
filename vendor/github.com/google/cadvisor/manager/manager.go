@@ -30,6 +30,7 @@ import (
 	"github.com/google/cadvisor/cache/memory"
 	"github.com/google/cadvisor/collector"
 	"github.com/google/cadvisor/container"
+	"github.com/google/cadvisor/container/containerd"
 	"github.com/google/cadvisor/container/docker"
 	"github.com/google/cadvisor/container/raw"
 	"github.com/google/cadvisor/events"
@@ -273,6 +274,11 @@ func (self *manager) Start() error {
 	err := docker.Register(self, self.fsInfo, self.includedMetrics)
 	if err != nil {
 		klog.V(5).Infof("Registration of the Docker container factory failed: %v.", err)
+	}
+
+	err = containerd.Register(self, self.fsInfo, self.includedMetrics)
+	if err != nil {
+		klog.V(5).Infof("Registration of the containerd container factory failed: %v", err)
 	}
 
 	err = raw.Register(self, self.fsInfo, self.includedMetrics, self.rawContainerCgroupPathPrefixWhiteList)
