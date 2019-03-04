@@ -3,7 +3,6 @@
 // license that can be found in the LICENSE file.
 
 // +build gccgo
-// +build !aix
 
 package unix
 
