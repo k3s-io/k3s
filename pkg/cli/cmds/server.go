@@ -57,6 +57,7 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Name:        "cluster-cidr",
 				Usage:       "Network CIDR to use for pod IPs",
 				Destination: &ServerConfig.ClusterCIDR,
+				Value:       "10.42.0.0/16",
 			},
 			cli.StringFlag{
 				Name:        "cluster-secret",
