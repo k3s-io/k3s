@@ -25,10 +25,10 @@ import (
 	tasksapi "github.com/containerd/containerd/api/services/tasks/v1"
 	versionapi "github.com/containerd/containerd/api/services/version/v1"
 	"github.com/containerd/containerd/containers"
-	"github.com/containerd/containerd/dialer"
 	"github.com/containerd/containerd/errdefs"
 	ptypes "github.com/gogo/protobuf/types"
 	"google.golang.org/grpc"
+	"k8s.io/kubernetes/pkg/kubelet/util"
 )
 
 const (
@@ -68,9 +68,15 @@ func Client() (containerdClient, error) {
 		}
 		tryConn.Close()
 
+		addr, dialer, err := util.GetAddressAndDialer(address)
+		if err != nil {
+			retErr = err
+			return
+		}
+
 		gopts := []grpc.DialOption{
 			grpc.WithInsecure(),
-			grpc.WithDialer(dialer.Dialer),
+			grpc.WithDialer(dialer),
 			grpc.WithBlock(),
 			grpc.WithBackoffMaxDelay(maxBackoffDelay),
 			grpc.WithTimeout(connectionTimeout),
@@ -81,7 +87,7 @@ func Client() (containerdClient, error) {
 			grpc.WithStreamInterceptor(stream),
 		)
 
-		conn, err := grpc.Dial(dialer.DialAddress(address), gopts...)
+		conn, err := grpc.Dial(addr, gopts...)
 		if err != nil {
 			retErr = err
 			return
