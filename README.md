@@ -29,7 +29,7 @@ k3s is intended to be a fully compliant Kubernetes distribution with the followi
     * CNI
     * Host utilities (iptables, socat, etc)
     
-Quick Start
+Quick start
 -----------
 1. Download `k3s` from latest [release](https://github.com/rancher/k3s/releases/latest), x86_64, armhf, and arm64 are
    supported
@@ -46,7 +46,7 @@ sudo k3s agent --server https://myserver:6443 --token ${NODE_TOKEN}
 
 ```
 
-Running Server
+Running server
 --------------
 
 To run the server just do
@@ -79,7 +79,7 @@ flag
     
 At this point, you can run the agent as a separate process or not run it on this node at all.
 
-Joining Nodes
+Joining nodes
 -------------
 
 When the server starts it creates a file `/var/lib/rancher/k3s/server/node-token`. Use the contents
@@ -132,14 +132,14 @@ helper scripts
 
 To build the full release binary run `make` and that will create `./dist/k3s`
 
-Kubernetes Source
+Kubernetes source
 -----------------
 
 The source code for Kubernetes is in `vendor/` and the location from which that is copied
 is in `./vendor.conf`.  Go to the referenced repo/tag and you'll find all the patches applied
 to upstream Kubernetes.
 
-Open Ports/Network Security
+Open ports / Network security
 ---------------------------
 
 The server needs port 6443 to be accessible by the nodes.  The nodes need to be able to reach
@@ -237,7 +237,7 @@ CoreDNS is deployed on start of the agent, to disable add `--no-deploy coredns` 
      
 If you don't install CoreDNS you will need to install a cluster DNS provider yourself.
 
-Service Load Balancer
+Service load balancer
 ---------------------
 
 k3s includes a basic service load balancer that uses available host ports.  If you try to create
@@ -255,4 +255,3 @@ Currently broken or stuff that needs to be done for this to be considered produc
 2. HA
 3. Work on e2e, sonobouy.
 4. etcd doesn't actually work because args aren't exposed
-    
