@@ -109,7 +109,9 @@ func (h *handler) onChange(svc *core.Service) (runtime.Object, error) {
 		return svc, err
 	}
 
-	return h.updateService(svc)
+	// Don't return service because we don't want another update
+	_, err := h.updateService(svc)
+	return nil, err
 }
 
 func (h *handler) updateService(svc *core.Service) (runtime.Object, error) {

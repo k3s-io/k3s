@@ -57,6 +57,7 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Name:        "cluster-cidr",
 				Usage:       "Network CIDR to use for pod IPs",
 				Destination: &ServerConfig.ClusterCIDR,
+				Value:       "10.42.0.0/16",
 			},
 			cli.StringFlag{
 				Name:        "cluster-secret",
@@ -66,7 +67,7 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 			},
 			cli.StringSliceFlag{
 				Name:  "no-deploy",
-				Usage: "Do not deploy packaged components (valid items: coredns, servicelb)",
+				Usage: "Do not deploy packaged components (valid items: coredns, servicelb, traefik)",
 			},
 			cli.StringFlag{
 				Name:        "write-kubeconfig,o",
@@ -82,6 +83,9 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 			},
 			NodeIPFlag,
 			NodeNameFlag,
+			DockerFlag,
+			FlannelFlag,
+			CRIEndpointFlag,
 		},
 	}
 }

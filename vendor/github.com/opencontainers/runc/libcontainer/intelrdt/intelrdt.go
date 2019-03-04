@@ -547,7 +547,7 @@ func (m *IntelRdtManager) Apply(pid int) (err error) {
 func (m *IntelRdtManager) Destroy() error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if err := os.RemoveAll(m.Path); err != nil {
+	if err := os.RemoveAll(m.GetPath()); err != nil {
 		return err
 	}
 	m.Path = ""
