@@ -156,8 +156,9 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 	}
 
 	nodeConfig := &config.Node{
-		Docker:    envInfo.Docker,
-		NoFlannel: envInfo.NoFlannel,
+		Docker:                   envInfo.Docker,
+		NoFlannel:                envInfo.NoFlannel,
+		ContainerRuntimeEndpoint: envInfo.ContainerRuntimeEndpoint,
 	}
 	nodeConfig.LocalAddress = localAddress(controlConfig)
 	nodeConfig.AgentConfig.NodeIP = nodeIP
@@ -183,8 +184,10 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 		nodeConfig.AgentConfig.CNIBinDir = filepath.Dir(hostLocal)
 		nodeConfig.AgentConfig.CNIConfDir = filepath.Join(envInfo.DataDir, "etc/cni/net.d")
 	}
-	if !nodeConfig.Docker {
+	if !nodeConfig.Docker && nodeConfig.ContainerRuntimeEndpoint == "" {
 		nodeConfig.AgentConfig.RuntimeSocket = "unix://" + nodeConfig.Containerd.Address
+	} else {
+		nodeConfig.AgentConfig.RuntimeSocket = "unix://" + nodeConfig.ContainerRuntimeEndpoint
 	}
 	if controlConfig.ClusterIPRange != nil {
 		nodeConfig.AgentConfig.ClusterCIDR = *controlConfig.ClusterIPRange

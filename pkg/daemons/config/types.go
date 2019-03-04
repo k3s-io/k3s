@@ -10,15 +10,16 @@ import (
 )
 
 type Node struct {
-	Docker        bool
-	NoFlannel     bool
-	FlannelConf   string
-	LocalAddress  string
-	Containerd    Containerd
-	AgentConfig   Agent
-	CACerts       []byte
-	ServerAddress string
-	Certificate   *tls.Certificate
+	Docker                   bool
+	ContainerRuntimeEndpoint string
+	NoFlannel                bool
+	FlannelConf              string
+	LocalAddress             string
+	Containerd               Containerd
+	AgentConfig              Agent
+	CACerts                  []byte
+	ServerAddress            string
+	Certificate              *tls.Certificate
 }
 
 type Containerd struct {

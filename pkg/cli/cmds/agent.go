@@ -8,15 +8,16 @@ import (
 )
 
 type Agent struct {
-	Token         string
-	ServerURL     string
-	DataDir       string
-	NodeIP        string
-	NodeName      string
-	ClusterSecret string
-	Docker        bool
-	NoFlannel     bool
-	Debug         bool
+	Token                    string
+	ServerURL                string
+	DataDir                  string
+	NodeIP                   string
+	NodeName                 string
+	ClusterSecret            string
+	Docker                   bool
+	ContainerRuntimeEndpoint string
+	NoFlannel                bool
+	Debug                    bool
 	AgentShared
 }
 
@@ -47,6 +48,11 @@ var (
 		Name:        "no-flannel",
 		Usage:       "(agent) Disable embedded flannel",
 		Destination: &AgentConfig.NoFlannel,
+	}
+	CRIEndpointFlag = cli.StringFlag{
+		Name:        "container-runtime-endpoint",
+		Usage:       "(agent) Disable embedded containerd and use alternative CRI implementation",
+		Destination: &AgentConfig.ContainerRuntimeEndpoint,
 	}
 )
 
@@ -85,6 +91,7 @@ func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
 			FlannelFlag,
 			NodeNameFlag,
 			NodeIPFlag,
+			CRIEndpointFlag,
 		},
 	}
 }
