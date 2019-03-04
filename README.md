@@ -254,6 +254,6 @@ Currently broken or stuff that needs to be done for this to be considered produc
 
 1. Metrics API due to kube aggregation not being setup
 2. HA
-3. Work on e2e, sonobouy, CNCF certification.
+3. Work on e2e, sonobouy.
 4. etcd doesn't actually work because args aren't exposed
     
