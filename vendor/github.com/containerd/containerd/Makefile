@@ -116,11 +116,11 @@ AUTHORS: .mailmap .git/HEAD
 
 generate: protos
 	@echo "$(WHALE) $@"
-	@PATH=${ROOTDIR}/bin:${PATH} go generate -x ${PACKAGES}
+	@PATH="${ROOTDIR}/bin:${PATH}" go generate -x ${PACKAGES}
 
 protos: bin/protoc-gen-gogoctrd ## generate protobuf
 	@echo "$(WHALE) $@"
-	@PATH=${ROOTDIR}/bin:${PATH} protobuild --quiet ${PACKAGES}
+	@PATH="${ROOTDIR}/bin:${PATH}" protobuild --quiet ${PACKAGES}
 
 check-protos: protos ## check if protobufs needs to be generated again
 	@echo "$(WHALE) $@"
