@@ -130,7 +130,7 @@ helper scripts
 ./scripts/dev-agent.sh
 ```
 
-To build the full release binary run `make` and that will create `./dist/k3s`
+To build the full release binary run `make` and that will create `./dist/artifacts/k3s`
 
 Kubernetes Source
 -----------------
