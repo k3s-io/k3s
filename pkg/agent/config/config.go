@@ -161,6 +161,7 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 		ContainerRuntimeEndpoint: envInfo.ContainerRuntimeEndpoint,
 	}
 	nodeConfig.LocalAddress = localAddress(controlConfig)
+	nodeConfig.Images = filepath.Join(envInfo.DataDir, "images")
 	nodeConfig.AgentConfig.NodeIP = nodeIP
 	nodeConfig.AgentConfig.NodeName = nodeName
 	nodeConfig.AgentConfig.ClusterDNS = controlConfig.ClusterDNS
