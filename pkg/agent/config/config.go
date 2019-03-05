@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -89,6 +90,10 @@ func getHostnameAndIP(info cmds.Agent) (string, string, error) {
 		}
 		name = hostname
 	}
+
+	// Use lower case hostname to comply with kubernetes constraint:
+	// https://github.com/kubernetes/kubernetes/issues/71140
+	name = strings.ToLower(name)
 
 	return name, ip, nil
 }
