@@ -101,6 +101,21 @@ Auto-deploying manifests
 Any file found in `/var/lib/rancher/k3s/server/manifests` will automatically be deployed to
 Kubernetes in a manner similar to `kubectl apply`.
 
+It is also possible to deploy Helm charts. k3s supports a CRD controller for installing charts. A YAML file specification can look as following (example taken from `/var/lib/rancher/k3s/server/manifests/traefik.yaml`):
+
+```
+apiVersion: k3s.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  chart: stable/traefik
+  set:
+    rbac.enabled: "true"
+    ssl.enabled: "true"
+```
+
 Building from source
 --------------------
 
@@ -131,6 +146,11 @@ helper scripts
 ```
 
 To build the full release binary run `make` and that will create `./dist/artifacts/k3s`
+
+Uninstalling server
+-----------------
+
+If you installed your k3s server with the help of `install.sh` script from the root directory, you may use the uninstall script generated during installation, which will be created on your server node at `/usr/local/bin/k3s-uninstall.sh`
 
 Kubernetes source
 -----------------
@@ -236,6 +256,13 @@ CoreDNS is deployed on start of the agent, to disable add `--no-deploy coredns` 
      k3s server --no-deploy coredns
      
 If you don't install CoreDNS you will need to install a cluster DNS provider yourself.
+
+Traefik
+-------
+
+Traefik is deployed by default when starting the server; to disable it, start the server with `--no-deploy traefik` like this
+
+     k3s server --no-deploy traefik
 
 Service load balancer
 ---------------------
