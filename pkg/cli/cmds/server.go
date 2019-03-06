@@ -65,6 +65,12 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Destination: &ServerConfig.ClusterSecret,
 				EnvVar:      "K3S_CLUSTER_SECRET",
 			},
+			cli.StringFlag{
+				Name:        "service-cidr",
+				Usage:       "Network CIDR to use for services IPs",
+				Destination: &ServerConfig.ServiceCIDR,
+				Value:       "10.43.0.0/16",
+			},
 			cli.StringSliceFlag{
 				Name:  "no-deploy",
 				Usage: "Do not deploy packaged components (valid items: coredns, servicelb, traefik)",

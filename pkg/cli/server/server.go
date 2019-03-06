@@ -82,6 +82,10 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	if err != nil {
 		return errors.Wrapf(err, "Invalid CIDR %s: %v", cfg.ClusterCIDR, err)
 	}
+	_, serverConfig.ControlConfig.ServiceIPRange, err = net2.ParseCIDR(cfg.ServiceCIDR)
+	if err != nil {
+		return errors.Wrapf(err, "Invalid CIDR %s: %v", cfg.ServiceCIDR, err)
+	}
 
 	// TODO: support etcd
 	serverConfig.ControlConfig.NoLeaderElect = true
