@@ -219,6 +219,96 @@ TasksMax=infinity
 WantedBy=multi-user.target
 ```
 
+The k3s `install.sh` script also provides a convenient way for installing to systemd,
+to install the agent and server as a k3s service just run:
+```sh
+curl -sfL https://get.k3s.io | sh -
+```
+
+The install script will attempt to download the latest release, to specify a specific
+version for download we can use the `INSTALL_K3S_VERSION` environment variable, eg:
+```sh
+curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=vX.Y.Z-rc1 sh -
+```
+
+To install just the server without an agent we can add a `INSTALL_K3S_EXEC`
+environment variable to the command: 
+```sh
+curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--disable-agent" sh -
+```
+
+To install just the agent without a server we should pass `K3S_URL` along with
+`K3S_TOKEN` or `K3S_CLUSTER_SECRET`, eg:
+```sh
+curl -sfL https://get.k3s.io | K3S_URL=https://example-url:6443 K3S_TOKEN=XXX sh -
+```
+
+The installer can also be run without performing downloads by setting `INSTALL_K3S_SKIP_DOWNLOAD=true`, eg:
+```sh
+curl -sfL https://github.com/rancher/k3s/releases/download/vX.Y.Z/k3s -o /usr/local/bin/k3s
+chmod 0755 /usr/local/bin/k3s
+
+curl -sfL https://get.k3s.io -o install-k3s.sh
+chmod 0755 install-k3s.sh
+
+export INSTALL_K3S_SKIP_DOWNLOAD=true
+./install-k3s.sh
+```
+
+The full help text for the install script environment variables are as follows:
+   - `K3S_*`
+
+     Environment variables which begin with `K3S_` will be preserved for the
+     systemd service to use. Setting `K3S_URL` without explicitly setting
+     a systemd exec command will default the command to "agent", and we
+     enforce that `K3S_TOKEN` or `K3S_CLUSTER_SECRET` is also set.
+
+   - `INSTALL_K3S_SKIP_DOWNLOAD`
+
+     If set to true will not download k3s hash or binary.
+
+   - `INSTALL_K3S_VERSION`
+
+     Version of k3s to download from github. Will attempt to download the
+     latest version if not specified.
+
+   - `INSTALL_K3S_BIN_DIR`
+
+     Directory to install k3s binary, links, and uninstall script to, or use
+     /usr/local/bin as the default
+
+   - `INSTALL_K3S_SYSTEMD_DIR`
+
+     Directory to install systemd service and environment files to, or use
+     /etc/systemd/system as the default
+
+   - `INSTALL_K3S_EXEC` or script arguments
+
+     Command with flags to use for launching k3s in the systemd service, if
+     the command is not specified will default to "agent" if `K3S_URL` is set
+     or "server" if not. The final systemd command resolves to a combination
+     of EXEC and script args ($@).
+
+     The following commands result in the same behavior:
+     ```sh
+     curl ... | INSTALL_K3S_EXEC="--disable-agent" sh -s -
+     curl ... | INSTALL_K3S_EXEC="server --disable-agent" sh -s -
+     curl ... | INSTALL_K3S_EXEC="server" sh -s - --disable-agent
+     curl ... | sh -s - server --disable-agent
+     curl ... | sh -s - --disable-agent
+     ```
+
+   - `INSTALL_K3S_NAME`
+
+     Name of systemd service to create, will default from the k3s exec command
+     if not specified. If specified the name will be prefixed with 'k3s-'.
+
+   - `INSTALL_K3S_TYPE`
+
+     Type of systemd service to create, will default from the k3s exec command
+     if not specified.
+
+
 Flannel
 -------
 
