@@ -86,7 +86,7 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	if err != nil {
 		return errors.Wrapf(err, "Invalid CIDR %s: %v", cfg.ServiceCIDR, err)
 	}
-
+	serverConfig.ControlConfig.ClusterDNS = net2.ParseIP(cfg.ClusterDNS)
 	// TODO: support etcd
 	serverConfig.ControlConfig.NoLeaderElect = true
 
