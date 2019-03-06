@@ -76,7 +76,7 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Name:        "cluster-dns",
 				Usage:       "Cluster IP for coredns service. Should be in your service-cidr range",
 				Destination: &ServerConfig.ClusterDNS,
-				Value:       "10.43.0.10",
+				Value:       "",
 			},
 			cli.StringSliceFlag{
 				Name:  "no-deploy",

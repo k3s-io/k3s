@@ -86,7 +86,17 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	if err != nil {
 		return errors.Wrapf(err, "Invalid CIDR %s: %v", cfg.ServiceCIDR, err)
 	}
-	serverConfig.ControlConfig.ClusterDNS = net2.ParseIP(cfg.ClusterDNS)
+
+	// If cluster-dns CLI arg is not set, we set ClusterDNS address to be ServiceCIDR network + 10,
+	// i.e. when you set service-cidr to 192.168.0.0/16 and don't provide cluster-dns, it will be set to 192.168.0.10
+	if cfg.ClusterDNS == "" {
+		serverConfig.ControlConfig.ClusterDNS = make(net2.IP, 4)
+		copy(serverConfig.ControlConfig.ClusterDNS, serverConfig.ControlConfig.ServiceIPRange.IP.To4())
+		serverConfig.ControlConfig.ClusterDNS[3] = 10
+	} else {
+		serverConfig.ControlConfig.ClusterDNS = net2.ParseIP(cfg.ClusterDNS)
+	}
+
 	// TODO: support etcd
 	serverConfig.ControlConfig.NoLeaderElect = true
 
