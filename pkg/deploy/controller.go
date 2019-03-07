@@ -74,6 +74,7 @@ type watcher struct {
 	restConfig rest.Config
 	discovery  discovery.DiscoveryInterface
 	clients    map[schema.GroupVersionKind]*objectclient.ObjectClient
+	namespaced map[schema.GroupVersionKind]bool
 }
 
 func (w *watcher) start(ctx context.Context) {
@@ -208,15 +209,25 @@ func (w *watcher) apply(addon v1.Addon, set *objectset.ObjectSet) (map[schema.Gr
 	ds := op.NewDesiredSet(nil, set)
 
 	for _, gvk := range addon.Status.GVKs {
+		var (
+			namespaced bool
+		)
+
 		client, ok := w.clients[gvk]
-		if !ok {
-			client, err = objectset.NewDiscoveredClient(gvk, w.restConfig, w.discovery)
+		if ok {
+			namespaced = w.namespaced[gvk]
+		} else {
+			client, namespaced, err = objectset.NewDiscoveredClient(gvk, w.restConfig, w.discovery)
 			if err != nil {
 				return nil, err
 			}
+			if w.namespaced == nil {
+				w.namespaced = map[schema.GroupVersionKind]bool{}
+			}
+			w.namespaced[gvk] = namespaced
 		}
 
-		ds.AddDiscoveredClient(gvk, client)
+		ds.AddDiscoveredClient(gvk, client, namespaced)
 	}
 
 	if err := ds.Apply(); err != nil {
