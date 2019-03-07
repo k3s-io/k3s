@@ -52,21 +52,15 @@ func WatchFiles(ctx context.Context, skips []string, bases ...string) error {
 	addons.Enqueue("", startKey)
 	addons.Interface().AddHandler(ctx, "addon-start", func(key string, _ *v1.Addon) (runtime.Object, error) {
 		if key == startKey {
-			if err := w.listFiles(true); err != nil {
-				return nil, err
-			}
-			w.started = true
-			return nil, nil
+			go w.start(ctx)
 		}
 		return nil, nil
 	})
 
-	w.start(ctx)
 	return nil
 }
 
 type watcher struct {
-	started    bool
 	addonCache v1.AddonClientCache
 	addons     v1.AddonClient
 	bases      []string
@@ -77,14 +71,17 @@ type watcher struct {
 }
 
 func (w *watcher) start(ctx context.Context) {
+	force := true
 	for {
+		if err := w.listFiles(force); err == nil {
+			force = false
+		} else {
+			logrus.Errorf("failed to process config: %v", err)
+		}
 		select {
 		case <-ctx.Done():
 			return
 		case <-time.After(15 * time.Second):
-			if err := w.listFiles(false); err != nil {
-				logrus.Errorf("failed to process config: %v", err)
-			}
 		}
 	}
 }
@@ -101,10 +98,6 @@ func (w *watcher) listFiles(force bool) error {
 }
 
 func (w *watcher) listFilesIn(base string, force bool) error {
-	if !w.started {
-		return nil
-	}
-
 	files, err := ioutil.ReadDir(base)
 	if os.IsNotExist(err) {
 		return nil
