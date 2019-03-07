@@ -293,6 +293,7 @@ func (p *ObjectClient) Patch(name string, o runtime.Object, patchType types.Patc
 	if len(name) == 0 {
 		return result, errors.New("object missing name")
 	}
+	logrus.Debugf("REST PATCH %s/%s/%s/%s/%s", p.getAPIPrefix(), p.gvk.Group, p.gvk.Version, p.ns, name)
 	err := p.restClient.Patch(patchType).
 		Prefix(p.getAPIPrefix(), p.gvk.Group, p.gvk.Version).
 		NamespaceIfScoped(ns, p.resource.Namespaced).

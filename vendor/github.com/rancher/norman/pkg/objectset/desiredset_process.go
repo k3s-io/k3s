@@ -25,17 +25,18 @@ import (
 )
 
 var (
-	deletePolicy    = v1.DeletePropagationBackground
-	ErrReplace      = errors.New("replace object with changes")
-	ReplaceOnChange = func(name string, o runtime.Object, patchType types2.PatchType, data []byte, subresources ...string) (runtime.Object, error) {
+	defaultNamespace = "default"
+	deletePolicy     = v1.DeletePropagationBackground
+	ErrReplace       = errors.New("replace object with changes")
+	ReplaceOnChange  = func(name string, o runtime.Object, patchType types2.PatchType, data []byte, subresources ...string) (runtime.Object, error) {
 		return nil, ErrReplace
 	}
 )
 
-func NewDiscoveredClient(gvk schema.GroupVersionKind, restConfig rest.Config, discovery discovery.DiscoveryInterface) (*objectclient.ObjectClient, error) {
+func NewDiscoveredClient(gvk schema.GroupVersionKind, restConfig rest.Config, discovery discovery.DiscoveryInterface) (*objectclient.ObjectClient, bool, error) {
 	resources, err := discovery.ServerResourcesForGroupVersion(gvk.GroupVersion().String())
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	for _, resource := range resources.APIResources {
@@ -49,14 +50,14 @@ func NewDiscoveredClient(gvk schema.GroupVersionKind, restConfig rest.Config, di
 
 		restClient, err := restwatch.UnversionedRESTClientFor(&restConfig)
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
 
 		objectClient := objectclient.NewObjectClient("", restClient, &resource, gvk, &objectclient.UnstructuredObjectFactory{})
-		return objectClient, nil
+		return objectClient, resource.Namespaced, nil
 	}
 
-	return nil, fmt.Errorf("failed to discover client for %s", gvk)
+	return nil, false, fmt.Errorf("failed to discover client for %s", gvk)
 }
 
 func (o *DesiredSet) getControllerAndObjectClient(debugID string, gvk schema.GroupVersionKind) (controller.GenericController, *objectclient.ObjectClient, error) {
@@ -74,18 +75,50 @@ func (o *DesiredSet) getControllerAndObjectClient(debugID string, gvk schema.Gro
 		return nil, objectClient, nil
 	}
 
-	objectClient, err := NewDiscoveredClient(gvk, o.restConfig, o.discovery)
+	objectClient, namespaced, err := NewDiscoveredClient(gvk, o.restConfig, o.discovery)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "failed to find client for %s for %s", gvk, debugID)
 	}
 
-	o.AddDiscoveredClient(gvk, objectClient)
+	o.AddDiscoveredClient(gvk, objectClient, namespaced)
 	return nil, objectClient, nil
+}
+
+func (o *DesiredSet) adjustNamespace(gvk schema.GroupVersionKind, objs map[objectKey]runtime.Object) error {
+	namespaced, ok := o.namespaced[gvk]
+	if !ok || !namespaced {
+		return nil
+	}
+
+	for k, v := range objs {
+		if k.namespace != "" {
+			continue
+		}
+
+		v = v.DeepCopyObject()
+		meta, err := meta.Accessor(v)
+		if err != nil {
+			return err
+		}
+
+		meta.SetNamespace(defaultNamespace)
+
+		delete(objs, k)
+		k.namespace = defaultNamespace
+		objs[k] = v
+	}
+
+	return nil
 }
 
 func (o *DesiredSet) process(inputID, debugID string, set labels.Selector, gvk schema.GroupVersionKind, objs map[objectKey]runtime.Object) {
 	controller, objectClient, err := o.getControllerAndObjectClient(debugID, gvk)
 	if err != nil {
+		o.err(err)
+		return
+	}
+
+	if err := o.adjustNamespace(gvk, objs); err != nil {
 		o.err(err)
 		return
 	}
@@ -224,7 +257,8 @@ func list(controller controller.GenericController, objectClient *objectclient.Ob
 		}
 
 		for _, obj := range list.Items {
-			if err := addObjectToMap(objs, &obj); err != nil {
+			copy := obj
+			if err := addObjectToMap(objs, &copy); err != nil {
 				errs = append(errs, err)
 			}
 		}
