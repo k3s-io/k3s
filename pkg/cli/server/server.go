@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	systemd "github.com/coreos/go-systemd/daemon"
 	"github.com/docker/docker/pkg/reexec"
 	"github.com/natefinch/lumberjack"
 	"github.com/pkg/errors"
@@ -113,6 +114,9 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	}
 
 	logrus.Info("Starting k3s ", app.App.Version)
+	notifySocket := os.Getenv("NOTIFY_SOCKET")
+	os.Unsetenv("NOTIFY_SOCKET")
+
 	ctx := signal.SigTermCancelContext(context.Background())
 	certs, err := server.StartServer(ctx, &serverConfig)
 	if err != nil {
@@ -120,6 +124,10 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	}
 
 	logrus.Info("k3s is up and running")
+	if notifySocket != "" {
+		os.Setenv("NOTIFY_SOCKET", notifySocket)
+		systemd.SdNotify(true, "READY=1")
+	}
 
 	if cfg.DisableAgent {
 		<-ctx.Done()
