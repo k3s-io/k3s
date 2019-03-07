@@ -9,6 +9,7 @@ type Server struct {
 	ClusterCIDR      string
 	ClusterSecret    string
 	ServiceCIDR      string
+	ClusterDNS       string
 	HTTPSPort        int
 	HTTPPort         int
 	DataDir          string
@@ -64,6 +65,18 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Usage:       "Shared secret used to bootstrap a cluster",
 				Destination: &ServerConfig.ClusterSecret,
 				EnvVar:      "K3S_CLUSTER_SECRET",
+			},
+			cli.StringFlag{
+				Name:        "service-cidr",
+				Usage:       "Network CIDR to use for services IPs",
+				Destination: &ServerConfig.ServiceCIDR,
+				Value:       "10.43.0.0/16",
+			},
+			cli.StringFlag{
+				Name:        "cluster-dns",
+				Usage:       "Cluster IP for coredns service. Should be in your service-cidr range",
+				Destination: &ServerConfig.ClusterDNS,
+				Value:       "",
 			},
 			cli.StringSliceFlag{
 				Name:  "no-deploy",

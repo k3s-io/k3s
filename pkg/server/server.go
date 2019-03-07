@@ -120,7 +120,8 @@ func startNorman(ctx context.Context, config *Config) (string, error) {
 			},
 			func(ctx context.Context) error {
 				dataDir := filepath.Join(controlConfig.DataDir, "manifests")
-				if err := deploy.Stage(dataDir); err != nil {
+				templateVars := map[string]string{"%{CLUSTER_DNS}%": controlConfig.ClusterDNS.String()}
+				if err := deploy.Stage(dataDir, templateVars); err != nil {
 					return err
 				}
 				if err := deploy.WatchFiles(ctx, controlConfig.Skips, dataDir); err != nil {

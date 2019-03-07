@@ -1,15 +1,15 @@
 package deploy
 
 import (
+	"bytes"
+	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-
-	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 )
 
-func Stage(dataDir string) error {
+func Stage(dataDir string, templateVars map[string]string) error {
 	os.MkdirAll(dataDir, 0700)
 
 	for _, name := range AssetNames() {
@@ -17,7 +17,9 @@ func Stage(dataDir string) error {
 		if err != nil {
 			return err
 		}
-
+		for k, v := range templateVars {
+			content = bytes.Replace(content, []byte(k), []byte(v), -1)
+		}
 		p := filepath.Join(dataDir, name)
 		logrus.Info("Writing manifest: ", p)
 		if err := ioutil.WriteFile(p, content, 0600); err != nil {
