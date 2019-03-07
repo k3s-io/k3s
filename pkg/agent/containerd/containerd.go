@@ -131,7 +131,9 @@ func Run(ctx context.Context, cfg *config.Node) error {
 
 func preloadImages(cfg *config.Node) error {
 	fileInfo, err := os.Stat(cfg.Images)
-	if err != nil {
+	if os.IsNotExist(err) {
+		return nil
+	} else if err != nil {
 		logrus.Errorf("Unable to find images in %s: %v", cfg.Images, err)
 		return nil
 	}
