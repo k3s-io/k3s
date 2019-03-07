@@ -12,6 +12,7 @@ import (
 
 type DesiredSet struct {
 	discoveredClients map[schema.GroupVersionKind]*objectclient.ObjectClient
+	namespaced        map[schema.GroupVersionKind]bool
 	discovery         discovery.DiscoveryInterface
 	restConfig        rest.Config
 	remove            bool
@@ -25,11 +26,15 @@ type DesiredSet struct {
 	errs              []error
 }
 
-func (o *DesiredSet) AddDiscoveredClient(gvk schema.GroupVersionKind, client *objectclient.ObjectClient) {
+func (o *DesiredSet) AddDiscoveredClient(gvk schema.GroupVersionKind, client *objectclient.ObjectClient, namespaced bool) {
 	if o.discoveredClients == nil {
 		o.discoveredClients = map[schema.GroupVersionKind]*objectclient.ObjectClient{}
 	}
 	o.discoveredClients[gvk] = client
+	if o.namespaced == nil {
+		o.namespaced = map[schema.GroupVersionKind]bool{}
+	}
+	o.namespaced[gvk] = namespaced
 }
 
 func (o *DesiredSet) DiscoveredClients() map[schema.GroupVersionKind]*objectclient.ObjectClient {

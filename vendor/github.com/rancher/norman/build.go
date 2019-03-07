@@ -82,10 +82,6 @@ func (c *Config) Build(ctx context.Context, opts *Options) (context.Context, *Se
 		return ctx, nil, err
 	}
 
-	if !opts.DisableControllers {
-		go c.masterControllers(ctx, starters, r)
-	}
-
 	if c.EnableAPI {
 		if err := c.apiServer(ctx, r); err != nil {
 			return ctx, nil, err
@@ -100,6 +96,7 @@ func (c *Config) Build(ctx context.Context, opts *Options) (context.Context, *Se
 
 	if !opts.DisableControllers {
 		err = controller.SyncThenStart(ctx, c.Threadiness, starters...)
+		go c.masterControllers(ctx, starters, r)
 	}
 
 	return ctx, server, err
