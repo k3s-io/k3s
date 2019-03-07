@@ -103,7 +103,7 @@ Kubernetes in a manner similar to `kubectl apply`.
 
 It is also possible to deploy Helm charts. k3s supports a CRD controller for installing charts. A YAML file specification can look as following (example taken from `/var/lib/rancher/k3s/server/manifests/traefik.yaml`):
 
-```
+```yaml
 apiVersion: k3s.cattle.io/v1
 kind: HelmChart
 metadata:
