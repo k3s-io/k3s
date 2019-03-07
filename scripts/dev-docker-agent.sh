@@ -1,8 +1,10 @@
 #!/bin/bash
-
-. setup-rancher-path.sh
+set -e
 
 cd $(dirname $0)/..
+
+. ./scripts/setup-rancher-path.sh
+
 IP=$(ip addr show dev docker0 | grep -w inet | awk '{print $2}' | cut -f1 -d/)
 docker run \
     --read-only \

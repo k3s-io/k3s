@@ -1,9 +1,9 @@
 #!/bin/bash
 set -e
 
-. setup-rancher-path.sh
-
 cd $(dirname $0)/..
+
+. ./scripts/setup-rancher-path.sh
 
 # Prime sudo
 sudo echo Compiling
