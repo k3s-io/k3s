@@ -3,6 +3,8 @@ set -e
 
 cd $(dirname $0)/..
 
+. ./scripts/setup-rancher-path.sh
+
 # Prime sudo
 sudo echo Compiling
 
@@ -15,4 +17,4 @@ else
 fi
 
 echo Starting agent
-sudo env "PATH=$(pwd)/bin:$PATH" ./bin/k3s-agent --debug agent -s https://localhost:6443 -t $(<${HOME}/.rancher/k3s/server/node-token) "$@"
+sudo env "PATH=$(pwd)/bin:$PATH" ./bin/k3s-agent --debug agent -s https://localhost:6443 -t $(<${RANCHER_PATH}/k3s/server/node-token) "$@"
