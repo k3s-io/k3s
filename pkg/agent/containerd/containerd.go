@@ -3,8 +3,6 @@ package containerd
 import (
 	"context"
 	"fmt"
-	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/namespaces"
 	"io"
 	"io/ioutil"
 	"os"
@@ -14,6 +12,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/containerd/containerd"
+	"github.com/containerd/containerd/namespaces"
 	"github.com/natefinch/lumberjack"
 	util2 "github.com/rancher/k3s/pkg/agent/util"
 	"github.com/rancher/k3s/pkg/daemons/config"
@@ -126,40 +126,52 @@ func Run(ctx context.Context, cfg *config.Node) error {
 		}
 	}
 
+	return preloadImages(cfg)
+}
+
+func preloadImages(cfg *config.Node) error {
 	fileInfo, err := os.Stat(cfg.Images)
 	if err != nil {
-		logrus.Infof("Cannot find images in %s: %v", cfg.Images, err)
-	} else {
-		if fileInfo.IsDir() {
-			fileInfos, err := ioutil.ReadDir(cfg.Images)
-			if err != nil {
-				logrus.Infof("Cannot read images in %s: %v", cfg.Images, err)
-			}
-			client, err := containerd.New(cfg.Containerd.Address)
-			if err != nil {
-				return err
-			}
-			defer client.Close()
-
-			ctxContainerD := namespaces.WithNamespace(context.Background(), "k8s.io")
-
-			for _, fileInfo := range fileInfos {
-				if !fileInfo.IsDir() {
-					filePath := filepath.Join(cfg.Images, fileInfo.Name())
-					file, err := os.Open(filePath)
-					if err != nil {
-						logrus.Errorf("Unable to read %s: %v", filePath, err)
-						continue
-					}
-					logrus.Debugf("Import %s", filePath)
-					_, err = client.Import(ctxContainerD, file)
-					if err != nil {
-						logrus.Errorf("Unable to import %s: %v", filePath, err)
-					}
-				}
-			}
-		}
+		logrus.Errorf("Unable to find images in %s: %v", cfg.Images, err)
+		return nil
 	}
 
+	if !fileInfo.IsDir() {
+		return nil
+	}
+
+	fileInfos, err := ioutil.ReadDir(cfg.Images)
+	if err != nil {
+		logrus.Errorf("Unable to read images in %s: %v", cfg.Images, err)
+		return nil
+	}
+
+	client, err := containerd.New(cfg.Containerd.Address)
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+
+	ctxContainerD := namespaces.WithNamespace(context.Background(), "k8s.io")
+
+	for _, fileInfo := range fileInfos {
+		if fileInfo.IsDir() {
+			continue
+		}
+
+		filePath := filepath.Join(cfg.Images, fileInfo.Name())
+
+		file, err := os.Open(filePath)
+		if err != nil {
+			logrus.Errorf("Unable to read %s: %v", filePath, err)
+			continue
+		}
+
+		logrus.Debugf("Import %s", filePath)
+		_, err = client.Import(ctxContainerD, file)
+		if err != nil {
+			logrus.Errorf("Unable to import %s: %v", filePath, err)
+		}
+	}
 	return nil
 }
