@@ -32,6 +32,7 @@ import (
 	"github.com/opencontainers/runc/libcontainer/cgroups"
 	"github.com/opencontainers/runc/libcontainer/cgroups/fs"
 	"github.com/opencontainers/runc/libcontainer/configs"
+	rsystem "github.com/opencontainers/runc/libcontainer/system"
 	"k8s.io/klog"
 
 	"k8s.io/api/core/v1"
@@ -375,7 +376,11 @@ func setupKernelTunables(option KernelTunableBehavior) error {
 			klog.V(2).Infof("Updating kernel flag: %v, expected value: %v, actual value: %v", flag, expectedValue, val)
 			err = sysctl.SetSysctl(flag, expectedValue)
 			if err != nil {
-				errList = append(errList, err)
+				if rsystem.RunningInUserNS() {
+					klog.Warningf("Updating kernel flag failed: %v: %v", flag, err)
+				} else {
+					errList = append(errList, err)
+				}
 			}
 		}
 	}
@@ -461,13 +466,20 @@ func (cm *containerManagerImpl) setupNode(activePods ActivePodsFunc) error {
 			},
 		}
 		cont.ensureStateFunc = func(_ *fs.Manager) error {
-			return ensureProcessInContainerWithOOMScore(os.Getpid(), qos.KubeletOOMScoreAdj, &manager)
+			err := ensureProcessInContainerWithOOMScore(os.Getpid(), qos.KubeletOOMScoreAdj, &manager)
+			if rsystem.RunningInUserNS() {
+				// if we are in userns, cgroups might not be available
+				err = nil
+			}
+			return err
 		}
 		systemContainers = append(systemContainers, cont)
 	} else {
 		cm.periodicTasks = append(cm.periodicTasks, func() {
 			if err := ensureProcessInContainerWithOOMScore(os.Getpid(), qos.KubeletOOMScoreAdj, nil); err != nil {
-				klog.Error(err)
+				if !rsystem.RunningInUserNS() {
+					klog.Error(err)
+				}
 				return
 			}
 			cont, err := getContainer(os.Getpid())
