@@ -2,6 +2,8 @@ package helm
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"sort"
 
@@ -22,7 +24,7 @@ import (
 
 const (
 	namespace = "kube-system"
-	image     = "rancher/klipper-helm:v0.1.2"
+	image     = "rancher/klipper-helm:v0.1.3"
 	label     = "helm.k3s.cattle.io/chart"
 )
 
@@ -124,6 +126,7 @@ func (h *handler) onRemove(chart *k3s.HelmChart) (runtime.Object, error) {
 
 func job(chart *k3s.HelmChart) (*batch.Job, *core.ConfigMap) {
 	oneThousand := int32(1000)
+	valuesHash := sha256.Sum256([]byte(chart.Spec.ValuesContent))
 
 	action := "install"
 	if chart.DeletionTimestamp != nil {
@@ -169,6 +172,10 @@ func job(chart *k3s.HelmChart) (*batch.Job, *core.ConfigMap) {
 								{
 									Name:  "REPO",
 									Value: chart.Spec.Repo,
+								},
+								{
+									Name:  "VALUES_HASH",
+									Value: hex.EncodeToString(valuesHash[:]),
 								},
 							},
 						},
