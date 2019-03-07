@@ -63,7 +63,7 @@ func Run(ctx context.Context, cfg *config.Node) error {
 	}
 
 	if os.Getenv("CONTAINERD_LOG_LEVEL") != "" {
-		args = append(args, "-l", "CONTAINERD_LOG_LEVEL")
+		args = append(args, "-l", os.Getenv("CONTAINERD_LOG_LEVEL"))
 	}
 
 	stdOut := io.Writer(os.Stdout)
