@@ -21,6 +21,7 @@ type Server struct {
 	ExtraAPIArgs        cli.StringSlice
 	ExtraSchedulerArgs  cli.StringSlice
 	ExtraControllerArgs cli.StringSlice
+	Rootless            bool
 }
 
 var ServerConfig Server
@@ -123,6 +124,11 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Name:  "kube-controller-arg",
 				Usage: "Customized flag for kube-controller-manager process",
 				Value: &ServerConfig.ExtraControllerArgs,
+			},
+			cli.BoolFlag{
+				Name:        "rootless",
+				Usage:       "(experimental) Run rootless",
+				Destination: &ServerConfig.Rootless,
 			},
 			NodeIPFlag,
 			NodeNameFlag,

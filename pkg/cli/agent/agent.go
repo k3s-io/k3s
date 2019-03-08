@@ -10,7 +10,7 @@ import (
 
 	"github.com/rancher/k3s/pkg/agent"
 	"github.com/rancher/k3s/pkg/cli/cmds"
-	"github.com/rancher/norman/pkg/resolvehome"
+	"github.com/rancher/k3s/pkg/datadir"
 	"github.com/rancher/norman/signal"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
@@ -57,7 +57,7 @@ func Run(ctx *cli.Context) error {
 
 	logrus.Infof("Starting k3s agent %s", ctx.App.Version)
 
-	dataDir, err := resolvehome.Resolve(cmds.AgentConfig.DataDir)
+	dataDir, err := datadir.LocalHome(cmds.AgentConfig.DataDir, cmds.AgentConfig.Rootless)
 	if err != nil {
 		return err
 	}

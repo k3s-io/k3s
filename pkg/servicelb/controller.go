@@ -34,11 +34,12 @@ var (
 	trueVal = true
 )
 
-func Register(ctx context.Context, kubernetes kubernetes.Interface, enabled bool) error {
+func Register(ctx context.Context, kubernetes kubernetes.Interface, enabled, rootless bool) error {
 	clients := coreclient.ClientsFrom(ctx)
 	appClients := appclient.ClientsFrom(ctx)
 
 	h := &handler{
+		rootless:  rootless,
 		enabled:   enabled,
 		nodeCache: clients.Node.Cache(),
 		podCache:  clients.Pod.Cache(),
@@ -59,6 +60,7 @@ func Register(ctx context.Context, kubernetes kubernetes.Interface, enabled bool
 }
 
 type handler struct {
+	rootless     bool
 	enabled      bool
 	nodeCache    coreclient.NodeClientCache
 	podCache     coreclient.PodClientCache
@@ -189,6 +191,11 @@ func (h *handler) podIPs(pods []*core.Pod) ([]string, error) {
 	for k := range ips {
 		ipList = append(ipList, k)
 	}
+
+	if len(ipList) > 0 && h.rootless {
+		return []string{"127.0.0.1"}, nil
+	}
+
 	return ipList, nil
 }
 
