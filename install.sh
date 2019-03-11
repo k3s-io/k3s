@@ -10,7 +10,7 @@ set -e
 #   Installing a server without an agent:
 #     curl ... | INSTALL_K3S_EXEC="--disable-agent" sh -
 #   Installing an agent to point at a server:
-#     curl ... | K3S_TOKEN=xxx K3S_URL=https://server-url:6443 sh -  
+#     curl ... | K3S_TOKEN=xxx K3S_URL=https://server-url:6443 sh -
 #
 # Environment variables:
 #   - K3S_*
@@ -56,6 +56,7 @@ set -e
 #     if not specified.
 
 GITHUB_URL=https://github.com/rancher/k3s/releases
+GITHUB_STARTUP_URL=https://github.com/Sellto/k3s-startup/releases
 
 # --- helper functions for logs ---
 info()
@@ -247,6 +248,12 @@ download_binary() {
     curl -o ${TMP_BIN} -sfL ${BIN_URL} || fatal "Binary download failed"
 }
 
+download_binary_startup() {
+    BIN_URL=${GITHUB_STARTUP_URL}/download/v0.1.0/k3s-startup${SUFFIX}
+    info "Downloading binary ${BIN_URL}"
+    curl -o ${TMP_BIN} -sfL ${BIN_URL} || fatal "Binary download failed"
+}
+
 # --- verify downloaded binary hash ---
 verify_binary() {
     info "Verifying binary download"
@@ -262,6 +269,13 @@ setup_binary() {
     info "Installing k3s to ${BIN_DIR}/k3s"
     $SUDO chown root:root ${TMP_BIN}
     $SUDO mv -f ${TMP_BIN} ${BIN_DIR}/k3s
+}
+
+setup_startup_binary() {
+    chmod 755 ${TMP_BIN}
+    info "Installing k3s to ${BIN_DIR}/k3s-startup"
+    $SUDO chown root:root ${TMP_BIN}
+    $SUDO mv -f ${TMP_BIN} ${BIN_DIR}/k3s-startup
 }
 
 # --- download and verify k3s ---
@@ -286,6 +300,8 @@ download_and_verify() {
     download_binary
     verify_binary
     setup_binary
+    download_binary_startup
+    setup_startup_binary
 }
 
 # --- add additional utility links ---
@@ -350,6 +366,7 @@ fi
 rm -rf /etc/rancher/k3s
 rm -rf /var/lib/rancher/k3s
 rm -f ${BIN_DIR}/k3s
+rm -f ${BIN_DIR}/k3s-startup
 EOF
     $SUDO chmod 755 ${BIN_DIR}/${UNINSTALL_K3S_SH}
     $SUDO chown root:root ${BIN_DIR}/${UNINSTALL_K3S_SH}
@@ -374,7 +391,7 @@ create_env_file() {
 # --- write service file ---
 create_service_file() {
     info "systemd: Creating service file ${SYSTEMD_DIR}/${SERVICE_K3S}"
-    $SUDO tee ${SYSTEMD_DIR}/${SERVICE_K3S} >/dev/null << EOF
+    $SUDO tee ${SYSTEMD_DIR}/${SERVICE_K3S} >/dev/null <<EOF
 [Unit]
 Description=Lightweight Kubernetes
 Documentation=https://k3s.io
@@ -385,7 +402,9 @@ Type=${SYSTEMD_TYPE}
 EnvironmentFile=${SYSTEMD_DIR}/${SERVICE_K3S}.env
 ExecStartPre=-/sbin/modprobe br_netfilter
 ExecStartPre=-/sbin/modprobe overlay
-ExecStart=${BIN_DIR}/k3s ${CMD_K3S_EXEC}
+ExecStart=${BIN_DIR}/k3s-startup $1
+RemainAfterExit=yes
+ExecStop=/usr/bin/pkill k3s
 KillMode=process
 Delegate=yes
 LimitNOFILE=infinity
@@ -398,15 +417,59 @@ WantedBy=multi-user.target
 EOF
 }
 
+
+create_config_file() {
+    info "systemd: Creating config file /etc/k3s/$1-conf.yml"
+    if [ "$1" = 'agent' ]
+    then
+    $SUDO mkdir -p /etc/k3s/
+    $SUDO tee /etc/k3s/agent-conf.yml >/dev/null << EOF
+token:              #Token to use for authentication [$K3S_TOKEN]
+server:             #Server to connect to [$K3S_URL]
+data-dir:           #Folder to hold state (default: "/var/lib/rancher/k3s")
+docker:     "no"    #Use docker instead of containerd
+no-flannel: "no"    #Disable embedded flannel
+cluster-secret :    #Shared secret used to bootstrap a cluster [$K3S_CLUSTER_SECRET]
+node-name :         #Node name [$K3S_NODE_NAME]
+node-ip:            #IP address to advertise for node
+EOF
+    fi
+    if [ "$1" = 'server' ]
+    then
+    $SUDO mkdir -p /etc/k3s/
+    $SUDO tee /etc/k3s/server-conf.yml >/dev/null << EOF
+https-listen-port:           #HTTPS listen port (default: 6443)
+http-listen-port:            #HTTP listen port (for /healthz, HTTPS redirect, and port for TLS terminating LB) (default: 0)
+data-dir:                    #Folder to hold state default /var/lib/rancher/k3s or ${HOME}/.rancher/k3s if not root
+disable-agent: "yes"          #Do not run a local agent and register a local kubelet
+log:                         #Log to file
+cluster-cidr:                #Network CIDR to use for pod IPs (default: "10.42.0.0/16")
+cluster-secret:              #Shared secret used to bootstrap a cluster [$K3S_CLUSTER_SECRET]
+service-cidr:                #Network CIDR to use for services IPs (default: "10.43.0.0/16")
+cluster-dns:                 #Cluster IP for coredns service. Should be in your service-cidr range
+no-deploy:                   #Do not deploy packaged components (valid items: coredns, servicelb, traefik)
+write-kubeconfig:            #Write kubeconfig for admin client to this file [$K3S_KUBECONFIG_OUTPUT]
+write-kubeconfig-mode:       #Write kubeconfig with this mode [$K3S_KUBECONFIG_MODE]
+node-ip:                     #(agent) IP address to advertise for node
+node-name:                   #(agent) Node name [$K3S_NODE_NAME]
+docker: "no"                 #(agent) Use docker instead of containerd
+no-flannel: "no"             #(agent) Disable embedded flannel
+container-runtime-endpoint:  #(agent) Disable embedded containerd and use alternative CRI implementation
+EOF
+    fi
+}
+
 # --- enable and start systemd service ---
 systemd_enable_and_start() {
     info "systemd: Enabling ${SYSTEMD_NAME} unit"
     $SUDO systemctl enable ${SYSTEMD_DIR}/${SERVICE_K3S} >/dev/null
     $SUDO systemctl daemon-reload >/dev/null
 
-    info "systemd: Starting ${SYSTEMD_NAME}"
-    $SUDO systemctl restart ${SYSTEMD_NAME}
+    info "k3s is installed - Change the config into /etc/k3s/$1-conf.yml file"
+    info "And start the service with the command:  systemctl start ${SYSTEMD_NAME}.service"
+    #$SUDO systemctl restart ${SYSTEMD_NAME}
 }
+
 
 # --- run the install process --
 {
@@ -417,6 +480,7 @@ systemd_enable_and_start() {
     create_uninstall
     systemd_disable
     create_env_file
-    create_service_file
+    create_service_file $1
+    create_config_file $1
     systemd_enable_and_start
 }
