@@ -1,0 +1,43 @@
+---
+
+- name: Copy K3s service file
+  register: k3s_service
+  template:
+    src: "k3s.service.j2"
+    dest: "{{ systemd_dir }}/k3s.service"
+    owner: root
+    group: root
+    mode: 0755
+
+- name: Enable and check K3s service
+  systemd:
+    name: k3s
+    daemon_reload: yes
+    state: restarted
+    enabled: yes
+
+- name: Register file access mode
+  stat:
+    path: /var/lib/rancher/k3s/server
+  register: p
+
+- name: Change file access node-token
+  file:
+    path: /var/lib/rancher/k3s/server
+    mode: "g+rx,o+rx"
+
+- name: Read Node Token from Master
+  slurp:
+    src: /var/lib/rancher/k3s/server/node-token
+  register: node_token
+
+- name: Store Master Token
+  set_fact: 
+   token: "{{ node_token.content | b64decode | regex_replace('\n', '') }}"
+
+- name: Restore file access 
+  file:
+    path: /var/lib/rancher/k3s/server
+    mode: "{{ p.stat.mode }}"
+
+#- debug: msg="Node TOKEN {{ token }}"
