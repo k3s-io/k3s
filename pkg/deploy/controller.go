@@ -259,6 +259,9 @@ func yamlToObjects(in io.Reader) ([]runtime.Object, error) {
 		if err == io.EOF {
 			break
 		}
+		if bytes.Count(raw, []byte{'\n'}) == len(raw) {
+			break
+		}
 		if err != nil {
 			return nil, err
 		}
