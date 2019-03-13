@@ -328,6 +328,71 @@ The full help text for the install script environment variables are as follows:
      Type of systemd service to create, will default from the k3s exec command
      if not specified.
 
+openrc on Alpine Linux
+-------
+
+In order to pre-setup Alpine Linux you have to go through the following steps:
+
+```
+echo "cgroup /sys/fs/cgroup cgroup defaults 0 0" >> /etc/fstab
+
+cat >> /etc/cgconfig.conf <<EOF
+mount {
+cpuacct = /cgroup/cpuacct;
+memory = /cgroup/memory;
+devices = /cgroup/devices;
+freezer = /cgroup/freezer;
+net_cls = /cgroup/net_cls;
+blkio = /cgroup/blkio;
+cpuset = /cgroup/cpuset;
+cpu = /cgroup/cpu;
+}
+EOF
+```
+
+Then update **/etc/update-extlinux.conf** by adding:
+
+```
+default_kernel_opts="...  cgroup_enable=cpuset cgroup_memory=1 cgroup_enable=memory"
+```
+
+Than update the config and reboot
+
+```
+update-extlinux
+reboot
+```
+
+After rebooting:
+
+- download **k3s** to **/usr/local/bin/k3s**
+- create an openrc file in **/etc/init.d**
+
+For the server:
+
+```
+#!/sbin/openrc-run
+
+command=/usr/local/bin/k3s
+command_args="server"
+pidfile=
+
+name="k3s"
+description="Lightweight Kubernetes"
+```
+
+For the agent:
+
+```
+#!/sbin/openrc-run
+
+command=/usr/local/bin/k3s
+command_args="agent --server https://myserver:6443 --token ${NODE_TOKEN}"
+pidfile=
+
+name="k3s"
+description="Lightweight Kubernetes"
+```
 
 Flannel
 -------
