@@ -210,7 +210,7 @@ k3s includes and defaults to containerd. Why? Because it's just plain better. If
 run with Docker first stop and think, "Really? Do I really want more headache?" If still
 yes then you just need to run the agent with the `--docker` flag
 
-     k3s agent -u ${SERVER_URL} -t ${NODE_TOKEN} --docker &
+     k3s agent -s ${SERVER_URL} -t ${NODE_TOKEN} --docker &
      
 systemd
 -------
