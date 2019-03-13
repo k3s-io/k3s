@@ -265,6 +265,8 @@ Documentation=https://k3s.io
 After=network.target
 
 [Service]
+Type=notify
+EnvironmentFile=/etc/systemd/system/k3s.service.env
 ExecStartPre=-/sbin/modprobe br_netfilter
 ExecStartPre=-/sbin/modprobe overlay
 ExecStart=/usr/local/bin/k3s server
@@ -274,6 +276,7 @@ LimitNOFILE=infinity
 LimitNPROC=infinity
 LimitCORE=infinity
 TasksMax=infinity
+TimeoutStartSec=infinity
 
 [Install]
 WantedBy=multi-user.target
