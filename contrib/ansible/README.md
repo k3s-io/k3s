@@ -11,8 +11,8 @@ Build a Kubernetes cluster using Ansible with kubeadm. The goal is easily instal
 on processor architecture:
 
 - [X] x64
-- [ ] arm64
-- [ ] armhf
+- [X] arm64
+- [X] armhf
 
 ## System requirements:
 
