@@ -333,7 +333,7 @@ openrc on Alpine Linux
 
 In order to pre-setup Alpine Linux you have to go through the following steps:
 
-```
+```bash
 echo "cgroup /sys/fs/cgroup cgroup defaults 0 0" >> /etc/fstab
 
 cat >> /etc/cgconfig.conf <<EOF
@@ -358,7 +358,7 @@ default_kernel_opts="...  cgroup_enable=cpuset cgroup_memory=1 cgroup_enable=mem
 
 Than update the config and reboot
 
-```
+```bash
 update-extlinux
 reboot
 ```
@@ -370,7 +370,7 @@ After rebooting:
 
 For the server:
 
-```
+```bash
 #!/sbin/openrc-run
 
 command=/usr/local/bin/k3s
@@ -383,7 +383,7 @@ description="Lightweight Kubernetes"
 
 For the agent:
 
-```
+```bash
 #!/sbin/openrc-run
 
 command=/usr/local/bin/k3s
