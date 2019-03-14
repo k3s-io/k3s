@@ -264,9 +264,11 @@ setup_binary() {
     $SUDO mv -f ${TMP_BIN} ${BIN_DIR}/k3s
 
     if [ "Disabled" != `getenforce` ]; then
-        info "SeLinux is enabled, setting permissions"
-        $SUDO semanage fcontext -a -t bin_t "${BIN_DIR}/k3s"
-        $SUDO restorecon -v ${BIN_DIR}/k3s
+        if [ -z `ls -Z "${BIN_DIR}/k3s" | grep ':bin_t:'` ]; then
+                info "SeLinux is enabled, setting permissions"
+                $SUDO semanage fcontext -a -t bin_t "${BIN_DIR}/k3s"
+                $SUDO restorecon -v ${BIN_DIR}/k3s
+        fi
     fi
 }
 
