@@ -254,8 +254,9 @@ func checksum(bytes []byte) string {
 func isEmptyYaml(yaml []byte) bool {
 	isEmpty := true
 	lines := bytes.Split(yaml, []byte("\n"))
-	for _, k := range lines {
-		if string(k) != "---" && !bytes.HasPrefix(k, []byte("#")) && string(k) != "" {
+	for _, l := range lines {
+		s := bytes.TrimSpace(l)
+		if string(s) != "---" && !bytes.HasPrefix(s, []byte("#")) && string(s) != "" {
 			isEmpty = false
 		}
 	}
