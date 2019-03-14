@@ -10,7 +10,7 @@ set -e
 #   Installing a server without an agent:
 #     curl ... | INSTALL_K3S_EXEC="--disable-agent" sh -
 #   Installing an agent to point at a server:
-#     curl ... | K3S_TOKEN=xxx K3S_URL=https://server-url:6443 sh -  
+#     curl ... | K3S_TOKEN=xxx K3S_URL=https://server-url:6443 sh -
 #
 # Environment variables:
 #   - K3S_*
@@ -262,6 +262,12 @@ setup_binary() {
     info "Installing k3s to ${BIN_DIR}/k3s"
     $SUDO chown root:root ${TMP_BIN}
     $SUDO mv -f ${TMP_BIN} ${BIN_DIR}/k3s
+
+    if [ "Disabled" != `getenforce` ]; then
+        info "SeLinux is enabled, setting permissions"
+        $SUDO semanage fcontext -a -t bin_t "${BIN_DIR}/k3s"
+        $SUDO restorecon -v ${BIN_DIR}/k3s
+    fi
 }
 
 # --- download and verify k3s ---
@@ -413,6 +419,7 @@ systemd_enable_and_start() {
     verify_systemd
     setup_env ${INSTALL_K3S_EXEC} $@
     download_and_verify
+    set_permissions
     create_symlinks
     create_uninstall
     systemd_disable
