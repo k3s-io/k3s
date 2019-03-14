@@ -421,7 +421,6 @@ systemd_enable_and_start() {
     verify_systemd
     setup_env ${INSTALL_K3S_EXEC} $@
     download_and_verify
-    set_permissions
     create_symlinks
     create_uninstall
     systemd_disable
