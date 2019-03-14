@@ -251,6 +251,17 @@ func checksum(bytes []byte) string {
 	return hex.EncodeToString(d[:])
 }
 
+func isEmptyYaml(yaml []byte) bool {
+	isEmpty := true
+	lines := bytes.Split(yaml, []byte("\n"))
+	for _, k := range lines {
+		if string(k) != "---" && !bytes.HasPrefix(k, []byte("#")) && string(k) != "" {
+			isEmpty = false
+		}
+	}
+	return isEmpty
+}
+
 func yamlToObjects(in io.Reader) ([]runtime.Object, error) {
 	var result []runtime.Object
 	reader := yamlDecoder.NewYAMLReader(bufio.NewReaderSize(in, 4096))
@@ -263,12 +274,14 @@ func yamlToObjects(in io.Reader) ([]runtime.Object, error) {
 			return nil, err
 		}
 
-		obj, err := toObjects(raw)
-		if err != nil {
-			return nil, err
-		}
+		if !isEmptyYaml(raw) {
+			obj, err := toObjects(raw)
+			if err != nil {
+				return nil, err
+			}
 
-		result = append(result, obj...)
+			result = append(result, obj...)
+		}
 	}
 
 	return result, nil
@@ -279,6 +292,7 @@ func toObjects(bytes []byte) ([]runtime.Object, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	obj, _, err := unstructured.UnstructuredJSONScheme.Decode(bytes, nil, nil)
 	if err != nil {
 		return nil, err
