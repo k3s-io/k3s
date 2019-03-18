@@ -7,7 +7,7 @@
 
 - name: Download k3s binary x64
   get_url:                                                           
-      url: https://github.com/rancher/k3s/releases/download/v0.2.0/k3s
+      url: https://github.com/rancher/k3s/releases/download/{{ k3s_version }}/k3s
       dest: /usr/local/bin/k3s
       owner: root
       group: root
@@ -16,7 +16,7 @@
 
 - name: Download k3s binary arm64
   get_url:                                                           
-      url: https://github.com/rancher/k3s/releases/download/v0.2.0/k3s-arm64
+      url: https://github.com/rancher/k3s/releases/download/{{ k3s_version }}/k3s-arm64
       dest: /usr/local/bin/k3s
       owner: root
       group: root
@@ -26,7 +26,7 @@
 
 - name: Download k3s binary armhf
   get_url:                                                           
-      url: https://github.com/rancher/k3s/releases/download/v0.2.0/k3s-armhf
+      url: https://github.com/rancher/k3s/releases/download/{{ k3s_version }}/k3s-armhf
       dest: /usr/local/bin/k3s
       owner: root
       group: root
