@@ -1,8 +1,8 @@
 # Build a Kubernetes cluster using k3s via Ansible.
 
-## Kubeadm Ansible Playbook
+## K3s Ansible Playbook
 
-Build a Kubernetes cluster using Ansible with kubeadm. The goal is easily install a Kubernetes cluster on machines running:
+Build a Kubernetes cluster using Ansible with k3s. The goal is easily install a Kubernetes cluster on machines running:
 
 - [X] Debian 9
 - [ ] Ubuntu 16.04
