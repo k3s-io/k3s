@@ -2,6 +2,7 @@ package server
 
 import (
 	"net/http"
+	"path/filepath"
 	"strconv"
 
 	"github.com/gorilla/mux"
@@ -15,6 +16,7 @@ const (
 	binaryMediaType = "application/octet-stream"
 	pbMediaType     = "application/com.github.proto-openapi.spec.v2@v1.0+protobuf"
 	openapiPrefix   = "openapi."
+	staticURL       = "/static/"
 )
 
 type CACertsGetter func() (string, error)
@@ -28,8 +30,10 @@ func router(serverConfig *config.Control, tunnel http.Handler, cacertsGetter CAC
 	authed.Path("/v1-k3s/node.key").Handler(nodeKey(serverConfig))
 	authed.Path("/v1-k3s/config").Handler(configHandler(serverConfig))
 
+	staticDir := filepath.Join(serverConfig.DataDir, "static")
 	router := mux.NewRouter()
 	router.NotFoundHandler = authed
+	router.PathPrefix(staticURL).Handler(serveStatic(staticURL, staticDir))
 	router.Path("/cacerts").Handler(cacerts(cacertsGetter))
 	router.Path("/openapi/v2").Handler(serveOpenapi())
 	router.Path("/ping").Handler(ping())
@@ -109,4 +113,8 @@ func ping() http.Handler {
 		resp.Header().Set("Content-Length", strconv.Itoa(len(data)))
 		resp.Write(data)
 	})
+}
+
+func serveStatic(urlPrefix, staticDir string) http.Handler {
+	return http.StripPrefix(urlPrefix, http.FileServer(http.Dir(staticDir)))
 }
