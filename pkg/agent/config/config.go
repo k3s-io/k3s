@@ -206,11 +206,20 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 		return nil, errors.Wrapf(err, "failed to find host-local")
 	}
 
+	var flannelIface *sysnet.Interface
+	if !envInfo.NoFlannel && len(envInfo.FlannelIface) > 0 {
+		flannelIface, err = sysnet.InterfaceByName(envInfo.FlannelIface)
+		if err != nil {
+			return nil, errors.Wrapf(err, "unable to find interface")
+		}
+	}
+
 	nodeConfig := &config.Node{
 		Docker:                   envInfo.Docker,
 		NoFlannel:                envInfo.NoFlannel,
 		ContainerRuntimeEndpoint: envInfo.ContainerRuntimeEndpoint,
 	}
+	nodeConfig.FlannelIface = flannelIface
 	nodeConfig.LocalAddress = localAddress(controlConfig)
 	nodeConfig.Images = filepath.Join(envInfo.DataDir, "images")
 	nodeConfig.AgentConfig.NodeIP = nodeIP

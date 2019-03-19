@@ -19,6 +19,7 @@ type Agent struct {
 	Docker                   bool
 	ContainerRuntimeEndpoint string
 	NoFlannel                bool
+	FlannelIface             string
 	Debug                    bool
 	Rootless                 bool
 	AgentShared
@@ -53,6 +54,11 @@ var (
 		Name:        "no-flannel",
 		Usage:       "(agent) Disable embedded flannel",
 		Destination: &AgentConfig.NoFlannel,
+	}
+	FlannelIfaceFlag = cli.StringFlag{
+		Name:        "flannel-iface",
+		Usage:       "(agent) Override default flannel interface",
+		Destination: &AgentConfig.FlannelIface,
 	}
 	CRIEndpointFlag = cli.StringFlag{
 		Name:        "container-runtime-endpoint",
@@ -121,6 +127,7 @@ func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
 			},
 			DockerFlag,
 			FlannelFlag,
+			FlannelIfaceFlag,
 			NodeNameFlag,
 			NodeIPFlag,
 			CRIEndpointFlag,
