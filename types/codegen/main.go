@@ -51,6 +51,22 @@ func main() {
 	bc = &bindata.Config{
 		Input: []bindata.InputConfig{
 			{
+				Path:      "build/static",
+				Recursive: true,
+			},
+		},
+		Package:    "static",
+		NoMetadata: true,
+		Prefix:     "build/static/",
+		Output:     "pkg/static/zz_generated_bindata.go",
+	}
+	if err := bindata.Translate(bc); err != nil {
+		logrus.Fatal(err)
+	}
+
+	bc = &bindata.Config{
+		Input: []bindata.InputConfig{
+			{
 				Path: "vendor/k8s.io/kubernetes/openapi.json",
 			},
 			{
