@@ -178,6 +178,7 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 	nodeConfig.Containerd.Config = filepath.Join(envInfo.DataDir, "etc/containerd/config.toml")
 	nodeConfig.Containerd.Root = filepath.Join(envInfo.DataDir, "containerd")
 	nodeConfig.Containerd.Opt = filepath.Join(envInfo.DataDir, "containerd")
+	nodeConfig.ConfigTemplate = envInfo.ContainerdConfig
 	if !envInfo.Debug {
 		nodeConfig.Containerd.Log = filepath.Join(envInfo.DataDir, "containerd/containerd.log")
 	}

@@ -16,6 +16,7 @@ type Node struct {
 	FlannelConf              string
 	LocalAddress             string
 	Containerd               Containerd
+	ConfigTemplate			 string
 	Images                   string
 	AgentConfig              Agent
 	CACerts                  []byte

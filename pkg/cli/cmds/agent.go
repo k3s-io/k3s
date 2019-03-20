@@ -10,8 +10,9 @@ import (
 type Agent struct {
 	Token                    string
 	TokenFile                string
-  ServerURL                string
+    ServerURL                string
 	DataDir                  string
+	ContainerdConfig		 string
 	NodeIP                   string
 	NodeName                 string
 	ClusterSecret            string
@@ -87,6 +88,12 @@ func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
 				Usage:       "Folder to hold state",
 				Destination: &AgentConfig.DataDir,
 				Value:       "/var/lib/rancher/k3s",
+			},
+			cli.StringFlag{
+				Name:        "containerd-config-template",
+				Usage:       "Use Custom Containerd config file",
+				Destination: &AgentConfig.ContainerdConfig,
+				Value:       "nil",
 			},
 			cli.StringFlag{
 				Name:        "cluster-secret",
