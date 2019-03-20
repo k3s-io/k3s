@@ -1,6 +1,7 @@
 //go:generate go run types/codegen/cleanup/main.go
 //go:generate go run types/codegen/main.go
 //go:generate go fmt pkg/deploy/zz_generated_bindata.go
+//go:generate go fmt pkg/static/zz_generated_bindata.go
 //go:generate go fmt pkg/openapi/zz_generated_bindata.go
 
 package main
