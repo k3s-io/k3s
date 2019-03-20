@@ -93,7 +93,7 @@ func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
 				Name:        "containerd-config-template",
 				Usage:       "Use Custom Containerd config file",
 				Destination: &AgentConfig.ContainerdConfig,
-				Value:       "nil",
+				Value:       "",
 			},
 			cli.StringFlag{
 				Name:        "cluster-secret",

@@ -48,11 +48,12 @@ func Run(ctx context.Context, cfg *config.Node) error {
 		"--root", cfg.Containerd.Root,
 	}
 
+	template := configToml
+
 	if cfg.ConfigTemplate != "" {
 		template := ioutil.ReadFile(cfg.ConfigTemplate)
-	}else{
-		template := configToml
 	}
+	
 	if !cfg.NoFlannel {
 		template += configCNIToml
 	}
