@@ -158,7 +158,7 @@ func job(chart *k3s.HelmChart) (*batch.Job, *core.ConfigMap) {
 						{
 							Name:            "helm",
 							Image:           image,
-							ImagePullPolicy: core.PullAlways,
+							ImagePullPolicy: core.PullIfNotPresent,
 							Args:            args(chart),
 							Env: []core.EnvVar{
 								{
