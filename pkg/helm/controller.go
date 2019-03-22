@@ -24,7 +24,7 @@ import (
 
 const (
 	namespace = "kube-system"
-	image     = "rancher/klipper-helm:v0.1.4"
+	image     = "rancher/klipper-helm:v0.1.5"
 	label     = "helm.k3s.cattle.io/chart"
 )
 
