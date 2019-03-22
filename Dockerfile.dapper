@@ -5,7 +5,8 @@ RUN apk -U --no-cache add bash git gcc musl-dev docker vim less file curl wget c
     python3 py3-pip python3-dev openssl-dev libffi-dev libseccomp libseccomp-dev make
 RUN pip3 install 'tox==3.6.0'
 RUN apk -U --no-cache --repository http://dl-3.alpinelinux.org/alpine/edge/main/ add sqlite-dev sqlite-static
-RUN go get -d golang.org/x/lint/golint && \
+RUN mkdir -p /go/src/golang.org/x && \
+    cd /go/src/golang.org/x && git clone https://github.com/golang/tools && git clone https://github.com/golang/lint && \
     git -C /go/src/golang.org/x/lint/golint checkout -b current 06c8688daad7faa9da5a0c2f163a3d14aac986ca && \
     go install golang.org/x/lint/golint
 RUN go get -d github.com/alecthomas/gometalinter && \
