@@ -272,11 +272,8 @@ func (h *handler) newDeployment(svc *core.Service) (*apps.Deployment, error) {
 		},
 	}
 
-	for i, port := range svc.Spec.Ports {
-		portName := port.Name
-		if portName == "" {
-			portName = fmt.Sprintf("port-%d", i)
-		}
+	for _, port := range svc.Spec.Ports {
+		portName := fmt.Sprintf("lb-port-%d", port.Port)
 		container := core.Container{
 			Name:            portName,
 			Image:           image,
