@@ -20,6 +20,8 @@ services:
     - /run
     - /var/run
     privileged: true
+    depends_on:
+    - server
     environment:
     - K3S_URL=https://server:6443
     - K3S_CLUSTER_SECRET=somethingtotallyrandom
