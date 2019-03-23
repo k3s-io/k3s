@@ -35,14 +35,13 @@ const (
 	startKey = "_start_"
 )
 
-func WatchFiles(ctx context.Context, skips []string, bases ...string) error {
+func WatchFiles(ctx context.Context, bases ...string) error {
 	server := norman.GetServer(ctx)
 	addons := v1.ClientsFrom(ctx).Addon
 
 	w := &watcher{
 		addonCache: addons.Cache(),
 		addons:     addons,
-		skips:      skips,
 		bases:      bases,
 		restConfig: *server.Runtime.LocalConfig,
 		discovery:  server.K8sClient.Discovery(),
@@ -64,7 +63,6 @@ type watcher struct {
 	addonCache v1.AddonClientCache
 	addons     v1.AddonClient
 	bases      []string
-	skips      []string
 	restConfig rest.Config
 	discovery  discovery.DiscoveryInterface
 	clients    map[schema.GroupVersionKind]*objectclient.ObjectClient
@@ -107,9 +105,6 @@ func (w *watcher) listFilesIn(base string, force bool) error {
 	}
 
 	skips := map[string]bool{}
-	for _, skip := range w.skips {
-		skips[skip] = true
-	}
 	for _, file := range files {
 		if strings.HasSuffix(file.Name(), ".skip") {
 			skips[strings.TrimSuffix(file.Name(), ".skip")] = true
