@@ -16,7 +16,7 @@ type Server struct {
 	DisableAgent     bool
 	KubeConfigOutput string
 	KubeConfigMode   string
-	AdvertiseAddress string
+	KnownIPs cli.StringSlice
 }
 
 var ServerConfig Server
@@ -95,11 +95,10 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Destination: &ServerConfig.KubeConfigMode,
 				EnvVar:      "K3S_KUBECONFIG_MODE",
 			},
-			cli.StringFlag{
-				Name:        "advertise-address",
-				Usage:       "Advertise address for k3s server",
-				Destination: &ServerConfig.AdvertiseAddress,
-				Value:       "",
+			cli.StringSliceFlag{
+				Name:        "tls-san",
+				Usage:       "Add additional hostname or IP as a Subject Alternative Name in the TLS cert",
+				Value: &ServerConfig.KnownIPs,
 			},
 			NodeIPFlag,
 			NodeNameFlag,
