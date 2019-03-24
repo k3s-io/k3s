@@ -10,7 +10,7 @@ import (
 type Agent struct {
 	Token                    string
 	TokenFile                string
-  ServerURL                string
+	ServerURL                string
 	DataDir                  string
 	NodeIP                   string
 	NodeName                 string
