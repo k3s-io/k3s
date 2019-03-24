@@ -3,7 +3,7 @@ set -e
 
 cd $(dirname $0)
 
-if [ -z "SKIP_VALIDATE" ]; then
+if [ -z "$SKIP_VALIDATE" ]; then
     ./validate
 fi
 ./build
