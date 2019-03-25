@@ -77,7 +77,7 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	serverConfig.ControlConfig.KubeConfigMode = cfg.KubeConfigMode
 	serverConfig.TLSConfig.HTTPSPort = cfg.HTTPSPort
 	serverConfig.TLSConfig.HTTPPort = cfg.HTTPPort
-	serverConfig.TLSConfig.KnownIPs = knownIPs()
+	serverConfig.TLSConfig.KnownIPs = knownIPs(cfg.KnownIPs)
 
 	_, serverConfig.ControlConfig.ClusterIPRange, err = net2.ParseCIDR(cfg.ClusterCIDR)
 	if err != nil {
@@ -146,10 +146,8 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	return agent.Run(ctx, agentConfig)
 }
 
-func knownIPs() []string {
-	ips := []string{
-		"127.0.0.1",
-	}
+func knownIPs(ips []string) []string {
+	ips = append(ips, "127.0.0.1")
 	ip, err := net.ChooseHostInterface()
 	if err == nil {
 		ips = append(ips, ip.String())
