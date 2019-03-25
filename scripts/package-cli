@@ -5,8 +5,6 @@ source $(dirname $0)/version.sh
 
 cd $(dirname $0)/..
 
-./scripts/download
-
 rm -rf bin/crictl bin/kubectl bin/k3s-agent bin/k3s-server bin/kubectl bin/k3s build/data
 ln -s containerd bin/k3s-agent
 ln -s containerd bin/k3s-server
