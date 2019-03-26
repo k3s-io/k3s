@@ -76,6 +76,9 @@ func kubelet(cfg *config.Agent) {
 	if len(cfg.ClusterDNS) > 0 {
 		args = append(args, "--cluster-dns", cfg.ClusterDNS.String())
 	}
+	if cfg.ResolvConf != "" {
+		args = append(args, "--resolv-conf", cfg.ResolvConf)
+	}
 	if cfg.RuntimeSocket != "" {
 		args = append(args, "--container-runtime", "remote")
 		args = append(args, "--container-runtime-endpoint", cfg.RuntimeSocket)
