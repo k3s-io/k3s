@@ -54,7 +54,7 @@ func kubelet(cfg *config.Agent) {
 		"--healthz-bind-address", "127.0.0.1",
 		"--read-only-port", "0",
 		"--allow-privileged=true",
-		"--cluster-domain", "cluster.local",
+		"--cluster-domain", "cluster.site",
 		"--kubeconfig", cfg.KubeConfig,
 		"--eviction-hard", "imagefs.available<5%,nodefs.available<5%",
 		"--eviction-minimum-reclaim", "imagefs.available=10%,nodefs.available=10%",
