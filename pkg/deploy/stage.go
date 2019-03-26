@@ -2,11 +2,12 @@ package deploy
 
 import (
 	"bytes"
-	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+
+	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 )
 
 func Stage(dataDir string, templateVars map[string]string, skipList []string) error {

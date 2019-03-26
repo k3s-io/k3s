@@ -137,8 +137,7 @@ func startNorman(ctx context.Context, config *Config) (string, error) {
 		},
 	}
 
-	ctx, _, err = normanConfig.Build(ctx, nil)
-	if err != nil {
+	if _, _, err = normanConfig.Build(ctx, nil); err != nil {
 		return "", err
 	}
 

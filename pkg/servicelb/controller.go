@@ -222,7 +222,7 @@ func (h *handler) newDeployment(svc *core.Service) (*apps.Deployment, error) {
 
 	for _, node := range nodes {
 		if Ready.IsTrue(node) {
-			replicas += 1
+			replicas++
 		}
 		if replicas >= 2 {
 			break
