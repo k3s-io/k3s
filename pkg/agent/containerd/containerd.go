@@ -58,6 +58,10 @@ func Run(ctx context.Context, cfg *config.Node) error {
 	template = strings.Replace(template, "%CNICFG%", cfg.AgentConfig.CNIConfDir, -1)
 	template = strings.Replace(template, "%NODE%", cfg.AgentConfig.NodeName, -1)
 
+	if os.Getenv("CONTAINERD_CUSTOM_CONFIG") != "" {
+		template += os.Getenv("CONTAINERD_CUSTOM_CONFIG")
+	}
+
 	if err := util2.WriteFile(cfg.Containerd.Config, template); err != nil {
 		return err
 	}
