@@ -62,7 +62,7 @@ Flag --insecure-port has been deprecated, This flag will be removed in a future 
 INFO[2019-01-22T15:16:20.196766005-07:00] Running kube-scheduler --kubeconfig /var/lib/rancher/k3s/server/cred/kubeconfig-system.yaml --port 0 --secure-port 0 --leader-elect=false
 INFO[2019-01-22T15:16:20.196880841-07:00] Running kube-controller-manager --kubeconfig /var/lib/rancher/k3s/server/cred/kubeconfig-system.yaml --service-account-private-key-file /var/lib/rancher/k3s/server/tls/service.key --allocate-node-cidrs --cluster-cidr 10.42.0.0/16 --root-ca-file /var/lib/rancher/k3s/server/tls/token-ca.crt --port 0 --secure-port 0 --leader-elect=false
 Flag --port has been deprecated, see --secure-port instead.
-INFO[2019-01-22T15:16:20.273441984-07:00] Listening on :6443
+INFO[2019-01-22T15:16:20.273441984-07:00] Listening on :6443                           
 INFO[2019-01-22T15:16:20.278383446-07:00] Writing manifest: /var/lib/rancher/k3s/server/manifests/coredns.yaml
 INFO[2019-01-22T15:16:20.474454524-07:00] Node token is available at /var/lib/rancher/k3s/server/node-token
 INFO[2019-01-22T15:16:20.474471391-07:00] To join node to cluster: k3s agent -s https://10.20.0.3:6443 -t ${NODE_TOKEN}
@@ -163,14 +163,14 @@ Open ports / Network security
 ---------------------------
 
 The server needs port 6443 to be accessible by the nodes.  The nodes need to be able to reach
-other nodes over UDP port 4789.  This is used for flannel VXLAN.  If you don't use flannel
-and provide your own custom CNI, then 4789 is not needed by k3s. The node should not listen
+other nodes over UDP port 8472.  This is used for flannel VXLAN.  If you don't use flannel
+and provide your own custom CNI, then 8472 is not needed by k3s. The node should not listen
 on any other port.  k3s uses reverse tunneling such that the nodes make outbound connections
 to the server and all kubelet traffic runs through that tunnel.
 
 IMPORTANT. The VXLAN port on nodes should not be exposed to the world, it opens up your
 cluster network to accessed by anyone.  Run your nodes behind a firewall/security group that
-disables access to port 4789.
+disables access to port 8472.
 
 
 Server HA
@@ -194,6 +194,12 @@ serves as an example of how to run k3s from Docker.  To run from `docker-compose
     d54c8b17c055   Ready    <none>   11s   v1.13.2-k3s2
     db7a5a5a5bdd   Ready    <none>   12s   v1.13.2-k3s2
 
+To run the agent only in Docker use the following `docker-compose-agent.yml` is in the root of this repo that
+serves as an example of how to run k3s agent from Docker. Alternatively the Docker run command can also be used;
+
+    sudo docker run -d --tmpfs /run --tmpfs /var/run -e K3S_URL=${SERVER_URL} -e K3S_TOKEN=${NODE_TOKEN} --privileged rancher/k3s:v0.2.0
+
+    sudo docker run -d --tmpfs /run --tmpfs /var/run -e K3S_URL=https://k3s.example.com:6443 -e K3S_TOKEN=K13849a67fc385fd3c0fa6133a8649d9e717b0258b3b09c87ffc33dae362c12d8c0::node:2e373dca319a0525745fd8b3d8120d9c --privileged rancher/k3s:v0.2.0
 
 Hyperkube
 --------
@@ -210,7 +216,7 @@ k3s includes and defaults to containerd. Why? Because it's just plain better. If
 run with Docker first stop and think, "Really? Do I really want more headache?" If still
 yes then you just need to run the agent with the `--docker` flag
 
-     k3s agent -u ${SERVER_URL} -t ${NODE_TOKEN} --docker &
+     k3s agent -s ${SERVER_URL} -t ${NODE_TOKEN} --docker &
 
 systemd
 -------

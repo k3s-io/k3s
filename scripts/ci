@@ -3,7 +3,8 @@ set -e
 
 cd $(dirname $0)
 
-if [ -z "SKIP_VALIDATE" ]; then
+./download
+if [ -z "$SKIP_VALIDATE" ]; then
     ./validate
 fi
 ./build

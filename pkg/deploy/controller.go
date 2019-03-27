@@ -35,14 +35,13 @@ const (
 	startKey = "_start_"
 )
 
-func WatchFiles(ctx context.Context, skips []string, bases ...string) error {
+func WatchFiles(ctx context.Context, bases ...string) error {
 	server := norman.GetServer(ctx)
 	addons := v1.ClientsFrom(ctx).Addon
 
 	w := &watcher{
 		addonCache: addons.Cache(),
 		addons:     addons,
-		skips:      skips,
 		bases:      bases,
 		restConfig: *server.Runtime.LocalConfig,
 		discovery:  server.K8sClient.Discovery(),
@@ -64,7 +63,6 @@ type watcher struct {
 	addonCache v1.AddonClientCache
 	addons     v1.AddonClient
 	bases      []string
-	skips      []string
 	restConfig rest.Config
 	discovery  discovery.DiscoveryInterface
 	clients    map[schema.GroupVersionKind]*objectclient.ObjectClient
@@ -107,9 +105,6 @@ func (w *watcher) listFilesIn(base string, force bool) error {
 	}
 
 	skips := map[string]bool{}
-	for _, skip := range w.skips {
-		skips[skip] = true
-	}
 	for _, file := range files {
 		if strings.HasSuffix(file.Name(), ".skip") {
 			skips[strings.TrimSuffix(file.Name(), ".skip")] = true
@@ -251,6 +246,18 @@ func checksum(bytes []byte) string {
 	return hex.EncodeToString(d[:])
 }
 
+func isEmptyYaml(yaml []byte) bool {
+	isEmpty := true
+	lines := bytes.Split(yaml, []byte("\n"))
+	for _, l := range lines {
+		s := bytes.TrimSpace(l)
+		if string(s) != "---" && !bytes.HasPrefix(s, []byte("#")) && string(s) != "" {
+			isEmpty = false
+		}
+	}
+	return isEmpty
+}
+
 func yamlToObjects(in io.Reader) ([]runtime.Object, error) {
 	var result []runtime.Object
 	reader := yamlDecoder.NewYAMLReader(bufio.NewReaderSize(in, 4096))
@@ -263,12 +270,14 @@ func yamlToObjects(in io.Reader) ([]runtime.Object, error) {
 			return nil, err
 		}
 
-		obj, err := toObjects(raw)
-		if err != nil {
-			return nil, err
-		}
+		if !isEmptyYaml(raw) {
+			obj, err := toObjects(raw)
+			if err != nil {
+				return nil, err
+			}
 
-		result = append(result, obj...)
+			result = append(result, obj...)
+		}
 	}
 
 	return result, nil
@@ -279,6 +288,7 @@ func toObjects(bytes []byte) ([]runtime.Object, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	obj, _, err := unstructured.UnstructuredJSONScheme.Decode(bytes, nil, nil)
 	if err != nil {
 		return nil, err

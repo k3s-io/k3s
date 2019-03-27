@@ -262,6 +262,16 @@ setup_binary() {
     info "Installing k3s to ${BIN_DIR}/k3s"
     $SUDO chown root:root ${TMP_BIN}
     $SUDO mv -f ${TMP_BIN} ${BIN_DIR}/k3s
+
+    if command -v getenforce > /dev/null 2>&1; then
+        if [ "Disabled" != `getenforce` ]; then
+            info "SeLinux is enabled, setting permissions"
+            if ! $SUDO semanage fcontext -l | grep "${BIN_DIR}/k3s" > /dev/null 2>&1; then
+                $SUDO semanage fcontext -a -t bin_t "${BIN_DIR}/k3s"
+            fi
+            $SUDO restorecon -v ${BIN_DIR}/k3s > /dev/null
+        fi
+    fi
 }
 
 # --- download and verify k3s ---

@@ -222,7 +222,7 @@ func (h *handler) newDeployment(svc *core.Service) (*apps.Deployment, error) {
 
 	for _, node := range nodes {
 		if Ready.IsTrue(node) {
-			replicas += 1
+			replicas++
 		}
 		if replicas >= 2 {
 			break
@@ -272,11 +272,8 @@ func (h *handler) newDeployment(svc *core.Service) (*apps.Deployment, error) {
 		},
 	}
 
-	for i, port := range svc.Spec.Ports {
-		portName := port.Name
-		if portName == "" {
-			portName = fmt.Sprintf("port-%d", i)
-		}
+	for _, port := range svc.Spec.Ports {
+		portName := fmt.Sprintf("lb-port-%d", port.Port)
 		container := core.Container{
 			Name:            portName,
 			Image:           image,
