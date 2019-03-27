@@ -45,7 +45,7 @@ git rebase -i ${VERSION}
 
 ```bash
 VERSION=v1.13.4
-./deps && ./tag.sh ${VERSION}-k3s.1
+./deps.sh && ./tag.sh ${VERSION}-k3s.1
 ```
 
 * Update the README.md with anything that might have changed in the procedure
