@@ -10,7 +10,7 @@ set -e
 #   Installing a server without an agent:
 #     curl ... | INSTALL_K3S_EXEC="--disable-agent" sh -
 #   Installing an agent to point at a server:
-#     curl ... | K3S_TOKEN=xxx K3S_URL=https://server-url:6443 sh -  
+#     curl ... | K3S_TOKEN=xxx K3S_URL=https://server-url:6443 sh -
 #
 # Environment variables:
 #   - K3S_*
@@ -392,6 +392,7 @@ LimitNOFILE=infinity
 LimitNPROC=infinity
 LimitCORE=infinity
 TasksMax=infinity
+TimeoutSec=infinity
 
 [Install]
 WantedBy=multi-user.target

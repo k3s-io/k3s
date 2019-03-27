@@ -28,19 +28,19 @@ k3s is intended to be a fully compliant Kubernetes distribution with the followi
     * CoreDNS
     * CNI
     * Host utilities (iptables, socat, etc)
-    
+
 Quick start
 -----------
 1. Download `k3s` from latest [release](https://github.com/rancher/k3s/releases/latest), x86_64, armhf, and arm64 are
    supported
-2. Run server 
+2. Run server
 
 ```bash
 sudo k3s server &
 # Kubeconfig is written to /etc/rancher/k3s/k3s.yaml
 sudo k3s kubectl get node
 
-# On a different node run the below. NODE_TOKEN comes from /var/lib/rancher/k3s/server/node-token 
+# On a different node run the below. NODE_TOKEN comes from /var/lib/rancher/k3s/server/node-token
 # on your server
 sudo k3s agent --server https://myserver:6443 --token ${NODE_TOKEN}
 
@@ -56,18 +56,18 @@ To run the server just do
 You should get an output similar to
 
 ```
-INFO[2019-01-22T15:16:19.908493986-07:00] Starting k3s dev                             
-INFO[2019-01-22T15:16:19.908934479-07:00] Running kube-apiserver --allow-privileged=true --authorization-mode Node,RBAC --service-account-signing-key-file /var/lib/rancher/k3s/server/tls/service.key --service-cluster-ip-range 10.43.0.0/16 --advertise-port 6445 --advertise-address 127.0.0.1 --insecure-port 0 --secure-port 6444 --bind-address 127.0.0.1 --tls-cert-file /var/lib/rancher/k3s/server/tls/localhost.crt --tls-private-key-file /var/lib/rancher/k3s/server/tls/localhost.key --service-account-key-file /var/lib/rancher/k3s/server/tls/service.key --service-account-issuer k3s --api-audiences unknown --basic-auth-file /var/lib/rancher/k3s/server/cred/passwd --kubelet-client-certificate /var/lib/rancher/k3s/server/tls/token-node.crt --kubelet-client-key /var/lib/rancher/k3s/server/tls/token-node.key 
+INFO[2019-01-22T15:16:19.908493986-07:00] Starting k3s dev
+INFO[2019-01-22T15:16:19.908934479-07:00] Running kube-apiserver --allow-privileged=true --authorization-mode Node,RBAC --service-account-signing-key-file /var/lib/rancher/k3s/server/tls/service.key --service-cluster-ip-range 10.43.0.0/16 --advertise-port 6445 --advertise-address 127.0.0.1 --insecure-port 0 --secure-port 6444 --bind-address 127.0.0.1 --tls-cert-file /var/lib/rancher/k3s/server/tls/localhost.crt --tls-private-key-file /var/lib/rancher/k3s/server/tls/localhost.key --service-account-key-file /var/lib/rancher/k3s/server/tls/service.key --service-account-issuer k3s --api-audiences unknown --basic-auth-file /var/lib/rancher/k3s/server/cred/passwd --kubelet-client-certificate /var/lib/rancher/k3s/server/tls/token-node.crt --kubelet-client-key /var/lib/rancher/k3s/server/tls/token-node.key
 Flag --insecure-port has been deprecated, This flag will be removed in a future version.
-INFO[2019-01-22T15:16:20.196766005-07:00] Running kube-scheduler --kubeconfig /var/lib/rancher/k3s/server/cred/kubeconfig-system.yaml --port 0 --secure-port 0 --leader-elect=false 
-INFO[2019-01-22T15:16:20.196880841-07:00] Running kube-controller-manager --kubeconfig /var/lib/rancher/k3s/server/cred/kubeconfig-system.yaml --service-account-private-key-file /var/lib/rancher/k3s/server/tls/service.key --allocate-node-cidrs --cluster-cidr 10.42.0.0/16 --root-ca-file /var/lib/rancher/k3s/server/tls/token-ca.crt --port 0 --secure-port 0 --leader-elect=false 
+INFO[2019-01-22T15:16:20.196766005-07:00] Running kube-scheduler --kubeconfig /var/lib/rancher/k3s/server/cred/kubeconfig-system.yaml --port 0 --secure-port 0 --leader-elect=false
+INFO[2019-01-22T15:16:20.196880841-07:00] Running kube-controller-manager --kubeconfig /var/lib/rancher/k3s/server/cred/kubeconfig-system.yaml --service-account-private-key-file /var/lib/rancher/k3s/server/tls/service.key --allocate-node-cidrs --cluster-cidr 10.42.0.0/16 --root-ca-file /var/lib/rancher/k3s/server/tls/token-ca.crt --port 0 --secure-port 0 --leader-elect=false
 Flag --port has been deprecated, see --secure-port instead.
-INFO[2019-01-22T15:16:20.273441984-07:00] Listening on :6443                           
-INFO[2019-01-22T15:16:20.278383446-07:00] Writing manifest: /var/lib/rancher/k3s/server/manifests/coredns.yaml 
-INFO[2019-01-22T15:16:20.474454524-07:00] Node token is available at /var/lib/rancher/k3s/server/node-token 
-INFO[2019-01-22T15:16:20.474471391-07:00] To join node to cluster: k3s agent -s https://10.20.0.3:6443 -t ${NODE_TOKEN} 
+INFO[2019-01-22T15:16:20.273441984-07:00] Listening on :6443
+INFO[2019-01-22T15:16:20.278383446-07:00] Writing manifest: /var/lib/rancher/k3s/server/manifests/coredns.yaml
+INFO[2019-01-22T15:16:20.474454524-07:00] Node token is available at /var/lib/rancher/k3s/server/node-token
+INFO[2019-01-22T15:16:20.474471391-07:00] To join node to cluster: k3s agent -s https://10.20.0.3:6443 -t ${NODE_TOKEN}
 INFO[2019-01-22T15:16:20.541027133-07:00] Wrote kubeconfig /etc/rancher/k3s/k3s.yaml
-INFO[2019-01-22T15:16:20.541049100-07:00] Run: k3s kubectl                             
+INFO[2019-01-22T15:16:20.541049100-07:00] Run: k3s kubectl
 ```
 
 The output will probably be much longer as the agent will spew a lot of logs. By default the server
@@ -76,7 +76,7 @@ that the control plane be part of the cluster.  To not run the agent by default 
 flag
 
     k3s server --disable-agent
-    
+
 At this point, you can run the agent as a separate process or not run it on this node at all.
 
 Joining nodes
@@ -86,7 +86,7 @@ When the server starts it creates a file `/var/lib/rancher/k3s/server/node-token
 of that file as `NODE_TOKEN` and then run the agent as follows
 
     k3s agent --server https://myserver:6443 --token ${NODE_TOKEN}
-    
+
 That's it.
 
 Accessing cluster from outside
@@ -122,7 +122,7 @@ Building from source
 The clone will be much faster on this repo if you do
 
     git clone --depth 1 https://github.com/rancher/k3s.git
-    
+
 This repo includes all of Kubernetes history so `--depth 1` will avoid most of that.
 
 For development, you just need go 1.11 and a sane GOPATH.  To compile the binaries run
@@ -177,7 +177,7 @@ Server HA
 ---------
 Just don't right now :)  It's currently broken.
 
-    
+
 Running in Docker (and docker-compose)
 -----------------
 
@@ -188,13 +188,13 @@ serves as an example of how to run k3s from Docker.  To run from `docker-compose
     docker-compose up --scale node=3
     # kubeconfig is written to current dir
     kubectl --kubeconfig kubeconfig.yaml get node
-    
+
     NAME           STATUS   ROLES    AGE   VERSION
     497278a2d6a2   Ready    <none>   11s   v1.13.2-k3s2
     d54c8b17c055   Ready    <none>   11s   v1.13.2-k3s2
     db7a5a5a5bdd   Ready    <none>   12s   v1.13.2-k3s2
 
-    
+
 Hyperkube
 --------
 
@@ -202,7 +202,7 @@ k3s is bundled in a nice wrapper to remove the majority of the headache of runni
 you don't want that wrapper and just want a smaller k8s distro, the releases includes
 the `hyperkube` binary you can use.  It's then up to you to know how to use `hyperkube`. If
 you want individual binaries you will need to compile them yourself from source
-    
+
 containerd and Docker
 ----------
 
@@ -211,7 +211,7 @@ run with Docker first stop and think, "Really? Do I really want more headache?" 
 yes then you just need to run the agent with the `--docker` flag
 
      k3s agent -u ${SERVER_URL} -t ${NODE_TOKEN} --docker &
-     
+
 systemd
 -------
 
@@ -225,6 +225,8 @@ Documentation=https://k3s.io
 After=network.target
 
 [Service]
+Type=notify
+EnvironmentFile=/etc/systemd/system/k3s.service.env
 ExecStartPre=-/sbin/modprobe br_netfilter
 ExecStartPre=-/sbin/modprobe overlay
 ExecStart=/usr/local/bin/k3s server
@@ -234,6 +236,7 @@ LimitNOFILE=infinity
 LimitNPROC=infinity
 LimitCORE=infinity
 TasksMax=infinity
+TimeoutSec=infinity
 
 [Install]
 WantedBy=multi-user.target
@@ -252,7 +255,7 @@ curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=vX.Y.Z-rc1 sh -
 ```
 
 To install just the server without an agent we can add a `INSTALL_K3S_EXEC`
-environment variable to the command: 
+environment variable to the command:
 ```sh
 curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--disable-agent" sh -
 ```
@@ -335,7 +338,7 @@ Flannel
 Flannel is included by default, if you don't want flannel then run the agent with `--no-flannel` as follows
 
      k3s agent -u ${SERVER_URL} -t ${NODE_TOKEN} --no-flannel &
-     
+
 In this setup you will still be required to install your own CNI driver.  More info [here](https://kubernetes.io/docs/setup/independent/create-cluster-kubeadm/#pod-network)
 
 CoreDNS
@@ -344,7 +347,7 @@ CoreDNS
 CoreDNS is deployed on start of the agent, to disable add `--no-deploy coredns` to the server
 
      k3s server --no-deploy coredns
-     
+
 If you don't install CoreDNS you will need to install a cluster DNS provider yourself.
 
 Traefik
