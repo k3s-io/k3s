@@ -1,21 +1,22 @@
-FROM golang:1.11.4-alpine3.8
-# FROM arm=golang@sha256:fe81149b4e7f07ecb558fd16cdbcdb11e739846a046e38cc6e170aa39a67e7ec arm64=golang@sha256:da9c2d140ed4bf911ef8f6d9437912b80497c256ef2235c65836eac83d1c0ce7
+FROM golang:1.12.1-alpine3.9
 
 RUN apk -U --no-cache add bash git gcc musl-dev docker vim less file curl wget ca-certificates jq linux-headers zlib-dev tar zip squashfs-tools npm coreutils \
     python3 py3-pip python3-dev openssl-dev libffi-dev libseccomp libseccomp-dev make
 RUN pip3 install 'tox==3.6.0'
 RUN apk -U --no-cache --repository http://dl-3.alpinelinux.org/alpine/edge/main/ add sqlite-dev sqlite-static
-RUN go get -d golang.org/x/lint/golint && \
-    git -C /go/src/golang.org/x/lint/golint checkout -b current 06c8688daad7faa9da5a0c2f163a3d14aac986ca && \
-    go install golang.org/x/lint/golint
-RUN go get -d github.com/alecthomas/gometalinter && \
-    git -C /go/src/github.com/alecthomas/gometalinter checkout -b current v2.0.11 && \
-    go install github.com/alecthomas/gometalinter && \
-    gometalinter --install
+RUN mkdir -p /go/src/golang.org/x && \
+    cd /go/src/golang.org/x && git clone https://github.com/golang/tools && \
+    git -C /go/src/golang.org/x/tools checkout -b current aa82965741a9fecd12b026fbb3d3c6ed3231b8f8 && \
+    go install golang.org/x/tools/cmd/goimports
 RUN rm -rf /go/src /go/pkg
 
 ARG DAPPER_HOST_ARCH
 ENV ARCH $DAPPER_HOST_ARCH
+
+RUN if [ "${ARCH}" == "amd64" ]; then \
+        curl -sL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s v1.15.0; \
+    fi
+
 ENV DAPPER_RUN_ARGS --privileged -v k3s-cache:/go/src/github.com/rancher/k3s/.cache
 ENV DAPPER_ENV REPO TAG DRONE_TAG IMAGE_NAME
 ENV DAPPER_SOURCE /go/src/github.com/rancher/k3s/

@@ -19,11 +19,12 @@ import (
 	"github.com/rancher/k3s/pkg/deploy"
 	"github.com/rancher/k3s/pkg/helm"
 	"github.com/rancher/k3s/pkg/servicelb"
+	"github.com/rancher/k3s/pkg/static"
 	"github.com/rancher/k3s/pkg/tls"
 	appsv1 "github.com/rancher/k3s/types/apis/apps/v1"
 	batchv1 "github.com/rancher/k3s/types/apis/batch/v1"
 	corev1 "github.com/rancher/k3s/types/apis/core/v1"
-	"github.com/rancher/k3s/types/apis/k3s.cattle.io/v1"
+	v1 "github.com/rancher/k3s/types/apis/k3s.cattle.io/v1"
 	rbacv1 "github.com/rancher/k3s/types/apis/rbac.authorization.k8s.io/v1"
 	"github.com/rancher/norman"
 	"github.com/rancher/norman/pkg/clientaccess"
@@ -119,12 +120,16 @@ func startNorman(ctx context.Context, config *Config) (string, error) {
 				return servicelb.Register(ctx, norman.GetServer(ctx).K8sClient, !config.DisableServiceLB)
 			},
 			func(ctx context.Context) error {
+				dataDir := filepath.Join(controlConfig.DataDir, "static")
+				return static.Stage(dataDir)
+			},
+			func(ctx context.Context) error {
 				dataDir := filepath.Join(controlConfig.DataDir, "manifests")
 				templateVars := map[string]string{"%{CLUSTER_DNS}%": controlConfig.ClusterDNS.String()}
-				if err := deploy.Stage(dataDir, templateVars); err != nil {
+				if err := deploy.Stage(dataDir, templateVars, controlConfig.Skips); err != nil {
 					return err
 				}
-				if err := deploy.WatchFiles(ctx, controlConfig.Skips, dataDir); err != nil {
+				if err := deploy.WatchFiles(ctx, dataDir); err != nil {
 					return err
 				}
 				return nil
@@ -132,8 +137,7 @@ func startNorman(ctx context.Context, config *Config) (string, error) {
 		},
 	}
 
-	ctx, _, err = normanConfig.Build(ctx, nil)
-	if err != nil {
+	if _, _, err = normanConfig.Build(ctx, nil); err != nil {
 		return "", err
 	}
 

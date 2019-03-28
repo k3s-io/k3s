@@ -37,6 +37,7 @@ type Agent struct {
 	NodeName           string
 	ClusterCIDR        net.IPNet
 	ClusterDNS         net.IP
+	ResolvConf         string
 	RootDir            string
 	KubeConfig         string
 	NodeIP             string

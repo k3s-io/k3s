@@ -2,17 +2,26 @@ package deploy
 
 import (
 	"bytes"
-	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+
+	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 )
 
-func Stage(dataDir string, templateVars map[string]string) error {
+func Stage(dataDir string, templateVars map[string]string, skipList []string) error {
 	os.MkdirAll(dataDir, 0700)
 
+	skips := map[string]bool{}
+	for _, skip := range skipList {
+		skips[skip] = true
+	}
+
 	for _, name := range AssetNames() {
+		if skips[name] {
+			continue
+		}
 		content, err := Asset(name)
 		if err != nil {
 			return err

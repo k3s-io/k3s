@@ -1,0 +1,5 @@
+docker.io/coredns/coredns:1.3.0
+docker.io/library/traefik:1.7.9
+docker.io/rancher/klipper-helm:v0.1.5
+docker.io/rancher/klipper-lb:v0.1.1
+k8s.gcr.io/pause:3.1

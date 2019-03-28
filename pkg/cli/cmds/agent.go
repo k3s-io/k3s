@@ -10,7 +10,8 @@ import (
 type Agent struct {
 	Token                    string
 	TokenFile                string
-    ServerURL                string
+	ServerURL                string
+	ResolvConf               string
 	DataDir                  string
 	ContainerdConfig		 string
 	NodeIP                   string
@@ -55,6 +56,12 @@ var (
 		Name:        "container-runtime-endpoint",
 		Usage:       "(agent) Disable embedded containerd and use alternative CRI implementation",
 		Destination: &AgentConfig.ContainerRuntimeEndpoint,
+	}
+	ResolvConfFlag = cli.StringFlag{
+		Name:        "resolv-conf",
+		Usage:       "Kubelet resolv.conf file",
+		EnvVar:      "K3S_RESOLV_CONF",
+		Destination: &AgentConfig.ResolvConf,
 	}
 )
 
@@ -106,6 +113,7 @@ func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
 			NodeNameFlag,
 			NodeIPFlag,
 			CRIEndpointFlag,
+			ResolvConfFlag,
 		},
 	}
 }

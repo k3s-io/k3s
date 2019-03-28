@@ -105,13 +105,13 @@ func getAssetAndDir(dataDir string) (string, string) {
 
 func extract(dataDir string) (string, error) {
 	// first look for global asset folder so we don't create a HOME version if not needed
-	asset, dir := getAssetAndDir(datadir.DefaultDataDir)
+	_, dir := getAssetAndDir(datadir.DefaultDataDir)
 	if _, err := os.Stat(dir); err == nil {
 		logrus.Debugf("Asset dir %s", dir)
 		return dir, nil
 	}
 
-	asset, dir = getAssetAndDir(dataDir)
+	asset, dir := getAssetAndDir(dataDir)
 	if _, err := os.Stat(dir); err == nil {
 		logrus.Debugf("Asset dir %s", dir)
 		return dir, nil

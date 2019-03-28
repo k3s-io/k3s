@@ -122,7 +122,7 @@ func WriteSubnetFile(path string, nw ip.IP4Net, ipMasq bool, bn backend.Network)
 	// Write out the first usable IP by incrementing
 	// sn.IP by one
 	sn := bn.Lease().Subnet
-	sn.IP += 1
+	sn.IP++
 
 	fmt.Fprintf(f, "FLANNEL_NETWORK=%s\n", nw)
 	fmt.Fprintf(f, "FLANNEL_SUBNET=%s\n", sn)
