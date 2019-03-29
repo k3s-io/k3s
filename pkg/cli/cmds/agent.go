@@ -13,7 +13,7 @@ type Agent struct {
 	ServerURL                string
 	ResolvConf               string
 	DataDir                  string
-	ContainerdConfig		 string
+	ContainerdConfig         string
 	NodeIP                   string
 	NodeName                 string
 	ClusterSecret            string

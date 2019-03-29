@@ -51,10 +51,10 @@ func Run(ctx context.Context, cfg *config.Node) error {
 	template := configToml
 
 	if cfg.ConfigTemplate != "" {
-		fileBytes , _ := ioutil.ReadFile(cfg.ConfigTemplate)
+		fileBytes, _ := ioutil.ReadFile(cfg.ConfigTemplate)
 		template = string(fileBytes[:])
 	}
-	
+
 	if !cfg.NoFlannel {
 		template += configCNIToml
 	}
