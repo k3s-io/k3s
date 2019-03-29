@@ -54,13 +54,13 @@ const (
 )
 
 type csiPlugin struct {
-	host              volume.VolumeHost
+	host volume.VolumeHost
 }
 
 // ProbeVolumePlugins returns implemented plugins
 func ProbeVolumePlugins() []volume.VolumePlugin {
 	p := &csiPlugin{
-		host:         nil,
+		host: nil,
 	}
 	return []volume.VolumePlugin{p}
 }
@@ -273,11 +273,6 @@ func (p *csiPlugin) NewMounter(
 		return nil, errors.New("failed to get a Kubernetes client")
 	}
 
-	csi, err := newCsiDriverClient(csiDriverName(pvSource.Driver))
-	if err != nil {
-		return nil, err
-	}
-
 	mounter := &csiMountMgr{
 		plugin:       p,
 		k8s:          k8s,
@@ -287,9 +282,9 @@ func (p *csiPlugin) NewMounter(
 		driverName:   csiDriverName(pvSource.Driver),
 		volumeID:     pvSource.VolumeHandle,
 		specVolumeID: spec.Name(),
-		csiClient:    csi,
 		readOnly:     readOnly,
 	}
+	mounter.csiClientGetter.driverName = csiDriverName(pvSource.Driver)
 
 	// Save volume info in pod dir
 	dir := mounter.GetPath()
@@ -345,10 +340,7 @@ func (p *csiPlugin) NewUnmounter(specName string, podUID types.UID) (volume.Unmo
 	}
 	unmounter.driverName = csiDriverName(data[volDataKey.driverName])
 	unmounter.volumeID = data[volDataKey.volHandle]
-	unmounter.csiClient, err = newCsiDriverClient(unmounter.driverName)
-	if err != nil {
-		return nil, err
-	}
+	unmounter.csiClientGetter.driverName = unmounter.driverName
 
 	return unmounter, nil
 }

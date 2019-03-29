@@ -26,7 +26,7 @@ import (
 
 	"k8s.io/klog"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	storage "k8s.io/api/storage/v1beta1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
@@ -36,8 +36,8 @@ import (
 )
 
 type csiBlockMapper struct {
+	csiClientGetter
 	k8s        kubernetes.Interface
-	csiClient  csiClient
 	plugin     *csiPlugin
 	driverName csiDriverName
 	specName   string

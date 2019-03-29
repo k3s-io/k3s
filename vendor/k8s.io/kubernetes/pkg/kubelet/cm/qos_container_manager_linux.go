@@ -28,6 +28,7 @@ import (
 
 	units "github.com/docker/go-units"
 	cgroupfs "github.com/opencontainers/runc/libcontainer/cgroups/fs"
+	rsystem "github.com/opencontainers/runc/libcontainer/system"
 	"k8s.io/api/core/v1"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/kubernetes/pkg/api/v1/resource"
@@ -82,7 +83,9 @@ func (m *qosContainerManagerImpl) Start(getNodeAllocatable func() v1.ResourceLis
 	cm := m.cgroupManager
 	rootContainer := m.cgroupRoot
 	if !cm.Exists(rootContainer) {
-		return fmt.Errorf("root container %v doesn't exist", rootContainer)
+		if !rsystem.RunningInUserNS() {
+			return fmt.Errorf("root container %v doesn't exist", rootContainer)
+		}
 	}
 
 	// Top level for Qos containers are created only for Burstable
@@ -120,7 +123,11 @@ func (m *qosContainerManagerImpl) Start(getNodeAllocatable func() v1.ResourceLis
 		} else {
 			// to ensure we actually have the right state, we update the config on startup
 			if err := cm.Update(containerConfig); err != nil {
-				return fmt.Errorf("failed to update top level %v QOS cgroup : %v", qosClass, err)
+				if rsystem.RunningInUserNS() {
+					klog.Errorf("failed to update top level %v QOS cgroup : %v", qosClass, err)
+				} else {
+					return fmt.Errorf("failed to update top level %v QOS cgroup : %v", qosClass, err)
+				}
 			}
 		}
 	}
@@ -296,15 +303,23 @@ func (m *qosContainerManagerImpl) UpdateCgroups() error {
 		}
 	}
 
+	updateSuccess := true
 	for _, config := range qosConfigs {
 		err := m.cgroupManager.Update(config)
 		if err != nil {
-			klog.Errorf("[ContainerManager]: Failed to update QoS cgroup configuration")
-			return err
+			if rsystem.RunningInUserNS() {
+				// if we are in userns, cgroups might not available
+				updateSuccess = false
+			} else {
+				klog.Errorf("[ContainerManager]: Failed to update QoS cgroup configuration")
+				return err
+			}
 		}
 	}
 
-	klog.V(4).Infof("[ContainerManager]: Updated QoS cgroup configuration")
+	if updateSuccess {
+		klog.V(4).Infof("[ContainerManager]: Updated QoS cgroup configuration")
+	}
 	return nil
 }
 

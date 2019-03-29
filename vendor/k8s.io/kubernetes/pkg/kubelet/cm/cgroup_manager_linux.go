@@ -28,6 +28,7 @@ import (
 	libcontainercgroups "github.com/opencontainers/runc/libcontainer/cgroups"
 	cgroupfs "github.com/opencontainers/runc/libcontainer/cgroups/fs"
 	libcontainerconfigs "github.com/opencontainers/runc/libcontainer/configs"
+	rsystem "github.com/opencontainers/runc/libcontainer/system"
 	"k8s.io/klog"
 
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -97,8 +98,9 @@ func (l *libcontainerAdapter) newManager(cgroups *libcontainerconfigs.Cgroup, pa
 	switch l.cgroupManagerType {
 	case libcontainerCgroupfs:
 		return &cgroupfs.Manager{
-			Cgroups: cgroups,
-			Paths:   paths,
+			Cgroups:  cgroups,
+			Rootless: rsystem.RunningInUserNS(),
+			Paths:    paths,
 		}, nil
 	}
 	return nil, fmt.Errorf("invalid cgroup manager configuration")
@@ -368,7 +370,9 @@ func (m *cgroupManagerImpl) Create(cgroupConfig *CgroupConfig) error {
 	// in the tasks file. We use the function to create all the required
 	// cgroup files but not attach any "real" pid to the cgroup.
 	if err := manager.Apply(-1); err != nil {
-		return err
+		if !rsystem.RunningInUserNS() {
+			return err
+		}
 	}
 
 	// it may confuse why we call set after we do apply, but the issue is that runc
