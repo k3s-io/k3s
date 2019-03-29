@@ -116,6 +116,32 @@ spec:
     ssl.enabled: "true"
 ```
 
+Keep in mind that `namespace` in your HelmChart resource metadata section should always be `kube-system`, because k3s deploy controller is configured to watch this namespace for new HelmChart resources. If you want to specify the namespace for the actual helm release, you can do that using `targetNamespace` key in the spec section:
+
+```
+apiVersion: k3s.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: grafana
+  namespace: kube-system
+spec:
+  chart: stable/grafana
+  targetNamespace: monitoring
+  set:
+    adminPassword: "NotVerySafePassword"
+  valuesContent: |-
+    image:
+      tag: master
+    env:
+      GF_EXPLORE_ENABLED: true
+    adminUser: admin
+    sidecar:
+      datasources:
+        enabled: true
+```
+
+Also note that besides `set` you can use `valuesContent` in the spec section. And it's okay to use both of them.
+
 Building from source
 --------------------
 
