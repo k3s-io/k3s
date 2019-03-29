@@ -44,10 +44,6 @@ import (
 	restclient "k8s.io/client-go/rest"
 )
 
-var (
-	NotifySystemD = true
-)
-
 // Info about an API group.
 type APIGroupInfo struct {
 	PrioritizedVersions []schema.GroupVersion
@@ -300,10 +296,8 @@ func (s preparedGenericAPIServer) NonBlockingRun(stopCh <-chan struct{}) error {
 
 	s.RunPostStartHooks(stopCh)
 
-	if NotifySystemD {
-		if _, err := systemd.SdNotify(true, "READY=1\n"); err != nil {
-			klog.Errorf("Unable to send systemd daemon successful start message: %v\n", err)
-		}
+	if _, err := systemd.SdNotify(true, "READY=1\n"); err != nil {
+		klog.Errorf("Unable to send systemd daemon successful start message: %v\n", err)
 	}
 
 	return nil

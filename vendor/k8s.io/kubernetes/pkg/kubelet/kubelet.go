@@ -32,6 +32,7 @@ import (
 
 	cadvisorapi "github.com/google/cadvisor/info/v1"
 	cadvisorapiv2 "github.com/google/cadvisor/info/v2"
+	rsystem "github.com/opencontainers/runc/libcontainer/system"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
@@ -792,7 +793,7 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 	klet.podKillingCh = make(chan *kubecontainer.PodPair, podKillingChannelCapacity)
 
 	// setup eviction manager
-	evictionManager, evictionAdmitHandler := eviction.NewManager(klet.resourceAnalyzer, evictionConfig, killPodNow(klet.podWorkers, kubeDeps.Recorder), klet.imageManager, klet.containerGC, kubeDeps.Recorder, nodeRef, klet.clock)
+	evictionManager, evictionAdmitHandler := eviction.NewManager(klet.resourceAnalyzer, evictionConfig, killPodNow(klet.podWorkers, kubeDeps.Recorder), klet.podManager.GetMirrorPodByPod, klet.imageManager, klet.containerGC, kubeDeps.Recorder, nodeRef, klet.clock)
 
 	klet.evictionManager = evictionManager
 	klet.admitHandlers.AddPodAdmitHandler(evictionAdmitHandler)
@@ -1514,10 +1515,13 @@ func (kl *Kubelet) syncPod(o syncPodOptions) error {
 				break
 			}
 		}
+
+		// TODO(AkihiroSuda): implement rootless cgroup manager that can emulate Exists() properly
+
 		// Don't kill containers in pod if pod's cgroups already
 		// exists or the pod is running for the first time
 		podKilled := false
-		if !pcm.Exists(pod) && !firstSync {
+		if !pcm.Exists(pod) && !firstSync && !rsystem.RunningInUserNS() {
 			if err := kl.killPod(pod, nil, podStatus, nil); err == nil {
 				podKilled = true
 			}
@@ -1536,7 +1540,9 @@ func (kl *Kubelet) syncPod(o syncPodOptions) error {
 				}
 				if err := pcm.EnsureExists(pod); err != nil {
 					kl.recorder.Eventf(pod, v1.EventTypeWarning, events.FailedToCreatePodContainer, "unable to ensure pod container exists: %v", err)
-					return fmt.Errorf("failed to ensure that the pod: %v cgroups exist and are correctly applied: %v", pod.UID, err)
+					if !rsystem.RunningInUserNS() {
+						return fmt.Errorf("failed to ensure that the pod: %v cgroups exist and are correctly applied: %v", pod.UID, err)
+					}
 				}
 			}
 		}
