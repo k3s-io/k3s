@@ -17,6 +17,7 @@ type Server struct {
 	KubeConfigOutput string
 	KubeConfigMode   string
 	KnownIPs         cli.StringSlice
+	BindAddress      string
 }
 
 var ServerConfig Server
@@ -28,6 +29,11 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 		UsageText: appName + " server [OPTIONS]",
 		Action:    action,
 		Flags: []cli.Flag{
+			cli.StringFlag{
+				Name:        "bind-address",
+				Usage:       "k3s bind address",
+				Destination: &ServerConfig.BindAddress,
+			},
 			cli.IntFlag{
 				Name:        "https-listen-port",
 				Usage:       "HTTPS listen port",
