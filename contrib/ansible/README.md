@@ -4,9 +4,9 @@
 
 Build a Kubernetes cluster using Ansible with k3s. The goal is easily install a Kubernetes cluster on machines running:
 
-- [X] Debian 9
-- [ ] Ubuntu 16.04
-- [ ] CentOS 7
+- [X] Debian 
+- [ ] Ubuntu 
+- [ ] CentOS 
 
 on processor architecture:
 
@@ -35,7 +35,7 @@ master
 node
 ```
 
-Start provisionning of the cluster using the following command:
+Start provisioning of the cluster using the following command:
 
 ```
 ansible-playbook site.yaml
