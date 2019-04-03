@@ -79,6 +79,13 @@ flag
 
 At this point, you can run the agent as a separate process or not run it on this node at all.
 
+If you encounter an error like `"stream server error: listen tcp: lookup some-host on X.X.X.X:53: no such host"`
+when starting k3s please ensure `/etc/hosts` contains your current hostname (output of `hostname`), 
+set to a 127.x.x.x address. For example:
+```
+127.0.1.1	myhost
+```
+
 Joining nodes
 -------------
 
