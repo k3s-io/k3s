@@ -76,18 +76,24 @@ type Control struct {
 }
 
 type ControlRuntime struct {
-	TLSCert          string
-	TLSKey           string
-	TLSCA            string
-	TLSCAKey         string
-	TokenCA          string
-	TokenCAKey       string
+	ServerCA           string
+	ServerCAKey        string
+	ClientCA           string
+	ClientCAKey        string
+	RequestHeaderCA    string
+	RequestHeaderCAKey string
+
+	ServingKubeAPICert  string
+	ServingKubeAPIKey   string
+	ClientKubeAPICert   string
+	ClientKubeAPIKey    string
+	ClientAuthProxyCert string
+	ClientAuthProxyKey  string
+
 	ServiceKey       string
 	PasswdFile       string
 	KubeConfigSystem string
 
-	NodeCert      string
-	NodeKey       string
 	ClientToken   string
 	NodeToken     string
 	Handler       http.Handler

@@ -2,12 +2,16 @@ package config
 
 import (
 	"bufio"
+	"bytes"
 	"context"
+	"crypto/rsa"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/pem"
 	"fmt"
 	"io/ioutil"
 	sysnet "net"
+	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
@@ -17,13 +21,14 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/rancher/k3s/pkg/agent/clientaccess"
 	"github.com/rancher/k3s/pkg/cli/cmds"
 	"github.com/rancher/k3s/pkg/daemons/config"
-	"github.com/rancher/norman/pkg/clientaccess"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/client-go/util/cert"
+	certutil "k8s.io/client-go/util/cert"
 	"k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1beta1"
 )
 
@@ -41,6 +46,25 @@ func Get(ctx context.Context, agent cmds.Agent) *config.Node {
 		}
 		return agentConfig
 	}
+}
+
+func genNodeCert(nodeName string, info *clientaccess.Info) (*tls.Certificate, error) {
+	privKey, err := certutil.NewPrivateKey()
+	if err != nil {
+		return nil, err
+	}
+	nodeKey := certutil.EncodePrivateKeyPEM(privKey)
+
+	nodeCert, err := clientaccess.Request("/v1-k3s/node.crt", info, postKeyGetNodeCert(nodeName, nodeKey))
+	if err != nil {
+		return nil, err
+	}
+
+	cert, err := tls.X509KeyPair(nodeCert, nodeKey)
+	if err != nil {
+		return nil, err
+	}
+	return &cert, nil
 }
 
 func getNodeCert(info *clientaccess.Info) (*tls.Certificate, error) {
@@ -61,10 +85,36 @@ func getNodeCert(info *clientaccess.Info) (*tls.Certificate, error) {
 	return &cert, nil
 }
 
+func postKeyGetNodeCert(nodeName string, keyBytes []byte) clientaccess.HTTPRequester {
+	return func(u string, client *http.Client, username, password string) ([]byte, error) {
+		req, err := http.NewRequest(http.MethodPost, u, bytes.NewBuffer(keyBytes))
+		if err != nil {
+			return nil, err
+		}
+
+		if username != "" {
+			req.SetBasicAuth(username, password)
+		}
+
+		req.Header.Set("K3s-Node-Name", nodeName)
+		resp, err := client.Do(req)
+		if err != nil {
+			return nil, err
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("%s: %s", u, resp.Status)
+		}
+
+		return ioutil.ReadAll(resp.Body)
+	}
+}
+
 func writeNodeCA(dataDir string, nodeCert *tls.Certificate) (string, error) {
 	clientCABytes := pem.EncodeToMemory(&pem.Block{
 		Type:  "CERTIFICATE",
-		Bytes: nodeCert.Certificate[1],
+		Bytes: nodeCert.Certificate[0],
 	})
 
 	clientCA := filepath.Join(dataDir, "client-ca.pem")
@@ -73,6 +123,32 @@ func writeNodeCA(dataDir string, nodeCert *tls.Certificate) (string, error) {
 	}
 
 	return clientCA, nil
+}
+
+func writeClientCA(dataDir string, info *clientaccess.Info) (string, error) {
+	clientCABytes, err := clientaccess.Get("/client-cacerts", info)
+	if err != nil {
+		return "", err
+	}
+	clientCA := filepath.Join(dataDir, "client-ca.crt")
+	if err := ioutil.WriteFile(clientCA, clientCABytes, 0600); err != nil {
+		return "", errors.Wrapf(err, "failed to write client CA")
+	}
+
+	return clientCA, nil
+}
+
+func writeServerCA(dataDir string, info *clientaccess.Info) (string, error) {
+	serverCABytes, err := clientaccess.Get("/server-cacerts", info)
+	if err != nil {
+		return "", err
+	}
+	serverCA := filepath.Join(dataDir, "server-ca.crt")
+	if err := ioutil.WriteFile(serverCA, serverCABytes, 0600); err != nil {
+		return "", errors.Wrapf(err, "failed to write server CA")
+	}
+
+	return serverCA, nil
 }
 
 func getHostnameAndIP(info cmds.Agent) (string, string, error) {
@@ -113,6 +189,29 @@ func writeKubeConfig(envInfo *cmds.Agent, info clientaccess.Info, controlConfig 
 	info.CACerts = pem.EncodeToMemory(&pem.Block{
 		Type:  cert.CertificateBlockType,
 		Bytes: nodeCert.Certificate[1],
+	})
+
+	return kubeConfigPath, info.WriteKubeConfig(kubeConfigPath)
+}
+
+func genKubeConfig(envInfo *cmds.Agent, info clientaccess.Info, controlConfig *config.Control, ca string, nodeCert *tls.Certificate) (string, error) {
+	caBytes, err := ioutil.ReadFile(ca)
+	if err != nil {
+		return "", err
+	}
+
+	os.MkdirAll(envInfo.DataDir, 0700)
+	kubeConfigPath := filepath.Join(envInfo.DataDir, "kubeconfig.yaml")
+
+	info.URL = "https://" + localAddress(controlConfig)
+	info.CACerts = caBytes
+	info.ClientKeyData = pem.EncodeToMemory(&pem.Block{
+		Type:  cert.RSAPrivateKeyBlockType,
+		Bytes: x509.MarshalPKCS1PrivateKey(nodeCert.PrivateKey.(*rsa.PrivateKey)),
+	})
+	info.ClientCertData = pem.EncodeToMemory(&pem.Block{
+		Type:  cert.CertificateBlockType,
+		Bytes: nodeCert.Certificate[0],
 	})
 
 	return kubeConfigPath, info.WriteKubeConfig(kubeConfigPath)
@@ -181,22 +280,27 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 		return nil, err
 	}
 
-	nodeCert, err := getNodeCert(info)
-	if err != nil {
-		return nil, err
-	}
-
-	clientCA, err := writeNodeCA(envInfo.DataDir, nodeCert)
-	if err != nil {
-		return nil, err
-	}
-
 	nodeName, nodeIP, err := getHostnameAndIP(*envInfo)
 	if err != nil {
 		return nil, err
 	}
 
-	kubeConfig, err := writeKubeConfig(envInfo, *info, controlConfig, nodeCert)
+	nodeCert, err := genNodeCert(nodeName, info)
+	if err != nil {
+		return nil, err
+	}
+
+	clientCA, err := writeClientCA(envInfo.DataDir, info)
+	if err != nil {
+		return nil, err
+	}
+
+	serverCA, err := writeServerCA(envInfo.DataDir, info)
+	if err != nil {
+		return nil, err
+	}
+
+	kubeConfig, err := genKubeConfig(envInfo, *info, controlConfig, serverCA, nodeCert)
 	if err != nil {
 		return nil, err
 	}

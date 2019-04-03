@@ -1,6 +1,10 @@
 package server
 
 import (
+	"crypto/rsa"
+	"crypto/x509"
+	"io/ioutil"
+	"net"
 	"net/http"
 	"path/filepath"
 	"strconv"
@@ -8,7 +12,10 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/openapi"
+	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/json"
+	certutil "k8s.io/client-go/util/cert"
+	"k8s.io/kubernetes/pkg/master"
 )
 
 const (
@@ -35,6 +42,8 @@ func router(serverConfig *config.Control, tunnel http.Handler, cacertsGetter CAC
 	router.NotFoundHandler = authed
 	router.PathPrefix(staticURL).Handler(serveStatic(staticURL, staticDir))
 	router.Path("/cacerts").Handler(cacerts(cacertsGetter))
+	router.Path("/client-cacerts").Handler(clientcacerts(serverConfig))
+	router.Path("/server-cacerts").Handler(servercacerts(serverConfig))
 	router.Path("/openapi/v2").Handler(serveOpenapi())
 	router.Path("/ping").Handler(ping())
 
@@ -59,7 +68,99 @@ func nodeCrt(server *config.Control) http.Handler {
 			resp.WriteHeader(http.StatusNotFound)
 			return
 		}
-		http.ServeFile(resp, req, server.Runtime.NodeCert)
+
+		if req.Method != http.MethodPost {
+			resp.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+
+		logrus.Info(req.Header)
+		var nodeName string
+		nodeNames := req.Header["K3s-Node-Name"]
+		if len(nodeNames) == 1 {
+			nodeName = nodeNames[0]
+		} else {
+			resp.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		nodeKey, err := ioutil.ReadAll(req.Body)
+		if err != nil {
+			sendError(err, resp)
+			return
+		}
+
+		key, err := certutil.ParsePrivateKeyPEM(nodeKey)
+		if err != nil {
+			sendError(err, resp)
+			return
+		}
+
+		caKeyBytes, err := ioutil.ReadFile(server.Runtime.ServerCAKey)
+		if err != nil {
+			sendError(err, resp)
+			return
+		}
+
+		caBytes, err := ioutil.ReadFile(server.Runtime.ServerCA)
+		if err != nil {
+			sendError(err, resp)
+			return
+		}
+
+		caKey, err := certutil.ParsePrivateKeyPEM(caKeyBytes)
+		if err != nil {
+			sendError(err, resp)
+			return
+		}
+
+		caCert, err := certutil.ParseCertsPEM(caBytes)
+		if err != nil {
+			sendError(err, resp)
+			return
+		}
+
+		_, apiServerServiceIP, err := master.DefaultServiceIPRange(*server.ServiceIPRange)
+		if err != nil {
+			sendError(err, resp)
+			return
+		}
+
+		cfg := certutil.Config{
+			CommonName:   "system:node:" + nodeName,
+			Organization: []string{"system:nodes"},
+			Usages:       []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
+			AltNames: certutil.AltNames{
+				DNSNames: []string{"kubernetes.default.svc", "kubernetes.default", "kubernetes", "localhost"},
+				IPs:      []net.IP{apiServerServiceIP, net.ParseIP("127.0.0.1")},
+			},
+		}
+
+		cert, err := certutil.NewSignedCert(cfg, key.(*rsa.PrivateKey), caCert[0], caKey.(*rsa.PrivateKey))
+		if err != nil {
+			sendError(err, resp)
+			return
+		}
+
+		// serverCABytes, err := ioutil.ReadFile(server.Runtime.ServerCA)
+		// if err != nil {
+		// 	sendError(err, resp)
+		// 	return
+		// }
+
+		// serverCACert, err := certutil.ParseCertsPEM(serverCABytes)
+		// if err != nil {
+		// 	sendError(err, resp)
+		// 	return
+		// }
+
+		// certs := append(certutil.EncodeCertPEM(cert), certutil.EncodeCertPEM(servingCACert[0])...)
+
+		certs := certutil.EncodeCertPEM(cert)
+		// certs = append(certs, certutil.EncodeCertPEM(caCert[0])...)
+		// certs = append(certs, certutil.EncodeCertPEM(serverCACert[0])...)
+		resp.Write(certs)
+		// http.ServeFile(resp, req, server.Runtime.ServingKubeAPICert)
 	})
 }
 
@@ -69,7 +170,27 @@ func nodeKey(server *config.Control) http.Handler {
 			resp.WriteHeader(http.StatusNotFound)
 			return
 		}
-		http.ServeFile(resp, req, server.Runtime.NodeKey)
+		http.ServeFile(resp, req, server.Runtime.ServingKubeAPIKey)
+	})
+}
+
+func clientcacerts(server *config.Control) http.Handler {
+	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
+		if req.TLS == nil {
+			resp.WriteHeader(http.StatusNotFound)
+			return
+		}
+		http.ServeFile(resp, req, server.Runtime.ClientCA)
+	})
+}
+
+func servercacerts(server *config.Control) http.Handler {
+	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
+		if req.TLS == nil {
+			resp.WriteHeader(http.StatusNotFound)
+			return
+		}
+		http.ServeFile(resp, req, server.Runtime.ServerCA)
 	})
 }
 
@@ -95,8 +216,7 @@ func serveOpenapi() http.Handler {
 
 		data, err := openapi.Asset(openapiPrefix + suffix)
 		if err != nil {
-			resp.WriteHeader(http.StatusInternalServerError)
-			resp.Write([]byte(err.Error()))
+			sendError(err, resp)
 			return
 		}
 
@@ -117,4 +237,10 @@ func ping() http.Handler {
 
 func serveStatic(urlPrefix, staticDir string) http.Handler {
 	return http.StripPrefix(urlPrefix, http.FileServer(http.Dir(staticDir)))
+}
+
+func sendError(err error, resp http.ResponseWriter) {
+	logrus.Error(err)
+	resp.WriteHeader(http.StatusInternalServerError)
+	resp.Write([]byte(err.Error()))
 }
