@@ -1,7 +1,7 @@
 version: '3'
 services:
   node:
-    image: rancher/k3s:v0.2.0
+    image: rancher/k3s:v0.3.0
     tmpfs:
     - /run
     - /var/run
