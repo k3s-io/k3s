@@ -21,6 +21,8 @@ type Agent struct {
 	NoFlannel                bool
 	Debug                    bool
 	AgentShared
+	ExtraKubeletArgs   cli.StringSlice
+	ExtraKubeProxyArgs cli.StringSlice
 }
 
 type AgentShared struct {
@@ -61,6 +63,16 @@ var (
 		Usage:       "Kubelet resolv.conf file",
 		EnvVar:      "K3S_RESOLV_CONF",
 		Destination: &AgentConfig.ResolvConf,
+	}
+	ExtraKubeletArgs = cli.StringSliceFlag{
+		Name:  "kubelet-arg",
+		Usage: "(agent) Customized flag for kubelet process",
+		Value: &AgentConfig.ExtraKubeletArgs,
+	}
+	ExtraKubeProxyArgs = cli.StringSliceFlag{
+		Name:  "kube-proxy-arg",
+		Usage: "(agent) Customized flag for kube-proxy process",
+		Value: &AgentConfig.ExtraKubeProxyArgs,
 	}
 )
 
@@ -107,6 +119,8 @@ func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
 			NodeIPFlag,
 			CRIEndpointFlag,
 			ResolvConfFlag,
+			ExtraKubeletArgs,
+			ExtraKubeProxyArgs,
 		},
 	}
 }

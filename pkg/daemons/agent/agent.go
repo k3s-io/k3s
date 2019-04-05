@@ -28,14 +28,14 @@ func Agent(config *config.Agent) error {
 	return nil
 }
 
-func kubeProxy(config *config.Agent) {
-	args := []string{
-		"--proxy-mode", "iptables",
-		"--healthz-bind-address", "127.0.0.1",
-		"--kubeconfig", config.KubeConfig,
-		"--cluster-cidr", config.ClusterCIDR.String(),
+func kubeProxy(cfg *config.Agent) {
+	argsMap := map[string]string{
+		"proxy-mode":           "iptables",
+		"healthz-bind-address": "127.0.0.1",
+		"kubeconfig":           cfg.KubeConfig,
+		"cluster-cidr":         cfg.ClusterCIDR.String(),
 	}
-	args = append(args, config.ExtraKubeletArgs...)
+	args := config.GetArgsList(argsMap, cfg.ExtraKubeProxyArgs)
 
 	command := app2.NewProxyCommand()
 	command.SetArgs(args)
@@ -50,63 +50,64 @@ func kubelet(cfg *config.Agent) {
 	logs.InitLogs()
 	defer logs.FlushLogs()
 
-	args := []string{
-		"--healthz-bind-address", "127.0.0.1",
-		"--read-only-port", "0",
-		"--allow-privileged=true",
-		"--cluster-domain", "cluster.local",
-		"--kubeconfig", cfg.KubeConfig,
-		"--eviction-hard", "imagefs.available<5%,nodefs.available<5%",
-		"--eviction-minimum-reclaim", "imagefs.available=10%,nodefs.available=10%",
-		"--fail-swap-on=false",
-		//"--cgroup-root", "/k3s",
-		"--cgroup-driver", "cgroupfs",
+	argsMap := map[string]string{
+		"healthz-bind-address":     "127.0.0.1",
+		"read-only-port":           "0",
+		"allow-privileged":         "true",
+		"cluster-domain":           "cluster.local",
+		"kubeconfig":               cfg.KubeConfig,
+		"eviction-hard":            "imagefs.available<5%,nodefs.available<5%",
+		"eviction-minimum-reclaim": "imagefs.available=10%,nodefs.available=10%",
+		"fail-swap-on":             "false",
+		//"cgroup-root": "/k3s",
+		"cgroup-driver": "cgroupfs",
 	}
 	if cfg.RootDir != "" {
-		args = append(args, "--root-dir", cfg.RootDir)
-		args = append(args, "--cert-dir", filepath.Join(cfg.RootDir, "pki"))
-		args = append(args, "--seccomp-profile-root", filepath.Join(cfg.RootDir, "seccomp"))
+		argsMap["root-dir"] = cfg.RootDir
+		argsMap["cert-dir"] = filepath.Join(cfg.RootDir, "pki")
+		argsMap["seccomp-profile-root"] = filepath.Join(cfg.RootDir, "seccomp")
 	}
 	if cfg.CNIConfDir != "" {
-		args = append(args, "--cni-conf-dir", cfg.CNIConfDir)
+		argsMap["cni-conf-dir"] = cfg.CNIConfDir
 	}
 	if cfg.CNIBinDir != "" {
-		args = append(args, "--cni-bin-dir", cfg.CNIBinDir)
+		argsMap["cni-bin-dir"] = cfg.CNIBinDir
 	}
 	if len(cfg.ClusterDNS) > 0 {
-		args = append(args, "--cluster-dns", cfg.ClusterDNS.String())
+		argsMap["cluster-dns"] = cfg.ClusterDNS.String()
 	}
 	if cfg.ResolvConf != "" {
-		args = append(args, "--resolv-conf", cfg.ResolvConf)
+		argsMap["resolv-conf"] = cfg.ResolvConf
 	}
 	if cfg.RuntimeSocket != "" {
-		args = append(args, "--container-runtime", "remote")
-		args = append(args, "--container-runtime-endpoint", cfg.RuntimeSocket)
-		args = append(args, "--serialize-image-pulls=false")
+		argsMap["container-runtime"] = "remote"
+		argsMap["container-runtime-endpoint"] = cfg.RuntimeSocket
+		argsMap["serialize-image-pulls"] = "false"
 	}
 	if cfg.ListenAddress != "" {
-		args = append(args, "--address", cfg.ListenAddress)
+		argsMap["address"] = cfg.ListenAddress
 	}
 	if cfg.CACertPath != "" {
-		args = append(args, "--anonymous-auth=false", "--client-ca-file", cfg.CACertPath)
+		argsMap["anonymous-auth"] = "false"
+		argsMap["client-ca-file"] = cfg.CACertPath
 	}
 	if cfg.NodeName != "" {
-		args = append(args, "--hostname-override", cfg.NodeName)
+		argsMap["hostname-override"] = cfg.NodeName
 	}
 	defaultIP, err := net.ChooseHostInterface()
 	if err != nil || defaultIP.String() != cfg.NodeIP {
-		args = append(args, "--node-ip", cfg.NodeIP)
+		argsMap["node-ip"] = cfg.NodeIP
 	}
 	root, hasCFS := checkCgroups()
 	if !hasCFS {
 		logrus.Warn("Disabling CPU quotas due to missing cpu.cfs_period_us")
-		args = append(args, "--cpu-cfs-quota=false")
+		argsMap["cpu-cfs-quota"] = "false"
 	}
 	if root != "" {
-		args = append(args, "--runtime-cgroups", root)
-		args = append(args, "--kubelet-cgroups", root)
+		argsMap["runtime-cgroups"] = root
+		argsMap["kubelet-cgroups"] = root
 	}
-	args = append(args, cfg.ExtraKubeletArgs...)
+	args := config.GetArgsList(argsMap, cfg.ExtraKubeletArgs)
 
 	command.SetArgs(args)
 

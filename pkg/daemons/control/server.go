@@ -95,20 +95,22 @@ func Server(ctx context.Context, cfg *config.Control) error {
 }
 
 func controllerManager(cfg *config.Control, runtime *config.ControlRuntime) {
-	args := []string{
-		"--kubeconfig", runtime.KubeConfigSystem,
-		"--service-account-private-key-file", runtime.ServiceKey,
-		"--allocate-node-cidrs",
-		"--cluster-cidr", cfg.ClusterIPRange.String(),
-		"--root-ca-file", runtime.TokenCA,
-		"--port", "10252",
-		"--bind-address", "127.0.0.1",
-		"--secure-port", "0",
+	argsMap := map[string]string{
+		"kubeconfig":                       runtime.KubeConfigSystem,
+		"service-account-private-key-file": runtime.ServiceKey,
+		"allocate-node-cidrs":              "true",
+		"cluster-cidr":                     cfg.ClusterIPRange.String(),
+		"root-ca-file":                     runtime.TokenCA,
+		"port":                             "10252",
+		"bind-address":                     "127.0.0.1",
+		"secure-port":                      "0",
 	}
 	if cfg.NoLeaderElect {
-		args = append(args, "--leader-elect=false")
+		argsMap["leader-elect"] = "false"
 	}
-	args = append(args, cfg.ExtraControllerArgs...)
+
+	args := config.GetArgsList(argsMap, cfg.ExtraControllerArgs)
+
 	command := cmapp.NewControllerManagerCommand()
 	command.SetArgs(args)
 
@@ -119,16 +121,17 @@ func controllerManager(cfg *config.Control, runtime *config.ControlRuntime) {
 }
 
 func scheduler(cfg *config.Control, runtime *config.ControlRuntime) {
-	args := []string{
-		"--kubeconfig", runtime.KubeConfigSystem,
-		"--port", "10251",
-		"--bind-address", "127.0.0.1",
-		"--secure-port", "0",
+	argsMap := map[string]string{
+		"kubeconfig":   runtime.KubeConfigSystem,
+		"port":         "10251",
+		"bind-address": "127.0.0.1",
+		"secure-port":  "0",
 	}
 	if cfg.NoLeaderElect {
-		args = append(args, "--leader-elect=false")
+		argsMap["leader-elect"] = "false"
 	}
-	args = append(args, cfg.ExtraSchedulerAPIArgs...)
+	args := config.GetArgsList(argsMap, cfg.ExtraSchedulerAPIArgs)
+
 	command := sapp.NewSchedulerCommand()
 	command.SetArgs(args)
 
@@ -139,19 +142,18 @@ func scheduler(cfg *config.Control, runtime *config.ControlRuntime) {
 }
 
 func apiServer(ctx context.Context, cfg *config.Control, runtime *config.ControlRuntime) (authenticator.Request, http.Handler, error) {
-	var args []string
-
+	argsMap := make(map[string]string)
 	if len(cfg.ETCDEndpoints) > 0 {
-		args = append(args, "--storage-backend", "etcd3")
-		args = append(args, "--etcd-servers", strings.Join(cfg.ETCDEndpoints, ","))
+		argsMap["storage-backend"] = "etcd3"
+		argsMap["etcd-servers"] = strings.Join(cfg.ETCDEndpoints, ",")
 		if cfg.ETCDKeyFile != "" {
-			args = append(args, "--etcd-keyfile", cfg.ETCDKeyFile)
+			argsMap["etcd-keyfile"] = cfg.ETCDKeyFile
 		}
 		if cfg.ETCDCAFile != "" {
-			args = append(args, "--etcd-cafile", cfg.ETCDCAFile)
+			argsMap["etcd-cafile"] = cfg.ETCDCAFile
 		}
 		if cfg.ETCDCertFile != "" {
-			args = append(args, "--etcd-certfile", cfg.ETCDCertFile)
+			argsMap["etcd-certfile"] = cfg.ETCDCertFile
 		}
 	}
 
@@ -159,27 +161,28 @@ func apiServer(ctx context.Context, cfg *config.Control, runtime *config.Control
 	os.MkdirAll(certDir, 0700)
 
 	// TODO: sqlite doesn't need the watch cache, but etcd does, so make this dynamic
-	args = append(args, "--watch-cache=false")
-	args = append(args, "--cert-dir", certDir)
-	args = append(args, "--allow-privileged=true")
-	args = append(args, "--authorization-mode", strings.Join([]string{modes.ModeNode, modes.ModeRBAC}, ","))
-	args = append(args, "--service-account-signing-key-file", runtime.ServiceKey)
-	args = append(args, "--service-cluster-ip-range", cfg.ServiceIPRange.String())
-	args = append(args, "--advertise-port", strconv.Itoa(cfg.AdvertisePort))
-	args = append(args, "--advertise-address", localhostIP.String())
-	args = append(args, "--insecure-port", "0")
-	args = append(args, "--secure-port", strconv.Itoa(cfg.ListenPort))
-	args = append(args, "--bind-address", localhostIP.String())
-	args = append(args, "--tls-cert-file", runtime.TLSCert)
-	args = append(args, "--tls-private-key-file", runtime.TLSKey)
-	args = append(args, "--service-account-key-file", runtime.ServiceKey)
-	args = append(args, "--service-account-issuer", "k3s")
-	args = append(args, "--api-audiences", "unknown")
-	args = append(args, "--basic-auth-file", runtime.PasswdFile)
-	args = append(args, "--kubelet-client-certificate", runtime.NodeCert)
-	args = append(args, "--kubelet-client-key", runtime.NodeKey)
+	argsMap["watch-cache"] = "false"
+	argsMap["cert-dir"] = certDir
+	argsMap["allow-privileged"] = "true"
+	argsMap["authorization-mode"] = strings.Join([]string{modes.ModeNode, modes.ModeRBAC}, ",")
+	argsMap["service-account-signing-key-file"] = runtime.ServiceKey
+	argsMap["service-cluster-ip-range"] = cfg.ServiceIPRange.String()
+	argsMap["advertise-port"] = strconv.Itoa(cfg.AdvertisePort)
+	argsMap["advertise-address"] = localhostIP.String()
+	argsMap["insecure-port"] = "0"
+	argsMap["secure-port"] = strconv.Itoa(cfg.ListenPort)
+	argsMap["bind-address"] = localhostIP.String()
+	argsMap["tls-cert-file"] = runtime.TLSCert
+	argsMap["tls-private-key-file"] = runtime.TLSKey
+	argsMap["service-account-key-file"] = runtime.ServiceKey
+	argsMap["service-account-issuer"] = "k3s"
+	argsMap["api-audiences"] = "unknown"
+	argsMap["basic-auth-file"] = runtime.PasswdFile
+	argsMap["kubelet-client-certificate"] = runtime.NodeCert
+	argsMap["kubelet-client-key"] = runtime.NodeKey
 
-	args = append(args, cfg.ExtraAPIArgs...)
+	args := config.GetArgsList(argsMap, cfg.ExtraAPIArgs)
+
 	command := app.NewAPIServerCommand(ctx.Done())
 	command.SetArgs(args)
 
