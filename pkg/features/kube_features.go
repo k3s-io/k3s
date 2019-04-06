@@ -306,12 +306,6 @@ const (
 	// Enables the AWS EBS in-tree driver to AWS EBS CSI Driver migration feature.
 	CSIMigrationAWS utilfeature.Feature = "CSIMigrationAWS"
 
-	// owner: @RobertKrawitz
-	// alpha: v1.14
-	//
-	// Implement support for limiting pids in nodes
-	SupportNodePidsLimit utilfeature.Feature = "SupportNodePidsLimit"
-
 	// owner: @wk8
 	// alpha: v1.14
 	//
@@ -360,7 +354,6 @@ var defaultKubernetesFeatureGates = map[utilfeature.Feature]utilfeature.FeatureS
 	StorageObjectInUseProtection:            {Default: true, PreRelease: utilfeature.GA},
 	SupportIPVSProxyMode:                    {Default: true, PreRelease: utilfeature.GA},
 	SupportPodPidsLimit:                     {Default: true, PreRelease: utilfeature.Beta},
-	SupportNodePidsLimit:                    {Default: false, PreRelease: utilfeature.Alpha},
 	ScheduleDaemonSetPods:                   {Default: true, PreRelease: utilfeature.Beta},
 	TokenRequest:                            {Default: true, PreRelease: utilfeature.Beta},
 	TokenRequestProjection:                  {Default: true, PreRelease: utilfeature.Beta},
