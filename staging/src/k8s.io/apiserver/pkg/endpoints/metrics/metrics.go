@@ -26,16 +26,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/emicklei/go-restful"
+	"github.com/prometheus/client_golang/prometheus"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/validation"
-	"k8s.io/apimachinery/pkg/types"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	utilsets "k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apiserver/pkg/endpoints/request"
-	"k8s.io/apiserver/pkg/features"
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
-
-	"github.com/emicklei/go-restful"
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 // resettableCollector is the interface implemented by prometheus.MetricVec
@@ -324,9 +320,6 @@ func cleanVerb(verb string, request *http.Request) string {
 	// normalize the legacy WATCHLIST to WATCH to ensure users aren't surprised by metrics
 	if verb == "WATCHLIST" {
 		reportedVerb = "WATCH"
-	}
-	if verb == "PATCH" && request.Header.Get("Content-Type") == string(types.ApplyPatchType) && utilfeature.DefaultFeatureGate.Enabled(features.ServerSideApply) {
-		reportedVerb = "APPLY"
 	}
 	return reportedVerb
 }
