@@ -25,10 +25,8 @@ import (
 
 	api "k8s.io/api/core/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
-	"k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/volume"
 	utilstrings "k8s.io/utils/strings"
 )
@@ -145,9 +143,6 @@ func getSourceFromSpec(spec *volume.Spec) (*api.CSIVolumeSource, *api.CSIPersist
 	}
 	if spec.Volume != nil && spec.PersistentVolume != nil {
 		return nil, nil, fmt.Errorf("volume.Spec has both volume and persistent volume sources")
-	}
-	if spec.Volume != nil && spec.Volume.CSI != nil && utilfeature.DefaultFeatureGate.Enabled(features.CSIInlineVolume) {
-		return spec.Volume.CSI, nil, nil
 	}
 	if spec.PersistentVolume != nil &&
 		spec.PersistentVolume.Spec.CSI != nil {
