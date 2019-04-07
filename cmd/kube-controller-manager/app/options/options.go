@@ -315,7 +315,7 @@ func (s *KubeControllerManagerOptions) ApplyTo(c *kubecontrollerconfig.Config) e
 		return err
 	}
 	if s.SecureServing.BindPort != 0 || s.SecureServing.Listener != nil {
-		if err := s.Authentication.ApplyTo(&c.Authentication, c.SecureServing, nil); err != nil {
+		if err := s.Authentication.ApplyTo(&c.Authentication, c.SecureServing); err != nil {
 			return err
 		}
 		if err := s.Authorization.ApplyTo(&c.Authorization); err != nil {
