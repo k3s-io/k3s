@@ -28,14 +28,12 @@ import (
 	"k8s.io/client-go/pkg/version"
 
 	"k8s.io/kube-aggregator/pkg/apis/apiregistration"
-	"k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
+	v1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
 	"k8s.io/kube-aggregator/pkg/apis/apiregistration/v1beta1"
 	aggregatorscheme "k8s.io/kube-aggregator/pkg/apiserver/scheme"
 	"k8s.io/kube-aggregator/pkg/client/clientset_generated/internalclientset"
 	informers "k8s.io/kube-aggregator/pkg/client/informers/internalversion"
 	listers "k8s.io/kube-aggregator/pkg/client/listers/apiregistration/internalversion"
-	openapicontroller "k8s.io/kube-aggregator/pkg/controllers/openapi"
-	openapiaggregator "k8s.io/kube-aggregator/pkg/controllers/openapi/aggregator"
 	statuscontrollers "k8s.io/kube-aggregator/pkg/controllers/status"
 	apiservicerest "k8s.io/kube-aggregator/pkg/registry/apiservice/rest"
 )
@@ -115,8 +113,6 @@ type APIAggregator struct {
 
 	// Information needed to determine routing for the aggregator
 	serviceResolver ServiceResolver
-
-	openAPIAggregationController *openapicontroller.AggregationController
 }
 
 // Complete fills in any fields not set that are required to have valid data. It's mutating the receiver.
@@ -139,9 +135,6 @@ func (cfg *Config) Complete() CompletedConfig {
 func (c completedConfig) NewWithDelegate(delegationTarget genericapiserver.DelegationTarget) (*APIAggregator, error) {
 	// Prevent generic API server to install OpenAPI handler. Aggregator server
 	// has its own customized OpenAPI handler.
-	openAPIConfig := c.GenericConfig.OpenAPIConfig
-	c.GenericConfig.OpenAPIConfig = nil
-
 	genericServer, err := c.GenericConfig.New("kube-aggregator", delegationTarget)
 	if err != nil {
 		return nil, err
@@ -206,25 +199,6 @@ func (c completedConfig) NewWithDelegate(delegationTarget genericapiserver.Deleg
 		return nil
 	})
 
-	if openAPIConfig != nil {
-		specDownloader := openapiaggregator.NewDownloader()
-		openAPIAggregator, err := openapiaggregator.BuildAndRegisterAggregator(
-			&specDownloader,
-			delegationTarget,
-			s.GenericAPIServer.Handler.GoRestfulContainer.RegisteredWebServices(),
-			openAPIConfig,
-			s.GenericAPIServer.Handler.NonGoRestfulMux)
-		if err != nil {
-			return nil, err
-		}
-		s.openAPIAggregationController = openapicontroller.NewAggregationController(&specDownloader, openAPIAggregator)
-
-		s.GenericAPIServer.AddPostStartHookOrDie("apiservice-openapi-controller", func(context genericapiserver.PostStartHookContext) error {
-			go s.openAPIAggregationController.Run(context.StopCh)
-			return nil
-		})
-	}
-
 	return s, nil
 }
 
@@ -235,9 +209,6 @@ func (s *APIAggregator) AddAPIService(apiService *apiregistration.APIService) er
 	// since they are wired against listers because they require multiple resources to respond
 	if proxyHandler, exists := s.proxyHandlers[apiService.Name]; exists {
 		proxyHandler.updateAPIService(apiService)
-		if s.openAPIAggregationController != nil {
-			s.openAPIAggregationController.UpdateAPIService(proxyHandler, apiService)
-		}
 		return nil
 	}
 
@@ -256,9 +227,6 @@ func (s *APIAggregator) AddAPIService(apiService *apiregistration.APIService) er
 		serviceResolver: s.serviceResolver,
 	}
 	proxyHandler.updateAPIService(apiService)
-	if s.openAPIAggregationController != nil {
-		s.openAPIAggregationController.AddAPIService(proxyHandler, apiService)
-	}
 	s.proxyHandlers[apiService.Name] = proxyHandler
 	s.GenericAPIServer.Handler.NonGoRestfulMux.Handle(proxyPath, proxyHandler)
 	s.GenericAPIServer.Handler.NonGoRestfulMux.UnlistedHandlePrefix(proxyPath+"/", proxyHandler)
@@ -300,9 +268,6 @@ func (s *APIAggregator) RemoveAPIService(apiServiceName string) {
 	}
 	s.GenericAPIServer.Handler.NonGoRestfulMux.Unregister(proxyPath)
 	s.GenericAPIServer.Handler.NonGoRestfulMux.Unregister(proxyPath + "/")
-	if s.openAPIAggregationController != nil {
-		s.openAPIAggregationController.RemoveAPIService(apiServiceName)
-	}
 	delete(s.proxyHandlers, apiServiceName)
 
 	// TODO unregister group level discovery when there are no more versions for the group
