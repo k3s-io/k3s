@@ -306,12 +306,6 @@ const (
 	// Enables the AWS EBS in-tree driver to AWS EBS CSI Driver migration feature.
 	CSIMigrationAWS utilfeature.Feature = "CSIMigrationAWS"
 
-	// owner: @wk8
-	// alpha: v1.14
-	//
-	// Enables GMSA support for Windows workloads.
-	WindowsGMSA utilfeature.Feature = "WindowsGMSA"
-
 	// owner: @adisky
 	// alpha: v1.14
 	//
@@ -372,7 +366,6 @@ var defaultKubernetesFeatureGates = map[utilfeature.Feature]utilfeature.FeatureS
 	CSIInlineVolume:                         {Default: false, PreRelease: utilfeature.Alpha},
 	RuntimeClass:                            {Default: true, PreRelease: utilfeature.Beta},
 	NodeLease:                               {Default: true, PreRelease: utilfeature.Beta},
-	WindowsGMSA:                             {Default: false, PreRelease: utilfeature.Alpha},
 
 	// inherited features from generic apiserver, relisted here to get a conflict if it is changed
 	// unintentionally on either side:
