@@ -35,7 +35,6 @@ import (
 	"k8s.io/apiserver/pkg/admission"
 	"k8s.io/apiserver/pkg/endpoints/discovery"
 	"k8s.io/apiserver/pkg/endpoints/handlers"
-	"k8s.io/apiserver/pkg/endpoints/handlers/fieldmanager"
 	"k8s.io/apiserver/pkg/endpoints/handlers/negotiation"
 	"k8s.io/apiserver/pkg/endpoints/metrics"
 	"k8s.io/apiserver/pkg/features"
@@ -542,19 +541,6 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 	if a.group.MetaGroupVersion != nil {
 		reqScope.MetaGroupVersion = *a.group.MetaGroupVersion
 	}
-	if a.group.OpenAPIModels != nil && utilfeature.DefaultFeatureGate.Enabled(features.ServerSideApply) {
-		fm, err := fieldmanager.NewFieldManager(
-			a.group.OpenAPIModels,
-			a.group.UnsafeConvertor,
-			a.group.Defaulter,
-			fqKindToRegister.GroupVersion(),
-			reqScope.HubGroupVersion,
-		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create field manager: %v", err)
-		}
-		reqScope.FieldManager = fm
-	}
 	for _, action := range actions {
 		producedObject := storageMeta.ProducesObject(action.Verb)
 		if producedObject == nil {
@@ -707,9 +693,6 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 				string(types.JSONPatchType),
 				string(types.MergePatchType),
 				string(types.StrategicMergePatchType),
-			}
-			if utilfeature.DefaultFeatureGate.Enabled(features.ServerSideApply) {
-				supportedTypes = append(supportedTypes, string(types.ApplyPatchType))
 			}
 			handler := metrics.InstrumentRouteFunc(action.Verb, group, version, resource, subresource, requestScope, metrics.APIServerComponent, restfulPatchResource(patcher, reqScope, admit, supportedTypes))
 			route := ws.PATCH(action.Path).To(handler).
