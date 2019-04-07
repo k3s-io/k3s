@@ -405,12 +405,6 @@ func AddDryRunFlag(cmd *cobra.Command) {
 	cmd.Flags().Bool("dry-run", false, "If true, only print the object that would be sent, without sending it.")
 }
 
-func AddServerSideApplyFlags(cmd *cobra.Command) {
-	cmd.Flags().Bool("experimental-server-side", false, "If true, apply runs in the server instead of the client. This is an alpha feature and flag.")
-	cmd.Flags().Bool("experimental-force-conflicts", false, "If true, server-side apply will force the changes against conflicts. This is an alpha feature and flag.")
-	cmd.Flags().String("experimental-field-manager", "kubectl", "Name of the manager used to track field ownership. This is an alpha feature and flag.")
-}
-
 func AddIncludeUninitializedFlag(cmd *cobra.Command) {
 	cmd.Flags().Bool("include-uninitialized", false, `If true, the kubectl command applies to uninitialized objects. If explicitly set to false, this flag overrides other flags that make the kubectl commands apply to uninitialized objects, e.g., "--all". Objects with empty metadata.initializers are regarded as initialized.`)
 	cmd.Flags().MarkDeprecated("include-uninitialized", "The Initializers feature has been removed. This flag is now a no-op, and will be removed in v1.15")
@@ -482,18 +476,6 @@ func DumpReaderToFile(reader io.Reader, filename string) error {
 		}
 	}
 	return nil
-}
-
-func GetServerSideApplyFlag(cmd *cobra.Command) bool {
-	return GetFlagBool(cmd, "experimental-server-side")
-}
-
-func GetForceConflictsFlag(cmd *cobra.Command) bool {
-	return GetFlagBool(cmd, "experimental-force-conflicts")
-}
-
-func GetFieldManagerFlag(cmd *cobra.Command) string {
-	return GetFlagString(cmd, "experimental-field-manager")
 }
 
 func GetDryRunFlag(cmd *cobra.Command) bool {

@@ -55,11 +55,9 @@ import (
 	"k8s.io/apiserver/pkg/admission"
 	"k8s.io/apiserver/pkg/authorization/authorizer"
 	"k8s.io/apiserver/pkg/endpoints/handlers"
-	"k8s.io/apiserver/pkg/endpoints/handlers/fieldmanager"
 	"k8s.io/apiserver/pkg/endpoints/handlers/responsewriters"
 	"k8s.io/apiserver/pkg/endpoints/metrics"
 	apirequest "k8s.io/apiserver/pkg/endpoints/request"
-	"k8s.io/apiserver/pkg/features"
 	"k8s.io/apiserver/pkg/registry/generic"
 	genericregistry "k8s.io/apiserver/pkg/registry/generic/registry"
 	"k8s.io/apiserver/pkg/storage/storagebackend"
@@ -233,9 +231,6 @@ func (r *crdHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	supportedTypes := []string{
 		string(types.JSONPatchType),
 		string(types.MergePatchType),
-	}
-	if utilfeature.DefaultFeatureGate.Enabled(features.ServerSideApply) {
-		supportedTypes = append(supportedTypes, string(types.ApplyPatchType))
 	}
 
 	var handler http.HandlerFunc
@@ -574,16 +569,6 @@ func (r *crdHandler) getOrCreateServingInfoFor(crd *apiextensions.CustomResource
 			TableConvertor: storages[v.Name].CustomResource,
 
 			Authorizer: r.authorizer,
-		}
-		if utilfeature.DefaultFeatureGate.Enabled(features.ServerSideApply) {
-			reqScope := requestScopes[v.Name]
-			reqScope.FieldManager = fieldmanager.NewCRDFieldManager(
-				reqScope.Convertor,
-				reqScope.Defaulter,
-				reqScope.Kind.GroupVersion(),
-				reqScope.HubGroupVersion,
-			)
-			requestScopes[v.Name] = reqScope
 		}
 
 		// override scaleSpec subresource values
