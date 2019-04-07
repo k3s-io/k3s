@@ -450,25 +450,9 @@ func (og *operationGenerator) GenerateDetachVolumeFunc(
 			return volumetypes.GeneratedOperations{}, volumeToDetach.GenerateErrorDetailed("DetachVolume.SplitUniqueName failed", err)
 		}
 
-		// TODO(dyzz): This case can't distinguish between PV and In-line which is necessary because
-		// if it was PV it may have been migrated, but the same plugin with in-line may not have been.
-		// Suggestions welcome...
-		if csilib.IsMigratableIntreePluginByName(pluginName) && utilfeature.DefaultFeatureGate.Enabled(features.CSIMigration) {
-			// The volume represented by this spec is CSI and thus should be migrated
-			attachableVolumePlugin, err = og.volumePluginMgr.FindAttachablePluginByName(csi.CSIPluginName)
-			if err != nil || attachableVolumePlugin == nil {
-				return volumetypes.GeneratedOperations{}, volumeToDetach.GenerateErrorDetailed("AttachVolume.FindAttachablePluginBySpec failed", err)
-			}
-			// volumeToDetach.VolumeName here is always the in-tree volume name
-			// therefore a workaround is required. volumeToDetach.DevicePath
-			// is the attachID which happens to be what volumeName is needed for in Detach.
-			// Therefore we set volumeName to the attachID. And CSI Detach can detect and use that.
-			volumeName = volumeToDetach.DevicePath
-		} else {
-			attachableVolumePlugin, err = og.volumePluginMgr.FindAttachablePluginByName(pluginName)
-			if err != nil || attachableVolumePlugin == nil {
-				return volumetypes.GeneratedOperations{}, volumeToDetach.GenerateErrorDetailed("DetachVolume.FindAttachablePluginByName failed", err)
-			}
+		attachableVolumePlugin, err = og.volumePluginMgr.FindAttachablePluginByName(pluginName)
+		if err != nil || attachableVolumePlugin == nil {
+			return volumetypes.GeneratedOperations{}, volumeToDetach.GenerateErrorDetailed("DetachVolume.FindAttachablePluginByName failed", err)
 		}
 
 	}
@@ -1624,15 +1608,6 @@ func useCSIPlugin(vpm *volume.VolumePluginMgr, spec *volume.Spec) bool {
 	// we can throw a better error when the driver is not installed.
 	// The error should be of the approximate form:
 	// fmt.Errorf("in-tree plugin %s is migrated on node %s but driver %s is not installed", pluginName, string(nodeName), driverName)
-	if !utilfeature.DefaultFeatureGate.Enabled(features.CSIMigration) {
-		return false
-	}
-	if csilib.IsPVMigratable(spec.PersistentVolume) || csilib.IsInlineMigratable(spec.Volume) {
-		migratable, err := vpm.IsPluginMigratableBySpec(spec)
-		if err == nil && migratable {
-			return true
-		}
-	}
 	return false
 }
 
@@ -1641,8 +1616,7 @@ func nodeUsingCSIPlugin(og *operationGenerator, spec *volume.Spec, nodeName type
 	if err != nil {
 		return false, err
 	}
-	if !utilfeature.DefaultFeatureGate.Enabled(features.CSIMigration) ||
-		!utilfeature.DefaultFeatureGate.Enabled(features.CSINodeInfo) ||
+	if !utilfeature.DefaultFeatureGate.Enabled(features.CSINodeInfo) ||
 		!migratable {
 		return false, nil
 	}
