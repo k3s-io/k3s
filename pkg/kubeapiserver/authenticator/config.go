@@ -19,8 +19,6 @@ package authenticator
 import (
 	"time"
 
-	"github.com/go-openapi/spec"
-
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 	"k8s.io/apiserver/pkg/authentication/authenticatorfactory"
 	"k8s.io/apiserver/pkg/authentication/group"
@@ -82,10 +80,9 @@ type Config struct {
 
 // New returns an authenticator.Request or an error that supports the standard
 // Kubernetes authentication mechanisms.
-func (config Config) New() (authenticator.Request, *spec.SecurityDefinitions, error) {
+func (config Config) New() (authenticator.Request, error) {
 	var authenticators []authenticator.Request
 	var tokenAuthenticators []authenticator.Token
-	securityDefinitions := spec.SecurityDefinitions{}
 
 	// front-proxy, BasicAuth methods, local first, then remote
 	// Add the front proxy authenticator if requested
@@ -98,7 +95,7 @@ func (config Config) New() (authenticator.Request, *spec.SecurityDefinitions, er
 			config.RequestHeaderConfig.ExtraHeaderPrefixes,
 		)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		authenticators = append(authenticators, authenticator.WrapAudienceAgnosticRequest(config.APIAudiences, requestHeaderAuthenticator))
 	}
@@ -107,23 +104,16 @@ func (config Config) New() (authenticator.Request, *spec.SecurityDefinitions, er
 	if len(config.BasicAuthFile) > 0 {
 		basicAuth, err := newAuthenticatorFromBasicAuthFile(config.BasicAuthFile)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		authenticators = append(authenticators, authenticator.WrapAudienceAgnosticRequest(config.APIAudiences, basicAuth))
-
-		securityDefinitions["HTTPBasic"] = &spec.SecurityScheme{
-			SecuritySchemeProps: spec.SecuritySchemeProps{
-				Type:        "basic",
-				Description: "HTTP Basic authentication",
-			},
-		}
 	}
 
 	// X509 methods
 	if len(config.ClientCAFile) > 0 {
 		certAuth, err := newAuthenticatorFromClientCAFile(config.ClientCAFile)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		authenticators = append(authenticators, certAuth)
 	}
@@ -132,21 +122,21 @@ func (config Config) New() (authenticator.Request, *spec.SecurityDefinitions, er
 	if len(config.TokenAuthFile) > 0 {
 		tokenAuth, err := newAuthenticatorFromTokenFile(config.TokenAuthFile)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		tokenAuthenticators = append(tokenAuthenticators, authenticator.WrapAudienceAgnosticToken(config.APIAudiences, tokenAuth))
 	}
 	if len(config.ServiceAccountKeyFiles) > 0 {
 		serviceAccountAuth, err := newLegacyServiceAccountAuthenticator(config.ServiceAccountKeyFiles, config.ServiceAccountLookup, config.APIAudiences, config.ServiceAccountTokenGetter)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		tokenAuthenticators = append(tokenAuthenticators, serviceAccountAuth)
 	}
 	if utilfeature.DefaultFeatureGate.Enabled(features.TokenRequest) && config.ServiceAccountIssuer != "" {
 		serviceAccountAuth, err := newServiceAccountAuthenticator(config.ServiceAccountIssuer, config.ServiceAccountKeyFiles, config.APIAudiences, config.ServiceAccountTokenGetter)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		tokenAuthenticators = append(tokenAuthenticators, serviceAccountAuth)
 	}
@@ -176,14 +166,14 @@ func (config Config) New() (authenticator.Request, *spec.SecurityDefinitions, er
 			RequiredClaims:       config.OIDCRequiredClaims,
 		})
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		tokenAuthenticators = append(tokenAuthenticators, oidcAuth)
 	}
 	if len(config.WebhookTokenAuthnConfigFile) > 0 {
 		webhookTokenAuth, err := newWebhookTokenAuthenticator(config.WebhookTokenAuthnConfigFile, config.WebhookTokenAuthnCacheTTL, config.APIAudiences)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		tokenAuthenticators = append(tokenAuthenticators, webhookTokenAuth)
 	}
@@ -196,21 +186,13 @@ func (config Config) New() (authenticator.Request, *spec.SecurityDefinitions, er
 			tokenAuth = tokencache.New(tokenAuth, true, config.TokenSuccessCacheTTL, config.TokenFailureCacheTTL)
 		}
 		authenticators = append(authenticators, bearertoken.New(tokenAuth), websocket.NewProtocolAuthenticator(tokenAuth))
-		securityDefinitions["BearerToken"] = &spec.SecurityScheme{
-			SecuritySchemeProps: spec.SecuritySchemeProps{
-				Type:        "apiKey",
-				Name:        "authorization",
-				In:          "header",
-				Description: "Bearer Token authentication",
-			},
-		}
 	}
 
 	if len(authenticators) == 0 {
 		if config.Anonymous {
-			return anonymous.NewAuthenticator(), &securityDefinitions, nil
+			return anonymous.NewAuthenticator(), nil
 		}
-		return nil, &securityDefinitions, nil
+		return nil, nil
 	}
 
 	authenticator := union.New(authenticators...)
@@ -223,7 +205,7 @@ func (config Config) New() (authenticator.Request, *spec.SecurityDefinitions, er
 		authenticator = union.NewFailOnError(authenticator, anonymous.NewAuthenticator())
 	}
 
-	return authenticator, &securityDefinitions, nil
+	return authenticator, nil
 }
 
 // IsValidServiceAccountKeyFile returns true if a valid public RSA key can be read from the given file
