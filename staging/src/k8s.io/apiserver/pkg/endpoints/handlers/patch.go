@@ -39,7 +39,6 @@ import (
 	"k8s.io/apiserver/pkg/admission"
 	"k8s.io/apiserver/pkg/audit"
 	"k8s.io/apiserver/pkg/authorization/authorizer"
-	"k8s.io/apiserver/pkg/endpoints/handlers/fieldmanager"
 	"k8s.io/apiserver/pkg/endpoints/handlers/negotiation"
 	"k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/features"
@@ -126,9 +125,6 @@ func PatchResource(r rest.Patcher, scope RequestScope, admit admission.Interface
 		trace.Step("Recorded the audit event")
 
 		baseContentType := runtime.ContentTypeJSON
-		if patchType == types.ApplyPatchType {
-			baseContentType = runtime.ContentTypeYAML
-		}
 		s, ok := runtime.SerializerInfoForMediaType(scope.Serializer.SupportedMediaTypes(), baseContentType)
 		if !ok {
 			scope.err(fmt.Errorf("no serializer defined for %v", baseContentType), w, req)
@@ -296,8 +292,6 @@ type patchMechanism interface {
 
 type jsonPatcher struct {
 	*patcher
-
-	fieldManager *fieldmanager.FieldManager
 }
 
 func (p *jsonPatcher) applyPatchToCurrentObject(currentObject runtime.Object) (runtime.Object, error) {
@@ -319,11 +313,6 @@ func (p *jsonPatcher) applyPatchToCurrentObject(currentObject runtime.Object) (r
 		return nil, err
 	}
 
-	if p.fieldManager != nil {
-		if objToUpdate, err = p.fieldManager.Update(currentObject, objToUpdate, managerOrUserAgent(p.options.FieldManager, p.userAgent)); err != nil {
-			return nil, fmt.Errorf("failed to update object (json PATCH for %v) managed fields: %v", p.kind, err)
-		}
-	}
 	return objToUpdate, nil
 }
 
@@ -363,7 +352,6 @@ type smpPatcher struct {
 
 	// Schema
 	schemaReferenceObj runtime.Object
-	fieldManager       *fieldmanager.FieldManager
 }
 
 func (p *smpPatcher) applyPatchToCurrentObject(currentObject runtime.Object) (runtime.Object, error) {
@@ -386,43 +374,11 @@ func (p *smpPatcher) applyPatchToCurrentObject(currentObject runtime.Object) (ru
 		return nil, err
 	}
 
-	if p.fieldManager != nil {
-		if newObj, err = p.fieldManager.Update(currentObject, newObj, managerOrUserAgent(p.options.FieldManager, p.userAgent)); err != nil {
-			return nil, fmt.Errorf("failed to update object (smp PATCH for %v) managed fields: %v", p.kind, err)
-		}
-	}
 	return newObj, nil
 }
 
 func (p *smpPatcher) createNewObject() (runtime.Object, error) {
 	return nil, errors.NewNotFound(p.resource.GroupResource(), p.name)
-}
-
-type applyPatcher struct {
-	patch        []byte
-	options      *metav1.PatchOptions
-	creater      runtime.ObjectCreater
-	kind         schema.GroupVersionKind
-	fieldManager *fieldmanager.FieldManager
-}
-
-func (p *applyPatcher) applyPatchToCurrentObject(obj runtime.Object) (runtime.Object, error) {
-	force := false
-	if p.options.Force != nil {
-		force = *p.options.Force
-	}
-	if p.fieldManager == nil {
-		panic("FieldManager must be installed to run apply")
-	}
-	return p.fieldManager.Apply(obj, p.patch, p.options.FieldManager, force)
-}
-
-func (p *applyPatcher) createNewObject() (runtime.Object, error) {
-	obj, err := p.creater.New(p.kind)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create new object: %v", obj)
-	}
-	return p.applyPatchToCurrentObject(obj)
 }
 
 // strategicPatchObject applies a strategic merge patch of <patchBytes> to
@@ -523,7 +479,6 @@ func (p *patcher) patchResource(ctx context.Context, scope RequestScope) (runtim
 	case types.JSONPatchType, types.MergePatchType:
 		p.mechanism = &jsonPatcher{
 			patcher:      p,
-			fieldManager: scope.FieldManager,
 		}
 	case types.StrategicMergePatchType:
 		schemaReferenceObj, err := p.unsafeConvertor.ConvertToVersion(p.restPatcher.New(), p.kind.GroupVersion())
@@ -533,18 +488,8 @@ func (p *patcher) patchResource(ctx context.Context, scope RequestScope) (runtim
 		p.mechanism = &smpPatcher{
 			patcher:            p,
 			schemaReferenceObj: schemaReferenceObj,
-			fieldManager:       scope.FieldManager,
 		}
 	// this case is unreachable if ServerSideApply is not enabled because we will have already rejected the content type
-	case types.ApplyPatchType:
-		p.mechanism = &applyPatcher{
-			fieldManager: scope.FieldManager,
-			patch:        p.patchBytes,
-			options:      p.options,
-			creater:      p.creater,
-			kind:         p.kind,
-		}
-		p.forceAllowCreate = true
 	default:
 		return nil, false, fmt.Errorf("%v: unimplemented patch type", p.patchType)
 	}

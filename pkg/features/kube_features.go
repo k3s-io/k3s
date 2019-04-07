@@ -374,7 +374,6 @@ var defaultKubernetesFeatureGates = map[utilfeature.Feature]utilfeature.FeatureS
 	genericfeatures.AdvancedAuditing:        {Default: true, PreRelease: utilfeature.GA},
 	genericfeatures.APIListChunking:         {Default: true, PreRelease: utilfeature.Beta},
 	genericfeatures.DryRun:                  {Default: true, PreRelease: utilfeature.Beta},
-	genericfeatures.ServerSideApply:         {Default: false, PreRelease: utilfeature.Alpha},
 
 	// inherited features from apiextensions-apiserver, relisted here to get a conflict if it is changed
 	// unintentionally on either side:
