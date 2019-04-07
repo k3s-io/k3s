@@ -379,7 +379,6 @@ var defaultKubernetesFeatureGates = map[utilfeature.Feature]utilfeature.FeatureS
 	// unintentionally on either side:
 	apiextensionsfeatures.CustomResourceValidation:     {Default: true, PreRelease: utilfeature.Beta},
 	apiextensionsfeatures.CustomResourceSubresources:   {Default: true, PreRelease: utilfeature.Beta},
-	apiextensionsfeatures.CustomResourcePublishOpenAPI: {Default: false, PreRelease: utilfeature.Alpha},
 
 	// features that enable backwards compatibility but are scheduled to be removed
 	// ...
