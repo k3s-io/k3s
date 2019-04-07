@@ -31,7 +31,6 @@ import (
 
 	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
 	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
-	apiservervalidation "k8s.io/apiextensions-apiserver/pkg/apiserver/validation"
 )
 
 var (
@@ -570,12 +569,6 @@ func ValidateCustomResourceDefinitionValidation(customResourceValidation *apiext
 		allErrs = append(allErrs, ValidateCustomResourceDefinitionOpenAPISchema(schema, fldPath.Child("openAPIV3Schema"), openAPIV3Schema)...)
 	}
 
-	// if validation passed otherwise, make sure we can actually construct a schema validator from this custom resource validation.
-	if len(allErrs) == 0 {
-		if _, _, err := apiservervalidation.NewSchemaValidator(customResourceValidation); err != nil {
-			allErrs = append(allErrs, field.Invalid(fldPath, "", fmt.Sprintf("error building validator: %v", err)))
-		}
-	}
 	return allErrs
 }
 
