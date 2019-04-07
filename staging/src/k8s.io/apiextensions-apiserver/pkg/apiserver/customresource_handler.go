@@ -18,6 +18,7 @@ package apiserver
 
 import (
 	"fmt"
+	"k8s.io/klog"
 	"net/http"
 	"path"
 	"strings"
@@ -25,12 +26,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/go-openapi/spec"
-	"github.com/go-openapi/strfmt"
-	"github.com/go-openapi/validate"
 	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
 	"k8s.io/apiextensions-apiserver/pkg/apiserver/conversion"
-	apiservervalidation "k8s.io/apiextensions-apiserver/pkg/apiserver/validation"
 	informers "k8s.io/apiextensions-apiserver/pkg/client/informers/internalversion/apiextensions/internalversion"
 	listers "k8s.io/apiextensions-apiserver/pkg/client/listers/apiextensions/internalversion"
 	"k8s.io/apiextensions-apiserver/pkg/controller/establish"
@@ -67,7 +64,6 @@ import (
 	"k8s.io/client-go/scale"
 	"k8s.io/client-go/scale/scheme/autoscalingv1"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/klog"
 )
 
 // crdHandler serves the `/apis` endpoint.
@@ -483,18 +479,7 @@ func (r *crdHandler) getOrCreateServingInfoFor(crd *apiextensions.CustomResource
 		typer := newUnstructuredObjectTyper(parameterScheme)
 		creator := unstructuredCreator{}
 
-		validationSchema, err := apiextensions.GetSchemaForVersion(crd, v.Name)
-		if err != nil {
-			utilruntime.HandleError(err)
-			return nil, fmt.Errorf("the server could not properly serve the CR schema")
-		}
-		validator, _, err := apiservervalidation.NewSchemaValidator(validationSchema)
-		if err != nil {
-			return nil, err
-		}
-
 		var statusSpec *apiextensions.CustomResourceSubresourceStatus
-		var statusValidator *validate.SchemaValidator
 		subresources, err := apiextensions.GetSubresourcesForVersion(crd, v.Name)
 		if err != nil {
 			utilruntime.HandleError(err)
@@ -502,16 +487,6 @@ func (r *crdHandler) getOrCreateServingInfoFor(crd *apiextensions.CustomResource
 		}
 		if utilfeature.DefaultFeatureGate.Enabled(apiextensionsfeatures.CustomResourceSubresources) && subresources != nil && subresources.Status != nil {
 			statusSpec = subresources.Status
-			// for the status subresource, validate only against the status schema
-			if validationSchema != nil && validationSchema.OpenAPIV3Schema != nil && validationSchema.OpenAPIV3Schema.Properties != nil {
-				if statusSchema, ok := validationSchema.OpenAPIV3Schema.Properties["status"]; ok {
-					openapiSchema := &spec.Schema{}
-					if err := apiservervalidation.ConvertJSONSchemaProps(&statusSchema, openapiSchema); err != nil {
-						return nil, err
-					}
-					statusValidator = validate.NewSchemaValidator(openapiSchema, nil, "", strfmt.Default)
-				}
-			}
 		}
 
 		var scaleSpec *apiextensions.CustomResourceSubresourceScale
@@ -537,8 +512,6 @@ func (r *crdHandler) getOrCreateServingInfoFor(crd *apiextensions.CustomResource
 				typer,
 				crd.Spec.Scope == apiextensions.NamespaceScoped,
 				kind,
-				validator,
-				statusValidator,
 				statusSpec,
 				scaleSpec,
 			),
