@@ -28,8 +28,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/apiserver/pkg/admission"
-	"k8s.io/apiserver/pkg/features"
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
 )
 
 // RESTUpdateStrategy defines the minimum validation, accepted input, and
@@ -109,10 +107,8 @@ func BeforeUpdate(strategy RESTUpdateStrategy, ctx context.Context, obj, old run
 	objectMeta.SetInitializers(nil)
 
 	// Ensure managedFields state is removed unless ServerSideApply is enabled
-	if !utilfeature.DefaultFeatureGate.Enabled(features.ServerSideApply) {
-		oldMeta.SetManagedFields(nil)
-		objectMeta.SetManagedFields(nil)
-	}
+	oldMeta.SetManagedFields(nil)
+	objectMeta.SetManagedFields(nil)
 
 	strategy.PrepareForUpdate(ctx, obj, old)
 

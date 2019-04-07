@@ -70,12 +70,6 @@ const (
 	// committing.
 	DryRun utilfeature.Feature = "DryRun"
 
-	// owner: @apelisse, @lavalamp
-	// alpha: v1.14
-	//
-	// Server-side apply. Merging happens on the server.
-	ServerSideApply utilfeature.Feature = "ServerSideApply"
-
 	// owner: @caesarxuchao
 	// alpha: v1.14
 	//
@@ -109,7 +103,6 @@ var defaultKubernetesFeatureGates = map[utilfeature.Feature]utilfeature.FeatureS
 	AdvancedAuditing:        {Default: true, PreRelease: utilfeature.GA},
 	APIListChunking:         {Default: true, PreRelease: utilfeature.Beta},
 	DryRun:                  {Default: true, PreRelease: utilfeature.Beta},
-	ServerSideApply:         {Default: false, PreRelease: utilfeature.Alpha},
 	StorageVersionHash:      {Default: false, PreRelease: utilfeature.Alpha},
 	WinOverlay:              {Default: false, PreRelease: utilfeature.Alpha},
 	WinDSR:                  {Default: false, PreRelease: utilfeature.Alpha},
