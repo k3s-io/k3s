@@ -95,7 +95,6 @@ func (c *DiscoveryController) sync(version schema.GroupVersion) error {
 		}
 
 		foundThisVersion := false
-		var storageVersionHash string
 		for _, v := range crd.Spec.Versions {
 			if !v.Served {
 				continue
@@ -113,9 +112,6 @@ func (c *DiscoveryController) sync(version schema.GroupVersion) error {
 			}
 			if v.Name == version.Version {
 				foundThisVersion = true
-			}
-			if v.Storage {
-				storageVersionHash = discovery.StorageVersionHash(gv.Group, gv.Version, crd.Spec.Names.Kind)
 			}
 		}
 
@@ -138,7 +134,6 @@ func (c *DiscoveryController) sync(version schema.GroupVersion) error {
 			Verbs:              verbs,
 			ShortNames:         crd.Status.AcceptedNames.ShortNames,
 			Categories:         crd.Status.AcceptedNames.Categories,
-			StorageVersionHash: storageVersionHash,
 		})
 
 		subresources, err := apiextensions.GetSubresourcesForVersion(crd, version.Version)
