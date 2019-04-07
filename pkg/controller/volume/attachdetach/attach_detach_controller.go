@@ -139,12 +139,6 @@ func NewAttachDetachController(
 		pvcQueue:    workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "pvcs"),
 	}
 
-	if utilfeature.DefaultFeatureGate.Enabled(features.CSIMigration) &&
-		utilfeature.DefaultFeatureGate.Enabled(features.CSINodeInfo) {
-		adc.csiNodeLister = csiNodeInformer.Lister()
-		adc.csiNodeSynced = csiNodeInformer.Informer().HasSynced
-	}
-
 	if utilfeature.DefaultFeatureGate.Enabled(features.CSIDriverRegistry) {
 		adc.csiDriverLister = csiDriverInformer.Lister()
 		adc.csiDriversSynced = csiDriverInformer.Informer().HasSynced
