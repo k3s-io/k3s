@@ -733,7 +733,9 @@ func WithCapabilities(caps []string) SpecOpts {
 }
 
 // WithAllCapabilities sets all linux capabilities for the process
-var WithAllCapabilities = WithCapabilities(getAllCapabilities())
+var WithAllCapabilities = func(ctx context.Context, client Client, c *containers.Container, s *Spec) error {
+	return WithCapabilities(getAllCapabilities())(ctx, client, c, s)
+}
 
 func getAllCapabilities() []string {
 	last := capability.CAP_LAST_CAP

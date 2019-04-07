@@ -27,6 +27,7 @@ import (
 	"github.com/containerd/containerd/oci"
 	cni "github.com/containerd/go-cni"
 	"github.com/containerd/typeurl"
+	"github.com/davecgh/go-spew/spew"
 	imagespec "github.com/opencontainers/image-spec/specs-go/v1"
 	runtimespec "github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
@@ -54,6 +55,7 @@ func init() {
 // the sandbox is in ready state.
 func (c *criService) RunPodSandbox(ctx context.Context, r *runtime.RunPodSandboxRequest) (_ *runtime.RunPodSandboxResponse, retErr error) {
 	config := r.GetConfig()
+	logrus.Debugf("Sandbox config %+v", config)
 
 	// Generate unique id and name for the sandbox and reserve the name.
 	id := util.GenerateID()
@@ -143,7 +145,7 @@ func (c *criService) RunPodSandbox(ctx context.Context, r *runtime.RunPodSandbox
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to generate sandbox container spec")
 	}
-	logrus.Debugf("Sandbox container spec: %+v", spec)
+	logrus.Debugf("Sandbox container %q spec: %#+v", id, spew.NewFormatter(spec))
 
 	var specOpts []oci.SpecOpts
 	userstr, err := generateUserString(
@@ -227,7 +229,7 @@ func (c *criService) RunPodSandbox(ctx context.Context, r *runtime.RunPodSandbox
 		}
 	}()
 
-	// Setup sandbox /dev/shm, /etc/hosts and /etc/resolv.conf.
+	// Setup sandbox /dev/shm, /etc/hosts, /etc/resolv.conf and /etc/hostname.
 	if err = c.setupSandboxFiles(id, config); err != nil {
 		return nil, errors.Wrapf(err, "failed to setup sandbox files")
 	}
@@ -383,6 +385,7 @@ func (c *criService) generateSandboxContainerSpec(id string, config *runtime.Pod
 	nsOptions := securityContext.GetNamespaceOptions()
 	if nsOptions.GetNetwork() == runtime.NamespaceMode_NODE {
 		g.RemoveLinuxNamespace(string(runtimespec.NetworkNamespace)) // nolint: errcheck
+		g.RemoveLinuxNamespace(string(runtimespec.UTSNamespace))     // nolint: errcheck
 	} else {
 		//TODO(Abhi): May be move this to containerd spec opts (WithLinuxSpaceOption)
 		g.AddOrReplaceLinuxNamespace(string(runtimespec.NetworkNamespace), nsPath) // nolint: errcheck
@@ -433,13 +436,27 @@ func (c *criService) generateSandboxContainerSpec(id string, config *runtime.Pod
 
 	g.AddAnnotation(annotations.ContainerType, annotations.ContainerTypeSandbox)
 	g.AddAnnotation(annotations.SandboxID, id)
+	g.AddAnnotation(annotations.SandboxLogDir, config.GetLogDirectory())
 
 	return g.Config, nil
 }
 
-// setupSandboxFiles sets up necessary sandbox files including /dev/shm, /etc/hosts
-// and /etc/resolv.conf.
+// setupSandboxFiles sets up necessary sandbox files including /dev/shm, /etc/hosts,
+// /etc/resolv.conf and /etc/hostname.
 func (c *criService) setupSandboxFiles(id string, config *runtime.PodSandboxConfig) error {
+	sandboxEtcHostname := c.getSandboxHostname(id)
+	hostname := config.GetHostname()
+	if hostname == "" {
+		var err error
+		hostname, err = c.os.Hostname()
+		if err != nil {
+			return errors.Wrap(err, "failed to get hostname")
+		}
+	}
+	if err := c.os.WriteFile(sandboxEtcHostname, []byte(hostname+"\n"), 0644); err != nil {
+		return errors.Wrapf(err, "failed to write hostname to %q", sandboxEtcHostname)
+	}
+
 	// TODO(random-liu): Consider whether we should maintain /etc/hosts and /etc/resolv.conf in kubelet.
 	sandboxEtcHosts := c.getSandboxHosts(id)
 	if err := c.os.CopyFile(etcHosts, sandboxEtcHosts, 0644); err != nil {

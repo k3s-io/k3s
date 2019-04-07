@@ -7,19 +7,19 @@
 #
 
 # Install proto3
-FROM golang:1.10 AS proto3
+FROM golang:1.11 AS proto3
 RUN apt-get update && apt-get install -y autoconf automake g++ libtool unzip
 COPY script/setup/install-protobuf install-protobuf
 RUN ./install-protobuf
 
 # Install runc
-FROM golang:1.10 AS runc
+FROM golang:1.11 AS runc
 RUN apt-get update && apt-get install -y curl libseccomp-dev
 COPY vendor.conf /go/src/github.com/containerd/containerd/vendor.conf
 COPY script/setup/install-runc install-runc
 RUN ./install-runc
 
-FROM golang:1.10
+FROM golang:1.11
 RUN apt-get update && apt-get install -y btrfs-tools gcc git libseccomp-dev make xfsprogs
 
 COPY --from=proto3 /usr/local/bin/protoc /usr/local/bin/protoc

@@ -8,6 +8,7 @@ endif
 .PHONY: test
 test: check-gopath
 	go test -timeout 3m -tags "${BUILDTAGS}" ${TESTFLAGS} -v ./...
+	go test -timeout 3m ${TESTFLAGS} -v ./...
 
 .PHONY:
 lint:

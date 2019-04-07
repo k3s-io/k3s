@@ -20,8 +20,10 @@ import (
 	"time"
 
 	"k8s.io/apiserver/pkg/authentication/authenticator"
+	"k8s.io/apiserver/pkg/authentication/authenticatorfactory"
 	"k8s.io/apiserver/pkg/authentication/group"
 	"k8s.io/apiserver/pkg/authentication/request/bearertoken"
+	"k8s.io/apiserver/pkg/authentication/request/headerrequest"
 	"k8s.io/apiserver/pkg/authentication/request/union"
 	"k8s.io/apiserver/pkg/authentication/request/websocket"
 	"k8s.io/apiserver/pkg/authentication/request/x509"
@@ -32,8 +34,10 @@ import (
 	"k8s.io/apiserver/plugin/pkg/authenticator/password/passwordfile"
 	"k8s.io/apiserver/plugin/pkg/authenticator/request/basicauth"
 	"k8s.io/apiserver/plugin/pkg/authenticator/token/webhook"
+
 	// Initialize all known client auth plugins.
 	certutil "k8s.io/client-go/util/cert"
+	"k8s.io/client-go/util/keyutil"
 	"k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/serviceaccount"
 )
@@ -53,6 +57,8 @@ type Config struct {
 	TokenSuccessCacheTTL time.Duration
 	TokenFailureCacheTTL time.Duration
 
+	RequestHeaderConfig *authenticatorfactory.RequestHeaderConfig
+
 	// TODO, this is the only non-serializable part of the entire config.  Factor it out into a clientconfig
 	ServiceAccountTokenGetter   serviceaccount.ServiceAccountTokenGetter
 }
@@ -62,6 +68,22 @@ type Config struct {
 func (config Config) New() (authenticator.Request, error) {
 	var authenticators []authenticator.Request
 	var tokenAuthenticators []authenticator.Token
+
+	// front-proxy, BasicAuth methods, local first, then remote
+	// Add the front proxy authenticator if requested
+	if config.RequestHeaderConfig != nil {
+		requestHeaderAuthenticator, err := headerrequest.NewSecure(
+			config.RequestHeaderConfig.ClientCA,
+			config.RequestHeaderConfig.AllowedClientNames,
+			config.RequestHeaderConfig.UsernameHeaders,
+			config.RequestHeaderConfig.GroupHeaders,
+			config.RequestHeaderConfig.ExtraHeaderPrefixes,
+		)
+		if err != nil {
+			return nil, err
+		}
+		authenticators = append(authenticators, authenticator.WrapAudienceAgnosticRequest(config.APIAudiences, requestHeaderAuthenticator))
+	}
 
 	// basic auth
 	if len(config.BasicAuthFile) > 0 {
@@ -134,7 +156,7 @@ func (config Config) New() (authenticator.Request, error) {
 
 // IsValidServiceAccountKeyFile returns true if a valid public RSA key can be read from the given file
 func IsValidServiceAccountKeyFile(file string) bool {
-	_, err := certutil.PublicKeysFromFile(file)
+	_, err := keyutil.PublicKeysFromFile(file)
 	return err == nil
 }
 
@@ -162,7 +184,7 @@ func newAuthenticatorFromTokenFile(tokenAuthFile string) (authenticator.Token, e
 func newLegacyServiceAccountAuthenticator(keyfiles []string, lookup bool, apiAudiences authenticator.Audiences, serviceAccountGetter serviceaccount.ServiceAccountTokenGetter) (authenticator.Token, error) {
 	allPublicKeys := []interface{}{}
 	for _, keyfile := range keyfiles {
-		publicKeys, err := certutil.PublicKeysFromFile(keyfile)
+		publicKeys, err := keyutil.PublicKeysFromFile(keyfile)
 		if err != nil {
 			return nil, err
 		}
@@ -177,7 +199,7 @@ func newLegacyServiceAccountAuthenticator(keyfiles []string, lookup bool, apiAud
 func newServiceAccountAuthenticator(iss string, keyfiles []string, apiAudiences authenticator.Audiences, serviceAccountGetter serviceaccount.ServiceAccountTokenGetter) (authenticator.Token, error) {
 	allPublicKeys := []interface{}{}
 	for _, keyfile := range keyfiles {
-		publicKeys, err := certutil.PublicKeysFromFile(keyfile)
+		publicKeys, err := keyutil.PublicKeysFromFile(keyfile)
 		if err != nil {
 			return nil, err
 		}

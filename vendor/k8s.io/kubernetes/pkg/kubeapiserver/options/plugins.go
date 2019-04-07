@@ -23,6 +23,7 @@ import (
 	// Admission policies
 	"k8s.io/kubernetes/plugin/pkg/admission/defaulttolerationseconds"
 	"k8s.io/kubernetes/plugin/pkg/admission/limitranger"
+	"k8s.io/kubernetes/plugin/pkg/admission/noderestriction"
 	"k8s.io/kubernetes/plugin/pkg/admission/nodetaint"
 	podpriority "k8s.io/kubernetes/plugin/pkg/admission/priority"
 	"k8s.io/kubernetes/plugin/pkg/admission/resourcequota"
@@ -41,17 +42,18 @@ import (
 
 // AllOrderedPlugins is the list of all the plugins in order.
 var AllOrderedPlugins = []string{
-	lifecycle.PluginName,                // NamespaceLifecycle
-	limitranger.PluginName,              // LimitRanger
-	serviceaccount.PluginName,           // ServiceAccount
-	nodetaint.PluginName,                // TaintNodesByCondition
-	podpriority.PluginName,              // Priority
-	defaulttolerationseconds.PluginName, // DefaultTolerationSeconds
-	setdefault.PluginName,               // DefaultStorageClass
-	resize.PluginName,                   // PersistentVolumeClaimResize
-	mutatingwebhook.PluginName,          // MutatingAdmissionWebhook
-	validatingwebhook.PluginName,        // ValidatingAdmissionWebhook
-	resourcequota.PluginName,            // ResourceQuota
+	lifecycle.PluginName,                    // NamespaceLifecycle
+	limitranger.PluginName,                  // LimitRanger
+	serviceaccount.PluginName,               // ServiceAccount
+	noderestriction.PluginName,              // NodeRestriction
+	nodetaint.PluginName,                    // TaintNodesByCondition
+	podpriority.PluginName,                  // Priority
+	defaulttolerationseconds.PluginName,     // DefaultTolerationSeconds
+	setdefault.PluginName,                   // DefaultStorageClass
+	resize.PluginName,                       // PersistentVolumeClaimResize
+	mutatingwebhook.PluginName,              // MutatingAdmissionWebhook
+	validatingwebhook.PluginName,            // ValidatingAdmissionWebhook
+	resourcequota.PluginName,                // ResourceQuota
 }
 
 // RegisterAllAdmissionPlugins registers all admission plugins and
@@ -59,6 +61,7 @@ var AllOrderedPlugins = []string{
 func RegisterAllAdmissionPlugins(plugins *admission.Plugins) {
 	defaulttolerationseconds.Register(plugins)
 	limitranger.Register(plugins)
+	noderestriction.Register(plugins)
 	nodetaint.Register(plugins)
 	resourcequota.Register(plugins)
 	podpriority.Register(plugins)

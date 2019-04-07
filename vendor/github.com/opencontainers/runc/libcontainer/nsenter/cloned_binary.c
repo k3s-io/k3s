@@ -27,8 +27,10 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/statfs.h>
 #include <sys/vfs.h>
 #include <sys/mman.h>
+#include <sys/mount.h>
 #include <sys/sendfile.h>
 #include <sys/syscall.h>
 
@@ -36,18 +38,21 @@
 #if !defined(SYS_memfd_create) && defined(__NR_memfd_create)
 #  define SYS_memfd_create __NR_memfd_create
 #endif
-#ifdef SYS_memfd_create
-#  define HAVE_MEMFD_CREATE
 /* memfd_create(2) flags -- copied from <linux/memfd.h>. */
-#  ifndef MFD_CLOEXEC
-#    define MFD_CLOEXEC       0x0001U
-#    define MFD_ALLOW_SEALING 0x0002U
-#  endif
+#ifndef MFD_CLOEXEC
+#  define MFD_CLOEXEC       0x0001U
+#  define MFD_ALLOW_SEALING 0x0002U
+#endif
 int memfd_create(const char *name, unsigned int flags)
 {
+#ifdef SYS_memfd_create
 	return syscall(SYS_memfd_create, name, flags);
-}
+#else
+	errno = ENOSYS;
+	return -1;
 #endif
+}
+
 
 /* This comes directly from <linux/fcntl.h>. */
 #ifndef F_LINUX_SPECIFIC_BASE
@@ -64,12 +69,10 @@ int memfd_create(const char *name, unsigned int flags)
 #  define F_SEAL_WRITE  0x0008	/* prevent writes */
 #endif
 
-#define RUNC_SENDFILE_MAX 0x7FFFF000 /* sendfile(2) is limited to 2GB. */
-#ifdef HAVE_MEMFD_CREATE
-#  define RUNC_MEMFD_COMMENT "runc_cloned:/proc/self/exe"
-#  define RUNC_MEMFD_SEALS \
+#define CLONED_BINARY_ENV "_LIBCONTAINER_CLONED_BINARY"
+#define RUNC_MEMFD_COMMENT "runc_cloned:/proc/self/exe"
+#define RUNC_MEMFD_SEALS \
 	(F_SEAL_SEAL | F_SEAL_SHRINK | F_SEAL_GROW | F_SEAL_WRITE)
-#endif
 
 static void *must_realloc(void *ptr, size_t size)
 {
@@ -88,28 +91,61 @@ static void *must_realloc(void *ptr, size_t size)
 static int is_self_cloned(void)
 {
 	int fd, ret, is_cloned = 0;
+	struct stat statbuf = {};
+	struct statfs fsbuf = {};
 
 	fd = open("/proc/self/exe", O_RDONLY|O_CLOEXEC);
 	if (fd < 0)
 		return -ENOTRECOVERABLE;
 
-#ifdef HAVE_MEMFD_CREATE
+	/*
+	 * Is the binary a fully-sealed memfd? We don't need CLONED_BINARY_ENV for
+	 * this, because you cannot write to a sealed memfd no matter what (so
+	 * sharing it isn't a bad thing -- and an admin could bind-mount a sealed
+	 * memfd to /usr/bin/runc to allow re-use).
+	 */
 	ret = fcntl(fd, F_GET_SEALS);
-	is_cloned = (ret == RUNC_MEMFD_SEALS);
-#else
-	struct stat statbuf = {0};
-	ret = fstat(fd, &statbuf);
-	if (ret >= 0)
-		is_cloned = (statbuf.st_nlink == 0);
-#endif
+	if (ret >= 0) {
+		is_cloned = (ret == RUNC_MEMFD_SEALS);
+		goto out;
+	}
+
+	/*
+	 * All other forms require CLONED_BINARY_ENV, since they are potentially
+	 * writeable (or we can't tell if they're fully safe) and thus we must
+	 * check the environment as an extra layer of defence.
+	 */
+	if (!getenv(CLONED_BINARY_ENV)) {
+		is_cloned = false;
+		goto out;
+	}
+
+	/*
+	 * Is the binary on a read-only filesystem? We can't detect bind-mounts in
+	 * particular (in-kernel they are identical to regular mounts) but we can
+	 * at least be sure that it's read-only. In addition, to make sure that
+	 * it's *our* bind-mount we check CLONED_BINARY_ENV.
+	 */
+	if (fstatfs(fd, &fsbuf) >= 0)
+		is_cloned |= (fsbuf.f_flags & MS_RDONLY);
+
+	/*
+	 * Okay, we're a tmpfile -- or we're currently running on RHEL <=7.6
+	 * which appears to have a borked backport of F_GET_SEALS. Either way,
+	 * having a file which has no hardlinks indicates that we aren't using
+	 * a host-side "runc" binary and this is something that a container
+	 * cannot fake (because unlinking requires being able to resolve the
+	 * path that you want to unlink).
+	 */
+	if (fstat(fd, &statbuf) >= 0)
+		is_cloned |= (statbuf.st_nlink == 0);
+
+out:
 	close(fd);
 	return is_cloned;
 }
 
-/*
- * Basic wrapper around mmap(2) that gives you the file length so you can
- * safely treat it as an ordinary buffer. Only gives you read access.
- */
+/* Read a given file into a new buffer, and providing the length. */
 static char *read_file(char *path, size_t *length)
 {
 	int fd;
@@ -124,7 +160,7 @@ static char *read_file(char *path, size_t *length)
 
 	*length = 0;
 	for (;;) {
-		int n;
+		ssize_t n;
 
 		n = read(fd, buf, sizeof(buf));
 		if (n < 0)
@@ -169,100 +205,312 @@ static int parse_xargs(char *data, int data_length, char ***output)
 }
 
 /*
- * "Parse" out argv and envp from /proc/self/cmdline and /proc/self/environ.
+ * "Parse" out argv from /proc/self/cmdline.
  * This is necessary because we are running in a context where we don't have a
  * main() that we can just get the arguments from.
  */
-static int fetchve(char ***argv, char ***envp)
+static int fetchve(char ***argv)
 {
-	char *cmdline = NULL, *environ = NULL;
-	size_t cmdline_size, environ_size;
+	char *cmdline = NULL;
+	size_t cmdline_size;
 
 	cmdline = read_file("/proc/self/cmdline", &cmdline_size);
 	if (!cmdline)
 		goto error;
-	environ = read_file("/proc/self/environ", &environ_size);
-	if (!environ)
-		goto error;
 
 	if (parse_xargs(cmdline, cmdline_size, argv) <= 0)
-		goto error;
-	if (parse_xargs(environ, environ_size, envp) <= 0)
 		goto error;
 
 	return 0;
 
 error:
-	free(environ);
 	free(cmdline);
 	return -EINVAL;
 }
 
+enum {
+	EFD_NONE = 0,
+	EFD_MEMFD,
+	EFD_FILE,
+};
+
+/*
+ * This comes from <linux/fcntl.h>. We can't hard-code __O_TMPFILE because it
+ * changes depending on the architecture. If we don't have O_TMPFILE we always
+ * have the mkostemp(3) fallback.
+ */
+#ifndef O_TMPFILE
+#  if defined(__O_TMPFILE) && defined(O_DIRECTORY)
+#    define O_TMPFILE (__O_TMPFILE | O_DIRECTORY)
+#  endif
+#endif
+
+static int make_execfd(int *fdtype)
+{
+	int fd = -1;
+	char template[PATH_MAX] = {0};
+	char *prefix = getenv("_LIBCONTAINER_STATEDIR");
+
+	if (!prefix || *prefix != '/')
+		prefix = "/tmp";
+	if (snprintf(template, sizeof(template), "%s/runc.XXXXXX", prefix) < 0)
+		return -1;
+
+	/*
+	 * Now try memfd, it's much nicer than actually creating a file in STATEDIR
+	 * since it's easily detected thanks to sealing and also doesn't require
+	 * assumptions about STATEDIR.
+	 */
+	*fdtype = EFD_MEMFD;
+	fd = memfd_create(RUNC_MEMFD_COMMENT, MFD_CLOEXEC | MFD_ALLOW_SEALING);
+	if (fd >= 0)
+		return fd;
+	if (errno != ENOSYS && errno != EINVAL)
+		goto error;
+
+#ifdef O_TMPFILE
+	/*
+	 * Try O_TMPFILE to avoid races where someone might snatch our file. Note
+	 * that O_EXCL isn't actually a security measure here (since you can just
+	 * fd re-open it and clear O_EXCL).
+	 */
+	*fdtype = EFD_FILE;
+	fd = open(prefix, O_TMPFILE | O_EXCL | O_RDWR | O_CLOEXEC, 0700);
+	if (fd >= 0) {
+		struct stat statbuf = {};
+		bool working_otmpfile = false;
+
+		/*
+		 * open(2) ignores unknown O_* flags -- yeah, I was surprised when I
+		 * found this out too. As a result we can't check for EINVAL. However,
+		 * if we get nlink != 0 (or EISDIR) then we know that this kernel
+		 * doesn't support O_TMPFILE.
+		 */
+		if (fstat(fd, &statbuf) >= 0)
+			working_otmpfile = (statbuf.st_nlink == 0);
+
+		if (working_otmpfile)
+			return fd;
+
+		/* Pretend that we got EISDIR since O_TMPFILE failed. */
+		close(fd);
+		errno = EISDIR;
+	}
+	if (errno != EISDIR)
+		goto error;
+#endif /* defined(O_TMPFILE) */
+
+	/*
+	 * Our final option is to create a temporary file the old-school way, and
+	 * then unlink it so that nothing else sees it by accident.
+	 */
+	*fdtype = EFD_FILE;
+	fd = mkostemp(template, O_CLOEXEC);
+	if (fd >= 0) {
+		if (unlink(template) >= 0)
+			return fd;
+		close(fd);
+	}
+
+error:
+	*fdtype = EFD_NONE;
+	return -1;
+}
+
+static int seal_execfd(int *fd, int fdtype)
+{
+	switch (fdtype) {
+	case EFD_MEMFD:
+		return fcntl(*fd, F_ADD_SEALS, RUNC_MEMFD_SEALS);
+	case EFD_FILE: {
+		/* Need to re-open our pseudo-memfd as an O_PATH to avoid execve(2) giving -ETXTBSY. */
+		int newfd;
+		char fdpath[PATH_MAX] = {0};
+
+		if (fchmod(*fd, 0100) < 0)
+			return -1;
+
+		if (snprintf(fdpath, sizeof(fdpath), "/proc/self/fd/%d", *fd) < 0)
+			return -1;
+
+		newfd = open(fdpath, O_PATH | O_CLOEXEC);
+		if (newfd < 0)
+			return -1;
+
+		close(*fd);
+		*fd = newfd;
+		return 0;
+	}
+	default:
+	   break;
+	}
+	return -1;
+}
+
+static int try_bindfd(void)
+{
+	int fd, ret = -1;
+	char template[PATH_MAX] = {0};
+	char *prefix = getenv("_LIBCONTAINER_STATEDIR");
+
+	if (!prefix || *prefix != '/')
+		prefix = "/tmp";
+	if (snprintf(template, sizeof(template), "%s/runc.XXXXXX", prefix) < 0)
+		return ret;
+
+	/*
+	 * We need somewhere to mount it, mounting anything over /proc/self is a
+	 * BAD idea on the host -- even if we do it temporarily.
+	 */
+	fd = mkstemp(template);
+	if (fd < 0)
+		return ret;
+	close(fd);
+
+	/*
+	 * For obvious reasons this won't work in rootless mode because we haven't
+	 * created a userns+mntns -- but getting that to work will be a bit
+	 * complicated and it's only worth doing if someone actually needs it.
+	 */
+	ret = -EPERM;
+	if (mount("/proc/self/exe", template, "", MS_BIND, "") < 0)
+		goto out;
+	if (mount("", template, "", MS_REMOUNT | MS_BIND | MS_RDONLY, "") < 0)
+		goto out_umount;
+
+
+	/* Get read-only handle that we're sure can't be made read-write. */
+	ret = open(template, O_PATH | O_CLOEXEC);
+
+out_umount:
+	/*
+	 * Make sure the MNT_DETACH works, otherwise we could get remounted
+	 * read-write and that would be quite bad (the fd would be made read-write
+	 * too, invalidating the protection).
+	 */
+	if (umount2(template, MNT_DETACH) < 0) {
+		if (ret >= 0)
+			close(ret);
+		ret = -ENOTRECOVERABLE;
+	}
+
+out:
+	/*
+	 * We don't care about unlink errors, the worst that happens is that
+	 * there's an empty file left around in STATEDIR.
+	 */
+	unlink(template);
+	return ret;
+}
+
+static ssize_t fd_to_fd(int outfd, int infd)
+{
+	ssize_t total = 0;
+	char buffer[4096];
+
+	for (;;) {
+		ssize_t nread, nwritten = 0;
+
+		nread = read(infd, buffer, sizeof(buffer));
+		if (nread < 0)
+			return -1;
+		if (!nread)
+			break;
+
+		do {
+			ssize_t n = write(outfd, buffer + nwritten, nread - nwritten);
+			if (n < 0)
+				return -1;
+			nwritten += n;
+		} while(nwritten < nread);
+
+		total += nwritten;
+	}
+
+	return total;
+}
+
 static int clone_binary(void)
 {
-	int binfd, memfd;
-	ssize_t sent = 0;
+	int binfd, execfd;
+	struct stat statbuf = {};
+	size_t sent = 0;
+	int fdtype = EFD_NONE;
 
-#ifdef HAVE_MEMFD_CREATE
-	memfd = memfd_create(RUNC_MEMFD_COMMENT, MFD_CLOEXEC | MFD_ALLOW_SEALING);
-#else
-	memfd = open("/tmp", O_TMPFILE | O_EXCL | O_RDWR | O_CLOEXEC, 0711);
-#endif
-	if (memfd < 0)
+	/*
+	 * Before we resort to copying, let's try creating an ro-binfd in one shot
+	 * by getting a handle for a read-only bind-mount of the execfd.
+	 */
+	execfd = try_bindfd();
+	if (execfd >= 0)
+		return execfd;
+
+	/*
+	 * Dammit, that didn't work -- time to copy the binary to a safe place we
+	 * can seal the contents.
+	 */
+	execfd = make_execfd(&fdtype);
+	if (execfd < 0 || fdtype == EFD_NONE)
 		return -ENOTRECOVERABLE;
 
 	binfd = open("/proc/self/exe", O_RDONLY | O_CLOEXEC);
 	if (binfd < 0)
 		goto error;
 
-	sent = sendfile(memfd, binfd, NULL, RUNC_SENDFILE_MAX);
+	if (fstat(binfd, &statbuf) < 0)
+		goto error_binfd;
+
+	while (sent < statbuf.st_size) {
+		int n = sendfile(execfd, binfd, NULL, statbuf.st_size - sent);
+		if (n < 0) {
+			/* sendfile can fail so we fallback to a dumb user-space copy. */
+			n = fd_to_fd(execfd, binfd);
+			if (n < 0)
+				goto error_binfd;
+		}
+		sent += n;
+	}
 	close(binfd);
-	if (sent < 0)
+	if (sent != statbuf.st_size)
 		goto error;
 
-#ifdef HAVE_MEMFD_CREATE
-	int err = fcntl(memfd, F_ADD_SEALS, RUNC_MEMFD_SEALS);
-	if (err < 0)
-		goto error;
-#else
-	/* Need to re-open "memfd" as read-only to avoid execve(2) giving -EXTBUSY. */
-	int newfd;
-	char *fdpath = NULL;
-
-	if (asprintf(&fdpath, "/proc/self/fd/%d", memfd) < 0)
-		goto error;
-	newfd = open(fdpath, O_RDONLY | O_CLOEXEC);
-	free(fdpath);
-	if (newfd < 0)
+	if (seal_execfd(&execfd, fdtype) < 0)
 		goto error;
 
-	close(memfd);
-	memfd = newfd;
-#endif
-	return memfd;
+	return execfd;
 
+error_binfd:
+	close(binfd);
 error:
-	close(memfd);
+	close(execfd);
 	return -EIO;
 }
+
+/* Get cheap access to the environment. */
+extern char **environ;
 
 int ensure_cloned_binary(void)
 {
 	int execfd;
-	char **argv = NULL, **envp = NULL;
+	char **argv = NULL;
 
 	/* Check that we're not self-cloned, and if we are then bail. */
 	int cloned = is_self_cloned();
 	if (cloned > 0 || cloned == -ENOTRECOVERABLE)
 		return cloned;
 
-	if (fetchve(&argv, &envp) < 0)
+	if (fetchve(&argv) < 0)
 		return -EINVAL;
 
 	execfd = clone_binary();
 	if (execfd < 0)
 		return -EIO;
 
-	fexecve(execfd, argv, envp);
+	if (putenv(CLONED_BINARY_ENV "=1"))
+		goto error;
+
+	fexecve(execfd, argv, environ);
+error:
+	close(execfd);
 	return -ENOEXEC;
 }

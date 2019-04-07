@@ -17,12 +17,15 @@ limitations under the License.
 package options
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"time"
 
 	"github.com/spf13/pflag"
 	"k8s.io/klog"
 
+	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apiserver/pkg/authentication/authenticatorfactory"
@@ -31,6 +34,70 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
+
+type RequestHeaderAuthenticationOptions struct {
+	// ClientCAFile is the root certificate bundle to verify client certificates on incoming requests
+	// before trusting usernames in headers.
+	ClientCAFile string
+
+	UsernameHeaders     []string
+	GroupHeaders        []string
+	ExtraHeaderPrefixes []string
+	AllowedNames        []string
+}
+
+func (s *RequestHeaderAuthenticationOptions) AddFlags(fs *pflag.FlagSet) {
+	if s == nil {
+		return
+	}
+
+	fs.StringSliceVar(&s.UsernameHeaders, "requestheader-username-headers", s.UsernameHeaders, ""+
+		"List of request headers to inspect for usernames. X-Remote-User is common.")
+
+	fs.StringSliceVar(&s.GroupHeaders, "requestheader-group-headers", s.GroupHeaders, ""+
+		"List of request headers to inspect for groups. X-Remote-Group is suggested.")
+
+	fs.StringSliceVar(&s.ExtraHeaderPrefixes, "requestheader-extra-headers-prefix", s.ExtraHeaderPrefixes, ""+
+		"List of request header prefixes to inspect. X-Remote-Extra- is suggested.")
+
+	fs.StringVar(&s.ClientCAFile, "requestheader-client-ca-file", s.ClientCAFile, ""+
+		"Root certificate bundle to use to verify client certificates on incoming requests "+
+		"before trusting usernames in headers specified by --requestheader-username-headers. "+
+		"WARNING: generally do not depend on authorization being already done for incoming requests.")
+
+	fs.StringSliceVar(&s.AllowedNames, "requestheader-allowed-names", s.AllowedNames, ""+
+		"List of client certificate common names to allow to provide usernames in headers "+
+		"specified by --requestheader-username-headers. If empty, any client certificate validated "+
+		"by the authorities in --requestheader-client-ca-file is allowed.")
+}
+
+// ToAuthenticationRequestHeaderConfig returns a RequestHeaderConfig config object for these options
+// if necessary, nil otherwise.
+func (s *RequestHeaderAuthenticationOptions) ToAuthenticationRequestHeaderConfig() *authenticatorfactory.RequestHeaderConfig {
+	if len(s.ClientCAFile) == 0 {
+		return nil
+	}
+
+	return &authenticatorfactory.RequestHeaderConfig{
+		UsernameHeaders:     s.UsernameHeaders,
+		GroupHeaders:        s.GroupHeaders,
+		ExtraHeaderPrefixes: s.ExtraHeaderPrefixes,
+		ClientCA:            s.ClientCAFile,
+		AllowedClientNames:  s.AllowedNames,
+	}
+}
+
+type ClientCertAuthenticationOptions struct {
+	// ClientCA is the certificate bundle for all the signers that you'll recognize for incoming client certificates
+	ClientCA string
+}
+
+func (s *ClientCertAuthenticationOptions) AddFlags(fs *pflag.FlagSet) {
+	fs.StringVar(&s.ClientCA, "client-ca-file", s.ClientCA, ""+
+		"If set, any request presenting a client certificate signed by one of "+
+		"the authorities in the client-ca-file is authenticated with an identity "+
+		"corresponding to the CommonName of the client certificate.")
+}
 
 // DelegatingAuthenticationOptions provides an easy way for composing API servers to delegate their authentication to
 // the root kube API server.  The API federator will act as
@@ -46,6 +113,10 @@ type DelegatingAuthenticationOptions struct {
 	// CacheTTL is the length of time that a token authentication answer will be cached.
 	CacheTTL time.Duration
 
+	ClientCert    ClientCertAuthenticationOptions
+	RequestHeader RequestHeaderAuthenticationOptions
+
+	// SkipInClusterLookup indicates missing authentication configuration should not be retrieved from the cluster configmap
 	SkipInClusterLookup bool
 
 	// TolerateInClusterLookupFailure indicates failures to look up authentication configuration from the cluster configmap should not be fatal.
@@ -57,6 +128,12 @@ func NewDelegatingAuthenticationOptions() *DelegatingAuthenticationOptions {
 	return &DelegatingAuthenticationOptions{
 		// very low for responsiveness, but high enough to handle storms
 		CacheTTL:   10 * time.Second,
+		ClientCert: ClientCertAuthenticationOptions{},
+		RequestHeader: RequestHeaderAuthenticationOptions{
+			UsernameHeaders:     []string{"x-remote-user"},
+			GroupHeaders:        []string{"x-remote-group"},
+			ExtraHeaderPrefixes: []string{"x-remote-extra-"},
+		},
 	}
 }
 
@@ -80,6 +157,9 @@ func (s *DelegatingAuthenticationOptions) AddFlags(fs *pflag.FlagSet) {
 
 	fs.DurationVar(&s.CacheTTL, "authentication-token-webhook-cache-ttl", s.CacheTTL,
 		"The duration to cache responses from the webhook token authenticator.")
+
+	s.ClientCert.AddFlags(fs)
+	s.RequestHeader.AddFlags(fs)
 
 	fs.BoolVar(&s.SkipInClusterLookup, "authentication-skip-lookup", s.SkipInClusterLookup, ""+
 		"If false, the authentication-kubeconfig will be used to lookup missing authentication "+
@@ -118,6 +198,17 @@ func (s *DelegatingAuthenticationOptions) ApplyTo(c *server.AuthenticationInfo, 
 		}
 	}
 
+	// configure AuthenticationInfo config
+	cfg.ClientCAFile = s.ClientCert.ClientCA
+	if err = c.ApplyClientCert(s.ClientCert.ClientCA, servingInfo); err != nil {
+		return fmt.Errorf("unable to load client CA file: %v", err)
+	}
+
+	cfg.RequestHeaderConfig = s.RequestHeader.ToAuthenticationRequestHeaderConfig()
+	if err = c.ApplyClientCert(s.RequestHeader.ClientCAFile, servingInfo); err != nil {
+		return fmt.Errorf("unable to load client CA file: %v", err)
+	}
+
 	// create authenticator
 	authenticator, err := cfg.New()
 	if err != nil {
@@ -140,24 +231,131 @@ const (
 )
 
 func (s *DelegatingAuthenticationOptions) lookupMissingConfigInCluster(client kubernetes.Interface) error {
+	if len(s.ClientCert.ClientCA) > 0 && len(s.RequestHeader.ClientCAFile) > 0 {
+		return nil
+	}
 	if client == nil {
+		if len(s.ClientCert.ClientCA) == 0 {
+			klog.Warningf("No authentication-kubeconfig provided in order to lookup client-ca-file in configmap/%s in %s, so client certificate authentication won't work.", authenticationConfigMapName, authenticationConfigMapNamespace)
+		}
+		if len(s.RequestHeader.ClientCAFile) == 0 {
+			klog.Warningf("No authentication-kubeconfig provided in order to lookup requestheader-client-ca-file in configmap/%s in %s, so request-header client certificate authentication won't work.", authenticationConfigMapName, authenticationConfigMapNamespace)
+		}
 		return nil
 	}
 
-	_, err := client.CoreV1().ConfigMaps(authenticationConfigMapNamespace).Get(authenticationConfigMapName, metav1.GetOptions{})
+	authConfigMap, err := client.CoreV1().ConfigMaps(authenticationConfigMapNamespace).Get(authenticationConfigMapName, metav1.GetOptions{})
 	switch {
 	case errors.IsNotFound(err):
 		// ignore, authConfigMap is nil now
 	case errors.IsForbidden(err):
 		klog.Warningf("Unable to get configmap/%s in %s.  Usually fixed by "+
-			"'kubectl create rolebinding -n %s ROLE_NAME --role=%s --serviceaccount=YOUR_NS:YOUR_SA'",
+			"'kubectl create rolebinding -n %s ROLEBINDING_NAME --role=%s --serviceaccount=YOUR_NS:YOUR_SA'",
 			authenticationConfigMapName, authenticationConfigMapNamespace, authenticationConfigMapNamespace, authenticationRoleName)
 		return err
 	case err != nil:
 		return err
 	}
 
+	if len(s.ClientCert.ClientCA) == 0 {
+		if authConfigMap != nil {
+			opt, err := inClusterClientCA(authConfigMap)
+			if err != nil {
+				return err
+			}
+			if opt != nil {
+				s.ClientCert = *opt
+			}
+		}
+		if len(s.ClientCert.ClientCA) == 0 {
+			klog.Warningf("Cluster doesn't provide client-ca-file in configmap/%s in %s, so client certificate authentication won't work.", authenticationConfigMapName, authenticationConfigMapNamespace)
+		}
+	}
+
+	if len(s.RequestHeader.ClientCAFile) == 0 {
+		if authConfigMap != nil {
+			opt, err := inClusterRequestHeader(authConfigMap)
+			if err != nil {
+				return err
+			}
+			if opt != nil {
+				s.RequestHeader = *opt
+			}
+		}
+		if len(s.RequestHeader.ClientCAFile) == 0 {
+			klog.Warningf("Cluster doesn't provide requestheader-client-ca-file in configmap/%s in %s, so request-header client certificate authentication won't work.", authenticationConfigMapName, authenticationConfigMapNamespace)
+		}
+	}
+
 	return nil
+}
+
+func inClusterClientCA(authConfigMap *v1.ConfigMap) (*ClientCertAuthenticationOptions, error) {
+	clientCA, ok := authConfigMap.Data["client-ca-file"]
+	if !ok {
+		// not having a client-ca is fine, return nil
+		return nil, nil
+	}
+
+	f, err := ioutil.TempFile("", "client-ca-file")
+	if err != nil {
+		return nil, err
+	}
+	if err := ioutil.WriteFile(f.Name(), []byte(clientCA), 0600); err != nil {
+		return nil, err
+	}
+	return &ClientCertAuthenticationOptions{ClientCA: f.Name()}, nil
+}
+
+func inClusterRequestHeader(authConfigMap *v1.ConfigMap) (*RequestHeaderAuthenticationOptions, error) {
+	requestHeaderCA, ok := authConfigMap.Data["requestheader-client-ca-file"]
+	if !ok {
+		// not having a requestheader-client-ca is fine, return nil
+		return nil, nil
+	}
+
+	f, err := ioutil.TempFile("", "requestheader-client-ca-file")
+	if err != nil {
+		return nil, err
+	}
+	if err := ioutil.WriteFile(f.Name(), []byte(requestHeaderCA), 0600); err != nil {
+		return nil, err
+	}
+	usernameHeaders, err := deserializeStrings(authConfigMap.Data["requestheader-username-headers"])
+	if err != nil {
+		return nil, err
+	}
+	groupHeaders, err := deserializeStrings(authConfigMap.Data["requestheader-group-headers"])
+	if err != nil {
+		return nil, err
+	}
+	extraHeaderPrefixes, err := deserializeStrings(authConfigMap.Data["requestheader-extra-headers-prefix"])
+	if err != nil {
+		return nil, err
+	}
+	allowedNames, err := deserializeStrings(authConfigMap.Data["requestheader-allowed-names"])
+	if err != nil {
+		return nil, err
+	}
+
+	return &RequestHeaderAuthenticationOptions{
+		UsernameHeaders:     usernameHeaders,
+		GroupHeaders:        groupHeaders,
+		ExtraHeaderPrefixes: extraHeaderPrefixes,
+		ClientCAFile:        f.Name(),
+		AllowedNames:        allowedNames,
+	}, nil
+}
+
+func deserializeStrings(in string) ([]string, error) {
+	if len(in) == 0 {
+		return nil, nil
+	}
+	var ret []string
+	if err := json.Unmarshal([]byte(in), &ret); err != nil {
+		return nil, err
+	}
+	return ret, nil
 }
 
 // getClient returns a Kubernetes clientset. If s.RemoteKubeConfigFileOptional is true, nil will be returned

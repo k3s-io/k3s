@@ -22,10 +22,10 @@ import (
 	"time"
 
 	lru "github.com/hashicorp/golang-lru"
+	cert "github.com/rancher/norman/pkg/cert"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/acme/autocert"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/client-go/util/cert"
 )
 
 const (

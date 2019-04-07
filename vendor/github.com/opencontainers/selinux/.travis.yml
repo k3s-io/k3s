@@ -1,7 +1,7 @@
 language: go
 go:
-  - 1.8.x
-  - 1.9.x
+  - 1.10.x
+  - 1.11.x
   - tip
   - master
 
@@ -10,7 +10,7 @@ env:
     - BUILDTAGS="selinux"
 
 before_install:
-  - go get -u github.com/golang/lint/golint
+  - go get -u golang.org/x/lint/golint
   - go get -u github.com/vbatts/git-validation
 
 script:

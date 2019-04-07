@@ -33,10 +33,10 @@ import (
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
-	cacheddiscovery "k8s.io/client-go/discovery/cached"
+	cacheddiscovery "k8s.io/client-go/discovery/cached/memory"
 	"k8s.io/client-go/dynamic"
 	clientset "k8s.io/client-go/kubernetes"
-	csiclientset "k8s.io/csi-api/pkg/client/clientset/versioned"
+	restclient "k8s.io/client-go/rest"
 	"k8s.io/kubernetes/pkg/controller"
 	endpointcontroller "k8s.io/kubernetes/pkg/controller/endpoint"
 	"k8s.io/kubernetes/pkg/controller/garbagecollector"
@@ -47,7 +47,6 @@ import (
 	"k8s.io/kubernetes/pkg/controller/podgc"
 	replicationcontroller "k8s.io/kubernetes/pkg/controller/replication"
 	resourcequotacontroller "k8s.io/kubernetes/pkg/controller/resourcequota"
-	servicecontroller "k8s.io/kubernetes/pkg/controller/service"
 	serviceaccountcontroller "k8s.io/kubernetes/pkg/controller/serviceaccount"
 	ttlcontroller "k8s.io/kubernetes/pkg/controller/ttl"
 	"k8s.io/kubernetes/pkg/controller/volume/attachdetach"
@@ -61,25 +60,9 @@ import (
 	"k8s.io/kubernetes/pkg/util/metrics"
 )
 
-func startServiceController(ctx ControllerContext) (http.Handler, bool, error) {
-	serviceController, err := servicecontroller.New(
-		ctx.ClientBuilder.ClientOrDie("service-controller"),
-		ctx.InformerFactory.Core().V1().Services(),
-		ctx.InformerFactory.Core().V1().Nodes(),
-		ctx.ComponentConfig.KubeCloudShared.ClusterName,
-	)
-	if err != nil {
-		// This error shouldn't fail. It lives like this as a legacy.
-		klog.Errorf("Failed to start service controller: %v", err)
-		return nil, false, nil
-	}
-	go serviceController.Run(ctx.Stop, int(ctx.ComponentConfig.ServiceController.ConcurrentServiceSyncs))
-	return nil, true, nil
-}
-
 func startNodeIpamController(ctx ControllerContext) (http.Handler, bool, error) {
-	var clusterCIDR *net.IPNet = nil
-	var serviceCIDR *net.IPNet = nil
+	var clusterCIDR *net.IPNet
+	var serviceCIDR *net.IPNet
 
 	if !ctx.ComponentConfig.KubeCloudShared.AllocateNodeCIDRs {
 		return nil, false, nil
@@ -117,9 +100,11 @@ func startNodeIpamController(ctx ControllerContext) (http.Handler, bool, error) 
 
 func startNodeLifecycleController(ctx ControllerContext) (http.Handler, bool, error) {
 	lifecycleController, err := lifecyclecontroller.NewNodeLifecycleController(
+		ctx.InformerFactory.Coordination().V1beta1().Leases(),
 		ctx.InformerFactory.Core().V1().Pods(),
 		ctx.InformerFactory.Core().V1().Nodes(),
-		ctx.InformerFactory.Extensions().V1beta1().DaemonSets(),
+		ctx.InformerFactory.Apps().V1().DaemonSets(),
+		// node lifecycle controller uses existing cluster role from node-controller
 		ctx.ClientBuilder.ClientOrDie("node-controller"),
 		ctx.ComponentConfig.KubeCloudShared.NodeMonitorPeriod.Duration,
 		ctx.ComponentConfig.NodeLifecycleController.NodeStartupGracePeriod.Duration,
@@ -163,20 +148,17 @@ func startPersistentVolumeBinderController(ctx ControllerContext) (http.Handler,
 
 func startAttachDetachController(ctx ControllerContext) (http.Handler, bool, error) {
 	if ctx.ComponentConfig.AttachDetachController.ReconcilerSyncLoopPeriod.Duration < time.Second {
-		return nil, true, fmt.Errorf("Duration time must be greater than one second as set via command line option reconcile-sync-loop-period.")
+		return nil, true, fmt.Errorf("duration time must be greater than one second as set via command line option reconcile-sync-loop-period")
 	}
-	csiClientConfig := ctx.ClientBuilder.ConfigOrDie("attachdetach-controller")
-	// csiClient works with CRDs that support json only
-	csiClientConfig.ContentType = "application/json"
 
 	attachDetachController, attachDetachControllerErr :=
 		attachdetach.NewAttachDetachController(
 			ctx.ClientBuilder.ClientOrDie("attachdetach-controller"),
-			csiclientset.NewForConfigOrDie(csiClientConfig),
 			ctx.InformerFactory.Core().V1().Pods(),
 			ctx.InformerFactory.Core().V1().Nodes(),
 			ctx.InformerFactory.Core().V1().PersistentVolumeClaims(),
 			ctx.InformerFactory.Core().V1().PersistentVolumes(),
+			ctx.InformerFactory.Storage().V1beta1().CSINodes(),
 			ProbeAttachableVolumePlugins(),
 			GetDynamicPluginProber(ctx.ComponentConfig.PersistentVolumeBinderController.VolumeConfiguration),
 			ctx.ComponentConfig.AttachDetachController.DisableAttachDetachReconcilerSync,
@@ -199,7 +181,7 @@ func startVolumeExpandController(ctx ControllerContext) (http.Handler, bool, err
 			ProbeExpandableVolumePlugins(ctx.ComponentConfig.PersistentVolumeBinderController.VolumeConfiguration))
 
 		if expandControllerErr != nil {
-			return nil, true, fmt.Errorf("Failed to start volume expand controller : %v", expandControllerErr)
+			return nil, true, fmt.Errorf("failed to start volume expand controller : %v", expandControllerErr)
 		}
 		go expandController.Run(ctx.Stop)
 		return nil, true, nil
@@ -279,6 +261,10 @@ func startNamespaceController(ctx ControllerContext) (http.Handler, bool, error)
 	nsKubeconfig.QPS *= 20
 	nsKubeconfig.Burst *= 100
 	namespaceKubeClient := clientset.NewForConfigOrDie(nsKubeconfig)
+	return startModifiedNamespaceController(ctx, namespaceKubeClient, nsKubeconfig)
+}
+
+func startModifiedNamespaceController(ctx ControllerContext, namespaceKubeClient clientset.Interface, nsKubeconfig *restclient.Config) (http.Handler, bool, error) {
 
 	dynamicClient, err := dynamic.NewForConfig(nsKubeconfig)
 	if err != nil {
@@ -351,7 +337,7 @@ func startGarbageCollectorController(ctx ControllerContext) (http.Handler, bool,
 		ctx.InformersStarted,
 	)
 	if err != nil {
-		return nil, true, fmt.Errorf("Failed to start the generic garbage collector: %v", err)
+		return nil, true, fmt.Errorf("failed to start the generic garbage collector: %v", err)
 	}
 
 	// Start the garbage collector.

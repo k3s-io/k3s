@@ -15,7 +15,7 @@ var (
 	gitMinor = "$(echo $1 | cut -f2 -d.)"
 	gitVersion   = "$1"
 	gitCommit    = "$(git rev-parse HEAD)"
-	gitTreeState = "clean" 
+	gitTreeState = "clean"
 	buildDate = "$(date -u -Iminutes)Z"
 )
 EOF

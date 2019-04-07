@@ -184,6 +184,20 @@ func NewConflict(qualifiedResource schema.GroupResource, name string, err error)
 	}}
 }
 
+// NewApplyConflict returns an error including details on the requests apply conflicts
+func NewApplyConflict(causes []metav1.StatusCause, message string) *StatusError {
+	return &StatusError{ErrStatus: metav1.Status{
+		Status: metav1.StatusFailure,
+		Code:   http.StatusConflict,
+		Reason: metav1.StatusReasonConflict,
+		Details: &metav1.StatusDetails{
+			// TODO: Get obj details here?
+			Causes: causes,
+		},
+		Message: message,
+	}}
+}
+
 // NewGone returns an error indicating the item no longer available at the server and no forwarding address is known.
 func NewGone(message string) *StatusError {
 	return &StatusError{metav1.Status{
