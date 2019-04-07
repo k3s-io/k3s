@@ -69,18 +69,6 @@ const (
 	// validation, merging, mutation can be tested without
 	// committing.
 	DryRun utilfeature.Feature = "DryRun"
-
-	// owner: @ksubrmnn
-	// alpha: v1.14
-	//
-	// Allows kube-proxy to run in Overlay mode for Windows
-	WinOverlay utilfeature.Feature = "WinOverlay"
-
-	// owner: @ksubrmnn
-	// alpha: v1.14
-	//
-	// Allows kube-proxy to create DSR loadbalancers for Windows
-	WinDSR utilfeature.Feature = "WinDSR"
 )
 
 func init() {
@@ -96,6 +84,4 @@ var defaultKubernetesFeatureGates = map[utilfeature.Feature]utilfeature.FeatureS
 	AdvancedAuditing:        {Default: true, PreRelease: utilfeature.GA},
 	APIListChunking:         {Default: true, PreRelease: utilfeature.Beta},
 	DryRun:                  {Default: true, PreRelease: utilfeature.Beta},
-	WinOverlay:              {Default: false, PreRelease: utilfeature.Alpha},
-	WinDSR:                  {Default: false, PreRelease: utilfeature.Alpha},
 }
