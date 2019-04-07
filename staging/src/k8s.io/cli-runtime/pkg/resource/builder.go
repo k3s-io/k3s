@@ -130,25 +130,15 @@ func IsUsageError(err error) bool {
 
 type FilenameOptions struct {
 	Filenames []string
-	Kustomize string
 	Recursive bool
 }
 
 func (o *FilenameOptions) validate() []error {
 	var errs []error
-	if len(o.Filenames) > 0 && len(o.Kustomize) > 0 {
-		errs = append(errs, fmt.Errorf("only one of -f or -k can be specified"))
-	}
-	if len(o.Kustomize) > 0 && o.Recursive {
-		errs = append(errs, fmt.Errorf("the -k flag can't be used with -f or -R"))
-	}
 	return errs
 }
 
 func (o *FilenameOptions) RequireFilenameOrKustomize() error {
-	if len(o.Filenames) == 0 && len(o.Kustomize) == 0 {
-		return fmt.Errorf("must specify one of -f and -k")
-	}
 	return nil
 }
 
@@ -237,10 +227,6 @@ func (b *Builder) FilenameParam(enforceNamespace bool, filenameOptions *Filename
 			}
 			b.Path(recursive, s)
 		}
-	}
-	if filenameOptions.Kustomize != "" {
-		b.paths = append(b.paths, &KustomizeVisitor{filenameOptions.Kustomize,
-			NewStreamVisitor(nil, b.mapper, filenameOptions.Kustomize, b.schema)})
 	}
 
 	if enforceNamespace {
