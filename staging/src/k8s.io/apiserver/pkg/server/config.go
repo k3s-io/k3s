@@ -23,14 +23,12 @@ import (
 	"net"
 	"net/http"
 	goruntime "runtime"
-	"sort"
 	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
 
 	jsonpatch "github.com/evanphx/json-patch"
-	"github.com/go-openapi/spec"
 	"github.com/pborman/uuid"
 	"k8s.io/klog"
 
@@ -51,7 +49,6 @@ import (
 	authorizerunion "k8s.io/apiserver/pkg/authorization/union"
 	"k8s.io/apiserver/pkg/endpoints/discovery"
 	genericapifilters "k8s.io/apiserver/pkg/endpoints/filters"
-	apiopenapi "k8s.io/apiserver/pkg/endpoints/openapi"
 	apirequest "k8s.io/apiserver/pkg/endpoints/request"
 	genericregistry "k8s.io/apiserver/pkg/registry/generic"
 	genericfilters "k8s.io/apiserver/pkg/server/filters"
@@ -62,7 +59,6 @@ import (
 	restclient "k8s.io/client-go/rest"
 	certutil "k8s.io/client-go/util/cert"
 	"k8s.io/component-base/logs"
-	openapicommon "k8s.io/kube-openapi/pkg/common"
 
 	// install apis
 	_ "k8s.io/apiserver/pkg/apis/apiserver/install"
@@ -141,8 +137,6 @@ type Config struct {
 	// Serializer is required and provides the interface for serializing and converting objects to and from the wire
 	// The default (api.Codecs) usually works fine.
 	Serializer runtime.NegotiatedSerializer
-	// OpenAPIConfig will be used in generating OpenAPI spec. This is nil by default. Use DefaultOpenAPIConfig for "working" defaults.
-	OpenAPIConfig *openapicommon.Config
 
 	// RESTOptionsGetter is used to construct RESTStorage types via the generic registry.
 	RESTOptionsGetter genericregistry.RESTOptionsGetter
@@ -290,26 +284,6 @@ func NewRecommendedConfig(codecs serializer.CodecFactory) *RecommendedConfig {
 	}
 }
 
-func DefaultOpenAPIConfig(getDefinitions openapicommon.GetOpenAPIDefinitions, defNamer *apiopenapi.DefinitionNamer) *openapicommon.Config {
-	return &openapicommon.Config{
-		ProtocolList:   []string{"https"},
-		IgnorePrefixes: []string{},
-		Info: &spec.Info{
-			InfoProps: spec.InfoProps{
-				Title: "Generic API Server",
-			},
-		},
-		DefaultResponse: &spec.Response{
-			ResponseProps: spec.ResponseProps{
-				Description: "Default Response.",
-			},
-		},
-		GetOperationIDAndTags: apiopenapi.GetOperationIDAndTags,
-		GetDefinitionName:     defNamer.GetDefinitionName,
-		GetDefinitions:        getDefinitions,
-	}
-}
-
 func (c *AuthenticationInfo) ApplyClientCert(clientCAFile string, servingInfo *SecureServingInfo) error {
 	if servingInfo != nil {
 		if len(clientCAFile) > 0 {
@@ -364,42 +338,6 @@ func (c *Config) Complete(informers informers.SharedInformerFactory) CompletedCo
 		c.ExternalAddress = net.JoinHostPort(c.ExternalAddress, strconv.Itoa(port))
 	}
 
-	if c.OpenAPIConfig != nil {
-		if c.OpenAPIConfig.SecurityDefinitions != nil {
-			// Setup OpenAPI security: all APIs will have the same authentication for now.
-			c.OpenAPIConfig.DefaultSecurity = []map[string][]string{}
-			keys := []string{}
-			for k := range *c.OpenAPIConfig.SecurityDefinitions {
-				keys = append(keys, k)
-			}
-			sort.Strings(keys)
-			for _, k := range keys {
-				c.OpenAPIConfig.DefaultSecurity = append(c.OpenAPIConfig.DefaultSecurity, map[string][]string{k: {}})
-			}
-			if c.OpenAPIConfig.CommonResponses == nil {
-				c.OpenAPIConfig.CommonResponses = map[int]spec.Response{}
-			}
-			if _, exists := c.OpenAPIConfig.CommonResponses[http.StatusUnauthorized]; !exists {
-				c.OpenAPIConfig.CommonResponses[http.StatusUnauthorized] = spec.Response{
-					ResponseProps: spec.ResponseProps{
-						Description: "Unauthorized",
-					},
-				}
-			}
-		}
-
-		// make sure we populate info, and info.version, if not manually set
-		if c.OpenAPIConfig.Info == nil {
-			c.OpenAPIConfig.Info = &spec.Info{}
-		}
-		if c.OpenAPIConfig.Info.Version == "" {
-			if c.Version != nil {
-				c.OpenAPIConfig.Info.Version = strings.Split(c.Version.String(), "-")[0]
-			} else {
-				c.OpenAPIConfig.Info.Version = "unversioned"
-			}
-		}
-	}
 	if c.DiscoveryAddresses == nil {
 		c.DiscoveryAddresses = discovery.DefaultAddresses{DefaultAddress: c.ExternalAddress}
 	}
@@ -455,8 +393,6 @@ func (c completedConfig) New(name string, delegationTarget DelegationTarget) (*G
 		Handler: apiServerHandler,
 
 		listedPathProvider: apiServerHandler,
-
-		openAPIConfig: c.OpenAPIConfig,
 
 		postStartHooks:         map[string]postStartHookEntry{},
 		preShutdownHooks:       map[string]preShutdownHookEntry{},
