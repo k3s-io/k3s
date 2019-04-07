@@ -18,10 +18,6 @@ package volume
 
 import (
 	"fmt"
-	"net"
-	"strings"
-	"sync"
-
 	authenticationv1 "k8s.io/api/authentication/v1"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -36,6 +32,9 @@ import (
 	"k8s.io/kubernetes/pkg/util/mount"
 	"k8s.io/kubernetes/pkg/volume/util/recyclerclient"
 	"k8s.io/kubernetes/pkg/volume/util/subpath"
+	"net"
+	"strings"
+	"sync"
 )
 
 type ProbeOperation uint32
@@ -553,6 +552,10 @@ func NewSpecFromPersistentVolume(pv *v1.PersistentVolume, readOnly bool) *Spec {
 func (pm *VolumePluginMgr) InitPlugins(plugins []VolumePlugin, prober DynamicPluginProber, host VolumeHost) error {
 	pm.mutex.Lock()
 	defer pm.mutex.Unlock()
+
+	if pm.Host != nil {
+		return nil
+	}
 
 	pm.Host = host
 
