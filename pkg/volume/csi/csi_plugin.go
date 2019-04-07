@@ -23,6 +23,7 @@ import (
 	"path"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"context"
@@ -60,6 +61,12 @@ const (
 	csiResyncPeriod = time.Minute
 )
 
+var (
+	WaitForValidHostName bool
+	csiPluginInstance *csiPlugin
+	csiPluginLock sync.Mutex
+)
+
 var deprecatedSocketDirVersions = []string{"0.1.0", "0.2.0", "0.3.0", "0.4.0"}
 
 type csiPlugin struct {
@@ -76,11 +83,18 @@ const ephemeralDriverMode driverMode = "ephemeral"
 
 // ProbeVolumePlugins returns implemented plugins
 func ProbeVolumePlugins() []volume.VolumePlugin {
-	p := &csiPlugin{
+	csiPluginLock.Lock()
+	defer csiPluginLock.Unlock()
+
+	if csiPluginInstance != nil {
+		return []volume.VolumePlugin{csiPluginInstance}
+	}
+
+	csiPluginInstance = &csiPlugin{
 		host:         nil,
 		blockEnabled: utilfeature.DefaultFeatureGate.Enabled(features.CSIBlockVolume),
 	}
-	return []volume.VolumePlugin{p}
+	return []volume.VolumePlugin{csiPluginInstance}
 }
 
 // volume.VolumePlugin methods
@@ -204,6 +218,21 @@ func (h *RegistrationHandler) DeRegisterPlugin(pluginName string) {
 }
 
 func (p *csiPlugin) Init(host volume.VolumeHost) error {
+	csiPluginLock.Lock()
+	defer csiPluginLock.Unlock()
+
+	if WaitForValidHostName && host.GetHostName() == "" {
+		for {
+			if p.host != nil {
+				return nil
+			}
+			csiPluginLock.Unlock()
+			time.Sleep(time.Second)
+			klog.Infof("Waiting for CSI volume hostname")
+			csiPluginLock.Lock()
+		}
+	}
+
 	p.host = host
 
 	if utilfeature.DefaultFeatureGate.Enabled(features.CSIDriverRegistry) {
