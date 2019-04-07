@@ -142,23 +142,7 @@ func (c *csiMountMgr) SetUpAt(dir string, fsGroup *int64) error {
 
 	switch {
 	case volSrc != nil:
-		if !utilfeature.DefaultFeatureGate.Enabled(features.CSIInlineVolume) {
-			return fmt.Errorf("CSIInlineVolume feature required")
-		}
-		if c.driverMode != ephemeralDriverMode {
-			return fmt.Errorf("unexpected driver mode: %s", c.driverMode)
-		}
-		if volSrc.FSType != nil {
-			fsType = *volSrc.FSType
-		}
-
-		volAttribs = volSrc.VolumeAttributes
-
-		if volSrc.NodePublishSecretRef != nil {
-			secretName := volSrc.NodePublishSecretRef.Name
-			ns := c.pod.Namespace
-			secretRef = &api.SecretReference{Name: secretName, Namespace: ns}
-		}
+		return fmt.Errorf("CSIInlineVolume feature required")
 	case pvSrc != nil:
 		if c.driverMode != persistentDriverMode {
 			return fmt.Errorf("unexpected driver mode: %s", c.driverMode)

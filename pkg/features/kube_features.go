@@ -94,11 +94,6 @@ const (
 	// Ability to Expand persistent volumes
 	ExpandPersistentVolumes utilfeature.Feature = "ExpandPersistentVolumes"
 
-	// owner: @gnufied
-	// alpha: v1.14
-	// Ability to expand CSI volumes
-	ExpandCSIVolumes utilfeature.Feature = "ExpandCSIVolumes"
-
 	// owner: @verb
 	// beta: v1.12
 	//
@@ -267,12 +262,6 @@ const (
 	// Enables CSI to use raw block storage volumes
 	CSIBlockVolume utilfeature.Feature = "CSIBlockVolume"
 
-	// owner: @vladimirvivien
-	// alpha: v1.14
-	//
-	// Enables CSI Inline volumes support for pods
-	CSIInlineVolume utilfeature.Feature = "CSIInlineVolume"
-
 	// owner: @tallclair
 	// alpha: v1.12
 	// beta:  v1.14
@@ -286,30 +275,6 @@ const (
 	// Kubelet uses the new Lease API to report node heartbeats,
 	// (Kube) Node Lifecycle Controller uses these heartbeats as a node health signal.
 	NodeLease utilfeature.Feature = "NodeLease"
-
-	// owner: @davidz627
-	// alpha: v1.14
-	//
-	// Enables the in-tree storage to CSI Plugin migration feature.
-	CSIMigration utilfeature.Feature = "CSIMigration"
-
-	// owner: @davidz627
-	// alpha: v1.14
-	//
-	// Enables the GCE PD in-tree driver to GCE CSI Driver migration feature.
-	CSIMigrationGCE utilfeature.Feature = "CSIMigrationGCE"
-
-	// owner: @leakingtapan
-	// alpha: v1.14
-	//
-	// Enables the AWS EBS in-tree driver to AWS EBS CSI Driver migration feature.
-	CSIMigrationAWS utilfeature.Feature = "CSIMigrationAWS"
-
-	// owner: @adisky
-	// alpha: v1.14
-	//
-	// Enables the OpenStack Cinder in-tree driver to OpenStack Cinder CSI Driver migration feature.
-	CSIMigrationOpenStack utilfeature.Feature = "CSIMigrationOpenStack"
 )
 
 func init() {
@@ -335,7 +300,6 @@ var defaultKubernetesFeatureGates = map[utilfeature.Feature]utilfeature.FeatureS
 	PodPriority:                             {Default: true, PreRelease: utilfeature.GA},
 	TaintNodesByCondition:                   {Default: true, PreRelease: utilfeature.Beta},
 	ExpandPersistentVolumes:                 {Default: true, PreRelease: utilfeature.Beta},
-	ExpandCSIVolumes:                        {Default: false, PreRelease: utilfeature.Alpha},
 	AttachVolumeLimit:                       {Default: true, PreRelease: utilfeature.Beta},
 	CPUManager:                              {Default: true, PreRelease: utilfeature.Beta},
 	VolumeScheduling:                        {Default: true, PreRelease: utilfeature.GA, LockToDefault: true}, // remove in 1.16
@@ -351,17 +315,12 @@ var defaultKubernetesFeatureGates = map[utilfeature.Feature]utilfeature.FeatureS
 	TokenRequest:                            {Default: true, PreRelease: utilfeature.Beta},
 	TokenRequestProjection:                  {Default: true, PreRelease: utilfeature.Beta},
 	CRIContainerLogRotation:                 {Default: true, PreRelease: utilfeature.Beta},
-	CSIMigration:                            {Default: false, PreRelease: utilfeature.Alpha},
-	CSIMigrationGCE:                         {Default: false, PreRelease: utilfeature.Alpha},
-	CSIMigrationAWS:                         {Default: false, PreRelease: utilfeature.Alpha},
 	RunAsGroup:                              {Default: true, PreRelease: utilfeature.Beta},
-	CSIMigrationOpenStack:                   {Default: false, PreRelease: utilfeature.Alpha},
 	VolumeSubpath:                           {Default: true, PreRelease: utilfeature.GA},
 	PodReadinessGates:                       {Default: true, PreRelease: utilfeature.GA, LockToDefault: true}, // remove in 1.16
 	KubeletPluginsWatcher:                   {Default: true, PreRelease: utilfeature.GA, LockToDefault: true}, // remove in 1.16
 	ResourceQuotaScopeSelectors:             {Default: true, PreRelease: utilfeature.Beta},
 	CSIBlockVolume:                          {Default: true, PreRelease: utilfeature.Beta},
-	CSIInlineVolume:                         {Default: false, PreRelease: utilfeature.Alpha},
 	RuntimeClass:                            {Default: true, PreRelease: utilfeature.Beta},
 	NodeLease:                               {Default: true, PreRelease: utilfeature.Beta},
 

@@ -433,7 +433,7 @@ func dropDisabledVolumeDevicesFields(podSpec, oldPodSpec *api.PodSpec) {
 // dropDisabledCSIVolumeSourceAlphaFields removes disabled alpha fields from []CSIVolumeSource.
 // This should be called from PrepareForCreate/PrepareForUpdate for all pod specs resources containing a CSIVolumeSource
 func dropDisabledCSIVolumeSourceAlphaFields(podSpec, oldPodSpec *api.PodSpec) {
-	if !utilfeature.DefaultFeatureGate.Enabled(features.CSIInlineVolume) && !csiInUse(oldPodSpec) {
+	if !csiInUse(oldPodSpec) {
 		for i := range podSpec.Volumes {
 			podSpec.Volumes[i].CSI = nil
 		}

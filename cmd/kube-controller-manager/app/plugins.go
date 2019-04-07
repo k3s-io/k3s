@@ -106,10 +106,6 @@ func ProbeControllerVolumePlugins(config kubectrlmgrconfig.VolumeConfiguration) 
 	allPlugins = append(allPlugins, nfs.ProbeVolumePlugins(nfsConfig)...)
 	allPlugins = append(allPlugins, local.ProbeVolumePlugins()...)
 
-	if utilfeature.DefaultFeatureGate.Enabled(features.CSIInlineVolume) {
-		allPlugins = append(allPlugins, csi.ProbeVolumePlugins()...)
-	}
-
 	return allPlugins
 }
 
