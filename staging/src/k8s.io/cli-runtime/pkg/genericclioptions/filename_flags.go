@@ -32,7 +32,6 @@ type FileNameFlags struct {
 	Usage string
 
 	Filenames *[]string
-	Kustomize *string
 	Recursive *bool
 }
 
@@ -48,9 +47,6 @@ func (o *FileNameFlags) ToOptions() resource.FilenameOptions {
 	}
 	if o.Filenames != nil {
 		options.Filenames = *o.Filenames
-	}
-	if o.Kustomize != nil {
-		options.Kustomize = *o.Kustomize
 	}
 
 	return options
@@ -71,9 +67,5 @@ func (o *FileNameFlags) AddFlags(flags *pflag.FlagSet) {
 			annotations = append(annotations, strings.TrimLeft(ext, "."))
 		}
 		flags.SetAnnotation("filename", cobra.BashCompFilenameExt, annotations)
-	}
-	if o.Kustomize != nil {
-		flags.StringVarP(o.Kustomize, "kustomize", "k", *o.Kustomize,
-			"Process a kustomization directory. This flag can't be used together with -f or -R.")
 	}
 }
