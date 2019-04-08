@@ -20,6 +20,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 	"k8s.io/apimachinery/pkg/util/net"
+	"k8s.io/kubernetes/pkg/volume"
 
 	_ "github.com/mattn/go-sqlite3" // ensure we have sqlite
 )
@@ -69,6 +70,9 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	if !cfg.DisableAgent && os.Getuid() != 0 {
 		return fmt.Errorf("must run as root unless --disable-agent is specified")
 	}
+
+	// If running agent in server, set this so that CSI initializes properly
+	volume.WaitForValidHost = !cfg.DisableAgent
 
 	serverConfig := server.Config{}
 	serverConfig.ControlConfig.ClusterSecret = cfg.ClusterSecret
