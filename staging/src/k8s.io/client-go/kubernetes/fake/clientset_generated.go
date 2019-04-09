@@ -36,6 +36,8 @@ import (
 	fakeauthenticationv1 "k8s.io/client-go/kubernetes/typed/authentication/v1/fake"
 	authorizationv1 "k8s.io/client-go/kubernetes/typed/authorization/v1"
 	fakeauthorizationv1 "k8s.io/client-go/kubernetes/typed/authorization/v1/fake"
+	authorizationv1beta1 "k8s.io/client-go/kubernetes/typed/authorization/v1beta1"
+	fakeauthorizationv1beta1 "k8s.io/client-go/kubernetes/typed/authorization/v1beta1/fake"
 	autoscalingv1 "k8s.io/client-go/kubernetes/typed/autoscaling/v1"
 	fakeautoscalingv1 "k8s.io/client-go/kubernetes/typed/autoscaling/v1/fake"
 	autoscalingv2beta1 "k8s.io/client-go/kubernetes/typed/autoscaling/v2beta1"
@@ -153,6 +155,11 @@ func (c *Clientset) AuthenticationV1() authenticationv1.AuthenticationV1Interfac
 // AuthorizationV1 retrieves the AuthorizationV1Client
 func (c *Clientset) AuthorizationV1() authorizationv1.AuthorizationV1Interface {
 	return &fakeauthorizationv1.FakeAuthorizationV1{Fake: &c.Fake}
+}
+
+// AuthorizationV1beta1 retrieves the AuthorizationV1beta1Client
+func (c *Clientset) AuthorizationV1beta1() authorizationv1beta1.AuthorizationV1beta1Interface {
+	return &fakeauthorizationv1beta1.FakeAuthorizationV1beta1{Fake: &c.Fake}
 }
 
 // AutoscalingV1 retrieves the AutoscalingV1Client
