@@ -12,7 +12,7 @@ import (
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/net"
-	"k8s.io/apiserver/pkg/util/logs"
+	"k8s.io/component-base/logs"
 	app2 "k8s.io/kubernetes/cmd/kube-proxy/app"
 	"k8s.io/kubernetes/cmd/kubelet/app"
 	_ "k8s.io/kubernetes/pkg/client/metrics/prometheus" // for client metric registration
@@ -82,6 +82,7 @@ func kubelet(cfg *config.Agent) {
 	if cfg.RuntimeSocket != "" {
 		args = append(args, "--container-runtime", "remote")
 		args = append(args, "--container-runtime-endpoint", cfg.RuntimeSocket)
+		args = append(args, "--serialize-image-pulls=false")
 	}
 	if cfg.ListenAddress != "" {
 		args = append(args, "--address", cfg.ListenAddress)

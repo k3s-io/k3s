@@ -35,7 +35,6 @@ import (
 	imagespec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/opencontainers/runc/libcontainer/devices"
 	runtimespec "github.com/opencontainers/runtime-spec/specs-go"
-	"github.com/opencontainers/runtime-tools/generate"
 	"github.com/opencontainers/runtime-tools/validate"
 	"github.com/opencontainers/selinux/go-selinux/label"
 	"github.com/pkg/errors"
@@ -76,6 +75,7 @@ func init() {
 // CreateContainer creates a new container in the given PodSandbox.
 func (c *criService) CreateContainer(ctx context.Context, r *runtime.CreateContainerRequest) (_ *runtime.CreateContainerResponse, retErr error) {
 	config := r.GetConfig()
+	logrus.Debugf("Container config %+v", config)
 	sandboxConfig := r.GetSandboxConfig()
 	sandbox, err := c.sandboxStore.Get(r.GetPodSandboxId())
 	if err != nil {
@@ -182,7 +182,7 @@ func (c *criService) CreateContainer(ctx context.Context, r *runtime.CreateConta
 	if len(volumeMounts) > 0 {
 		mountMap := make(map[string]string)
 		for _, v := range volumeMounts {
-			mountMap[v.HostPath] = v.ContainerPath
+			mountMap[filepath.Clean(v.HostPath)] = v.ContainerPath
 		}
 		opts = append(opts, customopts.WithVolumes(mountMap))
 	}
@@ -191,7 +191,7 @@ func (c *criService) CreateContainer(ctx context.Context, r *runtime.CreateConta
 
 	// Get container log path.
 	if config.GetLogPath() != "" {
-		meta.LogPath = filepath.Join(sandbox.Config.GetLogDirectory(), config.GetLogPath())
+		meta.LogPath = filepath.Join(sandboxConfig.GetLogDirectory(), config.GetLogPath())
 	}
 
 	containerIO, err := cio.NewContainerIO(id,
@@ -335,8 +335,7 @@ func (c *criService) generateContainerSpec(id string, sandboxID string, sandboxP
 
 	// Add HOSTNAME env.
 	hostname := sandboxConfig.GetHostname()
-	if sandboxConfig.GetLinux().GetSecurityContext().GetNamespaceOptions().GetNetwork() == runtime.NamespaceMode_NODE &&
-		hostname == "" {
+	if sandboxConfig.GetHostname() == "" {
 		hostname, err = c.os.Hostname()
 		if err != nil {
 			return nil, err
@@ -473,6 +472,22 @@ func (c *criService) generateVolumeMounts(containerRootDir string, criMounts []*
 func (c *criService) generateContainerMounts(sandboxID string, config *runtime.ContainerConfig) []*runtime.Mount {
 	var mounts []*runtime.Mount
 	securityContext := config.GetLinux().GetSecurityContext()
+	if !isInCRIMounts(etcHostname, config.GetMounts()) {
+		// /etc/hostname is added since 1.1.6, 1.2.4 and 1.3.
+		// For in-place upgrade, the old sandbox doesn't have the hostname file,
+		// do not mount this in that case.
+		// TODO(random-liu): Remove the check and always mount this when
+		// containerd 1.1 and 1.2 are deprecated.
+		hostpath := c.getSandboxHostname(sandboxID)
+		if _, err := c.os.Stat(hostpath); err == nil {
+			mounts = append(mounts, &runtime.Mount{
+				ContainerPath: etcHostname,
+				HostPath:      hostpath,
+				Readonly:      securityContext.GetReadonlyRootfs(),
+			})
+		}
+	}
+
 	if !isInCRIMounts(etcHosts, config.GetMounts()) {
 		mounts = append(mounts, &runtime.Mount{
 			ContainerPath: etcHosts,
@@ -507,7 +522,7 @@ func (c *criService) generateContainerMounts(sandboxID string, config *runtime.C
 
 // setOCIProcessArgs sets process args. It returns error if the final arg list
 // is empty.
-func setOCIProcessArgs(g *generate.Generator, config *runtime.ContainerConfig, imageConfig *imagespec.ImageConfig) error {
+func setOCIProcessArgs(g *generator, config *runtime.ContainerConfig, imageConfig *imagespec.ImageConfig) error {
 	command, args := config.GetCommand(), config.GetArgs()
 	// The following logic is migrated from https://github.com/moby/moby/blob/master/daemon/commit.go
 	// TODO(random-liu): Clearly define the commands overwrite behavior.
@@ -529,7 +544,7 @@ func setOCIProcessArgs(g *generate.Generator, config *runtime.ContainerConfig, i
 
 // addImageEnvs adds environment variables from image config. It returns error if
 // an invalid environment variable is encountered.
-func addImageEnvs(g *generate.Generator, imageEnvs []string) error {
+func addImageEnvs(g *generator, imageEnvs []string) error {
 	for _, e := range imageEnvs {
 		kv := strings.SplitN(e, "=", 2)
 		if len(kv) != 2 {
@@ -540,7 +555,7 @@ func addImageEnvs(g *generate.Generator, imageEnvs []string) error {
 	return nil
 }
 
-func setOCIPrivileged(g *generate.Generator, config *runtime.ContainerConfig) error {
+func setOCIPrivileged(g *generator, config *runtime.ContainerConfig) error {
 	// Add all capabilities in privileged mode.
 	g.SetupPrivileged(true)
 	setOCIBindMountsPrivileged(g)
@@ -561,7 +576,7 @@ func clearReadOnly(m *runtimespec.Mount) {
 }
 
 // addDevices set device mapping without privilege.
-func (c *criService) addOCIDevices(g *generate.Generator, devs []*runtime.Device) error {
+func (c *criService) addOCIDevices(g *generator, devs []*runtime.Device) error {
 	spec := g.Config
 	for _, device := range devs {
 		path, err := c.os.ResolveSymbolicLink(device.HostPath)
@@ -593,7 +608,7 @@ func (c *criService) addOCIDevices(g *generate.Generator, devs []*runtime.Device
 }
 
 // addDevices set device mapping with privilege.
-func setOCIDevicesPrivileged(g *generate.Generator) error {
+func setOCIDevicesPrivileged(g *generator) error {
 	spec := g.Config
 	hostDevices, err := devices.HostDevices()
 	if err != nil {
@@ -624,7 +639,7 @@ func setOCIDevicesPrivileged(g *generate.Generator) error {
 }
 
 // addOCIBindMounts adds bind mounts.
-func (c *criService) addOCIBindMounts(g *generate.Generator, mounts []*runtime.Mount, mountLabel string) error {
+func (c *criService) addOCIBindMounts(g *generator, mounts []*runtime.Mount, mountLabel string) error {
 	// Sort mounts in number of parts. This ensures that high level mounts don't
 	// shadow other mounts.
 	sort.Sort(orderedMounts(mounts))
@@ -729,11 +744,11 @@ func (c *criService) addOCIBindMounts(g *generate.Generator, mounts []*runtime.M
 	return nil
 }
 
-func setOCIBindMountsPrivileged(g *generate.Generator) {
+func setOCIBindMountsPrivileged(g *generator) {
 	spec := g.Config
 	// clear readonly for /sys and cgroup
 	for i, m := range spec.Mounts {
-		if spec.Mounts[i].Destination == "/sys" {
+		if filepath.Clean(spec.Mounts[i].Destination) == "/sys" {
 			clearReadOnly(&spec.Mounts[i])
 		}
 		if m.Type == "cgroup" {
@@ -745,7 +760,7 @@ func setOCIBindMountsPrivileged(g *generate.Generator) {
 }
 
 // setOCILinuxResource set container resource limit.
-func setOCILinuxResource(g *generate.Generator, resources *runtime.LinuxContainerResources) {
+func setOCILinuxResource(g *generator, resources *runtime.LinuxContainerResources) {
 	if resources == nil {
 		return
 	}
@@ -771,7 +786,7 @@ func getOCICapabilitiesList() []string {
 }
 
 // Adds capabilities to all sets relevant to root (bounding, permitted, effective, inheritable)
-func addProcessRootCapability(g *generate.Generator, c string) error {
+func addProcessRootCapability(g *generator, c string) error {
 	if err := g.AddProcessCapabilityBounding(c); err != nil {
 		return err
 	}
@@ -788,7 +803,7 @@ func addProcessRootCapability(g *generate.Generator, c string) error {
 }
 
 // Drops capabilities to all sets relevant to root (bounding, permitted, effective, inheritable)
-func dropProcessRootCapability(g *generate.Generator, c string) error {
+func dropProcessRootCapability(g *generator, c string) error {
 	if err := g.DropProcessCapabilityBounding(c); err != nil {
 		return err
 	}
@@ -805,7 +820,7 @@ func dropProcessRootCapability(g *generate.Generator, c string) error {
 }
 
 // setOCICapabilities adds/drops process capabilities.
-func setOCICapabilities(g *generate.Generator, capabilities *runtime.Capability) error {
+func setOCICapabilities(g *generator, capabilities *runtime.Capability) error {
 	if capabilities == nil {
 		return nil
 	}
@@ -851,7 +866,7 @@ func setOCICapabilities(g *generate.Generator, capabilities *runtime.Capability)
 }
 
 // setOCINamespaces sets namespaces.
-func setOCINamespaces(g *generate.Generator, namespaces *runtime.NamespaceOption, sandboxPid uint32) {
+func setOCINamespaces(g *generator, namespaces *runtime.NamespaceOption, sandboxPid uint32) {
 	g.AddOrReplaceLinuxNamespace(string(runtimespec.NetworkNamespace), getNetworkNamespace(sandboxPid)) // nolint: errcheck
 	g.AddOrReplaceLinuxNamespace(string(runtimespec.IPCNamespace), getIPCNamespace(sandboxPid))         // nolint: errcheck
 	g.AddOrReplaceLinuxNamespace(string(runtimespec.UTSNamespace), getUTSNamespace(sandboxPid))         // nolint: errcheck
@@ -874,7 +889,7 @@ func defaultRuntimeSpec(id string) (*runtimespec.Spec, error) {
 	// TODO(random-liu): Mount tmpfs for /run and handle copy-up.
 	var mounts []runtimespec.Mount
 	for _, mount := range spec.Mounts {
-		if mount.Destination == "/run" {
+		if filepath.Clean(mount.Destination) == "/run" {
 			continue
 		}
 		mounts = append(mounts, mount)

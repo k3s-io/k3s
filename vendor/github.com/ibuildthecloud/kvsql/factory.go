@@ -66,7 +66,7 @@ func NewKVSQLHealthCheck(c storagebackend.Config) (func() error, error) {
 
 func newETCD3Client(c storagebackend.Config) (*clientv3.Client, error) {
 	cfg := clientv3.Config{
-		Endpoints: c.ServerList,
+		Endpoints: c.Transport.ServerList,
 	}
 
 	if len(cfg.Endpoints) == 0 {

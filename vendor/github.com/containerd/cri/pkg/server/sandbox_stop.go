@@ -144,7 +144,7 @@ func (c *criService) waitSandboxStop(ctx context.Context, sandbox sandboxstore.S
 	defer timeoutTimer.Stop()
 	select {
 	case <-ctx.Done():
-		return errors.Errorf("wait sandbox container %q is cancelled", sandbox.ID)
+		return errors.Wrapf(ctx.Err(), "wait sandbox container %q is cancelled", sandbox.ID)
 	case <-timeoutTimer.C:
 		return errors.Errorf("wait sandbox container %q stop timeout", sandbox.ID)
 	case <-sandbox.Stopped():

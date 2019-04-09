@@ -68,4 +68,7 @@ func SetDefaults_CustomResourceDefinitionSpec(obj *CustomResourceDefinitionSpec)
 			Strategy: NoneConverter,
 		}
 	}
+	if obj.Conversion.Strategy == WebhookConverter && len(obj.Conversion.ConversionReviewVersions) == 0 {
+		obj.Conversion.ConversionReviewVersions = []string{SchemeGroupVersion.Version}
+	}
 }

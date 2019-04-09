@@ -24,15 +24,12 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/util/initialization"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apiserver/pkg/admission"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	api "k8s.io/kubernetes/pkg/apis/core"
 	k8s_api_v1 "k8s.io/kubernetes/pkg/apis/core/v1"
 	"k8s.io/kubernetes/pkg/apis/core/v1/helper"
 	k8sfeatures "k8s.io/kubernetes/pkg/features"
-	"k8s.io/kubernetes/pkg/kubeapiserver/admission/util"
 	quota "k8s.io/kubernetes/pkg/quota/v1"
 	"k8s.io/kubernetes/pkg/quota/v1/generic"
 )
@@ -98,25 +95,9 @@ func (p *pvcEvaluator) Handles(a admission.Attributes) bool {
 		return true
 	}
 	if op == admission.Update && utilfeature.DefaultFeatureGate.Enabled(k8sfeatures.ExpandPersistentVolumes) {
-		initialized, err := initialization.IsObjectInitialized(a.GetObject())
-		if err != nil {
-			// fail closed, will try to give an evaluation.
-			utilruntime.HandleError(err)
-			return true
-		}
-		// only handle the update if the object is initialized after the update.
-		return initialized
-	}
-	// TODO: when the ExpandPersistentVolumes feature gate is removed, remove
-	// the initializationCompletion check as well, because it will become a
-	// subset of the "initialized" condition.
-	initializationCompletion, err := util.IsInitializationCompletion(a)
-	if err != nil {
-		// fail closed, will try to give an evaluation.
-		utilruntime.HandleError(err)
 		return true
 	}
-	return initializationCompletion
+	return false
 }
 
 // Matches returns true if the evaluator matches the specified quota with the provided input item

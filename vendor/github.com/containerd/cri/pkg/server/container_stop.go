@@ -143,8 +143,9 @@ func (c *criService) stopContainer(ctx context.Context, container containerstore
 			return errors.Wrapf(err, "failed to stop container %q", id)
 		}
 
-		if err = c.waitContainerStop(ctx, container, timeout); err == nil {
-			return nil
+		if err = c.waitContainerStop(ctx, container, timeout); err == nil || errors.Cause(err) == ctx.Err() {
+			// Do not SIGKILL container if the context is cancelled.
+			return err
 		}
 		logrus.WithError(err).Errorf("An error occurs during waiting for container %q to be stopped", id)
 	}
@@ -167,7 +168,7 @@ func (c *criService) waitContainerStop(ctx context.Context, container containers
 	defer timeoutTimer.Stop()
 	select {
 	case <-ctx.Done():
-		return errors.Errorf("wait container %q is cancelled", container.ID)
+		return errors.Wrapf(ctx.Err(), "wait container %q is cancelled", container.ID)
 	case <-timeoutTimer.C:
 		return errors.Errorf("wait container %q stop timeout", container.ID)
 	case <-container.Stopped():

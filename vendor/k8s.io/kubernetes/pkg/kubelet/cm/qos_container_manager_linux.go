@@ -26,14 +26,12 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/wait"
 
-	units "github.com/docker/go-units"
+	"github.com/docker/go-units"
 	cgroupfs "github.com/opencontainers/runc/libcontainer/cgroups/fs"
 	rsystem "github.com/opencontainers/runc/libcontainer/system"
-	"k8s.io/api/core/v1"
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/kubernetes/pkg/api/v1/resource"
 	v1qos "k8s.io/kubernetes/pkg/apis/core/v1/helper/qos"
-	kubefeatures "k8s.io/kubernetes/pkg/features"
 )
 
 const (
@@ -111,9 +109,7 @@ func (m *qosContainerManagerImpl) Start(getNodeAllocatable func() v1.ResourceLis
 		}
 
 		// for each enumerated huge page size, the qos tiers are unbounded
-		if utilfeature.DefaultFeatureGate.Enabled(kubefeatures.HugePages) {
-			m.setHugePagesUnbounded(containerConfig)
-		}
+		m.setHugePagesUnbounded(containerConfig)
 
 		// check if it exists
 		if !cm.Exists(containerName) {
@@ -123,11 +119,7 @@ func (m *qosContainerManagerImpl) Start(getNodeAllocatable func() v1.ResourceLis
 		} else {
 			// to ensure we actually have the right state, we update the config on startup
 			if err := cm.Update(containerConfig); err != nil {
-				if rsystem.RunningInUserNS() {
-					klog.Errorf("failed to update top level %v QOS cgroup : %v", qosClass, err)
-				} else {
-					return fmt.Errorf("failed to update top level %v QOS cgroup : %v", qosClass, err)
-				}
+				return fmt.Errorf("failed to update top level %v QOS cgroup : %v", qosClass, err)
 			}
 		}
 	}
@@ -297,10 +289,8 @@ func (m *qosContainerManagerImpl) UpdateCgroups() error {
 	}
 
 	// update the qos level cgroup settings for huge pages (ensure they remain unbounded)
-	if utilfeature.DefaultFeatureGate.Enabled(kubefeatures.HugePages) {
-		if err := m.setHugePagesConfig(qosConfigs); err != nil {
-			return err
-		}
+	if err := m.setHugePagesConfig(qosConfigs); err != nil {
+		return err
 	}
 
 	updateSuccess := true
