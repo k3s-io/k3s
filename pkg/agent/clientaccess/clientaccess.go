@@ -57,8 +57,8 @@ func AgentAccessInfoToKubeConfig(destFile, server, token string) error {
 type Info struct {
 	URL            string `json:"url,omitempty"`
 	CACerts        []byte `json:"cacerts,omitempty"`
-	username       string
-	password       string
+	Username       string
+	Password       string
 	Token          string `json:"token,omitempty"`
 	ClientCertData []byte
 	ClientKeyData  []byte
@@ -76,9 +76,13 @@ func (i *Info) KubeConfig() *clientcmdapi.Config {
 	cluster.Server = i.URL
 
 	authInfo := clientcmdapi.NewAuthInfo()
-	if i.password != "" {
-		authInfo.Username = i.username
-		authInfo.Password = i.password
+	if i.ClientCertData != nil && i.ClientKeyData != nil {
+		authInfo.ClientCertificateData = i.ClientCertData
+		authInfo.ClientKeyData = i.ClientKeyData
+	}
+	if i.Password != "" {
+		authInfo.Username = i.Username
+		authInfo.Password = i.Password
 	} else if i.Token != "" {
 		if username, pass, ok := ParseUsernamePassword(i.Token); ok {
 			authInfo.Username = username
@@ -86,10 +90,6 @@ func (i *Info) KubeConfig() *clientcmdapi.Config {
 		} else {
 			authInfo.Token = i.Token
 		}
-	}
-	if i.ClientCertData != nil && i.ClientKeyData != nil {
-		authInfo.ClientCertificateData = i.ClientCertData
-		authInfo.ClientKeyData = i.ClientKeyData
 	}
 
 	context := clientcmdapi.NewContext()
@@ -141,8 +141,8 @@ func ParseAndValidateToken(server, token string) (*Info, error) {
 	return &Info{
 		URL:      url.String(),
 		CACerts:  cacerts,
-		username: parsedToken.username,
-		password: parsedToken.password,
+		Username: parsedToken.username,
+		Password: parsedToken.password,
 		Token:    token,
 	}, nil
 }
@@ -236,7 +236,7 @@ func Request(path string, info *Info, requester HTTPRequester) ([]byte, error) {
 		return nil, err
 	}
 	u.Path = path
-	return requester(u.String(), GetHTTPClient(info.CACerts), info.username, info.password)
+	return requester(u.String(), GetHTTPClient(info.CACerts), info.Username, info.Password)
 }
 
 func Get(path string, info *Info) ([]byte, error) {

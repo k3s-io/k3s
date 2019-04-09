@@ -217,6 +217,33 @@ func genKubeConfig(envInfo *cmds.Agent, info clientaccess.Info, controlConfig *c
 	return kubeConfigPath, info.WriteKubeConfig(kubeConfigPath)
 }
 
+func genProxyKubeConfig(envInfo *cmds.Agent, info clientaccess.Info, controlConfig *config.Control, ca string, nodeCert *tls.Certificate) (string, error) {
+	caBytes, err := ioutil.ReadFile(ca)
+	if err != nil {
+		return "", err
+	}
+
+	os.MkdirAll(envInfo.DataDir, 0700)
+	kubeConfigPath := filepath.Join(envInfo.DataDir, "proxy-kubeconfig.yaml")
+
+	info.URL = "https://127.0.0.1:6443"
+	info.CACerts = caBytes
+	info.Token = ""
+	info.Password = ""
+	if nodeCert != nil {
+		info.ClientKeyData = pem.EncodeToMemory(&pem.Block{
+			Type:  cert.RSAPrivateKeyBlockType,
+			Bytes: x509.MarshalPKCS1PrivateKey(nodeCert.PrivateKey.(*rsa.PrivateKey)),
+		})
+		info.ClientCertData = pem.EncodeToMemory(&pem.Block{
+			Type:  cert.CertificateBlockType,
+			Bytes: nodeCert.Certificate[0],
+		})
+	}
+
+	return kubeConfigPath, info.WriteKubeConfig(kubeConfigPath)
+}
+
 func isValidResolvConf(resolvConfFile string) bool {
 	file, err := os.Open(resolvConfFile)
 	if err != nil {
@@ -305,6 +332,11 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 		return nil, err
 	}
 
+	proxyKubeConfig, err := genProxyKubeConfig(envInfo, *info, controlConfig, serverCA, nil)
+	if err != nil {
+		return nil, err
+	}
+
 	hostLocal, err := exec.LookPath("host-local")
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to find host-local")
@@ -324,6 +356,7 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 	nodeConfig.AgentConfig.CACertPath = clientCA
 	nodeConfig.AgentConfig.ListenAddress = "127.0.0.1"
 	nodeConfig.AgentConfig.KubeConfig = kubeConfig
+	nodeConfig.AgentConfig.ProxyKubeConfig = proxyKubeConfig
 	nodeConfig.AgentConfig.RootDir = filepath.Join(envInfo.DataDir, "kubelet")
 	nodeConfig.CACerts = info.CACerts
 	nodeConfig.Containerd.Config = filepath.Join(envInfo.DataDir, "etc/containerd/config.toml")

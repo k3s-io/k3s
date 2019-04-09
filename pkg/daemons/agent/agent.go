@@ -45,6 +45,7 @@ func kubeProxy(cfg *config.Agent) {
 		err := command.Execute()
 		logrus.Fatalf("kube-proxy exited: %v", err)
 	}()
+	logrus.Info("running kube-proxy ", args)
 }
 
 func kubelet(cfg *config.Agent) {

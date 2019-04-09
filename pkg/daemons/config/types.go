@@ -40,6 +40,7 @@ type Agent struct {
 	ResolvConf         string
 	RootDir            string
 	KubeConfig         string
+	ProxyKubeConfig    string
 	NodeIP             string
 	RuntimeSocket      string
 	ListenAddress      string

@@ -77,7 +77,11 @@ func startNorman(ctx context.Context, config *Config) (string, error) {
 		tlsConfig     = &config.TLSConfig
 		controlConfig = &config.ControlConfig
 	)
-
+	// caCerts, err := ioutil.ReadFile(config.ControlConfig.Runtime.ServerCA)
+	// if err != nil {
+	// 	return "", err
+	// }
+	// tlsConfig.CACerts = string(caCerts)
 	tlsConfig.Handler = router(controlConfig, controlConfig.Runtime.Tunnel, func() (string, error) {
 		if tlsServer == nil {
 			return "", nil
