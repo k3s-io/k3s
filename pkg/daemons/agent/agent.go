@@ -82,6 +82,7 @@ func kubelet(cfg *config.Agent) {
 	if cfg.RuntimeSocket != "" {
 		args = append(args, "--container-runtime", "remote")
 		args = append(args, "--container-runtime-endpoint", cfg.RuntimeSocket)
+		args = append(args, "--serialize-image-pulls=false")
 	}
 	if cfg.ListenAddress != "" {
 		args = append(args, "--address", cfg.ListenAddress)
