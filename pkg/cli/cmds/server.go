@@ -5,19 +5,22 @@ import (
 )
 
 type Server struct {
-	Log              string
-	ClusterCIDR      string
-	ClusterSecret    string
-	ServiceCIDR      string
-	ClusterDNS       string
-	HTTPSPort        int
-	HTTPPort         int
-	DataDir          string
-	DisableAgent     bool
-	KubeConfigOutput string
-	KubeConfigMode   string
-	KnownIPs         cli.StringSlice
-	BindAddress      string
+	Log                 string
+	ClusterCIDR         string
+	ClusterSecret       string
+	ServiceCIDR         string
+	ClusterDNS          string
+	HTTPSPort           int
+	HTTPPort            int
+	DataDir             string
+	DisableAgent        bool
+	KubeConfigOutput    string
+	KubeConfigMode      string
+	KnownIPs            cli.StringSlice
+	BindAddress         string
+	ExtraAPIArgs        cli.StringSlice
+	ExtraSchedulerArgs  cli.StringSlice
+	ExtraControllerArgs cli.StringSlice
 }
 
 var ServerConfig Server
@@ -106,12 +109,29 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Usage: "Add additional hostname or IP as a Subject Alternative Name in the TLS cert",
 				Value: &ServerConfig.KnownIPs,
 			},
+			cli.StringSliceFlag{
+				Name:  "kube-apiserver-arg",
+				Usage: "Customized flag for kube-apiserver process",
+				Value: &ServerConfig.ExtraAPIArgs,
+			},
+			cli.StringSliceFlag{
+				Name:  "kube-scheduler-arg",
+				Usage: "Customized flag for kube-scheduler process",
+				Value: &ServerConfig.ExtraSchedulerArgs,
+			},
+			cli.StringSliceFlag{
+				Name:  "kube-controller-arg",
+				Usage: "Customized flag for kube-controller-manager process",
+				Value: &ServerConfig.ExtraControllerArgs,
+			},
 			NodeIPFlag,
 			NodeNameFlag,
 			DockerFlag,
 			FlannelFlag,
 			CRIEndpointFlag,
 			ResolvConfFlag,
+			ExtraKubeletArgs,
+			ExtraKubeProxyArgs,
 		},
 	}
 }
