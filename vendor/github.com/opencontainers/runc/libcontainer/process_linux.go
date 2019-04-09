@@ -22,6 +22,10 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+// Synchronisation value for cgroup namespace setup.
+// The same constant is defined in nsexec.c as "CREATECGROUPNS".
+const createCgroupns = 0x80
+
 type parentProcess interface {
 	// pid returns the pid for the running process.
 	pid() int
@@ -154,10 +158,8 @@ func (p *setnsProcess) execSetns() error {
 	}
 
 	// Clean up the zombie parent process
-	firstChildProcess, err := os.FindProcess(pid.PidFirstChild)
-	if err != nil {
-		return err
-	}
+	// On Unix systems FindProcess always succeeds.
+	firstChildProcess, _ := os.FindProcess(pid.PidFirstChild)
 
 	// Ignore the error in case the child has already been reaped for any reason
 	_, _ = firstChildProcess.Wait()
@@ -225,12 +227,25 @@ func (p *initProcess) externalDescriptors() []string {
 	return p.fds
 }
 
-// execSetns runs the process that executes C code to perform the setns calls
-// because setns support requires the C process to fork off a child and perform the setns
-// before the go runtime boots, we wait on the process to die and receive the child's pid
-// over the provided pipe.
-// This is called by initProcess.start function
-func (p *initProcess) execSetns() error {
+// getChildPid receives the final child's pid over the provided pipe.
+func (p *initProcess) getChildPid() (int, error) {
+	var pid pid
+	if err := json.NewDecoder(p.parentPipe).Decode(&pid); err != nil {
+		p.cmd.Wait()
+		return -1, err
+	}
+
+	// Clean up the zombie parent process
+	// On Unix systems FindProcess always succeeds.
+	firstChildProcess, _ := os.FindProcess(pid.PidFirstChild)
+
+	// Ignore the error in case the child has already been reaped for any reason
+	_, _ = firstChildProcess.Wait()
+
+	return pid.Pid, nil
+}
+
+func (p *initProcess) waitForChildExit(childPid int) error {
 	status, err := p.cmd.Process.Wait()
 	if err != nil {
 		p.cmd.Wait()
@@ -240,22 +255,8 @@ func (p *initProcess) execSetns() error {
 		p.cmd.Wait()
 		return &exec.ExitError{ProcessState: status}
 	}
-	var pid *pid
-	if err := json.NewDecoder(p.parentPipe).Decode(&pid); err != nil {
-		p.cmd.Wait()
-		return err
-	}
 
-	// Clean up the zombie parent process
-	firstChildProcess, err := os.FindProcess(pid.PidFirstChild)
-	if err != nil {
-		return err
-	}
-
-	// Ignore the error in case the child has already been reaped for any reason
-	_, _ = firstChildProcess.Wait()
-
-	process, err := os.FindProcess(pid.Pid)
+	process, err := os.FindProcess(childPid)
 	if err != nil {
 		return err
 	}
@@ -297,19 +298,47 @@ func (p *initProcess) start() error {
 	if _, err := io.Copy(p.parentPipe, p.bootstrapData); err != nil {
 		return newSystemErrorWithCause(err, "copying bootstrap data to pipe")
 	}
-
-	if err := p.execSetns(); err != nil {
-		return newSystemErrorWithCause(err, "running exec setns process for init")
+	childPid, err := p.getChildPid()
+	if err != nil {
+		return newSystemErrorWithCause(err, "getting the final child's pid from pipe")
 	}
 
 	// Save the standard descriptor names before the container process
 	// can potentially move them (e.g., via dup2()).  If we don't do this now,
 	// we won't know at checkpoint time which file descriptor to look up.
-	fds, err := getPipeFds(p.pid())
+	fds, err := getPipeFds(childPid)
 	if err != nil {
-		return newSystemErrorWithCausef(err, "getting pipe fds for pid %d", p.pid())
+		return newSystemErrorWithCausef(err, "getting pipe fds for pid %d", childPid)
 	}
 	p.setExternalDescriptors(fds)
+	// Do this before syncing with child so that no children
+	// can escape the cgroup
+	if err := p.manager.Apply(childPid); err != nil {
+		return newSystemErrorWithCause(err, "applying cgroup configuration for process")
+	}
+	if p.intelRdtManager != nil {
+		if err := p.intelRdtManager.Apply(childPid); err != nil {
+			return newSystemErrorWithCause(err, "applying Intel RDT configuration for process")
+		}
+	}
+	// Now it's time to setup cgroup namesapce
+	if p.config.Config.Namespaces.Contains(configs.NEWCGROUP) && p.config.Config.Namespaces.PathOf(configs.NEWCGROUP) == "" {
+		if _, err := p.parentPipe.Write([]byte{createCgroupns}); err != nil {
+			return newSystemErrorWithCause(err, "sending synchronization value to init process")
+		}
+	}
+
+	// Wait for our first child to exit
+	if err := p.waitForChildExit(childPid); err != nil {
+		return newSystemErrorWithCause(err, "waiting for our first child to exit")
+	}
+
+	defer func() {
+		if err != nil {
+			// TODO: should not be the responsibility to call here
+			p.manager.Destroy()
+		}
+	}()
 	if err := p.createNetworkInterfaces(); err != nil {
 		return newSystemErrorWithCause(err, "creating network interfaces")
 	}
@@ -342,14 +371,13 @@ func (p *initProcess) start() error {
 				}
 
 				if p.config.Config.Hooks != nil {
-					bundle, annotations := utils.Annotations(p.container.config.Labels)
-					s := configs.HookState{
-						Version:     p.container.config.Version,
-						ID:          p.container.id,
-						Pid:         p.pid(),
-						Bundle:      bundle,
-						Annotations: annotations,
+					s, err := p.container.currentOCIState()
+					if err != nil {
+						return err
 					}
+					// initProcessStartTime hasn't been set yet.
+					s.Pid = p.cmd.Process.Pid
+					s.Status = "creating"
 					for i, hook := range p.config.Config.Hooks.Prestart {
 						if err := hook.Run(s); err != nil {
 							return newSystemErrorWithCausef(err, "running prestart hook %d", i)
@@ -373,14 +401,13 @@ func (p *initProcess) start() error {
 				}
 			}
 			if p.config.Config.Hooks != nil {
-				bundle, annotations := utils.Annotations(p.container.config.Labels)
-				s := configs.HookState{
-					Version:     p.container.config.Version,
-					ID:          p.container.id,
-					Pid:         p.pid(),
-					Bundle:      bundle,
-					Annotations: annotations,
+				s, err := p.container.currentOCIState()
+				if err != nil {
+					return err
 				}
+				// initProcessStartTime hasn't been set yet.
+				s.Pid = p.cmd.Process.Pid
+				s.Status = "creating"
 				for i, hook := range p.config.Config.Hooks.Prestart {
 					if err := hook.Run(s); err != nil {
 						return newSystemErrorWithCausef(err, "running prestart hook %d", i)
