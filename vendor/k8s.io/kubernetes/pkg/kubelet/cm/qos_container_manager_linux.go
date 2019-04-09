@@ -119,7 +119,11 @@ func (m *qosContainerManagerImpl) Start(getNodeAllocatable func() v1.ResourceLis
 		} else {
 			// to ensure we actually have the right state, we update the config on startup
 			if err := cm.Update(containerConfig); err != nil {
-				return fmt.Errorf("failed to update top level %v QOS cgroup : %v", qosClass, err)
+				if rsystem.RunningInUserNS() {
+					klog.Errorf("failed to update top level %v QOS cgroup : %v", qosClass, err)
+				} else {
+					return fmt.Errorf("failed to update top level %v QOS cgroup : %v", qosClass, err)
+				}
 			}
 		}
 	}

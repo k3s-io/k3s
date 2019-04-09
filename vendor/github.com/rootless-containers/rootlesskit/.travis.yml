@@ -1,0 +1,8 @@
+dist: trusty
+sudo: required
+
+services:
+  - docker
+
+script:
+  - ./hack/test.sh

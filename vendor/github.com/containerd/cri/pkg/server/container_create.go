@@ -416,12 +416,18 @@ func (c *criService) generateContainerSpec(id string, sandboxID string, sandboxP
 
 	g.SetRootReadonly(securityContext.GetReadonlyRootfs())
 
-	setOCILinuxResource(&g, config.GetLinux().GetResources())
-
-	if sandboxConfig.GetLinux().GetCgroupParent() != "" {
-		cgroupsPath := getCgroupsPath(sandboxConfig.GetLinux().GetCgroupParent(), id,
-			c.config.SystemdCgroup)
-		g.SetLinuxCgroupsPath(cgroupsPath)
+	if c.config.DisableCgroup {
+		g.SetLinuxCgroupsPath("")
+	} else {
+		setOCILinuxResourceCgroup(&g, config.GetLinux().GetResources())
+		if sandboxConfig.GetLinux().GetCgroupParent() != "" {
+			cgroupsPath := getCgroupsPath(sandboxConfig.GetLinux().GetCgroupParent(), id,
+				c.config.SystemdCgroup)
+			g.SetLinuxCgroupsPath(cgroupsPath)
+		}
+	}
+	if err := setOCILinuxResourceOOMScoreAdj(&g, config.GetLinux().GetResources(), c.config.RestrictOOMScoreAdj); err != nil {
+		return nil, err
 	}
 
 	// Set namespaces, share namespace with sandbox container.
@@ -759,8 +765,8 @@ func setOCIBindMountsPrivileged(g *generator) {
 	spec.Linux.MaskedPaths = nil
 }
 
-// setOCILinuxResource set container resource limit.
-func setOCILinuxResource(g *generator, resources *runtime.LinuxContainerResources) {
+// setOCILinuxResourceCgroup set container cgroup resource limit.
+func setOCILinuxResourceCgroup(g *generator, resources *runtime.LinuxContainerResources) {
 	if resources == nil {
 		return
 	}
@@ -768,9 +774,26 @@ func setOCILinuxResource(g *generator, resources *runtime.LinuxContainerResource
 	g.SetLinuxResourcesCPUQuota(resources.GetCpuQuota())
 	g.SetLinuxResourcesCPUShares(uint64(resources.GetCpuShares()))
 	g.SetLinuxResourcesMemoryLimit(resources.GetMemoryLimitInBytes())
-	g.SetProcessOOMScoreAdj(int(resources.GetOomScoreAdj()))
 	g.SetLinuxResourcesCPUCpus(resources.GetCpusetCpus())
 	g.SetLinuxResourcesCPUMems(resources.GetCpusetMems())
+}
+
+// setOCILinuxResourceOOMScoreAdj set container OOMScoreAdj resource limit.
+func setOCILinuxResourceOOMScoreAdj(g *generator, resources *runtime.LinuxContainerResources, restrictOOMScoreAdjFlag bool) error {
+	if resources == nil {
+		return nil
+	}
+	adj := int(resources.GetOomScoreAdj())
+	if restrictOOMScoreAdjFlag {
+		var err error
+		adj, err = restrictOOMScoreAdj(adj)
+		if err != nil {
+			return err
+		}
+	}
+	g.SetProcessOOMScoreAdj(adj)
+
+	return nil
 }
 
 // getOCICapabilitiesList returns a list of all available capabilities.
