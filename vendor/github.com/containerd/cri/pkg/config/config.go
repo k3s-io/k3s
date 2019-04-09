@@ -142,6 +142,16 @@ type PluginConfig struct {
 	// Log line longer than the limit will be split into multiple lines. Non-positive
 	// value means no limit.
 	MaxContainerLogLineSize int `toml:"max_container_log_line_size" json:"maxContainerLogSize"`
+	// DisableCgroup indicates to disable the cgroup support.
+	// This is useful when the containerd does not have permission to access cgroup.
+	DisableCgroup bool `toml:"disable_cgroup" json:"disableCgroup"`
+	// DisableApparmor indicates to disable the apparmor support.
+	// This is useful when the containerd does not have permission to access Apparmor.
+	DisableApparmor bool `toml:"disable_apparmor" json:"disableApparmor"`
+	// RestrictOOMScoreAdj indicates to limit the lower bound of OOMScoreAdj to the containerd's
+	// current OOMScoreADj.
+	// This is useful when the containerd does not have permission to decrease OOMScoreAdj.
+	RestrictOOMScoreAdj bool `toml:"restrict_oom_score_adj" json:"restrictOOMScoreAdj"`
 }
 
 // X509KeyPairStreaming contains the x509 configuration for streaming

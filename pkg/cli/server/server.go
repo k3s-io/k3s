@@ -15,12 +15,14 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rancher/k3s/pkg/agent"
 	"github.com/rancher/k3s/pkg/cli/cmds"
+	"github.com/rancher/k3s/pkg/datadir"
+	"github.com/rancher/k3s/pkg/rootless"
 	"github.com/rancher/k3s/pkg/server"
 	"github.com/rancher/norman/signal"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 	"k8s.io/apimachinery/pkg/util/net"
-	"k8s.io/kubernetes/pkg/volume"
+	"k8s.io/kubernetes/pkg/volume/csi"
 
 	_ "github.com/mattn/go-sqlite3" // ensure we have sqlite
 )
@@ -67,18 +69,30 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 
 	setupLogging(app)
 
-	if !cfg.DisableAgent && os.Getuid() != 0 {
+	if !cfg.DisableAgent && os.Getuid() != 0 && !cfg.Rootless {
 		return fmt.Errorf("must run as root unless --disable-agent is specified")
 	}
 
+	if cfg.Rootless {
+		dataDir, err := datadir.LocalHome(cfg.DataDir, true)
+		if err != nil {
+			return err
+		}
+		cfg.DataDir = dataDir
+		if err := rootless.Rootless(dataDir); err != nil {
+			return err
+		}
+	}
+
 	// If running agent in server, set this so that CSI initializes properly
-	volume.WaitForValidHost = !cfg.DisableAgent
+	csi.WaitForValidHostName = !cfg.DisableAgent
 
 	serverConfig := server.Config{}
 	serverConfig.ControlConfig.ClusterSecret = cfg.ClusterSecret
 	serverConfig.ControlConfig.DataDir = cfg.DataDir
 	serverConfig.ControlConfig.KubeConfigOutput = cfg.KubeConfigOutput
 	serverConfig.ControlConfig.KubeConfigMode = cfg.KubeConfigMode
+	serverConfig.Rootless = cfg.Rootless
 	serverConfig.TLSConfig.HTTPSPort = cfg.HTTPSPort
 	serverConfig.TLSConfig.HTTPPort = cfg.HTTPPort
 	serverConfig.TLSConfig.KnownIPs = knownIPs(cfg.KnownIPs)

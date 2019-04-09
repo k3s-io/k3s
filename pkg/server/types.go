@@ -10,4 +10,5 @@ type Config struct {
 	DisableServiceLB bool
 	TLSConfig        dynamiclistener.UserConfig
 	ControlConfig    config.Control
+	Rootless         bool
 }

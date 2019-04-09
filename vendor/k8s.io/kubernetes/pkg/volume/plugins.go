@@ -18,11 +18,6 @@ package volume
 
 import (
 	"fmt"
-	"net"
-	"strings"
-	"sync"
-	"time"
-
 	authenticationv1 "k8s.io/api/authentication/v1"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -37,10 +32,9 @@ import (
 	"k8s.io/kubernetes/pkg/util/mount"
 	"k8s.io/kubernetes/pkg/volume/util/recyclerclient"
 	"k8s.io/kubernetes/pkg/volume/util/subpath"
-)
-
-var (
-	WaitForValidHost = false
+	"net"
+	"strings"
+	"sync"
 )
 
 type ProbeOperation uint32
@@ -556,19 +550,6 @@ func NewSpecFromPersistentVolume(pv *v1.PersistentVolume, readOnly bool) *Spec {
 // This must be called exactly once before any New* methods are called on any
 // plugins.
 func (pm *VolumePluginMgr) InitPlugins(plugins []VolumePlugin, prober DynamicPluginProber, host VolumeHost) error {
-	if host.GetHostName() == "" && WaitForValidHost {
-		for {
-			pm.mutex.Lock()
-			if pm.Host != nil && pm.Host.GetHostName() != "" {
-				pm.mutex.Unlock()
-				break
-			}
-			pm.mutex.Unlock()
-			klog.Infof("Waiting for volume plugins to be initialized")
-			time.Sleep(time.Second)
-		}
-	}
-
 	pm.mutex.Lock()
 	defer pm.mutex.Unlock()
 

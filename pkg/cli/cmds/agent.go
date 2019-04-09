@@ -20,6 +20,7 @@ type Agent struct {
 	ContainerRuntimeEndpoint string
 	NoFlannel                bool
 	Debug                    bool
+	Rootless                 bool
 	AgentShared
 	ExtraKubeletArgs   cli.StringSlice
 	ExtraKubeProxyArgs cli.StringSlice
@@ -112,6 +113,11 @@ func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
 				Usage:       "Shared secret used to bootstrap a cluster",
 				Destination: &AgentConfig.ClusterSecret,
 				EnvVar:      "K3S_CLUSTER_SECRET",
+			},
+			cli.BoolFlag{
+				Name:        "rootless",
+				Usage:       "(experimental) Run rootless",
+				Destination: &AgentConfig.Rootless,
 			},
 			DockerFlag,
 			FlannelFlag,

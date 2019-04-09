@@ -18,6 +18,7 @@ import (
 	"github.com/rancher/k3s/pkg/datadir"
 	"github.com/rancher/k3s/pkg/deploy"
 	"github.com/rancher/k3s/pkg/helm"
+	"github.com/rancher/k3s/pkg/rootlessports"
 	"github.com/rancher/k3s/pkg/servicelb"
 	"github.com/rancher/k3s/pkg/static"
 	"github.com/rancher/k3s/pkg/tls"
@@ -36,16 +37,8 @@ import (
 )
 
 func resolveDataDir(dataDir string) (string, error) {
-	if dataDir == "" {
-		if os.Getuid() == 0 {
-			dataDir = "/var/lib/rancher/k3s"
-		} else {
-			dataDir = "${HOME}/.rancher/k3s"
-		}
-	}
-
-	dataDir = filepath.Join(dataDir, "server")
-	return resolvehome.Resolve(dataDir)
+	dataDir, err := datadir.Resolve(dataDir)
+	return filepath.Join(dataDir, "server"), err
 }
 
 func StartServer(ctx context.Context, config *Config) (string, error) {
@@ -72,7 +65,7 @@ func StartServer(ctx context.Context, config *Config) (string, error) {
 	}
 	printTokens(certs, ip.String(), &config.TLSConfig, &config.ControlConfig)
 
-	writeKubeConfig(certs, &config.TLSConfig, &config.ControlConfig)
+	writeKubeConfig(certs, &config.TLSConfig, config)
 
 	return certs, nil
 }
@@ -121,7 +114,8 @@ func startNorman(ctx context.Context, config *Config) (string, error) {
 		MasterControllers: []norman.ControllerRegister{
 			helm.Register,
 			func(ctx context.Context) error {
-				return servicelb.Register(ctx, norman.GetServer(ctx).K8sClient, !config.DisableServiceLB)
+				return servicelb.Register(ctx, norman.GetServer(ctx).K8sClient, !config.DisableServiceLB,
+					config.Rootless)
 			},
 			func(ctx context.Context) error {
 				dataDir := filepath.Join(controlConfig.DataDir, "static")
@@ -135,6 +129,12 @@ func startNorman(ctx context.Context, config *Config) (string, error) {
 				}
 				if err := deploy.WatchFiles(ctx, dataDir); err != nil {
 					return err
+				}
+				return nil
+			},
+			func(ctx context.Context) error {
+				if !config.DisableServiceLB && config.Rootless {
+					return rootlessports.Register(ctx, config.TLSConfig.HTTPSPort)
 				}
 				return nil
 			},
@@ -156,9 +156,9 @@ func startNorman(ctx context.Context, config *Config) (string, error) {
 	}
 }
 
-func HomeKubeConfig(write bool) (string, error) {
+func HomeKubeConfig(write, rootless bool) (string, error) {
 	if write {
-		if os.Getuid() == 0 {
+		if os.Getuid() == 0 && !rootless {
 			return datadir.GlobalConfig, nil
 		}
 		return resolvehome.Resolve(datadir.HomeConfig)
@@ -194,30 +194,30 @@ func printTokens(certs, advertiseIP string, tlsConfig *dynamiclistener.UserConfi
 
 }
 
-func writeKubeConfig(certs string, tlsConfig *dynamiclistener.UserConfig, config *config.Control) {
-	clientToken := FormatToken(config.Runtime.ClientToken, certs)
+func writeKubeConfig(certs string, tlsConfig *dynamiclistener.UserConfig, config *Config) {
+	clientToken := FormatToken(config.ControlConfig.Runtime.ClientToken, certs)
 	ip := tlsConfig.BindAddress
 	if ip == "" {
 		ip = "localhost"
 	}
 	url := fmt.Sprintf("https://%s:%d", ip, tlsConfig.HTTPSPort)
-	kubeConfig, err := HomeKubeConfig(true)
+	kubeConfig, err := HomeKubeConfig(true, config.Rootless)
 	def := true
 	if err != nil {
-		kubeConfig = filepath.Join(config.DataDir, "kubeconfig-k3s.yaml")
+		kubeConfig = filepath.Join(config.ControlConfig.DataDir, "kubeconfig-k3s.yaml")
 		def = false
 	}
 
-	if config.KubeConfigOutput != "" {
-		kubeConfig = config.KubeConfigOutput
+	if config.ControlConfig.KubeConfigOutput != "" {
+		kubeConfig = config.ControlConfig.KubeConfigOutput
 	}
 
 	if err = clientaccess.AgentAccessInfoToKubeConfig(kubeConfig, url, clientToken); err != nil {
 		logrus.Errorf("Failed to generate kubeconfig: %v", err)
 	}
 
-	if config.KubeConfigMode != "" {
-		mode, err := strconv.ParseInt(config.KubeConfigMode, 8, 0)
+	if config.ControlConfig.KubeConfigMode != "" {
+		mode, err := strconv.ParseInt(config.ControlConfig.KubeConfigMode, 8, 0)
 		if err == nil {
 			os.Chmod(kubeConfig, os.FileMode(mode))
 		} else {

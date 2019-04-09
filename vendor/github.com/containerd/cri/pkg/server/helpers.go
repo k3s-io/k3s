@@ -18,6 +18,7 @@ package server
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -143,9 +144,9 @@ const (
 // generated is unique as long as sandbox metadata is unique.
 func makeSandboxName(s *runtime.PodSandboxMetadata) string {
 	return strings.Join([]string{
-		s.Name,      // 0
-		s.Namespace, // 1
-		s.Uid,       // 2
+		s.Name,                       // 0
+		s.Namespace,                  // 1
+		s.Uid,                        // 2
 		fmt.Sprintf("%d", s.Attempt), // 3
 	}, nameDelimiter)
 }
@@ -155,10 +156,10 @@ func makeSandboxName(s *runtime.PodSandboxMetadata) string {
 // unique.
 func makeContainerName(c *runtime.ContainerMetadata, s *runtime.PodSandboxMetadata) string {
 	return strings.Join([]string{
-		c.Name,      // 0
-		s.Name,      // 1: pod name
-		s.Namespace, // 2: pod namespace
-		s.Uid,       // 3: pod uid
+		c.Name,                       // 0
+		s.Name,                       // 1: pod name
+		s.Namespace,                  // 2: pod namespace
+		s.Uid,                        // 3: pod uid
 		fmt.Sprintf("%d", c.Attempt), // 4
 	}, nameDelimiter)
 }
@@ -602,4 +603,28 @@ func getTaskStatus(ctx context.Context, task containerd.Task) (containerd.Status
 		return unknownExitStatus(), nil
 	}
 	return status, nil
+}
+
+func getCurrentOOMScoreAdj() (int, error) {
+	b, err := ioutil.ReadFile("/proc/self/oom_score_adj")
+	if err != nil {
+		return 0, errors.Wrap(err, "could not get the daemon oom_score_adj")
+	}
+	s := strings.TrimSpace(string(b))
+	i, err := strconv.Atoi(s)
+	if err != nil {
+		return 0, errors.Wrap(err, "could not get the daemon oom_score_adj")
+	}
+	return i, nil
+}
+
+func restrictOOMScoreAdj(preferredOOMScoreAdj int) (int, error) {
+	currentOOMScoreAdj, err := getCurrentOOMScoreAdj()
+	if err != nil {
+		return preferredOOMScoreAdj, err
+	}
+	if preferredOOMScoreAdj < currentOOMScoreAdj {
+		return currentOOMScoreAdj, nil
+	}
+	return preferredOOMScoreAdj, nil
 }

@@ -8,11 +8,11 @@ questions you may have as an aspiring Moby contributor.
 Moby has two test suites (and one legacy test suite):
 
 * Unit tests - use standard `go test` and
-  [gotestyourself/assert](https://godoc.org/github.com/gotestyourself/gotestyourself/assert) assertions. They are located in
+  [gotest.tools/assert](https://godoc.org/gotest.tools/assert) assertions. They are located in
   the package they test. Unit tests should be fast and test only their own 
   package.
 * API integration tests - use standard `go test` and
-  [gotestyourself/assert](https://godoc.org/github.com/gotestyourself/gotestyourself/assert) assertions. They are located in
+  [gotest.tools/assert](https://godoc.org/gotest.tools/assert) assertions. They are located in
   `./integration/<component>` directories, where `component` is: container,
   image, volume, etc. These tests perform HTTP requests to an API endpoint and
   check the HTTP response and daemon state after the call.
@@ -46,6 +46,24 @@ Bugs fixes should include a unit test case which exercises the bug.
 
 A bug fix may also include new assertions in an existing integration tests for the
 API endpoint.
+
+### Integration tests environment considerations
+
+When adding new tests or modifying existing test under `integration/`, testing 
+environment should be properly considered. `skip.If` from 
+[gotest.tools/skip](https://godoc.org/gotest.tools/skip) can be used to make the 
+test run conditionally. Full testing environment conditions can be found at 
+[environment.go](https://github.com/moby/moby/blob/cb37987ee11655ed6bbef663d245e55922354c68/internal/test/environment/environment.go)
+
+Here is a quick example. If the test needs to interact with a docker daemon on 
+the same host, the following condition should be checked within the test code
+
+```go
+skip.If(t, testEnv.IsRemoteDaemon())
+// your integration test code
+```
+
+If a remote daemon is detected, the test will be skipped.
 
 ## Running tests
 

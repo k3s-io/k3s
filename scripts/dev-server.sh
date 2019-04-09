@@ -5,4 +5,9 @@ mkdir -p $(dirname $0)/../bin
 cd $(dirname $0)/../bin
 
 echo Running
-go run -tags "apparmor" ../main.go --debug server --disable-agent "$@"
+ARGS="--disable-agent"
+if echo -- "$@" | grep -q rootless; then
+    ARGS=""
+    PATH=$(pwd):$PATH
+fi
+go run -tags "apparmor" ../main.go server $ARGS "$@"

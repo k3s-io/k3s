@@ -9,12 +9,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/opencontainers/runc/libcontainer/system"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/component-base/logs"
 	app2 "k8s.io/kubernetes/cmd/kube-proxy/app"
 	"k8s.io/kubernetes/cmd/kubelet/app"
+
 	_ "k8s.io/kubernetes/pkg/client/metrics/prometheus" // for client metric registration
 	_ "k8s.io/kubernetes/pkg/version/prometheus"        // for version metric registration
 )
@@ -107,8 +109,11 @@ func kubelet(cfg *config.Agent) {
 		argsMap["runtime-cgroups"] = root
 		argsMap["kubelet-cgroups"] = root
 	}
-	args := config.GetArgsList(argsMap, cfg.ExtraKubeletArgs)
+	if system.RunningInUserNS() {
+		argsMap["feature-gates"] = "DevicePlugins=false"
+	}
 
+	args := config.GetArgsList(argsMap, cfg.ExtraKubeletArgs)
 	command.SetArgs(args)
 
 	go func() {

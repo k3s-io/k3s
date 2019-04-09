@@ -28,6 +28,7 @@ import (
 	cni "github.com/containerd/go-cni"
 	runcapparmor "github.com/opencontainers/runc/libcontainer/apparmor"
 	runcseccomp "github.com/opencontainers/runc/libcontainer/seccomp"
+	runcsystem "github.com/opencontainers/runc/libcontainer/system"
 	"github.com/opencontainers/selinux/go-selinux"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -108,7 +109,7 @@ func NewCRIService(config criconfig.Config, client *containerd.Client) (CRIServi
 	c := &criService{
 		config:             config,
 		client:             client,
-		apparmorEnabled:    runcapparmor.IsEnabled(),
+		apparmorEnabled:    runcapparmor.IsEnabled() && !config.DisableApparmor,
 		seccompEnabled:     runcseccomp.IsEnabled(),
 		os:                 osinterface.RealOS{},
 		sandboxStore:       sandboxstore.NewStore(),
@@ -118,6 +119,12 @@ func NewCRIService(config criconfig.Config, client *containerd.Client) (CRIServi
 		sandboxNameIndex:   registrar.NewRegistrar(),
 		containerNameIndex: registrar.NewRegistrar(),
 		initialized:        atomic.NewBool(false),
+	}
+
+	if runcsystem.RunningInUserNS() {
+		if !(config.DisableCgroup && !c.apparmorEnabled && config.RestrictOOMScoreAdj) {
+			logrus.Warn("Running containerd in a user namespace typically requires disable_cgroup, disable_apparmor, restrict_oom_score_adj set to be true")
+		}
 	}
 
 	if c.config.EnableSelinux {
