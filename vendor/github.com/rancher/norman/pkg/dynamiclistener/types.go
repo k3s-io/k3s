@@ -26,13 +26,14 @@ type UserConfig struct {
 
 	// Optional fields
 
-	KnownIPs  []string
-	Domains   []string
-	Mode      string
-	NoCACerts bool
-	CACerts   string
-	Cert      string
-	Key       string
+	KnownIPs    []string
+	Domains     []string
+	Mode        string
+	NoCACerts   bool
+	CACerts     string
+	Cert        string
+	Key         string
+	BindAddress string
 }
 
 type ListenerStatus struct {

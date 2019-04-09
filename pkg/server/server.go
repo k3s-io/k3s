@@ -49,6 +49,7 @@ func resolveDataDir(dataDir string) (string, error) {
 }
 
 func StartServer(ctx context.Context, config *Config) (string, error) {
+
 	if err := setupDataDirAndChdir(&config.ControlConfig); err != nil {
 		return "", err
 	}
@@ -62,9 +63,12 @@ func StartServer(ctx context.Context, config *Config) (string, error) {
 		return "", errors.Wrap(err, "starting tls server")
 	}
 
-	ip, err := net.ChooseHostInterface()
-	if err != nil {
-		ip = net2.ParseIP("127.0.0.1")
+	ip := net2.ParseIP(config.TLSConfig.BindAddress)
+	if ip == nil {
+		ip, err = net.ChooseHostInterface()
+		if err != nil {
+			ip = net2.ParseIP("127.0.0.1")
+		}
 	}
 	printTokens(certs, ip.String(), &config.TLSConfig, &config.ControlConfig)
 
@@ -192,7 +196,11 @@ func printTokens(certs, advertiseIP string, tlsConfig *dynamiclistener.UserConfi
 
 func writeKubeConfig(certs string, tlsConfig *dynamiclistener.UserConfig, config *config.Control) {
 	clientToken := FormatToken(config.Runtime.ClientToken, certs)
-	url := fmt.Sprintf("https://localhost:%d", tlsConfig.HTTPSPort)
+	ip := tlsConfig.BindAddress
+	if ip == "" {
+		ip = "localhost"
+	}
+	url := fmt.Sprintf("https://%s:%d", ip, tlsConfig.HTTPSPort)
 	kubeConfig, err := HomeKubeConfig(true)
 	def := true
 	if err != nil {
