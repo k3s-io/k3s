@@ -23,12 +23,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"k8s.io/klog"
 	"path"
 	"reflect"
 	"strings"
 	"time"
-
-	"k8s.io/klog"
 
 	"github.com/ibuildthecloud/kvsql/clientv3"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"

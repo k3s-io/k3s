@@ -26,7 +26,6 @@ import (
 	"github.com/docker/docker/pkg/parsers/operatingsystem"
 	"github.com/google/cadvisor/fs"
 	info "github.com/google/cadvisor/info/v1"
-	"github.com/google/cadvisor/utils/cloudinfo"
 	"github.com/google/cadvisor/utils/sysfs"
 	"github.com/google/cadvisor/utils/sysinfo"
 
@@ -140,11 +139,6 @@ func Info(sysFs sysfs.SysFs, fsInfo fs.FsInfo, inHostNamespace bool) (*info.Mach
 		klog.Errorf("Failed to get system UUID: %v", err)
 	}
 
-	realCloudInfo := cloudinfo.NewRealCloudInfo()
-	cloudProvider := realCloudInfo.GetCloudProvider()
-	instanceType := realCloudInfo.GetInstanceType()
-	instanceID := realCloudInfo.GetInstanceID()
-
 	machineInfo := &info.MachineInfo{
 		NumCores:       numCores,
 		CpuFrequency:   clockSpeed,
@@ -156,9 +150,6 @@ func Info(sysFs sysfs.SysFs, fsInfo fs.FsInfo, inHostNamespace bool) (*info.Mach
 		MachineID:      getInfoFromFiles(filepath.Join(rootFs, *machineIdFilePath)),
 		SystemUUID:     systemUUID,
 		BootID:         getInfoFromFiles(filepath.Join(rootFs, *bootIdFilePath)),
-		CloudProvider:  cloudProvider,
-		InstanceType:   instanceType,
-		InstanceID:     instanceID,
 	}
 
 	for i := range filesystems {
