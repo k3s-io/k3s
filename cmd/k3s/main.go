@@ -84,7 +84,7 @@ func stageAndRun(dataDir string, cmd string, args []string) error {
 		return errors.Wrap(err, "extracting data")
 	}
 
-	if err := os.Setenv("PATH", filepath.Join(dir, "bin")+":"+os.Getenv("PATH")+":"+filepath.Join(dir, "bin/utils")); err != nil {
+	if err := os.Setenv("PATH", filepath.Join(dir, "bin")+":"+os.Getenv("PATH")); err != nil {
 		return err
 	}
 
