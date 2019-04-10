@@ -185,13 +185,12 @@ func apiServer(ctx context.Context, cfg *config.Control, runtime *config.Control
 	argsMap["kubelet-client-key"] = runtime.ClientKubeAPIKey
 	argsMap["client-ca-file"] = runtime.ClientCA
 	argsMap["requestheader-client-ca-file"] = runtime.RequestHeaderCA
-	argsMap["requestheader-allowed-names"] = requestHeaderCN
+	// argsMap["requestheader-allowed-names"] = requestHeaderCN
 	argsMap["proxy-client-key-file"] = runtime.ClientAuthProxyKey
 	argsMap["proxy-client-cert-file"] = runtime.ClientAuthProxyCert
 	argsMap["requestheader-extra-headers-prefix"] = "X-Remote-Extra-"
 	argsMap["requestheader-group-headers"] = "X-Remote-Group"
 	argsMap["requestheader-username-headers"] = "X-Remote-User"
-	argsMap["enable-admission-plugins"] = "ServiceAccount,NamespaceLifecycle,LimitRanger,DefaultStorageClass,ResourceQuota,DefaultTolerationSeconds"
 
 	args := config.GetArgsList(argsMap, cfg.ExtraAPIArgs)
 

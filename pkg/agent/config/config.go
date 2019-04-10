@@ -24,11 +24,11 @@ import (
 	"github.com/rancher/k3s/pkg/agent/clientaccess"
 	"github.com/rancher/k3s/pkg/cli/cmds"
 	"github.com/rancher/k3s/pkg/daemons/config"
+	certutil "github.com/rancher/norman/pkg/cert"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/client-go/util/cert"
-	certutil "k8s.io/client-go/util/cert"
 	"k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1beta1"
 )
 
@@ -206,7 +206,7 @@ func genKubeConfig(envInfo *cmds.Agent, info clientaccess.Info, controlConfig *c
 	info.URL = "https://" + localAddress(controlConfig)
 	info.CACerts = caBytes
 	info.ClientKeyData = pem.EncodeToMemory(&pem.Block{
-		Type:  cert.RSAPrivateKeyBlockType,
+		Type:  certutil.RSAPrivateKeyBlockType,
 		Bytes: x509.MarshalPKCS1PrivateKey(nodeCert.PrivateKey.(*rsa.PrivateKey)),
 	})
 	info.ClientCertData = pem.EncodeToMemory(&pem.Block{
@@ -232,7 +232,7 @@ func genProxyKubeConfig(envInfo *cmds.Agent, info clientaccess.Info, controlConf
 	info.Password = ""
 	if nodeCert != nil {
 		info.ClientKeyData = pem.EncodeToMemory(&pem.Block{
-			Type:  cert.RSAPrivateKeyBlockType,
+			Type:  certutil.RSAPrivateKeyBlockType,
 			Bytes: x509.MarshalPKCS1PrivateKey(nodeCert.PrivateKey.(*rsa.PrivateKey)),
 		})
 		info.ClientCertData = pem.EncodeToMemory(&pem.Block{
@@ -354,7 +354,7 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 	nodeConfig.AgentConfig.ClusterDNS = controlConfig.ClusterDNS
 	nodeConfig.AgentConfig.ResolvConf = locateOrGenerateResolvConf(envInfo)
 	nodeConfig.AgentConfig.CACertPath = clientCA
-	nodeConfig.AgentConfig.ListenAddress = "127.0.0.1"
+	nodeConfig.AgentConfig.ListenAddress = "0.0.0.0"
 	nodeConfig.AgentConfig.KubeConfig = kubeConfig
 	nodeConfig.AgentConfig.ProxyKubeConfig = proxyKubeConfig
 	nodeConfig.AgentConfig.RootDir = filepath.Join(envInfo.DataDir, "kubelet")

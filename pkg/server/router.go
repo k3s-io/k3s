@@ -12,9 +12,9 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/openapi"
+	certutil "github.com/rancher/norman/pkg/cert"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/json"
-	certutil "k8s.io/client-go/util/cert"
 	"k8s.io/kubernetes/pkg/master"
 )
 
