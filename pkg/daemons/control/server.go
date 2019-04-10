@@ -433,8 +433,8 @@ func genTLSCerts(config *config.Control, runtime *config.ControlRuntime) error {
 
 	if err := createClientCertKey(regen, "localhost",
 		nil, &certutil.AltNames{
-			DNSNames: []string{"kubernetes.default.svc", "kubernetes.default", "kubernetes", "localhost"},
-			IPs:      []net.IP{apiServerServiceIP, localhostIP},
+			DNSNames: []string{"kubernetes.default.svc", "kubernetes.default", "kubernetes", "localhost", "ip6-localhost"},
+			IPs:      []net.IP{apiServerServiceIP, localhostIP, net.IPv6loopback},
 		}, x509KeyServerOnly,
 		runtime.TLSCA, runtime.TLSCAKey,
 		runtime.TLSCert, runtime.TLSKey); err != nil {
@@ -457,8 +457,8 @@ func genTokenCerts(config *config.Control, runtime *config.ControlRuntime) error
 
 	if err := createClientCertKey(regen, "kubernetes",
 		nil, &certutil.AltNames{
-			DNSNames: []string{"kubernetes.default.svc", "kubernetes.default", "kubernetes", "localhost"},
-			IPs:      []net.IP{apiServerServiceIP, localhostIP},
+			DNSNames: []string{"kubernetes.default.svc", "kubernetes.default", "kubernetes", "localhost", "ip6-localhost"},
+			IPs:      []net.IP{apiServerServiceIP, localhostIP, net.IPv6loopback},
 		}, x509KeyClientUsage,
 		runtime.TokenCA, runtime.TokenCAKey,
 		runtime.NodeCert, runtime.NodeKey); err != nil {

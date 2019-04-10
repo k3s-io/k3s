@@ -102,6 +102,9 @@ func getHostnameAndIP(info cmds.Agent) (string, string, error) {
 }
 
 func localAddress(controlConfig *config.Control) string {
+	if controlConfig.ClusterIPRange.IP.To4() == nil {
+		return fmt.Sprintf("[::1]:%d", controlConfig.AdvertisePort)
+	}
 	return fmt.Sprintf("127.0.0.1:%d", controlConfig.AdvertisePort)
 }
 
