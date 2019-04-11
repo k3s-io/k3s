@@ -93,6 +93,11 @@ type ControlRuntime struct {
 	Handler       http.Handler
 	Tunnel        http.Handler
 	Authenticator authenticator.Request
+
+	RequestHeaderCA     string
+	RequestHeaderCAKey  string
+	ClientAuthProxyCert string
+	ClientAuthProxyKey  string
 }
 
 type ArgString []string

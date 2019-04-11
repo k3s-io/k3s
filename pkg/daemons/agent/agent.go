@@ -62,7 +62,8 @@ func kubelet(cfg *config.Agent) {
 		"eviction-minimum-reclaim": "imagefs.available=10%,nodefs.available=10%",
 		"fail-swap-on":             "false",
 		//"cgroup-root": "/k3s",
-		"cgroup-driver": "cgroupfs",
+		"cgroup-driver":                "cgroupfs",
+		"authentication-token-webhook": "true",
 	}
 	if cfg.RootDir != "" {
 		argsMap["root-dir"] = cfg.RootDir
