@@ -10,6 +10,7 @@ type Server struct {
 	ClusterSecret       string
 	ServiceCIDR         string
 	ClusterDNS          string
+	ClusterDomain       string
 	HTTPSPort           int
 	HTTPPort            int
 	DataDir             string
@@ -88,6 +89,12 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Usage:       "Cluster IP for coredns service. Should be in your service-cidr range",
 				Destination: &ServerConfig.ClusterDNS,
 				Value:       "",
+			},
+			cli.StringFlag{
+				Name:        "cluster-domain",
+				Usage:       "Cluster Domain",
+				Destination: &ServerConfig.ClusterDomain,
+				Value:       "cluster.local",
 			},
 			cli.StringSliceFlag{
 				Name:  "no-deploy",

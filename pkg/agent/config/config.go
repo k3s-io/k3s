@@ -216,6 +216,7 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 	nodeConfig.AgentConfig.NodeIP = nodeIP
 	nodeConfig.AgentConfig.NodeName = nodeName
 	nodeConfig.AgentConfig.ClusterDNS = controlConfig.ClusterDNS
+	nodeConfig.AgentConfig.ClusterDomain = controlConfig.ClusterDomain
 	nodeConfig.AgentConfig.ResolvConf = locateOrGenerateResolvConf(envInfo)
 	nodeConfig.AgentConfig.CACertPath = clientCA
 	nodeConfig.AgentConfig.ListenAddress = "127.0.0.1"

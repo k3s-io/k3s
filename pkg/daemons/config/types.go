@@ -37,6 +37,7 @@ type Agent struct {
 	NodeName           string
 	ClusterCIDR        net.IPNet
 	ClusterDNS         net.IP
+	ClusterDomain      string
 	ResolvConf         string
 	RootDir            string
 	KubeConfig         string
@@ -57,6 +58,7 @@ type Control struct {
 	ClusterIPRange        *net.IPNet
 	ServiceIPRange        *net.IPNet
 	ClusterDNS            net.IP
+	ClusterDomain         string
 	NoCoreDNS             bool
 	KubeConfigOutput      string
 	KubeConfigMode        string
