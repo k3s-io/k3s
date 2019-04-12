@@ -35,7 +35,7 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 		Flags: []cli.Flag{
 			cli.StringFlag{
 				Name:        "bind-address",
-				Usage:       "k3s bind address",
+				Usage:       "k3s bind address (default: localhost)",
 				Destination: &ServerConfig.BindAddress,
 			},
 			cli.IntFlag{
