@@ -101,6 +101,14 @@ func getHostnameAndIP(info cmds.Agent) (string, string, error) {
 	return name, ip, nil
 }
 
+func getPauseImage(info cmds.Agent) (string, error) {
+	pause := info.PauseImage
+	if pause == "" {
+		return "", nil
+	}
+	return pause, nil
+}
+
 func localAddress(controlConfig *config.Control) string {
 	return fmt.Sprintf("127.0.0.1:%d", controlConfig.AdvertisePort)
 }
@@ -196,6 +204,11 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 		return nil, err
 	}
 
+	pauseImage, err := getPauseImage(*envInfo)
+	if err != nil {
+		return nil, err
+	}
+
 	kubeConfig, err := writeKubeConfig(envInfo, *info, controlConfig, nodeCert)
 	if err != nil {
 		return nil, err
@@ -221,6 +234,7 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 	nodeConfig.AgentConfig.ListenAddress = "127.0.0.1"
 	nodeConfig.AgentConfig.KubeConfig = kubeConfig
 	nodeConfig.AgentConfig.RootDir = filepath.Join(envInfo.DataDir, "kubelet")
+	nodeConfig.AgentConfig.PauseImage = pauseImage
 	nodeConfig.CACerts = info.CACerts
 	nodeConfig.Containerd.Config = filepath.Join(envInfo.DataDir, "etc/containerd/config.toml")
 	nodeConfig.Containerd.Root = filepath.Join(envInfo.DataDir, "containerd")

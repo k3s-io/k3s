@@ -32,6 +32,7 @@ const (
 [plugins.cri]
   stream_server_address = "%NODE%"
   stream_server_port = "10010"
+  sandbox_image = "%PAUSEIMAGE%"
 `
 	configUserNSToml = `
   disable_cgroup = true
@@ -66,7 +67,11 @@ func Run(ctx context.Context, cfg *config.Node) error {
 	template = strings.Replace(template, "%CNIBIN%", cfg.AgentConfig.CNIBinDir, -1)
 	template = strings.Replace(template, "%CNICFG%", cfg.AgentConfig.CNIConfDir, -1)
 	template = strings.Replace(template, "%NODE%", cfg.AgentConfig.NodeName, -1)
-
+	if cfg.AgentConfig.PauseImage != "" {
+		template = strings.Replace(template, "%PAUSEIMAGE%", cfg.AgentConfig.PauseImage, -1)
+	} else {
+		template = strings.Replace(template, "%PAUSEIMAGE%", "k8s.gcr.io/pause:3.1", -1)
+	}
 	if err := util2.WriteFile(cfg.Containerd.Config, template); err != nil {
 		return err
 	}

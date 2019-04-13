@@ -16,6 +16,7 @@ type Agent struct {
 	NodeIP                   string
 	NodeName                 string
 	ClusterSecret            string
+	PauseImage               string
 	Docker                   bool
 	ContainerRuntimeEndpoint string
 	NoFlannel                bool
@@ -58,6 +59,11 @@ var (
 		Name:        "container-runtime-endpoint",
 		Usage:       "(agent) Disable embedded containerd and use alternative CRI implementation",
 		Destination: &AgentConfig.ContainerRuntimeEndpoint,
+	}
+	PauseImageFlag = cli.StringFlag{
+		Name:        "pause-image",
+		Usage:       "(agent) Customized pause image for containerd sandbox",
+		Destination: &AgentConfig.PauseImage,
 	}
 	ResolvConfFlag = cli.StringFlag{
 		Name:        "resolv-conf",
@@ -124,6 +130,7 @@ func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
 			NodeNameFlag,
 			NodeIPFlag,
 			CRIEndpointFlag,
+			PauseImageFlag,
 			ResolvConfFlag,
 			ExtraKubeletArgs,
 			ExtraKubeProxyArgs,
