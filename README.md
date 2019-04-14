@@ -62,7 +62,7 @@ Flag --insecure-port has been deprecated, This flag will be removed in a future 
 INFO[2019-01-22T15:16:20.196766005-07:00] Running kube-scheduler --kubeconfig /var/lib/rancher/k3s/server/cred/kubeconfig-system.yaml --port 0 --secure-port 0 --leader-elect=false
 INFO[2019-01-22T15:16:20.196880841-07:00] Running kube-controller-manager --kubeconfig /var/lib/rancher/k3s/server/cred/kubeconfig-system.yaml --service-account-private-key-file /var/lib/rancher/k3s/server/tls/service.key --allocate-node-cidrs --cluster-cidr 10.42.0.0/16 --root-ca-file /var/lib/rancher/k3s/server/tls/token-ca.crt --port 0 --secure-port 0 --leader-elect=false
 Flag --port has been deprecated, see --secure-port instead.
-INFO[2019-01-22T15:16:20.273441984-07:00] Listening on :6443                           
+INFO[2019-01-22T15:16:20.273441984-07:00] Listening on :6443
 INFO[2019-01-22T15:16:20.278383446-07:00] Writing manifest: /var/lib/rancher/k3s/server/manifests/coredns.yaml
 INFO[2019-01-22T15:16:20.474454524-07:00] Node token is available at /var/lib/rancher/k3s/server/node-token
 INFO[2019-01-22T15:16:20.474471391-07:00] To join node to cluster: k3s agent -s https://10.20.0.3:6443 -t ${NODE_TOKEN}
@@ -243,6 +243,7 @@ LimitNPROC=infinity
 LimitCORE=infinity
 TasksMax=infinity
 TimeoutSec=infinity
+TimeoutStartSec=infinity
 
 [Install]
 WantedBy=multi-user.target
