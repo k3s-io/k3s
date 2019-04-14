@@ -30,18 +30,26 @@ import (
 	appsv1beta2 "k8s.io/api/apps/v1beta2"
 	authenticationv1 "k8s.io/api/authentication/v1"
 	authorizationapiv1 "k8s.io/api/authorization/v1"
+	authorizationapiv1beta1 "k8s.io/api/authorization/v1beta1"
 	autoscalingapiv1 "k8s.io/api/autoscaling/v1"
+	autoscalingapiv2beta1 "k8s.io/api/autoscaling/v2beta1"
 	autoscalingapiv2beta2 "k8s.io/api/autoscaling/v2beta2"
 	batchapiv1 "k8s.io/api/batch/v1"
 	batchapiv1beta1 "k8s.io/api/batch/v1beta1"
 	batchapiv2alpha1 "k8s.io/api/batch/v2alpha1"
 	certificatesapiv1beta1 "k8s.io/api/certificates/v1beta1"
+	coordinationapiv1 "k8s.io/api/coordination/v1"
+	coordinationapiv1beta1 "k8s.io/api/coordination/v1beta1"
 	apiv1 "k8s.io/api/core/v1"
 	extensionsapiv1beta1 "k8s.io/api/extensions/v1beta1"
 	networkingapiv1 "k8s.io/api/networking/v1"
+	networkingapiv1beta1 "k8s.io/api/networking/v1beta1"
+	nodev1alpha1 "k8s.io/api/node/v1alpha1"
+	nodev1beta1 "k8s.io/api/node/v1beta1"
 	policyapiv1beta1 "k8s.io/api/policy/v1beta1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	rbacv1beta1 "k8s.io/api/rbac/v1beta1"
+	schedulingapiv1 "k8s.io/api/scheduling/v1"
 	schedulingapiv1beta1 "k8s.io/api/scheduling/v1beta1"
 	storageapiv1 "k8s.io/api/storage/v1"
 	storageapiv1beta1 "k8s.io/api/storage/v1beta1"
@@ -72,9 +80,11 @@ import (
 	autoscalingrest "k8s.io/kubernetes/pkg/registry/autoscaling/rest"
 	batchrest "k8s.io/kubernetes/pkg/registry/batch/rest"
 	certificatesrest "k8s.io/kubernetes/pkg/registry/certificates/rest"
+	coordinationrest "k8s.io/kubernetes/pkg/registry/coordination/rest"
 	corerest "k8s.io/kubernetes/pkg/registry/core/rest"
 	extensionsrest "k8s.io/kubernetes/pkg/registry/extensions/rest"
 	networkingrest "k8s.io/kubernetes/pkg/registry/networking/rest"
+	noderest "k8s.io/kubernetes/pkg/registry/node/rest"
 	policyrest "k8s.io/kubernetes/pkg/registry/policy/rest"
 	rbacrest "k8s.io/kubernetes/pkg/registry/rbac/rest"
 	schedulingrest "k8s.io/kubernetes/pkg/registry/scheduling/rest"
@@ -90,6 +100,8 @@ const (
 )
 
 type ExtraConfig struct {
+	ClientCARegistrationHook ClientCARegistrationHook
+
 	APIResourceConfigSource  serverstorage.APIResourceConfigSource
 	StorageFactory           serverstorage.StorageFactory
 	EndpointReconcilerConfig EndpointReconcilerConfig
@@ -174,6 +186,8 @@ type EndpointReconcilerConfig struct {
 // Master contains state for a Kubernetes cluster master/api server.
 type Master struct {
 	GenericAPIServer *genericapiserver.GenericAPIServer
+
+	ClientCARegistrationHook ClientCARegistrationHook
 }
 
 func (c *Config) createMasterCountReconciler() reconcilers.EndpointReconciler {
@@ -315,8 +329,10 @@ func (c completedConfig) New(delegationTarget genericapiserver.DelegationTarget)
 		autoscalingrest.RESTStorageProvider{},
 		batchrest.RESTStorageProvider{},
 		certificatesrest.RESTStorageProvider{},
+		coordinationrest.RESTStorageProvider{},
 		extensionsrest.RESTStorageProvider{},
 		networkingrest.RESTStorageProvider{},
+		noderest.RESTStorageProvider{},
 		policyrest.RESTStorageProvider{},
 		rbacrest.RESTStorageProvider{Authorizer: c.GenericConfig.Authorization.Authorizer},
 		schedulingrest.RESTStorageProvider{},
@@ -327,6 +343,8 @@ func (c completedConfig) New(delegationTarget genericapiserver.DelegationTarget)
 		admissionregistrationrest.RESTStorageProvider{},
 	}
 	m.InstallAPIs(c.ExtraConfig.APIResourceConfigSource, c.GenericConfig.RESTOptionsGetter, restStorageProviders...)
+
+	m.GenericAPIServer.AddPostStartHookOrDie("ca-registration", c.ExtraConfig.ClientCARegistrationHook.PostStartHook)
 
 	return m, nil
 }
@@ -339,7 +357,7 @@ func (m *Master) InstallLegacyAPI(c *completedConfig, restOptionsGetter generic.
 
 	controllerName := "bootstrap-controller"
 	coreClient := corev1client.NewForConfigOrDie(c.GenericConfig.LoopbackClientConfig)
-	bootstrapController := c.NewBootstrapController(legacyRESTStorage, coreClient, coreClient, coreClient)
+	bootstrapController := c.NewBootstrapController(legacyRESTStorage, coreClient, coreClient, coreClient, coreClient.RESTClient())
 	m.GenericAPIServer.AddPostStartHookOrDie(controllerName, bootstrapController.PostStartHook)
 	m.GenericAPIServer.AddPreShutdownHookOrDie(controllerName, bootstrapController.PreShutdownHook)
 
@@ -356,7 +374,7 @@ type RESTStorageProvider interface {
 
 // InstallAPIs will install the APIs for the restStorageProviders if they are enabled.
 func (m *Master) InstallAPIs(apiResourceConfigSource serverstorage.APIResourceConfigSource, restOptionsGetter generic.RESTOptionsGetter, restStorageProviders ...RESTStorageProvider) {
-	apiGroupsInfo := []genericapiserver.APIGroupInfo{}
+	apiGroupsInfo := []*genericapiserver.APIGroupInfo{}
 
 	for _, restStorageBuilder := range restStorageProviders {
 		groupName := restStorageBuilder.GroupName()
@@ -379,13 +397,11 @@ func (m *Master) InstallAPIs(apiResourceConfigSource serverstorage.APIResourceCo
 			m.GenericAPIServer.AddPostStartHookOrDie(name, hook)
 		}
 
-		apiGroupsInfo = append(apiGroupsInfo, apiGroupInfo)
+		apiGroupsInfo = append(apiGroupsInfo, &apiGroupInfo)
 	}
 
-	for i := range apiGroupsInfo {
-		if err := m.GenericAPIServer.InstallAPIGroup(&apiGroupsInfo[i]); err != nil {
-			klog.Fatalf("Error in registering group versions: %v", err)
-		}
+	if err := m.GenericAPIServer.InstallAPIGroups(apiGroupsInfo...); err != nil {
+		klog.Fatalf("Error in registering group versions: %v", err)
 	}
 }
 
@@ -401,14 +417,25 @@ func (n nodeAddressProvider) externalAddresses() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	var matchErr error
 	addrs := []string{}
 	for ix := range nodes.Items {
 		node := &nodes.Items[ix]
 		addr, err := nodeutil.GetPreferredNodeAddress(node, preferredAddressTypes)
 		if err != nil {
+			if _, ok := err.(*nodeutil.NoMatchError); ok {
+				matchErr = err
+				continue
+			}
 			return nil, err
 		}
 		addrs = append(addrs, addr)
+	}
+	if len(addrs) == 0 && matchErr != nil {
+		// We only return an error if we have items.
+		// Currently we return empty list/no error if Items is empty.
+		// We do this for backward compatibility reasons.
+		return nil, matchErr
 	}
 	return addrs, nil
 }
@@ -419,28 +446,52 @@ func DefaultAPIResourceConfigSource() *serverstorage.ResourceConfig {
 	ret.EnableVersions(
 		admissionregistrationv1beta1.SchemeGroupVersion,
 		apiv1.SchemeGroupVersion,
-		appsv1beta1.SchemeGroupVersion,
-		appsv1beta2.SchemeGroupVersion,
 		appsv1.SchemeGroupVersion,
 		authenticationv1.SchemeGroupVersion,
 		authorizationapiv1.SchemeGroupVersion,
+		authorizationapiv1beta1.SchemeGroupVersion,
 		autoscalingapiv1.SchemeGroupVersion,
+		autoscalingapiv2beta1.SchemeGroupVersion,
 		autoscalingapiv2beta2.SchemeGroupVersion,
 		batchapiv1.SchemeGroupVersion,
 		batchapiv1beta1.SchemeGroupVersion,
 		certificatesapiv1beta1.SchemeGroupVersion,
+		coordinationapiv1.SchemeGroupVersion,
+		coordinationapiv1beta1.SchemeGroupVersion,
 		extensionsapiv1beta1.SchemeGroupVersion,
 		networkingapiv1.SchemeGroupVersion,
+		networkingapiv1beta1.SchemeGroupVersion,
+		nodev1beta1.SchemeGroupVersion,
 		policyapiv1beta1.SchemeGroupVersion,
 		rbacv1.SchemeGroupVersion,
 		rbacv1beta1.SchemeGroupVersion,
 		storageapiv1.SchemeGroupVersion,
 		storageapiv1beta1.SchemeGroupVersion,
 		schedulingapiv1beta1.SchemeGroupVersion,
+		schedulingapiv1.SchemeGroupVersion,
+	)
+	// enable non-deprecated beta resources in extensions/v1beta1 explicitly so we have a full list of what's possible to serve
+	ret.EnableResources(
+		extensionsapiv1beta1.SchemeGroupVersion.WithResource("ingresses"),
+	)
+	// enable deprecated beta resources in extensions/v1beta1 explicitly so we have a full list of what's possible to serve
+	ret.EnableResources(
+		extensionsapiv1beta1.SchemeGroupVersion.WithResource("daemonsets"),
+		extensionsapiv1beta1.SchemeGroupVersion.WithResource("deployments"),
+		extensionsapiv1beta1.SchemeGroupVersion.WithResource("networkpolicies"),
+		extensionsapiv1beta1.SchemeGroupVersion.WithResource("podsecuritypolicies"),
+		extensionsapiv1beta1.SchemeGroupVersion.WithResource("replicasets"),
+		extensionsapiv1beta1.SchemeGroupVersion.WithResource("replicationcontrollers"),
+	)
+	// enable deprecated beta versions explicitly so we have a full list of what's possible to serve
+	ret.EnableVersions(
+		appsv1beta1.SchemeGroupVersion,
+		appsv1beta2.SchemeGroupVersion,
 	)
 	// disable alpha versions explicitly so we have a full list of what's possible to serve
 	ret.DisableVersions(
 		batchapiv2alpha1.SchemeGroupVersion,
+		nodev1alpha1.SchemeGroupVersion,
 	)
 
 	return ret

@@ -22,66 +22,12 @@ import (
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	"k8s.io/apimachinery/pkg/labels"
 	schedulerapi "k8s.io/kubernetes/pkg/scheduler/api"
-	schedulercache "k8s.io/kubernetes/pkg/scheduler/cache"
 )
 
 // NodeFieldSelectorKeys is a map that: the key are node field selector keys; the values are
 // the functions to get the value of the node field.
 var NodeFieldSelectorKeys = map[string]func(*v1.Node) string{
 	schedulerapi.NodeFieldSelectorKeyNodeName: func(n *v1.Node) string { return n.Name },
-}
-
-// FitPredicate is a function that indicates if a pod fits into an existing node.
-// The failure information is given by the error.
-type FitPredicate func(pod *v1.Pod, meta PredicateMetadata, nodeInfo *schedulercache.NodeInfo) (bool, []PredicateFailureReason, error)
-
-// PriorityMapFunction is a function that computes per-node results for a given node.
-// TODO: Figure out the exact API of this method.
-// TODO: Change interface{} to a specific type.
-type PriorityMapFunction func(pod *v1.Pod, meta interface{}, nodeInfo *schedulercache.NodeInfo) (schedulerapi.HostPriority, error)
-
-// PriorityReduceFunction is a function that aggregated per-node results and computes
-// final scores for all nodes.
-// TODO: Figure out the exact API of this method.
-// TODO: Change interface{} to a specific type.
-type PriorityReduceFunction func(pod *v1.Pod, meta interface{}, nodeNameToInfo map[string]*schedulercache.NodeInfo, result schedulerapi.HostPriorityList) error
-
-// PredicateMetadataProducer is a function that computes predicate metadata for a given pod.
-type PredicateMetadataProducer func(pod *v1.Pod, nodeNameToInfo map[string]*schedulercache.NodeInfo) PredicateMetadata
-
-// PriorityMetadataProducer is a function that computes metadata for a given pod. This
-// is now used for only for priority functions. For predicates please use PredicateMetadataProducer.
-type PriorityMetadataProducer func(pod *v1.Pod, nodeNameToInfo map[string]*schedulercache.NodeInfo) interface{}
-
-// PriorityFunction is a function that computes scores for all nodes.
-// DEPRECATED
-// Use Map-Reduce pattern for priority functions.
-type PriorityFunction func(pod *v1.Pod, nodeNameToInfo map[string]*schedulercache.NodeInfo, nodes []*v1.Node) (schedulerapi.HostPriorityList, error)
-
-// PriorityConfig is a config used for a priority function.
-type PriorityConfig struct {
-	Name   string
-	Map    PriorityMapFunction
-	Reduce PriorityReduceFunction
-	// TODO: Remove it after migrating all functions to
-	// Map-Reduce pattern.
-	Function PriorityFunction
-	Weight   int
-}
-
-// EmptyPredicateMetadataProducer returns a no-op MetadataProducer type.
-func EmptyPredicateMetadataProducer(pod *v1.Pod, nodeNameToInfo map[string]*schedulercache.NodeInfo) PredicateMetadata {
-	return nil
-}
-
-// EmptyPriorityMetadataProducer returns a no-op PriorityMetadataProducer type.
-func EmptyPriorityMetadataProducer(pod *v1.Pod, nodeNameToInfo map[string]*schedulercache.NodeInfo) interface{} {
-	return nil
-}
-
-// PredicateFailureReason interface represents the failure reason of a predicate.
-type PredicateFailureReason interface {
-	GetReason() string
 }
 
 // NodeLister interface represents anything that can list nodes for a scheduler.
@@ -171,11 +117,4 @@ type EmptyStatefulSetLister struct{}
 // GetPodStatefulSets of EmptyStatefulSetLister returns nil.
 func (f EmptyStatefulSetLister) GetPodStatefulSets(pod *v1.Pod) (sss []*apps.StatefulSet, err error) {
 	return nil, nil
-}
-
-// PredicateMetadata interface represents anything that can access a predicate metadata.
-type PredicateMetadata interface {
-	ShallowCopy() PredicateMetadata
-	AddPod(addedPod *v1.Pod, nodeInfo *schedulercache.NodeInfo) error
-	RemovePod(deletedPod *v1.Pod) error
 }

@@ -27,6 +27,11 @@ func Resolve(s string) (string, error) {
 }
 
 func getHomeDir() (string, error) {
+	home := os.Getenv("HOME")
+	if home != "" {
+		return home, nil
+	}
+
 	if os.Getuid() == 0 {
 		return "/root", nil
 	}

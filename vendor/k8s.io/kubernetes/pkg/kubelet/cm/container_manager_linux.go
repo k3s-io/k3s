@@ -32,6 +32,7 @@ import (
 	"github.com/opencontainers/runc/libcontainer/cgroups"
 	"github.com/opencontainers/runc/libcontainer/cgroups/fs"
 	"github.com/opencontainers/runc/libcontainer/configs"
+	rsystem "github.com/opencontainers/runc/libcontainer/system"
 	"k8s.io/klog"
 
 	"k8s.io/api/core/v1"
@@ -52,14 +53,15 @@ import (
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
 	"k8s.io/kubernetes/pkg/kubelet/lifecycle"
 	"k8s.io/kubernetes/pkg/kubelet/qos"
+	"k8s.io/kubernetes/pkg/kubelet/stats/pidlimit"
 	"k8s.io/kubernetes/pkg/kubelet/status"
 	"k8s.io/kubernetes/pkg/kubelet/util/pluginwatcher"
-	schedulercache "k8s.io/kubernetes/pkg/scheduler/cache"
-	utilfile "k8s.io/kubernetes/pkg/util/file"
+	schedulernodeinfo "k8s.io/kubernetes/pkg/scheduler/nodeinfo"
 	"k8s.io/kubernetes/pkg/util/mount"
 	"k8s.io/kubernetes/pkg/util/oom"
 	"k8s.io/kubernetes/pkg/util/procfs"
 	utilsysctl "k8s.io/kubernetes/pkg/util/sysctl"
+	utilpath "k8s.io/utils/path"
 )
 
 const (
@@ -122,6 +124,8 @@ type containerManagerImpl struct {
 	cgroupManager CgroupManager
 	// Capacity of this node.
 	capacity v1.ResourceList
+	// Capacity of this node, including internal resources.
+	internalCapacity v1.ResourceList
 	// Absolute cgroupfs path to a cgroup that Kubelet needs to place all pods under.
 	// This path include a top level container for enforcing Node Allocatable.
 	cgroupRoot CgroupName
@@ -178,11 +182,11 @@ func validateSystemRequirements(mountUtil mount.Interface) (features, error) {
 
 	// Check if cpu quota is available.
 	// CPU cgroup is required and so it expected to be mounted at this point.
-	periodExists, err := utilfile.FileExists(path.Join(cpuMountPoint, "cpu.cfs_period_us"))
+	periodExists, err := utilpath.Exists(utilpath.CheckFollowSymlink, path.Join(cpuMountPoint, "cpu.cfs_period_us"))
 	if err != nil {
 		klog.Errorf("failed to detect if CPU cgroup cpu.cfs_period_us is available - %v", err)
 	}
-	quotaExists, err := utilfile.FileExists(path.Join(cpuMountPoint, "cpu.cfs_quota_us"))
+	quotaExists, err := utilpath.Exists(utilpath.CheckFollowSymlink, path.Join(cpuMountPoint, "cpu.cfs_quota_us"))
 	if err != nil {
 		klog.Errorf("failed to detect if CPU cgroup cpu.cfs_quota_us is available - %v", err)
 	}
@@ -218,6 +222,7 @@ func NewContainerManager(mountUtil mount.Interface, cadvisorInterface cadvisor.I
 	}
 
 	var capacity = v1.ResourceList{}
+	var internalCapacity = v1.ResourceList{}
 	// It is safe to invoke `MachineInfo` on cAdvisor before logically initializing cAdvisor here because
 	// machine info is computed and cached once as part of cAdvisor object creation.
 	// But `RootFsInfo` and `ImagesFsInfo` are not available at this moment so they will be called later during manager starts
@@ -226,6 +231,15 @@ func NewContainerManager(mountUtil mount.Interface, cadvisorInterface cadvisor.I
 		return nil, err
 	}
 	capacity = cadvisor.CapacityFromMachineInfo(machineInfo)
+	for k, v := range capacity {
+		internalCapacity[k] = v
+	}
+	pidlimits, err := pidlimit.Stats()
+	if err == nil && pidlimits != nil && pidlimits.MaxPID != nil {
+		internalCapacity[pidlimit.PIDs] = *resource.NewQuantity(
+			int64(*pidlimits.MaxPID),
+			resource.DecimalSI)
+	}
 
 	// Turn CgroupRoot from a string (in cgroupfs path format) to internal CgroupName
 	cgroupRoot := ParseCgroupfsToCgroupName(nodeConfig.CgroupRoot)
@@ -263,6 +277,7 @@ func NewContainerManager(mountUtil mount.Interface, cadvisorInterface cadvisor.I
 		subsystems:          subsystems,
 		cgroupManager:       cgroupManager,
 		capacity:            capacity,
+		internalCapacity:    internalCapacity,
 		cgroupRoot:          cgroupRoot,
 		recorder:            recorder,
 		qosContainerManager: qosContainerManager,
@@ -375,7 +390,11 @@ func setupKernelTunables(option KernelTunableBehavior) error {
 			klog.V(2).Infof("Updating kernel flag: %v, expected value: %v, actual value: %v", flag, expectedValue, val)
 			err = sysctl.SetSysctl(flag, expectedValue)
 			if err != nil {
-				errList = append(errList, err)
+				if rsystem.RunningInUserNS() {
+					klog.Warningf("Updating kernel flag failed: %v: %v", flag, err)
+				} else {
+					errList = append(errList, err)
+				}
 			}
 		}
 	}
@@ -461,13 +480,20 @@ func (cm *containerManagerImpl) setupNode(activePods ActivePodsFunc) error {
 			},
 		}
 		cont.ensureStateFunc = func(_ *fs.Manager) error {
-			return ensureProcessInContainerWithOOMScore(os.Getpid(), qos.KubeletOOMScoreAdj, &manager)
+			err := ensureProcessInContainerWithOOMScore(os.Getpid(), qos.KubeletOOMScoreAdj, &manager)
+			if rsystem.RunningInUserNS() {
+				// if we are in userns, cgroups might not be available
+				err = nil
+			}
+			return err
 		}
 		systemContainers = append(systemContainers, cont)
 	} else {
 		cm.periodicTasks = append(cm.periodicTasks, func() {
 			if err := ensureProcessInContainerWithOOMScore(os.Getpid(), qos.KubeletOOMScoreAdj, nil); err != nil {
-				klog.Error(err)
+				if !rsystem.RunningInUserNS() {
+					klog.Error(err)
+				}
 				return
 			}
 			cont, err := getContainer(os.Getpid())
@@ -627,7 +653,7 @@ func (cm *containerManagerImpl) GetResources(pod *v1.Pod, container *v1.Containe
 	return opts, nil
 }
 
-func (cm *containerManagerImpl) UpdatePluginResources(node *schedulercache.NodeInfo, attrs *lifecycle.PodAdmitAttributes) error {
+func (cm *containerManagerImpl) UpdatePluginResources(node *schedulernodeinfo.NodeInfo, attrs *lifecycle.PodAdmitAttributes) error {
 	return cm.deviceManager.Allocate(node, attrs)
 }
 

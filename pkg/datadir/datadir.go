@@ -15,8 +15,12 @@ const (
 )
 
 func Resolve(dataDir string) (string, error) {
+	return LocalHome(dataDir, false)
+}
+
+func LocalHome(dataDir string, forceLocal bool) (string, error) {
 	if dataDir == "" {
-		if os.Getuid() == 0 {
+		if os.Getuid() == 0 && !forceLocal {
 			dataDir = DefaultDataDir
 		} else {
 			dataDir = DefaultHomeDataDir

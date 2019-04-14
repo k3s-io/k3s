@@ -44,6 +44,7 @@ func run(ctx context.Context, namespace, name string, client kubernetes.Interfac
 		namespace,
 		name,
 		client.CoreV1(),
+		nil,
 		resourcelock.ResourceLockConfig{
 			Identity:      id,
 			EventRecorder: recorder,

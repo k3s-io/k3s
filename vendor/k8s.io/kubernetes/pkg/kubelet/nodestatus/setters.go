@@ -29,10 +29,12 @@ import (
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/errors"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	v1helper "k8s.io/kubernetes/pkg/apis/core/v1/helper"
 	"k8s.io/kubernetes/pkg/features"
+	kubeletapis "k8s.io/kubernetes/pkg/kubelet/apis"
 	"k8s.io/kubernetes/pkg/kubelet/cadvisor"
 	"k8s.io/kubernetes/pkg/kubelet/cm"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
@@ -57,6 +59,9 @@ type Setter func(node *v1.Node) error
 func NodeAddress(nodeIP net.IP, // typically Kubelet.nodeIP
 	validateNodeIPFunc func(net.IP) error, // typically Kubelet.nodeIPValidator
 	hostname string, // typically Kubelet.hostname
+	hostnameOverridden bool, // was the hostname force set?
+	externalCloudProvider bool, // typically Kubelet.externalCloudProvider
+	nodeAddressesFunc func() ([]v1.NodeAddress, error), // typically Kubelet.cloudResourceSyncManager.NodeAddresses
 ) Setter {
 	return func(node *v1.Node) error {
 		if nodeIP != nil {
@@ -66,50 +71,76 @@ func NodeAddress(nodeIP net.IP, // typically Kubelet.nodeIP
 			klog.V(2).Infof("Using node IP: %q", nodeIP.String())
 		}
 
-		{
-			var ipAddr net.IP
-			var err error
-
-			// 1) Use nodeIP if set
-			// 2) If the user has specified an IP to HostnameOverride, use it
-			// 3) Lookup the IP from node name by DNS and use the first valid IPv4 address.
-			//    If the node does not have a valid IPv4 address, use the first valid IPv6 address.
-			// 4) Try to get the IP from the network interface used as default gateway
+		if externalCloudProvider {
 			if nodeIP != nil {
-				ipAddr = nodeIP
-			} else if addr := net.ParseIP(hostname); addr != nil {
-				ipAddr = addr
-			} else {
-				var addrs []net.IP
-				addrs, _ = net.LookupIP(node.Name)
-				for _, addr := range addrs {
-					if err = validateNodeIPFunc(addr); err == nil {
-						if addr.To4() != nil {
-							ipAddr = addr
-							break
-						}
-						if addr.To16() != nil && ipAddr == nil {
-							ipAddr = addr
-						}
-					}
+				if node.ObjectMeta.Annotations == nil {
+					node.ObjectMeta.Annotations = make(map[string]string)
 				}
+				node.ObjectMeta.Annotations[kubeletapis.AnnotationProvidedIPAddr] = nodeIP.String()
+			}
+			// We rely on the external cloud provider to supply the addresses.
+			return nil
+		}
 
-				if ipAddr == nil {
-					ipAddr, err = utilnet.ChooseHostInterface()
+		var ipAddr net.IP
+		var err error
+
+		// 1) Use nodeIP if set
+		// 2) If the user has specified an IP to HostnameOverride, use it
+		// 3) Lookup the IP from node name by DNS and use the first valid IPv4 address.
+		//    If the node does not have a valid IPv4 address, use the first valid IPv6 address.
+		// 4) Try to get the IP from the network interface used as default gateway
+		if nodeIP != nil {
+			ipAddr = nodeIP
+		} else if addr := net.ParseIP(hostname); addr != nil {
+			ipAddr = addr
+		} else {
+			var addrs []net.IP
+			addrs, _ = net.LookupIP(node.Name)
+			for _, addr := range addrs {
+				if err = validateNodeIPFunc(addr); err == nil {
+					if addr.To4() != nil {
+						ipAddr = addr
+						break
+					}
+					if addr.To16() != nil && ipAddr == nil {
+						ipAddr = addr
+					}
 				}
 			}
 
 			if ipAddr == nil {
-				// We tried everything we could, but the IP address wasn't fetchable; error out
-				return fmt.Errorf("can't get ip address of node %s. error: %v", node.Name, err)
+				ipAddr, err = utilnet.ChooseHostInterface()
 			}
-			node.Status.Addresses = []v1.NodeAddress{
-				{Type: v1.NodeInternalIP, Address: ipAddr.String()},
-				{Type: v1.NodeHostName, Address: hostname},
-			}
+		}
+
+		if ipAddr == nil {
+			// We tried everything we could, but the IP address wasn't fetchable; error out
+			return fmt.Errorf("can't get ip address of node %s. error: %v", node.Name, err)
+		}
+		node.Status.Addresses = []v1.NodeAddress{
+			{Type: v1.NodeInternalIP, Address: ipAddr.String()},
+			{Type: v1.NodeHostName, Address: hostname},
 		}
 		return nil
 	}
+}
+
+func hasAddressType(addresses []v1.NodeAddress, addressType v1.NodeAddressType) bool {
+	for _, address := range addresses {
+		if address.Type == addressType {
+			return true
+		}
+	}
+	return false
+}
+func hasAddressValue(addresses []v1.NodeAddress, addressValue string) bool {
+	for _, address := range addresses {
+		if address.Address == addressValue {
+			return true
+		}
+	}
+	return false
 }
 
 // MachineInfo returns a Setter that updates machine-related information on the node.
@@ -173,7 +204,9 @@ func MachineInfo(nodeName string,
 				// capacity for every node status request
 				initialCapacity := capacityFunc()
 				if initialCapacity != nil {
-					node.Status.Capacity[v1.ResourceEphemeralStorage] = initialCapacity[v1.ResourceEphemeralStorage]
+					if v, exists := initialCapacity[v1.ResourceEphemeralStorage]; exists {
+						node.Status.Capacity[v1.ResourceEphemeralStorage] = v
+					}
 				}
 			}
 
@@ -339,8 +372,9 @@ func GoRuntime() Setter {
 // ReadyCondition returns a Setter that updates the v1.NodeReady condition on the node.
 func ReadyCondition(
 	nowFunc func() time.Time, // typically Kubelet.clock.Now
-	runtimeErrorsFunc func() []string, // typically Kubelet.runtimeState.runtimeErrors
-	networkErrorsFunc func() []string, // typically Kubelet.runtimeState.networkErrors
+	runtimeErrorsFunc func() error, // typically Kubelet.runtimeState.runtimeErrors
+	networkErrorsFunc func() error, // typically Kubelet.runtimeState.networkErrors
+	storageErrorsFunc func() error, // typically Kubelet.runtimeState.storageErrors
 	appArmorValidateHostFunc func() error, // typically Kubelet.appArmorValidator.ValidateHost, might be nil depending on whether there was an appArmorValidator
 	cmStatusFunc func() cm.Status, // typically Kubelet.containerManager.Status
 	recordEventFunc func(eventType, event string), // typically Kubelet.recordNodeStatusEvent
@@ -357,7 +391,7 @@ func ReadyCondition(
 			Message:           "kubelet is posting ready status",
 			LastHeartbeatTime: currentTime,
 		}
-		rs := append(runtimeErrorsFunc(), networkErrorsFunc()...)
+		errs := []error{runtimeErrorsFunc(), networkErrorsFunc(), storageErrorsFunc()}
 		requiredCapacities := []v1.ResourceName{v1.ResourceCPU, v1.ResourceMemory, v1.ResourcePods}
 		if utilfeature.DefaultFeatureGate.Enabled(features.LocalStorageCapacityIsolation) {
 			requiredCapacities = append(requiredCapacities, v1.ResourceEphemeralStorage)
@@ -369,14 +403,14 @@ func ReadyCondition(
 			}
 		}
 		if len(missingCapacities) > 0 {
-			rs = append(rs, fmt.Sprintf("Missing node capacity for resources: %s", strings.Join(missingCapacities, ", ")))
+			errs = append(errs, fmt.Errorf("Missing node capacity for resources: %s", strings.Join(missingCapacities, ", ")))
 		}
-		if len(rs) > 0 {
+		if aggregatedErr := errors.NewAggregate(errs); aggregatedErr != nil {
 			newNodeReadyCondition = v1.NodeCondition{
 				Type:              v1.NodeReady,
 				Status:            v1.ConditionFalse,
 				Reason:            "KubeletNotReady",
-				Message:           strings.Join(rs, ","),
+				Message:           aggregatedErr.Error(),
 				LastHeartbeatTime: currentTime,
 			}
 		}

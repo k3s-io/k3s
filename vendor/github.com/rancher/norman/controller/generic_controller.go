@@ -3,7 +3,6 @@ package controller
 import (
 	"context"
 	"fmt"
-	"os"
 	"reflect"
 	"strings"
 	"sync"
@@ -25,22 +24,9 @@ import (
 	"k8s.io/client-go/util/workqueue"
 )
 
-const MetricsQueueEnv = "NORMAN_QUEUE_METRICS"
-const MetricsReflectorEnv = "NORMAN_REFLECTOR_METRICS"
-
 var (
 	resyncPeriod = 2 * time.Hour
 )
-
-// Override the metrics providers
-func init() {
-	if os.Getenv(MetricsQueueEnv) != "true" {
-		DisableControllerWorkqueuMetrics()
-	}
-	if os.Getenv(MetricsReflectorEnv) != "true" {
-		DisableControllerReflectorMetrics()
-	}
-}
 
 type HandlerFunc func(key string, obj interface{}) (interface{}, error)
 

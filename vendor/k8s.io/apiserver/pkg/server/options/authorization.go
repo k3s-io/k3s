@@ -18,7 +18,6 @@ package options
 
 import (
 	"fmt"
-	"k8s.io/client-go/kubernetes"
 	"time"
 
 	"github.com/spf13/pflag"
@@ -29,6 +28,7 @@ import (
 	"k8s.io/apiserver/pkg/authorization/path"
 	"k8s.io/apiserver/pkg/authorization/union"
 	"k8s.io/apiserver/pkg/server"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -146,7 +146,7 @@ func (s *DelegatingAuthorizationOptions) toAuthorizer(client kubernetes.Interfac
 		klog.Warningf("No authorization-kubeconfig provided, so SubjectAccessReview of authorization tokens won't work.")
 	} else {
 		cfg := authorizerfactory.DelegatingAuthorizerConfig{
-			SubjectAccessReviewClient: client.AuthorizationV1().SubjectAccessReviews(),
+			SubjectAccessReviewClient: client.AuthorizationV1beta1().SubjectAccessReviews(),
 			AllowCacheTTL:             s.AllowCacheTTL,
 			DenyCacheTTL:              s.DenyCacheTTL,
 		}

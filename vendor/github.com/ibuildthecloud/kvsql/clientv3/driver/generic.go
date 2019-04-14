@@ -11,7 +11,7 @@ import (
 	"github.com/ibuildthecloud/kvsql/pkg/broadcast"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	utiltrace "k8s.io/apiserver/pkg/util/trace"
+	utiltrace "k8s.io/utils/trace"
 )
 
 type Generic struct {

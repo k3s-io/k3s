@@ -22,10 +22,10 @@ import (
 	"time"
 
 	lru "github.com/hashicorp/golang-lru"
+	cert "github.com/rancher/norman/pkg/cert"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/acme/autocert"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/client-go/util/cert"
 )
 
 const (
@@ -196,7 +196,10 @@ func (s *server) userConfigure() error {
 			s.ips.Add(ip, netIP)
 		}
 	}
-
+	bindAddress := net.ParseIP(s.userConfig.BindAddress)
+	if bindAddress != nil {
+		s.ips.Add(s.userConfig.BindAddress, bindAddress)
+	}
 	return nil
 }
 
@@ -445,7 +448,7 @@ func (s *server) serveHTTPS() error {
 		PreferServerCipherSuites: true,
 	}
 
-	listener, err := s.newListener(s.userConfig.HTTPSPort, conf)
+	listener, err := s.newListener(s.userConfig.BindAddress, s.userConfig.HTTPSPort, conf)
 	if err != nil {
 		return err
 	}
@@ -460,7 +463,7 @@ func (s *server) serveHTTPS() error {
 	s.startServer(listener, server)
 
 	if s.userConfig.HTTPPort > 0 {
-		httpListener, err := s.newListener(s.userConfig.HTTPPort, nil)
+		httpListener, err := s.newListener(s.userConfig.BindAddress, s.userConfig.HTTPPort, nil)
 		if err != nil {
 			return err
 		}
@@ -524,8 +527,8 @@ func (s *server) Handler() http.Handler {
 	return s.userConfig.Handler
 }
 
-func (s *server) newListener(port int, config *tls.Config) (net.Listener, error) {
-	addr := fmt.Sprintf(":%d", port)
+func (s *server) newListener(ip string, port int, config *tls.Config) (net.Listener, error) {
+	addr := fmt.Sprintf("%s:%d", ip, port)
 	l, err := net.Listen("tcp", addr)
 	if err != nil {
 		return nil, err
@@ -561,7 +564,7 @@ func (s *server) serveACME() error {
 	}
 
 	if s.userConfig.HTTPPort > 0 {
-		httpListener, err := s.newListener(s.userConfig.HTTPPort, nil)
+		httpListener, err := s.newListener(s.userConfig.BindAddress, s.userConfig.HTTPPort, nil)
 		if err != nil {
 			return err
 		}
@@ -579,7 +582,7 @@ func (s *server) serveACME() error {
 
 	}
 
-	httpsListener, err := s.newListener(s.userConfig.HTTPSPort, conf)
+	httpsListener, err := s.newListener(s.userConfig.BindAddress, s.userConfig.HTTPSPort, conf)
 	if err != nil {
 		return err
 	}

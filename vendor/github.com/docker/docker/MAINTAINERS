@@ -36,6 +36,7 @@
 			"jhowardmsft",
 			"johnstep",
 			"justincormack",
+			"kolyshkin",
 			"mhbauer",
 			"mlaventure",
 			"runcom",
@@ -48,15 +49,6 @@
 			"vdemeester",
 			"vieux",
 			"yongtang"
-		]
-
-	[Org."Docs maintainers"]
-
-	# TODO Describe the docs maintainers role.
-
-		people = [
-			"misty",
-			"thajeztah"
 		]
 
 	[Org.Curators]
@@ -78,6 +70,7 @@
 			"chanwit",
 			"fntlnz",
 			"gianarb",
+			"olljanat",
 			"programmerq",
 			"rheinwein",
 			"ripcurld",
@@ -162,7 +155,7 @@
 
 			# Alexander Morozov contributed many features to Docker, worked on the premise of 
 			# what later became containerd (and worked on that too), and made a "stupid" Go
-			# vendor tool specificaly for docker/docker needs: vndr (https://github.com/LK4D4/vndr).
+			# vendor tool specifically for docker/docker needs: vndr (https://github.com/LK4D4/vndr).
 			# Not many know that Alexander is a master negotiator, being able to change course
 			# of action with a single "Nope, we're not gonna do that".
 			"lk4d4",
@@ -365,6 +358,11 @@
 	Email = "justin.cormack@docker.com"
 	GitHub = "justincormack"
 
+	[people.kolyshkin]
+	Name = "Kir Kolyshkin"
+	Email = "kolyshkin@gmail.com"
+	GitHub = "kolyshkin"
+
 	[people.lk4d4]
 	Name = "Alexander Morozov"
 	Email = "lk4d4@docker.com"
@@ -380,11 +378,6 @@
 	Email = "mbauer@us.ibm.com"
 	GitHub = "mhbauer"
 
-	[people.misty]
-	Name = "Misty Stanley-Jones"
-	Email = "misty@docker.com"
-	GitHub = "mistyhacks"
-
 	[people.mlaventure]
 	Name = "Kenfe-Mickaël Laventure"
 	Email = "mickael.laventure@gmail.com"
@@ -399,6 +392,11 @@
 	Name = "Jana Radhakrishnan"
 	Email = "mrjana@docker.com"
 	GitHub = "mrjana"
+
+	[people.olljanat]
+	Name = "Olli Janatuinen"
+	Email = "olli.janatuinen@gmail.com"
+	GitHub = "olljanat"
 
 	[people.programmerq]
 	Name = "Jeff Anderson"

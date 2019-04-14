@@ -79,6 +79,13 @@ flag
 
 At this point, you can run the agent as a separate process or not run it on this node at all.
 
+If you encounter an error like `"stream server error: listen tcp: lookup some-host on X.X.X.X:53: no such host"`
+when starting k3s please ensure `/etc/hosts` contains your current hostname (output of `hostname`), 
+set to a 127.x.x.x address. For example:
+```
+127.0.1.1	myhost
+```
+
 Joining nodes
 -------------
 
@@ -115,6 +122,32 @@ spec:
     rbac.enabled: "true"
     ssl.enabled: "true"
 ```
+
+Keep in mind that `namespace` in your HelmChart resource metadata section should always be `kube-system`, because k3s deploy controller is configured to watch this namespace for new HelmChart resources. If you want to specify the namespace for the actual helm release, you can do that using `targetNamespace` key in the spec section:
+
+```
+apiVersion: k3s.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: grafana
+  namespace: kube-system
+spec:
+  chart: stable/grafana
+  targetNamespace: monitoring
+  set:
+    adminPassword: "NotVerySafePassword"
+  valuesContent: |-
+    image:
+      tag: master
+    env:
+      GF_EXPLORE_ENABLED: true
+    adminUser: admin
+    sidecar:
+      datasources:
+        enabled: true
+```
+
+Also note that besides `set` you can use `valuesContent` in the spec section. And it's okay to use both of them.
 
 Building from source
 --------------------
@@ -197,9 +230,9 @@ serves as an example of how to run k3s from Docker.  To run from `docker-compose
 To run the agent only in Docker use the following `docker-compose-agent.yml` is in the root of this repo that
 serves as an example of how to run k3s agent from Docker. Alternatively the Docker run command can also be used;
 
-    sudo docker run -d --tmpfs /run --tmpfs /var/run -e K3S_URL=${SERVER_URL} -e K3S_TOKEN=${NODE_TOKEN} --privileged rancher/k3s:v0.2.0
+    sudo docker run -d --tmpfs /run --tmpfs /var/run -e K3S_URL=${SERVER_URL} -e K3S_TOKEN=${NODE_TOKEN} --privileged rancher/k3s:v0.3.0
 
-    sudo docker run -d --tmpfs /run --tmpfs /var/run -e K3S_URL=https://k3s.example.com:6443 -e K3S_TOKEN=K13849a67fc385fd3c0fa6133a8649d9e717b0258b3b09c87ffc33dae362c12d8c0::node:2e373dca319a0525745fd8b3d8120d9c --privileged rancher/k3s:v0.2.0
+    sudo docker run -d --tmpfs /run --tmpfs /var/run -e K3S_URL=https://k3s.example.com:6443 -e K3S_TOKEN=K13849a67fc385fd3c0fa6133a8649d9e717b0258b3b09c87ffc33dae362c12d8c0::node:2e373dca319a0525745fd8b3d8120d9c --privileged rancher/k3s:v0.3.0
 
 Hyperkube
 --------
@@ -373,6 +406,26 @@ for port 80.  If no port is available the load balancer will stay in Pending.
 
 To disable the embedded service load balancer (if you wish to use a different implementation like
 MetalLB) just add `--no-deploy=servicelb` to the server on startup.
+
+Air-Gap Support
+---------------
+
+k3s supports pre-loading of containerd images by placing them in the `images` directory for the agent before starting, eg:
+```sh
+sudo mkdir -p /var/lib/rancher/k3s/agent/images/
+sudo cp ./k3s-airgap-images-$ARCH.tar /var/lib/rancher/k3s/agent/images/
+```
+Images needed for a base install are provided through the releases page, additional images can be created with the `docker save` command.
+
+Offline Helm charts are served from the `/var/lib/rancher/k3s/server/static` directory, and Helm chart manifests may reference the static files with a `%{KUBERNETES_API}%` templated variable. For example, the default traefik manifest chart installs from `https://%{KUBERNETES_API}%/static/charts/traefik-X.Y.Z.tgz`.
+
+If networking is completely disabled k3s may not be able to start (ie ethernet unplugged or wifi disconnected), in which case it may be necessary to add a default route. For example:
+```sh
+sudo ip -c address add 192.168.123.123/24 dev eno1
+sudo ip route add default via 192.168.123.1
+```
+
+k3s additionally provides a `--resolv-conf` flag for kubelets, which may help with configuring DNS in air-gap networks.
 
 TODO
 ----

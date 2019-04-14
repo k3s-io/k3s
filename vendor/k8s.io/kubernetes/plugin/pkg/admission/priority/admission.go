@@ -96,7 +96,7 @@ var (
 
 // Admit checks Pods and admits or rejects them. It also resolves the priority of pods based on their PriorityClass.
 // Note that pod validation mechanism prevents update of a pod priority.
-func (p *priorityPlugin) Admit(a admission.Attributes) error {
+func (p *priorityPlugin) Admit(a admission.Attributes, o admission.ObjectInterfaces) error {
 	if !utilfeature.DefaultFeatureGate.Enabled(features.PodPriority) {
 		return nil
 	}
@@ -120,7 +120,7 @@ func (p *priorityPlugin) Admit(a admission.Attributes) error {
 }
 
 // Validate checks PriorityClasses and admits or rejects them.
-func (p *priorityPlugin) Validate(a admission.Attributes) error {
+func (p *priorityPlugin) Validate(a admission.Attributes, o admission.ObjectInterfaces) error {
 	operation := a.GetOperation()
 	// Ignore all calls to subresources
 	if len(a.GetSubresource()) != 0 {

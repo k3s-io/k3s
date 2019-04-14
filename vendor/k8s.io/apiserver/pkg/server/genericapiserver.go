@@ -44,10 +44,6 @@ import (
 	restclient "k8s.io/client-go/rest"
 )
 
-var (
-	NotifySystemD = true
-)
-
 // Info about an API group.
 type APIGroupInfo struct {
 	PrioritizedVersions []schema.GroupVersion
@@ -280,9 +276,11 @@ func (s preparedGenericAPIServer) NonBlockingRun(stopCh <-chan struct{}) error {
 
 	// Use an internal stop channel to allow cleanup of the listeners on error.
 	internalStopCh := make(chan struct{})
-
+	var stoppedCh <-chan struct{}
 	if s.SecureServingInfo != nil && s.Handler != nil {
-		if err := s.SecureServingInfo.Serve(s.Handler, s.ShutdownTimeout, internalStopCh); err != nil {
+		var err error
+		stoppedCh, err = s.SecureServingInfo.Serve(s.Handler, s.ShutdownTimeout, internalStopCh)
+		if err != nil {
 			close(internalStopCh)
 			return err
 		}
@@ -294,16 +292,17 @@ func (s preparedGenericAPIServer) NonBlockingRun(stopCh <-chan struct{}) error {
 	go func() {
 		<-stopCh
 		close(internalStopCh)
+		if stoppedCh != nil {
+			<-stoppedCh
+		}
 		s.HandlerChainWaitGroup.Wait()
 		close(auditStopCh)
 	}()
 
 	s.RunPostStartHooks(stopCh)
 
-	if NotifySystemD {
-		if _, err := systemd.SdNotify(true, "READY=1\n"); err != nil {
-			klog.Errorf("Unable to send systemd daemon successful start message: %v\n", err)
-		}
+	if _, err := systemd.SdNotify(true, "READY=1\n"); err != nil {
+		klog.Errorf("Unable to send systemd daemon successful start message: %v\n", err)
 	}
 
 	return nil
@@ -335,6 +334,7 @@ func (s *GenericAPIServer) InstallLegacyAPIGroup(apiPrefix string, apiGroupInfo 
 	if !s.legacyAPIGroupPrefixes.Has(apiPrefix) {
 		return fmt.Errorf("%q is not in the allowed legacy API prefixes: %v", apiPrefix, s.legacyAPIGroupPrefixes.List())
 	}
+
 	if err := s.installAPIResources(apiPrefix, apiGroupInfo); err != nil {
 		return err
 	}
@@ -346,49 +346,57 @@ func (s *GenericAPIServer) InstallLegacyAPIGroup(apiPrefix string, apiGroupInfo 
 	return nil
 }
 
+// Exposes given api groups in the API.
+func (s *GenericAPIServer) InstallAPIGroups(apiGroupInfos ...*APIGroupInfo) error {
+	for _, apiGroupInfo := range apiGroupInfos {
+		// Do not register empty group or empty version.  Doing so claims /apis/ for the wrong entity to be returned.
+		// Catching these here places the error  much closer to its origin
+		if len(apiGroupInfo.PrioritizedVersions[0].Group) == 0 {
+			return fmt.Errorf("cannot register handler with an empty group for %#v", *apiGroupInfo)
+		}
+		if len(apiGroupInfo.PrioritizedVersions[0].Version) == 0 {
+			return fmt.Errorf("cannot register handler with an empty version for %#v", *apiGroupInfo)
+		}
+	}
+
+	for _, apiGroupInfo := range apiGroupInfos {
+		if err := s.installAPIResources(APIGroupPrefix, apiGroupInfo); err != nil {
+			return fmt.Errorf("unable to install api resources: %v", err)
+		}
+
+		// setup discovery
+		// Install the version handler.
+		// Add a handler at /apis/<groupName> to enumerate all versions supported by this group.
+		apiVersionsForDiscovery := []metav1.GroupVersionForDiscovery{}
+		for _, groupVersion := range apiGroupInfo.PrioritizedVersions {
+			// Check the config to make sure that we elide versions that don't have any resources
+			if len(apiGroupInfo.VersionedResourcesStorageMap[groupVersion.Version]) == 0 {
+				continue
+			}
+			apiVersionsForDiscovery = append(apiVersionsForDiscovery, metav1.GroupVersionForDiscovery{
+				GroupVersion: groupVersion.String(),
+				Version:      groupVersion.Version,
+			})
+		}
+		preferredVersionForDiscovery := metav1.GroupVersionForDiscovery{
+			GroupVersion: apiGroupInfo.PrioritizedVersions[0].String(),
+			Version:      apiGroupInfo.PrioritizedVersions[0].Version,
+		}
+		apiGroup := metav1.APIGroup{
+			Name:             apiGroupInfo.PrioritizedVersions[0].Group,
+			Versions:         apiVersionsForDiscovery,
+			PreferredVersion: preferredVersionForDiscovery,
+		}
+
+		s.DiscoveryGroupManager.AddGroup(apiGroup)
+		s.Handler.GoRestfulContainer.Add(discovery.NewAPIGroupHandler(s.Serializer, apiGroup).WebService())
+	}
+	return nil
+}
+
 // Exposes the given api group in the API.
 func (s *GenericAPIServer) InstallAPIGroup(apiGroupInfo *APIGroupInfo) error {
-	// Do not register empty group or empty version.  Doing so claims /apis/ for the wrong entity to be returned.
-	// Catching these here places the error  much closer to its origin
-	if len(apiGroupInfo.PrioritizedVersions[0].Group) == 0 {
-		return fmt.Errorf("cannot register handler with an empty group for %#v", *apiGroupInfo)
-	}
-	if len(apiGroupInfo.PrioritizedVersions[0].Version) == 0 {
-		return fmt.Errorf("cannot register handler with an empty version for %#v", *apiGroupInfo)
-	}
-
-	if err := s.installAPIResources(APIGroupPrefix, apiGroupInfo); err != nil {
-		return err
-	}
-
-	// setup discovery
-	// Install the version handler.
-	// Add a handler at /apis/<groupName> to enumerate all versions supported by this group.
-	apiVersionsForDiscovery := []metav1.GroupVersionForDiscovery{}
-	for _, groupVersion := range apiGroupInfo.PrioritizedVersions {
-		// Check the config to make sure that we elide versions that don't have any resources
-		if len(apiGroupInfo.VersionedResourcesStorageMap[groupVersion.Version]) == 0 {
-			continue
-		}
-		apiVersionsForDiscovery = append(apiVersionsForDiscovery, metav1.GroupVersionForDiscovery{
-			GroupVersion: groupVersion.String(),
-			Version:      groupVersion.Version,
-		})
-	}
-	preferredVersionForDiscovery := metav1.GroupVersionForDiscovery{
-		GroupVersion: apiGroupInfo.PrioritizedVersions[0].String(),
-		Version:      apiGroupInfo.PrioritizedVersions[0].Version,
-	}
-	apiGroup := metav1.APIGroup{
-		Name:             apiGroupInfo.PrioritizedVersions[0].Group,
-		Versions:         apiVersionsForDiscovery,
-		PreferredVersion: preferredVersionForDiscovery,
-	}
-
-	s.DiscoveryGroupManager.AddGroup(apiGroup)
-	s.Handler.GoRestfulContainer.Add(discovery.NewAPIGroupHandler(s.Serializer, apiGroup).WebService())
-
-	return nil
+	return s.InstallAPIGroups(apiGroupInfo)
 }
 
 func (s *GenericAPIServer) getAPIGroupVersion(apiGroupInfo *APIGroupInfo, groupVersion schema.GroupVersion, apiPrefix string) *genericapi.APIGroupVersion {

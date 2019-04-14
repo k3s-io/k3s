@@ -18,6 +18,7 @@ package server
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -37,7 +38,6 @@ import (
 	imagedigest "github.com/opencontainers/go-digest"
 	runtimespec "github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/opencontainers/runtime-tools/generate"
-	"github.com/opencontainers/selinux/go-selinux"
 	"github.com/opencontainers/selinux/go-selinux/label"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
@@ -97,6 +97,8 @@ const (
 	devShm = "/dev/shm"
 	// etcHosts is the default path of /etc/hosts file.
 	etcHosts = "/etc/hosts"
+	// etcHostname is the default path of /etc/hostname file.
+	etcHostname = "/etc/hostname"
 	// resolvConfPath is the abs path of resolv.conf on host or container.
 	resolvConfPath = "/etc/resolv.conf"
 	// hostnameEnv is the key for HOSTNAME env.
@@ -142,9 +144,9 @@ const (
 // generated is unique as long as sandbox metadata is unique.
 func makeSandboxName(s *runtime.PodSandboxMetadata) string {
 	return strings.Join([]string{
-		s.Name,      // 0
-		s.Namespace, // 1
-		s.Uid,       // 2
+		s.Name,                       // 0
+		s.Namespace,                  // 1
+		s.Uid,                        // 2
 		fmt.Sprintf("%d", s.Attempt), // 3
 	}, nameDelimiter)
 }
@@ -154,10 +156,10 @@ func makeSandboxName(s *runtime.PodSandboxMetadata) string {
 // unique.
 func makeContainerName(c *runtime.ContainerMetadata, s *runtime.PodSandboxMetadata) string {
 	return strings.Join([]string{
-		c.Name,      // 0
-		s.Name,      // 1: pod name
-		s.Namespace, // 2: pod namespace
-		s.Uid,       // 3: pod uid
+		c.Name,                       // 0
+		s.Name,                       // 1: pod name
+		s.Namespace,                  // 2: pod namespace
+		s.Uid,                        // 3: pod uid
 		fmt.Sprintf("%d", c.Attempt), // 4
 	}, nameDelimiter)
 }
@@ -195,6 +197,11 @@ func (c *criService) getContainerRootDir(id string) string {
 // e.g. named pipes.
 func (c *criService) getVolatileContainerRootDir(id string) string {
 	return filepath.Join(c.config.StateDir, containersDir, id)
+}
+
+// getSandboxHostname returns the hostname file path inside the sandbox root directory.
+func (c *criService) getSandboxHostname(id string) string {
+	return filepath.Join(c.getSandboxRootDir(id), "hostname")
 }
 
 // getSandboxHosts returns the hosts file path inside the sandbox root directory.
@@ -348,7 +355,12 @@ func initSelinuxOpts(selinuxOpt *runtime.SELinuxOption) (string, string, error) 
 		selinuxOpt.GetRole(),
 		selinuxOpt.GetType(),
 		selinuxOpt.GetLevel())
-	return label.InitLabels(selinux.DupSecOpt(labelOpts))
+
+	options, err := label.DupSecOpt(labelOpts)
+	if err != nil {
+		return "", "", err
+	}
+	return label.InitLabels(options)
 }
 
 func checkSelinuxLevel(level string) (bool, error) {
@@ -366,7 +378,7 @@ func checkSelinuxLevel(level string) (bool, error) {
 // isInCRIMounts checks whether a destination is in CRI mount list.
 func isInCRIMounts(dst string, mounts []*runtime.Mount) bool {
 	for _, m := range mounts {
-		if m.ContainerPath == dst {
+		if filepath.Clean(m.ContainerPath) == filepath.Clean(dst) {
 			return true
 		}
 	}
@@ -390,10 +402,51 @@ func buildLabels(configLabels map[string]string, containerType string) map[strin
 }
 
 // newSpecGenerator creates a new spec generator for the runtime spec.
-func newSpecGenerator(spec *runtimespec.Spec) generate.Generator {
+func newSpecGenerator(spec *runtimespec.Spec) generator {
 	g := generate.NewFromSpec(spec)
 	g.HostSpecific = true
-	return g
+	return newCustomGenerator(g)
+}
+
+// generator is a custom generator with some functions overridden
+// used by the cri plugin.
+// TODO(random-liu): Upstream this fix.
+type generator struct {
+	generate.Generator
+	envCache map[string]int
+}
+
+func newCustomGenerator(g generate.Generator) generator {
+	cg := generator{
+		Generator: g,
+		envCache:  make(map[string]int),
+	}
+	if g.Config != nil && g.Config.Process != nil {
+		for i, env := range g.Config.Process.Env {
+			kv := strings.SplitN(env, "=", 2)
+			cg.envCache[kv[0]] = i
+		}
+	}
+	return cg
+}
+
+// AddProcessEnv overrides the original AddProcessEnv. It uses
+// a map to cache and override envs.
+func (g *generator) AddProcessEnv(key, value string) {
+	if len(g.envCache) == 0 {
+		// Call AddProccessEnv once to initialize the spec.
+		g.Generator.AddProcessEnv(key, value)
+		g.envCache[key] = 0
+		return
+	}
+	spec := g.Config
+	env := fmt.Sprintf("%s=%s", key, value)
+	if idx, ok := g.envCache[key]; !ok {
+		spec.Process.Env = append(spec.Process.Env, env)
+		g.envCache[key] = len(spec.Process.Env) - 1
+	} else {
+		spec.Process.Env[idx] = env
+	}
 }
 
 func getPodCNILabels(id string, config *runtime.PodSandboxConfig) map[string]string {
@@ -550,4 +603,28 @@ func getTaskStatus(ctx context.Context, task containerd.Task) (containerd.Status
 		return unknownExitStatus(), nil
 	}
 	return status, nil
+}
+
+func getCurrentOOMScoreAdj() (int, error) {
+	b, err := ioutil.ReadFile("/proc/self/oom_score_adj")
+	if err != nil {
+		return 0, errors.Wrap(err, "could not get the daemon oom_score_adj")
+	}
+	s := strings.TrimSpace(string(b))
+	i, err := strconv.Atoi(s)
+	if err != nil {
+		return 0, errors.Wrap(err, "could not get the daemon oom_score_adj")
+	}
+	return i, nil
+}
+
+func restrictOOMScoreAdj(preferredOOMScoreAdj int) (int, error) {
+	currentOOMScoreAdj, err := getCurrentOOMScoreAdj()
+	if err != nil {
+		return preferredOOMScoreAdj, err
+	}
+	if preferredOOMScoreAdj < currentOOMScoreAdj {
+		return currentOOMScoreAdj, nil
+	}
+	return preferredOOMScoreAdj, nil
 }

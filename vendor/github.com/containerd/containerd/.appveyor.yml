@@ -13,7 +13,7 @@ environment:
   GOPATH: C:\gopath
   CGO_ENABLED: 1
   matrix:
-    - GO_VERSION: 1.10
+    - GO_VERSION: 1.11
 
 before_build:
   - choco install -y mingw --version 5.3.0

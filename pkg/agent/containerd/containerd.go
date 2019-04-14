@@ -15,6 +15,7 @@ import (
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/namespaces"
 	"github.com/natefinch/lumberjack"
+	"github.com/opencontainers/runc/libcontainer/system"
 	util2 "github.com/rancher/k3s/pkg/agent/util"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/sirupsen/logrus"
@@ -27,10 +28,15 @@ const (
 	maxMsgSize = 1024 * 1024 * 16
 	configToml = `
 [plugins.opt]
-	path = "%OPT%"
+  path = "%OPT%"
 [plugins.cri]
   stream_server_address = "%NODE%"
   stream_server_port = "10010"
+`
+	configUserNSToml = `
+  disable_cgroup = true
+  disable_apparmor = true
+  restrict_oom_score_adj = true
 `
 	configCNIToml = `
   [plugins.cri.cni]
@@ -49,6 +55,9 @@ func Run(ctx context.Context, cfg *config.Node) error {
 	}
 
 	template := configToml
+	if system.RunningInUserNS() {
+		template += configUserNSToml
+	}
 	if !cfg.NoFlannel {
 		template += configCNIToml
 	}

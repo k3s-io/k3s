@@ -249,6 +249,9 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 	os.Setenv("NODE_NAME", nodeConfig.AgentConfig.NodeName)
 	v1beta1.KubeletSocket = filepath.Join(envInfo.DataDir, "kubelet/device-plugins/kubelet.sock")
 
+	nodeConfig.AgentConfig.ExtraKubeletArgs = envInfo.ExtraKubeletArgs
+	nodeConfig.AgentConfig.ExtraKubeProxyArgs = envInfo.ExtraKubeProxyArgs
+
 	return nodeConfig, nil
 }
 

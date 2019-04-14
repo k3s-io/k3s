@@ -32,6 +32,15 @@ const (
 	// SandboxID is the sandbox ID annotation
 	SandboxID = "io.kubernetes.cri.sandbox-id"
 
+	// SandboxLogDir is the pod log directory annotation.
+	// If the sandbox needs to generate any log, it will put it into this directory.
+	// Kubelet will be responsible for:
+	// 1) Monitoring the disk usage of the log, and including it as part of the pod
+	// ephemeral storage usage.
+	// 2) Cleaning up the logs when the pod is deleted.
+	// NOTE: Kubelet is not responsible for rotating the logs.
+	SandboxLogDir = "io.kubernetes.cri.sandbox-log-directory"
+
 	// UntrustedWorkload is the sandbox annotation for untrusted workload. Untrusted
 	// workload can only run on dedicated runtime for untrusted workload.
 	UntrustedWorkload = "io.kubernetes.cri.untrusted-workload"

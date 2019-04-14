@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
 	"strings"
 	"time"
 
@@ -39,8 +40,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
-	"k8s.io/cli-runtime/pkg/genericclioptions/printers"
-	"k8s.io/cli-runtime/pkg/genericclioptions/resource"
+	"k8s.io/cli-runtime/pkg/printers"
+	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/klog"
@@ -63,16 +64,16 @@ type ApplyOptions struct {
 	DeleteFlags   *delete.DeleteFlags
 	DeleteOptions *delete.DeleteOptions
 
-	Selector                   string
-	DryRun                     bool
-	ServerDryRun               bool
-	Prune                      bool
-	PruneResources             []pruneResource
-	cmdBaseName                string
-	All                        bool
-	Overwrite                  bool
-	PruneWhitelist             []string
-	ShouldIncludeUninitialized bool
+	Selector       string
+	DryRun         bool
+	ServerDryRun   bool
+	Prune          bool
+	PruneResources []pruneResource
+	cmdBaseName    string
+	All            bool
+	Overwrite      bool
+	OpenAPIPatch   bool
+	PruneWhitelist []string
 
 	Validator       validation.Schema
 	Builder         *resource.Builder
@@ -89,7 +90,7 @@ type ApplyOptions struct {
 const (
 	// maxPatchRetry is the maximum number of conflicts retry for during a patch operation before returning failure
 	maxPatchRetry = 5
-	// backOffPeriod is the period to back off when apply patch resutls in error.
+	// backOffPeriod is the period to back off when apply patch results in error.
 	backOffPeriod = 1 * time.Second
 	// how many times we can retry before back off
 	triesBeforeBackOff = 1
@@ -108,6 +109,9 @@ var (
 	applyExample = templates.Examples(i18n.T(`
 		# Apply the configuration in pod.json to a pod.
 		kubectl apply -f ./pod.json
+
+		# Apply resources from a directory containing kustomization.yaml - e.g. dir/kustomization.yaml.
+		kubectl apply -k dir/
 
 		# Apply the JSON passed into stdin to a pod.
 		cat pod.json | kubectl apply -f -
@@ -128,7 +132,7 @@ func NewApplyOptions(ioStreams genericclioptions.IOStreams) *ApplyOptions {
 		DeleteFlags: delete.NewDeleteFlags("that contains the configuration to apply"),
 		PrintFlags:  genericclioptions.NewPrintFlags("created").WithTypeSetter(scheme.Scheme),
 
-		Overwrite:    true,
+		Overwrite: true,
 
 		Recorder: genericclioptions.NoopRecorder{},
 
@@ -136,6 +140,7 @@ func NewApplyOptions(ioStreams genericclioptions.IOStreams) *ApplyOptions {
 	}
 }
 
+// NewCmdApply creates the `apply` command
 func NewCmdApply(baseName string, f cmdutil.Factory, ioStreams genericclioptions.IOStreams) *cobra.Command {
 	o := NewApplyOptions(ioStreams)
 
@@ -144,7 +149,7 @@ func NewCmdApply(baseName string, f cmdutil.Factory, ioStreams genericclioptions
 	o.cmdBaseName = baseName
 
 	cmd := &cobra.Command{
-		Use:                   "apply -f FILENAME",
+		Use:                   "apply (-f FILENAME | -k DIRECTORY)",
 		DisableFlagsInUseLine: true,
 		Short:                 i18n.T("Apply a configuration to a resource by filename or stdin"),
 		Long:                  applyLong,
@@ -162,7 +167,6 @@ func NewCmdApply(baseName string, f cmdutil.Factory, ioStreams genericclioptions
 	o.RecordFlags.AddFlags(cmd)
 	o.PrintFlags.AddFlags(cmd)
 
-	cmd.MarkFlagRequired("filename")
 	cmd.Flags().BoolVar(&o.Overwrite, "overwrite", o.Overwrite, "Automatically resolve conflicts between the modified and live configuration by using values from the modified configuration")
 	cmd.Flags().BoolVar(&o.Prune, "prune", o.Prune, "Automatically delete resource objects, including the uninitialized ones, that do not appear in the configs and are created by either apply or create --save-config. Should be used with either -l or --all.")
 	cmdutil.AddValidateFlags(cmd)
@@ -170,7 +174,7 @@ func NewCmdApply(baseName string, f cmdutil.Factory, ioStreams genericclioptions
 	cmd.Flags().BoolVar(&o.All, "all", o.All, "Select all resources in the namespace of the specified resource types.")
 	cmd.Flags().StringArrayVar(&o.PruneWhitelist, "prune-whitelist", o.PruneWhitelist, "Overwrite the default whitelist with <group/version/kind> for --prune")
 	cmd.Flags().BoolVar(&o.ServerDryRun, "server-dry-run", o.ServerDryRun, "If true, request will be sent to server with dry-run flag, which means the modifications won't be persisted. This is an alpha feature and flag.")
-	cmdutil.AddDryRunFlag(cmd)
+	cmd.Flags().Bool("dry-run", false, "If true, only print the object that would be sent, without sending it. Warning: --dry-run cannot accurately output the result of merging the local manifest and the server-side data. Use --server-dry-run to get the merged result instead.")
 	cmdutil.AddIncludeUninitializedFlag(cmd)
 
 	// apply subcommands
@@ -217,7 +221,10 @@ func (o *ApplyOptions) Complete(f cmdutil.Factory, cmd *cobra.Command) error {
 		return err
 	}
 	o.DeleteOptions = o.DeleteFlags.ToOptions(dynamicClient, o.IOStreams)
-	o.ShouldIncludeUninitialized = cmdutil.ShouldIncludeUninitialized(cmd, o.Prune)
+	err = o.DeleteOptions.FilenameOptions.RequireFilenameOrKustomize()
+	if err != nil {
+		return err
+	}
 
 	o.Validator, err = f.Validator(cmdutil.GetFlagBool(cmd, "validate"))
 	o.Builder = f.NewBuilder()
@@ -251,7 +258,7 @@ func validatePruneAll(prune, all bool, selector string) error {
 		return fmt.Errorf("cannot set --all and --selector at the same time")
 	}
 	if prune && !all && selector == "" {
-		return fmt.Errorf("all resources selected for prune without explicitly passing --all. To prune all resources, pass the --all flag. If you did not mean to prune all resources, specify a label selector.")
+		return fmt.Errorf("all resources selected for prune without explicitly passing --all. To prune all resources, pass the --all flag. If you did not mean to prune all resources, specify a label selector")
 	}
 	return nil
 }
@@ -287,9 +294,19 @@ func parsePruneResources(mapper meta.RESTMapper, gvks []string) ([]pruneResource
 	return pruneResources, nil
 }
 
+func isIncompatibleServerError(err error) bool {
+	// 415: Unsupported media type means we're talking to a server which doesn't
+	// support server-side apply.
+	if _, ok := err.(*errors.StatusError); !ok {
+		// Non-StatusError means the error isn't because the server is incompatible.
+		return false
+	}
+	return err.(*errors.StatusError).Status().Code == http.StatusUnsupportedMediaType
+}
+
 func (o *ApplyOptions) Run() error {
 	dryRunVerifier := &DryRunVerifier{
-		Finder:        cmdutil.NewCRDFinder(cmdutil.CRDFromDynamic(o.DynamicClient)),
+		Finder: cmdutil.NewCRDFinder(cmdutil.CRDFromDynamic(o.DynamicClient)),
 	}
 
 	// include the uninitialized objects by default if --prune is true
@@ -301,7 +318,6 @@ func (o *ApplyOptions) Run() error {
 		NamespaceParam(o.Namespace).DefaultNamespace().
 		FilenameParam(o.EnforceNamespace, &o.DeleteOptions.FilenameOptions).
 		LabelSelectorParam(o.Selector).
-		IncludeUninitialized(o.ShouldIncludeUninitialized).
 		Flatten().
 		Do()
 	if err := r.Err(); err != nil {
@@ -520,13 +536,13 @@ func (o *ApplyOptions) Run() error {
 
 	for n := range visitedNamespaces {
 		for _, m := range namespacedRESTMappings {
-			if err := p.prune(n, m, o.ShouldIncludeUninitialized); err != nil {
+			if err := p.prune(n, m); err != nil {
 				return fmt.Errorf("error pruning namespaced object %v: %v", m.GroupVersionKind, err)
 			}
 		}
 	}
 	for _, m := range nonNamespacedRESTMappings {
-		if err := p.prune(metav1.NamespaceNone, m, o.ShouldIncludeUninitialized); err != nil {
+		if err := p.prune(metav1.NamespaceNone, m); err != nil {
 			return fmt.Errorf("error pruning nonNamespaced object %v: %v", m.GroupVersionKind, err)
 		}
 	}
@@ -561,12 +577,11 @@ func getRESTMappings(mapper meta.RESTMapper, pruneResources *[]pruneResource) (n
 			{"", "v1", "Service", true},
 			{"batch", "v1", "Job", true},
 			{"batch", "v1beta1", "CronJob", true},
-			{"extensions", "v1beta1", "DaemonSet", true},
-			{"extensions", "v1beta1", "Deployment", true},
 			{"extensions", "v1beta1", "Ingress", true},
-			{"extensions", "v1beta1", "ReplicaSet", true},
-			{"apps", "v1beta1", "StatefulSet", true},
-			{"apps", "v1beta1", "Deployment", true},
+			{"apps", "v1", "DaemonSet", true},
+			{"apps", "v1", "Deployment", true},
+			{"apps", "v1", "ReplicaSet", true},
+			{"apps", "v1", "StatefulSet", true},
 		}
 	}
 
@@ -603,13 +618,12 @@ type pruner struct {
 	out io.Writer
 }
 
-func (p *pruner) prune(namespace string, mapping *meta.RESTMapping, includeUninitialized bool) error {
+func (p *pruner) prune(namespace string, mapping *meta.RESTMapping) error {
 	objList, err := p.dynamicClient.Resource(mapping.Resource).
 		Namespace(namespace).
 		List(metav1.ListOptions{
-			LabelSelector:        p.labelSelector,
-			FieldSelector:        p.fieldSelector,
-			IncludeUninitialized: includeUninitialized,
+			LabelSelector: p.labelSelector,
+			FieldSelector: p.fieldSelector,
 		})
 	if err != nil {
 		return err
@@ -705,7 +719,7 @@ type Patcher struct {
 // delay the check for CRDs as much as possible though, since it
 // requires an extra round-trip to the server.
 type DryRunVerifier struct {
-	Finder        cmdutil.CRDFinder
+	Finder cmdutil.CRDFinder
 }
 
 // HasSupport verifies if the given gvk supports DryRun. An error is
@@ -800,7 +814,7 @@ func (p *Patcher) patchSimple(obj runtime.Object, modified []byte, source, names
 		}
 	}
 
-	options := metav1.UpdateOptions{}
+	options := metav1.PatchOptions{}
 	if p.ServerDryRun {
 		options.DryRun = []string{metav1.DryRunAll}
 	}
@@ -858,7 +872,7 @@ func (p *Patcher) deleteAndCreate(original runtime.Object, modified []byte, name
 		// but still propagate and advertise error to user
 		recreated, recreateErr := p.Helper.Create(namespace, true, original, &options)
 		if recreateErr != nil {
-			err = fmt.Errorf("An error occurred force-replacing the existing object with the newly provided one:\n\n%v.\n\nAdditionally, an error occurred attempting to restore the original object:\n\n%v\n", err, recreateErr)
+			err = fmt.Errorf("An error occurred force-replacing the existing object with the newly provided one:\n\n%v.\n\nAdditionally, an error occurred attempting to restore the original object:\n\n%v", err, recreateErr)
 		} else {
 			createdObject = recreated
 		}

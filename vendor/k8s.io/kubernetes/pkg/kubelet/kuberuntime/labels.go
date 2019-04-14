@@ -20,7 +20,7 @@ import (
 	"encoding/json"
 	"strconv"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	kubetypes "k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
@@ -56,7 +56,6 @@ type annotatedPodSandboxInfo struct {
 
 type labeledContainerInfo struct {
 	ContainerName string
-	ContainerType kubecontainer.ContainerType
 	PodName       string
 	PodNamespace  string
 	PodUID        kubetypes.UID
@@ -95,7 +94,7 @@ func newPodAnnotations(pod *v1.Pod) map[string]string {
 }
 
 // newContainerLabels creates container labels from v1.Container and v1.Pod.
-func newContainerLabels(container *v1.Container, pod *v1.Pod, containerType kubecontainer.ContainerType) map[string]string {
+func newContainerLabels(container *v1.Container, pod *v1.Pod) map[string]string {
 	labels := map[string]string{}
 	labels[types.KubernetesPodNameLabel] = pod.Name
 	labels[types.KubernetesPodNamespaceLabel] = pod.Namespace
@@ -176,13 +175,11 @@ func getPodSandboxInfoFromAnnotations(annotations map[string]string) *annotatedP
 
 // getContainerInfoFromLabels gets labeledContainerInfo from labels.
 func getContainerInfoFromLabels(labels map[string]string) *labeledContainerInfo {
-	var containerType kubecontainer.ContainerType
 	return &labeledContainerInfo{
 		PodName:       getStringValueFromLabel(labels, types.KubernetesPodNameLabel),
 		PodNamespace:  getStringValueFromLabel(labels, types.KubernetesPodNamespaceLabel),
 		PodUID:        kubetypes.UID(getStringValueFromLabel(labels, types.KubernetesPodUIDLabel)),
 		ContainerName: getStringValueFromLabel(labels, types.KubernetesContainerNameLabel),
-		ContainerType: containerType,
 	}
 }
 

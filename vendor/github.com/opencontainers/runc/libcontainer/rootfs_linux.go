@@ -182,6 +182,33 @@ func mountCmd(cmd configs.Command) error {
 	return nil
 }
 
+func prepareBindMount(m *configs.Mount, rootfs string) error {
+	stat, err := os.Stat(m.Source)
+	if err != nil {
+		// error out if the source of a bind mount does not exist as we will be
+		// unable to bind anything to it.
+		return err
+	}
+	// ensure that the destination of the bind mount is resolved of symlinks at mount time because
+	// any previous mounts can invalidate the next mount's destination.
+	// this can happen when a user specifies mounts within other mounts to cause breakouts or other
+	// evil stuff to try to escape the container's rootfs.
+	var dest string
+	if dest, err = securejoin.SecureJoin(rootfs, m.Destination); err != nil {
+		return err
+	}
+	if err := checkMountDestination(rootfs, dest); err != nil {
+		return err
+	}
+	// update the mount with the correct dest after symlinks are resolved.
+	m.Destination = dest
+	if err := createIfNotExists(dest, stat.IsDir()); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func mountToRootfs(m *configs.Mount, rootfs, mountLabel string, enableCgroupns bool) error {
 	var (
 		dest = m.Destination
@@ -257,25 +284,7 @@ func mountToRootfs(m *configs.Mount, rootfs, mountLabel string, enableCgroupns b
 		}
 		return nil
 	case "bind":
-		stat, err := os.Stat(m.Source)
-		if err != nil {
-			// error out if the source of a bind mount does not exist as we will be
-			// unable to bind anything to it.
-			return err
-		}
-		// ensure that the destination of the bind mount is resolved of symlinks at mount time because
-		// any previous mounts can invalidate the next mount's destination.
-		// this can happen when a user specifies mounts within other mounts to cause breakouts or other
-		// evil stuff to try to escape the container's rootfs.
-		if dest, err = securejoin.SecureJoin(rootfs, m.Destination); err != nil {
-			return err
-		}
-		if err := checkMountDestination(rootfs, dest); err != nil {
-			return err
-		}
-		// update the mount with the correct dest after symlinks are resolved.
-		m.Destination = dest
-		if err := createIfNotExists(dest, stat.IsDir()); err != nil {
+		if err := prepareBindMount(m, rootfs); err != nil {
 			return err
 		}
 		if err := mountPropagate(m, rootfs, mountLabel); err != nil {

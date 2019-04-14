@@ -44,12 +44,13 @@ import (
 	"k8s.io/apiserver/pkg/server/filters"
 	serveroptions "k8s.io/apiserver/pkg/server/options"
 	serverstorage "k8s.io/apiserver/pkg/server/storage"
-	apiserverflag "k8s.io/apiserver/pkg/util/flag"
-	"k8s.io/apiserver/pkg/util/globalflag"
+	"k8s.io/apiserver/pkg/util/term"
 	"k8s.io/apiserver/pkg/util/webhook"
 	clientgoinformers "k8s.io/client-go/informers"
 	clientgoclientset "k8s.io/client-go/kubernetes"
-	certutil "k8s.io/client-go/util/cert"
+	"k8s.io/client-go/util/keyutil"
+	cliflag "k8s.io/component-base/cli/flag"
+	"k8s.io/component-base/cli/globalflag"
 	"k8s.io/klog"
 	aggregatorapiserver "k8s.io/kube-aggregator/pkg/apiserver"
 	"k8s.io/kubernetes/cmd/kube-apiserver/app/options"
@@ -120,15 +121,15 @@ cluster's shared state through which all other components interact.`,
 	}
 
 	usageFmt := "Usage:\n  %s\n"
-	cols, _, _ := apiserverflag.TerminalSize(cmd.OutOrStdout())
+	cols, _, _ := term.TerminalSize(cmd.OutOrStdout())
 	cmd.SetUsageFunc(func(cmd *cobra.Command) error {
 		fmt.Fprintf(cmd.OutOrStderr(), usageFmt, cmd.UseLine())
-		apiserverflag.PrintSections(cmd.OutOrStderr(), namedFlagSets, cols)
+		cliflag.PrintSections(cmd.OutOrStderr(), namedFlagSets, cols)
 		return nil
 	})
 	cmd.SetHelpFunc(func(cmd *cobra.Command, args []string) {
 		fmt.Fprintf(cmd.OutOrStdout(), "%s\n\n"+usageFmt, cmd.Long, cmd.UseLine())
-		apiserverflag.PrintSections(cmd.OutOrStdout(), namedFlagSets, cols)
+		cliflag.PrintSections(cmd.OutOrStdout(), namedFlagSets, cols)
 	})
 
 	return cmd
@@ -278,9 +279,27 @@ func CreateKubeAPIServerConfig(
 		return
 	}
 
+	clientCA, lastErr := readCAorNil(s.Authentication.ClientCert.ClientCA)
+	if lastErr != nil {
+		return
+	}
+	requestHeaderProxyCA, lastErr := readCAorNil(s.Authentication.RequestHeader.ClientCAFile)
+	if lastErr != nil {
+		return
+	}
+
 	config = &master.Config{
 		GenericConfig: genericConfig,
 		ExtraConfig: master.ExtraConfig{
+			ClientCARegistrationHook: master.ClientCARegistrationHook{
+				ClientCA:                         clientCA,
+				RequestHeaderUsernameHeaders:     s.Authentication.RequestHeader.UsernameHeaders,
+				RequestHeaderGroupHeaders:        s.Authentication.RequestHeader.GroupHeaders,
+				RequestHeaderExtraHeaderPrefixes: s.Authentication.RequestHeader.ExtraHeaderPrefixes,
+				RequestHeaderCA:                  requestHeaderProxyCA,
+				RequestHeaderAllowedNames:        s.Authentication.RequestHeader.AllowedNames,
+			},
+
 			APIResourceConfigSource: storageFactory.APIResourceConfigSource,
 			StorageFactory:          storageFactory,
 			EventTTL:                s.EventTTL,
@@ -355,7 +374,7 @@ func buildGenericConfig(
 
 	storageFactoryConfig := kubeapiserver.NewStorageFactoryConfig()
 	storageFactoryConfig.ApiResourceConfig = genericConfig.MergedResourceConfig
-	completedStorageFactoryConfig, err := storageFactoryConfig.Complete(s.Etcd, s.StorageSerialization)
+	completedStorageFactoryConfig, err := storageFactoryConfig.Complete(s.Etcd)
 	if err != nil {
 		lastErr = err
 		return
@@ -430,7 +449,6 @@ func buildGenericConfig(
 		genericConfig,
 		versionedInformers,
 		kubeClientConfig,
-		legacyscheme.Scheme,
 		pluginInitializers...)
 	if err != nil {
 		lastErr = fmt.Errorf("failed to initialize admission: %v", err)
@@ -443,7 +461,12 @@ func buildGenericConfig(
 func BuildAuthenticator(s *options.ServerRunOptions, extclient clientgoclientset.Interface, versionedInformer clientgoinformers.SharedInformerFactory) (authenticator.Request, error) {
 	authenticatorConfig := s.Authentication.ToAuthenticationConfig()
 	if s.Authentication.ServiceAccounts.Lookup {
-		authenticatorConfig.ServiceAccountTokenGetter = serviceaccountcontroller.NewGetterFromClient(extclient)
+		authenticatorConfig.ServiceAccountTokenGetter = serviceaccountcontroller.NewGetterFromClient(
+			extclient,
+			versionedInformer.Core().V1().Secrets().Lister(),
+			versionedInformer.Core().V1().ServiceAccounts().Lister(),
+			versionedInformer.Core().V1().Pods().Lister(),
+		)
 	}
 
 	return authenticatorConfig.New()
@@ -512,7 +535,7 @@ func Complete(s *options.ServerRunOptions) (completedServerRunOptions, error) {
 	}
 
 	if s.ServiceAccountSigningKeyFile != "" && s.Authentication.ServiceAccounts.Issuer != "" {
-		sk, err := certutil.PrivateKeyFromFile(s.ServiceAccountSigningKeyFile)
+		sk, err := keyutil.PrivateKeyFromFile(s.ServiceAccountSigningKeyFile)
 		if err != nil {
 			return options, fmt.Errorf("failed to parse service-account-issuer-key-file: %v", err)
 		}

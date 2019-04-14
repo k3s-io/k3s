@@ -9,15 +9,15 @@ import (
 
 	"github.com/rancher/k3s/pkg/server"
 	"github.com/spf13/pflag"
-	utilflag "k8s.io/apiserver/pkg/util/flag"
-	"k8s.io/apiserver/pkg/util/logs"
+	utilflag "k8s.io/component-base/cli/flag"
+	"k8s.io/component-base/logs"
 	"k8s.io/kubernetes/pkg/kubectl/cmd"
 )
 
 func Main() {
 	kubenv := os.Getenv("KUBECONFIG")
 	if kubenv == "" {
-		config, err := server.HomeKubeConfig(false)
+		config, err := server.HomeKubeConfig(false, false)
 		if _, serr := os.Stat(config); err == nil && serr == nil {
 			os.Setenv("KUBECONFIG", config)
 		}

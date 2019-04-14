@@ -1,5 +1,13 @@
 # Changelog
 
+### 0.33.0 (2019-02-26)
+- Add --raw_cgroup_prefix_whitelist flag to allow configuring which raw cgroup trees cAdvisor monitors
+- Replace `du` and `find` with a golang implementation
+- Periodically update MachineInfo to support hot-add/remove
+- Add explicit timestamps to prometheus metrics to fix rate calculations
+- Add --url_base_prefix flag to provide better support for reverse proxies
+- Add --white_listed_container_labels flag to allow specifying the container labels added as prometheus labels
+
 ### 0.32.0 (2018-11-12)
 - Add container process and file descriptor metrics (disabled by default)
 - Rename `type` label to `failure_type` for prometheus `memory_failures_total` metric

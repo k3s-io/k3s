@@ -27,6 +27,8 @@ import (
 	dockertypes "github.com/docker/docker/api/types"
 	dockercontainer "github.com/docker/docker/api/types/container"
 	dockerfilters "github.com/docker/docker/api/types/filters"
+	rsystem "github.com/opencontainers/runc/libcontainer/system"
+
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog"
 	runtimeapi "k8s.io/kubernetes/pkg/kubelet/apis/cri/runtime/v1alpha2"
@@ -535,11 +537,13 @@ func (ds *dockerService) ListPodSandbox(_ context.Context, r *runtimeapi.ListPod
 		checkpoint := NewPodSandboxCheckpoint("", "", &CheckpointData{})
 		err := ds.checkpointManager.GetCheckpoint(id, checkpoint)
 		if err != nil {
-			klog.Errorf("Failed to retrieve checkpoint for sandbox %q: %v", id, err)
-			if err == errors.ErrCorruptCheckpoint {
-				err = ds.checkpointManager.RemoveCheckpoint(id)
-				if err != nil {
-					klog.Errorf("Failed to delete corrupt checkpoint for sandbox %q: %v", id, err)
+			if !rsystem.RunningInUserNS() {
+				klog.Errorf("Failed to retrieve checkpoint for sandbox %q: %v", id, err)
+				if err == errors.ErrCorruptCheckpoint {
+					err = ds.checkpointManager.RemoveCheckpoint(id)
+					if err != nil {
+						klog.Errorf("Failed to delete corrupt checkpoint for sandbox %q: %v", id, err)
+					}
 				}
 			}
 			continue
@@ -593,7 +597,9 @@ func (ds *dockerService) makeSandboxDockerConfig(c *runtimeapi.PodSandboxConfig,
 	// TODO(random-liu): Deprecate this label once container metrics is directly got from CRI.
 	labels[types.KubernetesContainerNameLabel] = sandboxContainerName
 
-	hc := &dockercontainer.HostConfig{}
+	hc := &dockercontainer.HostConfig{
+		IpcMode: dockercontainer.IpcMode("shareable"),
+	}
 	createConfig := &dockertypes.ContainerCreateConfig{
 		Name: makeSandboxName(c),
 		Config: &dockercontainer.Config{
@@ -670,6 +676,7 @@ func constructPodSandboxCheckpoint(config *runtimeapi.PodSandboxConfig) checkpoi
 			HostPort:      &pm.HostPort,
 			ContainerPort: &pm.ContainerPort,
 			Protocol:      &proto,
+			HostIP:        pm.HostIp,
 		})
 	}
 	if config.GetLinux().GetSecurityContext().GetNamespaceOptions().GetNetwork() == runtimeapi.NamespaceMode_NODE {

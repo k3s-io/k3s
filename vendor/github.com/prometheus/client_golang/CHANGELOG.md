@@ -1,3 +1,75 @@
+## 0.9.2 / 2018-12-06
+* [FEATURE] Support for Go modules. #501
+* [FEATURE] `Timer.ObserveDuration` returns observed duration. #509
+* [ENHANCEMENT] Improved doc comments and error messages. #504 
+* [BUGFIX] Fix race condition during metrics gathering. #512
+* [BUGFIX] Fix testutil metric comparison for Histograms and empty labels. #494
+  #498
+
+## 0.9.1 / 2018-11-03
+* [FEATURE] Add `WriteToTextfile` function to facilitate the creation of
+  *.prom files for the textfile collector of the node exporter. #489
+* [ENHANCEMENT] More descriptive error messages for inconsistent label
+  cardinality. #487
+* [ENHANCEMENT] Exposition: Use a GZIP encoder pool to avoid allocations in
+  high-frequency scrape scenarios. #366
+* [ENHANCEMENT] Exposition: Streaming serving of metrics data while encoding.
+  #482
+* [ENHANCEMENT] API client: Add a way to return the body of a 5xx response.
+  #479
+
+## 0.9.0 / 2018-10-15
+* [CHANGE] Go1.6 is no longer supported.
+* [CHANGE] More refinements of the `Registry` consistency checks: Duplicated
+  labels are now detected, but inconsistent label dimensions are now allowed.
+  Collisions with the “magic” metric and label names in Summaries and
+  Histograms are detected now. #108 #417 #471
+* [CHANGE] Changed `ProcessCollector` constructor. #219
+* [CHANGE] Changed Go counter `go_memstats_heap_released_bytes_total` to gauge
+  `go_memstats_heap_released_bytes`. #229
+* [CHANGE] Unexported `LabelPairSorter`. #453
+* [CHANGE] Removed the `Untyped` metric from direct instrumentation. #340
+* [CHANGE] Unexported `MetricVec`. #319
+* [CHANGE] Removed deprecated `Set` method from `Counter` #247
+* [CHANGE] Removed deprecated `RegisterOrGet` and `MustRegisterOrGet`. #247
+* [CHANGE] API client: Introduced versioned packages.
+* [FEATURE] A `Registerer` can be wrapped with prefixes and labels. #357
+* [FEATURE] “Describe by collect” helper function. #239
+* [FEATURE] Added package `testutil`. #58
+* [FEATURE] Timestamp can be explicitly set for const metrics. #187
+* [FEATURE] “Unchecked” collectors are possible now without cheating. #47
+* [FEATURE] Pushing to the Pushgateway reworked in package `push` to support
+  many new features. (The old functions are still usable but deprecated.) #372
+  #341
+* [FEATURE] Configurable connection limit for scrapes. #179
+* [FEATURE] New HTTP middlewares to instrument `http.Handler` and
+  `http.RoundTripper`. The old middlewares and the pre-instrumented `/metrics`
+  handler are (strongly) deprecated. #316 #57 #101 #224
+* [FEATURE] “Currying” for metric vectors. #320
+* [FEATURE] A `Summary` can be created without quantiles. #118
+* [FEATURE] Added a `Timer` helper type. #231
+* [FEATURE] Added a Graphite bridge. #197
+* [FEATURE] Help strings are now optional. #460
+* [FEATURE] Added `process_virtual_memory_max_bytes` metric. #438 #440
+* [FEATURE] Added `go_gc_cpu_fraction` and `go_threads` metrics. #281 #277
+* [FEATURE] Added `promauto` package with auto-registering metrics. #385 #393
+* [FEATURE] Add `SetToCurrentTime` method to `Gauge`. #259
+* [FEATURE] API client: Add AlertManager, Status, and Target methods. #402
+* [FEATURE] API client: Add admin methods. #398
+* [FEATURE] API client: Support series API. #361
+* [FEATURE] API client: Support querying label values.
+* [ENHANCEMENT] Smarter creation of goroutines during scraping. Solves memory
+  usage spikes in certain situations. #369
+* [ENHANCEMENT] Counters are now faster if dealing with integers only. #367
+* [ENHANCEMENT] Improved label validation. #274 #335
+* [BUGFIX] Creating a const metric with an invalid `Desc` returns an error. #460
+* [BUGFIX] Histogram observations don't race any longer with exposition. #275
+* [BUGFIX] Fixed goroutine leaks. #236 #472
+* [BUGFIX] Fixed an error message for exponential histogram buckets. #467
+* [BUGFIX] Fixed data race writing to the metric map. #401
+* [BUGFIX] API client: Decode JSON on a 4xx respons but do not on 204
+  responses. #476 #414
+
 ## 0.8.0 / 2016-08-17
 * [CHANGE] Registry is doing more consistency checks. This might break
   existing setups that used to export inconsistent metrics.

@@ -28,7 +28,6 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	apimachineryvalidation "k8s.io/apimachinery/pkg/apis/meta/v1/validation"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -70,7 +69,7 @@ func (podStrategy) PrepareForCreate(ctx context.Context, obj runtime.Object) {
 		QOSClass: qos.GetPodQOS(pod),
 	}
 
-	podutil.DropDisabledAlphaFields(&pod.Spec)
+	podutil.DropDisabledPodFields(pod, nil)
 }
 
 // PrepareForUpdate clears fields that are not allowed to be set by end users on update.
@@ -79,14 +78,15 @@ func (podStrategy) PrepareForUpdate(ctx context.Context, obj, old runtime.Object
 	oldPod := old.(*api.Pod)
 	newPod.Status = oldPod.Status
 
-	podutil.DropDisabledAlphaFields(&newPod.Spec)
-	podutil.DropDisabledAlphaFields(&oldPod.Spec)
+	podutil.DropDisabledPodFields(newPod, oldPod)
 }
 
 // Validate validates a new pod.
 func (podStrategy) Validate(ctx context.Context, obj runtime.Object) field.ErrorList {
 	pod := obj.(*api.Pod)
-	return validation.ValidatePod(pod)
+	allErrs := validation.ValidatePod(pod)
+	allErrs = append(allErrs, validation.ValidateConditionalPod(pod, nil, field.NewPath(""))...)
+	return allErrs
 }
 
 // Canonicalize normalizes the object after validation.
@@ -98,21 +98,12 @@ func (podStrategy) AllowCreateOnUpdate() bool {
 	return false
 }
 
-func isUpdatingUninitializedPod(old runtime.Object) (bool, error) {
-	return false, nil
-}
-
 // ValidateUpdate is the default update validation for an end user.
 func (podStrategy) ValidateUpdate(ctx context.Context, obj, old runtime.Object) field.ErrorList {
 	errorList := validation.ValidatePod(obj.(*api.Pod))
-	uninitializedUpdate, err := isUpdatingUninitializedPod(old)
-	if err != nil {
-		return append(errorList, field.InternalError(field.NewPath("metadata"), err))
-	}
-	if uninitializedUpdate {
-		return errorList
-	}
-	return append(errorList, validation.ValidatePodUpdate(obj.(*api.Pod), old.(*api.Pod))...)
+	errorList = append(errorList, validation.ValidatePodUpdate(obj.(*api.Pod), old.(*api.Pod))...)
+	errorList = append(errorList, validation.ValidateConditionalPod(obj.(*api.Pod), old.(*api.Pod), field.NewPath(""))...)
+	return errorList
 }
 
 // AllowUnconditionalUpdate allows pods to be overwritten
@@ -180,25 +171,16 @@ func (podStatusStrategy) PrepareForUpdate(ctx context.Context, obj, old runtime.
 }
 
 func (podStatusStrategy) ValidateUpdate(ctx context.Context, obj, old runtime.Object) field.ErrorList {
-	var errorList field.ErrorList
-	uninitializedUpdate, err := isUpdatingUninitializedPod(old)
-	if err != nil {
-		return append(errorList, field.InternalError(field.NewPath("metadata"), err))
-	}
-	if uninitializedUpdate {
-		return append(errorList, field.Forbidden(field.NewPath("status"), apimachineryvalidation.UninitializedStatusUpdateErrorMsg))
-	}
-	// TODO: merge valid fields after update
 	return validation.ValidatePodStatusUpdate(obj.(*api.Pod), old.(*api.Pod))
 }
 
 // GetAttrs returns labels and fields of a given object for filtering purposes.
-func GetAttrs(obj runtime.Object) (labels.Set, fields.Set, bool, error) {
+func GetAttrs(obj runtime.Object) (labels.Set, fields.Set, error) {
 	pod, ok := obj.(*api.Pod)
 	if !ok {
-		return nil, nil, false, fmt.Errorf("not a pod")
+		return nil, nil, fmt.Errorf("not a pod")
 	}
-	return labels.Set(pod.ObjectMeta.Labels), PodToSelectableFields(pod), pod.Initializers != nil, nil
+	return labels.Set(pod.ObjectMeta.Labels), PodToSelectableFields(pod), nil
 }
 
 // MatchPod returns a generic matcher for a given label and field selector.

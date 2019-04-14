@@ -26,13 +26,12 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/wait"
 
-	units "github.com/docker/go-units"
+	"github.com/docker/go-units"
 	cgroupfs "github.com/opencontainers/runc/libcontainer/cgroups/fs"
-	"k8s.io/api/core/v1"
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	rsystem "github.com/opencontainers/runc/libcontainer/system"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/kubernetes/pkg/api/v1/resource"
 	v1qos "k8s.io/kubernetes/pkg/apis/core/v1/helper/qos"
-	kubefeatures "k8s.io/kubernetes/pkg/features"
 )
 
 const (
@@ -82,7 +81,9 @@ func (m *qosContainerManagerImpl) Start(getNodeAllocatable func() v1.ResourceLis
 	cm := m.cgroupManager
 	rootContainer := m.cgroupRoot
 	if !cm.Exists(rootContainer) {
-		return fmt.Errorf("root container %v doesn't exist", rootContainer)
+		if !rsystem.RunningInUserNS() {
+			return fmt.Errorf("root container %v doesn't exist", rootContainer)
+		}
 	}
 
 	// Top level for Qos containers are created only for Burstable
@@ -108,9 +109,7 @@ func (m *qosContainerManagerImpl) Start(getNodeAllocatable func() v1.ResourceLis
 		}
 
 		// for each enumerated huge page size, the qos tiers are unbounded
-		if utilfeature.DefaultFeatureGate.Enabled(kubefeatures.HugePages) {
-			m.setHugePagesUnbounded(containerConfig)
-		}
+		m.setHugePagesUnbounded(containerConfig)
 
 		// check if it exists
 		if !cm.Exists(containerName) {
@@ -120,7 +119,11 @@ func (m *qosContainerManagerImpl) Start(getNodeAllocatable func() v1.ResourceLis
 		} else {
 			// to ensure we actually have the right state, we update the config on startup
 			if err := cm.Update(containerConfig); err != nil {
-				return fmt.Errorf("failed to update top level %v QOS cgroup : %v", qosClass, err)
+				if rsystem.RunningInUserNS() {
+					klog.Errorf("failed to update top level %v QOS cgroup : %v", qosClass, err)
+				} else {
+					return fmt.Errorf("failed to update top level %v QOS cgroup : %v", qosClass, err)
+				}
 			}
 		}
 	}
@@ -290,21 +293,27 @@ func (m *qosContainerManagerImpl) UpdateCgroups() error {
 	}
 
 	// update the qos level cgroup settings for huge pages (ensure they remain unbounded)
-	if utilfeature.DefaultFeatureGate.Enabled(kubefeatures.HugePages) {
-		if err := m.setHugePagesConfig(qosConfigs); err != nil {
-			return err
-		}
+	if err := m.setHugePagesConfig(qosConfigs); err != nil {
+		return err
 	}
 
+	updateSuccess := true
 	for _, config := range qosConfigs {
 		err := m.cgroupManager.Update(config)
 		if err != nil {
-			klog.Errorf("[ContainerManager]: Failed to update QoS cgroup configuration")
-			return err
+			if rsystem.RunningInUserNS() {
+				// if we are in userns, cgroups might not available
+				updateSuccess = false
+			} else {
+				klog.Errorf("[ContainerManager]: Failed to update QoS cgroup configuration")
+				return err
+			}
 		}
 	}
 
-	klog.V(4).Infof("[ContainerManager]: Updated QoS cgroup configuration")
+	if updateSuccess {
+		klog.V(4).Infof("[ContainerManager]: Updated QoS cgroup configuration")
+	}
 	return nil
 }
 

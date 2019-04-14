@@ -48,6 +48,12 @@ an existing package to this repository.
   
 - [Pointers](/pointers) provides some functions for pointer-based operations.
 
+- [Io](/io) provides interfaces for working with file IO. Currently it provides
+  functionality for consistently reading a file.
+
+- [NSEnter](/nsenter) provies interfaces for executing and interacting with
+  processes running within a namespace.
+
 [Build Status]: https://travis-ci.org/kubernetes/utils.svg?branch=master
 [Go standard libs]: https://golang.org/pkg/#stdlib
 [api]: https://github.com/kubernetes/api

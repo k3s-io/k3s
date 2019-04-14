@@ -18,6 +18,7 @@ package apiserver
 
 import (
 	"fmt"
+	"k8s.io/klog"
 	"net/http"
 	"path"
 	"strings"
@@ -25,8 +26,16 @@ import (
 	"sync/atomic"
 	"time"
 
-	"k8s.io/klog"
-
+	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
+	"k8s.io/apiextensions-apiserver/pkg/apiserver/conversion"
+	informers "k8s.io/apiextensions-apiserver/pkg/client/informers/internalversion/apiextensions/internalversion"
+	listers "k8s.io/apiextensions-apiserver/pkg/client/listers/apiextensions/internalversion"
+	"k8s.io/apiextensions-apiserver/pkg/controller/establish"
+	"k8s.io/apiextensions-apiserver/pkg/controller/finalizer"
+	"k8s.io/apiextensions-apiserver/pkg/crdserverscheme"
+	apiextensionsfeatures "k8s.io/apiextensions-apiserver/pkg/features"
+	"k8s.io/apiextensions-apiserver/pkg/registry/customresource"
+	"k8s.io/apiextensions-apiserver/pkg/registry/customresource/tableconvertor"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -41,6 +50,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apiserver/pkg/admission"
+	"k8s.io/apiserver/pkg/authorization/authorizer"
 	"k8s.io/apiserver/pkg/endpoints/handlers"
 	"k8s.io/apiserver/pkg/endpoints/handlers/responsewriters"
 	"k8s.io/apiserver/pkg/endpoints/metrics"
@@ -49,21 +59,10 @@ import (
 	genericregistry "k8s.io/apiserver/pkg/registry/generic/registry"
 	"k8s.io/apiserver/pkg/storage/storagebackend"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	"k8s.io/apiserver/pkg/util/webhook"
 	"k8s.io/client-go/scale"
 	"k8s.io/client-go/scale/scheme/autoscalingv1"
 	"k8s.io/client-go/tools/cache"
-
-	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
-	"k8s.io/apiextensions-apiserver/pkg/apiserver/conversion"
-	informers "k8s.io/apiextensions-apiserver/pkg/client/informers/internalversion/apiextensions/internalversion"
-	listers "k8s.io/apiextensions-apiserver/pkg/client/listers/apiextensions/internalversion"
-	"k8s.io/apiextensions-apiserver/pkg/controller/establish"
-	"k8s.io/apiextensions-apiserver/pkg/controller/finalizer"
-	"k8s.io/apiextensions-apiserver/pkg/crdserverscheme"
-	apiextensionsfeatures "k8s.io/apiextensions-apiserver/pkg/features"
-	"k8s.io/apiextensions-apiserver/pkg/registry/customresource"
-	"k8s.io/apiextensions-apiserver/pkg/registry/customresource/tableconvertor"
-	"k8s.io/apiserver/pkg/util/webhook"
 )
 
 // crdHandler serves the `/apis` endpoint.
@@ -92,6 +91,9 @@ type crdHandler struct {
 	masterCount int
 
 	converterFactory *conversion.CRConverterFactory
+
+	// so that we can do create on update.
+	authorizer authorizer.Authorizer
 }
 
 // crdInfo stores enough information to serve the storage for the custom resource
@@ -130,7 +132,8 @@ func NewCustomResourceDefinitionHandler(
 	establishingController *establish.EstablishingController,
 	serviceResolver webhook.ServiceResolver,
 	authResolverWrapper webhook.AuthenticationInfoResolverWrapper,
-	masterCount int) (*crdHandler, error) {
+	masterCount int,
+	authorizer authorizer.Authorizer) (*crdHandler, error) {
 	ret := &crdHandler{
 		versionDiscoveryHandler: versionDiscoveryHandler,
 		groupDiscoveryHandler:   groupDiscoveryHandler,
@@ -141,6 +144,7 @@ func NewCustomResourceDefinitionHandler(
 		admission:               admission,
 		establishingController:  establishingController,
 		masterCount:             masterCount,
+		authorizer:              authorizer,
 	}
 	crdInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		UpdateFunc: ret.updateCustomResourceDefinition,
@@ -226,7 +230,7 @@ func (r *crdHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	var handler http.HandlerFunc
-	subresources, err := getSubresourcesForVersion(crd, requestInfo.APIVersion)
+	subresources, err := apiextensions.GetSubresourcesForVersion(crd, requestInfo.APIVersion)
 	if err != nil {
 		utilruntime.HandleError(err)
 		http.Error(w, "the server could not properly serve the CR subresources", http.StatusInternalServerError)
@@ -244,7 +248,7 @@ func (r *crdHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	if handler != nil {
-		handler = metrics.InstrumentHandlerFunc(verb, resource, subresource, scope, handler)
+		handler = metrics.InstrumentHandlerFunc(verb, requestInfo.APIGroup, requestInfo.APIVersion, resource, subresource, scope, metrics.APIServerComponent, handler)
 		handler(w, req)
 		return
 	}
@@ -457,7 +461,7 @@ func (r *crdHandler) getOrCreateServingInfoFor(crd *apiextensions.CustomResource
 		creator := unstructuredCreator{}
 
 		var statusSpec *apiextensions.CustomResourceSubresourceStatus
-		subresources, err := getSubresourcesForVersion(crd, v.Name)
+		subresources, err := apiextensions.GetSubresourcesForVersion(crd, v.Name)
 		if err != nil {
 			utilruntime.HandleError(err)
 			return nil, fmt.Errorf("the server could not properly serve the CR subresources")
@@ -471,7 +475,7 @@ func (r *crdHandler) getOrCreateServingInfoFor(crd *apiextensions.CustomResource
 			scaleSpec = subresources.Scale
 		}
 
-		columns, err := getColumnsForVersion(crd, v.Name)
+		columns, err := apiextensions.GetColumnsForVersion(crd, v.Name)
 		if err != nil {
 			utilruntime.HandleError(err)
 			return nil, fmt.Errorf("the server could not properly serve the CR columns")
@@ -536,6 +540,8 @@ func (r *crdHandler) getOrCreateServingInfoFor(crd *apiextensions.CustomResource
 			MetaGroupVersion: metav1.SchemeGroupVersion,
 
 			TableConvertor: storages[v.Name].CustomResource,
+
+			Authorizer: r.authorizer,
 		}
 
 		// override scaleSpec subresource values

@@ -20,7 +20,10 @@ type Agent struct {
 	ContainerRuntimeEndpoint string
 	NoFlannel                bool
 	Debug                    bool
+	Rootless                 bool
 	AgentShared
+	ExtraKubeletArgs   cli.StringSlice
+	ExtraKubeProxyArgs cli.StringSlice
 }
 
 type AgentShared struct {
@@ -62,6 +65,16 @@ var (
 		EnvVar:      "K3S_RESOLV_CONF",
 		Destination: &AgentConfig.ResolvConf,
 	}
+	ExtraKubeletArgs = cli.StringSliceFlag{
+		Name:  "kubelet-arg",
+		Usage: "(agent) Customized flag for kubelet process",
+		Value: &AgentConfig.ExtraKubeletArgs,
+	}
+	ExtraKubeProxyArgs = cli.StringSliceFlag{
+		Name:  "kube-proxy-arg",
+		Usage: "(agent) Customized flag for kube-proxy process",
+		Value: &AgentConfig.ExtraKubeProxyArgs,
+	}
 )
 
 func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
@@ -101,12 +114,19 @@ func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
 				Destination: &AgentConfig.ClusterSecret,
 				EnvVar:      "K3S_CLUSTER_SECRET",
 			},
+			cli.BoolFlag{
+				Name:        "rootless",
+				Usage:       "(experimental) Run rootless",
+				Destination: &AgentConfig.Rootless,
+			},
 			DockerFlag,
 			FlannelFlag,
 			NodeNameFlag,
 			NodeIPFlag,
 			CRIEndpointFlag,
 			ResolvConfFlag,
+			ExtraKubeletArgs,
+			ExtraKubeProxyArgs,
 		},
 	}
 }

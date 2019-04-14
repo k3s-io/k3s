@@ -36,8 +36,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
-	"k8s.io/cli-runtime/pkg/genericclioptions/printers"
-	"k8s.io/cli-runtime/pkg/genericclioptions/resource"
+	"k8s.io/cli-runtime/pkg/printers"
+	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/dynamic"
 	watchtools "k8s.io/client-go/tools/watch"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
@@ -45,7 +45,7 @@ import (
 )
 
 var (
-	wait_long = templates.LongDesc(`
+	waitLong = templates.LongDesc(`
 		Experimental: Wait for a specific condition on one or many resources.
 
 		The command takes multiple resources and waits until the specified condition
@@ -57,7 +57,7 @@ var (
 		A successful message will be printed to stdout indicating when the specified
         condition has been met. One can use -o option to change to output destination.`)
 
-	wait_example = templates.Examples(`
+	waitExample = templates.Examples(`
 		# Wait for the pod "busybox1" to contain the status condition of type "Ready".
 		kubectl wait --for=condition=Ready pod/busybox1
 
@@ -90,7 +90,10 @@ func NewWaitFlags(restClientGetter genericclioptions.RESTClientGetter, streams g
 		PrintFlags:       genericclioptions.NewPrintFlags("condition met"),
 		ResourceBuilderFlags: genericclioptions.NewResourceBuilderFlags().
 			WithLabelSelector("").
+			WithFieldSelector("").
+			WithAll(false).
 			WithAllNamespaces(false).
+			WithAll(false).
 			WithLatest(),
 
 		Timeout: 30 * time.Second,
@@ -104,11 +107,12 @@ func NewCmdWait(restClientGetter genericclioptions.RESTClientGetter, streams gen
 	flags := NewWaitFlags(restClientGetter, streams)
 
 	cmd := &cobra.Command{
-		Use:                   "wait resource.group/name [--for=delete|--for condition=available]",
+		Use:     "wait ([-f FILENAME] | resource.group/resource.name | resource.group [(-l label | --all)]) [--for=delete|--for condition=available]",
+		Short:   "Experimental: Wait for a specific condition on one or many resources.",
+		Long:    waitLong,
+		Example: waitExample,
+
 		DisableFlagsInUseLine: true,
-		Short:                 "Experimental: Wait for a specific condition on one or many resources.",
-		Long:                  wait_long,
-		Example:               wait_example,
 		Run: func(cmd *cobra.Command, args []string) {
 			o, err := flags.ToOptions(args)
 			cmdutil.CheckErr(err)
@@ -192,12 +196,14 @@ func conditionFuncFor(condition string, errOut io.Writer) (ConditionFunc, error)
 	return nil, fmt.Errorf("unrecognized condition: %q", condition)
 }
 
+// ResourceLocation holds the location of a resource
 type ResourceLocation struct {
 	GroupResource schema.GroupResource
 	Namespace     string
 	Name          string
 }
 
+// UIDMap maps ResourceLocation with UID
 type UIDMap map[ResourceLocation]types.UID
 
 // WaitOptions is a set of options that allows you to wait.  This is the object reflects the runtime needs of a wait
@@ -289,9 +295,10 @@ func IsDeleted(info *resource.Info, o *WaitOptions) (runtime.Object, bool, error
 		}
 
 		timeout := endTime.Sub(time.Now())
+		errWaitTimeoutWithName := extendErrWaitTimeout(wait.ErrWaitTimeout, info)
 		if timeout < 0 {
 			// we're out of time
-			return gottenObj, false, wait.ErrWaitTimeout
+			return gottenObj, false, errWaitTimeoutWithName
 		}
 
 		ctx, cancel := watchtools.ContextWithOptionalTimeout(context.Background(), o.Timeout)
@@ -304,9 +311,9 @@ func IsDeleted(info *resource.Info, o *WaitOptions) (runtime.Object, bool, error
 			continue
 		case err == wait.ErrWaitTimeout:
 			if watchEvent != nil {
-				return watchEvent.Object, false, wait.ErrWaitTimeout
+				return watchEvent.Object, false, errWaitTimeoutWithName
 			}
-			return gottenObj, false, wait.ErrWaitTimeout
+			return gottenObj, false, errWaitTimeoutWithName
 		default:
 			return gottenObj, false, err
 		}
@@ -383,9 +390,10 @@ func (w ConditionalWait) IsConditionMet(info *resource.Info, o *WaitOptions) (ru
 		}
 
 		timeout := endTime.Sub(time.Now())
+		errWaitTimeoutWithName := extendErrWaitTimeout(wait.ErrWaitTimeout, info)
 		if timeout < 0 {
 			// we're out of time
-			return gottenObj, false, wait.ErrWaitTimeout
+			return gottenObj, false, errWaitTimeoutWithName
 		}
 
 		ctx, cancel := watchtools.ContextWithOptionalTimeout(context.Background(), o.Timeout)
@@ -398,9 +406,9 @@ func (w ConditionalWait) IsConditionMet(info *resource.Info, o *WaitOptions) (ru
 			continue
 		case err == wait.ErrWaitTimeout:
 			if watchEvent != nil {
-				return watchEvent.Object, false, wait.ErrWaitTimeout
+				return watchEvent.Object, false, errWaitTimeoutWithName
 			}
-			return gottenObj, false, wait.ErrWaitTimeout
+			return gottenObj, false, errWaitTimeoutWithName
 		default:
 			return gottenObj, false, err
 		}
@@ -445,4 +453,8 @@ func (w ConditionalWait) isConditionMet(event watch.Event) (bool, error) {
 	}
 	obj := event.Object.(*unstructured.Unstructured)
 	return w.checkCondition(obj)
+}
+
+func extendErrWaitTimeout(err error, info *resource.Info) error {
+	return fmt.Errorf("%s on %s/%s", err.Error(), info.Mapping.Resource.Resource, info.Name)
 }

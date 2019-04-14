@@ -34,6 +34,7 @@ import (
 	"k8s.io/kubernetes/pkg/util/mount"
 	"k8s.io/kubernetes/pkg/volume"
 	volumeutil "k8s.io/kubernetes/pkg/volume/util"
+	utilexec "k8s.io/utils/exec"
 )
 
 const (
@@ -51,15 +52,19 @@ const (
 
 	// How many seconds to wait for a multipath device if at least two paths are available.
 	multipathDeviceTimeout = 10
+
+	// 'iscsiadm' error code stating that a session is logged in
+	// See https://github.com/open-iscsi/open-iscsi/blob/7d121d12ad6ba7783308c25ffd338a9fa0cc402b/include/iscsi_err.h#L37-L38
+	iscsiadmErrorSessExists = 15
 )
 
 var (
-	chap_st = []string{
+	chapSt = []string{
 		"discovery.sendtargets.auth.username",
 		"discovery.sendtargets.auth.password",
 		"discovery.sendtargets.auth.username_in",
 		"discovery.sendtargets.auth.password_in"}
-	chap_sess = []string{
+	chapSess = []string{
 		"node.session.auth.username",
 		"node.session.auth.password",
 		"node.session.auth.username_in",
@@ -69,7 +74,7 @@ var (
 )
 
 func updateISCSIDiscoverydb(b iscsiDiskMounter, tp string) error {
-	if !b.chap_discovery {
+	if !b.chapDiscovery {
 		return nil
 	}
 	out, err := b.exec.Run("iscsiadm", "-m", "discoverydb", "-t", "sendtargets", "-p", tp, "-I", b.Iface, "-o", "update", "-n", "discovery.sendtargets.auth.authmethod", "-v", "CHAP")
@@ -77,7 +82,7 @@ func updateISCSIDiscoverydb(b iscsiDiskMounter, tp string) error {
 		return fmt.Errorf("iscsi: failed to update discoverydb with CHAP, output: %v", string(out))
 	}
 
-	for _, k := range chap_st {
+	for _, k := range chapSt {
 		v := b.secret[k]
 		if len(v) > 0 {
 			out, err := b.exec.Run("iscsiadm", "-m", "discoverydb", "-t", "sendtargets", "-p", tp, "-I", b.Iface, "-o", "update", "-n", k, "-v", v)
@@ -90,7 +95,7 @@ func updateISCSIDiscoverydb(b iscsiDiskMounter, tp string) error {
 }
 
 func updateISCSINode(b iscsiDiskMounter, tp string) error {
-	if !b.chap_session {
+	if !b.chapSession {
 		return nil
 	}
 
@@ -99,7 +104,7 @@ func updateISCSINode(b iscsiDiskMounter, tp string) error {
 		return fmt.Errorf("iscsi: failed to update node with CHAP, output: %v", string(out))
 	}
 
-	for _, k := range chap_sess {
+	for _, k := range chapSess {
 		v := b.secret[k]
 		if len(v) > 0 {
 			out, err := b.exec.Run("iscsiadm", "-m", "node", "-p", tp, "-T", b.Iqn, "-I", b.Iface, "-o", "update", "-n", k, "-v", v)
@@ -210,7 +215,7 @@ func (util *ISCSIUtil) persistISCSI(conf iscsiDisk, mnt string) error {
 	defer fp.Close()
 	encoder := json.NewEncoder(fp)
 	if err = encoder.Encode(conf); err != nil {
-		return fmt.Errorf("iscsi: encode err: %v.", err)
+		return fmt.Errorf("iscsi: encode err: %v", err)
 	}
 	return nil
 }
@@ -224,7 +229,7 @@ func (util *ISCSIUtil) loadISCSI(conf *iscsiDisk, mnt string) error {
 	defer fp.Close()
 	decoder := json.NewDecoder(fp)
 	if err = decoder.Decode(conf); err != nil {
-		return fmt.Errorf("iscsi: decode err: %v.", err)
+		return fmt.Errorf("iscsi: decode err: %v", err)
 	}
 	return nil
 }
@@ -590,7 +595,7 @@ func deleteDevices(c iscsiDiskUnmounter) error {
 
 // DetachDisk unmounts and detaches a volume from node
 func (util *ISCSIUtil) DetachDisk(c iscsiDiskUnmounter, mntPath string) error {
-	if pathExists, pathErr := volumeutil.PathExists(mntPath); pathErr != nil {
+	if pathExists, pathErr := mount.PathExists(mntPath); pathErr != nil {
 		return fmt.Errorf("Error checking if path exists: %v", pathErr)
 	} else if !pathExists {
 		klog.Warningf("Warning: Unmount skipped because path does not exist: %v", mntPath)
@@ -667,7 +672,7 @@ func (util *ISCSIUtil) DetachDisk(c iscsiDiskUnmounter, mntPath string) error {
 
 // DetachBlockISCSIDisk removes loopback device for a volume and detaches a volume from node
 func (util *ISCSIUtil) DetachBlockISCSIDisk(c iscsiDiskUnmapper, mapPath string) error {
-	if pathExists, pathErr := volumeutil.PathExists(mapPath); pathErr != nil {
+	if pathExists, pathErr := mount.PathExists(mapPath); pathErr != nil {
 		return fmt.Errorf("Error checking if path exists: %v", pathErr)
 	} else if !pathExists {
 		klog.Warningf("Warning: Unmap skipped because path does not exist: %v", mapPath)
@@ -872,8 +877,13 @@ func cloneIface(b iscsiDiskMounter, newIface string) error {
 	// create new iface
 	out, err = b.exec.Run("iscsiadm", "-m", "iface", "-I", newIface, "-o", "new")
 	if err != nil {
-		lastErr = fmt.Errorf("iscsi: failed to create new iface: %s (%v)", string(out), err)
-		return lastErr
+		exit, ok := err.(utilexec.ExitError)
+		if ok && exit.ExitStatus() == iscsiadmErrorSessExists {
+			klog.Infof("iscsi: there is a session already logged in with iface %s", newIface)
+		} else {
+			lastErr = fmt.Errorf("iscsi: failed to create new iface: %s (%v)", string(out), err)
+			return lastErr
+		}
 	}
 	// update new iface records
 	for key, val := range params {

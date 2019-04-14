@@ -28,8 +28,8 @@ import (
 	"strings"
 	"time"
 
-	"k8s.io/api/core/v1"
-	apimachineryconfig "k8s.io/apimachinery/pkg/apis/config"
+	v1 "k8s.io/api/core/v1"
+	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/runtime/serializer/json"
@@ -39,7 +39,6 @@ import (
 	"k8s.io/apiserver/pkg/server/mux"
 	"k8s.io/apiserver/pkg/server/routes"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
-	"k8s.io/apiserver/pkg/util/flag"
 	informers "k8s.io/client-go/informers"
 	clientset "k8s.io/client-go/kubernetes"
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -47,11 +46,14 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/client-go/tools/record"
+	cliflag "k8s.io/component-base/cli/flag"
+	componentbaseconfig "k8s.io/component-base/config"
 	"k8s.io/kube-proxy/config/v1alpha1"
 	api "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/kubelet/qos"
 	"k8s.io/kubernetes/pkg/master/ports"
 	"k8s.io/kubernetes/pkg/proxy"
+	"k8s.io/kubernetes/pkg/proxy/apis"
 	kubeproxyconfig "k8s.io/kubernetes/pkg/proxy/apis/config"
 	"k8s.io/kubernetes/pkg/proxy/apis/config/scheme"
 	"k8s.io/kubernetes/pkg/proxy/apis/config/validation"
@@ -61,6 +63,7 @@ import (
 	"k8s.io/kubernetes/pkg/proxy/ipvs"
 	"k8s.io/kubernetes/pkg/proxy/userspace"
 	"k8s.io/kubernetes/pkg/util/configz"
+	"k8s.io/kubernetes/pkg/util/filesystem"
 	utilflag "k8s.io/kubernetes/pkg/util/flag"
 	utilipset "k8s.io/kubernetes/pkg/util/ipset"
 	utiliptables "k8s.io/kubernetes/pkg/util/iptables"
@@ -72,6 +75,7 @@ import (
 	"k8s.io/utils/exec"
 	utilpointer "k8s.io/utils/pointer"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -84,6 +88,11 @@ const (
 	proxyModeIPVS        = "ipvs"
 	proxyModeKernelspace = "kernelspace"
 )
+
+// proxyRun defines the interface to run a specified ProxyServer
+type proxyRun interface {
+	Run() error
+}
 
 // Options contains everything necessary to create and run a proxy server.
 type Options struct {
@@ -100,6 +109,12 @@ type Options struct {
 	WindowsService bool
 	// config is the proxy server's configuration object.
 	config *kubeproxyconfig.KubeProxyConfiguration
+	// watcher is used to watch on the update change of ConfigFile
+	watcher filesystem.FSWatcher
+	// proxyServer is the interface to run the proxy server
+	proxyServer proxyRun
+	// errCh is the channel that errors will be sent
+	errCh chan error
 
 	// The fields below here are placeholders for flags that can't be directly mapped into
 	// config.KubeProxyConfiguration.
@@ -128,7 +143,7 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&o.CleanupAndExit, "cleanup-iptables", o.CleanupAndExit, "If true cleanup iptables and ipvs rules and exit.")
 	fs.MarkDeprecated("cleanup-iptables", "This flag is replaced by --cleanup.")
 	fs.BoolVar(&o.CleanupAndExit, "cleanup", o.CleanupAndExit, "If true cleanup iptables and ipvs rules and exit.")
-	fs.BoolVar(&o.CleanupIPVS, "cleanup-ipvs", o.CleanupIPVS, "If true make kube-proxy cleanup ipvs rules before running.  Default is true")
+	fs.BoolVar(&o.CleanupIPVS, "cleanup-ipvs", o.CleanupIPVS, "If true and --cleanup is specified, kube-proxy will also flush IPVS rules, in addition to normal cleanup.")
 
 	// All flags below here are deprecated and will eventually be removed.
 
@@ -177,7 +192,7 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&o.config.IPVS.Scheduler, "ipvs-scheduler", o.config.IPVS.Scheduler, "The ipvs scheduler type when proxy mode is ipvs")
 	fs.StringSliceVar(&o.config.NodePortAddresses, "nodeport-addresses", o.config.NodePortAddresses,
 		"A string slice of values which specify the addresses to use for NodePorts. Values may be valid IP blocks (e.g. 1.2.3.0/24, 1.2.3.4/32). The default empty string slice ([]) means to use all local addresses.")
-	fs.Var(flag.NewMapStringBool(&o.config.FeatureGates), "feature-gates", "A set of key=value pairs that describe feature gates for alpha/experimental features. "+
+	fs.Var(cliflag.NewMapStringBool(&o.config.FeatureGates), "feature-gates", "A set of key=value pairs that describe feature gates for alpha/experimental features. "+
 		"Options are:\n"+strings.Join(utilfeature.DefaultFeatureGate.KnownFeatures(), "\n"))
 }
 
@@ -189,6 +204,7 @@ func NewOptions() *Options {
 		scheme:      scheme.Scheme,
 		codecs:      scheme.Codecs,
 		CleanupIPVS: true,
+		errCh:       make(chan error),
 	}
 }
 
@@ -207,17 +223,50 @@ func (o *Options) Complete() error {
 		} else {
 			o.config = c
 		}
+
+		if err := o.initWatcher(); err != nil {
+			return err
+		}
 	}
 
 	if err := o.processHostnameOverrideFlag(); err != nil {
 		return err
 	}
 
-	if err := utilfeature.DefaultFeatureGate.SetFromMap(o.config.FeatureGates); err != nil {
+	if err := utilfeature.DefaultMutableFeatureGate.SetFromMap(o.config.FeatureGates); err != nil {
 		return err
 	}
-
 	return nil
+}
+
+// Creates a new filesystem watcher and adds watches for the config file.
+func (o *Options) initWatcher() error {
+	fswatcher := filesystem.NewFsnotifyWatcher()
+	err := fswatcher.Init(o.eventHandler, o.errorHandler)
+	if err != nil {
+		return err
+	}
+	err = fswatcher.AddWatch(o.ConfigFile)
+	if err != nil {
+		return err
+	}
+	o.watcher = fswatcher
+	return nil
+}
+
+func (o *Options) eventHandler(ent fsnotify.Event) {
+	eventOpIs := func(Op fsnotify.Op) bool {
+		return ent.Op&Op == Op
+	}
+	if eventOpIs(fsnotify.Write) || eventOpIs(fsnotify.Rename) {
+		// error out when ConfigFile is updated
+		o.errCh <- fmt.Errorf("content of the proxy server's configuration file was updated")
+	}
+	o.errCh <- nil
+}
+
+func (o *Options) errorHandler(err error) {
+	o.errCh <- err
 }
 
 // processHostnameOverrideFlag processes hostname-override flag
@@ -239,7 +288,6 @@ func (o *Options) Validate(args []string) error {
 	if len(args) != 0 {
 		return errors.New("no arguments are supported")
 	}
-
 	if errs := validation.Validate(o.config); len(errs) != 0 {
 		return errs.ToAggregate()
 	}
@@ -248,6 +296,7 @@ func (o *Options) Validate(args []string) error {
 }
 
 func (o *Options) Run() error {
+	defer close(o.errCh)
 	if len(o.WriteConfigTo) > 0 {
 		return o.writeConfigFile()
 	}
@@ -256,8 +305,31 @@ func (o *Options) Run() error {
 	if err != nil {
 		return err
 	}
+	o.proxyServer = proxyServer
+	return o.runLoop()
+}
 
-	return proxyServer.Run()
+// runLoop will watch on the update change of the proxy server's configuration file.
+// Return an error when updated
+func (o *Options) runLoop() error {
+	if o.watcher != nil {
+		o.watcher.Run()
+	}
+
+	// run the proxy in goroutine
+	go func() {
+		err := o.proxyServer.Run()
+		o.errCh <- err
+	}()
+
+	for {
+		select {
+		case err := <-o.errCh:
+			if err != nil {
+				return err
+			}
+		}
+	}
 }
 
 func (o *Options) writeConfigFile() error {
@@ -440,7 +512,7 @@ type ProxyServer struct {
 
 // createClients creates a kube client and an event client from the given config and masterOverride.
 // TODO remove masterOverride when CLI flags are removed.
-func createClients(config apimachineryconfig.ClientConnectionConfiguration, masterOverride string) (clientset.Interface, v1core.EventsGetter, error) {
+func createClients(config componentbaseconfig.ClientConnectionConfiguration, masterOverride string) (clientset.Interface, v1core.EventsGetter, error) {
 	var kubeConfig *rest.Config
 	var err error
 
@@ -549,17 +621,18 @@ func (s *ProxyServer) Run() error {
 		if max > 0 {
 			err := s.Conntracker.SetMax(max)
 			if err != nil {
-				if err != readOnlySysFSError {
+				if err != errReadOnlySysFS {
 					return err
 				}
-				// readOnlySysFSError is caused by a known docker issue (https://github.com/docker/docker/issues/24000),
+				// errReadOnlySysFS is caused by a known docker issue (https://github.com/docker/docker/issues/24000),
 				// the only remediation we know is to restart the docker daemon.
 				// Here we'll send an node event with specific reason and message, the
 				// administrator should decide whether and how to handle this issue,
-				// whether to drain the node and restart docker.
+				// whether to drain the node and restart docker.  Occurs in other container runtimes
+				// as well.
 				// TODO(random-liu): Remove this when the docker bug is fixed.
-				const message = "DOCKER RESTART NEEDED (docker issue #24000): /sys is read-only: " +
-					"cannot modify conntrack limits, problems may arise later."
+				const message = "CRI error: /sys is read-only: " +
+					"cannot modify conntrack limits, problems may arise later (If running Docker, see docker issue #24000)"
 				s.Recorder.Eventf(s.NodeRef, api.EventTypeWarning, err.Error(), message)
 			}
 		}
@@ -579,7 +652,10 @@ func (s *ProxyServer) Run() error {
 		}
 	}
 
-	informerFactory := informers.NewSharedInformerFactory(s.Client, s.ConfigSyncPeriod)
+	informerFactory := informers.NewSharedInformerFactoryWithOptions(s.Client, s.ConfigSyncPeriod,
+		informers.WithTweakListOptions(func(options *v1meta.ListOptions) {
+			options.LabelSelector = "!" + apis.LabelServiceProxyName
+		}))
 
 	// Create configs (i.e. Watches for Services and Endpoints)
 	// Note: RegisterHandler() calls need to happen before creation of Sources because sources

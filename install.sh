@@ -226,7 +226,7 @@ download_hash() {
     HASH_URL=${GITHUB_URL}/download/${VERSION_K3S}/sha256sum-${ARCH}.txt
     info "Downloading hash ${HASH_URL}"
     curl -o ${TMP_HASH} -sfL ${HASH_URL} || fatal "Hash download failed"
-    HASH_EXPECTED=`grep k3s ${TMP_HASH} | awk '{print $1}'`
+    HASH_EXPECTED=`grep " k3s${SUFFIX}$" ${TMP_HASH} | awk '{print $1}'`
 }
 
 # --- check hash against installed version ---

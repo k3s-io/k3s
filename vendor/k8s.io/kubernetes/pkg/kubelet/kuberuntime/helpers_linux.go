@@ -54,7 +54,6 @@ func milliCPUToQuota(milliCPU int64, period int64) (quota int64) {
 	if milliCPU == 0 {
 		return
 	}
-	period = quotaPeriod
 
 	// we then convert your milliCPU to a value normalized over a period
 	quota = (milliCPU * period) / milliCPUToCPU

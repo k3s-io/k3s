@@ -57,6 +57,9 @@ service Controller {
 
   rpc ListSnapshots (ListSnapshotsRequest)
     returns (ListSnapshotsResponse) {}
+
+  rpc ControllerExpandVolume (ControllerExpandVolumeRequest)
+    returns (ControllerExpandVolumeResponse) {}
 }
 
 service Node {
@@ -74,6 +77,11 @@ service Node {
 
   rpc NodeGetVolumeStats (NodeGetVolumeStatsRequest)
     returns (NodeGetVolumeStatsResponse) {}
+
+
+  rpc NodeExpandVolume(NodeExpandVolumeRequest)
+    returns (NodeExpandVolumeResponse) {}
+
 
   rpc NodeGetCapabilities (NodeGetCapabilitiesRequest)
     returns (NodeGetCapabilitiesResponse) {}
@@ -116,7 +124,6 @@ message PluginCapability {
   message Service {
     enum Type {
       UNKNOWN = 0;
-
       // CONTROLLER_SERVICE indicates that the Plugin provides RPCs for
       // the ControllerService. Plugins SHOULD provide this capability.
       // In rare cases certain plugins MAY wish to omit the
@@ -138,9 +145,56 @@ message PluginCapability {
     Type type = 1;
   }
 
+  message VolumeExpansion {
+    enum Type {
+      UNKNOWN = 0;
+
+      // ONLINE indicates that volumes may be expanded when published to
+      // a node. When a Plugin implements this capability it MUST
+      // implement either the EXPAND_VOLUME controller capability or the
+      // EXPAND_VOLUME node capability or both. When a plugin supports
+      // ONLINE volume expansion and also has the EXPAND_VOLUME
+      // controller capability then the plugin MUST support expansion of
+      // volumes currently published and available on a node. When a
+      // plugin supports ONLINE volume expansion and also has the
+      // EXPAND_VOLUME node capability then the plugin MAY support
+      // expansion of node-published volume via NodeExpandVolume.
+      //
+      // Example 1: Given a shared filesystem volume (e.g. GlusterFs),
+      //   the Plugin may set the ONLINE volume expansion capability and
+      //   implement ControllerExpandVolume but not NodeExpandVolume.
+      //
+      // Example 2: Given a block storage volume type (e.g. EBS), the
+      //   Plugin may set the ONLINE volume expansion capability and
+      //   implement both ControllerExpandVolume and NodeExpandVolume.
+      //
+      // Example 3: Given a Plugin that supports volume expansion only
+      //   upon a node, the Plugin may set the ONLINE volume
+      //   expansion capability and implement NodeExpandVolume but not
+      //   ControllerExpandVolume.
+      ONLINE = 1;
+
+      // OFFLINE indicates that volumes currently published and
+      // available on a node SHALL NOT be expanded via
+      // ControllerExpandVolume. When a plugin supports OFFLINE volume
+      // expansion it MUST implement either the EXPAND_VOLUME controller
+      // capability or both the EXPAND_VOLUME controller capability and
+      // the EXPAND_VOLUME node capability.
+      //
+      // Example 1: Given a block storage volume type (e.g. Azure Disk)
+      //   that does not support expansion of "node-attached" (i.e.
+      //   controller-published) volumes, the Plugin may indicate
+      //   OFFLINE volume expansion support and implement both
+      //   ControllerExpandVolume and NodeExpandVolume.
+      OFFLINE = 2;
+    }
+    Type type = 1;
+  }
+
   oneof type {
     // Service that the plugin supports.
     Service service = 1;
+    VolumeExpansion volume_expansion = 2;
   }
 }
 message ProbeRequest {
@@ -236,7 +290,7 @@ message CreateVolumeRequest {
   // If specified, the new volume will be pre-populated with data from
   // this source. This field is OPTIONAL.
   VolumeContentSource volume_content_source = 6;
-  
+
   // Specifies where (regions, zones, racks, etc.) the provisioned
   // volume MUST be accessible from.
   // An SP SHALL advertise the requirements for topological
@@ -420,7 +474,7 @@ message Volume {
   // Example 2:
   //   accessible_topology =
   //     {"region": "R1", "zone": "Z2"},
-  //     {"region": "R1", "zone": "Z3"} 
+  //     {"region": "R1", "zone": "Z3"}
   // Indicates a volume accessible from both "zone" "Z2" and "zone" "Z3"
   // in the "region" "R1".
   repeated Topology accessible_topology = 5;
@@ -431,15 +485,15 @@ message TopologyRequirement {
   // accessible from.
   // This field is OPTIONAL. If TopologyRequirement is specified either
   // requisite or preferred or both MUST be specified.
-  // 
+  //
   // If requisite is specified, the provisioned volume MUST be
   // accessible from at least one of the requisite topologies.
-  // 
+  //
   // Given
   //   x = number of topologies provisioned volume is accessible from
   //   n = number of requisite topologies
   // The CO MUST ensure n >= 1. The SP MUST ensure x >= 1
-  // If x==n, than the SP MUST make the provisioned volume available to
+  // If x==n, then the SP MUST make the provisioned volume available to
   // all topologies from the list of requisite topologies. If it is
   // unable to do so, the SP MUST fail the CreateVolume call.
   // For example, if a volume should be accessible from a single zone,
@@ -454,7 +508,7 @@ message TopologyRequirement {
   // then the provisioned volume MUST be accessible from the "region"
   // "R1" and both "zone" "Z2" and "zone" "Z3".
   //
-  // If x<n, than the SP SHALL choose x unique topologies from the list
+  // If x<n, then the SP SHALL choose x unique topologies from the list
   // of requisite topologies. If it is unable to do so, the SP MUST fail
   // the CreateVolume call.
   // For example, if a volume should be accessible from a single zone,
@@ -472,7 +526,7 @@ message TopologyRequirement {
   // of two unique topologies: e.g. "R1/Z2" and "R1/Z3", or "R1/Z2" and
   //  "R1/Z4", or "R1/Z3" and "R1/Z4".
   //
-  // If x>n, than the SP MUST make the provisioned volume available from
+  // If x>n, then the SP MUST make the provisioned volume available from
   // all topologies from the list of requisite topologies and MAY choose
   // the remaining x-n unique topologies from the list of all possible
   // topologies. If it is unable to do so, the SP MUST fail the
@@ -490,7 +544,7 @@ message TopologyRequirement {
   //
   // This field is OPTIONAL. If TopologyRequirement is specified either
   // requisite or preferred or both MUST be specified.
-  // 
+  //
   // An SP MUST attempt to make the provisioned volume available using
   // the preferred topologies in order from first to last.
   //
@@ -505,7 +559,7 @@ message TopologyRequirement {
   // If the list of requisite topologies is specified and the SP is
   // unable to to make the provisioned volume available from any of the
   // requisite topologies it MUST fail the CreateVolume call.
-  // 
+  //
   // Example 1:
   // Given a volume should be accessible from a single zone, and
   // requisite =
@@ -817,14 +871,19 @@ message ControllerServiceCapability {
       // snapshot.
       CREATE_DELETE_SNAPSHOT = 5;
       LIST_SNAPSHOTS = 6;
+
       // Plugins supporting volume cloning at the storage level MAY
       // report this capability. The source volume MUST be managed by
       // the same plugin. Not all volume sources and parameters
       // combinations MAY work.
       CLONE_VOLUME = 7;
+
       // Indicates the SP supports ControllerPublishVolume.readonly
       // field.
       PUBLISH_READONLY = 8;
+
+      // See VolumeExpansion for details.
+      EXPAND_VOLUME = 9;
     }
 
     Type type = 1;
@@ -966,6 +1025,28 @@ message ListSnapshotsResponse {
   // field is OPTIONAL.
   // An empty string is equal to an unspecified field value.
   string next_token = 2;
+}
+message ControllerExpandVolumeRequest {
+  // The ID of the volume to expand. This field is REQUIRED.
+  string volume_id = 1;
+
+  // This allows CO to specify the capacity requirements of the volume
+  // after expansion. This field is REQUIRED.
+  CapacityRange capacity_range = 2;
+
+  // Secrets required by the plugin for expanding the volume.
+  // This field is OPTIONAL.
+  map<string, string> secrets = 3 [(csi_secret) = true];
+}
+
+message ControllerExpandVolumeResponse {
+  // Capacity of volume after expansion. This field is REQUIRED.
+  int64 capacity_bytes = 1;
+
+  // Whether node expansion is required for the volume. When true
+  // the CO MUST make NodeExpandVolume RPC call on the node. This field
+  // is REQUIRED.
+  bool node_expansion_required = 2;
 }
 message NodeStageVolumeRequest {
   // The ID of the volume to publish. This field is REQUIRED.
@@ -1151,6 +1232,8 @@ message NodeServiceCapability {
       // then it MUST implement NodeGetVolumeStats RPC
       // call for fetching volume statistics.
       GET_VOLUME_STATS = 2;
+      // See VolumeExpansion for details.
+      EXPAND_VOLUME = 3;
     }
 
     Type type = 1;
@@ -1196,8 +1279,28 @@ message NodeGetInfoResponse {
   //
   // Example 1:
   //   accessible_topology =
-  //     {"region": "R1", "zone": "R2"}
+  //     {"region": "R1", "zone": "Z2"}
   // Indicates the node exists within the "region" "R1" and the "zone"
   // "Z2".
   Topology accessible_topology = 3;
+}
+message NodeExpandVolumeRequest {
+  // The ID of the volume. This field is REQUIRED.
+  string volume_id = 1;
+
+  // The path on which volume is available. This field is REQUIRED.
+  string volume_path = 2;
+
+  // This allows CO to specify the capacity requirements of the volume
+  // after expansion. If capacity_range is omitted then a plugin MAY
+  // inspect the file system of the volume to determine the maximum
+  // capacity to which the volume can be expanded. In such cases a
+  // plugin MAY expand the volume to its maximum capacity.
+  // This field is OPTIONAL.
+  CapacityRange capacity_range = 3;
+}
+
+message NodeExpandVolumeResponse {
+  // The capacity of the volume in bytes. This field is OPTIONAL.
+  int64 capacity_bytes = 1;
 }

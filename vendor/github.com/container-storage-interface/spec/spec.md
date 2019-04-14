@@ -338,6 +338,9 @@ service Controller {
 
   rpc ListSnapshots (ListSnapshotsRequest)
     returns (ListSnapshotsResponse) {}
+
+  rpc ControllerExpandVolume (ControllerExpandVolumeRequest)
+    returns (ControllerExpandVolumeResponse) {}
 }
 
 service Node {
@@ -355,6 +358,11 @@ service Node {
 
   rpc NodeGetVolumeStats (NodeGetVolumeStatsRequest)
     returns (NodeGetVolumeStatsResponse) {}
+
+
+  rpc NodeExpandVolume(NodeExpandVolumeRequest)
+    returns (NodeExpandVolumeResponse) {}
+
 
   rpc NodeGetCapabilities (NodeGetCapabilitiesRequest)
     returns (NodeGetCapabilitiesResponse) {}
@@ -417,7 +425,7 @@ The status `code` MUST contain a [canonical error code](https://github.com/grpc/
 | Condition | gRPC Code | Description | Recovery Behavior |
 |-----------|-----------|-------------|-------------------|
 | Missing required field | 3 INVALID_ARGUMENT | Indicates that a required field is missing from the request. More human-readable information MAY be provided in the `status.message` field. | Caller MUST fix the request by adding the missing required field before retrying. |
-| Invalid or unsupported field in the request | 3 INVALID_ARGUMENT | Indicates that the one ore more fields in this field is either not allowed by the Plugin or has an invalid value. More human-readable information MAY be provided in the gRPC `status.message` field. | Caller MUST fix the field before retrying. |
+| Invalid or unsupported field in the request | 3 INVALID_ARGUMENT | Indicates that the one or more fields in this field is either not allowed by the Plugin or has an invalid value. More human-readable information MAY be provided in the gRPC `status.message` field. | Caller MUST fix the field before retrying. |
 | Permission denied | 7 PERMISSION_DENIED | The Plugin is able to derive or otherwise infer an identity from the secrets present within an RPC, but that identity does not have permission to invoke the RPC. | System administrator SHOULD ensure that requisite permissions are granted, after which point the caller MAY retry the attempted RPC. |
 | Operation pending for volume | 10 ABORTED | Indicates that there is already an operation pending for the specified volume. In general the Cluster Orchestrator (CO) is responsible for ensuring that there is no more than one call "in-flight" per volume at a given time. However, in some circumstances, the CO MAY lose state (for example when the CO crashes and restarts), and MAY issue multiple calls simultaneously for the same volume. The Plugin, SHOULD handle this as gracefully as possible, and MAY return this error code to reject secondary calls. | Caller SHOULD ensure that there are no other calls pending for the specified volume, and then retry with exponential back off. |
 | Call not implemented | 12 UNIMPLEMENTED | The invoked RPC is not implemented by the Plugin or disabled in the Plugin's current mode of operation. | Caller MUST NOT retry. Caller MAY call `GetPluginCapabilities`, `ControllerGetCapabilities`, or `NodeGetCapabilities` to discover Plugin capabilities. |
@@ -526,7 +534,6 @@ message PluginCapability {
   message Service {
     enum Type {
       UNKNOWN = 0;
-
       // CONTROLLER_SERVICE indicates that the Plugin provides RPCs for
       // the ControllerService. Plugins SHOULD provide this capability.
       // In rare cases certain plugins MAY wish to omit the
@@ -548,9 +555,56 @@ message PluginCapability {
     Type type = 1;
   }
 
+  message VolumeExpansion {
+    enum Type {
+      UNKNOWN = 0;
+
+      // ONLINE indicates that volumes may be expanded when published to
+      // a node. When a Plugin implements this capability it MUST
+      // implement either the EXPAND_VOLUME controller capability or the
+      // EXPAND_VOLUME node capability or both. When a plugin supports
+      // ONLINE volume expansion and also has the EXPAND_VOLUME
+      // controller capability then the plugin MUST support expansion of
+      // volumes currently published and available on a node. When a
+      // plugin supports ONLINE volume expansion and also has the
+      // EXPAND_VOLUME node capability then the plugin MAY support
+      // expansion of node-published volume via NodeExpandVolume.
+      //
+      // Example 1: Given a shared filesystem volume (e.g. GlusterFs),
+      //   the Plugin may set the ONLINE volume expansion capability and
+      //   implement ControllerExpandVolume but not NodeExpandVolume.
+      //
+      // Example 2: Given a block storage volume type (e.g. EBS), the
+      //   Plugin may set the ONLINE volume expansion capability and
+      //   implement both ControllerExpandVolume and NodeExpandVolume.
+      //
+      // Example 3: Given a Plugin that supports volume expansion only
+      //   upon a node, the Plugin may set the ONLINE volume
+      //   expansion capability and implement NodeExpandVolume but not
+      //   ControllerExpandVolume.
+      ONLINE = 1;
+
+      // OFFLINE indicates that volumes currently published and
+      // available on a node SHALL NOT be expanded via
+      // ControllerExpandVolume. When a plugin supports OFFLINE volume
+      // expansion it MUST implement either the EXPAND_VOLUME controller
+      // capability or both the EXPAND_VOLUME controller capability and
+      // the EXPAND_VOLUME node capability.
+      //
+      // Example 1: Given a block storage volume type (e.g. Azure Disk)
+      //   that does not support expansion of "node-attached" (i.e.
+      //   controller-published) volumes, the Plugin may indicate
+      //   OFFLINE volume expansion support and implement both
+      //   ControllerExpandVolume and NodeExpandVolume.
+      OFFLINE = 2;
+    }
+    Type type = 1;
+  }
+
   oneof type {
     // Service that the plugin supports.
     Service service = 1;
+    VolumeExpansion volume_expansion = 2;
   }
 }
 ```
@@ -700,7 +754,7 @@ message CreateVolumeRequest {
   // If specified, the new volume will be pre-populated with data from
   // this source. This field is OPTIONAL.
   VolumeContentSource volume_content_source = 6;
-  
+
   // Specifies where (regions, zones, racks, etc.) the provisioned
   // volume MUST be accessible from.
   // An SP SHALL advertise the requirements for topological
@@ -884,7 +938,7 @@ message Volume {
   // Example 2:
   //   accessible_topology =
   //     {"region": "R1", "zone": "Z2"},
-  //     {"region": "R1", "zone": "Z3"} 
+  //     {"region": "R1", "zone": "Z3"}
   // Indicates a volume accessible from both "zone" "Z2" and "zone" "Z3"
   // in the "region" "R1".
   repeated Topology accessible_topology = 5;
@@ -895,15 +949,15 @@ message TopologyRequirement {
   // accessible from.
   // This field is OPTIONAL. If TopologyRequirement is specified either
   // requisite or preferred or both MUST be specified.
-  // 
+  //
   // If requisite is specified, the provisioned volume MUST be
   // accessible from at least one of the requisite topologies.
-  // 
+  //
   // Given
   //   x = number of topologies provisioned volume is accessible from
   //   n = number of requisite topologies
   // The CO MUST ensure n >= 1. The SP MUST ensure x >= 1
-  // If x==n, than the SP MUST make the provisioned volume available to
+  // If x==n, then the SP MUST make the provisioned volume available to
   // all topologies from the list of requisite topologies. If it is
   // unable to do so, the SP MUST fail the CreateVolume call.
   // For example, if a volume should be accessible from a single zone,
@@ -918,7 +972,7 @@ message TopologyRequirement {
   // then the provisioned volume MUST be accessible from the "region"
   // "R1" and both "zone" "Z2" and "zone" "Z3".
   //
-  // If x<n, than the SP SHALL choose x unique topologies from the list
+  // If x<n, then the SP SHALL choose x unique topologies from the list
   // of requisite topologies. If it is unable to do so, the SP MUST fail
   // the CreateVolume call.
   // For example, if a volume should be accessible from a single zone,
@@ -936,7 +990,7 @@ message TopologyRequirement {
   // of two unique topologies: e.g. "R1/Z2" and "R1/Z3", or "R1/Z2" and
   //  "R1/Z4", or "R1/Z3" and "R1/Z4".
   //
-  // If x>n, than the SP MUST make the provisioned volume available from
+  // If x>n, then the SP MUST make the provisioned volume available from
   // all topologies from the list of requisite topologies and MAY choose
   // the remaining x-n unique topologies from the list of all possible
   // topologies. If it is unable to do so, the SP MUST fail the
@@ -954,7 +1008,7 @@ message TopologyRequirement {
   //
   // This field is OPTIONAL. If TopologyRequirement is specified either
   // requisite or preferred or both MUST be specified.
-  // 
+  //
   // An SP MUST attempt to make the provisioned volume available using
   // the preferred topologies in order from first to last.
   //
@@ -969,7 +1023,7 @@ message TopologyRequirement {
   // If the list of requisite topologies is specified and the SP is
   // unable to to make the provisioned volume available from any of the
   // requisite topologies it MUST fail the CreateVolume call.
-  // 
+  //
   // Example 1:
   // Given a volume should be accessible from a single zone, and
   // requisite =
@@ -1181,7 +1235,7 @@ The CO MUST implement the specified error recovery behavior when it encounters t
 |-----------|-----------|-------------|-------------------|
 | Volume does not exist | 5 NOT_FOUND | Indicates that a volume corresponding to the specified `volume_id` does not exist. | Caller MUST verify that the `volume_id` is correct and that the volume is accessible and has not been deleted before retrying with exponential back off. |
 | Node does not exist | 5 NOT_FOUND | Indicates that a node corresponding to the specified `node_id` does not exist. | Caller MUST verify that the `node_id` is correct and that the node is available and has not been terminated or deleted before retrying with exponential backoff. |
-| Volume published but is incompatible | 6 ALREADY_EXISTS | Indicates that a volume corresponding to the specified `volume_id` has already been published at the node corresponding to the specified `volume_id` but is incompatible with the specified `volume_capability` or `readonly` flag . | Caller MUST fix the arguments before retying. |
+| Volume published but is incompatible | 6 ALREADY_EXISTS | Indicates that a volume corresponding to the specified `volume_id` has already been published at the node corresponding to the specified `node_id` but is incompatible with the specified `volume_capability` or `readonly` flag . | Caller MUST fix the arguments before retrying. |
 | Volume published to another node | 9 FAILED_PRECONDITION | Indicates that a volume corresponding to the specified `volume_id` has already been published at another node and does not have MULTI_NODE volume capability. If this error code is returned, the Plugin SHOULD specify the `node_id` of the node at which the volume is published as part of the gRPC `status.message`. | Caller SHOULD ensure the specified volume is not published at any other node before retrying with exponential back off. |
 | Max volumes attached | 8 RESOURCE_EXHAUSTED | Indicates that the maximum supported number of volumes that can be attached to the specified node are already attached. Therefore, this operation will fail until at least one of the existing attached volumes is detached from the node. | Caller MUST ensure that the number of volumes already attached to the node is less then the maximum supported number of volumes before retrying with exponential backoff. |
 
@@ -1442,14 +1496,19 @@ message ControllerServiceCapability {
       // snapshot.
       CREATE_DELETE_SNAPSHOT = 5;
       LIST_SNAPSHOTS = 6;
+
       // Plugins supporting volume cloning at the storage level MAY
       // report this capability. The source volume MUST be managed by
       // the same plugin. Not all volume sources and parameters
       // combinations MAY work.
       CLONE_VOLUME = 7;
+
       // Indicates the SP supports ControllerPublishVolume.readonly
       // field.
       PUBLISH_READONLY = 8;
+
+      // See VolumeExpansion for details.
+      EXPAND_VOLUME = 9;
     }
 
     Type type = 1;
@@ -1702,6 +1761,75 @@ The CO MUST implement the specified error recovery behavior when it encounters t
 | Invalid `starting_token` | 10 ABORTED | Indicates that `starting_token` is not valid. | Caller SHOULD start the `ListSnapshots` operation again with an empty `starting_token`. |
 
 
+#### `ControllerExpandVolume`
+
+A Controller plugin MUST implement this RPC call if plugin has `EXPAND_VOLUME` controller capability.
+This RPC allows the CO to expand the size of a volume.
+
+This call MAY be made by the CO during any time in the lifecycle of the volume after creation if plugin has `VolumeExpansion.ONLINE` capability.
+If plugin has `EXPAND_VOLUME` node capability, then `NodeExpandVolume` MUST be called after successful `ControllerExpandVolume` and `node_expansion_required` in `ControllerExpandVolumeResponse` is `true`.
+
+If the plugin has only `VolumeExpansion.OFFLINE` expansion capability and volume is currently published or available on a node then `ControllerExpandVolume` MUST be called ONLY after either:
+- The plugin has controller `PUBLISH_UNPUBLISH_VOLUME` capability and `ControllerUnpublishVolume` has been invoked successfully.
+
+OR ELSE
+
+- The plugin does NOT have controller `PUBLISH_UNPUBLISH_VOLUME` capability, the plugin has node `STAGE_UNSTAGE_VOLUME` capability, and `NodeUnstageVolume` has been completed successfully.
+
+OR ELSE
+
+- The plugin does NOT have controller `PUBLISH_UNPUBLISH_VOLUME` capability, nor node `STAGE_UNSTAGE_VOLUME` capability, and `NodeUnpublishVolume` has completed successfully.
+
+Examples:
+* Offline Volume Expansion:
+  Given an ElasticSearch process that runs on Azure Disk and needs more space.
+  - The administrator takes the Elasticsearch server offline by stopping the workload and CO calls `ControllerUnpublishVolume`.
+  - The administrator requests more space for the volume from CO.
+  - The CO in turn first makes `ControllerExpandVolume` RPC call which results in requesting more space from Azure cloud provider for volume ID that was being used by ElasticSearch.
+  - Once `ControllerExpandVolume` is completed and successful, the CO will inform administrator about it and administrator will resume the ElasticSearch workload.
+  - On the node where the ElasticSearch workload is scheduled, the CO calls `NodeExpandVolume` after calling `NodeStageVolume`.
+  - Calling `NodeExpandVolume` on volume results in expanding the underlying file system and added space becomes available to workload when it starts up.
+* Online Volume Expansion:
+  Given a Mysql server running on Openstack Cinder and needs more space.
+  - The administrator requests more space for volume from the CO.
+  - The CO in turn first makes `ControllerExpandVolume` RPC call which results in requesting more space from Openstack Cinder for given volume.
+  - On the node where the mysql workload is running, the CO calls `NodeExpandVolume` while volume is in-use using the path where the volume is staged.
+  - Calling `NodeExpandVolume` on volume results in expanding the underlying file system and added space automatically becomes available to mysql workload without any downtime.
+
+
+```protobuf
+message ControllerExpandVolumeRequest {
+  // The ID of the volume to expand. This field is REQUIRED.
+  string volume_id = 1;
+
+  // This allows CO to specify the capacity requirements of the volume
+  // after expansion. This field is REQUIRED.
+  CapacityRange capacity_range = 2;
+
+  // Secrets required by the plugin for expanding the volume.
+  // This field is OPTIONAL.
+  map<string, string> secrets = 3 [(csi_secret) = true];
+}
+
+message ControllerExpandVolumeResponse {
+  // Capacity of volume after expansion. This field is REQUIRED.
+  int64 capacity_bytes = 1;
+
+  // Whether node expansion is required for the volume. When true
+  // the CO MUST make NodeExpandVolume RPC call on the node. This field
+  // is REQUIRED.
+  bool node_expansion_required = 2;
+}
+```
+
+##### ControllerExpandVolume Errors
+
+| Condition | gRPC Code | Description | Recovery Behavior |
+|-----------|-----------|-------------|-------------------|
+| Volume does not exist | 5 NOT FOUND | Indicates that a volume corresponding to the specified volume_id does not exist. | Caller MUST verify that the volume_id is correct and that the volume is accessible and has not been deleted before retrying with exponential back off. |
+| Volume in use | 9 FAILED_PRECONDITION | Indicates that the volume corresponding to the specified `volume_id` could not be expanded because it is currently published on a node but the plugin does not have ONLINE expansion capability. | Caller SHOULD ensure that volume is not published and retry with exponential back off. |
+| Unsupported `capacity_range` | 11 OUT_OF_RANGE | Indicates that the capacity range is not allowed by the Plugin. More human-readable information MAY be provided in the gRPC `status.message` field. | Caller MUST fix the capacity range before retrying. |
+
 #### RPC Interactions
 
 ##### `CreateVolume`, `DeleteVolume`, `ListVolumes`
@@ -1802,7 +1930,7 @@ The CO MUST implement the specified error recovery behavior when it encounters t
 | Condition | gRPC Code | Description | Recovery Behavior |
 |-----------|-----------|-------------|-------------------|
 | Volume does not exist | 5 NOT_FOUND | Indicates that a volume corresponding to the specified `volume_id` does not exist. | Caller MUST verify that the `volume_id` is correct and that the volume is accessible and has not been deleted before retrying with exponential back off. |
-| Volume published but is incompatible | 6 ALREADY_EXISTS | Indicates that a volume corresponding to the specified `volume_id` has already been published at the specified `staging_target_path` but is incompatible with the specified `volume_capability` flag. | Caller MUST fix the arguments before retying. |
+| Volume published but is incompatible | 6 ALREADY_EXISTS | Indicates that a volume corresponding to the specified `volume_id` has already been published at the specified `staging_target_path` but is incompatible with the specified `volume_capability` flag. | Caller MUST fix the arguments before retrying. |
 | Exceeds capabilities | 9 FAILED_PRECONDITION | Indicates that the CO has exceeded the volume's capabilities because the volume does not have MULTI_NODE capability. | Caller MAY choose to call `ValidateVolumeCapabilities` to validate the volume capabilities, or wait for the volume to be unpublished on the node. |
 
 #### `NodeUnstageVolume`
@@ -1951,7 +2079,7 @@ The CO MUST implement the specified error recovery behavior when it encounters t
 | Condition | gRPC Code | Description | Recovery Behavior |
 |-----------|-----------|-------------|-------------------|
 | Volume does not exist | 5 NOT_FOUND | Indicates that a volume corresponding to the specified `volume_id` does not exist. | Caller MUST verify that the `volume_id` is correct and that the volume is accessible and has not been deleted before retrying with exponential back off. |
-| Volume published but is incompatible | 6 ALREADY_EXISTS | Indicates that a volume corresponding to the specified `volume_id` has already been published at the specified `target_path` but is incompatible with the specified `volume_capability` or `readonly` flag. | Caller MUST fix the arguments before retying. |
+| Volume published but is incompatible | 6 ALREADY_EXISTS | Indicates that a volume corresponding to the specified `volume_id` has already been published at the specified `target_path` but is incompatible with the specified `volume_capability` or `readonly` flag. | Caller MUST fix the arguments before retrying. |
 | Exceeds capabilities | 9 FAILED_PRECONDITION | Indicates that the CO has exceeded the volume's capabilities because the volume does not have MULTI_NODE capability. | Caller MAY choose to call `ValidateVolumeCapabilities` to validate the volume capabilities, or wait for the volume to be unpublished on the node. |
 | Staging target path not set | 9 FAILED_PRECONDITION | Indicates that `STAGE_UNSTAGE_VOLUME` capability is set but no `staging_target_path` was set. | Caller MUST make sure call to `NodeStageVolume` is made and returns success before retrying with valid `staging_target_path`. |
 
@@ -2085,6 +2213,8 @@ message NodeServiceCapability {
       // then it MUST implement NodeGetVolumeStats RPC
       // call for fetching volume statistics.
       GET_VOLUME_STATS = 2;
+      // See VolumeExpansion for details.
+      EXPAND_VOLUME = 3;
     }
 
     Type type = 1;
@@ -2100,7 +2230,6 @@ message NodeServiceCapability {
 ##### NodeGetCapabilities Errors
 
 If the plugin is unable to complete the NodeGetCapabilities call successfully, it MUST return a non-ok gRPC code in the gRPC status.
-
 
 #### `NodeGetInfo`
 
@@ -2147,7 +2276,7 @@ message NodeGetInfoResponse {
   //
   // Example 1:
   //   accessible_topology =
-  //     {"region": "R1", "zone": "R2"}
+  //     {"region": "R1", "zone": "Z2"}
   // Indicates the node exists within the "region" "R1" and the "zone"
   // "Z2".
   Topology accessible_topology = 3;
@@ -2158,6 +2287,52 @@ message NodeGetInfoResponse {
 
 If the plugin is unable to complete the NodeGetInfo call successfully, it MUST return a non-ok gRPC code in the gRPC status.
 The CO MUST implement the specified error recovery behavior when it encounters the gRPC error code.
+
+#### `NodeExpandVolume`
+
+A Node Plugin MUST implement this RPC call if it has `EXPAND_VOLUME` node capability.
+This RPC call allows CO to expand volume on a node.
+
+`NodeExpandVolume` ONLY supports expansion of already node-published or node-staged volumes on the given `volume_path`.
+
+If plugin has `STAGE_UNSTAGE_VOLUME` node capability then:
+* `NodeExpandVolume` MUST be called after successful `NodeStageVolume`.
+* `NodeExpandVolume` MAY be called before or after `NodePublishVolume`.
+
+Otherwise `NodeExpandVolume` MUST be called after successful `NodePublishVolume`.
+
+If a plugin only supports expansion via the `VolumeExpansion.OFFLINE` capability, then the volume MUST first be taken offline and expanded via `ControllerExpandVolume` (see `ControllerExpandVolume` for more details), and then node-staged or node-published before it can be expanded on the node via `NodeExpandVolume`.
+
+```protobuf
+message NodeExpandVolumeRequest {
+  // The ID of the volume. This field is REQUIRED.
+  string volume_id = 1;
+
+  // The path on which volume is available. This field is REQUIRED.
+  string volume_path = 2;
+
+  // This allows CO to specify the capacity requirements of the volume
+  // after expansion. If capacity_range is omitted then a plugin MAY
+  // inspect the file system of the volume to determine the maximum
+  // capacity to which the volume can be expanded. In such cases a
+  // plugin MAY expand the volume to its maximum capacity.
+  // This field is OPTIONAL.
+  CapacityRange capacity_range = 3;
+}
+
+message NodeExpandVolumeResponse {
+  // The capacity of the volume in bytes. This field is OPTIONAL.
+  int64 capacity_bytes = 1;
+}
+```
+
+##### NodeExpandVolume Errors
+
+| Condition             | gRPC code | Description           | Recovery Behavior                 |
+|-----------------------|-----------|-----------------------|-----------------------------------|
+| Volume does not exist | 5 NOT FOUND | Indicates that a volume corresponding to the specified volume_id does not exist. | Caller MUST verify that the volume_id is correct and that the volume is accessible and has not been deleted before retrying with exponential back off. |
+| Volume in use | 9 FAILED_PRECONDITION | Indicates that the volume corresponding to the specified `volume_id` could not be expanded because it is node-published or node-staged and the underlying filesystem does not support expansion of published or staged volumes. | Caller MUST NOT retry. |
+| Unsupported capacity_range | 11 OUT_OF_RANGE | Indicates that the capacity range is not allowed by the Plugin. More human-readable information MAY be provided in the gRPC `status.message` field. | Caller MUST fix the capacity range before retrying. |
 
 ## Protocol
 
