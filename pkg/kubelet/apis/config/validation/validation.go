@@ -18,6 +18,7 @@ package validation
 
 import (
 	"fmt"
+
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	utilvalidation "k8s.io/apimachinery/pkg/util/validation"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
@@ -38,7 +39,8 @@ func ValidateKubeletConfiguration(kc *kubeletconfig.KubeletConfiguration) error 
 	if kc.NodeLeaseDurationSeconds <= 0 {
 		allErrors = append(allErrors, fmt.Errorf("invalid configuration: NodeLeaseDurationSeconds must be greater than 0"))
 	}
-	if !kc.CgroupsPerQOS && len(kc.EnforceNodeAllocatable) > 0 {
+	if !kc.CgroupsPerQOS && len(kc.EnforceNodeAllocatable) > 0 &&
+		!(len(kc.EnforceNodeAllocatable) == 1 && kc.EnforceNodeAllocatable[0] == kubetypes.NodeAllocatableNoneKey) {
 		allErrors = append(allErrors, fmt.Errorf("invalid configuration: EnforceNodeAllocatable (--enforce-node-allocatable) is not supported unless CgroupsPerQOS (--cgroups-per-qos) feature is turned on"))
 	}
 	if kc.SystemCgroups != "" && kc.CgroupRoot == "" {
