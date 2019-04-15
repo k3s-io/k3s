@@ -19,6 +19,7 @@ package client
 import (
 	"context"
 	"net/http"
+	"net/url"
 	"strconv"
 	"time"
 
@@ -51,6 +52,9 @@ type KubeletClientConfig struct {
 
 	// Dial is a custom dialer used for the client
 	Dial utilnet.DialFunc
+
+	// Proxy is a custom proxy function for the client
+	Proxy func(*http.Request) (*url.URL, error)
 }
 
 // ConnectionInfo provides the information needed to connect to a kubelet
@@ -77,6 +81,7 @@ func MakeTransport(config *KubeletClientConfig) (http.RoundTripper, error) {
 		rt = utilnet.SetOldTransportDefaults(&http.Transport{
 			DialContext:     config.Dial,
 			TLSClientConfig: tlsConfig,
+			Proxy:           config.Proxy,
 		})
 	}
 
