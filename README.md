@@ -431,7 +431,7 @@ TODO
 ----
 Currently broken or stuff that needs to be done for this to be considered production quality.
 
-1. Metrics API due to kube aggregation not being setup
+1. Metrics API ([fixed](https://github.com/rancher/k3s/issues/252): use `k3s server --kubelet-arg="address=0.0.0.0"` and apply `recipes/metrics-server`)
 2. HA
 3. Work on e2e, sonobouy.
 4. etcd doesn't actually work because args aren't exposed
