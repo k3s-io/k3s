@@ -427,6 +427,31 @@ sudo ip route add default via 192.168.123.1
 
 k3s additionally provides a `--resolv-conf` flag for kubelets, which may help with configuring DNS in air-gap networks.
 
+Rootless - (Some advanced magic, user beware)
+--------
+
+Initial rootless support has been added but there are a series of significant usability issues surrounding it.
+We are releasing the initial support for those interested in rootless and hopefully some people can help to
+improve the usability.  First ensure you have proper setup and support for user namespaces.  Refer to the
+[requirements section](https://github.com/rootless-containers/rootlesskit#setup) in rootlesskit for instructions.
+In short, latest Ubuntu is your best bet for this to work.
+
+## Issues w/ Rootless
+
+When running rootless a new network namespace is created.  This means that k3s instance is running with networking
+fairly detached from the host.  The only way to access services run in k3s from the host is to setup port forwards
+to the k3s network namespace.  We have a controller that will automatically bind 6443 and any service port to the
+host with an offset of 10000.  That means service port 80 will become 10080 on the host.  Once you kill k3s and then
+start a new instance of k3s it will create a new network namespace, but it doesn't kill the old pods.  So you are left
+with a fairly broken setup.  This is the main issue at the moment, how to deal with the network namespace.
+
+## Running w/ Rootless
+
+Just add `--rootless` flag to either server or agent.  So run `k3s server --rootless` and then look for the message
+`Wrote kubeconfig [SOME PATH]` for where your kubeconfig to access you cluster is.  Becareful, if you use `-o` to write
+the kubeconfig to a different directory it will probably not work.  This is because the k3s instance in running in a different
+mount namespace.
+
 TODO
 ----
 Currently broken or stuff that needs to be done for this to be considered production quality.
