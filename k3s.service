@@ -4,8 +4,8 @@ Documentation=https://k3s.io
 After=network.target
 
 [Service]
-ExecStartPre=-/sbin/modprobe br_netfilter
-ExecStartPre=-/sbin/modprobe overlay
+Type=notify
+EnvironmentFile=/etc/systemd/system/k3s.service.env
 ExecStart=/usr/local/bin/k3s server
 KillMode=process
 Delegate=yes
