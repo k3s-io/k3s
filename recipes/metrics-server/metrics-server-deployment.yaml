@@ -36,7 +36,7 @@ spec:
         # - --metric-resolution=10s
         - --kubelet-insecure-tls
         - --kubelet-preferred-address-types=InternalIP
-        image: k8s.gcr.io/metrics-server-amd64:v0.3.1
+        image: k8s.gcr.io/metrics-server-arm:v0.3.1
         imagePullPolicy: Always
         volumeMounts:
         - name: tmp-dir
