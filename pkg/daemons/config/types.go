@@ -119,7 +119,7 @@ func (a ArgString) String() string {
 func GetArgsList(argsMap map[string]string, extraArgs []string) []string {
 	// add extra args to args map to override any default option
 	for _, arg := range extraArgs {
-		splitArg := strings.Split(arg, "=")
+		splitArg := strings.SplitN(arg, "=", 2)
 		if len(splitArg) < 2 {
 			argsMap[splitArg[0]] = "true"
 			continue
