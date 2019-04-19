@@ -26,12 +26,13 @@ type Node struct {
 }
 
 type Containerd struct {
-	Address string
-	Log     string
-	Root    string
-	State   string
-	Config  string
-	Opt     string
+	Address  string
+	Log      string
+	Root     string
+	State    string
+	Config   string
+	Opt      string
+	Template string
 }
 
 type Agent struct {
