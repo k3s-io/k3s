@@ -1,6 +1,10 @@
 package server
 
 import (
+	"crypto/rsa"
+	"crypto/x509"
+	"io/ioutil"
+	"net"
 	"net/http"
 	"path/filepath"
 	"strconv"
@@ -8,7 +12,10 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/openapi"
+	certutil "github.com/rancher/norman/pkg/cert"
+	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/json"
+	"k8s.io/kubernetes/pkg/master"
 )
 
 const (
@@ -59,7 +66,71 @@ func nodeCrt(server *config.Control) http.Handler {
 			resp.WriteHeader(http.StatusNotFound)
 			return
 		}
-		http.ServeFile(resp, req, server.Runtime.NodeCert)
+
+		var nodeName string
+		nodeNames := req.Header["K3s-Node-Name"]
+		if len(nodeNames) == 1 {
+			nodeName = nodeNames[0]
+		}
+
+		nodeKey, err := ioutil.ReadFile(server.Runtime.NodeKey)
+		if err != nil {
+			sendError(err, resp)
+			return
+		}
+
+		key, err := certutil.ParsePrivateKeyPEM(nodeKey)
+		if err != nil {
+			sendError(err, resp)
+			return
+		}
+
+		caKeyBytes, err := ioutil.ReadFile(server.Runtime.TokenCAKey)
+		if err != nil {
+			sendError(err, resp)
+			return
+		}
+
+		caBytes, err := ioutil.ReadFile(server.Runtime.TokenCA)
+		if err != nil {
+			sendError(err, resp)
+			return
+		}
+
+		caKey, err := certutil.ParsePrivateKeyPEM(caKeyBytes)
+		if err != nil {
+			sendError(err, resp)
+			return
+		}
+
+		caCert, err := certutil.ParseCertsPEM(caBytes)
+		if err != nil {
+			sendError(err, resp)
+			return
+		}
+
+		_, apiServerServiceIP, err := master.DefaultServiceIPRange(*server.ServiceIPRange)
+		if err != nil {
+			sendError(err, resp)
+			return
+		}
+
+		cfg := certutil.Config{
+			CommonName: "kubernetes",
+			Usages:     []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
+			AltNames: certutil.AltNames{
+				DNSNames: []string{"kubernetes.default.svc", "kubernetes.default", "kubernetes", "localhost", nodeName},
+				IPs:      []net.IP{apiServerServiceIP, net.ParseIP("127.0.0.1")},
+			},
+		}
+
+		cert, err := certutil.NewSignedCert(cfg, key.(*rsa.PrivateKey), caCert[0], caKey.(*rsa.PrivateKey))
+		if err != nil {
+			sendError(err, resp)
+			return
+		}
+
+		resp.Write(append(certutil.EncodeCertPEM(cert), certutil.EncodeCertPEM(caCert[0])...))
 	})
 }
 
@@ -117,4 +188,10 @@ func ping() http.Handler {
 
 func serveStatic(urlPrefix, staticDir string) http.Handler {
 	return http.StripPrefix(urlPrefix, http.FileServer(http.Dir(staticDir)))
+}
+
+func sendError(err error, resp http.ResponseWriter) {
+	logrus.Error(err)
+	resp.WriteHeader(http.StatusInternalServerError)
+	resp.Write([]byte(err.Error()))
 }

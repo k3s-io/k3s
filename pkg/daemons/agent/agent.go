@@ -94,6 +94,10 @@ func kubelet(cfg *config.Agent) {
 		argsMap["anonymous-auth"] = "false"
 		argsMap["client-ca-file"] = cfg.CACertPath
 	}
+	if cfg.NodeCertFile != "" && cfg.NodeKeyFile != "" {
+		argsMap["tls-cert-file"] = cfg.NodeCertFile
+		argsMap["tls-private-key-file"] = cfg.NodeKeyFile
+	}
 	if cfg.NodeName != "" {
 		argsMap["hostname-override"] = cfg.NodeName
 	}

@@ -36,6 +36,8 @@ type Containerd struct {
 
 type Agent struct {
 	NodeName           string
+	NodeCertFile       string
+	NodeKeyFile        string
 	ClusterCIDR        net.IPNet
 	ClusterDNS         net.IP
 	ClusterDomain      string

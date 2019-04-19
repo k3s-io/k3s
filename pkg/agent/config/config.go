@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	sysnet "net"
+	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
@@ -43,15 +44,59 @@ func Get(ctx context.Context, agent cmds.Agent) *config.Node {
 	}
 }
 
-func getNodeCert(info *clientaccess.Info) (*tls.Certificate, error) {
-	nodeCert, err := clientaccess.Get("/v1-k3s/node.crt", info)
+type HTTPRequester func(u string, client *http.Client, username, password string) ([]byte, error)
+
+func Request(path string, info *clientaccess.Info, requester HTTPRequester) ([]byte, error) {
+	u, err := url.Parse(info.URL)
 	if err != nil {
 		return nil, err
+	}
+	u.Path = path
+	username, password, _ := clientaccess.ParseUsernamePassword(info.Token)
+	return requester(u.String(), clientaccess.GetHTTPClient(info.CACerts), username, password)
+}
+
+func getNodeNamedCrt(nodeName string) HTTPRequester {
+	return func(u string, client *http.Client, username, password string) ([]byte, error) {
+		req, err := http.NewRequest(http.MethodGet, u, nil)
+		if err != nil {
+			return nil, err
+		}
+
+		if username != "" {
+			req.SetBasicAuth(username, password)
+		}
+
+		req.Header.Set("K3s-Node-Name", nodeName)
+		resp, err := client.Do(req)
+		if err != nil {
+			return nil, err
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("%s: %s", u, resp.Status)
+		}
+
+		return ioutil.ReadAll(resp.Body)
+	}
+}
+
+func getNodeCert(nodeName, nodeCertFile, nodeKeyFile string, info *clientaccess.Info) (*tls.Certificate, error) {
+	nodeCert, err := Request("/v1-k3s/node.crt", info, getNodeNamedCrt(nodeName))
+	if err != nil {
+		return nil, err
+	}
+	if err := ioutil.WriteFile(nodeCertFile, nodeCert, 0600); err != nil {
+		return nil, errors.Wrapf(err, "failed to write node cert")
 	}
 
 	nodeKey, err := clientaccess.Get("/v1-k3s/node.key", info)
 	if err != nil {
 		return nil, err
+	}
+	if err := ioutil.WriteFile(nodeKeyFile, nodeKey, 0600); err != nil {
+		return nil, errors.Wrapf(err, "failed to write node key")
 	}
 
 	cert, err := tls.X509KeyPair(nodeCert, nodeKey)
@@ -181,17 +226,19 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 		return nil, err
 	}
 
-	nodeCert, err := getNodeCert(info)
+	nodeName, nodeIP, err := getHostnameAndIP(*envInfo)
+	if err != nil {
+		return nil, err
+	}
+
+	nodeCertFile := filepath.Join(envInfo.DataDir, "token-node.crt")
+	nodeKeyFile := filepath.Join(envInfo.DataDir, "token-node.key")
+	nodeCert, err := getNodeCert(nodeName, nodeCertFile, nodeKeyFile, info)
 	if err != nil {
 		return nil, err
 	}
 
 	clientCA, err := writeNodeCA(envInfo.DataDir, nodeCert)
-	if err != nil {
-		return nil, err
-	}
-
-	nodeName, nodeIP, err := getHostnameAndIP(*envInfo)
 	if err != nil {
 		return nil, err
 	}
@@ -224,6 +271,8 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 	nodeConfig.Images = filepath.Join(envInfo.DataDir, "images")
 	nodeConfig.AgentConfig.NodeIP = nodeIP
 	nodeConfig.AgentConfig.NodeName = nodeName
+	nodeConfig.AgentConfig.NodeCertFile = nodeCertFile
+	nodeConfig.AgentConfig.NodeKeyFile = nodeKeyFile
 	nodeConfig.AgentConfig.ClusterDNS = controlConfig.ClusterDNS
 	nodeConfig.AgentConfig.ClusterDomain = controlConfig.ClusterDomain
 	nodeConfig.AgentConfig.ResolvConf = locateOrGenerateResolvConf(envInfo)
