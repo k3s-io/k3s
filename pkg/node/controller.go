@@ -40,13 +40,10 @@ func (h *handler) onRemove(node *core.Node) (runtime.Object, error) {
 func (h *handler) updateHosts(node *core.Node, removed bool) (runtime.Object, error) {
 	var (
 		newHosts    string
-		nodeUID     string
 		nodeAddress string
-		nodeEntry   string
-		uidHostsMap map[string]string
+		hostsMap    map[string]string
 	)
-	nodeUID = string(node.UID)
-	uidHostsMap = make(map[string]string)
+	hostsMap = make(map[string]string)
 
 	for _, address := range node.Status.Addresses {
 		if address.Type == "InternalIP" {
@@ -58,7 +55,6 @@ func (h *handler) updateHosts(node *core.Node, removed bool) (runtime.Object, er
 		logrus.Errorf("No InternalIP found for node %s", node.Name)
 		return nil, nil
 	}
-	nodeEntry = nodeAddress + " " + node.Name
 
 	configMap, err := h.configCache.Get("kube-system", "coredns")
 	if err != nil || configMap == nil {
@@ -72,30 +68,28 @@ func (h *handler) updateHosts(node *core.Node, removed bool) (runtime.Object, er
 			continue
 		}
 		fields := strings.Fields(line)
-		if len(fields) != 4 || fields[2] != "#" {
+		if len(fields) != 2 {
 			logrus.Warnf("Unknown format for hosts line [%s]", line)
 			continue
 		}
 		ip := fields[0]
 		host := fields[1]
-		uid := fields[3]
-		hostEntry := ip + " " + host
-		if uid == nodeUID {
+		if host == node.Name {
 			if removed {
 				continue
 			}
-			if hostEntry == nodeEntry {
+			if ip == nodeAddress {
 				return nil, nil
 			}
 		}
-		uidHostsMap[uid] = hostEntry
+		hostsMap[host] = ip
 	}
 
 	if !removed {
-		uidHostsMap[nodeUID] = nodeEntry
+		hostsMap[node.Name] = nodeAddress
 	}
-	for uid, hostEntry := range uidHostsMap {
-		newHosts += hostEntry + " # " + uid + "\n"
+	for host, ip := range hostsMap {
+		newHosts += ip + " " + host + "\n"
 	}
 	configMap.Data["NodeHosts"] = newHosts
 
@@ -109,7 +103,7 @@ func (h *handler) updateHosts(node *core.Node, removed bool) (runtime.Object, er
 	} else {
 		actionType = "Updated"
 	}
-	logrus.Infof("%s coredns node hosts entry [%s]", actionType, nodeEntry)
+	logrus.Infof("%s coredns node hosts entry [%s]", actionType, nodeAddress+" "+node.Name)
 
 	return nil, nil
 }
