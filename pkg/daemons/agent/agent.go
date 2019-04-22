@@ -32,7 +32,7 @@ func Agent(config *config.Agent) error {
 
 func kubeProxy(cfg *config.Agent) {
 	argsMap := map[string]string{
-		"proxy-mode":           "iptables",
+		"proxy-mode":           cfg.ProxyMode,
 		"healthz-bind-address": "127.0.0.1",
 		"kubeconfig":           cfg.KubeConfig,
 		"cluster-cidr":         cfg.ClusterCIDR.String(),

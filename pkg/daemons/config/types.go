@@ -37,6 +37,7 @@ type Containerd struct {
 type Agent struct {
 	NodeName           string
 	ClusterCIDR        net.IPNet
+	ProxyMode          string
 	ClusterDNS         net.IP
 	ClusterDomain      string
 	ResolvConf         string
@@ -57,6 +58,7 @@ type Control struct {
 	ListenPort            int
 	ClusterSecret         string
 	ClusterIPRange        *net.IPNet
+	ProxyMode             string
 	ServiceIPRange        *net.IPNet
 	ClusterDNS            net.IP
 	ClusterDomain         string

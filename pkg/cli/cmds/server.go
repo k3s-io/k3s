@@ -9,6 +9,7 @@ type Server struct {
 	ClusterCIDR         string
 	ClusterSecret       string
 	ServiceCIDR         string
+	ProxyMode           string
 	ClusterDNS          string
 	ClusterDomain       string
 	HTTPSPort           int
@@ -71,6 +72,12 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Usage:       "Network CIDR to use for pod IPs",
 				Destination: &ServerConfig.ClusterCIDR,
 				Value:       "10.42.0.0/16",
+			},
+			cli.StringFlag{
+				Name:        "proxy-mode",
+				Usage:       "kube-proxy proxy mode to use",
+				Destination: &ServerConfig.ProxyMode,
+				Value:       "iptables",
 			},
 			cli.StringFlag{
 				Name:        "cluster-secret",
