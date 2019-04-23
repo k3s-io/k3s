@@ -1,13 +1,18 @@
 package server
 
 import (
+	"bufio"
 	"crypto/rsa"
 	"crypto/x509"
+	"errors"
+	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/rancher/k3s/pkg/daemons/config"
@@ -67,10 +72,21 @@ func nodeCrt(server *config.Control) http.Handler {
 			return
 		}
 
-		var nodeName string
 		nodeNames := req.Header["K3s-Node-Name"]
-		if len(nodeNames) == 1 {
-			nodeName = nodeNames[0]
+		if len(nodeNames) != 1 || nodeNames[0] == "" {
+			sendError(errors.New("node name not set"), resp)
+			return
+		}
+
+		nodePasswords := req.Header["K3s-Node-Password"]
+		if len(nodePasswords) != 1 || nodePasswords[0] == "" {
+			sendError(errors.New("node password not set"), resp)
+			return
+		}
+
+		if err := ensureNodePassword(server.Runtime.PasswdFile, nodeNames[0], nodePasswords[0]); err != nil {
+			sendError(err, resp, http.StatusForbidden)
+			return
 		}
 
 		nodeKey, err := ioutil.ReadFile(server.Runtime.NodeKey)
@@ -119,7 +135,7 @@ func nodeCrt(server *config.Control) http.Handler {
 			CommonName: "kubernetes",
 			Usages:     []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
 			AltNames: certutil.AltNames{
-				DNSNames: []string{"kubernetes.default.svc", "kubernetes.default", "kubernetes", "localhost", nodeName},
+				DNSNames: []string{"kubernetes.default.svc", "kubernetes.default", "kubernetes", "localhost", nodeNames[0]},
 				IPs:      []net.IP{apiServerServiceIP, net.ParseIP("127.0.0.1")},
 			},
 		}
@@ -190,8 +206,48 @@ func serveStatic(urlPrefix, staticDir string) http.Handler {
 	return http.StripPrefix(urlPrefix, http.FileServer(http.Dir(staticDir)))
 }
 
-func sendError(err error, resp http.ResponseWriter) {
+func sendError(err error, resp http.ResponseWriter, status ...int) {
+	code := http.StatusInternalServerError
+	if len(status) == 1 {
+		code = status[0]
+	}
+
 	logrus.Error(err)
-	resp.WriteHeader(http.StatusInternalServerError)
+	resp.WriteHeader(code)
 	resp.Write([]byte(err.Error()))
+}
+
+func ensureNodePassword(passwdFile, nodeName, passwd string) error {
+	f, err := os.Open(passwdFile)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	user := strings.ToLower("node:" + nodeName)
+
+	buf := &strings.Builder{}
+	scan := bufio.NewScanner(f)
+	for scan.Scan() {
+		line := scan.Text()
+		parts := strings.Split(line, ",")
+		if len(parts) < 4 {
+			continue
+		}
+		if parts[1] == user {
+			if parts[0] == passwd {
+				return nil
+			}
+			return fmt.Errorf("Node password validation failed for [%s]", nodeName)
+		}
+		buf.WriteString(line)
+		buf.WriteString("\n")
+	}
+	buf.WriteString(fmt.Sprintf("%s,%s,%s,system:masters\n", passwd, user, user))
+
+	if scan.Err() != nil {
+		return scan.Err()
+	}
+
+	f.Close()
+	return ioutil.WriteFile(passwdFile, []byte(buf.String()), 0600)
 }

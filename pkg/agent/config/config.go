@@ -3,7 +3,9 @@ package config
 import (
 	"bufio"
 	"context"
+	cryptorand "crypto/rand"
 	"crypto/tls"
+	"encoding/hex"
 	"encoding/pem"
 	"fmt"
 	"io/ioutil"
@@ -56,7 +58,7 @@ func Request(path string, info *clientaccess.Info, requester HTTPRequester) ([]b
 	return requester(u.String(), clientaccess.GetHTTPClient(info.CACerts), username, password)
 }
 
-func getNodeNamedCrt(nodeName string) HTTPRequester {
+func getNodeNamedCrt(nodeName, nodePasswordFile string) HTTPRequester {
 	return func(u string, client *http.Client, username, password string) ([]byte, error) {
 		req, err := http.NewRequest(http.MethodGet, u, nil)
 		if err != nil {
@@ -68,6 +70,12 @@ func getNodeNamedCrt(nodeName string) HTTPRequester {
 		}
 
 		req.Header.Set("K3s-Node-Name", nodeName)
+		nodePassword, err := ensureNodePassword(nodePasswordFile)
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("K3s-Node-Password", hex.EncodeToString(nodePassword))
+
 		resp, err := client.Do(req)
 		if err != nil {
 			return nil, err
@@ -82,8 +90,20 @@ func getNodeNamedCrt(nodeName string) HTTPRequester {
 	}
 }
 
-func getNodeCert(nodeName, nodeCertFile, nodeKeyFile string, info *clientaccess.Info) (*tls.Certificate, error) {
-	nodeCert, err := Request("/v1-k3s/node.crt", info, getNodeNamedCrt(nodeName))
+func ensureNodePassword(nodePasswordFile string) ([]byte, error) {
+	if _, err := os.Stat(nodePasswordFile); err == nil {
+		return ioutil.ReadFile(nodePasswordFile)
+	}
+	password := make([]byte, 16, 16)
+	_, err := cryptorand.Read(password)
+	if err != nil {
+		return nil, err
+	}
+	return password, ioutil.WriteFile(nodePasswordFile, password, 0600)
+}
+
+func getNodeCert(nodeName, nodeCertFile, nodeKeyFile, nodePasswordFile string, info *clientaccess.Info) (*tls.Certificate, error) {
+	nodeCert, err := Request("/v1-k3s/node.crt", info, getNodeNamedCrt(nodeName, nodePasswordFile))
 	if err != nil {
 		return nil, err
 	}
@@ -233,7 +253,9 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 
 	nodeCertFile := filepath.Join(envInfo.DataDir, "token-node.crt")
 	nodeKeyFile := filepath.Join(envInfo.DataDir, "token-node.key")
-	nodeCert, err := getNodeCert(nodeName, nodeCertFile, nodeKeyFile, info)
+	nodePasswordFile := filepath.Join(envInfo.DataDir, "node-password.bin")
+
+	nodeCert, err := getNodeCert(nodeName, nodeCertFile, nodeKeyFile, nodePasswordFile, info)
 	if err != nil {
 		return nil, err
 	}
