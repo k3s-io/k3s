@@ -22,6 +22,9 @@ set -e
 #   - INSTALL_K3S_SKIP_DOWNLOAD
 #     If set to true will not download k3s hash or binary.
 #
+#   - INSTALL_K3S_SKIP_START
+#     If set to true will not start k3s service.
+#
 #   - INSTALL_K3S_VERSION
 #     Version of k3s to download from github. Will attempt to download the
 #     latest version if not specified.
@@ -482,6 +485,7 @@ systemd_enable_and_start() {
     $SUDO systemctl enable ${FILE_K3S_SERVICE} >/dev/null
     $SUDO systemctl daemon-reload >/dev/null
 
+    [ "${INSTALL_K3S_SKIP_START}" = "true" ] && return
     info "systemd: Starting ${SYSTEM_NAME}"
     $SUDO systemctl restart ${SYSTEM_NAME}
 }
@@ -491,6 +495,7 @@ openrc_enable_and_start() {
     info "openrc: Enabling ${SYSTEM_NAME} service for default runlevel"
     $SUDO rc-update add ${SYSTEM_NAME} default >/dev/null
 
+    [ "${INSTALL_K3S_SKIP_START}" = "true" ] && return
     info "openrc: Starting ${SYSTEM_NAME}"
     $SUDO ${FILE_K3S_SERVICE} restart
 }
