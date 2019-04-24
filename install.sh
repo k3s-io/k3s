@@ -449,7 +449,7 @@ start_pre() {
 
 supervisor=supervise-daemon
 name="${SYSTEM_NAME}"
-command="/usr/local/bin/k3s"
+command="${BIN_DIR}/k3s"
 command_args="${CMD_K3S_EXEC} >>${LOG_FILE} 2>&1"
 pidfile="/var/run/${SYSTEM_NAME}.pid"
 respawn_delay=5
