@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"os"
 	"sort"
 
 	batchclient "github.com/rancher/k3s/types/apis/batch/v1"
@@ -185,7 +186,7 @@ func job(chart *k3s.HelmChart) (*batch.Job, *core.ConfigMap) {
 			},
 		},
 	}
-
+	setProxyEnv(job)
 	configMap := configMap(chart)
 	if configMap == nil {
 		return job, nil
@@ -316,4 +317,27 @@ func keys(val map[string]intstr.IntOrString) []string {
 	}
 	sort.Strings(keys)
 	return keys
+}
+
+func setProxyEnv(job *batch.Job) {
+	proxySysEnv := []string{
+		"http_proxy",
+		"https_proxy",
+		"HTTP_PROXY",
+		"HTTPS_PROXY",
+		"NO_PROXY",
+	}
+	for _, proxyEnv := range proxySysEnv {
+		proxyEnvValue := os.Getenv(proxyEnv)
+		if len(proxyEnvValue) == 0 {
+			continue
+		}
+		envar := core.EnvVar{
+			Name:  proxyEnv,
+			Value: proxyEnvValue,
+		}
+		job.Spec.Template.Spec.Containers[0].Env = append(
+			job.Spec.Template.Spec.Containers[0].Env,
+			envar)
+	}
 }
