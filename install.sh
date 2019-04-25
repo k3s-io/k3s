@@ -162,6 +162,8 @@ setup_env() {
     if [ `id -u` = 0 ]; then
         SUDO=
     fi
+
+    PRE_INSTALL_HASHES=`get_installed_hashes`
 }
 
 # --- check if skip download environment variable set ---
@@ -472,41 +474,53 @@ EOF
 
 # --- write systemd or openrc service file ---
 create_service_file() {
-    if [ "${HAS_SYSTEMD}" = "true" ]; then
-        create_systemd_service_file
-    elif [ "${HAS_OPENRC}" = "true" ]; then
-        create_openrc_service_file
-    fi
+    [ "${HAS_SYSTEMD}" = "true" ] && create_systemd_service_file
+    [ "${HAS_OPENRC}" = "true" ] && create_openrc_service_file
+}
+
+# --- get hashes of the current k3s bin and service files
+get_installed_hashes() {
+    sha256sum ${BIN_DIR}/k3s ${FILE_K3S_SERVICE} ${FILE_K3S_ENV} 2>&1 || true
 }
 
 # --- enable and start systemd service ---
-systemd_enable_and_start() {
+systemd_enable() {
     info "systemd: Enabling ${SYSTEM_NAME} unit"
     $SUDO systemctl enable ${FILE_K3S_SERVICE} >/dev/null
     $SUDO systemctl daemon-reload >/dev/null
+}
 
-    [ "${INSTALL_K3S_SKIP_START}" = "true" ] && return
+systemd_start() {
     info "systemd: Starting ${SYSTEM_NAME}"
     $SUDO systemctl restart ${SYSTEM_NAME}
 }
 
 # --- enable and start openrc service ---
-openrc_enable_and_start() {
+openrc_enable() {
     info "openrc: Enabling ${SYSTEM_NAME} service for default runlevel"
     $SUDO rc-update add ${SYSTEM_NAME} default >/dev/null
+}
 
-    [ "${INSTALL_K3S_SKIP_START}" = "true" ] && return
+openrc_start() {
     info "openrc: Starting ${SYSTEM_NAME}"
     $SUDO ${FILE_K3S_SERVICE} restart
 }
 
 # --- startup systemd or openrc service ---
 service_enable_and_start() {
-    if [ "${HAS_SYSTEMD}" = "true" ]; then
-        systemd_enable_and_start
-    elif [ "${HAS_OPENRC}" = "true" ]; then
-        openrc_enable_and_start
+    [ "${HAS_SYSTEMD}" = "true" ] && systemd_enable
+    [ "${HAS_OPENRC}" = "true" ] && openrc_enable
+
+    [ "${INSTALL_K3S_SKIP_START}" = "true" ] && return
+
+    POST_INSTALL_HASHES=`get_installed_hashes`
+    if [ "${PRE_INSTALL_HASHES}" = "${POST_INSTALL_HASHES}" ]; then
+        info "No change detected so skipping service start"
+        return
     fi
+
+    [ "${HAS_SYSTEMD}" = "true" ] && systemd_start
+    [ "${HAS_OPENRC}" = "true" ] && openrc_start
 }
 
 # --- run the install process --
