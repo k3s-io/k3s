@@ -240,6 +240,7 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 	}
 	nodeConfig.Containerd.State = "/run/k3s/containerd"
 	nodeConfig.Containerd.Address = filepath.Join(nodeConfig.Containerd.State, "containerd.sock")
+	nodeConfig.Containerd.Template = filepath.Join(envInfo.DataDir, "etc/containerd/config.toml.tmpl")
 	nodeConfig.ServerAddress = serverURLParsed.Host
 	nodeConfig.Certificate = nodeCert
 	if !nodeConfig.NoFlannel {
