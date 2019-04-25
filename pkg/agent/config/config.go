@@ -74,7 +74,7 @@ func getNodeNamedCrt(nodeName, nodePasswordFile string) HTTPRequester {
 		if err != nil {
 			return nil, err
 		}
-		req.Header.Set("K3s-Node-Password", hex.EncodeToString(nodePassword))
+		req.Header.Set("K3s-Node-Password", nodePassword)
 
 		resp, err := client.Do(req)
 		if err != nil {
@@ -90,16 +90,18 @@ func getNodeNamedCrt(nodeName, nodePasswordFile string) HTTPRequester {
 	}
 }
 
-func ensureNodePassword(nodePasswordFile string) ([]byte, error) {
+func ensureNodePassword(nodePasswordFile string) (string, error) {
 	if _, err := os.Stat(nodePasswordFile); err == nil {
-		return ioutil.ReadFile(nodePasswordFile)
+		password, err := ioutil.ReadFile(nodePasswordFile)
+		return strings.TrimSpace(string(password)), err
 	}
 	password := make([]byte, 16, 16)
 	_, err := cryptorand.Read(password)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
-	return password, ioutil.WriteFile(nodePasswordFile, password, 0600)
+	nodePassword := hex.EncodeToString(password)
+	return nodePassword, ioutil.WriteFile(nodePasswordFile, []byte(nodePassword), 0600)
 }
 
 func getNodeCert(nodeName, nodeCertFile, nodeKeyFile, nodePasswordFile string, info *clientaccess.Info) (*tls.Certificate, error) {
@@ -253,7 +255,7 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 
 	nodeCertFile := filepath.Join(envInfo.DataDir, "token-node.crt")
 	nodeKeyFile := filepath.Join(envInfo.DataDir, "token-node.key")
-	nodePasswordFile := filepath.Join(envInfo.DataDir, "node-password.bin")
+	nodePasswordFile := filepath.Join(envInfo.DataDir, "node-password.txt")
 
 	nodeCert, err := getNodeCert(nodeName, nodeCertFile, nodeKeyFile, nodePasswordFile, info)
 	if err != nil {
