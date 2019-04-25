@@ -33,6 +33,10 @@ set -e
 #     Directory to install k3s binary, links, and uninstall script to, or use
 #     /usr/local/bin as the default
 #
+#   - INSTALL_K3S_BIN_DIR_READ_ONLY
+#     If set to true will not write files to INSTALL_K3S_BIN_DIR, forces
+#     setting INSTALL_K3S_SKIP_DOWNLOAD=true
+#
 #   - INSTALL_K3S_SYSTEMD_DIR
 #     Directory to install systemd service and environment files to, or use
 #     /etc/systemd/system as the default
@@ -164,6 +168,9 @@ setup_env() {
     fi
 
     PRE_INSTALL_HASHES=`get_installed_hashes`
+    if [ "${INSTALL_K3S_BIN_DIR_READ_ONLY}" = "true" ]; then
+        INSTALL_K3S_SKIP_DOWNLOAD=true
+    fi
 }
 
 # --- check if skip download environment variable set ---
@@ -321,6 +328,7 @@ download_and_verify() {
 
 # --- add additional utility links ---
 create_symlinks() {
+    [ "${INSTALL_K3S_BIN_DIR_READ_ONLY}" = "true" ] && return
     if [ ! -e ${BIN_DIR}/kubectl ]; then
         info "Creating ${BIN_DIR}/kubectl symlink to k3s"
         $SUDO ln -s k3s ${BIN_DIR}/kubectl
@@ -334,6 +342,7 @@ create_symlinks() {
 
 # --- create uninstall script ---
 create_uninstall() {
+    [ "${INSTALL_K3S_BIN_DIR_READ_ONLY}" = "true" ] && return
     info "Creating uninstall script ${BIN_DIR}/${UNINSTALL_K3S_SH}"
     $SUDO tee ${BIN_DIR}/${UNINSTALL_K3S_SH} >/dev/null << EOF
 #!/bin/sh
