@@ -80,7 +80,7 @@ flag
 At this point, you can run the agent as a separate process or not run it on this node at all.
 
 If you encounter an error like `"stream server error: listen tcp: lookup some-host on X.X.X.X:53: no such host"`
-when starting k3s please ensure `/etc/hosts` contains your current hostname (output of `hostname`), 
+when starting k3s please ensure `/etc/hosts` contains your current hostname (output of `hostname`),
 set to a 127.x.x.x address. For example:
 ```
 127.0.1.1	myhost
@@ -251,6 +251,10 @@ run with Docker first stop and think, "Really? Do I really want more headache?" 
 yes then you just need to run the agent with the `--docker` flag
 
      k3s agent -s ${SERVER_URL} -t ${NODE_TOKEN} --docker &
+
+k3s will generate config.toml for containerd in `/var/lib/rancher/k3s/agent/etc/containerd/config.toml`, for advanced customization for this file you can create another file called `config.toml.tmpl` in the same directory and it will be used instead.
+
+The `config.toml.tmpl` will be treated as a Golang template file, and the `config.Node` structure is being passed to the template,the following is an example on how to use the structure to customize the configuration file https://github.com/rancher/k3s/blob/master/pkg/agent/templates/templates.go#L16-L32
 
 systemd
 -------
