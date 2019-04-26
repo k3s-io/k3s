@@ -180,6 +180,31 @@ helper scripts
 
 To build the full release binary run `make` and that will create `./dist/artifacts/k3s`
 
+
+Customizing components
+----------------------
+
+As of v0.3.0 any of the following processes can be customized with extra flags:
+
+- kube-apiserver (server)
+- kube-controller-manager (server)
+- kube-scheduler (server)
+- kubelet (agent)
+- kube-proxy (agent)
+
+Adding extra argument can be done by passing the following flags to server or agent:
+```
+--kube-apiserver-arg value
+--kube-scheduler-arg value
+--kube-controller-arg value
+--kubelet-arg value        
+--kube-proxy-arg value     
+```
+For example to add the following arguments `-v=9` and `log-file=/tmp/kubeapi.log` to the kube-apiserver, you should pass the following:
+```
+k3s server --kube-apiserver-arg v=9 --kube-apiserver-arg log-file=/tmp/kubeapi.log
+```
+
 Uninstalling server
 -----------------
 
