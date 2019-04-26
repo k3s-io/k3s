@@ -80,7 +80,7 @@ flag
 At this point, you can run the agent as a separate process or not run it on this node at all.
 
 If you encounter an error like `"stream server error: listen tcp: lookup some-host on X.X.X.X:53: no such host"`
-when starting k3s please ensure `/etc/hosts` contains your current hostname (output of `hostname`), 
+when starting k3s please ensure `/etc/hosts` contains your current hostname (output of `hostname`),
 set to a 127.x.x.x address. For example:
 ```
 127.0.1.1	myhost
@@ -179,6 +179,31 @@ helper scripts
 ```
 
 To build the full release binary run `make` and that will create `./dist/artifacts/k3s`
+
+
+Customizing components
+----------------------
+
+As of v0.3.0 any of the following processes can be customized with extra flags:
+
+- kube-apiserver (server)
+- kube-controller-manager (server)
+- kube-scheduler (server)
+- kubelet (agent)
+- kube-proxy (agent)
+
+Adding extra argument can be done by passing the following flags to server or agent:
+```
+--kube-apiserver-arg value
+--kube-scheduler-arg value
+--kube-controller-arg value
+--kubelet-arg value        
+--kube-proxy-arg value     
+```
+For example to add the following arguments `-v=9` and `log-file=/tmp/kubeapi.log` to the kube-apiserver, you should pass the following:
+```
+k3s server --kube-apiserver-arg v=9 --kube-apiserver-arg log-file=/tmp/kubeapi.log
+```
 
 Uninstalling server
 -----------------
