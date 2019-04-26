@@ -18,6 +18,7 @@ import (
 	"github.com/rancher/k3s/pkg/datadir"
 	"github.com/rancher/k3s/pkg/deploy"
 	"github.com/rancher/k3s/pkg/helm"
+	"github.com/rancher/k3s/pkg/node"
 	"github.com/rancher/k3s/pkg/rootlessports"
 	"github.com/rancher/k3s/pkg/servicelb"
 	"github.com/rancher/k3s/pkg/static"
@@ -112,6 +113,7 @@ func startNorman(ctx context.Context, config *Config) (string, error) {
 		},
 		DisableLeaderElection: true,
 		MasterControllers: []norman.ControllerRegister{
+			node.Register,
 			helm.Register,
 			func(ctx context.Context) error {
 				return servicelb.Register(ctx, norman.GetServer(ctx).K8sClient, !config.DisableServiceLB,
