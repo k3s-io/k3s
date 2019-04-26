@@ -301,7 +301,7 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 	nodeConfig.AgentConfig.ClusterDomain = controlConfig.ClusterDomain
 	nodeConfig.AgentConfig.ResolvConf = locateOrGenerateResolvConf(envInfo)
 	nodeConfig.AgentConfig.CACertPath = clientCA
-	nodeConfig.AgentConfig.ListenAddress = "127.0.0.1"
+	nodeConfig.AgentConfig.ListenAddress = "0.0.0.0"
 	nodeConfig.AgentConfig.KubeConfig = kubeConfig
 	nodeConfig.AgentConfig.RootDir = filepath.Join(envInfo.DataDir, "kubelet")
 	nodeConfig.CACerts = info.CACerts

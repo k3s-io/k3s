@@ -16,6 +16,7 @@ import (
 	"k8s.io/component-base/logs"
 	app2 "k8s.io/kubernetes/cmd/kube-proxy/app"
 	"k8s.io/kubernetes/cmd/kubelet/app"
+	"k8s.io/kubernetes/pkg/kubeapiserver/authorizer/modes"
 
 	_ "k8s.io/kubernetes/pkg/client/metrics/prometheus" // for client metric registration
 	_ "k8s.io/kubernetes/pkg/version/prometheus"        // for version metric registration
@@ -64,6 +65,7 @@ func kubelet(cfg *config.Agent) {
 		//"cgroup-root": "/k3s",
 		"cgroup-driver":                "cgroupfs",
 		"authentication-token-webhook": "true",
+		"authorization-mode":           modes.ModeWebhook,
 	}
 	if cfg.RootDir != "" {
 		argsMap["root-dir"] = cfg.RootDir

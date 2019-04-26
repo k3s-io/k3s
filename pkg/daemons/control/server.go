@@ -455,8 +455,8 @@ func genTokenCerts(config *config.Control, runtime *config.ControlRuntime) error
 		return err
 	}
 
-	if err := createClientCertKey(regen, "kubernetes",
-		nil, &certutil.AltNames{
+	if err := createClientCertKey(regen, "kubernetes", []string{"system:masters"},
+		&certutil.AltNames{
 			DNSNames: []string{"kubernetes.default.svc", "kubernetes.default", "kubernetes", "localhost"},
 			IPs:      []net.IP{apiServerServiceIP, localhostIP},
 		}, x509KeyClientUsage,
