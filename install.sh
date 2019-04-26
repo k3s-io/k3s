@@ -22,6 +22,9 @@ set -e
 #   - INSTALL_K3S_SKIP_DOWNLOAD
 #     If set to true will not download k3s hash or binary.
 #
+#   - INSTALL_K3S_SKIP_START
+#     If set to true will not start k3s service.
+#
 #   - INSTALL_K3S_VERSION
 #     Version of k3s to download from github. Will attempt to download the
 #     latest version if not specified.
@@ -29,6 +32,10 @@ set -e
 #   - INSTALL_K3S_BIN_DIR
 #     Directory to install k3s binary, links, and uninstall script to, or use
 #     /usr/local/bin as the default
+#
+#   - INSTALL_K3S_BIN_DIR_READ_ONLY
+#     If set to true will not write files to INSTALL_K3S_BIN_DIR, forces
+#     setting INSTALL_K3S_SKIP_DOWNLOAD=true
 #
 #   - INSTALL_K3S_SYSTEMD_DIR
 #     Directory to install systemd service and environment files to, or use
@@ -68,11 +75,17 @@ fatal()
     exit 1
 }
 
-# --- fatal if no systemd ---
-verify_systemd() {
-    if [ ! -d /run/systemd ]; then
-        fatal "Can not find systemd to use as a process supervisor for k3s"
+# --- fatal if no systemd or openrc ---
+verify_system() {
+    if [ -x /sbin/openrc-run ]; then
+        HAS_OPENRC=true
+        return
     fi
+    if [ -d /run/systemd ]; then
+        HAS_SYSTEMD=true
+        return
+    fi
+    fatal "Can not find systemd or openrc to use as a process supervisor for k3s"
 }
 
 # --- define needed environment variables ---
@@ -102,16 +115,16 @@ setup_env() {
 
     # --- use systemd name if defined or create default ---
     if [ -n "${INSTALL_K3S_NAME}" ]; then
-        SYSTEMD_NAME=k3s-${INSTALL_K3S_NAME}
+        SYSTEM_NAME=k3s-${INSTALL_K3S_NAME}
     else
         if [ "${CMD_K3S}" = "server" ]; then
-            SYSTEMD_NAME=k3s
+            SYSTEM_NAME=k3s
         else
-            SYSTEMD_NAME=k3s-${CMD_K3S}
+            SYSTEM_NAME=k3s-${CMD_K3S}
         fi
     fi
-    SERVICE_K3S=${SYSTEMD_NAME}.service
-    UNINSTALL_K3S_SH=${SYSTEMD_NAME}-uninstall.sh
+    SERVICE_K3S=${SYSTEM_NAME}.service
+    UNINSTALL_K3S_SH=${SYSTEM_NAME}-uninstall.sh
 
     # --- use systemd type if defined or create default ---
     if [ -n "${INSTALL_K3S_TYPE}" ]; then
@@ -138,10 +151,25 @@ setup_env() {
         SYSTEMD_DIR="/etc/systemd/system"
     fi
 
+    # --- use servive or environment location depending on systemd/openrc ---
+    if [ "${HAS_SYSTEMD}" = "true" ]; then
+        FILE_K3S_SERVICE=${SYSTEMD_DIR}/${SERVICE_K3S}
+        FILE_K3S_ENV=${SYSTEMD_DIR}/${SERVICE_K3S}.env
+    elif [ "${HAS_OPENRC}" = "true" ]; then
+        $SUDO mkdir -p /etc/rancher/k3s
+        FILE_K3S_SERVICE=/etc/init.d/${SYSTEM_NAME}
+        FILE_K3S_ENV=/etc/rancher/k3s/${SYSTEM_NAME}.env
+    fi
+
     # --- use sudo if we are not already root ---
     SUDO=sudo
     if [ `id -u` = 0 ]; then
         SUDO=
+    fi
+
+    PRE_INSTALL_HASHES=`get_installed_hashes`
+    if [ "${INSTALL_K3S_BIN_DIR_READ_ONLY}" = "true" ]; then
+        INSTALL_K3S_SKIP_DOWNLOAD=true
     fi
 }
 
@@ -300,6 +328,7 @@ download_and_verify() {
 
 # --- add additional utility links ---
 create_symlinks() {
+    [ "${INSTALL_K3S_BIN_DIR_READ_ONLY}" = "true" ] && return
     if [ ! -e ${BIN_DIR}/kubectl ]; then
         info "Creating ${BIN_DIR}/kubectl symlink to k3s"
         $SUDO ln -s k3s ${BIN_DIR}/kubectl
@@ -313,23 +342,26 @@ create_symlinks() {
 
 # --- create uninstall script ---
 create_uninstall() {
+    [ "${INSTALL_K3S_BIN_DIR_READ_ONLY}" = "true" ] && return
     info "Creating uninstall script ${BIN_DIR}/${UNINSTALL_K3S_SH}"
     $SUDO tee ${BIN_DIR}/${UNINSTALL_K3S_SH} >/dev/null << EOF
 #!/bin/sh
 set -x
-systemctl kill ${SYSTEMD_NAME}
-systemctl disable ${SYSTEMD_NAME}
-systemctl reset-failed ${SYSTEMD_NAME}
-systemctl daemon-reload
-rm -f ${SYSTEMD_DIR}/${SERVICE_K3S}
-rm -f ${SYSTEMD_DIR}/${SERVICE_K3S}.env
+if which systemctl; then
+    systemctl kill ${SYSTEM_NAME}
+    systemctl disable ${SYSTEM_NAME}
+    systemctl reset-failed ${SYSTEM_NAME}
+    systemctl daemon-reload
+fi
+rm -f ${FILE_K3S_SERVICE}
+rm -f ${FILE_K3S_ENV}
 
 remove_uninstall() {
     rm -f ${BIN_DIR}/${UNINSTALL_K3S_SH}
 }
 trap remove_uninstall EXIT
 
-if ls ${SYSTEMD_DIR}/k3s*.service >/dev/null 2>&1; then
+if (ls ${SYSTEMD_DIR}/k3s*.service || ls /etc/init.d/k3s*) >/dev/null 2>&1; then
     set +x; echo "Additional k3s services installed, skipping uninstall of k3s"; set -x
     exit
 fi
@@ -369,22 +401,22 @@ EOF
 systemd_disable() {
     $SUDO rm -f /etc/systemd/system/${SERVICE_K3S} || true
     $SUDO rm -f /etc/systemd/system/${SERVICE_K3S}.env || true
-    $SUDO systemctl disable ${SYSTEMD_NAME} >/dev/null 2>&1 || true
+    $SUDO systemctl disable ${SYSTEM_NAME} >/dev/null 2>&1 || true
 }
 
 # --- capture current env and create file containing k3s_ variables ---
 create_env_file() {
-    info "systemd: Creating environment file ${SYSTEMD_DIR}/${SERVICE_K3S}.env"
+    info "env: Creating environment file ${FILE_K3S_ENV}"
     UMASK=`umask`
     umask 0377
-    env | grep '^K3S_' | $SUDO tee ${SYSTEMD_DIR}/${SERVICE_K3S}.env >/dev/null
+    env | grep '^K3S_' | $SUDO tee ${FILE_K3S_ENV} >/dev/null
     umask $UMASK
 }
 
-# --- write service file ---
-create_service_file() {
-    info "systemd: Creating service file ${SYSTEMD_DIR}/${SERVICE_K3S}"
-    $SUDO tee ${SYSTEMD_DIR}/${SERVICE_K3S} >/dev/null << EOF
+# --- write systemd service file ---
+create_systemd_service_file() {
+    info "systemd: Creating service file ${FILE_K3S_SERVICE}"
+    $SUDO tee ${FILE_K3S_SERVICE} >/dev/null << EOF
 [Unit]
 Description=Lightweight Kubernetes
 Documentation=https://k3s.io
@@ -392,7 +424,7 @@ After=network.target
 
 [Service]
 Type=${SYSTEMD_TYPE}
-EnvironmentFile=${SYSTEMD_DIR}/${SERVICE_K3S}.env
+EnvironmentFile=${FILE_K3S_ENV}
 ExecStartPre=-/sbin/modprobe br_netfilter
 ExecStartPre=-/sbin/modprobe overlay
 ExecStart=${BIN_DIR}/k3s ${CMD_K3S_EXEC}
@@ -409,19 +441,100 @@ WantedBy=multi-user.target
 EOF
 }
 
-# --- enable and start systemd service ---
-systemd_enable_and_start() {
-    info "systemd: Enabling ${SYSTEMD_NAME} unit"
-    $SUDO systemctl enable ${SYSTEMD_DIR}/${SERVICE_K3S} >/dev/null
-    $SUDO systemctl daemon-reload >/dev/null
+# --- write openrc service file ---
+create_openrc_service_file() {
+    LOG_FILE=/var/log/${SYSTEM_NAME}.log
 
-    info "systemd: Starting ${SYSTEMD_NAME}"
-    $SUDO systemctl restart ${SYSTEMD_NAME}
+    info "openrc: Creating service file ${FILE_K3S_SERVICE}"
+    $SUDO tee ${FILE_K3S_SERVICE} >/dev/null << EOF
+#!/sbin/openrc-run
+
+depend() {
+    after net-online
+    need net
+}
+
+start_pre() {
+    rm -f /tmp/k3s.*
+}
+
+supervisor=supervise-daemon
+name="${SYSTEM_NAME}"
+command="${BIN_DIR}/k3s"
+command_args="${CMD_K3S_EXEC} >>${LOG_FILE} 2>&1"
+pidfile="/var/run/${SYSTEM_NAME}.pid"
+respawn_delay=5
+
+set -o allexport
+if [ -f /etc/environment ]; then source /etc/environment; fi
+if [ -f ${FILE_K3S_ENV} ]; then source ${FILE_K3S_ENV}; fi
+set +o allexport
+EOF
+    $SUDO chmod 0755 ${FILE_K3S_SERVICE}
+
+    $SUDO tee /etc/logrotate.d/${SYSTEM_NAME} >/dev/null << EOF
+${LOG_FILE} {
+	missingok
+	notifempty
+	copytruncate
+}
+EOF
+}
+
+# --- write systemd or openrc service file ---
+create_service_file() {
+    [ "${HAS_SYSTEMD}" = "true" ] && create_systemd_service_file
+    [ "${HAS_OPENRC}" = "true" ] && create_openrc_service_file
+}
+
+# --- get hashes of the current k3s bin and service files
+get_installed_hashes() {
+    sha256sum ${BIN_DIR}/k3s ${FILE_K3S_SERVICE} ${FILE_K3S_ENV} 2>&1 || true
+}
+
+# --- enable and start systemd service ---
+systemd_enable() {
+    info "systemd: Enabling ${SYSTEM_NAME} unit"
+    $SUDO systemctl enable ${FILE_K3S_SERVICE} >/dev/null
+    $SUDO systemctl daemon-reload >/dev/null
+}
+
+systemd_start() {
+    info "systemd: Starting ${SYSTEM_NAME}"
+    $SUDO systemctl restart ${SYSTEM_NAME}
+}
+
+# --- enable and start openrc service ---
+openrc_enable() {
+    info "openrc: Enabling ${SYSTEM_NAME} service for default runlevel"
+    $SUDO rc-update add ${SYSTEM_NAME} default >/dev/null
+}
+
+openrc_start() {
+    info "openrc: Starting ${SYSTEM_NAME}"
+    $SUDO ${FILE_K3S_SERVICE} restart
+}
+
+# --- startup systemd or openrc service ---
+service_enable_and_start() {
+    [ "${HAS_SYSTEMD}" = "true" ] && systemd_enable
+    [ "${HAS_OPENRC}" = "true" ] && openrc_enable
+
+    [ "${INSTALL_K3S_SKIP_START}" = "true" ] && return
+
+    POST_INSTALL_HASHES=`get_installed_hashes`
+    if [ "${PRE_INSTALL_HASHES}" = "${POST_INSTALL_HASHES}" ]; then
+        info "No change detected so skipping service start"
+        return
+    fi
+
+    [ "${HAS_SYSTEMD}" = "true" ] && systemd_start
+    [ "${HAS_OPENRC}" = "true" ] && openrc_start
 }
 
 # --- run the install process --
 {
-    verify_systemd
+    verify_system
     setup_env ${INSTALL_K3S_EXEC} $@
     download_and_verify
     create_symlinks
@@ -429,5 +542,5 @@ systemd_enable_and_start() {
     systemd_disable
     create_env_file
     create_service_file
-    systemd_enable_and_start
+    service_enable_and_start
 }
