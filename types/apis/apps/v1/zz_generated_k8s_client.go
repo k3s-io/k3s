@@ -20,13 +20,13 @@ type Interface interface {
 	RESTClient() rest.Interface
 	controller.Starter
 
-	DeploymentsGetter
+	DaemonSetsGetter
 }
 
 type Clients struct {
 	Interface Interface
 
-	Deployment DeploymentClient
+	DaemonSet DaemonSetClient
 }
 
 type Client struct {
@@ -34,7 +34,7 @@ type Client struct {
 	restClient rest.Interface
 	starters   []controller.Starter
 
-	deploymentControllers map[string]DeploymentController
+	daemonSetControllers map[string]DaemonSetController
 }
 
 func Factory(ctx context.Context, config rest.Config) (context.Context, controller.Starter, error) {
@@ -70,8 +70,8 @@ func NewClientsFromInterface(iface Interface) *Clients {
 	return &Clients{
 		Interface: iface,
 
-		Deployment: &deploymentClient2{
-			iface: iface.Deployments(""),
+		DaemonSet: &daemonSetClient2{
+			iface: iface.DaemonSets(""),
 		},
 	}
 }
@@ -89,7 +89,7 @@ func NewForConfig(config rest.Config) (Interface, error) {
 	return &Client{
 		restClient: restClient,
 
-		deploymentControllers: map[string]DeploymentController{},
+		daemonSetControllers: map[string]DaemonSetController{},
 	}, nil
 }
 
@@ -105,13 +105,13 @@ func (c *Client) Start(ctx context.Context, threadiness int) error {
 	return controller.Start(ctx, threadiness, c.starters...)
 }
 
-type DeploymentsGetter interface {
-	Deployments(namespace string) DeploymentInterface
+type DaemonSetsGetter interface {
+	DaemonSets(namespace string) DaemonSetInterface
 }
 
-func (c *Client) Deployments(namespace string) DeploymentInterface {
-	objectClient := objectclient.NewObjectClient(namespace, c.restClient, &DeploymentResource, DeploymentGroupVersionKind, deploymentFactory{})
-	return &deploymentClient{
+func (c *Client) DaemonSets(namespace string) DaemonSetInterface {
+	objectClient := objectclient.NewObjectClient(namespace, c.restClient, &DaemonSetResource, DaemonSetGroupVersionKind, daemonSetFactory{})
+	return &daemonSetClient{
 		ns:           namespace,
 		client:       c,
 		objectClient: objectClient,
