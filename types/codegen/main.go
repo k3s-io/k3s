@@ -99,7 +99,7 @@ func main() {
 	}
 
 	if err := generator.ControllersForForeignTypes(basePackage, appsv1.SchemeGroupVersion, []interface{}{
-		appsv1.Deployment{},
+		appsv1.DaemonSet{},
 	}, nil); err != nil {
 		logrus.Fatal(err)
 	}
