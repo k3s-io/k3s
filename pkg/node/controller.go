@@ -17,7 +17,6 @@ func Register(ctx context.Context) error {
 		configCache:  clients.ConfigMap.Cache(),
 		configClient: clients.ConfigMap,
 	}
-	clients.Node.OnCreate(ctx, "node", h.onChange)
 	clients.Node.OnChange(ctx, "node", h.onChange)
 	clients.Node.OnRemove(ctx, "node", h.onRemove)
 
