@@ -109,12 +109,11 @@ func (w *watcher) listFilesIn(base string, force bool) error {
 		if strings.HasSuffix(file.Name(), ".skip") {
 			skips[strings.TrimSuffix(file.Name(), ".skip")] = true
 		}
-
 	}
 
 	var errs []error
 	for _, file := range files {
-		if strings.HasSuffix(file.Name(), ".skip") || skips[file.Name()] {
+		if skipFile(file.Name(), skips) {
 			continue
 		}
 		p := filepath.Join(base, file.Name())
@@ -304,4 +303,21 @@ func toObjects(bytes []byte) ([]runtime.Object, error) {
 	}
 
 	return []runtime.Object{obj}, nil
+}
+
+func skipFile(fileName string, skips map[string]bool) bool {
+	switch {
+	case strings.HasPrefix(fileName, "."):
+		return true
+	case skips[fileName]:
+		return true
+	case strings.HasSuffix(fileName, ".json"):
+		return false
+	case strings.HasSuffix(fileName, ".yml"):
+		return false
+	case strings.HasSuffix(fileName, ".yaml"):
+		return false
+	default:
+		return true
+	}
 }

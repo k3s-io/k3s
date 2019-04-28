@@ -1,0 +1,99 @@
+#!/bin/bash
+set -ve
+
+cd $(dirname $0)/..
+
+if [ ! -f /etc/vagrant_box_build_time ]; then
+    echo "This script should only be called during vagrant provisioning"
+    exit 1
+fi
+
+ARCH=amd64
+if [[ $HOME == /go/* ]]; then
+    echo "Must not launch vagrant from /go/"
+    exit 1
+fi 
+
+if [ -z "${GOPATH}" ]; then
+    GOPATH=$(realpath $HOME/../../../..)
+    echo "WARNING: Assuming GOPATH=$GOPATH"
+else
+    echo "Using parent GOPATH=$GOPATH"
+fi
+goversion=$(grep "^FROM " Dockerfile.dapper | sed -e 's/^FROM golang:\(.*\)-.*/\1/')
+
+if [ -z "$goversion" ]; then
+    echo "Cannot find version of go to fetch"
+    exit 1
+fi
+
+echo "Installing go $goversion"
+apk add -q -f curl libc6-compat tzdata
+curl -sL https://storage.googleapis.com/golang/go${goversion}.linux-${ARCH}.tar.gz | tar -xzf - -C /usr/local
+# ---
+cat <<EOF >/etc/profile.d/build.sh
+export STATIC_BUILD=true
+EOF
+# ---
+cat <<EOF >/etc/profile.d/go.sh
+export GOPATH=$GOPATH
+export PATH=$PATH:/usr/local/go/bin:$GOPATH/bin
+EOF
+. /etc/profile.d/go.sh
+# ---
+sed -i 's|:/bin/ash$|:/bin/bash|g' /etc/passwd
+cat <<\EOF >/etc/profile.d/color.sh
+alias ls='ls --color=auto'
+export PS1='\033[31m[ \033[90m\D{%F %T}\033[31m ]\n\[\033[36m\]\u\[\033[m\]🐮\[\033[32m\]\h:\[\033[33;1m\]\w\[\033[m\]$ '
+EOF
+# ---
+mkdir -p ${GOPATH}/bin
+mkdir -p /go
+ln -s $GOPATH/bin /go/bin
+sed ':a;N;$!ba;s/\\\n/ /g' <Dockerfile.dapper | grep '^RUN ' | sed -e 's/^RUN //' >/tmp/docker-run
+export BINDIR=/go/bin
+export GOPATH=/go
+export HOME=/tmp && cd
+. /tmp/docker-run
+cd /go
+go get github.com/rancher/trash
+rm -rf /go
+cd
+# ---
+cd /etc/local.d
+cat <<\EOF >cgroup.start
+#!/bin/bash
+mount cgroup_root /sys/fs/cgroup -t tmpfs -o "rw,nosuid,nodev,noexec,relatime,size=10240k,mode=755"
+# blkio freezer net_cls net_prio 
+for d in cpu cpuacct cpuset devices memory pids; do
+    mkdir -p /sys/fs/cgroup/$d
+    mount $d /sys/fs/cgroup/$d -t cgroup -o "rw,nosuid,nodev,noexec,relatime,$d"
+done
+EOF
+chmod 0755 cgroup.start
+rc-update add local default
+rc-service local start
+# ---
+cat <<EOF >/etc/profile.d/docker.sh
+export DOCKER_HOST=tcp://10.0.2.2:2375
+EOF
+. /etc/profile.d/docker.sh
+# ---
+cat <<\EOF >>/etc/motd
+               ,        ,
+   ,-----------|'------'| |\    ____
+  /.           '-'@  o|-' | |  /___ \
+ |/|             | .. |   | | __ __) | ____
+   |   .________.'----'   | |/ /|__ < / __/
+   |  ||        |  ||     |   < ___) |\__ \
+   \__|'        \__|'     |_|\_\_____/____/
+
+EOF
+# ---
+set +v
+if ! docker version --format '{{.Server.Version}}' >/tmp/docker-server-version; then
+    echo "WARNING: Unable to connect to the docker socket, to enable docker in vagrant run the following command on the host:"
+    echo "docker run -d -v /var/run/docker.sock:/var/run/docker.sock -p 127.0.0.1:2375:2375 alpine/socat TCP-LISTEN:2375,fork UNIX-CONNECT:/var/run/docker.sock"
+else
+    echo "Using host docker server v$(cat /tmp/docker-server-version)"
+fi

@@ -1,0 +1,14 @@
+---
+
+- name: Activating cgroup on Raspbian
+  lineinfile:
+    path: /boot/cmdline.txt
+    regexp: '^(.*rootwait)$'
+    line: '\1 cgroup_enable=cpuset cgroup_memory=1 cgroup_enable=memory'
+    backrefs: true
+  when: ( ansible_facts.architecture is search "arm" )
+
+- name: Rebooting on Raspbian 
+  shell: reboot now
+  ignore_errors: true
+  when: ( ansible_facts.architecture is search "arm" )

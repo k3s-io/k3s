@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"syscall"
 	"time"
 
@@ -16,6 +15,7 @@ import (
 	"github.com/containerd/containerd/namespaces"
 	"github.com/natefinch/lumberjack"
 	"github.com/opencontainers/runc/libcontainer/system"
+	"github.com/rancher/k3s/pkg/agent/templates"
 	util2 "github.com/rancher/k3s/pkg/agent/util"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/sirupsen/logrus"
@@ -26,24 +26,6 @@ import (
 
 const (
 	maxMsgSize = 1024 * 1024 * 16
-	configToml = `
-[plugins.opt]
-  path = "%OPT%"
-[plugins.cri]
-  stream_server_address = "%NODE%"
-  stream_server_port = "10010"
-  sandbox_image = "%PAUSEIMAGE%"
-`
-	configUserNSToml = `
-  disable_cgroup = true
-  disable_apparmor = true
-  restrict_oom_score_adj = true
-`
-	configCNIToml = `
-  [plugins.cri.cni]
-    bin_dir = "%CNIBIN%"
-    conf_dir = "%CNICFG%"
-`
 )
 
 func Run(ctx context.Context, cfg *config.Node) error {
@@ -55,24 +37,7 @@ func Run(ctx context.Context, cfg *config.Node) error {
 		"--root", cfg.Containerd.Root,
 	}
 
-	template := configToml
-	if system.RunningInUserNS() {
-		template += configUserNSToml
-	}
-	if !cfg.NoFlannel {
-		template += configCNIToml
-	}
-
-	template = strings.Replace(template, "%OPT%", cfg.Containerd.Opt, -1)
-	template = strings.Replace(template, "%CNIBIN%", cfg.AgentConfig.CNIBinDir, -1)
-	template = strings.Replace(template, "%CNICFG%", cfg.AgentConfig.CNIConfDir, -1)
-	template = strings.Replace(template, "%NODE%", cfg.AgentConfig.NodeName, -1)
-	if cfg.AgentConfig.PauseImage != "" {
-		template = strings.Replace(template, "%PAUSEIMAGE%", cfg.AgentConfig.PauseImage, -1)
-	} else {
-		template = strings.Replace(template, "%PAUSEIMAGE%", "k8s.gcr.io/pause:3.1", -1)
-	}
-	if err := util2.WriteFile(cfg.Containerd.Config, template); err != nil {
+	if err := setupContainerdConfig(ctx, cfg); err != nil {
 		return err
 	}
 
@@ -190,4 +155,28 @@ func preloadImages(cfg *config.Node) error {
 		}
 	}
 	return nil
+}
+
+func setupContainerdConfig(ctx context.Context, cfg *config.Node) error {
+	var containerdTemplate string
+	containerdConfig := templates.ContainerdConfig{
+		NodeConfig:        cfg,
+		IsRunningInUserNS: system.RunningInUserNS(),
+	}
+
+	containerdTemplateBytes, err := ioutil.ReadFile(cfg.Containerd.Template)
+	if err == nil {
+		logrus.Infof("Using containerd template at %s", cfg.Containerd.Template)
+		containerdTemplate = string(containerdTemplateBytes)
+	} else if os.IsNotExist(err) {
+		containerdTemplate = templates.ContainerdConfigTemplate
+	} else {
+		return err
+	}
+	parsedTemplate, err := templates.ParseTemplateFromConfig(containerdTemplate, containerdConfig)
+	if err != nil {
+		return err
+	}
+
+	return util2.WriteFile(cfg.Containerd.Config, parsedTemplate)
 }

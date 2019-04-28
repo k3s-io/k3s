@@ -3,11 +3,14 @@ package config
 import (
 	"bufio"
 	"context"
+	cryptorand "crypto/rand"
 	"crypto/tls"
+	"encoding/hex"
 	"encoding/pem"
 	"fmt"
 	"io/ioutil"
 	sysnet "net"
+	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
@@ -43,15 +46,79 @@ func Get(ctx context.Context, agent cmds.Agent) *config.Node {
 	}
 }
 
-func getNodeCert(info *clientaccess.Info) (*tls.Certificate, error) {
-	nodeCert, err := clientaccess.Get("/v1-k3s/node.crt", info)
+type HTTPRequester func(u string, client *http.Client, username, password string) ([]byte, error)
+
+func Request(path string, info *clientaccess.Info, requester HTTPRequester) ([]byte, error) {
+	u, err := url.Parse(info.URL)
 	if err != nil {
 		return nil, err
+	}
+	u.Path = path
+	username, password, _ := clientaccess.ParseUsernamePassword(info.Token)
+	return requester(u.String(), clientaccess.GetHTTPClient(info.CACerts), username, password)
+}
+
+func getNodeNamedCrt(nodeName, nodePasswordFile string) HTTPRequester {
+	return func(u string, client *http.Client, username, password string) ([]byte, error) {
+		req, err := http.NewRequest(http.MethodGet, u, nil)
+		if err != nil {
+			return nil, err
+		}
+
+		if username != "" {
+			req.SetBasicAuth(username, password)
+		}
+
+		req.Header.Set("K3s-Node-Name", nodeName)
+		nodePassword, err := ensureNodePassword(nodePasswordFile)
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("K3s-Node-Password", nodePassword)
+
+		resp, err := client.Do(req)
+		if err != nil {
+			return nil, err
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("%s: %s", u, resp.Status)
+		}
+
+		return ioutil.ReadAll(resp.Body)
+	}
+}
+
+func ensureNodePassword(nodePasswordFile string) (string, error) {
+	if _, err := os.Stat(nodePasswordFile); err == nil {
+		password, err := ioutil.ReadFile(nodePasswordFile)
+		return strings.TrimSpace(string(password)), err
+	}
+	password := make([]byte, 16, 16)
+	_, err := cryptorand.Read(password)
+	if err != nil {
+		return "", err
+	}
+	nodePassword := hex.EncodeToString(password)
+	return nodePassword, ioutil.WriteFile(nodePasswordFile, []byte(nodePassword), 0600)
+}
+
+func getNodeCert(nodeName, nodeCertFile, nodeKeyFile, nodePasswordFile string, info *clientaccess.Info) (*tls.Certificate, error) {
+	nodeCert, err := Request("/v1-k3s/node.crt", info, getNodeNamedCrt(nodeName, nodePasswordFile))
+	if err != nil {
+		return nil, err
+	}
+	if err := ioutil.WriteFile(nodeCertFile, nodeCert, 0600); err != nil {
+		return nil, errors.Wrapf(err, "failed to write node cert")
 	}
 
 	nodeKey, err := clientaccess.Get("/v1-k3s/node.key", info)
 	if err != nil {
 		return nil, err
+	}
+	if err := ioutil.WriteFile(nodeKeyFile, nodeKey, 0600); err != nil {
+		return nil, errors.Wrapf(err, "failed to write node key")
 	}
 
 	cert, err := tls.X509KeyPair(nodeCert, nodeKey)
@@ -189,17 +256,21 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 		return nil, err
 	}
 
-	nodeCert, err := getNodeCert(info)
+	nodeName, nodeIP, err := getHostnameAndIP(*envInfo)
+	if err != nil {
+		return nil, err
+	}
+
+	nodeCertFile := filepath.Join(envInfo.DataDir, "token-node.crt")
+	nodeKeyFile := filepath.Join(envInfo.DataDir, "token-node.key")
+	nodePasswordFile := filepath.Join(envInfo.DataDir, "node-password.txt")
+
+	nodeCert, err := getNodeCert(nodeName, nodeCertFile, nodeKeyFile, nodePasswordFile, info)
 	if err != nil {
 		return nil, err
 	}
 
 	clientCA, err := writeNodeCA(envInfo.DataDir, nodeCert)
-	if err != nil {
-		return nil, err
-	}
-
-	nodeName, nodeIP, err := getHostnameAndIP(*envInfo)
 	if err != nil {
 		return nil, err
 	}
@@ -219,19 +290,31 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 		return nil, errors.Wrapf(err, "failed to find host-local")
 	}
 
+	var flannelIface *sysnet.Interface
+	if !envInfo.NoFlannel && len(envInfo.FlannelIface) > 0 {
+		flannelIface, err = sysnet.InterfaceByName(envInfo.FlannelIface)
+		if err != nil {
+			return nil, errors.Wrapf(err, "unable to find interface")
+		}
+	}
+
 	nodeConfig := &config.Node{
 		Docker:                   envInfo.Docker,
 		NoFlannel:                envInfo.NoFlannel,
 		ContainerRuntimeEndpoint: envInfo.ContainerRuntimeEndpoint,
 	}
+	nodeConfig.FlannelIface = flannelIface
 	nodeConfig.LocalAddress = localAddress(controlConfig)
 	nodeConfig.Images = filepath.Join(envInfo.DataDir, "images")
 	nodeConfig.AgentConfig.NodeIP = nodeIP
 	nodeConfig.AgentConfig.NodeName = nodeName
+	nodeConfig.AgentConfig.NodeCertFile = nodeCertFile
+	nodeConfig.AgentConfig.NodeKeyFile = nodeKeyFile
 	nodeConfig.AgentConfig.ClusterDNS = controlConfig.ClusterDNS
+	nodeConfig.AgentConfig.ClusterDomain = controlConfig.ClusterDomain
 	nodeConfig.AgentConfig.ResolvConf = locateOrGenerateResolvConf(envInfo)
 	nodeConfig.AgentConfig.CACertPath = clientCA
-	nodeConfig.AgentConfig.ListenAddress = "127.0.0.1"
+	nodeConfig.AgentConfig.ListenAddress = "0.0.0.0"
 	nodeConfig.AgentConfig.KubeConfig = kubeConfig
 	nodeConfig.AgentConfig.RootDir = filepath.Join(envInfo.DataDir, "kubelet")
 	nodeConfig.AgentConfig.PauseImage = pauseImage
@@ -244,6 +327,7 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 	}
 	nodeConfig.Containerd.State = "/run/k3s/containerd"
 	nodeConfig.Containerd.Address = filepath.Join(nodeConfig.Containerd.State, "containerd.sock")
+	nodeConfig.Containerd.Template = filepath.Join(envInfo.DataDir, "etc/containerd/config.toml.tmpl")
 	nodeConfig.ServerAddress = serverURLParsed.Host
 	nodeConfig.Certificate = nodeCert
 	if !nodeConfig.NoFlannel {

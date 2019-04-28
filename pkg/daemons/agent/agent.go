@@ -16,6 +16,7 @@ import (
 	"k8s.io/component-base/logs"
 	app2 "k8s.io/kubernetes/cmd/kube-proxy/app"
 	"k8s.io/kubernetes/cmd/kubelet/app"
+	"k8s.io/kubernetes/pkg/kubeapiserver/authorizer/modes"
 
 	_ "k8s.io/kubernetes/pkg/client/metrics/prometheus" // for client metric registration
 	_ "k8s.io/kubernetes/pkg/version/prometheus"        // for version metric registration
@@ -56,13 +57,15 @@ func kubelet(cfg *config.Agent) {
 		"healthz-bind-address":     "127.0.0.1",
 		"read-only-port":           "0",
 		"allow-privileged":         "true",
-		"cluster-domain":           "cluster.local",
+		"cluster-domain":           cfg.ClusterDomain,
 		"kubeconfig":               cfg.KubeConfig,
 		"eviction-hard":            "imagefs.available<5%,nodefs.available<5%",
 		"eviction-minimum-reclaim": "imagefs.available=10%,nodefs.available=10%",
 		"fail-swap-on":             "false",
 		//"cgroup-root": "/k3s",
-		"cgroup-driver": "cgroupfs",
+		"cgroup-driver":                "cgroupfs",
+		"authentication-token-webhook": "true",
+		"authorization-mode":           modes.ModeWebhook,
 	}
 	if cfg.RootDir != "" {
 		argsMap["root-dir"] = cfg.RootDir
@@ -93,6 +96,10 @@ func kubelet(cfg *config.Agent) {
 		argsMap["anonymous-auth"] = "false"
 		argsMap["client-ca-file"] = cfg.CACertPath
 	}
+	if cfg.NodeCertFile != "" && cfg.NodeKeyFile != "" {
+		argsMap["tls-cert-file"] = cfg.NodeCertFile
+		argsMap["tls-private-key-file"] = cfg.NodeKeyFile
+	}
 	if cfg.NodeName != "" {
 		argsMap["hostname-override"] = cfg.NodeName
 	}
@@ -100,17 +107,23 @@ func kubelet(cfg *config.Agent) {
 	if err != nil || defaultIP.String() != cfg.NodeIP {
 		argsMap["node-ip"] = cfg.NodeIP
 	}
-	root, hasCFS := checkCgroups()
+	root, hasCFS, hasPIDs := checkCgroups()
 	if !hasCFS {
 		logrus.Warn("Disabling CPU quotas due to missing cpu.cfs_period_us")
 		argsMap["cpu-cfs-quota"] = "false"
+	}
+	if !hasPIDs {
+		logrus.Warn("Disabling pod PIDs limit feature due to missing cgroup pids support")
+		argsMap["cgroups-per-qos"] = "false"
+		argsMap["enforce-node-allocatable"] = ""
+		argsMap["feature-gates"] = addFeatureGate(argsMap["feature-gates"], "SupportPodPidsLimit=false")
 	}
 	if root != "" {
 		argsMap["runtime-cgroups"] = root
 		argsMap["kubelet-cgroups"] = root
 	}
 	if system.RunningInUserNS() {
-		argsMap["feature-gates"] = "DevicePlugins=false"
+		argsMap["feature-gates"] = addFeatureGate(argsMap["feature-gates"], "DevicePlugins=false")
 	}
 
 	args := config.GetArgsList(argsMap, cfg.ExtraKubeletArgs)
@@ -122,15 +135,20 @@ func kubelet(cfg *config.Agent) {
 	}()
 }
 
-func checkCgroups() (string, bool) {
+func addFeatureGate(current, new string) string {
+	if current == "" {
+		return new
+	}
+	return current + "," + new
+}
+
+func checkCgroups() (root string, hasCFS bool, hasPIDs bool) {
 	f, err := os.Open("/proc/self/cgroup")
 	if err != nil {
-		return "", false
+		return "", false, false
 	}
 	defer f.Close()
 
-	ret := false
-	root := ""
 	scan := bufio.NewScanner(f)
 	for scan.Scan() {
 		parts := strings.Split(scan.Text(), ":")
@@ -139,10 +157,12 @@ func checkCgroups() (string, bool) {
 		}
 		systems := strings.Split(parts[1], ",")
 		for _, system := range systems {
-			if system == "cpu" {
+			if system == "pids" {
+				hasPIDs = true
+			} else if system == "cpu" {
 				p := filepath.Join("/sys/fs/cgroup", parts[1], parts[2], "cpu.cfs_period_us")
 				if _, err := os.Stat(p); err == nil {
-					ret = true
+					hasCFS = true
 				}
 			} else if system == "name=systemd" {
 				last := parts[len(parts)-1]
@@ -154,5 +174,5 @@ func checkCgroups() (string, bool) {
 		}
 	}
 
-	return root, ret
+	return root, hasCFS, hasPIDs
 }

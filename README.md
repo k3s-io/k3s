@@ -80,7 +80,7 @@ flag
 At this point, you can run the agent as a separate process or not run it on this node at all.
 
 If you encounter an error like `"stream server error: listen tcp: lookup some-host on X.X.X.X:53: no such host"`
-when starting k3s please ensure `/etc/hosts` contains your current hostname (output of `hostname`), 
+when starting k3s please ensure `/etc/hosts` contains your current hostname (output of `hostname`),
 set to a 127.x.x.x address. For example:
 ```
 127.0.1.1	myhost
@@ -180,6 +180,31 @@ helper scripts
 
 To build the full release binary run `make` and that will create `./dist/artifacts/k3s`
 
+
+Customizing components
+----------------------
+
+As of v0.3.0 any of the following processes can be customized with extra flags:
+
+- kube-apiserver (server)
+- kube-controller-manager (server)
+- kube-scheduler (server)
+- kubelet (agent)
+- kube-proxy (agent)
+
+Adding extra argument can be done by passing the following flags to server or agent:
+```
+--kube-apiserver-arg value
+--kube-scheduler-arg value
+--kube-controller-arg value
+--kubelet-arg value        
+--kube-proxy-arg value     
+```
+For example to add the following arguments `-v=9` and `log-file=/tmp/kubeapi.log` to the kube-apiserver, you should pass the following:
+```
+k3s server --kube-apiserver-arg v=9 --kube-apiserver-arg log-file=/tmp/kubeapi.log
+```
+
 Uninstalling server
 -----------------
 
@@ -230,9 +255,9 @@ serves as an example of how to run k3s from Docker.  To run from `docker-compose
 To run the agent only in Docker use the following `docker-compose-agent.yml` is in the root of this repo that
 serves as an example of how to run k3s agent from Docker. Alternatively the Docker run command can also be used;
 
-    sudo docker run -d --tmpfs /run --tmpfs /var/run -e K3S_URL=${SERVER_URL} -e K3S_TOKEN=${NODE_TOKEN} --privileged rancher/k3s:v0.3.0
+    sudo docker run -d --tmpfs /run --tmpfs /var/run -e K3S_URL=${SERVER_URL} -e K3S_TOKEN=${NODE_TOKEN} --privileged rancher/k3s:v0.4.0
 
-    sudo docker run -d --tmpfs /run --tmpfs /var/run -e K3S_URL=https://k3s.example.com:6443 -e K3S_TOKEN=K13849a67fc385fd3c0fa6133a8649d9e717b0258b3b09c87ffc33dae362c12d8c0::node:2e373dca319a0525745fd8b3d8120d9c --privileged rancher/k3s:v0.3.0
+    sudo docker run -d --tmpfs /run --tmpfs /var/run -e K3S_URL=https://k3s.example.com:6443 -e K3S_TOKEN=K13849a67fc385fd3c0fa6133a8649d9e717b0258b3b09c87ffc33dae362c12d8c0::node:2e373dca319a0525745fd8b3d8120d9c --privileged rancher/k3s:v0.4.0
 
 
 Hyperkube
@@ -265,8 +290,8 @@ Documentation=https://k3s.io
 After=network.target
 
 [Service]
-ExecStartPre=-/sbin/modprobe br_netfilter
-ExecStartPre=-/sbin/modprobe overlay
+Type=notify
+EnvironmentFile=/etc/systemd/system/k3s.service.env
 ExecStart=/usr/local/bin/k3s server
 KillMode=process
 Delegate=yes
@@ -274,6 +299,7 @@ LimitNOFILE=infinity
 LimitNPROC=infinity
 LimitCORE=infinity
 TasksMax=infinity
+TimeoutStartSec=0
 
 [Install]
 WantedBy=multi-user.target
@@ -368,6 +394,71 @@ The full help text for the install script environment variables are as follows:
      Type of systemd service to create, will default from the k3s exec command
      if not specified.
 
+openrc on Alpine Linux
+-------
+
+In order to pre-setup Alpine Linux you have to go through the following steps:
+
+```bash
+echo "cgroup /sys/fs/cgroup cgroup defaults 0 0" >> /etc/fstab
+
+cat >> /etc/cgconfig.conf <<EOF
+mount {
+cpuacct = /cgroup/cpuacct;
+memory = /cgroup/memory;
+devices = /cgroup/devices;
+freezer = /cgroup/freezer;
+net_cls = /cgroup/net_cls;
+blkio = /cgroup/blkio;
+cpuset = /cgroup/cpuset;
+cpu = /cgroup/cpu;
+}
+EOF
+```
+
+Then update **/etc/update-extlinux.conf** by adding:
+
+```
+default_kernel_opts="...  cgroup_enable=cpuset cgroup_memory=1 cgroup_enable=memory"
+```
+
+Than update the config and reboot
+
+```bash
+update-extlinux
+reboot
+```
+
+After rebooting:
+
+- download **k3s** to **/usr/local/bin/k3s**
+- create an openrc file in **/etc/init.d**
+
+For the server:
+
+```bash
+#!/sbin/openrc-run
+
+command=/usr/local/bin/k3s
+command_args="server"
+pidfile=
+
+name="k3s"
+description="Lightweight Kubernetes"
+```
+
+For the agent:
+
+```bash
+#!/sbin/openrc-run
+
+command=/usr/local/bin/k3s
+command_args="agent --server https://myserver:6443 --token ${NODE_TOKEN}"
+pidfile=
+
+name="k3s"
+description="Lightweight Kubernetes"
+```
 
 Flannel
 -------
@@ -424,11 +515,36 @@ sudo ip route add default via 192.168.123.1
 
 k3s additionally provides a `--resolv-conf` flag for kubelets, which may help with configuring DNS in air-gap networks.
 
+Rootless - (Some advanced magic, user beware)
+--------
+
+Initial rootless support has been added but there are a series of significant usability issues surrounding it.
+We are releasing the initial support for those interested in rootless and hopefully some people can help to
+improve the usability.  First ensure you have proper setup and support for user namespaces.  Refer to the
+[requirements section](https://github.com/rootless-containers/rootlesskit#setup) in rootlesskit for instructions.
+In short, latest Ubuntu is your best bet for this to work.
+
+## Issues w/ Rootless
+
+When running rootless a new network namespace is created.  This means that k3s instance is running with networking
+fairly detached from the host.  The only way to access services run in k3s from the host is to setup port forwards
+to the k3s network namespace.  We have a controller that will automatically bind 6443 and any service port to the
+host with an offset of 10000.  That means service port 80 will become 10080 on the host.  Once you kill k3s and then
+start a new instance of k3s it will create a new network namespace, but it doesn't kill the old pods.  So you are left
+with a fairly broken setup.  This is the main issue at the moment, how to deal with the network namespace.
+
+## Running w/ Rootless
+
+Just add `--rootless` flag to either server or agent.  So run `k3s server --rootless` and then look for the message
+`Wrote kubeconfig [SOME PATH]` for where your kubeconfig to access you cluster is.  Becareful, if you use `-o` to write
+the kubeconfig to a different directory it will probably not work.  This is because the k3s instance in running in a different
+mount namespace.
+
 TODO
 ----
 Currently broken or stuff that needs to be done for this to be considered production quality.
 
-1. Metrics API due to kube aggregation not being setup
+1. Metrics API ([fixed](https://github.com/rancher/k3s/issues/252): use `k3s server --kubelet-arg="address=0.0.0.0"` and apply `recipes/metrics-server`)
 2. HA
 3. Work on e2e, sonobouy.
 4. etcd doesn't actually work because args aren't exposed

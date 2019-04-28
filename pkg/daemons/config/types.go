@@ -15,6 +15,7 @@ type Node struct {
 	ContainerRuntimeEndpoint string
 	NoFlannel                bool
 	FlannelConf              string
+	FlannelIface             *net.Interface
 	LocalAddress             string
 	Containerd               Containerd
 	Images                   string
@@ -25,18 +26,22 @@ type Node struct {
 }
 
 type Containerd struct {
-	Address string
-	Log     string
-	Root    string
-	State   string
-	Config  string
-	Opt     string
+	Address  string
+	Log      string
+	Root     string
+	State    string
+	Config   string
+	Opt      string
+	Template string
 }
 
 type Agent struct {
 	NodeName           string
+	NodeCertFile       string
+	NodeKeyFile        string
 	ClusterCIDR        net.IPNet
 	ClusterDNS         net.IP
+	ClusterDomain      string
 	ResolvConf         string
 	RootDir            string
 	KubeConfig         string
@@ -58,6 +63,7 @@ type Control struct {
 	ClusterIPRange        *net.IPNet
 	ServiceIPRange        *net.IPNet
 	ClusterDNS            net.IP
+	ClusterDomain         string
 	NoCoreDNS             bool
 	KubeConfigOutput      string
 	KubeConfigMode        string
@@ -94,6 +100,11 @@ type ControlRuntime struct {
 	Handler       http.Handler
 	Tunnel        http.Handler
 	Authenticator authenticator.Request
+
+	RequestHeaderCA     string
+	RequestHeaderCAKey  string
+	ClientAuthProxyCert string
+	ClientAuthProxyKey  string
 }
 
 type ArgString []string
@@ -112,7 +123,7 @@ func (a ArgString) String() string {
 func GetArgsList(argsMap map[string]string, extraArgs []string) []string {
 	// add extra args to args map to override any default option
 	for _, arg := range extraArgs {
-		splitArg := strings.Split(arg, "=")
+		splitArg := strings.SplitN(arg, "=", 2)
 		if len(splitArg) < 2 {
 			argsMap[splitArg[0]] = "true"
 			continue

@@ -1,14 +1,26 @@
 package server
 
 import (
+	"bufio"
+	"crypto/rsa"
+	"crypto/x509"
+	"errors"
+	"fmt"
+	"io/ioutil"
+	"net"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/openapi"
+	certutil "github.com/rancher/norman/pkg/cert"
+	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/json"
+	"k8s.io/kubernetes/pkg/master"
 )
 
 const (
@@ -59,7 +71,82 @@ func nodeCrt(server *config.Control) http.Handler {
 			resp.WriteHeader(http.StatusNotFound)
 			return
 		}
-		http.ServeFile(resp, req, server.Runtime.NodeCert)
+
+		nodeNames := req.Header["K3s-Node-Name"]
+		if len(nodeNames) != 1 || nodeNames[0] == "" {
+			sendError(errors.New("node name not set"), resp)
+			return
+		}
+
+		nodePasswords := req.Header["K3s-Node-Password"]
+		if len(nodePasswords) != 1 || nodePasswords[0] == "" {
+			sendError(errors.New("node password not set"), resp)
+			return
+		}
+
+		if err := ensureNodePassword(server.Runtime.PasswdFile, nodeNames[0], nodePasswords[0]); err != nil {
+			sendError(err, resp, http.StatusForbidden)
+			return
+		}
+
+		nodeKey, err := ioutil.ReadFile(server.Runtime.NodeKey)
+		if err != nil {
+			sendError(err, resp)
+			return
+		}
+
+		key, err := certutil.ParsePrivateKeyPEM(nodeKey)
+		if err != nil {
+			sendError(err, resp)
+			return
+		}
+
+		caKeyBytes, err := ioutil.ReadFile(server.Runtime.TokenCAKey)
+		if err != nil {
+			sendError(err, resp)
+			return
+		}
+
+		caBytes, err := ioutil.ReadFile(server.Runtime.TokenCA)
+		if err != nil {
+			sendError(err, resp)
+			return
+		}
+
+		caKey, err := certutil.ParsePrivateKeyPEM(caKeyBytes)
+		if err != nil {
+			sendError(err, resp)
+			return
+		}
+
+		caCert, err := certutil.ParseCertsPEM(caBytes)
+		if err != nil {
+			sendError(err, resp)
+			return
+		}
+
+		_, apiServerServiceIP, err := master.DefaultServiceIPRange(*server.ServiceIPRange)
+		if err != nil {
+			sendError(err, resp)
+			return
+		}
+
+		cfg := certutil.Config{
+			CommonName: "kubernetes",
+			Usages:     []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
+			AltNames: certutil.AltNames{
+				DNSNames: []string{"kubernetes.default.svc", "kubernetes.default", "kubernetes", "localhost", nodeNames[0]},
+				IPs:      []net.IP{apiServerServiceIP, net.ParseIP("127.0.0.1")},
+			},
+		}
+
+		cert, err := certutil.NewSignedCert(cfg, key.(*rsa.PrivateKey), caCert[0], caKey.(*rsa.PrivateKey))
+		if err != nil {
+			sendError(err, resp)
+			return
+		}
+
+		resp.Write(append(certutil.EncodeCertPEM(cert), certutil.EncodeCertPEM(caCert[0])...))
 	})
 }
 
@@ -117,4 +204,50 @@ func ping() http.Handler {
 
 func serveStatic(urlPrefix, staticDir string) http.Handler {
 	return http.StripPrefix(urlPrefix, http.FileServer(http.Dir(staticDir)))
+}
+
+func sendError(err error, resp http.ResponseWriter, status ...int) {
+	code := http.StatusInternalServerError
+	if len(status) == 1 {
+		code = status[0]
+	}
+
+	logrus.Error(err)
+	resp.WriteHeader(code)
+	resp.Write([]byte(err.Error()))
+}
+
+func ensureNodePassword(passwdFile, nodeName, passwd string) error {
+	f, err := os.Open(passwdFile)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	user := strings.ToLower("node:" + nodeName)
+
+	buf := &strings.Builder{}
+	scan := bufio.NewScanner(f)
+	for scan.Scan() {
+		line := scan.Text()
+		parts := strings.Split(line, ",")
+		if len(parts) < 4 {
+			continue
+		}
+		if parts[1] == user {
+			if parts[0] == passwd {
+				return nil
+			}
+			return fmt.Errorf("Node password validation failed for [%s]", nodeName)
+		}
+		buf.WriteString(line)
+		buf.WriteString("\n")
+	}
+	buf.WriteString(fmt.Sprintf("%s,%s,%s,system:masters\n", passwd, user, user))
+
+	if scan.Err() != nil {
+		return scan.Err()
+	}
+
+	f.Close()
+	return ioutil.WriteFile(passwdFile, []byte(buf.String()), 0600)
 }

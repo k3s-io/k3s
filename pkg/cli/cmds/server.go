@@ -10,6 +10,7 @@ type Server struct {
 	ClusterSecret       string
 	ServiceCIDR         string
 	ClusterDNS          string
+	ClusterDomain       string
 	HTTPSPort           int
 	HTTPPort            int
 	DataDir             string
@@ -35,7 +36,7 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 		Flags: []cli.Flag{
 			cli.StringFlag{
 				Name:        "bind-address",
-				Usage:       "k3s bind address",
+				Usage:       "k3s bind address (default: localhost)",
 				Destination: &ServerConfig.BindAddress,
 			},
 			cli.IntFlag{
@@ -89,6 +90,12 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Destination: &ServerConfig.ClusterDNS,
 				Value:       "",
 			},
+			cli.StringFlag{
+				Name:        "cluster-domain",
+				Usage:       "Cluster Domain",
+				Destination: &ServerConfig.ClusterDomain,
+				Value:       "cluster.local",
+			},
 			cli.StringSliceFlag{
 				Name:  "no-deploy",
 				Usage: "Do not deploy packaged components (valid items: coredns, servicelb, traefik)",
@@ -134,6 +141,7 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 			NodeNameFlag,
 			DockerFlag,
 			FlannelFlag,
+			FlannelIfaceFlag,
 			CRIEndpointFlag,
 			ResolvConfFlag,
 			ExtraKubeletArgs,

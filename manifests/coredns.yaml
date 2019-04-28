@@ -55,10 +55,14 @@ data:
     .:53 {
         errors
         health
-        kubernetes cluster.local in-addr.arpa ip6.arpa {
+        kubernetes %{CLUSTER_DOMAIN}% in-addr.arpa ip6.arpa {
           pods insecure
           upstream
           fallthrough in-addr.arpa ip6.arpa
+        }
+        hosts /etc/coredns/NodeHosts {
+          reload 1s
+          fallthrough
         }
         prometheus :9153
         proxy . /etc/resolv.conf
@@ -146,6 +150,8 @@ spec:
             items:
             - key: Corefile
               path: Corefile
+            - key: NodeHosts
+              path: NodeHosts
 ---
 apiVersion: v1
 kind: Service
