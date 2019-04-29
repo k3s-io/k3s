@@ -420,7 +420,7 @@ create_systemd_service_file() {
 [Unit]
 Description=Lightweight Kubernetes
 Documentation=https://k3s.io
-After=network.target
+After=network-online.target
 
 [Service]
 Type=${SYSTEMD_TYPE}
