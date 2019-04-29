@@ -1,0 +1,45 @@
+#!/bin/bash
+set -e -x
+
+source $(dirname $0)/version.sh
+
+cd $(dirname $0)/..
+
+TAG=${TAG:-${VERSION}${SUFFIX}}
+REPO=${REPO:-rancher}
+IMAGE_NAME=${IMAGE_NAME:-k3s}
+export K3S_IMAGE=${REPO}/${IMAGE_NAME}:${TAG}
+
+OUTPUT=$(pwd)/dist/artifacts
+mkdir -p ${OUTPUT}
+
+pids=()
+output=()
+
+run-sonobuoy() {
+    output+=(${log_output})
+    E2E_LOG_OUTPUT=${log_output} ./scripts/sonobuoy ${@} &
+    pids+=($!)
+}
+
+log_output=${OUTPUT}/e2e-${ARCH}-serial.log \
+    run-sonobuoy --e2e-focus='\[Serial\].*\[Conformance\]'
+
+log_output=${OUTPUT}/e2e-${ARCH}-parallel.log \
+    run-sonobuoy --e2e-focus='\[Conformance\]' --e2e-skip='\[Serial\]' --e2e-parallel=y
+
+cleanup() {
+    exit_status=$?
+    set +e
+    echo "Killing the tests!"
+    kill ${pids[@]}
+    wait ${pids[@]}
+    exit ${exit_status}
+}
+trap cleanup EXIT
+wait ${pids[@]}
+trap - EXIT
+
+for log in ${output[@]}; do
+    tail -20 ${log}
+done
