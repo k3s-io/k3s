@@ -1,0 +1,149 @@
+#!/bin/bash
+
+set -xe
+
+cd $(dirname $0)/..
+
+if [ -z "${K3S_IMAGE}" ]; then
+    echo "K3S_IMAGE environment variable should be defined"
+    exit 1
+fi
+
+# ---
+
+port-used() {
+    (cat </dev/null >/dev/tcp/127.0.0.1/$1) 2>/dev/null
+}
+export -f port-used
+
+get-port() {
+    while
+        PORT=$((10000 + RANDOM % 50000))
+        port-used ${PORT}
+    do continue; done
+    echo ${PORT}
+}
+export -f get-port
+
+K3S_PORT=$(timeout 5s bash -c get-port)
+OUTPUT=$(pwd)/sonobuoy-output/${K3S_PORT}
+mkdir -p ${OUTPUT}
+
+SECRET=random-$((100000 + RANDOM % 999999))
+export K3S_AGENT=sonobuoy-k3s-agent-${K3S_PORT}
+export K3S_SERVER=sonobuoy-k3s-server-${K3S_PORT}
+export KUBECONFIG=${OUTPUT}/kubeconfig.yaml
+
+# ---
+
+cleanup() {
+    exit_status=$?
+    set +e
+    echo "Cleaning up"
+    docker logs ${K3S_SERVER} >${OUTPUT}/k3s-server.log 2>&1
+    docker logs ${K3S_AGENT} >${OUTPUT}/k3s-agent.log 2>&1
+    docker rm -f ${K3S_SERVER} 2>/dev/null
+    docker rm -f ${K3S_AGENT} 2>/dev/null
+    rm ${KUBECONFIG}
+    exit ${exit_status}
+}
+trap cleanup EXIT
+
+# ---
+
+docker run -d --name ${K3S_SERVER} --privileged \
+    -p 127.0.0.1:${K3S_PORT}:${K3S_PORT} \
+    -e K3S_CLUSTER_SECRET=${SECRET} \
+    ${K3S_IMAGE} server --no-deploy=traefik --https-listen-port=${K3S_PORT}
+
+K3S_IP=$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' ${K3S_SERVER})
+echo "Started ${K3S_SERVER} @ ${K3S_IP}:${K3S_PORT}"
+
+# ---
+
+docker run -d --name ${K3S_AGENT} --privileged \
+    -e K3S_CLUSTER_SECRET=${SECRET} \
+    -e K3S_URL=https://${K3S_IP}:${K3S_PORT} \
+    ${K3S_IMAGE} agent
+
+echo "Started ${K3S_AGENT}"
+
+# ---
+
+fetch-kubeconfig() {
+    docker exec ${K3S_SERVER} cat /etc/rancher/k3s/k3s.yaml 2>/dev/null \
+        | tee ${KUBECONFIG}
+}
+export -f fetch-kubeconfig
+
+wait-for-kubeconfig() {
+    while [[ -z "$(fetch-kubeconfig)" ]]; do
+        echo "Waiting for kubeconfig to become available..."
+        sleep 5
+    done
+}
+export -f wait-for-kubeconfig
+
+timeout 1m bash -c wait-for-kubeconfig
+
+# ---
+
+count-ready-nodes() {
+    kubectl get nodes -o json \
+        | jq '.items[].status.conditions[] | select(.type == "Ready" and .status == "True") | .type' \
+        | wc -l \
+        | tr -d '[:space:]'
+}
+export -f count-ready-nodes
+
+wait-for-nodes() {
+    while [[ "$(count-ready-nodes)" != "2" ]]; do
+        echo "Waiting for nodes to be ready..."
+        sleep 5
+    done
+}
+export -f wait-for-nodes
+
+timeout 1m bash -c wait-for-nodes
+
+# ---
+
+pod-ready() {
+    kubectl get pods -n kube-system -o json \
+        | jq ".items[].status.containerStatuses[] | select(.name == \"$1\") | .ready" 2>/dev/null
+}
+export -f pod-ready
+
+wait-for-services() {
+    for service in coredns; do
+        while [[ "$(pod-ready ${service})" != "true" ]]; do
+            echo "Waiting for service ${service} to be ready..."
+            sleep 5
+        done
+        echo "Service ${service} is ready"
+    done
+}
+export -f wait-for-services
+
+timeout 1m bash -c wait-for-services
+
+# ---
+
+echo "Starting sonobuoy tests"
+
+timeout 30m sonobuoy run \
+    --config scripts/sonobuoy-config.json \
+    --wait \
+    ${@}
+sonobuoy status
+sonobuoy retrieve ${OUTPUT}
+
+(
+    cd ${OUTPUT}
+    tar xzf *_sonobuoy_*.tar.gz
+    results="./plugins/e2e/results/e2e.log"
+    [ -s ${results} ] || exit 1
+    if [ -n "${E2E_LOG_OUTPUT}" ]; then
+        cp ${results} ${E2E_LOG_OUTPUT}
+    fi
+)
