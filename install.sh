@@ -189,7 +189,9 @@ verify_k3s_is_executable() {
 
 # --- set arch and suffix, fatal if architecture not supported ---
 setup_verify_arch() {
-    ARCH=`uname -m`
+    if [ -z "$ARCH" ]; then
+        ARCH=`uname -m`
+    fi
     case $ARCH in
         amd64)
             ARCH=amd64
