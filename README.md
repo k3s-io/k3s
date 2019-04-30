@@ -287,7 +287,7 @@ in the root of this repo `k3s.service` which is as follows
 [Unit]
 Description=Lightweight Kubernetes
 Documentation=https://k3s.io
-After=network.target
+After=network-online.target
 
 [Service]
 Type=notify
