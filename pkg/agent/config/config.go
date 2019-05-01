@@ -253,6 +253,8 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 		return nil, err
 	}
 
+	hostnameCheck(nodeName)
+
 	nodeCertFile := filepath.Join(envInfo.DataDir, "token-node.crt")
 	nodeKeyFile := filepath.Join(envInfo.DataDir, "token-node.key")
 	nodePasswordFile := filepath.Join(envInfo.DataDir, "node-password.txt")
@@ -347,4 +349,15 @@ func getConfig(info *clientaccess.Info) (*config.Control, error) {
 
 	controlControl := &config.Control{}
 	return controlControl, json.Unmarshal(data, controlControl)
+}
+
+func hostnameCheck(hostname string) {
+	for {
+		_, err := sysnet.LookupHost(hostname)
+		if err == nil {
+			break
+		}
+		logrus.Infof("Waiting for hostname %s to be resolvable: %v", hostname, err)
+		time.Sleep(2 * time.Second)
+	}
 }
