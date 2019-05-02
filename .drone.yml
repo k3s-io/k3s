@@ -18,7 +18,7 @@ steps:
 - name: sonobuoy-e2e-tests
   image: rancher/dapper:v0.4.1
   commands:
-  - dapper -f Dockerfile.sonobuoy.dapper sonobuoy-e2e-tests
+  - dapper -f Dockerfile.sonobuoy.dapper
   volumes:
   - name: docker
     path: /var/run/docker.sock
