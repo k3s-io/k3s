@@ -1,14 +1,15 @@
 #!/bin/bash
 set -e -x
 
-source $(dirname $0)/version.sh
-
 cd $(dirname $0)/..
 
-TAG=${TAG:-${VERSION}${SUFFIX}}
-REPO=${REPO:-rancher}
-IMAGE_NAME=${IMAGE_NAME:-k3s}
-export K3S_IMAGE=${REPO}/${IMAGE_NAME}:${TAG}
+if [ -z "$K3S_IMAGE" ]; then
+    source $(dirname $0)/version.sh
+    TAG=${TAG:-${VERSION}${SUFFIX}}
+    REPO=${REPO:-rancher}
+    IMAGE_NAME=${IMAGE_NAME:-k3s}
+    export K3S_IMAGE=${REPO}/${IMAGE_NAME}:${TAG}
+fi
 
 OUTPUT=$(pwd)/dist/artifacts
 mkdir -p ${OUTPUT}

@@ -25,7 +25,7 @@ get-port() {
 }
 export -f get-port
 
-K3S_PORT=$(timeout 5s bash -c get-port)
+K3S_PORT=$(timeout --foreground 5s bash -c get-port)
 OUTPUT=$(pwd)/sonobuoy-output/${K3S_PORT}
 mkdir -p ${OUTPUT}
 
@@ -84,7 +84,7 @@ wait-for-kubeconfig() {
 }
 export -f wait-for-kubeconfig
 
-timeout 1m bash -c wait-for-kubeconfig
+timeout --foreground 1m bash -c wait-for-kubeconfig
 
 # ---
 
@@ -104,7 +104,7 @@ wait-for-nodes() {
 }
 export -f wait-for-nodes
 
-timeout 1m bash -c wait-for-nodes
+timeout --foreground 1m bash -c wait-for-nodes
 
 # ---
 
@@ -125,13 +125,13 @@ wait-for-services() {
 }
 export -f wait-for-services
 
-timeout 1m bash -c wait-for-services
+timeout --foreground 1m bash -c wait-for-services
 
 # ---
 
 echo "Starting sonobuoy tests"
 
-timeout 30m sonobuoy run \
+timeout --foreground 30m sonobuoy run \
     --config scripts/sonobuoy-config.json \
     --wait \
     ${@}

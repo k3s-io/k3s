@@ -15,6 +15,7 @@ RUN curl -sL https://storage.googleapis.com/kubernetes-release/release/$( \
     chmod a+x /usr/local/bin/kubectl
 
 ENV DAPPER_RUN_ARGS --privileged --network host
+ENV DAPPER_ENV REPO TAG DRONE_TAG IMAGE_NAME
 ENV DAPPER_SOURCE /go/src/github.com/rancher/k3s/
 ENV DAPPER_OUTPUT ./dist
 ENV DAPPER_DOCKER_SOCKET true
@@ -22,4 +23,4 @@ ENV HOME ${DAPPER_SOURCE}
 WORKDIR ${DAPPER_SOURCE}
 
 ENTRYPOINT ["./scripts/entry.sh"]
-CMD ["ci"]
+CMD ["sonobuoy-e2e-tests"]
