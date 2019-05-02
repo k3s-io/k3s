@@ -78,6 +78,9 @@ func kubelet(cfg *config.Agent) {
 	if cfg.CNIBinDir != "" {
 		argsMap["cni-bin-dir"] = cfg.CNIBinDir
 	}
+	if cfg.CNIPlugin {
+		argsMap["network-plugin"] = "cni"
+	}
 	if len(cfg.ClusterDNS) > 0 {
 		argsMap["cluster-dns"] = cfg.ClusterDNS.String()
 	}
