@@ -15,25 +15,6 @@ steps:
   - name: docker
     path: /var/run/docker.sock
 
-- name: sonobuoy-e2e-tests
-  image: rancher/dapper:v0.4.1
-  commands:
-  - dapper -f Dockerfile.sonobuoy.dapper
-  volumes:
-  - name: docker
-    path: /var/run/docker.sock
-  when:
-    instance:
-    - drone-publish.rancher.io
-    ref:
-      include:
-      - refs/head/master
-      - refs/tags/*
-      exclude:
-      - refs/tags/*-k3s.*
-    event:
-    - tag
-
 - name: github_binary_release
   image: ibuildthecloud/github-release:v0.0.1
   settings:
@@ -71,6 +52,25 @@ steps:
     ref:
     - refs/head/master
     - refs/tags/*
+    event:
+    - tag
+
+- name: sonobuoy-e2e-tests
+  image: rancher/dapper:v0.4.1
+  commands:
+  - dapper -f Dockerfile.sonobuoy.dapper
+  volumes:
+  - name: docker
+    path: /var/run/docker.sock
+  when:
+    instance:
+    - drone-publish.rancher.io
+    ref:
+      include:
+      - refs/head/master
+      - refs/tags/*
+      exclude:
+      - refs/tags/*-k3s.*
     event:
     - tag
 
