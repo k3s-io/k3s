@@ -304,6 +304,7 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 	nodeConfig.AgentConfig.ListenAddress = "0.0.0.0"
 	nodeConfig.AgentConfig.KubeConfig = kubeConfig
 	nodeConfig.AgentConfig.RootDir = filepath.Join(envInfo.DataDir, "kubelet")
+	nodeConfig.AgentConfig.PauseImage = envInfo.PauseImage
 	nodeConfig.CACerts = info.CACerts
 	nodeConfig.Containerd.Config = filepath.Join(envInfo.DataDir, "etc/containerd/config.toml")
 	nodeConfig.Containerd.Root = filepath.Join(envInfo.DataDir, "containerd")

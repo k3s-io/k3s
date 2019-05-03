@@ -53,6 +53,7 @@ type Agent struct {
 	CNIConfDir         string
 	ExtraKubeletArgs   []string
 	ExtraKubeProxyArgs []string
+	PauseImage         string
 	CNIPlugin          bool
 }
 
