@@ -19,4 +19,4 @@ __pycache__
 /tests/.pytest_cache/
 /tests/.tox/
 /tests/.vscode
-
+/sonobuoy-output

@@ -55,6 +55,25 @@ steps:
     event:
     - tag
 
+- name: sonobuoy-e2e-tests
+  image: rancher/dapper:v0.4.1
+  commands:
+  - dapper -f Dockerfile.sonobuoy.dapper
+  volumes:
+  - name: docker
+    path: /var/run/docker.sock
+  when:
+    instance:
+    - drone-publish.rancher.io
+    ref:
+      include:
+      - refs/head/master
+      - refs/tags/*
+      exclude:
+      - refs/tags/*-k3s.*
+    event:
+    - tag
+
 volumes:
 - name: docker
   host:

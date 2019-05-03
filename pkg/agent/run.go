@@ -33,6 +33,7 @@ func run(ctx context.Context, cfg cmds.Agent) error {
 
 	if nodeConfig.Docker || nodeConfig.ContainerRuntimeEndpoint != "" {
 		nodeConfig.AgentConfig.RuntimeSocket = nodeConfig.ContainerRuntimeEndpoint
+		nodeConfig.AgentConfig.CNIPlugin = true
 	} else {
 		if err := containerd.Run(ctx, nodeConfig); err != nil {
 			return err

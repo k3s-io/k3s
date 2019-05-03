@@ -54,6 +54,7 @@ type Agent struct {
 	ExtraKubeletArgs   []string
 	ExtraKubeProxyArgs []string
 	PauseImage         string
+	CNIPlugin          bool
 }
 
 type Control struct {

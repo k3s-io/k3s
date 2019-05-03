@@ -158,7 +158,7 @@ The clone will be much faster on this repo if you do
 
 This repo includes all of Kubernetes history so `--depth 1` will avoid most of that.
 
-For development, you just need go 1.11 and a sane GOPATH.  To compile the binaries run
+For development, you just need go 1.12 and a sane GOPATH.  To compile the binaries run
 
 ```bash
 go build -o k3s
@@ -287,7 +287,7 @@ in the root of this repo `k3s.service` which is as follows
 [Unit]
 Description=Lightweight Kubernetes
 Documentation=https://k3s.io
-After=network.target
+After=network-online.target
 
 [Service]
 Type=notify

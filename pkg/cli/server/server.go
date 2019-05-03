@@ -29,7 +29,7 @@ import (
 
 func setupLogging(app *cli.Context) {
 	if !app.GlobalBool("debug") {
-		flag.Set("stderrthreshold", "3")
+		flag.Set("stderrthreshold", "WARNING")
 		flag.Set("alsologtostderr", "false")
 		flag.Set("logtostderr", "false")
 	}
