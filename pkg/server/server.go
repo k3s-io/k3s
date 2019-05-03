@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -45,6 +46,10 @@ func resolveDataDir(dataDir string) (string, error) {
 func StartServer(ctx context.Context, config *Config) (string, error) {
 
 	if err := setupDataDirAndChdir(&config.ControlConfig); err != nil {
+		return "", err
+	}
+
+	if err := setNoProxyEnv(&config.ControlConfig); err != nil {
 		return "", err
 	}
 
@@ -292,4 +297,13 @@ func writeToken(token, file, certs string) error {
 
 	token = FormatToken(token, certs)
 	return ioutil.WriteFile(file, []byte(token+"\n"), 0600)
+}
+
+func setNoProxyEnv(config *config.Control) error {
+	envList := strings.Join([]string{
+		os.Getenv("NO_PROXY"),
+		config.ClusterIPRange.String(),
+		config.ServiceIPRange.String(),
+	}, ",")
+	return os.Setenv("NO_PROXY", envList)
 }
