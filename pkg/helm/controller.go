@@ -321,10 +321,13 @@ func keys(val map[string]intstr.IntOrString) []string {
 
 func setProxyEnv(job *batch.Job) {
 	proxySysEnv := []string{
+		"all_proxy",
+		"ALL_PROXY",
 		"http_proxy",
-		"https_proxy",
 		"HTTP_PROXY",
+		"https_proxy",
 		"HTTPS_PROXY",
+		"no_proxy",
 		"NO_PROXY",
 	}
 	for _, proxyEnv := range proxySysEnv {
