@@ -42,15 +42,17 @@ func Register(ctx context.Context, kubernetes kubernetes.Interface, enabled, roo
 	appClients := appclient.ClientsFrom(ctx)
 
 	h := &handler{
-		rootless:  rootless,
-		enabled:   enabled,
-		nodeCache: clients.Node.Cache(),
-		podCache:  clients.Pod.Cache(),
+		rootless:        rootless,
+		enabled:         enabled,
+		nodeCache:       clients.Node.Cache(),
+		podCache:        clients.Pod.Cache(),
+		deploymentCache: appClients.Deployment.Cache(),
 		processor: objectset.NewProcessor("svccontroller").
 			Client(appClients.DaemonSet),
 		serviceCache: clients.Service.Cache(),
 		services:     kubernetes.CoreV1(),
 		daemonsets:   kubernetes.AppsV1(),
+		deployments:  kubernetes.AppsV1(),
 	}
 
 	clients.Service.OnChange(ctx, "svccontroller", h.onChangeService)
@@ -65,14 +67,16 @@ func Register(ctx context.Context, kubernetes kubernetes.Interface, enabled, roo
 }
 
 type handler struct {
-	rootless     bool
-	enabled      bool
-	nodeCache    coreclient.NodeClientCache
-	podCache     coreclient.PodClientCache
-	processor    *objectset.Processor
-	serviceCache coreclient.ServiceClientCache
-	services     coregetter.ServicesGetter
-	daemonsets   v1getter.DaemonSetsGetter
+	rootless        bool
+	enabled         bool
+	nodeCache       coreclient.NodeClientCache
+	podCache        coreclient.PodClientCache
+	deploymentCache appclient.DeploymentClientCache
+	processor       *objectset.Processor
+	serviceCache    coreclient.ServiceClientCache
+	services        coregetter.ServicesGetter
+	daemonsets      v1getter.DaemonSetsGetter
+	deployments     v1getter.DeploymentsGetter
 }
 
 func (h *handler) onResourceChange(name, namespace string, obj runtime.Object) ([]changeset.Key, error) {
@@ -218,7 +222,9 @@ func (h *handler) podIPs(pods []*core.Pod) ([]string, error) {
 }
 
 func (h *handler) deployPod(svc *core.Service) error {
-
+	if err := h.deleteOldDeployments(svc); err != nil {
+		return err
+	}
 	objs := objectset.NewObjectSet()
 	if !h.enabled {
 		return h.processor.NewDesiredSet(svc, objs).Apply()
@@ -362,4 +368,15 @@ func (h *handler) updateDaemonSets() error {
 	}
 
 	return nil
+}
+
+func (h *handler) deleteOldDeployments(svc *core.Service) error {
+	name := fmt.Sprintf("svclb-%s", svc.Name)
+	if _, err := h.deploymentCache.Get(svc.Namespace, name); err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+	return h.deployments.Deployments(svc.Namespace).Delete(name, &meta.DeleteOptions{})
 }
