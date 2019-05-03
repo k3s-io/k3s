@@ -73,7 +73,7 @@ var (
 	}
 	ResolvConfFlag = cli.StringFlag{
 		Name:        "resolv-conf",
-		Usage:       "Kubelet resolv.conf file",
+		Usage:       "(agent) Kubelet resolv.conf file",
 		EnvVar:      "K3S_RESOLV_CONF",
 		Destination: &AgentConfig.ResolvConf,
 	}
