@@ -40,10 +40,15 @@ cleanup() {
     exit_status=$?
     set +e
     echo "Cleaning up"
-    docker logs ${K3S_SERVER} >${OUTPUT}/k3s-server.log 2>&1
-    docker logs ${K3S_AGENT} >${OUTPUT}/k3s-agent.log 2>&1
-    docker rm -f ${K3S_SERVER} 2>/dev/null
-    docker rm -f ${K3S_AGENT} 2>/dev/null
+    for container in ${K3S_SERVER} ${K3S_AGENT}; do
+        docker cp ${container}:/var/lib/rancher/k3s/agent/containerd/containerd.log ${OUTPUT}/${container}-containerd.log
+        docker logs ${container} >${OUTPUT}/${container}.log 2>&1
+        docker rm -f ${container} 2>/dev/null
+        if [ ${exit_status} -ne 0 ]; then
+            cat ${OUTPUT}/${container}-containerd.log
+            cat ${OUTPUT}/${container}.log
+        fi
+    done
     rm ${KUBECONFIG}
     exit ${exit_status}
 }
@@ -61,23 +66,13 @@ echo "Started ${K3S_SERVER} @ ${K3S_IP}:${K3S_PORT}"
 
 # ---
 
-docker run -d --name ${K3S_AGENT} --privileged \
-    -e K3S_CLUSTER_SECRET=${SECRET} \
-    -e K3S_URL=https://${K3S_IP}:${K3S_PORT} \
-    ${K3S_IMAGE} agent
-
-echo "Started ${K3S_AGENT}"
-
-# ---
-
 fetch-kubeconfig() {
-    docker exec ${K3S_SERVER} cat /etc/rancher/k3s/k3s.yaml 2>/dev/null \
-        | tee ${KUBECONFIG}
+    docker cp ${K3S_SERVER}:/etc/rancher/k3s/k3s.yaml ${KUBECONFIG} 2>/dev/null
 }
 export -f fetch-kubeconfig
 
 wait-for-kubeconfig() {
-    while [[ -z "$(fetch-kubeconfig)" ]]; do
+    while ! fetch-kubeconfig; do
         echo "Waiting for kubeconfig to become available..."
         sleep 5
     done
@@ -85,6 +80,15 @@ wait-for-kubeconfig() {
 export -f wait-for-kubeconfig
 
 timeout --foreground 1m bash -c wait-for-kubeconfig
+
+# ---
+
+docker run -d --name ${K3S_AGENT} --privileged \
+    -e K3S_CLUSTER_SECRET=${SECRET} \
+    -e K3S_URL=https://${K3S_IP}:${K3S_PORT} \
+    ${K3S_IMAGE} agent
+
+echo "Started ${K3S_AGENT}"
 
 # ---
 
@@ -143,7 +147,9 @@ sonobuoy retrieve ${OUTPUT}
     tar xzf *_sonobuoy_*.tar.gz
     results="./plugins/e2e/results/e2e.log"
     [ -s ${results} ] || exit 1
+    tail -20 ${results}
+    status=$(tail -5 ${results} | grep '^SUCCESS!.*| 0 Failed |' >/dev/null && echo passed || echo failed)
     if [ -n "${E2E_LOG_OUTPUT}" ]; then
-        cp ${results} ${E2E_LOG_OUTPUT}
+        cp ${results} $(echo ${E2E_LOG_OUTPUT} | sed -e "s/-STATUS-/-${status}-/g")
     fi
 )

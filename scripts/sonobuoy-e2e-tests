@@ -23,24 +23,19 @@ run-sonobuoy() {
     pids+=($!)
 }
 
-log_output=${OUTPUT}/e2e-${ARCH}-serial.log \
+log_output=${OUTPUT}/e2e-STATUS-${ARCH}-serial.log \
     run-sonobuoy --e2e-focus='\[Serial\].*\[Conformance\]'
 
-log_output=${OUTPUT}/e2e-${ARCH}-parallel.log \
+log_output=${OUTPUT}/e2e-STATUS-${ARCH}-parallel.log \
     run-sonobuoy --e2e-focus='\[Conformance\]' --e2e-skip='\[Serial\]' --e2e-parallel=y
 
 cleanup() {
     exit_status=$?
     set +e
-    echo "Killing the tests!"
-    kill ${pids[@]}
-    wait ${pids[@]}
+    echo "Waiting on the tests!"
+    wait
     exit ${exit_status}
 }
 trap cleanup EXIT
 wait ${pids[@]}
 trap - EXIT
-
-for log in ${output[@]}; do
-    tail -20 ${log}
-done
