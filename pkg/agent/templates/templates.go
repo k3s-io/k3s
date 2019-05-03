@@ -19,22 +19,22 @@ path = "{{ .NodeConfig.Containerd.Opt }}"
 [plugins.cri]
 stream_server_address = "{{ .NodeConfig.AgentConfig.NodeName }}"
 stream_server_port = "10010"
-{{ if eq .NodeConfig.AgentConfig.PauseImage "" }}
-sandbox_image = "k8s.gcr.io/pause:3.1"
-{{ else }}
-sandbox_image = "{{ .NodeConfig.AgentConfig.PauseImage }}"
-{{ end }}
-{{ if .IsRunningInUserNS }}
+
+{{- if .IsRunningInUserNS }}
 disable_cgroup = true
 disable_apparmor = true
 restrict_oom_score_adj = true
-{{ end }}
+{{ end -}}
 
-{{ if not .NodeConfig.NoFlannel }}
+{{- if .NodeConfig.AgentConfig.PauseImage }}
+sandbox_image = "{{ .NodeConfig.AgentConfig.PauseImage }}"
+{{ end -}}
+
+{{- if not .NodeConfig.NoFlannel }}
   [plugins.cri.cni]
     bin_dir = "{{ .NodeConfig.AgentConfig.CNIBinDir }}"
     conf_dir = "{{ .NodeConfig.AgentConfig.CNIConfDir }}"
-{{ end }}
+{{ end -}}
 `
 
 func ParseTemplateFromConfig(templateBuffer string, config interface{}) (string, error) {
