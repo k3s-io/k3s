@@ -266,7 +266,7 @@ func prepare(config *config.Control, runtime *config.ControlRuntime) error {
 	runtime.PasswdFile = path.Join(config.DataDir, "cred", "passwd")
 	runtime.KubeConfigSystem = path.Join(config.DataDir, "cred", "kubeconfig-system.yaml")
 	runtime.NodeKey = path.Join(config.DataDir, "tls", "token-node.key")
-	runtime.NodeCert = path.Join(config.DataDir, "tls", "token-node.crt")
+	runtime.NodeCert = path.Join(config.DataDir, "tls", "token-node-1.crt")
 	runtime.RequestHeaderCA = path.Join(config.DataDir, "tls", "request-header-ca.crt")
 	runtime.RequestHeaderCAKey = path.Join(config.DataDir, "tls", "request-header-ca.key")
 	runtime.ClientAuthProxyKey = path.Join(config.DataDir, "tls", "client-auth-proxy.key")
