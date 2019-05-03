@@ -74,6 +74,23 @@ steps:
     event:
     - tag
 
+- name: github_e2e_logs_release
+  image: ibuildthecloud/github-release:v0.0.1
+  settings:
+    api_key:
+      from_secret: github_token
+    prerelease: true
+    files:
+    - "dist/artifacts/e2e-*.log"
+  when:
+    instance:
+    - drone-publish.rancher.io
+    ref:
+    - refs/head/master
+    - refs/tags/*
+    event:
+    - tag
+
 volumes:
 - name: docker
   host:
