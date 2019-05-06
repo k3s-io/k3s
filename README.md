@@ -540,6 +540,27 @@ Just add `--rootless` flag to either server or agent.  So run `k3s server --root
 the kubeconfig to a different directory it will probably not work.  This is because the k3s instance in running in a different
 mount namespace.
 
+## Upgrades
+
+To upgrade k3s from older version you can either run the installation script if you already ran k3s using the installation script, this can be done using:
+
+```sh
+curl -sfL https://get.k3s.io | sh -
+```
+
+If you want to upgrade to specific version you can run the following command:
+
+```sh
+curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=vX.Y.Z-rc1 sh -
+```
+
+### Upgrades for openrc
+
+To upgrade with openrc you can download newer version of `k3s` from latest [release](https://github.com/rancher/k3s/releases/latest) and replace the binary in `/usr/local/bin/k3s` and then restart the service:
+```sh
+service k3s restart
+```
+
 TODO
 ----
 Currently broken or stuff that needs to be done for this to be considered production quality.
