@@ -277,6 +277,10 @@ yes then you just need to run the agent with the `--docker` flag
 
      k3s agent -s ${SERVER_URL} -t ${NODE_TOKEN} --docker &
 
+k3s will generate config.toml for containerd in `/var/lib/rancher/k3s/agent/etc/containerd/config.toml`, for advanced customization for this file you can create another file called `config.toml.tmpl` in the same directory and it will be used instead.
+
+The `config.toml.tmpl` will be treated as a Golang template file, and the `config.Node` structure is being passed to the template,the following is an example on how to use the structure to customize the configuration file https://github.com/rancher/k3s/blob/master/pkg/agent/templates/templates.go#L16-L32
+
 systemd
 -------
 
