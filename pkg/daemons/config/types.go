@@ -55,6 +55,8 @@ type Agent struct {
 	ExtraKubeProxyArgs []string
 	PauseImage         string
 	CNIPlugin          bool
+	NodeTaints         []string
+	NodeLabels         []string
 }
 
 type Control struct {

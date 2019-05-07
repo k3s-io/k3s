@@ -337,6 +337,9 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 	nodeConfig.AgentConfig.ExtraKubeletArgs = envInfo.ExtraKubeletArgs
 	nodeConfig.AgentConfig.ExtraKubeProxyArgs = envInfo.ExtraKubeProxyArgs
 
+	nodeConfig.AgentConfig.NodeTaints = envInfo.Taints
+	nodeConfig.AgentConfig.NodeLabels = envInfo.Labels
+
 	return nodeConfig, nil
 }
 

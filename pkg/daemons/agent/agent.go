@@ -129,6 +129,10 @@ func kubelet(cfg *config.Agent) {
 		argsMap["feature-gates"] = addFeatureGate(argsMap["feature-gates"], "DevicePlugins=false")
 	}
 
+	argsMap["node-labels"] = strings.Join(cfg.NodeLabels, ",")
+	if len(cfg.NodeTaints) > 0 {
+		argsMap["register-with-taints"] = strings.Join(cfg.NodeTaints, ",")
+	}
 	args := config.GetArgsList(argsMap, cfg.ExtraKubeletArgs)
 	command.SetArgs(args)
 
