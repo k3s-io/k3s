@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	systemd "github.com/coreos/go-systemd/daemon"
 	"github.com/docker/docker/pkg/reexec"
@@ -65,6 +66,10 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 
 	if cfg.Log != "" && os.Getenv("_RIO_REEXEC_") == "" {
 		return runWithLogging(app, cfg)
+	}
+
+	if err := checkUnixTimestamp(); err != nil {
+		return err
 	}
 
 	setupLogging(app)
@@ -179,4 +184,13 @@ func knownIPs(ips []string) []string {
 		ips = append(ips, ip.String())
 	}
 	return ips
+}
+
+func checkUnixTimestamp() error {
+	timeNow := time.Now()
+	// check if time before 01/01/1980
+	if timeNow.Before(time.Unix(315532800, 0)) {
+		return fmt.Errorf("server time isn't set properly: %v", timeNow)
+	}
+	return nil
 }
