@@ -304,6 +304,7 @@ LimitNPROC=infinity
 LimitCORE=infinity
 TasksMax=infinity
 TimeoutStartSec=0
+Restart=always
 
 [Install]
 WantedBy=multi-user.target
