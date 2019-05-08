@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/rancher/k3s/pkg/server"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
 	utilflag "k8s.io/component-base/cli/flag"
 	"k8s.io/component-base/logs"
@@ -20,6 +21,9 @@ func Main() {
 		config, err := server.HomeKubeConfig(false, false)
 		if _, serr := os.Stat(config); err == nil && serr == nil {
 			os.Setenv("KUBECONFIG", config)
+		}
+		if err := checkReadConfigPermissions(config); err != nil {
+			logrus.Warn(err)
 		}
 	}
 
@@ -44,4 +48,16 @@ func main() {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}
+}
+
+func checkReadConfigPermissions(configFile string) error {
+	file, err := os.OpenFile(configFile, os.O_RDONLY, 0600)
+	if err != nil {
+		if os.IsPermission(err) {
+			return fmt.Errorf("Unable to read %s, please start server "+
+				"with --write-kubeconfig-mode to modify kube config permissions", configFile)
+		}
+	}
+	file.Close()
+	return nil
 }
