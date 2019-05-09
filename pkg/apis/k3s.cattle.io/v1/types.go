@@ -7,12 +7,18 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
 type ListenerConfig struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	Status dynamiclistener.ListenerStatus `json:"status,omitempty"`
 }
+
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type Addon struct {
 	metav1.TypeMeta   `json:",inline"`
@@ -30,6 +36,9 @@ type AddonSpec struct {
 type AddonStatus struct {
 	GVKs []schema.GroupVersionKind `json:"gvks,omitempty"`
 }
+
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type HelmChart struct {
 	metav1.TypeMeta   `json:",inline"`

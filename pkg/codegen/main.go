@@ -1,9 +1,12 @@
 package main
 
 import (
+	"os"
+
 	bindata "github.com/jteeuwen/go-bindata"
-	v1 "github.com/rancher/k3s/types/apis/k3s.cattle.io/v1"
-	"github.com/rancher/norman/generator"
+	v1 "github.com/rancher/k3s/pkg/apis/k3s.cattle.io/v1"
+	controllergen "github.com/rancher/wrangler/pkg/controller-gen"
+	"github.com/rancher/wrangler/pkg/controller-gen/args"
 	"github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -16,6 +19,7 @@ var (
 )
 
 func main() {
+	os.Unsetenv("GOPATH")
 	bc := &bindata.Config{
 		Input: []bindata.InputConfig{
 			{
@@ -82,38 +86,56 @@ func main() {
 		logrus.Fatal(err)
 	}
 
-	if err := generator.DefaultGenerate(v1.Schemas, basePackage, false, nil); err != nil {
-		logrus.Fatal(err)
-	}
-
-	if err := generator.ControllersForForeignTypes(basePackage, corev1.SchemeGroupVersion, []interface{}{
-		corev1.ServiceAccount{},
-		corev1.Endpoints{},
-		corev1.Service{},
-		corev1.Pod{},
-		corev1.ConfigMap{},
-	}, []interface{}{
-		corev1.Node{},
-	}); err != nil {
-		logrus.Fatal(err)
-	}
-
-	if err := generator.ControllersForForeignTypes(basePackage, appsv1.SchemeGroupVersion, []interface{}{
-		appsv1.DaemonSet{},
-		appsv1.Deployment{},
-	}, nil); err != nil {
-		logrus.Fatal(err)
-	}
-
-	if err := generator.ControllersForForeignTypes(basePackage, batchv1.SchemeGroupVersion, []interface{}{
-		batchv1.Job{},
-	}, nil); err != nil {
-		logrus.Fatal(err)
-	}
-
-	if err := generator.ControllersForForeignTypes(basePackage, rbacv1.SchemeGroupVersion, nil, []interface{}{
-		rbacv1.ClusterRoleBinding{},
-	}); err != nil {
-		logrus.Fatal(err)
-	}
+	controllergen.Run(args.Options{
+		OutputPackage: "github.com/rancher/k3s/pkg/generated",
+		Boilerplate:   "scripts/boilerplate.go.txt",
+		Groups: map[string]args.Group{
+			"k3s.cattle.io": {
+				Types: []interface{}{
+					v1.ListenerConfig{},
+					v1.Addon{},
+					v1.HelmChart{},
+				},
+				GenerateTypes: true,
+			},
+			"": {
+				Types: []interface{}{
+					corev1.ServiceAccount{},
+					corev1.Endpoints{},
+					corev1.Service{},
+					corev1.Pod{},
+					corev1.ConfigMap{},
+					corev1.Node{},
+				},
+				InformersPackage: "k8s.io/client-go/informers",
+				ClientSetPackage: "k8s.io/client-go/kubernetes",
+				ListersPackage:   "k8s.io/client-go/listers",
+			},
+			"apps": {
+				Types: []interface{}{
+					appsv1.Deployment{},
+					appsv1.DaemonSet{},
+				},
+				InformersPackage: "k8s.io/client-go/informers",
+				ClientSetPackage: "k8s.io/client-go/kubernetes",
+				ListersPackage:   "k8s.io/client-go/listers",
+			},
+			"batch": {
+				Types: []interface{}{
+					batchv1.Job{},
+				},
+				InformersPackage: "k8s.io/client-go/informers",
+				ClientSetPackage: "k8s.io/client-go/kubernetes",
+				ListersPackage:   "k8s.io/client-go/listers",
+			},
+			"rbac": {
+				Types: []interface{}{
+					rbacv1.ClusterRoleBinding{},
+				},
+				InformersPackage: "k8s.io/client-go/informers",
+				ClientSetPackage: "k8s.io/client-go/kubernetes",
+				ListersPackage:   "k8s.io/client-go/listers",
+			},
+		},
+	})
 }
