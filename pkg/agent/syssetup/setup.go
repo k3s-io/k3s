@@ -2,6 +2,7 @@ package syssetup
 
 import (
 	"io/ioutil"
+	"os"
 	"os/exec"
 
 	"github.com/sirupsen/logrus"
@@ -12,11 +13,20 @@ var (
 	forward          = "/proc/sys/net/ipv4/ip_forward"
 )
 
-func Configure() error {
-	if err := exec.Command("modprobe", "br_netfilter").Run(); err != nil {
-		logrus.Warnf("failed to start br_netfilter module")
-		return nil
+func loadKernelModule(moduleName string) {
+	if _, err := os.Stat("/sys/module/" + moduleName); err == nil {
+		logrus.Infof("module %s was already loaded", moduleName)
+		return
 	}
+
+	if err := exec.Command("modprobe", moduleName).Run(); err != nil {
+		logrus.Warnf("failed to start %s module", moduleName)
+	}
+}
+
+func Configure() error {
+	loadKernelModule("br_netfilter")
+
 	if err := ioutil.WriteFile(callIPTablesFile, []byte("1"), 0640); err != nil {
 		logrus.Warnf("failed to write value 1 at %s: %v", callIPTablesFile, err)
 		return nil
@@ -26,13 +36,8 @@ func Configure() error {
 		return nil
 	}
 
-	if err := exec.Command("modprobe", "overlay").Run(); err != nil {
-		logrus.Warnf("failed to start overlay module")
-		return nil
-	}
-	if err := exec.Command("modprobe", "nf_conntrack").Run(); err != nil {
-		logrus.Warnf("failed to start nf_conntrack module")
-		return nil
-	}
+	loadKernelModule("overlay")
+	loadKernelModule("nf_conntrack")
+
 	return nil
 }
