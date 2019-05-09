@@ -1,0 +1,6 @@
+.DS_Store
+/.dapper
+/.idea
+/bin
+/dist
+helm-controller
