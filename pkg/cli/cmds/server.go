@@ -23,6 +23,7 @@ type Server struct {
 	ExtraSchedulerArgs  cli.StringSlice
 	ExtraControllerArgs cli.StringSlice
 	Rootless            bool
+	StorageEndpoint     string
 }
 
 var ServerConfig Server
@@ -136,6 +137,12 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Name:        "rootless",
 				Usage:       "(experimental) Run rootless",
 				Destination: &ServerConfig.Rootless,
+			},
+			cli.StringFlag{
+				Name:        "storage-endpoint",
+				Usage:       "Specify Mysql, Postgres, or Sqlite (default) data source name",
+				Destination: &ServerConfig.StorageEndpoint,
+				EnvVar:      "K3S_STORAGE_ENDPOINT",
 			},
 			NodeIPFlag,
 			NodeNameFlag,

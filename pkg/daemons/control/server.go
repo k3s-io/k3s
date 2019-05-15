@@ -146,18 +146,8 @@ func scheduler(cfg *config.Control, runtime *config.ControlRuntime) {
 
 func apiServer(ctx context.Context, cfg *config.Control, runtime *config.ControlRuntime) (authenticator.Request, http.Handler, error) {
 	argsMap := make(map[string]string)
-	if len(cfg.ETCDEndpoints) > 0 {
-		argsMap["storage-backend"] = "etcd3"
-		argsMap["etcd-servers"] = strings.Join(cfg.ETCDEndpoints, ",")
-		if cfg.ETCDKeyFile != "" {
-			argsMap["etcd-keyfile"] = cfg.ETCDKeyFile
-		}
-		if cfg.ETCDCAFile != "" {
-			argsMap["etcd-cafile"] = cfg.ETCDCAFile
-		}
-		if cfg.ETCDCertFile != "" {
-			argsMap["etcd-certfile"] = cfg.ETCDCertFile
-		}
+	if len(cfg.StorageEndpoint) > 0 {
+		argsMap["etcd-servers"] = cfg.StorageEndpoint
 	}
 
 	certDir := filepath.Join(cfg.DataDir, "tls/temporary-certs")
