@@ -2,6 +2,7 @@ package config
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	cryptorand "crypto/rand"
 	"crypto/tls"
@@ -16,6 +17,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -285,6 +287,14 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 		}
 	}
 
+	// If node-ip is not set and flannel-iface is set then automatically set node-ip
+	if envInfo.NodeIP == "" && len(envInfo.FlannelIface) > 0 {
+		nodeIP, err = getIPFromInterface(envInfo.FlannelIface)
+		if err != nil {
+			return nil, errors.Wrapf(err, "unable to find ip for interface %s", envInfo.FlannelIface)
+		}
+	}
+
 	nodeConfig := &config.Node{
 		Docker:                   envInfo.Docker,
 		NoFlannel:                envInfo.NoFlannel,
@@ -364,4 +374,37 @@ func HostnameCheck(cfg cmds.Agent) error {
 		time.Sleep(time.Second * 3)
 	}
 	return fmt.Errorf("Timed out waiting for hostname %s to be resolvable: %v", hostname, err)
+}
+
+func getIPFromInterface(flannelIfaceName string) (string, error) {
+	flannelIface, err := sysnet.InterfaceByName(flannelIfaceName)
+	if err != nil {
+		return "", err
+	}
+	addrs, err := flannelIface.Addrs()
+	if err != nil {
+		return "", err
+	}
+	if flannelIface.Flags&sysnet.FlagUp == 0 {
+		return "", fmt.Errorf("the interface %s is not up", flannelIfaceName)
+	}
+	var realIPs []sysnet.IP
+	for _, addr := range addrs {
+		ip, _, err := sysnet.ParseCIDR(addr.String())
+		if err != nil {
+			return "", fmt.Errorf("Unable to parse CIDR for interface %q: %s", flannelIface.Name, err)
+		}
+		// skipping if ipv6
+		if ip.To4() == nil {
+			continue
+		}
+		realIPs = append(realIPs, ip)
+	}
+	sort.Slice(realIPs, func(i, j int) bool {
+		return bytes.Compare(realIPs[i], realIPs[j]) < 0
+	})
+	if len(realIPs) > 0 {
+		return realIPs[0].String(), nil
+	}
+	return "", fmt.Errorf("can't find ip for interface %s", flannelIfaceName)
 }
