@@ -16,7 +16,7 @@
     state: restarted
     enabled: yes
 
-- name: Register file access mode
+- name: Register node-token file access mode
   stat:
     path: /var/lib/rancher/k3s/server
   register: p
@@ -26,18 +26,35 @@
     path: /var/lib/rancher/k3s/server
     mode: "g+rx,o+rx"
 
-- name: Read Node Token from Master
+- name: Read node-token from master
   slurp:
     src: /var/lib/rancher/k3s/server/node-token
   register: node_token
 
-- name: Store Master Token
+- name: Store Master node-token
   set_fact: 
    token: "{{ node_token.content | b64decode | regex_replace('\n', '') }}"
 
-- name: Restore file access 
+- name: Restore node-token file access 
   file:
     path: /var/lib/rancher/k3s/server
     mode: "{{ p.stat.mode }}"
 
-#- debug: msg="Node TOKEN {{ token }}"
+- name: Create directory .kube
+  file:
+    path: /home/{{ ansible_user }}/.kube
+    state: directory
+    owner: "{{ ansible_user }}"
+
+- name: Copy config file to user home directory
+  copy:
+    src: /etc/rancher/k3s/k3s.yaml
+    dest: /home/{{ ansible_user }}/.kube/config
+    remote_src: yes
+    owner: "{{ ansible_user }}"
+
+- name: Replace https://localhost:6443 by https://master-pi:6443
+  replace:
+    path: /home/{{ ansible_user }}/.kube/config
+    regexp: 'https://localhost:6443'
+    replace: 'https://{{master_ip}}:6443'
