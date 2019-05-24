@@ -147,6 +147,8 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 			ResolvConfFlag,
 			ExtraKubeletArgs,
 			ExtraKubeProxyArgs,
+			NodeLabels,
+			NodeTaints,
 		},
 	}
 }

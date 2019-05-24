@@ -26,6 +26,8 @@ type Agent struct {
 	AgentShared
 	ExtraKubeletArgs   cli.StringSlice
 	ExtraKubeProxyArgs cli.StringSlice
+	Labels             cli.StringSlice
+	Taints             cli.StringSlice
 }
 
 type AgentShared struct {
@@ -87,6 +89,16 @@ var (
 		Usage: "(agent) Customized flag for kube-proxy process",
 		Value: &AgentConfig.ExtraKubeProxyArgs,
 	}
+	NodeTaints = cli.StringSliceFlag{
+		Name:  "node-taint",
+		Usage: "(agent) Registring kubelet with set of taints",
+		Value: &AgentConfig.Taints,
+	}
+	NodeLabels = cli.StringSliceFlag{
+		Name:  "node-label",
+		Usage: "(agent) Registring kubelet with set of labels",
+		Value: &AgentConfig.Labels,
+	}
 )
 
 func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
@@ -141,6 +153,8 @@ func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
 			ResolvConfFlag,
 			ExtraKubeletArgs,
 			ExtraKubeProxyArgs,
+			NodeLabels,
+			NodeTaints,
 		},
 	}
 }
