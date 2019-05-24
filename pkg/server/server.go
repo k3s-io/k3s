@@ -214,9 +214,15 @@ func writeKubeConfig(certs string, tlsConfig *dynamiclistener.UserConfig, config
 		kubeConfig = filepath.Join(config.ControlConfig.DataDir, "kubeconfig-k3s.yaml")
 		def = false
 	}
-
+	kubeConfigSymlink := kubeConfig
 	if config.ControlConfig.KubeConfigOutput != "" {
 		kubeConfig = config.ControlConfig.KubeConfigOutput
+	}
+
+	if isSymlink(kubeConfigSymlink) {
+		if err := os.Remove(kubeConfigSymlink); err != nil {
+			logrus.Errorf("failed to remove kubeconfig symlink")
+		}
 	}
 
 	if err = clientaccess.AgentAccessInfoToKubeConfig(kubeConfig, url, clientToken); err != nil {
@@ -232,6 +238,12 @@ func writeKubeConfig(certs string, tlsConfig *dynamiclistener.UserConfig, config
 		}
 	} else {
 		os.Chmod(kubeConfig, os.FileMode(0600))
+	}
+
+	if kubeConfigSymlink != kubeConfig {
+		if err := writeConfigSymlink(kubeConfig, kubeConfigSymlink); err != nil {
+			logrus.Errorf("failed to write kubeconfig symlink: %v", err)
+		}
 	}
 
 	logrus.Infof("Wrote kubeconfig %s", kubeConfig)
@@ -306,4 +318,24 @@ func setNoProxyEnv(config *config.Control) error {
 		config.ServiceIPRange.String(),
 	}, ",")
 	return os.Setenv("NO_PROXY", envList)
+}
+
+func writeConfigSymlink(kubeconfig, kubeconfigSymlink string) error {
+	if err := os.Remove(kubeconfigSymlink); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("failed to remove %s file: %v", kubeconfigSymlink, err)
+	}
+	if err := os.MkdirAll(filepath.Dir(kubeconfigSymlink), 0755); err != nil {
+		return fmt.Errorf("failed to create path for symlink: %v", err)
+	}
+	if err := os.Symlink(kubeconfig, kubeconfigSymlink); err != nil {
+		return fmt.Errorf("failed to create symlink: %v", err)
+	}
+	return nil
+}
+
+func isSymlink(config string) bool {
+	if fi, err := os.Lstat(config); err == nil && (fi.Mode()&os.ModeSymlink == os.ModeSymlink) {
+		return true
+	}
+	return false
 }
