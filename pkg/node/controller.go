@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	coreclient "github.com/rancher/k3s/pkg/generated/controllers/core/v1"
+	coreclient "github.com/rancher/wrangler-api/pkg/generated/controllers/core/v1"
 	"github.com/sirupsen/logrus"
 	core "k8s.io/api/core/v1"
 )

@@ -31,8 +31,9 @@ const (
 	startKey = "_start_"
 )
 
-func WatchFiles(ctx context.Context, addons v1.AddonController, bases ...string) error {
+func WatchFiles(ctx context.Context, apply apply.Apply, addons v1.AddonController, bases ...string) error {
 	w := &watcher{
+		apply:      apply,
 		addonCache: addons.Cache(),
 		addons:     addons,
 		bases:      bases,

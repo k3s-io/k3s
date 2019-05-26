@@ -3,9 +3,12 @@ package server
 import (
 	"context"
 
-	"github.com/rancher/k3s/pkg/generated/controllers/apps"
-	"github.com/rancher/k3s/pkg/generated/controllers/core"
+	"github.com/rancher/helm-controller/pkg/generated/controllers/helm.cattle.io"
 	"github.com/rancher/k3s/pkg/generated/controllers/k3s.cattle.io"
+	"github.com/rancher/wrangler-api/pkg/generated/controllers/apps"
+	"github.com/rancher/wrangler-api/pkg/generated/controllers/batch"
+	"github.com/rancher/wrangler-api/pkg/generated/controllers/core"
+	"github.com/rancher/wrangler-api/pkg/generated/controllers/rbac"
 	"github.com/rancher/wrangler/pkg/apply"
 	"github.com/rancher/wrangler/pkg/crd"
 	"github.com/rancher/wrangler/pkg/start"
@@ -16,14 +19,17 @@ import (
 
 type Context struct {
 	K3s   *k3s.Factory
+	Helm  *helm.Factory
+	Batch *batch.Factory
 	Apps  *apps.Factory
+	Auth  *rbac.Factory
 	Core  *core.Factory
 	K8s   kubernetes.Interface
 	Apply apply.Apply
 }
 
 func (c *Context) Start(ctx context.Context) error {
-	return start.All(ctx, 5, c.K3s, c.Apps, c.Core)
+	return start.All(ctx, 5, c.K3s, c.Helm, c.Apps, c.Auth, c.Batch, c.Core)
 }
 
 func newContext(ctx context.Context, cfg string) (*Context, error) {
@@ -39,8 +45,11 @@ func newContext(ctx context.Context, cfg string) (*Context, error) {
 	k8s := kubernetes.NewForConfigOrDie(restConfig)
 	return &Context{
 		K3s:   k3s.NewFactoryFromConfigOrDie(restConfig),
+		Helm:  helm.NewFactoryFromConfigOrDie(restConfig),
 		K8s:   k8s,
+		Auth:  rbac.NewFactoryFromConfigOrDie(restConfig),
 		Apps:  apps.NewFactoryFromConfigOrDie(restConfig),
+		Batch: batch.NewFactoryFromConfigOrDie(restConfig),
 		Core:  core.NewFactoryFromConfigOrDie(restConfig),
 		Apply: apply.New(k8s, apply.NewClientFactory(restConfig)),
 	}, nil
@@ -55,7 +64,7 @@ func crds(ctx context.Context, config *rest.Config) error {
 	factory.BatchCreateCRDs(ctx, crd.NamespacedTypes(
 		"ListenerConfig.k3s.cattle.io/v1",
 		"Addon.k3s.cattle.io/v1",
-		"HelmChart.k3s.cattle.io/v1")...)
+		"HelmChart.helm.cattle.io/v1")...)
 
 	return factory.BatchWait()
 }

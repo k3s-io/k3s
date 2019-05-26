@@ -15,6 +15,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/rancher/dynamiclistener"
+	"github.com/rancher/helm-controller/pkg/helm"
 	"github.com/rancher/k3s/pkg/clientaccess"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/daemons/control"
@@ -128,7 +129,11 @@ func masterControllers(ctx context.Context, sc *Context, config *Config) error {
 		return err
 	}
 
-	//helm.Register
+	helm.Register(ctx, sc.Apply,
+		sc.Helm.Helm().V1().HelmChart(),
+		sc.Batch.Batch().V1().Job(),
+		sc.Auth.Rbac().V1().ClusterRoleBinding(),
+		sc.Core.Core().V1().ServiceAccount())
 
 	if err := servicelb.Register(ctx,
 		sc.K8s,
@@ -166,7 +171,7 @@ func stageFiles(ctx context.Context, sc *Context, controlConfig *config.Control)
 		return err
 	}
 
-	return deploy.WatchFiles(ctx, sc.K3s.K3s().V1().Addon(), dataDir)
+	return deploy.WatchFiles(ctx, sc.Apply, sc.K3s.K3s().V1().Addon(), dataDir)
 }
 
 func HomeKubeConfig(write, rootless bool) (string, error) {
