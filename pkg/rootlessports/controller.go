@@ -5,20 +5,19 @@ import (
 	"time"
 
 	"github.com/rancher/k3s/pkg/rootless"
-	coreClients "github.com/rancher/k3s/types/apis/core/v1"
+	coreClients "github.com/rancher/wrangler-api/pkg/generated/controllers/core/v1"
 	"github.com/rootless-containers/rootlesskit/pkg/api/client"
 	"github.com/rootless-containers/rootlesskit/pkg/port"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime"
 )
 
 var (
 	all = "_all_"
 )
 
-func Register(ctx context.Context, httpsPort int) error {
+func Register(ctx context.Context, serviceController coreClients.ServiceController, httpsPort int) error {
 	var (
 		err            error
 		rootlessClient client.Client
@@ -28,7 +27,6 @@ func Register(ctx context.Context, httpsPort int) error {
 		return nil
 	}
 
-	coreClients := coreClients.ClientsFrom(ctx)
 	for i := 0; i < 30; i++ {
 		rootlessClient, err = client.New(rootless.Sock)
 		if err == nil {
@@ -44,26 +42,26 @@ func Register(ctx context.Context, httpsPort int) error {
 
 	h := &handler{
 		rootlessClient: rootlessClient,
-		serviceClient:  coreClients.Service,
-		serviceCache:   coreClients.Service.Cache(),
+		serviceClient:  serviceController,
+		serviceCache:   serviceController.Cache(),
 		httpsPort:      httpsPort,
 		ctx:            ctx,
 	}
-	coreClients.Service.Interface().Controller().AddHandler(ctx, "rootlessports", h.serviceChanged)
-	coreClients.Service.Enqueue("", all)
+	serviceController.OnChange(ctx, "rootlessports", h.serviceChanged)
+	serviceController.Enqueue("", all)
 
 	return nil
 }
 
 type handler struct {
 	rootlessClient client.Client
-	serviceClient  coreClients.ServiceClient
-	serviceCache   coreClients.ServiceClientCache
+	serviceClient  coreClients.ServiceController
+	serviceCache   coreClients.ServiceCache
 	httpsPort      int
 	ctx            context.Context
 }
 
-func (h *handler) serviceChanged(key string, svc *v1.Service) (runtime.Object, error) {
+func (h *handler) serviceChanged(key string, svc *v1.Service) (*v1.Service, error) {
 	if key != all {
 		h.serviceClient.Enqueue("", all)
 		return svc, nil

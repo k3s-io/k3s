@@ -16,9 +16,9 @@ import (
 	"github.com/rancher/k3s/pkg/agent/syssetup"
 	"github.com/rancher/k3s/pkg/agent/tunnel"
 	"github.com/rancher/k3s/pkg/cli/cmds"
+	"github.com/rancher/k3s/pkg/clientaccess"
 	"github.com/rancher/k3s/pkg/daemons/agent"
 	"github.com/rancher/k3s/pkg/rootless"
-	"github.com/rancher/norman/pkg/clientaccess"
 	"github.com/sirupsen/logrus"
 )
 

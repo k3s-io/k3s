@@ -14,20 +14,16 @@ import (
 	"time"
 
 	errors2 "github.com/pkg/errors"
-
-	v1 "github.com/rancher/k3s/types/apis/k3s.cattle.io/v1"
-	"github.com/rancher/norman"
-	"github.com/rancher/norman/objectclient"
-	"github.com/rancher/norman/pkg/objectset"
-	"github.com/rancher/norman/types"
+	v12 "github.com/rancher/k3s/pkg/apis/k3s.cattle.io/v1"
+	v1 "github.com/rancher/k3s/pkg/generated/controllers/k3s.cattle.io/v1"
+	"github.com/rancher/wrangler/pkg/apply"
+	"github.com/rancher/wrangler/pkg/merr"
+	"github.com/rancher/wrangler/pkg/objectset"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
-	"k8s.io/client-go/discovery"
-	"k8s.io/client-go/rest"
 )
 
 const (
@@ -35,21 +31,16 @@ const (
 	startKey = "_start_"
 )
 
-func WatchFiles(ctx context.Context, bases ...string) error {
-	server := norman.GetServer(ctx)
-	addons := v1.ClientsFrom(ctx).Addon
-
+func WatchFiles(ctx context.Context, apply apply.Apply, addons v1.AddonController, bases ...string) error {
 	w := &watcher{
+		apply:      apply,
 		addonCache: addons.Cache(),
 		addons:     addons,
 		bases:      bases,
-		restConfig: *server.Runtime.LocalConfig,
-		discovery:  server.K8sClient.Discovery(),
-		clients:    map[schema.GroupVersionKind]*objectclient.ObjectClient{},
 	}
 
 	addons.Enqueue("", startKey)
-	addons.Interface().AddHandler(ctx, "addon-start", func(key string, _ *v1.Addon) (runtime.Object, error) {
+	addons.OnChange(ctx, "addon-start", func(key string, _ *v12.Addon) (*v12.Addon, error) {
 		if key == startKey {
 			go w.start(ctx)
 		}
@@ -60,13 +51,10 @@ func WatchFiles(ctx context.Context, bases ...string) error {
 }
 
 type watcher struct {
-	addonCache v1.AddonClientCache
+	apply      apply.Apply
+	addonCache v1.AddonCache
 	addons     v1.AddonClient
 	bases      []string
-	restConfig rest.Config
-	discovery  discovery.DiscoveryInterface
-	clients    map[schema.GroupVersionKind]*objectclient.ObjectClient
-	namespaced map[schema.GroupVersionKind]bool
 }
 
 func (w *watcher) start(ctx context.Context) {
@@ -93,7 +81,7 @@ func (w *watcher) listFiles(force bool) error {
 		}
 
 	}
-	return types.NewErrors(errs...)
+	return merr.NewErrors(errs...)
 }
 
 func (w *watcher) listFilesIn(base string, force bool) error {
@@ -122,7 +110,7 @@ func (w *watcher) listFilesIn(base string, force bool) error {
 		}
 	}
 
-	return types.NewErrors(errs...)
+	return merr.NewErrors(errs...)
 }
 
 func (w *watcher) deploy(path string, compareChecksum bool) error {
@@ -148,23 +136,13 @@ func (w *watcher) deploy(path string, compareChecksum bool) error {
 		return err
 	}
 
-	clients, err := w.apply(addon, objectSet)
-	if err != nil {
+	if err := w.apply.WithOwner(&addon).Apply(objectSet); err != nil {
 		return err
-	}
-
-	if w.clients == nil {
-		w.clients = map[schema.GroupVersionKind]*objectclient.ObjectClient{}
 	}
 
 	addon.Spec.Source = path
 	addon.Spec.Checksum = checksum
 	addon.Status.GVKs = nil
-
-	for gvk, client := range clients {
-		addon.Status.GVKs = append(addon.Status.GVKs, gvk)
-		w.clients[gvk] = client
-	}
 
 	if addon.UID == "" {
 		_, err := w.addons.Create(&addon)
@@ -175,53 +153,14 @@ func (w *watcher) deploy(path string, compareChecksum bool) error {
 	return err
 }
 
-func (w *watcher) addon(name string) (v1.Addon, error) {
+func (w *watcher) addon(name string) (v12.Addon, error) {
 	addon, err := w.addonCache.Get(ns, name)
 	if errors.IsNotFound(err) {
-		addon = v1.NewAddon(ns, name, v1.Addon{})
+		addon = v12.NewAddon(ns, name, v12.Addon{})
 	} else if err != nil {
-		return v1.Addon{}, err
+		return v12.Addon{}, err
 	}
 	return *addon, nil
-}
-
-func (w *watcher) apply(addon v1.Addon, set *objectset.ObjectSet) (map[schema.GroupVersionKind]*objectclient.ObjectClient, error) {
-	var (
-		err error
-	)
-
-	op := objectset.NewProcessor(addon.Name)
-	op.AllowDiscovery(w.discovery, w.restConfig)
-
-	ds := op.NewDesiredSet(nil, set)
-
-	for _, gvk := range addon.Status.GVKs {
-		var (
-			namespaced bool
-		)
-
-		client, ok := w.clients[gvk]
-		if ok {
-			namespaced = w.namespaced[gvk]
-		} else {
-			client, namespaced, err = objectset.NewDiscoveredClient(gvk, w.restConfig, w.discovery)
-			if err != nil {
-				return nil, err
-			}
-			if w.namespaced == nil {
-				w.namespaced = map[schema.GroupVersionKind]bool{}
-			}
-			w.namespaced[gvk] = namespaced
-		}
-
-		ds.AddDiscoveredClient(gvk, client, namespaced)
-	}
-
-	if err := ds.Apply(); err != nil {
-		return nil, err
-	}
-
-	return ds.DiscoveredClients(), nil
 }
 
 func objectSet(content []byte) (*objectset.ObjectSet, error) {

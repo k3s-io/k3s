@@ -6,12 +6,13 @@ import (
 	"sort"
 	"strconv"
 
-	appclient "github.com/rancher/k3s/types/apis/apps/v1"
-	coreclient "github.com/rancher/k3s/types/apis/core/v1"
-	"github.com/rancher/norman/condition"
-	"github.com/rancher/norman/pkg/changeset"
-	"github.com/rancher/norman/pkg/objectset"
-	"github.com/rancher/norman/types/slice"
+	appclient "github.com/rancher/wrangler-api/pkg/generated/controllers/apps/v1"
+	coreclient "github.com/rancher/wrangler-api/pkg/generated/controllers/core/v1"
+	"github.com/rancher/wrangler/pkg/apply"
+	"github.com/rancher/wrangler/pkg/condition"
+	"github.com/rancher/wrangler/pkg/objectset"
+	"github.com/rancher/wrangler/pkg/relatedresource"
+	"github.com/rancher/wrangler/pkg/slice"
 	"github.com/sirupsen/logrus"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
@@ -37,31 +38,37 @@ var (
 	trueVal = true
 )
 
-func Register(ctx context.Context, kubernetes kubernetes.Interface, enabled, rootless bool) error {
-	clients := coreclient.ClientsFrom(ctx)
-	appClients := appclient.ClientsFrom(ctx)
-
+func Register(ctx context.Context,
+	kubernetes kubernetes.Interface,
+	apply apply.Apply,
+	daemonSetController appclient.DaemonSetController,
+	deployments appclient.DeploymentController,
+	nodes coreclient.NodeController,
+	pods coreclient.PodController,
+	services coreclient.ServiceController,
+	endpoints coreclient.EndpointsController,
+	enabled, rootless bool) error {
 	h := &handler{
 		rootless:        rootless,
 		enabled:         enabled,
-		nodeCache:       clients.Node.Cache(),
-		podCache:        clients.Pod.Cache(),
-		deploymentCache: appClients.Deployment.Cache(),
-		processor: objectset.NewProcessor("svccontroller").
-			Client(appClients.DaemonSet),
-		serviceCache: clients.Service.Cache(),
+		nodeCache:       nodes.Cache(),
+		podCache:        pods.Cache(),
+		deploymentCache: deployments.Cache(),
+		processor: apply.WithSetID("svccontroller").
+			WithCacheTypes(daemonSetController),
+		serviceCache: services.Cache(),
 		services:     kubernetes.CoreV1(),
 		daemonsets:   kubernetes.AppsV1(),
 		deployments:  kubernetes.AppsV1(),
 	}
 
-	clients.Service.OnChange(ctx, "svccontroller", h.onChangeService)
-	clients.Node.OnChange(ctx, "svccontroller", h.onChangeNode)
-	changeset.Watch(ctx, "svccontroller-watcher",
+	services.OnChange(ctx, "svccontroller", h.onChangeService)
+	nodes.OnChange(ctx, "svccontroller", h.onChangeNode)
+	relatedresource.Watch(ctx, "svccontroller-watcher",
 		h.onResourceChange,
-		clients.Service,
-		clients.Pod,
-		clients.Endpoints)
+		services,
+		pods,
+		endpoints)
 
 	return nil
 }
@@ -69,19 +76,19 @@ func Register(ctx context.Context, kubernetes kubernetes.Interface, enabled, roo
 type handler struct {
 	rootless        bool
 	enabled         bool
-	nodeCache       coreclient.NodeClientCache
-	podCache        coreclient.PodClientCache
-	deploymentCache appclient.DeploymentClientCache
-	processor       *objectset.Processor
-	serviceCache    coreclient.ServiceClientCache
+	nodeCache       coreclient.NodeCache
+	podCache        coreclient.PodCache
+	deploymentCache appclient.DeploymentCache
+	processor       apply.Apply
+	serviceCache    coreclient.ServiceCache
 	services        coregetter.ServicesGetter
 	daemonsets      v1getter.DaemonSetsGetter
 	deployments     v1getter.DeploymentsGetter
 }
 
-func (h *handler) onResourceChange(name, namespace string, obj runtime.Object) ([]changeset.Key, error) {
+func (h *handler) onResourceChange(name, namespace string, obj runtime.Object) ([]relatedresource.Key, error) {
 	if ep, ok := obj.(*core.Endpoints); ok {
-		return []changeset.Key{
+		return []relatedresource.Key{
 			{
 				Name:      ep.Name,
 				Namespace: ep.Namespace,
@@ -103,7 +110,7 @@ func (h *handler) onResourceChange(name, namespace string, obj runtime.Object) (
 		return nil, nil
 	}
 
-	return []changeset.Key{
+	return []relatedresource.Key{
 		{
 			Name:      serviceName,
 			Namespace: pod.Namespace,
@@ -111,7 +118,11 @@ func (h *handler) onResourceChange(name, namespace string, obj runtime.Object) (
 	}, nil
 }
 
-func (h *handler) onChangeService(svc *core.Service) (runtime.Object, error) {
+func (h *handler) onChangeService(key string, svc *core.Service) (*core.Service, error) {
+	if svc == nil {
+		return nil, nil
+	}
+
 	if svc.Spec.Type != core.ServiceTypeLoadBalancer || svc.Spec.ClusterIP == "" ||
 		svc.Spec.ClusterIP == "None" {
 		return svc, nil
@@ -126,7 +137,10 @@ func (h *handler) onChangeService(svc *core.Service) (runtime.Object, error) {
 	return nil, err
 }
 
-func (h *handler) onChangeNode(node *core.Node) (runtime.Object, error) {
+func (h *handler) onChangeNode(key string, node *core.Node) (*core.Node, error) {
+	if node == nil {
+		return nil, nil
+	}
 	if _, ok := node.Labels[daemonsetNodeLabel]; !ok {
 		return node, nil
 	}
@@ -195,7 +209,7 @@ func (h *handler) podIPs(pods []*core.Pod) ([]string, error) {
 			continue
 		}
 
-		node, err := h.nodeCache.Get("", pod.Spec.NodeName)
+		node, err := h.nodeCache.Get(pod.Spec.NodeName)
 		if errors.IsNotFound(err) {
 			continue
 		} else if err != nil {
@@ -227,7 +241,7 @@ func (h *handler) deployPod(svc *core.Service) error {
 	}
 	objs := objectset.NewObjectSet()
 	if !h.enabled {
-		return h.processor.NewDesiredSet(svc, objs).Apply()
+		return h.processor.WithOwner(svc).Apply(objs)
 	}
 
 	ds, err := h.newDaemonSet(svc)
@@ -237,7 +251,7 @@ func (h *handler) deployPod(svc *core.Service) error {
 	if ds != nil {
 		objs.Add(ds)
 	}
-	return h.processor.NewDesiredSet(svc, objs).Apply()
+	return h.processor.WithOwner(svc).Apply(objs)
 }
 
 func (h *handler) newDaemonSet(svc *core.Service) (*apps.DaemonSet, error) {
@@ -335,7 +349,7 @@ func (h *handler) newDaemonSet(svc *core.Service) (*apps.DaemonSet, error) {
 	if err != nil {
 		return nil, err
 	}
-	nodesWithLabel, err := h.nodeCache.List("", selector)
+	nodesWithLabel, err := h.nodeCache.List(selector)
 	if err != nil {
 		return nil, err
 	}

@@ -4,7 +4,7 @@ import (
 	"os"
 
 	"github.com/pkg/errors"
-	"github.com/rancher/norman/pkg/resolvehome"
+	"github.com/rancher/wrangler/pkg/resolvehome"
 )
 
 const (

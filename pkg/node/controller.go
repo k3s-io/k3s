@@ -5,38 +5,39 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	coreclient "github.com/rancher/k3s/types/apis/core/v1"
+	coreclient "github.com/rancher/wrangler-api/pkg/generated/controllers/core/v1"
 	"github.com/sirupsen/logrus"
 	core "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 )
 
-func Register(ctx context.Context) error {
-	clients := coreclient.ClientsFrom(ctx)
+func Register(ctx context.Context, configMap coreclient.ConfigMapController, nodes coreclient.NodeController) error {
 	h := &handler{
-		configCache:  clients.ConfigMap.Cache(),
-		configClient: clients.ConfigMap,
+		configCache:  configMap.Cache(),
+		configClient: configMap,
 	}
-	clients.Node.OnChange(ctx, "node", h.onChange)
-	clients.Node.OnRemove(ctx, "node", h.onRemove)
+	nodes.OnChange(ctx, "node", h.onChange)
+	nodes.OnRemove(ctx, "node", h.onRemove)
 
 	return nil
 }
 
 type handler struct {
-	configCache  coreclient.ConfigMapClientCache
+	configCache  coreclient.ConfigMapCache
 	configClient coreclient.ConfigMapClient
 }
 
-func (h *handler) onChange(node *core.Node) (runtime.Object, error) {
+func (h *handler) onChange(key string, node *core.Node) (*core.Node, error) {
+	if node == nil {
+		return nil, nil
+	}
 	return h.updateHosts(node, false)
 }
 
-func (h *handler) onRemove(node *core.Node) (runtime.Object, error) {
+func (h *handler) onRemove(key string, node *core.Node) (*core.Node, error) {
 	return h.updateHosts(node, true)
 }
 
-func (h *handler) updateHosts(node *core.Node, removed bool) (runtime.Object, error) {
+func (h *handler) updateHosts(node *core.Node, removed bool) (*core.Node, error) {
 	var (
 		newHosts    string
 		nodeAddress string

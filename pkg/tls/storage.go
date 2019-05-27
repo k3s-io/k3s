@@ -3,11 +3,11 @@ package tls
 import (
 	"context"
 
-	v1 "github.com/rancher/k3s/types/apis/k3s.cattle.io/v1"
-	"github.com/rancher/norman/pkg/dynamiclistener"
+	"github.com/rancher/dynamiclistener"
+	v1 "github.com/rancher/k3s/pkg/apis/k3s.cattle.io/v1"
+	k3sclient "github.com/rancher/k3s/pkg/generated/controllers/k3s.cattle.io/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 )
 
 const (
@@ -15,14 +15,21 @@ const (
 	name = "tls-config"
 )
 
-func NewServer(ctx context.Context, listenerClient v1.ListenerConfigClient, config dynamiclistener.UserConfig) (dynamiclistener.ServerInterface, error) {
+func NewServer(ctx context.Context, listenerConfigs k3sclient.ListenerConfigController, config dynamiclistener.UserConfig) (dynamiclistener.ServerInterface, error) {
 	storage := &listenerConfigStorage{
-		client: listenerClient,
-		cache:  listenerClient.Cache(),
+		client: listenerConfigs,
+		cache:  listenerConfigs.Cache(),
 	}
 
 	server, err := dynamiclistener.NewServer(storage, config)
-	listenerClient.OnChange(ctx, "listen-config", func(obj *v1.ListenerConfig) (runtime.Object, error) {
+	if err != nil {
+		return nil, err
+	}
+
+	listenerConfigs.OnChange(ctx, "listen-config", func(key string, obj *v1.ListenerConfig) (*v1.ListenerConfig, error) {
+		if obj == nil {
+			return nil, nil
+		}
 		return obj, server.Update(fromStorage(obj))
 	})
 
@@ -30,8 +37,8 @@ func NewServer(ctx context.Context, listenerClient v1.ListenerConfigClient, conf
 }
 
 type listenerConfigStorage struct {
-	cache  v1.ListenerConfigClientCache
-	client v1.ListenerConfigClient
+	cache  k3sclient.ListenerConfigCache
+	client k3sclient.ListenerConfigClient
 }
 
 func (l *listenerConfigStorage) Set(config *dynamiclistener.ListenerStatus) (*dynamiclistener.ListenerStatus, error) {
@@ -64,6 +71,9 @@ func (l *listenerConfigStorage) Get() (*dynamiclistener.ListenerStatus, error) {
 	obj, err := l.cache.Get(ns, name)
 	if errors.IsNotFound(err) {
 		obj, err = l.client.Get(ns, name, metav1.GetOptions{})
+	}
+	if errors.IsNotFound(err) {
+		return &dynamiclistener.ListenerStatus{}, nil
 	}
 	return fromStorage(obj), err
 }

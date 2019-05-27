@@ -13,7 +13,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/rancher/k3s/pkg/daemons/config"
-	"github.com/rancher/norman/pkg/remotedialer"
+	"github.com/rancher/remotedialer"
 	"github.com/sirupsen/logrus"
 	"k8s.io/client-go/tools/clientcmd"
 )

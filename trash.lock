@@ -162,6 +162,9 @@ import:
   version: 89fcab3d43de07060e4fd4c1547430ed57e87f24
 - package: github.com/lithammer/dedent
   version: v1.1.0
+- package: github.com/matryer/moq
+  version: ee5226d43009
+  repo: https://github.com/rancher/moq.git
 - package: github.com/mattn/go-shellwords
   version: v1.0.3-20-gf8471b0a71ded0
 - package: github.com/mattn/go-sqlite3
@@ -216,9 +219,16 @@ import:
   version: v0.2.0
 - package: github.com/prometheus/procfs
   version: 65c1f6f8f0fc1e2185eb9863a3bc751496404259
-- package: github.com/rancher/norman
-  version: 50017efee23caa79542ef685b65a7b783e0a73ca
-  repo: https://github.com/ibuildthecloud/norman.git
+- package: github.com/rancher/dynamiclistener
+  version: 077eb13a904f2c62496f31b158135d9743526f82
+- package: github.com/rancher/helm-controller
+  version: 4f3b43bfd868bcb74fe847f8df88c482e9b70ff8
+- package: github.com/rancher/remotedialer
+  version: 20ec38853712bb6d348f0db9ac47d34c954c6b00
+- package: github.com/rancher/wrangler
+  version: 4202dbfa88013c19238bb004d82e013f0593493d
+- package: github.com/rancher/wrangler-api
+  version: efe26ac6a9d720e1bfa5a8cc5f8dce5ad598ce26
 - package: github.com/robfig/cron
   version: v1-53-gdf38d32658d878
 - package: github.com/rootless-containers/rootlesskit
