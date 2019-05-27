@@ -62,17 +62,6 @@ steps:
   volumes:
   - name: docker
     path: /var/run/docker.sock
-  when:
-    instance:
-    - drone-publish.rancher.io
-    ref:
-      include:
-      - refs/head/master
-      - refs/tags/*
-      exclude:
-      - refs/tags/*-k3s.*
-    event:
-    - tag
 
 - name: github_e2e_logs_release
   image: ibuildthecloud/github-release:v0.0.1
