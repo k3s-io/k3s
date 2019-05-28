@@ -72,10 +72,7 @@ type Control struct {
 	KubeConfigMode        string
 	DataDir               string
 	Skips                 []string
-	ETCDEndpoints         []string
-	ETCDKeyFile           string
-	ETCDCertFile          string
-	ETCDCAFile            string
+	StorageEndpoint       string
 	NoScheduler           bool
 	ExtraAPIArgs          []string
 	ExtraControllerArgs   []string

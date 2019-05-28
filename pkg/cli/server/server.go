@@ -25,7 +25,9 @@ import (
 	"k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/kubernetes/pkg/volume/csi"
 
-	_ "github.com/mattn/go-sqlite3" // ensure we have sqlite
+	_ "github.com/go-sql-driver/mysql" // ensure we have mysql
+	_ "github.com/lib/pq"              // ensure we have postgres
+	_ "github.com/mattn/go-sqlite3"    // ensure we have sqlite
 )
 
 func setupLogging(app *cli.Context) {
@@ -106,6 +108,7 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	serverConfig.ControlConfig.ExtraControllerArgs = cfg.ExtraControllerArgs
 	serverConfig.ControlConfig.ExtraSchedulerAPIArgs = cfg.ExtraSchedulerArgs
 	serverConfig.ControlConfig.ClusterDomain = cfg.ClusterDomain
+	serverConfig.ControlConfig.StorageEndpoint = cfg.StorageEndpoint
 
 	_, serverConfig.ControlConfig.ClusterIPRange, err = net2.ParseCIDR(cfg.ClusterCIDR)
 	if err != nil {

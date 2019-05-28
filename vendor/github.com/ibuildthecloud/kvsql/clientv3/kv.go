@@ -21,11 +21,13 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/ibuildthecloud/kvsql/clientv3/driver"
-	"github.com/ibuildthecloud/kvsql/clientv3/driver/sqlite"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/mvcc/mvccpb"
 	"github.com/docker/docker/pkg/locker"
+	"github.com/ibuildthecloud/kvsql/clientv3/driver"
+	"github.com/ibuildthecloud/kvsql/clientv3/driver/mysql"
+	"github.com/ibuildthecloud/kvsql/clientv3/driver/pgsql"
+	"github.com/ibuildthecloud/kvsql/clientv3/driver/sqlite"
 	"golang.org/x/net/context"
 )
 
@@ -38,9 +40,9 @@ type (
 )
 
 var (
-	connections map[string]*kv
-	connectionsCtx context.Context
-	CloseDB func()
+	connections     map[string]*kv
+	connectionsCtx  context.Context
+	CloseDB         func()
 	connectionsLock sync.Mutex
 )
 
@@ -101,9 +103,9 @@ func newKV(cfg Config) (*kv, error) {
 	}
 
 	var (
-		db *sql.DB
+		db     *sql.DB
 		driver *driver.Generic
-		err error
+		err    error
 	)
 
 	switch parts[0] {
@@ -112,6 +114,16 @@ func newKV(cfg Config) (*kv, error) {
 			return nil, err
 		}
 		driver = sqlite.NewSQLite()
+	case "mysql":
+		if db, err = mysql.Open(parts[1]); err != nil {
+			return nil, err
+		}
+		driver = mysql.NewMySQL()
+	case "postgres":
+		if db, err = pgsql.Open(parts[1]); err != nil {
+			return nil, err
+		}
+		driver = pgsql.NewPGSQL()
 	}
 
 	if err := driver.Start(context.TODO(), db); err != nil {
@@ -120,11 +132,11 @@ func newKV(cfg Config) (*kv, error) {
 	}
 
 	kv := &kv{
-		d:driver,
+		d: driver,
 	}
 	connections[key] = kv
 
-	return  kv, nil
+	return kv, nil
 }
 
 func (k *kv) Put(ctx context.Context, key, val string, opts ...OpOption) (*PutResponse, error) {
