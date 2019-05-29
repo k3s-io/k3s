@@ -2,7 +2,6 @@ package driver
 
 import (
 	"context"
-	"io"
 	"strings"
 )
 
@@ -94,10 +93,9 @@ func start(watchResponses chan Event) {
 }
 
 func sendErrorAndClose(watchResponses chan Event, err error) {
-	if err == nil {
-		err = io.EOF
+	if err != nil {
+		watchResponses <- Event{Err: err}
 	}
-	watchResponses <- Event{Err: err}
 	close(watchResponses)
 }
 

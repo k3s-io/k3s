@@ -104,6 +104,8 @@ import:
   version: v1.3.1-1-gf12c6236fe7b5c
 - package: github.com/ghodss/yaml
   version: v1.0.0
+- package: github.com/go-sql-driver/mysql
+  version: v1.4.1
 - package: github.com/godbus/dbus
   version: c7fdd8b5cd55e87b4e1f4e372cdb1db61dd6c66f
 - package: github.com/gogo/googleapis
@@ -140,7 +142,8 @@ import:
 - package: github.com/hashicorp/golang-lru
   version: v0.5.0
 - package: github.com/ibuildthecloud/kvsql
-  version: 0e798b1475327aadf3b8da5d2d1f99bb93dfd667
+  version: d37dd2b0829b44a4964e48c9396e14b0536fefb6
+  repo: https://github.com/erikwilson/rancher-kvsql.git
 - package: github.com/imdario/mergo
   version: v0.3.5
 - package: github.com/inconshreveable/mousetrap
@@ -158,6 +161,8 @@ import:
 - package: github.com/kubernetes-sigs/cri-tools
   version: c465773e3ad8c941d1756c0a467d550b04a8f65b
   repo: https://github.com/ibuildthecloud/cri-tools.git
+- package: github.com/lib/pq
+  version: v1.1.1
 - package: github.com/liggitt/tabwriter
   version: 89fcab3d43de07060e4fd4c1547430ed57e87f24
 - package: github.com/lithammer/dedent
