@@ -21,35 +21,49 @@ k3s is intended to be a fully compliant Kubernetes distribution with the followi
    with out of tree addons.
 3. Add sqlite3 as the default storage mechanism. etcd3 is still available, but not the default.
 4. Wrapped in simple launcher that handles a lot of the complexity of TLS and options.
-5. Minimal to no OS dependencies (just a sane kernel and cgroup mounts needed). k3s packages required
-   dependencies
+5. Minimal to no OS dependencies (just a sane kernel and cgroup mounts needed). k3s packages everything you need into one `k3s` binary:
     * containerd
     * Flannel
     * CoreDNS
     * CNI
     * Host utilities (iptables, socat, etc)
+    * Kubernetes (hyperkube)
 
 Quick start
 -----------
-1. Download `k3s` from latest [release](https://github.com/rancher/k3s/releases/latest), x86_64, armhf, and arm64 are
-   supported
-2. Run server
-
 ```bash
 sudo k3s server &
-# Kubeconfig is written to /etc/rancher/k3s/k3s.yaml
+# That's it, you now have a Kubernetes cluster you can examine with:
 sudo k3s kubectl get node
+# Or use any other Kuberentes tools
 
-# On a different node run the below. NODE_TOKEN comes from /var/lib/rancher/k3s/server/node-token
-# on your server
+# (Optional)
+# Add more nodes to your cluster by running agents on other nodes.
+# The NODE_TOKEN created by the server is found in /var/lib/rancher/k3s/server/node-token
 sudo k3s agent --server https://myserver:6443 --token ${NODE_TOKEN}
 
 ```
 
-Running server
---------------
+See "Open ports" below for security concerns.
 
-To run the server just do
+Install K3s
+-----------
+
+You can get started with `k3s` in the following ways:
+
+* Download the latest [release](https://github.com/rancher/k3s/releases/latest) as a single binary
+* Use the [Install script](README.md#install-script) to download and create system services.
+* Run as a [Docker container](README.md#running-in-docker-and-docker-compose) or a whole cluster of docker containers
+* Install via Ansible (see contrib/ansible)
+* Install in Vagrant (see scripts/vagrant-provision)
+* Use [K3OS](https://k3os.io/), an entire operating system designed around `k3s`.
+
+`k3s` is supported on  x86_64, armhf, and arm64 architectures.
+
+
+Starting a cluster
+-----------
+To run the server (and an agent) just do
 
     k3s server
 
@@ -72,12 +86,15 @@ INFO[2019-01-22T15:16:20.541049100-07:00] Run: k3s kubectl
 
 The output will probably be much longer as the agent will spew a lot of logs. By default the server
 will register itself as a node (run the agent).  It is common and almost required these days
-that the control plane be part of the cluster.  To not run the agent by default use the `--disable-agent`
-flag
+that the control plane be part of the cluster.
+
+To start a server without also running an agent, use the `--disable-agent` flag
 
     k3s server --disable-agent
 
 At this point, you can run the agent as a separate process or not run it on this node at all.
+
+Right now, you can only run one server per cluster.
 
 If you encounter an error like `"stream server error: listen tcp: lookup some-host on X.X.X.X:53: no such host"`
 when starting k3s please ensure `/etc/hosts` contains your current hostname (output of `hostname`),
@@ -86,21 +103,52 @@ set to a 127.x.x.x address. For example:
 127.0.1.1	myhost
 ```
 
-Joining nodes
--------------
 
-When the server starts it creates a file `/var/lib/rancher/k3s/server/node-token`. Use the contents
-of that file as `NODE_TOKEN` and then run the agent as follows
+Adding Nodes to your cluster
+-----------
+
+You can add more nodes to your cluster by running a `k3s` agent on each node.
 
     k3s agent --server https://myserver:6443 --token ${NODE_TOKEN}
 
-That's it.
+Get the value of `NODE_TOKEN` from `/var/lib/rancher/k3s/server/node-token`
+(a file created on the server node when starting the server).
 
-Accessing cluster from outside
+Your cluster always needs at least one agent, and each agent should be run on it's own node.
+
+
+Accessing cluster from other tools
 -----------------------------
 
-Copy `/etc/rancher/k3s/k3s.yaml` on your machine located outside the cluster as `~/.kube/config`. Then replace
-"localhost" with the IP or name of your k3s server. `kubectl` can now manage your k3s cluster.
+To use existing Kubernetes tools (such as `kubectl`) to manage the cluster, you will
+need to copy `/etc/rancher/k3s/k3s.yaml` to `~/.kube/config`. If you move that file
+off the server, you will need to edit the file to replace "localhost" with the IP or
+name of your k3s server.
+
+
+Open ports / Network security
+---------------------------
+
+The server needs port 6443 to be accessible by the nodes.  The nodes need to be able to reach
+other nodes over UDP port 8472.  This is used for flannel VXLAN.  If you don't use flannel
+and provide your own custom CNI, then 8472 is not needed by k3s. The node should not listen
+on any other port.  k3s uses reverse tunneling such that the nodes make outbound connections
+to the server and all kubelet traffic runs through that tunnel.
+
+IMPORTANT. The VXLAN port on nodes should not be exposed to the world, it opens up your
+cluster network to accessed by anyone.  Run your nodes behind a firewall/security group that
+disables access to port 8472.
+
+
+Uninstalling K3s
+-----------------
+
+If you installed your k3s server with the help of `install.sh` script from the root directory (or `curl`), you may use the uninstall script generated during installation, which will be created on your server node at `/usr/local/bin/k3s-uninstall.sh`
+
+
+Server HA
+---------
+Just don't right now :)  It's currently broken.
 
 Auto-deploying manifests
 ------------------------
@@ -149,37 +197,6 @@ spec:
 
 Also note that besides `set` you can use `valuesContent` in the spec section. And it's okay to use both of them.
 
-Building from source
---------------------
-
-The clone will be much faster on this repo if you do
-
-    git clone --depth 1 https://github.com/rancher/k3s.git
-
-This repo includes all of Kubernetes history so `--depth 1` will avoid most of that.
-
-For development, you just need go 1.12 and a sane GOPATH.  To compile the binaries run
-
-```bash
-go build -o k3s
-go build -o kubectl ./cmd/kubectl
-go build -o hyperkube ./vendor/k8s.io/kubernetes/cmd/hyperkube
-```
-
-This will create the main executable, but it does not include the dependencies like containerd, CNI,
-etc.  To run a server and agent with all the dependencies for development run the following
-helper scripts
-
-```bash
-# Server
-./scripts/dev-server.sh
-
-# Agent
-./scripts/dev-agent.sh
-```
-
-To build the full release binary run `make` and that will create `./dist/artifacts/k3s`
-
 
 Customizing components
 ----------------------
@@ -204,82 +221,6 @@ For example to add the following arguments `-v=9` and `log-file=/tmp/kubeapi.log
 ```
 k3s server --kube-apiserver-arg v=9 --kube-apiserver-arg log-file=/tmp/kubeapi.log
 ```
-
-Uninstalling server
------------------
-
-If you installed your k3s server with the help of `install.sh` script from the root directory, you may use the uninstall script generated during installation, which will be created on your server node at `/usr/local/bin/k3s-uninstall.sh`
-
-Kubernetes source
------------------
-
-The source code for Kubernetes is in `vendor/` and the location from which that is copied
-is in `./vendor.conf`.  Go to the referenced repo/tag and you'll find all the patches applied
-to upstream Kubernetes.
-
-Open ports / Network security
----------------------------
-
-The server needs port 6443 to be accessible by the nodes.  The nodes need to be able to reach
-other nodes over UDP port 8472.  This is used for flannel VXLAN.  If you don't use flannel
-and provide your own custom CNI, then 8472 is not needed by k3s. The node should not listen
-on any other port.  k3s uses reverse tunneling such that the nodes make outbound connections
-to the server and all kubelet traffic runs through that tunnel.
-
-IMPORTANT. The VXLAN port on nodes should not be exposed to the world, it opens up your
-cluster network to accessed by anyone.  Run your nodes behind a firewall/security group that
-disables access to port 8472.
-
-
-Server HA
----------
-Just don't right now :)  It's currently broken.
-
-
-Running in Docker (and docker-compose)
------------------
-
-I wouldn't be me if I couldn't run my cluster in Docker.  `rancher/k3s` images are available
-to run k3s server and agent from Docker.  A `docker-compose.yml` is in the root of this repo that
-serves as an example of how to run k3s from Docker.  To run from `docker-compose` from this repo run
-
-    docker-compose up --scale node=3
-    # kubeconfig is written to current dir
-    kubectl --kubeconfig kubeconfig.yaml get node
-
-    NAME           STATUS   ROLES    AGE   VERSION
-    497278a2d6a2   Ready    <none>   11s   v1.13.2-k3s2
-    d54c8b17c055   Ready    <none>   11s   v1.13.2-k3s2
-    db7a5a5a5bdd   Ready    <none>   12s   v1.13.2-k3s2
-
-To run the agent only in Docker use the following `docker-compose-agent.yml` is in the root of this repo that
-serves as an example of how to run k3s agent from Docker. Alternatively the Docker run command can also be used;
-
-    sudo docker run -d --tmpfs /run --tmpfs /var/run -e K3S_URL=${SERVER_URL} -e K3S_TOKEN=${NODE_TOKEN} --privileged rancher/k3s:v0.5.0
-
-    sudo docker run -d --tmpfs /run --tmpfs /var/run -e K3S_URL=https://k3s.example.com:6443 -e K3S_TOKEN=K13849a67fc385fd3c0fa6133a8649d9e717b0258b3b09c87ffc33dae362c12d8c0::node:2e373dca319a0525745fd8b3d8120d9c --privileged rancher/k3s:v0.5.0
-
-
-Hyperkube
---------
-
-k3s is bundled in a nice wrapper to remove the majority of the headache of running k8s. If
-you don't want that wrapper and just want a smaller k8s distro, the releases includes
-the `hyperkube` binary you can use.  It's then up to you to know how to use `hyperkube`. If
-you want individual binaries you will need to compile them yourself from source
-
-containerd and Docker
-----------
-
-k3s includes and defaults to containerd. Why? Because it's just plain better. If you want to
-run with Docker first stop and think, "Really? Do I really want more headache?" If still
-yes then you just need to run the agent with the `--docker` flag
-
-     k3s agent -s ${SERVER_URL} -t ${NODE_TOKEN} --docker &
-
-k3s will generate config.toml for containerd in `/var/lib/rancher/k3s/agent/etc/containerd/config.toml`, for advanced customization for this file you can create another file called `config.toml.tmpl` in the same directory and it will be used instead.
-
-The `config.toml.tmpl` will be treated as a Golang template file, and the `config.Node` structure is being passed to the template,the following is an example on how to use the structure to customize the configuration file https://github.com/rancher/k3s/blob/master/pkg/agent/templates/templates.go#L16-L32
 
 systemd
 -------
@@ -310,8 +251,11 @@ Restart=always
 WantedBy=multi-user.target
 ```
 
-The k3s `install.sh` script also provides a convenient way for installing to systemd,
-to install the agent and server as a k3s service just run:
+Install Script
+--------
+
+The k3s `install.sh` script provides a convenient way for installing to systemd or openrc.
+To install the agent and server as a k3s service just run:
 ```sh
 curl -sfL https://get.k3s.io | sh -
 ```
@@ -465,6 +409,51 @@ name="k3s"
 description="Lightweight Kubernetes"
 ```
 
+Running in Docker (and docker-compose)
+-----------------
+
+I wouldn't be me if I couldn't run my cluster in Docker.  `rancher/k3s` images are available
+to run k3s server and agent from Docker.  A `docker-compose.yml` is in the root of this repo that
+serves as an example of how to run k3s from Docker.  To run from `docker-compose` from this repo run
+
+    docker-compose up --scale node=3
+    # kubeconfig is written to current dir
+    kubectl --kubeconfig kubeconfig.yaml get node
+
+    NAME           STATUS   ROLES    AGE   VERSION
+    497278a2d6a2   Ready    <none>   11s   v1.13.2-k3s2
+    d54c8b17c055   Ready    <none>   11s   v1.13.2-k3s2
+    db7a5a5a5bdd   Ready    <none>   12s   v1.13.2-k3s2
+
+To run the agent only in Docker use the following `docker-compose-agent.yml` is in the root of this repo that
+serves as an example of how to run k3s agent from Docker. Alternatively the Docker run command can also be used;
+
+    sudo docker run -d --tmpfs /run --tmpfs /var/run -e K3S_URL=${SERVER_URL} -e K3S_TOKEN=${NODE_TOKEN} --privileged rancher/k3s:v0.5.0
+
+    sudo docker run -d --tmpfs /run --tmpfs /var/run -e K3S_URL=https://k3s.example.com:6443 -e K3S_TOKEN=K13849a67fc385fd3c0fa6133a8649d9e717b0258b3b09c87ffc33dae362c12d8c0::node:2e373dca319a0525745fd8b3d8120d9c --privileged rancher/k3s:v0.5.0
+
+
+Hyperkube
+--------
+
+k3s is bundled in a nice wrapper to remove the majority of the headache of running k8s. If
+you don't want that wrapper and just want a smaller k8s distro, the releases includes
+the `hyperkube` binary you can use.  It's then up to you to know how to use `hyperkube`. If
+you want individual binaries you will need to compile them yourself from source
+
+containerd and Docker
+----------
+
+k3s includes and defaults to containerd. Why? Because it's just plain better. If you want to
+run with Docker first stop and think, "Really? Do I really want more headache?" If still
+yes then you just need to run the agent with the `--docker` flag
+
+     k3s agent -s ${SERVER_URL} -t ${NODE_TOKEN} --docker &
+
+k3s will generate config.toml for containerd in `/var/lib/rancher/k3s/agent/etc/containerd/config.toml`, for advanced customization for this file you can create another file called `config.toml.tmpl` in the same directory and it will be used instead.
+
+The `config.toml.tmpl` will be treated as a Golang template file, and the `config.Node` structure is being passed to the template,the following is an example on how to use the structure to customize the configuration file https://github.com/rancher/k3s/blob/master/pkg/agent/templates/templates.go#L16-L32
+
 Flannel
 -------
 
@@ -573,6 +562,46 @@ To upgrade with openrc you can download newer version of `k3s` from latest [rele
 ```sh
 service k3s restart
 ```
+
+Building from source
+--------------------
+
+The clone will be much faster on this repo if you do
+
+    git clone --depth 1 https://github.com/rancher/k3s.git
+
+This repo includes all of Kubernetes history so `--depth 1` will avoid most of that.
+
+For development, you just need go 1.12 and a sane GOPATH.  To compile the binaries run
+
+```bash
+go build -o k3s
+go build -o kubectl ./cmd/kubectl
+go build -o hyperkube ./vendor/k8s.io/kubernetes/cmd/hyperkube
+```
+
+This will create the main executable, but it does not include the dependencies like containerd, CNI,
+etc.  To run a server and agent with all the dependencies for development run the following
+helper scripts
+
+```bash
+# Server
+./scripts/dev-server.sh
+
+# Agent
+./scripts/dev-agent.sh
+```
+
+To build the full release binary run `make` and that will create `./dist/artifacts/k3s`
+
+
+Kubernetes source
+-----------------
+
+The source code for Kubernetes is in `vendor/` and the location from which that is copied
+is in `./vendor.conf`.  Go to the referenced repo/tag and you'll find all the patches applied
+to upstream Kubernetes.
+
 
 TODO
 ----
