@@ -17,7 +17,7 @@ type Server struct {
 	DisableAgent        bool
 	KubeConfigOutput    string
 	KubeConfigMode      string
-	KnownIPs            cli.StringSlice
+	TLSSan              cli.StringSlice
 	BindAddress         string
 	ExtraAPIArgs        cli.StringSlice
 	ExtraSchedulerArgs  cli.StringSlice
@@ -28,6 +28,8 @@ type Server struct {
 	StorageCAFile       string
 	StorageCertFile     string
 	StorageKeyFile      string
+	AdvertiseIP         string
+	AdvertisePort       int
 }
 
 var ServerConfig Server
@@ -120,7 +122,7 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 			cli.StringSliceFlag{
 				Name:  "tls-san",
 				Usage: "Add additional hostname or IP as a Subject Alternative Name in the TLS cert",
-				Value: &ServerConfig.KnownIPs,
+				Value: &ServerConfig.TLSSan,
 			},
 			cli.StringSliceFlag{
 				Name:  "kube-apiserver-arg",
@@ -171,6 +173,17 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Usage:       "SSL key file used to secure storage backend communication",
 				Destination: &ServerConfig.StorageKeyFile,
 				EnvVar:      "K3S_STORAGE_KEYFILE",
+			},
+			cli.StringFlag{
+				Name:        "advertise-address",
+				Usage:       "IP address that apiserver uses to advertise to members of the cluster",
+				Destination: &ServerConfig.AdvertiseIP,
+			},
+			cli.IntFlag{
+				Name:        "advertise-port",
+				Usage:       "Port that apiserver uses to advertise to members of the cluster",
+				Value:       0,
+				Destination: &ServerConfig.AdvertisePort,
 			},
 			NodeIPFlag,
 			NodeNameFlag,

@@ -36,32 +36,41 @@ type Containerd struct {
 }
 
 type Agent struct {
-	NodeName           string
-	NodeCertFile       string
-	NodeKeyFile        string
-	ClusterCIDR        net.IPNet
-	ClusterDNS         net.IP
-	ClusterDomain      string
-	ResolvConf         string
-	RootDir            string
-	KubeConfig         string
-	NodeIP             string
-	RuntimeSocket      string
-	ListenAddress      string
-	CACertPath         string
-	CNIBinDir          string
-	CNIConfDir         string
-	ExtraKubeletArgs   []string
-	ExtraKubeProxyArgs []string
-	PauseImage         string
-	CNIPlugin          bool
-	NodeTaints         []string
-	NodeLabels         []string
+	NodeName            string
+	ClientKubeletCert   string
+	ClientKubeletKey    string
+	ClientKubeProxyCert string
+	ClientKubeProxyKey  string
+	ServingKubeletCert  string
+	ServingKubeletKey   string
+	ClusterCIDR         net.IPNet
+	ClusterDNS          net.IP
+	ClusterDomain       string
+	ResolvConf          string
+	RootDir             string
+	KubeConfigNode      string
+	KubeConfigKubelet   string
+	KubeConfigKubeProxy string
+	NodeIP              string
+	RuntimeSocket       string
+	ListenAddress       string
+	ClientCA            string
+	CNIBinDir           string
+	CNIConfDir          string
+	ExtraKubeletArgs    []string
+	ExtraKubeProxyArgs  []string
+	PauseImage          string
+	CNIPlugin           bool
+	NodeTaints          []string
+	NodeLabels          []string
 }
 
 type Control struct {
 	AdvertisePort         int
+	AdvertiseIP           string
 	ListenPort            int
+	HTTPSPort             int
+	ProxyPort             int
 	ClusterSecret         string
 	ClusterIPRange        *net.IPNet
 	ServiceIPRange        *net.IPNet
@@ -87,28 +96,44 @@ type Control struct {
 }
 
 type ControlRuntime struct {
-	TLSCert          string
-	TLSKey           string
-	TLSCA            string
-	TLSCAKey         string
-	TokenCA          string
-	TokenCAKey       string
-	ServiceKey       string
-	PasswdFile       string
-	KubeConfigSystem string
+	ClientKubeAPICert string
+	ClientKubeAPIKey  string
+	ClientCA          string
+	ClientCAKey       string
+	ServerCA          string
+	ServerCAKey       string
+	ServiceKey        string
+	PasswdFile        string
 
-	NodeCert      string
-	NodeKey       string
-	ClientToken   string
-	NodeToken     string
-	Handler       http.Handler
-	Tunnel        http.Handler
-	Authenticator authenticator.Request
+	KubeConfigAdmin      string
+	KubeConfigController string
+	KubeConfigScheduler  string
+	KubeConfigAPIServer  string
+
+	ServingKubeAPICert string
+	ServingKubeAPIKey  string
+	ClientToken        string
+	NodeToken          string
+	Handler            http.Handler
+	Tunnel             http.Handler
+	Authenticator      authenticator.Request
 
 	RequestHeaderCA     string
 	RequestHeaderCAKey  string
 	ClientAuthProxyCert string
 	ClientAuthProxyKey  string
+
+	ClientAdminCert      string
+	ClientAdminKey       string
+	ClientControllerCert string
+	ClientControllerKey  string
+	ClientSchedulerCert  string
+	ClientSchedulerKey   string
+	ClientKubeProxyCert  string
+	ClientKubeProxyKey   string
+
+	ServingKubeletKey string
+	ClientKubeletKey  string
 }
 
 type ArgString []string

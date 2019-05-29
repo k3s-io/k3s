@@ -23,6 +23,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 	"k8s.io/apimachinery/pkg/util/net"
+	"k8s.io/kubernetes/pkg/master"
 	"k8s.io/kubernetes/pkg/volume/csi"
 
 	_ "github.com/go-sql-driver/mysql" // ensure we have mysql
@@ -102,8 +103,16 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	serverConfig.Rootless = cfg.Rootless
 	serverConfig.TLSConfig.HTTPSPort = cfg.HTTPSPort
 	serverConfig.TLSConfig.HTTPPort = cfg.HTTPPort
-	serverConfig.TLSConfig.KnownIPs = knownIPs(cfg.KnownIPs)
+	for _, san := range knownIPs(cfg.TLSSan) {
+		addr := net2.ParseIP(san)
+		if addr != nil {
+			serverConfig.TLSConfig.KnownIPs = append(serverConfig.TLSConfig.KnownIPs, san)
+		} else {
+			serverConfig.TLSConfig.Domains = append(serverConfig.TLSConfig.Domains, san)
+		}
+	}
 	serverConfig.TLSConfig.BindAddress = cfg.BindAddress
+	serverConfig.ControlConfig.HTTPSPort = cfg.HTTPSPort
 	serverConfig.ControlConfig.ExtraAPIArgs = cfg.ExtraAPIArgs
 	serverConfig.ControlConfig.ExtraControllerArgs = cfg.ExtraControllerArgs
 	serverConfig.ControlConfig.ExtraSchedulerAPIArgs = cfg.ExtraSchedulerArgs
@@ -113,6 +122,15 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	serverConfig.ControlConfig.StorageCAFile = cfg.StorageCAFile
 	serverConfig.ControlConfig.StorageCertFile = cfg.StorageCertFile
 	serverConfig.ControlConfig.StorageKeyFile = cfg.StorageKeyFile
+	serverConfig.ControlConfig.AdvertiseIP = cfg.AdvertiseIP
+	serverConfig.ControlConfig.AdvertisePort = cfg.AdvertisePort
+
+	if serverConfig.ControlConfig.AdvertiseIP == "" && cmds.AgentConfig.NodeIP != "" {
+		serverConfig.ControlConfig.AdvertiseIP = cmds.AgentConfig.NodeIP
+	}
+	if serverConfig.ControlConfig.AdvertiseIP != "" {
+		serverConfig.TLSConfig.KnownIPs = append(serverConfig.TLSConfig.KnownIPs, serverConfig.ControlConfig.AdvertiseIP)
+	}
 
 	_, serverConfig.ControlConfig.ClusterIPRange, err = net2.ParseCIDR(cfg.ClusterCIDR)
 	if err != nil {
@@ -122,6 +140,12 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	if err != nil {
 		return errors.Wrapf(err, "Invalid CIDR %s: %v", cfg.ServiceCIDR, err)
 	}
+
+	_, apiServerServiceIP, err := master.DefaultServiceIPRange(*serverConfig.ControlConfig.ServiceIPRange)
+	if err != nil {
+		return err
+	}
+	serverConfig.TLSConfig.KnownIPs = append(serverConfig.TLSConfig.KnownIPs, apiServerServiceIP.String())
 
 	// If cluster-dns CLI arg is not set, we set ClusterDNS address to be ServiceCIDR network + 10,
 	// i.e. when you set service-cidr to 192.168.0.0/16 and don't provide cluster-dns, it will be set to 192.168.0.10

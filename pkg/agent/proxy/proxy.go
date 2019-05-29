@@ -1,35 +1,18 @@
 package proxy
 
 import (
-	"crypto/tls"
-	"net/http"
-
-	"github.com/pkg/errors"
+	"github.com/google/tcpproxy"
 	"github.com/rancher/k3s/pkg/daemons/config"
-	"github.com/rancher/k3s/pkg/proxy"
 	"github.com/sirupsen/logrus"
 )
 
 func Run(config *config.Node) error {
-	proxy, err := proxy.NewSimpleProxy(config.ServerAddress, config.CACerts, true)
-	if err != nil {
-		return err
-	}
-
-	listener, err := tls.Listen("tcp", config.LocalAddress, &tls.Config{
-		Certificates: []tls.Certificate{
-			*config.Certificate,
-		},
-	})
-
-	if err != nil {
-		return errors.Wrap(err, "Failed to start tls listener")
-	}
-
+	logrus.Infof("Starting proxy %s -> %s", config.LocalAddress, config.ServerAddress)
+	var proxy tcpproxy.Proxy
+	proxy.AddRoute(config.LocalAddress, tcpproxy.To(config.ServerAddress))
 	go func() {
-		err := http.Serve(listener, proxy)
+		err := proxy.Run()
 		logrus.Fatalf("TLS proxy stopped: %v", err)
 	}()
-
 	return nil
 }

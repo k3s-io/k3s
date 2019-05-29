@@ -55,7 +55,7 @@ func Prepare(ctx context.Context, config *config.Node) error {
 func Run(ctx context.Context, config *config.Node) error {
 	nodeName := config.AgentConfig.NodeName
 
-	restConfig, err := clientcmd.BuildConfigFromFlags("", config.AgentConfig.KubeConfig)
+	restConfig, err := clientcmd.BuildConfigFromFlags("", config.AgentConfig.KubeConfigNode)
 	if err != nil {
 		return err
 	}
@@ -79,7 +79,7 @@ func Run(ctx context.Context, config *config.Node) error {
 	}
 
 	go func() {
-		err := flannel(ctx, config.FlannelIface, config.FlannelConf, config.AgentConfig.KubeConfig)
+		err := flannel(ctx, config.FlannelIface, config.FlannelConf, config.AgentConfig.KubeConfigNode)
 		logrus.Fatalf("flannel exited: %v", err)
 	}()
 
