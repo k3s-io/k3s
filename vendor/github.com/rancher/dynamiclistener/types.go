@@ -29,6 +29,7 @@ type UserConfig struct {
 	Mode        string
 	NoCACerts   bool
 	CACerts     string
+	CAKey       string
 	Cert        string
 	Key         string
 	BindAddress string

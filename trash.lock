@@ -125,6 +125,8 @@ import:
   version: v1.0.21
 - package: github.com/google/gofuzz
   version: 44d81051d367757e1c7c6a5a86423ece9afcf63c
+- package: github.com/google/tcpproxy
+  version: dfa16c61dad2b18a385dfb351adf71566720535b
 - package: github.com/googleapis/gnostic
   version: 0c5108395e2debce0d731cf0287ddf7242066aba
 - package: github.com/gorilla/mux
@@ -225,7 +227,8 @@ import:
 - package: github.com/prometheus/procfs
   version: 65c1f6f8f0fc1e2185eb9863a3bc751496404259
 - package: github.com/rancher/dynamiclistener
-  version: 077eb13a904f2c62496f31b158135d9743526f82
+  version: 03208cf106d553d58d3a73267aa473a45af63120
+  repo: https://github.com/erikwilson/rancher-dynamiclistener.git
 - package: github.com/rancher/helm-controller
   version: d5f5c830231110722f14d446d3b2038e5cdf1532
 - package: github.com/rancher/remotedialer
@@ -310,7 +313,7 @@ import:
 - package: k8s.io/klog
   version: v0.2.0-14-g8e90cee79f8237
 - package: k8s.io/kubernetes
-  version: v1.14.3-k3s.1
+  version: v1.14.3-k3s.2
   repo: https://github.com/rancher/k3s.git
   transitive: true
   staging: true
