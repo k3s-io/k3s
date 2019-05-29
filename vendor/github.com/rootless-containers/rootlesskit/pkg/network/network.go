@@ -14,5 +14,7 @@ type ParentDriver interface {
 
 // ChildDriver is called from the child namespace
 type ChildDriver interface {
-	ConfigureTap(netmsg common.NetworkMessage) (tap string, err error)
+	// netmsg MAY be modified.
+	// devName is like "tap" or "eth0"
+	ConfigureNetworkChild(netmsg *common.NetworkMessage) (devName string, err error)
 }

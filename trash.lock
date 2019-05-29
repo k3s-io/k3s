@@ -237,7 +237,7 @@ import:
 - package: github.com/robfig/cron
   version: v1-53-gdf38d32658d878
 - package: github.com/rootless-containers/rootlesskit
-  version: 893c1c3de71f54c301fdb85a7c0dd15c1933c159
+  version: v0.4.1
 - package: github.com/russross/blackfriday
   version: v1.4-2-g300106c228d52c
 - package: github.com/seccomp/libseccomp-golang

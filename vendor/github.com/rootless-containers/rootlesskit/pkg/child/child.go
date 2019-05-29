@@ -4,11 +4,13 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"runtime"
 	"strconv"
 	"syscall"
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/sys/unix"
 
 	"github.com/rootless-containers/rootlesskit/pkg/common"
 	"github.com/rootless-containers/rootlesskit/pkg/copyup"
@@ -76,12 +78,12 @@ func activateLoopback() error {
 	return nil
 }
 
-func activateTap(tap, ip string, netmask int, gateway string, mtu int) error {
+func activateDev(dev, ip string, netmask int, gateway string, mtu int) error {
 	cmds := [][]string{
-		{"ip", "link", "set", tap, "up"},
-		{"ip", "link", "set", "dev", tap, "mtu", strconv.Itoa(mtu)},
-		{"ip", "addr", "add", ip + "/" + strconv.Itoa(netmask), "dev", tap},
-		{"ip", "route", "add", "default", "via", gateway, "dev", tap},
+		{"ip", "link", "set", dev, "up"},
+		{"ip", "link", "set", "dev", dev, "mtu", strconv.Itoa(mtu)},
+		{"ip", "addr", "add", ip + "/" + strconv.Itoa(netmask), "dev", dev},
+		{"ip", "route", "add", "default", "via", gateway, "dev", dev},
 	}
 	if err := common.Execs(os.Stderr, os.Environ(), cmds); err != nil {
 		return errors.Wrapf(err, "executing %v", cmds)
@@ -119,11 +121,11 @@ func setupNet(msg common.Message, etcWasCopied bool, driver network.ChildDriver)
 	if err := activateLoopback(); err != nil {
 		return err
 	}
-	tap, err := driver.ConfigureTap(msg.Network)
+	dev, err := driver.ConfigureNetworkChild(&msg.Network)
 	if err != nil {
 		return err
 	}
-	if err := activateTap(tap, msg.Network.IP, msg.Network.Netmask, msg.Network.Gateway, msg.Network.MTU); err != nil {
+	if err := activateDev(dev, msg.Network.IP, msg.Network.Netmask, msg.Network.Gateway, msg.Network.MTU); err != nil {
 		return err
 	}
 	if etcWasCopied {
@@ -186,6 +188,14 @@ func Child(opt Opt) error {
 	}
 	if msg.Stage != 1 {
 		return errors.Errorf("expected stage 1, got stage %d", msg.Stage)
+	}
+	// The parent calls child with Pdeathsig, but it is cleared when newuidmap SUID binary is called
+	// https://github.com/rootless-containers/rootlesskit/issues/65#issuecomment-492343646
+	runtime.LockOSThread()
+	err = unix.Prctl(unix.PR_SET_PDEATHSIG, uintptr(unix.SIGKILL), 0, 0, 0)
+	runtime.UnlockOSThread()
+	if err != nil {
+		return err
 	}
 	os.Unsetenv(opt.PipeFDEnvKey)
 	if err := pipeR.Close(); err != nil {
