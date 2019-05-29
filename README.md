@@ -539,12 +539,24 @@ k3s server --node-label foo=bar --node-label hello=world --node-taint key1=value
 
 ## Issues w/ Rootless
 
+### Ports
 When running rootless a new network namespace is created.  This means that k3s instance is running with networking
 fairly detached from the host.  The only way to access services run in k3s from the host is to setup port forwards
-to the k3s network namespace.  We have a controller that will automatically bind 6443 and any service port to the
-host with an offset of 10000.  That means service port 80 will become 10080 on the host.  Once you kill k3s and then
-start a new instance of k3s it will create a new network namespace, but it doesn't kill the old pods.  So you are left
+to the k3s network namespace.  We have a controller that will automatically bind 6443 and service port below 1024 to the host with an offset of 10000. 
+
+That means service port 80 will become 10080 on the host, but 8080 will become 8080 without any offset.
+
+Currently, only `LoadBalancer` services are automatically bound.
+
+### Daemon lifecycle
+Once you kill k3s and then start a new instance of k3s it will create a new network namespace, but it doesn't kill the old pods.  So you are left
 with a fairly broken setup.  This is the main issue at the moment, how to deal with the network namespace.
+
+The issue is tracked in https://github.com/rootless-containers/rootlesskit/issues/65
+
+### Cgroups
+
+Cgroups are not supported
 
 ## Running w/ Rootless
 
