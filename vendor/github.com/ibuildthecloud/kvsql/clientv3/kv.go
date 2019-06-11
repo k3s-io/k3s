@@ -115,7 +115,7 @@ func newKV(cfg Config) (*kv, error) {
 		}
 		driver = sqlite.NewSQLite()
 	case "mysql":
-		if db, err = mysql.Open(parts[1]); err != nil {
+		if db, err = mysql.Open(parts[1], cfg.TLS); err != nil {
 			return nil, err
 		}
 		driver = mysql.NewMySQL()
