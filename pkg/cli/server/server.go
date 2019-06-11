@@ -109,6 +109,10 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	serverConfig.ControlConfig.ExtraSchedulerAPIArgs = cfg.ExtraSchedulerArgs
 	serverConfig.ControlConfig.ClusterDomain = cfg.ClusterDomain
 	serverConfig.ControlConfig.StorageEndpoint = cfg.StorageEndpoint
+	serverConfig.ControlConfig.StorageBackend = cfg.StorageBackend
+	serverConfig.ControlConfig.StorageCAFile = cfg.StorageCAFile
+	serverConfig.ControlConfig.StorageCertFile = cfg.StorageCertFile
+	serverConfig.ControlConfig.StorageKeyFile = cfg.StorageKeyFile
 
 	_, serverConfig.ControlConfig.ClusterIPRange, err = net2.ParseCIDR(cfg.ClusterCIDR)
 	if err != nil {

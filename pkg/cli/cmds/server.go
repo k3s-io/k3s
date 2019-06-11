@@ -23,7 +23,11 @@ type Server struct {
 	ExtraSchedulerArgs  cli.StringSlice
 	ExtraControllerArgs cli.StringSlice
 	Rootless            bool
+	StorageBackend      string
 	StorageEndpoint     string
+	StorageCAFile       string
+	StorageCertFile     string
+	StorageKeyFile      string
 }
 
 var ServerConfig Server
@@ -139,10 +143,34 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Destination: &ServerConfig.Rootless,
 			},
 			cli.StringFlag{
+				Name:        "storage-backend",
+				Usage:       "Specify storage type etcd3 or kvsql",
+				Destination: &ServerConfig.StorageBackend,
+				EnvVar:      "K3S_STORAGE_BACKEND",
+			},
+			cli.StringFlag{
 				Name:        "storage-endpoint",
-				Usage:       "Specify Mysql, Postgres, or Sqlite (default) data source name",
+				Usage:       "Specify etcd, Mysql, Postgres, or Sqlite (default) data source name",
 				Destination: &ServerConfig.StorageEndpoint,
 				EnvVar:      "K3S_STORAGE_ENDPOINT",
+			},
+			cli.StringFlag{
+				Name:        "storage-cafile",
+				Usage:       "SSL Certificate Authority file used to secure storage backend communication",
+				Destination: &ServerConfig.StorageCAFile,
+				EnvVar:      "K3S_STORAGE_CAFILE",
+			},
+			cli.StringFlag{
+				Name:        "storage-certfile",
+				Usage:       "SSL certification file used to secure storage backend communication",
+				Destination: &ServerConfig.StorageCertFile,
+				EnvVar:      "K3S_STORAGE_CERTFILE",
+			},
+			cli.StringFlag{
+				Name:        "storage-keyfile",
+				Usage:       "SSL key file used to secure storage backend communication",
+				Destination: &ServerConfig.StorageKeyFile,
+				EnvVar:      "K3S_STORAGE_KEYFILE",
 			},
 			NodeIPFlag,
 			NodeNameFlag,

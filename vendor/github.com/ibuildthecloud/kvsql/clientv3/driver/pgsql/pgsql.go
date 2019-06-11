@@ -68,6 +68,8 @@ func NewPGSQL() *driver.Generic {
 func Open(dataSourceName string) (*sql.DB, error) {
 	if dataSourceName == "" {
 		dataSourceName = "postgres://postgres:postgres@localhost/"
+	} else {
+		dataSourceName = "postgres://" + dataSourceName
 	}
 	// get database name
 	dsList := strings.Split(dataSourceName, "/")

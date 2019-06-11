@@ -72,7 +72,11 @@ type Control struct {
 	KubeConfigMode        string
 	DataDir               string
 	Skips                 []string
+	StorageBackend        string
 	StorageEndpoint       string
+	StorageCAFile         string
+	StorageCertFile       string
+	StorageKeyFile        string
 	NoScheduler           bool
 	ExtraAPIArgs          []string
 	ExtraControllerArgs   []string

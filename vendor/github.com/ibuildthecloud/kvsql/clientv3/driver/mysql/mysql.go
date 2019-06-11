@@ -1,6 +1,7 @@
 package mysql
 
 import (
+	"crypto/tls"
 	"database/sql"
 	"strings"
 
@@ -64,7 +65,7 @@ func NewMySQL() *driver.Generic {
 	}
 }
 
-func Open(dataSourceName string) (*sql.DB, error) {
+func Open(dataSourceName string, tlsConfig *tls.Config) (*sql.DB, error) {
 	if dataSourceName == "" {
 		dataSourceName = "root@unix(/var/run/mysqld/mysqld.sock)/"
 	}
@@ -77,6 +78,17 @@ func Open(dataSourceName string) (*sql.DB, error) {
 		}
 		dataSourceName = dataSourceName + "kubernetes"
 	}
+
+	// setting up tlsConfig
+	if tlsConfig != nil {
+		mysql.RegisterTLSConfig("custom", tlsConfig)
+		if strings.Contains(dataSourceName, "?") {
+			dataSourceName = dataSourceName + ",tls=custom"
+		} else {
+			dataSourceName = dataSourceName + "?tls=custom"
+		}
+	}
+
 	db, err := sql.Open("mysql", dataSourceName)
 	if err != nil {
 		return nil, err
