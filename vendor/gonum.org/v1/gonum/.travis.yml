@@ -1,0 +1,48 @@
+sudo: false
+
+language: go
+
+# Do not move these lines; they are referred to by README.md.
+# Versions of go that are explicitly supported by gonum plus go tip.
+go:
+ - 1.8.x
+ - 1.9.x
+ - 1.10.x
+ - master
+
+env:
+ - TAGS=""
+ - TAGS="-tags bounds"
+ - TAGS="-tags noasm"
+ - TAGS="-tags appengine"
+
+matrix:
+ fast_finish: true
+ allow_failures:
+   - go: master
+
+before_install:
+ # Required for format check.
+ - go get golang.org/x/tools/cmd/goimports
+ # Required for imports check.
+ - go get gonum.org/v1/tools/cmd/check-imports
+ # Required for coverage.
+ - go get golang.org/x/tools/cmd/cover
+ - go get github.com/mattn/goveralls
+ # Required for dot parser checks.
+ - ./.travis/install-gocc.sh 0e2cfc030005b281b2e5a2de04fa7fe1d5063722
+
+go_import_path: gonum.org/v1/gonum
+
+# Get deps, build, test, and ensure the code is gofmt'ed.
+# If we are building as gonum, then we have access to the coveralls api key, so we can run coverage as well.
+script:
+ - ${TRAVIS_BUILD_DIR}/.travis/check-formatting.sh
+ - go get -d -t -v ./...
+ - go build -v ./...
+ - go test -a $TAGS -v ./...
+ - if [[ $TRAVIS_SECURE_ENV_VARS = "true" ]]; then bash ./.travis/test-coverage.sh; fi
+ - ${TRAVIS_BUILD_DIR}/.travis/check-imports.sh
+ # This is run last since it alters the tree.
+ - ${TRAVIS_BUILD_DIR}/.travis/check-generate.sh
+
