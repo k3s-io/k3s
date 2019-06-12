@@ -63,7 +63,7 @@ import:
 - package: github.com/coreos/go-iptables
   version: 47f22b0dd3355c0ba570ba12b0b8a36bf214c04b
 - package: github.com/coreos/go-semver
-  version: v0.2.0-9-ge214231b295a8e
+  version: v0.3.0
 - package: github.com/coreos/go-systemd
   version: 48702e0da86bd25e76cfef347e2adeb434a0d0a6
 - package: github.com/coreos/pkg
@@ -95,7 +95,7 @@ import:
 - package: github.com/euank/go-kmsg-parser
   version: v2.0.0
 - package: github.com/evanphx/json-patch
-  version: v4.1.0-19-g5858425f75500d
+  version: v4.2.0
 - package: github.com/exponent-io/jsonpath
   version: d6023ce2651d8eafb5c75bb0c7167536102ec9f5
 - package: github.com/fatih/camelcase
@@ -142,7 +142,7 @@ import:
 - package: github.com/hashicorp/golang-lru
   version: v0.5.0
 - package: github.com/ibuildthecloud/kvsql
-  version: d37dd2b0829b44a4964e48c9396e14b0536fefb6
+  version: 1afc2d8ad7d7e263c1971b05cb37e83aa5562561
   repo: https://github.com/erikwilson/rancher-kvsql.git
 - package: github.com/imdario/mergo
   version: v0.3.5
@@ -310,7 +310,7 @@ import:
 - package: k8s.io/klog
   version: v0.2.0-14-g8e90cee79f8237
 - package: k8s.io/kubernetes
-  version: v1.14.1-k3s.4
+  version: v1.14.3-k3s.1
   repo: https://github.com/rancher/k3s.git
   transitive: true
   staging: true

@@ -194,7 +194,9 @@ type Proxier struct {
 	syncPeriod    time.Duration
 	minSyncPeriod time.Duration
 	// Values are CIDR's to exclude when cleaning up IPVS rules.
-	excludeCIDRs   []string
+	excludeCIDRs []string
+	// Set to true to set sysctls arp_ignore and arp_announce
+	strictARP      bool
 	iptables       utiliptables.Interface
 	ipvs           utilipvs.Interface
 	ipset          utilipset.Interface
@@ -285,6 +287,7 @@ func NewProxier(ipt utiliptables.Interface,
 	syncPeriod time.Duration,
 	minSyncPeriod time.Duration,
 	excludeCIDRs []string,
+	strictARP bool,
 	masqueradeAll bool,
 	masqueradeBit int,
 	clusterCIDR string,
@@ -344,17 +347,19 @@ func NewProxier(ipt utiliptables.Interface,
 		}
 	}
 
-	// Set the arp_ignore sysctl we need for
-	if val, _ := sysctl.GetSysctl(sysctlArpIgnore); val != 1 {
-		if err := sysctl.SetSysctl(sysctlArpIgnore, 1); err != nil {
-			return nil, fmt.Errorf("can't set sysctl %s: %v", sysctlArpIgnore, err)
+	if strictARP {
+		// Set the arp_ignore sysctl we need for
+		if val, _ := sysctl.GetSysctl(sysctlArpIgnore); val != 1 {
+			if err := sysctl.SetSysctl(sysctlArpIgnore, 1); err != nil {
+				return nil, fmt.Errorf("can't set sysctl %s: %v", sysctlArpIgnore, err)
+			}
 		}
-	}
 
-	// Set the arp_announce sysctl we need for
-	if val, _ := sysctl.GetSysctl(sysctlArpAnnounce); val != 2 {
-		if err := sysctl.SetSysctl(sysctlArpAnnounce, 2); err != nil {
-			return nil, fmt.Errorf("can't set sysctl %s: %v", sysctlArpAnnounce, err)
+		// Set the arp_announce sysctl we need for
+		if val, _ := sysctl.GetSysctl(sysctlArpAnnounce); val != 2 {
+			if err := sysctl.SetSysctl(sysctlArpAnnounce, 2); err != nil {
+				return nil, fmt.Errorf("can't set sysctl %s: %v", sysctlArpAnnounce, err)
+			}
 		}
 	}
 
@@ -1654,15 +1659,17 @@ func (proxier *Proxier) syncEndpoint(svcPortName proxy.ServicePortName, onlyNode
 func (proxier *Proxier) cleanLegacyService(activeServices map[string]bool, currentServices map[string]*utilipvs.VirtualServer, legacyBindAddrs map[string]bool) {
 	for cs := range currentServices {
 		svc := currentServices[cs]
+		if proxier.isIPInExcludeCIDRs(svc.Address) {
+			continue
+		}
 		if _, ok := activeServices[cs]; !ok {
-			// This service was not processed in the latest sync loop so before deleting it,
-			okayToDelete := true
 			rsList, _ := proxier.ipvs.GetRealServers(svc)
 
 			// If we still have real servers graceful termination is not done
 			if len(rsList) > 0 {
-				okayToDelete = false
+				continue
 			}
+
 			// Applying graceful termination to all real servers
 			for _, rs := range rsList {
 				uniqueRS := GetUniqueRSName(svc, rs)
@@ -1675,33 +1682,34 @@ func (proxier *Proxier) cleanLegacyService(activeServices map[string]bool, curre
 					klog.Errorf("Failed to delete destination: %v, error: %v", uniqueRS, err)
 				}
 			}
-			// make sure it does not fall within an excluded CIDR range.
-			for _, excludedCIDR := range proxier.excludeCIDRs {
-				// Any validation of this CIDR already should have occurred.
-				_, n, _ := net.ParseCIDR(excludedCIDR)
-				if n.Contains(svc.Address) {
-					okayToDelete = false
-					break
-				}
+			klog.V(4).Infof("Delete service %s", svc.String())
+			if err := proxier.ipvs.DeleteVirtualServer(svc); err != nil {
+				klog.Errorf("Failed to delete service %s, error: %v", svc.String(), err)
 			}
-			if okayToDelete {
-				klog.V(4).Infof("Delete service %s", svc.String())
-				if err := proxier.ipvs.DeleteVirtualServer(svc); err != nil {
-					klog.Errorf("Failed to delete service %s, error: %v", svc.String(), err)
-				}
-				addr := svc.Address.String()
-				if _, ok := legacyBindAddrs[addr]; ok {
-					klog.V(4).Infof("Unbinding address %s", addr)
-					if err := proxier.netlinkHandle.UnbindAddress(addr, DefaultDummyDevice); err != nil {
-						klog.Errorf("Failed to unbind service addr %s from dummy interface %s: %v", addr, DefaultDummyDevice, err)
-					} else {
-						// In case we delete a multi-port service, avoid trying to unbind multiple times
-						delete(legacyBindAddrs, addr)
-					}
+			addr := svc.Address.String()
+			if _, ok := legacyBindAddrs[addr]; ok {
+				klog.V(4).Infof("Unbinding address %s", addr)
+				if err := proxier.netlinkHandle.UnbindAddress(addr, DefaultDummyDevice); err != nil {
+					klog.Errorf("Failed to unbind service addr %s from dummy interface %s: %v", addr, DefaultDummyDevice, err)
+				} else {
+					// In case we delete a multi-port service, avoid trying to unbind multiple times
+					delete(legacyBindAddrs, addr)
 				}
 			}
 		}
 	}
+}
+
+func (proxier *Proxier) isIPInExcludeCIDRs(ip net.IP) bool {
+	// make sure it does not fall within an excluded CIDR range.
+	for _, excludedCIDR := range proxier.excludeCIDRs {
+		// Any validation of this CIDR already should have occurred.
+		_, n, _ := net.ParseCIDR(excludedCIDR)
+		if n.Contains(ip) {
+			return true
+		}
+	}
+	return false
 }
 
 func (proxier *Proxier) getLegacyBindAddr(activeBindAddrs map[string]bool, currentBindAddrs []string) map[string]bool {
