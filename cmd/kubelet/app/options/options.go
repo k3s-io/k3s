@@ -132,8 +132,6 @@ type KubeletFlags struct {
 	// Whitelist of unsafe sysctls or sysctl patterns (ending in *).
 	// +optional
 	AllowedUnsafeSysctls []string
-	// containerized should be set to true if kubelet is running in a container.
-	Containerized bool
 	// remoteRuntimeEndpoint is the endpoint of remote runtime service
 	RemoteRuntimeEndpoint string
 	// remoteImageEndpoint is the endpoint of remote image service
@@ -425,7 +423,6 @@ func (f *KubeletFlags) AddFlags(mainfs *pflag.FlagSet) {
 	fs.Int32Var(&f.NodeStatusMaxImages, "node-status-max-images", f.NodeStatusMaxImages, "<Warning: Alpha feature> The maximum number of images to report in Node.Status.Images. If -1 is specified, no cap will be applied.")
 
 	// DEPRECATED FLAGS
-	fs.BoolVar(&f.Containerized, "containerized", f.Containerized, "Running kubelet in a container.")
 	fs.MarkDeprecated("containerized", "This feature will be removed in a later release.")
 	fs.StringVar(&f.BootstrapKubeconfig, "experimental-bootstrap-kubeconfig", f.BootstrapKubeconfig, "")
 	fs.MarkDeprecated("experimental-bootstrap-kubeconfig", "Use --bootstrap-kubeconfig")
@@ -462,16 +459,6 @@ func (f *KubeletFlags) AddFlags(mainfs *pflag.FlagSet) {
 func AddKubeletConfigFlags(mainfs *pflag.FlagSet, c *kubeletconfig.KubeletConfiguration) {
 	fs := pflag.NewFlagSet("", pflag.ExitOnError)
 	defer func() {
-		// All KubeletConfiguration flags are now deprecated, and any new flags that point to
-		// KubeletConfiguration fields are deprecated-on-creation. When removing flags at the end
-		// of their deprecation period, be careful to check that they have *actually* been deprecated
-		// members of the KubeletConfiguration for the entire deprecation period:
-		// e.g. if a flag was added after this deprecation function, it may not be at the end
-		// of its lifetime yet, even if the rest are.
-		deprecated := "This parameter should be set via the config file specified by the Kubelet's --config flag. See https://kubernetes.io/docs/tasks/administer-cluster/kubelet-config-file/ for more information."
-		fs.VisitAll(func(f *pflag.Flag) {
-			f.Deprecated = deprecated
-		})
 		mainfs.AddFlagSet(fs)
 	}()
 

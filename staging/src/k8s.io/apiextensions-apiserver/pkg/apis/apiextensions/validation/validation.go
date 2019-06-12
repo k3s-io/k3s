@@ -27,13 +27,10 @@ import (
 	utilvalidation "k8s.io/apimachinery/pkg/util/validation"
 	validationutil "k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/apiserver/pkg/util/webhook"
 
 	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
 	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
-	apiservervalidation "k8s.io/apiextensions-apiserver/pkg/apiserver/validation"
-	apiextensionsfeatures "k8s.io/apiextensions-apiserver/pkg/features"
 )
 
 var (
@@ -298,11 +295,7 @@ func validateCustomResourceConversion(conversion *apiextensions.CustomResourceCo
 	allErrs = append(allErrs, validateEnumStrings(fldPath.Child("strategy"), string(conversion.Strategy), []string{string(apiextensions.NoneConverter), string(apiextensions.WebhookConverter)}, true)...)
 	if conversion.Strategy == apiextensions.WebhookConverter {
 		if conversion.WebhookClientConfig == nil {
-			if utilfeature.DefaultFeatureGate.Enabled(apiextensionsfeatures.CustomResourceWebhookConversion) {
-				allErrs = append(allErrs, field.Required(fldPath.Child("webhookClientConfig"), "required when strategy is set to Webhook"))
-			} else {
-				allErrs = append(allErrs, field.Required(fldPath.Child("webhookClientConfig"), "required when strategy is set to Webhook, but not allowed because the CustomResourceWebhookConversion feature is disabled"))
-			}
+			allErrs = append(allErrs, field.Required(fldPath.Child("webhookClientConfig"), "required when strategy is set to Webhook, but not allowed because the CustomResourceWebhookConversion feature is disabled"))
 		} else {
 			cc := conversion.WebhookClientConfig
 			switch {
@@ -576,12 +569,6 @@ func ValidateCustomResourceDefinitionValidation(customResourceValidation *apiext
 		allErrs = append(allErrs, ValidateCustomResourceDefinitionOpenAPISchema(schema, fldPath.Child("openAPIV3Schema"), openAPIV3Schema)...)
 	}
 
-	// if validation passed otherwise, make sure we can actually construct a schema validator from this custom resource validation.
-	if len(allErrs) == 0 {
-		if _, _, err := apiservervalidation.NewSchemaValidator(customResourceValidation); err != nil {
-			allErrs = append(allErrs, field.Invalid(fldPath, "", fmt.Sprintf("error building validator: %v", err)))
-		}
-	}
 	return allErrs
 }
 

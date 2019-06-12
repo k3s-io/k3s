@@ -26,7 +26,6 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	admissionregistrationinternalversion "k8s.io/kubernetes/pkg/apis/admissionregistration"
 	appsinternalversion "k8s.io/kubernetes/pkg/apis/apps"
-	auditregistrationinternalversion "k8s.io/kubernetes/pkg/apis/auditregistration"
 	authenticationinternalversion "k8s.io/kubernetes/pkg/apis/authentication"
 	authorizationinternalversion "k8s.io/kubernetes/pkg/apis/authorization"
 	autoscalinginternalversion "k8s.io/kubernetes/pkg/apis/autoscaling"
@@ -34,14 +33,12 @@ import (
 	certificatesinternalversion "k8s.io/kubernetes/pkg/apis/certificates"
 	coordinationinternalversion "k8s.io/kubernetes/pkg/apis/coordination"
 	coreinternalversion "k8s.io/kubernetes/pkg/apis/core"
-	eventsinternalversion "k8s.io/kubernetes/pkg/apis/events"
 	extensionsinternalversion "k8s.io/kubernetes/pkg/apis/extensions"
 	networkinginternalversion "k8s.io/kubernetes/pkg/apis/networking"
 	nodeinternalversion "k8s.io/kubernetes/pkg/apis/node"
 	policyinternalversion "k8s.io/kubernetes/pkg/apis/policy"
 	rbacinternalversion "k8s.io/kubernetes/pkg/apis/rbac"
 	schedulinginternalversion "k8s.io/kubernetes/pkg/apis/scheduling"
-	settingsinternalversion "k8s.io/kubernetes/pkg/apis/settings"
 	storageinternalversion "k8s.io/kubernetes/pkg/apis/storage"
 )
 
@@ -52,21 +49,18 @@ var localSchemeBuilder = runtime.SchemeBuilder{
 	admissionregistrationinternalversion.AddToScheme,
 	coreinternalversion.AddToScheme,
 	appsinternalversion.AddToScheme,
-	auditregistrationinternalversion.AddToScheme,
 	authenticationinternalversion.AddToScheme,
 	authorizationinternalversion.AddToScheme,
 	autoscalinginternalversion.AddToScheme,
 	batchinternalversion.AddToScheme,
 	certificatesinternalversion.AddToScheme,
 	coordinationinternalversion.AddToScheme,
-	eventsinternalversion.AddToScheme,
 	extensionsinternalversion.AddToScheme,
 	networkinginternalversion.AddToScheme,
 	nodeinternalversion.AddToScheme,
 	policyinternalversion.AddToScheme,
 	rbacinternalversion.AddToScheme,
 	schedulinginternalversion.AddToScheme,
-	settingsinternalversion.AddToScheme,
 	storageinternalversion.AddToScheme,
 }
 

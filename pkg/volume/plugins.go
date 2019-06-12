@@ -18,10 +18,6 @@ package volume
 
 import (
 	"fmt"
-	"net"
-	"strings"
-	"sync"
-
 	authenticationv1 "k8s.io/api/authentication/v1"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -32,11 +28,13 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	storagelisters "k8s.io/client-go/listers/storage/v1beta1"
 	"k8s.io/client-go/tools/record"
-	cloudprovider "k8s.io/cloud-provider"
 	"k8s.io/klog"
 	"k8s.io/kubernetes/pkg/util/mount"
 	"k8s.io/kubernetes/pkg/volume/util/recyclerclient"
 	"k8s.io/kubernetes/pkg/volume/util/subpath"
+	"net"
+	"strings"
+	"sync"
 )
 
 type ProbeOperation uint32
@@ -382,9 +380,6 @@ type VolumeHost interface {
 	// context.
 	NewWrapperUnmounter(volName string, spec Spec, podUID types.UID) (Unmounter, error)
 
-	// Get cloud provider from kubelet.
-	GetCloudProvider() cloudprovider.Interface
-
 	// Get mounter interface.
 	GetMounter(pluginName string) mount.Interface
 
@@ -557,6 +552,10 @@ func NewSpecFromPersistentVolume(pv *v1.PersistentVolume, readOnly bool) *Spec {
 func (pm *VolumePluginMgr) InitPlugins(plugins []VolumePlugin, prober DynamicPluginProber, host VolumeHost) error {
 	pm.mutex.Lock()
 	defer pm.mutex.Unlock()
+
+	if pm.Host != nil {
+		return nil
+	}
 
 	pm.Host = host
 

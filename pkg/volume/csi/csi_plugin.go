@@ -23,6 +23,7 @@ import (
 	"path"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"context"
@@ -33,7 +34,6 @@ import (
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	utilversion "k8s.io/apimachinery/pkg/util/version"
 	"k8s.io/apimachinery/pkg/util/wait"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
@@ -41,7 +41,6 @@ import (
 	csiinformer "k8s.io/client-go/informers/storage/v1beta1"
 	clientset "k8s.io/client-go/kubernetes"
 	csilister "k8s.io/client-go/listers/storage/v1beta1"
-	csitranslationplugins "k8s.io/csi-translation-lib/plugins"
 	"k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/volume"
 	"k8s.io/kubernetes/pkg/volume/csi/nodeinfomanager"
@@ -65,6 +64,12 @@ const (
 	csiResyncPeriod = time.Minute
 )
 
+var (
+	WaitForValidHostName bool
+	csiPluginInstance *csiPlugin
+	csiPluginLock sync.Mutex
+)
+
 var deprecatedSocketDirVersions = []string{"0.1.0", "0.2.0", "0.3.0", "0.4.0"}
 
 type csiPlugin struct {
@@ -82,11 +87,18 @@ const ephemeralDriverMode driverMode = "ephemeral"
 
 // ProbeVolumePlugins returns implemented plugins
 func ProbeVolumePlugins() []volume.VolumePlugin {
-	p := &csiPlugin{
+	csiPluginLock.Lock()
+	defer csiPluginLock.Unlock()
+
+	if csiPluginInstance != nil {
+		return []volume.VolumePlugin{csiPluginInstance}
+	}
+
+	csiPluginInstance = &csiPlugin{
 		host:         nil,
 		blockEnabled: utilfeature.DefaultFeatureGate.Enabled(features.CSIBlockVolume),
 	}
-	return []volume.VolumePlugin{p}
+	return []volume.VolumePlugin{csiPluginInstance}
 }
 
 // volume.VolumePlugin methods
@@ -210,6 +222,21 @@ func (h *RegistrationHandler) DeRegisterPlugin(pluginName string) {
 }
 
 func (p *csiPlugin) Init(host volume.VolumeHost) error {
+	csiPluginLock.Lock()
+	defer csiPluginLock.Unlock()
+
+	if WaitForValidHostName && host.GetHostName() == "" {
+		for {
+			if p.host != nil {
+				return nil
+			}
+			csiPluginLock.Unlock()
+			time.Sleep(time.Second)
+			klog.Infof("Waiting for CSI volume hostname")
+			csiPluginLock.Lock()
+		}
+	}
+
 	p.host = host
 
 	if utilfeature.DefaultFeatureGate.Enabled(features.CSIDriverRegistry) {
@@ -225,81 +252,9 @@ func (p *csiPlugin) Init(host volume.VolumeHost) error {
 		}
 	}
 
-	var migratedPlugins = map[string](func() bool){
-		csitranslationplugins.GCEPDInTreePluginName: func() bool {
-			return utilfeature.DefaultFeatureGate.Enabled(features.CSIMigration) && utilfeature.DefaultFeatureGate.Enabled(features.CSIMigrationGCE)
-		},
-		csitranslationplugins.AWSEBSInTreePluginName: func() bool {
-			return utilfeature.DefaultFeatureGate.Enabled(features.CSIMigration) && utilfeature.DefaultFeatureGate.Enabled(features.CSIMigrationAWS)
-		},
-		csitranslationplugins.CinderInTreePluginName: func() bool {
-			return utilfeature.DefaultFeatureGate.Enabled(features.CSIMigration) && utilfeature.DefaultFeatureGate.Enabled(features.CSIMigrationOpenStack)
-		},
-	}
-
 	// Initializing the label management channels
-	nim = nodeinfomanager.NewNodeInfoManager(host.GetNodeName(), host, migratedPlugins)
+	nim = nodeinfomanager.NewNodeInfoManager(host.GetNodeName(), host, nil)
 
-	if utilfeature.DefaultFeatureGate.Enabled(features.CSINodeInfo) &&
-		utilfeature.DefaultFeatureGate.Enabled(features.CSIMigration) {
-		// This function prevents Kubelet from posting Ready status until CSINodeInfo
-		// is both installed and initialized
-		if err := initializeCSINode(host); err != nil {
-			return fmt.Errorf("failed to initialize CSINodeInfo: %v", err)
-		}
-	}
-
-	return nil
-}
-
-func initializeCSINode(host volume.VolumeHost) error {
-	kvh, ok := host.(volume.KubeletVolumeHost)
-	if !ok {
-		klog.V(4).Info("Cast from VolumeHost to KubeletVolumeHost failed. Skipping CSINodeInfo initialization, not running on kubelet")
-		return nil
-	}
-	kubeClient := host.GetKubeClient()
-	if kubeClient == nil {
-		// Kubelet running in standalone mode. Skip CSINodeInfo initialization
-		klog.Warning("Skipping CSINodeInfo initialization, kubelet running in standalone mode")
-		return nil
-	}
-
-	kvh.SetKubeletError(errors.New("CSINodeInfo is not yet initialized"))
-
-	go func() {
-		defer utilruntime.HandleCrash()
-
-		// Backoff parameters tuned to retry over 140 seconds. Will fail and restart the Kubelet
-		// after max retry steps.
-		initBackoff := wait.Backoff{
-			Steps:    6,
-			Duration: 15 * time.Millisecond,
-			Factor:   6.0,
-			Jitter:   0.1,
-		}
-		err := wait.ExponentialBackoff(initBackoff, func() (bool, error) {
-			klog.V(4).Infof("Initializing migrated drivers on CSINodeInfo")
-			err := nim.InitializeCSINodeWithAnnotation()
-			if err != nil {
-				kvh.SetKubeletError(fmt.Errorf("Failed to initialize CSINodeInfo: %v", err))
-				klog.Errorf("Failed to initialize CSINodeInfo: %v", err)
-				return false, nil
-			}
-
-			// Successfully initialized drivers, allow Kubelet to post Ready
-			kvh.SetKubeletError(nil)
-			return true, nil
-		})
-		if err != nil {
-			// 2 releases after CSIMigration and all CSIMigrationX (where X is a volume plugin)
-			// are permanently enabled the apiserver/controllers can assume that the kubelet is
-			// using CSI for all Migrated volume plugins. Then all the CSINode initialization
-			// code can be dropped from Kubelet.
-			// Kill the Kubelet process and allow it to restart to retry initialization
-			klog.Fatalf("Failed to initialize CSINodeInfo after retrying")
-		}
-	}()
 	return nil
 }
 
@@ -326,10 +281,6 @@ func (p *csiPlugin) CanSupport(spec *volume.Spec) bool {
 	if spec == nil {
 		return false
 	}
-	if utilfeature.DefaultFeatureGate.Enabled(features.CSIInlineVolume) {
-		return (spec.PersistentVolume != nil && spec.PersistentVolume.Spec.CSI != nil) ||
-			(spec.Volume != nil && spec.Volume.CSI != nil)
-	}
 
 	return spec.PersistentVolume != nil && spec.PersistentVolume.Spec.CSI != nil
 }
@@ -347,7 +298,7 @@ func (p *csiPlugin) NewMounter(
 	pod *api.Pod,
 	_ volume.VolumeOptions) (volume.Mounter, error) {
 
-	volSrc, pvSrc, err := getSourceFromSpec(spec)
+	_, pvSrc, err := getSourceFromSpec(spec)
 	if err != nil {
 		return nil, err
 	}
@@ -359,12 +310,6 @@ func (p *csiPlugin) NewMounter(
 	)
 
 	switch {
-	case volSrc != nil && utilfeature.DefaultFeatureGate.Enabled(features.CSIInlineVolume):
-		volumeHandle = makeVolumeHandle(string(pod.UID), spec.Name())
-		driverName = volSrc.Driver
-		if volSrc.ReadOnly != nil {
-			readOnly = *volSrc.ReadOnly
-		}
 	case pvSrc != nil:
 		driverName = pvSrc.Driver
 		volumeHandle = pvSrc.VolumeHandle
@@ -471,22 +416,7 @@ func (p *csiPlugin) ConstructVolumeSpec(volumeName, mountPath string) (*volume.S
 	klog.V(4).Info(log("plugin.ConstructVolumeSpec extracted [%#v]", volData))
 
 	var spec *volume.Spec
-	inlineEnabled := utilfeature.DefaultFeatureGate.Enabled(features.CSIInlineVolume)
-
-	if inlineEnabled {
-		mode := driverMode(volData[volDataKey.driverMode])
-		switch {
-		case mode == ephemeralDriverMode:
-			spec = p.constructVolSourceSpec(volData[volDataKey.specVolID], volData[volDataKey.driverName])
-
-		case mode == persistentDriverMode:
-			fallthrough
-		default:
-			spec = p.constructPVSourceSpec(volData[volDataKey.specVolID], volData[volDataKey.driverName], volData[volDataKey.volHandle])
-		}
-	} else {
-		spec = p.constructPVSourceSpec(volData[volDataKey.specVolID], volData[volDataKey.driverName], volData[volDataKey.volHandle])
-	}
+	spec = p.constructPVSourceSpec(volData[volDataKey.specVolID], volData[volDataKey.driverName], volData[volDataKey.volHandle])
 
 	return spec, nil
 }
@@ -774,18 +704,6 @@ func (p *csiPlugin) skipAttach(driver string) (bool, error) {
 // 2) If Mode cannot be resolved to either {persistent | ephemeral}, an error is returned
 // See https://github.com/kubernetes/enhancements/blob/master/keps/sig-storage/20190122-csi-inline-volumes.md
 func (p *csiPlugin) getDriverMode(spec *volume.Spec) (driverMode, error) {
-	// TODO (vladimirvivien) ultimately, mode will be retrieved from CSIDriver.Spec.Mode.
-	// However, in alpha version, mode is determined by the volume source:
-	// 1) if volume.Spec.Volume.CSI != nil -> mode is ephemeral
-	// 2) if volume.Spec.PersistentVolume.Spec.CSI != nil -> persistent
-	volSrc, _, err := getSourceFromSpec(spec)
-	if err != nil {
-		return "", err
-	}
-
-	if volSrc != nil && utilfeature.DefaultFeatureGate.Enabled(features.CSIInlineVolume) {
-		return ephemeralDriverMode, nil
-	}
 	return persistentDriverMode, nil
 }
 

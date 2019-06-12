@@ -29,8 +29,6 @@ import (
 	fakeadmissionregistrationinternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/admissionregistration/internalversion/fake"
 	appsinternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/apps/internalversion"
 	fakeappsinternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/apps/internalversion/fake"
-	auditregistrationinternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/auditregistration/internalversion"
-	fakeauditregistrationinternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/auditregistration/internalversion/fake"
 	authenticationinternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/authentication/internalversion"
 	fakeauthenticationinternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/authentication/internalversion/fake"
 	authorizationinternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/authorization/internalversion"
@@ -45,8 +43,6 @@ import (
 	fakecoordinationinternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/coordination/internalversion/fake"
 	coreinternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/internalversion"
 	fakecoreinternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/internalversion/fake"
-	eventsinternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/events/internalversion"
-	fakeeventsinternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/events/internalversion/fake"
 	extensionsinternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/extensions/internalversion"
 	fakeextensionsinternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/extensions/internalversion/fake"
 	networkinginternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/networking/internalversion"
@@ -59,8 +55,6 @@ import (
 	fakerbacinternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/rbac/internalversion/fake"
 	schedulinginternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/scheduling/internalversion"
 	fakeschedulinginternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/scheduling/internalversion/fake"
-	settingsinternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/settings/internalversion"
-	fakesettingsinternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/settings/internalversion/fake"
 	storageinternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/storage/internalversion"
 	fakestorageinternalversion "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/storage/internalversion/fake"
 )
@@ -122,11 +116,6 @@ func (c *Clientset) Apps() appsinternalversion.AppsInterface {
 	return &fakeappsinternalversion.FakeApps{Fake: &c.Fake}
 }
 
-// Auditregistration retrieves the AuditregistrationClient
-func (c *Clientset) Auditregistration() auditregistrationinternalversion.AuditregistrationInterface {
-	return &fakeauditregistrationinternalversion.FakeAuditregistration{Fake: &c.Fake}
-}
-
 // Authentication retrieves the AuthenticationClient
 func (c *Clientset) Authentication() authenticationinternalversion.AuthenticationInterface {
 	return &fakeauthenticationinternalversion.FakeAuthentication{Fake: &c.Fake}
@@ -157,11 +146,6 @@ func (c *Clientset) Coordination() coordinationinternalversion.CoordinationInter
 	return &fakecoordinationinternalversion.FakeCoordination{Fake: &c.Fake}
 }
 
-// Events retrieves the EventsClient
-func (c *Clientset) Events() eventsinternalversion.EventsInterface {
-	return &fakeeventsinternalversion.FakeEvents{Fake: &c.Fake}
-}
-
 // Extensions retrieves the ExtensionsClient
 func (c *Clientset) Extensions() extensionsinternalversion.ExtensionsInterface {
 	return &fakeextensionsinternalversion.FakeExtensions{Fake: &c.Fake}
@@ -190,11 +174,6 @@ func (c *Clientset) Rbac() rbacinternalversion.RbacInterface {
 // Scheduling retrieves the SchedulingClient
 func (c *Clientset) Scheduling() schedulinginternalversion.SchedulingInterface {
 	return &fakeschedulinginternalversion.FakeScheduling{Fake: &c.Fake}
-}
-
-// Settings retrieves the SettingsClient
-func (c *Clientset) Settings() settingsinternalversion.SettingsInterface {
-	return &fakesettingsinternalversion.FakeSettings{Fake: &c.Fake}
 }
 
 // Storage retrieves the StorageClient

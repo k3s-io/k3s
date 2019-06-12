@@ -34,24 +34,12 @@ const (
 	// CustomResourceValidation is a list of validation methods for CustomResources
 	CustomResourceValidation utilfeature.Feature = "CustomResourceValidation"
 
-	// owner: @roycaihw, @sttts
-	// alpha: v1.14
-	//
-	// CustomResourcePublishOpenAPI enables publishing of CRD OpenAPI specs.
-	CustomResourcePublishOpenAPI utilfeature.Feature = "CustomResourcePublishOpenAPI"
-
 	// owner: @sttts, @nikhita
 	// alpha: v1.10
 	// beta: v1.11
 	//
 	// CustomResourceSubresources defines the subresources for CustomResources
 	CustomResourceSubresources utilfeature.Feature = "CustomResourceSubresources"
-
-	// owner: @mbohlool, @roycaihw
-	// alpha: v1.13
-	//
-	// CustomResourceWebhookConversion defines the webhook conversion for Custom Resources.
-	CustomResourceWebhookConversion utilfeature.Feature = "CustomResourceWebhookConversion"
 )
 
 func init() {
@@ -62,8 +50,6 @@ func init() {
 // To add a new feature, define a key for it above and add it here. The features will be
 // available throughout Kubernetes binaries.
 var defaultKubernetesFeatureGates = map[utilfeature.Feature]utilfeature.FeatureSpec{
-	CustomResourceValidation:        {Default: true, PreRelease: utilfeature.Beta},
-	CustomResourceSubresources:      {Default: true, PreRelease: utilfeature.Beta},
-	CustomResourceWebhookConversion: {Default: false, PreRelease: utilfeature.Alpha},
-	CustomResourcePublishOpenAPI:    {Default: false, PreRelease: utilfeature.Alpha},
+	CustomResourceValidation:     {Default: true, PreRelease: utilfeature.Beta},
+	CustomResourceSubresources:   {Default: true, PreRelease: utilfeature.Beta},
 }

@@ -38,7 +38,6 @@ import (
 	"github.com/google/cadvisor/metrics"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"google.golang.org/grpc"
 	"k8s.io/klog"
 
 	v1 "k8s.io/api/core/v1"
@@ -58,8 +57,6 @@ import (
 	"k8s.io/kubernetes/pkg/api/legacyscheme"
 	api "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/apis/core/v1/validation"
-	"k8s.io/kubernetes/pkg/kubelet/apis/podresources"
-	podresourcesapi "k8s.io/kubernetes/pkg/kubelet/apis/podresources/v1alpha1"
 	"k8s.io/kubernetes/pkg/kubelet/apis/resourcemetrics/v1alpha1"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
 	"k8s.io/kubernetes/pkg/kubelet/prober"
@@ -68,7 +65,6 @@ import (
 	"k8s.io/kubernetes/pkg/kubelet/server/stats"
 	"k8s.io/kubernetes/pkg/kubelet/server/streaming"
 	kubelettypes "k8s.io/kubernetes/pkg/kubelet/types"
-	"k8s.io/kubernetes/pkg/kubelet/util"
 	"k8s.io/kubernetes/pkg/util/configz"
 )
 
@@ -167,17 +163,6 @@ func ListenAndServeKubeletReadOnlyServer(host HostInterface, resourceAnalyzer st
 		MaxHeaderBytes: 1 << 20,
 	}
 	klog.Fatal(server.ListenAndServe())
-}
-
-// ListenAndServePodResources initializes a gRPC server to serve the PodResources service
-func ListenAndServePodResources(socket string, podsProvider podresources.PodsProvider, devicesProvider podresources.DevicesProvider) {
-	server := grpc.NewServer()
-	podresourcesapi.RegisterPodResourcesListerServer(server, podresources.NewPodResourcesServer(podsProvider, devicesProvider))
-	l, err := util.CreateListener(socket)
-	if err != nil {
-		klog.Fatalf("Failed to create listener for podResources endpoint: %v", err)
-	}
-	klog.Fatal(server.Serve(l))
 }
 
 // AuthInterface contains all methods required by the auth filters
