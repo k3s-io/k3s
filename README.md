@@ -555,7 +555,7 @@ mount namespace.
 
 ## Upgrades
 
-To upgrade k3s from older version you can either run the installation script if you already ran k3s using the installation script, this can be done using:
+To upgrade k3s from an older version you can re-run the installation script using the same flags, eg:
 
 ```sh
 curl -sfL https://get.k3s.io | sh -
@@ -567,12 +567,27 @@ If you want to upgrade to specific version you can run the following command:
 curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=vX.Y.Z-rc1 sh -
 ```
 
-### Upgrades for openrc
+Or to manually upgrade k3s:
+1. Download the desired version of k3s from [releases](https://github.com/rancher/k3s/releases/latest)
+2. Install to an appropriate location (normally `/usr/local/bin/k3s`)
+3. Stop the old version
+4. Start the new version
 
-To upgrade with openrc you can download newer version of `k3s` from latest [release](https://github.com/rancher/k3s/releases/latest) and replace the binary in `/usr/local/bin/k3s` and then restart the service:
+Restarting k3s is supported by the installation script for systemd and openrc.
+To restart manually for systemd use:
 ```sh
-service k3s restart
+sudo systemctl restart k3s
 ```
+
+To restart manually for openrc use:
+```sh
+sudo service k3s restart
+```
+
+Upgrading an air-gap environment can be accomplished in the following manner:
+1. Download air-gap images and install if changed
+2. Install new k3s binary (from installer or manual download)
+3. Restart k3s (if not restarted automatically by installer)
 
 TODO
 ----
