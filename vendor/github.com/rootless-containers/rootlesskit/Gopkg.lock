@@ -55,6 +55,19 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:a1d58d11ad642c9760251e0846ee37ad1237e83f8245c8d310e3eba0d76bb7f4"
+  name = "github.com/insomniacslk/dhcp"
+  packages = [
+    "dhcpv4",
+    "dhcpv4/client4",
+    "iana",
+    "rfc1035label",
+  ]
+  pruneopts = "UT"
+  revision = "625d653f51917b167cc2e53ef8fe595e85dd5fa4"
+
+[[projects]]
+  branch = "master"
   digest = "1:dd1e851f4e3a5ee3f51613c79a01666e04e5e9289e2da3f6f815c008010fc02f"
   name = "github.com/jamescun/tuntap"
   packages = ["."]
@@ -129,6 +142,18 @@
   version = "v0.7.1"
 
 [[projects]]
+  branch = "master"
+  digest = "1:35bdf197f9a11e01b3e2d9a35af57cd2b0ed0023d7c4d63a3e1bd7762275a17a"
+  name = "github.com/u-root/u-root"
+  packages = [
+    "pkg/rand",
+    "pkg/ubinary",
+    "pkg/uio",
+  ]
+  pruneopts = "UT"
+  revision = "34b144e97033ea76860cc0fa6a69256cd5fe2133"
+
+[[projects]]
   digest = "1:b24d38b282bacf9791408a080f606370efa3d364e4b5fd9ba0f7b87786d3b679"
   name = "github.com/urfave/cli"
   packages = ["."]
@@ -138,9 +163,15 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:7ccb2dbb79f60b4e530c7dc3a0b3681b3869cf7ea91c645735e4dd4e6e3264fd"
+  digest = "1:19df0dab53c3fdea922472b4199990146f3db473881fdc59317d8b4800df145a"
   name = "golang.org/x/net"
-  packages = ["context/ctxhttp"]
+  packages = [
+    "bpf",
+    "context/ctxhttp",
+    "internal/iana",
+    "internal/socket",
+    "ipv4",
+  ]
   pruneopts = "UT"
   revision = "74de082e2cca95839e88aa0aeee5aadf6ce7710f"
 
@@ -162,6 +193,8 @@
     "github.com/docker/docker/pkg/idtools",
     "github.com/google/uuid",
     "github.com/gorilla/mux",
+    "github.com/insomniacslk/dhcp/dhcpv4",
+    "github.com/insomniacslk/dhcp/dhcpv4/client4",
     "github.com/jamescun/tuntap",
     "github.com/moby/vpnkit/go/pkg/vmnet",
     "github.com/pkg/errors",

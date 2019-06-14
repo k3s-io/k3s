@@ -1,15 +1,40 @@
 # RootlessKit: the gate to the rootless world
 
-`rootlesskit` is a kind of Linux-native "fake root" utility, made for mainly running [Docker and Kubernetes as an unprivileged user](https://github.com/rootless-containers/usernetes).
+RootlessKit is a kind of Linux-native "fake root" utility, made for mainly running [Docker and Kubernetes as an unprivileged user](https://github.com/rootless-containers/usernetes), so as to protect the real root on the host from potential container-breakout attacks.
 
-`rootlesskit` does an equivalent of [`unshare(1)`](http://man7.org/linux/man-pages/man1/unshare.1.html) and [`newuidmap(1)`](http://man7.org/linux/man-pages/man1/newuidmap.1.html)/[`newgidmap(1)`](http://man7.org/linux/man-pages/man1/newgidmap.1.html) in a single command, for creating unprivileged [`user_namespaces(7)`](http://man7.org/linux/man-pages/man7/user_namespaces.7.html) and [`mount_namespaces(7)`](http://man7.org/linux/man-pages/man7/user_namespaces.7.html) with [`subuid(5)`](http://man7.org/linux/man-pages/man5/subuid.5.html) and [`subgid(5)`](http://man7.org/linux/man-pages/man5/subgid.5.html).
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-`rootlesskit` also supports network namespace isolation and userspace NAT using ["slirp"](#slirp).
-Kernel NAT using SUID-enabled [`lxc-user-nic(1)`](https://linuxcontainers.org/lxc/manpages/man1/lxc-user-nic.1.html) is also on the plan.
+
+- [What it actually does](#what-it-actually-does)
+- [Projects using RootlessKit](#projects-using-rootlesskit)
+- [Setup](#setup)
+  - [Requirements](#requirements)
+    - [Distribution-specific hints](#distribution-specific-hints)
+- [Usage](#usage)
+- [State directory](#state-directory)
+- [Environment variables](#environment-variables)
+- [Network Drivers](#network-drivers)
+  - [`--net=host` (default)](#--nethost-default)
+  - [`--net=slirp4netns` (recommended)](#--netslirp4netns-recommended)
+  - [`--net=vpnkit`](#--netvpnkit)
+  - [`--net=lxc-user-nic` (experimental)](#--netlxc-user-nic-experimental)
+- [Port Drivers](#port-drivers)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
+## What it actually does
+
+RootlessKit creates [`user_namespaces(7)`](http://man7.org/linux/man-pages/man7/user_namespaces.7.html) and [`mount_namespaces(7)`](http://man7.org/linux/man-pages/man7/mount_namespaces.7.html), and executes [`newuidmap(1)`](http://man7.org/linux/man-pages/man1/newuidmap.1.html)/[`newgidmap(1)`](http://man7.org/linux/man-pages/man1/newgidmap.1.html) along with [`subuid(5)`](http://man7.org/linux/man-pages/man5/subuid.5.html) and [`subgid(5)`](http://man7.org/linux/man-pages/man5/subgid.5.html).
+
+RootlessKit also supports isolating [`network_namespaces(7)`](http://man7.org/linux/man-pages/man7/network_namespaces.7.html) with userspace NAT using ["slirp"](#network-drivers).
+Kernel NAT using SUID-enabled [`lxc-user-nic(1)`](https://linuxcontainers.org/lxc/manpages/man1/lxc-user-nic.1.html) is also experimentally supported.
 
 ## Projects using RootlessKit
 
+* [Docker/Moby](https://get.docker.com/rootless)
 * [Usernetes](https://github.com/rootless-containers/usernetes): Docker & Kubernetes, installable under a non-root user's `$HOME`.
+* [k3s](https://k3s.io/): Lightweight Kubernetes
 * [BuildKit](https://github.com/moby/buildkit): Next-generation `docker build` backend
 
 ## Setup
@@ -19,21 +44,36 @@ $ go get github.com/rootless-containers/rootlesskit/cmd/rootlesskit
 $ go get github.com/rootless-containers/rootlesskit/cmd/rootlessctl
 ```
 
-Requirements:
-* Some distros such as Debian (excluding Ubuntu) and Arch Linux require `sudo sh -c "echo 1 > /proc/sys/kernel/unprivileged_userns_clone"`.
-* `newuidmap` and `newgidmap` need to be installed on the host. These commands are provided by the `uidmap` package on most distros.
-* `/etc/subuid` and `/etc/subgid` should contain >= 65536 sub-IDs. e.g. `penguin:231072:65536`.
+or just run `make` to make binaries under `./bin` directory.
+
+### Requirements
+
+* `newuidmap` and `newgidmap` need to be installed on the host. These commands are provided by the `uidmap` package on most distributions.
+
+* `/etc/subuid` and `/etc/subgid` should contain more than 65536 sub-IDs. e.g. `penguin:231072:65536`. These files are automatically configured on most distributions.
 
 ```console
 $ id -u
 1001
 $ whoami
 penguin
-$ grep ^$(whoami): /etc/subuid
+$ grep "^$(whoami):" /etc/subuid
 penguin:231072:65536
-$ grep ^$(whoami): /etc/subgid
+$ grep "^$(whoami):" /etc/subgid
 penguin:231072:65536
 ```
+
+#### Distribution-specific hints
+
+Debian (excluding Ubuntu):
+* `sudo sh -c "echo 1 > /proc/sys/kernel/unprivileged_userns_clone"` is required
+
+Arch Linux:
+* `sudo sh -c "echo 1 > /proc/sys/kernel/unprivileged_userns_clone"` is required
+
+RHEL/CentOS 7:
+* `sudo sh -c "echo 28633 > /proc/sys/user/max_user_namespaces"` is required
+* [COPR package `vbatts/shadow-utils-newxidmap`](https://copr.fedorainfracloud.org/coprs/vbatts/shadow-utils-newxidmap/) needs to be installed
 
 
 ## Usage
@@ -70,10 +110,10 @@ rootlesskit$ rm /etc/resolv.conf
 rootlesskit$ vi /etc/resolv.conf
 ```
 
-You can even create network namespaces with [Slirp](#slirp):
+You can even create network namespaces with [Slirp](#network-drivers):
 
 ```console
-$ rootlesskit --copy-up=/etc --copy-up=/run --net=slirp4netns bash
+$ rootlesskit --copy-up=/etc --copy-up=/run --net=slirp4netns --disable-host-loopback bash
 rootlesskit$ ip netns add foo
 ...
 ```
@@ -95,7 +135,7 @@ allow
 Full CLI options:
 
 ```console
-$ rootlesskit --help
+
 NAME:
    rootlesskit - the gate to the rootless world
 
@@ -103,40 +143,37 @@ USAGE:
    rootlesskit [global options] command [command options] [arguments...]
 
 VERSION:
-   0.3.0-alpha.0
+   0.3.0+dev
 
 COMMANDS:
      help, h  Shows a list of commands or help for one command
 
 GLOBAL OPTIONS:
-   --debug                     debug mode
-   --state-dir value           state directory
-   --net value                 network driver [host, slirp4netns, vpnkit, vdeplug_slirp] (default: "host")
-   --slirp4netns-binary value  path of slirp4netns binary for --net=slirp4netns (default: "slirp4netns")
-   --vpnkit-binary value       path of VPNKit binary for --net=vpnkit (default: "vpnkit")
-   --mtu value                 MTU for non-host network (default: 65520 for slirp4netns, 1500 for others) (default: 0)
-   --cidr value                CIDR for slirp4netns network (default: 10.0.2.0/24, requires slirp4netns v0.3.0+ for custom CIDR)
-   --disable-host-loopback     prohibit connecting to 127.0.0.1:* on the host namespace
-   --copy-up value             mount a filesystem and copy-up the contents. e.g. "--copy-up=/etc" (typically required for non-host network)
-   --copy-up-mode value        copy-up mode [tmpfs+symlink] (default: "tmpfs+symlink")
-   --port-driver value         port driver for non-host network. [none, socat] (default: "none")
-   --help, -h                  show help
-   --version, -v               print the version
-```
-
-## Building from source
-`rootlesskit` and `rootlessctl` can be built from source using:
-
-```
-make
+   --debug                      debug mode
+   --state-dir value            state directory
+   --net value                  network driver [host, slirp4netns, vpnkit, lxc-user-nic(experimental), vdeplug_slirp(deprecated)] (default: "host")
+   --slirp4netns-binary value   path of slirp4netns binary for --net=slirp4netns (default: "slirp4netns")
+   --vpnkit-binary value        path of VPNKit binary for --net=vpnkit (default: "vpnkit")
+   --lxc-user-nic-binary value  path of lxc-user-nic binary for --net=lxc-user-nic (default: "/usr/lib/x86_64-linux-gnu/lxc/lxc-user-nic")
+   --lxc-user-nic-bridge value  lxc-user-nic bridge name (default: "lxcbr0")
+   --mtu value                  MTU for non-host network (default: 65520 for slirp4netns, 1500 for others) (default: 0)
+   --cidr value                 CIDR for slirp4netns network (default: 10.0.2.0/24, requires slirp4netns v0.3.0+ for custom CIDR)
+   --disable-host-loopback      prohibit connecting to 127.0.0.1:* on the host namespace
+   --copy-up value              mount a filesystem and copy-up the contents. e.g. "--copy-up=/etc" (typically required for non-host network)
+   --copy-up-mode value         copy-up mode [tmpfs+symlink] (default: "tmpfs+symlink")
+   --port-driver value          port driver for non-host network. [none, socat, slirp4netns, builtin(experimental)] (default: "none")
+   --help, -h                   show help
+   --version, -v                print the version
 ```
 
 ## State directory
 
-The following files will be created in the `--state-dir` directory:
+The following files will be created in the state directory, which can be specified with `--state-dir`:
 * `lock`: lock file
 * `child_pid`: decimal PID text that can be used for `nsenter(1)`.
-* `api.sock`: REST API socket for `rootlessctl`. See [Port forwarding](#port-forwarding) section.
+* `api.sock`: REST API socket for `rootlessctl`. See [Port Drivers](#port-drivers) section.
+
+If `--state-dir` is not specified, RootlessKit creates a temporary state directory on `/tmp` and removes it on exit.
 
 Undocumented files are subject to change.
 
@@ -147,20 +184,95 @@ The following environment variables will be set for the child process:
 
 Undocumented environment variables are subject to change.
 
-## Slirp
+## Network Drivers
 
-Remarks:
-* Specifying `--copy-up=/etc` is highly recommended unless `/etc/resolv.conf` is statically configured. Otherwise `/etc/resolv.conf` will be invalidated when it is recreated on the host, typically by NetworkManager or systemd-resolved.
+RootlessKit provides several drivers for providing network connectivity:
 
-Currently there are three slirp implementations supported by rootlesskit:
-* `--net=slirp4netns`, using [slirp4netns](https://github.com/rootless-containers/slirp4netns) (recommended)
-* `--net=vpnkit`, using [VPNKit](https://github.com/moby/vpnkit)
-* `--net=vdeplug_slirp`, using [vdeplug_slirp](https://github.com/rd235/vdeplug_slirp)
+* `--net=host`: use host network namespace (default)
+* `--net=slirp4netns`: use [slirp4netns](https://github.com/rootless-containers/slirp4netns) (recommended)
+* `--net=vpnkit`: use [VPNKit](https://github.com/moby/vpnkit)
+* `--net=lxc-user-nic`: use `lxc-user-nic` (experimental)
+* `--net=vdeplug_slirp`: use [vdeplug_slirp](https://github.com/rd235/vdeplug_slirp) (deprecated)
 
-Usage:
+[Benchmark (Aug 28, 2018)](https://github.com/rootless-containers/rootlesskit/pull/16):
+
+|          Implementation         |  MTU=1500  |  MTU=4000   |  MTU=16384  |  MTU=65520
+|---------------------------------|------------|-------------|-------------|------------
+|(rootful veth)                   |(52.1 Gbps) | (45.4 Gbps) | (43.6 Gbps )| (51.5 Gbps)
+|`rootlesskit --net=slirp4netns`  | 1.07 Gbps  |  2.78 Gbps  |  4.55 Gbps  |  9.21 Gbps
+|`rootlesskit --net=vpnKit`       |  514 Mbps  |   526 Mbps  |   540 Mbps  |(Unsupported)
+|`rootlesskit --net=vdeplug_slirp`|  763 Mbps  |(Unsupported)|(Unsupported)|(Unsupported)
+|
+
+`--net=lxc-user-nic` is as fast as rootful veth.
+
+### `--net=host` (default)
+
+`--net=host` does not isolate the network namespace from the host.
+
+Pros:
+* No performance overhead
+* Supports ICMP Echo (`ping`) when `/proc/sys/net/ipv4/ping_group_range` is configured
+
+Cons:
+* No permission for network-namespaced operations, e.g. creating iptables rules, running `tcpdump`
+
+To route ICMP Echo packets (`ping`), you need to write the range of GIDs to [`net.ipv4.ping_group_range`](http://man7.org/linux/man-pages/man7/icmp.7.html). 
 
 ```console
-$ rootlesskit --state-dir=/run/user/1001/rootlesskit/foo --net=slirp4netns --copy-up=/etc bash
+$ sudo sh -c "echo 0   2147483647  > /proc/sys/net/ipv4/ping_group_range"
+```
+
+### `--net=slirp4netns` (recommended)
+
+`--net=slirp4netns` isolates the network namespace from the host and launch [slirp4netns](https://github.com/rootless-containers/slirp4netns) for providing usermode networking.
+
+Pros:
+* Possible to perform network-namespaced operations, e.g. creating iptables rules, running `tcpdump`
+* Supports ICMP Echo (`ping`) when `/proc/sys/net/ipv4/ping_group_range` is configured
+
+Cons:
+* Extra performance overhead (but still faster than `--net=vpnkit`)
+* Supports only TCP, UDP, and ICMP Echo packets
+
+
+To use `--net=slirp4netns`, you need to install slirp4netns.
+v0.3.0 or later is recommended.
+
+```console
+$ sudo dnf install slirp4netns
+```
+
+or
+
+```console
+$ sudo apt-get install slirp4netns
+```
+
+If binary package is not available for your distribution, install from the source:
+
+```console
+$ git clone https://github.com/rootless-containers/slirp4netns
+$ cd slirp4netns
+$ ./autogen.sh && ./configure && make
+$ cp slirp4netns ~/bin
+```
+
+The network is configured as follows by default:
+* IP: 10.0.2.100/24
+* Gateway: 10.0.2.2
+* DNS: 10.0.2.3
+
+The network configuration can be changed by specifying custom CIDR, e.g. `--cidr=10.0.3.0/24` (requires slirp4netns v0.3.0+).
+
+Specifying `--copy-up=/etc` is highly recommended unless `/etc/resolv.conf` on the host is statically configured. Otherwise `/etc/resolv.conf` in the RootlessKit's mount namespace will be unmounted when `/etc/resolv.conf` on the host is recreated, typically by NetworkManager or systemd-resolved.
+
+It is also highly recommended to specyfy`--disable-host-loopback`. Otherwise ports listening on 127.0.0.1 in the host are accessible as 10.0.2.2 in the RootlessKit's network namespace.
+
+Example session:
+
+```console
+$ rootlesskit --net=slirp4netns --copy-up=/etc --disable-host-loopback bash
 rootlesskit$ ip a
 1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
     link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
@@ -168,13 +280,13 @@ rootlesskit$ ip a
        valid_lft forever preferred_lft forever
     inet6 ::1/128 scope host
        valid_lft forever preferred_lft forever
-2: tap0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP group default qlen 1000
-    link/ether 42:b6:8d:e4:02:c4 brd ff:ff:ff:ff:ff:ff
+2: tap0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 65520 qdisc fq_codel state UP group default qlen 1000
+    link/ether 46:dc:8d:09:fd:f2 brd ff:ff:ff:ff:ff:ff
     inet 10.0.2.100/24 scope global tap0
        valid_lft forever preferred_lft forever
-    inet6 fe80::40b6:8dff:fee4:2c4/64 scope link
+    inet6 fe80::44dc:8dff:fe09:fdf2/64 scope link
        valid_lft forever preferred_lft forever
-rootlesskit$ ip r
+ootlesskit$ ip r
 default via 10.0.2.2 dev tap0
 10.0.2.0/24 dev tap0 proto kernel scope link src 10.0.2.100
 rootlesskit$ cat /etc/resolv.conf 
@@ -183,23 +295,70 @@ rootlesskit$ curl https://www.google.com
 <!doctype html><html ...>...</html>
 ```
 
-Default network configuration for `--net=slirp4netns` and `--net=vdeplug_slirp`:
-* IP: 10.0.2.100/24
-* Gateway: 10.0.2.2
-* DNS: 10.0.2.3
-* Host: 10.0.2.2, 10.0.2.3
 
-Default network configuration for `--net=vpnkit`:
+### `--net=vpnkit`
+
+`--net=vpnkit` isolates the network namespace from the host and launch [VPNKit](https://github.com/moby/vpnkit) for providing usermode networking.
+
+Pros:
+* Possible to perform network-namespaced operations, e.g. creating iptables rules, running `tcpdump`
+
+Cons:
+* Extra performance overhead
+* Supports only TCP and UDP packets. No support for ICMP Echo (`ping`) unlike `--net=slirp4netns`, even if `/proc/sys/net/ipv4/ping_group_range` is configured.
+
+To use `--net=vpnkit`, you need to install VPNkit.
+
+```console
+$ git clone https://github.com/moby/vpnkit.git
+$ cd vpnkit
+$ make
+$ cp vpnkit.exe ~/bin/vpnkit
+```
+
+The network is configured as follows by default:
 * IP: 192.168.65.3/24
 * Gateway: 192.168.65.1
 * DNS: 192.168.65.1
-* Host: 192.168.65.2
 
-`--net=slirp4netns` supports specifying custom CIDR, e.g. `--cidr=10.0.3.0/24` (requires slirp4netns v0.3.0+)
+As in `--net=slirp4netns`, specifying `--copy-up=/etc` and `--disable-host-loopback` is highly recommended.
+If `--disable-host-loopback` is not specified, ports listening on 127.0.0.1 in the host are accessible as 192.168.65.2 in the RootlessKit's network namespace.
 
-It is highly recommended to disable host loopback address by specyfing `--disable-host-loopback`.
+### `--net=lxc-user-nic` (experimental)
 
-### Port forwarding
+`--net=lxc-user-nic` isolates the network namespace from the host and launch [`lxc-user-nic(1)`](https://linuxcontainers.org/lxc/manpages/man1/lxc-user-nic.1.html) SUID binary for providing kernel-mode NAT.
+
+Pros:
+* No performance overhead
+* Possible to perform network-namespaced operations, e.g. creating iptables rules, running `tcpdump`
+* Supports ICMP Echo (`ping`) without `/proc/sys/net/ipv4/ping_group_range` configuration
+
+Cons:
+* Less secure
+* Needs `/etc/lxc/lxc-usernet` configuration
+
+To use `lxc-user-nic`, you need to install `liblxc-common` package:
+```console
+$ sudo apt-get install liblxc-common
+```
+
+You also need to set up [`/etc/lxc/lxc-usernet`](https://linuxcontainers.org/lxc/manpages/man5/lxc-usernet.5.html):
+```
+# USERNAME TYPE BRIDGE COUNT
+penguin    veth lxcbr0 1
+```
+
+The `COUNT` value needs to be increased to run multiple RootlessKit instances with `--net=lxc-user-nic` simultaneously.
+
+It may take a few seconds to configure the interface using DHCP.
+
+If you start and stop RootlessKit too frequently, you might use up all available DHCP addresses.
+You might need to reset `/var/lib/misc/dnsmasq.lxcbr0.leases` and restart the `lxc-net` service.
+
+Currently, the MAC address is always set to a random address.
+
+
+## Port Drivers
 
 `rootlessctl` can be used for exposing the ports in the network namespace to the host network namespace.
 You also need to launch `rootlesskit` with `--port-driver=(socat|slirp4netns|builtin)`. `builtin` is the fastest but currently experimental.
@@ -207,7 +366,7 @@ You also need to launch `rootlesskit` with `--port-driver=(socat|slirp4netns|bui
 For example, to expose 80 in the child as 8080 in the parent:
 
 ```console
-$ rootlesskit --state-dir=/run/user/1001/rootlesskit/foo --net=slirp4netns --copy-up=/etc --port-driver=socat bash
+$ rootlesskit --state-dir=/run/user/1001/rootlesskit/foo --net=slirp4netns --disable-host-loopback --copy-up=/etc --port-driver=builtin bash
 rootlesskit$ rootlessctl --socket=/run/user/1001/rootlesskit/foo/api.sock add-ports 0.0.0.0:8080:80/tcp
 1
 rootlesskit$ rootlessctl --socket=/run/user/1001/rootlesskit/foo/api.sock list-ports
@@ -217,67 +376,9 @@ rootlesskit$ rootlessctl --socket=/run/user/1001/rootlesskit/foo/api.sock remove
 1
 ```
 
-You can also expose the ports manually without using the API socket.
+You can also expose ports using `socat` and `nsenter` instead of RootlessKit's port drivers.
 ```console
 $ pid=$(cat /run/user/1001/rootlesskit/foo/child_pid)
 $ socat -t -- TCP-LISTEN:8080,reuseaddr,fork EXEC:"nsenter -U -n -t $pid socat -t -- STDIN TCP4\:127.0.0.1\:80"
 ```
 
-### Routing ping packets
-
-To route ping packets, you need to set up `net.ipv4.ping_group_range` properly.
-
-```console
-$ sudo sh -c "echo 0   2147483647  > /proc/sys/net/ipv4/ping_group_range"
-```
-
-Note: routing ping packets is not supported for `--net=vpnkit`.
-
-### Annex: benchmark (MTU=1500)
-
-Aug 1, 2018, on Travis: https://travis-ci.org/rootless-containers/rootlesskit/builds/410721610
-
-* `--net=slirp4netns`: 1.07 Gbits/sec
-* `--net=vpnkit`: 528 Mbits/sec
-* `--net=vdeplug_slirp`: 771 Mbits/sec
-
-Note: slirp4netns can reach 8.18 Gbits/sec with MTU=65520: https://github.com/rootless-containers/slirp4netns/pull/20
-
-### Annex: how to install `slirp4netns` (required for `--net=slirp4netns`)
-
-See also https://github.com/rootless-containers/slirp4netns
-
-```console
-$ git clone https://github.com/rootless-containers/slirp4netns
-$ cd slirp4netns
-$ ./autogen.sh && ./configure && make
-$ cp slirp4netns ~/bin
-```
-
-RPM is also available for Fedora: https://rpms.remirepo.net/rpmphp/zoom.php?rpm=slirp4netns
-
-```console
-$ sudo dnf install slirp4netns
-```
-
-### Annex: how to install VPNKit (required for `--net=vpnkit`)
-
-See also https://github.com/moby/vpnkit
-
-```console
-$ git clone https://github.com/moby/vpnkit.git
-$ cd vpnkit
-$ make
-$ cp vpnkit.exe ~/bin/vpnkit
-```
-
-### Annex: how to install `vdeplug_slirp` (required for `--net=vdeplug_slirp`)
-
-You need to install the following components:
-
-* https://github.com/rd235/s2argv-execs
-* https://github.com/rd235/vdeplug4 (depends on `s2argv-execs`)
-* https://github.com/rd235/libslirp
-* https://github.com/rd235/vdeplug_slirp (depends on `vdeplug4` and `libslirp`)
-
-Please refer to README in the each of the components.
