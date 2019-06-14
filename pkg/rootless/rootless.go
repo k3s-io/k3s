@@ -128,7 +128,7 @@ func createChildOpt() (*child.Opt, error) {
 	opt.PipeFDEnvKey = pipeFD
 	opt.NetworkDriver = slirp4netns.NewChildDriver()
 	opt.PortDriver = portbuiltin.NewChildDriver(&logrusDebugWriter{})
-	opt.CopyUpDirs = []string{"/etc", "/run"}
+	opt.CopyUpDirs = []string{"/etc", "/run", "/var/lib"}
 	opt.CopyUpDriver = tmpfssymlink.NewChildDriver()
 	return opt, nil
 }
