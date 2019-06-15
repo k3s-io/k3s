@@ -88,9 +88,33 @@ verify_system() {
     fatal "Can not find systemd or openrc to use as a process supervisor for k3s"
 }
 
+# --- add quotes to command arguments ---
+quote() {
+    for arg in "$@"; do
+        printf "%s\n" "$arg" | sed "s/'/'\\\\''/g;1s/^/'/;\$s/\$/'/"
+    done
+}
+
+# --- add indentation and trailing slash to quoted args ---
+quote_indent() {
+    printf ' \\'"\n"
+    for arg in "$@"; do
+        printf "\t%s "'\\'"\n" "$(quote "$arg")"
+    done
+}
+
+# --- escape most punctuation characters, except quotes, forward slash, and space ---
+escape() {
+    printf "%s" "$@" | sed -e 's/\([][!#$%&()*;<=>?\_`{|}]\)/\\\1/g;'
+}
+
+# --- escape double quotes ---
+escape_dq() {
+    printf "%s" "$@" | sed -e 's/"/\\"/g'
+}
+
 # --- define needed environment variables ---
 setup_env() {
-
     # --- use command args if passed or create default ---
     case "$1" in
         # --- if we only have flags discover if command should be server or agent ---
@@ -103,15 +127,14 @@ setup_env() {
                 fi
                 CMD_K3S=agent
             fi
-            CMD_K3S_EXEC="${CMD_K3S} $@"
         ;;
         # --- command is provided ---
         (*)
             CMD_K3S="$1"
-            CMD_K3S_EXEC="$@"
+            shift
         ;;
     esac
-    CMD_K3S_EXEC=$(trim() { echo $@; } && trim ${CMD_K3S_EXEC})
+    CMD_K3S_EXEC="${CMD_K3S}$(quote_indent "$@")"
 
     # --- use systemd name if defined or create default ---
     if [ -n "${INSTALL_K3S_NAME}" ]; then
@@ -123,6 +146,17 @@ setup_env() {
             SYSTEM_NAME=k3s-${CMD_K3S}
         fi
     fi
+
+    # --- check for invalid characters in system name ---
+    valid_chars=$(printf "%s" "${SYSTEM_NAME}" | sed -e 's/[][!#$%&()*;<=>?\_`{|}/[:space:]]/^/g;' )
+    if [ "${SYSTEM_NAME}" != "${valid_chars}"  ]; then
+        invalid_chars=$(printf "%s" "${valid_chars}" | sed -e 's/[^^]/ /g')
+        fatal "Invalid characters for system name:
+            ${SYSTEM_NAME}
+            ${invalid_chars}"
+    fi
+
+    # --- set related files from system name ---
     SERVICE_K3S=${SYSTEM_NAME}.service
     UNINSTALL_K3S_SH=${SYSTEM_NAME}-uninstall.sh
     KILLALL_K3S_SH=k3s-killall.sh
@@ -482,7 +516,9 @@ Type=${SYSTEMD_TYPE}
 EnvironmentFile=${FILE_K3S_ENV}
 ExecStartPre=-/sbin/modprobe br_netfilter
 ExecStartPre=-/sbin/modprobe overlay
-ExecStart=${BIN_DIR}/k3s ${CMD_K3S_EXEC}
+ExecStart=${BIN_DIR}/k3s \\
+    ${CMD_K3S_EXEC}
+
 KillMode=process
 Delegate=yes
 LimitNOFILE=infinity
@@ -517,7 +553,9 @@ start_pre() {
 supervisor=supervise-daemon
 name="${SYSTEM_NAME}"
 command="${BIN_DIR}/k3s"
-command_args="${CMD_K3S_EXEC} >>${LOG_FILE} 2>&1"
+command_args="$(escape_dq "${CMD_K3S_EXEC}")
+    >>${LOG_FILE} 2>&1"
+
 pidfile="/var/run/${SYSTEM_NAME}.pid"
 respawn_delay=5
 
@@ -590,10 +628,13 @@ service_enable_and_start() {
     return 0
 }
 
+# --- re-evaluate args to include env command ---
+eval set -- $(escape "${INSTALL_K3S_EXEC}") $(quote "$@")
+
 # --- run the install process --
 {
     verify_system
-    setup_env ${INSTALL_K3S_EXEC} $@
+    setup_env "$@"
     download_and_verify
     create_symlinks
     create_killall
