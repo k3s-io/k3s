@@ -2,12 +2,18 @@ package pgsql
 
 import (
 	"database/sql"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
 
+	"github.com/coreos/etcd/pkg/transport"
 	"github.com/ibuildthecloud/kvsql/clientv3/driver"
 	"github.com/lib/pq"
+)
+
+const (
+	defaultDSN = "postgres://postgres:postgres@localhost/"
 )
 
 var (
@@ -46,7 +52,7 @@ INSERT INTO key_value(` + fieldList + `)
 		`create index if not exists name_idx on key_value (name)`,
 		`create index if not exists revision_idx on key_value (revision)`,
 	}
-	createDB = "create database kubernetes"
+	createDB = "create database "
 )
 
 func NewPGSQL() *driver.Generic {
@@ -65,22 +71,16 @@ func NewPGSQL() *driver.Generic {
 	}
 }
 
-func Open(dataSourceName string) (*sql.DB, error) {
-	if dataSourceName == "" {
-		dataSourceName = "postgres://postgres:postgres@localhost/"
-	} else {
-		dataSourceName = "postgres://" + dataSourceName
+func Open(dataSourceName string, tlsInfo *transport.TLSInfo) (*sql.DB, error) {
+	parsedDSN, err := prepareDSN(dataSourceName, tlsInfo)
+	if err != nil {
+		return nil, err
 	}
 	// get database name
-	dsList := strings.Split(dataSourceName, "/")
-	databaseName := dsList[len(dsList)-1]
-	if databaseName == "" {
-		if err := createDBIfNotExist(dataSourceName); err != nil {
-			return nil, err
-		}
-		dataSourceName = dataSourceName + "kubernetes"
+	if err := createDBIfNotExist(parsedDSN); err != nil {
+		return nil, err
 	}
-	db, err := sql.Open("postgres", dataSourceName)
+	db, err := sql.Open("postgres", parsedDSN)
 	if err != nil {
 		return nil, err
 	}
@@ -96,14 +96,34 @@ func Open(dataSourceName string) (*sql.DB, error) {
 }
 
 func createDBIfNotExist(dataSourceName string) error {
+	u, err := url.Parse(dataSourceName)
+	if err != nil {
+		return err
+	}
+	dbName := strings.SplitN(u.Path, "/", 2)[1]
 	db, err := sql.Open("postgres", dataSourceName)
 	if err != nil {
 		return err
 	}
-	_, err = db.Exec(createDB)
+	err = db.Ping()
 	// check if database already exists
-	if err != nil && err.(*pq.Error).Code != "42P04" {
+	if _, ok := err.(*pq.Error); !ok {
 		return err
+	}
+	if err := err.(*pq.Error); err.Code != "42P04" {
+		if err.Code != "3D000" {
+			return err
+		}
+		// database doesn't exit, will try to create it
+		u.Path = "/postgres"
+		db, err := sql.Open("postgres", u.String())
+		if err != nil {
+			return err
+		}
+		_, err = db.Exec(createDB + dbName + ";")
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -116,4 +136,47 @@ func q(sql string) string {
 		n++
 		return pref + strconv.Itoa(n)
 	})
+}
+
+func prepareDSN(dataSourceName string, tlsInfo *transport.TLSInfo) (string, error) {
+	if len(dataSourceName) == 0 {
+		dataSourceName = defaultDSN
+	} else {
+		dataSourceName = "postgres://" + dataSourceName
+	}
+	u, err := url.Parse(dataSourceName)
+	if err != nil {
+		return "", err
+	}
+	if len(u.Path) == 0 || u.Path == "/" {
+		u.Path = "/kubernetes"
+	}
+
+	queryMap, err := url.ParseQuery(u.RawQuery)
+	if err != nil {
+		return "", err
+	}
+	// set up tls dsn
+	params := url.Values{}
+	sslmode := "require"
+	if _, ok := queryMap["sslcert"]; tlsInfo.CertFile != "" && !ok {
+		params.Add("sslcert", tlsInfo.CertFile)
+		sslmode = "verify-full"
+	}
+	if _, ok := queryMap["sslkey"]; tlsInfo.KeyFile != "" && !ok {
+		params.Add("sslkey", tlsInfo.KeyFile)
+		sslmode = "verify-full"
+	}
+	if _, ok := queryMap["sslrootcert"]; tlsInfo.CAFile != "" && !ok {
+		params.Add("sslrootcert", tlsInfo.CAFile)
+		sslmode = "verify-full"
+	}
+	if _, ok := queryMap["sslmode"]; !ok {
+		params.Add("sslmode", sslmode)
+	}
+	for k, v := range queryMap {
+		params.Add(k, v[0])
+	}
+	u.RawQuery = params.Encode()
+	return u.String(), nil
 }

@@ -18,7 +18,6 @@ package factory
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
 	"sync/atomic"
 	"time"
@@ -67,22 +66,14 @@ func NewKVSQLHealthCheck(c storagebackend.Config) (func() error, error) {
 }
 
 func newETCD3Client(c storagebackend.Config) (*clientv3.Client, error) {
-	tlsInfo := transport.TLSInfo{
+	tlsInfo := &transport.TLSInfo{
 		CertFile: c.Transport.CertFile,
 		KeyFile:  c.Transport.KeyFile,
 		CAFile:   c.Transport.CAFile,
 	}
-	tlsConfig, err := tlsInfo.ClientConfig()
-	if err != nil {
-		return nil, err
-	}
-	tlsConfig.MinVersion = tls.VersionTLS11
-	if len(c.Transport.CertFile) == 0 && len(c.Transport.KeyFile) == 0 && len(c.Transport.CAFile) == 0 {
-		tlsConfig = nil
-	}
 	cfg := clientv3.Config{
 		Endpoints: c.Transport.ServerList,
-		TLS:       tlsConfig,
+		TLSInfo:   tlsInfo,
 	}
 
 	if len(cfg.Endpoints) == 0 {

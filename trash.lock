@@ -142,7 +142,7 @@ import:
 - package: github.com/hashicorp/golang-lru
   version: v0.5.0
 - package: github.com/ibuildthecloud/kvsql
-  version: 1afc2d8ad7d7e263c1971b05cb37e83aa5562561
+  version: 79f1f6881e28b90976f070aad6edad8e259057c1
   repo: https://github.com/erikwilson/rancher-kvsql.git
 - package: github.com/imdario/mergo
   version: v0.3.5
