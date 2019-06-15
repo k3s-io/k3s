@@ -18,6 +18,7 @@ import (
 	"crypto/tls"
 	"time"
 
+	"github.com/coreos/etcd/pkg/transport"
 	"google.golang.org/grpc"
 )
 
@@ -39,4 +40,6 @@ type Config struct {
 	DialTimeout time.Duration
 
 	DialOptions []grpc.DialOption
+
+	TLSInfo *transport.TLSInfo
 }

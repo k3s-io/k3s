@@ -5,8 +5,14 @@ import (
 	"database/sql"
 	"strings"
 
+	"github.com/coreos/etcd/pkg/transport"
 	"github.com/go-sql-driver/mysql"
 	"github.com/ibuildthecloud/kvsql/clientv3/driver"
+)
+
+const (
+	defaultUnixDSN = "root@unix(/var/run/mysqld/mysqld.sock)/"
+	defaultHostDSN = "root@tcp(127.0.0.1)/"
 )
 
 var (
@@ -46,7 +52,7 @@ INSERT INTO key_value(` + fieldList + `)
 	}
 	nameIdx     = "create index name_idx on key_value (name(100))"
 	revisionIdx = "create index revision_idx on key_value (revision)"
-	createDB    = "create database if not exists kubernetes"
+	createDB    = "create database if not exists "
 )
 
 func NewMySQL() *driver.Generic {
@@ -65,31 +71,24 @@ func NewMySQL() *driver.Generic {
 	}
 }
 
-func Open(dataSourceName string, tlsConfig *tls.Config) (*sql.DB, error) {
-	if dataSourceName == "" {
-		dataSourceName = "root@unix(/var/run/mysqld/mysqld.sock)/"
+func Open(dataSourceName string, tlsInfo *transport.TLSInfo) (*sql.DB, error) {
+	tlsConfig, err := tlsInfo.ClientConfig()
+	if err != nil {
+		return nil, err
 	}
-	// get database name
-	dsList := strings.Split(dataSourceName, "/")
-	databaseName := dsList[len(dsList)-1]
-	if databaseName == "" {
-		if err := createDBIfNotExist(dataSourceName); err != nil {
-			return nil, err
-		}
-		dataSourceName = dataSourceName + "kubernetes"
+	tlsConfig.MinVersion = tls.VersionTLS11
+	if len(tlsInfo.CertFile) == 0 && len(tlsInfo.KeyFile) == 0 && len(tlsInfo.CAFile) == 0 {
+		tlsConfig = nil
 	}
-
-	// setting up tlsConfig
-	if tlsConfig != nil {
-		mysql.RegisterTLSConfig("custom", tlsConfig)
-		if strings.Contains(dataSourceName, "?") {
-			dataSourceName = dataSourceName + ",tls=custom"
-		} else {
-			dataSourceName = dataSourceName + "?tls=custom"
-		}
+	parsedDSN, err := prepareDSN(dataSourceName, tlsConfig)
+	if err != nil {
+		return nil, err
+	}
+	if err := createDBIfNotExist(parsedDSN); err != nil {
+		return nil, err
 	}
 
-	db, err := sql.Open("mysql", dataSourceName)
+	db, err := sql.Open("mysql", parsedDSN)
 	if err != nil {
 		return nil, err
 	}
@@ -116,13 +115,30 @@ func Open(dataSourceName string, tlsConfig *tls.Config) (*sql.DB, error) {
 }
 
 func createDBIfNotExist(dataSourceName string) error {
+	config, err := mysql.ParseDSN(dataSourceName)
+	if err != nil {
+		return err
+	}
+	dbName := config.DBName
+
 	db, err := sql.Open("mysql", dataSourceName)
 	if err != nil {
 		return err
 	}
-	_, err = db.Exec(createDB)
+	_, err = db.Exec(createDB + dbName)
 	if err != nil {
-		return err
+		if mysqlError, ok := err.(*mysql.MySQLError); !ok || mysqlError.Number != 1049 {
+			return err
+		}
+		config.DBName = ""
+		db, err = sql.Open("mysql", config.FormatDSN())
+		if err != nil {
+			return err
+		}
+		_, err = db.Exec(createDB + dbName)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -130,11 +146,35 @@ func createDBIfNotExist(dataSourceName string) error {
 func createIndex(db *sql.DB, indexStmt string) error {
 	_, err := db.Exec(indexStmt)
 	if err != nil {
-		// check if its a duplicate error
-		if err.(*mysql.MySQLError).Number == 1061 {
-			return nil
+		if mysqlError, ok := err.(*mysql.MySQLError); !ok || mysqlError.Number != 1061 {
+			return err
 		}
-		return err
 	}
 	return nil
+}
+
+func prepareDSN(dataSourceName string, tlsConfig *tls.Config) (string, error) {
+	if len(dataSourceName) == 0 {
+		dataSourceName = defaultUnixDSN
+		if tlsConfig != nil {
+			dataSourceName = defaultHostDSN
+		}
+	}
+	config, err := mysql.ParseDSN(dataSourceName)
+	if err != nil {
+		return "", err
+	}
+	// setting up tlsConfig
+	if tlsConfig != nil {
+		mysql.RegisterTLSConfig("custom", tlsConfig)
+		config.TLSConfig = "custom"
+	}
+	dbName := "kubernetes"
+	if len(config.DBName) > 0 {
+		dbName = config.DBName
+	}
+	config.DBName = dbName
+	parsedDSN := config.FormatDSN()
+
+	return parsedDSN, nil
 }
