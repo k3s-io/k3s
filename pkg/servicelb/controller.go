@@ -153,6 +153,10 @@ func (h *handler) onChangeNode(key string, node *core.Node) (*core.Node, error) 
 }
 
 func (h *handler) updateService(svc *core.Service) (runtime.Object, error) {
+	if !h.enabled {
+		return svc, nil
+	}
+
 	pods, err := h.podCache.List(svc.Namespace, labels.SelectorFromSet(map[string]string{
 		svcNameLabel: svc.Name,
 	}))
