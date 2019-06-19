@@ -149,6 +149,82 @@ spec:
 
 Also note that besides `set` you can use `valuesContent` in the spec section. And it's okay to use both of them.
 
+Storage Backends
+----------------
+
+As of version 0.6.0, k3s can support various storage backends including: SQLite (default), MySQL, Postgres, and etcd, this enahancement depends on the following arguments that can be passed to k3s server:
+
+```
+--storage-backend value             Specify storage type etcd3 or kvsql [$K3S_STORAGE_BACKEND]
+--storage-endpoint value            Specify etcd, Mysql, Postgres, or Sqlite (default) data source name [$K3S_STORAGE_ENDPOINT]
+--storage-cafile value              SSL Certificate Authority file used to secure storage backend communication [$K3S_STORAGE_CAFILE]
+--storage-certfile value            SSL certification file used to secure storage backend communication [$K3S_STORAGE_CERTFILE]
+--storage-keyfile value             SSL key file used to secure storage backend communication [$K3S_STORAGE_KEYFILE]
+```
+
+## MySQL
+
+To use k3s with MySQL storage backend, you can specify the following for insecure connection:
+
+```
+k3s server --storage-endpoint="mysql://"
+```
+By default the server will attempt to connect to mysql using the mysql socket at `/var/run/mysqld/mysqld.sock` using the root user and with no password, k3s will also create a database with the name `kubernetes` if the database is not specified in the DSN.
+
+To override the method of connection, user/pass, and database name, you can provide a custom DSN, for example:
+
+```
+k3s server --storage-endpoint="mysql://k3suser:k3spass@tcp(192.168.1.100:3306)/k3stest"
+```
+
+This command will attempt to connect to MySQL on host `192.168.1.100` on port `3306` with username `k3suser` and password `k3spass` and k3s will automatically create a new database with the name `k3stest` if it doesn't exist, for more information about the MySQL driver data source name, please refer to https://github.com/go-sql-driver/mysql#dsn-data-source-name
+
+To connect to MySQL securely, you can use the following example:
+```
+k3s server --storage-endpoint="mysql://k3suser:k3spass@tcp(192.168.1.100:3306)/k3stest" --storage-cafile ca.crt --storage-certfile mysql.crt --storage-keyfile mysql.key
+```
+The above command will use these certificates to generate the tls config to communicate with mysql securely.
+
+
+## Postgres
+
+Connection to postgres can be established using the following command:
+
+```
+k3s server --storage-endpoint="postgres://"
+```
+
+By default the server will attempt to connect to postgres on localhost with using the `postgres` user and with `postgres` password, k3s will also create a database with the name `kubernetes` if the database is not specified in the DSN.
+
+To override the method of connection, user/pass, and database name, you can provide a custom DSN, for example:
+
+```
+k3s server --storage-endpoint="postgres://k3suser:k3spass@192.168.1.100:5432/k3stest"
+```
+
+This command will attempt to connect to Postgres on host `192.168.1.100` on port `5432` with username `k3suser` and password `k3spass` and k3s will automatically create a new database with the name `k3stest` if it doesn't exist, for more information about the Postgres driver data source name, please refer to https://godoc.org/github.com/lib/pq
+
+To connect to Postgres securely, you can use the following example:
+
+```
+k3s server --storage-endpoint="postgres://k3suser:k3spass@192.168.1.100:5432/k3stest?sslmode=verify-full" --storage-certfile postgres.crt --storage-keyfile postgres.key --storage-cafile ca.crt
+```
+
+The above command will use these certificates to generate the tls config to communicate with postgres securely, note that the `sslmode` in the example is `verify-full` which verify that the certification presented by the server was signed by a trusted CA and the server host name matches the one in the certificate.
+
+## etcd
+
+Connection to postgres can be established using the following command:
+
+```
+k3s server --storage-backend=etcd3 --storage-endpoint="https://127.0.0.1:2379"
+```
+The above command will attempt to connect insecurely to etcd on localhost with port `2379`, you can connect securely to etcd using the following command:
+
+```
+k3s server --storage-backend=etcd3 --storage-endpoint="https://127.0.0.1:2379" --storage-cafile ca.crt --storage-certfile etcd.crt --storage-keyfile etcd.key
+```
+
 Building from source
 --------------------
 
