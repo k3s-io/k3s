@@ -679,9 +679,8 @@ Upgrading an air-gap environment can be accomplished in the following manner:
 
 TODO
 ----
-Currently broken or stuff that needs to be done for this to be considered production quality.
+Current items to implement before this is to be considered production quality.
 
-1. Metrics API ([fixed](https://github.com/rancher/k3s/issues/252): use `k3s server --kubelet-arg="address=0.0.0.0"` and apply `recipes/metrics-server`)
-2. HA
-3. Work on e2e, sonobouy.
-4. etcd doesn't actually work because args aren't exposed
+1. Multi-Server / High Availability (HA)
+2. Documentation moved to Rancher
+3. Automated tests for k3s specific features
