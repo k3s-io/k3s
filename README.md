@@ -255,9 +255,9 @@ serves as an example of how to run k3s from Docker.  To run from `docker-compose
 To run the agent only in Docker use the following `docker-compose-agent.yml` is in the root of this repo that
 serves as an example of how to run k3s agent from Docker. Alternatively the Docker run command can also be used;
 
-    sudo docker run -d --tmpfs /run --tmpfs /var/run -e K3S_URL=${SERVER_URL} -e K3S_TOKEN=${NODE_TOKEN} --privileged rancher/k3s:v0.5.0
+    sudo docker run -d --tmpfs /run --tmpfs /var/run -e K3S_URL=${SERVER_URL} -e K3S_TOKEN=${NODE_TOKEN} --privileged rancher/k3s:v0.6.0
 
-    sudo docker run -d --tmpfs /run --tmpfs /var/run -e K3S_URL=https://k3s.example.com:6443 -e K3S_TOKEN=K13849a67fc385fd3c0fa6133a8649d9e717b0258b3b09c87ffc33dae362c12d8c0::node:2e373dca319a0525745fd8b3d8120d9c --privileged rancher/k3s:v0.5.0
+    sudo docker run -d --tmpfs /run --tmpfs /var/run -e K3S_URL=https://k3s.example.com:6443 -e K3S_TOKEN=K13849a67fc385fd3c0fa6133a8649d9e717b0258b3b09c87ffc33dae362c12d8c0::node:2e373dca319a0525745fd8b3d8120d9c --privileged rancher/k3s:v0.6.0
 
 
 Hyperkube
