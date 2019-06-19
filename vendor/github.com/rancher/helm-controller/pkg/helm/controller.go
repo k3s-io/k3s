@@ -46,9 +46,10 @@ func Register(ctx context.Context, apply apply.Apply,
 	helms helmcontroller.HelmChartController,
 	jobs batchcontroller.JobController,
 	crbs rbaccontroller.ClusterRoleBindingController,
-	sas corecontroller.ServiceAccountController) {
+	sas corecontroller.ServiceAccountController,
+	cm corecontroller.ConfigMapController) {
 	apply = apply.WithSetID(name).
-		WithCacheTypes(helms, jobs, crbs, sas).
+		WithCacheTypes(helms, jobs, crbs, sas, cm).
 		WithStrictCaching()
 
 	relatedresource.Watch(ctx, "helm-pod-watch",
