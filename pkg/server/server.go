@@ -133,7 +133,8 @@ func masterControllers(ctx context.Context, sc *Context, config *Config) error {
 		sc.Helm.Helm().V1().HelmChart(),
 		sc.Batch.Batch().V1().Job(),
 		sc.Auth.Rbac().V1().ClusterRoleBinding(),
-		sc.Core.Core().V1().ServiceAccount())
+		sc.Core.Core().V1().ServiceAccount(),
+		sc.Core.Core().V1().ConfigMap())
 	if err := servicelb.Register(ctx,
 		sc.K8s,
 		sc.Apply,
