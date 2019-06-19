@@ -111,7 +111,7 @@ Kubernetes in a manner similar to `kubectl apply`.
 It is also possible to deploy Helm charts. k3s supports a CRD controller for installing charts. A YAML file specification can look as following (example taken from `/var/lib/rancher/k3s/server/manifests/traefik.yaml`):
 
 ```yaml
-apiVersion: k3s.cattle.io/v1
+apiVersion: helm.cattle.io/v1
 kind: HelmChart
 metadata:
   name: traefik
@@ -126,7 +126,7 @@ spec:
 Keep in mind that `namespace` in your HelmChart resource metadata section should always be `kube-system`, because k3s deploy controller is configured to watch this namespace for new HelmChart resources. If you want to specify the namespace for the actual helm release, you can do that using `targetNamespace` key in the spec section:
 
 ```
-apiVersion: k3s.cattle.io/v1
+apiVersion: helm.cattle.io/v1
 kind: HelmChart
 metadata:
   name: grafana
@@ -148,6 +148,8 @@ spec:
 ```
 
 Also note that besides `set` you can use `valuesContent` in the spec section. And it's okay to use both of them.
+
+k3s versions <= v0.5.0 used `k3s.cattle.io` for the api group of helmcharts, this has been changed to `helm.cattle.io` for later versions.
 
 Storage Backends
 ----------------
