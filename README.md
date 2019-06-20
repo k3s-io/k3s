@@ -578,6 +578,18 @@ for port 80.  If no port is available the load balancer will stay in Pending.
 To disable the embedded service load balancer (if you wish to use a different implementation like
 MetalLB) just add `--no-deploy=servicelb` to the server on startup.
 
+Metrics Server
+--------------
+
+To add functionality for commands such as `k3s kubectl top node` metrics-server must be installed, 
+to install see the instructions located at https://github.com/kubernetes-incubator/metrics-server/.
+
+NOTE: By default the image used in `metrics-server-deployment.yaml` is valid only for amd64 devices,
+this should be edited as appropriate for your architecture. As of this writing metrics-server provides
+the following images relevant to k3s: `amd64:v0.3.3`, `arm64:v0.3.2`, and `arm:v0.3.2`. Further information
+on the images provided through gcr.io can be found at https://console.cloud.google.com/gcr/images/google-containers/GLOBAL.
+
+
 Air-Gap Support
 ---------------
 
