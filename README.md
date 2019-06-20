@@ -216,7 +216,7 @@ The above command will use these certificates to generate the tls config to comm
 
 ## etcd
 
-Connection to postgres can be established using the following command:
+Connection to etcd3 can be established using the following command:
 
 ```
 k3s server --storage-backend=etcd3 --storage-endpoint="https://127.0.0.1:2379"
