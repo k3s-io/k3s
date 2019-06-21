@@ -524,8 +524,25 @@ func genClientCerts(config *config.Control, runtime *config.ControlRuntime) erro
 	return nil
 }
 
+func createServerSigningCertKey(config *config.Control, runtime *config.ControlRuntime) (bool, error) {
+	TokenCA := path.Join(config.DataDir, "tls", "token-ca.crt")
+	TokenCAKey := path.Join(config.DataDir, "tls", "token-ca.key")
+
+	if exists(TokenCA, TokenCAKey) && !exists(runtime.ServerCA) && !exists(runtime.ServerCAKey) {
+		logrus.Infof("Upgrading token-ca files to server-ca")
+		if err := os.Link(TokenCA, runtime.ServerCA); err != nil {
+			return false, err
+		}
+		if err := os.Link(TokenCAKey, runtime.ServerCAKey); err != nil {
+			return false, err
+		}
+		return true, nil
+	}
+	return createSigningCertKey("k3s-server", runtime.ServerCA, runtime.ServerCAKey)
+}
+
 func genServerCerts(config *config.Control, runtime *config.ControlRuntime) error {
-	regen, err := createSigningCertKey("k3s-server", runtime.ServerCA, runtime.ServerCAKey)
+	regen, err := createServerSigningCertKey(config, runtime)
 	if err != nil {
 		return err
 	}
