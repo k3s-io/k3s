@@ -19,6 +19,7 @@ func NewServer(ctx context.Context, listenerConfigs k3sclient.ListenerConfigCont
 	storage := &listenerConfigStorage{
 		client: listenerConfigs,
 		cache:  listenerConfigs.Cache(),
+		config: config,
 	}
 
 	server, err := dynamiclistener.NewServer(storage, config)
@@ -30,7 +31,7 @@ func NewServer(ctx context.Context, listenerConfigs k3sclient.ListenerConfigCont
 		if obj == nil {
 			return nil, nil
 		}
-		return obj, server.Update(fromStorage(obj))
+		return obj, server.Update(storage.fromStorage(obj))
 	})
 
 	return server, err
@@ -39,6 +40,7 @@ func NewServer(ctx context.Context, listenerConfigs k3sclient.ListenerConfigCont
 type listenerConfigStorage struct {
 	cache  k3sclient.ListenerConfigCache
 	client k3sclient.ListenerConfigClient
+	config dynamiclistener.UserConfig
 }
 
 func (l *listenerConfigStorage) Set(config *dynamiclistener.ListenerStatus) (*dynamiclistener.ListenerStatus, error) {
@@ -53,7 +55,7 @@ func (l *listenerConfigStorage) Set(config *dynamiclistener.ListenerStatus) (*dy
 		})
 
 		ls, err := l.client.Create(ls)
-		return fromStorage(ls), err
+		return l.fromStorage(ls), err
 	} else if err != nil {
 		return nil, err
 	}
@@ -63,8 +65,13 @@ func (l *listenerConfigStorage) Set(config *dynamiclistener.ListenerStatus) (*dy
 	obj.Status = *config
 	obj.Status.Revision = ""
 
+	if l.config.CACerts != "" && l.config.CAKey != "" {
+		obj.Status.CACert = ""
+		obj.Status.CAKey = ""
+	}
+
 	obj, err = l.client.Update(obj)
-	return fromStorage(obj), err
+	return l.fromStorage(obj), err
 }
 
 func (l *listenerConfigStorage) Get() (*dynamiclistener.ListenerStatus, error) {
@@ -75,15 +82,21 @@ func (l *listenerConfigStorage) Get() (*dynamiclistener.ListenerStatus, error) {
 	if errors.IsNotFound(err) {
 		return &dynamiclistener.ListenerStatus{}, nil
 	}
-	return fromStorage(obj), err
+	return l.fromStorage(obj), err
 }
 
-func fromStorage(obj *v1.ListenerConfig) *dynamiclistener.ListenerStatus {
+func (l *listenerConfigStorage) fromStorage(obj *v1.ListenerConfig) *dynamiclistener.ListenerStatus {
 	if obj == nil {
 		return nil
 	}
 
 	copy := obj.DeepCopy()
 	copy.Status.Revision = obj.ResourceVersion
+
+	if l.config.CACerts != "" && l.config.CAKey != "" {
+		copy.Status.CACert = l.config.CACerts
+		copy.Status.CAKey = l.config.CAKey
+	}
+
 	return &copy.Status
 }
