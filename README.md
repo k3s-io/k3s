@@ -275,8 +275,8 @@ Adding extra argument can be done by passing the following flags to server or ag
 --kube-apiserver-arg value
 --kube-scheduler-arg value
 --kube-controller-arg value
---kubelet-arg value        
---kube-proxy-arg value     
+--kubelet-arg value
+--kube-proxy-arg value
 ```
 For example to add the following arguments `-v=9` and `log-file=/tmp/kubeapi.log` to the kube-apiserver, you should pass the following:
 ```
@@ -333,9 +333,9 @@ serves as an example of how to run k3s from Docker.  To run from `docker-compose
 To run the agent only in Docker use the following `docker-compose-agent.yml` is in the root of this repo that
 serves as an example of how to run k3s agent from Docker. Alternatively the Docker run command can also be used;
 
-    sudo docker run -d --tmpfs /run --tmpfs /var/run -e K3S_URL=${SERVER_URL} -e K3S_TOKEN=${NODE_TOKEN} --privileged rancher/k3s:v0.6.0
+    sudo docker run -d --tmpfs /run --tmpfs /var/run -e K3S_URL=${SERVER_URL} -e K3S_TOKEN=${NODE_TOKEN} --privileged rancher/k3s:v0.6.1
 
-    sudo docker run -d --tmpfs /run --tmpfs /var/run -e K3S_URL=https://k3s.example.com:6443 -e K3S_TOKEN=K13849a67fc385fd3c0fa6133a8649d9e717b0258b3b09c87ffc33dae362c12d8c0::node:2e373dca319a0525745fd8b3d8120d9c --privileged rancher/k3s:v0.6.0
+    sudo docker run -d --tmpfs /run --tmpfs /var/run -e K3S_URL=https://k3s.example.com:6443 -e K3S_TOKEN=K13849a67fc385fd3c0fa6133a8649d9e717b0258b3b09c87ffc33dae362c12d8c0::node:2e373dca319a0525745fd8b3d8120d9c --privileged rancher/k3s:v0.6.1
 
 
 Hyperkube
@@ -581,7 +581,7 @@ MetalLB) just add `--no-deploy=servicelb` to the server on startup.
 Metrics Server
 --------------
 
-To add functionality for commands such as `k3s kubectl top node` metrics-server must be installed, 
+To add functionality for commands such as `k3s kubectl top node` metrics-server must be installed,
 to install see the instructions located at https://github.com/kubernetes-incubator/metrics-server/.
 
 NOTE: By default the image used in `metrics-server-deployment.yaml` is valid only for amd64 devices,
@@ -632,7 +632,7 @@ k3s server --node-label foo=bar --node-label hello=world --node-taint key1=value
 ### Ports
 When running rootless a new network namespace is created.  This means that k3s instance is running with networking
 fairly detached from the host.  The only way to access services run in k3s from the host is to setup port forwards
-to the k3s network namespace.  We have a controller that will automatically bind 6443 and service port below 1024 to the host with an offset of 10000. 
+to the k3s network namespace.  We have a controller that will automatically bind 6443 and service port below 1024 to the host with an offset of 10000.
 
 That means service port 80 will become 10080 on the host, but 8080 will become 8080 without any offset.
 
