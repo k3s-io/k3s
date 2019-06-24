@@ -187,11 +187,9 @@ func localAddress(controlConfig *config.Control) string {
 	return fmt.Sprintf("127.0.0.1:%d", controlConfig.ProxyPort)
 }
 
-func writeKubeConfig(envInfo *cmds.Agent, info clientaccess.Info, controlConfig *config.Control, tlsCert *tls.Certificate) (string, error) {
+func writeKubeConfig(envInfo *cmds.Agent, info clientaccess.Info, tlsCert *tls.Certificate) (string, error) {
 	os.MkdirAll(envInfo.DataDir, 0700)
 	kubeConfigPath := filepath.Join(envInfo.DataDir, "kubeconfig.yaml")
-
-	info.URL = "https://" + localAddress(controlConfig)
 	info.CACerts = pem.EncodeToMemory(&pem.Block{
 		Type:  cert.CertificateBlockType,
 		Bytes: tlsCert.Certificate[1],
@@ -281,8 +279,6 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 		}
 	}
 
-	proxyURL := "https://" + localAddress(controlConfig)
-
 	clientCAFile := filepath.Join(envInfo.DataDir, "client-ca.crt")
 	if err := getHostFile(clientCAFile, info); err != nil {
 		return nil, err
@@ -301,7 +297,7 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 		return nil, err
 	}
 
-	kubeconfigNode, err := writeKubeConfig(envInfo, *info, controlConfig, servingCert)
+	kubeconfigNode, err := writeKubeConfig(envInfo, *info, servingCert)
 	if err != nil {
 		return nil, err
 	}
@@ -317,7 +313,7 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 	}
 
 	kubeconfigKubelet := filepath.Join(envInfo.DataDir, "kubelet.kubeconfig")
-	if err := control.KubeConfig(kubeconfigKubelet, proxyURL, serverCAFile, clientKubeletCert, clientKubeletKey); err != nil {
+	if err := control.KubeConfig(kubeconfigKubelet, info.URL, serverCAFile, clientKubeletCert, clientKubeletKey); err != nil {
 		return nil, err
 	}
 
@@ -332,7 +328,7 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 	}
 
 	kubeconfigKubeproxy := filepath.Join(envInfo.DataDir, "kubeproxy.kubeconfig")
-	if err := control.KubeConfig(kubeconfigKubeproxy, proxyURL, serverCAFile, clientKubeProxyCert, clientKubeProxyKey); err != nil {
+	if err := control.KubeConfig(kubeconfigKubeproxy, info.URL, serverCAFile, clientKubeProxyCert, clientKubeProxyKey); err != nil {
 		return nil, err
 	}
 
