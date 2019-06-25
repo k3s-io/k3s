@@ -83,7 +83,7 @@ func getNodeInfo(req *http.Request) (string, string, error) {
 		return "", "", errors.New("node password not set")
 	}
 
-	return nodeNames[0], nodePasswords[0], nil
+	return strings.ToLower(nodeNames[0]), nodePasswords[0], nil
 }
 
 func getCACertAndKeys(caCertFile, caKeyFile, signingKeyFile string) ([]*x509.Certificate, crypto.Signer, crypto.Signer, error) {
@@ -132,7 +132,7 @@ func servingKubeletCert(server *config.Control) http.Handler {
 			sendError(err, resp)
 		}
 
-		if err := ensureNodePassword(server.Runtime.PasswdFile, nodeName, nodePassword); err != nil {
+		if err := ensureNodePassword(server.Runtime.NodePasswdFile, nodeName, nodePassword); err != nil {
 			sendError(err, resp, http.StatusForbidden)
 			return
 		}
@@ -172,7 +172,7 @@ func clientKubeletCert(server *config.Control) http.Handler {
 			sendError(err, resp)
 		}
 
-		if err := ensureNodePassword(server.Runtime.PasswdFile, nodeName, nodePassword); err != nil {
+		if err := ensureNodePassword(server.Runtime.NodePasswdFile, nodeName, nodePassword); err != nil {
 			sendError(err, resp, http.StatusForbidden)
 			return
 		}
@@ -265,36 +265,37 @@ func sendError(err error, resp http.ResponseWriter, status ...int) {
 }
 
 func ensureNodePassword(passwdFile, nodeName, passwd string) error {
-	f, err := os.Open(passwdFile)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	user := strings.ToLower("node:" + nodeName)
-
 	records := [][]string{}
-	reader := csv.NewReader(f)
-	for {
-		record, err := reader.Read()
-		if err == io.EOF {
-			break
-		}
+
+	if _, err := os.Stat(passwdFile); !os.IsNotExist(err) {
+		f, err := os.Open(passwdFile)
 		if err != nil {
 			return err
 		}
-		if len(record) < 3 {
-			return fmt.Errorf("password file '%s' must have at least 3 columns (password, user name, user uid), found %d", passwdFile, len(record))
-		}
-		if record[1] == user {
-			if record[0] == passwd {
-				return nil
+		defer f.Close()
+		reader := csv.NewReader(f)
+		for {
+			record, err := reader.Read()
+			if err == io.EOF {
+				break
 			}
-			return fmt.Errorf("Node password validation failed for '%s', using passwd file '%s'", nodeName, passwdFile)
+			if err != nil {
+				return err
+			}
+			if len(record) < 2 {
+				return fmt.Errorf("password file '%s' must have at least 2 columns (password, nodeName), found %d", passwdFile, len(record))
+			}
+			if record[1] == nodeName {
+				if record[0] == passwd {
+					return nil
+				}
+				return fmt.Errorf("Node password validation failed for '%s', using passwd file '%s'", nodeName, passwdFile)
+			}
+			records = append(records, record)
 		}
-		records = append(records, record)
+		f.Close()
 	}
-	records = append(records, []string{passwd, user, user, "system:node:" + nodeName})
 
-	f.Close()
+	records = append(records, []string{passwd, nodeName})
 	return control.WritePasswords(passwdFile, records)
 }

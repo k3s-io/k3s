@@ -263,6 +263,7 @@ func prepare(config *config.Control, runtime *config.ControlRuntime) error {
 
 	runtime.ServiceKey = path.Join(config.DataDir, "tls", "service.key")
 	runtime.PasswdFile = path.Join(config.DataDir, "cred", "passwd")
+	runtime.NodePasswdFile = path.Join(config.DataDir, "cred", "node-passwd")
 
 	runtime.KubeConfigAdmin = path.Join(config.DataDir, "cred", "admin.kubeconfig")
 	runtime.KubeConfigController = path.Join(config.DataDir, "cred", "controller.kubeconfig")

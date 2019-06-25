@@ -104,6 +104,7 @@ type ControlRuntime struct {
 	ServerCAKey       string
 	ServiceKey        string
 	PasswdFile        string
+	NodePasswdFile    string
 
 	KubeConfigAdmin      string
 	KubeConfigController string
