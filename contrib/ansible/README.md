@@ -32,7 +32,7 @@ Add the system information gathered above into a file called hosts.ini. For exam
 [node]
 192.16.35.[10:11]
 
-[kube-cluster:children]
+[k3s-cluster:children]
 master
 node
 ```
