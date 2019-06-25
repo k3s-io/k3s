@@ -154,7 +154,7 @@ k3s versions <= v0.5.0 used `k3s.cattle.io` for the api group of helmcharts, thi
 Storage Backends
 ----------------
 
-As of version 0.6.0, k3s can support various storage backends including: SQLite (default), MySQL, Postgres, and etcd, this enahancement depends on the following arguments that can be passed to k3s server:
+As of version 0.6.0, k3s can support various storage backends including: SQLite (default), MySQL, Postgres, and etcd, this enhancement depends on the following arguments that can be passed to k3s server:
 
 ```
 --storage-backend value             Specify storage type etcd3 or kvsql [$K3S_STORAGE_BACKEND]
