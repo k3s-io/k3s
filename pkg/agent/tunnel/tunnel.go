@@ -26,7 +26,7 @@ var (
 )
 
 func Setup(config *config.Node) error {
-	restConfig, err := clientcmd.BuildConfigFromFlags("", config.AgentConfig.KubeConfig)
+	restConfig, err := clientcmd.BuildConfigFromFlags("", config.AgentConfig.KubeConfigNode)
 	if err != nil {
 		return err
 	}

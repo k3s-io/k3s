@@ -1,11 +1,12 @@
 package server
 
 import (
-	"bufio"
-	"crypto/rsa"
+	"crypto"
 	"crypto/x509"
+	"encoding/csv"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -17,10 +18,10 @@ import (
 	"github.com/gorilla/mux"
 	certutil "github.com/rancher/dynamiclistener/cert"
 	"github.com/rancher/k3s/pkg/daemons/config"
+	"github.com/rancher/k3s/pkg/daemons/control"
 	"github.com/rancher/k3s/pkg/openapi"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/json"
-	"k8s.io/kubernetes/pkg/master"
 )
 
 const (
@@ -38,8 +39,14 @@ func router(serverConfig *config.Control, tunnel http.Handler, cacertsGetter CAC
 	authed.Use(authMiddleware(serverConfig))
 	authed.NotFoundHandler = serverConfig.Runtime.Handler
 	authed.Path("/v1-k3s/connect").Handler(tunnel)
-	authed.Path("/v1-k3s/node.crt").Handler(nodeCrt(serverConfig))
-	authed.Path("/v1-k3s/node.key").Handler(nodeKey(serverConfig))
+	authed.Path("/v1-k3s/serving-kubelet.crt").Handler(servingKubeletCert(serverConfig))
+	authed.Path("/v1-k3s/serving-kubelet.key").Handler(fileHandler(serverConfig.Runtime.ServingKubeletKey))
+	authed.Path("/v1-k3s/client-kubelet.crt").Handler(clientKubeletCert(serverConfig))
+	authed.Path("/v1-k3s/client-kubelet.key").Handler(fileHandler(serverConfig.Runtime.ClientKubeletKey))
+	authed.Path("/v1-k3s/client-kube-proxy.crt").Handler(fileHandler(serverConfig.Runtime.ClientKubeProxyCert))
+	authed.Path("/v1-k3s/client-kube-proxy.key").Handler(fileHandler(serverConfig.Runtime.ClientKubeProxyKey))
+	authed.Path("/v1-k3s/client-ca.crt").Handler(fileHandler(serverConfig.Runtime.ClientCA))
+	authed.Path("/v1-k3s/server-ca.crt").Handler(fileHandler(serverConfig.Runtime.ServerCA))
 	authed.Path("/v1-k3s/config").Handler(configHandler(serverConfig))
 
 	staticDir := filepath.Join(serverConfig.DataDir, "static")
@@ -65,82 +72,85 @@ func cacerts(getter CACertsGetter) http.Handler {
 	})
 }
 
-func nodeCrt(server *config.Control) http.Handler {
+func getNodeInfo(req *http.Request) (string, string, error) {
+	nodeNames := req.Header["K3s-Node-Name"]
+	if len(nodeNames) != 1 || nodeNames[0] == "" {
+		return "", "", errors.New("node name not set")
+	}
+
+	nodePasswords := req.Header["K3s-Node-Password"]
+	if len(nodePasswords) != 1 || nodePasswords[0] == "" {
+		return "", "", errors.New("node password not set")
+	}
+
+	return strings.ToLower(nodeNames[0]), nodePasswords[0], nil
+}
+
+func getCACertAndKeys(caCertFile, caKeyFile, signingKeyFile string) ([]*x509.Certificate, crypto.Signer, crypto.Signer, error) {
+	keyBytes, err := ioutil.ReadFile(signingKeyFile)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	key, err := certutil.ParsePrivateKeyPEM(keyBytes)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	caKeyBytes, err := ioutil.ReadFile(caKeyFile)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	caKey, err := certutil.ParsePrivateKeyPEM(caKeyBytes)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	caBytes, err := ioutil.ReadFile(caCertFile)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	caCert, err := certutil.ParseCertsPEM(caBytes)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	return caCert, caKey.(crypto.Signer), key.(crypto.Signer), nil
+}
+
+func servingKubeletCert(server *config.Control) http.Handler {
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 		if req.TLS == nil {
 			resp.WriteHeader(http.StatusNotFound)
 			return
 		}
 
-		nodeNames := req.Header["K3s-Node-Name"]
-		if len(nodeNames) != 1 || nodeNames[0] == "" {
-			sendError(errors.New("node name not set"), resp)
-			return
+		nodeName, nodePassword, err := getNodeInfo(req)
+		if err != nil {
+			sendError(err, resp)
 		}
 
-		nodePasswords := req.Header["K3s-Node-Password"]
-		if len(nodePasswords) != 1 || nodePasswords[0] == "" {
-			sendError(errors.New("node password not set"), resp)
-			return
-		}
-
-		if err := ensureNodePassword(server.Runtime.PasswdFile, nodeNames[0], nodePasswords[0]); err != nil {
+		if err := ensureNodePassword(server.Runtime.NodePasswdFile, nodeName, nodePassword); err != nil {
 			sendError(err, resp, http.StatusForbidden)
 			return
 		}
 
-		nodeKey, err := ioutil.ReadFile(server.Runtime.NodeKey)
+		caCert, caKey, key, err := getCACertAndKeys(server.Runtime.ServerCA, server.Runtime.ServerCAKey, server.Runtime.ServingKubeletKey)
 		if err != nil {
 			sendError(err, resp)
 			return
 		}
 
-		key, err := certutil.ParsePrivateKeyPEM(nodeKey)
-		if err != nil {
-			sendError(err, resp)
-			return
-		}
-
-		caKeyBytes, err := ioutil.ReadFile(server.Runtime.TokenCAKey)
-		if err != nil {
-			sendError(err, resp)
-			return
-		}
-
-		caBytes, err := ioutil.ReadFile(server.Runtime.TokenCA)
-		if err != nil {
-			sendError(err, resp)
-			return
-		}
-
-		caKey, err := certutil.ParsePrivateKeyPEM(caKeyBytes)
-		if err != nil {
-			sendError(err, resp)
-			return
-		}
-
-		caCert, err := certutil.ParseCertsPEM(caBytes)
-		if err != nil {
-			sendError(err, resp)
-			return
-		}
-
-		_, apiServerServiceIP, err := master.DefaultServiceIPRange(*server.ServiceIPRange)
-		if err != nil {
-			sendError(err, resp)
-			return
-		}
-
-		cfg := certutil.Config{
-			CommonName: "kubernetes",
-			Usages:     []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
+		cert, err := certutil.NewSignedCert(certutil.Config{
+			CommonName: nodeName,
+			Usages:     []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 			AltNames: certutil.AltNames{
-				DNSNames: []string{"kubernetes.default.svc", "kubernetes.default", "kubernetes", "localhost", nodeNames[0]},
-				IPs:      []net.IP{apiServerServiceIP, net.ParseIP("127.0.0.1")},
+				DNSNames: []string{nodeName, "localhost"},
+				IPs:      []net.IP{net.ParseIP("127.0.0.1")},
 			},
-		}
-
-		cert, err := certutil.NewSignedCert(cfg, key.(*rsa.PrivateKey), caCert[0], caKey.(*rsa.PrivateKey))
+		}, key, caCert[0], caKey)
 		if err != nil {
 			sendError(err, resp)
 			return
@@ -150,13 +160,50 @@ func nodeCrt(server *config.Control) http.Handler {
 	})
 }
 
-func nodeKey(server *config.Control) http.Handler {
+func clientKubeletCert(server *config.Control) http.Handler {
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 		if req.TLS == nil {
 			resp.WriteHeader(http.StatusNotFound)
 			return
 		}
-		http.ServeFile(resp, req, server.Runtime.NodeKey)
+
+		nodeName, nodePassword, err := getNodeInfo(req)
+		if err != nil {
+			sendError(err, resp)
+		}
+
+		if err := ensureNodePassword(server.Runtime.NodePasswdFile, nodeName, nodePassword); err != nil {
+			sendError(err, resp, http.StatusForbidden)
+			return
+		}
+
+		caCert, caKey, key, err := getCACertAndKeys(server.Runtime.ClientCA, server.Runtime.ClientCAKey, server.Runtime.ClientKubeletKey)
+		if err != nil {
+			sendError(err, resp)
+			return
+		}
+
+		cert, err := certutil.NewSignedCert(certutil.Config{
+			CommonName:   "system:node:" + nodeName,
+			Organization: []string{"system:nodes"},
+			Usages:       []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+		}, key, caCert[0], caKey)
+		if err != nil {
+			sendError(err, resp)
+			return
+		}
+
+		resp.Write(append(certutil.EncodeCertPEM(cert), certutil.EncodeCertPEM(caCert[0])...))
+	})
+}
+
+func fileHandler(fileName string) http.Handler {
+	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
+		if req.TLS == nil {
+			resp.WriteHeader(http.StatusNotFound)
+			return
+		}
+		http.ServeFile(resp, req, fileName)
 	})
 }
 
@@ -218,36 +265,37 @@ func sendError(err error, resp http.ResponseWriter, status ...int) {
 }
 
 func ensureNodePassword(passwdFile, nodeName, passwd string) error {
-	f, err := os.Open(passwdFile)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	user := strings.ToLower("node:" + nodeName)
+	records := [][]string{}
 
-	buf := &strings.Builder{}
-	scan := bufio.NewScanner(f)
-	for scan.Scan() {
-		line := scan.Text()
-		parts := strings.Split(line, ",")
-		if len(parts) < 4 {
-			continue
+	if _, err := os.Stat(passwdFile); !os.IsNotExist(err) {
+		f, err := os.Open(passwdFile)
+		if err != nil {
+			return err
 		}
-		if parts[1] == user {
-			if parts[0] == passwd {
-				return nil
+		defer f.Close()
+		reader := csv.NewReader(f)
+		for {
+			record, err := reader.Read()
+			if err == io.EOF {
+				break
 			}
-			return fmt.Errorf("Node password validation failed for [%s]", nodeName)
+			if err != nil {
+				return err
+			}
+			if len(record) < 2 {
+				return fmt.Errorf("password file '%s' must have at least 2 columns (password, nodeName), found %d", passwdFile, len(record))
+			}
+			if record[1] == nodeName {
+				if record[0] == passwd {
+					return nil
+				}
+				return fmt.Errorf("Node password validation failed for '%s', using passwd file '%s'", nodeName, passwdFile)
+			}
+			records = append(records, record)
 		}
-		buf.WriteString(line)
-		buf.WriteString("\n")
-	}
-	buf.WriteString(fmt.Sprintf("%s,%s,%s,system:masters\n", passwd, user, user))
-
-	if scan.Err() != nil {
-		return scan.Err()
+		f.Close()
 	}
 
-	f.Close()
-	return ioutil.WriteFile(passwdFile, []byte(buf.String()), 0600)
+	records = append(records, []string{passwd, nodeName})
+	return control.WritePasswords(passwdFile, records)
 }

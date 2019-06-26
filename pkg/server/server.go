@@ -77,6 +77,18 @@ func startWrangler(ctx context.Context, config *Config) (string, error) {
 		controlConfig = &config.ControlConfig
 	)
 
+	caBytes, err := ioutil.ReadFile(controlConfig.Runtime.ServerCA)
+	if err != nil {
+		return "", err
+	}
+	caKeyBytes, err := ioutil.ReadFile(controlConfig.Runtime.ServerCAKey)
+	if err != nil {
+		return "", err
+	}
+
+	tlsConfig.CACerts = string(caBytes)
+	tlsConfig.CAKey = string(caKeyBytes)
+
 	tlsConfig.Handler = router(controlConfig, controlConfig.Runtime.Tunnel, func() (string, error) {
 		if tlsServer == nil {
 			return "", nil
@@ -84,7 +96,7 @@ func startWrangler(ctx context.Context, config *Config) (string, error) {
 		return tlsServer.CACert()
 	})
 
-	sc, err := newContext(ctx, controlConfig.Runtime.KubeConfigSystem)
+	sc, err := newContext(ctx, controlConfig.Runtime.KubeConfigAdmin)
 	if err != nil {
 		return "", err
 	}

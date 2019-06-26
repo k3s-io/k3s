@@ -35,7 +35,7 @@ func kubeProxy(cfg *config.Agent) {
 	argsMap := map[string]string{
 		"proxy-mode":           "iptables",
 		"healthz-bind-address": "127.0.0.1",
-		"kubeconfig":           cfg.KubeConfig,
+		"kubeconfig":           cfg.KubeConfigKubeProxy,
 		"cluster-cidr":         cfg.ClusterCIDR.String(),
 	}
 	args := config.GetArgsList(argsMap, cfg.ExtraKubeProxyArgs)
@@ -58,7 +58,7 @@ func kubelet(cfg *config.Agent) {
 		"read-only-port":           "0",
 		"allow-privileged":         "true",
 		"cluster-domain":           cfg.ClusterDomain,
-		"kubeconfig":               cfg.KubeConfig,
+		"kubeconfig":               cfg.KubeConfigKubelet,
 		"eviction-hard":            "imagefs.available<5%,nodefs.available<5%",
 		"eviction-minimum-reclaim": "imagefs.available=10%,nodefs.available=10%",
 		"fail-swap-on":             "false",
@@ -95,13 +95,13 @@ func kubelet(cfg *config.Agent) {
 	if cfg.ListenAddress != "" {
 		argsMap["address"] = cfg.ListenAddress
 	}
-	if cfg.CACertPath != "" {
+	if cfg.ClientCA != "" {
 		argsMap["anonymous-auth"] = "false"
-		argsMap["client-ca-file"] = cfg.CACertPath
+		argsMap["client-ca-file"] = cfg.ClientCA
 	}
-	if cfg.NodeCertFile != "" && cfg.NodeKeyFile != "" {
-		argsMap["tls-cert-file"] = cfg.NodeCertFile
-		argsMap["tls-private-key-file"] = cfg.NodeKeyFile
+	if cfg.ServingKubeletCert != "" && cfg.ServingKubeletKey != "" {
+		argsMap["tls-cert-file"] = cfg.ServingKubeletCert
+		argsMap["tls-private-key-file"] = cfg.ServingKubeletKey
 	}
 	if cfg.NodeName != "" {
 		argsMap["hostname-override"] = cfg.NodeName

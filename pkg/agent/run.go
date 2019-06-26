@@ -12,7 +12,6 @@ import (
 	"github.com/rancher/k3s/pkg/agent/config"
 	"github.com/rancher/k3s/pkg/agent/containerd"
 	"github.com/rancher/k3s/pkg/agent/flannel"
-	"github.com/rancher/k3s/pkg/agent/proxy"
 	"github.com/rancher/k3s/pkg/agent/syssetup"
 	"github.com/rancher/k3s/pkg/agent/tunnel"
 	"github.com/rancher/k3s/pkg/cli/cmds"
@@ -49,10 +48,6 @@ func run(ctx context.Context, cfg cmds.Agent) error {
 	}
 
 	if err := tunnel.Setup(nodeConfig); err != nil {
-		return err
-	}
-
-	if err := proxy.Run(nodeConfig); err != nil {
 		return err
 	}
 

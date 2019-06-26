@@ -23,6 +23,7 @@ import (
 	"github.com/rancher/k3s/pkg/cli/cmds"
 	"github.com/rancher/k3s/pkg/clientaccess"
 	"github.com/rancher/k3s/pkg/daemons/config"
+	"github.com/rancher/k3s/pkg/daemons/control"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/apimachinery/pkg/util/net"
@@ -82,6 +83,10 @@ func getNodeNamedCrt(nodeName, nodePasswordFile string) HTTPRequester {
 		}
 		defer resp.Body.Close()
 
+		if resp.StatusCode == http.StatusForbidden {
+			return nil, fmt.Errorf("Node password rejected, contents of '%s' may not match server passwd entry", nodePasswordFile)
+		}
+
 		if resp.StatusCode != http.StatusOK {
 			return nil, fmt.Errorf("%s: %s", u, resp.Status)
 		}
@@ -101,45 +106,55 @@ func ensureNodePassword(nodePasswordFile string) (string, error) {
 		return "", err
 	}
 	nodePassword := hex.EncodeToString(password)
-	return nodePassword, ioutil.WriteFile(nodePasswordFile, []byte(nodePassword), 0600)
+	return nodePassword, ioutil.WriteFile(nodePasswordFile, []byte(nodePassword+"\n"), 0600)
 }
 
-func getNodeCert(nodeName, nodeCertFile, nodeKeyFile, nodePasswordFile string, info *clientaccess.Info) (*tls.Certificate, error) {
-	nodeCert, err := Request("/v1-k3s/node.crt", info, getNodeNamedCrt(nodeName, nodePasswordFile))
+func getServingCert(nodeName, servingCertFile, servingKeyFile, nodePasswordFile string, info *clientaccess.Info) (*tls.Certificate, error) {
+	servingCert, err := Request("/v1-k3s/serving-kubelet.crt", info, getNodeNamedCrt(nodeName, nodePasswordFile))
 	if err != nil {
 		return nil, err
 	}
-	if err := ioutil.WriteFile(nodeCertFile, nodeCert, 0600); err != nil {
+	if err := ioutil.WriteFile(servingCertFile, servingCert, 0600); err != nil {
 		return nil, errors.Wrapf(err, "failed to write node cert")
 	}
 
-	nodeKey, err := clientaccess.Get("/v1-k3s/node.key", info)
+	servingKey, err := clientaccess.Get("/v1-k3s/serving-kubelet.key", info)
 	if err != nil {
 		return nil, err
 	}
-	if err := ioutil.WriteFile(nodeKeyFile, nodeKey, 0600); err != nil {
+	if err := ioutil.WriteFile(servingKeyFile, servingKey, 0600); err != nil {
 		return nil, errors.Wrapf(err, "failed to write node key")
 	}
 
-	cert, err := tls.X509KeyPair(nodeCert, nodeKey)
+	cert, err := tls.X509KeyPair(servingCert, servingKey)
 	if err != nil {
 		return nil, err
 	}
 	return &cert, nil
 }
 
-func writeNodeCA(dataDir string, nodeCert *tls.Certificate) (string, error) {
-	clientCABytes := pem.EncodeToMemory(&pem.Block{
-		Type:  "CERTIFICATE",
-		Bytes: nodeCert.Certificate[1],
-	})
-
-	clientCA := filepath.Join(dataDir, "client-ca.pem")
-	if err := ioutil.WriteFile(clientCA, clientCABytes, 0600); err != nil {
-		return "", errors.Wrapf(err, "failed to write client CA")
+func getHostFile(filename string, info *clientaccess.Info) error {
+	basename := filepath.Base(filename)
+	fileBytes, err := clientaccess.Get("/v1-k3s/"+basename, info)
+	if err != nil {
+		return err
 	}
+	if err := ioutil.WriteFile(filename, fileBytes, 0600); err != nil {
+		return errors.Wrapf(err, "failed to write cert %s", filename)
+	}
+	return nil
+}
 
-	return clientCA, nil
+func getNodeNamedHostFile(filename, nodeName, nodePasswordFile string, info *clientaccess.Info) error {
+	basename := filepath.Base(filename)
+	fileBytes, err := Request("/v1-k3s/"+basename, info, getNodeNamedCrt(nodeName, nodePasswordFile))
+	if err != nil {
+		return err
+	}
+	if err := ioutil.WriteFile(filename, fileBytes, 0600); err != nil {
+		return errors.Wrapf(err, "failed to write cert %s", filename)
+	}
+	return nil
 }
 
 func getHostnameAndIP(info cmds.Agent) (string, string, error) {
@@ -169,17 +184,15 @@ func getHostnameAndIP(info cmds.Agent) (string, string, error) {
 }
 
 func localAddress(controlConfig *config.Control) string {
-	return fmt.Sprintf("127.0.0.1:%d", controlConfig.AdvertisePort)
+	return fmt.Sprintf("127.0.0.1:%d", controlConfig.ProxyPort)
 }
 
-func writeKubeConfig(envInfo *cmds.Agent, info clientaccess.Info, controlConfig *config.Control, nodeCert *tls.Certificate) (string, error) {
+func writeKubeConfig(envInfo *cmds.Agent, info clientaccess.Info, tlsCert *tls.Certificate) (string, error) {
 	os.MkdirAll(envInfo.DataDir, 0700)
 	kubeConfigPath := filepath.Join(envInfo.DataDir, "kubeconfig.yaml")
-
-	info.URL = "https://" + localAddress(controlConfig)
 	info.CACerts = pem.EncodeToMemory(&pem.Block{
 		Type:  cert.CertificateBlockType,
-		Bytes: nodeCert.Certificate[1],
+		Bytes: tlsCert.Certificate[1],
 	})
 
 	return kubeConfigPath, info.WriteKubeConfig(kubeConfigPath)
@@ -253,25 +266,6 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 		return nil, err
 	}
 
-	nodeCertFile := filepath.Join(envInfo.DataDir, "token-node.crt")
-	nodeKeyFile := filepath.Join(envInfo.DataDir, "token-node.key")
-	nodePasswordFile := filepath.Join(envInfo.DataDir, "node-password.txt")
-
-	nodeCert, err := getNodeCert(nodeName, nodeCertFile, nodeKeyFile, nodePasswordFile, info)
-	if err != nil {
-		return nil, err
-	}
-
-	clientCA, err := writeNodeCA(envInfo.DataDir, nodeCert)
-	if err != nil {
-		return nil, err
-	}
-
-	kubeConfig, err := writeKubeConfig(envInfo, *info, controlConfig, nodeCert)
-	if err != nil {
-		return nil, err
-	}
-
 	hostLocal, err := exec.LookPath("host-local")
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to find host-local")
@@ -285,6 +279,59 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 		}
 	}
 
+	clientCAFile := filepath.Join(envInfo.DataDir, "client-ca.crt")
+	if err := getHostFile(clientCAFile, info); err != nil {
+		return nil, err
+	}
+
+	serverCAFile := filepath.Join(envInfo.DataDir, "server-ca.crt")
+	if err := getHostFile(serverCAFile, info); err != nil {
+		return nil, err
+	}
+
+	servingKubeletCert := filepath.Join(envInfo.DataDir, "serving-kubelet.crt")
+	servingKubeletKey := filepath.Join(envInfo.DataDir, "serving-kubelet.key")
+	nodePasswordFile := filepath.Join(envInfo.DataDir, "node-password.txt")
+	servingCert, err := getServingCert(nodeName, servingKubeletCert, servingKubeletKey, nodePasswordFile, info)
+	if err != nil {
+		return nil, err
+	}
+
+	kubeconfigNode, err := writeKubeConfig(envInfo, *info, servingCert)
+	if err != nil {
+		return nil, err
+	}
+
+	clientKubeletCert := filepath.Join(envInfo.DataDir, "client-kubelet.crt")
+	if err := getNodeNamedHostFile(clientKubeletCert, nodeName, nodePasswordFile, info); err != nil {
+		return nil, err
+	}
+
+	clientKubeletKey := filepath.Join(envInfo.DataDir, "client-kubelet.key")
+	if err := getHostFile(clientKubeletKey, info); err != nil {
+		return nil, err
+	}
+
+	kubeconfigKubelet := filepath.Join(envInfo.DataDir, "kubelet.kubeconfig")
+	if err := control.KubeConfig(kubeconfigKubelet, info.URL, serverCAFile, clientKubeletCert, clientKubeletKey); err != nil {
+		return nil, err
+	}
+
+	clientKubeProxyCert := filepath.Join(envInfo.DataDir, "client-kube-proxy.crt")
+	if err := getHostFile(clientKubeProxyCert, info); err != nil {
+		return nil, err
+	}
+
+	clientKubeProxyKey := filepath.Join(envInfo.DataDir, "client-kube-proxy.key")
+	if err := getHostFile(clientKubeProxyKey, info); err != nil {
+		return nil, err
+	}
+
+	kubeconfigKubeproxy := filepath.Join(envInfo.DataDir, "kubeproxy.kubeconfig")
+	if err := control.KubeConfig(kubeconfigKubeproxy, info.URL, serverCAFile, clientKubeProxyCert, clientKubeProxyKey); err != nil {
+		return nil, err
+	}
+
 	nodeConfig := &config.Node{
 		Docker:                   envInfo.Docker,
 		NoFlannel:                envInfo.NoFlannel,
@@ -295,14 +342,16 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 	nodeConfig.Images = filepath.Join(envInfo.DataDir, "images")
 	nodeConfig.AgentConfig.NodeIP = nodeIP
 	nodeConfig.AgentConfig.NodeName = nodeName
-	nodeConfig.AgentConfig.NodeCertFile = nodeCertFile
-	nodeConfig.AgentConfig.NodeKeyFile = nodeKeyFile
+	nodeConfig.AgentConfig.ServingKubeletCert = servingKubeletCert
+	nodeConfig.AgentConfig.ServingKubeletKey = servingKubeletKey
 	nodeConfig.AgentConfig.ClusterDNS = controlConfig.ClusterDNS
 	nodeConfig.AgentConfig.ClusterDomain = controlConfig.ClusterDomain
 	nodeConfig.AgentConfig.ResolvConf = locateOrGenerateResolvConf(envInfo)
-	nodeConfig.AgentConfig.CACertPath = clientCA
+	nodeConfig.AgentConfig.ClientCA = clientCAFile
 	nodeConfig.AgentConfig.ListenAddress = "0.0.0.0"
-	nodeConfig.AgentConfig.KubeConfig = kubeConfig
+	nodeConfig.AgentConfig.KubeConfigNode = kubeconfigNode
+	nodeConfig.AgentConfig.KubeConfigKubelet = kubeconfigKubelet
+	nodeConfig.AgentConfig.KubeConfigKubeProxy = kubeconfigKubeproxy
 	nodeConfig.AgentConfig.RootDir = filepath.Join(envInfo.DataDir, "kubelet")
 	nodeConfig.AgentConfig.PauseImage = envInfo.PauseImage
 	nodeConfig.CACerts = info.CACerts
@@ -316,7 +365,7 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 	nodeConfig.Containerd.Address = filepath.Join(nodeConfig.Containerd.State, "containerd.sock")
 	nodeConfig.Containerd.Template = filepath.Join(envInfo.DataDir, "etc/containerd/config.toml.tmpl")
 	nodeConfig.ServerAddress = serverURLParsed.Host
-	nodeConfig.Certificate = nodeCert
+	nodeConfig.Certificate = servingCert
 	if !nodeConfig.NoFlannel {
 		nodeConfig.FlannelConf = filepath.Join(envInfo.DataDir, "etc/flannel/net-conf.json")
 		nodeConfig.AgentConfig.CNIBinDir = filepath.Dir(hostLocal)
