@@ -14,7 +14,7 @@ if [ ! -e build/data ];then
 fi
 
 echo Running: go generate
-go generate
+HOME=/ go generate
 
 echo Running: golangci-lint
 golangci-lint run
