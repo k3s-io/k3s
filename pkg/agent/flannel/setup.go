@@ -2,6 +2,7 @@ package flannel
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -98,6 +99,9 @@ func createFlannelConf(config *config.Node) error {
 	if config.FlannelConf == "" {
 		return nil
 	}
-	return util.WriteFile(config.FlannelConf,
-		strings.Replace(netJSON, "%CIDR%", config.AgentConfig.ClusterCIDR.String(), -1))
+	if _, err := os.Stat(config.FlannelConf); os.IsNotExist(err) {
+		return util.WriteFile(config.FlannelConf,
+			strings.Replace(netJSON, "%CIDR%", config.AgentConfig.ClusterCIDR.String(), -1))
+	}
+	return nil
 }
