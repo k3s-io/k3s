@@ -157,8 +157,9 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 		serverConfig.ControlConfig.ClusterDNS = net2.ParseIP(cfg.ClusterDNS)
 	}
 
-	// TODO: support etcd
-	serverConfig.ControlConfig.NoLeaderElect = true
+	if serverConfig.ControlConfig.StorageBackend != "etcd3" {
+		serverConfig.ControlConfig.NoLeaderElect = true
+	}
 
 	for _, noDeploy := range app.StringSlice("no-deploy") {
 		if noDeploy == "servicelb" {
