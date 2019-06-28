@@ -290,6 +290,10 @@ func prepare(config *config.Control, runtime *config.ControlRuntime) error {
 	runtime.ClientAuthProxyCert = path.Join(config.DataDir, "tls", "client-auth-proxy.crt")
 	runtime.ClientAuthProxyKey = path.Join(config.DataDir, "tls", "client-auth-proxy.key")
 
+	if err := getHAData(config); err != nil {
+		return err
+	}
+
 	if err := genCerts(config, runtime); err != nil {
 		return err
 	}
@@ -299,6 +303,10 @@ func prepare(config *config.Control, runtime *config.ControlRuntime) error {
 	}
 
 	if err := genUsers(config, runtime); err != nil {
+		return err
+	}
+
+	if err := setHAData(config); err != nil {
 		return err
 	}
 
