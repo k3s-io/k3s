@@ -31,9 +31,10 @@ type serverHA struct {
 }
 
 func setHAData(cfg *config.Control) error {
-	if cfg.StorageBackend != "etcd3" {
+	if cfg.StorageBackend != "etcd3" || cfg.CertStorageBackend != "etcd3" {
 		return nil
 	}
+
 	endpoints := strings.Split(cfg.StorageEndpoint, ",")
 	cli, err := clientv3.New(clientv3.Config{
 		Endpoints:   endpoints,
@@ -67,7 +68,7 @@ func setHAData(cfg *config.Control) error {
 
 func getHAData(cfg *config.Control) error {
 	serverRuntime := &serverHA{}
-	if cfg.StorageBackend != "etcd3" {
+	if cfg.StorageBackend != "etcd3" || cfg.CertStorageBackend != "etcd3" {
 		return nil
 	}
 	endpoints := strings.Split(cfg.StorageEndpoint, ",")
