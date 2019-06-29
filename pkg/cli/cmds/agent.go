@@ -91,12 +91,12 @@ var (
 	}
 	NodeTaints = cli.StringSliceFlag{
 		Name:  "node-taint",
-		Usage: "(agent) Registring kubelet with set of taints",
+		Usage: "(agent) Registering kubelet with set of taints",
 		Value: &AgentConfig.Taints,
 	}
 	NodeLabels = cli.StringSliceFlag{
 		Name:  "node-label",
-		Usage: "(agent) Registring kubelet with set of labels",
+		Usage: "(agent) Registering kubelet with set of labels",
 		Value: &AgentConfig.Labels,
 	}
 )
