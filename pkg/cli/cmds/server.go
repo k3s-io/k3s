@@ -147,7 +147,7 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 			},
 			cli.StringFlag{
 				Name:        "cert-storage-backend",
-				Usage:       "Specify storage type for storing certificate information",
+				Usage:       "(experimental) Specify storage type for storing certificate information",
 				Destination: &ServerConfig.CertStorageBackend,
 			},
 			cli.StringFlag{
