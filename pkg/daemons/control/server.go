@@ -290,7 +290,7 @@ func prepare(config *config.Control, runtime *config.ControlRuntime) error {
 	runtime.ClientAuthProxyCert = path.Join(config.DataDir, "tls", "client-auth-proxy.crt")
 	runtime.ClientAuthProxyKey = path.Join(config.DataDir, "tls", "client-auth-proxy.key")
 
-	if err := getHAData(config); err != nil {
+	if err := fetchBootstrapData(config); err != nil {
 		return err
 	}
 
@@ -306,7 +306,7 @@ func prepare(config *config.Control, runtime *config.ControlRuntime) error {
 		return err
 	}
 
-	if err := setHAData(config); err != nil {
+	if err := storeBootstrapData(config); err != nil {
 		return err
 	}
 

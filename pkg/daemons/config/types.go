@@ -81,7 +81,7 @@ type Control struct {
 	KubeConfigMode        string
 	DataDir               string
 	Skips                 []string
-	CertStorageBackend    string
+	BootstrapType         string
 	StorageBackend        string
 	StorageEndpoint       string
 	StorageCAFile         string
