@@ -23,7 +23,7 @@ type Server struct {
 	ExtraSchedulerArgs  cli.StringSlice
 	ExtraControllerArgs cli.StringSlice
 	Rootless            bool
-	CertStorageBackend  string
+	BootstrapType       string
 	StorageBackend      string
 	StorageEndpoint     string
 	StorageCAFile       string
@@ -146,9 +146,9 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Destination: &ServerConfig.Rootless,
 			},
 			cli.StringFlag{
-				Name:        "cert-storage-backend",
-				Usage:       "(experimental) Specify storage type for storing certificate information",
-				Destination: &ServerConfig.CertStorageBackend,
+				Name:        "bootstrap",
+				Usage:       "(experimental) Specify data bootstrap behavior (one of: none, read, write, or full), etcd3 only",
+				Destination: &ServerConfig.BootstrapType,
 			},
 			cli.StringFlag{
 				Name:        "storage-backend",
