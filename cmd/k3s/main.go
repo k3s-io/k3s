@@ -27,8 +27,8 @@ func main() {
 		cmds.NewServerCommand(wrap("k3s-server", os.Args)),
 		cmds.NewAgentCommand(wrap("k3s-agent", os.Args)),
 		cmds.NewKubectlCommand(externalCLIAction("kubectl")),
-		//cmds.NewCtrCommand(externalCLIAction("ctr")),
 		cmds.NewCRICTL(externalCLIAction("crictl")),
+		cmds.NewCtrCommand(externalCLIAction("ctr")),
 	}
 
 	err := app.Run(os.Args)
