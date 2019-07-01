@@ -32,6 +32,7 @@ mkdir -p ${OUTPUT}
 SECRET=random-$((100000 + RANDOM % 999999))
 export K3S_AGENT=sonobuoy-k3s-agent-${K3S_PORT}
 export K3S_SERVER=sonobuoy-k3s-server-${K3S_PORT}
+export CONTAINERS="${K3S_SERVER} ${K3S_AGENT}"
 export KUBECONFIG=${OUTPUT}/kubeconfig.yaml
 
 # ---
@@ -40,19 +41,24 @@ cleanup() {
     exit_status=$?
     set +e
     echo "Cleaning up"
-    for container in ${K3S_SERVER} ${K3S_AGENT}; do
+    docker rm -f ${CONTAINERS} 2>/dev/null
+    rm ${KUBECONFIG}
+    exit ${exit_status}
+}
+trap cleanup EXIT
+
+# ---
+
+dump-logs() {
+    for container in ${CONTAINERS}; do
         docker cp ${container}:/var/lib/rancher/k3s/agent/containerd/containerd.log ${OUTPUT}/${container}-containerd.log
         docker logs ${container} >${OUTPUT}/${container}.log 2>&1
-        docker rm -f ${container} 2>/dev/null
         if [ ${exit_status} -ne 0 ]; then
             cat ${OUTPUT}/${container}-containerd.log
             cat ${OUTPUT}/${container}.log
         fi
     done
-    rm ${KUBECONFIG}
-    exit ${exit_status}
 }
-trap cleanup EXIT
 
 # ---
 
@@ -146,7 +152,10 @@ sonobuoy retrieve ${OUTPUT}
     cd ${OUTPUT}
     tar xzf *_sonobuoy_*.tar.gz
     results="./plugins/e2e/results/e2e.log"
-    [ -s ${results} ] || exit 1
+    [ -s ${results} ] || {
+        dump-logs
+        exit 1
+    }
     tail -20 ${results}
 
     exit_code=0
