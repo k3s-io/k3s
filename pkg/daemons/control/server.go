@@ -150,12 +150,13 @@ func apiServer(ctx context.Context, cfg *config.Control, runtime *config.Control
 	if len(cfg.StorageEndpoint) > 0 {
 		argsMap["etcd-servers"] = cfg.StorageEndpoint
 	}
+	if cfg.StorageBackend != "etcd3" {
+		argsMap["watch-cache"] = "false"
+	}
 
 	certDir := filepath.Join(cfg.DataDir, "tls/temporary-certs")
 	os.MkdirAll(certDir, 0700)
 
-	// TODO: sqlite doesn't need the watch cache, but etcd does, so make this dynamic
-	argsMap["watch-cache"] = "false"
 	argsMap["cert-dir"] = certDir
 	argsMap["allow-privileged"] = "true"
 	argsMap["authorization-mode"] = strings.Join([]string{modes.ModeNode, modes.ModeRBAC}, ",")
