@@ -2,7 +2,7 @@ FROM golang:1.12.1-alpine3.9
 
 RUN apk -U --no-cache add bash git docker curl jq coreutils
 RUN go get -d github.com/heptio/sonobuoy && \
-    git -C /go/src/github.com/heptio/sonobuoy checkout -b current v0.14.2 && \
+    git -C /go/src/github.com/heptio/sonobuoy checkout -b current v0.14.3 && \
     go install github.com/heptio/sonobuoy
 RUN rm -rf /go/src /go/pkg
 
