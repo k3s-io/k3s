@@ -148,8 +148,14 @@ sonobuoy retrieve ${OUTPUT}
     results="./plugins/e2e/results/e2e.log"
     [ -s ${results} ] || exit 1
     tail -20 ${results}
+
+    exit_code=0
     status=$(tail -5 ${results} | grep '^SUCCESS!.*| 0 Failed |' >/dev/null && echo passed || echo failed)
+    [ "${status}" = "failed" ] && exit_code=1
+
     if [ -n "${E2E_LOG_OUTPUT}" ]; then
         cp ${results} $(echo ${E2E_LOG_OUTPUT} | sed -e "s/-STATUS-/-${status}-/g")
     fi
+
+    exit ${exit_code}
 )
