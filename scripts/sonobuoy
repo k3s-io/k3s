@@ -28,6 +28,7 @@ export -f get-port
 K3S_PORT=$(timeout --foreground 5s bash -c get-port)
 OUTPUT=$(pwd)/sonobuoy-output/${K3S_PORT}
 mkdir -p ${OUTPUT}
+RESULTS="${OUTPUT}/plugins/e2e/results/e2e.log"
 
 SECRET=random-$((100000 + RANDOM % 999999))
 export K3S_AGENT=sonobuoy-k3s-agent-${K3S_PORT}
@@ -46,17 +47,6 @@ cleanup() {
     exit ${exit_status}
 }
 trap cleanup EXIT
-
-# ---
-
-dump-logs() {
-    for container in ${CONTAINERS}; do
-        docker cp ${container}:/var/lib/rancher/k3s/agent/containerd/containerd.log ${OUTPUT}/${container}-containerd.log
-        docker logs ${container} >${OUTPUT}/${container}.log 2>&1
-        cat ${OUTPUT}/${container}-containerd.log
-        cat ${OUTPUT}/${container}.log
-    done
-}
 
 # ---
 
@@ -137,32 +127,76 @@ timeout --foreground 1m bash -c wait-for-services
 
 # ---
 
-echo "Starting sonobuoy tests"
+dump-container-logs() {
+    for container in ${CONTAINERS}; do
+        docker cp ${container}:/var/lib/rancher/k3s/agent/containerd/containerd.log ${OUTPUT}/${container}-containerd.log
+        docker logs ${container} >${OUTPUT}/${container}.log 2>&1
+        cat ${OUTPUT}/${container}-containerd.log
+        cat ${OUTPUT}/${container}.log
+    done
+}
+export -f dump-container-logs
 
-timeout --foreground 30m sonobuoy run \
-    --config scripts/sonobuoy-config.json \
-    --wait \
-    ${@}
-sonobuoy status
-sonobuoy retrieve ${OUTPUT}
+# ---
 
-(
-    cd ${OUTPUT}
-    tar xzf *_sonobuoy_*.tar.gz
-    results="./plugins/e2e/results/e2e.log"
-    [ -s ${results} ] || {
-        dump-logs
-        exit 1
-    }
-    tail -20 ${results}
+sonobuoy-destruct() {
+    sonobuoy logs
+    sonobuoy delete --wait
+}
+export -f sonobuoy-destruct
 
-    exit_code=0
-    status=$(tail -5 ${results} | grep '^SUCCESS!.*| 0 Failed |' >/dev/null && echo passed || echo failed)
-    [ "${status}" = "failed" ] && exit_code=1
+# ---
 
-    if [ -n "${E2E_LOG_OUTPUT}" ]; then
-        cp ${results} $(echo ${E2E_LOG_OUTPUT} | sed -e "s/-STATUS-/-${status}-/g")
+sonobuoy-test() {
+    timeout --foreground 30m sonobuoy run \
+        --config scripts/sonobuoy-config.json \
+        --wait \
+        "${@}"
+    if sonobuoy status | grep "failed"; then
+        sonobuoy-destruct
+        return 1
+    fi
+    sonobuoy retrieve ${OUTPUT}
+
+    tar x -z -f ${OUTPUT}/*_sonobuoy_*.tar.gz -C ${OUTPUT}
+    if [ ! -s ${RESULTS} ]; then
+        sonobuoy-destruct
+        return 1
     fi
 
-    exit ${exit_code}
-)
+    tail -20 ${RESULTS}
+}
+export -f sonobuoy-test
+
+# ---
+
+sonobuoy-retry-test() {
+    SECONDS=0
+    LIMIT=300
+    for i in seq 1 3; do
+        sonobuoy-test "${@}" && return
+        echo "Failed sonobuoy try #${i}"
+        if [[ "$SECONDS" > "$LIMIT" ]]; then
+            echo "Stopping sonobuoy re-try after ${SECONDS} seconds (limit ${LIMIT}s)"
+            break
+        fi
+    done
+    dump-container-logs
+    return 1
+}
+export -f sonobuoy-retry-test
+
+# ---
+
+echo "Starting sonobuoy tests"
+sonobuoy-retry-test "${@}"
+
+exit_code=0
+status=$(tail -5 ${RESULTS} | grep '^SUCCESS!.*| 0 Failed |' >/dev/null && echo passed || echo failed)
+[ "${status}" = "failed" ] && exit_code=1
+
+if [ -n "${E2E_LOG_OUTPUT}" ]; then
+    cp ${RESULTS} $(echo ${E2E_LOG_OUTPUT} | sed -e "s/-STATUS-/-${status}-/g")
+fi
+
+exit ${exit_code}

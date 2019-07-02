@@ -6,8 +6,8 @@ cd $(dirname $0)/..
 cleanup() {
     exit_code=$?
     set +e
-    echo "Waiting on the tests!"
     wait
+    echo "Finished the tests!"
     exit ${exit_code}
 }
 trap cleanup EXIT
@@ -40,9 +40,6 @@ log_output=${OUTPUT}/e2e-STATUS-${ARCH}-parallel.log \
     run-sonobuoy --e2e-focus='\[Conformance\]' --e2e-skip='\[Serial\]' --e2e-parallel=y
 
 
-exit_code=0
 for pid in "${pids[@]}"; do
-    wait $pid || exit_code=$?
+    wait $pid || exit $?
 done
-trap - EXIT
-exit ${exit_code}
