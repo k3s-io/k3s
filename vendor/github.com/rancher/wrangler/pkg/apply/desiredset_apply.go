@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"sync"
 
+	gvk2 "github.com/rancher/wrangler/pkg/gvk"
+
 	"github.com/pkg/errors"
 	"github.com/rancher/wrangler/pkg/apply/injectors"
 	"github.com/rancher/wrangler/pkg/objectset"
@@ -165,10 +167,14 @@ func (o *desiredSet) getLabelsAndAnnotations() (map[string]string, map[string]st
 	}
 
 	if o.owner != nil {
-		annotations[LabelGVK] = o.owner.GetObjectKind().GroupVersionKind().String()
+		gvk, err := gvk2.Get(o.owner)
+		if err != nil {
+			return nil, nil, err
+		}
+		annotations[LabelGVK] = gvk.String()
 		metadata, err := meta.Accessor(o.owner)
 		if err != nil {
-			return nil, nil, fmt.Errorf("failed to get metadata for %s", o.owner.GetObjectKind().GroupVersionKind())
+			return nil, nil, fmt.Errorf("failed to get metadata for %s", gvk)
 		}
 		annotations[LabelName] = metadata.GetName()
 		annotations[LabelNamespace] = metadata.GetNamespace()

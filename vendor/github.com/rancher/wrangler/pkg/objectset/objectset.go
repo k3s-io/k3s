@@ -5,6 +5,8 @@ import (
 	"reflect"
 	"sort"
 
+	"github.com/rancher/wrangler/pkg/gvk"
+
 	"github.com/rancher/wrangler/pkg/merr"
 	"k8s.io/apimachinery/pkg/api/meta"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -33,16 +35,21 @@ func (o ObjectKey) String() string {
 
 type ObjectByGVK map[schema.GroupVersionKind]map[ObjectKey]runtime.Object
 
-func (o ObjectByGVK) Add(obj runtime.Object) error {
+func (o ObjectByGVK) Add(obj runtime.Object) (schema.GroupVersionKind, error) {
 	metadata, err := meta.Accessor(obj)
 	if err != nil {
-		return err
+		return schema.GroupVersionKind{}, err
 	}
 
-	objs := o[obj.GetObjectKind().GroupVersionKind()]
+	gvk, err := gvk.Get(obj)
+	if err != nil {
+		return schema.GroupVersionKind{}, err
+	}
+
+	objs := o[gvk]
 	if objs == nil {
 		objs = map[ObjectKey]runtime.Object{}
-		o[obj.GetObjectKind().GroupVersionKind()] = objs
+		o[gvk] = objs
 	}
 
 	objs[ObjectKey{
@@ -50,40 +57,26 @@ func (o ObjectByGVK) Add(obj runtime.Object) error {
 		Name:      metadata.GetName(),
 	}] = obj
 
-	return nil
+	return gvk, nil
 }
 
 type ObjectSet struct {
-	errs    []error
-	objects ObjectByGVK
-	nsed    map[schema.GroupVersionKind]bool
-	inputs  []runtime.Object
-	order   []runtime.Object
+	errs     []error
+	objects  ObjectByGVK
+	order    []runtime.Object
+	gvkOrder []schema.GroupVersionKind
+	gvkSeen  map[schema.GroupVersionKind]bool
 }
 
 func NewObjectSet() *ObjectSet {
 	return &ObjectSet{
-		nsed:    map[schema.GroupVersionKind]bool{},
 		objects: ObjectByGVK{},
+		gvkSeen: map[schema.GroupVersionKind]bool{},
 	}
-}
-
-func (o *ObjectSet) Inputs() []runtime.Object {
-	return o.inputs
 }
 
 func (o *ObjectSet) ObjectsByGVK() ObjectByGVK {
 	return o.objects
-}
-
-func (o *ObjectSet) AddInput(objs ...runtime.Object) *ObjectSet {
-	for _, obj := range objs {
-		if obj == nil || reflect.ValueOf(obj).IsNil() {
-			continue
-		}
-		o.inputs = append(o.inputs, obj)
-	}
-	return o
 }
 
 func (o *ObjectSet) Add(objs ...runtime.Object) *ObjectSet {
@@ -98,34 +91,17 @@ func (o *ObjectSet) add(obj runtime.Object) {
 		return
 	}
 
-	gvk := obj.GetObjectKind().GroupVersionKind()
-
-	metadata, err := meta.Accessor(obj)
+	gvk, err := o.objects.Add(obj)
 	if err != nil {
-		o.err(fmt.Errorf("failed to get metadata for %s", gvk))
-		return
-	}
-
-	name := metadata.GetName()
-	if name == "" {
-		o.err(fmt.Errorf("%s is missing name", gvk))
-		return
-	}
-
-	namespace := metadata.GetNamespace()
-	nsed, ok := o.nsed[gvk]
-	if ok && nsed != (namespace != "") {
-		o.err(fmt.Errorf("got %s objects that are both namespaced and not namespaced", gvk))
-		return
-	}
-	o.nsed[gvk] = namespace != ""
-
-	if err := o.objects.Add(obj); err != nil {
-		o.err(fmt.Errorf("failed to get metadata for %s", gvk))
+		o.err(fmt.Errorf("failed to add %v", obj))
 		return
 	}
 
 	o.order = append(o.order, obj)
+	if !o.gvkSeen[gvk] {
+		o.gvkSeen[gvk] = true
+		o.gvkOrder = append(o.gvkOrder, gvk)
+	}
 }
 
 func (o *ObjectSet) err(err error) error {
@@ -146,25 +122,12 @@ func (o *ObjectSet) Len() int {
 }
 
 func (o *ObjectSet) GVKOrder(known ...schema.GroupVersionKind) []schema.GroupVersionKind {
-	seen := map[schema.GroupVersionKind]bool{}
-	var gvkOrder []schema.GroupVersionKind
-
-	for _, obj := range o.order {
-		if seen[obj.GetObjectKind().GroupVersionKind()] {
-			continue
-		}
-		seen[obj.GetObjectKind().GroupVersionKind()] = true
-		gvkOrder = append(gvkOrder, obj.GetObjectKind().GroupVersionKind())
-	}
-
 	var rest []schema.GroupVersionKind
 
 	for _, gvk := range known {
-		if seen[gvk] {
+		if o.gvkSeen[gvk] {
 			continue
 		}
-
-		seen[gvk] = true
 		rest = append(rest, gvk)
 	}
 
@@ -172,5 +135,5 @@ func (o *ObjectSet) GVKOrder(known ...schema.GroupVersionKind) []schema.GroupVer
 		return rest[i].String() < rest[j].String()
 	})
 
-	return append(gvkOrder, rest...)
+	return append(o.gvkOrder, rest...)
 }
