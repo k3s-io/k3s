@@ -8,7 +8,7 @@ platform:
 
 steps:
 - name: build
-  image: rancher/dapper:v0.4.1
+  image: rancher/dapper:v0.4.2
   commands:
   - dapper ci
   volumes:
@@ -56,7 +56,7 @@ steps:
     - tag
 
 - name: sonobuoy-e2e-tests
-  image: rancher/dapper:v0.4.1
+  image: rancher/dapper:v0.4.2
   commands:
   - dapper -f Dockerfile.sonobuoy.dapper
   volumes:
@@ -95,7 +95,7 @@ platform:
 
 steps:
 - name: build
-  image: rancher/dapper:v0.4.1
+  image: rancher/dapper:v0.4.2
   commands:
   - dapper ci
   volumes:
@@ -157,7 +157,7 @@ platform:
 
 steps:
 - name: build
-  image: rancher/dapper:v0.4.1
+  image: rancher/dapper:v0.4.2
   commands:
   - dapper ci
   volumes:
