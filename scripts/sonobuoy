@@ -173,10 +173,10 @@ export -f sonobuoy-test
 sonobuoy-retry-test() {
     SECONDS=0
     LIMIT=300
-    for i in seq 1 3; do
+    for i in $(seq 1 3); do
         sonobuoy-test "${@}" && return
         echo "Failed sonobuoy try #${i}"
-        if [[ "$SECONDS" > "$LIMIT" ]]; then
+        if [ "$SECONDS" -gt "$LIMIT" ]; then
             echo "Stopping sonobuoy re-try after ${SECONDS} seconds (limit ${LIMIT}s)"
             break
         fi
