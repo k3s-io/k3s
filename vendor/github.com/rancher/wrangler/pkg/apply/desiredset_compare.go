@@ -208,15 +208,19 @@ func getOriginal(obj v1.Object) ([]byte, error) {
 		return []byte("{}"), nil
 	}
 
-	mapObj := &unstructured.Unstructured{}
-	err := json.Unmarshal(original, mapObj)
+	mapObj := map[string]interface{}{}
+	err := json.Unmarshal(original, &mapObj)
 	if err != nil {
 		return nil, err
 	}
 
-	removeCreationTimestamp(mapObj.Object)
+	removeCreationTimestamp(mapObj)
 
-	objCopy, err := prepareObjectForCreate(mapObj)
+	u := &unstructured.Unstructured{
+		Object: mapObj,
+	}
+
+	objCopy, err := prepareObjectForCreate(u)
 	if err != nil {
 		return nil, err
 	}

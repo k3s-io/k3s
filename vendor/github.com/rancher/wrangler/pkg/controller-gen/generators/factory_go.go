@@ -3,6 +3,7 @@ package generators
 import (
 	"fmt"
 	"io"
+	"path/filepath"
 
 	args2 "github.com/rancher/wrangler/pkg/controller-gen/args"
 	"k8s.io/gengo/args"
@@ -38,7 +39,9 @@ func (f *factory) Imports(*generator.Context) []string {
 		"k8s.io/apimachinery/pkg/runtime/schema",
 		"k8s.io/client-go/rest",
 		GenericPackage,
+		AllSchemes,
 		fmt.Sprintf("clientset \"%s\"", group.ClientSetPackage),
+		fmt.Sprintf("scheme \"%s\"", filepath.Join(group.ClientSetPackage, "scheme")),
 		fmt.Sprintf("informers \"%s\"", group.InformersPackage),
 	}
 }
@@ -61,6 +64,10 @@ func (f *factory) Init(c *generator.Context, w io.Writer) error {
 }
 
 var factoryBody = `
+func init() {
+	scheme.AddToScheme(schemes.All)
+}
+
 type Factory struct {
 	synced            bool
 	informerFactory   informers.SharedInformerFactory
