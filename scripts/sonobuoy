@@ -163,7 +163,7 @@ sonobuoy-test() {
         sonobuoy retrieve ${OUTPUT}
         tar x -z -f ${OUTPUT}/*_sonobuoy_*.tar.gz -C ${OUTPUT}
         [ -s ${RESULTS} ] && break
-    fi
+    done
 
     if [ ! -s ${RESULTS} ]; then
         sonobuoy-destruct
