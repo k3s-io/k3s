@@ -152,13 +152,19 @@ sonobuoy-test() {
         --config scripts/sonobuoy-config.json \
         --wait \
         "${@}"
+
     if sonobuoy status | grep "failed"; then
         sonobuoy-destruct
         return 1
     fi
-    sonobuoy retrieve ${OUTPUT}
 
-    tar x -z -f ${OUTPUT}/*_sonobuoy_*.tar.gz -C ${OUTPUT}
+    for i in $(seq 1 3); do
+        sleep 5
+        sonobuoy retrieve ${OUTPUT}
+        tar x -z -f ${OUTPUT}/*_sonobuoy_*.tar.gz -C ${OUTPUT}
+        [ -s ${RESULTS} ] && break
+    fi
+
     if [ ! -s ${RESULTS} ]; then
         sonobuoy-destruct
         return 1
