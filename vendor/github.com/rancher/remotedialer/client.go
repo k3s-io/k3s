@@ -11,14 +11,14 @@ import (
 
 type ConnectAuthorizer func(proto, address string) bool
 
-func ClientConnect(wsURL string, headers http.Header, dialer *websocket.Dialer, auth ConnectAuthorizer, onConnect func(context.Context) error) {
-	if err := connectToProxy(wsURL, headers, auth, dialer, onConnect); err != nil {
-		logrus.WithError(err).Error("Failed to connect to proxy")
+func ClientConnect(ctx context.Context, wsURL string, headers http.Header, dialer *websocket.Dialer, auth ConnectAuthorizer, onConnect func(context.Context) error) {
+	if err := connectToProxy(ctx, wsURL, headers, auth, dialer, onConnect); err != nil {
+		logrus.WithError(err).Error("Remotedialer proxy error")
 		time.Sleep(time.Duration(5) * time.Second)
 	}
 }
 
-func connectToProxy(proxyURL string, headers http.Header, auth ConnectAuthorizer, dialer *websocket.Dialer, onConnect func(context.Context) error) error {
+func connectToProxy(ctx context.Context, proxyURL string, headers http.Header, auth ConnectAuthorizer, dialer *websocket.Dialer, onConnect func(context.Context) error) error {
 	logrus.WithField("url", proxyURL).Info("Connecting to proxy")
 
 	if dialer == nil {
@@ -41,7 +41,18 @@ func connectToProxy(proxyURL string, headers http.Header, auth ConnectAuthorizer
 	}
 
 	session := NewClientSession(auth, ws)
-	_, err = session.Serve()
-	session.Close()
-	return err
+	defer session.Close()
+
+	result := make(chan error, 1)
+	go func() {
+		_, err = session.Serve()
+		result <- err
+	}()
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case err := <-result:
+		return err
+	}
 }
