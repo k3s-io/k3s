@@ -16,6 +16,8 @@ port-used() {
 }
 export -f port-used
 
+# ---
+
 get-port() {
     while
         PORT=$((10000 + RANDOM % 50000))
@@ -25,45 +27,14 @@ get-port() {
 }
 export -f get-port
 
-K3S_PORT=$(timeout --foreground 5s bash -c get-port)
-OUTPUT=$(pwd)/sonobuoy-output/${K3S_PORT}
-mkdir -p ${OUTPUT}
-RESULTS="${OUTPUT}/plugins/e2e/results/e2e.log"
-
-SECRET=random-$((100000 + RANDOM % 999999))
-export K3S_AGENT=sonobuoy-k3s-agent-${K3S_PORT}
-export K3S_SERVER=sonobuoy-k3s-server-${K3S_PORT}
-export CONTAINERS="${K3S_SERVER} ${K3S_AGENT}"
-export KUBECONFIG=${OUTPUT}/kubeconfig.yaml
-
-# ---
-
-cleanup() {
-    exit_status=$?
-    set +e
-    echo "Cleaning up"
-    docker rm -f ${CONTAINERS} 2>/dev/null
-    rm ${KUBECONFIG}
-    exit ${exit_status}
-}
-trap cleanup EXIT
-
-# ---
-
-docker run -d --name ${K3S_SERVER} --privileged \
-    -p 127.0.0.1:${K3S_PORT}:${K3S_PORT} \
-    -e K3S_CLUSTER_SECRET=${SECRET} \
-    ${K3S_IMAGE} server --no-deploy=traefik --https-listen-port=${K3S_PORT}
-
-K3S_IP=$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' ${K3S_SERVER})
-echo "Started ${K3S_SERVER} @ ${K3S_IP}:${K3S_PORT}"
-
 # ---
 
 fetch-kubeconfig() {
     docker cp ${K3S_SERVER}:/etc/rancher/k3s/k3s.yaml ${KUBECONFIG} 2>/dev/null
 }
 export -f fetch-kubeconfig
+
+# ---
 
 wait-for-kubeconfig() {
     while ! fetch-kubeconfig; do
@@ -72,17 +43,6 @@ wait-for-kubeconfig() {
     done
 }
 export -f wait-for-kubeconfig
-
-timeout --foreground 1m bash -c wait-for-kubeconfig
-
-# ---
-
-docker run -d --name ${K3S_AGENT} --privileged \
-    -e K3S_CLUSTER_SECRET=${SECRET} \
-    -e K3S_URL=https://${K3S_IP}:${K3S_PORT} \
-    ${K3S_IMAGE} agent
-
-echo "Started ${K3S_AGENT}"
 
 # ---
 
@@ -94,6 +54,8 @@ count-ready-nodes() {
 }
 export -f count-ready-nodes
 
+# ---
+
 wait-for-nodes() {
     while [[ "$(count-ready-nodes)" != "2" ]]; do
         echo "Waiting for nodes to be ready..."
@@ -102,8 +64,6 @@ wait-for-nodes() {
 }
 export -f wait-for-nodes
 
-timeout --foreground 1m bash -c wait-for-nodes
-
 # ---
 
 pod-ready() {
@@ -111,6 +71,8 @@ pod-ready() {
         | jq ".items[].status.containerStatuses[] | select(.name == \"$1\") | .ready" 2>/dev/null
 }
 export -f pod-ready
+
+# ---
 
 wait-for-services() {
     for service in coredns; do
@@ -122,8 +84,6 @@ wait-for-services() {
     done
 }
 export -f wait-for-services
-
-timeout --foreground 1m bash -c wait-for-services
 
 # ---
 
@@ -156,9 +116,12 @@ sonobuoy-test() {
         sonobuoy-destruct
         return 1
     fi
-    sonobuoy retrieve ${OUTPUT}
 
-    tar x -z -f ${OUTPUT}/*_sonobuoy_*.tar.gz -C ${OUTPUT}
+    rm -rf ${E2E}
+    mkdir -p ${E2E}
+    sonobuoy retrieve ${E2E}
+
+    tar x -z -f ${E2E}/*_sonobuoy_*.tar.gz -C ${E2E} ${E2E_LOG}
     if [ ! -s ${RESULTS} ]; then
         sonobuoy-destruct
         return 1
@@ -175,7 +138,7 @@ sonobuoy-retry-test() {
     LIMIT=300
     for i in $(seq 1 3); do
         sonobuoy-test "${@}" && return
-        echo "Failed sonobuoy try #${i}"
+        echo "*** Failed Sonobuoy try #${i} on port ${K3S_PORT} at ${SECONDS} seconds ***"
         if [ "$SECONDS" -gt "$LIMIT" ]; then
             echo "Stopping sonobuoy re-try after ${SECONDS} seconds (limit ${LIMIT}s)"
             break
@@ -188,8 +151,61 @@ export -f sonobuoy-retry-test
 
 # ---
 
+cleanup() {
+    exit_status=$?
+    set +e
+    echo "Cleaning up"
+    docker rm -f ${CONTAINERS} 2>/dev/null
+    rm ${KUBECONFIG}
+    exit ${exit_status}
+}
+trap cleanup EXIT
+
+# ---
+
+K3S_PORT=$(timeout --foreground 5s bash -c get-port)
+OUTPUT=$(pwd)/sonobuoy-output/${K3S_PORT}
+E2E="${OUTPUT}/e2e"
+E2E_LOG="plugins/e2e/results/e2e.log"
+RESULTS="${E2E}/${E2E_LOG}"
+mkdir -p ${OUTPUT}
+
+SECRET=random-$((100000 + RANDOM % 999999))
+export K3S_AGENT=sonobuoy-k3s-agent-${K3S_PORT}
+export K3S_SERVER=sonobuoy-k3s-server-${K3S_PORT}
+export CONTAINERS="${K3S_SERVER} ${K3S_AGENT}"
+export KUBECONFIG=${OUTPUT}/kubeconfig.yaml
+
+# ---
+
+docker run -d --name ${K3S_SERVER} --privileged \
+    -p 127.0.0.1:${K3S_PORT}:${K3S_PORT} \
+    -e K3S_CLUSTER_SECRET=${SECRET} \
+    ${K3S_IMAGE} server --no-deploy=traefik --https-listen-port=${K3S_PORT}
+
+K3S_IP=$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' ${K3S_SERVER})
+echo "Started ${K3S_SERVER} @ ${K3S_IP}:${K3S_PORT}"
+
+# ---
+
+timeout --foreground 1m bash -c wait-for-kubeconfig
+
+docker run -d --name ${K3S_AGENT} --privileged \
+    -e K3S_CLUSTER_SECRET=${SECRET} \
+    -e K3S_URL=https://${K3S_IP}:${K3S_PORT} \
+    ${K3S_IMAGE} agent
+
+echo "Started ${K3S_AGENT}"
+
+# ---
+
+timeout --foreground 1m bash -c wait-for-nodes
+timeout --foreground 1m bash -c wait-for-services
+
 echo "Starting sonobuoy tests"
 sonobuoy-retry-test "${@}"
+
+# ---
 
 exit_code=0
 status=$(tail -5 ${RESULTS} | grep '^SUCCESS!.*| 0 Failed |' >/dev/null && echo passed || echo failed)
