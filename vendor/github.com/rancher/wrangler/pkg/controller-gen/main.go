@@ -104,11 +104,9 @@ func Run(opts cgargs.Options) {
 		logrus.Fatalf("go modules copy failed: %v", err)
 	}
 
-	if opts.GenMocks {
-		if err := clientGen.GenerateMocks(); err != nil {
-			logrus.Errorf("mocks failed: %v", err)
-			return
-		}
+	if err := clientGen.GenerateMocks(); err != nil {
+		logrus.Errorf("mocks failed: %v", err)
+		return
 	}
 }
 

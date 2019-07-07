@@ -94,6 +94,5 @@ func main() {
 				GenerateTypes: true,
 			},
 		},
-		GenMocks: false,
 	})
 }
