@@ -150,9 +150,6 @@ func apiServer(ctx context.Context, cfg *config.Control, runtime *config.Control
 	if len(cfg.StorageEndpoint) > 0 {
 		argsMap["etcd-servers"] = cfg.StorageEndpoint
 	}
-	if cfg.StorageBackend != "etcd3" {
-		argsMap["watch-cache"] = "false"
-	}
 
 	certDir := filepath.Join(cfg.DataDir, "tls/temporary-certs")
 	os.MkdirAll(certDir, 0700)
