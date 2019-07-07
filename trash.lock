@@ -231,7 +231,7 @@ import:
 - package: github.com/rancher/remotedialer
   version: 66218bc42b4fa27c34523c0d19a41a0e2b74983d
 - package: github.com/rancher/wrangler
-  version: d53925110e19e055d1c21df3b49021833e883f33
+  version: 4202dbfa88013c19238bb004d82e013f0593493d
 - package: github.com/rancher/wrangler-api
   version: efe26ac6a9d720e1bfa5a8cc5f8dce5ad598ce26
 - package: github.com/robfig/cron
@@ -274,8 +274,6 @@ import:
   version: 1d523034197ff1f222f6429836dd36a2457a1874
 - package: go.etcd.io/bbolt
   version: v1.3.1-etcd.8
-- package: go.etcd.io/etcd
-  version: v3.3.11
 - package: golang.org/x/crypto
   version: a49355c7e3f8fe157a85be2f77e6e269a0f89602
 - package: golang.org/x/net
