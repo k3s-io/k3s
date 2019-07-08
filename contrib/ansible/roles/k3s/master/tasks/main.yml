@@ -16,6 +16,10 @@
     state: restarted
     enabled: yes
 
+- name: Wait for node-token
+  wait_for:
+    path: /var/lib/rancher/k3s/server/node-token
+
 - name: Register node-token file access mode
   stat:
     path: /var/lib/rancher/k3s/server
