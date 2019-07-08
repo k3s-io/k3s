@@ -106,7 +106,11 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 			},
 			cli.StringSliceFlag{
 				Name:  "no-deploy",
-				Usage: "Do not deploy packaged components (valid items: coredns, servicelb, traefik)",
+				Usage: "Do not deploy packaged components (valid items: coredns, servicelb, traefik, gloo)",
+			},
+			cli.StringSliceFlag{
+				Name:  "deploy",
+				Usage: "Force deploy packaged components. Take precedence over --no-deploy.",
 			},
 			cli.StringFlag{
 				Name:        "write-kubeconfig,o",

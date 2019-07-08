@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gloo-system
+---
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: gloo
+  namespace: gloo-system
+spec:
+  chart: https://%{KUBERNETES_API}%/static/charts/gloo-0.16.0.tgz
+  set:
+    discovery.deployment.image.pullPolicy: IfNotPresent
+    gateway.deployment.image.pullPolicy: IfNotPresent
+    gatewayProxies.gateway-proxy.deployment.image.pullPolicy: IfNotPresent
+    gloo.deployment.image.pullPolicy: IfNotPresent

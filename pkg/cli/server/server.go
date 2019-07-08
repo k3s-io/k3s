@@ -174,6 +174,36 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 		serverConfig.ControlConfig.Skips = append(serverConfig.ControlConfig.Skips, noDeploy)
 	}
 
+	// Default skip is Gloo. Not to be deployed with the default Traefik
+	// to keep it compatible with the default behavior
+	serverConfig.ControlConfig.Skips = append(serverConfig.ControlConfig.Skips, "gloo.yaml")
+
+	// Flag --deploy takes precedence over --no-deploy.
+	// For example, calling: k3s server --no-deploy servicelb --deploy servicelb
+	// means that we are going to deploy servicelb
+	for _, deploy := range app.StringSlice("deploy") {
+
+		if deploy == "servicelb" {
+			serverConfig.DisableServiceLB = false
+			continue
+		}
+
+		if !strings.HasSuffix(deploy, ".yaml") {
+			deploy = deploy + ".yaml"
+		}
+
+		skips := serverConfig.ControlConfig.Skips
+		for i, skip := range skips {
+			if skip == deploy {
+				// remove it from the skips list
+				skips = append(skips[:i], skips[i+1:]...)
+				break
+			}
+		}
+
+		serverConfig.ControlConfig.Skips = skips
+	}
+
 	logrus.Info("Starting k3s ", app.App.Version)
 	notifySocket := os.Getenv("NOTIFY_SOCKET")
 	os.Unsetenv("NOTIFY_SOCKET")
