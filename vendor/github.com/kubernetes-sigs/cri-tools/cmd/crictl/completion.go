@@ -34,33 +34,94 @@ var bashCompletionTemplate = `_cli_bash_autocomplete() {
 
 complete -F _cli_bash_autocomplete crictl`
 
+func bashCompletion(c *cli.Context) error {
+	subcommands := []string{}
+	for _, command := range c.App.Commands {
+		if command.Hidden {
+			continue
+		}
+		for _, name := range command.Names() {
+			subcommands = append(subcommands, name)
+		}
+	}
+
+	for _, flag := range c.App.Flags {
+		// only includes full flag name.
+		subcommands = append(subcommands, "--"+strings.Split(flag.GetName(), ",")[0])
+	}
+
+	fmt.Fprintln(c.App.Writer, fmt.Sprintf(bashCompletionTemplate, strings.Join(subcommands, "\n")))
+	return nil
+}
+
+var zshCompletionTemplate = `_cli_zsh_autocomplete() {
+
+  local -a cmds
+  cmds=('%s')
+  _describe 'commands' cmds
+
+  local -a opts
+  opts=('%s')
+  _describe 'global options' opts
+
+  return
+}
+
+compdef _cli_zsh_autocomplete crictl`
+
+func zshCompletion(c *cli.Context) error {
+	subcommands := []string{}
+	for _, command := range c.App.Commands {
+		if command.Hidden {
+			continue
+		}
+		for _, name := range command.Names() {
+			subcommands = append(subcommands, name+":"+command.Usage)
+		}
+	}
+
+	opts := []string{}
+	for _, flag := range c.App.Flags {
+		// only includes full flag name.
+		opts = append(opts, "--"+strings.Split(flag.GetName(), ",")[0])
+	}
+
+	fmt.Fprintln(c.App.Writer, fmt.Sprintf(zshCompletionTemplate, strings.Join(subcommands, "' '"), strings.Join(opts, "' '")))
+	return nil
+
+}
+
 var completionCommand = cli.Command{
-	Name:  "completion",
-	Usage: "Output bash shell completion code",
-	Description: `Output bash shell completion code.
+	Name:      "completion",
+	Usage:     "Output shell completion code",
+	ArgsUsage: "SHELL",
+	Description: `Output shell completion code for bash or zsh.
 
 Examples:
 
     # Installing bash completion on Linux
-    source <(crictl completion)
+    source <(crictl completion bash)
+
+    # Installing zsh completion on Linux
+    source <(crictl completion zsh)
 	`,
 	Action: func(c *cli.Context) error {
-		subcommands := []string{}
-		for _, command := range c.App.Commands {
-			if command.Hidden {
-				continue
-			}
-			for _, name := range command.Names() {
-				subcommands = append(subcommands, name)
-			}
+		// select bash by default for backwards compatibility
+		if c.NArg() == 0 {
+			return bashCompletion(c)
 		}
 
-		for _, flag := range c.App.Flags {
-			// only includes full flag name.
-			subcommands = append(subcommands, "--"+strings.Split(flag.GetName(), ",")[0])
+		if c.NArg() != 1 {
+			return cli.ShowSubcommandHelp(c)
 		}
 
-		fmt.Fprintln(c.App.Writer, fmt.Sprintf(bashCompletionTemplate, strings.Join(subcommands, "\n")))
-		return nil
+		switch c.Args().First() {
+		case "bash":
+			return bashCompletion(c)
+		case "zsh":
+			return zshCompletion(c)
+		default:
+			return fmt.Errorf("only bash and zsh supported")
+		}
 	},
 }

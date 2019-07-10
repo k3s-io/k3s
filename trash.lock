@@ -159,8 +159,8 @@ import:
 - package: github.com/karrick/godirwalk
   version: v1.7.5
 - package: github.com/kubernetes-sigs/cri-tools
-  version: c465773e3ad8c941d1756c0a467d550b04a8f65b
-  repo: https://github.com/ibuildthecloud/cri-tools.git
+  version: v1.14.0-k3s1
+  repo: https://github.com/rancher/cri-tools.git
 - package: github.com/lib/pq
   version: v1.1.1
 - package: github.com/liggitt/tabwriter

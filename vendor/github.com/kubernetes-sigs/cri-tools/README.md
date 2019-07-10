@@ -23,7 +23,8 @@ Version matrix:
 
 | Kubernetes Version | cri-tools Version | cri-tools branch |
 |--------------------|-------------------|------------------|
-| 1.13.X             | v1.13.0           | master           |
+| 1.14.X             | N/A               | master           |
+| 1.13.X             | v1.13.0           | release-1.13     |
 | 1.12.X             | v1.12.0           | release-1.12     |
 | 1.11.X             | v1.11.1           | release-1.11     |
 | 1.10.X             | v1.0.0-beta.2     | release-1.10     |

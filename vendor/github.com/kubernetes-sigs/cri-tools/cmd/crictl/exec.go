@@ -78,9 +78,12 @@ var runtimeExecCommand = cli.Command{
 			cmd:     context.Args()[1:],
 		}
 		if context.Bool("sync") {
-			err := ExecSync(runtimeClient, opts)
+			exitCode, err := ExecSync(runtimeClient, opts)
 			if err != nil {
 				return fmt.Errorf("execing command in container synchronously failed: %v", err)
+			}
+			if exitCode != 0 {
+				return cli.NewExitError("non-zero exit code", exitCode)
 			}
 			return nil
 		}
@@ -94,8 +97,9 @@ var runtimeExecCommand = cli.Command{
 }
 
 // ExecSync sends an ExecSyncRequest to the server, and parses
-// the returned ExecSyncResponse.
-func ExecSync(client pb.RuntimeServiceClient, opts execOptions) error {
+// the returned ExecSyncResponse. The function returns the corresponding exit
+// code beside an general error.
+func ExecSync(client pb.RuntimeServiceClient, opts execOptions) (int, error) {
 	request := &pb.ExecSyncRequest{
 		ContainerId: opts.id,
 		Cmd:         opts.cmd,
@@ -105,15 +109,11 @@ func ExecSync(client pb.RuntimeServiceClient, opts execOptions) error {
 	r, err := client.ExecSync(context.Background(), request)
 	logrus.Debugf("ExecSyncResponse: %v", r)
 	if err != nil {
-		return err
+		return 1, err
 	}
 	fmt.Println(string(r.Stdout))
 	fmt.Println(string(r.Stderr))
-	if r.ExitCode != 0 {
-		fmt.Printf("Exit code: %v\n", r.ExitCode)
-	}
-
-	return nil
+	return int(r.ExitCode), nil
 }
 
 // Exec sends an ExecRequest to server, and parses the returned ExecResponse
