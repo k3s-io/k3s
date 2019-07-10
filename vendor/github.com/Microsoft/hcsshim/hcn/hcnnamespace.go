@@ -308,13 +308,13 @@ func (namespace *HostComputeNamespace) Create() (*HostComputeNamespace, error) {
 }
 
 // Delete Namespace.
-func (namespace *HostComputeNamespace) Delete() (*HostComputeNamespace, error) {
+func (namespace *HostComputeNamespace) Delete() error {
 	logrus.Debugf("hcn::HostComputeNamespace::Delete id=%s", namespace.Id)
 
 	if err := deleteNamespace(namespace.Id); err != nil {
-		return nil, err
+		return err
 	}
-	return nil, nil
+	return nil
 }
 
 // Sync Namespace endpoints with the appropriate sandbox container holding the

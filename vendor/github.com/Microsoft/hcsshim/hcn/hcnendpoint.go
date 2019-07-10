@@ -313,13 +313,13 @@ func (endpoint *HostComputeEndpoint) Create() (*HostComputeEndpoint, error) {
 }
 
 // Delete Endpoint.
-func (endpoint *HostComputeEndpoint) Delete() (*HostComputeEndpoint, error) {
+func (endpoint *HostComputeEndpoint) Delete() error {
 	logrus.Debugf("hcn::HostComputeEndpoint::Delete id=%s", endpoint.Id)
 
 	if err := deleteEndpoint(endpoint.Id); err != nil {
-		return nil, err
+		return err
 	}
-	return nil, nil
+	return nil
 }
 
 // ModifyEndpointSettings updates the Port/Policy of an Endpoint.

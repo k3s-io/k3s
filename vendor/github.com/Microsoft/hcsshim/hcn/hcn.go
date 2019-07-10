@@ -134,6 +134,33 @@ func V2SchemaVersion() SchemaVersion {
 	}
 }
 
+// RemoteSubnetSupported returns an error if the HCN version does not support Remote Subnet policies.
+func RemoteSubnetSupported() error {
+	supported := GetSupportedFeatures()
+	if supported.RemoteSubnet {
+		return nil
+	}
+	return platformDoesNotSupportError("Remote Subnet")
+}
+
+// HostRouteSupported returns an error if the HCN version does not support Host Route policies.
+func HostRouteSupported() error {
+	supported := GetSupportedFeatures()
+	if supported.HostRoute {
+		return nil
+	}
+	return platformDoesNotSupportError("Host Route")
+}
+
+// DSRSupported returns an error if the HCN version does not support Direct Server Return.
+func DSRSupported() error {
+	supported := GetSupportedFeatures()
+	if supported.DSR {
+		return nil
+	}
+	return platformDoesNotSupportError("Direct Server Return (DSR)")
+}
+
 // RequestType are the different operations performed to settings.
 // Used to update the settings of Endpoint/Namespace objects.
 type RequestType string

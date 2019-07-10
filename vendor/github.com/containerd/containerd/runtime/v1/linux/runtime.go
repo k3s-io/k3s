@@ -21,6 +21,7 @@ package linux
 import (
 	"context"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -40,6 +41,7 @@ import (
 	"github.com/containerd/containerd/plugin"
 	"github.com/containerd/containerd/runtime"
 	"github.com/containerd/containerd/runtime/linux/runctypes"
+	"github.com/containerd/containerd/runtime/v1"
 	"github.com/containerd/containerd/runtime/v1/linux/proc"
 	shim "github.com/containerd/containerd/runtime/v1/shim/v1"
 	runc "github.com/containerd/go-runc"
@@ -349,6 +351,38 @@ func (r *Runtime) loadTasks(ctx context.Context, ns string) ([]*Task, error) {
 					Error("cleaning up after dead shim")
 			}
 			continue
+		}
+
+		logDirPath := filepath.Join(r.root, ns, id)
+
+		shimStdoutLog, err := v1.OpenShimStdoutLog(ctx, logDirPath)
+		if err != nil {
+			log.G(ctx).WithError(err).WithFields(logrus.Fields{
+				"id":         id,
+				"namespace":  ns,
+				"logDirPath": logDirPath,
+			}).Error("opening shim stdout log pipe")
+			continue
+		}
+		if r.config.ShimDebug {
+			go io.Copy(os.Stdout, shimStdoutLog)
+		} else {
+			go io.Copy(ioutil.Discard, shimStdoutLog)
+		}
+
+		shimStderrLog, err := v1.OpenShimStderrLog(ctx, logDirPath)
+		if err != nil {
+			log.G(ctx).WithError(err).WithFields(logrus.Fields{
+				"id":         id,
+				"namespace":  ns,
+				"logDirPath": logDirPath,
+			}).Error("opening shim stderr log pipe")
+			continue
+		}
+		if r.config.ShimDebug {
+			go io.Copy(os.Stderr, shimStderrLog)
+		} else {
+			go io.Copy(ioutil.Discard, shimStderrLog)
 		}
 
 		t, err := newTask(id, ns, pid, s, r.events, r.tasks, bundle)

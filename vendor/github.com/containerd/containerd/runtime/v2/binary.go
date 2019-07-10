@@ -97,8 +97,7 @@ func (b *binary) Start(ctx context.Context) (_ *shim, err error) {
 	if err != nil {
 		return nil, err
 	}
-	client := ttrpc.NewClient(conn)
-	client.OnClose(func() { conn.Close() })
+	client := ttrpc.NewClient(conn, ttrpc.WithOnClose(func() { _ = conn.Close() }))
 	return &shim{
 		bundle:  b.bundle,
 		client:  client,

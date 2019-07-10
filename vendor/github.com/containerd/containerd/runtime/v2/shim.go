@@ -75,8 +75,7 @@ func loadShim(ctx context.Context, bundle *Bundle, events *exchange.Exchange, rt
 		}
 	}()
 
-	client := ttrpc.NewClient(conn)
-	client.OnClose(func() { conn.Close() })
+	client := ttrpc.NewClient(conn, ttrpc.WithOnClose(func() { _ = conn.Close() }))
 	s := &shim{
 		client:  client,
 		task:    task.NewTaskClient(client),
@@ -151,7 +150,7 @@ func (s *shim) Delete(ctx context.Context) (*runtime.Exit, error) {
 	response, err := s.task.Delete(ctx, &task.DeleteRequest{
 		ID: s.ID(),
 	})
-	if err != nil {
+	if err != nil && !errdefs.IsNotFound(err) {
 		return nil, errdefs.FromGRPC(err)
 	}
 	if err := s.waitShutdown(ctx); err != nil {

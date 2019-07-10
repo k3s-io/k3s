@@ -9,9 +9,9 @@ import:
 - package: github.com/MakeNowJust/heredoc
   version: bb23615498cded5e105af4ce27de75b089cbe851
 - package: github.com/Microsoft/go-winio
-  version: v0.4.11
+  version: v0.4.12
 - package: github.com/Microsoft/hcsshim
-  version: v0.8.3
+  version: v0.8.6
 - package: github.com/alexflint/go-filemutex
   version: 72bdc8eae2aef913234599b837f5dda445ca9bd9
 - package: github.com/armon/circbuf
@@ -33,8 +33,8 @@ import:
 - package: github.com/containerd/console
   version: c12b1e7919c14469339a5d38f2f8ed9b64a9de23
 - package: github.com/containerd/containerd
-  version: v1.2.6-k3s1
-  repo: https://github.com/ibuildthecloud/containerd
+  version: v1.2.7-k3s1
+  repo: https://github.com/rancher/containerd
 - package: github.com/containerd/continuity
   version: bd77b46c8352f74eb12c85bdc01f4b90f69d66b4
 - package: github.com/containerd/cri
@@ -47,7 +47,7 @@ import:
 - package: github.com/containerd/go-runc
   version: 5a6d9f37cfa36b15efba46dc7ea349fa9b7143c3
 - package: github.com/containerd/ttrpc
-  version: 2a805f71863501300ae1976d29f0454ae003e85a
+  version: f82148331ad2181edea8f3f649a1f7add6c3f9c2
 - package: github.com/containerd/typeurl
   version: a93fcdb778cd272c6e9b3028b2f42d813e785d40
 - package: github.com/containernetworking/cni
@@ -203,7 +203,7 @@ import:
 - package: github.com/opencontainers/image-spec
   version: v1.0.1
 - package: github.com/opencontainers/runc
-  version: 69ae5da6afdcaaf38285a10b36f362e41cb298d6
+  version: v1.0.0-rc8
 - package: github.com/opencontainers/runtime-spec
   version: 5684b8af48c1ac3b1451fa499724e30e3c20a294
 - package: github.com/opencontainers/runtime-tools
@@ -274,6 +274,8 @@ import:
   version: 1d523034197ff1f222f6429836dd36a2457a1874
 - package: go.etcd.io/bbolt
   version: v1.3.1-etcd.8
+- package: go.etcd.io/etcd
+  version: v3.3.11
 - package: golang.org/x/crypto
   version: a49355c7e3f8fe157a85be2f77e6e269a0f89602
 - package: golang.org/x/net

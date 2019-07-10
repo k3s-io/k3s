@@ -16,7 +16,7 @@
    limitations under the License.
 */
 
-package v2
+package v1
 
 import (
 	"context"
@@ -27,6 +27,12 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-func openShimLog(ctx context.Context, bundle *Bundle) (io.ReadCloser, error) {
-	return fifo.OpenFifo(ctx, filepath.Join(bundle.Path, "log"), unix.O_RDONLY|unix.O_CREAT|unix.O_NONBLOCK, 0700)
+// OpenShimStdoutLog opens the shim log for reading
+func OpenShimStdoutLog(ctx context.Context, logDirPath string) (io.ReadWriteCloser, error) {
+	return fifo.OpenFifo(ctx, filepath.Join(logDirPath, "shim.stdout.log"), unix.O_RDWR|unix.O_CREAT|unix.O_NONBLOCK, 0700)
+}
+
+// OpenShimStderrLog opens the shim log
+func OpenShimStderrLog(ctx context.Context, logDirPath string) (io.ReadWriteCloser, error) {
+	return fifo.OpenFifo(ctx, filepath.Join(logDirPath, "shim.stderr.log"), unix.O_RDWR|unix.O_CREAT|unix.O_NONBLOCK, 0700)
 }

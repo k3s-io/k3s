@@ -42,7 +42,7 @@ type MacPool struct {
 
 // Dns (Domain Name System is associated with a network.
 type Dns struct {
-	Suffix     string   `json:",omitempty"`
+	Domain     string   `json:",omitempty"`
 	Search     []string `json:",omitempty"`
 	ServerList []string `json:",omitempty"`
 	Options    []string `json:",omitempty"`
@@ -62,6 +62,15 @@ const (
 	Overlay     NetworkType = "Overlay"
 )
 
+// NetworkFlags are various network flags.
+type NetworkFlags uint32
+
+// NetworkFlags const
+const (
+	None                NetworkFlags = 0
+	EnableNonPersistent NetworkFlags = 8
+)
+
 // HostComputeNetwork represents a network
 type HostComputeNetwork struct {
 	Id            string          `json:"ID,omitempty"`
@@ -71,7 +80,7 @@ type HostComputeNetwork struct {
 	MacPool       MacPool         `json:",omitempty"`
 	Dns           Dns             `json:",omitempty"`
 	Ipams         []Ipam          `json:",omitempty"`
-	Flags         uint32          `json:",omitempty"` // 0: None
+	Flags         NetworkFlags    `json:",omitempty"` // 0: None
 	SchemaVersion SchemaVersion   `json:",omitempty"`
 }
 
@@ -326,13 +335,13 @@ func (network *HostComputeNetwork) Create() (*HostComputeNetwork, error) {
 }
 
 // Delete Network.
-func (network *HostComputeNetwork) Delete() (*HostComputeNetwork, error) {
+func (network *HostComputeNetwork) Delete() error {
 	logrus.Debugf("hcn::HostComputeNetwork::Delete id=%s", network.Id)
 
 	if err := deleteNetwork(network.Id); err != nil {
-		return nil, err
+		return err
 	}
-	return nil, nil
+	return nil
 }
 
 // ModifyNetworkSettings updates the Policy for a network.
