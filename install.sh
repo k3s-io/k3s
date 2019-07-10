@@ -22,6 +22,9 @@ set -e
 #   - INSTALL_K3S_SKIP_DOWNLOAD
 #     If set to true will not download k3s hash or binary.
 #
+#   - INSTALL_K3S_SKIP_SYMLINK
+#     If set to true will not symlink kubectl or crictl to k3s.
+#
 #   - INSTALL_K3S_SKIP_START
 #     If set to true will not start k3s service.
 #
@@ -369,6 +372,7 @@ download_and_verify() {
 # --- add additional utility links ---
 create_symlinks() {
     [ "${INSTALL_K3S_BIN_DIR_READ_ONLY}" = "true" ] && return
+    [ "${INSTALL_K3S_SKIP_SYMLINK}" = "true" ] && return
     if [ ! -e ${BIN_DIR}/kubectl ]; then
         info "Creating ${BIN_DIR}/kubectl symlink to k3s"
         $SUDO ln -s k3s ${BIN_DIR}/kubectl
