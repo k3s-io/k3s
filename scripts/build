@@ -4,8 +4,20 @@ set -e -x
 source $(dirname $0)/version.sh
 
 cd $(dirname $0)/..
+PKG="github.com/rancher/k3s"
+PKG_CONTAINERD="github.com/containerd/containerd"
+PKG_RANCHER_CONTAINERD="github.com/rancher/containerd"
+PKG_CRICTL="github.com/kubernetes-sigs/cri-tools"
 
-LDFLAGS="-X github.com/rancher/k3s/pkg/version.Version=$VERSION -X github.com/rancher/k3s/pkg/version.GitCommit=${COMMIT:0:8} -w -s"
+LDFLAGS="
+    -X $PKG/pkg/version.Version=$VERSION
+    -X $PKG/pkg/version.GitCommit=${COMMIT:0:8}
+    -X $PKG/vendor/$PKG_CONTAINERD/version.Version=$VERSION_CONTAINERD
+    -X $PKG/vendor/$PKG_CONTAINERD/version.Package=$PKG_RANCHER_CONTAINERD
+    -X $PKG/vendor/$PKG_CRICTL/pkg/version.Version=$VERSION_CRICTL
+    -w -s
+"
+
 STATIC="-extldflags '-static'"
 STATIC_SQLITE="-extldflags '-static -lm -ldl -lz -lpthread'"
 TAGS="ctrd apparmor seccomp no_btrfs netgo osusergo"
@@ -23,7 +35,18 @@ if [ -z "$GOARM" ] && [ "arm" = "$(go env GOARCH)" ]; then
     GOARM=7
 fi
 
-rm -f bin/k3s-agent bin/hyperkube bin/containerd bin/cni ./bin/runc bin/containerd-shim bin/k3s-server bin/kubectl bin/crictl bin/ctr
+rm -f \
+    bin/k3s-agent \
+    bin/hyperkube \
+    bin/containerd \
+    bin/cni \
+    bin/runc \
+    bin/containerd-shim \
+    bin/k3s-server \
+    bin/kubectl \
+    bin/crictl \
+    bin/ctr
+
 # echo Building agent
 # CGO_ENABLED=1 go build -tags "$TAGS" -ldflags "$LDFLAGS $STATIC" -o bin/k3s-agent ./cmd/agent/main.go
 echo Building server
