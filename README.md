@@ -412,6 +412,14 @@ To install just the agent without a server we should pass `K3S_URL` along with
 curl -sfL https://get.k3s.io | K3S_URL=https://example-url:6443 K3S_TOKEN=XXX sh -
 ```
 
+The install script will by default attempt to create symlink for `kubectl` and `crictl` to `k3s`.
+You can skip this by setting `INSTALL_K3S_SKIP_SYMLINK=true`, eg:
+```sh
+curl -sfL https://get.k3s.io | INSTALL_K3S_SKIP_SYMLINK=true sh -
+
+export KUBECONFIG=$HOME/.kube/config:/etc/rancher/k3s/k3s.yaml
+```
+
 The installer can also be run without performing downloads by setting `INSTALL_K3S_SKIP_DOWNLOAD=true`, eg:
 ```sh
 curl -sfL https://github.com/rancher/k3s/releases/download/vX.Y.Z/k3s -o /usr/local/bin/k3s
@@ -435,6 +443,10 @@ The full help text for the install script environment variables are as follows:
    - `INSTALL_K3S_SKIP_DOWNLOAD`
 
      If set to true will not download k3s hash or binary.
+
+   - `INSTALL_K3S_SKIP_DOWNLOAD`
+
+     If set to true will not symlink `kubectl` and `crictl` to `k3s.
 
    - `INSTALL_K3S_VERSION`
 
