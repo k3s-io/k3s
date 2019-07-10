@@ -91,7 +91,7 @@ func Setup(config *config.Node) error {
 				FieldSelector: fields.Set{"metadata.name": "kubernetes"}.String(),
 			})
 			if err != nil {
-				logrus.Errorf("Unable to watch for endpoints: %v", err)
+				logrus.Errorf("Unable to watch for tunnel endpoints: %v", err)
 				time.Sleep(5 * time.Second)
 				continue connect
 			}
@@ -100,21 +100,24 @@ func Setup(config *config.Node) error {
 				select {
 				case ev, ok := <-watch.ResultChan():
 					if !ok {
-						logrus.Error("endpoint watch channel closed")
+						logrus.Error("Tunnel endpoint watch channel closed")
 						continue connect
 					}
 					endpoint, ok := ev.Object.(*v1.Endpoints)
 					if !ok {
-						logrus.Error("could not case event object to endpoint")
+						logrus.Error("Tunnel could not case event object to endpoint")
 						continue watching
 					}
 
-					validEndpoint := map[string]bool{}
 					var addresses = getAddresses(endpoint)
+					logrus.Infof("Tunnel endpoint watch event: %v", addresses)
+
+					validEndpoint := map[string]bool{}
+
 					for _, address := range addresses {
 						validEndpoint[address] = true
 						if _, ok := disconnect[address]; !ok {
-							disconnect[address] = connect(wg, address, config, transportConfig)
+							disconnect[address] = connect(nil, address, config, transportConfig)
 						}
 					}
 
@@ -173,7 +176,7 @@ func connect(waitGroup *sync.WaitGroup, address string, config *config.Node, tra
 			})
 
 			if ctx.Err() != nil {
-				logrus.Infof("Stopping tunnel to %s", wsURL)
+				logrus.Infof("Stopped tunnel to %s", wsURL)
 				return
 			}
 		}
