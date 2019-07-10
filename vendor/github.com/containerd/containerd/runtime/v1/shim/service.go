@@ -545,7 +545,7 @@ func shouldKillAllOnExit(bundlePath string) (bool, error) {
 
 	if bundleSpec.Linux != nil {
 		for _, ns := range bundleSpec.Linux.Namespaces {
-			if ns.Type == specs.PIDNamespace {
+			if ns.Type == specs.PIDNamespace && ns.Path == "" {
 				return false, nil
 			}
 		}

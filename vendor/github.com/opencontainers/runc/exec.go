@@ -224,5 +224,5 @@ func getProcess(context *cli.Context, bundle string) (*specs.Process, error) {
 		}
 		p.User.AdditionalGids = append(p.User.AdditionalGids, uint32(gid))
 	}
-	return p, nil
+	return p, validateProcessSpec(p)
 }

@@ -31,6 +31,7 @@ import (
 
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/log"
+	"github.com/containerd/containerd/version"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context/ctxhttp"
@@ -40,6 +41,7 @@ type dockerAuthorizer struct {
 	credentials func(string) (string, string, error)
 
 	client *http.Client
+	ua     string
 	mu     sync.Mutex
 
 	auth map[string]string
@@ -54,6 +56,7 @@ func NewAuthorizer(client *http.Client, f func(string) (string, string, error)) 
 	return &dockerAuthorizer{
 		credentials: f,
 		client:      client,
+		ua:          "containerd/" + version.Version,
 		auth:        map[string]string{},
 	}
 }
@@ -194,7 +197,16 @@ func (a *dockerAuthorizer) fetchTokenWithOAuth(ctx context.Context, to tokenOpti
 		form.Set("password", to.secret)
 	}
 
-	resp, err := ctxhttp.PostForm(ctx, a.client, to.realm, form)
+	req, err := http.NewRequest("POST", to.realm, strings.NewReader(form.Encode()))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded; charset=utf-8")
+	if a.ua != "" {
+		req.Header.Set("User-Agent", a.ua)
+	}
+
+	resp, err := ctxhttp.Do(ctx, a.client, req)
 	if err != nil {
 		return "", err
 	}
@@ -238,6 +250,10 @@ func (a *dockerAuthorizer) fetchToken(ctx context.Context, to tokenOptions) (str
 	req, err := http.NewRequest("GET", to.realm, nil)
 	if err != nil {
 		return "", err
+	}
+
+	if a.ua != "" {
+		req.Header.Set("User-Agent", a.ua)
 	}
 
 	reqParams := req.URL.Query()
