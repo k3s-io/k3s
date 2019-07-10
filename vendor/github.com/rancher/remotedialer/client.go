@@ -31,11 +31,11 @@ func connectToProxy(ctx context.Context, proxyURL string, headers http.Header, a
 	}
 	defer ws.Close()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	if onConnect != nil {
-		if err := onConnect(ctx); err != nil {
+		ctxOnConnect, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		if err := onConnect(ctxOnConnect); err != nil {
 			return err
 		}
 	}
@@ -51,7 +51,8 @@ func connectToProxy(ctx context.Context, proxyURL string, headers http.Header, a
 
 	select {
 	case <-ctx.Done():
-		return ctx.Err()
+		logrus.WithField("url", proxyURL).WithField("err", ctx.Err()).Info("Proxy done")
+		return nil
 	case err := <-result:
 		return err
 	}
