@@ -23,4 +23,6 @@ Follow either of the two links above to access the appropriate CLA and instructi
 
 ### Adding dependencies
 
-If your patch depends on new packages, add that package with [`godep`](https://github.com/tools/godep). Follow the [instructions to add a dependency](https://github.com/kubernetes/kubernetes/blob/master/docs/devel/development.md#godep-and-dependency-management).
+If your patch depends on new packages, add that package using the provided [hack/update-vendor.sh](hack/update-vendor.sh) script, which is a wrapper around [vndr](https://github.com/LK4D4/vndr).
+
+To restore package versions with `godep`, refer to the Kubernetes Community docs for [restoring dependencies](https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/godep.md#restoring-deps).

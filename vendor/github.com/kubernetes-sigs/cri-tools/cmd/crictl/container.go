@@ -209,7 +209,7 @@ var removeContainerCommand = cli.Command{
 			containerID := context.Args().Get(i)
 			err := RemoveContainer(runtimeClient, containerID)
 			if err != nil {
-				return fmt.Errorf("Removing the container %q failed: %v", containerID, err)
+				fmt.Printf("Removing the container %q failed: %v\n", containerID, err)
 			}
 		}
 		return nil

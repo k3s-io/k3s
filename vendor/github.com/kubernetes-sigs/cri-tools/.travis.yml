@@ -1,9 +1,9 @@
 language: go
 sudo: required
-dist: trusty
+dist: xenial
 
 go:
-  - 1.11.x
+  - 1.12.x
 
 os:
   - linux
@@ -42,15 +42,15 @@ jobs:
       os: linux
       script:
         - make
-        - hack/install-docker.sh
-        - hack/install-kubelet.sh
+        - travis_wait hack/install-docker.sh
+        - travis_wait hack/install-kubelet.sh
         - sudo env PATH=$PATH GOPATH=$GOPATH hack/run-critest.sh
     - stage: Test
       os: windows
       script:
         - make windows
         - powershell -c "Set-ExecutionPolicy Bypass -Scope CURRENTUSER -Force"
-        - powershell hack/install-kubelet.ps1
+        - travis_wait powershell hack/install-kubelet.ps1
         # Skip hack/run-critest.sh temporarily.
 
 stages:

@@ -37,6 +37,10 @@ var runtimeStatusCommand = cli.Command{
 			Value: "json",
 			Usage: "Output format, One of: json|yaml",
 		},
+		cli.BoolFlag{
+			Name:  "quiet, q",
+			Usage: "Do not show verbose information",
+		},
 	},
 	Action: func(context *cli.Context) error {
 		err := Info(context, runtimeClient)
@@ -51,7 +55,7 @@ var runtimeStatusCommand = cli.Command{
 
 // Info sends a StatusRequest to the server, and parses the returned StatusResponse.
 func Info(cliContext *cli.Context, client pb.RuntimeServiceClient) error {
-	request := &pb.StatusRequest{Verbose: true}
+	request := &pb.StatusRequest{Verbose: !cliContext.Bool("quiet")}
 	logrus.Debugf("StatusRequest: %v", request)
 	r, err := client.Status(context.Background(), request)
 	logrus.Debugf("StatusResponse: %v", r)
