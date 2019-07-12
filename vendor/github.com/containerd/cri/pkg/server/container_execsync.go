@@ -131,7 +131,7 @@ func (c *criService) execInContainer(ctx context.Context, id string, opts execOp
 	defer func() {
 		deferCtx, deferCancel := ctrdutil.DeferContext()
 		defer deferCancel()
-		if _, err := process.Delete(deferCtx); err != nil {
+		if _, err := process.Delete(deferCtx, containerd.WithProcessKill); err != nil {
 			logrus.WithError(err).Errorf("Failed to delete exec process %q for container %q", execID, id)
 		}
 	}()

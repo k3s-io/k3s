@@ -19,7 +19,6 @@ package server
 import (
 	"time"
 
-	"github.com/containerd/containerd"
 	eventtypes "github.com/containerd/containerd/api/events"
 	"github.com/containerd/containerd/errdefs"
 	cni "github.com/containerd/go-cni"
@@ -29,6 +28,7 @@ import (
 	"golang.org/x/sys/unix"
 	runtime "k8s.io/kubernetes/pkg/kubelet/apis/cri/runtime/v1alpha2"
 
+	ctrdutil "github.com/containerd/cri/pkg/containerd/util"
 	sandboxstore "github.com/containerd/cri/pkg/store/sandbox"
 )
 
@@ -97,6 +97,7 @@ func (c *criService) StopPodSandbox(ctx context.Context, r *runtime.StopPodSandb
 // `task.Delete` is not called here because it will be called when
 // the event monitor handles the `TaskExit` event.
 func (c *criService) stopSandboxContainer(ctx context.Context, sandbox sandboxstore.Sandbox) error {
+	id := sandbox.ID
 	container := sandbox.Container
 	state := sandbox.Status.Get().State
 	task, err := container.Task(ctx, nil)
@@ -105,29 +106,35 @@ func (c *criService) stopSandboxContainer(ctx context.Context, sandbox sandboxst
 			return errors.Wrap(err, "failed to get sandbox container")
 		}
 		// Don't return for unknown state, some cleanup needs to be done.
-		if state != sandboxstore.StateUnknown {
-			return nil
+		if state == sandboxstore.StateUnknown {
+			return cleanupUnknownSandbox(ctx, id, sandbox)
 		}
-		// Task is an interface, explicitly set it to nil just in case.
-		task = nil
+		return nil
 	}
 
 	// Handle unknown state.
 	// The cleanup logic is the same with container unknown state.
 	if state == sandboxstore.StateUnknown {
-		status, err := getTaskStatus(ctx, task)
+		// Start an exit handler for containers in unknown state.
+		waitCtx, waitCancel := context.WithCancel(ctrdutil.NamespacedContext())
+		defer waitCancel()
+		exitCh, err := task.Wait(waitCtx)
 		if err != nil {
-			return errors.Wrapf(err, "failed to get task status for %q", sandbox.ID)
+			if !errdefs.IsNotFound(err) {
+				return errors.Wrap(err, "failed to wait for task")
+			}
+			return cleanupUnknownSandbox(ctx, id, sandbox)
 		}
-		switch status.Status {
-		case containerd.Running, containerd.Created:
-			// The task is still running, continue stopping the task.
-		case containerd.Stopped:
-			// The task has exited, explicitly cleanup.
-			return cleanupUnknownSandbox(ctx, sandbox.ID, status, sandbox)
-		default:
-			return errors.Wrapf(err, "unsupported task status %q", status.Status)
-		}
+
+		exitCtx, exitCancel := context.WithCancel(context.Background())
+		stopCh := c.eventMonitor.startExitMonitor(exitCtx, id, task.Pid(), exitCh)
+		defer func() {
+			exitCancel()
+			// This ensures that exit monitor is stopped before
+			// `Wait` is cancelled, so no exit event is generated
+			// because of the `Wait` cancellation.
+			<-stopCh
+		}()
 	}
 
 	// Kill the sandbox container.
@@ -166,14 +173,13 @@ func (c *criService) teardownPod(id string, path string, config *runtime.PodSand
 }
 
 // cleanupUnknownSandbox cleanup stopped sandbox in unknown state.
-func cleanupUnknownSandbox(ctx context.Context, id string, status containerd.Status,
-	sandbox sandboxstore.Sandbox) error {
+func cleanupUnknownSandbox(ctx context.Context, id string, sandbox sandboxstore.Sandbox) error {
 	// Reuse handleSandboxExit to do the cleanup.
 	return handleSandboxExit(ctx, &eventtypes.TaskExit{
 		ContainerID: id,
 		ID:          id,
 		Pid:         0,
-		ExitStatus:  status.ExitStatus,
-		ExitedAt:    status.ExitTime,
+		ExitStatus:  unknownExitCode,
+		ExitedAt:    time.Now(),
 	}, sandbox)
 }

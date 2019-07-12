@@ -34,6 +34,7 @@ import (
 	"golang.org/x/net/context"
 	runtime "k8s.io/kubernetes/pkg/kubelet/apis/cri/runtime/v1alpha2"
 
+	ctrdutil "github.com/containerd/cri/pkg/containerd/util"
 	"github.com/containerd/cri/pkg/netns"
 	cio "github.com/containerd/cri/pkg/server/io"
 	containerstore "github.com/containerd/cri/pkg/store/container"
@@ -57,7 +58,7 @@ func (c *criService) recover(ctx context.Context) error {
 		return errors.Wrap(err, "failed to list sandbox containers")
 	}
 	for _, sandbox := range sandboxes {
-		sb, err := loadSandbox(ctx, sandbox)
+		sb, err := c.loadSandbox(ctx, sandbox)
 		if err != nil {
 			logrus.WithError(err).Errorf("Failed to load sandbox %q", sandbox.ID())
 			continue
@@ -275,6 +276,22 @@ func (c *criService) loadContainer(ctx context.Context, cntr containerd.Containe
 					status.StartedAt = time.Now().UnixNano()
 					status.Pid = t.Pid()
 				}
+				// Wait for the task for exit monitor.
+				// wait is a long running background request, no timeout needed.
+				exitCh, err := t.Wait(ctrdutil.NamespacedContext())
+				if err != nil {
+					if !errdefs.IsNotFound(err) {
+						return errors.Wrap(err, "failed to wait for task")
+					}
+					// Container was in running state, but its task has been deleted,
+					// set unknown exited state.
+					status.FinishedAt = time.Now().UnixNano()
+					status.ExitCode = unknownExitCode
+					status.Reason = unknownExitReason
+				} else {
+					// Start exit monitor.
+					c.eventMonitor.startExitMonitor(context.Background(), id, status.Pid, exitCh)
+				}
 			case containerd.Stopped:
 				// Task is stopped. Updata status and delete the task.
 				if _, err := t.Delete(ctx, containerd.WithProcessKill); err != nil && !errdefs.IsNotFound(err) {
@@ -304,7 +321,7 @@ func (c *criService) loadContainer(ctx context.Context, cntr containerd.Containe
 }
 
 // loadSandbox loads sandbox from containerd.
-func loadSandbox(ctx context.Context, cntr containerd.Container) (sandboxstore.Sandbox, error) {
+func (c *criService) loadSandbox(ctx context.Context, cntr containerd.Container) (sandboxstore.Sandbox, error) {
 	ctx, cancel := context.WithTimeout(ctx, loadContainerTimeout)
 	defer cancel()
 	var sandbox sandboxstore.Sandbox
@@ -358,9 +375,20 @@ func loadSandbox(ctx context.Context, cntr containerd.Container) (sandboxstore.S
 			status.State = sandboxstore.StateNotReady
 		} else {
 			if taskStatus.Status == containerd.Running {
-				// Task is running, set sandbox state as READY.
-				status.State = sandboxstore.StateReady
-				status.Pid = t.Pid()
+				// Wait for the task for sandbox monitor.
+				// wait is a long running background request, no timeout needed.
+				exitCh, err := t.Wait(ctrdutil.NamespacedContext())
+				if err != nil {
+					if !errdefs.IsNotFound(err) {
+						return status, errors.Wrap(err, "failed to wait for task")
+					}
+					status.State = sandboxstore.StateNotReady
+				} else {
+					// Task is running, set sandbox state as READY.
+					status.State = sandboxstore.StateReady
+					status.Pid = t.Pid()
+					c.eventMonitor.startExitMonitor(context.Background(), meta.ID, status.Pid, exitCh)
+				}
 			} else {
 				// Task is not running. Delete the task and set sandbox state as NOTREADY.
 				if _, err := t.Delete(ctx, containerd.WithProcessKill); err != nil && !errdefs.IsNotFound(err) {

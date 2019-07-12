@@ -19,7 +19,6 @@ package server
 import (
 	"time"
 
-	"github.com/containerd/containerd"
 	eventtypes "github.com/containerd/containerd/api/events"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/docker/docker/pkg/signal"
@@ -29,6 +28,7 @@ import (
 	"golang.org/x/sys/unix"
 	runtime "k8s.io/kubernetes/pkg/kubelet/apis/cri/runtime/v1alpha2"
 
+	ctrdutil "github.com/containerd/cri/pkg/containerd/util"
 	"github.com/containerd/cri/pkg/store"
 	containerstore "github.com/containerd/cri/pkg/store/container"
 )
@@ -75,36 +75,34 @@ func (c *criService) stopContainer(ctx context.Context, container containerstore
 			return errors.Wrapf(err, "failed to get task for container %q", id)
 		}
 		// Don't return for unknown state, some cleanup needs to be done.
-		if state != runtime.ContainerState_CONTAINER_UNKNOWN {
-			return nil
+		if state == runtime.ContainerState_CONTAINER_UNKNOWN {
+			return cleanupUnknownContainer(ctx, id, container)
 		}
-		// Task is an interface, explicitly set it to nil just in case.
-		task = nil
+		return nil
 	}
 
 	// Handle unknown state.
 	if state == runtime.ContainerState_CONTAINER_UNKNOWN {
-		status, err := getTaskStatus(ctx, task)
+		// Start an exit handler for containers in unknown state.
+		waitCtx, waitCancel := context.WithCancel(ctrdutil.NamespacedContext())
+		defer waitCancel()
+		exitCh, err := task.Wait(waitCtx)
 		if err != nil {
-			return errors.Wrapf(err, "failed to get task status for %q", id)
+			if !errdefs.IsNotFound(err) {
+				return errors.Wrapf(err, "failed to wait for task for %q", id)
+			}
+			return cleanupUnknownContainer(ctx, id, container)
 		}
-		switch status.Status {
-		case containerd.Running, containerd.Created:
-			// The task is still running, continue stopping the task.
-		case containerd.Stopped:
-			// The task has exited. If the task exited after containerd
-			// started, the event monitor will receive its exit event; if it
-			// exited before containerd started, the event monitor will never
-			// receive its exit event.
-			// However, we can't tell that because the task state was not
-			// successfully loaded during containerd start (container is
-			// in UNKNOWN state).
-			// So always do cleanup here, just in case that we've missed the
-			// exit event.
-			return cleanupUnknownContainer(ctx, id, status, container)
-		default:
-			return errors.Wrapf(err, "unsupported task status %q", status.Status)
-		}
+
+		exitCtx, exitCancel := context.WithCancel(context.Background())
+		stopCh := c.eventMonitor.startExitMonitor(exitCtx, id, task.Pid(), exitCh)
+		defer func() {
+			exitCancel()
+			// This ensures that exit monitor is stopped before
+			// `Wait` is cancelled, so no exit event is generated
+			// because of the `Wait` cancellation.
+			<-stopCh
+		}()
 	}
 
 	// We only need to kill the task. The event handler will Delete the
@@ -177,19 +175,13 @@ func (c *criService) waitContainerStop(ctx context.Context, container containers
 }
 
 // cleanupUnknownContainer cleanup stopped container in unknown state.
-func cleanupUnknownContainer(ctx context.Context, id string, status containerd.Status,
-	cntr containerstore.Container) error {
+func cleanupUnknownContainer(ctx context.Context, id string, cntr containerstore.Container) error {
 	// Reuse handleContainerExit to do the cleanup.
-	// NOTE(random-liu): If the task did exit after containerd started, both
-	// the event monitor and the cleanup function would update the container
-	// state. The final container state will be whatever being updated first.
-	// There is no way to completely avoid this race condition, and for best
-	// effort unknown state container cleanup, this seems acceptable.
 	return handleContainerExit(ctx, &eventtypes.TaskExit{
 		ContainerID: id,
 		ID:          id,
 		Pid:         0,
-		ExitStatus:  status.ExitStatus,
-		ExitedAt:    status.ExitTime,
+		ExitStatus:  unknownExitCode,
+		ExitedAt:    time.Now(),
 	}, cntr)
 }

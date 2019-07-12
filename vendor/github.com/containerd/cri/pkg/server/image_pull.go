@@ -102,6 +102,7 @@ func (c *criService) PullImage(ctx context.Context, r *runtime.PullImageRequest)
 		containerd.WithResolver(resolver),
 		containerd.WithPullSnapshotter(c.config.ContainerdConfig.Snapshotter),
 		containerd.WithPullUnpack,
+		containerd.WithPullLabel(imageLabelKey, imageLabelValue),
 	)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to pull and unpack image %q", ref)

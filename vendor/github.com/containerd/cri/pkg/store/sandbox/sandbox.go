@@ -86,22 +86,9 @@ func (s *Store) Add(sb Sandbox) error {
 	return nil
 }
 
-// Get returns the sandbox with specified id. Returns store.ErrNotExist
-// if the sandbox doesn't exist.
+// Get returns the sandbox with specified id.
+// Returns store.ErrNotExist if the sandbox doesn't exist.
 func (s *Store) Get(id string) (Sandbox, error) {
-	sb, err := s.GetAll(id)
-	if err != nil {
-		return sb, err
-	}
-	if sb.Status.Get().State == StateInit {
-		return Sandbox{}, store.ErrNotExist
-	}
-	return sb, nil
-}
-
-// GetAll returns the sandbox with specified id, including sandbox in unknown
-// state. Returns store.ErrNotExist if the sandbox doesn't exist.
-func (s *Store) GetAll(id string) (Sandbox, error) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 	id, err := s.idIndex.Get(id)
@@ -123,9 +110,6 @@ func (s *Store) List() []Sandbox {
 	defer s.lock.RUnlock()
 	var sandboxes []Sandbox
 	for _, sb := range s.sandboxes {
-		if sb.Status.Get().State == StateInit {
-			continue
-		}
 		sandboxes = append(sandboxes, sb)
 	}
 	return sandboxes

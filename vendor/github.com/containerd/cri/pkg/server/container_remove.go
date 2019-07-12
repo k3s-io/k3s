@@ -105,6 +105,9 @@ func setContainerRemoving(container containerstore.Container) error {
 		if status.State() == runtime.ContainerState_CONTAINER_UNKNOWN {
 			return status, errors.New("container state is unknown, to stop first")
 		}
+		if status.Starting {
+			return status, errors.New("container is in starting state, can't be removed")
+		}
 		if status.Removing {
 			return status, errors.New("container is already in removing state")
 		}
