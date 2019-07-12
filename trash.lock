@@ -229,7 +229,7 @@ import:
 - package: github.com/rancher/helm-controller
   version: v0.2.1
 - package: github.com/rancher/remotedialer
-  version: 66218bc42b4fa27c34523c0d19a41a0e2b74983d
+  version: 4a5a661be67697d6369df54ef62d5a30b0385697
 - package: github.com/rancher/wrangler
   version: 7737c167e16514a38229bc64c839cee8cd14e6d3
 - package: github.com/rancher/wrangler-api

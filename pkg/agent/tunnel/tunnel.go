@@ -68,10 +68,12 @@ func Setup(config *config.Node) error {
 	}
 
 	addresses := []string{config.ServerAddress}
+	endpointResourceVersion := ""
 
 	endpoint, _ := client.CoreV1().Endpoints("default").Get("kubernetes", metav1.GetOptions{})
 	if endpoint != nil {
 		addresses = getAddresses(endpoint)
+		endpointResourceVersion = endpoint.ResourceVersion
 	}
 
 	disconnect := map[string]context.CancelFunc{}
@@ -88,10 +90,11 @@ func Setup(config *config.Node) error {
 	connect:
 		for {
 			watch, err := client.CoreV1().Endpoints("default").Watch(metav1.ListOptions{
-				FieldSelector: fields.Set{"metadata.name": "kubernetes"}.String(),
+				FieldSelector:   fields.Set{"metadata.name": "kubernetes"}.String(),
+				ResourceVersion: endpointResourceVersion,
 			})
 			if err != nil {
-				logrus.Errorf("Unable to watch for endpoints: %v", err)
+				logrus.Errorf("Unable to watch for tunnel endpoints: %v", err)
 				time.Sleep(5 * time.Second)
 				continue connect
 			}
@@ -100,21 +103,25 @@ func Setup(config *config.Node) error {
 				select {
 				case ev, ok := <-watch.ResultChan():
 					if !ok {
-						logrus.Error("endpoint watch channel closed")
+						logrus.Error("Tunnel endpoint watch channel closed")
 						continue connect
 					}
 					endpoint, ok := ev.Object.(*v1.Endpoints)
 					if !ok {
-						logrus.Error("could not case event object to endpoint")
+						logrus.Error("Tunnel could not case event object to endpoint")
 						continue watching
 					}
+					endpointResourceVersion = endpoint.ResourceVersion
+
+					var addresses = getAddresses(endpoint)
+					logrus.Infof("Tunnel endpoint watch event: %v", addresses)
 
 					validEndpoint := map[string]bool{}
-					var addresses = getAddresses(endpoint)
+
 					for _, address := range addresses {
 						validEndpoint[address] = true
 						if _, ok := disconnect[address]; !ok {
-							disconnect[address] = connect(wg, address, config, transportConfig)
+							disconnect[address] = connect(nil, address, config, transportConfig)
 						}
 					}
 
@@ -173,7 +180,7 @@ func connect(waitGroup *sync.WaitGroup, address string, config *config.Node, tra
 			})
 
 			if ctx.Err() != nil {
-				logrus.Infof("Stopping tunnel to %s", wsURL)
+				logrus.Infof("Stopped tunnel to %s", wsURL)
 				return
 			}
 		}
