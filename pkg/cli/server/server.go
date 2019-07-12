@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rancher/k3s/pkg/netutil"
+
 	systemd "github.com/coreos/go-systemd/daemon"
 	"github.com/docker/docker/pkg/reexec"
 	"github.com/natefinch/lumberjack"
@@ -126,6 +128,10 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	serverConfig.ControlConfig.AdvertiseIP = cfg.AdvertiseIP
 	serverConfig.ControlConfig.AdvertisePort = cfg.AdvertisePort
 	serverConfig.ControlConfig.BootstrapType = cfg.BootstrapType
+
+	if cmds.AgentConfig.FlannelIface != "" && cmds.AgentConfig.NodeIP == "" {
+		cmds.AgentConfig.NodeIP = netutil.GetIPFromInterface(cmds.AgentConfig.FlannelIface)
+	}
 
 	if serverConfig.ControlConfig.AdvertiseIP == "" && cmds.AgentConfig.NodeIP != "" {
 		serverConfig.ControlConfig.AdvertiseIP = cmds.AgentConfig.NodeIP

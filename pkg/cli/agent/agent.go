@@ -13,6 +13,7 @@ import (
 	"github.com/rancher/k3s/pkg/agent"
 	"github.com/rancher/k3s/pkg/cli/cmds"
 	"github.com/rancher/k3s/pkg/datadir"
+	"github.com/rancher/k3s/pkg/netutil"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 )
@@ -54,6 +55,10 @@ func Run(ctx *cli.Context) error {
 
 	if cmds.AgentConfig.ServerURL == "" {
 		return fmt.Errorf("--server is required")
+	}
+
+	if cmds.AgentConfig.FlannelIface != "" && cmds.AgentConfig.NodeIP == "" {
+		cmds.AgentConfig.NodeIP = netutil.GetIPFromInterface(cmds.AgentConfig.FlannelIface)
 	}
 
 	logrus.Infof("Starting k3s agent %s", ctx.App.Version)
