@@ -56,7 +56,6 @@ func NewController(name string, informer cache.SharedIndexInformer, workqueue wo
 		workqueue: workqueue,
 	}
 
-	logrus.Info("Setting up event handlers")
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: controller.handleObject,
 		UpdateFunc: func(old, new interface{}) {

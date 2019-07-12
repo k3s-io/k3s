@@ -227,13 +227,13 @@ import:
 - package: github.com/rancher/dynamiclistener
   version: 4716ac2362986f28bede3f3caf5d1ce347da55b0
 - package: github.com/rancher/helm-controller
-  version: d5f5c830231110722f14d446d3b2038e5cdf1532
+  version: v0.2.1
 - package: github.com/rancher/remotedialer
   version: 66218bc42b4fa27c34523c0d19a41a0e2b74983d
 - package: github.com/rancher/wrangler
-  version: 4202dbfa88013c19238bb004d82e013f0593493d
+  version: 7737c167e16514a38229bc64c839cee8cd14e6d3
 - package: github.com/rancher/wrangler-api
-  version: efe26ac6a9d720e1bfa5a8cc5f8dce5ad598ce26
+  version: v0.1.4
 - package: github.com/robfig/cron
   version: v1-53-gdf38d32658d878
 - package: github.com/rootless-containers/rootlesskit
