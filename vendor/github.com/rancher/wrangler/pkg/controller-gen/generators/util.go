@@ -8,6 +8,7 @@ import (
 
 const (
 	GenericPackage = "github.com/rancher/wrangler/pkg/generic"
+	AllSchemes     = "github.com/rancher/wrangler/pkg/schemes"
 )
 
 func groupPath(group string) string {
