@@ -68,10 +68,12 @@ func Setup(config *config.Node) error {
 	}
 
 	addresses := []string{config.ServerAddress}
+	endpointResourceVersion := ""
 
 	endpoint, _ := client.CoreV1().Endpoints("default").Get("kubernetes", metav1.GetOptions{})
 	if endpoint != nil {
 		addresses = getAddresses(endpoint)
+		endpointResourceVersion = endpoint.ResourceVersion
 	}
 
 	disconnect := map[string]context.CancelFunc{}
@@ -88,7 +90,8 @@ func Setup(config *config.Node) error {
 	connect:
 		for {
 			watch, err := client.CoreV1().Endpoints("default").Watch(metav1.ListOptions{
-				FieldSelector: fields.Set{"metadata.name": "kubernetes"}.String(),
+				FieldSelector:   fields.Set{"metadata.name": "kubernetes"}.String(),
+				ResourceVersion: endpointResourceVersion,
 			})
 			if err != nil {
 				logrus.Errorf("Unable to watch for tunnel endpoints: %v", err)
@@ -108,6 +111,7 @@ func Setup(config *config.Node) error {
 						logrus.Error("Tunnel could not case event object to endpoint")
 						continue watching
 					}
+					endpointResourceVersion = endpoint.ResourceVersion
 
 					var addresses = getAddresses(endpoint)
 					logrus.Infof("Tunnel endpoint watch event: %v", addresses)
