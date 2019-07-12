@@ -26,11 +26,11 @@ import (
 //                    |              |
 //                    | Create(Run)  | Load
 //                    |              |
-//      Start    +----v----+         |
-//     (failed)  |         |         |
-// +-------------+  INIT   |         +-----------+
-// |             |         |         |           |
-// |             +----+----+         |           |
+//      Start         |              |
+//     (failed)       |              |
+// +------------------+              +-----------+
+// |                  |              |           |
+// |                  |              |           |
 // |                  |              |           |
 // |                  | Start(Run)   |           |
 // |                  |              |           |
@@ -53,23 +53,17 @@ import (
 // +-------------> DELETED
 
 // State is the sandbox state we use in containerd/cri.
-// It includes init and unknown, which are internal states not defined in CRI.
+// It includes unknown, which is internal states not defined in CRI.
 // The state mapping from internal states to CRI states:
 // * ready -> ready
 // * not ready -> not ready
-// * init -> not exist
 // * unknown -> not ready
 type State uint32
 
 const (
-	// StateInit is init state of sandbox. Sandbox
-	// is in init state before its corresponding sandbox container
-	// is created. Sandbox in init state should be ignored by most
-	// functions, unless the caller needs to update sandbox state.
-	StateInit State = iota
 	// StateReady is ready state, it means sandbox container
 	// is running.
-	StateReady
+	StateReady = iota
 	// StateNotReady is notready state, it ONLY means sandbox
 	// container is not running.
 	// StopPodSandbox should still be called for NOTREADY sandbox to

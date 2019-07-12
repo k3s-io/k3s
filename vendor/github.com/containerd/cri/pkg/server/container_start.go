@@ -38,64 +38,48 @@ import (
 
 // StartContainer starts the container.
 func (c *criService) StartContainer(ctx context.Context, r *runtime.StartContainerRequest) (retRes *runtime.StartContainerResponse, retErr error) {
-	container, err := c.containerStore.Get(r.GetContainerId())
+	cntr, err := c.containerStore.Get(r.GetContainerId())
 	if err != nil {
 		return nil, errors.Wrapf(err, "an error occurred when try to find container %q", r.GetContainerId())
 	}
 
-	var startErr error
-	// update container status in one transaction to avoid race with event monitor.
-	if err := container.Status.UpdateSync(func(status containerstore.Status) (containerstore.Status, error) {
-		// Always apply status change no matter startContainer fails or not. Because startContainer
-		// may change container state no matter it fails or succeeds.
-		startErr = c.startContainer(ctx, container, &status)
-		return status, nil
-	}); startErr != nil {
-		return nil, startErr
-	} else if err != nil {
-		return nil, errors.Wrapf(err, "failed to update container %q metadata", container.ID)
-	}
-	return &runtime.StartContainerResponse{}, nil
-}
-
-// startContainer actually starts the container. The function needs to be run in one transaction. Any updates
-// to the status passed in will be applied no matter the function returns error or not.
-func (c *criService) startContainer(ctx context.Context,
-	cntr containerstore.Container,
-	status *containerstore.Status) (retErr error) {
 	id := cntr.ID
 	meta := cntr.Metadata
 	container := cntr.Container
 	config := meta.Config
 
-	// Return error if container is not in created state.
-	if status.State() != runtime.ContainerState_CONTAINER_CREATED {
-		return errors.Errorf("container %q is in %s state", id, criContainerStateToString(status.State()))
+	// Set starting state to prevent other start/remove operations against this container
+	// while it's being started.
+	if err := setContainerStarting(cntr); err != nil {
+		return nil, errors.Wrapf(err, "failed to set starting state for container %q", id)
 	}
-	// Do not start the container when there is a removal in progress.
-	if status.Removing {
-		return errors.Errorf("container %q is in removing state", id)
-	}
-
 	defer func() {
 		if retErr != nil {
 			// Set container to exited if fail to start.
-			status.Pid = 0
-			status.FinishedAt = time.Now().UnixNano()
-			status.ExitCode = errorStartExitCode
-			status.Reason = errorStartReason
-			status.Message = retErr.Error()
+			if err := cntr.Status.UpdateSync(func(status containerstore.Status) (containerstore.Status, error) {
+				status.Pid = 0
+				status.FinishedAt = time.Now().UnixNano()
+				status.ExitCode = errorStartExitCode
+				status.Reason = errorStartReason
+				status.Message = retErr.Error()
+				return status, nil
+			}); err != nil {
+				logrus.WithError(err).Errorf("failed to set start failure state for container %q", id)
+			}
+		}
+		if err := resetContainerStarting(cntr); err != nil {
+			logrus.WithError(err).Errorf("failed to reset starting state for container %q", id)
 		}
 	}()
 
 	// Get sandbox config from sandbox store.
 	sandbox, err := c.sandboxStore.Get(meta.SandboxID)
 	if err != nil {
-		return errors.Wrapf(err, "sandbox %q not found", meta.SandboxID)
+		return nil, errors.Wrapf(err, "sandbox %q not found", meta.SandboxID)
 	}
 	sandboxID := meta.SandboxID
 	if sandbox.Status.Get().State != sandboxstore.StateReady {
-		return errors.Errorf("sandbox container %q is not running", sandboxID)
+		return nil, errors.Errorf("sandbox container %q is not running", sandboxID)
 	}
 
 	ioCreation := func(id string) (_ containerdio.IO, err error) {
@@ -110,7 +94,7 @@ func (c *criService) startContainer(ctx context.Context,
 
 	ctrInfo, err := container.Info(ctx)
 	if err != nil {
-		return errors.Wrap(err, "failed to get container info")
+		return nil, errors.Wrap(err, "failed to get container info")
 	}
 
 	var taskOpts []containerd.NewTaskOpts
@@ -120,7 +104,7 @@ func (c *criService) startContainer(ctx context.Context,
 	}
 	task, err := container.NewTask(ctx, ioCreation, taskOpts...)
 	if err != nil {
-		return errors.Wrap(err, "failed to create containerd task")
+		return nil, errors.Wrap(err, "failed to create containerd task")
 	}
 	defer func() {
 		if retErr != nil {
@@ -133,15 +117,61 @@ func (c *criService) startContainer(ctx context.Context,
 		}
 	}()
 
+	// wait is a long running background request, no timeout needed.
+	exitCh, err := task.Wait(ctrdutil.NamespacedContext())
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to wait for containerd task")
+	}
+
 	// Start containerd task.
 	if err := task.Start(ctx); err != nil {
-		return errors.Wrapf(err, "failed to start containerd task %q", id)
+		return nil, errors.Wrapf(err, "failed to start containerd task %q", id)
 	}
 
 	// Update container start timestamp.
-	status.Pid = task.Pid()
-	status.StartedAt = time.Now().UnixNano()
-	return nil
+	if err := cntr.Status.UpdateSync(func(status containerstore.Status) (containerstore.Status, error) {
+		status.Pid = task.Pid()
+		status.StartedAt = time.Now().UnixNano()
+		return status, nil
+	}); err != nil {
+		return nil, errors.Wrapf(err, "failed to update container %q state", id)
+	}
+
+	// start the monitor after updating container state, this ensures that
+	// event monitor receives the TaskExit event and update container state
+	// after this.
+	c.eventMonitor.startExitMonitor(context.Background(), id, task.Pid(), exitCh)
+
+	return &runtime.StartContainerResponse{}, nil
+}
+
+// setContainerStarting sets the container into starting state. In starting state, the
+// container will not be removed or started again.
+func setContainerStarting(container containerstore.Container) error {
+	return container.Status.Update(func(status containerstore.Status) (containerstore.Status, error) {
+		// Return error if container is not in created state.
+		if status.State() != runtime.ContainerState_CONTAINER_CREATED {
+			return status, errors.Errorf("container is in %s state", criContainerStateToString(status.State()))
+		}
+		// Do not start the container when there is a removal in progress.
+		if status.Removing {
+			return status, errors.New("container is in removing state, can't be started")
+		}
+		if status.Starting {
+			return status, errors.New("container is already in starting state")
+		}
+		status.Starting = true
+		return status, nil
+	})
+}
+
+// resetContainerStarting resets the container starting state on start failure. So
+// that we could remove the container later.
+func resetContainerStarting(container containerstore.Container) error {
+	return container.Status.Update(func(status containerstore.Status) (containerstore.Status, error) {
+		status.Starting = false
+		return status, nil
+	})
 }
 
 // createContainerLoggers creates container loggers and return write closer for stdout and stderr.

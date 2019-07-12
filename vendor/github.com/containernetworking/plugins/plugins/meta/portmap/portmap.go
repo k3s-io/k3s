@@ -255,6 +255,10 @@ func genMarkMasqChain(markBit int) chain {
 		table:       "nat",
 		name:        MarkMasqChainName,
 		entryChains: []string{"POSTROUTING"},
+		// Only this entry chain needs to be prepended, because otherwise it is
+		// stomped on by the masquerading rules created by the CNI ptp and bridge
+		// plugins.
+		prependEntry: true,
 		entryRules: [][]string{{
 			"-m", "comment",
 			"--comment", "CNI portfwd requiring masquerade",

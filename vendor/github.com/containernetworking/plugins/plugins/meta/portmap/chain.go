@@ -29,6 +29,8 @@ type chain struct {
 
 	entryRules [][]string // the rules that "point" to this chain
 	rules      [][]string // the rules this chain contains
+
+	prependEntry bool // whether or not the entry rules should be prepended
 }
 
 // setup idempotently creates the chain. It will not error if the chain exists.
@@ -45,19 +47,19 @@ func (c *chain) setup(ipt *iptables.IPTables) error {
 	}
 
 	// Add the rules to the chain
-	for i := len(c.rules) - 1; i >= 0; i-- {
-		if err := prependUnique(ipt, c.table, c.name, c.rules[i]); err != nil {
+	for _, rule := range c.rules {
+		if err := insertUnique(ipt, c.table, c.name, false, rule); err != nil {
 			return err
 		}
 	}
 
 	// Add the entry rules to the entry chains
 	for _, entryChain := range c.entryChains {
-		for i := len(c.entryRules) - 1; i >= 0; i-- {
+		for _, rule := range c.entryRules {
 			r := []string{}
-			r = append(r, c.entryRules[i]...)
+			r = append(r, rule...)
 			r = append(r, "-j", c.name)
-			if err := prependUnique(ipt, c.table, entryChain, r); err != nil {
+			if err := insertUnique(ipt, c.table, entryChain, c.prependEntry, r); err != nil {
 				return err
 			}
 		}
@@ -105,8 +107,9 @@ func (c *chain) teardown(ipt *iptables.IPTables) error {
 	return nil
 }
 
-// prependUnique will prepend a rule to a chain, if it does not already exist
-func prependUnique(ipt *iptables.IPTables, table, chain string, rule []string) error {
+// insertUnique will add a rule to a chain if it does not already exist.
+// By default the rule is appended, unless prepend is true.
+func insertUnique(ipt *iptables.IPTables, table, chain string, prepend bool, rule []string) error {
 	exists, err := ipt.Exists(table, chain, rule...)
 	if err != nil {
 		return err
@@ -115,7 +118,11 @@ func prependUnique(ipt *iptables.IPTables, table, chain string, rule []string) e
 		return nil
 	}
 
-	return ipt.Insert(table, chain, 1, rule...)
+	if prepend {
+		return ipt.Insert(table, chain, 1, rule...)
+	} else {
+		return ipt.Append(table, chain, rule...)
+	}
 }
 
 func chainExists(ipt *iptables.IPTables, tableName, chainName string) (bool, error) {
