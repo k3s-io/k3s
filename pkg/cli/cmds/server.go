@@ -31,6 +31,7 @@ type Server struct {
 	StorageKeyFile      string
 	AdvertiseIP         string
 	AdvertisePort       int
+	DisableScheduler    bool
 }
 
 var ServerConfig Server
@@ -190,6 +191,11 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Usage:       "Port that apiserver uses to advertise to members of the cluster",
 				Value:       0,
 				Destination: &ServerConfig.AdvertisePort,
+			},
+			cli.BoolFlag{
+				Name:        "disable-scheduler",
+				Usage:       "Disable Kubernetes default scheduler",
+				Destination: &ServerConfig.DisableScheduler,
 			},
 			NodeIPFlag,
 			NodeNameFlag,
