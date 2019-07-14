@@ -312,7 +312,7 @@ import:
 - package: k8s.io/klog
   version: v0.2.0-14-g8e90cee79f8237
 - package: k8s.io/kubernetes
-  version: v1.14.3-k3s.2
+  version: v1.14.4-k3s.1
   repo: https://github.com/rancher/k3s.git
   transitive: true
   staging: true

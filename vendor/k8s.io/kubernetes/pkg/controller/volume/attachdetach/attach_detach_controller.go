@@ -30,6 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	storageinformers "k8s.io/client-go/informers/storage/v1beta1"
 	clientset "k8s.io/client-go/kubernetes"
@@ -48,6 +49,7 @@ import (
 	"k8s.io/kubernetes/pkg/controller/volume/attachdetach/reconciler"
 	"k8s.io/kubernetes/pkg/controller/volume/attachdetach/statusupdater"
 	"k8s.io/kubernetes/pkg/controller/volume/attachdetach/util"
+	"k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/util/mount"
 	"k8s.io/kubernetes/pkg/volume"
 	volumeutil "k8s.io/kubernetes/pkg/volume/util"
@@ -103,6 +105,7 @@ func NewAttachDetachController(
 	pvcInformer coreinformers.PersistentVolumeClaimInformer,
 	pvInformer coreinformers.PersistentVolumeInformer,
 	csiNodeInformer storageinformers.CSINodeInformer,
+	csiDriverInformer storageinformers.CSIDriverInformer,
 	plugins []volume.VolumePlugin,
 	prober volume.DynamicPluginProber,
 	disableReconciliationSync bool,
@@ -134,6 +137,11 @@ func NewAttachDetachController(
 		nodeLister:  nodeInformer.Lister(),
 		nodesSynced: nodeInformer.Informer().HasSynced,
 		pvcQueue:    workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "pvcs"),
+	}
+
+	if utilfeature.DefaultFeatureGate.Enabled(features.CSIDriverRegistry) {
+		adc.csiDriverLister = csiDriverInformer.Lister()
+		adc.csiDriversSynced = csiDriverInformer.Informer().HasSynced
 	}
 
 	if err := adc.volumePluginMgr.InitPlugins(plugins, prober, adc); err != nil {
@@ -260,6 +268,12 @@ type attachDetachController struct {
 	csiNodeLister storagelisters.CSINodeLister
 	csiNodeSynced kcache.InformerSynced
 
+	// csiDriverLister is the shared CSIDriver lister used to fetch and store
+	// CSIDriver objects from the API server. It is shared with other controllers
+	// and therefore the CSIDriver objects in its store should be treated as immutable.
+	csiDriverLister  storagelisters.CSIDriverLister
+	csiDriversSynced kcache.InformerSynced
+
 	// volumePluginMgr used to initialize and fetch volume plugins
 	volumePluginMgr volume.VolumePluginMgr
 
@@ -312,6 +326,9 @@ func (adc *attachDetachController) Run(stopCh <-chan struct{}) {
 	synced := []kcache.InformerSynced{adc.podsSynced, adc.nodesSynced, adc.pvcsSynced, adc.pvsSynced}
 	if adc.csiNodeSynced != nil {
 		synced = append(synced, adc.csiNodeSynced)
+	}
+	if adc.csiDriversSynced != nil {
+		synced = append(synced, adc.csiDriversSynced)
 	}
 
 	if !controller.WaitForCacheSync("attach detach", stopCh, synced...) {
@@ -655,6 +672,10 @@ func (adc *attachDetachController) CSINodeLister() storagelisters.CSINodeLister 
 	return adc.csiNodeLister
 }
 
+func (adc *attachDetachController) CSIDriverLister() storagelisters.CSIDriverLister {
+	return adc.csiDriverLister
+}
+
 func (adc *attachDetachController) IsAttachDetachController() bool {
 	return true
 }
@@ -774,4 +795,8 @@ func (adc *attachDetachController) GetEventRecorder() record.EventRecorder {
 func (adc *attachDetachController) GetSubpather() subpath.Interface {
 	// Subpaths not needed in attachdetach controller
 	return nil
+}
+
+func (adc *attachDetachController) GetCSIDriverLister() storagelisters.CSIDriverLister {
+	return adc.csiDriverLister
 }
