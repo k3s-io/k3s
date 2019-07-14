@@ -72,6 +72,7 @@ func fetchBootstrapData(cfg *config.Control) error {
 	}
 	defer cli.Close()
 
+	logrus.Info("Fetching bootstrap data from etcd")
 	gr, err := cli.Get(context.TODO(), k3sRuntimeEtcdPath)
 	if err != nil {
 		return err
@@ -136,6 +137,7 @@ func storeBootstrapData(cfg *config.Control) error {
 		return err
 	}
 
+	logrus.Info("Storing bootstrap data to etcd")
 	runtimeBase64 := base64.StdEncoding.EncodeToString(certData)
 	_, err = cli.Put(context.TODO(), k3sRuntimeEtcdPath, runtimeBase64)
 	if err != nil {
