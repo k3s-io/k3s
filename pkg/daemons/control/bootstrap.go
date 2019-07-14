@@ -72,12 +72,16 @@ func fetchBootstrapData(cfg *config.Control) error {
 	}
 	defer cli.Close()
 
+	logrus.Info("Fetching bootstrap data from etcd")
 	gr, err := cli.Get(context.TODO(), k3sRuntimeEtcdPath)
 	if err != nil {
 		return err
 	}
 	if len(gr.Kvs) == 0 {
-		return nil
+		if cfg.BootstrapType != bootstrapTypeRead {
+			return nil
+		}
+		return errors.New("Unable to read bootstrap data from server")
 	}
 
 	runtimeJSON, err := base64.URLEncoding.DecodeString(string(gr.Kvs[0].Value))
@@ -118,18 +122,22 @@ func storeBootstrapData(cfg *config.Control) error {
 	}
 	defer cli.Close()
 
-	gr, err := cli.Get(context.TODO(), k3sRuntimeEtcdPath)
-	if err != nil {
-		return err
+	if cfg.BootstrapType != bootstrapTypeWrite {
+		gr, err := cli.Get(context.TODO(), k3sRuntimeEtcdPath)
+		if err != nil {
+			return err
+		}
+		if len(gr.Kvs) > 0 && string(gr.Kvs[0].Value) != "" {
+			return nil
+		}
 	}
-	if len(gr.Kvs) > 0 && string(gr.Kvs[0].Value) != "" {
-		return nil
-	}
+
 	certData, err := readRuntimeBootstrapData(cfg.Runtime)
 	if err != nil {
 		return err
 	}
 
+	logrus.Info("Storing bootstrap data to etcd")
 	runtimeBase64 := base64.StdEncoding.EncodeToString(certData)
 	_, err = cli.Put(context.TODO(), k3sRuntimeEtcdPath, runtimeBase64)
 	if err != nil {
