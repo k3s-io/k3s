@@ -2,6 +2,7 @@ package sqlite
 
 import (
 	"database/sql"
+	"os"
 	"strings"
 
 	"github.com/ibuildthecloud/kvsql/clientv3/driver"
@@ -54,7 +55,7 @@ func NewSQLite() *driver.Generic {
 		ListResumeSQL: strings.Replace(strings.Replace(baseList, "%REV%", "WHERE kvi.revision <= ?", -1),
 			"%RES%", "and kv.name > ? ", -1),
 		InsertSQL:      insertSQL,
-		ReplaySQL:      "SELECT id, " + fieldList + " FROM key_value WHERE name like ? and revision > ? ORDER BY revision ASC",
+		ReplaySQL:      "SELECT id, " + fieldList + " FROM key_value WHERE name like ? and revision >= ? ORDER BY revision ASC",
 		GetRevisionSQL: "SELECT MAX(revision) FROM key_value",
 		ToDeleteSQL:    "SELECT count(*) c, name, max(revision) FROM key_value GROUP BY name HAVING c > 1 or (c = 1 and del = 1)",
 		DeleteOldSQL:   "DELETE FROM key_value WHERE name = ? AND (revision < ? OR (revision = ? AND del = 1))",
@@ -63,7 +64,8 @@ func NewSQLite() *driver.Generic {
 
 func Open(dataSourceName string) (*sql.DB, error) {
 	if dataSourceName == "" {
-		dataSourceName = "./state.db?_journal=WAL&cache=shared"
+		os.MkdirAll("./db", 0700)
+		dataSourceName = "./db/state.db?_journal=WAL&cache=shared"
 	}
 	db, err := sql.Open("sqlite3", dataSourceName)
 	if err != nil {
