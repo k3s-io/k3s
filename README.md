@@ -388,6 +388,8 @@ Restart=always
 WantedBy=multi-user.target
 ```
 
+For agent systemd unit you should change the `Type=notify` to `Type=exec`.
+
 The k3s `install.sh` script also provides a convenient way for installing to systemd,
 to install the agent and server as a k3s service just run:
 ```sh
