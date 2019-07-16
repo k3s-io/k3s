@@ -125,7 +125,7 @@ spec:
 
 Keep in mind that `namespace` in your HelmChart resource metadata section should always be `kube-system`, because k3s deploy controller is configured to watch this namespace for new HelmChart resources. If you want to specify the namespace for the actual helm release, you can do that using `targetNamespace` key in the spec section:
 
-```
+```yaml
 apiVersion: helm.cattle.io/v1
 kind: HelmChart
 metadata:
