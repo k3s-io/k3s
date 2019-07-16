@@ -566,7 +566,7 @@ Traefik
 
 Traefik is deployed by default when starting the server; to disable it, start the server with `--no-deploy traefik` like this
 
-     k3s server --no-deploy traefik
+     k3s server --no-deploy=traefik
 
 Service load balancer
 ---------------------
