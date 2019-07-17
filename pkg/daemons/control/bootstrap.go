@@ -37,6 +37,9 @@ type serverBootstrap struct {
 	PasswdFileData         string `json:"passwdFileData,omitempty"`
 	RequestHeaderCAData    string `json:"requestHeaderCAData,omitempty"`
 	RequestHeaderCAKeyData string `json:"requestHeaderCAKeyData,omitempty"`
+	ClientKubeletKey       string `json:"clientKubeletKey,omitempty"`
+	ClientKubeProxyKey     string `json:"clientKubeProxyKey,omitempty"`
+	ServingKubeletKey      string `json:"servingKubeletKey,omitempty"`
 }
 
 var validBootstrapTypes = map[string]bool{
@@ -206,6 +209,9 @@ func readRuntimeBootstrapData(runtime *config.ControlRuntime) ([]byte, error) {
 		runtime.PasswdFile:         "",
 		runtime.RequestHeaderCA:    "",
 		runtime.RequestHeaderCAKey: "",
+		runtime.ClientKubeletKey:   "",
+		runtime.ClientKubeProxyKey: "",
+		runtime.ServingKubeletKey:  "",
 	}
 	for k := range serverBootstrapFiles {
 		data, err := ioutil.ReadFile(k)
@@ -223,6 +229,9 @@ func readRuntimeBootstrapData(runtime *config.ControlRuntime) ([]byte, error) {
 		PasswdFileData:         serverBootstrapFiles[runtime.PasswdFile],
 		RequestHeaderCAData:    serverBootstrapFiles[runtime.RequestHeaderCA],
 		RequestHeaderCAKeyData: serverBootstrapFiles[runtime.RequestHeaderCAKey],
+		ClientKubeletKey:       serverBootstrapFiles[runtime.ClientKubeletKey],
+		ClientKubeProxyKey:     serverBootstrapFiles[runtime.ClientKubeProxyKey],
+		ServingKubeletKey:      serverBootstrapFiles[runtime.ServingKubeletKey],
 	}
 	return json.Marshal(serverBootstrapFileData)
 }
@@ -237,10 +246,13 @@ func writeRuntimeBootstrapData(runtime *config.ControlRuntime, runtimeData *serv
 		runtime.PasswdFile:         runtimeData.PasswdFileData,
 		runtime.RequestHeaderCA:    runtimeData.RequestHeaderCAData,
 		runtime.RequestHeaderCAKey: runtimeData.RequestHeaderCAKeyData,
+		runtime.ClientKubeletKey:   runtimeData.ClientKubeletKey,
+		runtime.ClientKubeProxyKey: runtimeData.ClientKubeProxyKey,
+		runtime.ServingKubeletKey:  runtimeData.ServingKubeletKey,
 	}
 	for k, v := range runtimePathValue {
 		if _, err := os.Stat(k); os.IsNotExist(err) {
-			if err := ioutil.WriteFile(k, []byte(v), 600); err != nil {
+			if err := ioutil.WriteFile(k, []byte(v), 0600); err != nil {
 				return err
 			}
 		}
