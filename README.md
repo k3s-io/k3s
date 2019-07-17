@@ -610,6 +610,14 @@ sudo ip route add default via 192.168.123.1
 
 k3s additionally provides a `--resolv-conf` flag for kubelets, which may help with configuring DNS in air-gap networks.
 
+Node Labels and Taints
+----------------------
+
+k3s server and agent can be configured with options `--node-label` and `--node-taint` which adds set of Labels and Taints to kubelet, the two options only adds labels/taints at registration time, so they can only be added once and not changed after that, an example to add new label is:
+```
+k3s server --node-label foo=bar --node-label hello=world --node-taint key1=value1:NoExecute
+```
+
 Rootless - (Some advanced magic, user beware)
 --------
 
@@ -618,14 +626,6 @@ We are releasing the initial support for those interested in rootless and hopefu
 improve the usability.  First ensure you have proper setup and support for user namespaces.  Refer to the
 [requirements section](https://github.com/rootless-containers/rootlesskit#setup) in rootlesskit for instructions.
 In short, latest Ubuntu is your best bet for this to work.
-
-Node Labels and Taints
-----------------------
-
-k3s server and agent can be configured with options `--node-label` and `--node-taint` which adds set of Labels and Taints to kubelet, the two options only adds labels/taints at registration time, so they can only be added once and not changed after that, an example to add new label is:
-```
-k3s server --node-label foo=bar --node-label hello=world --node-taint key1=value1:NoExecute
-```
 
 ## Issues w/ Rootless
 
