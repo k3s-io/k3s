@@ -34,7 +34,7 @@ k3s is intended to be a fully compliant Kubernetes distribution with the followi
 Documentation
 -------------
 
-Please see [the official docs site](https://rancher.com/docs/k3s) for complete documentation on k3s.
+Please see [the official docs site](https://rancher.com/docs/k3s/latest/en/) for complete documentation on k3s.
 
 Quick-Start - Install Script
 --------------
