@@ -164,7 +164,7 @@ As of version 0.6.0, k3s can support various storage backends including: SQLite 
 --storage-keyfile value             SSL key file used to secure storage backend communication [$K3S_STORAGE_KEYFILE]
 ```
 
-## MySQL
+### MySQL
 
 To use k3s with MySQL storage backend, you can specify the following for insecure connection:
 
@@ -188,7 +188,7 @@ k3s server --storage-endpoint="mysql://k3suser:k3spass@tcp(192.168.1.100:3306)/k
 The above command will use these certificates to generate the tls config to communicate with mysql securely.
 
 
-## Postgres
+### Postgres
 
 Connection to postgres can be established using the following command:
 
@@ -214,7 +214,7 @@ k3s server --storage-endpoint="postgres://k3suser:k3spass@192.168.1.100:5432/k3s
 
 The above command will use these certificates to generate the tls config to communicate with postgres securely, note that the `sslmode` in the example is `verify-full` which verify that the certification presented by the server was signed by a trusted CA and the server host name matches the one in the certificate.
 
-## etcd
+### etcd
 
 Connection to etcd3 can be established using the following command:
 
@@ -627,9 +627,9 @@ improve the usability.  First ensure you have proper setup and support for user 
 [requirements section](https://github.com/rootless-containers/rootlesskit#setup) in rootlesskit for instructions.
 In short, latest Ubuntu is your best bet for this to work.
 
-## Issues w/ Rootless
+### Issues w/ Rootless
 
-### Ports
+#### Ports
 When running rootless a new network namespace is created.  This means that k3s instance is running with networking
 fairly detached from the host.  The only way to access services run in k3s from the host is to setup port forwards
 to the k3s network namespace.  We have a controller that will automatically bind 6443 and service port below 1024 to the host with an offset of 10000.
@@ -638,17 +638,17 @@ That means service port 80 will become 10080 on the host, but 8080 will become 8
 
 Currently, only `LoadBalancer` services are automatically bound.
 
-### Daemon lifecycle
+#### Daemon lifecycle
 Once you kill k3s and then start a new instance of k3s it will create a new network namespace, but it doesn't kill the old pods.  So you are left
 with a fairly broken setup.  This is the main issue at the moment, how to deal with the network namespace.
 
 The issue is tracked in https://github.com/rootless-containers/rootlesskit/issues/65
 
-### Cgroups
+#### Cgroups
 
 Cgroups are not supported
 
-## Running w/ Rootless
+### Running w/ Rootless
 
 Just add `--rootless` flag to either server or agent.  So run `k3s server --rootless` and then look for the message
 `Wrote kubeconfig [SOME PATH]` for where your kubeconfig to access you cluster is.  Becareful, if you use `-o` to write
