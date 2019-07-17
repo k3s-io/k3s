@@ -183,10 +183,6 @@ func getHostnameAndIP(info cmds.Agent) (string, string, error) {
 	return name, ip, nil
 }
 
-func localAddress(controlConfig *config.Control) string {
-	return fmt.Sprintf("127.0.0.1:%d", controlConfig.ProxyPort)
-}
-
 func writeKubeConfig(envInfo *cmds.Agent, info clientaccess.Info, tlsCert *tls.Certificate) (string, error) {
 	os.MkdirAll(envInfo.DataDir, 0700)
 	kubeConfigPath := filepath.Join(envInfo.DataDir, "kubeconfig.yaml")
@@ -338,7 +334,6 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 		ContainerRuntimeEndpoint: envInfo.ContainerRuntimeEndpoint,
 	}
 	nodeConfig.FlannelIface = flannelIface
-	nodeConfig.LocalAddress = localAddress(controlConfig)
 	nodeConfig.Images = filepath.Join(envInfo.DataDir, "images")
 	nodeConfig.AgentConfig.NodeIP = nodeIP
 	nodeConfig.AgentConfig.NodeName = nodeName
