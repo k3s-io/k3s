@@ -45,6 +45,8 @@ var validBootstrapTypes = map[string]bool{
 	bootstrapTypeFull:  true,
 }
 
+// fetchBootstrapData copies the bootstrap data (certs, keys, passwords)
+// from etcd to inidividual files specified by cfg.Runtime.
 func fetchBootstrapData(cfg *config.Control) error {
 	if valid, err := checkBootstrapArgs(cfg, map[string]bool{
 		bootstrapTypeFull: true,
@@ -95,6 +97,8 @@ func fetchBootstrapData(cfg *config.Control) error {
 	return writeRuntimeBootstrapData(cfg.Runtime, serverRuntime)
 }
 
+// storeBootstrapData copies the bootstrap data in the opposite direction to
+// fetchBootstrapData.
 func storeBootstrapData(cfg *config.Control) error {
 	if valid, err := checkBootstrapArgs(cfg, map[string]bool{
 		bootstrapTypeFull:  true,
