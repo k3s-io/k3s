@@ -77,13 +77,11 @@ func Setup(config *config.Node) error {
 
 	disconnect := map[string]context.CancelFunc{}
 
-	wg := &sync.WaitGroup{}
 	for _, address := range addresses {
 		if _, ok := disconnect[address]; !ok {
-			disconnect[address] = connect(wg, address, config, transportConfig)
+			disconnect[address] = connect(nil, address, config, transportConfig)
 		}
 	}
-	wg.Wait()
 
 	go func() {
 	connect:
