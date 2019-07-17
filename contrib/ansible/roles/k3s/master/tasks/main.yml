@@ -62,3 +62,15 @@
     path: /home/{{ ansible_user }}/.kube/config
     regexp: 'https://localhost:6443'
     replace: 'https://{{master_ip}}:6443'
+
+- name: Create kubectl symlink
+  file:
+    src: /usr/local/bin/k3s
+    dest: /usr/local/bin/kubectl
+    state: link
+
+- name: Create crictl symlink
+  file:
+    src: /usr/local/bin/k3s
+    dest: /usr/local/bin/crictl
+    state: link
