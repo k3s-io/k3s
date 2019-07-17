@@ -26,11 +26,6 @@ func ReadTLSConfig(userConfig *UserConfig) error {
 		return err
 	}
 
-	userConfig.Mode = "https"
-	if len(userConfig.Domains) > 0 {
-		userConfig.Mode = "acme"
-	}
-
 	valid := false
 	if userConfig.Key != "" && userConfig.Cert != "" {
 		valid = true
