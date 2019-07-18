@@ -225,7 +225,8 @@ import:
 - package: github.com/prometheus/procfs
   version: 65c1f6f8f0fc1e2185eb9863a3bc751496404259
 - package: github.com/rancher/dynamiclistener
-  version: 4716ac2362986f28bede3f3caf5d1ce347da55b0
+  version: c08b499d17195fbc2c1764b21c322951811629a5
+  repo: https://github.com/erikwilson/rancher-dynamiclistener.git
 - package: github.com/rancher/helm-controller
   version: v0.2.1
 - package: github.com/rancher/remotedialer
