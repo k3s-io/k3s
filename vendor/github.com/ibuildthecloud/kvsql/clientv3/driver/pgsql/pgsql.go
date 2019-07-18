@@ -39,13 +39,13 @@ INSERT INTO key_value(` + fieldList + `)
 		`create table if not exists key_value
  			(
  				name TEXT,
- 				value bytea,
+ 				value TEXT,
  				create_revision INTEGER,
  				revision INTEGER,
  				ttl INTEGER,
  				version INTEGER,
  				del INTEGER,
- 				old_value bytea,
+ 				old_value TEXT,
  				id SERIAL PRIMARY KEY,
  				old_revision INTEGER
  			);`,
