@@ -83,7 +83,6 @@ func Setup(config *config.Node) error {
 			disconnect[address] = connect(wg, address, config, transportConfig)
 		}
 	}
-	wg.Wait()
 
 	go func() {
 	connect:
@@ -134,6 +133,8 @@ func Setup(config *config.Node) error {
 		}
 	}()
 
+	wg.Wait()
+
 	return nil
 }
 
@@ -178,6 +179,9 @@ func connect(waitGroup *sync.WaitGroup, address string, config *config.Node, tra
 			})
 
 			if ctx.Err() != nil {
+				if waitGroup != nil {
+					once.Do(waitGroup.Done)
+				}
 				logrus.Infof("Stopped tunnel to %s", wsURL)
 				return
 			}
