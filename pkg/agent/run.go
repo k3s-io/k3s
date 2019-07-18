@@ -47,7 +47,7 @@ func run(ctx context.Context, cfg cmds.Agent) error {
 		return err
 	}
 
-	if err := tunnel.Setup(nodeConfig); err != nil {
+	if err := tunnel.Setup(ctx, nodeConfig); err != nil {
 		return err
 	}
 
