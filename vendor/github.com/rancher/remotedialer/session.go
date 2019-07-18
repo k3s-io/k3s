@@ -63,8 +63,8 @@ func newSession(sessionKey int64, clientKey string, conn *websocket.Conn) *Sessi
 	}
 }
 
-func (s *Session) startPings() {
-	ctx, cancel := context.WithCancel(context.Background())
+func (s *Session) startPings(rootCtx context.Context) {
+	ctx, cancel := context.WithCancel(rootCtx)
 	s.pingCancel = cancel
 	s.pingWait.Add(1)
 
@@ -99,9 +99,9 @@ func (s *Session) stopPings() {
 	s.pingWait.Wait()
 }
 
-func (s *Session) Serve() (int, error) {
+func (s *Session) Serve(ctx context.Context) (int, error) {
 	if s.client {
-		s.startPings()
+		s.startPings(ctx)
 	}
 
 	for {

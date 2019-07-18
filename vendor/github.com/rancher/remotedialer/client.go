@@ -18,7 +18,7 @@ func ClientConnect(ctx context.Context, wsURL string, headers http.Header, diale
 	}
 }
 
-func connectToProxy(ctx context.Context, proxyURL string, headers http.Header, auth ConnectAuthorizer, dialer *websocket.Dialer, onConnect func(context.Context) error) error {
+func connectToProxy(rootCtx context.Context, proxyURL string, headers http.Header, auth ConnectAuthorizer, dialer *websocket.Dialer, onConnect func(context.Context) error) error {
 	logrus.WithField("url", proxyURL).Info("Connecting to proxy")
 
 	if dialer == nil {
@@ -31,11 +31,11 @@ func connectToProxy(ctx context.Context, proxyURL string, headers http.Header, a
 	}
 	defer ws.Close()
 
-	if onConnect != nil {
-		ctxOnConnect, cancel := context.WithCancel(context.Background())
-		defer cancel()
+	ctx, cancel := context.WithCancel(rootCtx)
+	defer cancel()
 
-		if err := onConnect(ctxOnConnect); err != nil {
+	if onConnect != nil {
+		if err := onConnect(ctx); err != nil {
 			return err
 		}
 	}
@@ -45,7 +45,7 @@ func connectToProxy(ctx context.Context, proxyURL string, headers http.Header, a
 
 	result := make(chan error, 1)
 	go func() {
-		_, err = session.Serve()
+		_, err = session.Serve(ctx)
 		result <- err
 	}()
 

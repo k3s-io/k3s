@@ -1,6 +1,7 @@
 package remotedialer
 
 import (
+	"context"
 	"net/http"
 	"sync"
 	"time"
@@ -71,7 +72,7 @@ func (s *Server) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	defer s.sessions.remove(session)
 
 	// Don't need to associate req.Context() to the Session, it will cancel otherwise
-	code, err := session.Serve()
+	code, err := session.Serve(context.Background())
 	if err != nil {
 		// Hijacked so we can't write to the client
 		logrus.Infof("error in remotedialer server [%d]: %v", code, err)

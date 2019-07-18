@@ -106,7 +106,7 @@ outer:
 		}
 
 		s.sessions.addListener(session)
-		_, err = session.Serve()
+		_, err = session.Serve(context.Background())
 		s.sessions.removeListener(session)
 		session.Close()
 
