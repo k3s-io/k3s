@@ -8,12 +8,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rancher/wrangler/pkg/signals"
-
+	systemd "github.com/coreos/go-systemd/daemon"
 	"github.com/rancher/k3s/pkg/agent"
 	"github.com/rancher/k3s/pkg/cli/cmds"
 	"github.com/rancher/k3s/pkg/datadir"
 	"github.com/rancher/k3s/pkg/netutil"
+	"github.com/rancher/wrangler/pkg/signals"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 )
@@ -74,6 +74,7 @@ func Run(ctx *cli.Context) error {
 	cfg.Labels = append(cfg.Labels, "node-role.kubernetes.io/worker=true")
 
 	contextCtx := signals.SetupSignalHandler(context.Background())
+	systemd.SdNotify(true, "READY=1\n")
 
 	return agent.Run(contextCtx, cfg)
 }
