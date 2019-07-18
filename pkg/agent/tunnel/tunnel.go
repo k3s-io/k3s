@@ -52,7 +52,7 @@ func getAddresses(endpoint *v1.Endpoints) []string {
 	return serverAddresses
 }
 
-func Setup(config *config.Node) error {
+func Setup(ctx context.Context, config *config.Node) error {
 	restConfig, err := clientcmd.BuildConfigFromFlags("", config.AgentConfig.KubeConfigNode)
 	if err != nil {
 		return err
@@ -83,7 +83,6 @@ func Setup(config *config.Node) error {
 			disconnect[address] = connect(wg, address, config, transportConfig)
 		}
 	}
-	wg.Wait()
 
 	go func() {
 	connect:
@@ -134,6 +133,19 @@ func Setup(config *config.Node) error {
 		}
 	}()
 
+	wait := make(chan int, 1)
+	go func() {
+		wg.Wait()
+		wait <- 0
+	}()
+
+	select {
+	case <-ctx.Done():
+		logrus.Error("tunnel context canceled while waiting for connection")
+		return ctx.Err()
+	case <-wait:
+	}
+
 	return nil
 }
 
@@ -178,6 +190,9 @@ func connect(waitGroup *sync.WaitGroup, address string, config *config.Node, tra
 			})
 
 			if ctx.Err() != nil {
+				if waitGroup != nil {
+					once.Do(waitGroup.Done)
+				}
 				logrus.Infof("Stopped tunnel to %s", wsURL)
 				return
 			}
