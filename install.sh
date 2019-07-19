@@ -22,8 +22,9 @@ set -e
 #   - INSTALL_K3S_SKIP_DOWNLOAD
 #     If set to true will not download k3s hash or binary.
 #
-#   - INSTALL_K3S_SKIP_SYMLINK
-#     If set to true will not symlink kubectl or crictl to k3s.
+#   - INSTALL_K3S_SYMLINK
+#     If set to 'skip' will not create symlinks, 'force' will overwrite,
+#     default will symlink if command does not exist in path.
 #
 #   - INSTALL_K3S_SKIP_START
 #     If set to true will not start k3s service.
@@ -372,18 +373,22 @@ download_and_verify() {
 # --- add additional utility links ---
 create_symlinks() {
     [ "${INSTALL_K3S_BIN_DIR_READ_ONLY}" = "true" ] && return
-    [ "${INSTALL_K3S_SKIP_SYMLINK}" = "true" ] && return
-    if [ ! -e ${BIN_DIR}/kubectl ]; then
-        info "Creating ${BIN_DIR}/kubectl symlink to k3s"
-        $SUDO ln -s k3s ${BIN_DIR}/kubectl
-    fi
+    [ "${INSTALL_K3S_SYMLINK}" = "skip" ] && return
 
-    if [ ! -e ${BIN_DIR}/crictl ]; then
-        info "Creating ${BIN_DIR}/crictl symlink to k3s"
-        $SUDO ln -s k3s ${BIN_DIR}/crictl
-    fi
+    for cmd in kubectl crictl ctr; do
+        if [ ! -e ${BIN_DIR}/${cmd} ] || [ "${INSTALL_K3S_SYMLINK}" = "force" ]; then
+            which_cmd=$(which ${cmd} || true)
+            if [ -z "${which_cmd}" ] || [ "${INSTALL_K3S_SYMLINK}" = "force" ]; then
+                info "Creating ${BIN_DIR}/${cmd} symlink to k3s"
+                $SUDO ln -sf k3s ${BIN_DIR}/${cmd}
+            else
+                info "Skipping ${BIN_DIR}/${cmd} symlink to k3s, command exists in PATH at ${which_cmd}"
+            fi
+        else
+            info "Skipping ${BIN_DIR}/${cmd} symlink to k3s, already exists"
+        fi
+    done
 }
-
 
 # --- create killall script ---
 create_killall() {
@@ -474,12 +479,11 @@ if (ls ${SYSTEMD_DIR}/k3s*.service || ls /etc/init.d/k3s*) >/dev/null 2>&1; then
     exit
 fi
 
-if [ -L ${BIN_DIR}/kubectl ]; then
-    rm -f ${BIN_DIR}/kubectl
-fi
-if [ -L ${BIN_DIR}/crictl ]; then
-    rm -f ${BIN_DIR}/crictl
-fi
+for cmd in kubectl crictl ctr; do
+    if [ -L ${BIN_DIR}/\$cmd ]; then
+        rm -f ${BIN_DIR}/\$cmd
+    fi
+done
 
 rm -rf /etc/rancher/k3s
 rm -rf /var/lib/rancher/k3s
