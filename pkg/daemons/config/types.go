@@ -16,7 +16,6 @@ type Node struct {
 	NoFlannel                bool
 	FlannelConf              string
 	FlannelIface             *net.Interface
-	LocalAddress             string
 	Containerd               Containerd
 	Images                   string
 	AgentConfig              Agent
@@ -70,7 +69,6 @@ type Control struct {
 	AdvertiseIP           string
 	ListenPort            int
 	HTTPSPort             int
-	ProxyPort             int
 	ClusterSecret         string
 	ClusterIPRange        *net.IPNet
 	ServiceIPRange        *net.IPNet

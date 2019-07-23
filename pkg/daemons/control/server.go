@@ -222,10 +222,6 @@ func defaults(config *config.Control) {
 		config.ListenPort = 6444
 	}
 
-	if config.ProxyPort == 0 {
-		config.ProxyPort = 6445
-	}
-
 	if config.DataDir == "" {
 		config.DataDir = "./management-state"
 	}
