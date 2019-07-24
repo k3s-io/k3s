@@ -44,7 +44,7 @@ error_log {{ .LogFile }};
 {{- if .PidFile }}
 pid {{ .PidFile }};
 {{ end -}}
-user nobody;
+user 0;
 
 events {
 	worker_connections  4096;  ## Default: 1024
