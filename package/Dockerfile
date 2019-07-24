@@ -14,5 +14,12 @@ VOLUME /var/lib/rancher/k3s
 VOLUME /var/lib/cni
 VOLUME /var/log
 ENV PATH="$PATH:/bin/aux"
+
+# Create a group and user for nginx
+RUN touch /etc/group
+RUN addgroup -g 99 nobody
+RUN touch /etc/passwd
+RUN adduser -u 99 -D -H nobody -G nobody
+
 ENTRYPOINT ["/bin/k3s"]
 CMD ["agent"]
