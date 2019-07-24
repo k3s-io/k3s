@@ -250,5 +250,8 @@ func (lb *LoadBalancer) nginxExec(args ...string) (_err error) {
 		nginxArgs = append(nginxArgs, "-p", lb.prefixPath)
 	}
 	nginxArgs = append(nginxArgs, args...)
-	return exec.Command("nginx", nginxArgs...).Run()
+	cmd := exec.Command("nginx", nginxArgs...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
 }
