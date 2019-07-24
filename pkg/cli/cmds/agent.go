@@ -11,6 +11,8 @@ type Agent struct {
 	Token                    string
 	TokenFile                string
 	ServerURL                string
+	LoadBalancerPort         int
+	DisableLoadBalancer      bool
 	ResolvConf               string
 	DataDir                  string
 	NodeIP                   string
@@ -99,6 +101,17 @@ var (
 		Usage: "(agent) Registering kubelet with set of labels",
 		Value: &AgentConfig.Labels,
 	}
+	LoadBalancerPort = cli.IntFlag{
+		Name:        "lb-port",
+		Usage:       "(agent) Port that nginx uses to create a load-balancing proxy",
+		Value:       6445,
+		Destination: &AgentConfig.LoadBalancerPort,
+	}
+	DisableLoadBalancer = cli.BoolFlag{
+		Name:        "disable-lb",
+		Usage:       "(agent) Do not run a local nginx load-balancing proxy",
+		Destination: &AgentConfig.DisableLoadBalancer,
+	}
 )
 
 func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
@@ -155,6 +168,8 @@ func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
 			ExtraKubeProxyArgs,
 			NodeLabels,
 			NodeTaints,
+			LoadBalancerPort,
+			DisableLoadBalancer,
 		},
 	}
 }

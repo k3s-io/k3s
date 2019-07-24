@@ -53,7 +53,7 @@ func getAddresses(endpoint *v1.Endpoints) []string {
 	return serverAddresses
 }
 
-func Setup(ctx context.Context, config *config.Node) error {
+func Setup(ctx context.Context, config *config.Node, onChange func([]string)) error {
 	restConfig, err := clientcmd.BuildConfigFromFlags("", config.AgentConfig.KubeConfigNode)
 	if err != nil {
 		return err
@@ -74,6 +74,9 @@ func Setup(ctx context.Context, config *config.Node) error {
 	endpoint, _ := client.CoreV1().Endpoints("default").Get("kubernetes", metav1.GetOptions{})
 	if endpoint != nil {
 		addresses = getAddresses(endpoint)
+		if onChange != nil {
+			onChange(addresses)
+		}
 	}
 
 	disconnect := map[string]context.CancelFunc{}
@@ -120,6 +123,9 @@ func Setup(ctx context.Context, config *config.Node) error {
 					}
 					addresses = newAddresses
 					logrus.Infof("Tunnel endpoint watch event: %v", addresses)
+					if onChange != nil {
+						onChange(addresses)
+					}
 
 					validEndpoint := map[string]bool{}
 
