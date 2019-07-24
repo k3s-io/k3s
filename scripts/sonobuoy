@@ -151,9 +151,27 @@ export -f sonobuoy-retry-test
 
 # ---
 
+haste() {
+    a=$(cat)
+    curl -X POST -s -d "$a" https://hastebin.com/documents | \
+        awk -F '"' '{print "https://hastebin.com/"$4}'
+}
+export -f haste
+
+# ---
+
 cleanup() {
     exit_status=$?
-    set +e
+    set +ex
+    set -v
+    if [ "$exit_status" -ne "0" ]; then
+        echo "Saving logs"
+        for container in ${CONTAINERS}; do
+            docker logs ${container} 2>&1 | haste
+            docker cp ${container}:/var/lib/rancher/k3s/agent/containerd/containerd.log - 2>&1 | haste
+            docker cp ${container}:/var/lib/rancher/k3s/agent/nginx/nginx.log - 2>&1 | haste
+        done
+    fi
     echo "Cleaning up"
     docker rm -f ${CONTAINERS} 2>/dev/null
     rm ${KUBECONFIG}
