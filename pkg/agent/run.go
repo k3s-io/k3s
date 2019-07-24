@@ -12,6 +12,7 @@ import (
 	"github.com/rancher/k3s/pkg/agent/config"
 	"github.com/rancher/k3s/pkg/agent/containerd"
 	"github.com/rancher/k3s/pkg/agent/flannel"
+	"github.com/rancher/k3s/pkg/agent/loadbalancer"
 	"github.com/rancher/k3s/pkg/agent/syssetup"
 	"github.com/rancher/k3s/pkg/agent/tunnel"
 	"github.com/rancher/k3s/pkg/cli/cmds"
@@ -21,7 +22,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func run(ctx context.Context, cfg cmds.Agent) error {
+func run(ctx context.Context, cfg cmds.Agent, lb *loadbalancer.LoadBalancer) error {
 	nodeConfig := config.Get(ctx, cfg)
 
 	if err := config.HostnameCheck(cfg); err != nil {
@@ -47,7 +48,7 @@ func run(ctx context.Context, cfg cmds.Agent) error {
 		return err
 	}
 
-	if err := tunnel.Setup(ctx, nodeConfig); err != nil {
+	if err := tunnel.Setup(ctx, nodeConfig, lb.Update); err != nil {
 		return err
 	}
 
@@ -77,9 +78,18 @@ func Run(ctx context.Context, cfg cmds.Agent) error {
 	}
 
 	cfg.DataDir = filepath.Join(cfg.DataDir, "agent")
+	os.MkdirAll(cfg.DataDir, 0700)
 
 	if cfg.ClusterSecret != "" {
 		cfg.Token = "K10node:" + cfg.ClusterSecret
+	}
+
+	lb, err := loadbalancer.Setup(ctx, cfg)
+	if err != nil {
+		return err
+	}
+	if lb != nil {
+		cfg.ServerURL = lb.LoadBalancerServerURL()
 	}
 
 	for {
@@ -97,8 +107,7 @@ func Run(ctx context.Context, cfg cmds.Agent) error {
 		break
 	}
 
-	os.MkdirAll(cfg.DataDir, 0700)
-	return run(ctx, cfg)
+	return run(ctx, cfg, lb)
 }
 
 func validate() error {
