@@ -21,6 +21,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rancher/kine/pkg/client"
+	"github.com/rancher/kine/pkg/endpoint"
+
 	certutil "github.com/rancher/dynamiclistener/cert"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/sirupsen/logrus"
@@ -69,7 +72,7 @@ func Server(ctx context.Context, cfg *config.Control) error {
 	runtime := &config.ControlRuntime{}
 	cfg.Runtime = runtime
 
-	if err := prepare(cfg, runtime); err != nil {
+	if err := prepare(ctx, cfg, runtime); err != nil {
 		return err
 	}
 
@@ -147,9 +150,6 @@ func apiServer(ctx context.Context, cfg *config.Control, runtime *config.Control
 	argsMap := make(map[string]string)
 
 	setupStorageBackend(argsMap, cfg)
-	if len(cfg.StorageEndpoint) > 0 {
-		argsMap["etcd-servers"] = cfg.StorageEndpoint
-	}
 
 	certDir := filepath.Join(cfg.DataDir, "tls/temporary-certs")
 	os.MkdirAll(certDir, 0700)
@@ -227,16 +227,12 @@ func defaults(config *config.Control) {
 	}
 }
 
-func prepare(config *config.Control, runtime *config.ControlRuntime) error {
+func prepare(ctx context.Context, config *config.Control, runtime *config.ControlRuntime) error {
 	var err error
 
 	defaults(config)
 
-	if _, err := os.Stat(config.DataDir); os.IsNotExist(err) {
-		if err := os.MkdirAll(config.DataDir, 0700); err != nil {
-			return err
-		}
-	} else if err != nil {
+	if err := os.MkdirAll(config.DataDir, 0700); err != nil {
 		return err
 	}
 
@@ -284,7 +280,13 @@ func prepare(config *config.Control, runtime *config.ControlRuntime) error {
 	runtime.ClientAuthProxyCert = path.Join(config.DataDir, "tls", "client-auth-proxy.crt")
 	runtime.ClientAuthProxyKey = path.Join(config.DataDir, "tls", "client-auth-proxy.key")
 
-	if err := fetchBootstrapData(config); err != nil {
+	etcdClient, err := prepareStorageBackend(ctx, config)
+	if err != nil {
+		return err
+	}
+	defer etcdClient.Close()
+
+	if err := fetchBootstrapData(ctx, config, etcdClient); err != nil {
 		return err
 	}
 
@@ -300,11 +302,23 @@ func prepare(config *config.Control, runtime *config.ControlRuntime) error {
 		return err
 	}
 
-	if err := storeBootstrapData(config); err != nil {
+	if err := storeBootstrapData(ctx, config, etcdClient); err != nil {
 		return err
 	}
 
 	return readTokens(runtime)
+}
+
+func prepareStorageBackend(ctx context.Context, config *config.Control) (client.Client, error) {
+	etcdConfig, err := endpoint.Listen(ctx, config.Storage)
+	if err != nil {
+		return nil, err
+	}
+
+	config.Storage.Config = etcdConfig.TLSConfig
+	config.Storage.Endpoint = strings.Join(etcdConfig.Endpoints, ",")
+	config.NoLeaderElect = !etcdConfig.LeaderElect
+	return client.New(etcdConfig)
 }
 
 func readTokenFile(passwdFile string) (map[string]string, error) {
@@ -717,22 +731,19 @@ func KubeConfig(dest, url, caCert, clientCert, clientKey string) error {
 }
 
 func setupStorageBackend(argsMap map[string]string, cfg *config.Control) {
-	// setup the storage backend
-	if len(cfg.StorageBackend) > 0 {
-		argsMap["storage-backend"] = cfg.StorageBackend
-	}
+	argsMap["storage-backend"] = "etcd3"
 	// specify the endpoints
-	if len(cfg.StorageEndpoint) > 0 {
-		argsMap["etcd-servers"] = cfg.StorageEndpoint
+	if len(cfg.Storage.Endpoint) > 0 {
+		argsMap["etcd-servers"] = cfg.Storage.Endpoint
 	}
 	// storage backend tls configuration
-	if len(cfg.StorageCAFile) > 0 {
-		argsMap["etcd-cafile"] = cfg.StorageCAFile
+	if len(cfg.Storage.CAFile) > 0 {
+		argsMap["etcd-cafile"] = cfg.Storage.CAFile
 	}
-	if len(cfg.StorageCertFile) > 0 {
-		argsMap["etcd-certfile"] = cfg.StorageCertFile
+	if len(cfg.Storage.CertFile) > 0 {
+		argsMap["etcd-certfile"] = cfg.Storage.CertFile
 	}
-	if len(cfg.StorageKeyFile) > 0 {
-		argsMap["etcd-keyfile"] = cfg.StorageKeyFile
+	if len(cfg.Storage.KeyFile) > 0 {
+		argsMap["etcd-keyfile"] = cfg.Storage.KeyFile
 	}
 }

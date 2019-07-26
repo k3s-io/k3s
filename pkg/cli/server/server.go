@@ -8,13 +8,12 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/rancher/k3s/pkg/netutil"
-
 	systemd "github.com/coreos/go-systemd/daemon"
 	"github.com/pkg/errors"
 	"github.com/rancher/k3s/pkg/agent"
 	"github.com/rancher/k3s/pkg/cli/cmds"
 	"github.com/rancher/k3s/pkg/datadir"
+	"github.com/rancher/k3s/pkg/netutil"
 	"github.com/rancher/k3s/pkg/rootless"
 	"github.com/rancher/k3s/pkg/server"
 	"github.com/rancher/wrangler/pkg/signals"
@@ -82,14 +81,12 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	serverConfig.ControlConfig.ExtraControllerArgs = cfg.ExtraControllerArgs
 	serverConfig.ControlConfig.ExtraSchedulerAPIArgs = cfg.ExtraSchedulerArgs
 	serverConfig.ControlConfig.ClusterDomain = cfg.ClusterDomain
-	serverConfig.ControlConfig.StorageEndpoint = cfg.StorageEndpoint
-	serverConfig.ControlConfig.StorageBackend = cfg.StorageBackend
-	serverConfig.ControlConfig.StorageCAFile = cfg.StorageCAFile
-	serverConfig.ControlConfig.StorageCertFile = cfg.StorageCertFile
-	serverConfig.ControlConfig.StorageKeyFile = cfg.StorageKeyFile
+	serverConfig.ControlConfig.Storage.Endpoint = cfg.StorageEndpoint
+	serverConfig.ControlConfig.Storage.CAFile = cfg.StorageCAFile
+	serverConfig.ControlConfig.Storage.CertFile = cfg.StorageCertFile
+	serverConfig.ControlConfig.Storage.KeyFile = cfg.StorageKeyFile
 	serverConfig.ControlConfig.AdvertiseIP = cfg.AdvertiseIP
 	serverConfig.ControlConfig.AdvertisePort = cfg.AdvertisePort
-	serverConfig.ControlConfig.BootstrapType = cfg.BootstrapType
 
 	if cmds.AgentConfig.FlannelIface != "" && cmds.AgentConfig.NodeIP == "" {
 		cmds.AgentConfig.NodeIP = netutil.GetIPFromInterface(cmds.AgentConfig.FlannelIface)
@@ -125,10 +122,6 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 		serverConfig.ControlConfig.ClusterDNS[3] = 10
 	} else {
 		serverConfig.ControlConfig.ClusterDNS = net2.ParseIP(cfg.ClusterDNS)
-	}
-
-	if serverConfig.ControlConfig.StorageBackend != "etcd3" {
-		serverConfig.ControlConfig.NoLeaderElect = true
 	}
 
 	for _, noDeploy := range app.StringSlice("no-deploy") {

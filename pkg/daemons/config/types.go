@@ -8,6 +8,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/rancher/kine/pkg/endpoint"
+
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 )
 
@@ -66,44 +68,51 @@ type Agent struct {
 }
 
 type Control struct {
-	AdvertisePort         int
-	AdvertiseIP           string
-	ListenPort            int
-	HTTPSPort             int
-	ClusterSecret         string
-	ClusterIPRange        *net.IPNet
-	ServiceIPRange        *net.IPNet
-	ClusterDNS            net.IP
-	ClusterDomain         string
-	NoCoreDNS             bool
-	KubeConfigOutput      string
-	KubeConfigMode        string
-	DataDir               string
-	Skips                 []string
-	BootstrapType         string
-	StorageBackend        string
-	StorageEndpoint       string
-	StorageCAFile         string
-	StorageCertFile       string
-	StorageKeyFile        string
-	NoScheduler           bool
-	ExtraAPIArgs          []string
-	ExtraControllerArgs   []string
-	ExtraSchedulerAPIArgs []string
-	NoLeaderElect         bool
+	AdvertisePort           int
+	AdvertiseIP             string
+	ListenPort              int
+	HTTPSPort               int
+	ClusterSecret           string
+	ClusterIPRange          *net.IPNet
+	ServiceIPRange          *net.IPNet
+	ClusterDNS              net.IP
+	ClusterDomain           string
+	NoCoreDNS               bool
+	KubeConfigOutput        string
+	KubeConfigMode          string
+	DataDir                 string
+	Skips                   []string
+	BootstrapReadOnly       bool
+	BootstrapOverwriteLocal bool
+	Storage                 endpoint.Config
+	NoScheduler             bool
+	ExtraAPIArgs            []string
+	ExtraControllerArgs     []string
+	ExtraSchedulerAPIArgs   []string
+	NoLeaderElect           bool
 
 	Runtime *ControlRuntime `json:"-"`
 }
 
+type ControlRuntimeBootstrap struct {
+	ServerCA           string
+	ServerCAKey        string
+	ClientCA           string
+	ClientCAKey        string
+	ServiceKey         string
+	PasswdFile         string
+	RequestHeaderCA    string
+	RequestHeaderCAKey string
+	ClientKubeletKey   string
+	ClientKubeProxyKey string
+	ServingKubeletKey  string
+}
+
 type ControlRuntime struct {
+	ControlRuntimeBootstrap
+
 	ClientKubeAPICert string
 	ClientKubeAPIKey  string
-	ClientCA          string
-	ClientCAKey       string
-	ServerCA          string
-	ServerCAKey       string
-	ServiceKey        string
-	PasswdFile        string
 	NodePasswdFile    string
 
 	KubeConfigAdmin      string
@@ -119,8 +128,6 @@ type ControlRuntime struct {
 	Tunnel             http.Handler
 	Authenticator      authenticator.Request
 
-	RequestHeaderCA     string
-	RequestHeaderCAKey  string
 	ClientAuthProxyCert string
 	ClientAuthProxyKey  string
 
@@ -131,10 +138,6 @@ type ControlRuntime struct {
 	ClientSchedulerCert  string
 	ClientSchedulerKey   string
 	ClientKubeProxyCert  string
-	ClientKubeProxyKey   string
-
-	ServingKubeletKey string
-	ClientKubeletKey  string
 }
 
 type ArgString []string
