@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/coreos/etcd/pkg/transport"
 	"github.com/pkg/errors"
 	"github.com/rancher/dynamiclistener"
 	"github.com/rancher/helm-controller/pkg/helm"
@@ -26,9 +27,13 @@ import (
 	"github.com/rancher/k3s/pkg/servicelb"
 	"github.com/rancher/k3s/pkg/static"
 	"github.com/rancher/k3s/pkg/tls"
+	"github.com/rancher/kine/pkg/drivers/pgsql"
+	"github.com/rancher/kine/pkg/drivers/sqlite"
+	"github.com/rancher/kine/pkg/server"
 	"github.com/rancher/wrangler/pkg/leader"
 	"github.com/rancher/wrangler/pkg/resolvehome"
 	"github.com/sirupsen/logrus"
+	"google.golang.org/grpc"
 	"k8s.io/apimachinery/pkg/util/net"
 )
 
@@ -45,6 +50,8 @@ func StartServer(ctx context.Context, config *Config) (string, error) {
 	if err := setNoProxyEnv(&config.ControlConfig); err != nil {
 		return "", err
 	}
+
+	go startKine(ctx, &config.ControlConfig)
 
 	if err := control.Server(ctx, &config.ControlConfig); err != nil {
 		return "", errors.Wrap(err, "starting kubernetes")
@@ -360,4 +367,71 @@ func isSymlink(config string) bool {
 		return true
 	}
 	return false
+}
+
+func startKine(ctx context.Context, config *config.Control) {
+	backend, err := getKineStorageBackend(config)
+	if err != nil {
+		panic(err)
+	}
+	if backend == nil {
+		return
+	}
+	if err := backend.Start(ctx); err != nil {
+		panic(err)
+	}
+	b := server.New(backend)
+
+	grpcServer := grpc.NewServer()
+	b.Register(grpcServer)
+
+	lis, err := net2.Listen("unix", control.KineETCDSocket)
+	if err != nil {
+		panic(err)
+	}
+	defer lis.Close()
+
+	go func() {
+		<-ctx.Done()
+		grpcServer.Stop()
+	}()
+
+	grpcServer.Serve(lis)
+}
+
+func getKineStorageBackend(cfg *config.Control) (server.Backend, error) {
+	var backend server.Backend
+	var err error
+
+	tlsInfo := &transport.TLSInfo{
+		CAFile:   cfg.StorageCAFile,
+		CertFile: cfg.StorageCertFile,
+		KeyFile:  cfg.StorageKeyFile,
+	}
+
+	storageBackend, dsn := ParseStorageEndpoint(cfg.StorageEndpoint)
+	cfg.Kine = true
+	switch storageBackend {
+	case control.SQLiteBackend:
+		backend, err = sqlite.New(dsn)
+	case control.PostgresBackend:
+		backend, err = pgsql.New(dsn, tlsInfo)
+	case control.ETCDBackend:
+		cfg.Kine = false
+		return nil, nil
+	default:
+		return nil, fmt.Errorf("storage backend is not defined")
+	}
+	return backend, err
+}
+
+func ParseStorageEndpoint(storageEndpoint string) (string, string) {
+	endpointString := strings.SplitN(storageEndpoint, "://", 2)
+	if storageEndpoint == "" {
+		return control.SQLiteBackend, ""
+	}
+	if endpointString[0] == "http" || endpointString[0] == "https" {
+		return control.ETCDBackend, endpointString[1]
+	}
+	return endpointString[0], endpointString[1]
 }

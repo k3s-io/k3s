@@ -81,7 +81,7 @@ type Control struct {
 	DataDir               string
 	Skips                 []string
 	BootstrapType         string
-	StorageBackend        string
+	Kine                  bool
 	StorageEndpoint       string
 	StorageCAFile         string
 	StorageCertFile       string

@@ -37,6 +37,14 @@ import (
 	_ "k8s.io/kubernetes/pkg/version/prometheus"        // for version metric registration
 )
 
+const (
+	KineETCDSocket  = "kine-etcd.sock"
+	SQLiteBackend   = "sqlite"
+	ETCDBackend     = "etcd3"
+	MySQLBackend    = "mysql"
+	PostgresBackend = "postgres"
+)
+
 var (
 	localhostIP        = net.ParseIP("127.0.0.1")
 	requestHeaderCN    = "system:auth-proxy"
@@ -147,9 +155,6 @@ func apiServer(ctx context.Context, cfg *config.Control, runtime *config.Control
 	argsMap := make(map[string]string)
 
 	setupStorageBackend(argsMap, cfg)
-	if len(cfg.StorageEndpoint) > 0 {
-		argsMap["etcd-servers"] = cfg.StorageEndpoint
-	}
 
 	certDir := filepath.Join(cfg.DataDir, "tls/temporary-certs")
 	os.MkdirAll(certDir, 0700)
@@ -717,22 +722,22 @@ func KubeConfig(dest, url, caCert, clientCert, clientKey string) error {
 }
 
 func setupStorageBackend(argsMap map[string]string, cfg *config.Control) {
-	// setup the storage backend
-	if len(cfg.StorageBackend) > 0 {
-		argsMap["storage-backend"] = cfg.StorageBackend
-	}
-	// specify the endpoints
-	if len(cfg.StorageEndpoint) > 0 {
-		argsMap["etcd-servers"] = cfg.StorageEndpoint
-	}
-	// storage backend tls configuration
-	if len(cfg.StorageCAFile) > 0 {
-		argsMap["etcd-cafile"] = cfg.StorageCAFile
-	}
-	if len(cfg.StorageCertFile) > 0 {
-		argsMap["etcd-certfile"] = cfg.StorageCertFile
-	}
-	if len(cfg.StorageKeyFile) > 0 {
-		argsMap["etcd-keyfile"] = cfg.StorageKeyFile
+	argsMap["etcd-servers"] = "unix://" + KineETCDSocket
+	argsMap["storage-backend"] = ETCDBackend
+	if !cfg.Kine {
+		// specify the endpoints
+		if len(cfg.StorageEndpoint) > 0 {
+			argsMap["etcd-servers"] = cfg.StorageEndpoint
+		}
+		// storage backend tls configuration
+		if len(cfg.StorageCAFile) > 0 {
+			argsMap["etcd-cafile"] = cfg.StorageCAFile
+		}
+		if len(cfg.StorageCertFile) > 0 {
+			argsMap["etcd-certfile"] = cfg.StorageCertFile
+		}
+		if len(cfg.StorageKeyFile) > 0 {
+			argsMap["etcd-keyfile"] = cfg.StorageKeyFile
+		}
 	}
 }
