@@ -87,13 +87,25 @@ export -f wait-for-services
 
 # ---
 
+haste() { 
+    a=$(cat)
+    curl -X POST -s -d "$a" https://hastebin.com/documents | \
+        awk -F '"' '{print "https://hastebin.com/"$4}'
+}
+export -f haste
+
+# ---
+
 dump-container-logs() {
+    set +xe
+    set -v
     for container in ${CONTAINERS}; do
-        docker cp ${container}:/var/lib/rancher/k3s/agent/containerd/containerd.log ${OUTPUT}/${container}-containerd.log
-        docker logs ${container} >${OUTPUT}/${container}.log 2>&1
-        cat ${OUTPUT}/${container}-containerd.log
-        cat ${OUTPUT}/${container}.log
+        echo "logs for container: ${container}"
+        echo "   k3s service log: "$(docker logs ${container} 2>&1 | haste)
+        echo "   containerd logs: "$(docker cp ${container}:/var/lib/rancher/k3s/agent/containerd/containerd.log - | haste)
     done
+    set +v
+    set -xe
 }
 export -f dump-container-logs
 
@@ -144,7 +156,6 @@ sonobuoy-retry-test() {
             break
         fi
     done
-    dump-container-logs
     return 1
 }
 export -f sonobuoy-retry-test
@@ -155,6 +166,9 @@ cleanup() {
     exit_status=$?
     set +e
     echo "Cleaning up"
+    if [ "${exit_status}" -ne "0" ]; then
+        dump-container-logs
+    fi
     docker rm -f ${CONTAINERS} 2>/dev/null
     rm ${KUBECONFIG}
     exit ${exit_status}
