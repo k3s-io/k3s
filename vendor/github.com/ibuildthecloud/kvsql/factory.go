@@ -22,9 +22,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/coreos/etcd/pkg/transport"
 	"github.com/ibuildthecloud/kvsql/clientv3"
-	etcd3 "github.com/ibuildthecloud/kvsql/storage"
+	"github.com/ibuildthecloud/kvsql/storage"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/storage"
 	"k8s.io/apiserver/pkg/storage/storagebackend"
@@ -66,14 +65,8 @@ func NewKVSQLHealthCheck(c storagebackend.Config) (func() error, error) {
 }
 
 func newETCD3Client(c storagebackend.Config) (*clientv3.Client, error) {
-	tlsInfo := &transport.TLSInfo{
-		CertFile: c.Transport.CertFile,
-		KeyFile:  c.Transport.KeyFile,
-		CAFile:   c.Transport.CAFile,
-	}
 	cfg := clientv3.Config{
 		Endpoints: c.Transport.ServerList,
-		TLSInfo:   tlsInfo,
 	}
 
 	if len(cfg.Endpoints) == 0 {

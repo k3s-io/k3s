@@ -8,8 +8,11 @@ import (
 	"strings"
 
 	"github.com/coreos/etcd/pkg/transport"
-	"github.com/ibuildthecloud/kvsql/clientv3/driver"
 	"github.com/lib/pq"
+	"github.com/rancher/kine/pkg/drivers/generic"
+	"github.com/rancher/kine/pkg/logstructured"
+	"github.com/rancher/kine/pkg/logstructured/sqllog"
+	"github.com/rancher/kine/pkg/server"
 )
 
 const (
@@ -17,82 +20,56 @@ const (
 )
 
 var (
-	fieldList = "name, value, old_value, old_revision, create_revision, revision, ttl, version, del"
-	baseList  = `
-SELECT kv.id, kv.name, kv.value, kv.old_value, kv.old_revision, kv.create_revision, kv.revision, kv.ttl, kv.version, kv.del
-FROM key_value kv
-  INNER JOIN
-    (
-      SELECT MAX(revision) revision, kvi.name
-      FROM key_value kvi
-		%REV%
-        GROUP BY kvi.name
-    ) AS r
-    ON r.name = kv.name AND r.revision = kv.revision
-WHERE kv.name like ? %RES% ORDER BY kv.name ASC limit ?
-`
-	insertSQL = `
-INSERT INTO key_value(` + fieldList + `)
-   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-
 	schema = []string{
 		`create table if not exists key_value
  			(
- 				name TEXT,
- 				value TEXT,
- 				create_revision INTEGER,
- 				revision INTEGER,
- 				ttl INTEGER,
- 				version INTEGER,
- 				del INTEGER,
- 				old_value TEXT,
  				id SERIAL PRIMARY KEY,
- 				old_revision INTEGER
+ 				name TEXT,
+				created INTEGER,
+				deleted INTEGER,
+ 				create_revision INTEGER,
+ 				prev_revision INTEGER,
+ 				lease INTEGER,
+ 				value bytea,
+ 				old_value bytea
  			);`,
-		`create index if not exists name_idx on key_value (name)`,
-		`create index if not exists revision_idx on key_value (revision)`,
+		`CREATE INDEX IF NOT EXISTS key_value_name_index ON key_value (name)`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS key_value_name_prev_revision_uindex ON key_value (name, prev_revision)`,
 	}
 	createDB = "create database "
 )
 
-func NewPGSQL() *driver.Generic {
-	return &driver.Generic{
-		CleanupSQL:      q("DELETE FROM key_value WHERE ttl > 0 AND ttl < ?"),
-		GetSQL:          q("SELECT id, " + fieldList + " FROM key_value WHERE name=? ORDER BY revision DESC limit ?"),
-		ListSQL:         q(strings.Replace(strings.Replace(baseList, "%REV%", "", -1), "%RES%", "", -1)),
-		ListRevisionSQL: q(strings.Replace(strings.Replace(baseList, "%REV%", "WHERE kvi.revision>=?", -1), "%RES%", "", -1)),
-		ListResumeSQL: q(strings.Replace(strings.Replace(baseList, "%REV%", "WHERE kvi.revision<=?", -1),
-			"%RES%", "and kv.name > ? ", -1)),
-		InsertSQL:      q(insertSQL),
-		ReplaySQL:      q("SELECT id, " + fieldList + " FROM key_value WHERE name like ? and revision>=? ORDER BY revision ASC"),
-		GetRevisionSQL: q("SELECT MAX(revision) FROM key_value"),
-		ToDeleteSQL:    q("SELECT count(*), name, max(revision) FROM key_value GROUP BY name,del HAVING count(*) > 1 or (count(*)=1 and del=1)"),
-		DeleteOldSQL:   q("DELETE FROM key_value WHERE name=? AND (revision<? OR (revision=? AND del=1))"),
-	}
-}
-
-func Open(dataSourceName string, tlsInfo *transport.TLSInfo) (*sql.DB, error) {
+func New(dataSourceName string, tlsInfo *transport.TLSInfo) (server.Backend, error) {
 	parsedDSN, err := prepareDSN(dataSourceName, tlsInfo)
 	if err != nil {
 		return nil, err
 	}
-	// get database name
+
 	if err := createDBIfNotExist(parsedDSN); err != nil {
 		return nil, err
 	}
-	db, err := sql.Open("postgres", parsedDSN)
+
+	dialect, err := generic.Open("postgres", parsedDSN, "$", true)
 	if err != nil {
 		return nil, err
 	}
 
+	if err := setup(dialect.DB, parsedDSN, tlsInfo); err != nil {
+		return nil, err
+	}
+
+	return logstructured.New(sqllog.New(dialect)), nil
+}
+
+func setup(db *sql.DB, parsedDSN string, tlsInfo *transport.TLSInfo) error {
 	for _, stmt := range schema {
 		_, err := db.Exec(stmt)
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
 
-	return db, nil
+	return nil
 }
 
 func createDBIfNotExist(dataSourceName string) error {
@@ -100,11 +77,14 @@ func createDBIfNotExist(dataSourceName string) error {
 	if err != nil {
 		return err
 	}
+
 	dbName := strings.SplitN(u.Path, "/", 2)[1]
 	db, err := sql.Open("postgres", dataSourceName)
 	if err != nil {
 		return err
 	}
+	defer db.Close()
+
 	err = db.Ping()
 	// check if database already exists
 	if _, ok := err.(*pq.Error); !ok {
@@ -120,6 +100,7 @@ func createDBIfNotExist(dataSourceName string) error {
 		if err != nil {
 			return err
 		}
+		defer db.Close()
 		_, err = db.Exec(createDB + dbName + ";")
 		if err != nil {
 			return err
@@ -158,7 +139,7 @@ func prepareDSN(dataSourceName string, tlsInfo *transport.TLSInfo) (string, erro
 	}
 	// set up tls dsn
 	params := url.Values{}
-	sslmode := "require"
+	sslmode := ""
 	if _, ok := queryMap["sslcert"]; tlsInfo.CertFile != "" && !ok {
 		params.Add("sslcert", tlsInfo.CertFile)
 		sslmode = "verify-full"
@@ -171,7 +152,7 @@ func prepareDSN(dataSourceName string, tlsInfo *transport.TLSInfo) (string, erro
 		params.Add("sslrootcert", tlsInfo.CAFile)
 		sslmode = "verify-full"
 	}
-	if _, ok := queryMap["sslmode"]; !ok {
+	if _, ok := queryMap["sslmode"]; !ok && sslmode != "" {
 		params.Add("sslmode", sslmode)
 	}
 	for k, v := range queryMap {
