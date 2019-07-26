@@ -24,7 +24,6 @@ type Server struct {
 	ExtraControllerArgs cli.StringSlice
 	Rootless            bool
 	BootstrapType       string
-	StorageBackend      string
 	StorageEndpoint     string
 	StorageCAFile       string
 	StorageCertFile     string
@@ -150,12 +149,6 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Name:        "bootstrap",
 				Usage:       "(experimental) Specify data bootstrap behavior (one of: none, read, write, or full), etcd3 only",
 				Destination: &ServerConfig.BootstrapType,
-			},
-			cli.StringFlag{
-				Name:        "storage-backend",
-				Usage:       "Specify storage type etcd3 or kvsql",
-				Destination: &ServerConfig.StorageBackend,
-				EnvVar:      "K3S_STORAGE_BACKEND",
 			},
 			cli.StringFlag{
 				Name:        "storage-endpoint",

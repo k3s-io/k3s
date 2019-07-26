@@ -161,7 +161,7 @@ func checkBootstrapArgs(cfg *config.Control, accepted map[string]bool) (bool, er
 	if !validBootstrapTypes[cfg.BootstrapType] {
 		return false, fmt.Errorf("unsupported bootstrap type [%s]", cfg.BootstrapType)
 	}
-	if cfg.StorageBackend != "etcd3" {
+	if !cfg.Kine {
 		return false, errors.New("bootstrap only supported with etcd3 as storage backend")
 	}
 	if !accepted[cfg.BootstrapType] {

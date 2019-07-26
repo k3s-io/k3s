@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rancher/k3s/pkg/daemons/control"
 	"github.com/rancher/k3s/pkg/netutil"
 
 	systemd "github.com/coreos/go-systemd/daemon"
@@ -121,7 +122,6 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	serverConfig.ControlConfig.ExtraSchedulerAPIArgs = cfg.ExtraSchedulerArgs
 	serverConfig.ControlConfig.ClusterDomain = cfg.ClusterDomain
 	serverConfig.ControlConfig.StorageEndpoint = cfg.StorageEndpoint
-	serverConfig.ControlConfig.StorageBackend = cfg.StorageBackend
 	serverConfig.ControlConfig.StorageCAFile = cfg.StorageCAFile
 	serverConfig.ControlConfig.StorageCertFile = cfg.StorageCertFile
 	serverConfig.ControlConfig.StorageKeyFile = cfg.StorageKeyFile
@@ -164,8 +164,8 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	} else {
 		serverConfig.ControlConfig.ClusterDNS = net2.ParseIP(cfg.ClusterDNS)
 	}
-
-	if serverConfig.ControlConfig.StorageBackend != "etcd3" {
+	backend, _ := server.ParseStorageEndpoint(serverConfig.ControlConfig.StorageEndpoint)
+	if backend != control.ETCDBackend {
 		serverConfig.ControlConfig.NoLeaderElect = true
 	}
 
