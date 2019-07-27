@@ -38,20 +38,24 @@ show-logs() {
             continue
         fi
         echo
-        echo "# ----- logs for sonobuoy run pid ${pid} -----"
+        echo "# ----- Start: logs for sonobuoy run pid ${pid} -----"
         for log in $(pwd)/logs/${pid}/*; do
             if [ -f ${log} ]; then
                 echo
-                echo "# ----- ${log} -----"
+                echo "# ----- Start: ${log} -----"
                 cat ${log}
+                echo "# ----- Done: ${log} -----"
+                echo
             fi
         done
+        echo "# ----- Done: logs for sonobuoy run pid ${pid} -----"
+        echo
     done
 }
 
 cleanup() {
     exit_status=$?
-    set +e
+    set +e +x
     wait
     echo "Finished the tests!"
     if [ "${exit_status}" -ne "0" ]; then
