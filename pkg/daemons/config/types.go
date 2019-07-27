@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"sort"
 	"strings"
 
 	"k8s.io/apiserver/pkg/authentication/authenticator"
@@ -164,5 +165,6 @@ func GetArgsList(argsMap map[string]string, extraArgs []string) []string {
 		cmd := fmt.Sprintf("--%s=%s", arg, value)
 		args = append(args, cmd)
 	}
+	sort.Strings(args)
 	return args
 }
