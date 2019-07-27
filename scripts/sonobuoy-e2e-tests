@@ -51,16 +51,12 @@ show-logs() {
 
 cleanup() {
     exit_status=$?
-    set +e +x
-    set -v
+    set +e
     wait
     echo "Finished the tests!"
-
-    if [ "${exit_status}" -eq "0" ]; then
-        exit
+    if [ "${exit_status}" -ne "0" ]; then
+        show-logs
     fi
-    show-logs
-
     exit ${exit_status}
 }
 trap cleanup EXIT
