@@ -90,8 +90,8 @@ export -f wait-for-services
 dump-container-logs() {
     mkdir -p ${LOGS}
     for container in ${CONTAINERS}; do
-        docker logs ${container} >${LOGS}/k3s-${container}.log 2>&1
         docker cp ${container}:/var/lib/rancher/k3s/agent/containerd/containerd.log ${LOGS}/containerd-${container}.log
+        docker logs ${container} >${LOGS}/${container}.log 2>&1
     done
 }
 export -f dump-container-logs

@@ -38,17 +38,17 @@ show-logs() {
             continue
         fi
         echo
-        echo "# ----- Start: logs for sonobuoy run pid ${pid} -----"
+        echo "#- Begin: logs for sonobuoy run pid ${pid}"
         for log in $(pwd)/logs/${pid}/*; do
             if [ -f ${log} ]; then
                 echo
-                echo "# ----- Start: ${log} -----"
+                echo "#- Start: ${log}"
                 cat ${log}
-                echo "# ----- Done: ${log} -----"
+                echo "#- End: ${log}"
                 echo
             fi
         done
-        echo "# ----- Done: logs for sonobuoy run pid ${pid} -----"
+        echo "#- Finish: logs for sonobuoy run pid ${pid}"
         echo
     done
 }
