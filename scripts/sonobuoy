@@ -88,8 +88,7 @@ export -f wait-for-services
 # ---
 
 haste() { 
-    a=$(cat)
-    curl -X POST -s -d "$a" https://hastebin.com/documents | \
+    curl -X POST -s -d @- https://hastebin.com/documents | \
         awk -F '"' '{print "https://hastebin.com/"$4}'
 }
 export -f haste
