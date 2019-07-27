@@ -87,31 +87,20 @@ export -f wait-for-services
 
 # ---
 
-haste() { 
-    curl -X POST -s -d @- https://hastebin.com/documents | \
-        awk -F '"' '{print "https://hastebin.com/"$4}'
-}
-export -f haste
-
-# ---
-
 dump-container-logs() {
-    set +xe
-    set -v
+    mkdir -p ${LOGS}
     for container in ${CONTAINERS}; do
-        echo "logs for container: ${container}"
-        echo "   k3s service log: "$(docker logs ${container} 2>&1 | haste)
-        echo "   containerd logs: "$(docker cp ${container}:/var/lib/rancher/k3s/agent/containerd/containerd.log - | haste)
+        docker logs ${container} >${LOGS}/k3s-${container}.log 2>&1
+        docker cp ${container}:/var/lib/rancher/k3s/agent/containerd/containerd.log ${LOGS}/containerd-${container}.log
     done
-    set +v
-    set -xe
 }
 export -f dump-container-logs
 
 # ---
 
 sonobuoy-destruct() {
-    sonobuoy logs
+    mkdir -p ${LOGS}
+    sonobuoy logs >${LOGS}/$i-sonobuoy.log 2>&1
     sonobuoy delete --wait
 }
 export -f sonobuoy-destruct
@@ -178,6 +167,7 @@ trap cleanup EXIT
 
 K3S_PORT=$(timeout --foreground 5s bash -c get-port)
 OUTPUT=$(pwd)/sonobuoy-output/${K3S_PORT}
+LOGS=$(pwd)/logs/$$
 E2E="${OUTPUT}/e2e"
 E2E_LOG="plugins/e2e/results/e2e.log"
 RESULTS="${E2E}/${E2E_LOG}"
