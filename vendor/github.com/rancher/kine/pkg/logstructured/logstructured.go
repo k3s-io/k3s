@@ -198,9 +198,10 @@ func (l *LogStructured) Update(ctx context.Context, key string, value []byte, re
 
 	rev, err = l.log.Append(ctx, updateEvent)
 	if err != nil {
+		logrus.Warnf("Kine log append error: %s", err)
 		rev, event, err := l.get(ctx, key, revision, false)
 		if event == nil {
-			return 0, nil, false, err
+			return rev, nil, false, err
 		}
 		return rev, event.KV, false, err
 	}
