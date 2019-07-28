@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/sirupsen/logrus"
 )
@@ -58,6 +59,7 @@ func (s Stripped) String() string {
 }
 
 type Generic struct {
+	mutex                 sync.Mutex
 	LastInsertID          bool
 	DB                    *sql.DB
 	GetCurrentSQL         string
@@ -250,6 +252,9 @@ func (d *Generic) Insert(ctx context.Context, key string, create, delete bool, c
 	}
 
 	if d.LastInsertID {
+		d.mutex.Lock()
+		defer d.mutex.Unlock()
+
 		row, err := d.execute(ctx, d.InsertLastInsertIDSQL, key, cVal, dVal, createRevision, previousRevision, ttl, value, prevValue)
 		if err != nil {
 			return 00, err
