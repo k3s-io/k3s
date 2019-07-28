@@ -157,6 +157,9 @@ func (d *Generic) execute(ctx context.Context, sql string, args ...interface{}) 
 }
 
 func (d *Generic) GetCompactRevision(ctx context.Context) (int64, error) {
+	d.mutex.Lock()
+	defer d.mutex.Unlock()
+
 	var id int64
 	row := d.queryRow(ctx, compactRevSQL)
 	err := row.Scan(&id)
@@ -167,6 +170,9 @@ func (d *Generic) GetCompactRevision(ctx context.Context) (int64, error) {
 }
 
 func (d *Generic) SetCompactRevision(ctx context.Context, revision int64) error {
+	d.mutex.Lock()
+	defer d.mutex.Unlock()
+
 	result, err := d.execute(ctx, d.UpdateCompactSQL, revision)
 	if err != nil {
 		return err
@@ -178,20 +184,29 @@ func (d *Generic) SetCompactRevision(ctx context.Context, revision int64) error 
 	if num != 0 {
 		return nil
 	}
-	_, err = d.Insert(ctx, "compact_rev_key", false, false, 0, revision, 0, []byte(""), nil)
+	_, err = d.insert(ctx, "compact_rev_key", false, false, 0, revision, 0, []byte(""), nil)
 	return err
 }
 
 func (d *Generic) GetRevision(ctx context.Context, revision int64) (*sql.Rows, error) {
+	d.mutex.Lock()
+	defer d.mutex.Unlock()
+
 	return d.query(ctx, d.GetRevisionSQL, revision)
 }
 
 func (d *Generic) DeleteRevision(ctx context.Context, revision int64) error {
+	d.mutex.Lock()
+	defer d.mutex.Unlock()
+
 	_, err := d.execute(ctx, d.DeleteSQL, revision)
 	return err
 }
 
 func (d *Generic) ListCurrent(ctx context.Context, prefix string, limit int64, includeDeleted bool) (*sql.Rows, error) {
+	d.mutex.Lock()
+	defer d.mutex.Unlock()
+
 	sql := d.GetCurrentSQL
 	if limit > 0 {
 		sql = fmt.Sprintf("%s LIMIT %d", sql, limit)
@@ -200,6 +215,9 @@ func (d *Generic) ListCurrent(ctx context.Context, prefix string, limit int64, i
 }
 
 func (d *Generic) List(ctx context.Context, prefix, startKey string, limit, revision int64, includeDeleted bool) (*sql.Rows, error) {
+	d.mutex.Lock()
+	defer d.mutex.Unlock()
+
 	if startKey == "" {
 		sql := d.ListRevisionStartSQL
 		if limit > 0 {
@@ -216,6 +234,9 @@ func (d *Generic) List(ctx context.Context, prefix, startKey string, limit, revi
 }
 
 func (d *Generic) Count(ctx context.Context, prefix string) (int64, int64, error) {
+	d.mutex.Lock()
+	defer d.mutex.Unlock()
+
 	var (
 		rev sql.NullInt64
 		id  int64
@@ -227,6 +248,9 @@ func (d *Generic) Count(ctx context.Context, prefix string) (int64, int64, error
 }
 
 func (d *Generic) CurrentRevision(ctx context.Context) (int64, error) {
+	d.mutex.Lock()
+	defer d.mutex.Unlock()
+
 	var id int64
 	row := d.queryRow(ctx, revSQL)
 	err := row.Scan(&id)
@@ -237,11 +261,21 @@ func (d *Generic) CurrentRevision(ctx context.Context) (int64, error) {
 }
 
 func (d *Generic) After(ctx context.Context, prefix string, rev int64) (*sql.Rows, error) {
+	d.mutex.Lock()
+	defer d.mutex.Unlock()
+
 	sql := d.AfterSQL
 	return d.query(ctx, sql, prefix, rev)
 }
 
 func (d *Generic) Insert(ctx context.Context, key string, create, delete bool, createRevision, previousRevision int64, ttl int64, value, prevValue []byte) (id int64, err error) {
+	d.mutex.Lock()
+	defer d.mutex.Unlock()
+
+	return d.insert(ctx, key, create, delete, createRevision, previousRevision, ttl, value, prevValue)
+}
+
+func (d *Generic) insert(ctx context.Context, key string, create, delete bool, createRevision, previousRevision int64, ttl int64, value, prevValue []byte) (id int64, err error) {
 	cVal := 0
 	dVal := 0
 	if create {
@@ -252,9 +286,6 @@ func (d *Generic) Insert(ctx context.Context, key string, create, delete bool, c
 	}
 
 	if d.LastInsertID {
-		d.mutex.Lock()
-		defer d.mutex.Unlock()
-
 		row, err := d.execute(ctx, d.InsertLastInsertIDSQL, key, cVal, dVal, createRevision, previousRevision, ttl, value, prevValue)
 		if err != nil {
 			return 00, err

@@ -200,7 +200,7 @@ func (l *LogStructured) Update(ctx context.Context, key string, value []byte, re
 	if err != nil {
 		rev, event, err := l.get(ctx, key, revision, false)
 		if event == nil {
-			return 0, nil, false, nil
+			return 0, nil, false, err
 		}
 		return rev, event.KV, false, err
 	}
