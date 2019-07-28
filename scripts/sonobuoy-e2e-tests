@@ -3,15 +3,6 @@ set -e -x
 
 cd $(dirname $0)/..
 
-cleanup() {
-    exit_code=$?
-    set +e
-    wait
-    echo "Finished the tests!"
-    exit ${exit_code}
-}
-trap cleanup EXIT
-
 if [ -z "$K3S_IMAGE" ]; then
     source $(dirname $0)/version.sh
     TAG=${TAG:-${VERSION}${SUFFIX}}
@@ -32,7 +23,6 @@ run-sonobuoy() {
     pids+=($!)
 }
 
-
 log_output=${OUTPUT}/e2e-STATUS-${ARCH}-parallel.log \
     run-sonobuoy --e2e-focus='\[Conformance\]' --e2e-skip='\[Serial\]' --e2e-parallel=y
 
@@ -41,6 +31,39 @@ sleep 60
 log_output=${OUTPUT}/e2e-STATUS-${ARCH}-serial.log \
     run-sonobuoy --e2e-focus='\[Serial\].*\[Conformance\]'
 
+show-logs() {
+    for pid in "${pids[@]}"; do
+        logdir=$(pwd)/logs/${pid}
+        if [ ! -d $logdir ]; then
+            continue
+        fi
+        echo
+        echo "#- Begin: logs for sonobuoy run pid ${pid}"
+        for log in $(pwd)/logs/${pid}/*; do
+            if [ -f ${log} ]; then
+                echo
+                echo "#- Start: ${log}"
+                cat ${log}
+                echo "#- End: ${log}"
+                echo
+            fi
+        done
+        echo "#- Finish: logs for sonobuoy run pid ${pid}"
+        echo
+    done
+}
+
+cleanup() {
+    exit_status=$?
+    set +e +x
+    wait
+    echo "Finished the tests!"
+    if [ "${exit_status}" -ne "0" ]; then
+        show-logs
+    fi
+    exit ${exit_status}
+}
+trap cleanup EXIT
 
 for pid in "${pids[@]}"; do
     wait $pid || exit $?
