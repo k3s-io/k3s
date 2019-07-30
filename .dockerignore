@@ -1,6 +1,5 @@
 ./bin
-./build/data
-./build/data.tar.gz
+./build
 ./pkg/data/zz_generated_bindata.go
 ./package/data.tar.gz
 ./.vagrant
