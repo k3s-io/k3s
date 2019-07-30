@@ -65,8 +65,7 @@ func (l *listenerConfigStorage) Set(config *dynamiclistener.ListenerStatus) (*dy
 	obj.Status = *config
 	obj.Status.Revision = ""
 
-	if l.config.CACerts != "" && l.config.CAKey != "" {
-		obj.Status.CACert = ""
+	if l.config.CAKey != "" {
 		obj.Status.CAKey = ""
 	}
 
@@ -94,7 +93,10 @@ func (l *listenerConfigStorage) fromStorage(obj *v1.ListenerConfig) *dynamiclist
 	copy.Status.Revision = obj.ResourceVersion
 
 	if l.config.CACerts != "" && l.config.CAKey != "" {
-		copy.Status.CACert = l.config.CACerts
+		if copy.Status.CACert != l.config.CACerts {
+			copy.Status.CACert = l.config.CACerts
+			copy.Status.GeneratedCerts = map[string]string{}
+		}
 		copy.Status.CAKey = l.config.CAKey
 	}
 
