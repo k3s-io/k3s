@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/pkg/errors"
 	"github.com/rancher/dynamiclistener"
@@ -72,7 +71,6 @@ func StartServer(ctx context.Context, config *Config) (string, error) {
 func startWrangler(ctx context.Context, config *Config) (string, error) {
 	var (
 		err           error
-		tlsServer     dynamiclistener.ServerInterface
 		tlsConfig     = &config.TLSConfig
 		controlConfig = &config.ControlConfig
 	)
@@ -86,14 +84,12 @@ func startWrangler(ctx context.Context, config *Config) (string, error) {
 		return "", err
 	}
 
-	tlsConfig.CACerts = string(caBytes)
+	certs := string(caBytes)
+	tlsConfig.CACerts = certs
 	tlsConfig.CAKey = string(caKeyBytes)
 
 	tlsConfig.Handler = router(controlConfig, controlConfig.Runtime.Tunnel, func() (string, error) {
-		if tlsServer == nil {
-			return "", nil
-		}
-		return tlsServer.CACert()
+		return certs, nil
 	})
 
 	sc, err := newContext(ctx, controlConfig.Runtime.KubeConfigAdmin)
@@ -105,23 +101,13 @@ func startWrangler(ctx context.Context, config *Config) (string, error) {
 		return "", err
 	}
 
-	tlsServer, err = tls.NewServer(ctx, sc.K3s.K3s().V1().ListenerConfig(), *tlsConfig)
+	_, err = tls.NewServer(ctx, sc.K3s.K3s().V1().ListenerConfig(), *tlsConfig)
 	if err != nil {
 		return "", err
 	}
 
 	if err := sc.Start(ctx); err != nil {
 		return "", err
-	}
-
-	certs := ""
-	for certs == "" {
-		certs, err = tlsServer.CACert()
-		if err != nil {
-			logrus.Infof("waiting to generate CA certs")
-			time.Sleep(time.Second)
-			continue
-		}
 	}
 
 	go leader.RunOrDie(ctx, "", "k3s", sc.K8s, func(ctx context.Context) {
