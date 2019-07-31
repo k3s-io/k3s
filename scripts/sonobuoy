@@ -109,6 +109,7 @@ export -f sonobuoy-destruct
 
 sonobuoy-test() {
     timeout --foreground 30m sonobuoy run \
+        --kube-conformance-image erikwilson/conformance-amd64:v1.14.4 \
         --config scripts/sonobuoy-config.json \
         --wait \
         "${@}"
