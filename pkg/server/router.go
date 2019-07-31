@@ -130,6 +130,7 @@ func servingKubeletCert(server *config.Control) http.Handler {
 		nodeName, nodePassword, err := getNodeInfo(req)
 		if err != nil {
 			sendError(err, resp)
+			return
 		}
 
 		if err := ensureNodePassword(server.Runtime.NodePasswdFile, nodeName, nodePassword); err != nil {
@@ -170,6 +171,7 @@ func clientKubeletCert(server *config.Control) http.Handler {
 		nodeName, nodePassword, err := getNodeInfo(req)
 		if err != nil {
 			sendError(err, resp)
+			return
 		}
 
 		if err := ensureNodePassword(server.Runtime.NodePasswdFile, nodeName, nodePassword); err != nil {
