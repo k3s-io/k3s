@@ -1,0 +1,55 @@
+version: '3'
+services:
+  etcd:
+    image: quay.io/coreos/etcd
+    command: /usr/local/bin/etcd -name etcd --data-dir /data --listen-client-urls http://0.0.0.0:2379 --advertise-client-urls http://etcd:2379
+    volumes:
+    - etcd:/data
+    ports:
+    - 2379:2379
+
+  server:
+    image: rancher/k3s:v0.8.0
+    command: server --disable-agent --bootstrap write
+    environment:
+    - K3S_STORAGE_BACKEND=etcd3
+    - K3S_STORAGE_ENDPOINT=etcd:2379
+    - K3S_CLUSTER_SECRET=somethingtotallyrandom
+    - K3S_KUBECONFIG_OUTPUT=/output/kubeconfig.yaml
+    - K3S_KUBECONFIG_MODE=666
+    volumes:
+    - k3s-server:/var/lib/rancher/k3s
+    # This is just so that we get the kubeconfig file out
+    - .:/output
+    ports:
+    - 6443:6443
+
+  server2:
+    image: rancher/k3s:v0.8.0
+    command: server --disable-agent --bootstrap read
+    # restart to wait for the bootstrap data prepared by the primary server
+    restart: always
+    environment:
+    - K3S_STORAGE_BACKEND=etcd3
+    - K3S_STORAGE_ENDPOINT=etcd:2379
+    volumes:
+    - k3s-server2:/var/lib/rancher/k3s
+    ports:
+    - 16443:6443
+
+  node:
+    image: rancher/k3s:v0.8.0
+    tmpfs:
+    - /run
+    - /var/run
+    privileged: true
+    environment:
+    - K3S_URL=https://server:6443
+    - K3S_CLUSTER_SECRET=somethingtotallyrandom
+    # Can also use K3S_TOKEN from /var/lib/rancher/k3s/server/node-token instead of K3S_CLUSTER_SECRET
+    #- K3S_TOKEN=K13849a67fc385fd3c0fa6133a8649d9e717b0258b3b09c87ffc33dae362c12d8c0::node:2e373dca319a0525745fd8b3d8120d9c
+
+volumes:
+  k3s-server: {}
+  k3s-server2: {}
+  etcd: {}
