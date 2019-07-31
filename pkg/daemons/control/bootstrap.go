@@ -171,7 +171,9 @@ func checkBootstrapArgs(cfg *config.Control, accepted map[string]bool) (bool, er
 }
 
 func genBootstrapTLSConfig(cfg *config.Control) (*tls.Config, error) {
-	tlsConfig := &tls.Config{}
+	secureTLSConfig := &tls.Config{}
+	// Note: clientv3 excepts nil for non-tls
+	var tlsConfig *tls.Config
 	if cfg.StorageCertFile != "" && cfg.StorageKeyFile != "" {
 		certPem, err := ioutil.ReadFile(cfg.StorageCertFile)
 		if err != nil {
@@ -185,6 +187,7 @@ func genBootstrapTLSConfig(cfg *config.Control) (*tls.Config, error) {
 		if err != nil {
 			return nil, err
 		}
+		tlsConfig = secureTLSConfig
 		tlsConfig.Certificates = []tls.Certificate{tlsCert}
 	}
 	if cfg.StorageCAFile != "" {
@@ -194,6 +197,7 @@ func genBootstrapTLSConfig(cfg *config.Control) (*tls.Config, error) {
 		}
 		certPool := x509.NewCertPool()
 		certPool.AppendCertsFromPEM(caData)
+		tlsConfig = secureTLSConfig
 		tlsConfig.RootCAs = certPool
 	}
 	return tlsConfig, nil
