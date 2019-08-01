@@ -11,6 +11,7 @@ type Agent struct {
 	Token                    string
 	TokenFile                string
 	ServerURL                string
+	DisableLoadBalancer      bool
 	ResolvConf               string
 	DataDir                  string
 	NodeIP                   string

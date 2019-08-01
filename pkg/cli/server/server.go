@@ -214,6 +214,7 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	agentConfig.ServerURL = url
 	agentConfig.Token = token
 	agentConfig.Labels = append(agentConfig.Labels, "node-role.kubernetes.io/master=true")
+	agentConfig.DisableLoadBalancer = true
 
 	return agent.Run(ctx, agentConfig)
 }
