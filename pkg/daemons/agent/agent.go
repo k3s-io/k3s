@@ -176,6 +176,8 @@ func checkCgroups() (root string, hasCFS bool, hasPIDs bool) {
 				i := strings.LastIndex(last, ".slice")
 				if i > 0 {
 					root = "/systemd" + last[:i+len(".slice")]
+				} else {
+					root = "/systemd"
 				}
 			}
 		}
