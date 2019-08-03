@@ -117,6 +117,16 @@ escape_dq() {
     printf "%s" "$@" | sed -e 's/"/\\"/g'
 }
 
+# --- format version in a way that is comparable by the shell; this assumes the current versioning scheme
+pad_version() {
+    printf "%03d%03d%03d%03d%n" $(echo "${1}-999" | tr '.[:punct:][:alpha:]' ' ') 2>/dev/null
+}
+
+# --- compare version being installed to some supplied version
+version_ge() {
+    [ $(pad_version "${VERSION_K3S}") -ge $(pad_version "${1}") ]
+}
+
 # --- define needed environment variables ---
 setup_env() {
     # --- use command args if passed or create default ---
@@ -175,7 +185,8 @@ setup_env() {
     if [ -n "${INSTALL_K3S_TYPE}" ]; then
         SYSTEMD_TYPE="${INSTALL_K3S_TYPE}"
     else
-        if [ "${CMD_K3S}" = "server" ]; then
+        # TODO: simplify to "always notify" when support for < 0.7.0 is dropped
+        if version_ge 'v0.7.0' || [ "${CMD_K3S}" = "server" ]; then
             SYSTEMD_TYPE=notify
         else
             SYSTEMD_TYPE=exec
@@ -357,7 +368,6 @@ download_and_verify() {
     setup_verify_arch
     verify_curl
     setup_tmp
-    get_release_version
     download_hash
 
     if installed_hash_matches; then
@@ -643,6 +653,7 @@ eval set -- $(escape "${INSTALL_K3S_EXEC}") $(quote "$@")
 # --- run the install process --
 {
     verify_system
+    get_release_version
     setup_env "$@"
     download_and_verify
     create_symlinks
