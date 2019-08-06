@@ -56,11 +56,12 @@ func (h *handler) updateHosts(node *core.Node, removed bool) (*core.Node, error)
 		return nil, nil
 	}
 
-	configMap, err := h.configCache.Get("kube-system", "coredns")
-	if err != nil || configMap == nil {
+	configMapCache, err := h.configCache.Get("kube-system", "coredns")
+	if err != nil || configMapCache == nil {
 		logrus.Warn(errors.Wrap(err, "Unable to fetch coredns config map"))
 		return nil, nil
 	}
+	configMap := configMapCache.DeepCopy()
 
 	hosts := configMap.Data["NodeHosts"]
 	for _, line := range strings.Split(hosts, "\n") {
