@@ -565,6 +565,9 @@ command="${BIN_DIR}/k3s"
 command_args="$(escape_dq "${CMD_K3S_EXEC}")
     >>${LOG_FILE} 2>&1"
 
+output_log="${LOG_FILE}"
+error_log="${LOG_FILE}"
+
 pidfile="/var/run/${SYSTEM_NAME}.pid"
 respawn_delay=5
 
