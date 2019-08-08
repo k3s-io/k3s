@@ -98,6 +98,10 @@ func createFlannelConf(config *config.Node) error {
 	if config.FlannelConf == "" {
 		return nil
 	}
+	if config.FlannelConfOverride {
+		logrus.Infof("Using custom flannel conf defined at %s", config.FlannelConf)
+		return nil
+	}
 	return util.WriteFile(config.FlannelConf,
 		strings.Replace(netJSON, "%CIDR%", config.AgentConfig.ClusterCIDR.String(), -1))
 }

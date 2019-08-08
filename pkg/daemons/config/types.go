@@ -18,6 +18,7 @@ type Node struct {
 	ContainerRuntimeEndpoint string
 	NoFlannel                bool
 	FlannelConf              string
+	FlannelConfOverride      bool
 	FlannelIface             *net.Interface
 	Containerd               Containerd
 	Images                   string

@@ -194,6 +194,7 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 			DockerFlag,
 			FlannelFlag,
 			FlannelIfaceFlag,
+			FlannelConfFlag,
 			CRIEndpointFlag,
 			PauseImageFlag,
 			ResolvConfFlag,

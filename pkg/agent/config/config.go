@@ -362,7 +362,12 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 	nodeConfig.ServerAddress = serverURLParsed.Host
 	nodeConfig.Certificate = servingCert
 	if !nodeConfig.NoFlannel {
-		nodeConfig.FlannelConf = filepath.Join(envInfo.DataDir, "etc/flannel/net-conf.json")
+		if envInfo.FlannelConf == "" {
+			nodeConfig.FlannelConf = filepath.Join(envInfo.DataDir, "etc/flannel/net-conf.json")
+		} else {
+			nodeConfig.FlannelConf = envInfo.FlannelConf
+			nodeConfig.FlannelConfOverride = true
+		}
 		nodeConfig.AgentConfig.CNIBinDir = filepath.Dir(hostLocal)
 		nodeConfig.AgentConfig.CNIConfDir = filepath.Join(envInfo.DataDir, "etc/cni/net.d")
 	}
