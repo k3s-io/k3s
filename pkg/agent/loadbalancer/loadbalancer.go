@@ -75,6 +75,7 @@ func Setup(ctx context.Context, cfg cmds.Agent) (_lb *LoadBalancer, _err error) 
 	lb.proxy.AddRoute(serviceName, &tcpproxy.DialProxy{
 		Addr:        serviceName,
 		DialContext: lb.dialContext,
+		OnDialError: onDialError,
 	})
 
 	if err := lb.updateConfig(); err != nil {
@@ -118,14 +119,14 @@ func (lb *LoadBalancer) dialContext(ctx context.Context, network, address string
 		if err == nil {
 			return conn, nil
 		}
-		logrus.Warnf("Dial error from load balancer: %s", err)
+		logrus.Debugf("Dial error from load balancer: %s", err)
 
 		newServer, err := lb.nextServer(targetServer)
 		if err != nil {
 			return nil, err
 		}
 		if targetServer != newServer {
-			logrus.Warnf("Dial context in load balancer failed over to %s", newServer)
+			logrus.Debugf("Dial server in load balancer failed over to %s", newServer)
 		}
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
@@ -139,4 +140,9 @@ func (lb *LoadBalancer) dialContext(ctx context.Context, network, address string
 			return nil, errors.New("all servers failed")
 		}
 	}
+}
+
+func onDialError(src net.Conn, dstDialErr error) {
+	logrus.Debugf("Incoming conn %v, error dialing load balancer servers: %v", src.RemoteAddr().String(), dstDialErr)
+	src.Close()
 }
