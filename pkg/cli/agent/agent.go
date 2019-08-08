@@ -37,6 +37,9 @@ func readToken(path string) (string, error) {
 }
 
 func Run(ctx *cli.Context) error {
+	if err := cmds.InitLogging(); err != nil {
+		return err
+	}
 	if os.Getuid() != 0 {
 		return fmt.Errorf("agent must be ran as root")
 	}
