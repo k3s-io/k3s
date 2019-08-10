@@ -1,5 +1,7 @@
 ## bindata
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/go-bindata/bindata)](https://goreportcard.com/report/github.com/go-bindata/bindata)
+
 This package converts any file into managable Go source code. Useful for
 embedding binary data into a go program. The file data is optionally gzip
 compressed before being converted to a raw byte slice.
@@ -13,7 +15,7 @@ output being generated.
 
 To install the library and command line program, use the following:
 
-	go get -u github.com/jteeuwen/go-bindata/...
+	go get -u github.com/go-bindata/go-bindata/...
 
 
 ### Usage
@@ -182,8 +184,16 @@ format is specified at build time with the appropriate tags.
 The tags are appended to a `// +build` line in the beginning of the output file
 and must follow the build tags syntax specified by the go tool.
 
-### Related projects
+### Serve assets with `net/http`
 
-[go-bindata-assetfs](https://github.com/elazarl/go-bindata-assetfs#readme) - 
-implements `http.FileSystem` interface. Allows you to serve assets with `net/http`.
+With the `-fs` flag, `go-bindata` will add an `AssetFile()` method returning an `http.FileSystem` interface:
 
+	$ go-bindata -fs -prefix "static/" static/
+
+Use `-prefix` flag to strip first level dir, then in your `net/http` router, you can use `AssetFile()` with `http.FileServer()` like:
+
+```go
+mux := http.NewServeMux()
+mux.Handle("/static", http.FileServer(AssetFile()))
+http.ListenAndServe(":8080", mux)
+```
