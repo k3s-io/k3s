@@ -22,6 +22,7 @@ const (
     {
       "type":"flannel",
       "delegate":{
+        "hairpinMode":true,
         "forceAddress":true,
         "isDefaultGateway":true
       }
