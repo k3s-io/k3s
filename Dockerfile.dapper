@@ -1,4 +1,4 @@
-FROM golang:1.12.1-alpine3.9
+FROM golang:1.12.9-alpine3.10
 
 RUN apk -U --no-cache add bash git gcc musl-dev docker vim less file curl wget ca-certificates jq linux-headers zlib-dev tar zip squashfs-tools npm coreutils \
     python3 py3-pip python3-dev openssl-dev libffi-dev libseccomp libseccomp-dev make
