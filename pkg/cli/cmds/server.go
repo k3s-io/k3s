@@ -5,7 +5,6 @@ import (
 )
 
 type Server struct {
-	Log                 string
 	ClusterCIDR         string
 	ClusterSecret       string
 	ServiceCIDR         string
@@ -43,6 +42,10 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 		UsageText: appName + " server [OPTIONS]",
 		Action:    action,
 		Flags: []cli.Flag{
+			VLevel,
+			VModule,
+			LogFile,
+			AlsoLogToStderr,
 			cli.StringFlag{
 				Name:        "bind-address",
 				Usage:       "k3s bind address (default: localhost)",
@@ -69,11 +72,6 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Name:        "disable-agent",
 				Usage:       "Do not run a local agent and register a local kubelet",
 				Destination: &ServerConfig.DisableAgent,
-			},
-			cli.StringFlag{
-				Name:        "log,l",
-				Usage:       "Log to file",
-				Destination: &ServerConfig.Log,
 			},
 			cli.StringFlag{
 				Name:        "cluster-cidr",

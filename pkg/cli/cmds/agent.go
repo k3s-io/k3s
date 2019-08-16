@@ -109,6 +109,10 @@ func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
 		UsageText: appName + " agent [OPTIONS]",
 		Action:    action,
 		Flags: []cli.Flag{
+			VLevel,
+			VModule,
+			LogFile,
+			AlsoLogToStderr,
 			cli.StringFlag{
 				Name:        "token,t",
 				Usage:       "Token to use for authentication",

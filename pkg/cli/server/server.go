@@ -2,19 +2,15 @@ package server
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	net2 "net"
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/rancher/k3s/pkg/netutil"
 
 	systemd "github.com/coreos/go-systemd/daemon"
-	"github.com/docker/docker/pkg/reexec"
-	"github.com/natefinch/lumberjack"
 	"github.com/pkg/errors"
 	"github.com/rancher/k3s/pkg/agent"
 	"github.com/rancher/k3s/pkg/cli/cmds"
@@ -33,34 +29,10 @@ import (
 	_ "github.com/mattn/go-sqlite3"    // ensure we have sqlite
 )
 
-func setupLogging(app *cli.Context) {
-	if !app.GlobalBool("debug") {
-		flag.Set("stderrthreshold", "WARNING")
-		flag.Set("alsologtostderr", "false")
-		flag.Set("logtostderr", "false")
-	}
-}
-
-func runWithLogging(app *cli.Context, cfg *cmds.Server) error {
-	l := &lumberjack.Logger{
-		Filename:   cfg.Log,
-		MaxSize:    50,
-		MaxBackups: 3,
-		MaxAge:     28,
-		Compress:   true,
-	}
-
-	args := append([]string{"k3s"}, os.Args[1:]...)
-	cmd := reexec.Command(args...)
-	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, "_RIO_REEXEC_=true")
-	cmd.Stderr = l
-	cmd.Stdout = l
-	cmd.Stdin = os.Stdin
-	return cmd.Run()
-}
-
 func Run(app *cli.Context) error {
+	if err := cmds.InitLogging(); err != nil {
+		return err
+	}
 	return run(app, &cmds.ServerConfig)
 }
 
@@ -68,16 +40,6 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	var (
 		err error
 	)
-
-	if cfg.Log != "" && os.Getenv("_RIO_REEXEC_") == "" {
-		return runWithLogging(app, cfg)
-	}
-
-	if err := checkUnixTimestamp(); err != nil {
-		return err
-	}
-
-	setupLogging(app)
 
 	if !cfg.DisableAgent && os.Getuid() != 0 && !cfg.Rootless {
 		return fmt.Errorf("must run as root unless --disable-agent is specified")
@@ -226,13 +188,4 @@ func knownIPs(ips []string) []string {
 		ips = append(ips, ip.String())
 	}
 	return ips
-}
-
-func checkUnixTimestamp() error {
-	timeNow := time.Now()
-	// check if time before 01/01/1980
-	if timeNow.Before(time.Unix(315532800, 0)) {
-		return fmt.Errorf("server time isn't set properly: %v", timeNow)
-	}
-	return nil
 }
