@@ -23,7 +23,7 @@ import (
 	"time"
 
 	"github.com/ibuildthecloud/kvsql/clientv3"
-	etcd3 "github.com/ibuildthecloud/kvsql/storage"
+	"github.com/ibuildthecloud/kvsql/storage"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/storage"
 	"k8s.io/apiserver/pkg/storage/storagebackend"

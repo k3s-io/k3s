@@ -15,6 +15,9 @@ import (
 )
 
 type Generic struct {
+	// revision must be first to ensure that this is properly aligned for atomic.LoadInt64
+	revision        int64
+
 	db *sql.DB
 
 	CleanupSQL      string
@@ -27,7 +30,6 @@ type Generic struct {
 	GetRevisionSQL  string
 	ToDeleteSQL     string
 	DeleteOldSQL    string
-	revision        int64
 
 	changes     chan *KeyValue
 	broadcaster broadcast.Broadcaster
@@ -147,7 +149,7 @@ func (g *Generic) List(ctx context.Context, revision, limit int64, rangeKey, sta
 
 	listRevision := atomic.LoadInt64(&g.revision)
 	if !strings.HasSuffix(rangeKey, "%") && revision <= 0 {
-		rows, err = g.QueryContext(ctx, g.GetSQL, rangeKey, limit)
+		rows, err = g.QueryContext(ctx, g.GetSQL, rangeKey, 1)
 	} else if revision <= 0 {
 		rows, err = g.QueryContext(ctx, g.ListSQL, rangeKey, limit)
 	} else if len(startKey) > 0 {
