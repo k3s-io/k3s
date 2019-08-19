@@ -104,6 +104,8 @@ import:
   version: v1.3.1-1-gf12c6236fe7b5c
 - package: github.com/ghodss/yaml
   version: v1.0.0
+- package: github.com/go-bindata/go-bindata
+  version: v3.1.2
 - package: github.com/go-sql-driver/mysql
   version: v1.4.1
 - package: github.com/godbus/dbus
@@ -156,8 +158,6 @@ import:
   version: 72f9bd7c4e0c2a40055ab3d0f09654f730cce982
 - package: github.com/json-iterator/go
   version: 1.1.5
-- package: github.com/go-bindata/go-bindata
-  version: v3.1.2
 - package: github.com/karrick/godirwalk
   version: v1.7.5
 - package: github.com/kubernetes-sigs/cri-tools
@@ -316,7 +316,7 @@ import:
 - package: k8s.io/klog
   version: v0.2.0-14-g8e90cee79f8237
 - package: k8s.io/kubernetes
-  version: v1.14.5-k3s.1
+  version: v1.14.6-k3s.1
   repo: https://github.com/rancher/k3s.git
   transitive: true
   staging: true
