@@ -8,6 +8,7 @@ import (
 	"os"
 	"sort"
 
+	"k8s.io/apimachinery/pkg/types"
 	helmv1 "github.com/rancher/helm-controller/pkg/apis/helm.cattle.io/v1"
 	helmcontroller "github.com/rancher/helm-controller/pkg/generated/controllers/helm.cattle.io/v1"
 	batchcontroller "github.com/rancher/wrangler-api/pkg/generated/controllers/batch/v1"
@@ -21,6 +22,7 @@ import (
 	rbac "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
@@ -50,7 +52,13 @@ func Register(ctx context.Context, apply apply.Apply,
 	cm corecontroller.ConfigMapController) {
 	apply = apply.WithSetID(name).
 		WithCacheTypes(helms, jobs, crbs, sas, cm).
-		WithStrictCaching()
+		WithStrictCaching().WithPatcher(batch.SchemeGroupVersion.WithKind("Job"), func(namespace, name string, pt types.PatchType, data []byte) (runtime.Object, error) {
+		err := jobs.Delete(namespace, name, &metav1.DeleteOptions{})
+		if err == nil {
+			return nil, fmt.Errorf("replace job")
+		}
+		return nil, err
+	})
 
 	relatedresource.Watch(ctx, "helm-pod-watch",
 		func(namespace, name string, obj runtime.Object) ([]relatedresource.Key, error) {
