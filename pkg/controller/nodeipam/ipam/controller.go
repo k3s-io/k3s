@@ -1,3 +1,5 @@
+// +build deleted
+
 /*
 Copyright 2017 The Kubernetes Authors.
 
@@ -24,15 +26,13 @@ import (
 
 	"k8s.io/klog"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	informers "k8s.io/client-go/informers/core/v1"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
-	cloudprovider "k8s.io/cloud-provider"
 	"k8s.io/kubernetes/pkg/controller/nodeipam/ipam/cidrset"
 	nodesync "k8s.io/kubernetes/pkg/controller/nodeipam/ipam/sync"
 	nodeutil "k8s.io/kubernetes/pkg/controller/util/node"
-	"k8s.io/legacy-cloud-providers/gce"
 )
 
 // Config for the IPAM controller.
@@ -63,17 +63,12 @@ type Controller struct {
 func NewController(
 	config *Config,
 	kubeClient clientset.Interface,
-	cloud cloudprovider.Interface,
+	_ interface{},
 	clusterCIDR, serviceCIDR *net.IPNet,
 	nodeCIDRMaskSize int) (*Controller, error) {
 
 	if !nodesync.IsValidMode(config.Mode) {
 		return nil, fmt.Errorf("invalid IPAM controller mode %q", config.Mode)
-	}
-
-	gceCloud, ok := cloud.(*gce.Cloud)
-	if !ok {
-		return nil, fmt.Errorf("cloud IPAM controller does not support %q provider", cloud.ProviderName())
 	}
 
 	set, err := cidrset.NewCIDRSet(clusterCIDR, nodeCIDRMaskSize)
@@ -83,7 +78,6 @@ func NewController(
 
 	c := &Controller{
 		config:  config,
-		adapter: newAdapter(kubeClient, gceCloud),
 		syncers: make(map[string]*nodesync.NodeSync),
 		set:     set,
 	}
