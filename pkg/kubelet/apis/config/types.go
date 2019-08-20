@@ -189,7 +189,7 @@ type KubeletConfiguration struct {
 	// And all Burstable and BestEffort pods are brought up under their
 	// specific top level QoS cgroup.
 	CgroupsPerQOS bool
-	// driver that the kubelet uses to manipulate cgroups on the host (cgroupfs or systemd)
+	// driver that the kubelet uses to manipulate cgroups on the host (cgroupfs, systemd, none)
 	CgroupDriver string
 	// CPUManagerPolicy is the name of the policy to use.
 	// Requires the CPUManager feature gate to be enabled.

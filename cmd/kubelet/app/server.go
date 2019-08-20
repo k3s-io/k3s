@@ -621,28 +621,31 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 	}
 
 	var cgroupRoots []string
+	if s.CgroupDriver == "none" {
+		cgroupRoots = []string{"/"}
+	} else {
+		cgroupRoots = append(cgroupRoots, cm.NodeAllocatableRoot(s.CgroupRoot, s.CgroupDriver))
+		kubeletCgroup, err := cm.GetKubeletContainer(s.KubeletCgroups)
+		if err != nil {
+			return fmt.Errorf("failed to get the kubelet's cgroup: %v", err)
+		}
+		if kubeletCgroup != "" {
+			cgroupRoots = append(cgroupRoots, kubeletCgroup)
+		}
 
-	cgroupRoots = append(cgroupRoots, cm.NodeAllocatableRoot(s.CgroupRoot, s.CgroupDriver))
-	kubeletCgroup, err := cm.GetKubeletContainer(s.KubeletCgroups)
-	if err != nil {
-		return fmt.Errorf("failed to get the kubelet's cgroup: %v", err)
-	}
-	if kubeletCgroup != "" {
-		cgroupRoots = append(cgroupRoots, kubeletCgroup)
-	}
+		runtimeCgroup, err := cm.GetRuntimeContainer(s.ContainerRuntime, s.RuntimeCgroups)
+		if err != nil {
+			return fmt.Errorf("failed to get the container runtime's cgroup: %v", err)
+		}
+		if runtimeCgroup != "" {
+			// RuntimeCgroups is optional, so ignore if it isn't specified
+			cgroupRoots = append(cgroupRoots, runtimeCgroup)
+		}
 
-	runtimeCgroup, err := cm.GetRuntimeContainer(s.ContainerRuntime, s.RuntimeCgroups)
-	if err != nil {
-		return fmt.Errorf("failed to get the container runtime's cgroup: %v", err)
-	}
-	if runtimeCgroup != "" {
-		// RuntimeCgroups is optional, so ignore if it isn't specified
-		cgroupRoots = append(cgroupRoots, runtimeCgroup)
-	}
-
-	if s.SystemCgroups != "" {
-		// SystemCgroups is optional, so ignore if it isn't specified
-		cgroupRoots = append(cgroupRoots, s.SystemCgroups)
+		if s.SystemCgroups != "" {
+			// SystemCgroups is optional, so ignore if it isn't specified
+			cgroupRoots = append(cgroupRoots, s.SystemCgroups)
+		}
 	}
 
 	if kubeDeps.CAdvisorInterface == nil {

@@ -100,8 +100,12 @@ func TestIsCgroupPod(t *testing.T) {
 		},
 	}
 	for _, cgroupDriver := range []string{"cgroupfs", "systemd"} {
+		cm, err := NewCgroupManager(nil, cgroupDriver)
+		if err != nil {
+			t.Fatal(err)
+		}
 		pcm := &podContainerManagerImpl{
-			cgroupManager:     NewCgroupManager(nil, cgroupDriver),
+			cgroupManager:     cm,
 			enforceCPULimits:  true,
 			qosContainersInfo: qosContainersInfo,
 		}

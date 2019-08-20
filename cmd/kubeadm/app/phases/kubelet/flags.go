@@ -80,6 +80,8 @@ func buildKubeletArgMap(opts kubeletFlagsOpts) map[string]string {
 		if err != nil {
 			klog.Warningf("cannot automatically assign a '--cgroup-driver' value when starting the Kubelet: %v\n", err)
 		} else {
+			// NOTE: As of Docker v19.03.0-beta5, rootless dockerd uses "cgroupfs" driver but it is substantially "none" driver.
+			// User would need to override the kubelet configuration manually.
 			kubeletFlags["cgroup-driver"] = driver
 		}
 		if opts.pauseImage != "" {

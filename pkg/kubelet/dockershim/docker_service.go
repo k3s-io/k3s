@@ -265,7 +265,8 @@ func NewDockerService(config *ClientConfig, podSandboxImage string, streamingCon
 	} else {
 		cgroupDriver = dockerInfo.CgroupDriver
 	}
-	if len(kubeCgroupDriver) != 0 && kubeCgroupDriver != cgroupDriver {
+	// NOTE: As of Docker v19.03.0-beta5, rootless dockerd uses "cgroupfs" driver but it is substantially "none" driver.
+	if len(kubeCgroupDriver) != 0 && kubeCgroupDriver != "none" && kubeCgroupDriver != cgroupDriver {
 		return nil, fmt.Errorf("misconfiguration: kubelet cgroup driver: %q is different from docker cgroup driver: %q", kubeCgroupDriver, cgroupDriver)
 	}
 	klog.Infof("Setting cgroupDriver to %s", cgroupDriver)

@@ -253,9 +253,15 @@ func NewContainerManager(mountUtil mount.Interface, cadvisorInterface cadvisor.I
 
 	// Turn CgroupRoot from a string (in cgroupfs path format) to internal CgroupName
 	cgroupRoot := ParseCgroupfsToCgroupName(nodeConfig.CgroupRoot)
-	cgroupManager := NewCgroupManager(subsystems, nodeConfig.CgroupDriver)
+	cgroupManager, err := NewCgroupManager(subsystems, nodeConfig.CgroupDriver)
+	if err != nil {
+		return nil, err
+	}
 	// Check if Cgroup-root actually exists on the node
 	if nodeConfig.CgroupsPerQOS {
+		if nodeConfig.CgroupDriver == noneDriver {
+			return nil, fmt.Errorf("invalid configuration: cgroups-per-qos is not supported for %s cgroup driver", nodeConfig.CgroupDriver)
+		}
 		// this does default to / when enabled, but this tests against regressions.
 		if nodeConfig.CgroupRoot == "" {
 			return nil, fmt.Errorf("invalid configuration: cgroups-per-qos was specified and cgroup-root was not specified. To enable the QoS cgroup hierarchy you need to specify a valid cgroup-root")
@@ -265,7 +271,7 @@ func NewContainerManager(mountUtil mount.Interface, cadvisorInterface cadvisor.I
 		// of note, we always use the cgroupfs driver when performing this check since
 		// the input is provided in that format.
 		// this is important because we do not want any name conversion to occur.
-		if !cgroupManager.Exists(cgroupRoot) {
+		if !cgroupManager.Exists(cgroupRoot) && nodeConfig.CgroupDriver != noneDriver {
 			return nil, fmt.Errorf("invalid configuration: cgroup-root %q doesn't exist", cgroupRoot)
 		}
 		klog.Infof("container manager verified user specified cgroup-root exists: %v", cgroupRoot)

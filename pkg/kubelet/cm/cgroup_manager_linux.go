@@ -45,6 +45,9 @@ const (
 	libcontainerCgroupfs libcontainerCgroupManagerType = "cgroupfs"
 	// libcontainerSystemd means use libcontainer with systemd
 	libcontainerSystemd libcontainerCgroupManagerType = "systemd"
+	// noneDriver is the name of the "NOP" driver, which is used when
+	// cgroup is not accessible
+	noneDriver = "none"
 	// systemdSuffix is the cgroup name suffix for systemd
 	systemdSuffix string = ".slice"
 )
@@ -191,7 +194,15 @@ type cgroupManagerImpl struct {
 var _ CgroupManager = &cgroupManagerImpl{}
 
 // NewCgroupManager is a factory method that returns a CgroupManager
-func NewCgroupManager(cs *CgroupSubsystems, cgroupDriver string) CgroupManager {
+func NewCgroupManager(cs *CgroupSubsystems, cgroupDriver string) (CgroupManager, error) {
+	if cgroupDriver == noneDriver {
+		if !utilfeature.DefaultFeatureGate.Enabled(kubefeatures.SupportNoneCgroupDriver) {
+			return nil, fmt.Errorf("cgroup driver %q requires SupportNoneCgroupDriver feature gate", cgroupDriver)
+		}
+		cm := &noneCgroupManager{}
+		cm.init()
+		return cm, nil
+	}
 	managerType := libcontainerCgroupfs
 	if cgroupDriver == string(libcontainerSystemd) {
 		managerType = libcontainerSystemd
@@ -199,7 +210,7 @@ func NewCgroupManager(cs *CgroupSubsystems, cgroupDriver string) CgroupManager {
 	return &cgroupManagerImpl{
 		subsystems: cs,
 		adapter:    newLibcontainerAdapter(managerType),
-	}
+	}, nil
 }
 
 // Name converts the cgroup to the driver specific value in cgroupfs form.
@@ -590,4 +601,58 @@ func (m *cgroupManagerImpl) GetResourceStats(name CgroupName) (*ResourceStats, e
 		return nil, fmt.Errorf("failed to get stats supported cgroup subsystems for cgroup %v: %v", name, err)
 	}
 	return toResourceStats(stats), nil
+}
+
+type noneCgroupManager struct {
+	names map[string]struct{}
+}
+
+func (m *noneCgroupManager) init() {
+	m.names = make(map[string]struct{})
+}
+
+func (m *noneCgroupManager) Create(c *CgroupConfig) error {
+	name := m.Name(c.Name)
+	m.names[name] = struct{}{}
+	return nil
+}
+
+func (m *noneCgroupManager) Destroy(c *CgroupConfig) error {
+	name := m.Name(c.Name)
+	delete(m.names, name)
+	return nil
+}
+
+func (m *noneCgroupManager) Update(c *CgroupConfig) error {
+	name := m.Name(c.Name)
+	m.names[name] = struct{}{}
+	return nil
+}
+
+func (m *noneCgroupManager) Exists(cgname CgroupName) bool {
+	name := m.Name(cgname)
+	_, ok := m.names[name]
+	return ok
+}
+
+func (m *noneCgroupManager) Name(cgname CgroupName) string {
+	return cgname.ToCgroupfs()
+}
+
+func (m *noneCgroupManager) CgroupName(name string) CgroupName {
+	return ParseCgroupfsToCgroupName(name)
+}
+
+func (m *noneCgroupManager) Pids(_ CgroupName) []int {
+	return nil
+}
+
+func (m *noneCgroupManager) ReduceCPULimits(cgroupName CgroupName) error {
+	return nil
+}
+
+func (m *noneCgroupManager) GetResourceStats(name CgroupName) (*ResourceStats, error) {
+	return &ResourceStats{
+		MemoryStats: &MemoryStats{},
+	}, nil
 }
