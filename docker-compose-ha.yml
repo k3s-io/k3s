@@ -9,7 +9,7 @@ services:
     - 2379:2379
 
   server:
-    image: rancher/k3s:v0.8.0
+    image: rancher/k3s:v0.8.1
     command: server --disable-agent --bootstrap write
     environment:
     - K3S_STORAGE_BACKEND=etcd3
@@ -25,7 +25,7 @@ services:
     - 6443:6443
 
   server2:
-    image: rancher/k3s:v0.8.0
+    image: rancher/k3s:v0.8.1
     command: server --disable-agent --bootstrap read
     # restart to wait for the bootstrap data prepared by the primary server
     restart: always
@@ -38,7 +38,7 @@ services:
     - 16443:6443
 
   node:
-    image: rancher/k3s:v0.8.0
+    image: rancher/k3s:v0.8.1
     tmpfs:
     - /run
     - /var/run
