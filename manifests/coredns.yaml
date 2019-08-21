@@ -55,22 +55,32 @@ data:
     .:53 {
         errors
         health
+        import /etc/coredns-user/..data/*
+        hosts /etc/coredns/NodeHosts {
+          reload 1s
+          fallthrough
+        }
         kubernetes %{CLUSTER_DOMAIN}% in-addr.arpa ip6.arpa {
           pods insecure
           upstream
           fallthrough in-addr.arpa ip6.arpa
         }
-        hosts /etc/coredns/NodeHosts {
-          reload 1s
-          fallthrough
-        }
         prometheus :9153
-        proxy . /etc/resolv.conf
+        forward . /etc/resolv.conf
         cache 30
         loop
         reload
         loadbalance
     }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coredns-user
+  namespace: kube-system
+data:
+  EmptyExample: |
+    # This is an example empty coredns configmap entry to silence warnings
 ---
 apiVersion: extensions/v1beta1
 kind: Deployment
@@ -102,7 +112,7 @@ spec:
         beta.kubernetes.io/os: linux
       containers:
       - name: coredns
-        image: coredns/coredns:1.3.0
+        image: coredns/coredns:1.6.2
         imagePullPolicy: IfNotPresent
         resources:
           limits:
@@ -114,6 +124,9 @@ spec:
         volumeMounts:
         - name: config-volume
           mountPath: /etc/coredns
+          readOnly: true
+        - name: config-volume-user
+          mountPath: /etc/coredns-user
           readOnly: true
         ports:
         - containerPort: 53
@@ -152,6 +165,9 @@ spec:
               path: Corefile
             - key: NodeHosts
               path: NodeHosts
+        - name: config-volume-user
+          configMap:
+            name: coredns-user
 ---
 apiVersion: v1
 kind: Service
