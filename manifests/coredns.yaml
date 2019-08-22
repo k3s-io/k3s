@@ -52,10 +52,11 @@ metadata:
   namespace: kube-system
 data:
   Corefile: |
+    import /etc/coredns-zones/*.corefile
     .:53 {
         errors
         health
-        import /etc/coredns-user/..data/*
+        import /etc/coredns-inline/*.corefile
         hosts /etc/coredns/NodeHosts {
           reload 1s
           fallthrough
@@ -65,6 +66,7 @@ data:
           upstream
           fallthrough in-addr.arpa ip6.arpa
         }
+        import /etc/coredns-fallthrough/*.corefile
         prometheus :9153
         forward . /etc/resolv.conf
         cache 30
@@ -76,13 +78,36 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: coredns-user
+  name: coredns-zones
   namespace: kube-system
 data:
-  EmptyExample: |
-    # This is an example empty coredns configmap entry to silence warnings
+  Example.corefile: |
+    ### this is an example server block to prevent warnings
+    # example.com {
+    #   log
+    # }
 ---
-apiVersion: extensions/v1beta1
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coredns-inline
+  namespace: kube-system
+data:
+  Example.corefile: |
+    ### this is an example inline root directive to prevent warnings
+    # log
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coredns-fallthrough
+  namespace: kube-system
+data:
+  Example.corefile: |
+    ### this is an example root fallthrough directive to prevent warnings
+    # log
+---
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: coredns
@@ -125,8 +150,14 @@ spec:
         - name: config-volume
           mountPath: /etc/coredns
           readOnly: true
-        - name: config-volume-user
-          mountPath: /etc/coredns-user
+        - name: config-volume-zones
+          mountPath: /etc/coredns-zones
+          readOnly: true
+        - name: config-volume-inline
+          mountPath: /etc/coredns-inline
+          readOnly: true
+        - name: config-volume-fallthrough
+          mountPath: /etc/coredns-fallthrough
           readOnly: true
         ports:
         - containerPort: 53
@@ -165,9 +196,15 @@ spec:
               path: Corefile
             - key: NodeHosts
               path: NodeHosts
-        - name: config-volume-user
+        - name: config-volume-zones
           configMap:
-            name: coredns-user
+            name: coredns-zones
+        - name: config-volume-inline
+          configMap:
+            name: coredns-inline
+        - name: config-volume-fallthrough
+          configMap:
+            name: coredns-fallthrough
 ---
 apiVersion: v1
 kind: Service
