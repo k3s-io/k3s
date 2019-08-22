@@ -474,7 +474,7 @@ func genClientCerts(config *config.Control, runtime *config.ControlRuntime) erro
 	factory := getSigningCertFactory(regen, nil, []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}, runtime.ClientCA, runtime.ClientCAKey)
 
 	var certGen bool
-	apiEndpoint := fmt.Sprintf("https://localhost:%d", config.ListenPort)
+	apiEndpoint := fmt.Sprintf("https://127.0.0.1:%d", config.ListenPort)
 
 	certGen, err = factory("system:admin", []string{"system:masters"}, runtime.ClientAdminCert, runtime.ClientAdminKey)
 	if err != nil {
