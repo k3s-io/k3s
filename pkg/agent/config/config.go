@@ -396,19 +396,3 @@ func getConfig(info *clientaccess.Info) (*config.Control, error) {
 	controlControl := &config.Control{}
 	return controlControl, json.Unmarshal(data, controlControl)
 }
-
-func HostnameCheck(cfg cmds.Agent) error {
-	hostname, _, err := getHostnameAndIP(cfg)
-	if err != nil {
-		return err
-	}
-	for i := 0; i < 5; i++ {
-		_, err = sysnet.LookupHost(hostname)
-		if err == nil {
-			return nil
-		}
-		logrus.Infof("Waiting for hostname %s to be resolvable: %v", hostname, err)
-		time.Sleep(time.Second * 3)
-	}
-	return fmt.Errorf("Timed out waiting for hostname %s to be resolvable: %v", hostname, err)
-}
