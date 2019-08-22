@@ -8,4 +8,5 @@ spec:
   set:
     rbac.enabled: "true"
     ssl.enabled: "true"
+    metrics.prometheus.enabled: "true"
     kubernetes.ingressEndpoint.useDefaultPublishedService: "true"
