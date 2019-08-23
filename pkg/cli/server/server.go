@@ -165,7 +165,7 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	}
 	ip := serverConfig.TLSConfig.BindAddress
 	if ip == "" {
-		ip = "localhost"
+		ip = "127.0.0.1"
 	}
 	url := fmt.Sprintf("https://%s:%d", ip, serverConfig.TLSConfig.HTTPSPort)
 	token := server.FormatToken(serverConfig.ControlConfig.Runtime.NodeToken, certs)
