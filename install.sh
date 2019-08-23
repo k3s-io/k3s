@@ -67,6 +67,7 @@ set -e
 #     if not specified.
 
 GITHUB_URL=https://github.com/rancher/k3s/releases
+DOWNLOADER=
 
 # --- helper functions for logs ---
 info()
@@ -260,11 +261,14 @@ setup_verify_arch() {
     esac
 }
 
-# --- fatal if no curl ---
-verify_curl() {
-    if [ -z `which curl || true` ]; then
-        fatal "Can not find curl for downloading files"
-    fi
+# --- verify existence of network downloader executable ---
+verify_downloader() {
+    # Return failure if it doesn't exist or is no executable
+    [ -x "$(which $1)" ] || return 1
+
+    # Set verified executable as our downloader program and return success
+    DOWNLOADER=$1
+    return 0
 }
 
 # --- create tempory directory and cleanup when done ---
@@ -288,7 +292,17 @@ get_release_version() {
         VERSION_K3S="${INSTALL_K3S_VERSION}"
     else
         info "Finding latest release"
-        VERSION_K3S=`curl -w "%{url_effective}" -I -L -s -S ${GITHUB_URL}/latest -o /dev/null | sed -e 's|.*/||'`
+        case $DOWNLOADER in
+            curl)
+                VERSION_K3S=$(curl -w '%{url_effective}' -I -L -s -S ${GITHUB_URL}/latest -o /dev/null | sed -e 's|.*/||')
+                ;;
+            wget)
+                VERSION_K3S=$(wget -SqO /dev/null ${GITHUB_URL}/latest 2>&1 | grep Location | sed -e 's|.*/||')
+                ;;
+            *)
+                fatal "Incorrect downloader executable '$DOWNLOADER'"
+                ;;
+        esac
     fi
     info "Using ${VERSION_K3S} as release"
 }
@@ -297,7 +311,19 @@ get_release_version() {
 download_hash() {
     HASH_URL=${GITHUB_URL}/download/${VERSION_K3S}/sha256sum-${ARCH}.txt
     info "Downloading hash ${HASH_URL}"
-    curl -o ${TMP_HASH} -sfL ${HASH_URL} || fatal "Hash download failed"
+    case $DOWNLOADER in
+        curl)
+            curl -o ${TMP_HASH} -sfL ${HASH_URL}
+            ;;
+        wget)
+            wget -qO ${TMP_HASH} ${HASH_URL}
+            ;;
+        *)
+            fatal "Incorrect executable '$DOWNLOADER'"
+            ;;
+    esac
+    # Abort if download command failed
+    [ $? -eq 0 ] || fatal 'Hash download failed'
     HASH_EXPECTED=`grep " k3s${SUFFIX}$" ${TMP_HASH} | awk '{print $1}'`
 }
 
@@ -316,7 +342,19 @@ installed_hash_matches() {
 download_binary() {
     BIN_URL=${GITHUB_URL}/download/${VERSION_K3S}/k3s${SUFFIX}
     info "Downloading binary ${BIN_URL}"
-    curl -o ${TMP_BIN} -sfL ${BIN_URL} || fatal "Binary download failed"
+    case $DOWNLOADER in
+        curl)
+            curl -o ${TMP_BIN} -sfL ${BIN_URL}
+            ;;
+        wget)
+            wget -qO ${TMP_BIN} ${BIN_URL}
+            ;;
+        *)
+            fatal "Incorrect executable '$DOWNLOADER'"
+            ;;
+    esac
+    # Abort if download command failed
+    [ $? -eq 0 ] || fatal 'Binary download failed'
 }
 
 # --- verify downloaded binary hash ---
@@ -355,7 +393,7 @@ download_and_verify() {
     fi
 
     setup_verify_arch
-    verify_curl
+    verify_downloader curl || verify_downloader wget || fatal 'Can not find curl or wget for downloading files'
     setup_tmp
     get_release_version
     download_hash
