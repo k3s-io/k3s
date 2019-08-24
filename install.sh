@@ -75,7 +75,7 @@ info()
 }
 fatal()
 {
-    echo '[ERROR] ' "$@" 2>&1
+    echo '[ERROR] ' "$@" >&2
     exit 1
 }
 
