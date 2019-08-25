@@ -337,11 +337,15 @@ setup_binary() {
 
     if command -v getenforce > /dev/null 2>&1; then
         if [ "Disabled" != `getenforce` ]; then
-            info "SeLinux is enabled, setting permissions"
-            if ! $SUDO semanage fcontext -l | grep "${BIN_DIR}/k3s" > /dev/null 2>&1; then
-                $SUDO semanage fcontext -a -t bin_t "${BIN_DIR}/k3s"
+            if command -v semanage > /dev/null 2>&1; then
+                info "SELinux is enabled, setting permissions"
+                if ! $SUDO semanage fcontext -l | grep "${BIN_DIR}/k3s" > /dev/null 2>&1; then
+                    $SUDO semanage fcontext -a -t bin_t "${BIN_DIR}/k3s"
+                fi
+                $SUDO restorecon -v ${BIN_DIR}/k3s > /dev/null
+            else
+                error 'SELinux is enabled but semanage is not found'
             fi
-            $SUDO restorecon -v ${BIN_DIR}/k3s > /dev/null
         fi
     fi
 }
