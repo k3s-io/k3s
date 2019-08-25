@@ -18,7 +18,7 @@ const (
 )
 
 // fetchBootstrapData copies the bootstrap data (certs, keys, passwords)
-// from etcd to inidividual files specified by cfg.Runtime.
+// from etcd to individual files specified by cfg.Runtime.
 func fetchBootstrapData(ctx context.Context, cfg *config.Control, c client.Client) error {
 	logrus.Info("Fetching bootstrap data from etcd")
 	gr, err := c.Get(ctx, k3sRuntimeEtcdPath)
@@ -43,12 +43,6 @@ func fetchBootstrapData(ctx context.Context, cfg *config.Control, c client.Clien
 		path, ok := paths[pathKey]
 		if !ok {
 			continue
-		}
-
-		if !cfg.BootstrapOverwriteLocal {
-			if _, err := os.Stat(path); err == nil {
-				continue
-			}
 		}
 
 		if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {

@@ -22,6 +22,7 @@ type Server struct {
 	ExtraSchedulerArgs  cli.StringSlice
 	ExtraControllerArgs cli.StringSlice
 	Rootless            bool
+	StoreBootstrap      bool
 	StorageEndpoint     string
 	StorageCAFile       string
 	StorageCertFile     string
@@ -141,6 +142,12 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Name:        "rootless",
 				Usage:       "(experimental) Run rootless",
 				Destination: &ServerConfig.Rootless,
+			},
+			cli.BoolFlag{
+				Name:        "bootstrap-save",
+				Usage:       "(experimental) Save bootstrap information in the storage endpoint",
+				Hidden:      true,
+				Destination: &ServerConfig.StoreBootstrap,
 			},
 			cli.StringFlag{
 				Name:        "storage-endpoint",
