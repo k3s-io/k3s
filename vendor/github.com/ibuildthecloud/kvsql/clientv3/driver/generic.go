@@ -16,7 +16,7 @@ import (
 
 type Generic struct {
 	// revision must be first to ensure that this is properly aligned for atomic.LoadInt64
-	revision int64
+	revision        int64
 
 	db *sql.DB
 
@@ -64,7 +64,7 @@ func (g *Generic) Start(ctx context.Context, db *sql.DB) error {
 
 				err = g.cleanup(ctx)
 				if err != nil {
-					logrus.Errorf("Failed to cleanup duplicate entries: %v", err)
+					logrus.Errorf("Failed to cleanup duplicate entries")
 				}
 			}
 		}
@@ -209,12 +209,14 @@ func (g *Generic) Update(ctx context.Context, key string, value []byte, revision
 func (g *Generic) ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
 	trace := utiltrace.New(fmt.Sprintf("SQL DB ExecContext query: %s keys: %v", query, args))
 	defer trace.LogIfLong(500 * time.Millisecond)
+
 	return g.db.ExecContext(ctx, query, args...)
 }
 
 func (g *Generic) QueryContext(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error) {
 	trace := utiltrace.New(fmt.Sprintf("SQL DB QueryContext query: %s keys: %v", query, args))
 	defer trace.LogIfLong(500 * time.Millisecond)
+
 	return g.db.QueryContext(ctx, query, args...)
 }
 
