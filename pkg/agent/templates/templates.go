@@ -17,7 +17,7 @@ const ContainerdConfigTemplate = `
 path = "{{ .NodeConfig.Containerd.Opt }}"
 
 [plugins.cri]
-stream_server_address = "{{ .NodeConfig.AgentConfig.NodeName }}"
+stream_server_address = "127.0.0.1"
 stream_server_port = "10010"
 
 {{- if .IsRunningInUserNS }}
