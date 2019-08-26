@@ -193,7 +193,7 @@ func printTokens(certs, advertiseIP string, tlsConfig *dynamiclistener.UserConfi
 	)
 
 	if advertiseIP == "" {
-		advertiseIP = "localhost"
+		advertiseIP = "127.0.0.1"
 	}
 
 	if len(config.Runtime.NodeToken) > 0 {
@@ -213,7 +213,7 @@ func writeKubeConfig(certs string, tlsConfig *dynamiclistener.UserConfig, config
 	clientToken := FormatToken(config.ControlConfig.Runtime.ClientToken, certs)
 	ip := tlsConfig.BindAddress
 	if ip == "" {
-		ip = "localhost"
+		ip = "127.0.0.1"
 	}
 	url := fmt.Sprintf("https://%s:%d", ip, tlsConfig.HTTPSPort)
 	kubeConfig, err := HomeKubeConfig(true, config.Rootless)
