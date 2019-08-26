@@ -167,7 +167,7 @@ setup_env() {
 
     # --- use sudo if we are not already root ---
     SUDO=sudo
-    if [ $(id -u) = 0 ]; then
+    if [ $(id -u) -eq 0 ]; then
         SUDO=
     fi
 
@@ -401,7 +401,7 @@ create_killall() {
     $SUDO tee ${BIN_DIR}/${KILLALL_K3S_SH} >/dev/null << \EOF
 #!/bin/sh
 set -x
-[ $(id -u) = 0 ] || exec sudo $0 $@
+[ $(id -u) -eq 0 ] || exec sudo $0 $@
 
 for bin in /var/lib/rancher/k3s/data/**/bin/; do
     [ -d $bin ] && export PATH=$bin:$PATH
@@ -457,7 +457,7 @@ create_uninstall() {
     $SUDO tee ${BIN_DIR}/${UNINSTALL_K3S_SH} >/dev/null << EOF
 #!/bin/sh
 set -x
-[ \$(id -u) = 0 ] || exec sudo \$0 \$@
+[ \$(id -u) -eq 0 ] || exec sudo \$0 \$@
 
 ${BIN_DIR}/${KILLALL_K3S_SH}
 
