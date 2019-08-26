@@ -23,6 +23,7 @@ import (
 	"errors"
 	goflag "flag"
 	"fmt"
+	"k8s.io/apiserver/pkg/server"
 	"math/rand"
 	"os"
 	"path"
@@ -85,12 +86,14 @@ func commandFor(basename string, defaultCommand *cobra.Command, commands []func(
 func NewHyperKubeCommand() (*cobra.Command, []func() *cobra.Command) {
 	// these have to be functions since the command is polymorphic. Cobra wants you to be top level
 	// command to get executed
-	apiserver := func() *cobra.Command { return kubeapiserver.NewAPIServerCommand() }
+	stopCh := server.SetupSignalHandler()
+
+	apiserver := func() *cobra.Command { return kubeapiserver.NewAPIServerCommand(stopCh) }
 	controller := func() *cobra.Command { return kubecontrollermanager.NewControllerManagerCommand() }
 	proxy := func() *cobra.Command { return kubeproxy.NewProxyCommand() }
 	scheduler := func() *cobra.Command { return kubescheduler.NewSchedulerCommand() }
 	kubectlCmd := func() *cobra.Command { return kubectl.NewDefaultKubectlCommand() }
-	kubelet := func() *cobra.Command { return kubelet.NewKubeletCommand() }
+	kubelet := func() *cobra.Command { return kubelet.NewKubeletCommand(stopCh) }
 
 	commandFns := []func() *cobra.Command{
 		apiserver,
