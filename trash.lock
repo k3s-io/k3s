@@ -146,8 +146,7 @@ import:
 - package: github.com/hashicorp/golang-lru
   version: v0.5.0
 - package: github.com/ibuildthecloud/kvsql
-  version: 9f00ccc82235f0433c736306d091abd2939b7449
-  repo: https://github.com/erikwilson/rancher-kvsql.git
+  version: 0e798b1475327aadf3b8da5d2d1f99bb93dfd667
 - package: github.com/imdario/mergo
   version: v0.3.5
 - package: github.com/inconshreveable/mousetrap
@@ -175,7 +174,7 @@ import:
 - package: github.com/mattn/go-shellwords
   version: v1.0.3-20-gf8471b0a71ded0
 - package: github.com/mattn/go-sqlite3
-  version: v1.9.0
+  version: v1.10.0
 - package: github.com/matttproud/golang_protobuf_extensions
   version: v1.0.0
 - package: github.com/miekg/dns
@@ -231,6 +230,9 @@ import:
   repo: https://github.com/erikwilson/rancher-dynamiclistener.git
 - package: github.com/rancher/helm-controller
   version: v0.2.2
+- package: github.com/rancher/kine
+  version: c308515dee837fd00d480e482f763d76e7572df5
+  repo: https://github.com/ibuildthecloud/kine.git
 - package: github.com/rancher/remotedialer
   version: 7c71ffa8f5d7a181704d92bb8a33b0c7d07dccaa
   repo: https://github.com/erikwilson/rancher-remotedialer.git
@@ -251,7 +253,7 @@ import:
 - package: github.com/sigma/go-inotify
   version: c87b6cf5033d2c6486046f045eeebdc3d910fd38
 - package: github.com/sirupsen/logrus
-  version: v1.0.3
+  version: v1.4.1
 - package: github.com/spf13/cobra
   version: v0.0.1-34-gc439c4fa093711
 - package: github.com/spf13/pflag
@@ -278,8 +280,6 @@ import:
   version: 1d523034197ff1f222f6429836dd36a2457a1874
 - package: go.etcd.io/bbolt
   version: v1.3.1-etcd.8
-- package: go.etcd.io/etcd
-  version: v3.3.11
 - package: golang.org/x/crypto
   version: a49355c7e3f8fe157a85be2f77e6e269a0f89602
 - package: golang.org/x/net
