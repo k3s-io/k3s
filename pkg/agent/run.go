@@ -25,10 +25,6 @@ import (
 func run(ctx context.Context, cfg cmds.Agent, lb *loadbalancer.LoadBalancer) error {
 	nodeConfig := config.Get(ctx, cfg)
 
-	if err := config.HostnameCheck(cfg); err != nil {
-		return err
-	}
-
 	if !nodeConfig.NoFlannel {
 		if err := flannel.Prepare(ctx, nodeConfig); err != nil {
 			return err

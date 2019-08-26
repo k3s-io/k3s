@@ -8,6 +8,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/rancher/kine/pkg/endpoint"
+
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 )
 
@@ -80,12 +82,8 @@ type Control struct {
 	KubeConfigMode        string
 	DataDir               string
 	Skips                 []string
-	BootstrapType         string
-	StorageBackend        string
-	StorageEndpoint       string
-	StorageCAFile         string
-	StorageCertFile       string
-	StorageKeyFile        string
+	BootstrapReadOnly     bool
+	Storage               endpoint.Config
 	NoScheduler           bool
 	ExtraAPIArgs          []string
 	ExtraControllerArgs   []string
@@ -95,15 +93,25 @@ type Control struct {
 	Runtime *ControlRuntime `json:"-"`
 }
 
+type ControlRuntimeBootstrap struct {
+	ServerCA           string
+	ServerCAKey        string
+	ClientCA           string
+	ClientCAKey        string
+	ServiceKey         string
+	PasswdFile         string
+	RequestHeaderCA    string
+	RequestHeaderCAKey string
+	ClientKubeletKey   string
+	ClientKubeProxyKey string
+	ServingKubeletKey  string
+}
+
 type ControlRuntime struct {
+	ControlRuntimeBootstrap
+
 	ClientKubeAPICert string
 	ClientKubeAPIKey  string
-	ClientCA          string
-	ClientCAKey       string
-	ServerCA          string
-	ServerCAKey       string
-	ServiceKey        string
-	PasswdFile        string
 	NodePasswdFile    string
 
 	KubeConfigAdmin      string
@@ -119,8 +127,6 @@ type ControlRuntime struct {
 	Tunnel             http.Handler
 	Authenticator      authenticator.Request
 
-	RequestHeaderCA     string
-	RequestHeaderCAKey  string
 	ClientAuthProxyCert string
 	ClientAuthProxyKey  string
 
@@ -131,10 +137,6 @@ type ControlRuntime struct {
 	ClientSchedulerCert  string
 	ClientSchedulerKey   string
 	ClientKubeProxyCert  string
-	ClientKubeProxyKey   string
-
-	ServingKubeletKey string
-	ClientKubeletKey  string
 }
 
 type ArgString []string
