@@ -182,7 +182,7 @@ func apiServer(ctx context.Context, cfg *config.Control, runtime *config.Control
 	argsMap["requestheader-group-headers"] = "X-Remote-Group"
 	argsMap["requestheader-username-headers"] = "X-Remote-User"
 	argsMap["client-ca-file"] = runtime.ClientCA
-	argsMap["enable-admission-plugins"] = "NodeRestriction"
+	argsMap["anonymous-auth"] = "false"
 
 	args := config.GetArgsList(argsMap, cfg.ExtraAPIArgs)
 
