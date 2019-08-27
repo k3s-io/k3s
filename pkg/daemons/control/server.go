@@ -215,7 +215,11 @@ func defaults(config *config.Control) {
 	}
 
 	if config.ListenPort == 0 {
-		config.ListenPort = 6444
+		if config.HTTPSPort != 0 {
+			config.ListenPort = config.HTTPSPort + 1
+		} else {
+			config.ListenPort = 6444
+		}
 	}
 
 	if config.DataDir == "" {
