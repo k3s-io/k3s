@@ -21,11 +21,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rancher/kine/pkg/client"
-	"github.com/rancher/kine/pkg/endpoint"
-
 	certutil "github.com/rancher/dynamiclistener/cert"
 	"github.com/rancher/k3s/pkg/daemons/config"
+	"github.com/rancher/kine/pkg/client"
+	"github.com/rancher/kine/pkg/endpoint"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 	"k8s.io/kubernetes/cmd/kube-apiserver/app"
@@ -35,9 +34,6 @@ import (
 	"k8s.io/kubernetes/pkg/kubeapiserver/authorizer/modes"
 	"k8s.io/kubernetes/pkg/master"
 	"k8s.io/kubernetes/pkg/proxy/util"
-	_ "k8s.io/kubernetes/pkg/util/reflector/prometheus" // for reflector metric registration
-	_ "k8s.io/kubernetes/pkg/util/workqueue/prometheus" // for workqueue metric registration
-	_ "k8s.io/kubernetes/pkg/version/prometheus"        // for version metric registration
 )
 
 var (
