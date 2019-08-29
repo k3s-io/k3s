@@ -344,7 +344,7 @@ setup_binary() {
                 fi
                 $SUDO restorecon -v ${BIN_DIR}/k3s > /dev/null
             else
-                error 'SELinux is enabled but semanage is not found'
+                fatal 'SELinux is enabled but semanage is not found'
             fi
         fi
     fi
