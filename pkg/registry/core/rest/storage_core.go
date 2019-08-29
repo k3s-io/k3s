@@ -263,6 +263,9 @@ func (s componentStatusStorage) serversToValidate() map[string]*componentstatus.
 			klog.Errorf("Failed to parse etcd url for validation: %v", err)
 			continue
 		}
+		if etcdUrl.Scheme == "unix" {
+			continue
+		}
 		var port int
 		var addr string
 		if strings.Contains(etcdUrl.Host, ":") {
