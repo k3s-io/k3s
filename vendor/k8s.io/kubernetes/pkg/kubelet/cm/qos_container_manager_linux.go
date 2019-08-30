@@ -26,12 +26,13 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/wait"
 
-	"github.com/docker/go-units"
+	units "github.com/docker/go-units"
 	cgroupfs "github.com/opencontainers/runc/libcontainer/cgroups/fs"
-	rsystem "github.com/opencontainers/runc/libcontainer/system"
-	v1 "k8s.io/api/core/v1"
+	"k8s.io/api/core/v1"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/kubernetes/pkg/api/v1/resource"
 	v1qos "k8s.io/kubernetes/pkg/apis/core/v1/helper/qos"
+	kubefeatures "k8s.io/kubernetes/pkg/features"
 )
 
 const (
@@ -81,9 +82,7 @@ func (m *qosContainerManagerImpl) Start(getNodeAllocatable func() v1.ResourceLis
 	cm := m.cgroupManager
 	rootContainer := m.cgroupRoot
 	if !cm.Exists(rootContainer) {
-		if !rsystem.RunningInUserNS() {
-			return fmt.Errorf("root container %v doesn't exist", rootContainer)
-		}
+		return fmt.Errorf("root container %v doesn't exist", rootContainer)
 	}
 
 	// Top level for Qos containers are created only for Burstable
@@ -119,11 +118,7 @@ func (m *qosContainerManagerImpl) Start(getNodeAllocatable func() v1.ResourceLis
 		} else {
 			// to ensure we actually have the right state, we update the config on startup
 			if err := cm.Update(containerConfig); err != nil {
-				if rsystem.RunningInUserNS() {
-					klog.Errorf("failed to update top level %v QOS cgroup : %v", qosClass, err)
-				} else {
-					return fmt.Errorf("failed to update top level %v QOS cgroup : %v", qosClass, err)
-				}
+				return fmt.Errorf("failed to update top level %v QOS cgroup : %v", qosClass, err)
 			}
 		}
 	}
@@ -297,23 +292,46 @@ func (m *qosContainerManagerImpl) UpdateCgroups() error {
 		return err
 	}
 
-	updateSuccess := true
-	for _, config := range qosConfigs {
-		err := m.cgroupManager.Update(config)
-		if err != nil {
-			if rsystem.RunningInUserNS() {
-				// if we are in userns, cgroups might not available
+	if utilfeature.DefaultFeatureGate.Enabled(kubefeatures.QOSReserved) {
+		for resource, percentReserve := range m.qosReserved {
+			switch resource {
+			case v1.ResourceMemory:
+				m.setMemoryReserve(qosConfigs, percentReserve)
+			}
+		}
+
+		updateSuccess := true
+		for _, config := range qosConfigs {
+			err := m.cgroupManager.Update(config)
+			if err != nil {
 				updateSuccess = false
-			} else {
-				klog.Errorf("[ContainerManager]: Failed to update QoS cgroup configuration")
-				return err
+			}
+		}
+		if updateSuccess {
+			klog.V(4).Infof("[ContainerManager]: Updated QoS cgroup configuration")
+			return nil
+		}
+
+		// If the resource can adjust the ResourceConfig to increase likelihood of
+		// success, call the adjustment function here.  Otherwise, the Update() will
+		// be called again with the same values.
+		for resource, percentReserve := range m.qosReserved {
+			switch resource {
+			case v1.ResourceMemory:
+				m.retrySetMemoryReserve(qosConfigs, percentReserve)
 			}
 		}
 	}
 
-	if updateSuccess {
-		klog.V(4).Infof("[ContainerManager]: Updated QoS cgroup configuration")
+	for _, config := range qosConfigs {
+		err := m.cgroupManager.Update(config)
+		if err != nil {
+			klog.Errorf("[ContainerManager]: Failed to update QoS cgroup configuration")
+			return err
+		}
 	}
+
+	klog.V(4).Infof("[ContainerManager]: Updated QoS cgroup configuration")
 	return nil
 }
 

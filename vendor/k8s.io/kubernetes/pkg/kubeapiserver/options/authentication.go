@@ -17,6 +17,7 @@ limitations under the License.
 package options
 
 import (
+	"errors"
 	"fmt"
 	"net/url"
 	"strings"
@@ -25,15 +26,23 @@ import (
 	"github.com/spf13/pflag"
 	"k8s.io/klog"
 
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	genericoptions "k8s.io/apiserver/pkg/server/options"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	cliflag "k8s.io/component-base/cli/flag"
+	"k8s.io/kubernetes/pkg/features"
 	kubeauthenticator "k8s.io/kubernetes/pkg/kubeapiserver/authenticator"
+	authzmodes "k8s.io/kubernetes/pkg/kubeapiserver/authorizer/modes"
 )
 
 type BuiltInAuthenticationOptions struct {
 	APIAudiences    []string
+	Anonymous       *AnonymousAuthenticationOptions
+	BootstrapToken  *BootstrapTokenAuthenticationOptions
 	ClientCert      *genericoptions.ClientCertAuthenticationOptions
+	OIDC            *OIDCAuthenticationOptions
 	PasswordFile    *PasswordFileAuthenticationOptions
 	RequestHeader   *genericoptions.RequestHeaderAuthenticationOptions
 	ServiceAccounts *ServiceAccountAuthenticationOptions
@@ -42,6 +51,26 @@ type BuiltInAuthenticationOptions struct {
 
 	TokenSuccessCacheTTL time.Duration
 	TokenFailureCacheTTL time.Duration
+}
+
+type AnonymousAuthenticationOptions struct {
+	Allow bool
+}
+
+type BootstrapTokenAuthenticationOptions struct {
+	Enable bool
+}
+
+type OIDCAuthenticationOptions struct {
+	CAFile         string
+	ClientID       string
+	IssuerURL      string
+	UsernameClaim  string
+	UsernamePrefix string
+	GroupsClaim    string
+	GroupsPrefix   string
+	SigningAlgs    []string
+	RequiredClaims map[string]string
 }
 
 type PasswordFileAuthenticationOptions struct {
@@ -73,7 +102,10 @@ func NewBuiltInAuthenticationOptions() *BuiltInAuthenticationOptions {
 
 func (s *BuiltInAuthenticationOptions) WithAll() *BuiltInAuthenticationOptions {
 	return s.
+		WithAnonymous().
+		WithBootstrapToken().
 		WithClientCert().
+		WithOIDC().
 		WithPasswordFile().
 		WithRequestHeader().
 		WithServiceAccounts().
@@ -81,8 +113,23 @@ func (s *BuiltInAuthenticationOptions) WithAll() *BuiltInAuthenticationOptions {
 		WithWebHook()
 }
 
+func (s *BuiltInAuthenticationOptions) WithAnonymous() *BuiltInAuthenticationOptions {
+	s.Anonymous = &AnonymousAuthenticationOptions{Allow: true}
+	return s
+}
+
+func (s *BuiltInAuthenticationOptions) WithBootstrapToken() *BuiltInAuthenticationOptions {
+	s.BootstrapToken = &BootstrapTokenAuthenticationOptions{}
+	return s
+}
+
 func (s *BuiltInAuthenticationOptions) WithClientCert() *BuiltInAuthenticationOptions {
 	s.ClientCert = &genericoptions.ClientCertAuthenticationOptions{}
+	return s
+}
+
+func (s *BuiltInAuthenticationOptions) WithOIDC() *BuiltInAuthenticationOptions {
+	s.OIDC = &OIDCAuthenticationOptions{}
 	return s
 }
 
@@ -117,9 +164,25 @@ func (s *BuiltInAuthenticationOptions) WithWebHook() *BuiltInAuthenticationOptio
 func (s *BuiltInAuthenticationOptions) Validate() []error {
 	allErrors := []error{}
 
+	if s.OIDC != nil && (len(s.OIDC.IssuerURL) > 0) != (len(s.OIDC.ClientID) > 0) {
+		allErrors = append(allErrors, fmt.Errorf("oidc-issuer-url and oidc-client-id should be specified together"))
+	}
+
 	if s.ServiceAccounts != nil && len(s.ServiceAccounts.Issuer) > 0 && strings.Contains(s.ServiceAccounts.Issuer, ":") {
 		if _, err := url.Parse(s.ServiceAccounts.Issuer); err != nil {
 			allErrors = append(allErrors, fmt.Errorf("service-account-issuer contained a ':' but was not a valid URL: %v", err))
+		}
+	}
+	if s.ServiceAccounts != nil && utilfeature.DefaultFeatureGate.Enabled(features.BoundServiceAccountTokenVolume) {
+		if !utilfeature.DefaultFeatureGate.Enabled(features.TokenRequest) || !utilfeature.DefaultFeatureGate.Enabled(features.TokenRequestProjection) {
+			allErrors = append(allErrors, errors.New("If the BoundServiceAccountTokenVolume feature is enabled,"+
+				" the TokenRequest and TokenRequestProjection features must also be enabled"))
+		}
+		if len(s.ServiceAccounts.Issuer) == 0 {
+			allErrors = append(allErrors, errors.New("service-account-issuer is a required flag when BoundServiceAccountTokenVolume is enabled"))
+		}
+		if len(s.ServiceAccounts.KeyFiles) == 0 {
+			allErrors = append(allErrors, errors.New("service-account-key-file is a required flag when BoundServiceAccountTokenVolume is enabled"))
 		}
 	}
 
@@ -133,8 +196,63 @@ func (s *BuiltInAuthenticationOptions) AddFlags(fs *pflag.FlagSet) {
 		"--service-account-issuer flag is configured and this flag is not, this field "+
 		"defaults to a single element list containing the issuer URL .")
 
+	if s.Anonymous != nil {
+		fs.BoolVar(&s.Anonymous.Allow, "anonymous-auth", s.Anonymous.Allow, ""+
+			"Enables anonymous requests to the secure port of the API server. "+
+			"Requests that are not rejected by another authentication method are treated as anonymous requests. "+
+			"Anonymous requests have a username of system:anonymous, and a group name of system:unauthenticated.")
+	}
+
+	if s.BootstrapToken != nil {
+		fs.BoolVar(&s.BootstrapToken.Enable, "enable-bootstrap-token-auth", s.BootstrapToken.Enable, ""+
+			"Enable to allow secrets of type 'bootstrap.kubernetes.io/token' in the 'kube-system' "+
+			"namespace to be used for TLS bootstrapping authentication.")
+	}
+
 	if s.ClientCert != nil {
 		s.ClientCert.AddFlags(fs)
+	}
+
+	if s.OIDC != nil {
+		fs.StringVar(&s.OIDC.IssuerURL, "oidc-issuer-url", s.OIDC.IssuerURL, ""+
+			"The URL of the OpenID issuer, only HTTPS scheme will be accepted. "+
+			"If set, it will be used to verify the OIDC JSON Web Token (JWT).")
+
+		fs.StringVar(&s.OIDC.ClientID, "oidc-client-id", s.OIDC.ClientID,
+			"The client ID for the OpenID Connect client, must be set if oidc-issuer-url is set.")
+
+		fs.StringVar(&s.OIDC.CAFile, "oidc-ca-file", s.OIDC.CAFile, ""+
+			"If set, the OpenID server's certificate will be verified by one of the authorities "+
+			"in the oidc-ca-file, otherwise the host's root CA set will be used.")
+
+		fs.StringVar(&s.OIDC.UsernameClaim, "oidc-username-claim", "sub", ""+
+			"The OpenID claim to use as the user name. Note that claims other than the default ('sub') "+
+			"is not guaranteed to be unique and immutable. This flag is experimental, please see "+
+			"the authentication documentation for further details.")
+
+		fs.StringVar(&s.OIDC.UsernamePrefix, "oidc-username-prefix", "", ""+
+			"If provided, all usernames will be prefixed with this value. If not provided, "+
+			"username claims other than 'email' are prefixed by the issuer URL to avoid "+
+			"clashes. To skip any prefixing, provide the value '-'.")
+
+		fs.StringVar(&s.OIDC.GroupsClaim, "oidc-groups-claim", "", ""+
+			"If provided, the name of a custom OpenID Connect claim for specifying user groups. "+
+			"The claim value is expected to be a string or array of strings. This flag is experimental, "+
+			"please see the authentication documentation for further details.")
+
+		fs.StringVar(&s.OIDC.GroupsPrefix, "oidc-groups-prefix", "", ""+
+			"If provided, all groups will be prefixed with this value to prevent conflicts with "+
+			"other authentication strategies.")
+
+		fs.StringSliceVar(&s.OIDC.SigningAlgs, "oidc-signing-algs", []string{"RS256"}, ""+
+			"Comma-separated list of allowed JOSE asymmetric signing algorithms. JWTs with a "+
+			"'alg' header value not in this list will be rejected. "+
+			"Values are defined by RFC 7518 https://tools.ietf.org/html/rfc7518#section-3.1.")
+
+		fs.Var(cliflag.NewMapStringStringNoSplit(&s.OIDC.RequiredClaims), "oidc-required-claim", ""+
+			"A key=value pair that describes a required claim in the ID Token. "+
+			"If set, the claim is verified to be present in the ID Token with a matching value. "+
+			"Repeat this flag to specify multiple claims.")
 	}
 
 	if s.PasswordFile != nil {
@@ -195,8 +313,28 @@ func (s *BuiltInAuthenticationOptions) ToAuthenticationConfig() kubeauthenticato
 		TokenFailureCacheTTL: s.TokenFailureCacheTTL,
 	}
 
+	if s.Anonymous != nil {
+		ret.Anonymous = s.Anonymous.Allow
+	}
+
+	if s.BootstrapToken != nil {
+		ret.BootstrapToken = s.BootstrapToken.Enable
+	}
+
 	if s.ClientCert != nil {
 		ret.ClientCAFile = s.ClientCert.ClientCA
+	}
+
+	if s.OIDC != nil {
+		ret.OIDCCAFile = s.OIDC.CAFile
+		ret.OIDCClientID = s.OIDC.ClientID
+		ret.OIDCGroupsClaim = s.OIDC.GroupsClaim
+		ret.OIDCGroupsPrefix = s.OIDC.GroupsPrefix
+		ret.OIDCIssuerURL = s.OIDC.IssuerURL
+		ret.OIDCUsernameClaim = s.OIDC.UsernameClaim
+		ret.OIDCUsernamePrefix = s.OIDC.UsernamePrefix
+		ret.OIDCSigningAlgs = s.OIDC.SigningAlgs
+		ret.OIDCRequiredClaims = s.OIDC.RequiredClaims
 	}
 
 	if s.PasswordFile != nil {
@@ -267,7 +405,14 @@ func (o *BuiltInAuthenticationOptions) ApplyTo(c *genericapiserver.Config) error
 
 // ApplyAuthorization will conditionally modify the authentication options based on the authorization options
 func (o *BuiltInAuthenticationOptions) ApplyAuthorization(authorization *BuiltInAuthorizationOptions) {
-	if o == nil || authorization == nil {
+	if o == nil || authorization == nil || o.Anonymous == nil {
 		return
+	}
+
+	// authorization ModeAlwaysAllow cannot be combined with AnonymousAuth.
+	// in such a case the AnonymousAuth is stomped to false and you get a message
+	if o.Anonymous.Allow && sets.NewString(authorization.Modes...).Has(authzmodes.ModeAlwaysAllow) {
+		klog.Warningf("AnonymousAuth is not allowed with the AlwaysAllow authorizer. Resetting AnonymousAuth to false. You should use a different authorizer")
+		o.Anonymous.Allow = false
 	}
 }

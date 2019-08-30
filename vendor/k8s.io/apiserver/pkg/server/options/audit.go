@@ -27,6 +27,7 @@ import (
 	"gopkg.in/natefinch/lumberjack.v2"
 	"k8s.io/klog"
 
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	auditinternal "k8s.io/apiserver/pkg/apis/audit"
 	auditv1 "k8s.io/apiserver/pkg/apis/audit/v1"
@@ -34,12 +35,18 @@ import (
 	auditv1beta1 "k8s.io/apiserver/pkg/apis/audit/v1beta1"
 	"k8s.io/apiserver/pkg/audit"
 	"k8s.io/apiserver/pkg/audit/policy"
+	"k8s.io/apiserver/pkg/features"
 	"k8s.io/apiserver/pkg/server"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	pluginbuffered "k8s.io/apiserver/plugin/pkg/audit/buffered"
+	plugindynamic "k8s.io/apiserver/plugin/pkg/audit/dynamic"
+	pluginenforced "k8s.io/apiserver/plugin/pkg/audit/dynamic/enforced"
 	pluginlog "k8s.io/apiserver/plugin/pkg/audit/log"
 	plugintruncate "k8s.io/apiserver/plugin/pkg/audit/truncate"
 	pluginwebhook "k8s.io/apiserver/plugin/pkg/audit/webhook"
 	"k8s.io/client-go/informers"
+	"k8s.io/client-go/kubernetes"
+	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
 	restclient "k8s.io/client-go/rest"
 )
 
@@ -71,6 +78,7 @@ type AuditOptions struct {
 	// Plugin options
 	LogOptions     AuditLogOptions
 	WebhookOptions AuditWebhookOptions
+	DynamicOptions AuditDynamicOptions
 }
 
 const (
@@ -140,6 +148,16 @@ type AuditWebhookOptions struct {
 	GroupVersionString string
 }
 
+// AuditDynamicOptions control the configuration of dynamic backends for audit events
+type AuditDynamicOptions struct {
+	// Enabled tells whether the dynamic audit capability is enabled.
+	Enabled bool
+
+	// Configuration for batching backend. This is currently only used as an override
+	// for integration tests
+	BatchConfig *pluginbuffered.BatchConfig
+}
+
 func NewAuditOptions() *AuditOptions {
 	return &AuditOptions{
 		WebhookOptions: AuditWebhookOptions{
@@ -159,6 +177,10 @@ func NewAuditOptions() *AuditOptions {
 			},
 			TruncateOptions:    NewAuditTruncateOptions(),
 			GroupVersionString: "audit.k8s.io/v1",
+		},
+		DynamicOptions: AuditDynamicOptions{
+			Enabled:     false,
+			BatchConfig: plugindynamic.NewDefaultWebhookBatchConfig(),
 		},
 	}
 }
@@ -182,6 +204,7 @@ func (o *AuditOptions) Validate() []error {
 	var allErrors []error
 	allErrors = append(allErrors, o.LogOptions.Validate()...)
 	allErrors = append(allErrors, o.WebhookOptions.Validate()...)
+	allErrors = append(allErrors, o.DynamicOptions.Validate()...)
 
 	return allErrors
 }
@@ -261,6 +284,7 @@ func (o *AuditOptions) AddFlags(fs *pflag.FlagSet) {
 	o.WebhookOptions.AddFlags(fs)
 	o.WebhookOptions.BatchOptions.AddFlags(pluginwebhook.PluginName, fs)
 	o.WebhookOptions.TruncateOptions.AddFlags(pluginwebhook.PluginName, fs)
+	o.DynamicOptions.AddFlags(fs)
 }
 
 func (o *AuditOptions) ApplyTo(
@@ -313,7 +337,23 @@ func (o *AuditOptions) ApplyTo(
 
 	// 4. Apply dynamic options.
 	var dynamicBackend audit.Backend
-	if webhookBackend != nil {
+	if o.DynamicOptions.enabled() {
+		// if dynamic is enabled the webhook and log backends need to be wrapped in an enforced backend with the static policy
+		if webhookBackend != nil {
+			webhookBackend = pluginenforced.NewBackend(webhookBackend, checker)
+		}
+		if logBackend != nil {
+			logBackend = pluginenforced.NewBackend(logBackend, checker)
+		}
+		// build dynamic backend
+		dynamicBackend, checker, err = o.DynamicOptions.newBackend(c.ExternalAddress, kubeClientConfig, informers, processInfo, webhookOptions)
+		if err != nil {
+			return err
+		}
+		// union dynamic and webhook backends so that truncate options can be applied to both
+		dynamicBackend = appendBackend(webhookBackend, dynamicBackend)
+		dynamicBackend = o.WebhookOptions.TruncateOptions.wrapBackend(dynamicBackend, groupVersion)
+	} else if webhookBackend != nil {
 		// if only webhook is enabled wrap it in the truncate options
 		dynamicBackend = o.WebhookOptions.TruncateOptions.wrapBackend(webhookBackend, groupVersion)
 	}
@@ -558,6 +598,66 @@ func (o *AuditWebhookOptions) newUntruncatedBackend() (audit.Backend, error) {
 	}
 	webhook = o.BatchOptions.wrapBackend(webhook)
 	return webhook, nil
+}
+
+func (o *AuditDynamicOptions) AddFlags(fs *pflag.FlagSet) {
+	fs.BoolVar(&o.Enabled, "audit-dynamic-configuration", o.Enabled,
+		"Enables dynamic audit configuration. This feature also requires the DynamicAuditing feature flag")
+}
+
+func (o *AuditDynamicOptions) enabled() bool {
+	return o.Enabled && utilfeature.DefaultFeatureGate.Enabled(features.DynamicAuditing)
+}
+
+func (o *AuditDynamicOptions) Validate() []error {
+	var allErrors []error
+	if o.Enabled && !utilfeature.DefaultFeatureGate.Enabled(features.DynamicAuditing) {
+		allErrors = append(allErrors, fmt.Errorf("--audit-dynamic-configuration set, but DynamicAuditing feature gate is not enabled"))
+	}
+	return allErrors
+}
+
+func (o *AuditDynamicOptions) newBackend(
+	hostname string,
+	kubeClientConfig *restclient.Config,
+	informers informers.SharedInformerFactory,
+	processInfo *ProcessInfo,
+	webhookOptions *WebhookOptions,
+) (audit.Backend, policy.Checker, error) {
+	if err := validateProcessInfo(processInfo); err != nil {
+		return nil, nil, err
+	}
+	clientset, err := kubernetes.NewForConfig(kubeClientConfig)
+	if err != nil {
+		return nil, nil, err
+	}
+	if webhookOptions == nil {
+		webhookOptions = NewWebhookOptions()
+	}
+	checker := policy.NewDynamicChecker()
+	informer := informers.Auditregistration().V1alpha1().AuditSinks()
+	eventSink := &v1core.EventSinkImpl{Interface: clientset.CoreV1().Events(processInfo.Namespace)}
+
+	dc := &plugindynamic.Config{
+		Informer:       informer,
+		BufferedConfig: o.BatchConfig,
+		EventConfig: plugindynamic.EventConfig{
+			Sink: eventSink,
+			Source: corev1.EventSource{
+				Component: processInfo.Name,
+				Host:      hostname,
+			},
+		},
+		WebhookConfig: plugindynamic.WebhookConfig{
+			AuthInfoResolverWrapper: webhookOptions.AuthInfoResolverWrapper,
+			ServiceResolver:         webhookOptions.ServiceResolver,
+		},
+	}
+	backend, err := plugindynamic.NewBackend(dc)
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not create dynamic audit backend: %v", err)
+	}
+	return backend, checker, nil
 }
 
 // defaultWebhookBatchConfig returns the default BatchConfig used by the Webhook backend.

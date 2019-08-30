@@ -23,6 +23,7 @@ import (
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
+	"k8s.io/kubernetes/pkg/kubectl/cmd/util/openapi"
 	"k8s.io/kubernetes/pkg/kubectl/validation"
 )
 
@@ -60,4 +61,6 @@ type Factory interface {
 
 	// Returns a schema that can validate objects stored on disk.
 	Validator(validate bool) (validation.Schema, error)
+	// OpenAPISchema returns the schema openapi schema definition
+	OpenAPISchema() (openapi.Resources, error)
 }

@@ -41,6 +41,7 @@ import (
 	"github.com/containerd/containerd/runtime/v1/linux/proc"
 	"github.com/containerd/containerd/runtime/v1/shim"
 	shimapi "github.com/containerd/containerd/runtime/v1/shim/v1"
+	"github.com/containerd/containerd/sys/reaper"
 	"github.com/containerd/ttrpc"
 	"github.com/containerd/typeurl"
 	ptypes "github.com/gogo/protobuf/types"
@@ -190,7 +191,9 @@ func serve(ctx context.Context, server *ttrpc.Server, path string) error {
 		err error
 	)
 	if path == "" {
-		l, err = net.FileListener(os.NewFile(3, "socket"))
+		f := os.NewFile(3, "socket")
+		l, err = net.FileListener(f)
+		f.Close()
 		path = "[inherited from parent]"
 	} else {
 		if len(path) > 106 {
@@ -225,7 +228,7 @@ func handleSignals(logger *logrus.Entry, signals chan os.Signal, server *ttrpc.S
 		case s := <-signals:
 			switch s {
 			case unix.SIGCHLD:
-				if err := shim.Reap(); err != nil {
+				if err := reaper.Reap(); err != nil {
 					logger.WithError(err).Error("reap exit status")
 				}
 			case unix.SIGTERM, unix.SIGINT:
@@ -279,11 +282,11 @@ func (l *remoteEventsPublisher) Publish(ctx context.Context, topic string, event
 	}
 	cmd := exec.CommandContext(ctx, containerdBinaryFlag, "--address", l.address, "publish", "--topic", topic, "--namespace", ns)
 	cmd.Stdin = bytes.NewReader(data)
-	c, err := shim.Default.Start(cmd)
+	c, err := reaper.Default.Start(cmd)
 	if err != nil {
 		return err
 	}
-	status, err := shim.Default.Wait(cmd, c)
+	status, err := reaper.Default.Wait(cmd, c)
 	if err != nil {
 		return err
 	}

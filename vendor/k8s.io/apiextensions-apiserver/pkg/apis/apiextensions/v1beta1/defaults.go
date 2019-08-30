@@ -20,13 +20,11 @@ import (
 	"strings"
 
 	"k8s.io/apimachinery/pkg/runtime"
+	utilpointer "k8s.io/utils/pointer"
 )
 
 func addDefaultingFuncs(scheme *runtime.Scheme) error {
-	scheme.AddTypeDefaultingFunc(&CustomResourceDefinition{}, func(obj interface{}) { SetDefaults_CustomResourceDefinition(obj.(*CustomResourceDefinition)) })
-	// TODO figure out why I can't seem to get my defaulter generated
-	// return RegisterDefaults(scheme)
-	return nil
+	return RegisterDefaults(scheme)
 }
 
 func SetDefaults_CustomResourceDefinition(obj *CustomResourceDefinition) {
@@ -70,5 +68,15 @@ func SetDefaults_CustomResourceDefinitionSpec(obj *CustomResourceDefinitionSpec)
 	}
 	if obj.Conversion.Strategy == WebhookConverter && len(obj.Conversion.ConversionReviewVersions) == 0 {
 		obj.Conversion.ConversionReviewVersions = []string{SchemeGroupVersion.Version}
+	}
+	if obj.PreserveUnknownFields == nil {
+		obj.PreserveUnknownFields = utilpointer.BoolPtr(true)
+	}
+}
+
+// SetDefaults_ServiceReference sets defaults for Webhook's ServiceReference
+func SetDefaults_ServiceReference(obj *ServiceReference) {
+	if obj.Port == nil {
+		obj.Port = utilpointer.Int32Ptr(443)
 	}
 }

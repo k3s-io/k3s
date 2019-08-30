@@ -23,16 +23,19 @@ import (
 	"net"
 	"net/http"
 	goruntime "runtime"
+	"sort"
 	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
 
 	jsonpatch "github.com/evanphx/json-patch"
+	"github.com/go-openapi/spec"
 	"github.com/pborman/uuid"
 	"k8s.io/klog"
 
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/util/sets"
 	utilwaitgroup "k8s.io/apimachinery/pkg/util/waitgroup"
@@ -49,16 +52,20 @@ import (
 	authorizerunion "k8s.io/apiserver/pkg/authorization/union"
 	"k8s.io/apiserver/pkg/endpoints/discovery"
 	genericapifilters "k8s.io/apiserver/pkg/endpoints/filters"
+	apiopenapi "k8s.io/apiserver/pkg/endpoints/openapi"
 	apirequest "k8s.io/apiserver/pkg/endpoints/request"
+	"k8s.io/apiserver/pkg/features"
 	genericregistry "k8s.io/apiserver/pkg/registry/generic"
 	genericfilters "k8s.io/apiserver/pkg/server/filters"
 	"k8s.io/apiserver/pkg/server/healthz"
 	"k8s.io/apiserver/pkg/server/routes"
 	serverstore "k8s.io/apiserver/pkg/server/storage"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/client-go/informers"
 	restclient "k8s.io/client-go/rest"
 	certutil "k8s.io/client-go/util/cert"
 	"k8s.io/component-base/logs"
+	openapicommon "k8s.io/kube-openapi/pkg/common"
 
 	// install apis
 	_ "k8s.io/apiserver/pkg/apis/apiserver/install"
@@ -137,6 +144,8 @@ type Config struct {
 	// Serializer is required and provides the interface for serializing and converting objects to and from the wire
 	// The default (api.Codecs) usually works fine.
 	Serializer runtime.NegotiatedSerializer
+	// OpenAPIConfig will be used in generating OpenAPI spec. This is nil by default. Use DefaultOpenAPIConfig for "working" defaults.
+	OpenAPIConfig *openapicommon.Config
 
 	// RESTOptionsGetter is used to construct RESTStorage types via the generic registry.
 	RESTOptionsGetter genericregistry.RESTOptionsGetter
@@ -163,6 +172,10 @@ type Config struct {
 	// Predicate which is true for paths of long-running http requests
 	LongRunningFunc apirequest.LongRunningRequestCheck
 
+	// EnableAPIResponseCompression indicates whether API Responses should support compression
+	// if the client requests it via Accept-Encoding
+	EnableAPIResponseCompression bool
+
 	// MergedResourceConfig indicates which groupVersion enabled and its resources enabled/disabled.
 	// This is composed of genericapiserver defaultAPIResourceConfig and those parsed from flags.
 	// If not specify any in flags, then genericapiserver will only enable defaultAPIResourceConfig.
@@ -176,6 +189,10 @@ type Config struct {
 	// kube-proxy, services, etc.) can reach the GenericAPIServer.
 	// If nil or 0.0.0.0, the host's default interface will be used.
 	PublicAddress net.IP
+
+	// EquivalentResourceRegistry provides information about resources equivalent to a given resource,
+	// and the kind associated with a given resource. As resources are installed, they are registered here.
+	EquivalentResourceRegistry runtime.EquivalentResourceRegistry
 }
 
 type RecommendedConfig struct {
@@ -271,7 +288,8 @@ func NewConfig(codecs serializer.CodecFactory) *Config {
 		// proto when persisted in etcd. Assuming the upper bound of
 		// the size ratio is 10:1, we set 100MB as the largest request
 		// body size to be accepted and decoded in a write request.
-		MaxRequestBodyBytes: int64(100 * 1024 * 1024),
+		MaxRequestBodyBytes:          int64(100 * 1024 * 1024),
+		EnableAPIResponseCompression: utilfeature.DefaultFeatureGate.Enabled(features.APIResponseCompression),
 
 		// Default to treating watch as a long-running operation
 		// Generic API servers have no inherent long-running subresources
@@ -283,6 +301,26 @@ func NewConfig(codecs serializer.CodecFactory) *Config {
 func NewRecommendedConfig(codecs serializer.CodecFactory) *RecommendedConfig {
 	return &RecommendedConfig{
 		Config: *NewConfig(codecs),
+	}
+}
+
+func DefaultOpenAPIConfig(getDefinitions openapicommon.GetOpenAPIDefinitions, defNamer *apiopenapi.DefinitionNamer) *openapicommon.Config {
+	return &openapicommon.Config{
+		ProtocolList:   []string{"https"},
+		IgnorePrefixes: []string{},
+		Info: &spec.Info{
+			InfoProps: spec.InfoProps{
+				Title: "Generic API Server",
+			},
+		},
+		DefaultResponse: &spec.Response{
+			ResponseProps: spec.ResponseProps{
+				Description: "Default Response.",
+			},
+		},
+		GetOperationIDAndTags: apiopenapi.GetOperationIDAndTags,
+		GetDefinitionName:     defNamer.GetDefinitionName,
+		GetDefinitions:        getDefinitions,
 	}
 }
 
@@ -340,6 +378,42 @@ func (c *Config) Complete(informers informers.SharedInformerFactory) CompletedCo
 		c.ExternalAddress = net.JoinHostPort(c.ExternalAddress, strconv.Itoa(port))
 	}
 
+	if c.OpenAPIConfig != nil {
+		if c.OpenAPIConfig.SecurityDefinitions != nil {
+			// Setup OpenAPI security: all APIs will have the same authentication for now.
+			c.OpenAPIConfig.DefaultSecurity = []map[string][]string{}
+			keys := []string{}
+			for k := range *c.OpenAPIConfig.SecurityDefinitions {
+				keys = append(keys, k)
+			}
+			sort.Strings(keys)
+			for _, k := range keys {
+				c.OpenAPIConfig.DefaultSecurity = append(c.OpenAPIConfig.DefaultSecurity, map[string][]string{k: {}})
+			}
+			if c.OpenAPIConfig.CommonResponses == nil {
+				c.OpenAPIConfig.CommonResponses = map[int]spec.Response{}
+			}
+			if _, exists := c.OpenAPIConfig.CommonResponses[http.StatusUnauthorized]; !exists {
+				c.OpenAPIConfig.CommonResponses[http.StatusUnauthorized] = spec.Response{
+					ResponseProps: spec.ResponseProps{
+						Description: "Unauthorized",
+					},
+				}
+			}
+		}
+
+		// make sure we populate info, and info.version, if not manually set
+		if c.OpenAPIConfig.Info == nil {
+			c.OpenAPIConfig.Info = &spec.Info{}
+		}
+		if c.OpenAPIConfig.Info.Version == "" {
+			if c.Version != nil {
+				c.OpenAPIConfig.Info.Version = strings.Split(c.Version.String(), "-")[0]
+			} else {
+				c.OpenAPIConfig.Info.Version = "unversioned"
+			}
+		}
+	}
 	if c.DiscoveryAddresses == nil {
 		c.DiscoveryAddresses = discovery.DefaultAddresses{DefaultAddress: c.ExternalAddress}
 	}
@@ -348,6 +422,21 @@ func (c *Config) Complete(informers informers.SharedInformerFactory) CompletedCo
 
 	if c.RequestInfoResolver == nil {
 		c.RequestInfoResolver = NewRequestInfoResolver(c)
+	}
+
+	if c.EquivalentResourceRegistry == nil {
+		if c.RESTOptionsGetter == nil {
+			c.EquivalentResourceRegistry = runtime.NewEquivalentResourceRegistry()
+		} else {
+			c.EquivalentResourceRegistry = runtime.NewEquivalentResourceRegistryWithIdentity(func(groupResource schema.GroupResource) string {
+				// use the storage prefix as the key if possible
+				if opts, err := c.RESTOptionsGetter.GetRESTOptions(groupResource); err == nil {
+					return opts.ResourcePrefix
+				}
+				// otherwise return "" to use the default key (parent GV name)
+				return ""
+			})
+		}
 	}
 
 	return CompletedConfig{&completedConfig{c, informers}}
@@ -369,6 +458,9 @@ func (c completedConfig) New(name string, delegationTarget DelegationTarget) (*G
 	if c.LoopbackClientConfig == nil {
 		return nil, fmt.Errorf("Genericapiserver.New() called with config.LoopbackClientConfig == nil")
 	}
+	if c.EquivalentResourceRegistry == nil {
+		return nil, fmt.Errorf("Genericapiserver.New() called with config.EquivalentResourceRegistry == nil")
+	}
 
 	handlerChainBuilder := func(handler http.Handler) http.Handler {
 		return c.BuildHandlerChainFunc(handler, c.Config)
@@ -376,15 +468,16 @@ func (c completedConfig) New(name string, delegationTarget DelegationTarget) (*G
 	apiServerHandler := NewAPIServerHandler(name, c.Serializer, handlerChainBuilder, delegationTarget.UnprotectedHandler())
 
 	s := &GenericAPIServer{
-		discoveryAddresses:     c.DiscoveryAddresses,
-		LoopbackClientConfig:   c.LoopbackClientConfig,
-		legacyAPIGroupPrefixes: c.LegacyAPIGroupPrefixes,
-		admissionControl:       c.AdmissionControl,
-		Serializer:             c.Serializer,
-		AuditBackend:           c.AuditBackend,
-		Authorizer:             c.Authorization.Authorizer,
-		delegationTarget:       delegationTarget,
-		HandlerChainWaitGroup:  c.HandlerChainWaitGroup,
+		discoveryAddresses:         c.DiscoveryAddresses,
+		LoopbackClientConfig:       c.LoopbackClientConfig,
+		legacyAPIGroupPrefixes:     c.LegacyAPIGroupPrefixes,
+		admissionControl:           c.AdmissionControl,
+		Serializer:                 c.Serializer,
+		AuditBackend:               c.AuditBackend,
+		Authorizer:                 c.Authorization.Authorizer,
+		delegationTarget:           delegationTarget,
+		EquivalentResourceRegistry: c.EquivalentResourceRegistry,
+		HandlerChainWaitGroup:      c.HandlerChainWaitGroup,
 
 		minRequestTimeout: time.Duration(c.MinRequestTimeout) * time.Second,
 		ShutdownTimeout:   c.RequestTimeout,
@@ -396,6 +489,8 @@ func (c completedConfig) New(name string, delegationTarget DelegationTarget) (*G
 
 		listedPathProvider: apiServerHandler,
 
+		openAPIConfig: c.OpenAPIConfig,
+
 		postStartHooks:         map[string]postStartHookEntry{},
 		preShutdownHooks:       map[string]preShutdownHookEntry{},
 		disabledPostStartHooks: c.DisabledPostStartHooks,
@@ -403,7 +498,9 @@ func (c completedConfig) New(name string, delegationTarget DelegationTarget) (*G
 		healthzChecks: c.HealthzChecks,
 
 		DiscoveryGroupManager: discovery.NewRootAPIsHandler(c.DiscoveryAddresses, c.Serializer),
-		maxRequestBodyBytes:   c.MaxRequestBodyBytes,
+
+		enableAPIResponseCompression: c.EnableAPIResponseCompression,
+		maxRequestBodyBytes:          c.MaxRequestBodyBytes,
 	}
 
 	for {
@@ -546,9 +643,18 @@ func (s *SecureServingInfo) HostPort() (string, int, error) {
 }
 
 // AuthorizeClientBearerToken wraps the authenticator and authorizer in loopback authentication logic
-// if the loopback client config is specified AND it has a bearer token.
+// if the loopback client config is specified AND it has a bearer token. Note that if either authn or
+// authz is nil, this function won't add a token authenticator or authorizer.
 func AuthorizeClientBearerToken(loopback *restclient.Config, authn *AuthenticationInfo, authz *AuthorizationInfo) {
-	if loopback == nil || authn == nil || authz == nil || authn.Authenticator == nil && authz.Authorizer == nil || len(loopback.BearerToken) == 0 {
+	if loopback == nil || len(loopback.BearerToken) == 0 {
+		return
+	}
+	if authn == nil || authz == nil {
+		// prevent nil pointer panic
+	}
+	if authn.Authenticator == nil || authz.Authorizer == nil {
+		// authenticator or authorizer might be nil if we want to bypass authz/authn
+		// and we also do nothing in this case.
 		return
 	}
 

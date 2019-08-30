@@ -1,31 +1,41 @@
 package: package=github.com/rancher/k3s
 import:
+- package: cloud.google.com/go
+  version: v0.34.0
 - package: github.com/Azure/go-ansiterm
-  version: d6e3b3328b783f23731bc4d058875b0371ff8109
+  version: d6e3b3328b78
 - package: github.com/BurntSushi/toml
   version: a368813c5e648fee92e5f6c30e3944ff9d5e8895
+- package: github.com/GoogleCloudPlatform/k8s-cloud-provider
+  version: f8e995905100
 - package: github.com/JeffAshton/win_pdh
-  version: 76bb4ee9f0ab50f77826f2a2ee7fb9d3880d6ec2
+  version: 76bb4ee9f0ab
 - package: github.com/MakeNowJust/heredoc
-  version: bb23615498cded5e105af4ce27de75b089cbe851
+  version: bb23615498cd
 - package: github.com/Microsoft/go-winio
   version: v0.4.12
 - package: github.com/Microsoft/hcsshim
   version: v0.8.6
+- package: github.com/NYTimes/gziphandler
+  version: 56545f4a5d46
+- package: github.com/PuerkitoBio/purell
+  version: v1.1.0
+- package: github.com/PuerkitoBio/urlesc
+  version: de5bf2ad4578
 - package: github.com/alexflint/go-filemutex
   version: 72bdc8eae2aef913234599b837f5dda445ca9bd9
 - package: github.com/armon/circbuf
-  version: bbbad097214e2918d8543d5201d12bfd7bca254d
+  version: bbbad097214e
+- package: github.com/asaskevich/govalidator
+  version: f9ffefc3facf
 - package: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
 - package: github.com/blang/semver
   version: v3.1.0
 - package: github.com/chai2010/gettext-go
-  version: c6fed771bfd517099caf0f7a961671fa8ed08723
-- package: github.com/checkpoint-restore/go-criu
-  version: v3.11
+  version: c6fed771bfd5
 - package: github.com/cloudflare/cfssl
-  version: 1.3.2-21-g56268a613adfed
+  version: 56268a613adf
 - package: github.com/container-storage-interface/spec
   version: v1.1.0
 - package: github.com/containerd/cgroups
@@ -33,12 +43,12 @@ import:
 - package: github.com/containerd/console
   version: c12b1e7919c14469339a5d38f2f8ed9b64a9de23
 - package: github.com/containerd/containerd
-  version: v1.2.7-k3s1
-  repo: https://github.com/rancher/containerd
+  version: v1.2.8-k3s.1
+  repo: https://github.com/rancher/containerd.git
 - package: github.com/containerd/continuity
   version: bd77b46c8352f74eb12c85bdc01f4b90f69d66b4
 - package: github.com/containerd/cri
-  version: v1.2.7-k3s1
+  version: v1.2.8-k3s.1
   repo: https://github.com/rancher/cri.git
 - package: github.com/containerd/fifo
   version: 3d5202aec260678c48179c56f40e6f38a095738c
@@ -56,24 +66,26 @@ import:
   version: v0.7.5-k3s1
   repo: https://github.com/rancher/plugins.git
 - package: github.com/coreos/etcd
-  version: v3.3.10
+  version: v3.3.13
 - package: github.com/coreos/flannel
   version: 823afe66b2266bf71f5bec24e6e28b26d70cfc7c
   repo: https://github.com/ibuildthecloud/flannel.git
 - package: github.com/coreos/go-iptables
   version: 47f22b0dd3355c0ba570ba12b0b8a36bf214c04b
+- package: github.com/coreos/go-oidc
+  version: 065b426bd416
 - package: github.com/coreos/go-semver
-  version: v0.3.0
+  version: e214231b295a
 - package: github.com/coreos/go-systemd
   version: v14
 - package: github.com/coreos/pkg
-  version: v4
+  version: 97fdf19511ea
 - package: github.com/cyphar/filepath-securejoin
-  version: v0.2.1-1-gae69057f2299fb
+  version: ae69057f2299
 - package: github.com/davecgh/go-spew
   version: v1.1.0
 - package: github.com/daviddengcn/go-colortext
-  version: 511bcaf42ccd42c38aba7427b6673277bf19e2a1
+  version: 511bcaf42ccd
 - package: github.com/docker/distribution
   version: 0d3efadf0154c2b8a4e7b6621fff9809655cc580
 - package: github.com/docker/docker
@@ -85,9 +97,9 @@ import:
 - package: github.com/docker/go-metrics
   version: 4ea375f7759c82740c893fc030bc37088d2ec098
 - package: github.com/docker/go-units
-  version: v0.3.1-11-g9e638d38cf6977
+  version: v0.3.3
 - package: github.com/docker/libnetwork
-  version: v0.8.0-dev.2-1265-ga9cd636e378982
+  version: a9cd636e3789
 - package: github.com/docker/spdystream
   version: 449fdfce4d962303d702fec724ef0ad181c92528
 - package: github.com/emicklei/go-restful
@@ -95,17 +107,39 @@ import:
 - package: github.com/euank/go-kmsg-parser
   version: v2.0.0
 - package: github.com/evanphx/json-patch
-  version: v4.2.0
+  version: 5858425f7550
 - package: github.com/exponent-io/jsonpath
-  version: d6023ce2651d8eafb5c75bb0c7167536102ec9f5
+  version: d6023ce2651d
 - package: github.com/fatih/camelcase
-  version: f6a740d52f961c60348ebb109adde9f4635d7540
+  version: f6a740d52f96
 - package: github.com/fsnotify/fsnotify
-  version: v1.3.1-1-gf12c6236fe7b5c
+  version: v1.4.7
 - package: github.com/ghodss/yaml
   version: v1.0.0
+- package: github.com/globalsign/mgo
+  version: eeefdecb41b8
 - package: github.com/go-bindata/go-bindata
   version: v3.1.2
+- package: github.com/go-openapi/analysis
+  version: v0.17.2
+- package: github.com/go-openapi/errors
+  version: v0.17.2
+- package: github.com/go-openapi/jsonpointer
+  version: v0.19.0
+- package: github.com/go-openapi/jsonreference
+  version: v0.19.0
+- package: github.com/go-openapi/loads
+  version: v0.17.2
+- package: github.com/go-openapi/runtime
+  version: v0.17.2
+- package: github.com/go-openapi/spec
+  version: v0.17.2
+- package: github.com/go-openapi/strfmt
+  version: v0.17.0
+- package: github.com/go-openapi/swag
+  version: v0.17.2
+- package: github.com/go-openapi/validate
+  version: v0.18.0
 - package: github.com/go-sql-driver/mysql
   version: v1.4.1
 - package: github.com/godbus/dbus
@@ -115,28 +149,33 @@ import:
 - package: github.com/gogo/protobuf
   version: v1.0.0
 - package: github.com/golang/groupcache
-  version: 02826c3e79038b59d737d3b1c0a1d937f71a4433
+  version: 02826c3e7903
 - package: github.com/golang/protobuf
   version: v1.1.0
 - package: github.com/google/btree
-  version: 7d79101e329e5a3adf994758c578dab82b90c017
+  version: 7d79101e329e
 - package: github.com/google/cadvisor
-  version: v0.33.1-k3s.1
-  repo: https://github.com/ibuildthecloud/cadvisor.git
+  version: v0.34.0
 - package: github.com/google/certificate-transparency-go
   version: v1.0.21
+- package: github.com/google/go-cmp
+  version: v0.1.0
 - package: github.com/google/gofuzz
   version: 44d81051d367757e1c7c6a5a86423ece9afcf63c
 - package: github.com/google/tcpproxy
   version: dfa16c61dad2b18a385dfb351adf71566720535b
+- package: github.com/google/uuid
+  version: v1.0.0
 - package: github.com/googleapis/gnostic
-  version: 0c5108395e2debce0d731cf0287ddf7242066aba
+  version: 0c5108395e2d
+- package: github.com/gorilla/context
+  version: v1.1.1
 - package: github.com/gorilla/mux
   version: v1.6.2
 - package: github.com/gorilla/websocket
   version: v1.2.0
 - package: github.com/gregjones/httpcache
-  version: 787624de3eb7bd915c329cba748687a3b22666a6
+  version: 787624de3eb7
 - package: github.com/grpc-ecosystem/go-grpc-prometheus
   version: v1.1
 - package: github.com/hashicorp/errwrap
@@ -145,46 +184,52 @@ import:
   version: ed905158d87462226a13fe39ddf685ea65f1c11f
 - package: github.com/hashicorp/golang-lru
   version: v0.5.0
-- package: github.com/ibuildthecloud/kvsql
-  version: 0e798b1475327aadf3b8da5d2d1f99bb93dfd667
 - package: github.com/imdario/mergo
   version: v0.3.5
 - package: github.com/inconshreveable/mousetrap
-  version: v1.0
+  version: v1.0.0
 - package: github.com/j-keck/arping
   version: 2cf9dc699c5640a7e2c81403a44127bf28033600
 - package: github.com/jonboulle/clockwork
-  version: 72f9bd7c4e0c2a40055ab3d0f09654f730cce982
+  version: 72f9bd7c4e0c
 - package: github.com/json-iterator/go
   version: 1.1.5
 - package: github.com/karrick/godirwalk
   version: v1.7.5
+- package: github.com/konsorten/go-windows-terminal-sequences
+  version: v1.0.1
+- package: github.com/kr/fs
+  version: 2788f0dbd169
 - package: github.com/kubernetes-sigs/cri-tools
-  version: v1.14.0-k3s1
+  version: v1.15.0-k3s.2
   repo: https://github.com/rancher/cri-tools.git
 - package: github.com/lib/pq
   version: v1.1.1
 - package: github.com/liggitt/tabwriter
-  version: 89fcab3d43de07060e4fd4c1547430ed57e87f24
+  version: 89fcab3d43de
 - package: github.com/lithammer/dedent
   version: v1.1.0
+- package: github.com/mailru/easyjson
+  version: 60711f1a8329
 - package: github.com/matryer/moq
   version: ee5226d43009
   repo: https://github.com/rancher/moq.git
 - package: github.com/mattn/go-shellwords
-  version: v1.0.3-20-gf8471b0a71ded0
+  version: f8471b0a71de
 - package: github.com/mattn/go-sqlite3
   version: v1.10.0
 - package: github.com/matttproud/golang_protobuf_extensions
   version: v1.0.0
 - package: github.com/miekg/dns
-  version: 5d001d020961ae1c184f9f8152fdc73810481677
+  version: 5d001d020961
 - package: github.com/mindprince/gonvml
-  version: fee913ce8fb235edf54739d259ca0ecc226c7b8a
+  version: fee913ce8fb2
 - package: github.com/mistifyio/go-zfs
-  version: v2.1.1-5-g1b4ae6fb4e77b0
+  version: 166add352731e515512690329794ee593f1aaff2
 - package: github.com/mitchellh/go-wordwrap
-  version: ad45545899c7b13c020ea92b2072220eefad42b8
+  version: ad45545899c7
+- package: github.com/mitchellh/mapstructure
+  version: v1.1.2
 - package: github.com/modern-go/concurrent
   version: 1.0.3
 - package: github.com/modern-go/reflect2
@@ -192,11 +237,11 @@ import:
 - package: github.com/morikuni/aec
   version: 39771216ff4c63d11f5e604076f9c45e8be1067b
 - package: github.com/mrunalp/fileutils
-  version: 4ee1cc9a80582a0c75febdd5cfa779ee4361cbca
+  version: 4ee1cc9a8058
 - package: github.com/munnerz/goautoneg
-  version: a547fc61f48d567d5b4ec6f8aee5573d8efce11d
+  version: a547fc61f48d
 - package: github.com/mxk/go-flowrate
-  version: cca7078d478f8520f85629ad7c68962d31ed7682
+  version: cca7078d478f
 - package: github.com/natefinch/lumberjack
   version: aee4629129445bbdfb69aa565537dcfa16544311
 - package: github.com/opencontainers/go-digest
@@ -204,7 +249,7 @@ import:
 - package: github.com/opencontainers/image-spec
   version: v1.0.1
 - package: github.com/opencontainers/runc
-  version: v1.0.0-rc8
+  version: f000fe11ece1
 - package: github.com/opencontainers/runtime-spec
   version: 5684b8af48c1ac3b1451fa499724e30e3c20a294
 - package: github.com/opencontainers/runtime-tools
@@ -212,50 +257,55 @@ import:
 - package: github.com/opencontainers/selinux
   version: v1.2.2
 - package: github.com/pborman/uuid
-  version: ca53cad383cad2479bbba7f7a1a05797ec1386e4
+  version: c65b2f87fee37d1c7854c9164a450713c28d50cd
 - package: github.com/peterbourgon/diskv
   version: v2.0.1
 - package: github.com/pkg/errors
   version: v0.8.0
+- package: github.com/pkg/sftp
+  version: 4d0e916071f6
+- package: github.com/pquerna/cachecontrol
+  version: 0dec1b30a021
 - package: github.com/prometheus/client_golang
   version: v0.9.2
 - package: github.com/prometheus/client_model
-  version: model-0.0.2-12-gfa8ad6fec33561
+  version: 5c3871d89910
 - package: github.com/prometheus/common
-  version: v0.2.0
+  version: 4724e9255275
 - package: github.com/prometheus/procfs
-  version: 65c1f6f8f0fc1e2185eb9863a3bc751496404259
+  version: 1dc9a6cbc91a
 - package: github.com/rancher/dynamiclistener
   version: c08b499d17195fbc2c1764b21c322951811629a5
   repo: https://github.com/erikwilson/rancher-dynamiclistener.git
 - package: github.com/rancher/helm-controller
   version: v0.2.2
 - package: github.com/rancher/kine
-  version: c308515dee837fd00d480e482f763d76e7572df5
+  version: v0.1.0
   repo: https://github.com/ibuildthecloud/kine.git
 - package: github.com/rancher/remotedialer
-  version: 7c71ffa8f5d7a181704d92bb8a33b0c7d07dccaa
-  repo: https://github.com/erikwilson/rancher-remotedialer.git
+  version: v0.2.0
 - package: github.com/rancher/wrangler
   version: 7737c167e16514a38229bc64c839cee8cd14e6d3
 - package: github.com/rancher/wrangler-api
   version: v0.1.4
 - package: github.com/robfig/cron
-  version: v1.0.0-53-gdf38d32658d878
+  version: df38d32658d8
 - package: github.com/rootless-containers/rootlesskit
-  version: v0.4.1
+  version: v0.6.0
 - package: github.com/russross/blackfriday
-  version: v1.4-2-g300106c228d52c
+  version: 300106c228d5
 - package: github.com/seccomp/libseccomp-golang
   version: 32f571b70023028bd57d9288c20efbcb237f3ce0
 - package: github.com/shurcooL/sanitized_anchor_name
-  version: 10ef21a441db47d8b13ebcc5fd2310f636973c77
+  version: 10ef21a441db
 - package: github.com/sigma/go-inotify
-  version: c87b6cf5033d2c6486046f045eeebdc3d910fd38
+  version: c87b6cf5033d
 - package: github.com/sirupsen/logrus
   version: v1.4.1
+- package: github.com/spf13/afero
+  version: b28a7effac97
 - package: github.com/spf13/cobra
-  version: v0.0.1-34-gc439c4fa093711
+  version: c439c4fa0937
 - package: github.com/spf13/pflag
   version: v1.0.1
 - package: github.com/syndtr/gocapability
@@ -264,14 +314,12 @@ import:
   version: v2.2.6
 - package: github.com/theckman/go-flock
   version: v0.7.1
-- package: github.com/ugorji/go
-  version: bdcc60b419d136a85cdf2e7cbcac34b3f1cd6e57
 - package: github.com/urfave/cli
   version: 8e01ec4cd3e2d84ab2fe90d8210528ffbb06d8ff
 - package: github.com/vishvananda/netlink
-  version: b2de5d10e38ecce8607e6b438b6d174f389a004e
+  version: b2de5d10e38e
 - package: github.com/vishvananda/netns
-  version: be1fbeda19366dea804f00efff2dd73a1642fdcc
+  version: be1fbeda1936
 - package: github.com/xeipuuv/gojsonpointer
   version: 4e3ac2762d5f479393488629ee9370b50873b3a6
 - package: github.com/xeipuuv/gojsonreference
@@ -296,33 +344,49 @@ import:
 - package: golang.org/x/time
   version: f51c12702a4d776e4c1fa9b0fabab841babae631
 - package: golang.org/x/tools
-  version: 7f7074d5bcfd282eb16bc382b0bb3da762461985
+  version: aa82965741a9
+- package: gonum.org/v1/gonum
+  version: 3d26580ed485
+- package: google.golang.org/api
+  version: 583d854617af
+- package: google.golang.org/appengine
+  version: v1.5.0
 - package: google.golang.org/genproto
   version: d80a6e20e776b0b17a324d0ba1ab50a39c8e8944
 - package: google.golang.org/grpc
   version: v1.12.0
+- package: gopkg.in/gcfg.v1
+  version: v1.2.0
 - package: gopkg.in/inf.v0
   version: 3887ee99ecf07df5b447e9b00d9c0b2adaa9f3e4
 - package: gopkg.in/natefinch/lumberjack.v2
-  version: v1.0-16-g20b71e5b60d756
+  version: 20b71e5b60d7
 - package: gopkg.in/square/go-jose.v2
-  version: v2.1.6-4-g89060dee6a84df
+  version: 89060dee6a84
+- package: gopkg.in/warnings.v0
+  version: v0.1.1
 - package: gopkg.in/yaml.v2
   version: v2.2.1
 - package: k8s.io/gengo
-  version: 51747d6e00da1fc578d5a333a93bb2abcbce7a95
+  version: f8a0810f38af
 - package: k8s.io/heapster
   version: v1.2.0-beta.1
 - package: k8s.io/klog
-  version: v0.2.0-14-g8e90cee79f8237
+  version: v0.3.1
+- package: k8s.io/kube-openapi
+  version: b3a7cee44a30
 - package: k8s.io/kubernetes
-  version: v1.14.6-k3s.1
+  version: v1.15.3-k3s.1
   repo: https://github.com/rancher/k3s.git
   transitive: true
   staging: true
 - package: k8s.io/utils
-  version: c2654d5206da6b7b6ace12841e8f359bb89b443c
+  version: 6c36bc71fc4aeb1f49801054e71aebdaef1fbeb4
+- package: sigs.k8s.io/kustomize
+  version: v2.0.3
+- package: sigs.k8s.io/structured-merge-diff
+  version: e85c7b244fd2
 - package: sigs.k8s.io/yaml
   version: v1.1.0
 - package: vbom.ml/util
-  version: db5cfe13f5cc80a4990d98e2e1b0707a4d1a5394
+  version: db5cfe13f5cc

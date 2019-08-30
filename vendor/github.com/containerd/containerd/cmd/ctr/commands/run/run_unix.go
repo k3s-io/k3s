@@ -32,6 +32,8 @@ import (
 	"github.com/urfave/cli"
 )
 
+var platformRunFlags []cli.Flag
+
 // NewContainer creates a new container
 func NewContainer(ctx gocontext.Context, client *containerd.Client, context *cli.Context) (containerd.Container, error) {
 	var (

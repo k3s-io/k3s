@@ -31,6 +31,7 @@ import (
 	"k8s.io/apiserver/pkg/authorization/authorizer"
 	"k8s.io/apiserver/pkg/endpoints/discovery"
 	"k8s.io/apiserver/pkg/registry/rest"
+	openapiproto "k8s.io/kube-openapi/pkg/util/proto"
 )
 
 // APIGroupVersion is a helper for exposing rest.Storage objects as http.Handlers via go-restful
@@ -71,6 +72,8 @@ type APIGroupVersion struct {
 	Linker          runtime.SelfLinker
 	UnsafeConvertor runtime.ObjectConvertor
 
+	EquivalentResourceRegistry runtime.EquivalentResourceRegistry
+
 	// Authorizer determines whether a user is allowed to make a certain request. The Handler does a preliminary
 	// authorization check using the request URI but it may be necessary to make additional checks, such as in
 	// the create-on-update case
@@ -79,6 +82,13 @@ type APIGroupVersion struct {
 	Admit admission.Interface
 
 	MinRequestTimeout time.Duration
+
+	// EnableAPIResponseCompression indicates whether API Responses should support compression
+	// if the client requests it via Accept-Encoding
+	EnableAPIResponseCompression bool
+
+	// OpenAPIModels exposes the OpenAPI models to each individual handler.
+	OpenAPIModels openapiproto.Models
 
 	// The limit on the request body size that would be accepted and decoded in a write request.
 	// 0 means no limit.
@@ -91,9 +101,10 @@ type APIGroupVersion struct {
 func (g *APIGroupVersion) InstallREST(container *restful.Container) error {
 	prefix := path.Join(g.Root, g.GroupVersion.Group, g.GroupVersion.Version)
 	installer := &APIInstaller{
-		group:             g,
-		prefix:            prefix,
-		minRequestTimeout: g.MinRequestTimeout,
+		group:                        g,
+		prefix:                       prefix,
+		minRequestTimeout:            g.MinRequestTimeout,
+		enableAPIResponseCompression: g.EnableAPIResponseCompression,
 	}
 
 	apiResources, ws, registrationErrors := installer.Install()

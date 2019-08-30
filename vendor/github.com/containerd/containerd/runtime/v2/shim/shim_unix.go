@@ -30,6 +30,7 @@ import (
 
 	"github.com/containerd/containerd/events"
 	"github.com/containerd/containerd/namespaces"
+	"github.com/containerd/containerd/sys/reaper"
 	"github.com/containerd/fifo"
 	"github.com/containerd/typeurl"
 	"github.com/pkg/errors"
@@ -77,7 +78,7 @@ func handleSignals(logger *logrus.Entry, signals chan os.Signal) error {
 		for s := range signals {
 			switch s {
 			case unix.SIGCHLD:
-				if err := Reap(); err != nil {
+				if err := reaper.Reap(); err != nil {
 					logger.WithError(err).Error("reap exit status")
 				}
 			case unix.SIGPIPE:
@@ -102,11 +103,11 @@ func (l *remoteEventsPublisher) Publish(ctx context.Context, topic string, event
 	}
 	cmd := exec.CommandContext(ctx, l.containerdBinaryPath, "--address", l.address, "publish", "--topic", topic, "--namespace", ns)
 	cmd.Stdin = bytes.NewReader(data)
-	c, err := Default.Start(cmd)
+	c, err := reaper.Default.Start(cmd)
 	if err != nil {
 		return err
 	}
-	status, err := Default.Wait(cmd, c)
+	status, err := reaper.Default.Wait(cmd, c)
 	if err != nil {
 		return err
 	}

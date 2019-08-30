@@ -21,7 +21,7 @@ import (
 	"strconv"
 
 	apps "k8s.io/api/apps/v1"
-	v1 "k8s.io/api/core/v1"
+	"k8s.io/api/core/v1"
 	extensions "k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
@@ -45,7 +45,7 @@ func GetTemplateGeneration(ds *apps.DaemonSet) (*int64, error) {
 	return &generation, nil
 }
 
-// AddOrUpdateDaemonPodTolerations apply necessary tolerations to DeamonSet Pods, e.g. node.kubernetes.io/not-ready:NoExecute.
+// AddOrUpdateDaemonPodTolerations apply necessary tolerations to DaemonSet Pods, e.g. node.kubernetes.io/not-ready:NoExecute.
 func AddOrUpdateDaemonPodTolerations(spec *v1.PodSpec) {
 	// DaemonSet pods shouldn't be deleted by NodeController in case of node problems.
 	// Add infinite toleration for taint notReady:NoExecute here

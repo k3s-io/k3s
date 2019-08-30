@@ -23,6 +23,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/mergepatch"
 	forkedjson "k8s.io/apimachinery/third_party/forked/golang/json"
+	openapi "k8s.io/kube-openapi/pkg/util/proto"
 )
 
 type PatchMeta struct {
@@ -145,4 +146,49 @@ func GetTagStructTypeOrDie(dataStruct interface{}) reflect.Type {
 		panic(err)
 	}
 	return t
+}
+
+type PatchMetaFromOpenAPI struct {
+	Schema openapi.Schema
+}
+
+func NewPatchMetaFromOpenAPI(s openapi.Schema) PatchMetaFromOpenAPI {
+	return PatchMetaFromOpenAPI{Schema: s}
+}
+
+var _ LookupPatchMeta = PatchMetaFromOpenAPI{}
+
+func (s PatchMetaFromOpenAPI) LookupPatchMetadataForStruct(key string) (LookupPatchMeta, PatchMeta, error) {
+	if s.Schema == nil {
+		return nil, PatchMeta{}, nil
+	}
+	kindItem := NewKindItem(key, s.Schema.GetPath())
+	s.Schema.Accept(kindItem)
+
+	err := kindItem.Error()
+	if err != nil {
+		return nil, PatchMeta{}, err
+	}
+	return PatchMetaFromOpenAPI{Schema: kindItem.subschema},
+		kindItem.patchmeta, nil
+}
+
+func (s PatchMetaFromOpenAPI) LookupPatchMetadataForSlice(key string) (LookupPatchMeta, PatchMeta, error) {
+	if s.Schema == nil {
+		return nil, PatchMeta{}, nil
+	}
+	sliceItem := NewSliceItem(key, s.Schema.GetPath())
+	s.Schema.Accept(sliceItem)
+
+	err := sliceItem.Error()
+	if err != nil {
+		return nil, PatchMeta{}, err
+	}
+	return PatchMetaFromOpenAPI{Schema: sliceItem.subschema},
+		sliceItem.patchmeta, nil
+}
+
+func (s PatchMetaFromOpenAPI) Name() string {
+	schema := s.Schema
+	return schema.GetName()
 }

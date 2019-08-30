@@ -76,7 +76,35 @@ func NewEtcdOptions(backendConfig *storagebackend.Config) *EtcdOptions {
 }
 
 func (s *EtcdOptions) Validate() []error {
-	return nil
+	if s == nil {
+		return nil
+	}
+
+	allErrors := []error{}
+	if len(s.StorageConfig.Transport.ServerList) == 0 {
+		allErrors = append(allErrors, fmt.Errorf("--etcd-servers must be specified"))
+	}
+
+	if s.StorageConfig.Type != storagebackend.StorageTypeUnset && !storageTypes.Has(s.StorageConfig.Type) {
+		allErrors = append(allErrors, fmt.Errorf("--storage-backend invalid, allowed values: %s. If not specified, it will default to 'etcd3'", strings.Join(storageTypes.List(), ", ")))
+	}
+
+	for _, override := range s.EtcdServersOverrides {
+		tokens := strings.Split(override, "#")
+		if len(tokens) != 2 {
+			allErrors = append(allErrors, fmt.Errorf("--etcd-servers-overrides invalid, must be of format: group/resource#servers, where servers are URLs, semicolon separated"))
+			continue
+		}
+
+		apiresource := strings.Split(tokens[0], "/")
+		if len(apiresource) != 2 {
+			allErrors = append(allErrors, fmt.Errorf("--etcd-servers-overrides invalid, must be of format: group/resource#servers, where servers are URLs, semicolon separated"))
+			continue
+		}
+
+	}
+
+	return allErrors
 }
 
 // AddEtcdFlags adds flags related to etcd storage for a specific APIServer to the specified FlagSet
@@ -201,6 +229,7 @@ func (f *SimpleRestOptionsFactory) GetRESTOptions(resource schema.GroupResource)
 		if !ok {
 			cacheSize = f.Options.DefaultWatchCacheSize
 		}
+		// depending on cache size this might return an undecorated storage
 		ret.Decorator = genericregistry.StorageWithCacher(cacheSize)
 	}
 	return ret, nil
@@ -234,6 +263,7 @@ func (f *StorageFactoryRestOptionsFactory) GetRESTOptions(resource schema.GroupR
 		if !ok {
 			cacheSize = f.Options.DefaultWatchCacheSize
 		}
+		// depending on cache size this might return an undecorated storage
 		ret.Decorator = genericregistry.StorageWithCacher(cacheSize)
 	}
 
@@ -257,7 +287,6 @@ func ParseWatchCacheSizes(cacheSizes []string) (map[schema.GroupResource]int, er
 		if size < 0 {
 			return nil, fmt.Errorf("watch cache size cannot be negative: %s", c)
 		}
-
 		watchCacheSizes[schema.ParseGroupResource(tokens[0])] = size
 	}
 	return watchCacheSizes, nil

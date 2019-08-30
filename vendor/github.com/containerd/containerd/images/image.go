@@ -142,6 +142,7 @@ type platformManifest struct {
 // this direction because this abstraction is not needed.`
 func Manifest(ctx context.Context, provider content.Provider, image ocispec.Descriptor, platform platforms.MatchComparer) (ocispec.Manifest, error) {
 	var (
+		limit    = 1
 		m        []platformManifest
 		wasIndex bool
 	)
@@ -210,13 +211,22 @@ func Manifest(ctx context.Context, provider content.Provider, image ocispec.Desc
 				}
 			}
 
-			// mimic behavior of client.Pull which limits to 1 manifest list child
-			descs = limitChildren(descs, platform, 1)
+			sort.SliceStable(descs, func(i, j int) bool {
+				if descs[i].Platform == nil {
+					return false
+				}
+				if descs[j].Platform == nil {
+					return true
+				}
+				return platform.Less(*descs[i].Platform, *descs[j].Platform)
+			})
 
 			wasIndex = true
 
+			if len(descs) > limit {
+				return descs[:limit], nil
+			}
 			return descs, nil
-
 		}
 		return nil, errors.Wrapf(errdefs.ErrNotFound, "unexpected media type %v for %v", desc.MediaType, desc.Digest)
 	}), image); err != nil {
@@ -230,17 +240,6 @@ func Manifest(ctx context.Context, provider content.Provider, image ocispec.Desc
 		}
 		return ocispec.Manifest{}, err
 	}
-
-	sort.SliceStable(m, func(i, j int) bool {
-		if m[i].p == nil {
-			return false
-		}
-		if m[j].p == nil {
-			return true
-		}
-		return platform.Less(*m[i].p, *m[j].p)
-	})
-
 	return *m[0].m, nil
 }
 

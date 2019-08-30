@@ -32,7 +32,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
-	runtime "k8s.io/kubernetes/pkg/kubelet/apis/cri/runtime/v1alpha2"
+	runtime "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 
 	"github.com/containerd/cri/pkg/util"
 )
@@ -256,7 +256,11 @@ func (c *criService) getResolver(ctx context.Context, ref string, cred func(stri
 		return nil, imagespec.Descriptor{}, errors.Wrap(err, "parse image reference")
 	}
 	// Try mirrors in order first, and then try default host name.
-	for _, e := range c.config.Registry.Mirrors[refspec.Hostname()].Endpoints {
+	var (
+		resolveErr error
+		endpoints  = c.config.Registry.Mirrors[refspec.Hostname()].Endpoints
+	)
+	for _, e := range endpoints {
 		u, err := url.Parse(e)
 		if err != nil {
 			return nil, imagespec.Descriptor{}, errors.Wrapf(err, "parse registry endpoint %q", e)
@@ -272,7 +276,18 @@ func (c *criService) getResolver(ctx context.Context, ref string, cred func(stri
 		if err == nil {
 			return resolver, desc, nil
 		}
+		resolveErr = err
 		// Continue to try next endpoint
+	}
+	defaultHost, err := docker.DefaultHost(refspec.Hostname())
+	if err != nil {
+		return nil, imagespec.Descriptor{}, errors.Wrap(err, "get default host")
+	}
+	if util.InStringSlice(endpoints, "http://"+defaultHost) {
+		return nil, imagespec.Descriptor{}, resolveErr
+	}
+	if util.InStringSlice(endpoints, "https://"+defaultHost) {
+		return nil, imagespec.Descriptor{}, resolveErr
 	}
 	resolver := docker.NewResolver(docker.ResolverOptions{
 		Credentials: cred,

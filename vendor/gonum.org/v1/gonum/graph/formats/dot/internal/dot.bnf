@@ -1,0 +1,359 @@
+// The DOT Language
+//
+// http://www.graphviz.org/doc/info/lang.html
+
+// ### [ Tokens ] ##############################################################
+
+// The keywords node, edge, graph, digraph, subgraph, and strict are case-
+// independent.
+
+node
+	: 'n' 'o' 'd' 'e'
+	| 'N' 'o' 'd' 'e'
+	| 'N' 'O' 'D' 'E'
+;
+
+edge
+	: 'e' 'd' 'g' 'e'
+	| 'E' 'd' 'g' 'e'
+	| 'E' 'D' 'G' 'E'
+;
+
+// TODO: Rename graphx to graph once gocc#20 is fixed [1].
+//
+// [1]: https://github.com/goccmack/gocc/issues/20
+
+graphx
+	: 'g' 'r' 'a' 'p' 'h'
+	| 'G' 'r' 'a' 'p' 'h'
+	| 'G' 'R' 'A' 'P' 'H'
+;
+
+digraph
+	: 'd' 'i' 'g' 'r' 'a' 'p' 'h'
+	| 'D' 'i' 'g' 'r' 'a' 'p' 'h'
+	| 'd' 'i' 'G' 'r' 'a' 'p' 'h'
+	| 'D' 'i' 'G' 'r' 'a' 'p' 'h'
+	| 'D' 'I' 'G' 'R' 'A' 'P' 'H'
+;
+
+subgraph
+	: 's' 'u' 'b' 'g' 'r' 'a' 'p' 'h'
+	| 'S' 'u' 'b' 'g' 'r' 'a' 'p' 'h'
+	| 's' 'u' 'b' 'G' 'r' 'a' 'p' 'h'
+	| 'S' 'u' 'b' 'G' 'r' 'a' 'p' 'h'
+	| 'S' 'U' 'B' 'G' 'R' 'A' 'P' 'H'
+;
+
+strict
+	: 's' 't' 'r' 'i' 'c' 't'
+	| 'S' 't' 'r' 'i' 'c' 't'
+	| 'S' 'T' 'R' 'I' 'C' 'T'
+;
+
+// An arbitrary ASCII character except null (0x00), double quote (0x22) and
+// backslash (0x5C).
+_ascii_char
+	// skip null (0x00)
+	: '\x01' - '\x21'
+	// skip double quote (0x22)
+	| '\x23' - '\x5B'
+	// skip backslash (0x5C)
+	| '\x5D' - '\x7F'
+;
+
+_ascii_letter
+	: 'a' - 'z'
+	| 'A' - 'Z'
+;
+
+_ascii_digit : '0' - '9' ;
+
+_unicode_char
+	: _ascii_char
+	| _unicode_byte
+;
+
+_unicode_byte
+	: '\u0080' - '\uFFFC'
+	// skip invalid code point (\uFFFD)
+	| '\uFFFE' - '\U0010FFFF'
+;
+
+_letter        : _ascii_letter | _unicode_byte | '_' ;
+_decimal_digit : _ascii_digit ;
+_decimals      : _decimal_digit { _decimal_digit } ;
+
+// An ID is one of the following:
+//
+//    1) Any string of alphabetic ([a-zA-Z\200-\377]) characters, underscores
+//       ('_') or digits ([0-9]), not beginning with a digit;
+//
+//    2) a numeral [-]?(.[0-9]+ | [0-9]+(.[0-9]*)? );
+//
+//    3) any double-quoted string ("...") possibly containing escaped quotes
+//       (\");
+//
+//    4) an HTML string (<...>).
+
+id
+	: _letter { _letter | _decimal_digit }
+	| _int_lit
+	| _string_lit
+	| _html_lit
+;
+
+_int_lit
+	: [ '-' ] '.' _decimals
+	| [ '-' ] _decimals [ '.' { _decimal_digit } ]
+;
+
+// In quoted strings in DOT, the only escaped character is double-quote (").
+// That is, in quoted strings, the dyad \" is converted to "; all other
+// characters are left unchanged. In particular, \\ remains \\.
+
+// As another aid for readability, dot allows double-quoted strings to span
+// multiple physical lines using the standard C convention of a backslash
+// immediately preceding a newline character.
+
+// In addition, double-quoted strings can be concatenated using a '+' operator.
+
+_escaped_char : '\\' ( _unicode_char | '"' | '\\' ) ;
+_char         : _unicode_char | _escaped_char ;
+_string_lit   : '"' { _char } '"' ;
+
+// An arbitrary HTML character except null (0x00), left angle bracket (0x3C) and
+// right angle bracket (0x3E).
+_html_char
+	// skip null (0x00)
+	: '\x01' - '\x3B'
+	// skip left angle bracket (0x3C)
+	| '\x3D'
+	// skip right angle bracket (0x3E)
+	| '\x3F' - '\xFF'
+	| _unicode_byte
+;
+
+_html_chars : { _html_char } ;
+_html_tag   : '<' _html_chars '>' ;
+_html_lit   : '<' { _html_chars | _html_tag } '>' ;
+
+// The language supports C++-style comments: /* */ and //. In addition, a line
+// beginning with a '#' character is considered a line output from a C
+// preprocessor (e.g., # 34 to indicate line 34 ) and discarded.
+
+_line_comment
+	: '/' '/' { . } '\n'
+	| '#' { . } '\n'
+;
+
+_block_comment : '/' '*' { . | '*' } '*' '/' ;
+!comment       : _line_comment | _block_comment ;
+
+!whitespace : ' ' | '\t' | '\r' | '\n' ;
+
+// ### [ Syntax ] ##############################################################
+
+<< import (
+	"gonum.org/v1/gonum/graph/formats/dot/ast"
+	"gonum.org/v1/gonum/graph/formats/dot/internal/astx"
+) >>
+
+// === [ Files ] ===============================================================
+
+File
+	: Graph                                       << astx.NewFile($0) >>
+	| File Graph                                  << astx.AppendGraph($0, $1) >>
+;
+
+// === [ Graphs ] ==============================================================
+
+// Graph : [ "strict" ] ( "graph" | "digraph" ) [ ID ] "{" [ StmtList ] "}"
+
+Graph
+	: OptStrict DirectedGraph OptID
+	  "{" OptStmtList "}"                         << astx.NewGraph($0, $1, $2, $4) >>
+;
+
+OptStrict
+	: empty                                       << false, nil >>
+	| strict                                      << true, nil >>
+;
+
+DirectedGraph
+	: graphx                                      << false, nil >>
+	| digraph                                     << true, nil >>
+;
+
+// === [ Statements ] ==========================================================
+
+// StmtList
+//    : Stmt [ ";" ]
+//    | StmtList Stmt [ ";" ]
+
+StmtList
+	: Stmt OptSemi                                << astx.NewStmtList($0) >>
+	| StmtList Stmt OptSemi                       << astx.AppendStmt($0, $1) >>
+;
+
+OptStmtList
+	: empty
+	| StmtList
+;
+
+Stmt
+	: NodeStmt
+	| EdgeStmt
+	| AttrStmt
+	| Attr
+	| Subgraph
+;
+
+OptSemi
+	: empty
+	| ";"
+;
+
+// --- [ Node statement ] ------------------------------------------------------
+
+// NodeStmt : Node [ AttrList ]
+
+NodeStmt
+	: Node OptAttrList                            << astx.NewNodeStmt($0, $1) >>
+;
+
+// --- [ Edge statement ] ------------------------------------------------------
+
+// EdgeStmt : ( Node | Subgraph ) Edge [ AttrList ]
+
+EdgeStmt
+	: Vertex Edge OptAttrList                     << astx.NewEdgeStmt($0, $1, $2) >>
+;
+
+// Edge : ( "--" | "-->" ) ( Node | Subgraph ) [ Edge ]
+
+Edge
+	: DirectedEdge Vertex OptEdge                 << astx.NewEdge($0, $1, $2) >>
+;
+
+DirectedEdge
+	: "--"                                        << false, nil >>
+	| "->"                                        << true, nil >>
+;
+
+OptEdge
+	: empty
+	| Edge
+;
+
+// --- [ Attribute statement ] -------------------------------------------------
+
+// AttrStmt : ( "graph" | "node" | "edge" ) AttrList
+
+AttrStmt
+	: Component AttrList                          << astx.NewAttrStmt($0, $1) >>
+;
+
+Component
+	: graphx                                      << ast.GraphKind, nil >>
+	| node                                        << ast.NodeKind, nil >>
+	| edge                                        << ast.EdgeKind, nil >>
+;
+
+// AttrList : "[" [ AList ] "]" [ AttrList ]
+
+AttrList
+	: "[" OptAList "]"                            << $1, nil >>
+	| AttrList "[" OptAList "]"                   << astx.AppendAttrList($0, $2) >>
+;
+
+OptAttrList
+	: empty
+	| AttrList
+;
+
+// AList
+//    : Attr [ ( ";" | "," ) ]
+//    | AList Attr [ ( ";" | "," ) ]
+
+AList
+	: Attr OptSep                                 << astx.NewAttrList($0) >>
+	| AList Attr OptSep                           << astx.AppendAttr($0, $1) >>
+;
+
+OptAList
+	: empty
+	| AList
+;
+
+OptSep
+	: empty
+	| ";"
+	| ","
+;
+
+// --- [ Attribute ] -----------------------------------------------------------
+
+Attr
+	: ID "=" ID                                   << astx.NewAttr($0, $2) >>
+;
+
+// --- [ Subgraph ] ------------------------------------------------------------
+
+// Subgraph : [ "subgraph" [ ID ] ] "{" [ StmtList ] "}"
+
+Subgraph
+	: OptSubgraphID "{" OptStmtList "}"           << astx.NewSubgraph($0, $2) >>
+;
+
+OptSubgraphID
+	: empty
+	| subgraph OptID                              << $1, nil >>
+;
+
+// === [ Vertices ] ============================================================
+
+Vertex
+	: Node
+	| Subgraph
+;
+
+// --- [ Node identifier ] -----------------------------------------------------
+
+// Node : ID [ Port ]
+
+Node
+	: ID OptPort                                  << astx.NewNode($0, $1) >>
+;
+
+// Port
+//    : ":" ID [ ":" CompassPoint ]
+//    | ":" CompassPoint
+//
+// CompassPoint
+//    : "n" | "ne" | "e" | "se" | "s" | "sw" | "w" | "nw" | "c" | "_"
+
+// Note also that the allowed compass point values are not keywords, so these
+// strings can be used elsewhere as ordinary identifiers and, conversely, the
+// parser will actually accept any identifier.
+
+Port
+	: ":" ID                                      << astx.NewPort($1, nil) >>
+	| ":" ID ":" ID                               << astx.NewPort($1, $3) >>
+;
+
+OptPort
+	: empty
+	| Port
+;
+
+// === [ Identifiers ] =========================================================
+
+ID
+	: id                                          << astx.NewID($0) >>
+;
+
+OptID
+	: empty                                       << "", nil >>
+	| ID
+;

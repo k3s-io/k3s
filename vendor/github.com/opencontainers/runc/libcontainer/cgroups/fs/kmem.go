@@ -3,7 +3,6 @@
 package fs
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -18,12 +17,7 @@ import (
 const cgroupKernelMemoryLimit = "memory.kmem.limit_in_bytes"
 
 func EnableKernelMemoryAccounting(path string) error {
-	// Ensure that kernel memory is available in this kernel build. If it
-	// isn't, we just ignore it because EnableKernelMemoryAccounting is
-	// automatically called for all memory limits.
-	if !cgroups.PathExists(filepath.Join(path, cgroupKernelMemoryLimit)) {
-		return nil
-	}
+	// Check if kernel memory is enabled
 	// We have to limit the kernel memory here as it won't be accounted at all
 	// until a limit is set on the cgroup and limit cannot be set once the
 	// cgroup has children, or if there are already tasks in the cgroup.
@@ -40,9 +34,8 @@ func setKernelMemory(path string, kernelMemoryLimit int64) error {
 		return fmt.Errorf("no such directory for %s", cgroupKernelMemoryLimit)
 	}
 	if !cgroups.PathExists(filepath.Join(path, cgroupKernelMemoryLimit)) {
-		// We have specifically been asked to set a kmem limit. If the kernel
-		// doesn't support it we *must* error out.
-		return errors.New("kernel memory accounting not supported by this kernel")
+		// kernel memory is not enabled on the system so we should do nothing
+		return nil
 	}
 	if err := ioutil.WriteFile(filepath.Join(path, cgroupKernelMemoryLimit), []byte(strconv.FormatInt(kernelMemoryLimit, 10)), 0700); err != nil {
 		// Check if the error number returned by the syscall is "EBUSY"

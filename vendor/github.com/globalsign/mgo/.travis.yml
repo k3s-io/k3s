@@ -1,0 +1,49 @@
+language: go
+
+go_import_path: github.com/globalsign/mgo
+
+go:
+    - 1.9.x
+    - 1.10.x
+
+env:
+    global:
+        - BUCKET=https://s3.eu-west-2.amazonaws.com/globalsign-mgo
+        - FASTDL=https://fastdl.mongodb.org/linux
+    matrix:
+        - MONGODB=x86_64-ubuntu1404-3.0.15
+        - MONGODB=x86_64-ubuntu1404-3.2.17
+        - MONGODB=x86_64-ubuntu1404-3.4.10
+        - MONGODB=x86_64-ubuntu1404-3.6.0
+
+install:
+
+    - wget $FASTDL/mongodb-linux-$MONGODB.tgz
+    - tar xzvf mongodb-linux-$MONGODB.tgz
+    - export PATH=$PWD/mongodb-linux-$MONGODB/bin:$PATH
+
+    - wget $BUCKET/daemontools.tar.gz
+    - tar xzvf daemontools.tar.gz
+    - export PATH=$PWD/daemontools:$PATH
+
+    - go get gopkg.in/check.v1
+    - go get gopkg.in/yaml.v2
+    - go get gopkg.in/tomb.v2
+    - go get golang.org/x/lint/golint
+
+before_script:
+    - golint  ./... | grep -v 'ID' | cat
+    - go vet github.com/globalsign/mgo/bson github.com/globalsign/mgo/txn github.com/globalsign/mgo 
+    - export NOIPV6=1
+    - make startdb
+
+script:
+    - (cd bson && go test -check.v)
+    - go test -check.v -fast
+    - (cd txn && go test -check.v)
+    - make stopdb
+
+git:
+  depth: 3
+
+# vim:sw=4:ts=4:et
