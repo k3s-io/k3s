@@ -32,6 +32,7 @@ import (
 	evictionapi "k8s.io/kubernetes/pkg/kubelet/eviction/api"
 	kubetypes "k8s.io/kubernetes/pkg/kubelet/types"
 	schedulerutils "k8s.io/kubernetes/pkg/scheduler/util"
+	volumeutils "k8s.io/kubernetes/pkg/volume/util"
 )
 
 const (
@@ -399,9 +400,7 @@ func podDiskUsage(podStats statsapi.PodStats, pod *v1.Pod, statsToMeasure []fsSt
 func localEphemeralVolumeNames(pod *v1.Pod) []string {
 	result := []string{}
 	for _, volume := range pod.Spec.Volumes {
-		if volume.GitRepo != nil ||
-			(volume.EmptyDir != nil && volume.EmptyDir.Medium != v1.StorageMediumMemory) ||
-			volume.ConfigMap != nil || volume.DownwardAPI != nil {
+		if volumeutils.IsLocalEphemeralVolume(volume) {
 			result = append(result, volume.Name)
 		}
 	}
@@ -432,14 +431,6 @@ func podLocalEphemeralStorageUsage(podStats statsapi.PodStats, pod *v1.Pod, stat
 // formatThreshold formats a threshold for logging.
 func formatThreshold(threshold evictionapi.Threshold) string {
 	return fmt.Sprintf("threshold(signal=%v, operator=%v, value=%v, gracePeriod=%v)", threshold.Signal, threshold.Operator, evictionapi.ThresholdValue(threshold.Value), threshold.GracePeriod)
-}
-
-// formatevictionapi.ThresholdValue formats a thresholdValue for logging.
-func formatThresholdValue(value evictionapi.ThresholdValue) string {
-	if value.Quantity != nil {
-		return value.Quantity.String()
-	}
-	return fmt.Sprintf("%f%%", value.Percentage*float32(100))
 }
 
 // cachedStatsFunc returns a statsFunc based on the provided pod stats.

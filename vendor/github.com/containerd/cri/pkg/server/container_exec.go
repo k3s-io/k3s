@@ -19,7 +19,7 @@ package server
 import (
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
-	runtime "k8s.io/kubernetes/pkg/kubelet/apis/cri/runtime/v1alpha2"
+	runtime "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
 
 // Exec prepares a streaming endpoint to execute a command in the container, and returns the address.

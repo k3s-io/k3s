@@ -150,7 +150,9 @@ func (s *walkingDiff) Compare(ctx context.Context, lower, upper []mount.Mount, o
 			if err != nil {
 				return errors.Wrap(err, "failed to get info from content store")
 			}
-
+			if info.Labels == nil {
+				info.Labels = make(map[string]string)
+			}
 			// Set uncompressed label if digest already existed without label
 			if _, ok := info.Labels[uncompressed]; !ok {
 				info.Labels[uncompressed] = config.Labels[uncompressed]

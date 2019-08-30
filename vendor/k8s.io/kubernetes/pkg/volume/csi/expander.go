@@ -21,15 +21,23 @@ import (
 	"fmt"
 
 	api "k8s.io/api/core/v1"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/klog"
+	"k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/volume"
 )
 
 var _ volume.NodeExpandableVolumePlugin = &csiPlugin{}
 
 func (c *csiPlugin) RequiresFSResize() bool {
-	klog.V(4).Infof("Resizing is not enabled for CSI volume")
-	return false
+	// We could check plugin's node capability but we instead are going to rely on
+	// NodeExpand to do the right thing and return early if plugin does not have
+	// node expansion capability.
+	if !utilfeature.DefaultFeatureGate.Enabled(features.ExpandCSIVolumes) {
+		klog.V(4).Infof("Resizing is not enabled for CSI volume")
+		return false
+	}
+	return true
 }
 
 func (c *csiPlugin) NodeExpand(resizeOptions volume.NodeResizeOptions) (bool, error) {

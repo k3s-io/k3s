@@ -15,6 +15,7 @@ syntax = "proto2";
 
 package io.prometheus.client;
 option java_package = "io.prometheus.client";
+option go_package = "github.com/prometheus/client_model/go;io_prometheus_client";
 
 message LabelPair {
   optional string name  = 1;

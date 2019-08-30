@@ -44,9 +44,11 @@ import (
 	"k8s.io/kubernetes/pkg/kubectl/cmd/create"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/delete"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/describe"
+	"k8s.io/kubernetes/pkg/kubectl/cmd/diff"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/drain"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/edit"
 	cmdexec "k8s.io/kubernetes/pkg/kubectl/cmd/exec"
+	"k8s.io/kubernetes/pkg/kubectl/cmd/explain"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/expose"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/get"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/label"
@@ -71,6 +73,7 @@ import (
 	"k8s.io/kubernetes/pkg/kubectl/util/templates"
 
 	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"k8s.io/kubernetes/pkg/kubectl/cmd/kustomize"
 )
 
 const (
@@ -470,6 +473,7 @@ func NewKubectlCommand(in io.Reader, out, err io.Writer) *cobra.Command {
 		{
 			Message: "Basic Commands (Intermediate):",
 			Commands: []*cobra.Command{
+				explain.NewCmdExplain("kubectl", f, ioStreams),
 				get.NewCmdGet("kubectl", f, ioStreams),
 				edit.NewCmdEdit(f, ioStreams),
 				delete.NewCmdDelete(f, ioStreams),
@@ -512,11 +516,13 @@ func NewKubectlCommand(in io.Reader, out, err io.Writer) *cobra.Command {
 		{
 			Message: "Advanced Commands:",
 			Commands: []*cobra.Command{
+				diff.NewCmdDiff(f, ioStreams),
 				apply.NewCmdApply("kubectl", f, ioStreams),
 				patch.NewCmdPatch(f, ioStreams),
 				replace.NewCmdReplace(f, ioStreams),
 				wait.NewCmdWait(f, ioStreams),
 				convert.NewCmdConvert(f, ioStreams),
+				kustomize.NewCmdKustomize(ioStreams),
 			},
 		},
 		{
@@ -565,19 +571,4 @@ func NewKubectlCommand(in io.Reader, out, err io.Writer) *cobra.Command {
 
 func runHelp(cmd *cobra.Command, args []string) {
 	cmd.Help()
-}
-
-// deprecatedAlias is intended to be used to create a "wrapper" command around
-// an existing command. The wrapper works the same but prints a deprecation
-// message before running. This command is identical functionality.
-func deprecatedAlias(deprecatedVersion string, cmd *cobra.Command) *cobra.Command {
-	// Have to be careful here because Cobra automatically extracts the name
-	// of the command from the .Use field.
-	originalName := cmd.Name()
-
-	cmd.Use = deprecatedVersion
-	cmd.Deprecated = fmt.Sprintf("use %q instead", originalName)
-	cmd.Short = fmt.Sprintf("%s. This command is deprecated, use %q instead", cmd.Short, originalName)
-	cmd.Hidden = true
-	return cmd
 }

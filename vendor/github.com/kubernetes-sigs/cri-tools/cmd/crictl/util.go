@@ -32,7 +32,7 @@ import (
 	"github.com/urfave/cli"
 	"google.golang.org/grpc"
 	utilyaml "k8s.io/apimachinery/pkg/util/yaml"
-	pb "k8s.io/kubernetes/pkg/kubelet/apis/cri/runtime/v1alpha2"
+	pb "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
 
 const (

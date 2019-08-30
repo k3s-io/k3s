@@ -24,7 +24,7 @@ import (
 	cni "github.com/containerd/go-cni"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
-	runtime "k8s.io/kubernetes/pkg/kubelet/apis/cri/runtime/v1alpha2"
+	runtime "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
 
 // networkNotReadyReason is the reason reported when network is not ready.

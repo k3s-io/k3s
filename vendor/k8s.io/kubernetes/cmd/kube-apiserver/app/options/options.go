@@ -115,7 +115,7 @@ func NewServerRunOptions() *ServerRunOptions {
 	s.ServiceClusterIPRange = kubeoptions.DefaultServiceIPCIDR
 
 	// Overwrite the default for storage data format.
-	//s.Etcd.DefaultStorageMediaType = "application/vnd.kubernetes.protobuf"
+	s.Etcd.DefaultStorageMediaType = "application/vnd.kubernetes.protobuf"
 
 	return &s
 }
@@ -147,6 +147,7 @@ func (s *ServerRunOptions) Flags() (fss cliflag.NamedFlagSets) {
 
 	fs.BoolVar(&s.EnableLogsHandler, "enable-logs-handler", s.EnableLogsHandler,
 		"If true, install a /logs handler for the apiserver logs.")
+	fs.MarkDeprecated("enable-logs-handler", "This flag will be removed in v1.19")
 
 	// Deprecated in release 1.9
 	fs.StringVar(&s.SSHUser, "ssh-user", s.SSHUser,

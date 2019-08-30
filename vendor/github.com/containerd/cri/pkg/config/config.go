@@ -142,6 +142,9 @@ type PluginConfig struct {
 	// Log line longer than the limit will be split into multiple lines. Non-positive
 	// value means no limit.
 	MaxContainerLogLineSize int `toml:"max_container_log_line_size" json:"maxContainerLogSize"`
+	// DisableProcMount disables Kubernetes ProcMount support. This MUST be set to `true`
+	// when using containerd with Kubernetes <=1.11.
+	DisableProcMount bool `toml:"disable_proc_mount" json:"disableProcMount"`
 	// DisableCgroup indicates to disable the cgroup support.
 	// This is useful when the containerd does not have permission to access cgroup.
 	DisableCgroup bool `toml:"disable_cgroup" json:"disableCgroup"`
@@ -213,6 +216,7 @@ func DefaultConfig() PluginConfig {
 				},
 			},
 		},
+		DisableProcMount: false,
 	}
 }
 

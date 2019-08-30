@@ -18,16 +18,14 @@ package crictl
 
 import (
 	"fmt"
-	"os"
 	"sort"
-	"text/tabwriter"
 	"time"
 
-	units "github.com/docker/go-units"
+	"github.com/docker/go-units"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 	"golang.org/x/net/context"
-	pb "k8s.io/kubernetes/pkg/kubelet/apis/cri/runtime/v1alpha2"
+	pb "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
 
 type statsOptions struct {
@@ -43,11 +41,12 @@ type statsOptions struct {
 	labels map[string]string
 	// output format
 	output string
+	// live watch
+	watch bool
 }
 
 var statsCommand = cli.Command{
-	Name: "stats",
-	// TODO(random-liu): Support live monitoring of resource usage.
+	Name:                   "stats",
 	Usage:                  "List container(s) resource usage statistics",
 	SkipArgReorder:         true,
 	UseShortOptionHandling: true,
@@ -79,6 +78,10 @@ var statsCommand = cli.Command{
 			Value: 1,
 			Usage: "Sample duration for CPU usage in seconds",
 		},
+		cli.BoolFlag{
+			Name:  "watch, w",
+			Usage: "Watch pod resources",
+		},
 	},
 	Action: func(context *cli.Context) error {
 		var err error
@@ -92,6 +95,7 @@ var statsCommand = cli.Command{
 			podID:  context.String("pod"),
 			sample: time.Duration(context.Int("seconds")) * time.Second,
 			output: context.String("output"),
+			watch:  context.Bool("watch"),
 		}
 		opts.labels, err = parseLabelStringSlice(context.StringSlice("label"))
 		if err != nil {
@@ -129,14 +133,39 @@ func ContainerStats(client pb.RuntimeServiceClient, opts statsOptions) error {
 	request := &pb.ListContainerStatsRequest{
 		Filter: filter,
 	}
+
+	display := newTableDisplay(20, 1, 3, ' ', 0)
+	if !opts.watch {
+		if err := displayStats(client, request, display, opts); err != nil {
+			return err
+		}
+	} else {
+		for range time.Tick(500 * time.Millisecond) {
+			if err := displayStats(client, request, display, opts); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func getContainerStats(client pb.RuntimeServiceClient, request *pb.ListContainerStatsRequest) (*pb.ListContainerStatsResponse, error) {
 	logrus.Debugf("ListContainerStatsRequest: %v", request)
 	r, err := client.ListContainerStats(context.Background(), request)
 	logrus.Debugf("ListContainerResponse: %v", r)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	sort.Sort(containerStatsByID(r.Stats))
+	return r, nil
+}
 
+func displayStats(client pb.RuntimeServiceClient, request *pb.ListContainerStatsRequest, display *display, opts statsOptions) error {
+	r, err := getContainerStats(client, request)
+	if err != nil {
+		return err
+	}
 	switch opts.output {
 	case "json":
 		return outputProtobufObjAsJSON(r)
@@ -150,17 +179,12 @@ func ContainerStats(client pb.RuntimeServiceClient, opts statsOptions) error {
 
 	time.Sleep(opts.sample)
 
-	logrus.Debugf("ListContainerStatsRequest: %v", request)
-	r, err = client.ListContainerStats(context.Background(), request)
-	logrus.Debugf("ListContainerResponse: %v", r)
+	r, err = getContainerStats(client, request)
 	if err != nil {
 		return err
 	}
-	sort.Sort(containerStatsByID(r.Stats))
 
-	w := tabwriter.NewWriter(os.Stdout, 20, 1, 3, ' ', 0)
-	// Use `+` to work around go vet bug
-	fmt.Fprintln(w, "CONTAINER\tCPU %"+"\tMEM\tDISK\tINODES")
+	display.AddRow([]string{columnContainer, columnCPU, columnMemory, columnDisk, columnInodes})
 	for _, s := range r.GetStats() {
 		id := getTruncatedID(s.Attributes.Id, "")
 		cpu := s.GetCpu().GetUsageCoreNanoSeconds().GetValue()
@@ -185,9 +209,12 @@ func ContainerStats(client pb.RuntimeServiceClient, opts statsOptions) error {
 			}
 			cpuPerc = float64(cpu-old.GetCpu().GetUsageCoreNanoSeconds().GetValue()) / float64(duration) * 100
 		}
-		fmt.Fprintf(w, "%s\t%.2f\t%s\t%s\t%d\n", id, cpuPerc, units.HumanSize(float64(mem)), units.HumanSize(float64(disk)), inodes)
-	}
+		display.AddRow([]string{id, fmt.Sprintf("%.2f", cpuPerc), units.HumanSize(float64(mem)),
+			units.HumanSize(float64(disk)), fmt.Sprintf("%d", inodes)})
 
-	w.Flush()
+	}
+	display.ClearScreen()
+	display.Flush()
+
 	return nil
 }

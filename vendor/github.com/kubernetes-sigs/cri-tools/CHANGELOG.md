@@ -1,38 +1,85 @@
 <!-- TOC -->
 
+- [v1.14.0](#v1140)
+    - [CRI CLI (crictl)](#cri-cli-crictl)
+    - [CRI validation testing (critest)](#cri-validation-testing-critest)
+    - [Downloads](#downloads)
 - [v1.13.0](#v1130)
-  - [CRI CLI (crictl)](#cri-cli-crictl)
-  - [CRI validation testing (critest)](#cri-validation-testing-critest)
-  - [Downloads](#downloads)
+    - [CRI CLI (crictl)](#cri-cli-crictl-1)
+    - [CRI validation testing (critest)](#cri-validation-testing-critest-1)
+    - [Downloads](#downloads-1)
 - [v1.12.0](#v1120)
-  - [CRI CLI (crictl)](#cri-cli-crictl-1)
-  - [CRI validation testing (critest)](#cri-validation-testing-critest-1)
-  - [Downloads](#downloads-1)
+    - [CRI CLI (crictl)](#cri-cli-crictl-2)
+    - [CRI validation testing (critest)](#cri-validation-testing-critest-2)
+    - [Downloads](#downloads-2)
 - [v1.11.1](#v1111)
-  - [CRI CLI (crictl)](#cri-cli-crictl-2)
+    - [CRI CLI (crictl)](#cri-cli-crictl-3)
 - [v1.11.0](#v1110)
-  - [CRI validation testing (critest)](#cri-validation-testing-critest-2)
-  - [CRI CLI (crictl)](#cri-cli-crictl-3)
+    - [CRI validation testing (critest)](#cri-validation-testing-critest-3)
+    - [CRI CLI (crictl)](#cri-cli-crictl-4)
 - [v1.0.0-beta.1](#v100-beta1)
-  - [CRI validation testing (critest)](#cri-validation-testing-critest-3)
-  - [CRI CLI (crictl)](#cri-cli-crictl-4)
+    - [CRI validation testing (critest)](#cri-validation-testing-critest-4)
+    - [CRI CLI (crictl)](#cri-cli-crictl-5)
 - [v1.0.0-beta.0](#v100-beta0)
-  - [CRI validation testing (critest)](#cri-validation-testing-critest-4)
-  - [CRI CLI (crictl)](#cri-cli-crictl-5)
+    - [CRI validation testing (critest)](#cri-validation-testing-critest-5)
+    - [CRI CLI (crictl)](#cri-cli-crictl-6)
 - [v1.0.0-alpha.0](#v100-alpha0)
-  - [CRI validation testing (critest)](#cri-validation-testing-critest-5)
-  - [CRI CLI (crictl)](#cri-cli-crictl-6)
+    - [CRI validation testing (critest)](#cri-validation-testing-critest-6)
+    - [CRI CLI (crictl)](#cri-cli-crictl-7)
 - [v0.2](#v02)
-  - [CRI validation testing (critest)](#cri-validation-testing-critest-6)
-  - [CRI CLI (crictl)](#cri-cli-crictl-7)
+    - [CRI validation testing (critest)](#cri-validation-testing-critest-7)
+    - [CRI CLI (crictl)](#cri-cli-crictl-8)
 - [v0.1](#v01)
-  - [Features](#features)
-    - [CRI validation testing](#cri-validation-testing)
-    - [crictl](#crictl)
-    - [CRI performance benchmarking](#cri-performance-benchmarking)
-  - [Documentation](#documentation)
+    - [Features](#features)
+        - [CRI validation testing](#cri-validation-testing)
+        - [crictl](#crictl)
+        - [CRI performance benchmarking](#cri-performance-benchmarking)
+    - [Documentation](#documentation)
 
 <!-- /TOC -->
+
+# v1.14.0
+
+cri-tools v1.14.0 has upgraded to kubernetes v1.14, and Go version to 1.12. It mainly focus on bug fixes and stability improvements. It also adds full critest on Windows.
+
+## CRI CLI (crictl)
+
+- [#417](https://github.com/kubernetes-sigs/cri-tools/pull/417) Adds imagefsinfo subcommand for CRI ImageFSInfo() method.
+- [#424](https://github.com/kubernetes-sigs/cri-tools/pull/424) Adds support to filter containers by image.
+- [#425](https://github.com/kubernetes-sigs/cri-tools/pull/425) Fixes a bug when removing multiple containers.
+- [#428](https://github.com/kubernetes-sigs/cri-tools/pull/428) Reduces the default connection timeout value.
+- [#431](https://github.com/kubernetes-sigs/cri-tools/pull/431) Fixes the exit code for crictl exec.
+- [#434](https://github.com/kubernetes-sigs/cri-tools/pull/434) Updated the instructions fro godep.
+- [#437](https://github.com/kubernetes-sigs/cri-tools/pull/437) Adds support of -q for crictl info.
+- [#442](https://github.com/kubernetes-sigs/cri-tools/pull/442) Adds support of zsh completion.
+- [#451](https://github.com/kubernetes-sigs/cri-tools/pull/451) Upgrades kubernetes version to 1.14.
+
+## CRI validation testing (critest)
+
+- [#419](https://github.com/kubernetes-sigs/cri-tools/pull/419) Adds a benchmark testcase for measuring the time of creating pod and a container.
+- [#429](https://github.com/kubernetes-sigs/cri-tools/pull/429) Changes streaming tests to omit newlines on echo
+- [#430](https://github.com/kubernetes-sigs/cri-tools/pull/430) Adds support of critest for Windows container runtime.
+- [#445](https://github.com/kubernetes-sigs/cri-tools/pull/445) Updates test environment to xenial and fixes docker installation.
+- [#450](https://github.com/kubernetes-sigs/cri-tools/pull/450) Updates Go version to 1.12.
+
+## Downloads
+
+| file                                | sha256                                                       |
+| ----------------------------------- | ------------------------------------------------------------ |
+| [crictl-v1.14.0-linux-386.tar.gz](https://github.com/kubernetes-sigs/cri-tools/releases/download/v1.14.0/crictl-v1.14.0-linux-386.tar.gz)     | 665d5f1d31979039b85ff3756db66e377be69618dcefae077ddd42422a09b79f |
+| [crictl-v1.14.0-linux-amd64.tar.gz](https://github.com/kubernetes-sigs/cri-tools/releases/download/v1.14.0/crictl-v1.14.0-linux-amd64.tar.gz)   | 483c90a9fe679590df4332ba807991c49232e8cd326c307c575ecef7fe22327b |
+| [crictl-v1.14.0-linux-arm64.tar.gz](https://github.com/kubernetes-sigs/cri-tools/releases/download/v1.14.0/crictl-v1.14.0-linux-arm64.tar.gz)   | f76b3d00a272c8d210e9a45f77d07d3770bee310d99c4fd9a72d6f55278882e5 |
+| [crictl-v1.14.0-linux-arm.tar.gz](https://github.com/kubernetes-sigs/cri-tools/releases/download/v1.14.0/crictl-v1.14.0-linux-arm.tar.gz)     | 9910cecfd6558239ba015323066c7233d8371af359b9ddd0b2a35d5223bcf945 |
+| [crictl-v1.14.0-linux-ppc64le.tar.gz](https://github.com/kubernetes-sigs/cri-tools/releases/download/v1.14.0/crictl-v1.14.0-linux-ppc64le.tar.gz) | 1e2cd11a1e025ed9755521cf13bb1bda986afa0052597a9bb44d31e62583413b |
+| [crictl-v1.14.0-linux-s390x.tar.gz](https://github.com/kubernetes-sigs/cri-tools/releases/download/v1.14.0/crictl-v1.14.0-linux-s390x.tar.gz)   | 8b7b5749cba88ef337997ae90aa04380e3cab2c040b44b505b2fcd691c4935e4 |
+| [crictl-v1.14.0-windows-386.tar.gz](https://github.com/kubernetes-sigs/cri-tools/releases/download/v1.14.0/crictl-v1.14.0-windows-386.tar.gz)   | 02b1ba64c6fa7bbc7319e7c637ed89b4f898acd1b6f25f2012ac4a538de5be89 |
+| [crictl-v1.14.0-windows-amd64.tar.gz](https://github.com/kubernetes-sigs/cri-tools/releases/download/v1.14.0/crictl-v1.14.0-windows-amd64.tar.gz) | 1f2d2e6612e930ff77640a10308a2cd40393a449a35b2dfbfeb06ae8d31e072d |
+| [critest-v1.14.0-linux-386.tar.gz](https://github.com/kubernetes-sigs/cri-tools/releases/download/v1.14.0/critest-v1.14.0-linux-386.tar.gz)    | 1eeaf7fdd386e14940326c83ed2a47fb28f6512c8d93b08d3c2a2f9e3d4270bb |
+| [critest-v1.14.0-linux-amd64.tar.gz](https://github.com/kubernetes-sigs/cri-tools/releases/download/v1.14.0/critest-v1.14.0-linux-amd64.tar.gz)  | 4c640219e297c877b56e7b13dcd0f10ab2a76092dd7bdb888d83c64372f0a3f9 |
+| [critest-v1.14.0-linux-arm64.tar.gz](https://github.com/kubernetes-sigs/cri-tools/releases/download/v1.14.0/critest-v1.14.0-linux-arm64.tar.gz)  | e4d5e9cc9b6eb22a96a37477e392d17a5e091c40aad1ae96ec06da3708fe605a |
+| [critest-v1.14.0-linux-arm.tar.gz](https://github.com/kubernetes-sigs/cri-tools/releases/download/v1.14.0/critest-v1.14.0-linux-arm.tar.gz)    | bb29da5ff3405dae0442a5e2672524bf46837d6dea5c3b1ac4a99f0ad8bf78c4 |
+| [critest-v1.14.0-windows-386.tar.gz](https://github.com/kubernetes-sigs/cri-tools/releases/download/v1.14.0/critest-v1.14.0-windows-386.tar.gz)    | 8003a50ae0e0398237e42bb26da7cbfd8675deb4258ec812cb28ed989a03d7df |
+| [critest-v1.14.0-windows-amd64.tar.gz](https://github.com/kubernetes-sigs/cri-tools/releases/download/v1.14.0/critest-v1.14.0-windows-amd64.tar.gz)  | 07dd737b207b12d22f68425dbe5347483059a9b48f47e95c37044de960023147 |
 
 # v1.13.0
 

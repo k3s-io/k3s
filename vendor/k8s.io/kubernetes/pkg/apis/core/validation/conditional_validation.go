@@ -18,14 +18,16 @@ package validation
 
 import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	api "k8s.io/kubernetes/pkg/apis/core"
+	"k8s.io/kubernetes/pkg/features"
 )
 
 // ValidateConditionalService validates conditionally valid fields.
 func ValidateConditionalService(service, oldService *api.Service) field.ErrorList {
 	var errs field.ErrorList
 	// If the SCTPSupport feature is disabled, and the old object isn't using the SCTP feature, prevent the new object from using it
-	if len(serviceSCTPFields(oldService)) == 0 {
+	if !utilfeature.DefaultFeatureGate.Enabled(features.SCTPSupport) && len(serviceSCTPFields(oldService)) == 0 {
 		for _, f := range serviceSCTPFields(service) {
 			errs = append(errs, field.NotSupported(f, api.ProtocolSCTP, []string{string(api.ProtocolTCP), string(api.ProtocolUDP)}))
 		}
@@ -50,7 +52,7 @@ func serviceSCTPFields(service *api.Service) []*field.Path {
 func ValidateConditionalEndpoints(endpoints, oldEndpoints *api.Endpoints) field.ErrorList {
 	var errs field.ErrorList
 	// If the SCTPSupport feature is disabled, and the old object isn't using the SCTP feature, prevent the new object from using it
-	if len(endpointsSCTPFields(oldEndpoints)) == 0 {
+	if !utilfeature.DefaultFeatureGate.Enabled(features.SCTPSupport) && len(endpointsSCTPFields(oldEndpoints)) == 0 {
 		for _, f := range endpointsSCTPFields(endpoints) {
 			errs = append(errs, field.NotSupported(f, api.ProtocolSCTP, []string{string(api.ProtocolTCP), string(api.ProtocolUDP)}))
 		}
@@ -114,7 +116,7 @@ func validateConditionalPodSpec(podSpec, oldPodSpec *api.PodSpec, fldPath *field
 	errs := field.ErrorList{}
 
 	// If the SCTPSupport feature is disabled, and the old object isn't using the SCTP feature, prevent the new object from using it
-	if len(podSCTPFields(oldPodSpec, nil)) == 0 {
+	if !utilfeature.DefaultFeatureGate.Enabled(features.SCTPSupport) && len(podSCTPFields(oldPodSpec, nil)) == 0 {
 		for _, f := range podSCTPFields(podSpec, fldPath) {
 			errs = append(errs, field.NotSupported(f, api.ProtocolSCTP, []string{string(api.ProtocolTCP), string(api.ProtocolUDP)}))
 		}

@@ -1,0 +1,30 @@
+run:
+  deadline: 5m
+
+linters:
+  disable-all: true
+  enable:
+    - dupl
+    - goconst
+    - gocyclo
+    - gofmt
+    - golint
+    - govet
+    - ineffassign
+    - interfacer
+    - lll
+    - misspell
+    - nakedret
+    - structcheck
+    - unparam
+    - varcheck
+
+linters-settings:
+  dupl:
+    threshold: 400 
+  lll:   
+    line-length: 170
+  gocyclo:
+    min-complexity: 15
+  golint:
+    min-confidence: 0.85

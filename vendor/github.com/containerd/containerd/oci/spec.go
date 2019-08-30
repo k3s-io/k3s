@@ -141,7 +141,6 @@ func populateDefaultUnixSpec(ctx context.Context, s *Spec, id string) error {
 			Path: defaultRootfsPath,
 		},
 		Process: &specs.Process{
-			Env:             defaultUnixEnv,
 			Cwd:             "/",
 			NoNewPrivileges: true,
 			User: specs.User{

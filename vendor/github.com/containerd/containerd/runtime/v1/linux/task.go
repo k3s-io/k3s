@@ -124,11 +124,15 @@ func (t *Task) Start(ctx context.Context) error {
 	t.pid = int(r.Pid)
 	if !hasCgroup {
 		cg, err := cgroups.Load(cgroups.V1, cgroups.PidPath(t.pid))
-		if err != nil {
+		if err != nil && err != cgroups.ErrCgroupDeleted {
 			return err
 		}
 		t.mu.Lock()
-		t.cg = cg
+		if err == cgroups.ErrCgroupDeleted {
+			t.cg = nil
+		} else {
+			t.cg = cg
+		}
 		t.mu.Unlock()
 	}
 	t.events.Publish(ctx, runtime.TaskStartEventTopic, &eventstypes.TaskStart{

@@ -33,6 +33,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	openapicommon "k8s.io/kube-openapi/pkg/common"
 )
 
 type RequestHeaderAuthenticationOptions struct {
@@ -169,19 +170,25 @@ func (s *DelegatingAuthenticationOptions) AddFlags(fs *pflag.FlagSet) {
 		"Note that this can result in authentication that treats all requests as anonymous.")
 }
 
-func (s *DelegatingAuthenticationOptions) ApplyTo(c *server.AuthenticationInfo, servingInfo *server.SecureServingInfo) error {
+func (s *DelegatingAuthenticationOptions) ApplyTo(c *server.AuthenticationInfo, servingInfo *server.SecureServingInfo, openAPIConfig *openapicommon.Config) error {
 	if s == nil {
 		c.Authenticator = nil
 		return nil
 	}
 
 	cfg := authenticatorfactory.DelegatingAuthenticatorConfig{
+		Anonymous: true,
 		CacheTTL:  s.CacheTTL,
 	}
 
 	client, err := s.getClient()
 	if err != nil {
 		return fmt.Errorf("failed to get delegated authentication kubeconfig: %v", err)
+	}
+
+	// configure token review
+	if client != nil {
+		cfg.TokenAccessReviewClient = client.AuthenticationV1beta1().TokenReviews()
 	}
 
 	// look into configmaps/external-apiserver-authentication for missing authn info
@@ -210,11 +217,14 @@ func (s *DelegatingAuthenticationOptions) ApplyTo(c *server.AuthenticationInfo, 
 	}
 
 	// create authenticator
-	authenticator, err := cfg.New()
+	authenticator, securityDefinitions, err := cfg.New()
 	if err != nil {
 		return err
 	}
 	c.Authenticator = authenticator
+	if openAPIConfig != nil {
+		openAPIConfig.SecurityDefinitions = securityDefinitions
+	}
 	c.SupportsBasicAuth = false
 
 	return nil

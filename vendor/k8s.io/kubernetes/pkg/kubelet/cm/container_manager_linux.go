@@ -32,10 +32,10 @@ import (
 	"github.com/opencontainers/runc/libcontainer/cgroups"
 	"github.com/opencontainers/runc/libcontainer/cgroups/fs"
 	"github.com/opencontainers/runc/libcontainer/configs"
-	rsystem "github.com/opencontainers/runc/libcontainer/system"
+	libcontainersystem "github.com/opencontainers/runc/libcontainer/system"
 	"k8s.io/klog"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -43,8 +43,9 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/client-go/tools/record"
+	internalapi "k8s.io/cri-api/pkg/apis"
 	kubefeatures "k8s.io/kubernetes/pkg/features"
-	internalapi "k8s.io/kubernetes/pkg/kubelet/apis/cri"
+	podresourcesapi "k8s.io/kubernetes/pkg/kubelet/apis/podresources/v1alpha1"
 	"k8s.io/kubernetes/pkg/kubelet/cadvisor"
 	"k8s.io/kubernetes/pkg/kubelet/cm/cpumanager"
 	"k8s.io/kubernetes/pkg/kubelet/cm/devicemanager"
@@ -52,10 +53,10 @@ import (
 	"k8s.io/kubernetes/pkg/kubelet/config"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
 	"k8s.io/kubernetes/pkg/kubelet/lifecycle"
+	"k8s.io/kubernetes/pkg/kubelet/pluginmanager/cache"
 	"k8s.io/kubernetes/pkg/kubelet/qos"
 	"k8s.io/kubernetes/pkg/kubelet/stats/pidlimit"
 	"k8s.io/kubernetes/pkg/kubelet/status"
-	"k8s.io/kubernetes/pkg/kubelet/util/pluginwatcher"
 	schedulernodeinfo "k8s.io/kubernetes/pkg/scheduler/nodeinfo"
 	"k8s.io/kubernetes/pkg/util/mount"
 	"k8s.io/kubernetes/pkg/util/oom"
@@ -200,6 +201,15 @@ func validateSystemRequirements(mountUtil mount.Interface) (features, error) {
 // Takes the absolute name of the specified containers.
 // Empty container name disables use of the specified container.
 func NewContainerManager(mountUtil mount.Interface, cadvisorInterface cadvisor.Interface, nodeConfig NodeConfig, failSwapOn bool, devicePluginEnabled bool, recorder record.EventRecorder) (ContainerManager, error) {
+	// Mitigation of the issue fixed in master where hugetlb prefix for page sizes with "KiB"
+	// is "kB" in runc, but the correct is "KB"
+	// See https://github.com/opencontainers/runc/pull/2065
+	// and https://github.com/kubernetes/kubernetes/pull/78495
+	// for more info.
+	for i, pageSize := range fs.HugePageSizes {
+		fs.HugePageSizes[i] = strings.ReplaceAll(pageSize, "kB", "KB")
+	}
+
 	subsystems, err := GetCgroupSubsystems()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get mounted cgroup subsystems: %v", err)
@@ -243,9 +253,15 @@ func NewContainerManager(mountUtil mount.Interface, cadvisorInterface cadvisor.I
 
 	// Turn CgroupRoot from a string (in cgroupfs path format) to internal CgroupName
 	cgroupRoot := ParseCgroupfsToCgroupName(nodeConfig.CgroupRoot)
-	cgroupManager := NewCgroupManager(subsystems, nodeConfig.CgroupDriver)
+	cgroupManager, err := NewCgroupManager(subsystems, nodeConfig.CgroupDriver)
+	if err != nil {
+		return nil, err
+	}
 	// Check if Cgroup-root actually exists on the node
 	if nodeConfig.CgroupsPerQOS {
+		if nodeConfig.CgroupDriver == noneDriver {
+			return nil, fmt.Errorf("invalid configuration: cgroups-per-qos is not supported for %s cgroup driver", nodeConfig.CgroupDriver)
+		}
 		// this does default to / when enabled, but this tests against regressions.
 		if nodeConfig.CgroupRoot == "" {
 			return nil, fmt.Errorf("invalid configuration: cgroups-per-qos was specified and cgroup-root was not specified. To enable the QoS cgroup hierarchy you need to specify a valid cgroup-root")
@@ -255,8 +271,8 @@ func NewContainerManager(mountUtil mount.Interface, cadvisorInterface cadvisor.I
 		// of note, we always use the cgroupfs driver when performing this check since
 		// the input is provided in that format.
 		// this is important because we do not want any name conversion to occur.
-		if !cgroupManager.Exists(cgroupRoot) {
-			return nil, fmt.Errorf("invalid configuration: cgroup-root %q doesn't exist: %v", cgroupRoot, err)
+		if !cgroupManager.Exists(cgroupRoot) && nodeConfig.CgroupDriver != noneDriver {
+			return nil, fmt.Errorf("invalid configuration: cgroup-root %q doesn't exist", cgroupRoot)
 		}
 		klog.Infof("container manager verified user specified cgroup-root exists: %v", cgroupRoot)
 		// Include the top level cgroup for enforcing node allocatable into cgroup-root.
@@ -390,8 +406,8 @@ func setupKernelTunables(option KernelTunableBehavior) error {
 			klog.V(2).Infof("Updating kernel flag: %v, expected value: %v, actual value: %v", flag, expectedValue, val)
 			err = sysctl.SetSysctl(flag, expectedValue)
 			if err != nil {
-				if rsystem.RunningInUserNS() {
-					klog.Warningf("Updating kernel flag failed: %v: %v", flag, err)
+				if libcontainersystem.RunningInUserNS() {
+					klog.Warningf("Updating kernel flag failed: %v: %v (running in UserNS)", flag, err)
 				} else {
 					errList = append(errList, err)
 				}
@@ -480,20 +496,13 @@ func (cm *containerManagerImpl) setupNode(activePods ActivePodsFunc) error {
 			},
 		}
 		cont.ensureStateFunc = func(_ *fs.Manager) error {
-			err := ensureProcessInContainerWithOOMScore(os.Getpid(), qos.KubeletOOMScoreAdj, &manager)
-			if rsystem.RunningInUserNS() {
-				// if we are in userns, cgroups might not be available
-				err = nil
-			}
-			return err
+			return ensureProcessInContainerWithOOMScore(os.Getpid(), qos.KubeletOOMScoreAdj, &manager)
 		}
 		systemContainers = append(systemContainers, cont)
 	} else {
 		cm.periodicTasks = append(cm.periodicTasks, func() {
 			if err := ensureProcessInContainerWithOOMScore(os.Getpid(), qos.KubeletOOMScoreAdj, nil); err != nil {
-				if !rsystem.RunningInUserNS() {
-					klog.Error(err)
-				}
+				klog.Error(err)
 				return
 			}
 			cont, err := getContainer(os.Getpid())
@@ -631,7 +640,7 @@ func (cm *containerManagerImpl) Start(node *v1.Node,
 	return nil
 }
 
-func (cm *containerManagerImpl) GetPluginRegistrationHandler() pluginwatcher.PluginHandler {
+func (cm *containerManagerImpl) GetPluginRegistrationHandler() cache.PluginHandler {
 	return cm.deviceManager.GetWatcherHandler()
 }
 
@@ -903,4 +912,12 @@ func (cm *containerManagerImpl) GetCapacity() v1.ResourceList {
 
 func (cm *containerManagerImpl) GetDevicePluginResourceCapacity() (v1.ResourceList, v1.ResourceList, []string) {
 	return cm.deviceManager.GetCapacity()
+}
+
+func (cm *containerManagerImpl) GetDevices(podUID, containerName string) []*podresourcesapi.ContainerDevices {
+	return cm.deviceManager.GetDevices(podUID, containerName)
+}
+
+func (cm *containerManagerImpl) ShouldResetExtendedResourceCapacity() bool {
+	return cm.deviceManager.ShouldResetExtendedResourceCapacity()
 }

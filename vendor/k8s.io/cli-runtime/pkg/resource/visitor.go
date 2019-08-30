@@ -39,6 +39,8 @@ import (
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/cli-runtime/pkg/kustomize"
+	"sigs.k8s.io/kustomize/pkg/fs"
 )
 
 const (
@@ -167,7 +169,12 @@ func (i *Info) String() string {
 
 // Namespaced returns true if the object belongs to a namespace
 func (i *Info) Namespaced() bool {
-	return i.Mapping != nil && i.Mapping.Scope.Name() == meta.RESTScopeNameNamespace
+	if i.Mapping != nil {
+		// if we have RESTMapper info, use it
+		return i.Mapping.Scope.Name() == meta.RESTScopeNameNamespace
+	}
+	// otherwise, use the presence of a namespace in the info as an indicator
+	return len(i.Namespace) > 0
 }
 
 // Watch returns server changes to this object after it was retrieved.
@@ -517,6 +524,24 @@ func (v *FileVisitor) Visit(fn VisitorFunc) error {
 	utf16bom := unicode.BOMOverride(unicode.UTF8.NewDecoder())
 	v.StreamVisitor.Reader = transform.NewReader(f, utf16bom)
 
+	return v.StreamVisitor.Visit(fn)
+}
+
+// KustomizeVisitor is wrapper around a StreamVisitor, to handle Kustomization directories
+type KustomizeVisitor struct {
+	Path string
+	*StreamVisitor
+}
+
+// Visit in a KustomizeVisitor gets the output of Kustomize build and save it in the Streamvisitor
+func (v *KustomizeVisitor) Visit(fn VisitorFunc) error {
+	fSys := fs.MakeRealFS()
+	var out bytes.Buffer
+	err := kustomize.RunKustomizeBuild(&out, fSys, v.Path)
+	if err != nil {
+		return err
+	}
+	v.StreamVisitor.Reader = bytes.NewReader(out.Bytes())
 	return v.StreamVisitor.Visit(fn)
 }
 

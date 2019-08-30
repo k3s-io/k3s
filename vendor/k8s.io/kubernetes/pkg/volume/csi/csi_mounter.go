@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
 
 	"k8s.io/klog"
 
@@ -68,14 +69,14 @@ type csiMountMgr struct {
 	podUID         types.UID
 	options        volume.VolumeOptions
 	publishContext map[string]string
-	volume.MetricsNil
+	volume.MetricsProvider
 }
 
 // volume.Volume methods
 var _ volume.Volume = &csiMountMgr{}
 
 func (c *csiMountMgr) GetPath() string {
-	dir := path.Join(getTargetPath(c.podUID, c.specVolumeID, c.plugin.host), "/mount")
+	dir := filepath.Join(getTargetPath(c.podUID, c.specVolumeID, c.plugin.host), "/mount")
 	klog.V(4).Info(log("mounter.GetPath generated [%s]", dir))
 	return dir
 }
@@ -92,11 +93,11 @@ func (c *csiMountMgr) CanMount() error {
 	return nil
 }
 
-func (c *csiMountMgr) SetUp(fsGroup *int64) error {
-	return c.SetUpAt(c.GetPath(), fsGroup)
+func (c *csiMountMgr) SetUp(mounterArgs volume.MounterArgs) error {
+	return c.SetUpAt(c.GetPath(), mounterArgs)
 }
 
-func (c *csiMountMgr) SetUpAt(dir string, fsGroup *int64) error {
+func (c *csiMountMgr) SetUpAt(dir string, mounterArgs volume.MounterArgs) error {
 	klog.V(4).Infof(log("Mounter.SetUpAt(%s)", dir))
 
 	mounted, err := isDirMounted(c.plugin, dir)
@@ -141,7 +142,23 @@ func (c *csiMountMgr) SetUpAt(dir string, fsGroup *int64) error {
 
 	switch {
 	case volSrc != nil:
-		return fmt.Errorf("CSIInlineVolume feature required")
+		if !utilfeature.DefaultFeatureGate.Enabled(features.CSIInlineVolume) {
+			return fmt.Errorf("CSIInlineVolume feature required")
+		}
+		if c.driverMode != ephemeralDriverMode {
+			return fmt.Errorf("unexpected driver mode: %s", c.driverMode)
+		}
+		if volSrc.FSType != nil {
+			fsType = *volSrc.FSType
+		}
+
+		volAttribs = volSrc.VolumeAttributes
+
+		if volSrc.NodePublishSecretRef != nil {
+			secretName := volSrc.NodePublishSecretRef.Name
+			ns := c.pod.Namespace
+			secretRef = &api.SecretReference{Name: secretName, Namespace: ns}
+		}
 	case pvSrc != nil:
 		if c.driverMode != persistentDriverMode {
 			return fmt.Errorf("unexpected driver mode: %s", c.driverMode)
@@ -251,7 +268,7 @@ func (c *csiMountMgr) SetUpAt(dir string, fsGroup *int64) error {
 	// if fstype is "", then skip fsgroup (could be indication of non-block filesystem)
 	// if fstype is provided and pv.AccessMode == ReadWriteOnly, then apply fsgroup
 
-	err = c.applyFSGroup(fsType, fsGroup)
+	err = c.applyFSGroup(fsType, mounterArgs.FsGroup)
 	if err != nil {
 		// attempt to rollback mount.
 		fsGrpErr := fmt.Errorf("applyFSGroup failed for vol %s: %v", c.volumeID, err)
@@ -424,7 +441,7 @@ func removeMountDir(plug *csiPlugin, mountPath string) error {
 		}
 		// remove volume data file as well
 		volPath := path.Dir(mountPath)
-		dataFile := path.Join(volPath, volDataFileName)
+		dataFile := filepath.Join(volPath, volDataFileName)
 		klog.V(4).Info(log("also deleting volume info data file [%s]", dataFile))
 		if err := os.Remove(dataFile); err != nil && !os.IsNotExist(err) {
 			klog.Error(log("failed to delete volume data file [%s]: %v", dataFile, err))

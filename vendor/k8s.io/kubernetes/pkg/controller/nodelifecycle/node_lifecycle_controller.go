@@ -23,8 +23,6 @@ package nodelifecycle
 
 import (
 	"fmt"
-	"hash/fnv"
-	"io"
 	"sync"
 	"time"
 
@@ -625,8 +623,10 @@ func (nc *Controller) doEvictionPass() {
 }
 
 // monitorNodeHealth verifies node health are constantly updated by kubelet, and
-// if not, post "NodeReady==ConditionUnknown". It also evicts all pods if node
-// is not ready or not reachable for a long period of time.
+// if not, post "NodeReady==ConditionUnknown".
+// For nodes who are not ready or not reachable for a long period of time.
+// This function will taint them if TaintBasedEvictions feature was enabled.
+// Otherwise, it would evict it directly.
 func (nc *Controller) monitorNodeHealth() error {
 	// We are listing nodes from local cache as we can tolerate some small delays
 	// comparing to state from etcd and there is eventual consistency anyway.
@@ -862,7 +862,7 @@ func (nc *Controller) tryUpdateNodeHealth(node *v1.Node) (time.Duration, v1.Node
 			transitionTime = savedNodeHealth.readyTransitionTimestamp
 		}
 		if klog.V(5) {
-			klog.V(5).Infof("Node %s ReadyCondition updated. Updating timestamp: %+v vs %+v.", node.Name, savedNodeHealth.status, node.Status)
+			klog.Infof("Node %s ReadyCondition updated. Updating timestamp: %+v vs %+v.", node.Name, savedNodeHealth.status, node.Status)
 		} else {
 			klog.V(3).Infof("Node %s ReadyCondition updated. Updating timestamp.", node.Name)
 		}
@@ -1275,10 +1275,4 @@ func (nc *Controller) reconcileNodeLabels(nodeName string) error {
 		return fmt.Errorf("failed update labels for node %+v", node)
 	}
 	return nil
-}
-
-func hash(val string, max int) int {
-	hasher := fnv.New32a()
-	io.WriteString(hasher, val)
-	return int(hasher.Sum32()) % max
 }

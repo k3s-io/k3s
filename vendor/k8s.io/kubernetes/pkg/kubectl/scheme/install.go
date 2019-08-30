@@ -23,6 +23,7 @@ import (
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	appsv1beta2 "k8s.io/api/apps/v1beta2"
 	authenticationv1 "k8s.io/api/authentication/v1"
+	authenticationv1beta1 "k8s.io/api/authentication/v1beta1"
 	authorizationv1 "k8s.io/api/authorization/v1"
 	authorizationv1beta1 "k8s.io/api/authorization/v1beta1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
@@ -33,13 +34,18 @@ import (
 	certificatesv1beta1 "k8s.io/api/certificates/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
+	imagepolicyv1alpha1 "k8s.io/api/imagepolicy/v1alpha1"
 	networkingv1 "k8s.io/api/networking/v1"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	rbacv1alpha1 "k8s.io/api/rbac/v1alpha1"
 	rbacv1beta1 "k8s.io/api/rbac/v1beta1"
+	schedulingv1alpha1 "k8s.io/api/scheduling/v1alpha1"
+	settingsv1alpha1 "k8s.io/api/settings/v1alpha1"
 	storagev1 "k8s.io/api/storage/v1"
 	storagev1beta1 "k8s.io/api/storage/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1beta1 "k8s.io/apimachinery/pkg/apis/meta/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -51,20 +57,25 @@ import (
 func init() {
 	// Register external types for Scheme
 	metav1.AddToGroupVersion(Scheme, schema.GroupVersion{Version: "v1"})
+	utilruntime.Must(metav1beta1.AddMetaToScheme(Scheme))
+	utilruntime.Must(metav1.AddMetaToScheme(Scheme))
 	utilruntime.Must(scheme.AddToScheme(Scheme))
 
 	utilruntime.Must(Scheme.SetVersionPriority(corev1.SchemeGroupVersion))
 	utilruntime.Must(Scheme.SetVersionPriority(admissionv1alpha1.SchemeGroupVersion))
 	utilruntime.Must(Scheme.SetVersionPriority(admissionregistrationv1beta1.SchemeGroupVersion))
 	utilruntime.Must(Scheme.SetVersionPriority(appsv1beta1.SchemeGroupVersion, appsv1beta2.SchemeGroupVersion, appsv1.SchemeGroupVersion))
-	utilruntime.Must(Scheme.SetVersionPriority(authenticationv1.SchemeGroupVersion))
+	utilruntime.Must(Scheme.SetVersionPriority(authenticationv1.SchemeGroupVersion, authenticationv1beta1.SchemeGroupVersion))
 	utilruntime.Must(Scheme.SetVersionPriority(authorizationv1.SchemeGroupVersion, authorizationv1beta1.SchemeGroupVersion))
 	utilruntime.Must(Scheme.SetVersionPriority(autoscalingv1.SchemeGroupVersion, autoscalingv2beta1.SchemeGroupVersion))
 	utilruntime.Must(Scheme.SetVersionPriority(batchv1.SchemeGroupVersion, batchv1beta1.SchemeGroupVersion, batchv2alpha1.SchemeGroupVersion))
 	utilruntime.Must(Scheme.SetVersionPriority(certificatesv1beta1.SchemeGroupVersion))
 	utilruntime.Must(Scheme.SetVersionPriority(extensionsv1beta1.SchemeGroupVersion))
+	utilruntime.Must(Scheme.SetVersionPriority(imagepolicyv1alpha1.SchemeGroupVersion))
 	utilruntime.Must(Scheme.SetVersionPriority(networkingv1.SchemeGroupVersion))
 	utilruntime.Must(Scheme.SetVersionPriority(policyv1beta1.SchemeGroupVersion))
-	utilruntime.Must(Scheme.SetVersionPriority(rbacv1.SchemeGroupVersion, rbacv1beta1.SchemeGroupVersion))
+	utilruntime.Must(Scheme.SetVersionPriority(rbacv1.SchemeGroupVersion, rbacv1beta1.SchemeGroupVersion, rbacv1alpha1.SchemeGroupVersion))
+	utilruntime.Must(Scheme.SetVersionPriority(schedulingv1alpha1.SchemeGroupVersion))
+	utilruntime.Must(Scheme.SetVersionPriority(settingsv1alpha1.SchemeGroupVersion))
 	utilruntime.Must(Scheme.SetVersionPriority(storagev1.SchemeGroupVersion, storagev1beta1.SchemeGroupVersion))
 }
