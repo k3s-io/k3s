@@ -62,9 +62,7 @@ const (
 )
 
 var (
-	WaitForValidHostName bool
-	csiPluginInstance *csiPlugin
-	csiPluginLock sync.Mutex
+	nimsMutex sync.Mutex
 )
 
 var deprecatedSocketDirVersions = []string{"0.1.0", "0.2.0", "0.3.0", "0.4.0"}
@@ -83,18 +81,11 @@ const ephemeralDriverMode driverMode = "ephemeral"
 
 // ProbeVolumePlugins returns implemented plugins
 func ProbeVolumePlugins() []volume.VolumePlugin {
-	csiPluginLock.Lock()
-	defer csiPluginLock.Unlock()
-
-	if csiPluginInstance != nil {
-		return []volume.VolumePlugin{csiPluginInstance}
-	}
-
-	csiPluginInstance = &csiPlugin{
+	p := &csiPlugin{
 		host:         nil,
 		blockEnabled: utilfeature.DefaultFeatureGate.Enabled(features.CSIBlockVolume),
 	}
-	return []volume.VolumePlugin{csiPluginInstance}
+	return []volume.VolumePlugin{p}
 }
 
 // volume.VolumePlugin methods
@@ -102,6 +93,7 @@ var _ volume.VolumePlugin = &csiPlugin{}
 
 // RegistrationHandler is the handler which is fed to the pluginwatcher API.
 type RegistrationHandler struct {
+	nim nodeinfomanager.Interface
 }
 
 // TODO (verult) consider using a struct instead of global variables
@@ -109,11 +101,7 @@ type RegistrationHandler struct {
 // corresponding sockets
 var csiDrivers = &DriversStore{}
 
-var nim nodeinfomanager.Interface
-
-// PluginHandler is the plugin registration handler interface passed to the
-// pluginwatcher module in kubelet
-var PluginHandler = &RegistrationHandler{}
+var nims = map[string]nodeinfomanager.Interface{}
 
 // ValidatePlugin is called by kubelet's plugin watcher upon detection
 // of a new registration socket opened by CSI Driver registrar side car.
@@ -164,15 +152,20 @@ func (h *RegistrationHandler) RegisterPlugin(pluginName string, endpoint string,
 
 	driverNodeID, maxVolumePerNode, accessibleTopology, err := csi.NodeGetInfo(ctx)
 	if err != nil {
-		if unregErr := unregisterDriver(pluginName); unregErr != nil {
+		if unregErr := h.unregisterDriver(pluginName); unregErr != nil {
 			klog.Error(log("registrationHandler.RegisterPlugin failed to unregister plugin due to previous error: %v", unregErr))
 		}
 		return err
 	}
 
-	err = nim.InstallCSIDriver(pluginName, driverNodeID, maxVolumePerNode, accessibleTopology)
+	klog.V(4).Info(log("RegistrationHandler.RegisterPlugin finds nim for %s", driverNodeID))
+	nimsMutex.Lock()
+	h.nim = nims[driverNodeID]
+	nimsMutex.Unlock()
+
+	err = h.nim.InstallCSIDriver(pluginName, driverNodeID, maxVolumePerNode, accessibleTopology)
 	if err != nil {
-		if unregErr := unregisterDriver(pluginName); unregErr != nil {
+		if unregErr := h.unregisterDriver(pluginName); unregErr != nil {
 			klog.Error(log("registrationHandler.RegisterPlugin failed to unregister plugin due to previous error: %v", unregErr))
 		}
 		return err
@@ -212,27 +205,12 @@ func (h *RegistrationHandler) validateVersions(callerName, pluginName string, en
 // it is no longer available
 func (h *RegistrationHandler) DeRegisterPlugin(pluginName string) {
 	klog.V(4).Info(log("registrationHandler.DeRegisterPlugin request for plugin %s", pluginName))
-	if err := unregisterDriver(pluginName); err != nil {
+	if err := h.unregisterDriver(pluginName); err != nil {
 		klog.Error(log("registrationHandler.DeRegisterPlugin failed: %v", err))
 	}
 }
 
 func (p *csiPlugin) Init(host volume.VolumeHost) error {
-	csiPluginLock.Lock()
-	defer csiPluginLock.Unlock()
-
-	if WaitForValidHostName && host.GetHostName() == "" {
-		for {
-			if p.host != nil {
-				return nil
-			}
-			csiPluginLock.Unlock()
-			time.Sleep(time.Second)
-			klog.Infof("Waiting for CSI volume hostname")
-			csiPluginLock.Lock()
-		}
-	}
-
 	p.host = host
 
 	if utilfeature.DefaultFeatureGate.Enabled(features.CSIDriverRegistry) {
@@ -259,7 +237,13 @@ func (p *csiPlugin) Init(host volume.VolumeHost) error {
 	}
 
 	// Initializing the label management channels
-	nim = nodeinfomanager.NewNodeInfoManager(host.GetNodeName(), host, nil)
+	node := string(host.GetNodeName())
+	if node != "" {
+		klog.V(4).Info(log("csiPlugin.Init adds nim for %s", node))
+		nimsMutex.Lock()
+		nims[node] = nodeinfomanager.NewNodeInfoManager(host.GetNodeName(), host, nil)
+		nimsMutex.Unlock()
+	}
 
 	return nil
 }
@@ -743,10 +727,13 @@ func (p *csiPlugin) getPublishContext(client clientset.Interface, handle, driver
 	return attachment.Status.AttachmentMetadata, nil
 }
 
-func unregisterDriver(driverName string) error {
+func (h *RegistrationHandler) unregisterDriver(driverName string) error {
 	csiDrivers.Delete(driverName)
+	if h.nim == nil {
+		return nil
+	}
 
-	if err := nim.UninstallCSIDriver(driverName); err != nil {
+	if err := h.nim.UninstallCSIDriver(driverName); err != nil {
 		klog.Errorf("Error uninstalling CSI driver: %v", err)
 		return err
 	}
