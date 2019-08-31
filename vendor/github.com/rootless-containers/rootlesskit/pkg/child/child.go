@@ -68,6 +68,19 @@ func mountSysfs() error {
 	return nil
 }
 
+func mountProcfs() error {
+	cmds := [][]string{{"mount", "-t", "proc", "none", "/proc"}}
+	if err := common.Execs(os.Stderr, os.Environ(), cmds); err != nil {
+		cmdsRo := [][]string{{"mount", "-t", "proc", "-o", "ro", "none", "/proc"}}
+		logrus.Warnf("failed to mount procfs (%v), falling back to read-only mount (%v): %v",
+			cmds, cmdsRo, err)
+		if err := common.Execs(os.Stderr, os.Environ(), cmdsRo); err != nil {
+			logrus.Warnf("failed to mount procfs (%v): %v", cmdsRo, err)
+		}
+	}
+	return nil
+}
+
 func activateLoopback() error {
 	cmds := [][]string{
 		{"ip", "link", "set", "lo", "up"},
@@ -157,6 +170,7 @@ type Opt struct {
 	CopyUpDriver  copyup.ChildDriver  // cannot be nil if len(CopyUpDirs) != 0
 	CopyUpDirs    []string
 	PortDriver    port.ChildDriver
+	MountProcfs   bool // needs to be set if (and only if) parent.Opt.CreatePIDNS is set
 }
 
 func Child(opt Opt) error {
@@ -210,6 +224,11 @@ func Child(opt Opt) error {
 	}
 	if err := setupNet(msg, etcWasCopied, opt.NetworkDriver); err != nil {
 		return err
+	}
+	if opt.MountProcfs {
+		if err := mountProcfs(); err != nil {
+			return err
+		}
 	}
 	portQuitCh := make(chan struct{})
 	portErrCh := make(chan error)

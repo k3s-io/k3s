@@ -27,11 +27,9 @@ import (
 	dockertypes "github.com/docker/docker/api/types"
 	dockercontainer "github.com/docker/docker/api/types/container"
 	dockerfilters "github.com/docker/docker/api/types/filters"
-	rsystem "github.com/opencontainers/runc/libcontainer/system"
-
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 	"k8s.io/klog"
-	runtimeapi "k8s.io/kubernetes/pkg/kubelet/apis/cri/runtime/v1alpha2"
 	"k8s.io/kubernetes/pkg/kubelet/checkpointmanager"
 	"k8s.io/kubernetes/pkg/kubelet/checkpointmanager/errors"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
@@ -98,7 +96,7 @@ func (ds *dockerService) RunPodSandbox(ctx context.Context, r *runtimeapi.RunPod
 	}
 
 	// Step 2: Create the sandbox container.
-	if r.GetRuntimeHandler() != "" {
+	if r.GetRuntimeHandler() != "" && r.GetRuntimeHandler() != runtimeName {
 		return nil, fmt.Errorf("RuntimeHandler %q not supported", r.GetRuntimeHandler())
 	}
 	createConfig, err := ds.makeSandboxDockerConfig(config, image)
@@ -537,13 +535,11 @@ func (ds *dockerService) ListPodSandbox(_ context.Context, r *runtimeapi.ListPod
 		checkpoint := NewPodSandboxCheckpoint("", "", &CheckpointData{})
 		err := ds.checkpointManager.GetCheckpoint(id, checkpoint)
 		if err != nil {
-			if !rsystem.RunningInUserNS() {
-				klog.Errorf("Failed to retrieve checkpoint for sandbox %q: %v", id, err)
-				if err == errors.ErrCorruptCheckpoint {
-					err = ds.checkpointManager.RemoveCheckpoint(id)
-					if err != nil {
-						klog.Errorf("Failed to delete corrupt checkpoint for sandbox %q: %v", id, err)
-					}
+			klog.Errorf("Failed to retrieve checkpoint for sandbox %q: %v", id, err)
+			if err == errors.ErrCorruptCheckpoint {
+				err = ds.checkpointManager.RemoveCheckpoint(id)
+				if err != nil {
+					klog.Errorf("Failed to delete corrupt checkpoint for sandbox %q: %v", id, err)
 				}
 			}
 			continue

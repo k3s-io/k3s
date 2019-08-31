@@ -38,9 +38,6 @@ func (v *ConfigValidator) Validate(config *configs.Config) error {
 	if err := v.usernamespace(config); err != nil {
 		return err
 	}
-	if err := v.cgroupnamespace(config); err != nil {
-		return err
-	}
 	if err := v.sysctl(config); err != nil {
 		return err
 	}
@@ -114,15 +111,6 @@ func (v *ConfigValidator) usernamespace(config *configs.Config) error {
 	} else {
 		if config.UidMappings != nil || config.GidMappings != nil {
 			return fmt.Errorf("User namespace mappings specified, but USER namespace isn't enabled in the config")
-		}
-	}
-	return nil
-}
-
-func (v *ConfigValidator) cgroupnamespace(config *configs.Config) error {
-	if config.Namespaces.Contains(configs.NEWCGROUP) {
-		if _, err := os.Stat("/proc/self/ns/cgroup"); os.IsNotExist(err) {
-			return fmt.Errorf("cgroup namespaces aren't enabled in the kernel")
 		}
 	}
 	return nil

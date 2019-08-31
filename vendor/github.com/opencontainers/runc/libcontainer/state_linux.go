@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/opencontainers/runc/libcontainer/configs"
+	"github.com/opencontainers/runc/libcontainer/utils"
 
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
@@ -62,9 +63,12 @@ func destroy(c *linuxContainer) error {
 
 func runPoststopHooks(c *linuxContainer) error {
 	if c.config.Hooks != nil {
-		s, err := c.currentOCIState()
-		if err != nil {
-			return err
+		bundle, annotations := utils.Annotations(c.config.Labels)
+		s := configs.HookState{
+			Version:     c.config.Version,
+			ID:          c.id,
+			Bundle:      bundle,
+			Annotations: annotations,
 		}
 		for _, hook := range c.config.Hooks.Poststop {
 			if err := hook.Run(s); err != nil {

@@ -71,7 +71,7 @@ func inheritStdio(process *libcontainer.Process) error {
 	return nil
 }
 
-func (t *tty) recvtty(process *libcontainer.Process, socket *os.File) (Err error) {
+func (t *tty) recvtty(process *libcontainer.Process, socket *os.File) error {
 	f, err := utils.RecvFd(socket)
 	if err != nil {
 		return err
@@ -89,11 +89,6 @@ func (t *tty) recvtty(process *libcontainer.Process, socket *os.File) (Err error
 	if err != nil {
 		return err
 	}
-	defer func() {
-		if Err != nil {
-			epollConsole.Close()
-		}
-	}()
 	go epoller.Wait()
 	go io.Copy(epollConsole, os.Stdin)
 	t.wg.Add(1)
@@ -102,9 +97,11 @@ func (t *tty) recvtty(process *libcontainer.Process, socket *os.File) (Err error
 	// set raw mode to stdin and also handle interrupt
 	stdin, err := console.ConsoleFromFile(os.Stdin)
 	if err != nil {
+		epollConsole.Close()
 		return err
 	}
 	if err := stdin.SetRaw(); err != nil {
+		epollConsole.Close()
 		return fmt.Errorf("failed to set the terminal from the stdin: %v", err)
 	}
 	go handleInterrupt(stdin)

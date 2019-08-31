@@ -28,7 +28,6 @@ var namespaceMapping = map[specs.LinuxNamespaceType]configs.NamespaceType{
 	specs.UserNamespace:    configs.NEWUSER,
 	specs.IPCNamespace:     configs.NEWIPC,
 	specs.UTSNamespace:     configs.NEWUTS,
-	specs.CgroupNamespace:  configs.NEWCGROUP,
 }
 
 var mountPropagationMapping = map[string]int{
@@ -325,7 +324,7 @@ func createCgroupConfig(opts *CreateOpts) (*configs.Cgroup, error) {
 			// for e.g. "system.slice:docker:1234"
 			parts := strings.Split(myCgroupPath, ":")
 			if len(parts) != 3 {
-				return nil, fmt.Errorf("expected cgroupsPath to be of format \"slice:prefix:name\" for systemd cgroups, got %q instead", myCgroupPath)
+				return nil, fmt.Errorf("expected cgroupsPath to be of format \"slice:prefix:name\" for systemd cgroups")
 			}
 			c.Parent = parts[0]
 			c.ScopePrefix = parts[1]

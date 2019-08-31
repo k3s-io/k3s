@@ -20,7 +20,7 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 
-	runtime "k8s.io/kubernetes/pkg/kubelet/apis/cri/runtime/v1alpha2"
+	runtime "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
 
 // ReopenContainerLog asks the cri plugin to reopen the stdout/stderr log file for the container.

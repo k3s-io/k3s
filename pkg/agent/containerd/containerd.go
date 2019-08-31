@@ -20,7 +20,7 @@ import (
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
-	runtimeapi "k8s.io/kubernetes/pkg/kubelet/apis/cri/runtime/v1alpha2"
+	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 	"k8s.io/kubernetes/pkg/kubelet/util"
 )
 

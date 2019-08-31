@@ -14,6 +14,7 @@ RootlessKit is a kind of Linux-native "fake root" utility, made for mainly runni
 - [Usage](#usage)
 - [State directory](#state-directory)
 - [Environment variables](#environment-variables)
+- [PID Namespace](#pid-namespace)
 - [Network Drivers](#network-drivers)
   - [`--net=host` (default)](#--nethost-default)
   - [`--net=slirp4netns` (recommended)](#--netslirp4netns-recommended)
@@ -135,7 +136,6 @@ allow
 Full CLI options:
 
 ```console
-
 NAME:
    rootlesskit - the gate to the rootless world
 
@@ -143,7 +143,7 @@ USAGE:
    rootlesskit [global options] command [command options] [arguments...]
 
 VERSION:
-   0.3.0+dev
+   0.5.0+dev
 
 COMMANDS:
      help, h  Shows a list of commands or help for one command
@@ -162,6 +162,8 @@ GLOBAL OPTIONS:
    --copy-up value              mount a filesystem and copy-up the contents. e.g. "--copy-up=/etc" (typically required for non-host network)
    --copy-up-mode value         copy-up mode [tmpfs+symlink] (default: "tmpfs+symlink")
    --port-driver value          port driver for non-host network. [none, socat, slirp4netns, builtin(experimental)] (default: "none")
+   --publish value, -p value    publish ports. e.g. "127.0.0.1:8080:80/tcp"
+   --pidns                      create a PID namespace
    --help, -h                   show help
    --version, -v                print the version
 ```
@@ -183,6 +185,14 @@ The following environment variables will be set for the child process:
 * `ROOTLESSKIT_STATE_DIR` (since v0.3.0): absolute path to the state dir
 
 Undocumented environment variables are subject to change.
+
+## PID Namespace
+
+When `--pidns` (since v0.5.0) is specified, RootlessKit executes the child process in a new PID namespace.
+The RootlessKit child process becomes the init (PID=1).
+When RootlessKit terminates, all the processes in the namespace are killed with `SIGKILL`.
+
+See also [`pid_namespaces(7)`](http://man7.org/linux/man-pages/man7/pid_namespaces.7.html).
 
 ## Network Drivers
 

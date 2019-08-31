@@ -34,7 +34,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"golang.org/x/sys/unix"
-	runtime "k8s.io/kubernetes/pkg/kubelet/apis/cri/runtime/v1alpha2"
+	runtime "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 
 	"github.com/containerd/cri/pkg/annotations"
 	criconfig "github.com/containerd/cri/pkg/config"
@@ -91,6 +91,11 @@ func (c *criService) RunPodSandbox(ctx context.Context, r *runtime.RunPodSandbox
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get sandbox image %q", c.config.SandboxImage)
 	}
+	containerdImage, err := c.toContainerdImage(ctx, *image)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to get image from containerd %q", image.ID)
+	}
+
 	securityContext := config.GetLinux().GetSecurityContext()
 	//Create Network Namespace if it is not in host network
 	hostNet := securityContext.GetNamespaceOptions().GetNetwork() == runtime.NamespaceMode_NODE
@@ -179,7 +184,7 @@ func (c *criService) RunPodSandbox(ctx context.Context, r *runtime.RunPodSandbox
 	}
 	opts := []containerd.NewContainerOpts{
 		containerd.WithSnapshotter(c.config.ContainerdConfig.Snapshotter),
-		customopts.WithNewSnapshot(id, image.Image),
+		customopts.WithNewSnapshot(id, containerdImage),
 		containerd.WithSpec(spec, specOpts...),
 		containerd.WithContainerLabels(sandboxLabels),
 		containerd.WithContainerExtension(sandboxMetadataExtension, &sandbox.Metadata),

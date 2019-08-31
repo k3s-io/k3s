@@ -23,6 +23,8 @@ const (
 	ModeAlwaysAllow string = "AlwaysAllow"
 	// ModeAlwaysDeny is the mode to set no requests as authorized
 	ModeAlwaysDeny string = "AlwaysDeny"
+	// ModeABAC is the mode to use Attribute Based Access Control to authorize
+	ModeABAC string = "ABAC"
 	// ModeWebhook is the mode to make an external webhook call to authorize
 	ModeWebhook string = "Webhook"
 	// ModeRBAC is the mode to use Role Based Access Control to authorize
@@ -32,7 +34,7 @@ const (
 )
 
 // AuthorizationModeChoices is the list of supported authorization modes
-var AuthorizationModeChoices = []string{ModeAlwaysAllow, ModeAlwaysDeny, ModeWebhook, ModeRBAC, ModeNode}
+var AuthorizationModeChoices = []string{ModeAlwaysAllow, ModeAlwaysDeny, ModeABAC, ModeWebhook, ModeRBAC, ModeNode}
 
 // IsValidAuthorizationMode returns true if the given authorization mode is a valid one for the apiserver
 func IsValidAuthorizationMode(authzMode string) bool {

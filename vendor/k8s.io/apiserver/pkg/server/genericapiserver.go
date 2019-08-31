@@ -19,11 +19,13 @@ package server
 import (
 	"fmt"
 	"net/http"
+	gpath "path"
 	"strings"
 	"sync"
 	"time"
 
 	systemd "github.com/coreos/go-systemd/daemon"
+	"github.com/go-openapi/spec"
 	"k8s.io/klog"
 
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -41,7 +43,13 @@ import (
 	"k8s.io/apiserver/pkg/registry/rest"
 	"k8s.io/apiserver/pkg/server/healthz"
 	"k8s.io/apiserver/pkg/server/routes"
+	utilopenapi "k8s.io/apiserver/pkg/util/openapi"
 	restclient "k8s.io/client-go/rest"
+	openapibuilder "k8s.io/kube-openapi/pkg/builder"
+	openapicommon "k8s.io/kube-openapi/pkg/common"
+	"k8s.io/kube-openapi/pkg/handler"
+	openapiutil "k8s.io/kube-openapi/pkg/util"
+	openapiproto "k8s.io/kube-openapi/pkg/util/proto"
 )
 
 // Info about an API group.
@@ -113,6 +121,17 @@ type GenericAPIServer struct {
 	// DiscoveryGroupManager serves /apis
 	DiscoveryGroupManager discovery.GroupManager
 
+	// Enable swagger and/or OpenAPI if these configs are non-nil.
+	openAPIConfig *openapicommon.Config
+
+	// OpenAPIVersionedService controls the /openapi/v2 endpoint, and can be used to update the served spec.
+	// It is set during PrepareRun.
+	OpenAPIVersionedService *handler.OpenAPIService
+
+	// StaticOpenAPISpec is the spec derived from the restful container endpoints.
+	// It is set during PrepareRun.
+	StaticOpenAPISpec *spec.Swagger
+
 	// PostStartHooks are each called after the server has started listening, in a separate go func for each
 	// with no guarantee of ordering between them.  The map key is a name used for error reporting.
 	// It may kill the process with a panic if it wishes to by returning an error.
@@ -137,6 +156,14 @@ type GenericAPIServer struct {
 	// authorization check using the request URI but it may be necessary to make additional checks, such as in
 	// the create-on-update case
 	Authorizer authorizer.Authorizer
+
+	// EquivalentResourceRegistry provides information about resources equivalent to a given resource,
+	// and the kind associated with a given resource. As resources are installed, they are registered here.
+	EquivalentResourceRegistry runtime.EquivalentResourceRegistry
+
+	// enableAPIResponseCompression indicates whether API Responses should support compression
+	// if the client requests it via Accept-Encoding
+	enableAPIResponseCompression bool
 
 	// delegationTarget is the next delegate in the chain. This is never nil.
 	delegationTarget DelegationTarget
@@ -225,14 +252,23 @@ type preparedGenericAPIServer struct {
 
 // PrepareRun does post API installation setup steps.
 func (s *GenericAPIServer) PrepareRun() preparedGenericAPIServer {
+	if s.openAPIConfig != nil {
+		s.OpenAPIVersionedService, s.StaticOpenAPISpec = routes.OpenAPI{
+			Config: s.openAPIConfig,
+		}.Install(s.Handler.GoRestfulContainer, s.Handler.NonGoRestfulMux)
+	}
+
 	s.installHealthz()
 
 	// Register audit backend preShutdownHook.
 	if s.AuditBackend != nil {
-		s.AddPreShutdownHook("audit-backend", func() error {
+		err := s.AddPreShutdownHook("audit-backend", func() error {
 			s.AuditBackend.Shutdown()
 			return nil
 		})
+		if err != nil {
+			klog.Errorf("Failed to add pre-shutdown hook for audit-backend %s", err)
+		}
 	}
 
 	return preparedGenericAPIServer{s}
@@ -309,7 +345,7 @@ func (s preparedGenericAPIServer) NonBlockingRun(stopCh <-chan struct{}) error {
 }
 
 // installAPIResources is a private method for installing the REST storage backing each api groupversionresource
-func (s *GenericAPIServer) installAPIResources(apiPrefix string, apiGroupInfo *APIGroupInfo) error {
+func (s *GenericAPIServer) installAPIResources(apiPrefix string, apiGroupInfo *APIGroupInfo, openAPIModels openapiproto.Models) error {
 	for _, groupVersion := range apiGroupInfo.PrioritizedVersions {
 		if len(apiGroupInfo.VersionedResourcesStorageMap[groupVersion.Version]) == 0 {
 			klog.Warningf("Skipping API %v because it has no resources.", groupVersion)
@@ -320,6 +356,7 @@ func (s *GenericAPIServer) installAPIResources(apiPrefix string, apiGroupInfo *A
 		if apiGroupInfo.OptionsExternalVersion != nil {
 			apiGroupVersion.OptionsExternalVersion = apiGroupInfo.OptionsExternalVersion
 		}
+		apiGroupVersion.OpenAPIModels = openAPIModels
 		apiGroupVersion.MaxRequestBodyBytes = s.maxRequestBodyBytes
 
 		if err := apiGroupVersion.InstallREST(s.Handler.GoRestfulContainer); err != nil {
@@ -335,7 +372,12 @@ func (s *GenericAPIServer) InstallLegacyAPIGroup(apiPrefix string, apiGroupInfo 
 		return fmt.Errorf("%q is not in the allowed legacy API prefixes: %v", apiPrefix, s.legacyAPIGroupPrefixes.List())
 	}
 
-	if err := s.installAPIResources(apiPrefix, apiGroupInfo); err != nil {
+	openAPIModels, err := s.getOpenAPIModels(apiPrefix, apiGroupInfo)
+	if err != nil {
+		return fmt.Errorf("unable to get openapi models: %v", err)
+	}
+
+	if err := s.installAPIResources(apiPrefix, apiGroupInfo, openAPIModels); err != nil {
 		return err
 	}
 
@@ -359,8 +401,13 @@ func (s *GenericAPIServer) InstallAPIGroups(apiGroupInfos ...*APIGroupInfo) erro
 		}
 	}
 
+	openAPIModels, err := s.getOpenAPIModels(APIGroupPrefix, apiGroupInfos...)
+	if err != nil {
+		return fmt.Errorf("unable to get openapi models: %v", err)
+	}
+
 	for _, apiGroupInfo := range apiGroupInfos {
-		if err := s.installAPIResources(APIGroupPrefix, apiGroupInfo); err != nil {
+		if err := s.installAPIResources(APIGroupPrefix, apiGroupInfo, openAPIModels); err != nil {
 			return fmt.Errorf("unable to install api resources: %v", err)
 		}
 
@@ -424,9 +471,12 @@ func (s *GenericAPIServer) newAPIGroupVersion(apiGroupInfo *APIGroupInfo, groupV
 		Typer:           apiGroupInfo.Scheme,
 		Linker:          runtime.SelfLinker(meta.NewAccessor()),
 
-		Admit:             s.admissionControl,
-		MinRequestTimeout: s.minRequestTimeout,
-		Authorizer:        s.Authorizer,
+		EquivalentResourceRegistry: s.EquivalentResourceRegistry,
+
+		Admit:                        s.admissionControl,
+		MinRequestTimeout:            s.minRequestTimeout,
+		EnableAPIResponseCompression: s.enableAPIResponseCompression,
+		Authorizer:                   s.Authorizer,
 	}
 }
 
@@ -442,4 +492,52 @@ func NewDefaultAPIGroupInfo(group string, scheme *runtime.Scheme, parameterCodec
 		ParameterCodec:         parameterCodec,
 		NegotiatedSerializer:   codecs,
 	}
+}
+
+// getOpenAPIModels is a private method for getting the OpenAPI models
+func (s *GenericAPIServer) getOpenAPIModels(apiPrefix string, apiGroupInfos ...*APIGroupInfo) (openapiproto.Models, error) {
+	if s.openAPIConfig == nil {
+		return nil, nil
+	}
+	pathsToIgnore := openapiutil.NewTrie(s.openAPIConfig.IgnorePrefixes)
+	resourceNames := make([]string, 0)
+	for _, apiGroupInfo := range apiGroupInfos {
+		groupResources, err := getResourceNamesForGroup(apiPrefix, apiGroupInfo, pathsToIgnore)
+		if err != nil {
+			return nil, err
+		}
+		resourceNames = append(resourceNames, groupResources...)
+	}
+
+	// Build the openapi definitions for those resources and convert it to proto models
+	openAPISpec, err := openapibuilder.BuildOpenAPIDefinitionsForResources(s.openAPIConfig, resourceNames...)
+	if err != nil {
+		return nil, err
+	}
+	return utilopenapi.ToProtoModels(openAPISpec)
+}
+
+// getResourceNamesForGroup is a private method for getting the canonical names for each resource to build in an api group
+func getResourceNamesForGroup(apiPrefix string, apiGroupInfo *APIGroupInfo, pathsToIgnore openapiutil.Trie) ([]string, error) {
+	// Get the canonical names of every resource we need to build in this api group
+	resourceNames := make([]string, 0)
+	for _, groupVersion := range apiGroupInfo.PrioritizedVersions {
+		for resource, storage := range apiGroupInfo.VersionedResourcesStorageMap[groupVersion.Version] {
+			path := gpath.Join(apiPrefix, groupVersion.Group, groupVersion.Version, resource)
+			if !pathsToIgnore.HasPrefix(path) {
+				kind, err := genericapi.GetResourceKind(groupVersion, storage, apiGroupInfo.Scheme)
+				if err != nil {
+					return nil, err
+				}
+				sampleObject, err := apiGroupInfo.Scheme.New(kind)
+				if err != nil {
+					return nil, err
+				}
+				name := openapiutil.GetCanonicalTypeName(sampleObject)
+				resourceNames = append(resourceNames, name)
+			}
+		}
+	}
+
+	return resourceNames, nil
 }

@@ -46,12 +46,12 @@ an existing package to this repository.
 - [Clock](/clock) provides an interface for time-based operations.  It allows
   mocking time for testing.
   
-- [Pointers](/pointers) provides some functions for pointer-based operations.
+- [Pointer](/pointer) provides some functions for pointer-based operations.
 
 - [Io](/io) provides interfaces for working with file IO. Currently it provides
   functionality for consistently reading a file.
 
-- [NSEnter](/nsenter) provies interfaces for executing and interacting with
+- [NSEnter](/nsenter) provides interfaces for executing and interacting with
   processes running within a namespace.
 
 [Build Status]: https://travis-ci.org/kubernetes/utils.svg?branch=master

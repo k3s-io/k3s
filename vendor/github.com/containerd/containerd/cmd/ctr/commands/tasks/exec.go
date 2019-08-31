@@ -18,8 +18,11 @@ package tasks
 
 import (
 	"errors"
+	"io"
+	"os"
 
 	"github.com/containerd/console"
+	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
 	"github.com/containerd/containerd/cmd/ctr/commands"
 	"github.com/sirupsen/logrus"
@@ -80,7 +83,12 @@ var execCommand = cli.Command{
 		pspec.Terminal = tty
 		pspec.Args = args
 
-		cioOpts := []cio.Opt{cio.WithStdio, cio.WithFIFODir(context.String("fifo-dir"))}
+		var (
+			stdinC = &stdinCloser{
+				stdin: os.Stdin,
+			}
+		)
+		cioOpts := []cio.Opt{cio.WithStreams(stdinC, os.Stdout, os.Stderr), cio.WithFIFODir(context.String("fifo-dir"))}
 		if tty {
 			cioOpts = append(cioOpts, cio.WithTerminal)
 		}
@@ -88,6 +96,9 @@ var execCommand = cli.Command{
 		process, err := task.Exec(ctx, context.String("exec-id"), pspec, ioCreator)
 		if err != nil {
 			return err
+		}
+		stdinC.closer = func() {
+			process.CloseIO(ctx, containerd.WithStdinCloser)
 		}
 		defer process.Delete(ctx)
 
@@ -126,4 +137,19 @@ var execCommand = cli.Command{
 		}
 		return nil
 	},
+}
+
+type stdinCloser struct {
+	stdin  *os.File
+	closer func()
+}
+
+func (s *stdinCloser) Read(p []byte) (int, error) {
+	n, err := s.stdin.Read(p)
+	if err == io.EOF {
+		if s.closer != nil {
+			s.closer()
+		}
+	}
+	return n, err
 }

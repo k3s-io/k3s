@@ -29,6 +29,13 @@ import (
 	"github.com/urfave/cli"
 )
 
+var platformRunFlags = []cli.Flag{
+	cli.BoolFlag{
+		Name:  "isolated",
+		Usage: "run the container with vm isolation",
+	},
+}
+
 // NewContainer creates a new container
 func NewContainer(ctx gocontext.Context, client *containerd.Client, context *cli.Context) (containerd.Container, error) {
 	var (

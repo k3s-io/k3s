@@ -28,7 +28,7 @@ cpp/metrics.pb.h: metrics.proto
 go: go/metrics.pb.go
 
 go/metrics.pb.go: metrics.proto
-	protoc $< --go_out=go/
+	protoc $< --go_out=import_path=github.com/prometheus/client_model/,paths=source_relative:go/
 
 java: src/main/java/io/prometheus/client/Metrics.java pom.xml
 	mvn clean compile package
@@ -39,6 +39,7 @@ src/main/java/io/prometheus/client/Metrics.java: metrics.proto
 python: python/prometheus/client/model/metrics_pb2.py
 
 python/prometheus/client/model/metrics_pb2.py: metrics.proto
+	mkdir -p python/prometheus/client/model
 	protoc $< --python_out=python/prometheus/client/model
 
 ruby:

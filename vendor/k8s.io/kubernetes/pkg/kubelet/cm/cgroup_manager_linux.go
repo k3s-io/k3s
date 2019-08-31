@@ -28,7 +28,6 @@ import (
 	libcontainercgroups "github.com/opencontainers/runc/libcontainer/cgroups"
 	cgroupfs "github.com/opencontainers/runc/libcontainer/cgroups/fs"
 	libcontainerconfigs "github.com/opencontainers/runc/libcontainer/configs"
-	rsystem "github.com/opencontainers/runc/libcontainer/system"
 	"k8s.io/klog"
 
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -43,11 +42,14 @@ type libcontainerCgroupManagerType string
 const (
 	// libcontainerCgroupfs means use libcontainer with cgroupfs
 	libcontainerCgroupfs libcontainerCgroupManagerType = "cgroupfs"
+	// noneDriver is the name of the "NOP" driver, which is used when
+	// cgroup is not accessible
+	noneDriver = "none"
 )
 
 // hugePageSizeList is useful for converting to the hugetlb canonical unit
 // which is what is expected when interacting with libcontainer
-var hugePageSizeList = []string{"B", "kB", "MB", "GB", "TB", "PB"}
+var hugePageSizeList = []string{"B", "KB", "MB", "GB", "TB", "PB"}
 
 var RootCgroupName = CgroupName([]string{})
 
@@ -98,9 +100,8 @@ func (l *libcontainerAdapter) newManager(cgroups *libcontainerconfigs.Cgroup, pa
 	switch l.cgroupManagerType {
 	case libcontainerCgroupfs:
 		return &cgroupfs.Manager{
-			Cgroups:  cgroups,
-			Rootless: rsystem.RunningInUserNS(),
-			Paths:    paths,
+			Cgroups: cgroups,
+			Paths:   paths,
 		}, nil
 	}
 	return nil, fmt.Errorf("invalid cgroup manager configuration")
@@ -133,12 +134,20 @@ type cgroupManagerImpl struct {
 var _ CgroupManager = &cgroupManagerImpl{}
 
 // NewCgroupManager is a factory method that returns a CgroupManager
-func NewCgroupManager(cs *CgroupSubsystems, cgroupDriver string) CgroupManager {
+func NewCgroupManager(cs *CgroupSubsystems, cgroupDriver string) (CgroupManager, error) {
+	if cgroupDriver == noneDriver {
+		if !utilfeature.DefaultFeatureGate.Enabled(kubefeatures.SupportNoneCgroupDriver) {
+			return nil, fmt.Errorf("cgroup driver %q requires SupportNoneCgroupDriver feature gate", cgroupDriver)
+		}
+		cm := &noneCgroupManager{}
+		cm.init()
+		return cm, nil
+	}
 	managerType := libcontainerCgroupfs
 	return &cgroupManagerImpl{
 		subsystems: cs,
 		adapter:    newLibcontainerAdapter(managerType),
-	}
+	}, nil
 }
 
 // Name converts the cgroup to the driver specific value in cgroupfs form.
@@ -174,7 +183,7 @@ func (m *cgroupManagerImpl) Exists(name CgroupName) bool {
 	// in https://github.com/opencontainers/runc/issues/1440
 	// once resolved, we can remove this code.
 	whitelistControllers := sets.NewString("cpu", "cpuacct", "cpuset", "memory", "systemd")
-	if utilfeature.DefaultFeatureGate.Enabled(kubefeatures.SupportPodPidsLimit) {
+	if utilfeature.DefaultFeatureGate.Enabled(kubefeatures.SupportPodPidsLimit) || utilfeature.DefaultFeatureGate.Enabled(kubefeatures.SupportNodePidsLimit) {
 		whitelistControllers.Insert("pids")
 	}
 	var missingPaths []string
@@ -243,7 +252,7 @@ func getSupportedSubsystems() map[subsystem]bool {
 	}
 	// not all hosts support hugetlb cgroup, and in the absent of hugetlb, we will fail silently by reporting no capacity.
 	supportedSubsystems[&cgroupfs.HugetlbGroup{}] = false
-	if utilfeature.DefaultFeatureGate.Enabled(kubefeatures.SupportPodPidsLimit) {
+	if utilfeature.DefaultFeatureGate.Enabled(kubefeatures.SupportPodPidsLimit) || utilfeature.DefaultFeatureGate.Enabled(kubefeatures.SupportNodePidsLimit) {
 		supportedSubsystems[&cgroupfs.PidsGroup{}] = true
 	}
 	return supportedSubsystems
@@ -292,7 +301,7 @@ func (m *cgroupManagerImpl) toResources(resourceConfig *ResourceConfig) *libcont
 	if resourceConfig.CpuPeriod != nil {
 		resources.CpuPeriod = *resourceConfig.CpuPeriod
 	}
-	if utilfeature.DefaultFeatureGate.Enabled(kubefeatures.SupportPodPidsLimit) {
+	if utilfeature.DefaultFeatureGate.Enabled(kubefeatures.SupportPodPidsLimit) || utilfeature.DefaultFeatureGate.Enabled(kubefeatures.SupportNodePidsLimit) {
 		if resourceConfig.PidsLimit != nil {
 			resources.PidsLimit = *resourceConfig.PidsLimit
 		}
@@ -387,9 +396,7 @@ func (m *cgroupManagerImpl) Create(cgroupConfig *CgroupConfig) error {
 	// in the tasks file. We use the function to create all the required
 	// cgroup files but not attach any "real" pid to the cgroup.
 	if err := manager.Apply(-1); err != nil {
-		if !rsystem.RunningInUserNS() {
-			return err
-		}
+		return err
 	}
 
 	// it may confuse why we call set after we do apply, but the issue is that runc
@@ -497,4 +504,58 @@ func (m *cgroupManagerImpl) GetResourceStats(name CgroupName) (*ResourceStats, e
 		return nil, fmt.Errorf("failed to get stats supported cgroup subsystems for cgroup %v: %v", name, err)
 	}
 	return toResourceStats(stats), nil
+}
+
+type noneCgroupManager struct {
+	names map[string]struct{}
+}
+
+func (m *noneCgroupManager) init() {
+	m.names = make(map[string]struct{})
+}
+
+func (m *noneCgroupManager) Create(c *CgroupConfig) error {
+	name := m.Name(c.Name)
+	m.names[name] = struct{}{}
+	return nil
+}
+
+func (m *noneCgroupManager) Destroy(c *CgroupConfig) error {
+	name := m.Name(c.Name)
+	delete(m.names, name)
+	return nil
+}
+
+func (m *noneCgroupManager) Update(c *CgroupConfig) error {
+	name := m.Name(c.Name)
+	m.names[name] = struct{}{}
+	return nil
+}
+
+func (m *noneCgroupManager) Exists(cgname CgroupName) bool {
+	name := m.Name(cgname)
+	_, ok := m.names[name]
+	return ok
+}
+
+func (m *noneCgroupManager) Name(cgname CgroupName) string {
+	return cgname.ToCgroupfs()
+}
+
+func (m *noneCgroupManager) CgroupName(name string) CgroupName {
+	return ParseCgroupfsToCgroupName(name)
+}
+
+func (m *noneCgroupManager) Pids(_ CgroupName) []int {
+	return nil
+}
+
+func (m *noneCgroupManager) ReduceCPULimits(cgroupName CgroupName) error {
+	return nil
+}
+
+func (m *noneCgroupManager) GetResourceStats(name CgroupName) (*ResourceStats, error) {
+	return &ResourceStats{
+		MemoryStats: &MemoryStats{},
+	}, nil
 }

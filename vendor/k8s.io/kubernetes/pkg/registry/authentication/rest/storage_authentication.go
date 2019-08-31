@@ -18,6 +18,7 @@ package rest
 
 import (
 	authenticationv1 "k8s.io/api/authentication/v1"
+	authenticationv1beta1 "k8s.io/api/authentication/v1beta1"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 	"k8s.io/apiserver/pkg/registry/generic"
 	"k8s.io/apiserver/pkg/registry/rest"
@@ -43,6 +44,9 @@ func (p RESTStorageProvider) NewRESTStorage(apiResourceConfigSource serverstorag
 	// If you add a version here, be sure to add an entry in `k8s.io/kubernetes/cmd/kube-apiserver/app/aggregator.go with specific priorities.
 	// TODO refactor the plumbing to provide the information in the APIGroupInfo
 
+	if apiResourceConfigSource.VersionEnabled(authenticationv1beta1.SchemeGroupVersion) {
+		apiGroupInfo.VersionedResourcesStorageMap[authenticationv1beta1.SchemeGroupVersion.Version] = p.v1beta1Storage(apiResourceConfigSource, restOptionsGetter)
+	}
 	if apiResourceConfigSource.VersionEnabled(authenticationv1.SchemeGroupVersion) {
 		apiGroupInfo.VersionedResourcesStorageMap[authenticationv1.SchemeGroupVersion.Version] = p.v1Storage(apiResourceConfigSource, restOptionsGetter)
 	}

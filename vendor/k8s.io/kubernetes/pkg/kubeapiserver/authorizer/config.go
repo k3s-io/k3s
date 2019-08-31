@@ -25,6 +25,7 @@ import (
 	"k8s.io/apiserver/pkg/authorization/union"
 	"k8s.io/apiserver/plugin/pkg/authorizer/webhook"
 	versionedinformers "k8s.io/client-go/informers"
+	"k8s.io/kubernetes/pkg/auth/authorizer/abac"
 	"k8s.io/kubernetes/pkg/auth/nodeidentifier"
 	"k8s.io/kubernetes/pkg/kubeapiserver/authorizer/modes"
 	"k8s.io/kubernetes/plugin/pkg/auth/authorizer/node"
@@ -37,6 +38,9 @@ type Config struct {
 	AuthorizationModes []string
 
 	// Options for ModeABAC
+
+	// Path to an ABAC policy file.
+	PolicyFile string
 
 	// Options for ModeWebhook
 
@@ -85,6 +89,13 @@ func (config Config) New() (authorizer.Authorizer, authorizer.RuleResolver, erro
 			alwaysDenyAuthorizer := authorizerfactory.NewAlwaysDenyAuthorizer()
 			authorizers = append(authorizers, alwaysDenyAuthorizer)
 			ruleResolvers = append(ruleResolvers, alwaysDenyAuthorizer)
+		case modes.ModeABAC:
+			abacAuthorizer, err := abac.NewFromFile(config.PolicyFile)
+			if err != nil {
+				return nil, nil, err
+			}
+			authorizers = append(authorizers, abacAuthorizer)
+			ruleResolvers = append(ruleResolvers, abacAuthorizer)
 		case modes.ModeWebhook:
 			webhookAuthorizer, err := webhook.New(config.WebhookConfigFile,
 				config.WebhookCacheAuthorizedTTL,

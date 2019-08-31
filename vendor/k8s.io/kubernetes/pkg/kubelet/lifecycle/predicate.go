@@ -18,7 +18,6 @@ package lifecycle
 
 import (
 	"fmt"
-	"time"
 
 	"k8s.io/klog"
 
@@ -56,19 +55,6 @@ func NewPredicateAdmitHandler(getNodeAnyWayFunc getNodeAnyWayFuncType, admission
 }
 
 func (w *predicateAdmitHandler) Admit(attrs *PodAdmitAttributes) PodAdmitResult {
-	result := w.admit(attrs)
-	for i := 0; i < 10; i++ {
-		if result.Admit {
-			break
-		}
-		time.Sleep(time.Second)
-		result = w.admit(attrs)
-	}
-
-	return result
-}
-
-func (w *predicateAdmitHandler) admit(attrs *PodAdmitAttributes) PodAdmitResult {
 	node, err := w.getNodeAnyWayFunc()
 	if err != nil {
 		klog.Errorf("Cannot get Node info: %v", err)

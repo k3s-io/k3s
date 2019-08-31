@@ -21,7 +21,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
-	runtime "k8s.io/kubernetes/pkg/kubelet/apis/cri/runtime/v1alpha2"
+	runtime "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 
 	api "github.com/containerd/cri/pkg/api/v1"
 	ctrdutil "github.com/containerd/cri/pkg/containerd/util"

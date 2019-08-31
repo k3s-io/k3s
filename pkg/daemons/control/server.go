@@ -21,11 +21,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rancher/kine/pkg/client"
-	"github.com/rancher/kine/pkg/endpoint"
-
 	certutil "github.com/rancher/dynamiclistener/cert"
 	"github.com/rancher/k3s/pkg/daemons/config"
+	"github.com/rancher/kine/pkg/client"
+	"github.com/rancher/kine/pkg/endpoint"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 	"k8s.io/kubernetes/cmd/kube-apiserver/app"
@@ -35,9 +34,6 @@ import (
 	"k8s.io/kubernetes/pkg/kubeapiserver/authorizer/modes"
 	"k8s.io/kubernetes/pkg/master"
 	"k8s.io/kubernetes/pkg/proxy/util"
-	_ "k8s.io/kubernetes/pkg/util/reflector/prometheus" // for reflector metric registration
-	_ "k8s.io/kubernetes/pkg/util/workqueue/prometheus" // for workqueue metric registration
-	_ "k8s.io/kubernetes/pkg/version/prometheus"        // for version metric registration
 )
 
 var (
@@ -182,7 +178,7 @@ func apiServer(ctx context.Context, cfg *config.Control, runtime *config.Control
 	argsMap["requestheader-group-headers"] = "X-Remote-Group"
 	argsMap["requestheader-username-headers"] = "X-Remote-User"
 	argsMap["client-ca-file"] = runtime.ClientCA
-	argsMap["enable-admission-plugins"] = "NodeRestriction"
+	argsMap["anonymous-auth"] = "false"
 
 	args := config.GetArgsList(argsMap, cfg.ExtraAPIArgs)
 
@@ -219,7 +215,11 @@ func defaults(config *config.Control) {
 	}
 
 	if config.ListenPort == 0 {
-		config.ListenPort = 6444
+		if config.HTTPSPort != 0 {
+			config.ListenPort = config.HTTPSPort + 1
+		} else {
+			config.ListenPort = 6444
+		}
 	}
 
 	if config.DataDir == "" {
