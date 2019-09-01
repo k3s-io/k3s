@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 source $(dirname $0)/version.sh
 
@@ -12,7 +13,13 @@ mkdir -p ${CHARTS_DIR}
 
 curl --compressed -sfL https://github.com/ibuildthecloud/k3s-root/releases/download/${ROOT_VERSION}/k3s-root-${ARCH}.tar | tar xf -
 ln -sf pigz bin/unpigz
-mkdir -p bin/aux && rm bin/mount && ln -sf ../busybox bin/aux/mount
+mkdir -p bin/aux
+rm bin/mount
+ln -sf ../busybox bin/aux/mount
+for i in iptables{,-save,-restore}; do
+    rm bin/$i
+    ln -sf ../xtables-multi bin/aux/$i
+done
 
 TRAEFIK_FILE=traefik-${TRAEFIK_VERSION}.tgz
 curl -sfL https://kubernetes-charts.storage.googleapis.com/${TRAEFIK_FILE} -o ${CHARTS_DIR}/${TRAEFIK_FILE}
