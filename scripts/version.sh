@@ -16,5 +16,5 @@ fi
 ARCH=$(go env GOARCH)
 SUFFIX="-${ARCH}"
 
-VERSION_CONTAINERD=$(grep ^github.com/containerd/containerd $(dirname $0)/../vendor.conf | awk '{print $2}')
-VERSION_CRICTL=$(grep ^github.com/kubernetes-sigs/cri-tools $(dirname $0)/../vendor.conf | awk '{print $2}')
+VERSION_CONTAINERD=$(grep github.com/containerd/containerd $(dirname $0)/../go.mod | head -n1 | awk '{print $4}')
+VERSION_CRICTL=$(grep github.com/kubernetes-sigs/cri-tools $(dirname $0)/../go.mod | head -n1 | awk '{print $4}')
