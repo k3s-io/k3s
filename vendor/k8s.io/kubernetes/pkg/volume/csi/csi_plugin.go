@@ -23,7 +23,6 @@ import (
 	"path"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 
 	"context"
@@ -64,12 +63,6 @@ const (
 	csiResyncPeriod = time.Minute
 )
 
-var (
-	WaitForValidHostName bool
-	csiPluginInstance *csiPlugin
-	csiPluginLock sync.Mutex
-)
-
 var deprecatedSocketDirVersions = []string{"0.1.0", "0.2.0", "0.3.0", "0.4.0"}
 
 type csiPlugin struct {
@@ -86,18 +79,11 @@ const ephemeralDriverMode driverMode = "ephemeral"
 
 // ProbeVolumePlugins returns implemented plugins
 func ProbeVolumePlugins() []volume.VolumePlugin {
-	csiPluginLock.Lock()
-	defer csiPluginLock.Unlock()
-
-	if csiPluginInstance != nil {
-		return []volume.VolumePlugin{csiPluginInstance}
-	}
-
-	csiPluginInstance = &csiPlugin{
+	p := &csiPlugin{
 		host:         nil,
 		blockEnabled: utilfeature.DefaultFeatureGate.Enabled(features.CSIBlockVolume),
 	}
-	return []volume.VolumePlugin{csiPluginInstance}
+	return []volume.VolumePlugin{p}
 }
 
 // volume.VolumePlugin methods
@@ -221,21 +207,6 @@ func (h *RegistrationHandler) DeRegisterPlugin(pluginName string) {
 }
 
 func (p *csiPlugin) Init(host volume.VolumeHost) error {
-	csiPluginLock.Lock()
-	defer csiPluginLock.Unlock()
-
-	if WaitForValidHostName && host.GetHostName() == "" {
-		for {
-			if p.host != nil {
-				return nil
-			}
-			csiPluginLock.Unlock()
-			time.Sleep(time.Second)
-			klog.Infof("Waiting for CSI volume hostname")
-			csiPluginLock.Lock()
-		}
-	}
-
 	p.host = host
 
 	if utilfeature.DefaultFeatureGate.Enabled(features.CSIDriverRegistry) {
@@ -274,21 +245,25 @@ func (p *csiPlugin) Init(host volume.VolumeHost) error {
 	}
 
 	// Initializing the label management channels
-	nim = nodeinfomanager.NewNodeInfoManager(host.GetNodeName(), host, migratedPlugins)
+	localNim := nodeinfomanager.NewNodeInfoManager(host.GetNodeName(), host, migratedPlugins)
 
 	if utilfeature.DefaultFeatureGate.Enabled(features.CSINodeInfo) &&
 		utilfeature.DefaultFeatureGate.Enabled(features.CSIMigration) {
 		// This function prevents Kubelet from posting Ready status until CSINodeInfo
 		// is both installed and initialized
-		if err := initializeCSINode(host); err != nil {
+		if err := initializeCSINode(host, localNim); err != nil {
 			return fmt.Errorf("failed to initialize CSINodeInfo: %v", err)
 		}
+	}
+
+	if _, ok := host.(volume.KubeletVolumeHost); ok {
+		nim = localNim
 	}
 
 	return nil
 }
 
-func initializeCSINode(host volume.VolumeHost) error {
+func initializeCSINode(host volume.VolumeHost, nim nodeinfomanager.Interface) error {
 	kvh, ok := host.(volume.KubeletVolumeHost)
 	if !ok {
 		klog.V(4).Info("Cast from VolumeHost to KubeletVolumeHost failed. Skipping CSINodeInfo initialization, not running on kubelet")
