@@ -307,23 +307,31 @@ get_release_version() {
     info "Using ${VERSION_K3S} as release"
 }
 
-# --- download hash from github url ---
-download_hash() {
-    HASH_URL=${GITHUB_URL}/download/${VERSION_K3S}/sha256sum-${ARCH}.txt
-    info "Downloading hash ${HASH_URL}"
+# --- download from github url ---
+download() {
+    [ $# -eq 2 ] || fatal 'download needs exactly 2 arguments'
+
     case $DOWNLOADER in
         curl)
-            curl -o ${TMP_HASH} -sfL ${HASH_URL}
+            curl -o $1 -sfL $2
             ;;
         wget)
-            wget -qO ${TMP_HASH} ${HASH_URL}
+            wget -qO $1 $2
             ;;
         *)
             fatal "Incorrect executable '$DOWNLOADER'"
             ;;
     esac
+
     # Abort if download command failed
     [ $? -eq 0 ] || fatal 'Hash download failed'
+}
+
+# --- download hash from github url ---
+download_hash() {
+    HASH_URL=${GITHUB_URL}/download/${VERSION_K3S}/sha256sum-${ARCH}.txt
+    info "Downloading hash ${HASH_URL}"
+    download ${TMP_HASH} ${HASH_URL}
     HASH_EXPECTED=`grep " k3s${SUFFIX}$" ${TMP_HASH} | awk '{print $1}'`
 }
 
@@ -342,19 +350,7 @@ installed_hash_matches() {
 download_binary() {
     BIN_URL=${GITHUB_URL}/download/${VERSION_K3S}/k3s${SUFFIX}
     info "Downloading binary ${BIN_URL}"
-    case $DOWNLOADER in
-        curl)
-            curl -o ${TMP_BIN} -sfL ${BIN_URL}
-            ;;
-        wget)
-            wget -qO ${TMP_BIN} ${BIN_URL}
-            ;;
-        *)
-            fatal "Incorrect executable '$DOWNLOADER'"
-            ;;
-    esac
-    # Abort if download command failed
-    [ $? -eq 0 ] || fatal 'Binary download failed'
+    download ${TMP_BIN} ${BIN_URL}
 }
 
 # --- verify downloaded binary hash ---
