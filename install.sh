@@ -338,7 +338,7 @@ setup_binary() {
     if command -v getenforce > /dev/null 2>&1; then
         if [ "Disabled" != $(getenforce) ]; then
             if command -v semanage > /dev/null 2>&1; then
-                info 'SeLinux is enabled, setting permissions'
+                info 'SELinux is enabled, setting permissions'
                 if ! $SUDO semanage fcontext -l | grep "${BIN_DIR}/k3s" > /dev/null 2>&1; then
                     $SUDO semanage fcontext -a -t bin_t "${BIN_DIR}/k3s"
                 fi
