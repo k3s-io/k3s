@@ -324,7 +324,7 @@ download() {
     esac
 
     # Abort if download command failed
-    [ $? -eq 0 ] || fatal 'Hash download failed'
+    [ $? -eq 0 ] || fatal 'Download failed'
 }
 
 # --- download hash from github url ---
@@ -332,7 +332,7 @@ download_hash() {
     HASH_URL=${GITHUB_URL}/download/${VERSION_K3S}/sha256sum-${ARCH}.txt
     info "Downloading hash ${HASH_URL}"
     download ${TMP_HASH} ${HASH_URL}
-    HASH_EXPECTED=`grep " k3s${SUFFIX}$" ${TMP_HASH} | awk '{print $1}'`
+    HASH_EXPECTED=$(grep " k3s${SUFFIX}$" ${TMP_HASH} | awk '{print $1}')
 }
 
 # --- check hash against installed version ---
