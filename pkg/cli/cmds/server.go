@@ -1,6 +1,9 @@
 package cmds
 
 import (
+	"fmt"
+
+	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/urfave/cli"
 )
 
@@ -30,6 +33,7 @@ type Server struct {
 	AdvertiseIP         string
 	AdvertisePort       int
 	DisableScheduler    bool
+	FlannelBackend      string
 }
 
 var ServerConfig Server
@@ -188,6 +192,12 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Name:        "disable-scheduler",
 				Usage:       "Disable Kubernetes default scheduler",
 				Destination: &ServerConfig.DisableScheduler,
+			},
+			cli.StringFlag{
+				Name:        "flannel-backend",
+				Usage:       fmt.Sprintf("One of '%s', '%s', '%s', or '%s'", config.FlannelBackendNone, config.FlannelBackendVXLAN, config.FlannelBackendIPSEC, config.FlannelBackendWireguard),
+				Destination: &ServerConfig.FlannelBackend,
+				Value:       config.FlannelBackendVXLAN,
 			},
 			NodeIPFlag,
 			NodeNameFlag,

@@ -62,6 +62,11 @@ users:
 `))
 )
 
+const (
+	userTokenSize  = 16
+	ipsecTokenSize = 48
+)
+
 func Server(ctx context.Context, cfg *config.Control) error {
 	rand.Seed(time.Now().UTC().UnixNano())
 
@@ -252,6 +257,7 @@ func prepare(ctx context.Context, config *config.Control, runtime *config.Contro
 	runtime.ServerCAKey = path.Join(config.DataDir, "tls", "server-ca.key")
 	runtime.RequestHeaderCA = path.Join(config.DataDir, "tls", "request-header-ca.crt")
 	runtime.RequestHeaderCAKey = path.Join(config.DataDir, "tls", "request-header-ca.key")
+	runtime.IPSECKey = path.Join(config.DataDir, "cred", "ipsec.psk")
 
 	runtime.ServiceKey = path.Join(config.DataDir, "tls", "service.key")
 	runtime.PasswdFile = path.Join(config.DataDir, "cred", "passwd")
@@ -301,6 +307,10 @@ func prepare(ctx context.Context, config *config.Control, runtime *config.Contro
 	}
 
 	if err := genUsers(config, runtime); err != nil {
+		return err
+	}
+
+	if err := genEncryptedNetworkInfo(config, runtime); err != nil {
 		return err
 	}
 
@@ -422,20 +432,43 @@ func WritePasswords(passwdFile string, records [][]string) error {
 	return os.Rename(passwdFile+".tmp", passwdFile)
 }
 
+func genEncryptedNetworkInfo(controlConfig *config.Control, runtime *config.ControlRuntime) error {
+	if s, err := os.Stat(runtime.IPSECKey); err == nil && s.Size() > 0 {
+		psk, err := ioutil.ReadFile(runtime.IPSECKey)
+		if err != nil {
+			return err
+		}
+		controlConfig.IPSECPSK = strings.TrimSpace(string(psk))
+		return nil
+	}
+
+	psk, err := getToken(ipsecTokenSize)
+	if err != nil {
+		return err
+	}
+
+	controlConfig.IPSECPSK = psk
+	if err := ioutil.WriteFile(runtime.IPSECKey, []byte(psk+"\n"), 0600); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func genUsers(config *config.Control, runtime *config.ControlRuntime) error {
 	if s, err := os.Stat(runtime.PasswdFile); err == nil && s.Size() > 0 {
 		return ensureNodeToken(config, runtime)
 	}
 
-	adminToken, err := getToken()
+	adminToken, err := getToken(userTokenSize)
 	if err != nil {
 		return err
 	}
-	systemToken, err := getToken()
+	systemToken, err := getToken(userTokenSize)
 	if err != nil {
 		return err
 	}
-	nodeToken, err := getToken()
+	nodeToken, err := getToken(userTokenSize)
 	if err != nil {
 		return err
 	}
@@ -451,8 +484,8 @@ func genUsers(config *config.Control, runtime *config.ControlRuntime) error {
 	})
 }
 
-func getToken() (string, error) {
-	token := make([]byte, 16, 16)
+func getToken(size int) (string, error) {
+	token := make([]byte, size, size)
 	_, err := cryptorand.Read(token)
 	if err != nil {
 		return "", err
