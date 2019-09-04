@@ -168,6 +168,7 @@ func apiServer(ctx context.Context, cfg *config.Control, runtime *config.Control
 	argsMap["service-account-issuer"] = "k3s"
 	argsMap["api-audiences"] = "unknown"
 	argsMap["basic-auth-file"] = runtime.PasswdFile
+	argsMap["kubelet-certificate-authority"] = runtime.ServerCA
 	argsMap["kubelet-client-certificate"] = runtime.ClientKubeAPICert
 	argsMap["kubelet-client-key"] = runtime.ClientKubeAPIKey
 	argsMap["requestheader-client-ca-file"] = runtime.RequestHeaderCA
