@@ -138,6 +138,7 @@ func DefaultOffAdmissionPlugins() sets.String {
 		validatingwebhook.PluginName,            //ValidatingAdmissionWebhook
 		resourcequota.PluginName,                //ResourceQuota
 		storageobjectinuseprotection.PluginName, //StorageObjectInUseProtection
+		noderestriction.PluginName,              //NodeRestriction
 	)
 
 	if utilfeature.DefaultFeatureGate.Enabled(features.PodPriority) {
