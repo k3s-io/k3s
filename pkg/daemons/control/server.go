@@ -26,6 +26,7 @@ import (
 	"github.com/rancher/kine/pkg/client"
 	"github.com/rancher/kine/pkg/endpoint"
 	"github.com/sirupsen/logrus"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 	"k8s.io/kubernetes/cmd/kube-apiserver/app"
 	cmapp "k8s.io/kubernetes/cmd/kube-controller-manager/app"
@@ -37,9 +38,10 @@ import (
 )
 
 var (
-	localhostIP        = net.ParseIP("127.0.0.1")
-	requestHeaderCN    = "system:auth-proxy"
-	kubeconfigTemplate = template.Must(template.New("kubeconfig").Parse(`apiVersion: v1
+	defaultAdmissionPlugins = []string{"NodeRestriction"}
+	localhostIP             = net.ParseIP("127.0.0.1")
+	requestHeaderCN         = "system:auth-proxy"
+	kubeconfigTemplate      = template.Must(template.New("kubeconfig").Parse(`apiVersion: v1
 clusters:
 - cluster:
     server: {{.URL}}
@@ -180,8 +182,9 @@ func apiServer(ctx context.Context, cfg *config.Control, runtime *config.Control
 	argsMap["requestheader-username-headers"] = "X-Remote-User"
 	argsMap["client-ca-file"] = runtime.ClientCA
 	argsMap["anonymous-auth"] = "false"
+	extraArgs := admissionControlers(cfg.ExtraAPIArgs)
 
-	args := config.GetArgsList(argsMap, cfg.ExtraAPIArgs)
+	args := config.GetArgsList(argsMap, extraArgs)
 
 	command := app.NewAPIServerCommand(ctx.Done())
 	command.SetArgs(args)
@@ -194,6 +197,35 @@ func apiServer(ctx context.Context, cfg *config.Control, runtime *config.Control
 	startupConfig := <-app.StartupConfig
 
 	return startupConfig.Authenticator, startupConfig.Handler, nil
+}
+
+func admissionControlers(overrideArgs []string) []string {
+	override := config.ArgListToMap(overrideArgs)
+
+	// If user set explicit, just take as is
+	if len(override["admission-control"]) > 0 {
+		return overrideArgs
+	}
+
+	// Ensure that the user hasn't tried to disable a default
+	disable := sliceVarAsSet(override["disable-admission-plugins"])
+	enable := sets.NewString(defaultAdmissionPlugins...).Difference(disable)
+	if len(enable) > 0 {
+		overrideArgs = append(overrideArgs, fmt.Sprintf("enable-admission-plugins=%s", strings.Join(enable.List(), ",")))
+	}
+
+	return overrideArgs
+}
+
+func sliceVarAsSet(values []string) sets.String {
+	result := sets.String{}
+	for _, vs := range values {
+		for _, v := range strings.Split(vs, ",") {
+			result.Insert(v)
+		}
+	}
+
+	return result
 }
 
 func defaults(config *config.Control) {

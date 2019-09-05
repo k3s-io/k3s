@@ -152,21 +152,38 @@ func (a ArgString) String() string {
 	return b.String()
 }
 
-func GetArgsList(argsMap map[string]string, extraArgs []string) []string {
-	// add extra args to args map to override any default option
-	for _, arg := range extraArgs {
-		splitArg := strings.SplitN(arg, "=", 2)
-		if len(splitArg) < 2 {
-			argsMap[splitArg[0]] = "true"
-			continue
+func ArgListToMap(args []string) map[string][]string {
+	result := map[string][]string{}
+	for _, arg := range args {
+		key, value := arg, "true"
+		parts := strings.SplitN(arg, "=", 2)
+		if len(parts) > 1 {
+			key, value = parts[0], parts[1]
 		}
-		argsMap[splitArg[0]] = splitArg[1]
+
+		result[key] = append(result[key], value)
 	}
-	var args []string
-	for arg, value := range argsMap {
-		cmd := fmt.Sprintf("--%s=%s", arg, value)
-		args = append(args, cmd)
+
+	return result
+}
+
+func GetArgsList(argsMap map[string]string, extraArgs []string) (result []string) {
+	override := ArgListToMap(extraArgs)
+	for k, v := range argsMap {
+		if _, ok := override[k]; !ok {
+			if v != "" {
+				result = append(result, fmt.Sprintf("--%s=%s", k, v))
+			}
+		}
 	}
-	sort.Strings(args)
-	return args
+	for k, vs := range override {
+		for _, v := range vs {
+			if v != "" {
+				result = append(result, fmt.Sprintf("--%s=%s", k, v))
+			}
+		}
+	}
+
+	sort.Strings(result)
+	return
 }

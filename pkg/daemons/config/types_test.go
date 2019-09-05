@@ -20,6 +20,7 @@ func TestGetArgsList(t *testing.T) {
 		"bbb=BB",
 		"ddd=DD",
 		"iii=II",
+		"iii=JJ",
 	}
 	expected := []string{
 		"--aaa=A",
@@ -31,6 +32,7 @@ func TestGetArgsList(t *testing.T) {
 		"--ggg=g",
 		"--hhh=h",
 		"--iii=II",
+		"--iii=JJ",
 	}
 	actual := GetArgsList(argsMap, extraArgs)
 	if !reflect.DeepEqual(actual, expected) {

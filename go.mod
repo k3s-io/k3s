@@ -102,6 +102,7 @@ require (
 	github.com/seccomp/libseccomp-golang v0.0.0-20160531183505-32f571b70023 // indirect
 	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/pflag v1.0.1
+	github.com/stretchr/testify v1.3.0
 	github.com/syndtr/gocapability v0.0.0-20170704070218-db04d3cc01c8 // indirect
 	github.com/tchap/go-patricia v2.2.6+incompatible // indirect
 	github.com/theckman/go-flock v0.7.1 // indirect
