@@ -37,14 +37,14 @@ func run(ctx context.Context, namespace, name string, client kubernetes.Interfac
 		client.CoreV1(),
 		client.CoordinationV1(),
 		resourcelock.ResourceLockConfig{
-			Identity:      id,
+			Identity: id,
 		})
 	if err != nil {
 		logrus.Fatalf("error creating leader lock for %s: %v", name, err)
 	}
 
 	t := time.Second
-	if dl := os.Getenv("DEV_LEADERELECTION"); dl != "" {
+	if dl := os.Getenv("CATTLE_DEV_MODE"); dl != "" {
 		t = time.Hour
 	}
 
@@ -61,7 +61,7 @@ func run(ctx context.Context, namespace, name string, client kubernetes.Interfac
 				logrus.Fatalf("leaderelection lost for %s", name)
 			},
 		},
+		ReleaseOnCancel: true,
 	})
 	panic("unreachable")
 }
-

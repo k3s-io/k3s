@@ -57,7 +57,7 @@ type Command struct {
 	// Boolean to hide this command from help or completion
 	Hidden bool
 	// Boolean to enable short-option handling so user can combine several
-	// single-character bool arguements into one
+	// single-character bool arguments into one
 	// i.e. foobar -o -v -> foobar -ov
 	UseShortOptionHandling bool
 
@@ -135,6 +135,12 @@ func (c Command) Run(ctx *Context) (err error) {
 		return nil
 	}
 
+	cerr := checkRequiredFlags(c.Flags, context)
+	if cerr != nil {
+		ShowCommandHelp(context, c.Name)
+		return cerr
+	}
+
 	if c.After != nil {
 		defer func() {
 			afterErr := c.After(context)
@@ -181,16 +187,49 @@ func (c *Command) parseFlags(args Args) (*flag.FlagSet, error) {
 		return set, set.Parse(append([]string{"--"}, args...))
 	}
 
-	if c.UseShortOptionHandling {
-		args = translateShortOptions(args)
-	}
-
 	if !c.SkipArgReorder {
 		args = reorderArgs(args)
 	}
 
+PARSE:
 	err = set.Parse(args)
 	if err != nil {
+		if c.UseShortOptionHandling {
+			// To enable short-option handling (e.g., "-it" vs "-i -t")
+			// we have to iteratively catch parsing errors.  This way
+			// we achieve LR parsing without transforming any arguments.
+			// Otherwise, there is no way we can discriminate combined
+			// short options from common arguments that should be left
+			// untouched.
+			errStr := err.Error()
+			trimmed := strings.TrimPrefix(errStr, "flag provided but not defined: ")
+			if errStr == trimmed {
+				return nil, err
+			}
+			// regenerate the initial args with the split short opts
+			newArgs := Args{}
+			for i, arg := range args {
+				if arg != trimmed {
+					newArgs = append(newArgs, arg)
+					continue
+				}
+				shortOpts := translateShortOptions(set, Args{trimmed})
+				if len(shortOpts) == 1 {
+					return nil, err
+				}
+				// add each short option and all remaining arguments
+				newArgs = append(newArgs, shortOpts...)
+				newArgs = append(newArgs, args[i+1:]...)
+				args = newArgs
+				// now reset the flagset parse again
+				set, err = flagSet(c.Name, c.Flags)
+				if err != nil {
+					return nil, err
+				}
+				set.SetOutput(ioutil.Discard)
+				goto PARSE
+			}
+		}
 		return nil, err
 	}
 
@@ -232,11 +271,25 @@ func reorderArgs(args []string) []string {
 	return append(flags, nonflags...)
 }
 
-func translateShortOptions(flagArgs Args) []string {
+func translateShortOptions(set *flag.FlagSet, flagArgs Args) []string {
+	allCharsFlags := func (s string) bool {
+		for i := range s {
+			f := set.Lookup(string(s[i]))
+			if f == nil {
+				return false
+			}
+		}
+		return true
+	}
+
 	// separate combined flags
 	var flagArgsSeparated []string
 	for _, flagArg := range flagArgs {
 		if strings.HasPrefix(flagArg, "-") && strings.HasPrefix(flagArg, "--") == false && len(flagArg) > 2 {
+			if !allCharsFlags(flagArg[1:]) {
+				flagArgsSeparated = append(flagArgsSeparated, flagArg)
+				continue
+			}
 			for _, flagChar := range flagArg[1:] {
 				flagArgsSeparated = append(flagArgsSeparated, "-"+string(flagChar))
 			}

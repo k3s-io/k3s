@@ -95,7 +95,7 @@ func (o *desiredSet) process(debugID string, set labels.Selector, gvk schema.Gro
 		patcher = o.createPatcher(client)
 	}
 
-	existing, err := list(controller, client, set)
+	existing, err := o.list(controller, client, set)
 	if err != nil {
 		o.err(fmt.Errorf("failed to list %s for %s", gvk, debugID))
 		return
@@ -159,6 +159,49 @@ func (o *desiredSet) process(debugID string, set labels.Selector, gvk schema.Gro
 	}
 }
 
+func (o *desiredSet) list(informer cache.SharedIndexInformer, client dynamic.NamespaceableResourceInterface, selector labels.Selector) (map[objectset.ObjectKey]runtime.Object, error) {
+	var (
+		errs []error
+		objs = map[objectset.ObjectKey]runtime.Object{}
+	)
+
+	if informer == nil {
+		var c dynamic.ResourceInterface
+		if o.listerNamespace != "" {
+			c = client.Namespace(o.listerNamespace)
+		} else {
+			c = client
+		}
+
+		list, err := c.List(v1.ListOptions{
+			LabelSelector: selector.String(),
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		for _, obj := range list.Items {
+			copy := obj
+			if err := addObjectToMap(objs, &copy); err != nil {
+				errs = append(errs, err)
+			}
+		}
+
+		return objs, merr.NewErrors(errs...)
+	}
+
+	err := cache.ListAllByNamespace(informer.GetIndexer(), "", selector, func(obj interface{}) {
+		if err := addObjectToMap(objs, obj); err != nil {
+			errs = append(errs, err)
+		}
+	})
+	if err != nil {
+		errs = append(errs, err)
+	}
+
+	return objs, merr.NewErrors(errs...)
+}
+
 func compareSets(existingSet, newSet map[objectset.ObjectKey]runtime.Object) (toCreate, toDelete, toUpdate []objectset.ObjectKey) {
 	for k := range newSet {
 		if _, ok := existingSet[k]; ok {
@@ -201,38 +244,3 @@ func addObjectToMap(objs map[objectset.ObjectKey]runtime.Object, obj interface{}
 	return nil
 }
 
-func list(informer cache.SharedIndexInformer, client dynamic.NamespaceableResourceInterface, selector labels.Selector) (map[objectset.ObjectKey]runtime.Object, error) {
-	var (
-		errs []error
-		objs = map[objectset.ObjectKey]runtime.Object{}
-	)
-
-	if informer == nil {
-		list, err := client.List(v1.ListOptions{
-			LabelSelector: selector.String(),
-		})
-		if err != nil {
-			return nil, err
-		}
-
-		for _, obj := range list.Items {
-			copy := obj
-			if err := addObjectToMap(objs, &copy); err != nil {
-				errs = append(errs, err)
-			}
-		}
-
-		return objs, merr.NewErrors(errs...)
-	}
-
-	err := cache.ListAllByNamespace(informer.GetIndexer(), "", selector, func(obj interface{}) {
-		if err := addObjectToMap(objs, obj); err != nil {
-			errs = append(errs, err)
-		}
-	})
-	if err != nil {
-		errs = append(errs, err)
-	}
-
-	return objs, merr.NewErrors(errs...)
-}
