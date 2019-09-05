@@ -376,7 +376,7 @@ import:
 - package: k8s.io/kube-openapi
   version: b3a7cee44a30
 - package: k8s.io/kubernetes
-  version: v1.15.3-k3s.1
+  version: v1.15.3-k3s.2
   repo: https://github.com/rancher/k3s.git
   transitive: true
   staging: true
