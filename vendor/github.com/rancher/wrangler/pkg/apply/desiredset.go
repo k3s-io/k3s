@@ -12,6 +12,7 @@ import (
 type desiredSet struct {
 	a                *apply
 	defaultNamespace string
+	listerNamespace  string
 	strictCaching    bool
 	pruneTypes       map[schema.GroupVersionKind]cache.SharedIndexInformer
 	patchers         map[schema.GroupVersionKind]Patcher
@@ -101,6 +102,11 @@ func (o desiredSet) WithStrictCaching() Apply {
 
 func (o desiredSet) WithDefaultNamespace(ns string) Apply {
 	o.defaultNamespace = ns
+	return o
+}
+
+func (o desiredSet) WithListerNamespace(ns string) Apply {
+	o.listerNamespace = ns
 	return o
 }
 

@@ -4,7 +4,28 @@
 
 ## [Unreleased]
 
-## 1.20.0 - 2017-08-10
+## [1.21.0] - 2019-08-02
+
+### Fixed
+
+* Fix using "slice" flag types with `EnvVar` in [urfave/cli/pull/687](https://github.com/urfave/cli/pull/687) via [@joshuarubin](https://github.com/joshuarubin)
+* Fix regression of `SkipFlagParsing` behavior in [urfave/cli/pull/697](https://github.com/urfave/cli/pull/697) via [@jszwedko](https://github.com/jszwedko)
+* Fix handling `ShortOptions` and `SkipArgReorder` in [urfave/cli/pull/686](https://github.com/urfave/cli/pull/686) via [@baude](https://github.com/baude)
+* Fix args reordering when bool flags are present in [urfave/cli/pull/712](https://github.com/urfave/cli/pull/712) via [@windler](https://github.com/windler)
+* Fix parsing of short options in [urfave/cli/pull/758](https://github.com/urfave/cli/pull/758) via [@vrothberg](https://github.com/vrothberg)
+
+### Added / Changed
+
+* Added _"required flags"_ support in [urfave/cli/pull/819](https://github.com/urfave/cli/pull/819) via [@lynncyrin](https://github.com/lynncyrin/)
+* Cleaned up help output in [urfave/cli/pull/664](https://github.com/urfave/cli/pull/664) via [@maguro](https://github.com/maguro)
+* Case is now considered when sorting strings in [urfave/cli/pull/676](https://github.com/urfave/cli/pull/676) via [@rliebz](https://github.com/rliebz)
+* Backport JSON `InputSource` to v1 in [urfave/cli/pull/598](https://github.com/urfave/cli/pull/598) via [@jszwedko](https://github.com/jszwedko)
+* Allow more customization of flag help strings in [urfave/cli/pull/661](https://github.com/urfave/cli/pull/661) via [@rliebz](https://github.com/rliebz)
+* Allow custom `ExitError` handler function in [urfave/cli/pull/628](https://github.com/urfave/cli/pull/628) via [@phinnaeus](https://github.com/phinnaeus)
+* Allow loading a variable from a file in [urfave/cli/pull/675](https://github.com/urfave/cli/pull/675) via [@jmccann](https://github.com/jmccann)
+* Allow combining short bool names in [urfave/cli/pull/684](https://github.com/urfave/cli/pull/684) via [@baude](https://github.com/baude)
+
+## [1.20.0] - 2017-08-10
 
 ### Fixed
 
@@ -407,7 +428,11 @@ signature of `func(*cli.Context) error`, as defined by `cli.ActionFunc`.
 ### Added
 - Initial implementation.
 
-[Unreleased]: https://github.com/urfave/cli/compare/v1.18.0...HEAD
+[Unreleased]: https://github.com/urfave/cli/compare/v1.21.0...HEAD
+[1.21.0]: https://github.com/urfave/cli/compare/v1.20.0...v1.21.0
+[1.20.0]: https://github.com/urfave/cli/compare/v1.19.1...v1.20.0
+[1.19.1]: https://github.com/urfave/cli/compare/v1.19.0...v1.19.1
+[1.19.0]: https://github.com/urfave/cli/compare/v1.18.0...v1.19.0
 [1.18.0]: https://github.com/urfave/cli/compare/v1.17.0...v1.18.0
 [1.17.0]: https://github.com/urfave/cli/compare/v1.16.0...v1.17.0
 [1.16.0]: https://github.com/urfave/cli/compare/v1.15.0...v1.16.0

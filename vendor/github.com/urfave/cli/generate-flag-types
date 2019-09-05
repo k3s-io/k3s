@@ -143,6 +143,7 @@ def _write_cli_flag_types(outfile, types):
             Usage string
             EnvVar string
             FilePath string
+            Required bool
             Hidden bool
         """.format(**typedef))
 
@@ -168,6 +169,11 @@ def _write_cli_flag_types(outfile, types):
             // GetName returns the name of the flag
             func (f {name}Flag) GetName() string {{
                 return f.Name
+            }}
+
+            // IsRequired returns the whether or not the flag is required
+            func (f {name}Flag) IsRequired() bool {{
+                return f.Required
             }}
 
             // {name} looks up the value of a local {name}Flag, returns

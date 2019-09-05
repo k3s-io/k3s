@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE.md file.
 
-// +build debug
+// +build cmp_debug
 
 package diff
 
@@ -14,7 +14,7 @@ import (
 )
 
 // The algorithm can be seen running in real-time by enabling debugging:
-//	go test -tags=debug -v
+//	go test -tags=cmp_debug -v
 //
 // Example output:
 //	=== RUN   TestDifference/#34
@@ -50,7 +50,7 @@ import (
 //
 // The series of '.', 'X', 'Y', and 'M' characters at the bottom represents
 // the currently established path from the forward and reverse searches,
-// seperated by a '|' character.
+// separated by a '|' character.
 
 const (
 	updateDelay  = 100 * time.Millisecond

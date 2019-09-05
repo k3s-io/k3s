@@ -1,0 +1,5 @@
+github.com/juju/loggo	git	8232ab8918d91c72af1a9fb94d3edbe31d88b790	2017-06-05T01:46:07Z
+github.com/juju/testing	git	72703b1e95eb8ce4737fd8a3d8496c6b0be280a6	2018-05-17T13:41:05Z
+gopkg.in/check.v1	git	4f90aeace3a26ad7021961c297b22c42160c7b25	2016-01-05T16:49:36Z
+gopkg.in/mgo.v2	git	f2b6f6c918c452ad107eec89615f074e3bd80e33	2016-08-18T01:52:18Z
+gopkg.in/yaml.v2	git	1be3d31502d6eabc0dd7ce5b0daab022e14a5538	2017-07-12T05:45:46Z
