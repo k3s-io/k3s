@@ -1,4 +1,5 @@
 ./bin
+./etc
 ./build/data
 ./build/data.tar.gz
 ./pkg/data/zz_generated_bindata.go

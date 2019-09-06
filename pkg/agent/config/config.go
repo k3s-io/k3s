@@ -350,6 +350,7 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 	nodeConfig.AgentConfig.RootDir = filepath.Join(envInfo.DataDir, "kubelet")
 	nodeConfig.AgentConfig.PauseImage = envInfo.PauseImage
 	nodeConfig.AgentConfig.IPSECPSK = controlConfig.IPSECPSK
+	nodeConfig.AgentConfig.StrongSwanDir = filepath.Join(envInfo.DataDir, "strongswan")
 	nodeConfig.CACerts = info.CACerts
 	nodeConfig.Containerd.Config = filepath.Join(envInfo.DataDir, "etc/containerd/config.toml")
 	nodeConfig.Containerd.Root = filepath.Join(envInfo.DataDir, "containerd")
