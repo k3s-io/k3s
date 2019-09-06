@@ -77,12 +77,12 @@ func (ip IP4) StringSep(sep string) string {
 	return fmt.Sprintf("%d%s%d%s%d%s%d", a, sep, b, sep, c, sep, d)
 }
 
-// json.Marshaler impl
+// MarshalJSON: json.Marshaler impl
 func (ip IP4) MarshalJSON() ([]byte, error) {
 	return []byte(fmt.Sprintf(`"%s"`, ip)), nil
 }
 
-// json.Unmarshaler impl
+// UnmarshalJSON: json.Unmarshaler impl
 func (ip *IP4) UnmarshalJSON(j []byte) error {
 	j = bytes.Trim(j, "\"")
 	if val, err := ParseIP4(string(j)); err != nil {
@@ -163,12 +163,12 @@ func (n IP4Net) Empty() bool {
 	return n.IP == IP4(0) && n.PrefixLen == uint(0)
 }
 
-// json.Marshaler impl
+// MarshalJSON: json.Marshaler impl
 func (n IP4Net) MarshalJSON() ([]byte, error) {
 	return []byte(fmt.Sprintf(`"%s"`, n)), nil
 }
 
-// json.Unmarshaler impl
+// UnmarshalJSON: json.Unmarshaler impl
 func (n *IP4Net) UnmarshalJSON(j []byte) error {
 	j = bytes.Trim(j, "\"")
 	if _, val, err := net.ParseCIDR(string(j)); err != nil {

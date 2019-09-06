@@ -119,6 +119,8 @@ github.com/bhendo/go-powershell/backend
 github.com/bhendo/go-powershell/utils
 # github.com/blang/semver v3.5.0+incompatible
 github.com/blang/semver
+# github.com/bronze1man/goStrongswanVici v0.0.0-20190828090544-27d02f80ba40
+github.com/bronze1man/goStrongswanVici
 # github.com/buger/jsonparser v0.0.0-20181115193947-bf1c66bbce23
 github.com/buger/jsonparser
 # github.com/chai2010/gettext-go v0.0.0-20160711120539-c6fed771bfd5
@@ -358,8 +360,10 @@ github.com/coreos/etcd/clientv3/balancer/connectivity
 github.com/coreos/etcd/pkg/systemd
 github.com/coreos/etcd/raft
 github.com/coreos/etcd/raft/raftpb
-# github.com/coreos/flannel v0.11.0 => github.com/ibuildthecloud/flannel v0.10.1-0.20190131215433-823afe66b226
+# github.com/coreos/flannel v0.11.0 => github.com/rancher/flannel v0.11.0-k3s.1
 github.com/coreos/flannel/backend
+github.com/coreos/flannel/backend/extension
+github.com/coreos/flannel/backend/ipsec
 github.com/coreos/flannel/backend/vxlan
 github.com/coreos/flannel/network
 github.com/coreos/flannel/pkg/ip

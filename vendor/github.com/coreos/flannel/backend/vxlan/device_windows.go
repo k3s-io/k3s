@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/Microsoft/hcsshim"
+	"github.com/Microsoft/hcsshim/hcn"
 	"github.com/buger/jsonparser"
 	"github.com/coreos/flannel/pkg/ip"
 	log "k8s.io/klog"
@@ -129,7 +130,30 @@ func ensureNetwork(expectedNetwork *hcsshim.HNSNetwork, expectedVSID int64, expe
 		}
 
 		log.Infof("Created HNSNetwork %s", networkName)
-		return newNetwork, nil
+		existingNetwork = newNetwork
+	}
+
+	existingNetworkV2, err := hcn.GetNetworkByID(existingNetwork.Id)
+	if err != nil {
+		return nil, errors.Annotatef(err, "Could not find vxlan0 in V2")
+	}
+
+	addHostRoute := true
+	for _, policy := range existingNetworkV2.Policies {
+		if policy.Type == hcn.HostRoute {
+			addHostRoute = false
+		}
+	}
+	if addHostRoute {
+		hostRoutePolicy := hcn.NetworkPolicy{
+			Type:     hcn.HostRoute,
+			Settings: []byte("{}"),
+		}
+
+		networkRequest := hcn.PolicyNetworkRequest{
+			Policies: []hcn.NetworkPolicy{hostRoutePolicy},
+		}
+		existingNetworkV2.AddPolicy(networkRequest)
 	}
 
 	return existingNetwork, nil
