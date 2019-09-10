@@ -1,0 +1,45 @@
+#cloud-config
+ssh_authorized_keys:
+- ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC06Qvs+Y9JiyOTeYNGAN/Ukq7SmeCTr7EreD1K8Lwu5VuOmo+SBZh685tNTEGV044HgFvGEOBVreDlO2ArYuwHjUBGnpQGV8/abjoeLrmZBdREAUzBQ1h2GFE/WssKUfum81cnigRK1J3tWP7emq/Y2h/Zw5F09yiCIlXMBX2auKWUCXqwG3xKTi1NVSF9N6BGyFolrAR0LZJ6k7UBXPRc/QDTclI427gSJNbnmn8LVym6YxacV/V9Y7s23iR5zYbhLPe9VJWYNk1brVvfUVb3mILVVYz76KGEq8SHdWlPQPCOp+fSJ+PezDRklnex/MmvhNrBOmMSNcpj7wSLA3hD wmaxwell@wmaxwell-laptop
+- ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIN5O7k6gRYCU7YPkCH6dyXVW10izMAkDAQtQxNxdRE22 drpebcak
+- ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC2TBZGjE+J8ag11dzkFT58J3XPONDrVmalCNrKxsfADfyy0eqdZrG8hAcxAR/5zuj90Gin2uB4RSw6Cn4VHsPZcFpXyQCj1KQDADj+WcuhpXOIOY3AB0LZBly9NI0ll+8lo3QtEaoyRLtrMBhQ6Mooy2M3MTG4JNwU9o3yInuqZWf9PvtW6KxMl+ygg1xZkljhemGZ9k0wSrjqif+8usNbzVlCOVQmZwZA+BZxbdcLNwkg7zWJSXzDIXyqM6iWPGXQDEbWLq3+HR1qKucTCSxjbqoe0FD5xcW7NHIME5XKX84yH92n6yn+rxSsyUfhJWYqJd+i0fKf5UbN6qLrtd/D darren@darrens
+write_files:
+  - path: /var/lib/rancher/k3s/server/manifests/metrics.yaml
+    permissions: "0755"
+    owner: root:root
+    encoding: b64
+    content: ${metrics_yaml}
+  - path: /var/lib/rancher/k3s/server/manifests/prom.yaml
+    permissions: "0755"
+    owner: root:root
+    encoding: b64
+    content: ${prom_yaml}
+runcmd:
+  - echo "net.ipv4.neigh.default.gc_interval = 3600" >> /etc/sysctl.conf
+  - echo "net.ipv4.neigh.default.gc_stale_time = 3600" >> /etc/sysctl.conf
+  - echo "net.ipv4.neigh.default.gc_thresh3 = 16384" >> /etc/sysctl.conf
+  - echo "net.ipv4.neigh.default.gc_thresh2 = 8192" >> /etc/sysctl.conf
+  - echo "net.ipv4.neigh.default.gc_thresh1 = 4096" >> /etc/sysctl.conf
+  - echo "fs.file-max = 12000500" >> /etc/sysctl.conf
+  - echo "fs.nr_open = 20000500" >> /etc/sysctl.conf
+  - echo "net.ipv4.tcp_mem = '10000000 10000000 10000000'" >> /etc/sysctl.conf
+  - echo "net.ipv4.tcp_rmem = '1024 4096 16384'" >> /etc/sysctl.conf
+  - echo "net.ipv4.tcp_wmem = '1024 4096 16384'" >> /etc/sysctl.conf
+  - echo "net.core.rmem_max = 16384" >> /etc/sysctl.conf
+  - echo "net.core.wmem_max = 16384" >> /etc/sysctl.conf
+  - ulimit -n 20000000
+  - echo "# <domain> <type> <item>  <value>" >> /etc/security/limits.d/limits.conf
+  - echo "    *       soft  nofile  20000" >> /etc/security/limits.d/limits.conf
+  - echo "    *       hard  nofile  20000" >> /etc/security/limits.d/limits.conf
+  - sysctl -p
+  - apt-get update
+  - apt-get install -y software-properties-common resolvconf linux-headers-$(uname -r)
+  - echo "nameserver 1.1.1.1" > /etc/resolvconf/resolv.conf.d/tail
+  - systemctl start resolvconf
+  - curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+  - add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+  - apt-get update
+  - apt-get -y install docker-ce
+  - DEBIAN_FRONTEND=noninteractive apt-get upgrade -y
+  - if [ "${create_eip}" = "1" ]; then docker run -e "EIP=${eip}" cloudnautique/eip-autoassign:latest; fi
+  - until (curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="${k3s_server_args} --disable-agent --no-deploy traefik --no-deploy servicelb --cluster-cidr=10.0.0.0/8 --service-cidr=192.168.0.0/16 --cluster-dns=192.168.0.10 --tls-san ${eip}" K3S_CLUSTER_SECRET="${k3s_cluster_secret}" INSTALL_K3S_VERSION=${install_k3s_version} sh -); do echo 'Error installing k3s'; sleep 1; done

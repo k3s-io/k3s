@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{.Name}}
+data:
+  data.yaml: |-
+    a: 1
+    b: 2
+    c: 3

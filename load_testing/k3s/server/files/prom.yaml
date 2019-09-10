@@ -1,0 +1,86 @@
+%{ if local.prom_worker_node_count != 0 }
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+
+---
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: prometheus
+  namespace: kube-system
+spec:
+  chart: https://raw.githubusercontent.com/drpebcak/charts/master/prometheus-9.1.0.tgz
+  targetNamespace: monitoring
+  valuesContent: |-
+    alertmanager:
+      nodeSelector:
+        prom: "true"
+      persistentVolume:
+        enabled: false
+    kubeStateMetrics:
+      nodeSelector:
+        prom: "true"
+    nodeExporter:
+      nodeSelector:
+        prom: "true"
+    server:
+      nodeSelector:
+        prom: "true"
+      ingress:
+        enabled: true
+        hosts:
+          - ${prom_host}
+      persistentVolume:
+        enabled: false
+    pushgateway:
+      nodeSelector:
+        prom: "true"
+      persistentVolume:
+        enabled: false
+    serverFiles:
+      prometheus.yml:
+        scrape_configs:
+        - job_name: prometheus
+          static_configs:
+            - targets:
+              - localhost:9090
+        - job_name: kubernetes-apiservers
+          scrape_interval: 10s
+          scrape_timeout: 10s
+          metrics_path: /metrics
+          scheme: https
+          kubernetes_sd_configs:
+          - api_server: null
+            role: endpoints
+            namespaces:
+              names: []
+          bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+          tls_config:
+            ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+            insecure_skip_verify: true
+          relabel_configs:
+          - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
+            separator: ;
+            regex: default;kubernetes;https
+            replacement: $1
+            action: keep
+---
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: grafana
+  namespace: kube-system
+spec:
+  chart: stable/grafana
+  targetNamespace: monitoring
+  valuesContent: |-
+    ingress:
+      enabled: true
+      hosts:
+        - ${graf_host}
+    nodeSelector:
+      prom: "true"
+%{ endif }
