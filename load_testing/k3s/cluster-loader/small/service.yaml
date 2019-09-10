@@ -1,0 +1,16 @@
+{{$SetServiceProxyLabel := DefaultParam .SetServiceProxyLabel false}}
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{.Name}}
+{{if and $SetServiceProxyLabel (eq (Mod .Index 2) 0)}}
+  labels:
+    service.kubernetes.io/service-proxy-name: foo
+{{end}}
+spec:
+  selector:
+    svc: {{.Name}}
+  ports:
+  - port: 80
+    targetPort: 80
