@@ -589,8 +589,7 @@ create_openrc_service_file() {
 #!/sbin/openrc-run
 
 depend() {
-    after net-online
-    need net
+    after network-online
 }
 
 start_pre() {
