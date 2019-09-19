@@ -21,10 +21,12 @@ import (
 	"sync"
 	"time"
 
-	v1 "k8s.io/api/core/v1"
+	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	"k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/scheduler/algorithm"
 	schedulernodeinfo "k8s.io/kubernetes/pkg/scheduler/nodeinfo"
 
@@ -120,8 +122,8 @@ func newNodeInfoListItem(ni *schedulernodeinfo.NodeInfo) *nodeInfoListItem {
 }
 
 // NewNodeInfoSnapshot initializes a NodeInfoSnapshot struct and returns it.
-func NewNodeInfoSnapshot() NodeInfoSnapshot {
-	return NodeInfoSnapshot{
+func NewNodeInfoSnapshot() *NodeInfoSnapshot {
+	return &NodeInfoSnapshot{
 		NodeInfoMap: make(map[string]*schedulernodeinfo.NodeInfo),
 	}
 }
@@ -208,6 +210,7 @@ func (cache *schedulerCache) Snapshot() *Snapshot {
 func (cache *schedulerCache) UpdateNodeInfoSnapshot(nodeSnapshot *NodeInfoSnapshot) error {
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
+	balancedVolumesEnabled := utilfeature.DefaultFeatureGate.Enabled(features.BalanceAttachedNodeVolumes)
 
 	// Get the last generation of the the snapshot.
 	snapshotGeneration := nodeSnapshot.Generation
@@ -218,6 +221,10 @@ func (cache *schedulerCache) UpdateNodeInfoSnapshot(nodeSnapshot *NodeInfoSnapsh
 		if node.info.GetGeneration() <= snapshotGeneration {
 			// all the nodes are updated before the existing snapshot. We are done.
 			break
+		}
+		if balancedVolumesEnabled && node.info.TransientInfo != nil {
+			// Transient scheduler info is reset here.
+			node.info.TransientInfo.ResetTransientSchedulerInfo()
 		}
 		if np := node.info.Node(); np != nil {
 			nodeSnapshot.NodeInfoMap[np.Name] = node.info.Clone()

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	args2 "github.com/rancher/wrangler/pkg/controller-gen/args"
+	"github.com/rancher/wrangler/pkg/name"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/gengo/args"
 	"k8s.io/gengo/generator"
@@ -62,6 +63,18 @@ func (f *registerGroupVersionGo) Init(c *generator.Context, w io.Writer) error {
 		"version":   f.gv.Version,
 		"groupPath": groupPath(f.gv.Group),
 	}
+
+	sw.Do("var (\n", nil)
+	for _, t := range types {
+		m := map[string]interface{}{
+			"name":   t.Name.Name + "ResourceName",
+			"plural": name.GuessPluralName(strings.ToLower(t.Name.Name)),
+		}
+
+		sw.Do("{{.name}} = \"{{.plural}}\"\n", m)
+	}
+	sw.Do(")\n", nil)
+
 	sw.Do(registerGroupVersionBody, m)
 
 	for _, t := range types {

@@ -75,6 +75,14 @@ type Flag interface {
 	GetName() string
 }
 
+// RequiredFlag is an interface that allows us to mark flags as required
+// it allows flags required flags to be backwards compatible with the Flag interface
+type RequiredFlag interface {
+	Flag
+
+	IsRequired() bool
+}
+
 // errorableFlag is an interface that allows us to return errors during apply
 // it allows flags defined in this library to return errors in a fashion backwards compatible
 // TODO remove in v2 and modify the existing Flag interface to return errors

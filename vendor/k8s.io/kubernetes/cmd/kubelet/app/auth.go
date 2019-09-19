@@ -27,7 +27,7 @@ import (
 	"k8s.io/apiserver/pkg/authorization/authorizer"
 	"k8s.io/apiserver/pkg/authorization/authorizerfactory"
 	clientset "k8s.io/client-go/kubernetes"
-	authenticationclient "k8s.io/client-go/kubernetes/typed/authentication/v1"
+	authenticationclient "k8s.io/client-go/kubernetes/typed/authentication/v1beta1"
 	authorizationclient "k8s.io/client-go/kubernetes/typed/authorization/v1beta1"
 
 	kubeletconfig "k8s.io/kubernetes/pkg/kubelet/apis/config"
@@ -42,7 +42,7 @@ func BuildAuth(nodeName types.NodeName, client clientset.Interface, config kubel
 		sarClient   authorizationclient.SubjectAccessReviewInterface
 	)
 	if client != nil && !reflect.ValueOf(client).IsNil() {
-		tokenClient = client.AuthenticationV1().TokenReviews()
+		tokenClient = client.AuthenticationV1beta1().TokenReviews()
 		sarClient = client.AuthorizationV1beta1().SubjectAccessReviews()
 	}
 
@@ -64,6 +64,7 @@ func BuildAuth(nodeName types.NodeName, client clientset.Interface, config kubel
 // BuildAuthn creates an authenticator compatible with the kubelet's needs
 func BuildAuthn(client authenticationclient.TokenReviewInterface, authn kubeletconfig.KubeletAuthentication) (authenticator.Request, error) {
 	authenticatorConfig := authenticatorfactory.DelegatingAuthenticatorConfig{
+		Anonymous:    authn.Anonymous.Enabled,
 		CacheTTL:     authn.Webhook.CacheTTL.Duration,
 		ClientCAFile: authn.X509.ClientCAFile,
 	}
@@ -75,7 +76,8 @@ func BuildAuthn(client authenticationclient.TokenReviewInterface, authn kubeletc
 		authenticatorConfig.TokenAccessReviewClient = client
 	}
 
-	return authenticatorConfig.New()
+	authenticator, _, err := authenticatorConfig.New()
+	return authenticator, err
 }
 
 // BuildAuthz creates an authorizer compatible with the kubelet's needs

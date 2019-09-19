@@ -21,7 +21,6 @@ import (
 	"github.com/urfave/cli"
 	"k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/kubernetes/pkg/master"
-	"k8s.io/kubernetes/pkg/volume/csi"
 
 	_ "github.com/go-sql-driver/mysql" // ensure we have mysql
 	_ "github.com/lib/pq"              // ensure we have postgres
@@ -54,9 +53,6 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 			return err
 		}
 	}
-
-	// If running agent in server, set this so that CSI initializes properly
-	csi.WaitForValidHostName = !cfg.DisableAgent
 
 	serverConfig := server.Config{}
 	serverConfig.ControlConfig.ClusterSecret = cfg.ClusterSecret

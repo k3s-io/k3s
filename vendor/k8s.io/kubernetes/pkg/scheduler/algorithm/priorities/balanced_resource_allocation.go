@@ -19,6 +19,8 @@ package priorities
 import (
 	"math"
 
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	"k8s.io/kubernetes/pkg/features"
 	schedulerapi "k8s.io/kubernetes/pkg/scheduler/api"
 	schedulernodeinfo "k8s.io/kubernetes/pkg/scheduler/nodeinfo"
 )
@@ -40,6 +42,20 @@ func balancedResourceScorer(requested, allocable *schedulernodeinfo.Resource, in
 	cpuFraction := fractionOfCapacity(requested.MilliCPU, allocable.MilliCPU)
 	memoryFraction := fractionOfCapacity(requested.Memory, allocable.Memory)
 	// This to find a node which has most balanced CPU, memory and volume usage.
+	if includeVolumes && utilfeature.DefaultFeatureGate.Enabled(features.BalanceAttachedNodeVolumes) && allocatableVolumes > 0 {
+		volumeFraction := float64(requestedVolumes) / float64(allocatableVolumes)
+		if cpuFraction >= 1 || memoryFraction >= 1 || volumeFraction >= 1 {
+			// if requested >= capacity, the corresponding host should never be preferred.
+			return 0
+		}
+		// Compute variance for all the three fractions.
+		mean := (cpuFraction + memoryFraction + volumeFraction) / float64(3)
+		variance := float64((((cpuFraction - mean) * (cpuFraction - mean)) + ((memoryFraction - mean) * (memoryFraction - mean)) + ((volumeFraction - mean) * (volumeFraction - mean))) / float64(3))
+		// Since the variance is between positive fractions, it will be positive fraction. 1-variance lets the
+		// score to be higher for node which has least variance and multiplying it with 10 provides the scaling
+		// factor needed.
+		return int64((1 - variance) * float64(schedulerapi.MaxPriority))
+	}
 
 	if cpuFraction >= 1 || memoryFraction >= 1 {
 		// if requested >= capacity, the corresponding host should never be preferred.

@@ -21,9 +21,7 @@ import (
 
 	"k8s.io/klog"
 
-	rsystem "github.com/opencontainers/runc/libcontainer/system"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	statsapi "k8s.io/kubernetes/pkg/kubelet/apis/stats/v1alpha1"
 	"k8s.io/kubernetes/pkg/kubelet/util"
 )
@@ -76,13 +74,7 @@ func (sp *summaryProviderImpl) Get(updateStats bool) (*statsapi.Summary, error) 
 	nodeConfig := sp.provider.GetNodeConfig()
 	rootStats, networkStats, err := sp.provider.GetCgroupStats("/", updateStats)
 	if err != nil {
-		if !rsystem.RunningInUserNS() {
-			return nil, fmt.Errorf("failed to get root cgroup stats: %v", err)
-		}
-		// if we are in userns, cgroups might not be available
-		klog.Errorf("failed to get root cgroup stats: %v", err)
-		rootStats = &statsapi.ContainerStats{}
-		networkStats = &statsapi.NetworkStats{}
+		return nil, fmt.Errorf("failed to get root cgroup stats: %v", err)
 	}
 	rootFsStats, err := sp.provider.RootFsStats()
 	if err != nil {

@@ -19,13 +19,14 @@ package crictl
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 	"time"
 
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 	"google.golang.org/grpc"
-	"k8s.io/kubernetes/pkg/kubelet/apis/cri"
+	internalapi "k8s.io/cri-api/pkg/apis"
 	"k8s.io/kubernetes/pkg/kubelet/remote"
 	"k8s.io/kubernetes/pkg/kubelet/util"
 
@@ -59,7 +60,7 @@ func getRuntimeClientConnection(context *cli.Context) (*grpc.ClientConn, error) 
 
 	conn, err := grpc.Dial(addr, grpc.WithInsecure(), grpc.WithBlock(), grpc.WithTimeout(Timeout), grpc.WithDialer(dialer))
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect: %v", err)
+		return nil, fmt.Errorf("failed to connect, make sure you are running as root and the runtime has been started: %v", err)
 	}
 	return conn, nil
 }
@@ -79,12 +80,12 @@ func getImageClientConnection(context *cli.Context) (*grpc.ClientConn, error) {
 
 	conn, err := grpc.Dial(addr, grpc.WithInsecure(), grpc.WithBlock(), grpc.WithTimeout(Timeout), grpc.WithDialer(dialer))
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect: %v", err)
+		return nil, fmt.Errorf("failed to connect, make sure you are running as root and the runtime has been started: %v", err)
 	}
 	return conn, nil
 }
 
-func getRuntimeService(context *cli.Context) (cri.RuntimeService, error) {
+func getRuntimeService(context *cli.Context) (internalapi.RuntimeService, error) {
 	return remote.NewRemoteRuntimeService(RuntimeEndpoint, Timeout)
 }
 
@@ -128,7 +129,7 @@ func Main() {
 			Name:   "config, c",
 			EnvVar: "CRI_CONFIG_FILE",
 			Value:  defaultConfigPath,
-			Usage:  "Location of the client config file",
+			Usage:  "Location of the client config file. If not specified and the default does not exist, the program's directory is searched as well",
 		},
 		cli.StringFlag{
 			Name:   "runtime-endpoint, r",
@@ -160,8 +161,20 @@ func Main() {
 		} else {
 			if context.IsSet("config") || !os.IsNotExist(err) {
 				// note: the absence of default config file is normal case
-				// when user have not setted it in cli
-				logrus.Fatalf("Falied to load config file: %v", err)
+				// when user have not set it in cli
+				logrus.Fatalf("Failed to load config file: %v", err)
+			} else {
+				// If the default config was not found, and the user didn't
+				// explicitly specify a config, try looking in the program's
+				// directory as a fallback. This is a convenience for
+				// deployments of crictl so they don't have to place a file in a
+				// global location.
+				configFile = filepath.Join(filepath.Dir(os.Args[0]), "crictl.yaml")
+				if _, err := os.Stat(configFile); err == nil {
+					isUseConfig = true
+				} else if !os.IsNotExist(err) {
+					logrus.Fatalf("Failed to load config file: %v", err)
+				}
 			}
 		}
 

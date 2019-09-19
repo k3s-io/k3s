@@ -14,6 +14,7 @@ type BoolFlag struct {
 	Usage       string
 	EnvVar      string
 	FilePath    string
+	Required    bool
 	Hidden      bool
 	Destination *bool
 }
@@ -27,6 +28,11 @@ func (f BoolFlag) String() string {
 // GetName returns the name of the flag
 func (f BoolFlag) GetName() string {
 	return f.Name
+}
+
+// IsRequired returns the whether or not the flag is required
+func (f BoolFlag) IsRequired() bool {
+	return f.Required
 }
 
 // Bool looks up the value of a local BoolFlag, returns
@@ -62,6 +68,7 @@ type BoolTFlag struct {
 	Usage       string
 	EnvVar      string
 	FilePath    string
+	Required    bool
 	Hidden      bool
 	Destination *bool
 }
@@ -75,6 +82,11 @@ func (f BoolTFlag) String() string {
 // GetName returns the name of the flag
 func (f BoolTFlag) GetName() string {
 	return f.Name
+}
+
+// IsRequired returns the whether or not the flag is required
+func (f BoolTFlag) IsRequired() bool {
+	return f.Required
 }
 
 // BoolT looks up the value of a local BoolTFlag, returns
@@ -110,6 +122,7 @@ type DurationFlag struct {
 	Usage       string
 	EnvVar      string
 	FilePath    string
+	Required    bool
 	Hidden      bool
 	Value       time.Duration
 	Destination *time.Duration
@@ -124,6 +137,11 @@ func (f DurationFlag) String() string {
 // GetName returns the name of the flag
 func (f DurationFlag) GetName() string {
 	return f.Name
+}
+
+// IsRequired returns the whether or not the flag is required
+func (f DurationFlag) IsRequired() bool {
+	return f.Required
 }
 
 // Duration looks up the value of a local DurationFlag, returns
@@ -159,6 +177,7 @@ type Float64Flag struct {
 	Usage       string
 	EnvVar      string
 	FilePath    string
+	Required    bool
 	Hidden      bool
 	Value       float64
 	Destination *float64
@@ -173,6 +192,11 @@ func (f Float64Flag) String() string {
 // GetName returns the name of the flag
 func (f Float64Flag) GetName() string {
 	return f.Name
+}
+
+// IsRequired returns the whether or not the flag is required
+func (f Float64Flag) IsRequired() bool {
+	return f.Required
 }
 
 // Float64 looks up the value of a local Float64Flag, returns
@@ -208,6 +232,7 @@ type GenericFlag struct {
 	Usage    string
 	EnvVar   string
 	FilePath string
+	Required bool
 	Hidden   bool
 	Value    Generic
 }
@@ -221,6 +246,11 @@ func (f GenericFlag) String() string {
 // GetName returns the name of the flag
 func (f GenericFlag) GetName() string {
 	return f.Name
+}
+
+// IsRequired returns the whether or not the flag is required
+func (f GenericFlag) IsRequired() bool {
+	return f.Required
 }
 
 // Generic looks up the value of a local GenericFlag, returns
@@ -256,6 +286,7 @@ type Int64Flag struct {
 	Usage       string
 	EnvVar      string
 	FilePath    string
+	Required    bool
 	Hidden      bool
 	Value       int64
 	Destination *int64
@@ -270,6 +301,11 @@ func (f Int64Flag) String() string {
 // GetName returns the name of the flag
 func (f Int64Flag) GetName() string {
 	return f.Name
+}
+
+// IsRequired returns the whether or not the flag is required
+func (f Int64Flag) IsRequired() bool {
+	return f.Required
 }
 
 // Int64 looks up the value of a local Int64Flag, returns
@@ -305,6 +341,7 @@ type IntFlag struct {
 	Usage       string
 	EnvVar      string
 	FilePath    string
+	Required    bool
 	Hidden      bool
 	Value       int
 	Destination *int
@@ -319,6 +356,11 @@ func (f IntFlag) String() string {
 // GetName returns the name of the flag
 func (f IntFlag) GetName() string {
 	return f.Name
+}
+
+// IsRequired returns the whether or not the flag is required
+func (f IntFlag) IsRequired() bool {
+	return f.Required
 }
 
 // Int looks up the value of a local IntFlag, returns
@@ -354,6 +396,7 @@ type IntSliceFlag struct {
 	Usage    string
 	EnvVar   string
 	FilePath string
+	Required bool
 	Hidden   bool
 	Value    *IntSlice
 }
@@ -367,6 +410,11 @@ func (f IntSliceFlag) String() string {
 // GetName returns the name of the flag
 func (f IntSliceFlag) GetName() string {
 	return f.Name
+}
+
+// IsRequired returns the whether or not the flag is required
+func (f IntSliceFlag) IsRequired() bool {
+	return f.Required
 }
 
 // IntSlice looks up the value of a local IntSliceFlag, returns
@@ -402,6 +450,7 @@ type Int64SliceFlag struct {
 	Usage    string
 	EnvVar   string
 	FilePath string
+	Required bool
 	Hidden   bool
 	Value    *Int64Slice
 }
@@ -415,6 +464,11 @@ func (f Int64SliceFlag) String() string {
 // GetName returns the name of the flag
 func (f Int64SliceFlag) GetName() string {
 	return f.Name
+}
+
+// IsRequired returns the whether or not the flag is required
+func (f Int64SliceFlag) IsRequired() bool {
+	return f.Required
 }
 
 // Int64Slice looks up the value of a local Int64SliceFlag, returns
@@ -450,6 +504,7 @@ type StringFlag struct {
 	Usage       string
 	EnvVar      string
 	FilePath    string
+	Required    bool
 	Hidden      bool
 	Value       string
 	Destination *string
@@ -464,6 +519,11 @@ func (f StringFlag) String() string {
 // GetName returns the name of the flag
 func (f StringFlag) GetName() string {
 	return f.Name
+}
+
+// IsRequired returns the whether or not the flag is required
+func (f StringFlag) IsRequired() bool {
+	return f.Required
 }
 
 // String looks up the value of a local StringFlag, returns
@@ -499,6 +559,7 @@ type StringSliceFlag struct {
 	Usage    string
 	EnvVar   string
 	FilePath string
+	Required bool
 	Hidden   bool
 	Value    *StringSlice
 }
@@ -512,6 +573,11 @@ func (f StringSliceFlag) String() string {
 // GetName returns the name of the flag
 func (f StringSliceFlag) GetName() string {
 	return f.Name
+}
+
+// IsRequired returns the whether or not the flag is required
+func (f StringSliceFlag) IsRequired() bool {
+	return f.Required
 }
 
 // StringSlice looks up the value of a local StringSliceFlag, returns
@@ -547,6 +613,7 @@ type Uint64Flag struct {
 	Usage       string
 	EnvVar      string
 	FilePath    string
+	Required    bool
 	Hidden      bool
 	Value       uint64
 	Destination *uint64
@@ -561,6 +628,11 @@ func (f Uint64Flag) String() string {
 // GetName returns the name of the flag
 func (f Uint64Flag) GetName() string {
 	return f.Name
+}
+
+// IsRequired returns the whether or not the flag is required
+func (f Uint64Flag) IsRequired() bool {
+	return f.Required
 }
 
 // Uint64 looks up the value of a local Uint64Flag, returns
@@ -596,6 +668,7 @@ type UintFlag struct {
 	Usage       string
 	EnvVar      string
 	FilePath    string
+	Required    bool
 	Hidden      bool
 	Value       uint
 	Destination *uint
@@ -610,6 +683,11 @@ func (f UintFlag) String() string {
 // GetName returns the name of the flag
 func (f UintFlag) GetName() string {
 	return f.Name
+}
+
+// IsRequired returns the whether or not the flag is required
+func (f UintFlag) IsRequired() bool {
+	return f.Required
 }
 
 // Uint looks up the value of a local UintFlag, returns

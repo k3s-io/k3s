@@ -20,7 +20,7 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/containerd/containerd/runtime/v1/shim"
+	"github.com/containerd/containerd/sys/reaper"
 	runc "github.com/containerd/go-runc"
 	"github.com/containerd/ttrpc"
 	"github.com/opencontainers/runc/libcontainer/system"
@@ -34,7 +34,7 @@ func setupSignals() (chan os.Signal, error) {
 	signal.Notify(signals, unix.SIGTERM, unix.SIGINT, unix.SIGCHLD, unix.SIGPIPE)
 	// make sure runc is setup to use the monitor
 	// for waiting on processes
-	runc.Monitor = shim.Default
+	runc.Monitor = reaper.Default
 	// set the shim as the subreaper for all orphaned processes created by the container
 	if err := system.SetSubreaper(1); err != nil {
 		return nil, err

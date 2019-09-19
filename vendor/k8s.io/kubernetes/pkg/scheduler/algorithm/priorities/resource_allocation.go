@@ -20,7 +20,9 @@ import (
 	"fmt"
 
 	"k8s.io/api/core/v1"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/klog"
+	"k8s.io/kubernetes/pkg/features"
 	priorityutil "k8s.io/kubernetes/pkg/scheduler/algorithm/priorities/util"
 	schedulerapi "k8s.io/kubernetes/pkg/scheduler/api"
 	schedulernodeinfo "k8s.io/kubernetes/pkg/scheduler/nodeinfo"
@@ -56,16 +58,31 @@ func (r *ResourceAllocationPriority) PriorityMap(
 	requested.Memory += nodeInfo.NonZeroRequest().Memory
 	var score int64
 	// Check if the pod has volumes and this could be added to scorer function for balanced resource allocation.
-	score = r.scorer(&requested, &allocatable, false, 0, 0)
+	if len(pod.Spec.Volumes) >= 0 && utilfeature.DefaultFeatureGate.Enabled(features.BalanceAttachedNodeVolumes) && nodeInfo.TransientInfo != nil {
+		score = r.scorer(&requested, &allocatable, true, nodeInfo.TransientInfo.TransNodeInfo.RequestedVolumes, nodeInfo.TransientInfo.TransNodeInfo.AllocatableVolumesCount)
+	} else {
+		score = r.scorer(&requested, &allocatable, false, 0, 0)
+	}
 
 	if klog.V(10) {
-		klog.Infof(
-			"%v -> %v: %v, capacity %d millicores %d memory bytes, total request %d millicores %d memory bytes, score %d",
-			pod.Name, node.Name, r.Name,
-			allocatable.MilliCPU, allocatable.Memory,
-			requested.MilliCPU, requested.Memory,
-			score,
-		)
+		if len(pod.Spec.Volumes) >= 0 && utilfeature.DefaultFeatureGate.Enabled(features.BalanceAttachedNodeVolumes) && nodeInfo.TransientInfo != nil {
+			klog.Infof(
+				"%v -> %v: %v, capacity %d millicores %d memory bytes, %d volumes, total request %d millicores %d memory bytes %d volumes, score %d",
+				pod.Name, node.Name, r.Name,
+				allocatable.MilliCPU, allocatable.Memory, nodeInfo.TransientInfo.TransNodeInfo.AllocatableVolumesCount,
+				requested.MilliCPU, requested.Memory,
+				nodeInfo.TransientInfo.TransNodeInfo.RequestedVolumes,
+				score,
+			)
+		} else {
+			klog.Infof(
+				"%v -> %v: %v, capacity %d millicores %d memory bytes, total request %d millicores %d memory bytes, score %d",
+				pod.Name, node.Name, r.Name,
+				allocatable.MilliCPU, allocatable.Memory,
+				requested.MilliCPU, requested.Memory,
+				score,
+			)
+		}
 	}
 
 	return schedulerapi.HostPriority{

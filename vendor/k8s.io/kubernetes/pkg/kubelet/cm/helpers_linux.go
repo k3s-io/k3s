@@ -25,11 +25,13 @@ import (
 
 	libcontainercgroups "github.com/opencontainers/runc/libcontainer/cgroups"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/kubernetes/pkg/api/v1/resource"
 	v1helper "k8s.io/kubernetes/pkg/apis/core/v1/helper"
 	v1qos "k8s.io/kubernetes/pkg/apis/core/v1/helper/qos"
+	kubefeatures "k8s.io/kubernetes/pkg/features"
 )
 
 const (
@@ -56,7 +58,9 @@ func MilliCPUToQuota(milliCPU int64, period int64) (quota int64) {
 		return
 	}
 
-	period = QuotaPeriod
+	if !utilfeature.DefaultFeatureGate.Enabled(kubefeatures.CPUCFSQuotaPeriod) {
+		period = QuotaPeriod
+	}
 
 	// we then convert your milliCPU to a value normalized over a period
 	quota = (milliCPU * period) / MilliCPUToCPU
@@ -231,4 +235,35 @@ func getCgroupProcs(dir string) ([]int, error) {
 // GetPodCgroupNameSuffix returns the last element of the pod CgroupName identifier
 func GetPodCgroupNameSuffix(podUID types.UID) string {
 	return podCgroupNamePrefix + string(podUID)
+}
+
+// NodeAllocatableRoot returns the literal cgroup path for the node allocatable cgroup
+func NodeAllocatableRoot(cgroupRoot, cgroupDriver string) string {
+	root := ParseCgroupfsToCgroupName(cgroupRoot)
+	nodeAllocatableRoot := NewCgroupName(root, defaultNodeAllocatableCgroupName)
+	return nodeAllocatableRoot.ToCgroupfs()
+}
+
+// GetKubeletContainer returns the cgroup the kubelet will use
+func GetKubeletContainer(kubeletCgroups string) (string, error) {
+	if kubeletCgroups == "" {
+		cont, err := getContainer(os.Getpid())
+		if err != nil {
+			return "", err
+		}
+		return cont, nil
+	}
+	return kubeletCgroups, nil
+}
+
+// GetRuntimeContainer returns the cgroup used by the container runtime
+func GetRuntimeContainer(containerRuntime, runtimeCgroups string) (string, error) {
+	if containerRuntime == "docker" {
+		cont, err := getContainerNameForProcess(dockerProcessName, dockerPidFile)
+		if err != nil {
+			return "", fmt.Errorf("failed to get container name for docker process: %v", err)
+		}
+		return cont, nil
+	}
+	return runtimeCgroups, nil
 }

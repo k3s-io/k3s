@@ -56,7 +56,6 @@ func kubelet(cfg *config.Agent) {
 	argsMap := map[string]string{
 		"healthz-bind-address":     "127.0.0.1",
 		"read-only-port":           "0",
-		"allow-privileged":         "true",
 		"cluster-domain":           cfg.ClusterDomain,
 		"kubeconfig":               cfg.KubeConfigKubelet,
 		"eviction-hard":            "imagefs.available<5%,nodefs.available<5%",
@@ -65,6 +64,7 @@ func kubelet(cfg *config.Agent) {
 		//"cgroup-root": "/k3s",
 		"cgroup-driver":                "cgroupfs",
 		"authentication-token-webhook": "true",
+		"anonymous-auth":               "false",
 		"authorization-mode":           modes.ModeWebhook,
 	}
 	if cfg.RootDir != "" {

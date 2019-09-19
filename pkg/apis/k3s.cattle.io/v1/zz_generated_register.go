@@ -27,6 +27,11 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
+var (
+	AddonResourceName          = "addons"
+	ListenerConfigResourceName = "listenerconfigs"
+)
+
 // SchemeGroupVersion is group version used to register these objects
 var SchemeGroupVersion = schema.GroupVersion{Group: k3s.GroupName, Version: "v1"}
 

@@ -45,15 +45,18 @@ import (
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/klog"
+	oapi "k8s.io/kube-openapi/pkg/util/proto"
 	"k8s.io/kubernetes/pkg/kubectl"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/delete"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	"k8s.io/kubernetes/pkg/kubectl/cmd/util/openapi"
 	"k8s.io/kubernetes/pkg/kubectl/scheme"
 	"k8s.io/kubernetes/pkg/kubectl/util/i18n"
 	"k8s.io/kubernetes/pkg/kubectl/util/templates"
 	"k8s.io/kubernetes/pkg/kubectl/validation"
 )
 
+// ApplyOptions defines flags and other configuration parameters for the `apply` command
 type ApplyOptions struct {
 	RecordFlags *genericclioptions.RecordFlags
 	Recorder    genericclioptions.Recorder
@@ -64,22 +67,26 @@ type ApplyOptions struct {
 	DeleteFlags   *delete.DeleteFlags
 	DeleteOptions *delete.DeleteOptions
 
-	Selector       string
-	DryRun         bool
-	ServerDryRun   bool
-	Prune          bool
-	PruneResources []pruneResource
-	cmdBaseName    string
-	All            bool
-	Overwrite      bool
-	OpenAPIPatch   bool
-	PruneWhitelist []string
+	ServerSideApply bool
+	ForceConflicts  bool
+	FieldManager    string
+	Selector        string
+	DryRun          bool
+	ServerDryRun    bool
+	Prune           bool
+	PruneResources  []pruneResource
+	cmdBaseName     string
+	All             bool
+	Overwrite       bool
+	OpenAPIPatch    bool
+	PruneWhitelist  []string
 
 	Validator       validation.Schema
 	Builder         *resource.Builder
 	Mapper          meta.RESTMapper
 	DynamicClient   dynamic.Interface
 	DiscoveryClient discovery.DiscoveryInterface
+	OpenAPISchema   openapi.Resources
 
 	Namespace        string
 	EnforceNamespace bool
@@ -126,13 +133,15 @@ var (
 	warningNoLastAppliedConfigAnnotation = "Warning: %[1]s apply should be used on resource created by either %[1]s create --save-config or %[1]s apply\n"
 )
 
+// NewApplyOptions creates new ApplyOptions for the `apply` command
 func NewApplyOptions(ioStreams genericclioptions.IOStreams) *ApplyOptions {
 	return &ApplyOptions{
 		RecordFlags: genericclioptions.NewRecordFlags(),
 		DeleteFlags: delete.NewDeleteFlags("that contains the configuration to apply"),
 		PrintFlags:  genericclioptions.NewPrintFlags("created").WithTypeSetter(scheme.Scheme),
 
-		Overwrite: true,
+		Overwrite:    true,
+		OpenAPIPatch: true,
 
 		Recorder: genericclioptions.NoopRecorder{},
 
@@ -173,9 +182,11 @@ func NewCmdApply(baseName string, f cmdutil.Factory, ioStreams genericclioptions
 	cmd.Flags().StringVarP(&o.Selector, "selector", "l", o.Selector, "Selector (label query) to filter on, supports '=', '==', and '!='.(e.g. -l key1=value1,key2=value2)")
 	cmd.Flags().BoolVar(&o.All, "all", o.All, "Select all resources in the namespace of the specified resource types.")
 	cmd.Flags().StringArrayVar(&o.PruneWhitelist, "prune-whitelist", o.PruneWhitelist, "Overwrite the default whitelist with <group/version/kind> for --prune")
+	cmd.Flags().BoolVar(&o.OpenAPIPatch, "openapi-patch", o.OpenAPIPatch, "If true, use openapi to calculate diff when the openapi presents and the resource can be found in the openapi spec. Otherwise, fall back to use baked-in types.")
 	cmd.Flags().BoolVar(&o.ServerDryRun, "server-dry-run", o.ServerDryRun, "If true, request will be sent to server with dry-run flag, which means the modifications won't be persisted. This is an alpha feature and flag.")
 	cmd.Flags().Bool("dry-run", false, "If true, only print the object that would be sent, without sending it. Warning: --dry-run cannot accurately output the result of merging the local manifest and the server-side data. Use --server-dry-run to get the merged result instead.")
 	cmdutil.AddIncludeUninitializedFlag(cmd)
+	cmdutil.AddServerSideApplyFlags(cmd)
 
 	// apply subcommands
 	cmd.AddCommand(NewCmdApplyViewLastApplied(f, ioStreams))
@@ -185,8 +196,20 @@ func NewCmdApply(baseName string, f cmdutil.Factory, ioStreams genericclioptions
 	return cmd
 }
 
+// Complete verifies if ApplyOptions are valid and without conflicts.
 func (o *ApplyOptions) Complete(f cmdutil.Factory, cmd *cobra.Command) error {
+	o.ServerSideApply = cmdutil.GetServerSideApplyFlag(cmd)
+	o.ForceConflicts = cmdutil.GetForceConflictsFlag(cmd)
+	o.FieldManager = cmdutil.GetFieldManagerFlag(cmd)
 	o.DryRun = cmdutil.GetDryRunFlag(cmd)
+
+	if o.ForceConflicts && !o.ServerSideApply {
+		return fmt.Errorf("--experimental-force-conflicts only works with --experimental-server-side")
+	}
+
+	if o.DryRun && o.ServerSideApply {
+		return fmt.Errorf("--dry-run doesn't work with --experimental-server-side (did you mean --server-dry-run instead?)")
+	}
 
 	if o.DryRun && o.ServerDryRun {
 		return fmt.Errorf("--dry-run and --server-dry-run can't be used together")
@@ -226,6 +249,7 @@ func (o *ApplyOptions) Complete(f cmdutil.Factory, cmd *cobra.Command) error {
 		return err
 	}
 
+	o.OpenAPISchema, _ = f.OpenAPISchema()
 	o.Validator, err = f.Validator(cmdutil.GetFlagBool(cmd, "validate"))
 	o.Builder = f.NewBuilder()
 	o.Mapper, err = f.ToRESTMapper()
@@ -304,9 +328,16 @@ func isIncompatibleServerError(err error) bool {
 	return err.(*errors.StatusError).Status().Code == http.StatusUnsupportedMediaType
 }
 
+// Run executes the `apply` command.
 func (o *ApplyOptions) Run() error {
+	var openapiSchema openapi.Resources
+	if o.OpenAPIPatch {
+		openapiSchema = o.OpenAPISchema
+	}
+
 	dryRunVerifier := &DryRunVerifier{
-		Finder: cmdutil.NewCRDFinder(cmdutil.CRDFromDynamic(o.DynamicClient)),
+		Finder:        cmdutil.NewCRDFinder(cmdutil.CRDFromDynamic(o.DynamicClient)),
+		OpenAPIGetter: o.DiscoveryClient,
 	}
 
 	// include the uninitialized objects by default if --prune is true
@@ -359,6 +390,51 @@ func (o *ApplyOptions) Run() error {
 
 		if err := o.Recorder.Record(info.Object); err != nil {
 			klog.V(4).Infof("error recording current command: %v", err)
+		}
+
+		if o.ServerSideApply {
+			// Send the full object to be applied on the server side.
+			data, err := runtime.Encode(unstructured.UnstructuredJSONScheme, info.Object)
+			if err != nil {
+				return cmdutil.AddSourceToErr("serverside-apply", info.Source, err)
+			}
+			options := metav1.PatchOptions{
+				Force:        &o.ForceConflicts,
+				FieldManager: o.FieldManager,
+			}
+			if o.ServerDryRun {
+				options.DryRun = []string{metav1.DryRunAll}
+			}
+			obj, err := resource.NewHelper(info.Client, info.Mapping).Patch(
+				info.Namespace,
+				info.Name,
+				types.ApplyPatchType,
+				data,
+				&options,
+			)
+			if err == nil {
+				info.Refresh(obj, true)
+				metadata, err := meta.Accessor(info.Object)
+				if err != nil {
+					return err
+				}
+				visitedUids.Insert(string(metadata.GetUID()))
+				count++
+				if len(output) > 0 && !shortOutput {
+					objs = append(objs, info.Object)
+					return nil
+				}
+				printer, err := o.ToPrinter("serverside-applied")
+				if err != nil {
+					return err
+				}
+				return printer.PrintObj(info.Object, o.Out)
+			} else if !isIncompatibleServerError(err) {
+				return err
+			}
+			// If we're talking to a server which does not implement server-side apply,
+			// continue with the client side apply after this block.
+			klog.Warningf("serverside-apply incompatible server: %v", err)
 		}
 
 		// Get the modified configuration of the object. Embed the result
@@ -440,6 +516,7 @@ func (o *ApplyOptions) Run() error {
 				Timeout:       o.DeleteOptions.Timeout,
 				GracePeriod:   o.DeleteOptions.GracePeriod,
 				ServerDryRun:  o.ServerDryRun,
+				OpenapiSchema: openapiSchema,
 				Retries:       maxPatchRetry,
 			}
 
@@ -688,6 +765,7 @@ func (p *Patcher) delete(namespace, name string) error {
 	return runDelete(namespace, name, p.Mapping, p.DynamicClient, p.Cascade, p.GracePeriod, p.ServerDryRun)
 }
 
+// Patcher defines options to patch OpenAPI objects.
 type Patcher struct {
 	Mapping       *meta.RESTMapping
 	Helper        *resource.Helper
@@ -707,6 +785,8 @@ type Patcher struct {
 
 	// Number of retries to make if the patch fails with conflict
 	Retries int
+
+	OpenapiSchema openapi.Resources
 }
 
 // DryRunVerifier verifies if a given group-version-kind supports DryRun
@@ -719,15 +799,28 @@ type Patcher struct {
 // delay the check for CRDs as much as possible though, since it
 // requires an extra round-trip to the server.
 type DryRunVerifier struct {
-	Finder cmdutil.CRDFinder
+	Finder        cmdutil.CRDFinder
+	OpenAPIGetter discovery.OpenAPISchemaInterface
 }
 
 // HasSupport verifies if the given gvk supports DryRun. An error is
 // returned if it doesn't.
 func (v *DryRunVerifier) HasSupport(gvk schema.GroupVersionKind) error {
-	supports, err := v.Finder.HasCRD(gvk.GroupKind())
+	oapi, err := v.OpenAPIGetter.OpenAPISchema()
 	if err != nil {
-		return fmt.Errorf("failed to check CRD: %v", err)
+		return fmt.Errorf("failed to download openapi: %v", err)
+	}
+	supports, err := openapi.SupportsDryRun(oapi, gvk)
+	if err != nil {
+		// We assume that we couldn't find the type, then check for namespace:
+		supports, _ = openapi.SupportsDryRun(oapi, schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Namespace"})
+		// If namespace supports dryRun, then we will support dryRun for CRDs only.
+		if supports {
+			supports, err = v.Finder.HasCRD(gvk.GroupKind())
+			if err != nil {
+				return fmt.Errorf("failed to check CRD: %v", err)
+			}
+		}
 	}
 	if !supports {
 		return fmt.Errorf("%v doesn't support dry-run", gvk)
@@ -767,6 +860,7 @@ func (p *Patcher) patchSimple(obj runtime.Object, modified []byte, source, names
 	var patchType types.PatchType
 	var patch []byte
 	var lookupPatchMeta strategicpatch.LookupPatchMeta
+	var schema oapi.Schema
 	createPatchErrFormat := "creating patch with:\noriginal:\n%s\nmodified:\n%s\ncurrent:\n%s\nfor:"
 
 	// Create the versioned struct from the type defined in the restmapping
@@ -790,6 +884,20 @@ func (p *Patcher) patchSimple(obj runtime.Object, modified []byte, source, names
 	case err == nil:
 		// Compute a three way strategic merge patch to send to server.
 		patchType = types.StrategicMergePatchType
+
+		// Try to use openapi first if the openapi spec is available and can successfully calculate the patch.
+		// Otherwise, fall back to baked-in types.
+		if p.OpenapiSchema != nil {
+			if schema = p.OpenapiSchema.LookupResource(p.Mapping.GroupVersionKind); schema != nil {
+				lookupPatchMeta = strategicpatch.PatchMetaFromOpenAPI{Schema: schema}
+				if openapiPatch, err := strategicpatch.CreateThreeWayMergePatch(original, modified, current, lookupPatchMeta, p.Overwrite); err != nil {
+					fmt.Fprintf(errOut, "warning: error calculating patch from openapi spec: %v\n", err)
+				} else {
+					patchType = types.StrategicMergePatchType
+					patch = openapiPatch
+				}
+			}
+		}
 
 		if patch == nil {
 			lookupPatchMeta, err = strategicpatch.NewPatchMetaFromStruct(versionedObject)
@@ -823,6 +931,8 @@ func (p *Patcher) patchSimple(obj runtime.Object, modified []byte, source, names
 	return patch, patchedObj, err
 }
 
+// Patch tries to patch an OpenAPI resource. On success, returns the merge patch as well
+// the final patched object. On failure, returns an error.
 func (p *Patcher) Patch(current runtime.Object, modified []byte, source, namespace, name string, errOut io.Writer) ([]byte, runtime.Object, error) {
 	var getErr error
 	patchBytes, patchObject, err := p.patchSimple(current, modified, source, namespace, name, errOut)

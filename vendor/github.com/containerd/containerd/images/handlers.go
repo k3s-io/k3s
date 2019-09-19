@@ -222,66 +222,22 @@ func LimitManifests(f HandlerFunc, m platforms.MatchComparer, n int) HandlerFunc
 
 		switch desc.MediaType {
 		case ocispec.MediaTypeImageIndex, MediaTypeDockerSchema2ManifestList:
-			children = limitChildren(children, m, n)
+			sort.SliceStable(children, func(i, j int) bool {
+				if children[i].Platform == nil {
+					return false
+				}
+				if children[j].Platform == nil {
+					return true
+				}
+				return m.Less(*children[i].Platform, *children[j].Platform)
+			})
+
+			if n > 0 && len(children) > n {
+				children = children[:n]
+			}
 		default:
 			// only limit manifests from an index
 		}
-		return children, nil
-	}
-}
-
-func limitChildren(children []ocispec.Descriptor, m platforms.MatchComparer, n int) []ocispec.Descriptor {
-	sort.SliceStable(children, func(i, j int) bool {
-		if children[i].Platform == nil {
-			return false
-		}
-		if children[j].Platform == nil {
-			return true
-		}
-		return m.Less(*children[i].Platform, *children[j].Platform)
-	})
-
-	if n > 0 && len(children) > n {
-		children = children[:n]
-	}
-
-	return children
-}
-
-type PlatformCapture struct {
-	requested platforms.MatchComparer
-	platforms []ocispec.Platform
-}
-
-func NewPlatformCapture(comparer platforms.MatchComparer) *PlatformCapture {
-	return &PlatformCapture{
-		requested: comparer,
-	}
-}
-
-func (p *PlatformCapture) MatchComparer() platforms.MatchComparer {
-	if len(p.platforms) == 0 {
-		return p.requested
-	}
-	return platforms.Any(p.platforms...)
-}
-
-func (p *PlatformCapture) Handler(f HandlerFunc) HandlerFunc {
-	return func(ctx context.Context, desc ocispec.Descriptor) (subdescs []ocispec.Descriptor, err error) {
-		children, err := f(ctx, desc)
-		if err != nil {
-			return children, err
-		}
-
-		switch desc.MediaType {
-		case ocispec.MediaTypeImageIndex, MediaTypeDockerSchema2ManifestList:
-			for _, child := range children {
-				if child.Platform != nil {
-					p.platforms = append(p.platforms, *child.Platform)
-				}
-			}
-		}
-
 		return children, nil
 	}
 }

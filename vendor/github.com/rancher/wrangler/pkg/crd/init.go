@@ -12,6 +12,7 @@ import (
 	apiext "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -43,7 +44,7 @@ func (c CRD) ToCustomResourceDefinition() apiext.CustomResourceDefinition {
 			Name: name,
 		},
 		Spec: apiext.CustomResourceDefinitionSpec{
-			Group: c.GVK.Group,
+			Group:   c.GVK.Group,
 			Version: c.GVK.Version,
 			Versions: []apiext.CustomResourceDefinitionVersion{
 				{
@@ -227,7 +228,13 @@ func (f *Factory) createCRD(crdDef CRD, ready map[string]*apiext.CustomResourceD
 	}
 
 	logrus.Infof("Creating CRD %s", crd.Name)
-	return f.CRDClient.ApiextensionsV1beta1().CustomResourceDefinitions().Create(&crd)
+	if newCrd, err := f.CRDClient.ApiextensionsV1beta1().CustomResourceDefinitions().Create(&crd); errors.IsAlreadyExists(err) {
+		return f.CRDClient.ApiextensionsV1beta1().CustomResourceDefinitions().Get(crd.Name, metav1.GetOptions{})
+	} else if err != nil {
+		return nil, err
+	} else {
+		return newCrd, nil
+	}
 }
 
 func (f *Factory) getReadyCRDs() (map[string]*apiext.CustomResourceDefinition, error) {

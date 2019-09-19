@@ -110,14 +110,24 @@ func startWrangler(ctx context.Context, config *Config) (string, error) {
 		return "", err
 	}
 
-	go leader.RunOrDie(ctx, "", "k3s", sc.K8s, func(ctx context.Context) {
+	start := func(ctx context.Context) {
 		if err := masterControllers(ctx, sc, config); err != nil {
 			panic(err)
 		}
 		if err := sc.Start(ctx); err != nil {
 			panic(err)
 		}
-	})
+	}
+
+	if controlConfig.NoLeaderElect {
+		go func() {
+			start(ctx)
+			<-ctx.Done()
+			logrus.Fatal("controllers exited")
+		}()
+	} else {
+		go leader.RunOrDie(ctx, "", "k3s", sc.K8s, start)
+	}
 
 	return certs, nil
 }

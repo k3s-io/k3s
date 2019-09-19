@@ -20,18 +20,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"os"
 	"sort"
 	"strings"
-	"text/tabwriter"
 	"time"
 
-	units "github.com/docker/go-units"
+	"github.com/docker/go-units"
 	godigest "github.com/opencontainers/go-digest"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 	"golang.org/x/net/context"
-	pb "k8s.io/kubernetes/pkg/kubelet/apis/cri/runtime/v1alpha2"
+	pb "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
 
 type containerByCreated []*pb.Container
@@ -639,9 +637,9 @@ func ListContainers(client pb.RuntimeServiceClient, opts listOptions) error {
 		return fmt.Errorf("unsupported output format %q", opts.output)
 	}
 
-	w := tabwriter.NewWriter(os.Stdout, 20, 1, 3, ' ', 0)
+	display := newTableDisplay(20, 1, 3, ' ', 0)
 	if !opts.verbose && !opts.quiet {
-		fmt.Fprintln(w, "CONTAINER ID\tIMAGE\tCREATED\tSTATE\tNAME\tATTEMPT\tPOD ID")
+		display.AddRow([]string{columnContainer, columnImage, columnCreated, columnState, columnName, columnAttempt, columnPodID})
 	}
 	for _, c := range r.Containers {
 		// Filter by pod name/namespace regular expressions.
@@ -672,8 +670,8 @@ func ListContainers(client pb.RuntimeServiceClient, opts listOptions) error {
 				}
 			}
 			PodID := getTruncatedID(c.PodSandboxId, "")
-			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%d\t%s\n",
-				id, image, ctm, convertContainerState(c.State), c.Metadata.Name, c.Metadata.Attempt, PodID)
+			display.AddRow([]string{id, image, ctm, convertContainerState(c.State), c.Metadata.Name,
+				fmt.Sprintf("%d", c.Metadata.Attempt), PodID})
 			continue
 		}
 
@@ -705,7 +703,7 @@ func ListContainers(client pb.RuntimeServiceClient, opts listOptions) error {
 		fmt.Println()
 	}
 
-	w.Flush()
+	display.Flush()
 	return nil
 }
 

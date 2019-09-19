@@ -32,6 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/errors"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	cloudprovider "k8s.io/cloud-provider"
 	v1helper "k8s.io/kubernetes/pkg/apis/core/v1/helper"
 	"k8s.io/kubernetes/pkg/features"
 	kubeletapis "k8s.io/kubernetes/pkg/kubelet/apis"
@@ -61,6 +62,7 @@ func NodeAddress(nodeIP net.IP, // typically Kubelet.nodeIP
 	hostname string, // typically Kubelet.hostname
 	hostnameOverridden bool, // was the hostname force set?
 	externalCloudProvider bool, // typically Kubelet.externalCloudProvider
+	cloud cloudprovider.Interface, // typically Kubelet.cloud
 	nodeAddressesFunc func() ([]v1.NodeAddress, error), // typically Kubelet.cloudResourceSyncManager.NodeAddresses
 ) Setter {
 	return func(node *v1.Node) error {
@@ -81,46 +83,110 @@ func NodeAddress(nodeIP net.IP, // typically Kubelet.nodeIP
 			// We rely on the external cloud provider to supply the addresses.
 			return nil
 		}
+		if cloud != nil {
+			nodeAddresses, err := nodeAddressesFunc()
+			if err != nil {
+				return err
+			}
+			if nodeIP != nil {
+				enforcedNodeAddresses := []v1.NodeAddress{}
 
-		var ipAddr net.IP
-		var err error
+				nodeIPTypes := make(map[v1.NodeAddressType]bool)
+				for _, nodeAddress := range nodeAddresses {
+					if nodeAddress.Address == nodeIP.String() {
+						enforcedNodeAddresses = append(enforcedNodeAddresses, v1.NodeAddress{Type: nodeAddress.Type, Address: nodeAddress.Address})
+						nodeIPTypes[nodeAddress.Type] = true
+					}
+				}
+				if len(enforcedNodeAddresses) > 0 {
+					for _, nodeAddress := range nodeAddresses {
+						if !nodeIPTypes[nodeAddress.Type] && nodeAddress.Type != v1.NodeHostName {
+							enforcedNodeAddresses = append(enforcedNodeAddresses, v1.NodeAddress{Type: nodeAddress.Type, Address: nodeAddress.Address})
+						}
+					}
 
-		// 1) Use nodeIP if set
-		// 2) If the user has specified an IP to HostnameOverride, use it
-		// 3) Lookup the IP from node name by DNS and use the first valid IPv4 address.
-		//    If the node does not have a valid IPv4 address, use the first valid IPv6 address.
-		// 4) Try to get the IP from the network interface used as default gateway
-		if nodeIP != nil {
-			ipAddr = nodeIP
-		} else if addr := net.ParseIP(hostname); addr != nil {
-			ipAddr = addr
-		} else {
-			var addrs []net.IP
-			addrs, _ = net.LookupIP(node.Name)
-			for _, addr := range addrs {
-				if err = validateNodeIPFunc(addr); err == nil {
-					if addr.To4() != nil {
-						ipAddr = addr
+					enforcedNodeAddresses = append(enforcedNodeAddresses, v1.NodeAddress{Type: v1.NodeHostName, Address: hostname})
+					node.Status.Addresses = enforcedNodeAddresses
+					return nil
+				}
+				return fmt.Errorf("failed to get node address from cloud provider that matches ip: %v", nodeIP)
+			}
+
+			switch {
+			case len(nodeAddresses) == 0:
+				// the cloud provider didn't specify any addresses
+				nodeAddresses = append(nodeAddresses, v1.NodeAddress{Type: v1.NodeHostName, Address: hostname})
+
+			case !hasAddressType(nodeAddresses, v1.NodeHostName) && hasAddressValue(nodeAddresses, hostname):
+				// the cloud provider didn't specify an address of type Hostname,
+				// but the auto-detected hostname matched an address reported by the cloud provider,
+				// so we can add it and count on the value being verifiable via cloud provider metadata
+				nodeAddresses = append(nodeAddresses, v1.NodeAddress{Type: v1.NodeHostName, Address: hostname})
+
+			case hostnameOverridden:
+				// the hostname was force-set via flag/config.
+				// this means the hostname might not be able to be validated via cloud provider metadata,
+				// but was a choice by the kubelet deployer we should honor
+				var existingHostnameAddress *v1.NodeAddress
+				for i := range nodeAddresses {
+					if nodeAddresses[i].Type == v1.NodeHostName {
+						existingHostnameAddress = &nodeAddresses[i]
 						break
 					}
-					if addr.To16() != nil && ipAddr == nil {
-						ipAddr = addr
+				}
+
+				if existingHostnameAddress == nil {
+					// no existing Hostname address found, add it
+					klog.Warningf("adding overridden hostname of %v to cloudprovider-reported addresses", hostname)
+					nodeAddresses = append(nodeAddresses, v1.NodeAddress{Type: v1.NodeHostName, Address: hostname})
+				} else if existingHostnameAddress.Address != hostname {
+					// override the Hostname address reported by the cloud provider
+					klog.Warningf("replacing cloudprovider-reported hostname of %v with overridden hostname of %v", existingHostnameAddress.Address, hostname)
+					existingHostnameAddress.Address = hostname
+				}
+			}
+			node.Status.Addresses = nodeAddresses
+		} else {
+			var ipAddr net.IP
+			var err error
+
+			// 1) Use nodeIP if set
+			// 2) If the user has specified an IP to HostnameOverride, use it
+			// 3) Lookup the IP from node name by DNS and use the first valid IPv4 address.
+			//    If the node does not have a valid IPv4 address, use the first valid IPv6 address.
+			// 4) Try to get the IP from the network interface used as default gateway
+			if nodeIP != nil {
+				ipAddr = nodeIP
+			} else if addr := net.ParseIP(hostname); addr != nil {
+				ipAddr = addr
+			} else {
+				var addrs []net.IP
+				addrs, _ = net.LookupIP(node.Name)
+				for _, addr := range addrs {
+					if err = validateNodeIPFunc(addr); err == nil {
+						if addr.To4() != nil {
+							ipAddr = addr
+							break
+						}
+						if addr.To16() != nil && ipAddr == nil {
+							ipAddr = addr
+						}
 					}
+				}
+
+				if ipAddr == nil {
+					ipAddr, err = utilnet.ChooseHostInterface()
 				}
 			}
 
 			if ipAddr == nil {
-				ipAddr, err = utilnet.ChooseHostInterface()
+				// We tried everything we could, but the IP address wasn't fetchable; error out
+				return fmt.Errorf("can't get ip address of node %s. error: %v", node.Name, err)
 			}
-		}
-
-		if ipAddr == nil {
-			// We tried everything we could, but the IP address wasn't fetchable; error out
-			return fmt.Errorf("can't get ip address of node %s. error: %v", node.Name, err)
-		}
-		node.Status.Addresses = []v1.NodeAddress{
-			{Type: v1.NodeInternalIP, Address: ipAddr.String()},
-			{Type: v1.NodeHostName, Address: hostname},
+			node.Status.Addresses = []v1.NodeAddress{
+				{Type: v1.NodeInternalIP, Address: ipAddr.String()},
+				{Type: v1.NodeHostName, Address: hostname},
+			}
 		}
 		return nil
 	}

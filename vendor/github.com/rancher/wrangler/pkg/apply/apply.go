@@ -11,6 +11,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -38,8 +40,18 @@ type Apply interface {
 	WithPatcher(gvk schema.GroupVersionKind, patchers Patcher) Apply
 	WithStrictCaching() Apply
 	WithDefaultNamespace(ns string) Apply
+	WithListerNamespace(ns string) Apply
 	WithRateLimiting(ratelimitingQps float32) Apply
 	WithNoDelete() Apply
+}
+
+func NewForConfig(cfg *rest.Config) (Apply, error) {
+	k8s, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	return New(k8s.Discovery(), NewClientFactory(cfg)), nil
 }
 
 func New(discovery discovery.DiscoveryInterface, cf ClientFactory, igs ...InformerGetter) Apply {
@@ -159,6 +171,10 @@ func (a *apply) WithStrictCaching() Apply {
 
 func (a *apply) WithDefaultNamespace(ns string) Apply {
 	return a.newDesiredSet().WithDefaultNamespace(ns)
+}
+
+func (a *apply) WithListerNamespace(ns string) Apply {
+	return a.newDesiredSet().WithListerNamespace(ns)
 }
 
 func (a *apply) WithRateLimiting(ratelimitingQps float32) Apply {

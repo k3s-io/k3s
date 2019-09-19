@@ -25,7 +25,7 @@ import (
 
 	"github.com/docker/docker/pkg/ioutils"
 	"github.com/pkg/errors"
-	runtime "k8s.io/kubernetes/pkg/kubelet/apis/cri/runtime/v1alpha2"
+	runtime "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
 
 // The container state machine in the CRI plugin:

@@ -103,8 +103,8 @@ func NewCmdCreate(f cmdutil.Factory, ioStreams genericclioptions.IOStreams) *cob
 		Long:                  createLong,
 		Example:               createExample,
 		Run: func(cmd *cobra.Command, args []string) {
-			if cmdutil.IsFilenameSliceEmpty(o.FilenameOptions.Filenames, "") {
-				ioStreams.ErrOut.Write([]byte("Error: must specify -f\n\n"))
+			if cmdutil.IsFilenameSliceEmpty(o.FilenameOptions.Filenames, o.FilenameOptions.Kustomize) {
+				ioStreams.ErrOut.Write([]byte("Error: must specify one of -f and -k\n\n"))
 				defaultRunFunc := cmdutil.DefaultSubCommandRun(ioStreams.ErrOut)
 				defaultRunFunc(cmd, args)
 				return

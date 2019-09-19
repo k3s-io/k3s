@@ -31,6 +31,7 @@ import (
 
 type BuiltInAuthorizationOptions struct {
 	Modes                       []string
+	PolicyFile                  string
 	WebhookConfigFile           string
 	WebhookCacheAuthorizedTTL   time.Duration
 	WebhookCacheUnauthorizedTTL time.Duration
@@ -60,11 +61,20 @@ func (s *BuiltInAuthorizationOptions) Validate() []error {
 		if !allowedModes.Has(mode) {
 			allErrors = append(allErrors, fmt.Errorf("authorization-mode %q is not a valid mode", mode))
 		}
+		if mode == authzmodes.ModeABAC {
+			if s.PolicyFile == "" {
+				allErrors = append(allErrors, fmt.Errorf("authorization-mode ABAC's authorization policy file not passed"))
+			}
+		}
 		if mode == authzmodes.ModeWebhook {
 			if s.WebhookConfigFile == "" {
 				allErrors = append(allErrors, fmt.Errorf("authorization-mode Webhook's authorization config file not passed"))
 			}
 		}
+	}
+
+	if s.PolicyFile != "" && !modes.Has(authzmodes.ModeABAC) {
+		allErrors = append(allErrors, fmt.Errorf("cannot specify --authorization-policy-file without mode ABAC"))
 	}
 
 	if s.WebhookConfigFile != "" && !modes.Has(authzmodes.ModeWebhook) {
@@ -83,6 +93,9 @@ func (s *BuiltInAuthorizationOptions) AddFlags(fs *pflag.FlagSet) {
 		"Ordered list of plug-ins to do authorization on secure port. Comma-delimited list of: "+
 		strings.Join(authzmodes.AuthorizationModeChoices, ",")+".")
 
+	fs.StringVar(&s.PolicyFile, "authorization-policy-file", s.PolicyFile, ""+
+		"File with authorization policy in json line by line format, used with --authorization-mode=ABAC, on the secure port.")
+
 	fs.StringVar(&s.WebhookConfigFile, "authorization-webhook-config-file", s.WebhookConfigFile, ""+
 		"File with webhook configuration in kubeconfig format, used with --authorization-mode=Webhook. "+
 		"The API server will query the remote service to determine access on the API server's secure port.")
@@ -99,6 +112,7 @@ func (s *BuiltInAuthorizationOptions) AddFlags(fs *pflag.FlagSet) {
 func (s *BuiltInAuthorizationOptions) ToAuthorizationConfig(versionedInformerFactory versionedinformers.SharedInformerFactory) authorizer.Config {
 	return authorizer.Config{
 		AuthorizationModes:          s.Modes,
+		PolicyFile:                  s.PolicyFile,
 		WebhookConfigFile:           s.WebhookConfigFile,
 		WebhookCacheAuthorizedTTL:   s.WebhookCacheAuthorizedTTL,
 		WebhookCacheUnauthorizedTTL: s.WebhookCacheUnauthorizedTTL,

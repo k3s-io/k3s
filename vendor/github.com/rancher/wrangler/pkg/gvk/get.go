@@ -25,3 +25,23 @@ func Get(obj runtime.Object) (schema.GroupVersionKind, error) {
 
 	return gvks[0], nil
 }
+
+func Set(obj runtime.Object) error {
+	gvk := obj.GetObjectKind().GroupVersionKind()
+	if gvk.Kind != "" {
+		return nil
+	}
+	
+	gvks, _, err := schemes.All.ObjectKinds(obj)
+	if err != nil {
+		return err
+	}
+
+	if len(gvks) == 0 {
+		return nil
+	}
+
+	kind := obj.GetObjectKind()
+	kind.SetGroupVersionKind(gvks[0])
+	return nil
+}
