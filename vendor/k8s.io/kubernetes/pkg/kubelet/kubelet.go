@@ -90,6 +90,7 @@ import (
 	"k8s.io/kubernetes/pkg/kubelet/runtimeclass"
 	"k8s.io/kubernetes/pkg/kubelet/secret"
 	"k8s.io/kubernetes/pkg/kubelet/server"
+	servermetrics "k8s.io/kubernetes/pkg/kubelet/server/metrics"
 	serverstats "k8s.io/kubernetes/pkg/kubelet/server/stats"
 	"k8s.io/kubernetes/pkg/kubelet/server/streaming"
 	"k8s.io/kubernetes/pkg/kubelet/stats"
@@ -1315,6 +1316,7 @@ func (kl *Kubelet) initializeModules() error {
 		collectors.NewLogMetricsCollector(kl.StatsProvider.ListPodStats),
 	)
 	metrics.SetNodeName(kl.nodeName)
+	servermetrics.Register()
 
 	// Setup filesystem directories.
 	if err := kl.setupDataDirs(); err != nil {
@@ -1629,11 +1631,13 @@ func (kl *Kubelet) syncPod(o syncPodOptions) error {
 			if mirrorPod.DeletionTimestamp != nil || !kl.podManager.IsMirrorPodOf(mirrorPod, pod) {
 				// The mirror pod is semantically different from the static pod. Remove
 				// it. The mirror pod will get recreated later.
-				klog.Warningf("Deleting mirror pod %q because it is outdated", format.Pod(mirrorPod))
-				if err := kl.podManager.DeleteMirrorPod(podFullName); err != nil {
+				klog.Infof("Trying to delete pod %s %v", podFullName, mirrorPod.ObjectMeta.UID)
+				var err error
+				deleted, err = kl.podManager.DeleteMirrorPod(podFullName, &mirrorPod.ObjectMeta.UID)
+				if deleted {
+					klog.Warningf("Deleted mirror pod %q because it is outdated", format.Pod(mirrorPod))
+				} else if err != nil {
 					klog.Errorf("Failed deleting mirror pod %q: %v", format.Pod(mirrorPod), err)
-				} else {
-					deleted = true
 				}
 			}
 		}
