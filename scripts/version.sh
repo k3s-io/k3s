@@ -18,3 +18,11 @@ SUFFIX="-${ARCH}"
 
 VERSION_CONTAINERD=$(grep github.com/containerd/containerd $(dirname $0)/../go.mod | head -n1 | awk '{print $4}')
 VERSION_CRICTL=$(grep github.com/kubernetes-sigs/cri-tools $(dirname $0)/../go.mod | head -n1 | awk '{print $4}')
+
+if [ -z "$VERSION_CONTAINERD" ]; then
+    VERSION_CONTAINERD="v0.0.0"
+fi
+
+if [ -z "$VERSION_CRICTL" ]; then
+    VERSION_CRICTL="v0.0.0"
+fi
