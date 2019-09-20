@@ -10,7 +10,7 @@ CHARTS_DIR=build/static/charts
 
 mkdir -p ${CHARTS_DIR}
 
-curl --compressed -sfL https://github.com/ibuildthecloud/k3s-root/releases/download/${ROOT_VERSION}/k3s-root-${ARCH}.tar | tar xf -
+curl --compressed -sfL https://github.com/rancher/k3s-root/releases/download/${ROOT_VERSION}/k3s-root-${ARCH}.tar | tar xf -
 ln -sf pigz bin/unpigz
 mkdir -p bin/aux && rm bin/mount && ln -sf ../busybox bin/aux/mount
 
