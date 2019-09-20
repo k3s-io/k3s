@@ -20,7 +20,7 @@ LDFLAGS="
 
 STATIC="-extldflags '-static'"
 STATIC_SQLITE="-extldflags '-static -lm -ldl -lz -lpthread'"
-TAGS="ctrd apparmor seccomp no_btrfs netgo osusergo"
+TAGS="ctrd apparmor seccomp no_btrfs netgo osusergo providerless"
 
 if [ "$STATIC_BUILD" != "true" ]; then
     STATIC=""
