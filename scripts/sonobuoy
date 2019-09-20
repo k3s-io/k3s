@@ -169,7 +169,7 @@ K3S_PORT=$(timeout --foreground 5s bash -c get-port)
 OUTPUT=$(pwd)/sonobuoy-output/${K3S_PORT}
 LOGS=$(pwd)/logs/$$
 E2E="${OUTPUT}/e2e"
-E2E_LOG="plugins/e2e/results/e2e.log"
+E2E_LOG="plugins/e2e/results/global/e2e.log"
 RESULTS="${E2E}/${E2E_LOG}"
 mkdir -p ${OUTPUT}
 
