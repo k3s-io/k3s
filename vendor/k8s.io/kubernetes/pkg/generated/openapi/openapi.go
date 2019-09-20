@@ -18,7 +18,7 @@ var (
 func init() {
 	start := time.Now()
 	defer func() {
-		klog.Info("Instantiated OpenAPI definitions in ", time.Now().Sub(start))
+		klog.V(7).Info("Instantiated OpenAPI definitions in ", time.Now().Sub(start))
 	}()
 
 	var json = jsoniter.ConfigCompatibleWithStandardLibrary

@@ -23,11 +23,14 @@ go_library(
         "//staging/src/k8s.io/apimachinery/pkg/apis/meta/v1beta1:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/labels:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/runtime:go_default_library",
+        "//staging/src/k8s.io/apimachinery/pkg/types:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/util/runtime:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/util/sets:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/util/wait:go_default_library",
         "//staging/src/k8s.io/apiserver/pkg/endpoints:go_default_library",
         "//staging/src/k8s.io/apiserver/pkg/endpoints/openapi:go_default_library",
+        "//staging/src/k8s.io/apiserver/pkg/features:go_default_library",
+        "//staging/src/k8s.io/apiserver/pkg/util/feature:go_default_library",
         "//staging/src/k8s.io/client-go/tools/cache:go_default_library",
         "//staging/src/k8s.io/client-go/util/workqueue:go_default_library",
         "//vendor/github.com/emicklei/go-restful:go_default_library",
@@ -61,6 +64,7 @@ go_test(
         "//vendor/github.com/googleapis/gnostic/compiler:go_default_library",
         "//vendor/gopkg.in/yaml.v2:go_default_library",
         "//vendor/k8s.io/kube-openapi/pkg/util/proto:go_default_library",
+        "//vendor/k8s.io/utils/pointer:go_default_library",
     ],
 )
 

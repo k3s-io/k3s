@@ -26,19 +26,21 @@ import (
 	"github.com/go-openapi/spec"
 
 	v1 "k8s.io/api/autoscaling/v1"
+	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
 	structuralschema "k8s.io/apiextensions-apiserver/pkg/apiserver/schema"
+	generatedopenapi "k8s.io/apiextensions-apiserver/pkg/generated/openapi"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	metav1beta1 "k8s.io/apimachinery/pkg/apis/meta/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apiserver/pkg/endpoints"
 	"k8s.io/apiserver/pkg/endpoints/openapi"
+	"k8s.io/apiserver/pkg/features"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	openapibuilder "k8s.io/kube-openapi/pkg/builder"
 	"k8s.io/kube-openapi/pkg/common"
 	"k8s.io/kube-openapi/pkg/util"
-
-	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
-	generatedopenapi "k8s.io/apiextensions-apiserver/pkg/generated/openapi"
 )
 
 const (
@@ -252,11 +254,17 @@ func (b *builder) buildRoute(root, path, action, verb string, sample interface{}
 
 	// Build consume media types
 	if action == "PATCH" {
-		route.Consumes("application/json-patch+json",
-			"application/merge-patch+json",
-			"application/strategic-merge-patch+json")
+		supportedTypes := []string{
+			string(types.JSONPatchType),
+			string(types.MergePatchType),
+		}
+		if utilfeature.DefaultFeatureGate.Enabled(features.ServerSideApply) {
+			supportedTypes = append(supportedTypes, string(types.ApplyPatchType))
+		}
+
+		route.Consumes(supportedTypes...)
 	} else {
-		route.Consumes("*/*")
+		route.Consumes(runtime.ContentTypeJSON, runtime.ContentTypeYAML)
 	}
 
 	// Build option parameters
@@ -292,12 +300,12 @@ func (b *builder) buildRoute(root, path, action, verb string, sample interface{}
 
 // buildKubeNative builds input schema with Kubernetes' native object meta, type meta and
 // extensions
-func (b *builder) buildKubeNative(schema *structuralschema.Structural, v2 bool) (ret *spec.Schema) {
+func (b *builder) buildKubeNative(schema *structuralschema.Structural, v2 bool, crdPreserveUnknownFields bool) (ret *spec.Schema) {
 	// only add properties if we have a schema. Otherwise, kubectl would (wrongly) assume additionalProperties=false
 	// and forbid anything outside of apiVersion, kind and metadata. We have to fix kubectl to stop doing this, e.g. by
 	// adding additionalProperties=true support to explicitly allow additional fields.
 	// TODO: fix kubectl to understand additionalProperties=true
-	if schema == nil || (v2 && schema.XPreserveUnknownFields) {
+	if schema == nil || (v2 && (schema.XPreserveUnknownFields || crdPreserveUnknownFields)) {
 		ret = &spec.Schema{
 			SchemaProps: spec.SchemaProps{Type: []string{"object"}},
 		}
@@ -464,7 +472,8 @@ func newBuilder(crd *apiextensions.CustomResourceDefinition, version string, sch
 	}
 
 	// Pre-build schema with Kubernetes native properties
-	b.schema = b.buildKubeNative(schema, v2)
+	preserveUnknownFields := crd.Spec.PreserveUnknownFields != nil && *crd.Spec.PreserveUnknownFields
+	b.schema = b.buildKubeNative(schema, v2, preserveUnknownFields)
 	b.listSchema = b.buildListSchema()
 
 	return b
