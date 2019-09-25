@@ -12,7 +12,6 @@ replace (
 	github.com/opencontainers/runtime-spec => github.com/opencontainers/runtime-spec v0.0.0-20180911193056-5684b8af48c1
 	github.com/rancher/dynamiclistener => github.com/erikwilson/rancher-dynamiclistener v0.0.0-20190717164634-c08b499d1719
 	github.com/rancher/kine => github.com/ibuildthecloud/kine v0.1.0
-	golang.org/x/sys => github.com/golang/sys v0.0.0-20190204203706-41f3e6584952
 	k8s.io/api => github.com/rancher/kubernetes/staging/src/k8s.io/api v1.15.4-k3s.1
 	k8s.io/apiextensions-apiserver => github.com/rancher/kubernetes/staging/src/k8s.io/apiextensions-apiserver v1.15.4-k3s.1
 	k8s.io/apimachinery => github.com/rancher/kubernetes/staging/src/k8s.io/apimachinery v1.15.4-k3s.1
