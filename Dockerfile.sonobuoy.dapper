@@ -1,6 +1,6 @@
 FROM golang:1.12.9-alpine3.10
 
-RUN apk -U --no-cache add bash git docker curl jq coreutils
+RUN apk -U --no-cache add bash git gcc musl-dev docker curl jq coreutils
 RUN go get -d github.com/heptio/sonobuoy && \
     git -C /go/src/github.com/heptio/sonobuoy checkout -b current v0.16.0 && \
     go install github.com/heptio/sonobuoy
