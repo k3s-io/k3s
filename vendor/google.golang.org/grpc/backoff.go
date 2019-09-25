@@ -17,7 +17,7 @@
  */
 
 // See internal/backoff package for the backoff implementation. This file is
-// kept for the exported types and API backward compatibility.
+// kept for the exported types and API backward compatility.
 
 package grpc
 
