@@ -22,8 +22,7 @@
 package connectivity
 
 import (
-	"context"
-
+	"golang.org/x/net/context"
 	"google.golang.org/grpc/grpclog"
 )
 
@@ -52,7 +51,7 @@ func (s State) String() string {
 const (
 	// Idle indicates the ClientConn is idle.
 	Idle State = iota
-	// Connecting indicates the ClientConn is connecting.
+	// Connecting indicates the ClienConn is connecting.
 	Connecting
 	// Ready indicates the ClientConn is ready for work.
 	Ready
