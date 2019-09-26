@@ -742,7 +742,7 @@ github.com/prometheus/procfs/internal/util
 # github.com/rakelkar/gonetsh v0.0.0-20190719023240-501daadcadf8
 github.com/rakelkar/gonetsh/netroute
 github.com/rakelkar/gonetsh/netsh
-# github.com/rancher/dynamiclistener v0.0.0-20190717164634-c08b499d1719 => github.com/erikwilson/rancher-dynamiclistener v0.0.0-20190717164634-c08b499d1719
+# github.com/rancher/dynamiclistener v0.0.0-20190926205813-e2ac9e2c193d
 github.com/rancher/dynamiclistener
 github.com/rancher/dynamiclistener/cert
 # github.com/rancher/helm-controller v0.2.2
