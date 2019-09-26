@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/rancher/dynamiclistener"
@@ -30,6 +31,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/net"
 )
+
+const MasterRoleLabelKey = "node-role.kubernetes.io/master"
 
 func resolveDataDir(dataDir string) (string, error) {
 	dataDir, err := datadir.Resolve(dataDir)
@@ -118,7 +121,9 @@ func startWrangler(ctx context.Context, config *Config) (string, error) {
 			panic(err)
 		}
 	}
-
+	if !config.DisableAgent {
+		go setMasterRoleLabel(ctx, sc, config)
+	}
 	if controlConfig.NoLeaderElect {
 		go func() {
 			start(ctx)
@@ -356,4 +361,36 @@ func isSymlink(config string) bool {
 		return true
 	}
 	return false
+}
+
+func setMasterRoleLabel(ctx context.Context, sc *Context, config *Config) error {
+	for {
+		nodeName := os.Getenv("NODE_NAME")
+		nodeController := sc.Core.Core().V1().Node()
+		nodeCached, err := nodeController.Cache().Get(nodeName)
+		if err != nil {
+			logrus.Infof("Waiting for master node %s startup: %v", nodeName, err)
+			time.Sleep(1 * time.Second)
+			continue
+		}
+		if v, ok := nodeCached.Labels[MasterRoleLabelKey]; ok && v == "true" {
+			break
+		}
+		node := nodeCached.DeepCopy()
+		if node.Labels == nil {
+			node.Labels = make(map[string]string)
+		}
+		node.Labels[MasterRoleLabelKey] = "true"
+		_, err = nodeController.Update(node)
+		if err == nil {
+			logrus.Infof("master role label has been set succesfully on node: %s", nodeName)
+			break
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(time.Second):
+		}
+	}
+	return nil
 }

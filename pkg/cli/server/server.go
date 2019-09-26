@@ -165,7 +165,6 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	agentConfig.DataDir = filepath.Dir(serverConfig.ControlConfig.DataDir)
 	agentConfig.ServerURL = url
 	agentConfig.Token = token
-	agentConfig.Labels = append(agentConfig.Labels, "node-role.kubernetes.io/master=true")
 	agentConfig.DisableLoadBalancer = true
 
 	return agent.Run(ctx, agentConfig)
