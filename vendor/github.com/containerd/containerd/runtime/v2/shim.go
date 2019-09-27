@@ -31,13 +31,28 @@ import (
 	"github.com/containerd/containerd/events/exchange"
 	"github.com/containerd/containerd/identifiers"
 	"github.com/containerd/containerd/log"
+	"github.com/containerd/containerd/namespaces"
+	"github.com/containerd/containerd/pkg/timeout"
 	"github.com/containerd/containerd/runtime"
 	client "github.com/containerd/containerd/runtime/v2/shim"
 	"github.com/containerd/containerd/runtime/v2/task"
 	"github.com/containerd/ttrpc"
 	ptypes "github.com/gogo/protobuf/types"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 )
+
+const (
+	loadTimeout     = "io.containerd.timeout.shim.load"
+	cleanupTimeout  = "io.containerd.timeout.shim.cleanup"
+	shutdownTimeout = "io.containerd.timeout.shim.shutdown"
+)
+
+func init() {
+	timeout.Set(loadTimeout, 5*time.Second)
+	timeout.Set(cleanupTimeout, 5*time.Second)
+	timeout.Set(shutdownTimeout, 3*time.Second)
+}
 
 func loadAddress(path string) (string, error) {
 	data, err := ioutil.ReadFile(path)
@@ -47,16 +62,21 @@ func loadAddress(path string) (string, error) {
 	return string(data), nil
 }
 
-func loadShim(ctx context.Context, bundle *Bundle, events *exchange.Exchange, rt *runtime.TaskList) (_ *shim, err error) {
+func loadShim(ctx context.Context, bundle *Bundle, events *exchange.Exchange, rt *runtime.TaskList, onClose func()) (_ *shim, err error) {
 	address, err := loadAddress(filepath.Join(bundle.Path, "address"))
 	if err != nil {
 		return nil, err
 	}
-	conn, err := client.Connect(address, client.AnonDialer)
+	conn, err := client.Connect(address, client.AnonReconnectDialer)
 	if err != nil {
 		return nil, err
 	}
-	f, err := openShimLog(ctx, bundle)
+	defer func() {
+		if err != nil {
+			conn.Close()
+		}
+	}()
+	f, err := openShimLog(ctx, bundle, client.AnonReconnectDialer)
 	if err != nil {
 		return nil, errors.Wrap(err, "open shim log pipe")
 	}
@@ -71,11 +91,21 @@ func loadShim(ctx context.Context, bundle *Bundle, events *exchange.Exchange, rt
 	go func() {
 		defer f.Close()
 		if _, err := io.Copy(os.Stderr, f); err != nil {
-			log.G(ctx).WithError(err).Error("copy shim log")
+			// When using a multi-container shim the 2nd to Nth container in the
+			// shim will not have a separate log pipe. Ignore the failure log
+			// message here when the shim connect times out.
+			if !os.IsNotExist(errors.Cause(err)) {
+				log.G(ctx).WithError(err).Error("copy shim log")
+			}
 		}
 	}()
 
-	client := ttrpc.NewClient(conn, ttrpc.WithOnClose(func() { _ = conn.Close() }))
+	client := ttrpc.NewClient(conn, ttrpc.WithOnClose(onClose))
+	defer func() {
+		if err != nil {
+			client.Close()
+		}
+	}()
 	s := &shim{
 		client:  client,
 		task:    task.NewTaskClient(client),
@@ -83,10 +113,58 @@ func loadShim(ctx context.Context, bundle *Bundle, events *exchange.Exchange, rt
 		events:  events,
 		rtTasks: rt,
 	}
+	ctx, cancel := timeout.WithContext(ctx, loadTimeout)
+	defer cancel()
 	if err := s.Connect(ctx); err != nil {
 		return nil, err
 	}
 	return s, nil
+}
+
+func cleanupAfterDeadShim(ctx context.Context, id, ns string, events *exchange.Exchange, binaryCall *binary) {
+	ctx = namespaces.WithNamespace(ctx, ns)
+	ctx, cancel := timeout.WithContext(ctx, cleanupTimeout)
+	defer cancel()
+
+	log.G(ctx).WithFields(logrus.Fields{
+		"id":        id,
+		"namespace": ns,
+	}).Warn("cleaning up after shim disconnected")
+	response, err := binaryCall.Delete(ctx)
+	if err != nil {
+		log.G(ctx).WithError(err).WithFields(logrus.Fields{
+			"id":        id,
+			"namespace": ns,
+		}).Warn("failed to clean up after shim disconnected")
+	}
+
+	var (
+		pid        uint32
+		exitStatus uint32
+		exitedAt   time.Time
+	)
+	if response != nil {
+		pid = response.Pid
+		exitStatus = response.Status
+		exitedAt = response.Timestamp
+	} else {
+		exitStatus = 255
+		exitedAt = time.Now()
+	}
+	events.Publish(ctx, runtime.TaskExitEventTopic, &eventstypes.TaskExit{
+		ContainerID: id,
+		ID:          id,
+		Pid:         pid,
+		ExitStatus:  exitStatus,
+		ExitedAt:    exitedAt,
+	})
+
+	events.Publish(ctx, runtime.TaskDeleteEventTopic, &eventstypes.TaskDelete{
+		ContainerID: id,
+		Pid:         pid,
+		ExitStatus:  exitStatus,
+		ExitedAt:    exitedAt,
+	})
 }
 
 type shim struct {
@@ -99,7 +177,9 @@ type shim struct {
 }
 
 func (s *shim) Connect(ctx context.Context) error {
-	response, err := s.task.Connect(ctx, &task.ConnectRequest{})
+	response, err := s.task.Connect(ctx, &task.ConnectRequest{
+		ID: s.ID(),
+	})
 	if err != nil {
 		return err
 	}
@@ -111,31 +191,26 @@ func (s *shim) Shutdown(ctx context.Context) error {
 	_, err := s.task.Shutdown(ctx, &task.ShutdownRequest{
 		ID: s.ID(),
 	})
-	if err != nil && err != ttrpc.ErrClosed {
+	if err != nil && errors.Cause(err) != ttrpc.ErrClosed {
 		return errdefs.FromGRPC(err)
 	}
 	return nil
 }
 
 func (s *shim) waitShutdown(ctx context.Context) error {
-	dead := make(chan struct{})
-	go func() {
-		if err := s.Shutdown(ctx); err != nil {
-			log.G(ctx).WithError(err).Error("shim shutdown error")
-		}
-		close(dead)
-	}()
-	select {
-	case <-time.After(3 * time.Second):
-		return errors.New("failed to shutdown shim in time")
-	case <-dead:
-		return nil
-	}
+	ctx, cancel := timeout.WithContext(ctx, shutdownTimeout)
+	defer cancel()
+	return s.Shutdown(ctx)
 }
 
 // ID of the shim/task
 func (s *shim) ID() string {
 	return s.bundle.ID
+}
+
+// PID of the task
+func (s *shim) PID() uint32 {
+	return uint32(s.taskPid)
 }
 
 func (s *shim) Namespace() string {
@@ -153,21 +228,16 @@ func (s *shim) Delete(ctx context.Context) (*runtime.Exit, error) {
 	if err != nil && !errdefs.IsNotFound(err) {
 		return nil, errdefs.FromGRPC(err)
 	}
-	if err := s.waitShutdown(ctx); err != nil {
-		return nil, err
-	}
-	if err := s.bundle.Delete(); err != nil {
-		return nil, err
-	}
 	// remove self from the runtime task list
 	// this seems dirty but it cleans up the API across runtimes, tasks, and the service
 	s.rtTasks.Delete(ctx, s.ID())
-	s.events.Publish(ctx, runtime.TaskDeleteEventTopic, &eventstypes.TaskDelete{
-		ContainerID: s.ID(),
-		ExitStatus:  response.ExitStatus,
-		ExitedAt:    response.ExitedAt,
-		Pid:         response.Pid,
-	})
+	if err := s.waitShutdown(ctx); err != nil {
+		log.G(ctx).WithError(err).Error("failed to shutdown shim")
+	}
+	s.Close()
+	if err := s.bundle.Delete(); err != nil {
+		log.G(ctx).WithError(err).Error("failed to delete bundle")
+	}
 	return &runtime.Exit{
 		Status:    response.ExitStatus,
 		Timestamp: response.ExitedAt,
@@ -211,9 +281,6 @@ func (s *shim) Pause(ctx context.Context) error {
 	}); err != nil {
 		return errdefs.FromGRPC(err)
 	}
-	s.events.Publish(ctx, runtime.TaskPausedEventTopic, &eventstypes.TaskPaused{
-		ContainerID: s.ID(),
-	})
 	return nil
 }
 
@@ -223,9 +290,6 @@ func (s *shim) Resume(ctx context.Context) error {
 	}); err != nil {
 		return errdefs.FromGRPC(err)
 	}
-	s.events.Publish(ctx, runtime.TaskResumedEventTopic, &eventstypes.TaskResumed{
-		ContainerID: s.ID(),
-	})
 	return nil
 }
 
@@ -237,10 +301,6 @@ func (s *shim) Start(ctx context.Context) error {
 		return errdefs.FromGRPC(err)
 	}
 	s.taskPid = int(response.Pid)
-	s.events.Publish(ctx, runtime.TaskStartEventTopic, &eventstypes.TaskStart{
-		ContainerID: s.ID(),
-		Pid:         uint32(s.taskPid),
-	})
 	return nil
 }
 
@@ -333,15 +393,13 @@ func (s *shim) Wait(ctx context.Context) (*runtime.Exit, error) {
 
 func (s *shim) Checkpoint(ctx context.Context, path string, options *ptypes.Any) error {
 	request := &task.CheckpointTaskRequest{
+		ID:      s.ID(),
 		Path:    path,
 		Options: options,
 	}
 	if _, err := s.task.Checkpoint(ctx, request); err != nil {
 		return errdefs.FromGRPC(err)
 	}
-	s.events.Publish(ctx, runtime.TaskCheckpointedEventTopic, &eventstypes.TaskCheckpointed{
-		ContainerID: s.ID(),
-	})
 	return nil
 }
 

@@ -25,6 +25,10 @@ message Options {
 	string criu_path = 8;
 	// enable systemd cgroups
 	bool systemd_cgroup = 9;
+	// criu image path
+	string criu_image_path = 10;
+	// criu work path
+	string criu_work_path = 11;
 }
 
 message CheckpointOptions {
@@ -42,6 +46,10 @@ message CheckpointOptions {
 	repeated string empty_namespaces = 6;
 	// set the cgroups mode, soft, full, strict
 	string cgroups_mode = 7;
+	// checkpoint image path
+	string image_path = 8;
+	// checkpoint work path
+	string work_path = 9;
 }
 
 message ProcessDetails {

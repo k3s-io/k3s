@@ -18,6 +18,10 @@ package introspection
 
 import (
 	context "context"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"sync"
 
 	api "github.com/containerd/containerd/api/services/introspection/v1"
 	"github.com/containerd/containerd/api/types"
@@ -26,6 +30,7 @@ import (
 	"github.com/containerd/containerd/plugin"
 	"github.com/gogo/googleapis/google/rpc"
 	ptypes "github.com/gogo/protobuf/types"
+	"github.com/google/uuid"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/status"
 )
@@ -40,19 +45,22 @@ func init() {
 			// this service is initialized. Since we require this service last,
 			// it should provide the full set of plugins.
 			pluginsPB := pluginsToPB(ic.GetAll())
-			return NewService(pluginsPB), nil
+			return NewService(pluginsPB, ic.Root), nil
 		},
 	})
 }
 
 type service struct {
+	mu      sync.Mutex
 	plugins []api.Plugin
+	root    string
 }
 
 // NewService returns the GRPC introspection server
-func NewService(plugins []api.Plugin) api.IntrospectionServer {
+func NewService(plugins []api.Plugin, root string) api.IntrospectionServer {
 	return &service{
 		plugins: plugins,
+		root:    root,
 	}
 }
 
@@ -79,6 +87,54 @@ func (s *service) Plugins(ctx context.Context, req *api.PluginsRequest) (*api.Pl
 	return &api.PluginsResponse{
 		Plugins: plugins,
 	}, nil
+}
+
+func (s *service) Server(ctx context.Context, _ *ptypes.Empty) (*api.ServerResponse, error) {
+	u, err := s.getUUID()
+	if err != nil {
+		return nil, errdefs.ToGRPC(err)
+	}
+	return &api.ServerResponse{
+		UUID: u,
+	}, nil
+}
+
+func (s *service) getUUID() (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	data, err := ioutil.ReadFile(s.uuidPath())
+	if err != nil {
+		if os.IsNotExist(err) {
+			return s.generateUUID()
+		}
+		return "", err
+	}
+	u := string(data)
+	if _, err := uuid.Parse(u); err != nil {
+		return "", err
+	}
+	return u, nil
+}
+
+func (s *service) generateUUID() (string, error) {
+	u, err := uuid.NewRandom()
+	if err != nil {
+		return "", err
+	}
+	path := s.uuidPath()
+	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+		return "", err
+	}
+	uu := u.String()
+	if err := ioutil.WriteFile(path, []byte(uu), 0666); err != nil {
+		return "", err
+	}
+	return uu, nil
+}
+
+func (s *service) uuidPath() string {
+	return filepath.Join(s.root, "uuid")
 }
 
 func adaptPlugin(o interface{}) filters.Adaptor {

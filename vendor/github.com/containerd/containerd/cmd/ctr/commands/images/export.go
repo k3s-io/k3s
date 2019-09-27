@@ -21,9 +21,8 @@ import (
 	"os"
 
 	"github.com/containerd/containerd/cmd/ctr/commands"
-	oci "github.com/containerd/containerd/images/oci"
-	"github.com/containerd/containerd/reference"
-	digest "github.com/opencontainers/go-digest"
+	"github.com/containerd/containerd/images/archive"
+	"github.com/containerd/containerd/platforms"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
@@ -31,67 +30,73 @@ import (
 
 var exportCommand = cli.Command{
 	Name:      "export",
-	Usage:     "export an image",
-	ArgsUsage: "[flags] <out> <image>",
-	Description: `Export an image to a tar stream.
-Currently, only OCI format is supported.
+	Usage:     "export images",
+	ArgsUsage: "[flags] <out> <image> ...",
+	Description: `Export images to an OCI tar archive.
+
+Tar output is formatted as an OCI archive, a Docker manifest is provided for the platform.
+Use '--skip-manifest-json' to avoid including the Docker manifest.json file.
+Use '--platform' to define the output platform.
+When '--all-platforms' is given all images in a manifest list must be available.
 `,
 	Flags: []cli.Flag{
-		// TODO(AkihiroSuda): make this map[string]string as in moby/moby#33355?
-		cli.StringFlag{
-			Name:  "oci-ref-name",
-			Value: "",
-			Usage: "override org.opencontainers.image.ref.name annotation",
+		cli.BoolFlag{
+			Name:  "skip-manifest-json",
+			Usage: "do not add Docker compatible manifest.json to archive",
 		},
-		cli.StringFlag{
-			Name:  "manifest",
-			Usage: "digest of manifest",
+		cli.StringSliceFlag{
+			Name:  "platform",
+			Usage: "Pull content from a specific platform",
+			Value: &cli.StringSlice{},
 		},
-		cli.StringFlag{
-			Name:  "manifest-type",
-			Usage: "media type of manifest digest",
-			Value: ocispec.MediaTypeImageManifest,
+		cli.BoolFlag{
+			Name:  "all-platforms",
+			Usage: "exports content from all platforms",
 		},
 	},
 	Action: func(context *cli.Context) error {
 		var (
-			out   = context.Args().First()
-			local = context.Args().Get(1)
-			desc  ocispec.Descriptor
+			out        = context.Args().First()
+			images     = context.Args().Tail()
+			exportOpts = []archive.ExportOpt{}
 		)
-		if out == "" || local == "" {
+		if out == "" || len(images) == 0 {
 			return errors.New("please provide both an output filename and an image reference to export")
 		}
+
+		if pss := context.StringSlice("platform"); len(pss) > 0 {
+			var all []ocispec.Platform
+			for _, ps := range pss {
+				p, err := platforms.Parse(ps)
+				if err != nil {
+					return errors.Wrapf(err, "invalid platform %q", ps)
+				}
+				all = append(all, p)
+			}
+			exportOpts = append(exportOpts, archive.WithPlatform(platforms.Ordered(all...)))
+		} else {
+			exportOpts = append(exportOpts, archive.WithPlatform(platforms.Default()))
+		}
+
+		if context.Bool("all-platforms") {
+			exportOpts = append(exportOpts, archive.WithAllPlatforms())
+		}
+
+		if context.Bool("skip-manifest-json") {
+			exportOpts = append(exportOpts, archive.WithSkipDockerManifest())
+		}
+
 		client, ctx, cancel, err := commands.NewClient(context)
 		if err != nil {
 			return err
 		}
 		defer cancel()
-		if manifest := context.String("manifest"); manifest != "" {
-			desc.Digest, err = digest.Parse(manifest)
-			if err != nil {
-				return errors.Wrap(err, "invalid manifest digest")
-			}
-			desc.MediaType = context.String("manifest-type")
-		} else {
-			img, err := client.ImageService().Get(ctx, local)
-			if err != nil {
-				return errors.Wrap(err, "unable to resolve image to manifest")
-			}
-			desc = img.Target
+
+		is := client.ImageService()
+		for _, img := range images {
+			exportOpts = append(exportOpts, archive.WithImage(is, img))
 		}
 
-		if desc.Annotations == nil {
-			desc.Annotations = make(map[string]string)
-		}
-		if s, ok := desc.Annotations[ocispec.AnnotationRefName]; !ok || s == "" {
-			if ociRefName := determineOCIRefName(local); ociRefName != "" {
-				desc.Annotations[ocispec.AnnotationRefName] = ociRefName
-			}
-			if ociRefName := context.String("oci-ref-name"); ociRefName != "" {
-				desc.Annotations[ocispec.AnnotationRefName] = ociRefName
-			}
-		}
 		var w io.WriteCloser
 		if out == "-" {
 			w = os.Stdout
@@ -101,25 +106,8 @@ Currently, only OCI format is supported.
 				return nil
 			}
 		}
-		r, err := client.Export(ctx, &oci.V1Exporter{}, desc)
-		if err != nil {
-			return err
-		}
-		if _, err := io.Copy(w, r); err != nil {
-			return err
-		}
-		if err := w.Close(); err != nil {
-			return err
-		}
-		return r.Close()
-	},
-}
+		defer w.Close()
 
-func determineOCIRefName(local string) string {
-	refspec, err := reference.Parse(local)
-	if err != nil {
-		return ""
-	}
-	tag, _ := reference.SplitObject(refspec.Object)
-	return tag
+		return client.Export(ctx, w, exportOpts...)
+	},
 }

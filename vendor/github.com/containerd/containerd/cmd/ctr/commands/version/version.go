@@ -46,6 +46,11 @@ var Command = cli.Command{
 		fmt.Println("Server:")
 		fmt.Println("  Version: ", v.Version)
 		fmt.Println("  Revision:", v.Revision)
+		di, err := client.Server(ctx)
+		if err != nil {
+			return err
+		}
+		fmt.Println("  UUID:", di.UUID)
 		if v.Version != version.Version {
 			fmt.Fprintln(os.Stderr, "WARNING: version mismatch")
 		}

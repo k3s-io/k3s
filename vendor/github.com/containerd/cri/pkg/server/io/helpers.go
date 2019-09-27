@@ -120,17 +120,21 @@ func newStdioPipes(fifos *cio.FIFOSet) (_ *stdioPipes, _ *wgCloser, err error) {
 		set = append(set, f)
 	}
 
-	if f, err = fifo.OpenFifo(ctx, fifos.Stdout, syscall.O_RDONLY|syscall.O_CREAT|syscall.O_NONBLOCK, 0700); err != nil {
-		return nil, nil, err
+	if fifos.Stdout != "" {
+		if f, err = fifo.OpenFifo(ctx, fifos.Stdout, syscall.O_RDONLY|syscall.O_CREAT|syscall.O_NONBLOCK, 0700); err != nil {
+			return nil, nil, err
+		}
+		p.stdout = f
+		set = append(set, f)
 	}
-	p.stdout = f
-	set = append(set, f)
 
-	if f, err = fifo.OpenFifo(ctx, fifos.Stderr, syscall.O_RDONLY|syscall.O_CREAT|syscall.O_NONBLOCK, 0700); err != nil {
-		return nil, nil, err
+	if fifos.Stderr != "" {
+		if f, err = fifo.OpenFifo(ctx, fifos.Stderr, syscall.O_RDONLY|syscall.O_CREAT|syscall.O_NONBLOCK, 0700); err != nil {
+			return nil, nil, err
+		}
+		p.stderr = f
+		set = append(set, f)
 	}
-	p.stderr = f
-	set = append(set, f)
 
 	return p, &wgCloser{
 		wg:     &sync.WaitGroup{},

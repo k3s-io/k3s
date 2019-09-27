@@ -20,9 +20,8 @@ package v2
 
 import (
 	"github.com/containerd/containerd/platforms"
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
-func supportedPlatforms() []ocispec.Platform {
-	return []ocispec.Platform{platforms.DefaultSpec()}
+func defaultPlatforms() []string {
+	return []string{platforms.DefaultString()}
 }

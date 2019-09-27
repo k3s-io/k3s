@@ -68,6 +68,18 @@ If you need to use a unit but it is not defined in the package please open a PR 
 
 Package documentation can be found [here](https://godoc.org/github.com/docker/go-metrics).
 
+## HTTP Metrics
+
+To instrument a http handler, you can wrap the code like this:
+
+```go
+namespace := metrics.NewNamespace("docker_distribution", "http", metrics.Labels{"handler": "your_http_handler_name"})
+httpMetrics := namespace.NewDefaultHttpMetrics()
+metrics.Register(namespace)
+instrumentedHandler = metrics.InstrumentHandler(httpMetrics, unInstrumentedHandler)
+```
+Note: The `handler` label must be provided when a new namespace is created.
+
 ## Additional Metrics
 
 Additional metrics are also defined here that are not available in the prometheus client.

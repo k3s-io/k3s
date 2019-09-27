@@ -19,7 +19,7 @@
 package cgroups
 
 import (
-	"github.com/containerd/cgroups"
+	v1 "github.com/containerd/containerd/metrics/types/v1"
 	metrics "github.com/docker/go-metrics"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -30,7 +30,7 @@ var pidMetrics = []*metric{
 		help: "The limit to the number of pids allowed",
 		unit: metrics.Unit("limit"),
 		vt:   prometheus.GaugeValue,
-		getValues: func(stats *cgroups.Metrics) []value {
+		getValues: func(stats *v1.Metrics) []value {
 			if stats.Pids == nil {
 				return nil
 			}
@@ -46,7 +46,7 @@ var pidMetrics = []*metric{
 		help: "The current number of pids",
 		unit: metrics.Unit("current"),
 		vt:   prometheus.GaugeValue,
-		getValues: func(stats *cgroups.Metrics) []value {
+		getValues: func(stats *v1.Metrics) []value {
 			if stats.Pids == nil {
 				return nil
 			}

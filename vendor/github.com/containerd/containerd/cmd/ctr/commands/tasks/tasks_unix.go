@@ -20,6 +20,7 @@ package tasks
 
 import (
 	gocontext "context"
+	"net/url"
 	"os"
 	"os/signal"
 
@@ -67,7 +68,7 @@ func HandleConsoleResize(ctx gocontext.Context, task resizer, con console.Consol
 }
 
 // NewTask creates a new task
-func NewTask(ctx gocontext.Context, client *containerd.Client, container containerd.Container, checkpoint string, con console.Console, nullIO bool, ioOpts []cio.Opt, opts ...containerd.NewTaskOpts) (containerd.Task, error) {
+func NewTask(ctx gocontext.Context, client *containerd.Client, container containerd.Container, checkpoint string, con console.Console, nullIO bool, logURI string, ioOpts []cio.Opt, opts ...containerd.NewTaskOpts) (containerd.Task, error) {
 	stdinC := &stdinCloser{
 		stdin: os.Stdin,
 	}
@@ -88,6 +89,13 @@ func NewTask(ctx gocontext.Context, client *containerd.Client, container contain
 			return nil, errors.New("tty and null-io cannot be used together")
 		}
 		ioCreator = cio.NullIO
+	}
+	if logURI != "" {
+		u, err := url.Parse(logURI)
+		if err != nil {
+			return nil, err
+		}
+		ioCreator = cio.LogURI(u)
 	}
 	t, err := container.NewTask(ctx, ioCreator, opts...)
 	if err != nil {

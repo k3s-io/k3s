@@ -56,7 +56,7 @@ func NewNoPathDefinedError() *MetricsError {
 func NewFsInfoFailedError(err error) *MetricsError {
 	return &MetricsError{
 		Code: ErrCodeFsInfoFailed,
-		Msg:  fmt.Sprintf("Failed to get FsInfo due to error %v", err),
+		Msg:  fmt.Sprintf("failed to get FsInfo due to error %v", err),
 	}
 }
 
@@ -67,7 +67,7 @@ type MetricsError struct {
 }
 
 func (e *MetricsError) Error() string {
-	return fmt.Sprintf("%s", e.Msg)
+	return e.Msg
 }
 
 // IsNotSupported returns true if and only if err is "key" not found error.

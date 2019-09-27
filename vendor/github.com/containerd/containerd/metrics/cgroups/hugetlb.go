@@ -19,7 +19,7 @@
 package cgroups
 
 import (
-	"github.com/containerd/cgroups"
+	v1 "github.com/containerd/containerd/metrics/types/v1"
 	metrics "github.com/docker/go-metrics"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -31,7 +31,7 @@ var hugetlbMetrics = []*metric{
 		unit:   metrics.Bytes,
 		vt:     prometheus.GaugeValue,
 		labels: []string{"page"},
-		getValues: func(stats *cgroups.Metrics) []value {
+		getValues: func(stats *v1.Metrics) []value {
 			if stats.Hugetlb == nil {
 				return nil
 			}
@@ -51,7 +51,7 @@ var hugetlbMetrics = []*metric{
 		unit:   metrics.Total,
 		vt:     prometheus.GaugeValue,
 		labels: []string{"page"},
-		getValues: func(stats *cgroups.Metrics) []value {
+		getValues: func(stats *v1.Metrics) []value {
 			if stats.Hugetlb == nil {
 				return nil
 			}
@@ -71,7 +71,7 @@ var hugetlbMetrics = []*metric{
 		unit:   metrics.Bytes,
 		vt:     prometheus.GaugeValue,
 		labels: []string{"page"},
-		getValues: func(stats *cgroups.Metrics) []value {
+		getValues: func(stats *v1.Metrics) []value {
 			if stats.Hugetlb == nil {
 				return nil
 			}

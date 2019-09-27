@@ -14,7 +14,7 @@ RUNC_IMAGE := runc_dev$(if $(GIT_BRANCH_CLEAN),:$(GIT_BRANCH_CLEAN))
 PROJECT := github.com/opencontainers/runc
 BUILDTAGS ?= seccomp
 COMMIT_NO := $(shell git rev-parse HEAD 2> /dev/null || true)
-COMMIT := $(if $(shell git status --porcelain --untracked-files=no),"${COMMIT_NO}-dirty","${COMMIT_NO}")
+COMMIT ?= $(if $(shell git status --porcelain --untracked-files=no),"${COMMIT_NO}-dirty","${COMMIT_NO}")
 
 MAN_DIR := $(CURDIR)/man/man8
 MAN_PAGES = $(shell ls $(MAN_DIR)/*.8)

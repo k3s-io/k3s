@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	gofilepath "path/filepath"
 	"strconv"
 
 	"github.com/sirupsen/logrus"
@@ -54,6 +55,9 @@ func ReadConfig(filepath string) (*Config, error) {
 func writeConfig(c *Config, filepath string) error {
 	data, err := yaml.Marshal(c)
 	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(gofilepath.Dir(filepath), 0755); err != nil {
 		return err
 	}
 	return ioutil.WriteFile(filepath, data, 0644)

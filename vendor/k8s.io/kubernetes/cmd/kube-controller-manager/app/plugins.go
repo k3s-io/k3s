@@ -25,6 +25,10 @@ import (
 
 	"k8s.io/klog"
 
+	// Cloud providers
+	cloudprovider "k8s.io/cloud-provider"
+	// ensure the cloud providers are installed
+	_ "k8s.io/kubernetes/pkg/cloudprovider/providers"
 	// Volume plugins
 	"k8s.io/kubernetes/pkg/volume"
 	"k8s.io/kubernetes/pkg/volume/csi"
@@ -48,10 +52,9 @@ import (
 func ProbeAttachableVolumePlugins() []volume.VolumePlugin {
 	allPlugins := []volume.VolumePlugin{}
 
+	allPlugins = appendAttachableLegacyProviderVolumes(allPlugins)
 	allPlugins = append(allPlugins, iscsi.ProbeVolumePlugins()...)
-	if utilfeature.DefaultFeatureGate.Enabled(features.CSIPersistentVolume) {
-		allPlugins = append(allPlugins, csi.ProbeVolumePlugins()...)
-	}
+	allPlugins = append(allPlugins, csi.ProbeVolumePlugins()...)
 	return allPlugins
 }
 
@@ -65,13 +68,14 @@ func GetDynamicPluginProber(config persistentvolumeconfig.VolumeConfiguration) v
 // ProbeExpandableVolumePlugins returns volume plugins which are expandable
 func ProbeExpandableVolumePlugins(config persistentvolumeconfig.VolumeConfiguration) []volume.VolumePlugin {
 	allPlugins := []volume.VolumePlugin{}
+	allPlugins = appendExpandableLegacyProviderVolumes(allPlugins)
 	return allPlugins
 }
 
 // ProbeControllerVolumePlugins collects all persistent volume plugins into an
 // easy to use list. Only volume plugins that implement any of
 // provisioner/recycler/deleter interface should be returned.
-func ProbeControllerVolumePlugins(_ interface{}, config persistentvolumeconfig.VolumeConfiguration) []volume.VolumePlugin {
+func ProbeControllerVolumePlugins(cloud cloudprovider.Interface, config persistentvolumeconfig.VolumeConfiguration) []volume.VolumePlugin {
 	allPlugins := []volume.VolumePlugin{}
 
 	// The list of plugins to probe is decided by this binary, not

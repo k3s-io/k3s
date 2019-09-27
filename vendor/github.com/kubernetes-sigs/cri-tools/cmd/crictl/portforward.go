@@ -42,15 +42,17 @@ var runtimePortForwardCommand = cli.Command{
 			return cli.ShowSubcommandHelp(context)
 		}
 
-		if err := getRuntimeClient(context); err != nil {
+		runtimeClient, runtimeConn, err := getRuntimeClient(context)
+		if err != nil {
 			return err
 		}
+		defer closeConnection(context, runtimeConn)
 
 		var opts = portforwardOptions{
 			id:    args[0],
 			ports: args[1:],
 		}
-		err := PortForward(runtimeClient, opts)
+		err = PortForward(runtimeClient, opts)
 		if err != nil {
 			return fmt.Errorf("port forward failed: %v", err)
 
@@ -58,7 +60,6 @@ var runtimePortForwardCommand = cli.Command{
 		return nil
 
 	},
-	After: closeConnection,
 }
 
 // PortForward sends an PortForwardRequest to server, and parses the returned PortForwardResponse

@@ -30,6 +30,7 @@ import (
 	libcontainerconfigs "github.com/opencontainers/runc/libcontainer/configs"
 	"k8s.io/klog"
 
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	kubefeatures "k8s.io/kubernetes/pkg/features"
@@ -46,10 +47,6 @@ const (
 	// cgroup is not accessible
 	noneDriver = "none"
 )
-
-// hugePageSizeList is useful for converting to the hugetlb canonical unit
-// which is what is expected when interacting with libcontainer
-var hugePageSizeList = []string{"B", "KB", "MB", "GB", "TB", "PB"}
 
 var RootCgroupName = CgroupName([]string{})
 
@@ -228,7 +225,7 @@ func (m *cgroupManagerImpl) Destroy(cgroupConfig *CgroupConfig) error {
 
 	// Delete cgroups using libcontainers Managers Destroy() method
 	if err = manager.Destroy(); err != nil {
-		return fmt.Errorf("Unable to destroy cgroup paths for cgroup %v : %v", cgroupConfig.Name, err)
+		return fmt.Errorf("unable to destroy cgroup paths for cgroup %v : %v", cgroupConfig.Name, err)
 	}
 
 	return nil
@@ -271,14 +268,14 @@ func setSupportedSubsystems(cgroupConfig *libcontainerconfigs.Cgroup) error {
 	for sys, required := range getSupportedSubsystems() {
 		if _, ok := cgroupConfig.Paths[sys.Name()]; !ok {
 			if required {
-				return fmt.Errorf("Failed to find subsystem mount for required subsystem: %v", sys.Name())
+				return fmt.Errorf("failed to find subsystem mount for required subsystem: %v", sys.Name())
 			}
 			// the cgroup is not mounted, but its not required so continue...
 			klog.V(6).Infof("Unable to find subsystem mount for optional subsystem: %v", sys.Name())
 			continue
 		}
 		if err := sys.Set(cgroupConfig.Paths[sys.Name()], cgroupConfig); err != nil {
-			return fmt.Errorf("Failed to set config for supported subsystems : %v", err)
+			return fmt.Errorf("failed to set config for supported subsystems : %v", err)
 		}
 	}
 	return nil
@@ -310,7 +307,7 @@ func (m *cgroupManagerImpl) toResources(resourceConfig *ResourceConfig) *libcont
 	// for each page size enumerated, set that value
 	pageSizes := sets.NewString()
 	for pageSize, limit := range resourceConfig.HugePageLimit {
-		sizeString := units.CustomSize("%g%s", float64(pageSize), 1024.0, hugePageSizeList)
+		sizeString := units.CustomSize("%g%s", float64(pageSize), 1024.0, libcontainercgroups.HugePageSizeUnitList)
 		resources.HugetlbLimit = append(resources.HugetlbLimit, &libcontainerconfigs.HugepageLimit{
 			Pagesize: sizeString,
 			Limit:    uint64(limit),
@@ -401,7 +398,9 @@ func (m *cgroupManagerImpl) Create(cgroupConfig *CgroupConfig) error {
 
 	// it may confuse why we call set after we do apply, but the issue is that runc
 	// follows a similar pattern.  it's needed to ensure cpu quota is set properly.
-	m.Update(cgroupConfig)
+	if err := m.Update(cgroupConfig); err != nil {
+		utilruntime.HandleError(fmt.Errorf("cgroup update failed %v", err))
+	}
 
 	return nil
 }
@@ -475,14 +474,14 @@ func getStatsSupportedSubsystems(cgroupPaths map[string]string) (*libcontainercg
 	for sys, required := range getSupportedSubsystems() {
 		if _, ok := cgroupPaths[sys.Name()]; !ok {
 			if required {
-				return nil, fmt.Errorf("Failed to find subsystem mount for required subsystem: %v", sys.Name())
+				return nil, fmt.Errorf("failed to find subsystem mount for required subsystem: %v", sys.Name())
 			}
 			// the cgroup is not mounted, but its not required so continue...
 			klog.V(6).Infof("Unable to find subsystem mount for optional subsystem: %v", sys.Name())
 			continue
 		}
 		if err := sys.GetStats(cgroupPaths[sys.Name()], stats); err != nil {
-			return nil, fmt.Errorf("Failed to get stats for supported subsystems : %v", err)
+			return nil, fmt.Errorf("failed to get stats for supported subsystems : %v", err)
 		}
 	}
 	return stats, nil

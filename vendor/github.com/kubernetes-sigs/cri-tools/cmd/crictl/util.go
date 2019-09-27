@@ -40,10 +40,6 @@ const (
 	truncatedIDLen = 13
 )
 
-var runtimeClient pb.RuntimeServiceClient
-var imageClient pb.ImageServiceClient
-var conn *grpc.ClientConn
-
 type listOptions struct {
 	// id of container or sandbox
 	id string
@@ -104,7 +100,7 @@ type portforwardOptions struct {
 }
 
 func getSortedKeys(m map[string]string) []string {
-	var keys []string
+	keys := make([]string, len(m))
 	for k := range m {
 		keys = append(keys, k)
 	}
@@ -152,33 +148,30 @@ func openFile(path string) (*os.File, error) {
 	return f, nil
 }
 
-func getRuntimeClient(context *cli.Context) error {
+func getRuntimeClient(context *cli.Context) (pb.RuntimeServiceClient, *grpc.ClientConn, error) {
 	// Set up a connection to the server.
-	var err error
-	conn, err = getRuntimeClientConnection(context)
+	conn, err := getRuntimeClientConnection(context)
 	if err != nil {
-		return fmt.Errorf("failed to connect: %v", err)
+		return nil, nil, fmt.Errorf("failed to connect: %v", err)
 	}
-	runtimeClient = pb.NewRuntimeServiceClient(conn)
-	return nil
+	runtimeClient := pb.NewRuntimeServiceClient(conn)
+	return runtimeClient, conn, nil
 }
 
-func getImageClient(context *cli.Context) error {
+func getImageClient(context *cli.Context) (pb.ImageServiceClient, *grpc.ClientConn, error) {
 	// Set up a connection to the server.
-	var err error
-	conn, err = getImageClientConnection(context)
+	conn, err := getImageClientConnection(context)
 	if err != nil {
-		return fmt.Errorf("failed to connect: %v", err)
+		return nil, nil, fmt.Errorf("failed to connect: %v", err)
 	}
-	imageClient = pb.NewImageServiceClient(conn)
-	return nil
+	imageClient := pb.NewImageServiceClient(conn)
+	return imageClient, conn, nil
 }
 
-func closeConnection(context *cli.Context) error {
+func closeConnection(context *cli.Context, conn *grpc.ClientConn) error {
 	if conn == nil {
 		return nil
 	}
-
 	return conn.Close()
 }
 
@@ -217,7 +210,7 @@ func outputProtobufObjAsYAML(obj proto.Message) error {
 
 func outputStatusInfo(status string, info map[string]string, format string) error {
 	// Sort all keys
-	var keys []string
+	keys := make([]string, len(info))
 	for k := range info {
 		keys = append(keys, k)
 	}
@@ -324,12 +317,9 @@ func matchesRegex(pattern, target string) bool {
 	return matched
 }
 
-func matchesImage(image, containerImage string) (bool, error) {
+func matchesImage(imageClient pb.ImageServiceClient, image string, containerImage string) (bool, error) {
 	if image == "" {
 		return true, nil
-	}
-	if imageClient == nil {
-		getImageClient(nil)
 	}
 	r1, err := ImageStatus(imageClient, image, false)
 	if err != nil {

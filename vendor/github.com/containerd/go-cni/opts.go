@@ -54,8 +54,17 @@ func WithPluginConfDir(dir string) CNIOpt {
 	}
 }
 
+// WithPluginMaxConfNum can be used to configure the
+// max cni plugin config file num.
+func WithPluginMaxConfNum(max int) CNIOpt {
+	return func(c *libcni) error {
+		c.pluginMaxConfNum = max
+		return nil
+	}
+}
+
 // WithMinNetworkCount can be used to configure the
-// minimum networks to be configured and initalized
+// minimum networks to be configured and initialized
 // for the status to report success. By default its 1.
 func WithMinNetworkCount(count int) CNIOpt {
 	return func(c *libcni) error {
@@ -86,6 +95,12 @@ func WithLoNetwork(c *libcni) error {
 // WithConf can be used to load config directly
 // from byte.
 func WithConf(bytes []byte) CNIOpt {
+	return WithConfIndex(bytes, 0)
+}
+
+// WithConfIndex can be used to load config directly
+// from byte and set the interface name's index.
+func WithConfIndex(bytes []byte, index int) CNIOpt {
 	return func(c *libcni) error {
 		conf, err := cnilibrary.ConfFromBytes(bytes)
 		if err != nil {
@@ -98,7 +113,7 @@ func WithConf(bytes []byte) CNIOpt {
 		c.networks = append(c.networks, &Network{
 			cni:    c.cniConfig,
 			config: confList,
-			ifName: getIfName(c.prefix, 0),
+			ifName: getIfName(c.prefix, index),
 		})
 		return nil
 	}
@@ -122,6 +137,24 @@ func WithConfFile(fileName string) CNIOpt {
 			cni:    c.cniConfig,
 			config: confList,
 			ifName: getIfName(c.prefix, 0),
+		})
+		return nil
+	}
+}
+
+// WithConfListBytes can be used to load network config list directly
+// from byte
+func WithConfListBytes(bytes []byte) CNIOpt {
+	return func(c *libcni) error {
+		confList, err := cnilibrary.ConfListFromBytes(bytes)
+		if err != nil {
+			return err
+		}
+		i := len(c.networks)
+		c.networks = append(c.networks, &Network{
+			cni:    c.cniConfig,
+			config: confList,
+			ifName: getIfName(c.prefix, i),
 		})
 		return nil
 	}
@@ -153,7 +186,7 @@ func WithConfListFile(fileName string) CNIOpt {
 // the convention chosen is - the first network configuration in the sorted
 // list of network conf files as the default network.
 func WithDefaultConf(c *libcni) error {
-	return loadFromConfDir(c, 1)
+	return loadFromConfDir(c, c.pluginMaxConfNum)
 }
 
 // WithAllConf can be used to detect all network config
@@ -205,11 +238,11 @@ func loadFromConfDir(c *libcni, max int) error {
 
 			confList, err = cnilibrary.ConfListFromConf(conf)
 			if err != nil {
-				return errors.Wrapf(ErrInvalidConfig, "failed to convert CNI config file %s to list: %v", confFile, err)
+				return errors.Wrapf(ErrInvalidConfig, "failed to convert CNI config file %s to CNI config list: %v", confFile, err)
 			}
 		}
 		if len(confList.Plugins) == 0 {
-			return errors.Wrapf(ErrInvalidConfig, "CNI config list %s has no networks, skipping", confFile)
+			return errors.Wrapf(ErrInvalidConfig, "CNI config list in config file %s has no networks, skipping", confFile)
 
 		}
 		networks = append(networks, &Network{

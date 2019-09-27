@@ -94,7 +94,6 @@ func (s *service) ListStream(req *api.ListContainersRequest, stream api.Containe
 			}
 		}
 	}
-	return nil
 }
 
 func (s *service) Create(ctx context.Context, req *api.CreateContainerRequest) (*api.CreateContainerResponse, error) {

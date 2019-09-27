@@ -17,28 +17,21 @@ limitations under the License.
 package server
 
 import (
+	"syscall"
 	"time"
 
+	"github.com/containerd/containerd"
 	eventtypes "github.com/containerd/containerd/api/events"
 	"github.com/containerd/containerd/errdefs"
-	"github.com/docker/docker/pkg/signal"
+	"github.com/containerd/containerd/log"
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
-	"golang.org/x/sys/unix"
 	runtime "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 
 	ctrdutil "github.com/containerd/cri/pkg/containerd/util"
 	"github.com/containerd/cri/pkg/store"
 	containerstore "github.com/containerd/cri/pkg/store/container"
 )
-
-// killContainerTimeout is the timeout that we wait for the container to
-// be SIGKILLed.
-// The timeout is set to 1 min, because the default CRI operation timeout
-// for StopContainer is (2 min + stop timeout). Set to 1 min, so that we
-// have enough time for kill(all=true) and kill(all=false).
-const killContainerTimeout = 1 * time.Minute
 
 // StopContainer stops a running container with a grace period (i.e., timeout).
 func (c *criService) StopContainer(ctx context.Context, r *runtime.StopContainerRequest) (*runtime.StopContainerResponse, error) {
@@ -64,7 +57,7 @@ func (c *criService) stopContainer(ctx context.Context, container containerstore
 	state := container.Status.Get().State()
 	if state != runtime.ContainerState_CONTAINER_RUNNING &&
 		state != runtime.ContainerState_CONTAINER_UNKNOWN {
-		logrus.Infof("Container to stop %q must be in running or unknown state, current state %q",
+		log.G(ctx).Infof("Container to stop %q must be in running or unknown state, current state %q",
 			id, criContainerStateToString(state))
 		return nil
 	}
@@ -125,50 +118,56 @@ func (c *criService) stopContainer(ctx context.Context, container containerstore
 				if err != store.ErrNotExist {
 					return errors.Wrapf(err, "failed to get image %q", container.ImageRef)
 				}
-				logrus.Warningf("Image %q not found, stop container with signal %q", container.ImageRef, stopSignal)
+				log.G(ctx).Warningf("Image %q not found, stop container with signal %q", container.ImageRef, stopSignal)
 			} else {
 				if image.ImageSpec.Config.StopSignal != "" {
 					stopSignal = image.ImageSpec.Config.StopSignal
 				}
 			}
 		}
-		sig, err := signal.ParseSignal(stopSignal)
+		sig, err := containerd.ParseSignal(stopSignal)
 		if err != nil {
 			return errors.Wrapf(err, "failed to parse stop signal %q", stopSignal)
 		}
-		logrus.Infof("Stop container %q with signal %v", id, sig)
+		log.G(ctx).Infof("Stop container %q with signal %v", id, sig)
 		if err = task.Kill(ctx, sig); err != nil && !errdefs.IsNotFound(err) {
 			return errors.Wrapf(err, "failed to stop container %q", id)
 		}
 
-		if err = c.waitContainerStop(ctx, container, timeout); err == nil || errors.Cause(err) == ctx.Err() {
-			// Do not SIGKILL container if the context is cancelled.
-			return err
+		sigTermCtx, sigTermCtxCancel := context.WithTimeout(ctx, timeout)
+		defer sigTermCtxCancel()
+		err = c.waitContainerStop(sigTermCtx, container)
+		if err == nil {
+			// Container stopped on first signal no need for SIGKILL
+			return nil
 		}
-		logrus.WithError(err).Errorf("An error occurs during waiting for container %q to be stopped", id)
+		// If the parent context was cancelled or exceeded return immediately
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		// sigTermCtx was exceeded. Send SIGKILL
+		log.G(ctx).Debugf("Stop container %q with signal %v timed out", id, sig)
 	}
 
-	logrus.Infof("Kill container %q", id)
-	if err = task.Kill(ctx, unix.SIGKILL); err != nil && !errdefs.IsNotFound(err) {
+	log.G(ctx).Infof("Kill container %q", id)
+	if err = task.Kill(ctx, syscall.SIGKILL); err != nil && !errdefs.IsNotFound(err) {
 		return errors.Wrapf(err, "failed to kill container %q", id)
 	}
 
 	// Wait for a fixed timeout until container stop is observed by event monitor.
-	if err = c.waitContainerStop(ctx, container, killContainerTimeout); err == nil {
-		return nil
+	err = c.waitContainerStop(ctx, container)
+	if err != nil {
+		return errors.Wrapf(err, "an error occurs during waiting for container %q to be killed", id)
 	}
-	return errors.Wrapf(err, "an error occurs during waiting for container %q to be killed", id)
+	return nil
 }
 
-// waitContainerStop waits for container to be stopped until timeout exceeds or context is cancelled.
-func (c *criService) waitContainerStop(ctx context.Context, container containerstore.Container, timeout time.Duration) error {
-	timeoutTimer := time.NewTimer(timeout)
-	defer timeoutTimer.Stop()
+// waitContainerStop waits for container to be stopped until context is
+// cancelled or the context deadline is exceeded.
+func (c *criService) waitContainerStop(ctx context.Context, container containerstore.Container) error {
 	select {
 	case <-ctx.Done():
-		return errors.Wrapf(ctx.Err(), "wait container %q is cancelled", container.ID)
-	case <-timeoutTimer.C:
-		return errors.Errorf("wait container %q stop timeout", container.ID)
+		return errors.Wrapf(ctx.Err(), "wait container %q", container.ID)
 	case <-container.Stopped():
 		return nil
 	}

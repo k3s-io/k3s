@@ -32,9 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	utilversion "k8s.io/apimachinery/pkg/util/version"
 	"k8s.io/apimachinery/pkg/util/wait"
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/klog"
-	"k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/volume"
 	csipbv0 "k8s.io/kubernetes/pkg/volume/csi/csiv0"
 )
@@ -157,21 +155,15 @@ func newCsiDriverClient(driverName csiDriverName) (*csiDriverClient, error) {
 		return nil, fmt.Errorf("driver name is empty")
 	}
 
-	addr := fmt.Sprintf(csiAddrTemplate, driverName)
-	requiresV0Client := true
-	if utilfeature.DefaultFeatureGate.Enabled(features.KubeletPluginsWatcher) {
-		existingDriver, driverExists := csiDrivers.Get(string(driverName))
-		if !driverExists {
-			return nil, fmt.Errorf("driver name %s not found in the list of registered CSI drivers", driverName)
-		}
-
-		addr = existingDriver.endpoint
-		requiresV0Client = versionRequiresV0Client(existingDriver.highestSupportedVersion)
+	existingDriver, driverExists := csiDrivers.Get(string(driverName))
+	if !driverExists {
+		return nil, fmt.Errorf("driver name %s not found in the list of registered CSI drivers", driverName)
 	}
 
 	nodeV1ClientCreator := newV1NodeClient
 	nodeV0ClientCreator := newV0NodeClient
-	if requiresV0Client {
+
+	if versionRequiresV0Client(existingDriver.highestSupportedVersion) {
 		nodeV1ClientCreator = nil
 	} else {
 		nodeV0ClientCreator = nil
@@ -179,7 +171,7 @@ func newCsiDriverClient(driverName csiDriverName) (*csiDriverClient, error) {
 
 	return &csiDriverClient{
 		driverName:          driverName,
-		addr:                csiAddr(addr),
+		addr:                csiAddr(existingDriver.endpoint),
 		nodeV1ClientCreator: nodeV1ClientCreator,
 		nodeV0ClientCreator: nodeV0ClientCreator,
 	}, nil
@@ -935,6 +927,9 @@ func (c *csiDriverClient) nodeGetVolumeStatsV1(
 		InodesFree: resource.NewQuantity(int64(0), resource.BinarySI),
 	}
 	for _, usage := range usages {
+		if usage == nil {
+			continue
+		}
 		unit := usage.GetUnit()
 		switch unit {
 		case csipbv1.VolumeUsage_BYTES:

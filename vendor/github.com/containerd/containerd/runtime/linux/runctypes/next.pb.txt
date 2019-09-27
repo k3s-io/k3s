@@ -112,6 +112,20 @@ file {
       type: TYPE_UINT32
       json_name: "ioGid"
     }
+    field {
+      name: "criu_work_path"
+      number: 12
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "criuWorkPath"
+    }
+    field {
+      name: "criu_image_path"
+      number: 13
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "criuImagePath"
+    }
   }
   message_type {
     name: "CheckpointOptions"
@@ -163,6 +177,20 @@ file {
       label: LABEL_OPTIONAL
       type: TYPE_STRING
       json_name: "cgroupsMode"
+    }
+    field {
+      name: "work_path"
+      number: 8
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "workPath"
+    }
+    field {
+      name: "image_path"
+      number: 9
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "imagePath"
     }
   }
   message_type {

@@ -86,3 +86,50 @@ flannel plugin will set the following fields in the delegated plugin configurati
 * `mtu`: `$FLANNEL_MTU`
 
 Additionally, for the bridge plugin, `isGateway` will be set to `true`, if not present.
+
+## Windows Support (Experimental)
+This plugin supports delegating to the windows CNI plugins (overlay.exe, l2bridge.exe) to work in conjunction with [Flannel on Windows](https://github.com/coreos/flannel/issues/833). 
+Flannel sets up an [HNS Network](https://docs.microsoft.com/en-us/virtualization/windowscontainers/manage-containers/container-networking) in L2Bridge mode for host-gw and in Overlay mode for vxlan. 
+
+The following fields must be set in the delegated plugin configuration:
+* `name` (string, required): the name of the network (must match the name in Flannel config / name of the HNS network)
+* `type` (string, optional): set to `win-l2bridge` by default. Can be set to `win-overlay` or other custom windows CNI
+* `ipMasq`: the inverse of `$FLANNEL_IPMASQ`
+* `endpointMacPrefix` (string, optional): required for `win-overlay` mode, set to the MAC prefix configured for Flannel  
+* `clusterNetworkPrefix` (string, optional): required for `win-l2bridge` mode, setup NAT if `ipMasq` is set to true
+
+For `win-l2bridge`, the Flannel CNI plugin will set:
+* `ipam`: "host-local" type will be used with "subnet" set to `$FLANNEL_SUBNET` and gateway as the .2 address in `$FLANNEL_NETWORK`
+
+For `win-overlay`, the Flannel CNI plugin will set:
+* `ipam`: "host-local" type will be used with "subnet" set to `$FLANNEL_SUBNET` and gateway as the .1 address in `$FLANNEL_NETWORK`
+
+If IPMASQ is true, the Flannel CNI plugin will setup an OutBoundNAT policy and add FLANNEL_SUBNET to any existing exclusions.
+
+All other delegate config e.g. other HNS endpoint policies in AdditionalArgs will be passed to WINCNI as-is.    
+
+Example VXLAN Flannel CNI config
+```
+{
+	"name": "mynet",
+	"type": "flannel",
+	"delegate": {
+		"type": "win-overlay",
+		"endpointMacPrefix": "0E-2A"
+	}
+}
+```
+
+For this example, Flannel CNI would generate the following config to delegate to the windows CNI when FLANNEL_NETWORK=10.244.0.0/16, FLANNEL_SUBNET=10.244.1.0/24 and IPMASQ=true
+```
+{
+	"name": "mynet",
+	"type": "win-overlay",
+	"endpointMacPrefix": "0E-2A",
+	"ipMasq": true,
+	"ipam": {
+		"subnet": "10.244.1.0/24",
+		"type": "host-local"
+	}
+}
+```

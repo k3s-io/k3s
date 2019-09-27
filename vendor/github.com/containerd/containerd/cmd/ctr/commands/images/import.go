@@ -64,6 +64,18 @@ If foobar.tar contains an OCI ref named "latest" and anonymous ref "sha256:deadb
 			Name:  "index-name",
 			Usage: "image name to keep index as, by default index is discarded",
 		},
+		cli.BoolFlag{
+			Name:  "all-platforms",
+			Usage: "imports content for all platforms, false by default",
+		},
+		cli.BoolFlag{
+			Name:  "no-unpack",
+			Usage: "skip unpacking the images, false by default",
+		},
+		cli.BoolFlag{
+			Name:  "compress-blobs",
+			Usage: "compress uncompressed blobs when creating manifest (Docker format only)",
+		},
 	}, commands.SnapshotterFlags...),
 
 	Action: func(context *cli.Context) error {
@@ -89,6 +101,12 @@ If foobar.tar contains an OCI ref named "latest" and anonymous ref "sha256:deadb
 			opts = append(opts, containerd.WithIndexName(idxName))
 		}
 
+		if context.Bool("compress-blobs") {
+			opts = append(opts, containerd.WithImportCompression())
+		}
+
+		opts = append(opts, containerd.WithAllPlatforms(context.Bool("all-platforms")))
+
 		client, ctx, cancel, err := commands.NewClient(context)
 		if err != nil {
 			return err
@@ -113,19 +131,21 @@ If foobar.tar contains an OCI ref named "latest" and anonymous ref "sha256:deadb
 			return closeErr
 		}
 
-		log.G(ctx).Debugf("unpacking %d images", len(imgs))
+		if !context.Bool("no-unpack") {
+			log.G(ctx).Debugf("unpacking %d images", len(imgs))
 
-		for _, img := range imgs {
-			// TODO: Allow configuration of the platform
-			image := containerd.NewImage(client, img)
+			for _, img := range imgs {
+				// TODO: Allow configuration of the platform
+				image := containerd.NewImage(client, img)
 
-			// TODO: Show unpack status
-			fmt.Printf("unpacking %s (%s)...", img.Name, img.Target.Digest)
-			err = image.Unpack(ctx, context.String("snapshotter"))
-			if err != nil {
-				return err
+				// TODO: Show unpack status
+				fmt.Printf("unpacking %s (%s)...", img.Name, img.Target.Digest)
+				err = image.Unpack(ctx, context.String("snapshotter"))
+				if err != nil {
+					return err
+				}
+				fmt.Println("done")
 			}
-			fmt.Println("done")
 		}
 		return nil
 	},

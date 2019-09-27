@@ -40,8 +40,8 @@ func NewIPAllocator(s *RangeSet, store backend.Store, id int) *IPAllocator {
 	}
 }
 
-// Get alocates an IP
-func (a *IPAllocator) Get(id string, requestedIP net.IP) (*current.IPConfig, error) {
+// Get allocates an IP
+func (a *IPAllocator) Get(id string, ifname string, requestedIP net.IP) (*current.IPConfig, error) {
 	a.store.Lock()
 	defer a.store.Unlock()
 
@@ -62,7 +62,7 @@ func (a *IPAllocator) Get(id string, requestedIP net.IP) (*current.IPConfig, err
 			return nil, fmt.Errorf("requested ip %s is subnet's gateway", requestedIP.String())
 		}
 
-		reserved, err := a.store.Reserve(id, requestedIP, a.rangeID)
+		reserved, err := a.store.Reserve(id, ifname, requestedIP, a.rangeID)
 		if err != nil {
 			return nil, err
 		}
@@ -73,6 +73,17 @@ func (a *IPAllocator) Get(id string, requestedIP net.IP) (*current.IPConfig, err
 		gw = r.Gateway
 
 	} else {
+		// try to get allocated IPs for this given id, if exists, just return error
+		// because duplicate allocation is not allowed in SPEC
+		// https://github.com/containernetworking/cni/blob/master/SPEC.md
+		allocatedIPs := a.store.GetByID(id, ifname)
+		for _, allocatedIP := range allocatedIPs {
+			// check whether the existing IP belong to this range set
+			if _, err := a.rangeset.RangeFor(allocatedIP); err == nil {
+				return nil, fmt.Errorf("%s has been allocated to %s, duplicate allocation is not allowed", allocatedIP.String(), id)
+			}
+		}
+
 		iter, err := a.GetIter()
 		if err != nil {
 			return nil, err
@@ -83,7 +94,7 @@ func (a *IPAllocator) Get(id string, requestedIP net.IP) (*current.IPConfig, err
 				break
 			}
 
-			reserved, err := a.store.Reserve(id, reservedIP.IP, a.rangeID)
+			reserved, err := a.store.Reserve(id, ifname, reservedIP.IP, a.rangeID)
 			if err != nil {
 				return nil, err
 			}
@@ -110,11 +121,11 @@ func (a *IPAllocator) Get(id string, requestedIP net.IP) (*current.IPConfig, err
 }
 
 // Release clears all IPs allocated for the container with given ID
-func (a *IPAllocator) Release(id string) error {
+func (a *IPAllocator) Release(id string, ifname string) error {
 	a.store.Lock()
 	defer a.store.Unlock()
 
-	return a.store.ReleaseByID(id)
+	return a.store.ReleaseByID(id, ifname)
 }
 
 type RangeIter struct {

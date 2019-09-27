@@ -19,7 +19,6 @@ package v2
 import (
 	"context"
 
-	eventstypes "github.com/containerd/containerd/api/events"
 	tasktypes "github.com/containerd/containerd/api/types/task"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/runtime"
@@ -114,18 +113,13 @@ func (p *process) CloseIO(ctx context.Context) error {
 
 // Start the process
 func (p *process) Start(ctx context.Context) error {
-	response, err := p.shim.task.Start(ctx, &task.StartRequest{
+	_, err := p.shim.task.Start(ctx, &task.StartRequest{
 		ID:     p.shim.ID(),
 		ExecID: p.id,
 	})
 	if err != nil {
 		return errdefs.FromGRPC(err)
 	}
-	p.shim.events.Publish(ctx, runtime.TaskExecStartedEventTopic, &eventstypes.TaskExecStarted{
-		ContainerID: p.shim.ID(),
-		Pid:         response.Pid,
-		ExecID:      p.id,
-	})
 	return nil
 }
 

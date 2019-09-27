@@ -428,11 +428,11 @@ func (c *capsV3) Load() (err error) {
 		}
 		if strings.HasPrefix(line, "CapB") {
 			fmt.Sscanf(line[4:], "nd:  %08x%08x", &c.bounds[1], &c.bounds[0])
-			continue
+			break
 		}
 		if strings.HasPrefix(line, "CapA") {
 			fmt.Sscanf(line[4:], "mb:  %08x%08x", &c.ambient[1], &c.ambient[0])
-			continue
+			break
 		}
 	}
 	f.Close()

@@ -28,7 +28,7 @@ import (
 type Snapshot struct {
 	// Key is the key of the snapshot
 	Key string
-	// Kind is the kind of the snapshot (active, commited, view)
+	// Kind is the kind of the snapshot (active, committed, view)
 	Kind snapshot.Kind
 	// Size is the size of the snapshot in bytes.
 	Size uint64

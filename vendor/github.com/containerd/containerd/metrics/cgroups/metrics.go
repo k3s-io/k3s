@@ -25,6 +25,7 @@ import (
 
 	"github.com/containerd/cgroups"
 	"github.com/containerd/containerd/log"
+	v1 "github.com/containerd/containerd/metrics/types/v1"
 	"github.com/containerd/containerd/namespaces"
 	"github.com/containerd/containerd/runtime"
 	"github.com/containerd/typeurl"
@@ -114,7 +115,7 @@ func (c *collector) collect(t runtime.Task, ch chan<- prometheus.Metric, block b
 		log.L.WithError(err).Errorf("unmarshal stats for %s", t.ID())
 		return
 	}
-	s, ok := data.(*cgroups.Metrics)
+	s, ok := data.(*v1.Metrics)
 	if !ok {
 		log.L.WithError(err).Errorf("invalid metric type for %s", t.ID())
 		return

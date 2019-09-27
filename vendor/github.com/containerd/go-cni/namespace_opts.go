@@ -33,6 +33,23 @@ func WithCapabilityIPRanges(ipRanges []IPRanges) NamespaceOpts {
 	}
 }
 
+// WithCapabilityBandWitdh adds support for traffic shaping:
+// https://github.com/heptio/cni-plugins/tree/master/plugins/meta/bandwidth
+func WithCapabilityBandWidth(bandWidth BandWidth) NamespaceOpts {
+	return func(c *Namespace) error {
+		c.capabilityArgs["bandwidth"] = bandWidth
+		return nil
+	}
+}
+
+// WithCapabilityDNS adds support for dns
+func WithCapabilityDNS(dns DNS) NamespaceOpts {
+	return func(c *Namespace) error {
+		c.capabilityArgs["dns"] = dns
+		return nil
+	}
+}
+
 func WithCapability(name string, capability interface{}) NamespaceOpts {
 	return func(c *Namespace) error {
 		c.capabilityArgs[name] = capability

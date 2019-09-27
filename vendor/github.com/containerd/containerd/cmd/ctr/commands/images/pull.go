@@ -51,7 +51,11 @@ command. As part of this process, we do the following:
 		},
 		cli.BoolFlag{
 			Name:  "all-platforms",
-			Usage: "pull content from all platforms",
+			Usage: "pull content and metadata from all platforms",
+		},
+		cli.BoolFlag{
+			Name:  "all-metadata",
+			Usage: "Pull metadata for all platforms",
 		},
 	),
 	Action: func(context *cli.Context) error {
@@ -78,6 +82,7 @@ command. As part of this process, we do the following:
 		if err != nil {
 			return err
 		}
+
 		img, err := content.Fetch(ctx, client, ref, config)
 		if err != nil {
 			return err

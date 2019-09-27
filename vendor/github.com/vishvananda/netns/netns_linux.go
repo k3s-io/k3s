@@ -190,6 +190,10 @@ func getPidForContainer(id string) (int, error) {
 		filepath.Join(cgroupRoot, "..", "systemd", "docker", id, "tasks"),
 		// Kubernetes with docker and CNI is even more different
 		filepath.Join(cgroupRoot, "..", "systemd", "kubepods", "*", "pod*", id, "tasks"),
+		// Another flavor of containers location in recent kubernetes 1.11+
+		filepath.Join(cgroupRoot, cgroupThis, "kubepods.slice", "kubepods-besteffort.slice", "*", "docker-"+id+".scope", "tasks"),
+		// When runs inside of a container with recent kubernetes 1.11+
+		filepath.Join(cgroupRoot, "kubepods.slice", "kubepods-besteffort.slice", "*", "docker-"+id+".scope", "tasks"),
 	}
 
 	var filename string

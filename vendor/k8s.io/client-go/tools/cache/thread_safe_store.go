@@ -308,6 +308,7 @@ func (c *threadSafeMap) Resync() error {
 	return nil
 }
 
+// NewThreadSafeStore creates a new instance of ThreadSafeStore.
 func NewThreadSafeStore(indexers Indexers, indices Indices) ThreadSafeStore {
 	return &threadSafeMap{
 		items:    map[string]interface{}{},

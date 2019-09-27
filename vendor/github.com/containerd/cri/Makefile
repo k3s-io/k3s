@@ -1,4 +1,4 @@
-# Copyright 2017 The Kubernetes Authors.
+# Copyright 2018 The containerd Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,6 +15,8 @@
 GO := go
 GOOS := $(shell $(GO) env GOOS)
 GOARCH := $(shell $(GO) env GOARCH)
+WHALE = "🇩"
+ONI = "👹"
 EPOCH_TEST_COMMIT := f9e02affccd51702191e5312665a16045ffef8ab
 PROJECT := github.com/containerd/cri
 BINDIR := ${DESTDIR}/usr/local/bin
@@ -33,160 +35,150 @@ INTEGRATION_SOURCES := $(shell find integration/ -name '*.go')
 
 all: binaries
 
-default: help
+help: ## this help
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z0-9._-]+:.*?## / {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST) | sort
 
-help:
-	@echo "Usage: make <target>"
-	@echo
-	@echo " * 'install'          	- Install binaries to system locations"
-	@echo " * 'binaries'         	- Build containerd and ctr"
-	@echo " * 'static-binaries   	- Build static containerd and ctr"
-	@echo " * 'ctr'  		- Build ctr"
-	@echo " * 'install-ctr' 	- Install ctr"
-	@echo " * 'containerd'  	- Build a customized containerd with CRI plugin for testing"
-	@echo " * 'install-containerd'	- Install customized containerd to system location"
-	@echo " * 'release'          	- Build release tarball"
-	@echo " * 'push'             	- Push release tarball to GCS"
-	@echo " * 'test'             	- Test cri with unit test"
-	@echo " * 'test-integration' 	- Test cri with integration test"
-	@echo " * 'test-cri'         	- Test cri with cri validation test"
-	@echo " * 'test-e2e-node'    	- Test cri with Kubernetes node e2e test"
-	@echo " * 'clean'            	- Clean artifacts"
-	@echo " * 'verify'           	- Execute the source code verification tools"
-	@echo " * 'proto'            	- Update protobuf of the cri plugin api"
-	@echo " * 'install.tools'    	- Install tools used by verify"
-	@echo " * 'install.deps'     	- Install dependencies of cri (Note: BUILDTAGS defaults to 'seccomp apparmor' for runc build")
-	@echo " * 'uninstall'        	- Remove installed binaries from system locations"
-	@echo " * 'version'          	- Print current cri plugin release version"
-	@echo " * 'update-vendor'    	- Syncs containerd/vendor.conf -> vendor.conf and sorts vendor.conf"
+verify: lint gofmt boiler check-vendor ## execute the source code verification tools
 
-verify: lint gofmt boiler
-
-version:
+version: ## print current cri plugin release version
 	@echo $(VERSION)
 
 lint:
-	@echo "checking lint"
-	@./hack/verify-lint.sh
+	@echo "$(WHALE) $@"
+	golangci-lint run --skip-files .*_test.go
 
 gofmt:
-	@echo "checking gofmt"
+	@echo "$(WHALE) $@"
 	@./hack/verify-gofmt.sh
 
 boiler:
-	@echo "checking boilerplate"
+	@echo "$(WHALE) $@"
 	@./hack/verify-boilerplate.sh
+
+check-vendor:
+	@echo "$(WHALE) $@"
+	@./hack/verify-vendor.sh
 
 .PHONY: sort-vendor sync-vendor update-vendor
 
 sort-vendor:
-	@echo "sorting vendor.conf"
+	@echo "$(WHALE) $@"
 	@./hack/sort-vendor.sh
 
 sync-vendor:
-	@echo "syncing vendor.conf from containerd"
+	@echo "$(WHALE) $@ from containerd"
 	@./hack/sync-vendor.sh
 
-update-vendor: sync-vendor sort-vendor
-
-$(BUILD_DIR)/ctr: $(SOURCES)
-	$(GO) build -o $@ \
-		-tags '$(BUILD_TAGS)' \
-		-ldflags '$(GO_LDFLAGS)' \
-		-gcflags '$(GO_GCFLAGS)' \
-		$(PROJECT)/cmd/ctr
+update-vendor: sync-vendor sort-vendor ## Syncs containerd/vendor.conf -> vendor.conf and sorts vendor.conf
+	@echo "$(WHALE) $@"
 
 $(BUILD_DIR)/containerd: $(SOURCES) $(PLUGIN_SOURCES)
+	@echo "$(WHALE) $@"
 	$(GO) build -o $@ \
 		-tags '$(BUILD_TAGS)' \
 		-ldflags '$(GO_LDFLAGS)' \
 		-gcflags '$(GO_GCFLAGS)' \
 		$(PROJECT)/cmd/containerd
 
-test:
+test: ## unit test
+	@echo "$(WHALE) $@"
 	$(GO) test -timeout=10m -race ./pkg/... \
 		-tags '$(BUILD_TAGS)' \
 	        -ldflags '$(GO_LDFLAGS)' \
 		-gcflags '$(GO_GCFLAGS)'
 
 $(BUILD_DIR)/integration.test: $(INTEGRATION_SOURCES)
+	@echo "$(WHALE) $@"
 	$(GO) test -c $(PROJECT)/integration -o $(BUILD_DIR)/integration.test
 
-test-integration: $(BUILD_DIR)/integration.test binaries
+test-integration: $(BUILD_DIR)/integration.test binaries ## integration test
+	@echo "$(WHALE) $@"
 	@./hack/test-integration.sh
 
-test-cri: binaries
+test-cri: binaries ## critools CRI validation test
+	@echo "$(WHALE) $@"
 	@./hack/test-cri.sh
 
-test-e2e-node: binaries
+test-e2e-node: binaries ## e2e node test
+	@echo "$(WHALE) $@"
 	@VERSION=$(VERSION) ./hack/test-e2e-node.sh
 
-clean:
-	rm -rf $(BUILD_DIR)/*
+clean: ## cleanup binaries
+	@echo "$(WHALE) $@"
+	@rm -rf $(BUILD_DIR)/*
 
-binaries: $(BUILD_DIR)/containerd $(BUILD_DIR)/ctr
+binaries: $(BUILD_DIR)/containerd ## build a customized containerd (same result as make containerd)
+	@echo "$(WHALE) $@"
 
 static-binaries: GO_LDFLAGS += -extldflags "-fno-PIC -static"
-static-binaries: $(BUILD_DIR)/containerd $(BUILD_DIR)/ctr
+static-binaries: $(BUILD_DIR)/containerd ## build static containerd
+	@echo "$(WHALE) $@"
 
-ctr: $(BUILD_DIR)/ctr
+containerd: $(BUILD_DIR)/containerd ## build a customized containerd with CRI plugin for testing
+	@echo "$(WHALE) $@"
 
-install-ctr: ctr
-	install -D -m 755 $(BUILD_DIR)/ctr $(BINDIR)/ctr
+install-containerd: containerd ## installs customized containerd to system location
+	@echo "$(WHALE) $@"
+	@install -D -m 755 $(BUILD_DIR)/containerd $(BINDIR)/containerd
 
-containerd: $(BUILD_DIR)/containerd
+install: install-containerd ## installs customized containerd to system location
+	@echo "$(WHALE) $@"
 
-install-containerd: containerd
-	install -D -m 755 $(BUILD_DIR)/containerd $(BINDIR)/containerd
-
-install: install-ctr install-containerd
-
-uninstall:
-	rm -f $(BINDIR)/containerd
-	rm -f $(BINDIR)/ctr
+uninstall: ## remove containerd from system location
+	@echo "$(WHALE) $@"
+	@rm -f $(BINDIR)/containerd
 
 $(BUILD_DIR)/$(TARBALL): static-binaries vendor.conf
 	@BUILD_DIR=$(BUILD_DIR) TARBALL=$(TARBALL) VERSION=$(VERSION) ./hack/release.sh
 
-release: $(BUILD_DIR)/$(TARBALL)
+release: $(BUILD_DIR)/$(TARBALL) ## build release tarball
 
-push: $(BUILD_DIR)/$(TARBALL)
+push: $(BUILD_DIR)/$(TARBALL) ## push release tarball to GCS
+	@echo "$(WHALE) $@"
 	@BUILD_DIR=$(BUILD_DIR) TARBALL=$(TARBALL) VERSION=$(VERSION) ./hack/push.sh
 
-proto:
-	@hack/update-proto.sh
+proto: ## update protobuf of the cri plugin api
+	@echo "$(WHALE) $@"
+	@API_PATH=pkg/api/v1 hack/update-proto.sh
+	@API_PATH=pkg/api/runtimeoptions/v1 hack/update-proto.sh
 
 .PHONY: install.deps
 
-install.deps:
+install.deps: ## install dependencies of cri (default 'seccomp apparmor' BUILDTAGS for runc build)
+	@echo "$(WHALE) $@"
 	@./hack/install/install-deps.sh
 
 .PHONY: .gitvalidation
 # When this is running in travis, it will only check the travis commit range.
 # When running outside travis, it will check from $(EPOCH_TEST_COMMIT)..HEAD.
 .gitvalidation:
+	@echo "$(WHALE) $@"
 ifeq ($(TRAVIS),true)
 	git-validation -q -run DCO,short-subject
 else
 	git-validation -v -run DCO,short-subject -range $(EPOCH_TEST_COMMIT)..HEAD
 endif
 
-.PHONY: install.tools .install.gitvalidation .install.gometalinter
+.PHONY: install.tools .install.gitvalidation .install.golangci-lint .install.vndr
 
-install.tools: .install.gitvalidation .install.gometalinter
+install.tools: .install.gitvalidation .install.golangci-lint .install.vndr ## install tools used by verify
+	@echo "$(WHALE) $@"
 
 .install.gitvalidation:
+	@echo "$(WHALE) $@"
 	$(GO) get -u github.com/vbatts/git-validation
 
-.install.gometalinter:
-	$(GO) get -u github.com/alecthomas/gometalinter
-	gometalinter --install
+.install.golangci-lint:
+	@echo "$(WHALE) $@"
+	$(GO) get -u github.com/golangci/golangci-lint/cmd/golangci-lint
+
+.install.vndr:
+	@echo "$(WHALE) $@"
+	$(GO) get -u github.com/LK4D4/vndr
 
 .PHONY: \
 	binaries \
 	static-binaries \
-	ctr \
-	install-ctr \
 	containerd \
 	install-containerd \
 	release \
@@ -204,4 +196,5 @@ install.tools: .install.gitvalidation .install.gometalinter
 	test-e2e-node \
 	uninstall \
 	version \
-	proto
+	proto \
+	check-vendor

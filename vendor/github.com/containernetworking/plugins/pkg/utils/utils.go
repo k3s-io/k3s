@@ -22,20 +22,39 @@ import (
 const (
 	maxChainLength = 28
 	chainPrefix    = "CNI-"
-	prefixLength   = len(chainPrefix)
 )
 
-// Generates a chain name to be used with iptables.
-// Ensures that the generated chain name is exactly
-// maxChainLength chars in length
+// FormatChainName generates a chain name to be used
+// with iptables. Ensures that the generated chain
+// name is exactly maxChainLength chars in length.
 func FormatChainName(name string, id string) string {
-	chainBytes := sha512.Sum512([]byte(name + id))
-	chain := fmt.Sprintf("%s%x", chainPrefix, chainBytes)
-	return chain[:maxChainLength]
+	return MustFormatChainNameWithPrefix(name, id, "")
+}
+
+// MustFormatChainNameWithPrefix generates a chain name similar
+// to FormatChainName, but adds a custom prefix between
+// chainPrefix and unique identifier. Ensures that the
+// generated chain name is exactly maxChainLength chars in length.
+// Panics if the given prefix is too long.
+func MustFormatChainNameWithPrefix(name string, id string, prefix string) string {
+	return MustFormatHashWithPrefix(maxChainLength, chainPrefix+prefix, name+id)
 }
 
 // FormatComment returns a comment used for easier
 // rule identification within iptables.
 func FormatComment(name string, id string) string {
 	return fmt.Sprintf("name: %q id: %q", name, id)
+}
+
+const MaxHashLen = sha512.Size * 2
+
+// MustFormatHashWithPrefix returns a string of given length that begins with the
+// given prefix. It is filled with entropy based on the given string toHash.
+func MustFormatHashWithPrefix(length int, prefix string, toHash string) string {
+	if len(prefix) >= length || length > MaxHashLen {
+		panic("invalid length")
+	}
+
+	output := sha512.Sum512([]byte(toHash))
+	return fmt.Sprintf("%s%x", prefix, output)[:length]
 }
