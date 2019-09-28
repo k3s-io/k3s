@@ -195,7 +195,7 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 			},
 			cli.StringFlag{
 				Name:        "flannel-backend",
-				Usage:       fmt.Sprintf("One of '%s', '%s', '%s', or '%s'", config.FlannelBackendNone, config.FlannelBackendVXLAN, config.FlannelBackendIPSEC, config.FlannelBackendWireguard),
+				Usage:       fmt.Sprintf("(experimental) One of '%s', '%s', '%s', or '%s'", config.FlannelBackendNone, config.FlannelBackendVXLAN, config.FlannelBackendIPSEC, config.FlannelBackendWireguard),
 				Destination: &ServerConfig.FlannelBackend,
 				Value:       config.FlannelBackendVXLAN,
 			},

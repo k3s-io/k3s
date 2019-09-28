@@ -67,7 +67,7 @@ var (
 	}
 	FlannelConfFlag = cli.StringFlag{
 		Name:        "flannel-conf",
-		Usage:       "(agent) Override default flannel config file",
+		Usage:       "(agent) (experimental) Override default flannel config file",
 		Destination: &AgentConfig.FlannelConf,
 	}
 	CRIEndpointFlag = cli.StringFlag{
