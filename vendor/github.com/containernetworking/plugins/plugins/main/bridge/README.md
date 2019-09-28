@@ -28,6 +28,17 @@ If the bridge is missing, the plugin will create one on first use and, if gatewa
 }
 ```
 
+## Example L2-only configuration
+```
+{
+    "cniVersion": "0.3.1",
+	"name": "mynet",
+	"type": "bridge",
+	"bridge": "mynet0",
+	"ipam": {}
+}
+```
+
 ## Network configuration reference
 
 * `name` (string, required): the name of the network.
@@ -39,5 +50,10 @@ If the bridge is missing, the plugin will create one on first use and, if gatewa
 * `ipMasq` (boolean, optional): set up IP Masquerade on the host for traffic originating from this network and destined outside of it. Defaults to false.
 * `mtu` (integer, optional): explicitly set MTU to the specified value. Defaults to the value chosen by the kernel.
 * `hairpinMode` (boolean, optional): set hairpin mode for interfaces on the bridge. Defaults to false.
-* `ipam` (dictionary, required): IPAM configuration to be used for this network.
+* `ipam` (dictionary, required): IPAM configuration to be used for this network. For L2-only network, create empty dictionary.
 * `promiscMode` (boolean, optional): set promiscuous mode on the bridge. Defaults to false.
+* `vlan` (int, optional): assign VLAN tag. Defaults to none.
+
+*Note:* The VLAN parameter configures the VLAN tag on the host end of the veth and also enables the vlan_filtering feature on the bridge interface.
+
+*Note:* To configure uplink for L2 network you need to allow the vlan on the uplink interface by using the following command ``` bridge vlan add vid VLAN_ID dev DEV```.

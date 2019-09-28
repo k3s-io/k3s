@@ -34,7 +34,7 @@ import (
 	"github.com/containerd/containerd/pkg/progress"
 	"github.com/containerd/containerd/platforms"
 	"github.com/containerd/containerd/remotes"
-	digest "github.com/opencontainers/go-digest"
+	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/urfave/cli"
 )
@@ -66,6 +66,14 @@ Most of this is experimental and there are few leaps to make this work.`,
 			Name:  "all-platforms",
 			Usage: "pull content from all platforms",
 		},
+		cli.BoolFlag{
+			Name:  "all-metadata",
+			Usage: "Pull metadata for all platforms",
+		},
+		cli.BoolFlag{
+			Name:  "metadata-only",
+			Usage: "Pull all metadata including manifests and configs",
+		},
 	),
 	Action: func(clicontext *cli.Context) error {
 		var (
@@ -80,6 +88,7 @@ Most of this is experimental and there are few leaps to make this work.`,
 		if err != nil {
 			return err
 		}
+
 		_, err = Fetch(ctx, client, ref, config)
 		return err
 	},
@@ -93,8 +102,12 @@ type FetchConfig struct {
 	ProgressOutput io.Writer
 	// Labels to set on the content
 	Labels []string
+	// PlatformMatcher matches platforms, supersedes Platforms
+	PlatformMatcher platforms.MatchComparer
 	// Platforms to fetch
 	Platforms []string
+	// Whether or not download all metadata
+	AllMetadata bool
 }
 
 // NewFetchConfig returns the default FetchConfig from cli flags
@@ -117,6 +130,15 @@ func NewFetchConfig(ctx context.Context, clicontext *cli.Context) (*FetchConfig,
 		}
 		config.Platforms = p
 	}
+
+	if clicontext.Bool("metadata-only") {
+		config.AllMetadata = true
+		// Any with an empty set is None
+		config.PlatformMatcher = platforms.Any()
+	} else if clicontext.Bool("all-metadata") {
+		config.AllMetadata = true
+	}
+
 	return config, nil
 }
 
@@ -150,9 +172,19 @@ func Fetch(ctx context.Context, client *containerd.Client, ref string, config *F
 		containerd.WithImageHandler(h),
 		containerd.WithSchema1Conversion,
 	}
-	for _, platform := range config.Platforms {
-		opts = append(opts, containerd.WithPlatform(platform))
+
+	if config.AllMetadata {
+		opts = append(opts, containerd.WithAllMetadata())
 	}
+
+	if config.PlatformMatcher != nil {
+		opts = append(opts, containerd.WithPlatformMatcher(config.PlatformMatcher))
+	} else {
+		for _, platform := range config.Platforms {
+			opts = append(opts, containerd.WithPlatform(platform))
+		}
+	}
+
 	img, err := client.Fetch(pctx, ref, opts...)
 	stopProgress()
 	if err != nil {

@@ -20,7 +20,7 @@ LDFLAGS="
 
 STATIC="-extldflags '-static'"
 STATIC_SQLITE="-extldflags '-static -lm -ldl -lz -lpthread'"
-TAGS="ctrd apparmor seccomp no_btrfs netgo osusergo"
+TAGS="ctrd apparmor seccomp no_btrfs netgo osusergo providerless"
 
 if [ "$STATIC_BUILD" != "true" ]; then
     STATIC=""
@@ -42,6 +42,7 @@ rm -f \
     bin/cni \
     bin/runc \
     bin/containerd-shim \
+    bin/containerd-shim-runc-v1 \
     bin/k3s-server \
     bin/kubectl \
     bin/crictl \
@@ -67,6 +68,6 @@ CGO_ENABLED=0 go build -tags "$TAGS" -ldflags "$LDFLAGS $STATIC" -o bin/cni ./cm
 echo Building runc
 make EXTRA_LDFLAGS="-w -s" BUILDTAGS="apparmor seccomp" -C ./vendor/github.com/opencontainers/runc static
 cp -f ./vendor/github.com/opencontainers/runc/runc ./bin/runc
-echo Building containerd-shim
-make -C ./vendor/github.com/containerd/containerd bin/containerd-shim
-cp -f ./vendor/github.com/containerd/containerd/bin/containerd-shim ./bin/containerd-shim
+echo Building containerd-shim-runc-v1
+make -C ./vendor/github.com/containerd/containerd bin/containerd-shim-runc-v1
+cp -f ./vendor/github.com/containerd/containerd/bin/containerd-shim-runc-v1 ./bin/containerd-shim-runc-v1

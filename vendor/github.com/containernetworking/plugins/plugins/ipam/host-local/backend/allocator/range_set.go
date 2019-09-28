@@ -61,7 +61,7 @@ func (s *RangeSet) Canonicalize() error {
 	}
 
 	fam := 0
-	for i, _ := range *s {
+	for i := range *s {
 		if err := (*s)[i].Canonicalize(); err != nil {
 			return err
 		}

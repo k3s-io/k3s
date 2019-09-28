@@ -241,10 +241,6 @@ func (em *eventMonitor) handleEvent(any interface{}) error {
 	defer cancel()
 
 	switch e := any.(type) {
-	// If containerd-shim exits unexpectedly, there will be no corresponding event.
-	// However, containerd could not retrieve container state in that case, so it's
-	// fine to leave out that case for now.
-	// TODO(random-liu): [P2] Handle containerd-shim exit.
 	case *eventtypes.TaskExit:
 		logrus.Infof("TaskExit event %+v", e)
 		// Use ID instead of ContainerID to rule out TaskExit event for exec.

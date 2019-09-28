@@ -58,13 +58,13 @@ func HandleConsoleResize(ctx gocontext.Context, task resizer, con console.Consol
 }
 
 // NewTask creates a new task
-func NewTask(ctx gocontext.Context, client *containerd.Client, container containerd.Container, _ string, con console.Console, nullIO bool, ioOpts []cio.Opt, opts ...containerd.NewTaskOpts) (containerd.Task, error) {
+func NewTask(ctx gocontext.Context, client *containerd.Client, container containerd.Container, _ string, con console.Console, nullIO bool, logURI string, ioOpts []cio.Opt, opts ...containerd.NewTaskOpts) (containerd.Task, error) {
 	var ioCreator cio.Creator
 	if con != nil {
 		if nullIO {
 			return nil, errors.New("tty and null-io cannot be used together")
 		}
-		ioCreator = cio.NewCreator(append([]cio.Opt{cio.WithStreams(con, con, con), cio.WithTerminal}, ioOpts...)...)
+		ioCreator = cio.NewCreator(append([]cio.Opt{cio.WithStreams(con, con, nil), cio.WithTerminal}, ioOpts...)...)
 	} else if nullIO {
 		ioCreator = cio.NullIO
 	} else {

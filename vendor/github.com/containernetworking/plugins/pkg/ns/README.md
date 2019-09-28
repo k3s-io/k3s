@@ -12,10 +12,6 @@ For example, you cannot rely on the `ns.Set()` namespace being the current names
 The `ns.Do()` method provides **partial** control over network namespaces for you by implementing these strategies. All code dependent on a particular network namespace (including the root namespace) should be wrapped in the `ns.Do()` method to ensure the correct namespace is selected for the duration of your code.  For example:
 
 ```go
-targetNs, err := ns.NewNS()
-if err != nil {
-    return err
-}
 err = targetNs.Do(func(hostNs ns.NetNS) error {
 	dummy := &netlink.Dummy{
 		LinkAttrs: netlink.LinkAttrs{
@@ -26,11 +22,16 @@ err = targetNs.Do(func(hostNs ns.NetNS) error {
 })
 ```
 
-Note this requirement to wrap every network call is very onerous - any libraries you call might call out to network services such as DNS, and all such calls need to be protected after you call `ns.Do()`. The CNI plugins all exit very soon after calling `ns.Do()` which helps to minimize the problem.
+Note this requirement to wrap every network call is very onerous - any libraries you call might call out to network services such as DNS, and all such calls need to be protected after you call `ns.Do()`. All goroutines spawned from within the `ns.Do` will not inherit the new namespace. The CNI plugins all exit very soon after calling `ns.Do()` which helps to minimize the problem.
 
-Also:  If the runtime spawns a new OS thread, it will inherit the network namespace of the parent thread, which may have been temporarily switched, and thus the new OS thread will be permanently "stuck in the wrong namespace".
+When a new thread is spawned in Linux, it inherits the namespace of its parent. In versions of go **prior to 1.10**, if the runtime spawns a new OS thread, it picks the parent randomly. If the chosen parent thread has been moved to a new namespace (even temporarily), the new OS thread will be permanently "stuck in the wrong namespace", and goroutines will non-deterministically switch namespaces as they are rescheduled.
 
-In short, **there is no safe way to change network namespaces from within a long-lived, multithreaded Go process**.  If your daemon process needs to be namespace aware, consider spawning a separate process (like a CNI plugin) for each namespace.
+In short, **there was no safe way to change network namespaces, even temporarily, from within a long-lived, multithreaded Go process**. If you wish to do this, you must use go 1.10 or greater. 
+
+
+### Creating network namespaces
+Earlier versions of this library managed namespace creation, but as CNI does not actually utilize this feature (and it was essentially unmaintained), it was removed. If you're writing a container runtime, you should implement namespace management yourself. However, there are some gotchas when doing so, especially around handling `/var/run/netns`. A reasonably correct reference implementation, borrowed from `rkt`, can be found in `pkg/testutils/netns_linux.go` if you're in need of a source of inspiration.
+
 
 ### Further Reading
  - https://github.com/golang/go/wiki/LockOSThread

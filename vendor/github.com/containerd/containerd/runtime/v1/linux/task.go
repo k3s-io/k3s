@@ -84,6 +84,11 @@ func (t *Task) Namespace() string {
 	return t.namespace
 }
 
+// PID of the task
+func (t *Task) PID() uint32 {
+	return uint32(t.pid)
+}
+
 // Delete the task and return the exit status
 func (t *Task) Delete(ctx context.Context) (*runtime.Exit, error) {
 	rsp, err := t.shim.Delete(ctx, empty)

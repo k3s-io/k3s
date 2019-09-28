@@ -36,6 +36,10 @@ var startCommand = cli.Command{
 			Usage: "send all IO to /dev/null",
 		},
 		cli.StringFlag{
+			Name:  "log-uri",
+			Usage: "log uri",
+		},
+		cli.StringFlag{
 			Name:  "fifo-dir",
 			Usage: "directory used for storing IO FIFOs",
 		},
@@ -85,7 +89,7 @@ var startCommand = cli.Command{
 			}
 		}
 
-		task, err := NewTask(ctx, client, container, "", con, context.Bool("null-io"), ioOpts, opts...)
+		task, err := NewTask(ctx, client, container, "", con, context.Bool("null-io"), context.String("log-uri"), ioOpts, opts...)
 		if err != nil {
 			return err
 		}

@@ -34,9 +34,8 @@ import (
 	"k8s.io/kubernetes/pkg/volume/projected"
 	"k8s.io/kubernetes/pkg/volume/secret"
 
-	// features check
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
-	"k8s.io/kubernetes/pkg/features"
+	// Cloud providers
+	_ "k8s.io/kubernetes/pkg/cloudprovider/providers"
 )
 
 // ProbeVolumePlugins collects all volume plugins into an easy to use list.
@@ -49,6 +48,7 @@ func ProbeVolumePlugins() []volume.VolumePlugin {
 	//
 	// Kubelet does not currently need to configure volume plugins.
 	// If/when it does, see kube-controller-manager/app/plugins.go for example of using volume.VolumeConfig
+	allPlugins = appendLegacyProviderVolumes(allPlugins)
 	allPlugins = append(allPlugins, emptydir.ProbeVolumePlugins()...)
 	allPlugins = append(allPlugins, hostpath.ProbeVolumePlugins(volume.VolumeConfig{})...)
 	allPlugins = append(allPlugins, nfs.ProbeVolumePlugins(volume.VolumeConfig{})...)
@@ -58,9 +58,7 @@ func ProbeVolumePlugins() []volume.VolumePlugin {
 	allPlugins = append(allPlugins, configmap.ProbeVolumePlugins()...)
 	allPlugins = append(allPlugins, projected.ProbeVolumePlugins()...)
 	allPlugins = append(allPlugins, local.ProbeVolumePlugins()...)
-	if utilfeature.DefaultFeatureGate.Enabled(features.CSIPersistentVolume) {
-		allPlugins = append(allPlugins, csi.ProbeVolumePlugins()...)
-	}
+	allPlugins = append(allPlugins, csi.ProbeVolumePlugins()...)
 	return allPlugins
 }
 

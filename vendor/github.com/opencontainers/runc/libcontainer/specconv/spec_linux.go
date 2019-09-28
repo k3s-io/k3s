@@ -28,6 +28,7 @@ var namespaceMapping = map[specs.LinuxNamespaceType]configs.NamespaceType{
 	specs.UserNamespace:    configs.NEWUSER,
 	specs.IPCNamespace:     configs.NEWIPC,
 	specs.UTSNamespace:     configs.NEWUTS,
+	specs.CgroupNamespace:  configs.NEWCGROUP,
 }
 
 var mountPropagationMapping = map[string]int{
@@ -276,9 +277,10 @@ func createLibcontainerMount(cwd string, m specs.Mount) *configs.Mount {
 	source := m.Source
 	device := m.Type
 	if flags&unix.MS_BIND != 0 {
-		if device == "" {
-			device = "bind"
-		}
+		// Any "type" the user specified is meaningless (and ignored) for
+		// bind-mounts -- so we set it to "bind" because rootfs_linux.go
+		// (incorrectly) relies on this for some checks.
+		device = "bind"
 		if !filepath.IsAbs(source) {
 			source = filepath.Join(cwd, m.Source)
 		}
@@ -324,7 +326,7 @@ func createCgroupConfig(opts *CreateOpts) (*configs.Cgroup, error) {
 			// for e.g. "system.slice:docker:1234"
 			parts := strings.Split(myCgroupPath, ":")
 			if len(parts) != 3 {
-				return nil, fmt.Errorf("expected cgroupsPath to be of format \"slice:prefix:name\" for systemd cgroups")
+				return nil, fmt.Errorf("expected cgroupsPath to be of format \"slice:prefix:name\" for systemd cgroups, got %q instead", myCgroupPath)
 			}
 			c.Parent = parts[0]
 			c.ScopePrefix = parts[1]

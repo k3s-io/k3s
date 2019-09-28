@@ -6,6 +6,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/opencontainers/runc/libcontainer/logs"
+
 	"github.com/opencontainers/runtime-spec/specs-go"
 
 	"github.com/sirupsen/logrus"
@@ -85,7 +87,7 @@ func main() {
 		},
 		cli.StringFlag{
 			Name:  "log",
-			Value: "/dev/null",
+			Value: "",
 			Usage: "set the log file path where internal debug information is written",
 		},
 		cli.StringFlag{
@@ -133,26 +135,9 @@ func main() {
 		updateCommand,
 	}
 	app.Before = func(context *cli.Context) error {
-		if context.GlobalBool("debug") {
-			logrus.SetLevel(logrus.DebugLevel)
-		}
-		if path := context.GlobalString("log"); path != "" {
-			f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND|os.O_SYNC, 0666)
-			if err != nil {
-				return err
-			}
-			logrus.SetOutput(f)
-		}
-		switch context.GlobalString("log-format") {
-		case "text":
-			// retain logrus's default.
-		case "json":
-			logrus.SetFormatter(new(logrus.JSONFormatter))
-		default:
-			return fmt.Errorf("unknown log-format %q", context.GlobalString("log-format"))
-		}
-		return nil
+		return logs.ConfigureLogging(createLogConfig(context))
 	}
+
 	// If the command returns an error, cli takes upon itself to print
 	// the error on cli.ErrWriter and exit.
 	// Use our own writer here to ensure the log gets sent to the right location.
@@ -169,4 +154,23 @@ type FatalWriter struct {
 func (f *FatalWriter) Write(p []byte) (n int, err error) {
 	logrus.Error(string(p))
 	return f.cliErrWriter.Write(p)
+}
+
+func createLogConfig(context *cli.Context) logs.Config {
+	logFilePath := context.GlobalString("log")
+	logPipeFd := ""
+	if logFilePath == "" {
+		logPipeFd = "2"
+	}
+	config := logs.Config{
+		LogPipeFd:   logPipeFd,
+		LogLevel:    logrus.InfoLevel,
+		LogFilePath: logFilePath,
+		LogFormat:   context.GlobalString("log-format"),
+	}
+	if context.GlobalBool("debug") {
+		config.LogLevel = logrus.DebugLevel
+	}
+
+	return config
 }

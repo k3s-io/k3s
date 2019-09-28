@@ -21,10 +21,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 
-	"github.com/containerd/containerd"
+	"github.com/containerd/containerd/defaults"
 	"github.com/urfave/cli"
 )
 
@@ -34,7 +33,6 @@ var (
 		cli.StringFlag{
 			Name:   "snapshotter",
 			Usage:  "snapshotter name. Empty value stands for the default value.",
-			Value:  containerd.DefaultSnapshotter,
 			EnvVar: "CONTAINERD_SNAPSHOTTER",
 		},
 	}
@@ -72,16 +70,16 @@ var (
 			Usage: "path to the runtime-specific spec config file",
 		},
 		cli.StringFlag{
-			Name:  "checkpoint",
-			Usage: "provide the checkpoint digest to restore the container",
-		},
-		cli.StringFlag{
 			Name:  "cwd",
 			Usage: "specify the working directory of the process",
 		},
 		cli.StringSliceFlag{
 			Name:  "env",
 			Usage: "specify additional container environment variables (i.e. FOO=bar)",
+		},
+		cli.StringFlag{
+			Name:  "env-file",
+			Usage: "specify additional container environment variables in a file(i.e. FOO=bar, one per line)",
 		},
 		cli.StringSliceFlag{
 			Name:  "label",
@@ -106,7 +104,7 @@ var (
 		cli.StringFlag{
 			Name:  "runtime",
 			Usage: "runtime name",
-			Value: fmt.Sprintf("io.containerd.runtime.v1.%s", runtime.GOOS),
+			Value: defaults.DefaultRuntime,
 		},
 		cli.BoolFlag{
 			Name:  "tty,t",
@@ -127,6 +125,18 @@ var (
 		cli.BoolFlag{
 			Name:  "allow-new-privs",
 			Usage: "turn off OCI spec's NoNewPrivileges feature flag",
+		},
+		cli.Uint64Flag{
+			Name:  "memory-limit",
+			Usage: "memory limit (in bytes) for the container",
+		},
+		cli.StringSliceFlag{
+			Name:  "device",
+			Usage: "add a device to a container",
+		},
+		cli.BoolFlag{
+			Name:  "seccomp",
+			Usage: "enable the default seccomp profile",
 		},
 	}
 )

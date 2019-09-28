@@ -20,27 +20,25 @@ limitations under the License.
 package main
 
 import (
-	"errors"
 	goflag "flag"
-	"fmt"
-	"k8s.io/apiserver/pkg/server"
 	"math/rand"
 	"os"
-	"path"
 	"path/filepath"
 	"time"
+
+	"k8s.io/apiserver/pkg/server"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/component-base/logs"
+	_ "k8s.io/component-base/metrics/prometheus/restclient" // for client metric registration
 	kubeapiserver "k8s.io/kubernetes/cmd/kube-apiserver/app"
 	kubecontrollermanager "k8s.io/kubernetes/cmd/kube-controller-manager/app"
 	kubeproxy "k8s.io/kubernetes/cmd/kube-proxy/app"
 	kubescheduler "k8s.io/kubernetes/cmd/kube-scheduler/app"
 	kubelet "k8s.io/kubernetes/cmd/kubelet/app"
-	_ "k8s.io/kubernetes/pkg/client/metrics/prometheus" // for client metric registration
 	kubectl "k8s.io/kubernetes/pkg/kubectl/cmd"
 	_ "k8s.io/kubernetes/pkg/version/prometheus" // for version metric registration
 )
@@ -61,7 +59,6 @@ func main() {
 
 	basename := filepath.Base(os.Args[0])
 	if err := commandFor(basename, hyperkubeCommand, allCommandFns).Execute(); err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}
 }
@@ -104,53 +101,21 @@ func NewHyperKubeCommand() (*cobra.Command, []func() *cobra.Command) {
 		kubelet,
 	}
 
-	makeSymlinksFlag := false
 	cmd := &cobra.Command{
 		Use:   "hyperkube",
 		Short: "Request a new project",
 		Run: func(cmd *cobra.Command, args []string) {
-			if len(args) != 0 || !makeSymlinksFlag {
+			if len(args) != 0 {
 				cmd.Help()
 				os.Exit(1)
 			}
 
-			if err := makeSymlinks(os.Args[0], commandFns); err != nil {
-				fmt.Fprintf(os.Stderr, "%v\n", err.Error())
-			}
 		},
 	}
-	cmd.Flags().BoolVar(&makeSymlinksFlag, "make-symlinks", makeSymlinksFlag, "create a symlink for each server in current directory")
-	cmd.Flags().MarkHidden("make-symlinks") // hide this flag from appearing in servers' usage output
-	cmd.Flags().MarkDeprecated("make-symlinks", "This feature will be removed in a later release.")
 
 	for i := range commandFns {
 		cmd.AddCommand(commandFns[i]())
 	}
 
 	return cmd, commandFns
-}
-
-// makeSymlinks will create a symlink for each command in the local directory.
-func makeSymlinks(targetName string, commandFns []func() *cobra.Command) error {
-	wd, err := os.Getwd()
-	if err != nil {
-		return err
-	}
-
-	var errs bool
-	for _, commandFn := range commandFns {
-		command := commandFn()
-		link := path.Join(wd, command.Name())
-
-		err := os.Symlink(targetName, link)
-		if err != nil {
-			errs = true
-			fmt.Println(err)
-		}
-	}
-
-	if errs {
-		return errors.New("Error creating one or more symlinks")
-	}
-	return nil
 }

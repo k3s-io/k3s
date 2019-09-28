@@ -67,6 +67,20 @@ file {
       type: TYPE_BOOL
       json_name: "systemdCgroup"
     }
+    field {
+      name: "criu_image_path"
+      number: 10
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "criuImagePath"
+    }
+    field {
+      name: "criu_work_path"
+      number: 11
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "criuWorkPath"
+    }
   }
   message_type {
     name: "CheckpointOptions"
@@ -118,6 +132,20 @@ file {
       label: LABEL_OPTIONAL
       type: TYPE_STRING
       json_name: "cgroupsMode"
+    }
+    field {
+      name: "image_path"
+      number: 8
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "imagePath"
+    }
+    field {
+      name: "work_path"
+      number: 9
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "workPath"
     }
   }
   message_type {

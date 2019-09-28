@@ -20,6 +20,7 @@ package flannel
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -33,6 +34,8 @@ import (
 	"github.com/containernetworking/cni/pkg/skel"
 	"github.com/containernetworking/cni/pkg/types"
 	"github.com/containernetworking/cni/pkg/version"
+
+	bv "github.com/containernetworking/plugins/pkg/utils/buildversion"
 )
 
 const (
@@ -42,9 +45,11 @@ const (
 
 type NetConf struct {
 	types.NetConf
-	SubnetFile string                 `json:"subnetFile"`
-	DataDir    string                 `json:"dataDir"`
-	Delegate   map[string]interface{} `json:"delegate"`
+
+	SubnetFile    string                 `json:"subnetFile"`
+	DataDir       string                 `json:"dataDir"`
+	Delegate      map[string]interface{} `json:"delegate"`
+	RuntimeConfig map[string]interface{} `json:"runtimeConfig,omitempty"`
 }
 
 type subnetEnv struct {
@@ -80,6 +85,7 @@ func loadFlannelNetConf(bytes []byte) (*NetConf, error) {
 	if err := json.Unmarshal(bytes, n); err != nil {
 		return nil, fmt.Errorf("failed to load netconf: %v", err)
 	}
+
 	return n, nil
 }
 
@@ -159,7 +165,7 @@ func delegateAdd(cid, dataDir string, netconf map[string]interface{}) error {
 		return err
 	}
 
-	result, err := invoke.DelegateAdd(netconf["type"].(string), netconfBytes)
+	result, err := invoke.DelegateAdd(context.TODO(), netconf["type"].(string), netconfBytes, nil)
 	if err != nil {
 		return err
 	}
@@ -202,43 +208,11 @@ func cmdAdd(args *skel.CmdArgs) error {
 		}
 	}
 
-	n.Delegate["name"] = n.Name
-
-	if !hasKey(n.Delegate, "type") {
-		n.Delegate["type"] = "bridge"
+	if n.RuntimeConfig != nil {
+		n.Delegate["runtimeConfig"] = n.RuntimeConfig
 	}
 
-	if !hasKey(n.Delegate, "ipMasq") {
-		// if flannel is not doing ipmasq, we should
-		ipmasq := !*fenv.ipmasq
-		n.Delegate["ipMasq"] = ipmasq
-	}
-
-	if !hasKey(n.Delegate, "mtu") {
-		mtu := fenv.mtu
-		n.Delegate["mtu"] = mtu
-	}
-
-	if n.Delegate["type"].(string) == "bridge" {
-		if !hasKey(n.Delegate, "isGateway") {
-			n.Delegate["isGateway"] = true
-		}
-	}
-	if n.CNIVersion != "" {
-		n.Delegate["cniVersion"] = n.CNIVersion
-	}
-
-	n.Delegate["ipam"] = map[string]interface{}{
-		"type":   "host-local",
-		"subnet": fenv.sn.String(),
-		"routes": []types.Route{
-			types.Route{
-				Dst: *fenv.nw,
-			},
-		},
-	}
-
-	return delegateAdd(args.ContainerID, n.DataDir, n.Delegate)
+	return doCmdAdd(args, n, fenv)
 }
 
 func cmdDel(args *skel.CmdArgs) error {
@@ -247,23 +221,21 @@ func cmdDel(args *skel.CmdArgs) error {
 		return err
 	}
 
-	netconfBytes, err := consumeScratchNetConf(args.ContainerID, nc.DataDir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			// Per spec should ignore error if resources are missing / already removed
-			return nil
+	if nc.RuntimeConfig != nil {
+		if nc.Delegate == nil {
+			nc.Delegate = make(map[string]interface{})
 		}
-		return err
+		nc.Delegate["runtimeConfig"] = nc.RuntimeConfig
 	}
 
-	n := &types.NetConf{}
-	if err = json.Unmarshal(netconfBytes, n); err != nil {
-		return fmt.Errorf("failed to parse netconf: %v", err)
-	}
-
-	return invoke.DelegateDel(n.Type, netconfBytes)
+	return doCmdDel(args, nc)
 }
 
 func Main() {
-	skel.PluginMain(cmdAdd, cmdDel, version.All)
+	skel.PluginMain(cmdAdd, cmdCheck, cmdDel, version.All, bv.BuildString("flannel"))
+}
+
+func cmdCheck(args *skel.CmdArgs) error {
+	// TODO: implement
+	return nil
 }

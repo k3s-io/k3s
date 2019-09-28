@@ -105,18 +105,20 @@ func (c *ContainerIO) Config() cio.Config {
 // to output stream.
 func (c *ContainerIO) Pipe() {
 	wg := c.closer.wg
-	wg.Add(1)
-	go func() {
-		if _, err := io.Copy(c.stdoutGroup, c.stdout); err != nil {
-			logrus.WithError(err).Errorf("Failed to pipe stdout of container %q", c.id)
-		}
-		c.stdout.Close()
-		c.stdoutGroup.Close()
-		wg.Done()
-		logrus.Infof("Finish piping stdout of container %q", c.id)
-	}()
+	if c.stdout != nil {
+		wg.Add(1)
+		go func() {
+			if _, err := io.Copy(c.stdoutGroup, c.stdout); err != nil {
+				logrus.WithError(err).Errorf("Failed to pipe stdout of container %q", c.id)
+			}
+			c.stdout.Close()
+			c.stdoutGroup.Close()
+			wg.Done()
+			logrus.Infof("Finish piping stdout of container %q", c.id)
+		}()
+	}
 
-	if !c.fifos.Terminal {
+	if !c.fifos.Terminal && c.stderr != nil {
 		wg.Add(1)
 		go func() {
 			if _, err := io.Copy(c.stderrGroup, c.stderr); err != nil {

@@ -72,9 +72,11 @@ var pullImageCommand = cli.Command{
 			return cli.ShowSubcommandHelp(context)
 		}
 
-		if err := getImageClient(context); err != nil {
+		imageClient, conn, err := getImageClient(context)
+		if err != nil {
 			return err
 		}
+		defer closeConnection(context, conn)
 
 		auth, err := getAuth(context.String("creds"), context.String("auth"))
 		if err != nil {
@@ -99,6 +101,7 @@ var pullImageCommand = cli.Command{
 
 var listImageCommand = cli.Command{
 	Name:                   "images",
+	Aliases:                []string{"image", "img"},
 	Usage:                  "List images",
 	ArgsUsage:              "[REPOSITORY[:TAG]]",
 	SkipArgReorder:         true,
@@ -126,9 +129,11 @@ var listImageCommand = cli.Command{
 		},
 	},
 	Action: func(context *cli.Context) error {
-		if err := getImageClient(context); err != nil {
+		imageClient, conn, err := getImageClient(context)
+		if err != nil {
 			return err
 		}
+		defer closeConnection(context, conn)
 
 		r, err := ListImages(imageClient, context.Args().First())
 		if err != nil {
@@ -222,9 +227,12 @@ var imageStatusCommand = cli.Command{
 		if context.NArg() == 0 {
 			return cli.ShowSubcommandHelp(context)
 		}
-		if err := getImageClient(context); err != nil {
+		imageClient, conn, err := getImageClient(context)
+		if err != nil {
 			return err
 		}
+		defer closeConnection(context, conn)
+
 		verbose := !(context.Bool("quiet"))
 		output := context.String("output")
 		if output == "" { // default to json output
@@ -277,36 +285,70 @@ var imageStatusCommand = cli.Command{
 }
 
 var removeImageCommand = cli.Command{
-	Name:      "rmi",
-	Usage:     "Remove one or more images",
-	ArgsUsage: "IMAGE-ID [IMAGE-ID...]",
-	Action: func(context *cli.Context) error {
-		if context.NArg() == 0 {
-			return cli.ShowSubcommandHelp(context)
-		}
-		if err := getImageClient(context); err != nil {
+	Name:                   "rmi",
+	Usage:                  "Remove one or more images",
+	ArgsUsage:              "IMAGE-ID [IMAGE-ID...]",
+	SkipArgReorder:         true,
+	UseShortOptionHandling: true,
+	Flags: []cli.Flag{
+		cli.BoolFlag{
+			Name:  "all, a",
+			Usage: "Remove all images",
+		},
+	},
+	Action: func(ctx *cli.Context) error {
+		imageClient, conn, err := getImageClient(ctx)
+		if err != nil {
 			return err
 		}
-		for i := 0; i < context.NArg(); i++ {
-			id := context.Args().Get(i)
+		defer closeConnection(ctx, conn)
 
-			var verbose = false
-			status, err := ImageStatus(imageClient, id, verbose)
+		ids := ctx.Args()
+		if ctx.Bool("all") {
+			r, err := imageClient.ListImages(context.Background(),
+				&pb.ListImagesRequest{})
 			if err != nil {
-				return fmt.Errorf("image status request for %q failed: %v", id, err)
+				return err
+			}
+			ids = nil
+			for _, img := range r.GetImages() {
+				ids = append(ids, img.GetId())
+			}
+		}
+
+		if len(ids) == 0 {
+			return cli.ShowSubcommandHelp(ctx)
+		}
+
+		errored := false
+		for _, id := range ids {
+			status, err := ImageStatus(imageClient, id, false)
+			if err != nil {
+				logrus.Errorf("image status request for %q failed: %v", id, err)
+				errored = true
+				continue
 			}
 			if status.Image == nil {
-				return fmt.Errorf("no such image %s", id)
+				logrus.Errorf("no such image %s", id)
+				errored = true
+				continue
 			}
 
 			_, err = RemoveImage(imageClient, id)
 			if err != nil {
-				return fmt.Errorf("error of removing image %q: %v", id, err)
+				logrus.Errorf("error of removing image %q: %v", id, err)
+				errored = true
+				continue
 			}
 			for _, repoTag := range status.Image.RepoTags {
 				fmt.Printf("Deleted: %s\n", repoTag)
 			}
 		}
+
+		if errored {
+			return fmt.Errorf("unable to remove the image(s)")
+		}
+
 		return nil
 	},
 }
@@ -323,9 +365,12 @@ var imageFsInfoCommand = cli.Command{
 		},
 	},
 	Action: func(context *cli.Context) error {
-		if err := getImageClient(context); err != nil {
+		imageClient, conn, err := getImageClient(context)
+		if err != nil {
 			return err
 		}
+		defer closeConnection(context, conn)
+
 		output := context.String("output")
 		if output == "" { // default to json output
 			output = "json"

@@ -19,20 +19,15 @@
 package shim
 
 import (
-	"bytes"
 	"context"
 	"io"
 	"net"
 	"os"
-	"os/exec"
 	"os/signal"
 	"syscall"
 
-	"github.com/containerd/containerd/events"
-	"github.com/containerd/containerd/namespaces"
 	"github.com/containerd/containerd/sys/reaper"
 	"github.com/containerd/fifo"
-	"github.com/containerd/typeurl"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
@@ -40,9 +35,13 @@ import (
 
 // setupSignals creates a new signal handler for all signals and sets the shim as a
 // sub-reaper so that the container processes are reparented
-func setupSignals() (chan os.Signal, error) {
+func setupSignals(config Config) (chan os.Signal, error) {
 	signals := make(chan os.Signal, 32)
-	signal.Notify(signals, unix.SIGTERM, unix.SIGINT, unix.SIGCHLD, unix.SIGPIPE)
+	smp := []os.Signal{unix.SIGTERM, unix.SIGINT, unix.SIGPIPE}
+	if !config.NoReaper {
+		smp = append(smp, unix.SIGCHLD)
+	}
+	signal.Notify(signals, smp...)
 	return signals, nil
 }
 
@@ -71,11 +70,14 @@ func serveListener(path string) (net.Listener, error) {
 	return l, nil
 }
 
-func handleSignals(logger *logrus.Entry, signals chan os.Signal) error {
+func handleSignals(ctx context.Context, logger *logrus.Entry, signals chan os.Signal) error {
 	logger.Info("starting signal loop")
 
 	for {
-		for s := range signals {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case s := <-signals:
 			switch s {
 			case unix.SIGCHLD:
 				if err := reaper.Reap(); err != nil {
@@ -89,30 +91,4 @@ func handleSignals(logger *logrus.Entry, signals chan os.Signal) error {
 
 func openLog(ctx context.Context, _ string) (io.Writer, error) {
 	return fifo.OpenFifo(ctx, "log", unix.O_WRONLY, 0700)
-}
-
-func (l *remoteEventsPublisher) Publish(ctx context.Context, topic string, event events.Event) error {
-	ns, _ := namespaces.Namespace(ctx)
-	encoded, err := typeurl.MarshalAny(event)
-	if err != nil {
-		return err
-	}
-	data, err := encoded.Marshal()
-	if err != nil {
-		return err
-	}
-	cmd := exec.CommandContext(ctx, l.containerdBinaryPath, "--address", l.address, "publish", "--topic", topic, "--namespace", ns)
-	cmd.Stdin = bytes.NewReader(data)
-	c, err := reaper.Default.Start(cmd)
-	if err != nil {
-		return err
-	}
-	status, err := reaper.Default.Wait(cmd, c)
-	if err != nil {
-		return err
-	}
-	if status != 0 {
-		return errors.New("failed to publish event")
-	}
-	return nil
 }

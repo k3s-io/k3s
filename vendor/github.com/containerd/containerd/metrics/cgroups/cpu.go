@@ -21,7 +21,7 @@ package cgroups
 import (
 	"strconv"
 
-	"github.com/containerd/cgroups"
+	v1 "github.com/containerd/containerd/metrics/types/v1"
 	metrics "github.com/docker/go-metrics"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -32,7 +32,7 @@ var cpuMetrics = []*metric{
 		help: "The total cpu time",
 		unit: metrics.Nanoseconds,
 		vt:   prometheus.GaugeValue,
-		getValues: func(stats *cgroups.Metrics) []value {
+		getValues: func(stats *v1.Metrics) []value {
 			if stats.CPU == nil {
 				return nil
 			}
@@ -48,7 +48,7 @@ var cpuMetrics = []*metric{
 		help: "The total kernel cpu time",
 		unit: metrics.Nanoseconds,
 		vt:   prometheus.GaugeValue,
-		getValues: func(stats *cgroups.Metrics) []value {
+		getValues: func(stats *v1.Metrics) []value {
 			if stats.CPU == nil {
 				return nil
 			}
@@ -64,7 +64,7 @@ var cpuMetrics = []*metric{
 		help: "The total user cpu time",
 		unit: metrics.Nanoseconds,
 		vt:   prometheus.GaugeValue,
-		getValues: func(stats *cgroups.Metrics) []value {
+		getValues: func(stats *v1.Metrics) []value {
 			if stats.CPU == nil {
 				return nil
 			}
@@ -81,7 +81,7 @@ var cpuMetrics = []*metric{
 		unit:   metrics.Nanoseconds,
 		vt:     prometheus.GaugeValue,
 		labels: []string{"cpu"},
-		getValues: func(stats *cgroups.Metrics) []value {
+		getValues: func(stats *v1.Metrics) []value {
 			if stats.CPU == nil {
 				return nil
 			}
@@ -100,7 +100,7 @@ var cpuMetrics = []*metric{
 		help: "The total cpu throttle periods",
 		unit: metrics.Total,
 		vt:   prometheus.GaugeValue,
-		getValues: func(stats *cgroups.Metrics) []value {
+		getValues: func(stats *v1.Metrics) []value {
 			if stats.CPU == nil {
 				return nil
 			}
@@ -116,7 +116,7 @@ var cpuMetrics = []*metric{
 		help: "The total cpu throttled periods",
 		unit: metrics.Total,
 		vt:   prometheus.GaugeValue,
-		getValues: func(stats *cgroups.Metrics) []value {
+		getValues: func(stats *v1.Metrics) []value {
 			if stats.CPU == nil {
 				return nil
 			}
@@ -132,7 +132,7 @@ var cpuMetrics = []*metric{
 		help: "The total cpu throttled time",
 		unit: metrics.Nanoseconds,
 		vt:   prometheus.GaugeValue,
-		getValues: func(stats *cgroups.Metrics) []value {
+		getValues: func(stats *v1.Metrics) []value {
 			if stats.CPU == nil {
 				return nil
 			}

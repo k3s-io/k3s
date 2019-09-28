@@ -15,14 +15,19 @@
 package ipam
 
 import (
+	"context"
 	"github.com/containernetworking/cni/pkg/invoke"
 	"github.com/containernetworking/cni/pkg/types"
 )
 
 func ExecAdd(plugin string, netconf []byte) (types.Result, error) {
-	return invoke.DelegateAdd(plugin, netconf)
+	return invoke.DelegateAdd(context.TODO(), plugin, netconf, nil)
+}
+
+func ExecCheck(plugin string, netconf []byte) error {
+	return invoke.DelegateCheck(context.TODO(), plugin, netconf, nil)
 }
 
 func ExecDel(plugin string, netconf []byte) error {
-	return invoke.DelegateDel(plugin, netconf)
+	return invoke.DelegateDel(context.TODO(), plugin, netconf, nil)
 }

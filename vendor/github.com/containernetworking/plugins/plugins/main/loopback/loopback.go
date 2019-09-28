@@ -15,11 +15,14 @@
 package loopback
 
 import (
+	"github.com/vishvananda/netlink"
+
 	"github.com/containernetworking/cni/pkg/skel"
 	"github.com/containernetworking/cni/pkg/types/current"
 	"github.com/containernetworking/cni/pkg/version"
+
 	"github.com/containernetworking/plugins/pkg/ns"
-	"github.com/vishvananda/netlink"
+	bv "github.com/containernetworking/plugins/pkg/utils/buildversion"
 )
 
 func cmdAdd(args *skel.CmdArgs) error {
@@ -46,6 +49,9 @@ func cmdAdd(args *skel.CmdArgs) error {
 }
 
 func cmdDel(args *skel.CmdArgs) error {
+	if args.Netns == "" {
+		return nil
+	}
 	args.IfName = "lo" // ignore config, this only works for loopback
 	err := ns.WithNetNSPath(args.Netns, func(ns.NetNS) error {
 		link, err := netlink.LinkByName(args.IfName)
@@ -68,5 +74,10 @@ func cmdDel(args *skel.CmdArgs) error {
 }
 
 func Main() {
-	skel.PluginMain(cmdAdd, cmdDel, version.All)
+	skel.PluginMain(cmdAdd, cmdCheck, cmdDel, version.All, bv.BuildString("loopback"))
+}
+
+func cmdCheck(args *skel.CmdArgs) error {
+	// TODO: implement
+	return nil
 }

@@ -25,14 +25,17 @@ import (
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/images/archive"
+	"github.com/containerd/containerd/platforms"
 	digest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 type importOpts struct {
-	indexName string
-	imageRefT func(string) string
-	dgstRefT  func(digest.Digest) string
+	indexName    string
+	imageRefT    func(string) string
+	dgstRefT     func(digest.Digest) string
+	allPlatforms bool
+	compress     bool
 }
 
 // ImportOpt allows the caller to specify import specific options
@@ -64,9 +67,26 @@ func WithIndexName(name string) ImportOpt {
 	}
 }
 
+// WithAllPlatforms is used to import content for all platforms.
+func WithAllPlatforms(allPlatforms bool) ImportOpt {
+	return func(c *importOpts) error {
+		c.allPlatforms = allPlatforms
+		return nil
+	}
+}
+
+// WithImportCompression compresses uncompressed layers on import.
+// This is used for import formats which do not include the manifest.
+func WithImportCompression() ImportOpt {
+	return func(c *importOpts) error {
+		c.compress = true
+		return nil
+	}
+}
+
 // Import imports an image from a Tar stream using reader.
 // Caller needs to specify importer. Future version may use oci.v1 as the default.
-// Note that unreferrenced blobs may be imported to the content store as well.
+// Note that unreferenced blobs may be imported to the content store as well.
 func (c *Client) Import(ctx context.Context, reader io.Reader, opts ...ImportOpt) ([]images.Image, error) {
 	var iopts importOpts
 	for _, o := range opts {
@@ -81,7 +101,12 @@ func (c *Client) Import(ctx context.Context, reader io.Reader, opts ...ImportOpt
 	}
 	defer done(ctx)
 
-	index, err := archive.ImportIndex(ctx, c.ContentStore(), reader)
+	var aio []archive.ImportOpt
+	if iopts.compress {
+		aio = append(aio, archive.WithImportCompression())
+	}
+
+	index, err := archive.ImportIndex(ctx, c.ContentStore(), reader, aio...)
 	if err != nil {
 		return nil, err
 	}
@@ -97,6 +122,10 @@ func (c *Client) Import(ctx context.Context, reader io.Reader, opts ...ImportOpt
 			Name:   iopts.indexName,
 			Target: index,
 		})
+	}
+	var platformMatcher = platforms.All
+	if !iopts.allPlatforms {
+		platformMatcher = c.platform
 	}
 
 	var handler images.HandlerFunc = func(ctx context.Context, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
@@ -116,16 +145,12 @@ func (c *Client) Import(ctx context.Context, reader io.Reader, opts ...ImportOpt
 		}
 
 		for _, m := range idx.Manifests {
-			if ref := m.Annotations[ocispec.AnnotationRefName]; ref != "" {
-				if iopts.imageRefT != nil {
-					ref = iopts.imageRefT(ref)
-				}
-				if ref != "" {
-					imgs = append(imgs, images.Image{
-						Name:   ref,
-						Target: m,
-					})
-				}
+			name := imageName(m.Annotations, iopts.imageRefT)
+			if name != "" {
+				imgs = append(imgs, images.Image{
+					Name:   name,
+					Target: m,
+				})
 			}
 			if iopts.dgstRefT != nil {
 				ref := iopts.dgstRefT(m.Digest)
@@ -141,6 +166,7 @@ func (c *Client) Import(ctx context.Context, reader io.Reader, opts ...ImportOpt
 		return idx.Manifests, nil
 	}
 
+	handler = images.FilterPlatforms(handler, platformMatcher)
 	handler = images.SetChildrenLabels(cs, handler)
 	if err := images.Walk(ctx, handler, index); err != nil {
 		return nil, err
@@ -162,4 +188,18 @@ func (c *Client) Import(ctx context.Context, reader io.Reader, opts ...ImportOpt
 	}
 
 	return imgs, nil
+}
+
+func imageName(annotations map[string]string, ociCleanup func(string) string) string {
+	name := annotations[images.AnnotationImageName]
+	if name != "" {
+		return name
+	}
+	name = annotations[ocispec.AnnotationRefName]
+	if name != "" {
+		if ociCleanup != nil {
+			name = ociCleanup(name)
+		}
+	}
+	return name
 }

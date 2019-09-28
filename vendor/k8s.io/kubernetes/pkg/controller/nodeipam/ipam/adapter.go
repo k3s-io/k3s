@@ -1,4 +1,4 @@
-// +build delete
+// +build !providerless
 
 /*
 Copyright 2017 The Kubernetes Authors.
@@ -25,25 +25,28 @@ import (
 
 	"k8s.io/klog"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	clientset "k8s.io/client-go/kubernetes"
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/record"
 	nodeutil "k8s.io/kubernetes/pkg/util/node"
+	"k8s.io/legacy-cloud-providers/gce"
 	"k8s.io/metrics/pkg/client/clientset/versioned/scheme"
 )
 
 type adapter struct {
 	k8s   clientset.Interface
+	cloud *gce.Cloud
 
 	recorder record.EventRecorder
 }
 
-func newAdapter(k8s clientset.Interface, cloud interface{}) *adapter {
+func newAdapter(k8s clientset.Interface, cloud *gce.Cloud) *adapter {
 	ret := &adapter{
 		k8s:   k8s,
+		cloud: cloud,
 	}
 
 	broadcaster := record.NewBroadcaster()

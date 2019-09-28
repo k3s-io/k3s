@@ -20,10 +20,12 @@ import (
 	"context"
 
 	api "github.com/containerd/containerd/api/services/events/v1"
+	apittrpc "github.com/containerd/containerd/api/services/ttrpc/events/v1"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/events"
 	"github.com/containerd/containerd/events/exchange"
 	"github.com/containerd/containerd/plugin"
+	"github.com/containerd/ttrpc"
 	ptypes "github.com/gogo/protobuf/types"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
@@ -40,16 +42,27 @@ func init() {
 }
 
 type service struct {
-	events *exchange.Exchange
+	ttService *ttrpcService
+	events    *exchange.Exchange
 }
 
 // NewService returns the GRPC events server
 func NewService(events *exchange.Exchange) api.EventsServer {
-	return &service{events: events}
+	return &service{
+		ttService: &ttrpcService{
+			events: events,
+		},
+		events: events,
+	}
 }
 
 func (s *service) Register(server *grpc.Server) error {
 	api.RegisterEventsServer(server, s)
+	return nil
+}
+
+func (s *service) RegisterTTRPC(server *ttrpc.Server) error {
+	apittrpc.RegisterEventsService(server, s.ttService)
 	return nil
 }
 
