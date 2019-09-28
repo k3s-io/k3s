@@ -33,7 +33,6 @@ import (
 
 	"golang.org/x/net/context"
 
-	"github.com/Microsoft/hcsshim"
 	"github.com/Microsoft/hcsshim/hcn"
 	"github.com/coreos/flannel/backend"
 	"github.com/coreos/flannel/pkg/ip"
@@ -65,9 +64,13 @@ func New(sm subnet.Manager, extIface *backend.ExternalInterface) (backend.Backen
 }
 
 func newSubnetAttrs(publicIP net.IP, vnid uint16, mac net.HardwareAddr) (*subnet.LeaseAttrs, error) {
+	var hardwareAddress hardwareAddr
+	if mac != nil {
+		hardwareAddress = hardwareAddr(mac)
+	}
 	leaseAttrs := &vxlanLeaseAttrs{
 		VNI:     vnid,
-		VtepMAC: hardwareAddr(mac),
+		VtepMAC: hardwareAddress,
 	}
 	data, err := json.Marshal(&leaseAttrs)
 	if err != nil {
@@ -123,33 +126,12 @@ func (be *VXLANBackend) RegisterNetwork(ctx context.Context, wg sync.WaitGroup, 
 	}
 	log.Infof("VXLAN config: Name=%s MacPrefix=%s VNI=%d Port=%d GBP=%v DirectRouting=%v", cfg.Name, cfg.MacPrefix, cfg.VNI, cfg.Port, cfg.GBP, cfg.DirectRouting)
 
-	hnsNetworks, err := hcsshim.HNSListNetworkRequest("GET", "", "")
-	if err != nil {
-		log.Infof("Cannot get HNS networks [%+v]", err)
-	}
-
-	var remoteDrMac string
-	for _, hnsnetwork := range hnsNetworks {
-		if hnsnetwork.ManagementIP == be.extIface.ExtAddr.String() {
-			hcnnetwork, err := hcn.GetNetworkByID(hnsnetwork.Id)
-			policies := hcnnetwork.Policies
-			for _, policy := range policies {
-				if policy.Type == hcn.DrMacAddress {
-					policySettings := hcn.DrMacAddressNetworkPolicySetting{}
-					err = json.Unmarshal(policy.Settings, &policySettings)
-					if err != nil {
-						return nil, fmt.Errorf("Failed to unmarshal settings")
-					}
-					remoteDrMac = policySettings.Address
-				}
-			}
-		}
-	}
-	mac, err := net.ParseMAC(string(remoteDrMac))
+	err := hcn.RemoteSubnetSupported()
 	if err != nil {
 		return nil, err
 	}
-	subnetAttrs, err := newSubnetAttrs(be.extIface.ExtAddr, uint16(cfg.VNI), mac)
+
+	subnetAttrs, err := newSubnetAttrs(be.extIface.ExtAddr, uint16(cfg.VNI), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -176,7 +158,41 @@ func (be *VXLANBackend) RegisterNetwork(ctx context.Context, wg sync.WaitGroup, 
 	dev.directRouting = cfg.DirectRouting
 	dev.macPrefix = cfg.MacPrefix
 
-	return newNetwork(be.subnetMgr, be.extIface, dev, ip.IP4Net{}, lease)
+	network, err := newNetwork(be.subnetMgr, be.extIface, dev, ip.IP4Net{}, lease)
+	if err != nil {
+		return nil, err
+	}
+
+	hcnNetwork, err := hcn.GetNetworkByName(cfg.Name)
+	if err != nil {
+		return nil, err
+	}
+
+	var newDrMac string
+	for _, policy := range hcnNetwork.Policies {
+		if policy.Type == hcn.DrMacAddress {
+			policySettings := hcn.DrMacAddressNetworkPolicySetting{}
+			err = json.Unmarshal(policy.Settings, &policySettings)
+			if err != nil {
+				return nil, fmt.Errorf("Failed to unmarshal settings")
+			}
+			newDrMac = policySettings.Address
+		}
+	}
+
+	mac, err := net.ParseMAC(string(newDrMac))
+	if err != nil {
+		return nil, fmt.Errorf("Cannot parse DR MAC %v: %+v", newDrMac, err)
+	}
+
+	subnetAttrs, err = newSubnetAttrs(be.extIface.ExtAddr, uint16(cfg.VNI), mac)
+	if err != nil {
+		return nil, err
+	}
+
+	lease, err = be.subnetMgr.AcquireLease(ctx, subnetAttrs)
+
+	return network, nil
 }
 
 // So we can make it JSON (un)marshalable

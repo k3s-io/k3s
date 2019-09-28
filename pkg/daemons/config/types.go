@@ -13,11 +13,20 @@ import (
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 )
 
+const (
+	FlannelBackendNone      = "none"
+	FlannelBackendVXLAN     = "vxlan"
+	FlannelBackendIPSEC     = "ipsec"
+	FlannelBackendWireguard = "wireguard"
+)
+
 type Node struct {
 	Docker                   bool
 	ContainerRuntimeEndpoint string
 	NoFlannel                bool
+	FlannelBackend           string
 	FlannelConf              string
+	FlannelConfOverride      bool
 	FlannelIface             *net.Interface
 	Containerd               Containerd
 	Images                   string
@@ -65,6 +74,8 @@ type Agent struct {
 	CNIPlugin           bool
 	NodeTaints          []string
 	NodeLabels          []string
+	IPSECPSK            string
+	StrongSwanDir       string
 }
 
 type Control struct {
@@ -89,6 +100,8 @@ type Control struct {
 	ExtraControllerArgs   []string
 	ExtraSchedulerAPIArgs []string
 	NoLeaderElect         bool
+	FlannelBackend        string
+	IPSECPSK              string
 
 	Runtime *ControlRuntime `json:"-"`
 }
@@ -105,6 +118,7 @@ type ControlRuntimeBootstrap struct {
 	ClientKubeletKey   string
 	ClientKubeProxyKey string
 	ServingKubeletKey  string
+	IPSECKey           string
 }
 
 type ControlRuntime struct {
