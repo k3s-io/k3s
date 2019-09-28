@@ -456,7 +456,7 @@ pstree() {
     for pid in $@; do
         echo $pid
         # Find and show pstree for child processes of $pid
-        $(ps -o ppid= -o pid=) | while read parent child; do
+        ps -o ppid= -o pid= | while read parent child; do
             [ $parent -ne $pid ] || pstree $child
         done
     done
