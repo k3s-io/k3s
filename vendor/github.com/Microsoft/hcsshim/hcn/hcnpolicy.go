@@ -1,6 +1,8 @@
 package hcn
 
-import "encoding/json"
+import (
+	"encoding/json"
+)
 
 // EndpointPolicyType are the potential Policies that apply to Endpoints.
 type EndpointPolicyType string
@@ -64,14 +66,18 @@ type SubnetPolicy struct {
 	Settings json.RawMessage  `json:",omitempty"`
 }
 
+// NatFlags are flags for portmappings.
+type NatFlags uint32
+
 /// Endpoint Policy objects
 
 // PortMappingPolicySetting defines Port Mapping (NAT)
 type PortMappingPolicySetting struct {
-	Protocol     uint32 `json:",omitempty"` // EX: TCP = 6, UDP = 17
-	InternalPort uint16 `json:",omitempty"`
-	ExternalPort uint16 `json:",omitempty"`
-	VIP          string `json:",omitempty"`
+	Protocol     uint32   `json:",omitempty"` // EX: TCP = 6, UDP = 17
+	InternalPort uint16   `json:",omitempty"`
+	ExternalPort uint16   `json:",omitempty"`
+	VIP          string   `json:",omitempty"`
+	Flags        NatFlags `json:",omitempty"`
 }
 
 // ActionType associated with ACLs. Value is either Allow or Block.
@@ -131,6 +137,26 @@ type SDNRoutePolicySetting struct {
 	NeedEncap         bool   `json:",omitempty"`
 }
 
+// A ProxyType is a type of proxy used by the L4 proxy policy.
+type ProxyType int
+
+const (
+	// ProxyTypeVFP specifies a Virtual Filtering Protocol proxy.
+	ProxyTypeVFP ProxyType = iota
+	// ProxyTypeWFP specifies a Windows Filtering Platform proxy.
+	ProxyTypeWFP
+)
+
+// FiveTuple is nested in L4ProxyPolicySetting for WFP support.
+type FiveTuple struct {
+	Protocols       string `json:",omitempty"`
+	LocalAddresses  string `json:",omitempty"`
+	RemoteAddresses string `json:",omitempty"`
+	LocalPorts      string `json:",omitempty"`
+	RemotePorts     string `json:",omitempty"`
+	Priority        uint16 `json:",omitempty"`
+}
+
 // L4ProxyPolicySetting sets Layer-4 Proxy on an endpoint.
 type L4ProxyPolicySetting struct {
 	IP            string   `json:",omitempty"`
@@ -139,6 +165,12 @@ type L4ProxyPolicySetting struct {
 	ExceptionList []string `json:",omitempty"`
 	Destination   string   `json:","`
 	OutboundNat   bool     `json:",omitempty"`
+
+	// For the WFP proxy
+	FilterTuple   FiveTuple `json:",omitempty"`
+	ProxyType     ProxyType `json:",omitempty"`
+	UserSID       string    `json:",omitempty"`
+	CompartmentID uint32    `json:",omitempty"`
 }
 
 // PortnameEndpointPolicySetting sets the port name for an endpoint.
