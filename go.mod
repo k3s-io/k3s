@@ -3,6 +3,7 @@ module github.com/rancher/k3s
 go 1.13
 
 replace (
+	github.com/Microsoft/hcsshim => github.com/Microsoft/hcsshim v0.8.7-0.20190926181021-82c7525d98c8
 	github.com/containerd/btrfs => github.com/containerd/btrfs v0.0.0-20181101203652-af5082808c83
 	github.com/containerd/cgroups => github.com/containerd/cgroups v0.0.0-20190717030353-c4b9ac5c7601
 	github.com/containerd/console => github.com/containerd/console v0.0.0-20181022165439-0650fd9eeb50
@@ -58,17 +59,15 @@ replace (
 	k8s.io/sample-cli-plugin => github.com/rancher/kubernetes/staging/src/k8s.io/sample-cli-plugin v1.16.0-k3s.1
 	k8s.io/sample-controller => github.com/rancher/kubernetes/staging/src/k8s.io/sample-controller v1.16.0-k3s.1
 	mvdan.cc/unparam => mvdan.cc/unparam v0.0.0-20190209190245-fbb59629db34
-// github.com/Microsoft/hcsshim/cmd/containerd-shim-runhcs-v1/options => github.com/Microsoft/hcsshim/cmd/containerd-shim-runhcs-v1/options 82c7525d98c8
 )
 
 require (
-	github.com/Microsoft/go-winio v0.4.14 // indirect
 	github.com/NYTimes/gziphandler v1.1.1 // indirect
 	github.com/bhendo/go-powershell v0.0.0-20190719160123-219e7fb4e41e // indirect
 	github.com/bronze1man/goStrongswanVici v0.0.0-20190828090544-27d02f80ba40 // indirect
 	github.com/buger/jsonparser v0.0.0-20181115193947-bf1c66bbce23 // indirect
 	github.com/containerd/cgroups v0.0.0-20190923161937-abd0b19954a6 // indirect
-	github.com/containerd/containerd v1.2.8
+	github.com/containerd/containerd v1.3.0-beta.2.0.20190828155532-0293cbd26c69
 	github.com/containerd/continuity v0.0.0-20190827140505-75bee3e2ccb6 // indirect
 	github.com/containerd/cri v1.11.1-0.20190909171321-f4d75d321c89
 	github.com/containerd/fifo v0.0.0-20190816180239-bda0ff6ed73c // indirect
@@ -79,7 +78,6 @@ require (
 	github.com/coreos/flannel v0.11.0
 	github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e
 	github.com/docker/docker v0.7.3-0.20190731001754-589f1dad8dad
-	github.com/docker/go-events v0.0.0-20190806004212-e31b211e4f1c // indirect
 	github.com/docker/go-metrics v0.0.1 // indirect
 	github.com/docker/libnetwork v0.8.0-dev.2.0.20190624125649-f0e46a78ea34 // indirect
 	github.com/go-bindata/go-bindata v3.1.2+incompatible
@@ -114,7 +112,7 @@ require (
 	github.com/urfave/cli v1.21.0
 	go.etcd.io/bbolt v1.3.3 // indirect
 	golang.org/x/net v0.0.0-20190812203447-cdfb69ac37fc
-	golang.org/x/sys v0.0.0-20190812073006-9eafafc0a87e
+	golang.org/x/sys v0.0.0-20190916202348-b4ddaad3f8a3
 	google.golang.org/grpc v1.23.0
 	gopkg.in/mgo.v2 v2.0.0-20190816093944-a6b53ec6cb22 // indirect
 	k8s.io/api v0.0.0
