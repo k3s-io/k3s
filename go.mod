@@ -1,6 +1,6 @@
 module github.com/rancher/k3s
 
-go 1.12
+go 1.13
 
 replace (
 	github.com/containerd/btrfs => github.com/containerd/btrfs v0.0.0-20181101203652-af5082808c83
