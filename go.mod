@@ -23,7 +23,6 @@ replace (
 	github.com/prometheus/client_model => github.com/prometheus/client_model v0.0.0-20180712105110-5c3871d89910
 	github.com/prometheus/common => github.com/prometheus/common v0.0.0-20181126121408-4724e9255275
 	github.com/prometheus/procfs => github.com/prometheus/procfs v0.0.0-20181204211112-1dc9a6cbc91a
-	github.com/rancher/dynamiclistener => github.com/erikwilson/rancher-dynamiclistener v0.0.0-20190717164634-c08b499d1719
 	github.com/rancher/kine => github.com/ibuildthecloud/kine v0.1.0
 	k8s.io/api => github.com/rancher/kubernetes/staging/src/k8s.io/api v1.16.0-k3s.1
 	k8s.io/apiextensions-apiserver => github.com/rancher/kubernetes/staging/src/k8s.io/apiextensions-apiserver v1.16.0-k3s.1
@@ -92,7 +91,7 @@ require (
 	github.com/opencontainers/runc v1.0.0-rc2.0.20190611121236-6cc515888830
 	github.com/pkg/errors v0.8.1
 	github.com/rakelkar/gonetsh v0.0.0-20190719023240-501daadcadf8 // indirect
-	github.com/rancher/dynamiclistener v0.0.0-20190717164634-c08b499d1719
+	github.com/rancher/dynamiclistener v0.0.0-20190926205813-e2ac9e2c193d
 	github.com/rancher/helm-controller v0.2.2
 	github.com/rancher/kine v0.0.0-00010101000000-000000000000
 	github.com/rancher/remotedialer v0.2.0

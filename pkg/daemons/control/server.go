@@ -569,7 +569,7 @@ func genClientCerts(config *config.Control, runtime *config.ControlRuntime) erro
 		return err
 	}
 
-	if _, _, err := certutil.LoadOrGenerateKeyFile(runtime.ClientKubeletKey); err != nil {
+	if _, _, err := certutil.LoadOrGenerateKeyFile(runtime.ClientKubeletKey, regen); err != nil {
 		return err
 	}
 
@@ -614,7 +614,7 @@ func genServerCerts(config *config.Control, runtime *config.ControlRuntime) erro
 		return err
 	}
 
-	if _, _, err := certutil.LoadOrGenerateKeyFile(runtime.ServingKubeletKey); err != nil {
+	if _, _, err := certutil.LoadOrGenerateKeyFile(runtime.ServingKubeletKey, regen); err != nil {
 		return err
 	}
 
@@ -638,6 +638,11 @@ func genRequestHeaderCerts(config *config.Control, runtime *config.ControlRuntim
 }
 
 func createClientCertKey(regen bool, commonName string, organization []string, altNames *certutil.AltNames, extKeyUsage []x509.ExtKeyUsage, caCertFile, caKeyFile, certFile, keyFile string) (bool, error) {
+	// check for certificate expiration
+	if !regen {
+		regen = expired(certFile)
+	}
+
 	if !regen {
 		if exists(certFile, keyFile) {
 			return false, nil
@@ -663,8 +668,7 @@ func createClientCertKey(regen bool, commonName string, organization []string, a
 	if err != nil {
 		return false, err
 	}
-
-	keyBytes, _, err := certutil.LoadOrGenerateKeyFile(keyFile)
+	keyBytes, _, err := certutil.LoadOrGenerateKeyFile(keyFile, regen)
 	if err != nil {
 		return false, err
 	}
@@ -718,7 +722,7 @@ func createSigningCertKey(prefix, certFile, keyFile string) (bool, error) {
 		return false, nil
 	}
 
-	caKeyBytes, _, err := certutil.LoadOrGenerateKeyFile(keyFile)
+	caKeyBytes, _, err := certutil.LoadOrGenerateKeyFile(keyFile, false)
 	if err != nil {
 		return false, err
 	}
@@ -781,4 +785,22 @@ func setupStorageBackend(argsMap map[string]string, cfg *config.Control) {
 	if len(cfg.Storage.KeyFile) > 0 {
 		argsMap["etcd-keyfile"] = cfg.Storage.KeyFile
 	}
+}
+
+func expired(certFile string) bool {
+	certBytes, err := ioutil.ReadFile(certFile)
+	if err != nil {
+		return false
+	}
+	certificates, err := certutil.ParseCertsPEM(certBytes)
+	if err != nil {
+		return false
+	}
+	expirationDate := certificates[0].NotAfter
+	diffDays := expirationDate.Sub(time.Now()).Hours() / 24.0
+	if diffDays <= 90 {
+		logrus.Infof("certificate %s is about to expire", certFile)
+		return true
+	}
+	return false
 }
