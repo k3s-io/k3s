@@ -483,12 +483,10 @@ do_unmount '/run/k3s'
 do_unmount '/var/lib/rancher/k3s'
 
 # Delete network interface(s) that match 'master cni0'
-while read ignore iface ignore; do
+ip link show | grep 'master cni0' | while read ignore iface ignore; do
     iface=${iface%%@*}
     [ -z "$iface" ] || ip link delete $iface
-done <<-EOF
-    $(ip link show | grep 'master cni0')
-EOF
+done
 ip link delete cni0
 ip link delete flannel.1
 rm -rf /var/lib/cni/
