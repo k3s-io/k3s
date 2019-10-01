@@ -79,29 +79,30 @@ type Agent struct {
 }
 
 type Control struct {
-	AdvertisePort         int
-	AdvertiseIP           string
-	ListenPort            int
-	HTTPSPort             int
-	ClusterSecret         string
-	ClusterIPRange        *net.IPNet
-	ServiceIPRange        *net.IPNet
-	ClusterDNS            net.IP
-	ClusterDomain         string
-	NoCoreDNS             bool
-	KubeConfigOutput      string
-	KubeConfigMode        string
-	DataDir               string
-	Skips                 []string
-	BootstrapReadOnly     bool
-	Storage               endpoint.Config
-	NoScheduler           bool
-	ExtraAPIArgs          []string
-	ExtraControllerArgs   []string
-	ExtraSchedulerAPIArgs []string
-	NoLeaderElect         bool
-	FlannelBackend        string
-	IPSECPSK              string
+	AdvertisePort           int
+	AdvertiseIP             string
+	ListenPort              int
+	HTTPSPort               int
+	ClusterSecret           string
+	ClusterIPRange          *net.IPNet
+	ServiceIPRange          *net.IPNet
+	ClusterDNS              net.IP
+	ClusterDomain           string
+	NoCoreDNS               bool
+	KubeConfigOutput        string
+	KubeConfigMode          string
+	DataDir                 string
+	Skips                   []string
+	BootstrapReadOnly       bool
+	Storage                 endpoint.Config
+	NoScheduler             bool
+	ExtraAPIArgs            []string
+	ExtraControllerArgs     []string
+	ExtraSchedulerAPIArgs   []string
+	NoLeaderElect           bool
+	FlannelBackend          string
+	IPSECPSK                string
+	DefaultLocalStoragePath string
 
 	Runtime *ControlRuntime `json:"-"`
 }

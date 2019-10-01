@@ -176,8 +176,9 @@ func stageFiles(ctx context.Context, sc *Context, controlConfig *config.Control)
 
 	dataDir = filepath.Join(controlConfig.DataDir, "manifests")
 	templateVars := map[string]string{
-		"%{CLUSTER_DNS}%":    controlConfig.ClusterDNS.String(),
-		"%{CLUSTER_DOMAIN}%": controlConfig.ClusterDomain,
+		"%{CLUSTER_DNS}%":                controlConfig.ClusterDNS.String(),
+		"%{CLUSTER_DOMAIN}%":             controlConfig.ClusterDomain,
+		"%{DEFAULT_LOCAL_STORAGE_PATH}%": controlConfig.DefaultLocalStoragePath,
 	}
 
 	if err := deploy.Stage(dataDir, templateVars, controlConfig.Skips); err != nil {
