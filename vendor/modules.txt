@@ -35,15 +35,14 @@ github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud/mock
 github.com/JeffAshton/win_pdh
 # github.com/MakeNowJust/heredoc v0.0.0-20170808103936-bb23615498cd
 github.com/MakeNowJust/heredoc
-# github.com/Microsoft/go-winio v0.4.14
+# github.com/Microsoft/go-winio v0.4.15-0.20190919025122-fc70bd9a86b5
 github.com/Microsoft/go-winio
 github.com/Microsoft/go-winio/pkg/etw
 github.com/Microsoft/go-winio/pkg/etwlogrus
 github.com/Microsoft/go-winio/pkg/guid
-# github.com/Microsoft/hcsshim v0.8.6
+# github.com/Microsoft/hcsshim v0.8.6 => github.com/Microsoft/hcsshim v0.8.7-0.20190926181021-82c7525d98c8
 github.com/Microsoft/hcsshim
 github.com/Microsoft/hcsshim/hcn
-github.com/Microsoft/hcsshim/internal/guid
 github.com/Microsoft/hcsshim/internal/hcs
 github.com/Microsoft/hcsshim/internal/hcserror
 github.com/Microsoft/hcsshim/internal/hns
@@ -54,9 +53,13 @@ github.com/Microsoft/hcsshim/internal/cni
 github.com/Microsoft/hcsshim/internal/interop
 github.com/Microsoft/hcsshim/internal/regstate
 github.com/Microsoft/hcsshim/internal/runhcs
-github.com/Microsoft/hcsshim/internal/guestrequest
+github.com/Microsoft/hcsshim/cmd/containerd-shim-runhcs-v1/options
+github.com/Microsoft/hcsshim/internal/cow
+github.com/Microsoft/hcsshim/internal/log
 github.com/Microsoft/hcsshim/internal/logfields
+github.com/Microsoft/hcsshim/internal/oc
 github.com/Microsoft/hcsshim/internal/timeout
+github.com/Microsoft/hcsshim/internal/vmcompute
 github.com/Microsoft/hcsshim/internal/schema2
 github.com/Microsoft/hcsshim/internal/longpath
 github.com/Microsoft/hcsshim/internal/safefile
@@ -148,9 +151,9 @@ github.com/cloudflare/cfssl/info
 github.com/container-storage-interface/spec/lib/go/csi
 # github.com/containerd/cgroups v0.0.0-20190923161937-abd0b19954a6 => github.com/containerd/cgroups v0.0.0-20190717030353-c4b9ac5c7601
 github.com/containerd/cgroups
-# github.com/containerd/console v0.0.0-20170925154832-84eeaae905fa => github.com/containerd/console v0.0.0-20181022165439-0650fd9eeb50
+# github.com/containerd/console v0.0.0-20180822173158-c12b1e7919c1 => github.com/containerd/console v0.0.0-20181022165439-0650fd9eeb50
 github.com/containerd/console
-# github.com/containerd/containerd v1.2.8 => github.com/rancher/containerd v1.3.0-k3s.1
+# github.com/containerd/containerd v1.3.0-beta.2.0.20190828155532-0293cbd26c69 => github.com/rancher/containerd v1.3.0-k3s.1
 github.com/containerd/containerd/cmd/containerd-shim-runc-v1
 github.com/containerd/containerd
 github.com/containerd/containerd/namespaces
@@ -841,7 +844,7 @@ github.com/spf13/afero/mem
 github.com/spf13/cobra
 # github.com/spf13/pflag v1.0.3
 github.com/spf13/pflag
-# github.com/syndtr/gocapability v0.0.0-20160928074757-e7cb7fa329f4
+# github.com/syndtr/gocapability v0.0.0-20170704070218-db04d3cc01c8
 github.com/syndtr/gocapability/capability
 # github.com/tchap/go-patricia v2.3.0+incompatible
 github.com/tchap/go-patricia/patricia
@@ -883,23 +886,23 @@ github.com/vmware/govmomi/sts/internal
 github.com/vmware/govmomi/lookup/methods
 # go.etcd.io/bbolt v1.3.3
 go.etcd.io/bbolt
-# go.opencensus.io v0.21.0
+# go.opencensus.io v0.22.0
+go.opencensus.io/trace
+go.opencensus.io/internal
+go.opencensus.io/trace/internal
+go.opencensus.io/trace/tracestate
+go.opencensus.io
 go.opencensus.io/plugin/ochttp
 go.opencensus.io/plugin/ochttp/propagation/b3
 go.opencensus.io/stats
 go.opencensus.io/stats/view
 go.opencensus.io/tag
-go.opencensus.io/trace
 go.opencensus.io/trace/propagation
 go.opencensus.io/metric/metricdata
 go.opencensus.io/stats/internal
 go.opencensus.io/internal/tagencoding
 go.opencensus.io/metric/metricproducer
-go.opencensus.io/internal
-go.opencensus.io/trace/internal
-go.opencensus.io/trace/tracestate
 go.opencensus.io/resource
-go.opencensus.io
 # go.uber.org/atomic v0.0.0-20181018215023-8dc6146f7569
 go.uber.org/atomic
 # go.uber.org/multierr v0.0.0-20180122172545-ddea229ff1df
@@ -956,7 +959,7 @@ golang.org/x/oauth2/jwt
 # golang.org/x/sync v0.0.0-20190423024810-112230192c58
 golang.org/x/sync/errgroup
 golang.org/x/sync/semaphore
-# golang.org/x/sys v0.0.0-20190812073006-9eafafc0a87e
+# golang.org/x/sys v0.0.0-20190916202348-b4ddaad3f8a3
 golang.org/x/sys/unix
 golang.org/x/sys/windows
 golang.org/x/sys/windows/svc

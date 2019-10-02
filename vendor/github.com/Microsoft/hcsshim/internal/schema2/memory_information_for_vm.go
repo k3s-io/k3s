@@ -10,7 +10,6 @@
 package hcsschema
 
 type MemoryInformationForVm struct {
-
 	VirtualNodeCount int32 `json:"VirtualNodeCount,omitempty"`
 
 	VirtualMachineMemory *VmMemory `json:"VirtualMachineMemory,omitempty"`
