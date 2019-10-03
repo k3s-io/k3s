@@ -48,6 +48,16 @@ rm -f \
     bin/crictl \
     bin/ctr
 
+INSTALLBIN=$(pwd)/bin
+(
+    echo Building cni
+    WORKDIR=$(go env GOPATH)/src/github.com/containernetworking/plugins
+    [ -d $WORKDIR ] || git clone https://github.com/rancher/plugins.git $WORKDIR
+    cd $WORKDIR
+    git fetch -f
+    git checkout $VERSION_CNIPLUGINS
+    CGO_ENABLED=0 go build -tags "$TAGS" -ldflags "$LDFLAGS $STATIC" -o $INSTALLBIN/cni
+)
 # echo Building agent
 # CGO_ENABLED=1 go build -tags "$TAGS" -ldflags "$LDFLAGS $STATIC" -o bin/k3s-agent ./cmd/agent/main.go
 echo Building server
@@ -63,8 +73,6 @@ CGO_ENABLED=1 go build -tags "$TAGS" -ldflags "$LDFLAGS $STATIC_SQLITE" -o bin/h
 #CGO_ENABLED=1 go build -tags "$TAGS" -ldflags "$LDFLAGS $STATIC_SQLITE" -o bin/ctr ./cmd/ctr/main.go
 # echo Building containerd
 # CGO_ENABLED=0 go build -tags "$TAGS" -ldflags "$LDFLAGS $STATIC" -o bin/containerd ./cmd/containerd/
-echo Building cni
-CGO_ENABLED=0 go build -tags "$TAGS" -ldflags "$LDFLAGS $STATIC" -o bin/cni ./cmd/cni/main.go
 echo Building runc
 make EXTRA_LDFLAGS="-w -s" BUILDTAGS="apparmor seccomp" -C ./vendor/github.com/opencontainers/runc static
 cp -f ./vendor/github.com/opencontainers/runc/runc ./bin/runc

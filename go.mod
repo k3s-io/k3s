@@ -12,7 +12,6 @@ replace (
 	github.com/containerd/fifo => github.com/containerd/fifo v0.0.0-20190816180239-bda0ff6ed73c
 	github.com/containerd/go-runc => github.com/containerd/go-runc v0.0.0-20190911050354-e029b79d8cda
 	github.com/containerd/typeurl => github.com/containerd/typeurl v0.0.0-20180627222232-a93fcdb778cd
-	github.com/containernetworking/plugins => github.com/rancher/plugins v0.8.2-k3s.2
 	github.com/coreos/flannel => github.com/rancher/flannel v0.11.0-k3s.1
 	github.com/coreos/go-systemd => github.com/coreos/go-systemd v0.0.0-20180511133405-39ca1b05acc7
 	github.com/docker/distribution => github.com/docker/distribution v0.0.0-20190205005809-0d3efadf0154
@@ -73,7 +72,7 @@ require (
 	github.com/containerd/go-cni v0.0.0-20190904155053-d20b7eebc7ee // indirect
 	github.com/containerd/go-runc v0.0.0-20190923131748-a2952bc25f51 // indirect
 	github.com/containerd/ttrpc v0.0.0-20190828172938-92c8520ef9f8 // indirect
-	github.com/containernetworking/plugins v0.8.2
+	github.com/containernetworking/plugins v0.8.2 // indirect
 	github.com/coreos/flannel v0.11.0
 	github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e
 	github.com/docker/docker v0.7.3-0.20190731001754-589f1dad8dad
@@ -86,7 +85,6 @@ require (
 	github.com/google/tcpproxy v0.0.0-20180808230851-dfa16c61dad2
 	github.com/gorilla/mux v1.7.3
 	github.com/gorilla/websocket v1.4.0
-	github.com/j-keck/arping v1.0.0 // indirect
 	github.com/juju/errors v0.0.0-20190806202954-0232dcc7464d // indirect
 	github.com/juju/testing v0.0.0-20190723135506-ce30eb24acd2 // indirect
 	github.com/kubernetes-sigs/cri-tools v0.0.0-00010101000000-000000000000

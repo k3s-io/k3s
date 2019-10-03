@@ -26,3 +26,5 @@ fi
 if [ -z "$VERSION_CRICTL" ]; then
     VERSION_CRICTL="v0.0.0"
 fi
+
+VERSION_CNIPLUGINS="v0.7.6-k3s1"
