@@ -9,22 +9,27 @@ PKG_CONTAINERD="github.com/containerd/containerd"
 PKG_RANCHER_CONTAINERD="github.com/rancher/containerd"
 PKG_CRICTL="github.com/kubernetes-sigs/cri-tools"
 
-LDFLAGS="
+VERSIONFLAGS="
     -X $PKG/pkg/version.Version=$VERSION
     -X $PKG/pkg/version.GitCommit=${COMMIT:0:8}
     -X $PKG/vendor/$PKG_CONTAINERD/version.Version=$VERSION_CONTAINERD
     -X $PKG/vendor/$PKG_CONTAINERD/version.Package=$PKG_RANCHER_CONTAINERD
-    -X $PKG/vendor/$PKG_CRICTL/pkg/version.Version=$VERSION_CRICTL
-    -w -s
+    -X $PKG/vendor/$PKG_CRICTL/pkg/version.Version=$VERSION_CRICTL"
+LDFLAGS="
+    -w -s"
+STATIC="
+    -extldflags '-static'
 "
-
-STATIC="-extldflags '-static'"
-STATIC_SQLITE="-extldflags '-static -lm -ldl -lz -lpthread'"
+STATIC_SQLITE="
+    -extldflags '-static -lm -ldl -lz -lpthread'
+"
 TAGS="ctrd apparmor seccomp no_btrfs netgo osusergo providerless"
 
 if [ "$STATIC_BUILD" != "true" ]; then
-    STATIC=""
-    STATIC_SQLITE=""
+    STATIC="
+"
+    STATIC_SQLITE="
+"
 else
     TAGS="static_build libsqlite3 $TAGS"
 fi
@@ -48,31 +53,37 @@ rm -f \
     bin/crictl \
     bin/ctr
 
+cleanup() {
+    exit_status=$?
+    rm -rf $TMPDIR
+    exit ${exit_status}
+}
+
 INSTALLBIN=$(pwd)/bin
 (
     echo Building cni
-    WORKDIR=$(go env GOPATH)/src/github.com/containernetworking/plugins
-    [ -d $WORKDIR ] || git clone https://github.com/rancher/plugins.git $WORKDIR
+    TMPDIR=$(mktemp -d)
+    trap cleanup EXIT
+    WORKDIR=$TMPDIR/src/github.com/containernetworking/plugins
+    git clone -b $VERSION_CNIPLUGINS https://github.com/rancher/plugins.git $WORKDIR
     cd $WORKDIR
-    git fetch -f
-    git checkout $VERSION_CNIPLUGINS
-    CGO_ENABLED=0 go build -tags "$TAGS" -ldflags "$LDFLAGS $STATIC" -o $INSTALLBIN/cni
+    GOPATH=$TMPDIR CGO_ENABLED=0 go build -tags "$TAGS" -ldflags "$LDFLAGS $STATIC" -o $INSTALLBIN/cni
 )
 # echo Building agent
-# CGO_ENABLED=1 go build -tags "$TAGS" -ldflags "$LDFLAGS $STATIC" -o bin/k3s-agent ./cmd/agent/main.go
+# CGO_ENABLED=1 go build -tags "$TAGS" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC" -o bin/k3s-agent ./cmd/agent/main.go
 echo Building server
-CGO_ENABLED=1 go build -tags "$TAGS" -ldflags "$LDFLAGS $STATIC_SQLITE" -o bin/containerd ./cmd/server/main.go
+CGO_ENABLED=1 go build -tags "$TAGS" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC_SQLITE" -o bin/containerd ./cmd/server/main.go
 ln -s containerd ./bin/k3s-agent
 ln -s containerd ./bin/k3s-server
 ln -s containerd ./bin/kubectl
 ln -s containerd ./bin/crictl
 ln -s containerd ./bin/ctr
 echo Building hyperkube
-CGO_ENABLED=1 go build -tags "$TAGS" -ldflags "$LDFLAGS $STATIC_SQLITE" -o bin/hyperkube ./vendor/k8s.io/kubernetes/cmd/hyperkube/
+CGO_ENABLED=1 go build -tags "$TAGS" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC_SQLITE" -o bin/hyperkube ./vendor/k8s.io/kubernetes/cmd/hyperkube/
 #echo Building ctr
-#CGO_ENABLED=1 go build -tags "$TAGS" -ldflags "$LDFLAGS $STATIC_SQLITE" -o bin/ctr ./cmd/ctr/main.go
+#CGO_ENABLED=1 go build -tags "$TAGS" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC_SQLITE" -o bin/ctr ./cmd/ctr/main.go
 # echo Building containerd
-# CGO_ENABLED=0 go build -tags "$TAGS" -ldflags "$LDFLAGS $STATIC" -o bin/containerd ./cmd/containerd/
+# CGO_ENABLED=0 go build -tags "$TAGS" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC" -o bin/containerd ./cmd/containerd/
 echo Building runc
 make EXTRA_LDFLAGS="-w -s" BUILDTAGS="apparmor seccomp" -C ./vendor/github.com/opencontainers/runc static
 cp -f ./vendor/github.com/opencontainers/runc/runc ./bin/runc
