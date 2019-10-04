@@ -4,7 +4,7 @@ source $(dirname $0)/version.sh
 
 cd $(dirname $0)/..
 
-ROOT_VERSION=v0.2.0
+ROOT_VERSION=v0.3.0
 TRAEFIK_VERSION=1.77.1
 CHARTS_DIR=build/static/charts
 
