@@ -473,7 +473,7 @@ do_unmount() {
     while read ignore mount ignore; do
         MOUNTS="$mount\n$MOUNTS"
     done </proc/self/mounts
-    MOUNTS=$(printf $MOUNTS | sort -r -)
+    MOUNTS=$(printf $MOUNTS | grep "^$1" | sort -r)
     if [ -n "${MOUNTS}" ]; then
         umount ${MOUNTS}
     fi
