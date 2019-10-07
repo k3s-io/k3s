@@ -76,6 +76,7 @@ type Agent struct {
 	NodeLabels          []string
 	IPSECPSK            string
 	StrongSwanDir       string
+	PrivateRegistry     string
 }
 
 type Control struct {

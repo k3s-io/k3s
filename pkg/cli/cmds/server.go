@@ -218,6 +218,7 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 			ExtraKubeProxyArgs,
 			NodeLabels,
 			NodeTaints,
+			PrivateRegistryFlag,
 		},
 	}
 }
