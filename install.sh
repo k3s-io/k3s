@@ -332,13 +332,15 @@ download_hash() {
     HASH_URL=${GITHUB_URL}/download/${VERSION_K3S}/sha256sum-${ARCH}.txt
     info "Downloading hash ${HASH_URL}"
     download ${TMP_HASH} ${HASH_URL}
-    HASH_EXPECTED=$(grep " k3s${SUFFIX}$" ${TMP_HASH} | awk '{print $1}')
+    HASH_EXPECTED=$(grep " k3s${SUFFIX}$" ${TMP_HASH})
+    HASH_EXPECTED=${HASH_EXPECTED%%[[:blank:]]*}
 }
 
 # --- check hash against installed version ---
 installed_hash_matches() {
     if [ -x ${BIN_DIR}/k3s ]; then
-        HASH_INSTALLED=$(sha256sum ${BIN_DIR}/k3s | awk '{print $1}')
+        HASH_INSTALLED=$(sha256sum ${BIN_DIR}/k3s)
+        HASH_INSTALLED=${HASH_INSTALLED%%[[:blank:]]*}
         if [ "${HASH_EXPECTED}" = "${HASH_INSTALLED}" ]; then
             return
         fi
@@ -356,7 +358,8 @@ download_binary() {
 # --- verify downloaded binary hash ---
 verify_binary() {
     info "Verifying binary download"
-    HASH_BIN=$(sha256sum ${TMP_BIN} | awk '{print $1}')
+    HASH_BIN=$(sha256sum ${TMP_BIN})
+    HASH_BIN=${HASH_BIN%%[[:blank:]]*}
     if [ "${HASH_EXPECTED}" != "${HASH_BIN}" ]; then
         fatal "Download sha256 does not match ${HASH_EXPECTED}, got ${HASH_BIN}"
     fi
@@ -452,7 +455,10 @@ done
 pstree() {
     for pid in $@; do
         echo $pid
-        pstree $(ps -o ppid= -o pid= | awk "\$1==$pid {print \$2}")
+        # Find and show pstree for child processes of $pid
+        ps -o ppid= -o pid= | while read parent child; do
+            [ $parent -ne $pid ] || pstree $child
+        done
     done
 }
 
@@ -463,7 +469,11 @@ killtree() {
 killtree $(lsof | sed -e 's/^[^0-9]*//g; s/  */\t/g' | grep -w 'k3s/data/[^/]*/bin/containerd-shim' | cut -f1 | sort -n -u)
 
 do_unmount() {
-    MOUNTS=$(cat /proc/self/mounts | awk '{print $2}' | grep "^$1" | sort -r)
+    MOUNTS=
+    while read ignore mount ignore; do
+        MOUNTS="$mount\n$MOUNTS"
+    done </proc/self/mounts
+    MOUNTS=$(printf $MOUNTS | grep "^$1" | sort -r)
     if [ -n "${MOUNTS}" ]; then
         umount ${MOUNTS}
     fi
@@ -472,9 +482,10 @@ do_unmount() {
 do_unmount '/run/k3s'
 do_unmount '/var/lib/rancher/k3s'
 
-nets=$(ip link show | grep 'master cni0' | awk -F': ' '{print $2}' | sed -e 's|@.*||')
-for iface in $nets; do
-    ip link delete $iface;
+# Delete network interface(s) that match 'master cni0'
+ip link show | grep 'master cni0' | while read ignore iface ignore; do
+    iface=${iface%%@*}
+    [ -z "$iface" ] || ip link delete $iface
 done
 ip link delete cni0
 ip link delete flannel.1
