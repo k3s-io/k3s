@@ -113,6 +113,56 @@ func (s *service) List(ctx context.Context, r *api.ListRequest) (*api.ListRespon
 	}, nil
 }
 
+func (s *service) AddResource(ctx context.Context, r *api.AddResourceRequest) (*ptypes.Empty, error) {
+	lease := leases.Lease{
+		ID: r.ID,
+	}
+
+	if err := s.lm.AddResource(ctx, lease, leases.Resource{
+		ID:   r.Resource.ID,
+		Type: r.Resource.Type,
+	}); err != nil {
+		return nil, errdefs.ToGRPC(err)
+	}
+	return &ptypes.Empty{}, nil
+}
+
+func (s *service) DeleteResource(ctx context.Context, r *api.DeleteResourceRequest) (*ptypes.Empty, error) {
+	lease := leases.Lease{
+		ID: r.ID,
+	}
+
+	if err := s.lm.DeleteResource(ctx, lease, leases.Resource{
+		ID:   r.Resource.ID,
+		Type: r.Resource.Type,
+	}); err != nil {
+		return nil, errdefs.ToGRPC(err)
+	}
+	return &ptypes.Empty{}, nil
+}
+
+func (s *service) ListResources(ctx context.Context, r *api.ListResourcesRequest) (*api.ListResourcesResponse, error) {
+	lease := leases.Lease{
+		ID: r.ID,
+	}
+
+	rs, err := s.lm.ListResources(ctx, lease)
+	if err != nil {
+		return nil, errdefs.ToGRPC(err)
+	}
+
+	apiResources := make([]api.Resource, 0, len(rs))
+	for _, i := range rs {
+		apiResources = append(apiResources, api.Resource{
+			ID:   i.ID,
+			Type: i.Type,
+		})
+	}
+	return &api.ListResourcesResponse{
+		Resources: apiResources,
+	}, nil
+}
+
 func leaseToGRPC(l leases.Lease) *api.Lease {
 	return &api.Lease{
 		ID:        l.ID,

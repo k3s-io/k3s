@@ -94,6 +94,10 @@ type Config struct {
 	// UserAgent is an optional field that specifies the caller of this request.
 	UserAgent string
 
+	// DisableCompression bypasses automatic GZip compression requests to the
+	// server.
+	DisableCompression bool
+
 	// Transport may be used for custom HTTP behavior. This attribute may not
 	// be specified with the TLS client certificate options. Use WrapTransport
 	// to provide additional per-server middleware behavior.
@@ -207,6 +211,12 @@ type TLSClientConfig struct {
 	// CAData holds PEM-encoded bytes (typically read from a root certificates bundle).
 	// CAData takes precedence over CAFile
 	CAData []byte
+
+	// NextProtos is a list of supported application level protocols, in order of preference.
+	// Used to populate tls.Config.NextProtos.
+	// To indicate to the server http/1.1 is preferred over http/2, set to ["http/1.1", "h2"] (though the server is free to ignore that preference).
+	// To use only http/1.1, set to ["http/1.1"].
+	NextProtos []string
 }
 
 var _ fmt.Stringer = TLSClientConfig{}
@@ -232,6 +242,7 @@ func (c TLSClientConfig) String() string {
 		CertData:   c.CertData,
 		KeyData:    c.KeyData,
 		CAData:     c.CAData,
+		NextProtos: c.NextProtos,
 	}
 	// Explicitly mark non-empty credential fields as redacted.
 	if len(cc.CertData) != 0 {
@@ -487,7 +498,7 @@ func AddUserAgent(config *Config, userAgent string) *Config {
 	return config
 }
 
-// AnonymousClientConfig returns a copy of the given config with all user credentials (cert/key, bearer token, and username/password) removed
+// AnonymousClientConfig returns a copy of the given config with all user credentials (cert/key, bearer token, and username/password) and custom transports (WrapTransport, Transport) removed
 func AnonymousClientConfig(config *Config) *Config {
 	// copy only known safe fields
 	return &Config{
@@ -499,15 +510,15 @@ func AnonymousClientConfig(config *Config) *Config {
 			ServerName: config.ServerName,
 			CAFile:     config.TLSClientConfig.CAFile,
 			CAData:     config.TLSClientConfig.CAData,
+			NextProtos: config.TLSClientConfig.NextProtos,
 		},
-		RateLimiter:   config.RateLimiter,
-		UserAgent:     config.UserAgent,
-		Transport:     config.Transport,
-		WrapTransport: config.WrapTransport,
-		QPS:           config.QPS,
-		Burst:         config.Burst,
-		Timeout:       config.Timeout,
-		Dial:          config.Dial,
+		RateLimiter:        config.RateLimiter,
+		UserAgent:          config.UserAgent,
+		DisableCompression: config.DisableCompression,
+		QPS:                config.QPS,
+		Burst:              config.Burst,
+		Timeout:            config.Timeout,
+		Dial:               config.Dial,
 	}
 }
 
@@ -538,14 +549,16 @@ func CopyConfig(config *Config) *Config {
 			CertData:   config.TLSClientConfig.CertData,
 			KeyData:    config.TLSClientConfig.KeyData,
 			CAData:     config.TLSClientConfig.CAData,
+			NextProtos: config.TLSClientConfig.NextProtos,
 		},
-		UserAgent:     config.UserAgent,
-		Transport:     config.Transport,
-		WrapTransport: config.WrapTransport,
-		QPS:           config.QPS,
-		Burst:         config.Burst,
-		RateLimiter:   config.RateLimiter,
-		Timeout:       config.Timeout,
-		Dial:          config.Dial,
+		UserAgent:          config.UserAgent,
+		DisableCompression: config.DisableCompression,
+		Transport:          config.Transport,
+		WrapTransport:      config.WrapTransport,
+		QPS:                config.QPS,
+		Burst:              config.Burst,
+		RateLimiter:        config.RateLimiter,
+		Timeout:            config.Timeout,
+		Dial:               config.Dial,
 	}
 }

@@ -150,18 +150,11 @@ var diffCommand = cli.Command{
 				return err
 			}
 		} else {
-			var a, b []mount.Mount
-			ds := client.DiffService()
-
-			a, err = getMounts(ctx, idA, snapshotter)
-			if err != nil {
-				return err
-			}
-			b, err = getMounts(ctx, idB, snapshotter)
-			if err != nil {
-				return err
-			}
-			desc, err = ds.Compare(ctx, a, b, opts...)
+			desc, err = withMounts(ctx, idA, snapshotter, func(a []mount.Mount) (ocispec.Descriptor, error) {
+				return withMounts(ctx, idB, snapshotter, func(b []mount.Mount) (ocispec.Descriptor, error) {
+					return client.DiffService().Compare(ctx, a, b, opts...)
+				})
+			})
 			if err != nil {
 				return err
 			}
@@ -177,26 +170,26 @@ var diffCommand = cli.Command{
 	},
 }
 
-func getMounts(ctx gocontext.Context, id string, sn snapshots.Snapshotter) ([]mount.Mount, error) {
+func withMounts(ctx gocontext.Context, id string, sn snapshots.Snapshotter, f func(mounts []mount.Mount) (ocispec.Descriptor, error)) (ocispec.Descriptor, error) {
 	var mounts []mount.Mount
 	info, err := sn.Stat(ctx, id)
 	if err != nil {
-		return nil, err
+		return ocispec.Descriptor{}, err
 	}
 	if info.Kind == snapshots.KindActive {
 		mounts, err = sn.Mounts(ctx, id)
 		if err != nil {
-			return nil, err
+			return ocispec.Descriptor{}, err
 		}
 	} else {
 		key := fmt.Sprintf("%s-view-key", id)
 		mounts, err = sn.View(ctx, key, id)
 		if err != nil {
-			return nil, err
+			return ocispec.Descriptor{}, err
 		}
 		defer sn.Remove(ctx, key)
 	}
-	return mounts, nil
+	return f(mounts)
 }
 
 var usageCommand = cli.Command{

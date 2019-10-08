@@ -22,13 +22,14 @@ import (
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/errdefs"
+	"github.com/containerd/containerd/log"
 	"github.com/containerd/typeurl"
 	runtimespec "github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
-	runtime "k8s.io/kubernetes/pkg/kubelet/apis/cri/runtime/v1alpha2"
+	runtime "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 
+	"github.com/containerd/cri/pkg/containerd/opts"
 	ctrdutil "github.com/containerd/cri/pkg/containerd/util"
 	containerstore "github.com/containerd/cri/pkg/store/container"
 	"github.com/containerd/cri/pkg/util"
@@ -69,7 +70,7 @@ func (c *criService) updateContainerResources(ctx context.Context,
 	if err != nil {
 		return errors.Wrap(err, "failed to get container spec")
 	}
-	newSpec, err := updateOCILinuxResource(oldSpec, resources)
+	newSpec, err := updateOCILinuxResource(ctx, oldSpec, resources)
 	if err != nil {
 		return errors.Wrap(err, "failed to update resource in spec")
 	}
@@ -83,7 +84,7 @@ func (c *criService) updateContainerResources(ctx context.Context,
 			defer deferCancel()
 			// Reset spec on error.
 			if err := updateContainerSpec(deferCtx, cntr.Container, oldSpec); err != nil {
-				logrus.WithError(err).Errorf("Failed to update spec %+v for container %q", oldSpec, id)
+				log.G(ctx).WithError(err).Errorf("Failed to update spec %+v for container %q", oldSpec, id)
 			}
 		}
 	}()
@@ -129,33 +130,17 @@ func updateContainerSpec(ctx context.Context, cntr containerd.Container, spec *r
 }
 
 // updateOCILinuxResource updates container resource limit.
-func updateOCILinuxResource(spec *runtimespec.Spec, new *runtime.LinuxContainerResources) (*runtimespec.Spec, error) {
+func updateOCILinuxResource(ctx context.Context, spec *runtimespec.Spec, new *runtime.LinuxContainerResources) (*runtimespec.Spec, error) {
 	// Copy to make sure old spec is not changed.
 	var cloned runtimespec.Spec
 	if err := util.DeepCopy(&cloned, spec); err != nil {
 		return nil, errors.Wrap(err, "failed to deep copy")
 	}
-	g := newSpecGenerator(&cloned)
-
-	if new.GetCpuPeriod() != 0 {
-		g.SetLinuxResourcesCPUPeriod(uint64(new.GetCpuPeriod()))
+	if cloned.Linux == nil {
+		cloned.Linux = &runtimespec.Linux{}
 	}
-	if new.GetCpuQuota() != 0 {
-		g.SetLinuxResourcesCPUQuota(new.GetCpuQuota())
+	if err := opts.WithResources(new)(ctx, nil, nil, &cloned); err != nil {
+		return nil, errors.Wrap(err, "unable to set linux container resources")
 	}
-	if new.GetCpuShares() != 0 {
-		g.SetLinuxResourcesCPUShares(uint64(new.GetCpuShares()))
-	}
-	if new.GetMemoryLimitInBytes() != 0 {
-		g.SetLinuxResourcesMemoryLimit(new.GetMemoryLimitInBytes())
-	}
-	// OOMScore is not updatable.
-	if new.GetCpusetCpus() != "" {
-		g.SetLinuxResourcesCPUCpus(new.GetCpusetCpus())
-	}
-	if new.GetCpusetMems() != "" {
-		g.SetLinuxResourcesCPUMems(new.GetCpusetMems())
-	}
-
-	return g.Config, nil
+	return &cloned, nil
 }

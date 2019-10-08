@@ -17,6 +17,8 @@
 package cni
 
 import (
+	"context"
+
 	cnilibrary "github.com/containernetworking/cni/libcni"
 	"github.com/containernetworking/cni/pkg/types/current"
 )
@@ -27,16 +29,16 @@ type Network struct {
 	ifName string
 }
 
-func (n *Network) Attach(ns *Namespace) (*current.Result, error) {
-	r, err := n.cni.AddNetworkList(n.config, ns.config(n.ifName))
+func (n *Network) Attach(ctx context.Context, ns *Namespace) (*current.Result, error) {
+	r, err := n.cni.AddNetworkList(ctx, n.config, ns.config(n.ifName))
 	if err != nil {
 		return nil, err
 	}
 	return current.NewResultFromResult(r)
 }
 
-func (n *Network) Remove(ns *Namespace) error {
-	return n.cni.DelNetworkList(n.config, ns.config(n.ifName))
+func (n *Network) Remove(ctx context.Context, ns *Namespace) error {
+	return n.cni.DelNetworkList(ctx, n.config, ns.config(n.ifName))
 }
 
 type Namespace struct {

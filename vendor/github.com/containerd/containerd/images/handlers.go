@@ -26,6 +26,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
+	"golang.org/x/sync/semaphore"
 )
 
 var (
@@ -108,19 +109,31 @@ func Walk(ctx context.Context, handler Handler, descs ...ocispec.Descriptor) err
 // handler may return `ErrSkipDesc` to signal to the dispatcher to not traverse
 // any children.
 //
+// A concurrency limiter can be passed in to limit the number of concurrent
+// handlers running. When limiter is nil, there is no limit.
+//
 // Typically, this function will be used with `FetchHandler`, often composed
 // with other handlers.
 //
 // If any handler returns an error, the dispatch session will be canceled.
-func Dispatch(ctx context.Context, handler Handler, descs ...ocispec.Descriptor) error {
-	eg, ctx := errgroup.WithContext(ctx)
+func Dispatch(ctx context.Context, handler Handler, limiter *semaphore.Weighted, descs ...ocispec.Descriptor) error {
+	eg, ctx2 := errgroup.WithContext(ctx)
 	for _, desc := range descs {
 		desc := desc
+
+		if limiter != nil {
+			if err := limiter.Acquire(ctx, 1); err != nil {
+				return err
+			}
+		}
 
 		eg.Go(func() error {
 			desc := desc
 
-			children, err := handler.Handle(ctx, desc)
+			children, err := handler.Handle(ctx2, desc)
+			if limiter != nil {
+				limiter.Release(1)
+			}
 			if err != nil {
 				if errors.Cause(err) == ErrSkipDesc {
 					return nil // don't traverse the children.
@@ -129,7 +142,7 @@ func Dispatch(ctx context.Context, handler Handler, descs ...ocispec.Descriptor)
 			}
 
 			if len(children) > 0 {
-				return Dispatch(ctx, handler, children...)
+				return Dispatch(ctx2, handler, limiter, children...)
 			}
 
 			return nil
@@ -222,66 +235,22 @@ func LimitManifests(f HandlerFunc, m platforms.MatchComparer, n int) HandlerFunc
 
 		switch desc.MediaType {
 		case ocispec.MediaTypeImageIndex, MediaTypeDockerSchema2ManifestList:
-			children = limitChildren(children, m, n)
+			sort.SliceStable(children, func(i, j int) bool {
+				if children[i].Platform == nil {
+					return false
+				}
+				if children[j].Platform == nil {
+					return true
+				}
+				return m.Less(*children[i].Platform, *children[j].Platform)
+			})
+
+			if n > 0 && len(children) > n {
+				children = children[:n]
+			}
 		default:
 			// only limit manifests from an index
 		}
-		return children, nil
-	}
-}
-
-func limitChildren(children []ocispec.Descriptor, m platforms.MatchComparer, n int) []ocispec.Descriptor {
-	sort.SliceStable(children, func(i, j int) bool {
-		if children[i].Platform == nil {
-			return false
-		}
-		if children[j].Platform == nil {
-			return true
-		}
-		return m.Less(*children[i].Platform, *children[j].Platform)
-	})
-
-	if n > 0 && len(children) > n {
-		children = children[:n]
-	}
-
-	return children
-}
-
-type PlatformCapture struct {
-	requested platforms.MatchComparer
-	platforms []ocispec.Platform
-}
-
-func NewPlatformCapture(comparer platforms.MatchComparer) *PlatformCapture {
-	return &PlatformCapture{
-		requested: comparer,
-	}
-}
-
-func (p *PlatformCapture) MatchComparer() platforms.MatchComparer {
-	if len(p.platforms) == 0 {
-		return p.requested
-	}
-	return platforms.Any(p.platforms...)
-}
-
-func (p *PlatformCapture) Handler(f HandlerFunc) HandlerFunc {
-	return func(ctx context.Context, desc ocispec.Descriptor) (subdescs []ocispec.Descriptor, err error) {
-		children, err := f(ctx, desc)
-		if err != nil {
-			return children, err
-		}
-
-		switch desc.MediaType {
-		case ocispec.MediaTypeImageIndex, MediaTypeDockerSchema2ManifestList:
-			for _, child := range children {
-				if child.Platform != nil {
-					p.platforms = append(p.platforms, *child.Platform)
-				}
-			}
-		}
-
 		return children, nil
 	}
 }

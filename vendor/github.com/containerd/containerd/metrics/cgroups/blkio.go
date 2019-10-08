@@ -21,7 +21,7 @@ package cgroups
 import (
 	"strconv"
 
-	"github.com/containerd/cgroups"
+	v1 "github.com/containerd/containerd/metrics/types/v1"
 	metrics "github.com/docker/go-metrics"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -33,7 +33,7 @@ var blkioMetrics = []*metric{
 		unit:   metrics.Total,
 		vt:     prometheus.GaugeValue,
 		labels: []string{"op", "device", "major", "minor"},
-		getValues: func(stats *cgroups.Metrics) []value {
+		getValues: func(stats *v1.Metrics) []value {
 			if stats.Blkio == nil {
 				return nil
 			}
@@ -46,7 +46,7 @@ var blkioMetrics = []*metric{
 		unit:   metrics.Total,
 		vt:     prometheus.GaugeValue,
 		labels: []string{"op", "device", "major", "minor"},
-		getValues: func(stats *cgroups.Metrics) []value {
+		getValues: func(stats *v1.Metrics) []value {
 			if stats.Blkio == nil {
 				return nil
 			}
@@ -59,7 +59,7 @@ var blkioMetrics = []*metric{
 		unit:   metrics.Bytes,
 		vt:     prometheus.GaugeValue,
 		labels: []string{"op", "device", "major", "minor"},
-		getValues: func(stats *cgroups.Metrics) []value {
+		getValues: func(stats *v1.Metrics) []value {
 			if stats.Blkio == nil {
 				return nil
 			}
@@ -68,11 +68,11 @@ var blkioMetrics = []*metric{
 	},
 	{
 		name:   "blkio_io_service_time_recursive",
-		help:   "The blkio io servie time recursive",
+		help:   "The blkio io service time recursive",
 		unit:   metrics.Total,
 		vt:     prometheus.GaugeValue,
 		labels: []string{"op", "device", "major", "minor"},
-		getValues: func(stats *cgroups.Metrics) []value {
+		getValues: func(stats *v1.Metrics) []value {
 			if stats.Blkio == nil {
 				return nil
 			}
@@ -81,11 +81,11 @@ var blkioMetrics = []*metric{
 	},
 	{
 		name:   "blkio_io_serviced_recursive",
-		help:   "The blkio io servied recursive",
+		help:   "The blkio io serviced recursive",
 		unit:   metrics.Total,
 		vt:     prometheus.GaugeValue,
 		labels: []string{"op", "device", "major", "minor"},
-		getValues: func(stats *cgroups.Metrics) []value {
+		getValues: func(stats *v1.Metrics) []value {
 			if stats.Blkio == nil {
 				return nil
 			}
@@ -98,7 +98,7 @@ var blkioMetrics = []*metric{
 		unit:   metrics.Total,
 		vt:     prometheus.GaugeValue,
 		labels: []string{"op", "device", "major", "minor"},
-		getValues: func(stats *cgroups.Metrics) []value {
+		getValues: func(stats *v1.Metrics) []value {
 			if stats.Blkio == nil {
 				return nil
 			}
@@ -111,7 +111,7 @@ var blkioMetrics = []*metric{
 		unit:   metrics.Total,
 		vt:     prometheus.GaugeValue,
 		labels: []string{"op", "device", "major", "minor"},
-		getValues: func(stats *cgroups.Metrics) []value {
+		getValues: func(stats *v1.Metrics) []value {
 			if stats.Blkio == nil {
 				return nil
 			}
@@ -120,7 +120,7 @@ var blkioMetrics = []*metric{
 	},
 }
 
-func blkioValues(l []*cgroups.BlkIOEntry) []value {
+func blkioValues(l []*v1.BlkIOEntry) []value {
 	var out []value
 	for _, e := range l {
 		out = append(out, value{

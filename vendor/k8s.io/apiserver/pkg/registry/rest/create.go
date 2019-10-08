@@ -28,7 +28,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/apiserver/pkg/admission"
+	"k8s.io/apiserver/pkg/features"
 	"k8s.io/apiserver/pkg/storage/names"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
 )
 
 // RESTCreateStrategy defines the minimum validation, accepted input, and
@@ -90,11 +92,10 @@ func BeforeCreate(strategy RESTCreateStrategy, ctx context.Context, obj runtime.
 		objectMeta.SetName(strategy.GenerateName(objectMeta.GetGenerateName()))
 	}
 
-	// Initializers are a deprecated alpha field and should not be saved
-	objectMeta.SetInitializers(nil)
-
 	// Ensure managedFields is not set unless the feature is enabled
-	objectMeta.SetManagedFields(nil)
+	if !utilfeature.DefaultFeatureGate.Enabled(features.ServerSideApply) {
+		objectMeta.SetManagedFields(nil)
+	}
 
 	// ClusterName is ignored and should not be saved
 	if len(objectMeta.GetClusterName()) > 0 {
@@ -159,24 +160,33 @@ type NamespaceScopedStrategy interface {
 func AdmissionToValidateObjectFunc(admit admission.Interface, staticAttributes admission.Attributes, o admission.ObjectInterfaces) ValidateObjectFunc {
 	validatingAdmission, ok := admit.(admission.ValidationInterface)
 	if !ok {
-		return func(obj runtime.Object) error { return nil }
+		return func(ctx context.Context, obj runtime.Object) error { return nil }
 	}
-	return func(obj runtime.Object) error {
+	return func(ctx context.Context, obj runtime.Object) error {
+		name := staticAttributes.GetName()
+		// in case the generated name is populated
+		if len(name) == 0 {
+			if metadata, err := meta.Accessor(obj); err == nil {
+				name = metadata.GetName()
+			}
+		}
+
 		finalAttributes := admission.NewAttributesRecord(
 			obj,
 			staticAttributes.GetOldObject(),
 			staticAttributes.GetKind(),
 			staticAttributes.GetNamespace(),
-			staticAttributes.GetName(),
+			name,
 			staticAttributes.GetResource(),
 			staticAttributes.GetSubresource(),
 			staticAttributes.GetOperation(),
+			staticAttributes.GetOperationOptions(),
 			staticAttributes.IsDryRun(),
 			staticAttributes.GetUserInfo(),
 		)
 		if !validatingAdmission.Handles(finalAttributes.GetOperation()) {
 			return nil
 		}
-		return validatingAdmission.Validate(finalAttributes, o)
+		return validatingAdmission.Validate(ctx, finalAttributes, o)
 	}
 }

@@ -290,6 +290,11 @@ var (
 				Name:  "validate",
 				Usage: "validate the result against a format (json, mediatype, etc.)",
 			},
+			cli.StringFlag{
+				Name:   "editor",
+				Usage:  "select editor (vim, emacs, etc.)",
+				EnvVar: "EDITOR",
+			},
 		},
 		Action: func(context *cli.Context) error {
 			var (
@@ -320,7 +325,7 @@ var (
 			}
 			defer ra.Close()
 
-			nrc, err := edit(content.NewReader(ra))
+			nrc, err := edit(context, content.NewReader(ra))
 			if err != nil {
 				return err
 			}
@@ -505,7 +510,12 @@ var (
 	}
 )
 
-func edit(rd io.Reader) (io.ReadCloser, error) {
+func edit(context *cli.Context, rd io.Reader) (io.ReadCloser, error) {
+	editor := context.String("editor")
+	if editor == "" {
+		return nil, fmt.Errorf("editor is required")
+	}
+
 	tmp, err := ioutil.TempFile(os.Getenv("XDG_RUNTIME_DIR"), "edit-")
 	if err != nil {
 		return nil, err
@@ -516,7 +526,7 @@ func edit(rd io.Reader) (io.ReadCloser, error) {
 		return nil, err
 	}
 
-	cmd := exec.Command("sh", "-c", "$EDITOR "+tmp.Name())
+	cmd := exec.Command("sh", "-c", fmt.Sprintf("%s %s", editor, tmp.Name()))
 
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout

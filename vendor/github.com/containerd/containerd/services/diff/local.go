@@ -99,8 +99,13 @@ func (l *local) Apply(ctx context.Context, er *diffapi.ApplyRequest, _ ...grpc.C
 		mounts  = toMounts(er.Mounts)
 	)
 
+	var opts []diff.ApplyOpt
+	if er.Payloads != nil {
+		opts = append(opts, diff.WithPayloads(er.Payloads))
+	}
+
 	for _, differ := range l.differs {
-		ocidesc, err = differ.Apply(ctx, desc, mounts)
+		ocidesc, err = differ.Apply(ctx, desc, mounts, opts...)
 		if !errdefs.IsNotImplemented(err) {
 			break
 		}

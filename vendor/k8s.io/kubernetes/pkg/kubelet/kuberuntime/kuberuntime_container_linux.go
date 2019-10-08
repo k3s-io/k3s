@@ -19,8 +19,12 @@ limitations under the License.
 package kuberuntime
 
 import (
-	v1 "k8s.io/api/core/v1"
-	runtimeapi "k8s.io/kubernetes/pkg/kubelet/apis/cri/runtime/v1alpha2"
+	"time"
+
+	"k8s.io/api/core/v1"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
+	kubefeatures "k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/kubelet/qos"
 )
 
@@ -66,6 +70,9 @@ func (m *kubeGenericRuntimeManager) generateLinuxContainerConfig(container *v1.C
 		// if cpuLimit.Amount is nil, then the appropriate default value is returned
 		// to allow full usage of cpu resource.
 		cpuPeriod := int64(quotaPeriod)
+		if utilfeature.DefaultFeatureGate.Enabled(kubefeatures.CPUCFSQuotaPeriod) {
+			cpuPeriod = int64(m.cpuCFSQuotaPeriod.Duration / time.Microsecond)
+		}
 		cpuQuota := milliCPUToQuota(cpuLimit.MilliValue(), cpuPeriod)
 		lc.Resources.CpuQuota = cpuQuota
 		lc.Resources.CpuPeriod = cpuPeriod

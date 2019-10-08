@@ -277,9 +277,10 @@ func createLibcontainerMount(cwd string, m specs.Mount) *configs.Mount {
 	source := m.Source
 	device := m.Type
 	if flags&unix.MS_BIND != 0 {
-		if device == "" {
-			device = "bind"
-		}
+		// Any "type" the user specified is meaningless (and ignored) for
+		// bind-mounts -- so we set it to "bind" because rootfs_linux.go
+		// (incorrectly) relies on this for some checks.
+		device = "bind"
 		if !filepath.IsAbs(source) {
 			source = filepath.Join(cwd, m.Source)
 		}

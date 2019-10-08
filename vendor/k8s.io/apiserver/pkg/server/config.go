@@ -23,17 +23,20 @@ import (
 	"net"
 	"net/http"
 	goruntime "runtime"
+	"sort"
 	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
 
 	jsonpatch "github.com/evanphx/json-patch"
+	"github.com/go-openapi/spec"
 	"github.com/pborman/uuid"
-	"k8s.io/klog"
 
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
+	"k8s.io/apimachinery/pkg/util/clock"
 	"k8s.io/apimachinery/pkg/util/sets"
 	utilwaitgroup "k8s.io/apimachinery/pkg/util/waitgroup"
 	"k8s.io/apimachinery/pkg/version"
@@ -49,8 +52,10 @@ import (
 	authorizerunion "k8s.io/apiserver/pkg/authorization/union"
 	"k8s.io/apiserver/pkg/endpoints/discovery"
 	genericapifilters "k8s.io/apiserver/pkg/endpoints/filters"
+	apiopenapi "k8s.io/apiserver/pkg/endpoints/openapi"
 	apirequest "k8s.io/apiserver/pkg/endpoints/request"
 	genericregistry "k8s.io/apiserver/pkg/registry/generic"
+	"k8s.io/apiserver/pkg/server/egressselector"
 	genericfilters "k8s.io/apiserver/pkg/server/filters"
 	"k8s.io/apiserver/pkg/server/healthz"
 	"k8s.io/apiserver/pkg/server/routes"
@@ -59,6 +64,8 @@ import (
 	restclient "k8s.io/client-go/rest"
 	certutil "k8s.io/client-go/util/cert"
 	"k8s.io/component-base/logs"
+	"k8s.io/klog"
+	openapicommon "k8s.io/kube-openapi/pkg/common"
 
 	// install apis
 	_ "k8s.io/apiserver/pkg/apis/apiserver/install"
@@ -88,6 +95,11 @@ type Config struct {
 	// This is required for proper functioning of the PostStartHooks on a GenericAPIServer
 	// TODO: move into SecureServing(WithLoopback) as soon as insecure serving is gone
 	LoopbackClientConfig *restclient.Config
+
+	// EgressSelector provides a lookup mechanism for dialing outbound connections.
+	// It does so based on a EgressSelectorConfiguration which was read at startup.
+	EgressSelector *egressselector.EgressSelector
+
 	// RuleResolver is required to get the list of rules that apply to a given user
 	// in a given namespace
 	RuleResolver authorizer.RuleResolver
@@ -126,8 +138,12 @@ type Config struct {
 	// DiscoveryAddresses is used to build the IPs pass to discovery. If nil, the ExternalAddress is
 	// always reported
 	DiscoveryAddresses discovery.Addresses
-	// The default set of healthz checks. There might be more added via AddHealthzChecks dynamically.
-	HealthzChecks []healthz.HealthzChecker
+	// The default set of healthz checks. There might be more added via AddHealthChecks dynamically.
+	HealthzChecks []healthz.HealthChecker
+	// The default set of livez checks. There might be more added via AddHealthChecks dynamically.
+	LivezChecks []healthz.HealthChecker
+	// The default set of readyz-only checks. There might be more added via AddReadyzChecks dynamically.
+	ReadyzChecks []healthz.HealthChecker
 	// LegacyAPIGroupPrefixes is used to set up URL parsing for authorization and for validating requests
 	// to InstallLegacyAPIGroup. New API servers don't generally have legacy groups at all.
 	LegacyAPIGroupPrefixes sets.String
@@ -137,6 +153,8 @@ type Config struct {
 	// Serializer is required and provides the interface for serializing and converting objects to and from the wire
 	// The default (api.Codecs) usually works fine.
 	Serializer runtime.NegotiatedSerializer
+	// OpenAPIConfig will be used in generating OpenAPI spec. This is nil by default. Use DefaultOpenAPIConfig for "working" defaults.
+	OpenAPIConfig *openapicommon.Config
 
 	// RESTOptionsGetter is used to construct RESTStorage types via the generic registry.
 	RESTOptionsGetter genericregistry.RESTOptionsGetter
@@ -147,6 +165,17 @@ type Config struct {
 	// If specified, long running requests such as watch will be allocated a random timeout between this value, and
 	// twice this value.  Note that it is up to the request handlers to ignore or honor this timeout. In seconds.
 	MinRequestTimeout int
+
+	// This represents the maximum amount of time it should take for apiserver to complete its startup
+	// sequence and become healthy. From apiserver's start time to when this amount of time has
+	// elapsed, /livez will assume that unfinished post-start hooks will complete successfully and
+	// therefore return true.
+	LivezGracePeriod time.Duration
+	// ShutdownDelayDuration allows to block shutdown for some time, e.g. until endpoints pointing to this API server
+	// have converged on all node. During this time, the API server keeps serving, /healthz will return 200,
+	// but /readyz will return failure.
+	ShutdownDelayDuration time.Duration
+
 	// The limit on the total size increase all "copy" operations in a json
 	// patch may cause.
 	// This affects all places that applies json patch in the binary.
@@ -176,6 +205,10 @@ type Config struct {
 	// kube-proxy, services, etc.) can reach the GenericAPIServer.
 	// If nil or 0.0.0.0, the host's default interface will be used.
 	PublicAddress net.IP
+
+	// EquivalentResourceRegistry provides information about resources equivalent to a given resource,
+	// and the kind associated with a given resource. As resources are installed, they are registered here.
+	EquivalentResourceRegistry runtime.EquivalentResourceRegistry
 }
 
 type RecommendedConfig struct {
@@ -219,6 +252,9 @@ type SecureServingInfo struct {
 	HTTP2MaxStreamsPerConnection int
 
 	AdvertisePort int
+
+	// DisableHTTP2 indicates that http2 should not be enabled.
+	DisableHTTP2 bool
 }
 
 type AuthenticationInfo struct {
@@ -241,13 +277,16 @@ type AuthorizationInfo struct {
 
 // NewConfig returns a Config struct with the default values
 func NewConfig(codecs serializer.CodecFactory) *Config {
+	defaultHealthChecks := []healthz.HealthChecker{healthz.PingHealthz, healthz.LogHealthz}
 	return &Config{
 		Serializer:                  codecs,
 		BuildHandlerChainFunc:       DefaultBuildHandlerChain,
 		HandlerChainWaitGroup:       new(utilwaitgroup.SafeWaitGroup),
 		LegacyAPIGroupPrefixes:      sets.NewString(DefaultLegacyAPIPrefix),
 		DisabledPostStartHooks:      sets.NewString(),
-		HealthzChecks:               []healthz.HealthzChecker{healthz.PingHealthz, healthz.LogHealthz},
+		HealthzChecks:               append([]healthz.HealthChecker{}, defaultHealthChecks...),
+		ReadyzChecks:                append([]healthz.HealthChecker{}, defaultHealthChecks...),
+		LivezChecks:                 append([]healthz.HealthChecker{}, defaultHealthChecks...),
 		EnableIndex:                 true,
 		EnableDiscovery:             true,
 		EnableProfiling:             true,
@@ -256,6 +295,8 @@ func NewConfig(codecs serializer.CodecFactory) *Config {
 		MaxMutatingRequestsInFlight: 200,
 		RequestTimeout:              time.Duration(60) * time.Second,
 		MinRequestTimeout:           1800,
+		LivezGracePeriod:            time.Duration(0),
+		ShutdownDelayDuration:       time.Duration(0),
 		// 10MB is the recommended maximum client request size in bytes
 		// the etcd server should accept. See
 		// https://github.com/etcd-io/etcd/blob/release-3.3/etcdserver/server.go#L90.
@@ -283,6 +324,26 @@ func NewConfig(codecs serializer.CodecFactory) *Config {
 func NewRecommendedConfig(codecs serializer.CodecFactory) *RecommendedConfig {
 	return &RecommendedConfig{
 		Config: *NewConfig(codecs),
+	}
+}
+
+func DefaultOpenAPIConfig(getDefinitions openapicommon.GetOpenAPIDefinitions, defNamer *apiopenapi.DefinitionNamer) *openapicommon.Config {
+	return &openapicommon.Config{
+		ProtocolList:   []string{"https"},
+		IgnorePrefixes: []string{},
+		Info: &spec.Info{
+			InfoProps: spec.InfoProps{
+				Title: "Generic API Server",
+			},
+		},
+		DefaultResponse: &spec.Response{
+			ResponseProps: spec.ResponseProps{
+				Description: "Default Response.",
+			},
+		},
+		GetOperationIDAndTags: apiopenapi.GetOperationIDAndTags,
+		GetDefinitionName:     defNamer.GetDefinitionName,
+		GetDefinitions:        getDefinitions,
 	}
 }
 
@@ -340,6 +401,42 @@ func (c *Config) Complete(informers informers.SharedInformerFactory) CompletedCo
 		c.ExternalAddress = net.JoinHostPort(c.ExternalAddress, strconv.Itoa(port))
 	}
 
+	if c.OpenAPIConfig != nil {
+		if c.OpenAPIConfig.SecurityDefinitions != nil {
+			// Setup OpenAPI security: all APIs will have the same authentication for now.
+			c.OpenAPIConfig.DefaultSecurity = []map[string][]string{}
+			keys := []string{}
+			for k := range *c.OpenAPIConfig.SecurityDefinitions {
+				keys = append(keys, k)
+			}
+			sort.Strings(keys)
+			for _, k := range keys {
+				c.OpenAPIConfig.DefaultSecurity = append(c.OpenAPIConfig.DefaultSecurity, map[string][]string{k: {}})
+			}
+			if c.OpenAPIConfig.CommonResponses == nil {
+				c.OpenAPIConfig.CommonResponses = map[int]spec.Response{}
+			}
+			if _, exists := c.OpenAPIConfig.CommonResponses[http.StatusUnauthorized]; !exists {
+				c.OpenAPIConfig.CommonResponses[http.StatusUnauthorized] = spec.Response{
+					ResponseProps: spec.ResponseProps{
+						Description: "Unauthorized",
+					},
+				}
+			}
+		}
+
+		// make sure we populate info, and info.version, if not manually set
+		if c.OpenAPIConfig.Info == nil {
+			c.OpenAPIConfig.Info = &spec.Info{}
+		}
+		if c.OpenAPIConfig.Info.Version == "" {
+			if c.Version != nil {
+				c.OpenAPIConfig.Info.Version = strings.Split(c.Version.String(), "-")[0]
+			} else {
+				c.OpenAPIConfig.Info.Version = "unversioned"
+			}
+		}
+	}
 	if c.DiscoveryAddresses == nil {
 		c.DiscoveryAddresses = discovery.DefaultAddresses{DefaultAddress: c.ExternalAddress}
 	}
@@ -348,6 +445,21 @@ func (c *Config) Complete(informers informers.SharedInformerFactory) CompletedCo
 
 	if c.RequestInfoResolver == nil {
 		c.RequestInfoResolver = NewRequestInfoResolver(c)
+	}
+
+	if c.EquivalentResourceRegistry == nil {
+		if c.RESTOptionsGetter == nil {
+			c.EquivalentResourceRegistry = runtime.NewEquivalentResourceRegistry()
+		} else {
+			c.EquivalentResourceRegistry = runtime.NewEquivalentResourceRegistryWithIdentity(func(groupResource schema.GroupResource) string {
+				// use the storage prefix as the key if possible
+				if opts, err := c.RESTOptionsGetter.GetRESTOptions(groupResource); err == nil {
+					return opts.ResourcePrefix
+				}
+				// otherwise return "" to use the default key (parent GV name)
+				return ""
+			})
+		}
 	}
 
 	return CompletedConfig{&completedConfig{c, informers}}
@@ -369,6 +481,9 @@ func (c completedConfig) New(name string, delegationTarget DelegationTarget) (*G
 	if c.LoopbackClientConfig == nil {
 		return nil, fmt.Errorf("Genericapiserver.New() called with config.LoopbackClientConfig == nil")
 	}
+	if c.EquivalentResourceRegistry == nil {
+		return nil, fmt.Errorf("Genericapiserver.New() called with config.EquivalentResourceRegistry == nil")
+	}
 
 	handlerChainBuilder := func(handler http.Handler) http.Handler {
 		return c.BuildHandlerChainFunc(handler, c.Config)
@@ -376,34 +491,43 @@ func (c completedConfig) New(name string, delegationTarget DelegationTarget) (*G
 	apiServerHandler := NewAPIServerHandler(name, c.Serializer, handlerChainBuilder, delegationTarget.UnprotectedHandler())
 
 	s := &GenericAPIServer{
-		discoveryAddresses:     c.DiscoveryAddresses,
-		LoopbackClientConfig:   c.LoopbackClientConfig,
-		legacyAPIGroupPrefixes: c.LegacyAPIGroupPrefixes,
-		admissionControl:       c.AdmissionControl,
-		Serializer:             c.Serializer,
-		AuditBackend:           c.AuditBackend,
-		Authorizer:             c.Authorization.Authorizer,
-		delegationTarget:       delegationTarget,
-		HandlerChainWaitGroup:  c.HandlerChainWaitGroup,
+		discoveryAddresses:         c.DiscoveryAddresses,
+		LoopbackClientConfig:       c.LoopbackClientConfig,
+		legacyAPIGroupPrefixes:     c.LegacyAPIGroupPrefixes,
+		admissionControl:           c.AdmissionControl,
+		Serializer:                 c.Serializer,
+		AuditBackend:               c.AuditBackend,
+		Authorizer:                 c.Authorization.Authorizer,
+		delegationTarget:           delegationTarget,
+		EquivalentResourceRegistry: c.EquivalentResourceRegistry,
+		HandlerChainWaitGroup:      c.HandlerChainWaitGroup,
 
-		minRequestTimeout: time.Duration(c.MinRequestTimeout) * time.Second,
-		ShutdownTimeout:   c.RequestTimeout,
-
-		SecureServingInfo: c.SecureServing,
-		ExternalAddress:   c.ExternalAddress,
+		minRequestTimeout:     time.Duration(c.MinRequestTimeout) * time.Second,
+		ShutdownTimeout:       c.RequestTimeout,
+		ShutdownDelayDuration: c.ShutdownDelayDuration,
+		SecureServingInfo:     c.SecureServing,
+		ExternalAddress:       c.ExternalAddress,
 
 		Handler: apiServerHandler,
 
 		listedPathProvider: apiServerHandler,
 
+		openAPIConfig: c.OpenAPIConfig,
+
 		postStartHooks:         map[string]postStartHookEntry{},
 		preShutdownHooks:       map[string]preShutdownHookEntry{},
 		disabledPostStartHooks: c.DisabledPostStartHooks,
 
-		healthzChecks: c.HealthzChecks,
+		healthzChecks:    c.HealthzChecks,
+		livezChecks:      c.LivezChecks,
+		readyzChecks:     c.ReadyzChecks,
+		readinessStopCh:  make(chan struct{}),
+		livezGracePeriod: c.LivezGracePeriod,
 
 		DiscoveryGroupManager: discovery.NewRootAPIsHandler(c.DiscoveryAddresses, c.Serializer),
-		maxRequestBodyBytes:   c.MaxRequestBodyBytes,
+
+		maxRequestBodyBytes: c.MaxRequestBodyBytes,
+		livezClock:          clock.RealClock{},
 	}
 
 	for {
@@ -449,8 +573,7 @@ func (c completedConfig) New(name string, delegationTarget DelegationTarget) (*G
 		if skip {
 			continue
 		}
-
-		s.healthzChecks = append(s.healthzChecks, delegateCheck)
+		s.AddHealthChecks(delegateCheck)
 	}
 
 	s.listedPathProvider = routes.ListedPathProviders{s.listedPathProvider, delegationTarget}
@@ -481,6 +604,7 @@ func DefaultBuildHandlerChain(apiHandler http.Handler, c *Config) http.Handler {
 	handler = genericfilters.WithTimeoutForNonLongRunningRequests(handler, c.LongRunningFunc, c.RequestTimeout)
 	handler = genericfilters.WithWaitGroup(handler, c.LongRunningFunc, c.HandlerChainWaitGroup)
 	handler = genericapifilters.WithRequestInfo(handler, c.RequestInfoResolver)
+	handler = genericapifilters.WithCacheControl(handler)
 	handler = genericfilters.WithPanicRecovery(handler)
 	return handler
 }
@@ -546,9 +670,19 @@ func (s *SecureServingInfo) HostPort() (string, int, error) {
 }
 
 // AuthorizeClientBearerToken wraps the authenticator and authorizer in loopback authentication logic
-// if the loopback client config is specified AND it has a bearer token.
+// if the loopback client config is specified AND it has a bearer token. Note that if either authn or
+// authz is nil, this function won't add a token authenticator or authorizer.
 func AuthorizeClientBearerToken(loopback *restclient.Config, authn *AuthenticationInfo, authz *AuthorizationInfo) {
-	if loopback == nil || authn == nil || authz == nil || authn.Authenticator == nil && authz.Authorizer == nil || len(loopback.BearerToken) == 0 {
+	if loopback == nil || len(loopback.BearerToken) == 0 {
+		return
+	}
+	if authn == nil || authz == nil {
+		// prevent nil pointer panic
+		return
+	}
+	if authn.Authenticator == nil || authz.Authorizer == nil {
+		// authenticator or authorizer might be nil if we want to bypass authz/authn
+		// and we also do nothing in this case.
 		return
 	}
 

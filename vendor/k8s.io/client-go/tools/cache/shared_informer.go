@@ -31,31 +31,118 @@ import (
 	"k8s.io/klog"
 )
 
-// SharedInformer has a shared data cache and is capable of distributing notifications for changes
-// to the cache to multiple listeners who registered via AddEventHandler. If you use this, there is
-// one behavior change compared to a standard Informer.  When you receive a notification, the cache
-// will be AT LEAST as fresh as the notification, but it MAY be more fresh.  You should NOT depend
-// on the contents of the cache exactly matching the notification you've received in handler
-// functions.  If there was a create, followed by a delete, the cache may NOT have your item.  This
-// has advantages over the broadcaster since it allows us to share a common cache across many
-// controllers. Extending the broadcaster would have required us keep duplicate caches for each
-// watch.
+// SharedInformer provides eventually consistent linkage of its
+// clients to the authoritative state of a given collection of
+// objects.  An object is identified by its API group, kind/resource,
+// namespace, and name; the `ObjectMeta.UID` is not part of an
+// object's ID as far as this contract is concerned.  One
+// SharedInformer provides linkage to objects of a particular API
+// group and kind/resource.  The linked object collection of a
+// SharedInformer may be further restricted to one namespace and/or by
+// label selector and/or field selector.
+//
+// The authoritative state of an object is what apiservers provide
+// access to, and an object goes through a strict sequence of states.
+// An object state is either "absent" or present with a
+// ResourceVersion and other appropriate content.
+//
+// A SharedInformer gets object states from apiservers using a
+// sequence of LIST and WATCH operations.  Through this sequence the
+// apiservers provide a sequence of "collection states" to the
+// informer, where each collection state defines the state of every
+// object of the collection.  No promise --- beyond what is implied by
+// other remarks here --- is made about how one informer's sequence of
+// collection states relates to a different informer's sequence of
+// collection states.
+//
+// A SharedInformer maintains a local cache, exposed by GetStore() and
+// by GetIndexer() in the case of an indexed informer, of the state of
+// each relevant object.  This cache is eventually consistent with the
+// authoritative state.  This means that, unless prevented by
+// persistent communication problems, if ever a particular object ID X
+// is authoritatively associated with a state S then for every
+// SharedInformer I whose collection includes (X, S) eventually either
+// (1) I's cache associates X with S or a later state of X, (2) I is
+// stopped, or (3) the authoritative state service for X terminates.
+// To be formally complete, we say that the absent state meets any
+// restriction by label selector or field selector.
+//
+// The local cache starts out empty, and gets populated and updated
+// during `Run()`.
+//
+// As a simple example, if a collection of objects is henceforeth
+// unchanging, a SharedInformer is created that links to that
+// collection, and that SharedInformer is `Run()` then that
+// SharedInformer's cache eventually holds an exact copy of that
+// collection (unless it is stopped too soon, the authoritative state
+// service ends, or communication problems between the two
+// persistently thwart achievement).
+//
+// As another simple example, if the local cache ever holds a
+// non-absent state for some object ID and the object is eventually
+// removed from the authoritative state then eventually the object is
+// removed from the local cache (unless the SharedInformer is stopped
+// too soon, the authoritative state service ends, or communication
+// problems persistently thwart the desired result).
+//
+// The keys in the Store are of the form namespace/name for namespaced
+// objects, and are simply the name for non-namespaced objects.
+// Clients can use `MetaNamespaceKeyFunc(obj)` to extract the key for
+// a given object, and `SplitMetaNamespaceKey(key)` to split a key
+// into its constituent parts.
+//
+// A client is identified here by a ResourceEventHandler.  For every
+// update to the SharedInformer's local cache and for every client
+// added before `Run()`, eventually either the SharedInformer is
+// stopped or the client is notified of the update.  A client added
+// after `Run()` starts gets a startup batch of notifications of
+// additions of the object existing in the cache at the time that
+// client was added; also, for every update to the SharedInformer's
+// local cache after that client was added, eventually either the
+// SharedInformer is stopped or that client is notified of that
+// update.  Client notifications happen after the corresponding cache
+// update and, in the case of a SharedIndexInformer, after the
+// corresponding index updates.  It is possible that additional cache
+// and index updates happen before such a prescribed notification.
+// For a given SharedInformer and client, the notifications are
+// delivered sequentially.  For a given SharedInformer, client, and
+// object ID, the notifications are delivered in order.
+//
+// A client must process each notification promptly; a SharedInformer
+// is not engineered to deal well with a large backlog of
+// notifications to deliver.  Lengthy processing should be passed off
+// to something else, for example through a
+// `client-go/util/workqueue`.
+//
+// Each query to an informer's local cache --- whether a single-object
+// lookup, a list operation, or a use of one of its indices --- is
+// answered entirely from one of the collection states received by
+// that informer.
+//
+// A delete notification exposes the last locally known non-absent
+// state, except that its ResourceVersion is replaced with a
+// ResourceVersion in which the object is actually absent.
 type SharedInformer interface {
 	// AddEventHandler adds an event handler to the shared informer using the shared informer's resync
 	// period.  Events to a single handler are delivered sequentially, but there is no coordination
 	// between different handlers.
 	AddEventHandler(handler ResourceEventHandler)
-	// AddEventHandlerWithResyncPeriod adds an event handler to the shared informer using the
-	// specified resync period.  Events to a single handler are delivered sequentially, but there is
-	// no coordination between different handlers.
+	// AddEventHandlerWithResyncPeriod adds an event handler to the
+	// shared informer using the specified resync period.  The resync
+	// operation consists of delivering to the handler a create
+	// notification for every object in the informer's local cache; it
+	// does not add any interactions with the authoritative storage.
 	AddEventHandlerWithResyncPeriod(handler ResourceEventHandler, resyncPeriod time.Duration)
-	// GetStore returns the Store.
+	// GetStore returns the informer's local cache as a Store.
 	GetStore() Store
 	// GetController gives back a synthetic interface that "votes" to start the informer
 	GetController() Controller
-	// Run starts the shared informer, which will be stopped when stopCh is closed.
+	// Run starts and runs the shared informer, returning after it stops.
+	// The informer will be stopped when stopCh is closed.
 	Run(stopCh <-chan struct{})
-	// HasSynced returns true if the shared informer's store has synced.
+	// HasSynced returns true if the shared informer's store has been
+	// informed by at least one full LIST of the authoritative state
+	// of the informer's object collection.  This is unrelated to "resync".
 	HasSynced() bool
 	// LastSyncResourceVersion is the resource version observed when last synced with the underlying
 	// store. The value returned is not synchronized with access to the underlying store and is not
@@ -63,6 +150,7 @@ type SharedInformer interface {
 	LastSyncResourceVersion() string
 }
 
+// SharedIndexInformer provides add and get Indexers ability based on SharedInformer.
 type SharedIndexInformer interface {
 	SharedInformer
 	// AddIndexers add indexers to the informer before it starts.
@@ -102,8 +190,24 @@ const (
 	initialBufferSize = 1024
 )
 
+// WaitForNamedCacheSync is a wrapper around WaitForCacheSync that generates log messages
+// indicating that the caller identified by name is waiting for syncs, followed by
+// either a successful or failed sync.
+func WaitForNamedCacheSync(controllerName string, stopCh <-chan struct{}, cacheSyncs ...InformerSynced) bool {
+	klog.Infof("Waiting for caches to sync for %s", controllerName)
+
+	if !WaitForCacheSync(stopCh, cacheSyncs...) {
+		utilruntime.HandleError(fmt.Errorf("unable to sync caches for %s", controllerName))
+		return false
+	}
+
+	klog.Infof("Caches are synced for %s ", controllerName)
+	return true
+}
+
 // WaitForCacheSync waits for caches to populate.  It returns true if it was successful, false
 // if the controller should shutdown
+// callers should prefer WaitForNamedCacheSync()
 func WaitForCacheSync(stopCh <-chan struct{}, cacheSyncs ...InformerSynced) bool {
 	err := wait.PollUntil(syncedPollPeriod,
 		func() (bool, error) {
@@ -129,7 +233,7 @@ type sharedIndexInformer struct {
 	controller Controller
 
 	processor             *sharedProcessor
-	cacheMutationDetector CacheMutationDetector
+	cacheMutationDetector MutationDetector
 
 	// This block is tracked to handle late initialization of the controller
 	listerWatcher ListerWatcher
@@ -169,7 +273,7 @@ func (v *dummyController) HasSynced() bool {
 	return v.informer.HasSynced()
 }
 
-func (c *dummyController) LastSyncResourceVersion() string {
+func (v *dummyController) LastSyncResourceVersion() string {
 	return ""
 }
 
@@ -556,7 +660,7 @@ func (p *processorListener) run() {
 				case deleteNotification:
 					p.handler.OnDelete(notification.oldObj)
 				default:
-					utilruntime.HandleError(fmt.Errorf("unrecognized notification: %#v", next))
+					utilruntime.HandleError(fmt.Errorf("unrecognized notification: %T", next))
 				}
 			}
 			// the only way to get here is if the p.nextCh is empty and closed

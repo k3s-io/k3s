@@ -16,18 +16,10 @@
 #Windows specific settings.
 WHALE = "+"
 ONI = "-"
-COMMANDS += containerd-shim-runhcs-v1
 
 BINARY_SUFFIX=".exe"
 
 # amd64 supports go test -race
 ifeq ($(GOARCH),amd64)
 	TESTFLAGS_RACE= -race
-endif
-
-# add support for building the Windows v2 runtime
-# based on the containerd-shim-runhcs-v1 shim rather
-# than the existing runtime on hcsshim
-ifeq (${BUILD_WINDOWS_V2},1)
-	BUILDTAGS += windows_v2
 endif

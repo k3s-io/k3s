@@ -21,9 +21,11 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strconv"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	utilrand "k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/tools/record"
 	helper "k8s.io/kubernetes/pkg/apis/core/v1/helper"
@@ -33,16 +35,49 @@ import (
 )
 
 const (
+	// IPv4ZeroCIDR is the CIDR block for the whole IPv4 address space
 	IPv4ZeroCIDR = "0.0.0.0/0"
+
+	// IPv6ZeroCIDR is the CIDR block for the whole IPv6 address space
 	IPv6ZeroCIDR = "::/0"
 )
 
 var (
+	// ErrAddressNotAllowed indicates the address is not allowed
 	ErrAddressNotAllowed = errors.New("address not allowed")
-	ErrNoAddresses       = errors.New("No addresses for hostname")
+
+	// ErrNoAddresses indicates there are no addresses for the hostname
+	ErrNoAddresses = errors.New("No addresses for hostname")
+
 	DisableProxyHostnameCheck = false
 )
 
+// isValidEndpoint checks that the given host / port pair are valid endpoint
+func isValidEndpoint(host string, port int) bool {
+	return host != "" && port > 0
+}
+
+// BuildPortsToEndpointsMap builds a map of portname -> all ip:ports for that
+// portname. Explode Endpoints.Subsets[*] into this structure.
+func BuildPortsToEndpointsMap(endpoints *v1.Endpoints) map[string][]string {
+	portsToEndpoints := map[string][]string{}
+	for i := range endpoints.Subsets {
+		ss := &endpoints.Subsets[i]
+		for i := range ss.Ports {
+			port := &ss.Ports[i]
+			for i := range ss.Addresses {
+				addr := &ss.Addresses[i]
+				if isValidEndpoint(addr.IP, int(port.Port)) {
+					portsToEndpoints[port.Name] = append(portsToEndpoints[port.Name], net.JoinHostPort(addr.IP, strconv.Itoa(int(port.Port))))
+				}
+			}
+		}
+	}
+	return portsToEndpoints
+}
+
+// IsZeroCIDR checks whether the input CIDR string is either
+// the IPv4 or IPv6 zero CIDR
 func IsZeroCIDR(cidr string) bool {
 	if cidr == IPv4ZeroCIDR || cidr == IPv6ZeroCIDR {
 		return true
@@ -94,6 +129,8 @@ func IsProxyableHostname(ctx context.Context, resolv Resolver, hostname string) 
 	return nil
 }
 
+// IsLocalIP checks if a given IP address is bound to an interface
+// on the local system
 func IsLocalIP(ip string) (bool, error) {
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {
@@ -111,6 +148,7 @@ func IsLocalIP(ip string) (bool, error) {
 	return false, nil
 }
 
+// ShouldSkipService checks if a given service should skip proxying
 func ShouldSkipService(svcName types.NamespacedName, service *v1.Service) bool {
 	// if ClusterIP is "None" or empty, skip proxying
 	if !helper.IsServiceIPSet(service) {
@@ -218,4 +256,39 @@ func filterWithCondition(strs []string, expectedCondition bool, conditionFunc fu
 		}
 	}
 	return corrects, incorrects
+}
+
+// AppendPortIfNeeded appends the given port to IP address unless it is already in
+// "ipv4:port" or "[ipv6]:port" format.
+func AppendPortIfNeeded(addr string, port int32) string {
+	// Return if address is already in "ipv4:port" or "[ipv6]:port" format.
+	if _, _, err := net.SplitHostPort(addr); err == nil {
+		return addr
+	}
+
+	// Simply return for invalid case. This should be caught by validation instead.
+	ip := net.ParseIP(addr)
+	if ip == nil {
+		return addr
+	}
+
+	// Append port to address.
+	if ip.To4() != nil {
+		return fmt.Sprintf("%s:%d", addr, port)
+	}
+	return fmt.Sprintf("[%s]:%d", addr, port)
+}
+
+// ShuffleStrings copies strings from the specified slice into a copy in random
+// order. It returns a new slice.
+func ShuffleStrings(s []string) []string {
+	if s == nil {
+		return nil
+	}
+	shuffled := make([]string, len(s))
+	perm := utilrand.Perm(len(s))
+	for i, j := range perm {
+		shuffled[j] = s[i]
+	}
+	return shuffled
 }

@@ -33,11 +33,13 @@ import (
 	"k8s.io/client-go/util/jsonpath"
 )
 
+var swaggerMetadataDescriptions = metav1.ObjectMeta{}.SwaggerDoc()
+
 // New creates a new table convertor for the provided CRD column definition. If the printer definition cannot be parsed,
 // error will be returned along with a default table convertor.
 func New(crdColumns []apiextensions.CustomResourceColumnDefinition) (rest.TableConvertor, error) {
 	headers := []metav1beta1.TableColumnDefinition{
-		{Name: "Name", Type: "string", Format: "name", Description: ""},
+		{Name: "Name", Type: "string", Format: "name", Description: swaggerMetadataDescriptions["name"]},
 	}
 	c := &convertor{
 		headers: headers,
@@ -74,13 +76,18 @@ type convertor struct {
 }
 
 func (c *convertor) ConvertToTable(ctx context.Context, obj runtime.Object, tableOptions runtime.Object) (*metav1beta1.Table, error) {
-	table := &metav1beta1.Table{
-		ColumnDefinitions: c.headers,
+	table := &metav1beta1.Table{}
+	opt, ok := tableOptions.(*metav1beta1.TableOptions)
+	noHeaders := ok && opt != nil && opt.NoHeaders
+	if !noHeaders {
+		table.ColumnDefinitions = c.headers
 	}
+
 	if m, err := meta.ListAccessor(obj); err == nil {
 		table.ResourceVersion = m.GetResourceVersion()
 		table.SelfLink = m.GetSelfLink()
 		table.Continue = m.GetContinue()
+		table.RemainingItemCount = m.GetRemainingItemCount()
 	} else {
 		if m, err := meta.CommonAccessor(obj); err == nil {
 			table.ResourceVersion = m.GetResourceVersion()

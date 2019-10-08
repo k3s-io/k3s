@@ -27,10 +27,11 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog"
 
-	runtimeapi "k8s.io/kubernetes/pkg/kubelet/apis/cri/runtime/v1alpha2"
+	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 	"k8s.io/kubernetes/pkg/kubelet/cm/cpumanager/state"
 	"k8s.io/kubernetes/pkg/kubelet/cm/cpumanager/topology"
 	"k8s.io/kubernetes/pkg/kubelet/cm/cpuset"
+	"k8s.io/kubernetes/pkg/kubelet/cm/topologymanager"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
 	"k8s.io/kubernetes/pkg/kubelet/status"
 )
@@ -64,6 +65,10 @@ type Manager interface {
 
 	// State returns a read-only interface to the internal CPU manager state.
 	State() state.Reader
+
+	// GetTopologyHints implements the Topology Manager Interface and is
+	// consulted to make Topology aware resource alignments
+	GetTopologyHints(pod v1.Pod, container v1.Container) map[string][]topologymanager.TopologyHint
 }
 
 type manager struct {
@@ -89,7 +94,7 @@ type manager struct {
 	// and the containerID of their containers
 	podStatusProvider status.PodStatusProvider
 
-	machineInfo *cadvisorapi.MachineInfo
+	topology *topology.CPUTopology
 
 	nodeAllocatableReservation v1.ResourceList
 }
@@ -97,7 +102,8 @@ type manager struct {
 var _ Manager = &manager{}
 
 // NewManager creates new cpu manager based on provided policy
-func NewManager(cpuPolicyName string, reconcilePeriod time.Duration, machineInfo *cadvisorapi.MachineInfo, nodeAllocatableReservation v1.ResourceList, stateFileDirectory string) (Manager, error) {
+func NewManager(cpuPolicyName string, reconcilePeriod time.Duration, machineInfo *cadvisorapi.MachineInfo, numaNodeInfo topology.NUMANodeInfo, nodeAllocatableReservation v1.ResourceList, stateFileDirectory string, affinity topologymanager.Store) (Manager, error) {
+	var topo *topology.CPUTopology
 	var policy Policy
 
 	switch policyName(cpuPolicyName) {
@@ -106,7 +112,8 @@ func NewManager(cpuPolicyName string, reconcilePeriod time.Duration, machineInfo
 		policy = NewNonePolicy()
 
 	case PolicyStatic:
-		topo, err := topology.Discover(machineInfo)
+		var err error
+		topo, err = topology.Discover(machineInfo, numaNodeInfo)
 		if err != nil {
 			return nil, err
 		}
@@ -129,11 +136,10 @@ func NewManager(cpuPolicyName string, reconcilePeriod time.Duration, machineInfo
 		// exclusively allocated.
 		reservedCPUsFloat := float64(reservedCPUs.MilliValue()) / 1000
 		numReservedCPUs := int(math.Ceil(reservedCPUsFloat))
-		policy = NewStaticPolicy(topo, numReservedCPUs)
+		policy = NewStaticPolicy(topo, numReservedCPUs, affinity)
 
 	default:
-		klog.Errorf("[cpumanager] Unknown policy \"%s\", falling back to default policy \"%s\"", cpuPolicyName, PolicyNone)
-		policy = NewNonePolicy()
+		return nil, fmt.Errorf("unknown policy: \"%s\"", cpuPolicyName)
 	}
 
 	stateImpl, err := state.NewCheckpointState(stateFileDirectory, cpuManagerStateFileName, policy.Name())
@@ -145,7 +151,7 @@ func NewManager(cpuPolicyName string, reconcilePeriod time.Duration, machineInfo
 		policy:                     policy,
 		reconcilePeriod:            reconcilePeriod,
 		state:                      stateImpl,
-		machineInfo:                machineInfo,
+		topology:                   topo,
 		nodeAllocatableReservation: nodeAllocatableReservation,
 	}
 	return manager, nil
@@ -225,10 +231,10 @@ func (m *manager) reconcileState() (success []reconciledContainer, failure []rec
 	for _, pod := range m.activePods() {
 		allContainers := pod.Spec.InitContainers
 		allContainers = append(allContainers, pod.Spec.Containers...)
+		status, ok := m.podStatusProvider.GetPodStatus(pod.UID)
 		for _, container := range allContainers {
-			status, ok := m.podStatusProvider.GetPodStatus(pod.UID)
 			if !ok {
-				klog.Warningf("[cpumanager] reconcileState: skipping pod; status not found (pod: %s, container: %s)", pod.Name, container.Name)
+				klog.Warningf("[cpumanager] reconcileState: skipping pod; status not found (pod: %s)", pod.Name)
 				failure = append(failure, reconciledContainer{pod.Name, container.Name, ""})
 				break
 			}
@@ -294,7 +300,9 @@ func (m *manager) reconcileState() (success []reconciledContainer, failure []rec
 }
 
 func findContainerIDByName(status *v1.PodStatus, name string) (string, error) {
-	for _, container := range status.ContainerStatuses {
+	allStatuses := status.InitContainerStatuses
+	allStatuses = append(allStatuses, status.ContainerStatuses...)
+	for _, container := range allStatuses {
 		if container.Name == name && container.ContainerID != "" {
 			cid := &kubecontainer.ContainerID{}
 			err := cid.ParseString(container.ContainerID)

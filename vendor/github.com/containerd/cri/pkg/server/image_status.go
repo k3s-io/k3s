@@ -19,14 +19,14 @@ package server
 import (
 	"encoding/json"
 
+	"github.com/containerd/containerd/log"
+	imagespec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
-	runtime "k8s.io/kubernetes/pkg/kubelet/apis/cri/runtime/v1alpha2"
+	runtime "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 
 	"github.com/containerd/cri/pkg/store"
 	imagestore "github.com/containerd/cri/pkg/store/image"
-	imagespec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 // ImageStatus returns the status of the image, returns nil if the image isn't present.
@@ -97,7 +97,7 @@ func (c *criService) toCRIImageInfo(ctx context.Context, image *imagestore.Image
 	if err == nil {
 		info["info"] = string(m)
 	} else {
-		logrus.WithError(err).Errorf("failed to marshal info %v", imi)
+		log.G(ctx).WithError(err).Errorf("failed to marshal info %v", imi)
 		info["info"] = err.Error()
 	}
 

@@ -53,10 +53,13 @@ func NewServer(opts ...ServerOpt) (*Server, error) {
 			return nil, err
 		}
 	}
+	if config.interceptor == nil {
+		config.interceptor = defaultServerInterceptor
+	}
 
 	return &Server{
 		config:      config,
-		services:    newServiceSet(),
+		services:    newServiceSet(config.interceptor),
 		done:        make(chan struct{}),
 		listeners:   make(map[net.Listener]struct{}),
 		connections: make(map[*serverConn]struct{}),
@@ -341,7 +344,7 @@ func (c *serverConn) run(sctx context.Context) {
 			default: // proceed
 			}
 
-			mh, p, err := ch.recv(ctx)
+			mh, p, err := ch.recv()
 			if err != nil {
 				status, ok := status.FromError(err)
 				if !ok {
@@ -438,7 +441,7 @@ func (c *serverConn) run(sctx context.Context) {
 				return
 			}
 
-			if err := ch.send(ctx, response.id, messageTypeResponse, p); err != nil {
+			if err := ch.send(response.id, messageTypeResponse, p); err != nil {
 				logrus.WithError(err).Error("failed sending message on channel")
 				return
 			}
@@ -466,6 +469,12 @@ func (c *serverConn) run(sctx context.Context) {
 var noopFunc = func() {}
 
 func getRequestContext(ctx context.Context, req *Request) (retCtx context.Context, cancel func()) {
+	if len(req.Metadata) > 0 {
+		md := MD{}
+		md.fromRequest(req)
+		ctx = WithMetadata(ctx, md)
+	}
+
 	cancel = noopFunc
 	if req.TimeoutNano == 0 {
 		return ctx, cancel

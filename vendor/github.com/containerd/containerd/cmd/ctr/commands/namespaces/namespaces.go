@@ -33,7 +33,7 @@ import (
 // Command is the cli command for managing namespaces
 var Command = cli.Command{
 	Name:    "namespaces",
-	Aliases: []string{"namespace"},
+	Aliases: []string{"namespace", "ns"},
 	Usage:   "manage namespaces",
 	Subcommands: cli.Commands{
 		createCommand,
@@ -45,6 +45,7 @@ var Command = cli.Command{
 
 var createCommand = cli.Command{
 	Name:        "create",
+	Aliases:     []string{"c"},
 	Usage:       "create a new namespace",
 	ArgsUsage:   "<name> [<key>=<value]",
 	Description: "create a new namespace. it must be unique",
@@ -146,6 +147,12 @@ var removeCommand = cli.Command{
 	Usage:       "remove one or more namespaces",
 	ArgsUsage:   "<name> [<name>, ...]",
 	Description: "remove one or more namespaces. for now, the namespace must be empty",
+	Flags: []cli.Flag{
+		cli.BoolFlag{
+			Name:  "cgroup,c",
+			Usage: "delete the namespace's cgroup",
+		},
+	},
 	Action: func(context *cli.Context) error {
 		var exitErr error
 		client, ctx, cancel, err := commands.NewClient(context)
@@ -153,9 +160,11 @@ var removeCommand = cli.Command{
 			return err
 		}
 		defer cancel()
+
+		opts := deleteOpts(context)
 		namespaces := client.NamespaceService()
 		for _, target := range context.Args() {
-			if err := namespaces.Delete(ctx, target); err != nil {
+			if err := namespaces.Delete(ctx, target, opts...); err != nil {
 				if !errdefs.IsNotFound(err) {
 					if exitErr == nil {
 						exitErr = errors.Wrapf(err, "unable to delete %v", target)

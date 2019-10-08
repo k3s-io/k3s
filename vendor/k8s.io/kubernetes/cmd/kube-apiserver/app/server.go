@@ -27,36 +27,50 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/go-openapi/spec"
 	"k8s.io/kubernetes/pkg/kubelet/types"
 
 	"github.com/spf13/cobra"
 
+	extensionsapiserver "k8s.io/apiextensions-apiserver/pkg/apiserver"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/apimachinery/pkg/util/sets"
+	utilwait "k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/admission"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 	"k8s.io/apiserver/pkg/authorization/authorizer"
+	openapinamer "k8s.io/apiserver/pkg/endpoints/openapi"
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	"k8s.io/apiserver/pkg/server/filters"
 	serveroptions "k8s.io/apiserver/pkg/server/options"
 	serverstorage "k8s.io/apiserver/pkg/server/storage"
+	"k8s.io/apiserver/pkg/storage/etcd3/preflight"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/apiserver/pkg/util/term"
 	"k8s.io/apiserver/pkg/util/webhook"
 	clientgoinformers "k8s.io/client-go/informers"
 	clientgoclientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/util/keyutil"
+	cloudprovider "k8s.io/cloud-provider"
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/component-base/cli/globalflag"
+	_ "k8s.io/component-base/metrics/prometheus/workqueue" // for workqueue metric registration
+	"k8s.io/component-base/version"
 	"k8s.io/klog"
 	aggregatorapiserver "k8s.io/kube-aggregator/pkg/apiserver"
+	aggregatorscheme "k8s.io/kube-aggregator/pkg/apiserver/scheme"
 	"k8s.io/kubernetes/cmd/kube-apiserver/app/options"
 	"k8s.io/kubernetes/pkg/api/legacyscheme"
 	"k8s.io/kubernetes/pkg/capabilities"
 	serviceaccountcontroller "k8s.io/kubernetes/pkg/controller/serviceaccount"
+	"k8s.io/kubernetes/pkg/features"
+	generatedopenapi "k8s.io/kubernetes/pkg/generated/openapi"
 	"k8s.io/kubernetes/pkg/kubeapiserver"
 	kubeapiserveradmission "k8s.io/kubernetes/pkg/kubeapiserver/admission"
 	kubeauthenticator "k8s.io/kubernetes/pkg/kubeapiserver/authenticator"
@@ -65,19 +79,19 @@ import (
 	kubeserver "k8s.io/kubernetes/pkg/kubeapiserver/server"
 	"k8s.io/kubernetes/pkg/master"
 	"k8s.io/kubernetes/pkg/master/reconcilers"
+	"k8s.io/kubernetes/pkg/master/tunneler"
 	"k8s.io/kubernetes/pkg/registry/cachesize"
 	rbacrest "k8s.io/kubernetes/pkg/registry/rbac/rest"
 	"k8s.io/kubernetes/pkg/serviceaccount"
-
 	utilflag "k8s.io/kubernetes/pkg/util/flag"
-	_ "k8s.io/kubernetes/pkg/util/reflector/prometheus" // for reflector metric registration
-	_ "k8s.io/kubernetes/pkg/util/workqueue/prometheus" // for workqueue metric registration
-	"k8s.io/kubernetes/pkg/version"
 	"k8s.io/kubernetes/pkg/version/verflag"
+	"k8s.io/kubernetes/plugin/pkg/auth/authenticator/token/bootstrap"
 )
 
-const etcdRetryLimit = 60
-const etcdRetryInterval = 1 * time.Second
+const (
+	etcdRetryLimit    = 60
+	etcdRetryInterval = 1 * time.Second
+)
 
 var (
 	DefaultProxyDialerFn utilnet.DialFunc
@@ -147,24 +161,24 @@ func Run(completeOptions completedServerRunOptions, stopCh <-chan struct{}) erro
 	// To help debugging, immediately log version
 	klog.Infof("Version: %+v", version.Get())
 
-	config, server, err := CreateServerChain(completeOptions, stopCh)
+	server, err := CreateServerChain(completeOptions, stopCh)
 	if err != nil {
 		return err
 	}
 
-	StartupConfig <- startupConfig{
-		Handler:       server.Handler,
-		Authenticator: config.GenericConfig.Authentication.Authenticator,
+	prepared, err := server.PrepareRun()
+	if err != nil {
+		return err
 	}
 
-	return server.PrepareRun().Run(stopCh)
+	return prepared.Run(stopCh)
 }
 
 // CreateServerChain creates the apiservers connected via delegation.
-func CreateServerChain(completedOptions completedServerRunOptions, stopCh <-chan struct{}) (*master.Config, *genericapiserver.GenericAPIServer, error) {
-	proxyTransport, err := CreateNodeDialer(completedOptions)
+func CreateServerChain(completedOptions completedServerRunOptions, stopCh <-chan struct{}) (*aggregatorapiserver.APIAggregator, error) {
+	nodeTunneler, proxyTransport, err := CreateNodeDialer(completedOptions)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	if DefaultProxyDialerFn != nil {
@@ -172,53 +186,53 @@ func CreateServerChain(completedOptions completedServerRunOptions, stopCh <-chan
 		completedOptions.KubeletConfig.Proxy = http.ProxyURL(nil)
 	}
 
-	kubeAPIServerConfig, insecureServingInfo, serviceResolver, pluginInitializer, admissionPostStartHook, err := CreateKubeAPIServerConfig(completedOptions, proxyTransport)
+	kubeAPIServerConfig, insecureServingInfo, serviceResolver, pluginInitializer, admissionPostStartHook, err := CreateKubeAPIServerConfig(completedOptions, nodeTunneler, proxyTransport)
+
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	// If additional API servers are added, they should be gated.
 	apiExtensionsConfig, err := createAPIExtensionsConfig(*kubeAPIServerConfig.GenericConfig, kubeAPIServerConfig.ExtraConfig.VersionedInformers, pluginInitializer, completedOptions.ServerRunOptions, completedOptions.MasterCount,
-		serviceResolver, webhook.NewDefaultAuthenticationInfoResolverWrapper(nil, kubeAPIServerConfig.GenericConfig.LoopbackClientConfig))
+		serviceResolver, webhook.NewDefaultAuthenticationInfoResolverWrapper(proxyTransport, kubeAPIServerConfig.GenericConfig.LoopbackClientConfig))
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	apiExtensionsServer, err := createAPIExtensionsServer(apiExtensionsConfig, genericapiserver.NewEmptyDelegate())
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	kubeAPIServer, err := CreateKubeAPIServer(kubeAPIServerConfig, apiExtensionsServer.GenericAPIServer, admissionPostStartHook)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	// otherwise go down the normal path of standing the aggregator up in front of the API server
-	// this wires up openapi
-	kubeAPIServer.GenericAPIServer.PrepareRun()
-
-	// This will wire up openapi for extension api server
-	apiExtensionsServer.GenericAPIServer.PrepareRun()
-
 	// aggregator comes last in the chain
-	aggregatorConfig, err := createAggregatorConfig(*kubeAPIServerConfig.GenericConfig, completedOptions.ServerRunOptions, kubeAPIServerConfig.ExtraConfig.VersionedInformers, serviceResolver, nil, pluginInitializer)
+	aggregatorConfig, err := createAggregatorConfig(*kubeAPIServerConfig.GenericConfig, completedOptions.ServerRunOptions, kubeAPIServerConfig.ExtraConfig.VersionedInformers, serviceResolver, proxyTransport, pluginInitializer)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	aggregatorServer, err := createAggregatorServer(aggregatorConfig, kubeAPIServer.GenericAPIServer, apiExtensionsServer.Informers)
 	if err != nil {
 		// we don't need special handling for innerStopCh because the aggregator server doesn't create any go routines
-		return nil, nil, err
+		return nil, err
 	}
 
 	if insecureServingInfo != nil {
 		insecureHandlerChain := kubeserver.BuildInsecureHandlerChain(aggregatorServer.GenericAPIServer.UnprotectedHandler(), kubeAPIServerConfig.GenericConfig)
 		if err := insecureServingInfo.Serve(insecureHandlerChain, kubeAPIServerConfig.GenericConfig.RequestTimeout, stopCh); err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 	}
 
-	return kubeAPIServerConfig, aggregatorServer.GenericAPIServer, nil
+	StartupConfig <- startupConfig{
+		Handler:       aggregatorServer.GenericAPIServer.Handler,
+		Authenticator: kubeAPIServerConfig.GenericConfig.Authentication.Authenticator,
+	}
+	close(StartupConfig)
+
+	return aggregatorServer, nil
 }
 
 // CreateKubeAPIServer creates and wires a workable kube-apiserver
@@ -234,18 +248,54 @@ func CreateKubeAPIServer(kubeAPIServerConfig *master.Config, delegateAPIServer g
 }
 
 // CreateNodeDialer creates the dialer infrastructure to connect to the nodes.
-func CreateNodeDialer(s completedServerRunOptions) (*http.Transport, error) {
+func CreateNodeDialer(s completedServerRunOptions) (tunneler.Tunneler, *http.Transport, error) {
+	// Setup nodeTunneler if needed
+	var nodeTunneler tunneler.Tunneler
+	var proxyDialerFn utilnet.DialFunc
+	if len(s.SSHUser) > 0 {
+		// Get ssh key distribution func, if supported
+		var installSSHKey tunneler.InstallSSHKey
+		cloud, err := cloudprovider.InitCloudProvider(s.CloudProvider.CloudProvider, s.CloudProvider.CloudConfigFile)
+		if err != nil {
+			return nil, nil, fmt.Errorf("cloud provider could not be initialized: %v", err)
+		}
+		if cloud != nil {
+			if instances, supported := cloud.Instances(); supported {
+				installSSHKey = instances.AddSSHKeyToAllInstances
+			}
+		}
+		if s.KubeletConfig.Port == 0 {
+			return nil, nil, fmt.Errorf("must enable kubelet port if proxy ssh-tunneling is specified")
+		}
+		if s.KubeletConfig.ReadOnlyPort == 0 {
+			return nil, nil, fmt.Errorf("must enable kubelet readonly port if proxy ssh-tunneling is specified")
+		}
+		// Set up the nodeTunneler
+		// TODO(cjcullen): If we want this to handle per-kubelet ports or other
+		// kubelet listen-addresses, we need to plumb through options.
+		healthCheckPath := &url.URL{
+			Scheme: "http",
+			Host:   net.JoinHostPort("127.0.0.1", strconv.FormatUint(uint64(s.KubeletConfig.ReadOnlyPort), 10)),
+			Path:   "healthz",
+		}
+		nodeTunneler = tunneler.New(s.SSHUser, s.SSHKeyfile, healthCheckPath, installSSHKey)
+
+		// Use the nodeTunneler's dialer when proxying to pods, services, and nodes
+		proxyDialerFn = nodeTunneler.Dial
+	}
+	// Proxying to pods and services is IP-based... don't expect to be able to verify the hostname
 	proxyTLSClientConfig := &tls.Config{InsecureSkipVerify: true}
 	proxyTransport := utilnet.SetTransportDefaults(&http.Transport{
-		DialContext:     nil,
+		DialContext:     proxyDialerFn,
 		TLSClientConfig: proxyTLSClientConfig,
 	})
-	return proxyTransport, nil
+	return nodeTunneler, proxyTransport, nil
 }
 
 // CreateKubeAPIServerConfig creates all the resources for running the API server, but runs none of them
 func CreateKubeAPIServerConfig(
 	s completedServerRunOptions,
+	nodeTunneler tunneler.Tunneler,
 	proxyTransport *http.Transport,
 ) (
 	config *master.Config,
@@ -263,7 +313,15 @@ func CreateKubeAPIServerConfig(
 		return
 	}
 
+	if _, port, err := net.SplitHostPort(s.Etcd.StorageConfig.Transport.ServerList[0]); err == nil && port != "0" && len(port) != 0 {
+		if err := utilwait.PollImmediate(etcdRetryInterval, etcdRetryLimit*etcdRetryInterval, preflight.EtcdConnection{ServerList: s.Etcd.StorageConfig.Transport.ServerList}.CheckEtcdServers); err != nil {
+			lastErr = fmt.Errorf("error waiting for etcd connection: %v", err)
+			return
+		}
+	}
+
 	all, _ := types.GetValidatedSources([]string{types.AllSource})
+
 	capabilities.Initialize(capabilities.Capabilities{
 		AllowPrivileged: s.AllowPrivileged,
 		// TODO(vmarmol): Implement support for HostNetworkSources.
@@ -275,9 +333,19 @@ func CreateKubeAPIServerConfig(
 		PerConnectionBandwidthLimitBytesPerSec: s.MaxConnectionBytesPerSec,
 	})
 
-	serviceIPRange, apiServerServiceIP, lastErr := master.DefaultServiceIPRange(s.ServiceClusterIPRange)
+	serviceIPRange, apiServerServiceIP, lastErr := master.DefaultServiceIPRange(s.PrimaryServiceClusterIPRange)
 	if lastErr != nil {
 		return
+	}
+
+	// defaults to empty range and ip
+	var secondaryServiceIPRange net.IPNet
+	// process secondary range only if provided by user
+	if s.SecondaryServiceClusterIPRange.IP != nil {
+		secondaryServiceIPRange, _, lastErr = master.DefaultServiceIPRange(s.SecondaryServiceClusterIPRange)
+		if lastErr != nil {
+			return
+		}
 	}
 
 	clientCA, lastErr := readCAorNil(s.Authentication.ClientCert.ClientCA)
@@ -308,8 +376,12 @@ func CreateKubeAPIServerConfig(
 			EnableLogsSupport:       s.EnableLogsHandler,
 			ProxyTransport:          proxyTransport,
 
-			ServiceIPRange:       serviceIPRange,
-			APIServerServiceIP:   apiServerServiceIP,
+			Tunneler: nodeTunneler,
+
+			ServiceIPRange:          serviceIPRange,
+			APIServerServiceIP:      apiServerServiceIP,
+			SecondaryServiceIPRange: secondaryServiceIPRange,
+
 			APIServerServicePort: 443,
 
 			ServiceNodePortRange:      s.ServiceNodePortRange,
@@ -323,6 +395,15 @@ func CreateKubeAPIServerConfig(
 
 			VersionedInformers: versionedInformers,
 		},
+	}
+
+	if nodeTunneler != nil {
+		// Use the nodeTunneler's dialer to connect to the kubelet
+		config.ExtraConfig.KubeletClientConfig.Dial = nodeTunneler.Dial
+	}
+	if config.GenericConfig.EgressSelector != nil {
+		// Use the config.GenericConfig.EgressSelector lookup to find the dialer to connect to the kubelet
+		config.ExtraConfig.KubeletClientConfig.Lookup = config.GenericConfig.EgressSelector.Lookup
 	}
 
 	return
@@ -364,7 +445,12 @@ func buildGenericConfig(
 	if lastErr = s.APIEnablement.ApplyTo(genericConfig, master.DefaultAPIResourceConfigSource(), legacyscheme.Scheme); lastErr != nil {
 		return
 	}
+	if lastErr = s.EgressSelector.ApplyTo(genericConfig); lastErr != nil {
+		return
+	}
 
+	genericConfig.OpenAPIConfig = genericapiserver.DefaultOpenAPIConfig(generatedopenapi.GetOpenAPIDefinitions, openapinamer.NewDefinitionNamer(legacyscheme.Scheme, extensionsapiserver.Scheme, aggregatorscheme.Scheme))
+	genericConfig.OpenAPIConfig.Info.Title = "Kubernetes"
 	genericConfig.LongRunningFunc = filters.BasicLongRunningRequestCheck(
 		sets.NewString("watch", "proxy"),
 		sets.NewString("attach", "exec", "proxy", "log", "portforward"),
@@ -384,6 +470,9 @@ func buildGenericConfig(
 	if lastErr != nil {
 		return
 	}
+	if genericConfig.EgressSelector != nil {
+		storageFactory.StorageConfig.Transport.EgressLookup = genericConfig.EgressSelector.Lookup
+	}
 	if lastErr = s.Etcd.ApplyWithStorageFactoryTo(storageFactory, genericConfig); lastErr != nil {
 		return
 	}
@@ -393,6 +482,9 @@ func buildGenericConfig(
 	// cannot default to it in generic apiserver and need to explicitly
 	// set it in kube-apiserver.
 	genericConfig.LoopbackClientConfig.ContentConfig.ContentType = "application/vnd.kubernetes.protobuf"
+	// Disable compression for self-communication, since we are going to be
+	// on a fast local network
+	genericConfig.LoopbackClientConfig.DisableCompression = true
 
 	kubeClientConfig := genericConfig.LoopbackClientConfig
 	clientgoExternalClient, err := clientgoclientset.NewForConfig(kubeClientConfig)
@@ -402,7 +494,7 @@ func buildGenericConfig(
 	}
 	versionedInformers = clientgoinformers.NewSharedInformerFactory(clientgoExternalClient, 10*time.Minute)
 
-	genericConfig.Authentication.Authenticator, err = BuildAuthenticator(s, clientgoExternalClient, versionedInformers)
+	genericConfig.Authentication.Authenticator, genericConfig.OpenAPIConfig.SecurityDefinitions, err = BuildAuthenticator(s, clientgoExternalClient, versionedInformers)
 	if err != nil {
 		lastErr = fmt.Errorf("invalid authentication config: %v", err)
 		return
@@ -459,9 +551,9 @@ func buildGenericConfig(
 }
 
 // BuildAuthenticator constructs the authenticator
-func BuildAuthenticator(s *options.ServerRunOptions, extclient clientgoclientset.Interface, versionedInformer clientgoinformers.SharedInformerFactory) (authenticator.Request, error) {
+func BuildAuthenticator(s *options.ServerRunOptions, extclient clientgoclientset.Interface, versionedInformer clientgoinformers.SharedInformerFactory) (authenticator.Request, *spec.SecurityDefinitions, error) {
 	authenticatorConfig := s.Authentication.ToAuthenticationConfig()
-	if s.Authentication.ServiceAccounts.Lookup {
+	if s.Authentication.ServiceAccounts.Lookup || utilfeature.DefaultFeatureGate.Enabled(features.TokenRequest) {
 		authenticatorConfig.ServiceAccountTokenGetter = serviceaccountcontroller.NewGetterFromClient(
 			extclient,
 			versionedInformer.Core().V1().Secrets().Lister(),
@@ -469,6 +561,9 @@ func BuildAuthenticator(s *options.ServerRunOptions, extclient clientgoclientset
 			versionedInformer.Core().V1().Pods().Lister(),
 		)
 	}
+	authenticatorConfig.BootstrapTokenAuthenticator = bootstrap.NewTokenAuthenticator(
+		versionedInformer.Core().V1().Secrets().Lister().Secrets(v1.NamespaceSystem),
+	)
 
 	return authenticatorConfig.New()
 }
@@ -495,11 +590,49 @@ func Complete(s *options.ServerRunOptions) (completedServerRunOptions, error) {
 	if err := kubeoptions.DefaultAdvertiseAddress(s.GenericServerRunOptions, s.InsecureServing.DeprecatedInsecureServingOptions); err != nil {
 		return options, err
 	}
-	serviceIPRange, apiServerServiceIP, err := master.DefaultServiceIPRange(s.ServiceClusterIPRange)
-	if err != nil {
-		return options, fmt.Errorf("error determining service IP ranges: %v", err)
+
+	// process s.ServiceClusterIPRange from list to Primary and Secondary
+	// we process secondary only if provided by user
+
+	serviceClusterIPRangeList := strings.Split(s.ServiceClusterIPRanges, ",")
+
+	var apiServerServiceIP net.IP
+	var serviceIPRange net.IPNet
+	var err error
+	// nothing provided by user, use default range (only applies to the Primary)
+	if len(serviceClusterIPRangeList) == 0 {
+		var primaryServiceClusterCIDR net.IPNet
+		serviceIPRange, apiServerServiceIP, err = master.DefaultServiceIPRange(primaryServiceClusterCIDR)
+		if err != nil {
+			return options, fmt.Errorf("error determining service IP ranges: %v", err)
+		}
+		s.PrimaryServiceClusterIPRange = serviceIPRange
 	}
-	s.ServiceClusterIPRange = serviceIPRange
+
+	if len(serviceClusterIPRangeList) > 0 {
+		_, primaryServiceClusterCIDR, err := net.ParseCIDR(serviceClusterIPRangeList[0])
+		if err != nil {
+			return options, fmt.Errorf("service-cluster-ip-range[0] is not a valid cidr")
+		}
+
+		serviceIPRange, apiServerServiceIP, err = master.DefaultServiceIPRange(*(primaryServiceClusterCIDR))
+		if err != nil {
+			return options, fmt.Errorf("error determining service IP ranges for primary service cidr: %v", err)
+		}
+		s.PrimaryServiceClusterIPRange = serviceIPRange
+	}
+
+	// user provided at least two entries
+	if len(serviceClusterIPRangeList) > 1 {
+		_, secondaryServiceClusterCIDR, err := net.ParseCIDR(serviceClusterIPRangeList[1])
+		if err != nil {
+			return options, fmt.Errorf("service-cluster-ip-range[1] is not an ip net")
+		}
+
+		s.SecondaryServiceClusterIPRange = *(secondaryServiceClusterCIDR)
+	}
+	//note: validation asserts that the list is max of two dual stack entries
+
 	if err := s.SecureServing.MaybeDefaultWithSelfSignedCerts(s.GenericServerRunOptions.AdvertiseAddress.String(), []string{"kubernetes.default.svc", "kubernetes.default", "kubernetes"}, []net.IP{apiServerServiceIP}); err != nil {
 		return options, fmt.Errorf("error creating self-signed certificates: %v", err)
 	}
@@ -570,7 +703,6 @@ func Complete(s *options.ServerRunOptions) (completedServerRunOptions, error) {
 		}
 	}
 
-	// TODO: remove when we stop supporting the legacy group version.
 	if s.APIEnablement.RuntimeConfig != nil {
 		for key, value := range s.APIEnablement.RuntimeConfig {
 			if key == "v1" || strings.HasPrefix(key, "v1/") ||

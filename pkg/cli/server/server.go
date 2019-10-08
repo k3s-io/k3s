@@ -21,7 +21,6 @@ import (
 	"github.com/urfave/cli"
 	"k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/kubernetes/pkg/master"
-	"k8s.io/kubernetes/pkg/volume/csi"
 
 	_ "github.com/go-sql-driver/mysql" // ensure we have mysql
 	_ "github.com/lib/pq"              // ensure we have postgres
@@ -55,9 +54,6 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 		}
 	}
 
-	// If running agent in server, set this so that CSI initializes properly
-	csi.WaitForValidHostName = !cfg.DisableAgent
-
 	serverConfig := server.Config{}
 	serverConfig.ControlConfig.ClusterSecret = cfg.ClusterSecret
 	serverConfig.ControlConfig.DataDir = cfg.DataDir
@@ -88,6 +84,7 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	serverConfig.ControlConfig.AdvertiseIP = cfg.AdvertiseIP
 	serverConfig.ControlConfig.AdvertisePort = cfg.AdvertisePort
 	serverConfig.ControlConfig.BootstrapReadOnly = !cfg.StoreBootstrap
+	serverConfig.ControlConfig.FlannelBackend = cfg.FlannelBackend
 
 	if cmds.AgentConfig.FlannelIface != "" && cmds.AgentConfig.NodeIP == "" {
 		cmds.AgentConfig.NodeIP = netutil.GetIPFromInterface(cmds.AgentConfig.FlannelIface)
@@ -123,6 +120,16 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 		serverConfig.ControlConfig.ClusterDNS[3] = 10
 	} else {
 		serverConfig.ControlConfig.ClusterDNS = net2.ParseIP(cfg.ClusterDNS)
+	}
+
+	if cfg.DefaultLocalStoragePath == "" {
+		dataDir, err := datadir.LocalHome(cfg.DataDir, false)
+		if err != nil {
+			return err
+		}
+		serverConfig.ControlConfig.DefaultLocalStoragePath = filepath.Join(dataDir, "/storage")
+	} else {
+		serverConfig.ControlConfig.DefaultLocalStoragePath = cfg.DefaultLocalStoragePath
 	}
 
 	for _, noDeploy := range app.StringSlice("no-deploy") {
@@ -169,7 +176,6 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	agentConfig.DataDir = filepath.Dir(serverConfig.ControlConfig.DataDir)
 	agentConfig.ServerURL = url
 	agentConfig.Token = token
-	agentConfig.Labels = append(agentConfig.Labels, "node-role.kubernetes.io/master=true")
 	agentConfig.DisableLoadBalancer = true
 
 	return agent.Run(ctx, agentConfig)

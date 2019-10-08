@@ -46,14 +46,17 @@ type StatefulSetStorage struct {
 	Scale       *ScaleREST
 }
 
-func NewStorage(optsGetter generic.RESTOptionsGetter) StatefulSetStorage {
-	statefulSetRest, statefulSetStatusRest := NewREST(optsGetter)
+func NewStorage(optsGetter generic.RESTOptionsGetter) (StatefulSetStorage, error) {
+	statefulSetRest, statefulSetStatusRest, err := NewREST(optsGetter)
+	if err != nil {
+		return StatefulSetStorage{}, err
+	}
 
 	return StatefulSetStorage{
 		StatefulSet: statefulSetRest,
 		Status:      statefulSetStatusRest,
 		Scale:       &ScaleREST{store: statefulSetRest.Store},
-	}
+	}, nil
 }
 
 // rest implements a RESTStorage for statefulsets against etcd
@@ -62,7 +65,7 @@ type REST struct {
 }
 
 // NewREST returns a RESTStorage object that will work against statefulsets.
-func NewREST(optsGetter generic.RESTOptionsGetter) (*REST, *StatusREST) {
+func NewREST(optsGetter generic.RESTOptionsGetter) (*REST, *StatusREST, error) {
 	store := &genericregistry.Store{
 		NewFunc:                  func() runtime.Object { return &apps.StatefulSet{} },
 		NewListFunc:              func() runtime.Object { return &apps.StatefulSetList{} },
@@ -72,16 +75,16 @@ func NewREST(optsGetter generic.RESTOptionsGetter) (*REST, *StatusREST) {
 		UpdateStrategy: statefulset.Strategy,
 		DeleteStrategy: statefulset.Strategy,
 
-		TableConvertor: printerstorage.TableConvertor{TablePrinter: printers.NewTablePrinter().With(printersinternal.AddHandlers)},
+		TableConvertor: printerstorage.TableConvertor{TableGenerator: printers.NewTableGenerator().With(printersinternal.AddHandlers)},
 	}
 	options := &generic.StoreOptions{RESTOptions: optsGetter}
 	if err := store.CompleteWithOptions(options); err != nil {
-		panic(err) // TODO: Propagate error up
+		return nil, nil, err
 	}
 
 	statusStore := *store
 	statusStore.UpdateStrategy = statefulset.StatusStrategy
-	return &REST{store}, &StatusREST{store: &statusStore}
+	return &REST{store}, &StatusREST{store: &statusStore}, nil
 }
 
 // Implement CategoriesProvider
@@ -188,7 +191,15 @@ func (r *ScaleREST) Update(ctx context.Context, name string, objInfo rest.Update
 
 	ss.Spec.Replicas = scale.Spec.Replicas
 	ss.ResourceVersion = scale.ResourceVersion
-	obj, _, err = r.store.Update(ctx, ss.Name, rest.DefaultUpdatedObjectInfo(ss), createValidation, updateValidation, false, options)
+	obj, _, err = r.store.Update(
+		ctx,
+		ss.Name,
+		rest.DefaultUpdatedObjectInfo(ss),
+		toScaleCreateValidation(createValidation),
+		toScaleUpdateValidation(updateValidation),
+		false,
+		options,
+	)
 	if err != nil {
 		return nil, false, err
 	}
@@ -198,6 +209,30 @@ func (r *ScaleREST) Update(ctx context.Context, name string, objInfo rest.Update
 		return nil, false, errors.NewBadRequest(fmt.Sprintf("%v", err))
 	}
 	return newScale, false, err
+}
+
+func toScaleCreateValidation(f rest.ValidateObjectFunc) rest.ValidateObjectFunc {
+	return func(ctx context.Context, obj runtime.Object) error {
+		scale, err := scaleFromStatefulSet(obj.(*apps.StatefulSet))
+		if err != nil {
+			return err
+		}
+		return f(ctx, scale)
+	}
+}
+
+func toScaleUpdateValidation(f rest.ValidateObjectUpdateFunc) rest.ValidateObjectUpdateFunc {
+	return func(ctx context.Context, obj, old runtime.Object) error {
+		newScale, err := scaleFromStatefulSet(obj.(*apps.StatefulSet))
+		if err != nil {
+			return err
+		}
+		oldScale, err := scaleFromStatefulSet(old.(*apps.StatefulSet))
+		if err != nil {
+			return err
+		}
+		return f(ctx, newScale, oldScale)
+	}
 }
 
 // scaleFromStatefulSet returns a scale subresource for a statefulset.

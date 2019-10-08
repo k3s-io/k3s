@@ -17,13 +17,13 @@ limitations under the License.
 package kubelet
 
 import (
+	"context"
 	"fmt"
 	"net"
 	goruntime "runtime"
 	"sort"
+	"strings"
 	"time"
-
-	"k8s.io/klog"
 
 	"k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -32,6 +32,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	cloudprovider "k8s.io/cloud-provider"
+	"k8s.io/klog"
 	k8s_api_v1 "k8s.io/kubernetes/pkg/apis/core/v1"
 	v1helper "k8s.io/kubernetes/pkg/apis/core/v1/helper"
 	"k8s.io/kubernetes/pkg/features"
@@ -130,12 +132,15 @@ func (kl *Kubelet) tryRegisterWithAPIServer(node *v1.Node) bool {
 // Zeros out extended resource capacity during reconciliation.
 func (kl *Kubelet) reconcileExtendedResource(initialNode, node *v1.Node) bool {
 	requiresUpdate := false
-	for k := range node.Status.Capacity {
-		if v1helper.IsExtendedResourceName(k) {
-			klog.Infof("Zero out resource %s capacity in existing node.", k)
-			node.Status.Capacity[k] = *resource.NewQuantity(int64(0), resource.DecimalSI)
-			node.Status.Allocatable[k] = *resource.NewQuantity(int64(0), resource.DecimalSI)
-			requiresUpdate = true
+	// Check with the device manager to see if node has been recreated, in which case extended resources should be zeroed until they are available
+	if kl.containerManager.ShouldResetExtendedResourceCapacity() {
+		for k := range node.Status.Capacity {
+			if v1helper.IsExtendedResourceName(k) {
+				klog.Infof("Zero out resource %s capacity in existing node.", k)
+				node.Status.Capacity[k] = *resource.NewQuantity(int64(0), resource.DecimalSI)
+				node.Status.Allocatable[k] = *resource.NewQuantity(int64(0), resource.DecimalSI)
+				requiresUpdate = true
+			}
 		}
 	}
 	return requiresUpdate
@@ -304,6 +309,49 @@ func (kl *Kubelet) initialNode() (*v1.Node, error) {
 		node.Spec.ProviderID = kl.providerID
 	}
 
+	if kl.cloud != nil {
+		instances, ok := kl.cloud.Instances()
+		if !ok {
+			return nil, fmt.Errorf("failed to get instances from cloud provider")
+		}
+
+		// TODO: We can't assume that the node has credentials to talk to the
+		// cloudprovider from arbitrary nodes. At most, we should talk to a
+		// local metadata server here.
+		var err error
+		if node.Spec.ProviderID == "" {
+			node.Spec.ProviderID, err = cloudprovider.GetInstanceProviderID(context.TODO(), kl.cloud, kl.nodeName)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		instanceType, err := instances.InstanceType(context.TODO(), kl.nodeName)
+		if err != nil {
+			return nil, err
+		}
+		if instanceType != "" {
+			klog.Infof("Adding node label from cloud provider: %s=%s", v1.LabelInstanceType, instanceType)
+			node.ObjectMeta.Labels[v1.LabelInstanceType] = instanceType
+		}
+		// If the cloud has zone information, label the node with the zone information
+		zones, ok := kl.cloud.Zones()
+		if ok {
+			zone, err := zones.GetZone(context.TODO())
+			if err != nil {
+				return nil, fmt.Errorf("failed to get zone from cloud provider: %v", err)
+			}
+			if zone.FailureDomain != "" {
+				klog.Infof("Adding node label from cloud provider: %s=%s", v1.LabelZoneFailureDomain, zone.FailureDomain)
+				node.ObjectMeta.Labels[v1.LabelZoneFailureDomain] = zone.FailureDomain
+			}
+			if zone.Region != "" {
+				klog.Infof("Adding node label from cloud provider: %s=%s", v1.LabelZoneRegion, zone.Region)
+				node.ObjectMeta.Labels[v1.LabelZoneRegion] = zone.Region
+			}
+		}
+	}
+
 	kl.setNodeStatus(node)
 
 	return node, nil
@@ -369,11 +417,12 @@ func (kl *Kubelet) tryUpdateNodeStatus(tryNumber int) error {
 	}
 
 	podCIDRChanged := false
-	if node.Spec.PodCIDR != "" {
+	if len(node.Spec.PodCIDRs) != 0 {
 		// Pod CIDR could have been updated before, so we cannot rely on
 		// node.Spec.PodCIDR being non-empty. We also need to know if pod CIDR is
 		// actually changed.
-		if podCIDRChanged, err = kl.updatePodCIDR(node.Spec.PodCIDR); err != nil {
+		podCIDRs := strings.Join(node.Spec.PodCIDRs, ",")
+		if podCIDRChanged, err = kl.updatePodCIDR(podCIDRs); err != nil {
 			klog.Errorf(err.Error())
 		}
 	}
@@ -465,8 +514,8 @@ func (kl *Kubelet) setLastObservedNodeAddresses(addresses []v1.NodeAddress) {
 	kl.lastObservedNodeAddresses = addresses
 }
 func (kl *Kubelet) getLastObservedNodeAddresses() []v1.NodeAddress {
-	kl.lastObservedNodeAddressesMux.Lock()
-	defer kl.lastObservedNodeAddressesMux.Unlock()
+	kl.lastObservedNodeAddressesMux.RLock()
+	defer kl.lastObservedNodeAddressesMux.RUnlock()
 	return kl.lastObservedNodeAddresses
 }
 
@@ -475,13 +524,16 @@ func (kl *Kubelet) getLastObservedNodeAddresses() []v1.NodeAddress {
 func (kl *Kubelet) defaultNodeStatusFuncs() []func(*v1.Node) error {
 	// if cloud is not nil, we expect the cloud resource sync manager to exist
 	var nodeAddressesFunc func() ([]v1.NodeAddress, error)
+	if kl.cloud != nil {
+		nodeAddressesFunc = kl.cloudResourceSyncManager.NodeAddresses
+	}
 	var validateHostFunc func() error
 	if kl.appArmorValidator != nil {
 		validateHostFunc = kl.appArmorValidator.ValidateHost
 	}
 	var setters []func(n *v1.Node) error
 	setters = append(setters,
-		nodestatus.NodeAddress(kl.nodeIP, kl.nodeIPValidator, kl.hostname, kl.hostnameOverridden, kl.externalCloudProvider, nodeAddressesFunc),
+		nodestatus.NodeAddress(kl.nodeIP, kl.nodeIPValidator, kl.hostname, kl.hostnameOverridden, kl.externalCloudProvider, kl.cloud, nodeAddressesFunc),
 		nodestatus.MachineInfo(string(kl.nodeName), kl.maxPods, kl.podsPerCore, kl.GetCachedMachineInfo, kl.containerManager.GetCapacity,
 			kl.containerManager.GetDevicePluginResourceCapacity, kl.containerManager.GetNodeAllocatableReservation, kl.recordEvent),
 		nodestatus.VersionInfo(kl.cadvisor.VersionInfo, kl.containerRuntime.Type, kl.containerRuntime.Version),
@@ -498,7 +550,6 @@ func (kl *Kubelet) defaultNodeStatusFuncs() []func(*v1.Node) error {
 		nodestatus.PIDPressureCondition(kl.clock.Now, kl.evictionManager.IsUnderPIDPressure, kl.recordNodeStatusEvent),
 		nodestatus.ReadyCondition(kl.clock.Now, kl.runtimeState.runtimeErrors, kl.runtimeState.networkErrors, kl.runtimeState.storageErrors, validateHostFunc, kl.containerManager.Status, kl.recordNodeStatusEvent),
 		nodestatus.VolumesInUse(kl.volumeManager.ReconcilerStatesHasBeenSynced, kl.volumeManager.GetVolumesInUse),
-		nodestatus.RemoveOutOfDiskCondition(),
 		// TODO(mtaufen): I decided not to move this setter for now, since all it does is send an event
 		// and record state back to the Kubelet runtime object. In the future, I'd like to isolate
 		// these side-effects by decoupling the decisions to send events and partial status recording
@@ -543,7 +594,7 @@ func validateNodeIP(nodeIP net.IP) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("Node IP: %q not found in the host's network interfaces", nodeIP.String())
+	return fmt.Errorf("node IP: %q not found in the host's network interfaces", nodeIP.String())
 }
 
 // nodeStatusHasChanged compares the original node and current node's status and

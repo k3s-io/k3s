@@ -54,6 +54,9 @@ type Config struct {
 // c) DNS information. Dictionary that includes DNS information for nameservers,
 // domain, search domains and options.
 func (c *libcni) GetCNIResultFromResults(results []*current.Result) (*CNIResult, error) {
+	c.RLock()
+	defer c.RUnlock()
+
 	r := &CNIResult{
 		Interfaces: make(map[string]*Config),
 	}
@@ -76,7 +79,7 @@ func (c *libcni) GetCNIResultFromResults(results []*current.Result) (*CNIResult,
 		// interfaces
 		for _, ipConf := range result.IPs {
 			if err := validateInterfaceConfig(ipConf, len(result.Interfaces)); err != nil {
-				return nil, errors.Wrapf(ErrInvalidResult, "failed to valid interface config: %v", err)
+				return nil, errors.Wrapf(ErrInvalidResult, "invalid interface config: %v", err)
 			}
 			name := c.getInterfaceName(result.Interfaces, ipConf)
 			r.Interfaces[name].IPConfigs = append(r.Interfaces[name].IPConfigs,
@@ -86,7 +89,7 @@ func (c *libcni) GetCNIResultFromResults(results []*current.Result) (*CNIResult,
 		r.Routes = append(r.Routes, result.Routes...)
 	}
 	if _, ok := r.Interfaces[defaultInterface(c.prefix)]; !ok {
-		return nil, errors.Wrapf(ErrNotFound, "default network not found")
+		return nil, errors.Wrapf(ErrNotFound, "default network not found for: %s", defaultInterface(c.prefix))
 	}
 	return r, nil
 }

@@ -67,6 +67,7 @@ set -e
 #     if not specified.
 
 GITHUB_URL=https://github.com/rancher/k3s/releases
+DOWNLOADER=
 
 # --- helper functions for logs ---
 info()
@@ -260,11 +261,14 @@ setup_verify_arch() {
     esac
 }
 
-# --- fatal if no curl ---
-verify_curl() {
-    if [ -z $(which curl || true) ]; then
-        fatal 'Can not find curl for downloading files'
-    fi
+# --- verify existence of network downloader executable ---
+verify_downloader() {
+    # Return failure if it doesn't exist or is no executable
+    [ -x "$(which $1)" ] || return 1
+
+    # Set verified executable as our downloader program and return success
+    DOWNLOADER=$1
+    return 0
 }
 
 # --- create tempory directory and cleanup when done ---
@@ -287,24 +291,56 @@ get_release_version() {
     if [ -n "${INSTALL_K3S_VERSION}" ]; then
         VERSION_K3S=${INSTALL_K3S_VERSION}
     else
-        info 'Finding latest release'
-        VERSION_K3S=$(curl -w "%{url_effective}" -I -L -s -S ${GITHUB_URL}/latest -o /dev/null | sed -e 's|.*/||')
+        info "Finding latest release"
+        case $DOWNLOADER in
+            curl)
+                VERSION_K3S=$(curl -w '%{url_effective}' -I -L -s -S ${GITHUB_URL}/latest -o /dev/null | sed -e 's|.*/||')
+                ;;
+            wget)
+                VERSION_K3S=$(wget -SqO /dev/null ${GITHUB_URL}/latest 2>&1 | grep Location | sed -e 's|.*/||')
+                ;;
+            *)
+                fatal "Incorrect downloader executable '$DOWNLOADER'"
+                ;;
+        esac
     fi
     info "Using ${VERSION_K3S} as release"
+}
+
+# --- download from github url ---
+download() {
+    [ $# -eq 2 ] || fatal 'download needs exactly 2 arguments'
+
+    case $DOWNLOADER in
+        curl)
+            curl -o $1 -sfL $2
+            ;;
+        wget)
+            wget -qO $1 $2
+            ;;
+        *)
+            fatal "Incorrect executable '$DOWNLOADER'"
+            ;;
+    esac
+
+    # Abort if download command failed
+    [ $? -eq 0 ] || fatal 'Download failed'
 }
 
 # --- download hash from github url ---
 download_hash() {
     HASH_URL=${GITHUB_URL}/download/${VERSION_K3S}/sha256sum-${ARCH}.txt
     info "Downloading hash ${HASH_URL}"
-    curl -o ${TMP_HASH} -sfL ${HASH_URL} || fatal 'Hash download failed'
-    HASH_EXPECTED=$(grep " k3s${SUFFIX}$" ${TMP_HASH} | awk '{print $1}')
+    download ${TMP_HASH} ${HASH_URL}
+    HASH_EXPECTED=$(grep " k3s${SUFFIX}$" ${TMP_HASH})
+    HASH_EXPECTED=${HASH_EXPECTED%%[[:blank:]]*}
 }
 
 # --- check hash against installed version ---
 installed_hash_matches() {
     if [ -x ${BIN_DIR}/k3s ]; then
-        HASH_INSTALLED=$(sha256sum ${BIN_DIR}/k3s | awk '{print $1}')
+        HASH_INSTALLED=$(sha256sum ${BIN_DIR}/k3s)
+        HASH_INSTALLED=${HASH_INSTALLED%%[[:blank:]]*}
         if [ "${HASH_EXPECTED}" = "${HASH_INSTALLED}" ]; then
             return
         fi
@@ -316,13 +352,14 @@ installed_hash_matches() {
 download_binary() {
     BIN_URL=${GITHUB_URL}/download/${VERSION_K3S}/k3s${SUFFIX}
     info "Downloading binary ${BIN_URL}"
-    curl -o ${TMP_BIN} -sfL ${BIN_URL} || fatal 'Binary download failed'
+    download ${TMP_BIN} ${BIN_URL}
 }
 
 # --- verify downloaded binary hash ---
 verify_binary() {
-    info 'Verifying binary download'
-    HASH_BIN=$(sha256sum ${TMP_BIN} | awk '{print $1}')
+    info "Verifying binary download"
+    HASH_BIN=$(sha256sum ${TMP_BIN})
+    HASH_BIN=${HASH_BIN%%[[:blank:]]*}
     if [ "${HASH_EXPECTED}" != "${HASH_BIN}" ]; then
         fatal "Download sha256 does not match ${HASH_EXPECTED}, got ${HASH_BIN}"
     fi
@@ -344,7 +381,7 @@ setup_binary() {
                 fi
                 $SUDO restorecon -v ${BIN_DIR}/k3s > /dev/null
             else
-                error 'SELinux is enabled but semanage is not found'
+                fatal 'SELinux is enabled but semanage is not found'
             fi
         fi
     fi
@@ -359,7 +396,7 @@ download_and_verify() {
     fi
 
     setup_verify_arch
-    verify_curl
+    verify_downloader curl || verify_downloader wget || fatal 'Can not find curl or wget for downloading files'
     setup_tmp
     get_release_version
     download_hash
@@ -418,7 +455,10 @@ done
 pstree() {
     for pid in $@; do
         echo $pid
-        pstree $(ps -o ppid= -o pid= | awk "\$1==$pid {print \$2}")
+        # Find and show pstree for child processes of $pid
+        ps -o ppid= -o pid= | while read parent child; do
+            [ $parent -ne $pid ] || pstree $child
+        done
     done
 }
 
@@ -429,7 +469,11 @@ killtree() {
 killtree $(lsof | sed -e 's/^[^0-9]*//g; s/  */\t/g' | grep -w 'k3s/data/[^/]*/bin/containerd-shim' | cut -f1 | sort -n -u)
 
 do_unmount() {
-    MOUNTS=$(cat /proc/self/mounts | awk '{print $2}' | grep "^$1" | sort -r)
+    MOUNTS=
+    while read ignore mount ignore; do
+        MOUNTS="$mount\n$MOUNTS"
+    done </proc/self/mounts
+    MOUNTS=$(printf $MOUNTS | grep "^$1" | sort -r)
     if [ -n "${MOUNTS}" ]; then
         umount ${MOUNTS}
     fi
@@ -438,9 +482,10 @@ do_unmount() {
 do_unmount '/run/k3s'
 do_unmount '/var/lib/rancher/k3s'
 
-nets=$(ip link show | grep 'master cni0' | awk -F': ' '{print $2}' | sed -e 's|@.*||')
-for iface in $nets; do
-    ip link delete $iface;
+# Delete network interface(s) that match 'master cni0'
+ip link show | grep 'master cni0' | while read ignore iface ignore; do
+    iface=${iface%%@*}
+    [ -z "$iface" ] || ip link delete $iface
 done
 ip link delete cni0
 ip link delete flannel.1
@@ -555,8 +600,7 @@ create_openrc_service_file() {
 #!/sbin/openrc-run
 
 depend() {
-    after net-online
-    need net
+    after network-online
 }
 
 start_pre() {

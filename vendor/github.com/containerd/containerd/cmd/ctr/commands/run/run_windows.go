@@ -19,15 +19,22 @@ package run
 import (
 	gocontext "context"
 
+	"github.com/Microsoft/hcsshim/cmd/containerd-shim-runhcs-v1/options"
 	"github.com/containerd/console"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cmd/ctr/commands"
 	"github.com/containerd/containerd/oci"
-	"github.com/containerd/containerd/runtime/v2/runhcs/options"
 	specs "github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 )
+
+var platformRunFlags = []cli.Flag{
+	cli.BoolFlag{
+		Name:  "isolated",
+		Usage: "run the container with vm isolation",
+	},
+}
 
 // NewContainer creates a new container
 func NewContainer(ctx gocontext.Context, client *containerd.Client, context *cli.Context) (containerd.Container, error) {
@@ -57,6 +64,11 @@ func NewContainer(ctx gocontext.Context, client *containerd.Client, context *cli
 			opts = append(opts, oci.WithRootFSPath(""))
 		} else {
 			opts = append(opts, oci.WithDefaultSpec())
+			opts = append(opts, oci.WithWindowNetworksAllowUnqualifiedDNSQuery())
+			opts = append(opts, oci.WithWindowsIgnoreFlushesDuringBoot())
+		}
+		if ef := context.String("env-file"); ef != "" {
+			opts = append(opts, oci.WithEnvFile(ef))
 		}
 		opts = append(opts, oci.WithEnv(context.StringSlice("env")))
 		opts = append(opts, withMounts(context))
@@ -97,6 +109,14 @@ func NewContainer(ctx gocontext.Context, client *containerd.Client, context *cli
 		}
 		if context.Bool("isolated") {
 			opts = append(opts, oci.WithWindowsHyperV)
+		}
+		limit := context.Uint64("memory-limit")
+		if limit != 0 {
+			opts = append(opts, oci.WithMemoryLimit(limit))
+		}
+		ccount := context.Uint64("cpu-count")
+		if ccount != 0 {
+			opts = append(opts, oci.WithWindowsCPUCount(ccount))
 		}
 	}
 

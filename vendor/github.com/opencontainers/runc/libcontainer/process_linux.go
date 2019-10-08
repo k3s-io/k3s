@@ -16,6 +16,7 @@ import (
 	"github.com/opencontainers/runc/libcontainer/cgroups"
 	"github.com/opencontainers/runc/libcontainer/configs"
 	"github.com/opencontainers/runc/libcontainer/intelrdt"
+	"github.com/opencontainers/runc/libcontainer/logs"
 	"github.com/opencontainers/runc/libcontainer/system"
 	"github.com/opencontainers/runc/libcontainer/utils"
 
@@ -47,12 +48,19 @@ type parentProcess interface {
 	externalDescriptors() []string
 
 	setExternalDescriptors(fds []string)
+
+	forwardChildLogs()
+}
+
+type filePair struct {
+	parent *os.File
+	child  *os.File
 }
 
 type setnsProcess struct {
 	cmd             *exec.Cmd
-	parentPipe      *os.File
-	childPipe       *os.File
+	messageSockPair filePair
+	logFilePair     filePair
 	cgroupPaths     map[string]string
 	rootlessCgroups bool
 	intelRdtPath    string
@@ -76,14 +84,16 @@ func (p *setnsProcess) signal(sig os.Signal) error {
 }
 
 func (p *setnsProcess) start() (err error) {
-	defer p.parentPipe.Close()
+	defer p.messageSockPair.parent.Close()
 	err = p.cmd.Start()
-	p.childPipe.Close()
+	// close the write-side of the pipes (controlled by child)
+	p.messageSockPair.child.Close()
+	p.logFilePair.child.Close()
 	if err != nil {
 		return newSystemErrorWithCause(err, "starting setns process")
 	}
 	if p.bootstrapData != nil {
-		if _, err := io.Copy(p.parentPipe, p.bootstrapData); err != nil {
+		if _, err := io.Copy(p.messageSockPair.parent, p.bootstrapData); err != nil {
 			return newSystemErrorWithCause(err, "copying bootstrap data to pipe")
 		}
 	}
@@ -109,11 +119,11 @@ func (p *setnsProcess) start() (err error) {
 	if err := setupRlimits(p.config.Rlimits, p.pid()); err != nil {
 		return newSystemErrorWithCause(err, "setting rlimits for process")
 	}
-	if err := utils.WriteJSON(p.parentPipe, p.config); err != nil {
+	if err := utils.WriteJSON(p.messageSockPair.parent, p.config); err != nil {
 		return newSystemErrorWithCause(err, "writing config to pipe")
 	}
 
-	ierr := parseSync(p.parentPipe, func(sync *syncT) error {
+	ierr := parseSync(p.messageSockPair.parent, func(sync *syncT) error {
 		switch sync.Type {
 		case procReady:
 			// This shouldn't happen.
@@ -126,7 +136,7 @@ func (p *setnsProcess) start() (err error) {
 		}
 	})
 
-	if err := unix.Shutdown(int(p.parentPipe.Fd()), unix.SHUT_WR); err != nil {
+	if err := unix.Shutdown(int(p.messageSockPair.parent.Fd()), unix.SHUT_WR); err != nil {
 		return newSystemErrorWithCause(err, "calling shutdown on init pipe")
 	}
 	// Must be done after Shutdown so the child will exit and we can wait for it.
@@ -152,7 +162,7 @@ func (p *setnsProcess) execSetns() error {
 		return newSystemError(&exec.ExitError{ProcessState: status})
 	}
 	var pid *pid
-	if err := json.NewDecoder(p.parentPipe).Decode(&pid); err != nil {
+	if err := json.NewDecoder(p.messageSockPair.parent).Decode(&pid); err != nil {
 		p.cmd.Wait()
 		return newSystemErrorWithCause(err, "reading pid from init pipe")
 	}
@@ -205,10 +215,14 @@ func (p *setnsProcess) setExternalDescriptors(newFds []string) {
 	p.fds = newFds
 }
 
+func (p *setnsProcess) forwardChildLogs() {
+	go logs.ForwardLogs(p.logFilePair.parent)
+}
+
 type initProcess struct {
 	cmd             *exec.Cmd
-	parentPipe      *os.File
-	childPipe       *os.File
+	messageSockPair filePair
+	logFilePair     filePair
 	config          *initConfig
 	manager         cgroups.Manager
 	intelRdtManager intelrdt.Manager
@@ -230,7 +244,7 @@ func (p *initProcess) externalDescriptors() []string {
 // getChildPid receives the final child's pid over the provided pipe.
 func (p *initProcess) getChildPid() (int, error) {
 	var pid pid
-	if err := json.NewDecoder(p.parentPipe).Decode(&pid); err != nil {
+	if err := json.NewDecoder(p.messageSockPair.parent).Decode(&pid); err != nil {
 		p.cmd.Wait()
 		return -1, err
 	}
@@ -266,10 +280,12 @@ func (p *initProcess) waitForChildExit(childPid int) error {
 }
 
 func (p *initProcess) start() error {
-	defer p.parentPipe.Close()
+	defer p.messageSockPair.parent.Close()
 	err := p.cmd.Start()
 	p.process.ops = p
-	p.childPipe.Close()
+	// close the write-side of the pipes (controlled by child)
+	p.messageSockPair.child.Close()
+	p.logFilePair.child.Close()
 	if err != nil {
 		p.process.ops = nil
 		return newSystemErrorWithCause(err, "starting init process command")
@@ -295,7 +311,7 @@ func (p *initProcess) start() error {
 		}
 	}()
 
-	if _, err := io.Copy(p.parentPipe, p.bootstrapData); err != nil {
+	if _, err := io.Copy(p.messageSockPair.parent, p.bootstrapData); err != nil {
 		return newSystemErrorWithCause(err, "copying bootstrap data to pipe")
 	}
 	childPid, err := p.getChildPid()
@@ -323,7 +339,7 @@ func (p *initProcess) start() error {
 	}
 	// Now it's time to setup cgroup namesapce
 	if p.config.Config.Namespaces.Contains(configs.NEWCGROUP) && p.config.Config.Namespaces.PathOf(configs.NEWCGROUP) == "" {
-		if _, err := p.parentPipe.Write([]byte{createCgroupns}); err != nil {
+		if _, err := p.messageSockPair.parent.Write([]byte{createCgroupns}); err != nil {
 			return newSystemErrorWithCause(err, "sending synchronization value to init process")
 		}
 	}
@@ -337,6 +353,9 @@ func (p *initProcess) start() error {
 		if err != nil {
 			// TODO: should not be the responsibility to call here
 			p.manager.Destroy()
+			if p.intelRdtManager != nil {
+				p.intelRdtManager.Destroy()
+			}
 		}
 	}()
 	if err := p.createNetworkInterfaces(); err != nil {
@@ -350,7 +369,7 @@ func (p *initProcess) start() error {
 		sentResume bool
 	)
 
-	ierr := parseSync(p.parentPipe, func(sync *syncT) error {
+	ierr := parseSync(p.messageSockPair.parent, func(sync *syncT) error {
 		switch sync.Type {
 		case procReady:
 			// set rlimits, this has to be done here because we lose permissions
@@ -386,7 +405,7 @@ func (p *initProcess) start() error {
 				}
 			}
 			// Sync with child.
-			if err := writeSync(p.parentPipe, procRun); err != nil {
+			if err := writeSync(p.messageSockPair.parent, procRun); err != nil {
 				return newSystemErrorWithCause(err, "writing syncT 'run'")
 			}
 			sentRun = true
@@ -415,7 +434,7 @@ func (p *initProcess) start() error {
 				}
 			}
 			// Sync with child.
-			if err := writeSync(p.parentPipe, procResume); err != nil {
+			if err := writeSync(p.messageSockPair.parent, procResume); err != nil {
 				return newSystemErrorWithCause(err, "writing syncT 'resume'")
 			}
 			sentResume = true
@@ -432,7 +451,7 @@ func (p *initProcess) start() error {
 	if p.config.Config.Namespaces.Contains(configs.NEWNS) && !sentResume {
 		return newSystemError(fmt.Errorf("could not synchronise after executing prestart hooks with container process"))
 	}
-	if err := unix.Shutdown(int(p.parentPipe.Fd()), unix.SHUT_WR); err != nil {
+	if err := unix.Shutdown(int(p.messageSockPair.parent.Fd()), unix.SHUT_WR); err != nil {
 		return newSystemErrorWithCause(err, "shutting down init pipe")
 	}
 
@@ -476,7 +495,7 @@ func (p *initProcess) sendConfig() error {
 	// send the config to the container's init process, we don't use JSON Encode
 	// here because there might be a problem in JSON decoder in some cases, see:
 	// https://github.com/docker/docker/issues/14203#issuecomment-174177790
-	return utils.WriteJSON(p.parentPipe, p.config)
+	return utils.WriteJSON(p.messageSockPair.parent, p.config)
 }
 
 func (p *initProcess) createNetworkInterfaces() error {
@@ -506,6 +525,10 @@ func (p *initProcess) signal(sig os.Signal) error {
 
 func (p *initProcess) setExternalDescriptors(newFds []string) {
 	p.fds = newFds
+}
+
+func (p *initProcess) forwardChildLogs() {
+	go logs.ForwardLogs(p.logFilePair.parent)
 }
 
 func getPipeFds(pid int) ([]string, error) {

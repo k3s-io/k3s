@@ -17,8 +17,15 @@ limitations under the License.
 package config
 
 import (
+	"context"
+	"time"
+
 	"github.com/BurntSushi/toml"
 	"github.com/containerd/containerd"
+	"github.com/containerd/containerd/log"
+	"github.com/containerd/containerd/plugin"
+	"github.com/pkg/errors"
+	"k8s.io/kubernetes/pkg/kubelet/server/streaming"
 )
 
 // Runtime struct to contain the type(ID), engine, and root variables for a default runtime
@@ -30,6 +37,9 @@ type Runtime struct {
 	// This only works for runtime type "io.containerd.runtime.v1.linux".
 	// DEPRECATED: use Options instead. Remove when shim v1 is deprecated.
 	Engine string `toml:"runtime_engine" json:"runtimeEngine"`
+	// PodAnnotations is a list of pod annotations passed to both pod sandbox as well as
+	// container OCI annotations.
+	PodAnnotations []string `toml:"pod_annotations" json:"PodAnnotations"`
 	// Root is the directory used by containerd for runtime state.
 	// DEPRECATED: use Options instead. Remove when shim v1 is deprecated.
 	// This only works for runtime type "io.containerd.runtime.v1.linux".
@@ -37,27 +47,29 @@ type Runtime struct {
 	// Options are config options for the runtime. If options is loaded
 	// from toml config, it will be toml.Primitive.
 	Options *toml.Primitive `toml:"options" json:"options"`
+	// PrivilegedWithoutHostDevices overloads the default behaviour for adding host devices to the
+	// runtime spec when the container is privileged. Defaults to false.
+	PrivilegedWithoutHostDevices bool `toml:"privileged_without_host_devices" json:"privileged_without_host_devices"`
 }
 
 // ContainerdConfig contains toml config related to containerd
 type ContainerdConfig struct {
 	// Snapshotter is the snapshotter used by containerd.
 	Snapshotter string `toml:"snapshotter" json:"snapshotter"`
+	// DefaultRuntimeName is the default runtime name to use from the runtimes table.
+	DefaultRuntimeName string `toml:"default_runtime_name" json:"defaultRuntimeName"`
 	// DefaultRuntime is the default runtime to use in containerd.
 	// This runtime is used when no runtime handler (or the empty string) is provided.
+	// DEPRECATED: use DefaultRuntimeName instead. Remove in containerd 1.4.
 	DefaultRuntime Runtime `toml:"default_runtime" json:"defaultRuntime"`
 	// UntrustedWorkloadRuntime is a runtime to run untrusted workloads on it.
-	// DEPRECATED: use Runtimes instead. If provided, this runtime is mapped to the runtime handler
-	//     named 'untrusted'. It is a configuration error to provide both the (now deprecated)
-	//     UntrustedWorkloadRuntime and a handler in the Runtimes handler map (below) for 'untrusted'
-	//     workloads at the same time. Please provide one or the other.
+	// DEPRECATED: use `untrusted` runtime in Runtimes instead. Remove in containerd 1.4.
 	UntrustedWorkloadRuntime Runtime `toml:"untrusted_workload_runtime" json:"untrustedWorkloadRuntime"`
 	// Runtimes is a map from CRI RuntimeHandler strings, which specify types of runtime
 	// configurations, to the matching configurations.
 	Runtimes map[string]Runtime `toml:"runtimes" json:"runtimes"`
 	// NoPivot disables pivot-root (linux only), required when running a container in a RamDisk with runc
 	// This only works for runtime type "io.containerd.runtime.v1.linux".
-	// DEPRECATED: use Runtime.Options instead. Remove when shim v1 is deprecated.
 	NoPivot bool `toml:"no_pivot" json:"noPivot"`
 }
 
@@ -67,6 +79,10 @@ type CniConfig struct {
 	NetworkPluginBinDir string `toml:"bin_dir" json:"binDir"`
 	// NetworkPluginConfDir is the directory in which the admin places a CNI conf.
 	NetworkPluginConfDir string `toml:"conf_dir" json:"confDir"`
+	// NetworkPluginMaxConfNum is the max number of plugin config files that will
+	// be loaded from the cni config directory by go-cni. Set the value to 0 to
+	// load all config files (no arbitrary limit). The legacy default value is 1.
+	NetworkPluginMaxConfNum int `toml:"max_conf_num" json:"maxConfNum"`
 	// NetworkPluginConfTemplate is the file path of golang template used to generate
 	// cni config.
 	// When it is set, containerd will get cidr from kubelet to replace {{.PodCIDR}} in
@@ -85,6 +101,7 @@ type Mirror struct {
 	// Endpoints are endpoints for a namespace. CRI plugin will try the endpoints
 	// one by one until a working one is found. The endpoint must be a valid url
 	// with host specified.
+	// The scheme, host and path from the endpoint URL will be used.
 	Endpoints []string `toml:"endpoint" json:"endpoint"`
 }
 
@@ -102,13 +119,34 @@ type AuthConfig struct {
 	IdentityToken string `toml:"identitytoken" json:"identitytoken"`
 }
 
+// TLSConfig contains the CA/Cert/Key used for a registry
+type TLSConfig struct {
+	CAFile   string `toml:"ca_file" json:"caFile"`
+	CertFile string `toml:"cert_file" json:"certFile"`
+	KeyFile  string `toml:"key_file" json:"keyFile"`
+}
+
 // Registry is registry settings configured
 type Registry struct {
 	// Mirrors are namespace to mirror mapping for all namespaces.
 	Mirrors map[string]Mirror `toml:"mirrors" json:"mirrors"`
+	// Configs are configs for each registry.
+	// The key is the FDQN or IP of the registry.
+	Configs map[string]RegistryConfig `toml:"configs" json:"configs"`
+
 	// Auths are registry endpoint to auth config mapping. The registry endpoint must
 	// be a valid url with host specified.
+	// DEPRECATED: Use Configs instead. Remove in containerd 1.4.
 	Auths map[string]AuthConfig `toml:"auths" json:"auths"`
+}
+
+// RegistryConfig contains configuration used to communicate with the registry.
+type RegistryConfig struct {
+	// Auth contains information to authenticate to the registry.
+	Auth *AuthConfig `toml:"auth" json:"auth"`
+	// TLS is a pair of CA/Cert/Key which then are used when creating the transport
+	// that communicates with the registry.
+	TLS *TLSConfig `toml:"tls" json:"tls"`
 }
 
 // PluginConfig contains toml config related to CRI plugin,
@@ -120,10 +158,17 @@ type PluginConfig struct {
 	CniConfig `toml:"cni" json:"cni"`
 	// Registry contains config related to the registry
 	Registry Registry `toml:"registry" json:"registry"`
+	// DisableTCPService disables serving CRI on the TCP server.
+	DisableTCPService bool `toml:"disable_tcp_service" json:"disableTCPService"`
 	// StreamServerAddress is the ip address streaming server is listening on.
 	StreamServerAddress string `toml:"stream_server_address" json:"streamServerAddress"`
 	// StreamServerPort is the port streaming server is listening on.
 	StreamServerPort string `toml:"stream_server_port" json:"streamServerPort"`
+	// StreamIdleTimeout is the maximum time a streaming connection
+	// can be idle before the connection is automatically closed.
+	// The string is in the golang duration format, see:
+	//   https://golang.org/pkg/time/#ParseDuration
+	StreamIdleTimeout string `toml:"stream_idle_timeout" json:"streamIdleTimeout"`
 	// EnableSelinux indicates to enable the selinux support.
 	EnableSelinux bool `toml:"enable_selinux" json:"enableSelinux"`
 	// SandboxImage is the image used by sandbox container.
@@ -152,6 +197,11 @@ type PluginConfig struct {
 	// current OOMScoreADj.
 	// This is useful when the containerd does not have permission to decrease OOMScoreAdj.
 	RestrictOOMScoreAdj bool `toml:"restrict_oom_score_adj" json:"restrictOOMScoreAdj"`
+	// MaxConcurrentDownloads restricts the number of concurrent downloads for each image.
+	MaxConcurrentDownloads int `toml:"max_concurrent_downloads" json:"maxConcurrentDownloads"`
+	// DisableProcMount disables Kubernetes ProcMount support. This MUST be set to `true`
+	// when using containerd with Kubernetes <=1.11.
+	DisableProcMount bool `toml:"disable_proc_mount" json:"disableProcMount"`
 }
 
 // X509KeyPairStreaming contains the x509 configuration for streaming
@@ -183,19 +233,23 @@ func DefaultConfig() PluginConfig {
 		CniConfig: CniConfig{
 			NetworkPluginBinDir:       "/opt/cni/bin",
 			NetworkPluginConfDir:      "/etc/cni/net.d",
+			NetworkPluginMaxConfNum:   1, // only one CNI plugin config file will be loaded
 			NetworkPluginConfTemplate: "",
 		},
 		ContainerdConfig: ContainerdConfig{
-			Snapshotter: containerd.DefaultSnapshotter,
-			DefaultRuntime: Runtime{
-				Type:   "io.containerd.runtime.v1.linux",
-				Engine: "",
-				Root:   "",
+			Snapshotter:        containerd.DefaultSnapshotter,
+			DefaultRuntimeName: "runc",
+			NoPivot:            false,
+			Runtimes: map[string]Runtime{
+				"runc": {
+					Type: "io.containerd.runc.v1",
+				},
 			},
-			NoPivot: false,
 		},
+		DisableTCPService:   true,
 		StreamServerAddress: "127.0.0.1",
 		StreamServerPort:    "0",
+		StreamIdleTimeout:   streaming.DefaultConfig.StreamIdleTimeout.String(), // 4 hour
 		EnableSelinux:       false,
 		EnableTLSStreaming:  false,
 		X509KeyPairStreaming: X509KeyPairStreaming{
@@ -213,10 +267,95 @@ func DefaultConfig() PluginConfig {
 				},
 			},
 		},
+		MaxConcurrentDownloads: 3,
+		DisableProcMount:       false,
 	}
 }
 
 const (
 	// RuntimeUntrusted is the implicit runtime defined for ContainerdConfig.UntrustedWorkloadRuntime
 	RuntimeUntrusted = "untrusted"
+	// RuntimeDefault is the implicit runtime defined for ContainerdConfig.DefaultRuntime
+	RuntimeDefault = "default"
 )
+
+// ValidatePluginConfig validates the given plugin configuration.
+func ValidatePluginConfig(ctx context.Context, c *PluginConfig) error {
+	if c.ContainerdConfig.Runtimes == nil {
+		c.ContainerdConfig.Runtimes = make(map[string]Runtime)
+	}
+
+	// Validation for deprecated untrusted_workload_runtime.
+	if c.ContainerdConfig.UntrustedWorkloadRuntime.Type != "" {
+		log.G(ctx).Warning("`untrusted_workload_runtime` is deprecated, please use `untrusted` runtime in `runtimes` instead")
+		if _, ok := c.ContainerdConfig.Runtimes[RuntimeUntrusted]; ok {
+			return errors.Errorf("conflicting definitions: configuration includes both `untrusted_workload_runtime` and `runtimes[%q]`", RuntimeUntrusted)
+		}
+		c.ContainerdConfig.Runtimes[RuntimeUntrusted] = c.ContainerdConfig.UntrustedWorkloadRuntime
+	}
+
+	// Validation for deprecated default_runtime field.
+	if c.ContainerdConfig.DefaultRuntime.Type != "" {
+		log.G(ctx).Warning("`default_runtime` is deprecated, please use `default_runtime_name` to reference the default configuration you have defined in `runtimes`")
+		c.ContainerdConfig.DefaultRuntimeName = RuntimeDefault
+		c.ContainerdConfig.Runtimes[RuntimeDefault] = c.ContainerdConfig.DefaultRuntime
+	}
+
+	// Validation for default_runtime_name
+	if c.ContainerdConfig.DefaultRuntimeName == "" {
+		return errors.New("`default_runtime_name` is empty")
+	}
+	if _, ok := c.ContainerdConfig.Runtimes[c.ContainerdConfig.DefaultRuntimeName]; !ok {
+		return errors.New("no corresponding runtime configured in `runtimes` for `default_runtime_name`")
+	}
+
+	// Validation for deprecated runtime options.
+	if c.SystemdCgroup {
+		if c.ContainerdConfig.Runtimes[c.ContainerdConfig.DefaultRuntimeName].Type != plugin.RuntimeLinuxV1 {
+			return errors.Errorf("`systemd_cgroup` only works for runtime %s", plugin.RuntimeLinuxV1)
+		}
+		log.G(ctx).Warning("`systemd_cgroup` is deprecated, please use runtime `options` instead")
+	}
+	if c.NoPivot {
+		if c.ContainerdConfig.Runtimes[c.ContainerdConfig.DefaultRuntimeName].Type != plugin.RuntimeLinuxV1 {
+			return errors.Errorf("`no_pivot` only works for runtime %s", plugin.RuntimeLinuxV1)
+		}
+		// NoPivot can't be deprecated yet, because there is no alternative config option
+		// for `io.containerd.runtime.v1.linux`.
+	}
+	for _, r := range c.ContainerdConfig.Runtimes {
+		if r.Engine != "" {
+			if r.Type != plugin.RuntimeLinuxV1 {
+				return errors.Errorf("`runtime_engine` only works for runtime %s", plugin.RuntimeLinuxV1)
+			}
+			log.G(ctx).Warning("`runtime_engine` is deprecated, please use runtime `options` instead")
+		}
+		if r.Root != "" {
+			if r.Type != plugin.RuntimeLinuxV1 {
+				return errors.Errorf("`runtime_root` only works for runtime %s", plugin.RuntimeLinuxV1)
+			}
+			log.G(ctx).Warning("`runtime_root` is deprecated, please use runtime `options` instead")
+		}
+	}
+
+	// Validation for deprecated auths options and mapping it to configs.
+	if len(c.Registry.Auths) != 0 {
+		if c.Registry.Configs == nil {
+			c.Registry.Configs = make(map[string]RegistryConfig)
+		}
+		for endpoint, auth := range c.Registry.Auths {
+			config := c.Registry.Configs[endpoint]
+			config.Auth = &auth
+			c.Registry.Configs[endpoint] = config
+		}
+		log.G(ctx).Warning("`auths` is deprecated, please use registry`configs` instead")
+	}
+
+	// Validation for stream_idle_timeout
+	if c.StreamIdleTimeout != "" {
+		if _, err := time.ParseDuration(c.StreamIdleTimeout); err != nil {
+			return errors.Wrap(err, "invalid stream idle timeout")
+		}
+	}
+	return nil
+}

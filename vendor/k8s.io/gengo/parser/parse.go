@@ -43,6 +43,9 @@ type importPathString string
 type Builder struct {
 	context *build.Context
 
+	// If true, include *_test.go
+	IncludeTestFiles bool
+
 	// Map of package names to more canonical information about the package.
 	// This might hold the same value for multiple names, e.g. if someone
 	// referenced ./pkg/name or in the case of vendoring, which canonicalizes
@@ -304,11 +307,17 @@ func (b *Builder) addDir(dir string, userRequested bool) error {
 		b.absPaths[pkgPath] = buildPkg.Dir
 	}
 
-	for _, n := range buildPkg.GoFiles {
-		if !strings.HasSuffix(n, ".go") {
+	files := []string{}
+	files = append(files, buildPkg.GoFiles...)
+	if b.IncludeTestFiles {
+		files = append(files, buildPkg.TestGoFiles...)
+	}
+
+	for _, file := range files {
+		if !strings.HasSuffix(file, ".go") {
 			continue
 		}
-		absPath := filepath.Join(buildPkg.Dir, n)
+		absPath := filepath.Join(buildPkg.Dir, file)
 		data, err := ioutil.ReadFile(absPath)
 		if err != nil {
 			return fmt.Errorf("while loading %q: %v", absPath, err)
@@ -403,7 +412,7 @@ func (b *Builder) typeCheckPackage(pkgPath importPathString) (*tc.Package, error
 	}
 	parsedFiles, ok := b.parsed[pkgPath]
 	if !ok {
-		return nil, fmt.Errorf("No files for pkg %q: %#v", pkgPath, b.parsed)
+		return nil, fmt.Errorf("No files for pkg %q", pkgPath)
 	}
 	files := make([]*ast.File, len(parsedFiles))
 	for i := range parsedFiles {

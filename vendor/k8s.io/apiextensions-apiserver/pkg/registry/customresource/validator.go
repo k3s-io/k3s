@@ -22,6 +22,8 @@ import (
 	"math"
 	"strings"
 
+	"github.com/go-openapi/validate"
+
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/validation"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -30,11 +32,14 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
+	apiservervalidation "k8s.io/apiextensions-apiserver/pkg/apiserver/validation"
 )
 
 type customResourceValidator struct {
-	namespaceScoped bool
-	kind            schema.GroupVersionKind
+	namespaceScoped       bool
+	kind                  schema.GroupVersionKind
+	schemaValidator       *validate.SchemaValidator
+	statusSchemaValidator *validate.SchemaValidator
 }
 
 func (a customResourceValidator) Validate(ctx context.Context, obj runtime.Object, scale *apiextensions.CustomResourceSubresourceScale) field.ErrorList {
@@ -54,6 +59,7 @@ func (a customResourceValidator) Validate(ctx context.Context, obj runtime.Objec
 	var allErrs field.ErrorList
 
 	allErrs = append(allErrs, validation.ValidateObjectMetaAccessor(accessor, a.namespaceScoped, validation.NameIsDNSSubdomain, field.NewPath("metadata"))...)
+	allErrs = append(allErrs, apiservervalidation.ValidateCustomResource(nil, u.UnstructuredContent(), a.schemaValidator)...)
 	allErrs = append(allErrs, a.ValidateScaleSpec(ctx, u, scale)...)
 	allErrs = append(allErrs, a.ValidateScaleStatus(ctx, u, scale)...)
 
@@ -81,6 +87,7 @@ func (a customResourceValidator) ValidateUpdate(ctx context.Context, obj, old ru
 	var allErrs field.ErrorList
 
 	allErrs = append(allErrs, validation.ValidateObjectMetaAccessorUpdate(objAccessor, oldAccessor, field.NewPath("metadata"))...)
+	allErrs = append(allErrs, apiservervalidation.ValidateCustomResource(nil, u.UnstructuredContent(), a.schemaValidator)...)
 	allErrs = append(allErrs, a.ValidateScaleSpec(ctx, u, scale)...)
 	allErrs = append(allErrs, a.ValidateScaleStatus(ctx, u, scale)...)
 
@@ -108,6 +115,7 @@ func (a customResourceValidator) ValidateStatusUpdate(ctx context.Context, obj, 
 	var allErrs field.ErrorList
 
 	allErrs = append(allErrs, validation.ValidateObjectMetaAccessorUpdate(objAccessor, oldAccessor, field.NewPath("metadata"))...)
+	allErrs = append(allErrs, apiservervalidation.ValidateCustomResource(nil, u.UnstructuredContent(), a.schemaValidator)...)
 	allErrs = append(allErrs, a.ValidateScaleStatus(ctx, u, scale)...)
 
 	return allErrs

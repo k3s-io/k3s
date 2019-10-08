@@ -24,7 +24,7 @@ import (
 	"time"
 
 	authenticationv1 "k8s.io/api/authentication/v1"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
@@ -41,8 +41,8 @@ import (
 	kcache "k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
+	cloudprovider "k8s.io/cloud-provider"
 	"k8s.io/klog"
-	"k8s.io/kubernetes/pkg/controller"
 	"k8s.io/kubernetes/pkg/controller/volume/attachdetach/cache"
 	"k8s.io/kubernetes/pkg/controller/volume/attachdetach/metrics"
 	"k8s.io/kubernetes/pkg/controller/volume/attachdetach/populator"
@@ -106,6 +106,7 @@ func NewAttachDetachController(
 	pvInformer coreinformers.PersistentVolumeInformer,
 	csiNodeInformer storageinformers.CSINodeInformer,
 	csiDriverInformer storageinformers.CSIDriverInformer,
+	cloud cloudprovider.Interface,
 	plugins []volume.VolumePlugin,
 	prober volume.DynamicPluginProber,
 	disableReconciliationSync bool,
@@ -136,7 +137,14 @@ func NewAttachDetachController(
 		podIndexer:  podInformer.Informer().GetIndexer(),
 		nodeLister:  nodeInformer.Lister(),
 		nodesSynced: nodeInformer.Informer().HasSynced,
+		cloud:       cloud,
 		pvcQueue:    workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "pvcs"),
+	}
+
+	if utilfeature.DefaultFeatureGate.Enabled(features.CSIMigration) &&
+		utilfeature.DefaultFeatureGate.Enabled(features.CSINodeInfo) {
+		adc.csiNodeLister = csiNodeInformer.Lister()
+		adc.csiNodeSynced = csiNodeInformer.Informer().HasSynced
 	}
 
 	if utilfeature.DefaultFeatureGate.Enabled(features.CSIDriverRegistry) {
@@ -274,6 +282,9 @@ type attachDetachController struct {
 	csiDriverLister  storagelisters.CSIDriverLister
 	csiDriversSynced kcache.InformerSynced
 
+	// cloud provider used by volume host
+	cloud cloudprovider.Interface
+
 	// volumePluginMgr used to initialize and fetch volume plugins
 	volumePluginMgr volume.VolumePluginMgr
 
@@ -331,7 +342,7 @@ func (adc *attachDetachController) Run(stopCh <-chan struct{}) {
 		synced = append(synced, adc.csiDriversSynced)
 	}
 
-	if !controller.WaitForCacheSync("attach detach", stopCh, synced...) {
+	if !kcache.WaitForNamedCacheSync("attach detach", stopCh, synced...) {
 		return
 	}
 
@@ -722,6 +733,10 @@ func (adc *attachDetachController) NewWrapperUnmounter(volName string, spec volu
 	return nil, fmt.Errorf("NewWrapperUnmounter not supported by Attach/Detach controller's VolumeHost implementation")
 }
 
+func (adc *attachDetachController) GetCloudProvider() cloudprovider.Interface {
+	return adc.cloud
+}
+
 func (adc *attachDetachController) GetMounter(pluginName string) mount.Interface {
 	return nil
 }
@@ -763,7 +778,7 @@ func (adc *attachDetachController) DeleteServiceAccountTokenFunc() func(types.UI
 }
 
 func (adc *attachDetachController) GetExec(pluginName string) mount.Exec {
-	return mount.NewOsExec()
+	return mount.NewOSExec()
 }
 
 func (adc *attachDetachController) addNodeToDswp(node *v1.Node, nodeName types.NodeName) {

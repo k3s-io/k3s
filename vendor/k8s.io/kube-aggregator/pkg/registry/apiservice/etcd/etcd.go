@@ -57,20 +57,23 @@ func NewREST(scheme *runtime.Scheme, optsGetter generic.RESTOptionsGetter) *REST
 	return &REST{store}
 }
 
+var swaggerMetadataDescriptions = metav1.ObjectMeta{}.SwaggerDoc()
+
 // ConvertToTable implements the TableConvertor interface for REST.
 func (c *REST) ConvertToTable(ctx context.Context, obj runtime.Object, tableOptions runtime.Object) (*metav1beta1.Table, error) {
 	table := &metav1beta1.Table{
 		ColumnDefinitions: []metav1beta1.TableColumnDefinition{
-			{Name: "Name", Type: "string", Format: "name", Description: ""},
+			{Name: "Name", Type: "string", Format: "name", Description: swaggerMetadataDescriptions["name"]},
 			{Name: "Service", Type: "string", Description: "The reference to the service that hosts this API endpoint."},
 			{Name: "Available", Type: "string", Description: "Whether this service is available."},
-			{Name: "Age", Type: "string", Description: ""},
+			{Name: "Age", Type: "string", Description: swaggerMetadataDescriptions["creationTimestamp"]},
 		},
 	}
 	if m, err := meta.ListAccessor(obj); err == nil {
 		table.ResourceVersion = m.GetResourceVersion()
 		table.SelfLink = m.GetSelfLink()
 		table.Continue = m.GetContinue()
+		table.RemainingItemCount = m.GetRemainingItemCount()
 	} else {
 		if m, err := meta.CommonAccessor(obj); err == nil {
 			table.ResourceVersion = m.GetResourceVersion()

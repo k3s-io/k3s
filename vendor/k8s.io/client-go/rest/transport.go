@@ -21,6 +21,7 @@ import (
 	"errors"
 	"net/http"
 
+	"k8s.io/client-go/plugin/pkg/client/auth/exec"
 	"k8s.io/client-go/transport"
 )
 
@@ -60,9 +61,10 @@ func HTTPWrappersForConfig(config *Config, rt http.RoundTripper) (http.RoundTrip
 // TransportConfig converts a client config to an appropriate transport config.
 func (c *Config) TransportConfig() (*transport.Config, error) {
 	conf := &transport.Config{
-		UserAgent:     c.UserAgent,
-		Transport:     c.Transport,
-		WrapTransport: c.WrapTransport,
+		UserAgent:          c.UserAgent,
+		Transport:          c.Transport,
+		WrapTransport:      c.WrapTransport,
+		DisableCompression: c.DisableCompression,
 		TLS: transport.TLSConfig{
 			Insecure:   c.Insecure,
 			ServerName: c.ServerName,
@@ -72,6 +74,7 @@ func (c *Config) TransportConfig() (*transport.Config, error) {
 			CertData:   c.CertData,
 			KeyFile:    c.KeyFile,
 			KeyData:    c.KeyData,
+			NextProtos: c.NextProtos,
 		},
 		Username:        c.Username,
 		Password:        c.Password,
@@ -89,6 +92,15 @@ func (c *Config) TransportConfig() (*transport.Config, error) {
 		return nil, errors.New("execProvider and authProvider cannot be used in combination")
 	}
 
+	if c.ExecProvider != nil {
+		provider, err := exec.GetAuthenticator(c.ExecProvider)
+		if err != nil {
+			return nil, err
+		}
+		if err := provider.UpdateTransportConfig(conf); err != nil {
+			return nil, err
+		}
+	}
 	if c.AuthProvider != nil {
 		provider, err := GetAuthProvider(c.Host, c.AuthProvider, c.AuthConfigPersister)
 		if err != nil {

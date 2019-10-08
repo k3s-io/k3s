@@ -36,7 +36,6 @@ import (
 	clientretry "k8s.io/client-go/util/retry"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog"
-	"k8s.io/kubernetes/pkg/controller"
 	"k8s.io/kubernetes/pkg/registry/core/secret"
 	"k8s.io/kubernetes/pkg/serviceaccount"
 	"k8s.io/kubernetes/pkg/util/metrics"
@@ -162,14 +161,14 @@ type TokensController struct {
 	maxRetries int
 }
 
-// Runs controller blocks until stopCh is closed
+// Run runs controller blocks until stopCh is closed
 func (e *TokensController) Run(workers int, stopCh <-chan struct{}) {
 	// Shut down queues
 	defer utilruntime.HandleCrash()
 	defer e.syncServiceAccountQueue.ShutDown()
 	defer e.syncSecretQueue.ShutDown()
 
-	if !controller.WaitForCacheSync("tokens", stopCh, e.serviceAccountSynced, e.secretSynced) {
+	if !cache.WaitForNamedCacheSync("tokens", stopCh, e.serviceAccountSynced, e.secretSynced) {
 		return
 	}
 
@@ -700,16 +699,6 @@ func (e *TokensController) listTokenSecrets(serviceAccount *v1.ServiceAccount) (
 		}
 	}
 	return items, nil
-}
-
-// serviceAccountNameAndUID is a helper method to get the ServiceAccount Name and UID from the given secret
-// Returns "","" if the secret is not a ServiceAccountToken secret
-// If the name or uid annotation is missing, "" is returned instead
-func serviceAccountNameAndUID(secret *v1.Secret) (string, string) {
-	if secret.Type != v1.SecretTypeServiceAccountToken {
-		return "", ""
-	}
-	return secret.Annotations[v1.ServiceAccountNameKey], secret.Annotations[v1.ServiceAccountUIDKey]
 }
 
 func getSecretReferences(serviceAccount *v1.ServiceAccount) sets.String {

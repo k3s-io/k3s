@@ -22,6 +22,7 @@ import (
 	"os"
 
 	"github.com/BurntSushi/toml"
+	"github.com/containerd/containerd/pkg/timeout"
 	"github.com/containerd/containerd/services/server"
 	srvconfig "github.com/containerd/containerd/services/server/config"
 	"github.com/urfave/cli"
@@ -39,6 +40,50 @@ func (c *Config) WriteTo(w io.Writer) (int64, error) {
 	return 0, toml.NewEncoder(w).Encode(c)
 }
 
+func outputConfig(cfg *srvconfig.Config) error {
+	config := &Config{
+		Config: cfg,
+	}
+
+	plugins, err := server.LoadPlugins(gocontext.Background(), config.Config)
+	if err != nil {
+		return err
+	}
+	if len(plugins) != 0 {
+		config.Plugins = make(map[string]interface{})
+		for _, p := range plugins {
+			if p.Config == nil {
+				continue
+			}
+
+			pc, err := config.Decode(p)
+			if err != nil {
+				return err
+			}
+
+			config.Plugins[p.URI()] = pc
+		}
+	}
+
+	timeouts := timeout.All()
+	config.Timeouts = make(map[string]string)
+	for k, v := range timeouts {
+		config.Timeouts[k] = v.String()
+	}
+
+	// for the time being, keep the defaultConfig's version set at 1 so that
+	// when a config without a version is loaded from disk and has no version
+	// set, we assume it's a v1 config.  But when generating new configs via
+	// this command, generate the v2 config
+	config.Config.Version = 2
+
+	// remove overridden Plugins type to avoid duplication in output
+	config.Config.Plugins = nil
+
+	_, err = config.WriteTo(os.Stdout)
+	return err
+}
+
 var configCommand = cli.Command{
 	Name:  "config",
 	Usage: "information on the containerd config",
@@ -47,24 +92,19 @@ var configCommand = cli.Command{
 			Name:  "default",
 			Usage: "see the output of the default config",
 			Action: func(context *cli.Context) error {
-				config := &Config{
-					Config: defaultConfig(),
-				}
-				plugins, err := server.LoadPlugins(gocontext.Background(), config.Config)
-				if err != nil {
+				return outputConfig(defaultConfig())
+			},
+		},
+		{
+			Name:  "dump",
+			Usage: "see the output of the final main config with imported in subconfig files",
+			Action: func(context *cli.Context) error {
+				config := defaultConfig()
+				if err := srvconfig.LoadConfig(context.GlobalString("config"), config); err != nil && !os.IsNotExist(err) {
 					return err
 				}
-				if len(plugins) != 0 {
-					config.Plugins = make(map[string]interface{})
-					for _, p := range plugins {
-						if p.Config == nil {
-							continue
-						}
-						config.Plugins[p.ID] = p.Config
-					}
-				}
-				_, err = config.WriteTo(os.Stdout)
-				return err
+
+				return outputConfig(config)
 			},
 		},
 	},

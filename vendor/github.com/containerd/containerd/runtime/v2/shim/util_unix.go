@@ -20,7 +20,10 @@ package shim
 
 import (
 	"context"
+	"crypto/sha256"
+	"fmt"
 	"net"
+	"os"
 	"path/filepath"
 	"strings"
 	"syscall"
@@ -30,6 +33,8 @@ import (
 	"github.com/containerd/containerd/sys"
 	"github.com/pkg/errors"
 )
+
+const shimBinaryFormat = "containerd-shim-%s-%s"
 
 func getSysProcAttr() *syscall.SysProcAttr {
 	return &syscall.SysProcAttr{
@@ -42,19 +47,39 @@ func SetScore(pid int) error {
 	return sys.SetOOMScore(pid, sys.OOMScoreMaxKillable)
 }
 
+// AdjustOOMScore sets the OOM score for the process to the parents OOM score +1
+// to ensure that they parent has a lower* score than the shim
+func AdjustOOMScore(pid int) error {
+	parent := os.Getppid()
+	score, err := sys.GetOOMScoreAdj(parent)
+	if err != nil {
+		return errors.Wrap(err, "get parent OOM score")
+	}
+	shimScore := score + 1
+	if err := sys.SetOOMScore(pid, shimScore); err != nil {
+		return errors.Wrap(err, "set shim OOM score")
+	}
+	return nil
+}
+
 // SocketAddress returns an abstract socket address
 func SocketAddress(ctx context.Context, id string) (string, error) {
 	ns, err := namespaces.NamespaceRequired(ctx)
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(string(filepath.Separator), "containerd-shim", ns, id, "shim.sock"), nil
+	d := sha256.Sum256([]byte(filepath.Join(ns, id)))
+	return filepath.Join(string(filepath.Separator), "containerd-shim", fmt.Sprintf("%x.sock", d)), nil
 }
 
 // AnonDialer returns a dialer for an abstract socket
 func AnonDialer(address string, timeout time.Duration) (net.Conn, error) {
 	address = strings.TrimPrefix(address, "unix://")
 	return net.DialTimeout("unix", "\x00"+address, timeout)
+}
+
+func AnonReconnectDialer(address string, timeout time.Duration) (net.Conn, error) {
+	return AnonDialer(address, timeout)
 }
 
 // NewSocket returns a new socket

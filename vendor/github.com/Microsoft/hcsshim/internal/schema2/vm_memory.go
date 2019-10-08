@@ -10,7 +10,6 @@
 package hcsschema
 
 type VmMemory struct {
-
 	AvailableMemory int32 `json:"AvailableMemory,omitempty"`
 
 	AvailableMemoryBuffer int32 `json:"AvailableMemoryBuffer,omitempty"`

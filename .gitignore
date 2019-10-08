@@ -11,6 +11,7 @@
 /.lesshst
 /*.log
 /bin
+/etc
 /build
 /data-dir
 /dist

@@ -17,12 +17,14 @@ limitations under the License.
 package volumemanager
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	k8stypes "k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -42,6 +44,7 @@ import (
 	"k8s.io/kubernetes/pkg/util/mount"
 	"k8s.io/kubernetes/pkg/volume"
 	"k8s.io/kubernetes/pkg/volume/util"
+	"k8s.io/kubernetes/pkg/volume/util/hostutil"
 	"k8s.io/kubernetes/pkg/volume/util/operationexecutor"
 	"k8s.io/kubernetes/pkg/volume/util/types"
 	"k8s.io/kubernetes/pkg/volume/util/volumepathhandler"
@@ -51,10 +54,6 @@ const (
 	// reconcilerLoopSleepPeriod is the amount of time the reconciler loop waits
 	// between successive executions
 	reconcilerLoopSleepPeriod = 100 * time.Millisecond
-
-	// reconcilerSyncStatesSleepPeriod is the amount of time the reconciler reconstruct process
-	// waits between successive executions
-	reconcilerSyncStatesSleepPeriod = 3 * time.Minute
 
 	// desiredStateOfWorldPopulatorLoopSleepPeriod is the amount of time the
 	// DesiredStateOfWorldPopulator loop waits between successive executions
@@ -155,10 +154,12 @@ func NewVolumeManager(
 	volumePluginMgr *volume.VolumePluginMgr,
 	kubeContainerRuntime container.Runtime,
 	mounter mount.Interface,
+	hostutil hostutil.HostUtils,
 	kubeletPodsDir string,
 	recorder record.EventRecorder,
 	checkNodeCapabilitiesBeforeMount bool,
-	keepTerminatedPodVolumes bool) VolumeManager {
+	keepTerminatedPodVolumes bool,
+	blockVolumePathHandler volumepathhandler.BlockVolumePathHandler) VolumeManager {
 
 	vm := &volumeManager{
 		kubeClient:          kubeClient,
@@ -170,7 +171,7 @@ func NewVolumeManager(
 			volumePluginMgr,
 			recorder,
 			checkNodeCapabilitiesBeforeMount,
-			volumepathhandler.NewBlockVolumePathHandler())),
+			blockVolumePathHandler)),
 	}
 
 	vm.desiredStateOfWorldPopulator = populator.NewDesiredStateOfWorldPopulator(
@@ -187,7 +188,6 @@ func NewVolumeManager(
 		kubeClient,
 		controllerAttachDetachEnabled,
 		reconcilerLoopSleepPeriod,
-		reconcilerSyncStatesSleepPeriod,
 		waitForAttachTimeout,
 		nodeName,
 		vm.desiredStateOfWorld,
@@ -195,6 +195,7 @@ func NewVolumeManager(
 		vm.desiredStateOfWorldPopulator.HasAddedPods,
 		vm.operationExecutor,
 		mounter,
+		hostutil,
 		volumePluginMgr,
 		kubeletPodsDir)
 
@@ -366,7 +367,6 @@ func (vm *volumeManager) WaitForAttachAndMount(pod *v1.Pod) error {
 		vm.verifyVolumesMountedFunc(uniquePodName, expectedVolumes))
 
 	if err != nil {
-		// Timeout expired
 		unmountedVolumes :=
 			vm.getUnmountedVolumes(uniquePodName, expectedVolumes)
 		// Also get unattached volumes for error message
@@ -378,11 +378,10 @@ func (vm *volumeManager) WaitForAttachAndMount(pod *v1.Pod) error {
 		}
 
 		return fmt.Errorf(
-			"timeout expired waiting for volumes to attach or mount for pod %q/%q. list of unmounted volumes=%v. list of unattached volumes=%v",
-			pod.Namespace,
-			pod.Name,
+			"unmounted volumes=%v, unattached volumes=%v: %s",
 			unmountedVolumes,
-			unattachedVolumes)
+			unattachedVolumes,
+			err)
 	}
 
 	klog.V(3).Infof("All volumes are attached and mounted for pod %q", format.Pod(pod))
@@ -405,6 +404,9 @@ func (vm *volumeManager) getUnattachedVolumes(expectedVolumes []string) []string
 // volumes are mounted.
 func (vm *volumeManager) verifyVolumesMountedFunc(podName types.UniquePodName, expectedVolumes []string) wait.ConditionFunc {
 	return func() (done bool, err error) {
+		if errs := vm.desiredStateOfWorld.PopPodErrors(podName); len(errs) > 0 {
+			return true, errors.New(strings.Join(errs, "; "))
+		}
 		return len(vm.getUnmountedVolumes(podName, expectedVolumes)) == 0, nil
 	}
 }
@@ -435,13 +437,8 @@ func filterUnmountedVolumes(mountedVolumes sets.String, expectedVolumes []string
 // getExpectedVolumes returns a list of volumes that must be mounted in order to
 // consider the volume setup step for this pod satisfied.
 func getExpectedVolumes(pod *v1.Pod) []string {
-	expectedVolumes := []string{}
-
-	for _, podVolume := range pod.Spec.Volumes {
-		expectedVolumes = append(expectedVolumes, podVolume.Name)
-	}
-
-	return expectedVolumes
+	mounts, devices := util.GetPodVolumeNames(pod)
+	return mounts.Union(devices).UnsortedList()
 }
 
 // getExtraSupplementalGid returns the value of an extra supplemental GID as

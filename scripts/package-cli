@@ -22,7 +22,7 @@ rm -rf build/data
 mkdir -p build/data build/out
 mkdir -p dist/artifacts
 
-tar cvzf ./build/out/data.tar.gz --exclude ./bin/hyperkube ./bin
+tar cvzf ./build/out/data.tar.gz --exclude ./bin/hyperkube ./bin ./etc
 HASH=$(sha256sum ./build/out/data.tar.gz | awk '{print $1}')
 
 cp ./build/out/data.tar.gz ./build/data/${HASH}.tgz

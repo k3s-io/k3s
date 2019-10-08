@@ -19,11 +19,9 @@ package types
 import (
 	"fmt"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/kubernetes/pkg/apis/scheduling"
-	"k8s.io/kubernetes/pkg/features"
 )
 
 const (
@@ -90,9 +88,8 @@ func GetValidatedSources(sources []string) ([]string, error) {
 			return []string{FileSource, HTTPSource, ApiserverSource}, nil
 		case FileSource, HTTPSource, ApiserverSource:
 			validated = append(validated, source)
-			break
 		case "":
-			break
+			// Skip
 		default:
 			return []string{}, fmt.Errorf("unknown pod source %q", source)
 		}
@@ -140,14 +137,13 @@ func (sp SyncPodType) String() string {
 	}
 }
 
-// IsCriticalPod returns true if the pod bears the critical pod annotation key or if pod's priority is greater than
-// or equal to SystemCriticalPriority. Both the default scheduler and the kubelet use this function
-// to make admission and scheduling decisions.
+// IsCriticalPod returns true if pod's priority is greater than or equal to SystemCriticalPriority.
 func IsCriticalPod(pod *v1.Pod) bool {
-	if utilfeature.DefaultFeatureGate.Enabled(features.PodPriority) {
-		if pod.Spec.Priority != nil && IsCriticalPodBasedOnPriority(*pod.Spec.Priority) {
-			return true
-		}
+	if IsStaticPod(pod) {
+		return true
+	}
+	if pod.Spec.Priority != nil && IsCriticalPodBasedOnPriority(*pod.Spec.Priority) {
+		return true
 	}
 	return false
 }
@@ -158,11 +154,9 @@ func Preemptable(preemptor, preemptee *v1.Pod) bool {
 	if IsCriticalPod(preemptor) && !IsCriticalPod(preemptee) {
 		return true
 	}
-	if utilfeature.DefaultFeatureGate.Enabled(features.PodPriority) {
-		if (preemptor != nil && preemptor.Spec.Priority != nil) &&
-			(preemptee != nil && preemptee.Spec.Priority != nil) {
-			return *(preemptor.Spec.Priority) > *(preemptee.Spec.Priority)
-		}
+	if (preemptor != nil && preemptor.Spec.Priority != nil) &&
+		(preemptee != nil && preemptee.Spec.Priority != nil) {
+		return *(preemptor.Spec.Priority) > *(preemptee.Spec.Priority)
 	}
 
 	return false
@@ -170,8 +164,11 @@ func Preemptable(preemptor, preemptee *v1.Pod) bool {
 
 // IsCriticalPodBasedOnPriority checks if the given pod is a critical pod based on priority resolved from pod Spec.
 func IsCriticalPodBasedOnPriority(priority int32) bool {
-	if priority >= scheduling.SystemCriticalPriority {
-		return true
-	}
-	return false
+	return priority >= scheduling.SystemCriticalPriority
+}
+
+// IsStaticPod returns true if the pod is a static pod.
+func IsStaticPod(pod *v1.Pod) bool {
+	source, err := GetPodSource(pod)
+	return err == nil && source != ApiserverSource
 }

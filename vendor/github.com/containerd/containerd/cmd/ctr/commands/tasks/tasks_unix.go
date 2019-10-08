@@ -20,6 +20,7 @@ package tasks
 
 import (
 	gocontext "context"
+	"net/url"
 	"os"
 	"os/signal"
 
@@ -67,8 +68,11 @@ func HandleConsoleResize(ctx gocontext.Context, task resizer, con console.Consol
 }
 
 // NewTask creates a new task
-func NewTask(ctx gocontext.Context, client *containerd.Client, container containerd.Container, checkpoint string, con console.Console, nullIO bool, ioOpts []cio.Opt, opts ...containerd.NewTaskOpts) (containerd.Task, error) {
-	stdio := cio.NewCreator(append([]cio.Opt{cio.WithStdio}, ioOpts...)...)
+func NewTask(ctx gocontext.Context, client *containerd.Client, container containerd.Container, checkpoint string, con console.Console, nullIO bool, logURI string, ioOpts []cio.Opt, opts ...containerd.NewTaskOpts) (containerd.Task, error) {
+	stdinC := &stdinCloser{
+		stdin: os.Stdin,
+	}
+	stdio := cio.NewCreator(append([]cio.Opt{cio.WithStreams(stdinC, os.Stdout, os.Stderr)}, ioOpts...)...)
 	if checkpoint != "" {
 		im, err := client.GetImage(ctx, checkpoint)
 		if err != nil {
@@ -86,7 +90,21 @@ func NewTask(ctx gocontext.Context, client *containerd.Client, container contain
 		}
 		ioCreator = cio.NullIO
 	}
-	return container.NewTask(ctx, ioCreator, opts...)
+	if logURI != "" {
+		u, err := url.Parse(logURI)
+		if err != nil {
+			return nil, err
+		}
+		ioCreator = cio.LogURI(u)
+	}
+	t, err := container.NewTask(ctx, ioCreator, opts...)
+	if err != nil {
+		return nil, err
+	}
+	stdinC.closer = func() {
+		t.CloseIO(ctx, containerd.WithStdinCloser)
+	}
+	return t, nil
 }
 
 func getNewTaskOpts(context *cli.Context) []containerd.NewTaskOpts {

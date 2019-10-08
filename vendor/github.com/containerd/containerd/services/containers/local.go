@@ -48,8 +48,11 @@ func init() {
 			if err != nil {
 				return nil, err
 			}
+
+			db := m.(*metadata.DB)
 			return &local{
-				db:        m.(*metadata.DB),
+				Store:     metadata.NewContainerStore(db),
+				db:        db,
 				publisher: ic.Events,
 			}, nil
 		},
@@ -57,6 +60,7 @@ func init() {
 }
 
 type local struct {
+	containers.Store
 	db        *metadata.DB
 	publisher events.Publisher
 }
@@ -66,8 +70,8 @@ var _ api.ContainersClient = &local{}
 func (l *local) Get(ctx context.Context, req *api.GetContainerRequest, _ ...grpc.CallOption) (*api.GetContainerResponse, error) {
 	var resp api.GetContainerResponse
 
-	return &resp, errdefs.ToGRPC(l.withStoreView(ctx, func(ctx context.Context, store containers.Store) error {
-		container, err := store.Get(ctx, req.ID)
+	return &resp, errdefs.ToGRPC(l.withStoreView(ctx, func(ctx context.Context) error {
+		container, err := l.Store.Get(ctx, req.ID)
 		if err != nil {
 			return err
 		}
@@ -80,8 +84,8 @@ func (l *local) Get(ctx context.Context, req *api.GetContainerRequest, _ ...grpc
 
 func (l *local) List(ctx context.Context, req *api.ListContainersRequest, _ ...grpc.CallOption) (*api.ListContainersResponse, error) {
 	var resp api.ListContainersResponse
-	return &resp, errdefs.ToGRPC(l.withStoreView(ctx, func(ctx context.Context, store containers.Store) error {
-		containers, err := store.List(ctx, req.Filters...)
+	return &resp, errdefs.ToGRPC(l.withStoreView(ctx, func(ctx context.Context) error {
+		containers, err := l.Store.List(ctx, req.Filters...)
 		if err != nil {
 			return err
 		}
@@ -94,8 +98,8 @@ func (l *local) ListStream(ctx context.Context, req *api.ListContainersRequest, 
 	stream := &localStream{
 		ctx: ctx,
 	}
-	return stream, errdefs.ToGRPC(l.withStoreView(ctx, func(ctx context.Context, store containers.Store) error {
-		containers, err := store.List(ctx, req.Filters...)
+	return stream, errdefs.ToGRPC(l.withStoreView(ctx, func(ctx context.Context) error {
+		containers, err := l.Store.List(ctx, req.Filters...)
 		if err != nil {
 			return err
 		}
@@ -107,10 +111,10 @@ func (l *local) ListStream(ctx context.Context, req *api.ListContainersRequest, 
 func (l *local) Create(ctx context.Context, req *api.CreateContainerRequest, _ ...grpc.CallOption) (*api.CreateContainerResponse, error) {
 	var resp api.CreateContainerResponse
 
-	if err := l.withStoreUpdate(ctx, func(ctx context.Context, store containers.Store) error {
+	if err := l.withStoreUpdate(ctx, func(ctx context.Context) error {
 		container := containerFromProto(&req.Container)
 
-		created, err := store.Create(ctx, container)
+		created, err := l.Store.Create(ctx, container)
 		if err != nil {
 			return err
 		}
@@ -144,13 +148,13 @@ func (l *local) Update(ctx context.Context, req *api.UpdateContainerRequest, _ .
 		container = containerFromProto(&req.Container)
 	)
 
-	if err := l.withStoreUpdate(ctx, func(ctx context.Context, store containers.Store) error {
+	if err := l.withStoreUpdate(ctx, func(ctx context.Context) error {
 		var fieldpaths []string
 		if req.UpdateMask != nil && len(req.UpdateMask.Paths) > 0 {
 			fieldpaths = append(fieldpaths, req.UpdateMask.Paths...)
 		}
 
-		updated, err := store.Update(ctx, container, fieldpaths...)
+		updated, err := l.Store.Update(ctx, container, fieldpaths...)
 		if err != nil {
 			return err
 		}
@@ -174,8 +178,8 @@ func (l *local) Update(ctx context.Context, req *api.UpdateContainerRequest, _ .
 }
 
 func (l *local) Delete(ctx context.Context, req *api.DeleteContainerRequest, _ ...grpc.CallOption) (*ptypes.Empty, error) {
-	if err := l.withStoreUpdate(ctx, func(ctx context.Context, store containers.Store) error {
-		return store.Delete(ctx, req.ID)
+	if err := l.withStoreUpdate(ctx, func(ctx context.Context) error {
+		return l.Store.Delete(ctx, req.ID)
 	}); err != nil {
 		return &ptypes.Empty{}, errdefs.ToGRPC(err)
 	}
@@ -189,15 +193,17 @@ func (l *local) Delete(ctx context.Context, req *api.DeleteContainerRequest, _ .
 	return &ptypes.Empty{}, nil
 }
 
-func (l *local) withStore(ctx context.Context, fn func(ctx context.Context, store containers.Store) error) func(tx *bolt.Tx) error {
-	return func(tx *bolt.Tx) error { return fn(ctx, metadata.NewContainerStore(tx)) }
+func (l *local) withStore(ctx context.Context, fn func(ctx context.Context) error) func(tx *bolt.Tx) error {
+	return func(tx *bolt.Tx) error {
+		return fn(metadata.WithTransactionContext(ctx, tx))
+	}
 }
 
-func (l *local) withStoreView(ctx context.Context, fn func(ctx context.Context, store containers.Store) error) error {
+func (l *local) withStoreView(ctx context.Context, fn func(ctx context.Context) error) error {
 	return l.db.View(l.withStore(ctx, fn))
 }
 
-func (l *local) withStoreUpdate(ctx context.Context, fn func(ctx context.Context, store containers.Store) error) error {
+func (l *local) withStoreUpdate(ctx context.Context, fn func(ctx context.Context) error) error {
 	return l.db.Update(l.withStore(ctx, fn))
 }
 

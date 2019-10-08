@@ -22,8 +22,13 @@ import (
 	"context"
 
 	srvconfig "github.com/containerd/containerd/services/server/config"
+	"github.com/containerd/ttrpc"
 )
 
 func apply(_ context.Context, _ *srvconfig.Config) error {
 	return nil
+}
+
+func newTTRPCServer() (*ttrpc.Server, error) {
+	return ttrpc.NewServer()
 }

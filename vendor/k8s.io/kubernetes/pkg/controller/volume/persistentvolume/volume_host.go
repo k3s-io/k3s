@@ -21,10 +21,11 @@ import (
 	"net"
 
 	authenticationv1 "k8s.io/api/authentication/v1"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/record"
+	cloudprovider "k8s.io/cloud-provider"
 	"k8s.io/klog"
 	"k8s.io/kubernetes/pkg/util/mount"
 	vol "k8s.io/kubernetes/pkg/volume"
@@ -71,6 +72,10 @@ func (ctrl *PersistentVolumeController) NewWrapperUnmounter(volName string, spec
 	return nil, fmt.Errorf("PersistentVolumeController.NewWrapperMounter is not implemented")
 }
 
+func (ctrl *PersistentVolumeController) GetCloudProvider() cloudprovider.Interface {
+	return ctrl.cloud
+}
+
 func (ctrl *PersistentVolumeController) GetMounter(pluginName string) mount.Interface {
 	return nil
 }
@@ -112,7 +117,7 @@ func (ctrl *PersistentVolumeController) DeleteServiceAccountTokenFunc() func(typ
 }
 
 func (adc *PersistentVolumeController) GetExec(pluginName string) mount.Exec {
-	return mount.NewOsExec()
+	return mount.NewOSExec()
 }
 
 func (ctrl *PersistentVolumeController) GetNodeLabels() (map[string]string, error) {

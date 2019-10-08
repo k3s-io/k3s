@@ -46,6 +46,7 @@ var Command = cli.Command{
 		pullCommand,
 		pushCommand,
 		removeCommand,
+		tagCommand,
 		setLabelsCommand,
 	},
 }
@@ -54,7 +55,7 @@ var listCommand = cli.Command{
 	Name:        "list",
 	Aliases:     []string{"ls"},
 	Usage:       "list images known to containerd",
-	ArgsUsage:   "[flags] <ref>",
+	ArgsUsage:   "[flags] [<filter>, ...]",
 	Description: "list images registered with containerd",
 	Flags: []cli.Flag{
 		cli.BoolFlag{
@@ -196,7 +197,7 @@ var setLabelsCommand = cli.Command{
 var checkCommand = cli.Command{
 	Name:        "check",
 	Usage:       "check that an image has all content available locally",
-	ArgsUsage:   "[flags] <ref> [<ref>, ...]",
+	ArgsUsage:   "[flags] [<filter>, ...]",
 	Description: "check that an image has all content available locally",
 	Flags:       commands.SnapshotterFlags,
 	Action: func(context *cli.Context) error {

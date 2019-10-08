@@ -57,7 +57,7 @@ func (in *Addon) DeepCopyObject() runtime.Object {
 func (in *AddonList) DeepCopyInto(out *AddonList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]Addon, len(*in))
@@ -154,7 +154,7 @@ func (in *ListenerConfig) DeepCopyObject() runtime.Object {
 func (in *ListenerConfigList) DeepCopyInto(out *ListenerConfigList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]ListenerConfig, len(*in))

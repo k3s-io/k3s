@@ -20,18 +20,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"os"
 	"sort"
 	"strings"
-	"text/tabwriter"
 	"time"
 
-	units "github.com/docker/go-units"
+	"github.com/docker/go-units"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 	"golang.org/x/net/context"
 
-	pb "k8s.io/kubernetes/pkg/kubelet/apis/cri/runtime/v1alpha2"
+	pb "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
 
 type sandboxByCreated []*pb.PodSandbox
@@ -59,9 +57,11 @@ var runPodCommand = cli.Command{
 			return cli.ShowSubcommandHelp(context)
 		}
 
-		if err := getRuntimeClient(context); err != nil {
+		runtimeClient, runtimeConn, err := getRuntimeClient(context)
+		if err != nil {
 			return err
 		}
+		defer closeConnection(context, runtimeConn)
 
 		podSandboxConfig, err := loadPodSandboxConfig(sandboxSpec)
 		if err != nil {
@@ -69,10 +69,11 @@ var runPodCommand = cli.Command{
 		}
 
 		// Test RuntimeServiceClient.RunPodSandbox
-		err = RunPodSandbox(runtimeClient, podSandboxConfig, context.String("runtime"))
+		podID, err := RunPodSandbox(runtimeClient, podSandboxConfig, context.String("runtime"))
 		if err != nil {
 			return fmt.Errorf("run pod sandbox failed: %v", err)
 		}
+		fmt.Println(podID)
 		return nil
 	},
 }
@@ -85,9 +86,11 @@ var stopPodCommand = cli.Command{
 		if context.NArg() == 0 {
 			return cli.ShowSubcommandHelp(context)
 		}
-		if err := getRuntimeClient(context); err != nil {
+		runtimeClient, runtimeConn, err := getRuntimeClient(context)
+		if err != nil {
 			return err
 		}
+		defer closeConnection(context, runtimeConn)
 		for i := 0; i < context.NArg(); i++ {
 			id := context.Args().Get(i)
 			err := StopPodSandbox(runtimeClient, id)
@@ -100,22 +103,78 @@ var stopPodCommand = cli.Command{
 }
 
 var removePodCommand = cli.Command{
-	Name:      "rmp",
-	Usage:     "Remove one or more pods",
-	ArgsUsage: "POD-ID [POD-ID...]",
-	Action: func(context *cli.Context) error {
-		if context.NArg() == 0 {
-			return cli.ShowSubcommandHelp(context)
-		}
-		if err := getRuntimeClient(context); err != nil {
+	Name:                   "rmp",
+	Usage:                  "Remove one or more pods",
+	ArgsUsage:              "POD-ID [POD-ID...]",
+	SkipArgReorder:         true,
+	UseShortOptionHandling: true,
+	Flags: []cli.Flag{
+		cli.BoolFlag{
+			Name:  "force, f",
+			Usage: "Force removal of the pod sandbox, disregarding if running",
+		},
+		cli.BoolFlag{
+			Name:  "all, a",
+			Usage: "Remove all pods",
+		},
+	},
+	Action: func(ctx *cli.Context) error {
+		runtimeClient, runtimeConn, err := getRuntimeClient(ctx)
+		if err != nil {
 			return err
 		}
-		for i := 0; i < context.NArg(); i++ {
-			id := context.Args().Get(i)
-			err := RemovePodSandbox(runtimeClient, id)
+		defer closeConnection(ctx, runtimeConn)
+
+		ids := ctx.Args()
+		if ctx.Bool("all") {
+			r, err := runtimeClient.ListPodSandbox(context.Background(),
+				&pb.ListPodSandboxRequest{})
 			if err != nil {
-				return fmt.Errorf("removing the pod sandbox %q failed: %v", id, err)
+				return err
 			}
+			ids = nil
+			for _, sb := range r.GetItems() {
+				ids = append(ids, sb.GetId())
+			}
+		}
+
+		if len(ids) == 0 {
+			return cli.ShowSubcommandHelp(ctx)
+		}
+
+		errored := false
+		for _, id := range ids {
+			resp, err := runtimeClient.PodSandboxStatus(context.Background(),
+				&pb.PodSandboxStatusRequest{PodSandboxId: id})
+			if err != nil {
+				logrus.Error(err)
+				errored = true
+				continue
+			}
+			if resp.Status.State == pb.PodSandboxState_SANDBOX_READY {
+				if ctx.Bool("force") {
+					if err := StopPodSandbox(runtimeClient, id); err != nil {
+						logrus.Errorf("stopping the pod sandbox %q failed: %v", id, err)
+						errored = true
+						continue
+					}
+				} else {
+					logrus.Errorf("pod sandbox %q is running, please stop it first", id)
+					errored = true
+					continue
+				}
+			}
+
+			err = RemovePodSandbox(runtimeClient, id)
+			if err != nil {
+				logrus.Errorf("removing the pod sandbox %q failed: %v", id, err)
+				errored = true
+				continue
+			}
+		}
+
+		if errored {
+			return fmt.Errorf("unable to remove sandbox(es)")
 		}
 		return nil
 	},
@@ -141,9 +200,11 @@ var podStatusCommand = cli.Command{
 		if context.NArg() == 0 {
 			return cli.ShowSubcommandHelp(context)
 		}
-		if err := getRuntimeClient(context); err != nil {
+		runtimeClient, runtimeConn, err := getRuntimeClient(context)
+		if err != nil {
 			return err
 		}
+		defer closeConnection(context, runtimeConn)
 		for i := 0; i < context.NArg(); i++ {
 			id := context.Args().Get(i)
 
@@ -213,9 +274,11 @@ var listPodCommand = cli.Command{
 	},
 	Action: func(context *cli.Context) error {
 		var err error
-		if err = getRuntimeClient(context); err != nil {
+		runtimeClient, runtimeConn, err := getRuntimeClient(context)
+		if err != nil {
 			return err
 		}
+		defer closeConnection(context, runtimeConn)
 
 		opts := listOptions{
 			id:                 context.String("id"),
@@ -242,7 +305,7 @@ var listPodCommand = cli.Command{
 
 // RunPodSandbox sends a RunPodSandboxRequest to the server, and parses
 // the returned RunPodSandboxResponse.
-func RunPodSandbox(client pb.RuntimeServiceClient, config *pb.PodSandboxConfig, runtime string) error {
+func RunPodSandbox(client pb.RuntimeServiceClient, config *pb.PodSandboxConfig, runtime string) (string, error) {
 	request := &pb.RunPodSandboxRequest{
 		Config:         config,
 		RuntimeHandler: runtime,
@@ -251,10 +314,9 @@ func RunPodSandbox(client pb.RuntimeServiceClient, config *pb.PodSandboxConfig, 
 	r, err := client.RunPodSandbox(context.Background(), request)
 	logrus.Debugf("RunPodSandboxResponse: %v", r)
 	if err != nil {
-		return err
+		return "", err
 	}
-	fmt.Println(r.PodSandboxId)
-	return nil
+	return r.PodSandboxId, nil
 }
 
 // StopPodSandbox sends a StopPodSandboxRequest to the server, and parses
@@ -361,7 +423,10 @@ func PodSandboxStatus(client pb.RuntimeServiceClient, ID, output string, quiet b
 	fmt.Printf("Created: %v\n", ctm)
 
 	if r.Status.Network != nil {
-		fmt.Printf("IP Address: %v\n", r.Status.Network.Ip)
+		fmt.Printf("IP Addresses: %v\n", r.Status.Network.Ip)
+		for _, ip := range r.Status.Network.AdditionalIps {
+			fmt.Printf("Additional IP: %v\n", ip.Ip)
+		}
 	}
 	if r.Status.Labels != nil {
 		fmt.Println("Labels:")
@@ -428,9 +493,9 @@ func ListPodSandboxes(client pb.RuntimeServiceClient, opts listOptions) error {
 		return fmt.Errorf("unsupported output format %q", opts.output)
 	}
 
-	w := tabwriter.NewWriter(os.Stdout, 20, 1, 3, ' ', 0)
+	display := newTableDisplay(20, 1, 3, ' ', 0)
 	if !opts.verbose && !opts.quiet {
-		fmt.Fprintln(w, "POD ID\tCREATED\tSTATE\tNAME\tNAMESPACE\tATTEMPT")
+		display.AddRow([]string{columnPodID, columnCreated, columnState, columnName, columnNamespace, columnAttempt})
 	}
 	for _, pod := range r.Items {
 		// Filter by pod name/namespace regular expressions.
@@ -452,8 +517,8 @@ func ListPodSandboxes(client pb.RuntimeServiceClient, opts listOptions) error {
 			if !opts.noTrunc {
 				id = getTruncatedID(id, "")
 			}
-			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%d\n",
-				id, ctm, convertPodState(pod.State), pod.Metadata.Name, pod.Metadata.Namespace, pod.Metadata.Attempt)
+			display.AddRow([]string{id, ctm, convertPodState(pod.State), pod.Metadata.Name,
+				pod.Metadata.Namespace, fmt.Sprintf("%d", pod.Metadata.Attempt)})
 			continue
 		}
 
@@ -490,7 +555,7 @@ func ListPodSandboxes(client pb.RuntimeServiceClient, opts listOptions) error {
 		fmt.Println()
 	}
 
-	w.Flush()
+	display.Flush()
 	return nil
 }
 

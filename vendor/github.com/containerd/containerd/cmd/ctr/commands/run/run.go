@@ -86,9 +86,10 @@ func parseMountFlag(m string) (specs.Mount, error) {
 
 // Command runs a container
 var Command = cli.Command{
-	Name:      "run",
-	Usage:     "run a container",
-	ArgsUsage: "[flags] Image|RootFS ID [COMMAND] [ARG...]",
+	Name:           "run",
+	Usage:          "run a container",
+	ArgsUsage:      "[flags] Image|RootFS ID [COMMAND] [ARG...]",
+	SkipArgReorder: true,
 	Flags: append([]cli.Flag{
 		cli.BoolFlag{
 			Name:  "rm",
@@ -98,6 +99,10 @@ var Command = cli.Command{
 			Name:  "null-io",
 			Usage: "send all IO to /dev/null",
 		},
+		cli.StringFlag{
+			Name:  "log-uri",
+			Usage: "log uri",
+		},
 		cli.BoolFlag{
 			Name:  "detach,d",
 			Usage: "detach from the task after it has started execution",
@@ -106,11 +111,15 @@ var Command = cli.Command{
 			Name:  "fifo-dir",
 			Usage: "directory used for storing IO FIFOs",
 		},
-		cli.BoolFlag{
-			Name:  "isolated",
-			Usage: "run the container with vm isolation",
+		cli.StringFlag{
+			Name:  "cgroup",
+			Usage: "cgroup path (To disable use of cgroup, set to \"\" explicitly)",
 		},
-	}, append(commands.SnapshotterFlags, commands.ContainerFlags...)...),
+		cli.StringFlag{
+			Name:  "platform",
+			Usage: "run image for specific platform",
+		},
+	}, append(platformRunFlags, append(commands.SnapshotterFlags, commands.ContainerFlags...)...)...),
 	Action: func(context *cli.Context) error {
 		var (
 			err error
@@ -160,7 +169,7 @@ var Command = cli.Command{
 		}
 		opts := getNewTaskOpts(context)
 		ioOpts := []cio.Opt{cio.WithFIFODir(context.String("fifo-dir"))}
-		task, err := tasks.NewTask(ctx, client, container, context.String("checkpoint"), con, context.Bool("null-io"), ioOpts, opts...)
+		task, err := tasks.NewTask(ctx, client, container, context.String("checkpoint"), con, context.Bool("null-io"), context.String("log-uri"), ioOpts, opts...)
 		if err != nil {
 			return err
 		}

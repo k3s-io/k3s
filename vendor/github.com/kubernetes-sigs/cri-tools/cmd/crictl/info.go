@@ -22,7 +22,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 	"golang.org/x/net/context"
-	pb "k8s.io/kubernetes/pkg/kubelet/apis/cri/runtime/v1alpha2"
+	pb "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
 
 var runtimeStatusCommand = cli.Command{
@@ -43,14 +43,18 @@ var runtimeStatusCommand = cli.Command{
 		},
 	},
 	Action: func(context *cli.Context) error {
-		err := Info(context, runtimeClient)
+		runtimeClient, runtimeConn, err := getRuntimeClient(context)
+		if err != nil {
+			return err
+		}
+		defer closeConnection(context, runtimeConn)
+
+		err = Info(context, runtimeClient)
 		if err != nil {
 			return fmt.Errorf("getting status of runtime failed: %v", err)
 		}
 		return nil
 	},
-	Before: getRuntimeClient,
-	After:  closeConnection,
 }
 
 // Info sends a StatusRequest to the server, and parses the returned StatusResponse.

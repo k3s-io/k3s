@@ -27,7 +27,6 @@ import (
 
 	"github.com/opencontainers/runc/libcontainer/cgroups/fs"
 	"github.com/opencontainers/runc/libcontainer/configs"
-	rsystem "github.com/opencontainers/runc/libcontainer/system"
 	utilversion "k8s.io/apimachinery/pkg/util/version"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog"
@@ -38,11 +37,13 @@ import (
 )
 
 const (
-	// The percent of the machine memory capacity.
-	dockerMemoryLimitThresholdPercent = kubecm.DockerMemoryLimitThresholdPercent
+	// The percent of the machine memory capacity. The value is used to calculate
+	// docker memory resource container's hardlimit to workaround docker memory
+	// leakage issue. Please see kubernetes/issues/9881 for more detail.
+	dockerMemoryLimitThresholdPercent = 70
 
-	// The minimum memory limit allocated to docker container.
-	minDockerMemoryLimit = kubecm.MinDockerMemoryLimit
+	// The minimum memory limit allocated to docker container: 150Mi
+	minDockerMemoryLimit = 150 * 1024 * 1024
 
 	// The Docker OOM score adjustment.
 	dockerOOMScoreAdj = qos.DockerOOMScoreAdj
@@ -52,6 +53,7 @@ var (
 	memoryCapacityRegexp = regexp.MustCompile(`MemTotal:\s*([0-9]+) kB`)
 )
 
+// NewContainerManager creates a new instance of ContainerManager
 func NewContainerManager(cgroupsName string, client libdocker.Interface) ContainerManager {
 	return &containerManager{
 		cgroupsName: cgroupsName,
@@ -96,10 +98,7 @@ func (m *containerManager) doWork() {
 	//   1. Ensure processes run in the cgroups if m.cgroupsManager is not nil.
 	//   2. Ensure processes have the OOM score applied.
 	if err := kubecm.EnsureDockerInContainer(version, dockerOOMScoreAdj, m.cgroupsManager); err != nil {
-		// if we are in userns, the operation is likely to fail, unless cgroupfs is properly chown-ed.
-		if !rsystem.RunningInUserNS() {
-			klog.Errorf("Unable to ensure the docker processes run in the desired containers: %v", err)
-		}
+		klog.Errorf("Unable to ensure the docker processes run in the desired containers: %v", err)
 	}
 }
 

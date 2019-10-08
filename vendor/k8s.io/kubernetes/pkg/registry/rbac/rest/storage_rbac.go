@@ -23,6 +23,7 @@ import (
 	"k8s.io/klog"
 
 	rbacapiv1 "k8s.io/api/rbac/v1"
+	rbacapiv1alpha1 "k8s.io/api/rbac/v1alpha1"
 	rbacapiv1beta1 "k8s.io/api/rbac/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -64,27 +65,54 @@ type RESTStorageProvider struct {
 
 var _ genericapiserver.PostStartHookProvider = RESTStorageProvider{}
 
-func (p RESTStorageProvider) NewRESTStorage(apiResourceConfigSource serverstorage.APIResourceConfigSource, restOptionsGetter generic.RESTOptionsGetter) (genericapiserver.APIGroupInfo, bool) {
+func (p RESTStorageProvider) NewRESTStorage(apiResourceConfigSource serverstorage.APIResourceConfigSource, restOptionsGetter generic.RESTOptionsGetter) (genericapiserver.APIGroupInfo, bool, error) {
 	apiGroupInfo := genericapiserver.NewDefaultAPIGroupInfo(rbac.GroupName, legacyscheme.Scheme, legacyscheme.ParameterCodec, legacyscheme.Codecs)
 	// If you add a version here, be sure to add an entry in `k8s.io/kubernetes/cmd/kube-apiserver/app/aggregator.go with specific priorities.
 	// TODO refactor the plumbing to provide the information in the APIGroupInfo
 
+	if apiResourceConfigSource.VersionEnabled(rbacapiv1alpha1.SchemeGroupVersion) {
+		if storageMap, err := p.storage(rbacapiv1alpha1.SchemeGroupVersion, apiResourceConfigSource, restOptionsGetter); err != nil {
+			return genericapiserver.APIGroupInfo{}, false, err
+		} else {
+			apiGroupInfo.VersionedResourcesStorageMap[rbacapiv1alpha1.SchemeGroupVersion.Version] = storageMap
+		}
+	}
 	if apiResourceConfigSource.VersionEnabled(rbacapiv1beta1.SchemeGroupVersion) {
-		apiGroupInfo.VersionedResourcesStorageMap[rbacapiv1beta1.SchemeGroupVersion.Version] = p.storage(rbacapiv1beta1.SchemeGroupVersion, apiResourceConfigSource, restOptionsGetter)
+		if stoageMap, err := p.storage(rbacapiv1beta1.SchemeGroupVersion, apiResourceConfigSource, restOptionsGetter); err != nil {
+			return genericapiserver.APIGroupInfo{}, false, err
+		} else {
+			apiGroupInfo.VersionedResourcesStorageMap[rbacapiv1beta1.SchemeGroupVersion.Version] = stoageMap
+		}
 	}
 	if apiResourceConfigSource.VersionEnabled(rbacapiv1.SchemeGroupVersion) {
-		apiGroupInfo.VersionedResourcesStorageMap[rbacapiv1.SchemeGroupVersion.Version] = p.storage(rbacapiv1.SchemeGroupVersion, apiResourceConfigSource, restOptionsGetter)
+		if storageMap, err := p.storage(rbacapiv1.SchemeGroupVersion, apiResourceConfigSource, restOptionsGetter); err != nil {
+			return genericapiserver.APIGroupInfo{}, false, err
+		} else {
+			apiGroupInfo.VersionedResourcesStorageMap[rbacapiv1.SchemeGroupVersion.Version] = storageMap
+		}
 	}
 
-	return apiGroupInfo, true
+	return apiGroupInfo, true, nil
 }
 
-func (p RESTStorageProvider) storage(version schema.GroupVersion, apiResourceConfigSource serverstorage.APIResourceConfigSource, restOptionsGetter generic.RESTOptionsGetter) map[string]rest.Storage {
+func (p RESTStorageProvider) storage(version schema.GroupVersion, apiResourceConfigSource serverstorage.APIResourceConfigSource, restOptionsGetter generic.RESTOptionsGetter) (map[string]rest.Storage, error) {
 	storage := map[string]rest.Storage{}
-	rolesStorage := rolestore.NewREST(restOptionsGetter)
-	roleBindingsStorage := rolebindingstore.NewREST(restOptionsGetter)
-	clusterRolesStorage := clusterrolestore.NewREST(restOptionsGetter)
-	clusterRoleBindingsStorage := clusterrolebindingstore.NewREST(restOptionsGetter)
+	rolesStorage, err := rolestore.NewREST(restOptionsGetter)
+	if err != nil {
+		return storage, err
+	}
+	roleBindingsStorage, err := rolebindingstore.NewREST(restOptionsGetter)
+	if err != nil {
+		return storage, err
+	}
+	clusterRolesStorage, err := clusterrolestore.NewREST(restOptionsGetter)
+	if err != nil {
+		return storage, err
+	}
+	clusterRoleBindingsStorage, err := clusterrolebindingstore.NewREST(restOptionsGetter)
+	if err != nil {
+		return storage, err
+	}
 
 	authorizationRuleResolver := rbacregistryvalidation.NewDefaultRuleResolver(
 		role.AuthorizerAdapter{Registry: role.NewRegistry(rolesStorage)},
@@ -105,7 +133,7 @@ func (p RESTStorageProvider) storage(version schema.GroupVersion, apiResourceCon
 	// clusterrolebindings
 	storage["clusterrolebindings"] = clusterrolebindingpolicybased.NewStorage(clusterRoleBindingsStorage, p.Authorizer, authorizationRuleResolver)
 
-	return storage
+	return storage, nil
 }
 
 func (p RESTStorageProvider) PostStartHook() (string, genericapiserver.PostStartHookFunc, error) {
@@ -186,9 +214,9 @@ func (p *PolicyData) EnsureRBACPolicy() genericapiserver.PostStartHookFunc {
 					case result.Protected && result.Operation != reconciliation.ReconcileNone:
 						klog.Warningf("skipped reconcile-protected clusterrole.%s/%s with missing permissions: %v", rbac.GroupName, clusterRole.Name, result.MissingRules)
 					case result.Operation == reconciliation.ReconcileUpdate:
-						klog.Infof("updated clusterrole.%s/%s with additional permissions: %v", rbac.GroupName, clusterRole.Name, result.MissingRules)
+						klog.V(2).Infof("updated clusterrole.%s/%s with additional permissions: %v", rbac.GroupName, clusterRole.Name, result.MissingRules)
 					case result.Operation == reconciliation.ReconcileCreate:
-						klog.Infof("created clusterrole.%s/%s", rbac.GroupName, clusterRole.Name)
+						klog.V(2).Infof("created clusterrole.%s/%s", rbac.GroupName, clusterRole.Name)
 					}
 					return nil
 				})
@@ -214,11 +242,11 @@ func (p *PolicyData) EnsureRBACPolicy() genericapiserver.PostStartHookFunc {
 					case result.Protected && result.Operation != reconciliation.ReconcileNone:
 						klog.Warningf("skipped reconcile-protected clusterrolebinding.%s/%s with missing subjects: %v", rbac.GroupName, clusterRoleBinding.Name, result.MissingSubjects)
 					case result.Operation == reconciliation.ReconcileUpdate:
-						klog.Infof("updated clusterrolebinding.%s/%s with additional subjects: %v", rbac.GroupName, clusterRoleBinding.Name, result.MissingSubjects)
+						klog.V(2).Infof("updated clusterrolebinding.%s/%s with additional subjects: %v", rbac.GroupName, clusterRoleBinding.Name, result.MissingSubjects)
 					case result.Operation == reconciliation.ReconcileCreate:
-						klog.Infof("created clusterrolebinding.%s/%s", rbac.GroupName, clusterRoleBinding.Name)
+						klog.V(2).Infof("created clusterrolebinding.%s/%s", rbac.GroupName, clusterRoleBinding.Name)
 					case result.Operation == reconciliation.ReconcileRecreate:
-						klog.Infof("recreated clusterrolebinding.%s/%s", rbac.GroupName, clusterRoleBinding.Name)
+						klog.V(2).Infof("recreated clusterrolebinding.%s/%s", rbac.GroupName, clusterRoleBinding.Name)
 					}
 					return nil
 				})
@@ -245,9 +273,9 @@ func (p *PolicyData) EnsureRBACPolicy() genericapiserver.PostStartHookFunc {
 						case result.Protected && result.Operation != reconciliation.ReconcileNone:
 							klog.Warningf("skipped reconcile-protected role.%s/%s in %v with missing permissions: %v", rbac.GroupName, role.Name, namespace, result.MissingRules)
 						case result.Operation == reconciliation.ReconcileUpdate:
-							klog.Infof("updated role.%s/%s in %v with additional permissions: %v", rbac.GroupName, role.Name, namespace, result.MissingRules)
+							klog.V(2).Infof("updated role.%s/%s in %v with additional permissions: %v", rbac.GroupName, role.Name, namespace, result.MissingRules)
 						case result.Operation == reconciliation.ReconcileCreate:
-							klog.Infof("created role.%s/%s in %v", rbac.GroupName, role.Name, namespace)
+							klog.V(2).Infof("created role.%s/%s in %v", rbac.GroupName, role.Name, namespace)
 						}
 						return nil
 					})
@@ -275,11 +303,11 @@ func (p *PolicyData) EnsureRBACPolicy() genericapiserver.PostStartHookFunc {
 						case result.Protected && result.Operation != reconciliation.ReconcileNone:
 							klog.Warningf("skipped reconcile-protected rolebinding.%s/%s in %v with missing subjects: %v", rbac.GroupName, roleBinding.Name, namespace, result.MissingSubjects)
 						case result.Operation == reconciliation.ReconcileUpdate:
-							klog.Infof("updated rolebinding.%s/%s in %v with additional subjects: %v", rbac.GroupName, roleBinding.Name, namespace, result.MissingSubjects)
+							klog.V(2).Infof("updated rolebinding.%s/%s in %v with additional subjects: %v", rbac.GroupName, roleBinding.Name, namespace, result.MissingSubjects)
 						case result.Operation == reconciliation.ReconcileCreate:
-							klog.Infof("created rolebinding.%s/%s in %v", rbac.GroupName, roleBinding.Name, namespace)
+							klog.V(2).Infof("created rolebinding.%s/%s in %v", rbac.GroupName, roleBinding.Name, namespace)
 						case result.Operation == reconciliation.ReconcileRecreate:
-							klog.Infof("recreated rolebinding.%s/%s in %v", rbac.GroupName, roleBinding.Name, namespace)
+							klog.V(2).Infof("recreated rolebinding.%s/%s in %v", rbac.GroupName, roleBinding.Name, namespace)
 						}
 						return nil
 					})

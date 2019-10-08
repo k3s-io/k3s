@@ -17,6 +17,7 @@
 package errdefs
 
 import (
+	"context"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -55,6 +56,10 @@ func ToGRPC(err error) error {
 		return status.Errorf(codes.Unavailable, err.Error())
 	case IsNotImplemented(err):
 		return status.Errorf(codes.Unimplemented, err.Error())
+	case IsCanceled(err):
+		return status.Errorf(codes.Canceled, err.Error())
+	case IsDeadlineExceeded(err):
+		return status.Errorf(codes.DeadlineExceeded, err.Error())
 	}
 
 	return err
@@ -89,13 +94,17 @@ func FromGRPC(err error) error {
 		cls = ErrFailedPrecondition
 	case codes.Unimplemented:
 		cls = ErrNotImplemented
+	case codes.Canceled:
+		cls = context.Canceled
+	case codes.DeadlineExceeded:
+		cls = context.DeadlineExceeded
 	default:
 		cls = ErrUnknown
 	}
 
 	msg := rebaseMessage(cls, err)
 	if msg != "" {
-		err = errors.Wrapf(cls, msg)
+		err = errors.Wrap(cls, msg)
 	} else {
 		err = errors.WithStack(cls)
 	}

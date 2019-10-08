@@ -19,10 +19,10 @@ produces:
 consumes:
   - "application/json"
   - "text/plain"
-basePath: "/v1.40"
+basePath: "/v1.41"
 info:
   title: "Docker Engine API"
-  version: "1.40"
+  version: "1.41"
   x-logo:
     url: "https://docs.docker.com/images/logo-docker-main.png"
   description: |
@@ -49,8 +49,8 @@ info:
     the URL is not supported by the daemon, a HTTP `400 Bad Request` error message
     is returned.
 
-    If you omit the version-prefix, the current version of the API (v1.40) is used.
-    For example, calling `/info` is the same as calling `/v1.40/info`. Using the
+    If you omit the version-prefix, the current version of the API (v1.41) is used.
+    For example, calling `/info` is the same as calling `/v1.41/info`. Using the
     API without a version-prefix is deprecated and will be removed in a future release.
 
     Engine releases in the near future should support this version of the API,
@@ -463,10 +463,6 @@ definitions:
         type: "array"
         items:
           $ref: "#/definitions/DeviceRequest"
-      DiskQuota:
-        description: "Disk limit (in bytes)."
-        type: "integer"
-        format: "int64"
       KernelMemory:
         description: "Kernel memory limit in bytes."
         type: "integer"
@@ -707,6 +703,19 @@ definitions:
             description: "A list of kernel capabilities to drop from the container. Conflicts with option 'Capabilities'"
             items:
               type: "string"
+          CgroupnsMode:
+            type: "string"
+            enum:
+              - "private"
+              - "host"
+            description: |
+                    cgroup namespace mode for the container. Possible values are:
+
+                    - `"private"`: the container runs in its own private cgroup namespace
+                    - `"host"`: use the host system's cgroup namespace
+
+                    If not specified, the daemon default is used, which can either be `"private"`
+                    or `"host"`, depending on daemon version, kernel support and configuration.
           Dns:
             type: "array"
             description: "A list of DNS servers for the container to use."
@@ -1145,6 +1154,7 @@ definitions:
     type: "object"
     additionalProperties:
       type: "array"
+      x-nullable: true
       items:
         $ref: "#/definitions/PortBinding"
     example:
@@ -1169,7 +1179,6 @@ definitions:
       PortBinding represents a binding between a host IP address and a host
       port.
     type: "object"
-    x-nullable: true
     properties:
       HostIp:
         description: "Host IP address that the container's port is mapped to."
@@ -2873,6 +2882,18 @@ definitions:
             type: "object"
             additionalProperties:
               type: "string"
+          # This option is not used by Windows containers
+          Capabilities:
+            type: "array"
+            description: |
+              A list of kernel capabilities to be available for container (this overrides the default set).
+            items:
+              type: "string"
+            example:
+              - "CAP_NET_RAW"
+              - "CAP_SYS_ADMIN"
+              - "CAP_SYS_CHROOT"
+              - "CAP_SYSLOG"
       NetworkAttachmentSpec:
         description: |
           Read-only spec type for non-swarm containers attached to swarm overlay
@@ -3284,8 +3305,8 @@ definitions:
     type: "object"
     properties:
       Mode:
-        description: "The mode of resolution to use for internal load balancing
-      between tasks."
+        description: |
+          The mode of resolution to use for internal load balancing between tasks.
         type: "string"
         enum:
           - "vip"
@@ -3809,7 +3830,7 @@ definitions:
         description: |
           The driver to use for managing cgroups.
         type: "string"
-        enum: ["cgroupfs", "systemd"]
+        enum: ["cgroupfs", "systemd", "none"]
         default: "cgroupfs"
         example: "cgroupfs"
       NEventsListener:
@@ -3831,6 +3852,17 @@ definitions:
           or "Windows Server 2016 Datacenter"
         type: "string"
         example: "Alpine Linux v3.5"
+      OSVersion:
+        description: |
+          Version of the host's operating system
+
+          <p><br /></p>
+
+          > **Note**: The information returned in this field, including its
+          > very existence, and the formatting of values, should not be considered
+          > stable, and may change without notice.
+        type: "string"
+        example: "16.04"
       OSType:
         description: |
           Generic type of the operating system of the host, as returned by the
@@ -4044,7 +4076,7 @@ definitions:
       SecurityOptions:
         description: |
           List of security features that are enabled on the daemon, such as
-          apparmor, seccomp, SELinux, and user-namespaces (userns).
+          apparmor, seccomp, SELinux, user-namespaces (userns), and rootless.
 
           Additional configuration options for each security feature may
           be present, and are included as a comma-separated list of key/value
@@ -4057,6 +4089,7 @@ definitions:
           - "name=seccomp,profile=default"
           - "name=selinux"
           - "name=userns"
+          - "name=rootless"
       ProductLicense:
         description: |
           Reports a summary of the product license on the daemon.
@@ -4611,9 +4644,9 @@ paths:
       parameters:
         - name: "name"
           in: "query"
-          description: "Assign the specified name to the container. Must match `/?[a-zA-Z0-9_-]+`."
+          description: "Assign the specified name to the container. Must match `/?[a-zA-Z0-9][a-zA-Z0-9_.-]+`."
           type: "string"
-          pattern: "/?[a-zA-Z0-9_-]+"
+          pattern: "^/?[a-zA-Z0-9][a-zA-Z0-9_.-]+$"
         - name: "body"
           in: "body"
           description: "Container to create"
@@ -5177,15 +5210,15 @@ paths:
         Note: This endpoint works only for containers with the `json-file` or `journald` logging driver.
       operationId: "ContainerLogs"
       responses:
-        101:
-          description: "logs returned as a stream"
+        200:
+          description: |
+                  logs returned as a stream in response body.
+                  For the stream format, [see the documentation for the attach endpoint](#operation/ContainerAttach).
+                  Note that unlike the attach endpoint, the logs endpoint does not upgrade the connection and does not
+                  set Content-Type.
           schema:
             type: "string"
             format: "binary"
-        200:
-          description: "logs returned as a string in response body"
-          schema:
-            type: "string"
         404:
           description: "no such container"
           schema:
@@ -5205,10 +5238,7 @@ paths:
           type: "string"
         - name: "follow"
           in: "query"
-          description: |
-            Return the logs as a stream.
-
-            This will return a `101` HTTP response with a `Connection: upgrade` header, then hijack the HTTP connection to send raw output. For more information about hijacking and the stream format, [see the documentation for the attach endpoint](#operation/ContainerAttach).
+          description: "Keep connection after returning logs."
           type: "boolean"
           default: false
         - name: "stdout"
@@ -5469,7 +5499,7 @@ paths:
   /containers/{id}/resize:
     post:
       summary: "Resize a container TTY"
-      description: "Resize the TTY for a container. You must restart the container for the resize to take effect."
+      description: "Resize the TTY for a container."
       operationId: "ContainerResize"
       consumes:
         - "application/octet-stream"
@@ -5513,8 +5543,6 @@ paths:
           description: "no error"
         304:
           description: "container already started"
-          schema:
-            $ref: "#/definitions/ErrorResponse"
         404:
           description: "no such container"
           schema:
@@ -5546,8 +5574,6 @@ paths:
           description: "no error"
         304:
           description: "container already stopped"
-          schema:
-            $ref: "#/definitions/ErrorResponse"
         404:
           description: "no such container"
           schema:
@@ -6223,12 +6249,17 @@ paths:
           in: "query"
           description: "If “1”, “true”, or “True” then it will be an error if unpacking the given content would cause an existing directory to be replaced with a non-directory and vice versa."
           type: "string"
+        - name: "copyUIDGID"
+          in: "query"
+          description: "If “1”, “true”, then it will copy UID/GID maps to the dest file or dir"
+          type: "string"
         - name: "inputStream"
           in: "body"
           required: true
           description: "The input stream must be a tar archive compressed with one of the following algorithms: identity (no compression), gzip, bzip2, xz."
           schema:
             type: "string"
+            format: "binary"
       tags: ["Container"]
   /containers/prune:
     post:
@@ -6458,10 +6489,11 @@ paths:
           type: "string"
         - name: "networkmode"
           in: "query"
-          description: "Sets the networking mode for the run commands during
-        build. Supported standard values are: `bridge`, `host`, `none`, and
-        `container:<name|id>`. Any other value is taken as a custom network's
-        name to which this container should connect to."
+          description: |
+            Sets the networking mode for the run commands during build. Supported
+            standard values are: `bridge`, `host`, `none`, and `container:<name|id>`.
+            Any other value is taken as a custom network's name or ID to which this
+            container should connect to.
           type: "string"
         - name: "Content-type"
           in: "header"
@@ -9113,7 +9145,9 @@ paths:
                 type: "string"
               RemoteAddrs:
                 description: "Addresses of manager nodes already participating in the swarm."
-                type: "string"
+                type: "array"
+                items:
+                  type: "string"
               JoinToken:
                 description: "Secret token for joining this swarm."
                 type: "string"
@@ -9548,17 +9582,19 @@ paths:
           type: "integer"
         - name: "registryAuthFrom"
           in: "query"
+          description: |
+            If the `X-Registry-Auth` header is not specified, this parameter
+            indicates where to find registry authorization credentials.
           type: "string"
-          description: "If the X-Registry-Auth header is not specified, this
-  parameter indicates where to find registry authorization credentials. The
-  valid values are `spec` and `previous-spec`."
+          enum: ["spec", "previous-spec"]
           default: "spec"
         - name: "rollback"
           in: "query"
+          description: |
+            Set to this parameter to `previous` to cause a server-side rollback
+            to the previous service spec. The supplied spec will be ignored in
+            this case.
           type: "string"
-          description: "Set to this parameter to `previous` to cause a
-  server-side rollback to the previous service spec. The supplied spec will be
-  ignored in this case."
         - name: "X-Registry-Auth"
           in: "header"
           description: "A base64-encoded auth configuration for pulling from private registries. [See the authentication section for details.](#section/Authentication)"
@@ -9569,23 +9605,16 @@ paths:
     get:
       summary: "Get service logs"
       description: |
-        Get `stdout` and `stderr` logs from a service.
+        Get `stdout` and `stderr` logs from a service. See also [`/containers/{id}/logs`](#operation/ContainerLogs).
 
-        **Note**: This endpoint works only for services with the `json-file` or `journald` logging drivers.
+        **Note**: This endpoint works only for services with the `local`, `json-file` or `journald` logging drivers.
       operationId: "ServiceLogs"
-      produces:
-        - "application/vnd.docker.raw-stream"
-        - "application/json"
       responses:
-        101:
-          description: "logs returned as a stream"
+        200:
+          description: "logs returned as a stream in response body"
           schema:
             type: "string"
             format: "binary"
-        200:
-          description: "logs returned as a string in response body"
-          schema:
-            type: "string"
         404:
           description: "no such service"
           schema:
@@ -9614,10 +9643,7 @@ paths:
           default: false
         - name: "follow"
           in: "query"
-          description: |
-            Return the logs as a stream.
-
-            This will return a `101` HTTP response with a `Connection: upgrade` header, then hijack the HTTP connection to send raw output. For more information about hijacking and the stream format, [see the documentation for the attach endpoint](#operation/ContainerAttach).
+          description: "Keep connection after returning logs."
           type: "boolean"
           default: false
         - name: "stdout"
@@ -9826,23 +9852,16 @@ paths:
     get:
       summary: "Get task logs"
       description: |
-        Get `stdout` and `stderr` logs from a task.
+        Get `stdout` and `stderr` logs from a task. See also [`/containers/{id}/logs`](#operation/ContainerLogs).
 
-        **Note**: This endpoint works only for services with the `json-file` or `journald` logging drivers.
+        **Note**: This endpoint works only for services with the `local`, `json-file` or `journald` logging drivers.
       operationId: "TaskLogs"
-      produces:
-        - "application/vnd.docker.raw-stream"
-        - "application/json"
       responses:
-        101:
-          description: "logs returned as a stream"
+        200:
+          description: "logs returned as a stream in response body"
           schema:
             type: "string"
             format: "binary"
-        200:
-          description: "logs returned as a string in response body"
-          schema:
-            type: "string"
         404:
           description: "no such task"
           schema:
@@ -9871,10 +9890,7 @@ paths:
           default: false
         - name: "follow"
           in: "query"
-          description: |
-            Return the logs as a stream.
-
-            This will return a `101` HTTP response with a `Connection: upgrade` header, then hijack the HTTP connection to send raw output. For more information about hijacking and the stream format, [see the documentation for the attach endpoint](#operation/ContainerAttach).
+          description: "Keep connection after returning logs."
           type: "boolean"
           default: false
         - name: "stdout"

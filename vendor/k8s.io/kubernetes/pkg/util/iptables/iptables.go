@@ -43,8 +43,6 @@ const (
 
 // An injectable interface for running iptables commands.  Implementations must be goroutine-safe.
 type Interface interface {
-	// GetVersion returns the "X.Y.Z" version string for iptables.
-	GetVersion() (string, error)
 	// EnsureChain checks if the specified chain exists and, if not, creates it.  If the chain existed, return true.
 	EnsureChain(table Table, chain Chain) (bool, error)
 	// FlushChain clears the specified chain.  If the chain did not exist, return error.
@@ -71,6 +69,12 @@ type Interface interface {
 	AddReloadFunc(reloadFunc func())
 	// Destroy cleans up resources used by the Interface
 	Destroy()
+	// HasRandomFully reveals whether `-j MASQUERADE` takes the
+	// `--random-fully` option.  This is helpful to work around a
+	// Linux kernel bug that sometimes causes multiple flows to get
+	// mapped to the same IP:PORT and consequently some suffer packet
+	// drops.
+	HasRandomFully() bool
 }
 
 type Protocol byte
@@ -121,11 +125,15 @@ const NoFlushTables FlushFlag = false
 
 // Versions of iptables less than this do not support the -C / --check flag
 // (test whether a rule exists).
-const MinCheckVersion = "1.4.11"
+var MinCheckVersion = utilversion.MustParseGeneric("1.4.11")
+
+var RandomFullyMinVersion = utilversion.MustParseGeneric("1.6.2")
 
 // Minimum iptables versions supporting the -w and -w<seconds> flags
-const WaitMinVersion = "1.4.20"
-const WaitSecondsMinVersion = "1.4.22"
+var WaitMinVersion = utilversion.MustParseGeneric("1.4.20")
+var WaitSecondsMinVersion = utilversion.MustParseGeneric("1.4.22")
+var WaitRestoreMinVersion = utilversion.MustParseGeneric("1.6.2")
+
 const WaitString = "-w"
 const WaitSecondsValue = "5"
 
@@ -139,6 +147,7 @@ type runner struct {
 	protocol        Protocol
 	hasCheck        bool
 	hasListener     bool
+	hasRandomFully  bool
 	waitFlag        []string
 	restoreWaitFlag []string
 	lockfilePath    string
@@ -150,10 +159,10 @@ type runner struct {
 // newInternal returns a new Interface which will exec iptables, and allows the
 // caller to change the iptables-restore lockfile path
 func newInternal(exec utilexec.Interface, dbus utildbus.Interface, protocol Protocol, lockfilePath string) Interface {
-	vstring, err := getIPTablesVersionString(exec, protocol)
+	version, err := getIPTablesVersion(exec, protocol)
 	if err != nil {
 		klog.Warningf("Error checking iptables version, assuming version at least %s: %v", MinCheckVersion, err)
-		vstring = MinCheckVersion
+		version = MinCheckVersion
 	}
 
 	if lockfilePath == "" {
@@ -164,10 +173,11 @@ func newInternal(exec utilexec.Interface, dbus utildbus.Interface, protocol Prot
 		exec:            exec,
 		dbus:            dbus,
 		protocol:        protocol,
-		hasCheck:        getIPTablesHasCheckCommand(vstring),
+		hasCheck:        version.AtLeast(MinCheckVersion),
 		hasListener:     false,
-		waitFlag:        getIPTablesWaitFlag(vstring),
-		restoreWaitFlag: getIPTablesRestoreWaitFlag(exec, protocol),
+		hasRandomFully:  version.AtLeast(RandomFullyMinVersion),
+		waitFlag:        getIPTablesWaitFlag(version),
+		restoreWaitFlag: getIPTablesRestoreWaitFlag(version, exec, protocol),
 		lockfilePath:    lockfilePath,
 	}
 	return runner
@@ -212,11 +222,6 @@ func (runner *runner) connectToFirewallD() {
 	bus.Signal(runner.signal)
 
 	go runner.dbusSignalHandler(bus)
-}
-
-// GetVersion returns the version string.
-func (runner *runner) GetVersion() (string, error) {
-	return getIPTablesVersionString(runner.exec, runner.protocol)
 }
 
 // EnsureChain is part of Interface.
@@ -326,14 +331,15 @@ func (runner *runner) SaveInto(table Table, buffer *bytes.Buffer) error {
 	args := []string{"-t", string(table)}
 	klog.V(4).Infof("running %s %v", iptablesSaveCmd, args)
 	cmd := runner.exec.Command(iptablesSaveCmd, args...)
-	// Since CombinedOutput() doesn't support redirecting it to a buffer,
-	// we need to workaround it by redirecting stdout and stderr to buffer
-	// and explicitly calling Run() [CombinedOutput() underneath itself
-	// creates a new buffer, redirects stdout and stderr to it and also
-	// calls Run()].
 	cmd.SetStdout(buffer)
-	cmd.SetStderr(buffer)
-	return cmd.Run()
+	stderrBuffer := bytes.NewBuffer(nil)
+	cmd.SetStderr(stderrBuffer)
+
+	err := cmd.Run()
+	if err != nil {
+		stderrBuffer.WriteTo(buffer) // ignore error, since we need to return the original error
+	}
+	return err
 }
 
 // Restore is part of Interface.
@@ -401,25 +407,23 @@ func (runner *runner) restoreInternal(args []string, data []byte, flush FlushFla
 func iptablesSaveCommand(protocol Protocol) string {
 	if protocol == ProtocolIpv6 {
 		return cmdIP6TablesSave
-	} else {
-		return cmdIPTablesSave
 	}
+	return cmdIPTablesSave
 }
 
 func iptablesRestoreCommand(protocol Protocol) string {
 	if protocol == ProtocolIpv6 {
 		return cmdIP6TablesRestore
-	} else {
-		return cmdIPTablesRestore
 	}
+	return cmdIPTablesRestore
+
 }
 
 func iptablesCommand(protocol Protocol) string {
 	if protocol == ProtocolIpv6 {
 		return cmdIP6Tables
-	} else {
-		return cmdIPTables
 	}
+	return cmdIPTables
 }
 
 func (runner *runner) run(op operation, args []string) ([]byte, error) {
@@ -540,72 +544,47 @@ func makeFullArgs(table Table, chain Chain, args ...string) []string {
 	return append([]string{string(chain), "-t", string(table)}, args...)
 }
 
-// Checks if iptables has the "-C" flag
-func getIPTablesHasCheckCommand(vstring string) bool {
-	minVersion, err := utilversion.ParseGeneric(MinCheckVersion)
-	if err != nil {
-		klog.Errorf("MinCheckVersion (%s) is not a valid version string: %v", MinCheckVersion, err)
-		return true
-	}
-	version, err := utilversion.ParseGeneric(vstring)
-	if err != nil {
-		klog.Errorf("vstring (%s) is not a valid version string: %v", vstring, err)
-		return true
-	}
-	return version.AtLeast(minVersion)
-}
-
-// Checks if iptables version has a "wait" flag
-func getIPTablesWaitFlag(vstring string) []string {
-	version, err := utilversion.ParseGeneric(vstring)
-	if err != nil {
-		klog.Errorf("vstring (%s) is not a valid version string: %v", vstring, err)
-		return nil
-	}
-
-	minVersion, err := utilversion.ParseGeneric(WaitMinVersion)
-	if err != nil {
-		klog.Errorf("WaitMinVersion (%s) is not a valid version string: %v", WaitMinVersion, err)
-		return nil
-	}
-	if version.LessThan(minVersion) {
-		return nil
-	}
-
-	minVersion, err = utilversion.ParseGeneric(WaitSecondsMinVersion)
-	if err != nil {
-		klog.Errorf("WaitSecondsMinVersion (%s) is not a valid version string: %v", WaitSecondsMinVersion, err)
-		return nil
-	}
-	if version.LessThan(minVersion) {
-		return []string{WaitString}
-	} else {
-		return []string{WaitString, WaitSecondsValue}
-	}
-}
-
-// getIPTablesVersionString runs "iptables --version" to get the version string
-// in the form "X.X.X"
-func getIPTablesVersionString(exec utilexec.Interface, protocol Protocol) (string, error) {
+// getIPTablesVersion runs "iptables --version" and parses the returned version
+func getIPTablesVersion(exec utilexec.Interface, protocol Protocol) (*utilversion.Version, error) {
 	// this doesn't access mutable state so we don't need to use the interface / runner
 	iptablesCmd := iptablesCommand(protocol)
 	bytes, err := exec.Command(iptablesCmd, "--version").CombinedOutput()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	versionMatcher := regexp.MustCompile("v([0-9]+(\\.[0-9]+)+)")
 	match := versionMatcher.FindStringSubmatch(string(bytes))
 	if match == nil {
-		return "", fmt.Errorf("no iptables version found in string: %s", bytes)
+		return nil, fmt.Errorf("no iptables version found in string: %s", bytes)
 	}
-	return match[1], nil
+	version, err := utilversion.ParseGeneric(match[1])
+	if err != nil {
+		return nil, fmt.Errorf("iptables version %q is not a valid version string: %v", match[1], err)
+	}
+
+	return version, nil
+}
+
+// Checks if iptables version has a "wait" flag
+func getIPTablesWaitFlag(version *utilversion.Version) []string {
+	switch {
+	case version.AtLeast(WaitSecondsMinVersion):
+		return []string{WaitString, WaitSecondsValue}
+	case version.AtLeast(WaitMinVersion):
+		return []string{WaitString}
+	default:
+		return nil
+	}
 }
 
 // Checks if iptables-restore has a "wait" flag
-// --wait support landed in v1.6.1+ right before --version support, so
-// any version of iptables-restore that supports --version will also
-// support --wait
-func getIPTablesRestoreWaitFlag(exec utilexec.Interface, protocol Protocol) []string {
+func getIPTablesRestoreWaitFlag(version *utilversion.Version, exec utilexec.Interface, protocol Protocol) []string {
+	if version.AtLeast(WaitRestoreMinVersion) {
+		return []string{WaitString, WaitSecondsValue}
+	}
+
+	// Older versions may have backported features; if iptables-restore supports
+	// --version, assume it also supports --wait
 	vstring, err := getIPTablesRestoreVersionString(exec, protocol)
 	if err != nil || vstring == "" {
 		klog.V(3).Infof("couldn't get iptables-restore version; assuming it doesn't support --wait")
@@ -615,8 +594,7 @@ func getIPTablesRestoreWaitFlag(exec utilexec.Interface, protocol Protocol) []st
 		klog.V(3).Infof("couldn't parse iptables-restore version; assuming it doesn't support --wait")
 		return nil
 	}
-
-	return []string{WaitString, WaitSecondsValue}
+	return []string{WaitString}
 }
 
 // getIPTablesRestoreVersionString runs "iptables-restore --version" to get the version string
@@ -656,9 +634,9 @@ func (runner *runner) dbusSignalHandler(bus utildbus.Connection) {
 		switch s.Name {
 		case "org.freedesktop.DBus.NameOwnerChanged":
 			name := s.Body[0].(string)
-			new_owner := s.Body[2].(string)
+			newOwner := s.Body[2].(string)
 
-			if name != firewalldName || len(new_owner) == 0 {
+			if name != firewalldName || len(newOwner) == 0 {
 				continue
 			}
 
@@ -698,16 +676,43 @@ func (runner *runner) reload() {
 	}
 }
 
+func (runner *runner) HasRandomFully() bool {
+	return runner.hasRandomFully
+}
+
+var iptablesNotFoundStrings = []string{
+	// iptables-legacy [-A|-I] BAD-CHAIN [...]
+	// iptables-legacy [-C|-D] GOOD-CHAIN [...non-matching rule...]
+	// iptables-legacy [-X|-F|-Z] BAD-CHAIN
+	// iptables-nft -X BAD-CHAIN
+	// NB: iptables-nft [-F|-Z] BAD-CHAIN exits with no error
+	"No chain/target/match by that name",
+
+	// iptables-legacy [...] -j BAD-CHAIN
+	// iptables-nft-1.8.0 [-A|-I] BAD-CHAIN [...]
+	// iptables-nft-1.8.0 [-A|-I] GOOD-CHAIN -j BAD-CHAIN
+	// NB: also matches some other things like "-m BAD-MODULE"
+	"No such file or directory",
+
+	// iptables-legacy [-C|-D] BAD-CHAIN [...]
+	// iptables-nft [-C|-D] GOOD-CHAIN [...non-matching rule...]
+	"does a matching rule exist",
+
+	// iptables-nft-1.8.2 [-A|-C|-D|-I] BAD-CHAIN [...]
+	// iptables-nft-1.8.2 [...] -j BAD-CHAIN
+	"does not exist",
+}
+
 // IsNotFoundError returns true if the error indicates "not found".  It parses
-// the error string looking for known values, which is imperfect but works in
-// practice.
+// the error string looking for known values, which is imperfect; beware using
+// this function for anything beyond deciding between logging or ignoring an
+// error.
 func IsNotFoundError(err error) bool {
 	es := err.Error()
-	if strings.Contains(es, "No such file or directory") {
-		return true
-	}
-	if strings.Contains(es, "No chain/target/match by that name") {
-		return true
+	for _, str := range iptablesNotFoundStrings {
+		if strings.Contains(es, str) {
+			return true
+		}
 	}
 	return false
 }

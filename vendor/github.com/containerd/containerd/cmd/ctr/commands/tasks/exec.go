@@ -18,8 +18,12 @@ package tasks
 
 import (
 	"errors"
+	"io"
+	"net/url"
+	"os"
 
 	"github.com/containerd/console"
+	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
 	"github.com/containerd/containerd/cmd/ctr/commands"
 	"github.com/sirupsen/logrus"
@@ -28,9 +32,10 @@ import (
 
 //TODO:(jessvalarezo) exec-id is optional here, update to required arg
 var execCommand = cli.Command{
-	Name:      "exec",
-	Usage:     "execute additional processes in an existing container",
-	ArgsUsage: "[flags] CONTAINER CMD [ARG...]",
+	Name:           "exec",
+	Usage:          "execute additional processes in an existing container",
+	ArgsUsage:      "[flags] CONTAINER CMD [ARG...]",
+	SkipArgReorder: true,
 	Flags: []cli.Flag{
 		cli.StringFlag{
 			Name:  "cwd",
@@ -40,6 +45,10 @@ var execCommand = cli.Command{
 			Name:  "tty,t",
 			Usage: "allocate a TTY for the container",
 		},
+		cli.BoolFlag{
+			Name:  "detach,d",
+			Usage: "detach from the task after it has started execution",
+		},
 		cli.StringFlag{
 			Name:  "exec-id",
 			Usage: "exec specific id for the process",
@@ -48,12 +57,17 @@ var execCommand = cli.Command{
 			Name:  "fifo-dir",
 			Usage: "directory used for storing IO FIFOs",
 		},
+		cli.StringFlag{
+			Name:  "log-uri",
+			Usage: "log uri for custom shim logging",
+		},
 	},
 	Action: func(context *cli.Context) error {
 		var (
-			id   = context.Args().First()
-			args = context.Args().Tail()
-			tty  = context.Bool("tty")
+			id     = context.Args().First()
+			args   = context.Args().Tail()
+			tty    = context.Bool("tty")
+			detach = context.Bool("detach")
 		)
 		if id == "" {
 			return errors.New("container id must be provided")
@@ -80,16 +94,47 @@ var execCommand = cli.Command{
 		pspec.Terminal = tty
 		pspec.Args = args
 
-		cioOpts := []cio.Opt{cio.WithStdio, cio.WithFIFODir(context.String("fifo-dir"))}
-		if tty {
-			cioOpts = append(cioOpts, cio.WithTerminal)
+		var (
+			ioCreator cio.Creator
+			stdinC    = &stdinCloser{
+				stdin: os.Stdin,
+			}
+		)
+
+		if logURI := context.String("log-uri"); logURI != "" {
+			uri, err := url.Parse(logURI)
+			if err != nil {
+				return err
+			}
+
+			if dir := context.String("fifo-dir"); dir != "" {
+				return errors.New("can't use log-uri with fifo-dir")
+			}
+
+			if tty {
+				return errors.New("can't use log-uri with tty")
+			}
+
+			ioCreator = cio.LogURI(uri)
+		} else {
+			cioOpts := []cio.Opt{cio.WithStreams(stdinC, os.Stdout, os.Stderr), cio.WithFIFODir(context.String("fifo-dir"))}
+			if tty {
+				cioOpts = append(cioOpts, cio.WithTerminal)
+			}
+			ioCreator = cio.NewCreator(cioOpts...)
 		}
-		ioCreator := cio.NewCreator(cioOpts...)
+
 		process, err := task.Exec(ctx, context.String("exec-id"), pspec, ioCreator)
 		if err != nil {
 			return err
 		}
-		defer process.Delete(ctx)
+		stdinC.closer = func() {
+			process.CloseIO(ctx, containerd.WithStdinCloser)
+		}
+		// if detach, we should not call this defer
+		if !detach {
+			defer process.Delete(ctx)
+		}
 
 		statusC, err := process.Wait(ctx)
 		if err != nil {
@@ -104,17 +149,22 @@ var execCommand = cli.Command{
 				return err
 			}
 		}
-		if tty {
-			if err := HandleConsoleResize(ctx, process, con); err != nil {
-				logrus.WithError(err).Error("console resize")
+		if !detach {
+			if tty {
+				if err := HandleConsoleResize(ctx, process, con); err != nil {
+					logrus.WithError(err).Error("console resize")
+				}
+			} else {
+				sigc := commands.ForwardAllSignals(ctx, process)
+				defer commands.StopCatch(sigc)
 			}
-		} else {
-			sigc := commands.ForwardAllSignals(ctx, process)
-			defer commands.StopCatch(sigc)
 		}
 
 		if err := process.Start(ctx); err != nil {
 			return err
+		}
+		if detach {
+			return nil
 		}
 		status := <-statusC
 		code, _, err := status.Result()
@@ -126,4 +176,19 @@ var execCommand = cli.Command{
 		}
 		return nil
 	},
+}
+
+type stdinCloser struct {
+	stdin  *os.File
+	closer func()
+}
+
+func (s *stdinCloser) Read(p []byte) (int, error) {
+	n, err := s.stdin.Read(p)
+	if err == io.EOF {
+		if s.closer != nil {
+			s.closer()
+		}
+	}
+	return n, err
 }

@@ -1,0 +1,14 @@
+- project:
+    name: containerd/containerd
+    check:
+      jobs:
+        - containerd-build-arm64
+
+- job:
+    name: containerd-build-arm64
+    parent: init-test
+    description: |
+      Containerd build in openlab cluster.
+    run: .zuul/playbooks/containerd-build/run.yaml
+    nodeset: ubuntu-xenial-arm64
+    voting: false

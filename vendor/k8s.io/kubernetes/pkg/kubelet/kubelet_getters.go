@@ -154,10 +154,23 @@ func (kl *Kubelet) getPodContainerDir(podUID types.UID, ctrName string) string {
 	return filepath.Join(kl.getPodDir(podUID), config.DefaultKubeletContainersDirName, ctrName)
 }
 
+// getPodResourcesSocket returns the full path to the directory containing the pod resources socket
+func (kl *Kubelet) getPodResourcesDir() string {
+	return filepath.Join(kl.getRootDir(), config.DefaultKubeletPodResourcesDirName)
+}
+
 // GetPods returns all pods bound to the kubelet and their spec, and the mirror
 // pods.
 func (kl *Kubelet) GetPods() []*v1.Pod {
-	return kl.podManager.GetPods()
+	pods := kl.podManager.GetPods()
+	// a kubelet running without apiserver requires an additional
+	// update of the static pod status. See #57106
+	for _, p := range pods {
+		if status, ok := kl.statusManager.GetPodStatus(p.UID); ok {
+			p.Status = status
+		}
+	}
+	return pods
 }
 
 // GetRunningPods returns all pods running on kubelet from looking at the
@@ -274,7 +287,7 @@ func (kl *Kubelet) getPodVolumePathListFromDisk(podUID types.UID) ([]string, err
 	podVolDir := kl.getPodVolumesDir(podUID)
 
 	if pathExists, pathErr := mount.PathExists(podVolDir); pathErr != nil {
-		return volumes, fmt.Errorf("Error checking if path %q exists: %v", podVolDir, pathErr)
+		return volumes, fmt.Errorf("error checking if path %q exists: %v", podVolDir, pathErr)
 	} else if !pathExists {
 		klog.Warningf("Path %q does not exist", podVolDir)
 		return volumes, nil
@@ -290,7 +303,7 @@ func (kl *Kubelet) getPodVolumePathListFromDisk(podUID types.UID) ([]string, err
 		volumePluginPath := filepath.Join(podVolDir, volumePluginName)
 		volumeDirs, err := utilpath.ReadDirNoStat(volumePluginPath)
 		if err != nil {
-			return volumes, fmt.Errorf("Could not read directory %s: %v", volumePluginPath, err)
+			return volumes, fmt.Errorf("could not read directory %s: %v", volumePluginPath, err)
 		}
 		for _, volumeDir := range volumeDirs {
 			volumes = append(volumes, filepath.Join(volumePluginPath, volumeDir))
@@ -323,7 +336,7 @@ func (kl *Kubelet) podVolumeSubpathsDirExists(podUID types.UID) (bool, error) {
 	podVolDir := kl.getPodVolumeSubpathsDir(podUID)
 
 	if pathExists, pathErr := mount.PathExists(podVolDir); pathErr != nil {
-		return true, fmt.Errorf("Error checking if path %q exists: %v", podVolDir, pathErr)
+		return true, fmt.Errorf("error checking if path %q exists: %v", podVolDir, pathErr)
 	} else if !pathExists {
 		return false, nil
 	}

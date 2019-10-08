@@ -49,14 +49,17 @@ type ReplicaSetStorage struct {
 	Scale      *ScaleREST
 }
 
-func NewStorage(optsGetter generic.RESTOptionsGetter) ReplicaSetStorage {
-	replicaSetRest, replicaSetStatusRest := NewREST(optsGetter)
+func NewStorage(optsGetter generic.RESTOptionsGetter) (ReplicaSetStorage, error) {
+	replicaSetRest, replicaSetStatusRest, err := NewREST(optsGetter)
+	if err != nil {
+		return ReplicaSetStorage{}, err
+	}
 
 	return ReplicaSetStorage{
 		ReplicaSet: replicaSetRest,
 		Status:     replicaSetStatusRest,
 		Scale:      &ScaleREST{store: replicaSetRest.Store},
-	}
+	}, nil
 }
 
 type REST struct {
@@ -65,7 +68,7 @@ type REST struct {
 }
 
 // NewREST returns a RESTStorage object that will work against ReplicaSet.
-func NewREST(optsGetter generic.RESTOptionsGetter) (*REST, *StatusREST) {
+func NewREST(optsGetter generic.RESTOptionsGetter) (*REST, *StatusREST, error) {
 	store := &genericregistry.Store{
 		NewFunc:                  func() runtime.Object { return &apps.ReplicaSet{} },
 		NewListFunc:              func() runtime.Object { return &apps.ReplicaSetList{} },
@@ -76,17 +79,17 @@ func NewREST(optsGetter generic.RESTOptionsGetter) (*REST, *StatusREST) {
 		UpdateStrategy: replicaset.Strategy,
 		DeleteStrategy: replicaset.Strategy,
 
-		TableConvertor: printerstorage.TableConvertor{TablePrinter: printers.NewTablePrinter().With(printersinternal.AddHandlers)},
+		TableConvertor: printerstorage.TableConvertor{TableGenerator: printers.NewTableGenerator().With(printersinternal.AddHandlers)},
 	}
 	options := &generic.StoreOptions{RESTOptions: optsGetter, AttrFunc: replicaset.GetAttrs}
 	if err := store.CompleteWithOptions(options); err != nil {
-		panic(err) // TODO: Propagate error up
+		return nil, nil, err
 	}
 
 	statusStore := *store
 	statusStore.UpdateStrategy = replicaset.StatusStrategy
 
-	return &REST{store, []string{"all"}}, &StatusREST{store: &statusStore}
+	return &REST{store, []string{"all"}}, &StatusREST{store: &statusStore}, nil
 }
 
 // Implement ShortNamesProvider
@@ -201,7 +204,15 @@ func (r *ScaleREST) Update(ctx context.Context, name string, objInfo rest.Update
 
 	rs.Spec.Replicas = scale.Spec.Replicas
 	rs.ResourceVersion = scale.ResourceVersion
-	obj, _, err = r.store.Update(ctx, rs.Name, rest.DefaultUpdatedObjectInfo(rs), createValidation, updateValidation, false, options)
+	obj, _, err = r.store.Update(
+		ctx,
+		rs.Name,
+		rest.DefaultUpdatedObjectInfo(rs),
+		toScaleCreateValidation(createValidation),
+		toScaleUpdateValidation(updateValidation),
+		false,
+		options,
+	)
 	if err != nil {
 		return nil, false, err
 	}
@@ -211,6 +222,30 @@ func (r *ScaleREST) Update(ctx context.Context, name string, objInfo rest.Update
 		return nil, false, errors.NewBadRequest(fmt.Sprintf("%v", err))
 	}
 	return newScale, false, err
+}
+
+func toScaleCreateValidation(f rest.ValidateObjectFunc) rest.ValidateObjectFunc {
+	return func(ctx context.Context, obj runtime.Object) error {
+		scale, err := scaleFromReplicaSet(obj.(*apps.ReplicaSet))
+		if err != nil {
+			return err
+		}
+		return f(ctx, scale)
+	}
+}
+
+func toScaleUpdateValidation(f rest.ValidateObjectUpdateFunc) rest.ValidateObjectUpdateFunc {
+	return func(ctx context.Context, obj, old runtime.Object) error {
+		newScale, err := scaleFromReplicaSet(obj.(*apps.ReplicaSet))
+		if err != nil {
+			return err
+		}
+		oldScale, err := scaleFromReplicaSet(old.(*apps.ReplicaSet))
+		if err != nil {
+			return err
+		}
+		return f(ctx, newScale, oldScale)
+	}
 }
 
 // scaleFromReplicaSet returns a scale subresource for a replica set.

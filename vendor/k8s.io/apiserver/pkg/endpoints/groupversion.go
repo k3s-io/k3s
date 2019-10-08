@@ -20,7 +20,7 @@ import (
 	"path"
 	"time"
 
-	"github.com/emicklei/go-restful"
+	restful "github.com/emicklei/go-restful"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -31,6 +31,7 @@ import (
 	"k8s.io/apiserver/pkg/authorization/authorizer"
 	"k8s.io/apiserver/pkg/endpoints/discovery"
 	"k8s.io/apiserver/pkg/registry/rest"
+	openapiproto "k8s.io/kube-openapi/pkg/util/proto"
 )
 
 // APIGroupVersion is a helper for exposing rest.Storage objects as http.Handlers via go-restful
@@ -71,6 +72,8 @@ type APIGroupVersion struct {
 	Linker          runtime.SelfLinker
 	UnsafeConvertor runtime.ObjectConvertor
 
+	EquivalentResourceRegistry runtime.EquivalentResourceRegistry
+
 	// Authorizer determines whether a user is allowed to make a certain request. The Handler does a preliminary
 	// authorization check using the request URI but it may be necessary to make additional checks, such as in
 	// the create-on-update case
@@ -79,6 +82,9 @@ type APIGroupVersion struct {
 	Admit admission.Interface
 
 	MinRequestTimeout time.Duration
+
+	// OpenAPIModels exposes the OpenAPI models to each individual handler.
+	OpenAPIModels openapiproto.Models
 
 	// The limit on the request body size that would be accepted and decoded in a write request.
 	// 0 means no limit.

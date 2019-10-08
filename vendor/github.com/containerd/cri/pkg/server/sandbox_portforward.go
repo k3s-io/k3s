@@ -23,11 +23,12 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/containerd/containerd/log"
 	"github.com/containernetworking/plugins/pkg/ns"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
-	runtime "k8s.io/kubernetes/pkg/kubelet/apis/cri/runtime/v1alpha2"
+	runtime "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 
 	sandboxstore "github.com/containerd/cri/pkg/store/sandbox"
 )
@@ -48,7 +49,7 @@ func (c *criService) PortForward(ctx context.Context, r *runtime.PortForwardRequ
 // portForward requires `socat` on the node. It uses netns to enter the sandbox namespace,
 // and run `socat` insidethe namespace to forward stream for a specific port. The `socat`
 // command keeps running until it exits or client disconnect.
-func (c *criService) portForward(id string, port int32, stream io.ReadWriteCloser) error {
+func (c *criService) portForward(ctx context.Context, id string, port int32, stream io.ReadWriter) error {
 	s, err := c.sandboxStore.Get(id)
 	if err != nil {
 		return errors.Wrapf(err, "failed to find sandbox %q in store", id)
@@ -82,7 +83,7 @@ func (c *criService) portForward(id string, port int32, stream io.ReadWriteClose
 	// Check https://linux.die.net/man/1/socat for meaning of the options.
 	args := []string{socat, "-", fmt.Sprintf("TCP4:localhost:%d", port)}
 
-	logrus.Infof("Executing port forwarding command %q in network namespace %q", strings.Join(args, " "), netNSPath)
+	log.G(ctx).Infof("Executing port forwarding command %q in network namespace %q", strings.Join(args, " "), netNSPath)
 	err = netNSDo(func(_ ns.NetNS) error {
 		cmd := exec.Command(args[0], args[1:]...)
 		cmd.Stdout = stream
@@ -119,7 +120,7 @@ func (c *criService) portForward(id string, port int32, stream io.ReadWriteClose
 	if err != nil {
 		return errors.Wrapf(err, "failed to execute portforward in network namespace %q", netNSPath)
 	}
-	logrus.Infof("Finish port forwarding for %q port %d", id, port)
+	log.G(ctx).Infof("Finish port forwarding for %q port %d", id, port)
 
 	return nil
 }

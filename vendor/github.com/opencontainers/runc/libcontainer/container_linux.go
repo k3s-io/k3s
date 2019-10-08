@@ -337,6 +337,7 @@ func (c *linuxContainer) start(process *Process) error {
 	if err != nil {
 		return newSystemErrorWithCause(err, "creating new parent process")
 	}
+	parent.forwardChildLogs()
 	if err := parent.start(); err != nil {
 		// terminate the process to ensure that it properly is reaped.
 		if err := ignoreTerminateErrors(parent.terminate()); err != nil {
@@ -438,16 +439,24 @@ func (c *linuxContainer) includeExecFifo(cmd *exec.Cmd) error {
 }
 
 func (c *linuxContainer) newParentProcess(p *Process) (parentProcess, error) {
-	parentPipe, childPipe, err := utils.NewSockPair("init")
+	parentInitPipe, childInitPipe, err := utils.NewSockPair("init")
 	if err != nil {
 		return nil, newSystemErrorWithCause(err, "creating new init pipe")
 	}
-	cmd, err := c.commandTemplate(p, childPipe)
+	messageSockPair := filePair{parentInitPipe, childInitPipe}
+
+	parentLogPipe, childLogPipe, err := os.Pipe()
+	if err != nil {
+		return nil, fmt.Errorf("Unable to create the log pipe:  %s", err)
+	}
+	logFilePair := filePair{parentLogPipe, childLogPipe}
+
+	cmd, err := c.commandTemplate(p, childInitPipe, childLogPipe)
 	if err != nil {
 		return nil, newSystemErrorWithCause(err, "creating new command template")
 	}
 	if !p.Init {
-		return c.newSetnsProcess(p, cmd, parentPipe, childPipe)
+		return c.newSetnsProcess(p, cmd, messageSockPair, logFilePair)
 	}
 
 	// We only set up fifoFd if we're not doing a `runc exec`. The historic
@@ -458,10 +467,10 @@ func (c *linuxContainer) newParentProcess(p *Process) (parentProcess, error) {
 	if err := c.includeExecFifo(cmd); err != nil {
 		return nil, newSystemErrorWithCause(err, "including execfifo in cmd.Exec setup")
 	}
-	return c.newInitProcess(p, cmd, parentPipe, childPipe)
+	return c.newInitProcess(p, cmd, messageSockPair, logFilePair)
 }
 
-func (c *linuxContainer) commandTemplate(p *Process, childPipe *os.File) (*exec.Cmd, error) {
+func (c *linuxContainer) commandTemplate(p *Process, childInitPipe *os.File, childLogPipe *os.File) (*exec.Cmd, error) {
 	cmd := exec.Command(c.initPath, c.initArgs[1:]...)
 	cmd.Args[0] = c.initArgs[0]
 	cmd.Stdin = p.Stdin
@@ -479,11 +488,18 @@ func (c *linuxContainer) commandTemplate(p *Process, childPipe *os.File) (*exec.
 			fmt.Sprintf("_LIBCONTAINER_CONSOLE=%d", stdioFdCount+len(cmd.ExtraFiles)-1),
 		)
 	}
-	cmd.ExtraFiles = append(cmd.ExtraFiles, childPipe)
+	cmd.ExtraFiles = append(cmd.ExtraFiles, childInitPipe)
 	cmd.Env = append(cmd.Env,
 		fmt.Sprintf("_LIBCONTAINER_INITPIPE=%d", stdioFdCount+len(cmd.ExtraFiles)-1),
 		fmt.Sprintf("_LIBCONTAINER_STATEDIR=%s", c.root),
 	)
+
+	cmd.ExtraFiles = append(cmd.ExtraFiles, childLogPipe)
+	cmd.Env = append(cmd.Env,
+		fmt.Sprintf("_LIBCONTAINER_LOGPIPE=%d", stdioFdCount+len(cmd.ExtraFiles)-1),
+		fmt.Sprintf("_LIBCONTAINER_LOGLEVEL=%s", p.LogLevel),
+	)
+
 	// NOTE: when running a container with no PID namespace and the parent process spawning the container is
 	// PID1 the pdeathsig is being delivered to the container's init process by the kernel for some reason
 	// even with the parent still running.
@@ -493,7 +509,7 @@ func (c *linuxContainer) commandTemplate(p *Process, childPipe *os.File) (*exec.
 	return cmd, nil
 }
 
-func (c *linuxContainer) newInitProcess(p *Process, cmd *exec.Cmd, parentPipe, childPipe *os.File) (*initProcess, error) {
+func (c *linuxContainer) newInitProcess(p *Process, cmd *exec.Cmd, messageSockPair, logFilePair filePair) (*initProcess, error) {
 	cmd.Env = append(cmd.Env, "_LIBCONTAINER_INITTYPE="+string(initStandard))
 	nsMaps := make(map[configs.NamespaceType]string)
 	for _, ns := range c.config.Namespaces {
@@ -508,8 +524,8 @@ func (c *linuxContainer) newInitProcess(p *Process, cmd *exec.Cmd, parentPipe, c
 	}
 	init := &initProcess{
 		cmd:             cmd,
-		childPipe:       childPipe,
-		parentPipe:      parentPipe,
+		messageSockPair: messageSockPair,
+		logFilePair:     logFilePair,
 		manager:         c.cgroupManager,
 		intelRdtManager: c.intelRdtManager,
 		config:          c.newInitConfig(p),
@@ -522,7 +538,7 @@ func (c *linuxContainer) newInitProcess(p *Process, cmd *exec.Cmd, parentPipe, c
 	return init, nil
 }
 
-func (c *linuxContainer) newSetnsProcess(p *Process, cmd *exec.Cmd, parentPipe, childPipe *os.File) (*setnsProcess, error) {
+func (c *linuxContainer) newSetnsProcess(p *Process, cmd *exec.Cmd, messageSockPair, logFilePair filePair) (*setnsProcess, error) {
 	cmd.Env = append(cmd.Env, "_LIBCONTAINER_INITTYPE="+string(initSetns))
 	state, err := c.currentState()
 	if err != nil {
@@ -539,8 +555,8 @@ func (c *linuxContainer) newSetnsProcess(p *Process, cmd *exec.Cmd, parentPipe, 
 		cgroupPaths:     c.cgroupManager.GetPaths(),
 		rootlessCgroups: c.config.RootlessCgroups,
 		intelRdtPath:    state.IntelRdtPath,
-		childPipe:       childPipe,
-		parentPipe:      parentPipe,
+		messageSockPair: messageSockPair,
+		logFilePair:     logFilePair,
 		config:          c.newInitConfig(p),
 		process:         p,
 		bootstrapData:   data,

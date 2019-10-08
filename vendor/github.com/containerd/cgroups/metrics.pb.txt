@@ -55,6 +55,14 @@ file {
       type_name: ".io.containerd.cgroups.v1.RdmaStat"
       json_name: "rdma"
     }
+    field {
+      name: "network"
+      number: 7
+      label: LABEL_REPEATED
+      type: TYPE_MESSAGE
+      type_name: ".io.containerd.cgroups.v1.NetworkStat"
+      json_name: "network"
+    }
   }
   message_type {
     name: "HugetlbStat"
@@ -614,24 +622,90 @@ file {
     name: "RdmaEntry"
     field {
       name: "device"
-      number: 2
+      number: 1
       label: LABEL_OPTIONAL
       type: TYPE_STRING
       json_name: "device"
     }
     field {
       name: "hca_handles"
-      number: 1
+      number: 2
       label: LABEL_OPTIONAL
-      type: TYPE_UINT64
-      json_name: "hca_handles"
+      type: TYPE_UINT32
+      json_name: "hcaHandles"
     }
     field {
       name: "hca_objects"
+      number: 3
+      label: LABEL_OPTIONAL
+      type: TYPE_UINT32
+      json_name: "hcaObjects"
+    }
+  }
+  message_type {
+    name: "NetworkStat"
+    field {
+      name: "name"
       number: 1
       label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "name"
+    }
+    field {
+      name: "rx_bytes"
+      number: 2
+      label: LABEL_OPTIONAL
       type: TYPE_UINT64
-      json_name: "hca_objects"
+      json_name: "rxBytes"
+    }
+    field {
+      name: "rx_packets"
+      number: 3
+      label: LABEL_OPTIONAL
+      type: TYPE_UINT64
+      json_name: "rxPackets"
+    }
+    field {
+      name: "rx_errors"
+      number: 4
+      label: LABEL_OPTIONAL
+      type: TYPE_UINT64
+      json_name: "rxErrors"
+    }
+    field {
+      name: "rx_dropped"
+      number: 5
+      label: LABEL_OPTIONAL
+      type: TYPE_UINT64
+      json_name: "rxDropped"
+    }
+    field {
+      name: "tx_bytes"
+      number: 6
+      label: LABEL_OPTIONAL
+      type: TYPE_UINT64
+      json_name: "txBytes"
+    }
+    field {
+      name: "tx_packets"
+      number: 7
+      label: LABEL_OPTIONAL
+      type: TYPE_UINT64
+      json_name: "txPackets"
+    }
+    field {
+      name: "tx_errors"
+      number: 8
+      label: LABEL_OPTIONAL
+      type: TYPE_UINT64
+      json_name: "txErrors"
+    }
+    field {
+      name: "tx_dropped"
+      number: 9
+      label: LABEL_OPTIONAL
+      type: TYPE_UINT64
+      json_name: "txDropped"
     }
   }
   syntax: "proto3"

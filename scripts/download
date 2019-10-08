@@ -4,15 +4,17 @@ source $(dirname $0)/version.sh
 
 cd $(dirname $0)/..
 
-ROOT_VERSION=v0.1.1
-TRAEFIK_VERSION=1.76.1
+ROOT_VERSION=v0.3.0
+TRAEFIK_VERSION=1.77.1
 CHARTS_DIR=build/static/charts
 
 mkdir -p ${CHARTS_DIR}
 
-curl --compressed -sfL https://github.com/ibuildthecloud/k3s-root/releases/download/${ROOT_VERSION}/k3s-root-${ARCH}.tar | tar xf -
+curl --compressed -sfL https://github.com/rancher/k3s-root/releases/download/${ROOT_VERSION}/k3s-root-${ARCH}.tar | tar xf -
 ln -sf pigz bin/unpigz
 mkdir -p bin/aux && rm bin/mount && ln -sf ../busybox bin/aux/mount
 
 TRAEFIK_FILE=traefik-${TRAEFIK_VERSION}.tgz
 curl -sfL https://kubernetes-charts.storage.googleapis.com/${TRAEFIK_FILE} -o ${CHARTS_DIR}/${TRAEFIK_FILE}
+
+cp scripts/wg-add.sh bin/aux/

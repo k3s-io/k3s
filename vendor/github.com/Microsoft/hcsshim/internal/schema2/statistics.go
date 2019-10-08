@@ -15,7 +15,6 @@ import (
 
 //  Runtime statistics for a container
 type Statistics struct {
-
 	Timestamp time.Time `json:"Timestamp,omitempty"`
 
 	ContainerStartTime time.Time `json:"ContainerStartTime,omitempty"`

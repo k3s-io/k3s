@@ -70,9 +70,9 @@ func (h Bar) Format(state fmt.State, r rune) {
 	negative := width - pad - positive
 
 	n := 1
-	n += copy(p[n:], []byte(green))
+	n += copy(p[n:], green)
 	n += copy(p[n:], bytes.Repeat([]byte("+"), positive))
-	n += copy(p[n:], []byte(reset))
+	n += copy(p[n:], reset)
 
 	if negative > 0 {
 		copy(p[n:len(p)-1], bytes.Repeat([]byte("-"), negative))

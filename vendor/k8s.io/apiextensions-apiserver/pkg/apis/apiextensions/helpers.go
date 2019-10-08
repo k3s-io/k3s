@@ -23,20 +23,23 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+var swaggerMetadataDescriptions = metav1.ObjectMeta{}.SwaggerDoc()
+
 // SetCRDCondition sets the status condition. It either overwrites the existing one or creates a new one.
 func SetCRDCondition(crd *CustomResourceDefinition, newCondition CustomResourceDefinitionCondition) {
+	newCondition.LastTransitionTime = metav1.NewTime(time.Now())
+
 	existingCondition := FindCRDCondition(crd, newCondition.Type)
 	if existingCondition == nil {
-		newCondition.LastTransitionTime = metav1.NewTime(time.Now())
 		crd.Status.Conditions = append(crd.Status.Conditions, newCondition)
 		return
 	}
 
-	if existingCondition.Status != newCondition.Status {
-		existingCondition.Status = newCondition.Status
+	if existingCondition.Status != newCondition.Status || existingCondition.LastTransitionTime.IsZero() {
 		existingCondition.LastTransitionTime = newCondition.LastTransitionTime
 	}
 
+	existingCondition.Status = newCondition.Status
 	existingCondition.Reason = newCondition.Reason
 	existingCondition.Message = newCondition.Message
 }
@@ -238,7 +241,7 @@ func serveDefaultColumnsIfEmpty(columns []CustomResourceColumnDefinition) []Cust
 		return columns
 	}
 	return []CustomResourceColumnDefinition{
-		{Name: "Age", Type: "date", Description: "", JSONPath: ".metadata.creationTimestamp"},
+		{Name: "Age", Type: "date", Description: swaggerMetadataDescriptions["creationTimestamp"], JSONPath: ".metadata.creationTimestamp"},
 	}
 }
 

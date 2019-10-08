@@ -36,7 +36,7 @@ option go_package = "v1";
 // according to etcd is in ObjectMeta.Name.
 message StorageClass {
   // Standard object's metadata.
-  // More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#metadata
+  // More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
   // +optional
   optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
 
@@ -80,7 +80,7 @@ message StorageClass {
 // StorageClassList is a collection of storage classes.
 message StorageClassList {
   // Standard list metadata
-  // More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#metadata
+  // More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
   // +optional
   optional k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
 
@@ -94,7 +94,7 @@ message StorageClassList {
 // VolumeAttachment objects are non-namespaced.
 message VolumeAttachment {
   // Standard object metadata.
-  // More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#metadata
+  // More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
   // +optional
   optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
 
@@ -112,7 +112,7 @@ message VolumeAttachment {
 // VolumeAttachmentList is a collection of VolumeAttachment objects.
 message VolumeAttachmentList {
   // Standard list metadata
-  // More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#metadata
+  // More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
   // +optional
   optional k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
 
@@ -128,6 +128,15 @@ message VolumeAttachmentSource {
   // Name of the persistent volume to attach.
   // +optional
   optional string persistentVolumeName = 1;
+
+  // inlineVolumeSpec contains all the information necessary to attach
+  // a persistent volume defined by a pod's inline VolumeSource. This field
+  // is populated only for the CSIMigration feature. It contains
+  // translated fields from a pod's inline VolumeSource to a
+  // PersistentVolumeSpec. This field is alpha-level and is only
+  // honored by servers that enabled the CSIMigration feature.
+  // +optional
+  optional k8s.io.api.core.v1.PersistentVolumeSpec inlineVolumeSpec = 2;
 }
 
 // VolumeAttachmentSpec is the specification of a VolumeAttachment request.

@@ -163,6 +163,18 @@ func UseSystemd() bool {
 	return hasStartTransientUnit
 }
 
+func NewSystemdCgroupsManager() (func(config *configs.Cgroup, paths map[string]string) cgroups.Manager, error) {
+	if !systemdUtil.IsRunningSystemd() {
+		return nil, fmt.Errorf("systemd not running on this host, can't use systemd as a cgroups.Manager")
+	}
+	return func(config *configs.Cgroup, paths map[string]string) cgroups.Manager {
+		return &Manager{
+			Cgroups: config,
+			Paths:   paths,
+		}
+	}, nil
+}
+
 func (m *Manager) Apply(pid int) error {
 	var (
 		c          = m.Cgroups

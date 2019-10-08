@@ -1,30 +1,49 @@
-Abhinandan Prativadi <abhi@docker.com> Abhinandan Prativadi <aprativadi@gmail.com>
-Abhinandan Prativadi <abhi@docker.com> abhi <abhi@docker.com>
-Akihiro Suda <suda.akihiro@lab.ntt.co.jp> Akihiro Suda <suda.kyoto@gmail.com>
-Andrei Vagin <avagin@virtuozzo.com> Andrei Vagin <avagin@openvz.org>
-Brent Baude <bbaude@redhat.com> baude <bbaude@redhat.com>
-Frank Yang <yyb196@gmail.com> frank yang <yyb196@gmail.com>
-Georgia Panoutsakopoulou <gpanoutsak@gmail.com> gpanouts <gpanoutsak@gmail.com>
-Jie Zhang <iamkadisi@163.com> kadisi <iamkadisi@163.com>
-John Howard <john.howard@microsoft.com> John Howard <jhoward@microsoft.com>
-Justin Terry <juterry@microsoft.com> Justin Terry (VM) <juterry@microsoft.com>
-Justin Terry <juterry@microsoft.com> Justin <jterry75@users.noreply.github.com>
-Kenfe-Mickaël Laventure <mickael.laventure@gmail.com> Kenfe-Mickael Laventure <mickael.laventure@gmail.com>
-Kevin Xu <cming.xu@gmail.com> kevin.xu <cming.xu@gmail.com>
-Lu Jingxiao <lujingxiao@huawei.com> l00397676 <lujingxiao@huawei.com>
-Lantao Liu <lantaol@google.com> Lantao Liu <taotaotheripper@gmail.com>
-Phil Estes <estesp@gmail.com> Phil Estes <estesp@linux.vnet.ibm.com>
-Stephen J Day <stevvooe@gmail.com> Stephen J Day <stephen.day@docker.com>
-Stephen J Day <stevvooe@gmail.com> Stephen Day <stevvooe@users.noreply.github.com>
-Stephen J Day <stevvooe@gmail.com> Stephen Day <stephen.day@getcruise.com>
-Sudeesh John <sudeesh@linux.vnet.ibm.com> sudeesh john <sudeesh@linux.vnet.ibm.com>
-Tõnis Tiigi <tonistiigi@gmail.com> Tonis Tiigi <tonistiigi@gmail.com>
-Lifubang <lifubang@aliyun.com> Lifubang <lifubang@acmcoder.com>
-Xiaodong Zhang <a4012017@sina.com> nashasha1 <a4012017@sina.com>
-Jian Liao <jliao@alauda.io> liaoj <jliao@alauda.io>
-Jian Liao <jliao@alauda.io> liaojian <liaojian@Dabllo.local>
-Rui Cao <ruicao@alauda.io> ruicao <ruicao@alauda.io>
-Xuean Yan <yan.xuean@zte.com.cn> yanxuean <yan.xuean@zte.com.cn>
-Mike Brown <brownwm@us.ibm.com> Mike Brown <mikebrow@users.noreply.github.com>
-Ace-Tang <aceapril@126.com>
-Wei Fu <fuweid89@gmail.com>
+Abhinandan Prativadi <abhi@docker.com>
+Abhinandan Prativadi <abhi@docker.com> <aprativadi@gmail.com>
+Akihiro Suda <akihiro.suda.cz@hco.ntt.co.jp> <suda.akihiro@lab.ntt.co.jp>
+Akihiro Suda <akihiro.suda.cz@hco.ntt.co.jp> <suda.kyoto@gmail.com>
+Andrei Vagin <avagin@virtuozzo.com> <avagin@openvz.org>
+Andrey Kolomentsev <andrey.kolomentsev@gmail.com>
+Brent Baude <bbaude@redhat.com>
+Carlos Eduardo <me@carlosedp.com> <me@carlosedp.com>
+Eric Ren <renzhen.rz@alibaba-linux.com> <renzhen.rz@alibaba-inc.com>
+Frank Yang <yyb196@gmail.com>
+Georgia Panoutsakopoulou <gpanoutsak@gmail.com>
+Guangming Wang <guangming.wang@daocloud.io>
+Haiyan Meng <haiyanmeng@google.com>
+Jian Liao <jliao@alauda.io>
+Jian Liao <jliao@alauda.io> <liaojian@Dabllo.local>
+Ji'an Liu <anthonyliu@zju.edu.cn>
+Jie Zhang <iamkadisi@163.com>
+John Howard <john.howard@microsoft.com> <jhoward@microsoft.com>
+John Howard <john.howard@microsoft.com> <jhowardmsft@users.noreply.github.com>
+Julien Balestra <julien.balestra@datadoghq.com>
+Justin Cormack <justin.cormack@docker.com> <justin@specialbusservice.com>
+Justin Terry <juterry@microsoft.com>
+Justin Terry <juterry@microsoft.com> <jterry75@users.noreply.github.com>
+Kenfe-Mickaël Laventure <mickael.laventure@gmail.com>
+Kevin Xu <cming.xu@gmail.com>
+Lantao Liu <lantaol@google.com> <taotaotheripper@gmail.com>
+Lifubang <lifubang@aliyun.com> <lifubang@acmcoder.com>
+Lu Jingxiao <lujingxiao@huawei.com>
+Maksym Pavlenko <makpav@amazon.com> <pavlenko.maksym@gmail.com>
+Mark Gordon <msg555@gmail.com>
+Michael Katsoulis <michaelkatsoulis88@gmail.com>
+Mike Brown <brownwm@us.ibm.com> <mikebrow@users.noreply.github.com>
+Nishchay Kumar <mrawesomenix@gmail.com>
+Phil Estes <estesp@gmail.com> <estesp@linux.vnet.ibm.com>
+Rui Cao <ruicao@alauda.io> <ruicao@alauda.io>
+Stephen J Day <stevvooe@gmail.com> <stephen.day@getcruise.com>
+Stephen J Day <stevvooe@gmail.com> <stevvooe@users.noreply.github.com>
+Stephen J Day <stevvooe@gmail.com> <stephen.day@docker.com>
+Sudeesh John <sudeesh@linux.vnet.ibm.com>
+Su Fei  <fesu@ebay.com> <fesu@ebay.com>
+Tõnis Tiigi <tonistiigi@gmail.com>
+Wei Fu <fuweid89@gmail.com> <fhfuwei@163.com>
+Xiaodong Zhang <a4012017@sina.com>
+Xuean Yan <yan.xuean@zte.com.cn>
+Yuxing Liu <starnop@163.com>
+zhenguang zhu <zhengguang.zhu@daocloud.io>
+zhongming chang<zhongming.chang@daocloud.io>
+zhoulin xie <zhoulin.xie@daocloud.io>
+zhoulin xie <zhoulin.xie@daocloud.io> <42261994+JoeWrightss@users.noreply.github.com>

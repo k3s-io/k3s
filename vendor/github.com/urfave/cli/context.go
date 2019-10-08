@@ -3,6 +3,7 @@ package cli
 import (
 	"errors"
 	"flag"
+	"fmt"
 	"os"
 	"reflect"
 	"strings"
@@ -283,5 +284,45 @@ func normalizeFlags(flags []Flag, set *flag.FlagSet) error {
 			}
 		}
 	}
+	return nil
+}
+
+type requiredFlagsErr interface {
+	error
+	getMissingFlags() []string
+}
+
+type errRequiredFlags struct {
+	missingFlags []string
+}
+
+func (e *errRequiredFlags) Error() string {
+	numberOfMissingFlags := len(e.missingFlags)
+	if numberOfMissingFlags == 1 {
+		return fmt.Sprintf("Required flag %q not set", e.missingFlags[0])
+	}
+	joinedMissingFlags := strings.Join(e.missingFlags, ", ")
+	return fmt.Sprintf("Required flags %q not set", joinedMissingFlags)
+}
+
+func (e *errRequiredFlags) getMissingFlags() []string {
+	return e.missingFlags
+}
+
+func checkRequiredFlags(flags []Flag, context *Context) requiredFlagsErr {
+	var missingFlags []string
+	for _, f := range flags {
+		if rf, ok := f.(RequiredFlag); ok && rf.IsRequired() {
+			key := strings.Split(f.GetName(), ",")[0]
+			if !context.IsSet(key) {
+				missingFlags = append(missingFlags, key)
+			}
+		}
+	}
+
+	if len(missingFlags) != 0 {
+		return &errRequiredFlags{missingFlags: missingFlags}
+	}
+
 	return nil
 }

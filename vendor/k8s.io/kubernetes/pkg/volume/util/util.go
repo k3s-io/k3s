@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -37,6 +36,7 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
 	"k8s.io/kubernetes/pkg/api/legacyscheme"
+	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	v1helper "k8s.io/kubernetes/pkg/apis/core/v1/helper"
 	"k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/util/mount"
@@ -58,6 +58,10 @@ const (
 	// that decides if pod volumes are unmounted when pod is terminated
 	KeepTerminatedPodVolumesAnnotation string = "volumes.kubernetes.io/keep-terminated-pod-volumes"
 
+	// MountsInGlobalPDPath is name of the directory appended to a volume plugin
+	// name to create the place for volume mounts in the global PD path.
+	MountsInGlobalPDPath = "mounts"
+
 	// VolumeGidAnnotationKey is the of the annotation on the PersistentVolume
 	// object that specifies a supplemental GID.
 	VolumeGidAnnotationKey = "pv.beta.kubernetes.io/gid"
@@ -71,7 +75,7 @@ const (
 // called 'ready' in the given directory and returns
 // true if that file exists.
 func IsReady(dir string) bool {
-	readyFile := path.Join(dir, readyFileName)
+	readyFile := filepath.Join(dir, readyFileName)
 	s, err := os.Stat(readyFile)
 	if err != nil {
 		return false
@@ -94,7 +98,7 @@ func SetReady(dir string) {
 		return
 	}
 
-	readyFile := path.Join(dir, readyFileName)
+	readyFile := filepath.Join(dir, readyFileName)
 	file, err := os.Create(readyFile)
 	if err != nil {
 		klog.Errorf("Can't touch %s: %v", readyFile, err)
@@ -529,4 +533,60 @@ func MapBlockVolume(
 	}
 
 	return nil
+}
+
+// GetPluginMountDir returns the global mount directory name appended
+// to the given plugin name's plugin directory
+func GetPluginMountDir(host volume.VolumeHost, name string) string {
+	mntDir := filepath.Join(host.GetPluginDir(name), MountsInGlobalPDPath)
+	return mntDir
+}
+
+// IsLocalEphemeralVolume determines whether the argument is a local ephemeral
+// volume vs. some other type
+func IsLocalEphemeralVolume(volume v1.Volume) bool {
+	return volume.GitRepo != nil ||
+		(volume.EmptyDir != nil && volume.EmptyDir.Medium != v1.StorageMediumMemory) ||
+		volume.ConfigMap != nil || volume.DownwardAPI != nil
+}
+
+// GetPodVolumeNames returns names of volumes that are used in a pod,
+// either as filesystem mount or raw block device.
+func GetPodVolumeNames(pod *v1.Pod) (mounts sets.String, devices sets.String) {
+	mounts = sets.NewString()
+	devices = sets.NewString()
+
+	podutil.VisitContainers(&pod.Spec, func(container *v1.Container) bool {
+		if container.VolumeMounts != nil {
+			for _, mount := range container.VolumeMounts {
+				mounts.Insert(mount.Name)
+			}
+		}
+		// TODO: remove feature gate check after no longer needed
+		if utilfeature.DefaultFeatureGate.Enabled(features.BlockVolume) &&
+			container.VolumeDevices != nil {
+			for _, device := range container.VolumeDevices {
+				devices.Insert(device.Name)
+			}
+		}
+		return true
+	})
+	return
+}
+
+// HasMountRefs checks if the given mountPath has mountRefs.
+// TODO: this is a workaround for the unmount device issue caused by gci mounter.
+// In GCI cluster, if gci mounter is used for mounting, the container started by mounter
+// script will cause additional mounts created in the container. Since these mounts are
+// irrelevant to the original mounts, they should be not considered when checking the
+// mount references. Current solution is to filter out those mount paths that contain
+// the string of original mount path.
+// Plan to work on better approach to solve this issue.
+func HasMountRefs(mountPath string, mountRefs []string) bool {
+	for _, ref := range mountRefs {
+		if !strings.Contains(ref, mountPath) {
+			return true
+		}
+	}
+	return false
 }

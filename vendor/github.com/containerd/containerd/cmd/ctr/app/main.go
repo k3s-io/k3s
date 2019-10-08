@@ -57,6 +57,11 @@ func New() *cli.App {
 	app := cli.NewApp()
 	app.Name = "ctr"
 	app.Version = version.Version
+	app.Description = `
+ctr is an unsupported debug and administrative client for interacting
+with the containerd daemon. Because it is unsupported, the commands,
+options, and operations are not guaranteed to be backward compatible or
+stable from release to release of the containerd project.`
 	app.Usage = `
         __
   _____/ /______

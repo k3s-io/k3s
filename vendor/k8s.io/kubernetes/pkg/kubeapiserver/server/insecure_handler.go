@@ -24,10 +24,6 @@ import (
 	genericfilters "k8s.io/apiserver/pkg/server/filters"
 )
 
-// DeprecatedInsecureServingInfo is required to serve http.  HTTP does NOT include authentication or authorization.
-// You shouldn't be using this.  It makes sig-auth sad.
-// DeprecatedInsecureServingInfo *ServingInfo
-
 // BuildInsecureHandlerChain sets up the server to listen to http. Should be removed.
 func BuildInsecureHandlerChain(apiHandler http.Handler, c *server.Config) http.Handler {
 	handler := apiHandler
@@ -38,6 +34,7 @@ func BuildInsecureHandlerChain(apiHandler http.Handler, c *server.Config) http.H
 	handler = genericfilters.WithMaxInFlightLimit(handler, c.MaxRequestsInFlight, c.MaxMutatingRequestsInFlight, c.LongRunningFunc)
 	handler = genericfilters.WithWaitGroup(handler, c.LongRunningFunc, c.HandlerChainWaitGroup)
 	handler = genericapifilters.WithRequestInfo(handler, server.NewRequestInfoResolver(c))
+	handler = genericapifilters.WithCacheControl(handler)
 	handler = genericfilters.WithPanicRecovery(handler)
 
 	return handler

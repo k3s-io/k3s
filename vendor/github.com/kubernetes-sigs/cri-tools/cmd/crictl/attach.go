@@ -23,7 +23,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 	"golang.org/x/net/context"
-	pb "k8s.io/kubernetes/pkg/kubelet/apis/cri/runtime/v1alpha2"
+	pb "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
 
 var runtimeAttachCommand = cli.Command{
@@ -48,24 +48,24 @@ var runtimeAttachCommand = cli.Command{
 			return cli.ShowSubcommandHelp(context)
 		}
 
-		if err := getRuntimeClient(context); err != nil {
+		runtimeClient, conn, err := getRuntimeClient(context)
+		if err != nil {
 			return err
 		}
+		defer closeConnection(context, conn)
 
 		var opts = attachOptions{
 			id:    id,
 			tty:   context.Bool("tty"),
 			stdin: context.Bool("stdin"),
 		}
-		err := Attach(runtimeClient, opts)
+		err = Attach(runtimeClient, opts)
 		if err != nil {
 			return fmt.Errorf("attaching running container failed: %v", err)
 
 		}
 		return nil
-
 	},
-	After: closeConnection,
 }
 
 // Attach sends an AttachRequest to server, and parses the returned AttachResponse

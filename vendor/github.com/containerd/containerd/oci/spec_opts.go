@@ -17,6 +17,7 @@
 package oci
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -33,7 +34,7 @@ import (
 	"github.com/containerd/containerd/namespaces"
 	"github.com/containerd/containerd/platforms"
 	"github.com/containerd/continuity/fs"
-	"github.com/opencontainers/image-spec/specs-go/v1"
+	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/opencontainers/runc/libcontainer/user"
 	specs "github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
@@ -76,6 +77,20 @@ func setLinux(s *Spec) {
 	}
 }
 
+// nolint
+func setResources(s *Spec) {
+	if s.Linux != nil {
+		if s.Linux.Resources == nil {
+			s.Linux.Resources = &specs.LinuxResources{}
+		}
+	}
+	if s.Windows != nil {
+		if s.Windows.Resources == nil {
+			s.Windows.Resources = &specs.WindowsResources{}
+		}
+	}
+}
+
 // setCapabilities sets Linux Capabilities to empty if unset
 func setCapabilities(s *Spec) {
 	setProcess(s)
@@ -104,7 +119,7 @@ func WithDefaultSpecForPlatform(platform string) SpecOpts {
 	}
 }
 
-// WithSpecFromBytes loads the the spec from the provided byte slice.
+// WithSpecFromBytes loads the spec from the provided byte slice.
 func WithSpecFromBytes(p []byte) SpecOpts {
 	return func(_ context.Context, _ Client, _ *containers.Container, s *Spec) error {
 		*s = Spec{} // make sure spec is cleared.
@@ -137,12 +152,21 @@ func WithEnv(environmentVariables []string) SpecOpts {
 	}
 }
 
+// WithDefaultPathEnv sets the $PATH environment variable to the
+// default PATH defined in this package.
+func WithDefaultPathEnv(_ context.Context, _ Client, _ *containers.Container, s *Spec) error {
+	s.Process.Env = replaceOrAppendEnvValues(s.Process.Env, defaultUnixEnv)
+	return nil
+}
+
 // replaceOrAppendEnvValues returns the defaults with the overrides either
 // replaced by env key or appended to the list
 func replaceOrAppendEnvValues(defaults, overrides []string) []string {
 	cache := make(map[string]int, len(defaults))
+	results := make([]string, 0, len(defaults))
 	for i, e := range defaults {
 		parts := strings.SplitN(e, "=", 2)
+		results = append(results, e)
 		cache[parts[0]] = i
 	}
 
@@ -150,7 +174,7 @@ func replaceOrAppendEnvValues(defaults, overrides []string) []string {
 		// Values w/o = means they want this env to be removed/unset.
 		if !strings.Contains(value, "=") {
 			if i, exists := cache[value]; exists {
-				defaults[i] = "" // Used to indicate it should be removed
+				results[i] = "" // Used to indicate it should be removed
 			}
 			continue
 		}
@@ -158,21 +182,21 @@ func replaceOrAppendEnvValues(defaults, overrides []string) []string {
 		// Just do a normal set/update
 		parts := strings.SplitN(value, "=", 2)
 		if i, exists := cache[parts[0]]; exists {
-			defaults[i] = value
+			results[i] = value
 		} else {
-			defaults = append(defaults, value)
+			results = append(results, value)
 		}
 	}
 
 	// Now remove all entries that we want to "unset"
-	for i := 0; i < len(defaults); i++ {
-		if defaults[i] == "" {
-			defaults = append(defaults[:i], defaults[i+1:]...)
+	for i := 0; i < len(results); i++ {
+		if results[i] == "" {
+			results = append(results[:i], results[i+1:]...)
 			i--
 		}
 	}
 
-	return defaults
+	return results
 }
 
 // WithProcessArgs replaces the args on the generated spec
@@ -310,7 +334,11 @@ func WithImageConfigArgs(image Image, args []string) SpecOpts {
 
 		setProcess(s)
 		if s.Linux != nil {
-			s.Process.Env = append(s.Process.Env, config.Env...)
+			defaults := config.Env
+			if len(defaults) == 0 {
+				defaults = defaultUnixEnv
+			}
+			s.Process.Env = replaceOrAppendEnvValues(defaults, s.Process.Env)
 			cmd := config.Cmd
 			if len(args) > 0 {
 				cmd = args
@@ -332,8 +360,14 @@ func WithImageConfigArgs(image Image, args []string) SpecOpts {
 			// even if there is no specified user in the image config
 			return WithAdditionalGIDs("root")(ctx, client, c, s)
 		} else if s.Windows != nil {
-			s.Process.Env = config.Env
-			s.Process.Args = append(config.Entrypoint, config.Cmd...)
+			s.Process.Env = replaceOrAppendEnvValues(config.Env, s.Process.Env)
+			cmd := config.Cmd
+			if len(args) > 0 {
+				cmd = args
+			}
+			s.Process.Args = append(config.Entrypoint, cmd...)
+
+			s.Process.Cwd = config.WorkingDir
 			s.Process.User = specs.User{
 				Username: config.User,
 			}
@@ -599,7 +633,7 @@ func WithUserID(uid uint32) SpecOpts {
 }
 
 // WithUsername sets the correct UID and GID for the container
-// based on the the image's /etc/passwd contents. If /etc/passwd
+// based on the image's /etc/passwd contents. If /etc/passwd
 // does not exist, or the username is not found in /etc/passwd,
 // it returns error.
 func WithUsername(username string) SpecOpts {
@@ -734,10 +768,12 @@ func WithCapabilities(caps []string) SpecOpts {
 
 // WithAllCapabilities sets all linux capabilities for the process
 var WithAllCapabilities = func(ctx context.Context, client Client, c *containers.Container, s *Spec) error {
-	return WithCapabilities(getAllCapabilities())(ctx, client, c, s)
+	return WithCapabilities(GetAllCapabilities())(ctx, client, c, s)
 }
 
-func getAllCapabilities() []string {
+// GetAllCapabilities returns all caps up to CAP_LAST_CAP
+// or CAP_BLOCK_SUSPEND on RHEL6
+func GetAllCapabilities() []string {
 	last := capability.CAP_LAST_CAP
 	// hack for RHEL6 which has no /proc/sys/kernel/cap_last_cap
 	if last == capability.Cap(63) {
@@ -751,6 +787,64 @@ func getAllCapabilities() []string {
 		caps = append(caps, "CAP_"+strings.ToUpper(cap.String()))
 	}
 	return caps
+}
+
+func capsContain(caps []string, s string) bool {
+	for _, c := range caps {
+		if c == s {
+			return true
+		}
+	}
+	return false
+}
+
+func removeCap(caps *[]string, s string) {
+	var newcaps []string
+	for _, c := range *caps {
+		if c == s {
+			continue
+		}
+		newcaps = append(newcaps, c)
+	}
+	*caps = newcaps
+}
+
+// WithAddedCapabilities adds the provided capabilities
+func WithAddedCapabilities(caps []string) SpecOpts {
+	return func(_ context.Context, _ Client, _ *containers.Container, s *Spec) error {
+		setCapabilities(s)
+		for _, c := range caps {
+			for _, cl := range []*[]string{
+				&s.Process.Capabilities.Bounding,
+				&s.Process.Capabilities.Effective,
+				&s.Process.Capabilities.Permitted,
+				&s.Process.Capabilities.Inheritable,
+			} {
+				if !capsContain(*cl, c) {
+					*cl = append(*cl, c)
+				}
+			}
+		}
+		return nil
+	}
+}
+
+// WithDroppedCapabilities removes the provided capabilities
+func WithDroppedCapabilities(caps []string) SpecOpts {
+	return func(_ context.Context, _ Client, _ *containers.Container, s *Spec) error {
+		setCapabilities(s)
+		for _, c := range caps {
+			for _, cl := range []*[]string{
+				&s.Process.Capabilities.Bounding,
+				&s.Process.Capabilities.Effective,
+				&s.Process.Capabilities.Permitted,
+				&s.Process.Capabilities.Inheritable,
+			} {
+				removeCap(cl, c)
+			}
+		}
+		return nil
+	}
 }
 
 // WithAmbientCapabilities set the Linux ambient capabilities for the process
@@ -1027,4 +1121,129 @@ func WithWindowsHyperV(_ context.Context, _ Client, _ *containers.Container, s *
 		s.Windows.HyperV = &specs.WindowsHyperV{}
 	}
 	return nil
+}
+
+// WithMemoryLimit sets the `Linux.LinuxResources.Memory.Limit` section to the
+// `limit` specified if the `Linux` section is not `nil`. Additionally sets the
+// `Windows.WindowsResources.Memory.Limit` section if the `Windows` section is
+// not `nil`.
+func WithMemoryLimit(limit uint64) SpecOpts {
+	return func(_ context.Context, _ Client, _ *containers.Container, s *Spec) error {
+		if s.Linux != nil {
+			if s.Linux.Resources == nil {
+				s.Linux.Resources = &specs.LinuxResources{}
+			}
+			if s.Linux.Resources.Memory == nil {
+				s.Linux.Resources.Memory = &specs.LinuxMemory{}
+			}
+			l := int64(limit)
+			s.Linux.Resources.Memory.Limit = &l
+		}
+		if s.Windows != nil {
+			if s.Windows.Resources == nil {
+				s.Windows.Resources = &specs.WindowsResources{}
+			}
+			if s.Windows.Resources.Memory == nil {
+				s.Windows.Resources.Memory = &specs.WindowsMemoryResources{}
+			}
+			s.Windows.Resources.Memory.Limit = &limit
+		}
+		return nil
+	}
+}
+
+// WithAnnotations appends or replaces the annotations on the spec with the
+// provided annotations
+func WithAnnotations(annotations map[string]string) SpecOpts {
+	return func(_ context.Context, _ Client, _ *containers.Container, s *Spec) error {
+		if s.Annotations == nil {
+			s.Annotations = make(map[string]string)
+		}
+		for k, v := range annotations {
+			s.Annotations[k] = v
+		}
+		return nil
+	}
+}
+
+// WithLinuxDevices adds the provided linux devices to the spec
+func WithLinuxDevices(devices []specs.LinuxDevice) SpecOpts {
+	return func(_ context.Context, _ Client, _ *containers.Container, s *Spec) error {
+		setLinux(s)
+		s.Linux.Devices = append(s.Linux.Devices, devices...)
+		return nil
+	}
+}
+
+var ErrNotADevice = errors.New("not a device node")
+
+// WithLinuxDevice adds the device specified by path to the spec
+func WithLinuxDevice(path, permissions string) SpecOpts {
+	return func(_ context.Context, _ Client, _ *containers.Container, s *Spec) error {
+		setLinux(s)
+		setResources(s)
+
+		dev, err := deviceFromPath(path, permissions)
+		if err != nil {
+			return err
+		}
+
+		s.Linux.Devices = append(s.Linux.Devices, *dev)
+
+		s.Linux.Resources.Devices = append(s.Linux.Resources.Devices, specs.LinuxDeviceCgroup{
+			Type:   dev.Type,
+			Allow:  true,
+			Major:  &dev.Major,
+			Minor:  &dev.Minor,
+			Access: permissions,
+		})
+
+		return nil
+	}
+}
+
+// WithEnvFile adds environment variables from a file to the container's spec
+func WithEnvFile(path string) SpecOpts {
+	return func(_ context.Context, _ Client, _ *containers.Container, s *Spec) error {
+		var vars []string
+		f, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+
+		sc := bufio.NewScanner(f)
+		for sc.Scan() {
+			if sc.Err() != nil {
+				return sc.Err()
+			}
+			vars = append(vars, sc.Text())
+		}
+		return WithEnv(vars)(nil, nil, nil, s)
+	}
+}
+
+// ErrNoShmMount is returned when there is no /dev/shm mount specified in the config
+// and an Opts was trying to set a configuration value on the mount.
+var ErrNoShmMount = errors.New("no /dev/shm mount specified")
+
+// WithDevShmSize sets the size of the /dev/shm mount for the container.
+//
+// The size value is specified in kb, kilobytes.
+func WithDevShmSize(kb int64) SpecOpts {
+	return func(ctx context.Context, _ Client, c *containers.Container, s *Spec) error {
+		for _, m := range s.Mounts {
+			if m.Source == "shm" && m.Type == "tmpfs" {
+				for i, o := range m.Options {
+					if strings.HasPrefix(o, "size=") {
+						m.Options[i] = fmt.Sprintf("size=%dk", kb)
+						return nil
+					}
+				}
+				m.Options = append(m.Options, fmt.Sprintf("size=%dk", kb))
+				return nil
+			}
+		}
+		return ErrNoShmMount
+	}
 }
