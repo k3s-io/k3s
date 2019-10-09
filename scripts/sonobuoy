@@ -110,6 +110,7 @@ export -f sonobuoy-destruct
 sonobuoy-test() {
     timeout --foreground 30m sonobuoy run \
         --config scripts/sonobuoy-config.json \
+        --plugin-env=e2e.E2E_USE_GO_RUNNER=true \
         --wait \
         "${@}"
     if sonobuoy status | grep "failed"; then
