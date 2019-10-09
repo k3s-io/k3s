@@ -174,7 +174,7 @@ mkdir -p ${OUTPUT}
 docker run -d --name ${K3S_SERVER} --privileged \
     -p 127.0.0.1:${K3S_PORT}:${K3S_PORT} \
     -e K3S_CLUSTER_SECRET=${SECRET} \
-    ${K3S_IMAGE} server --no-deploy=traefik --https-listen-port=${K3S_PORT}
+    ${K3S_IMAGE} server --no-deploy=traefik --https-listen-port=${K3S_PORT} --flannel-backend=ipsec #--kube-apiserver-arg="watch-cache=false"
 
 K3S_IP=$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' ${K3S_SERVER})
 echo "Started ${K3S_SERVER} @ ${K3S_IP}:${K3S_PORT}"
