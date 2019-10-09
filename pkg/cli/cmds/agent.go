@@ -24,6 +24,7 @@ type Agent struct {
 	FlannelIface             string
 	Debug                    bool
 	Rootless                 bool
+	ServerURLPublic          bool
 	AgentShared
 	ExtraKubeletArgs   cli.StringSlice
 	ExtraKubeProxyArgs cli.StringSlice
@@ -147,6 +148,11 @@ func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
 				Name:        "rootless",
 				Usage:       "(experimental) Run rootless",
 				Destination: &AgentConfig.Rootless,
+			},
+			cli.BoolFlag{
+				Name:        "server-public",
+				Usage:       "(experimental) Server behind public IP",
+				Destination: &AgentConfig.ServerURLPublic,
 			},
 			DockerFlag,
 			FlannelFlag,

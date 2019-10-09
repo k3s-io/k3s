@@ -65,6 +65,7 @@ type Agent struct {
 	CNIPlugin           bool
 	NodeTaints          []string
 	NodeLabels          []string
+	ServerIsPublic      bool
 }
 
 type Control struct {
