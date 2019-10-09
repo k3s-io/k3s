@@ -46,6 +46,7 @@ need to satisfy this dependencies in your system:
 
 If you're building with seccomp, you'll need to install it with the following:
 
+* CentOS/Fedora: `yum install libseccomp-devel`
 * Debian/Ubuntu: `apt install libseccomp-dev`
 
 At this point you are ready to build `containerd` yourself!
@@ -79,7 +80,8 @@ result in undefined behavior.
 `containerd` uses `make` to create a repeatable build flow. It means that you
 can run:
 
-```sudo
+```
+cd $GOPATH/src/github.com/containerd/containerd
 make
 ```
 
@@ -102,6 +104,7 @@ make generate
 > * `no_btrfs`: A build tag disables building the btrfs snapshot driver.
 > * `no_cri`: A build tag disables building Kubernetes [CRI](http://blog.kubernetes.io/2016/12/container-runtime-interface-cri-in-kubernetes.html) support into containerd.
 > See [here](https://github.com/containerd/cri-containerd#build-tags) for build tags of CRI plugin.
+> * `no_devmapper`: A build tag disables building the device mapper snapshot driver.
 >
 > For example, adding `BUILDTAGS=no_btrfs` to your environment before calling the **binaries**
 > Makefile target will disable the btrfs driver within the containerd Go build.
@@ -218,8 +221,7 @@ containerd --config config.toml
 During the automated CI the unit tests and integration tests are run as part of the PR validation. As a developer you can run these tests locally by using any of the following `Makefile` targets:
  - `make test`: run all non-integration tests that do not require `root` privileges
  - `make root-test`: run all non-integration tests which require `root`
- - `make integration`: run all tests, including integration tests and those which require `root`
- - `make integration-parallel`: run all tests (integration and root-required included) in parallel mode
+ - `make integration`: run all tests, including integration tests and those which require `root`. `TESTFLAGS_PARALLEL` can be used to control parallelism. For example, `TESTFLAGS_PARALLEL=1 make integration` will lead a non-parallel execution. The default value of `TESTFLAGS_PARALLEL` is **8**.
 
 To execute a specific test or set of tests you can use the `go test` capabilities
 without using the `Makefile` targets. The following examples show how to specify a test

@@ -29,6 +29,8 @@ import (
 	log "k8s.io/klog"
 
 	// Backends need to be imported for their init() to get executed and them to register
+	_ "github.com/coreos/flannel/backend/extension"
+	_ "github.com/coreos/flannel/backend/ipsec"
 	_ "github.com/coreos/flannel/backend/vxlan"
 )
 
@@ -42,7 +44,7 @@ func flannel(ctx context.Context, flannelIface *net.Interface, flannelConf, kube
 		return err
 	}
 
-	sm, err := kube.NewSubnetManager("", flannelConf, kubeConfigFile, "flannel.alpha.coreos.com")
+	sm, err := kube.NewSubnetManager("", kubeConfigFile, "flannel.alpha.coreos.com", flannelConf)
 	if err != nil {
 		return err
 	}

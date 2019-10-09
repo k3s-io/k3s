@@ -107,6 +107,7 @@ func (be *VXLANBackend) RegisterNetwork(ctx context.Context, wg sync.WaitGroup, 
 		VNI           int
 		Port          int
 		GBP           bool
+		Learning      bool
 		DirectRouting bool
 	}{
 		VNI: defaultVNI,
@@ -117,7 +118,7 @@ func (be *VXLANBackend) RegisterNetwork(ctx context.Context, wg sync.WaitGroup, 
 			return nil, fmt.Errorf("error decoding VXLAN backend config: %v", err)
 		}
 	}
-	log.Infof("VXLAN config: VNI=%d Port=%d GBP=%v DirectRouting=%v", cfg.VNI, cfg.Port, cfg.GBP, cfg.DirectRouting)
+	log.Infof("VXLAN config: VNI=%d Port=%d GBP=%v Learning=%v DirectRouting=%v", cfg.VNI, cfg.Port, cfg.GBP, cfg.Learning, cfg.DirectRouting)
 
 	devAttrs := vxlanDeviceAttrs{
 		vni:       uint32(cfg.VNI),
@@ -126,6 +127,7 @@ func (be *VXLANBackend) RegisterNetwork(ctx context.Context, wg sync.WaitGroup, 
 		vtepAddr:  be.extIface.IfaceAddr,
 		vtepPort:  cfg.Port,
 		gbp:       cfg.GBP,
+		learning:  cfg.Learning,
 	}
 
 	dev, err := newVXLANDevice(&devAttrs)

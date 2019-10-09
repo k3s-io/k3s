@@ -1,35 +1,40 @@
 package cmds
 
 import (
+	"fmt"
+
+	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/urfave/cli"
 )
 
 type Server struct {
-	ClusterCIDR         string
-	ClusterSecret       string
-	ServiceCIDR         string
-	ClusterDNS          string
-	ClusterDomain       string
-	HTTPSPort           int
-	HTTPPort            int
-	DataDir             string
-	DisableAgent        bool
-	KubeConfigOutput    string
-	KubeConfigMode      string
-	TLSSan              cli.StringSlice
-	BindAddress         string
-	ExtraAPIArgs        cli.StringSlice
-	ExtraSchedulerArgs  cli.StringSlice
-	ExtraControllerArgs cli.StringSlice
-	Rootless            bool
-	StoreBootstrap      bool
-	StorageEndpoint     string
-	StorageCAFile       string
-	StorageCertFile     string
-	StorageKeyFile      string
-	AdvertiseIP         string
-	AdvertisePort       int
-	DisableScheduler    bool
+	ClusterCIDR             string
+	ClusterSecret           string
+	ServiceCIDR             string
+	ClusterDNS              string
+	ClusterDomain           string
+	HTTPSPort               int
+	HTTPPort                int
+	DataDir                 string
+	DisableAgent            bool
+	KubeConfigOutput        string
+	KubeConfigMode          string
+	TLSSan                  cli.StringSlice
+	BindAddress             string
+	ExtraAPIArgs            cli.StringSlice
+	ExtraSchedulerArgs      cli.StringSlice
+	ExtraControllerArgs     cli.StringSlice
+	Rootless                bool
+	StoreBootstrap          bool
+	StorageEndpoint         string
+	StorageCAFile           string
+	StorageCertFile         string
+	StorageKeyFile          string
+	AdvertiseIP             string
+	AdvertisePort           int
+	DisableScheduler        bool
+	FlannelBackend          string
+	DefaultLocalStoragePath string
 }
 
 var ServerConfig Server
@@ -189,11 +194,23 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Usage:       "Disable Kubernetes default scheduler",
 				Destination: &ServerConfig.DisableScheduler,
 			},
+			cli.StringFlag{
+				Name:        "flannel-backend",
+				Usage:       fmt.Sprintf("(experimental) One of '%s', '%s', '%s', or '%s'", config.FlannelBackendNone, config.FlannelBackendVXLAN, config.FlannelBackendIPSEC, config.FlannelBackendWireguard),
+				Destination: &ServerConfig.FlannelBackend,
+				Value:       config.FlannelBackendVXLAN,
+			},
+			cli.StringFlag{
+				Name:        "default-local-storage-path",
+				Usage:       "Default local storage path for local provisioner storage class",
+				Destination: &ServerConfig.DefaultLocalStoragePath,
+			},
 			NodeIPFlag,
 			NodeNameFlag,
 			DockerFlag,
 			FlannelFlag,
 			FlannelIfaceFlag,
+			FlannelConfFlag,
 			CRIEndpointFlag,
 			PauseImageFlag,
 			ResolvConfFlag,

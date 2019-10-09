@@ -20,7 +20,6 @@ import (
 	"context"
 	"encoding/json"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/containerd/containerd/content"
@@ -358,15 +357,11 @@ func Children(ctx context.Context, provider content.Provider, desc ocispec.Descr
 		}
 
 		descs = append(descs, index.Manifests...)
-	case MediaTypeDockerSchema2Layer, MediaTypeDockerSchema2LayerGzip,
-		MediaTypeDockerSchema2LayerForeign, MediaTypeDockerSchema2LayerForeignGzip,
-		MediaTypeDockerSchema2Config, ocispec.MediaTypeImageConfig,
-		ocispec.MediaTypeImageLayer, ocispec.MediaTypeImageLayerGzip,
-		ocispec.MediaTypeImageLayerNonDistributable, ocispec.MediaTypeImageLayerNonDistributableGzip,
-		MediaTypeContainerd1Checkpoint, MediaTypeContainerd1CheckpointConfig:
-		// childless data types.
-		return nil, nil
 	default:
+		if IsLayerType(desc.MediaType) || IsKnownConfig(desc.MediaType) {
+			// childless data types.
+			return nil, nil
+		}
 		log.G(ctx).Warnf("encountered unknown type %v; children may not be fetched", desc.MediaType)
 	}
 
@@ -388,23 +383,4 @@ func RootFS(ctx context.Context, provider content.Provider, configDesc ocispec.D
 		return nil, err
 	}
 	return config.RootFS.DiffIDs, nil
-}
-
-// IsCompressedDiff returns true if mediaType is a known compressed diff media type.
-// It returns false if the media type is a diff, but not compressed. If the media type
-// is not a known diff type, it returns errdefs.ErrNotImplemented
-func IsCompressedDiff(ctx context.Context, mediaType string) (bool, error) {
-	switch mediaType {
-	case ocispec.MediaTypeImageLayer, MediaTypeDockerSchema2Layer:
-	case ocispec.MediaTypeImageLayerGzip, MediaTypeDockerSchema2LayerGzip:
-		return true, nil
-	default:
-		// Still apply all generic media types *.tar[.+]gzip and *.tar
-		if strings.HasSuffix(mediaType, ".tar.gzip") || strings.HasSuffix(mediaType, ".tar+gzip") {
-			return true, nil
-		} else if !strings.HasSuffix(mediaType, ".tar") {
-			return false, errdefs.ErrNotImplemented
-		}
-	}
-	return false, nil
 }

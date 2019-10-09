@@ -24,7 +24,6 @@ import (
 	"github.com/containerd/containerd/metadata"
 	"github.com/containerd/containerd/plugin"
 	"github.com/containerd/containerd/services"
-	bolt "go.etcd.io/bbolt"
 )
 
 func init() {
@@ -44,8 +43,8 @@ func init() {
 				return nil, err
 			}
 			return &local{
-				db: m.(*metadata.DB),
-				gc: g.(gcScheduler),
+				Manager: metadata.NewLeaseManager(m.(*metadata.DB)),
+				gc:      g.(gcScheduler),
 			}, nil
 		},
 	})
@@ -56,20 +55,8 @@ type gcScheduler interface {
 }
 
 type local struct {
-	db *metadata.DB
+	leases.Manager
 	gc gcScheduler
-}
-
-func (l *local) Create(ctx context.Context, opts ...leases.Opt) (leases.Lease, error) {
-	var lease leases.Lease
-	if err := l.db.Update(func(tx *bolt.Tx) error {
-		var err error
-		lease, err = metadata.NewLeaseManager(tx).Create(ctx, opts...)
-		return err
-	}); err != nil {
-		return leases.Lease{}, err
-	}
-	return lease, nil
 }
 
 func (l *local) Delete(ctx context.Context, lease leases.Lease, opts ...leases.DeleteOpt) error {
@@ -80,9 +67,7 @@ func (l *local) Delete(ctx context.Context, lease leases.Lease, opts ...leases.D
 		}
 	}
 
-	if err := l.db.Update(func(tx *bolt.Tx) error {
-		return metadata.NewLeaseManager(tx).Delete(ctx, lease)
-	}); err != nil {
+	if err := l.Manager.Delete(ctx, lease); err != nil {
 		return err
 	}
 
@@ -94,16 +79,4 @@ func (l *local) Delete(ctx context.Context, lease leases.Lease, opts ...leases.D
 
 	return nil
 
-}
-
-func (l *local) List(ctx context.Context, filters ...string) ([]leases.Lease, error) {
-	var ll []leases.Lease
-	if err := l.db.View(func(tx *bolt.Tx) error {
-		var err error
-		ll, err = metadata.NewLeaseManager(tx).List(ctx, filters...)
-		return err
-	}); err != nil {
-		return nil, err
-	}
-	return ll, nil
 }

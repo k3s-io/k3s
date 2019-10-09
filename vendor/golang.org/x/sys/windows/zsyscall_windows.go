@@ -43,6 +43,7 @@ var (
 	modcrypt32  = NewLazySystemDLL("crypt32.dll")
 	moduser32   = NewLazySystemDLL("user32.dll")
 	modole32    = NewLazySystemDLL("ole32.dll")
+	modntdll    = NewLazySystemDLL("ntdll.dll")
 	modws2_32   = NewLazySystemDLL("ws2_32.dll")
 	moddnsapi   = NewLazySystemDLL("dnsapi.dll")
 	modiphlpapi = NewLazySystemDLL("iphlpapi.dll")
@@ -196,6 +197,10 @@ var (
 	procSetEvent                           = modkernel32.NewProc("SetEvent")
 	procResetEvent                         = modkernel32.NewProc("ResetEvent")
 	procPulseEvent                         = modkernel32.NewProc("PulseEvent")
+	procCreateMutexW                       = modkernel32.NewProc("CreateMutexW")
+	procCreateMutexExW                     = modkernel32.NewProc("CreateMutexExW")
+	procOpenMutexW                         = modkernel32.NewProc("OpenMutexW")
+	procReleaseMutex                       = modkernel32.NewProc("ReleaseMutex")
 	procSleepEx                            = modkernel32.NewProc("SleepEx")
 	procCreateJobObjectW                   = modkernel32.NewProc("CreateJobObjectW")
 	procAssignProcessToJobObject           = modkernel32.NewProc("AssignProcessToJobObject")
@@ -208,6 +213,7 @@ var (
 	procGenerateConsoleCtrlEvent           = modkernel32.NewProc("GenerateConsoleCtrlEvent")
 	procGetProcessId                       = modkernel32.NewProc("GetProcessId")
 	procOpenThread                         = modkernel32.NewProc("OpenThread")
+	procSetProcessPriorityBoost            = modkernel32.NewProc("SetProcessPriorityBoost")
 	procDefineDosDeviceW                   = modkernel32.NewProc("DefineDosDeviceW")
 	procDeleteVolumeMountPointW            = modkernel32.NewProc("DeleteVolumeMountPointW")
 	procFindFirstVolumeW                   = modkernel32.NewProc("FindFirstVolumeW")
@@ -228,10 +234,16 @@ var (
 	procSetVolumeLabelW                    = modkernel32.NewProc("SetVolumeLabelW")
 	procSetVolumeMountPointW               = modkernel32.NewProc("SetVolumeMountPointW")
 	procMessageBoxW                        = moduser32.NewProc("MessageBoxW")
+	procExitWindowsEx                      = moduser32.NewProc("ExitWindowsEx")
+	procInitiateSystemShutdownExW          = modadvapi32.NewProc("InitiateSystemShutdownExW")
+	procSetProcessShutdownParameters       = modkernel32.NewProc("SetProcessShutdownParameters")
+	procGetProcessShutdownParameters       = modkernel32.NewProc("GetProcessShutdownParameters")
 	procCLSIDFromString                    = modole32.NewProc("CLSIDFromString")
 	procStringFromGUID2                    = modole32.NewProc("StringFromGUID2")
 	procCoCreateGuid                       = modole32.NewProc("CoCreateGuid")
 	procCoTaskMemFree                      = modole32.NewProc("CoTaskMemFree")
+	procRtlGetVersion                      = modntdll.NewProc("RtlGetVersion")
+	procRtlGetNtVersionNumbers             = modntdll.NewProc("RtlGetNtVersionNumbers")
 	procWSAStartup                         = modws2_32.NewProc("WSAStartup")
 	procWSACleanup                         = modws2_32.NewProc("WSACleanup")
 	procWSAIoctl                           = modws2_32.NewProc("WSAIoctl")
@@ -301,6 +313,8 @@ var (
 	procDuplicateTokenEx                   = modadvapi32.NewProc("DuplicateTokenEx")
 	procGetUserProfileDirectoryW           = moduserenv.NewProc("GetUserProfileDirectoryW")
 	procGetSystemDirectoryW                = modkernel32.NewProc("GetSystemDirectoryW")
+	procGetWindowsDirectoryW               = modkernel32.NewProc("GetWindowsDirectoryW")
+	procGetSystemWindowsDirectoryW         = modkernel32.NewProc("GetSystemWindowsDirectoryW")
 	procWTSQueryUserToken                  = modwtsapi32.NewProc("WTSQueryUserToken")
 	procWTSEnumerateSessionsW              = modwtsapi32.NewProc("WTSEnumerateSessionsW")
 	procWTSFreeMemory                      = modwtsapi32.NewProc("WTSFreeMemory")
@@ -2103,6 +2117,69 @@ func PulseEvent(event Handle) (err error) {
 	return
 }
 
+func CreateMutex(mutexAttrs *SecurityAttributes, initialOwner bool, name *uint16) (handle Handle, err error) {
+	var _p0 uint32
+	if initialOwner {
+		_p0 = 1
+	} else {
+		_p0 = 0
+	}
+	r0, _, e1 := syscall.Syscall(procCreateMutexW.Addr(), 3, uintptr(unsafe.Pointer(mutexAttrs)), uintptr(_p0), uintptr(unsafe.Pointer(name)))
+	handle = Handle(r0)
+	if handle == 0 {
+		if e1 != 0 {
+			err = errnoErr(e1)
+		} else {
+			err = syscall.EINVAL
+		}
+	}
+	return
+}
+
+func CreateMutexEx(mutexAttrs *SecurityAttributes, name *uint16, flags uint32, desiredAccess uint32) (handle Handle, err error) {
+	r0, _, e1 := syscall.Syscall6(procCreateMutexExW.Addr(), 4, uintptr(unsafe.Pointer(mutexAttrs)), uintptr(unsafe.Pointer(name)), uintptr(flags), uintptr(desiredAccess), 0, 0)
+	handle = Handle(r0)
+	if handle == 0 {
+		if e1 != 0 {
+			err = errnoErr(e1)
+		} else {
+			err = syscall.EINVAL
+		}
+	}
+	return
+}
+
+func OpenMutex(desiredAccess uint32, inheritHandle bool, name *uint16) (handle Handle, err error) {
+	var _p0 uint32
+	if inheritHandle {
+		_p0 = 1
+	} else {
+		_p0 = 0
+	}
+	r0, _, e1 := syscall.Syscall(procOpenMutexW.Addr(), 3, uintptr(desiredAccess), uintptr(_p0), uintptr(unsafe.Pointer(name)))
+	handle = Handle(r0)
+	if handle == 0 {
+		if e1 != 0 {
+			err = errnoErr(e1)
+		} else {
+			err = syscall.EINVAL
+		}
+	}
+	return
+}
+
+func ReleaseMutex(mutex Handle) (err error) {
+	r1, _, e1 := syscall.Syscall(procReleaseMutex.Addr(), 1, uintptr(mutex), 0, 0)
+	if r1 == 0 {
+		if e1 != 0 {
+			err = errnoErr(e1)
+		} else {
+			err = syscall.EINVAL
+		}
+	}
+	return
+}
+
 func SleepEx(milliseconds uint32, alertable bool) (ret uint32) {
 	var _p0 uint32
 	if alertable {
@@ -2244,6 +2321,24 @@ func OpenThread(desiredAccess uint32, inheritHandle bool, threadId uint32) (hand
 	r0, _, e1 := syscall.Syscall(procOpenThread.Addr(), 3, uintptr(desiredAccess), uintptr(_p0), uintptr(threadId))
 	handle = Handle(r0)
 	if handle == 0 {
+		if e1 != 0 {
+			err = errnoErr(e1)
+		} else {
+			err = syscall.EINVAL
+		}
+	}
+	return
+}
+
+func SetProcessPriorityBoost(process Handle, disable bool) (err error) {
+	var _p0 uint32
+	if disable {
+		_p0 = 1
+	} else {
+		_p0 = 0
+	}
+	r1, _, e1 := syscall.Syscall(procSetProcessPriorityBoost.Addr(), 2, uintptr(process), uintptr(_p0), 0)
+	if r1 == 0 {
 		if e1 != 0 {
 			err = errnoErr(e1)
 		} else {
@@ -2493,6 +2588,66 @@ func MessageBox(hwnd Handle, text *uint16, caption *uint16, boxtype uint32) (ret
 	return
 }
 
+func ExitWindowsEx(flags uint32, reason uint32) (err error) {
+	r1, _, e1 := syscall.Syscall(procExitWindowsEx.Addr(), 2, uintptr(flags), uintptr(reason), 0)
+	if r1 == 0 {
+		if e1 != 0 {
+			err = errnoErr(e1)
+		} else {
+			err = syscall.EINVAL
+		}
+	}
+	return
+}
+
+func InitiateSystemShutdownEx(machineName *uint16, message *uint16, timeout uint32, forceAppsClosed bool, rebootAfterShutdown bool, reason uint32) (err error) {
+	var _p0 uint32
+	if forceAppsClosed {
+		_p0 = 1
+	} else {
+		_p0 = 0
+	}
+	var _p1 uint32
+	if rebootAfterShutdown {
+		_p1 = 1
+	} else {
+		_p1 = 0
+	}
+	r1, _, e1 := syscall.Syscall6(procInitiateSystemShutdownExW.Addr(), 6, uintptr(unsafe.Pointer(machineName)), uintptr(unsafe.Pointer(message)), uintptr(timeout), uintptr(_p0), uintptr(_p1), uintptr(reason))
+	if r1 == 0 {
+		if e1 != 0 {
+			err = errnoErr(e1)
+		} else {
+			err = syscall.EINVAL
+		}
+	}
+	return
+}
+
+func SetProcessShutdownParameters(level uint32, flags uint32) (err error) {
+	r1, _, e1 := syscall.Syscall(procSetProcessShutdownParameters.Addr(), 2, uintptr(level), uintptr(flags), 0)
+	if r1 == 0 {
+		if e1 != 0 {
+			err = errnoErr(e1)
+		} else {
+			err = syscall.EINVAL
+		}
+	}
+	return
+}
+
+func GetProcessShutdownParameters(level *uint32, flags *uint32) (err error) {
+	r1, _, e1 := syscall.Syscall(procGetProcessShutdownParameters.Addr(), 2, uintptr(unsafe.Pointer(level)), uintptr(unsafe.Pointer(flags)), 0)
+	if r1 == 0 {
+		if e1 != 0 {
+			err = errnoErr(e1)
+		} else {
+			err = syscall.EINVAL
+		}
+	}
+	return
+}
+
 func clsidFromString(lpsz *uint16, pclsid *GUID) (ret error) {
 	r0, _, _ := syscall.Syscall(procCLSIDFromString.Addr(), 2, uintptr(unsafe.Pointer(lpsz)), uintptr(unsafe.Pointer(pclsid)), 0)
 	if r0 != 0 {
@@ -2515,8 +2670,21 @@ func coCreateGuid(pguid *GUID) (ret error) {
 	return
 }
 
-func coTaskMemFree(address unsafe.Pointer) {
+func CoTaskMemFree(address unsafe.Pointer) {
 	syscall.Syscall(procCoTaskMemFree.Addr(), 1, uintptr(address), 0, 0)
+	return
+}
+
+func rtlGetVersion(info *OsVersionInfoEx) (ret error) {
+	r0, _, _ := syscall.Syscall(procRtlGetVersion.Addr(), 1, uintptr(unsafe.Pointer(info)), 0, 0)
+	if r0 != 0 {
+		ret = syscall.Errno(r0)
+	}
+	return
+}
+
+func rtlGetNtVersionNumbers(majorVersion *uint32, minorVersion *uint32, buildNumber *uint32) {
+	syscall.Syscall(procRtlGetNtVersionNumbers.Addr(), 3, uintptr(unsafe.Pointer(majorVersion)), uintptr(unsafe.Pointer(minorVersion)), uintptr(unsafe.Pointer(buildNumber)))
 	return
 }
 
@@ -3286,6 +3454,32 @@ func GetUserProfileDirectory(t Token, dir *uint16, dirLen *uint32) (err error) {
 
 func getSystemDirectory(dir *uint16, dirLen uint32) (len uint32, err error) {
 	r0, _, e1 := syscall.Syscall(procGetSystemDirectoryW.Addr(), 2, uintptr(unsafe.Pointer(dir)), uintptr(dirLen), 0)
+	len = uint32(r0)
+	if len == 0 {
+		if e1 != 0 {
+			err = errnoErr(e1)
+		} else {
+			err = syscall.EINVAL
+		}
+	}
+	return
+}
+
+func getWindowsDirectory(dir *uint16, dirLen uint32) (len uint32, err error) {
+	r0, _, e1 := syscall.Syscall(procGetWindowsDirectoryW.Addr(), 2, uintptr(unsafe.Pointer(dir)), uintptr(dirLen), 0)
+	len = uint32(r0)
+	if len == 0 {
+		if e1 != 0 {
+			err = errnoErr(e1)
+		} else {
+			err = syscall.EINVAL
+		}
+	}
+	return
+}
+
+func getSystemWindowsDirectory(dir *uint16, dirLen uint32) (len uint32, err error) {
+	r0, _, e1 := syscall.Syscall(procGetSystemWindowsDirectoryW.Addr(), 2, uintptr(unsafe.Pointer(dir)), uintptr(dirLen), 0)
 	len = uint32(r0)
 	if len == 0 {
 		if e1 != 0 {

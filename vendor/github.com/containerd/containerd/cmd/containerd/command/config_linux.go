@@ -23,12 +23,15 @@ import (
 
 func defaultConfig() *srvconfig.Config {
 	return &srvconfig.Config{
-		Root:  defaults.DefaultRootDir,
-		State: defaults.DefaultStateDir,
+		Version: 1,
+		Root:    defaults.DefaultRootDir,
+		State:   defaults.DefaultStateDir,
 		GRPC: srvconfig.GRPCConfig{
 			Address:        defaults.DefaultAddress,
 			MaxRecvMsgSize: defaults.DefaultMaxRecvMsgSize,
 			MaxSendMsgSize: defaults.DefaultMaxSendMsgSize,
 		},
+		DisabledPlugins: []string{},
+		RequiredPlugins: []string{},
 	}
 }

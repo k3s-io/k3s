@@ -50,6 +50,7 @@ var statsCommand = cli.Command{
 	Usage:                  "List container(s) resource usage statistics",
 	SkipArgReorder:         true,
 	UseShortOptionHandling: true,
+	ArgsUsage:              "[ID]",
 	Flags: []cli.Flag{
 		cli.BoolFlag{
 			Name:  "all, a",
@@ -84,14 +85,20 @@ var statsCommand = cli.Command{
 		},
 	},
 	Action: func(context *cli.Context) error {
-		var err error
-		if err = getRuntimeClient(context); err != nil {
+		runtimeClient, runtimeConn, err := getRuntimeClient(context)
+		if err != nil {
 			return err
+		}
+		defer closeConnection(context, runtimeConn)
+
+		id := context.String("id")
+		if id == "" && context.Args() != nil {
+			id = context.Args()[0]
 		}
 
 		opts := statsOptions{
 			all:    context.Bool("all"),
-			id:     context.String("id"),
+			id:     id,
 			podID:  context.String("pod"),
 			sample: time.Duration(context.Int("seconds")) * time.Second,
 			output: context.String("output"),

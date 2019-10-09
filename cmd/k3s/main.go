@@ -87,6 +87,9 @@ func stageAndRun(dataDir string, cmd string, args []string) error {
 	if err := os.Setenv("PATH", filepath.Join(dir, "bin")+":"+os.Getenv("PATH")+":"+filepath.Join(dir, "bin/aux")); err != nil {
 		return err
 	}
+	if err := os.Setenv("K3S_DATA_DIR", dir); err != nil {
+		return err
+	}
 
 	cmd, err = exec.LookPath(cmd)
 	if err != nil {

@@ -330,8 +330,8 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 
 	nodeConfig := &config.Node{
 		Docker:                   envInfo.Docker,
-		NoFlannel:                envInfo.NoFlannel,
 		ContainerRuntimeEndpoint: envInfo.ContainerRuntimeEndpoint,
+		FlannelBackend:           controlConfig.FlannelBackend,
 	}
 	nodeConfig.FlannelIface = flannelIface
 	nodeConfig.Images = filepath.Join(envInfo.DataDir, "images")
@@ -349,6 +349,8 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 	nodeConfig.AgentConfig.KubeConfigKubeProxy = kubeconfigKubeproxy
 	nodeConfig.AgentConfig.RootDir = filepath.Join(envInfo.DataDir, "kubelet")
 	nodeConfig.AgentConfig.PauseImage = envInfo.PauseImage
+	nodeConfig.AgentConfig.IPSECPSK = controlConfig.IPSECPSK
+	nodeConfig.AgentConfig.StrongSwanDir = filepath.Join(envInfo.DataDir, "strongswan")
 	nodeConfig.CACerts = info.CACerts
 	nodeConfig.Containerd.Config = filepath.Join(envInfo.DataDir, "etc/containerd/config.toml")
 	nodeConfig.Containerd.Root = filepath.Join(envInfo.DataDir, "containerd")
@@ -362,8 +364,20 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 	nodeConfig.ServerAddress = serverURLParsed.Host
 	nodeConfig.AgentConfig.ServerIsPublic = envInfo.ServerURLPublic
 	nodeConfig.Certificate = servingCert
+
+	if nodeConfig.FlannelBackend == config.FlannelBackendNone {
+		nodeConfig.NoFlannel = true
+	} else {
+		nodeConfig.NoFlannel = envInfo.NoFlannel
+	}
+
 	if !nodeConfig.NoFlannel {
-		nodeConfig.FlannelConf = filepath.Join(envInfo.DataDir, "etc/flannel/net-conf.json")
+		if envInfo.FlannelConf == "" {
+			nodeConfig.FlannelConf = filepath.Join(envInfo.DataDir, "etc/flannel/net-conf.json")
+		} else {
+			nodeConfig.FlannelConf = envInfo.FlannelConf
+			nodeConfig.FlannelConfOverride = true
+		}
 		nodeConfig.AgentConfig.CNIBinDir = filepath.Dir(hostLocal)
 		nodeConfig.AgentConfig.CNIConfDir = filepath.Join(envInfo.DataDir, "etc/cni/net.d")
 	}

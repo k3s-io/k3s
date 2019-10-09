@@ -62,6 +62,11 @@ users:
 `))
 )
 
+const (
+	userTokenSize  = 16
+	ipsecTokenSize = 48
+)
+
 func Server(ctx context.Context, cfg *config.Control) error {
 	rand.Seed(time.Now().UTC().UnixNano())
 
@@ -252,6 +257,7 @@ func prepare(ctx context.Context, config *config.Control, runtime *config.Contro
 	runtime.ServerCAKey = path.Join(config.DataDir, "tls", "server-ca.key")
 	runtime.RequestHeaderCA = path.Join(config.DataDir, "tls", "request-header-ca.crt")
 	runtime.RequestHeaderCAKey = path.Join(config.DataDir, "tls", "request-header-ca.key")
+	runtime.IPSECKey = path.Join(config.DataDir, "cred", "ipsec.psk")
 
 	runtime.ServiceKey = path.Join(config.DataDir, "tls", "service.key")
 	runtime.PasswdFile = path.Join(config.DataDir, "cred", "passwd")
@@ -301,6 +307,10 @@ func prepare(ctx context.Context, config *config.Control, runtime *config.Contro
 	}
 
 	if err := genUsers(config, runtime); err != nil {
+		return err
+	}
+
+	if err := genEncryptedNetworkInfo(config, runtime); err != nil {
 		return err
 	}
 
@@ -422,20 +432,43 @@ func WritePasswords(passwdFile string, records [][]string) error {
 	return os.Rename(passwdFile+".tmp", passwdFile)
 }
 
+func genEncryptedNetworkInfo(controlConfig *config.Control, runtime *config.ControlRuntime) error {
+	if s, err := os.Stat(runtime.IPSECKey); err == nil && s.Size() > 0 {
+		psk, err := ioutil.ReadFile(runtime.IPSECKey)
+		if err != nil {
+			return err
+		}
+		controlConfig.IPSECPSK = strings.TrimSpace(string(psk))
+		return nil
+	}
+
+	psk, err := getToken(ipsecTokenSize)
+	if err != nil {
+		return err
+	}
+
+	controlConfig.IPSECPSK = psk
+	if err := ioutil.WriteFile(runtime.IPSECKey, []byte(psk+"\n"), 0600); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func genUsers(config *config.Control, runtime *config.ControlRuntime) error {
 	if s, err := os.Stat(runtime.PasswdFile); err == nil && s.Size() > 0 {
 		return ensureNodeToken(config, runtime)
 	}
 
-	adminToken, err := getToken()
+	adminToken, err := getToken(userTokenSize)
 	if err != nil {
 		return err
 	}
-	systemToken, err := getToken()
+	systemToken, err := getToken(userTokenSize)
 	if err != nil {
 		return err
 	}
-	nodeToken, err := getToken()
+	nodeToken, err := getToken(userTokenSize)
 	if err != nil {
 		return err
 	}
@@ -451,8 +484,8 @@ func genUsers(config *config.Control, runtime *config.ControlRuntime) error {
 	})
 }
 
-func getToken() (string, error) {
-	token := make([]byte, 16, 16)
+func getToken(size int) (string, error) {
+	token := make([]byte, size, size)
 	_, err := cryptorand.Read(token)
 	if err != nil {
 		return "", err
@@ -536,7 +569,7 @@ func genClientCerts(config *config.Control, runtime *config.ControlRuntime) erro
 		return err
 	}
 
-	if _, _, err := certutil.LoadOrGenerateKeyFile(runtime.ClientKubeletKey); err != nil {
+	if _, _, err := certutil.LoadOrGenerateKeyFile(runtime.ClientKubeletKey, regen); err != nil {
 		return err
 	}
 
@@ -581,7 +614,7 @@ func genServerCerts(config *config.Control, runtime *config.ControlRuntime) erro
 		return err
 	}
 
-	if _, _, err := certutil.LoadOrGenerateKeyFile(runtime.ServingKubeletKey); err != nil {
+	if _, _, err := certutil.LoadOrGenerateKeyFile(runtime.ServingKubeletKey, regen); err != nil {
 		return err
 	}
 
@@ -605,6 +638,11 @@ func genRequestHeaderCerts(config *config.Control, runtime *config.ControlRuntim
 }
 
 func createClientCertKey(regen bool, commonName string, organization []string, altNames *certutil.AltNames, extKeyUsage []x509.ExtKeyUsage, caCertFile, caKeyFile, certFile, keyFile string) (bool, error) {
+	// check for certificate expiration
+	if !regen {
+		regen = expired(certFile)
+	}
+
 	if !regen {
 		if exists(certFile, keyFile) {
 			return false, nil
@@ -630,8 +668,7 @@ func createClientCertKey(regen bool, commonName string, organization []string, a
 	if err != nil {
 		return false, err
 	}
-
-	keyBytes, _, err := certutil.LoadOrGenerateKeyFile(keyFile)
+	keyBytes, _, err := certutil.LoadOrGenerateKeyFile(keyFile, regen)
 	if err != nil {
 		return false, err
 	}
@@ -685,7 +722,7 @@ func createSigningCertKey(prefix, certFile, keyFile string) (bool, error) {
 		return false, nil
 	}
 
-	caKeyBytes, _, err := certutil.LoadOrGenerateKeyFile(keyFile)
+	caKeyBytes, _, err := certutil.LoadOrGenerateKeyFile(keyFile, false)
 	if err != nil {
 		return false, err
 	}
@@ -748,4 +785,22 @@ func setupStorageBackend(argsMap map[string]string, cfg *config.Control) {
 	if len(cfg.Storage.KeyFile) > 0 {
 		argsMap["etcd-keyfile"] = cfg.Storage.KeyFile
 	}
+}
+
+func expired(certFile string) bool {
+	certBytes, err := ioutil.ReadFile(certFile)
+	if err != nil {
+		return false
+	}
+	certificates, err := certutil.ParseCertsPEM(certBytes)
+	if err != nil {
+		return false
+	}
+	expirationDate := certificates[0].NotAfter
+	diffDays := expirationDate.Sub(time.Now()).Hours() / 24.0
+	if diffDays <= 90 {
+		logrus.Infof("certificate %s is about to expire", certFile)
+		return true
+	}
+	return false
 }

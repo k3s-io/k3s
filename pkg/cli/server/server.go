@@ -84,6 +84,7 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	serverConfig.ControlConfig.AdvertiseIP = cfg.AdvertiseIP
 	serverConfig.ControlConfig.AdvertisePort = cfg.AdvertisePort
 	serverConfig.ControlConfig.BootstrapReadOnly = !cfg.StoreBootstrap
+	serverConfig.ControlConfig.FlannelBackend = cfg.FlannelBackend
 
 	if cmds.AgentConfig.FlannelIface != "" && cmds.AgentConfig.NodeIP == "" {
 		cmds.AgentConfig.NodeIP = netutil.GetIPFromInterface(cmds.AgentConfig.FlannelIface)
@@ -119,6 +120,16 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 		serverConfig.ControlConfig.ClusterDNS[3] = 10
 	} else {
 		serverConfig.ControlConfig.ClusterDNS = net2.ParseIP(cfg.ClusterDNS)
+	}
+
+	if cfg.DefaultLocalStoragePath == "" {
+		dataDir, err := datadir.LocalHome(cfg.DataDir, false)
+		if err != nil {
+			return err
+		}
+		serverConfig.ControlConfig.DefaultLocalStoragePath = filepath.Join(dataDir, "/storage")
+	} else {
+		serverConfig.ControlConfig.DefaultLocalStoragePath = cfg.DefaultLocalStoragePath
 	}
 
 	for _, noDeploy := range app.StringSlice("no-deploy") {
@@ -165,7 +176,6 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	agentConfig.DataDir = filepath.Dir(serverConfig.ControlConfig.DataDir)
 	agentConfig.ServerURL = url
 	agentConfig.Token = token
-	agentConfig.Labels = append(agentConfig.Labels, "node-role.kubernetes.io/master=true")
 	agentConfig.DisableLoadBalancer = true
 
 	return agent.Run(ctx, agentConfig)

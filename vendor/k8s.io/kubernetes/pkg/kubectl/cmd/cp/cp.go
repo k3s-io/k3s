@@ -18,6 +18,7 @@ package cp
 
 import (
 	"archive/tar"
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -27,18 +28,16 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/lithammer/dedent"
+	"github.com/spf13/cobra"
+
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
-	"k8s.io/kubernetes/pkg/kubectl/cmd/exec"
-	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
-	"k8s.io/kubernetes/pkg/kubectl/util/i18n"
-	"k8s.io/kubernetes/pkg/kubectl/util/templates"
-
-	"bytes"
-
-	"github.com/lithammer/dedent"
-	"github.com/spf13/cobra"
+	"k8s.io/kubectl/pkg/cmd/exec"
+	cmdutil "k8s.io/kubectl/pkg/cmd/util"
+	"k8s.io/kubectl/pkg/util/i18n"
+	"k8s.io/kubectl/pkg/util/templates"
 )
 
 var (
@@ -46,6 +45,15 @@ var (
 		# !!!Important Note!!!
 		# Requires that the 'tar' binary is present in your container
 		# image.  If 'tar' is not present, 'kubectl cp' will fail.
+		#
+		# For advanced use cases, such as symlinks, wildcard expansion or
+		# file mode preservation consider using 'kubectl exec'.
+
+		# Copy /tmp/foo local file to /tmp/bar in a remote pod in namespace <some-namespace>
+		tar cf - /tmp/foo | kubectl exec -i -n <some-namespace> <some-pod> -- tar xf - -C /tmp/bar
+
+		# Copy /tmp/foo from a remote pod to /tmp/bar locally
+		kubectl exec -n <some-namespace> <some-pod> -- tar cf - /tmp/foo | tar xf - -C /tmp/bar
 
 		# Copy /tmp/foo_dir local directory to /tmp/bar_dir in a remote pod in the default namespace
 		kubectl cp /tmp/foo_dir <some-pod>:/tmp/bar_dir
@@ -72,8 +80,9 @@ type CopyOptions struct {
 	Namespace  string
 	NoPreserve bool
 
-	ClientConfig *restclient.Config
-	Clientset    kubernetes.Interface
+	ClientConfig      *restclient.Config
+	Clientset         kubernetes.Interface
+	ExecParentCmdName string
 
 	genericclioptions.IOStreams
 }
@@ -144,6 +153,10 @@ func extractFileSpec(arg string) (fileSpec, error) {
 
 // Complete completes all the required options
 func (o *CopyOptions) Complete(f cmdutil.Factory, cmd *cobra.Command) error {
+	if cmd.Parent() != nil {
+		o.ExecParentCmdName = cmd.Parent().CommandPath()
+	}
+
 	var err error
 	o.Namespace, _, err = f.ToRawKubeConfigLoader().Namespace()
 	if err != nil {
@@ -249,9 +262,9 @@ func (o *CopyOptions) copyToPod(src, dest fileSpec, options *exec.ExecOptions) e
 
 	// TODO: Improve error messages by first testing if 'tar' is present in the container?
 	if o.NoPreserve {
-		cmdArr = []string{"tar", "--no-same-permissions", "--no-same-owner", "-xf", "-"}
+		cmdArr = []string{"tar", "--no-same-permissions", "--no-same-owner", "-xmf", "-"}
 	} else {
-		cmdArr = []string{"tar", "-xf", "-"}
+		cmdArr = []string{"tar", "-xmf", "-"}
 	}
 	destDir := path.Dir(dest.File)
 	if len(destDir) > 0 {
@@ -308,7 +321,7 @@ func (o *CopyOptions) copyFromPod(src, dest fileSpec) error {
 	// remove extraneous path shortcuts - these could occur if a path contained extra "../"
 	// and attempted to navigate beyond "/" in a remote filesystem
 	prefix = stripPathShortcuts(prefix)
-	return o.untarAll(reader, dest.File, prefix)
+	return o.untarAll(src, reader, dest.File, prefix)
 }
 
 // stripPathShortcuts removes any leading or trailing "../" from a given path
@@ -413,10 +426,10 @@ func recursiveTar(srcBase, srcFile, destBase, destFile string, tw *tar.Writer) e
 	return nil
 }
 
-func (o *CopyOptions) untarAll(reader io.Reader, destDir, prefix string) error {
+func (o *CopyOptions) untarAll(src fileSpec, reader io.Reader, destDir, prefix string) error {
+	symlinkWarningPrinted := false
 	// TODO: use compression here?
 	tarReader := tar.NewReader(reader)
-	symlinks := map[string]string{} // map of link -> destination
 	for {
 		header, err := tarReader.Next()
 		if err != nil {
@@ -455,47 +468,24 @@ func (o *CopyOptions) untarAll(reader io.Reader, destDir, prefix string) error {
 			continue
 		}
 
-		// We need to ensure that the destination file is always within boundries
-		// of the destination directory. This prevents any kind of path traversal
-		// from within tar archive.
-		evaledPath, err := filepath.EvalSymlinks(baseName)
+		if mode&os.ModeSymlink != 0 {
+			if !symlinkWarningPrinted && len(o.ExecParentCmdName) > 0 {
+				fmt.Fprintf(o.IOStreams.ErrOut, "warning: file %q is a symlink, skipping (consider using \"%s exec -n %q %q -- tar cf - %q | tar xf -\")\n", destFileName, o.ExecParentCmdName, src.PodNamespace, src.PodName, src.File)
+				symlinkWarningPrinted = true
+				continue
+			}
+			fmt.Fprintf(o.IOStreams.ErrOut, "warning: skipping symlink: %q -> %q\n", destFileName, header.Linkname)
+			continue
+		}
+		outFile, err := os.Create(destFileName)
 		if err != nil {
 			return err
 		}
-		// For scrutiny we verify both the actual destination as well as we follow
-		// all the links that might lead outside of the destination directory.
-		if !isDestRelative(destDir, filepath.Join(evaledPath, filepath.Base(destFileName))) {
-			fmt.Fprintf(o.IOStreams.ErrOut, "warning: file %q is outside target destination, skipping\n", destFileName)
-			continue
+		defer outFile.Close()
+		if _, err := io.Copy(outFile, tarReader); err != nil {
+			return err
 		}
-
-		if mode&os.ModeSymlink != 0 {
-			if _, exists := symlinks[destFileName]; exists {
-				return fmt.Errorf("duplicate symlink: %q", destFileName)
-			}
-			symlinks[destFileName] = header.Linkname
-		} else {
-			outFile, err := os.Create(destFileName)
-			if err != nil {
-				return err
-			}
-			defer outFile.Close()
-			if _, err := io.Copy(outFile, tarReader); err != nil {
-				return err
-			}
-			if err := outFile.Close(); err != nil {
-				return err
-			}
-		}
-	}
-
-	// Create symlinks after all regular files have been written.
-	// Ordering this way prevents writing data outside the destination directory through path
-	// traversals.
-	// Symlink chaining is prevented due to the directory tree being established (MkdirAll) before
-	// creating any symlinks.
-	for newname, oldname := range symlinks {
-		if err := os.Symlink(oldname, newname); err != nil {
+		if err := outFile.Close(); err != nil {
 			return err
 		}
 	}

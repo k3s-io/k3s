@@ -19,6 +19,7 @@ go_test(
         "//staging/src/k8s.io/client-go/informers:go_default_library",
         "//staging/src/k8s.io/client-go/kubernetes/fake:go_default_library",
         "//staging/src/k8s.io/legacy-cloud-providers/gce:go_default_library",
+        "//vendor/k8s.io/utils/net:go_default_library",
     ],
 )
 
@@ -26,11 +27,11 @@ go_library(
     name = "go_default_library",
     srcs = [
         "doc.go",
+        "legacyprovider.go",
         "node_ipam_controller.go",
     ],
     importpath = "k8s.io/kubernetes/pkg/controller/nodeipam",
     deps = [
-        "//pkg/controller:go_default_library",
         "//pkg/controller/nodeipam/ipam:go_default_library",
         "//pkg/controller/nodeipam/ipam/sync:go_default_library",
         "//pkg/util/metrics:go_default_library",

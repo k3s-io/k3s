@@ -18,7 +18,6 @@ package containers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -29,8 +28,10 @@ import (
 	"github.com/containerd/containerd/cmd/ctr/commands"
 	"github.com/containerd/containerd/cmd/ctr/commands/run"
 	"github.com/containerd/containerd/containers"
+	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/log"
 	"github.com/containerd/typeurl"
+	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
 
@@ -45,13 +46,15 @@ var Command = cli.Command{
 		infoCommand,
 		listCommand,
 		setLabelsCommand,
+		checkpointCommand,
+		restoreCommand,
 	},
 }
 
 var createCommand = cli.Command{
 	Name:      "create",
 	Usage:     "create container",
-	ArgsUsage: "[flags] Image|RootFS CONTAINER",
+	ArgsUsage: "[flags] Image|RootFS CONTAINER [COMMAND] [ARG...]",
 	Flags:     append(commands.SnapshotterFlags, commands.ContainerFlags...),
 	Action: func(context *cli.Context) error {
 		var (
@@ -63,17 +66,17 @@ var createCommand = cli.Command{
 		if config {
 			id = context.Args().First()
 			if context.NArg() > 1 {
-				return errors.New("with spec config file, only container id should be provided")
+				return errors.Wrap(errdefs.ErrInvalidArgument, "with spec config file, only container id should be provided")
 			}
 		} else {
 			id = context.Args().Get(1)
 			ref = context.Args().First()
 			if ref == "" {
-				return errors.New("image ref must be provided")
+				return errors.Wrap(errdefs.ErrInvalidArgument, "image ref must be provided")
 			}
 		}
 		if id == "" {
-			return errors.New("container id must be provided")
+			return errors.Wrap(errdefs.ErrInvalidArgument, "container id must be provided")
 		}
 		client, ctx, cancel, err := commands.NewClient(context)
 		if err != nil {
@@ -122,7 +125,7 @@ var listCommand = cli.Command{
 		w := tabwriter.NewWriter(os.Stdout, 4, 8, 4, ' ', 0)
 		fmt.Fprintln(w, "CONTAINER\tIMAGE\tRUNTIME\t")
 		for _, c := range containers {
-			info, err := c.Info(ctx)
+			info, err := c.Info(ctx, containerd.WithoutRefreshedMetadata)
 			if err != nil {
 				return err
 			}
@@ -166,7 +169,7 @@ var deleteCommand = cli.Command{
 		}
 
 		if context.NArg() == 0 {
-			return errors.New("must specify at least one container to delete")
+			return errors.Wrap(errdefs.ErrInvalidArgument, "must specify at least one container to delete")
 		}
 		for _, arg := range context.Args() {
 			if err := deleteContainer(ctx, client, arg, deleteOpts...); err != nil {
@@ -212,7 +215,7 @@ var setLabelsCommand = cli.Command{
 	Action: func(context *cli.Context) error {
 		containerID, labels := commands.ObjectWithLabelArgs(context)
 		if containerID == "" {
-			return errors.New("container id must be provided")
+			return errors.Wrap(errdefs.ErrInvalidArgument, "container id must be provided")
 		}
 		client, ctx, cancel, err := commands.NewClient(context)
 		if err != nil {
@@ -248,7 +251,7 @@ var infoCommand = cli.Command{
 	Action: func(context *cli.Context) error {
 		id := context.Args().First()
 		if id == "" {
-			return errors.New("container id must be provided")
+			return errors.Wrap(errdefs.ErrInvalidArgument, "container id must be provided")
 		}
 		client, ctx, cancel, err := commands.NewClient(context)
 		if err != nil {
@@ -259,7 +262,7 @@ var infoCommand = cli.Command{
 		if err != nil {
 			return err
 		}
-		info, err := container.Info(ctx)
+		info, err := container.Info(ctx, containerd.WithoutRefreshedMetadata)
 		if err != nil {
 			return err
 		}

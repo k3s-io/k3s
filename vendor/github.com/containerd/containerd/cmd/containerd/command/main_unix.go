@@ -21,11 +21,9 @@ package command
 import (
 	"context"
 	"os"
-	"runtime"
 
 	"github.com/containerd/containerd/log"
 	"github.com/containerd/containerd/services/server"
-	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 )
 
@@ -50,7 +48,7 @@ func handleSignals(ctx context.Context, signals chan os.Signal, serverC chan *se
 				log.G(ctx).WithField("signal", s).Debug("received signal")
 				switch s {
 				case unix.SIGUSR1:
-					dumpStacks()
+					dumpStacks(true)
 				case unix.SIGPIPE:
 					continue
 				default:
@@ -60,24 +58,10 @@ func handleSignals(ctx context.Context, signals chan os.Signal, serverC chan *se
 					}
 					server.Stop()
 					close(done)
+					return
 				}
 			}
 		}
 	}()
 	return done
-}
-
-func dumpStacks() {
-	var (
-		buf       []byte
-		stackSize int
-	)
-	bufferLen := 16384
-	for stackSize == len(buf) {
-		buf = make([]byte, bufferLen)
-		stackSize = runtime.Stack(buf, true)
-		bufferLen *= 2
-	}
-	buf = buf[:stackSize]
-	logrus.Infof("=== BEGIN goroutine stack dump ===\n%s\n=== END goroutine stack dump ===", buf)
 }

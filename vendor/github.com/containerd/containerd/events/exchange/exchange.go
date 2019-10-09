@@ -50,7 +50,7 @@ var _ events.Publisher = &Exchange{}
 var _ events.Forwarder = &Exchange{}
 var _ events.Subscriber = &Exchange{}
 
-// Forward accepts an envelope to be direcly distributed on the exchange.
+// Forward accepts an envelope to be directly distributed on the exchange.
 //
 // This is useful when an event is forwarded on behalf of another namespace or
 // when the event is propagated on behalf of another publisher.
@@ -138,10 +138,10 @@ func (e *Exchange) Subscribe(ctx context.Context, fs ...string) (ch <-chan *even
 	)
 
 	closeAll := func() {
-		defer close(errq)
-		defer e.broadcaster.Remove(dst)
-		defer queue.Close()
-		defer channel.Close()
+		channel.Close()
+		queue.Close()
+		e.broadcaster.Remove(dst)
+		close(errq)
 	}
 
 	ch = evch

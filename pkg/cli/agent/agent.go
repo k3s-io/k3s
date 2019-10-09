@@ -74,7 +74,6 @@ func Run(ctx *cli.Context) error {
 	cfg := cmds.AgentConfig
 	cfg.Debug = ctx.GlobalBool("debug")
 	cfg.DataDir = dataDir
-	cfg.Labels = append(cfg.Labels, "node-role.kubernetes.io/worker=true")
 
 	contextCtx := signals.SetupSignalHandler(context.Background())
 	systemd.SdNotify(true, "READY=1\n")

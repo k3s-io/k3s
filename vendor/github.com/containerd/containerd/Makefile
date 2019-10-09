@@ -17,7 +17,7 @@
 ROOTDIR=$(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
 # Base path used to install.
-DESTDIR=/usr/local
+DESTDIR ?= /usr/local
 
 # Used to populate variables in version package.
 VERSION=$(shell git describe --match 'v[0-9]*' --dirty='.m' --always)
@@ -51,6 +51,15 @@ else
 	endif
 endif
 
+ifndef GODEBUG
+	EXTRA_LDFLAGS += -s -w
+	DEBUG_GO_GCFLAGS :=
+	DEBUG_TAGS :=
+else
+	DEBUG_GO_GCFLAGS := -gcflags=all="-N -l"
+	DEBUG_TAGS := static_build
+endif
+
 WHALE = "🇩"
 ONI = "👹"
 
@@ -75,11 +84,15 @@ TEST_REQUIRES_ROOT_PACKAGES=$(filter \
 COMMANDS=ctr containerd containerd-stress
 MANPAGES=ctr.1 containerd.1 containerd-config.1 containerd-config.toml.5
 
+ifdef BUILDTAGS
+    GO_BUILDTAGS = ${BUILDTAGS}
+endif
 # Build tags seccomp and apparmor are needed by CRI plugin.
-BUILDTAGS ?= seccomp apparmor
-GO_TAGS=$(if $(BUILDTAGS),-tags "$(BUILDTAGS)",)
-GO_LDFLAGS=-ldflags '-s -w -X $(PKG)/version.Version=$(VERSION) -X $(PKG)/version.Revision=$(REVISION) -X $(PKG)/version.Package=$(PACKAGE) $(EXTRA_LDFLAGS)'
-SHIM_GO_LDFLAGS=-ldflags '-s -w -X $(PKG)/version.Version=$(VERSION) -X $(PKG)/version.Revision=$(REVISION) -X $(PKG)/version.Package=$(PACKAGE) -extldflags "-static"'
+GO_BUILDTAGS ?= seccomp apparmor
+GO_BUILDTAGS += ${DEBUG_TAGS}
+GO_TAGS=$(if $(GO_BUILDTAGS),-tags "$(GO_BUILDTAGS)",)
+GO_LDFLAGS=-ldflags '-X $(PKG)/version.Version=$(VERSION) -X $(PKG)/version.Revision=$(REVISION) -X $(PKG)/version.Package=$(PACKAGE) $(EXTRA_LDFLAGS)'
+SHIM_GO_LDFLAGS=-ldflags '-X $(PKG)/version.Version=$(VERSION) -X $(PKG)/version.Revision=$(REVISION) -X $(PKG)/version.Package=$(PACKAGE) -extldflags "-static" $(EXTRA_LDFLAGS)'
 
 #Replaces ":" (*nix), ";" (windows) with newline for easy parsing
 GOPATHS=$(shell echo ${GOPATH} | tr ":" "\n" | tr ";" "\n")
@@ -98,17 +111,17 @@ GO_GCFLAGS=$(shell				\
 BINARIES=$(addprefix bin/,$(COMMANDS))
 
 # Flags passed to `go test`
-TESTFLAGS ?= -v $(TESTFLAGS_RACE)
+TESTFLAGS ?= $(TESTFLAGS_RACE)
 TESTFLAGS_PARALLEL ?= 8
 
-.PHONY: clean all AUTHORS build binaries test integration generate protos checkprotos coverage ci check help install uninstall vendor release mandir install-man
+.PHONY: clean all AUTHORS build binaries test integration generate protos checkprotos coverage ci check help install uninstall vendor release mandir install-man genman
 .DEFAULT: default
 
 all: binaries
 
 check: proto-fmt ## run all linters
 	@echo "$(WHALE) $@"
-	gometalinter --config .gometalinter.json ./...
+	GOGC=75 golangci-lint run
 
 ci: check binaries checkprotos coverage coverage-integration ## to be used by the CI
 
@@ -144,7 +157,7 @@ proto-fmt: ## check format of proto files
 
 build: ## build the go packages
 	@echo "$(WHALE) $@"
-	@go build ${GO_GCFLAGS} ${GO_BUILD_FLAGS} ${EXTRA_FLAGS} ${GO_LDFLAGS} ${PACKAGES}
+	@go build ${DEBUG_GO_GCFLAGS} ${GO_GCFLAGS} ${GO_BUILD_FLAGS} ${EXTRA_FLAGS} ${GO_LDFLAGS} ${PACKAGES}
 
 test: ## run tests, except integration tests and tests that require root
 	@echo "$(WHALE) $@"
@@ -167,7 +180,7 @@ FORCE:
 # Build a binary from a cmd.
 bin/%: cmd/% FORCE
 	@echo "$(WHALE) $@${BINARY_SUFFIX}"
-	@go build ${GO_GCFLAGS} ${GO_BUILD_FLAGS} -o $@${BINARY_SUFFIX} ${GO_LDFLAGS} ${GO_TAGS}  ./$<
+	@go build ${DEBUG_GO_GCFLAGS} ${GO_GCFLAGS} ${GO_BUILD_FLAGS} -o $@${BINARY_SUFFIX} ${GO_LDFLAGS} ${GO_TAGS}  ./$<
 
 bin/containerd-shim: cmd/containerd-shim FORCE # set !cgo and omit pie for a static shim build: https://github.com/golang/go/issues/17789#issuecomment-258542220
 	@echo "$(WHALE) bin/containerd-shim"
@@ -177,9 +190,9 @@ bin/containerd-shim-runc-v1: cmd/containerd-shim-runc-v1 FORCE # set !cgo and om
 	@echo "$(WHALE) bin/containerd-shim-runc-v1"
 	@CGO_ENABLED=0 go build ${GO_BUILD_FLAGS} -o bin/containerd-shim-runc-v1 ${SHIM_GO_LDFLAGS} ${GO_TAGS} ./cmd/containerd-shim-runc-v1
 
-bin/containerd-shim-runhcs-v1: cmd/containerd-shim-runhcs-v1 FORCE # set !cgo and omit pie for a static shim build: https://github.com/golang/go/issues/17789#issuecomment-258542220
-	@echo "$(WHALE) bin/containerd-shim-runhcs-v1${BINARY_SUFFIX}"
-	@CGO_ENABLED=0 go build ${GO_BUILD_FLAGS} -o bin/containerd-shim-runhcs-v1${BINARY_SUFFIX} ${SHIM_GO_LDFLAGS} ${GO_TAGS} ./cmd/containerd-shim-runhcs-v1
+bin/containerd-shim-runc-v2: cmd/containerd-shim-runc-v2 FORCE # set !cgo and omit pie for a static shim build: https://github.com/golang/go/issues/17789#issuecomment-258542220
+	@echo "$(WHALE) bin/containerd-shim-runc-v2"
+	@CGO_ENABLED=0 go build ${GO_BUILD_FLAGS} -o bin/containerd-shim-runc-v2 ${SHIM_GO_LDFLAGS} ${GO_TAGS} ./cmd/containerd-shim-runc-v2
 
 binaries: $(BINARIES) ## build binaries
 	@echo "$(WHALE) $@"
@@ -189,6 +202,9 @@ man: mandir $(addprefix man/,$(MANPAGES))
 
 mandir:
 	@mkdir -p man
+
+genman: FORCE
+	go run cmd/gen-manpages/main.go man/
 
 man/%: docs/man/%.md FORCE
 	@echo "$(WHALE) $<"
@@ -203,16 +219,39 @@ install-man:
 	@echo "$(WHALE) $@"
 	$(foreach manpage,$(addprefix man/,$(MANPAGES)), $(call installmanpage,$(manpage),$(subst .,,$(suffix $(manpage))),$(notdir $(manpage))))
 
-release: $(BINARIES)
+releases/$(RELEASE).tar.gz: $(BINARIES)
 	@echo "$(WHALE) $@"
 	@rm -rf releases/$(RELEASE) releases/$(RELEASE).tar.gz
 	@install -d releases/$(RELEASE)/bin
 	@install $(BINARIES) releases/$(RELEASE)/bin
-	@cd releases/$(RELEASE) && tar -czf ../$(RELEASE).tar.gz *
+	@tar -czf releases/$(RELEASE).tar.gz -C releases/$(RELEASE) bin
+	@rm -rf releases/$(RELEASE)
+
+release: $(BINARIES) releases/$(RELEASE).tar.gz
+	@echo "$(WHALE) $@"
+	@cd releases && sha256sum $(RELEASE).tar.gz >$(RELEASE).tar.gz.sha256sum
+
+cri-release: $(BINARIES) releases/$(RELEASE).tar.gz
+	@echo "$(WHALE) $@"
+	@VERSION=$(VERSION:v%=%) script/release/release-cri
 
 clean: ## clean up binaries
 	@echo "$(WHALE) $@"
 	@rm -f $(BINARIES)
+
+clean-test: ## clean up debris from previously failed tests
+	@echo "$(WHALE) $@"
+	$(eval containers=$(shell find /run/containerd/runc -mindepth 2 -maxdepth 3  -type d -exec basename {} \;))
+	$(shell pidof containerd containerd-shim runc | xargs -r -n 1 kill -9)
+	@( for container in $(containers); do \
+	    grep $$container /proc/self/mountinfo | while read -r mountpoint; do \
+		umount $$(echo $$mountpoint | awk '{print $$5}'); \
+	    done; \
+	    find /sys/fs/cgroup -name $$container -print0 | xargs -r -0 rmdir; \
+	done )
+	@rm -rf /run/containerd/runc/*
+	@rm -rf /run/containerd/fifo/*
+	@rm -rf /run/containerd-test/*
 
 install: ## install binaries
 	@echo "$(WHALE) $@ $(BINARIES)"

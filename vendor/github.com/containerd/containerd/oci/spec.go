@@ -78,7 +78,7 @@ func generateDefaultSpecWithPlatform(ctx context.Context, platform, id string, s
 	return err
 }
 
-// ApplyOpts applys the options to the given spec, injecting data from the
+// ApplyOpts applies the options to the given spec, injecting data from the
 // context, client and container instance.
 func ApplyOpts(ctx context.Context, client Client, c *containers.Container, s *Spec, opts ...SpecOpts) error {
 	for _, o := range opts {
@@ -246,17 +246,8 @@ func populateDefaultWindowsSpec(ctx context.Context, s *Spec, id string) error {
 		Root:    &specs.Root{},
 		Process: &specs.Process{
 			Cwd: `C:\`,
-			ConsoleSize: &specs.Box{
-				Width:  80,
-				Height: 20,
-			},
 		},
-		Windows: &specs.Windows{
-			IgnoreFlushesDuringBoot: true,
-			Network: &specs.WindowsNetwork{
-				AllowUnqualifiedDNSQuery: true,
-			},
-		},
+		Windows: &specs.Windows{},
 	}
 	return nil
 }

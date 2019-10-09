@@ -44,7 +44,7 @@ type Process interface {
 	Wait(context.Context) (<-chan ExitStatus, error)
 	// CloseIO allows various pipes to be closed on the process
 	CloseIO(context.Context, ...IOCloserOpts) error
-	// Resize changes the width and heigh of the process's terminal
+	// Resize changes the width and height of the process's terminal
 	Resize(ctx context.Context, w, h uint32) error
 	// IO returns the io set for the process
 	IO() cio.IO
@@ -52,7 +52,16 @@ type Process interface {
 	Status(context.Context) (Status, error)
 }
 
-// ExitStatus encapsulates a process' exit status.
+// NewExitStatus populates an ExitStatus
+func NewExitStatus(code uint32, t time.Time, err error) *ExitStatus {
+	return &ExitStatus{
+		code:     code,
+		exitedAt: t,
+		err:      err,
+	}
+}
+
+// ExitStatus encapsulates a process's exit status.
 // It is used by `Wait()` to return either a process exit code or an error
 type ExitStatus struct {
 	code     uint32

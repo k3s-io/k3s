@@ -7,7 +7,10 @@ assignees: ''
 
 ---
 
-Thanks for helping us to improve k3s! We welcome all bug reports. At this stage, we are also looking for help in testing/QAing fixes. Once we've fixed you're issue, we'll ping you in the comments to see if you can verify the fix. We'll give you details on what version can be used to test the fix. Additionally, if you are interested in testing fixes that you ***didn't*** report, look for the issues with the `status/to-test` label. You can pick any of these up for verification.  ***You can delete this message portion of the bug report.***
+Thanks for helping us to improve k3s! We welcome all bug reports. Please fill out each area of the template so we can better help you.  ***You can delete this message portion of the bug report.***
+
+**Version:**
+Provide the output from `k3s -v` and provide the flags used to install or run k3s server.
 
 **Describe the bug**
 A clear and concise description of what the bug is.
@@ -18,9 +21,8 @@ Steps to reproduce the behavior:
 **Expected behavior**
 A clear and concise description of what you expected to happen.
 
-**Screenshots**
-If applicable, add screenshots to help explain your problem.
-
+**Actual behavior**
+A clear and concise description of what actually happened.
 
 **Additional context**
 Add any other context about the problem here.

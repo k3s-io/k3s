@@ -18,10 +18,10 @@ package tasks
 
 import (
 	"fmt"
-	"runtime"
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cmd/ctr/commands"
+	"github.com/containerd/containerd/plugin"
 	"github.com/containerd/containerd/runtime/linux/runctypes"
 	"github.com/containerd/containerd/runtime/v2/runc/options"
 	"github.com/pkg/errors"
@@ -38,9 +38,12 @@ var checkpointCommand = cli.Command{
 			Usage: "stop the container after the checkpoint",
 		},
 		cli.StringFlag{
-			Name:  "runtime",
-			Usage: "runtime name",
-			Value: fmt.Sprintf("io.containerd.runtime.v1.%s", runtime.GOOS),
+			Name:  "image-path",
+			Usage: "path to criu image files",
+		},
+		cli.StringFlag{
+			Name:  "work-path",
+			Usage: "path to criu work files and logs",
 		},
 	},
 	Action: func(context *cli.Context) error {
@@ -61,39 +64,58 @@ var checkpointCommand = cli.Command{
 		if err != nil {
 			return err
 		}
-		var opts []containerd.CheckpointTaskOpts
-		if context.Bool("exit") {
-			opts = append(opts, withExit(context.String("runtime")))
+		info, err := container.Info(ctx)
+		if err != nil {
+			return err
 		}
+		opts := []containerd.CheckpointTaskOpts{withCheckpointOpts(info.Runtime.Name, context)}
 		checkpoint, err := task.Checkpoint(ctx, opts...)
 		if err != nil {
 			return err
 		}
-		fmt.Println(checkpoint.Name())
+		if context.String("image-path") == "" {
+			fmt.Println(checkpoint.Name())
+		}
 		return nil
 	},
 }
 
-func withExit(rt string) containerd.CheckpointTaskOpts {
+// withCheckpointOpts only suitable for runc runtime now
+func withCheckpointOpts(rt string, context *cli.Context) containerd.CheckpointTaskOpts {
 	return func(r *containerd.CheckpointTaskInfo) error {
+		imagePath := context.String("image-path")
+		workPath := context.String("work-path")
+
 		switch rt {
-		case "io.containerd.runc.v1":
+		case plugin.RuntimeRuncV1, plugin.RuntimeRuncV2:
 			if r.Options == nil {
-				r.Options = &options.CheckpointOptions{
-					Exit: true,
-				}
-			} else {
-				opts, _ := r.Options.(*options.CheckpointOptions)
+				r.Options = &options.CheckpointOptions{}
+			}
+			opts, _ := r.Options.(*options.CheckpointOptions)
+
+			if context.Bool("exit") {
 				opts.Exit = true
 			}
-		default:
+			if imagePath != "" {
+				opts.ImagePath = imagePath
+			}
+			if workPath != "" {
+				opts.WorkPath = workPath
+			}
+		case plugin.RuntimeLinuxV1:
 			if r.Options == nil {
-				r.Options = &runctypes.CheckpointOptions{
-					Exit: true,
-				}
-			} else {
-				opts, _ := r.Options.(*runctypes.CheckpointOptions)
+				r.Options = &runctypes.CheckpointOptions{}
+			}
+			opts, _ := r.Options.(*runctypes.CheckpointOptions)
+
+			if context.Bool("exit") {
 				opts.Exit = true
+			}
+			if imagePath != "" {
+				opts.ImagePath = imagePath
+			}
+			if workPath != "" {
+				opts.WorkPath = workPath
 			}
 		}
 		return nil

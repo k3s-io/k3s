@@ -47,12 +47,13 @@ func toCRISandbox(meta sandboxstore.Metadata, status sandboxstore.Status) *runti
 		state = runtime.PodSandboxState_SANDBOX_READY
 	}
 	return &runtime.PodSandbox{
-		Id:          meta.ID,
-		Metadata:    meta.Config.GetMetadata(),
-		State:       state,
-		CreatedAt:   status.CreatedAt.UnixNano(),
-		Labels:      meta.Config.GetLabels(),
-		Annotations: meta.Config.GetAnnotations(),
+		Id:             meta.ID,
+		Metadata:       meta.Config.GetMetadata(),
+		State:          state,
+		CreatedAt:      status.CreatedAt.UnixNano(),
+		Labels:         meta.Config.GetLabels(),
+		Annotations:    meta.Config.GetAnnotations(),
+		RuntimeHandler: meta.RuntimeHandler,
 	}
 }
 

@@ -63,16 +63,19 @@ var pushCommand = cli.Command{
 		var (
 			ref   = context.Args().First()
 			local = context.Args().Get(1)
+			debug = context.GlobalBool("debug")
 			desc  ocispec.Descriptor
 		)
 		if ref == "" {
 			return errors.New("please provide a remote image reference to push")
 		}
+
 		client, ctx, cancel, err := commands.NewClient(context)
 		if err != nil {
 			return err
 		}
 		defer cancel()
+
 		if manifest := context.String("manifest"); manifest != "" {
 			desc.Digest, err = digest.Parse(manifest)
 			if err != nil {
@@ -98,7 +101,12 @@ var pushCommand = cli.Command{
 
 		eg, ctx := errgroup.WithContext(ctx)
 
+		// used to notify the progress writer
+		doneCh := make(chan struct{})
+
 		eg.Go(func() error {
+			defer close(doneCh)
+
 			log.G(ctx).WithField("image", ref).WithField("digest", desc.Digest).Debug("pushing")
 
 			jobHandler := images.HandlerFunc(func(ctx gocontext.Context, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
@@ -112,43 +120,41 @@ var pushCommand = cli.Command{
 			)
 		})
 
-		errs := make(chan error)
-		go func() {
-			defer close(errs)
-			errs <- eg.Wait()
-		}()
+		// don't show progress if debug mode is set
+		if !debug {
+			eg.Go(func() error {
+				var (
+					ticker = time.NewTicker(100 * time.Millisecond)
+					fw     = progress.NewWriter(os.Stdout)
+					start  = time.Now()
+					done   bool
+				)
 
-		var (
-			ticker = time.NewTicker(100 * time.Millisecond)
-			fw     = progress.NewWriter(os.Stdout)
-			start  = time.Now()
-			done   bool
-		)
-		defer ticker.Stop()
+				defer ticker.Stop()
 
-		for {
-			select {
-			case <-ticker.C:
-				fw.Flush()
+				for {
+					select {
+					case <-ticker.C:
+						fw.Flush()
 
-				tw := tabwriter.NewWriter(fw, 1, 8, 1, ' ', 0)
+						tw := tabwriter.NewWriter(fw, 1, 8, 1, ' ', 0)
 
-				content.Display(tw, ongoing.status(), start)
-				tw.Flush()
+						content.Display(tw, ongoing.status(), start)
+						tw.Flush()
 
-				if done {
-					fw.Flush()
-					return nil
+						if done {
+							fw.Flush()
+							return nil
+						}
+					case <-doneCh:
+						done = true
+					case <-ctx.Done():
+						done = true // allow ui to update once more
+					}
 				}
-			case err := <-errs:
-				if err != nil {
-					return err
-				}
-				done = true
-			case <-ctx.Done():
-				done = true // allow ui to update once more
-			}
+			})
 		}
+		return eg.Wait()
 	},
 }
 

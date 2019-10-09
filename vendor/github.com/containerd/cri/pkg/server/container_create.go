@@ -17,9 +17,7 @@ limitations under the License.
 package server
 
 import (
-	"os"
 	"path/filepath"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -28,28 +26,22 @@ import (
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/contrib/apparmor"
 	"github.com/containerd/containerd/contrib/seccomp"
-	"github.com/containerd/containerd/mount"
+	"github.com/containerd/containerd/log"
 	"github.com/containerd/containerd/oci"
-	"github.com/containerd/typeurl"
-	"github.com/davecgh/go-spew/spew"
-	imagespec "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/opencontainers/runc/libcontainer/devices"
-	runtimespec "github.com/opencontainers/runtime-spec/specs-go"
-	"github.com/opencontainers/runtime-tools/validate"
-	"github.com/opencontainers/selinux/go-selinux/label"
-	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
-	"github.com/syndtr/gocapability/capability"
-	"golang.org/x/net/context"
-	"golang.org/x/sys/unix"
-	runtime "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
-
 	"github.com/containerd/cri/pkg/annotations"
+	"github.com/containerd/cri/pkg/config"
 	customopts "github.com/containerd/cri/pkg/containerd/opts"
 	ctrdutil "github.com/containerd/cri/pkg/containerd/util"
 	cio "github.com/containerd/cri/pkg/server/io"
 	containerstore "github.com/containerd/cri/pkg/store/container"
 	"github.com/containerd/cri/pkg/util"
+	"github.com/containerd/typeurl"
+	"github.com/davecgh/go-spew/spew"
+	imagespec "github.com/opencontainers/image-spec/specs-go/v1"
+	runtimespec "github.com/opencontainers/runtime-spec/specs-go"
+	"github.com/pkg/errors"
+	"golang.org/x/net/context"
+	runtime "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
 
 const (
@@ -75,7 +67,7 @@ func init() {
 // CreateContainer creates a new container in the given PodSandbox.
 func (c *criService) CreateContainer(ctx context.Context, r *runtime.CreateContainerRequest) (_ *runtime.CreateContainerResponse, retErr error) {
 	config := r.GetConfig()
-	logrus.Debugf("Container config %+v", config)
+	log.G(ctx).Debugf("Container config %+v", config)
 	sandboxConfig := r.GetSandboxConfig()
 	sandbox, err := c.sandboxStore.Get(r.GetPodSandboxId())
 	if err != nil {
@@ -92,8 +84,12 @@ func (c *criService) CreateContainer(ctx context.Context, r *runtime.CreateConta
 	// Reserve the container name to avoid concurrent `CreateContainer` request creating
 	// the same container.
 	id := util.GenerateID()
-	name := makeContainerName(config.GetMetadata(), sandboxConfig.GetMetadata())
-	logrus.Debugf("Generated id %q for container %q", id, name)
+	metadata := config.GetMetadata()
+	if metadata == nil {
+		return nil, errors.New("container config must include metadata")
+	}
+	name := makeContainerName(metadata, sandboxConfig.GetMetadata())
+	log.G(ctx).Debugf("Generated id %q for container %q", id, name)
 	if err = c.containerNameIndex.Reserve(name, id); err != nil {
 		return nil, errors.Wrapf(err, "failed to reserve container name %q", name)
 	}
@@ -139,7 +135,7 @@ func (c *criService) CreateContainer(ctx context.Context, r *runtime.CreateConta
 		if retErr != nil {
 			// Cleanup the container root directory.
 			if err = c.os.RemoveAll(containerRootDir); err != nil {
-				logrus.WithError(err).Errorf("Failed to remove container root directory %q",
+				log.G(ctx).WithError(err).Errorf("Failed to remove container root directory %q",
 					containerRootDir)
 			}
 		}
@@ -153,7 +149,7 @@ func (c *criService) CreateContainer(ctx context.Context, r *runtime.CreateConta
 		if retErr != nil {
 			// Cleanup the volatile container root directory.
 			if err = c.os.RemoveAll(volatileContainerRootDir); err != nil {
-				logrus.WithError(err).Errorf("Failed to remove volatile container root directory %q",
+				log.G(ctx).WithError(err).Errorf("Failed to remove volatile container root directory %q",
 					volatileContainerRootDir)
 			}
 		}
@@ -165,12 +161,19 @@ func (c *criService) CreateContainer(ctx context.Context, r *runtime.CreateConta
 	// Generate container runtime spec.
 	mounts := c.generateContainerMounts(sandboxID, config)
 
-	spec, err := c.generateContainerSpec(id, sandboxID, sandboxPid, config, sandboxConfig, &image.ImageSpec.Config, append(mounts, volumeMounts...))
+	ociRuntime, err := c.getSandboxRuntime(sandboxConfig, sandbox.Metadata.RuntimeHandler)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get sandbox runtime")
+	}
+	log.G(ctx).Debugf("Use OCI runtime %+v for sandbox %q and container %q", ociRuntime, sandboxID, id)
+
+	spec, err := c.generateContainerSpec(id, sandboxID, sandboxPid, config, sandboxConfig,
+		&image.ImageSpec.Config, append(mounts, volumeMounts...), ociRuntime)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to generate container %q spec", id)
 	}
 
-	logrus.Debugf("Container %q spec: %#+v", id, spew.NewFormatter(spec))
+	log.G(ctx).Debugf("Container %q spec: %#+v", id, spew.NewFormatter(spec))
 
 	// Set snapshotter before any other options.
 	opts := []containerd.NewContainerOpts{
@@ -193,9 +196,14 @@ func (c *criService) CreateContainer(ctx context.Context, r *runtime.CreateConta
 	meta.ImageRef = image.ID
 	meta.StopSignal = image.ImageSpec.Config.StopSignal
 
-	// Get container log path.
-	if config.GetLogPath() != "" {
+	// Validate log paths and compose full container log path.
+	if sandboxConfig.GetLogDirectory() != "" && config.GetLogPath() != "" {
 		meta.LogPath = filepath.Join(sandboxConfig.GetLogDirectory(), config.GetLogPath())
+		log.G(ctx).Debugf("Composed container full log path %q using sandbox log dir %q and container log path %q",
+			meta.LogPath, sandboxConfig.GetLogDirectory(), config.GetLogPath())
+	} else {
+		log.G(ctx).Infof("Logging will be disabled due to empty log paths for sandbox (%q) or container (%q)",
+			sandboxConfig.GetLogDirectory(), config.GetLogPath())
 	}
 
 	containerIO, err := cio.NewContainerIO(id,
@@ -206,7 +214,7 @@ func (c *criService) CreateContainer(ctx context.Context, r *runtime.CreateConta
 	defer func() {
 		if retErr != nil {
 			if err := containerIO.Close(); err != nil {
-				logrus.WithError(err).Errorf("Failed to close container io %q", id)
+				log.G(ctx).WithError(err).Errorf("Failed to close container io %q", id)
 			}
 		}
 	}()
@@ -219,10 +227,15 @@ func (c *criService) CreateContainer(ctx context.Context, r *runtime.CreateConta
 	userstr, err := generateUserString(
 		securityContext.GetRunAsUsername(),
 		securityContext.GetRunAsUser(),
-		securityContext.GetRunAsGroup(),
-	)
+		securityContext.GetRunAsGroup())
+
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to generate user string")
+	}
+	if userstr == "" {
+		// Lastly, since no user override was passed via CRI try to set via OCI
+		// Image
+		userstr = image.ImageSpec.Config.User
 	}
 	if userstr != "" {
 		specOpts = append(specOpts, oci.WithUser(userstr))
@@ -278,7 +291,7 @@ func (c *criService) CreateContainer(ctx context.Context, r *runtime.CreateConta
 			deferCtx, deferCancel := ctrdutil.DeferContext()
 			defer deferCancel()
 			if err := cntr.Delete(deferCtx, containerd.WithSnapshotCleanup); err != nil {
-				logrus.WithError(err).Errorf("Failed to delete containerd container %q", id)
+				log.G(ctx).WithError(err).Errorf("Failed to delete containerd container %q", id)
 			}
 		}
 	}()
@@ -296,7 +309,7 @@ func (c *criService) CreateContainer(ctx context.Context, r *runtime.CreateConta
 		if retErr != nil {
 			// Cleanup container checkpoint on error.
 			if err := container.Delete(); err != nil {
-				logrus.WithError(err).Errorf("Failed to cleanup container checkpoint for %q", id)
+				log.G(ctx).WithError(err).Errorf("Failed to cleanup container checkpoint for %q", id)
 			}
 		}
 	}()
@@ -310,51 +323,46 @@ func (c *criService) CreateContainer(ctx context.Context, r *runtime.CreateConta
 }
 
 func (c *criService) generateContainerSpec(id string, sandboxID string, sandboxPid uint32, config *runtime.ContainerConfig,
-	sandboxConfig *runtime.PodSandboxConfig, imageConfig *imagespec.ImageConfig, extraMounts []*runtime.Mount) (*runtimespec.Spec, error) {
-	// Creates a spec Generator with the default spec.
-	spec, err := defaultRuntimeSpec(id)
-	if err != nil {
-		return nil, err
+	sandboxConfig *runtime.PodSandboxConfig, imageConfig *imagespec.ImageConfig, extraMounts []*runtime.Mount,
+	ociRuntime config.Runtime) (*runtimespec.Spec, error) {
+
+	specOpts := []oci.SpecOpts{
+		customopts.WithoutRunMount,
+		customopts.WithoutDefaultSecuritySettings,
+		customopts.WithRelativeRoot(relativeRootfsPath),
+		customopts.WithProcessArgs(config, imageConfig),
+		// this will be set based on the security context below
+		oci.WithNewPrivileges,
 	}
-	g := newSpecGenerator(spec)
-
-	// Set the relative path to the rootfs of the container from containerd's
-	// pre-defined directory.
-	g.SetRootPath(relativeRootfsPath)
-
-	if err := setOCIProcessArgs(&g, config, imageConfig); err != nil {
-		return nil, err
-	}
-
 	if config.GetWorkingDir() != "" {
-		g.SetProcessCwd(config.GetWorkingDir())
+		specOpts = append(specOpts, oci.WithProcessCwd(config.GetWorkingDir()))
 	} else if imageConfig.WorkingDir != "" {
-		g.SetProcessCwd(imageConfig.WorkingDir)
+		specOpts = append(specOpts, oci.WithProcessCwd(imageConfig.WorkingDir))
 	}
 
-	g.SetProcessTerminal(config.GetTty())
 	if config.GetTty() {
-		g.AddProcessEnv("TERM", "xterm")
+		specOpts = append(specOpts, oci.WithTTY)
 	}
 
 	// Add HOSTNAME env.
-	hostname := sandboxConfig.GetHostname()
-	if sandboxConfig.GetHostname() == "" {
-		hostname, err = c.os.Hostname()
-		if err != nil {
+	var (
+		err      error
+		hostname = sandboxConfig.GetHostname()
+	)
+	if hostname == "" {
+		if hostname, err = c.os.Hostname(); err != nil {
 			return nil, err
 		}
 	}
-	g.AddProcessEnv(hostnameEnv, hostname)
+	specOpts = append(specOpts, oci.WithEnv([]string{hostnameEnv + "=" + hostname}))
 
 	// Apply envs from image config first, so that envs from container config
 	// can override them.
-	if err := addImageEnvs(&g, imageConfig.Env); err != nil {
-		return nil, err
-	}
+	env := imageConfig.Env
 	for _, e := range config.GetEnvs() {
-		g.AddProcessEnv(e.GetKey(), e.GetValue())
+		env = append(env, e.GetKey()+"="+e.GetValue())
 	}
+	specOpts = append(specOpts, oci.WithEnv(env))
 
 	securityContext := config.GetLinux().GetSecurityContext()
 	selinuxOpt := securityContext.GetSelinuxOptions()
@@ -362,88 +370,74 @@ func (c *criService) generateContainerSpec(id string, sandboxID string, sandboxP
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to init selinux options %+v", securityContext.GetSelinuxOptions())
 	}
-
-	// Merge extra mounts and CRI mounts.
-	mounts := mergeMounts(config.GetMounts(), extraMounts)
-	if err := c.addOCIBindMounts(&g, mounts, mountLabel); err != nil {
-		return nil, errors.Wrapf(err, "failed to set OCI bind mounts %+v", mounts)
-	}
+	specOpts = append(specOpts, customopts.WithMounts(c.os, config, extraMounts, mountLabel))
 
 	if !c.config.DisableProcMount {
 		// Apply masked paths if specified.
-		// Note: If the container is privileged, then we clear any masked paths later on in the call to setOCIPrivileged()
-		g.Config.Linux.MaskedPaths = nil
-		for _, path := range securityContext.GetMaskedPaths() {
-			g.AddLinuxMaskedPaths(path)
-		}
+		// If the container is privileged, this will be cleared later on.
+		specOpts = append(specOpts, oci.WithMaskedPaths(securityContext.GetMaskedPaths()))
 
 		// Apply readonly paths if specified.
-		// Note: If the container is privileged, then we clear any readonly paths later on in the call to setOCIPrivileged()
-		g.Config.Linux.ReadonlyPaths = nil
-		for _, path := range securityContext.GetReadonlyPaths() {
-			g.AddLinuxReadonlyPaths(path)
-		}
+		// If the container is privileged, this will be cleared later on.
+		specOpts = append(specOpts, oci.WithReadonlyPaths(securityContext.GetReadonlyPaths()))
 	}
 
 	if securityContext.GetPrivileged() {
 		if !sandboxConfig.GetLinux().GetSecurityContext().GetPrivileged() {
 			return nil, errors.New("no privileged container allowed in sandbox")
 		}
-		if err := setOCIPrivileged(&g, config); err != nil {
-			return nil, err
+		specOpts = append(specOpts, oci.WithPrivileged)
+		if !ociRuntime.PrivilegedWithoutHostDevices {
+			specOpts = append(specOpts, customopts.WithPrivilegedDevices)
 		}
 	} else { // not privileged
-		if err := c.addOCIDevices(&g, config.GetDevices()); err != nil {
-			return nil, errors.Wrapf(err, "failed to set devices mapping %+v", config.GetDevices())
-		}
-
-		if err := setOCICapabilities(&g, securityContext.GetCapabilities()); err != nil {
-			return nil, errors.Wrapf(err, "failed to set capabilities %+v",
-				securityContext.GetCapabilities())
-		}
+		specOpts = append(specOpts, customopts.WithDevices(c.os, config), customopts.WithCapabilities(securityContext))
 	}
+
 	// Clear all ambient capabilities. The implication of non-root + caps
 	// is not clearly defined in Kubernetes.
 	// See https://github.com/kubernetes/kubernetes/issues/56374
 	// Keep docker's behavior for now.
-	g.Config.Process.Capabilities.Ambient = []string{}
-
-	g.SetProcessSelinuxLabel(processLabel)
-	g.SetLinuxMountLabel(mountLabel)
+	specOpts = append(specOpts,
+		customopts.WithoutAmbientCaps,
+		customopts.WithSelinuxLabels(processLabel, mountLabel),
+	)
 
 	// TODO: Figure out whether we should set no new privilege for sandbox container by default
-	g.SetProcessNoNewPrivileges(securityContext.GetNoNewPrivs())
-
+	if securityContext.GetNoNewPrivs() {
+		specOpts = append(specOpts, oci.WithNoNewPrivileges)
+	}
 	// TODO(random-liu): [P1] Set selinux options (privileged or not).
-
-	g.SetRootReadonly(securityContext.GetReadonlyRootfs())
+	if securityContext.GetReadonlyRootfs() {
+		specOpts = append(specOpts, oci.WithRootFSReadonly())
+	}
 
 	if c.config.DisableCgroup {
-		g.SetLinuxCgroupsPath("")
+		specOpts = append(specOpts, customopts.WithDisabledCgroups)
 	} else {
-		setOCILinuxResourceCgroup(&g, config.GetLinux().GetResources())
+		specOpts = append(specOpts, customopts.WithResources(config.GetLinux().GetResources()))
 		if sandboxConfig.GetLinux().GetCgroupParent() != "" {
-			cgroupsPath := getCgroupsPath(sandboxConfig.GetLinux().GetCgroupParent(), id,
-				c.config.SystemdCgroup)
-			g.SetLinuxCgroupsPath(cgroupsPath)
+			cgroupsPath := getCgroupsPath(sandboxConfig.GetLinux().GetCgroupParent(), id)
+			specOpts = append(specOpts, oci.WithCgroup(cgroupsPath))
 		}
 	}
-	if err := setOCILinuxResourceOOMScoreAdj(&g, config.GetLinux().GetResources(), c.config.RestrictOOMScoreAdj); err != nil {
-		return nil, err
-	}
-
-	// Set namespaces, share namespace with sandbox container.
-	setOCINamespaces(&g, securityContext.GetNamespaceOptions(), sandboxPid)
 
 	supplementalGroups := securityContext.GetSupplementalGroups()
-	for _, group := range supplementalGroups {
-		g.AddProcessAdditionalGid(uint32(group))
+
+	for pKey, pValue := range getPassthroughAnnotations(sandboxConfig.Annotations,
+		ociRuntime.PodAnnotations) {
+		specOpts = append(specOpts, customopts.WithAnnotation(pKey, pValue))
 	}
 
-	g.AddAnnotation(annotations.ContainerType, annotations.ContainerTypeContainer)
-	g.AddAnnotation(annotations.SandboxID, sandboxID)
+	specOpts = append(specOpts,
+		customopts.WithOOMScoreAdj(config, c.config.RestrictOOMScoreAdj),
+		customopts.WithPodNamespaces(securityContext, sandboxPid),
+		customopts.WithSupplementalGroups(supplementalGroups),
+		customopts.WithAnnotation(annotations.ContainerType, annotations.ContainerTypeContainer),
+		customopts.WithAnnotation(annotations.SandboxID, sandboxID),
+	)
 
-	return g.Config, nil
+	return runtimeSpec(id, specOpts...)
 }
 
 // generateVolumeMounts sets up image volumes for container. Rely on the removal of container
@@ -528,410 +522,14 @@ func (c *criService) generateContainerMounts(sandboxID string, config *runtime.C
 	return mounts
 }
 
-// setOCIProcessArgs sets process args. It returns error if the final arg list
-// is empty.
-func setOCIProcessArgs(g *generator, config *runtime.ContainerConfig, imageConfig *imagespec.ImageConfig) error {
-	command, args := config.GetCommand(), config.GetArgs()
-	// The following logic is migrated from https://github.com/moby/moby/blob/master/daemon/commit.go
-	// TODO(random-liu): Clearly define the commands overwrite behavior.
-	if len(command) == 0 {
-		// Copy array to avoid data race.
-		if len(args) == 0 {
-			args = append([]string{}, imageConfig.Cmd...)
-		}
-		if command == nil {
-			command = append([]string{}, imageConfig.Entrypoint...)
-		}
-	}
-	if len(command) == 0 && len(args) == 0 {
-		return errors.New("no command specified")
-	}
-	g.SetProcessArgs(append(command, args...))
-	return nil
-}
-
-// addImageEnvs adds environment variables from image config. It returns error if
-// an invalid environment variable is encountered.
-func addImageEnvs(g *generator, imageEnvs []string) error {
-	for _, e := range imageEnvs {
-		kv := strings.SplitN(e, "=", 2)
-		if len(kv) != 2 {
-			return errors.Errorf("invalid environment variable %q", e)
-		}
-		g.AddProcessEnv(kv[0], kv[1])
-	}
-	return nil
-}
-
-func setOCIPrivileged(g *generator, config *runtime.ContainerConfig) error {
-	// Add all capabilities in privileged mode.
-	g.SetupPrivileged(true)
-	setOCIBindMountsPrivileged(g)
-	if err := setOCIDevicesPrivileged(g); err != nil {
-		return errors.Wrapf(err, "failed to set devices mapping %+v", config.GetDevices())
-	}
-	return nil
-}
-
-func clearReadOnly(m *runtimespec.Mount) {
-	var opt []string
-	for _, o := range m.Options {
-		if o != "ro" {
-			opt = append(opt, o)
-		}
-	}
-	m.Options = append(opt, "rw")
-}
-
-// addDevices set device mapping without privilege.
-func (c *criService) addOCIDevices(g *generator, devs []*runtime.Device) error {
-	spec := g.Config
-	for _, device := range devs {
-		path, err := c.os.ResolveSymbolicLink(device.HostPath)
-		if err != nil {
-			return err
-		}
-		dev, err := devices.DeviceFromPath(path, device.Permissions)
-		if err != nil {
-			return err
-		}
-		rd := runtimespec.LinuxDevice{
-			Path:  device.ContainerPath,
-			Type:  string(dev.Type),
-			Major: dev.Major,
-			Minor: dev.Minor,
-			UID:   &dev.Uid,
-			GID:   &dev.Gid,
-		}
-		g.AddDevice(rd)
-		spec.Linux.Resources.Devices = append(spec.Linux.Resources.Devices, runtimespec.LinuxDeviceCgroup{
-			Allow:  true,
-			Type:   string(dev.Type),
-			Major:  &dev.Major,
-			Minor:  &dev.Minor,
-			Access: dev.Permissions,
-		})
-	}
-	return nil
-}
-
-// addDevices set device mapping with privilege.
-func setOCIDevicesPrivileged(g *generator) error {
-	spec := g.Config
-	hostDevices, err := devices.HostDevices()
-	if err != nil {
-		return err
-	}
-	for _, hostDevice := range hostDevices {
-		rd := runtimespec.LinuxDevice{
-			Path:  hostDevice.Path,
-			Type:  string(hostDevice.Type),
-			Major: hostDevice.Major,
-			Minor: hostDevice.Minor,
-			UID:   &hostDevice.Uid,
-			GID:   &hostDevice.Gid,
-		}
-		if hostDevice.Major == 0 && hostDevice.Minor == 0 {
-			// Invalid device, most likely a symbolic link, skip it.
-			continue
-		}
-		g.AddDevice(rd)
-	}
-	spec.Linux.Resources.Devices = []runtimespec.LinuxDeviceCgroup{
-		{
-			Allow:  true,
-			Access: "rwm",
-		},
-	}
-	return nil
-}
-
-// addOCIBindMounts adds bind mounts.
-func (c *criService) addOCIBindMounts(g *generator, mounts []*runtime.Mount, mountLabel string) error {
-	// Sort mounts in number of parts. This ensures that high level mounts don't
-	// shadow other mounts.
-	sort.Sort(orderedMounts(mounts))
-
-	// Mount cgroup into the container as readonly, which inherits docker's behavior.
-	g.AddMount(runtimespec.Mount{
-		Source:      "cgroup",
-		Destination: "/sys/fs/cgroup",
-		Type:        "cgroup",
-		Options:     []string{"nosuid", "noexec", "nodev", "relatime", "ro"},
-	})
-
-	// Copy all mounts from default mounts, except for
-	// - mounts overriden by supplied mount;
-	// - all mounts under /dev if a supplied /dev is present.
-	mountSet := make(map[string]struct{})
-	for _, m := range mounts {
-		mountSet[filepath.Clean(m.ContainerPath)] = struct{}{}
-	}
-	defaultMounts := g.Mounts()
-	g.ClearMounts()
-	for _, m := range defaultMounts {
-		dst := filepath.Clean(m.Destination)
-		if _, ok := mountSet[dst]; ok {
-			// filter out mount overridden by a supplied mount
-			continue
-		}
-		if _, mountDev := mountSet["/dev"]; mountDev && strings.HasPrefix(dst, "/dev/") {
-			// filter out everything under /dev if /dev is a supplied mount
-			continue
-		}
-		g.AddMount(m)
-	}
-
-	for _, mount := range mounts {
-		dst := mount.GetContainerPath()
-		src := mount.GetHostPath()
-		// Create the host path if it doesn't exist.
-		// TODO(random-liu): Add CRI validation test for this case.
-		if _, err := c.os.Stat(src); err != nil {
-			if !os.IsNotExist(err) {
-				return errors.Wrapf(err, "failed to stat %q", src)
-			}
-			if err := c.os.MkdirAll(src, 0755); err != nil {
-				return errors.Wrapf(err, "failed to mkdir %q", src)
-			}
-		}
-		// TODO(random-liu): Add cri-containerd integration test or cri validation test
-		// for this.
-		src, err := c.os.ResolveSymbolicLink(src)
-		if err != nil {
-			return errors.Wrapf(err, "failed to resolve symlink %q", src)
-		}
-
-		options := []string{"rbind"}
-		switch mount.GetPropagation() {
-		case runtime.MountPropagation_PROPAGATION_PRIVATE:
-			options = append(options, "rprivate")
-			// Since default root propogation in runc is rprivate ignore
-			// setting the root propagation
-		case runtime.MountPropagation_PROPAGATION_BIDIRECTIONAL:
-			if err := ensureShared(src, c.os.LookupMount); err != nil {
-				return err
-			}
-			options = append(options, "rshared")
-			g.SetLinuxRootPropagation("rshared") // nolint: errcheck
-		case runtime.MountPropagation_PROPAGATION_HOST_TO_CONTAINER:
-			if err := ensureSharedOrSlave(src, c.os.LookupMount); err != nil {
-				return err
-			}
-			options = append(options, "rslave")
-			if g.Config.Linux.RootfsPropagation != "rshared" &&
-				g.Config.Linux.RootfsPropagation != "rslave" {
-				g.SetLinuxRootPropagation("rslave") // nolint: errcheck
-			}
-		default:
-			logrus.Warnf("Unknown propagation mode for hostPath %q", mount.HostPath)
-			options = append(options, "rprivate")
-		}
-
-		// NOTE(random-liu): we don't change all mounts to `ro` when root filesystem
-		// is readonly. This is different from docker's behavior, but make more sense.
-		if mount.GetReadonly() {
-			options = append(options, "ro")
-		} else {
-			options = append(options, "rw")
-		}
-
-		if mount.GetSelinuxRelabel() {
-			if err := label.Relabel(src, mountLabel, true); err != nil && err != unix.ENOTSUP {
-				return errors.Wrapf(err, "relabel %q with %q failed", src, mountLabel)
-			}
-		}
-		g.AddMount(runtimespec.Mount{
-			Source:      src,
-			Destination: dst,
-			Type:        "bind",
-			Options:     options,
-		})
-	}
-
-	return nil
-}
-
-func setOCIBindMountsPrivileged(g *generator) {
-	spec := g.Config
-	// clear readonly for /sys and cgroup
-	for i, m := range spec.Mounts {
-		if filepath.Clean(spec.Mounts[i].Destination) == "/sys" {
-			clearReadOnly(&spec.Mounts[i])
-		}
-		if m.Type == "cgroup" {
-			clearReadOnly(&spec.Mounts[i])
-		}
-	}
-	spec.Linux.ReadonlyPaths = nil
-	spec.Linux.MaskedPaths = nil
-}
-
-// setOCILinuxResourceCgroup set container cgroup resource limit.
-func setOCILinuxResourceCgroup(g *generator, resources *runtime.LinuxContainerResources) {
-	if resources == nil {
-		return
-	}
-	g.SetLinuxResourcesCPUPeriod(uint64(resources.GetCpuPeriod()))
-	g.SetLinuxResourcesCPUQuota(resources.GetCpuQuota())
-	g.SetLinuxResourcesCPUShares(uint64(resources.GetCpuShares()))
-	g.SetLinuxResourcesMemoryLimit(resources.GetMemoryLimitInBytes())
-	g.SetLinuxResourcesCPUCpus(resources.GetCpusetCpus())
-	g.SetLinuxResourcesCPUMems(resources.GetCpusetMems())
-}
-
-// setOCILinuxResourceOOMScoreAdj set container OOMScoreAdj resource limit.
-func setOCILinuxResourceOOMScoreAdj(g *generator, resources *runtime.LinuxContainerResources, restrictOOMScoreAdjFlag bool) error {
-	if resources == nil {
-		return nil
-	}
-	adj := int(resources.GetOomScoreAdj())
-	if restrictOOMScoreAdjFlag {
-		var err error
-		adj, err = restrictOOMScoreAdj(adj)
-		if err != nil {
-			return err
-		}
-	}
-	g.SetProcessOOMScoreAdj(adj)
-
-	return nil
-}
-
-// getOCICapabilitiesList returns a list of all available capabilities.
-func getOCICapabilitiesList() []string {
-	var caps []string
-	for _, cap := range capability.List() {
-		if cap > validate.LastCap() {
-			continue
-		}
-		caps = append(caps, "CAP_"+strings.ToUpper(cap.String()))
-	}
-	return caps
-}
-
-// Adds capabilities to all sets relevant to root (bounding, permitted, effective, inheritable)
-func addProcessRootCapability(g *generator, c string) error {
-	if err := g.AddProcessCapabilityBounding(c); err != nil {
-		return err
-	}
-	if err := g.AddProcessCapabilityPermitted(c); err != nil {
-		return err
-	}
-	if err := g.AddProcessCapabilityEffective(c); err != nil {
-		return err
-	}
-	if err := g.AddProcessCapabilityInheritable(c); err != nil {
-		return err
-	}
-	return nil
-}
-
-// Drops capabilities to all sets relevant to root (bounding, permitted, effective, inheritable)
-func dropProcessRootCapability(g *generator, c string) error {
-	if err := g.DropProcessCapabilityBounding(c); err != nil {
-		return err
-	}
-	if err := g.DropProcessCapabilityPermitted(c); err != nil {
-		return err
-	}
-	if err := g.DropProcessCapabilityEffective(c); err != nil {
-		return err
-	}
-	if err := g.DropProcessCapabilityInheritable(c); err != nil {
-		return err
-	}
-	return nil
-}
-
-// setOCICapabilities adds/drops process capabilities.
-func setOCICapabilities(g *generator, capabilities *runtime.Capability) error {
-	if capabilities == nil {
-		return nil
-	}
-
-	// Add/drop all capabilities if "all" is specified, so that
-	// following individual add/drop could still work. E.g.
-	// AddCapabilities: []string{"ALL"}, DropCapabilities: []string{"CHOWN"}
-	// will be all capabilities without `CAP_CHOWN`.
-	if util.InStringSlice(capabilities.GetAddCapabilities(), "ALL") {
-		for _, c := range getOCICapabilitiesList() {
-			if err := addProcessRootCapability(g, c); err != nil {
-				return err
-			}
-		}
-	}
-	if util.InStringSlice(capabilities.GetDropCapabilities(), "ALL") {
-		for _, c := range getOCICapabilitiesList() {
-			if err := dropProcessRootCapability(g, c); err != nil {
-				return err
-			}
-		}
-	}
-
-	for _, c := range capabilities.GetAddCapabilities() {
-		if strings.ToUpper(c) == "ALL" {
-			continue
-		}
-		// Capabilities in CRI doesn't have `CAP_` prefix, so add it.
-		if err := addProcessRootCapability(g, "CAP_"+strings.ToUpper(c)); err != nil {
-			return err
-		}
-	}
-
-	for _, c := range capabilities.GetDropCapabilities() {
-		if strings.ToUpper(c) == "ALL" {
-			continue
-		}
-		if err := dropProcessRootCapability(g, "CAP_"+strings.ToUpper(c)); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// setOCINamespaces sets namespaces.
-func setOCINamespaces(g *generator, namespaces *runtime.NamespaceOption, sandboxPid uint32) {
-	g.AddOrReplaceLinuxNamespace(string(runtimespec.NetworkNamespace), getNetworkNamespace(sandboxPid)) // nolint: errcheck
-	g.AddOrReplaceLinuxNamespace(string(runtimespec.IPCNamespace), getIPCNamespace(sandboxPid))         // nolint: errcheck
-	g.AddOrReplaceLinuxNamespace(string(runtimespec.UTSNamespace), getUTSNamespace(sandboxPid))         // nolint: errcheck
-	// Do not share pid namespace if namespace mode is CONTAINER.
-	if namespaces.GetPid() != runtime.NamespaceMode_CONTAINER {
-		g.AddOrReplaceLinuxNamespace(string(runtimespec.PIDNamespace), getPIDNamespace(sandboxPid)) // nolint: errcheck
-	}
-}
-
-// defaultRuntimeSpec returns a default runtime spec used in cri-containerd.
-func defaultRuntimeSpec(id string) (*runtimespec.Spec, error) {
+// runtimeSpec returns a default runtime spec used in cri-containerd.
+func runtimeSpec(id string, opts ...oci.SpecOpts) (*runtimespec.Spec, error) {
 	// GenerateSpec needs namespace.
 	ctx := ctrdutil.NamespacedContext()
-	spec, err := oci.GenerateSpec(ctx, nil, &containers.Container{ID: id})
+	spec, err := oci.GenerateSpec(ctx, nil, &containers.Container{ID: id}, opts...)
 	if err != nil {
 		return nil, err
 	}
-
-	// Remove `/run` mount
-	// TODO(random-liu): Mount tmpfs for /run and handle copy-up.
-	var mounts []runtimespec.Mount
-	for _, mount := range spec.Mounts {
-		if filepath.Clean(mount.Destination) == "/run" {
-			continue
-		}
-		mounts = append(mounts, mount)
-	}
-	spec.Mounts = mounts
-
-	// Make sure no default seccomp/apparmor is specified
-	if spec.Process != nil {
-		spec.Process.ApparmorProfile = ""
-	}
-	if spec.Linux != nil {
-		spec.Linux.Seccomp = nil
-	}
-
-	// Remove default rlimits (See issue #515)
-	spec.Process.Rlimits = nil
-
 	return spec, nil
 }
 
@@ -979,18 +577,17 @@ func generateApparmorSpecOpts(apparmorProf string, privileged, apparmorEnabled b
 		return nil, nil
 	}
 	switch apparmorProf {
-	case runtimeDefault:
+	// Based on kubernetes#51746, default apparmor profile should be applied
+	// for when apparmor is not specified.
+	case runtimeDefault, "":
+		if privileged {
+			// Do not set apparmor profile when container is privileged
+			return nil, nil
+		}
 		// TODO (mikebrow): delete created apparmor default profile
 		return apparmor.WithDefaultProfile(appArmorDefaultProfileName), nil
 	case unconfinedProfile:
 		return nil, nil
-	case "":
-		// Based on kubernetes#51746, default apparmor profile should be applied
-		// for non-privileged container when apparmor is not specified.
-		if privileged {
-			return nil, nil
-		}
-		return apparmor.WithDefaultProfile(appArmorDefaultProfileName), nil
 	default:
 		// Require and Trim default profile name prefix
 		if !strings.HasPrefix(apparmorProf, profileNamePrefix) {
@@ -1000,43 +597,20 @@ func generateApparmorSpecOpts(apparmorProf string, privileged, apparmorEnabled b
 	}
 }
 
-// Ensure mount point on which path is mounted, is shared.
-func ensureShared(path string, lookupMount func(string) (mount.Info, error)) error {
-	mountInfo, err := lookupMount(path)
-	if err != nil {
-		return err
-	}
-
-	// Make sure source mount point is shared.
-	optsSplit := strings.Split(mountInfo.Optional, " ")
-	for _, opt := range optsSplit {
-		if strings.HasPrefix(opt, "shared:") {
-			return nil
-		}
-	}
-
-	return errors.Errorf("path %q is mounted on %q but it is not a shared mount", path, mountInfo.Mountpoint)
-}
-
-// Ensure mount point on which path is mounted, is either shared or slave.
-func ensureSharedOrSlave(path string, lookupMount func(string) (mount.Info, error)) error {
-	mountInfo, err := lookupMount(path)
-	if err != nil {
-		return err
-	}
-	// Make sure source mount point is shared.
-	optsSplit := strings.Split(mountInfo.Optional, " ")
-	for _, opt := range optsSplit {
-		if strings.HasPrefix(opt, "shared:") {
-			return nil
-		} else if strings.HasPrefix(opt, "master:") {
-			return nil
-		}
-	}
-	return errors.Errorf("path %q is mounted on %q but it is not a shared or slave mount", path, mountInfo.Mountpoint)
-}
-
-// generateUserString generates valid user string based on OCI Image Spec v1.0.0.
+// generateUserString generates valid user string based on OCI Image Spec
+// v1.0.0.
+//
+// CRI defines that the following combinations are valid:
+//
+// (none) -> ""
+// username -> username
+// username, uid -> username
+// username, uid, gid -> username:gid
+// username, gid -> username:gid
+// uid -> uid
+// uid, gid -> uid:gid
+// gid -> error
+//
 // TODO(random-liu): Add group name support in CRI.
 func generateUserString(username string, uid, gid *runtime.Int64Value) (string, error) {
 	var userstr, groupstr string
@@ -1059,26 +633,4 @@ func generateUserString(username string, uid, gid *runtime.Int64Value) (string, 
 		userstr = userstr + ":" + groupstr
 	}
 	return userstr, nil
-}
-
-// mergeMounts merge CRI mounts with extra mounts. If a mount destination
-// is mounted by both a CRI mount and an extra mount, the CRI mount will
-// be kept.
-func mergeMounts(criMounts, extraMounts []*runtime.Mount) []*runtime.Mount {
-	var mounts []*runtime.Mount
-	mounts = append(mounts, criMounts...)
-	// Copy all mounts from extra mounts, except for mounts overriden by CRI.
-	for _, e := range extraMounts {
-		found := false
-		for _, c := range criMounts {
-			if filepath.Clean(e.ContainerPath) == filepath.Clean(c.ContainerPath) {
-				found = true
-				break
-			}
-		}
-		if !found {
-			mounts = append(mounts, e)
-		}
-	}
-	return mounts
 }

@@ -41,39 +41,95 @@ func (a containerByCreated) Less(i, j int) bool {
 }
 
 type createOptions struct {
-	// configPath is path to the config for container
-	configPath string
 	// podID of the container
 	podID string
+
+	// the config and pod options
+	*runOptions
+}
+
+type runOptions struct {
+	// configPath is path to the config for container
+	configPath string
+
 	// podConfig is path to the config for sandbox
 	podConfig string
+
+	// the image pull options
+	*pullOptions
+}
+
+type pullOptions struct {
+	// do not pull the image on container creation
+	dontPull bool
+
+	// creds is string in the format `USERNAME[:PASSWORD]` for accessing the
+	// registry during image pull
+	creds string
+
+	// auth is a base64 encoded 'USERNAME[:PASSWORD]' string used for
+	// authentication with a registry when pulling an image
+	auth string
+}
+
+var pullFlags = []cli.Flag{
+	cli.BoolFlag{
+		Name:  "no-pull",
+		Usage: "Do not pull the image on container creation",
+	},
+	cli.StringFlag{
+		Name:  "creds",
+		Value: "",
+		Usage: "Use `USERNAME[:PASSWORD]` for accessing the registry",
+	},
+	cli.StringFlag{
+		Name:  "auth",
+		Value: "",
+		Usage: "Use `AUTH_STRING` for accessing the registry. AUTH_STRING is a base64 encoded 'USERNAME[:PASSWORD]'",
+	},
 }
 
 var createContainerCommand = cli.Command{
 	Name:      "create",
 	Usage:     "Create a new container",
 	ArgsUsage: "POD container-config.[json|yaml] pod-config.[json|yaml]",
-	Flags:     []cli.Flag{},
+	Flags:     pullFlags,
 
 	Action: func(context *cli.Context) error {
 		if len(context.Args()) != 3 {
 			return cli.ShowSubcommandHelp(context)
 		}
 
-		if err := getRuntimeClient(context); err != nil {
+		runtimeClient, runtimeConn, err := getRuntimeClient(context)
+		if err != nil {
 			return err
 		}
+		defer closeConnection(context, runtimeConn)
+
+		imageClient, imageConn, err := getImageClient(context)
+		if err != nil {
+			return err
+		}
+		defer closeConnection(context, imageConn)
 
 		opts := createOptions{
-			podID:      context.Args().Get(0),
-			configPath: context.Args().Get(1),
-			podConfig:  context.Args().Get(2),
+			podID: context.Args().Get(0),
+			runOptions: &runOptions{
+				configPath: context.Args().Get(1),
+				podConfig:  context.Args().Get(2),
+				pullOptions: &pullOptions{
+					dontPull: context.Bool("no-pull"),
+					creds:    context.String("creds"),
+					auth:     context.String("auth"),
+				},
+			},
 		}
 
-		err := CreateContainer(runtimeClient, opts)
+		ctrID, err := CreateContainer(imageClient, runtimeClient, opts)
 		if err != nil {
 			return fmt.Errorf("Creating container failed: %v", err)
 		}
+		fmt.Println(ctrID)
 		return nil
 	},
 }
@@ -86,9 +142,11 @@ var startContainerCommand = cli.Command{
 		if context.NArg() == 0 {
 			return cli.ShowSubcommandHelp(context)
 		}
-		if err := getRuntimeClient(context); err != nil {
+		runtimeClient, runtimeConn, err := getRuntimeClient(context)
+		if err != nil {
 			return err
 		}
+		defer closeConnection(context, runtimeConn)
 
 		for i := 0; i < context.NArg(); i++ {
 			containerID := context.Args().Get(i)
@@ -135,9 +193,11 @@ var updateContainerCommand = cli.Command{
 		if context.NArg() == 0 {
 			return cli.ShowSubcommandHelp(context)
 		}
-		if err := getRuntimeClient(context); err != nil {
+		runtimeClient, runtimeConn, err := getRuntimeClient(context)
+		if err != nil {
 			return err
 		}
+		defer closeConnection(context, runtimeConn)
 
 		options := updateOptions{
 			CPUPeriod:          context.Int64("cpu-period"),
@@ -176,9 +236,11 @@ var stopContainerCommand = cli.Command{
 		if context.NArg() == 0 {
 			return cli.ShowSubcommandHelp(context)
 		}
-		if err := getRuntimeClient(context); err != nil {
+		runtimeClient, runtimeConn, err := getRuntimeClient(context)
+		if err != nil {
 			return err
 		}
+		defer closeConnection(context, runtimeConn)
 
 		for i := 0; i < context.NArg(); i++ {
 			containerID := context.Args().Get(i)
@@ -192,23 +254,79 @@ var stopContainerCommand = cli.Command{
 }
 
 var removeContainerCommand = cli.Command{
-	Name:      "rm",
-	Usage:     "Remove one or more containers",
-	ArgsUsage: "CONTAINER-ID [CONTAINER-ID...]",
-	Action: func(context *cli.Context) error {
-		if context.NArg() == 0 {
-			return cli.ShowSubcommandHelp(context)
-		}
-		if err := getRuntimeClient(context); err != nil {
+	Name:                   "rm",
+	Usage:                  "Remove one or more containers",
+	ArgsUsage:              "CONTAINER-ID [CONTAINER-ID...]",
+	SkipArgReorder:         true,
+	UseShortOptionHandling: true,
+	Flags: []cli.Flag{
+		cli.BoolFlag{
+			Name:  "force, f",
+			Usage: "Force removal of the container, disregarding if running",
+		},
+		cli.BoolFlag{
+			Name:  "all, a",
+			Usage: "Remove all containers",
+		},
+	},
+	Action: func(ctx *cli.Context) error {
+		runtimeClient, runtimeConn, err := getRuntimeClient(ctx)
+		if err != nil {
 			return err
 		}
+		defer closeConnection(ctx, runtimeConn)
 
-		for i := 0; i < context.NArg(); i++ {
-			containerID := context.Args().Get(i)
-			err := RemoveContainer(runtimeClient, containerID)
+		ids := ctx.Args()
+		if ctx.Bool("all") {
+			r, err := runtimeClient.ListContainers(context.Background(),
+				&pb.ListContainersRequest{})
 			if err != nil {
-				fmt.Printf("Removing the container %q failed: %v\n", containerID, err)
+				return err
 			}
+			ids = nil
+			for _, ctr := range r.GetContainers() {
+				ids = append(ids, ctr.GetId())
+			}
+		}
+
+		if len(ids) == 0 {
+			return cli.ShowSubcommandHelp(ctx)
+		}
+
+		errored := false
+		for _, id := range ids {
+			resp, err := runtimeClient.ContainerStatus(context.Background(),
+				&pb.ContainerStatusRequest{ContainerId: id})
+			if err != nil {
+				logrus.Error(err)
+				errored = true
+				continue
+			}
+			if resp.GetStatus().GetState() == pb.ContainerState_CONTAINER_RUNNING {
+				if ctx.Bool("force") {
+					if err := RemoveContainer(runtimeClient, id); err != nil {
+						logrus.Errorf("stopping the container %q failed: %v", id, err)
+						errored = true
+						continue
+					}
+					continue
+				} else {
+					logrus.Errorf("container %q is running, please stop it first", id)
+					errored = true
+					continue
+				}
+			}
+
+			err = RemoveContainer(runtimeClient, id)
+			if err != nil {
+				logrus.Errorf("removing container %q failed: %v", id, err)
+				errored = true
+				continue
+			}
+		}
+
+		if errored {
+			return fmt.Errorf("unable to remove container(s)")
 		}
 		return nil
 	},
@@ -232,9 +350,11 @@ var containerStatusCommand = cli.Command{
 		if context.NArg() == 0 {
 			return cli.ShowSubcommandHelp(context)
 		}
-		if err := getRuntimeClient(context); err != nil {
+		runtimeClient, runtimeConn, err := getRuntimeClient(context)
+		if err != nil {
 			return err
 		}
+		defer closeConnection(context, runtimeConn)
 
 		for i := 0; i < context.NArg(); i++ {
 			containerID := context.Args().Get(i)
@@ -312,13 +432,17 @@ var listContainersCommand = cli.Command{
 		},
 	},
 	Action: func(context *cli.Context) error {
-		var err error
-		if err = getRuntimeClient(context); err != nil {
+		runtimeClient, runtimeConn, err := getRuntimeClient(context)
+		if err != nil {
 			return err
 		}
-		if err = getImageClient(context); err != nil {
+		defer closeConnection(context, runtimeConn)
+
+		imageClient, imageConn, err := getImageClient(context)
+		if err != nil {
 			return err
 		}
+		defer closeConnection(context, imageConn)
 
 		opts := listOptions{
 			id:         context.String("id"),
@@ -339,25 +463,119 @@ var listContainersCommand = cli.Command{
 			return err
 		}
 
-		if err = ListContainers(runtimeClient, opts); err != nil {
+		if err = ListContainers(runtimeClient, imageClient, opts); err != nil {
 			return fmt.Errorf("listing containers failed: %v", err)
 		}
 		return nil
 	},
 }
 
+var runContainerCommand = cli.Command{
+	Name:      "run",
+	Usage:     "Run a new container inside a sandbox",
+	ArgsUsage: "container-config.[json|yaml] pod-config.[json|yaml]",
+	Flags: append(pullFlags, cli.StringFlag{
+		Name:  "runtime, r",
+		Usage: "Runtime handler to use. Available options are defined by the container runtime.",
+	}),
+
+	Action: func(context *cli.Context) error {
+		if len(context.Args()) != 2 {
+			return cli.ShowSubcommandHelp(context)
+		}
+
+		runtimeClient, runtimeConn, err := getRuntimeClient(context)
+		if err != nil {
+			return err
+		}
+		defer closeConnection(context, runtimeConn)
+
+		imageClient, imageConn, err := getImageClient(context)
+		if err != nil {
+			return err
+		}
+		defer closeConnection(context, imageConn)
+
+		opts := runOptions{
+			configPath: context.Args().Get(0),
+			podConfig:  context.Args().Get(1),
+			pullOptions: &pullOptions{
+				dontPull: context.Bool("no-pull"),
+				creds:    context.String("creds"),
+				auth:     context.String("auth"),
+			},
+		}
+
+		err = RunContainer(imageClient, runtimeClient, opts, context.String("runtime"))
+		if err != nil {
+			return fmt.Errorf("Running container failed: %v", err)
+		}
+		return nil
+	},
+}
+
+// RunContainer starts a container in the provided sandbox
+func RunContainer(
+	iClient pb.ImageServiceClient,
+	rClient pb.RuntimeServiceClient,
+	opts runOptions,
+	runtime string,
+) error {
+	// Create the pod
+	podSandboxConfig, err := loadPodSandboxConfig(opts.podConfig)
+	if err != nil {
+		return fmt.Errorf("load podSandboxConfig failed: %v", err)
+	}
+	podID, err := RunPodSandbox(rClient, podSandboxConfig, runtime)
+	if err != nil {
+		return fmt.Errorf("run pod sandbox failed: %v", err)
+	}
+
+	// Create the container
+	containerOptions := createOptions{podID, &opts}
+	ctrID, err := CreateContainer(iClient, rClient, containerOptions)
+	if err != nil {
+		return fmt.Errorf("creating container failed: %v", err)
+	}
+
+	// Start the container
+	err = StartContainer(rClient, ctrID)
+	if err != nil {
+		return fmt.Errorf("starting the container %q failed: %v", ctrID, err)
+	}
+	return nil
+}
+
 // CreateContainer sends a CreateContainerRequest to the server, and parses
 // the returned CreateContainerResponse.
-func CreateContainer(client pb.RuntimeServiceClient, opts createOptions) error {
+func CreateContainer(
+	iClient pb.ImageServiceClient,
+	rClient pb.RuntimeServiceClient,
+	opts createOptions,
+) (string, error) {
+
 	config, err := loadContainerConfig(opts.configPath)
 	if err != nil {
-		return err
+		return "", err
 	}
 	var podConfig *pb.PodSandboxConfig
 	if opts.podConfig != "" {
 		podConfig, err = loadPodSandboxConfig(opts.podConfig)
 		if err != nil {
-			return err
+			return "", err
+		}
+	}
+
+	if !opts.dontPull {
+		auth, err := getAuth(opts.creds, opts.auth)
+		if err != nil {
+			return "", err
+		}
+
+		// Try to pull the image before container creation
+		image := config.GetImage().GetImage()
+		if _, err := PullImage(iClient, image, auth); err != nil {
+			return "", err
 		}
 	}
 
@@ -367,13 +585,12 @@ func CreateContainer(client pb.RuntimeServiceClient, opts createOptions) error {
 		SandboxConfig: podConfig,
 	}
 	logrus.Debugf("CreateContainerRequest: %v", request)
-	r, err := client.CreateContainer(context.Background(), request)
+	r, err := rClient.CreateContainer(context.Background(), request)
 	logrus.Debugf("CreateContainerResponse: %v", r)
 	if err != nil {
-		return err
+		return "", err
 	}
-	fmt.Println(r.ContainerId)
-	return nil
+	return r.ContainerId, nil
 }
 
 // StartContainer sends a StartContainerRequest to the server, and parses
@@ -576,7 +793,7 @@ func ContainerStatus(client pb.RuntimeServiceClient, ID, output string, quiet bo
 
 // ListContainers sends a ListContainerRequest to the server, and parses
 // the returned ListContainerResponse.
-func ListContainers(client pb.RuntimeServiceClient, opts listOptions) error {
+func ListContainers(runtimeClient pb.RuntimeServiceClient, imageClient pb.ImageServiceClient, opts listOptions) error {
 	filter := &pb.ContainerFilter{}
 	if opts.id != "" {
 		filter.Id = opts.id
@@ -619,7 +836,7 @@ func ListContainers(client pb.RuntimeServiceClient, opts listOptions) error {
 		Filter: filter,
 	}
 	logrus.Debugf("ListContainerRequest: %v", request)
-	r, err := client.ListContainers(context.Background(), request)
+	r, err := runtimeClient.ListContainers(context.Background(), request)
 	logrus.Debugf("ListContainerResponse: %v", r)
 	if err != nil {
 		return err
@@ -646,7 +863,7 @@ func ListContainers(client pb.RuntimeServiceClient, opts listOptions) error {
 		if !matchesRegex(opts.nameRegexp, c.Metadata.Name) {
 			continue
 		}
-		if match, err := matchesImage(opts.image, c.GetImage().GetImage()); err != nil {
+		if match, err := matchesImage(imageClient, opts.image, c.GetImage().GetImage()); err != nil {
 			return fmt.Errorf("failed to check image match %v", err)
 		} else if !match {
 			continue

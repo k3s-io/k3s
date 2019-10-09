@@ -12,7 +12,7 @@ A generic CNI library to provide APIs for CNI plugin interactions. The library p
 go-cni aims to support plugins that implement [Container Network Interface](https://github.com/containernetworking/cni)
 
 ## Usage
-```
+```go
 func main() {
 	id := "123456"
 	netns := "/proc/9999/ns/net"
@@ -24,7 +24,7 @@ func main() {
 		gocni.WithDefaultIfName(defaultIfName))
 	
 	// Load the cni configuration
-	err:= l.Load(gocni.WithLoNetwork,gocni.WithDefaultConf)
+	err:= l.Load(gocni.WithLoNetwork, gocni.WithDefaultConf)
         if err != nil{
 		log.Errorf("failed to load cni configuration: %v", err)
 		return 
@@ -47,3 +47,14 @@ func main() {
 	fmt.Printf("IP of the default interface %s:%s", defaultIfName, IP)
 }
 ```
+
+## Project details
+
+The go-cni is a containerd sub-project, licensed under the [Apache 2.0 license](./LICENSE).
+As a containerd sub-project, you will find the:
+
+ * [Project governance](https://github.com/containerd/project/blob/master/GOVERNANCE.md),
+ * [Maintainers](https://github.com/containerd/project/blob/master/MAINTAINERS),
+ * and [Contributing guidelines](https://github.com/containerd/project/blob/master/CONTRIBUTING.md)
+
+information in our [`containerd/project`](https://github.com/containerd/project) repository.
