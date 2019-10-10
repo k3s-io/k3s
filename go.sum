@@ -565,6 +565,8 @@ github.com/rancher/cri-tools v1.16.0-k3s.1 h1:cv/iVFkfvDLfpSqGFwgyQbMKLGRzcXo8AA
 github.com/rancher/cri-tools v1.16.0-k3s.1/go.mod h1:TEKhKv2EJIZp+p9jnEy4C63g8CosJzsI4kyKKkHag+8=
 github.com/rancher/dynamiclistener v0.0.0-20190926205813-e2ac9e2c193d h1:BPBA86IVuNX/S2g7Kry+jXcuftCWPRLpad1iyd1nP20=
 github.com/rancher/dynamiclistener v0.0.0-20190926205813-e2ac9e2c193d/go.mod h1:vNqDnGTkrX8tiBUevkvjZoQoiZOjaahVbMaYRIl25l0=
+github.com/rancher/dynamiclistener v0.1.1-0.20191010011134-8a2488bc860a h1:1bUYAv5U/Ky4YJ9o8gWxX+vNcjpIL3JWNBao70OlkFE=
+github.com/rancher/dynamiclistener v0.1.1-0.20191010011134-8a2488bc860a/go.mod h1:8hbGf35mB7ormKEFqsAgjgeI5rLbj5N764jG41dNhps=
 github.com/rancher/flannel v0.11.0-k3s.1 h1:mIwnfWDafjzQgFkZeJ1AkFrrAT3EdBaA1giE0eLJKo8=
 github.com/rancher/flannel v0.11.0-k3s.1/go.mod h1:Hn4ZV+eq0LhLZP63xZnxdGwXEoRSxs5sxELxu27M3UA=
 github.com/rancher/helm-controller v0.2.2 h1:MUqisy53/Ay1EYOF2uTCYBbGpgtZLNKKrI01BdxIbQo=
@@ -682,6 +684,7 @@ github.com/stretchr/testify v0.0.0-20151208002404-e3a8ff8ce365/go.mod h1:a8OnRci
 github.com/stretchr/testify v1.2.2/go.mod h1:a8OnRcib4nhh0OaRAV+Yts87kKdq0PP7pXfy6kDkUVs=
 github.com/stretchr/testify v1.3.0 h1:TivCn/peBQ7UY8ooIcPgZFpTNSz0Q2U6UrFlUfqbe0Q=
 github.com/stretchr/testify v1.3.0/go.mod h1:M5WIy9Dh21IEIfnGCwXGc5bZfKNJtfHm1UVUgZn+9EI=
+github.com/stripe/safesql v0.2.0/go.mod h1:q7b2n0JmzM1mVGfcYpanfVb2j23cXZeWFxcILPn3JV4=
 github.com/syndtr/gocapability v0.0.0-20160928074757-e7cb7fa329f4/go.mod h1:hkRG7XYTFWNJGYcbNJQlaLq0fg1yr4J4t/NcTQtrfww=
 github.com/syndtr/gocapability v0.0.0-20170704070218-db04d3cc01c8 h1:zLV6q4e8Jv9EHjNg/iHfzwDkCve6Ua5jCygptrtXHvI=
 github.com/syndtr/gocapability v0.0.0-20170704070218-db04d3cc01c8/go.mod h1:hkRG7XYTFWNJGYcbNJQlaLq0fg1yr4J4t/NcTQtrfww=
