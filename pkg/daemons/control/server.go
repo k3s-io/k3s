@@ -796,11 +796,5 @@ func expired(certFile string) bool {
 	if err != nil {
 		return false
 	}
-	expirationDate := certificates[0].NotAfter
-	diffDays := expirationDate.Sub(time.Now()).Hours() / 24.0
-	if diffDays <= 90 {
-		logrus.Infof("certificate %s is about to expire", certFile)
-		return true
-	}
-	return false
+	return certutil.IsCertExpired(certificates[0])
 }
