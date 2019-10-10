@@ -397,6 +397,7 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 
 	nodeConfig.AgentConfig.NodeTaints = envInfo.Taints
 	nodeConfig.AgentConfig.NodeLabels = envInfo.Labels
+	nodeConfig.AgentConfig.PrivateRegistry = envInfo.PrivateRegistry
 
 	return nodeConfig, nil
 }

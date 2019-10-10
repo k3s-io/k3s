@@ -112,6 +112,7 @@ require (
 	golang.org/x/sys v0.0.0-20190916202348-b4ddaad3f8a3
 	google.golang.org/grpc v1.23.0
 	gopkg.in/mgo.v2 v2.0.0-20190816093944-a6b53ec6cb22 // indirect
+	gopkg.in/yaml.v2 v2.2.2
 	k8s.io/api v0.0.0
 	k8s.io/apimachinery v0.0.0
 	k8s.io/apiserver v0.0.0

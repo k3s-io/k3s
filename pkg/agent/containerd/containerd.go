@@ -20,6 +20,7 @@ import (
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
+	yaml "gopkg.in/yaml.v2"
 	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 	"k8s.io/kubernetes/pkg/kubelet/util"
 )
@@ -158,10 +159,15 @@ func preloadImages(cfg *config.Node) error {
 }
 
 func setupContainerdConfig(ctx context.Context, cfg *config.Node) error {
+	privRegistries, err := getPrivateRegistries(ctx, cfg)
+	if err != nil {
+		return err
+	}
 	var containerdTemplate string
 	containerdConfig := templates.ContainerdConfig{
-		NodeConfig:        cfg,
-		IsRunningInUserNS: system.RunningInUserNS(),
+		NodeConfig:            cfg,
+		IsRunningInUserNS:     system.RunningInUserNS(),
+		PrivateRegistryConfig: privRegistries,
 	}
 
 	containerdTemplateBytes, err := ioutil.ReadFile(cfg.Containerd.Template)
@@ -179,4 +185,20 @@ func setupContainerdConfig(ctx context.Context, cfg *config.Node) error {
 	}
 
 	return util2.WriteFile(cfg.Containerd.Config, parsedTemplate)
+}
+
+func getPrivateRegistries(ctx context.Context, cfg *config.Node) (*templates.Registry, error) {
+	privRegistries := &templates.Registry{}
+	privRegistryFile, err := ioutil.ReadFile(cfg.AgentConfig.PrivateRegistry)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	logrus.Infof("Using registry config file at %s", cfg.AgentConfig.PrivateRegistry)
+	if err := yaml.Unmarshal([]byte(privRegistryFile), &privRegistries); err != nil {
+		return nil, err
+	}
+	return privRegistries, nil
 }

@@ -30,6 +30,7 @@ type Agent struct {
 	ExtraKubeProxyArgs cli.StringSlice
 	Labels             cli.StringSlice
 	Taints             cli.StringSlice
+	PrivateRegistry    string
 }
 
 type AgentShared struct {
@@ -106,6 +107,12 @@ var (
 		Usage: "(agent) Registering kubelet with set of labels",
 		Value: &AgentConfig.Labels,
 	}
+	PrivateRegistryFlag = cli.StringFlag{
+		Name:        "private-registry",
+		Usage:       "(agent) Private registry configuration file",
+		Destination: &AgentConfig.PrivateRegistry,
+		Value:       "/etc/rancher/k3s/registries.yaml",
+	}
 )
 
 func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
@@ -167,6 +174,7 @@ func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
 			ExtraKubeProxyArgs,
 			NodeLabels,
 			NodeTaints,
+			PrivateRegistryFlag,
 		},
 	}
 }
