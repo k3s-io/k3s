@@ -211,20 +211,25 @@ func (s *server) Update(status *ListenerStatus) (_err error) {
 	if tlsCert != nil {
 		s.tlsCert = tlsCert
 		for i, certBytes := range tlsCert.Certificate {
-			cert, err := x509.ParseCertificate(certBytes)
+			parsedCert, err := x509.ParseCertificate(certBytes)
 			if err != nil {
 				logrus.Errorf("Update cert %d parse error: %s", i, err)
 				s.tlsCert = nil
 				break
 			}
-
+			isExpired := cert.IsCertExpired(parsedCert)
+			if isExpired {
+				logrus.Infof("certificate is about to expire")
+				s.tlsCert = nil
+				break
+			}
 			ips := map[string]bool{}
-			for _, ip := range cert.IPAddresses {
+			for _, ip := range parsedCert.IPAddresses {
 				ips[ip.String()] = true
 			}
 
 			domains := map[string]bool{}
-			for _, domain := range cert.DNSNames {
+			for _, domain := range parsedCert.DNSNames {
 				domains[domain] = true
 			}
 

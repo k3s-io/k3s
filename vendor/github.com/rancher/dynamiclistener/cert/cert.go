@@ -36,6 +36,8 @@ import (
 	"path"
 	"strings"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -266,4 +268,15 @@ func ipsToStrings(ips []net.IP) []string {
 		ss = append(ss, ip.String())
 	}
 	return ss
+}
+
+// IsCertExpired checks if the certificate about to expire
+func IsCertExpired(cert *x509.Certificate) bool {
+	expirationDate := cert.NotAfter
+	diffDays := expirationDate.Sub(time.Now()).Hours() / 24.0
+	if diffDays <= 90 {
+		logrus.Infof("certificate will expire in %f days", diffDays)
+		return true
+	}
+	return false
 }
