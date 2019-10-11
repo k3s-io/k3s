@@ -109,7 +109,7 @@ func startWrangler(ctx context.Context, config *Config) (string, error) {
 		return "", err
 	}
 
-	if err := sc.Start(ctx); err != nil {
+	if err := startNodeCache(ctx, sc); err != nil {
 		return "", err
 	}
 
@@ -122,7 +122,7 @@ func startWrangler(ctx context.Context, config *Config) (string, error) {
 		}
 	}
 	if !config.DisableAgent {
-		go setMasterRoleLabel(ctx, sc, config)
+		go setMasterRoleLabel(ctx, sc)
 	}
 	if controlConfig.NoLeaderElect {
 		go func() {
@@ -364,11 +364,12 @@ func isSymlink(config string) bool {
 	return false
 }
 
-func setMasterRoleLabel(ctx context.Context, sc *Context, config *Config) error {
+func setMasterRoleLabel(ctx context.Context, sc *Context) error {
 	for {
 		nodeName := os.Getenv("NODE_NAME")
 		nodeController := sc.Core.Core().V1().Node()
-		nodeCached, err := nodeController.Cache().Get(nodeName)
+		nodeCache := nodeController.Cache()
+		nodeCached, err := nodeCache.Get(nodeName)
 		if err != nil {
 			logrus.Infof("Waiting for master node %s startup: %v", nodeName, err)
 			time.Sleep(1 * time.Second)
@@ -394,4 +395,10 @@ func setMasterRoleLabel(ctx context.Context, sc *Context, config *Config) error 
 		}
 	}
 	return nil
+}
+
+func startNodeCache(ctx context.Context, sc *Context) error {
+	sc.Core.Core().V1().Node().Cache()
+
+	return sc.Start(ctx)
 }
