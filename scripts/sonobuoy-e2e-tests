@@ -17,6 +17,23 @@ mkdir -p ${OUTPUT}
 pids=()
 output=()
 
+cleanup() {
+    exit_status=$?
+    set +e
+    trap - EXIT INT
+    kill ${pids[@]} 2>/dev/null
+    wait
+    set +x
+    echo -n "Tests "
+    if [ "${exit_status}" -eq "0" ]; then
+        echo "passed"
+    else
+        echo "failed"
+    fi
+    exit ${exit_status}
+}
+trap cleanup EXIT INT
+
 run-sonobuoy() {
     output+=(${log_output})
     E2E_LOG_OUTPUT=${log_output} ./scripts/sonobuoy ${@} &
@@ -31,40 +48,8 @@ sleep 60
 log_output=${OUTPUT}/e2e-STATUS-${ARCH}-serial.log \
     run-sonobuoy --e2e-focus='\[Serial\].*\[Conformance\]'
 
-show-logs() {
-    for pid in "${pids[@]}"; do
-        logdir=$(pwd)/logs/${pid}
-        if [ ! -d $logdir ]; then
-            continue
-        fi
-        echo
-        echo "#- Begin: logs for sonobuoy run pid ${pid}"
-        for log in $(pwd)/logs/${pid}/*; do
-            if [ -f ${log} ]; then
-                echo
-                echo "#- Start: ${log}"
-                cat ${log}
-                echo "#- End: ${log}"
-                echo
-            fi
-        done
-        echo "#- Finish: logs for sonobuoy run pid ${pid}"
-        echo
-    done
-}
-
-cleanup() {
-    exit_status=$?
-    set +e +x
-    wait
-    echo "Finished the tests!"
-    if [ "${exit_status}" -ne "0" ]; then
-        show-logs
-    fi
-    exit ${exit_status}
-}
-trap cleanup EXIT
-
+exit_code=0
 for pid in "${pids[@]}"; do
-    wait $pid || exit $?
+    wait $pid || exit_code=$?
 done
+exit ${exit_code}
