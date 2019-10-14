@@ -12,9 +12,9 @@ PKG_CRICTL="github.com/kubernetes-sigs/cri-tools"
 VERSIONFLAGS="
     -X $PKG/pkg/version.Version=$VERSION
     -X $PKG/pkg/version.GitCommit=${COMMIT:0:8}
-    -X $PKG/vendor/$PKG_CONTAINERD/version.Version=$VERSION_CONTAINERD
-    -X $PKG/vendor/$PKG_CONTAINERD/version.Package=$PKG_RANCHER_CONTAINERD
-    -X $PKG/vendor/$PKG_CRICTL/pkg/version.Version=$VERSION_CRICTL"
+    -X $PKG_CONTAINERD/version.Version=$VERSION_CONTAINERD
+    -X $PKG_CONTAINERD/version.Package=$PKG_RANCHER_CONTAINERD
+    -X $PKG_CRICTL/pkg/version.Version=$VERSION_CRICTL"
 LDFLAGS="
     -w -s"
 STATIC="
