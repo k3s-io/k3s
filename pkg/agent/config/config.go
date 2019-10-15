@@ -337,6 +337,7 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 	nodeConfig.Images = filepath.Join(envInfo.DataDir, "images")
 	nodeConfig.AgentConfig.NodeIP = nodeIP
 	nodeConfig.AgentConfig.NodeName = nodeName
+	nodeConfig.AgentConfig.NodeExternalIP = envInfo.NodeExternalIP
 	nodeConfig.AgentConfig.ServingKubeletCert = servingKubeletCert
 	nodeConfig.AgentConfig.ServingKubeletKey = servingKubeletKey
 	nodeConfig.AgentConfig.ClusterDNS = controlConfig.ClusterDNS
@@ -398,6 +399,7 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 	nodeConfig.AgentConfig.NodeTaints = envInfo.Taints
 	nodeConfig.AgentConfig.NodeLabels = envInfo.Labels
 	nodeConfig.AgentConfig.PrivateRegistry = envInfo.PrivateRegistry
+	nodeConfig.AgentConfig.DisableCCM = controlConfig.DisableCCM
 
 	return nodeConfig, nil
 }

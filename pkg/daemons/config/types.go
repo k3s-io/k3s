@@ -63,6 +63,7 @@ type Agent struct {
 	KubeConfigKubelet   string
 	KubeConfigKubeProxy string
 	NodeIP              string
+	NodeExternalIP      string
 	RuntimeSocket       string
 	ListenAddress       string
 	ClientCA            string
@@ -77,33 +78,36 @@ type Agent struct {
 	IPSECPSK            string
 	StrongSwanDir       string
 	PrivateRegistry     string
+	DisableCCM          bool
 }
 
 type Control struct {
-	AdvertisePort           int
-	AdvertiseIP             string
-	ListenPort              int
-	HTTPSPort               int
-	ClusterSecret           string
-	ClusterIPRange          *net.IPNet
-	ServiceIPRange          *net.IPNet
-	ClusterDNS              net.IP
-	ClusterDomain           string
-	NoCoreDNS               bool
-	KubeConfigOutput        string
-	KubeConfigMode          string
-	DataDir                 string
-	Skips                   []string
-	BootstrapReadOnly       bool
-	Storage                 endpoint.Config
-	NoScheduler             bool
-	ExtraAPIArgs            []string
-	ExtraControllerArgs     []string
-	ExtraSchedulerAPIArgs   []string
-	NoLeaderElect           bool
-	FlannelBackend          string
-	IPSECPSK                string
-	DefaultLocalStoragePath string
+	AdvertisePort            int
+	AdvertiseIP              string
+	ListenPort               int
+	HTTPSPort                int
+	ClusterSecret            string
+	ClusterIPRange           *net.IPNet
+	ServiceIPRange           *net.IPNet
+	ClusterDNS               net.IP
+	ClusterDomain            string
+	NoCoreDNS                bool
+	KubeConfigOutput         string
+	KubeConfigMode           string
+	DataDir                  string
+	Skips                    []string
+	BootstrapReadOnly        bool
+	Storage                  endpoint.Config
+	NoScheduler              bool
+	ExtraAPIArgs             []string
+	ExtraControllerArgs      []string
+	ExtraSchedulerAPIArgs    []string
+	ExtraCloudControllerArgs []string
+	NoLeaderElect            bool
+	FlannelBackend           string
+	IPSECPSK                 string
+	DefaultLocalStoragePath  string
+	DisableCCM               bool
 
 	Runtime *ControlRuntime `json:"-"`
 }
@@ -130,10 +134,11 @@ type ControlRuntime struct {
 	ClientKubeAPIKey  string
 	NodePasswdFile    string
 
-	KubeConfigAdmin      string
-	KubeConfigController string
-	KubeConfigScheduler  string
-	KubeConfigAPIServer  string
+	KubeConfigAdmin           string
+	KubeConfigController      string
+	KubeConfigScheduler       string
+	KubeConfigAPIServer       string
+	KubeConfigCloudController string
 
 	ServingKubeAPICert string
 	ServingKubeAPIKey  string
@@ -146,13 +151,15 @@ type ControlRuntime struct {
 	ClientAuthProxyCert string
 	ClientAuthProxyKey  string
 
-	ClientAdminCert      string
-	ClientAdminKey       string
-	ClientControllerCert string
-	ClientControllerKey  string
-	ClientSchedulerCert  string
-	ClientSchedulerKey   string
-	ClientKubeProxyCert  string
+	ClientAdminCert           string
+	ClientAdminKey            string
+	ClientControllerCert      string
+	ClientControllerKey       string
+	ClientSchedulerCert       string
+	ClientSchedulerKey        string
+	ClientKubeProxyCert       string
+	ClientCloudControllerCert string
+	ClientCloudControllerKey  string
 }
 
 type ArgString []string

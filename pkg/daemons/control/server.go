@@ -22,11 +22,17 @@ import (
 	"time"
 
 	certutil "github.com/rancher/dynamiclistener/cert"
+	// registering k3s cloud provider
+	_ "github.com/rancher/k3s/pkg/cloudprovider"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/kine/pkg/client"
 	"github.com/rancher/kine/pkg/endpoint"
+	"github.com/rancher/wrangler-api/pkg/generated/controllers/rbac"
 	"github.com/sirupsen/logrus"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
+	"k8s.io/client-go/tools/clientcmd"
+	ccmapp "k8s.io/kubernetes/cmd/cloud-controller-manager/app"
 	"k8s.io/kubernetes/cmd/kube-apiserver/app"
 	cmapp "k8s.io/kubernetes/cmd/kube-controller-manager/app"
 	sapp "k8s.io/kubernetes/cmd/kube-scheduler/app"
@@ -93,6 +99,10 @@ func Server(ctx context.Context, cfg *config.Control) error {
 	}
 
 	controllerManager(cfg, runtime)
+
+	if !cfg.DisableCCM {
+		cloudControllerManager(cfg, runtime)
+	}
 
 	return nil
 }
@@ -267,11 +277,14 @@ func prepare(ctx context.Context, config *config.Control, runtime *config.Contro
 	runtime.KubeConfigController = path.Join(config.DataDir, "cred", "controller.kubeconfig")
 	runtime.KubeConfigScheduler = path.Join(config.DataDir, "cred", "scheduler.kubeconfig")
 	runtime.KubeConfigAPIServer = path.Join(config.DataDir, "cred", "api-server.kubeconfig")
+	runtime.KubeConfigCloudController = path.Join(config.DataDir, "cred", "cloud-controller.kubeconfig")
 
 	runtime.ClientAdminCert = path.Join(config.DataDir, "tls", "client-admin.crt")
 	runtime.ClientAdminKey = path.Join(config.DataDir, "tls", "client-admin.key")
 	runtime.ClientControllerCert = path.Join(config.DataDir, "tls", "client-controller.crt")
 	runtime.ClientControllerKey = path.Join(config.DataDir, "tls", "client-controller.key")
+	runtime.ClientCloudControllerCert = path.Join(config.DataDir, "tls", "client-cloud-controller.crt")
+	runtime.ClientCloudControllerKey = path.Join(config.DataDir, "tls", "client-cloud-controller.key")
 	runtime.ClientSchedulerCert = path.Join(config.DataDir, "tls", "client-scheduler.crt")
 	runtime.ClientSchedulerKey = path.Join(config.DataDir, "tls", "client-scheduler.key")
 	runtime.ClientKubeAPICert = path.Join(config.DataDir, "tls", "client-kube-apiserver.crt")
@@ -573,6 +586,16 @@ func genClientCerts(config *config.Control, runtime *config.ControlRuntime) erro
 		return err
 	}
 
+	certGen, err = factory("cloud-controller-manager", nil, runtime.ClientCloudControllerCert, runtime.ClientCloudControllerKey)
+	if err != nil {
+		return err
+	}
+	if certGen {
+		if err := KubeConfig(runtime.KubeConfigCloudController, apiEndpoint, runtime.ServerCA, runtime.ClientCloudControllerCert, runtime.ClientCloudControllerKey); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -797,4 +820,53 @@ func expired(certFile string) bool {
 		return false
 	}
 	return certutil.IsCertExpired(certificates[0])
+}
+
+func cloudControllerManager(cfg *config.Control, runtime *config.ControlRuntime) {
+	argsMap := map[string]string{
+		"kubeconfig":                   runtime.KubeConfigCloudController,
+		"allocate-node-cidrs":          "true",
+		"cluster-cidr":                 cfg.ClusterIPRange.String(),
+		"bind-address":                 localhostIP.String(),
+		"secure-port":                  "0",
+		"cloud-provider":               "k3s",
+		"allow-untagged-cloud":         "true",
+		"node-status-update-frequency": "1m",
+	}
+	if cfg.NoLeaderElect {
+		argsMap["leader-elect"] = "false"
+	}
+
+	args := config.GetArgsList(argsMap, cfg.ExtraCloudControllerArgs)
+
+	command := ccmapp.NewCloudControllerManagerCommand()
+	command.SetArgs(args)
+	// register k3s cloud provider
+
+	go func() {
+		for {
+			// check for the cloud controller rbac binding
+			if err := checkForCloudControllerPrivileges(runtime); err != nil {
+				logrus.Infof("Waiting for cloudcontroller rbac role to be created")
+				time.Sleep(time.Second)
+				continue
+			}
+			break
+		}
+		logrus.Infof("Running cloud-controller-manager %s", config.ArgString(args))
+		logrus.Fatalf("cloud-controller-manager exited: %v", command.Execute())
+	}()
+}
+
+func checkForCloudControllerPrivileges(runtime *config.ControlRuntime) error {
+	restConfig, err := clientcmd.BuildConfigFromFlags("", runtime.KubeConfigAdmin)
+	if err != nil {
+		return err
+	}
+	crb := rbac.NewFactoryFromConfigOrDie(restConfig).Rbac().V1().ClusterRoleBinding()
+	_, err = crb.Get("cloud-controller-manager", metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+	return nil
 }

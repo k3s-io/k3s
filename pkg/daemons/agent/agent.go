@@ -133,6 +133,10 @@ func kubelet(cfg *config.Agent) {
 	if len(cfg.NodeTaints) > 0 {
 		argsMap["register-with-taints"] = strings.Join(cfg.NodeTaints, ",")
 	}
+	if !cfg.DisableCCM {
+		argsMap["cloud-provider"] = "external"
+	}
+
 	args := config.GetArgsList(argsMap, cfg.ExtraKubeletArgs)
 	command.SetArgs(args)
 

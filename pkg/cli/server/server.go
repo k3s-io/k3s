@@ -85,6 +85,8 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	serverConfig.ControlConfig.AdvertisePort = cfg.AdvertisePort
 	serverConfig.ControlConfig.BootstrapReadOnly = !cfg.StoreBootstrap
 	serverConfig.ControlConfig.FlannelBackend = cfg.FlannelBackend
+	serverConfig.ControlConfig.ExtraCloudControllerArgs = cfg.ExtraCloudControllerArgs
+	serverConfig.ControlConfig.DisableCCM = cfg.DisableCCM
 
 	if cmds.AgentConfig.FlannelIface != "" && cmds.AgentConfig.NodeIP == "" {
 		cmds.AgentConfig.NodeIP = netutil.GetIPFromInterface(cmds.AgentConfig.FlannelIface)
