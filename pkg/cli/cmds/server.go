@@ -8,33 +8,35 @@ import (
 )
 
 type Server struct {
-	ClusterCIDR             string
-	ClusterSecret           string
-	ServiceCIDR             string
-	ClusterDNS              string
-	ClusterDomain           string
-	HTTPSPort               int
-	HTTPPort                int
-	DataDir                 string
-	DisableAgent            bool
-	KubeConfigOutput        string
-	KubeConfigMode          string
-	TLSSan                  cli.StringSlice
-	BindAddress             string
-	ExtraAPIArgs            cli.StringSlice
-	ExtraSchedulerArgs      cli.StringSlice
-	ExtraControllerArgs     cli.StringSlice
-	Rootless                bool
-	StoreBootstrap          bool
-	StorageEndpoint         string
-	StorageCAFile           string
-	StorageCertFile         string
-	StorageKeyFile          string
-	AdvertiseIP             string
-	AdvertisePort           int
-	DisableScheduler        bool
-	FlannelBackend          string
-	DefaultLocalStoragePath string
+	ClusterCIDR              string
+	ClusterSecret            string
+	ServiceCIDR              string
+	ClusterDNS               string
+	ClusterDomain            string
+	HTTPSPort                int
+	HTTPPort                 int
+	DataDir                  string
+	DisableAgent             bool
+	KubeConfigOutput         string
+	KubeConfigMode           string
+	TLSSan                   cli.StringSlice
+	BindAddress              string
+	ExtraAPIArgs             cli.StringSlice
+	ExtraSchedulerArgs       cli.StringSlice
+	ExtraControllerArgs      cli.StringSlice
+	ExtraCloudControllerArgs cli.StringSlice
+	Rootless                 bool
+	StoreBootstrap           bool
+	StorageEndpoint          string
+	StorageCAFile            string
+	StorageCertFile          string
+	StorageKeyFile           string
+	AdvertiseIP              string
+	AdvertisePort            int
+	DisableScheduler         bool
+	FlannelBackend           string
+	DefaultLocalStoragePath  string
+	DisableCCM               bool
 }
 
 var ServerConfig Server
@@ -143,6 +145,11 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Usage: "Customized flag for kube-controller-manager process",
 				Value: &ServerConfig.ExtraControllerArgs,
 			},
+			cli.StringSliceFlag{
+				Name:  "kube-cloud-controller-arg",
+				Usage: "Customized flag for kube-cloud-controller-manager process",
+				Value: &ServerConfig.ExtraCloudControllerArgs,
+			},
 			cli.BoolFlag{
 				Name:        "rootless",
 				Usage:       "(experimental) Run rootless",
@@ -194,6 +201,11 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Usage:       "Disable Kubernetes default scheduler",
 				Destination: &ServerConfig.DisableScheduler,
 			},
+			cli.BoolFlag{
+				Name:        "disable-cloud-controller",
+				Usage:       "Disable k3s default cloud controller manager",
+				Destination: &ServerConfig.DisableCCM,
+			},
 			cli.StringFlag{
 				Name:        "flannel-backend",
 				Usage:       fmt.Sprintf("(experimental) One of '%s', '%s', '%s', or '%s'", config.FlannelBackendNone, config.FlannelBackendVXLAN, config.FlannelBackendIPSEC, config.FlannelBackendWireguard),
@@ -219,6 +231,7 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 			NodeLabels,
 			NodeTaints,
 			PrivateRegistryFlag,
+			NodeExternalIPFlag,
 		},
 	}
 }

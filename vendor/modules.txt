@@ -757,6 +757,7 @@ github.com/rancher/kine/pkg/broadcaster
 # github.com/rancher/remotedialer v0.2.0
 github.com/rancher/remotedialer
 # github.com/rancher/wrangler v0.2.0
+github.com/rancher/wrangler/pkg/start
 github.com/rancher/wrangler/pkg/signals
 github.com/rancher/wrangler/pkg/controller-gen
 github.com/rancher/wrangler/pkg/controller-gen/args
@@ -770,7 +771,6 @@ github.com/rancher/wrangler/pkg/generic
 github.com/rancher/wrangler/pkg/schemes
 github.com/rancher/wrangler/pkg/crd
 github.com/rancher/wrangler/pkg/leader
-github.com/rancher/wrangler/pkg/start
 github.com/rancher/wrangler/pkg/condition
 github.com/rancher/wrangler/pkg/relatedresource
 github.com/rancher/wrangler/pkg/slice
@@ -779,14 +779,14 @@ github.com/rancher/wrangler/pkg/apply/injectors
 github.com/rancher/wrangler/pkg/gvk
 github.com/rancher/wrangler/pkg/name
 # github.com/rancher/wrangler-api v0.2.0
+github.com/rancher/wrangler-api/pkg/generated/controllers/core
 github.com/rancher/wrangler-api/pkg/generated/controllers/core/v1
+github.com/rancher/wrangler-api/pkg/generated/controllers/rbac
 github.com/rancher/wrangler-api/pkg/generated/controllers/apps
 github.com/rancher/wrangler-api/pkg/generated/controllers/batch
-github.com/rancher/wrangler-api/pkg/generated/controllers/core
-github.com/rancher/wrangler-api/pkg/generated/controllers/rbac
 github.com/rancher/wrangler-api/pkg/generated/controllers/apps/v1
-github.com/rancher/wrangler-api/pkg/generated/controllers/batch/v1
 github.com/rancher/wrangler-api/pkg/generated/controllers/rbac/v1
+github.com/rancher/wrangler-api/pkg/generated/controllers/batch/v1
 # github.com/robfig/cron v1.1.0
 github.com/robfig/cron
 # github.com/rootless-containers/rootlesskit v0.6.0
@@ -1184,23 +1184,23 @@ k8s.io/apimachinery/pkg/fields
 k8s.io/apimachinery/pkg/watch
 k8s.io/apimachinery/pkg/runtime
 k8s.io/apimachinery/pkg/runtime/schema
+k8s.io/apimachinery/pkg/types
 k8s.io/apimachinery/pkg/api/errors
 k8s.io/apimachinery/pkg/apis/meta/v1/unstructured
 k8s.io/apimachinery/pkg/util/yaml
 k8s.io/apimachinery/pkg/runtime/serializer
 k8s.io/apimachinery/pkg/util/runtime
-k8s.io/apimachinery/pkg/types
 k8s.io/apimachinery/pkg/labels
 k8s.io/apimachinery/pkg/api/equality
 k8s.io/apimachinery/pkg/util/intstr
+k8s.io/apimachinery/pkg/util/errors
+k8s.io/apimachinery/pkg/util/validation
 k8s.io/apimachinery/pkg/util/sets
 k8s.io/apimachinery/pkg/util/wait
 k8s.io/apimachinery/pkg/util/strategicpatch
 k8s.io/apimachinery/pkg/api/resource
 k8s.io/apimachinery/pkg/conversion
 k8s.io/apimachinery/pkg/selection
-k8s.io/apimachinery/pkg/util/errors
-k8s.io/apimachinery/pkg/util/validation
 k8s.io/apimachinery/pkg/conversion/queryparams
 k8s.io/apimachinery/pkg/util/naming
 k8s.io/apimachinery/pkg/api/validation/path
@@ -1255,13 +1255,13 @@ k8s.io/apiserver/pkg/authorization/authorizer
 k8s.io/apiserver/pkg/authorization/authorizerfactory
 k8s.io/apiserver/pkg/authentication/user
 k8s.io/apiserver/pkg/apis/audit
+k8s.io/apiserver/pkg/util/term
 k8s.io/apiserver/pkg/admission
 k8s.io/apiserver/pkg/endpoints/openapi
 k8s.io/apiserver/pkg/features
 k8s.io/apiserver/pkg/server/filters
 k8s.io/apiserver/pkg/server/options
 k8s.io/apiserver/pkg/storage/etcd3/preflight
-k8s.io/apiserver/pkg/util/term
 k8s.io/apiserver/pkg/util/webhook
 k8s.io/apiserver/pkg/endpoints/filters
 k8s.io/apiserver/pkg/admission/plugin/namespace/lifecycle
@@ -1365,9 +1365,9 @@ k8s.io/cli-runtime/pkg/kustomize/k8sdeps/transformer/hash
 k8s.io/cli-runtime/pkg/kustomize/k8sdeps/transformer/patch
 k8s.io/cli-runtime/pkg/kustomize/k8sdeps/kv
 # k8s.io/client-go v11.0.1-0.20190409021438-1a26190bd76a+incompatible => github.com/rancher/kubernetes/staging/src/k8s.io/client-go v1.16.0-k3s.1
+k8s.io/client-go/tools/clientcmd
 k8s.io/client-go/util/cert
 k8s.io/client-go/kubernetes
-k8s.io/client-go/tools/clientcmd
 k8s.io/client-go/transport
 k8s.io/client-go/tools/clientcmd/api
 k8s.io/client-go/discovery
@@ -1381,8 +1381,15 @@ k8s.io/client-go/kubernetes/typed/core/v1
 k8s.io/client-go/tools/portforward
 k8s.io/client-go/tools/remotecommand
 k8s.io/client-go/transport/spdy
-k8s.io/client-go/util/keyutil
+k8s.io/client-go/informers
+k8s.io/client-go/informers/core
+k8s.io/client-go/kubernetes/scheme
+k8s.io/client-go/informers/core/v1
 k8s.io/client-go/listers/core/v1
+k8s.io/client-go/tools/auth
+k8s.io/client-go/tools/clientcmd/api/latest
+k8s.io/client-go/util/homedir
+k8s.io/client-go/util/keyutil
 k8s.io/client-go/kubernetes/typed/admissionregistration/v1
 k8s.io/client-go/kubernetes/typed/admissionregistration/v1beta1
 k8s.io/client-go/kubernetes/typed/apps/v1beta1
@@ -1419,14 +1426,13 @@ k8s.io/client-go/kubernetes/typed/settings/v1alpha1
 k8s.io/client-go/kubernetes/typed/storage/v1
 k8s.io/client-go/kubernetes/typed/storage/v1alpha1
 k8s.io/client-go/kubernetes/typed/storage/v1beta1
-k8s.io/client-go/tools/auth
-k8s.io/client-go/tools/clientcmd/api/latest
-k8s.io/client-go/util/homedir
-k8s.io/client-go/informers
 k8s.io/client-go/tools/record
 k8s.io/client-go/util/certificate
 k8s.io/client-go/util/connrotation
 k8s.io/client-go/tools/metrics
+k8s.io/client-go/informers/rbac
+k8s.io/client-go/tools/leaderelection
+k8s.io/client-go/tools/leaderelection/resourcelock
 k8s.io/client-go/discovery/cached
 k8s.io/client-go/discovery/cached/memory
 k8s.io/client-go/dynamic
@@ -1434,25 +1440,18 @@ k8s.io/client-go/metadata
 k8s.io/client-go/metadata/metadatainformer
 k8s.io/client-go/restmapper
 k8s.io/client-go/scale
-k8s.io/client-go/tools/leaderelection
-k8s.io/client-go/tools/leaderelection/resourcelock
-k8s.io/client-go/kubernetes/scheme
 k8s.io/client-go/pkg/version
 k8s.io/client-go/plugin/pkg/client/auth/exec
 k8s.io/client-go/rest/watch
 k8s.io/client-go/util/workqueue
 k8s.io/client-go/tools/pager
 k8s.io/client-go/util/retry
-k8s.io/client-go/informers/core/v1
 k8s.io/client-go/informers/apps
 k8s.io/client-go/informers/batch
-k8s.io/client-go/informers/core
-k8s.io/client-go/informers/rbac
 k8s.io/client-go/informers/apps/v1
 k8s.io/client-go/listers/apps/v1
 k8s.io/client-go/tools/reference
 k8s.io/client-go/util/exec
-k8s.io/client-go/tools/clientcmd/api/v1
 k8s.io/client-go/informers/admissionregistration
 k8s.io/client-go/informers/auditregistration
 k8s.io/client-go/informers/autoscaling
@@ -1468,10 +1467,15 @@ k8s.io/client-go/informers/policy
 k8s.io/client-go/informers/scheduling
 k8s.io/client-go/informers/settings
 k8s.io/client-go/informers/storage
+k8s.io/client-go/tools/clientcmd/api/v1
 k8s.io/client-go/tools/record/util
 k8s.io/client-go/informers/discovery/v1alpha1
 k8s.io/client-go/util/certificate/csr
 k8s.io/client-go/listers/storage/v1beta1
+k8s.io/client-go/informers/rbac/v1
+k8s.io/client-go/listers/rbac/v1
+k8s.io/client-go/informers/rbac/v1alpha1
+k8s.io/client-go/informers/rbac/v1beta1
 k8s.io/client-go/scale/scheme/autoscalingv1
 k8s.io/client-go/metadata/metadatalister
 k8s.io/client-go/scale/scheme
@@ -1483,8 +1487,6 @@ k8s.io/client-go/scale/scheme/extensionsv1beta1
 k8s.io/client-go/tools/watch
 k8s.io/client-go/informers/certificates/v1beta1
 k8s.io/client-go/listers/certificates/v1beta1
-k8s.io/client-go/informers/rbac/v1
-k8s.io/client-go/listers/rbac/v1
 k8s.io/client-go/informers/policy/v1beta1
 k8s.io/client-go/listers/policy/v1beta1
 k8s.io/client-go/listers/discovery/v1alpha1
@@ -1507,8 +1509,6 @@ k8s.io/client-go/informers/apps/v1beta1
 k8s.io/client-go/informers/apps/v1beta2
 k8s.io/client-go/informers/batch/v1beta1
 k8s.io/client-go/informers/batch/v2alpha1
-k8s.io/client-go/informers/rbac/v1alpha1
-k8s.io/client-go/informers/rbac/v1beta1
 k8s.io/client-go/informers/admissionregistration/v1
 k8s.io/client-go/informers/admissionregistration/v1beta1
 k8s.io/client-go/informers/auditregistration/v1alpha1
@@ -1529,13 +1529,13 @@ k8s.io/client-go/informers/storage/v1alpha1
 k8s.io/client-go/listers/settings/v1alpha1
 k8s.io/client-go/listers/scheduling/v1
 k8s.io/client-go/listers/node/v1beta1
+k8s.io/client-go/listers/rbac/v1alpha1
+k8s.io/client-go/listers/rbac/v1beta1
 k8s.io/client-go/third_party/forked/golang/template
 k8s.io/client-go/listers/apps/v1beta1
 k8s.io/client-go/listers/apps/v1beta2
 k8s.io/client-go/listers/batch/v1beta1
 k8s.io/client-go/listers/batch/v2alpha1
-k8s.io/client-go/listers/rbac/v1alpha1
-k8s.io/client-go/listers/rbac/v1beta1
 k8s.io/client-go/listers/admissionregistration/v1beta1
 k8s.io/client-go/listers/admissionregistration/v1
 k8s.io/client-go/listers/auditregistration/v1alpha1
@@ -1585,8 +1585,8 @@ k8s.io/component-base/metrics/prometheus/restclient
 k8s.io/component-base/config
 k8s.io/component-base/metrics/legacyregistry
 k8s.io/component-base/cli/globalflag
-k8s.io/component-base/metrics/prometheus/workqueue
 k8s.io/component-base/version
+k8s.io/component-base/metrics/prometheus/workqueue
 k8s.io/component-base/metrics
 k8s.io/component-base/featuregate
 k8s.io/component-base/config/v1alpha1
@@ -1741,6 +1741,7 @@ k8s.io/kubernetes/cmd/kubelet/app
 k8s.io/kubernetes/pkg/client/metrics/prometheus
 k8s.io/kubernetes/pkg/kubeapiserver/authorizer/modes
 k8s.io/kubernetes/pkg/version/prometheus
+k8s.io/kubernetes/cmd/cloud-controller-manager/app
 k8s.io/kubernetes/cmd/kube-apiserver/app
 k8s.io/kubernetes/cmd/kube-controller-manager/app
 k8s.io/kubernetes/cmd/kube-scheduler/app
@@ -1880,6 +1881,12 @@ k8s.io/kubernetes/pkg/volume/secret
 k8s.io/kubernetes/pkg/volume/util/hostutil
 k8s.io/kubernetes/pkg/volume/util/subpath
 k8s.io/kubernetes/pkg/volume/vsphere_volume
+k8s.io/kubernetes/cmd/cloud-controller-manager/app/config
+k8s.io/kubernetes/cmd/cloud-controller-manager/app/options
+k8s.io/kubernetes/cmd/controller-manager/app
+k8s.io/kubernetes/pkg/controller/cloud
+k8s.io/kubernetes/pkg/controller/route
+k8s.io/kubernetes/pkg/controller/service
 k8s.io/kubernetes/cmd/kube-apiserver/app/options
 k8s.io/kubernetes/pkg/controller/serviceaccount
 k8s.io/kubernetes/pkg/generated/openapi
@@ -1890,7 +1897,6 @@ k8s.io/kubernetes/pkg/kubeapiserver/server
 k8s.io/kubernetes/pkg/master/controller/crdregistration
 k8s.io/kubernetes/pkg/registry/cachesize
 k8s.io/kubernetes/plugin/pkg/auth/authenticator/token/bootstrap
-k8s.io/kubernetes/cmd/controller-manager/app
 k8s.io/kubernetes/cmd/kube-controller-manager/app/config
 k8s.io/kubernetes/cmd/kube-controller-manager/app/options
 k8s.io/kubernetes/pkg/controller
@@ -1900,7 +1906,6 @@ k8s.io/kubernetes/pkg/controller/certificates/approver
 k8s.io/kubernetes/pkg/controller/certificates/cleaner
 k8s.io/kubernetes/pkg/controller/certificates/rootcacertpublisher
 k8s.io/kubernetes/pkg/controller/certificates/signer
-k8s.io/kubernetes/pkg/controller/cloud
 k8s.io/kubernetes/pkg/controller/clusterroleaggregation
 k8s.io/kubernetes/pkg/controller/cronjob
 k8s.io/kubernetes/pkg/controller/daemon
@@ -1920,8 +1925,6 @@ k8s.io/kubernetes/pkg/controller/podgc
 k8s.io/kubernetes/pkg/controller/replicaset
 k8s.io/kubernetes/pkg/controller/replication
 k8s.io/kubernetes/pkg/controller/resourcequota
-k8s.io/kubernetes/pkg/controller/route
-k8s.io/kubernetes/pkg/controller/service
 k8s.io/kubernetes/pkg/controller/statefulset
 k8s.io/kubernetes/pkg/controller/ttl
 k8s.io/kubernetes/pkg/controller/ttlafterfinished
@@ -2214,9 +2217,13 @@ k8s.io/kubernetes/pkg/volume/util/recyclerclient
 k8s.io/kubernetes/pkg/volume/csi/csiv0
 k8s.io/kubernetes/pkg/volume/csi/nodeinfomanager
 k8s.io/kubernetes/pkg/volume/util/fsquota
+k8s.io/kubernetes/cmd/cloud-controller-manager/app/apis/config
+k8s.io/kubernetes/cmd/cloud-controller-manager/app/apis/config/scheme
+k8s.io/kubernetes/cmd/cloud-controller-manager/app/apis/config/v1alpha1
+k8s.io/kubernetes/cmd/controller-manager/app/options
+k8s.io/kubernetes/pkg/controller/util/node
 k8s.io/kubernetes/pkg/registry/core/secret
 k8s.io/kubernetes/pkg/quota/v1
-k8s.io/kubernetes/cmd/controller-manager/app/options
 k8s.io/kubernetes/pkg/controller/apis/config/scheme
 k8s.io/kubernetes/pkg/controller/certificates/signer/config
 k8s.io/kubernetes/pkg/controller/daemon/config
@@ -2239,7 +2246,6 @@ k8s.io/kubernetes/pkg/controller/ttlafterfinished/config
 k8s.io/kubernetes/pkg/controller/volume/attachdetach/config
 k8s.io/kubernetes/pkg/controller/service/config
 k8s.io/kubernetes/pkg/controller/certificates
-k8s.io/kubernetes/pkg/controller/util/node
 k8s.io/kubernetes/pkg/controller/daemon/util
 k8s.io/kubernetes/pkg/util/labels
 k8s.io/kubernetes/pkg/controller/deployment/util
@@ -2380,6 +2386,7 @@ k8s.io/kubernetes/pkg/util/ebtables
 k8s.io/kubernetes/pkg/kubelet/kubeletconfig/util/files
 k8s.io/kubernetes/pkg/volume/util/fsquota/common
 k8s.io/kubernetes/pkg/controller/apis/config/v1alpha1
+k8s.io/kubernetes/pkg/controller/service/config/v1alpha1
 k8s.io/kubernetes/pkg/volume/util/nestedpendingoperations
 k8s.io/kubernetes/pkg/scheduler/algorithm/priorities
 k8s.io/kubernetes/pkg/scheduler/api/validation
@@ -2432,7 +2439,6 @@ k8s.io/kubernetes/pkg/controller/podgc/config/v1alpha1
 k8s.io/kubernetes/pkg/controller/replicaset/config/v1alpha1
 k8s.io/kubernetes/pkg/controller/replication/config/v1alpha1
 k8s.io/kubernetes/pkg/controller/resourcequota/config/v1alpha1
-k8s.io/kubernetes/pkg/controller/service/config/v1alpha1
 k8s.io/kubernetes/pkg/controller/serviceaccount/config/v1alpha1
 k8s.io/kubernetes/pkg/controller/statefulset/config/v1alpha1
 k8s.io/kubernetes/pkg/controller/ttlafterfinished/config/v1alpha1

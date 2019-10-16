@@ -15,6 +15,7 @@ type Agent struct {
 	ResolvConf               string
 	DataDir                  string
 	NodeIP                   string
+	NodeExternalIP           string
 	NodeName                 string
 	ClusterSecret            string
 	PauseImage               string
@@ -44,6 +45,11 @@ var (
 		Name:        "node-ip,i",
 		Usage:       "(agent) IP address to advertise for node",
 		Destination: &AgentConfig.NodeIP,
+	}
+	NodeExternalIPFlag = cli.StringFlag{
+		Name:        "node-external-ip",
+		Usage:       "(agent) External IP address to advertise for node",
+		Destination: &AgentConfig.NodeExternalIP,
 	}
 	NodeNameFlag = cli.StringFlag{
 		Name:        "node-name",
@@ -175,6 +181,7 @@ func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
 			NodeLabels,
 			NodeTaints,
 			PrivateRegistryFlag,
+			NodeExternalIPFlag,
 		},
 	}
 }

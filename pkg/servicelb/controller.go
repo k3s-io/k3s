@@ -221,8 +221,15 @@ func (h *handler) podIPs(pods []*core.Pod) ([]string, error) {
 		}
 
 		for _, addr := range node.Status.Addresses {
-			if addr.Type == core.NodeInternalIP {
+			if addr.Type == core.NodeExternalIP {
 				ips[addr.Address] = true
+			}
+		}
+		if len(ips) == 0 {
+			for _, addr := range node.Status.Addresses {
+				if addr.Type == core.NodeInternalIP {
+					ips[addr.Address] = true
+				}
 			}
 		}
 	}
