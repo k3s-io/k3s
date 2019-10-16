@@ -134,7 +134,14 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 		serverConfig.ControlConfig.DefaultLocalStoragePath = cfg.DefaultLocalStoragePath
 	}
 
+	noDeploys := make([]string, 0)
 	for _, noDeploy := range app.StringSlice("no-deploy") {
+		for _, splitNoDeploy := range strings.Split(noDeploy, ",") {
+			noDeploys = append(noDeploys, splitNoDeploy)
+		}
+	}
+
+	for _, noDeploy := range noDeploys {
 		if noDeploy == "servicelb" {
 			serverConfig.DisableServiceLB = true
 			continue
