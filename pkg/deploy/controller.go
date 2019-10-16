@@ -85,10 +85,14 @@ func (w *watcher) listFiles(force bool) error {
 }
 
 func (w *watcher) listFilesIn(base string, force bool) error {
-	files, err := ioutil.ReadDir(base)
-	if os.IsNotExist(err) {
+	files := map[string]os.FileInfo{}
+	if err := filepath.Walk(base, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		files[path] = info
 		return nil
-	} else if err != nil {
+	}); err != nil {
 		return err
 	}
 
@@ -100,13 +104,12 @@ func (w *watcher) listFilesIn(base string, force bool) error {
 	}
 
 	var errs []error
-	for _, file := range files {
+	for path, file := range files {
 		if skipFile(file.Name(), skips) {
 			continue
 		}
-		p := filepath.Join(base, file.Name())
-		if err := w.deploy(p, !force); err != nil {
-			errs = append(errs, errors2.Wrapf(err, "failed to process %s", p))
+		if err := w.deploy(path, !force); err != nil {
+			errs = append(errs, errors2.Wrapf(err, "failed to process %s", path))
 		}
 	}
 
