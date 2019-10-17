@@ -5,12 +5,10 @@ terraform {
 }
 
 locals {
-  name                   = "k3s-load-server"
-  node_count             = 1
-  k3s_cluster_secret     = "pvc-6476dcaf-73a0-11e9-b8e5-06943b744282"
-  install_k3s_version    = "v0.9.0-rc2"
-  prom_worker_node_count = 0
-  worker_node_count      = 0
+  name                   = var.name
+  k3s_cluster_secret     = var.k3s_cluster_secret
+  install_k3s_version    = var.k3s_version
+  prom_worker_node_count = var.prom_worker_node_count
 }
 
 provider "aws" {
@@ -18,13 +16,8 @@ provider "aws" {
   profile = "rancher-eng"
 }
 
-resource "aws_eip" "k3s-server" {
-  count = local.node_count
-  vpc   = true
-}
-
 resource "aws_security_group" "k3s" {
-  name   = "${local.name}-rancher-server"
+  name   = "${local.name}-sg"
   vpc_id = data.aws_vpc.default.id
 
   ingress {
@@ -63,48 +56,36 @@ resource "aws_security_group" "k3s" {
   }
 }
 
-module "k3s-server-asg" {
-  source               = "terraform-aws-modules/autoscaling/aws"
-  version              = "3.0.0"
-  name                 = "load-testing-k3s-server"
-  asg_name             = "load-testing-k3s-server"
-  instance_type        = var.server_instance_type
-  image_id             = data.aws_ami.ubuntu.id
-  user_data            = data.template_file.k3s-server-user_data.rendered
+resource "aws_spot_instance_request" "k3s-server" {
+  instance_type = var.server_instance_type
+  ami           = data.aws_ami.ubuntu.id
+  user_data     = base64encode(templatefile("${path.module}/files/server_userdata.tmpl", { extra_ssh_keys = var.extra_ssh_keys, public_ip = aws_spot_instance_request.k3s-server.public_ip, metrics_yaml = base64encode(data.template_file.metrics.rendered), prom_yaml = base64encode(data.template_file.k3s-prom-yaml.rendered), k3s_cluster_secret = local.k3s_cluster_secret, install_k3s_version = local.install_k3s_version, k3s_server_args = var.k3s_server_args }))
+
   ebs_optimized        = true
-  iam_instance_profile = aws_iam_instance_profile.k3s-server.name
-
-  desired_capacity    = local.node_count
-  health_check_type   = "EC2"
-  max_size            = local.node_count
-  min_size            = local.node_count
-  vpc_zone_identifier = [data.aws_subnet.selected.id]
-  spot_price          = "1.591"
-
+  wait_for_fulfillment = true
   security_groups = [
     aws_security_group.k3s.id,
   ]
 
-  lc_name = "load-testing-k3s-server"
+  root_block_device {
+    volume_size = "1000"
+    volume_type = "gp2"
+  }
 
-  root_block_device = [
-    {
-      volume_size = "1000"
-      volume_type = "gp2"
-    },
-  ]
+  tags = {
+    Name = "${local.name}-server"
+  }
 }
 
 module "k3s-prom-worker-asg" {
-  source               = "terraform-aws-modules/autoscaling/aws"
-  version              = "3.0.0"
-  name                 = "load-testing-k3s-prom-worker"
-  asg_name             = "load-testing-k3s-prom-worker"
-  instance_type        = "m5.large"
-  image_id             = data.aws_ami.ubuntu.id
-  user_data            = data.template_file.k3s-prom-worker-user_data.rendered
-  ebs_optimized        = true
-  iam_instance_profile = aws_iam_instance_profile.k3s-server.name
+  source        = "terraform-aws-modules/autoscaling/aws"
+  version       = "3.0.0"
+  name          = "${local.name}-prom-worker"
+  asg_name      = "${local.name}-prom-worker"
+  instance_type = "m5.large"
+  image_id      = data.aws_ami.ubuntu.id
+  user_data     = base64encode(templatefile("${path.module}/files/worker_userdata.tmpl", { extra_ssh_keys = var.extra_ssh_keys, k3s_url = aws_spot_instance_request.k3s-server.public_ip, k3s_cluster_secret = local.k3s_cluster_secret, install_k3s_version = local.install_k3s_version, k3s_exec = "--node-label prom=true" }))
+  ebs_optimized = true
 
   desired_capacity    = local.prom_worker_node_count
   health_check_type   = "EC2"
@@ -117,7 +98,7 @@ module "k3s-prom-worker-asg" {
     aws_security_group.k3s.id,
   ]
 
-  lc_name = "load-testing-k3s-prom-worker"
+  lc_name = "${local.name}-prom-worker"
 
   root_block_device = [
     {
@@ -130,6 +111,6 @@ module "k3s-prom-worker-asg" {
 resource "null_resource" "get-kubeconfig" {
   provisioner "local-exec" {
     interpreter = ["bash", "-c"]
-    command     = "until ssh ubuntu@${aws_eip.k3s-server.0.public_ip} 'sudo sed \"s/localhost/${aws_eip.k3s-server.0.public_ip}/g;s/127.0.0.1/${aws_eip.k3s-server.0.public_ip}/g\" /etc/rancher/k3s/k3s.yaml' >| ../cluster-loader/kubeConfig.yaml; do sleep 5; done"
+    command     = "until ssh ubuntu@${aws_spot_instance_request.k3s-server.public_ip} 'sudo sed \"s/localhost/$aws_spot_instance_request.k3s-server.public_ip}/g;s/127.0.0.1/${aws_spot_instance_request.k3s-server.public_ip}/g\" /etc/rancher/k3s/k3s.yaml' >| ../cluster-loader/kubeConfig.yaml; do sleep 5; done"
   }
 }
