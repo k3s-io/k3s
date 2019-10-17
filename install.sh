@@ -463,27 +463,36 @@ pstree() {
 }
 
 killtree() {
-    [ $# -ne 0 ] && kill $(set +x; pstree $@; set -x)
+    kill -9 $({ set +x; } 2>/dev/null; pstree $@; set -x) 2>/dev/null
 }
 
-killtree $(lsof | sed -e 's/^[^0-9]*//g; s/  */\t/g' | grep -w 'k3s/data/[^/]*/bin/containerd-shim' | cut -f1 | sort -n -u)
+getshims() {
+    lsof | sed -e 's/^[^0-9]*//g; s/  */\t/g' | grep -w 'k3s/data/[^/]*/bin/containerd-shim' | cut -f1 | sort -n -u
+}
+
+killtree $({ set +x; } 2>/dev/null; getshims; set -x)
 
 do_unmount() {
+    { set +x; } 2>/dev/null
     MOUNTS=
     while read ignore mount ignore; do
         MOUNTS="$mount\n$MOUNTS"
     done </proc/self/mounts
     MOUNTS=$(printf $MOUNTS | grep "^$1" | sort -r)
     if [ -n "${MOUNTS}" ]; then
+        set -x
         umount ${MOUNTS}
+    else
+        set -x
     fi
 }
 
 do_unmount '/run/k3s'
 do_unmount '/var/lib/rancher/k3s'
+do_unmount '/run/netns/cni-'
 
 # Delete network interface(s) that match 'master cni0'
-ip link show | grep 'master cni0' | while read ignore iface ignore; do
+ip link show 2>/dev/null | grep 'master cni0' | while read ignore iface ignore; do
     iface=${iface%%@*}
     [ -z "$iface" ] || ip link delete $iface
 done
