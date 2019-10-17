@@ -42,14 +42,3 @@ data "aws_ami" "ubuntu" {
     values = ["x86_64"]
   }
 }
-
-data "template_file" "k3s-pool-worker-user_data" {
-  template = file("${path.module}/files/pool_worker_userdata.tmpl")
-
-  vars = {
-    k3s_url             = data.terraform_remote_state.server.outputs.public_ip[0]
-    k3s_cluster_secret  = local.k3s_cluster_secret
-    install_k3s_version = local.install_k3s_version
-    k3s_per_node        = var.k3s_per_node
-  }
-}

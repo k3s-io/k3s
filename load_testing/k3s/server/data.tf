@@ -45,39 +45,3 @@ data "template_file" "k3s-prom-yaml" {
     graf_host = var.graf_host
   }
 }
-
-data "template_file" "k3s-server-user_data" {
-  template = file("${path.module}/files/server_userdata.tmpl")
-
-  vars = {
-    create_eip          = 1
-    metrics_yaml        = base64encode(data.template_file.metrics.rendered)
-    prom_yaml           = base64encode(data.template_file.k3s-prom-yaml.rendered)
-    eip                 = join(",", aws_eip.k3s-server.*.public_ip)
-    k3s_cluster_secret  = local.k3s_cluster_secret
-    install_k3s_version = local.install_k3s_version
-    k3s_server_args     = var.k3s_server_args
-  }
-}
-
-data "template_file" "k3s-prom-worker-user_data" {
-  template = file("${path.module}/files/worker_userdata.tmpl")
-
-  vars = {
-    k3s_url             = aws_eip.k3s-server.0.public_ip
-    k3s_cluster_secret  = local.k3s_cluster_secret
-    install_k3s_version = local.install_k3s_version
-    k3s_exec            = "--node-label prom=true"
-  }
-}
-
-data "template_file" "k3s-worker-user_data" {
-  template = file("${path.module}/files/worker_userdata.tmpl")
-
-  vars = {
-    k3s_url             = aws_eip.k3s-server.0.public_ip
-    k3s_cluster_secret  = local.k3s_cluster_secret
-    install_k3s_version = local.install_k3s_version
-    k3s_exec            = ""
-  }
-}

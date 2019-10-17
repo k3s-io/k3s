@@ -1,5 +1,5 @@
 output "public_ip" {
-  value = aws_eip.k3s-server.*.public_ip
+  value = aws_spot_instance_request.k3s-server.public_ip
 }
 
 output "install_k3s_version" {
