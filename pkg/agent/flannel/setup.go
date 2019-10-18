@@ -147,10 +147,10 @@ func createFlannelConf(nodeConfig *config.Node) error {
 }
 
 func setupStrongSwan(nodeConfig *config.Node) error {
-	// if we don't know the location of extracted strongswan data then return
+	// if data dir env is not set point to root
 	dataDir := os.Getenv("K3S_DATA_DIR")
 	if dataDir == "" {
-		return nil
+		dataDir = "/"
 	}
 	dataDir = path.Join(dataDir, "etc", "strongswan")
 
@@ -158,6 +158,13 @@ func setupStrongSwan(nodeConfig *config.Node) error {
 	// something exists but is not a symlink, return
 	if err == nil && info.Mode()&os.ModeSymlink == 0 {
 		return nil
+	}
+	if err == nil {
+		target, err := os.Readlink(nodeConfig.AgentConfig.StrongSwanDir)
+		// current link is the same, return
+		if err == nil && target == dataDir {
+			return nil
+		}
 	}
 
 	// clean up strongswan old link
