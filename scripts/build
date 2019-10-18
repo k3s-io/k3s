@@ -48,6 +48,7 @@ rm -f \
     bin/runc \
     bin/containerd-shim \
     bin/containerd-shim-runc-v1 \
+    bin/containerd-shim-runc-v2 \
     bin/k3s-server \
     bin/kubectl \
     bin/crictl \
@@ -92,6 +93,6 @@ echo Building containerd-shim
 make -C ./vendor/github.com/containerd/containerd bin/containerd-shim
 cp -f ./vendor/github.com/containerd/containerd/bin/containerd-shim ./bin/containerd-shim
 
-echo Building containerd-shim-runc-v1
-make -C ./vendor/github.com/containerd/containerd bin/containerd-shim-runc-v1
-cp -f ./vendor/github.com/containerd/containerd/bin/containerd-shim-runc-v1 ./bin/containerd-shim-runc-v1
+echo Building containerd-shim-runc-v2
+make -C ./vendor/github.com/containerd/containerd bin/containerd-shim-runc-v2
+cp -f ./vendor/github.com/containerd/containerd/bin/containerd-shim-runc-v2 ./bin/containerd-shim-runc-v2

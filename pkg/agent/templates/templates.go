@@ -37,6 +37,9 @@ sandbox_image = "{{ .NodeConfig.AgentConfig.PauseImage }}"
     conf_dir = "{{ .NodeConfig.AgentConfig.CNIConfDir }}"
 {{ end -}}
 
+[plugins.cri.containerd.runtimes.runc]
+  runtime_type = "io.containerd.runc.v2"
+
 {{ if .PrivateRegistryConfig }}
 {{ if .PrivateRegistryConfig.Mirrors }}
 [plugins.cri.registry.mirrors]{{end}}
