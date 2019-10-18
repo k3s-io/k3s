@@ -489,6 +489,7 @@ do_unmount() {
 
 do_unmount '/run/k3s'
 do_unmount '/var/lib/rancher/k3s'
+do_unmount '/var/lib/kubelet/pods'
 do_unmount '/run/netns/cni-'
 
 # Delete network interface(s) that match 'master cni0'
@@ -545,6 +546,7 @@ done
 
 rm -rf /etc/rancher/k3s
 rm -rf /var/lib/rancher/k3s
+rm -rf /var/lib/kubelet
 rm -f ${BIN_DIR}/k3s
 rm -f ${BIN_DIR}/${KILLALL_K3S_SH}
 EOF
