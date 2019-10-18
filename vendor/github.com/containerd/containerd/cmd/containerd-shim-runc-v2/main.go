@@ -19,10 +19,10 @@
 package main
 
 import (
-	v1 "github.com/containerd/containerd/runtime/v2/runc/v1"
+	v2 "github.com/containerd/containerd/runtime/v2/runc/v2"
 	"github.com/containerd/containerd/runtime/v2/shim"
 )
 
 func main() {
-	shim.Run("io.containerd.runc.v1", v1.New)
+	shim.Run("io.containerd.runc.v2", v2.New)
 }
