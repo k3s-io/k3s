@@ -74,6 +74,7 @@ require (
 	github.com/containerd/ttrpc v0.0.0-20190828172938-92c8520ef9f8 // indirect
 	github.com/containernetworking/plugins v0.8.2 // indirect
 	github.com/coreos/flannel v0.11.0
+	github.com/coreos/go-iptables v0.4.2
 	github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e
 	github.com/docker/docker v0.7.3-0.20190731001754-589f1dad8dad
 	github.com/docker/go-metrics v0.0.1 // indirect

@@ -13,6 +13,7 @@ import (
 	"github.com/rancher/k3s/pkg/agent/containerd"
 	"github.com/rancher/k3s/pkg/agent/flannel"
 	"github.com/rancher/k3s/pkg/agent/loadbalancer"
+	"github.com/rancher/k3s/pkg/agent/netpol"
 	"github.com/rancher/k3s/pkg/agent/syssetup"
 	"github.com/rancher/k3s/pkg/agent/tunnel"
 	"github.com/rancher/k3s/pkg/cli/cmds"
@@ -71,6 +72,12 @@ func run(ctx context.Context, cfg cmds.Agent, lb *loadbalancer.LoadBalancer) err
 
 	if !nodeConfig.AgentConfig.DisableCCM {
 		if err := syncAddressesLabels(ctx, &nodeConfig.AgentConfig); err != nil {
+			return err
+		}
+	}
+
+	if !nodeConfig.AgentConfig.DisableNPC {
+		if err := netpol.Run(ctx, nodeConfig); err != nil {
 			return err
 		}
 	}

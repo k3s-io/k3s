@@ -37,6 +37,7 @@ type Server struct {
 	FlannelBackend           string
 	DefaultLocalStoragePath  string
 	DisableCCM               bool
+	DisableNPC               bool
 }
 
 var ServerConfig Server
@@ -205,6 +206,11 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Name:        "disable-cloud-controller",
 				Usage:       "Disable k3s default cloud controller manager",
 				Destination: &ServerConfig.DisableCCM,
+			},
+			cli.BoolFlag{
+				Name:        "disable-network-policy",
+				Usage:       "Disable k3s default network policy controller",
+				Destination: &ServerConfig.DisableNPC,
 			},
 			cli.StringFlag{
 				Name:        "flannel-backend",
