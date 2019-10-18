@@ -87,6 +87,11 @@ CGO_ENABLED=1 go build -tags "$TAGS" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC_SQ
 echo Building runc
 make EXTRA_LDFLAGS="-w -s" BUILDTAGS="apparmor seccomp" -C ./vendor/github.com/opencontainers/runc static
 cp -f ./vendor/github.com/opencontainers/runc/runc ./bin/runc
+
+echo Building containerd-shim
+make -C ./vendor/github.com/containerd/containerd bin/containerd-shim
+cp -f ./vendor/github.com/containerd/containerd/bin/containerd-shim ./bin/containerd-shim
+
 echo Building containerd-shim-runc-v1
 make -C ./vendor/github.com/containerd/containerd bin/containerd-shim-runc-v1
 cp -f ./vendor/github.com/containerd/containerd/bin/containerd-shim-runc-v1 ./bin/containerd-shim-runc-v1
