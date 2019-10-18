@@ -172,7 +172,7 @@ github.com/containerd/containerd/archive
 github.com/containerd/containerd/archive/compression
 github.com/containerd/containerd/cio
 github.com/containerd/containerd/cmd/containerd-shim
-github.com/containerd/containerd/cmd/containerd-shim-runc-v1
+github.com/containerd/containerd/cmd/containerd-shim-runc-v2
 github.com/containerd/containerd/cmd/containerd/command
 github.com/containerd/containerd/cmd/ctr/app
 github.com/containerd/containerd/cmd/ctr/commands
@@ -251,7 +251,7 @@ github.com/containerd/containerd/runtime/v1/shim/v1
 github.com/containerd/containerd/runtime/v2
 github.com/containerd/containerd/runtime/v2/runc
 github.com/containerd/containerd/runtime/v2/runc/options
-github.com/containerd/containerd/runtime/v2/runc/v1
+github.com/containerd/containerd/runtime/v2/runc/v2
 github.com/containerd/containerd/runtime/v2/shim
 github.com/containerd/containerd/runtime/v2/task
 github.com/containerd/containerd/services
