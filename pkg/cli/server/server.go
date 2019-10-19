@@ -187,6 +187,11 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	agentConfig.ServerURL = url
 	agentConfig.Token = token
 	agentConfig.DisableLoadBalancer = true
+	agentConfig.Rootless = cfg.Rootless
+	if agentConfig.Rootless {
+		// let agent specify Rootless kubelet flags, but not unshare twice
+		agentConfig.RootlessAlreadyUnshared = true
+	}
 
 	return agent.Run(ctx, agentConfig)
 }

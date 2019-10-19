@@ -26,6 +26,7 @@ type Agent struct {
 	FlannelConf              string
 	Debug                    bool
 	Rootless                 bool
+	RootlessAlreadyUnshared  bool
 	AgentShared
 	ExtraKubeletArgs   cli.StringSlice
 	ExtraKubeProxyArgs cli.StringSlice
