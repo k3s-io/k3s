@@ -85,8 +85,9 @@ type CniConfig struct {
 	NetworkPluginMaxConfNum int `toml:"max_conf_num" json:"maxConfNum"`
 	// NetworkPluginConfTemplate is the file path of golang template used to generate
 	// cni config.
-	// When it is set, containerd will get cidr from kubelet to replace {{.PodCIDR}} in
-	// the template, and write the config into NetworkPluginConfDir.
+	// When it is set, containerd will get cidr(s) from kubelet to replace {{.PodCIDR}},
+	// {{.PodCIDRRanges}} or {{.Routes}} in the template, and write the config into
+	// NetworkPluginConfDir.
 	// Ideally the cni config should be placed by system admin or cni daemon like calico,
 	// weaveworks etc. However, there are still users using kubenet
 	// (https://kubernetes.io/docs/concepts/cluster-administration/network-plugins/#kubenet)

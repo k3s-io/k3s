@@ -286,7 +286,15 @@ func (o *snapshotter) createSnapshot(ctx context.Context, kind snapshots.Kind, k
 	if td != "" {
 		if len(s.ParentIDs) > 0 {
 			parent := o.getSnapshotDir(s.ParentIDs[0])
-			if err := fs.CopyDir(td, parent); err != nil {
+			xattrErrorHandler := func(dst, src, xattrKey string, copyErr error) error {
+				// security.* xattr cannot be copied in most cases (moby/buildkit#1189)
+				log.G(ctx).WithError(copyErr).Debugf("failed to copy xattr %q", xattrKey)
+				return nil
+			}
+			copyDirOpts := []fs.CopyDirOpt{
+				fs.WithXAttrErrorHandler(xattrErrorHandler),
+			}
+			if err := fs.CopyDir(td, parent, copyDirOpts...); err != nil {
 				return nil, errors.Wrap(err, "copying of parent failed")
 			}
 		}

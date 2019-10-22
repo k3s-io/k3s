@@ -574,7 +574,7 @@ func CreateContainer(
 
 		// Try to pull the image before container creation
 		image := config.GetImage().GetImage()
-		if _, err := PullImage(iClient, image, auth); err != nil {
+		if _, err := PullImageWithSandbox(iClient, image, auth, podConfig); err != nil {
 			return "", err
 		}
 	}

@@ -92,7 +92,7 @@ var statsCommand = cli.Command{
 		defer closeConnection(context, runtimeConn)
 
 		id := context.String("id")
-		if id == "" && context.Args() != nil {
+		if id == "" && context.NArg() > 0 {
 			id = context.Args()[0]
 		}
 
