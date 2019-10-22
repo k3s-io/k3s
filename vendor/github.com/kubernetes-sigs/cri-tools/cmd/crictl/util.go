@@ -210,7 +210,7 @@ func outputProtobufObjAsYAML(obj proto.Message) error {
 
 func outputStatusInfo(status string, info map[string]string, format string) error {
 	// Sort all keys
-	keys := make([]string, len(info))
+	keys := []string{}
 	for k := range info {
 		keys = append(keys, k)
 	}
@@ -267,7 +267,7 @@ func marshalMapInOrder(m map[string]interface{}, t interface{}) (string, error) 
 	v := reflect.ValueOf(t)
 	for i := 0; i < v.Type().NumField(); i++ {
 		field := jsonFieldFromTag(v.Type().Field(i).Tag)
-		if field == "" {
+		if field == "" || field == "-" {
 			continue
 		}
 		value, err := json.Marshal(m[field])

@@ -72,15 +72,14 @@ func (c *criService) StopPodSandbox(ctx context.Context, r *runtime.StopPodSandb
 
 	// Teardown network for sandbox.
 	if sandbox.NetNS != nil {
-		netNSPath := sandbox.NetNSPath
 		// Use empty netns path if netns is not available. This is defined in:
 		// https://github.com/containernetworking/cni/blob/v0.7.0-alpha1/SPEC.md
 		if closed, err := sandbox.NetNS.Closed(); err != nil {
 			return nil, errors.Wrap(err, "failed to check network namespace closed")
 		} else if closed {
-			netNSPath = ""
+			sandbox.NetNSPath = ""
 		}
-		if err := c.teardownPod(ctx, id, netNSPath, sandbox.Config); err != nil {
+		if err := c.teardownPodNetwork(ctx, sandbox); err != nil {
 			return nil, errors.Wrapf(err, "failed to destroy network for sandbox %q", id)
 		}
 		if err = sandbox.NetNS.Remove(); err != nil {
@@ -156,12 +155,17 @@ func (c *criService) waitSandboxStop(ctx context.Context, sandbox sandboxstore.S
 	}
 }
 
-// teardownPod removes the network from the pod
-func (c *criService) teardownPod(ctx context.Context, id string, path string, config *runtime.PodSandboxConfig) error {
+// teardownPodNetwork removes the network from the pod
+func (c *criService) teardownPodNetwork(ctx context.Context, sandbox sandboxstore.Sandbox) error {
 	if c.netPlugin == nil {
 		return errors.New("cni config not initialized")
 	}
 
+	var (
+		id     = sandbox.ID
+		path   = sandbox.NetNSPath
+		config = sandbox.Config
+	)
 	labels := getPodCNILabels(id, config)
 	return c.netPlugin.Remove(ctx, id,
 		path,

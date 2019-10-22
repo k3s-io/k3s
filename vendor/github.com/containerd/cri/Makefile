@@ -170,7 +170,10 @@ install.tools: .install.gitvalidation .install.golangci-lint .install.vndr ## in
 
 .install.golangci-lint:
 	@echo "$(WHALE) $@"
-	$(GO) get -u github.com/golangci/golangci-lint/cmd/golangci-lint
+	$(GO) get -d github.com/golangci/golangci-lint/cmd/golangci-lint
+	@cd $(GOPATH)/src/github.com/golangci/golangci-lint/cmd/golangci-lint; \
+		git checkout v1.18.0; \
+		go install
 
 .install.vndr:
 	@echo "$(WHALE) $@"

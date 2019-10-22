@@ -241,7 +241,7 @@ func (l *local) Delete(ctx context.Context, r *api.DeleteTaskRequest, _ ...grpc.
 	}
 	exit, err := t.Delete(ctx)
 	if err != nil {
-		return nil, err
+		return nil, errdefs.ToGRPC(err)
 	}
 	return &api.DeleteResponse{
 		ExitStatus: exit.Status,
@@ -257,7 +257,7 @@ func (l *local) DeleteProcess(ctx context.Context, r *api.DeleteProcessRequest, 
 	}
 	process, err := t.Process(ctx, r.ExecID)
 	if err != nil {
-		return nil, err
+		return nil, errdefs.ToGRPC(err)
 	}
 	exit, err := process.Delete(ctx)
 	if err != nil {

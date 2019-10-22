@@ -55,6 +55,8 @@ type Metadata struct {
 	NetNSPath string
 	// IP of Pod if it is attached to non host network
 	IP string
+	// AdditionalIPs of the Pod if it is attached to non host network
+	AdditionalIPs []string
 	// RuntimeHandler is the runtime handler name of the pod.
 	RuntimeHandler string
 	// CNIresult resulting configuration for attached network namespace interfaces

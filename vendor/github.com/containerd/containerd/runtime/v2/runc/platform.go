@@ -32,7 +32,9 @@ import (
 
 var bufPool = sync.Pool{
 	New: func() interface{} {
-		buffer := make([]byte, 32<<10)
+		// setting to 4096 to align with PIPE_BUF
+		// http://man7.org/linux/man-pages/man7/pipe.7.html
+		buffer := make([]byte, 4096)
 		return &buffer
 	},
 }
@@ -77,6 +79,7 @@ func (p *linuxPlatform) CopyConsole(ctx context.Context, console console.Console
 			io.CopyBuffer(epollConsole, in, *bp)
 			// we need to shutdown epollConsole when pipe broken
 			epollConsole.Shutdown(p.epoller.CloseConsole)
+			epollConsole.Close()
 		}()
 	}
 
@@ -95,9 +98,9 @@ func (p *linuxPlatform) CopyConsole(ctx context.Context, console console.Console
 		buf := bufPool.Get().(*[]byte)
 		defer bufPool.Put(buf)
 		io.CopyBuffer(outw, epollConsole, *buf)
-		epollConsole.Close()
-		outr.Close()
+
 		outw.Close()
+		outr.Close()
 		wg.Done()
 	}()
 	cwg.Wait()

@@ -151,7 +151,7 @@ github.com/container-storage-interface/spec/lib/go/csi
 github.com/containerd/cgroups
 # github.com/containerd/console v0.0.0-20180822173158-c12b1e7919c1 => github.com/containerd/console v0.0.0-20181022165439-0650fd9eeb50
 github.com/containerd/console
-# github.com/containerd/containerd v1.3.0-beta.2.0.20190828155532-0293cbd26c69 => github.com/rancher/containerd v1.3.0-k3s.1
+# github.com/containerd/containerd v1.3.0-beta.2.0.20190828155532-0293cbd26c69 => github.com/rancher/containerd v1.3.0-k3s.2
 github.com/containerd/containerd
 github.com/containerd/containerd/api/events
 github.com/containerd/containerd/api/services/containers/v1
@@ -288,7 +288,7 @@ github.com/containerd/continuity/pathdriver
 github.com/containerd/continuity/proto
 github.com/containerd/continuity/syscallx
 github.com/containerd/continuity/sysx
-# github.com/containerd/cri v1.11.1-0.20190909171321-f4d75d321c89
+# github.com/containerd/cri v1.11.1-0.20191009213552-1fb415d208be
 github.com/containerd/cri
 github.com/containerd/cri/pkg/annotations
 github.com/containerd/cri/pkg/api/runtimeoptions/v1
@@ -619,7 +619,7 @@ github.com/juju/errors
 github.com/karrick/godirwalk
 # github.com/konsorten/go-windows-terminal-sequences v1.0.2
 github.com/konsorten/go-windows-terminal-sequences
-# github.com/kubernetes-sigs/cri-tools v0.0.0-00010101000000-000000000000 => github.com/rancher/cri-tools v1.16.0-k3s.1
+# github.com/kubernetes-sigs/cri-tools v0.0.0-00010101000000-000000000000 => github.com/rancher/cri-tools v1.16.1-k3s.1
 github.com/kubernetes-sigs/cri-tools/cmd/crictl
 github.com/kubernetes-sigs/cri-tools/pkg/version
 # github.com/lib/pq v1.1.1

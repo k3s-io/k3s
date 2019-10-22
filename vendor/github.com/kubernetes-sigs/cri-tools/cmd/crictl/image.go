@@ -478,12 +478,6 @@ func normalizeRepoDigest(repoDigests []string) (string, string) {
 	return repoDigestPair[0], repoDigestPair[1]
 }
 
-// PullImage sends a PullImageRequest to the server, and parses
-// the returned PullImageResponse.
-func PullImage(client pb.ImageServiceClient, image string, auth *pb.AuthConfig) (resp *pb.PullImageResponse, err error) {
-	return PullImageWithSandbox(client, image, auth, nil)
-}
-
 // PullImageWithSandbox sends a PullImageRequest to the server, and parses
 // the returned PullImageResponse.
 func PullImageWithSandbox(client pb.ImageServiceClient, image string, auth *pb.AuthConfig, sandbox *pb.PodSandboxConfig) (resp *pb.PullImageResponse, err error) {

@@ -1,7 +1,7 @@
 [Unit]
 Description=containerd container runtime
 Documentation=https://containerd.io
-After=network.target
+After=network.target local-fs.target
 
 [Service]
 ExecStartPre=-/sbin/modprobe overlay
