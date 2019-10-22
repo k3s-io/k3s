@@ -567,6 +567,7 @@ create_env_file() {
     UMASK=$(umask)
     umask 0377
     env | grep '^K3S_' | $SUDO tee ${FILE_K3S_ENV} >/dev/null
+    env | egrep '^(NO|HTTP|HTTPS)_PROXY' | $SUDO tee -a ${FILE_K3S_ENV} >/dev/null
     umask $UMASK
 }
 
