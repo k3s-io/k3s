@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	image              = "rancher/klipper-lb:v0.1.1"
+	image              = "rancher/klipper-lb:v0.1.2"
 	svcNameLabel       = "svccontroller.k3s.cattle.io/svcname"
 	daemonsetNodeLabel = "svccontroller.k3s.cattle.io/enablelb"
 	nodeSelectorLabel  = "svccontroller.k3s.cattle.io/nodeselector"
