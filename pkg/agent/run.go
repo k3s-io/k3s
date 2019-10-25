@@ -91,7 +91,7 @@ func Run(ctx context.Context, cfg cmds.Agent) error {
 		return err
 	}
 
-	if cfg.Rootless {
+	if cfg.Rootless && !cfg.RootlessAlreadyUnshared {
 		if err := rootless.Rootless(cfg.DataDir); err != nil {
 			return err
 		}

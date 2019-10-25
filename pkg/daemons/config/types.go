@@ -80,6 +80,7 @@ type Agent struct {
 	PrivateRegistry     string
 	DisableCCM          bool
 	DisableNPC          bool
+	Rootless            bool
 }
 
 type Control struct {
