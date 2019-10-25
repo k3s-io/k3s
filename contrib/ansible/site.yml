@@ -4,6 +4,7 @@
   gather_facts: yes
   become: yes
   roles:
+    - { role: prereq }
     - { role: download }
     - { role: raspbian }
 
