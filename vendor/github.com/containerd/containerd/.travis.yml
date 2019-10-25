@@ -10,7 +10,7 @@ os:
 - linux
 
 go:
-  - "1.12.x"
+  - "1.12.12"
 
 env:
   - TRAVIS_GOOS=linux TEST_RUNTIME=io.containerd.runc.v1 TRAVIS_CGO_ENABLED=1 TRAVIS_DISTRO=bionic
