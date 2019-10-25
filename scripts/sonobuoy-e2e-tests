@@ -17,6 +17,28 @@ mkdir -p ${OUTPUT}
 pids=()
 output=()
 
+show-logs() {
+    for pid in "${pids[@]}"; do
+        logdir=$(pwd)/logs/${pid}
+        if [ ! -d $logdir ]; then
+            continue
+        fi
+        echo
+        echo "#- Begin: logs for sonobuoy run pid ${pid}"
+        for log in $(pwd)/logs/${pid}/*; do
+            if [ -f ${log} ]; then
+                echo
+                echo "#- Start: ${log}"
+                cat ${log}
+                echo "#- End: ${log}"
+                echo
+            fi
+        done
+        echo "#- Finish: logs for sonobuoy run pid ${pid}"
+        echo
+    done
+}
+
 cleanup() {
     exit_status=$?
     set +e
@@ -29,6 +51,7 @@ cleanup() {
         echo "passed"
     else
         echo "failed"
+        show-logs
     fi
     exit ${exit_status}
 }

@@ -195,5 +195,10 @@ echo "Started ${K3S_AGENT}"
 timeout --foreground 1m bash -c wait-for-nodes
 timeout --foreground 1m bash -c wait-for-services
 
+if [ "$ARCH" = "arm" ]; then
+    echo "Aborting sonobuoy tests, images not available for $ARCH"
+    exit 0
+fi
+
 echo "Starting sonobuoy tests"
 sonobuoy-test "${@}"
