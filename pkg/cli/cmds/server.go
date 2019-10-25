@@ -78,6 +78,7 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 			cli.BoolFlag{
 				Name:        "disable-agent",
 				Usage:       "Do not run a local agent and register a local kubelet",
+				Hidden:      true,
 				Destination: &ServerConfig.DisableAgent,
 			},
 			cli.StringFlag{
