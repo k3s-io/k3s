@@ -437,12 +437,13 @@ create_killall() {
     info "Creating killall script ${BIN_DIR}/${KILLALL_K3S_SH}"
     $SUDO tee ${BIN_DIR}/${KILLALL_K3S_SH} >/dev/null << \EOF
 #!/bin/sh
-set -x
 [ $(id -u) -eq 0 ] || exec sudo $0 $@
 
 for bin in /var/lib/rancher/k3s/data/**/bin/; do
     [ -d $bin ] && export PATH=$bin:$PATH
 done
+
+set -x
 
 for service in /etc/systemd/system/k3s*.service; do
     [ -s $service ] && systemctl stop $(basename $service)
@@ -452,18 +453,28 @@ for service in /etc/init.d/k3s*; do
     [ -x $service ] && $service stop
 done
 
+pschildren() {
+    ps -e -o ppid= -o pid= | \
+    sed -e 's/^\s*//g; s/\s\s*/\t/g;' | \
+    grep -w "^$1" | \
+    cut -f2
+}
+
 pstree() {
     for pid in $@; do
         echo $pid
-        # Find and show pstree for child processes of $pid
-        ps -o ppid= -o pid= | while read parent child; do
-            [ $parent -ne $pid ] || pstree $child
+        for child in $(pschildren $pid); do
+            pstree $child
         done
     done
 }
 
 killtree() {
-    kill -9 $({ set +x; } 2>/dev/null; pstree $@; set -x) 2>/dev/null
+    kill -9 $(
+        { set +x; } 2>/dev/null;
+        pstree $@;
+        set -x;
+    ) 2>/dev/null
 }
 
 getshims() {
