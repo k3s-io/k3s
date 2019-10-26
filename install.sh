@@ -500,6 +500,7 @@ done
 ip link delete cni0
 ip link delete flannel.1
 rm -rf /var/lib/cni/
+iptables-save | grep -v KUBE- | grep -v CNI- | iptables-restore
 EOF
     $SUDO chmod 755 ${BIN_DIR}/${KILLALL_K3S_SH}
     $SUDO chown root:root ${BIN_DIR}/${KILLALL_K3S_SH}
