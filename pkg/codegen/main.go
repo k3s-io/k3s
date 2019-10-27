@@ -70,7 +70,6 @@ func main() {
 		Groups: map[string]args.Group{
 			"k3s.cattle.io": {
 				Types: []interface{}{
-					v1.ListenerConfig{},
 					v1.Addon{},
 				},
 				GenerateTypes: true,

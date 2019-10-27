@@ -2,6 +2,7 @@ package datadir
 
 import (
 	"os"
+	"path/filepath"
 
 	"github.com/pkg/errors"
 	"github.com/rancher/wrangler/pkg/resolvehome"
@@ -32,5 +33,5 @@ func LocalHome(dataDir string, forceLocal bool) (string, error) {
 		return "", errors.Wrapf(err, "resolving %s", dataDir)
 	}
 
-	return dataDir, nil
+	return filepath.Abs(dataDir)
 }

@@ -62,7 +62,6 @@ func crds(ctx context.Context, config *rest.Config) error {
 	}
 
 	factory.BatchCreateCRDs(ctx, crd.NamespacedTypes(
-		"ListenerConfig.k3s.cattle.io/v1",
 		"Addon.k3s.cattle.io/v1",
 		"HelmChart.helm.cattle.io/v1")...)
 

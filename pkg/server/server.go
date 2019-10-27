@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/rancher/dynamiclistener"
 	"github.com/rancher/helm-controller/pkg/helm"
 	"github.com/rancher/k3s/pkg/clientaccess"
 	"github.com/rancher/k3s/pkg/daemons/config"
@@ -25,10 +24,11 @@ import (
 	"github.com/rancher/k3s/pkg/rootlessports"
 	"github.com/rancher/k3s/pkg/servicelb"
 	"github.com/rancher/k3s/pkg/static"
-	"github.com/rancher/k3s/pkg/tls"
+	v1 "github.com/rancher/wrangler-api/pkg/generated/controllers/core/v1"
 	"github.com/rancher/wrangler/pkg/leader"
 	"github.com/rancher/wrangler/pkg/resolvehome"
 	"github.com/sirupsen/logrus"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/net"
 )
 
@@ -39,79 +39,67 @@ func resolveDataDir(dataDir string) (string, error) {
 	return filepath.Join(dataDir, "server"), err
 }
 
-func StartServer(ctx context.Context, config *Config) (string, error) {
+func StartServer(ctx context.Context, config *Config) error {
 	if err := setupDataDirAndChdir(&config.ControlConfig); err != nil {
-		return "", err
+		return err
 	}
 
 	if err := setNoProxyEnv(&config.ControlConfig); err != nil {
-		return "", err
+		return err
 	}
 
 	if err := control.Server(ctx, &config.ControlConfig); err != nil {
-		return "", errors.Wrap(err, "starting kubernetes")
+		return errors.Wrap(err, "starting kubernetes")
 	}
 
-	certs, err := startWrangler(ctx, config)
-	if err != nil {
-		return "", errors.Wrap(err, "starting tls server")
+	if err := startWrangler(ctx, config); err != nil {
+		return errors.Wrap(err, "starting tls server")
 	}
 
-	ip := net2.ParseIP(config.TLSConfig.BindAddress)
+	ip := net2.ParseIP(config.ControlConfig.BindAddress)
 	if ip == nil {
-		ip, err = net.ChooseHostInterface()
-		if err != nil {
+		hostIP, err := net.ChooseHostInterface()
+		if err == nil {
+			ip = hostIP
+		} else {
 			ip = net2.ParseIP("127.0.0.1")
 		}
 	}
-	printTokens(certs, ip.String(), &config.TLSConfig, &config.ControlConfig)
 
-	writeKubeConfig(certs, &config.TLSConfig, config)
+	if err := printTokens(ip.String(), &config.ControlConfig); err != nil {
+		return err
+	}
 
-	return certs, nil
+	return writeKubeConfig(config.ControlConfig.Runtime.ServerCA, config)
 }
 
-func startWrangler(ctx context.Context, config *Config) (string, error) {
+func startWrangler(ctx context.Context, config *Config) error {
 	var (
 		err           error
-		tlsConfig     = &config.TLSConfig
 		controlConfig = &config.ControlConfig
 	)
 
-	caBytes, err := ioutil.ReadFile(controlConfig.Runtime.ServerCA)
+	ca, err := ioutil.ReadFile(config.ControlConfig.Runtime.ServerCA)
 	if err != nil {
-		return "", err
-	}
-	caKeyBytes, err := ioutil.ReadFile(controlConfig.Runtime.ServerCAKey)
-	if err != nil {
-		return "", err
+		return err
 	}
 
-	certs := string(caBytes)
-	tlsConfig.CACerts = certs
-	tlsConfig.CAKey = string(caKeyBytes)
-
-	tlsConfig.Handler = router(controlConfig, controlConfig.Runtime.Tunnel, func() (string, error) {
-		return certs, nil
-	})
+	controlConfig.Runtime.Handler = router(controlConfig, controlConfig.Runtime.Tunnel, ca)
 
 	sc, err := newContext(ctx, controlConfig.Runtime.KubeConfigAdmin)
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	if err := stageFiles(ctx, sc, controlConfig); err != nil {
-		return "", err
+		return err
 	}
 
-	_, err = tls.NewServer(ctx, sc.K3s.K3s().V1().ListenerConfig(), *tlsConfig)
-	if err != nil {
-		return "", err
+	if err := sc.Start(ctx); err != nil {
+		return err
 	}
 
-	if err := startNodeCache(ctx, sc); err != nil {
-		return "", err
-	}
+	controlConfig.Runtime.Core = sc.Core
 
 	start := func(ctx context.Context) {
 		if err := masterControllers(ctx, sc, config); err != nil {
@@ -122,7 +110,7 @@ func startWrangler(ctx context.Context, config *Config) (string, error) {
 		}
 	}
 	if !config.DisableAgent {
-		go setMasterRoleLabel(ctx, sc)
+		go setMasterRoleLabel(ctx, sc.Core.Core().V1().Node())
 	}
 	if controlConfig.NoLeaderElect {
 		go func() {
@@ -134,7 +122,7 @@ func startWrangler(ctx context.Context, config *Config) (string, error) {
 		go leader.RunOrDie(ctx, "", "k3s", sc.K8s, start)
 	}
 
-	return certs, nil
+	return nil
 }
 
 func masterControllers(ctx context.Context, sc *Context, config *Config) error {
@@ -162,7 +150,7 @@ func masterControllers(ctx context.Context, sc *Context, config *Config) error {
 	}
 
 	if !config.DisableServiceLB && config.Rootless {
-		return rootlessports.Register(ctx, sc.Core.Core().V1().Service(), config.TLSConfig.HTTPSPort)
+		return rootlessports.Register(ctx, sc.Core.Core().V1().Service(), config.ControlConfig.HTTPSPort)
 	}
 
 	return nil
@@ -203,7 +191,7 @@ func HomeKubeConfig(write, rootless bool) (string, error) {
 	return resolvehome.Resolve(datadir.HomeConfig)
 }
 
-func printTokens(certs, advertiseIP string, tlsConfig *dynamiclistener.UserConfig, config *config.Control) {
+func printTokens(advertiseIP string, config *config.Control) error {
 	var (
 		nodeFile string
 	)
@@ -212,26 +200,43 @@ func printTokens(certs, advertiseIP string, tlsConfig *dynamiclistener.UserConfi
 		advertiseIP = "127.0.0.1"
 	}
 
-	if len(config.Runtime.NodeToken) > 0 {
-		p := filepath.Join(config.DataDir, "node-token")
-		if err := writeToken(config.Runtime.NodeToken, p, certs); err == nil {
+	if len(config.Runtime.AgentToken) > 0 {
+		p := filepath.Join(config.DataDir, "token")
+		if err := writeToken(config.Runtime.AgentToken, p, config.Runtime.ServerCA); err == nil {
 			logrus.Infof("Node token is available at %s", p)
 			nodeFile = p
+		}
+
+		// backwards compatibility
+		np := filepath.Join(config.DataDir, "node-token")
+		if !isSymlink(np) {
+			if err := os.RemoveAll(np); err != nil {
+				return err
+			}
+			if err := os.Symlink(p, np); err != nil {
+				return err
+			}
 		}
 	}
 
 	if len(nodeFile) > 0 {
-		printToken(tlsConfig.HTTPSPort, advertiseIP, "To join node to cluster:", "agent")
+		printToken(config.HTTPSPort, advertiseIP, "To join node to cluster:", "agent")
 	}
+
+	return nil
 }
 
-func writeKubeConfig(certs string, tlsConfig *dynamiclistener.UserConfig, config *Config) {
-	clientToken := FormatToken(config.ControlConfig.Runtime.ClientToken, certs)
-	ip := tlsConfig.BindAddress
+func writeKubeConfig(certs string, config *Config) error {
+	clientToken, err := FormatToken(config.ControlConfig.Runtime.ClientToken, certs)
+	if err != nil {
+		return err
+	}
+
+	ip := config.ControlConfig.BindAddress
 	if ip == "" {
 		ip = "127.0.0.1"
 	}
-	url := fmt.Sprintf("https://%s:%d", ip, tlsConfig.HTTPSPort)
+	url := fmt.Sprintf("https://%s:%d", ip, config.ControlConfig.HTTPSPort)
 	kubeConfig, err := HomeKubeConfig(true, config.Rootless)
 	def := true
 	if err != nil {
@@ -274,6 +279,8 @@ func writeKubeConfig(certs string, tlsConfig *dynamiclistener.UserConfig, config
 	if def {
 		logrus.Infof("Run: %s kubectl", filepath.Base(os.Args[0]))
 	}
+
+	return nil
 }
 
 func setupDataDirAndChdir(config *config.Control) error {
@@ -312,18 +319,22 @@ func printToken(httpsPort int, advertiseIP, prefix, cmd string) {
 	logrus.Infof("%s k3s %s -s https://%s:%d -t ${NODE_TOKEN}", prefix, cmd, ip, httpsPort)
 }
 
-func FormatToken(token string, certs string) string {
+func FormatToken(token string, certFile string) (string, error) {
 	if len(token) == 0 {
-		return token
+		return token, nil
 	}
 
 	prefix := "K10"
-	if len(certs) > 0 {
-		digest := sha256.Sum256([]byte(certs))
+	if len(certFile) > 0 {
+		bytes, err := ioutil.ReadFile(certFile)
+		if err != nil {
+			return "", nil
+		}
+		digest := sha256.Sum256(bytes)
 		prefix = "K10" + hex.EncodeToString(digest[:]) + "::"
 	}
 
-	return prefix + token
+	return prefix + token, nil
 }
 
 func writeToken(token, file, certs string) error {
@@ -331,7 +342,10 @@ func writeToken(token, file, certs string) error {
 		return nil
 	}
 
-	token = FormatToken(token, certs)
+	token, err := FormatToken(token, certs)
+	if err != nil {
+		return err
+	}
 	return ioutil.WriteFile(file, []byte(token+"\n"), 0600)
 }
 
@@ -364,26 +378,23 @@ func isSymlink(config string) bool {
 	return false
 }
 
-func setMasterRoleLabel(ctx context.Context, sc *Context) error {
+func setMasterRoleLabel(ctx context.Context, nodes v1.NodeClient) error {
 	for {
 		nodeName := os.Getenv("NODE_NAME")
-		nodeController := sc.Core.Core().V1().Node()
-		nodeCache := nodeController.Cache()
-		nodeCached, err := nodeCache.Get(nodeName)
+		node, err := nodes.Get(nodeName, metav1.GetOptions{})
 		if err != nil {
 			logrus.Infof("Waiting for master node %s startup: %v", nodeName, err)
 			time.Sleep(1 * time.Second)
 			continue
 		}
-		if v, ok := nodeCached.Labels[MasterRoleLabelKey]; ok && v == "true" {
+		if v, ok := node.Labels[MasterRoleLabelKey]; ok && v == "true" {
 			break
 		}
-		node := nodeCached.DeepCopy()
 		if node.Labels == nil {
 			node.Labels = make(map[string]string)
 		}
 		node.Labels[MasterRoleLabelKey] = "true"
-		_, err = nodeController.Update(node)
+		_, err = nodes.Update(node)
 		if err == nil {
 			logrus.Infof("master role label has been set succesfully on node: %s", nodeName)
 			break
@@ -395,10 +406,4 @@ func setMasterRoleLabel(ctx context.Context, sc *Context) error {
 		}
 	}
 	return nil
-}
-
-func startNodeCache(ctx context.Context, sc *Context) error {
-	sc.Core.Core().V1().Node().Cache()
-
-	return sc.Start(ctx)
 }

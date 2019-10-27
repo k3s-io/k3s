@@ -16,6 +16,7 @@ import (
 	"github.com/rancher/k3s/pkg/netutil"
 	"github.com/rancher/k3s/pkg/rootless"
 	"github.com/rancher/k3s/pkg/server"
+	"github.com/rancher/k3s/pkg/token"
 	"github.com/rancher/wrangler/pkg/signals"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
@@ -56,23 +57,28 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 
 	serverConfig := server.Config{}
 	serverConfig.DisableAgent = cfg.DisableAgent
-	serverConfig.ControlConfig.ClusterSecret = cfg.ClusterSecret
+	serverConfig.ControlConfig.Token = cfg.Token
+	serverConfig.ControlConfig.AgentToken = cfg.AgentToken
+	serverConfig.ControlConfig.JoinURL = cfg.ServerURL
+	if cfg.AgentTokenFile != "" {
+		serverConfig.ControlConfig.AgentToken, err = token.ReadFile(cfg.AgentTokenFile)
+		if err != nil {
+			return err
+		}
+	}
+	if cfg.TokenFile != "" {
+		serverConfig.ControlConfig.Token, err = token.ReadFile(cfg.TokenFile)
+		if err != nil {
+			return err
+		}
+	}
 	serverConfig.ControlConfig.DataDir = cfg.DataDir
 	serverConfig.ControlConfig.KubeConfigOutput = cfg.KubeConfigOutput
 	serverConfig.ControlConfig.KubeConfigMode = cfg.KubeConfigMode
 	serverConfig.ControlConfig.NoScheduler = cfg.DisableScheduler
 	serverConfig.Rootless = cfg.Rootless
-	serverConfig.TLSConfig.HTTPSPort = cfg.HTTPSPort
-	serverConfig.TLSConfig.HTTPPort = cfg.HTTPPort
-	for _, san := range knownIPs(cfg.TLSSan) {
-		addr := net2.ParseIP(san)
-		if addr != nil {
-			serverConfig.TLSConfig.KnownIPs = append(serverConfig.TLSConfig.KnownIPs, san)
-		} else {
-			serverConfig.TLSConfig.Domains = append(serverConfig.TLSConfig.Domains, san)
-		}
-	}
-	serverConfig.TLSConfig.BindAddress = cfg.BindAddress
+	serverConfig.ControlConfig.SANs = knownIPs(cfg.TLSSan)
+	serverConfig.ControlConfig.BindAddress = cfg.BindAddress
 	serverConfig.ControlConfig.HTTPSPort = cfg.HTTPSPort
 	serverConfig.ControlConfig.ExtraAPIArgs = cfg.ExtraAPIArgs
 	serverConfig.ControlConfig.ExtraControllerArgs = cfg.ExtraControllerArgs
@@ -84,21 +90,25 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	serverConfig.ControlConfig.Storage.KeyFile = cfg.StorageKeyFile
 	serverConfig.ControlConfig.AdvertiseIP = cfg.AdvertiseIP
 	serverConfig.ControlConfig.AdvertisePort = cfg.AdvertisePort
-	serverConfig.ControlConfig.BootstrapReadOnly = !cfg.StoreBootstrap
 	serverConfig.ControlConfig.FlannelBackend = cfg.FlannelBackend
 	serverConfig.ControlConfig.ExtraCloudControllerArgs = cfg.ExtraCloudControllerArgs
 	serverConfig.ControlConfig.DisableCCM = cfg.DisableCCM
 	serverConfig.ControlConfig.DisableNPC = cfg.DisableNPC
+	serverConfig.ControlConfig.ClusterInit = cfg.ClusterInit
+	serverConfig.ControlConfig.ClusterReset = cfg.ClusterReset
 
 	if cmds.AgentConfig.FlannelIface != "" && cmds.AgentConfig.NodeIP == "" {
 		cmds.AgentConfig.NodeIP = netutil.GetIPFromInterface(cmds.AgentConfig.FlannelIface)
 	}
 
+	if serverConfig.ControlConfig.AdvertiseIP == "" && cmds.AgentConfig.NodeExternalIP != "" {
+		serverConfig.ControlConfig.AdvertiseIP = cmds.AgentConfig.NodeExternalIP
+	}
 	if serverConfig.ControlConfig.AdvertiseIP == "" && cmds.AgentConfig.NodeIP != "" {
 		serverConfig.ControlConfig.AdvertiseIP = cmds.AgentConfig.NodeIP
 	}
 	if serverConfig.ControlConfig.AdvertiseIP != "" {
-		serverConfig.TLSConfig.KnownIPs = append(serverConfig.TLSConfig.KnownIPs, serverConfig.ControlConfig.AdvertiseIP)
+		serverConfig.ControlConfig.SANs = append(serverConfig.ControlConfig.SANs, serverConfig.ControlConfig.AdvertiseIP)
 	}
 
 	_, serverConfig.ControlConfig.ClusterIPRange, err = net2.ParseCIDR(cfg.ClusterCIDR)
@@ -114,7 +124,7 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	if err != nil {
 		return err
 	}
-	serverConfig.TLSConfig.KnownIPs = append(serverConfig.TLSConfig.KnownIPs, apiServerServiceIP.String())
+	serverConfig.ControlConfig.SANs = append(serverConfig.ControlConfig.SANs, apiServerServiceIP.String())
 
 	// If cluster-dns CLI arg is not set, we set ClusterDNS address to be ServiceCIDR network + 10,
 	// i.e. when you set service-cidr to 192.168.0.0/16 and don't provide cluster-dns, it will be set to 192.168.0.10
@@ -160,8 +170,7 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	os.Unsetenv("NOTIFY_SOCKET")
 
 	ctx := signals.SetupSignalHandler(context.Background())
-	certs, err := server.StartServer(ctx, &serverConfig)
-	if err != nil {
+	if err := server.StartServer(ctx, &serverConfig); err != nil {
 		return err
 	}
 
@@ -175,12 +184,17 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 		<-ctx.Done()
 		return nil
 	}
-	ip := serverConfig.TLSConfig.BindAddress
+
+	ip := serverConfig.ControlConfig.BindAddress
 	if ip == "" {
 		ip = "127.0.0.1"
 	}
-	url := fmt.Sprintf("https://%s:%d", ip, serverConfig.TLSConfig.HTTPSPort)
-	token := server.FormatToken(serverConfig.ControlConfig.Runtime.NodeToken, certs)
+
+	url := fmt.Sprintf("https://%s:%d", ip, serverConfig.ControlConfig.HTTPSPort)
+	token, err := server.FormatToken(serverConfig.ControlConfig.Runtime.AgentToken, serverConfig.ControlConfig.Runtime.ServerCA)
+	if err != nil {
+		return err
+	}
 
 	agentConfig := cmds.AgentConfig
 	agentConfig.Debug = app.GlobalBool("bool")

@@ -9,7 +9,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -35,21 +34,6 @@ type clientToken struct {
 	password string
 }
 
-func AgentAccessInfoToTempKubeConfig(tempDir, server, token string) (string, error) {
-	f, err := ioutil.TempFile(tempDir, "tmp-")
-	if err != nil {
-		return "", err
-	}
-	if err := f.Close(); err != nil {
-		return "", err
-	}
-	err = accessInfoToKubeConfig(f.Name(), server, token)
-	if err != nil {
-		os.Remove(f.Name())
-	}
-	return f.Name(), err
-}
-
 func AgentAccessInfoToKubeConfig(destFile, server, token string) error {
 	return accessInfoToKubeConfig(destFile, server, token)
 }
@@ -60,6 +44,10 @@ type Info struct {
 	username string
 	password string
 	Token    string `json:"token,omitempty"`
+}
+
+func (i *Info) ToToken() string {
+	return fmt.Sprintf("K10%s::%s:%s", hashCA(i.CACerts), i.username, i.password)
 }
 
 func (i *Info) WriteKubeConfig(destFile string) error {
@@ -98,6 +86,22 @@ func (i *Info) KubeConfig() *clientcmdapi.Config {
 	return config
 }
 
+func NormalizeAndValidateTokenForUser(server, token, user string) (string, error) {
+	if !strings.HasPrefix(token, "K10") {
+		token = "K10::" + user + ":" + token
+	}
+	info, err := ParseAndValidateToken(server, token)
+	if err != nil {
+		return "", err
+	}
+
+	if info.username != user {
+		info.username = user
+	}
+
+	return info.ToToken(), nil
+}
+
 func ParseAndValidateToken(server, token string) (*Info, error) {
 	url, err := url.Parse(server)
 	if err != nil {
@@ -132,13 +136,17 @@ func ParseAndValidateToken(server, token string) (*Info, error) {
 		return nil, err
 	}
 
-	return &Info{
+	i := &Info{
 		URL:      url.String(),
 		CACerts:  cacerts,
 		username: parsedToken.username,
 		password: parsedToken.password,
 		Token:    token,
-	}, nil
+	}
+
+	// normalize token
+	i.Token = i.ToToken()
+	return i, nil
 }
 
 func accessInfoToKubeConfig(destFile, server, token string) error {
@@ -164,9 +172,13 @@ func validateCACerts(cacerts []byte, hash string) (bool, string, string) {
 		return true, "", ""
 	}
 
-	digest := sha256.Sum256([]byte(cacerts))
-	newHash := hex.EncodeToString(digest[:])
+	newHash := hashCA(cacerts)
 	return hash == newHash, hash, newHash
+}
+
+func hashCA(cacerts []byte) string {
+	digest := sha256.Sum256(cacerts)
+	return hex.EncodeToString(digest[:])
 }
 
 func ParseUsernamePassword(token string) (string, string, bool) {

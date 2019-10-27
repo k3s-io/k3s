@@ -3,11 +3,8 @@ package tunnel
 import (
 	"context"
 	"crypto/tls"
-	"crypto/x509"
-	"encoding/base64"
 	"fmt"
 	"net"
-	"net/http"
 	"reflect"
 	"sync"
 	"time"
@@ -21,8 +18,8 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	watchtypes "k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/transport"
 )
 
 var (
@@ -54,17 +51,22 @@ func getAddresses(endpoint *v1.Endpoints) []string {
 }
 
 func Setup(ctx context.Context, config *config.Node, onChange func([]string)) error {
-	restConfig, err := clientcmd.BuildConfigFromFlags("", config.AgentConfig.KubeConfigNode)
-	if err != nil {
-		return err
-	}
-
-	transportConfig, err := restConfig.TransportConfig()
+	restConfig, err := clientcmd.BuildConfigFromFlags("", config.AgentConfig.KubeConfigK3sController)
 	if err != nil {
 		return err
 	}
 
 	client, err := kubernetes.NewForConfig(restConfig)
+	if err != nil {
+		return err
+	}
+
+	nodeRestConfig, err := clientcmd.BuildConfigFromFlags("", config.AgentConfig.KubeConfigKubelet)
+	if err != nil {
+		return err
+	}
+
+	tlsConfig, err := rest.TLSConfigFor(nodeRestConfig)
 	if err != nil {
 		return err
 	}
@@ -84,7 +86,7 @@ func Setup(ctx context.Context, config *config.Node, onChange func([]string)) er
 	wg := &sync.WaitGroup{}
 	for _, address := range addresses {
 		if _, ok := disconnect[address]; !ok {
-			disconnect[address] = connect(ctx, wg, address, config, transportConfig)
+			disconnect[address] = connect(ctx, wg, address, tlsConfig)
 		}
 	}
 
@@ -132,7 +134,7 @@ func Setup(ctx context.Context, config *config.Node, onChange func([]string)) er
 					for _, address := range addresses {
 						validEndpoint[address] = true
 						if _, ok := disconnect[address]; !ok {
-							disconnect[address] = connect(ctx, nil, address, config, transportConfig)
+							disconnect[address] = connect(ctx, nil, address, tlsConfig)
 						}
 					}
 
@@ -164,25 +166,10 @@ func Setup(ctx context.Context, config *config.Node, onChange func([]string)) er
 	return nil
 }
 
-func connect(rootCtx context.Context, waitGroup *sync.WaitGroup, address string, config *config.Node, transportConfig *transport.Config) context.CancelFunc {
+func connect(rootCtx context.Context, waitGroup *sync.WaitGroup, address string, tlsConfig *tls.Config) context.CancelFunc {
 	wsURL := fmt.Sprintf("wss://%s/v1-k3s/connect", address)
-	headers := map[string][]string{
-		"X-K3s-NodeName": {config.AgentConfig.NodeName},
-	}
-	ws := &websocket.Dialer{}
-
-	if len(config.CACerts) > 0 {
-		pool := x509.NewCertPool()
-		pool.AppendCertsFromPEM(config.CACerts)
-		ws.TLSClientConfig = &tls.Config{
-			RootCAs: pool,
-		}
-	}
-
-	if transportConfig.Username != "" {
-		auth := transportConfig.Username + ":" + transportConfig.Password
-		auth = base64.StdEncoding.EncodeToString([]byte(auth))
-		headers["Authorization"] = []string{"Basic " + auth}
+	ws := &websocket.Dialer{
+		TLSClientConfig: tlsConfig,
 	}
 
 	once := sync.Once{}
@@ -194,7 +181,7 @@ func connect(rootCtx context.Context, waitGroup *sync.WaitGroup, address string,
 
 	go func() {
 		for {
-			remotedialer.ClientConnect(ctx, wsURL, http.Header(headers), ws, func(proto, address string) bool {
+			remotedialer.ClientConnect(ctx, wsURL, nil, ws, func(proto, address string) bool {
 				host, port, err := net.SplitHostPort(address)
 				return err == nil && proto == "tcp" && ports[port] && host == "127.0.0.1"
 			}, func(_ context.Context) error {

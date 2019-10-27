@@ -4,6 +4,7 @@ import (
 	"context"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/rancher/remotedialer"
@@ -37,14 +38,9 @@ func authorizer(req *http.Request) (clientKey string, authed bool, err error) {
 		return "", false, nil
 	}
 
-	if user.GetName() != "node" {
-		return "", false, nil
+	if strings.HasPrefix(user.GetName(), "system:node:") {
+		return strings.TrimPrefix(user.GetName(), "system:node:"), true, nil
 	}
 
-	nodeName := req.Header.Get("X-K3s-NodeName")
-	if nodeName == "" {
-		return "", false, nil
-	}
-
-	return nodeName, true, nil
+	return "", false, nil
 }

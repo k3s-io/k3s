@@ -9,9 +9,21 @@ import (
 	"k8s.io/apiserver/pkg/endpoints/request"
 )
 
-func doAuth(serverConfig *config.Control, next http.Handler, rw http.ResponseWriter, req *http.Request) {
+func hasRole(mustRoles []string, roles []string) bool {
+	for _, check := range roles {
+		for _, role := range mustRoles {
+			if role == check {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func doAuth(roles []string, serverConfig *config.Control, next http.Handler, rw http.ResponseWriter, req *http.Request) {
 	if serverConfig == nil || serverConfig.Runtime.Authenticator == nil {
-		next.ServeHTTP(rw, req)
+		logrus.Errorf("authenticate not initialized")
+		rw.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
@@ -22,7 +34,7 @@ func doAuth(serverConfig *config.Control, next http.Handler, rw http.ResponseWri
 		return
 	}
 
-	if !ok || resp.User.GetName() != "node" {
+	if !ok || !hasRole(roles, resp.User.GetGroups()) {
 		rw.WriteHeader(http.StatusUnauthorized)
 		return
 	}
@@ -32,10 +44,10 @@ func doAuth(serverConfig *config.Control, next http.Handler, rw http.ResponseWri
 	next.ServeHTTP(rw, req)
 }
 
-func authMiddleware(serverConfig *config.Control) mux.MiddlewareFunc {
+func authMiddleware(serverConfig *config.Control, roles ...string) mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-			doAuth(serverConfig, next, rw, req)
+			doAuth(roles, serverConfig, next, rw, req)
 		})
 	}
 }
