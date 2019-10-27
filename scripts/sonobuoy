@@ -5,7 +5,7 @@ set -xe
 cd $(dirname $0)/..
 
 if [ -z "${K3S_IMAGE}" ]; then
-    echo "K3S_IMAGE environment variable should be defined"
+    echo 'K3S_IMAGE environment variable should be defined'
     exit 1
 fi
 
@@ -38,7 +38,7 @@ export -f fetch-kubeconfig
 
 wait-for-kubeconfig() {
     while ! fetch-kubeconfig; do
-        echo "Waiting for kubeconfig to become available..."
+        echo 'Waiting for kubeconfig to become available...'
         sleep 5
     done
 }
@@ -57,8 +57,8 @@ export -f count-ready-nodes
 # ---
 
 wait-for-nodes() {
-    while [[ "$(count-ready-nodes)" != "2" ]]; do
-        echo "Waiting for nodes to be ready..."
+    while [[ $(count-ready-nodes) -ne $1 ]]; do
+        echo 'Waiting for nodes to be ready...'
         sleep 5
     done
 }
@@ -75,8 +75,8 @@ export -f pod-ready
 # ---
 
 wait-for-services() {
-    for service in coredns; do
-        while [[ "$(pod-ready ${service})" != "true" ]]; do
+    for service in $@; do
+        while [[ "$(pod-ready ${service})" != 'true' ]]; do
             echo "Waiting for service ${service} to be ready..."
             sleep 5
         done
@@ -99,7 +99,7 @@ export -f dump-container-logs
 # ---
 
 retrieve-sonobuoy-logs() {
-    if sonobuoy status | grep -q -E " +e2e +complete +passed +"; then
+    if sonobuoy status | grep -q -E ' +e2e +complete +passed +'; then
         status=passed
         exit_code=0
     else
@@ -140,7 +140,7 @@ export -f sonobuoy-test
 cleanup() {
     exit_status=$?
     set +e
-    echo "Cleaning up"
+    echo 'Cleaning up'
     trap - EXIT
     [ -n "$SONOBUOY_PID" ] && kill $SONOBUOY_PID 2>/dev/null
     if [ "${exit_status}" -ne "0" ]; then
@@ -158,7 +158,7 @@ K3S_PORT=$(timeout --foreground 5s bash -c get-port)
 OUTPUT=$(pwd)/sonobuoy-output/${K3S_PORT}
 LOGS=$(pwd)/logs/$$
 E2E="${OUTPUT}/e2e"
-E2E_LOG="plugins/e2e/results/global/e2e.log"
+E2E_LOG='plugins/e2e/results/global/e2e.log'
 RESULTS="${E2E}/${E2E_LOG}"
 
 SECRET=random-$((100000 + RANDOM % 999999))
@@ -192,13 +192,13 @@ echo "Started ${K3S_AGENT}"
 
 # ---
 
-timeout --foreground 1m bash -c wait-for-nodes
-timeout --foreground 1m bash -c wait-for-services
+timeout --foreground 1m bash -c 'wait-for-nodes 2'
+timeout --foreground 1m bash -c 'wait-for-services coredns local-path-provisioner'
 
-if [ "$ARCH" = "arm" ]; then
+if [ "$ARCH" = 'arm' ]; then
     echo "Aborting sonobuoy tests, images not available for $ARCH"
     exit 0
 fi
 
-echo "Starting sonobuoy tests"
+echo 'Starting sonobuoy tests'
 sonobuoy-test "${@}"
