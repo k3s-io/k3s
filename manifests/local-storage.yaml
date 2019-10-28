@@ -8,7 +8,6 @@ apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRole
 metadata:
   name: local-path-provisioner-role
-  namespace: kube-system
 rules:
 - apiGroups: [""]
   resources: ["nodes", "persistentvolumeclaims"]
