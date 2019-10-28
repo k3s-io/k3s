@@ -55,6 +55,7 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	}
 
 	serverConfig := server.Config{}
+	serverConfig.DisableAgent = cfg.DisableAgent
 	serverConfig.ControlConfig.ClusterSecret = cfg.ClusterSecret
 	serverConfig.ControlConfig.DataDir = cfg.DataDir
 	serverConfig.ControlConfig.KubeConfigOutput = cfg.KubeConfigOutput
