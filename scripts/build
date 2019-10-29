@@ -41,7 +41,7 @@ fi
 mkdir -p bin
 
 if [ -z "$GOARM" ] && [ "arm" = "$(go env GOARCH)" ]; then
-    GOARM=7
+    GOARM=6
 fi
 
 rm -f \
