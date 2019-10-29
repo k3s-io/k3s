@@ -100,8 +100,6 @@ github.com/containerd/console v0.0.0-20181022165439-0650fd9eeb50 h1:WMpHmC6AxwWb
 github.com/containerd/console v0.0.0-20181022165439-0650fd9eeb50/go.mod h1:Tj/on1eG8kiEhd0+fhSDzsPAFESxzBBvdyEgyryXffw=
 github.com/containerd/continuity v0.0.0-20190815185530-f2a389ac0a02 h1:tN9D97v5A5QuKdcKHKt+UMKrkQ5YXUnD8iM7IAAjEfI=
 github.com/containerd/continuity v0.0.0-20190815185530-f2a389ac0a02/go.mod h1:GL3xCUCBDV3CZiTSEKksMWbLE66hEyuu9qyDOOqM47Y=
-github.com/containerd/cri v1.11.1-0.20191009213552-1fb415d208be h1:KHWCXlSziZmCfhtrX1YuWzL/EJ7OBViYvUn4wJzHZ0E=
-github.com/containerd/cri v1.11.1-0.20191009213552-1fb415d208be/go.mod h1:DavH5Qa8+6jOmeOMO3dhWoqksucZDe06LfuhBz/xPZs=
 github.com/containerd/fifo v0.0.0-20190816180239-bda0ff6ed73c h1:KFbqHhDeaHM7IfFtXHfUHMDaUStpM2YwBR+iJCIOsKk=
 github.com/containerd/fifo v0.0.0-20190816180239-bda0ff6ed73c/go.mod h1:ODA38xgv3Kuk8dQz2ZQXpnv/UZZUHUCL7pnLehbXgQI=
 github.com/containerd/go-cni v0.0.0-20190904155053-d20b7eebc7ee h1:fV37ZKnYs79fSyI3mu/XZFJVezrVsXBLbfojcTPpdXM=
@@ -561,6 +559,8 @@ github.com/rakelkar/gonetsh v0.0.0-20190719023240-501daadcadf8 h1:83l9gPhYtgxODl
 github.com/rakelkar/gonetsh v0.0.0-20190719023240-501daadcadf8/go.mod h1:4XHkfaUj+URzGO9sohoAgt2V9Y8nIW7fugpu0E6gShk=
 github.com/rancher/containerd v1.3.0-k3s.4 h1:Vq9EJQEm01eeWaBtgU35KxWeuVU5LwW43EmDIEnqpDQ=
 github.com/rancher/containerd v1.3.0-k3s.4/go.mod h1:ZMfzmqce2Z+QSEqdHMfeJs1TZ/UeJ1aDrazjpQT4ehM=
+github.com/rancher/cri v1.3.0-k3s.2 h1:k2XFyD+ZdsGvNfugdvqD38KSMANT3JmTFULFM2CtI70=
+github.com/rancher/cri v1.3.0-k3s.2/go.mod h1:Ht5T1dIKzm+4NExmb7wDVG6qR+j0xeXIjjhCv1d9geY=
 github.com/rancher/cri-tools v1.16.1-k3s.1 h1:iporgQ46noE6dtLzq6fWcIO2qjyPZy2m42d2P+UnGJg=
 github.com/rancher/cri-tools v1.16.1-k3s.1/go.mod h1:TEKhKv2EJIZp+p9jnEy4C63g8CosJzsI4kyKKkHag+8=
 github.com/rancher/dynamiclistener v0.1.1-0.20191010011134-8a2488bc860a h1:1bUYAv5U/Ky4YJ9o8gWxX+vNcjpIL3JWNBao70OlkFE=
