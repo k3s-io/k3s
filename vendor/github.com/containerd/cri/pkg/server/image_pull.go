@@ -346,6 +346,17 @@ func (c *criService) registryHosts(auth *runtime.AuthConfig) docker.RegistryHost
 	}
 }
 
+// defaultScheme returns the default scheme for a registry host.
+func defaultScheme(host string) string {
+	if h, _, err := net.SplitHostPort(host); err == nil {
+		host = h
+	}
+	if host == "localhost" || host == "127.0.0.1" || host == "::1" {
+		return "http"
+	}
+	return "https"
+}
+
 // registryEndpoints returns endpoints for a given host.
 // It adds default registry endpoint if it does not exist in the passed-in endpoint list.
 // It also supports wildcard host matching with `*`.
@@ -371,7 +382,7 @@ func (c *criService) registryEndpoints(host string) ([]string, error) {
 			return endpoints, nil
 		}
 	}
-	return append(endpoints, "https://"+defaultHost), nil
+	return append(endpoints, defaultScheme(defaultHost)+"://"+defaultHost), nil
 }
 
 // newTransport returns a new HTTP transport used to pull image.
