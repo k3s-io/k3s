@@ -1,0 +1,83 @@
+#!/bin/bash -ex
+
+TERRAFORM_PLAN_CMD="terraform plan --var-file variables.tfvars --out k3s.plan"
+TERRAFORM_APPLY_CMD="terraform apply k3s.plan"
+TERRAFORM_DESTROY_CMD="terraform destroy --var-file variables.tfvars --force"
+
+for bin in docker kubectl terraform; do
+    type $bin >/dev/null 2>&1 || (echo "$bin is not in the path. Please make sure it is installed and in PATH."; exit 1)
+done
+
+init() {
+  for i in server agents; do
+    pushd $i
+    terraform init
+    popd
+  done
+}
+
+apply() {
+  # init terraform
+  config
+  # Run apply for server and agents
+  for i in server agents; do
+    if [ $i == "agents" ]; then
+      echo "Sleeping 1 minute until server(s) is initialized"
+      sleep 60
+    fi
+    pushd $i
+    $TERRAFORM_PLAN_CMD
+    $TERRAFORM_APPLY_CMD
+    popd
+  done
+}
+
+config() {
+  source scripts/config
+  pushd ./server
+cat <<MAIN > variables.tfvars
+name = "${CLUSTER_NAME}"
+db_instance_type = "${DB_INSTANCE_TYPE}"
+server_instance_type = "${SERVER_INSTANCE_TYPE}"
+extra_ssh_keys = ["${EXTRA_SSH_KEYS}"]
+master_count = ${MASTER_COUNT}
+k3s_ha = ${K3S_HA}
+k3s_version = "${K3S_VERSION}"
+prom_worker_node_count = ${PROM_WORKER_NODE_COUNT}
+prom_host = "${PROM_HOST}"
+graf_host = "${GRAF_HOST}"
+ssh_key_path = "${PRIVATE_KEY_PATH}"
+debug = ${DEBUG}
+MAIN
+popd
+
+pushd ./agents
+cat <<MAIN > variables.tfvars
+name = "${CLUSTER_NAME}"
+node_count = ${AGENT_NODE_COUNT}
+extra_ssh_keys = ["${EXTRA_SSH_KEYS}"]
+k3s_version = "${K3S_VERSION}"
+worker_instance_type = "${WORKER_INSTANCE_TYPE}"
+MAIN
+popd
+}
+
+clean() {
+  # clean server and agents
+  for i in server agents; do
+    pushd $i
+    rm -f *.plan *.tfvars *.tfstate*
+    popd
+  done
+}
+
+destroy() {
+  for i in agents server; do
+    pushd $i
+    terraform destroy --var-file variables.tfvars --force
+    popd
+  done
+  clean
+}
+
+$@

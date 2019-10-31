@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{.Name}}
+  labels:
+    name: {{.Name}}
+spec:
+  clusterIP: None
+  selector:
+    name: {{.Name}}
