@@ -479,9 +479,9 @@ github.com/godbus/dbus
 github.com/gogo/googleapis/google/rpc
 # github.com/gogo/protobuf v1.3.0
 github.com/gogo/protobuf/types
-github.com/gogo/protobuf/gogoproto
 github.com/gogo/protobuf/proto
 github.com/gogo/protobuf/sortkeys
+github.com/gogo/protobuf/gogoproto
 github.com/gogo/protobuf/protoc-gen-gogo/descriptor
 # github.com/golang/groupcache v0.0.0-20190129154638-5b532d6fd5ef
 github.com/golang/groupcache/lru
@@ -617,7 +617,7 @@ github.com/json-iterator/go
 github.com/juju/errors
 # github.com/karrick/godirwalk v1.7.5
 github.com/karrick/godirwalk
-# github.com/konsorten/go-windows-terminal-sequences v1.0.2
+# github.com/konsorten/go-windows-terminal-sequences v1.0.1
 github.com/konsorten/go-windows-terminal-sequences
 # github.com/kubernetes-sigs/cri-tools v0.0.0-00010101000000-000000000000 => github.com/rancher/cri-tools v1.16.1-k3s.1
 github.com/kubernetes-sigs/cri-tools/cmd/crictl
@@ -726,8 +726,12 @@ github.com/prometheus/procfs/internal/util
 # github.com/rakelkar/gonetsh v0.0.0-20190719023240-501daadcadf8
 github.com/rakelkar/gonetsh/netroute
 github.com/rakelkar/gonetsh/netsh
-# github.com/rancher/dynamiclistener v0.1.1-0.20191010011134-8a2488bc860a
+# github.com/rancher/dynamiclistener v0.1.1-0.20191031022009-6224794ef3cb
 github.com/rancher/dynamiclistener
+github.com/rancher/dynamiclistener/factory
+github.com/rancher/dynamiclistener/storage/file
+github.com/rancher/dynamiclistener/storage/kubernetes
+github.com/rancher/dynamiclistener/storage/memory
 github.com/rancher/dynamiclistener/cert
 # github.com/rancher/helm-controller v0.2.2
 github.com/rancher/helm-controller/pkg/generated/controllers/helm.cattle.io
@@ -745,7 +749,6 @@ github.com/rancher/helm-controller/pkg/generated/informers/externalversions/inte
 github.com/rancher/helm-controller/pkg/apis/helm.cattle.io
 # github.com/rancher/kine v0.0.0-00010101000000-000000000000 => github.com/ibuildthecloud/kine v0.1.0
 github.com/rancher/kine/pkg/endpoint
-github.com/rancher/kine/pkg/client
 github.com/rancher/kine/pkg/drivers/mysql
 github.com/rancher/kine/pkg/drivers/pgsql
 github.com/rancher/kine/pkg/drivers/sqlite
@@ -758,8 +761,8 @@ github.com/rancher/kine/pkg/broadcaster
 # github.com/rancher/remotedialer v0.2.0
 github.com/rancher/remotedialer
 # github.com/rancher/wrangler v0.2.0
-github.com/rancher/wrangler/pkg/start
 github.com/rancher/wrangler/pkg/signals
+github.com/rancher/wrangler/pkg/start
 github.com/rancher/wrangler/pkg/controller-gen
 github.com/rancher/wrangler/pkg/controller-gen/args
 github.com/rancher/wrangler/pkg/cleanup
@@ -1021,15 +1024,15 @@ google.golang.org/api/transport/http/internal/propagation
 # google.golang.org/appengine v1.5.0
 google.golang.org/appengine/cloudsql
 google.golang.org/appengine/urlfetch
+google.golang.org/appengine
 google.golang.org/appengine/internal
 google.golang.org/appengine/internal/urlfetch
-google.golang.org/appengine
+google.golang.org/appengine/internal/app_identity
+google.golang.org/appengine/internal/modules
 google.golang.org/appengine/internal/base
 google.golang.org/appengine/internal/datastore
 google.golang.org/appengine/internal/log
 google.golang.org/appengine/internal/remote_api
-google.golang.org/appengine/internal/app_identity
-google.golang.org/appengine/internal/modules
 # google.golang.org/genproto v0.0.0-20190502173448-54afdca5d873
 google.golang.org/genproto/googleapis/rpc/status
 google.golang.org/genproto/googleapis/api/annotations
@@ -1092,12 +1095,14 @@ k8s.io/api/core/v1
 k8s.io/api/extensions/v1beta1
 k8s.io/api/networking/v1
 k8s.io/api/apps/v1
+k8s.io/api/authentication/v1
+k8s.io/api/autoscaling/v1
+k8s.io/api/policy/v1beta1
 k8s.io/api/apps/v1beta1
 k8s.io/api/admissionregistration/v1
 k8s.io/api/admissionregistration/v1beta1
 k8s.io/api/apps/v1beta2
 k8s.io/api/auditregistration/v1alpha1
-k8s.io/api/autoscaling/v1
 k8s.io/api/autoscaling/v2beta1
 k8s.io/api/autoscaling/v2beta2
 k8s.io/api/batch/v1
@@ -1111,7 +1116,6 @@ k8s.io/api/events/v1beta1
 k8s.io/api/networking/v1beta1
 k8s.io/api/node/v1alpha1
 k8s.io/api/node/v1beta1
-k8s.io/api/policy/v1beta1
 k8s.io/api/rbac/v1
 k8s.io/api/rbac/v1alpha1
 k8s.io/api/rbac/v1beta1
@@ -1122,7 +1126,6 @@ k8s.io/api/settings/v1alpha1
 k8s.io/api/storage/v1
 k8s.io/api/storage/v1alpha1
 k8s.io/api/storage/v1beta1
-k8s.io/api/authentication/v1
 k8s.io/api/authentication/v1beta1
 k8s.io/api/authorization/v1
 k8s.io/api/authorization/v1beta1
@@ -1178,9 +1181,10 @@ k8s.io/apiextensions-apiserver/pkg/client/informers/externalversions/apiextensio
 k8s.io/apiextensions-apiserver/pkg/client/listers/apiextensions/v1
 k8s.io/apiextensions-apiserver/pkg/client/listers/apiextensions/v1beta1
 # k8s.io/apimachinery v0.0.0 => github.com/rancher/kubernetes/staging/src/k8s.io/apimachinery v1.16.2-k3s.1
+k8s.io/apimachinery/pkg/api/equality
+k8s.io/apimachinery/pkg/apis/meta/v1
 k8s.io/apimachinery/pkg/util/json
 k8s.io/apimachinery/pkg/util/net
-k8s.io/apimachinery/pkg/apis/meta/v1
 k8s.io/apimachinery/pkg/labels
 k8s.io/apimachinery/pkg/util/intstr
 k8s.io/apimachinery/pkg/fields
@@ -1193,20 +1197,20 @@ k8s.io/apimachinery/pkg/apis/meta/v1/unstructured
 k8s.io/apimachinery/pkg/util/yaml
 k8s.io/apimachinery/pkg/runtime/serializer
 k8s.io/apimachinery/pkg/util/runtime
-k8s.io/apimachinery/pkg/api/equality
+k8s.io/apimachinery/pkg/api/resource
+k8s.io/apimachinery/pkg/conversion
+k8s.io/apimachinery/pkg/selection
 k8s.io/apimachinery/pkg/util/errors
 k8s.io/apimachinery/pkg/util/validation
 k8s.io/apimachinery/pkg/util/sets
 k8s.io/apimachinery/pkg/util/wait
 k8s.io/apimachinery/pkg/util/strategicpatch
-k8s.io/apimachinery/pkg/api/resource
-k8s.io/apimachinery/pkg/conversion
-k8s.io/apimachinery/pkg/selection
 k8s.io/apimachinery/pkg/api/meta
 k8s.io/apimachinery/pkg/util/cache
 k8s.io/apimachinery/pkg/util/clock
 k8s.io/apimachinery/pkg/util/diff
 k8s.io/apimachinery/pkg/util/naming
+k8s.io/apimachinery/pkg/runtime/serializer/streaming
 k8s.io/apimachinery/pkg/conversion/queryparams
 k8s.io/apimachinery/pkg/api/validation/path
 k8s.io/apimachinery/pkg/apis/meta/internalversion
@@ -1215,7 +1219,6 @@ k8s.io/apimachinery/pkg/util/rand
 k8s.io/apimachinery/pkg/util/jsonmergepatch
 k8s.io/apimachinery/pkg/util/validation/field
 k8s.io/apimachinery/pkg/version
-k8s.io/apimachinery/pkg/runtime/serializer/streaming
 k8s.io/apimachinery/pkg/runtime/serializer/json
 k8s.io/apimachinery/pkg/runtime/serializer/protobuf
 k8s.io/apimachinery/pkg/runtime/serializer/recognizer
@@ -1224,9 +1227,9 @@ k8s.io/apimachinery/pkg/util/waitgroup
 k8s.io/apimachinery/pkg/util/httpstream
 k8s.io/apimachinery/pkg/util/remotecommand
 k8s.io/apimachinery/pkg/util/httpstream/spdy
+k8s.io/apimachinery/third_party/forked/golang/reflect
 k8s.io/apimachinery/pkg/util/mergepatch
 k8s.io/apimachinery/third_party/forked/golang/json
-k8s.io/apimachinery/third_party/forked/golang/reflect
 k8s.io/apimachinery/pkg/util/version
 k8s.io/apimachinery/pkg/util/proxy
 k8s.io/apimachinery/pkg/apis/meta/v1beta1
@@ -1366,31 +1369,22 @@ k8s.io/cli-runtime/pkg/kustomize/k8sdeps/transformer/hash
 k8s.io/cli-runtime/pkg/kustomize/k8sdeps/transformer/patch
 k8s.io/cli-runtime/pkg/kustomize/k8sdeps/kv
 # k8s.io/client-go v11.0.1-0.20190409021438-1a26190bd76a+incompatible => github.com/rancher/kubernetes/staging/src/k8s.io/client-go v1.16.2-k3s.1
-k8s.io/client-go/tools/clientcmd
-k8s.io/client-go/util/cert
 k8s.io/client-go/kubernetes
+k8s.io/client-go/kubernetes/typed/core/v1
+k8s.io/client-go/tools/clientcmd
 k8s.io/client-go/informers
 k8s.io/client-go/listers/core/v1
 k8s.io/client-go/tools/cache
-k8s.io/client-go/transport
+k8s.io/client-go/rest
 k8s.io/client-go/tools/clientcmd/api
 k8s.io/client-go/discovery
-k8s.io/client-go/rest
 k8s.io/client-go/util/flowcontrol
 k8s.io/client-go/discovery/fake
 k8s.io/client-go/testing
 k8s.io/client-go/kubernetes/typed/apps/v1
-k8s.io/client-go/kubernetes/typed/core/v1
 k8s.io/client-go/tools/portforward
 k8s.io/client-go/tools/remotecommand
 k8s.io/client-go/transport/spdy
-k8s.io/client-go/informers/core
-k8s.io/client-go/kubernetes/scheme
-k8s.io/client-go/informers/core/v1
-k8s.io/client-go/tools/auth
-k8s.io/client-go/tools/clientcmd/api/latest
-k8s.io/client-go/util/homedir
-k8s.io/client-go/util/keyutil
 k8s.io/client-go/kubernetes/typed/admissionregistration/v1
 k8s.io/client-go/kubernetes/typed/admissionregistration/v1beta1
 k8s.io/client-go/kubernetes/typed/apps/v1beta1
@@ -1427,6 +1421,11 @@ k8s.io/client-go/kubernetes/typed/settings/v1alpha1
 k8s.io/client-go/kubernetes/typed/storage/v1
 k8s.io/client-go/kubernetes/typed/storage/v1alpha1
 k8s.io/client-go/kubernetes/typed/storage/v1beta1
+k8s.io/client-go/kubernetes/scheme
+k8s.io/client-go/tools/reference
+k8s.io/client-go/tools/auth
+k8s.io/client-go/tools/clientcmd/api/latest
+k8s.io/client-go/util/homedir
 k8s.io/client-go/informers/admissionregistration
 k8s.io/client-go/informers/apps
 k8s.io/client-go/informers/auditregistration
@@ -1434,6 +1433,7 @@ k8s.io/client-go/informers/autoscaling
 k8s.io/client-go/informers/batch
 k8s.io/client-go/informers/certificates
 k8s.io/client-go/informers/coordination
+k8s.io/client-go/informers/core
 k8s.io/client-go/informers/discovery
 k8s.io/client-go/informers/events
 k8s.io/client-go/informers/extensions
@@ -1447,10 +1447,17 @@ k8s.io/client-go/informers/settings
 k8s.io/client-go/informers/storage
 k8s.io/client-go/tools/pager
 k8s.io/client-go/util/retry
+k8s.io/client-go/pkg/version
+k8s.io/client-go/plugin/pkg/client/auth/exec
+k8s.io/client-go/rest/watch
+k8s.io/client-go/tools/metrics
+k8s.io/client-go/transport
+k8s.io/client-go/util/cert
+k8s.io/client-go/informers/core/v1
 k8s.io/client-go/tools/record
 k8s.io/client-go/util/certificate
 k8s.io/client-go/util/connrotation
-k8s.io/client-go/tools/metrics
+k8s.io/client-go/util/keyutil
 k8s.io/client-go/tools/leaderelection
 k8s.io/client-go/tools/leaderelection/resourcelock
 k8s.io/client-go/discovery/cached
@@ -1460,13 +1467,9 @@ k8s.io/client-go/metadata
 k8s.io/client-go/metadata/metadatainformer
 k8s.io/client-go/restmapper
 k8s.io/client-go/scale
-k8s.io/client-go/pkg/version
-k8s.io/client-go/plugin/pkg/client/auth/exec
-k8s.io/client-go/rest/watch
 k8s.io/client-go/util/workqueue
 k8s.io/client-go/informers/apps/v1
 k8s.io/client-go/listers/apps/v1
-k8s.io/client-go/tools/reference
 k8s.io/client-go/util/exec
 k8s.io/client-go/tools/clientcmd/api/v1
 k8s.io/client-go/informers/admissionregistration/v1
@@ -1501,6 +1504,9 @@ k8s.io/client-go/informers/settings/v1alpha1
 k8s.io/client-go/informers/storage/v1
 k8s.io/client-go/informers/storage/v1alpha1
 k8s.io/client-go/informers/storage/v1beta1
+k8s.io/client-go/pkg/apis/clientauthentication
+k8s.io/client-go/pkg/apis/clientauthentication/v1alpha1
+k8s.io/client-go/pkg/apis/clientauthentication/v1beta1
 k8s.io/client-go/tools/record/util
 k8s.io/client-go/util/certificate/csr
 k8s.io/client-go/listers/storage/v1beta1
@@ -1522,9 +1528,6 @@ k8s.io/client-go/listers/coordination/v1beta1
 k8s.io/client-go/listers/autoscaling/v1
 k8s.io/client-go/listers/storage/v1
 k8s.io/client-go/tools/events
-k8s.io/client-go/pkg/apis/clientauthentication
-k8s.io/client-go/pkg/apis/clientauthentication/v1alpha1
-k8s.io/client-go/pkg/apis/clientauthentication/v1beta1
 k8s.io/client-go/discovery/cached/disk
 k8s.io/client-go/util/jsonpath
 k8s.io/client-go/listers/admissionregistration/v1
