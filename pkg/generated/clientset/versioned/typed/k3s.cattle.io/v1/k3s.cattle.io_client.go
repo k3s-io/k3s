@@ -27,7 +27,6 @@ import (
 type K3sV1Interface interface {
 	RESTClient() rest.Interface
 	AddonsGetter
-	ListenerConfigsGetter
 }
 
 // K3sV1Client is used to interact with features provided by the k3s.cattle.io group.
@@ -37,10 +36,6 @@ type K3sV1Client struct {
 
 func (c *K3sV1Client) Addons(namespace string) AddonInterface {
 	return newAddons(c, namespace)
-}
-
-func (c *K3sV1Client) ListenerConfigs(namespace string) ListenerConfigInterface {
-	return newListenerConfigs(c, namespace)
 }
 
 // NewForConfig creates a new K3sV1Client for the given config.

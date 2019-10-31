@@ -27,7 +27,6 @@ import (
 
 type Interface interface {
 	Addon() AddonController
-	ListenerConfig() ListenerConfigController
 }
 
 func New(controllerManager *generic.ControllerManager, client clientset.K3sV1Interface,
@@ -47,7 +46,4 @@ type version struct {
 
 func (c *version) Addon() AddonController {
 	return NewAddonController(v1.SchemeGroupVersion.WithKind("Addon"), c.controllerManager, c.client, c.informers.Addons())
-}
-func (c *version) ListenerConfig() ListenerConfigController {
-	return NewListenerConfigController(v1.SchemeGroupVersion.WithKind("ListenerConfig"), c.controllerManager, c.client, c.informers.ListenerConfigs())
 }

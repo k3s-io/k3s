@@ -25,11 +25,3 @@ type AddonListerExpansion interface{}
 // AddonNamespaceListerExpansion allows custom methods to be added to
 // AddonNamespaceLister.
 type AddonNamespaceListerExpansion interface{}
-
-// ListenerConfigListerExpansion allows custom methods to be added to
-// ListenerConfigLister.
-type ListenerConfigListerExpansion interface{}
-
-// ListenerConfigNamespaceListerExpansion allows custom methods to be added to
-// ListenerConfigNamespaceLister.
-type ListenerConfigNamespaceListerExpansion interface{}

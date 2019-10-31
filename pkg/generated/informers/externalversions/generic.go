@@ -55,8 +55,6 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 	// Group=k3s.cattle.io, Version=v1
 	case v1.SchemeGroupVersion.WithResource("addons"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.K3s().V1().Addons().Informer()}, nil
-	case v1.SchemeGroupVersion.WithResource("listenerconfigs"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.K3s().V1().ListenerConfigs().Informer()}, nil
 
 	}
 
