@@ -37,6 +37,10 @@ func (c *Cluster) Start(ctx context.Context) error {
 		}
 	}
 
+	if err := c.testClusterDB(ctx); err != nil {
+		return err
+	}
+
 	return c.joined()
 }
 
