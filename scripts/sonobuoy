@@ -87,6 +87,24 @@ export -f wait-for-services
 
 # ---
 
+verify-valid-version() {
+    if docker exec $@ 2>&1 | grep -iE '(dev|head|unknown|fail|refuse)'; then
+        return 1
+    fi
+}
+export -f verify-valid-version
+
+# ---
+
+verify-valid-versions() {
+    verify-valid-version $1 kubectl version
+    verify-valid-version $1 ctr version
+    verify-valid-version $1 crictl version
+}
+export -f verify-valid-versions
+
+# ---
+
 dump-container-logs() {
     mkdir -p ${LOGS}
     for container in ${CONTAINERS}; do
@@ -179,9 +197,10 @@ docker run -d --name ${K3S_SERVER} --privileged \
 K3S_IP=$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' ${K3S_SERVER})
 echo "Started ${K3S_SERVER} @ ${K3S_IP}:${K3S_PORT}"
 
-# ---
-
 timeout --foreground 1m bash -c wait-for-kubeconfig
+verify-valid-versions ${K3S_SERVER}
+
+# ---
 
 docker run -d --name ${K3S_AGENT} --privileged \
     -e K3S_CLUSTER_SECRET=${SECRET} \
