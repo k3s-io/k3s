@@ -1,0 +1,14 @@
+#!/bin/bash
+
+export NUM_SERVERS=1
+export NUM_AGENTS=1
+export SERVER_ARGS='--no-deploy=traefik'
+export WAIT_SERVICES='coredns local-path-provisioner metrics-server'
+
+export sonobuoyParallelArgs=(--e2e-focus='\[Conformance\]' --e2e-skip='\[Serial\]' --e2e-parallel=y)
+export sonobuoySerialArgs=(--e2e-focus='\[Serial\].*\[Conformance\]')
+
+start-test() {
+  sonobuoy-test $@
+}
+export -f start-test

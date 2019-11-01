@@ -1,21 +1,22 @@
 FROM golang:1.13.5-alpine3.10
 
-RUN apk -U --no-cache add bash git gcc musl-dev docker curl jq coreutils python2
-RUN SONOBUOY_VER=v0.16.2 && \
-    SONOBUOY_PKG=github.com/vmware-tanzu/sonobuoy && \
-    go get -d ${SONOBUOY_PKG} && \
-    cd /go/src/${SONOBUOY_PKG} && \
-    git checkout -b current ${SONOBUOY_VER} && \
-    go build -o /usr/local/bin/sonobuoy
-RUN rm -rf /go/src /go/pkg
+RUN apk -U --no-cache add bash git gcc musl-dev docker curl jq coreutils python2 openssl
 
 ARG DAPPER_HOST_ARCH
 ENV ARCH $DAPPER_HOST_ARCH
+
+RUN if [ "${ARCH}" == "amd64" ] || [ "${ARCH}" == "arm64" ]; then \
+        VERSION=0.17.0 OS=linux && \
+        curl -sL "https://github.com/vmware-tanzu/sonobuoy/releases/download/v${VERSION}/sonobuoy_${VERSION}_${OS}_${ARCH}.tar.gz" | \
+        tar -xzf - -C /usr/local/bin; \
+    fi
 
 RUN curl -sL https://storage.googleapis.com/kubernetes-release/release/$( \
             curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt \
         )/bin/linux/${ARCH}/kubectl -o /usr/local/bin/kubectl && \
     chmod a+x /usr/local/bin/kubectl
+
+ENV TEST_CLEANUP true
 
 ENV DAPPER_RUN_ARGS --privileged --network host
 ENV DAPPER_ENV REPO TAG DRONE_TAG IMAGE_NAME GCLOUD_AUTH
@@ -26,4 +27,4 @@ ENV HOME ${DAPPER_SOURCE}
 WORKDIR ${DAPPER_SOURCE}
 
 ENTRYPOINT ["./scripts/entry.sh"]
-CMD ["sonobuoy-e2e-tests"]
+CMD ["test"]
