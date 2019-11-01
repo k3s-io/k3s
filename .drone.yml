@@ -55,10 +55,10 @@ steps:
     event:
     - tag
 
-- name: sonobuoy-e2e-tests
+- name: test
   image: rancher/dapper:v0.4.2
   commands:
-  - dapper -f Dockerfile.sonobuoy.dapper
+  - dapper -f Dockerfile.test.dapper
   volumes:
   - name: docker
     path: /var/run/docker.sock
@@ -142,10 +142,10 @@ steps:
     event:
     - tag
 
-- name: sonobuoy-e2e-tests
+- name: test
   image: rancher/dapper:v0.4.2
   commands:
-  - dapper -f Dockerfile.sonobuoy.dapper
+  - dapper -f Dockerfile.test.dapper
   volumes:
   - name: docker
     path: /var/run/docker.sock
@@ -212,10 +212,10 @@ steps:
     event:
     - tag
 
-- name: sonobuoy-e2e-tests
+- name: test
   image: rancher/dapper:v0.4.2
   commands:
-  - dapper -f Dockerfile.sonobuoy.dapper
+  - dapper -f Dockerfile.test.dapper
   volumes:
   - name: docker
     path: /var/run/docker.sock

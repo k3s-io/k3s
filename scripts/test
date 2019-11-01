@@ -59,7 +59,7 @@ trap cleanup EXIT INT
 
 run-sonobuoy() {
     output+=(${log_output})
-    E2E_LOG_OUTPUT=${log_output} ./scripts/sonobuoy ${@} &
+    E2E_LOG_OUTPUT=${log_output} ./scripts/test-sonobuoy ${@} &
     pids+=($!)
 }
 

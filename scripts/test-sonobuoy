@@ -1,0 +1,34 @@
+#!/bin/bash
+
+set -xe
+
+cd $(dirname $0)/..
+
+if [ -z "${K3S_IMAGE}" ]; then
+    echo 'K3S_IMAGE environment variable should be defined'
+    exit 1
+fi
+
+# ---
+
+trap test-cleanup EXIT
+
+# ---
+
+test-setup
+provision-server
+
+timeout --foreground 1m bash -c wait-for-kubeconfig
+verify-valid-versions ${K3S_SERVER}
+
+provision-agent
+timeout --foreground 1m bash -c 'wait-for-nodes 2'
+timeout --foreground 1m bash -c 'wait-for-services coredns local-path-provisioner'
+
+if [ "$ARCH" = 'arm' ]; then
+    echo "Aborting sonobuoy tests, images not available for $ARCH"
+    exit 0
+fi
+
+echo 'Starting sonobuoy tests'
+sonobuoy-test "${@}"

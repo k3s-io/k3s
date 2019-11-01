@@ -1,14 +1,5 @@
 #!/bin/bash
 
-set -xe
-
-cd $(dirname $0)/..
-
-if [ -z "${K3S_IMAGE}" ]; then
-    echo 'K3S_IMAGE environment variable should be defined'
-    exit 1
-fi
-
 # ---
 
 port-used() {
@@ -155,7 +146,7 @@ export -f sonobuoy-test
 
 # ---
 
-cleanup() {
+test-cleanup() {
     exit_status=$?
     set +e
     echo 'Cleaning up'
@@ -168,56 +159,51 @@ cleanup() {
     rm ${KUBECONFIG}
     exit ${exit_status}
 }
-trap cleanup EXIT
+export -f test-cleanup
 
 # ---
 
-K3S_PORT=$(timeout --foreground 5s bash -c get-port)
-OUTPUT=$(pwd)/sonobuoy-output/${K3S_PORT}
-LOGS=$(pwd)/logs/$$
-E2E="${OUTPUT}/e2e"
-E2E_LOG='plugins/e2e/results/global/e2e.log'
-RESULTS="${E2E}/${E2E_LOG}"
+test-setup() {
+    K3S_PORT=$(timeout --foreground 5s bash -c get-port)
+    OUTPUT=$(pwd)/sonobuoy-output/${K3S_PORT}
+    LOGS=$(pwd)/logs/$$
+    E2E="${OUTPUT}/e2e"
+    E2E_LOG='plugins/e2e/results/global/e2e.log'
+    RESULTS="${E2E}/${E2E_LOG}"
 
-SECRET=random-$((100000 + RANDOM % 999999))
-export K3S_AGENT=sonobuoy-k3s-agent-${K3S_PORT}
-export K3S_SERVER=sonobuoy-k3s-server-${K3S_PORT}
-export CONTAINERS="${K3S_SERVER} ${K3S_AGENT}"
-export KUBECONFIG=${OUTPUT}/kubeconfig.yaml
+    SECRET=random-$((100000 + RANDOM % 999999))
+    export K3S_AGENT=sonobuoy-k3s-agent-${K3S_PORT}
+    export K3S_SERVER=sonobuoy-k3s-server-${K3S_PORT}
+    export CONTAINERS="${K3S_SERVER} ${K3S_AGENT}"
+    export KUBECONFIG=${OUTPUT}/kubeconfig.yaml
 
-mkdir -p ${OUTPUT}
-
-# ---
-
-docker run -d --name ${K3S_SERVER} --privileged \
-    -p 127.0.0.1:${K3S_PORT}:${K3S_PORT} \
-    -e K3S_CLUSTER_SECRET=${SECRET} \
-    ${K3S_IMAGE} server --no-deploy=traefik --https-listen-port=${K3S_PORT}
-
-K3S_IP=$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' ${K3S_SERVER})
-echo "Started ${K3S_SERVER} @ ${K3S_IP}:${K3S_PORT}"
-
-timeout --foreground 1m bash -c wait-for-kubeconfig
-verify-valid-versions ${K3S_SERVER}
+    mkdir -p ${OUTPUT}
+}
+export -f test-setup
 
 # ---
 
-docker run -d --name ${K3S_AGENT} --privileged \
-    -e K3S_CLUSTER_SECRET=${SECRET} \
-    -e K3S_URL=https://${K3S_IP}:${K3S_PORT} \
-    ${K3S_IMAGE} agent
+provision-server() {
+    docker run -d --name ${K3S_SERVER} --privileged \
+        -p 127.0.0.1:${K3S_PORT}:${K3S_PORT} \
+        -e K3S_CLUSTER_SECRET=${SECRET} \
+        ${K3S_IMAGE} server --no-deploy=traefik --https-listen-port=${K3S_PORT}
 
-echo "Started ${K3S_AGENT}"
+    K3S_IP=$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' ${K3S_SERVER})
+    echo "Started ${K3S_SERVER} @ ${K3S_IP}:${K3S_PORT}"
+}
+export -f provision-server
 
 # ---
 
-timeout --foreground 1m bash -c 'wait-for-nodes 2'
-timeout --foreground 1m bash -c 'wait-for-services coredns local-path-provisioner'
+provision-agent() {
+    docker run -d --name ${K3S_AGENT} --privileged \
+        -e K3S_CLUSTER_SECRET=${SECRET} \
+        -e K3S_URL=https://${K3S_IP}:${K3S_PORT} \
+        ${K3S_IMAGE} agent
 
-if [ "$ARCH" = 'arm' ]; then
-    echo "Aborting sonobuoy tests, images not available for $ARCH"
-    exit 0
-fi
+    echo "Started ${K3S_AGENT}"
+}
+export -f provision-agent
 
-echo 'Starting sonobuoy tests'
-sonobuoy-test "${@}"
+# ---
