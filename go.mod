@@ -9,6 +9,7 @@ replace (
 	github.com/containerd/console => github.com/containerd/console v0.0.0-20181022165439-0650fd9eeb50
 	github.com/containerd/containerd => github.com/rancher/containerd v1.3.0-k3s.4
 	github.com/containerd/continuity => github.com/containerd/continuity v0.0.0-20190815185530-f2a389ac0a02
+	github.com/containerd/cri => github.com/rancher/cri v1.3.0-k3s.2
 	github.com/containerd/fifo => github.com/containerd/fifo v0.0.0-20190816180239-bda0ff6ed73c
 	github.com/containerd/go-runc => github.com/containerd/go-runc v0.0.0-20190911050354-e029b79d8cda
 	github.com/containerd/typeurl => github.com/containerd/typeurl v0.0.0-20180627222232-a93fcdb778cd
@@ -67,7 +68,7 @@ require (
 	github.com/containerd/cgroups v0.0.0-20190923161937-abd0b19954a6 // indirect
 	github.com/containerd/containerd v1.3.0-beta.2.0.20190828155532-0293cbd26c69
 	github.com/containerd/continuity v0.0.0-20190827140505-75bee3e2ccb6 // indirect
-	github.com/containerd/cri v1.11.1-0.20191009213552-1fb415d208be
+	github.com/containerd/cri v0.0.0-00010101000000-000000000000
 	github.com/containerd/fifo v0.0.0-20190816180239-bda0ff6ed73c // indirect
 	github.com/containerd/go-cni v0.0.0-20190904155053-d20b7eebc7ee // indirect
 	github.com/containerd/go-runc v0.0.0-20190923131748-a2952bc25f51 // indirect
