@@ -29,8 +29,8 @@ var (
 				create_revision INTEGER,
  				prev_revision INTEGER,
 				lease INTEGER,
- 				value BLOB,
- 				old_value BLOB,
+				value MEDIUMBLOB,
+				old_value MEDIUMBLOB,
 				PRIMARY KEY (id)
 			);`,
 	}
