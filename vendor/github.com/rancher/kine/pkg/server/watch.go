@@ -87,7 +87,7 @@ func (w *watcher) Start(r *etcdserverpb.WatchCreateRequest) {
 				Events:  toEvents(events...),
 			}); err != nil {
 				w.Cancel(id)
-				return
+				continue
 			}
 		}
 		logrus.Debugf("WATCH CLOSE id=%d, key=%s", id, key)

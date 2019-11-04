@@ -70,6 +70,7 @@ type Generic struct {
 	DeleteSQL             string
 	UpdateCompactSQL      string
 	InsertSQL             string
+	FillSQL               string
 	InsertLastInsertIDSQL string
 }
 
@@ -162,6 +163,9 @@ func Open(driverName, dataSourceName string, paramCharacter string, numbered boo
 
 		InsertSQL: q(`INSERT INTO kine(name, created, deleted, create_revision, prev_revision, lease, value, old_value)
 			values(?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`, paramCharacter, numbered),
+
+		FillSQL: q(`INSERT INTO kine(id, name, created, deleted, create_revision, prev_revision, lease, value, old_value)
+			values(?, ?, ?, ?, ?, ?, ?, ?, ?)`, paramCharacter, numbered),
 	}, nil
 }
 
@@ -263,6 +267,15 @@ func (d *Generic) CurrentRevision(ctx context.Context) (int64, error) {
 func (d *Generic) After(ctx context.Context, prefix string, rev int64) (*sql.Rows, error) {
 	sql := d.AfterSQL
 	return d.query(ctx, sql, prefix, rev)
+}
+
+func (d *Generic) Fill(ctx context.Context, revision int64) error {
+	_, err := d.execute(ctx, d.FillSQL, revision, fmt.Sprintf("gap-%d", revision), 0, 1, 0, 0, 0, nil, nil)
+	return err
+}
+
+func (d *Generic) IsFill(key string) bool {
+	return strings.HasPrefix(key, "gap-")
 }
 
 func (d *Generic) Insert(ctx context.Context, key string, create, delete bool, createRevision, previousRevision int64, ttl int64, value, prevValue []byte) (id int64, err error) {
