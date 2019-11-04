@@ -229,5 +229,4 @@ if [ "$ARCH" = 'arm' ]; then
     exit 0
 fi
 
-build_k3s "sqlite" &
-build_k3s "postgres"
+build_k3s ${@}
