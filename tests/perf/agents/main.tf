@@ -52,15 +52,19 @@ module "k3s-pool-worker-asg" {
   version       = "3.0.0"
   name          = "${local.name}-pool"
   asg_name      = "${local.name}-pool"
-  instance_type = var.worker_instance_type
+  instance_type = var.agent_instance_type
   image_id      = data.aws_ami.ubuntu.id
   user_data     = base64encode(templatefile("${path.module}/files/pool_worker_userdata.tmpl", { k3s_url = data.terraform_remote_state.server.outputs.public_ip, k3s_cluster_secret = local.k3s_cluster_secret, extra_ssh_keys = var.extra_ssh_keys, install_k3s_version = var.k3s_version }))
   ebs_optimized = true
 
-  desired_capacity    = var.node_count
+  default_cooldown          = 10
+  health_check_grace_period = 30
+  wait_for_capacity_timeout = "60m"
+
+  desired_capacity    = var.agent_node_count
   health_check_type   = "EC2"
-  max_size            = var.node_count
-  min_size            = var.node_count
+  max_size            = var.agent_node_count
+  min_size            = var.agent_node_count
   vpc_zone_identifier = [data.aws_subnet.selected.id]
   spot_price          = "0.680"
 

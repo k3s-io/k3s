@@ -1,28 +1,34 @@
 ## MAIN VARIABLES ##
 ####################
-CLUSTER_NAME="hgalal-k3s"
-K3S_VERSION="v0.10.0"
-EXTRA_SSH_KEYS="ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDZBAE6I9J733HJfCBVu7iWSUuJ7th0U4P4IFfpFDca52n/Hk4yFFr8SPR8JJc1n42c3vEVCbExp/MD4ihqEBy9+pLewxA+fkb7UAT4cT2eLfvZdTTVe8KSiw6lVN6tWSoNXmNqY+wH7zWQ04lfjXPa/c01L1n2XwV/O+5xii9vEuSxN9YhfQ/s61SdLFqQ5yS8gPsM0qQW+bFt5KGGbapqztDO+h9lxGbZRcRAKbCzZ5kF1mhjI/+VubTWKtoVLCumjzjYqILYyx9g/mLSo26qjDEZvtwBQB9KLugDAtnalLVp0HgivC5YfLHr8PxViVSHfIIKS2DhUpn07jr8eKi9"
-PRIVATE_KEY_PATH="/home/hussein/.ssh/id_rsa" #this has to be a full path
+CLUSTER_NAME="loadtest-k3s"
+DOMAIN_NAME=""
+ZONE_ID=""
+K3S_VERSION="v0.11.0-alpha2"
+EXTRA_SSH_KEYS="" # comma separated public keys
+PRIVATE_KEY_PATH="~/.ssh/id_rsa"
+DEBUG=1
 
+## K3S DB VARIABLES ##
+##########################
+DB_ENGINE="postgres"
+DB_INSTANCE_TYPE="db.m4.4xlarge"
+DB_NAME="k3s"
+DB_USERNAME="k3suser"
+DB_PASSWORD="024d9442b3add64b7ef90655bc302cd8"
+DB_VERSION=11.5
 
 ## K3S SERVER VARIABLES ##
 ##########################
-K3S_HA=1
-MASTER_COUNT=3
-DB_INSTANCE_TYPE="db.m4.4xlarge"
+SERVER_HA=1
+SERVER_COUNT=3
 SERVER_INSTANCE_TYPE="m5.2xlarge"
-DEBUG=1
-
 
 ## PROMETHEUS SERVER VARIABLES ##
 #################################
 PROM_WORKER_NODE_COUNT=1
-PROM_HOST="prometheus-load.eng.rancher.space"
-GRAF_HOST="prometheus-load.eng.rancher.space"
-
+PROM_WORKER_INSTANCE_TYPE="m5.large"
 
 ## K3S AGENTS VARIABLES ##
 ##########################
 AGENT_NODE_COUNT=100
-WORKER_INSTANCE_TYPE="m5.xlarge"
+AGENT_INSTANCE_TYPE="m5.large"

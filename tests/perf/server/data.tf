@@ -34,19 +34,3 @@ data "aws_ami" "ubuntu" {
     values = ["x86_64"]
   }
 }
-
-data "template_file" "metrics" {
-  template = file("${path.module}/files/metrics.yaml")
-  vars = {
-    prom_worker_node_count = local.prom_worker_node_count
-
-  }
-}
-data "template_file" "k3s-prom-yaml" {
-  template = file("${path.module}/files/prom.yaml")
-  vars = {
-    prom_host = var.prom_host
-    graf_host = var.graf_host
-    prom_worker_node_count = local.prom_worker_node_count
-  }
-}

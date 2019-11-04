@@ -23,12 +23,7 @@ variable "k3s_cluster_secret" {
   type        = string
   description = "Cluster secret for k3s cluster registration"
 }
-variable "prom_host" {
-  default = ""
-}
-variable "graf_host" {
-  default = ""
-}
+
 variable "name" {
   default     = "k3s-loadtest"
   type        = string
@@ -47,9 +42,17 @@ variable "extra_ssh_keys" {
   description = "Extra ssh keys to inject into Rancher instances"
 }
 
-variable "k3s_ha" {
+variable "server_ha" {
   default     = 0
   description = "Enable k3s in HA mode"
+}
+
+variable "etcd_count" {
+  default = 3
+}
+
+variable "db_engine" {
+  default = "postgres"
 }
 
 variable "db_instance_type" {
@@ -67,7 +70,9 @@ variable "db_password" {
   default = "b58bf234c4bd0133fc7a92b782e498a6"
 }
 
-variable "master_count" {
+variable "db_version" {}
+
+variable "server_count" {
   default     = 1
   description = "Count of k3s master servers"
 }
@@ -75,4 +80,17 @@ variable "master_count" {
 variable "debug" {
   default     = 0
   description = "Enable Debug log"
+}
+
+variable "prom_worker_instance_type" {
+  default = "m5.large"
+  description = "Prometheus instance type"
+}
+
+variable "domain_name" {
+  description = "FQDN of the cluster"
+}
+
+variable "zone_id" {
+  description = "route53 zone id to register the domain name"
 }

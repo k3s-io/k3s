@@ -1,10 +1,10 @@
-variable "node_count" {
+variable "agent_node_count" {
   description = "Number of nodes to run k3s agents on."
   type        = number
   # default   = 10
 }
 
-variable "worker_instance_type" {
+variable "agent_instance_type" {
   type    = string
   default = "t3.2xlarge"
 }
