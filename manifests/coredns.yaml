@@ -55,6 +55,7 @@ data:
     .:53 {
         errors
         health
+        ready
         kubernetes %{CLUSTER_DOMAIN}% in-addr.arpa ip6.arpa {
           pods insecure
           upstream
@@ -139,6 +140,15 @@ spec:
             port: 8080
             scheme: HTTP
           initialDelaySeconds: 60
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 5
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8181
+            scheme: HTTP
+          initialDelaySeconds: 10
           timeoutSeconds: 5
           successThreshold: 1
           failureThreshold: 5
