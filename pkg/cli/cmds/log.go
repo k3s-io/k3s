@@ -25,22 +25,22 @@ var (
 
 	VLevel = cli.IntFlag{
 		Name:        "v",
-		Usage:       "Number for the log level verbosity",
+		Usage:       "(logging) Number for the log level verbosity",
 		Destination: &LogConfig.VLevel,
 	}
 	VModule = cli.StringFlag{
 		Name:        "vmodule",
-		Usage:       "Comma-separated list of pattern=N settings for file-filtered logging",
+		Usage:       "(logging) Comma-separated list of pattern=N settings for file-filtered logging",
 		Destination: &LogConfig.VModule,
 	}
 	LogFile = cli.StringFlag{
 		Name:        "log,l",
-		Usage:       "Log to file",
+		Usage:       "(logging) Log to file",
 		Destination: &LogConfig.LogFile,
 	}
 	AlsoLogToStderr = cli.BoolFlag{
 		Name:        "alsologtostderr",
-		Usage:       "Log to standard error as well as file (if set)",
+		Usage:       "(logging) Log to standard error as well as file (if set)",
 		Destination: &LogConfig.AlsoLogToStderr,
 	}
 )

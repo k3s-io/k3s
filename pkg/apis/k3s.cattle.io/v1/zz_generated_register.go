@@ -28,8 +28,7 @@ import (
 )
 
 var (
-	AddonResourceName          = "addons"
-	ListenerConfigResourceName = "listenerconfigs"
+	AddonResourceName = "addons"
 )
 
 // SchemeGroupVersion is group version used to register these objects
@@ -55,8 +54,6 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(SchemeGroupVersion,
 		&Addon{},
 		&AddonList{},
-		&ListenerConfig{},
-		&ListenerConfigList{},
 	)
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil

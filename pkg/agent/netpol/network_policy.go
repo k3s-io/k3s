@@ -10,7 +10,7 @@ import (
 )
 
 func Run(ctx context.Context, nodeConfig *config.Node) error {
-	restConfig, err := clientcmd.BuildConfigFromFlags("", nodeConfig.AgentConfig.KubeConfigNode)
+	restConfig, err := clientcmd.BuildConfigFromFlags("", nodeConfig.AgentConfig.KubeConfigK3sController)
 	if err != nil {
 		return err
 	}

@@ -32,10 +32,6 @@ func (c *FakeK3sV1) Addons(namespace string) v1.AddonInterface {
 	return &FakeAddons{c, namespace}
 }
 
-func (c *FakeK3sV1) ListenerConfigs(namespace string) v1.ListenerConfigInterface {
-	return &FakeListenerConfigs{c, namespace}
-}
-
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
 func (c *FakeK3sV1) RESTClient() rest.Interface {

@@ -26,23 +26,6 @@ import (
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// ListenerConfigList is a list of ListenerConfig resources
-type ListenerConfigList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata"`
-
-	Items []ListenerConfig `json:"items"`
-}
-
-func NewListenerConfig(namespace, name string, obj ListenerConfig) *ListenerConfig {
-	obj.APIVersion, obj.Kind = SchemeGroupVersion.WithKind("ListenerConfig").ToAPIVersionAndKind()
-	obj.Name = name
-	obj.Namespace = namespace
-	return &obj
-}
-
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
 // AddonList is a list of Addon resources
 type AddonList struct {
 	metav1.TypeMeta `json:",inline"`

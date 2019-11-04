@@ -3,70 +3,68 @@ package server
 import (
 	"crypto"
 	"crypto/x509"
-	"encoding/csv"
 	"errors"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 
 	"github.com/gorilla/mux"
 	certutil "github.com/rancher/dynamiclistener/cert"
+	"github.com/rancher/k3s/pkg/bootstrap"
 	"github.com/rancher/k3s/pkg/daemons/config"
-	"github.com/rancher/k3s/pkg/daemons/control"
+	"github.com/rancher/k3s/pkg/passwd"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/json"
 )
 
 const (
-	jsonMediaType   = "application/json"
-	binaryMediaType = "application/octet-stream"
-	pbMediaType     = "application/com.github.proto-openapi.spec.v2@v1.0+protobuf"
-	openapiPrefix   = "openapi."
-	staticURL       = "/static/"
+	staticURL = "/static/"
 )
 
-type CACertsGetter func() (string, error)
-
-func router(serverConfig *config.Control, tunnel http.Handler, cacertsGetter CACertsGetter) http.Handler {
+func router(serverConfig *config.Control, tunnel http.Handler, ca []byte) http.Handler {
 	authed := mux.NewRouter()
-	authed.Use(authMiddleware(serverConfig))
+	authed.Use(authMiddleware(serverConfig, "k3s:agent"))
 	authed.NotFoundHandler = serverConfig.Runtime.Handler
-	authed.Path("/v1-k3s/connect").Handler(tunnel)
 	authed.Path("/v1-k3s/serving-kubelet.crt").Handler(servingKubeletCert(serverConfig))
 	authed.Path("/v1-k3s/serving-kubelet.key").Handler(fileHandler(serverConfig.Runtime.ServingKubeletKey))
 	authed.Path("/v1-k3s/client-kubelet.crt").Handler(clientKubeletCert(serverConfig))
 	authed.Path("/v1-k3s/client-kubelet.key").Handler(fileHandler(serverConfig.Runtime.ClientKubeletKey))
 	authed.Path("/v1-k3s/client-kube-proxy.crt").Handler(fileHandler(serverConfig.Runtime.ClientKubeProxyCert))
 	authed.Path("/v1-k3s/client-kube-proxy.key").Handler(fileHandler(serverConfig.Runtime.ClientKubeProxyKey))
+	authed.Path("/v1-k3s/client-k3s-controller.crt").Handler(fileHandler(serverConfig.Runtime.ClientK3sControllerCert))
+	authed.Path("/v1-k3s/client-k3s-controller.key").Handler(fileHandler(serverConfig.Runtime.ClientK3sControllerKey))
 	authed.Path("/v1-k3s/client-ca.crt").Handler(fileHandler(serverConfig.Runtime.ClientCA))
 	authed.Path("/v1-k3s/server-ca.crt").Handler(fileHandler(serverConfig.Runtime.ServerCA))
 	authed.Path("/v1-k3s/config").Handler(configHandler(serverConfig))
 
+	nodeAuthed := mux.NewRouter()
+	nodeAuthed.Use(authMiddleware(serverConfig, "system:nodes"))
+	nodeAuthed.Path("/v1-k3s/connect").Handler(tunnel)
+	nodeAuthed.NotFoundHandler = authed
+
+	serverAuthed := mux.NewRouter()
+	serverAuthed.Use(authMiddleware(serverConfig, "k3s:server"))
+	serverAuthed.NotFoundHandler = nodeAuthed
+	serverAuthed.Path("/v1-k3s/server-bootstrap").Handler(bootstrap.Handler(&serverConfig.Runtime.ControlRuntimeBootstrap))
+
 	staticDir := filepath.Join(serverConfig.DataDir, "static")
 	router := mux.NewRouter()
-	router.NotFoundHandler = authed
+	router.NotFoundHandler = serverAuthed
 	router.PathPrefix(staticURL).Handler(serveStatic(staticURL, staticDir))
-	router.Path("/cacerts").Handler(cacerts(cacertsGetter))
+	router.Path("/cacerts").Handler(cacerts(ca))
 	router.Path("/ping").Handler(ping())
 
 	return router
 }
 
-func cacerts(getter CACertsGetter) http.Handler {
+func cacerts(ca []byte) http.Handler {
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
-		content, err := getter()
-		if err != nil {
-			resp.WriteHeader(http.StatusInternalServerError)
-			resp.Write([]byte(err.Error()))
-		}
 		resp.Header().Set("content-type", "text/plain")
-		resp.Write([]byte(content))
+		resp.Write(ca)
 	})
 }
 
@@ -242,38 +240,19 @@ func sendError(err error, resp http.ResponseWriter, status ...int) {
 	resp.Write([]byte(err.Error()))
 }
 
-func ensureNodePassword(passwdFile, nodeName, passwd string) error {
-	records := [][]string{}
-
-	if _, err := os.Stat(passwdFile); !os.IsNotExist(err) {
-		f, err := os.Open(passwdFile)
-		if err != nil {
-			return err
-		}
-		defer f.Close()
-		reader := csv.NewReader(f)
-		for {
-			record, err := reader.Read()
-			if err == io.EOF {
-				break
-			}
-			if err != nil {
-				return err
-			}
-			if len(record) < 2 {
-				return fmt.Errorf("password file '%s' must have at least 2 columns (password, nodeName), found %d", passwdFile, len(record))
-			}
-			if record[1] == nodeName {
-				if record[0] == passwd {
-					return nil
-				}
-				return fmt.Errorf("Node password validation failed for '%s', using passwd file '%s'", nodeName, passwdFile)
-			}
-			records = append(records, record)
-		}
-		f.Close()
+func ensureNodePassword(passwdFile, nodeName, pass string) error {
+	passwd, err := passwd.Read(passwdFile)
+	if err != nil {
+		return err
 	}
-
-	records = append(records, []string{passwd, nodeName})
-	return control.WritePasswords(passwdFile, records)
+	match, exists := passwd.Check(nodeName, pass)
+	if exists {
+		if !match {
+			return fmt.Errorf("Node password validation failed for '%s', using passwd file '%s'", nodeName, passwdFile)
+		}
+		return nil
+	}
+	// If user doesn't exist we save this password for future validation
+	passwd.EnsureUser(nodeName, "", pass)
+	return passwd.Write(passwdFile)
 }

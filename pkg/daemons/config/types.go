@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/rancher/kine/pkg/endpoint"
-
+	"github.com/rancher/wrangler-api/pkg/generated/controllers/core"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 )
 
@@ -47,40 +47,36 @@ type Containerd struct {
 }
 
 type Agent struct {
-	NodeName            string
-	ClientKubeletCert   string
-	ClientKubeletKey    string
-	ClientKubeProxyCert string
-	ClientKubeProxyKey  string
-	ServingKubeletCert  string
-	ServingKubeletKey   string
-	ClusterCIDR         net.IPNet
-	ClusterDNS          net.IP
-	ClusterDomain       string
-	ResolvConf          string
-	RootDir             string
-	KubeConfigNode      string
-	KubeConfigKubelet   string
-	KubeConfigKubeProxy string
-	NodeIP              string
-	NodeExternalIP      string
-	RuntimeSocket       string
-	ListenAddress       string
-	ClientCA            string
-	CNIBinDir           string
-	CNIConfDir          string
-	ExtraKubeletArgs    []string
-	ExtraKubeProxyArgs  []string
-	PauseImage          string
-	CNIPlugin           bool
-	NodeTaints          []string
-	NodeLabels          []string
-	IPSECPSK            string
-	StrongSwanDir       string
-	PrivateRegistry     string
-	DisableCCM          bool
-	DisableNPC          bool
-	Rootless            bool
+	NodeName                string
+	ServingKubeletCert      string
+	ServingKubeletKey       string
+	ClusterCIDR             net.IPNet
+	ClusterDNS              net.IP
+	ClusterDomain           string
+	ResolvConf              string
+	RootDir                 string
+	KubeConfigKubelet       string
+	KubeConfigKubeProxy     string
+	KubeConfigK3sController string
+	NodeIP                  string
+	NodeExternalIP          string
+	RuntimeSocket           string
+	ListenAddress           string
+	ClientCA                string
+	CNIBinDir               string
+	CNIConfDir              string
+	ExtraKubeletArgs        []string
+	ExtraKubeProxyArgs      []string
+	PauseImage              string
+	CNIPlugin               bool
+	NodeTaints              []string
+	NodeLabels              []string
+	IPSECPSK                string
+	StrongSwanDir           string
+	PrivateRegistry         string
+	DisableCCM              bool
+	DisableNPC              bool
+	Rootless                bool
 }
 
 type Control struct {
@@ -88,7 +84,8 @@ type Control struct {
 	AdvertiseIP              string
 	ListenPort               int
 	HTTPSPort                int
-	ClusterSecret            string
+	AgentToken               string
+	Token                    string
 	ClusterIPRange           *net.IPNet
 	ServiceIPRange           *net.IPNet
 	ClusterDNS               net.IP
@@ -98,19 +95,24 @@ type Control struct {
 	KubeConfigMode           string
 	DataDir                  string
 	Skips                    []string
-	BootstrapReadOnly        bool
 	Storage                  endpoint.Config
 	NoScheduler              bool
 	ExtraAPIArgs             []string
 	ExtraControllerArgs      []string
-	ExtraSchedulerAPIArgs    []string
 	ExtraCloudControllerArgs []string
+	ExtraSchedulerAPIArgs    []string
 	NoLeaderElect            bool
+	JoinURL                  string
 	FlannelBackend           string
 	IPSECPSK                 string
 	DefaultLocalStoragePath  string
 	DisableCCM               bool
 	DisableNPC               bool
+	ClusterInit              bool
+	ClusterReset             bool
+
+	BindAddress string
+	SANs        []string
 
 	Runtime *ControlRuntime `json:"-"`
 }
@@ -124,9 +126,6 @@ type ControlRuntimeBootstrap struct {
 	PasswdFile         string
 	RequestHeaderCA    string
 	RequestHeaderCAKey string
-	ClientKubeletKey   string
-	ClientKubeProxyKey string
-	ServingKubeletKey  string
 	IPSECKey           string
 }
 
@@ -145,8 +144,10 @@ type ControlRuntime struct {
 
 	ServingKubeAPICert string
 	ServingKubeAPIKey  string
+	ServingKubeletKey  string
 	ClientToken        string
-	NodeToken          string
+	ServerToken        string
+	AgentToken         string
 	Handler            http.Handler
 	Tunnel             http.Handler
 	Authenticator      authenticator.Request
@@ -161,8 +162,19 @@ type ControlRuntime struct {
 	ClientSchedulerCert       string
 	ClientSchedulerKey        string
 	ClientKubeProxyCert       string
+	ClientKubeProxyKey        string
+	ClientKubeletKey          string
 	ClientCloudControllerCert string
 	ClientCloudControllerKey  string
+	ClientK3sControllerCert   string
+	ClientK3sControllerKey    string
+
+	Cluster ClusterConfig
+	Core    *core.Factory
+}
+
+type ClusterConfig struct {
+	Join bool
 }
 
 type ArgString []string

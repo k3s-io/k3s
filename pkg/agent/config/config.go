@@ -6,7 +6,6 @@ import (
 	cryptorand "crypto/rand"
 	"crypto/tls"
 	"encoding/hex"
-	"encoding/pem"
 	"fmt"
 	"io/ioutil"
 	sysnet "net"
@@ -27,7 +26,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/apimachinery/pkg/util/net"
-	"k8s.io/client-go/util/cert"
 	"k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1beta1"
 )
 
@@ -183,17 +181,6 @@ func getHostnameAndIP(info cmds.Agent) (string, string, error) {
 	return name, ip, nil
 }
 
-func writeKubeConfig(envInfo *cmds.Agent, info clientaccess.Info, tlsCert *tls.Certificate) (string, error) {
-	os.MkdirAll(envInfo.DataDir, 0700)
-	kubeConfigPath := filepath.Join(envInfo.DataDir, "kubeconfig.yaml")
-	info.CACerts = pem.EncodeToMemory(&pem.Block{
-		Type:  cert.CertificateBlockType,
-		Bytes: tlsCert.Certificate[1],
-	})
-
-	return kubeConfigPath, info.WriteKubeConfig(kubeConfigPath)
-}
-
 func isValidResolvConf(resolvConfFile string) bool {
 	file, err := os.Open(resolvConfFile)
 	if err != nil {
@@ -293,11 +280,6 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 		return nil, err
 	}
 
-	kubeconfigNode, err := writeKubeConfig(envInfo, *info, servingCert)
-	if err != nil {
-		return nil, err
-	}
-
 	clientKubeletCert := filepath.Join(envInfo.DataDir, "client-kubelet.crt")
 	if err := getNodeNamedHostFile(clientKubeletCert, nodeName, nodePasswordFile, info); err != nil {
 		return nil, err
@@ -328,6 +310,21 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 		return nil, err
 	}
 
+	clientK3sControllerCert := filepath.Join(envInfo.DataDir, "client-k3s-controller.crt")
+	if err := getHostFile(clientK3sControllerCert, info); err != nil {
+		return nil, err
+	}
+
+	clientK3sControllerKey := filepath.Join(envInfo.DataDir, "client-k3s-controller.key")
+	if err := getHostFile(clientK3sControllerKey, info); err != nil {
+		return nil, err
+	}
+
+	kubeconfigK3sController := filepath.Join(envInfo.DataDir, "k3scontroller.kubeconfig")
+	if err := control.KubeConfig(kubeconfigK3sController, info.URL, serverCAFile, clientK3sControllerCert, clientK3sControllerKey); err != nil {
+		return nil, err
+	}
+
 	nodeConfig := &config.Node{
 		Docker:                   envInfo.Docker,
 		ContainerRuntimeEndpoint: envInfo.ContainerRuntimeEndpoint,
@@ -345,9 +342,9 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 	nodeConfig.AgentConfig.ResolvConf = locateOrGenerateResolvConf(envInfo)
 	nodeConfig.AgentConfig.ClientCA = clientCAFile
 	nodeConfig.AgentConfig.ListenAddress = "0.0.0.0"
-	nodeConfig.AgentConfig.KubeConfigNode = kubeconfigNode
 	nodeConfig.AgentConfig.KubeConfigKubelet = kubeconfigKubelet
 	nodeConfig.AgentConfig.KubeConfigKubeProxy = kubeconfigKubeproxy
+	nodeConfig.AgentConfig.KubeConfigK3sController = kubeconfigK3sController
 	if envInfo.Rootless {
 		nodeConfig.AgentConfig.RootDir = filepath.Join(envInfo.DataDir, "kubelet")
 	}

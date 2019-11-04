@@ -3,38 +3,17 @@ package agent
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
-	"strings"
-	"time"
 
-	systemd "github.com/coreos/go-systemd/daemon"
 	"github.com/rancher/k3s/pkg/agent"
 	"github.com/rancher/k3s/pkg/cli/cmds"
 	"github.com/rancher/k3s/pkg/datadir"
 	"github.com/rancher/k3s/pkg/netutil"
+	"github.com/rancher/k3s/pkg/token"
 	"github.com/rancher/wrangler/pkg/signals"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 )
-
-func readToken(path string) (string, error) {
-	if path == "" {
-		return "", nil
-	}
-
-	for {
-		tokenBytes, err := ioutil.ReadFile(path)
-		if err == nil {
-			return strings.TrimSpace(string(tokenBytes)), nil
-		} else if os.IsNotExist(err) {
-			logrus.Infof("Waiting for %s to be available\n", path)
-			time.Sleep(2 * time.Second)
-		} else {
-			return "", err
-		}
-	}
-}
 
 func Run(ctx *cli.Context) error {
 	if err := cmds.InitLogging(); err != nil {
@@ -45,14 +24,14 @@ func Run(ctx *cli.Context) error {
 	}
 
 	if cmds.AgentConfig.TokenFile != "" {
-		token, err := readToken(cmds.AgentConfig.TokenFile)
+		token, err := token.ReadFile(cmds.AgentConfig.TokenFile)
 		if err != nil {
 			return err
 		}
 		cmds.AgentConfig.Token = token
 	}
 
-	if cmds.AgentConfig.Token == "" && cmds.AgentConfig.ClusterSecret == "" {
+	if cmds.AgentConfig.Token == "" {
 		return fmt.Errorf("--token is required")
 	}
 
@@ -76,7 +55,6 @@ func Run(ctx *cli.Context) error {
 	cfg.DataDir = dataDir
 
 	contextCtx := signals.SetupSignalHandler(context.Background())
-	systemd.SdNotify(true, "READY=1\n")
 
 	return agent.Run(contextCtx, cfg)
 }

@@ -26,8 +26,6 @@ import (
 type Interface interface {
 	// Addons returns a AddonInformer.
 	Addons() AddonInformer
-	// ListenerConfigs returns a ListenerConfigInformer.
-	ListenerConfigs() ListenerConfigInformer
 }
 
 type version struct {
@@ -44,9 +42,4 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 // Addons returns a AddonInformer.
 func (v *version) Addons() AddonInformer {
 	return &addonInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
-}
-
-// ListenerConfigs returns a ListenerConfigInformer.
-func (v *version) ListenerConfigs() ListenerConfigInformer {
-	return &listenerConfigInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
