@@ -30,6 +30,7 @@ import (
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
+	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/tools/clientcmd"
 	ccmapp "k8s.io/kubernetes/cmd/cloud-controller-manager/app"
 	"k8s.io/kubernetes/cmd/kube-apiserver/app"
@@ -87,6 +88,10 @@ func Server(ctx context.Context, cfg *config.Control) error {
 
 	auth, handler, err := apiServer(ctx, cfg, runtime)
 	if err != nil {
+		return err
+	}
+
+	if err := waitForAPIServer(runtime); err != nil {
 		return err
 	}
 
@@ -824,4 +829,28 @@ func checkForCloudControllerPrivileges(runtime *config.ControlRuntime) error {
 		return err
 	}
 	return nil
+}
+
+func waitForAPIServer(runtime *config.ControlRuntime) error {
+	restConfig, err := clientcmd.BuildConfigFromFlags("", runtime.KubeConfigAdmin)
+	if err != nil {
+		return err
+	}
+
+	discoveryclient, err := discovery.NewDiscoveryClientForConfig(restConfig)
+	if err != nil {
+		return err
+	}
+
+	for i := 0; i < 60; i++ {
+		info, err := discoveryclient.ServerVersion()
+		if err == nil {
+			logrus.Infof("apiserver %s is up and running", info)
+			return nil
+		}
+		logrus.Infof("waiting for apiserver to become available")
+		time.Sleep(1 * time.Second)
+	}
+
+	return fmt.Errorf("timeout waiting for apiserver")
 }
