@@ -54,10 +54,6 @@ func run(ctx context.Context, cfg cmds.Agent, lb *loadbalancer.LoadBalancer) err
 		}
 	}
 
-	if err := syssetup.Configure(); err != nil {
-		return err
-	}
-
 	if err := tunnel.Setup(ctx, nodeConfig, lb.Update); err != nil {
 		return err
 	}
@@ -105,6 +101,7 @@ func Run(ctx context.Context, cfg cmds.Agent) error {
 	if err := validate(); err != nil {
 		return err
 	}
+	syssetup.Configure()
 
 	if cfg.Rootless && !cfg.RootlessAlreadyUnshared {
 		if err := rootless.Rootless(cfg.DataDir); err != nil {
