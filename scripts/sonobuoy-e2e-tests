@@ -64,12 +64,12 @@ run-sonobuoy() {
 }
 
 log_output=${OUTPUT}/e2e-STATUS-${ARCH}-parallel.log \
-    run-sonobuoy sqlite --e2e-focus='\[Conformance\]' --e2e-skip='\[Serial\]' --e2e-parallel=y
+    run-sonobuoy --e2e-focus='\[Conformance\]' --e2e-skip='\[Serial\]' --e2e-parallel=y
 
 sleep 60
 
 log_output=${OUTPUT}/e2e-STATUS-${ARCH}-serial.log \
-    run-sonobuoy sqlite --e2e-focus='\[Serial\].*\[Conformance\]'
+    run-sonobuoy --e2e-focus='\[Serial\].*\[Conformance\]'
 
 exit_code=0
 for pid in "${pids[@]}"; do

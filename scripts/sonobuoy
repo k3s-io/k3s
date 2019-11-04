@@ -173,7 +173,6 @@ trap cleanup EXIT
 # ---
 
 build_k3s() {
-  K3S_BACKEND=$1
   K3S_PORT=$(timeout --foreground 5s bash -c get-port)
   OUTPUT=$(pwd)/sonobuoy-output/${K3S_BACKEND}-${K3S_PORT}
   LOGS=$(pwd)/logs/$$
@@ -229,4 +228,5 @@ if [ "$ARCH" = 'arm' ]; then
     exit 0
 fi
 
-build_k3s ${@}
+K3S_BACKEND="sqlite" build_k3s
+K3S_BACKEND="postgres" build_k3s
