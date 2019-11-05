@@ -26,6 +26,7 @@ type Agent struct {
 	Debug                    bool
 	Rootless                 bool
 	RootlessAlreadyUnshared  bool
+	WithNodeID               bool
 	AgentShared
 	ExtraKubeletArgs   cli.StringSlice
 	ExtraKubeProxyArgs cli.StringSlice
@@ -56,6 +57,11 @@ var (
 		Usage:       "(agent/node) Node name",
 		EnvVar:      "K3S_NODE_NAME",
 		Destination: &AgentConfig.NodeName,
+	}
+	WithNodeIDFlag = cli.BoolFlag{
+		Name:        "with-node-id",
+		Usage:       "(agent/node) Append id to node name",
+		Destination: &AgentConfig.WithNodeID,
 	}
 	DockerFlag = cli.BoolFlag{
 		Name:        "docker",

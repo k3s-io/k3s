@@ -48,6 +48,7 @@ type Containerd struct {
 
 type Agent struct {
 	NodeName                string
+	NodeConfigPath          string
 	ServingKubeletCert      string
 	ServingKubeletKey       string
 	ClusterCIDR             net.IPNet

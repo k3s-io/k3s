@@ -210,6 +210,7 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Destination: &ServerConfig.DisableNPC,
 			},
 			NodeNameFlag,
+			WithNodeIDFlag,
 			NodeLabels,
 			NodeTaints,
 			DockerFlag,
