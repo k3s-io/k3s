@@ -91,7 +91,7 @@ func Server(ctx context.Context, cfg *config.Control) error {
 		return err
 	}
 
-	if err := waitForAPIServer(runtime); err != nil {
+	if err := waitForAPIServer(ctx, runtime); err != nil {
 		return err
 	}
 
@@ -105,7 +105,7 @@ func Server(ctx context.Context, cfg *config.Control) error {
 	controllerManager(cfg, runtime)
 
 	if !cfg.DisableCCM {
-		cloudControllerManager(cfg, runtime)
+		cloudControllerManager(ctx, cfg, runtime)
 	}
 
 	return nil
@@ -782,7 +782,7 @@ func expired(certFile string) bool {
 	return certutil.IsCertExpired(certificates[0])
 }
 
-func cloudControllerManager(cfg *config.Control, runtime *config.ControlRuntime) {
+func cloudControllerManager(ctx context.Context, cfg *config.Control, runtime *config.ControlRuntime) {
 	argsMap := map[string]string{
 		"kubeconfig":                   runtime.KubeConfigCloudController,
 		"allocate-node-cidrs":          "true",
@@ -808,8 +808,12 @@ func cloudControllerManager(cfg *config.Control, runtime *config.ControlRuntime)
 			// check for the cloud controller rbac binding
 			if err := checkForCloudControllerPrivileges(runtime); err != nil {
 				logrus.Infof("Waiting for cloudcontroller rbac role to be created")
-				time.Sleep(time.Second)
-				continue
+				select {
+				case <-ctx.Done():
+					logrus.Fatalf("cloud-controller-manager context canceled: %v", ctx.Err())
+				case <-time.After(time.Second):
+					continue
+				}
 			}
 			break
 		}
@@ -831,7 +835,7 @@ func checkForCloudControllerPrivileges(runtime *config.ControlRuntime) error {
 	return nil
 }
 
-func waitForAPIServer(runtime *config.ControlRuntime) error {
+func waitForAPIServer(ctx context.Context, runtime *config.ControlRuntime) error {
 	restConfig, err := clientcmd.BuildConfigFromFlags("", runtime.KubeConfigAdmin)
 	if err != nil {
 		return err
@@ -849,7 +853,12 @@ func waitForAPIServer(runtime *config.ControlRuntime) error {
 			return nil
 		}
 		logrus.Infof("waiting for apiserver to become available")
-		time.Sleep(1 * time.Second)
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(time.Second):
+			continue
+		}
 	}
 
 	return fmt.Errorf("timeout waiting for apiserver")
