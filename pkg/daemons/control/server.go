@@ -30,6 +30,7 @@ import (
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
+	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/tools/clientcmd"
 	ccmapp "k8s.io/kubernetes/cmd/cloud-controller-manager/app"
 	"k8s.io/kubernetes/cmd/kube-apiserver/app"
@@ -90,6 +91,10 @@ func Server(ctx context.Context, cfg *config.Control) error {
 		return err
 	}
 
+	if err := waitForAPIServer(ctx, runtime); err != nil {
+		return err
+	}
+
 	runtime.Handler = handler
 	runtime.Authenticator = auth
 
@@ -100,7 +105,7 @@ func Server(ctx context.Context, cfg *config.Control) error {
 	controllerManager(cfg, runtime)
 
 	if !cfg.DisableCCM {
-		cloudControllerManager(cfg, runtime)
+		cloudControllerManager(ctx, cfg, runtime)
 	}
 
 	return nil
@@ -777,7 +782,7 @@ func expired(certFile string) bool {
 	return certutil.IsCertExpired(certificates[0])
 }
 
-func cloudControllerManager(cfg *config.Control, runtime *config.ControlRuntime) {
+func cloudControllerManager(ctx context.Context, cfg *config.Control, runtime *config.ControlRuntime) {
 	argsMap := map[string]string{
 		"kubeconfig":                   runtime.KubeConfigCloudController,
 		"allocate-node-cidrs":          "true",
@@ -803,8 +808,12 @@ func cloudControllerManager(cfg *config.Control, runtime *config.ControlRuntime)
 			// check for the cloud controller rbac binding
 			if err := checkForCloudControllerPrivileges(runtime); err != nil {
 				logrus.Infof("Waiting for cloudcontroller rbac role to be created")
-				time.Sleep(time.Second)
-				continue
+				select {
+				case <-ctx.Done():
+					logrus.Fatalf("cloud-controller-manager context canceled: %v", ctx.Err())
+				case <-time.After(time.Second):
+					continue
+				}
 			}
 			break
 		}
@@ -824,4 +833,33 @@ func checkForCloudControllerPrivileges(runtime *config.ControlRuntime) error {
 		return err
 	}
 	return nil
+}
+
+func waitForAPIServer(ctx context.Context, runtime *config.ControlRuntime) error {
+	restConfig, err := clientcmd.BuildConfigFromFlags("", runtime.KubeConfigAdmin)
+	if err != nil {
+		return err
+	}
+
+	discoveryclient, err := discovery.NewDiscoveryClientForConfig(restConfig)
+	if err != nil {
+		return err
+	}
+
+	for i := 0; i < 60; i++ {
+		info, err := discoveryclient.ServerVersion()
+		if err == nil {
+			logrus.Infof("apiserver %s is up and running", info)
+			return nil
+		}
+		logrus.Infof("waiting for apiserver to become available")
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(time.Second):
+			continue
+		}
+	}
+
+	return fmt.Errorf("timeout waiting for apiserver")
 }
