@@ -44,8 +44,8 @@ func Read(file string) (*Passwd, error) {
 		if err != nil {
 			return nil, err
 		}
-		if len(record) < 3 {
-			return nil, fmt.Errorf("password file '%s' must have at least 3 columns (password, user name, user uid), found %d", file, len(record))
+		if len(record) < 2 {
+			return nil, fmt.Errorf("password file '%s' must have at least 2 columns (password, name), found %d", file, len(record))
 		}
 		e := entry{
 			pass: record[0],
