@@ -36,7 +36,8 @@ func main() {
 	bc = &bindata.Config{
 		Input: []bindata.InputConfig{
 			{
-				Path: "manifests",
+				Path:      "manifests",
+				Recursive: true,
 			},
 		},
 		Package:    "deploy",
