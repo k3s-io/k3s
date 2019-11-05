@@ -225,7 +225,7 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 			},
 			cli.StringSliceFlag{
 				Name:  "no-deploy",
-				Usage: "(components) Do not deploy packaged components (valid items: coredns, servicelb, traefik, local-storage)",
+				Usage: "(components) Do not deploy packaged components (valid items: coredns, servicelb, traefik, local-storage, metrics-server)",
 			},
 			cli.BoolFlag{
 				Name:        "disable-scheduler",
