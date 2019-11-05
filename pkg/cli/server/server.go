@@ -158,10 +158,6 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 			serverConfig.DisableServiceLB = true
 			continue
 		}
-
-		if !strings.HasSuffix(noDeploy, ".yaml") {
-			noDeploy = noDeploy + ".yaml"
-		}
 		serverConfig.ControlConfig.Skips = append(serverConfig.ControlConfig.Skips, noDeploy)
 	}
 
