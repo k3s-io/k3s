@@ -6,6 +6,7 @@ metadata:
 spec:
   chart: https://%{KUBERNETES_API}%/static/charts/traefik-1.77.1.tgz
   set:
+    dashboard.enabled: "true"
     rbac.enabled: "true"
     ssl.enabled: "true"
     metrics.prometheus.enabled: "true"
