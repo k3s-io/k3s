@@ -16,6 +16,7 @@ docker run \
     -v /etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro \
     -v $(pwd)/bin:/usr/bin \
     -v /var/log \
+    -v /var/lib/kubelet \
     -v /var/lib/rancher/k3s \
     -v /var/lib/cni \
     -v /usr/lib/x86_64-linux-gnu/libsqlite3.so.0:/usr/lib/x86_64-linux-gnu/libsqlite3.so.0:ro \
