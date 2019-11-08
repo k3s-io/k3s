@@ -35,7 +35,7 @@ var (
 			);`,
 	}
 	nameIdx     = "create index kine_name_index on kine (name(100))"
-	revisionIdx = "create index kine_name_prev_revision_uindex on kine (name(100), prev_revision)"
+	revisionIdx = "create unique index kine_name_prev_revision_uindex on kine (name(100), prev_revision)"
 	createDB    = "create database if not exists "
 )
 
