@@ -3,7 +3,6 @@ package cmds
 import (
 	"fmt"
 
-	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/urfave/cli"
 )
 
@@ -114,9 +113,9 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 			},
 			cli.StringFlag{
 				Name:        "flannel-backend",
-				Usage:       fmt.Sprintf("(networking) One of '%s', '%s', '%s', or '%s'", config.FlannelBackendNone, config.FlannelBackendVXLAN, config.FlannelBackendIPSEC, config.FlannelBackendWireguard),
+				Usage:       fmt.Sprintf("(networking) One of 'none', 'vxlan', 'ipsec', or 'flannel'"),
 				Destination: &ServerConfig.FlannelBackend,
-				Value:       config.FlannelBackendVXLAN,
+				Value:       "vxlan",
 			},
 			cli.StringFlag{
 				Name:        "token,t",
@@ -149,14 +148,14 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Destination: &ServerConfig.ServerURL,
 			},
 			cli.BoolFlag{
-				Name:        "new-cluster",
+				Name:        "cluster-init",
 				Hidden:      hideDqlite,
 				Usage:       "(cluster) Initialize new cluster master",
 				EnvVar:      "K3S_CLUSTER_INIT",
 				Destination: &ServerConfig.ClusterInit,
 			},
 			cli.BoolFlag{
-				Name:        "reset-cluster",
+				Name:        "cluster-reset",
 				Hidden:      hideDqlite,
 				Usage:       "(cluster) Forget all peers and become a single cluster new cluster master",
 				EnvVar:      "K3S_CLUSTER_RESET",
