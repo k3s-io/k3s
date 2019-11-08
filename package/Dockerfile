@@ -10,6 +10,7 @@ RUN cd image/bin && \
 FROM scratch
 COPY --from=base /image /
 RUN chmod 1777 /tmp
+VOLUME /var/lib/kubelet
 VOLUME /var/lib/rancher/k3s
 VOLUME /var/lib/cni
 VOLUME /var/log
