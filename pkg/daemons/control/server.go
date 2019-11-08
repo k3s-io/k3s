@@ -21,6 +21,7 @@ import (
 	_ "github.com/rancher/k3s/pkg/cloudprovider"
 
 	certutil "github.com/rancher/dynamiclistener/cert"
+	"github.com/rancher/k3s/pkg/clientaccess"
 	"github.com/rancher/k3s/pkg/cluster"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/passwd"
@@ -364,7 +365,7 @@ func readTokens(runtime *config.ControlRuntime) error {
 		runtime.AgentToken = "node:" + nodeToken
 	}
 	if serverToken, ok := tokens.Pass("server"); ok {
-		runtime.AgentToken = "server:" + serverToken
+		runtime.ServerToken = "server:" + serverToken
 	}
 	if clientToken, ok := tokens.Pass("admin"); ok {
 		runtime.ClientToken = "admin:" + clientToken
@@ -426,6 +427,9 @@ func getServerPass(passwd *passwd.Passwd, config *config.Control) (string, error
 
 func getNodePass(config *config.Control, serverPass string) string {
 	if config.AgentToken == "" {
+		if _, passwd, ok := clientaccess.ParseUsernamePassword(serverPass); ok {
+			return passwd
+		}
 		return serverPass
 	}
 	return config.AgentToken
@@ -621,9 +625,17 @@ func genRequestHeaderCerts(config *config.Control, runtime *config.ControlRuntim
 }
 
 func createClientCertKey(regen bool, commonName string, organization []string, altNames *certutil.AltNames, extKeyUsage []x509.ExtKeyUsage, caCertFile, caKeyFile, certFile, keyFile string) (bool, error) {
+	caBytes, err := ioutil.ReadFile(caCertFile)
+	if err != nil {
+		return false, err
+	}
+
+	pool := x509.NewCertPool()
+	pool.AppendCertsFromPEM(caBytes)
+
 	// check for certificate expiration
 	if !regen {
-		regen = expired(certFile)
+		regen = expired(certFile, pool)
 	}
 
 	if !regen {
@@ -642,15 +654,11 @@ func createClientCertKey(regen bool, commonName string, organization []string, a
 		return false, err
 	}
 
-	caBytes, err := ioutil.ReadFile(caCertFile)
-	if err != nil {
-		return false, err
-	}
-
 	caCert, err := certutil.ParseCertsPEM(caBytes)
 	if err != nil {
 		return false, err
 	}
+
 	keyBytes, _, err := certutil.LoadOrGenerateKeyFile(keyFile, regen)
 	if err != nil {
 		return false, err
@@ -770,7 +778,7 @@ func setupStorageBackend(argsMap map[string]string, cfg *config.Control) {
 	}
 }
 
-func expired(certFile string) bool {
+func expired(certFile string, pool *x509.CertPool) bool {
 	certBytes, err := ioutil.ReadFile(certFile)
 	if err != nil {
 		return false
@@ -778,6 +786,15 @@ func expired(certFile string) bool {
 	certificates, err := certutil.ParseCertsPEM(certBytes)
 	if err != nil {
 		return false
+	}
+	_, err = certificates[0].Verify(x509.VerifyOptions{
+		Roots: pool,
+		KeyUsages: []x509.ExtKeyUsage{
+			x509.ExtKeyUsageAny,
+		},
+	})
+	if err != nil {
+		return true
 	}
 	return certutil.IsCertExpired(certificates[0])
 }
