@@ -564,6 +564,8 @@ github.com/rancher/cri-tools v1.16.1-k3s.1 h1:iporgQ46noE6dtLzq6fWcIO2qjyPZy2m42
 github.com/rancher/cri-tools v1.16.1-k3s.1/go.mod h1:TEKhKv2EJIZp+p9jnEy4C63g8CosJzsI4kyKKkHag+8=
 github.com/rancher/dynamiclistener v0.1.1-0.20191031022009-6224794ef3cb h1:bMoA9UHr1QNTWVrf0fSJCba6YDU1xmt2jmeohpiugKg=
 github.com/rancher/dynamiclistener v0.1.1-0.20191031022009-6224794ef3cb/go.mod h1:fs/dxyNcB3YT6W9fVz4bDGfhmSQS17QQup6BIcGF++s=
+github.com/rancher/dynamiclistener v0.1.1-0.20191108205817-245f86cc340a h1:yIQXTC2BjGQ4Bt5Y7QhnxNWbbq8e6koH+pFrJL2VsIs=
+github.com/rancher/dynamiclistener v0.1.1-0.20191108205817-245f86cc340a/go.mod h1:fs/dxyNcB3YT6W9fVz4bDGfhmSQS17QQup6BIcGF++s=
 github.com/rancher/flannel v0.11.0-k3s.1 h1:mIwnfWDafjzQgFkZeJ1AkFrrAT3EdBaA1giE0eLJKo8=
 github.com/rancher/flannel v0.11.0-k3s.1/go.mod h1:Hn4ZV+eq0LhLZP63xZnxdGwXEoRSxs5sxELxu27M3UA=
 github.com/rancher/helm-controller v0.2.2 h1:MUqisy53/Ay1EYOF2uTCYBbGpgtZLNKKrI01BdxIbQo=

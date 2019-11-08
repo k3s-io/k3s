@@ -1,7 +1,6 @@
 package dynamiclistener
 
 import (
-	"fmt"
 	"net"
 	"net/http"
 	"strconv"
@@ -12,7 +11,6 @@ import (
 func HTTPRedirect(next http.Handler) http.Handler {
 	return http.HandlerFunc(
 		func(rw http.ResponseWriter, r *http.Request) {
-			fmt.Println("!!!!!", r.URL.String(), r.Header)
 			if r.Header.Get("x-Forwarded-Proto") == "https" ||
 				r.Header.Get("x-Forwarded-Proto") == "wss" ||
 				strings.HasPrefix(r.URL.Path, "/ping") ||
