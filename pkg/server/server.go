@@ -200,9 +200,9 @@ func printTokens(advertiseIP string, config *config.Control) error {
 		advertiseIP = "127.0.0.1"
 	}
 
-	if len(config.Runtime.AgentToken) > 0 {
+	if len(config.Runtime.ServerToken) > 0 {
 		p := filepath.Join(config.DataDir, "token")
-		if err := writeToken(config.Runtime.AgentToken, p, config.Runtime.ServerCA); err == nil {
+		if err := writeToken(config.Runtime.ServerToken, p, config.Runtime.ServerCA); err == nil {
 			logrus.Infof("Node token is available at %s", p)
 			nodeFile = p
 		}

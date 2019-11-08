@@ -9,8 +9,11 @@ import (
 	"github.com/rancher/wrangler-api/pkg/generated/controllers/core"
 	v1controller "github.com/rancher/wrangler-api/pkg/generated/controllers/core/v1"
 	"github.com/rancher/wrangler/pkg/start"
+	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type CoreGetter func() *core.Factory
@@ -79,31 +82,56 @@ func (s *storage) Get() (*v1.Secret, error) {
 	return s.storage.Get()
 }
 
+func (s *storage) targetSecret() (*v1.Secret, error) {
+	existingSecret, err := s.secrets.Get(s.namespace, s.name, metav1.GetOptions{})
+	if errors.IsNotFound(err) {
+		return &v1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      s.name,
+				Namespace: s.namespace,
+			},
+		}, nil
+	}
+	return existingSecret, err
+}
+
+func (s *storage) saveInK8s(secret *v1.Secret) (*v1.Secret, error) {
+	if s.secrets == nil {
+		return secret, nil
+	}
+
+	targetSecret, err := s.targetSecret()
+	if err != nil {
+		return nil, err
+	}
+
+	if equality.Semantic.DeepEqual(targetSecret.Annotations, secret.Annotations) &&
+		equality.Semantic.DeepEqual(targetSecret.Data, secret.Data) {
+		return secret, nil
+	}
+
+	targetSecret.Annotations = secret.Annotations
+	targetSecret.Type = v1.SecretTypeTLS
+	targetSecret.Data = secret.Data
+
+	if targetSecret.UID == "" {
+		logrus.Infof("Creating new TLS secret for %v", targetSecret.Annotations)
+		return s.secrets.Create(targetSecret)
+	} else {
+		logrus.Infof("Updating TLS secret for %v", targetSecret.Annotations)
+		return s.secrets.Update(targetSecret)
+	}
+}
+
 func (s *storage) Update(secret *v1.Secret) (err error) {
 	s.Lock()
 	defer s.Unlock()
 
-	if s.secrets != nil {
-		if secret.UID == "" {
-			secret.Name = s.name
-			secret.Namespace = s.namespace
-			secret, err = s.secrets.Create(secret)
-			if err != nil {
-				return err
-			}
-		} else {
-			existingSecret, err := s.storage.Get()
-			if err != nil {
-				return err
-			}
-			if !equality.Semantic.DeepEqual(secret.Data, existingSecret.Data) {
-				secret, err = s.secrets.Update(secret)
-				if err != nil {
-					return err
-				}
-			}
-		}
+	secret, err = s.saveInK8s(secret)
+	if err != nil {
+		return err
 	}
 
+	// update underlying storage
 	return s.storage.Update(secret)
 }
