@@ -7,6 +7,11 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
+
+	"github.com/Rican7/retry/backoff"
+	"github.com/Rican7/retry/strategy"
 
 	"github.com/sirupsen/logrus"
 )
@@ -57,7 +62,12 @@ func (s Stripped) String() string {
 	return regexp.MustCompile("[\t ]+").ReplaceAllString(str, " ")
 }
 
+type ErrRetry func(error) bool
+
 type Generic struct {
+	sync.Mutex
+
+	LockWrites            bool
 	LastInsertID          bool
 	DB                    *sql.DB
 	GetCurrentSQL         string
@@ -72,6 +82,7 @@ type Generic struct {
 	InsertSQL             string
 	FillSQL               string
 	InsertLastInsertIDSQL string
+	Retry                 ErrRetry
 }
 
 func q(sql, param string, numbered bool) string {
@@ -179,9 +190,27 @@ func (d *Generic) queryRow(ctx context.Context, sql string, args ...interface{})
 	return d.DB.QueryRowContext(ctx, sql, args...)
 }
 
-func (d *Generic) execute(ctx context.Context, sql string, args ...interface{}) (sql.Result, error) {
-	logrus.Tracef("EXEC %v : %s", args, Stripped(sql))
-	return d.DB.ExecContext(ctx, sql, args...)
+func (d *Generic) execute(ctx context.Context, sql string, args ...interface{}) (result sql.Result, err error) {
+	if d.LockWrites {
+		d.Lock()
+		defer d.Unlock()
+	}
+
+	wait := strategy.Backoff(backoff.Linear(100 + time.Millisecond))
+	for i := uint(0); i < 20; i++ {
+		if i > 2 {
+			logrus.Infof("EXEC (%d) %v : %s", i, args, Stripped(sql))
+		} else {
+			logrus.Tracef("EXEC (%d) %v : %s", i, args, Stripped(sql))
+		}
+		result, err = d.DB.ExecContext(ctx, sql, args...)
+		if err != nil && d.Retry != nil && d.Retry(err) {
+			wait(i)
+			continue
+		}
+		return result, err
+	}
+	return
 }
 
 func (d *Generic) GetCompactRevision(ctx context.Context) (int64, error) {

@@ -41,10 +41,9 @@ type Dialect interface {
 	IsFill(key string) bool
 }
 
-func (s *SQLLog) Start(ctx context.Context) error {
+func (s *SQLLog) Start(ctx context.Context) (err error) {
 	s.ctx = ctx
-	go s.compact()
-	return nil
+	return
 }
 
 func (s *SQLLog) compact() {
@@ -266,14 +265,22 @@ func filter(events interface{}, checkPrefix bool, prefix string) ([]*server.Even
 }
 
 func (s *SQLLog) startWatch() (chan interface{}, error) {
+	pollStart, err := s.d.GetCompactRevision(s.ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	c := make(chan interface{})
-	go s.poll(c)
+	// start compaction and polling at the same time to watch starts
+	// at the oldest revision, but compaction doesn't create gaps
+	go s.compact()
+	go s.poll(c, pollStart)
 	return c, nil
 }
 
-func (s *SQLLog) poll(result chan interface{}) {
+func (s *SQLLog) poll(result chan interface{}, pollStart int64) {
 	var (
-		last     int64
+		last     = pollStart
 		skip     int64
 		skipTime time.Time
 	)
@@ -291,15 +298,6 @@ func (s *SQLLog) poll(result chan interface{}) {
 				continue
 			}
 		case <-wait.C:
-		}
-
-		if last == 0 {
-			if currentRev, err := s.CurrentRevision(s.ctx); err != nil {
-				logrus.Errorf("failed to find current revision: %v", err)
-				continue
-			} else {
-				last = currentRev
-			}
 		}
 
 		rows, err := s.d.After(s.ctx, "%", last)
