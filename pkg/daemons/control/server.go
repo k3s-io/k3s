@@ -31,9 +31,10 @@ import (
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
-	"k8s.io/client-go/discovery"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	ccmapp "k8s.io/kubernetes/cmd/cloud-controller-manager/app"
+	app2 "k8s.io/kubernetes/cmd/controller-manager/app"
 	"k8s.io/kubernetes/cmd/kube-apiserver/app"
 	cmapp "k8s.io/kubernetes/cmd/kube-controller-manager/app"
 	sapp "k8s.io/kubernetes/cmd/kube-scheduler/app"
@@ -858,25 +859,24 @@ func waitForAPIServer(ctx context.Context, runtime *config.ControlRuntime) error
 		return err
 	}
 
-	discoveryclient, err := discovery.NewDiscoveryClientForConfig(restConfig)
+	k8sClient, err := kubernetes.NewForConfig(restConfig)
 	if err != nil {
 		return err
 	}
 
-	for i := 0; i < 60; i++ {
-		info, err := discoveryclient.ServerVersion()
-		if err == nil {
-			logrus.Infof("apiserver %s is up and running", info)
-			return nil
-		}
-		logrus.Infof("waiting for apiserver to become available")
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-time.After(time.Second):
-			continue
-		}
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case err := <-promise(func() error { return app2.WaitForAPIServer(k8sClient, 5*time.Minute) }):
+		return err
 	}
+}
 
-	return fmt.Errorf("timeout waiting for apiserver")
+func promise(f func() error) <-chan error {
+	c := make(chan error, 1)
+	go func() {
+		c <- f()
+		close(c)
+	}()
+	return c
 }
