@@ -24,10 +24,16 @@ LDFLAGS="
 STATIC="
     -extldflags '-static'
 "
+
+if [ "$DQLITE" = "true" ]; then
+    DQLITE_TAGS="dqlite"
+    DQLITE_STATIC_SQLITE="-luv -lraft -lco"
+fi
+
 STATIC_SQLITE="
-    -extldflags '-static -lm -ldl -lz -lpthread'
+    -extldflags '-static -lm -ldl -lz -lpthread $DQLITE_STATIC_SQLITE'
 "
-TAGS="ctrd apparmor seccomp no_btrfs netgo osusergo providerless"
+TAGS="ctrd apparmor seccomp no_btrfs netgo osusergo providerless $DQLITE_TAGS"
 
 if [ "$STATIC_BUILD" != "true" ]; then
     STATIC="
