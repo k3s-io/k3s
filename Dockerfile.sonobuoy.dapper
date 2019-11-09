@@ -1,6 +1,6 @@
 FROM golang:1.13.3-alpine3.10
 
-RUN apk -U --no-cache add bash git gcc musl-dev docker curl jq coreutils
+RUN apk -U --no-cache add bash git gcc musl-dev docker curl jq coreutils xz
 RUN SONOBUOY_VER=v0.16.2 && \
     SONOBUOY_PKG=github.com/vmware-tanzu/sonobuoy && \
     go get -d ${SONOBUOY_PKG} && \

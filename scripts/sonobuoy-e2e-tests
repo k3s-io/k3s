@@ -25,15 +25,7 @@ show-logs() {
         fi
         echo
         echo "#- Begin: logs for sonobuoy run pid ${pid}"
-        for log in $(pwd)/logs/${pid}/*; do
-            if [ -f ${log} ]; then
-                echo
-                echo "#- Start: ${log}"
-                cat ${log}
-                echo "#- End: ${log}"
-                echo
-            fi
-        done
+        tar cJf - $(pwd)/logs/${pid}/* | base64
         echo "#- Finish: logs for sonobuoy run pid ${pid}"
         echo
     done
@@ -58,18 +50,20 @@ cleanup() {
 trap cleanup EXIT INT
 
 run-sonobuoy() {
+    local title=$1
+    shift 1
     output+=(${log_output})
-    E2E_LOG_OUTPUT=${log_output} ./scripts/sonobuoy ${@} &
+    E2E_LOG_OUTPUT=${log_output} ./scripts/sonobuoy ${@} 2>&1 | sed 's/^/'$title': /' &
     pids+=($!)
 }
 
 log_output=${OUTPUT}/e2e-STATUS-${ARCH}-parallel.log \
-    run-sonobuoy --e2e-focus='\[Conformance\]' --e2e-skip='\[Serial\]' --e2e-parallel=y
+    run-sonobuoy PARALLEL --e2e-focus='\[Conformance\]' --e2e-skip='\[Serial\]' --e2e-parallel=y
 
 sleep 60
 
 log_output=${OUTPUT}/e2e-STATUS-${ARCH}-serial.log \
-    run-sonobuoy --e2e-focus='\[Serial\].*\[Conformance\]'
+    run-sonobuoy SERIAL --e2e-focus='\[Serial\].*\[Conformance\]'
 
 exit_code=0
 for pid in "${pids[@]}"; do
