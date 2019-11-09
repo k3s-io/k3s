@@ -8,10 +8,11 @@ PKG="github.com/rancher/k3s"
 PKG_CONTAINERD="github.com/containerd/containerd"
 PKG_RANCHER_CONTAINERD="github.com/rancher/containerd"
 PKG_CRICTL="github.com/kubernetes-sigs/cri-tools"
-VENDOR_PREFIX=
-if [ -z "$(go mod why 2>/dev/null)" ]; then
-    VENDOR_PREFIX="${PKG}/vendor/"
-fi
+#export GO111MODULE=off
+# VENDOR_PREFIX=
+# if [ -z "$(go mod why 2>/dev/null)" ]; then
+#     VENDOR_PREFIX="${PKG}/vendor/"
+# fi
 
 VERSIONFLAGS="
     -X ${PKG}/pkg/version.Version=${VERSION}
