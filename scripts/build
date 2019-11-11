@@ -48,7 +48,6 @@ rm -f \
     bin/k3s-agent \
     bin/hyperkube \
     bin/containerd \
-    bin/cni \
     bin/runc \
     bin/containerd-shim \
     bin/containerd-shim-runc-v1 \
@@ -65,6 +64,7 @@ cleanup() {
 }
 
 INSTALLBIN=$(pwd)/bin
+if [ ! -x ${INSTALLBIN}/cni ]; then
 (
     echo Building cni
     TMPDIR=$(mktemp -d)
@@ -74,6 +74,7 @@ INSTALLBIN=$(pwd)/bin
     cd $WORKDIR
     GOPATH=$TMPDIR CGO_ENABLED=0 go build -tags "$TAGS" -ldflags "$LDFLAGS $STATIC" -o $INSTALLBIN/cni
 )
+fi
 # echo Building agent
 # CGO_ENABLED=1 go build -tags "$TAGS" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC" -o bin/k3s-agent ./cmd/agent/main.go
 echo Building server
