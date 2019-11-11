@@ -29,7 +29,7 @@ func Connect(src net.Conn, dst net.Conn) {
 	go func() {
 		_, err := io.Copy(eagain.Writer{Writer: dst}, eagain.Reader{Reader: src})
 		if err != nil && err != io.EOF {
-			logrus.Warnf("copy pipe src->dst closed: %v", err)
+			logrus.Debugf("copy pipe src->dst closed: %v", err)
 		}
 		src.Close()
 		dst.Close()
@@ -38,7 +38,7 @@ func Connect(src net.Conn, dst net.Conn) {
 	go func() {
 		_, err := io.Copy(eagain.Writer{Writer: src}, eagain.Reader{Reader: dst})
 		if err != nil {
-			logrus.Warnf("copy pipe dst->src closed: %v", err)
+			logrus.Debugf("copy pipe dst->src closed: %v", err)
 		}
 		src.Close()
 		dst.Close()

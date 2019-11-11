@@ -1,6 +1,8 @@
 package dqlite
 
 import (
+	"strings"
+
 	"github.com/canonical/go-dqlite/client"
 	"github.com/sirupsen/logrus"
 )
@@ -13,7 +15,11 @@ func log() client.LogFunc {
 		case client.LogError:
 			logrus.Errorf(s, i...)
 		case client.LogInfo:
-			logrus.Infof(s, i...)
+			if strings.HasPrefix(s, "connected") {
+				logrus.Debugf(s, i...)
+			} else {
+				logrus.Infof(s, i...)
+			}
 		case client.LogWarn:
 			logrus.Warnf(s, i...)
 		}
