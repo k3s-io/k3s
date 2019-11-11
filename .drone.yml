@@ -57,6 +57,10 @@ steps:
 
 - name: sonobuoy-e2e-tests
   image: rancher/dapper:v0.4.2
+  secrets: [ gcloud_auth ]
+  environment:
+    GCLOUD_AUTH:
+      from_secret: gcloud_auth
   commands:
   - dapper -f Dockerfile.sonobuoy.dapper
   volumes:
@@ -144,6 +148,10 @@ steps:
 
 - name: sonobuoy-e2e-tests
   image: rancher/dapper:v0.4.2
+  secrets: [ gcloud_auth ]
+  environment:
+    GCLOUD_AUTH:
+      from_secret: gcloud_auth
   commands:
   - dapper -f Dockerfile.sonobuoy.dapper
   volumes:
@@ -214,6 +222,10 @@ steps:
 
 - name: sonobuoy-e2e-tests
   image: rancher/dapper:v0.4.2
+  secrets: [ gcloud_auth ]
+  environment:
+    GCLOUD_AUTH:
+      from_secret: gcloud_auth
   commands:
   - dapper -f Dockerfile.sonobuoy.dapper
   volumes:
