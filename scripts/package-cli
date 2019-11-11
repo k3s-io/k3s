@@ -34,7 +34,6 @@ elif [ ${ARCH} = arm ]; then
     BIN_SUFFIX="-armhf"
 fi
 
-cp -f ./bin/hyperkube dist/artifacts/hyperkube${BIN_SUFFIX}
 CMD_NAME=dist/artifacts/k3s${BIN_SUFFIX}
 
 go generate

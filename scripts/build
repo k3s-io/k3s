@@ -83,8 +83,8 @@ ln -s containerd ./bin/k3s-server
 ln -s containerd ./bin/kubectl
 ln -s containerd ./bin/crictl
 ln -s containerd ./bin/ctr
-echo Building hyperkube
-CGO_ENABLED=1 go build -tags "$TAGS" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC_SQLITE" -o bin/hyperkube ./vendor/k8s.io/kubernetes/cmd/hyperkube/
+#echo Building hyperkube
+#CGO_ENABLED=1 go build -tags "$TAGS" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC_SQLITE" -o bin/hyperkube ./vendor/k8s.io/kubernetes/cmd/hyperkube/
 #echo Building ctr
 #CGO_ENABLED=1 go build -tags "$TAGS" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC_SQLITE" -o bin/ctr ./cmd/ctr/main.go
 # echo Building containerd
