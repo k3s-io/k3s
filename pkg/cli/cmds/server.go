@@ -130,38 +130,6 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				EnvVar:      "K3S_TOKEN_FILE",
 			},
 			cli.StringFlag{
-				Name:        "agent-token",
-				Usage:       "(cluster) Shared secret used to join agents to the cluster, but not agents",
-				Destination: &ServerConfig.AgentToken,
-				EnvVar:      "K3S_AGENT_TOKEN",
-			},
-			cli.StringFlag{
-				Name:        "agent-token-file",
-				Usage:       "(cluster) File containing the agent secret",
-				Destination: &ServerConfig.AgentTokenFile,
-				EnvVar:      "K3S_AGENT_TOKEN_FILE",
-			},
-			cli.StringFlag{
-				Name:        "server,s",
-				Usage:       "(cluster) Server to connect to, used to join a cluster",
-				EnvVar:      "K3S_URL",
-				Destination: &ServerConfig.ServerURL,
-			},
-			cli.BoolFlag{
-				Name:        "cluster-init",
-				Hidden:      hideDqlite,
-				Usage:       "(cluster) Initialize new cluster master",
-				EnvVar:      "K3S_CLUSTER_INIT",
-				Destination: &ServerConfig.ClusterInit,
-			},
-			cli.BoolFlag{
-				Name:        "cluster-reset",
-				Hidden:      hideDqlite,
-				Usage:       "(cluster) Forget all peers and become a single cluster new cluster master",
-				EnvVar:      "K3S_CLUSTER_RESET",
-				Destination: &ServerConfig.ClusterReset,
-			},
-			cli.StringFlag{
 				Name:        "write-kubeconfig,o",
 				Usage:       "(client) Write kubeconfig for admin client to this file",
 				Destination: &ServerConfig.KubeConfigOutput,
@@ -259,6 +227,38 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Name:        "rootless",
 				Usage:       "(experimental) Run rootless",
 				Destination: &ServerConfig.Rootless,
+			},
+			cli.StringFlag{
+				Name:        "agent-token",
+				Usage:       "(experimental/cluster) Shared secret used to join agents to the cluster, but not agents",
+				Destination: &ServerConfig.AgentToken,
+				EnvVar:      "K3S_AGENT_TOKEN",
+			},
+			cli.StringFlag{
+				Name:        "agent-token-file",
+				Usage:       "(experimental/cluster) File containing the agent secret",
+				Destination: &ServerConfig.AgentTokenFile,
+				EnvVar:      "K3S_AGENT_TOKEN_FILE",
+			},
+			cli.StringFlag{
+				Name:        "server,s",
+				Usage:       "(experimental/cluster) Server to connect to, used to join a cluster",
+				EnvVar:      "K3S_URL",
+				Destination: &ServerConfig.ServerURL,
+			},
+			cli.BoolFlag{
+				Name:        "cluster-init",
+				Hidden:      hideDqlite,
+				Usage:       "(experimental/cluster) Initialize new cluster master",
+				EnvVar:      "K3S_CLUSTER_INIT",
+				Destination: &ServerConfig.ClusterInit,
+			},
+			cli.BoolFlag{
+				Name:        "cluster-reset",
+				Hidden:      hideDqlite,
+				Usage:       "(experimental/cluster) Forget all peers and become a single cluster new cluster master",
+				EnvVar:      "K3S_CLUSTER_RESET",
+				Destination: &ServerConfig.ClusterReset,
 			},
 
 			// Hidden/Deprecated flags below
