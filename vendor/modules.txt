@@ -343,14 +343,14 @@ github.com/containernetworking/plugins/pkg/ns
 # github.com/coreos/etcd v3.3.15+incompatible
 github.com/coreos/etcd/clientv3
 github.com/coreos/etcd/pkg/transport
-github.com/coreos/etcd/etcdserver/etcdserverpb
-github.com/coreos/etcd/mvcc/mvccpb
 github.com/coreos/etcd/auth/authpb
 github.com/coreos/etcd/clientv3/balancer
 github.com/coreos/etcd/clientv3/balancer/picker
 github.com/coreos/etcd/clientv3/balancer/resolver/endpoint
 github.com/coreos/etcd/clientv3/credentials
 github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes
+github.com/coreos/etcd/etcdserver/etcdserverpb
+github.com/coreos/etcd/mvcc/mvccpb
 github.com/coreos/etcd/pkg/logutil
 github.com/coreos/etcd/pkg/types
 github.com/coreos/etcd/pkg/tlsutil
@@ -769,7 +769,8 @@ github.com/rancher/helm-controller/pkg/generated/informers/externalversions/helm
 github.com/rancher/helm-controller/pkg/generated/listers/helm.cattle.io/v1
 github.com/rancher/helm-controller/pkg/generated/informers/externalversions/internalinterfaces
 github.com/rancher/helm-controller/pkg/apis/helm.cattle.io
-# github.com/rancher/kine v0.2.0 => ../kine
+# github.com/rancher/kine v0.2.1
+github.com/rancher/kine/pkg/client
 github.com/rancher/kine/pkg/endpoint
 github.com/rancher/kine/pkg/drivers/dqlite
 github.com/rancher/kine/pkg/drivers/mysql
@@ -920,10 +921,10 @@ go.uber.org/zap/buffer
 go.uber.org/zap/internal/color
 go.uber.org/zap/internal/exit
 # golang.org/x/crypto v0.0.0-20190611184440-5c40567a22f8
+golang.org/x/crypto/pbkdf2
 golang.org/x/crypto/ssh/terminal
 golang.org/x/crypto/ssh
 golang.org/x/crypto/ed25519
-golang.org/x/crypto/pbkdf2
 golang.org/x/crypto/ocsp
 golang.org/x/crypto/pkcs12
 golang.org/x/crypto/curve25519

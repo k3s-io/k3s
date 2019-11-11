@@ -31,7 +31,6 @@ replace (
 	github.com/prometheus/client_model => github.com/prometheus/client_model v0.0.0-20180712105110-5c3871d89910
 	github.com/prometheus/common => github.com/prometheus/common v0.0.0-20181126121408-4724e9255275
 	github.com/prometheus/procfs => github.com/prometheus/procfs v0.0.0-20181204211112-1dc9a6cbc91a
-	github.com/rancher/kine => ../kine
 	k8s.io/api => github.com/rancher/kubernetes/staging/src/k8s.io/api v1.16.2-k3s.1
 	k8s.io/apiextensions-apiserver => github.com/rancher/kubernetes/staging/src/k8s.io/apiextensions-apiserver v1.16.2-k3s.1
 	k8s.io/apimachinery => github.com/rancher/kubernetes/staging/src/k8s.io/apimachinery v1.16.2-k3s.1
@@ -102,7 +101,7 @@ require (
 	github.com/rakelkar/gonetsh v0.0.0-20190719023240-501daadcadf8 // indirect
 	github.com/rancher/dynamiclistener v0.1.1-0.20191110035254-aaa5bc0d2a07
 	github.com/rancher/helm-controller v0.2.2
-	github.com/rancher/kine v0.2.0
+	github.com/rancher/kine v0.2.1
 	github.com/rancher/remotedialer v0.2.0
 	github.com/rancher/wrangler v0.2.0
 	github.com/rancher/wrangler-api v0.2.0
@@ -112,6 +111,7 @@ require (
 	github.com/tchap/go-patricia v2.3.0+incompatible // indirect
 	github.com/theckman/go-flock v0.7.1 // indirect
 	github.com/urfave/cli v1.21.0
+	golang.org/x/crypto v0.0.0-20190611184440-5c40567a22f8
 	golang.org/x/net v0.0.0-20190812203447-cdfb69ac37fc
 	golang.org/x/sys v0.0.0-20190916202348-b4ddaad3f8a3
 	google.golang.org/grpc v1.23.0
