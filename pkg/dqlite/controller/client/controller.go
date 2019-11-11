@@ -117,7 +117,11 @@ func (h *handler) updateNodeStore() error {
 		return err
 	}
 
-	var nodeInfos []client.NodeInfo
+	var (
+		nodeInfos []client.NodeInfo
+		seen      = map[string]bool{}
+	)
+
 	for _, node := range nodes {
 		address, ok := node.Annotations[nodeAddress]
 		if !ok {
@@ -135,10 +139,13 @@ func (h *handler) updateNodeStore() error {
 			continue
 		}
 
-		nodeInfos = append(nodeInfos, client.NodeInfo{
-			ID:      id,
-			Address: address,
-		})
+		if !seen[address] {
+			nodeInfos = append(nodeInfos, client.NodeInfo{
+				ID:      id,
+				Address: address,
+			})
+			seen[address] = true
+		}
 	}
 
 	if len(nodeInfos) == 0 {

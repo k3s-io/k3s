@@ -26,7 +26,6 @@ import (
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/passwd"
 	"github.com/rancher/k3s/pkg/token"
-	"github.com/rancher/kine/pkg/endpoint"
 	"github.com/rancher/wrangler-api/pkg/generated/controllers/rbac"
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -317,11 +316,13 @@ func prepare(ctx context.Context, config *config.Control, runtime *config.Contro
 	runtime.ClientAuthProxyCert = path.Join(config.DataDir, "tls", "client-auth-proxy.crt")
 	runtime.ClientAuthProxyKey = path.Join(config.DataDir, "tls", "client-auth-proxy.key")
 
-	if err := genCerts(config, runtime); err != nil {
+	cluster := cluster.New(config)
+
+	if err := cluster.Join(ctx); err != nil {
 		return err
 	}
 
-	if err := cluster.New(config).Start(ctx); err != nil {
+	if err := genCerts(config, runtime); err != nil {
 		return err
 	}
 
@@ -337,23 +338,11 @@ func prepare(ctx context.Context, config *config.Control, runtime *config.Contro
 		return err
 	}
 
-	if err := prepareStorageBackend(ctx, config); err != nil {
+	if err := readTokens(runtime); err != nil {
 		return err
 	}
 
-	return readTokens(runtime)
-}
-
-func prepareStorageBackend(ctx context.Context, config *config.Control) error {
-	etcdConfig, err := endpoint.Listen(ctx, config.Storage)
-	if err != nil {
-		return err
-	}
-
-	config.Storage.Config = etcdConfig.TLSConfig
-	config.Storage.Endpoint = strings.Join(etcdConfig.Endpoints, ",")
-	config.NoLeaderElect = !etcdConfig.LeaderElect
-	return nil
+	return cluster.Start(ctx)
 }
 
 func readTokens(runtime *config.ControlRuntime) error {

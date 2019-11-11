@@ -19,3 +19,7 @@ func (c *Cluster) initClusterDB(ctx context.Context, l net.Listener, handler htt
 func (c *Cluster) postJoin(ctx context.Context) error {
 	return nil
 }
+
+func (c *Cluster) dqliteEnabled() bool {
+	return false
+}

@@ -24,7 +24,7 @@ import (
 )
 
 func (c *Cluster) testClusterDB(ctx context.Context) error {
-	if !c.enabled() {
+	if !c.dqliteEnabled() {
 		return nil
 	}
 
@@ -45,7 +45,7 @@ func (c *Cluster) testClusterDB(ctx context.Context) error {
 }
 
 func (c *Cluster) initClusterDB(ctx context.Context, l net.Listener, handler http.Handler) (net.Listener, http.Handler, error) {
-	if !c.enabled() {
+	if !c.dqliteEnabled() {
 		return l, handler, nil
 	}
 
@@ -61,17 +61,17 @@ func (c *Cluster) initClusterDB(ctx context.Context, l net.Listener, handler htt
 		return nil, nil, err
 	}
 
-	handler, err = dqlite.Start(ctx, c.config.ClusterInit, certs, handler)
+	handler, err = dqlite.Start(ctx, c.config.ClusterInit, c.config.ClusterReset, certs, handler)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	if c.config.ClusterReset {
 		if err := dqlite.Reset(ctx); err == nil {
-			logrus.Info("Cluster reset")
+			logrus.Info("Cluster reset successful, now rejoin members")
 			os.Exit(0)
 		} else {
-			logrus.Fatal("Cluster reset failed: %v", err)
+			logrus.Fatalf("Cluster reset failed: %v", err)
 		}
 	}
 
@@ -85,17 +85,22 @@ func (c *Cluster) initClusterDB(ctx context.Context, l net.Listener, handler htt
 	return l, handler, err
 }
 
-func (c *Cluster) enabled() bool {
+func (c *Cluster) dqliteEnabled() bool {
 	stamp := filepath.Join(c.config.DataDir, "db", "state.dqlite")
 	if _, err := os.Stat(stamp); err == nil {
 		return true
 	}
 
-	return c.config.Storage.Endpoint == "" && (c.config.ClusterInit || c.runtime.Cluster.Join)
+	driver, _ := endpoint.ParseStorageEndpoint(c.config.Storage.Endpoint)
+	if driver == endpoint.DQLiteBackend {
+		return true
+	}
+
+	return c.config.Storage.Endpoint == "" && (c.config.ClusterInit || (c.config.Token != "" && c.config.JoinURL != ""))
 }
 
 func (c *Cluster) postJoin(ctx context.Context) error {
-	if !c.enabled() {
+	if !c.dqliteEnabled() {
 		return nil
 	}
 
