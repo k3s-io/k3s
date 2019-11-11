@@ -60,7 +60,7 @@ func New(dataDir, advertiseIP string, advertisePort int, getter NodeControllerGe
 	}
 }
 
-func (d *DQLite) Start(ctx context.Context, initCluster bool, certs *Certs, next http.Handler) (http.Handler, error) {
+func (d *DQLite) Start(ctx context.Context, initCluster, resetCluster bool, certs *Certs, next http.Handler) (http.Handler, error) {
 	bindAddress := d.getBindAddress()
 
 	clientTLSConfig, err := getClientTLSConfig(certs.ClientCert, certs.ServerTrust)
@@ -89,6 +89,7 @@ func (d *DQLite) Start(ctx context.Context, initCluster bool, certs *Certs, next
 	}
 
 	d.NodeInfo = nodeInfo
+	d.node = node
 
 	go func() {
 		<-ctx.Done()
@@ -101,7 +102,13 @@ func (d *DQLite) Start(ctx context.Context, initCluster bool, certs *Certs, next
 
 	go d.startController(ctx)
 
-	return router(ctx, next, nodeInfo, certs.ClientTrust, "kube-apiserver", bindAddress), node.Start()
+	if !resetCluster {
+		if err := node.Start(); err != nil {
+			return nil, err
+		}
+	}
+
+	return router(ctx, next, nodeInfo, certs.ClientTrust, "kube-apiserver", bindAddress), nil
 }
 
 func (d *DQLite) startController(ctx context.Context) {
