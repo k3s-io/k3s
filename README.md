@@ -72,3 +72,46 @@ sudo k3s kubectl get nodes
 # /var/lib/rancher/k3s/server/node-token on your server
 sudo k3s agent --server https://myserver:6443 --token ${NODE_TOKEN}
 ```
+
+Building from Source
+--------------------
+
+See the [release](https://github.com/rancher/k3s/releases/latest) page for pre-built releases.
+
+The clone will be much faster on this repo if you do
+
+    git clone --depth 1 https://github.com/rancher/k3s.git
+
+This repo includes all of Kubernetes history so `--depth 1` will avoid most of that.
+
+To build the full release binary run `make` and that will create `./dist/artifacts/k3s`.
+
+Optionally to build the binaries without running linting or building docker images:
+```sh
+./scripts/download && ./scripts/build && ./scripts/package-cli
+```
+
+For development, you just need go 1.12 and a sane GOPATH.  To compile the binaries run:
+```bash
+go build -o k3s
+go build -o kubectl ./cmd/kubectl
+go build -o hyperkube ./vendor/k8s.io/kubernetes/cmd/hyperkube
+```
+
+This will create the main executable, but it does not include the dependencies like containerd, CNI,
+etc.  To run a server and agent with all the dependencies for development run the following
+helper scripts:
+```bash
+# Server
+./scripts/dev-server.sh
+
+# Agent
+./scripts/dev-agent.sh
+```
+
+Kubernetes Source
+-----------------
+
+The source code for Kubernetes is in `vendor/` and the location from which that is copied
+is in `./vendor.conf`.  Go to the referenced repo/tag and you'll find all the patches applied
+to upstream Kubernetes.
