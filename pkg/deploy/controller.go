@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -97,15 +98,20 @@ func (w *watcher) listFilesIn(base string, force bool) error {
 	}
 
 	skips := map[string]bool{}
-	for _, file := range files {
+	keys := make([]string, len(files))
+	keyIndex := 0
+	for path, file := range files {
 		if strings.HasSuffix(file.Name(), ".skip") {
 			skips[strings.TrimSuffix(file.Name(), ".skip")] = true
 		}
+		keys[keyIndex] = path
+		keyIndex++
 	}
+	sort.Strings(keys)
 
 	var errs []error
-	for path, file := range files {
-		if skipFile(file.Name(), skips) {
+	for _, path := range keys {
+		if skipFile(files[path].Name(), skips) {
 			continue
 		}
 		if err := w.deploy(path, !force); err != nil {
