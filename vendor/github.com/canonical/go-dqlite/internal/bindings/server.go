@@ -89,14 +89,6 @@ type Node C.dqlite_node
 func Init() error {
 	// FIXME: ignore SIGPIPE, see https://github.com/joyent/libuv/issues/1254
 	C.signal(C.SIGPIPE, C.SIG_IGN)
-	// Don't enable single thread mode when running tests. TODO: find a
-	// better way to expose this functionality.
-	if os.Getenv("GO_DQLITE_MULTITHREAD") == "1" {
-		return nil
-	}
-	if rc := C.initializeSQLite(); rc != 0 {
-		return fmt.Errorf("%d", rc)
-	}
 	return nil
 }
 
