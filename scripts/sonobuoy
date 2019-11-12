@@ -55,6 +55,7 @@ docker run -d --name ${K3S_SERVER} --privileged \
 K3S_IP=$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' ${K3S_SERVER})
 echo "Started ${K3S_SERVER} @ ${K3S_IP}:${K3S_PORT}"
 
+docker exec ${K3S_SERVER} check-config || true
 timeout --foreground 1m bash -c wait-for-kubeconfig
 verify-valid-versions ${K3S_SERVER}
 
