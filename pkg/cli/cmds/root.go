@@ -2,6 +2,7 @@ package cmds
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/rancher/k3s/pkg/version"
 	"github.com/sirupsen/logrus"
@@ -11,6 +12,13 @@ import (
 var (
 	debug bool
 )
+
+func init() {
+	// hack - force "file,dns" lookup order if go dns is used
+	if os.Getenv("RES_OPTIONS") == "" {
+		os.Setenv("RES_OPTIONS", " ")
+	}
+}
 
 func NewApp() *cli.App {
 	app := cli.NewApp()
