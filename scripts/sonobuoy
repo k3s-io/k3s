@@ -212,7 +212,7 @@ echo "Started ${K3S_AGENT}"
 # ---
 
 timeout --foreground 1m bash -c 'wait-for-nodes 2'
-timeout --foreground 1m bash -c 'wait-for-services coredns local-path-provisioner metrics-server'
+timeout --foreground 3m bash -c 'wait-for-services coredns local-path-provisioner metrics-server'
 
 if [ "$ARCH" = 'arm' ]; then
     echo "Aborting sonobuoy tests, images not available for $ARCH"

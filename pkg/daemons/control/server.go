@@ -26,14 +26,14 @@ import (
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/passwd"
 	"github.com/rancher/k3s/pkg/token"
-	"github.com/rancher/kine/pkg/endpoint"
 	"github.com/rancher/wrangler-api/pkg/generated/controllers/rbac"
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
-	"k8s.io/client-go/discovery"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	ccmapp "k8s.io/kubernetes/cmd/cloud-controller-manager/app"
+	app2 "k8s.io/kubernetes/cmd/controller-manager/app"
 	"k8s.io/kubernetes/cmd/kube-apiserver/app"
 	cmapp "k8s.io/kubernetes/cmd/kube-controller-manager/app"
 	sapp "k8s.io/kubernetes/cmd/kube-scheduler/app"
@@ -316,11 +316,13 @@ func prepare(ctx context.Context, config *config.Control, runtime *config.Contro
 	runtime.ClientAuthProxyCert = path.Join(config.DataDir, "tls", "client-auth-proxy.crt")
 	runtime.ClientAuthProxyKey = path.Join(config.DataDir, "tls", "client-auth-proxy.key")
 
-	if err := genCerts(config, runtime); err != nil {
+	cluster := cluster.New(config)
+
+	if err := cluster.Join(ctx); err != nil {
 		return err
 	}
 
-	if err := cluster.New(config).Start(ctx); err != nil {
+	if err := genCerts(config, runtime); err != nil {
 		return err
 	}
 
@@ -336,23 +338,11 @@ func prepare(ctx context.Context, config *config.Control, runtime *config.Contro
 		return err
 	}
 
-	if err := prepareStorageBackend(ctx, config); err != nil {
+	if err := readTokens(runtime); err != nil {
 		return err
 	}
 
-	return readTokens(runtime)
-}
-
-func prepareStorageBackend(ctx context.Context, config *config.Control) error {
-	etcdConfig, err := endpoint.Listen(ctx, config.Storage)
-	if err != nil {
-		return err
-	}
-
-	config.Storage.Config = etcdConfig.TLSConfig
-	config.Storage.Endpoint = strings.Join(etcdConfig.Endpoints, ",")
-	config.NoLeaderElect = !etcdConfig.LeaderElect
-	return nil
+	return cluster.Start(ctx)
 }
 
 func readTokens(runtime *config.ControlRuntime) error {
@@ -858,25 +848,24 @@ func waitForAPIServer(ctx context.Context, runtime *config.ControlRuntime) error
 		return err
 	}
 
-	discoveryclient, err := discovery.NewDiscoveryClientForConfig(restConfig)
+	k8sClient, err := kubernetes.NewForConfig(restConfig)
 	if err != nil {
 		return err
 	}
 
-	for i := 0; i < 60; i++ {
-		info, err := discoveryclient.ServerVersion()
-		if err == nil {
-			logrus.Infof("apiserver %s is up and running", info)
-			return nil
-		}
-		logrus.Infof("waiting for apiserver to become available")
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-time.After(time.Second):
-			continue
-		}
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case err := <-promise(func() error { return app2.WaitForAPIServer(k8sClient, 5*time.Minute) }):
+		return err
 	}
+}
 
-	return fmt.Errorf("timeout waiting for apiserver")
+func promise(f func() error) <-chan error {
+	c := make(chan error, 1)
+	go func() {
+		c <- f()
+		close(c)
+	}()
+	return c
 }

@@ -68,7 +68,7 @@ func (l *listener) Accept() (net.Conn, error) {
 		return conn, err
 	}
 
-	addr := conn.RemoteAddr()
+	addr := conn.LocalAddr()
 	if addr == nil {
 		return conn, nil
 	}
@@ -79,7 +79,11 @@ func (l *listener) Accept() (net.Conn, error) {
 		return conn, nil
 	}
 
-	return conn, l.updateCert(host)
+	if err := l.updateCert(host); err != nil {
+		logrus.Infof("failed to create TLS cert for: %s", host)
+	}
+
+	return conn, nil
 }
 
 func (l *listener) getCertificate(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {

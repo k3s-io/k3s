@@ -73,6 +73,11 @@ func (s *storage) init(secrets v1controller.SecretController) {
 		return secret, nil
 	})
 	s.secrets = secrets
+
+	secret, err := s.storage.Get()
+	if err == nil && secret != nil {
+		s.saveInK8s(secret)
+	}
 }
 
 func (s *storage) Get() (*v1.Secret, error) {
@@ -115,10 +120,10 @@ func (s *storage) saveInK8s(secret *v1.Secret) (*v1.Secret, error) {
 	targetSecret.Data = secret.Data
 
 	if targetSecret.UID == "" {
-		logrus.Infof("Creating new TLS secret for %v", targetSecret.Annotations)
+		logrus.Infof("Creating new TLS secret for %v (count: %d)", targetSecret.Name, len(targetSecret.Data)-1)
 		return s.secrets.Create(targetSecret)
 	} else {
-		logrus.Infof("Updating TLS secret for %v", targetSecret.Annotations)
+		logrus.Infof("Updating TLS secret for %v (count: %d)", targetSecret.Name, len(targetSecret.Data)-1)
 		return s.secrets.Update(targetSecret)
 	}
 }
@@ -127,7 +132,16 @@ func (s *storage) Update(secret *v1.Secret) (err error) {
 	s.Lock()
 	defer s.Unlock()
 
-	secret, err = s.saveInK8s(secret)
+	for i := 0; i < 3; i++ {
+		secret, err = s.saveInK8s(secret)
+		if errors.IsConflict(err) {
+			continue
+		} else if err != nil {
+			return err
+		}
+		break
+	}
+
 	if err != nil {
 		return err
 	}

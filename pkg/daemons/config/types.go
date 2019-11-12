@@ -132,6 +132,8 @@ type ControlRuntimeBootstrap struct {
 type ControlRuntime struct {
 	ControlRuntimeBootstrap
 
+	HTTPBootstrap bool
+
 	ClientKubeAPICert string
 	ClientKubeAPIKey  string
 	NodePasswdFile    string
@@ -169,12 +171,7 @@ type ControlRuntime struct {
 	ClientK3sControllerCert   string
 	ClientK3sControllerKey    string
 
-	Cluster ClusterConfig
-	Core    *core.Factory
-}
-
-type ClusterConfig struct {
-	Join bool
+	Core *core.Factory
 }
 
 type ArgString []string

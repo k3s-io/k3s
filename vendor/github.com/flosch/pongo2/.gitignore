@@ -1,0 +1,42 @@
+# Compiled Object files, Static and Dynamic libs (Shared Objects)
+*.o
+*.a
+*.so
+
+# Folders
+_obj
+_test
+.idea
+.vscode
+
+# Architecture specific extensions/prefixes
+*.[568vq]
+[568vq].out
+
+*.cgo1.go
+*.cgo2.c
+_cgo_defun.c
+_cgo_gotypes.go
+_cgo_export.*
+
+_testmain.go
+
+*.exe
+
+.project
+EBNF.txt
+test1.tpl
+pongo2_internal_test.go
+tpl-error.out
+/count.out
+/cover.out
+*.swp
+*.iml
+/cpu.out
+/mem.out
+/pongo2.test
+*.error
+/profile
+/coverage.out
+/pongo2_internal_test.ignore
+go.sum

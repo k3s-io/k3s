@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/rancher/kine/pkg/drivers/dqlite"
 	"github.com/rancher/kine/pkg/drivers/mysql"
 	"github.com/rancher/kine/pkg/drivers/pgsql"
 	"github.com/rancher/kine/pkg/drivers/sqlite"
@@ -19,6 +20,7 @@ import (
 const (
 	KineSocket      = "unix://kine.sock"
 	SQLiteBackend   = "sqlite"
+	DQLiteBackend   = "dqlite"
 	ETCDBackend     = "etcd3"
 	MySQLBackend    = "mysql"
 	PostgresBackend = "postgres"
@@ -48,7 +50,7 @@ func Listen(ctx context.Context, config Config) (ETCDConfig, error) {
 		}, nil
 	}
 
-	leaderelect, backend, err := getKineStorageBackend(driver, dsn, config)
+	leaderelect, backend, err := getKineStorageBackend(ctx, driver, dsn, config)
 	if err != nil {
 		return ETCDConfig{}, err
 	}
@@ -112,7 +114,7 @@ func grpcServer(config Config) *grpc.Server {
 	return grpc.NewServer()
 }
 
-func getKineStorageBackend(driver, dsn string, cfg Config) (bool, server.Backend, error) {
+func getKineStorageBackend(ctx context.Context, driver, dsn string, cfg Config) (bool, server.Backend, error) {
 	var (
 		backend     server.Backend
 		leaderElect = true
@@ -122,6 +124,8 @@ func getKineStorageBackend(driver, dsn string, cfg Config) (bool, server.Backend
 	case SQLiteBackend:
 		leaderElect = false
 		backend, err = sqlite.New(dsn)
+	case DQLiteBackend:
+		backend, err = dqlite.New(ctx, dsn)
 	case PostgresBackend:
 		backend, err = pgsql.New(dsn, cfg.Config)
 	case MySQLBackend:

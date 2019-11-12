@@ -9,6 +9,8 @@ RUN cd image/bin && \
 
 FROM scratch
 COPY --from=base /image /
+RUN mkdir -p /etc && \
+    echo 'hosts: files dns' > /etc/nsswitch.conf
 RUN chmod 1777 /tmp
 VOLUME /var/lib/kubelet
 VOLUME /var/lib/rancher/k3s
