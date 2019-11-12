@@ -1,0 +1,150 @@
+#!/bin/bash
+
+# ---
+
+port-used() {
+    (cat </dev/null >/dev/tcp/127.0.0.1/$1) 2>/dev/null
+}
+export -f port-used
+
+# ---
+
+get-port() {
+    while
+        PORT=$((10000 + RANDOM % 50000))
+        port-used ${PORT}
+    do continue; done
+    echo ${PORT}
+}
+export -f get-port
+
+# ---
+
+fetch-kubeconfig() {
+    docker cp ${K3S_SERVER}:/etc/rancher/k3s/k3s.yaml ${KUBECONFIG} 2>/dev/null
+}
+export -f fetch-kubeconfig
+
+# ---
+
+wait-for-kubeconfig() {
+    while ! fetch-kubeconfig; do
+        echo 'Waiting for kubeconfig to become available...'
+        sleep 5
+    done
+}
+export -f wait-for-kubeconfig
+
+# ---
+
+count-ready-nodes() {
+    kubectl get nodes -o json \
+        | jq '.items[].status.conditions[] | select(.type == "Ready" and .status == "True") | .type' \
+        | wc -l \
+        | tr -d '[:space:]'
+}
+export -f count-ready-nodes
+
+# ---
+
+wait-for-nodes() {
+    while [[ $(count-ready-nodes) -ne $1 ]]; do
+        echo 'Waiting for nodes to be ready...'
+        sleep 5
+    done
+}
+export -f wait-for-nodes
+
+# ---
+
+pod-ready() {
+    kubectl get pods -n kube-system -o json \
+        | jq ".items[].status.containerStatuses[] | select(.name == \"$1\") | .ready" 2>/dev/null
+}
+export -f pod-ready
+
+# ---
+
+wait-for-services() {
+    for service in $@; do
+        while [[ "$(pod-ready ${service})" != 'true' ]]; do
+            echo "Waiting for service ${service} to be ready..."
+            sleep 5
+        done
+        echo "Service ${service} is ready"
+    done
+}
+export -f wait-for-services
+
+# ---
+
+verify-valid-version() {
+    if docker exec $@ 2>&1 | grep -iE '(dev|head|unknown|fail|refuse)'; then
+        return 1
+    fi
+}
+export -f verify-valid-version
+
+# ---
+
+verify-valid-versions() {
+    verify-valid-version $1 kubectl version
+    verify-valid-version $1 ctr version
+    verify-valid-version $1 crictl version
+}
+export -f verify-valid-versions
+
+# ---
+
+dump-logs() {
+    mkdir -p ${LOGS}/sonobuoy
+    tar -xz -f ${E2E}/*_sonobuoy_*.tar.gz -C ${LOGS}/sonobuoy
+    for container in ${CONTAINERS}; do
+        docker cp ${container}:/var/lib/rancher/k3s/agent/containerd/containerd.log ${LOGS}/${container}-containerd.log
+        docker logs ${container} >${LOGS}/${container}-system.log 2>&1
+    done
+    ./scripts/log-upload ${LOGS}
+}
+export -f dump-logs
+
+# ---
+
+retrieve-sonobuoy-logs() {
+    sonobuoy status || true
+    if sonobuoy status | grep -q -E ' +e2e +complete +passed +'; then
+        status=passed
+        exit_code=0
+    else
+        status=failed
+        exit_code=1
+    fi
+
+    mkdir -p ${E2E}
+    sonobuoy retrieve ${E2E}
+    tar -xz -f ${E2E}/*_sonobuoy_*.tar.gz -C ${E2E} ${E2E_LOG}
+    if [ ! -s ${RESULTS} ]; then
+        return 1
+    fi
+    if [ -n "${E2E_LOG_OUTPUT}" ]; then
+        cp ${RESULTS} $(sed -e "s/-STATUS-/-${status}-/g" <<< "${E2E_LOG_OUTPUT}")
+    fi
+    awk '/^Summarizing .* Failures:$/,0' ${RESULTS}
+    return ${exit_code}
+}
+export -f retrieve-sonobuoy-logs
+
+# ---
+
+sonobuoy-test() {
+    time sonobuoy run \
+        --config=scripts/sonobuoy-config.json \
+        --plugin-env=e2e.E2E_USE_GO_RUNNER=true \
+        --wait=30 \
+        "${@}" &
+    SONOBUOY_PID=$!
+    wait $SONOBUOY_PID
+    retrieve-sonobuoy-logs
+}
+export -f sonobuoy-test
+
+# ---
