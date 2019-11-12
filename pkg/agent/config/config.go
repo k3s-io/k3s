@@ -82,7 +82,7 @@ func getNodeNamedCrt(nodeName, nodePasswordFile string) HTTPRequester {
 		defer resp.Body.Close()
 
 		if resp.StatusCode == http.StatusForbidden {
-			return nil, fmt.Errorf("Node password rejected, contents of '%s' may not match server passwd entry", nodePasswordFile)
+			return nil, fmt.Errorf("Node password rejected, duplicate hostname or contents of '%s' may not match server node-passwd entry, try enabling a unique node name with the --with-node-id flag", nodePasswordFile)
 		}
 
 		if resp.StatusCode != http.StatusOK {
@@ -91,6 +91,20 @@ func getNodeNamedCrt(nodeName, nodePasswordFile string) HTTPRequester {
 
 		return ioutil.ReadAll(resp.Body)
 	}
+}
+
+func ensureNodeID(nodeIDFile string) (string, error) {
+	if _, err := os.Stat(nodeIDFile); err == nil {
+		id, err := ioutil.ReadFile(nodeIDFile)
+		return strings.TrimSpace(string(id)), err
+	}
+	id := make([]byte, 4, 4)
+	_, err := cryptorand.Read(id)
+	if err != nil {
+		return "", err
+	}
+	nodeID := hex.EncodeToString(id)
+	return nodeID, ioutil.WriteFile(nodeIDFile, []byte(nodeID+"\n"), 0644)
 }
 
 func ensureNodePassword(nodePasswordFile string) (string, error) {
@@ -105,6 +119,21 @@ func ensureNodePassword(nodePasswordFile string) (string, error) {
 	}
 	nodePassword := hex.EncodeToString(password)
 	return nodePassword, ioutil.WriteFile(nodePasswordFile, []byte(nodePassword+"\n"), 0600)
+}
+
+func upgradeOldNodePasswordPath(oldNodePasswordFile, newNodePasswordFile string) {
+	password, err := ioutil.ReadFile(oldNodePasswordFile)
+	if err != nil {
+		return
+	}
+	if err := ioutil.WriteFile(newNodePasswordFile, password, 0600); err != nil {
+		logrus.Warnf("Unable to write password file: %v", err)
+		return
+	}
+	if err := os.Remove(oldNodePasswordFile); err != nil {
+		logrus.Warnf("Unable to remove old password file: %v", err)
+		return
+	}
 }
 
 func getServingCert(nodeName, servingCertFile, servingKeyFile, nodePasswordFile string, info *clientaccess.Info) (*tls.Certificate, error) {
@@ -244,11 +273,6 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 		return nil, err
 	}
 
-	nodeName, nodeIP, err := getHostnameAndIP(*envInfo)
-	if err != nil {
-		return nil, err
-	}
-
 	hostLocal, err := exec.LookPath("host-local")
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to find host-local")
@@ -274,14 +298,40 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 
 	servingKubeletCert := filepath.Join(envInfo.DataDir, "serving-kubelet.crt")
 	servingKubeletKey := filepath.Join(envInfo.DataDir, "serving-kubelet.key")
-	nodePasswordFile := filepath.Join(envInfo.DataDir, "node-password.txt")
-	servingCert, err := getServingCert(nodeName, servingKubeletCert, servingKubeletKey, nodePasswordFile, info)
+
+	nodePasswordRoot := "/"
+	if envInfo.Rootless {
+		nodePasswordRoot = envInfo.DataDir
+	}
+	nodeConfigPath := filepath.Join(nodePasswordRoot, "etc", "rancher", "node")
+	if err := os.MkdirAll(nodeConfigPath, 0755); err != nil {
+		return nil, err
+	}
+
+	oldNodePasswordFile := filepath.Join(envInfo.DataDir, "node-password.txt")
+	newNodePasswordFile := filepath.Join(nodeConfigPath, "password")
+	upgradeOldNodePasswordPath(oldNodePasswordFile, newNodePasswordFile)
+
+	nodeName, nodeIP, err := getHostnameAndIP(*envInfo)
+	if err != nil {
+		return nil, err
+	}
+
+	if envInfo.WithNodeID {
+		nodeID, err := ensureNodeID(filepath.Join(nodeConfigPath, "id"))
+		if err != nil {
+			return nil, err
+		}
+		nodeName += "-" + nodeID
+	}
+
+	servingCert, err := getServingCert(nodeName, servingKubeletCert, servingKubeletKey, newNodePasswordFile, info)
 	if err != nil {
 		return nil, err
 	}
 
 	clientKubeletCert := filepath.Join(envInfo.DataDir, "client-kubelet.crt")
-	if err := getNodeNamedHostFile(clientKubeletCert, nodeName, nodePasswordFile, info); err != nil {
+	if err := getNodeNamedHostFile(clientKubeletCert, nodeName, newNodePasswordFile, info); err != nil {
 		return nil, err
 	}
 
@@ -334,6 +384,7 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 	nodeConfig.Images = filepath.Join(envInfo.DataDir, "images")
 	nodeConfig.AgentConfig.NodeIP = nodeIP
 	nodeConfig.AgentConfig.NodeName = nodeName
+	nodeConfig.AgentConfig.NodeConfigPath = nodeConfigPath
 	nodeConfig.AgentConfig.NodeExternalIP = envInfo.NodeExternalIP
 	nodeConfig.AgentConfig.ServingKubeletCert = servingKubeletCert
 	nodeConfig.AgentConfig.ServingKubeletKey = servingKubeletKey

@@ -14,8 +14,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/component-base/logs"
-	app2 "k8s.io/kubernetes/cmd/kube-proxy/app"
-	"k8s.io/kubernetes/cmd/kubelet/app"
+	proxy "k8s.io/kubernetes/cmd/kube-proxy/app"
+	kubelet "k8s.io/kubernetes/cmd/kubelet/app"
 	"k8s.io/kubernetes/pkg/kubeapiserver/authorizer/modes"
 
 	_ "k8s.io/kubernetes/pkg/client/metrics/prometheus" // for client metric registration
@@ -25,34 +25,37 @@ import (
 func Agent(config *config.Agent) error {
 	rand.Seed(time.Now().UTC().UnixNano())
 
-	kubelet(config)
-	kubeProxy(config)
+	logs.InitLogs()
+	defer logs.FlushLogs()
+
+	startKubelet(config)
+	startKubeProxy(config)
 
 	return nil
 }
 
-func kubeProxy(cfg *config.Agent) {
+func startKubeProxy(cfg *config.Agent) {
 	argsMap := map[string]string{
 		"proxy-mode":           "iptables",
 		"healthz-bind-address": "127.0.0.1",
 		"kubeconfig":           cfg.KubeConfigKubeProxy,
 		"cluster-cidr":         cfg.ClusterCIDR.String(),
 	}
-	args := config.GetArgsList(argsMap, cfg.ExtraKubeProxyArgs)
+	if cfg.NodeName != "" {
+		argsMap["hostname-override"] = cfg.NodeName
+	}
 
-	command := app2.NewProxyCommand()
+	args := config.GetArgsList(argsMap, cfg.ExtraKubeProxyArgs)
+	command := proxy.NewProxyCommand()
 	command.SetArgs(args)
+
 	go func() {
-		err := command.Execute()
-		logrus.Fatalf("kube-proxy exited: %v", err)
+		logrus.Infof("Running kube-proxy %s", config.ArgString(args))
+		logrus.Fatalf("kube-proxy exited: %v", command.Execute())
 	}()
 }
 
-func kubelet(cfg *config.Agent) {
-	command := app.NewKubeletCommand(context.Background().Done())
-	logs.InitLogs()
-	defer logs.FlushLogs()
-
+func startKubelet(cfg *config.Agent) {
 	argsMap := map[string]string{
 		"healthz-bind-address":     "127.0.0.1",
 		"read-only-port":           "0",
@@ -146,6 +149,7 @@ func kubelet(cfg *config.Agent) {
 	}
 
 	args := config.GetArgsList(argsMap, cfg.ExtraKubeletArgs)
+	command := kubelet.NewKubeletCommand(context.Background().Done())
 	command.SetArgs(args)
 
 	go func() {
