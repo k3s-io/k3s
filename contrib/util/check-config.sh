@@ -10,7 +10,6 @@ EXITCODE=0
 # see also https://github.com/lxc/lxc/blob/lxc-1.0.2/src/lxc/lxc-checkconfig.in
 
 uname=$(uname -r)
-
 possibleConfigs="
   /proc/config.gz
   /boot/config-${uname}
@@ -18,6 +17,8 @@ possibleConfigs="
   /usr/src/linux-${uname}/.config
   /usr/src/linux/.config
 "
+binDir=$(dirname "$0")
+configFormat=gz
 
 if [ $# -gt 0 ]; then
   CONFIG="$1"
@@ -28,8 +29,6 @@ if ! command -v zgrep >/dev/null 2>&1; then
     zcat "$2" | grep "$1"
   }
 fi
-
-configFormat=gz
 
 dogrep() {
   if [ "$configFormat" = "gz" ]; then
@@ -160,9 +159,8 @@ check_distro_userns() {
 echo
 
 {
-  BINDIR=$(dirname "$0")
-  cd $BINDIR
-  echo "Verifying binaries in $BINDIR:"
+  cd $binDir
+  echo "Verifying binaries in $binDir:"
 
   if [ -s .sha256sums ]; then
     sumsTemp=$(mktemp)
@@ -170,7 +168,7 @@ echo
       wrap_good '- sha256sum' 'good'
     else
       wrap_bad '- sha256sum' 'does not match'
-      cat $sumsTemp | sed -e 's/^/  ... /'
+      cat $sumsTemp | sed 's/^/  ... /'
       EXITCODE=1
     fi
     rm -f $sumsTemp
@@ -204,20 +202,41 @@ echo
   version_ge() {
     [ "$1" = "$2" ] || [ "$(printf '%s\n' "$@" | sort -V | head -n 1)" != "$1" ]
   }
+  which_iptables() {
+    (
+      localIPtables=$(command -v iptables)
+      PATH=$(printf "%s" "$(echo -n $PATH | tr ":" "\n" | grep -v -E "^$binDir$")" | tr "\n" ":")
+      systemIPtables=$(command -v iptables)
+      if [ -n "$systemIPtables" ]; then
+        echo $systemIPtables
+        return
+      fi
+      echo $localIPtables
+    )
+  }
 
   echo "System:"
-  iptablesInfo=$(iptables --version)
-  iptablesVersion=$(echo $iptablesInfo | awk '{ print $2 }')
-  if version_ge $iptablesVersion v1.8.0; then
+
+  iptablesCmd=$(which_iptables)
+  iptablesVersion=
+  if [ "$iptablesCmd" ]; then
+    iptablesInfo=$($iptablesCmd --version 2>/dev/null) || true
+    iptablesVersion=$(echo $iptablesInfo | awk '{ print $2 }')
+    label="$(dirname $iptablesCmd) $iptablesInfo"
+  fi
+  if echo "$iptablesVersion" | grep -v -q -E '^v[0-9]'; then
+    [ "$iptablesCmd" ] || iptablesCmd="unknown iptables"
+    wrap_warn "- $iptablesCmd" "unknown version: $iptablesInfo"
+  elif version_ge $iptablesVersion v1.8.0; then
     iptablesMode=$(echo $iptablesInfo | awk '{ print $3 }')
     if [ "$iptablesMode" != "(legacy)" ]; then
-      wrap_bad "- $iptablesInfo" 'should be older than v1.8.0 or in legacy mode'
+      wrap_bad "- $label" 'should be older than v1.8.0 or in legacy mode'
       EXITCODE=1
     else
-      wrap_good "- $iptablesInfo" 'ok'
+      wrap_good "- $label" 'ok'
     fi
   else
-    wrap_good "- $iptablesInfo" 'older than v1.8'
+    wrap_good "- $label" 'older than v1.8'
   fi
 
   totalSwap=$(free | grep -i '^swap:' | awk '{ print $2 }')
