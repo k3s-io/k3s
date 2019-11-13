@@ -1,4 +1,4 @@
-FROM golang:1.13.3-alpine3.10
+FROM golang:1.13.4-alpine3.10
 
 RUN apk -U --no-cache add bash git gcc musl-dev docker curl jq coreutils python2
 RUN SONOBUOY_VER=v0.16.2 && \

@@ -4,7 +4,7 @@ set -e -x
 cd $(dirname $0)/..
 
 if [ -z "$K3S_IMAGE" ]; then
-    source $(dirname $0)/version.sh
+    . ./scripts/version.sh
     TAG=${TAG:-${VERSION}${SUFFIX}}
     REPO=${REPO:-rancher}
     IMAGE_NAME=${IMAGE_NAME:-k3s}
