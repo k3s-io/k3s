@@ -24,6 +24,7 @@ RUN if [ "$DQLITE" = true ]; then \
         apk add --allow-untrusted /usr/local/packages/*.apk \
     ;fi
 
+ENV GO111MODULE off
 ENV DAPPER_RUN_ARGS --privileged -v k3s-cache:/go/src/github.com/rancher/k3s/.cache
 ENV DAPPER_ENV REPO TAG DRONE_TAG IMAGE_NAME SKIP_VALIDATE
 ENV DAPPER_SOURCE /go/src/github.com/rancher/k3s/
