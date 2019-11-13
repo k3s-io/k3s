@@ -33,7 +33,7 @@ fi
 STATIC_SQLITE="
     -extldflags '-static -lm -ldl -lz -lpthread $DQLITE_STATIC_SQLITE'
 "
-TAGS="ctrd apparmor seccomp no_btrfs netgo osusergo providerless $DQLITE_TAGS"
+TAGS="ctrd apparmor seccomp no_btrfs netcgo osusergo providerless $DQLITE_TAGS"
 
 if [ "$STATIC_BUILD" != "true" ]; then
     STATIC="
