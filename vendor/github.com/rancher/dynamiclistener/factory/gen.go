@@ -29,16 +29,20 @@ type TLS struct {
 	Organization []string
 }
 
-func collectCNs(secret *v1.Secret) (domains []string, ips []net.IP, hash string, err error) {
-	var (
-		cns    []string
-		digest = sha256.New()
-	)
+func cns(secret *v1.Secret) (cns []string) {
 	for k, v := range secret.Annotations {
 		if strings.HasPrefix(k, cnPrefix) {
 			cns = append(cns, v)
 		}
 	}
+	return
+}
+
+func collectCNs(secret *v1.Secret) (domains []string, ips []net.IP, hash string, err error) {
+	var (
+		cns    = cns(secret)
+		digest = sha256.New()
+	)
 
 	sort.Strings(cns)
 
@@ -54,6 +58,10 @@ func collectCNs(secret *v1.Secret) (domains []string, ips []net.IP, hash string,
 
 	hash = hex.EncodeToString(digest.Sum(nil))
 	return
+}
+
+func (t *TLS) Merge(secret, other *v1.Secret) (*v1.Secret, bool, error) {
+	return t.AddCN(secret, cns(other)...)
 }
 
 func (t *TLS) AddCN(secret *v1.Secret, cn ...string) (*v1.Secret, bool, error) {

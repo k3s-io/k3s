@@ -10,8 +10,6 @@ PKG_CONTAINERD="github.com/containerd/containerd"
 PKG_RANCHER_CONTAINERD="github.com/rancher/containerd"
 PKG_CRICTL="github.com/kubernetes-sigs/cri-tools"
 
-export GO111MODULE=off
-
 VENDOR_PREFIX="${PKG}/vendor/"
 VERSIONFLAGS="
     -X ${PKG}/pkg/version.Version=${VERSION}

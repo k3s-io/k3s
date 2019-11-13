@@ -108,11 +108,6 @@ func (l *LogStructured) Create(ctx context.Context, key string, value []byte, le
 	}
 
 	revRet, errRet = l.log.Append(ctx, createEvent)
-	if errRet != nil {
-		if _, prevEvent, err := l.get(ctx, key, 0, true); err == nil && prevEvent != nil && !prevEvent.Delete {
-			return 0, server.ErrKeyExists
-		}
-	}
 	return
 }
 

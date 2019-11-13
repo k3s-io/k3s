@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/rancher/dynamiclistener/factory"
@@ -16,6 +17,10 @@ import (
 type TLSStorage interface {
 	Get() (*v1.Secret, error)
 	Update(secret *v1.Secret) error
+}
+
+type SetFactory interface {
+	SetFactory(tls *factory.TLS)
 }
 
 type Config struct {
@@ -47,6 +52,10 @@ func NewListener(l net.Listener, storage TLSStorage, caCert *x509.Certificate, c
 	}
 	dynamicListener.tlsConfig.GetCertificate = dynamicListener.getCertificate
 
+	if setter, ok := storage.(SetFactory); ok {
+		setter.SetFactory(dynamicListener.factory)
+	}
+
 	return tls.NewListener(dynamicListener, &dynamicListener.tlsConfig), dynamicListener.cacheHandler(), nil
 }
 
@@ -60,9 +69,16 @@ type listener struct {
 	tlsConfig tls.Config
 	cert      *tls.Certificate
 	sans      []string
+	init      sync.Once
 }
 
 func (l *listener) Accept() (net.Conn, error) {
+	l.init.Do(func() {
+		if len(l.sans) > 0 {
+			l.updateCert(l.sans...)
+		}
+	})
+
 	conn, err := l.Listener.Accept()
 	if err != nil {
 		return conn, err
@@ -79,8 +95,10 @@ func (l *listener) Accept() (net.Conn, error) {
 		return conn, nil
 	}
 
-	if err := l.updateCert(host); err != nil {
-		logrus.Infof("failed to create TLS cert for: %s", host)
+	if !strings.Contains(host, ":") {
+		if err := l.updateCert(host); err != nil {
+			logrus.Infof("failed to create TLS cert for: %s", host)
+		}
 	}
 
 	return conn, nil
@@ -96,7 +114,7 @@ func (l *listener) getCertificate(hello *tls.ClientHelloInfo) (*tls.Certificate,
 	return l.loadCert()
 }
 
-func (l *listener) updateCert(cn string) error {
+func (l *listener) updateCert(cn ...string) error {
 	l.RLock()
 	defer l.RUnlock()
 
@@ -105,7 +123,7 @@ func (l *listener) updateCert(cn string) error {
 		return err
 	}
 
-	if !factory.NeedsUpdate(secret, append(l.sans, cn)...) {
+	if !factory.NeedsUpdate(secret, cn...) {
 		return nil
 	}
 
@@ -114,7 +132,7 @@ func (l *listener) updateCert(cn string) error {
 	defer l.RLock()
 	defer l.Unlock()
 
-	secret, updated, err := l.factory.AddCN(secret, append(l.sans, cn)...)
+	secret, updated, err := l.factory.AddCN(secret, append(l.sans, cn...)...)
 	if err != nil {
 		return err
 	}
