@@ -128,7 +128,7 @@ retrieve-sonobuoy-logs() {
     if [ -n "${E2E_LOG_OUTPUT}" ]; then
         cp ${RESULTS} $(sed -e "s/-STATUS-/-${status}-/g" <<< "${E2E_LOG_OUTPUT}")
     fi
-    awk '/^Summarizing .* Failures:$/,0' ${RESULTS}
+    awk '/^Summarizing .* Failures?:$/,0' ${RESULTS}
     return ${exit_code}
 }
 export -f retrieve-sonobuoy-logs
