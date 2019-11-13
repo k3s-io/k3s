@@ -29,6 +29,7 @@ func main() {
 		cmds.NewKubectlCommand(externalCLIAction("kubectl")),
 		cmds.NewCRICTL(externalCLIAction("crictl")),
 		cmds.NewCtrCommand(externalCLIAction("ctr")),
+		cmds.NewCheckConfigCommand(externalCLIAction("check-config")),
 	}
 
 	err := app.Run(os.Args)

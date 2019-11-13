@@ -17,10 +17,23 @@ for i in bridge flannel host-local loopback portmap; do
     ln -s cni ./bin/$i
 done
 
+cp contrib/util/check-config.sh bin/check-config
 
 rm -rf build/data
 mkdir -p build/data build/out
 mkdir -p dist/artifacts
+
+(
+    set +x
+    cd bin
+    find . -not -path '*/\.*' -type f -exec sha256sum {} \; | sed -e 's| \./| |' | sort -k2 >.sha256sums
+    (
+        for f in $(find . -type l); do
+            echo $f $(readlink $f)
+        done
+    ) | sed -e 's|^\./||' | sort >.links
+    set -x
+)
 
 tar cvzf ./build/out/data.tar.gz --exclude ./bin/hyperkube ./bin ./etc
 HASH=$(sha256sum ./build/out/data.tar.gz | awk '{print $1}')
