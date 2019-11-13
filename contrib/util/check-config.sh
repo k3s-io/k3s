@@ -10,7 +10,6 @@ EXITCODE=0
 # see also https://github.com/lxc/lxc/blob/lxc-1.0.2/src/lxc/lxc-checkconfig.in
 
 uname=$(uname -r)
-
 possibleConfigs="
   /proc/config.gz
   /boot/config-${uname}
@@ -18,6 +17,8 @@ possibleConfigs="
   /usr/src/linux-${uname}/.config
   /usr/src/linux/.config
 "
+binDir=$(dirname "$0")
+configFormat=gz
 
 if [ $# -gt 0 ]; then
   CONFIG="$1"
@@ -28,8 +29,6 @@ if ! command -v zgrep >/dev/null 2>&1; then
     zcat "$2" | grep "$1"
   }
 fi
-
-configFormat=gz
 
 dogrep() {
   if [ "$configFormat" = "gz" ]; then
@@ -93,7 +92,8 @@ wrap_good() {
   echo "$(wrap_color "$1" white): $(wrap_color "$2" green)"
 }
 wrap_bad() {
-  echo "$(wrap_color "$1" bold): $(wrap_color "$2" bold red)"
+  echo "$(wrap_color "$1" bold): $(wrap_color "$2 (fail)" bold red)"
+  EXITCODE=$(($EXITCODE+1))
 }
 wrap_warn() {
   echo "$(wrap_color "$1" bold): $(wrap_color "$2" bold yellow)"
@@ -110,7 +110,6 @@ check_flag() {
   else
     if [ "$IS_ERROR" = 1 ]; then
       wrap_bad "CONFIG_$1" 'missing'
-      EXITCODE=1
     else
       wrap_warn "CONFIG_$1" 'missing'
     fi
@@ -128,7 +127,6 @@ check_command() {
     wrap_good "$1 command" 'available'
   else
     wrap_bad "$1 command" 'missing'
-    EXITCODE=1
   fi
 }
 
@@ -137,7 +135,6 @@ check_device() {
     wrap_good "$1" 'present'
   else
     wrap_bad "$1" 'missing'
-    EXITCODE=1
   fi
 }
 
@@ -150,7 +147,6 @@ check_distro_userns() {
     if ! grep -q "user_namespace.enable=1" /proc/cmdline; then
       # no user namespace support enabled
       wrap_bad "  (RHEL7/CentOS7" "User namespaces disabled; add 'user_namespace.enable=1' to boot command line)"
-      EXITCODE=1
     fi
   fi
 }
@@ -160,9 +156,8 @@ check_distro_userns() {
 echo
 
 {
-  BINDIR=$(dirname "$0")
-  cd $BINDIR
-  echo "Verifying binaries in $BINDIR:"
+  cd $binDir
+  echo "Verifying binaries in $binDir:"
 
   if [ -s .sha256sums ]; then
     sumsTemp=$(mktemp)
@@ -170,8 +165,7 @@ echo
       wrap_good '- sha256sum' 'good'
     else
       wrap_bad '- sha256sum' 'does not match'
-      cat $sumsTemp | sed -e 's/^/  ... /'
-      EXITCODE=1
+      cat $sumsTemp | sed 's/^/  ... /'
     fi
     rm -f $sumsTemp
   else
@@ -188,8 +182,6 @@ echo
     done <.links
     if [ $linkFail -eq 0 ]; then
       wrap_good '- links' 'good'
-    else
-      EXITCODE=1
     fi
   else
     wrap_warn '- links' 'link list unavailable'
@@ -204,20 +196,40 @@ echo
   version_ge() {
     [ "$1" = "$2" ] || [ "$(printf '%s\n' "$@" | sort -V | head -n 1)" != "$1" ]
   }
+  which_iptables() {
+    (
+      localIPtables=$(command -v iptables)
+      PATH=$(printf "%s" "$(echo -n $PATH | tr ":" "\n" | grep -v -E "^$binDir$")" | tr "\n" ":")
+      systemIPtables=$(command -v iptables)
+      if [ -n "$systemIPtables" ]; then
+        echo $systemIPtables
+        return
+      fi
+      echo $localIPtables
+    )
+  }
 
   echo "System:"
-  iptablesInfo=$(iptables --version)
-  iptablesVersion=$(echo $iptablesInfo | awk '{ print $2 }')
-  if version_ge $iptablesVersion v1.8.0; then
+
+  iptablesCmd=$(which_iptables)
+  iptablesVersion=
+  if [ "$iptablesCmd" ]; then
+    iptablesInfo=$($iptablesCmd --version 2>/dev/null) || true
+    iptablesVersion=$(echo $iptablesInfo | awk '{ print $2 }')
+    label="$(dirname $iptablesCmd) $iptablesInfo"
+  fi
+  if echo "$iptablesVersion" | grep -v -q -E '^v[0-9]'; then
+    [ "$iptablesCmd" ] || iptablesCmd="unknown iptables"
+    wrap_warn "- $iptablesCmd" "unknown version: $iptablesInfo"
+  elif version_ge $iptablesVersion v1.8.0; then
     iptablesMode=$(echo $iptablesInfo | awk '{ print $3 }')
     if [ "$iptablesMode" != "(legacy)" ]; then
-      wrap_bad "- $iptablesInfo" 'should be older than v1.8.0 or in legacy mode'
-      EXITCODE=1
+      wrap_bad "- $label" 'should be older than v1.8.0 or in legacy mode'
     else
-      wrap_good "- $iptablesInfo" 'ok'
+      wrap_good "- $label" 'ok'
     fi
   else
-    wrap_good "- $iptablesInfo" 'older than v1.8'
+    wrap_good "- $label" 'older than v1.8'
   fi
 
   totalSwap=$(free | grep -i '^swap:' | awk '{ print $2 }')
@@ -242,7 +254,6 @@ echo
     if [ "$(cat "$1")" -le "$2" ]; then
       wrap_bad "- $1" "$(cat "$1")"
       wrap_color "    This should be set to at least $2, for example set: sysctl -w kernel/keys/root_maxkeys=1000000" bold black
-      EXITCODE=1
     else
       wrap_good "- $1" "$(cat "$1")"
     fi
@@ -293,14 +304,13 @@ echo -n '- '
 cgroupSubsystemDir="$(awk '/[, ](cpu|cpuacct|cpuset|devices|freezer|memory)[, ]/ && $3 == "cgroup" { print $2 }' /proc/mounts | head -n1)"
 cgroupDir="$(dirname "$cgroupSubsystemDir")"
 if [ -d "$cgroupDir/cpu" ] || [ -d "$cgroupDir/cpuacct" ] || [ -d "$cgroupDir/cpuset" ] || [  -d "$cgroupDir/devices" ] || [ -d "$cgroupDir/freezer" ] || [ -d "$cgroupDir/memory" ]; then
-  echo "$(wrap_good 'cgroup hierarchy' 'properly mounted') [$cgroupDir]"
+  wrap_good 'cgroup hierarchy' "properly mounted [$cgroupDir]"
 else
   if [ "$cgroupSubsystemDir" ]; then
-    echo "$(wrap_bad 'cgroup hierarchy' 'single mountpoint!') [$cgroupSubsystemDir]"
+    wrap_bad 'cgroup hierarchy' "single mountpoint! [$cgroupSubsystemDir]"
   else
     wrap_bad 'cgroup hierarchy' 'nonexistent??'
   fi
-  EXITCODE=1
   echo "    $(wrap_color '(see https://github.com/tianon/cgroupfs-mount)' yellow)"
 fi
 
@@ -318,7 +328,6 @@ if [ "$(cat /sys/module/apparmor/parameters/enabled 2>/dev/null)" = 'Y' ]; then
     else
       wrap_color '(look for an "apparmor" package for your distribution)'
     fi
-    EXITCODE=1
   fi
 fi
 
@@ -351,11 +360,9 @@ echo 'Optional Features:'
   check_flags CGROUP_PIDS
 }
 # {
-#   CODE=${EXITCODE}
 #   check_flags MEMCG_SWAP MEMCG_SWAP_ENABLED
 #   if [ -e /sys/fs/cgroup/memory/memory.memsw.limit_in_bytes ]; then
 #     echo "    $(wrap_color '(cgroup swap accounting is currently enabled)' bold black)"
-#     EXITCODE=${CODE}
 #   elif is_set MEMCG_SWAP && ! is_set MEMCG_SWAP_ENABLED; then
 #     echo "    $(wrap_color '(cgroup swap accounting is currently not enabled, you can enable it by setting boot option "swapaccount=1")' bold black)"
 #   fi
@@ -438,45 +445,9 @@ check_flags CRYPTO CRYPTO_AEAD CRYPTO_GCM CRYPTO_SEQIV CRYPTO_GHASH \
 # echo "  - \"$(wrap_color 'ftp,tftp client in container' blue)\":"
 # check_flags NF_NAT_FTP NF_CONNTRACK_FTP NF_NAT_TFTP NF_CONNTRACK_TFTP | sed 's/^/    /'
 
-# only fail if no storage drivers available
-CODE=${EXITCODE}
-EXITCODE=0
-STORAGE=1
-
 echo '- Storage Drivers:'
-# echo "  - \"$(wrap_color 'aufs' blue)\":"
-# check_flags AUFS_FS | sed 's/^/    /'
-# if ! is_set AUFS_FS && grep -q aufs /proc/filesystems; then
-#   echo "      $(wrap_color '(note that some kernels include AUFS patches but not the AUFS_FS flag)' bold black)"
-# fi
-# [ "$EXITCODE" = 0 ] && STORAGE=0
-# EXITCODE=0
-
-# echo "  - \"$(wrap_color 'btrfs' blue)\":"
-# check_flags BTRFS_FS | sed 's/^/    /'
-# check_flags BTRFS_FS_POSIX_ACL | sed 's/^/    /'
-# [ "$EXITCODE" = 0 ] && STORAGE=0
-# EXITCODE=0
-
-# echo "  - \"$(wrap_color 'devicemapper' blue)\":"
-# check_flags BLK_DEV_DM DM_THIN_PROVISIONING | sed 's/^/    /'
-# [ "$EXITCODE" = 0 ] && STORAGE=0
-# EXITCODE=0
-
 echo "  - \"$(wrap_color 'overlay' blue)\":"
 check_flags OVERLAY_FS | sed 's/^/    /'
-[ "$EXITCODE" = 0 ] && STORAGE=0
-EXITCODE=0
-
-# echo "  - \"$(wrap_color 'zfs' blue)\":"
-# echo -n "    - "; check_device /dev/zfs
-# echo -n "    - "; check_command zfs
-# echo -n "    - "; check_command zpool
-# [ "$EXITCODE" = 0 ] && STORAGE=0
-# EXITCODE=0
-
-EXITCODE=$CODE
-[ "$STORAGE" = 1 ] && EXITCODE=1
 
 # ---
 
@@ -484,7 +455,7 @@ echo
 if [ $EXITCODE -eq 0 ]; then
   wrap_good 'STATUS' 'pass'
 else
-  wrap_bad 'STATUS' 'fail'
+  wrap_bad 'STATUS' $EXITCODE
 fi
 
 exit $EXITCODE
