@@ -183,7 +183,7 @@ func checkCgroups() (root string, hasCFS bool, hasPIDs bool) {
 			if system == "pids" {
 				hasPIDs = true
 			} else if system == "cpu" {
-				p := filepath.Join("/sys/fs/cgroup", parts[1], parts[2], "cpu.cfs_period_us")
+				p := filepath.Join("/sys/fs/cgroup", system, parts[2], "cpu.cfs_period_us")
 				if _, err := os.Stat(p); err == nil {
 					hasCFS = true
 				}
