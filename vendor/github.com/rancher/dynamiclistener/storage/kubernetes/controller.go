@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/rancher/dynamiclistener"
+	"github.com/rancher/dynamiclistener/factory"
 	"github.com/rancher/wrangler-api/pkg/generated/controllers/core"
 	v1controller "github.com/rancher/wrangler-api/pkg/generated/controllers/core/v1"
 	"github.com/rancher/wrangler/pkg/start"
@@ -54,6 +55,11 @@ type storage struct {
 	storage         dynamiclistener.TLSStorage
 	secrets         v1controller.SecretClient
 	ctx             context.Context
+	tls             *factory.TLS
+}
+
+func (s *storage) SetFactory(tls *factory.TLS) {
+	s.tls = tls
 }
 
 func (s *storage) init(secrets v1controller.SecretController) {
@@ -103,6 +109,12 @@ func (s *storage) targetSecret() (*v1.Secret, error) {
 func (s *storage) saveInK8s(secret *v1.Secret) (*v1.Secret, error) {
 	if s.secrets == nil {
 		return secret, nil
+	}
+
+	if existing, err := s.storage.Get(); err == nil && s.tls != nil {
+		if newSecret, updated, err := s.tls.Merge(secret, existing); err == nil && updated {
+			secret = newSecret
+		}
 	}
 
 	targetSecret, err := s.targetSecret()

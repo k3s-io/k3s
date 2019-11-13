@@ -91,7 +91,6 @@ func New(ctx context.Context, datasourceName string) (server.Backend, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	if err := migrate(ctx, generic.DB); err != nil {
 		return nil, errors.Wrap(err, "failed to migrate DB from sqlite")
 	}
@@ -102,6 +101,12 @@ func New(ctx context.Context, datasourceName string) (server.Backend, error) {
 			return err.Code == driver.ErrBusy
 		}
 		return false
+	}
+	generic.TranslateErr = func(err error) error {
+		if strings.Contains(err.Error(), "UNIQUE constraint") {
+			return server.ErrKeyExists
+		}
+		return err
 	}
 
 	return backend, nil

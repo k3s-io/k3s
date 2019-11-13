@@ -12,7 +12,6 @@ import (
 
 	"github.com/Rican7/retry/backoff"
 	"github.com/Rican7/retry/strategy"
-
 	"github.com/sirupsen/logrus"
 )
 
@@ -63,6 +62,7 @@ func (s Stripped) String() string {
 }
 
 type ErrRetry func(error) bool
+type TranslateErr func(error) error
 
 type Generic struct {
 	sync.Mutex
@@ -83,6 +83,7 @@ type Generic struct {
 	FillSQL               string
 	InsertLastInsertIDSQL string
 	Retry                 ErrRetry
+	TranslateErr          TranslateErr
 }
 
 func q(sql, param string, numbered bool) string {
@@ -308,6 +309,14 @@ func (d *Generic) IsFill(key string) bool {
 }
 
 func (d *Generic) Insert(ctx context.Context, key string, create, delete bool, createRevision, previousRevision int64, ttl int64, value, prevValue []byte) (id int64, err error) {
+	if d.TranslateErr != nil {
+		defer func() {
+			if err != nil {
+				err = d.TranslateErr(err)
+			}
+		}()
+	}
+
 	cVal := 0
 	dVal := 0
 	if create {
@@ -320,7 +329,7 @@ func (d *Generic) Insert(ctx context.Context, key string, create, delete bool, c
 	if d.LastInsertID {
 		row, err := d.execute(ctx, d.InsertLastInsertIDSQL, key, cVal, dVal, createRevision, previousRevision, ttl, value, prevValue)
 		if err != nil {
-			return 00, err
+			return 0, err
 		}
 		return row.LastInsertId()
 	}

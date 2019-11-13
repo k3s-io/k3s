@@ -23,7 +23,7 @@ var (
 		`create table if not exists kine
 			(
 				id INTEGER AUTO_INCREMENT,
-				name TEXT,
+				name VARCHAR(630),
 				created INTEGER,
 				deleted INTEGER,
 				create_revision INTEGER,
@@ -34,8 +34,8 @@ var (
 				PRIMARY KEY (id)
 			);`,
 	}
-	nameIdx     = "create index kine_name_index on kine (name(100))"
-	revisionIdx = "create unique index kine_name_prev_revision_uindex on kine (name(100), prev_revision)"
+	nameIdx     = "create index kine_name_index on kine (name)"
+	revisionIdx = "create unique index kine_name_prev_revision_uindex on kine (name, prev_revision)"
 	createDB    = "create database if not exists "
 )
 
@@ -63,6 +63,12 @@ func New(dataSourceName string, tlsInfo tls.Config) (server.Backend, error) {
 		return nil, err
 	}
 	dialect.LastInsertID = true
+	dialect.TranslateErr = func(err error) error {
+		if err, ok := err.(*mysql.MySQLError); ok && err.Number == 1062 {
+			return server.ErrKeyExists
+		}
+		return err
+	}
 	if err := setup(dialect.DB); err != nil {
 		return nil, err
 	}

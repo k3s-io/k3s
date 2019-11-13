@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"os"
 
+	"github.com/mattn/go-sqlite3"
 	"github.com/rancher/kine/pkg/drivers/generic"
 	"github.com/rancher/kine/pkg/logstructured"
 	"github.com/rancher/kine/pkg/logstructured/sqllog"
@@ -51,6 +52,12 @@ func NewVariant(driverName, dataSourceName string) (server.Backend, *generic.Gen
 		return nil, nil, err
 	}
 	dialect.LastInsertID = true
+	dialect.TranslateErr = func(err error) error {
+		if err, ok := err.(sqlite3.Error); ok && err.ExtendedCode == sqlite3.ErrConstraintUnique {
+			return server.ErrKeyExists
+		}
+		return err
+	}
 
 	if err := setup(dialect.DB); err != nil {
 		return nil, nil, err
