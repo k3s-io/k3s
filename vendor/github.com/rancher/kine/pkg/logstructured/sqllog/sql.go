@@ -31,7 +31,7 @@ type Dialect interface {
 	List(ctx context.Context, prefix, startKey string, limit, revision int64, includeDeleted bool) (*sql.Rows, error)
 	Count(ctx context.Context, prefix string) (int64, int64, error)
 	CurrentRevision(ctx context.Context) (int64, error)
-	After(ctx context.Context, prefix string, rev int64) (*sql.Rows, error)
+	After(ctx context.Context, prefix string, rev, limit int64) (*sql.Rows, error)
 	Insert(ctx context.Context, key string, create, delete bool, createRevision, previousRevision int64, ttl int64, value, prevValue []byte) (int64, error)
 	GetRevision(ctx context.Context, revision int64) (*sql.Rows, error)
 	DeleteRevision(ctx context.Context, revision int64) error
@@ -152,12 +152,12 @@ func (s *SQLLog) CurrentRevision(ctx context.Context) (int64, error) {
 	return s.d.CurrentRevision(ctx)
 }
 
-func (s *SQLLog) After(ctx context.Context, prefix string, revision int64) (int64, []*server.Event, error) {
+func (s *SQLLog) After(ctx context.Context, prefix string, revision, limit int64) (int64, []*server.Event, error) {
 	if strings.HasSuffix(prefix, "/") {
 		prefix += "%"
 	}
 
-	rows, err := s.d.After(ctx, prefix, revision)
+	rows, err := s.d.After(ctx, prefix, revision, limit)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -280,9 +280,10 @@ func (s *SQLLog) startWatch() (chan interface{}, error) {
 
 func (s *SQLLog) poll(result chan interface{}, pollStart int64) {
 	var (
-		last     = pollStart
-		skip     int64
-		skipTime time.Time
+		last        = pollStart
+		skip        int64
+		skipTime    time.Time
+		waitForMore = true
 	)
 
 	wait := time.NewTicker(time.Second)
@@ -290,17 +291,20 @@ func (s *SQLLog) poll(result chan interface{}, pollStart int64) {
 	defer close(result)
 
 	for {
-		select {
-		case <-s.ctx.Done():
-			return
-		case check := <-s.notify:
-			if check <= last {
-				continue
+		if waitForMore {
+			select {
+			case <-s.ctx.Done():
+				return
+			case check := <-s.notify:
+				if check <= last {
+					continue
+				}
+			case <-wait.C:
 			}
-		case <-wait.C:
 		}
+		waitForMore = true
 
-		rows, err := s.d.After(s.ctx, "%", last)
+		rows, err := s.d.After(s.ctx, "%", last, 500)
 		if err != nil {
 			logrus.Errorf("fail to list latest changes: %v", err)
 			continue
@@ -315,6 +319,8 @@ func (s *SQLLog) poll(result chan interface{}, pollStart int64) {
 		if len(events) == 0 {
 			continue
 		}
+
+		waitForMore = len(events) < 100
 
 		rev := last
 		var (

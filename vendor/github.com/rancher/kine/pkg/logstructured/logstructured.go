@@ -13,7 +13,7 @@ type Log interface {
 	Start(ctx context.Context) error
 	CurrentRevision(ctx context.Context) (int64, error)
 	List(ctx context.Context, prefix, startKey string, limit, revision int64, includeDeletes bool) (int64, []*server.Event, error)
-	After(ctx context.Context, prefix string, revision int64) (int64, []*server.Event, error)
+	After(ctx context.Context, prefix string, revision, limit int64) (int64, []*server.Event, error)
 	Watch(ctx context.Context, prefix string) <-chan []*server.Event
 	Count(ctx context.Context, prefix string) (int64, int64, error)
 	Append(ctx context.Context, event *server.Event) (int64, error)
@@ -185,10 +185,14 @@ func (l *LogStructured) Count(ctx context.Context, prefix string) (revRet int64,
 func (l *LogStructured) Update(ctx context.Context, key string, value []byte, revision, lease int64) (revRet int64, kvRet *server.KeyValue, updateRet bool, errRet error) {
 	defer func() {
 		l.adjustRevision(ctx, &revRet)
-		logrus.Debugf("UPDATE %s, value=%d, rev=%d, lease=%v => rev=%d, kv=%v, updated=%v, err=%v", key, len(value), revision, lease, revRet, kvRet != nil, updateRet, errRet)
+		kvRev := int64(0)
+		if kvRet != nil {
+			kvRev = kvRet.ModRevision
+		}
+		logrus.Debugf("UPDATE %s, value=%d, rev=%d, lease=%v => rev=%d, kvrev=%d, updated=%v, err=%v", key, len(value), revision, lease, revRet, kvRev, updateRet, errRet)
 	}()
 
-	rev, event, err := l.get(ctx, key, revision, false)
+	rev, event, err := l.get(ctx, key, 0, false)
 	if err != nil {
 		return 0, nil, false, err
 	}
@@ -295,7 +299,7 @@ func (l *LogStructured) Watch(ctx context.Context, prefix string, revision int64
 
 	result := make(chan []*server.Event, 100)
 
-	rev, kvs, err := l.log.After(ctx, prefix, revision)
+	rev, kvs, err := l.log.After(ctx, prefix, revision, 0)
 	if err != nil {
 		logrus.Errorf("failed to list %s for revision %d", prefix, revision)
 		cancel()

@@ -104,10 +104,8 @@ func toKVs(kvs ...*KeyValue) []*mvccpb.KeyValue {
 	ret := make([]*mvccpb.KeyValue, 0, len(kvs))
 	for _, kv := range kvs {
 		newKV := toKV(kv)
-		if newKV == nil {
-			fmt.Println("HIHIHIH")
-		} else {
-			ret = append(ret, toKV(kv))
+		if newKV != nil {
+			ret = append(ret, newKV)
 		}
 	}
 	return ret
