@@ -270,7 +270,7 @@ echo
 
 SUDO=
 [ $(id -u) -ne 0 ] && SUDO=sudo
-lsmod | grep -q configs || $SUDO modprobe configs >/dev/null 2>&1 || true
+lsmod | grep -q configs || $SUDO modprobe configs || true
 
 if [ -z "$CONFIG" ]; then
   for tryConfig in ${possibleConfigs}; do
