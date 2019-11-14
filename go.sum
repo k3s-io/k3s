@@ -592,8 +592,8 @@ github.com/rancher/go-dqlite v1.1.0-k3s.1 h1:w3ghNkY5vqRnnrcqxvHkpBQr6E+R/nIwJfa
 github.com/rancher/go-dqlite v1.1.0-k3s.1/go.mod h1:lj8UhpkZddn/Ag0tBsnkbELbxHGMpzrZLMs/nW9/DX4=
 github.com/rancher/helm-controller v0.2.2 h1:MUqisy53/Ay1EYOF2uTCYBbGpgtZLNKKrI01BdxIbQo=
 github.com/rancher/helm-controller v0.2.2/go.mod h1:0JkL0UjxddNbT4FmLoESarD4Mz8xzA5YlejqJ/U4g+8=
-github.com/rancher/kine v0.2.2 h1:dN5jZK1x3t5CqqEz05EImBjtxQm7ANeLmNJ8rA2jB90=
-github.com/rancher/kine v0.2.2/go.mod h1:SdBUuE7e3XyrJvdBxCl9TMMapF+wyZnMZSP/H59OqNE=
+github.com/rancher/kine v0.2.3 h1:ln4Pmtb3ReqCLf6hF7aF1QmMLgnYPbq4/VZ1UyJ9v3A=
+github.com/rancher/kine v0.2.3/go.mod h1:SdBUuE7e3XyrJvdBxCl9TMMapF+wyZnMZSP/H59OqNE=
 github.com/rancher/kubernetes v1.16.2-k3s.1 h1:+oJEecXgQDkEOD/X8z2YUdYVonbXZtGzXsmtKDPYesg=
 github.com/rancher/kubernetes v1.16.2-k3s.1/go.mod h1:SmhGgKfQ30imqjFVj8AI+iW+zSyFsswNErKYeTfgoH0=
 github.com/rancher/kubernetes/staging/src/k8s.io/api v1.16.2-k3s.1 h1:2kK5KD6MU86txBYKG+tM6j5zbey02DaIDtwpG5JsfnI=
