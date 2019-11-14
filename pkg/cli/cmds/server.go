@@ -12,6 +12,7 @@ type Server struct {
 	AgentTokenFile           string
 	Token                    string
 	TokenFile                string
+	ClusterSecret            string
 	ServiceCIDR              string
 	ClusterDNS               string
 	ClusterDomain            string
@@ -121,7 +122,7 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Name:        "token,t",
 				Usage:       "(cluster) Shared secret used to join a server or agent to a cluster",
 				Destination: &ServerConfig.Token,
-				EnvVar:      "K3S_CLUSTER_SECRET,K3S_TOKEN",
+				EnvVar:      "K3S_TOKEN",
 			},
 			cli.StringFlag{
 				Name:        "token-file",
@@ -231,7 +232,7 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 			},
 			cli.StringFlag{
 				Name:        "agent-token",
-				Usage:       "(experimental/cluster) Shared secret used to join agents to the cluster, but not agents",
+				Usage:       "(experimental/cluster) Shared secret used to join agents to the cluster, but not servers",
 				Destination: &ServerConfig.AgentToken,
 				EnvVar:      "K3S_AGENT_TOKEN",
 			},
@@ -268,7 +269,7 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 			cli.StringFlag{
 				Name:        "cluster-secret",
 				Usage:       "(deprecated) use --token",
-				Destination: &ServerConfig.Token,
+				Destination: &ServerConfig.ClusterSecret,
 				EnvVar:      "K3S_CLUSTER_SECRET",
 			},
 			cli.BoolFlag{

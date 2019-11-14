@@ -10,6 +10,7 @@ import (
 type Agent struct {
 	Token                    string
 	TokenFile                string
+	ClusterSecret            string
 	ServerURL                string
 	DisableLoadBalancer      bool
 	ResolvConf               string
@@ -189,7 +190,7 @@ func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
 			cli.StringFlag{
 				Name:        "cluster-secret",
 				Usage:       "(deprecated) use --token",
-				Destination: &AgentConfig.Token,
+				Destination: &AgentConfig.ClusterSecret,
 				EnvVar:      "K3S_CLUSTER_SECRET",
 			},
 		},

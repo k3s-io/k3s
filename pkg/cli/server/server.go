@@ -55,6 +55,10 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 		}
 	}
 
+	if cfg.Token == "" && cfg.ClusterSecret != "" {
+		cfg.Token = cfg.ClusterSecret
+	}
+
 	serverConfig := server.Config{}
 	serverConfig.DisableAgent = cfg.DisableAgent
 	serverConfig.ControlConfig.Token = cfg.Token
