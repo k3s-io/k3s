@@ -8,12 +8,12 @@ This repo includes all of Kubernetes history so `--depth 1` will avoid most of t
 
 To build the full release binary run `make` and that will create `./dist/artifacts/k3s`.
 
-Optionally to build the binaries without running linting or building docker images:
+Optionally to build the binaries using local go environment without running linting or building docker images:
 ```sh
 ./scripts/download && ./scripts/build && ./scripts/package-cli
 ```
 
-For development, you just need go 1.12 and a proper GOPATH.  To compile the binaries run:
+For development, you just need go 1.12+ and a proper GOPATH.  To compile the binaries run:
 ```bash
 go build -o k3s
 go build -o kubectl ./cmd/kubectl
@@ -35,5 +35,5 @@ Kubernetes Source
 -----------------
 
 The source code for Kubernetes is in `vendor/` and the location from which that is copied
-is in `./vendor.conf`.  Go to the referenced repo/tag and you'll find all the patches applied
+is in `./go.mod`.  Go to the referenced repo/tag and you'll find all the patches applied
 to upstream Kubernetes.
