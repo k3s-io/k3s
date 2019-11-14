@@ -31,6 +31,10 @@ func Run(ctx *cli.Context) error {
 		cmds.AgentConfig.Token = token
 	}
 
+	if cmds.AgentConfig.Token == "" && cmds.AgentConfig.ClusterSecret != "" {
+		cmds.AgentConfig.Token = cmds.AgentConfig.ClusterSecret
+	}
+
 	if cmds.AgentConfig.Token == "" {
 		return fmt.Errorf("--token is required")
 	}
