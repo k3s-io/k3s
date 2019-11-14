@@ -126,10 +126,6 @@ func controllerManager(cfg *config.Control, runtime *config.ControlRuntime) {
 		"cluster-signing-cert-file":        runtime.ServerCA,
 		"cluster-signing-key-file":         runtime.ServerCAKey,
 	}
-	offset := cfg.HTTPSPort - 6443
-	if offset > 0 {
-		argsMap["port"] = strconv.Itoa(10252 + offset)
-	}
 	if cfg.NoLeaderElect {
 		argsMap["leader-elect"] = "false"
 	}
@@ -151,10 +147,6 @@ func scheduler(cfg *config.Control, runtime *config.ControlRuntime) {
 		"port":         "10251",
 		"bind-address": "127.0.0.1",
 		"secure-port":  "0",
-	}
-	offset := cfg.HTTPSPort - 6443
-	if offset > 0 {
-		argsMap["port"] = strconv.Itoa(10251 + offset)
 	}
 	if cfg.NoLeaderElect {
 		argsMap["leader-elect"] = "false"
