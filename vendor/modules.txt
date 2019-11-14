@@ -340,7 +340,7 @@ github.com/containernetworking/cni/pkg/invoke
 github.com/containernetworking/cni/pkg/version
 # github.com/containernetworking/plugins v0.8.2
 github.com/containernetworking/plugins/pkg/ns
-# github.com/coreos/etcd v3.3.15+incompatible
+# github.com/coreos/etcd v3.3.17+incompatible
 github.com/coreos/etcd/clientv3
 github.com/coreos/etcd/pkg/transport
 github.com/coreos/etcd/auth/authpb
@@ -1116,7 +1116,7 @@ gopkg.in/square/go-jose.v2/json
 gopkg.in/warnings.v0
 # gopkg.in/yaml.v2 v2.2.4
 gopkg.in/yaml.v2
-# k8s.io/api v0.0.0 => github.com/rancher/kubernetes/staging/src/k8s.io/api v1.16.2-k3s.1
+# k8s.io/api v0.0.0 => github.com/rancher/kubernetes/staging/src/k8s.io/api v1.16.3-k3s.1
 k8s.io/api/core/v1
 k8s.io/api/extensions/v1beta1
 k8s.io/api/networking/v1
@@ -1158,7 +1158,7 @@ k8s.io/api/authorization/v1beta1
 k8s.io/api/admission/v1
 k8s.io/api/admission/v1beta1
 k8s.io/api/imagepolicy/v1alpha1
-# k8s.io/apiextensions-apiserver v0.0.0 => github.com/rancher/kubernetes/staging/src/k8s.io/apiextensions-apiserver v1.16.2-k3s.1
+# k8s.io/apiextensions-apiserver v0.0.0 => github.com/rancher/kubernetes/staging/src/k8s.io/apiextensions-apiserver v1.16.3-k3s.1
 k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1
 k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1
 k8s.io/apiextensions-apiserver/pkg/apiserver
@@ -1206,7 +1206,7 @@ k8s.io/apiextensions-apiserver/pkg/client/informers/externalversions/apiextensio
 k8s.io/apiextensions-apiserver/pkg/client/informers/externalversions/apiextensions/v1beta1
 k8s.io/apiextensions-apiserver/pkg/client/listers/apiextensions/v1
 k8s.io/apiextensions-apiserver/pkg/client/listers/apiextensions/v1beta1
-# k8s.io/apimachinery v0.0.0 => github.com/rancher/kubernetes/staging/src/k8s.io/apimachinery v1.16.2-k3s.1
+# k8s.io/apimachinery v0.0.0 => github.com/rancher/kubernetes/staging/src/k8s.io/apimachinery v1.16.3-k3s.1
 k8s.io/apimachinery/pkg/api/equality
 k8s.io/apimachinery/pkg/apis/meta/v1
 k8s.io/apimachinery/pkg/util/json
@@ -1268,7 +1268,7 @@ k8s.io/apimachinery/pkg/api/meta/table
 k8s.io/apimachinery/pkg/apis/meta/v1beta1/validation
 k8s.io/apimachinery/pkg/runtime/serializer/yaml
 k8s.io/apimachinery/pkg/util/duration
-# k8s.io/apiserver v0.0.0 => github.com/rancher/kubernetes/staging/src/k8s.io/apiserver v1.16.2-k3s.1
+# k8s.io/apiserver v0.0.0 => github.com/rancher/kubernetes/staging/src/k8s.io/apiserver v1.16.3-k3s.1
 k8s.io/apiserver/pkg/authentication/authenticator
 k8s.io/apiserver/pkg/endpoints/request
 k8s.io/apiserver/pkg/server
@@ -1381,7 +1381,7 @@ k8s.io/apiserver/pkg/registry/generic/rest
 k8s.io/apiserver/pkg/storage/value/encrypt/envelope/v1beta1
 k8s.io/apiserver/pkg/admission/plugin/webhook/config/apis/webhookadmission
 k8s.io/apiserver/pkg/admission/plugin/webhook/config/apis/webhookadmission/v1alpha1
-# k8s.io/cli-runtime v0.0.0 => github.com/rancher/kubernetes/staging/src/k8s.io/cli-runtime v1.16.2-k3s.1
+# k8s.io/cli-runtime v0.0.0 => github.com/rancher/kubernetes/staging/src/k8s.io/cli-runtime v1.16.3-k3s.1
 k8s.io/cli-runtime/pkg/genericclioptions
 k8s.io/cli-runtime/pkg/printers
 k8s.io/cli-runtime/pkg/resource
@@ -1394,7 +1394,7 @@ k8s.io/cli-runtime/pkg/kustomize/k8sdeps/configmapandsecret
 k8s.io/cli-runtime/pkg/kustomize/k8sdeps/transformer/hash
 k8s.io/cli-runtime/pkg/kustomize/k8sdeps/transformer/patch
 k8s.io/cli-runtime/pkg/kustomize/k8sdeps/kv
-# k8s.io/client-go v11.0.1-0.20190409021438-1a26190bd76a+incompatible => github.com/rancher/kubernetes/staging/src/k8s.io/client-go v1.16.2-k3s.1
+# k8s.io/client-go v11.0.1-0.20190409021438-1a26190bd76a+incompatible => github.com/rancher/kubernetes/staging/src/k8s.io/client-go v1.16.3-k3s.1
 k8s.io/client-go/kubernetes
 k8s.io/client-go/kubernetes/typed/core/v1
 k8s.io/client-go/tools/clientcmd
@@ -1493,6 +1493,7 @@ k8s.io/client-go/metadata
 k8s.io/client-go/metadata/metadatainformer
 k8s.io/client-go/restmapper
 k8s.io/client-go/scale
+k8s.io/client-go/tools/events
 k8s.io/client-go/util/workqueue
 k8s.io/client-go/informers/apps/v1
 k8s.io/client-go/listers/apps/v1
@@ -1553,7 +1554,6 @@ k8s.io/client-go/listers/batch/v1
 k8s.io/client-go/listers/coordination/v1beta1
 k8s.io/client-go/listers/autoscaling/v1
 k8s.io/client-go/listers/storage/v1
-k8s.io/client-go/tools/events
 k8s.io/client-go/discovery/cached/disk
 k8s.io/client-go/util/jsonpath
 k8s.io/client-go/listers/admissionregistration/v1
@@ -1580,20 +1580,20 @@ k8s.io/client-go/listers/scheduling/v1beta1
 k8s.io/client-go/listers/settings/v1alpha1
 k8s.io/client-go/listers/storage/v1alpha1
 k8s.io/client-go/third_party/forked/golang/template
-# k8s.io/cloud-provider v0.0.0 => github.com/rancher/kubernetes/staging/src/k8s.io/cloud-provider v1.16.2-k3s.1
+# k8s.io/cloud-provider v0.0.0 => github.com/rancher/kubernetes/staging/src/k8s.io/cloud-provider v1.16.3-k3s.1
 k8s.io/cloud-provider
 k8s.io/cloud-provider/volume/helpers
 k8s.io/cloud-provider/volume
 k8s.io/cloud-provider/service/helpers
 k8s.io/cloud-provider/volume/errors
 k8s.io/cloud-provider/node/helpers
-# k8s.io/cluster-bootstrap v0.0.0 => github.com/rancher/kubernetes/staging/src/k8s.io/cluster-bootstrap v1.16.2-k3s.1
+# k8s.io/cluster-bootstrap v0.0.0 => github.com/rancher/kubernetes/staging/src/k8s.io/cluster-bootstrap v1.16.3-k3s.1
 k8s.io/cluster-bootstrap/token/api
 k8s.io/cluster-bootstrap/util/secrets
 k8s.io/cluster-bootstrap/util/tokens
 k8s.io/cluster-bootstrap/token/jws
 k8s.io/cluster-bootstrap/token/util
-# k8s.io/code-generator v0.0.0 => github.com/rancher/kubernetes/staging/src/k8s.io/code-generator v1.16.2-k3s.1
+# k8s.io/code-generator v0.0.0 => github.com/rancher/kubernetes/staging/src/k8s.io/code-generator v1.16.3-k3s.1
 k8s.io/code-generator/cmd/client-gen/args
 k8s.io/code-generator/cmd/client-gen/generators
 k8s.io/code-generator/cmd/client-gen/types
@@ -1608,7 +1608,7 @@ k8s.io/code-generator/pkg/util
 k8s.io/code-generator/cmd/client-gen/generators/fake
 k8s.io/code-generator/cmd/client-gen/generators/scheme
 k8s.io/code-generator/pkg/namer
-# k8s.io/component-base v0.0.0 => github.com/rancher/kubernetes/staging/src/k8s.io/component-base v1.16.2-k3s.1
+# k8s.io/component-base v0.0.0 => github.com/rancher/kubernetes/staging/src/k8s.io/component-base v1.16.3-k3s.1
 k8s.io/component-base/logs
 k8s.io/component-base/cli/flag
 k8s.io/component-base/metrics/prometheus/restclient
@@ -1621,10 +1621,10 @@ k8s.io/component-base/metrics
 k8s.io/component-base/featuregate
 k8s.io/component-base/config/v1alpha1
 k8s.io/component-base/config/validation
-# k8s.io/cri-api v0.0.0 => github.com/rancher/kubernetes/staging/src/k8s.io/cri-api v1.16.2-k3s.1
+# k8s.io/cri-api v0.0.0 => github.com/rancher/kubernetes/staging/src/k8s.io/cri-api v1.16.3-k3s.1
 k8s.io/cri-api/pkg/apis/runtime/v1alpha2
 k8s.io/cri-api/pkg/apis
-# k8s.io/csi-translation-lib v0.0.0 => github.com/rancher/kubernetes/staging/src/k8s.io/csi-translation-lib v1.16.2-k3s.1
+# k8s.io/csi-translation-lib v0.0.0 => github.com/rancher/kubernetes/staging/src/k8s.io/csi-translation-lib v1.16.3-k3s.1
 k8s.io/csi-translation-lib/plugins
 k8s.io/csi-translation-lib
 # k8s.io/gengo v0.0.0-20190822140433-26a664648505
@@ -1639,7 +1639,7 @@ k8s.io/gengo/examples/set-gen/sets
 k8s.io/heapster/metrics/api/v1/types
 # k8s.io/klog v0.4.0
 k8s.io/klog
-# k8s.io/kube-aggregator v0.0.0 => github.com/rancher/kubernetes/staging/src/k8s.io/kube-aggregator v1.16.2-k3s.1
+# k8s.io/kube-aggregator v0.0.0 => github.com/rancher/kubernetes/staging/src/k8s.io/kube-aggregator v1.16.3-k3s.1
 k8s.io/kube-aggregator/pkg/apis/apiregistration/v1
 k8s.io/kube-aggregator/pkg/apis/apiregistration/v1/helper
 k8s.io/kube-aggregator/pkg/apis/apiregistration/v1beta1
@@ -1667,7 +1667,7 @@ k8s.io/kube-aggregator/pkg/client/informers/externalversions/apiregistration/v1b
 k8s.io/kube-aggregator/pkg/registry/apiservice
 k8s.io/kube-aggregator/pkg/client/listers/apiregistration/v1beta1
 k8s.io/kube-aggregator/pkg/apis/apiregistration/validation
-# k8s.io/kube-controller-manager v0.0.0 => github.com/rancher/kubernetes/staging/src/k8s.io/kube-controller-manager v1.16.2-k3s.1
+# k8s.io/kube-controller-manager v0.0.0 => github.com/rancher/kubernetes/staging/src/k8s.io/kube-controller-manager v1.16.3-k3s.1
 k8s.io/kube-controller-manager/config/v1alpha1
 # k8s.io/kube-openapi v0.0.0-20190816220812-743ec37842bf
 k8s.io/kube-openapi/pkg/builder
@@ -1678,11 +1678,11 @@ k8s.io/kube-openapi/pkg/util/proto
 k8s.io/kube-openapi/pkg/aggregator
 k8s.io/kube-openapi/pkg/util/proto/validation
 k8s.io/kube-openapi/pkg/schemaconv
-# k8s.io/kube-proxy v0.0.0 => github.com/rancher/kubernetes/staging/src/k8s.io/kube-proxy v1.16.2-k3s.1
+# k8s.io/kube-proxy v0.0.0 => github.com/rancher/kubernetes/staging/src/k8s.io/kube-proxy v1.16.3-k3s.1
 k8s.io/kube-proxy/config/v1alpha1
-# k8s.io/kube-scheduler v0.0.0 => github.com/rancher/kubernetes/staging/src/k8s.io/kube-scheduler v1.16.2-k3s.1
+# k8s.io/kube-scheduler v0.0.0 => github.com/rancher/kubernetes/staging/src/k8s.io/kube-scheduler v1.16.3-k3s.1
 k8s.io/kube-scheduler/config/v1alpha1
-# k8s.io/kubectl v0.0.0 => github.com/rancher/kubernetes/staging/src/k8s.io/kubectl v1.16.2-k3s.1
+# k8s.io/kubectl v0.0.0 => github.com/rancher/kubernetes/staging/src/k8s.io/kubectl v1.16.3-k3s.1
 k8s.io/kubectl/pkg/util/term
 k8s.io/kubectl/pkg/cmd
 k8s.io/kubectl/pkg/cmd/annotate
@@ -1759,9 +1759,9 @@ k8s.io/kubectl/pkg/util/fieldpath
 k8s.io/kubectl/pkg/util/qos
 k8s.io/kubectl/pkg/util/resource
 k8s.io/kubectl/pkg/util/storage
-# k8s.io/kubelet v0.0.0 => github.com/rancher/kubernetes/staging/src/k8s.io/kubelet v1.16.2-k3s.1
+# k8s.io/kubelet v0.0.0 => github.com/rancher/kubernetes/staging/src/k8s.io/kubelet v1.16.3-k3s.1
 k8s.io/kubelet/config/v1beta1
-# k8s.io/kubernetes v1.16.0 => github.com/rancher/kubernetes v1.16.2-k3s.1
+# k8s.io/kubernetes v1.16.0 => github.com/rancher/kubernetes v1.16.3-k3s.1
 k8s.io/kubernetes/cmd/hyperkube
 k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1beta1
 k8s.io/kubernetes/pkg/kubelet/util
@@ -2477,7 +2477,7 @@ k8s.io/kubernetes/pkg/controller/volume/persistentvolume/config/v1alpha1
 k8s.io/kubernetes/pkg/apis/abac/v1beta1
 k8s.io/kubernetes/third_party/forked/gonum/graph/internal/linear
 k8s.io/kubernetes/pkg/util/maps
-# k8s.io/legacy-cloud-providers v0.0.0 => github.com/rancher/kubernetes/staging/src/k8s.io/legacy-cloud-providers v1.16.2-k3s.1
+# k8s.io/legacy-cloud-providers v0.0.0 => github.com/rancher/kubernetes/staging/src/k8s.io/legacy-cloud-providers v1.16.3-k3s.1
 k8s.io/legacy-cloud-providers/aws
 k8s.io/legacy-cloud-providers/azure
 k8s.io/legacy-cloud-providers/gce
@@ -2487,7 +2487,7 @@ k8s.io/legacy-cloud-providers/vsphere/vclib
 k8s.io/legacy-cloud-providers/azure/auth
 k8s.io/legacy-cloud-providers/openstack/util/mount
 k8s.io/legacy-cloud-providers/vsphere/vclib/diskmanagers
-# k8s.io/metrics v0.0.0 => github.com/rancher/kubernetes/staging/src/k8s.io/metrics v1.16.2-k3s.1
+# k8s.io/metrics v0.0.0 => github.com/rancher/kubernetes/staging/src/k8s.io/metrics v1.16.3-k3s.1
 k8s.io/metrics/pkg/client/clientset/versioned/typed/metrics/v1beta1
 k8s.io/metrics/pkg/client/custom_metrics
 k8s.io/metrics/pkg/client/external_metrics
