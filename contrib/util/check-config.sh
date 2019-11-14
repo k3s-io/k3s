@@ -19,6 +19,7 @@ possibleConfigs="
 "
 binDir=$(dirname "$0")
 configFormat=gz
+isError=0
 
 if [ $# -gt 0 ]; then
   CONFIG="$1"
@@ -108,7 +109,7 @@ check_flag() {
   elif is_set_as_module "$1"; then
     wrap_good "CONFIG_$1" 'enabled (as module)'
   else
-    if [ "$IS_ERROR" = 1 ]; then
+    if [ $isError -eq 1 ]; then
       wrap_bad "CONFIG_$1" 'missing'
     else
       wrap_warn "CONFIG_$1" 'missing'
@@ -341,7 +342,8 @@ flags="
   IP_NF_NAT NF_NAT NF_NAT_NEEDED
   POSIX_MQUEUE
 "
-IS_ERROR=1 check_flags $flags
+isError=1 check_flags $flags && isError=0
+
 if [ "$kernelMajor" -lt 4 ] || ( [ "$kernelMajor" -eq 4 ] && [ "$kernelMinor" -lt 8 ] ); then
   check_flags DEVPTS_MULTIPLE_INSTANCES
 fi
