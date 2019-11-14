@@ -155,7 +155,6 @@ func (l *LogStructured) Delete(ctx context.Context, key string, revision int64) 
 
 func (l *LogStructured) List(ctx context.Context, prefix, startKey string, limit, revision int64) (revRet int64, kvRet []*server.KeyValue, errRet error) {
 	defer func() {
-		l.adjustRevision(ctx, &revRet)
 		logrus.Debugf("LIST %s, start=%s, limit=%d, rev=%d => rev=%d, kvs=%d, err=%v", prefix, startKey, limit, revision, revRet, len(kvRet), errRet)
 	}()
 
@@ -163,7 +162,17 @@ func (l *LogStructured) List(ctx context.Context, prefix, startKey string, limit
 	if err != nil {
 		return 0, nil, err
 	}
-	if revision != 0 {
+	if revision == 0 && len(events) == 0 {
+		// if no revision is requested and no events are returned, then
+		// get the current revision and relist.  Relist is required because
+		// between now and getting the current revision something could have
+		// been created.
+		currentRev, err := l.log.CurrentRevision(ctx)
+		if err != nil {
+			return 0, nil, err
+		}
+		return l.List(ctx, prefix, startKey, limit, currentRev)
+	} else if revision != 0 {
 		rev = revision
 	}
 
@@ -176,10 +185,23 @@ func (l *LogStructured) List(ctx context.Context, prefix, startKey string, limit
 
 func (l *LogStructured) Count(ctx context.Context, prefix string) (revRet int64, count int64, err error) {
 	defer func() {
-		l.adjustRevision(ctx, &revRet)
 		logrus.Debugf("COUNT %s => rev=%d, count=%d, err=%v", prefix, revRet, count, err)
 	}()
-	return l.log.Count(ctx, prefix)
+	rev, count, err := l.log.Count(ctx, prefix)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	if count == 0 {
+		// if count is zero, then so is revision, so now get the current revision and re-count at that revision
+		currentRev, err := l.log.CurrentRevision(ctx)
+		if err != nil {
+			return 0, 0, err
+		}
+		rev, rows, err := l.List(ctx, prefix, prefix, 1000, currentRev)
+		return rev, int64(len(rows)), err
+	}
+	return rev, count, nil
 }
 
 func (l *LogStructured) Update(ctx context.Context, key string, value []byte, revision, lease int64) (revRet int64, kvRet *server.KeyValue, updateRet bool, errRet error) {
