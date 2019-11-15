@@ -1,21 +1,21 @@
 ## MAIN VARIABLES ##
 ####################
 CLUSTER_NAME="loadtest-k3s"
-DOMAIN_NAME=""
+DOMAIN_NAME="loadtest.eng.rancher.space"
 ZONE_ID=""
-K3S_VERSION="v0.11.0-alpha2"
+K3S_VERSION="v1.0.0"
 EXTRA_SSH_KEYS="" # comma separated public keys
 PRIVATE_KEY_PATH="~/.ssh/id_rsa"
 DEBUG=1
 
 ## K3S DB VARIABLES ##
 ##########################
-DB_ENGINE="postgres"
+DB_ENGINE="dqlite"
 DB_INSTANCE_TYPE="db.m4.4xlarge"
 DB_NAME="k3s"
 DB_USERNAME="k3suser"
 DB_PASSWORD="024d9442b3add64b7ef90655bc302cd8"
-DB_VERSION=11.5
+DB_VERSION=5.7
 
 ## K3S SERVER VARIABLES ##
 ##########################
@@ -30,5 +30,5 @@ PROM_WORKER_INSTANCE_TYPE="m5.large"
 
 ## K3S AGENTS VARIABLES ##
 ##########################
-AGENT_NODE_COUNT=100
+AGENT_NODE_COUNT=10
 AGENT_INSTANCE_TYPE="m5.large"

@@ -27,7 +27,4 @@ runcmd:
 - apt-get install -y software-properties-common
 - apt-get install -y resolvconf linux-headers-$(uname -r) && echo "nameserver 1.1.1.1" > /etc/resolvconf/resolv.conf.d/tail && systemctl start resolvconf
 - DEBIAN_FRONTEND=noninteractive apt-get upgrade -y
-- wget https://raw.githubusercontent.com/galal-hussein/k3s/k3s_with_kine_fix/k3s
-- cp k3s /usr/local/bin/k3s
-- chmod +x /usr/local/bin/k3s
 - until (curl -sfL https://get.k3s.io | K3S_URL=https://${k3s_url}:6443 K3S_CLUSTER_SECRET="${k3s_cluster_secret}" K3S_CLUSTER_SECRET="${k3s_cluster_secret}" INSTALL_K3S_VERSION="${install_k3s_version}" sh -); do echo 'Error installing k3s agent'; sleep 1; done

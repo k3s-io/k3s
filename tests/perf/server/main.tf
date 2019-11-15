@@ -13,7 +13,7 @@ locals {
 }
 
 provider "aws" {
-  region  = "us-west-2"
+  region  = "us-east-2"
   profile = "rancher-eng"
 }
 
@@ -58,10 +58,9 @@ resource "aws_security_group" "k3s" {
 }
 
 resource "aws_db_instance" "k3s_db" {
-  count                = "${var.db_engine == "etcd" ? 0 : var.server_ha}"
+  count                = "${var.db_engine == "postgres" || var.db_engine == "mysql" ? 1 : 0 }"
   allocated_storage    = 100 #baseline iops is 300 with gp2
-  storage_type         = "io1"
-  iops                 = "3000"
+  storage_type         = "gp2"
   engine               = "${var.db_engine}"
   engine_version       = "${var.db_version}"
   instance_class       = "${var.db_instance_type}"
@@ -87,7 +86,7 @@ resource "aws_instance" "k3s_etcd" {
   ]
 
    root_block_device {
-    volume_size = "100"
+    volume_size = "30"
     volume_type = "gp2"
   }
 
@@ -156,8 +155,8 @@ resource "aws_instance" "k3s-server" {
     k3s_cluster_secret = local.k3s_cluster_secret,
     install_k3s_version = local.install_k3s_version,
     k3s_server_args = var.k3s_server_args,
-    db_engine = var.db_engine
-    db_address = "${var.db_engine == "etcd" ? join(",",aws_instance.k3s_etcd.*.private_ip) : aws_db_instance.k3s_db[0].address}",
+    db_engine = var.db_engine,
+    db_address = "${var.db_engine == "etcd" ? join(",",aws_instance.k3s_etcd.*.private_ip) : var.db_engine == "dqlite" ? "null" : aws_db_instance.k3s_db[0].address}",
     db_name = var.db_name,
     db_username = var.db_username,
     db_password = var.db_password,
@@ -172,12 +171,14 @@ resource "aws_instance" "k3s-server" {
   ]
 
    root_block_device {
-    volume_size = "100"
+    volume_size = "30"
     volume_type = "gp2"
   }
 
    tags = {
     Name = "${local.name}-server-${count.index}"
+    Role = "master"
+    Leader = "${count.index == 0 ? "true" : "false"}"
   }
   provisioner "local-exec" {
       command = "sleep 10"
@@ -208,7 +209,7 @@ module "k3s-prom-worker-asg" {
 
   root_block_device = [
     {
-      volume_size = "100"
+      volume_size = "30"
       volume_type = "gp2"
     },
   ]

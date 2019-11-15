@@ -10,7 +10,7 @@ locals {
 }
 
 provider "aws" {
-  region  = "us-west-2"
+  region  = "us-east-2"
   profile = "rancher-eng"
 }
 
@@ -76,7 +76,7 @@ module "k3s-pool-worker-asg" {
 
   root_block_device = [
     {
-      volume_size = "100"
+      volume_size = "30"
       volume_type = "gp2"
     },
   ]
