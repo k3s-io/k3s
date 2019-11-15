@@ -6,6 +6,7 @@ import (
 	cryptorand "crypto/rand"
 	"crypto/tls"
 	"encoding/hex"
+	"encoding/pem"
 	"fmt"
 	"io/ioutil"
 	sysnet "net"
@@ -141,14 +142,13 @@ func getServingCert(nodeName, servingCertFile, servingKeyFile, nodePasswordFile 
 	if err != nil {
 		return nil, err
 	}
+
+	servingCert, servingKey := splitCertKeyPEM(servingCert)
+
 	if err := ioutil.WriteFile(servingCertFile, servingCert, 0600); err != nil {
 		return nil, errors.Wrapf(err, "failed to write node cert")
 	}
 
-	servingKey, err := clientaccess.Get("/v1-k3s/serving-kubelet.key", info)
-	if err != nil {
-		return nil, err
-	}
 	if err := ioutil.WriteFile(servingKeyFile, servingKey, 0600); err != nil {
 		return nil, errors.Wrapf(err, "failed to write node key")
 	}
@@ -160,26 +160,59 @@ func getServingCert(nodeName, servingCertFile, servingKeyFile, nodePasswordFile 
 	return &cert, nil
 }
 
-func getHostFile(filename string, info *clientaccess.Info) error {
+func getHostFile(filename, keyFile string, info *clientaccess.Info) error {
 	basename := filepath.Base(filename)
 	fileBytes, err := clientaccess.Get("/v1-k3s/"+basename, info)
 	if err != nil {
 		return err
 	}
-	if err := ioutil.WriteFile(filename, fileBytes, 0600); err != nil {
-		return errors.Wrapf(err, "failed to write cert %s", filename)
+	if keyFile == "" {
+		if err := ioutil.WriteFile(filename, fileBytes, 0600); err != nil {
+			return errors.Wrapf(err, "failed to write cert %s", filename)
+		}
+	} else {
+		fileBytes, keyBytes := splitCertKeyPEM(fileBytes)
+		if err := ioutil.WriteFile(filename, fileBytes, 0600); err != nil {
+			return errors.Wrapf(err, "failed to write cert %s", filename)
+		}
+		if err := ioutil.WriteFile(keyFile, keyBytes, 0600); err != nil {
+			return errors.Wrapf(err, "failed to write key %s", filename)
+		}
 	}
 	return nil
 }
 
-func getNodeNamedHostFile(filename, nodeName, nodePasswordFile string, info *clientaccess.Info) error {
+func splitCertKeyPEM(bytes []byte) (certPem []byte, keyPem []byte) {
+	for {
+		b, rest := pem.Decode(bytes)
+		if b == nil {
+			break
+		}
+		bytes = rest
+
+		if strings.Contains(b.Type, "PRIVATE KEY") {
+			keyPem = append(keyPem, pem.EncodeToMemory(b)...)
+		} else {
+			certPem = append(certPem, pem.EncodeToMemory(b)...)
+		}
+	}
+
+	return
+}
+
+func getNodeNamedHostFile(filename, keyFile, nodeName, nodePasswordFile string, info *clientaccess.Info) error {
 	basename := filepath.Base(filename)
 	fileBytes, err := Request("/v1-k3s/"+basename, info, getNodeNamedCrt(nodeName, nodePasswordFile))
 	if err != nil {
 		return err
 	}
+	fileBytes, keyBytes := splitCertKeyPEM(fileBytes)
+
 	if err := ioutil.WriteFile(filename, fileBytes, 0600); err != nil {
 		return errors.Wrapf(err, "failed to write cert %s", filename)
+	}
+	if err := ioutil.WriteFile(keyFile, keyBytes, 0600); err != nil {
+		return errors.Wrapf(err, "failed to write key %s", filename)
 	}
 	return nil
 }
@@ -287,12 +320,12 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 	}
 
 	clientCAFile := filepath.Join(envInfo.DataDir, "client-ca.crt")
-	if err := getHostFile(clientCAFile, info); err != nil {
+	if err := getHostFile(clientCAFile, "", info); err != nil {
 		return nil, err
 	}
 
 	serverCAFile := filepath.Join(envInfo.DataDir, "server-ca.crt")
-	if err := getHostFile(serverCAFile, info); err != nil {
+	if err := getHostFile(serverCAFile, "", info); err != nil {
 		return nil, err
 	}
 
@@ -331,12 +364,8 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 	}
 
 	clientKubeletCert := filepath.Join(envInfo.DataDir, "client-kubelet.crt")
-	if err := getNodeNamedHostFile(clientKubeletCert, nodeName, newNodePasswordFile, info); err != nil {
-		return nil, err
-	}
-
 	clientKubeletKey := filepath.Join(envInfo.DataDir, "client-kubelet.key")
-	if err := getHostFile(clientKubeletKey, info); err != nil {
+	if err := getNodeNamedHostFile(clientKubeletCert, clientKubeletKey, nodeName, newNodePasswordFile, info); err != nil {
 		return nil, err
 	}
 
@@ -346,12 +375,8 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 	}
 
 	clientKubeProxyCert := filepath.Join(envInfo.DataDir, "client-kube-proxy.crt")
-	if err := getHostFile(clientKubeProxyCert, info); err != nil {
-		return nil, err
-	}
-
 	clientKubeProxyKey := filepath.Join(envInfo.DataDir, "client-kube-proxy.key")
-	if err := getHostFile(clientKubeProxyKey, info); err != nil {
+	if err := getHostFile(clientKubeProxyCert, clientKubeProxyKey, info); err != nil {
 		return nil, err
 	}
 
@@ -361,12 +386,8 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 	}
 
 	clientK3sControllerCert := filepath.Join(envInfo.DataDir, "client-k3s-controller.crt")
-	if err := getHostFile(clientK3sControllerCert, info); err != nil {
-		return nil, err
-	}
-
 	clientK3sControllerKey := filepath.Join(envInfo.DataDir, "client-k3s-controller.key")
-	if err := getHostFile(clientK3sControllerKey, info); err != nil {
+	if err := getHostFile(clientK3sControllerCert, clientK3sControllerKey, info); err != nil {
 		return nil, err
 	}
 
