@@ -1,13 +1,16 @@
 package factory
 
 import (
-	"crypto/ecdsa"
+	"crypto"
 	"crypto/x509"
+	"fmt"
 	"io/ioutil"
 	"os"
+
+	"github.com/rancher/dynamiclistener/cert"
 )
 
-func GenCA() (*x509.Certificate, *ecdsa.PrivateKey, error) {
+func GenCA() (*x509.Certificate, crypto.Signer, error) {
 	caKey, err := NewPrivateKey()
 	if err != nil {
 		return nil, nil, err
@@ -21,7 +24,7 @@ func GenCA() (*x509.Certificate, *ecdsa.PrivateKey, error) {
 	return caCert, caKey, nil
 }
 
-func LoadOrGenCA() (*x509.Certificate, *ecdsa.PrivateKey, error) {
+func LoadOrGenCA() (*x509.Certificate, crypto.Signer, error) {
 	cert, key, err := loadCA()
 	if err == nil {
 		return cert, key, nil
@@ -52,11 +55,11 @@ func LoadOrGenCA() (*x509.Certificate, *ecdsa.PrivateKey, error) {
 	return cert, key, nil
 }
 
-func loadCA() (*x509.Certificate, *ecdsa.PrivateKey, error) {
+func loadCA() (*x509.Certificate, crypto.Signer, error) {
 	return LoadCerts("./certs/ca.pem", "./certs/ca.key")
 }
 
-func LoadCerts(certFile, keyFile string) (*x509.Certificate, *ecdsa.PrivateKey, error) {
+func LoadCerts(certFile, keyFile string) (*x509.Certificate, crypto.Signer, error) {
 	caPem, err := ioutil.ReadFile(certFile)
 	if err != nil {
 		return nil, nil, err
@@ -66,9 +69,13 @@ func LoadCerts(certFile, keyFile string) (*x509.Certificate, *ecdsa.PrivateKey, 
 		return nil, nil, err
 	}
 
-	key, err := ParseECPrivateKeyPEM(caKey)
+	key, err := cert.ParsePrivateKeyPEM(caKey)
 	if err != nil {
 		return nil, nil, err
+	}
+	signer, ok := key.(crypto.Signer)
+	if !ok {
+		return nil, nil, fmt.Errorf("key is not a crypto.Signer")
 	}
 
 	cert, err := ParseCertPEM(caPem)
@@ -76,5 +83,5 @@ func LoadCerts(certFile, keyFile string) (*x509.Certificate, *ecdsa.PrivateKey, 
 		return nil, nil, err
 	}
 
-	return cert, key, nil
+	return cert, signer, nil
 }

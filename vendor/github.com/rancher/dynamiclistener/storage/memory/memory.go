@@ -2,6 +2,7 @@ package memory
 
 import (
 	"github.com/rancher/dynamiclistener"
+	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 )
 
@@ -15,7 +16,7 @@ func NewBacked(storage dynamiclistener.TLSStorage) dynamiclistener.TLSStorage {
 
 type memory struct {
 	storage dynamiclistener.TLSStorage
-	secret *v1.Secret
+	secret  *v1.Secret
 }
 
 func (m *memory) Get() (*v1.Secret, error) {
@@ -37,6 +38,7 @@ func (m *memory) Update(secret *v1.Secret) error {
 		}
 	}
 
+	logrus.Infof("Active TLS secret %s (ver=%s) (count %d): %v", secret.Name, secret.ResourceVersion, len(secret.Annotations)-1, secret.Annotations)
 	m.secret = secret
 	return nil
 }

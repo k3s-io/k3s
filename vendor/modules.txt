@@ -748,7 +748,7 @@ github.com/prometheus/procfs/internal/util
 # github.com/rakelkar/gonetsh v0.0.0-20190719023240-501daadcadf8
 github.com/rakelkar/gonetsh/netroute
 github.com/rakelkar/gonetsh/netsh
-# github.com/rancher/dynamiclistener v0.1.1-0.20191113144757-736b5d5d8b51
+# github.com/rancher/dynamiclistener v0.2.0
 github.com/rancher/dynamiclistener
 github.com/rancher/dynamiclistener/factory
 github.com/rancher/dynamiclistener/storage/file
