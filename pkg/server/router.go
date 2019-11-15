@@ -29,14 +29,10 @@ func router(serverConfig *config.Control, tunnel http.Handler, ca []byte) http.H
 	authed := mux.NewRouter()
 	authed.Use(authMiddleware(serverConfig, "k3s:agent"))
 	authed.NotFoundHandler = serverConfig.Runtime.Handler
-	authed.Path("/v1-k3s/serving-kubelet.crt").Handler(servingKubeletCert(serverConfig))
-	authed.Path("/v1-k3s/serving-kubelet.key").Handler(fileHandler(serverConfig.Runtime.ServingKubeletKey))
-	authed.Path("/v1-k3s/client-kubelet.crt").Handler(clientKubeletCert(serverConfig))
-	authed.Path("/v1-k3s/client-kubelet.key").Handler(fileHandler(serverConfig.Runtime.ClientKubeletKey))
-	authed.Path("/v1-k3s/client-kube-proxy.crt").Handler(fileHandler(serverConfig.Runtime.ClientKubeProxyCert))
-	authed.Path("/v1-k3s/client-kube-proxy.key").Handler(fileHandler(serverConfig.Runtime.ClientKubeProxyKey))
-	authed.Path("/v1-k3s/client-k3s-controller.crt").Handler(fileHandler(serverConfig.Runtime.ClientK3sControllerCert))
-	authed.Path("/v1-k3s/client-k3s-controller.key").Handler(fileHandler(serverConfig.Runtime.ClientK3sControllerKey))
+	authed.Path("/v1-k3s/serving-kubelet.crt").Handler(servingKubeletCert(serverConfig, serverConfig.Runtime.ServingKubeletKey))
+	authed.Path("/v1-k3s/client-kubelet.crt").Handler(clientKubeletCert(serverConfig, serverConfig.Runtime.ClientKubeletKey))
+	authed.Path("/v1-k3s/client-kube-proxy.crt").Handler(fileHandler(serverConfig.Runtime.ClientKubeProxyCert, serverConfig.Runtime.ClientKubeProxyKey))
+	authed.Path("/v1-k3s/client-k3s-controller.crt").Handler(fileHandler(serverConfig.Runtime.ClientK3sControllerCert, serverConfig.Runtime.ClientK3sControllerKey))
 	authed.Path("/v1-k3s/client-ca.crt").Handler(fileHandler(serverConfig.Runtime.ClientCA))
 	authed.Path("/v1-k3s/server-ca.crt").Handler(fileHandler(serverConfig.Runtime.ServerCA))
 	authed.Path("/v1-k3s/config").Handler(configHandler(serverConfig))
@@ -119,7 +115,7 @@ func getCACertAndKeys(caCertFile, caKeyFile, signingKeyFile string) ([]*x509.Cer
 	return caCert, caKey.(crypto.Signer), key.(crypto.Signer), nil
 }
 
-func servingKubeletCert(server *config.Control) http.Handler {
+func servingKubeletCert(server *config.Control, keyFile string) http.Handler {
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 		if req.TLS == nil {
 			resp.WriteHeader(http.StatusNotFound)
@@ -156,11 +152,18 @@ func servingKubeletCert(server *config.Control) http.Handler {
 			return
 		}
 
+		keyBytes, err := ioutil.ReadFile(keyFile)
+		if err != nil {
+			http.Error(resp, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
 		resp.Write(append(certutil.EncodeCertPEM(cert), certutil.EncodeCertPEM(caCert[0])...))
+		resp.Write(keyBytes)
 	})
 }
 
-func clientKubeletCert(server *config.Control) http.Handler {
+func clientKubeletCert(server *config.Control, keyFile string) http.Handler {
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 		if req.TLS == nil {
 			resp.WriteHeader(http.StatusNotFound)
@@ -194,17 +197,39 @@ func clientKubeletCert(server *config.Control) http.Handler {
 			return
 		}
 
+		keyBytes, err := ioutil.ReadFile(keyFile)
+		if err != nil {
+			http.Error(resp, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
 		resp.Write(append(certutil.EncodeCertPEM(cert), certutil.EncodeCertPEM(caCert[0])...))
+		resp.Write(keyBytes)
 	})
 }
 
-func fileHandler(fileName string) http.Handler {
+func fileHandler(fileName ...string) http.Handler {
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 		if req.TLS == nil {
 			resp.WriteHeader(http.StatusNotFound)
 			return
 		}
-		http.ServeFile(resp, req, fileName)
+		resp.Header().Set("Content-Type", "text/plain")
+
+		if len(fileName) == 1 {
+			http.ServeFile(resp, req, fileName[0])
+			return
+		}
+
+		for _, f := range fileName {
+			bytes, err := ioutil.ReadFile(f)
+			if err != nil {
+				logrus.Errorf("Failed to read %s: %v", f, err)
+				resp.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			resp.Write(bytes)
+		}
 	})
 }
 
