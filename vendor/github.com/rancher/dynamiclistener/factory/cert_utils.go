@@ -2,7 +2,6 @@ package factory
 
 import (
 	"crypto"
-	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
@@ -15,8 +14,7 @@ import (
 )
 
 const (
-	ECPrivateKeyBlockType = "EC PRIVATE KEY"
-	CertificateBlockType  = "CERTIFICATE"
+	CertificateBlockType = "CERTIFICATE"
 )
 
 func NewSelfSignedCACert(key crypto.Signer, cn string, org ...string) (*x509.Certificate, error) {
@@ -70,22 +68,6 @@ func NewSignedCert(signer crypto.Signer, caCert *x509.Certificate, caKey crypto.
 	}
 
 	return x509.ParseCertificate(cert)
-}
-
-func ParseECPrivateKeyPEM(keyData []byte) (*ecdsa.PrivateKey, error) {
-	var privateKeyPemBlock *pem.Block
-	for {
-		privateKeyPemBlock, keyData = pem.Decode(keyData)
-		if privateKeyPemBlock == nil {
-			break
-		}
-
-		if privateKeyPemBlock.Type == ECPrivateKeyBlockType {
-			return x509.ParseECPrivateKey(privateKeyPemBlock.Bytes)
-		}
-	}
-
-	return nil, fmt.Errorf("pem does not include a valid EC private key")
 }
 
 func ParseCertPEM(pemCerts []byte) (*x509.Certificate, error) {

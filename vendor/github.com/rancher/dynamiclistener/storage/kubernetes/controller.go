@@ -80,9 +80,19 @@ func (s *storage) init(secrets v1controller.SecretController) {
 	})
 	s.secrets = secrets
 
-	secret, err := s.storage.Get()
-	if err == nil && secret != nil {
-		s.saveInK8s(secret)
+	if secret, err := s.storage.Get(); err == nil && secret != nil && len(secret.Data) > 0 {
+		// just ensure there is a secret in k3s
+		if _, err := s.secrets.Get(s.namespace, s.name, metav1.GetOptions{}); errors.IsNotFound(err) {
+			_, _ = s.secrets.Create(&v1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        s.name,
+					Namespace:   s.namespace,
+					Annotations: secret.Annotations,
+				},
+				Type: v1.SecretTypeTLS,
+				Data: secret.Data,
+			})
+		}
 	}
 }
 
@@ -132,10 +142,10 @@ func (s *storage) saveInK8s(secret *v1.Secret) (*v1.Secret, error) {
 	targetSecret.Data = secret.Data
 
 	if targetSecret.UID == "" {
-		logrus.Infof("Creating new TLS secret for %v (count: %d)", targetSecret.Name, len(targetSecret.Data)-1)
+		logrus.Infof("Creating new TLS secret for %v (count: %d): %v", targetSecret.Name, len(targetSecret.Annotations)-1, targetSecret.Annotations)
 		return s.secrets.Create(targetSecret)
 	} else {
-		logrus.Infof("Updating TLS secret for %v (count: %d)", targetSecret.Name, len(targetSecret.Data)-1)
+		logrus.Infof("Updating TLS secret for %v (count: %d): %v", targetSecret.Name, len(targetSecret.Annotations)-1, targetSecret.Annotations)
 		return s.secrets.Update(targetSecret)
 	}
 }

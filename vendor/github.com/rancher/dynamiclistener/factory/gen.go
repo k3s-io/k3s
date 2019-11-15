@@ -13,6 +13,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/rancher/dynamiclistener/cert"
 	v1 "k8s.io/api/core/v1"
 )
 
@@ -105,7 +106,7 @@ func (t *TLS) AddCN(secret *v1.Secret, cn ...string) (*v1.Secret, bool, error) {
 	return secret, true, nil
 }
 
-func (t *TLS) newCert(domains []string, ips []net.IP, privateKey *ecdsa.PrivateKey) (*x509.Certificate, error) {
+func (t *TLS) newCert(domains []string, ips []net.IP, privateKey crypto.Signer) (*x509.Certificate, error) {
 	return NewSignedCert(privateKey, t.CACert, t.CAKey, t.CN, t.Organization, domains, ips)
 }
 
@@ -134,39 +135,34 @@ func NeedsUpdate(secret *v1.Secret, cn ...string) bool {
 	return false
 }
 
-func getPrivateKey(secret *v1.Secret) (*ecdsa.PrivateKey, error) {
+func getPrivateKey(secret *v1.Secret) (crypto.Signer, error) {
 	keyBytes := secret.Data[v1.TLSPrivateKeyKey]
 	if len(keyBytes) == 0 {
 		return NewPrivateKey()
 	}
 
-	privateKey, err := ParseECPrivateKeyPEM(keyBytes)
-	if err == nil {
-		return privateKey, nil
+	privateKey, err := cert.ParsePrivateKeyPEM(keyBytes)
+	if signer, ok := privateKey.(crypto.Signer); ok && err == nil {
+		return signer, nil
 	}
 
 	return NewPrivateKey()
 }
 
-func Marshal(x509Cert *x509.Certificate, privateKey *ecdsa.PrivateKey) ([]byte, []byte, error) {
+func Marshal(x509Cert *x509.Certificate, privateKey crypto.Signer) ([]byte, []byte, error) {
 	certBlock := pem.Block{
 		Type:  CertificateBlockType,
 		Bytes: x509Cert.Raw,
 	}
 
-	keyBytes, err := x509.MarshalECPrivateKey(privateKey)
+	keyBytes, err := cert.MarshalPrivateKeyToPEM(privateKey)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	keyBlock := pem.Block{
-		Type:  ECPrivateKeyBlockType,
-		Bytes: keyBytes,
-	}
-
-	return pem.EncodeToMemory(&certBlock), pem.EncodeToMemory(&keyBlock), nil
+	return pem.EncodeToMemory(&certBlock), keyBytes, nil
 }
 
-func NewPrivateKey() (*ecdsa.PrivateKey, error) {
+func NewPrivateKey() (crypto.Signer, error) {
 	return ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 }

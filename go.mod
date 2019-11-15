@@ -100,7 +100,7 @@ require (
 	github.com/opencontainers/runc v1.0.0-rc2.0.20190611121236-6cc515888830
 	github.com/pkg/errors v0.8.1
 	github.com/rakelkar/gonetsh v0.0.0-20190719023240-501daadcadf8 // indirect
-	github.com/rancher/dynamiclistener v0.1.1-0.20191113144757-736b5d5d8b51
+	github.com/rancher/dynamiclistener v0.2.0
 	github.com/rancher/helm-controller v0.2.2
 	github.com/rancher/kine v0.2.4
 	github.com/rancher/remotedialer v0.2.0
