@@ -59,14 +59,14 @@ func (c *Cluster) startStorage(ctx context.Context) error {
 	}
 	c.storageStarted = true
 
-	etcdConfig, err := endpoint.Listen(ctx, c.config.Storage)
+	etcdConfig, err := endpoint.Listen(ctx, c.config.Datastore)
 	if err != nil {
 		return err
 	}
 
 	c.etcdConfig = etcdConfig
-	c.config.Storage.Config = etcdConfig.TLSConfig
-	c.config.Storage.Endpoint = strings.Join(etcdConfig.Endpoints, ",")
+	c.config.Datastore.Config = etcdConfig.TLSConfig
+	c.config.Datastore.Endpoint = strings.Join(etcdConfig.Endpoints, ",")
 	c.config.NoLeaderElect = !etcdConfig.LeaderElect
 	return nil
 }

@@ -28,10 +28,10 @@ type Server struct {
 	ExtraControllerArgs      cli.StringSlice
 	ExtraCloudControllerArgs cli.StringSlice
 	Rootless                 bool
-	StorageEndpoint          string
-	StorageCAFile            string
-	StorageCertFile          string
-	StorageKeyFile           string
+	DatastoreEndpoint        string
+	DatastoreCAFile          string
+	DatastoreCertFile        string
+	DatastoreKeyFile         string
 	AdvertiseIP              string
 	AdvertisePort            int
 	DisableScheduler         bool
@@ -163,28 +163,28 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Value: &ServerConfig.ExtraCloudControllerArgs,
 			},
 			cli.StringFlag{
-				Name:        "storage-endpoint",
+				Name:        "datastore-endpoint",
 				Usage:       "(db) Specify etcd, Mysql, Postgres, or Sqlite (default) data source name",
-				Destination: &ServerConfig.StorageEndpoint,
-				EnvVar:      "K3S_STORAGE_ENDPOINT",
+				Destination: &ServerConfig.DatastoreEndpoint,
+				EnvVar:      "K3S_DATASTORE_ENDPOINT",
 			},
 			cli.StringFlag{
-				Name:        "storage-cafile",
-				Usage:       "(db) SSL Certificate Authority file used to secure storage backend communication",
-				Destination: &ServerConfig.StorageCAFile,
-				EnvVar:      "K3S_STORAGE_CAFILE",
+				Name:        "datastore-cafile",
+				Usage:       "(db) TLS Certificate Authority file used to secure datastore backend communication",
+				Destination: &ServerConfig.DatastoreCAFile,
+				EnvVar:      "K3S_DATASTORE_CAFILE",
 			},
 			cli.StringFlag{
-				Name:        "storage-certfile",
-				Usage:       "(db) SSL certification file used to secure storage backend communication",
-				Destination: &ServerConfig.StorageCertFile,
-				EnvVar:      "K3S_STORAGE_CERTFILE",
+				Name:        "datastore-certfile",
+				Usage:       "(db) TLS certification file used to secure datastore backend communication",
+				Destination: &ServerConfig.DatastoreCertFile,
+				EnvVar:      "K3S_DATASTORE_CERTFILE",
 			},
 			cli.StringFlag{
-				Name:        "storage-keyfile",
-				Usage:       "(db) SSL key file used to secure storage backend communication",
-				Destination: &ServerConfig.StorageKeyFile,
-				EnvVar:      "K3S_STORAGE_KEYFILE",
+				Name:        "datastore-keyfile",
+				Usage:       "(db) TLS key file used to secure datastore backend communication",
+				Destination: &ServerConfig.DatastoreKeyFile,
+				EnvVar:      "K3S_DATASTORE_KEYFILE",
 			},
 			cli.StringFlag{
 				Name:        "default-local-storage-path",

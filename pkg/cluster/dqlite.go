@@ -76,8 +76,8 @@ func (c *Cluster) initClusterDB(ctx context.Context, l net.Listener, handler htt
 	}
 
 	c.db = dqlite
-	if !strings.HasPrefix(c.config.Storage.Endpoint, "dqlite://") {
-		c.config.Storage = endpoint.Config{
+	if !strings.HasPrefix(c.config.Datastore.Endpoint, "dqlite://") {
+		c.config.Datastore = endpoint.Config{
 			Endpoint: dqlite.StorageEndpoint,
 		}
 	}
@@ -91,12 +91,12 @@ func (c *Cluster) dqliteEnabled() bool {
 		return true
 	}
 
-	driver, _ := endpoint.ParseStorageEndpoint(c.config.Storage.Endpoint)
+	driver, _ := endpoint.ParseStorageEndpoint(c.config.Datastore.Endpoint)
 	if driver == endpoint.DQLiteBackend {
 		return true
 	}
 
-	return c.config.Storage.Endpoint == "" && (c.config.ClusterInit || (c.config.Token != "" && c.config.JoinURL != ""))
+	return c.config.Datastore.Endpoint == "" && (c.config.ClusterInit || (c.config.Token != "" && c.config.JoinURL != ""))
 }
 
 func (c *Cluster) postJoin(ctx context.Context) error {
