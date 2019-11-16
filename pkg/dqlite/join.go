@@ -46,6 +46,6 @@ func (d *DQLite) Join(ctx context.Context, nodes []client.NodeInfo) error {
 		}
 	}
 
-	logrus.Infof("Joining dqlite cluster as address=%s, id=%d")
+	logrus.Infof("Joining dqlite cluster as address=%s, id=%d", d.NodeInfo.Address, d.NodeInfo.ID)
 	return client.Add(ctx, d.NodeInfo)
 }
