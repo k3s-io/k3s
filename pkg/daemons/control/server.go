@@ -745,18 +745,18 @@ func KubeConfig(dest, url, caCert, clientCert, clientKey string) error {
 func setupStorageBackend(argsMap map[string]string, cfg *config.Control) {
 	argsMap["storage-backend"] = "etcd3"
 	// specify the endpoints
-	if len(cfg.Storage.Endpoint) > 0 {
-		argsMap["etcd-servers"] = cfg.Storage.Endpoint
+	if len(cfg.Datastore.Endpoint) > 0 {
+		argsMap["etcd-servers"] = cfg.Datastore.Endpoint
 	}
 	// storage backend tls configuration
-	if len(cfg.Storage.CAFile) > 0 {
-		argsMap["etcd-cafile"] = cfg.Storage.CAFile
+	if len(cfg.Datastore.CAFile) > 0 {
+		argsMap["etcd-cafile"] = cfg.Datastore.CAFile
 	}
-	if len(cfg.Storage.CertFile) > 0 {
-		argsMap["etcd-certfile"] = cfg.Storage.CertFile
+	if len(cfg.Datastore.CertFile) > 0 {
+		argsMap["etcd-certfile"] = cfg.Datastore.CertFile
 	}
-	if len(cfg.Storage.KeyFile) > 0 {
-		argsMap["etcd-keyfile"] = cfg.Storage.KeyFile
+	if len(cfg.Datastore.KeyFile) > 0 {
+		argsMap["etcd-keyfile"] = cfg.Datastore.KeyFile
 	}
 }
 

@@ -96,7 +96,7 @@ type Control struct {
 	KubeConfigMode           string
 	DataDir                  string
 	Skips                    []string
-	Storage                  endpoint.Config
+	Datastore                endpoint.Config
 	NoScheduler              bool
 	ExtraAPIArgs             []string
 	ExtraControllerArgs      []string

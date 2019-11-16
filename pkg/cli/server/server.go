@@ -88,10 +88,10 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	serverConfig.ControlConfig.ExtraControllerArgs = cfg.ExtraControllerArgs
 	serverConfig.ControlConfig.ExtraSchedulerAPIArgs = cfg.ExtraSchedulerArgs
 	serverConfig.ControlConfig.ClusterDomain = cfg.ClusterDomain
-	serverConfig.ControlConfig.Storage.Endpoint = cfg.StorageEndpoint
-	serverConfig.ControlConfig.Storage.CAFile = cfg.StorageCAFile
-	serverConfig.ControlConfig.Storage.CertFile = cfg.StorageCertFile
-	serverConfig.ControlConfig.Storage.KeyFile = cfg.StorageKeyFile
+	serverConfig.ControlConfig.Datastore.Endpoint = cfg.DatastoreEndpoint
+	serverConfig.ControlConfig.Datastore.CAFile = cfg.DatastoreCAFile
+	serverConfig.ControlConfig.Datastore.CertFile = cfg.DatastoreCertFile
+	serverConfig.ControlConfig.Datastore.KeyFile = cfg.DatastoreKeyFile
 	serverConfig.ControlConfig.AdvertiseIP = cfg.AdvertiseIP
 	serverConfig.ControlConfig.AdvertisePort = cfg.AdvertisePort
 	serverConfig.ControlConfig.FlannelBackend = cfg.FlannelBackend
