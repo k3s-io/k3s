@@ -47,7 +47,7 @@ func (l *LimitedServer) list(ctx context.Context, r *etcdserverpb.RangeRequest) 
 		Kvs:    kvs,
 	}
 
-	if limit > 0 && resp.Count > limit {
+	if limit > 0 && resp.Count > r.Limit {
 		resp.More = true
 		resp.Kvs = kvs[0 : limit-1]
 	}
