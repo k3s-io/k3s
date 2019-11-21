@@ -4,4 +4,4 @@ docker.io/rancher/klipper-helm:v0.1.5
 docker.io/rancher/klipper-lb:v0.1.2
 docker.io/rancher/local-path-provisioner:v0.0.11
 docker.io/rancher/metrics-server:v0.3.6
-k8s.gcr.io/pause:3.1
+docker.io/rancher/pause:3.1
