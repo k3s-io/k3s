@@ -271,6 +271,15 @@ verify_downloader() {
     return 0
 }
 
+# --- verify existence of semanage when SELinux is enabled ---
+verify_semanage() {
+    if [ -x "$(which getenforce)" ]; then
+        if [ "Disabled" != $(getenforce) ] && [ ! -x "$(which semanage)" ]; then
+            fatal 'SELinux is enabled but semanage is not found'
+        fi
+    fi
+}
+
 # --- create tempory directory and cleanup when done ---
 setup_tmp() {
     TMP_DIR=$(mktemp -d -t k3s-install.XXXXXXXXXX)
@@ -374,15 +383,11 @@ setup_binary() {
 
     if command -v getenforce > /dev/null 2>&1; then
         if [ "Disabled" != $(getenforce) ]; then
-            if command -v semanage > /dev/null 2>&1; then
-                info 'SELinux is enabled, setting permissions'
-                if ! $SUDO semanage fcontext -l | grep "${BIN_DIR}/k3s" > /dev/null 2>&1; then
-                    $SUDO semanage fcontext -a -t bin_t "${BIN_DIR}/k3s"
-                fi
-                $SUDO restorecon -v ${BIN_DIR}/k3s > /dev/null
-            else
-                fatal 'SELinux is enabled but semanage is not found'
-            fi
+	    info 'SELinux is enabled, setting permissions'
+	    if ! $SUDO semanage fcontext -l | grep "${BIN_DIR}/k3s" > /dev/null 2>&1; then
+	        $SUDO semanage fcontext -a -t bin_t "${BIN_DIR}/k3s"
+	    fi
+	    $SUDO restorecon -v ${BIN_DIR}/k3s > /dev/null
         fi
     fi
 }
@@ -397,6 +402,7 @@ download_and_verify() {
 
     setup_verify_arch
     verify_downloader curl || verify_downloader wget || fatal 'Can not find curl or wget for downloading files'
+    verify_semanage
     setup_tmp
     get_release_version
     download_hash
