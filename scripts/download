@@ -5,7 +5,7 @@ cd $(dirname $0)/..
 . ./scripts/version.sh
 
 ROOT_VERSION=v0.3.0
-TRAEFIK_VERSION=1.77.1
+TRAEFIK_VERSION=1.81.0
 CHARTS_DIR=build/static/charts
 
 mkdir -p ${CHARTS_DIR}
