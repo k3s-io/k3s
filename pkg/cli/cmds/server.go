@@ -114,7 +114,7 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 			},
 			cli.StringFlag{
 				Name:        "flannel-backend",
-				Usage:       fmt.Sprintf("(networking) One of 'none', 'vxlan', 'ipsec', or 'wireguard'"),
+				Usage:       fmt.Sprintf("(networking) One of 'none', 'vxlan', 'ipsec', 'hostgw', or 'wireguard'"),
 				Destination: &ServerConfig.FlannelBackend,
 				Value:       "vxlan",
 			},
