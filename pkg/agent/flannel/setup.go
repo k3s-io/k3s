@@ -44,6 +44,9 @@ const (
 	"Backend": %backend%
 }
 `
+	hostGwBackend = `{
+	"Type": "host-gw"
+}`
 
 	vxlanBackend = `{
 	"Type": "vxlan"
@@ -127,6 +130,8 @@ func createFlannelConf(nodeConfig *config.Node) error {
 		}
 	case config.FlannelBackendWireguard:
 		backendConf = wireguardBackend
+	case config.FlannelBackendHOSTGW:
+		backendConf = hostGwBackend
 	default:
 		return fmt.Errorf("Cannot configure unknown flannel backend '%s'", nodeConfig.FlannelBackend)
 	}

@@ -18,6 +18,7 @@ const (
 	FlannelBackendVXLAN     = "vxlan"
 	FlannelBackendIPSEC     = "ipsec"
 	FlannelBackendWireguard = "wireguard"
+	FlannelBackendHOSTGW    = "hostgw"
 )
 
 type Node struct {
