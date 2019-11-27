@@ -324,6 +324,7 @@ func (h *handler) newDaemonSet(svc *core.Service) (*apps.DaemonSet, error) {
 					Name:          portName,
 					ContainerPort: port.Port,
 					HostPort:      port.Port,
+					Protocol:      port.Protocol,
 				},
 			},
 			Env: []core.EnvVar{
