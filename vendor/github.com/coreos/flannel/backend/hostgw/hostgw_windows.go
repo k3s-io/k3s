@@ -24,7 +24,7 @@ import (
 	"github.com/coreos/flannel/backend"
 	"github.com/coreos/flannel/pkg/ip"
 	"github.com/coreos/flannel/subnet"
-	log "github.com/golang/glog"
+	log "k8s.io/klog"
 	"github.com/juju/errors"
 	"github.com/rakelkar/gonetsh/netroute"
 	"github.com/rakelkar/gonetsh/netsh"
