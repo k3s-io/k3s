@@ -1,6 +1,7 @@
 ## MAIN VARIABLES ##
 ####################
 CLUSTER_NAME="loadtest-k3s"
+CLUSTER_SECRET=""
 DOMAIN_NAME="loadtest.eng.rancher.space"
 ZONE_ID=""
 K3S_VERSION="v1.0.0"
@@ -14,7 +15,7 @@ DB_ENGINE="dqlite"
 DB_INSTANCE_TYPE="db.m4.4xlarge"
 DB_NAME="k3s"
 DB_USERNAME="k3suser"
-DB_PASSWORD="024d9442b3add64b7ef90655bc302cd8"
+DB_PASSWORD=""
 DB_VERSION=5.7
 
 ## K3S SERVER VARIABLES ##

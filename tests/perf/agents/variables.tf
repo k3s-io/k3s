@@ -26,3 +26,8 @@ variable "name" {
   type        = string
   description = "Name to identify this cluster"
 }
+
+variable "k3s_cluster_secret" {
+  type        = string
+  description = "Cluster secret for k3s cluster registration"
+}

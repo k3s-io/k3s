@@ -51,8 +51,17 @@ config() {
   pushd ./server
   eval PRIVATE_KEY_PATH=$PRIVATE_KEY_PATH
   EXPANDED_PRIV_KEY_PATH=`readlink -f $PRIVATE_KEY_PATH`
+  if [ -z "$DB_PASSWORD" ]; then
+    # randomize database password
+    DB_PASSWORD=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
+  fi
+  if [ -z "$CLUSTER_SECRET" ]; then
+    # randomize cluster secret
+    CLUSTER_SECRET=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
+  fi
 cat <<MAIN > variables.tfvars
 name = "${CLUSTER_NAME}"
+k3s_cluster_secret = "${CLUSTER_SECRET}"
 db_instance_type = "${DB_INSTANCE_TYPE}"
 db_name = "${DB_NAME}"
 db_username = "${DB_USERNAME}"
@@ -80,6 +89,7 @@ extra_ssh_keys = ["${EXTRA_SSH_KEYS}"]
 k3s_version = "${K3S_VERSION}"
 agent_node_count = ${AGENT_NODE_COUNT}
 agent_instance_type = "${AGENT_INSTANCE_TYPE}"
+k3s_cluster_secret = "${CLUSTER_SECRET}"
 MAIN
 popd
 }

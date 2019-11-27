@@ -19,7 +19,6 @@ variable "prom_worker_node_count" {
 }
 
 variable "k3s_cluster_secret" {
-  default     = "pvc-6476dcaf-73a0-11e9-b8e5-06943b744282"
   type        = string
   description = "Cluster secret for k3s cluster registration"
 }
@@ -66,9 +65,7 @@ variable "db_username" {
   default = "postgres"
 }
 
-variable "db_password" {
-  default = "b58bf234c4bd0133fc7a92b782e498a6"
-}
+variable "db_password" {}
 
 variable "db_version" {}
 

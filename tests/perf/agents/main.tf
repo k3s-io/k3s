@@ -6,7 +6,7 @@ terraform {
 
 locals {
   name                = var.name
-  k3s_cluster_secret  = "pvc-6476dcaf-73a0-11e9-b8e5-06943b744282"
+  k3s_cluster_secret  = var.k3s_cluster_secret
 }
 
 provider "aws" {
