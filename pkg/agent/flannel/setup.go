@@ -44,12 +44,13 @@ const (
 	"Backend": %backend%
 }
 `
-	hostGwBackend = `{
-	"Type": "host-gw"
-}`
 
 	vxlanBackend = `{
 	"Type": "vxlan"
+}`
+
+	hostGWBackend = `{
+	"Type": "host-gw"
 }`
 
 	ipsecBackend = `{
@@ -123,6 +124,8 @@ func createFlannelConf(nodeConfig *config.Node) error {
 	switch nodeConfig.FlannelBackend {
 	case config.FlannelBackendVXLAN:
 		backendConf = vxlanBackend
+	case config.FlannelBackendHostGW:
+		backendConf = hostGWBackend
 	case config.FlannelBackendIPSEC:
 		backendConf = strings.Replace(ipsecBackend, "%psk%", nodeConfig.AgentConfig.IPSECPSK, -1)
 		if err := setupStrongSwan(nodeConfig); err != nil {
@@ -130,8 +133,6 @@ func createFlannelConf(nodeConfig *config.Node) error {
 		}
 	case config.FlannelBackendWireguard:
 		backendConf = wireguardBackend
-	case config.FlannelBackendHOSTGW:
-		backendConf = hostGwBackend
 	default:
 		return fmt.Errorf("Cannot configure unknown flannel backend '%s'", nodeConfig.FlannelBackend)
 	}

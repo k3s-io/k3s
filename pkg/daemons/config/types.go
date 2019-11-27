@@ -16,9 +16,9 @@ import (
 const (
 	FlannelBackendNone      = "none"
 	FlannelBackendVXLAN     = "vxlan"
+	FlannelBackendHostGW    = "host-gw"
 	FlannelBackendIPSEC     = "ipsec"
 	FlannelBackendWireguard = "wireguard"
-	FlannelBackendHOSTGW    = "hostgw"
 )
 
 type Node struct {
