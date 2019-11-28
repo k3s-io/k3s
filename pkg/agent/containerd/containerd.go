@@ -197,7 +197,7 @@ func getPrivateRegistries(ctx context.Context, cfg *config.Node) (*templates.Reg
 		return nil, err
 	}
 	logrus.Infof("Using registry config file at %s", cfg.AgentConfig.PrivateRegistry)
-	if err := yaml.Unmarshal([]byte(privRegistryFile), &privRegistries); err != nil {
+	if err := yaml.Unmarshal(privRegistryFile, &privRegistries); err != nil {
 		return nil, err
 	}
 	return privRegistries, nil
