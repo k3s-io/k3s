@@ -1,0 +1,9 @@
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: {{.Name}}
+value: 1000000
+globalDefault: false
+description: "Designated priority class to be used for DaemonSet pods. This is
+  to make sure they have higher priority than other test pods and there is always
+  place for them on each node, see kubernetes/kubernetes#82818."

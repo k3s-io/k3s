@@ -1,0 +1,19 @@
+{{if eq (Mod .Index 10) 0}} # Create for only 10% of deployments
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{.Name}}
+spec:
+  podSelector:
+    matchLabels:
+      name: {{.BaseName}}-{{.Index}}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 10.0.0.0/24
+      ports:
+        - protocol: TCP
+          port: 8080
+{{end}}
