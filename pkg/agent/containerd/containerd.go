@@ -76,13 +76,13 @@ func Run(ctx context.Context, cfg *config.Node) error {
 	}()
 
 	for {
-		addr, dailer, err := util.GetAddressAndDialer("unix://" + cfg.Containerd.Address)
+		addr, dialer, err := util.GetAddressAndDialer("unix://" + cfg.Containerd.Address)
 		if err != nil {
 			time.Sleep(1 * time.Second)
 			continue
 		}
 
-		conn, err := grpc.Dial(addr, grpc.WithInsecure(), grpc.WithTimeout(3*time.Second), grpc.WithDialer(dailer), grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(maxMsgSize)))
+		conn, err := grpc.Dial(addr, grpc.WithInsecure(), grpc.WithTimeout(3*time.Second), grpc.WithDialer(dialer), grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(maxMsgSize)))
 		if err != nil {
 			time.Sleep(1 * time.Second)
 			continue
@@ -197,7 +197,7 @@ func getPrivateRegistries(ctx context.Context, cfg *config.Node) (*templates.Reg
 		return nil, err
 	}
 	logrus.Infof("Using registry config file at %s", cfg.AgentConfig.PrivateRegistry)
-	if err := yaml.Unmarshal([]byte(privRegistryFile), &privRegistries); err != nil {
+	if err := yaml.Unmarshal(privRegistryFile, &privRegistries); err != nil {
 		return nil, err
 	}
 	return privRegistries, nil

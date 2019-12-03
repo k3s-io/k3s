@@ -246,8 +246,8 @@ func (entry *Entry) Del() error {
 	if err != nil {
 		return err
 	}
-	entry.Set.Parent.Save()
-	return nil
+
+	return entry.Set.Parent.Save()
 }
 
 // Test wether an entry is in a set or not. Exit status number is zero if the
