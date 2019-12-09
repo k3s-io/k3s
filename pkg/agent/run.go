@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"k8s.io/apimachinery/pkg/labels"
+
 	systemd "github.com/coreos/go-systemd/daemon"
 	"github.com/rancher/k3s/pkg/agent/config"
 	"github.com/rancher/k3s/pkg/agent/containerd"
@@ -72,10 +74,8 @@ func run(ctx context.Context, cfg cmds.Agent, lb *loadbalancer.LoadBalancer) err
 		}
 	}
 
-	if !nodeConfig.AgentConfig.DisableCCM {
-		if err := syncAddressesLabels(ctx, &nodeConfig.AgentConfig, coreClient.CoreV1().Nodes()); err != nil {
-			return err
-		}
+	if err := syncLabels(ctx, &nodeConfig.AgentConfig, coreClient.CoreV1().Nodes()); err != nil {
+		return err
 	}
 
 	if !nodeConfig.AgentConfig.DisableNPC {
@@ -158,7 +158,7 @@ func validate() error {
 	return nil
 }
 
-func syncAddressesLabels(ctx context.Context, agentConfig *daemonconfig.Agent, nodes v1.NodeInterface) error {
+func syncLabels(ctx context.Context, agentConfig *daemonconfig.Agent, nodes v1.NodeInterface) error {
 	for {
 		node, err := nodes.Get(agentConfig.NodeName, metav1.GetOptions{})
 		if err != nil {
@@ -167,8 +167,14 @@ func syncAddressesLabels(ctx context.Context, agentConfig *daemonconfig.Agent, n
 			continue
 		}
 
-		newLabels, update := updateLabelMap(agentConfig, node.Labels)
-		if update {
+		newLabels, updateMutables := updateMutableLabels(agentConfig, node.Labels)
+
+		updateAddresses := !agentConfig.DisableCCM
+		if updateAddresses {
+			newLabels, updateAddresses = updateAddressLabels(agentConfig, newLabels)
+		}
+
+		if updateAddresses || updateMutables {
 			node.Labels = newLabels
 			if _, err := nodes.Update(node); err != nil {
 				logrus.Infof("Failed to update node %s: %v", agentConfig.NodeName, err)
@@ -179,9 +185,9 @@ func syncAddressesLabels(ctx context.Context, agentConfig *daemonconfig.Agent, n
 					continue
 				}
 			}
-			logrus.Infof("addresses labels has been set successfully on node: %s", agentConfig.NodeName)
+			logrus.Infof("labels have been set successfully on node: %s", agentConfig.NodeName)
 		} else {
-			logrus.Infof("addresses labels has already been set successfully on node: %s", agentConfig.NodeName)
+			logrus.Infof("labels have already set on node: %s", agentConfig.NodeName)
 		}
 
 		break
@@ -190,19 +196,34 @@ func syncAddressesLabels(ctx context.Context, agentConfig *daemonconfig.Agent, n
 	return nil
 }
 
-func updateLabelMap(agentConfig *daemonconfig.Agent, nodeLabels map[string]string) (map[string]string, bool) {
+func updateMutableLabels(agentConfig *daemonconfig.Agent, nodeLabels map[string]string) (map[string]string, bool) {
 	result := map[string]string{}
-	for k, v := range nodeLabels {
+
+	for _, m := range agentConfig.NodeLabels {
+		var (
+			v string
+			p = strings.SplitN(m, `=`, 2)
+			k = p[0]
+		)
+		if len(p) > 1 {
+			v = p[1]
+		}
 		result[k] = v
 	}
+	result = labels.Merge(nodeLabels, result)
+	return result, !equality.Semantic.DeepEqual(nodeLabels, result)
+}
 
-	result[InternalIPLabel] = agentConfig.NodeIP
-	result[HostnameLabel] = agentConfig.NodeName
-	if agentConfig.NodeExternalIP == "" {
-		delete(result, ExternalIPLabel)
-	} else {
+func updateAddressLabels(agentConfig *daemonconfig.Agent, nodeLabels map[string]string) (map[string]string, bool) {
+	result := map[string]string{
+		InternalIPLabel: agentConfig.NodeIP,
+		HostnameLabel:   agentConfig.NodeName,
+	}
+
+	if agentConfig.NodeExternalIP != "" {
 		result[ExternalIPLabel] = agentConfig.NodeExternalIP
 	}
 
+	result = labels.Merge(nodeLabels, result)
 	return result, !equality.Semantic.DeepEqual(nodeLabels, result)
 }
