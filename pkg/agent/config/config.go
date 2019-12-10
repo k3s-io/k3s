@@ -452,11 +452,14 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 		nodeConfig.AgentConfig.CNIBinDir = filepath.Dir(hostLocal)
 		nodeConfig.AgentConfig.CNIConfDir = filepath.Join(envInfo.DataDir, "etc/cni/net.d")
 	}
+
 	if !nodeConfig.Docker && nodeConfig.ContainerRuntimeEndpoint == "" {
-		nodeConfig.AgentConfig.RuntimeSocket = "unix://" + nodeConfig.Containerd.Address
+		nodeConfig.AgentConfig.RuntimeSocket = nodeConfig.Containerd.Address
 	} else {
-		nodeConfig.AgentConfig.RuntimeSocket = "unix://" + nodeConfig.ContainerRuntimeEndpoint
+		nodeConfig.AgentConfig.RuntimeSocket = nodeConfig.ContainerRuntimeEndpoint
+		nodeConfig.AgentConfig.CNIPlugin = true
 	}
+
 	if controlConfig.ClusterIPRange != nil {
 		nodeConfig.AgentConfig.ClusterCIDR = *controlConfig.ClusterIPRange
 	}
