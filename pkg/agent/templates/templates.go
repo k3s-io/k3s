@@ -29,8 +29,6 @@ const ContainerdConfigTemplate = `
 
 {{- if .NodeConfig.AgentConfig.PauseImage }}
   sandbox_image = "{{ .NodeConfig.AgentConfig.PauseImage }}"
-{{else}}
-  sandbox_image = "docker.io/rancher/pause:3.1"
 {{end}}
 
 {{- if not .NodeConfig.NoFlannel }}

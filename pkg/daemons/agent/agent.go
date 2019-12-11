@@ -94,6 +94,8 @@ func startKubelet(cfg *config.Agent) {
 		argsMap["container-runtime"] = "remote"
 		argsMap["container-runtime-endpoint"] = cfg.RuntimeSocket
 		argsMap["serialize-image-pulls"] = "false"
+	} else if cfg.PauseImage != "" {
+		argsMap["pod-infra-container-image"] = cfg.PauseImage
 	}
 	if cfg.ListenAddress != "" {
 		argsMap["address"] = cfg.ListenAddress
