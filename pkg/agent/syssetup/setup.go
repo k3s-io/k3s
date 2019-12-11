@@ -30,8 +30,13 @@ func Configure() {
 	loadKernelModule("nf_conntrack")
 	loadKernelModule("br_netfilter")
 
-	enableSystemControl("/proc/sys/net/ipv4/ip_forward")
+	// Kernel is inconsistent about how devconf is configured for
+	// new network namespaces between ipv4 and ipv6. Make sure to
+	// enable forwarding on all and default for both ipv4 and ipv8.
+	enableSystemControl("/proc/sys/net/ipv4/conf/all/forwarding")
+	enableSystemControl("/proc/sys/net/ipv4/conf/default/forwarding")
 	enableSystemControl("/proc/sys/net/ipv6/conf/all/forwarding")
+	enableSystemControl("/proc/sys/net/ipv6/conf/default/forwarding")
 	enableSystemControl("/proc/sys/net/bridge/bridge-nf-call-iptables")
 	enableSystemControl("/proc/sys/net/bridge/bridge-nf-call-ip6tables")
 }
