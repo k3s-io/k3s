@@ -123,7 +123,7 @@ var (
 	}
 	NodeLabels = cli.StringSliceFlag{
 		Name:  "node-label",
-		Usage: "(agent/node) Registering kubelet with set of labels",
+		Usage: "(agent/node) Registering and starting kubelet with set of labels",
 		Value: &AgentConfig.Labels,
 	}
 )
