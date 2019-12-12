@@ -42,6 +42,7 @@ type Server struct {
 	DisableNPC               bool
 	ClusterInit              bool
 	ClusterReset             bool
+	EncryptSecrets           bool
 }
 
 var ServerConfig Server
@@ -261,6 +262,11 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Usage:       "(experimental/cluster) Forget all peers and become a single cluster new cluster master",
 				EnvVar:      "K3S_CLUSTER_RESET",
 				Destination: &ServerConfig.ClusterReset,
+			},
+			cli.BoolFlag{
+				Name:        "secrets-encryption",
+				Usage:       "(experimental) Enable Secret encryption at rest",
+				Destination: &ServerConfig.EncryptSecrets,
 			},
 
 			// Hidden/Deprecated flags below
