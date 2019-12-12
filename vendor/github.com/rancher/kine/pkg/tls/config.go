@@ -3,7 +3,7 @@ package tls
 import (
 	"crypto/tls"
 
-	"github.com/coreos/etcd/pkg/transport"
+	"go.etcd.io/etcd/pkg/transport"
 )
 
 type Config struct {
@@ -18,9 +18,9 @@ func (c Config) ClientConfig() (*tls.Config, error) {
 	}
 
 	info := &transport.TLSInfo{
-		CertFile: c.CertFile,
-		KeyFile:  c.KeyFile,
-		CAFile:   c.CAFile,
+		CertFile:      c.CertFile,
+		KeyFile:       c.KeyFile,
+		TrustedCAFile: c.CAFile,
 	}
 	tlsConfig, err := info.ClientConfig()
 	if err != nil {

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/etcdserver/etcdserverpb"
 )
 
 type LimitedServer struct {
