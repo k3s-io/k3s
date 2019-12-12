@@ -12,7 +12,6 @@ import (
 	_ "github.com/opencontainers/runc/contrib/cmd/recvtty"
 	_ "github.com/opencontainers/runc/libcontainer/nsenter"
 	_ "github.com/opencontainers/runc/libcontainer/specconv"
-	_ "k8s.io/kubernetes/cmd/hyperkube"
 )
 
 func main() {}
