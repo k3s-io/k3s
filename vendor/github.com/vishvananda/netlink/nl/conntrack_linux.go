@@ -76,14 +76,12 @@ const (
 // 	__CTA_MAX
 // };
 const (
-	CTA_TUPLE_ORIG     = 1
-	CTA_TUPLE_REPLY    = 2
-	CTA_STATUS         = 3
-	CTA_TIMEOUT        = 7
-	CTA_MARK           = 8
-	CTA_COUNTERS_ORIG  = 9
-	CTA_COUNTERS_REPLY = 10
-	CTA_PROTOINFO      = 4
+	CTA_TUPLE_ORIG  = 1
+	CTA_TUPLE_REPLY = 2
+	CTA_STATUS      = 3
+	CTA_TIMEOUT     = 7
+	CTA_MARK        = 8
+	CTA_PROTOINFO   = 4
 )
 
 // enum ctattr_tuple {
@@ -163,21 +161,6 @@ const (
 	CTA_PROTOINFO_TCP_WSCALE_REPLY    = 3
 	CTA_PROTOINFO_TCP_FLAGS_ORIGINAL  = 4
 	CTA_PROTOINFO_TCP_FLAGS_REPLY     = 5
-)
-
-// enum ctattr_counters {
-// 	CTA_COUNTERS_UNSPEC,
-// 	CTA_COUNTERS_PACKETS,		/* 64bit counters */
-// 	CTA_COUNTERS_BYTES,		/* 64bit counters */
-// 	CTA_COUNTERS32_PACKETS,		/* old 32bit counters, unused */
-// 	CTA_COUNTERS32_BYTES,		/* old 32bit counters, unused */
-// 	CTA_COUNTERS_PAD,
-// 	__CTA_COUNTERS_M
-// };
-// #define CTA_COUNTERS_MAX (__CTA_COUNTERS_MAX - 1)
-const (
-	CTA_COUNTERS_PACKETS = 1
-	CTA_COUNTERS_BYTES   = 2
 )
 
 // /* General form of address family dependent message.

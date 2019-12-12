@@ -340,12 +340,6 @@ func dropDisabledFields(
 		}
 	}
 
-	if !utilfeature.DefaultFeatureGate.Enabled(features.PodShareProcessNamespace) && !shareProcessNamespaceInUse(oldPodSpec) {
-		if podSpec.SecurityContext != nil {
-			podSpec.SecurityContext.ShareProcessNamespace = nil
-		}
-	}
-
 	if !utilfeature.DefaultFeatureGate.Enabled(features.Sysctls) && !sysctlsInUse(oldPodSpec) {
 		if podSpec.SecurityContext != nil {
 			podSpec.SecurityContext.Sysctls = nil
@@ -633,16 +627,6 @@ func appArmorInUse(podAnnotations map[string]string) bool {
 	return false
 }
 
-func shareProcessNamespaceInUse(podSpec *api.PodSpec) bool {
-	if podSpec == nil {
-		return false
-	}
-	if podSpec.SecurityContext != nil && podSpec.SecurityContext.ShareProcessNamespace != nil {
-		return true
-	}
-	return false
-}
-
 func tokenRequestProjectionInUse(podSpec *api.PodSpec) bool {
 	if podSpec == nil {
 		return false
@@ -681,7 +665,7 @@ func sysctlsInUse(podSpec *api.PodSpec) bool {
 	return false
 }
 
-// emptyDirSizeLimitInUse returns true if any pod's EptyDir volumes use SizeLimit.
+// emptyDirSizeLimitInUse returns true if any pod's EmptyDir volumes use SizeLimit.
 func emptyDirSizeLimitInUse(podSpec *api.PodSpec) bool {
 	if podSpec == nil {
 		return false

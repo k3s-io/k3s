@@ -33,8 +33,8 @@ import (
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
+	servicehelper "k8s.io/cloud-provider/service/helpers"
 	"k8s.io/klog"
-	"k8s.io/kubernetes/pkg/apis/core/v1/helper"
 	"k8s.io/kubernetes/pkg/proxy"
 	"k8s.io/kubernetes/pkg/proxy/config"
 	utilproxy "k8s.io/kubernetes/pkg/proxy/util"
@@ -113,6 +113,8 @@ type asyncRunnerInterface interface {
 type Proxier struct {
 	// EndpointSlice support has not been added for this proxier yet.
 	config.NoopEndpointSliceHandler
+	// TODO(imroc): implement node handler for userspace proxier.
+	config.NoopNodeHandler
 
 	loadBalancer    LoadBalancer
 	mu              sync.Mutex // protects serviceMap
@@ -172,11 +174,6 @@ var (
 	// the caller provided invalid input.
 	ErrProxyOnLocalhost = fmt.Errorf("cannot proxy on localhost")
 )
-
-// IsProxyLocked returns true if the proxy could not acquire the lock on iptables.
-func IsProxyLocked(err error) bool {
-	return strings.Contains(err.Error(), "holding the xtables lock")
-}
 
 // NewProxier returns a new Proxier given a LoadBalancer and an address on
 // which to listen.  Because of the iptables logic, It is assumed that there
@@ -682,7 +679,7 @@ func sameConfig(info *ServiceInfo, service *v1.Service, port *v1.ServicePort) bo
 	if !ipsEqual(info.externalIPs, service.Spec.ExternalIPs) {
 		return false
 	}
-	if !helper.LoadBalancerStatusEqual(&info.loadBalancerStatus, &service.Status.LoadBalancer) {
+	if !servicehelper.LoadBalancerStatusEqual(&info.loadBalancerStatus, &service.Status.LoadBalancer) {
 		return false
 	}
 	if info.sessionAffinityType != service.Spec.SessionAffinity {

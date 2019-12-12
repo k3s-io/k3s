@@ -110,7 +110,10 @@ func Example() *specs.Spec {
 		},
 		Linux: &specs.Linux{
 			MaskedPaths: []string{
+				"/proc/acpi",
+				"/proc/asound",
 				"/proc/kcore",
+				"/proc/keys",
 				"/proc/latency_stats",
 				"/proc/timer_list",
 				"/proc/timer_stats",
@@ -119,7 +122,6 @@ func Example() *specs.Spec {
 				"/proc/scsi",
 			},
 			ReadonlyPaths: []string{
-				"/proc/asound",
 				"/proc/bus",
 				"/proc/fs",
 				"/proc/irq",

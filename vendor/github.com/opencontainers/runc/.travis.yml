@@ -1,14 +1,13 @@
 dist: xenial
 language: go
 go:
-  - 1.9.x
-  - 1.10.x
   - 1.11.x
+  - 1.12.x
   - tip
 
 matrix:
   include:
-    - go: 1.11.x
+    - go: 1.12.x
       env:
         - RUNC_USE_SYSTEMD=1
       script:

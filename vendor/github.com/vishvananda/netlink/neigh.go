@@ -23,9 +23,3 @@ type Neigh struct {
 func (neigh *Neigh) String() string {
 	return fmt.Sprintf("%s %s", neigh.IP, neigh.HardwareAddr)
 }
-
-// NeighUpdate is sent when a neighbor changes - type is RTM_NEWNEIGH or RTM_DELNEIGH.
-type NeighUpdate struct {
-	Type uint16
-	Neigh
-}

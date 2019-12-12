@@ -2,11 +2,9 @@ package netlink
 
 import (
 	"net"
-	"syscall"
 	"unsafe"
 
 	"github.com/vishvananda/netlink/nl"
-	"github.com/vishvananda/netns"
 	"golang.org/x/sys/unix"
 )
 
@@ -288,95 +286,4 @@ func NeighDeserialize(m []byte) (*Neigh, error) {
 	}
 
 	return &neigh, nil
-}
-
-// NeighSubscribe takes a chan down which notifications will be sent
-// when neighbors are added or deleted. Close the 'done' chan to stop subscription.
-func NeighSubscribe(ch chan<- NeighUpdate, done <-chan struct{}) error {
-	return neighSubscribeAt(netns.None(), netns.None(), ch, done, nil, false)
-}
-
-// NeighSubscribeAt works like NeighSubscribe plus it allows the caller
-// to choose the network namespace in which to subscribe (ns).
-func NeighSubscribeAt(ns netns.NsHandle, ch chan<- NeighUpdate, done <-chan struct{}) error {
-	return neighSubscribeAt(ns, netns.None(), ch, done, nil, false)
-}
-
-// NeighSubscribeOptions contains a set of options to use with
-// NeighSubscribeWithOptions.
-type NeighSubscribeOptions struct {
-	Namespace     *netns.NsHandle
-	ErrorCallback func(error)
-	ListExisting  bool
-}
-
-// NeighSubscribeWithOptions work like NeighSubscribe but enable to
-// provide additional options to modify the behavior. Currently, the
-// namespace can be provided as well as an error callback.
-func NeighSubscribeWithOptions(ch chan<- NeighUpdate, done <-chan struct{}, options NeighSubscribeOptions) error {
-	if options.Namespace == nil {
-		none := netns.None()
-		options.Namespace = &none
-	}
-	return neighSubscribeAt(*options.Namespace, netns.None(), ch, done, options.ErrorCallback, options.ListExisting)
-}
-
-func neighSubscribeAt(newNs, curNs netns.NsHandle, ch chan<- NeighUpdate, done <-chan struct{}, cberr func(error), listExisting bool) error {
-	s, err := nl.SubscribeAt(newNs, curNs, unix.NETLINK_ROUTE, unix.RTNLGRP_NEIGH)
-	if err != nil {
-		return err
-	}
-	if done != nil {
-		go func() {
-			<-done
-			s.Close()
-		}()
-	}
-	if listExisting {
-		req := pkgHandle.newNetlinkRequest(unix.RTM_GETNEIGH,
-			unix.NLM_F_DUMP)
-		infmsg := nl.NewIfInfomsg(unix.AF_UNSPEC)
-		req.AddData(infmsg)
-		if err := s.Send(req); err != nil {
-			return err
-		}
-	}
-	go func() {
-		defer close(ch)
-		for {
-			msgs, err := s.Receive()
-			if err != nil {
-				if cberr != nil {
-					cberr(err)
-				}
-				return
-			}
-			for _, m := range msgs {
-				if m.Header.Type == unix.NLMSG_DONE {
-					continue
-				}
-				if m.Header.Type == unix.NLMSG_ERROR {
-					native := nl.NativeEndian()
-					error := int32(native.Uint32(m.Data[0:4]))
-					if error == 0 {
-						continue
-					}
-					if cberr != nil {
-						cberr(syscall.Errno(-error))
-					}
-					return
-				}
-				neigh, err := NeighDeserialize(m.Data)
-				if err != nil {
-					if cberr != nil {
-						cberr(err)
-					}
-					return
-				}
-				ch <- NeighUpdate{Type: m.Header.Type, Neigh: *neigh}
-			}
-		}
-	}()
-
-	return nil
 }

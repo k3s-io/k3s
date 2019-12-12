@@ -30,7 +30,7 @@ import (
 
 // AttachDisk attaches a vhd to vm
 // the vhd must exist, can be identified by diskName, diskURI, and lun.
-func (as *availabilitySet) AttachDisk(isManagedDisk bool, diskName, diskURI string, nodeName types.NodeName, lun int32, cachingMode compute.CachingTypes) error {
+func (as *availabilitySet) AttachDisk(isManagedDisk bool, diskName, diskURI string, nodeName types.NodeName, lun int32, cachingMode compute.CachingTypes, diskEncryptionSetID string) error {
 	vm, err := as.getVirtualMachine(nodeName, cacheReadTypeDefault)
 	if err != nil {
 		return err
@@ -42,19 +42,20 @@ func (as *availabilitySet) AttachDisk(isManagedDisk bool, diskName, diskURI stri
 		return err
 	}
 
-	disks := make([]compute.DataDisk, len(*vm.StorageProfile.DataDisks))
-	copy(disks, *vm.StorageProfile.DataDisks)
+	disks := filterDetachingDisks(*vm.StorageProfile.DataDisks)
 
 	if isManagedDisk {
+		managedDisk := &compute.ManagedDiskParameters{ID: &diskURI}
+		if diskEncryptionSetID != "" {
+			managedDisk.DiskEncryptionSet = &compute.DiskEncryptionSetParameters{ID: &diskEncryptionSetID}
+		}
 		disks = append(disks,
 			compute.DataDisk{
 				Name:         &diskName,
 				Lun:          &lun,
 				Caching:      cachingMode,
 				CreateOption: "attach",
-				ManagedDisk: &compute.ManagedDiskParameters{
-					ID: &diskURI,
-				},
+				ManagedDisk:  managedDisk,
 			})
 	} else {
 		disks = append(disks,
@@ -77,7 +78,7 @@ func (as *availabilitySet) AttachDisk(isManagedDisk bool, diskName, diskURI stri
 			},
 		},
 	}
-	klog.V(2).Infof("azureDisk - update(%s): vm(%s) - attach disk(%s, %s)", nodeResourceGroup, vmName, diskName, diskURI)
+	klog.V(2).Infof("azureDisk - update(%s): vm(%s) - attach disk(%s, %s) with DiskEncryptionSetID(%s)", nodeResourceGroup, vmName, diskName, diskURI, diskEncryptionSetID)
 	ctx, cancel := getContextWithCancel()
 	defer cancel()
 
@@ -115,8 +116,7 @@ func (as *availabilitySet) DetachDisk(diskName, diskURI string, nodeName types.N
 		return nil, err
 	}
 
-	disks := make([]compute.DataDisk, len(*vm.StorageProfile.DataDisks))
-	copy(disks, *vm.StorageProfile.DataDisks)
+	disks := filterDetachingDisks(*vm.StorageProfile.DataDisks)
 
 	bFoundDisk := false
 	for i, disk := range disks {
