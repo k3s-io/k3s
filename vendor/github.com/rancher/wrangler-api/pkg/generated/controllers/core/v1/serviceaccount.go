@@ -20,6 +20,7 @@ package v1
 
 import (
 	"context"
+	"time"
 
 	"github.com/rancher/wrangler/pkg/generic"
 	v1 "k8s.io/api/core/v1"
@@ -40,20 +41,15 @@ import (
 type ServiceAccountHandler func(string, *v1.ServiceAccount) (*v1.ServiceAccount, error)
 
 type ServiceAccountController interface {
+	generic.ControllerMeta
 	ServiceAccountClient
 
 	OnChange(ctx context.Context, name string, sync ServiceAccountHandler)
 	OnRemove(ctx context.Context, name string, sync ServiceAccountHandler)
 	Enqueue(namespace, name string)
+	EnqueueAfter(namespace, name string, duration time.Duration)
 
 	Cache() ServiceAccountCache
-
-	Informer() cache.SharedIndexInformer
-	GroupVersionKind() schema.GroupVersionKind
-
-	AddGenericHandler(ctx context.Context, name string, handler generic.Handler)
-	AddGenericRemoveHandler(ctx context.Context, name string, handler generic.Handler)
-	Updater() generic.Updater
 }
 
 type ServiceAccountClient interface {
@@ -118,26 +114,21 @@ func (c *serviceAccountController) Updater() generic.Updater {
 	}
 }
 
-func UpdateServiceAccountOnChange(updater generic.Updater, handler ServiceAccountHandler) ServiceAccountHandler {
-	return func(key string, obj *v1.ServiceAccount) (*v1.ServiceAccount, error) {
-		if obj == nil {
-			return handler(key, nil)
-		}
-
-		copyObj := obj.DeepCopy()
-		newObj, err := handler(key, copyObj)
-		if newObj != nil {
-			copyObj = newObj
-		}
-		if obj.ResourceVersion == copyObj.ResourceVersion && !equality.Semantic.DeepEqual(obj, copyObj) {
-			newObj, err := updater(copyObj)
-			if newObj != nil && err == nil {
-				copyObj = newObj.(*v1.ServiceAccount)
-			}
-		}
-
-		return copyObj, err
+func UpdateServiceAccountDeepCopyOnChange(client ServiceAccountClient, obj *v1.ServiceAccount, handler func(obj *v1.ServiceAccount) (*v1.ServiceAccount, error)) (*v1.ServiceAccount, error) {
+	if obj == nil {
+		return obj, nil
 	}
+
+	copyObj := obj.DeepCopy()
+	newObj, err := handler(copyObj)
+	if newObj != nil {
+		copyObj = newObj
+	}
+	if obj.ResourceVersion == copyObj.ResourceVersion && !equality.Semantic.DeepEqual(obj, copyObj) {
+		return client.Update(copyObj)
+	}
+
+	return copyObj, err
 }
 
 func (c *serviceAccountController) AddGenericHandler(ctx context.Context, name string, handler generic.Handler) {
@@ -160,6 +151,10 @@ func (c *serviceAccountController) OnRemove(ctx context.Context, name string, sy
 
 func (c *serviceAccountController) Enqueue(namespace, name string) {
 	c.controllerManager.Enqueue(c.gvk, c.informer.Informer(), namespace, name)
+}
+
+func (c *serviceAccountController) EnqueueAfter(namespace, name string, duration time.Duration) {
+	c.controllerManager.EnqueueAfter(c.gvk, c.informer.Informer(), namespace, name, duration)
 }
 
 func (c *serviceAccountController) Informer() cache.SharedIndexInformer {

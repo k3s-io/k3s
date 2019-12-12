@@ -1359,6 +1359,7 @@ const (
 	NETLINK_XFRM                         = 0x6
 	NETNSA_MAX                           = 0x5
 	NETNSA_NSID_NOT_ASSIGNED             = -0x1
+	NFDBITS                              = 0x40
 	NFNETLINK_V0                         = 0x0
 	NFNLGRP_ACCT_QUOTA                   = 0x8
 	NFNLGRP_CONNTRACK_DESTROY            = 0x3

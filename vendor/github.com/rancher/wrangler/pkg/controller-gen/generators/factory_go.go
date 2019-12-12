@@ -118,6 +118,10 @@ func NewFactory(clientset clientset.Interface, informerFactory informers.SharedI
 	}
 }
 
+func (c *Factory) Controllers() map[schema.GroupVersionKind]*generic.Controller {
+	return c.controllerManager.Controllers()
+}
+
 func (c *Factory) SetThreadiness(gvk schema.GroupVersionKind, threadiness int) {
 	c.threadiness[gvk] = threadiness
 }

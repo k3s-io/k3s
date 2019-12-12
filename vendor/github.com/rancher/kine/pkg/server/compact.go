@@ -3,7 +3,7 @@ package server
 import (
 	"context"
 
-	"github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/etcdserver/etcdserverpb"
 )
 
 func isCompact(txn *etcdserverpb.TxnRequest) bool {

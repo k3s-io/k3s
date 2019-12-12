@@ -3,7 +3,7 @@ package server
 import (
 	"context"
 
-	"github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/etcdserver/etcdserverpb"
 )
 
 func isDelete(txn *etcdserverpb.TxnRequest) (int64, string, bool) {

@@ -122,7 +122,7 @@ using the runc checkpoint command.`,
 
 func criuOptions(context *cli.Context) *libcontainer.CriuOpts {
 	imagePath := getCheckpointImagePath(context)
-	if err := os.MkdirAll(imagePath, 0655); err != nil {
+	if err := os.MkdirAll(imagePath, 0755); err != nil {
 		fatal(err)
 	}
 	return &libcontainer.CriuOpts{

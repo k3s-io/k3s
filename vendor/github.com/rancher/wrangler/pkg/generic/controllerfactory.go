@@ -2,7 +2,9 @@ package generic
 
 import (
 	"context"
+	"strings"
 	"sync"
+	"time"
 
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/cache"
@@ -17,27 +19,60 @@ type ControllerManager struct {
 	handlers    map[schema.GroupVersionKind]*Handlers
 }
 
+func (g *ControllerManager) Controllers() map[schema.GroupVersionKind]*Controller {
+	return g.controllers
+}
+
+func (g *ControllerManager) EnsureStart(ctx context.Context, gvk schema.GroupVersionKind, threadiness int) error {
+	g.lock.Lock()
+	defer g.lock.Unlock()
+
+	return g.startController(ctx, gvk, threadiness)
+}
+
+func (g *ControllerManager) startController(ctx context.Context, gvk schema.GroupVersionKind, threadiness int) error {
+	if g.started[gvk] {
+		return nil
+	}
+
+	controller, ok := g.controllers[gvk]
+	if !ok {
+		return nil
+	}
+
+	if err := controller.Run(threadiness, ctx.Done()); err != nil {
+		return err
+	}
+
+	if g.started == nil {
+		g.started = map[schema.GroupVersionKind]bool{}
+	}
+	g.started[gvk] = true
+
+	go func() {
+		<-ctx.Done()
+		g.lock.Lock()
+		defer g.lock.Unlock()
+
+		delete(g.started, gvk)
+		delete(g.controllers, gvk)
+	}()
+
+	return nil
+}
+
 func (g *ControllerManager) Start(ctx context.Context, defaultThreadiness int, threadiness map[schema.GroupVersionKind]int) error {
 	g.lock.Lock()
 	defer g.lock.Unlock()
 
-	for gvk, controller := range g.controllers {
-		if g.started[gvk] {
-			continue
-		}
-
+	for gvk := range g.controllers {
 		threadiness, ok := threadiness[gvk]
 		if !ok {
 			threadiness = defaultThreadiness
 		}
-		if err := controller.Run(threadiness, ctx.Done()); err != nil {
+		if err := g.startController(ctx, gvk, threadiness); err != nil {
 			return err
 		}
-
-		if g.started == nil {
-			g.started = map[schema.GroupVersionKind]bool{}
-		}
-		g.started[gvk] = true
 	}
 
 	return nil
@@ -45,7 +80,29 @@ func (g *ControllerManager) Start(ctx context.Context, defaultThreadiness int, t
 
 func (g *ControllerManager) Enqueue(gvk schema.GroupVersionKind, informer cache.SharedIndexInformer, namespace, name string) {
 	_, controller, _ := g.getController(gvk, informer, true)
-	controller.Enqueue(namespace, name)
+
+	if namespace == "*" || name == "*" {
+		for _, key := range informer.GetStore().ListKeys() {
+			if namespace != "" && namespace != "*" && !strings.HasPrefix(key, namespace+"/") {
+				continue
+			}
+			if name != "*" && !nameMatches(key, name) {
+				continue
+			}
+			controller.workqueue.AddRateLimited(key)
+		}
+	} else {
+		controller.Enqueue(namespace, name)
+	}
+}
+
+func nameMatches(key, name string) bool {
+	return key == name || strings.HasSuffix(key, "/"+name)
+}
+
+func (g *ControllerManager) EnqueueAfter(gvk schema.GroupVersionKind, informer cache.SharedIndexInformer, namespace, name string, duration time.Duration) {
+	_, controller, _ := g.getController(gvk, informer, true)
+	controller.EnqueueAfter(namespace, name, duration)
 }
 
 func (g *ControllerManager) removeHandler(gvk schema.GroupVersionKind, generation int) {
@@ -81,7 +138,7 @@ func (g *ControllerManager) getController(gvk schema.GroupVersionKind, informer 
 	handlers := &Handlers{}
 
 	queue := workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), gvk.String())
-	controller := NewController(gvk.String(), informer, queue, handlers.Handle)
+	controller := NewController(gvk, informer, queue, handlers.Handle)
 
 	if g.handlers == nil {
 		g.handlers = map[schema.GroupVersionKind]*Handlers{}

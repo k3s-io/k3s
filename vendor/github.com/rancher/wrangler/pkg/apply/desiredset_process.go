@@ -5,6 +5,7 @@ import (
 	"sort"
 
 	"github.com/pkg/errors"
+	gvk2 "github.com/rancher/wrangler/pkg/gvk"
 	"github.com/rancher/wrangler/pkg/merr"
 	"github.com/rancher/wrangler/pkg/objectset"
 	"github.com/sirupsen/logrus"
@@ -43,6 +44,78 @@ func (o *desiredSet) getControllerAndClient(debugID string, gvk schema.GroupVers
 	return informer, client, nil
 }
 
+func (o *desiredSet) assignOwnerReference(gvk schema.GroupVersionKind, objs map[objectset.ObjectKey]runtime.Object) error {
+	if o.owner == nil {
+		return fmt.Errorf("no owner set to assign owner reference")
+	}
+	ownerMeta, err := meta.Accessor(o.owner)
+	if err != nil {
+		return err
+	}
+	ownerGVK, err := gvk2.Get(o.owner)
+	ownerNSed := o.a.clients.IsNamespaced(ownerGVK)
+
+	for k, v := range objs {
+		// can't set owners across boundaries
+		if ownerNSed && !o.a.clients.IsNamespaced(gvk) {
+			continue
+		}
+
+		assignNS := false
+		assignOwner := true
+		if o.a.clients.IsNamespaced(gvk) {
+			if k.Namespace == "" {
+				assignNS = true
+			} else if k.Namespace != ownerMeta.GetNamespace() && ownerNSed {
+				assignOwner = false
+			}
+		}
+
+		if !assignOwner {
+			continue
+		}
+
+		v = v.DeepCopyObject()
+		meta, err := meta.Accessor(v)
+		if err != nil {
+			return err
+		}
+
+		if assignNS {
+			meta.SetNamespace(ownerMeta.GetNamespace())
+		}
+
+		shouldSet := true
+		for _, of := range meta.GetOwnerReferences() {
+			if ownerMeta.GetUID() == of.UID {
+				shouldSet = false
+				break
+			}
+		}
+
+		if shouldSet {
+			meta.SetOwnerReferences(append(meta.GetOwnerReferences(), v1.OwnerReference{
+				APIVersion:         ownerGVK.GroupVersion().String(),
+				Kind:               ownerGVK.Kind,
+				Name:               ownerMeta.GetName(),
+				UID:                ownerMeta.GetUID(),
+				Controller:         &o.ownerReferenceController,
+				BlockOwnerDeletion: &o.ownerReferenceBlock,
+			}))
+		}
+
+		objs[k] = v
+
+		if assignNS {
+			delete(objs, k)
+			k.Namespace = ownerMeta.GetNamespace()
+			objs[k] = v
+		}
+	}
+
+	return nil
+}
+
 func (o *desiredSet) adjustNamespace(gvk schema.GroupVersionKind, objs map[objectset.ObjectKey]runtime.Object) error {
 	for k, v := range objs {
 		if k.Namespace != "" {
@@ -56,9 +129,30 @@ func (o *desiredSet) adjustNamespace(gvk schema.GroupVersionKind, objs map[objec
 		}
 
 		meta.SetNamespace(o.defaultNamespace)
-
 		delete(objs, k)
 		k.Namespace = o.defaultNamespace
+		objs[k] = v
+	}
+
+	return nil
+}
+
+func (o *desiredSet) clearNamespace(objs map[objectset.ObjectKey]runtime.Object) error {
+	for k, v := range objs {
+		if k.Namespace == "" {
+			continue
+		}
+
+		v = v.DeepCopyObject()
+		meta, err := meta.Accessor(v)
+		if err != nil {
+			return err
+		}
+
+		meta.SetNamespace("")
+
+		delete(objs, k)
+		k.Namespace = ""
 		objs[k] = v
 	}
 
@@ -83,8 +177,25 @@ func (o *desiredSet) process(debugID string, set labels.Selector, gvk schema.Gro
 
 	nsed := o.a.clients.IsNamespaced(gvk)
 
+	if !nsed && o.restrictClusterScoped {
+		o.err(fmt.Errorf("invalid cluster scoped gvk: %v", gvk))
+		return
+	}
+
+	if o.setOwnerReference {
+		if err := o.assignOwnerReference(gvk, objs); err != nil {
+			o.err(err)
+			return
+		}
+	}
+
 	if nsed {
 		if err := o.adjustNamespace(gvk, objs); err != nil {
+			o.err(err)
+			return
+		}
+	} else {
+		if err := o.clearNamespace(objs); err != nil {
 			o.err(err)
 			return
 		}
@@ -97,7 +208,7 @@ func (o *desiredSet) process(debugID string, set labels.Selector, gvk schema.Gro
 
 	existing, err := o.list(controller, client, set)
 	if err != nil {
-		o.err(fmt.Errorf("failed to list %s for %s", gvk, debugID))
+		o.err(errors.Wrapf(err, "failed to list %s for %s", gvk, debugID))
 		return
 	}
 
@@ -105,7 +216,7 @@ func (o *desiredSet) process(debugID string, set labels.Selector, gvk schema.Gro
 
 	createF := func(k objectset.ObjectKey) {
 		obj := objs[k]
-		obj, err := prepareObjectForCreate(obj)
+		obj, err := prepareObjectForCreate(gvk, obj)
 		if err != nil {
 			o.err(errors.Wrapf(err, "failed to prepare create %s %s for %s", k, gvk, debugID))
 			return
@@ -243,4 +354,3 @@ func addObjectToMap(objs map[objectset.ObjectKey]runtime.Object, obj interface{}
 
 	return nil
 }
-

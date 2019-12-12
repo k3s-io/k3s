@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"fmt"
 	"net"
+	"os"
 	"path/filepath"
 
 	"github.com/opencontainers/runtime-spec/specs-go"
@@ -57,6 +58,12 @@ func (s *notifySocket) setupSocket() error {
 
 	socket, err := net.ListenUnixgram("unixgram", &addr)
 	if err != nil {
+		return err
+	}
+
+	err = os.Chmod(s.socketPath, 0777)
+	if err != nil {
+		socket.Close()
 		return err
 	}
 

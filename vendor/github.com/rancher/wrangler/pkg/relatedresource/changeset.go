@@ -3,6 +3,8 @@ package relatedresource
 import (
 	"context"
 
+	"k8s.io/apimachinery/pkg/api/meta"
+
 	"github.com/rancher/wrangler/pkg/generic"
 	"github.com/rancher/wrangler/pkg/kv"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -39,17 +41,10 @@ func Watch(ctx context.Context, name string, resolve Resolver, enq Enqueuer, wat
 }
 
 func watch(ctx context.Context, name string, enq Enqueuer, resolve Resolver, controller ControllerWrapper) {
-	controller.AddGenericHandler(ctx, name, func(key string, obj runtime.Object) (runtime.Object, error) {
-		ns, name := kv.Split(key, "/")
-
-		ro, ok := obj.(runtime.Object)
-		if !ok {
-			ro = nil
-		}
-
-		keys, err := resolve(ns, name, ro)
+	runResolve := func(ns, name string, obj runtime.Object) error {
+		keys, err := resolve(ns, name, obj)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		for _, key := range keys {
@@ -58,6 +53,27 @@ func watch(ctx context.Context, name string, enq Enqueuer, resolve Resolver, con
 			}
 		}
 
-		return nil, nil
+		return nil
+	}
+
+	controller.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		DeleteFunc: func(obj interface{}) {
+			ro, ok := obj.(runtime.Object)
+			if !ok {
+				return
+			}
+
+			meta, err := meta.Accessor(ro)
+			if err != nil {
+				return
+			}
+
+			runResolve(meta.GetNamespace(), meta.GetName(), ro)
+		},
+	})
+
+	controller.AddGenericHandler(ctx, name, func(key string, obj runtime.Object) (runtime.Object, error) {
+		ns, name := kv.Split(key, "/")
+		return obj, runResolve(ns, name, obj)
 	})
 }

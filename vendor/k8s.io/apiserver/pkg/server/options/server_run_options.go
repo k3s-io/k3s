@@ -51,9 +51,9 @@ type ServerRunOptions struct {
 	// decoded in a write request. 0 means no limit.
 	// We intentionally did not add a flag for this option. Users of the
 	// apiserver library can wire it to a flag.
-	MaxRequestBodyBytes       int64
-	TargetRAMMB               int
-	EnableInfightQuotaHandler bool
+	MaxRequestBodyBytes        int64
+	TargetRAMMB                int
+	EnableInflightQuotaHandler bool
 }
 
 func NewServerRunOptions() *ServerRunOptions {
@@ -116,10 +116,10 @@ func (s *ServerRunOptions) Validate() []error {
 		errors = append(errors, fmt.Errorf("--livez-grace-period can not be a negative value"))
 	}
 
-	if s.EnableInfightQuotaHandler {
-		if !utilfeature.DefaultFeatureGate.Enabled(features.RequestManagement) {
+	if s.EnableInflightQuotaHandler {
+		if !utilfeature.DefaultFeatureGate.Enabled(features.APIPriorityAndFairness) {
 			errors = append(errors, fmt.Errorf("--enable-inflight-quota-handler can not be set if feature "+
-				"gate RequestManagement is disabled"))
+				"gate APIPriorityAndFairness is disabled"))
 		}
 		if s.MaxMutatingRequestsInFlight != 0 {
 			errors = append(errors, fmt.Errorf("--max-mutating-requests-inflight=%v "+
@@ -210,12 +210,12 @@ func (s *ServerRunOptions) AddUniversalFlags(fs *pflag.FlagSet) {
 		"handler, which picks a randomized value above this number as the connection timeout, "+
 		"to spread out load.")
 
-	fs.BoolVar(&s.EnableInfightQuotaHandler, "enable-inflight-quota-handler", s.EnableInfightQuotaHandler, ""+
+	fs.BoolVar(&s.EnableInflightQuotaHandler, "enable-inflight-quota-handler", s.EnableInflightQuotaHandler, ""+
 		"If true, replace the max-in-flight handler with an enhanced one that queues and dispatches with priority and fairness")
 
 	fs.DurationVar(&s.ShutdownDelayDuration, "shutdown-delay-duration", s.ShutdownDelayDuration, ""+
 		"Time to delay the termination. During that time the server keeps serving requests normally and /healthz "+
-		"returns success, but /readzy immediately returns failure. Graceful termination starts after this delay "+
+		"returns success, but /readyz immediately returns failure. Graceful termination starts after this delay "+
 		"has elapsed. This can be used to allow load balancer to stop sending traffic to this server.")
 
 	utilfeature.DefaultMutableFeatureGate.AddFlag(fs)

@@ -20,6 +20,7 @@ package v1
 
 import (
 	"context"
+	"time"
 
 	"github.com/rancher/wrangler/pkg/generic"
 	v1 "k8s.io/api/core/v1"
@@ -40,20 +41,15 @@ import (
 type EndpointsHandler func(string, *v1.Endpoints) (*v1.Endpoints, error)
 
 type EndpointsController interface {
+	generic.ControllerMeta
 	EndpointsClient
 
 	OnChange(ctx context.Context, name string, sync EndpointsHandler)
 	OnRemove(ctx context.Context, name string, sync EndpointsHandler)
 	Enqueue(namespace, name string)
+	EnqueueAfter(namespace, name string, duration time.Duration)
 
 	Cache() EndpointsCache
-
-	Informer() cache.SharedIndexInformer
-	GroupVersionKind() schema.GroupVersionKind
-
-	AddGenericHandler(ctx context.Context, name string, handler generic.Handler)
-	AddGenericRemoveHandler(ctx context.Context, name string, handler generic.Handler)
-	Updater() generic.Updater
 }
 
 type EndpointsClient interface {
@@ -118,26 +114,21 @@ func (c *endpointsController) Updater() generic.Updater {
 	}
 }
 
-func UpdateEndpointsOnChange(updater generic.Updater, handler EndpointsHandler) EndpointsHandler {
-	return func(key string, obj *v1.Endpoints) (*v1.Endpoints, error) {
-		if obj == nil {
-			return handler(key, nil)
-		}
-
-		copyObj := obj.DeepCopy()
-		newObj, err := handler(key, copyObj)
-		if newObj != nil {
-			copyObj = newObj
-		}
-		if obj.ResourceVersion == copyObj.ResourceVersion && !equality.Semantic.DeepEqual(obj, copyObj) {
-			newObj, err := updater(copyObj)
-			if newObj != nil && err == nil {
-				copyObj = newObj.(*v1.Endpoints)
-			}
-		}
-
-		return copyObj, err
+func UpdateEndpointsDeepCopyOnChange(client EndpointsClient, obj *v1.Endpoints, handler func(obj *v1.Endpoints) (*v1.Endpoints, error)) (*v1.Endpoints, error) {
+	if obj == nil {
+		return obj, nil
 	}
+
+	copyObj := obj.DeepCopy()
+	newObj, err := handler(copyObj)
+	if newObj != nil {
+		copyObj = newObj
+	}
+	if obj.ResourceVersion == copyObj.ResourceVersion && !equality.Semantic.DeepEqual(obj, copyObj) {
+		return client.Update(copyObj)
+	}
+
+	return copyObj, err
 }
 
 func (c *endpointsController) AddGenericHandler(ctx context.Context, name string, handler generic.Handler) {
@@ -160,6 +151,10 @@ func (c *endpointsController) OnRemove(ctx context.Context, name string, sync En
 
 func (c *endpointsController) Enqueue(namespace, name string) {
 	c.controllerManager.Enqueue(c.gvk, c.informer.Informer(), namespace, name)
+}
+
+func (c *endpointsController) EnqueueAfter(namespace, name string, duration time.Duration) {
+	c.controllerManager.EnqueueAfter(c.gvk, c.informer.Informer(), namespace, name, duration)
 }
 
 func (c *endpointsController) Informer() cache.SharedIndexInformer {

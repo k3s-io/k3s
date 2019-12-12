@@ -20,6 +20,7 @@ package v1
 
 import (
 	"context"
+	"time"
 
 	"github.com/rancher/wrangler/pkg/generic"
 	v1 "k8s.io/api/rbac/v1"
@@ -40,20 +41,15 @@ import (
 type ClusterRoleBindingHandler func(string, *v1.ClusterRoleBinding) (*v1.ClusterRoleBinding, error)
 
 type ClusterRoleBindingController interface {
+	generic.ControllerMeta
 	ClusterRoleBindingClient
 
 	OnChange(ctx context.Context, name string, sync ClusterRoleBindingHandler)
 	OnRemove(ctx context.Context, name string, sync ClusterRoleBindingHandler)
 	Enqueue(name string)
+	EnqueueAfter(name string, duration time.Duration)
 
 	Cache() ClusterRoleBindingCache
-
-	Informer() cache.SharedIndexInformer
-	GroupVersionKind() schema.GroupVersionKind
-
-	AddGenericHandler(ctx context.Context, name string, handler generic.Handler)
-	AddGenericRemoveHandler(ctx context.Context, name string, handler generic.Handler)
-	Updater() generic.Updater
 }
 
 type ClusterRoleBindingClient interface {
@@ -118,26 +114,21 @@ func (c *clusterRoleBindingController) Updater() generic.Updater {
 	}
 }
 
-func UpdateClusterRoleBindingOnChange(updater generic.Updater, handler ClusterRoleBindingHandler) ClusterRoleBindingHandler {
-	return func(key string, obj *v1.ClusterRoleBinding) (*v1.ClusterRoleBinding, error) {
-		if obj == nil {
-			return handler(key, nil)
-		}
-
-		copyObj := obj.DeepCopy()
-		newObj, err := handler(key, copyObj)
-		if newObj != nil {
-			copyObj = newObj
-		}
-		if obj.ResourceVersion == copyObj.ResourceVersion && !equality.Semantic.DeepEqual(obj, copyObj) {
-			newObj, err := updater(copyObj)
-			if newObj != nil && err == nil {
-				copyObj = newObj.(*v1.ClusterRoleBinding)
-			}
-		}
-
-		return copyObj, err
+func UpdateClusterRoleBindingDeepCopyOnChange(client ClusterRoleBindingClient, obj *v1.ClusterRoleBinding, handler func(obj *v1.ClusterRoleBinding) (*v1.ClusterRoleBinding, error)) (*v1.ClusterRoleBinding, error) {
+	if obj == nil {
+		return obj, nil
 	}
+
+	copyObj := obj.DeepCopy()
+	newObj, err := handler(copyObj)
+	if newObj != nil {
+		copyObj = newObj
+	}
+	if obj.ResourceVersion == copyObj.ResourceVersion && !equality.Semantic.DeepEqual(obj, copyObj) {
+		return client.Update(copyObj)
+	}
+
+	return copyObj, err
 }
 
 func (c *clusterRoleBindingController) AddGenericHandler(ctx context.Context, name string, handler generic.Handler) {
@@ -160,6 +151,10 @@ func (c *clusterRoleBindingController) OnRemove(ctx context.Context, name string
 
 func (c *clusterRoleBindingController) Enqueue(name string) {
 	c.controllerManager.Enqueue(c.gvk, c.informer.Informer(), "", name)
+}
+
+func (c *clusterRoleBindingController) EnqueueAfter(name string, duration time.Duration) {
+	c.controllerManager.EnqueueAfter(c.gvk, c.informer.Informer(), "", name, duration)
 }
 
 func (c *clusterRoleBindingController) Informer() cache.SharedIndexInformer {
