@@ -32,12 +32,12 @@ import (
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
+	_ "k8s.io/component-base/metrics/prometheus/restclient" // for client metric registration
 	ccmapp "k8s.io/kubernetes/cmd/cloud-controller-manager/app"
 	app2 "k8s.io/kubernetes/cmd/controller-manager/app"
 	"k8s.io/kubernetes/cmd/kube-apiserver/app"
 	cmapp "k8s.io/kubernetes/cmd/kube-controller-manager/app"
 	sapp "k8s.io/kubernetes/cmd/kube-scheduler/app"
-	_ "k8s.io/kubernetes/pkg/client/metrics/prometheus" // for client metric registration
 	"k8s.io/kubernetes/pkg/kubeapiserver/authorizer/modes"
 	"k8s.io/kubernetes/pkg/master"
 	"k8s.io/kubernetes/pkg/proxy/util"
@@ -568,7 +568,7 @@ func genServerCerts(config *config.Control, runtime *config.ControlRuntime) erro
 		return err
 	}
 
-	_, apiServerServiceIP, err := master.DefaultServiceIPRange(*config.ServiceIPRange)
+	_, apiServerServiceIP, err := master.ServiceIPRange(*config.ServiceIPRange)
 	if err != nil {
 		return err
 	}

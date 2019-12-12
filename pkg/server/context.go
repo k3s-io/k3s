@@ -51,7 +51,7 @@ func newContext(ctx context.Context, cfg string) (*Context, error) {
 		Apps:  apps.NewFactoryFromConfigOrDie(restConfig),
 		Batch: batch.NewFactoryFromConfigOrDie(restConfig),
 		Core:  core.NewFactoryFromConfigOrDie(restConfig),
-		Apply: apply.New(k8s, apply.NewClientFactory(restConfig)),
+		Apply: apply.New(k8s, apply.NewClientFactory(restConfig)).WithDynamicLookup(),
 	}, nil
 }
 
