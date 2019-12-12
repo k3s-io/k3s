@@ -30,5 +30,6 @@ VERSION_CNIPLUGINS="v0.7.6-k3s1"
 if [[ -n "$GIT_TAG" ]]; then
     VERSION=$GIT_TAG
 else
-    VERSION="$(sed -e 's/[-+].*//' <<< "$VERSION_K8S")+$COMMIT$DIRTY"
+    VERSION="$(sed -e 's/[-+].*//' <<< "$VERSION_K8S")+$COMMIT"
+    VERSION_TAG="$(sed -e 's/+/-/g' <<< "$VERSION")"
 fi
