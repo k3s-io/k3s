@@ -1,3 +1,6 @@
+# to run define K3S_TOKEN, K3S_VERSION is optional, eg:
+#   K3S_TOKEN=${RANDOM}${RANDOM}${RANDOM} docker-compose up
+
 version: '3'
 services:
 
@@ -9,7 +12,7 @@ services:
     - /var/run
     privileged: true
     environment:
-    - K3S_TOKEN=${K3S_TOKEN:-somethingtotallyrandom}
+    - K3S_TOKEN=${K3S_TOKEN:?err}
     - K3S_KUBECONFIG_OUTPUT=/output/kubeconfig.yaml
     - K3S_KUBECONFIG_MODE=666
     volumes:
@@ -27,7 +30,7 @@ services:
     privileged: true
     environment:
     - K3S_URL=https://server:6443
-    - K3S_TOKEN=${K3S_TOKEN:-somethingtotallyrandom}
+    - K3S_TOKEN=${K3S_TOKEN:?err}
 
 volumes:
   k3s-server: {}
