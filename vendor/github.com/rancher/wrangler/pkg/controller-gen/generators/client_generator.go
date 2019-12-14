@@ -18,17 +18,11 @@ limitations under the License.
 package generators
 
 import (
-	"bytes"
 	"fmt"
-	"io/ioutil"
-	"os"
-	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
 
-	"github.com/matryer/moq/pkg/moq"
-	"github.com/pkg/errors"
 	args2 "github.com/rancher/wrangler/pkg/controller-gen/args"
 	"golang.org/x/tools/imports"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -157,87 +151,4 @@ func (cg *ClientGenerator) groupVersionPackage(gv schema.GroupVersion, generator
 
 		return generators
 	})
-}
-
-func removePackage(pkg string) string {
-	pkgSplit := strings.Split(pkg, string(os.PathSeparator))
-	return strings.Join(pkgSplit[3:], string(os.PathSeparator))
-}
-
-func (cg *ClientGenerator) GenerateMocks() error {
-	base := args.DefaultSourceTree()
-
-	for packagePath, resources := range cg.Fakes {
-		if base == "./" {
-			packagePath = removePackage(packagePath)
-		}
-		genPath := path.Join(base, packagePath)
-
-		// Clean the fakes dir
-		err := cleanMockDir(genPath)
-		if err != nil {
-			return err
-		}
-
-		m, err := moq.New(genPath, "fakes")
-		if err != nil {
-			return err
-		}
-
-		for _, resource := range resources {
-			var out bytes.Buffer
-
-			interfaces := []string{
-				resource + "Controller",
-				resource + "Client",
-				resource + "Cache",
-			}
-
-			err = m.Mock(&out, interfaces...)
-			if err != nil {
-				return err
-			}
-
-			filePath := path.Join(genPath, "fakes", "zz_generated_"+addUnderscore(resource)+"_mock.go")
-
-			// format imports - moq only uses gofmt which does not do imports
-			res, err := imports.Process(filePath, out.Bytes(), goImportOpts)
-			if err != nil {
-				return err
-			}
-
-			// create the file
-			err = ioutil.WriteFile(filePath, res, 0644)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
-func addUnderscore(input string) string {
-	return strings.ToLower(underscoreRegexp.ReplaceAllString(input, `${1}_${2}`))
-}
-
-func cleanMockDir(dir string) error {
-	dir = path.Join(dir, "fakes")
-	files, err := ioutil.ReadDir(dir)
-	if err != nil {
-		// if the directory doesn't exist there is nothing to do
-		if !os.IsNotExist(err) {
-			return err
-		}
-		return nil
-	}
-
-	for _, file := range files {
-		if strings.HasSuffix(file.Name(), "_mock.go") || strings.HasSuffix(file.Name(), "_mock_test.go") {
-			if err := os.Remove(path.Join(dir, file.Name())); err != nil {
-				return errors.Wrapf(err, "failed to delete %s", path.Join(dir, file.Name()))
-			}
-		}
-	}
-
-	return nil
 }

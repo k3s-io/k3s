@@ -4,8 +4,6 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/pkg/errors"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -126,51 +124,6 @@ func (c Cond) GetMessage(obj runtime.Object) string {
 		return ""
 	}
 	return getFieldValue(*cond, "Message").String()
-}
-
-func (c Cond) Once(obj runtime.Object, f func() (runtime.Object, error)) error {
-	if c.IsFalse(obj) {
-		return errors.New(c.GetReason(obj))
-	}
-
-	return c.DoUntilTrue(obj, f)
-}
-
-func (c Cond) DoUntilTrue(obj runtime.Object, f func() (runtime.Object, error)) error {
-	if c.IsTrue(obj) {
-		return nil
-	}
-
-	return c.Do(f)
-}
-
-func messageAndReason(err error) (string, string) {
-	if err == nil {
-		return "", ""
-	}
-
-	switch ce := err.(type) {
-	case *conditionError:
-		return err.Error(), ce.reason
-	default:
-		return err.Error(), "Error"
-	}
-}
-
-func (c Cond) Do(f func() (runtime.Object, error)) error {
-	obj, err := f()
-
-	if apierrors.IsConflict(err) {
-		// Don't update condition state on conflicts
-		return err
-	}
-
-	message, reason := messageAndReason(err)
-	c.SetStatusBool(obj, err == nil)
-	c.Message(obj, message)
-	c.Reason(obj, reason)
-
-	return err
 }
 
 func touchTS(value reflect.Value) {

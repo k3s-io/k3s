@@ -28,6 +28,7 @@ import (
 type Interface interface {
 	DaemonSet() DaemonSetController
 	Deployment() DeploymentController
+	StatefulSet() StatefulSetController
 }
 
 func New(controllerManager *generic.ControllerManager, client clientset.AppsV1Interface,
@@ -50,4 +51,7 @@ func (c *version) DaemonSet() DaemonSetController {
 }
 func (c *version) Deployment() DeploymentController {
 	return NewDeploymentController(v1.SchemeGroupVersion.WithKind("Deployment"), c.controllerManager, c.client, c.informers.Deployments())
+}
+func (c *version) StatefulSet() StatefulSetController {
+	return NewStatefulSetController(v1.SchemeGroupVersion.WithKind("StatefulSet"), c.controllerManager, c.client, c.informers.StatefulSets())
 }

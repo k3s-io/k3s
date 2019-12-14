@@ -31,7 +31,7 @@ func Set(obj runtime.Object) error {
 	if gvk.Kind != "" {
 		return nil
 	}
-	
+
 	gvks, _, err := schemes.All.ObjectKinds(obj)
 	if err != nil {
 		return err

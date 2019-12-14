@@ -79,6 +79,10 @@ func (o *ObjectSet) ObjectsByGVK() ObjectByGVK {
 	return o.objects
 }
 
+func (o *ObjectSet) All() []runtime.Object {
+	return o.order
+}
+
 func (o *ObjectSet) Add(objs ...runtime.Object) *ObjectSet {
 	for _, obj := range objs {
 		o.add(obj)

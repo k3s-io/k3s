@@ -65,7 +65,7 @@ require (
 	github.com/bhendo/go-powershell v0.0.0-20190719160123-219e7fb4e41e // indirect
 	github.com/bronze1man/goStrongswanVici v0.0.0-20190828090544-27d02f80ba40 // indirect
 	github.com/buger/jsonparser v0.0.0-20181115193947-bf1c66bbce23 // indirect
-	github.com/canonical/go-dqlite v1.1.0
+	github.com/canonical/go-dqlite v1.2.0
 	github.com/containerd/cgroups v0.0.0-20190923161937-abd0b19954a6 // indirect
 	github.com/containerd/containerd v1.3.0-beta.2.0.20190828155532-0293cbd26c69
 	github.com/containerd/continuity v0.0.0-20190827140505-75bee3e2ccb6 // indirect
@@ -78,6 +78,7 @@ require (
 	github.com/coreos/flannel v0.11.0
 	github.com/coreos/go-iptables v0.4.2
 	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f
+	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
 	github.com/docker/docker v0.7.3-0.20190731001754-589f1dad8dad
 	github.com/docker/go-metrics v0.0.1 // indirect
 	github.com/flosch/pongo2 v0.0.0-20190707114632-bbf5a6c351f4 // indirect
@@ -85,40 +86,46 @@ require (
 	github.com/go-sql-driver/mysql v1.4.1
 	github.com/gofrs/flock v0.7.1 // indirect
 	github.com/gogo/googleapis v1.3.0 // indirect
+	github.com/gogo/protobuf v1.3.1 // indirect
 	github.com/google/tcpproxy v0.0.0-20180808230851-dfa16c61dad2
 	github.com/gorilla/mux v1.7.3
 	github.com/gorilla/websocket v1.4.1
+	github.com/imdario/mergo v0.3.8 // indirect
 	github.com/juju/errors v0.0.0-20190806202954-0232dcc7464d // indirect
 	github.com/juju/testing v0.0.0-20190723135506-ce30eb24acd2 // indirect
 	github.com/kubernetes-sigs/cri-tools v0.0.0-00010101000000-000000000000
-	github.com/lib/pq v1.1.1
+	github.com/lib/pq v1.2.0
 	github.com/lxc/lxd v0.0.0-20191108214106-60ea15630455
-	github.com/mattn/go-sqlite3 v1.11.0
+	github.com/mattn/go-sqlite3 v2.0.1+incompatible
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/opencontainers/runc v1.0.0-rc9
 	github.com/pkg/errors v0.8.1
 	github.com/rakelkar/gonetsh v0.0.0-20190719023240-501daadcadf8 // indirect
 	github.com/rancher/dynamiclistener v0.2.0
-	github.com/rancher/helm-controller v0.2.2
-	github.com/rancher/kine v0.2.5
+	github.com/rancher/helm-controller v0.3.0
+	github.com/rancher/kine v0.3.0
 	github.com/rancher/remotedialer v0.2.0
-	github.com/rancher/wrangler v0.2.0
-	github.com/rancher/wrangler-api v0.2.0
+	github.com/rancher/wrangler v0.4.0
+	github.com/rancher/wrangler-api v0.4.0
 	github.com/rootless-containers/rootlesskit v0.6.0
 	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/pflag v1.0.5
 	github.com/tchap/go-patricia v2.3.0+incompatible // indirect
 	github.com/theckman/go-flock v0.7.1 // indirect
-	github.com/urfave/cli v1.21.0
-	golang.org/x/crypto v0.0.0-20190820162420-60c769a6c586
-	golang.org/x/net v0.0.0-20191004110552-13f9640d40b9
-	golang.org/x/sys v0.0.0-20190916202348-b4ddaad3f8a3
-	google.golang.org/grpc v1.23.1
+	github.com/urfave/cli v1.22.2
+	golang.org/x/crypto v0.0.0-20191206172530-e9b2fee46413
+	golang.org/x/net v0.0.0-20191209160850-c0dbc17a3553
+	golang.org/x/oauth2 v0.0.0-20191202225959-858c2ad4c8b6 // indirect
+	golang.org/x/sys v0.0.0-20191210023423-ac6580df4449
+	golang.org/x/time v0.0.0-20191024005414-555d28b269f0 // indirect
+	google.golang.org/appengine v1.6.5 // indirect
+	google.golang.org/genproto v0.0.0-20191206224255-0243a4be9c8f // indirect
+	google.golang.org/grpc v1.25.1
 	gopkg.in/mgo.v2 v2.0.0-20190816093944-a6b53ec6cb22 // indirect
 	gopkg.in/robfig/cron.v2 v2.0.0-20150107220207-be2e0b0deed5 // indirect
-	gopkg.in/yaml.v2 v2.2.4
-	k8s.io/api v0.0.0
-	k8s.io/apimachinery v0.0.0
+	gopkg.in/yaml.v2 v2.2.7
+	k8s.io/api v0.17.0
+	k8s.io/apimachinery v0.17.0
 	k8s.io/apiserver v0.0.0
 	k8s.io/client-go v11.0.1-0.20190409021438-1a26190bd76a+incompatible
 	k8s.io/cloud-provider v0.0.0
@@ -127,4 +134,5 @@ require (
 	k8s.io/klog v1.0.0
 	k8s.io/kubelet v0.0.0
 	k8s.io/kubernetes v1.16.0
+	k8s.io/utils v0.0.0-20191114200735-6ca3b61696b6 // indirect
 )

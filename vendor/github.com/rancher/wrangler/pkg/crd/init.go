@@ -9,6 +9,7 @@ import (
 	"github.com/rancher/wrangler/pkg/kv"
 	"github.com/rancher/wrangler/pkg/name"
 	"github.com/sirupsen/logrus"
+	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	apiext "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -29,6 +30,42 @@ type CRD struct {
 	GVK          schema.GroupVersionKind
 	PluralName   string
 	NonNamespace bool
+	Schema       *v1beta1.JSONSchemaProps
+	Columns      []v1beta1.CustomResourceColumnDefinition
+	Status       bool
+	Scale        bool
+	Categories   []string
+	ShortNames   []string
+}
+
+func (c CRD) WithSchema(schema *v1beta1.JSONSchemaProps) CRD {
+	c.Schema = schema
+	return c
+}
+
+func (c CRD) WithCustomColumn(columns []v1beta1.CustomResourceColumnDefinition) CRD {
+	c.Columns = columns
+	return c
+}
+
+func (c CRD) WithStatus() CRD {
+	c.Status = true
+	return c
+}
+
+func (c CRD) WithScale() CRD {
+	c.Scale = true
+	return c
+}
+
+func (c CRD) WithCategories(categories ...string) CRD {
+	c.Categories = categories
+	return c
+}
+
+func (c CRD) WithShortNames(shortNames ...string) CRD {
+	c.ShortNames = shortNames
+	return c
 }
 
 func (c CRD) ToCustomResourceDefinition() apiext.CustomResourceDefinition {
@@ -44,8 +81,9 @@ func (c CRD) ToCustomResourceDefinition() apiext.CustomResourceDefinition {
 			Name: name,
 		},
 		Spec: apiext.CustomResourceDefinitionSpec{
-			Group:   c.GVK.Group,
-			Version: c.GVK.Version,
+			AdditionalPrinterColumns: c.Columns,
+			Group:                    c.GVK.Group,
+			Version:                  c.GVK.Version,
 			Versions: []apiext.CustomResourceDefinitionVersion{
 				{
 					Name:    c.GVK.Version,
@@ -54,10 +92,32 @@ func (c CRD) ToCustomResourceDefinition() apiext.CustomResourceDefinition {
 				},
 			},
 			Names: apiext.CustomResourceDefinitionNames{
-				Plural: plural,
-				Kind:   c.GVK.Kind,
+				Plural:     plural,
+				Kind:       c.GVK.Kind,
+				Categories: c.Categories,
+				ShortNames: c.ShortNames,
 			},
 		},
+	}
+
+	if c.Schema != nil {
+		crd.Spec.Validation = &apiext.CustomResourceValidation{
+			OpenAPIV3Schema: c.Schema,
+		}
+	}
+
+	if c.Status {
+		crd.Spec.Subresources = &apiext.CustomResourceSubresources{
+			Status: &apiext.CustomResourceSubresourceStatus{},
+		}
+		if c.Scale {
+			sel := "Spec.Selector"
+			crd.Spec.Subresources.Scale = &apiext.CustomResourceSubresourceScale{
+				SpecReplicasPath:   "Spec.Replicas",
+				StatusReplicasPath: "Status.Replicas",
+				LabelSelectorPath:  &sel,
+			}
+		}
 	}
 
 	if c.NonNamespace {
@@ -127,7 +187,7 @@ func (f *Factory) BatchWait() error {
 	return f.err
 }
 
-func (f *Factory) BatchCreateCRDs(ctx context.Context, crds ...CRD) {
+func (f *Factory) BatchCreateCRDs(ctx context.Context, crds ...CRD) *Factory {
 	f.wg.Add(1)
 	go func() {
 		defer f.wg.Done()
@@ -135,6 +195,7 @@ func (f *Factory) BatchCreateCRDs(ctx context.Context, crds ...CRD) {
 			f.err = err
 		}
 	}()
+	return f
 }
 
 func (f *Factory) CreateCRDs(ctx context.Context, crds ...CRD) (map[schema.GroupVersionKind]*apiext.CustomResourceDefinition, error) {
@@ -219,7 +280,8 @@ func (f *Factory) createCRD(crdDef CRD, ready map[string]*apiext.CustomResourceD
 
 	existing, ok := ready[crd.Name]
 	if ok {
-		if !equality.Semantic.DeepEqual(crd.Spec.Versions, existing.Spec.Versions) {
+		if !equality.Semantic.DeepEqual(crd.Spec.Validation, existing.Spec.Validation) ||
+			!equality.Semantic.DeepEqual(crd.Spec.Versions, existing.Spec.Versions) {
 			existing.Spec = crd.Spec
 			logrus.Infof("Updating CRD %s", crd.Name)
 			return f.CRDClient.ApiextensionsV1beta1().CustomResourceDefinitions().Update(existing)

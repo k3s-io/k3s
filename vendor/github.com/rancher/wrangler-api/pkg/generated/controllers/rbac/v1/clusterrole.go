@@ -20,6 +20,7 @@ package v1
 
 import (
 	"context"
+	"time"
 
 	"github.com/rancher/wrangler/pkg/generic"
 	v1 "k8s.io/api/rbac/v1"
@@ -40,20 +41,15 @@ import (
 type ClusterRoleHandler func(string, *v1.ClusterRole) (*v1.ClusterRole, error)
 
 type ClusterRoleController interface {
+	generic.ControllerMeta
 	ClusterRoleClient
 
 	OnChange(ctx context.Context, name string, sync ClusterRoleHandler)
 	OnRemove(ctx context.Context, name string, sync ClusterRoleHandler)
 	Enqueue(name string)
+	EnqueueAfter(name string, duration time.Duration)
 
 	Cache() ClusterRoleCache
-
-	Informer() cache.SharedIndexInformer
-	GroupVersionKind() schema.GroupVersionKind
-
-	AddGenericHandler(ctx context.Context, name string, handler generic.Handler)
-	AddGenericRemoveHandler(ctx context.Context, name string, handler generic.Handler)
-	Updater() generic.Updater
 }
 
 type ClusterRoleClient interface {
@@ -118,26 +114,21 @@ func (c *clusterRoleController) Updater() generic.Updater {
 	}
 }
 
-func UpdateClusterRoleOnChange(updater generic.Updater, handler ClusterRoleHandler) ClusterRoleHandler {
-	return func(key string, obj *v1.ClusterRole) (*v1.ClusterRole, error) {
-		if obj == nil {
-			return handler(key, nil)
-		}
-
-		copyObj := obj.DeepCopy()
-		newObj, err := handler(key, copyObj)
-		if newObj != nil {
-			copyObj = newObj
-		}
-		if obj.ResourceVersion == copyObj.ResourceVersion && !equality.Semantic.DeepEqual(obj, copyObj) {
-			newObj, err := updater(copyObj)
-			if newObj != nil && err == nil {
-				copyObj = newObj.(*v1.ClusterRole)
-			}
-		}
-
-		return copyObj, err
+func UpdateClusterRoleDeepCopyOnChange(client ClusterRoleClient, obj *v1.ClusterRole, handler func(obj *v1.ClusterRole) (*v1.ClusterRole, error)) (*v1.ClusterRole, error) {
+	if obj == nil {
+		return obj, nil
 	}
+
+	copyObj := obj.DeepCopy()
+	newObj, err := handler(copyObj)
+	if newObj != nil {
+		copyObj = newObj
+	}
+	if obj.ResourceVersion == copyObj.ResourceVersion && !equality.Semantic.DeepEqual(obj, copyObj) {
+		return client.Update(copyObj)
+	}
+
+	return copyObj, err
 }
 
 func (c *clusterRoleController) AddGenericHandler(ctx context.Context, name string, handler generic.Handler) {
@@ -160,6 +151,10 @@ func (c *clusterRoleController) OnRemove(ctx context.Context, name string, sync 
 
 func (c *clusterRoleController) Enqueue(name string) {
 	c.controllerManager.Enqueue(c.gvk, c.informer.Informer(), "", name)
+}
+
+func (c *clusterRoleController) EnqueueAfter(name string, duration time.Duration) {
+	c.controllerManager.EnqueueAfter(c.gvk, c.informer.Informer(), "", name, duration)
 }
 
 func (c *clusterRoleController) Informer() cache.SharedIndexInformer {

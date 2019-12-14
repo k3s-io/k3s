@@ -16,12 +16,12 @@ type Options struct {
 	OutputPackage string
 	Groups        map[string]Group
 	Boilerplate   string
-	GenMocks      bool
 }
 
 type Group struct {
 	Types            []interface{}
 	GenerateTypes    bool
+	GenerateClients  bool
 	PackageName      string
 	ClientSetPackage string
 	ListersPackage   string

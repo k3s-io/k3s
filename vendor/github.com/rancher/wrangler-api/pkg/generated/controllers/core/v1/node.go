@@ -20,10 +20,14 @@ package v1
 
 import (
 	"context"
+	"time"
 
+	"github.com/rancher/wrangler/pkg/apply"
+	"github.com/rancher/wrangler/pkg/condition"
 	"github.com/rancher/wrangler/pkg/generic"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -40,20 +44,15 @@ import (
 type NodeHandler func(string, *v1.Node) (*v1.Node, error)
 
 type NodeController interface {
+	generic.ControllerMeta
 	NodeClient
 
 	OnChange(ctx context.Context, name string, sync NodeHandler)
 	OnRemove(ctx context.Context, name string, sync NodeHandler)
 	Enqueue(name string)
+	EnqueueAfter(name string, duration time.Duration)
 
 	Cache() NodeCache
-
-	Informer() cache.SharedIndexInformer
-	GroupVersionKind() schema.GroupVersionKind
-
-	AddGenericHandler(ctx context.Context, name string, handler generic.Handler)
-	AddGenericRemoveHandler(ctx context.Context, name string, handler generic.Handler)
-	Updater() generic.Updater
 }
 
 type NodeClient interface {
@@ -118,26 +117,21 @@ func (c *nodeController) Updater() generic.Updater {
 	}
 }
 
-func UpdateNodeOnChange(updater generic.Updater, handler NodeHandler) NodeHandler {
-	return func(key string, obj *v1.Node) (*v1.Node, error) {
-		if obj == nil {
-			return handler(key, nil)
-		}
-
-		copyObj := obj.DeepCopy()
-		newObj, err := handler(key, copyObj)
-		if newObj != nil {
-			copyObj = newObj
-		}
-		if obj.ResourceVersion == copyObj.ResourceVersion && !equality.Semantic.DeepEqual(obj, copyObj) {
-			newObj, err := updater(copyObj)
-			if newObj != nil && err == nil {
-				copyObj = newObj.(*v1.Node)
-			}
-		}
-
-		return copyObj, err
+func UpdateNodeDeepCopyOnChange(client NodeClient, obj *v1.Node, handler func(obj *v1.Node) (*v1.Node, error)) (*v1.Node, error) {
+	if obj == nil {
+		return obj, nil
 	}
+
+	copyObj := obj.DeepCopy()
+	newObj, err := handler(copyObj)
+	if newObj != nil {
+		copyObj = newObj
+	}
+	if obj.ResourceVersion == copyObj.ResourceVersion && !equality.Semantic.DeepEqual(obj, copyObj) {
+		return client.Update(copyObj)
+	}
+
+	return copyObj, err
 }
 
 func (c *nodeController) AddGenericHandler(ctx context.Context, name string, handler generic.Handler) {
@@ -160,6 +154,10 @@ func (c *nodeController) OnRemove(ctx context.Context, name string, sync NodeHan
 
 func (c *nodeController) Enqueue(name string) {
 	c.controllerManager.Enqueue(c.gvk, c.informer.Informer(), "", name)
+}
+
+func (c *nodeController) EnqueueAfter(name string, duration time.Duration) {
+	c.controllerManager.EnqueueAfter(c.gvk, c.informer.Informer(), "", name, duration)
 }
 
 func (c *nodeController) Informer() cache.SharedIndexInformer {
@@ -239,4 +237,104 @@ func (c *nodeCache) GetByIndex(indexName, key string) (result []*v1.Node, err er
 		result = append(result, obj.(*v1.Node))
 	}
 	return result, nil
+}
+
+type NodeStatusHandler func(obj *v1.Node, status v1.NodeStatus) (v1.NodeStatus, error)
+
+type NodeGeneratingHandler func(obj *v1.Node, status v1.NodeStatus) ([]runtime.Object, v1.NodeStatus, error)
+
+func RegisterNodeStatusHandler(ctx context.Context, controller NodeController, condition condition.Cond, name string, handler NodeStatusHandler) {
+	statusHandler := &nodeStatusHandler{
+		client:    controller,
+		condition: condition,
+		handler:   handler,
+	}
+	controller.AddGenericHandler(ctx, name, FromNodeHandlerToHandler(statusHandler.sync))
+}
+
+func RegisterNodeGeneratingHandler(ctx context.Context, controller NodeController, apply apply.Apply,
+	condition condition.Cond, name string, handler NodeGeneratingHandler, opts *generic.GeneratingHandlerOptions) {
+	statusHandler := &nodeGeneratingHandler{
+		NodeGeneratingHandler: handler,
+		apply:                 apply,
+		name:                  name,
+		gvk:                   controller.GroupVersionKind(),
+	}
+	if opts != nil {
+		statusHandler.opts = *opts
+	}
+	RegisterNodeStatusHandler(ctx, controller, condition, name, statusHandler.Handle)
+}
+
+type nodeStatusHandler struct {
+	client    NodeClient
+	condition condition.Cond
+	handler   NodeStatusHandler
+}
+
+func (a *nodeStatusHandler) sync(key string, obj *v1.Node) (*v1.Node, error) {
+	if obj == nil {
+		return obj, nil
+	}
+
+	origStatus := obj.Status
+	obj = obj.DeepCopy()
+	newStatus, err := a.handler(obj, obj.Status)
+	if err != nil {
+		// Revert to old status on error
+		newStatus = *origStatus.DeepCopy()
+	}
+
+	obj.Status = newStatus
+	if a.condition != "" {
+		if errors.IsConflict(err) {
+			a.condition.SetError(obj, "", nil)
+		} else {
+			a.condition.SetError(obj, "", err)
+		}
+	}
+	if !equality.Semantic.DeepEqual(origStatus, obj.Status) {
+		var newErr error
+		obj, newErr = a.client.UpdateStatus(obj)
+		if err == nil {
+			err = newErr
+		}
+	}
+	return obj, err
+}
+
+type nodeGeneratingHandler struct {
+	NodeGeneratingHandler
+	apply apply.Apply
+	opts  generic.GeneratingHandlerOptions
+	gvk   schema.GroupVersionKind
+	name  string
+}
+
+func (a *nodeGeneratingHandler) Handle(obj *v1.Node, status v1.NodeStatus) (v1.NodeStatus, error) {
+	objs, newStatus, err := a.NodeGeneratingHandler(obj, status)
+	if err != nil {
+		return newStatus, err
+	}
+
+	apply := a.apply
+
+	if !a.opts.DynamicLookup {
+		apply = apply.WithStrictCaching()
+	}
+
+	if !a.opts.AllowCrossNamespace && !a.opts.AllowClusterScoped {
+		apply = apply.WithSetOwnerReference(true, false).
+			WithDefaultNamespace(obj.GetNamespace()).
+			WithListerNamespace(obj.GetNamespace())
+	}
+
+	if !a.opts.AllowClusterScoped {
+		apply = apply.WithRestrictClusterScoped()
+	}
+
+	return newStatus, apply.
+		WithOwner(obj).
+		WithSetID(a.name).
+		ApplyObjects(objs...)
 }

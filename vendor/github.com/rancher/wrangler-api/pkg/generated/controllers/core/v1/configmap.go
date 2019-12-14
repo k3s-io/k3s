@@ -20,6 +20,7 @@ package v1
 
 import (
 	"context"
+	"time"
 
 	"github.com/rancher/wrangler/pkg/generic"
 	v1 "k8s.io/api/core/v1"
@@ -40,20 +41,15 @@ import (
 type ConfigMapHandler func(string, *v1.ConfigMap) (*v1.ConfigMap, error)
 
 type ConfigMapController interface {
+	generic.ControllerMeta
 	ConfigMapClient
 
 	OnChange(ctx context.Context, name string, sync ConfigMapHandler)
 	OnRemove(ctx context.Context, name string, sync ConfigMapHandler)
 	Enqueue(namespace, name string)
+	EnqueueAfter(namespace, name string, duration time.Duration)
 
 	Cache() ConfigMapCache
-
-	Informer() cache.SharedIndexInformer
-	GroupVersionKind() schema.GroupVersionKind
-
-	AddGenericHandler(ctx context.Context, name string, handler generic.Handler)
-	AddGenericRemoveHandler(ctx context.Context, name string, handler generic.Handler)
-	Updater() generic.Updater
 }
 
 type ConfigMapClient interface {
@@ -118,26 +114,21 @@ func (c *configMapController) Updater() generic.Updater {
 	}
 }
 
-func UpdateConfigMapOnChange(updater generic.Updater, handler ConfigMapHandler) ConfigMapHandler {
-	return func(key string, obj *v1.ConfigMap) (*v1.ConfigMap, error) {
-		if obj == nil {
-			return handler(key, nil)
-		}
-
-		copyObj := obj.DeepCopy()
-		newObj, err := handler(key, copyObj)
-		if newObj != nil {
-			copyObj = newObj
-		}
-		if obj.ResourceVersion == copyObj.ResourceVersion && !equality.Semantic.DeepEqual(obj, copyObj) {
-			newObj, err := updater(copyObj)
-			if newObj != nil && err == nil {
-				copyObj = newObj.(*v1.ConfigMap)
-			}
-		}
-
-		return copyObj, err
+func UpdateConfigMapDeepCopyOnChange(client ConfigMapClient, obj *v1.ConfigMap, handler func(obj *v1.ConfigMap) (*v1.ConfigMap, error)) (*v1.ConfigMap, error) {
+	if obj == nil {
+		return obj, nil
 	}
+
+	copyObj := obj.DeepCopy()
+	newObj, err := handler(copyObj)
+	if newObj != nil {
+		copyObj = newObj
+	}
+	if obj.ResourceVersion == copyObj.ResourceVersion && !equality.Semantic.DeepEqual(obj, copyObj) {
+		return client.Update(copyObj)
+	}
+
+	return copyObj, err
 }
 
 func (c *configMapController) AddGenericHandler(ctx context.Context, name string, handler generic.Handler) {
@@ -160,6 +151,10 @@ func (c *configMapController) OnRemove(ctx context.Context, name string, sync Co
 
 func (c *configMapController) Enqueue(namespace, name string) {
 	c.controllerManager.Enqueue(c.gvk, c.informer.Informer(), namespace, name)
+}
+
+func (c *configMapController) EnqueueAfter(namespace, name string, duration time.Duration) {
+	c.controllerManager.EnqueueAfter(c.gvk, c.informer.Informer(), namespace, name, duration)
 }
 
 func (c *configMapController) Informer() cache.SharedIndexInformer {

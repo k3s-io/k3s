@@ -20,10 +20,14 @@ package v1
 
 import (
 	"context"
+	"time"
 
+	"github.com/rancher/wrangler/pkg/apply"
+	"github.com/rancher/wrangler/pkg/condition"
 	"github.com/rancher/wrangler/pkg/generic"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -40,20 +44,15 @@ import (
 type PodHandler func(string, *v1.Pod) (*v1.Pod, error)
 
 type PodController interface {
+	generic.ControllerMeta
 	PodClient
 
 	OnChange(ctx context.Context, name string, sync PodHandler)
 	OnRemove(ctx context.Context, name string, sync PodHandler)
 	Enqueue(namespace, name string)
+	EnqueueAfter(namespace, name string, duration time.Duration)
 
 	Cache() PodCache
-
-	Informer() cache.SharedIndexInformer
-	GroupVersionKind() schema.GroupVersionKind
-
-	AddGenericHandler(ctx context.Context, name string, handler generic.Handler)
-	AddGenericRemoveHandler(ctx context.Context, name string, handler generic.Handler)
-	Updater() generic.Updater
 }
 
 type PodClient interface {
@@ -118,26 +117,21 @@ func (c *podController) Updater() generic.Updater {
 	}
 }
 
-func UpdatePodOnChange(updater generic.Updater, handler PodHandler) PodHandler {
-	return func(key string, obj *v1.Pod) (*v1.Pod, error) {
-		if obj == nil {
-			return handler(key, nil)
-		}
-
-		copyObj := obj.DeepCopy()
-		newObj, err := handler(key, copyObj)
-		if newObj != nil {
-			copyObj = newObj
-		}
-		if obj.ResourceVersion == copyObj.ResourceVersion && !equality.Semantic.DeepEqual(obj, copyObj) {
-			newObj, err := updater(copyObj)
-			if newObj != nil && err == nil {
-				copyObj = newObj.(*v1.Pod)
-			}
-		}
-
-		return copyObj, err
+func UpdatePodDeepCopyOnChange(client PodClient, obj *v1.Pod, handler func(obj *v1.Pod) (*v1.Pod, error)) (*v1.Pod, error) {
+	if obj == nil {
+		return obj, nil
 	}
+
+	copyObj := obj.DeepCopy()
+	newObj, err := handler(copyObj)
+	if newObj != nil {
+		copyObj = newObj
+	}
+	if obj.ResourceVersion == copyObj.ResourceVersion && !equality.Semantic.DeepEqual(obj, copyObj) {
+		return client.Update(copyObj)
+	}
+
+	return copyObj, err
 }
 
 func (c *podController) AddGenericHandler(ctx context.Context, name string, handler generic.Handler) {
@@ -160,6 +154,10 @@ func (c *podController) OnRemove(ctx context.Context, name string, sync PodHandl
 
 func (c *podController) Enqueue(namespace, name string) {
 	c.controllerManager.Enqueue(c.gvk, c.informer.Informer(), namespace, name)
+}
+
+func (c *podController) EnqueueAfter(namespace, name string, duration time.Duration) {
+	c.controllerManager.EnqueueAfter(c.gvk, c.informer.Informer(), namespace, name, duration)
 }
 
 func (c *podController) Informer() cache.SharedIndexInformer {
@@ -239,4 +237,104 @@ func (c *podCache) GetByIndex(indexName, key string) (result []*v1.Pod, err erro
 		result = append(result, obj.(*v1.Pod))
 	}
 	return result, nil
+}
+
+type PodStatusHandler func(obj *v1.Pod, status v1.PodStatus) (v1.PodStatus, error)
+
+type PodGeneratingHandler func(obj *v1.Pod, status v1.PodStatus) ([]runtime.Object, v1.PodStatus, error)
+
+func RegisterPodStatusHandler(ctx context.Context, controller PodController, condition condition.Cond, name string, handler PodStatusHandler) {
+	statusHandler := &podStatusHandler{
+		client:    controller,
+		condition: condition,
+		handler:   handler,
+	}
+	controller.AddGenericHandler(ctx, name, FromPodHandlerToHandler(statusHandler.sync))
+}
+
+func RegisterPodGeneratingHandler(ctx context.Context, controller PodController, apply apply.Apply,
+	condition condition.Cond, name string, handler PodGeneratingHandler, opts *generic.GeneratingHandlerOptions) {
+	statusHandler := &podGeneratingHandler{
+		PodGeneratingHandler: handler,
+		apply:                apply,
+		name:                 name,
+		gvk:                  controller.GroupVersionKind(),
+	}
+	if opts != nil {
+		statusHandler.opts = *opts
+	}
+	RegisterPodStatusHandler(ctx, controller, condition, name, statusHandler.Handle)
+}
+
+type podStatusHandler struct {
+	client    PodClient
+	condition condition.Cond
+	handler   PodStatusHandler
+}
+
+func (a *podStatusHandler) sync(key string, obj *v1.Pod) (*v1.Pod, error) {
+	if obj == nil {
+		return obj, nil
+	}
+
+	origStatus := obj.Status
+	obj = obj.DeepCopy()
+	newStatus, err := a.handler(obj, obj.Status)
+	if err != nil {
+		// Revert to old status on error
+		newStatus = *origStatus.DeepCopy()
+	}
+
+	obj.Status = newStatus
+	if a.condition != "" {
+		if errors.IsConflict(err) {
+			a.condition.SetError(obj, "", nil)
+		} else {
+			a.condition.SetError(obj, "", err)
+		}
+	}
+	if !equality.Semantic.DeepEqual(origStatus, obj.Status) {
+		var newErr error
+		obj, newErr = a.client.UpdateStatus(obj)
+		if err == nil {
+			err = newErr
+		}
+	}
+	return obj, err
+}
+
+type podGeneratingHandler struct {
+	PodGeneratingHandler
+	apply apply.Apply
+	opts  generic.GeneratingHandlerOptions
+	gvk   schema.GroupVersionKind
+	name  string
+}
+
+func (a *podGeneratingHandler) Handle(obj *v1.Pod, status v1.PodStatus) (v1.PodStatus, error) {
+	objs, newStatus, err := a.PodGeneratingHandler(obj, status)
+	if err != nil {
+		return newStatus, err
+	}
+
+	apply := a.apply
+
+	if !a.opts.DynamicLookup {
+		apply = apply.WithStrictCaching()
+	}
+
+	if !a.opts.AllowCrossNamespace && !a.opts.AllowClusterScoped {
+		apply = apply.WithSetOwnerReference(true, false).
+			WithDefaultNamespace(obj.GetNamespace()).
+			WithListerNamespace(obj.GetNamespace())
+	}
+
+	if !a.opts.AllowClusterScoped {
+		apply = apply.WithRestrictClusterScoped()
+	}
+
+	return newStatus, apply.
+		WithOwner(obj).
+		WithSetID(a.name).
+		ApplyObjects(objs...)
 }
