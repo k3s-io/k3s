@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"reflect"
+	"strconv"
 	"sync"
 	"time"
 
@@ -37,14 +38,13 @@ func getAddresses(endpoint *v1.Endpoints) []string {
 	for _, subset := range endpoint.Subsets {
 		var port string
 		if len(subset.Ports) > 0 {
-			port = fmt.Sprint(subset.Ports[0].Port)
+			port = strconv.Itoa(int(subset.Ports[0].Port))
+		}
+		if port == "" {
+			port = "443"
 		}
 		for _, address := range subset.Addresses {
-			serverAddress := address.IP
-			if port != "" {
-				serverAddress += ":" + port
-			}
-			serverAddresses = append(serverAddresses, serverAddress)
+			serverAddresses = append(serverAddresses, net.JoinHostPort(address.IP, port))
 		}
 	}
 	return serverAddresses
