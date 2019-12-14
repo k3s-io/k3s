@@ -4,7 +4,8 @@ go 1.12
 
 replace (
 	github.com/Microsoft/hcsshim => github.com/Microsoft/hcsshim v0.8.7-0.20190926181021-82c7525d98c8
-	github.com/canonical/go-dqlite => github.com/rancher/go-dqlite v1.1.0-k3s.1
+
+	github.com/canonical/go-dqlite => ../go-dqlite
 	github.com/containerd/btrfs => github.com/containerd/btrfs v0.0.0-20181101203652-af5082808c83
 	github.com/containerd/cgroups => github.com/containerd/cgroups v0.0.0-20190717030353-c4b9ac5c7601
 	github.com/containerd/console => github.com/containerd/console v0.0.0-20181022165439-0650fd9eeb50
@@ -32,6 +33,7 @@ replace (
 	github.com/prometheus/client_model => github.com/prometheus/client_model v0.0.0-20180712105110-5c3871d89910
 	github.com/prometheus/common => github.com/prometheus/common v0.0.0-20181126121408-4724e9255275
 	github.com/prometheus/procfs => github.com/prometheus/procfs v0.0.0-20181204211112-1dc9a6cbc91a
+	github.com/rancher/kine => ../kine
 	k8s.io/api => github.com/rancher/kubernetes/staging/src/k8s.io/api v1.17.0-k3s.1
 	k8s.io/apiextensions-apiserver => github.com/rancher/kubernetes/staging/src/k8s.io/apiextensions-apiserver v1.17.0-k3s.1
 	k8s.io/apimachinery => github.com/rancher/kubernetes/staging/src/k8s.io/apimachinery v1.17.0-k3s.1
@@ -65,7 +67,7 @@ require (
 	github.com/bhendo/go-powershell v0.0.0-20190719160123-219e7fb4e41e // indirect
 	github.com/bronze1man/goStrongswanVici v0.0.0-20190828090544-27d02f80ba40 // indirect
 	github.com/buger/jsonparser v0.0.0-20181115193947-bf1c66bbce23 // indirect
-	github.com/canonical/go-dqlite v1.1.0
+	github.com/canonical/go-dqlite v1.2.1-0.20191212090618-3d4450e52edd
 	github.com/containerd/cgroups v0.0.0-20190923161937-abd0b19954a6 // indirect
 	github.com/containerd/containerd v1.3.0-beta.2.0.20190828155532-0293cbd26c69
 	github.com/containerd/continuity v0.0.0-20190827140505-75bee3e2ccb6 // indirect
@@ -99,26 +101,26 @@ require (
 	github.com/pkg/errors v0.8.1
 	github.com/rakelkar/gonetsh v0.0.0-20190719023240-501daadcadf8 // indirect
 	github.com/rancher/dynamiclistener v0.2.0
-	github.com/rancher/helm-controller v0.2.2
+	github.com/rancher/helm-controller v0.3.0
 	github.com/rancher/kine v0.2.5
 	github.com/rancher/remotedialer v0.2.0
-	github.com/rancher/wrangler v0.2.0
-	github.com/rancher/wrangler-api v0.2.0
+	github.com/rancher/wrangler v0.4.0
+	github.com/rancher/wrangler-api v0.4.0
 	github.com/rootless-containers/rootlesskit v0.6.0
 	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/pflag v1.0.5
 	github.com/tchap/go-patricia v2.3.0+incompatible // indirect
 	github.com/theckman/go-flock v0.7.1 // indirect
-	github.com/urfave/cli v1.21.0
+	github.com/urfave/cli v1.22.2
 	golang.org/x/crypto v0.0.0-20190820162420-60c769a6c586
 	golang.org/x/net v0.0.0-20191004110552-13f9640d40b9
-	golang.org/x/sys v0.0.0-20190916202348-b4ddaad3f8a3
-	google.golang.org/grpc v1.23.1
+	golang.org/x/sys v0.0.0-20191010194322-b09406accb47
+	google.golang.org/grpc v1.24.0
 	gopkg.in/mgo.v2 v2.0.0-20190816093944-a6b53ec6cb22 // indirect
 	gopkg.in/robfig/cron.v2 v2.0.0-20150107220207-be2e0b0deed5 // indirect
 	gopkg.in/yaml.v2 v2.2.4
-	k8s.io/api v0.0.0
-	k8s.io/apimachinery v0.0.0
+	k8s.io/api v0.17.0
+	k8s.io/apimachinery v0.17.0
 	k8s.io/apiserver v0.0.0
 	k8s.io/client-go v11.0.1-0.20190409021438-1a26190bd76a+incompatible
 	k8s.io/cloud-provider v0.0.0

@@ -17,6 +17,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
+
 	// registering k3s cloud provider
 	_ "github.com/rancher/k3s/pkg/cloudprovider"
 
@@ -81,7 +83,7 @@ func Server(ctx context.Context, cfg *config.Control) error {
 	cfg.Runtime = runtime
 
 	if err := prepare(ctx, cfg, runtime); err != nil {
-		return err
+		return errors.Wrap(err, "preparing server")
 	}
 
 	cfg.Runtime.Tunnel = setupTunnel()

@@ -25,6 +25,18 @@ import (
 	"k8s.io/apimachinery/pkg/util/net"
 )
 
+const (
+	PeersFile  = "peers.db"
+	NodeIDFile = "node-id"
+)
+
+var (
+	ignoreFile = map[string]bool{
+		PeersFile:  true,
+		NodeIDFile: true,
+	}
+)
+
 type Certs struct {
 	ServerTrust *x509.Certificate
 	ClientTrust *x509.Certificate
@@ -127,7 +139,7 @@ func (d *DQLite) startController(ctx context.Context) {
 }
 
 func (d *DQLite) nodeStore(ctx context.Context, initCluster bool) error {
-	peerDB := filepath.Join(d.DataDir, "db", "state.dqlite", "peers.db")
+	peerDB := filepath.Join(GetDBDir(d.DataDir), PeersFile)
 	ns, err := client.DefaultNodeStore(peerDB)
 	if err != nil {
 		return err
@@ -172,13 +184,17 @@ func getDialer(advertiseAddress, bindAddress string, tlsConfig *tls.Config) (cli
 	return dialer.NewHTTPDialer(advertiseAddress, bindAddress, tlsConfig)
 }
 
+func GetDBDir(dataDir string) string {
+	return filepath.Join(dataDir, "db", "state.dqlite")
+}
+
 func getNode(dataDir string, advertiseAddress, bindAddress string, initCluster bool, dial client.DialFunc) (dqlite.NodeInfo, *dqlite.Node, error) {
 	id, err := getClusterID(initCluster, dataDir)
 	if err != nil {
 		return dqlite.NodeInfo{}, nil, errors.Wrap(err, "reading cluster id")
 	}
 
-	dbDir := filepath.Join(dataDir, "db", "state.dqlite")
+	dbDir := GetDBDir(dataDir)
 
 	node, err := dqlite.New(id, advertiseAddress, dbDir,
 		dqlite.WithBindAddress(bindAddress),
@@ -191,7 +207,7 @@ func getNode(dataDir string, advertiseAddress, bindAddress string, initCluster b
 }
 
 func getClusterID(initCluster bool, dataDir string) (uint64, error) {
-	idFile := filepath.Join(dataDir, "db/state.dqlite/node-id")
+	idFile := filepath.Join(GetDBDir(dataDir), NodeIDFile)
 	content, err := ioutil.ReadFile(idFile)
 	if os.IsNotExist(err) {
 		content = nil
@@ -216,5 +232,5 @@ func getClusterID(initCluster bool, dataDir string) (uint64, error) {
 
 func (d *DQLite) getBindAddress() string {
 	// only anonymous works???
-	return "@" + filepath.Join(d.DataDir, "db", "state.dqlite", "dqlite.sock")
+	return "@" + filepath.Join(GetDBDir(d.DataDir), "dqlite.sock")
 }
