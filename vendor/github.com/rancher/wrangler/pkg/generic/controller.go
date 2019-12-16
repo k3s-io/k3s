@@ -17,20 +17,25 @@ limitations under the License.
 package generic
 
 import (
+	"context"
+	errors2 "errors"
 	"fmt"
 	"strings"
 	"time"
 
+	errors3 "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 )
+
+var ErrSkip = errors2.New("skip processing")
 
 type Handler func(key string, obj runtime.Object) (runtime.Object, error)
 
@@ -40,17 +45,22 @@ type Controller struct {
 	workqueue workqueue.RateLimitingInterface
 	informer  cache.SharedIndexInformer
 	handler   Handler
+	gvk       schema.GroupVersionKind
 }
 
-type generationKey struct {
-	generation int
-	key        string
+type ControllerMeta interface {
+	Informer() cache.SharedIndexInformer
+	GroupVersionKind() schema.GroupVersionKind
+
+	AddGenericHandler(ctx context.Context, name string, handler Handler)
+	AddGenericRemoveHandler(ctx context.Context, name string, handler Handler)
+	Updater() Updater
 }
 
 // NewController returns a new sample controller
-func NewController(name string, informer cache.SharedIndexInformer, workqueue workqueue.RateLimitingInterface, handler Handler) *Controller {
+func NewController(gvk schema.GroupVersionKind, informer cache.SharedIndexInformer, workqueue workqueue.RateLimitingInterface, handler Handler) *Controller {
 	controller := &Controller{
-		name:      name,
+		name:      gvk.String(),
 		handler:   handler,
 		informer:  informer,
 		workqueue: workqueue,
@@ -72,6 +82,14 @@ func NewController(name string, informer cache.SharedIndexInformer, workqueue wo
 	})
 
 	return controller
+}
+
+func (c *Controller) Informer() cache.SharedIndexInformer {
+	return c.informer
+}
+
+func (c *Controller) GroupVersionKind() schema.GroupVersionKind {
+	return c.gvk
 }
 
 func (c *Controller) run(threadiness int, stopCh <-chan struct{}) {
@@ -135,7 +153,7 @@ func (c *Controller) processSingleItem(obj interface{}) error {
 		utilruntime.HandleError(fmt.Errorf("expected string in workqueue but got %#v", obj))
 		return nil
 	}
-	if err := c.syncHandler(key); err != nil {
+	if err := c.syncHandler(key); err != nil && errors3.Cause(err) != ErrSkip {
 		c.workqueue.AddRateLimited(key)
 		return fmt.Errorf("error syncing '%s': %s, requeuing", key, err.Error())
 	}
@@ -163,6 +181,14 @@ func (c *Controller) Enqueue(namespace, name string) {
 		c.workqueue.AddRateLimited(name)
 	} else {
 		c.workqueue.AddRateLimited(namespace + "/" + name)
+	}
+}
+
+func (c *Controller) EnqueueAfter(namespace, name string, duration time.Duration) {
+	if namespace == "" {
+		c.workqueue.AddAfter(name, duration)
+	} else {
+		c.workqueue.AddAfter(namespace+"/"+name, duration)
 	}
 }
 

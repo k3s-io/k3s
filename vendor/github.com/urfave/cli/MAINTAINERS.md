@@ -1,4 +1,0 @@
-- @meatballhat
-- @lynncyrin
-- @AudriusButkevicius
-- @asahasrabuddhe

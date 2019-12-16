@@ -28,7 +28,6 @@ import (
 	"time"
 
 	restful "github.com/emicklei/go-restful"
-	"github.com/prometheus/client_golang/prometheus"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/validation"
 	"k8s.io/apimachinery/pkg/types"
@@ -77,9 +76,10 @@ var (
 	)
 	deprecatedRequestCounter = compbasemetrics.NewCounterVec(
 		&compbasemetrics.CounterOpts{
-			Name:           "apiserver_request_count",
-			Help:           "(Deprecated) Counter of apiserver requests broken out for each verb, group, version, resource, scope, component, client, and HTTP response contentType and code.",
-			StabilityLevel: compbasemetrics.ALPHA,
+			Name:              "apiserver_request_count",
+			Help:              "Counter of apiserver requests broken out for each verb, group, version, resource, scope, component, client, and HTTP response contentType and code.",
+			StabilityLevel:    compbasemetrics.ALPHA,
+			DeprecatedVersion: "1.14.0",
 		},
 		[]string{"verb", "group", "version", "resource", "subresource", "scope", "component", "client", "contentType", "code"},
 	)
@@ -107,21 +107,23 @@ var (
 	deprecatedRequestLatencies = compbasemetrics.NewHistogramVec(
 		&compbasemetrics.HistogramOpts{
 			Name: "apiserver_request_latencies",
-			Help: "(Deprecated) Response latency distribution in microseconds for each verb, group, version, resource, subresource, scope and component.",
+			Help: "Response latency distribution in microseconds for each verb, group, version, resource, subresource, scope and component.",
 			// Use buckets ranging from 125 ms to 8 seconds.
-			Buckets:        prometheus.ExponentialBuckets(125000, 2.0, 7),
-			StabilityLevel: compbasemetrics.ALPHA,
+			Buckets:           compbasemetrics.ExponentialBuckets(125000, 2.0, 7),
+			StabilityLevel:    compbasemetrics.ALPHA,
+			DeprecatedVersion: "1.14.0",
 		},
 		[]string{"verb", "group", "version", "resource", "subresource", "scope", "component"},
 	)
 	deprecatedRequestLatenciesSummary = compbasemetrics.NewSummaryVec(
 		&compbasemetrics.SummaryOpts{
 			Name: "apiserver_request_latencies_summary",
-			Help: "(Deprecated) Response latency summary in microseconds for each verb, group, version, resource, subresource, scope and component.",
+			Help: "Response latency summary in microseconds for each verb, group, version, resource, subresource, scope and component.",
 			// Make the sliding window of 5h.
 			// TODO: The value for this should be based on our SLI definition (medium term).
-			MaxAge:         5 * time.Hour,
-			StabilityLevel: compbasemetrics.ALPHA,
+			MaxAge:            5 * time.Hour,
+			StabilityLevel:    compbasemetrics.ALPHA,
+			DeprecatedVersion: "1.14.0",
 		},
 		[]string{"verb", "group", "version", "resource", "subresource", "scope", "component"},
 	)
@@ -130,7 +132,7 @@ var (
 			Name: "apiserver_response_sizes",
 			Help: "Response size distribution in bytes for each group, version, verb, resource, subresource, scope and component.",
 			// Use buckets ranging from 1000 bytes (1KB) to 10^9 bytes (1GB).
-			Buckets:        prometheus.ExponentialBuckets(1000, 10.0, 7),
+			Buckets:        compbasemetrics.ExponentialBuckets(1000, 10.0, 7),
 			StabilityLevel: compbasemetrics.ALPHA,
 		},
 		[]string{"verb", "group", "version", "resource", "subresource", "scope", "component"},
@@ -146,9 +148,10 @@ var (
 	)
 	DeprecatedDroppedRequests = compbasemetrics.NewCounterVec(
 		&compbasemetrics.CounterOpts{
-			Name:           "apiserver_dropped_requests",
-			Help:           "(Deprecated) Number of requests dropped with 'Try again later' response",
-			StabilityLevel: compbasemetrics.ALPHA,
+			Name:              "apiserver_dropped_requests",
+			Help:              "Number of requests dropped with 'Try again later' response",
+			StabilityLevel:    compbasemetrics.ALPHA,
+			DeprecatedVersion: "1.14.0",
 		},
 		[]string{"requestKind"},
 	)
@@ -173,7 +176,7 @@ var (
 		&compbasemetrics.HistogramOpts{
 			Name:           "apiserver_watch_events_sizes",
 			Help:           "Watch event size distribution in bytes",
-			Buckets:        prometheus.ExponentialBuckets(1024, 2.0, 8), // 1K, 2K, 4K, 8K, ..., 128K.
+			Buckets:        compbasemetrics.ExponentialBuckets(1024, 2.0, 8), // 1K, 2K, 4K, 8K, ..., 128K.
 			StabilityLevel: compbasemetrics.ALPHA,
 		},
 		[]string{"group", "version", "kind"},

@@ -62,11 +62,6 @@ var signals = [...]string{
 }
 
 const (
-	GENERIC_READ    = 0x80000000
-	GENERIC_WRITE   = 0x40000000
-	GENERIC_EXECUTE = 0x20000000
-	GENERIC_ALL     = 0x10000000
-
 	FILE_LIST_DIRECTORY   = 0x00000001
 	FILE_APPEND_DATA      = 0x00000004
 	FILE_WRITE_ATTRIBUTES = 0x00000100
@@ -157,13 +152,6 @@ const (
 	WAIT_ABANDONED = 0x00000080
 	WAIT_OBJECT_0  = 0x00000000
 	WAIT_FAILED    = 0xFFFFFFFF
-
-	// Standard access rights.
-	DELETE       = 0x00010000
-	READ_CONTROL = 0x00020000
-	SYNCHRONIZE  = 0x00100000
-	WRITE_DAC    = 0x00040000
-	WRITE_OWNER  = 0x00080000
 
 	// Access rights for process.
 	PROCESS_CREATE_PROCESS            = 0x0080
@@ -481,12 +469,6 @@ func NsecToTimeval(nsec int64) (tv Timeval) {
 	tv.Sec = int32(nsec / 1e9)
 	tv.Usec = int32(nsec % 1e9 / 1e3)
 	return
-}
-
-type SecurityAttributes struct {
-	Length             uint32
-	SecurityDescriptor uintptr
-	InheritHandle      uint32
 }
 
 type Overlapped struct {
@@ -1752,4 +1734,11 @@ const (
 	SHTDN_REASON_VALID_BIT_MASK                 = 0xc0ffffff
 
 	SHUTDOWN_NORETRY = 0x1
+)
+
+// Flags used for GetModuleHandleEx
+const (
+	GET_MODULE_HANDLE_EX_FLAG_PIN                = 1
+	GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT = 2
+	GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS       = 4
 )

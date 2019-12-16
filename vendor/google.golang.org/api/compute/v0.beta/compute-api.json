@@ -29,7 +29,7 @@
   "description": "Creates and runs virtual machines on Google Cloud Platform.",
   "discoveryVersion": "v1",
   "documentationLink": "https://developers.google.com/compute/docs/reference/latest/",
-  "etag": "\"VPK3KBfpaEgZ16pozGOoMYfKc0U/_AHzCpq0AAQFZQWJBiL19RSPIkQ\"",
+  "etag": "\"9eZ1uxVRThTDhLJCZHhqs3eQWz4/jCdf6DOx4OjYPC7yhr7Zwy53EJw\"",
   "icons": {
     "x16": "https://www.google.com/images/icons/product/compute_engine-16.png",
     "x32": "https://www.google.com/images/icons/product/compute_engine-32.png"
@@ -378,7 +378,7 @@
           ]
         },
         "insert": {
-          "description": "Creates an address resource in the specified project using the data included in the request.",
+          "description": "Creates an address resource in the specified project by using the data included in the request.",
           "httpMethod": "POST",
           "id": "compute.addresses.insert",
           "parameterOrder": [
@@ -3549,7 +3549,7 @@
           ]
         },
         "insert": {
-          "description": "Creates an address resource in the specified project using the data included in the request.",
+          "description": "Creates an address resource in the specified project by using the data included in the request.",
           "httpMethod": "POST",
           "id": "compute.globalAddresses.insert",
           "parameterOrder": [
@@ -12358,7 +12358,7 @@
           ]
         },
         "disableXpnResource": {
-          "description": "Disable a serivce resource (a.k.a service project) associated with this host project.",
+          "description": "Disable a service resource (also known as service project) associated with this host project.",
           "httpMethod": "POST",
           "id": "compute.projects.disableXpnResource",
           "parameterOrder": [
@@ -17587,6 +17587,48 @@
             "https://www.googleapis.com/auth/compute.readonly"
           ]
         },
+        "getIamPolicy": {
+          "description": "Gets the access control policy for a resource. May be empty if no such policy or resource exists.",
+          "httpMethod": "GET",
+          "id": "compute.resourcePolicies.getIamPolicy",
+          "parameterOrder": [
+            "project",
+            "region",
+            "resource"
+          ],
+          "parameters": {
+            "project": {
+              "description": "Project ID for this request.",
+              "location": "path",
+              "pattern": "(?:(?:[-a-z0-9]{1,63}\\.)*(?:[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?):)?(?:[0-9]{1,19}|(?:[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?))",
+              "required": true,
+              "type": "string"
+            },
+            "region": {
+              "description": "The name of the region for this request.",
+              "location": "path",
+              "pattern": "[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?",
+              "required": true,
+              "type": "string"
+            },
+            "resource": {
+              "description": "Name or id of the resource for this request.",
+              "location": "path",
+              "pattern": "[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?|[1-9][0-9]{0,19}",
+              "required": true,
+              "type": "string"
+            }
+          },
+          "path": "{project}/regions/{region}/resourcePolicies/{resource}/getIamPolicy",
+          "response": {
+            "$ref": "Policy"
+          },
+          "scopes": [
+            "https://www.googleapis.com/auth/cloud-platform",
+            "https://www.googleapis.com/auth/compute",
+            "https://www.googleapis.com/auth/compute.readonly"
+          ]
+        },
         "insert": {
           "description": "Creates a new resource policy.",
           "httpMethod": "POST",
@@ -17683,6 +17725,50 @@
             "https://www.googleapis.com/auth/cloud-platform",
             "https://www.googleapis.com/auth/compute",
             "https://www.googleapis.com/auth/compute.readonly"
+          ]
+        },
+        "setIamPolicy": {
+          "description": "Sets the access control policy on the specified resource. Replaces any existing policy.",
+          "httpMethod": "POST",
+          "id": "compute.resourcePolicies.setIamPolicy",
+          "parameterOrder": [
+            "project",
+            "region",
+            "resource"
+          ],
+          "parameters": {
+            "project": {
+              "description": "Project ID for this request.",
+              "location": "path",
+              "pattern": "(?:(?:[-a-z0-9]{1,63}\\.)*(?:[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?):)?(?:[0-9]{1,19}|(?:[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?))",
+              "required": true,
+              "type": "string"
+            },
+            "region": {
+              "description": "The name of the region for this request.",
+              "location": "path",
+              "pattern": "[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?",
+              "required": true,
+              "type": "string"
+            },
+            "resource": {
+              "description": "Name or id of the resource for this request.",
+              "location": "path",
+              "pattern": "[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?|[1-9][0-9]{0,19}",
+              "required": true,
+              "type": "string"
+            }
+          },
+          "path": "{project}/regions/{region}/resourcePolicies/{resource}/setIamPolicy",
+          "request": {
+            "$ref": "RegionSetPolicyRequest"
+          },
+          "response": {
+            "$ref": "Policy"
+          },
+          "scopes": [
+            "https://www.googleapis.com/auth/cloud-platform",
+            "https://www.googleapis.com/auth/compute"
           ]
         },
         "testIamPermissions": {
@@ -18216,7 +18302,7 @@
           ]
         },
         "update": {
-          "description": "Updates the specified Router resource with the data included in the request.",
+          "description": "Updates the specified Router resource with the data included in the request. This method conforms to PUT semantics, which requests that the state of the target resource be created or replaced with the state defined by the representation enclosed in the request message payload.",
           "httpMethod": "PUT",
           "id": "compute.routers.update",
           "parameterOrder": [
@@ -24100,7 +24186,7 @@
       }
     }
   },
-  "revision": "20190528",
+  "revision": "20190607",
   "rootUrl": "https://www.googleapis.com/",
   "schemas": {
     "AcceleratorConfig": {
@@ -24120,7 +24206,7 @@
       "type": "object"
     },
     "AcceleratorType": {
-      "description": "An Accelerator Type resource. (== resource_for beta.acceleratorTypes ==) (== resource_for v1.acceleratorTypes ==)",
+      "description": "Represents an Accelerator Type resource.\n\nGoogle Cloud Platform provides graphics processing units (accelerators) that you can add to VM instances to improve or accelerate performance when working with intensive workloads. For more information, read GPUs on Compute Engine. (== resource_for beta.acceleratorTypes ==) (== resource_for v1.acceleratorTypes ==)",
       "id": "AcceleratorType",
       "properties": {
         "creationTimestamp": {
@@ -24494,7 +24580,7 @@
           "type": "string"
         },
         "name": {
-          "description": "The name of this access configuration. The default and recommended name is External NAT but you can use any arbitrary string you would like. For example, My external IP or Network Access.",
+          "description": "The name of this access configuration. The default and recommended name is External NAT, but you can use any arbitrary string, such as My external IP or Network Access.",
           "type": "string"
         },
         "natIP": {
@@ -24514,11 +24600,11 @@
           "type": "string"
         },
         "publicPtrDomainName": {
-          "description": "The DNS domain name for the public PTR record. This field can only be set when the set_public_ptr field is enabled.",
+          "description": "The DNS domain name for the public PTR record. You can set this field only if the `setPublicPtr` field is enabled.",
           "type": "string"
         },
         "setPublicPtr": {
-          "description": "Specifies whether a public DNS ?PTR? record should be created to map the external IP address of the instance to a DNS domain name.",
+          "description": "Specifies whether a public DNS 'PTR' record should be created to map the external IP address of the instance to a DNS domain name.",
           "type": "boolean"
         },
         "type": {
@@ -24536,7 +24622,7 @@
       "type": "object"
     },
     "Address": {
-      "description": "A reserved address resource. (== resource_for beta.addresses ==) (== resource_for v1.addresses ==) (== resource_for beta.globalAddresses ==) (== resource_for v1.globalAddresses ==)",
+      "description": "Represents an IP Address resource.\n\nAn address resource represents a regional internal IP address. Regional internal IP addresses are RFC 1918 addresses that come from either a primary or secondary IP range of a subnet in a VPC network. Regional external IP addresses can be assigned to GCP VM instances, Cloud VPN gateways, regional external forwarding rules for network load balancers (in either Standard or Premium Tier), and regional external forwarding rules for HTTP(S), SSL Proxy, and TCP Proxy load balancers in Standard Tier. For more information, read IP addresses.\n\nA globalAddresses resource represent a global external IP address. Global external IP addresses are IPv4 or IPv6 addresses. They can only be assigned to global forwarding rules for HTTP(S), SSL Proxy, or TCP Proxy load balancers in Premium Tier. For more information, read Global resources. (== resource_for beta.addresses ==) (== resource_for v1.addresses ==) (== resource_for beta.globalAddresses ==) (== resource_for v1.globalAddresses ==)",
       "id": "Address",
       "properties": {
         "address": {
@@ -24562,7 +24648,7 @@
           "type": "string"
         },
         "description": {
-          "description": "An optional description of this resource. Provide this property when you create the resource.",
+          "description": "An optional description of this resource. Provide this field when you create the resource.",
           "type": "string"
         },
         "id": {
@@ -24571,7 +24657,7 @@
           "type": "string"
         },
         "ipVersion": {
-          "description": "The IP Version that will be used by this address. Valid options are IPV4 or IPV6. This can only be specified for a global address.",
+          "description": "The IP version that will be used by this address. Valid options are IPV4 or IPV6. This can only be specified for a global address.",
           "enum": [
             "IPV4",
             "IPV6",
@@ -24607,16 +24693,16 @@
               "compute.addresses.insert"
             ]
           },
-          "description": "Name of the resource. Provided by the client when the resource is created. The name must be 1-63 characters long, and comply with RFC1035. Specifically, the name must be 1-63 characters long and match the regular expression `[a-z]([-a-z0-9]*[a-z0-9])?` which means the first character must be a lowercase letter, and all following characters must be a dash, lowercase letter, or digit, except the last character, which cannot be a dash.",
+          "description": "Name of the resource. Provided by the client when the resource is created. The name must be 1-63 characters long, and comply with RFC1035. Specifically, the name must be 1-63 characters long and match the regular expression `[a-z]([-a-z0-9]*[a-z0-9])?`. The first character must be a lowercase letter, and all following characters (except for the last character) must be a dash, lowercase letter, or digit. The last character must be a lowercase letter or digit.",
           "pattern": "[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?",
           "type": "string"
         },
         "network": {
-          "description": "The URL of the network in which to reserve the address. This field can only be used with INTERNAL type with VPC_PEERING purpose.",
+          "description": "The URL of the network in which to reserve the address. This field can only be used with INTERNAL type with the VPC_PEERING purpose.",
           "type": "string"
         },
         "networkTier": {
-          "description": "This signifies the networking tier used for configuring this Address and can only take the following values: PREMIUM, STANDARD. Global forwarding rules can only be Premium Tier. Regional forwarding rules can be either Premium or Standard Tier. Standard Tier addresses applied to regional forwarding rules can be used with any external load balancer. Regional forwarding rules in Premium Tier can only be used with a Network load balancer.\n\nIf this field is not specified, it is assumed to be PREMIUM.",
+          "description": "This signifies the networking tier used for configuring this address and can only take the following values: PREMIUM or STANDARD. Global forwarding rules can only be Premium Tier. Regional forwarding rules can be either Premium or Standard Tier. Standard Tier addresses applied to regional forwarding rules can be used with any external load balancer. Regional forwarding rules in Premium Tier can only be used with a network load balancer.\n\nIf this field is not specified, it is assumed to be PREMIUM.",
           "enum": [
             "PREMIUM",
             "STANDARD"
@@ -24633,7 +24719,7 @@
           "type": "integer"
         },
         "purpose": {
-          "description": "The purpose of resource, only used with INTERNAL type.",
+          "description": "The purpose of this resource, which can be one of the following values:  \n- `GCE_ENDPOINT` for addresses that are used by VM instances, alias IP ranges, internal load balancers, and similar resources. \n- `DNS_RESOLVER` for a DNS resolver address in a subnetwork \n- `VPC_PEERING` for addresses that are reserved for VPC peer networks. \n- `NAT_AUTO` for addresses that are external IP addresses automatically reserved for Cloud NAT.",
           "enum": [
             "DNS_RESOLVER",
             "GCE_ENDPOINT",
@@ -24649,7 +24735,7 @@
           "type": "string"
         },
         "region": {
-          "description": "[Output Only] URL of the region where the regional address resides. This field is not applicable to global addresses. You must specify this field as part of the HTTP request URL. You cannot set this field in the request body.",
+          "description": "[Output Only] The URL of the region where the regional address resides. This field is not applicable to global addresses. You must specify this field as part of the HTTP request URL.",
           "type": "string"
         },
         "selfLink": {
@@ -24671,7 +24757,7 @@
           "type": "string"
         },
         "subnetwork": {
-          "description": "The URL of the subnetwork in which to reserve the address. If an IP address is specified, it must be within the subnetwork's IP range. This field can only be used with INTERNAL type with GCE_ENDPOINT/DNS_RESOLVER purposes.",
+          "description": "The URL of the subnetwork in which to reserve the address. If an IP address is specified, it must be within the subnetwork's IP range. This field can only be used with INTERNAL type with a GCE_ENDPOINT or DNS_RESOLVER purpose.",
           "type": "string"
         },
         "users": {
@@ -25007,11 +25093,11 @@
       "id": "AliasIpRange",
       "properties": {
         "ipCidrRange": {
-          "description": "The IP CIDR range represented by this alias IP range. This IP CIDR range must belong to the specified subnetwork and cannot contain IP addresses reserved by system or used by other network interfaces. This range may be a single IP address (e.g. 10.2.3.4), a netmask (e.g. /24) or a CIDR format string (e.g. 10.1.2.0/24).",
+          "description": "The IP alias ranges to allocate for this interface. This IP CIDR range must belong to the specified subnetwork and cannot contain IP addresses reserved by system or used by other network interfaces. This range may be a single IP address (such as 10.2.3.4), a netmask (such as /24) or a CIDR-formatted string (such as 10.1.2.0/24).",
           "type": "string"
         },
         "subnetworkRangeName": {
-          "description": "Optional subnetwork secondary range name specifying the secondary range from which to allocate the IP CIDR range for this alias IP range. If left unspecified, the primary range of the subnetwork will be used.",
+          "description": "The name of a subnetwork secondary IP range from which to allocate an IP alias range. If not specified, the primary range of the subnetwork is used.",
           "type": "string"
         }
       },
@@ -25127,7 +25213,7 @@
           "description": "[Input Only] Specifies the parameters for a new disk that will be created alongside the new instance. Use initialization parameters to create boot disks or local SSDs attached to the new instance.\n\nThis property is mutually exclusive with the source property; you can only define one or the other, but not both."
         },
         "interface": {
-          "description": "Specifies the disk interface to use for attaching this disk, which is either SCSI or NVME. The default is SCSI. Persistent disks must always use SCSI and the request will fail if you attempt to attach a persistent disk in any other format than SCSI. Local SSDs can use either NVME or SCSI. For performance characteristics of SCSI over NVMe, see Local SSD performance.",
+          "description": "Specifies the disk interface to use for attaching this disk, which is either SCSI or NVME. The default is SCSI. Persistent disks must always use SCSI and the request will fail if you attempt to attach a persistent disk in any other format than SCSI. Local SSDs can use either NVME or SCSI. For performance characteristics of SCSI over NVMe, see Local SSD performance. TODO(b/131765817): Update documentation when NVME is supported.",
           "enum": [
             "NVME",
             "SCSI"
@@ -25323,7 +25409,7 @@
       "type": "object"
     },
     "Autoscaler": {
-      "description": "Represents an Autoscaler resource. Autoscalers allow you to automatically scale virtual machine instances in managed instance groups according to an autoscaling policy that you define. For more information, read Autoscaling Groups of Instances. (== resource_for beta.autoscalers ==) (== resource_for v1.autoscalers ==) (== resource_for beta.regionAutoscalers ==) (== resource_for v1.regionAutoscalers ==)",
+      "description": "Represents an Autoscaler resource.\n\n\n\nUse autoscalers to automatically add or delete instances from a managed instance group according to your defined autoscaling policy. For more information, read Autoscaling Groups of Instances.\n\nFor zonal managed instance groups resource, use the autoscaler resource.\n\nFor regional managed instance groups, use the regionAutoscalers resource. (== resource_for beta.autoscalers ==) (== resource_for v1.autoscalers ==) (== resource_for beta.regionAutoscalers ==) (== resource_for v1.regionAutoscalers ==)",
       "id": "Autoscaler",
       "properties": {
         "autoscalingPolicy": {
@@ -26847,7 +26933,7 @@
       "type": "object"
     },
     "Commitment": {
-      "description": "Represents a Commitment resource. Creating a Commitment resource means that you are purchasing a committed use contract with an explicit start and end time. You can create commitments based on vCPUs and memory usage and receive discounted rates. For full details, read Signing Up for Committed Use Discounts.\n\nCommitted use discounts are subject to Google Cloud Platform's Service Specific Terms. By purchasing a committed use discount, you agree to these terms. Committed use discounts will not renew, so you must purchase a new commitment to continue receiving discounts. (== resource_for beta.commitments ==) (== resource_for v1.commitments ==)",
+      "description": "Represents a regional Commitment resource.\n\nCreating a commitment resource means that you are purchasing a committed use contract with an explicit start and end time. You can create commitments based on vCPUs and memory usage and receive discounted rates. For full details, read Signing Up for Committed Use Discounts. (== resource_for beta.regionCommitments ==) (== resource_for v1.regionCommitments ==)",
       "id": "Commitment",
       "properties": {
         "creationTimestamp": {
@@ -26935,6 +27021,24 @@
         },
         "statusMessage": {
           "description": "[Output Only] An optional, human-readable explanation of the status.",
+          "type": "string"
+        },
+        "type": {
+          "description": "The type of commitment, which affects the discount rate and the eligible resources. Type MEMORY_OPTIMIZED specifies a commitment that will only apply to memory optimized machines.",
+          "enum": [
+            "COMPUTE_OPTIMIZED",
+            "GENERAL_PURPOSE",
+            "GENERAL_PURPOSE_N2",
+            "MEMORY_OPTIMIZED",
+            "TYPE_UNSPECIFIED"
+          ],
+          "enumDescriptions": [
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
           "type": "string"
         }
       },
@@ -27519,7 +27623,7 @@
       "type": "object"
     },
     "Disk": {
-      "description": "A Disk resource. (== resource_for beta.disks ==) (== resource_for v1.disks ==)",
+      "description": "Represents a Persistent Disk resource.\n\nPersistent disks are required for running your VM instances. Create both boot and non-boot (data) persistent disks. For more information, read Persistent Disks. For more storage options, read Storage options.\n\nThe disks resource represents a zonal persistent disk. For more information, read Zonal persistent disks.\n\nThe regionDisks resource represents a regional persistent disk. For more information, read  Regional resources. (== resource_for beta.disks ==) (== resource_for v1.disks ==) (== resource_for v1.regionDisks ==) (== resource_for beta.regionDisks ==)",
       "id": "Disk",
       "properties": {
         "creationTimestamp": {
@@ -27984,7 +28088,7 @@
       "type": "object"
     },
     "DiskType": {
-      "description": "A DiskType resource. (== resource_for beta.diskTypes ==) (== resource_for v1.diskTypes ==)",
+      "description": "Represents a Disk Type resource.\n\nYou can choose from a variety of disk types based on your needs. For more information, read Storage options.\n\nThe diskTypes resource represents disk types for a zonal persistent disk. For more information, read Zonal persistent disks.\n\nThe regionDiskTypes resource represents disk types for a regional persistent disk. For more information, read Regional persistent disks. (== resource_for beta.diskTypes ==) (== resource_for v1.diskTypes ==) (== resource_for v1.regionDiskTypes ==) (== resource_for beta.regionDiskTypes ==)",
       "id": "DiskType",
       "properties": {
         "creationTimestamp": {
@@ -28552,7 +28656,7 @@
           "type": "string"
         },
         "imported": {
-          "description": "If the peering route is imported if there is no confliction.",
+          "description": "True if the peering route has been imported from a peer. The actual import happens if the field networkPeering.importCustomRoutes is true for this network, and networkPeering.exportCustomRoutes is true for the peer network, and the import does not result in a route conflict.",
           "type": "boolean"
         },
         "nextHopRegion": {
@@ -28919,7 +29023,7 @@
       "type": "object"
     },
     "Firewall": {
-      "description": "Represents a Firewall resource.",
+      "description": "Represents a Firewall Rule resource.\n\nFirewall rules allow or deny ingress traffic to, and egress traffic from your instances. For more information, read Firewall rules.",
       "id": "Firewall",
       "properties": {
         "allowed": {
@@ -28927,11 +29031,11 @@
           "items": {
             "properties": {
               "IPProtocol": {
-                "description": "The IP protocol to which this rule applies. The protocol type is required when creating a firewall rule. This value can either be one of the following well known protocol strings (tcp, udp, icmp, esp, ah, ipip, sctp), or the IP protocol number.",
+                "description": "The IP protocol to which this rule applies. The protocol type is required when creating a firewall rule. This value can either be one of the following well known protocol strings (tcp, udp, icmp, esp, ah, ipip, sctp) or the IP protocol number.",
                 "type": "string"
               },
               "ports": {
-                "description": "An optional list of ports to which this rule applies. This field is only applicable for UDP or TCP protocol. Each entry must be either an integer or a range. If not specified, this rule applies to connections through any port.\n\nExample inputs include: [\"22\"], [\"80\",\"443\"], and [\"12345-12349\"].",
+                "description": "An optional list of ports to which this rule applies. This field is only applicable for the UDP or TCP protocol. Each entry must be either an integer or a range. If not specified, this rule applies to connections through any port.\n\nExample inputs include: [\"22\"], [\"80\",\"443\"], and [\"12345-12349\"].",
                 "items": {
                   "type": "string"
                 },
@@ -28951,11 +29055,11 @@
           "items": {
             "properties": {
               "IPProtocol": {
-                "description": "The IP protocol to which this rule applies. The protocol type is required when creating a firewall rule. This value can either be one of the following well known protocol strings (tcp, udp, icmp, esp, ah, ipip, sctp), or the IP protocol number.",
+                "description": "The IP protocol to which this rule applies. The protocol type is required when creating a firewall rule. This value can either be one of the following well known protocol strings (tcp, udp, icmp, esp, ah, ipip, sctp) or the IP protocol number.",
                 "type": "string"
               },
               "ports": {
-                "description": "An optional list of ports to which this rule applies. This field is only applicable for UDP or TCP protocol. Each entry must be either an integer or a range. If not specified, this rule applies to connections through any port.\n\nExample inputs include: [\"22\"], [\"80\",\"443\"], and [\"12345-12349\"].",
+                "description": "An optional list of ports to which this rule applies. This field is only applicable for the UDP or TCP protocol. Each entry must be either an integer or a range. If not specified, this rule applies to connections through any port.\n\nExample inputs include: [\"22\"], [\"80\",\"443\"], and [\"12345-12349\"].",
                 "items": {
                   "type": "string"
                 },
@@ -28967,18 +29071,18 @@
           "type": "array"
         },
         "description": {
-          "description": "An optional description of this resource. Provide this property when you create the resource.",
+          "description": "An optional description of this resource. Provide this field when you create the resource.",
           "type": "string"
         },
         "destinationRanges": {
-          "description": "If destination ranges are specified, the firewall will apply only to traffic that has destination IP address in these ranges. These ranges must be expressed in CIDR format. Only IPv4 is supported.",
+          "description": "If destination ranges are specified, the firewall rule applies only to traffic that has destination IP address in these ranges. These ranges must be expressed in CIDR format. Only IPv4 is supported.",
           "items": {
             "type": "string"
           },
           "type": "array"
         },
         "direction": {
-          "description": "Direction of traffic to which this firewall applies; default is INGRESS. Note: For INGRESS traffic, it is NOT supported to specify destinationRanges; For EGRESS traffic, it is NOT supported to specify sourceRanges OR sourceTags.",
+          "description": "Direction of traffic to which this firewall applies, either `INGRESS` or `EGRESS`. The default is `INGRESS`. For `INGRESS` traffic, you cannot specify the destinationRanges field, and for `EGRESS` traffic, you cannot specify the sourceRanges or sourceTags fields.",
           "enum": [
             "EGRESS",
             "INGRESS"
@@ -28990,7 +29094,7 @@
           "type": "string"
         },
         "disabled": {
-          "description": "Denotes whether the firewall rule is disabled, i.e not applied to the network it is associated with. When set to true, the firewall rule is not enforced and the network behaves as if it did not exist. If this is unspecified, the firewall rule will be enabled.",
+          "description": "Denotes whether the firewall rule is disabled. When set to true, the firewall rule is not enforced and the network behaves as if it did not exist. If this is unspecified, the firewall rule will be enabled.",
           "type": "boolean"
         },
         "enableLogging": {
@@ -29018,16 +29122,16 @@
               "compute.firewalls.patch"
             ]
           },
-          "description": "Name of the resource; provided by the client when the resource is created. The name must be 1-63 characters long, and comply with RFC1035. Specifically, the name must be 1-63 characters long and match the regular expression `[a-z]([-a-z0-9]*[a-z0-9])?` which means the first character must be a lowercase letter, and all following characters must be a dash, lowercase letter, or digit, except the last character, which cannot be a dash.",
+          "description": "Name of the resource; provided by the client when the resource is created. The name must be 1-63 characters long, and comply with RFC1035. Specifically, the name must be 1-63 characters long and match the regular expression `[a-z]([-a-z0-9]*[a-z0-9])?. The first character must be a lowercase letter, and all following characters (except for the last character) must be a dash, lowercase letter, or digit. The last character must be a lowercase letter or digit.",
           "pattern": "[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?",
           "type": "string"
         },
         "network": {
-          "description": "URL of the network resource for this firewall rule. If not specified when creating a firewall rule, the default network is used:\nglobal/networks/default\nIf you choose to specify this property, you can specify the network as a full or partial URL. For example, the following are all valid URLs:  \n- https://www.googleapis.com/compute/v1/projects/myproject/global/networks/my-network \n- projects/myproject/global/networks/my-network \n- global/networks/default",
+          "description": "URL of the network resource for this firewall rule. If not specified when creating a firewall rule, the default network is used:\nglobal/networks/default\nIf you choose to specify this field, you can specify the network as a full or partial URL. For example, the following are all valid URLs:  \n- https://www.googleapis.com/compute/v1/projects/myproject/global/networks/my-network \n- projects/myproject/global/networks/my-network \n- global/networks/default",
           "type": "string"
         },
         "priority": {
-          "description": "Priority for this rule. This is an integer between 0 and 65535, both inclusive. When not specified, the value assumed is 1000. Relative priorities determine precedence of conflicting rules. Lower value of priority implies higher precedence (eg, a rule with priority 0 has higher precedence than a rule with priority 1). DENY rules take precedence over ALLOW rules having equal priority.",
+          "description": "Priority for this rule. This is an integer between `0` and `65535`, both inclusive. The default value is `1000`. Relative priorities determine which rule takes effect if multiple rules apply. Lower values indicate higher priority. For example, a rule with priority `0` has higher precedence than a rule with priority `1`. DENY rules take precedence over ALLOW rules if they have equal priority. Note that VPC networks have implied rules with a priority of `65535`. To avoid conflicts with the implied rules, use a priority number less than `65535`.",
           "format": "int32",
           "type": "integer"
         },
@@ -29036,21 +29140,21 @@
           "type": "string"
         },
         "sourceRanges": {
-          "description": "If source ranges are specified, the firewall will apply only to traffic that has source IP address in these ranges. These ranges must be expressed in CIDR format. One or both of sourceRanges and sourceTags may be set. If both properties are set, the firewall will apply to traffic that has source IP address within sourceRanges OR the source IP that belongs to a tag listed in the sourceTags property. The connection does not need to match both properties for the firewall to apply. Only IPv4 is supported.",
+          "description": "If source ranges are specified, the firewall rule applies only to traffic that has a source IP address in these ranges. These ranges must be expressed in CIDR format. One or both of sourceRanges and sourceTags may be set. If both fields are set, the rule applies to traffic that has a source IP address within sourceRanges OR a source IP from a resource with a matching tag listed in the sourceTags field. The connection does not need to match both fields for the rule to apply. Only IPv4 is supported.",
           "items": {
             "type": "string"
           },
           "type": "array"
         },
         "sourceServiceAccounts": {
-          "description": "If source service accounts are specified, the firewall will apply only to traffic originating from an instance with a service account in this list. Source service accounts cannot be used to control traffic to an instance's external IP address because service accounts are associated with an instance, not an IP address. sourceRanges can be set at the same time as sourceServiceAccounts. If both are set, the firewall will apply to traffic that has source IP address within sourceRanges OR the source IP belongs to an instance with service account listed in sourceServiceAccount. The connection does not need to match both properties for the firewall to apply. sourceServiceAccounts cannot be used at the same time as sourceTags or targetTags.",
+          "description": "If source service accounts are specified, the firewall rules apply only to traffic originating from an instance with a service account in this list. Source service accounts cannot be used to control traffic to an instance's external IP address because service accounts are associated with an instance, not an IP address. sourceRanges can be set at the same time as sourceServiceAccounts. If both are set, the firewall applies to traffic that has a source IP address within the sourceRanges OR a source IP that belongs to an instance with service account listed in sourceServiceAccount. The connection does not need to match both fields for the firewall to apply. sourceServiceAccounts cannot be used at the same time as sourceTags or targetTags.",
           "items": {
             "type": "string"
           },
           "type": "array"
         },
         "sourceTags": {
-          "description": "If source tags are specified, the firewall rule applies only to traffic with source IPs that match the primary network interfaces of VM instances that have the tag and are in the same VPC network. Source tags cannot be used to control traffic to an instance's external IP address, it only applies to traffic between instances in the same virtual network. Because tags are associated with instances, not IP addresses. One or both of sourceRanges and sourceTags may be set. If both properties are set, the firewall will apply to traffic that has source IP address within sourceRanges OR the source IP that belongs to a tag listed in the sourceTags property. The connection does not need to match both properties for the firewall to apply.",
+          "description": "If source tags are specified, the firewall rule applies only to traffic with source IPs that match the primary network interfaces of VM instances that have the tag and are in the same VPC network. Source tags cannot be used to control traffic to an instance's external IP address, it only applies to traffic between instances in the same virtual network. Because tags are associated with instances, not IP addresses. One or both of sourceRanges and sourceTags may be set. If both fields are set, the firewall applies to traffic that has a source IP address within sourceRanges OR a source IP from a resource with a matching tag listed in the sourceTags field. The connection does not need to match both fields for the firewall to apply.",
           "items": {
             "type": "string"
           },
@@ -29831,6 +29935,7 @@
           "description": "The ID of a supported feature. Read  Enabling guest operating system features to see a list of available options.",
           "enum": [
             "FEATURE_TYPE_UNSPECIFIED",
+            "GVNIC",
             "MULTI_IP_SUBNET",
             "SECURE_BOOT",
             "UEFI_COMPATIBLE",
@@ -29838,6 +29943,7 @@
             "WINDOWS"
           ],
           "enumDescriptions": [
+            "",
             "",
             "",
             "",
@@ -31218,7 +31324,7 @@
       "type": "object"
     },
     "Image": {
-      "description": "An Image resource. (== resource_for beta.images ==) (== resource_for v1.images ==)",
+      "description": "Represents an Image resource.\n\nYou can use images to create boot disks for your VM instances. For more information, read Images. (== resource_for beta.images ==) (== resource_for v1.images ==)",
       "id": "Image",
       "properties": {
         "archiveSizeBytes": {
@@ -31525,7 +31631,7 @@
       "type": "object"
     },
     "Instance": {
-      "description": "An Instance resource. (== resource_for beta.instances ==) (== resource_for v1.instances ==)",
+      "description": "Represents an Instance resource.\n\nAn instance is a virtual machine that is hosted on Google Cloud Platform. For more information, read Virtual Machine Instances. (== resource_for beta.instances ==) (== resource_for v1.instances ==)",
       "id": "Instance",
       "properties": {
         "canIpForward": {
@@ -31814,7 +31920,7 @@
       "type": "object"
     },
     "InstanceGroup": {
-      "description": "InstanceGroups (== resource_for beta.instanceGroups ==) (== resource_for v1.instanceGroups ==) (== resource_for beta.regionInstanceGroups ==) (== resource_for v1.regionInstanceGroups ==)",
+      "description": "Represents an unmanaged Instance Group resource.\n\nUse unmanaged instance groups if you need to apply load balancing to groups of heterogeneous instances or if you need to manage the instances yourself. For more information, read  Instance groups.\n\nFor zonal unmanaged Instance Group, use instanceGroups resource.\n\nFor regional unmanaged Instance Group, use regionInstanceGroups resource. (== resource_for beta.instanceGroups ==) (== resource_for v1.instanceGroups ==) (== resource_for beta.regionInstanceGroups ==) (== resource_for v1.regionInstanceGroups ==)",
       "id": "InstanceGroup",
       "properties": {
         "creationTimestamp": {
@@ -32110,7 +32216,7 @@
       "type": "object"
     },
     "InstanceGroupManager": {
-      "description": "An Instance Group Manager resource. (== resource_for beta.instanceGroupManagers ==) (== resource_for v1.instanceGroupManagers ==) (== resource_for beta.regionInstanceGroupManagers ==) (== resource_for v1.regionInstanceGroupManagers ==)",
+      "description": "Represents a Managed Instance Group resource.\n\nAn instance group is a collection of VM instances that you can manage as a single entity. For more information, read Instance groups.\n\nFor zonal Managed Instance Group, use the instanceGroupManagers resource.\n\nFor regional Managed Instance Group, use the regionInstanceGroupManagers resource. (== resource_for beta.instanceGroupManagers ==) (== resource_for v1.instanceGroupManagers ==) (== resource_for beta.regionInstanceGroupManagers ==) (== resource_for v1.regionInstanceGroupManagers ==)",
       "id": "InstanceGroupManager",
       "properties": {
         "autoHealingPolicies": {
@@ -32626,16 +32732,21 @@
         "minimalAction": {
           "description": "Minimal action to be taken on an instance. You can specify either RESTART to restart existing instances or REPLACE to delete and create new instances from the target template. If you specify a RESTART, the Updater will attempt to perform that action only. However, if the Updater determines that the minimal action you specify is not enough to perform the update, it might perform a more disruptive action.",
           "enum": [
+            "NONE",
+            "REFRESH",
             "REPLACE",
             "RESTART"
           ],
           "enumDescriptions": [
+            "",
+            "",
             "",
             ""
           ],
           "type": "string"
         },
         "type": {
+          "description": "The type of update process. You can specify either PROACTIVE so that the instance group manager proactively executes actions in order to bring instances to their target versions or OPPORTUNISTIC so that no action is proactively executed but the update will be performed as part of other actions (for example, resizes or recreateInstances calls).",
           "enum": [
             "OPPORTUNISTIC",
             "PROACTIVE"
@@ -32685,31 +32796,39 @@
       "id": "InstanceGroupManagersApplyUpdatesRequest",
       "properties": {
         "instances": {
-          "description": "The list of URLs of one or more instances for which we want to apply updates on this managed instance group. This can be a full URL or a partial URL, such as zones/[ZONE]/instances/[INSTANCE_NAME].",
+          "description": "The list of URLs of one or more instances for which you want to apply updates. Each URL can be a full URL or a partial URL, such as zones/[ZONE]/instances/[INSTANCE_NAME].",
           "items": {
             "type": "string"
           },
           "type": "array"
         },
         "minimalAction": {
-          "description": "The minimal action that should be perfomed on the instances. By default NONE.",
+          "description": "The minimal action that you want to perform on each instance during the update:  \n- REPLACE: At minimum, delete the instance and create it again. \n- RESTART: Stop the instance and start it again. \n- REFRESH: Do not stop the instance. \n- NONE: Do not disrupt the instance at all.  By default, the minimum action is NONE. If your update requires a more disruptive action than you set with this flag, the necessary action is performed to execute the update.",
           "enum": [
+            "NONE",
+            "REFRESH",
             "REPLACE",
             "RESTART"
           ],
           "enumDescriptions": [
+            "",
+            "",
             "",
             ""
           ],
           "type": "string"
         },
         "mostDisruptiveAllowedAction": {
-          "description": "The most disruptive action that allowed to be performed on the instances. By default REPLACE.",
+          "description": "The most disruptive action that you want to perform on each instance during the update:  \n- REPLACE: Delete the instance and create it again. \n- RESTART: Stop the instance and start it again. \n- REFRESH: Do not stop the instance. \n- NONE: Do not disrupt the instance at all.  By default, the most disruptive allowed action is REPLACE. If your update requires a more disruptive action than you set with this flag, the update request will fail.",
           "enum": [
+            "NONE",
+            "REFRESH",
             "REPLACE",
             "RESTART"
           ],
           "enumDescriptions": [
+            "",
+            "",
             "",
             ""
           ],
@@ -33516,7 +33635,7 @@
       "type": "object"
     },
     "InstanceTemplate": {
-      "description": "An Instance Template resource. (== resource_for beta.instanceTemplates ==) (== resource_for v1.instanceTemplates ==)",
+      "description": "Represents an Instance Template resource.\n\nYou can use instance templates to create VM instances and managed instance groups. For more information, read Instance Templates. (== resource_for beta.instanceTemplates ==) (== resource_for v1.instanceTemplates ==)",
       "id": "InstanceTemplate",
       "properties": {
         "creationTimestamp": {
@@ -33930,7 +34049,7 @@
       "type": "object"
     },
     "Interconnect": {
-      "description": "Represents an Interconnects resource. The Interconnects resource is a dedicated connection between Google's network and your on-premises network. For more information, see the  Dedicated overview page. (== resource_for v1.interconnects ==) (== resource_for beta.interconnects ==)",
+      "description": "Represents an Interconnect resource.\n\nAn Interconnect resource is a dedicated connection between the GCP network and your on-premises network. For more information, read the  Dedicated Interconnect Overview. (== resource_for v1.interconnects ==) (== resource_for beta.interconnects ==)",
       "id": "Interconnect",
       "properties": {
         "adminEnabled": {
@@ -34090,7 +34209,7 @@
       "type": "object"
     },
     "InterconnectAttachment": {
-      "description": "Represents an InterconnectAttachment (VLAN attachment) resource. For more information, see  Creating VLAN Attachments. (== resource_for beta.interconnectAttachments ==) (== resource_for v1.interconnectAttachments ==)",
+      "description": "Represents an Interconnect Attachment (VLAN) resource.\n\nYou can use Interconnect attachments (VLANS) to connect your Virtual Private Cloud networks to your on-premises networks through an Interconnect. For more information, read  Creating VLAN Attachments. (== resource_for beta.interconnectAttachments ==) (== resource_for v1.interconnectAttachments ==)",
       "id": "InterconnectAttachment",
       "properties": {
         "adminEnabled": {
@@ -34163,7 +34282,7 @@
           "type": "string"
         },
         "googleReferenceId": {
-          "description": "[Output Only] Google reference ID, to be used when raising support tickets with Google or otherwise to debug backend connectivity issues.",
+          "description": "[Output Only] Google reference ID, to be used when raising support tickets with Google or otherwise to debug backend connectivity issues. [Deprecated] This field is not used.",
           "type": "string"
         },
         "id": {
@@ -34890,7 +35009,7 @@
       "type": "object"
     },
     "InterconnectLocation": {
-      "description": "Represents an InterconnectLocations resource. The InterconnectLocations resource describes the locations where you can connect to Google's networks. For more information, see  Colocation Facilities.",
+      "description": "Represents an Interconnect Attachment (VLAN) Location resource.\n\nYou can use this resource to find location details about an Interconnect attachment (VLAN). For more information about interconnect attachments, read  Creating VLAN Attachments.",
       "id": "InterconnectLocation",
       "properties": {
         "address": {
@@ -35560,7 +35679,7 @@
       "type": "object"
     },
     "MachineType": {
-      "description": "A Machine Type resource. (== resource_for v1.machineTypes ==) (== resource_for beta.machineTypes ==)",
+      "description": "Represents a Machine Type resource.\n\nYou can use specific machine types for your VM instances based on performance and pricing requirements. For more information, read Machine Types. (== resource_for v1.machineTypes ==) (== resource_for beta.machineTypes ==)",
       "id": "MachineType",
       "properties": {
         "creationTimestamp": {
@@ -36173,7 +36292,7 @@
       "type": "object"
     },
     "Network": {
-      "description": "Represents a Network resource. Read Virtual Private Cloud (VPC) Network Overview for more information. (== resource_for v1.networks ==) (== resource_for beta.networks ==)",
+      "description": "Represents a VPC Network resource.\n\nNetworks connect resources to each other and to the internet. For more information, read Virtual Private Cloud (VPC) Network. (== resource_for v1.networks ==) (== resource_for beta.networks ==)",
       "id": "Network",
       "properties": {
         "IPv4Range": {
@@ -36190,11 +36309,11 @@
           "type": "string"
         },
         "description": {
-          "description": "An optional description of this resource. Provide this property when you create the resource.",
+          "description": "An optional description of this resource. Provide this field when you create the resource.",
           "type": "string"
         },
         "gatewayIPv4": {
-          "description": "[Output Only] The gateway address for default routing out of the network. This value is read only and is selected by GCP.",
+          "description": "[Output Only] The gateway address for default routing out of the network, selected by GCP.",
           "pattern": "[0-9]{1,3}(?:\\.[0-9]{1,3}){3}",
           "type": "string"
         },
@@ -36214,7 +36333,7 @@
               "compute.networks.insert"
             ]
           },
-          "description": "Name of the resource. Provided by the client when the resource is created. The name must be 1-63 characters long, and comply with RFC1035. Specifically, the name must be 1-63 characters long and match the regular expression `[a-z]([-a-z0-9]*[a-z0-9])?` which means the first character must be a lowercase letter, and all following characters must be a dash, lowercase letter, or digit, except the last character, which cannot be a dash.",
+          "description": "Name of the resource. Provided by the client when the resource is created. The name must be 1-63 characters long, and comply with RFC1035. Specifically, the name must be 1-63 characters long and match the regular expression `[a-z]([-a-z0-9]*[a-z0-9])?. The first character must be a lowercase letter, and all following characters (except for the last character) must be a dash, lowercase letter, or digit. The last character must be a lowercase letter or digit.",
           "pattern": "[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?",
           "type": "string"
         },
@@ -36853,7 +36972,7 @@
           "type": "array"
         },
         "aliasIpRanges": {
-          "description": "An array of alias IP ranges for this network interface. Can only be specified for network interfaces on subnet-mode networks.",
+          "description": "An array of alias IP ranges for this network interface. You can only specify this field for network interfaces in VPC networks.",
           "items": {
             "$ref": "AliasIpRange"
           },
@@ -36870,19 +36989,19 @@
           "type": "string"
         },
         "name": {
-          "description": "[Output Only] The name of the network interface, generated by the server. For network devices, these are eth0, eth1, etc.",
+          "description": "[Output Only] The name of the network interface, which is generated by the server. For network devices, these are eth0, eth1, etc.",
           "type": "string"
         },
         "network": {
-          "description": "URL of the network resource for this instance. When creating an instance, if neither the network nor the subnetwork is specified, the default network global/networks/default is used; if the network is not specified but the subnetwork is specified, the network is inferred.\n\nThis field is optional when creating a firewall rule. If not specified when creating a firewall rule, the default network global/networks/default is used.\n\nIf you specify this property, you can specify the network as a full or partial URL. For example, the following are all valid URLs:  \n- https://www.googleapis.com/compute/v1/projects/project/global/networks/network \n- projects/project/global/networks/network \n- global/networks/default",
+          "description": "URL of the network resource for this instance. When creating an instance, if neither the network nor the subnetwork is specified, the default network global/networks/default is used; if the network is not specified but the subnetwork is specified, the network is inferred.\n\nIf you specify this property, you can specify the network as a full or partial URL. For example, the following are all valid URLs:  \n- https://www.googleapis.com/compute/v1/projects/project/global/networks/network \n- projects/project/global/networks/network \n- global/networks/default",
           "type": "string"
         },
         "networkIP": {
-          "description": "An IPv4 internal network address to assign to the instance for this network interface. If not specified by the user, an unused internal IP is assigned by the system.",
+          "description": "An IPv4 internal IP address to assign to the instance for this network interface. If not specified by the user, an unused internal IP is assigned by the system.",
           "type": "string"
         },
         "subnetwork": {
-          "description": "The URL of the Subnetwork resource for this instance. If the network resource is in legacy mode, do not provide this property. If the network is in auto subnet mode, providing the subnetwork is optional. If the network is in custom subnet mode, then this field should be specified. If you specify this property, you can specify the subnetwork as a full or partial URL. For example, the following are all valid URLs:  \n- https://www.googleapis.com/compute/v1/projects/project/regions/region/subnetworks/subnetwork \n- regions/region/subnetworks/subnetwork",
+          "description": "The URL of the Subnetwork resource for this instance. If the network resource is in legacy mode, do not specify this field. If the network is in auto subnet mode, specifying the subnetwork is optional. If the network is in custom subnet mode, specifying the subnetwork is required. If you specify this field, you can specify the subnetwork as a full or partial URL. For example, the following are all valid URLs:  \n- https://www.googleapis.com/compute/v1/projects/project/regions/region/subnetworks/subnetwork \n- regions/region/subnetworks/subnetwork",
           "type": "string"
         }
       },
@@ -37005,7 +37124,7 @@
       "id": "NetworkPeering",
       "properties": {
         "autoCreateRoutes": {
-          "description": "This field will be deprecated soon. Prefer using exchange_subnet_routes instead. Indicates whether full mesh connectivity is created and managed automatically. When it is set to true, Google Compute Engine will automatically create and manage the routes between two networks when the state is ACTIVE. Otherwise, user needs to create routes manually to route packets to peer network.",
+          "description": "This field will be deprecated soon. Use the exchange_subnet_routes field instead. Indicates whether full mesh connectivity is created and managed automatically. When it is set to true, Google Compute Engine will automatically create and manage the routes between two networks when the state is ACTIVE. Otherwise, user needs to create routes manually to route packets to peer network.",
           "type": "boolean"
         },
         "exchangeSubnetRoutes": {
@@ -37021,7 +37140,7 @@
           "type": "boolean"
         },
         "name": {
-          "description": "Name of this peering. Provided by the client when the peering is created. The name must comply with RFC1035. Specifically, the name must be 1-63 characters long and match regular expression `[a-z]([-a-z0-9]*[a-z0-9])?` which means the first character must be a lowercase letter, and all the following characters must be a dash, lowercase letter, or digit, except the last character, which cannot be a dash.",
+          "description": "Name of this peering. Provided by the client when the peering is created. The name must comply with RFC1035. Specifically, the name must be 1-63 characters long and match regular expression `[a-z]([-a-z0-9]*[a-z0-9])?`. The first character must be a lowercase letter, and all the following characters must be a dash, lowercase letter, or digit, except the last character, which cannot be a dash.",
           "type": "string"
         },
         "network": {
@@ -37029,7 +37148,7 @@
           "type": "string"
         },
         "state": {
-          "description": "[Output Only] State for the peering.",
+          "description": "[Output Only] State for the peering, either `ACTIVE` or `INACTIVE`. The peering is `ACTIVE` when there's a matching configuration in the peer network.",
           "enum": [
             "ACTIVE",
             "INACTIVE"
@@ -37052,7 +37171,7 @@
       "id": "NetworkRoutingConfig",
       "properties": {
         "routingMode": {
-          "description": "The network-wide routing mode to use. If set to REGIONAL, this network's cloud routers will only advertise routes with subnets of this network in the same region as the router. If set to GLOBAL, this network's cloud routers will advertise routes with all subnets of this network, across regions.",
+          "description": "The network-wide routing mode to use. If set to REGIONAL, this network's Cloud Routers will only advertise routes with subnets of this network in the same region as the router. If set to GLOBAL, this network's Cloud Routers will advertise routes with all subnets of this network, across regions.",
           "enum": [
             "GLOBAL",
             "REGIONAL"
@@ -37070,7 +37189,7 @@
       "id": "NetworksAddPeeringRequest",
       "properties": {
         "autoCreateRoutes": {
-          "description": "This field will be deprecated soon. Prefer using exchange_subnet_routes in network_peering instead. Whether Google Compute Engine manages the routes automatically.",
+          "description": "This field will be deprecated soon. Use exchange_subnet_routes in network_peering instead. Whether Google Compute Engine manages the routes automatically.",
           "type": "boolean"
         },
         "name": {
@@ -37084,7 +37203,7 @@
         },
         "networkPeering": {
           "$ref": "NetworkPeering",
-          "description": "Network peering parameters. In order to specify route policies for peering using import/export custom routes, you will have to fill all peering related parameters (name, peer network, exchange_subnet_routes) in network_peeringfield. Corresponding fields in NetworksAddPeeringRequest will be deprecated soon."
+          "description": "Network peering parameters. In order to specify route policies for peering using import and export custom routes, you must specify all peering related parameters (name, peer network, exchange_subnet_routes) in the network_peering field. The corresponding fields in NetworksAddPeeringRequest will be deprecated soon."
         },
         "peerNetwork": {
           "description": "URL of the peer network. It can be either full URL or partial URL. The peer network may belong to a different project. If the partial URL does not contain project, it is assumed that the peer network is in the same project as the current network.",
@@ -37113,7 +37232,7 @@
       "type": "object"
     },
     "NodeGroup": {
-      "description": "A NodeGroup resource. To create a node group, you must first create a node templates. To learn more about node groups and sole-tenant nodes, read the Sole-tenant nodes documentation. (== resource_for beta.nodeGroups ==) (== resource_for v1.nodeGroups ==)",
+      "description": "Represent a sole-tenant Node Group resource.\n\nA sole-tenant node is a physical server that is dedicated to hosting VM instances only for your specific project. Use sole-tenant nodes to keep your instances physically separated from instances in other projects, or to group your instances together on the same host hardware. For more information, read Sole-tenant nodes. (== resource_for beta.nodeGroups ==) (== resource_for v1.nodeGroups ==) NextID: 15",
       "id": "NodeGroup",
       "properties": {
         "creationTimestamp": {
@@ -37678,7 +37797,7 @@
       "type": "object"
     },
     "NodeTemplate": {
-      "description": "A Node Template resource. To learn more about node templates and sole-tenant nodes, read the Sole-tenant nodes documentation. (== resource_for beta.nodeTemplates ==) (== resource_for v1.nodeTemplates ==)",
+      "description": "Represent a sole-tenant Node Template resource.\n\nYou can use a template to define properties for nodes in a node group. For more information, read Creating node groups and instances. (== resource_for beta.nodeTemplates ==) (== resource_for v1.nodeTemplates ==) (== NextID: 16 ==)",
       "id": "NodeTemplate",
       "properties": {
         "creationTimestamp": {
@@ -37728,7 +37847,7 @@
         },
         "serverBinding": {
           "$ref": "ServerBinding",
-          "description": "Binding properties for the physical server."
+          "description": "Sets the binding properties for the physical server. Valid values include:  \n- [Default] RESTART_NODE_ON_ANY_SERVER: Restarts VMs on any available physical server \n- RESTART_NODE_ON_MINIMAL_SERVER: Restarts VMs on the same physical server whenever possible  \n\nSee Sole-tenant node options for more information."
         },
         "status": {
           "description": "[Output Only] The status of the node template. One of the following values: CREATING, READY, and DELETING.",
@@ -38087,7 +38206,7 @@
       "type": "object"
     },
     "NodeType": {
-      "description": "A Node Type resource.",
+      "description": "Represent a sole-tenant Node Type resource.\n\nEach node within a node group must have a node type. A node type specifies the total amount of cores and memory for that node. Currently, the only available node type is n1-node-96-624 node type that has 96 vCPUs and 624 GB of memory, available in multiple zones. For more information read Node types. (== resource_for beta.nodeTypes ==) (== resource_for v1.nodeTypes ==)",
       "id": "NodeType",
       "properties": {
         "cpuPlatform": {
@@ -38466,7 +38585,7 @@
       "type": "object"
     },
     "Operation": {
-      "description": "An Operation resource, used to manage asynchronous API requests. (== resource_for v1.globalOperations ==) (== resource_for beta.globalOperations ==) (== resource_for v1.regionOperations ==) (== resource_for beta.regionOperations ==) (== resource_for v1.zoneOperations ==) (== resource_for beta.zoneOperations ==)",
+      "description": "Represents an Operation resource.\n\nYou can use an operation resource to manage asynchronous API requests. For more information, read Handling API responses.\n\nOperations can be global, regional or zonal.  \n- For global operations, use the globalOperations resource. \n- For regional operations, use the regionOperations resource. \n- For zonal operations, use the zonalOperations resource.  \n\nFor more information, read  Global, Regional, and Zonal Resources. (== resource_for v1.globalOperations ==) (== resource_for beta.globalOperations ==) (== resource_for v1.regionOperations ==) (== resource_for beta.regionOperations ==) (== resource_for v1.zoneOperations ==) (== resource_for beta.zoneOperations ==)",
       "id": "Operation",
       "properties": {
         "clientOperationId": {
@@ -38549,7 +38668,7 @@
           "type": "integer"
         },
         "region": {
-          "description": "[Output Only] The URL of the region where the operation resides. Only available when performing regional operations. You must specify this field as part of the HTTP request URL. It is not settable as a field in the request body.",
+          "description": "[Output Only] The URL of the region where the operation resides. Only applicable when performing regional operations.",
           "type": "string"
         },
         "selfLink": {
@@ -38676,7 +38795,7 @@
           "type": "array"
         },
         "zone": {
-          "description": "[Output Only] The URL of the zone where the operation resides. Only available when performing per-zone operations. You must specify this field as part of the HTTP request URL. It is not settable as a field in the request body.",
+          "description": "[Output Only] The URL of the zone where the operation resides. Only applicable when performing per-zone operations.",
           "type": "string"
         }
       },
@@ -39187,7 +39306,7 @@
       "type": "object"
     },
     "Project": {
-      "description": "A Project resource. For an overview of projects, see  Cloud Platform Resource Hierarchy. (== resource_for v1.projects ==) (== resource_for beta.projects ==)",
+      "description": "Represents a Project resource.\n\nA project is used to organize resources in a Google Cloud Platform environment. For more information, read about the  Resource Hierarchy. (== resource_for v1.projects ==) (== resource_for beta.projects ==)",
       "id": "Project",
       "properties": {
         "commonInstanceMetadata": {
@@ -39354,6 +39473,7 @@
             "AUTOSCALERS",
             "BACKEND_BUCKETS",
             "BACKEND_SERVICES",
+            "C2_CPUS",
             "COMMITMENTS",
             "CPUS",
             "CPUS_ALL_REGIONS",
@@ -39377,6 +39497,7 @@
             "IN_USE_BACKUP_SCHEDULES",
             "IN_USE_SNAPSHOT_SCHEDULES",
             "LOCAL_SSD_TOTAL_GB",
+            "N2_CPUS",
             "NETWORKS",
             "NETWORK_ENDPOINT_GROUPS",
             "NVIDIA_K80_GPUS",
@@ -39488,6 +39609,8 @@
             "",
             "",
             "",
+            "",
+            "",
             ""
           ],
           "type": "string"
@@ -39529,7 +39652,7 @@
       "type": "object"
     },
     "Region": {
-      "description": "Region resource. (== resource_for beta.regions ==) (== resource_for v1.regions ==)",
+      "description": "Represents a Region resource.\n\nA region is a geographical area where a resource is located. For more information, read Regions and Zones. (== resource_for beta.regions ==) (== resource_for v1.regions ==)",
       "id": "Region",
       "properties": {
         "creationTimestamp": {
@@ -40106,31 +40229,39 @@
       "id": "RegionInstanceGroupManagersApplyUpdatesRequest",
       "properties": {
         "instances": {
-          "description": "The list of instances for which we want to apply changes on this managed instance group.",
+          "description": "The list of URLs of one or more instances for which you want to apply updates. Each URL can be a full URL or a partial URL, such as zones/[ZONE]/instances/[INSTANCE_NAME].",
           "items": {
             "type": "string"
           },
           "type": "array"
         },
         "minimalAction": {
-          "description": "The minimal action that should be perfomed on the instances. By default NONE.",
+          "description": "The minimal action that you want to perform on each instance during the update:  \n- REPLACE: At minimum, delete the instance and create it again. \n- RESTART: Stop the instance and start it again. \n- REFRESH: Do not stop the instance. \n- NONE: Do not disrupt the instance at all.  By default, the minimum action is NONE. If your update requires a more disruptive action than you set with this flag, the necessary action is performed to execute the update.",
           "enum": [
+            "NONE",
+            "REFRESH",
             "REPLACE",
             "RESTART"
           ],
           "enumDescriptions": [
+            "",
+            "",
             "",
             ""
           ],
           "type": "string"
         },
         "mostDisruptiveAllowedAction": {
-          "description": "The most disruptive action that allowed to be performed on the instances. By default REPLACE.",
+          "description": "The most disruptive action that you want to perform on each instance during the update:  \n- REPLACE: Delete the instance and create it again. \n- RESTART: Stop the instance and start it again. \n- REFRESH: Do not stop the instance. \n- NONE: Do not disrupt the instance at all.  By default, the most disruptive allowed action is REPLACE. If your update requires a more disruptive action than you set with this flag, the update request will fail.",
           "enum": [
+            "NONE",
+            "REFRESH",
             "REPLACE",
             "RESTART"
           ],
           "enumDescriptions": [
+            "",
+            "",
             "",
             ""
           ],
@@ -40561,7 +40692,7 @@
       "type": "object"
     },
     "Reservation": {
-      "description": "Reservation resource",
+      "description": "Reservation resource NextID: 13",
       "id": "Reservation",
       "properties": {
         "commitment": {
@@ -40608,6 +40739,24 @@
           "description": "Indicates whether the reservation can be consumed by VMs with \"any reservation\" defined. If the field is set, then only VMs that target the reservation by name using --reservation-affinity can consume this reservation.",
           "type": "boolean"
         },
+        "status": {
+          "description": "[Output Only] The status of the reservation.",
+          "enum": [
+            "CREATING",
+            "DELETING",
+            "INVALID",
+            "READY",
+            "UPDATING"
+          ],
+          "enumDescriptions": [
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "type": "string"
+        },
         "zone": {
           "description": "Zone in which the reservation resides, must be provided if reservation is created with commitment creation.",
           "type": "string"
@@ -40616,7 +40765,7 @@
       "type": "object"
     },
     "ReservationAffinity": {
-      "description": "AllocationAffinity is the configuration of desired allocation which this instance could take capacity from.",
+      "description": "ReservationAffinity is the configuration of desired reservation which this instance could take capacity from.",
       "id": "ReservationAffinity",
       "properties": {
         "consumeReservationType": {
@@ -41585,7 +41734,7 @@
       "type": "object"
     },
     "Route": {
-      "description": "Represents a Route resource. A route specifies how certain packets should be handled by the network. Routes are associated with instances by tags and the set of routes for a particular instance is called its routing table.\n\nFor each packet leaving an instance, the system searches that instance's routing table for a single best matching route. Routes match packets by destination IP address, preferring smaller or more specific ranges over larger ones. If there is a tie, the system selects the route with the smallest priority value. If there is still a tie, it uses the layer three and four packet headers to select just one of the remaining matching routes. The packet is then forwarded as specified by the nextHop field of the winning route - either to another instance destination, an instance gateway, or a Google Compute Engine-operated gateway.\n\nPackets that do not match any route in the sending instance's routing table are dropped. (== resource_for beta.routes ==) (== resource_for v1.routes ==)",
+      "description": "Represents a Route resource.\n\nA route defines a path from VM instances in the VPC network to a specific destination. This destination can be inside or outside the VPC network. For more information, read the Routes overview. (== resource_for beta.routes ==) (== resource_for v1.routes ==)",
       "id": "Route",
       "properties": {
         "creationTimestamp": {
@@ -41593,7 +41742,7 @@
           "type": "string"
         },
         "description": {
-          "description": "An optional description of this resource. Provide this property when you create the resource.",
+          "description": "An optional description of this resource. Provide this field when you create the resource.",
           "type": "string"
         },
         "destRange": {
@@ -41621,7 +41770,7 @@
               "compute.routes.insert"
             ]
           },
-          "description": "Name of the resource. Provided by the client when the resource is created. The name must be 1-63 characters long, and comply with RFC1035. Specifically, the name must be 1-63 characters long and match the regular expression `[a-z]([-a-z0-9]*[a-z0-9])?` which means the first character must be a lowercase letter, and all following characters must be a dash, lowercase letter, or digit, except the last character, which cannot be a dash.",
+          "description": "Name of the resource. Provided by the client when the resource is created. The name must be 1-63 characters long, and comply with RFC1035. Specifically, the name must be 1-63 characters long and match the regular expression `[a-z]([-a-z0-9]*[a-z0-9])?`. The first character must be a lowercase letter, and all following characters (except for the last character) must be a dash, lowercase letter, or digit. The last character must be a lowercase letter or digit.",
           "pattern": "[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?",
           "type": "string"
         },
@@ -41635,7 +41784,7 @@
           "type": "string"
         },
         "nextHopGateway": {
-          "description": "The URL to a gateway that should handle matching packets. You can only specify the internet gateway using a full or partial valid URL:  projects/\u003cproject-id\u003e/global/gateways/default-internet-gateway",
+          "description": "The URL to a gateway that should handle matching packets. You can only specify the internet gateway using a full or partial valid URL:  projects/project/global/gateways/default-internet-gateway",
           "type": "string"
         },
         "nextHopIlb": {
@@ -41672,7 +41821,7 @@
               "compute.routes.insert"
             ]
           },
-          "description": "The priority of this route. Priority is used to break ties in cases where there is more than one matching route of equal prefix length. In the case of two routes with equal prefix length, the one with the lowest-numbered priority value wins. Default value is 1000. Valid range is 0 through 65535.",
+          "description": "The priority of this route. Priority is used to break ties in cases where there is more than one matching route of equal prefix length. In cases where multiple routes have equal prefix length, the one with the lowest-numbered priority value wins. The default value is `1000`. The priority value must be from `0` to `65535`, inclusive.",
           "format": "uint32",
           "type": "integer"
         },
@@ -41892,7 +42041,7 @@
       "type": "object"
     },
     "Router": {
-      "description": "Router resource.",
+      "description": "Represents a Cloud Router resource.\n\nFor more information about Cloud Router, read the the Cloud Router overview.",
       "id": "Router",
       "properties": {
         "bgp": {
@@ -42876,7 +43025,7 @@
       "type": "object"
     },
     "Scheduling": {
-      "description": "Sets the scheduling options for an Instance.",
+      "description": "Sets the scheduling options for an Instance. NextID: 9",
       "id": "Scheduling",
       "properties": {
         "automaticRestart": {
@@ -43418,7 +43567,7 @@
       "type": "object"
     },
     "Snapshot": {
-      "description": "A persistent disk snapshot resource. (== resource_for beta.snapshots ==) (== resource_for v1.snapshots ==)",
+      "description": "Represents a Persistent Disk Snapshot resource.\n\nYou can use snapshots to back up data on a regular interval. For more information, read  Creating persistent disk snapshots. (== resource_for beta.snapshots ==) (== resource_for v1.snapshots ==)",
       "id": "Snapshot",
       "properties": {
         "autoCreated": {
@@ -44443,7 +44592,7 @@
       "type": "object"
     },
     "Subnetwork": {
-      "description": "A Subnetwork resource. (== resource_for beta.subnetworks ==) (== resource_for v1.subnetworks ==)",
+      "description": "Represents a Subnetwork resource.\n\nA subnetwork (also known as a subnet) is a logical partition of a Virtual Private Cloud network with one primary IP range and zero or more secondary IP ranges. For more information, read  Virtual Private Cloud (VPC) Network. (== resource_for beta.subnetworks ==) (== resource_for v1.subnetworks ==)",
       "id": "Subnetwork",
       "properties": {
         "allowSubnetCidrRoutesOverlap": {
@@ -44816,7 +44965,7 @@
           "type": "number"
         },
         "metadata": {
-          "description": "Can only be specified if VPC flow logging for this subnetwork is enabled. Configures whether metadata fields should be added to the reported VPC flow logs. Default is INCLUDE_ALL_METADATA.",
+          "description": "Can only be specified if VPC flow logs for this subnetwork is enabled. Configures whether all, none or a subset of metadata fields should be added to the reported VPC flow logs. Default is INCLUDE_ALL_METADATA.",
           "enum": [
             "EXCLUDE_ALL_METADATA",
             "INCLUDE_ALL_METADATA"
@@ -45805,7 +45954,7 @@
       "type": "object"
     },
     "TargetInstance": {
-      "description": "A TargetInstance resource. This resource defines an endpoint instance that terminates traffic of certain protocols. (== resource_for beta.targetInstances ==) (== resource_for v1.targetInstances ==)",
+      "description": "Represents a Target Instance resource.\n\nYou can use a target instance to handle traffic for one or more forwarding rules, which is ideal for forwarding protocol traffic that is managed by a single source. For example, ESP, AH, TCP, or UDP. For more information, read Target instances. (== resource_for beta.targetInstances ==) (== resource_for v1.targetInstances ==)",
       "id": "TargetInstance",
       "properties": {
         "creationTimestamp": {
@@ -47058,7 +47207,7 @@
       "type": "object"
     },
     "TargetVpnGateway": {
-      "description": "Represents a Target VPN gateway resource. (== resource_for beta.targetVpnGateways ==) (== resource_for v1.targetVpnGateways ==)",
+      "description": "Represents a Target VPN Gateway resource.\n\nThe target VPN gateway resource represents a Classic Cloud VPN gateway. For more information, read the the Cloud VPN Overview. (== resource_for beta.targetVpnGateways ==) (== resource_for v1.targetVpnGateways ==)",
       "id": "TargetVpnGateway",
       "properties": {
         "creationTimestamp": {
@@ -48831,7 +48980,7 @@
       "type": "object"
     },
     "VpnTunnel": {
-      "description": "VPN tunnel resource. (== resource_for beta.vpnTunnels ==) (== resource_for v1.vpnTunnels ==)",
+      "description": "Represents a Cloud VPN Tunnel resource.\n\nFor more information about VPN, read the the Cloud VPN Overview. (== resource_for beta.vpnTunnels ==) (== resource_for v1.vpnTunnels ==)",
       "id": "VpnTunnel",
       "properties": {
         "creationTimestamp": {
@@ -49489,7 +49638,7 @@
       "type": "object"
     },
     "Zone": {
-      "description": "A Zone resource. (== resource_for beta.zones ==) (== resource_for v1.zones ==) Next ID: 17",
+      "description": "Represents a Zone resource.\n\nA zone is a deployment area. These deployment areas are subsets of a region. For example the zone us-east1-a is located in the us-east1 region. For more information, read Regions and Zones. (== resource_for beta.zones ==) (== resource_for v1.zones ==)",
       "id": "Zone",
       "properties": {
         "availableCpuPlatforms": {

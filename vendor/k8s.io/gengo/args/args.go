@@ -159,6 +159,9 @@ func (g *GeneratorArgs) InputIncludes(p *types.Package) bool {
 		if strings.HasSuffix(d, "...") {
 			d = strings.TrimSuffix(d, "...")
 		}
+		if strings.HasPrefix(d, "./vendor/") {
+			d = strings.TrimPrefix(d, "./vendor/")
+		}
 		if strings.HasPrefix(p.Path, d) {
 			return true
 		}

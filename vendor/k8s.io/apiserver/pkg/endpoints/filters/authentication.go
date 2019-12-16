@@ -20,6 +20,7 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -58,8 +59,19 @@ var (
 
 	authenticatedAttemptsCounter = metrics.NewCounterVec(
 		&metrics.CounterOpts{
-			Name: "authentication_attempts",
-			Help: "Counter of authenticated attempts.",
+			Name:           "authentication_attempts",
+			Help:           "Counter of authenticated attempts.",
+			StabilityLevel: metrics.ALPHA,
+		},
+		[]string{"result"},
+	)
+
+	authenticationLatency = metrics.NewHistogramVec(
+		&metrics.HistogramOpts{
+			Name:           "authentication_duration_seconds",
+			Help:           "Authentication duration in seconds broken out by result.",
+			Buckets:        metrics.ExponentialBuckets(0.001, 2, 15),
+			StabilityLevel: metrics.ALPHA,
 		},
 		[]string{"result"},
 	)
@@ -68,6 +80,7 @@ var (
 func init() {
 	legacyregistry.MustRegister(authenticatedUserCounter)
 	legacyregistry.MustRegister(authenticatedAttemptsCounter)
+	legacyregistry.MustRegister(authenticationLatency)
 }
 
 // WithAuthentication creates an http handler that tries to authenticate the given request as a user, and then
@@ -80,6 +93,8 @@ func WithAuthentication(handler http.Handler, auth authenticator.Request, failed
 		return handler
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		authenticationStart := time.Now()
+
 		if len(apiAuds) > 0 {
 			req = req.WithContext(authenticator.WithAudiences(req.Context(), apiAuds))
 		}
@@ -88,16 +103,21 @@ func WithAuthentication(handler http.Handler, auth authenticator.Request, failed
 			if err != nil {
 				klog.Errorf("Unable to authenticate the request due to an error: %v", err)
 				authenticatedAttemptsCounter.WithLabelValues(errorLabel).Inc()
+				authenticationLatency.WithLabelValues(errorLabel).Observe(time.Since(authenticationStart).Seconds())
 			} else if !ok {
 				authenticatedAttemptsCounter.WithLabelValues(failureLabel).Inc()
+				authenticationLatency.WithLabelValues(failureLabel).Observe(time.Since(authenticationStart).Seconds())
 			}
 
 			failed.ServeHTTP(w, req)
 			return
 		}
 
-		// TODO(mikedanese): verify the response audience matches one of apiAuds if
-		// non-empty
+		if len(apiAuds) > 0 && len(resp.Audiences) > 0 && len(authenticator.Audiences(apiAuds).Intersect(resp.Audiences)) == 0 {
+			klog.Errorf("Unable to match the audience: %v , accepted: %v", resp.Audiences, apiAuds)
+			failed.ServeHTTP(w, req)
+			return
+		}
 
 		// authorization header is not required anymore in case of a successful authentication.
 		req.Header.Del("Authorization")
@@ -106,6 +126,7 @@ func WithAuthentication(handler http.Handler, auth authenticator.Request, failed
 
 		authenticatedUserCounter.WithLabelValues(compressUsername(resp.User.GetName())).Inc()
 		authenticatedAttemptsCounter.WithLabelValues(successLabel).Inc()
+		authenticationLatency.WithLabelValues(successLabel).Observe(time.Since(authenticationStart).Seconds())
 
 		handler.ServeHTTP(w, req)
 	})

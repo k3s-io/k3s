@@ -27,8 +27,7 @@ func ParseIPNet(s string) (*net.IPNet, error) {
 	if err != nil {
 		return nil, err
 	}
-	ipNet.IP = ip
-	return ipNet, nil
+	return &net.IPNet{IP: ip, Mask: ipNet.Mask}, nil
 }
 
 // NewIPNet generates an IPNet from an ip address using a netmask of 32 or 128.

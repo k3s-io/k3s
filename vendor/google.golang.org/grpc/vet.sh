@@ -67,7 +67,7 @@ elif [[ "$#" -ne 0 ]]; then
 fi
 
 # - Ensure all source files contain a copyright message.
-git ls-files "*.go" | xargs grep -L "\(Copyright [0-9]\{4,\} gRPC authors\)\|DO NOT EDIT" 2>&1 | fail_on_output
+(! git grep -L "\(Copyright [0-9]\{4,\} gRPC authors\)\|DO NOT EDIT" -- '*.go')
 
 # - Make sure all tests in grpc and grpc/test use leakcheck via Teardown.
 (! grep 'func Test[^(]' *_test.go)
@@ -75,10 +75,10 @@ git ls-files "*.go" | xargs grep -L "\(Copyright [0-9]\{4,\} gRPC authors\)\|DO 
 
 # - Do not import math/rand for real library code.  Use internal/grpcrand for
 #   thread safety.
-git ls-files "*.go" | xargs grep -l '"math/rand"' 2>&1 | (! grep -v '^examples\|^stress\|grpcrand\|wrr_test')
+git grep -l '"math/rand"' -- "*.go" 2>&1 | (! grep -v '^examples\|^stress\|grpcrand\|wrr_test')
 
 # - Ensure all ptypes proto packages are renamed when importing.
-git ls-files "*.go" | (! xargs grep "\(import \|^\s*\)\"github.com/golang/protobuf/ptypes/")
+(! git grep "\(import \|^\s*\)\"github.com/golang/protobuf/ptypes/" -- "*.go")
 
 # - Check imports that are illegal in appengine (until Go 1.11).
 # TODO: Remove when we drop Go 1.10 support
@@ -86,7 +86,7 @@ go list -f {{.Dir}} ./... | xargs go run test/go_vet/vet.go
 
 # - gofmt, goimports, golint (with exceptions for generated code), go vet.
 gofmt -s -d -l . 2>&1 | fail_on_output
-goimports -l . 2>&1 | (! grep -vE "(_mock|\.pb)\.go:") | fail_on_output
+goimports -l . 2>&1 | (! grep -vE "(_mock|\.pb)\.go") | fail_on_output
 golint ./... 2>&1 | (! grep -vE "(_mock|\.pb)\.go:")
 go vet -all .
 
@@ -111,6 +111,7 @@ google.golang.org/grpc/balancer.go:SA1019
 google.golang.org/grpc/balancer/grpclb/grpclb_remote_balancer.go:SA1019
 google.golang.org/grpc/balancer/roundrobin/roundrobin_test.go:SA1019
 google.golang.org/grpc/xds/internal/balancer/edsbalancer/balancergroup.go:SA1019
+google.golang.org/grpc/xds/internal/resolver/xds_resolver.go:SA1019
 google.golang.org/grpc/xds/internal/balancer/xds.go:SA1019
 google.golang.org/grpc/xds/internal/balancer/xds_client.go:SA1019
 google.golang.org/grpc/balancer_conn_wrappers.go:SA1019

@@ -20,6 +20,7 @@ package v1
 
 import (
 	"context"
+	"time"
 
 	"github.com/rancher/wrangler/pkg/generic"
 	v1 "k8s.io/api/core/v1"
@@ -40,20 +41,15 @@ import (
 type SecretHandler func(string, *v1.Secret) (*v1.Secret, error)
 
 type SecretController interface {
+	generic.ControllerMeta
 	SecretClient
 
 	OnChange(ctx context.Context, name string, sync SecretHandler)
 	OnRemove(ctx context.Context, name string, sync SecretHandler)
 	Enqueue(namespace, name string)
+	EnqueueAfter(namespace, name string, duration time.Duration)
 
 	Cache() SecretCache
-
-	Informer() cache.SharedIndexInformer
-	GroupVersionKind() schema.GroupVersionKind
-
-	AddGenericHandler(ctx context.Context, name string, handler generic.Handler)
-	AddGenericRemoveHandler(ctx context.Context, name string, handler generic.Handler)
-	Updater() generic.Updater
 }
 
 type SecretClient interface {
@@ -118,26 +114,21 @@ func (c *secretController) Updater() generic.Updater {
 	}
 }
 
-func UpdateSecretOnChange(updater generic.Updater, handler SecretHandler) SecretHandler {
-	return func(key string, obj *v1.Secret) (*v1.Secret, error) {
-		if obj == nil {
-			return handler(key, nil)
-		}
-
-		copyObj := obj.DeepCopy()
-		newObj, err := handler(key, copyObj)
-		if newObj != nil {
-			copyObj = newObj
-		}
-		if obj.ResourceVersion == copyObj.ResourceVersion && !equality.Semantic.DeepEqual(obj, copyObj) {
-			newObj, err := updater(copyObj)
-			if newObj != nil && err == nil {
-				copyObj = newObj.(*v1.Secret)
-			}
-		}
-
-		return copyObj, err
+func UpdateSecretDeepCopyOnChange(client SecretClient, obj *v1.Secret, handler func(obj *v1.Secret) (*v1.Secret, error)) (*v1.Secret, error) {
+	if obj == nil {
+		return obj, nil
 	}
+
+	copyObj := obj.DeepCopy()
+	newObj, err := handler(copyObj)
+	if newObj != nil {
+		copyObj = newObj
+	}
+	if obj.ResourceVersion == copyObj.ResourceVersion && !equality.Semantic.DeepEqual(obj, copyObj) {
+		return client.Update(copyObj)
+	}
+
+	return copyObj, err
 }
 
 func (c *secretController) AddGenericHandler(ctx context.Context, name string, handler generic.Handler) {
@@ -160,6 +151,10 @@ func (c *secretController) OnRemove(ctx context.Context, name string, sync Secre
 
 func (c *secretController) Enqueue(namespace, name string) {
 	c.controllerManager.Enqueue(c.gvk, c.informer.Informer(), namespace, name)
+}
+
+func (c *secretController) EnqueueAfter(namespace, name string, duration time.Duration) {
+	c.controllerManager.EnqueueAfter(c.gvk, c.informer.Informer(), namespace, name, duration)
 }
 
 func (c *secretController) Informer() cache.SharedIndexInformer {

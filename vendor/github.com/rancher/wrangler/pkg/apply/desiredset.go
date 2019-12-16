@@ -10,22 +10,27 @@ import (
 )
 
 type desiredSet struct {
-	a                *apply
-	defaultNamespace string
-	listerNamespace  string
-	strictCaching    bool
-	pruneTypes       map[schema.GroupVersionKind]cache.SharedIndexInformer
-	patchers         map[schema.GroupVersionKind]Patcher
-	remove           bool
-	noDelete         bool
-	setID            string
-	objs             *objectset.ObjectSet
-	codeVersion      string
-	owner            runtime.Object
-	injectors        []injectors.ConfigInjector
-	ratelimitingQps  float32
-	injectorNames    []string
-	errs             []error
+	a                        *apply
+	defaultNamespace         string
+	listerNamespace          string
+	setOwnerReference        bool
+	ownerReferenceController bool
+	ownerReferenceBlock      bool
+	strictCaching            bool
+	restrictClusterScoped    bool
+	pruneTypes               map[schema.GroupVersionKind]cache.SharedIndexInformer
+	patchers                 map[schema.GroupVersionKind]Patcher
+	reconcilers              map[schema.GroupVersionKind]Reconciler
+	remove                   bool
+	noDelete                 bool
+	setID                    string
+	objs                     *objectset.ObjectSet
+	codeVersion              string
+	owner                    runtime.Object
+	injectors                []injectors.ConfigInjector
+	ratelimitingQps          float32
+	injectorNames            []string
+	errs                     []error
 }
 
 func (o *desiredSet) err(err error) error {
@@ -51,6 +56,19 @@ func (o desiredSet) ApplyObjects(objs ...runtime.Object) error {
 	return o.Apply(os)
 }
 
+// WithGVK uses a known listing of existing gvks to modify the the prune types to allow for deletion of objects
+func (o desiredSet) WithGVK(gvks ...schema.GroupVersionKind) Apply {
+	pruneTypes := make(map[schema.GroupVersionKind]cache.SharedIndexInformer, len(gvks))
+	for k, v := range o.pruneTypes {
+		pruneTypes[k] = v
+	}
+	for _, gvk := range gvks {
+		pruneTypes[gvk] = nil
+	}
+	o.pruneTypes = pruneTypes
+	return o
+}
+
 func (o desiredSet) WithSetID(id string) Apply {
 	o.setID = id
 	return o
@@ -58,6 +76,13 @@ func (o desiredSet) WithSetID(id string) Apply {
 
 func (o desiredSet) WithOwner(obj runtime.Object) Apply {
 	o.owner = obj
+	return o
+}
+
+func (o desiredSet) WithSetOwnerReference(controller, block bool) Apply {
+	o.setOwnerReference = true
+	o.ownerReferenceController = controller
+	o.ownerReferenceBlock = block
 	return o
 }
 
@@ -72,7 +97,7 @@ func (o desiredSet) WithInjectorName(injs ...string) Apply {
 }
 
 func (o desiredSet) WithCacheTypes(igs ...InformerGetter) Apply {
-	pruneTypes := map[schema.GroupVersionKind]cache.SharedIndexInformer{}
+	pruneTypes := make(map[schema.GroupVersionKind]cache.SharedIndexInformer, len(igs))
 	for k, v := range o.pruneTypes {
 		pruneTypes[k] = v
 	}
@@ -95,8 +120,27 @@ func (o desiredSet) WithPatcher(gvk schema.GroupVersionKind, patcher Patcher) Ap
 	return o
 }
 
+func (o desiredSet) WithReconciler(gvk schema.GroupVersionKind, reconciler Reconciler) Apply {
+	reconcilers := map[schema.GroupVersionKind]Reconciler{}
+	for k, v := range o.reconcilers {
+		reconcilers[k] = v
+	}
+	reconcilers[gvk] = reconciler
+	o.reconcilers = reconcilers
+	return o
+}
+
 func (o desiredSet) WithStrictCaching() Apply {
 	o.strictCaching = true
+	return o
+}
+func (o desiredSet) WithDynamicLookup() Apply {
+	o.strictCaching = false
+	return o
+}
+
+func (o desiredSet) WithRestrictClusterScoped() Apply {
+	o.restrictClusterScoped = true
 	return o
 }
 

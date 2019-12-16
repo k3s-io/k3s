@@ -3,7 +3,7 @@ package server
 import (
 	"context"
 
-	"github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/etcdserver/etcdserverpb"
 )
 
 func isUpdate(txn *etcdserverpb.TxnRequest) (int64, string, []byte, int64, bool) {

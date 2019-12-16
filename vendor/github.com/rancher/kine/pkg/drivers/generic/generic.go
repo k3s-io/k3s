@@ -128,10 +128,40 @@ func (d *Generic) Migrate(ctx context.Context) {
 	}
 }
 
-func Open(driverName, dataSourceName string, paramCharacter string, numbered bool) (*Generic, error) {
+func openAndTest(driverName, dataSourceName string) (*sql.DB, error) {
 	db, err := sql.Open(driverName, dataSourceName)
 	if err != nil {
 		return nil, err
+	}
+
+	for i := 0; i < 3; i++ {
+		if err := db.Ping(); err != nil {
+			db.Close()
+			return nil, err
+		}
+	}
+
+	return db, nil
+}
+
+func Open(ctx context.Context, driverName, dataSourceName string, paramCharacter string, numbered bool) (*Generic, error) {
+	var (
+		db  *sql.DB
+		err error
+	)
+
+	for i := 0; i < 300; i++ {
+		db, err = openAndTest(driverName, dataSourceName)
+		if err == nil {
+			break
+		}
+
+		logrus.Errorf("failed to ping connection: %v", err)
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(time.Second):
+		}
 	}
 
 	return &Generic{
@@ -178,7 +208,7 @@ func Open(driverName, dataSourceName string, paramCharacter string, numbered boo
 
 		FillSQL: q(`INSERT INTO kine(id, name, created, deleted, create_revision, prev_revision, lease, value, old_value)
 			values(?, ?, ?, ?, ?, ?, ?, ?, ?)`, paramCharacter, numbered),
-	}, nil
+	}, err
 }
 
 func (d *Generic) query(ctx context.Context, sql string, args ...interface{}) (*sql.Rows, error) {

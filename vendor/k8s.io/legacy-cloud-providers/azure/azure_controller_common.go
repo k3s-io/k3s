@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"path"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2019-07-01/compute"
@@ -32,7 +33,6 @@ import (
 	cloudprovider "k8s.io/cloud-provider"
 	volerr "k8s.io/cloud-provider/volume/errors"
 	"k8s.io/klog"
-	"k8s.io/utils/keymutex"
 )
 
 const (
@@ -57,15 +57,16 @@ var defaultBackOff = kwait.Backoff{
 	Jitter:   0.0,
 }
 
-// acquire lock to attach/detach disk in one node
-var diskOpMutex = keymutex.NewHashed(0)
-
 type controllerCommon struct {
 	subscriptionID        string
 	location              string
 	storageEndpointSuffix string
 	resourceGroup         string
-	cloud                 *Cloud
+	// store disk URI when disk is in attaching or detaching process
+	diskAttachDetachMap sync.Map
+	// vm disk map used to lock per vm update calls
+	vmLockMap *lockMap
+	cloud     *Cloud
 }
 
 // getNodeVMSet gets the VMSet interface based on config.VMType and the real virtual machine type.
@@ -98,6 +99,7 @@ func (c *controllerCommon) getNodeVMSet(nodeName types.NodeName, crt cacheReadTy
 // AttachDisk attaches a vhd to vm. The vhd must exist, can be identified by diskName, diskURI.
 // return (lun, error)
 func (c *controllerCommon) AttachDisk(isManagedDisk bool, diskName, diskURI string, nodeName types.NodeName, cachingMode compute.CachingTypes) (int32, error) {
+	diskEncryptionSetID := ""
 	if isManagedDisk {
 		diskName := path.Base(diskURI)
 		resourceGroup, err := getResourceGroupFromDiskURI(diskURI)
@@ -122,6 +124,11 @@ func (c *controllerCommon) AttachDisk(isManagedDisk bool, diskName, diskURI stri
 			danglingErr := volerr.NewDanglingError(attachErr, types.NodeName(attachedNode), "")
 			return -1, danglingErr
 		}
+
+		if disk.DiskProperties != nil && disk.DiskProperties.Encryption != nil &&
+			disk.DiskProperties.Encryption.DiskEncryptionSetID != nil {
+			diskEncryptionSetID = *disk.DiskProperties.Encryption.DiskEncryptionSetID
+		}
 	}
 
 	vmset, err := c.getNodeVMSet(nodeName, cacheReadTypeUnsafe)
@@ -135,8 +142,8 @@ func (c *controllerCommon) AttachDisk(isManagedDisk bool, diskName, diskURI stri
 		return -1, fmt.Errorf("failed to get azure instance id for node %q (%v)", nodeName, err)
 	}
 
-	diskOpMutex.LockKey(instanceid)
-	defer diskOpMutex.UnlockKey(instanceid)
+	c.vmLockMap.LockEntry(strings.ToLower(string(nodeName)))
+	defer c.vmLockMap.UnlockEntry(strings.ToLower(string(nodeName)))
 
 	lun, err := c.GetNextDiskLun(nodeName)
 	if err != nil {
@@ -145,12 +152,14 @@ func (c *controllerCommon) AttachDisk(isManagedDisk bool, diskName, diskURI stri
 	}
 
 	klog.V(2).Infof("Trying to attach volume %q lun %d to node %q.", diskURI, lun, nodeName)
-	return lun, vmset.AttachDisk(isManagedDisk, diskName, diskURI, nodeName, lun, cachingMode)
+	c.diskAttachDetachMap.Store(strings.ToLower(diskURI), "attaching")
+	defer c.diskAttachDetachMap.Delete(strings.ToLower(diskURI))
+	return lun, vmset.AttachDisk(isManagedDisk, diskName, diskURI, nodeName, lun, cachingMode, diskEncryptionSetID)
 }
 
 // DetachDisk detaches a disk from host. The vhd can be identified by diskName or diskURI.
 func (c *controllerCommon) DetachDisk(diskName, diskURI string, nodeName types.NodeName) error {
-	instanceid, err := c.cloud.InstanceID(context.TODO(), nodeName)
+	_, err := c.cloud.InstanceID(context.TODO(), nodeName)
 	if err != nil {
 		if err == cloudprovider.InstanceNotFound {
 			// if host doesn't exist, no need to detach
@@ -170,16 +179,20 @@ func (c *controllerCommon) DetachDisk(diskName, diskURI string, nodeName types.N
 	klog.V(2).Infof("detach %v from node %q", diskURI, nodeName)
 
 	// make the lock here as small as possible
-	diskOpMutex.LockKey(instanceid)
+	c.vmLockMap.LockEntry(strings.ToLower(string(nodeName)))
+	c.diskAttachDetachMap.Store(strings.ToLower(diskURI), "detaching")
 	resp, err := vmset.DetachDisk(diskName, diskURI, nodeName)
-	diskOpMutex.UnlockKey(instanceid)
+	c.diskAttachDetachMap.Delete(strings.ToLower(diskURI))
+	c.vmLockMap.UnlockEntry(strings.ToLower(string(nodeName)))
 
 	if c.cloud.CloudProviderBackoff && shouldRetryHTTPRequest(resp, err) {
 		klog.V(2).Infof("azureDisk - update backing off: detach disk(%s, %s), err: %v", diskName, diskURI, err)
 		retryErr := kwait.ExponentialBackoff(c.cloud.RequestBackoff(), func() (bool, error) {
-			diskOpMutex.LockKey(instanceid)
+			c.vmLockMap.LockEntry(strings.ToLower(string(nodeName)))
+			c.diskAttachDetachMap.Store(strings.ToLower(diskURI), "detaching")
 			resp, err := vmset.DetachDisk(diskName, diskURI, nodeName)
-			diskOpMutex.UnlockKey(instanceid)
+			c.diskAttachDetachMap.Delete(strings.ToLower(diskURI))
+			c.vmLockMap.UnlockEntry(strings.ToLower(string(nodeName)))
 			return c.cloud.processHTTPRetryResponse(nil, "", resp, err)
 		})
 		if retryErr != nil {
@@ -220,9 +233,13 @@ func (c *controllerCommon) GetDiskLun(diskName, diskURI string, nodeName types.N
 		if disk.Lun != nil && (disk.Name != nil && diskName != "" && strings.EqualFold(*disk.Name, diskName)) ||
 			(disk.Vhd != nil && disk.Vhd.URI != nil && diskURI != "" && strings.EqualFold(*disk.Vhd.URI, diskURI)) ||
 			(disk.ManagedDisk != nil && strings.EqualFold(*disk.ManagedDisk.ID, diskURI)) {
-			// found the disk
-			klog.V(2).Infof("azureDisk - find disk: lun %d name %q uri %q", *disk.Lun, diskName, diskURI)
-			return *disk.Lun, nil
+			if disk.ToBeDetached != nil && *disk.ToBeDetached {
+				klog.Warningf("azureDisk - find disk(ToBeDetached): lun %d name %q uri %q", *disk.Lun, diskName, diskURI)
+			} else {
+				// found the disk
+				klog.V(2).Infof("azureDisk - find disk: lun %d name %q uri %q", *disk.Lun, diskName, diskURI)
+				return *disk.Lun, nil
+			}
 		}
 	}
 	return -1, fmt.Errorf("cannot find Lun for disk %s", diskName)
@@ -282,4 +299,18 @@ func (c *controllerCommon) DisksAreAttached(diskNames []string, nodeName types.N
 	}
 
 	return attached, nil
+}
+
+func filterDetachingDisks(unfilteredDisks []compute.DataDisk) []compute.DataDisk {
+	filteredDisks := []compute.DataDisk{}
+	for _, disk := range unfilteredDisks {
+		if disk.ToBeDetached != nil && *disk.ToBeDetached {
+			if disk.Name != nil {
+				klog.V(2).Infof("Filtering disk: %s with ToBeDetached flag set.", *disk.Name)
+			}
+		} else {
+			filteredDisks = append(filteredDisks, disk)
+		}
+	}
+	return filteredDisks
 }

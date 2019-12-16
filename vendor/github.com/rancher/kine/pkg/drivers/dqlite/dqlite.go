@@ -68,14 +68,14 @@ func New(ctx context.Context, datasourceName string) (server.Backend, error) {
 	if opts.peerFile != "" {
 		nodeStore, err = client.DefaultNodeStore(opts.peerFile)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "opening peerfile")
 		}
 	} else {
 		nodeStore = client.NewInmemNodeStore()
 	}
 
 	if err := AddPeers(ctx, nodeStore, opts.peers...); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "add peers")
 	}
 
 	d, err := driver.New(nodeStore,
@@ -83,13 +83,13 @@ func New(ctx context.Context, datasourceName string) (server.Backend, error) {
 		driver.WithContext(ctx),
 		driver.WithDialFunc(Dialer))
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "new dqlite driver")
 	}
 
 	sql.Register("dqlite", d)
-	backend, generic, err := sqlite.NewVariant("dqlite", opts.dsn)
+	backend, generic, err := sqlite.NewVariant(ctx, "dqlite", opts.dsn)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "sqlite client")
 	}
 	if err := migrate(ctx, generic.DB); err != nil {
 		return nil, errors.Wrap(err, "failed to migrate DB from sqlite")

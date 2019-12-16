@@ -6,8 +6,6 @@
 // This file was derived from $GOROOT/src/cmd/compile/internal/gc/iexport.go;
 // see that file for specification of the format.
 
-// +build go1.11
-
 package gcimporter
 
 import (
@@ -267,6 +265,11 @@ func (w *exportWriter) tag(tag byte) {
 }
 
 func (w *exportWriter) pos(pos token.Pos) {
+	if w.p.fset == nil {
+		w.int64(0)
+		return
+	}
+
 	p := w.p.fset.Position(pos)
 	file := p.Filename
 	line := int64(p.Line)
@@ -394,7 +397,7 @@ func (w *exportWriter) doTyp(t types.Type, pkg *types.Package) {
 			w.pos(f.Pos())
 			w.string(f.Name())
 			w.typ(f.Type(), pkg)
-			w.bool(f.Embedded())
+			w.bool(f.Anonymous())
 			w.string(t.Tag(i)) // note (or tag)
 		}
 

@@ -60,6 +60,7 @@ includes_Darwin='
 #include <sys/types.h>
 #include <sys/event.h>
 #include <sys/ptrace.h>
+#include <sys/select.h>
 #include <sys/socket.h>
 #include <sys/sockio.h>
 #include <sys/sysctl.h>
@@ -80,6 +81,7 @@ includes_Darwin='
 includes_DragonFly='
 #include <sys/types.h>
 #include <sys/event.h>
+#include <sys/select.h>
 #include <sys/socket.h>
 #include <sys/sockio.h>
 #include <sys/stat.h>
@@ -103,6 +105,7 @@ includes_FreeBSD='
 #include <sys/param.h>
 #include <sys/types.h>
 #include <sys/event.h>
+#include <sys/select.h>
 #include <sys/socket.h>
 #include <sys/sockio.h>
 #include <sys/stat.h>
@@ -179,6 +182,7 @@ struct ltchars {
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/time.h>
+#include <sys/select.h>
 #include <sys/signalfd.h>
 #include <sys/socket.h>
 #include <sys/xattr.h>
@@ -281,6 +285,7 @@ includes_NetBSD='
 #include <sys/extattr.h>
 #include <sys/mman.h>
 #include <sys/mount.h>
+#include <sys/select.h>
 #include <sys/socket.h>
 #include <sys/sockio.h>
 #include <sys/sysctl.h>
@@ -307,6 +312,7 @@ includes_OpenBSD='
 #include <sys/event.h>
 #include <sys/mman.h>
 #include <sys/mount.h>
+#include <sys/select.h>
 #include <sys/socket.h>
 #include <sys/sockio.h>
 #include <sys/stat.h>
@@ -343,6 +349,7 @@ includes_OpenBSD='
 includes_SunOS='
 #include <limits.h>
 #include <sys/types.h>
+#include <sys/select.h>
 #include <sys/socket.h>
 #include <sys/sockio.h>
 #include <sys/stat.h>
@@ -435,6 +442,7 @@ ccflags="$@"
 		$2 == "XCASE" ||
 		$2 == "ALTWERASE" ||
 		$2 == "NOKERNINFO" ||
+		$2 == "NFDBITS" ||
 		$2 ~ /^PAR/ ||
 		$2 ~ /^SIG[^_]/ ||
 		$2 ~ /^O[CNPFPL][A-Z]+[^_][A-Z]+$/ ||

@@ -26,8 +26,8 @@ import (
 
 	// libs that provide registration functions
 	"k8s.io/component-base/logs"
+	"k8s.io/component-base/version/verflag"
 	"k8s.io/klog"
-	"k8s.io/kubernetes/pkg/version/verflag"
 )
 
 // AddGlobalFlags explicitly registers flags that libraries (glog, verflag, etc.) register

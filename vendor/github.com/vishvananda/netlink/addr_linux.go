@@ -65,11 +65,7 @@ func (h *Handle) addrHandle(link Link, addr *Addr, req *nl.NetlinkRequest) error
 	msg := nl.NewIfAddrmsg(family)
 	msg.Index = uint32(base.Index)
 	msg.Scope = uint8(addr.Scope)
-	mask := addr.Mask
-	if addr.Peer != nil {
-		mask = addr.Peer.Mask
-	}
-	prefixlen, masklen := mask.Size()
+	prefixlen, masklen := addr.Mask.Size()
 	msg.Prefixlen = uint8(prefixlen)
 	req.AddData(msg)
 
@@ -111,7 +107,7 @@ func (h *Handle) addrHandle(link Link, addr *Addr, req *nl.NetlinkRequest) error
 		if addr.Broadcast == nil {
 			calcBroadcast := make(net.IP, masklen/8)
 			for i := range localAddrData {
-				calcBroadcast[i] = localAddrData[i] | ^mask[i]
+				calcBroadcast[i] = localAddrData[i] | ^addr.Mask[i]
 			}
 			addr.Broadcast = calcBroadcast
 		}
@@ -210,17 +206,13 @@ func parseAddr(m []byte) (addr Addr, family, index int, err error) {
 				IP:   attr.Value,
 				Mask: net.CIDRMask(int(msg.Prefixlen), 8*len(attr.Value)),
 			}
+			addr.Peer = dst
 		case unix.IFA_LOCAL:
-			// iproute2 manual:
-			// If a peer address is specified, the local address
-			// cannot have a prefix length. The network prefix is
-			// associated with the peer rather than with the local
-			// address.
-			n := 8 * len(attr.Value)
 			local = &net.IPNet{
 				IP:   attr.Value,
-				Mask: net.CIDRMask(n, n),
+				Mask: net.CIDRMask(int(msg.Prefixlen), 8*len(attr.Value)),
 			}
+			addr.IPNet = local
 		case unix.IFA_BROADCAST:
 			addr.Broadcast = attr.Value
 		case unix.IFA_LABEL:
@@ -234,24 +226,12 @@ func parseAddr(m []byte) (addr Addr, family, index int, err error) {
 		}
 	}
 
-	// libnl addr.c comment:
-	// IPv6 sends the local address as IFA_ADDRESS with no
-	// IFA_LOCAL, IPv4 sends both IFA_LOCAL and IFA_ADDRESS
-	// with IFA_ADDRESS being the peer address if they differ
-	//
-	// But obviously, as there are IPv6 PtP addresses, too,
-	// IFA_LOCAL should also be handled for IPv6.
+	// IFA_LOCAL should be there but if not, fall back to IFA_ADDRESS
 	if local != nil {
-		if family == FAMILY_V4 && local.IP.Equal(dst.IP) {
-			addr.IPNet = dst
-		} else {
-			addr.IPNet = local
-			addr.Peer = dst
-		}
+		addr.IPNet = local
 	} else {
 		addr.IPNet = dst
 	}
-
 	addr.Scope = int(msg.Scope)
 
 	return
