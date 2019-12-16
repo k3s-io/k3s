@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/canonical/go-dqlite"
 	"github.com/canonical/go-dqlite/client"
 	"github.com/canonical/go-dqlite/driver"
 	"github.com/pkg/errors"
@@ -23,6 +24,13 @@ var (
 	Dialer = client.DefaultDialFunc
 	Logger = client.DefaultLogFunc
 )
+
+func init() {
+	// We assume SQLite will be used multi-threaded
+	if err := dqlite.ConfigMultiThread(); err != nil {
+		panic(errors.Wrap(err, "failed to set dqlite multithreaded mode"))
+	}
+}
 
 type opts struct {
 	peers    []client.NodeInfo

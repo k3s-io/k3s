@@ -542,6 +542,7 @@ type Rows struct {
 	response *protocol.Message
 	rows     protocol.Rows
 	consumed bool
+	types    []string
 }
 
 // Columns returns the names of the columns. The number of
@@ -618,16 +619,16 @@ func (r *Rows) ColumnTypeScanType(i int) reflect.Type {
 }
 
 // ColumnTypeDatabaseTypeName implements RowsColumnTypeDatabaseTypeName.
+// warning: not thread safe
 func (r *Rows) ColumnTypeDatabaseTypeName(i int) string {
-	// column := sql.NewColumn(r.rows, i)
-
-	// typeName, err := r.protocol.ColumnTypeDatabaseTypeName(context.Background(), column)
-	// if err != nil {
-	// 	return ""
-	// }
-
-	// return typeName.Value
-	return ""
+	if r.types == nil {
+		var err error
+		r.types, err = r.rows.ColumnTypes()
+		if err != nil {
+			panic(err)
+		}
+	}
+	return r.types[i]
 }
 
 // Convert a driver.Value slice into a driver.NamedValue slice.
@@ -660,11 +661,4 @@ func driverError(err error) error {
 		}
 	}
 	return err
-}
-
-func init() {
-	err := bindings.Init()
-	if err != nil {
-		panic(errors.Wrap(err, "failed to initialize dqlite"))
-	}
 }

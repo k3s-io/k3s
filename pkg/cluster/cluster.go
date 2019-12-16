@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/rancher/k3s/pkg/clientaccess"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/kine/pkg/client"
@@ -25,12 +26,12 @@ type Cluster struct {
 
 func (c *Cluster) Start(ctx context.Context) error {
 	if err := c.startClusterAndHTTPS(ctx); err != nil {
-		return err
+		return errors.Wrap(err, "start cluster and https")
 	}
 
 	if c.runJoin {
 		if err := c.postJoin(ctx); err != nil {
-			return err
+			return errors.Wrap(err, "post join")
 		}
 	}
 
@@ -61,7 +62,7 @@ func (c *Cluster) startStorage(ctx context.Context) error {
 
 	etcdConfig, err := endpoint.Listen(ctx, c.config.Datastore)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "creating storage endpoint")
 	}
 
 	c.etcdConfig = etcdConfig

@@ -19,8 +19,9 @@ RUN if [ "${ARCH}" == "amd64" ]; then \
 
 ARG DQLITE=true
 ENV DQLITE $DQLITE
+COPY --from=rancher/dqlite-build:v1.2.1-r3 /dist/artifacts /usr/src/
 RUN if [ "$DQLITE" = true ]; then \
-        curl -sfL https://github.com/rancher/dqlite-build/releases/download/v1.1.0-r6/dqlite-${ARCH}.tgz | tar xzf - -C / && \
+        tar xzf /usr/src/dqlite.tgz -C / && \
         apk add --allow-untrusted /usr/local/packages/*.apk \
     ;fi
 

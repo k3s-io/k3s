@@ -118,6 +118,8 @@ github.com/buger/jsonparser v0.0.0-20180808090653-f4dd9f5a6b44/go.mod h1:bbYlZJ7
 github.com/buger/jsonparser v0.0.0-20181115193947-bf1c66bbce23 h1:D21IyuvjDCshj1/qq+pCNd3VZOAEI9jy6Bi131YlXgI=
 github.com/buger/jsonparser v0.0.0-20181115193947-bf1c66bbce23/go.mod h1:bbYlZJ7hK1yFx9hf58LP0zeX7UjIGs20ufpu3evjr+s=
 github.com/caddyserver/caddy v1.0.3/go.mod h1:G+ouvOY32gENkJC+jhgl62TyhvqEsFaDiZ4uw0RzP1E=
+github.com/canonical/go-dqlite v1.2.0 h1:TCsNV/mAmPy7PQa4jIQMoiXbCUVqYTSv6OJSpi/qdX8=
+github.com/canonical/go-dqlite v1.2.0/go.mod h1:wp00vfMvPYgNCyxcPdHB5XExmDoCGoPUGymloAQT17Y=
 github.com/cenkalti/backoff v2.1.1+incompatible/go.mod h1:90ReRw6GdpyfrHakVjL/QHaoyV4aDUVVkXQJJJ3NXXM=
 github.com/census-instrumentation/opencensus-proto v0.2.0/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
@@ -606,8 +608,8 @@ github.com/mattn/go-shellwords v1.0.3/go.mod h1:3xCvwCdWdlDJUrvuMn7Wuy9eWs4pE8vq
 github.com/mattn/go-shellwords v1.0.5 h1:JhhFTIOslh5ZsPrpa3Wdg8bF0WI3b44EMblmU9wIsXc=
 github.com/mattn/go-shellwords v1.0.5/go.mod h1:3xCvwCdWdlDJUrvuMn7Wuy9eWs4pE8vqg+NOMyg4B2o=
 github.com/mattn/go-sqlite3 v1.10.0/go.mod h1:FPy6KqzDD04eiIsT53CuJW3U88zkxoIYsOqkbpncsNc=
-github.com/mattn/go-sqlite3 v1.11.0 h1:LDdKkqtYlom37fkvqs8rMPFKAMe8+SgjbwZ6ex1/A/Q=
-github.com/mattn/go-sqlite3 v1.11.0/go.mod h1:FPy6KqzDD04eiIsT53CuJW3U88zkxoIYsOqkbpncsNc=
+github.com/mattn/go-sqlite3 v1.13.0 h1:LnJI81JidiW9r7pS/hXe6cFeO5EXNq7KbfvoJLRI69c=
+github.com/mattn/go-sqlite3 v1.13.0/go.mod h1:FPy6KqzDD04eiIsT53CuJW3U88zkxoIYsOqkbpncsNc=
 github.com/mattn/goveralls v0.0.2/go.mod h1:8d1ZMHsd7fW6IRPKQh46F2WRpyib5/X4FOpevwGNQEw=
 github.com/matttproud/golang_protobuf_extensions v1.0.1 h1:4hp9jkHxhMHkqkrB3Ix0jegS5sx/RkqARlsWZ6pIwiU=
 github.com/matttproud/golang_protobuf_extensions v1.0.1/go.mod h1:D8He9yQNgCq6Z5Ld7szi9bcBfOoFv/3dc6xSMkL2PC0=
@@ -739,12 +741,10 @@ github.com/rancher/dynamiclistener v0.2.0 h1:KucYwJXVVGhZ/NndfMCeQoCafT/VN7kvqSG
 github.com/rancher/dynamiclistener v0.2.0/go.mod h1:fs/dxyNcB3YT6W9fVz4bDGfhmSQS17QQup6BIcGF++s=
 github.com/rancher/flannel v0.11.0-k3s.1 h1:mIwnfWDafjzQgFkZeJ1AkFrrAT3EdBaA1giE0eLJKo8=
 github.com/rancher/flannel v0.11.0-k3s.1/go.mod h1:Hn4ZV+eq0LhLZP63xZnxdGwXEoRSxs5sxELxu27M3UA=
-github.com/rancher/go-dqlite v1.1.0-k3s.1 h1:w3ghNkY5vqRnnrcqxvHkpBQr6E+R/nIwJfaGdNgJAiw=
-github.com/rancher/go-dqlite v1.1.0-k3s.1/go.mod h1:lj8UhpkZddn/Ag0tBsnkbELbxHGMpzrZLMs/nW9/DX4=
 github.com/rancher/helm-controller v0.3.0 h1:sYRpOiJc4+NmSEkft3lR2pwaEPOrPzZOTo2UjFnVF4I=
 github.com/rancher/helm-controller v0.3.0/go.mod h1:194LHuZRrxcD82bG1rJtOWsw98U4JbPhDWqvL7l3PAw=
-github.com/rancher/kine v0.3.0 h1:gZsX6RC7/XmjR7nSc89jB66ArHySzmA+6Fo4Ht4fU/8=
-github.com/rancher/kine v0.3.0/go.mod h1:LMVnaqwv9ussn49Qcfpq+T0hM3wNEsqapuu7kwNY6uA=
+github.com/rancher/kine v0.3.1 h1:gwfKz/KoyZG7Dyo/eKYb3eAKne6eSmQKE0etHTrGLLk=
+github.com/rancher/kine v0.3.1/go.mod h1:xEMl0tLCva9/9me7mXJ3m9Vo6yqHgC4OU3NiK4CPrGQ=
 github.com/rancher/kubernetes v1.17.0-k3s.1 h1:g1xvTHOHMJxwWtseblor0gighLRHpL7Bf9MwX8HR3W0=
 github.com/rancher/kubernetes v1.17.0-k3s.1/go.mod h1:NbNV+69yL3eKiKDJ+ZEjqOplN3BFXKBeunzkoOy8WLo=
 github.com/rancher/kubernetes/staging/src/k8s.io/api v1.17.0-k3s.1 h1:L2mS7D+Kv/0ZUg9uJZcPfKuDCYcKOTprTQsK35i2hFg=

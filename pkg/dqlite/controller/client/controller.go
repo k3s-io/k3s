@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/canonical/go-dqlite/client"
+	"github.com/canonical/go-dqlite/driver"
 	controllerv1 "github.com/rancher/wrangler-api/pkg/generated/controllers/core/v1"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
@@ -64,9 +65,33 @@ func (h *handler) sync(key string, node *v1.Node) (*v1.Node, error) {
 	return node, nil
 }
 
+func (h *handler) ensureExists(address string) error {
+	c, err := client.FindLeader(h.ctx, h.nodeStore, h.opts...)
+	if err == driver.ErrNoAvailableLeader {
+		logrus.Fatalf("no dqlite leader found: %v", err)
+	} else if err != nil {
+		return err
+	}
+	defer c.Close()
+
+	members, err := c.Cluster(h.ctx)
+	if err != nil {
+		return err
+	}
+
+	for _, member := range members {
+		if member.Address == address {
+			return nil
+		}
+	}
+
+	logrus.Fatalf("Address %s is not member of the cluster", address)
+	return nil
+}
+
 func (h *handler) handleSelf(node *v1.Node) (*v1.Node, error) {
 	if node.Annotations[nodeID] == h.id && node.Annotations[nodeAddress] == h.address {
-		return node, nil
+		return node, h.ensureExists(h.address)
 	}
 
 	node = node.DeepCopy()
