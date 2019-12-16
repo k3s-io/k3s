@@ -4,7 +4,6 @@ go 1.12
 
 replace (
 	github.com/Microsoft/hcsshim => github.com/Microsoft/hcsshim v0.8.7-0.20190926181021-82c7525d98c8
-	github.com/canonical/go-dqlite => github.com/rancher/go-dqlite v1.1.0-k3s.1
 	github.com/containerd/btrfs => github.com/containerd/btrfs v0.0.0-20181101203652-af5082808c83
 	github.com/containerd/cgroups => github.com/containerd/cgroups v0.0.0-20190717030353-c4b9ac5c7601
 	github.com/containerd/console => github.com/containerd/console v0.0.0-20181022165439-0650fd9eeb50
@@ -65,7 +64,7 @@ require (
 	github.com/bhendo/go-powershell v0.0.0-20190719160123-219e7fb4e41e // indirect
 	github.com/bronze1man/goStrongswanVici v0.0.0-20190828090544-27d02f80ba40 // indirect
 	github.com/buger/jsonparser v0.0.0-20181115193947-bf1c66bbce23 // indirect
-	github.com/canonical/go-dqlite v1.1.0
+	github.com/canonical/go-dqlite v1.2.0
 	github.com/containerd/cgroups v0.0.0-00010101000000-000000000000 // indirect
 	github.com/containerd/containerd v1.3.0-beta.2.0.20190828155532-0293cbd26c69
 	github.com/containerd/continuity v0.0.0-20190827140505-75bee3e2ccb6 // indirect
@@ -93,14 +92,14 @@ require (
 	github.com/kubernetes-sigs/cri-tools v0.0.0-00010101000000-000000000000
 	github.com/lib/pq v1.1.1
 	github.com/lxc/lxd v0.0.0-20191108214106-60ea15630455
-	github.com/mattn/go-sqlite3 v1.11.0
+	github.com/mattn/go-sqlite3 v1.13.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/opencontainers/runc v1.0.0-rc9
 	github.com/pkg/errors v0.8.1
 	github.com/rakelkar/gonetsh v0.0.0-20190719023240-501daadcadf8 // indirect
 	github.com/rancher/dynamiclistener v0.2.0
 	github.com/rancher/helm-controller v0.3.0
-	github.com/rancher/kine v0.3.0
+	github.com/rancher/kine v0.3.1
 	github.com/rancher/remotedialer v0.2.0
 	github.com/rancher/wrangler v0.4.0
 	github.com/rancher/wrangler-api v0.4.0

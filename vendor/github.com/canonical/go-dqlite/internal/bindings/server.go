@@ -46,19 +46,6 @@ static int configConnectFunc(dqlite_node *t, uintptr_t handle) {
         return dqlite_node_set_connect_func(t, connectTrampoline, (void*)handle);
 }
 
-static int initializeSQLite()
-{
-	int rc;
-
-	// Configure SQLite for single-thread mode. This is a global config.
-	rc = sqlite3_config(SQLITE_CONFIG_SINGLETHREAD);
-	if (rc != SQLITE_OK) {
-		assert(rc == SQLITE_MISUSE);
-		return DQLITE_MISUSE;
-	}
-	return 0;
-}
-
 static dqlite_node_info *makeInfos(int n) {
 	return calloc(n, sizeof(dqlite_node_info));
 }
@@ -67,6 +54,16 @@ static void setInfo(dqlite_node_info *infos, unsigned i, unsigned id, const char
 	dqlite_node_info *info = &infos[i];
 	info->id = id;
 	info->address = address;
+}
+
+static int sqlite3ConfigSingleThread()
+{
+	return sqlite3_config(SQLITE_CONFIG_SINGLETHREAD);
+}
+
+static int sqlite3ConfigMultiThread()
+{
+	return sqlite3_config(SQLITE_CONFIG_MULTITHREAD);
 }
 
 */
@@ -85,10 +82,23 @@ import (
 
 type Node C.dqlite_node
 
-// Init initializes dqlite global state.
-func Init() error {
+// Initializes state.
+func init() {
 	// FIXME: ignore SIGPIPE, see https://github.com/joyent/libuv/issues/1254
 	C.signal(C.SIGPIPE, C.SIG_IGN)
+}
+
+func ConfigSingleThread() error {
+	if rc := C.sqlite3ConfigSingleThread(); rc != 0 {
+		return Error{Code: int(rc)}
+	}
+	return nil
+}
+
+func ConfigMultiThread() error {
+	if rc := C.sqlite3ConfigMultiThread(); rc != 0 {
+		return Error{Code: int(rc)}
+	}
 	return nil
 }
 
@@ -104,7 +114,8 @@ func NewNode(id uint64, address string, dir string) (*Node, error) {
 	defer C.free(unsafe.Pointer(cdir))
 
 	if rc := C.dqlite_node_create(cid, caddress, cdir, &server); rc != 0 {
-		return nil, fmt.Errorf("failed to create task object")
+		errmsg := C.GoString(C.dqlite_node_errmsg(server))
+		return nil, fmt.Errorf("%s", errmsg)
 	}
 
 	return (*Node)(unsafe.Pointer(server)), nil
@@ -149,7 +160,8 @@ func (s *Node) GetBindAddress() string {
 func (s *Node) Start() error {
 	server := (*C.dqlite_node)(unsafe.Pointer(s))
 	if rc := C.dqlite_node_start(server); rc != 0 {
-		return fmt.Errorf("failed to start task")
+		errmsg := C.GoString(C.dqlite_node_errmsg(server))
+		return fmt.Errorf("%s", errmsg)
 	}
 	return nil
 }

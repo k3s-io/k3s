@@ -48,7 +48,7 @@ func (c *Connector) Connect(ctx context.Context) (*Protocol, error) {
 	err := retry.Retry(func(attempt uint) error {
 		log := func(l logging.Level, format string, a ...interface{}) {
 			format += fmt.Sprintf(" attempt=%d", attempt)
-			c.log(l, fmt.Sprintf(format, a...))
+			c.log(l, format, a...)
 		}
 
 		select {
@@ -92,8 +92,8 @@ func (c *Connector) connectAttemptAll(ctx context.Context, log logging.Func) (*P
 	// Make an attempt for each address until we find the leader.
 	for _, server := range servers {
 		log := func(l logging.Level, format string, a ...interface{}) {
-			format += fmt.Sprintf(" address=%s", server.Address)
-			log(l, fmt.Sprintf(format, a...))
+			format += fmt.Sprintf(" address=%s id=%d", server.Address, server.ID)
+			log(l, format, a...)
 		}
 
 		ctx, cancel := context.WithTimeout(ctx, c.config.AttemptTimeout)

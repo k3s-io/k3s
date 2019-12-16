@@ -37,8 +37,8 @@ Demo
 To see dqlite in action, either install the Debian package from the PPA:
 
 ```bash
-sudo add-apt-repository -y ppa:dqlite/v1
-sudo apt install dqlite
+sudo add-apt-repository -y ppa:dqlite/stable
+sudo apt install dqlite libdqlite-dev
 ```
 
 or build the dqlite C library and its dependencies from source, as described
@@ -87,5 +87,5 @@ key again we'll notice that the ```query``` command hangs for a bit waiting for
 the failover to occur and for another node to step up as leader:
 
 ```
-kill -TERM %1; sleep 0.1; dqlite-demo query my-key
+kill -TERM %1; sleep 0.1; dqlite-demo query my-key; dqlite-demo cluster
 ```
