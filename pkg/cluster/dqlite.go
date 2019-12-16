@@ -86,7 +86,7 @@ func (c *Cluster) initClusterDB(ctx context.Context, l net.Listener, handler htt
 }
 
 func (c *Cluster) dqliteEnabled() bool {
-	stamp := filepath.Join(c.config.DataDir, "db", "state.dqlite")
+	stamp := filepath.Join(dqlite.GetDBDir(c.config.DataDir))
 	if _, err := os.Stat(stamp); err == nil {
 		return true
 	}
