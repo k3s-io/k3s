@@ -172,8 +172,16 @@ func (s *SQLLog) List(ctx context.Context, prefix, startKey string, limit, revis
 		err  error
 	)
 
+	// It's assumed that when there is a start key that that key exists.
 	if strings.HasSuffix(prefix, "/") {
+		// In the situation of a list start the startKey will not exist so set to ""
+		if prefix == startKey {
+			startKey = ""
+		}
 		prefix += "%"
+	} else {
+		// Also if this isn't a list there is no reason to pass startKey
+		startKey = ""
 	}
 
 	if revision == 0 {

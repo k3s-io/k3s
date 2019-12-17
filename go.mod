@@ -99,7 +99,7 @@ require (
 	github.com/rakelkar/gonetsh v0.0.0-20190719023240-501daadcadf8 // indirect
 	github.com/rancher/dynamiclistener v0.2.0
 	github.com/rancher/helm-controller v0.3.0
-	github.com/rancher/kine v0.3.1
+	github.com/rancher/kine v0.3.2
 	github.com/rancher/remotedialer v0.2.0
 	github.com/rancher/wrangler v0.4.0
 	github.com/rancher/wrangler-api v0.4.0
