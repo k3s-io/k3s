@@ -1,10 +1,14 @@
 #!/bin/bash
 
+TREE_STATE=clean
 if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
     DIRTY="-dirty"
+    TREE_STATE=dirty
 fi
 
 COMMIT=$(git rev-parse --short HEAD)
+LONG_COMMIT=$(git rev-parse HEAD)
+
 GIT_TAG=${DRONE_TAG:-$(git tag -l --contains HEAD | head -n 1)}
 
 ARCH=$(go env GOARCH)
@@ -30,6 +34,6 @@ VERSION_CNIPLUGINS="v0.7.6-k3s1"
 if [[ -n "$GIT_TAG" ]]; then
     VERSION=$GIT_TAG
 else
-    VERSION="$(sed -e 's/[-+].*//' <<< "$VERSION_K8S")+$COMMIT"
+    VERSION="$(sed -e 's/[-+].*//' <<< "$VERSION_K8S")+$COMMIT$DIRTY"
     VERSION_TAG="$(sed -e 's/+/-/g' <<< "$VERSION")"
 fi
