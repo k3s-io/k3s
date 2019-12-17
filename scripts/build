@@ -11,27 +11,26 @@ PKG_RANCHER_CONTAINERD="github.com/rancher/containerd"
 PKG_CRICTL="github.com/kubernetes-sigs/cri-tools"
 
 buildDate=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
-versionFiles="
-    vendor/k8s.io/client-go/pkg/version/base.go
-    vendor/k8s.io/component-base/version/base.go
-"
-
-for i in $versionFiles; do
-    sed -e "s/gitVersion\s*=.*/gitVersion=\"$VERSION\"/" -i $i
-    sed -e "s/gitCommit\s*=.*/gitCommit=\"$(git rev-parse HEAD)\"/" -i $i
-    if [[ -n "$DIRTY" ]]; then
-        sed -e "s/gitTreeState\s*=.*/gitTreeState=\"dirty\"/" -i $i
-    fi
-    sed -e "s/buildDate\s*=.*/buildDate=\"$buildDate\"/" -i $i
-done
 
 VENDOR_PREFIX="${PKG}/vendor/"
 VERSIONFLAGS="
     -X ${PKG}/pkg/version.Version=${VERSION}
     -X ${PKG}/pkg/version.GitCommit=${COMMIT:0:8}
+
+    -X ${VENDOR_PREFIX}k8s.io/client-go/pkg/version.gitVersion=${VERSION}
+    -X ${VENDOR_PREFIX}k8s.io/client-go/pkg/version.gitCommit=${LONG_COMMIT}
+    -X ${VENDOR_PREFIX}k8s.io/client-go/pkg/version.gitTreeState=${TREE_STATE}
+    -X ${VENDOR_PREFIX}k8s.io/client-go/pkg/version.buildDate=${buildDate}
+
+    -X ${VENDOR_PREFIX}k8s.io/component-base/version.gitVersion=${VERSION}
+    -X ${VENDOR_PREFIX}k8s.io/component-base/version.gitCommit=${LONG_COMMIT}
+    -X ${VENDOR_PREFIX}k8s.io/component-base/version.gitTreeState=${TREE_STATE}
+    -X ${VENDOR_PREFIX}k8s.io/component-base/version.buildDate=${buildDate}
+
     -X ${VENDOR_PREFIX}${PKG_CONTAINERD}/version.Version=${VERSION_CONTAINERD}
     -X ${VENDOR_PREFIX}${PKG_CONTAINERD}/version.Package=${PKG_RANCHER_CONTAINERD}
-    -X ${VENDOR_PREFIX}${PKG_CRICTL}/pkg/version.Version=${VERSION_CRICTL}"
+    -X ${VENDOR_PREFIX}${PKG_CRICTL}/pkg/version.Version=${VERSION_CRICTL}
+"
 LDFLAGS="
     -w -s"
 STATIC="
