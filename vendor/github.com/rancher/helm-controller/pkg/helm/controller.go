@@ -39,7 +39,7 @@ type Controller struct {
 }
 
 const (
-	image = "rancher/klipper-helm:v0.1.5"
+	image = "rancher/klipper-helm:v0.2.0"
 	label = "helmcharts.helm.cattle.io/chart"
 	name  = "helm-controller"
 )
@@ -199,6 +199,22 @@ func job(chart *helmv1.HelmChart) (*batch.Job, *core.ConfigMap) {
 									Name:  "VALUES_HASH",
 									Value: hex.EncodeToString(valuesHash[:]),
 								},
+								{
+									Name:  "HELM_DRIVER",
+									Value: "secret",
+								},
+								{
+									Name: "CHART_NAMESPACE",
+									Value: chart.Namespace,
+								},
+								{
+									Name: "CHART",
+									Value: chart.Spec.Chart,
+								},
+								{
+									Name: "HELM_VERSION",
+									Value: chart.Spec.HelmVersion,
+								},
 							},
 						},
 					},
@@ -298,15 +314,12 @@ func args(chart *helmv1.HelmChart) []string {
 	if chart.DeletionTimestamp != nil {
 		return []string{
 			"delete",
-			"--purge", chart.Name,
 		}
 	}
 
 	spec := chart.Spec
 	args := []string{
 		"install",
-		"--name", chart.Name,
-		spec.Chart,
 	}
 	if spec.TargetNamespace != "" {
 		args = append(args, "--namespace", spec.TargetNamespace)

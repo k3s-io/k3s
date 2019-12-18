@@ -715,6 +715,8 @@ github.com/rancher/flannel v0.11.0-k3s.1 h1:mIwnfWDafjzQgFkZeJ1AkFrrAT3EdBaA1giE
 github.com/rancher/flannel v0.11.0-k3s.1/go.mod h1:Hn4ZV+eq0LhLZP63xZnxdGwXEoRSxs5sxELxu27M3UA=
 github.com/rancher/helm-controller v0.3.0 h1:sYRpOiJc4+NmSEkft3lR2pwaEPOrPzZOTo2UjFnVF4I=
 github.com/rancher/helm-controller v0.3.0/go.mod h1:194LHuZRrxcD82bG1rJtOWsw98U4JbPhDWqvL7l3PAw=
+github.com/rancher/helm-controller v0.4.0 h1:VO7TqMsMWh3TJK7U38LLht1uHiDy0fSYWSywT0bE5lY=
+github.com/rancher/helm-controller v0.4.0/go.mod h1:194LHuZRrxcD82bG1rJtOWsw98U4JbPhDWqvL7l3PAw=
 github.com/rancher/kine v0.3.2 h1:2kP48ojBWVoZ6vlzixc9jc9uKRk7Yn1a7kWoOsJi7Sg=
 github.com/rancher/kine v0.3.2/go.mod h1:xEMl0tLCva9/9me7mXJ3m9Vo6yqHgC4OU3NiK4CPrGQ=
 github.com/rancher/kubernetes v1.17.0-k3s.1 h1:g1xvTHOHMJxwWtseblor0gighLRHpL7Bf9MwX8HR3W0=
