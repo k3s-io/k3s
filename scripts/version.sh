@@ -35,5 +35,5 @@ if [[ -n "$GIT_TAG" ]]; then
     VERSION=$GIT_TAG
 else
     VERSION="$(sed -e 's/[-+].*//' <<< "$VERSION_K8S")+$COMMIT$DIRTY"
-    VERSION_TAG="$(sed -e 's/+/-/g' <<< "$VERSION")"
 fi
+VERSION_TAG="$(sed -e 's/+/-/g' <<< "$VERSION")"
