@@ -18,5 +18,4 @@ limitations under the License.
 
 // +k8s:deepcopy-gen=package
 // +groupName=helm.cattle.io
-
 package v1
