@@ -54,7 +54,7 @@ const ContainerdConfigTemplate = `
   {{ if $v.Auth.Username }}username = "{{ $v.Auth.Username }}"{{end}}
   {{ if $v.Auth.Password }}password = "{{ $v.Auth.Password }}"{{end}}
   {{ if $v.Auth.Auth }}auth = "{{ $v.Auth.Auth }}"{{end}}
-  {{ if $v.Auth.IdentityToken }}identity_token = "{{ $v.Auth.IdentityToken }}"{{end}}
+  {{ if $v.Auth.IdentityToken }}identitytoken = "{{ $v.Auth.IdentityToken }}"{{end}}
 {{end}}
 {{ if $v.TLS }}
 [plugins.cri.registry.configs."{{$k}}".tls]
