@@ -8,7 +8,6 @@ import (
 	"os"
 	"sort"
 
-	"k8s.io/apimachinery/pkg/types"
 	helmv1 "github.com/rancher/helm-controller/pkg/apis/helm.cattle.io/v1"
 	helmcontroller "github.com/rancher/helm-controller/pkg/generated/controllers/helm.cattle.io/v1"
 	batchcontroller "github.com/rancher/wrangler-api/pkg/generated/controllers/batch/v1"
@@ -24,6 +23,7 @@ import (
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
@@ -39,7 +39,7 @@ type Controller struct {
 }
 
 const (
-	image = "rancher/klipper-helm:v0.2.0"
+	image = "rancher/klipper-helm:v0.2.1"
 	label = "helmcharts.helm.cattle.io/chart"
 	name  = "helm-controller"
 )
@@ -204,15 +204,15 @@ func job(chart *helmv1.HelmChart) (*batch.Job, *core.ConfigMap) {
 									Value: "secret",
 								},
 								{
-									Name: "CHART_NAMESPACE",
+									Name:  "CHART_NAMESPACE",
 									Value: chart.Namespace,
 								},
 								{
-									Name: "CHART",
+									Name:  "CHART",
 									Value: chart.Spec.Chart,
 								},
 								{
-									Name: "HELM_VERSION",
+									Name:  "HELM_VERSION",
 									Value: chart.Spec.HelmVersion,
 								},
 							},
