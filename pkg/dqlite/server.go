@@ -214,6 +214,10 @@ func writeClusterID(id uint64, dataDir string) error {
 	return ioutil.WriteFile(idFile, []byte(strconv.FormatUint(id, 10)), 0644)
 }
 
+func deleteClusterID(dataDir string) {
+	os.Remove(filepath.Join(GetDBDir(dataDir), NodeIDFile))
+}
+
 func getClusterID(initCluster bool, dataDir string) (uint64, error) {
 	idFile := filepath.Join(GetDBDir(dataDir), NodeIDFile)
 	content, err := ioutil.ReadFile(idFile)
@@ -225,7 +229,7 @@ func getClusterID(initCluster bool, dataDir string) (uint64, error) {
 
 	idStr := strings.TrimSpace(string(content))
 	if idStr == "" {
-		id := rand.Uint64()
+		id := uint64(rand.Intn(1 << 20))
 		if initCluster {
 			id = 1
 		}
