@@ -719,6 +719,8 @@ github.com/rancher/helm-controller v0.4.0 h1:VO7TqMsMWh3TJK7U38LLht1uHiDy0fSYWSy
 github.com/rancher/helm-controller v0.4.0/go.mod h1:194LHuZRrxcD82bG1rJtOWsw98U4JbPhDWqvL7l3PAw=
 github.com/rancher/helm-controller v0.4.1-0.20191219210749-b81cad6ffd60 h1:c4UL7AcwFGoZIit6EoVS9S1ylj4IGhPCtQM23iFXBzA=
 github.com/rancher/helm-controller v0.4.1-0.20191219210749-b81cad6ffd60/go.mod h1:194LHuZRrxcD82bG1rJtOWsw98U4JbPhDWqvL7l3PAw=
+github.com/rancher/helm-controller v0.4.1-0.20191223195946-ae918063bc54 h1:S/IAloMp6MYYtoHKfJUS5M3Wv0CU+5Ixe1nnSv2pQUU=
+github.com/rancher/helm-controller v0.4.1-0.20191223195946-ae918063bc54/go.mod h1:194LHuZRrxcD82bG1rJtOWsw98U4JbPhDWqvL7l3PAw=
 github.com/rancher/kine v0.3.2 h1:2kP48ojBWVoZ6vlzixc9jc9uKRk7Yn1a7kWoOsJi7Sg=
 github.com/rancher/kine v0.3.2/go.mod h1:xEMl0tLCva9/9me7mXJ3m9Vo6yqHgC4OU3NiK4CPrGQ=
 github.com/rancher/kubernetes v1.17.0-k3s.1 h1:g1xvTHOHMJxwWtseblor0gighLRHpL7Bf9MwX8HR3W0=
