@@ -33,6 +33,13 @@ func (d *DQLite) Test(ctx context.Context) error {
 	return nil
 }
 
+func nodeIDsEqual(testID, currentID uint64) bool {
+	// this is a test for a bug in v1.0.0. In future versions we don't
+	// generate node ID higher than 1<<20 so this doesn't matter.  But
+	// basically just ignore the first 32 bits.
+	return uint32(testID) == uint32(currentID)
+}
+
 func (d *DQLite) Join(ctx context.Context, nodes []client.NodeInfo) error {
 	if len(nodes) > 0 {
 		if err := d.NodeStore.Set(ctx, nodes); err != nil {
@@ -51,22 +58,25 @@ func (d *DQLite) Join(ctx context.Context, nodes []client.NodeInfo) error {
 		return err
 	}
 
+	nodeID, err := getClusterID(false, d.DataDir)
+	if err != nil {
+		return errors.Wrap(err, "get cluster ID")
+	}
 	for _, testNode := range current {
 		if testNode.Address == d.NodeInfo.Address {
-			nodeID, err := getClusterID(false, d.DataDir)
-			if err != nil {
-				return errors.Wrap(err, "get cluster ID")
-			}
-			if testNode.ID != nodeID {
+			if !nodeIDsEqual(testNode.ID, nodeID) {
 				if err := d.node.Close(); err != nil {
 					return errors.Wrap(err, "node close for id reset")
 				}
 				if err := writeClusterID(testNode.ID, d.DataDir); err != nil {
 					return errors.Wrap(err, "restart node to reset ID")
 				}
-				return fmt.Errorf("reseting node ID from %d to %d, please restart", nodeID, testNode.ID)
+				logrus.Fatalf("resetting node ID from %d to %d, please restart", nodeID, testNode.ID)
 			}
 			return nil
+		} else if nodeIDsEqual(testNode.ID, nodeID) {
+			deleteClusterID(d.DataDir)
+			logrus.Fatalf("node ID %d is in use, please restart", nodeID)
 		}
 	}
 
