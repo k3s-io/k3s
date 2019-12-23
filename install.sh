@@ -271,6 +271,12 @@ verify_downloader() {
     return 0
 }
 
+# --- Verify swap is not enabled ---
+verify_no_swap() {
+    [ "$(wc -l < /proc/swaps)" == "1"  ] && return
+    fatal "Swap is enabled"
+}
+
 # --- verify existence of semanage when SELinux is enabled ---
 verify_semanage() {
     if [ -x "$(which getenforce)" ]; then
@@ -724,6 +730,7 @@ eval set -- $(escape "${INSTALL_K3S_EXEC}") $(quote "$@")
 # --- run the install process --
 {
     verify_system
+    verify_no_swap
     setup_env "$@"
     download_and_verify
     create_symlinks
