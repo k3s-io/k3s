@@ -9,6 +9,10 @@ platform:
 steps:
 - name: build
   image: rancher/dapper:v0.4.2
+  secrets: [ gcloud_auth ]
+  environment:
+    GCLOUD_AUTH:
+      from_secret: gcloud_auth
   commands:
   - dapper ci
   volumes:
@@ -100,6 +104,10 @@ platform:
 steps:
 - name: build
   image: rancher/dapper:v0.4.2
+  secrets: [ gcloud_auth ]
+  environment:
+    GCLOUD_AUTH:
+      from_secret: gcloud_auth
   commands:
   - dapper ci
   volumes:
@@ -174,6 +182,10 @@ platform:
 steps:
 - name: build
   image: rancher/dapper:v0.4.2
+  secrets: [ gcloud_auth ]
+  environment:
+    GCLOUD_AUTH:
+      from_secret: gcloud_auth
   commands:
   - dapper ci
   volumes:
