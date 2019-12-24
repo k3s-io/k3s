@@ -33,6 +33,10 @@ set -e
 #     Version of k3s to download from github. Will attempt to download the
 #     latest version if not specified.
 #
+#   - INSTALL_K3S_COMMIT
+#     Commit of k3s to download from temporary cloud storage.
+#     * (for developer & QA use)
+#
 #   - INSTALL_K3S_BIN_DIR
 #     Directory to install k3s binary, links, and uninstall script to, or use
 #     /usr/local/bin as the default
@@ -67,6 +71,7 @@ set -e
 #     if not specified.
 
 GITHUB_URL=https://github.com/rancher/k3s/releases
+STORAGE_URL=https://storage.googleapis.com/k3s-ci-builds
 DOWNLOADER=
 
 # --- helper functions for logs ---
@@ -297,7 +302,9 @@ setup_tmp() {
 
 # --- use desired k3s version if defined or find latest ---
 get_release_version() {
-    if [ -n "${INSTALL_K3S_VERSION}" ]; then
+    if [ -n "${INSTALL_K3S_COMMIT}" ]; then
+        VERSION_K3S="commit ${INSTALL_K3S_COMMIT}"
+    elif [ -n "${INSTALL_K3S_VERSION}" ]; then
         VERSION_K3S=${INSTALL_K3S_VERSION}
     else
         info "Finding latest release"
@@ -338,7 +345,11 @@ download() {
 
 # --- download hash from github url ---
 download_hash() {
-    HASH_URL=${GITHUB_URL}/download/${VERSION_K3S}/sha256sum-${ARCH}.txt
+    if [ -n "${INSTALL_K3S_COMMIT}" ]; then
+        HASH_URL=${STORAGE_URL}/k3s${SUFFIX}-${INSTALL_K3S_COMMIT}.sha256sum
+    else
+        HASH_URL=${GITHUB_URL}/download/${VERSION_K3S}/sha256sum-${ARCH}.txt
+    fi
     info "Downloading hash ${HASH_URL}"
     download ${TMP_HASH} ${HASH_URL}
     HASH_EXPECTED=$(grep " k3s${SUFFIX}$" ${TMP_HASH})
@@ -359,7 +370,11 @@ installed_hash_matches() {
 
 # --- download binary from github url ---
 download_binary() {
-    BIN_URL=${GITHUB_URL}/download/${VERSION_K3S}/k3s${SUFFIX}
+    if [ -n "${INSTALL_K3S_COMMIT}" ]; then
+        BIN_URL=${STORAGE_URL}/k3s${SUFFIX}-${INSTALL_K3S_COMMIT}
+    else
+        BIN_URL=${GITHUB_URL}/download/${VERSION_K3S}/k3s${SUFFIX}
+    fi
     info "Downloading binary ${BIN_URL}"
     download ${TMP_BIN} ${BIN_URL}
 }

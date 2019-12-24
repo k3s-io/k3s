@@ -18,12 +18,12 @@ VERSIONFLAGS="
     -X ${PKG}/pkg/version.GitCommit=${COMMIT:0:8}
 
     -X ${VENDOR_PREFIX}k8s.io/client-go/pkg/version.gitVersion=${VERSION}
-    -X ${VENDOR_PREFIX}k8s.io/client-go/pkg/version.gitCommit=${LONG_COMMIT}
+    -X ${VENDOR_PREFIX}k8s.io/client-go/pkg/version.gitCommit=${COMMIT}
     -X ${VENDOR_PREFIX}k8s.io/client-go/pkg/version.gitTreeState=${TREE_STATE}
     -X ${VENDOR_PREFIX}k8s.io/client-go/pkg/version.buildDate=${buildDate}
 
     -X ${VENDOR_PREFIX}k8s.io/component-base/version.gitVersion=${VERSION}
-    -X ${VENDOR_PREFIX}k8s.io/component-base/version.gitCommit=${LONG_COMMIT}
+    -X ${VENDOR_PREFIX}k8s.io/component-base/version.gitCommit=${COMMIT}
     -X ${VENDOR_PREFIX}k8s.io/component-base/version.gitTreeState=${TREE_STATE}
     -X ${VENDOR_PREFIX}k8s.io/component-base/version.buildDate=${buildDate}
 

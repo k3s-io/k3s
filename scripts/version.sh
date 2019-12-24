@@ -6,8 +6,10 @@ if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
     TREE_STATE=dirty
 fi
 
-COMMIT=$(git rev-parse --short HEAD)
-LONG_COMMIT=$(git rev-parse HEAD)
+COMMIT=$(git log -n3 --pretty=format:"%H %ae" | grep -v ' drone@localhost$' | cut -f1 -d\  | head -1)
+if [ -z "${COMMIT}" ]; then
+  COMMIT=$(git rev-parse HEAD)
+fi
 
 GIT_TAG=${DRONE_TAG:-$(git tag -l --contains HEAD | head -n 1)}
 
@@ -34,6 +36,6 @@ VERSION_CNIPLUGINS="v0.7.6-k3s1"
 if [[ -n "$GIT_TAG" ]]; then
     VERSION=$GIT_TAG
 else
-    VERSION="$(sed -e 's/[-+].*//' <<< "$VERSION_K8S")+$COMMIT$DIRTY"
+    VERSION="$(sed -e 's/[-+].*//' <<< "$VERSION_K8S")+${COMMIT:0:8}$DIRTY"
 fi
 VERSION_TAG="$(sed -e 's/+/-/g' <<< "$VERSION")"
