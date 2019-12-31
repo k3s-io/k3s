@@ -3,6 +3,7 @@ package cloudprovider
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
@@ -60,14 +61,14 @@ func (k *k3s) NodeAddresses(ctx context.Context, name types.NodeName) ([]corev1.
 	}
 	// check internal address
 	if node.Labels[InternalIPLabel] != "" {
-		addresses = append(addresses, corev1.NodeAddress{Type: corev1.NodeInternalIP, Address: node.Labels[InternalIPLabel]})
+		addresses = append(addresses, corev1.NodeAddress{Type: corev1.NodeInternalIP, Address: strings.ReplaceAll(node.Labels[InternalIPLabel], "x", ":")})
 	} else {
 		logrus.Infof("couldn't find node internal ip label on node %s", name)
 	}
 
 	// check external address
 	if node.Labels[ExternalIPLabel] != "" {
-		addresses = append(addresses, corev1.NodeAddress{Type: corev1.NodeExternalIP, Address: node.Labels[ExternalIPLabel]})
+		addresses = append(addresses, corev1.NodeAddress{Type: corev1.NodeExternalIP, Address: strings.ReplaceAll(node.Labels[ExternalIPLabel], "x", ":")})
 	}
 
 	// check hostname

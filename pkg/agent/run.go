@@ -213,12 +213,12 @@ func updateMutableLabels(agentConfig *daemonconfig.Agent, nodeLabels map[string]
 
 func updateAddressLabels(agentConfig *daemonconfig.Agent, nodeLabels map[string]string) (map[string]string, bool) {
 	result := map[string]string{
-		InternalIPLabel: agentConfig.NodeIP,
+		InternalIPLabel: strings.ReplaceAll(agentConfig.NodeIP, ":", "x"),
 		HostnameLabel:   agentConfig.NodeName,
 	}
 
 	if agentConfig.NodeExternalIP != "" {
-		result[ExternalIPLabel] = agentConfig.NodeExternalIP
+		result[ExternalIPLabel] = strings.ReplaceAll(agentConfig.NodeExternalIP, ":", "x")
 	}
 
 	result = labels.Merge(nodeLabels, result)
