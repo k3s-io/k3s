@@ -79,6 +79,10 @@ info()
 {
     echo '[INFO] ' "$@"
 }
+warn()
+{
+    echo '[WARN] ' "$@" >&2
+}
 fatal()
 {
     echo '[ERROR] ' "$@" >&2
@@ -123,6 +127,50 @@ escape_dq() {
     printf '%s' "$@" | sed -e 's/"/\\"/g'
 }
 
+# --- check for rootless mode ---
+is_rootless() {
+    while [ $# != 0 ]; do
+        case $1 in
+            --rootless)
+                return 0
+                ;;
+        esac
+        shift || break
+    done
+    return 1
+}
+
+# --- find kubeconfig location from args ---
+set_kubeconfig() {
+    if [ -n "$K3S_KUBECONFIG_OUTPUT" ]; then
+        KUBECONFIG=$K3S_KUBECONFIG_OUTPUT
+        return
+    fi
+
+    if is_rootless "$@"; then
+        KUBECONFIG=$HOME/.kube/k3s.yaml
+    else
+        KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+    fi
+
+    while [ $# != 0 ]; do
+        case $1 in
+            --write-kubeconfig | -o )
+                if [ -n "$2" ]; then
+                    KUBECONFIG=$2
+                    shift
+                else
+                    warn "'--write-kubeconfig' requires a non-empty option argument"
+                fi
+                ;;
+            --write-kubeconfig=?* | -o=?* )
+                KUBECONFIG=${1#*=}
+                ;;
+        esac
+        shift || break
+    done
+}
+
 # --- define needed environment variables ---
 setup_env() {
     # --- use command args if passed or create default ---
@@ -145,6 +193,8 @@ setup_env() {
         ;;
     esac
     CMD_K3S_EXEC="${CMD_K3S}$(quote_indent "$@")"
+
+    set_kubeconfig "$@"
 
     # --- use systemd name if defined or create default ---
     if [ -n "${INSTALL_K3S_NAME}" ]; then
@@ -733,6 +783,37 @@ service_enable_and_start() {
     return 0
 }
 
+# --- create symlink to kubeconfig
+setup_kubeconfig() {
+    DEFAULT_CONFIG=${HOME}/.kube/config
+    if [ ! -f "${KUBECONFIG}" ]; then
+        info "Waiting for kubeconfig at ${KUBECONFIG}..."
+        for _ in $(seq 1 20); do
+            [ -f "${KUBECONFIG}" ] && break
+            sleep 1
+        done
+        [ -f "${KUBECONFIG}" ] || warn "Kubeconfig does not yet exist at ${KUBECONFIG}"
+    fi
+
+    if [ -L ${DEFAULT_CONFIG} ]; then
+        CONFIG_LINK=$(readlink -f ${DEFAULT_CONFIG} || true)
+        if [ "${CONFIG_LINK}" == "${KUBECONFIG}" ] || echo ${CONFIG_LINK} | grep -vq k3s; then
+            info "Skipping kubeconfig symlink, ~/.kube/config link already exists to ${CONFIG_LINK}"
+            return
+        fi
+    elif [ -f ${DEFAULT_CONFIG} ]; then
+        info "Skipping kubeconfig symlink, ~/.kube/config file already exists"
+        return
+    fi
+
+    if [ ! -d $(dirname ${DEFAULT_CONFIG}) ]; then
+        mkdir -p $(dirname ${DEFAULT_CONFIG})
+    fi
+
+    ln -sf ${KUBECONFIG} ${DEFAULT_CONFIG}
+    info "Symlinked ~/.kube/config to ${KUBECONFIG}"
+}
+
 # --- re-evaluate args to include env command ---
 eval set -- $(escape "${INSTALL_K3S_EXEC}") $(quote "$@")
 
@@ -748,4 +829,5 @@ eval set -- $(escape "${INSTALL_K3S_EXEC}") $(quote "$@")
     create_env_file
     create_service_file
     service_enable_and_start
+    setup_kubeconfig
 }
