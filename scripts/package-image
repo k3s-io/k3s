@@ -12,4 +12,3 @@ IMAGE_NAME=${IMAGE_NAME:-k3s}
 IMAGE=${REPO}/${IMAGE_NAME}:${TAG}
 docker build -t ${IMAGE} -f package/Dockerfile .
 echo Built ${IMAGE}
-echo ${VERSION_TAG}-${ARCH} >.tags

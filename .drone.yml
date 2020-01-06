@@ -15,6 +15,7 @@ steps:
       from_secret: gcloud_auth
   commands:
   - dapper ci
+  - echo "${DRONE_TAG}-amd64" | sed -e 's/+/-/g' >.tags
   volumes:
   - name: docker
     path: /var/run/docker.sock
@@ -109,6 +110,7 @@ steps:
       from_secret: gcloud_auth
   commands:
   - dapper ci
+  - echo "${DRONE_TAG}-arm64" | sed -e 's/+/-/g' >.tags
   volumes:
   - name: docker
     path: /var/run/docker.sock
@@ -186,6 +188,7 @@ steps:
       from_secret: gcloud_auth
   commands:
   - dapper ci
+  - echo "${DRONE_TAG}-arm" | sed -e 's/+/-/g' >.tags
   volumes:
   - name: docker
     path: /var/run/docker.sock
