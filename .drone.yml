@@ -47,7 +47,6 @@ steps:
     password:
       from_secret: docker_password
     repo: "rancher/k3s"
-    tag: "${DRONE_TAG}-amd64"
     username:
       from_secret: docker_username
   when:
@@ -142,7 +141,6 @@ steps:
     password:
       from_secret: docker_password
     repo: "rancher/k3s"
-    tag: "${DRONE_TAG}-arm64"
     username:
       from_secret: docker_username
   when:
@@ -220,7 +218,6 @@ steps:
     password:
       from_secret: docker_password
     repo: "rancher/k3s"
-    tag: "${DRONE_TAG}-arm"
     username:
       from_secret: docker_username
   when:
