@@ -259,18 +259,17 @@ platform:
 
 steps:
 - name: manifest
-  image: plugins/manifest:1.0.2
-  settings:
-    username:
+  image: rancher/dapper:v0.4.2
+  environment:
+    USERNAME:
       from_secret: docker_username
-    password:
+    PASSWORD:
       from_secret: docker_password
-    platforms:
-      - linux/amd64
-      - linux/arm64
-      - linux/arm
-    target: "rancher/k3s:${DRONE_TAG}"
-    template: "rancher/k3s:${DRONE_TAG}-ARCH"
+  commands:
+    - export DOCKER_TAG=$(echo "${DRONE_TAG}" | sed -e 's/+/-/g')
+    - docker login -u $env:USERNAME -p $env:PASSWORD
+    - docker manifest create ${DOCKER_TAG} ${DOCKER_TAG}-amd64 ${DOCKER_TAG}-arm64 ${DOCKER_TAG}-arm
+    - docker manifest push ${DOCKER_TAG}
   when:
     instance:
     - drone-publish.rancher.io
