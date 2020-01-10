@@ -331,6 +331,7 @@ github.com/containernetworking/plugins/pkg/ns
 # github.com/coreos/flannel v0.11.0 => github.com/rancher/flannel v0.11.0-k3s.1
 github.com/coreos/flannel/backend
 github.com/coreos/flannel/backend/extension
+github.com/coreos/flannel/backend/hostgw
 github.com/coreos/flannel/backend/ipsec
 github.com/coreos/flannel/backend/vxlan
 github.com/coreos/flannel/network

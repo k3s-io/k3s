@@ -49,6 +49,10 @@ const (
 	"Type": "vxlan"
 }`
 
+	hostGWBackend = `{
+	"Type": "host-gw"
+}`
+
 	ipsecBackend = `{
 	"Type": "ipsec",
 	"UDPEncap": true,
@@ -120,6 +124,8 @@ func createFlannelConf(nodeConfig *config.Node) error {
 	switch nodeConfig.FlannelBackend {
 	case config.FlannelBackendVXLAN:
 		backendConf = vxlanBackend
+	case config.FlannelBackendHostGW:
+		backendConf = hostGWBackend
 	case config.FlannelBackendIPSEC:
 		backendConf = strings.Replace(ipsecBackend, "%psk%", nodeConfig.AgentConfig.IPSECPSK, -1)
 		if err := setupStrongSwan(nodeConfig); err != nil {
