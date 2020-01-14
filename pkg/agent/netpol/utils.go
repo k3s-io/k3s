@@ -152,8 +152,8 @@ func (ipset *IPSet) runWithStdin(stdin *bytes.Buffer, args ...string) (string, e
 	return stdout.String(), nil
 }
 
-// NewIPSet create a new IPSet with ipSetPath initialized.
-func NewIPSet(isIpv6 bool) (*IPSet, error) {
+// NewSavedIPSet create a new IPSet with ipSetPath initialized.
+func NewSavedIPSet(isIpv6 bool) (*IPSet, error) {
 	ipSetPath, err := getIPSetPath()
 	if err != nil {
 		return nil, err
@@ -162,6 +162,9 @@ func NewIPSet(isIpv6 bool) (*IPSet, error) {
 		ipSetPath: ipSetPath,
 		Sets:      make(map[string]*Set),
 		isIpv6:    isIpv6,
+	}
+	if err := ipSet.Save(); err != nil {
+		return nil, err
 	}
 	return ipSet, nil
 }
