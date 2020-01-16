@@ -40,7 +40,7 @@ END
 HOME=${TMPDIR}
 PATH=$PATH:${HOME}/gsutil
 
-LOG_TGZ=k3s-log-$(uname -s | tr '[:upper:]' '[:lower:]' )-$(go env GOARCH)-$(git rev-parse --short HEAD)-$(date +%s)-$(basename $1).tgz
+LOG_TGZ=k3s-log-$(date +%s)-$(go env GOARCH)-$(git rev-parse --short HEAD)-$(basename $1).tgz
 
 tar -cz -f ${TMPDIR}/${LOG_TGZ} -C $(dirname $1) $(basename $1)
 gsutil cp ${TMPDIR}/${LOG_TGZ} gs://k3s-ci-logs || exit 1
