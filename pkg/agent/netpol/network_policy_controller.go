@@ -934,13 +934,9 @@ func cleanupStaleRules(activePolicyChains, activePodFwChains, activePolicyIPSets
 	if err != nil {
 		log.Fatalf("failed to initialize iptables command executor due to %s", err.Error())
 	}
-	ipsets, err := NewIPSet(false)
+	ipset, err := NewSavedIPSet(false)
 	if err != nil {
-		log.Fatalf("failed to create ipsets command executor due to %s", err.Error())
-	}
-	err = ipsets.Save()
-	if err != nil {
-		log.Fatalf("failed to initialize ipsets command executor due to %s", err.Error())
+		log.Fatalf("failed to create ipset command executor due to %s", err.Error())
 	}
 
 	// get the list of chains created for pod firewall and network policies
@@ -957,7 +953,7 @@ func cleanupStaleRules(activePolicyChains, activePodFwChains, activePolicyIPSets
 			}
 		}
 	}
-	for _, set := range ipsets.Sets {
+	for _, set := range ipset.Sets {
 		if strings.HasPrefix(set.Name, kubeSourceIPSetPrefix) ||
 			strings.HasPrefix(set.Name, kubeDestinationIPSetPrefix) {
 			if _, ok := activePolicyIPSets[set.Name]; !ok {
@@ -1605,11 +1601,7 @@ func (npc *NetworkPolicyController) Cleanup() {
 	}
 
 	// delete all ipsets
-	ipset, err := NewIPSet(false)
-	if err != nil {
-		log.Errorf("Failed to clean up ipsets: " + err.Error())
-	}
-	err = ipset.Save()
+	ipset, err := NewSavedIPSet(false)
 	if err != nil {
 		log.Errorf("Failed to clean up ipsets: " + err.Error())
 	}
@@ -1719,11 +1711,7 @@ func NewNetworkPolicyController(
 	}
 	npc.nodeIP = nodeIP
 
-	ipset, err := NewIPSet(false)
-	if err != nil {
-		return nil, err
-	}
-	err = ipset.Save()
+	ipset, err := NewSavedIPSet(false)
 	if err != nil {
 		return nil, err
 	}
