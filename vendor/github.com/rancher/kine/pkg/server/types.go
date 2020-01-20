@@ -3,12 +3,12 @@ package server
 import (
 	"context"
 
-	"github.com/pkg/errors"
+	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
 )
 
 var (
-	ErrKeyExists = errors.New("key exists")
-	ErrCompacted = errors.New("revision has been compact")
+	ErrKeyExists = rpctypes.ErrGRPCDuplicateKey
+	ErrCompacted = rpctypes.ErrGRPCCompacted
 )
 
 type Backend interface {
