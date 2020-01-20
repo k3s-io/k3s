@@ -64,7 +64,7 @@ require (
 	github.com/bhendo/go-powershell v0.0.0-20190719160123-219e7fb4e41e // indirect
 	github.com/bronze1man/goStrongswanVici v0.0.0-20190828090544-27d02f80ba40 // indirect
 	github.com/buger/jsonparser v0.0.0-20181115193947-bf1c66bbce23 // indirect
-	github.com/canonical/go-dqlite v1.2.0
+	github.com/canonical/go-dqlite v1.3.0
 	github.com/containerd/cgroups v0.0.0-00010101000000-000000000000 // indirect
 	github.com/containerd/containerd v1.3.0-beta.2.0.20190828155532-0293cbd26c69
 	github.com/containerd/continuity v0.0.0-20190827140505-75bee3e2ccb6 // indirect

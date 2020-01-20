@@ -18,8 +18,10 @@ import (
 	"context"
 	"database/sql/driver"
 	"io"
+	"log"
 	"net"
 	"reflect"
+	"syscall"
 	"time"
 
 	"github.com/Rican7/retry/backoff"
@@ -624,8 +626,14 @@ func (r *Rows) ColumnTypeDatabaseTypeName(i int) string {
 	if r.types == nil {
 		var err error
 		r.types, err = r.rows.ColumnTypes()
-		if err != nil {
-			panic(err)
+		// an error might not matter if we get our types
+		if err != nil && i >= len(r.types) {
+			// a panic here doesn't really help,
+			// as an empty column type is not the end of the world
+			// but we should still inform the user of the failure
+			const msg = "row (%p) error returning column #%d type: %v\n"
+			log.Printf(msg, r, i, err)
+			return ""
 		}
 	}
 	return r.types[i]
@@ -645,6 +653,8 @@ func valuesToNamedValues(args []driver.Value) []driver.NamedValue {
 
 func driverError(err error) error {
 	switch err := errors.Cause(err).(type) {
+	case syscall.Errno:
+		return driver.ErrBadConn
 	case *net.OpError:
 		return driver.ErrBadConn
 	case protocol.ErrRequest:

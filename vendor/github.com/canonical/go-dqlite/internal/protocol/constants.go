@@ -6,6 +6,19 @@ const VersionOne = uint64(1)
 // VersionLegacy is the pre 1.0 dqlite server protocol version.
 const VersionLegacy = uint64(0x86104dd760433fe5)
 
+// Cluster response formats
+const (
+	ClusterFormatV0 = 0
+	ClusterFormatV1 = 1
+)
+
+// Node roles
+const (
+	Voter   = NodeRole(0)
+	StandBy = NodeRole(1)
+	Spare   = NodeRole(2)
+)
+
 // SQLite datatype codes
 const (
 	Integer = 1
@@ -35,11 +48,12 @@ const (
 	RequestExecSQL   = 8
 	RequestQuerySQL  = 9
 	RequestInterrupt = 10
-	RequestJoin      = 12
-	RequestPromote   = 13
+	RequestAdd       = 12
+	RequestAssign    = 13
 	RequestRemove    = 14
 	RequestDump      = 15
 	RequestCluster   = 16
+	RequestTransfer  = 17
 )
 
 // Response types.

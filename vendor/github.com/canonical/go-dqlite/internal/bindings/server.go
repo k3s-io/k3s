@@ -50,7 +50,7 @@ static dqlite_node_info *makeInfos(int n) {
 	return calloc(n, sizeof(dqlite_node_info));
 }
 
-static void setInfo(dqlite_node_info *infos, unsigned i, unsigned id, const char *address) {
+static void setInfo(dqlite_node_info *infos, unsigned i, dqlite_node_id id, const char *address) {
 	dqlite_node_info *info = &infos[i];
 	info->id = id;
 	info->address = address;
@@ -105,7 +105,7 @@ func ConfigMultiThread() error {
 // NewNode creates a new Node instance.
 func NewNode(id uint64, address string, dir string) (*Node, error) {
 	var server *C.dqlite_node
-	cid := C.unsigned(id)
+	cid := C.dqlite_node_id(id)
 
 	caddress := C.CString(address)
 	defer C.free(unsafe.Pointer(caddress))
@@ -186,7 +186,7 @@ func (s *Node) Recover(cluster []protocol.NodeInfo) error {
 	infos := C.makeInfos(n)
 	defer C.free(unsafe.Pointer(infos))
 	for i, info := range cluster {
-		cid := C.unsigned(info.ID)
+		cid := C.dqlite_node_id(info.ID)
 		caddress := C.CString(info.Address)
 		defer C.free(unsafe.Pointer(caddress))
 		C.setInfo(infos, C.unsigned(i), cid, caddress)
