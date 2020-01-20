@@ -1,0 +1,16 @@
+FROM golang:1.13.5-alpine3.10
+
+COPY --from=plugins/manifest:1.2.3 /bin/* /bin/
+
+ARG DOCKER_USERNAME
+ENV DOCKER_USERNAME $DOCKER_USERNAME
+
+ARG DOCKER_PASSWORD
+ENV DOCKER_PASSWORD $DOCKER_PASSWORD
+
+ARG DRONE_TAG
+ENV DRONE_TAG $DRONE_TAG
+
+COPY ./scripts/manifest /bin/
+
+RUN manifest
