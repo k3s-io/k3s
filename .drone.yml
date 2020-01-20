@@ -259,17 +259,20 @@ platform:
 
 steps:
 - name: manifest
-  image: rancher/dapper:v0.4.2
+  image: plugins/docker
   environment:
-    USERNAME:
+    DOCKER_USERNAME:
       from_secret: docker_username
-    PASSWORD:
+    DOCKER_PASSWORD:
       from_secret: docker_password
-  commands:
-    - export DOCKER_TAG=$(echo "${DRONE_TAG}" | sed -e 's/+/-/g')
-    - docker login -u $env:USERNAME -p $env:PASSWORD
-    - docker manifest create ${DOCKER_TAG} ${DOCKER_TAG}-amd64 ${DOCKER_TAG}-arm64 ${DOCKER_TAG}-arm
-    - docker manifest push ${DOCKER_TAG}
+  settings:
+    dry_run: true
+    dockerfile: Dockerfile.manifest
+    repo: "rancher/k3s-manifest"
+    build_args_from_env:
+    - DOCKER_USERNAME
+    - DOCKER_PASSWORD
+    - DRONE_TAG
   when:
     instance:
     - drone-publish.rancher.io
