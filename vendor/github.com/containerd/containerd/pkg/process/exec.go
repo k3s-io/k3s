@@ -96,7 +96,6 @@ func (e *execProcess) setExited(status int) {
 	e.status = status
 	e.exited = time.Now()
 	e.parent.Platform.ShutdownConsole(context.Background(), e.console)
-	e.pid.set(StoppedPID)
 	close(e.waitBlock)
 }
 
@@ -147,7 +146,7 @@ func (e *execProcess) kill(ctx context.Context, sig uint32, _ bool) error {
 	switch {
 	case pid == 0:
 		return errors.Wrap(errdefs.ErrFailedPrecondition, "process not created")
-	case pid < 0:
+	case !e.exited.IsZero():
 		return errors.Wrapf(errdefs.ErrNotFound, "process already finished")
 	default:
 		if err := unix.Kill(pid, syscall.Signal(sig)); err != nil {
@@ -261,17 +260,5 @@ func (e *execProcess) Status(ctx context.Context) (string, error) {
 	}
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	// if we don't have a pid(pid=0) then the exec process has just been created
-	if e.pid.get() == 0 {
-		return "created", nil
-	}
-	if e.pid.get() == StoppedPID {
-		return "stopped", nil
-	}
-	// if we have a pid and it can be signaled, the process is running
-	if err := unix.Kill(e.pid.get(), 0); err == nil {
-		return "running", nil
-	}
-	// else if we have a pid but it can nolonger be signaled, it has stopped
-	return "stopped", nil
+	return e.execState.Status(ctx)
 }

@@ -7,12 +7,13 @@ clone_folder: c:\gopath\src\github.com\containerd\containerd
 branches:
   only:
     - master
+    - /release\/.*/
 
 environment:
   GOPATH: C:\gopath
   CGO_ENABLED: 1
   matrix:
-    - GO_VERSION: 1.12.12
+    - GO_VERSION: 1.12.15
 
 before_build:
   - choco install -y mingw --version 5.3.0
