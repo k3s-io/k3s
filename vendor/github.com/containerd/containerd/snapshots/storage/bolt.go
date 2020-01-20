@@ -297,7 +297,7 @@ func Remove(ctx context.Context, key string) (string, snapshots.Kind, error) {
 		}
 
 		if err := readSnapshot(sbkt, &id, &si); err != nil {
-			errors.Wrapf(err, "failed to read snapshot %s", key)
+			return errors.Wrapf(err, "failed to read snapshot %s", key)
 		}
 
 		if pbkt != nil {

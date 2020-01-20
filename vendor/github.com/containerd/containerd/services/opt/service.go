@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 
 	"github.com/containerd/containerd/plugin"
 	"github.com/pkg/errors"
@@ -42,22 +41,20 @@ func init() {
 		InitFn: func(ic *plugin.InitContext) (interface{}, error) {
 			path := ic.Config.(*Config).Path
 			ic.Meta.Exports["path"] = path
-
 			bin := filepath.Join(path, "bin")
 			if err := os.MkdirAll(bin, 0711); err != nil {
 				return nil, err
 			}
-			if err := os.Setenv("PATH", fmt.Sprintf("%s:%s", bin, os.Getenv("PATH"))); err != nil {
+			if err := os.Setenv("PATH", fmt.Sprintf("%s%c%s", bin, os.PathListSeparator, os.Getenv("PATH"))); err != nil {
 				return nil, errors.Wrapf(err, "set binary image directory in path %s", bin)
 			}
-			if runtime.GOOS != "windows" {
-				lib := filepath.Join(path, "lib")
-				if err := os.MkdirAll(lib, 0711); err != nil {
-					return nil, err
-				}
-				if err := os.Setenv("LD_LIBRARY_PATH", fmt.Sprintf("%s:%s", os.Getenv("LD_LIBRARY_PATH"), lib)); err != nil {
-					return nil, errors.Wrapf(err, "set binary lib directory in path %s", lib)
-				}
+
+			lib := filepath.Join(path, "lib")
+			if err := os.MkdirAll(lib, 0711); err != nil {
+				return nil, err
+			}
+			if err := os.Setenv("LD_LIBRARY_PATH", fmt.Sprintf("%s%c%s", lib, os.PathListSeparator, os.Getenv("LD_LIBRARY_PATH"))); err != nil {
+				return nil, errors.Wrapf(err, "set binary lib directory in path %s", lib)
 			}
 			return &manager{}, nil
 		},

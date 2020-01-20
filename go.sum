@@ -705,8 +705,8 @@ github.com/quasilyte/go-consistent v0.0.0-20190521200055-c6f3937de18c/go.mod h1:
 github.com/quobyte/api v0.1.2/go.mod h1:jL7lIHrmqQ7yh05OJ+eEEdHr0u/kmT1Ff9iHd+4H6VI=
 github.com/rakelkar/gonetsh v0.0.0-20190719023240-501daadcadf8 h1:83l9gPhYtgxODlZKU0Odq4pQuDcMZEVgAh364+PV3OU=
 github.com/rakelkar/gonetsh v0.0.0-20190719023240-501daadcadf8/go.mod h1:4XHkfaUj+URzGO9sohoAgt2V9Y8nIW7fugpu0E6gShk=
-github.com/rancher/containerd v1.3.0-k3s.5 h1:r5GheXz59KQpEdYPxRd53vfFhipnQG/g3MI5NkNPDQI=
-github.com/rancher/containerd v1.3.0-k3s.5/go.mod h1:ZMfzmqce2Z+QSEqdHMfeJs1TZ/UeJ1aDrazjpQT4ehM=
+github.com/rancher/containerd v1.3.3-k3s1 h1:j8NGZdXKsZd2ne0XQg6OBfMJ/NkY/Qri6QhscGrJp2M=
+github.com/rancher/containerd v1.3.3-k3s1/go.mod h1:ZMfzmqce2Z+QSEqdHMfeJs1TZ/UeJ1aDrazjpQT4ehM=
 github.com/rancher/cri v1.3.0-k3s.3 h1:j/Sq2LMyg6gBn2MS1j5dEudpdL+UYVH7ubbewUCXkS0=
 github.com/rancher/cri v1.3.0-k3s.3/go.mod h1:Ht5T1dIKzm+4NExmb7wDVG6qR+j0xeXIjjhCv1d9geY=
 github.com/rancher/cri-tools v1.16.1-k3s.1 h1:iporgQ46noE6dtLzq6fWcIO2qjyPZy2m42d2P+UnGJg=

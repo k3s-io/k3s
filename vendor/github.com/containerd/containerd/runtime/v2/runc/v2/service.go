@@ -316,11 +316,12 @@ func (s *service) Start(ctx context.Context, r *taskAPI.StartRequest) (*taskAPI.
 		s.eventSendMu.Unlock()
 		return nil, errdefs.ToGRPC(err)
 	}
-	if err := s.ep.Add(container.ID, container.Cgroup()); err != nil {
-		logrus.WithError(err).Error("add cg to OOM monitor")
-	}
 	switch r.ExecID {
 	case "":
+		if err := s.ep.Add(container.ID, container.Cgroup()); err != nil {
+			logrus.WithError(err).Error("add cg to OOM monitor")
+		}
+
 		s.send(&eventstypes.TaskStart{
 			ContainerID: container.ID,
 			Pid:         uint32(p.Pid()),
@@ -348,15 +349,11 @@ func (s *service) Delete(ctx context.Context, r *taskAPI.DeleteRequest) (*taskAP
 	if err != nil {
 		return nil, errdefs.ToGRPC(err)
 	}
-	// if we deleted our init task, close the platform and send the task delete event
+	// if we deleted an init task, send the task delete event
 	if r.ExecID == "" {
 		s.mu.Lock()
 		delete(s.containers, r.ID)
-		hasContainers := len(s.containers) > 0
 		s.mu.Unlock()
-		if s.platform != nil && !hasContainers {
-			s.platform.Close()
-		}
 		s.send(&eventstypes.TaskDelete{
 			ContainerID: container.ID,
 			Pid:         uint32(p.Pid()),
@@ -600,6 +597,11 @@ func (s *service) Shutdown(ctx context.Context, r *taskAPI.ShutdownRequest) (*pt
 	}
 	s.cancel()
 	close(s.events)
+
+	if s.platform != nil {
+		s.platform.Close()
+	}
+
 	return empty, nil
 }
 
