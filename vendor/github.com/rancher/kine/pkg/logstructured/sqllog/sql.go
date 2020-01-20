@@ -162,7 +162,11 @@ func (s *SQLLog) After(ctx context.Context, prefix string, revision, limit int64
 		return 0, nil, err
 	}
 
-	rev, _, result, err := RowsToEvents(rows)
+	rev, compact, result, err := RowsToEvents(rows)
+	if revision > 0 && revision < compact {
+		return rev, result, server.ErrCompacted
+	}
+
 	return rev, result, err
 }
 
