@@ -131,7 +131,7 @@ github.com/blang/semver
 github.com/bronze1man/goStrongswanVici
 # github.com/buger/jsonparser v0.0.0-20181115193947-bf1c66bbce23
 github.com/buger/jsonparser
-# github.com/canonical/go-dqlite v1.2.0
+# github.com/canonical/go-dqlite v1.3.0
 github.com/canonical/go-dqlite
 github.com/canonical/go-dqlite/client
 github.com/canonical/go-dqlite/driver

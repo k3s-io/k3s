@@ -15,6 +15,9 @@ import (
 // dqlite nodes that it can dial in order to find a leader dqlite node to use.
 type NodeStore = protocol.NodeStore
 
+// NodeRole identifies the role of a node.
+type NodeRole = protocol.NodeRole
+
 // NodeInfo holds information about a single server.
 type NodeInfo = protocol.NodeInfo
 
@@ -30,6 +33,7 @@ type DatabaseNodeStore struct {
 	schema string  // Name of the schema holding the servers table.
 	table  string  // Name of the servers table.
 	column string  // Column name in the servers table holding the server address.
+	where  string  // Optional WHERE filter
 }
 
 // DefaultNodeStore creates a new NodeStore using the given filename to
@@ -59,13 +63,35 @@ func DefaultNodeStore(filename string) (*DatabaseNodeStore, error) {
 	return store, nil
 }
 
+// Option that can be used to tweak node store parameters.
+type NodeStoreOption func(*nodeStoreOptions)
+
+type nodeStoreOptions struct {
+	Where string
+}
+
+// WithNodeStoreWhereClause configures the node store to append the given
+// hard-coded where clause to the SELECT query used to fetch nodes. Only the
+// clause itself must be given, without the "WHERE" prefix.
+func WithNodeStoreWhereClause(where string) NodeStoreOption {
+	return func(options *nodeStoreOptions) {
+		options.Where = where
+	}
+}
+
 // NewNodeStore creates a new NodeStore.
-func NewNodeStore(db *sql.DB, schema, table, column string) *DatabaseNodeStore {
+func NewNodeStore(db *sql.DB, schema, table, column string, options ...NodeStoreOption) *DatabaseNodeStore {
+	o := &nodeStoreOptions{}
+	for _, option := range options {
+		option(o)
+	}
+
 	return &DatabaseNodeStore{
 		db:     db,
 		schema: schema,
 		table:  table,
 		column: column,
+		where:  o.Where,
 	}
 }
 
@@ -78,6 +104,9 @@ func (d *DatabaseNodeStore) Get(ctx context.Context) ([]NodeInfo, error) {
 	defer tx.Rollback()
 
 	query := fmt.Sprintf("SELECT %s FROM %s.%s", d.column, d.schema, d.table)
+	if d.where != "" {
+		query += " WHERE " + d.where
+	}
 	rows, err := tx.QueryContext(ctx, query)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to query servers table")

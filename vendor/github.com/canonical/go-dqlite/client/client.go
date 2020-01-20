@@ -107,7 +107,7 @@ func (c *Client) Cluster(ctx context.Context) ([]NodeInfo, error) {
 	response := protocol.Message{}
 	response.Init(512)
 
-	protocol.EncodeCluster(&request)
+	protocol.EncodeCluster(&request, protocol.ClusterFormatV1)
 
 	if err := c.protocol.Call(ctx, &request, &response); err != nil {
 		return nil, errors.Wrap(err, "failed to send Cluster request")
@@ -163,21 +163,83 @@ func (c *Client) Dump(ctx context.Context, dbname string) ([]File, error) {
 }
 
 // Add a node to a cluster.
+//
+// The new node will have the role specified in node.Role. Note that if the
+// desired role is Voter, the node being added must be online, since it will be
+// granted voting rights only once it catches up with the leader's log.
 func (c *Client) Add(ctx context.Context, node NodeInfo) error {
 	request := protocol.Message{}
-	request.Init(4096)
 	response := protocol.Message{}
+
+	request.Init(4096)
 	response.Init(4096)
 
-	protocol.EncodeJoin(&request, node.ID, node.Address)
+	protocol.EncodeAdd(&request, node.ID, node.Address)
 
 	if err := c.protocol.Call(ctx, &request, &response); err != nil {
 		return err
 	}
 
-	protocol.EncodePromote(&request, node.ID)
+	if err := protocol.DecodeEmpty(&response); err != nil {
+		return err
+	}
+
+	// If the desired role is spare, there's nothing to do, since all newly
+	// added nodes have the spare role.
+	if node.Role == Spare {
+		return nil
+	}
+
+	return c.Assign(ctx, node.ID, node.Role)
+}
+
+// Assign a role to a node.
+//
+// Possible roles are:
+//
+// - Voter: the node will replicate data and participate in quorum.
+// - StandBy: the node will replicate data but won't participate in quorum.
+// - Spare: the node won't replicate data and won't participate in quorum.
+//
+// If the target node does not exist or has already the desired role, an error
+// is returned.
+func (c *Client) Assign(ctx context.Context, id uint64, role NodeRole) error {
+	request := protocol.Message{}
+	response := protocol.Message{}
+
+	request.Init(4096)
+	response.Init(4096)
+
+	protocol.EncodeAssign(&request, id, uint64(role))
 
 	if err := c.protocol.Call(ctx, &request, &response); err != nil {
+		return err
+	}
+
+	if err := protocol.DecodeEmpty(&response); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Transfer leadership from the current leader to another node.
+//
+// This must be invoked one client connected to the current leader.
+func (c *Client) Transfer(ctx context.Context, id uint64) error {
+	request := protocol.Message{}
+	response := protocol.Message{}
+
+	request.Init(4096)
+	response.Init(4096)
+
+	protocol.EncodeTransfer(&request, id)
+
+	if err := c.protocol.Call(ctx, &request, &response); err != nil {
+		return err
+	}
+
+	if err := protocol.DecodeEmpty(&response); err != nil {
 		return err
 	}
 

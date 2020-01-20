@@ -4,10 +4,28 @@ import (
 	"context"
 )
 
+// NodeRole identifies the role of a node.
+type NodeRole int
+
+// String implements the Stringer interface.
+func (r NodeRole) String() string {
+	switch r {
+	case Voter:
+		return "voter"
+	case StandBy:
+		return "stand-by"
+	case Spare:
+		return "spare"
+	default:
+		return "unknown role"
+	}
+}
+
 // NodeInfo holds information about a single server.
 type NodeInfo struct {
 	ID      uint64
 	Address string
+	Role    NodeRole
 }
 
 // NodeStore is used by a dqlite client to get an initial list of candidate

@@ -94,19 +94,20 @@ func EncodeInterrupt(request *Message, db uint64) {
 	request.putHeader(RequestInterrupt)
 }
 
-// EncodeJoin encodes a Join request.
-func EncodeJoin(request *Message, id uint64, address string) {
+// EncodeAdd encodes a Add request.
+func EncodeAdd(request *Message, id uint64, address string) {
 	request.putUint64(id)
 	request.putString(address)
 
-	request.putHeader(RequestJoin)
+	request.putHeader(RequestAdd)
 }
 
-// EncodePromote encodes a Promote request.
-func EncodePromote(request *Message, id uint64) {
+// EncodeAssign encodes a Assign request.
+func EncodeAssign(request *Message, id uint64, role uint64) {
 	request.putUint64(id)
+	request.putUint64(role)
 
-	request.putHeader(RequestPromote)
+	request.putHeader(RequestAssign)
 }
 
 // EncodeRemove encodes a Remove request.
@@ -124,8 +125,15 @@ func EncodeDump(request *Message, name string) {
 }
 
 // EncodeCluster encodes a Cluster request.
-func EncodeCluster(request *Message) {
-	request.putUint64(0)
+func EncodeCluster(request *Message, format uint64) {
+	request.putUint64(format)
 
 	request.putHeader(RequestCluster)
+}
+
+// EncodeTransfer encodes a Transfer request.
+func EncodeTransfer(request *Message, id uint64) {
+	request.putUint64(id)
+
+	request.putHeader(RequestTransfer)
 }
