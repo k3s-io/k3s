@@ -98,7 +98,9 @@ export -f wait-for-db-connection
 # ---
 
 verify-valid-version() {
-    if docker exec $@ 2>&1 | grep -iE '(dev|head|unknown|fail|refuse)'; then
+    docker exec $@ 2>&1 | tee .version.tmp
+    # check for bad strings in the version output, including '.' in the build metadata
+    if grep -oiE '.*(dev|head|unknown|fail|refuse|\+[^"]*\.).*' .version.tmp; then
         return 1
     fi
 }
