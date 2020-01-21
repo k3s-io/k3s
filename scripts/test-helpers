@@ -189,8 +189,15 @@ sonobuoy-test() {
         return 0
     fi
     echo 'Starting sonobuoy tests'
+    local VERSION_CONFORMANCE=$(sed -e 's/[-+].*$//g' <<< "$VERSION_K8S")
 
-    sonobuoy run --config=scripts/sonobuoy-config.json --plugin-env=e2e.E2E_USE_GO_RUNNER=true --wait=30 $@ &
+    sonobuoy run \
+        --config=scripts/sonobuoy-config.json \
+        --plugin-env=e2e.E2E_USE_GO_RUNNER=true \
+        --kube-conformance-image-version=${VERSION_CONFORMANCE} \
+        --wait=30 \
+        $@ &
+
     local sonobuoyPID=$!
     local code=0
     time wait $sonobuoyPID || code=$?
