@@ -60,9 +60,10 @@ var pullImageCommand = cli.Command{
 			Usage: "Use `AUTH_STRING` for accessing the registry. AUTH_STRING is a base64 encoded 'USERNAME[:PASSWORD]'",
 		},
 		cli.StringFlag{
-			Name:  "pod-config",
-			Value: "",
-			Usage: "Use `pod-config.[json|yaml]` to override the the pull context",
+			Name:      "pod-config",
+			Value:     "",
+			Usage:     "Use `pod-config.[json|yaml]` to override the the pull context",
+			TakesFile: true,
 		},
 	},
 	ArgsUsage: "NAME[:TAG|@DIGEST]",
@@ -295,6 +296,10 @@ var removeImageCommand = cli.Command{
 			Name:  "all, a",
 			Usage: "Remove all images",
 		},
+		cli.BoolFlag{
+			Name:  "prune, p",
+			Usage: "Remove all unused images",
+		},
 	},
 	Action: func(ctx *cli.Context) error {
 		imageClient, conn, err := getImageClient(ctx)
@@ -303,25 +308,69 @@ var removeImageCommand = cli.Command{
 		}
 		defer closeConnection(ctx, conn)
 
-		ids := ctx.Args()
-		if ctx.Bool("all") {
+		ids := map[string]bool{}
+		for _, id := range ctx.Args() {
+			logrus.Debugf("User specified image to be removed: %v", id)
+			ids[id] = true
+		}
+
+		all := ctx.Bool("all")
+		prune := ctx.Bool("prune")
+
+		// Add all available images to the ID selector
+		if all || prune {
 			r, err := imageClient.ListImages(context.Background(),
 				&pb.ListImagesRequest{})
 			if err != nil {
 				return err
 			}
-			ids = nil
 			for _, img := range r.GetImages() {
-				ids = append(ids, img.GetId())
+				logrus.Debugf("Adding image to be removed: %v", img.GetId())
+				ids[img.GetId()] = true
+			}
+		}
+
+		// On prune, remove images which are in use from the ID selector
+		if prune {
+			runtimeClient, conn, err := getRuntimeClient(ctx)
+			if err != nil {
+				return err
+			}
+			defer closeConnection(ctx, conn)
+
+			// Container images
+			c, err := runtimeClient.ListContainers(
+				context.Background(), &pb.ListContainersRequest{},
+			)
+			if err != nil {
+				return err
+			}
+			for _, container := range c.GetContainers() {
+				img := container.GetImage().Image
+				imageStatus, err := ImageStatus(imageClient, img, false)
+				if err != nil {
+					logrus.Errorf(
+						"image status request for %q failed: %v",
+						img, err,
+					)
+					continue
+				}
+				id := imageStatus.GetImage().GetId()
+				logrus.Debugf("Excluding in use container image: %v", id)
+				ids[id] = false
 			}
 		}
 
 		if len(ids) == 0 {
-			return cli.ShowSubcommandHelp(ctx)
+			logrus.Info("No images to remove")
+			return nil
 		}
 
 		errored := false
-		for _, id := range ids {
+		for id, remove := range ids {
+			if !remove {
+				continue
+			}
 			status, err := ImageStatus(imageClient, id, false)
 			if err != nil {
 				logrus.Errorf("image status request for %q failed: %v", id, err)
@@ -336,8 +385,12 @@ var removeImageCommand = cli.Command{
 
 			_, err = RemoveImage(imageClient, id)
 			if err != nil {
-				logrus.Errorf("error of removing image %q: %v", id, err)
-				errored = true
+				// We ignore further errors on prune because there might be
+				// races
+				if !prune {
+					logrus.Errorf("error of removing image %q: %v", id, err)
+					errored = true
+				}
 				continue
 			}
 			for _, repoTag := range status.Image.RepoTags {

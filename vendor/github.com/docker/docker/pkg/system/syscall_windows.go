@@ -1,10 +1,10 @@
 package system // import "github.com/docker/docker/pkg/system"
 
 import (
-	"fmt"
 	"syscall"
 	"unsafe"
 
+	"github.com/Microsoft/hcsshim/osversion"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/windows"
 )
@@ -61,12 +61,7 @@ var (
 
 // OSVersion is a wrapper for Windows version information
 // https://msdn.microsoft.com/en-us/library/windows/desktop/ms724439(v=vs.85).aspx
-type OSVersion struct {
-	Version      uint32
-	MajorVersion uint8
-	MinorVersion uint8
-	Build        uint16
-}
+type OSVersion = osversion.OSVersion
 
 // https://msdn.microsoft.com/en-us/library/windows/desktop/ms724833(v=vs.85).aspx
 type osVersionInfoEx struct {
@@ -84,23 +79,10 @@ type osVersionInfoEx struct {
 }
 
 // GetOSVersion gets the operating system version on Windows. Note that
-// docker.exe must be manifested to get the correct version information.
+// dockerd.exe must be manifested to get the correct version information.
+// Deprecated: use github.com/Microsoft/hcsshim/osversion.Get() instead
 func GetOSVersion() OSVersion {
-	var err error
-	osv := OSVersion{}
-	osv.Version, err = windows.GetVersion()
-	if err != nil {
-		// GetVersion never fails.
-		panic(err)
-	}
-	osv.MajorVersion = uint8(osv.Version & 0xFF)
-	osv.MinorVersion = uint8(osv.Version >> 8 & 0xFF)
-	osv.Build = uint16(osv.Version >> 16)
-	return osv
-}
-
-func (osv OSVersion) ToString() string {
-	return fmt.Sprintf("%d.%d.%d", osv.MajorVersion, osv.MinorVersion, osv.Build)
+	return osversion.Get()
 }
 
 // IsWindowsClient returns true if the SKU is client

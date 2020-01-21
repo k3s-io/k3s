@@ -127,10 +127,11 @@ func Main() {
 
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
-			Name:   "config, c",
-			EnvVar: "CRI_CONFIG_FILE",
-			Value:  defaultConfigPath,
-			Usage:  "Location of the client config file. If not specified and the default does not exist, the program's directory is searched as well",
+			Name:      "config, c",
+			EnvVar:    "CRI_CONFIG_FILE",
+			Value:     defaultConfigPath,
+			Usage:     "Location of the client config file. If not specified and the default does not exist, the program's directory is searched as well",
+			TakesFile: true,
 		},
 		cli.StringFlag{
 			Name:   "runtime-endpoint, r",

@@ -174,6 +174,12 @@ func newHTTP2Server(conn net.Conn, config *ServerConfig) (_ ServerTransport, err
 			Val: *config.MaxHeaderListSize,
 		})
 	}
+	if config.HeaderTableSize != nil {
+		isettings = append(isettings, http2.Setting{
+			ID:  http2.SettingHeaderTableSize,
+			Val: *config.HeaderTableSize,
+		})
+	}
 	if err := framer.fr.WriteSettings(isettings...); err != nil {
 		return nil, connectionErrorf(false, err, "transport: %v", err)
 	}
@@ -751,7 +757,7 @@ func (t *http2Server) checkForHeaderListSize(it interface{}) bool {
 	return true
 }
 
-// WriteHeader sends the header metedata md back to the client.
+// WriteHeader sends the header metadata md back to the client.
 func (t *http2Server) WriteHeader(s *Stream, md metadata.MD) error {
 	if s.updateHeaderSent() || s.getState() == streamDone {
 		return ErrIllegalHeaderWrite

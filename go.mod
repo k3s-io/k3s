@@ -24,7 +24,7 @@ replace (
 	github.com/golangci/gosec => github.com/golangci/gosec v0.0.0-20190211064107-66fb7fc33547
 	github.com/golangci/ineffassign => github.com/golangci/ineffassign v0.0.0-20190609212857-42439a7714cc
 	github.com/golangci/lint-1 => github.com/golangci/lint-1 v0.0.0-20190420132249-ee948d087217
-	github.com/kubernetes-sigs/cri-tools => github.com/rancher/cri-tools v1.16.1-k3s.1
+	github.com/kubernetes-sigs/cri-tools => github.com/erikwilson/rancher-cri-tools v1.17.0-k3s1
 	github.com/matryer/moq => github.com/rancher/moq v0.0.0-20190404221404-ee5226d43009
 	github.com/opencontainers/runtime-spec => github.com/opencontainers/runtime-spec v0.0.0-20180911193056-5684b8af48c1
 	github.com/prometheus/client_golang => github.com/prometheus/client_golang v0.9.2
@@ -77,7 +77,7 @@ require (
 	github.com/coreos/flannel v0.11.0
 	github.com/coreos/go-iptables v0.4.2
 	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f
-	github.com/docker/docker v0.7.3-0.20190731001754-589f1dad8dad
+	github.com/docker/docker v1.4.2-0.20191205034852-d163fbba3c82
 	github.com/docker/go-metrics v0.0.1 // indirect
 	github.com/flosch/pongo2 v0.0.0-20190707114632-bbf5a6c351f4 // indirect
 	github.com/go-bindata/go-bindata v3.1.2+incompatible
@@ -110,12 +110,12 @@ require (
 	github.com/theckman/go-flock v0.7.1 // indirect
 	github.com/urfave/cli v1.22.2
 	golang.org/x/crypto v0.0.0-20190820162420-60c769a6c586
-	golang.org/x/net v0.0.0-20191004110552-13f9640d40b9
-	golang.org/x/sys v0.0.0-20191010194322-b09406accb47
-	google.golang.org/grpc v1.24.0
+	golang.org/x/net v0.0.0-20191204025024-5ee1b9f4859a
+	golang.org/x/sys v0.0.0-20191204072324-ce4227a45e2e
+	google.golang.org/grpc v1.25.1
 	gopkg.in/mgo.v2 v2.0.0-20190816093944-a6b53ec6cb22 // indirect
 	gopkg.in/robfig/cron.v2 v2.0.0-20150107220207-be2e0b0deed5 // indirect
-	gopkg.in/yaml.v2 v2.2.4
+	gopkg.in/yaml.v2 v2.2.7
 	k8s.io/api v0.17.0
 	k8s.io/apimachinery v0.17.0
 	k8s.io/apiserver v0.0.0

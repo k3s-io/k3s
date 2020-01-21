@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	timetypes "github.com/docker/docker/api/types/time"
@@ -39,6 +40,10 @@ var logsCommand = cli.Command{
 		cli.BoolFlag{
 			Name:  "follow, f",
 			Usage: "Follow log output",
+		},
+		cli.BoolFlag{
+			Name:  "previous, p",
+			Usage: "Print the logs for the previous instance of the container in a pod if it exists",
 		},
 		cli.Int64Flag{
 			Name:  "tail",
@@ -77,6 +82,7 @@ var logsCommand = cli.Command{
 			return err
 		}
 		timestamp := ctx.Bool("timestamps")
+		previous := ctx.Bool("previous")
 		logOptions := logs.NewLogOptions(&v1.PodLogOptions{
 			Follow:     ctx.Bool("follow"),
 			TailLines:  &tailLines,
@@ -91,6 +97,14 @@ var logsCommand = cli.Command{
 		logPath := status.GetLogPath()
 		if logPath == "" {
 			return fmt.Errorf("The container has not set log path")
+		}
+		if previous {
+			containerAttempt := status.GetMetadata().Attempt
+			if containerAttempt == uint32(0) {
+				return fmt.Errorf("Previous terminated container %s not found", status.GetMetadata().Name)
+			}
+			logPath = fmt.Sprintf("%s%s%s", logPath[:strings.LastIndex(logPath, "/")+1], fmt.Sprint(containerAttempt-1),
+				logPath[strings.LastIndex(logPath, "."):])
 		}
 		return logs.ReadLogs(context.Background(), logPath, status.GetId(), logOptions, runtimeService, os.Stdout, os.Stderr)
 	},

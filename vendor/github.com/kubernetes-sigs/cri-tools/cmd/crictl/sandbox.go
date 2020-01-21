@@ -486,7 +486,7 @@ func ListPodSandboxes(client pb.RuntimeServiceClient, opts listOptions) error {
 	case "json":
 		return outputProtobufObjAsJSON(r)
 	case "yaml":
-		return outputProtobufObjAsJSON(r)
+		return outputProtobufObjAsYAML(r)
 	case "table", "":
 	// continue; output will be generated after the switch block ends.
 	default:
@@ -498,14 +498,6 @@ func ListPodSandboxes(client pb.RuntimeServiceClient, opts listOptions) error {
 		display.AddRow([]string{columnPodID, columnCreated, columnState, columnName, columnNamespace, columnAttempt})
 	}
 	for _, pod := range r.Items {
-		// Filter by pod name/namespace regular expressions.
-		if !matchesRegex(opts.nameRegexp, pod.Metadata.Name) {
-			continue
-		}
-		if !matchesRegex(opts.podNamespaceRegexp, pod.Metadata.Namespace) {
-			continue
-		}
-
 		if opts.quiet {
 			fmt.Printf("%s\n", pod.Id)
 			continue
@@ -572,8 +564,17 @@ func convertPodState(state pb.PodSandboxState) string {
 }
 
 func getSandboxesList(sandboxesList []*pb.PodSandbox, opts listOptions) []*pb.PodSandbox {
-	sort.Sort(sandboxByCreated(sandboxesList))
-	n := len(sandboxesList)
+	filtered := []*pb.PodSandbox{}
+	for _, p := range sandboxesList {
+		// Filter by pod name/namespace regular expressions.
+		if matchesRegex(opts.nameRegexp, p.Metadata.Name) &&
+			matchesRegex(opts.podNamespaceRegexp, p.Metadata.Namespace) {
+			filtered = append(filtered, p)
+		}
+	}
+
+	sort.Sort(sandboxByCreated(filtered))
+	n := len(filtered)
 	if opts.latest {
 		n = 1
 	}
@@ -585,7 +586,7 @@ func getSandboxesList(sandboxesList []*pb.PodSandbox, opts listOptions) []*pb.Po
 			return a
 		}
 		return b
-	}(n, len(sandboxesList))
+	}(n, len(filtered))
 
-	return sandboxesList[:n]
+	return filtered[:n]
 }
