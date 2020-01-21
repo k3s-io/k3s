@@ -461,7 +461,7 @@ e2e-test() {
   fi
   local logOutput=
   if [ -n "$E2E_OUTPUT" ]; then
-    logOutput=$E2E_OUTPUT/$logname
+    logOutput=$E2E_OUTPUT/$logName
   fi
   LABEL=$label LOG_OUTPUT=$logOutput run-test $@
 }
