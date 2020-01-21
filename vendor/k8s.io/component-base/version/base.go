@@ -3,8 +3,8 @@ package version
 var (
 	gitMajor = "1"
 	gitMinor = "17"
-	gitVersion   = "v1.17.1-k3s.1"
-	gitCommit    = "c33b87d04b01f05ee53569e2807a7c85bb8a0ddc"
+	gitVersion   = "v1.17.2-k3s1"
+	gitCommit    = "2f70330e5ae4f8c1a275f7742a26f26bf890ae1c"
 	gitTreeState = "clean"
-	buildDate = "2020-01-15T17:03:01Z"
+	buildDate = "2020-01-21T21:23:52Z"
 )
