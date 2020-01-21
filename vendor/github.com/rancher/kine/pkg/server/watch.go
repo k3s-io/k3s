@@ -131,14 +131,14 @@ func (w *watcher) Cancel(watchID int64, err error) {
 		reason = err.Error()
 	}
 	logrus.Debugf("WATCH CANCEL id=%d reason=%s", watchID, reason)
-	err = w.server.Send(&etcdserverpb.WatchResponse{
+	serr := w.server.Send(&etcdserverpb.WatchResponse{
 		Header:       &etcdserverpb.ResponseHeader{},
 		Canceled:     true,
 		CancelReason: "watch closed",
 		WatchId:      watchID,
 	})
-	if err != nil {
-		logrus.Errorf("WATCH Failed to send cancel response for watchID %d: %v", watchID, err)
+	if serr != nil && err != nil {
+		logrus.Errorf("WATCH Failed to send cancel response for watchID %d: %v", watchID, serr)
 	}
 }
 
