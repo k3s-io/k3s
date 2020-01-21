@@ -39,7 +39,7 @@ type Controller struct {
 }
 
 const (
-	image = "rancher/klipper-helm:v0.2.2"
+	image = "rancher/klipper-helm:v0.2.3"
 	label = "helmcharts.helm.cattle.io/chart"
 	name  = "helm-controller"
 )
@@ -333,7 +333,9 @@ func args(chart *helmv1.HelmChart) []string {
 
 	for _, k := range keys(spec.Set) {
 		val := spec.Set[k]
-		if val.StrVal != "" {
+		if val.StrVal == "false" || val.StrVal == "true" {
+			args = append(args, "--set", fmt.Sprintf("%s=%s", k, val.StrVal))
+		} else if val.StrVal != "" {
 			args = append(args, "--set-string", fmt.Sprintf("%s=%s", k, val.StrVal))
 		} else {
 			args = append(args, "--set", fmt.Sprintf("%s=%d", k, val.IntVal))

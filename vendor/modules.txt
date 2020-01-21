@@ -712,7 +712,7 @@ github.com/rancher/dynamiclistener/factory
 github.com/rancher/dynamiclistener/storage/file
 github.com/rancher/dynamiclistener/storage/kubernetes
 github.com/rancher/dynamiclistener/storage/memory
-# github.com/rancher/helm-controller v0.4.1-0.20191223195946-ae918063bc54
+# github.com/rancher/helm-controller v0.4.1
 github.com/rancher/helm-controller/pkg/apis/helm.cattle.io
 github.com/rancher/helm-controller/pkg/apis/helm.cattle.io/v1
 github.com/rancher/helm-controller/pkg/generated/clientset/versioned
