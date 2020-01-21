@@ -19,7 +19,7 @@ RUN curl -sL https://storage.googleapis.com/kubernetes-release/release/$( \
 ENV TEST_CLEANUP true
 
 ENV DAPPER_RUN_ARGS --privileged --network host
-ENV DAPPER_ENV REPO TAG DRONE_TAG IMAGE_NAME GCLOUD_AUTH
+ENV DAPPER_ENV REPO TAG DRONE_TAG DRONE_SYSTEM_HOST IMAGE_NAME GCLOUD_AUTH
 ENV DAPPER_SOURCE /go/src/github.com/rancher/k3s/
 ENV DAPPER_OUTPUT ./dist
 ENV DAPPER_DOCKER_SOCKET true
