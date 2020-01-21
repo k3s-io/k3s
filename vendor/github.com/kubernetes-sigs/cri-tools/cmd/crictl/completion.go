@@ -95,7 +95,7 @@ var completionCommand = cli.Command{
 	Name:      "completion",
 	Usage:     "Output shell completion code",
 	ArgsUsage: "SHELL",
-	Description: `Output shell completion code for bash or zsh.
+	Description: `Output shell completion code for bash, zsh or fish.
 
 Examples:
 
@@ -104,6 +104,9 @@ Examples:
 
     # Installing zsh completion on Linux
     source <(crictl completion zsh)
+
+    # Installing fish completion on Linux
+    crictl completion fish | source
 	`,
 	Action: func(c *cli.Context) error {
 		// select bash by default for backwards compatibility
@@ -118,10 +121,21 @@ Examples:
 		switch c.Args().First() {
 		case "bash":
 			return bashCompletion(c)
+		case "fish":
+			return fishCompletion(c)
 		case "zsh":
 			return zshCompletion(c)
 		default:
-			return fmt.Errorf("only bash and zsh supported")
+			return fmt.Errorf("only bash, zsh or fish are supported")
 		}
 	},
+}
+
+func fishCompletion(c *cli.Context) error {
+	completion, err := c.App.ToFishCompletion()
+	if err != nil {
+		return err
+	}
+	fmt.Fprintln(c.App.Writer, completion)
+	return nil
 }

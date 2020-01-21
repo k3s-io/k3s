@@ -31,12 +31,15 @@ PATH="${GOPATH}/bin:${GOROOT}/bin:${PATH}"
 if [[ "$1" = "-install" ]]; then
   # Check for module support
   if go help mod >& /dev/null; then
+    # Install the pinned versions as defined in module tools.
+    pushd ./test/tools
     go install \
       golang.org/x/lint/golint \
       golang.org/x/tools/cmd/goimports \
       honnef.co/go/tools/cmd/staticcheck \
       github.com/client9/misspell/cmd/misspell \
       github.com/golang/protobuf/protoc-gen-go
+    popd
   else
     # Ye olde `go get` incantation.
     # Note: this gets the latest version of all tools (vs. the pinned versions
@@ -72,6 +75,9 @@ fi
 # - Make sure all tests in grpc and grpc/test use leakcheck via Teardown.
 (! grep 'func Test[^(]' *_test.go)
 (! grep 'func Test[^(]' test/*.go)
+
+# - Do not import x/net/context.
+(! git grep -l 'x/net/context' -- "*.go")
 
 # - Do not import math/rand for real library code.  Use internal/grpcrand for
 #   thread safety.
@@ -109,6 +115,7 @@ fi
 staticcheck -go 1.9 -checks 'inherit,-ST1015' -ignore '
 google.golang.org/grpc/balancer.go:SA1019
 google.golang.org/grpc/balancer/grpclb/grpclb_remote_balancer.go:SA1019
+google.golang.org/grpc/balancer/grpclb/grpclb_test.go:SA1019
 google.golang.org/grpc/balancer/roundrobin/roundrobin_test.go:SA1019
 google.golang.org/grpc/xds/internal/balancer/edsbalancer/balancergroup.go:SA1019
 google.golang.org/grpc/xds/internal/resolver/xds_resolver.go:SA1019
@@ -125,7 +132,7 @@ google.golang.org/grpc/examples/features/debugging/client/main.go:SA1019
 google.golang.org/grpc/examples/features/load_balancing/client/main.go:SA1019
 google.golang.org/grpc/internal/transport/handler_server.go:SA1019
 google.golang.org/grpc/internal/transport/handler_server_test.go:SA1019
-google.golang.org/grpc/resolver/dns/dns_resolver.go:SA1019
+google.golang.org/grpc/internal/resolver/dns/dns_resolver.go:SA1019
 google.golang.org/grpc/stats/stats_test.go:SA1019
 google.golang.org/grpc/test/balancer_test.go:SA1019
 google.golang.org/grpc/test/channelz_test.go:SA1019

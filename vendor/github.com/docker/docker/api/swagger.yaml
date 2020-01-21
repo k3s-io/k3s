@@ -2995,16 +2995,10 @@ definitions:
         description: "Runtime is the type of runtime specified for the task executor."
         type: "string"
       Networks:
+        description: "Specifies which networks the service should attach to."
         type: "array"
         items:
-          type: "object"
-          properties:
-            Target:
-              type: "string"
-            Aliases:
-              type: "array"
-              items:
-                type: "string"
+          $ref: "#/definitions/NetworkAttachmentConfig"
       LogDriver:
         description: "Specifies the log driver to use for tasks created from this spec. If not present, the default one for the swarm will be used, finally falling back to the engine default if not specified."
         type: "object"
@@ -3250,17 +3244,11 @@ definitions:
               - "stop-first"
               - "start-first"
       Networks:
-        description: "Array of network names or IDs to attach the service to."
+        description: "Specifies which networks the service should attach to."
         type: "array"
         items:
-          type: "object"
-          properties:
-            Target:
-              type: "string"
-            Aliases:
-              type: "array"
-              items:
-                type: "string"
+          $ref: "#/definitions/NetworkAttachmentConfig"
+
       EndpointSpec:
         $ref: "#/definitions/EndpointSpec"
 
@@ -3287,7 +3275,7 @@ definitions:
 
           <p><br /></p>
 
-          - "ingress" makes the target port accessible on on every node,
+          - "ingress" makes the target port accessible on every node,
             regardless of whether there is a task for the service running on
             that node or not.
           - "host" bypasses the routing mesh and publish the port directly on
@@ -3369,6 +3357,27 @@ definitions:
             format: "dateTime"
           Message:
             type: "string"
+      ServiceStatus:
+        description: |
+          The status of the service's tasks. Provided only when requested as
+          part of a ServiceList operation.
+        type: "object"
+        properties:
+          RunningTasks:
+            description: "The number of tasks for the service currently in the Running state"
+            type: "integer"
+            format: "uint64"
+            example: 7
+          DesiredTasks:
+            description: |
+              The number of tasks for the service desired to be running.
+              For replicated services, this is the replica count from the
+              service spec. For global services, this is computed by taking
+              count of all tasks for the service with a Desired State other
+              than Shutdown.
+            type: "integer"
+            format: "uint64"
+            example: 10
     example:
       ID: "9mnpnzenvg8p8tdbtq4wvbkcz"
       Version:
@@ -4443,6 +4452,24 @@ definitions:
           IP address and ports at which this node can be reached.
         type: "string"
 
+  NetworkAttachmentConfig:
+    description: "Specifies how a service should be attached to a particular network."
+    type: "object"
+    properties:
+      Target:
+        description: "The target network for attachment. Must be a network name or ID."
+        type: "string"
+      Aliases:
+        description: "Discoverable alternate names for the service on this network."
+        type: "array"
+        items:
+          type: "string"
+      DriverOpts:
+        description: "Driver attachment options for the network target"
+        type: "object"
+        additionalProperties:
+          type: "string"
+
 paths:
   /containers/json:
     get:
@@ -4873,7 +4900,7 @@ paths:
                       Note that a running container can be _paused_. The `Running` and `Paused`
                       booleans are not mutually exclusive:
 
-                      When pausing a container (on Linux), the cgroups freezer is used to suspend
+                      When pausing a container (on Linux), the freezer cgroup is used to suspend
                       all processes in the container. Freezing the process requires the process to
                       be running. As a result, paused containers are both `Running` _and_ `Paused`.
 
@@ -4923,6 +4950,8 @@ paths:
               RestartCount:
                 type: "integer"
               Driver:
+                type: "string"
+              Platform:
                 type: "string"
               MountLabel:
                 type: "string"
@@ -5764,9 +5793,9 @@ paths:
     post:
       summary: "Pause a container"
       description: |
-        Use the cgroups freezer to suspend all processes in a container.
+        Use the freezer cgroup to suspend all processes in a container.
 
-        Traditionally, when suspending a process the `SIGSTOP` signal is used, which is observable by the process being suspended. With the cgroups freezer the process is unaware, and unable to capture, that it is being suspended, and subsequently resumed.
+        Traditionally, when suspending a process the `SIGSTOP` signal is used, which is observable by the process being suspended. With the freezer cgroup the process is unaware, and unable to capture, that it is being suspended, and subsequently resumed.
       operationId: "ContainerPause"
       responses:
         204:
@@ -9316,6 +9345,10 @@ paths:
             - `label=<service label>`
             - `mode=["replicated"|"global"]`
             - `name=<service name>`
+        - name: "status"
+          in: "query"
+          type: "boolean"
+          description: "Include service status, with count of running and desired tasks"
       tags: ["Service"]
   /services/create:
     post:
@@ -10414,9 +10447,6 @@ paths:
       description: |
         Start a new interactive session with a server. Session allows server to call back to the client for advanced capabilities.
 
-        > **Note**: This endpoint is *experimental* and only available if the daemon is started with experimental
-        > features enabled. The specifications for this endpoint may still change in a future version of the API.
-
         ### Hijacking
 
         This endpoint hijacks the HTTP connection to HTTP2 transport that allows the client to expose gPRC services on that connection.
@@ -10450,4 +10480,4 @@ paths:
           description: "server error"
           schema:
             $ref: "#/definitions/ErrorResponse"
-      tags: ["Session (experimental)"]
+      tags: ["Session"]

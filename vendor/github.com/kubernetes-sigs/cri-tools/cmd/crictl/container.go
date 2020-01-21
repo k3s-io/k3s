@@ -304,7 +304,7 @@ var removeContainerCommand = cli.Command{
 			}
 			if resp.GetStatus().GetState() == pb.ContainerState_CONTAINER_RUNNING {
 				if ctx.Bool("force") {
-					if err := RemoveContainer(runtimeClient, id); err != nil {
+					if err := StopContainer(runtimeClient, id, 0); err != nil {
 						logrus.Errorf("stopping the container %q failed: %v", id, err)
 						errored = true
 						continue
@@ -859,10 +859,6 @@ func ListContainers(runtimeClient pb.RuntimeServiceClient, imageClient pb.ImageS
 		display.AddRow([]string{columnContainer, columnImage, columnCreated, columnState, columnName, columnAttempt, columnPodID})
 	}
 	for _, c := range r.Containers {
-		// Filter by pod name/namespace regular expressions.
-		if !matchesRegex(opts.nameRegexp, c.Metadata.Name) {
-			continue
-		}
 		if match, err := matchesImage(imageClient, opts.image, c.GetImage().GetImage()); err != nil {
 			return fmt.Errorf("failed to check image match %v", err)
 		} else if !match {
@@ -941,8 +937,16 @@ func convertContainerState(state pb.ContainerState) string {
 }
 
 func getContainersList(containersList []*pb.Container, opts listOptions) []*pb.Container {
-	sort.Sort(containerByCreated(containersList))
-	n := len(containersList)
+	filtered := []*pb.Container{}
+	for _, c := range containersList {
+		// Filter by pod name/namespace regular expressions.
+		if matchesRegex(opts.nameRegexp, c.Metadata.Name) {
+			filtered = append(filtered, c)
+		}
+	}
+
+	sort.Sort(containerByCreated(filtered))
+	n := len(filtered)
 	if opts.latest {
 		n = 1
 	}
@@ -954,7 +958,7 @@ func getContainersList(containersList []*pb.Container, opts listOptions) []*pb.C
 			return a
 		}
 		return b
-	}(n, len(containersList))
+	}(n, len(filtered))
 
-	return containersList[:n]
+	return filtered[:n]
 }
