@@ -517,6 +517,9 @@ pid-cleanup() {
     else
         printf "\033[31m$failCount tests failed.\033[m\n"
     fi
+    if [ "$DRONE_BUILD_EVENT" = 'tag' ]; then
+        code=0
+    fi
     echo
     exit $code
 }
@@ -531,8 +534,10 @@ wait-pids() {
     for pid in "${pids[@]}"; do
         wait $pid || code=$?
     done
-    [ $code -eq 0 ]
     pid-cleanup
+    if [ "$DRONE_BUILD_EVENT" = 'tag' ]; then
+        code=0
+    fi
     exit $code
 }
 export -f wait-pids
