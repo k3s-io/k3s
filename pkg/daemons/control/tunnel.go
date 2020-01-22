@@ -21,14 +21,18 @@ func setupTunnel() http.Handler {
 }
 
 func setupProxyDialer(tunnelServer *remotedialer.Server) {
-	app.DefaultProxyDialerFn = utilnet.DialFunc(func(_ context.Context, network, address string) (net.Conn, error) {
+	app.DefaultProxyDialerFn = utilnet.DialFunc(func(ctx context.Context, network, address string) (net.Conn, error) {
 		_, port, _ := net.SplitHostPort(address)
 		addr := "127.0.0.1"
 		if port != "" {
 			addr += ":" + port
 		}
 		nodeName, _ := kv.Split(address, ":")
-		return tunnelServer.Dial(nodeName, 15*time.Second, "tcp", addr)
+		if tunnelServer.HasSession(nodeName) {
+			return tunnelServer.Dial(nodeName, 15*time.Second, "tcp", addr)
+		}
+		var d net.Dialer
+		return d.DialContext(ctx, network, address)
 	})
 }
 
