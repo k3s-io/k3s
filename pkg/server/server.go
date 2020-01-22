@@ -151,8 +151,8 @@ func masterControllers(ctx context.Context, sc *Context, config *Config) error {
 		return err
 	}
 
-	if !config.DisableServiceLB && config.Rootless {
-		return rootlessports.Register(ctx, sc.Core.Core().V1().Service(), config.ControlConfig.HTTPSPort)
+	if config.Rootless {
+		return rootlessports.Register(ctx, sc.Core.Core().V1().Service(), !config.DisableServiceLB, config.ControlConfig.HTTPSPort)
 	}
 
 	return nil
