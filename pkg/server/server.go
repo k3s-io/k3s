@@ -27,6 +27,7 @@ import (
 	v1 "github.com/rancher/wrangler-api/pkg/generated/controllers/core/v1"
 	"github.com/rancher/wrangler/pkg/leader"
 	"github.com/rancher/wrangler/pkg/resolvehome"
+	"github.com/rancher/wrangler/pkg/slice"
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/net"
@@ -126,8 +127,10 @@ func startWrangler(ctx context.Context, config *Config) error {
 }
 
 func masterControllers(ctx context.Context, sc *Context, config *Config) error {
-	if err := node.Register(ctx, sc.Core.Core().V1().ConfigMap(), sc.Core.Core().V1().Node()); err != nil {
-		return err
+	if !slice.ContainsString(config.ControlConfig.Skips, "coredns") {
+		if err := node.Register(ctx, sc.Core.Core().V1().ConfigMap(), sc.Core.Core().V1().Node()); err != nil {
+			return err
+		}
 	}
 
 	helm.Register(ctx, sc.Apply,
