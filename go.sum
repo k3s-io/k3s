@@ -230,8 +230,6 @@ github.com/emicklei/go-restful v2.9.5+incompatible h1:spTtZBk5DYEvbxMVutUuTyh1Ao
 github.com/emicklei/go-restful v2.9.5+incompatible/go.mod h1:otzb+WCGbkyDHkqmQmT5YD2WR4BBwUdeQoFo8l/7tVs=
 github.com/envoyproxy/go-control-plane v0.9.0/go.mod h1:YTl/9mNaCwkRvm6d1a2C3ymFceY/DCBVvsKhRF0iEA4=
 github.com/envoyproxy/protoc-gen-validate v0.1.0/go.mod h1:iSmxcyjqTsJpI2R4NaDN7+kN2VEUnK/pcBlmesArF7c=
-github.com/erikwilson/rancher-cri-tools v1.17.0-k3s1 h1:Qn9TR8BCKBsw1fh1Y80RQ/bakD1ya4ydjZZ8uHuJJ5Q=
-github.com/erikwilson/rancher-cri-tools v1.17.0-k3s1/go.mod h1:bRTZttsvk+nCG8tSFs8D6UUx8CkMXR5TAsRLS0fXAqI=
 github.com/euank/go-kmsg-parser v2.0.0+incompatible h1:cHD53+PLQuuQyLZeriD1V/esuG4MuU0Pjs5y6iknohY=
 github.com/euank/go-kmsg-parser v2.0.0+incompatible/go.mod h1:MhmAMZ8V4CYH4ybgdRwPr2TU5ThnS43puaKEMpja1uw=
 github.com/evanphx/json-patch v4.2.0+incompatible/go.mod h1:50XU6AFN0ol/bzJsmQLiYLvXMP4fmwYFNcr97nuDLSk=
@@ -714,6 +712,8 @@ github.com/rancher/containerd v1.3.3-k3s1 h1:j8NGZdXKsZd2ne0XQg6OBfMJ/NkY/Qri6Qh
 github.com/rancher/containerd v1.3.3-k3s1/go.mod h1:ZMfzmqce2Z+QSEqdHMfeJs1TZ/UeJ1aDrazjpQT4ehM=
 github.com/rancher/cri v1.3.0-k3s.3 h1:j/Sq2LMyg6gBn2MS1j5dEudpdL+UYVH7ubbewUCXkS0=
 github.com/rancher/cri v1.3.0-k3s.3/go.mod h1:Ht5T1dIKzm+4NExmb7wDVG6qR+j0xeXIjjhCv1d9geY=
+github.com/rancher/cri-tools v1.17.0-k3s1 h1:jfu97FowbraTDc7b6fxWtO+dq+DU2oW+ABBQSEFiRb0=
+github.com/rancher/cri-tools v1.17.0-k3s1/go.mod h1:bRTZttsvk+nCG8tSFs8D6UUx8CkMXR5TAsRLS0fXAqI=
 github.com/rancher/dynamiclistener v0.2.0 h1:KucYwJXVVGhZ/NndfMCeQoCafT/VN7kvqSGgmlX8Lxk=
 github.com/rancher/dynamiclistener v0.2.0/go.mod h1:fs/dxyNcB3YT6W9fVz4bDGfhmSQS17QQup6BIcGF++s=
 github.com/rancher/flannel v0.11.0-k3s.1 h1:mIwnfWDafjzQgFkZeJ1AkFrrAT3EdBaA1giE0eLJKo8=
