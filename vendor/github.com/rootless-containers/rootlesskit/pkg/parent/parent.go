@@ -12,7 +12,6 @@ import (
 	"strconv"
 	"syscall"
 
-	"github.com/docker/docker/pkg/idtools"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -22,6 +21,7 @@ import (
 	"github.com/rootless-containers/rootlesskit/pkg/common"
 	"github.com/rootless-containers/rootlesskit/pkg/msgutil"
 	"github.com/rootless-containers/rootlesskit/pkg/network"
+	"github.com/rootless-containers/rootlesskit/pkg/parent/idtools"
 	"github.com/rootless-containers/rootlesskit/pkg/port"
 )
 
@@ -103,10 +103,6 @@ func Parent(opt Opt) error {
 	if err := cmd.Start(); err != nil {
 		return errors.Wrap(err, "failed to start the child")
 	}
-	childPIDPath := filepath.Join(opt.StateDir, StateFileChildPID)
-	if err := ioutil.WriteFile(childPIDPath, []byte(strconv.Itoa(cmd.Process.Pid)), 0444); err != nil {
-		return errors.Wrapf(err, "failed to write the child PID %d to %s", cmd.Process.Pid, childPIDPath)
-	}
 	if err := setupUIDGIDMap(cmd.Process.Pid); err != nil {
 		return errors.Wrap(err, "failed to setup UID/GID map")
 	}
@@ -175,6 +171,12 @@ func Parent(opt Opt) error {
 			}
 			logrus.Debugf("published port %v", st)
 		}
+	}
+
+	// after child is fully configured, write PID to child_pid file
+	childPIDPath := filepath.Join(opt.StateDir, StateFileChildPID)
+	if err := ioutil.WriteFile(childPIDPath, []byte(strconv.Itoa(cmd.Process.Pid)), 0444); err != nil {
+		return errors.Wrapf(err, "failed to write the child PID %d to %s", cmd.Process.Pid, childPIDPath)
 	}
 	// listens the API
 	apiSockPath := filepath.Join(opt.StateDir, StateFileAPISock)

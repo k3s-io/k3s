@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"os/signal"
 	"runtime"
 	"strconv"
 	"syscall"
@@ -43,39 +44,33 @@ func mountSysfs() error {
 		return errors.Wrap(err, "creating a directory under /tmp")
 	}
 	defer os.RemoveAll(tmp)
-	cmds := [][]string{{"mount", "--rbind", "/sys/fs/cgroup", tmp}}
-	if err := common.Execs(os.Stderr, os.Environ(), cmds); err != nil {
-		return errors.Wrapf(err, "executing %v", cmds)
+	cgroupDir := "/sys/fs/cgroup"
+	if err := unix.Mount(cgroupDir, tmp, "", uintptr(unix.MS_BIND|unix.MS_REC), ""); err != nil {
+		return errors.Wrapf(err, "failed to create bind mount on %s", cgroupDir)
 	}
-	cmds = [][]string{{"mount", "-t", "sysfs", "none", "/sys"}}
-	if err := common.Execs(os.Stderr, os.Environ(), cmds); err != nil {
+
+	if err := unix.Mount("none", "/sys", "sysfs", 0, ""); err != nil {
 		// when the sysfs in the parent namespace is RO,
 		// we can't mount RW sysfs even in the child namespace.
 		// https://github.com/rootless-containers/rootlesskit/pull/23#issuecomment-429292632
 		// https://github.com/torvalds/linux/blob/9f203e2f2f065cd74553e6474f0ae3675f39fb0f/fs/namespace.c#L3326-L3328
-		cmdsRo := [][]string{{"mount", "-t", "sysfs", "-o", "ro", "none", "/sys"}}
-		logrus.Warnf("failed to mount sysfs (%v), falling back to read-only mount (%v): %v",
-			cmds, cmdsRo, err)
-		if err := common.Execs(os.Stderr, os.Environ(), cmdsRo); err != nil {
+		logrus.Warnf("failed to mount sysfs, falling back to read-only mount: %v", err)
+		if err := unix.Mount("none", "/sys", "sysfs", uintptr(unix.MS_RDONLY), ""); err != nil {
 			// when /sys/firmware is masked, even RO sysfs can't be mounted
-			logrus.Warnf("failed to mount sysfs (%v): %v", cmdsRo, err)
+			logrus.Warnf("failed to mount sysfs: %v", err)
 		}
 	}
-	cmds = [][]string{{"mount", "-n", "--move", tmp, "/sys/fs/cgroup"}}
-	if err := common.Execs(os.Stderr, os.Environ(), cmds); err != nil {
-		return errors.Wrapf(err, "executing %v", cmds)
+	if err := unix.Mount(tmp, cgroupDir, "", uintptr(unix.MS_MOVE), ""); err != nil {
+		return errors.Wrapf(err, "failed to move mount point from %s to %s", tmp, cgroupDir)
 	}
 	return nil
 }
 
 func mountProcfs() error {
-	cmds := [][]string{{"mount", "-t", "proc", "none", "/proc"}}
-	if err := common.Execs(os.Stderr, os.Environ(), cmds); err != nil {
-		cmdsRo := [][]string{{"mount", "-t", "proc", "-o", "ro", "none", "/proc"}}
-		logrus.Warnf("failed to mount procfs (%v), falling back to read-only mount (%v): %v",
-			cmds, cmdsRo, err)
-		if err := common.Execs(os.Stderr, os.Environ(), cmdsRo); err != nil {
-			logrus.Warnf("failed to mount procfs (%v): %v", cmdsRo, err)
+	if err := unix.Mount("none", "/proc", "proc", 0, ""); err != nil {
+		logrus.Warnf("failed to mount procfs, falling back to read-only mount: %v", err)
+		if err := unix.Mount("none", "/proc", "proc", uintptr(unix.MS_RDONLY), ""); err != nil {
+			logrus.Warnf("failed to mount procfs: %v", err)
 		}
 	}
 	return nil
@@ -171,6 +166,7 @@ type Opt struct {
 	CopyUpDirs    []string
 	PortDriver    port.ChildDriver
 	MountProcfs   bool // needs to be set if (and only if) parent.Opt.CreatePIDNS is set
+	Reaper        bool
 }
 
 func Child(opt Opt) error {
@@ -242,12 +238,42 @@ func Child(opt Opt) error {
 	if err != nil {
 		return err
 	}
-	if err := cmd.Run(); err != nil {
-		return errors.Wrapf(err, "command %v exited", opt.TargetCmd)
+	if opt.Reaper {
+		if err := runAndReap(cmd); err != nil {
+			return errors.Wrapf(err, "command %v exited", opt.TargetCmd)
+		}
+	} else {
+		if err := cmd.Run(); err != nil {
+			return errors.Wrapf(err, "command %v exited", opt.TargetCmd)
+		}
 	}
 	if opt.PortDriver != nil {
 		portQuitCh <- struct{}{}
 		return <-portErrCh
 	}
 	return nil
+}
+
+func runAndReap(cmd *exec.Cmd) error {
+	c := make(chan os.Signal, 32)
+	signal.Notify(c, syscall.SIGCHLD)
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	result := make(chan error)
+	go func() {
+		defer close(result)
+		for range c {
+			for {
+				if pid, err := syscall.Wait4(-1, nil, syscall.WNOHANG, nil); err != nil || pid <= 0 {
+					break
+				} else {
+					if pid == cmd.Process.Pid {
+						result <- cmd.Wait()
+					}
+				}
+			}
+		}
+	}()
+	return <-result
 }

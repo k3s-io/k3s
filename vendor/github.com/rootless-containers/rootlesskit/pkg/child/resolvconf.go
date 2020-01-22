@@ -1,13 +1,12 @@
 package child
 
 import (
+	"golang.org/x/sys/unix"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 
 	"github.com/pkg/errors"
-
-	"github.com/rootless-containers/rootlesskit/pkg/common"
 )
 
 func generateResolvConf(dns string) []byte {
@@ -36,11 +35,9 @@ func mountResolvConf(tempDir, dns string) error {
 	if err := ioutil.WriteFile(myResolvConf, generateResolvConf(dns), 0644); err != nil {
 		return errors.Wrapf(err, "writing %s", myResolvConf)
 	}
-	cmds := [][]string{
-		{"mount", "--bind", myResolvConf, "/etc/resolv.conf"},
-	}
-	if err := common.Execs(os.Stderr, os.Environ(), cmds); err != nil {
-		return errors.Wrapf(err, "executing %v", cmds)
+
+	if err := unix.Mount(myResolvConf, "/etc/resolv.conf", "", uintptr(unix.MS_BIND), ""); err != nil {
+		return errors.Wrapf(err, "failed to create bind mount /etc/resolv.conf for %s", myResolvConf)
 	}
 	return nil
 }

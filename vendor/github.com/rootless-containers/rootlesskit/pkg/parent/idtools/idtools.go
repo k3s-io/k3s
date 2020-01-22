@@ -1,9 +1,11 @@
-package idtools // import "github.com/docker/docker/pkg/idtools"
+// Package idtools is forked from https://github.com/moby/moby/tree/c12f09bf99b54f274a5ae241dd154fa74020cbab/pkg/idtools
+package idtools
 
 import (
 	"bufio"
 	"fmt"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -32,28 +34,6 @@ const (
 	subuidFileName = "/etc/subuid"
 	subgidFileName = "/etc/subgid"
 )
-
-// MkdirAllAndChown creates a directory (include any along the path) and then modifies
-// ownership to the requested uid/gid.  If the directory already exists, this
-// function will still change ownership to the requested uid/gid pair.
-func MkdirAllAndChown(path string, mode os.FileMode, owner Identity) error {
-	return mkdirAs(path, mode, owner, true, true)
-}
-
-// MkdirAndChown creates a directory and then modifies ownership to the requested uid/gid.
-// If the directory already exists, this function still changes ownership.
-// Note that unlike os.Mkdir(), this function does not return IsExist error
-// in case path already exists.
-func MkdirAndChown(path string, mode os.FileMode, owner Identity) error {
-	return mkdirAs(path, mode, owner, false, true)
-}
-
-// MkdirAllAndChownNew creates a directory (include any along the path) and then modifies
-// ownership ONLY of newly created directories to the requested uid/gid. If the
-// directories along the path exist, no change of ownership will be performed
-func MkdirAllAndChownNew(path string, mode os.FileMode, owner Identity) error {
-	return mkdirAs(path, mode, owner, true, false)
-}
 
 // GetRootUIDGID retrieves the remapped root uid/gid pair from the set of maps.
 // If the maps are empty, then the root uid/gid will default to "real" 0/0
@@ -202,6 +182,8 @@ func (i *IdentityMapping) GIDs() []IDMap {
 func createIDMap(subidRanges ranges) []IDMap {
 	idMap := []IDMap{}
 
+	// sort the ranges by lowest ID first
+	sort.Sort(subidRanges)
 	containerID := 0
 	for _, idrange := range subidRanges {
 		idMap = append(idMap, IDMap{
