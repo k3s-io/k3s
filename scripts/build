@@ -10,13 +10,37 @@ PKG_CONTAINERD="github.com/containerd/containerd"
 PKG_RANCHER_CONTAINERD="github.com/rancher/containerd"
 PKG_CRICTL="github.com/kubernetes-sigs/cri-tools"
 
+buildDate=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+
 VENDOR_PREFIX="${PKG}/vendor/"
 VERSIONFLAGS="
     -X ${PKG}/pkg/version.Version=${VERSION}
     -X ${PKG}/pkg/version.GitCommit=${COMMIT:0:8}
+
+    -X ${VENDOR_PREFIX}k8s.io/client-go/pkg/version.gitVersion=${VERSION}
+    -X ${VENDOR_PREFIX}k8s.io/client-go/pkg/version.gitCommit=${COMMIT}
+    -X ${VENDOR_PREFIX}k8s.io/client-go/pkg/version.gitTreeState=${TREE_STATE}
+    -X ${VENDOR_PREFIX}k8s.io/client-go/pkg/version.buildDate=${buildDate}
+
+    -X ${VENDOR_PREFIX}k8s.io/component-base/version.gitVersion=${VERSION}
+    -X ${VENDOR_PREFIX}k8s.io/component-base/version.gitCommit=${COMMIT}
+    -X ${VENDOR_PREFIX}k8s.io/component-base/version.gitTreeState=${TREE_STATE}
+    -X ${VENDOR_PREFIX}k8s.io/component-base/version.buildDate=${buildDate}
+
+    -X ${VENDOR_PREFIX}k8s.io/kubectl/pkg/version.gitVersion=${VERSION}
+    -X ${VENDOR_PREFIX}k8s.io/kubectl/pkg/version.gitCommit=${COMMIT}
+    -X ${VENDOR_PREFIX}k8s.io/kubectl/pkg/version.gitTreeState=${TREE_STATE}
+    -X ${VENDOR_PREFIX}k8s.io/kubectl/pkg/version.buildDate=${buildDate}
+
+    -X ${VENDOR_PREFIX}k8s.io/kubernetes/pkg/version.gitVersion=${VERSION}
+    -X ${VENDOR_PREFIX}k8s.io/kubernetes/pkg/version.gitCommit=${COMMIT}
+    -X ${VENDOR_PREFIX}k8s.io/kubernetes/pkg/version.gitTreeState=${TREE_STATE}
+    -X ${VENDOR_PREFIX}k8s.io/kubernetes/pkg/version.buildDate=${buildDate}
+
     -X ${VENDOR_PREFIX}${PKG_CONTAINERD}/version.Version=${VERSION_CONTAINERD}
     -X ${VENDOR_PREFIX}${PKG_CONTAINERD}/version.Package=${PKG_RANCHER_CONTAINERD}
-    -X ${VENDOR_PREFIX}${PKG_CRICTL}/pkg/version.Version=${VERSION_CRICTL}"
+    -X ${VENDOR_PREFIX}${PKG_CRICTL}/pkg/version.Version=${VERSION_CRICTL}
+"
 LDFLAGS="
     -w -s"
 STATIC="

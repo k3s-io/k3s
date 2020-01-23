@@ -1,0 +1,56 @@
+#!/bin/bash
+
+. ./scripts/test-setup-sonobuoy
+
+# ---
+
+cluster-pre-hook() {
+  # gen-certs
+
+  mkdir -p $TEST_DIR/db/$LABEL_SUFFIX/metadata
+  local testID=$(basename $TEST_DIR)
+  local name=$(echo $LABEL_SUFFIX-$testID | tee $TEST_DIR/db/$LABEL_SUFFIX/metadata/name)
+  local port=$(timeout --foreground 5s bash -c get-port | tee $TEST_DIR/db/$LABEL_SUFFIX/metadata/port)
+  local secret=$(echo "${RANDOM}${RANDOM}${RANDOM}" | tee $TEST_DIR/db/$LABEL_SUFFIX/metadata/secret)
+
+  docker run --name $name \
+    --privileged \
+    -p 0.0.0.0:$port:3306 \
+    -v $TEST_DIR/db-ca/:/db-ca \
+    -e MYSQL_ROOT_PASSWORD=$secret \
+    -e MYSQL_ROOT_HOST=% \
+    -d mysql:latest \
+    >/dev/null
+      #  --require-secure-transport=ON \
+      #  --ssl-ca /db-ca/certs/ca.crt \
+      #  --ssl-cert /db-ca/certs/db.crt \
+      #  --ssl-key /db-ca/private/db.key \
+
+  local ip=$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' $name | tee $TEST_DIR/db/$LABEL_SUFFIX/metadata/ip)
+  # local host=host.docker.internal
+  local host=172.17.0.1
+
+  DB_CONNECTION_TEST="
+    docker run
+      -v $TEST_DIR/db-ca/:/db-ca
+      --rm mysql
+      mysql
+        -h$host
+        -P$port
+        -uroot
+        -p$secret
+        -e status" \
+    timeout --foreground 1m bash -c "wait-for-db-connection"
+        # --ssl-ca /db-ca/certs/ca.crt
+        # --ssl-cert /db-ca/certs/client.crt
+        # --ssl-key /db-ca/private/client.key
+
+  echo "Started $LABEL_SUFFIX db @ $host"
+  export SERVER_ARGS="${SERVER_ARGS}
+    --datastore-endpoint=mysql://root:$secret@tcp($host:$port)/testdb
+  "
+    # --datastore-cafile /db-ca/certs/ca.crt
+    # --datastore-certfile /db-ca/certs/client.crt
+    # --datastore-keyfile /db-ca/private/client.key
+}
+export -f cluster-pre-hook

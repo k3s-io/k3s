@@ -1,0 +1,34 @@
+#!/bin/bash
+set -e -x
+cd $(dirname $0)/..
+
+. ./scripts/test-helpers
+
+artifacts=$(pwd)/dist/artifacts
+mkdir -p $artifacts
+
+# ---
+
+. ./scripts/test-run-basics
+
+# ---
+
+E2E_OUTPUT=$artifacts test-run-sonobuoy
+
+# ---
+
+if [ "$DRONE_BUILD_EVENT" = 'tag' ]; then
+  printf "\033[33mSkipping remaining tests on tag.\033[m\n"
+  exit 0
+fi
+
+if [ "$ARCH" != 'amd64' ]; then
+  printf "\033[33mSkipping remaining tests, images not available for $ARCH.\033[m\n"
+  exit 0
+fi
+
+# ---
+
+test-run-sonobuoy mysql
+test-run-sonobuoy postgres
+# test-run-sonobuoy dqlite

@@ -1,0 +1,16 @@
+#!/bin/sh
+
+if [ -z "${DRONE_TAG}" ]; then
+  echo "DRONE_TAG not defined" >&2
+  exit 1
+fi
+
+set -e -x
+
+export REPO="rancher/k3s"
+export DRONE_TAG=$(echo "${DRONE_TAG}" | sed -e 's/+/-/g')
+export PLUGIN_TARGET="${REPO}:${DRONE_TAG}"
+export PLUGIN_TEMPLATE="${REPO}:${DRONE_TAG}-ARCH"
+export PLUGIN_PLATFORMS="linux/amd64,linux/arm64,linux/arm"
+
+drone-manifest

@@ -1,0 +1,14 @@
+#!/bin/bash
+
+export NUM_SERVERS=1
+export NUM_AGENTS=1
+export SERVER_ARGS='--no-deploy=traefik,coredns,local-storage,metrics-server'
+
+start-test() {
+    docker exec $(cat $TEST_DIR/servers/1/metadata/name) check-config || true
+    verify-valid-versions $(cat $TEST_DIR/servers/1/metadata/name)
+}
+export -f start-test
+
+# --- create a basic cluster and check for valid versions
+LABEL=BASICS run-test

@@ -9,8 +9,13 @@ platform:
 steps:
 - name: build
   image: rancher/dapper:v0.4.2
+  secrets: [ gcloud_auth ]
+  environment:
+    GCLOUD_AUTH:
+      from_secret: gcloud_auth
   commands:
   - dapper ci
+  - echo "${DRONE_TAG}-amd64" | sed -e 's/+/-/g' >.tags
   volumes:
   - name: docker
     path: /var/run/docker.sock
@@ -43,7 +48,6 @@ steps:
     password:
       from_secret: docker_password
     repo: "rancher/k3s"
-    tag: "${DRONE_TAG}-amd64"
     username:
       from_secret: docker_username
   when:
@@ -55,14 +59,14 @@ steps:
     event:
     - tag
 
-- name: sonobuoy-e2e-tests
+- name: test
   image: rancher/dapper:v0.4.2
   secrets: [ gcloud_auth ]
   environment:
     GCLOUD_AUTH:
       from_secret: gcloud_auth
   commands:
-  - dapper -f Dockerfile.sonobuoy.dapper
+  - dapper -f Dockerfile.test.dapper
   volumes:
   - name: docker
     path: /var/run/docker.sock
@@ -100,8 +104,13 @@ platform:
 steps:
 - name: build
   image: rancher/dapper:v0.4.2
+  secrets: [ gcloud_auth ]
+  environment:
+    GCLOUD_AUTH:
+      from_secret: gcloud_auth
   commands:
   - dapper ci
+  - echo "${DRONE_TAG}-arm64" | sed -e 's/+/-/g' >.tags
   volumes:
   - name: docker
     path: /var/run/docker.sock
@@ -134,7 +143,6 @@ steps:
     password:
       from_secret: docker_password
     repo: "rancher/k3s"
-    tag: "${DRONE_TAG}-arm64"
     username:
       from_secret: docker_username
   when:
@@ -146,14 +154,14 @@ steps:
     event:
     - tag
 
-- name: sonobuoy-e2e-tests
+- name: test
   image: rancher/dapper:v0.4.2
   secrets: [ gcloud_auth ]
   environment:
     GCLOUD_AUTH:
       from_secret: gcloud_auth
   commands:
-  - dapper -f Dockerfile.sonobuoy.dapper
+  - dapper -f Dockerfile.test.dapper
   volumes:
   - name: docker
     path: /var/run/docker.sock
@@ -174,8 +182,13 @@ platform:
 steps:
 - name: build
   image: rancher/dapper:v0.4.2
+  secrets: [ gcloud_auth ]
+  environment:
+    GCLOUD_AUTH:
+      from_secret: gcloud_auth
   commands:
   - dapper ci
+  - echo "${DRONE_TAG}-arm" | sed -e 's/+/-/g' >.tags
   volumes:
   - name: docker
     path: /var/run/docker.sock
@@ -208,7 +221,6 @@ steps:
     password:
       from_secret: docker_password
     repo: "rancher/k3s"
-    tag: "${DRONE_TAG}-arm"
     username:
       from_secret: docker_username
   when:
@@ -220,14 +232,14 @@ steps:
     event:
     - tag
 
-- name: sonobuoy-e2e-tests
+- name: test
   image: rancher/dapper:v0.4.2
   secrets: [ gcloud_auth ]
   environment:
     GCLOUD_AUTH:
       from_secret: gcloud_auth
   commands:
-  - dapper -f Dockerfile.sonobuoy.dapper
+  - dapper -f Dockerfile.test.dapper
   volumes:
   - name: docker
     path: /var/run/docker.sock
@@ -247,18 +259,20 @@ platform:
 
 steps:
 - name: manifest
-  image: plugins/manifest:1.0.2
-  settings:
-    username:
+  image: plugins/docker
+  environment:
+    DOCKER_USERNAME:
       from_secret: docker_username
-    password:
+    DOCKER_PASSWORD:
       from_secret: docker_password
-    platforms:
-      - linux/amd64
-      - linux/arm64
-      - linux/arm
-    target: "rancher/k3s:${DRONE_TAG}"
-    template: "rancher/k3s:${DRONE_TAG}-ARCH"
+  settings:
+    dry_run: true
+    dockerfile: Dockerfile.manifest
+    repo: "rancher/k3s-manifest"
+    build_args_from_env:
+    - DOCKER_USERNAME
+    - DOCKER_PASSWORD
+    - DRONE_TAG
   when:
     instance:
     - drone-publish.rancher.io

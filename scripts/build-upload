@@ -1,7 +1,14 @@
 #!/bin/bash
 
-[ -d "$1" ] || {
-  echo "First argument should be a directory" >&2
+[ -n "$GCLOUD_AUTH" ] || {
+  exit 0
+}
+[ -x "$1" ] || {
+  echo "First argument should be an executable" >&2
+  exit 1
+}
+[ -n "$2" ] || {
+  echo "Second argument should be a commit hash" >&2
   exit 1
 }
 
@@ -35,14 +42,16 @@ default_api_version = 2
 default_project_id = rancher-dev
 END
 
+BUILD_NAME=$(basename $1)-$2
+(cd $(dirname $1) && sha256sum $(basename $1)) >${TMPDIR}/${BUILD_NAME}.sha256sum
+cp $1 ${TMPDIR}/${BUILD_NAME}
+
 [ -d "${TMPDIR}/gsutil" ] || curl -sfL https://storage.googleapis.com/pub/gsutil.tar.gz | tar xz -C ${TMPDIR}
 
 HOME=${TMPDIR}
-PATH=$PATH:${HOME}/gsutil
+PATH=${PATH}:${HOME}/gsutil
 
-LOG_TGZ=k3s-log-$(date +%s)-$(go env GOARCH)-$(git rev-parse --short HEAD)-$(basename $1).tgz
+gsutil cp ${TMPDIR}/${BUILD_NAME}* gs://k3s-ci-builds || exit 1
 
-tar -cz -f ${TMPDIR}/${LOG_TGZ} -C $(dirname $1) $(basename $1)
-gsutil cp ${TMPDIR}/${LOG_TGZ} gs://k3s-ci-logs || exit 1
-echo "Logs uploaded" >&2
-echo "https://storage.googleapis.com/k3s-ci-logs/${LOG_TGZ}"
+echo "Build uploaded" >&2
+echo "https://storage.googleapis.com/k3s-ci-builds/${BUILD_NAME}"
