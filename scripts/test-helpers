@@ -189,12 +189,12 @@ sonobuoy-test() {
         return 0
     fi
     echo 'Starting sonobuoy tests'
-    local VERSION_CONFORMANCE=$(sed -e 's/[-+].*$//g' <<< "$VERSION_K8S")
+    local conformanceVersion=$(sed -e 's/[-+].*$//g' <<< "$VERSION_K8S")
 
     sonobuoy run \
         --config=scripts/sonobuoy-config.json \
         --plugin-env=e2e.E2E_USE_GO_RUNNER=true \
-        --kube-conformance-image-version=${VERSION_CONFORMANCE} \
+        --kube-conformance-image-version=${conformanceVersion} \
         --wait=30 \
         $@ &
 
@@ -497,28 +497,32 @@ export -f test-run-sonobuoy
 
 pid-cleanup() {
     local code=$?
-    set +e
     local failCount=0
+    set +e
+    if [ $code -eq 0 ]; then
+        for pid in ${pids[@]}; do
+            wait $pid || code=$?
+        done
+    fi
     if [ $code -ne 0 ]; then
         for pid in ${pids[@]}; do
             pkill -P $pid
             wait $pid || failCount=$((failCount+1))
         done
     fi
-    wait
     trap - EXIT INT TERM
     set +x
     echo
     if [ $failCount -eq 0 ]; then
         printf '\033[32mAll tests passed.\033[m\n'
-        if [ $code -ne 0 ]; then
-            printf "\033[31mExit code is $code.\033[m\n"
-        fi
     else
         printf "\033[31m$failCount tests failed.\033[m\n"
-    fi
-    if [ "$DRONE_BUILD_EVENT" = 'tag' ]; then
-        code=0
+        if [ "$DRONE_BUILD_EVENT" = 'tag' ]; then
+            printf "\033[31mIgnoring test failures on tag.\033[m\n"
+            code=0
+        else
+            code=1
+        fi
     fi
     echo
     exit $code
@@ -527,23 +531,5 @@ export -f pid-cleanup
 
 # ---
 
-wait-pids() {
-    trap - EXIT
-    set +e
-    local code=0
-    for pid in "${pids[@]}"; do
-        wait $pid || code=$?
-    done
-    pid-cleanup
-    if [ "$DRONE_BUILD_EVENT" = 'tag' ]; then
-        code=0
-    fi
-    exit $code
-}
-export -f wait-pids
-
-# ---
-
 pids=()
-trap pid-cleanup INT TERM
-trap wait-pids EXIT
+trap pid-cleanup EXIT INT TERM
