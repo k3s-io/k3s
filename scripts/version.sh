@@ -26,7 +26,7 @@ if [ -z "$VERSION_CRICTL" ]; then
     VERSION_CRICTL="v0.0.0"
 fi
 
-VERSION_K8S=$(grep k8s.io/kubernetes go.mod | head -n1 | awk '{print $4}')
+VERSION_K8S=$(grep k8s.io/kubernetes go.mod | head -n1 | awk '{print $4}' | sed -e 's/[-+].*//')
 if [ -z "$VERSION_K8S" ]; then
     VERSION_K8S="v0.0.0"
 fi
@@ -34,8 +34,12 @@ fi
 VERSION_CNIPLUGINS="v0.7.6-k3s1"
 
 if [[ -n "$GIT_TAG" ]]; then
+    if [[ ! "$GIT_TAG" =~ ^"$VERSION_K8S"[+-] ]]; then
+        echo "Tagged version '$GIT_TAG' does not match expected version '$VERSION_K8S[+-]*'" >&2
+        exit 1
+    fi
     VERSION=$GIT_TAG
 else
-    VERSION="$(sed -e 's/[-+].*//' <<< "$VERSION_K8S")+${COMMIT:0:8}$DIRTY"
+    VERSION="$VERSION_K8S+${COMMIT:0:8}$DIRTY"
 fi
 VERSION_TAG="$(sed -e 's/+/-/g' <<< "$VERSION")"
