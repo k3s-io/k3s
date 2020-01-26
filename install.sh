@@ -646,6 +646,7 @@ create_openrc_service_file() {
 
 depend() {
     after network-online
+    want cgroups
 }
 
 start_pre() {
