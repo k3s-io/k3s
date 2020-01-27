@@ -112,6 +112,7 @@ type Control struct {
 	DisableNPC               bool
 	ClusterInit              bool
 	ClusterReset             bool
+	EncryptSecrets           bool
 
 	BindAddress string
 	SANs        []string
@@ -129,6 +130,7 @@ type ControlRuntimeBootstrap struct {
 	RequestHeaderCA    string
 	RequestHeaderCAKey string
 	IPSECKey           string
+	EncryptionConfig   string
 }
 
 type ControlRuntime struct {

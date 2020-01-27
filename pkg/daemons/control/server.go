@@ -3,9 +3,11 @@ package control
 import (
 	"context"
 	"crypto"
+	cryptorand "crypto/rand"
 	"crypto/x509"
+	b64 "encoding/base64"
+	"encoding/json"
 	"fmt"
-	"html/template"
 	"io/ioutil"
 	"math/rand"
 	"net"
@@ -15,6 +17,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"text/template"
 	"time"
 
 	// registering k3s cloud provider
@@ -30,6 +33,8 @@ import (
 	"github.com/rancher/wrangler-api/pkg/generated/controllers/rbac"
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	apiserverconfigv1 "k8s.io/apiserver/pkg/apis/config/v1"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
@@ -71,8 +76,9 @@ users:
 )
 
 const (
-	userTokenSize  = 16
+	userTokenSize  = 8
 	ipsecTokenSize = 48
+	aescbcKeySize  = 32
 )
 
 func Server(ctx context.Context, cfg *config.Control) error {
@@ -202,7 +208,9 @@ func apiServer(ctx context.Context, cfg *config.Control, runtime *config.Control
 	argsMap["client-ca-file"] = runtime.ClientCA
 	argsMap["enable-admission-plugins"] = "NodeRestriction"
 	argsMap["anonymous-auth"] = "false"
-
+	if cfg.EncryptSecrets {
+		argsMap["encryption-provider-config"] = runtime.EncryptionConfig
+	}
 	args := config.GetArgsList(argsMap, cfg.ExtraAPIArgs)
 
 	command := app.NewAPIServerCommand(ctx.Done())
@@ -309,6 +317,10 @@ func prepare(ctx context.Context, config *config.Control, runtime *config.Contro
 	runtime.ClientAuthProxyCert = path.Join(config.DataDir, "tls", "client-auth-proxy.crt")
 	runtime.ClientAuthProxyKey = path.Join(config.DataDir, "tls", "client-auth-proxy.key")
 
+	if config.EncryptSecrets {
+		runtime.EncryptionConfig = path.Join(config.DataDir, "cred", "encryption-config.json")
+	}
+
 	cluster := cluster.New(config)
 
 	if err := cluster.Join(ctx); err != nil {
@@ -328,6 +340,10 @@ func prepare(ctx context.Context, config *config.Control, runtime *config.Contro
 	}
 
 	if err := genEncryptedNetworkInfo(config, runtime); err != nil {
+		return err
+	}
+
+	if err := genEncryptionConfig(config, runtime); err != nil {
 		return err
 	}
 
@@ -861,4 +877,52 @@ func promise(f func() error) <-chan error {
 		close(c)
 	}()
 	return c
+}
+
+func genEncryptionConfig(controlConfig *config.Control, runtime *config.ControlRuntime) error {
+	if !controlConfig.EncryptSecrets {
+		return nil
+	}
+	if s, err := os.Stat(runtime.EncryptionConfig); err == nil && s.Size() > 0 {
+		return nil
+	}
+
+	aescbcKey := make([]byte, aescbcKeySize, aescbcKeySize)
+	_, err := cryptorand.Read(aescbcKey)
+	if err != nil {
+		return err
+	}
+	encodedKey := b64.StdEncoding.EncodeToString(aescbcKey)
+
+	encConfig := apiserverconfigv1.EncryptionConfiguration{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "EncryptionConfiguration",
+			APIVersion: "apiserver.config.k8s.io/v1",
+		},
+		Resources: []apiserverconfigv1.ResourceConfiguration{
+			{
+				Resources: []string{"secrets"},
+				Providers: []apiserverconfigv1.ProviderConfiguration{
+					{
+						AESCBC: &apiserverconfigv1.AESConfiguration{
+							Keys: []apiserverconfigv1.Key{
+								{
+									Name:   "aescbckey",
+									Secret: encodedKey,
+								},
+							},
+						},
+					},
+					{
+						Identity: &apiserverconfigv1.IdentityConfiguration{},
+					},
+				},
+			},
+		},
+	}
+	jsonfile, err := json.Marshal(encConfig)
+	if err != nil {
+		return err
+	}
+	return ioutil.WriteFile(runtime.EncryptionConfig, jsonfile, 0600)
 }
