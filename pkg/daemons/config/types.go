@@ -96,7 +96,8 @@ type Control struct {
 	KubeConfigOutput         string
 	KubeConfigMode           string
 	DataDir                  string
-	Skips                    []string
+	Skips                    map[string]bool
+	Disables                 map[string]bool
 	Datastore                endpoint.Config
 	NoScheduler              bool
 	ExtraAPIArgs             []string
