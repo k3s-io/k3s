@@ -11,12 +11,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func Stage(dataDir string, templateVars map[string]string, skipList []string) error {
-	skips := map[string]bool{}
-	for _, skip := range skipList {
-		skips[skip] = true
-	}
-
+func Stage(dataDir string, templateVars map[string]string, skips map[string]bool) error {
 staging:
 	for _, name := range AssetNames() {
 		nameNoExtension := strings.TrimSuffix(name, filepath.Ext(name))

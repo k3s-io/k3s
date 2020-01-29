@@ -193,8 +193,8 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Destination: &ServerConfig.DefaultLocalStoragePath,
 			},
 			cli.StringSliceFlag{
-				Name:  "no-deploy",
-				Usage: "(components) Do not deploy packaged components (valid items: coredns, servicelb, traefik, local-storage, metrics-server)",
+				Name:  "disable",
+				Usage: "(components) Do not deploy packaged components and delete any deployed components (valid items: coredns, servicelb, traefik, local-storage, metrics-server)",
 			},
 			cli.BoolFlag{
 				Name:        "disable-scheduler",
@@ -272,6 +272,10 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 			// Hidden/Deprecated flags below
 
 			FlannelFlag,
+			cli.StringSliceFlag{
+				Name:  "no-deploy",
+				Usage: "(deprecated) Do not deploy packaged components (valid items: coredns, servicelb, traefik, local-storage, metrics-server)",
+			},
 			cli.StringFlag{
 				Name:        "cluster-secret",
 				Usage:       "(deprecated) use --token",

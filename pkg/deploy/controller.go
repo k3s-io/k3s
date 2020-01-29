@@ -22,8 +22,10 @@ import (
 	"github.com/rancher/wrangler/pkg/objectset"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
 )
 
@@ -32,12 +34,13 @@ const (
 	startKey = "_start_"
 )
 
-func WatchFiles(ctx context.Context, apply apply.Apply, addons v1.AddonController, bases ...string) error {
+func WatchFiles(ctx context.Context, apply apply.Apply, addons v1.AddonController, disables map[string]bool, bases ...string) error {
 	w := &watcher{
 		apply:      apply,
 		addonCache: addons.Cache(),
 		addons:     addons,
 		bases:      bases,
+		disables:   disables,
 	}
 
 	addons.Enqueue("", startKey)
@@ -56,6 +59,7 @@ type watcher struct {
 	addonCache v1.AddonCache
 	addons     v1.AddonClient
 	bases      []string
+	disables   map[string]bool
 }
 
 func (w *watcher) start(ctx context.Context) {
@@ -111,6 +115,12 @@ func (w *watcher) listFilesIn(base string, force bool) error {
 
 	var errs []error
 	for _, path := range keys {
+		if shouldDisableService(base, path, w.disables) {
+			if err := w.delete(path); err != nil {
+				errs = append(errs, errors2.Wrapf(err, "failed to delete %s", path))
+			}
+			continue
+		}
 		if skipFile(files[path].Name(), skips) {
 			continue
 		}
@@ -160,6 +170,39 @@ func (w *watcher) deploy(path string, compareChecksum bool) error {
 
 	_, err = w.addons.Update(&addon)
 	return err
+}
+
+func (w *watcher) delete(path string) error {
+	name := name(path)
+	addon, err := w.addon(name)
+	if err != nil {
+		return err
+	}
+
+	// ensure that the addon is completely removed before deleting the objectSet,
+	// so return when err == nil, otherwise pods may get stuck terminating
+	if err := w.addons.Delete(addon.Namespace, addon.Name, &metav1.DeleteOptions{}); err == nil || !errors.IsNotFound(err) {
+		return err
+	}
+
+	content, err := ioutil.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	objectSet, err := objectSet(content)
+	if err != nil {
+		return err
+	}
+	var gvk []schema.GroupVersionKind
+	for k := range objectSet.ObjectsByGVK() {
+		gvk = append(gvk, k)
+	}
+	// apply an empty set with owner & gvk data to delete
+	if err := w.apply.WithOwner(&addon).WithGVK(gvk...).Apply(nil); err != nil {
+		return err
+	}
+
+	return os.Remove(path)
 }
 
 func (w *watcher) addon(name string) (v12.Addon, error) {
@@ -268,4 +311,29 @@ func skipFile(fileName string, skips map[string]bool) bool {
 	default:
 		return true
 	}
+}
+
+func shouldDisableService(base, fileName string, disables map[string]bool) bool {
+	relFile := strings.TrimPrefix(fileName, base)
+	namePath := strings.Split(relFile, string(os.PathSeparator))
+	for i := 1; i < len(namePath); i++ {
+		subPath := filepath.Join(namePath[0:i]...)
+		if disables[subPath] {
+			return true
+		}
+	}
+	switch {
+	case strings.HasSuffix(fileName, ".json"):
+	case strings.HasSuffix(fileName, ".yml"):
+	case strings.HasSuffix(fileName, ".yaml"):
+	default:
+		return false
+	}
+	baseFile := filepath.Base(fileName)
+	suffix := filepath.Ext(baseFile)
+	baseName := strings.TrimSuffix(baseFile, suffix)
+	if disables[baseName] {
+		return true
+	}
+	return false
 }
