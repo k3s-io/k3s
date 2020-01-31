@@ -69,10 +69,16 @@ set -e
 #   - INSTALL_K3S_TYPE
 #     Type of systemd service to create, will default from the k3s exec command
 #     if not specified.
+#
+#   - INSTALL_K3S_MIRROR
+#     For Chinese users, set INSTALL_K3S_MIRROR=cn to use the mirror address to accelerate 
+#     k3s binary file download, and the default mirror address is mirror_k3s.rancher.cn
+#
 
 GITHUB_URL=https://github.com/rancher/k3s/releases
 STORAGE_URL=https://storage.googleapis.com/k3s-ci-builds
 DOWNLOADER=
+INSTALL_K3S_MIRROR_URL=${INSTALL_K3S_MIRROR_URL:-mirror-k3s.rancher.cn}
 
 # --- helper functions for logs ---
 info()
@@ -347,6 +353,8 @@ download() {
 download_hash() {
     if [ -n "${INSTALL_K3S_COMMIT}" ]; then
         HASH_URL=${STORAGE_URL}/k3s${SUFFIX}-${INSTALL_K3S_COMMIT}.sha256sum
+    elif [ "${INSTALL_K3S_MIRROR}" = cn ]; then
+        HASH_URL=${INSTALL_K3S_MIRROR_URL}/download/`echo ${VERSION_K3S} | sed 's/+/-/g'`/sha256sum-${ARCH}.txt
     else
         HASH_URL=${GITHUB_URL}/download/${VERSION_K3S}/sha256sum-${ARCH}.txt
     fi
@@ -372,6 +380,8 @@ installed_hash_matches() {
 download_binary() {
     if [ -n "${INSTALL_K3S_COMMIT}" ]; then
         BIN_URL=${STORAGE_URL}/k3s${SUFFIX}-${INSTALL_K3S_COMMIT}
+    elif [ "${INSTALL_K3S_MIRROR}" = cn ]; then
+        BIN_URL=${INSTALL_K3S_MIRROR_URL}/download/`echo ${VERSION_K3S} | sed 's/+/-/g'`/k3s${SUFFIX}
     else
         BIN_URL=${GITHUB_URL}/download/${VERSION_K3S}/k3s${SUFFIX}
     fi
