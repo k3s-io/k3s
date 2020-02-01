@@ -255,18 +255,7 @@ func (d *Generic) GetCompactRevision(ctx context.Context) (int64, error) {
 }
 
 func (d *Generic) SetCompactRevision(ctx context.Context, revision int64) error {
-	result, err := d.execute(ctx, d.UpdateCompactSQL, revision)
-	if err != nil {
-		return err
-	}
-	num, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if num != 0 {
-		return nil
-	}
-	_, err = d.Insert(ctx, "compact_rev_key", false, false, 0, revision, 0, []byte(""), nil)
+	_, err := d.execute(ctx, d.UpdateCompactSQL, revision)
 	return err
 }
 
