@@ -1,0 +1,23 @@
+kind: DaemonSet
+metadata:
+  name: daemonset-example
+  labels:
+    app: daemonset-example
+spec:
+  selector:
+    matchLabels:
+      app: daemonset-example
+  template:
+    metadata:
+      labels:
+        app: daemonset-example
+    spec:
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        effect: NoSchedule
+      containers:
+      - name: busybox
+        image: busybox
+        args:
+        - sleep
+        - "10000"
