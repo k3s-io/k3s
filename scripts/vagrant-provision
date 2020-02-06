@@ -60,20 +60,6 @@ go get github.com/rancher/trash
 rm -rf /go
 cd
 # ---
-cd /etc/local.d
-cat <<\EOF >cgroup.start
-#!/bin/bash
-mount cgroup_root /sys/fs/cgroup -t tmpfs -o "rw,nosuid,nodev,noexec,relatime,size=10240k,mode=755"
-# blkio freezer net_cls net_prio 
-for d in cpu cpuacct cpuset devices memory pids; do
-    mkdir -p /sys/fs/cgroup/$d
-    mount $d /sys/fs/cgroup/$d -t cgroup -o "rw,nosuid,nodev,noexec,relatime,$d"
-done
-EOF
-chmod 0755 cgroup.start
-rc-update add local default
-rc-service local start
-# ---
 cat <<EOF >/etc/profile.d/docker.sh
 export DOCKER_HOST=tcp://10.0.2.2:2375
 EOF
