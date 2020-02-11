@@ -23,6 +23,7 @@ import (
 	"github.com/rancher/k3s/pkg/clientaccess"
 	"github.com/rancher/k3s/pkg/daemons/agent"
 	daemonconfig "github.com/rancher/k3s/pkg/daemons/config"
+	"github.com/rancher/k3s/pkg/nodeconfig"
 	"github.com/rancher/k3s/pkg/rootless"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -71,7 +72,7 @@ func run(ctx context.Context, cfg cmds.Agent, lb *loadbalancer.LoadBalancer) err
 		}
 	}
 
-	if err := syncLabels(ctx, &nodeConfig.AgentConfig, coreClient.CoreV1().Nodes()); err != nil {
+	if err := configureNode(ctx, &nodeConfig.AgentConfig, coreClient.CoreV1().Nodes()); err != nil {
 		return err
 	}
 
@@ -155,7 +156,7 @@ func validate() error {
 	return nil
 }
 
-func syncLabels(ctx context.Context, agentConfig *daemonconfig.Agent, nodes v1.NodeInterface) error {
+func configureNode(ctx context.Context, agentConfig *daemonconfig.Agent, nodes v1.NodeInterface) error {
 	for {
 		node, err := nodes.Get(agentConfig.NodeName, metav1.GetOptions{})
 		if err != nil {
@@ -171,8 +172,16 @@ func syncLabels(ctx context.Context, agentConfig *daemonconfig.Agent, nodes v1.N
 			newLabels, updateAddresses = updateAddressLabels(agentConfig, newLabels)
 		}
 
+		// inject node config
+		updateNode, err := nodeconfig.SetNodeConfigAnnotations(node)
+		if err != nil {
+			return err
+		}
 		if updateAddresses || updateMutables {
 			node.Labels = newLabels
+			updateNode = true
+		}
+		if updateNode {
 			if _, err := nodes.Update(node); err != nil {
 				logrus.Infof("Failed to update node %s: %v", agentConfig.NodeName, err)
 				select {
