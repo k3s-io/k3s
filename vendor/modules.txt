@@ -726,7 +726,7 @@ github.com/rancher/helm-controller/pkg/generated/informers/externalversions/helm
 github.com/rancher/helm-controller/pkg/generated/informers/externalversions/internalinterfaces
 github.com/rancher/helm-controller/pkg/generated/listers/helm.cattle.io/v1
 github.com/rancher/helm-controller/pkg/helm
-# github.com/rancher/kine v0.3.4
+# github.com/rancher/kine v0.3.5
 github.com/rancher/kine/pkg/broadcaster
 github.com/rancher/kine/pkg/client
 github.com/rancher/kine/pkg/drivers/dqlite
