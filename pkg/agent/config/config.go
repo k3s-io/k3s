@@ -27,7 +27,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/apimachinery/pkg/util/net"
-	"k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
 )
 
 func Get(ctx context.Context, agent cmds.Agent) *config.Node {
@@ -465,7 +464,6 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 	}
 
 	os.Setenv("NODE_NAME", nodeConfig.AgentConfig.NodeName)
-	v1beta1.KubeletSocket = filepath.Join(envInfo.DataDir, "kubelet/device-plugins/kubelet.sock")
 
 	nodeConfig.AgentConfig.ExtraKubeletArgs = envInfo.ExtraKubeletArgs
 	nodeConfig.AgentConfig.ExtraKubeProxyArgs = envInfo.ExtraKubeProxyArgs
