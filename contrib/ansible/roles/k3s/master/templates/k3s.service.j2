@@ -5,7 +5,7 @@ After=network-online.target
 [Service]
 ExecStartPre=-/sbin/modprobe br_netfilter
 ExecStartPre=-/sbin/modprobe overlay
-ExecStart=/usr/local/bin/k3s server
+ExecStart=/usr/local/bin/k3s server {{ extra_server_args | default("") }}
 KillMode=process
 Delegate=yes
 LimitNOFILE=infinity
