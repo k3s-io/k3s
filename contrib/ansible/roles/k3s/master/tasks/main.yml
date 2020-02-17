@@ -58,10 +58,9 @@
     owner: "{{ ansible_user }}"
 
 - name: Replace https://localhost:6443 by https://master-pi:6443
-  replace:
-    path: ~{{ ansible_user }}/.kube/config
-    regexp: 'https://localhost:6443'
-    replace: 'https://{{master_ip}}:6443'
+  command: k3s kubectl config set-cluster default
+    --server=https://{{ master_ip }}:6443
+    --kubeconfig ~{{ ansible_user }}/.kube/config
 
 - name: Create kubectl symlink
   file:
