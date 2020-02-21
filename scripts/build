@@ -36,6 +36,7 @@ LDFLAGS="
 STATIC="
     -extldflags '-static'
 "
+RUNC_TARGET="static"
 
 if [ "$DQLITE" = "true" ]; then
     DQLITE_TAGS="dqlite"
@@ -45,13 +46,14 @@ fi
 STATIC_SQLITE="
     -extldflags '-static -lm -ldl -lz -lpthread $DQLITE_STATIC_SQLITE'
 "
-TAGS="ctrd apparmor seccomp no_btrfs netcgo osusergo providerless $DQLITE_TAGS"
+TAGS="ctrd apparmor seccomp selinux no_btrfs netcgo osusergo providerless $DQLITE_TAGS"
 
 if [ "$STATIC_BUILD" != "true" ]; then
     STATIC="
 "
     STATIC_SQLITE="
 "
+    RUNC_TARGET=""
 else
     TAGS="static_build libsqlite3 $TAGS"
 fi
@@ -109,13 +111,16 @@ ln -s containerd ./bin/ctr
 # echo Building containerd
 # CGO_ENABLED=0 go build -tags "$TAGS" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC" -o bin/containerd ./cmd/containerd/
 echo Building runc
-make EXTRA_LDFLAGS="-w -s" BUILDTAGS="apparmor seccomp" -C ./vendor/github.com/opencontainers/runc static
+rm -f ./vendor/github.com/opencontainers/runc/runc
+make EXTRA_LDFLAGS="-w -s" BUILDTAGS="apparmor seccomp selinux" -C ./vendor/github.com/opencontainers/runc $RUNC_TARGET
 cp -f ./vendor/github.com/opencontainers/runc/runc ./bin/runc
 
 echo Building containerd-shim
+rm -f ./vendor/github.com/containerd/containerd/bin/containerd-shim
 make -C ./vendor/github.com/containerd/containerd bin/containerd-shim
 cp -f ./vendor/github.com/containerd/containerd/bin/containerd-shim ./bin/containerd-shim
 
 echo Building containerd-shim-runc-v2
+rm -f ./vendor/github.com/containerd/containerd/bin/containerd-shim-runc-v2
 make -C ./vendor/github.com/containerd/containerd bin/containerd-shim-runc-v2
 cp -f ./vendor/github.com/containerd/containerd/bin/containerd-shim-runc-v2 ./bin/containerd-shim-runc-v2

@@ -20,6 +20,7 @@ const ContainerdConfigTemplate = `
 [plugins.cri]
   stream_server_address = "127.0.0.1"
   stream_server_port = "10010"
+  enable_selinux = true
 
 {{- if .IsRunningInUserNS }}
   disable_cgroup = true
