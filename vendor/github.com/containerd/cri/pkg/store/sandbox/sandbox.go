@@ -20,6 +20,7 @@ import (
 	"sync"
 
 	"github.com/containerd/containerd"
+	"github.com/containerd/cri/pkg/store/label"
 	"github.com/docker/docker/pkg/truncindex"
 
 	"github.com/containerd/cri/pkg/netns"
@@ -62,13 +63,15 @@ type Store struct {
 	lock      sync.RWMutex
 	sandboxes map[string]Sandbox
 	idIndex   *truncindex.TruncIndex
+	labels    *label.Store
 }
 
 // NewStore creates a sandbox store.
-func NewStore() *Store {
+func NewStore(labels *label.Store) *Store {
 	return &Store{
 		sandboxes: make(map[string]Sandbox),
 		idIndex:   truncindex.NewTruncIndex([]string{}),
+		labels:    labels,
 	}
 }
 
@@ -78,6 +81,9 @@ func (s *Store) Add(sb Sandbox) error {
 	defer s.lock.Unlock()
 	if _, ok := s.sandboxes[sb.ID]; ok {
 		return store.ErrAlreadyExist
+	}
+	if err := s.labels.Reserve(sb.ProcessLabel); err != nil {
+		return err
 	}
 	if err := s.idIndex.Add(sb.ID); err != nil {
 		return err
@@ -125,6 +131,7 @@ func (s *Store) Delete(id string) {
 		// So we need to return if there are error.
 		return
 	}
+	s.labels.Release(s.sandboxes[id].ProcessLabel)
 	s.idIndex.Delete(id) // nolint: errcheck
 	delete(s.sandboxes, id)
 }
