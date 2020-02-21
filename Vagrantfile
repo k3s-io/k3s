@@ -1,12 +1,14 @@
-BOX = "generic/alpine310"
+OS = (ENV['OS'] || "centos7" )
+BOX = (ENV['box'] || "generic/#{OS}")
 HOME = File.dirname(__FILE__)
 PROJECT = File.basename(HOME)
-MOUNT_TYPE = ENV['MOUNT_TYPE'] || "nfs"
 NUM_NODES = (ENV['NUM_NODES'] || 0).to_i
 NODE_CPUS = (ENV['NODE_CPUS'] || 4).to_i
 NODE_MEMORY = (ENV['NODE_MEMORY'] || 8192).to_i
 NETWORK_PREFIX = ENV['NETWORK_PREFIX'] || "10.135.135"
-VAGRANT_PROVISION = ENV['VAGRANT_PROVISION'] || "./scripts/vagrant-provision"
+VAGRANT_PROVISION = ENV['VAGRANT_PROVISION'] || "./scripts/#{BOX}/vagrant-provision"
+MOUNT_TYPE = ENV['MOUNT_TYPE'] || ""
+# MOUNT_TYPE = ENV['MOUNT_TYPE'] || "nfs"
 
 # --- Rules for /etc/sudoers to avoid password entry configuring NFS:
 # %admin	ALL = (root) NOPASSWD: /usr/bin/sed -E -e * -ibak /etc/exports
@@ -14,19 +16,19 @@ VAGRANT_PROVISION = ENV['VAGRANT_PROVISION'] || "./scripts/vagrant-provision"
 # %admin	ALL = (root) NOPASSWD: /sbin/nfsd restart
 # --- May need to add terminal to System Preferences -> Security & Privacy -> Privacy -> Full Disk Access
 
-# --- Check for missing plugins
-required_plugins = %w( vagrant-alpine vagrant-timezone )
-plugin_installed = false
-required_plugins.each do |plugin|
-  unless Vagrant.has_plugin?(plugin)
-    system "vagrant plugin install #{plugin}"
-    plugin_installed = true
-  end
-end
-# --- If new plugins installed, restart Vagrant process
-if plugin_installed === true
-  exec "vagrant #{ARGV.join' '}"
-end
+# # --- Check for missing plugins
+# required_plugins = %w( vagrant-alpine vagrant-timezone )
+# plugin_installed = false
+# required_plugins.each do |plugin|
+#  unless Vagrant.has_plugin?(plugin)
+#    system "vagrant plugin install #{plugin}"
+#    plugin_installed = true
+#  end
+# end
+# # --- If new plugins installed, restart Vagrant process
+# if plugin_installed === true
+#  exec "vagrant #{ARGV.join' '}"
+# end
 
 provision = <<SCRIPT
 # --- Use system gopath if available
@@ -61,8 +63,9 @@ Vagrant.configure("2") do |config|
   config.vm.hostname = PROJECT
   config.vm.synced_folder ".", HOME, type: MOUNT_TYPE
   config.vm.provision "shell", inline: provision
-  config.timezone.value = :host
-
+  if Vagrant.has_plugin?("vagrant-timezone")
+    config.timezone.value = :host
+  end
   config.vm.network "private_network", ip: "#{NETWORK_PREFIX}.100" if NUM_NODES==0
 
   (1..NUM_NODES).each do |i|
