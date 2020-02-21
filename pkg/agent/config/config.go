@@ -423,15 +423,17 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 	nodeConfig.AgentConfig.IPSECPSK = controlConfig.IPSECPSK
 	nodeConfig.AgentConfig.StrongSwanDir = filepath.Join(envInfo.DataDir, "strongswan")
 	nodeConfig.CACerts = info.CACerts
-	nodeConfig.Containerd.Config = filepath.Join(envInfo.DataDir, "etc/containerd/config.toml")
-	nodeConfig.Containerd.Root = filepath.Join(envInfo.DataDir, "containerd")
-	nodeConfig.Containerd.Opt = filepath.Join(envInfo.DataDir, "containerd")
-	if !envInfo.Debug {
-		nodeConfig.Containerd.Log = filepath.Join(envInfo.DataDir, "containerd/containerd.log")
-	}
-	nodeConfig.Containerd.State = "/run/k3s/containerd"
-	nodeConfig.Containerd.Address = filepath.Join(nodeConfig.Containerd.State, "containerd.sock")
-	nodeConfig.Containerd.Template = filepath.Join(envInfo.DataDir, "etc/containerd/config.toml.tmpl")
+
+	nodeConfig.Containerd.Config = "/etc/containerd/config.toml"
+	nodeConfig.Containerd.Root = "/var/lib/containerd"
+	nodeConfig.Containerd.Opt = "/opt/containerd"
+	nodeConfig.Containerd.Log = "/var/log/containerd.log"
+	// nodeConfig.Containerd.State = "/var/lib/docker/overlay2/"
+	nodeConfig.Containerd.State = "/run/containerd"
+	nodeConfig.Containerd.Address = "/run/containerd/containerd.sock"
+	nodeConfig.Containerd.Log = "/var/log/containerd.log"
+	nodeConfig.Containerd.Template = "/etc/containerd/config.toml.tmpl"
+
 	nodeConfig.ServerAddress = serverURLParsed.Host
 	nodeConfig.Certificate = servingCert
 
