@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"syscall"
 	"time"
 
 	"github.com/containerd/containerd"
@@ -66,9 +65,7 @@ func Run(ctx context.Context, cfg *config.Node) error {
 		cmd := exec.Command(args[0], args[1:]...)
 		cmd.Stdout = stdOut
 		cmd.Stderr = stdErr
-		cmd.SysProcAttr = &syscall.SysProcAttr{
-			Pdeathsig: syscall.SIGKILL,
-		}
+		addDeathSig(cmd)
 		if err := cmd.Run(); err != nil {
 			fmt.Fprintf(os.Stderr, "containerd: %s\n", err)
 		}
