@@ -6,6 +6,7 @@ import (
 	net2 "net"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	systemd "github.com/coreos/go-systemd/daemon"
@@ -41,7 +42,7 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 		err error
 	)
 
-	if !cfg.DisableAgent && os.Getuid() != 0 && !cfg.Rootless {
+	if !cfg.DisableAgent && os.Getuid() != 0 && runtime.GOOS != "windows" && !cfg.Rootless {
 		return fmt.Errorf("must run as root unless --disable-agent is specified")
 	}
 

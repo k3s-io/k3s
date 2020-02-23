@@ -2,8 +2,6 @@ package agent
 
 import (
 	"context"
-	"errors"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -133,25 +131,6 @@ func Run(ctx context.Context, cfg cmds.Agent) error {
 
 	systemd.SdNotify(true, "READY=1\n")
 	return run(ctx, cfg, proxy)
-}
-
-func validate() error {
-	cgroups, err := ioutil.ReadFile("/proc/self/cgroup")
-	if err != nil {
-		return err
-	}
-
-	if !strings.Contains(string(cgroups), "cpuset") {
-		logrus.Warn("Failed to find cpuset cgroup, you may need to add \"cgroup_enable=cpuset\" to your linux cmdline (/boot/cmdline.txt on a Raspberry Pi)")
-	}
-
-	if !strings.Contains(string(cgroups), "memory") {
-		msg := "ailed to find memory cgroup, you may need to add \"cgroup_memory=1 cgroup_enable=memory\" to your linux cmdline (/boot/cmdline.txt on a Raspberry Pi)"
-		logrus.Error("F" + msg)
-		return errors.New("f" + msg)
-	}
-
-	return nil
 }
 
 func configureNode(ctx context.Context, agentConfig *daemonconfig.Agent, nodes v1.NodeInterface) error {
