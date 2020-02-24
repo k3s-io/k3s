@@ -46,6 +46,12 @@ STATIC_SQLITE="
     -extldflags '-static -lm -ldl -lz -lpthread $DQLITE_STATIC_SQLITE'
 "
 TAGS="ctrd apparmor seccomp no_btrfs netcgo osusergo providerless $DQLITE_TAGS"
+RUNC_TAGS="apparmor seccomp"
+
+if [ "$SELINUX" = "true" ]; then
+    TAGS="$TAGS selinux"
+    RUNC_TAGS="$RUNC_TAGS selinux"
+fi
 
 if [ "$STATIC_BUILD" != "true" ]; then
     STATIC="
@@ -109,7 +115,7 @@ ln -s containerd ./bin/ctr
 # echo Building containerd
 # CGO_ENABLED=0 go build -tags "$TAGS" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC" -o bin/containerd ./cmd/containerd/
 echo Building runc
-make EXTRA_LDFLAGS="-w -s" BUILDTAGS="apparmor seccomp" -C ./vendor/github.com/opencontainers/runc static
+make EXTRA_LDFLAGS="-w -s" BUILDTAGS="$RUNC_TAGS" -C ./vendor/github.com/opencontainers/runc static
 cp -f ./vendor/github.com/opencontainers/runc/runc ./bin/runc
 
 echo Building containerd-shim
