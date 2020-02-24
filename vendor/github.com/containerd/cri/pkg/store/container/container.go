@@ -20,6 +20,7 @@ import (
 	"sync"
 
 	"github.com/containerd/containerd"
+	"github.com/containerd/cri/pkg/store/label"
 	"github.com/docker/docker/pkg/truncindex"
 	runtime "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 
@@ -101,13 +102,15 @@ type Store struct {
 	lock       sync.RWMutex
 	containers map[string]Container
 	idIndex    *truncindex.TruncIndex
+	labels     *label.Store
 }
 
 // NewStore creates a container store.
-func NewStore() *Store {
+func NewStore(labels *label.Store) *Store {
 	return &Store{
 		containers: make(map[string]Container),
 		idIndex:    truncindex.NewTruncIndex([]string{}),
+		labels:     labels,
 	}
 }
 
@@ -118,6 +121,9 @@ func (s *Store) Add(c Container) error {
 	defer s.lock.Unlock()
 	if _, ok := s.containers[c.ID]; ok {
 		return store.ErrAlreadyExist
+	}
+	if err := s.labels.Reserve(c.ProcessLabel); err != nil {
+		return err
 	}
 	if err := s.idIndex.Add(c.ID); err != nil {
 		return err
@@ -165,6 +171,7 @@ func (s *Store) Delete(id string) {
 		// So we need to return if there are error.
 		return
 	}
+	s.labels.Release(s.containers[id].ProcessLabel)
 	s.idIndex.Delete(id) // nolint: errcheck
 	delete(s.containers, id)
 }
