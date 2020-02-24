@@ -3,12 +3,16 @@ package slirp4netns
 import (
 	"context"
 	"net"
+	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 	"syscall"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/sys/unix"
 
 	"github.com/rootless-containers/rootlesskit/pkg/common"
 	"github.com/rootless-containers/rootlesskit/pkg/network"
@@ -16,13 +20,62 @@ import (
 	"github.com/rootless-containers/rootlesskit/pkg/network/parentutils"
 )
 
+type Features struct {
+	// SupportsCIDR --cidr (v0.3.0)
+	SupportsCIDR bool
+	// SupportsDisableHostLoopback --disable-host-loopback (v0.3.0)
+	SupportsDisableHostLoopback bool
+	// SupportsAPISocket --api-socket (v0.3.0)
+	SupportsAPISocket bool
+	// SupportsEnableSandbox --enable-sandbox (v0.4.0)
+	SupportsEnableSandbox bool
+	// SupportsEnableSeccomp --enable-seccomp (v0.4.0)
+	SupportsEnableSeccomp bool
+	// KernelSupportsSeccomp whether the kernel supports slirp4netns --enable-seccomp
+	KernelSupportsEnableSeccomp bool
+}
+
+func DetectFeatures(binary string) (*Features, error) {
+	if binary == "" {
+		return nil, errors.New("got empty slirp4netns binary")
+	}
+	realBinary, err := exec.LookPath(binary)
+	if err != nil {
+		return nil, errors.Wrapf(err, "slirp4netns binary %q is not installed", binary)
+	}
+	cmd := exec.Command(realBinary, "--help")
+	cmd.Env = os.Environ()
+	b, err := cmd.CombinedOutput()
+	s := string(b)
+	if err != nil {
+		return nil, errors.Wrapf(err,
+			"command \"%s --help\" failed, make sure slirp4netns v0.2.0+ is installed: %q",
+			realBinary, s)
+	}
+	kernelSupportsEnableSeccomp := false
+	if unix.Prctl(unix.PR_GET_SECCOMP, 0, 0, 0, 0) != unix.EINVAL {
+		kernelSupportsEnableSeccomp = unix.Prctl(unix.PR_SET_SECCOMP, unix.SECCOMP_MODE_FILTER, 0, 0, 0) != unix.EINVAL
+	}
+	f := Features{
+		SupportsCIDR:                strings.Contains(s, "--cidr"),
+		SupportsDisableHostLoopback: strings.Contains(s, "--disable-host-loopback"),
+		SupportsAPISocket:           strings.Contains(s, "--api-socket"),
+		SupportsEnableSandbox:       strings.Contains(s, "--enable-sandbox"),
+		SupportsEnableSeccomp:       strings.Contains(s, "--enable-seccomp"),
+		KernelSupportsEnableSeccomp: kernelSupportsEnableSeccomp,
+	}
+	return &f, nil
+}
+
 // NewParentDriver instantiates new parent driver.
 // ipnet is supported only for slirp4netns v0.3.0+.
 // ipnet MUST be nil for slirp4netns < v0.3.0.
 //
 // disableHostLoopback is supported only for slirp4netns v0.3.0+
 // apiSocketPath is supported only for slirp4netns v0.3.0+
-func NewParentDriver(binary string, mtu int, ipnet *net.IPNet, disableHostLoopback bool, apiSocketPath string) network.ParentDriver {
+// enableSandbox is supported only for slirp4netns v0.4.0+
+// enableSeccomp is supported only for slirp4netns v0.4.0+
+func NewParentDriver(binary string, mtu int, ipnet *net.IPNet, disableHostLoopback bool, apiSocketPath string, enableSandbox, enableSeccomp bool) network.ParentDriver {
 	if binary == "" {
 		panic("got empty slirp4netns binary")
 	}
@@ -38,6 +91,8 @@ func NewParentDriver(binary string, mtu int, ipnet *net.IPNet, disableHostLoopba
 		ipnet:               ipnet,
 		disableHostLoopback: disableHostLoopback,
 		apiSocketPath:       apiSocketPath,
+		enableSandbox:       enableSandbox,
+		enableSeccomp:       enableSeccomp,
 	}
 }
 
@@ -47,6 +102,8 @@ type parentDriver struct {
 	ipnet               *net.IPNet
 	disableHostLoopback bool
 	apiSocketPath       string
+	enableSandbox       bool
+	enableSeccomp       bool
 }
 
 func (d *parentDriver) MTU() int {
@@ -60,7 +117,14 @@ func (d *parentDriver) ConfigureNetwork(childPID int, stateDir string) (*common.
 		return nil, common.Seq(cleanups), errors.Wrapf(err, "setting up tap %s", tap)
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	opts := []string{"--mtu", strconv.Itoa(d.mtu)}
+	readyR, readyW, err := os.Pipe()
+	if err != nil {
+		return nil, common.Seq(cleanups), err
+	}
+	defer readyR.Close()
+	defer readyW.Close()
+	// -r: readyFD
+	opts := []string{"--mtu", strconv.Itoa(d.mtu), "-r", "3"}
 	if d.disableHostLoopback {
 		opts = append(opts, "--disable-host-loopback")
 	}
@@ -70,10 +134,17 @@ func (d *parentDriver) ConfigureNetwork(childPID int, stateDir string) (*common.
 	if d.apiSocketPath != "" {
 		opts = append(opts, "--api-socket", d.apiSocketPath)
 	}
+	if d.enableSandbox {
+		opts = append(opts, "--enable-sandbox")
+	}
+	if d.enableSeccomp {
+		opts = append(opts, "--enable-seccomp")
+	}
 	cmd := exec.CommandContext(ctx, d.binary, append(opts, []string{strconv.Itoa(childPID), tap}...)...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Pdeathsig: syscall.SIGKILL,
 	}
+	cmd.ExtraFiles = append(cmd.ExtraFiles, readyW)
 	cleanups = append(cleanups, func() error {
 		logrus.Debugf("killing slirp4netns")
 		cancel()
@@ -83,6 +154,10 @@ func (d *parentDriver) ConfigureNetwork(childPID int, stateDir string) (*common.
 	})
 	if err := cmd.Start(); err != nil {
 		return nil, common.Seq(cleanups), errors.Wrapf(err, "executing %v", cmd)
+	}
+
+	if err := waitForReadyFD(cmd.Process.Pid, readyR); err != nil {
+		return nil, common.Seq(cleanups), errors.Wrapf(err, "waiting for ready fd (%v)", cmd)
 	}
 	netmsg := common.NetworkMessage{
 		Dev: tap,
@@ -113,6 +188,41 @@ func (d *parentDriver) ConfigureNetwork(childPID int, stateDir string) (*common.
 		netmsg.DNS = "10.0.2.3"
 	}
 	return &netmsg, common.Seq(cleanups), nil
+}
+
+// waitForReady is from libpod
+// https://github.com/containers/libpod/blob/e6b843312b93ddaf99d0ef94a7e60ff66bc0eac8/libpod/networking_linux.go#L272-L308
+func waitForReadyFD(cmdPid int, r *os.File) error {
+	b := make([]byte, 16)
+	for {
+		if err := r.SetDeadline(time.Now().Add(1 * time.Second)); err != nil {
+			return errors.Wrapf(err, "error setting slirp4netns pipe timeout")
+		}
+		if _, err := r.Read(b); err == nil {
+			break
+		} else {
+			if os.IsTimeout(err) {
+				// Check if the process is still running.
+				var status syscall.WaitStatus
+				pid, err := syscall.Wait4(cmdPid, &status, syscall.WNOHANG, nil)
+				if err != nil {
+					return errors.Wrapf(err, "failed to read slirp4netns process status")
+				}
+				if pid != cmdPid {
+					continue
+				}
+				if status.Exited() {
+					return errors.New("slirp4netns failed")
+				}
+				if status.Signaled() {
+					return errors.New("slirp4netns killed by signal")
+				}
+				continue
+			}
+			return errors.Wrapf(err, "failed to read from slirp4netns sync pipe")
+		}
+	}
+	return nil
 }
 
 func NewChildDriver() network.ChildDriver {
