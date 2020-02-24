@@ -15,6 +15,7 @@ import (
 	"github.com/containerd/containerd/namespaces"
 	"github.com/natefinch/lumberjack"
 	"github.com/opencontainers/runc/libcontainer/system"
+	"github.com/pkg/errors"
 	"github.com/rancher/k3s/pkg/agent/templates"
 	util2 "github.com/rancher/k3s/pkg/agent/util"
 	"github.com/rancher/k3s/pkg/daemons/config"
@@ -169,6 +170,12 @@ func setupContainerdConfig(ctx context.Context, cfg *config.Node) error {
 		IsRunningInUserNS:     system.RunningInUserNS(),
 		PrivateRegistryConfig: privRegistries,
 	}
+
+	selinux, err := selinuxEnabled()
+	if err != nil {
+		return errors.Wrap(err, "failed to detect selinux")
+	}
+	containerdConfig.SELinuxEnabled = selinux
 
 	containerdTemplateBytes, err := ioutil.ReadFile(cfg.Containerd.Template)
 	if err == nil {
