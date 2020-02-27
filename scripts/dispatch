@@ -1,0 +1,11 @@
+#!/bin/sh
+set -e
+set -x
+
+REPO="https://api.github.com/repos/rancher/k3s-upgrade/dispatches"
+
+# send dispatch event to REPO
+curl -XPOST -u "${PAT_USERNAME}:${PAT_TOKEN}" \
+        -H "Accept: application/vnd.github.everest-preview+json"  \
+        -H "Content-Type: application/json" $REPO \
+        --data '{"event_type": "create_tag", "client_payload": {"tag":"'"$DRONE_TAG"'"}}'
