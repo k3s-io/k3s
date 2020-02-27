@@ -1,6 +1,8 @@
 // Apache License v2.0 (copyright Cloud Native Labs & Rancher Labs)
 // - modified from https://github.com/cloudnativelabs/kube-router/tree/d6f9f31a7b/pkg/utils
 
+// +build !windows
+
 package netpol
 
 import (
