@@ -115,6 +115,9 @@ func (w *watcher) listFilesIn(base string, force bool) error {
 
 	var errs []error
 	for _, path := range keys {
+		if w.skipNginx(path) {
+			continue
+		}
 		if shouldDisableService(base, path, w.disables) {
 			if err := w.delete(path); err != nil {
 				errs = append(errs, errors2.Wrapf(err, "failed to delete %s", path))
@@ -334,6 +337,17 @@ func shouldDisableService(base, fileName string, disables map[string]bool) bool 
 	baseName := strings.TrimSuffix(baseFile, suffix)
 	if disables[baseName] {
 		return true
+	}
+	return false
+}
+
+func (w *watcher) skipNginx(path string) bool {
+	name := name(path)
+	if name == "nginx" {
+		addon, err := w.addonCache.Get(ns, "traefik")
+		if err == nil && addon != nil {
+			return true
+		}
 	}
 	return false
 }

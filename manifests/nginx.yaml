@@ -1,0 +1,14 @@
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: nginx-ingress
+  namespace: kube-system
+spec:
+  chart: https://%{KUBERNETES_API}%/static/charts/nginx-ingress-1.33.0.tgz
+  set:
+    rbac.create: "true"
+    controller.service.enableHttps: "true"
+    controller.metrics.enabled: "true"
+    controller.publishService.enabled: "true"
+    controller.image.repository: "%{NGINX_IMAGE}"
+
