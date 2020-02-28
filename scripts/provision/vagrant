@@ -1,0 +1,55 @@
+#!/bin/bash
+set -ve
+
+ARCH=amd64
+PROVISION="scripts/provision/$BOX/vagrant"
+OS=$(basename $BOX)
+
+if [ ! -f /etc/vagrant_box_build_time ]; then
+    echo "This script should only be called during vagrant provisioning"
+    exit 1
+fi
+
+if [[ $HOME == /go/* ]]; then
+    echo "Must not launch vagrant from /go/"
+    exit 1
+fi 
+
+# --- Default to root user for vagrant ssh
+cat <<\EOF >/etc/profile.d/root.sh
+[ $EUID -ne 0 ] && exec sudo -i
+EOF
+
+# --- Setup basic env
+cat <<EOF >/etc/profile.d/env.sh
+export GO111MODULE=off
+export GOPATH="$GOPATH"
+export PATH=/usr/local/bin:$PATH:/usr/local/go/bin:$GOPATH/bin
+export HOME="$HOME" && cd
+EOF
+. /etc/profile.d/env.sh
+
+if [ -z "${GOPATH}" ]; then
+    GOPATH=$(realpath $HOME/../../../..)
+    echo "WARNING: Assuming GOPATH=$GOPATH"
+else
+    echo "Using parent GOPATH=$GOPATH"
+fi
+goversion=$(grep "^FROM " Dockerfile.dapper | sed -e 's/^FROM golang:\(.*\)-.*/\1/')
+
+if [ -z "$goversion" ]; then
+    echo "Cannot find version of go to fetch"
+    exit 1
+fi
+
+# clean go cache
+rm -rf .cache/go-build || true
+
+# --- Run vagrant provision script if available
+if [ ! -f "${PROVISION}" ]; then
+  echo 'WARNING: Unable to execute provision script "${PROVISION}"'
+  exit
+fi
+echo "running '${PROVISION}'..." && \
+  . ${PROVISION} && \
+  echo "finished '${PROVISION}'!"

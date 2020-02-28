@@ -1,51 +1,27 @@
 #!/bin/bash
 set -ve
 
-cd $(dirname $0)/..
-
-if [ ! -f /etc/vagrant_box_build_time ]; then
-    echo "This script should only be called during vagrant provisioning"
-    exit 1
-fi
-
-ARCH=amd64
-if [[ $HOME == /go/* ]]; then
-    echo "Must not launch vagrant from /go/"
-    exit 1
-fi 
-
-if [ -z "${GOPATH}" ]; then
-    GOPATH=$(realpath $HOME/../../../..)
-    echo "WARNING: Assuming GOPATH=$GOPATH"
-else
-    echo "Using parent GOPATH=$GOPATH"
-fi
-goversion=$(grep "^FROM " Dockerfile.dapper | sed -e 's/^FROM golang:\(.*\)-.*/\1/')
-
-if [ -z "$goversion" ]; then
-    echo "Cannot find version of go to fetch"
-    exit 1
-fi
-
-echo "Installing go $goversion"
 apk add -q -f curl libc6-compat tzdata
+echo "Installing go $goversion"
 curl -sL https://storage.googleapis.com/golang/go${goversion}.linux-${ARCH}.tar.gz | tar -xzf - -C /usr/local
 # ---
 cat <<EOF >/etc/profile.d/build.sh
+export SELINUX=true
+export DQLITE=true
 export STATIC_BUILD=true
 EOF
-# ---
-cat <<EOF >/etc/profile.d/go.sh
-export GOPATH=$GOPATH
-export PATH=$PATH:/usr/local/go/bin:$GOPATH/bin
-EOF
-. /etc/profile.d/go.sh
+. /etc/profile.d/build.sh
 # ---
 sed -i 's|:/bin/ash$|:/bin/bash|g' /etc/passwd
-cat <<\EOF >/etc/profile.d/color.sh
+cat <<EOF >/etc/profile.d/color.sh
 alias ls='ls --color=auto'
-export PS1='\033[31m[ \033[90m\D{%F %T}\033[31m ]\n\[\033[36m\]\u\[\033[m\]🐮\[\033[32m\]\h:\[\033[33;1m\]\w\[\033[m\]$ '
+export PS1='\033[31m[ \033[90m\D{%F %T}\033[31m ] \033[35m{\033[90m$OS\033[35m}\n\[\033[36m\]\u\[\033[m\]🐮\[\033[32m\]\h:\[\033[33;1m\]\w\[\033[m\]\$ '
 EOF
+# ---
+DQLITE_URL="https://github.com/$(grep dqlite-build Dockerfile.dapper | sed -e 's/^.*--from=\([^ ]*\).*$/\1/' -e 's|:|/releases/download/|')/dqlite-$ARCH.tgz"
+echo "Downloading DQLITE from $DQLITE_URL"
+mkdir -p /usr/src/
+curl -sfL $DQLITE_URL -o /usr/src/dqlite.tgz
 # ---
 mkdir -p ${GOPATH}/bin
 mkdir -p /go
@@ -53,12 +29,10 @@ ln -s $GOPATH/bin /go/bin
 sed ':a;N;$!ba;s/\\\n/ /g' <Dockerfile.dapper | grep '^RUN ' | sed -e 's/^RUN //' >/tmp/docker-run
 export BINDIR=/go/bin
 export GOPATH=/go
-export HOME=/tmp && cd
+export HOME=/tmp
 . /tmp/docker-run
-cd /go
-go get github.com/rancher/trash
-rm -rf /go
-cd
+# ---
+go get -u github.com/go-delve/delve/cmd/dlv
 # ---
 cat <<EOF >/etc/profile.d/docker.sh
 export DOCKER_HOST=tcp://10.0.2.2:2375
