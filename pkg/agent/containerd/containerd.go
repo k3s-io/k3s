@@ -168,11 +168,21 @@ func setupContainerdConfig(ctx context.Context, cfg *config.Node) error {
 		PrivateRegistryConfig: privRegistries,
 	}
 
-	selinux, err := selinuxEnabled()
+	selEnabled, selConfigured, err := selinuxStatus()
 	if err != nil {
 		return errors.Wrap(err, "failed to detect selinux")
 	}
-	containerdConfig.SELinuxEnabled = selinux
+	if cfg.DisableSELinux {
+		containerdConfig.SELinuxEnabled = false
+		if selEnabled {
+			logrus.Warn("SELinux is enabled for system but has been disabled for containerd by override")
+		}
+	} else {
+		containerdConfig.SELinuxEnabled = selEnabled
+	}
+	if containerdConfig.SELinuxEnabled && !selConfigured {
+		logrus.Warnf("SELinux is enabled for k3s but process is not running in context '%s', k3s-selinux policy may need to be applied", SELinuxContextType)
+	}
 
 	containerdTemplateBytes, err := ioutil.ReadFile(cfg.Containerd.Template)
 	if err == nil {
