@@ -8,20 +8,20 @@ const (
 	SELinuxContextType = "container_runtime_t"
 )
 
-func selinuxEnabled() (bool, error) {
+func selinuxStatus() (bool, bool, error) {
 	if !selinux.GetEnabled() {
-		return false, nil
+		return false, false, nil
 	}
 
 	label, err := selinux.CurrentLabel()
 	if err != nil {
-		return false, err
+		return true, false, err
 	}
 
 	ctx, err := selinux.NewContext(label)
 	if err != nil {
-		return false, err
+		return true, false, err
 	}
 
-	return ctx["type"] == SELinuxContextType, nil
+	return true, ctx["type"] == SELinuxContextType, nil
 }
