@@ -134,6 +134,12 @@ var (
 		Hidden:      true,
 		Destination: &AgentConfig.DisableSELinux,
 	}
+	DisableLoadBalancer = cli.BoolFlag{
+		Name:        "disable-load-balancer",
+		Usage:       "(agent/node) Disable Load Balancer",
+		Hidden:      true,
+		Destination: &AgentConfig.DisableLoadBalancer,
+	}
 )
 
 func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
@@ -187,6 +193,7 @@ func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
 			FlannelConfFlag,
 			ExtraKubeletArgs,
 			ExtraKubeProxyArgs,
+			DisableLoadBalancer,
 			cli.BoolFlag{
 				Name:        "rootless",
 				Usage:       "(experimental) Run rootless",
