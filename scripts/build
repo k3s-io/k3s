@@ -117,13 +117,16 @@ ln -s containerd ./bin/ctr
 # echo Building containerd
 # CGO_ENABLED=0 go build -tags "$TAGS" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC" -o bin/containerd ./cmd/containerd/
 echo Building runc
+rm -f ./vendor/github.com/opencontainers/runc/runc
 make EXTRA_LDFLAGS="-w -s" BUILDTAGS="$RUNC_TAGS" -C ./vendor/github.com/opencontainers/runc $RUNC_STATIC
 cp -f ./vendor/github.com/opencontainers/runc/runc ./bin/runc
 
 echo Building containerd-shim
+rm -f ./vendor/github.com/containerd/containerd/bin/containerd-shim
 make -C ./vendor/github.com/containerd/containerd bin/containerd-shim
 cp -f ./vendor/github.com/containerd/containerd/bin/containerd-shim ./bin/containerd-shim
 
 echo Building containerd-shim-runc-v2
+rm -f ./vendor/github.com/containerd/containerd/bin/containerd-shim-runc-v2
 make -C ./vendor/github.com/containerd/containerd bin/containerd-shim-runc-v2
 cp -f ./vendor/github.com/containerd/containerd/bin/containerd-shim-runc-v2 ./bin/containerd-shim-runc-v2
