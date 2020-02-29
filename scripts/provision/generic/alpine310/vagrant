@@ -12,24 +12,9 @@ export STATIC_BUILD=true
 EOF
 . /etc/profile.d/build.sh
 # ---
-sed -i 's|:/bin/ash$|:/bin/bash|g' /etc/passwd
-cat <<EOF >/etc/profile.d/color.sh
-alias ls='ls --color=auto'
-export PS1='\033[31m[ \033[90m\D{%F %T}\033[31m ] \033[35m{\033[90m$OS\033[35m}\n\[\033[36m\]\u\[\033[m\]🐮\[\033[32m\]\h:\[\033[33;1m\]\w\[\033[m\]\$ '
-EOF
-# ---
-DQLITE_URL="https://github.com/$(grep dqlite-build Dockerfile.dapper | sed -e 's/^.*--from=\([^ ]*\).*$/\1/' -e 's|:|/releases/download/|')/dqlite-$ARCH.tgz"
 echo "Downloading DQLITE from $DQLITE_URL"
-mkdir -p /usr/src/
 curl -sfL $DQLITE_URL -o /usr/src/dqlite.tgz
 # ---
-mkdir -p ${GOPATH}/bin
-mkdir -p /go
-ln -s $GOPATH/bin /go/bin
-sed ':a;N;$!ba;s/\\\n/ /g' <Dockerfile.dapper | grep '^RUN ' | sed -e 's/^RUN //' >/tmp/docker-run
-export BINDIR=/go/bin
-export GOPATH=/go
-export HOME=/tmp
 . /tmp/docker-run
 # ---
 go get -u github.com/go-delve/delve/cmd/dlv
@@ -39,21 +24,11 @@ export DOCKER_HOST=tcp://10.0.2.2:2375
 EOF
 . /etc/profile.d/docker.sh
 # ---
-cat <<\EOF >>/etc/motd
-               ,        ,
-   ,-----------|'------'| |\    ____
-  /.           '-'@  o|-' | |  /___ \
- |/|             | .. |   | | __ __) | ____
-   |   .________.'----'   | |/ /|__ < / __/
-   |  ||        |  ||     |   < ___) |\__ \
-   \__|'        \__|'     |_|\_\_____/____/
-
-EOF
-# ---
-set +v
-if ! docker version --format '{{.Server.Version}}' >/tmp/docker-server-version; then
-    echo "WARNING: Unable to connect to the docker socket, to enable docker in vagrant run the following command on the host:"
-    echo "docker run -d -v /var/run/docker.sock:/var/run/docker.sock -p 127.0.0.1:2375:2375 alpine/socat TCP-LISTEN:2375,fork UNIX-CONNECT:/var/run/docker.sock"
-else
-    echo "Using host docker server v$(cat /tmp/docker-server-version)"
-fi
+(
+    if ! docker version --format '{{.Server.Version}}' >/tmp/docker-server-version; then
+        echo "WARNING: Unable to connect to the docker socket, to enable docker in vagrant run the following command on the host:"
+        echo "docker run -d -v /var/run/docker.sock:/var/run/docker.sock -p 127.0.0.1:2375:2375 alpine/socat TCP-LISTEN:2375,fork UNIX-CONNECT:/var/run/docker.sock"
+    else
+        echo "Using host docker server v$(cat /tmp/docker-server-version)"
+    fi
+)
