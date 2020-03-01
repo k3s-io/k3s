@@ -5,6 +5,8 @@ After=network-online.target
 
 [Service]
 Type=notify
+ExecStartPre=-/sbin/modprobe br_netfilter
+ExecStartPre=-/sbin/modprobe overlay
 ExecStart=/usr/local/bin/k3s agent --server https://{{ master_ip }}:6443 --token {{ hostvars[groups['master'][0]]['token'] }}
 KillMode=process
 Delegate=yes
