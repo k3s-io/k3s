@@ -2,7 +2,9 @@
 Description=Lightweight Kubernetes
 Documentation=https://k3s.io
 After=network-online.target
+
 [Service]
+Type=notify
 ExecStart=/usr/local/bin/k3s agent --server https://{{ master_ip }}:6443 --token {{ hostvars[groups['master'][0]]['token'] }}
 KillMode=process
 Delegate=yes
@@ -10,6 +12,7 @@ LimitNOFILE=infinity
 LimitNPROC=infinity
 LimitCORE=infinity
 TasksMax=infinity
+TimeoutStartSec=infinity
 Restart=always
 RestartSec=5s
 
