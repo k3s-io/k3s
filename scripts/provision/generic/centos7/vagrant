@@ -1,9 +1,7 @@
 #!/bin/bash
 set -ve
 
-
-echo "Installing go $goversion"
-curl -sL https://storage.googleapis.com/golang/go${goversion}.linux-${ARCH}.tar.gz | tar -xzf - -C /usr/local
+download_go
 # ---
 cat <<EOF >/etc/profile.d/build.sh
 export SELINUX=true

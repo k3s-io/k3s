@@ -1,9 +1,7 @@
 #!/bin/bash
 set -ve
 
-ARCH=amd64
 PROVISION="scripts/provision/$BOX/vagrant"
-OS=$(basename $BOX)
 
 if [ ! -f /etc/vagrant_box_build_time ]; then
     echo "This script should only be called during vagrant provisioning"
@@ -28,25 +26,16 @@ if [ -z "${GOPATH}" ]; then
 else
     echo "Using parent GOPATH=$GOPATH"
 fi
-goversion=$(grep "^FROM " Dockerfile.dapper | sed -e 's/^FROM golang:\(.*\)-.*/\1/')
-
-if [ -z "$goversion" ]; then
-    echo "Cannot find version of go to fetch"
-    exit 1
-fi
 
 # --- Setup basic env
 cat <<EOF >/etc/profile.d/env.sh
+export ARCH=amd64
 export GO111MODULE=off
 export GOPATH="$GOPATH"
 export PATH=/usr/local/bin:$PATH:/usr/local/go/bin:$GOPATH/bin
 export HOME="$HOME" && cd
 EOF
 . /etc/profile.d/env.sh
-
-# --- Setup for dqlite download
-DQLITE_URL="https://github.com/$(grep dqlite-build Dockerfile.dapper | sed -e 's/^.*--from=\([^ ]*\).*$/\1/' -e 's|:|/releases/download/|')/dqlite-$ARCH.tgz"
-mkdir -p /usr/src/
 
 # --- Clean go cache
 rm -rf .cache/go-build || true
@@ -55,13 +44,13 @@ rm -rf .cache/go-build || true
 sed -i 's|:/bin/ash$|:/bin/bash|g' /etc/passwd
 cat <<EOF >/etc/profile.d/color.sh
 alias ls='ls --color=auto'
-export PS1='\033[31m[ \033[90m\D{%F %T}\033[31m ] \033[35m{\033[90m$OS\033[35m}\n\[\033[36m\]\u\[\033[m\]🐮\[\033[32m\]\h:\[\033[33;1m\]\w\[\033[m\]\$ '
+export PS1='\033[31m[ \033[90m\D{%F %T}\033[31m ]\n\[\033[36m\]\u\[\033[m\]🐮\[\033[32m\]\h:\[\033[33;1m\]\w\[\033[m\]\$ '
 EOF
 
 # --- Setup install script from docker run commands
 mkdir -p ${GOPATH}/bin
 mkdir -p /go
-ln -s $GOPATH/bin /go/bin
+ln -sf $GOPATH/bin /go/bin
 sed ':a;N;$!ba;s/\\\n/ /g' <Dockerfile.dapper | grep '^RUN ' | sed -e 's/^RUN //' >/tmp/docker-run
 export BINDIR=/go/bin
 export GOPATH=/go
@@ -78,6 +67,30 @@ cat <<\EOF >/etc/motd
    \__|'        \__|'     |_|\_\_____/____/
 
 EOF
+
+# --- Utility function to download go
+download_go() {
+    goversion=$(grep "^FROM " Dockerfile.dapper | sed -e 's/^FROM golang:\(.*\)-.*/\1/')
+    if [ -z "$goversion" ]; then
+        echo "Cannot find version of go to fetch"
+        return 1
+    fi
+    echo "Installing go $goversion"
+    curl -sL https://storage.googleapis.com/golang/go${goversion}.linux-${ARCH}.tar.gz | tar -xzf - -C /usr/local
+}
+
+
+# --- Utility function to download dqlite
+download_dqlite() {
+    dqliteURL="https://github.com/$(grep dqlite-build Dockerfile.dapper | sed -e 's/^.*--from=\([^ ]*\).*$/\1/' -e 's|:|/releases/download/|')/dqlite-$ARCH.tgz"
+    if [ -z "$dqliteURL" ]; then
+        echo "Cannot find dqlite URL to fetch"
+        return 1
+    fi
+    mkdir -p /usr/src/
+    echo "Downloading DQLITE from $dqliteURL"
+    curl -sfL $dqliteURL -o /usr/src/dqlite.tgz
+}
 
 # --- Run vagrant provision script if available
 if [ ! -f "${PROVISION}" ]; then
