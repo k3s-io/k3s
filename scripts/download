@@ -5,7 +5,7 @@ cd $(dirname $0)/..
 . ./scripts/version.sh
 
 ROOT_VERSION=v0.3.0
-TRAEFIK_VERSION=1.81.0
+NGINX_VERSION=1.33.0
 CHARTS_DIR=build/static/charts
 
 mkdir -p ${CHARTS_DIR}
@@ -17,7 +17,7 @@ for target in iptables iptables-save iptables-restore ip6tables ip6tables-save i
 done
 mkdir -p bin/aux && rm bin/mount && ln -sf ../busybox bin/aux/mount
 
-TRAEFIK_FILE=traefik-${TRAEFIK_VERSION}.tgz
-curl -sfL https://kubernetes-charts.storage.googleapis.com/${TRAEFIK_FILE} -o ${CHARTS_DIR}/${TRAEFIK_FILE}
+NGINX_FILE=nginx-ingress-${NGINX_VERSION}.tgz
+curl -sfL https://kubernetes-charts.storage.googleapis.com/${NGINX_FILE} -o ${CHARTS_DIR}/${NGINX_FILE}
 
 cp scripts/wg-add.sh bin/aux/
