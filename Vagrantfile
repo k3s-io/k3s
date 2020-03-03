@@ -1,6 +1,5 @@
 OS = (ENV['OS'] || "alpine310")
 BOX_REPO = (ENV['BOX_REPO'] || "generic")
-BOX = (ENV['BOX'] || "#{BOX_REPO}/#{OS}")
 HOME = File.dirname(__FILE__)
 PROJECT = File.basename(HOME)
 NUM_NODES = (ENV['NUM_NODES'] || 0).to_i
@@ -16,7 +15,11 @@ MOUNT_TYPE = ENV['MOUNT_TYPE'] || "nfs"
 # %admin	ALL = (root) NOPASSWD: /sbin/nfsd restart
 # --- May need to add terminal to System Preferences -> Security & Privacy -> Privacy -> Full Disk Access
 
-def provision(vm)
+def provision(vm, node_num)
+  node_os = (ENV["OS_#{node_num}"] || OS)
+  vm.box = (ENV["BOX_#{node_num}"] || ENV["BOX"] || "#{BOX_REPO}/#{node_os}")
+  vm.hostname = "#{PROJECT}-#{node_num}-#{node_os}"
+  vm.network "private_network", ip: "#{NETWORK_PREFIX}.#{100+node_num}"
   vm.provision "shell",
       path: VAGRANT_PROVISION,
       env: { 'HOME' => HOME, 'GOPATH' => ENV['GOPATH'], 'BOX' => vm.box }
@@ -29,26 +32,17 @@ Vagrant.configure("2") do |config|
     v.memory = NODE_MEMORY
     v.customize ["modifyvm", :id, "--audio", "none"]
   end
-
-  config.vm.box = BOX
-  config.vm.hostname = PROJECT
-  config.vm.synced_folder ".", HOME, type: MOUNT_TYPE
-
   if Vagrant.has_plugin?("vagrant-timezone")
     config.timezone.value = :host
   end
+  config.vm.synced_folder ".", HOME, type: MOUNT_TYPE
 
   if NUM_NODES==0
-    config.vm.network "private_network", ip: "#{NETWORK_PREFIX}.100"
-    provision(config.vm)
+    provision(config.vm, 0)
   else
     (1..NUM_NODES).each do |i|
       config.vm.define ".#{i}" do |node|
-        node_os = (ENV["OS_#{i}"] || OS)
-        node.vm.box = (ENV["BOX_#{i}"] || "#{BOX_REPO}/#{node_os}")
-        node.vm.network "private_network", ip: "#{NETWORK_PREFIX}.#{100+i}"
-        node.vm.hostname = "#{PROJECT}-#{i}"
-        provision(node.vm)
+        provision(node.vm, i)
       end
     end
   end
