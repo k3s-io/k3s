@@ -4,12 +4,12 @@ set -ve
 PROVISION="scripts/provision/$BOX/vagrant"
 
 if [ ! -f /etc/vagrant_box_build_time ]; then
-    echo "This script should only be called during vagrant provisioning"
+    echo 'This script should only be called during vagrant provisioning'
     exit 1
 fi
 
-if [[ $HOME == /go/* ]]; then
-    echo "Must not launch vagrant from /go/"
+if [[ $HOME = /go/* ]]; then
+    echo 'Must not launch vagrant from /go/'
     exit 1
 fi 
 cd
@@ -31,9 +31,9 @@ fi
 cat <<EOF >/etc/profile.d/env.sh
 export ARCH=amd64
 export GO111MODULE=off
-export GOPATH="$GOPATH"
+export GOPATH=$GOPATH
 export PATH=/usr/local/bin:$PATH:/usr/local/go/bin:$GOPATH/bin
-export HOME="$HOME" && cd
+export HOME=$HOME && cd
 EOF
 . /etc/profile.d/env.sh
 
@@ -72,7 +72,7 @@ EOF
 download_go() {
     goversion=$(grep "^FROM " Dockerfile.dapper | sed -e 's/^FROM golang:\(.*\)-.*/\1/')
     if [ -z "$goversion" ]; then
-        echo "Cannot find version of go to fetch"
+        echo 'Cannot find version of go to fetch'
         return 1
     fi
     echo "Installing go $goversion"
@@ -84,7 +84,7 @@ download_go() {
 download_dqlite() {
     dqliteURL="https://github.com/$(grep dqlite-build Dockerfile.dapper | sed -e 's/^.*--from=\([^ ]*\).*$/\1/' -e 's|:|/releases/download/|')/dqlite-$ARCH.tgz"
     if [ -z "$dqliteURL" ]; then
-        echo "Cannot find dqlite URL to fetch"
+        echo 'Cannot find dqlite URL to fetch'
         return 1
     fi
     mkdir -p /usr/src/
@@ -94,7 +94,7 @@ download_dqlite() {
 
 # --- Run vagrant provision script if available
 if [ ! -f "${PROVISION}" ]; then
-  echo 'WARNING: Unable to execute provision script "${PROVISION}"'
+  echo "WARNING: Unable to execute provision script \"${PROVISION}\""
   exit
 fi
 echo "running '${PROVISION}'..." && \
