@@ -13,7 +13,7 @@ RUN rm -rf /go/src /go/pkg
 ARG DAPPER_HOST_ARCH
 ENV ARCH $DAPPER_HOST_ARCH
 
-RUN if [ "${ARCH}" == "amd64" ]; then \
+RUN if [ "${ARCH}" = 'amd64' ]; then \
         curl -sL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s v1.15.0; \
     fi
 
