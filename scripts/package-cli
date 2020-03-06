@@ -8,7 +8,8 @@ cd $(dirname $0)/..
 GO=${GO-go}
 
 for i in crictl kubectl k3s-agent k3s-server k3s; do
-    ln -fs containerd bin/$i
+    rm -f bin/$i
+    ln -s containerd bin/$i
 done
 
 for i in bridge flannel host-local loopback portmap; do
