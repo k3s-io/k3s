@@ -9,7 +9,6 @@ import (
 	net2 "net"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -36,7 +35,6 @@ import (
 
 const (
 	MasterRoleLabelKey = "node-role.kubernetes.io/master"
-	NginxIngressImage  = "quay.io/kubernetes-ingress-controller/nginx-ingress-controller"
 )
 
 func resolveDataDir(dataDir string) (string, error) {
@@ -174,7 +172,6 @@ func stageFiles(ctx context.Context, sc *Context, controlConfig *config.Control)
 		"%{CLUSTER_DNS}%":                controlConfig.ClusterDNS.String(),
 		"%{CLUSTER_DOMAIN}%":             controlConfig.ClusterDomain,
 		"%{DEFAULT_LOCAL_STORAGE_PATH}%": controlConfig.DefaultLocalStoragePath,
-		"%{NGINX_IMAGE}":                 nginxImage(),
 	}
 
 	if err := deploy.Stage(dataDir, templateVars, controlConfig.Skips); err != nil {
@@ -414,12 +411,4 @@ func setMasterRoleLabel(ctx context.Context, nodes v1.NodeClient) error {
 		}
 	}
 	return nil
-}
-
-func nginxImage() string {
-	nginxImage := NginxIngressImage
-	if runtime.GOARCH == "arm" || runtime.GOARCH == "arm64" {
-		nginxImage = fmt.Sprintf("%s-%s", nginxImage, runtime.GOARCH)
-	}
-	return nginxImage
 }
