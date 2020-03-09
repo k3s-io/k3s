@@ -11,4 +11,5 @@ spec:
     controller.metrics.enabled: "true"
     controller.publishService.enabled: "true"
     controller.image.repository: "k3sio/nginx-ingress-controller"
+    defaultBackend.image.repository: "k3sio/k8s-defaultbackend"
 
