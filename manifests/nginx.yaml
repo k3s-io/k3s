@@ -10,5 +10,5 @@ spec:
     controller.service.enableHttps: "true"
     controller.metrics.enabled: "true"
     controller.publishService.enabled: "true"
-    controller.image.repository: "%{NGINX_IMAGE}"
+    controller.image.repository: "k3sio/nginx-ingress-controller"
 
