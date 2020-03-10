@@ -4,8 +4,7 @@ all_services=(
     coredns
     local-path-provisioner
     metrics-server
-    nginx-ingress-controller
-    nginx-ingress-default-backend
+    traefik
 )
 
 export NUM_SERVERS=1
