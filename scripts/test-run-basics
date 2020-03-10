@@ -1,14 +1,39 @@
 #!/bin/bash
 
+all_services=(
+    coredns
+    local-path-provisioner
+    metrics-server
+    nginx-ingress-controller
+    nginx-ingress-default-backend
+)
+
 export NUM_SERVERS=1
 export NUM_AGENTS=1
-export SERVER_ARGS='--no-deploy=traefik,coredns,local-storage,metrics-server'
+export WAIT_SERVICES="${all_services[@]}"
 
 start-test() {
     docker exec $(cat $TEST_DIR/servers/1/metadata/name) check-config || true
     verify-valid-versions $(cat $TEST_DIR/servers/1/metadata/name)
+    verify-airgap-images $(cat $TEST_DIR/{servers,agents}/*/metadata/name)
 }
 export -f start-test
+
+# -- check for changes to the airgap image list
+verify-airgap-images() {
+    local airgap_image_list='scripts/airgap/image-list.txt'
+
+    for name in $@; do
+        docker exec $name crictl images -o json \
+            | jq -r '.images[].repoTags[0] | select(. != null)'
+    done | sort -u >$airgap_image_list.tmp
+
+    if ! diff $airgap_image_list{,.tmp}; then
+        echo '[ERROR] Failed airgap image check'
+        return 1
+    fi
+}
+export -f verify-airgap-images
 
 # --- create a basic cluster and check for valid versions
 LABEL=BASICS run-test
