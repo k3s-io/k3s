@@ -4,7 +4,7 @@ ARCH=${ARCH:-$(go env GOARCH)}
 SUFFIX="-${ARCH}"
 GIT_TAG=$DRONE_TAG
 TREE_STATE=clean
-COMMIT=unknown
+COMMIT=$DRONE_COMMIT
 
 if [ -d .git ]; then
     if [ -z "$GIT_TAG" ]; then
