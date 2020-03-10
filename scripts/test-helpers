@@ -437,6 +437,14 @@ export -f provision-cluster
 
 # ---
 
+early-exit() {
+    printf "\033[33m$1\033[m\n"
+    exit $2
+}
+export -f early-exit
+
+# ---
+
 run-test() {
     export PROVISION_LOCK=$(mktemp)
     ./scripts/test-runner $@ &
@@ -454,27 +462,27 @@ export -f run-test
 # ---
 
 e2e-test() {
-  local label=$label
-  if [ -n "$LABEL_SUFFIX" ]; then
-    label="$label-$LABEL_SUFFIX"
-  fi
-  local logOutput=
-  if [ -n "$E2E_OUTPUT" ]; then
-    logOutput=$E2E_OUTPUT/$logName
-  fi
-  LABEL=$label LOG_OUTPUT=$logOutput run-test $@
+    local label=$label
+    if [ -n "$LABEL_SUFFIX" ]; then
+        label="$label-$LABEL_SUFFIX"
+    fi
+    local logOutput=
+    if [ -n "$E2E_OUTPUT" ]; then
+        logOutput=$E2E_OUTPUT/$logName
+    fi
+    LABEL=$label LOG_OUTPUT=$logOutput run-test $@
 }
 
 # ---
 
 run-e2e-tests() {
-  label=PARALLEL \
-      logName=e2e-STATUS-${ARCH}-parallel.log \
-      e2e-test ${sonobuoyParallelArgs[@]}
+    label=PARALLEL \
+        logName=e2e-STATUS-${ARCH}-parallel.log \
+        e2e-test ${sonobuoyParallelArgs[@]}
 
-  label=SERIAL \
-      logName=e2e-STATUS-${ARCH}-serial.log \
-      e2e-test ${sonobuoySerialArgs[@]}
+    label=SERIAL \
+        logName=e2e-STATUS-${ARCH}-serial.log \
+        e2e-test ${sonobuoySerialArgs[@]}
 }
 export -f run-e2e-tests
 

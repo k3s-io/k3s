@@ -28,3 +28,4 @@ __pycache__
 /tests/.tox/
 /tests/.vscode
 /sonobuoy-output
+*.tmp
