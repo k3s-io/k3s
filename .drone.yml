@@ -75,6 +75,14 @@ steps:
   commands:
   - scripts/provision/generic/centos7/yum-install-rpm-tools
   - scripts/package-rpm
+  when:
+    instance:
+    - drone-publish.rancher.io
+    ref:
+    - refs/head/master
+    - refs/tags/*
+    event:
+    - tag
 
 - name: test
   image: rancher/dapper:v0.4.2
@@ -187,6 +195,14 @@ steps:
   commands:
   - scripts/provision/generic/centos7/yum-install-rpm-tools
   - scripts/package-rpm
+  when:
+    instance:
+    - drone-publish.rancher.io
+    ref:
+    - refs/head/master
+    - refs/tags/*
+    event:
+    - tag
 
 - name: test
   image: rancher/dapper:v0.4.2
