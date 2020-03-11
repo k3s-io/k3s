@@ -1,3 +1,5 @@
+// +build !windows
+
 package rootless
 
 import (
@@ -89,7 +91,8 @@ func createParentOpt(stateDir string) (*parent.Opt, error) {
 	}
 
 	opt := &parent.Opt{
-		StateDir: stateDir,
+		StateDir:    stateDir,
+		CreatePIDNS: true,
 	}
 
 	mtu := 0
@@ -102,7 +105,7 @@ func createParentOpt(stateDir string) (*parent.Opt, error) {
 	if _, err := exec.LookPath(binary); err != nil {
 		return nil, err
 	}
-	opt.NetworkDriver = slirp4netns.NewParentDriver(binary, mtu, ipnet, disableHostLoopback, "")
+	opt.NetworkDriver = slirp4netns.NewParentDriver(binary, mtu, ipnet, disableHostLoopback, "", false, false)
 	opt.PortDriver, err = portbuiltin.NewParentDriver(&logrusDebugWriter{}, stateDir)
 	if err != nil {
 		return nil, err
@@ -130,5 +133,7 @@ func createChildOpt() (*child.Opt, error) {
 	opt.PortDriver = portbuiltin.NewChildDriver(&logrusDebugWriter{})
 	opt.CopyUpDirs = []string{"/etc", "/run", "/var/lib"}
 	opt.CopyUpDriver = tmpfssymlink.NewChildDriver()
+	opt.MountProcfs = true
+	opt.Reaper = true
 	return opt, nil
 }

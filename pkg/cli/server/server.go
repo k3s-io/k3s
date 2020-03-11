@@ -100,6 +100,7 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	serverConfig.ControlConfig.DisableNPC = cfg.DisableNPC
 	serverConfig.ControlConfig.ClusterInit = cfg.ClusterInit
 	serverConfig.ControlConfig.ClusterReset = cfg.ClusterReset
+	serverConfig.ControlConfig.EncryptSecrets = cfg.EncryptSecrets
 
 	if cmds.AgentConfig.FlannelIface != "" && cmds.AgentConfig.NodeIP == "" {
 		cmds.AgentConfig.NodeIP = netutil.GetIPFromInterface(cmds.AgentConfig.FlannelIface)
@@ -150,19 +151,21 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 		serverConfig.ControlConfig.DefaultLocalStoragePath = cfg.DefaultLocalStoragePath
 	}
 
-	noDeploys := make([]string, 0)
+	serverConfig.ControlConfig.Skips = map[string]bool{}
 	for _, noDeploy := range app.StringSlice("no-deploy") {
-		for _, splitNoDeploy := range strings.Split(noDeploy, ",") {
-			noDeploys = append(noDeploys, splitNoDeploy)
+		for _, v := range strings.Split(noDeploy, ",") {
+			serverConfig.ControlConfig.Skips[v] = true
 		}
 	}
-
-	for _, noDeploy := range noDeploys {
-		if noDeploy == "servicelb" {
-			serverConfig.DisableServiceLB = true
-			continue
+	serverConfig.ControlConfig.Disables = map[string]bool{}
+	for _, disable := range app.StringSlice("disable") {
+		for _, v := range strings.Split(disable, ",") {
+			serverConfig.ControlConfig.Skips[v] = true
+			serverConfig.ControlConfig.Disables[v] = true
 		}
-		serverConfig.ControlConfig.Skips = append(serverConfig.ControlConfig.Skips, noDeploy)
+	}
+	if serverConfig.ControlConfig.Skips["servicelb"] {
+		serverConfig.DisableServiceLB = true
 	}
 
 	logrus.Info("Starting k3s ", app.App.Version)

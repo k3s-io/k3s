@@ -7,9 +7,9 @@ replace (
 	github.com/containerd/btrfs => github.com/containerd/btrfs v0.0.0-20181101203652-af5082808c83
 	github.com/containerd/cgroups => github.com/containerd/cgroups v0.0.0-20190717030353-c4b9ac5c7601
 	github.com/containerd/console => github.com/containerd/console v0.0.0-20181022165439-0650fd9eeb50
-	github.com/containerd/containerd => github.com/rancher/containerd v1.3.3-k3s1
+	github.com/containerd/containerd => github.com/rancher/containerd v1.3.3-k3s2
 	github.com/containerd/continuity => github.com/containerd/continuity v0.0.0-20190815185530-f2a389ac0a02
-	github.com/containerd/cri => github.com/rancher/cri v1.3.0-k3s.3
+	github.com/containerd/cri => github.com/rancher/cri v1.3.0-k3s.4
 	github.com/containerd/fifo => github.com/containerd/fifo v0.0.0-20190816180239-bda0ff6ed73c
 	github.com/containerd/go-runc => github.com/containerd/go-runc v0.0.0-20190911050354-e029b79d8cda
 	github.com/containerd/typeurl => github.com/containerd/typeurl v0.0.0-20180627222232-a93fcdb778cd
@@ -82,7 +82,6 @@ require (
 	github.com/flosch/pongo2 v0.0.0-20190707114632-bbf5a6c351f4 // indirect
 	github.com/go-bindata/go-bindata v3.1.2+incompatible
 	github.com/go-sql-driver/mysql v1.4.1
-	github.com/gofrs/flock v0.7.1 // indirect
 	github.com/gogo/googleapis v1.3.0 // indirect
 	github.com/google/tcpproxy v0.0.0-20180808230851-dfa16c61dad2
 	github.com/gorilla/mux v1.7.3
@@ -95,6 +94,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.13.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/opencontainers/runc v1.0.0-rc9
+	github.com/opencontainers/selinux v1.3.1-0.20190929122143-5215b1806f52
 	github.com/pkg/errors v0.8.1
 	github.com/rakelkar/gonetsh v0.0.0-20190719023240-501daadcadf8 // indirect
 	github.com/rancher/dynamiclistener v0.2.0
@@ -103,11 +103,10 @@ require (
 	github.com/rancher/remotedialer v0.2.0
 	github.com/rancher/wrangler v0.4.0
 	github.com/rancher/wrangler-api v0.4.0
-	github.com/rootless-containers/rootlesskit v0.6.0
+	github.com/rootless-containers/rootlesskit v0.7.2
 	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/pflag v1.0.5
 	github.com/tchap/go-patricia v2.3.0+incompatible // indirect
-	github.com/theckman/go-flock v0.7.1 // indirect
 	github.com/urfave/cli v1.22.2
 	golang.org/x/crypto v0.0.0-20190820162420-60c769a6c586
 	golang.org/x/net v0.0.0-20191204025024-5ee1b9f4859a
@@ -124,6 +123,5 @@ require (
 	k8s.io/component-base v0.0.0
 	k8s.io/cri-api v0.0.0
 	k8s.io/klog v1.0.0
-	k8s.io/kubelet v0.0.0
 	k8s.io/kubernetes v1.16.0
 )

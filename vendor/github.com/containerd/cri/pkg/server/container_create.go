@@ -39,6 +39,7 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	imagespec "github.com/opencontainers/image-spec/specs-go/v1"
 	runtimespec "github.com/opencontainers/runtime-spec/specs-go"
+	"github.com/opencontainers/selinux/go-selinux/label"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	runtime "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
@@ -172,6 +173,18 @@ func (c *criService) CreateContainer(ctx context.Context, r *runtime.CreateConta
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to generate container %q spec", id)
 	}
+
+	meta.ProcessLabel = spec.Process.SelinuxLabel
+	if config.GetLinux().GetSecurityContext().GetPrivileged() {
+		// If privileged don't set the SELinux label but still record it on the container so
+		// the unused MCS label can be release later
+		spec.Process.SelinuxLabel = ""
+	}
+	defer func() {
+		if retErr != nil {
+			_ = label.ReleaseLabel(spec.Process.SelinuxLabel)
+		}
+	}()
 
 	log.G(ctx).Debugf("Container %q spec: %#+v", id, spew.NewFormatter(spec))
 
@@ -324,7 +337,7 @@ func (c *criService) CreateContainer(ctx context.Context, r *runtime.CreateConta
 
 func (c *criService) generateContainerSpec(id string, sandboxID string, sandboxPid uint32, config *runtime.ContainerConfig,
 	sandboxConfig *runtime.PodSandboxConfig, imageConfig *imagespec.ImageConfig, extraMounts []*runtime.Mount,
-	ociRuntime config.Runtime) (*runtimespec.Spec, error) {
+	ociRuntime config.Runtime) (retSpec *runtimespec.Spec, retErr error) {
 
 	specOpts := []oci.SpecOpts{
 		customopts.WithoutRunMount,
@@ -366,11 +379,27 @@ func (c *criService) generateContainerSpec(id string, sandboxID string, sandboxP
 	specOpts = append(specOpts, oci.WithEnv(env))
 
 	securityContext := config.GetLinux().GetSecurityContext()
-	selinuxOpt := securityContext.GetSelinuxOptions()
-	processLabel, mountLabel, err := initSelinuxOpts(selinuxOpt)
+	labelOptions := toLabel(securityContext.GetSelinuxOptions())
+	if len(labelOptions) == 0 {
+		// Use pod level SELinux config
+		if sandbox, err := c.sandboxStore.Get(sandboxID); err == nil {
+			labelOptions, err = label.DupSecOpt(sandbox.ProcessLabel)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	processLabel, mountLabel, err := label.InitLabels(labelOptions)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to init selinux options %+v", securityContext.GetSelinuxOptions())
 	}
+	defer func() {
+		if retErr != nil {
+			_ = label.ReleaseLabel(processLabel)
+		}
+	}()
+
 	specOpts = append(specOpts, customopts.WithMounts(c.os, config, extraMounts, mountLabel))
 
 	if !c.config.DisableProcMount {

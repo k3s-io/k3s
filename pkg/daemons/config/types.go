@@ -25,6 +25,7 @@ type Node struct {
 	Docker                   bool
 	ContainerRuntimeEndpoint string
 	NoFlannel                bool
+	DisableSELinux           bool
 	FlannelBackend           string
 	FlannelConf              string
 	FlannelConfOverride      bool
@@ -96,7 +97,8 @@ type Control struct {
 	KubeConfigOutput         string
 	KubeConfigMode           string
 	DataDir                  string
-	Skips                    []string
+	Skips                    map[string]bool
+	Disables                 map[string]bool
 	Datastore                endpoint.Config
 	NoScheduler              bool
 	ExtraAPIArgs             []string
@@ -112,6 +114,7 @@ type Control struct {
 	DisableNPC               bool
 	ClusterInit              bool
 	ClusterReset             bool
+	EncryptSecrets           bool
 
 	BindAddress string
 	SANs        []string
@@ -129,6 +132,7 @@ type ControlRuntimeBootstrap struct {
 	RequestHeaderCA    string
 	RequestHeaderCAKey string
 	IPSECKey           string
+	EncryptionConfig   string
 }
 
 type ControlRuntime struct {

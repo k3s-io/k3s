@@ -24,10 +24,10 @@ import (
 	"github.com/rancher/k3s/pkg/rootlessports"
 	"github.com/rancher/k3s/pkg/servicelb"
 	"github.com/rancher/k3s/pkg/static"
+	"github.com/rancher/k3s/pkg/util"
 	v1 "github.com/rancher/wrangler-api/pkg/generated/controllers/core/v1"
 	"github.com/rancher/wrangler/pkg/leader"
 	"github.com/rancher/wrangler/pkg/resolvehome"
-	"github.com/rancher/wrangler/pkg/slice"
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/net"
@@ -127,7 +127,7 @@ func startWrangler(ctx context.Context, config *Config) error {
 }
 
 func masterControllers(ctx context.Context, sc *Context, config *Config) error {
-	if !slice.ContainsString(config.ControlConfig.Skips, "coredns") {
+	if !config.ControlConfig.Skips["coredns"] {
 		if err := node.Register(ctx, sc.Core.Core().V1().ConfigMap(), sc.Core.Core().V1().Node()); err != nil {
 			return err
 		}
@@ -152,8 +152,8 @@ func masterControllers(ctx context.Context, sc *Context, config *Config) error {
 		return err
 	}
 
-	if !config.DisableServiceLB && config.Rootless {
-		return rootlessports.Register(ctx, sc.Core.Core().V1().Service(), config.ControlConfig.HTTPSPort)
+	if config.Rootless {
+		return rootlessports.Register(ctx, sc.Core.Core().V1().Service(), !config.DisableServiceLB, config.ControlConfig.HTTPSPort)
 	}
 
 	return nil
@@ -176,7 +176,7 @@ func stageFiles(ctx context.Context, sc *Context, controlConfig *config.Control)
 		return err
 	}
 
-	return deploy.WatchFiles(ctx, sc.Apply, sc.K3s.K3s().V1().Addon(), dataDir)
+	return deploy.WatchFiles(ctx, sc.Apply, sc.K3s.K3s().V1().Addon(), controlConfig.Disables, dataDir)
 }
 
 func HomeKubeConfig(write, rootless bool) (string, error) {
@@ -264,12 +264,12 @@ func writeKubeConfig(certs string, config *Config) error {
 	if config.ControlConfig.KubeConfigMode != "" {
 		mode, err := strconv.ParseInt(config.ControlConfig.KubeConfigMode, 8, 0)
 		if err == nil {
-			os.Chmod(kubeConfig, os.FileMode(mode))
+			util.SetFileModeForPath(kubeConfig, os.FileMode(mode))
 		} else {
 			logrus.Errorf("failed to set %s to mode %s: %v", kubeConfig, os.FileMode(mode), err)
 		}
 	} else {
-		os.Chmod(kubeConfig, os.FileMode(0600))
+		util.SetFileModeForPath(kubeConfig, os.FileMode(0600))
 	}
 
 	if kubeConfigSymlink != kubeConfig {

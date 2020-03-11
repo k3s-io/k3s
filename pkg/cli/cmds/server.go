@@ -42,6 +42,7 @@ type Server struct {
 	DisableNPC               bool
 	ClusterInit              bool
 	ClusterReset             bool
+	EncryptSecrets           bool
 }
 
 var ServerConfig Server
@@ -192,8 +193,8 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Destination: &ServerConfig.DefaultLocalStoragePath,
 			},
 			cli.StringSliceFlag{
-				Name:  "no-deploy",
-				Usage: "(components) Do not deploy packaged components (valid items: coredns, servicelb, traefik, local-storage, metrics-server)",
+				Name:  "disable",
+				Usage: "(components) Do not deploy packaged components and delete any deployed components (valid items: coredns, servicelb, traefik, local-storage, metrics-server)",
 			},
 			cli.BoolFlag{
 				Name:        "disable-scheduler",
@@ -215,6 +216,7 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 			NodeLabels,
 			NodeTaints,
 			DockerFlag,
+			DisableSELinuxFlag,
 			CRIEndpointFlag,
 			PauseImageFlag,
 			PrivateRegistryFlag,
@@ -262,10 +264,19 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				EnvVar:      "K3S_CLUSTER_RESET",
 				Destination: &ServerConfig.ClusterReset,
 			},
+			cli.BoolFlag{
+				Name:        "secrets-encryption",
+				Usage:       "(experimental) Enable Secret encryption at rest",
+				Destination: &ServerConfig.EncryptSecrets,
+			},
 
 			// Hidden/Deprecated flags below
 
 			FlannelFlag,
+			cli.StringSliceFlag{
+				Name:  "no-deploy",
+				Usage: "(deprecated) Do not deploy packaged components (valid items: coredns, servicelb, traefik, local-storage, metrics-server)",
+			},
 			cli.StringFlag{
 				Name:        "cluster-secret",
 				Usage:       "(deprecated) use --token",

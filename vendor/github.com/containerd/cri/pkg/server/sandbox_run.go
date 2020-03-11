@@ -34,6 +34,7 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	imagespec "github.com/opencontainers/image-spec/specs-go/v1"
 	runtimespec "github.com/opencontainers/runtime-spec/specs-go"
+	"github.com/opencontainers/selinux/go-selinux/label"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
@@ -158,6 +159,18 @@ func (c *criService) RunPodSandbox(ctx context.Context, r *runtime.RunPodSandbox
 		return nil, errors.Wrap(err, "failed to generate sandbox container spec")
 	}
 	log.G(ctx).Debugf("Sandbox container %q spec: %#+v", id, spew.NewFormatter(spec))
+	sandbox.ProcessLabel = spec.Process.SelinuxLabel
+	defer func() {
+		if retErr != nil {
+			_ = label.ReleaseLabel(sandbox.ProcessLabel)
+		}
+	}()
+
+	if securityContext.GetPrivileged() {
+		// If privileged don't set selinux label, but we still record the MCS label so that
+		// the unused label can be freed later.
+		spec.Process.SelinuxLabel = ""
+	}
 
 	var specOpts []oci.SpecOpts
 	userstr, err := generateUserString(
@@ -328,7 +341,7 @@ func (c *criService) RunPodSandbox(ctx context.Context, r *runtime.RunPodSandbox
 }
 
 func (c *criService) generateSandboxContainerSpec(id string, config *runtime.PodSandboxConfig,
-	imageConfig *imagespec.ImageConfig, nsPath string, runtimePodAnnotations []string) (*runtimespec.Spec, error) {
+	imageConfig *imagespec.ImageConfig, nsPath string, runtimePodAnnotations []string) (retSpec *runtimespec.Spec, retErr error) {
 	// Creates a spec Generator with the default spec.
 	// TODO(random-liu): [P1] Compare the default settings with docker and containerd default.
 	specOpts := []oci.SpecOpts{
@@ -403,11 +416,15 @@ func (c *criService) generateSandboxContainerSpec(id string, config *runtime.Pod
 		},
 	}))
 
-	selinuxOpt := securityContext.GetSelinuxOptions()
-	processLabel, mountLabel, err := initSelinuxOpts(selinuxOpt)
+	processLabel, mountLabel, err := initLabelsFromOpt(securityContext.GetSelinuxOptions())
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to init selinux options %+v", securityContext.GetSelinuxOptions())
 	}
+	defer func() {
+		if retErr != nil && processLabel != "" {
+			_ = label.ReleaseLabel(processLabel)
+		}
+	}()
 
 	supplementalGroups := securityContext.GetSupplementalGroups()
 	specOpts = append(specOpts,

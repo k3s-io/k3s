@@ -151,7 +151,7 @@ github.com/container-storage-interface/spec/lib/go/csi
 github.com/containerd/cgroups
 # github.com/containerd/console v0.0.0-20180822173158-c12b1e7919c1 => github.com/containerd/console v0.0.0-20181022165439-0650fd9eeb50
 github.com/containerd/console
-# github.com/containerd/containerd v1.3.0-beta.2.0.20190828155532-0293cbd26c69 => github.com/rancher/containerd v1.3.3-k3s1
+# github.com/containerd/containerd v1.3.0-beta.2.0.20190828155532-0293cbd26c69 => github.com/rancher/containerd v1.3.3-k3s2
 github.com/containerd/containerd
 github.com/containerd/containerd/api/events
 github.com/containerd/containerd/api/services/containers/v1
@@ -288,7 +288,7 @@ github.com/containerd/continuity/pathdriver
 github.com/containerd/continuity/proto
 github.com/containerd/continuity/syscallx
 github.com/containerd/continuity/sysx
-# github.com/containerd/cri v0.0.0-00010101000000-000000000000 => github.com/rancher/cri v1.3.0-k3s.3
+# github.com/containerd/cri v0.0.0-00010101000000-000000000000 => github.com/rancher/cri v1.3.0-k3s.4
 github.com/containerd/cri
 github.com/containerd/cri/pkg/annotations
 github.com/containerd/cri/pkg/api/runtimeoptions/v1
@@ -306,6 +306,7 @@ github.com/containerd/cri/pkg/server/io
 github.com/containerd/cri/pkg/store
 github.com/containerd/cri/pkg/store/container
 github.com/containerd/cri/pkg/store/image
+github.com/containerd/cri/pkg/store/label
 github.com/containerd/cri/pkg/store/sandbox
 github.com/containerd/cri/pkg/store/snapshot
 github.com/containerd/cri/pkg/util
@@ -383,7 +384,6 @@ github.com/docker/docker/api/types/volume
 github.com/docker/docker/client
 github.com/docker/docker/daemon/logger/jsonfilelog/jsonlog
 github.com/docker/docker/errdefs
-github.com/docker/docker/pkg/idtools
 github.com/docker/docker/pkg/jsonmessage
 github.com/docker/docker/pkg/longpath
 github.com/docker/docker/pkg/mount
@@ -774,7 +774,7 @@ github.com/rancher/wrangler-api/pkg/generated/controllers/rbac
 github.com/rancher/wrangler-api/pkg/generated/controllers/rbac/v1
 # github.com/robfig/cron v1.1.0
 github.com/robfig/cron
-# github.com/rootless-containers/rootlesskit v0.6.0
+# github.com/rootless-containers/rootlesskit v0.7.2
 github.com/rootless-containers/rootlesskit/pkg/api/client
 github.com/rootless-containers/rootlesskit/pkg/api/router
 github.com/rootless-containers/rootlesskit/pkg/child
@@ -787,8 +787,16 @@ github.com/rootless-containers/rootlesskit/pkg/network/iputils
 github.com/rootless-containers/rootlesskit/pkg/network/parentutils
 github.com/rootless-containers/rootlesskit/pkg/network/slirp4netns
 github.com/rootless-containers/rootlesskit/pkg/parent
+github.com/rootless-containers/rootlesskit/pkg/parent/idtools
 github.com/rootless-containers/rootlesskit/pkg/port
 github.com/rootless-containers/rootlesskit/pkg/port/builtin
+github.com/rootless-containers/rootlesskit/pkg/port/builtin/child
+github.com/rootless-containers/rootlesskit/pkg/port/builtin/msg
+github.com/rootless-containers/rootlesskit/pkg/port/builtin/opaque
+github.com/rootless-containers/rootlesskit/pkg/port/builtin/parent
+github.com/rootless-containers/rootlesskit/pkg/port/builtin/parent/tcp
+github.com/rootless-containers/rootlesskit/pkg/port/builtin/parent/udp
+github.com/rootless-containers/rootlesskit/pkg/port/builtin/parent/udp/udpproxy
 github.com/rootless-containers/rootlesskit/pkg/port/portutil
 # github.com/rubiojr/go-vhd v0.0.0-20160810183302-0bfd3b39853c
 github.com/rubiojr/go-vhd/vhd
