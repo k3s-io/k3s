@@ -216,6 +216,7 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 			NodeLabels,
 			NodeTaints,
 			DockerFlag,
+			DisableSELinuxFlag,
 			CRIEndpointFlag,
 			PauseImageFlag,
 			PrivateRegistryFlag,

@@ -40,7 +40,7 @@ node
 Start provisioning of the cluster using the following command:
 
 ```
-ansible-playbook site.yml
+ansible-playbook site.yml -i inventory/hosts.ini
 ```
 
 ## Kubeconfig

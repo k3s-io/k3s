@@ -1,3 +1,5 @@
+// +build !windows
+
 package rootless
 
 import (
@@ -17,6 +19,8 @@ func setupMounts(stateDir string) error {
 		{"/var/run", ""},
 		{"/var/log", filepath.Join(stateDir, "logs")},
 		{"/var/lib/cni", filepath.Join(stateDir, "cni")},
+		{"/var/lib/kubelet", filepath.Join(stateDir, "kubelet")},
+		{"/etc/rancher", filepath.Join(stateDir, "etc", "rancher")},
 	}
 
 	for _, v := range mountMap {

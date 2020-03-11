@@ -6,9 +6,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/pkg/errors"
+	"golang.org/x/sys/unix"
 
-	"github.com/rootless-containers/rootlesskit/pkg/common"
+	"github.com/pkg/errors"
 )
 
 // generateEtcHosts makes sure the current hostname is resolved into
@@ -56,11 +56,9 @@ func mountEtcHosts(tempDir string) error {
 	if err := ioutil.WriteFile(myEtcHosts, newEtcHosts, 0644); err != nil {
 		return errors.Wrapf(err, "writing %s", myEtcHosts)
 	}
-	cmds := [][]string{
-		{"mount", "--bind", myEtcHosts, "/etc/hosts"},
-	}
-	if err := common.Execs(os.Stderr, os.Environ(), cmds); err != nil {
-		return errors.Wrapf(err, "executing %v", cmds)
+
+	if err := unix.Mount(myEtcHosts, "/etc/hosts", "", uintptr(unix.MS_BIND), ""); err != nil {
+		return errors.Wrapf(err, "failed to create bind mount /etc/hosts for %s", myEtcHosts)
 	}
 	return nil
 }

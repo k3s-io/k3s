@@ -5,9 +5,10 @@ import (
 	"os"
 	"path/filepath"
 
+	"golang.org/x/sys/unix"
+
 	"github.com/pkg/errors"
 
-	"github.com/rootless-containers/rootlesskit/pkg/common"
 	"github.com/rootless-containers/rootlesskit/pkg/copyup"
 )
 
@@ -33,24 +34,23 @@ func (d *childDriver) CopyUp(dirs []string) ([]string, error) {
 			// TODO: we can support copy-up /tmp by changing bind0TempDir
 			return copied, errors.New("/tmp cannot be copied up")
 		}
-		cmds := [][]string{
-			// TODO: read-only bind (does not work well for /run)
-			{"mount", "--rbind", d, bind0},
-			{"mount", "-n", "-t", "tmpfs", "none", d},
+
+		if err := unix.Mount(d, bind0, "", uintptr(unix.MS_BIND|unix.MS_REC), ""); err != nil {
+			return copied, errors.Wrapf(err, "failed to create bind mount on %s", d)
 		}
-		if err := common.Execs(os.Stderr, os.Environ(), cmds); err != nil {
-			return copied, errors.Wrapf(err, "executing %v", cmds)
+
+		if err := unix.Mount("none", d, "tmpfs", 0, ""); err != nil {
+			return copied, errors.Wrapf(err, "failed to mount tmpfs on %s", d)
 		}
+
 		bind1, err := ioutil.TempDir(d, ".ro")
 		if err != nil {
 			return copied, errors.Wrapf(err, "creating a directory under %s", d)
 		}
-		cmds = [][]string{
-			{"mount", "-n", "--move", bind0, bind1},
+		if err := unix.Mount(bind0, bind1, "", uintptr(unix.MS_MOVE), ""); err != nil {
+			return copied, errors.Wrapf(err, "failed to move mount point from %s to %s", bind0, bind1)
 		}
-		if err := common.Execs(os.Stderr, os.Environ(), cmds); err != nil {
-			return copied, errors.Wrapf(err, "executing %v", cmds)
-		}
+
 		files, err := ioutil.ReadDir(bind1)
 		if err != nil {
 			return copied, errors.Wrapf(err, "reading dir %s", bind1)

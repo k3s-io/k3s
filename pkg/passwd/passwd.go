@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/rancher/k3s/pkg/token"
+	"github.com/rancher/k3s/pkg/util"
 )
 
 type entry struct {
@@ -133,17 +134,21 @@ func (p *Passwd) Write(passwdFile string) error {
 }
 
 func writePasswords(passwdFile string, records [][]string) error {
-	out, err := os.Create(passwdFile + ".tmp")
+	err := func() error {
+		// ensure to close tmp file before rename for filesystems like NTFS
+		out, err := os.Create(passwdFile + ".tmp")
+		if err != nil {
+			return err
+		}
+		defer out.Close()
+
+		if err := util.SetFileModeForFile(out, 0600); err != nil {
+			return err
+		}
+
+		return csv.NewWriter(out).WriteAll(records)
+	}()
 	if err != nil {
-		return err
-	}
-	defer out.Close()
-
-	if err := out.Chmod(0600); err != nil {
-		return err
-	}
-
-	if err := csv.NewWriter(out).WriteAll(records); err != nil {
 		return err
 	}
 
