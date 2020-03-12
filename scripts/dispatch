@@ -1,6 +1,5 @@
 #!/bin/sh
 set -e
-set -x
 
 REPO="https://api.github.com/repos/rancher/k3s-upgrade/dispatches"
 
