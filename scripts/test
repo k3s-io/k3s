@@ -13,19 +13,18 @@ mkdir -p $artifacts
 
 # ---
 
+[ "$ARCH" = 'arm' ] && \
+  early-exit "Skipping sonobuoy, images not available for $ARCH."
+
 E2E_OUTPUT=$artifacts test-run-sonobuoy
 
 # ---
 
-if [ "$DRONE_BUILD_EVENT" = 'tag' ]; then
-  printf "\033[33mSkipping remaining tests on tag.\033[m\n"
-  exit 0
-fi
+[ "$DRONE_BUILD_EVENT" = 'tag' ] && \
+  early-exit 'Skipping remaining tests on tag.'
 
-if [ "$ARCH" != 'amd64' ]; then
-  printf "\033[33mSkipping remaining tests, images not available for $ARCH.\033[m\n"
-  exit 0
-fi
+[ "$ARCH" != 'amd64' ] && \
+  early-exit "Skipping remaining tests, images not available for $ARCH."
 
 # ---
 
