@@ -1,12 +1,7 @@
 ./bin
 ./etc
-./build/data
-./build/data.tar.gz
 ./pkg/data/zz_generated_bindata.go
-./package/data.tar.gz
 ./.vagrant
 ./.cache
 ./.dapper
-./data-dir
-./dist
 ./.trash-cache

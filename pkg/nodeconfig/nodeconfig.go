@@ -16,6 +16,7 @@ const (
 	NodeArgsAnnotation       = "k3s.io/node-args"
 	NodeEnvAnnotation        = "k3s.io/node-env"
 	NodeConfigHashAnnotation = "k3s.io/node-config-hash"
+	OmittedValue             = "********"
 )
 
 func getNodeArgs() (string, error) {
@@ -31,7 +32,7 @@ func getNodeArgs() (string, error) {
 	for i, arg := range nodeArgsList {
 		if isSecret(arg) {
 			if i+1 < len(nodeArgsList) {
-				nodeArgsList[i+1] = ""
+				nodeArgsList[i+1] = OmittedValue
 			}
 		}
 	}
@@ -52,7 +53,7 @@ func getNodeEnv() (string, error) {
 	}
 	for key := range k3sEnv {
 		if isSecret(key) {
-			k3sEnv[key] = ""
+			k3sEnv[key] = OmittedValue
 		}
 	}
 	k3sEnvJSON, err := json.Marshal(k3sEnv)
