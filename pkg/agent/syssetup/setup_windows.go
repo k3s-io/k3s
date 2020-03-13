@@ -1,0 +1,3 @@
+package syssetup
+
+func Configure() {}

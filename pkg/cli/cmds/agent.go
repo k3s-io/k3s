@@ -28,6 +28,7 @@ type Agent struct {
 	Rootless                 bool
 	RootlessAlreadyUnshared  bool
 	WithNodeID               bool
+	DisableSELinux           bool
 	AgentShared
 	ExtraKubeletArgs   cli.StringSlice
 	ExtraKubeProxyArgs cli.StringSlice
@@ -127,6 +128,12 @@ var (
 		Usage: "(agent/node) Registering and starting kubelet with set of labels",
 		Value: &AgentConfig.Labels,
 	}
+	DisableSELinuxFlag = cli.BoolFlag{
+		Name:        "disable-selinux",
+		Usage:       "(agent/node) Disable SELinux in containerd if currently enabled",
+		Hidden:      true,
+		Destination: &AgentConfig.DisableSELinux,
+	}
 )
 
 func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
@@ -169,6 +176,7 @@ func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
 			NodeLabels,
 			NodeTaints,
 			DockerFlag,
+			DisableSELinuxFlag,
 			CRIEndpointFlag,
 			PauseImageFlag,
 			PrivateRegistryFlag,

@@ -25,6 +25,7 @@ type Node struct {
 	Docker                   bool
 	ContainerRuntimeEndpoint string
 	NoFlannel                bool
+	DisableSELinux           bool
 	FlannelBackend           string
 	FlannelConf              string
 	FlannelConfOverride      bool

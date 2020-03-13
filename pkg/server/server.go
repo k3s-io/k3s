@@ -24,6 +24,7 @@ import (
 	"github.com/rancher/k3s/pkg/rootlessports"
 	"github.com/rancher/k3s/pkg/servicelb"
 	"github.com/rancher/k3s/pkg/static"
+	"github.com/rancher/k3s/pkg/util"
 	v1 "github.com/rancher/wrangler-api/pkg/generated/controllers/core/v1"
 	"github.com/rancher/wrangler/pkg/leader"
 	"github.com/rancher/wrangler/pkg/resolvehome"
@@ -263,12 +264,12 @@ func writeKubeConfig(certs string, config *Config) error {
 	if config.ControlConfig.KubeConfigMode != "" {
 		mode, err := strconv.ParseInt(config.ControlConfig.KubeConfigMode, 8, 0)
 		if err == nil {
-			os.Chmod(kubeConfig, os.FileMode(mode))
+			util.SetFileModeForPath(kubeConfig, os.FileMode(mode))
 		} else {
 			logrus.Errorf("failed to set %s to mode %s: %v", kubeConfig, os.FileMode(mode), err)
 		}
 	} else {
-		os.Chmod(kubeConfig, os.FileMode(0600))
+		util.SetFileModeForPath(kubeConfig, os.FileMode(0600))
 	}
 
 	if kubeConfigSymlink != kubeConfig {
