@@ -1,6 +1,8 @@
 #!/bin/bash
 set -e
 
+GO=${GO-go}
+
 mkdir -p $(dirname $0)/../bin
 cd $(dirname $0)/../bin
 
@@ -10,4 +12,4 @@ if echo -- "$@" | grep -q rootless; then
     ARGS=""
     PATH=$(pwd):$PATH
 fi
-go run -tags "apparmor" ../main.go server $ARGS "$@"
+"${GO}" run -tags "apparmor" ../main.go server $ARGS "$@"

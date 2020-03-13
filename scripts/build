@@ -5,6 +5,8 @@ cd $(dirname $0)/..
 
 . ./scripts/version.sh
 
+GO=${GO-go}
+
 PKG="github.com/rancher/k3s"
 PKG_CONTAINERD="github.com/containerd/containerd"
 PKG_RANCHER_CONTAINERD="github.com/rancher/containerd"
@@ -66,7 +68,7 @@ fi
 
 mkdir -p bin
 
-if [ -z "$GOARM" ] && [ "arm" = "$(go env GOARCH)" ]; then
+if [ -z "$GOARM" ] && [ "arm" = "$("${GO}" env GOARCH)" ]; then
     GOARM=7
 fi
 
@@ -98,24 +100,24 @@ if [ ! -x ${INSTALLBIN}/cni ]; then
     WORKDIR=$TMPDIR/src/github.com/containernetworking/plugins
     git clone -b $VERSION_CNIPLUGINS https://github.com/rancher/plugins.git $WORKDIR
     cd $WORKDIR
-    GOPATH=$TMPDIR CGO_ENABLED=0 go build -tags "$TAGS" -ldflags "$LDFLAGS $STATIC" -o $INSTALLBIN/cni
+    GOPATH=$TMPDIR CGO_ENABLED=0 "${GO}" build -tags "$TAGS" -ldflags "$LDFLAGS $STATIC" -o $INSTALLBIN/cni
 )
 fi
 # echo Building agent
-# CGO_ENABLED=1 go build -tags "$TAGS" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC" -o bin/k3s-agent ./cmd/agent/main.go
+# CGO_ENABLED=1 "${GO}" build -tags "$TAGS" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC" -o bin/k3s-agent ./cmd/agent/main.go
 echo Building server
-CGO_ENABLED=1 go build -tags "$TAGS" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC_SQLITE" -o bin/containerd ./cmd/server/main.go
+CGO_ENABLED=1 "${GO}" build -tags "$TAGS" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC_SQLITE" -o bin/containerd ./cmd/server/main.go
 ln -s containerd ./bin/k3s-agent
 ln -s containerd ./bin/k3s-server
 ln -s containerd ./bin/kubectl
 ln -s containerd ./bin/crictl
 ln -s containerd ./bin/ctr
 #echo Building hyperkube
-#CGO_ENABLED=1 go build -tags "$TAGS" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC_SQLITE" -o bin/hyperkube ./vendor/k8s.io/kubernetes/cmd/hyperkube/
+#CGO_ENABLED=1 "${GO}" build -tags "$TAGS" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC_SQLITE" -o bin/hyperkube ./vendor/k8s.io/kubernetes/cmd/hyperkube/
 #echo Building ctr
-#CGO_ENABLED=1 go build -tags "$TAGS" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC_SQLITE" -o bin/ctr ./cmd/ctr/main.go
+#CGO_ENABLED=1 "${GO}" build -tags "$TAGS" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC_SQLITE" -o bin/ctr ./cmd/ctr/main.go
 # echo Building containerd
-# CGO_ENABLED=0 go build -tags "$TAGS" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC" -o bin/containerd ./cmd/containerd/
+# CGO_ENABLED=0 "${GO}" build -tags "$TAGS" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC" -o bin/containerd ./cmd/containerd/
 echo Building runc
 rm -f ./vendor/github.com/opencontainers/runc/runc
 make EXTRA_LDFLAGS="-w -s" BUILDTAGS="$RUNC_TAGS" -C ./vendor/github.com/opencontainers/runc $RUNC_STATIC

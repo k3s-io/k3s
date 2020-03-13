@@ -1,6 +1,7 @@
 #!/bin/bash
 
-ARCH=${ARCH:-$(go env GOARCH)}
+GO=${GO-go}
+ARCH=${ARCH:-$("${GO}" env GOARCH)}
 SUFFIX="-${ARCH}"
 GIT_TAG=$DRONE_TAG
 TREE_STATE=clean
