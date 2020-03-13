@@ -33,9 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/net"
 )
 
-const (
-	MasterRoleLabelKey = "node-role.kubernetes.io/master"
-)
+const MasterRoleLabelKey = "node-role.kubernetes.io/master"
 
 func resolveDataDir(dataDir string) (string, error) {
 	dataDir, err := datadir.Resolve(dataDir)
