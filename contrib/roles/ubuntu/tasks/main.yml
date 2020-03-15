@@ -1,0 +1,24 @@
+---
+
+- name: Test for Ubuntu for Raspberry
+  stat:
+    path: /boot/firmware/nobtcmd.txt
+  register: cmdline
+
+- name: Activating cgroup on Ubuntu for Raspberry
+  lineinfile:
+    path: /boot/firmware/nobtcmd.txt
+    regexp: '^(.*rootwait fixrtc)$'
+    line: '\1 cgroup_enable=cpuset cgroup_memory=1 cgroup_enable=memory'
+    backrefs: true
+  when: ( cmdline.stat.path is defined )
+          and
+        ( ansible_facts.architecture is search("aarch") )
+  register: boot_cmdline
+
+- name: Rebooting on Ubuntu for Raspberry
+  shell: reboot now
+  ignore_errors: true
+  when: ( boot_cmdline | changed )
+          and
+        ( ansible_facts.architecture is search("aarch") )
