@@ -450,7 +450,7 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 			nodeConfig.FlannelConfOverride = true
 		}
 
-		if nodeConfig.FlannelConfTpl != "" {
+		if envInfo.FlannelConfTpl != "" {
 			nodeConfig.FlannelConfTpl = envInfo.FlannelConfTpl
 			nodeConfig.FlannelConfOverride = true
 		}
