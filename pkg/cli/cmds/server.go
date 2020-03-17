@@ -225,6 +225,7 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 			ResolvConfFlag,
 			FlannelIfaceFlag,
 			FlannelConfFlag,
+			FlannelConfTplFlag,
 			ExtraKubeletArgs,
 			ExtraKubeProxyArgs,
 			cli.BoolFlag{

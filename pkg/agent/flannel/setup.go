@@ -3,6 +3,7 @@ package flannel
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -113,11 +114,26 @@ func createFlannelConf(nodeConfig *config.Node) error {
 	if nodeConfig.FlannelConf == "" {
 		return nil
 	}
+
+	flannelConfTpl := flannelConf
+
 	if nodeConfig.FlannelConfOverride {
-		logrus.Infof("Using custom flannel conf defined at %s", nodeConfig.FlannelConf)
-		return nil
+		if nodeConfig.FlannelConfTpl == "" {
+			logrus.Infof("Using custom flannel conf defined at %s", nodeConfig.FlannelConf)
+			return nil
+		}
+
+		// While FlannelConfTpl is not nil, read bytes as template from the file to substitute flannelConf
+		bytes, err := ioutil.ReadFile(nodeConfig.FlannelConfTpl)
+		if err != nil {
+			logrus.Errorf("Cannot read flannel conf tpl:%s, err:%v", nodeConfig.FlannelConfTpl, err)
+			return err
+		}
+
+		flannelConfTpl = string(bytes)
 	}
-	confJSON := strings.Replace(flannelConf, "%CIDR%", nodeConfig.AgentConfig.ClusterCIDR.String(), -1)
+
+	confJSON := strings.Replace(flannelConfTpl, "%CIDR%", nodeConfig.AgentConfig.ClusterCIDR.String(), -1)
 
 	var backendConf string
 

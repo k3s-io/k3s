@@ -449,6 +449,12 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 			nodeConfig.FlannelConf = envInfo.FlannelConf
 			nodeConfig.FlannelConfOverride = true
 		}
+
+		if nodeConfig.FlannelConfTpl != "" {
+			nodeConfig.FlannelConfTpl = envInfo.FlannelConfTpl
+			nodeConfig.FlannelConfOverride = true
+		}
+
 		nodeConfig.AgentConfig.CNIBinDir = filepath.Dir(hostLocal)
 		nodeConfig.AgentConfig.CNIConfDir = filepath.Join(envInfo.DataDir, "etc/cni/net.d")
 	}
