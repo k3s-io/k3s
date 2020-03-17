@@ -31,31 +31,31 @@ replace (
 	github.com/prometheus/client_model => github.com/prometheus/client_model v0.0.0-20180712105110-5c3871d89910
 	github.com/prometheus/common => github.com/prometheus/common v0.0.0-20181126121408-4724e9255275
 	github.com/prometheus/procfs => github.com/prometheus/procfs v0.0.0-20181204211112-1dc9a6cbc91a
-	k8s.io/api => github.com/rancher/kubernetes/staging/src/k8s.io/api v1.17.3-k3s1
-	k8s.io/apiextensions-apiserver => github.com/rancher/kubernetes/staging/src/k8s.io/apiextensions-apiserver v1.17.3-k3s1
-	k8s.io/apimachinery => github.com/rancher/kubernetes/staging/src/k8s.io/apimachinery v1.17.3-k3s1
-	k8s.io/apiserver => github.com/rancher/kubernetes/staging/src/k8s.io/apiserver v1.17.3-k3s1
-	k8s.io/cli-runtime => github.com/rancher/kubernetes/staging/src/k8s.io/cli-runtime v1.17.3-k3s1
-	k8s.io/client-go => github.com/rancher/kubernetes/staging/src/k8s.io/client-go v1.17.3-k3s1
-	k8s.io/cloud-provider => github.com/rancher/kubernetes/staging/src/k8s.io/cloud-provider v1.17.3-k3s1
-	k8s.io/cluster-bootstrap => github.com/rancher/kubernetes/staging/src/k8s.io/cluster-bootstrap v1.17.3-k3s1
-	k8s.io/code-generator => github.com/rancher/kubernetes/staging/src/k8s.io/code-generator v1.17.3-k3s1
-	k8s.io/component-base => github.com/rancher/kubernetes/staging/src/k8s.io/component-base v1.17.3-k3s1
-	k8s.io/cri-api => github.com/rancher/kubernetes/staging/src/k8s.io/cri-api v1.17.3-k3s1
-	k8s.io/csi-translation-lib => github.com/rancher/kubernetes/staging/src/k8s.io/csi-translation-lib v1.17.3-k3s1
-	k8s.io/kube-aggregator => github.com/rancher/kubernetes/staging/src/k8s.io/kube-aggregator v1.17.3-k3s1
-	k8s.io/kube-controller-manager => github.com/rancher/kubernetes/staging/src/k8s.io/kube-controller-manager v1.17.3-k3s1
-	k8s.io/kube-proxy => github.com/rancher/kubernetes/staging/src/k8s.io/kube-proxy v1.17.3-k3s1
-	k8s.io/kube-scheduler => github.com/rancher/kubernetes/staging/src/k8s.io/kube-scheduler v1.17.3-k3s1
-	k8s.io/kubectl => github.com/rancher/kubernetes/staging/src/k8s.io/kubectl v1.17.3-k3s1
-	k8s.io/kubelet => github.com/rancher/kubernetes/staging/src/k8s.io/kubelet v1.17.3-k3s1
-	k8s.io/kubernetes => github.com/rancher/kubernetes v1.17.3-k3s1
-	k8s.io/legacy-cloud-providers => github.com/rancher/kubernetes/staging/src/k8s.io/legacy-cloud-providers v1.17.3-k3s1
-	k8s.io/metrics => github.com/rancher/kubernetes/staging/src/k8s.io/metrics v1.17.3-k3s1
-	k8s.io/node-api => github.com/rancher/kubernetes/staging/src/k8s.io/node-api v1.17.3-k3s1
-	k8s.io/sample-apiserver => github.com/rancher/kubernetes/staging/src/k8s.io/sample-apiserver v1.17.3-k3s1
-	k8s.io/sample-cli-plugin => github.com/rancher/kubernetes/staging/src/k8s.io/sample-cli-plugin v1.17.3-k3s1
-	k8s.io/sample-controller => github.com/rancher/kubernetes/staging/src/k8s.io/sample-controller v1.17.3-k3s1
+	k8s.io/api => github.com/rancher/kubernetes/staging/src/k8s.io/api v1.17.4-k3s1
+	k8s.io/apiextensions-apiserver => github.com/rancher/kubernetes/staging/src/k8s.io/apiextensions-apiserver v1.17.4-k3s1
+	k8s.io/apimachinery => github.com/rancher/kubernetes/staging/src/k8s.io/apimachinery v1.17.4-k3s1
+	k8s.io/apiserver => github.com/rancher/kubernetes/staging/src/k8s.io/apiserver v1.17.4-k3s1
+	k8s.io/cli-runtime => github.com/rancher/kubernetes/staging/src/k8s.io/cli-runtime v1.17.4-k3s1
+	k8s.io/client-go => github.com/rancher/kubernetes/staging/src/k8s.io/client-go v1.17.4-k3s1
+	k8s.io/cloud-provider => github.com/rancher/kubernetes/staging/src/k8s.io/cloud-provider v1.17.4-k3s1
+	k8s.io/cluster-bootstrap => github.com/rancher/kubernetes/staging/src/k8s.io/cluster-bootstrap v1.17.4-k3s1
+	k8s.io/code-generator => github.com/rancher/kubernetes/staging/src/k8s.io/code-generator v1.17.4-k3s1
+	k8s.io/component-base => github.com/rancher/kubernetes/staging/src/k8s.io/component-base v1.17.4-k3s1
+	k8s.io/cri-api => github.com/rancher/kubernetes/staging/src/k8s.io/cri-api v1.17.4-k3s1
+	k8s.io/csi-translation-lib => github.com/rancher/kubernetes/staging/src/k8s.io/csi-translation-lib v1.17.4-k3s1
+	k8s.io/kube-aggregator => github.com/rancher/kubernetes/staging/src/k8s.io/kube-aggregator v1.17.4-k3s1
+	k8s.io/kube-controller-manager => github.com/rancher/kubernetes/staging/src/k8s.io/kube-controller-manager v1.17.4-k3s1
+	k8s.io/kube-proxy => github.com/rancher/kubernetes/staging/src/k8s.io/kube-proxy v1.17.4-k3s1
+	k8s.io/kube-scheduler => github.com/rancher/kubernetes/staging/src/k8s.io/kube-scheduler v1.17.4-k3s1
+	k8s.io/kubectl => github.com/rancher/kubernetes/staging/src/k8s.io/kubectl v1.17.4-k3s1
+	k8s.io/kubelet => github.com/rancher/kubernetes/staging/src/k8s.io/kubelet v1.17.4-k3s1
+	k8s.io/kubernetes => github.com/rancher/kubernetes v1.17.4-k3s1
+	k8s.io/legacy-cloud-providers => github.com/rancher/kubernetes/staging/src/k8s.io/legacy-cloud-providers v1.17.4-k3s1
+	k8s.io/metrics => github.com/rancher/kubernetes/staging/src/k8s.io/metrics v1.17.4-k3s1
+	k8s.io/node-api => github.com/rancher/kubernetes/staging/src/k8s.io/node-api v1.17.4-k3s1
+	k8s.io/sample-apiserver => github.com/rancher/kubernetes/staging/src/k8s.io/sample-apiserver v1.17.4-k3s1
+	k8s.io/sample-cli-plugin => github.com/rancher/kubernetes/staging/src/k8s.io/sample-cli-plugin v1.17.4-k3s1
+	k8s.io/sample-controller => github.com/rancher/kubernetes/staging/src/k8s.io/sample-controller v1.17.4-k3s1
 	mvdan.cc/unparam => mvdan.cc/unparam v0.0.0-20190209190245-fbb59629db34
 )
 
@@ -108,7 +108,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/tchap/go-patricia v2.3.0+incompatible // indirect
 	github.com/urfave/cli v1.22.2
-	golang.org/x/crypto v0.0.0-20190820162420-60c769a6c586
+	golang.org/x/crypto v0.0.0-20200220183623-bac4c82f6975
 	golang.org/x/net v0.0.0-20191204025024-5ee1b9f4859a
 	golang.org/x/sys v0.0.0-20191204072324-ce4227a45e2e
 	google.golang.org/grpc v1.25.1

@@ -279,15 +279,6 @@ verify_downloader() {
     return 0
 }
 
-# --- verify existence of semanage when SELinux is enabled ---
-verify_semanage() {
-    if [ -x "$(which getenforce)" ]; then
-        if [ "Disabled" != $(getenforce) ] && [ ! -x "$(which semanage)" ]; then
-            fatal 'SELinux is enabled but semanage is not found'
-        fi
-    fi
-}
-
 # --- create tempory directory and cleanup when done ---
 setup_tmp() {
     TMP_DIR=$(mktemp -d -t k3s-install.XXXXXXXXXX)
@@ -399,13 +390,9 @@ setup_binary() {
     $SUDO chown root:root ${TMP_BIN}
     $SUDO mv -f ${TMP_BIN} ${BIN_DIR}/k3s
 
-    if command -v getenforce >/dev/null 2>&1; then
-        if [ "Disabled" != $(getenforce) ]; then
-	    info 'SELinux is enabled, setting permissions'
-	    if ! $SUDO semanage fcontext -l | grep "${BIN_DIR}/k3s" > /dev/null 2>&1; then
-	        $SUDO semanage fcontext -a -t bin_t "${BIN_DIR}/k3s"
-	    fi
-	    $SUDO restorecon -v ${BIN_DIR}/k3s > /dev/null
+    if ! $SUDO chcon -u system_u -r object_r -t container_runtime_exec_t ${BIN_DIR}/k3s 2>/dev/null 2>&1; then
+        if $SUDO grep SELINUX=enforcing /etc/selinux/config >/dev/null 2>&1; then
+            fatal "Failed to apply container_runtime_exec_t to ${BIN_DIR}/k3s, please install k3s-selinux RPM"
         fi
     fi
 }
@@ -420,7 +407,6 @@ download_and_verify() {
 
     setup_verify_arch
     verify_downloader curl || verify_downloader wget || fatal 'Can not find curl or wget for downloading files'
-    verify_semanage
     setup_tmp
     get_release_version
     download_hash

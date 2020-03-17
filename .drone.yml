@@ -348,17 +348,14 @@ platform:
 
 steps:
 - name: dispatch
-  image: rancher/dapper:v0.4.2
+  image: curlimages/curl:7.69.1
   environment:
     PAT_USERNAME:
       from_secret: pat_username
     PAT_TOKEN:
       from_secret: github_token
   commands:
-    - dapper dispatch
-  volumes:
-    - name: docker
-      path: /var/run/docker.sock
+    - scripts/dispatch
 
 trigger:
   instance:
@@ -368,11 +365,6 @@ trigger:
     - refs/tags/*
   event:
     - tag
-
-volumes:
-  - name: docker
-    host:
-      path: /var/run/docker.sock
 
 depends_on:
 - manifest
