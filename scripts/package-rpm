@@ -47,7 +47,7 @@ rpmbuild \
   --define "_srcrpmdir ${PWD}" \
   --define "_rpmdir ${PWD}/dist/rpm" \
   --define "_buildrootdir ${PWD}/.rpm-build" \
-  -bb package/k3s.spec
+  -bb package/rpm/k3s.spec
 
 if ! grep "BEGIN PGP PRIVATE KEY BLOCK" <<<"$PRIVATE_KEY"; then
   echo "PRIVATE_KEY not defined, skipping rpm sign and upload"
