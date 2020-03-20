@@ -288,7 +288,7 @@ github.com/containerd/continuity/pathdriver
 github.com/containerd/continuity/proto
 github.com/containerd/continuity/syscallx
 github.com/containerd/continuity/sysx
-# github.com/containerd/cri v0.0.0-00010101000000-000000000000 => github.com/rancher/cri v1.3.0-k3s.4
+# github.com/containerd/cri v0.0.0-00010101000000-000000000000 => github.com/rancher/cri v1.3.0-k3s.5
 github.com/containerd/cri
 github.com/containerd/cri/pkg/annotations
 github.com/containerd/cri/pkg/api/runtimeoptions/v1
