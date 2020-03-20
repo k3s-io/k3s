@@ -265,7 +265,7 @@ func WithMounts(osi osinterface.OS, config *runtime.ContainerConfig, extra []*ru
 			}
 
 			if mount.GetSelinuxRelabel() {
-				if err := label.Relabel(src, mountLabel, true); err != nil && err != unix.ENOTSUP {
+				if err := label.Relabel(src, mountLabel, false); err != nil && err != unix.ENOTSUP {
 					return errors.Wrapf(err, "relabel %q with %q failed", src, mountLabel)
 				}
 			}
