@@ -74,7 +74,7 @@ set -e
 #     if not specified.
 #
 #   - INSTALL_K3S_MIRROR
-#     For Chinese users, set INSTALL_K3S_MIRROR=cn to use the mirror address to accelerate 
+#     For Chinese users, set INSTALL_K3S_MIRROR=cn to use the mirror address to accelerate
 #     k3s binary file download, and the default mirror address is mirror_k3s.rancher.cn
 #
 
