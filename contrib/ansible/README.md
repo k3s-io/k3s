@@ -1,14 +1,14 @@
-# Build a Kubernetes cluster using k3s via Ansible.
+# Build a Kubernetes cluster using k3s via Ansible
 
-Author: https://github.com/itwars
+Author: <https://github.com/itwars>
 
 ## K3s Ansible Playbook
 
 Build a Kubernetes cluster using Ansible with k3s. The goal is easily install a Kubernetes cluster on machines running:
 
-- [X] Debian 
-- [ ] Ubuntu 
-- [X] CentOS 
+- [X] Debian
+- [ ] Ubuntu
+- [X] CentOS
 
 on processor architecture:
 
@@ -16,7 +16,7 @@ on processor architecture:
 - [X] arm64
 - [X] armhf
 
-## System requirements:
+## System requirements
 
 Deployment environment must have Ansible 2.4.0+
 Master and nodes must have passwordless SSH access
@@ -25,7 +25,7 @@ Master and nodes must have passwordless SSH access
 
 Add the system information gathered above into a file called hosts.ini. For example:
 
-```
+```bash
 [master]
 192.16.35.12
 
@@ -35,14 +35,20 @@ Add the system information gathered above into a file called hosts.ini. For exam
 [k3s-cluster:children]
 master
 node
+
 ```
 
 Start provisioning of the cluster using the following command:
 
-```
+```bash
 ansible-playbook site.yml -i inventory/hosts.ini
 ```
 
 ## Kubeconfig
 
-To get access to your **Kubernetes** cluster just scp debian@master_pi:~/kube/config ~/.kube/config
+To get access to your **Kubernetes** cluster just
+
+```bash
+scp debian@master_pi:~/kube/config ~/.kube/config
+```
+
