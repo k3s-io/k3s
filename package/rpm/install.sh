@@ -354,7 +354,7 @@ get_release_version() {
                 VERSION_K3S=$(curl -w '%{url_effective}' -I -L -s -S ${GITHUB_URL}/latest -o /dev/null | sed -e 's|.*/||')
                 ;;
             wget)
-                VERSION_K3S=$(wget -SqO /dev/null ${GITHUB_URL}/latest 2>&1 | grep Location | sed -e 's|.*/||')
+                VERSION_K3S=$(wget -SqO /dev/null ${GITHUB_URL}/latest 2>&1 | grep -i Location | sed -e 's|.*/||')
                 ;;
             *)
                 fatal "Incorrect downloader executable '$DOWNLOADER'"
