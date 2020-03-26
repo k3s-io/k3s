@@ -158,7 +158,7 @@ func validate() error {
 
 func configureNode(ctx context.Context, agentConfig *daemonconfig.Agent, nodes v1.NodeInterface) error {
 	for {
-		node, err := nodes.Get(agentConfig.NodeName, metav1.GetOptions{})
+		node, err := nodes.Get(ctx, agentConfig.NodeName, metav1.GetOptions{})
 		if err != nil {
 			logrus.Infof("Waiting for kubelet to be ready on node %s: %v", agentConfig.NodeName, err)
 			time.Sleep(1 * time.Second)
@@ -182,7 +182,7 @@ func configureNode(ctx context.Context, agentConfig *daemonconfig.Agent, nodes v
 			updateNode = true
 		}
 		if updateNode {
-			if _, err := nodes.Update(node); err != nil {
+			if _, err := nodes.Update(ctx, node, metav1.UpdateOptions{}); err != nil {
 				logrus.Infof("Failed to update node %s: %v", agentConfig.NodeName, err)
 				select {
 				case <-ctx.Done():

@@ -73,7 +73,7 @@ func Setup(ctx context.Context, config *config.Node, onChange func([]string)) er
 
 	addresses := []string{config.ServerAddress}
 
-	endpoint, _ := client.CoreV1().Endpoints("default").Get("kubernetes", metav1.GetOptions{})
+	endpoint, _ := client.CoreV1().Endpoints("default").Get(ctx, "kubernetes", metav1.GetOptions{})
 	if endpoint != nil {
 		addresses = getAddresses(endpoint)
 		if onChange != nil {
@@ -94,7 +94,7 @@ func Setup(ctx context.Context, config *config.Node, onChange func([]string)) er
 	connect:
 		for {
 			time.Sleep(5 * time.Second)
-			watch, err := client.CoreV1().Endpoints("default").Watch(metav1.ListOptions{
+			watch, err := client.CoreV1().Endpoints("default").Watch(ctx, metav1.ListOptions{
 				FieldSelector:   fields.Set{"metadata.name": "kubernetes"}.String(),
 				ResourceVersion: "0",
 			})
