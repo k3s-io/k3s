@@ -1,0 +1,23 @@
+# Example channels config
+channels:
+- name: stable
+  latest: v1.17.4+k3s1
+- name: latest
+  latestRegexp: .*
+  excludeRegexp: ^[^+]+-
+- name: testing
+  latestRegexp: .*
+- name: v1.16
+  latestRegexp: v1\.16\..*
+  excludeRegexp: ^[^+]+-
+- name: v1.16-testing
+  latestRegexp: v1\.16\.*
+- name: v1.17
+  latestRegexp: v1\.17\..*
+  excludeRegexp: ^[^+]+-
+- name: v1.17-testing
+  latestRegexp: v1\.17\..*
+github:
+  owner: rancher
+  repo: k3s
+redirectBase: https://github.com/rancher/k3s/releases/tag/
