@@ -27,7 +27,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/emicklei/go-restful"
+	restful "github.com/emicklei/go-restful"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/validation"
 	"k8s.io/apimachinery/pkg/types"
@@ -64,23 +64,14 @@ var (
 	requestCounter = compbasemetrics.NewCounterVec(
 		&compbasemetrics.CounterOpts{
 			Name:           "apiserver_request_total",
-			Help:           "Counter of apiserver requests broken out for each verb, dry run value, group, version, resource, scope, component, client, and HTTP response contentType and code.",
+			Help:           "Counter of apiserver requests broken out for each verb, dry run value, group, version, resource, scope, component, and HTTP response contentType and code.",
 			StabilityLevel: compbasemetrics.ALPHA,
 		},
 		// The label_name contentType doesn't follow the label_name convention defined here:
 		// https://github.com/kubernetes/community/blob/master/contributors/devel/sig-instrumentation/instrumentation.md
 		// But changing it would break backwards compatibility. Future label_names
 		// should be all lowercase and separated by underscores.
-		[]string{"verb", "dry_run", "group", "version", "resource", "subresource", "scope", "component", "client", "contentType", "code"},
-	)
-	deprecatedRequestCounter = compbasemetrics.NewCounterVec(
-		&compbasemetrics.CounterOpts{
-			Name:              "apiserver_request_count",
-			Help:              "Counter of apiserver requests broken out for each verb, group, version, resource, scope, component, client, and HTTP response contentType and code.",
-			StabilityLevel:    compbasemetrics.ALPHA,
-			DeprecatedVersion: "1.14.0",
-		},
-		[]string{"verb", "group", "version", "resource", "subresource", "scope", "component", "client", "contentType", "code"},
+		[]string{"verb", "dry_run", "group", "version", "resource", "subresource", "scope", "component", "contentType", "code"},
 	)
 	longRunningRequestGauge = compbasemetrics.NewGaugeVec(
 		&compbasemetrics.GaugeOpts{
@@ -103,29 +94,6 @@ var (
 		},
 		[]string{"verb", "dry_run", "group", "version", "resource", "subresource", "scope", "component"},
 	)
-	deprecatedRequestLatencies = compbasemetrics.NewHistogramVec(
-		&compbasemetrics.HistogramOpts{
-			Name: "apiserver_request_latencies",
-			Help: "Response latency distribution in microseconds for each verb, group, version, resource, subresource, scope and component.",
-			// Use buckets ranging from 125 ms to 8 seconds.
-			Buckets:           compbasemetrics.ExponentialBuckets(125000, 2.0, 7),
-			StabilityLevel:    compbasemetrics.ALPHA,
-			DeprecatedVersion: "1.14.0",
-		},
-		[]string{"verb", "group", "version", "resource", "subresource", "scope", "component"},
-	)
-	deprecatedRequestLatenciesSummary = compbasemetrics.NewSummaryVec(
-		&compbasemetrics.SummaryOpts{
-			Name: "apiserver_request_latencies_summary",
-			Help: "Response latency summary in microseconds for each verb, group, version, resource, subresource, scope and component.",
-			// Make the sliding window of 5h.
-			// TODO: The value for this should be based on our SLI definition (medium term).
-			MaxAge:            5 * time.Hour,
-			StabilityLevel:    compbasemetrics.ALPHA,
-			DeprecatedVersion: "1.14.0",
-		},
-		[]string{"verb", "group", "version", "resource", "subresource", "scope", "component"},
-	)
 	responseSizes = compbasemetrics.NewHistogramVec(
 		&compbasemetrics.HistogramOpts{
 			Name: "apiserver_response_sizes",
@@ -142,15 +110,6 @@ var (
 			Name:           "apiserver_dropped_requests_total",
 			Help:           "Number of requests dropped with 'Try again later' response",
 			StabilityLevel: compbasemetrics.ALPHA,
-		},
-		[]string{"requestKind"},
-	)
-	DeprecatedDroppedRequests = compbasemetrics.NewCounterVec(
-		&compbasemetrics.CounterOpts{
-			Name:              "apiserver_dropped_requests",
-			Help:              "Number of requests dropped with 'Try again later' response",
-			StabilityLevel:    compbasemetrics.ALPHA,
-			DeprecatedVersion: "1.14.0",
 		},
 		[]string{"requestKind"},
 	)
@@ -203,14 +162,10 @@ var (
 
 	metrics = []resettableCollector{
 		requestCounter,
-		deprecatedRequestCounter,
 		longRunningRequestGauge,
 		requestLatencies,
-		deprecatedRequestLatencies,
-		deprecatedRequestLatenciesSummary,
 		responseSizes,
 		DroppedRequests,
-		DeprecatedDroppedRequests,
 		RegisteredWatchers,
 		WatchEvents,
 		WatchEventsSizes,
@@ -300,15 +255,9 @@ func RecordLongRunning(req *http.Request, requestInfo *request.RequestInfo, comp
 func MonitorRequest(req *http.Request, verb, group, version, resource, subresource, scope, component, contentType string, httpCode, respSize int, elapsed time.Duration) {
 	reportedVerb := cleanVerb(verb, req)
 	dryRun := cleanDryRun(req.URL)
-	// blank out client string here, in order to avoid cardinality issues
-	client := ""
-	elapsedMicroseconds := float64(elapsed / time.Microsecond)
 	elapsedSeconds := elapsed.Seconds()
-	requestCounter.WithLabelValues(reportedVerb, dryRun, group, version, resource, subresource, scope, component, client, contentType, codeToString(httpCode)).Inc()
-	deprecatedRequestCounter.WithLabelValues(reportedVerb, group, version, resource, subresource, scope, component, client, contentType, codeToString(httpCode)).Inc()
+	requestCounter.WithLabelValues(reportedVerb, dryRun, group, version, resource, subresource, scope, component, contentType, codeToString(httpCode)).Inc()
 	requestLatencies.WithLabelValues(reportedVerb, dryRun, group, version, resource, subresource, scope, component).Observe(elapsedSeconds)
-	deprecatedRequestLatencies.WithLabelValues(reportedVerb, group, version, resource, subresource, scope, component).Observe(elapsedMicroseconds)
-	deprecatedRequestLatenciesSummary.WithLabelValues(reportedVerb, group, version, resource, subresource, scope, component).Observe(elapsedMicroseconds)
 	// We are only interested in response sizes of read requests.
 	if verb == "GET" || verb == "LIST" {
 		responseSizes.WithLabelValues(reportedVerb, group, version, resource, subresource, scope, component).Observe(float64(respSize))
@@ -423,19 +372,6 @@ func cleanDryRun(u *url.URL) string {
 	// TODO: this is a fairly large allocation for what it does, consider
 	//   a sort and dedup in a single pass
 	return strings.Join(utilsets.NewString(dryRun...).List(), ",")
-}
-
-func cleanUserAgent(ua string) string {
-	// We collapse all "web browser"-type user agents into one "browser" to reduce metric cardinality.
-	if strings.HasPrefix(ua, "Mozilla/") {
-		return "Browser"
-	}
-	// If an old "kubectl.exe" has passed us its full path, we discard the path portion.
-	if kubectlExeRegexp.MatchString(ua) {
-		// avoid an allocation
-		ua = kubectlExeRegexp.ReplaceAllString(ua, "$1")
-	}
-	return ua
 }
 
 // ResponseWriterDelegator interface wraps http.ResponseWriter to additionally record content-length, status-code, etc.

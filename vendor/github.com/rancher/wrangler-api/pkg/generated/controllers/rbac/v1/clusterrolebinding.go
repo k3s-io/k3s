@@ -173,31 +173,34 @@ func (c *clusterRoleBindingController) Cache() ClusterRoleBindingCache {
 }
 
 func (c *clusterRoleBindingController) Create(obj *v1.ClusterRoleBinding) (*v1.ClusterRoleBinding, error) {
-	return c.clientGetter.ClusterRoleBindings().Create(obj)
+	return c.clientGetter.ClusterRoleBindings().Create(context.TODO(), obj, metav1.CreateOptions{})
 }
 
 func (c *clusterRoleBindingController) Update(obj *v1.ClusterRoleBinding) (*v1.ClusterRoleBinding, error) {
-	return c.clientGetter.ClusterRoleBindings().Update(obj)
+	return c.clientGetter.ClusterRoleBindings().Update(context.TODO(), obj, metav1.UpdateOptions{})
 }
 
 func (c *clusterRoleBindingController) Delete(name string, options *metav1.DeleteOptions) error {
-	return c.clientGetter.ClusterRoleBindings().Delete(name, options)
+	if options == nil {
+		options = &metav1.DeleteOptions{}
+	}
+	return c.clientGetter.ClusterRoleBindings().Delete(context.TODO(), name, *options)
 }
 
 func (c *clusterRoleBindingController) Get(name string, options metav1.GetOptions) (*v1.ClusterRoleBinding, error) {
-	return c.clientGetter.ClusterRoleBindings().Get(name, options)
+	return c.clientGetter.ClusterRoleBindings().Get(context.TODO(), name, options)
 }
 
 func (c *clusterRoleBindingController) List(opts metav1.ListOptions) (*v1.ClusterRoleBindingList, error) {
-	return c.clientGetter.ClusterRoleBindings().List(opts)
+	return c.clientGetter.ClusterRoleBindings().List(context.TODO(), opts)
 }
 
 func (c *clusterRoleBindingController) Watch(opts metav1.ListOptions) (watch.Interface, error) {
-	return c.clientGetter.ClusterRoleBindings().Watch(opts)
+	return c.clientGetter.ClusterRoleBindings().Watch(context.TODO(), opts)
 }
 
 func (c *clusterRoleBindingController) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.ClusterRoleBinding, err error) {
-	return c.clientGetter.ClusterRoleBindings().Patch(name, pt, data, subresources...)
+	return c.clientGetter.ClusterRoleBindings().Patch(context.TODO(), name, pt, data, metav1.PatchOptions{}, subresources...)
 }
 
 type clusterRoleBindingCache struct {
@@ -226,6 +229,7 @@ func (c *clusterRoleBindingCache) GetByIndex(indexName, key string) (result []*v
 	if err != nil {
 		return nil, err
 	}
+	result = make([]*v1.ClusterRoleBinding, 0, len(objs))
 	for _, obj := range objs {
 		result = append(result, obj.(*v1.ClusterRoleBinding))
 	}

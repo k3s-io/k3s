@@ -176,35 +176,38 @@ func (c *daemonSetController) Cache() DaemonSetCache {
 }
 
 func (c *daemonSetController) Create(obj *v1.DaemonSet) (*v1.DaemonSet, error) {
-	return c.clientGetter.DaemonSets(obj.Namespace).Create(obj)
+	return c.clientGetter.DaemonSets(obj.Namespace).Create(context.TODO(), obj, metav1.CreateOptions{})
 }
 
 func (c *daemonSetController) Update(obj *v1.DaemonSet) (*v1.DaemonSet, error) {
-	return c.clientGetter.DaemonSets(obj.Namespace).Update(obj)
+	return c.clientGetter.DaemonSets(obj.Namespace).Update(context.TODO(), obj, metav1.UpdateOptions{})
 }
 
 func (c *daemonSetController) UpdateStatus(obj *v1.DaemonSet) (*v1.DaemonSet, error) {
-	return c.clientGetter.DaemonSets(obj.Namespace).UpdateStatus(obj)
+	return c.clientGetter.DaemonSets(obj.Namespace).UpdateStatus(context.TODO(), obj, metav1.UpdateOptions{})
 }
 
 func (c *daemonSetController) Delete(namespace, name string, options *metav1.DeleteOptions) error {
-	return c.clientGetter.DaemonSets(namespace).Delete(name, options)
+	if options == nil {
+		options = &metav1.DeleteOptions{}
+	}
+	return c.clientGetter.DaemonSets(namespace).Delete(context.TODO(), name, *options)
 }
 
 func (c *daemonSetController) Get(namespace, name string, options metav1.GetOptions) (*v1.DaemonSet, error) {
-	return c.clientGetter.DaemonSets(namespace).Get(name, options)
+	return c.clientGetter.DaemonSets(namespace).Get(context.TODO(), name, options)
 }
 
 func (c *daemonSetController) List(namespace string, opts metav1.ListOptions) (*v1.DaemonSetList, error) {
-	return c.clientGetter.DaemonSets(namespace).List(opts)
+	return c.clientGetter.DaemonSets(namespace).List(context.TODO(), opts)
 }
 
 func (c *daemonSetController) Watch(namespace string, opts metav1.ListOptions) (watch.Interface, error) {
-	return c.clientGetter.DaemonSets(namespace).Watch(opts)
+	return c.clientGetter.DaemonSets(namespace).Watch(context.TODO(), opts)
 }
 
 func (c *daemonSetController) Patch(namespace, name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.DaemonSet, err error) {
-	return c.clientGetter.DaemonSets(namespace).Patch(name, pt, data, subresources...)
+	return c.clientGetter.DaemonSets(namespace).Patch(context.TODO(), name, pt, data, metav1.PatchOptions{}, subresources...)
 }
 
 type daemonSetCache struct {
@@ -233,6 +236,7 @@ func (c *daemonSetCache) GetByIndex(indexName, key string) (result []*v1.DaemonS
 	if err != nil {
 		return nil, err
 	}
+	result = make([]*v1.DaemonSet, 0, len(objs))
 	for _, obj := range objs {
 		result = append(result, obj.(*v1.DaemonSet))
 	}

@@ -23,7 +23,7 @@ import (
 
 	"github.com/docker/go-units"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 	"golang.org/x/net/context"
 	pb "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
@@ -45,43 +45,47 @@ type statsOptions struct {
 	watch bool
 }
 
-var statsCommand = cli.Command{
+var statsCommand = &cli.Command{
 	Name:                   "stats",
 	Usage:                  "List container(s) resource usage statistics",
-	SkipArgReorder:         true,
 	UseShortOptionHandling: true,
 	ArgsUsage:              "[ID]",
 	Flags: []cli.Flag{
-		cli.BoolFlag{
-			Name:  "all, a",
-			Usage: "Show all containers (default shows just running)",
+		&cli.BoolFlag{
+			Name:    "all",
+			Aliases: []string{"a"},
+			Usage:   "Show all containers (default shows just running)",
 		},
-		cli.StringFlag{
+		&cli.StringFlag{
 			Name:  "id",
 			Value: "",
 			Usage: "Filter by container id",
 		},
-		cli.StringFlag{
-			Name:  "pod, p",
-			Value: "",
-			Usage: "Filter by pod id",
+		&cli.StringFlag{
+			Name:    "pod",
+			Aliases: []string{"p"},
+			Value:   "",
+			Usage:   "Filter by pod id",
 		},
-		cli.StringSliceFlag{
+		&cli.StringSliceFlag{
 			Name:  "label",
 			Usage: "Filter by key=value label",
 		},
-		cli.StringFlag{
-			Name:  "output, o",
-			Usage: "Output format, One of: json|yaml|table",
+		&cli.StringFlag{
+			Name:    "output",
+			Aliases: []string{"o"},
+			Usage:   "Output format, One of: json|yaml|table",
 		},
-		cli.IntFlag{
-			Name:  "seconds, s",
-			Value: 1,
-			Usage: "Sample duration for CPU usage in seconds",
+		&cli.IntFlag{
+			Name:    "seconds",
+			Aliases: []string{"s"},
+			Value:   1,
+			Usage:   "Sample duration for CPU usage in seconds",
 		},
-		cli.BoolFlag{
-			Name:  "watch, w",
-			Usage: "Watch pod resources",
+		&cli.BoolFlag{
+			Name:    "watch",
+			Aliases: []string{"w"},
+			Usage:   "Watch pod resources",
 		},
 	},
 	Action: func(context *cli.Context) error {
@@ -93,7 +97,7 @@ var statsCommand = cli.Command{
 
 		id := context.String("id")
 		if id == "" && context.NArg() > 0 {
-			id = context.Args()[0]
+			id = context.Args().Get(0)
 		}
 
 		opts := statsOptions{

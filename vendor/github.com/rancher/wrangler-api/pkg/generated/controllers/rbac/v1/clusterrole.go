@@ -173,31 +173,34 @@ func (c *clusterRoleController) Cache() ClusterRoleCache {
 }
 
 func (c *clusterRoleController) Create(obj *v1.ClusterRole) (*v1.ClusterRole, error) {
-	return c.clientGetter.ClusterRoles().Create(obj)
+	return c.clientGetter.ClusterRoles().Create(context.TODO(), obj, metav1.CreateOptions{})
 }
 
 func (c *clusterRoleController) Update(obj *v1.ClusterRole) (*v1.ClusterRole, error) {
-	return c.clientGetter.ClusterRoles().Update(obj)
+	return c.clientGetter.ClusterRoles().Update(context.TODO(), obj, metav1.UpdateOptions{})
 }
 
 func (c *clusterRoleController) Delete(name string, options *metav1.DeleteOptions) error {
-	return c.clientGetter.ClusterRoles().Delete(name, options)
+	if options == nil {
+		options = &metav1.DeleteOptions{}
+	}
+	return c.clientGetter.ClusterRoles().Delete(context.TODO(), name, *options)
 }
 
 func (c *clusterRoleController) Get(name string, options metav1.GetOptions) (*v1.ClusterRole, error) {
-	return c.clientGetter.ClusterRoles().Get(name, options)
+	return c.clientGetter.ClusterRoles().Get(context.TODO(), name, options)
 }
 
 func (c *clusterRoleController) List(opts metav1.ListOptions) (*v1.ClusterRoleList, error) {
-	return c.clientGetter.ClusterRoles().List(opts)
+	return c.clientGetter.ClusterRoles().List(context.TODO(), opts)
 }
 
 func (c *clusterRoleController) Watch(opts metav1.ListOptions) (watch.Interface, error) {
-	return c.clientGetter.ClusterRoles().Watch(opts)
+	return c.clientGetter.ClusterRoles().Watch(context.TODO(), opts)
 }
 
 func (c *clusterRoleController) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.ClusterRole, err error) {
-	return c.clientGetter.ClusterRoles().Patch(name, pt, data, subresources...)
+	return c.clientGetter.ClusterRoles().Patch(context.TODO(), name, pt, data, metav1.PatchOptions{}, subresources...)
 }
 
 type clusterRoleCache struct {
@@ -226,6 +229,7 @@ func (c *clusterRoleCache) GetByIndex(indexName, key string) (result []*v1.Clust
 	if err != nil {
 		return nil, err
 	}
+	result = make([]*v1.ClusterRole, 0, len(objs))
 	for _, obj := range objs {
 		result = append(result, obj.(*v1.ClusterRole))
 	}

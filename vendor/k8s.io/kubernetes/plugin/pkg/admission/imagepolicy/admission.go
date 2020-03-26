@@ -174,7 +174,7 @@ func (a *Plugin) admitPod(ctx context.Context, pod *api.Pod, attributes admissio
 		review.Status = entry.(v1alpha1.ImageReviewStatus)
 	} else {
 		result := a.webhook.WithExponentialBackoff(ctx, func() rest.Result {
-			return a.webhook.RestClient.Post().Context(ctx).Body(review).Do()
+			return a.webhook.RestClient.Post().Body(review).Do(ctx)
 		})
 
 		if err := result.Error(); err != nil {
@@ -261,7 +261,7 @@ func NewImagePolicyWebhook(configFile io.Reader) (*Plugin, error) {
 		return nil, err
 	}
 
-	gw, err := webhook.NewGenericWebhook(legacyscheme.Scheme, legacyscheme.Codecs, whConfig.KubeConfigFile, groupVersions, whConfig.RetryBackoff)
+	gw, err := webhook.NewGenericWebhook(legacyscheme.Scheme, legacyscheme.Codecs, whConfig.KubeConfigFile, groupVersions, whConfig.RetryBackoff, nil)
 	if err != nil {
 		return nil, err
 	}

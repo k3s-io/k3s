@@ -21,14 +21,15 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
-	units "github.com/docker/go-units"
 	libcontainercgroups "github.com/opencontainers/runc/libcontainer/cgroups"
 	cgroupfs "github.com/opencontainers/runc/libcontainer/cgroups/fs"
 	libcontainerconfigs "github.com/opencontainers/runc/libcontainer/configs"
 	"k8s.io/klog"
+	v1helper "k8s.io/kubernetes/pkg/apis/core/v1/helper"
 
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -125,6 +126,8 @@ type cgroupManagerImpl struct {
 	subsystems *CgroupSubsystems
 	// simplifies interaction with libcontainer and its cgroup managers
 	adapter *libcontainerAdapter
+	// is the host running on cgroup v2
+	cgroupv2 bool
 }
 
 // Make sure that cgroupManagerImpl implements the CgroupManager interface
@@ -144,6 +147,7 @@ func NewCgroupManager(cs *CgroupSubsystems, cgroupDriver string) (CgroupManager,
 	return &cgroupManagerImpl{
 		subsystems: cs,
 		adapter:    newLibcontainerAdapter(managerType),
+		cgroupv2:   libcontainercgroups.IsCgroup2UnifiedMode(),
 	}, nil
 }
 
@@ -180,8 +184,12 @@ func (m *cgroupManagerImpl) Exists(name CgroupName) bool {
 	// in https://github.com/opencontainers/runc/issues/1440
 	// once resolved, we can remove this code.
 	whitelistControllers := sets.NewString("cpu", "cpuacct", "cpuset", "memory", "systemd")
+
 	if utilfeature.DefaultFeatureGate.Enabled(kubefeatures.SupportPodPidsLimit) || utilfeature.DefaultFeatureGate.Enabled(kubefeatures.SupportNodePidsLimit) {
 		whitelistControllers.Insert("pids")
+	}
+	if _, ok := m.subsystems.MountPoints["hugetlb"]; ok {
+		whitelistControllers.Insert("hugetlb")
 	}
 	var missingPaths []string
 	// If even one cgroup path doesn't exist, then the cgroup doesn't exist.
@@ -208,7 +216,6 @@ func (m *cgroupManagerImpl) Destroy(cgroupConfig *CgroupConfig) error {
 	start := time.Now()
 	defer func() {
 		metrics.CgroupManagerDuration.WithLabelValues("destroy").Observe(metrics.SinceInSeconds(start))
-		metrics.DeprecatedCgroupManagerLatency.WithLabelValues("destroy").Observe(metrics.SinceInMicroseconds(start))
 	}()
 
 	cgroupPaths := m.buildCgroupPaths(cgroupConfig.Name)
@@ -264,7 +271,7 @@ func getSupportedSubsystems() map[subsystem]bool {
 // We would like to skip setting any values on the device cgroup in this case
 // but this is not possible with libcontainers Set() method
 // See https://github.com/opencontainers/runc/issues/932
-func setSupportedSubsystems(cgroupConfig *libcontainerconfigs.Cgroup) error {
+func setSupportedSubsystems(cgroupConfig *libcontainerconfigs.Cgroup, cgroupv2 bool) error {
 	for sys, required := range getSupportedSubsystems() {
 		if _, ok := cgroupConfig.Paths[sys.Name()]; !ok {
 			if required {
@@ -290,13 +297,30 @@ func (m *cgroupManagerImpl) toResources(resourceConfig *ResourceConfig) *libcont
 		resources.Memory = *resourceConfig.Memory
 	}
 	if resourceConfig.CpuShares != nil {
-		resources.CpuShares = *resourceConfig.CpuShares
+		if m.cgroupv2 {
+			// Convert from the range [2-262144] to [1-10000]
+			resources.CpuWeight = (1 + ((*resourceConfig.CpuShares-2)*9999)/262142)
+		} else {
+			resources.CpuShares = *resourceConfig.CpuShares
+		}
 	}
-	if resourceConfig.CpuQuota != nil {
-		resources.CpuQuota = *resourceConfig.CpuQuota
-	}
-	if resourceConfig.CpuPeriod != nil {
-		resources.CpuPeriod = *resourceConfig.CpuPeriod
+	if m.cgroupv2 {
+		quota := "max"
+		period := "100000"
+		if resourceConfig.CpuQuota != nil {
+			quota = strconv.FormatInt(*resourceConfig.CpuQuota, 10)
+		}
+		if resourceConfig.CpuPeriod != nil {
+			period = strconv.FormatUint(*resourceConfig.CpuPeriod, 10)
+		}
+		resources.CpuMax = fmt.Sprintf("%s %s", quota, period)
+	} else {
+		if resourceConfig.CpuQuota != nil {
+			resources.CpuQuota = *resourceConfig.CpuQuota
+		}
+		if resourceConfig.CpuPeriod != nil {
+			resources.CpuPeriod = *resourceConfig.CpuPeriod
+		}
 	}
 	if utilfeature.DefaultFeatureGate.Enabled(kubefeatures.SupportPodPidsLimit) || utilfeature.DefaultFeatureGate.Enabled(kubefeatures.SupportNodePidsLimit) {
 		if resourceConfig.PidsLimit != nil {
@@ -307,7 +331,11 @@ func (m *cgroupManagerImpl) toResources(resourceConfig *ResourceConfig) *libcont
 	// for each page size enumerated, set that value
 	pageSizes := sets.NewString()
 	for pageSize, limit := range resourceConfig.HugePageLimit {
-		sizeString := units.CustomSize("%g%s", float64(pageSize), 1024.0, libcontainercgroups.HugePageSizeUnitList)
+		sizeString, err := v1helper.HugePageUnitSizeFromByteSize(pageSize)
+		if err != nil {
+			klog.Warningf("pageSize is invalid: %v", err)
+			continue
+		}
 		resources.HugetlbLimit = append(resources.HugetlbLimit, &libcontainerconfigs.HugepageLimit{
 			Pagesize: sizeString,
 			Limit:    uint64(limit),
@@ -332,7 +360,6 @@ func (m *cgroupManagerImpl) Update(cgroupConfig *CgroupConfig) error {
 	start := time.Now()
 	defer func() {
 		metrics.CgroupManagerDuration.WithLabelValues("update").Observe(metrics.SinceInSeconds(start))
-		metrics.DeprecatedCgroupManagerLatency.WithLabelValues("update").Observe(metrics.SinceInMicroseconds(start))
 	}()
 
 	// Extract the cgroup resource parameters
@@ -353,7 +380,7 @@ func (m *cgroupManagerImpl) Update(cgroupConfig *CgroupConfig) error {
 		libcontainerCgroupConfig.PidsLimit = *cgroupConfig.ResourceParameters.PidsLimit
 	}
 
-	if err := setSupportedSubsystems(libcontainerCgroupConfig); err != nil {
+	if err := setSupportedSubsystems(libcontainerCgroupConfig, m.cgroupv2); err != nil {
 		return fmt.Errorf("failed to set supported cgroup subsystems for cgroup %v: %v", cgroupConfig.Name, err)
 	}
 	return nil
@@ -364,7 +391,6 @@ func (m *cgroupManagerImpl) Create(cgroupConfig *CgroupConfig) error {
 	start := time.Now()
 	defer func() {
 		metrics.CgroupManagerDuration.WithLabelValues("create").Observe(metrics.SinceInSeconds(start))
-		metrics.DeprecatedCgroupManagerLatency.WithLabelValues("create").Observe(metrics.SinceInMicroseconds(start))
 	}()
 
 	resources := m.toResources(cgroupConfig.ResourceParameters)

@@ -22,7 +22,7 @@ import (
 
 	dockerterm "github.com/docker/docker/pkg/term"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 	"golang.org/x/net/context"
 	restclient "k8s.io/client-go/rest"
 	remoteclient "k8s.io/client-go/tools/remotecommand"
@@ -36,33 +36,35 @@ const (
 	kubeletURLHost   = "http://127.0.0.1:10250"
 )
 
-var runtimeExecCommand = cli.Command{
+var runtimeExecCommand = &cli.Command{
 	Name:                   "exec",
 	Usage:                  "Run a command in a running container",
 	ArgsUsage:              "CONTAINER-ID COMMAND [ARG...]",
-	SkipArgReorder:         true,
 	UseShortOptionHandling: true,
 	Flags: []cli.Flag{
-		cli.BoolFlag{
-			Name:  "sync, s",
-			Usage: "Run the command synchronously",
+		&cli.BoolFlag{
+			Name:    "sync",
+			Aliases: []string{"s"},
+			Usage:   "Run the command synchronously",
 		},
-		cli.Int64Flag{
+		&cli.Int64Flag{
 			Name:  "timeout",
 			Value: 0,
 			Usage: "Timeout in seconds",
 		},
-		cli.BoolFlag{
-			Name:  "tty, t",
-			Usage: "Allocate a pseudo-TTY",
+		&cli.BoolFlag{
+			Name:    "tty",
+			Aliases: []string{"t"},
+			Usage:   "Allocate a pseudo-TTY",
 		},
-		cli.BoolFlag{
-			Name:  "interactive, i",
-			Usage: "Keep STDIN open",
+		&cli.BoolFlag{
+			Name:    "interactive",
+			Aliases: []string{"i"},
+			Usage:   "Keep STDIN open",
 		},
 	},
 	Action: func(context *cli.Context) error {
-		if len(context.Args()) < 2 {
+		if context.Args().Len() < 2 {
 			return cli.ShowSubcommandHelp(context)
 		}
 
@@ -77,7 +79,7 @@ var runtimeExecCommand = cli.Command{
 			timeout: context.Int64("timeout"),
 			tty:     context.Bool("tty"),
 			stdin:   context.Bool("interactive"),
-			cmd:     context.Args()[1:],
+			cmd:     context.Args().Slice()[1:],
 		}
 		if context.Bool("sync") {
 			exitCode, err := ExecSync(runtimeClient, opts)

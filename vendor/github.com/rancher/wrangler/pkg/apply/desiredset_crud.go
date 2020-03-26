@@ -39,28 +39,28 @@ func (o *desiredSet) create(nsed bool, namespace string, client dynamic.Namespac
 	}
 
 	if nsed {
-		return client.Namespace(namespace).Create(unstr, v1.CreateOptions{})
+		return client.Namespace(namespace).Create(o.ctx, unstr, v1.CreateOptions{})
 	}
-	return client.Create(unstr, v1.CreateOptions{})
+	return client.Create(o.ctx, unstr, v1.CreateOptions{})
 }
 
 func (o *desiredSet) get(nsed bool, namespace, name string, client dynamic.NamespaceableResourceInterface) (runtime.Object, error) {
 	if nsed {
-		return client.Namespace(namespace).Get(name, v1.GetOptions{})
+		return client.Namespace(namespace).Get(o.ctx, name, v1.GetOptions{})
 	}
-	return client.Get(name, v1.GetOptions{})
+	return client.Get(o.ctx, name, v1.GetOptions{})
 }
 
-func (o *desiredSet) delete(nsed bool, namespace, name string, client dynamic.NamespaceableResourceInterface) error {
-	if o.noDelete {
+func (o *desiredSet) delete(nsed bool, namespace, name string, client dynamic.NamespaceableResourceInterface, force bool) error {
+	if o.noDelete && !force {
 		return nil
 	}
-	opts := &v1.DeleteOptions{
+	opts := v1.DeleteOptions{
 		PropagationPolicy: &deletePolicy,
 	}
 	if nsed {
-		return client.Namespace(namespace).Delete(name, opts)
+		return client.Namespace(namespace).Delete(o.ctx, name, opts)
 	}
 
-	return client.Delete(name, opts)
+	return client.Delete(o.ctx, name, opts)
 }

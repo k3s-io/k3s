@@ -176,35 +176,38 @@ func (c *nodeController) Cache() NodeCache {
 }
 
 func (c *nodeController) Create(obj *v1.Node) (*v1.Node, error) {
-	return c.clientGetter.Nodes().Create(obj)
+	return c.clientGetter.Nodes().Create(context.TODO(), obj, metav1.CreateOptions{})
 }
 
 func (c *nodeController) Update(obj *v1.Node) (*v1.Node, error) {
-	return c.clientGetter.Nodes().Update(obj)
+	return c.clientGetter.Nodes().Update(context.TODO(), obj, metav1.UpdateOptions{})
 }
 
 func (c *nodeController) UpdateStatus(obj *v1.Node) (*v1.Node, error) {
-	return c.clientGetter.Nodes().UpdateStatus(obj)
+	return c.clientGetter.Nodes().UpdateStatus(context.TODO(), obj, metav1.UpdateOptions{})
 }
 
 func (c *nodeController) Delete(name string, options *metav1.DeleteOptions) error {
-	return c.clientGetter.Nodes().Delete(name, options)
+	if options == nil {
+		options = &metav1.DeleteOptions{}
+	}
+	return c.clientGetter.Nodes().Delete(context.TODO(), name, *options)
 }
 
 func (c *nodeController) Get(name string, options metav1.GetOptions) (*v1.Node, error) {
-	return c.clientGetter.Nodes().Get(name, options)
+	return c.clientGetter.Nodes().Get(context.TODO(), name, options)
 }
 
 func (c *nodeController) List(opts metav1.ListOptions) (*v1.NodeList, error) {
-	return c.clientGetter.Nodes().List(opts)
+	return c.clientGetter.Nodes().List(context.TODO(), opts)
 }
 
 func (c *nodeController) Watch(opts metav1.ListOptions) (watch.Interface, error) {
-	return c.clientGetter.Nodes().Watch(opts)
+	return c.clientGetter.Nodes().Watch(context.TODO(), opts)
 }
 
 func (c *nodeController) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.Node, err error) {
-	return c.clientGetter.Nodes().Patch(name, pt, data, subresources...)
+	return c.clientGetter.Nodes().Patch(context.TODO(), name, pt, data, metav1.PatchOptions{}, subresources...)
 }
 
 type nodeCache struct {
@@ -233,6 +236,7 @@ func (c *nodeCache) GetByIndex(indexName, key string) (result []*v1.Node, err er
 	if err != nil {
 		return nil, err
 	}
+	result = make([]*v1.Node, 0, len(objs))
 	for _, obj := range objs {
 		result = append(result, obj.(*v1.Node))
 	}

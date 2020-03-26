@@ -28,6 +28,7 @@ import (
 type Interface interface {
 	ConfigMap() ConfigMapController
 	Endpoints() EndpointsController
+	Event() EventController
 	Namespace() NamespaceController
 	Node() NodeController
 	PersistentVolumeClaim() PersistentVolumeClaimController
@@ -57,6 +58,9 @@ func (c *version) ConfigMap() ConfigMapController {
 }
 func (c *version) Endpoints() EndpointsController {
 	return NewEndpointsController(v1.SchemeGroupVersion.WithKind("Endpoints"), c.controllerManager, c.client, c.informers.Endpoints())
+}
+func (c *version) Event() EventController {
+	return NewEventController(v1.SchemeGroupVersion.WithKind("Event"), c.controllerManager, c.client, c.informers.Events())
 }
 func (c *version) Namespace() NamespaceController {
 	return NewNamespaceController(v1.SchemeGroupVersion.WithKind("Namespace"), c.controllerManager, c.client, c.informers.Namespaces())

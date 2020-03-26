@@ -176,35 +176,38 @@ func (c *podController) Cache() PodCache {
 }
 
 func (c *podController) Create(obj *v1.Pod) (*v1.Pod, error) {
-	return c.clientGetter.Pods(obj.Namespace).Create(obj)
+	return c.clientGetter.Pods(obj.Namespace).Create(context.TODO(), obj, metav1.CreateOptions{})
 }
 
 func (c *podController) Update(obj *v1.Pod) (*v1.Pod, error) {
-	return c.clientGetter.Pods(obj.Namespace).Update(obj)
+	return c.clientGetter.Pods(obj.Namespace).Update(context.TODO(), obj, metav1.UpdateOptions{})
 }
 
 func (c *podController) UpdateStatus(obj *v1.Pod) (*v1.Pod, error) {
-	return c.clientGetter.Pods(obj.Namespace).UpdateStatus(obj)
+	return c.clientGetter.Pods(obj.Namespace).UpdateStatus(context.TODO(), obj, metav1.UpdateOptions{})
 }
 
 func (c *podController) Delete(namespace, name string, options *metav1.DeleteOptions) error {
-	return c.clientGetter.Pods(namespace).Delete(name, options)
+	if options == nil {
+		options = &metav1.DeleteOptions{}
+	}
+	return c.clientGetter.Pods(namespace).Delete(context.TODO(), name, *options)
 }
 
 func (c *podController) Get(namespace, name string, options metav1.GetOptions) (*v1.Pod, error) {
-	return c.clientGetter.Pods(namespace).Get(name, options)
+	return c.clientGetter.Pods(namespace).Get(context.TODO(), name, options)
 }
 
 func (c *podController) List(namespace string, opts metav1.ListOptions) (*v1.PodList, error) {
-	return c.clientGetter.Pods(namespace).List(opts)
+	return c.clientGetter.Pods(namespace).List(context.TODO(), opts)
 }
 
 func (c *podController) Watch(namespace string, opts metav1.ListOptions) (watch.Interface, error) {
-	return c.clientGetter.Pods(namespace).Watch(opts)
+	return c.clientGetter.Pods(namespace).Watch(context.TODO(), opts)
 }
 
 func (c *podController) Patch(namespace, name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.Pod, err error) {
-	return c.clientGetter.Pods(namespace).Patch(name, pt, data, subresources...)
+	return c.clientGetter.Pods(namespace).Patch(context.TODO(), name, pt, data, metav1.PatchOptions{}, subresources...)
 }
 
 type podCache struct {
@@ -233,6 +236,7 @@ func (c *podCache) GetByIndex(indexName, key string) (result []*v1.Pod, err erro
 	if err != nil {
 		return nil, err
 	}
+	result = make([]*v1.Pod, 0, len(objs))
 	for _, obj := range objs {
 		result = append(result, obj.(*v1.Pod))
 	}

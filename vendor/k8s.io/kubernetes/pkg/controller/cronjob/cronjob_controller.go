@@ -108,7 +108,7 @@ func (jm *Controller) syncAll() {
 	// we must also see that the parent CronJob has non-nil DeletionTimestamp (see #42639).
 	// Note that this only works because we are NOT using any caches here.
 	jobListFunc := func(opts metav1.ListOptions) (runtime.Object, error) {
-		return jm.kubeClient.BatchV1().Jobs(metav1.NamespaceAll).List(opts)
+		return jm.kubeClient.BatchV1().Jobs(metav1.NamespaceAll).List(context.TODO(), opts)
 	}
 
 	js := make([]batchv1.Job, 0)
@@ -128,7 +128,7 @@ func (jm *Controller) syncAll() {
 
 	klog.V(4).Infof("Found %d jobs", len(js))
 	cronJobListFunc := func(opts metav1.ListOptions) (runtime.Object, error) {
-		return jm.kubeClient.BatchV1beta1().CronJobs(metav1.NamespaceAll).List(opts)
+		return jm.kubeClient.BatchV1beta1().CronJobs(metav1.NamespaceAll).List(context.TODO(), opts)
 	}
 
 	jobsBySj := groupJobsByParent(js)
@@ -158,12 +158,12 @@ func cleanupFinishedJobs(sj *batchv1beta1.CronJob, js []batchv1.Job, jc jobContr
 	}
 
 	failedJobs := []batchv1.Job{}
-	succesfulJobs := []batchv1.Job{}
+	successfulJobs := []batchv1.Job{}
 
 	for _, job := range js {
 		isFinished, finishedStatus := getFinishedStatus(&job)
 		if isFinished && finishedStatus == batchv1.JobComplete {
-			succesfulJobs = append(succesfulJobs, job)
+			successfulJobs = append(successfulJobs, job)
 		} else if isFinished && finishedStatus == batchv1.JobFailed {
 			failedJobs = append(failedJobs, job)
 		}
@@ -171,7 +171,7 @@ func cleanupFinishedJobs(sj *batchv1beta1.CronJob, js []batchv1.Job, jc jobContr
 
 	if sj.Spec.SuccessfulJobsHistoryLimit != nil {
 		removeOldestJobs(sj,
-			succesfulJobs,
+			successfulJobs,
 			jc,
 			*sj.Spec.SuccessfulJobsHistoryLimit,
 			recorder)

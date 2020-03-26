@@ -176,35 +176,38 @@ func (c *deploymentController) Cache() DeploymentCache {
 }
 
 func (c *deploymentController) Create(obj *v1.Deployment) (*v1.Deployment, error) {
-	return c.clientGetter.Deployments(obj.Namespace).Create(obj)
+	return c.clientGetter.Deployments(obj.Namespace).Create(context.TODO(), obj, metav1.CreateOptions{})
 }
 
 func (c *deploymentController) Update(obj *v1.Deployment) (*v1.Deployment, error) {
-	return c.clientGetter.Deployments(obj.Namespace).Update(obj)
+	return c.clientGetter.Deployments(obj.Namespace).Update(context.TODO(), obj, metav1.UpdateOptions{})
 }
 
 func (c *deploymentController) UpdateStatus(obj *v1.Deployment) (*v1.Deployment, error) {
-	return c.clientGetter.Deployments(obj.Namespace).UpdateStatus(obj)
+	return c.clientGetter.Deployments(obj.Namespace).UpdateStatus(context.TODO(), obj, metav1.UpdateOptions{})
 }
 
 func (c *deploymentController) Delete(namespace, name string, options *metav1.DeleteOptions) error {
-	return c.clientGetter.Deployments(namespace).Delete(name, options)
+	if options == nil {
+		options = &metav1.DeleteOptions{}
+	}
+	return c.clientGetter.Deployments(namespace).Delete(context.TODO(), name, *options)
 }
 
 func (c *deploymentController) Get(namespace, name string, options metav1.GetOptions) (*v1.Deployment, error) {
-	return c.clientGetter.Deployments(namespace).Get(name, options)
+	return c.clientGetter.Deployments(namespace).Get(context.TODO(), name, options)
 }
 
 func (c *deploymentController) List(namespace string, opts metav1.ListOptions) (*v1.DeploymentList, error) {
-	return c.clientGetter.Deployments(namespace).List(opts)
+	return c.clientGetter.Deployments(namespace).List(context.TODO(), opts)
 }
 
 func (c *deploymentController) Watch(namespace string, opts metav1.ListOptions) (watch.Interface, error) {
-	return c.clientGetter.Deployments(namespace).Watch(opts)
+	return c.clientGetter.Deployments(namespace).Watch(context.TODO(), opts)
 }
 
 func (c *deploymentController) Patch(namespace, name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.Deployment, err error) {
-	return c.clientGetter.Deployments(namespace).Patch(name, pt, data, subresources...)
+	return c.clientGetter.Deployments(namespace).Patch(context.TODO(), name, pt, data, metav1.PatchOptions{}, subresources...)
 }
 
 type deploymentCache struct {
@@ -233,6 +236,7 @@ func (c *deploymentCache) GetByIndex(indexName, key string) (result []*v1.Deploy
 	if err != nil {
 		return nil, err
 	}
+	result = make([]*v1.Deployment, 0, len(objs))
 	for _, obj := range objs {
 		result = append(result, obj.(*v1.Deployment))
 	}

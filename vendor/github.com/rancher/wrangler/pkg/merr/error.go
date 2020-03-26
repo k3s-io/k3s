@@ -2,7 +2,6 @@ package merr
 
 import "bytes"
 
-
 type Errors []error
 
 func (e Errors) Err() error {

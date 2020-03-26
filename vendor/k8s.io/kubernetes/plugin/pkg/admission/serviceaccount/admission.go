@@ -315,7 +315,7 @@ func (s *Plugin) getServiceAccount(namespace string, name string) (*corev1.Servi
 		if i != 0 {
 			time.Sleep(retryInterval)
 		}
-		serviceAccount, err := s.client.CoreV1().ServiceAccounts(namespace).Get(name, metav1.GetOptions{})
+		serviceAccount, err := s.client.CoreV1().ServiceAccounts(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 		if err == nil {
 			return serviceAccount, nil
 		}
@@ -424,12 +424,19 @@ func (s *Plugin) limitSecretReferences(serviceAccount *corev1.ServiceAccount, po
 }
 
 func (s *Plugin) mountServiceAccountToken(serviceAccount *corev1.ServiceAccount, pod *api.Pod) error {
-	// Find the name of a referenced ServiceAccountToken secret we can mount
-	serviceAccountToken, err := s.getReferencedServiceAccountToken(serviceAccount)
-	if err != nil {
-		return fmt.Errorf("Error looking up service account token for %s/%s: %v", serviceAccount.Namespace, serviceAccount.Name, err)
+	var (
+		// serviceAccountToken holds the name of a secret containing a legacy service account token
+		serviceAccountToken string
+		err                 error
+	)
+	if !s.boundServiceAccountTokenVolume {
+		// Find the name of a referenced ServiceAccountToken secret we can mount
+		serviceAccountToken, err = s.getReferencedServiceAccountToken(serviceAccount)
+		if err != nil {
+			return fmt.Errorf("Error looking up service account token for %s/%s: %v", serviceAccount.Namespace, serviceAccount.Name, err)
+		}
 	}
-	if len(serviceAccountToken) == 0 {
+	if len(serviceAccountToken) == 0 && !s.boundServiceAccountTokenVolume {
 		// We don't have an API token to mount, so return
 		if s.RequireAPIToken {
 			// If a token is required, this is considered an error

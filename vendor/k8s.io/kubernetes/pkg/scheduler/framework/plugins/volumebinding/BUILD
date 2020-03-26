@@ -1,4 +1,4 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "go_default_library",
@@ -6,12 +6,11 @@ go_library(
     importpath = "k8s.io/kubernetes/pkg/scheduler/framework/plugins/volumebinding",
     visibility = ["//visibility:public"],
     deps = [
-        "//pkg/scheduler/algorithm/predicates:go_default_library",
-        "//pkg/scheduler/framework/plugins/migration:go_default_library",
+        "//pkg/controller/volume/scheduling:go_default_library",
         "//pkg/scheduler/framework/v1alpha1:go_default_library",
         "//pkg/scheduler/nodeinfo:go_default_library",
-        "//pkg/scheduler/volumebinder:go_default_library",
         "//staging/src/k8s.io/api/core/v1:go_default_library",
+        "//staging/src/k8s.io/apimachinery/pkg/runtime:go_default_library",
     ],
 )
 
@@ -27,4 +26,16 @@ filegroup(
     srcs = [":package-srcs"],
     tags = ["automanaged"],
     visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = ["volume_binding_test.go"],
+    embed = [":go_default_library"],
+    deps = [
+        "//pkg/controller/volume/scheduling:go_default_library",
+        "//pkg/scheduler/framework/v1alpha1:go_default_library",
+        "//pkg/scheduler/nodeinfo:go_default_library",
+        "//staging/src/k8s.io/api/core/v1:go_default_library",
+    ],
 )

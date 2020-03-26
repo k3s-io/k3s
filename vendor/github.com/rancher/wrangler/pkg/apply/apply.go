@@ -1,6 +1,7 @@
 package apply
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
@@ -35,6 +36,7 @@ type InformerGetter interface {
 type Apply interface {
 	Apply(set *objectset.ObjectSet) error
 	ApplyObjects(objs ...runtime.Object) error
+	WithContext(ctx context.Context) Apply
 	WithCacheTypes(igs ...InformerGetter) Apply
 	WithSetID(id string) Apply
 	WithOwner(obj runtime.Object) Apply
@@ -135,6 +137,7 @@ func (a *apply) newDesiredSet() desiredSet {
 	return desiredSet{
 		a:                a,
 		defaultNamespace: defaultNamespace,
+		ctx:              context.Background(),
 		ratelimitingQps:  1,
 		reconcilers:      defaultReconcilers,
 		strictCaching:    true,
@@ -213,4 +216,8 @@ func (a *apply) WithNoDelete() Apply {
 
 func (a *apply) WithSetOwnerReference(controller, block bool) Apply {
 	return a.newDesiredSet().WithSetOwnerReference(controller, block)
+}
+
+func (a *apply) WithContext(ctx context.Context) Apply {
+	return a.newDesiredSet().WithContext(ctx)
 }
