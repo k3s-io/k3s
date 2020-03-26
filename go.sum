@@ -197,6 +197,7 @@ github.com/dnaeon/go-vcr v1.0.1 h1:r8L/HqC0Hje5AXMu1ooW8oyQyOFv4GxqpL0nRP7SLLY=
 github.com/dnaeon/go-vcr v1.0.1/go.mod h1:aBB1+wY4s93YsC3HHjMBMrwTj2R9FHDzUr9KyGc8n1E=
 github.com/docker/distribution v0.0.0-20190205005809-0d3efadf0154 h1:C8WBRZDiZn3IZnBlbHVeTWF32XhVGK69Li4GC/3jL9Q=
 github.com/docker/distribution v0.0.0-20190205005809-0d3efadf0154/go.mod h1:J2gT2udsDAN96Uj4KfcMRqY0/ypR+oyYUYmja8H+y+w=
+github.com/docker/docker v0.7.3-0.20190327010347-be7ac8be2ae0 h1:w3NnFcKR5241cfmQU5ZZAsf0xcpId6mWOupTvJlUX2U=
 github.com/docker/docker v0.7.3-0.20190327010347-be7ac8be2ae0/go.mod h1:eEKB0N0r5NX/I1kEveEz05bcu8tLC/8azJZsviup8Sk=
 github.com/docker/docker v1.4.2-0.20191205034852-d163fbba3c82 h1:kf0UYG15U+KsO7mA8Lsz+OkuoC1Ldc+cTQUyUnAFmg8=
 github.com/docker/docker v1.4.2-0.20191205034852-d163fbba3c82/go.mod h1:eEKB0N0r5NX/I1kEveEz05bcu8tLC/8azJZsviup8Sk=
