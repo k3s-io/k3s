@@ -237,6 +237,7 @@ github.com/galal-hussein/kubernetes/staging/src/k8s.io/kubectl v1.16.8-k3s1 h1:P
 github.com/galal-hussein/kubernetes/staging/src/k8s.io/kubectl v1.16.8-k3s1/go.mod h1:6RX5jlm+srJDUD2pXvwTaygK2GcN7o4cztrKOqoKmiQ=
 github.com/galal-hussein/kubernetes/staging/src/k8s.io/kubelet v1.16.8-k3s1 h1:qlpvVnRCJdSoNRgHJto6pmhWda0uxjZEmWMjnBFq4UQ=
 github.com/galal-hussein/kubernetes/staging/src/k8s.io/kubelet v1.16.8-k3s1/go.mod h1:TYwPJHyAg97PV1XzgDrp/il12tZ5cwWHT6tECzCEwG0=
+github.com/galal-hussein/kubernetes/staging/src/k8s.io/legacy-cloud-providers v1.16.8-k3s1 h1:JMqM1rr/7bEIAdfkUz46h9CqILjL4YEShjYyzHLoN3g=
 github.com/galal-hussein/kubernetes/staging/src/k8s.io/legacy-cloud-providers v1.16.8-k3s1/go.mod h1:tUmOWcMug23gITlfkI8tDjgeDdD7xiNR6ylYS0LavV4=
 github.com/galal-hussein/kubernetes/staging/src/k8s.io/metrics v1.16.8-k3s1 h1:4r9ox9OTeSA1EDKBucqpIeNu/alE4byyBYhBA3EXa7k=
 github.com/galal-hussein/kubernetes/staging/src/k8s.io/metrics v1.16.8-k3s1/go.mod h1:pM/0ywERZODloMTAJKiUWRfmKBEhCf8oWgzBm1N5M/o=
