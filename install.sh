@@ -72,6 +72,9 @@ set -e
 #   - INSTALL_K3S_TYPE
 #     Type of systemd service to create, will default from the k3s exec command
 #     if not specified.
+#
+#   - INSTALL_K3S_SELINUX_WARN
+#     If set to true will continue if k3s-selinux policy is not found.
 
 GITHUB_URL=https://github.com/rancher/k3s/releases
 STORAGE_URL=https://storage.googleapis.com/k3s-ci-builds
@@ -81,6 +84,10 @@ DOWNLOADER=
 info()
 {
     echo '[INFO] ' "$@"
+}
+warn()
+{
+    echo '[WARN] ' "$@" >&2
 }
 fatal()
 {
@@ -389,10 +396,26 @@ setup_binary() {
     info "Installing k3s to ${BIN_DIR}/k3s"
     $SUDO chown root:root ${TMP_BIN}
     $SUDO mv -f ${TMP_BIN} ${BIN_DIR}/k3s
+}
 
-    if ! $SUDO chcon -u system_u -r object_r -t container_runtime_exec_t ${BIN_DIR}/k3s 2>/dev/null 2>&1; then
+# --- setup selinux policy ---
+setup_selinux() {
+    policy_hint="please install:
+    yum install -y container-selinux selinux-policy-base
+    rpm -i https://rpm.rancher.io/k3s-selinux-0.1.1-rc1.el7.noarch.rpm
+"
+    policy_error=fatal
+    if [ "$INSTALL_K3S_SELINUX_WARN" = true ]; then
+        policy_error=warn
+    fi
+
+    if ! $SUDO chcon -u system_u -r object_r -t container_runtime_exec_t ${BIN_DIR}/k3s >/dev/null 2>&1; then
         if $SUDO grep SELINUX=enforcing /etc/selinux/config >/dev/null 2>&1; then
-            fatal "Failed to apply container_runtime_exec_t to ${BIN_DIR}/k3s, please install k3s-selinux RPM"
+            $policy_error "Failed to apply container_runtime_exec_t to ${BIN_DIR}/k3s, ${policy_hint}"
+        fi
+    else
+        if [ ! -f /usr/share/selinux/packages/k3s.pp ]; then
+            $policy_error "Failed to find the k3s-selinux policy, ${policy_hint}"
         fi
     fi
 }
@@ -733,6 +756,7 @@ eval set -- $(escape "${INSTALL_K3S_EXEC}") $(quote "$@")
     verify_system
     setup_env "$@"
     download_and_verify
+    setup_selinux
     create_symlinks
     create_killall
     create_uninstall
