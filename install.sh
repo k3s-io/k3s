@@ -50,7 +50,7 @@ set -e
 #
 #   - INSTALL_K3S_SYSTEMD_DIR
 #     Directory to install systemd service and environment files to, or use
-#     /etc/systemd/system as the default
+#     /usr/local/etc/systemd/system as the default
 #
 #   - INSTALL_K3S_EXEC or script arguments
 #     Command with flags to use for launching k3s in the systemd service, if
@@ -197,7 +197,8 @@ setup_env() {
     if [ -n "${INSTALL_K3S_SYSTEMD_DIR}" ]; then
         SYSTEMD_DIR="${INSTALL_K3S_SYSTEMD_DIR}"
     else
-        SYSTEMD_DIR=/etc/systemd/system
+        mkdir -p /usr/local/etc/systemd/system
+        SYSTEMD_DIR=/usr/local/etc/systemd/system
     fi
 
     # --- set related files from system name ---
@@ -578,8 +579,8 @@ EOF
 
 # --- disable current service if loaded --
 systemd_disable() {
-    $SUDO rm -f /etc/systemd/system/${SERVICE_K3S} || true
-    $SUDO rm -f /etc/systemd/system/${SERVICE_K3S}.env || true
+    $SUDO rm -f ${SYSTEMD_DIR}/${SERVICE_K3S} || true
+    $SUDO rm -f ${SYSTEMD_DIR}/${SERVICE_K3S}.env || true
     $SUDO systemctl disable ${SYSTEM_NAME} >/dev/null 2>&1 || true
 }
 
