@@ -5,6 +5,8 @@ cd $(dirname $0)/..
 
 . ./scripts/setup-rancher-path.sh
 
+GO=${GO-go}
+
 # Prime sudo
 sudo echo Compiling
 
@@ -13,7 +15,7 @@ if [ ! -e bin/containerd ]; then
     ./scripts/package
 else
     rm -f ./bin/k3s-agent
-    go build -tags "apparmor seccomp" -o ./bin/k3s-agent ./cmd/agent/main.go
+    "${GO}" build -tags "apparmor seccomp" -o ./bin/k3s-agent ./cmd/agent/main.go
 fi
 
 echo Starting agent

@@ -28,7 +28,6 @@ k3s is intended to be a fully compliant Kubernetes distribution with the followi
     * CNI
     * Host utilities (iptables, socat, etc)
 
-
 Documentation
 -------------
 
@@ -36,8 +35,10 @@ Please see [the official docs site](https://rancher.com/docs/k3s/latest/en/) for
 
 Quick-Start - Install Script
 --------------
+
 The k3s `install.sh` script provides a convenient way for installing to systemd or openrc,
 to install k3s as a service just run:
+
 ```bash
 curl -sfL https://get.k3s.io | sh -
 ```
@@ -52,12 +53,14 @@ sudo kubectl get nodes
 `K3S_TOKEN` is created at `/var/lib/rancher/k3s/server/node-token` on your server.
 To install on worker nodes we should pass `K3S_URL` along with
 `K3S_TOKEN` or `K3S_CLUSTER_SECRET` environment variables, for example:
+
 ```bash
 curl -sfL https://get.k3s.io | K3S_URL=https://myserver:6443 K3S_TOKEN=XXX sh -
 ```
 
 Manual Download
 ---------------
+
 1. Download `k3s` from latest [release](https://github.com/rancher/k3s/releases/latest), x86_64, armhf, and arm64 are supported.
 2. Run server.
 
@@ -66,7 +69,8 @@ sudo k3s server &
 # Kubeconfig is written to /etc/rancher/k3s/k3s.yaml
 sudo k3s kubectl get nodes
 
-# On a different node run the below. NODE_TOKEN comes from 
+# On a different node run the below. NODE_TOKEN comes from
 # /var/lib/rancher/k3s/server/node-token on your server
 sudo k3s agent --server https://myserver:6443 --token ${NODE_TOKEN}
 ```
+

@@ -5,8 +5,21 @@ metadata:
   namespace: kube-system
 spec:
   chart: https://%{KUBERNETES_API}%/static/charts/traefik-1.81.0.tgz
-  set:
-    rbac.enabled: "true"
-    ssl.enabled: "true"
-    metrics.prometheus.enabled: "true"
-    kubernetes.ingressEndpoint.useDefaultPublishedService: "true"
+  valuesContent: |-
+    rbac:
+      enabled: true
+    ssl:
+      enabled: true
+    metrics:
+      prometheus:
+        enabled: true
+    kubernetes:
+      ingressEndpoint:
+        useDefaultPublishedService: true
+    image: "rancher/library-traefik"
+    tolerations:
+      - key: "CriticalAddonsOnly"
+        operator: "Exists"
+      - key: "node-role.kubernetes.io/master"
+        operator: "Exists"
+        effect: "NoSchedule"

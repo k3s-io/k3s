@@ -356,6 +356,22 @@ func (h *handler) newDaemonSet(svc *core.Service) (*apps.DaemonSet, error) {
 
 		ds.Spec.Template.Spec.Containers = append(ds.Spec.Template.Spec.Containers, container)
 	}
+
+	// Add toleration to noderole.kubernetes.io/master=*:NoSchedule
+	noScheduleToleration := core.Toleration{
+		Key:      "noderole.kubernetes.io/master",
+		Operator: "Exists",
+		Effect:   "NoSchedule",
+	}
+	ds.Spec.Template.Spec.Tolerations = append(ds.Spec.Template.Spec.Tolerations, noScheduleToleration)
+
+	// Add toleration to CriticalAddonsOnly
+	criticalAddonsOnlyToleration := core.Toleration{
+		Key:      "CriticalAddonsOnly",
+		Operator: "Exists",
+	}
+	ds.Spec.Template.Spec.Tolerations = append(ds.Spec.Template.Spec.Tolerations, criticalAddonsOnlyToleration)
+
 	// Add node selector only if label "svccontroller.k3s.cattle.io/enablelb" exists on the nodes
 	selector, err := labels.Parse(daemonsetNodeLabel)
 	if err != nil {

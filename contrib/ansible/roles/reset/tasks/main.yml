@@ -1,0 +1,25 @@
+---
+- name: Disable services
+  systemd:
+    name: "{{ item }}"
+    state: stopped
+    enabled: no
+  with_items:
+    - k3s
+    - k3s-node
+
+- name: Remove service files, binaries and data
+  file:
+    name: "{{ item }}"
+    state: absent
+  with_items:
+    - "{{ systemd_dir }}/k3s.service"
+    - "{{ systemd_dir }}/k3s-node.service"
+    - /etc/rancher/k3s
+    - /var/lib/rancher/k3s
+    - /var/lib/kubelet
+    - /usr/local/bin/k3s
+
+- name: daemon_reload
+  systemd:
+    daemon_reload: yes
