@@ -53,10 +53,10 @@ const ContainerdConfigTemplate = `
 {{range $k, $v := .PrivateRegistryConfig.Configs }}
 {{ if $v.Auth }}
 [plugins.cri.registry.configs."{{$k}}".auth]
-  {{ if $v.Auth.Username }}username = "{{ $v.Auth.Username }}"{{end}}
-  {{ if $v.Auth.Password }}password = "{{ $v.Auth.Password }}"{{end}}
-  {{ if $v.Auth.Auth }}auth = "{{ $v.Auth.Auth }}"{{end}}
-  {{ if $v.Auth.IdentityToken }}identitytoken = "{{ $v.Auth.IdentityToken }}"{{end}}
+  {{ if $v.Auth.Username }}username = {{ printf "%q" $v.Auth.Username }}{{end}}
+  {{ if $v.Auth.Password }}password = {{ printf "%q" $v.Auth.Password }}{{end}}
+  {{ if $v.Auth.Auth }}auth = {{ printf "%q" $v.Auth.Auth }}{{end}}
+  {{ if $v.Auth.IdentityToken }}identitytoken = {{ printf "%q" $v.Auth.IdentityToken }}{{end}}
 {{end}}
 {{ if $v.TLS }}
 [plugins.cri.registry.configs."{{$k}}".tls]
