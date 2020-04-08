@@ -50,7 +50,7 @@ type ContainerCommitOptions struct {
 
 // ContainerExecInspect holds information returned by exec inspect.
 type ContainerExecInspect struct {
-	ExecID      string
+	ExecID      string `json:"ID"`
 	ContainerID string
 	Running     bool
 	ExitCode    int
@@ -363,10 +363,6 @@ type ServiceUpdateOptions struct {
 // ServiceListOptions holds parameters to list services with.
 type ServiceListOptions struct {
 	Filters filters.Args
-
-	// Status indicates whether the server should include the service task
-	// count of running and desired tasks.
-	Status bool
 }
 
 // ServiceInspectOptions holds parameters related to the "service inspect"

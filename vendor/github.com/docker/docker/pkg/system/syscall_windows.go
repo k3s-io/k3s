@@ -1,10 +1,10 @@
 package system // import "github.com/docker/docker/pkg/system"
 
 import (
+	"fmt"
 	"syscall"
 	"unsafe"
 
-	"github.com/Microsoft/hcsshim/osversion"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/windows"
 )
@@ -55,13 +55,19 @@ var (
 	ntuserApiset                  = windows.NewLazyDLL("ext-ms-win-ntuser-window-l1-1-0")
 	modadvapi32                   = windows.NewLazySystemDLL("advapi32.dll")
 	procGetVersionExW             = modkernel32.NewProc("GetVersionExW")
+	procGetProductInfo            = modkernel32.NewProc("GetProductInfo")
 	procSetNamedSecurityInfo      = modadvapi32.NewProc("SetNamedSecurityInfoW")
 	procGetSecurityDescriptorDacl = modadvapi32.NewProc("GetSecurityDescriptorDacl")
 )
 
 // OSVersion is a wrapper for Windows version information
 // https://msdn.microsoft.com/en-us/library/windows/desktop/ms724439(v=vs.85).aspx
-type OSVersion = osversion.OSVersion
+type OSVersion struct {
+	Version      uint32
+	MajorVersion uint8
+	MinorVersion uint8
+	Build        uint16
+}
 
 // https://msdn.microsoft.com/en-us/library/windows/desktop/ms724833(v=vs.85).aspx
 type osVersionInfoEx struct {
@@ -79,10 +85,23 @@ type osVersionInfoEx struct {
 }
 
 // GetOSVersion gets the operating system version on Windows. Note that
-// dockerd.exe must be manifested to get the correct version information.
-// Deprecated: use github.com/Microsoft/hcsshim/osversion.Get() instead
+// docker.exe must be manifested to get the correct version information.
 func GetOSVersion() OSVersion {
-	return osversion.Get()
+	var err error
+	osv := OSVersion{}
+	osv.Version, err = windows.GetVersion()
+	if err != nil {
+		// GetVersion never fails.
+		panic(err)
+	}
+	osv.MajorVersion = uint8(osv.Version & 0xFF)
+	osv.MinorVersion = uint8(osv.Version >> 8 & 0xFF)
+	osv.Build = uint16(osv.Version >> 16)
+	return osv
+}
+
+func (osv OSVersion) ToString() string {
+	return fmt.Sprintf("%d.%d.%d", osv.MajorVersion, osv.MinorVersion, osv.Build)
 }
 
 // IsWindowsClient returns true if the SKU is client
@@ -97,6 +116,22 @@ func IsWindowsClient() bool {
 	}
 	const verNTWorkstation = 0x00000001
 	return osviex.ProductType == verNTWorkstation
+}
+
+// IsIoTCore returns true if the currently running image is based off of
+// Windows 10 IoT Core.
+// @engine maintainers - this function should not be removed or modified as it
+// is used to enforce licensing restrictions on Windows.
+func IsIoTCore() bool {
+	var returnedProductType uint32
+	r1, _, err := procGetProductInfo.Call(6, 1, 0, 0, uintptr(unsafe.Pointer(&returnedProductType)))
+	if r1 == 0 {
+		logrus.Warnf("GetProductInfo failed - assuming this is not IoT: %v", err)
+		return false
+	}
+	const productIoTUAP = 0x0000007B
+	const productIoTUAPCommercial = 0x00000083
+	return returnedProductType == productIoTUAP || returnedProductType == productIoTUAPCommercial
 }
 
 // Unmount is a platform-specific helper function to call

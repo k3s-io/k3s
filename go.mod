@@ -77,7 +77,7 @@ require (
 	github.com/coreos/flannel v0.11.0
 	github.com/coreos/go-iptables v0.4.2
 	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f
-	github.com/docker/docker v1.4.2-0.20191205034852-d163fbba3c82
+	github.com/docker/docker v17.12.0-ce-rc1.0.20200309214505-aa6a9891b09c+incompatible
 	github.com/docker/go-metrics v0.0.1 // indirect
 	github.com/flosch/pongo2 v0.0.0-20190707114632-bbf5a6c351f4 // indirect
 	github.com/go-bindata/go-bindata v3.1.2+incompatible
