@@ -40,7 +40,7 @@ github.com/Microsoft/go-winio
 github.com/Microsoft/go-winio/pkg/etw
 github.com/Microsoft/go-winio/pkg/etwlogrus
 github.com/Microsoft/go-winio/pkg/guid
-# github.com/Microsoft/hcsshim v0.8.6 => github.com/Microsoft/hcsshim v0.8.7-0.20190926181021-82c7525d98c8
+# github.com/Microsoft/hcsshim v0.0.0-20190417211021-672e52e9209d => github.com/Microsoft/hcsshim v0.8.7-0.20190926181021-82c7525d98c8
 github.com/Microsoft/hcsshim
 github.com/Microsoft/hcsshim/cmd/containerd-shim-runhcs-v1/options
 github.com/Microsoft/hcsshim/hcn
@@ -327,7 +327,7 @@ github.com/containernetworking/cni/pkg/types
 github.com/containernetworking/cni/pkg/types/020
 github.com/containernetworking/cni/pkg/types/current
 github.com/containernetworking/cni/pkg/version
-# github.com/containernetworking/plugins v0.8.2
+# github.com/containernetworking/plugins v0.8.1
 github.com/containernetworking/plugins/pkg/ns
 # github.com/coreos/flannel v0.11.0 => github.com/rancher/flannel v0.11.0-k3s.1
 github.com/coreos/flannel/backend
@@ -741,7 +741,7 @@ github.com/rancher/kine/pkg/server
 github.com/rancher/kine/pkg/tls
 # github.com/rancher/remotedialer v0.2.0
 github.com/rancher/remotedialer
-# github.com/rancher/wrangler v0.4.0
+# github.com/rancher/wrangler v0.6.1
 github.com/rancher/wrangler/pkg/apply
 github.com/rancher/wrangler/pkg/apply/injectors
 github.com/rancher/wrangler/pkg/cleanup
@@ -750,6 +750,8 @@ github.com/rancher/wrangler/pkg/controller-gen
 github.com/rancher/wrangler/pkg/controller-gen/args
 github.com/rancher/wrangler/pkg/controller-gen/generators
 github.com/rancher/wrangler/pkg/crd
+github.com/rancher/wrangler/pkg/data
+github.com/rancher/wrangler/pkg/data/convert
 github.com/rancher/wrangler/pkg/generic
 github.com/rancher/wrangler/pkg/gvk
 github.com/rancher/wrangler/pkg/kv
@@ -757,13 +759,17 @@ github.com/rancher/wrangler/pkg/leader
 github.com/rancher/wrangler/pkg/merr
 github.com/rancher/wrangler/pkg/name
 github.com/rancher/wrangler/pkg/objectset
+github.com/rancher/wrangler/pkg/patch
 github.com/rancher/wrangler/pkg/relatedresource
 github.com/rancher/wrangler/pkg/resolvehome
+github.com/rancher/wrangler/pkg/schemas
+github.com/rancher/wrangler/pkg/schemas/definition
+github.com/rancher/wrangler/pkg/schemas/openapi
 github.com/rancher/wrangler/pkg/schemes
 github.com/rancher/wrangler/pkg/signals
 github.com/rancher/wrangler/pkg/slice
 github.com/rancher/wrangler/pkg/start
-# github.com/rancher/wrangler-api v0.4.0
+# github.com/rancher/wrangler-api v0.6.0
 github.com/rancher/wrangler-api/pkg/generated/controllers/apps
 github.com/rancher/wrangler-api/pkg/generated/controllers/apps/v1
 github.com/rancher/wrangler-api/pkg/generated/controllers/batch
@@ -1118,7 +1124,7 @@ gopkg.in/square/go-jose.v2/jwt
 gopkg.in/warnings.v0
 # gopkg.in/yaml.v2 v2.2.8
 gopkg.in/yaml.v2
-# k8s.io/api v0.17.0 => github.com/rancher/kubernetes/staging/src/k8s.io/api v1.17.4-k3s1
+# k8s.io/api v0.18.0 => github.com/rancher/kubernetes/staging/src/k8s.io/api v1.17.4-k3s1
 k8s.io/api/admission/v1
 k8s.io/api/admission/v1beta1
 k8s.io/api/admissionregistration/v1
@@ -1162,7 +1168,7 @@ k8s.io/api/settings/v1alpha1
 k8s.io/api/storage/v1
 k8s.io/api/storage/v1alpha1
 k8s.io/api/storage/v1beta1
-# k8s.io/apiextensions-apiserver v0.17.0 => github.com/rancher/kubernetes/staging/src/k8s.io/apiextensions-apiserver v1.17.4-k3s1
+# k8s.io/apiextensions-apiserver v0.18.0 => github.com/rancher/kubernetes/staging/src/k8s.io/apiextensions-apiserver v1.17.4-k3s1
 k8s.io/apiextensions-apiserver/pkg/apihelpers
 k8s.io/apiextensions-apiserver/pkg/apis/apiextensions
 k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/install
@@ -1210,7 +1216,7 @@ k8s.io/apiextensions-apiserver/pkg/generated/openapi
 k8s.io/apiextensions-apiserver/pkg/registry/customresource
 k8s.io/apiextensions-apiserver/pkg/registry/customresource/tableconvertor
 k8s.io/apiextensions-apiserver/pkg/registry/customresourcedefinition
-# k8s.io/apimachinery v0.17.0 => github.com/rancher/kubernetes/staging/src/k8s.io/apimachinery v1.17.4-k3s1
+# k8s.io/apimachinery v0.18.0 => github.com/rancher/kubernetes/staging/src/k8s.io/apimachinery v1.17.4-k3s1
 k8s.io/apimachinery/pkg/api/equality
 k8s.io/apimachinery/pkg/api/errors
 k8s.io/apimachinery/pkg/api/meta
@@ -1608,7 +1614,7 @@ k8s.io/cluster-bootstrap/token/jws
 k8s.io/cluster-bootstrap/token/util
 k8s.io/cluster-bootstrap/util/secrets
 k8s.io/cluster-bootstrap/util/tokens
-# k8s.io/code-generator v0.17.0 => github.com/rancher/kubernetes/staging/src/k8s.io/code-generator v1.17.4-k3s1
+# k8s.io/code-generator v0.18.0 => github.com/rancher/kubernetes/staging/src/k8s.io/code-generator v1.17.4-k3s1
 k8s.io/code-generator/cmd/client-gen/args
 k8s.io/code-generator/cmd/client-gen/generators
 k8s.io/code-generator/cmd/client-gen/generators/fake
@@ -1646,7 +1652,7 @@ k8s.io/cri-api/pkg/apis/runtime/v1alpha2
 # k8s.io/csi-translation-lib v0.0.0 => github.com/rancher/kubernetes/staging/src/k8s.io/csi-translation-lib v1.17.4-k3s1
 k8s.io/csi-translation-lib
 k8s.io/csi-translation-lib/plugins
-# k8s.io/gengo v0.0.0-20191120174120-e74f70b9b27e
+# k8s.io/gengo v0.0.0-20200114144118-36b2048a9120
 k8s.io/gengo/args
 k8s.io/gengo/examples/deepcopy-gen/generators
 k8s.io/gengo/examples/set-gen/sets
@@ -1658,7 +1664,7 @@ k8s.io/gengo/types
 k8s.io/heapster/metrics/api/v1/types
 # k8s.io/klog v1.0.0
 k8s.io/klog
-# k8s.io/kube-aggregator v0.17.0 => github.com/rancher/kubernetes/staging/src/k8s.io/kube-aggregator v1.17.4-k3s1
+# k8s.io/kube-aggregator v0.18.0 => github.com/rancher/kubernetes/staging/src/k8s.io/kube-aggregator v1.17.4-k3s1
 k8s.io/kube-aggregator/pkg/apis/apiregistration
 k8s.io/kube-aggregator/pkg/apis/apiregistration/install
 k8s.io/kube-aggregator/pkg/apis/apiregistration/v1
@@ -1782,7 +1788,7 @@ k8s.io/kubectl/pkg/validation
 k8s.io/kubelet/config/v1beta1
 k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1
 k8s.io/kubelet/pkg/apis/pluginregistration/v1
-# k8s.io/kubernetes v1.16.0 => github.com/rancher/kubernetes v1.17.4-k3s1
+# k8s.io/kubernetes v1.13.0 => github.com/rancher/kubernetes v1.17.4-k3s1
 k8s.io/kubernetes/cmd/cloud-controller-manager/app
 k8s.io/kubernetes/cmd/cloud-controller-manager/app/apis/config
 k8s.io/kubernetes/cmd/cloud-controller-manager/app/apis/config/scheme

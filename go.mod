@@ -61,6 +61,7 @@ replace (
 
 require (
 	github.com/NYTimes/gziphandler v1.1.1 // indirect
+	github.com/alexflint/go-filemutex v0.0.0-20171022225611-72bdc8eae2ae // indirect
 	github.com/bhendo/go-powershell v0.0.0-20190719160123-219e7fb4e41e // indirect
 	github.com/bronze1man/goStrongswanVici v0.0.0-20190828090544-27d02f80ba40 // indirect
 	github.com/buger/jsonparser v0.0.0-20181115193947-bf1c66bbce23 // indirect
@@ -73,10 +74,14 @@ require (
 	github.com/containerd/go-cni v0.0.0-20190904155053-d20b7eebc7ee // indirect
 	github.com/containerd/go-runc v0.0.0-20190923131748-a2952bc25f51 // indirect
 	github.com/containerd/ttrpc v0.0.0-20190828172938-92c8520ef9f8 // indirect
-	github.com/containernetworking/plugins v0.8.2 // indirect
+	github.com/containernetworking/plugins v0.8.1 // indirect
 	github.com/coreos/flannel v0.11.0
 	github.com/coreos/go-iptables v0.4.2
 	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f
+	github.com/d2g/dhcp4 v0.0.0-20170904100407-a1d1b6c41b1c // indirect
+	github.com/d2g/dhcp4client v1.0.0 // indirect
+	github.com/d2g/dhcp4server v0.0.0-20181031114812-7d4a0a7f59a5 // indirect
+	github.com/d2g/hardwareaddr v0.0.0-20190221164911-e7d9fbe030e4 // indirect
 	github.com/docker/docker v1.4.2-0.20191205034852-d163fbba3c82
 	github.com/docker/go-metrics v0.0.1 // indirect
 	github.com/flosch/pongo2 v0.0.0-20190707114632-bbf5a6c351f4 // indirect
@@ -86,7 +91,9 @@ require (
 	github.com/google/tcpproxy v0.0.0-20180808230851-dfa16c61dad2
 	github.com/gorilla/mux v1.7.3
 	github.com/gorilla/websocket v1.4.1
+	github.com/j-keck/arping v0.0.0-20160618110441-2cf9dc699c56 // indirect
 	github.com/juju/errors v0.0.0-20190806202954-0232dcc7464d // indirect
+	github.com/juju/loggo v0.0.0-20190526231331-6e530bcce5d8 // indirect
 	github.com/juju/testing v0.0.0-20190723135506-ce30eb24acd2 // indirect
 	github.com/kubernetes-sigs/cri-tools v0.0.0-00010101000000-000000000000
 	github.com/lib/pq v1.1.1
@@ -101,13 +108,15 @@ require (
 	github.com/rancher/helm-controller v0.4.1
 	github.com/rancher/kine v0.3.5
 	github.com/rancher/remotedialer v0.2.0
-	github.com/rancher/wrangler v0.4.0
-	github.com/rancher/wrangler-api v0.4.0
+	github.com/rancher/wrangler v0.6.1
+	github.com/rancher/wrangler-api v0.6.0
 	github.com/rootless-containers/rootlesskit v0.7.2
+	github.com/safchain/ethtool v0.0.0-20190326074333-42ed695e3de8 // indirect
 	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/pflag v1.0.5
 	github.com/tchap/go-patricia v2.3.0+incompatible // indirect
 	github.com/urfave/cli v1.22.2
+	github.com/vishvananda/netns v0.0.0-20180720170159-13995c7128cc // indirect
 	golang.org/x/crypto v0.0.0-20200220183623-bac4c82f6975
 	golang.org/x/net v0.0.0-20191204025024-5ee1b9f4859a
 	golang.org/x/sys v0.0.0-20191204072324-ce4227a45e2e
@@ -115,13 +124,13 @@ require (
 	gopkg.in/mgo.v2 v2.0.0-20190816093944-a6b53ec6cb22 // indirect
 	gopkg.in/robfig/cron.v2 v2.0.0-20150107220207-be2e0b0deed5 // indirect
 	gopkg.in/yaml.v2 v2.2.8
-	k8s.io/api v0.17.0
-	k8s.io/apimachinery v0.17.0
+	k8s.io/api v0.18.0
+	k8s.io/apimachinery v0.18.0
 	k8s.io/apiserver v0.0.0
 	k8s.io/client-go v11.0.1-0.20190409021438-1a26190bd76a+incompatible
 	k8s.io/cloud-provider v0.0.0
 	k8s.io/component-base v0.0.0
 	k8s.io/cri-api v0.0.0
 	k8s.io/klog v1.0.0
-	k8s.io/kubernetes v1.16.0
+	k8s.io/kubernetes v1.13.0
 )

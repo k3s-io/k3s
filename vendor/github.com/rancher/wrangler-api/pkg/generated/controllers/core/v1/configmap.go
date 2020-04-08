@@ -173,31 +173,34 @@ func (c *configMapController) Cache() ConfigMapCache {
 }
 
 func (c *configMapController) Create(obj *v1.ConfigMap) (*v1.ConfigMap, error) {
-	return c.clientGetter.ConfigMaps(obj.Namespace).Create(obj)
+	return c.clientGetter.ConfigMaps(obj.Namespace).Create(context.TODO(), obj, metav1.CreateOptions{})
 }
 
 func (c *configMapController) Update(obj *v1.ConfigMap) (*v1.ConfigMap, error) {
-	return c.clientGetter.ConfigMaps(obj.Namespace).Update(obj)
+	return c.clientGetter.ConfigMaps(obj.Namespace).Update(context.TODO(), obj, metav1.UpdateOptions{})
 }
 
 func (c *configMapController) Delete(namespace, name string, options *metav1.DeleteOptions) error {
-	return c.clientGetter.ConfigMaps(namespace).Delete(name, options)
+	if options == nil {
+		options = &metav1.DeleteOptions{}
+	}
+	return c.clientGetter.ConfigMaps(namespace).Delete(context.TODO(), name, *options)
 }
 
 func (c *configMapController) Get(namespace, name string, options metav1.GetOptions) (*v1.ConfigMap, error) {
-	return c.clientGetter.ConfigMaps(namespace).Get(name, options)
+	return c.clientGetter.ConfigMaps(namespace).Get(context.TODO(), name, options)
 }
 
 func (c *configMapController) List(namespace string, opts metav1.ListOptions) (*v1.ConfigMapList, error) {
-	return c.clientGetter.ConfigMaps(namespace).List(opts)
+	return c.clientGetter.ConfigMaps(namespace).List(context.TODO(), opts)
 }
 
 func (c *configMapController) Watch(namespace string, opts metav1.ListOptions) (watch.Interface, error) {
-	return c.clientGetter.ConfigMaps(namespace).Watch(opts)
+	return c.clientGetter.ConfigMaps(namespace).Watch(context.TODO(), opts)
 }
 
 func (c *configMapController) Patch(namespace, name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.ConfigMap, err error) {
-	return c.clientGetter.ConfigMaps(namespace).Patch(name, pt, data, subresources...)
+	return c.clientGetter.ConfigMaps(namespace).Patch(context.TODO(), name, pt, data, metav1.PatchOptions{}, subresources...)
 }
 
 type configMapCache struct {
@@ -226,6 +229,7 @@ func (c *configMapCache) GetByIndex(indexName, key string) (result []*v1.ConfigM
 	if err != nil {
 		return nil, err
 	}
+	result = make([]*v1.ConfigMap, 0, len(objs))
 	for _, obj := range objs {
 		result = append(result, obj.(*v1.ConfigMap))
 	}

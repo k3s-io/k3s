@@ -25,6 +25,7 @@ import (
 	"github.com/rancher/wrangler/pkg/apply"
 	"github.com/rancher/wrangler/pkg/condition"
 	"github.com/rancher/wrangler/pkg/generic"
+	"github.com/rancher/wrangler/pkg/kv"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -176,35 +177,38 @@ func (c *podController) Cache() PodCache {
 }
 
 func (c *podController) Create(obj *v1.Pod) (*v1.Pod, error) {
-	return c.clientGetter.Pods(obj.Namespace).Create(obj)
+	return c.clientGetter.Pods(obj.Namespace).Create(context.TODO(), obj, metav1.CreateOptions{})
 }
 
 func (c *podController) Update(obj *v1.Pod) (*v1.Pod, error) {
-	return c.clientGetter.Pods(obj.Namespace).Update(obj)
+	return c.clientGetter.Pods(obj.Namespace).Update(context.TODO(), obj, metav1.UpdateOptions{})
 }
 
 func (c *podController) UpdateStatus(obj *v1.Pod) (*v1.Pod, error) {
-	return c.clientGetter.Pods(obj.Namespace).UpdateStatus(obj)
+	return c.clientGetter.Pods(obj.Namespace).UpdateStatus(context.TODO(), obj, metav1.UpdateOptions{})
 }
 
 func (c *podController) Delete(namespace, name string, options *metav1.DeleteOptions) error {
-	return c.clientGetter.Pods(namespace).Delete(name, options)
+	if options == nil {
+		options = &metav1.DeleteOptions{}
+	}
+	return c.clientGetter.Pods(namespace).Delete(context.TODO(), name, *options)
 }
 
 func (c *podController) Get(namespace, name string, options metav1.GetOptions) (*v1.Pod, error) {
-	return c.clientGetter.Pods(namespace).Get(name, options)
+	return c.clientGetter.Pods(namespace).Get(context.TODO(), name, options)
 }
 
 func (c *podController) List(namespace string, opts metav1.ListOptions) (*v1.PodList, error) {
-	return c.clientGetter.Pods(namespace).List(opts)
+	return c.clientGetter.Pods(namespace).List(context.TODO(), opts)
 }
 
 func (c *podController) Watch(namespace string, opts metav1.ListOptions) (watch.Interface, error) {
-	return c.clientGetter.Pods(namespace).Watch(opts)
+	return c.clientGetter.Pods(namespace).Watch(context.TODO(), opts)
 }
 
 func (c *podController) Patch(namespace, name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.Pod, err error) {
-	return c.clientGetter.Pods(namespace).Patch(name, pt, data, subresources...)
+	return c.clientGetter.Pods(namespace).Patch(context.TODO(), name, pt, data, metav1.PatchOptions{}, subresources...)
 }
 
 type podCache struct {
@@ -233,6 +237,7 @@ func (c *podCache) GetByIndex(indexName, key string) (result []*v1.Pod, err erro
 	if err != nil {
 		return nil, err
 	}
+	result = make([]*v1.Pod, 0, len(objs))
 	for _, obj := range objs {
 		result = append(result, obj.(*v1.Pod))
 	}
@@ -263,6 +268,7 @@ func RegisterPodGeneratingHandler(ctx context.Context, controller PodController,
 	if opts != nil {
 		statusHandler.opts = *opts
 	}
+	controller.OnChange(ctx, name, statusHandler.Remove)
 	RegisterPodStatusHandler(ctx, controller, condition, name, statusHandler.Handle)
 }
 
@@ -277,7 +283,7 @@ func (a *podStatusHandler) sync(key string, obj *v1.Pod) (*v1.Pod, error) {
 		return obj, nil
 	}
 
-	origStatus := obj.Status
+	origStatus := obj.Status.DeepCopy()
 	obj = obj.DeepCopy()
 	newStatus, err := a.handler(obj, obj.Status)
 	if err != nil {
@@ -285,16 +291,16 @@ func (a *podStatusHandler) sync(key string, obj *v1.Pod) (*v1.Pod, error) {
 		newStatus = *origStatus.DeepCopy()
 	}
 
-	obj.Status = newStatus
 	if a.condition != "" {
 		if errors.IsConflict(err) {
-			a.condition.SetError(obj, "", nil)
+			a.condition.SetError(&newStatus, "", nil)
 		} else {
-			a.condition.SetError(obj, "", err)
+			a.condition.SetError(&newStatus, "", err)
 		}
 	}
-	if !equality.Semantic.DeepEqual(origStatus, obj.Status) {
+	if !equality.Semantic.DeepEqual(origStatus, &newStatus) {
 		var newErr error
+		obj.Status = newStatus
 		obj, newErr = a.client.UpdateStatus(obj)
 		if err == nil {
 			err = newErr
@@ -311,29 +317,28 @@ type podGeneratingHandler struct {
 	name  string
 }
 
+func (a *podGeneratingHandler) Remove(key string, obj *v1.Pod) (*v1.Pod, error) {
+	if obj != nil {
+		return obj, nil
+	}
+
+	obj = &v1.Pod{}
+	obj.Namespace, obj.Name = kv.RSplit(key, "/")
+	obj.SetGroupVersionKind(a.gvk)
+
+	return nil, generic.ConfigureApplyForObject(a.apply, obj, &a.opts).
+		WithOwner(obj).
+		WithSetID(a.name).
+		ApplyObjects()
+}
+
 func (a *podGeneratingHandler) Handle(obj *v1.Pod, status v1.PodStatus) (v1.PodStatus, error) {
 	objs, newStatus, err := a.PodGeneratingHandler(obj, status)
 	if err != nil {
 		return newStatus, err
 	}
 
-	apply := a.apply
-
-	if !a.opts.DynamicLookup {
-		apply = apply.WithStrictCaching()
-	}
-
-	if !a.opts.AllowCrossNamespace && !a.opts.AllowClusterScoped {
-		apply = apply.WithSetOwnerReference(true, false).
-			WithDefaultNamespace(obj.GetNamespace()).
-			WithListerNamespace(obj.GetNamespace())
-	}
-
-	if !a.opts.AllowClusterScoped {
-		apply = apply.WithRestrictClusterScoped()
-	}
-
-	return newStatus, apply.
+	return newStatus, generic.ConfigureApplyForObject(a.apply, obj, &a.opts).
 		WithOwner(obj).
 		WithSetID(a.name).
 		ApplyObjects(objs...)
