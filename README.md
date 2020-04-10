@@ -14,11 +14,11 @@ Great for:
 What is this?
 ---
 
-k3s is intended to be a fully compliant Kubernetes distribution with the following changes:
+k3s is a toolkit for deploying lightweight, but fully compliant Kubernetes. This toolkit encompasses the following changes:
 
 1. Removed most in-tree plugins (cloud providers and storage plugins) which can be replaced
    with out of tree addons.
-2. Add sqlite3 as the default storage mechanism. etcd3 is still available, but not the default.
+2. Add sqlite3 as the default storage mechanism. etcd3 is still available, but not the default. Integration with external SQL databases is also available.
 3. Wrapped in simple launcher that handles a lot of the complexity of TLS and options.
 4. Minimal to no OS dependencies (just a sane kernel and cgroup mounts needed). k3s packages required
    dependencies
