@@ -15,11 +15,11 @@ func (cli *Client) NetworkCreate(ctx context.Context, name string, options types
 	}
 	var response types.NetworkCreateResponse
 	serverResp, err := cli.post(ctx, "/networks/create", nil, networkCreateRequest, nil)
-	defer ensureReaderClosed(serverResp)
 	if err != nil {
 		return response, err
 	}
 
-	err = json.NewDecoder(serverResp.body).Decode(&response)
+	json.NewDecoder(serverResp.body).Decode(&response)
+	ensureReaderClosed(serverResp)
 	return response, err
 }

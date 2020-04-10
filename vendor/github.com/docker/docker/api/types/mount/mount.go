@@ -79,8 +79,7 @@ const (
 
 // BindOptions defines options specific to mounts of type "bind".
 type BindOptions struct {
-	Propagation  Propagation `json:",omitempty"`
-	NonRecursive bool        `json:",omitempty"`
+	Propagation Propagation `json:",omitempty"`
 }
 
 // VolumeOptions represents the options for a mount of type volume.

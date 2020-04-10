@@ -8,8 +8,7 @@ func fromStatT(s *syscall.Stat_t) (*StatT, error) {
 		mode: s.Mode,
 		uid:  s.Uid,
 		gid:  s.Gid,
-		// the type is 32bit on mips
-		rdev: uint64(s.Rdev), // nolint: unconvert
+		rdev: s.Rdev,
 		mtim: s.Mtim}, nil
 }
 

@@ -16,6 +16,6 @@ func (cli *Client) VolumeRemove(ctx context.Context, volumeID string, force bool
 		}
 	}
 	resp, err := cli.delete(ctx, "/volumes/"+volumeID, query, nil)
-	defer ensureReaderClosed(resp)
+	ensureReaderClosed(resp)
 	return wrapResponseError(err, resp, "volume", volumeID)
 }
