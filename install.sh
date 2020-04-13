@@ -410,7 +410,7 @@ setup_selinux() {
     fi
 
     if ! $SUDO chcon -u system_u -r object_r -t container_runtime_exec_t ${BIN_DIR}/k3s >/dev/null 2>&1; then
-        if $SUDO grep SELINUX=enforcing /etc/selinux/config >/dev/null 2>&1; then
+        if $SUDO grep '^\s*SELINUX=enforcing' /etc/selinux/config >/dev/null 2>&1; then
             $policy_error "Failed to apply container_runtime_exec_t to ${BIN_DIR}/k3s, ${policy_hint}"
         fi
     else
