@@ -35,7 +35,6 @@ func (cli *Client) ContainerList(ctx context.Context, options types.ContainerLis
 	}
 
 	if options.Filters.Len() > 0 {
-		//nolint:staticcheck // ignore SA1019 for old code
 		filterJSON, err := filters.ToParamWithVersion(cli.version, options.Filters)
 
 		if err != nil {
@@ -46,12 +45,12 @@ func (cli *Client) ContainerList(ctx context.Context, options types.ContainerLis
 	}
 
 	resp, err := cli.get(ctx, "/containers/json", query, nil)
-	defer ensureReaderClosed(resp)
 	if err != nil {
 		return nil, err
 	}
 
 	var containers []types.Container
 	err = json.NewDecoder(resp.body).Decode(&containers)
+	ensureReaderClosed(resp)
 	return containers, err
 }
