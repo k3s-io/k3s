@@ -37,6 +37,7 @@
 - name: Store Master node-token
   set_fact:
     token: "{{ node_token.content | b64decode | regex_replace('\n', '') }}"
+    cacheable: yes
 
 - name: Restore node-token file access
   file:
