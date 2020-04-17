@@ -1,0 +1,5 @@
+---
+bin_arch_map:
+  aarch64: k3s-arm64
+  armv7l: k3s-armhf
+  x86_64: k3s
