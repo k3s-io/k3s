@@ -6,12 +6,14 @@
     owner: root
     group: root
     mode: 0755
+  notify: restart k3s
   register: k3s_service
+
+- meta: flush_handlers
 
 - name: Enable and check K3s service
   systemd:
     name: k3s
-    daemon_reload: yes
     state: started
     enabled: yes
 
@@ -37,7 +39,7 @@
 - name: Store Master node-token
   set_fact:
     token: "{{ node_token.content | b64decode | regex_replace('\n', '') }}"
-    cacheable: yes
+    cacheable: true
 
 - name: Restore node-token file access
   file:

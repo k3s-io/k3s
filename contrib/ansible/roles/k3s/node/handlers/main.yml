@@ -1,0 +1,7 @@
+---
+- name: restart k3s node
+  systemd:
+    name: k3s-node
+    daemon_reload: yes
+    state: restarted
+    enabled: yes

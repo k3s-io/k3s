@@ -1,5 +1,4 @@
 ---
-
 - name: Copy K3s service file
   template:
     src: "k3s.service.j2"
@@ -7,10 +6,10 @@
     owner: root
     group: root
     mode: 0755
+  notify: restart k3s node
 
 - name: Enable and check K3s service
   systemd:
     name: k3s-node
-    daemon_reload: yes
     state: started
     enabled: yes
