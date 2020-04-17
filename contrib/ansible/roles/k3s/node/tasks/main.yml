@@ -8,8 +8,9 @@
     mode: 0755
   notify: restart k3s node
 
+- meta: flush_handlers
+
 - name: Enable and check K3s service
   systemd:
     name: k3s-node
     state: started
-    enabled: yes

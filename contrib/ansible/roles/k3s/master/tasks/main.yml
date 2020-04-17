@@ -15,7 +15,6 @@
   systemd:
     name: k3s
     state: started
-    enabled: yes
 
 - block:
   - name: Wait for node-token
