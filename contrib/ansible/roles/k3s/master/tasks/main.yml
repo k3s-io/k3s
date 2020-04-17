@@ -17,52 +17,54 @@
     state: started
     enabled: yes
 
-- name: Wait for node-token
-  wait_for:
-    path: /var/lib/rancher/k3s/server/node-token
+- block:
+  - name: Wait for node-token
+    wait_for:
+      path: /var/lib/rancher/k3s/server/node-token
 
-- name: Register node-token file access mode
-  stat:
-    path: /var/lib/rancher/k3s/server
-  register: p
+  - name: Register node-token file access mode
+    stat:
+      path: /var/lib/rancher/k3s/server
+    register: p
 
-- name: Change file access node-token
-  file:
-    path: /var/lib/rancher/k3s/server
-    mode: "g+rx,o+rx"
+  - name: Change file access node-token
+    file:
+      path: /var/lib/rancher/k3s/server
+      mode: "g+rx,o+rx"
 
-- name: Read node-token from master
-  slurp:
-    src: /var/lib/rancher/k3s/server/node-token
-  register: node_token
+  - name: Read node-token from master
+    slurp:
+      src: /var/lib/rancher/k3s/server/node-token
+    register: node_token
 
-- name: Store Master node-token
-  set_fact:
-    token: "{{ node_token.content | b64decode | regex_replace('\n', '') }}"
-    cacheable: true
+  - name: Store Master node-token
+    set_fact:
+      token: "{{ node_token.content | b64decode | regex_replace('\n', '') }}"
+      cacheable: true
 
-- name: Restore node-token file access
-  file:
-    path: /var/lib/rancher/k3s/server
-    mode: "{{ p.stat.mode }}"
+  - name: Restore node-token file access
+    file:
+      path: /var/lib/rancher/k3s/server
+      mode: "{{ p.stat.mode }}"
 
-- name: Create directory .kube
-  file:
-    path: "{{ ansible_user_dir }}/.kube"
-    state: directory
-    owner: "{{ ansible_user }}"
+  - name: Create directory .kube
+    file:
+      path: "{{ ansible_env['PWD'] }}/.kube"
+      state: directory
+      owner: "{{ ansible_user }}"
 
-- name: Copy config file to user home directory
-  copy:
-    src: /etc/rancher/k3s/k3s.yaml
-    dest: "{{ ansible_user_dir }}/.kube/config"
-    remote_src: yes
-    owner: "{{ ansible_user }}"
+  - name: Copy config file to user home directory
+    copy:
+      src: /etc/rancher/k3s/k3s.yaml
+      dest: "{{ ansible_env['PWD'] }}/.kube/config"
+      remote_src: yes
+      owner: "{{ ansible_user }}"
 
-- name: "Replace https://localhost:6443 by https://{{ k3s_master_ip }}:6443"
-  command: k3s kubectl config set-cluster default
-    --server=https://{{ k3s_master_ip }}:6443
-    --kubeconfig "{{ ansible_user_dir }}/.kube/config"
+  - name: "Replace https://localhost:6443 by https://{{ k3s_master_ip }}:6443"
+    command: k3s kubectl config set-cluster default
+      --server=https://{{ k3s_master_ip }}:6443
+      --kubeconfig "{{ ansible_env['PWD'] }}/.kube/config"
+  when: token is undefined
 
 - name: Create kubectl symlink
   file:
