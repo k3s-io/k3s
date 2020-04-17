@@ -2,7 +2,7 @@
 - name: Copy K3s service file
   template:
     src: "k3s.service.j2"
-    dest: "{{ systemd_dir }}/k3s.service"
+    dest: "{{ k3s_systemd_dir }}/k3s.service"
     owner: root
     group: root
     mode: 0755
@@ -57,9 +57,9 @@
     remote_src: yes
     owner: "{{ ansible_user }}"
 
-- name: "Replace https://localhost:6443 by https://{{ master_ip }}:6443"
+- name: "Replace https://localhost:6443 by https://{{ k3s_master_ip }}:6443"
   command: k3s kubectl config set-cluster default
-    --server=https://{{ master_ip }}:6443
+    --server=https://{{ k3s_master_ip }}:6443
     --kubeconfig "{{ ansible_user_dir }}/.kube/config"
 
 - name: Create kubectl symlink
