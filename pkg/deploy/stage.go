@@ -13,12 +13,17 @@ import (
 
 func Stage(dataDir string, templateVars map[string]string, skips map[string]bool) error {
 staging:
-	for _, name := range AssetNames() {
+	for _, osSpecificName := range AssetNames() {
+		if skipOsFileName(osSpecificName) {
+			continue staging
+		}
+		name := convertOsFileName(osSpecificName)
 		nameNoExtension := strings.TrimSuffix(name, filepath.Ext(name))
 		if skips[name] || skips[nameNoExtension] {
 			continue staging
 		}
-		namePath := strings.Split(name, string(os.PathSeparator))
+		// always split with "/" as that is the separator in AssetNames
+		namePath := strings.Split(name, "/")
 		for i := 1; i < len(namePath); i++ {
 			subPath := filepath.Join(namePath[0:i]...)
 			if skips[subPath] {
@@ -26,7 +31,7 @@ staging:
 			}
 		}
 
-		content, err := Asset(name)
+		content, err := Asset(osSpecificName)
 		if err != nil {
 			return err
 		}
@@ -37,7 +42,7 @@ staging:
 		os.MkdirAll(filepath.Dir(p), 0700)
 		logrus.Info("Writing manifest: ", p)
 		if err := ioutil.WriteFile(p, content, 0600); err != nil {
-			return errors.Wrapf(err, "failed to write to %s", name)
+			return errors.Wrapf(err, "failed to write to %s", osSpecificName)
 		}
 	}
 
