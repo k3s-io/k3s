@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"runtime"
 
 	"github.com/rancher/k3s/pkg/agent"
 	"github.com/rancher/k3s/pkg/cli/cmds"
@@ -19,7 +20,7 @@ func Run(ctx *cli.Context) error {
 	if err := cmds.InitLogging(); err != nil {
 		return err
 	}
-	if os.Getuid() != 0 {
+	if os.Getuid() != 0 && runtime.GOOS != "windows" {
 		return fmt.Errorf("agent must be ran as root")
 	}
 
