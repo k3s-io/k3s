@@ -17,11 +17,12 @@ limitations under the License.
 package serviceaccount
 
 import (
+	"context"
 	"fmt"
 	"time"
 
 	"k8s.io/api/core/v1"
-	apierrs "k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -188,7 +189,7 @@ func (c *ServiceAccountsController) syncNamespace(key string) error {
 	}()
 
 	ns, err := c.nsLister.Get(key)
-	if apierrs.IsNotFound(err) {
+	if apierrors.IsNotFound(err) {
 		return nil
 	}
 	if err != nil {
@@ -204,7 +205,7 @@ func (c *ServiceAccountsController) syncNamespace(key string) error {
 		switch _, err := c.saLister.ServiceAccounts(ns.Name).Get(sa.Name); {
 		case err == nil:
 			continue
-		case apierrs.IsNotFound(err):
+		case apierrors.IsNotFound(err):
 		case err != nil:
 			return err
 		}
@@ -212,9 +213,9 @@ func (c *ServiceAccountsController) syncNamespace(key string) error {
 		// TODO eliminate this once the fake client can handle creation without NS
 		sa.Namespace = ns.Name
 
-		if _, err := c.client.CoreV1().ServiceAccounts(ns.Name).Create(&sa); err != nil && !apierrs.IsAlreadyExists(err) {
+		if _, err := c.client.CoreV1().ServiceAccounts(ns.Name).Create(context.TODO(), &sa, metav1.CreateOptions{}); err != nil && !apierrors.IsAlreadyExists(err) {
 			// we can safely ignore terminating namespace errors
-			if !apierrs.HasStatusCause(err, v1.NamespaceTerminatingCause) {
+			if !apierrors.HasStatusCause(err, v1.NamespaceTerminatingCause) {
 				createFailures = append(createFailures, err)
 			}
 		}

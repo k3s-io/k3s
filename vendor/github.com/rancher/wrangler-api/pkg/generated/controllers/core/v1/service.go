@@ -176,35 +176,38 @@ func (c *serviceController) Cache() ServiceCache {
 }
 
 func (c *serviceController) Create(obj *v1.Service) (*v1.Service, error) {
-	return c.clientGetter.Services(obj.Namespace).Create(obj)
+	return c.clientGetter.Services(obj.Namespace).Create(context.TODO(), obj, metav1.CreateOptions{})
 }
 
 func (c *serviceController) Update(obj *v1.Service) (*v1.Service, error) {
-	return c.clientGetter.Services(obj.Namespace).Update(obj)
+	return c.clientGetter.Services(obj.Namespace).Update(context.TODO(), obj, metav1.UpdateOptions{})
 }
 
 func (c *serviceController) UpdateStatus(obj *v1.Service) (*v1.Service, error) {
-	return c.clientGetter.Services(obj.Namespace).UpdateStatus(obj)
+	return c.clientGetter.Services(obj.Namespace).UpdateStatus(context.TODO(), obj, metav1.UpdateOptions{})
 }
 
 func (c *serviceController) Delete(namespace, name string, options *metav1.DeleteOptions) error {
-	return c.clientGetter.Services(namespace).Delete(name, options)
+	if options == nil {
+		options = &metav1.DeleteOptions{}
+	}
+	return c.clientGetter.Services(namespace).Delete(context.TODO(), name, *options)
 }
 
 func (c *serviceController) Get(namespace, name string, options metav1.GetOptions) (*v1.Service, error) {
-	return c.clientGetter.Services(namespace).Get(name, options)
+	return c.clientGetter.Services(namespace).Get(context.TODO(), name, options)
 }
 
 func (c *serviceController) List(namespace string, opts metav1.ListOptions) (*v1.ServiceList, error) {
-	return c.clientGetter.Services(namespace).List(opts)
+	return c.clientGetter.Services(namespace).List(context.TODO(), opts)
 }
 
 func (c *serviceController) Watch(namespace string, opts metav1.ListOptions) (watch.Interface, error) {
-	return c.clientGetter.Services(namespace).Watch(opts)
+	return c.clientGetter.Services(namespace).Watch(context.TODO(), opts)
 }
 
 func (c *serviceController) Patch(namespace, name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.Service, err error) {
-	return c.clientGetter.Services(namespace).Patch(name, pt, data, subresources...)
+	return c.clientGetter.Services(namespace).Patch(context.TODO(), name, pt, data, metav1.PatchOptions{}, subresources...)
 }
 
 type serviceCache struct {
@@ -233,6 +236,7 @@ func (c *serviceCache) GetByIndex(indexName, key string) (result []*v1.Service, 
 	if err != nil {
 		return nil, err
 	}
+	result = make([]*v1.Service, 0, len(objs))
 	for _, obj := range objs {
 		result = append(result, obj.(*v1.Service))
 	}

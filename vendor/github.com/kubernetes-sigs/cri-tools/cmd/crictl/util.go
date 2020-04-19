@@ -29,7 +29,7 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 	"google.golang.org/grpc"
 	utilyaml "k8s.io/apimachinery/pkg/util/yaml"
 	pb "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
@@ -208,7 +208,7 @@ func outputProtobufObjAsYAML(obj proto.Message) error {
 	return nil
 }
 
-func outputStatusInfo(status string, info map[string]string, format string) error {
+func outputStatusInfo(status string, info map[string]string, format string, tmplStr string) error {
 	// Sort all keys
 	keys := []string{}
 	for k := range info {
@@ -242,6 +242,12 @@ func outputStatusInfo(status string, info map[string]string, format string) erro
 			return err
 		}
 		fmt.Println(output.String())
+	case "go-template":
+		output, err := tmplExecuteRawJSON(tmplStr, jsonInfo)
+		if err != nil {
+			return err
+		}
+		fmt.Println(output)
 	default:
 		fmt.Printf("Don't support %q format\n", format)
 	}

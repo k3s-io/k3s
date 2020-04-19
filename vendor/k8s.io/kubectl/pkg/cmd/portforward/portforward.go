@@ -17,6 +17,7 @@ limitations under the License.
 package portforward
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -184,10 +185,13 @@ func translateServicePortToTargetPort(ports []string, svc corev1.Service, pod co
 			return nil, err
 		}
 
-		if int32(portnum) != containerPort {
-			translated = append(translated, fmt.Sprintf("%s:%d", localPort, containerPort))
+		// convert the resolved target port back to a string
+		remotePort = strconv.Itoa(int(containerPort))
+
+		if localPort != remotePort {
+			translated = append(translated, fmt.Sprintf("%s:%s", localPort, remotePort))
 		} else {
-			translated = append(translated, port)
+			translated = append(translated, remotePort)
 		}
 	}
 	return translated, nil
@@ -311,7 +315,7 @@ func (o PortForwardOptions) Validate() error {
 
 // RunPortForward implements all the necessary functionality for port-forward cmd.
 func (o PortForwardOptions) RunPortForward() error {
-	pod, err := o.PodClient.Pods(o.Namespace).Get(o.PodName, metav1.GetOptions{})
+	pod, err := o.PodClient.Pods(o.Namespace).Get(context.TODO(), o.PodName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}

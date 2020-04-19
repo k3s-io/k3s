@@ -19,6 +19,7 @@ limitations under the License.
 package v1
 
 import (
+	"context"
 	"time"
 
 	v1 "github.com/rancher/k3s/pkg/apis/k3s.cattle.io/v1"
@@ -37,15 +38,15 @@ type AddonsGetter interface {
 
 // AddonInterface has methods to work with Addon resources.
 type AddonInterface interface {
-	Create(*v1.Addon) (*v1.Addon, error)
-	Update(*v1.Addon) (*v1.Addon, error)
-	UpdateStatus(*v1.Addon) (*v1.Addon, error)
-	Delete(name string, options *metav1.DeleteOptions) error
-	DeleteCollection(options *metav1.DeleteOptions, listOptions metav1.ListOptions) error
-	Get(name string, options metav1.GetOptions) (*v1.Addon, error)
-	List(opts metav1.ListOptions) (*v1.AddonList, error)
-	Watch(opts metav1.ListOptions) (watch.Interface, error)
-	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.Addon, err error)
+	Create(ctx context.Context, addon *v1.Addon, opts metav1.CreateOptions) (*v1.Addon, error)
+	Update(ctx context.Context, addon *v1.Addon, opts metav1.UpdateOptions) (*v1.Addon, error)
+	UpdateStatus(ctx context.Context, addon *v1.Addon, opts metav1.UpdateOptions) (*v1.Addon, error)
+	Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
+	DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error
+	Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1.Addon, error)
+	List(ctx context.Context, opts metav1.ListOptions) (*v1.AddonList, error)
+	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.Addon, err error)
 	AddonExpansion
 }
 
@@ -64,20 +65,20 @@ func newAddons(c *K3sV1Client, namespace string) *addons {
 }
 
 // Get takes name of the addon, and returns the corresponding addon object, and an error if there is any.
-func (c *addons) Get(name string, options metav1.GetOptions) (result *v1.Addon, err error) {
+func (c *addons) Get(ctx context.Context, name string, options metav1.GetOptions) (result *v1.Addon, err error) {
 	result = &v1.Addon{}
 	err = c.client.Get().
 		Namespace(c.ns).
 		Resource("addons").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }
 
 // List takes label and field selectors, and returns the list of Addons that match those selectors.
-func (c *addons) List(opts metav1.ListOptions) (result *v1.AddonList, err error) {
+func (c *addons) List(ctx context.Context, opts metav1.ListOptions) (result *v1.AddonList, err error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
@@ -88,13 +89,13 @@ func (c *addons) List(opts metav1.ListOptions) (result *v1.AddonList, err error)
 		Resource("addons").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }
 
 // Watch returns a watch.Interface that watches the requested addons.
-func (c *addons) Watch(opts metav1.ListOptions) (watch.Interface, error) {
+func (c *addons) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
@@ -105,87 +106,90 @@ func (c *addons) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 		Resource("addons").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
-		Watch()
+		Watch(ctx)
 }
 
 // Create takes the representation of a addon and creates it.  Returns the server's representation of the addon, and an error, if there is any.
-func (c *addons) Create(addon *v1.Addon) (result *v1.Addon, err error) {
+func (c *addons) Create(ctx context.Context, addon *v1.Addon, opts metav1.CreateOptions) (result *v1.Addon, err error) {
 	result = &v1.Addon{}
 	err = c.client.Post().
 		Namespace(c.ns).
 		Resource("addons").
+		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(addon).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }
 
 // Update takes the representation of a addon and updates it. Returns the server's representation of the addon, and an error, if there is any.
-func (c *addons) Update(addon *v1.Addon) (result *v1.Addon, err error) {
+func (c *addons) Update(ctx context.Context, addon *v1.Addon, opts metav1.UpdateOptions) (result *v1.Addon, err error) {
 	result = &v1.Addon{}
 	err = c.client.Put().
 		Namespace(c.ns).
 		Resource("addons").
 		Name(addon.Name).
+		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(addon).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-
-func (c *addons) UpdateStatus(addon *v1.Addon) (result *v1.Addon, err error) {
+func (c *addons) UpdateStatus(ctx context.Context, addon *v1.Addon, opts metav1.UpdateOptions) (result *v1.Addon, err error) {
 	result = &v1.Addon{}
 	err = c.client.Put().
 		Namespace(c.ns).
 		Resource("addons").
 		Name(addon.Name).
 		SubResource("status").
+		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(addon).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }
 
 // Delete takes name of the addon and deletes it. Returns an error if one occurs.
-func (c *addons) Delete(name string, options *metav1.DeleteOptions) error {
+func (c *addons) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
 	return c.client.Delete().
 		Namespace(c.ns).
 		Resource("addons").
 		Name(name).
-		Body(options).
-		Do().
+		Body(&opts).
+		Do(ctx).
 		Error()
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *addons) DeleteCollection(options *metav1.DeleteOptions, listOptions metav1.ListOptions) error {
+func (c *addons) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
 	var timeout time.Duration
-	if listOptions.TimeoutSeconds != nil {
-		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
+	if listOpts.TimeoutSeconds != nil {
+		timeout = time.Duration(*listOpts.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
 		Namespace(c.ns).
 		Resource("addons").
-		VersionedParams(&listOptions, scheme.ParameterCodec).
+		VersionedParams(&listOpts, scheme.ParameterCodec).
 		Timeout(timeout).
-		Body(options).
-		Do().
+		Body(&opts).
+		Do(ctx).
 		Error()
 }
 
 // Patch applies the patch and returns the patched addon.
-func (c *addons) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.Addon, err error) {
+func (c *addons) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.Addon, err error) {
 	result = &v1.Addon{}
 	err = c.client.Patch(pt).
 		Namespace(c.ns).
 		Resource("addons").
-		SubResource(subresources...).
 		Name(name).
+		SubResource(subresources...).
+		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(data).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }

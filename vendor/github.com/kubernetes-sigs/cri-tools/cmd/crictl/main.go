@@ -24,7 +24,7 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 	"google.golang.org/grpc"
 	internalapi "k8s.io/cri-api/pkg/apis"
 	"k8s.io/kubernetes/pkg/kubelet/remote"
@@ -58,7 +58,7 @@ func getRuntimeClientConnection(context *cli.Context) (*grpc.ClientConn, error) 
 		return nil, err
 	}
 
-	conn, err := grpc.Dial(addr, grpc.WithInsecure(), grpc.WithBlock(), grpc.WithTimeout(Timeout), grpc.WithDialer(dialer))
+	conn, err := grpc.Dial(addr, grpc.WithInsecure(), grpc.WithBlock(), grpc.WithTimeout(Timeout), grpc.WithContextDialer(dialer))
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect, make sure you are running as root and the runtime has been started: %v", err)
 	}
@@ -78,7 +78,7 @@ func getImageClientConnection(context *cli.Context) (*grpc.ClientConn, error) {
 		return nil, err
 	}
 
-	conn, err := grpc.Dial(addr, grpc.WithInsecure(), grpc.WithBlock(), grpc.WithTimeout(Timeout), grpc.WithDialer(dialer))
+	conn, err := grpc.Dial(addr, grpc.WithInsecure(), grpc.WithBlock(), grpc.WithTimeout(Timeout), grpc.WithContextDialer(dialer))
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect, make sure you are running as root and the runtime has been started: %v", err)
 	}
@@ -95,7 +95,7 @@ func Main() {
 	app.Usage = "client for CRI"
 	app.Version = version.Version
 
-	app.Commands = []cli.Command{
+	app.Commands = []*cli.Command{
 		runtimeAttachCommand,
 		createContainerCommand,
 		runtimeExecCommand,
@@ -126,38 +126,43 @@ func Main() {
 	}
 
 	app.Flags = []cli.Flag{
-		cli.StringFlag{
-			Name:      "config, c",
-			EnvVar:    "CRI_CONFIG_FILE",
+		&cli.StringFlag{
+			Name:      "config",
+			Aliases:   []string{"c"},
+			EnvVars:   []string{"CRI_CONFIG_FILE"},
 			Value:     defaultConfigPath,
 			Usage:     "Location of the client config file. If not specified and the default does not exist, the program's directory is searched as well",
 			TakesFile: true,
 		},
-		cli.StringFlag{
-			Name:   "runtime-endpoint, r",
-			EnvVar: "CONTAINER_RUNTIME_ENDPOINT",
-			Value:  defaultRuntimeEndpoint,
-			Usage:  "Endpoint of CRI container runtime service",
+		&cli.StringFlag{
+			Name:    "runtime-endpoint",
+			Aliases: []string{"r"},
+			EnvVars: []string{"CONTAINER_RUNTIME_ENDPOINT"},
+			Value:   defaultRuntimeEndpoint,
+			Usage:   "Endpoint of CRI container runtime service",
 		},
-		cli.StringFlag{
-			Name:   "image-endpoint, i",
-			EnvVar: "IMAGE_SERVICE_ENDPOINT",
-			Usage:  "Endpoint of CRI image manager service",
+		&cli.StringFlag{
+			Name:    "image-endpoint",
+			Aliases: []string{"i"},
+			EnvVars: []string{"IMAGE_SERVICE_ENDPOINT"},
+			Usage:   "Endpoint of CRI image manager service",
 		},
-		cli.DurationFlag{
-			Name:  "timeout, t",
-			Value: defaultTimeout,
-			Usage: "Timeout of connecting to the server",
+		&cli.DurationFlag{
+			Name:    "timeout",
+			Aliases: []string{"t"},
+			Value:   defaultTimeout,
+			Usage:   "Timeout of connecting to the server",
 		},
-		cli.BoolFlag{
-			Name:  "debug, D",
-			Usage: "Enable debug mode",
+		&cli.BoolFlag{
+			Name:    "debug",
+			Aliases: []string{"D"},
+			Usage:   "Enable debug mode",
 		},
 	}
 
 	app.Before = func(context *cli.Context) error {
 		isUseConfig := false
-		configFile := context.GlobalString("config")
+		configFile := context.String("config")
 		if _, err := os.Stat(configFile); err == nil {
 			isUseConfig = true
 		} else {
@@ -181,10 +186,10 @@ func Main() {
 		}
 
 		if !isUseConfig {
-			RuntimeEndpoint = context.GlobalString("runtime-endpoint")
-			ImageEndpoint = context.GlobalString("image-endpoint")
-			Timeout = context.GlobalDuration("timeout")
-			Debug = context.GlobalBool("debug")
+			RuntimeEndpoint = context.String("runtime-endpoint")
+			ImageEndpoint = context.String("image-endpoint")
+			Timeout = context.Duration("timeout")
+			Debug = context.Bool("debug")
 		} else {
 			// Get config from file.
 			config, err := ReadConfig(configFile)
@@ -198,24 +203,24 @@ func Main() {
 			} else if config.RuntimeEndpoint != "" {
 				RuntimeEndpoint = config.RuntimeEndpoint
 			} else {
-				RuntimeEndpoint = context.GlobalString("runtime-endpoint")
+				RuntimeEndpoint = context.String("runtime-endpoint")
 			}
 			if context.IsSet("image-endpoint") {
 				ImageEndpoint = context.String("image-endpoint")
 			} else if config.ImageEndpoint != "" {
 				ImageEndpoint = config.ImageEndpoint
 			} else {
-				ImageEndpoint = context.GlobalString("image-endpoint")
+				ImageEndpoint = context.String("image-endpoint")
 			}
 			if context.IsSet("timeout") {
 				Timeout = context.Duration("timeout")
 			} else if config.Timeout != 0 {
 				Timeout = time.Duration(config.Timeout) * time.Second
 			} else {
-				Timeout = context.GlobalDuration("timeout")
+				Timeout = context.Duration("timeout")
 			}
 			if context.IsSet("debug") {
-				Debug = context.GlobalBool("debug")
+				Debug = context.Bool("debug")
 			} else {
 				Debug = config.Debug
 			}

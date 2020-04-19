@@ -24,45 +24,47 @@ import (
 	"time"
 
 	timetypes "github.com/docker/docker/api/types/time"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/kubernetes/pkg/kubelet/kuberuntime/logs"
 )
 
-var logsCommand = cli.Command{
+var logsCommand = &cli.Command{
 	Name:                   "logs",
 	Usage:                  "Fetch the logs of a container",
 	ArgsUsage:              "CONTAINER-ID",
-	SkipArgReorder:         true,
 	UseShortOptionHandling: true,
 	Flags: []cli.Flag{
-		cli.BoolFlag{
-			Name:  "follow, f",
-			Usage: "Follow log output",
+		&cli.BoolFlag{
+			Name:    "follow",
+			Aliases: []string{"f"},
+			Usage:   "Follow log output",
 		},
-		cli.BoolFlag{
-			Name:  "previous, p",
-			Usage: "Print the logs for the previous instance of the container in a pod if it exists",
+		&cli.BoolFlag{
+			Name:    "previous",
+			Aliases: []string{"p"},
+			Usage:   "Print the logs for the previous instance of the container in a pod if it exists",
 		},
-		cli.Int64Flag{
+		&cli.Int64Flag{
 			Name:  "tail",
 			Value: -1,
 			Usage: "Number of lines to show from the end of the logs. Defaults to all",
 		},
-		cli.Int64Flag{
+		&cli.Int64Flag{
 			Name:  "limit-bytes",
 			Value: -1,
 			Usage: "Maximum bytes of logs to return. Defaults to no limit",
 		},
-		cli.StringFlag{
+		&cli.StringFlag{
 			Name:  "since",
 			Value: "",
 			Usage: "Show logs since timestamp (e.g. 2013-01-02T13:23:37) or relative (e.g. 42m for 42 minutes)",
 		},
-		cli.BoolFlag{
-			Name:  "timestamps, t",
-			Usage: "Show timestamps",
+		&cli.BoolFlag{
+			Name:    "timestamps",
+			Aliases: []string{"t"},
+			Usage:   "Show timestamps",
 		},
 	},
 	Action: func(ctx *cli.Context) error {

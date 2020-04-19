@@ -20,6 +20,7 @@ limitations under the License.
 package reconciler
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -164,9 +165,21 @@ func (rc *reconciler) reconcile() {
 	// referenced by a pod that was deleted and is now referenced by another
 	// pod is unmounted from the first pod before being mounted to the new
 	// pod.
+	rc.unmountVolumes()
 
+	// Next we mount required volumes. This function could also trigger
+	// attach if kubelet is responsible for attaching volumes.
+	// If underlying PVC was resized while in-use then this function also handles volume
+	// resizing.
+	rc.mountAttachVolumes()
+
+	// Ensure devices that should be detached/unmounted are detached/unmounted.
+	rc.unmountDetachDevices()
+}
+
+func (rc *reconciler) unmountVolumes() {
 	// Ensure volumes that should be unmounted are unmounted.
-	for _, mountedVolume := range rc.actualStateOfWorld.GetMountedVolumes() {
+	for _, mountedVolume := range rc.actualStateOfWorld.GetAllMountedVolumes() {
 		if !rc.desiredStateOfWorld.PodExistsInVolume(mountedVolume.PodName, mountedVolume.VolumeName) {
 			// Volume is mounted, unmount it
 			klog.V(5).Infof(mountedVolume.GenerateMsgDetailed("Starting operationExecutor.UnmountVolume", ""))
@@ -184,7 +197,9 @@ func (rc *reconciler) reconcile() {
 			}
 		}
 	}
+}
 
+func (rc *reconciler) mountAttachVolumes() {
 	// Ensure volumes that should be attached/mounted are attached/mounted.
 	for _, volumeToMount := range rc.desiredStateOfWorld.GetVolumesToMount() {
 		volMounted, devicePath, err := rc.actualStateOfWorld.PodExistsInVolume(volumeToMount.PodName, volumeToMount.VolumeName)
@@ -274,13 +289,14 @@ func (rc *reconciler) reconcile() {
 			}
 		}
 	}
+}
 
-	// Ensure devices that should be detached/unmounted are detached/unmounted.
+func (rc *reconciler) unmountDetachDevices() {
 	for _, attachedVolume := range rc.actualStateOfWorld.GetUnmountedVolumes() {
 		// Check IsOperationPending to avoid marking a volume as detached if it's in the process of mounting.
 		if !rc.desiredStateOfWorld.VolumeExists(attachedVolume.VolumeName) &&
-			!rc.operationExecutor.IsOperationPending(attachedVolume.VolumeName, nestedpendingoperations.EmptyUniquePodName) {
-			if attachedVolume.GloballyMounted {
+			!rc.operationExecutor.IsOperationPending(attachedVolume.VolumeName, nestedpendingoperations.EmptyUniquePodName, nestedpendingoperations.EmptyNodeName) {
+			if attachedVolume.DeviceMayBeMounted() {
 				// Volume is globally mounted to device, unmount it
 				klog.V(5).Infof(attachedVolume.GenerateMsgDetailed("Starting operationExecutor.UnmountDevice", ""))
 				err := rc.operationExecutor.UnmountDevice(
@@ -407,7 +423,7 @@ func (rc *reconciler) syncStates() {
 			continue
 		}
 		// There is no pod that uses the volume.
-		if rc.operationExecutor.IsOperationPending(reconstructedVolume.volumeName, nestedpendingoperations.EmptyUniquePodName) {
+		if rc.operationExecutor.IsOperationPending(reconstructedVolume.volumeName, nestedpendingoperations.EmptyUniquePodName, nestedpendingoperations.EmptyNodeName) {
 			klog.Warning("Volume is in pending operation, skip cleaning up mounts")
 		}
 		klog.V(2).Infof(
@@ -471,8 +487,7 @@ func (rc *reconciler) reconstructVolume(volume podVolume) (*reconstructedVolume,
 	if err != nil {
 		return nil, err
 	}
-	// TODO: remove feature gate check after no longer needed
-	if utilfeature.DefaultFeatureGate.Enabled(features.BlockVolume) && volume.volumeMode == v1.PersistentVolumeBlock && mapperPlugin == nil {
+	if volume.volumeMode == v1.PersistentVolumeBlock && mapperPlugin == nil {
 		return nil, fmt.Errorf("could not find block volume plugin %q (spec.Name: %q) pod %q (UID: %q)", volume.pluginName, volume.volumeSpecName, volume.podName, pod.UID)
 	}
 
@@ -505,8 +520,7 @@ func (rc *reconciler) reconstructVolume(volume podVolume) (*reconstructedVolume,
 	// Path to the mount or block device to check
 	var checkPath string
 
-	// TODO: remove feature gate check after no longer needed
-	if utilfeature.DefaultFeatureGate.Enabled(features.BlockVolume) && volume.volumeMode == v1.PersistentVolumeBlock {
+	if volume.volumeMode == v1.PersistentVolumeBlock {
 		var newMapperErr error
 		volumeMapper, newMapperErr = mapperPlugin.NewBlockVolumeMapper(
 			volumeSpec,
@@ -584,7 +598,7 @@ func (rc *reconciler) reconstructVolume(volume podVolume) (*reconstructedVolume,
 
 // updateDevicePath gets the node status to retrieve volume device path information.
 func (rc *reconciler) updateDevicePath(volumesNeedUpdate map[v1.UniqueVolumeName]*reconstructedVolume) {
-	node, fetchErr := rc.kubeClient.CoreV1().Nodes().Get(string(rc.nodeName), metav1.GetOptions{})
+	node, fetchErr := rc.kubeClient.CoreV1().Nodes().Get(context.TODO(), string(rc.nodeName), metav1.GetOptions{})
 	if fetchErr != nil {
 		klog.Errorf("updateStates in reconciler: could not get node status with error %v", fetchErr)
 	} else {
@@ -625,15 +639,18 @@ func (rc *reconciler) updateStates(volumesNeedUpdate map[v1.UniqueVolumeName]*re
 			klog.Errorf("Could not add volume information to actual state of world: %v", err)
 			continue
 		}
-		err = rc.actualStateOfWorld.MarkVolumeAsMounted(
-			volume.podName,
-			types.UID(volume.podName),
-			volume.volumeName,
-			volume.mounter,
-			volume.blockVolumeMapper,
-			volume.outerVolumeSpecName,
-			volume.volumeGidValue,
-			volume.volumeSpec)
+		markVolumeOpts := operationexecutor.MarkVolumeOpts{
+			PodName:             volume.podName,
+			PodUID:              types.UID(volume.podName),
+			VolumeName:          volume.volumeName,
+			Mounter:             volume.mounter,
+			BlockVolumeMapper:   volume.blockVolumeMapper,
+			OuterVolumeSpecName: volume.outerVolumeSpecName,
+			VolumeGidVolume:     volume.volumeGidValue,
+			VolumeSpec:          volume.volumeSpec,
+			VolumeMountState:    operationexecutor.VolumeMounted,
+		}
+		err = rc.actualStateOfWorld.MarkVolumeAsMounted(markVolumeOpts)
 		if err != nil {
 			klog.Errorf("Could not add pod to volume information to actual state of world: %v", err)
 			continue
@@ -678,12 +695,10 @@ func getVolumesFromPodDir(podDir string) ([]podVolume, error) {
 		volumesDirs := map[v1.PersistentVolumeMode]string{
 			v1.PersistentVolumeFilesystem: path.Join(podDir, config.DefaultKubeletVolumesDirName),
 		}
-		// TODO: remove feature gate check after no longer needed
-		if utilfeature.DefaultFeatureGate.Enabled(features.BlockVolume) {
-			// Find block volume information
-			// ex. block volume: /pods/{podUid}/volumeDevices/{escapeQualifiedPluginName}/{volumeName}
-			volumesDirs[v1.PersistentVolumeBlock] = path.Join(podDir, config.DefaultKubeletVolumeDevicesDirName)
-		}
+		// Find block volume information
+		// ex. block volume: /pods/{podUid}/volumeDevices/{escapeQualifiedPluginName}/{volumeName}
+		volumesDirs[v1.PersistentVolumeBlock] = path.Join(podDir, config.DefaultKubeletVolumeDevicesDirName)
+
 		for volumeMode, volumesDir := range volumesDirs {
 			var volumesDirInfo []os.FileInfo
 			if volumesDirInfo, err = ioutil.ReadDir(volumesDir); err != nil {

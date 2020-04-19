@@ -1,6 +1,7 @@
 package apply
 
 import (
+	"context"
 	"github.com/rancher/wrangler/pkg/apply/injectors"
 	"github.com/rancher/wrangler/pkg/merr"
 	"github.com/rancher/wrangler/pkg/objectset"
@@ -11,6 +12,7 @@ import (
 
 type desiredSet struct {
 	a                        *apply
+	ctx  					context.Context
 	defaultNamespace         string
 	listerNamespace          string
 	setOwnerReference        bool
@@ -161,5 +163,10 @@ func (o desiredSet) WithRateLimiting(ratelimitingQps float32) Apply {
 
 func (o desiredSet) WithNoDelete() Apply {
 	o.noDelete = true
+	return o
+}
+
+func (o desiredSet) WithContext(ctx context.Context) Apply {
+	o.ctx = ctx
 	return o
 }

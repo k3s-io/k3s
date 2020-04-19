@@ -28,10 +28,8 @@ import (
 const (
 	// SchedulerSubsystem - subsystem name used by scheduler
 	SchedulerSubsystem = "scheduler"
-	// SchedulingLatencyName - scheduler latency metric name
-	SchedulingLatencyName = "scheduling_duration_seconds"
-	// DeprecatedSchedulingLatencyName - scheduler latency metric name which is deprecated
-	DeprecatedSchedulingLatencyName = "scheduling_latency_seconds"
+	// DeprecatedSchedulingDurationName - scheduler duration metric name which is deprecated
+	DeprecatedSchedulingDurationName = "scheduling_duration_seconds"
 
 	// OperationLabel - operation label name
 	OperationLabel = "operation"
@@ -65,29 +63,17 @@ var (
 	PodScheduleFailures = scheduleAttempts.With(metrics.Labels{"result": "unschedulable"})
 	// PodScheduleErrors counts how many pods could not be scheduled due to a scheduler error.
 	// This metric will be initialized again in Register() to assure the metric is not no-op metric.
-	PodScheduleErrors = scheduleAttempts.With(metrics.Labels{"result": "error"})
-	SchedulingLatency = metrics.NewSummaryVec(
+	PodScheduleErrors            = scheduleAttempts.With(metrics.Labels{"result": "error"})
+	DeprecatedSchedulingDuration = metrics.NewSummaryVec(
 		&metrics.SummaryOpts{
 			Subsystem: SchedulerSubsystem,
-			Name:      SchedulingLatencyName,
-			Help:      "Scheduling latency in seconds split by sub-parts of the scheduling operation",
-			// Make the sliding window of 5h.
-			// TODO: The value for this should be based on some SLI definition (long term).
-			MaxAge:         5 * time.Hour,
-			StabilityLevel: metrics.ALPHA,
-		},
-		[]string{OperationLabel},
-	)
-	DeprecatedSchedulingLatency = metrics.NewSummaryVec(
-		&metrics.SummaryOpts{
-			Subsystem: SchedulerSubsystem,
-			Name:      DeprecatedSchedulingLatencyName,
+			Name:      DeprecatedSchedulingDurationName,
 			Help:      "Scheduling latency in seconds split by sub-parts of the scheduling operation",
 			// Make the sliding window of 5h.
 			// TODO: The value for this should be based on some SLI definition (long term).
 			MaxAge:            5 * time.Hour,
 			StabilityLevel:    metrics.ALPHA,
-			DeprecatedVersion: "1.14.0",
+			DeprecatedVersion: "1.19.0",
 		},
 		[]string{OperationLabel},
 	)
@@ -100,16 +86,6 @@ var (
 			StabilityLevel: metrics.ALPHA,
 		},
 	)
-	DeprecatedE2eSchedulingLatency = metrics.NewHistogram(
-		&metrics.HistogramOpts{
-			Subsystem:         SchedulerSubsystem,
-			Name:              "e2e_scheduling_latency_microseconds",
-			Help:              "E2e scheduling latency in microseconds (scheduling algorithm + binding)",
-			Buckets:           metrics.ExponentialBuckets(1000, 2, 15),
-			StabilityLevel:    metrics.ALPHA,
-			DeprecatedVersion: "1.14.0",
-		},
-	)
 	SchedulingAlgorithmLatency = metrics.NewHistogram(
 		&metrics.HistogramOpts{
 			Subsystem:      SchedulerSubsystem,
@@ -119,52 +95,24 @@ var (
 			StabilityLevel: metrics.ALPHA,
 		},
 	)
-	DeprecatedSchedulingAlgorithmLatency = metrics.NewHistogram(
+	DeprecatedSchedulingAlgorithmPredicateEvaluationSecondsDuration = metrics.NewHistogram(
 		&metrics.HistogramOpts{
 			Subsystem:         SchedulerSubsystem,
-			Name:              "scheduling_algorithm_latency_microseconds",
-			Help:              "Scheduling algorithm latency in microseconds",
-			Buckets:           metrics.ExponentialBuckets(1000, 2, 15),
+			Name:              "scheduling_algorithm_predicate_evaluation_seconds",
+			Help:              "Scheduling algorithm predicate evaluation duration in seconds",
+			Buckets:           metrics.ExponentialBuckets(0.001, 2, 15),
 			StabilityLevel:    metrics.ALPHA,
-			DeprecatedVersion: "1.14.0",
+			DeprecatedVersion: "1.19.0",
 		},
 	)
-	SchedulingAlgorithmPredicateEvaluationDuration = metrics.NewHistogram(
-		&metrics.HistogramOpts{
-			Subsystem:      SchedulerSubsystem,
-			Name:           "scheduling_algorithm_predicate_evaluation_seconds",
-			Help:           "Scheduling algorithm predicate evaluation duration in seconds",
-			Buckets:        metrics.ExponentialBuckets(0.001, 2, 15),
-			StabilityLevel: metrics.ALPHA,
-		},
-	)
-	DeprecatedSchedulingAlgorithmPredicateEvaluationDuration = metrics.NewHistogram(
+	DeprecatedSchedulingAlgorithmPriorityEvaluationSecondsDuration = metrics.NewHistogram(
 		&metrics.HistogramOpts{
 			Subsystem:         SchedulerSubsystem,
-			Name:              "scheduling_algorithm_predicate_evaluation",
-			Help:              "Scheduling algorithm predicate evaluation duration in microseconds",
-			Buckets:           metrics.ExponentialBuckets(1000, 2, 15),
+			Name:              "scheduling_algorithm_priority_evaluation_seconds",
+			Help:              "Scheduling algorithm priority evaluation duration in seconds",
+			Buckets:           metrics.ExponentialBuckets(0.001, 2, 15),
 			StabilityLevel:    metrics.ALPHA,
-			DeprecatedVersion: "1.14.0",
-		},
-	)
-	SchedulingAlgorithmPriorityEvaluationDuration = metrics.NewHistogram(
-		&metrics.HistogramOpts{
-			Subsystem:      SchedulerSubsystem,
-			Name:           "scheduling_algorithm_priority_evaluation_seconds",
-			Help:           "Scheduling algorithm priority evaluation duration in seconds",
-			Buckets:        metrics.ExponentialBuckets(0.001, 2, 15),
-			StabilityLevel: metrics.ALPHA,
-		},
-	)
-	DeprecatedSchedulingAlgorithmPriorityEvaluationDuration = metrics.NewHistogram(
-		&metrics.HistogramOpts{
-			Subsystem:         SchedulerSubsystem,
-			Name:              "scheduling_algorithm_priority_evaluation",
-			Help:              "Scheduling algorithm priority evaluation duration in microseconds",
-			Buckets:           metrics.ExponentialBuckets(1000, 2, 15),
-			StabilityLevel:    metrics.ALPHA,
-			DeprecatedVersion: "1.14.0",
+			DeprecatedVersion: "1.19.0",
 		},
 	)
 	SchedulingAlgorithmPreemptionEvaluationDuration = metrics.NewHistogram(
@@ -176,16 +124,6 @@ var (
 			StabilityLevel: metrics.ALPHA,
 		},
 	)
-	DeprecatedSchedulingAlgorithmPreemptionEvaluationDuration = metrics.NewHistogram(
-		&metrics.HistogramOpts{
-			Subsystem:         SchedulerSubsystem,
-			Name:              "scheduling_algorithm_preemption_evaluation",
-			Help:              "Scheduling algorithm preemption evaluation duration in microseconds",
-			Buckets:           metrics.ExponentialBuckets(1000, 2, 15),
-			StabilityLevel:    metrics.ALPHA,
-			DeprecatedVersion: "1.14.0",
-		},
-	)
 	BindingLatency = metrics.NewHistogram(
 		&metrics.HistogramOpts{
 			Subsystem:      SchedulerSubsystem,
@@ -193,16 +131,6 @@ var (
 			Help:           "Binding latency in seconds",
 			Buckets:        metrics.ExponentialBuckets(0.001, 2, 15),
 			StabilityLevel: metrics.ALPHA,
-		},
-	)
-	DeprecatedBindingLatency = metrics.NewHistogram(
-		&metrics.HistogramOpts{
-			Subsystem:         SchedulerSubsystem,
-			Name:              "binding_latency_microseconds",
-			Help:              "Binding latency in microseconds",
-			Buckets:           metrics.ExponentialBuckets(1000, 2, 15),
-			StabilityLevel:    metrics.ALPHA,
-			DeprecatedVersion: "1.14.0",
 		},
 	)
 	PreemptionVictims = metrics.NewHistogram(
@@ -290,7 +218,7 @@ var (
 		&metrics.HistogramOpts{
 			Subsystem:      SchedulerSubsystem,
 			Name:           "permit_wait_duration_seconds",
-			Help:           "Duration of waiting in RunPermitPlugins.",
+			Help:           "Duration of waiting on permit.",
 			Buckets:        metrics.ExponentialBuckets(0.001, 2, 15),
 			StabilityLevel: metrics.ALPHA,
 		},
@@ -306,20 +234,13 @@ var (
 
 	metricsList = []metrics.Registerable{
 		scheduleAttempts,
-		SchedulingLatency,
-		DeprecatedSchedulingLatency,
+		DeprecatedSchedulingDuration,
 		E2eSchedulingLatency,
-		DeprecatedE2eSchedulingLatency,
 		SchedulingAlgorithmLatency,
-		DeprecatedSchedulingAlgorithmLatency,
 		BindingLatency,
-		DeprecatedBindingLatency,
-		SchedulingAlgorithmPredicateEvaluationDuration,
-		DeprecatedSchedulingAlgorithmPredicateEvaluationDuration,
-		SchedulingAlgorithmPriorityEvaluationDuration,
-		DeprecatedSchedulingAlgorithmPriorityEvaluationDuration,
+		DeprecatedSchedulingAlgorithmPredicateEvaluationSecondsDuration,
+		DeprecatedSchedulingAlgorithmPriorityEvaluationSecondsDuration,
 		SchedulingAlgorithmPreemptionEvaluationDuration,
-		DeprecatedSchedulingAlgorithmPreemptionEvaluationDuration,
 		PreemptionVictims,
 		PreemptionAttempts,
 		pendingPods,
@@ -372,13 +293,7 @@ func UnschedulablePods() metrics.GaugeMetric {
 
 // Reset resets metrics
 func Reset() {
-	SchedulingLatency.Reset()
-	DeprecatedSchedulingLatency.Reset()
-}
-
-// SinceInMicroseconds gets the time since the specified start in microseconds.
-func SinceInMicroseconds(start time.Time) float64 {
-	return float64(time.Since(start).Nanoseconds() / time.Microsecond.Nanoseconds())
+	DeprecatedSchedulingDuration.Reset()
 }
 
 // SinceInSeconds gets the time since the specified start in seconds.

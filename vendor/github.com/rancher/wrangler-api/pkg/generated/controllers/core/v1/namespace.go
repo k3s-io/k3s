@@ -176,35 +176,38 @@ func (c *namespaceController) Cache() NamespaceCache {
 }
 
 func (c *namespaceController) Create(obj *v1.Namespace) (*v1.Namespace, error) {
-	return c.clientGetter.Namespaces().Create(obj)
+	return c.clientGetter.Namespaces().Create(context.TODO(), obj, metav1.CreateOptions{})
 }
 
 func (c *namespaceController) Update(obj *v1.Namespace) (*v1.Namespace, error) {
-	return c.clientGetter.Namespaces().Update(obj)
+	return c.clientGetter.Namespaces().Update(context.TODO(), obj, metav1.UpdateOptions{})
 }
 
 func (c *namespaceController) UpdateStatus(obj *v1.Namespace) (*v1.Namespace, error) {
-	return c.clientGetter.Namespaces().UpdateStatus(obj)
+	return c.clientGetter.Namespaces().UpdateStatus(context.TODO(), obj, metav1.UpdateOptions{})
 }
 
 func (c *namespaceController) Delete(name string, options *metav1.DeleteOptions) error {
-	return c.clientGetter.Namespaces().Delete(name, options)
+	if options == nil {
+		options = &metav1.DeleteOptions{}
+	}
+	return c.clientGetter.Namespaces().Delete(context.TODO(), name, *options)
 }
 
 func (c *namespaceController) Get(name string, options metav1.GetOptions) (*v1.Namespace, error) {
-	return c.clientGetter.Namespaces().Get(name, options)
+	return c.clientGetter.Namespaces().Get(context.TODO(), name, options)
 }
 
 func (c *namespaceController) List(opts metav1.ListOptions) (*v1.NamespaceList, error) {
-	return c.clientGetter.Namespaces().List(opts)
+	return c.clientGetter.Namespaces().List(context.TODO(), opts)
 }
 
 func (c *namespaceController) Watch(opts metav1.ListOptions) (watch.Interface, error) {
-	return c.clientGetter.Namespaces().Watch(opts)
+	return c.clientGetter.Namespaces().Watch(context.TODO(), opts)
 }
 
 func (c *namespaceController) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.Namespace, err error) {
-	return c.clientGetter.Namespaces().Patch(name, pt, data, subresources...)
+	return c.clientGetter.Namespaces().Patch(context.TODO(), name, pt, data, metav1.PatchOptions{}, subresources...)
 }
 
 type namespaceCache struct {
@@ -233,6 +236,7 @@ func (c *namespaceCache) GetByIndex(indexName, key string) (result []*v1.Namespa
 	if err != nil {
 		return nil, err
 	}
+	result = make([]*v1.Namespace, 0, len(objs))
 	for _, obj := range objs {
 		result = append(result, obj.(*v1.Namespace))
 	}

@@ -21,25 +21,26 @@ import (
 	"net/url"
 
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 	"golang.org/x/net/context"
 	pb "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
 
-var runtimeAttachCommand = cli.Command{
+var runtimeAttachCommand = &cli.Command{
 	Name:                   "attach",
 	Usage:                  "Attach to a running container",
 	ArgsUsage:              "CONTAINER-ID",
-	SkipArgReorder:         true,
 	UseShortOptionHandling: true,
 	Flags: []cli.Flag{
-		cli.BoolFlag{
-			Name:  "tty,t",
-			Usage: "Allocate a pseudo-TTY",
+		&cli.BoolFlag{
+			Name:    "tty",
+			Aliases: []string{"t"},
+			Usage:   "Allocate a pseudo-TTY",
 		},
-		cli.BoolFlag{
-			Name:  "stdin,i",
-			Usage: "Keep STDIN open",
+		&cli.BoolFlag{
+			Name:    "stdin",
+			Aliases: []string{"i"},
+			Usage:   "Keep STDIN open",
 		},
 	},
 	Action: func(context *cli.Context) error {

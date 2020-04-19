@@ -176,35 +176,38 @@ func (c *jobController) Cache() JobCache {
 }
 
 func (c *jobController) Create(obj *v1.Job) (*v1.Job, error) {
-	return c.clientGetter.Jobs(obj.Namespace).Create(obj)
+	return c.clientGetter.Jobs(obj.Namespace).Create(context.TODO(), obj, metav1.CreateOptions{})
 }
 
 func (c *jobController) Update(obj *v1.Job) (*v1.Job, error) {
-	return c.clientGetter.Jobs(obj.Namespace).Update(obj)
+	return c.clientGetter.Jobs(obj.Namespace).Update(context.TODO(), obj, metav1.UpdateOptions{})
 }
 
 func (c *jobController) UpdateStatus(obj *v1.Job) (*v1.Job, error) {
-	return c.clientGetter.Jobs(obj.Namespace).UpdateStatus(obj)
+	return c.clientGetter.Jobs(obj.Namespace).UpdateStatus(context.TODO(), obj, metav1.UpdateOptions{})
 }
 
 func (c *jobController) Delete(namespace, name string, options *metav1.DeleteOptions) error {
-	return c.clientGetter.Jobs(namespace).Delete(name, options)
+	if options == nil {
+		options = &metav1.DeleteOptions{}
+	}
+	return c.clientGetter.Jobs(namespace).Delete(context.TODO(), name, *options)
 }
 
 func (c *jobController) Get(namespace, name string, options metav1.GetOptions) (*v1.Job, error) {
-	return c.clientGetter.Jobs(namespace).Get(name, options)
+	return c.clientGetter.Jobs(namespace).Get(context.TODO(), name, options)
 }
 
 func (c *jobController) List(namespace string, opts metav1.ListOptions) (*v1.JobList, error) {
-	return c.clientGetter.Jobs(namespace).List(opts)
+	return c.clientGetter.Jobs(namespace).List(context.TODO(), opts)
 }
 
 func (c *jobController) Watch(namespace string, opts metav1.ListOptions) (watch.Interface, error) {
-	return c.clientGetter.Jobs(namespace).Watch(opts)
+	return c.clientGetter.Jobs(namespace).Watch(context.TODO(), opts)
 }
 
 func (c *jobController) Patch(namespace, name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.Job, err error) {
-	return c.clientGetter.Jobs(namespace).Patch(name, pt, data, subresources...)
+	return c.clientGetter.Jobs(namespace).Patch(context.TODO(), name, pt, data, metav1.PatchOptions{}, subresources...)
 }
 
 type jobCache struct {
@@ -233,6 +236,7 @@ func (c *jobCache) GetByIndex(indexName, key string) (result []*v1.Job, err erro
 	if err != nil {
 		return nil, err
 	}
+	result = make([]*v1.Job, 0, len(objs))
 	for _, obj := range objs {
 		result = append(result, obj.(*v1.Job))
 	}

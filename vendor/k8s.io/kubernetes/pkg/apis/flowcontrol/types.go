@@ -33,7 +33,10 @@ const (
 
 // System preset priority level names
 const (
-	PriorityLevelConfigurationNameExempt = "exempt"
+	PriorityLevelConfigurationNameExempt   = "exempt"
+	PriorityLevelConfigurationNameCatchAll = "catch-all"
+	FlowSchemaNameExempt                   = "exempt"
+	FlowSchemaNameCatchAll                 = "catch-all"
 )
 
 // Conditions
@@ -41,6 +44,11 @@ const (
 	FlowSchemaConditionDangling = "Dangling"
 
 	PriorityLevelConfigurationConditionConcurrencyShared = "ConcurrencyShared"
+)
+
+// Constants used by api validation.
+const (
+	FlowSchemaMaxMatchingPrecedence int32 = 10000
 )
 
 // +genclient
@@ -88,8 +96,8 @@ type FlowSchemaSpec struct {
 	PriorityLevelConfiguration PriorityLevelConfigurationReference
 	// `matchingPrecedence` is used to choose among the FlowSchemas that match a given request. The chosen
 	// FlowSchema is among those with the numerically lowest (which we take to be logically highest)
-	// MatchingPrecedence.  Each MatchingPrecedence value must be non-negative.
-	// Note that if the precedence is not specified or zero, it will be set to 1000 as default.
+	// MatchingPrecedence.  Each MatchingPrecedence value must be ranged in [1,10000].
+	// Note that if the precedence is not specified, it will be set to 1000 as default.
 	// +optional
 	MatchingPrecedence int32
 	// `distinguisherMethod` defines how to compute the flow distinguisher for requests that match this schema.

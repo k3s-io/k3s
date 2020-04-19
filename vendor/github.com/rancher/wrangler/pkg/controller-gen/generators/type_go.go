@@ -239,37 +239,40 @@ func (c *{{.lowerName}}Controller) Cache() {{.type}}Cache {
 }
 
 func (c *{{.lowerName}}Controller) Create(obj *{{.version}}.{{.type}}) (*{{.version}}.{{.type}}, error) {
-	return c.clientGetter.{{.plural}}({{ if .namespaced}}obj.Namespace{{end}}).Create(obj)
+	return c.clientGetter.{{.plural}}({{ if .namespaced}}obj.Namespace{{end}}).Create(context.TODO(), obj, metav1.CreateOptions{})
 }
 
 func (c *{{.lowerName}}Controller) Update(obj *{{.version}}.{{.type}}) (*{{.version}}.{{.type}}, error) {
-	return c.clientGetter.{{.plural}}({{ if .namespaced}}obj.Namespace{{end}}).Update(obj)
+	return c.clientGetter.{{.plural}}({{ if .namespaced}}obj.Namespace{{end}}).Update(context.TODO(), obj, metav1.UpdateOptions{})
 }
 
 {{ if .hasStatus -}}
 func (c *{{.lowerName}}Controller) UpdateStatus(obj *{{.version}}.{{.type}}) (*{{.version}}.{{.type}}, error) {
-	return c.clientGetter.{{.plural}}({{ if .namespaced}}obj.Namespace{{end}}).UpdateStatus(obj)
+	return c.clientGetter.{{.plural}}({{ if .namespaced}}obj.Namespace{{end}}).UpdateStatus(context.TODO(), obj, metav1.UpdateOptions{})
 }
 {{- end }}
 
 func (c *{{.lowerName}}Controller) Delete({{ if .namespaced}}namespace, {{end}}name string, options *metav1.DeleteOptions) error {
-	return c.clientGetter.{{.plural}}({{ if .namespaced}}namespace{{end}}).Delete(name, options)
+	if options == nil {
+		options = &metav1.DeleteOptions{}
+	}
+	return c.clientGetter.{{.plural}}({{ if .namespaced}}namespace{{end}}).Delete(context.TODO(), name, *options)
 }
 
 func (c *{{.lowerName}}Controller) Get({{ if .namespaced}}namespace, {{end}}name string, options metav1.GetOptions) (*{{.version}}.{{.type}}, error) {
-	return c.clientGetter.{{.plural}}({{ if .namespaced}}namespace{{end}}).Get(name, options)
+	return c.clientGetter.{{.plural}}({{ if .namespaced}}namespace{{end}}).Get(context.TODO(), name, options)
 }
 
 func (c *{{.lowerName}}Controller) List({{ if .namespaced}}namespace string, {{end}}opts metav1.ListOptions) (*{{.version}}.{{.type}}List, error) {
-	return c.clientGetter.{{.plural}}({{ if .namespaced}}namespace{{end}}).List(opts)
+	return c.clientGetter.{{.plural}}({{ if .namespaced}}namespace{{end}}).List(context.TODO(), opts)
 }
 
 func (c *{{.lowerName}}Controller) Watch({{ if .namespaced}}namespace string, {{end}}opts metav1.ListOptions) (watch.Interface, error) {
-	return c.clientGetter.{{.plural}}({{ if .namespaced}}namespace{{end}}).Watch(opts)
+	return c.clientGetter.{{.plural}}({{ if .namespaced}}namespace{{end}}).Watch(context.TODO(), opts)
 }
 
 func (c *{{.lowerName}}Controller) Patch({{ if .namespaced}}namespace, {{end}}name string, pt types.PatchType, data []byte, subresources ...string) (result *{{.version}}.{{.type}}, err error) {
-	return c.clientGetter.{{.plural}}({{ if .namespaced}}namespace{{end}}).Patch(name, pt, data, subresources...)
+	return c.clientGetter.{{.plural}}({{ if .namespaced}}namespace{{end}}).Patch(context.TODO(), name, pt, data, metav1.PatchOptions{}, subresources...)
 }
 
 type {{.lowerName}}Cache struct {
@@ -298,6 +301,7 @@ func (c *{{.lowerName}}Cache) GetByIndex(indexName, key string) (result []*{{.ve
 	if err != nil {
 		return nil, err
 	}
+	result = make([]*{{.version}}.{{.type}}, 0, len(objs))
 	for _, obj := range objs {
 		result = append(result, obj.(*{{.version}}.{{.type}}))
 	}

@@ -19,6 +19,7 @@ limitations under the License.
 package v1
 
 import (
+	"context"
 	time "time"
 
 	helmcattleiov1 "github.com/rancher/helm-controller/pkg/apis/helm.cattle.io/v1"
@@ -61,13 +62,13 @@ func NewFilteredHelmChartInformer(client versioned.Interface, namespace string, 
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.HelmV1().HelmCharts(namespace).List(options)
+				return client.HelmV1().HelmCharts(namespace).List(context.TODO(), options)
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.HelmV1().HelmCharts(namespace).Watch(options)
+				return client.HelmV1().HelmCharts(namespace).Watch(context.TODO(), options)
 			},
 		},
 		&helmcattleiov1.HelmChart{},

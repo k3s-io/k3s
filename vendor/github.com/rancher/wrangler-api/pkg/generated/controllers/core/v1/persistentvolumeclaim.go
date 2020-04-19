@@ -176,35 +176,38 @@ func (c *persistentVolumeClaimController) Cache() PersistentVolumeClaimCache {
 }
 
 func (c *persistentVolumeClaimController) Create(obj *v1.PersistentVolumeClaim) (*v1.PersistentVolumeClaim, error) {
-	return c.clientGetter.PersistentVolumeClaims(obj.Namespace).Create(obj)
+	return c.clientGetter.PersistentVolumeClaims(obj.Namespace).Create(context.TODO(), obj, metav1.CreateOptions{})
 }
 
 func (c *persistentVolumeClaimController) Update(obj *v1.PersistentVolumeClaim) (*v1.PersistentVolumeClaim, error) {
-	return c.clientGetter.PersistentVolumeClaims(obj.Namespace).Update(obj)
+	return c.clientGetter.PersistentVolumeClaims(obj.Namespace).Update(context.TODO(), obj, metav1.UpdateOptions{})
 }
 
 func (c *persistentVolumeClaimController) UpdateStatus(obj *v1.PersistentVolumeClaim) (*v1.PersistentVolumeClaim, error) {
-	return c.clientGetter.PersistentVolumeClaims(obj.Namespace).UpdateStatus(obj)
+	return c.clientGetter.PersistentVolumeClaims(obj.Namespace).UpdateStatus(context.TODO(), obj, metav1.UpdateOptions{})
 }
 
 func (c *persistentVolumeClaimController) Delete(namespace, name string, options *metav1.DeleteOptions) error {
-	return c.clientGetter.PersistentVolumeClaims(namespace).Delete(name, options)
+	if options == nil {
+		options = &metav1.DeleteOptions{}
+	}
+	return c.clientGetter.PersistentVolumeClaims(namespace).Delete(context.TODO(), name, *options)
 }
 
 func (c *persistentVolumeClaimController) Get(namespace, name string, options metav1.GetOptions) (*v1.PersistentVolumeClaim, error) {
-	return c.clientGetter.PersistentVolumeClaims(namespace).Get(name, options)
+	return c.clientGetter.PersistentVolumeClaims(namespace).Get(context.TODO(), name, options)
 }
 
 func (c *persistentVolumeClaimController) List(namespace string, opts metav1.ListOptions) (*v1.PersistentVolumeClaimList, error) {
-	return c.clientGetter.PersistentVolumeClaims(namespace).List(opts)
+	return c.clientGetter.PersistentVolumeClaims(namespace).List(context.TODO(), opts)
 }
 
 func (c *persistentVolumeClaimController) Watch(namespace string, opts metav1.ListOptions) (watch.Interface, error) {
-	return c.clientGetter.PersistentVolumeClaims(namespace).Watch(opts)
+	return c.clientGetter.PersistentVolumeClaims(namespace).Watch(context.TODO(), opts)
 }
 
 func (c *persistentVolumeClaimController) Patch(namespace, name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.PersistentVolumeClaim, err error) {
-	return c.clientGetter.PersistentVolumeClaims(namespace).Patch(name, pt, data, subresources...)
+	return c.clientGetter.PersistentVolumeClaims(namespace).Patch(context.TODO(), name, pt, data, metav1.PatchOptions{}, subresources...)
 }
 
 type persistentVolumeClaimCache struct {
@@ -233,6 +236,7 @@ func (c *persistentVolumeClaimCache) GetByIndex(indexName, key string) (result [
 	if err != nil {
 		return nil, err
 	}
+	result = make([]*v1.PersistentVolumeClaim, 0, len(objs))
 	for _, obj := range objs {
 		result = append(result, obj.(*v1.PersistentVolumeClaim))
 	}

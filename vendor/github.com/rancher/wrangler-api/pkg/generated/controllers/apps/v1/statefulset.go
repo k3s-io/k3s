@@ -176,35 +176,38 @@ func (c *statefulSetController) Cache() StatefulSetCache {
 }
 
 func (c *statefulSetController) Create(obj *v1.StatefulSet) (*v1.StatefulSet, error) {
-	return c.clientGetter.StatefulSets(obj.Namespace).Create(obj)
+	return c.clientGetter.StatefulSets(obj.Namespace).Create(context.TODO(), obj, metav1.CreateOptions{})
 }
 
 func (c *statefulSetController) Update(obj *v1.StatefulSet) (*v1.StatefulSet, error) {
-	return c.clientGetter.StatefulSets(obj.Namespace).Update(obj)
+	return c.clientGetter.StatefulSets(obj.Namespace).Update(context.TODO(), obj, metav1.UpdateOptions{})
 }
 
 func (c *statefulSetController) UpdateStatus(obj *v1.StatefulSet) (*v1.StatefulSet, error) {
-	return c.clientGetter.StatefulSets(obj.Namespace).UpdateStatus(obj)
+	return c.clientGetter.StatefulSets(obj.Namespace).UpdateStatus(context.TODO(), obj, metav1.UpdateOptions{})
 }
 
 func (c *statefulSetController) Delete(namespace, name string, options *metav1.DeleteOptions) error {
-	return c.clientGetter.StatefulSets(namespace).Delete(name, options)
+	if options == nil {
+		options = &metav1.DeleteOptions{}
+	}
+	return c.clientGetter.StatefulSets(namespace).Delete(context.TODO(), name, *options)
 }
 
 func (c *statefulSetController) Get(namespace, name string, options metav1.GetOptions) (*v1.StatefulSet, error) {
-	return c.clientGetter.StatefulSets(namespace).Get(name, options)
+	return c.clientGetter.StatefulSets(namespace).Get(context.TODO(), name, options)
 }
 
 func (c *statefulSetController) List(namespace string, opts metav1.ListOptions) (*v1.StatefulSetList, error) {
-	return c.clientGetter.StatefulSets(namespace).List(opts)
+	return c.clientGetter.StatefulSets(namespace).List(context.TODO(), opts)
 }
 
 func (c *statefulSetController) Watch(namespace string, opts metav1.ListOptions) (watch.Interface, error) {
-	return c.clientGetter.StatefulSets(namespace).Watch(opts)
+	return c.clientGetter.StatefulSets(namespace).Watch(context.TODO(), opts)
 }
 
 func (c *statefulSetController) Patch(namespace, name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.StatefulSet, err error) {
-	return c.clientGetter.StatefulSets(namespace).Patch(name, pt, data, subresources...)
+	return c.clientGetter.StatefulSets(namespace).Patch(context.TODO(), name, pt, data, metav1.PatchOptions{}, subresources...)
 }
 
 type statefulSetCache struct {
@@ -233,6 +236,7 @@ func (c *statefulSetCache) GetByIndex(indexName, key string) (result []*v1.State
 	if err != nil {
 		return nil, err
 	}
+	result = make([]*v1.StatefulSet, 0, len(objs))
 	for _, obj := range objs {
 		result = append(result, obj.(*v1.StatefulSet))
 	}

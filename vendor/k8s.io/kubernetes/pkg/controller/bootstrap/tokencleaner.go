@@ -17,6 +17,7 @@ limitations under the License.
 package bootstrap
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -191,11 +192,11 @@ func (tc *TokenCleaner) evalSecret(o interface{}) {
 	ttl, alreadyExpired := bootstrapsecretutil.GetExpiration(secret, time.Now())
 	if alreadyExpired {
 		klog.V(3).Infof("Deleting expired secret %s/%s", secret.Namespace, secret.Name)
-		var options *metav1.DeleteOptions
+		var options metav1.DeleteOptions
 		if len(secret.UID) > 0 {
-			options = &metav1.DeleteOptions{Preconditions: &metav1.Preconditions{UID: &secret.UID}}
+			options.Preconditions = &metav1.Preconditions{UID: &secret.UID}
 		}
-		err := tc.client.CoreV1().Secrets(secret.Namespace).Delete(secret.Name, options)
+		err := tc.client.CoreV1().Secrets(secret.Namespace).Delete(context.TODO(), secret.Name, options)
 		// NotFound isn't a real error (it's already been deleted)
 		// Conflict isn't a real error (the UID precondition failed)
 		if err != nil && !apierrors.IsConflict(err) && !apierrors.IsNotFound(err) {

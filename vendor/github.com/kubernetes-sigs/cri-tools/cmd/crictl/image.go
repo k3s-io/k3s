@@ -24,7 +24,7 @@ import (
 
 	"github.com/docker/go-units"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 	"golang.org/x/net/context"
 	pb "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
@@ -43,23 +43,22 @@ func (a imageByRef) Less(i, j int) bool {
 	return a[i].Id < a[j].Id
 }
 
-var pullImageCommand = cli.Command{
+var pullImageCommand = &cli.Command{
 	Name:                   "pull",
 	Usage:                  "Pull an image from a registry",
-	SkipArgReorder:         true,
 	UseShortOptionHandling: true,
 	Flags: []cli.Flag{
-		cli.StringFlag{
+		&cli.StringFlag{
 			Name:  "creds",
 			Value: "",
 			Usage: "Use `USERNAME[:PASSWORD]` for accessing the registry",
 		},
-		cli.StringFlag{
+		&cli.StringFlag{
 			Name:  "auth",
 			Value: "",
 			Usage: "Use `AUTH_STRING` for accessing the registry. AUTH_STRING is a base64 encoded 'USERNAME[:PASSWORD]'",
 		},
-		cli.StringFlag{
+		&cli.StringFlag{
 			Name:      "pod-config",
 			Value:     "",
 			Usage:     "Use `pod-config.[json|yaml]` to override the the pull context",
@@ -100,31 +99,33 @@ var pullImageCommand = cli.Command{
 	},
 }
 
-var listImageCommand = cli.Command{
+var listImageCommand = &cli.Command{
 	Name:                   "images",
 	Aliases:                []string{"image", "img"},
 	Usage:                  "List images",
 	ArgsUsage:              "[REPOSITORY[:TAG]]",
-	SkipArgReorder:         true,
 	UseShortOptionHandling: true,
 	Flags: []cli.Flag{
-		cli.BoolFlag{
-			Name:  "verbose, v",
-			Usage: "Show verbose info for images",
+		&cli.BoolFlag{
+			Name:    "verbose",
+			Aliases: []string{"v"},
+			Usage:   "Show verbose info for images",
 		},
-		cli.BoolFlag{
-			Name:  "quiet, q",
-			Usage: "Only show image IDs",
+		&cli.BoolFlag{
+			Name:    "quiet",
+			Aliases: []string{"q"},
+			Usage:   "Only show image IDs",
 		},
-		cli.StringFlag{
-			Name:  "output, o",
-			Usage: "Output format, One of: json|yaml|table",
+		&cli.StringFlag{
+			Name:    "output",
+			Aliases: []string{"o"},
+			Usage:   "Output format, One of: json|yaml|table",
 		},
-		cli.BoolFlag{
+		&cli.BoolFlag{
 			Name:  "digests",
 			Usage: "Show digests",
 		},
-		cli.BoolFlag{
+		&cli.BoolFlag{
 			Name:  "no-trunc",
 			Usage: "Show output without truncating the ID",
 		},
@@ -208,20 +209,25 @@ var listImageCommand = cli.Command{
 	},
 }
 
-var imageStatusCommand = cli.Command{
+var imageStatusCommand = &cli.Command{
 	Name:                   "inspecti",
 	Usage:                  "Return the status of one or more images",
 	ArgsUsage:              "IMAGE-ID [IMAGE-ID...]",
-	SkipArgReorder:         true,
 	UseShortOptionHandling: true,
 	Flags: []cli.Flag{
-		cli.StringFlag{
-			Name:  "output, o",
-			Usage: "Output format, One of: json|yaml|table",
+		&cli.StringFlag{
+			Name:    "output",
+			Aliases: []string{"o"},
+			Usage:   "Output format, One of: json|yaml|go-template|table",
 		},
-		cli.BoolFlag{
-			Name:  "quiet, q",
-			Usage: "Do not show verbose information",
+		&cli.BoolFlag{
+			Name:    "quiet",
+			Aliases: []string{"q"},
+			Usage:   "Do not show verbose information",
+		},
+		&cli.StringFlag{
+			Name:  "template",
+			Usage: "The template string is only used when output is go-template; The Template format is golang template",
 		},
 	},
 	Action: func(context *cli.Context) error {
@@ -239,6 +245,7 @@ var imageStatusCommand = cli.Command{
 		if output == "" { // default to json output
 			output = "json"
 		}
+		tmplStr := context.String("template")
 		for i := 0; i < context.NArg(); i++ {
 			id := context.Args().Get(i)
 
@@ -256,8 +263,8 @@ var imageStatusCommand = cli.Command{
 				return fmt.Errorf("failed to marshal status to json for %q: %v", id, err)
 			}
 			switch output {
-			case "json", "yaml":
-				if err := outputStatusInfo(status, r.Info, output); err != nil {
+			case "json", "yaml", "go-template":
+				if err := outputStatusInfo(status, r.Info, output, tmplStr); err != nil {
 					return fmt.Errorf("failed to output status for %q: %v", id, err)
 				}
 				continue
@@ -285,20 +292,21 @@ var imageStatusCommand = cli.Command{
 	},
 }
 
-var removeImageCommand = cli.Command{
+var removeImageCommand = &cli.Command{
 	Name:                   "rmi",
 	Usage:                  "Remove one or more images",
 	ArgsUsage:              "IMAGE-ID [IMAGE-ID...]",
-	SkipArgReorder:         true,
 	UseShortOptionHandling: true,
 	Flags: []cli.Flag{
-		cli.BoolFlag{
-			Name:  "all, a",
-			Usage: "Remove all images",
+		&cli.BoolFlag{
+			Name:    "all",
+			Aliases: []string{"a"},
+			Usage:   "Remove all images",
 		},
-		cli.BoolFlag{
-			Name:  "prune, p",
-			Usage: "Remove all unused images",
+		&cli.BoolFlag{
+			Name:    "prune",
+			Aliases: []string{"q"},
+			Usage:   "Remove all unused images",
 		},
 	},
 	Action: func(ctx *cli.Context) error {
@@ -309,7 +317,7 @@ var removeImageCommand = cli.Command{
 		defer closeConnection(ctx, conn)
 
 		ids := map[string]bool{}
-		for _, id := range ctx.Args() {
+		for _, id := range ctx.Args().Slice() {
 			logrus.Debugf("User specified image to be removed: %v", id)
 			ids[id] = true
 		}
@@ -406,15 +414,19 @@ var removeImageCommand = cli.Command{
 	},
 }
 
-var imageFsInfoCommand = cli.Command{
+var imageFsInfoCommand = &cli.Command{
 	Name:                   "imagefsinfo",
 	Usage:                  "Return image filesystem info",
-	SkipArgReorder:         true,
 	UseShortOptionHandling: true,
 	Flags: []cli.Flag{
-		cli.StringFlag{
-			Name:  "output, o",
-			Usage: "Output format, One of: json|yaml|table",
+		&cli.StringFlag{
+			Name:    "output",
+			Aliases: []string{"o"},
+			Usage:   "Output format, One of: json|yaml|go-template|table",
+		},
+		&cli.StringFlag{
+			Name:  "template",
+			Usage: "The template string is only used when output is go-template; The Template format is golang template",
 		},
 	},
 	Action: func(context *cli.Context) error {
@@ -428,6 +440,7 @@ var imageFsInfoCommand = cli.Command{
 		if output == "" { // default to json output
 			output = "json"
 		}
+		tmplStr := context.String("template")
 
 		r, err := ImageFsInfo(imageClient)
 		if err != nil {
@@ -440,8 +453,8 @@ var imageFsInfoCommand = cli.Command{
 			}
 
 			switch output {
-			case "json", "yaml":
-				if err := outputStatusInfo(status, nil, output); err != nil {
+			case "json", "yaml", "go-template":
+				if err := outputStatusInfo(status, nil, output, tmplStr); err != nil {
 					return fmt.Errorf("failed to output image filesystem info %v", err)
 				}
 				continue

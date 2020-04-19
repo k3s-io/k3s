@@ -21,6 +21,7 @@ import (
 	"reflect"
 
 	"k8s.io/klog"
+	"k8s.io/kubernetes/pkg/scheduler/profile"
 
 	v1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
@@ -100,6 +101,7 @@ func (sched *Scheduler) addNodeToCache(obj interface{}) {
 		klog.Errorf("scheduler cache AddNode failed: %v", err)
 	}
 
+	klog.V(3).Infof("add event for node %q", node.Name)
 	sched.SchedulingQueue.MoveAllToActiveOrBackoffQueue(queue.NodeAdd)
 }
 
@@ -147,6 +149,7 @@ func (sched *Scheduler) deleteNodeFromCache(obj interface{}) {
 		klog.Errorf("cannot convert to *v1.Node: %v", t)
 		return
 	}
+	klog.V(3).Infof("delete event for node %q", node.Name)
 	// NOTE: Updates must be written to scheduler cache before invalidating
 	// equivalence cache, because we could snapshot equivalence cache after the
 	// invalidation and then snapshot the cache itself. If the cache is
@@ -166,7 +169,9 @@ func (sched *Scheduler) onCSINodeUpdate(oldObj, newObj interface{}) {
 }
 
 func (sched *Scheduler) addPodToSchedulingQueue(obj interface{}) {
-	if err := sched.SchedulingQueue.Add(obj.(*v1.Pod)); err != nil {
+	pod := obj.(*v1.Pod)
+	klog.V(3).Infof("add event for unscheduled pod %s/%s", pod.Namespace, pod.Name)
+	if err := sched.SchedulingQueue.Add(pod); err != nil {
 		utilruntime.HandleError(fmt.Errorf("unable to queue %T: %v", obj, err))
 	}
 }
@@ -197,6 +202,7 @@ func (sched *Scheduler) deletePodFromSchedulingQueue(obj interface{}) {
 		utilruntime.HandleError(fmt.Errorf("unable to handle object in %T: %T", sched, obj))
 		return
 	}
+	klog.V(3).Infof("delete event for unscheduled pod %s/%s", pod.Namespace, pod.Name)
 	if err := sched.SchedulingQueue.Delete(pod); err != nil {
 		utilruntime.HandleError(fmt.Errorf("unable to dequeue %T: %v", obj, err))
 	}
@@ -204,7 +210,14 @@ func (sched *Scheduler) deletePodFromSchedulingQueue(obj interface{}) {
 		// Volume binder only wants to keep unassigned pods
 		sched.VolumeBinder.DeletePodBindings(pod)
 	}
-	sched.Framework.RejectWaitingPod(pod.UID)
+	prof, err := sched.profileForPod(pod)
+	if err != nil {
+		// This shouldn't happen, because we only accept for scheduling the pods
+		// which specify a scheduler name that matches one of the profiles.
+		klog.Error(err)
+		return
+	}
+	prof.Framework.RejectWaitingPod(pod.UID)
 }
 
 func (sched *Scheduler) addPodToCache(obj interface{}) {
@@ -213,6 +226,7 @@ func (sched *Scheduler) addPodToCache(obj interface{}) {
 		klog.Errorf("cannot convert to *v1.Pod: %v", obj)
 		return
 	}
+	klog.V(3).Infof("add event for scheduled pod %s/%s ", pod.Namespace, pod.Name)
 
 	if err := sched.SchedulerCache.AddPod(pod); err != nil {
 		klog.Errorf("scheduler cache AddPod failed: %v", err)
@@ -261,6 +275,7 @@ func (sched *Scheduler) deletePodFromCache(obj interface{}) {
 		klog.Errorf("cannot convert to *v1.Pod: %v", t)
 		return
 	}
+	klog.V(3).Infof("delete event for scheduled pod %s/%s ", pod.Namespace, pod.Name)
 	// NOTE: Updates must be written to scheduler cache before invalidating
 	// equivalence cache, because we could snapshot equivalence cache after the
 	// invalidation and then snapshot the cache itself. If the cache is
@@ -279,8 +294,8 @@ func assignedPod(pod *v1.Pod) bool {
 }
 
 // responsibleForPod returns true if the pod has asked to be scheduled by the given scheduler.
-func responsibleForPod(pod *v1.Pod, schedulerName string) bool {
-	return schedulerName == pod.Spec.SchedulerName
+func responsibleForPod(pod *v1.Pod, profiles profile.Map) bool {
+	return profiles.HandlesSchedulerName(pod.Spec.SchedulerName)
 }
 
 // skipPodUpdate checks whether the specified pod update should be ignored.
@@ -330,11 +345,10 @@ func (sched *Scheduler) skipPodUpdate(pod *v1.Pod) bool {
 	return true
 }
 
-// AddAllEventHandlers is a helper function used in tests and in Scheduler
+// addAllEventHandlers is a helper function used in tests and in Scheduler
 // to add event handlers for various informers.
-func AddAllEventHandlers(
+func addAllEventHandlers(
 	sched *Scheduler,
-	schedulerName string,
 	informerFactory informers.SharedInformerFactory,
 	podInformer coreinformers.PodInformer,
 ) {
@@ -369,10 +383,10 @@ func AddAllEventHandlers(
 			FilterFunc: func(obj interface{}) bool {
 				switch t := obj.(type) {
 				case *v1.Pod:
-					return !assignedPod(t) && responsibleForPod(t, schedulerName)
+					return !assignedPod(t) && responsibleForPod(t, sched.Profiles)
 				case cache.DeletedFinalStateUnknown:
 					if pod, ok := t.Obj.(*v1.Pod); ok {
-						return !assignedPod(pod) && responsibleForPod(pod, schedulerName)
+						return !assignedPod(pod) && responsibleForPod(pod, sched.Profiles)
 					}
 					utilruntime.HandleError(fmt.Errorf("unable to convert object %T to *v1.Pod in %T", obj, sched))
 					return false

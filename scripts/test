@@ -13,8 +13,8 @@ mkdir -p $artifacts
 
 # ---
 
-[ "$ARCH" = 'arm' ] && \
-  early-exit "Skipping sonobuoy, images not available for $ARCH."
+[ "$ARCH" != 'amd64' ] && \
+  early-exit "Skipping remaining tests, images not available for $ARCH."
 
 E2E_OUTPUT=$artifacts test-run-sonobuoy
 
@@ -22,9 +22,6 @@ E2E_OUTPUT=$artifacts test-run-sonobuoy
 
 [ "$DRONE_BUILD_EVENT" = 'tag' ] && \
   early-exit 'Skipping remaining tests on tag.'
-
-[ "$ARCH" != 'amd64' ] && \
-  early-exit "Skipping remaining tests, images not available for $ARCH."
 
 # ---
 

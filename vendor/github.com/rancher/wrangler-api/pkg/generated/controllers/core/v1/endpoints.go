@@ -173,31 +173,34 @@ func (c *endpointsController) Cache() EndpointsCache {
 }
 
 func (c *endpointsController) Create(obj *v1.Endpoints) (*v1.Endpoints, error) {
-	return c.clientGetter.Endpoints(obj.Namespace).Create(obj)
+	return c.clientGetter.Endpoints(obj.Namespace).Create(context.TODO(), obj, metav1.CreateOptions{})
 }
 
 func (c *endpointsController) Update(obj *v1.Endpoints) (*v1.Endpoints, error) {
-	return c.clientGetter.Endpoints(obj.Namespace).Update(obj)
+	return c.clientGetter.Endpoints(obj.Namespace).Update(context.TODO(), obj, metav1.UpdateOptions{})
 }
 
 func (c *endpointsController) Delete(namespace, name string, options *metav1.DeleteOptions) error {
-	return c.clientGetter.Endpoints(namespace).Delete(name, options)
+	if options == nil {
+		options = &metav1.DeleteOptions{}
+	}
+	return c.clientGetter.Endpoints(namespace).Delete(context.TODO(), name, *options)
 }
 
 func (c *endpointsController) Get(namespace, name string, options metav1.GetOptions) (*v1.Endpoints, error) {
-	return c.clientGetter.Endpoints(namespace).Get(name, options)
+	return c.clientGetter.Endpoints(namespace).Get(context.TODO(), name, options)
 }
 
 func (c *endpointsController) List(namespace string, opts metav1.ListOptions) (*v1.EndpointsList, error) {
-	return c.clientGetter.Endpoints(namespace).List(opts)
+	return c.clientGetter.Endpoints(namespace).List(context.TODO(), opts)
 }
 
 func (c *endpointsController) Watch(namespace string, opts metav1.ListOptions) (watch.Interface, error) {
-	return c.clientGetter.Endpoints(namespace).Watch(opts)
+	return c.clientGetter.Endpoints(namespace).Watch(context.TODO(), opts)
 }
 
 func (c *endpointsController) Patch(namespace, name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.Endpoints, err error) {
-	return c.clientGetter.Endpoints(namespace).Patch(name, pt, data, subresources...)
+	return c.clientGetter.Endpoints(namespace).Patch(context.TODO(), name, pt, data, metav1.PatchOptions{}, subresources...)
 }
 
 type endpointsCache struct {
@@ -226,6 +229,7 @@ func (c *endpointsCache) GetByIndex(indexName, key string) (result []*v1.Endpoin
 	if err != nil {
 		return nil, err
 	}
+	result = make([]*v1.Endpoints, 0, len(objs))
 	for _, obj := range objs {
 		result = append(result, obj.(*v1.Endpoints))
 	}
