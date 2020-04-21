@@ -13,10 +13,8 @@ ln -s containerd bin/k3s-server
 ln -s containerd bin/kubectl
 ln -s containerd bin/crictl
 for i in bridge flannel host-local loopback portmap; do
-    if [ -e ./bin/$i ]; then
-        rm -f ./bin/$i
-    fi
-    ln -s cni ./bin/$i
+    rm -f bin/$i
+    ln -s cni bin/$i
 done
 
 cp contrib/util/check-config.sh bin/check-config
