@@ -41,6 +41,7 @@ func WatchFiles(ctx context.Context, apply apply.Apply, addons v1.AddonControlle
 		addons:     addons,
 		bases:      bases,
 		disables:   disables,
+		modTime:    map[string]time.Time{},
 	}
 
 	addons.Enqueue("", startKey)
@@ -60,6 +61,7 @@ type watcher struct {
 	addons     v1.AddonClient
 	bases      []string
 	disables   map[string]bool
+	modTime    map[string]time.Time
 }
 
 func (w *watcher) start(ctx context.Context) {
@@ -84,7 +86,6 @@ func (w *watcher) listFiles(force bool) error {
 		if err := w.listFilesIn(base, force); err != nil {
 			errs = append(errs, err)
 		}
-
 	}
 	return merr.NewErrors(errs...)
 }
@@ -124,8 +125,14 @@ func (w *watcher) listFilesIn(base string, force bool) error {
 		if skipFile(files[path].Name(), skips) {
 			continue
 		}
+		modTime := files[path].ModTime()
+		if !force && modTime.Equal(w.modTime[path]) {
+			continue
+		}
 		if err := w.deploy(path, !force); err != nil {
 			errs = append(errs, errors2.Wrapf(err, "failed to process %s", path))
+		} else {
+			w.modTime[path] = modTime
 		}
 	}
 
