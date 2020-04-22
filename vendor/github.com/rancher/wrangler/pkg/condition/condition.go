@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/rancher/wrangler/pkg/generic"
 	"github.com/sirupsen/logrus"
 )
 
@@ -14,7 +15,7 @@ func (c Cond) GetStatus(obj interface{}) string {
 }
 
 func (c Cond) SetError(obj interface{}, reason string, err error) {
-	if err == nil {
+	if err == nil || err == generic.ErrSkip {
 		c.True(obj)
 		c.Message(obj, "")
 		c.Reason(obj, reason)
@@ -153,6 +154,9 @@ func getTS(obj interface{}, condName string) string {
 }
 
 func setStatus(obj interface{}, condName, status string) {
+	if reflect.TypeOf(obj).Kind() != reflect.Ptr {
+		panic("obj passed must be a pointer")
+	}
 	cond := findOrCreateCond(obj, condName)
 	setValue(cond, "Status", status)
 }
@@ -167,6 +171,9 @@ func setValue(cond reflect.Value, fieldName, newValue string) {
 
 func findOrNotCreateCond(obj interface{}, condName string) *reflect.Value {
 	condSlice := getValue(obj, "Status", "Conditions")
+	if !condSlice.IsValid() {
+		condSlice = getValue(obj, "Conditions")
+	}
 	return findCond(obj, condSlice, condName)
 }
 
@@ -224,6 +231,9 @@ func getValue(obj interface{}, name ...string) reflect.Value {
 }
 
 func getFieldValue(v reflect.Value, name ...string) reflect.Value {
+	if !v.IsValid() {
+		return v
+	}
 	field := v.FieldByName(name[0])
 	if len(name) == 1 {
 		return field

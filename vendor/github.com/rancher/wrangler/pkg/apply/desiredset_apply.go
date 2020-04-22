@@ -27,6 +27,7 @@ const (
 	LabelName      = "objectset.rio.cattle.io/owner-name"
 	LabelNamespace = "objectset.rio.cattle.io/owner-namespace"
 	LabelHash      = "objectset.rio.cattle.io/hash"
+	LabelPrefix    = "objectset.rio.cattle.io/"
 )
 
 var (
@@ -58,6 +59,15 @@ func (o *desiredSet) getRateLimit(labelHash string) flowcontrol.RateLimiter {
 	return rl
 }
 
+func (o *desiredSet) dryRun() (Plan, error) {
+	o.createPlan = true
+	o.plan.Create = objectset.ObjectKeyByGVK{}
+	o.plan.Update = PatchByGVK{}
+	o.plan.Delete = objectset.ObjectKeyByGVK{}
+	err := o.apply()
+	return o.plan, err
+}
+
 func (o *desiredSet) apply() error {
 	if o.objs == nil || o.objs.Len() == 0 {
 		o.remove = true
@@ -67,7 +77,7 @@ func (o *desiredSet) apply() error {
 		return err
 	}
 
-	labelSet, annotationSet, err := o.getLabelsAndAnnotations()
+	labelSet, annotationSet, err := GetLabelsAndAnnotations(o.setID, o.owner)
 	if err != nil {
 		return o.err(err)
 	}
@@ -90,13 +100,13 @@ func (o *desiredSet) apply() error {
 	objs := o.collect(objList)
 
 	debugID := o.debugID()
-	req, err := labels.NewRequirement(LabelHash, selection.Equals, []string{labelSet[LabelHash]})
+	sel, err := GetSelector(labelSet)
 	if err != nil {
 		return o.err(err)
 	}
 
 	for _, gvk := range o.objs.GVKOrder(o.knownGVK()...) {
-		o.process(debugID, labels.NewSelector().Add(*req), gvk, objs[gvk])
+		o.process(debugID, sel, gvk, objs[gvk])
 	}
 
 	return o.Err()
@@ -161,18 +171,26 @@ func (o *desiredSet) runInjectors(objList []runtime.Object) ([]runtime.Object, e
 	return objList, nil
 }
 
-func (o *desiredSet) getLabelsAndAnnotations() (map[string]string, map[string]string, error) {
+func GetSelector(labelSet map[string]string) (labels.Selector, error) {
+	req, err := labels.NewRequirement(LabelHash, selection.Equals, []string{labelSet[LabelHash]})
+	if err != nil {
+		return nil, err
+	}
+	return labels.NewSelector().Add(*req), nil
+}
+
+func GetLabelsAndAnnotations(setID string, owner runtime.Object) (map[string]string, map[string]string, error) {
 	annotations := map[string]string{
-		LabelID: o.setID,
+		LabelID: setID,
 	}
 
-	if o.owner != nil {
-		gvk, err := gvk2.Get(o.owner)
+	if owner != nil {
+		gvk, err := gvk2.Get(owner)
 		if err != nil {
 			return nil, nil, err
 		}
 		annotations[LabelGVK] = gvk.String()
-		metadata, err := meta.Accessor(o.owner)
+		metadata, err := meta.Accessor(owner)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to get metadata for %s", gvk)
 		}

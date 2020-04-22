@@ -5,6 +5,9 @@ import (
 	"compress/gzip"
 	"encoding/base64"
 	"io/ioutil"
+	"strings"
+
+	data2 "github.com/rancher/wrangler/pkg/data"
 
 	"github.com/pkg/errors"
 	"github.com/rancher/wrangler/pkg/data/convert"
@@ -95,7 +98,7 @@ func emptyMaps(data map[string]interface{}, keys ...string) bool {
 	return true
 }
 
-func sanitizePatch(patch []byte) ([]byte, error) {
+func sanitizePatch(patch []byte, removeObjectSetAnnotation bool) ([]byte, error) {
 	mod := false
 	data := map[string]interface{}{}
 	err := json.Unmarshal(patch, &data)
@@ -115,6 +118,23 @@ func sanitizePatch(patch []byte) ([]byte, error) {
 
 	if deleted := removeCreationTimestamp(data); deleted {
 		mod = true
+	}
+
+	if removeObjectSetAnnotation {
+		metadata := convert.ToMapInterface(data2.GetValueN(data, "metadata"))
+		annotations := convert.ToMapInterface(data2.GetValueN(data, "metadata", "annotations"))
+		for k := range annotations {
+			if strings.HasPrefix(k, LabelPrefix) {
+				mod = true
+				delete(annotations, k)
+			}
+		}
+		if mod && len(annotations) == 0 {
+			delete(metadata, "annotations")
+			if len(metadata) == 0 {
+				delete(data, "metadata")
+			}
+		}
 	}
 
 	if emptyMaps(data, "metadata", "annotations") {
@@ -152,7 +172,7 @@ func applyPatch(gvk schema.GroupVersionKind, reconciler Reconciler, patcher Patc
 		return false, nil
 	}
 
-	patch, err = sanitizePatch(patch)
+	patch, err = sanitizePatch(patch, false)
 	if err != nil {
 		return false, err
 	}
@@ -172,6 +192,9 @@ func applyPatch(gvk schema.GroupVersionKind, reconciler Reconciler, patcher Patc
 		if err != nil {
 			return false, err
 		}
+		if originalObject == nil {
+			originalObject = oldObject
+		}
 		handled, err := reconciler(originalObject, newObject)
 		if err != nil {
 			return false, err
@@ -187,13 +210,17 @@ func applyPatch(gvk schema.GroupVersionKind, reconciler Reconciler, patcher Patc
 	return true, err
 }
 
-func (o *desiredSet) compareObjects(gvk schema.GroupVersionKind, patcher Patcher, client dynamic.NamespaceableResourceInterface, debugID string, oldObject, newObject runtime.Object, force bool) error {
+func (o *desiredSet) compareObjects(gvk schema.GroupVersionKind, reconciler Reconciler, patcher Patcher, client dynamic.NamespaceableResourceInterface, debugID string, oldObject, newObject runtime.Object, force bool) error {
 	oldMetadata, err := meta.Accessor(oldObject)
 	if err != nil {
 		return err
 	}
 
-	if ran, err := applyPatch(gvk, o.reconcilers[gvk], patcher, debugID, oldObject, newObject); err != nil {
+	if o.createPlan {
+		o.plan.Objects = append(o.plan.Objects, oldObject)
+	}
+
+	if ran, err := applyPatch(gvk, reconciler, patcher, debugID, oldObject, newObject); err != nil {
 		return err
 	} else if !ran {
 		logrus.Debugf("DesiredSet - No change(2) %s %s/%s for %s", gvk, oldMetadata.GetNamespace(), oldMetadata.GetName(), debugID)

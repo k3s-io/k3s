@@ -28,17 +28,25 @@ var (
 )
 
 func (o *desiredSet) getControllerAndClient(debugID string, gvk schema.GroupVersionKind) (cache.SharedIndexInformer, dynamic.NamespaceableResourceInterface, error) {
+	// client needs to be accessed first so that the gvk->gvr mapping gets cached
+	client, err := o.a.clients.client(gvk)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	informer, ok := o.pruneTypes[gvk]
 	if !ok {
 		informer = o.a.informers[gvk]
 	}
+	if informer == nil && o.informerFactory != nil {
+		newInformer, err := o.informerFactory.Get(gvk, o.a.clients.gvr(gvk))
+		if err != nil {
+			return nil, nil, errors.Wrapf(err, "failed to construct informer for %v for %s", gvk, debugID)
+		}
+		informer = newInformer
+	}
 	if informer == nil && o.strictCaching {
 		return nil, nil, fmt.Errorf("failed to find informer for %s for %s", gvk, debugID)
-	}
-
-	client, err := o.a.clients.client(gvk)
-	if err != nil {
-		return nil, nil, err
 	}
 
 	return informer, client, nil
@@ -206,6 +214,8 @@ func (o *desiredSet) process(debugID string, set labels.Selector, gvk schema.Gro
 		patcher = o.createPatcher(client)
 	}
 
+	reconciler := o.reconcilers[gvk]
+
 	existing, err := o.list(controller, client, set)
 	if err != nil {
 		o.err(errors.Wrapf(err, "failed to list %s for %s", gvk, debugID))
@@ -213,6 +223,26 @@ func (o *desiredSet) process(debugID string, set labels.Selector, gvk schema.Gro
 	}
 
 	toCreate, toDelete, toUpdate := compareSets(existing, objs)
+
+	if o.createPlan {
+		o.plan.Create[gvk] = toCreate
+		o.plan.Delete[gvk] = toDelete
+
+		reconciler = nil
+		patcher = func(namespace, name string, pt types2.PatchType, data []byte) (runtime.Object, error) {
+			data, err := sanitizePatch(data, true)
+			if err != nil {
+				return nil, err
+			}
+			if string(data) != "{}" {
+				o.plan.Update.Add(gvk, namespace, name, string(data))
+			}
+			return nil, nil
+		}
+
+		toCreate = nil
+		toDelete = nil
+	}
 
 	createF := func(k objectset.ObjectKey) {
 		obj := objs[k]
@@ -248,7 +278,7 @@ func (o *desiredSet) process(debugID string, set labels.Selector, gvk schema.Gro
 	}
 
 	updateF := func(k objectset.ObjectKey) {
-		err := o.compareObjects(gvk, patcher, client, debugID, existing[k], objs[k], len(toCreate) > 0 || len(toDelete) > 0)
+		err := o.compareObjects(gvk, reconciler, patcher, client, debugID, existing[k], objs[k], len(toCreate) > 0 || len(toDelete) > 0)
 		if err == ErrReplace {
 			deleteF(k, true)
 			o.err(fmt.Errorf("DesiredSet - Replace Wait %s %s for %s", gvk, k, debugID))
