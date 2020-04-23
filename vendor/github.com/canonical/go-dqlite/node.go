@@ -118,6 +118,16 @@ func (s *Node) Close() error {
 	return nil
 }
 
+// BootstrapID is a magic ID that should be used for the fist node in a
+// cluster. Alternatively ID 1 can be used as well.
+const BootstrapID = 0x2dc171858c3155be
+
+// GenerateID generates a unique ID for a new node, based on a hash of its
+// address and the current time.
+func GenerateID(address string) uint64 {
+	return bindings.GenerateID(address)
+}
+
 // Create a options object with sane defaults.
 func defaultOptions() *options {
 	return &options{

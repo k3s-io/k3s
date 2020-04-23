@@ -13,29 +13,21 @@ import (
 
 // Protocol sends and receive the dqlite message on the wire.
 type Protocol struct {
-	version        uint64        // Protocol version
-	conn           net.Conn      // Underlying network connection.
-	contextTimeout time.Duration // Default context timeout.
-	closeCh        chan struct{} // Stops the heartbeat when the connection gets closed
-	mu             sync.Mutex    // Serialize requests
-	netErr         error         // A network error occurred
+	version uint64        // Protocol version
+	conn    net.Conn      // Underlying network connection.
+	closeCh chan struct{} // Stops the heartbeat when the connection gets closed
+	mu      sync.Mutex    // Serialize requests
+	netErr  error         // A network error occurred
 }
 
-func NewProtocol(version uint64, conn net.Conn) *Protocol {
+func newProtocol(version uint64, conn net.Conn) *Protocol {
 	protocol := &Protocol{
-		version:        version,
-		conn:           conn,
-		closeCh:        make(chan struct{}),
-		contextTimeout: 5 * time.Second,
+		version: version,
+		conn:    conn,
+		closeCh: make(chan struct{}),
 	}
 
 	return protocol
-}
-
-// SetContextTimeout sets the default context timeout when no deadline is
-// provided.
-func (p *Protocol) SetContextTimeout(timeout time.Duration) {
-	p.contextTimeout = timeout
 }
 
 // Call invokes a dqlite RPC, sending a request message and receiving a
@@ -50,21 +42,22 @@ func (p *Protocol) Call(ctx context.Context, request, response *Message) (err er
 		return p.netErr
 	}
 
-	// Honor the ctx deadline, if present, or use a default.
-	deadline, ok := ctx.Deadline()
-	if !ok {
-		deadline = time.Now().Add(p.contextTimeout)
+	var budget time.Duration
+
+	// Honor the ctx deadline, if present.
+	if deadline, ok := ctx.Deadline(); ok {
+		p.conn.SetDeadline(deadline)
+		budget = time.Until(deadline)
+		defer p.conn.SetDeadline(time.Time{})
 	}
 
-	p.conn.SetDeadline(deadline)
-
 	if err = p.send(request); err != nil {
-		err = errors.Wrap(err, "failed to send request")
+		err = errors.Wrapf(err, "send request (budget=%s)", budget)
 		goto err
 	}
 
 	if err = p.recv(response); err != nil {
-		err = errors.Wrap(err, "failed to receive response")
+		err = errors.Wrapf(err, "receive response (budget=%s)", budget)
 		goto err
 	}
 
@@ -91,14 +84,11 @@ func (p *Protocol) Interrupt(ctx context.Context, request *Message, response *Me
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	// Honor the ctx deadline, if present, or use a default.
-	deadline, ok := ctx.Deadline()
-	if !ok {
-		deadline = time.Now().Add(2 * time.Second)
+	// Honor the ctx deadline, if present.
+	if deadline, ok := ctx.Deadline(); ok {
+		p.conn.SetDeadline(deadline)
+		defer p.conn.SetDeadline(time.Time{})
 	}
-	p.conn.SetDeadline(deadline)
-
-	defer request.Reset()
 
 	EncodeInterrupt(request, 0)
 
@@ -108,12 +98,10 @@ func (p *Protocol) Interrupt(ctx context.Context, request *Message, response *Me
 
 	for {
 		if err := p.recv(response); err != nil {
-			response.Reset()
 			return errors.Wrap(err, "failed to receive response")
 		}
 
 		mtype, _ := response.getHeader()
-		response.Reset()
 
 		if mtype == ResponseEmpty {
 			break
@@ -155,24 +143,10 @@ func (p *Protocol) sendHeader(req *Message) error {
 }
 
 func (p *Protocol) sendBody(req *Message) error {
-	buf := req.body1.Bytes[:req.body1.Offset]
+	buf := req.body.Bytes[:req.body.Offset]
 	n, err := p.conn.Write(buf)
 	if err != nil {
 		return errors.Wrap(err, "failed to send static body")
-	}
-
-	if n != len(buf) {
-		return errors.Wrap(io.ErrShortWrite, "failed to write body")
-	}
-
-	if req.body2.Bytes == nil {
-		return nil
-	}
-
-	buf = req.body2.Bytes[:req.body2.Offset]
-	n, err = p.conn.Write(buf)
-	if err != nil {
-		return errors.Wrap(err, "failed to send dynamic body")
 	}
 
 	if n != len(buf) {
@@ -183,6 +157,8 @@ func (p *Protocol) sendBody(req *Message) error {
 }
 
 func (p *Protocol) recv(res *Message) error {
+	res.reset()
+
 	if err := p.recvHeader(res); err != nil {
 		return errors.Wrap(err, "failed to receive header")
 	}
@@ -209,28 +185,17 @@ func (p *Protocol) recvHeader(res *Message) error {
 
 func (p *Protocol) recvBody(res *Message) error {
 	n := int(res.words) * messageWordSize
-	n1 := n
-	n2 := 0
 
-	if n1 > len(res.body1.Bytes) {
-		// We need to allocate the dynamic buffer.
-		n1 = len(res.body1.Bytes)
-		n2 = n - n1
+	for n > len(res.body.Bytes) {
+		// Grow message buffer.
+		bytes := make([]byte, len(res.body.Bytes)*2)
+		res.body.Bytes = bytes
 	}
 
-	buf := res.body1.Bytes[:n1]
+	buf := res.body.Bytes[:n]
 
 	if err := p.recvPeek(buf); err != nil {
 		return errors.Wrap(err, "failed to read body")
-	}
-
-	if n2 > 0 {
-		res.body2.Bytes = make([]byte, n2)
-		res.body2.Offset = 0
-		buf = res.body2.Bytes
-		if err := p.recvPeek(buf); err != nil {
-			return errors.Wrap(err, "failed to read body")
-		}
 	}
 
 	return nil

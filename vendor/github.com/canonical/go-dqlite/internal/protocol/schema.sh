@@ -54,6 +54,7 @@ if [ "$entity" = "--request" ]; then
 
 // Encode${cmd} encodes a $cmd request.
 func Encode${cmd}(request *Message${args}) {
+	request.reset()
 EOF
 
     for i in "${@}"

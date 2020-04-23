@@ -67,7 +67,7 @@ require (
 	github.com/bhendo/go-powershell v0.0.0-20190719160123-219e7fb4e41e // indirect
 	github.com/bronze1man/goStrongswanVici v0.0.0-20190828090544-27d02f80ba40 // indirect
 	github.com/buger/jsonparser v0.0.0-20181115193947-bf1c66bbce23 // indirect
-	github.com/canonical/go-dqlite v1.3.0
+	github.com/canonical/go-dqlite v1.5.1
 	github.com/containerd/cgroups v0.0.0-00010101000000-000000000000 // indirect
 	github.com/containerd/containerd v1.3.0-beta.2.0.20190828155532-0293cbd26c69
 	github.com/containerd/continuity v0.0.0-20190827140505-75bee3e2ccb6 // indirect
@@ -102,7 +102,7 @@ require (
 	github.com/rakelkar/gonetsh v0.0.0-20190719023240-501daadcadf8 // indirect
 	github.com/rancher/dynamiclistener v0.2.0
 	github.com/rancher/helm-controller v0.5.0
-	github.com/rancher/kine v0.3.6-0.20200422224205-0a0f5b924129
+	github.com/rancher/kine v0.4.0
 	github.com/rancher/remotedialer v0.2.0
 	github.com/rancher/wrangler v0.6.1
 	github.com/rancher/wrangler-api v0.6.0

@@ -10,8 +10,31 @@ Usage
 
 The best way to understand how to use the ```go-dqlite``` package is probably by
 looking at the source code of the [demo
-program](https://github.com/canonical/go-dqlite/tree/master/cmd/dqlite-demo) and
+program](https://github.com/canonical/go-dqlite/tree/master/cmd/dqlite-demo/main.go) and
 use it as example.
+
+In general your application will use code such as:
+
+
+```go
+dir := "/path/to/data/directory"
+address := "1.2.3.4:666" // Unique node address
+cluster := []string{...} // Optional list of existing nodes, when starting a new node
+app, err := app.New(dir, app.WithAddress(address), app.WithCluster(cluster))
+if err != nil {
+        // ...
+}
+
+db, err := app.Open(context.Background(), "my-database")
+if err != nil {
+        // ...
+}
+
+// db is a *sql.DB object
+if _, err := db.Exec("CREATE TABLE my_table (n INT)"); err != nil
+        // ...
+}
+```
 
 Build
 -----
@@ -50,42 +73,61 @@ go install -tags libsqlite3 ./cmd/dqlite-demo
 
 from the top-level directory of this repository.
 
-Once the ```dqlite-demo``` binary is installed, start three nodes of the demo
-application, respectively with IDs ```1```, ```2,``` and ```3```:
+This builds a demo dqlite application, which exposes a simple key/value store
+over an HTTP API.
+
+Once the `dqlite-demo` binary is installed (normally under `~/go/bin`),
+start three nodes of the demo application:
 
 ```bash
-dqlite-demo start 1 &
-dqlite-demo start 2 &
-dqlite-demo start 3 &
+dqlite-demo --api 127.0.0.1:8001 --db 127.0.0.1:9001 &
+dqlite-demo --api 127.0.0.1:8002 --db 127.0.0.1:9002 --join 127.0.0.1:9001 &
+dqlite-demo --api 127.0.0.1:8003 --db 127.0.0.1:9003 --join 127.0.0.1:9001 &
 ```
 
-The node with ID ```1``` automatically becomes the leader of a single node
-cluster, while the nodes with IDs ```2``` and ```3``` are waiting to be notified
-what cluster they belong to. Let's make nodes ```2``` and ```3``` join the
-cluster:
+The `--api` flag tells the demo program where to expose its HTTP API.
+
+The `--db` flag tells the demo program to use the given address for internal
+database replication.
+
+The `--join` flag is optional and should be used only for additional nodes after
+the first one. It informs them about the existing cluster, so they can
+automatically join it.
+
+Now we can start using the cluster. Let's insert a key pair:
 
 ```bash
-dqlite-demo add 2
-dqlite-demo add 3
-```
-
-Now we can start using the cluster. The demo application is just a simple
-key/value store that stores data in a SQLite table. Let's insert a key pair:
-
-```bash
-dqlite-demo update my-key my-value
+curl -X PUT -d my-key http://127.0.0.1:8001/my-value
 ```
 
 and then retrive it from the database:
 
 ```bash
-dqlite-demo query my-key
+curl http://127.0.0.1:8001/my-value
 ```
 
-Currently node ```1``` is the leader. If we stop it and then try to query the
-key again we'll notice that the ```query``` command hangs for a bit waiting for
-the failover to occur and for another node to step up as leader:
+Currently the first node is the leader. If we stop it and then try to query the
+key again curl will fail, but we can simply change the endpoint to another node
+and things will work since an automatic failover has taken place:
+
+```bash
+kill -TERM %1; curl http://127.0.0.1:8002/my-value
+```
+
+Shell
+------
+
+A basic SQLite-like dqlite shell can be built with:
 
 ```
-kill -TERM %1; sleep 0.1; dqlite-demo query my-key; dqlite-demo cluster
+go install -tags libsqlite3 ./cmd/dqlite
 ```
+
+You can test it with the `dqlite-demo` with:
+
+```
+dqlite -s 127.0.0.1:9001
+```
+
+It supports normal SQL queries plus the special `.cluster` and `.leader`
+commands to inspect the cluster members and the current leader.
