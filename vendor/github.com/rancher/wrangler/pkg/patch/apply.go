@@ -36,7 +36,7 @@ func applyStrategicMergePatch(original, patch []byte, lookup strategicpatch.Look
 	if err := json.Unmarshal(patch, &patchMap); err != nil {
 		return nil, err
 	}
-	patchedMap, err := strategicpatch.StrategicMergeMapPatch(originalMap, patchMap, lookup)
+	patchedMap, err := strategicpatch.StrategicMergeMapPatchUsingLookupPatchMeta(originalMap, patchMap, lookup)
 	if err != nil {
 		return nil, err
 	}

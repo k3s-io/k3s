@@ -90,14 +90,14 @@ func init() {
 
 func ConfigSingleThread() error {
 	if rc := C.sqlite3ConfigSingleThread(); rc != 0 {
-		return Error{Code: int(rc)}
+		return protocol.Error{Message: C.GoString(C.sqlite3_errstr(rc)), Code: int(rc)}
 	}
 	return nil
 }
 
 func ConfigMultiThread() error {
 	if rc := C.sqlite3ConfigMultiThread(); rc != 0 {
-		return Error{Code: int(rc)}
+		return protocol.Error{Message: C.GoString(C.sqlite3_errstr(rc)), Code: int(rc)}
 	}
 	return nil
 }
@@ -195,6 +195,14 @@ func (s *Node) Recover(cluster []protocol.NodeInfo) error {
 		return fmt.Errorf("recover failed with error code %d", rc)
 	}
 	return nil
+}
+
+// GenerateID generates a unique ID for a server.
+func GenerateID(address string) uint64 {
+	caddress := C.CString(address)
+	defer C.free(unsafe.Pointer(caddress))
+	id := C.dqlite_generate_node_id(caddress)
+	return uint64(id)
 }
 
 // Extract the underlying socket from a connection.

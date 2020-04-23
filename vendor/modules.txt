@@ -135,7 +135,7 @@ github.com/blang/semver
 github.com/bronze1man/goStrongswanVici
 # github.com/buger/jsonparser v0.0.0-20181115193947-bf1c66bbce23
 github.com/buger/jsonparser
-# github.com/canonical/go-dqlite v1.3.0
+# github.com/canonical/go-dqlite v1.5.1
 github.com/canonical/go-dqlite
 github.com/canonical/go-dqlite/client
 github.com/canonical/go-dqlite/driver
@@ -716,7 +716,7 @@ github.com/rancher/dynamiclistener/factory
 github.com/rancher/dynamiclistener/storage/file
 github.com/rancher/dynamiclistener/storage/kubernetes
 github.com/rancher/dynamiclistener/storage/memory
-# github.com/rancher/helm-controller v0.4.2-0.20200326195131-eb51d4fa9d8d
+# github.com/rancher/helm-controller v0.5.0
 github.com/rancher/helm-controller/pkg/apis/helm.cattle.io
 github.com/rancher/helm-controller/pkg/apis/helm.cattle.io/v1
 github.com/rancher/helm-controller/pkg/generated/clientset/versioned
@@ -730,7 +730,7 @@ github.com/rancher/helm-controller/pkg/generated/informers/externalversions/helm
 github.com/rancher/helm-controller/pkg/generated/informers/externalversions/internalinterfaces
 github.com/rancher/helm-controller/pkg/generated/listers/helm.cattle.io/v1
 github.com/rancher/helm-controller/pkg/helm
-# github.com/rancher/kine v0.3.5
+# github.com/rancher/kine v0.4.0
 github.com/rancher/kine/pkg/broadcaster
 github.com/rancher/kine/pkg/client
 github.com/rancher/kine/pkg/drivers/dqlite
@@ -745,7 +745,7 @@ github.com/rancher/kine/pkg/server
 github.com/rancher/kine/pkg/tls
 # github.com/rancher/remotedialer v0.2.0
 github.com/rancher/remotedialer
-# github.com/rancher/wrangler v0.5.4-0.20200326191509-4054411d9736
+# github.com/rancher/wrangler v0.6.1
 github.com/rancher/wrangler/pkg/apply
 github.com/rancher/wrangler/pkg/apply/injectors
 github.com/rancher/wrangler/pkg/cleanup
@@ -773,7 +773,7 @@ github.com/rancher/wrangler/pkg/schemes
 github.com/rancher/wrangler/pkg/signals
 github.com/rancher/wrangler/pkg/slice
 github.com/rancher/wrangler/pkg/start
-# github.com/rancher/wrangler-api v0.5.1-0.20200326194427-c13310506d04
+# github.com/rancher/wrangler-api v0.6.0
 github.com/rancher/wrangler-api/pkg/generated/controllers/apps
 github.com/rancher/wrangler-api/pkg/generated/controllers/apps/v1
 github.com/rancher/wrangler-api/pkg/generated/controllers/batch

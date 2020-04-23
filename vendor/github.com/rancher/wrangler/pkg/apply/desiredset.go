@@ -3,8 +3,10 @@ package apply
 import (
 	"context"
 	"github.com/rancher/wrangler/pkg/apply/injectors"
+	"github.com/rancher/wrangler/pkg/kv"
 	"github.com/rancher/wrangler/pkg/merr"
 	"github.com/rancher/wrangler/pkg/objectset"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/cache"
@@ -12,7 +14,7 @@ import (
 
 type desiredSet struct {
 	a                        *apply
-	ctx  					context.Context
+	ctx                      context.Context
 	defaultNamespace         string
 	listerNamespace          string
 	setOwnerReference        bool
@@ -23,6 +25,7 @@ type desiredSet struct {
 	pruneTypes               map[schema.GroupVersionKind]cache.SharedIndexInformer
 	patchers                 map[schema.GroupVersionKind]Patcher
 	reconcilers              map[schema.GroupVersionKind]Reconciler
+	informerFactory          InformerFactory
 	remove                   bool
 	noDelete                 bool
 	setID                    string
@@ -33,6 +36,9 @@ type desiredSet struct {
 	ratelimitingQps          float32
 	injectorNames            []string
 	errs                     []error
+
+	createPlan bool
+	plan       Plan
 }
 
 func (o *desiredSet) err(err error) error {
@@ -42,6 +48,12 @@ func (o *desiredSet) err(err error) error {
 
 func (o desiredSet) Err() error {
 	return merr.NewErrors(append(o.errs, o.objs.Err())...)
+}
+
+func (o desiredSet) DryRun(objs ...runtime.Object) (Plan, error) {
+	o.objs = objectset.NewObjectSet()
+	o.objs.Add(objs...)
+	return o.dryRun()
 }
 
 func (o desiredSet) Apply(set *objectset.ObjectSet) error {
@@ -76,6 +88,14 @@ func (o desiredSet) WithSetID(id string) Apply {
 	return o
 }
 
+func (o desiredSet) WithOwnerKey(key string, gvk schema.GroupVersionKind) Apply {
+	obj := &v1.PartialObjectMetadata{}
+	obj.Namespace, obj.Name = kv.RSplit(key, "/")
+	obj.SetGroupVersionKind(gvk)
+	o.owner = obj
+	return o
+}
+
 func (o desiredSet) WithOwner(obj runtime.Object) Apply {
 	o.owner = obj
 	return o
@@ -95,6 +115,11 @@ func (o desiredSet) WithInjector(injs ...injectors.ConfigInjector) Apply {
 
 func (o desiredSet) WithInjectorName(injs ...string) Apply {
 	o.injectorNames = append(o.injectorNames, injs...)
+	return o
+}
+
+func (o desiredSet) WithCacheTypeFactory(factory InformerFactory) Apply {
+	o.informerFactory = factory
 	return o
 }
 
@@ -147,7 +172,11 @@ func (o desiredSet) WithRestrictClusterScoped() Apply {
 }
 
 func (o desiredSet) WithDefaultNamespace(ns string) Apply {
-	o.defaultNamespace = ns
+	if ns == "" {
+		o.defaultNamespace = defaultNamespace
+	} else {
+		o.defaultNamespace = ns
+	}
 	return o
 }
 

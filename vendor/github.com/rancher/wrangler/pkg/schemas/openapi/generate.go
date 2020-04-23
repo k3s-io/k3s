@@ -1,11 +1,20 @@
 package openapi
 
 import (
+	"encoding/json"
 	"fmt"
 
 	types "github.com/rancher/wrangler/pkg/schemas"
 	"github.com/rancher/wrangler/pkg/schemas/definition"
 	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+)
+
+var (
+	blacklistFields = map[string]bool{
+		"kind":       true,
+		"apiVersion": true,
+		"metadata":   true,
+	}
 )
 
 func MustGenerate(obj interface{}) *v1beta1.JSONSchemaProps {
@@ -42,178 +51,169 @@ func toOpenAPI(name string, schemas *types.Schemas) (*v1beta1.JSONSchemaProps, e
 	delete(newSchema.ResourceFields, "kind")
 	delete(newSchema.ResourceFields, "apiVersion")
 	delete(newSchema.ResourceFields, "metadata")
-	return parseSchema(newSchema, schemas)
+
+	return schemaToProps(newSchema, schemas, map[string]bool{})
 }
 
-func parseSchema(schema *types.Schema, schemas *types.Schemas) (*v1beta1.JSONSchemaProps, error) {
-	jsp := &v1beta1.JSONSchemaProps{
-		Description: schema.Description,
-		Type:        "object",
-		Properties:  map[string]v1beta1.JSONSchemaProps{},
+func populateField(fieldJSP *v1beta1.JSONSchemaProps, f *types.Field) error {
+	fieldJSP.Description = f.Description
+	// don't reset this to not nullable
+	if f.Nullable {
+		fieldJSP.Nullable = f.Nullable
+	}
+	fieldJSP.MinLength = f.MinLength
+	fieldJSP.MaxLength = f.MaxLength
+
+	if f.Type == "string" && len(f.Options) > 0 {
+		for _, opt := range append(f.Options, "") {
+			bytes, err := json.Marshal(&opt)
+			if err != nil {
+				return err
+			}
+			fieldJSP.Enum = append(fieldJSP.Enum, v1beta1.JSON{
+				Raw: bytes,
+			})
+		}
 	}
 
-	for name, f := range schema.ResourceFields {
-		fieldJSP := v1beta1.JSONSchemaProps{
-			Description: f.Description,
-			Nullable:    f.Nullable,
-			MinLength:   f.MinLength,
-			MaxLength:   f.MaxLength,
+	if len(f.InvalidChars) > 0 {
+		fieldJSP.Pattern = fmt.Sprintf("^[^%s]*$", f.InvalidChars)
+	}
+
+	if len(f.ValidChars) > 0 {
+		fieldJSP.Pattern = fmt.Sprintf("^[%s]*$", f.ValidChars)
+	}
+
+	if f.Min != nil {
+		fl := float64(*f.Min)
+		fieldJSP.Minimum = &fl
+	}
+
+	if f.Max != nil {
+		fl := float64(*f.Max)
+		fieldJSP.Maximum = &fl
+	}
+
+	return nil
+}
+
+func typeToProps(typeName string, schemas *types.Schemas, inflight map[string]bool) (*v1beta1.JSONSchemaProps, error) {
+	t, subType, schema, err := typeAndSchema(typeName, schemas)
+	if err != nil {
+		return nil, err
+	}
+
+	if schema != nil {
+		return schemaToProps(schema, schemas, inflight)
+	}
+
+	jsp := &v1beta1.JSONSchemaProps{}
+
+	switch t {
+	case "map":
+		additionalProps, err := typeToProps(subType, schemas, inflight)
+		if err != nil {
+			return nil, err
 		}
-
-		if len(f.Options) > 0 {
-			for _, opt := range f.Options {
-				fieldJSP.Enum = append(fieldJSP.Enum, v1beta1.JSON{
-					Raw: []byte(opt),
-				})
-			}
+		jsp.Type = "object"
+		jsp.Nullable = true
+		jsp.AdditionalProperties = &v1beta1.JSONSchemaPropsOrBool{
+			Schema: additionalProps,
 		}
-
-		if len(f.InvalidChars) > 0 {
-			fieldJSP.Pattern = fmt.Sprintf("^[^%s]*$", f.InvalidChars)
+	case "array":
+		items, err := typeToProps(subType, schemas, inflight)
+		if err != nil {
+			return nil, err
 		}
-
-		if len(f.ValidChars) > 0 {
-			fieldJSP.Pattern = fmt.Sprintf("^[%s]*$", f.ValidChars)
+		jsp.Type = "array"
+		jsp.Nullable = true
+		jsp.Items = &v1beta1.JSONSchemaPropsOrArray{
+			Schema: items,
 		}
-
-		if f.Min != nil {
-			fl := float64(*f.Min)
-			fieldJSP.Minimum = &fl
-		}
-
-		if f.Max != nil {
-			fl := float64(*f.Max)
-			fieldJSP.Maximum = &fl
-		}
-
-		//  default is not support by k8s
-		//
-		//if f.Default != nil {
-		//	bytes, err := json.Marshal(f.Default)
-		//	if err != nil {
-		//		return nil, err
-		//	}
-		//	fieldJSP.Default = &v1beta1.JSON{
-		//		Raw: bytes,
-		//	}
-		//}
-
-		if f.Required {
-			fieldJSP.Required = append(fieldJSP.Required, name)
-		}
-
-		if definition.IsMapType(f.Type) {
-			fieldJSP.Type = "object"
-			subType := definition.SubType(f.Type)
-
-			subType, schema, err := typeAndSchema(subType, schemas)
-			if err != nil {
-				return nil, err
-			}
-
-			if schema == nil {
-				fieldJSP.AdditionalProperties = &v1beta1.JSONSchemaPropsOrBool{
-					Schema: &v1beta1.JSONSchemaProps{
-						Type: subType,
-					},
-				}
-			} else {
-				subObject, err := parseSchema(schema, schemas)
-				if err != nil {
-					return nil, err
-				}
-
-				fieldJSP.AdditionalProperties = &v1beta1.JSONSchemaPropsOrBool{
-					Schema: subObject,
-				}
-			}
-		} else if definition.IsArrayType(f.Type) {
-			fieldJSP.Type = "array"
-			subType := definition.SubType(f.Type)
-
-			subType, schema, err := typeAndSchema(subType, schemas)
-			if err != nil {
-				return nil, err
-			}
-
-			if schema == nil {
-				fieldJSP.Items = &v1beta1.JSONSchemaPropsOrArray{
-					Schema: &v1beta1.JSONSchemaProps{
-						Type: subType,
-					},
-				}
-			} else {
-				subObject, err := parseSchema(schema, schemas)
-				if err != nil {
-					return nil, err
-				}
-
-				fieldJSP.Items = &v1beta1.JSONSchemaPropsOrArray{
-					Schema: subObject,
-				}
-			}
-		} else {
-			typeName, schema, err := typeAndSchema(f.Type, schemas)
-			if err != nil {
-				return nil, err
-			}
-			if schema == nil {
-				fieldJSP.Type = typeName
-			} else {
-				fieldJSP.Type = "object"
-				subObject, err := parseSchema(schema, schemas)
-				if err != nil {
-					return nil, err
-				}
-				fieldJSP.Properties = subObject.Properties
-			}
-		}
-
-		jsp.Properties[name] = fieldJSP
+	default:
+		jsp.Type = t
 	}
 
 	return jsp, nil
 }
 
-func typeAndSchema(typeName string, schemas *types.Schemas) (string, *types.Schema, error) {
-	switch typeName {
-	// TODO: in v1 set the x- header for this
-	case "intOrString":
-		return "string", nil, nil
-	case "int":
-		return "integer", nil, nil
-	case "float":
-		return "number", nil, nil
-	case "string":
-		return "string", nil, nil
-	case "date":
-		return "string", nil, nil
-	case "enum":
-		return "string", nil, nil
-	case "password":
-		return "string", nil, nil
-	case "hostname":
-		return "string", nil, nil
-	case "boolean":
-		return "boolean", nil, nil
-	case "json":
-		return "object", nil, nil
+func schemaToProps(schema *types.Schema, schemas *types.Schemas, inflight map[string]bool) (*v1beta1.JSONSchemaProps, error) {
+	jsp := &v1beta1.JSONSchemaProps{
+		Description: schema.Description,
+		Type:        "object",
 	}
 
+	if inflight[schema.ID] {
+		return jsp, nil
+	}
+
+	inflight[schema.ID] = true
+	defer delete(inflight, schema.ID)
+
+	jsp.Properties = map[string]v1beta1.JSONSchemaProps{}
+
+	for name, f := range schema.ResourceFields {
+		fieldJSP, err := typeToProps(f.Type, schemas, inflight)
+		if err != nil {
+			return nil, err
+		}
+		if err := populateField(fieldJSP, &f); err != nil {
+			return nil, err
+		}
+		if f.Required {
+			jsp.Required = append(jsp.Required, name)
+		}
+		jsp.Properties[name] = *fieldJSP
+	}
+
+	return jsp, nil
+}
+
+func typeAndSchema(typeName string, schemas *types.Schemas) (string, string, *types.Schema, error) {
 	if definition.IsReferenceType(typeName) {
-		return "string", nil, nil
+		return "string", "", nil, nil
 	}
 
 	if definition.IsArrayType(typeName) {
-		return "array", nil, nil
+		return "array", definition.SubType(typeName), nil, nil
+	}
+
+	if definition.IsMapType(typeName) {
+		return "map", definition.SubType(typeName), nil, nil
+	}
+
+	switch typeName {
+	// TODO: in v1 set the x- header for this
+	case "intOrString":
+		return "string", "", nil, nil
+	case "int":
+		return "integer", "", nil, nil
+	case "float":
+		return "number", "", nil, nil
+	case "string":
+		return "string", "", nil, nil
+	case "date":
+		return "string", "", nil, nil
+	case "enum":
+		return "string", "", nil, nil
+	case "base64":
+		return "string", "", nil, nil
+	case "password":
+		return "string", "", nil, nil
+	case "hostname":
+		return "string", "", nil, nil
+	case "boolean":
+		return "boolean", "", nil, nil
+	case "json":
+		return "object", "", nil, nil
 	}
 
 	schema := schemas.Schema(typeName)
 	if schema == nil {
-		return "", nil, fmt.Errorf("failed to find schema %s", typeName)
+		return "", "", nil, fmt.Errorf("failed to find schema %s", typeName)
 	}
 	if schema.InternalSchema != nil {
-		return "", schema.InternalSchema, nil
+		return "", "", schema.InternalSchema, nil
 	}
-	return "", schema, nil
+	return "", "", schema, nil
 }

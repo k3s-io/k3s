@@ -61,12 +61,13 @@ replace (
 )
 
 require (
+	github.com/Azure/go-autorest v14.0.1+incompatible // indirect
 	github.com/NYTimes/gziphandler v1.1.1 // indirect
 	github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 // indirect
 	github.com/bhendo/go-powershell v0.0.0-20190719160123-219e7fb4e41e // indirect
 	github.com/bronze1man/goStrongswanVici v0.0.0-20190828090544-27d02f80ba40 // indirect
 	github.com/buger/jsonparser v0.0.0-20181115193947-bf1c66bbce23 // indirect
-	github.com/canonical/go-dqlite v1.3.0
+	github.com/canonical/go-dqlite v1.5.1
 	github.com/containerd/cgroups v0.0.0-00010101000000-000000000000 // indirect
 	github.com/containerd/containerd v1.3.0-beta.2.0.20190828155532-0293cbd26c69
 	github.com/containerd/continuity v0.0.0-20190827140505-75bee3e2ccb6 // indirect
@@ -100,11 +101,11 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/rakelkar/gonetsh v0.0.0-20190719023240-501daadcadf8 // indirect
 	github.com/rancher/dynamiclistener v0.2.0
-	github.com/rancher/helm-controller v0.4.2-0.20200326195131-eb51d4fa9d8d
-	github.com/rancher/kine v0.3.5
+	github.com/rancher/helm-controller v0.5.0
+	github.com/rancher/kine v0.4.0
 	github.com/rancher/remotedialer v0.2.0
-	github.com/rancher/wrangler v0.5.4-0.20200326191509-4054411d9736
-	github.com/rancher/wrangler-api v0.5.1-0.20200326194427-c13310506d04
+	github.com/rancher/wrangler v0.6.1
+	github.com/rancher/wrangler-api v0.6.0
 	github.com/rootless-containers/rootlesskit v0.7.2
 	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/pflag v1.0.5

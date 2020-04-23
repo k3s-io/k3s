@@ -39,9 +39,10 @@ type Controller struct {
 }
 
 const (
-	image = "rancher/klipper-helm:v0.2.3"
-	label = "helmcharts.helm.cattle.io/chart"
-	name  = "helm-controller"
+	image   = "rancher/klipper-helm:v0.2.5"
+	Label   = "helmcharts.helm.cattle.io/chart"
+	CRDName = "helmcharts.helm.cattle.io"
+	Name    = "helm-controller"
 )
 
 func Register(ctx context.Context, apply apply.Apply,
@@ -50,7 +51,7 @@ func Register(ctx context.Context, apply apply.Apply,
 	crbs rbaccontroller.ClusterRoleBindingController,
 	sas corecontroller.ServiceAccountController,
 	cm corecontroller.ConfigMapController) {
-	apply = apply.WithSetID(name).
+	apply = apply.WithSetID(Name).
 		WithCacheTypes(helms, jobs, crbs, sas, cm).
 		WithStrictCaching().WithPatcher(batch.SchemeGroupVersion.WithKind("Job"), func(namespace, name string, pt types.PatchType, data []byte) (runtime.Object, error) {
 		err := jobs.Delete(namespace, name, &metav1.DeleteOptions{})
@@ -63,7 +64,7 @@ func Register(ctx context.Context, apply apply.Apply,
 	relatedresource.Watch(ctx, "helm-pod-watch",
 		func(namespace, name string, obj runtime.Object) ([]relatedresource.Key, error) {
 			if job, ok := obj.(*batch.Job); ok {
-				name := job.Labels[label]
+				name := job.Labels[Label]
 				if name != "" {
 					return []relatedresource.Key{
 						{
@@ -84,8 +85,8 @@ func Register(ctx context.Context, apply apply.Apply,
 		apply:          apply,
 	}
 
-	helms.OnChange(ctx, name, controller.OnHelmChanged)
-	helms.OnRemove(ctx, name, controller.OnHelmRemove)
+	helms.OnChange(ctx, Name, controller.OnHelmChanged)
+	helms.OnRemove(ctx, Name, controller.OnHelmRemove)
 }
 
 func (c *Controller) OnHelmChanged(key string, chart *helmv1.HelmChart) (*helmv1.HelmChart, error) {
@@ -163,7 +164,7 @@ func job(chart *helmv1.HelmChart) (*batch.Job, *core.ConfigMap) {
 			Name:      fmt.Sprintf("helm-%s-%s", action, chart.Name),
 			Namespace: chart.Namespace,
 			Labels: map[string]string{
-				label: chart.Name,
+				Label: chart.Name,
 			},
 		},
 		Spec: batch.JobSpec{
@@ -171,7 +172,7 @@ func job(chart *helmv1.HelmChart) (*batch.Job, *core.ConfigMap) {
 			Template: core.PodTemplateSpec{
 				ObjectMeta: meta.ObjectMeta{
 					Labels: map[string]string{
-						label: chart.Name,
+						Label: chart.Name,
 					},
 				},
 				Spec: core.PodSpec{

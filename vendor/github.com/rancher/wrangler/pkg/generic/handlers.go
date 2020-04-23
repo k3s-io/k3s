@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"strings"
 
+	errors2 "github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -25,7 +26,7 @@ func (h *Handlers) Handle(key string, obj runtime.Object) (runtime.Object, error
 
 	for _, handler := range h.handlers {
 		newObj, err := handler.handler(key, obj)
-		if err != nil {
+		if err != nil && errors2.Cause(err) != ErrSkip {
 			errs = append(errs, &handlerError{
 				HandlerName: handler.name,
 				Err:         err,
