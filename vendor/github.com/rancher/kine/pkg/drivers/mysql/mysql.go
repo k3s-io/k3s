@@ -35,6 +35,7 @@ var (
 			);`,
 	}
 	nameIdx     = "create index kine_name_index on kine (name)"
+	nameIDIdx   = "create index kine_name_id_index on kine (name,id)"
 	revisionIdx = "create unique index kine_name_prev_revision_uindex on kine (name, prev_revision)"
 	createDB    = "create database if not exists "
 )
@@ -87,6 +88,7 @@ func setup(db *sql.DB) error {
 	// check if duplicate indexes
 	indexes := []string{
 		nameIdx,
+		nameIDIdx,
 		revisionIdx}
 
 	for _, idx := range indexes {

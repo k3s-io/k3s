@@ -2,10 +2,6 @@ package client
 
 import (
 	"context"
-	"encoding/binary"
-	"io"
-	"net"
-	"strings"
 
 	"github.com/canonical/go-dqlite/internal/protocol"
 	"github.com/pkg/errors"
@@ -57,22 +53,13 @@ func New(ctx context.Context, address string, options ...Option) (*Client, error
 		return nil, errors.Wrap(err, "failed to establish network connection")
 	}
 
-	// Latest protocol version.
-	proto := make([]byte, 8)
-	binary.LittleEndian.PutUint64(proto, protocol.VersionOne)
-
-	// Perform the protocol handshake.
-	n, err := conn.Write(proto)
+	protocol, err := protocol.Handshake(ctx, conn, protocol.VersionOne)
 	if err != nil {
 		conn.Close()
-		return nil, errors.Wrap(err, "failed to send handshake")
-	}
-	if n != 8 {
-		conn.Close()
-		return nil, errors.Wrap(io.ErrShortWrite, "failed to send handshake")
+		return nil, err
 	}
 
-	client := &Client{protocol: protocol.NewProtocol(protocol.VersionOne, conn)}
+	client := &Client{protocol: protocol}
 
 	return client, nil
 }
@@ -273,11 +260,4 @@ func defaultOptions() *options {
 		DialFunc: DefaultDialFunc,
 		LogFunc:  DefaultLogFunc,
 	}
-}
-
-func DefaultDialFunc(ctx context.Context, address string) (net.Conn, error) {
-	if strings.HasPrefix(address, "@") {
-		return protocol.UnixDial(ctx, address)
-	}
-	return protocol.TCPDial(ctx, address)
 }

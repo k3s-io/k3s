@@ -2,10 +2,7 @@ package client
 
 import (
 	"context"
-	"time"
 
-	"github.com/Rican7/retry/backoff"
-	"github.com/Rican7/retry/strategy"
 	"github.com/canonical/go-dqlite/internal/protocol"
 )
 
@@ -18,10 +15,7 @@ func FindLeader(ctx context.Context, store NodeStore, options ...Option) (*Clien
 	}
 
 	config := protocol.Config{
-		Dial:           o.DialFunc,
-		AttemptTimeout: time.Second,
-		RetryStrategies: []strategy.Strategy{
-			strategy.Backoff(backoff.BinaryExponential(time.Millisecond))},
+		Dial: o.DialFunc,
 	}
 	connector := protocol.NewConnector(0, store, config, o.LogFunc)
 	protocol, err := connector.Connect(ctx)
