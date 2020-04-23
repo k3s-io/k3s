@@ -22,7 +22,7 @@ ENV SELINUX $SELINUX
 
 ARG DQLITE=true
 ENV DQLITE $DQLITE
-COPY --from=rancher/dqlite-build:v1.3.1-r1 /dist/artifacts /usr/src/
+COPY --from=rancher/dqlite-build:v1.4.1-r1 /dist/artifacts /usr/src/
 RUN if [ "$DQLITE" = true ]; then \
         tar xzf /usr/src/dqlite.tgz -C / && \
         apk add --allow-untrusted /usr/local/packages/*.apk \

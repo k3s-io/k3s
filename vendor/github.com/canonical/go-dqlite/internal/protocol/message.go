@@ -26,24 +26,23 @@ type Message struct {
 	flags  uint8
 	extra  uint16
 	header []byte // Statically allocated header buffer
-	body1  buffer // Statically allocated body data, using bytes
-	body2  buffer // Dynamically allocated body data
+	body   buffer // Message body data.
 }
 
-// Init initializes the message using the given size of the statically
-// allocated buffer (i.e. a buffer which is re-used across requests or
-// responses encoded or decoded using this message object).
-func (m *Message) Init(staticSize int) {
-	if (staticSize % messageWordSize) != 0 {
-		panic("static size is not aligned to word boundary")
+// Init initializes the message using the given initial size for the data
+// buffer, which is re-used across requests or responses encoded or decoded
+// using this message object.
+func (m *Message) Init(initialBufferSize int) {
+	if (initialBufferSize % messageWordSize) != 0 {
+		panic("initial buffer size is not aligned to word boundary")
 	}
 	m.header = make([]byte, messageHeaderSize)
-	m.body1.Bytes = make([]byte, staticSize)
-	m.Reset()
+	m.body.Bytes = make([]byte, initialBufferSize)
+	m.reset()
 }
 
 // Reset the state of the message so it can be used to encode or decode again.
-func (m *Message) Reset() {
+func (m *Message) reset() {
 	m.words = 0
 	m.mtype = 0
 	m.flags = 0
@@ -51,9 +50,7 @@ func (m *Message) Reset() {
 	for i := 0; i < messageHeaderSize; i++ {
 		m.header[i] = 0
 	}
-	m.body1.Offset = 0
-	m.body2.Bytes = nil
-	m.body2.Offset = 0
+	m.body.Offset = 0
 }
 
 // Append a byte slice to the message.
@@ -232,11 +229,11 @@ func (m *Message) putNamedValues(values NamedValues) {
 // Finalize the message by setting the message type and the number
 // of words in the body (calculated from the body size).
 func (m *Message) putHeader(mtype uint8) {
-	if m.body1.Offset <= 0 {
+	if m.body.Offset <= 0 {
 		panic("static offset is not positive")
 	}
 
-	if (m.body1.Offset % messageWordSize) != 0 {
+	if (m.body.Offset % messageWordSize) != 0 {
 		panic("static body is not aligned")
 	}
 
@@ -244,22 +241,7 @@ func (m *Message) putHeader(mtype uint8) {
 	m.flags = 0
 	m.extra = 0
 
-	m.words = uint32(m.body1.Offset) / messageWordSize
-
-	if m.body2.Bytes == nil {
-		m.finalize()
-		return
-	}
-
-	if m.body2.Offset <= 0 {
-		panic("dynamic offset is not positive")
-	}
-
-	if (m.body2.Offset % messageWordSize) != 0 {
-		panic("dynamic body is not aligned")
-	}
-
-	m.words += uint32(m.body2.Offset) / messageWordSize
+	m.words = uint32(m.body.Offset) / messageWordSize
 
 	m.finalize()
 }
@@ -276,27 +258,14 @@ func (m *Message) finalize() {
 }
 
 func (m *Message) bufferForPut(size int) *buffer {
-	if m.body2.Bytes != nil {
-		if (m.body2.Offset + size) > len(m.body2.Bytes) {
-			// Grow body2.
-			//
-			// TODO: find a good grow strategy.
-			bytes := make([]byte, m.body2.Offset+size)
-			copy(bytes, m.body2.Bytes)
-			m.body2.Bytes = bytes
-		}
-
-		return &m.body2
+	for (m.body.Offset + size) > len(m.body.Bytes) {
+		// Grow message buffer.
+		bytes := make([]byte, len(m.body.Bytes)*2)
+		copy(bytes, m.body.Bytes)
+		m.body.Bytes = bytes
 	}
 
-	if (m.body1.Offset + size) > len(m.body1.Bytes) {
-		m.body2.Bytes = make([]byte, size)
-		m.body2.Offset = 0
-
-		return &m.body2
-	}
-
-	return &m.body1
+	return &m.body
 }
 
 // Return the message type and its flags.
@@ -310,31 +279,6 @@ func (m *Message) getString() string {
 
 	index := bytes.IndexByte(b.Bytes[b.Offset:], 0)
 	if index == -1 {
-		// Check if the string overflows in the dynamic buffer.
-		if b == &m.body1 && m.body2.Bytes != nil {
-			// Assert that this is the first read of the dynamic buffer.
-			if m.body2.Offset != 0 {
-				panic("static buffer read after dynamic buffer one")
-			}
-			index = bytes.IndexByte(m.body2.Bytes[0:], 0)
-			if index != -1 {
-				// We found the trailing part of the string.
-				data := b.Bytes[b.Offset:]
-				data = append(data, m.body2.Bytes[0:index]...)
-
-				index++
-
-				if trailing := index % messageWordSize; trailing != 0 {
-					// Account for padding, moving index to the next word boundary.
-					index += messageWordSize - trailing
-				}
-
-				m.body1.Offset = len(m.body1.Bytes)
-				m.body2.Advance(index)
-
-				return string(data)
-			}
-		}
 		panic("no string found")
 	}
 	s := string(b.Bytes[b.Offset : b.Offset+index])
@@ -465,31 +409,23 @@ func (m *Message) getFiles() Files {
 
 func (m *Message) hasBeenConsumed() bool {
 	size := int(m.words * messageWordSize)
-	return (m.body1.Offset == size || m.body1.Offset == len(m.body1.Bytes)) &&
-		m.body1.Offset+m.body2.Offset == size
+	return m.body.Offset == size
 }
 
 func (m *Message) lastByte() byte {
 	size := int(m.words * messageWordSize)
-	if size > len(m.body1.Bytes) {
-		size = size - m.body1.Offset
-		return m.body2.Bytes[size-1]
-	}
-	return m.body1.Bytes[size-1]
+	return m.body.Bytes[size-1]
 }
 
 func (m *Message) bufferForGet() *buffer {
 	size := int(m.words * messageWordSize)
-	if m.body1.Offset == size || m.body1.Offset == len(m.body1.Bytes) {
-		// The static body has been exahusted, use the dynamic one.
-		if m.body1.Offset+m.body2.Offset == size {
-			err := fmt.Errorf("short message: type=%d words=%d off=%d", m.mtype, m.words, m.body1.Offset)
-			panic(err)
-		}
-		return &m.body2
+	// The static body has been exahusted, use the dynamic one.
+	if m.body.Offset == size {
+		err := fmt.Errorf("short message: type=%d words=%d off=%d", m.mtype, m.words, m.body.Offset)
+		panic(err)
 	}
 
-	return &m.body1
+	return &m.body
 }
 
 // Result holds the result of a statement.
@@ -639,7 +575,7 @@ func (r *Rows) Close() error {
 			err = fmt.Errorf("unexpected end of message")
 		}
 	}
-	r.message.Reset()
+	r.message.reset()
 	return err
 }
 
@@ -664,7 +600,7 @@ func (f *Files) Next() (string, []byte) {
 }
 
 func (f *Files) Close() {
-	f.message.Reset()
+	f.message.reset()
 }
 
 const (

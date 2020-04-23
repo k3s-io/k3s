@@ -116,6 +116,8 @@ github.com/caddyserver/caddy v1.0.3/go.mod h1:G+ouvOY32gENkJC+jhgl62TyhvqEsFaDiZ
 github.com/canonical/go-dqlite v1.2.0/go.mod h1:wp00vfMvPYgNCyxcPdHB5XExmDoCGoPUGymloAQT17Y=
 github.com/canonical/go-dqlite v1.3.0 h1:c+7eGZfh0K7yCmGrBkNRGZdY8R8+2jSSkz6Zr3YCjJE=
 github.com/canonical/go-dqlite v1.3.0/go.mod h1:wp00vfMvPYgNCyxcPdHB5XExmDoCGoPUGymloAQT17Y=
+github.com/canonical/go-dqlite v1.5.1 h1:1YjtIrFsC1A3XlgsX38ARAiKhvkZS63PqsEd8z3T4yU=
+github.com/canonical/go-dqlite v1.5.1/go.mod h1:wp00vfMvPYgNCyxcPdHB5XExmDoCGoPUGymloAQT17Y=
 github.com/cenkalti/backoff v2.1.1+incompatible/go.mod h1:90ReRw6GdpyfrHakVjL/QHaoyV4aDUVVkXQJJJ3NXXM=
 github.com/census-instrumentation/opencensus-proto v0.2.0/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
@@ -724,6 +726,8 @@ github.com/rancher/kine v0.3.5 h1:Tm4eOtejpnzs1WFBrXj76lCLvX9czLlTkgqUk9luCQk=
 github.com/rancher/kine v0.3.5/go.mod h1:xEMl0tLCva9/9me7mXJ3m9Vo6yqHgC4OU3NiK4CPrGQ=
 github.com/rancher/kine v0.3.6-0.20200422224205-0a0f5b924129 h1:4HYvCG8+pfkBlpYLv/5ZOdxagg3jTszMOqMjamMQ0hA=
 github.com/rancher/kine v0.3.6-0.20200422224205-0a0f5b924129/go.mod h1:xEMl0tLCva9/9me7mXJ3m9Vo6yqHgC4OU3NiK4CPrGQ=
+github.com/rancher/kine v0.4.0 h1:1IhWy3TzjExG8xnj46eyUEWdzqNAD1WrgL4eEBKm6Uc=
+github.com/rancher/kine v0.4.0/go.mod h1:IImtCJ68AIkE+VY/kUI0NkyJL5q5WzO8QvMsSXqbrpA=
 github.com/rancher/kubernetes v1.17.5-k3s1 h1:rE+lSQ7SszfLZ4KB94FPQtvqQPYoU6Jwul8HHBPqQcY=
 github.com/rancher/kubernetes v1.17.5-k3s1/go.mod h1:4A7Bm7SHrj2SCb9vxMBil1wu2uJy3k1zSjoD43SS8Zg=
 github.com/rancher/kubernetes/staging/src/k8s.io/api v1.17.5-k3s1 h1:/6jG49ioPbxPlk+wY3XQTj3JjVoGuE/5Ozx3tZGk32g=

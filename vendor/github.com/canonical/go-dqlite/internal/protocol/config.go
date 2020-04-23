@@ -2,13 +2,14 @@ package protocol
 
 import (
 	"time"
-
-	"github.com/Rican7/retry/strategy"
 )
 
 // Config holds various configuration parameters for a dqlite client.
 type Config struct {
-	Dial            DialFunc            // Network dialer.
-	AttemptTimeout  time.Duration       // Timeout for each individual Dial attempt.
-	RetryStrategies []strategy.Strategy // Strategies used for retrying to connect to a leader.
+	Dial           DialFunc      // Network dialer.
+	DialTimeout    time.Duration // Timeout for establishing a network connection .
+	AttemptTimeout time.Duration // Timeout for each individual attempt to probe a server's leadership.
+	BackoffFactor  time.Duration // Exponential backoff factor for retries.
+	BackoffCap     time.Duration // Maximum connection retry backoff value,
+	RetryLimit     uint          // Maximum number of retries, or 0 for unlimited.
 }

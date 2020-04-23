@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/canonical/go-dqlite/internal/bindings"
+	"github.com/canonical/go-dqlite/internal/protocol"
 	"github.com/pkg/errors"
 )
 
@@ -26,7 +27,7 @@ import (
 // from setting Single-thread mode at all.
 func ConfigMultiThread() error {
 	if err := bindings.ConfigMultiThread(); err != nil {
-		if err, ok := err.(bindings.Error); ok && err.Code == 21 /* SQLITE_MISUSE */ {
+		if err, ok := err.(protocol.Error); ok && err.Code == 21 /* SQLITE_MISUSE */ {
 			return fmt.Errorf("SQLite is already initialized")
 		}
 		return errors.Wrap(err, "unknown error")
