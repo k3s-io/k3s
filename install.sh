@@ -33,8 +33,8 @@ set -e
 #     If set to true will not start k3s service.
 #
 #   - INSTALL_K3S_VERSION
-#     Version of k3s to download from github. Will attempt to download the
-#     latest version if not specified.
+#     Version of k3s to download from github. Will attempt to download from the
+#     stable channel if not specified.
 #
 #   - INSTALL_K3S_COMMIT
 #     Commit of k3s to download from temporary cloud storage.
@@ -77,6 +77,16 @@ set -e
 #     For Chinese users, set INSTALL_K3S_MIRROR=cn to use the mirror address to accelerate
 #     k3s binary file download, and the default mirror address is mirror_k3s.rancher.cn
 #
+#   - INSTALL_K3S_SELINUX_WARN
+#     If set to true will continue if k3s-selinux policy is not found.
+#
+#   - INSTALL_K3S_CHANNEL_URL
+#     Channel URL for fetching k3s download URL.
+#     Defaults to 'https://update.k3s.io/v1-release/channels'.
+#
+#   - INSTALL_K3S_CHANNEL
+#     Channel to use for fetching k3s download URL.
+#     Defaults to 'stable'.
 
 GITHUB_URL=https://github.com/rancher/k3s/releases
 STORAGE_URL=https://storage.googleapis.com/k3s-ci-builds
@@ -87,6 +97,10 @@ INSTALL_K3S_MIRROR_URL=${INSTALL_K3S_MIRROR_URL:-mirror-k3s.rancher.cn}
 info()
 {
     echo '[INFO] ' "$@"
+}
+warn()
+{
+    echo '[WARN] ' "$@" >&2
 }
 fatal()
 {
@@ -228,6 +242,10 @@ setup_env() {
     if [ "${INSTALL_K3S_BIN_DIR_READ_ONLY}" = true ]; then
         INSTALL_K3S_SKIP_DOWNLOAD=true
     fi
+
+    # --- setup channel values
+    INSTALL_K3S_CHANNEL_URL=${INSTALL_K3S_CHANNEL_URL:-'https://update.k3s.io/v1-release/channels'}
+    INSTALL_K3S_CHANNEL=${INSTALL_K3S_CHANNEL:-'stable'}
 }
 
 # --- check if skip download environment variable set ---
@@ -300,20 +318,21 @@ setup_tmp() {
     trap cleanup INT EXIT
 }
 
-# --- use desired k3s version if defined or find latest ---
+# --- use desired k3s version if defined or find version from channel ---
 get_release_version() {
     if [ -n "${INSTALL_K3S_COMMIT}" ]; then
         VERSION_K3S="commit ${INSTALL_K3S_COMMIT}"
     elif [ -n "${INSTALL_K3S_VERSION}" ]; then
         VERSION_K3S=${INSTALL_K3S_VERSION}
     else
-        info "Finding latest release"
+        info "Finding release for channel ${INSTALL_K3S_CHANNEL}"
+        version_url="${INSTALL_K3S_CHANNEL_URL}/${INSTALL_K3S_CHANNEL}"
         case $DOWNLOADER in
             curl)
-                VERSION_K3S=$(curl -w '%{url_effective}' -I -L -s -S ${GITHUB_URL}/latest -o /dev/null | sed -e 's|.*/||')
+                VERSION_K3S=$(curl -w '%{url_effective}' -L -s -S ${version_url} -o /dev/null | sed -e 's|.*/||')
                 ;;
             wget)
-                VERSION_K3S=$(wget -SqO /dev/null ${GITHUB_URL}/latest 2>&1 | grep -i Location | sed -e 's|.*/||')
+                VERSION_K3S=$(wget -SqO /dev/null ${version_url} 2>&1 | grep -i Location | sed -e 's|.*/||')
                 ;;
             *)
                 fatal "Incorrect downloader executable '$DOWNLOADER'"
@@ -337,7 +356,6 @@ download() {
         *)
             fatal "Incorrect executable '$DOWNLOADER'"
             ;;
-    esac
 
     # Abort if download command failed
     [ $? -eq 0 ] || fatal 'Download failed'
@@ -399,10 +417,26 @@ setup_binary() {
     info "Installing k3s to ${BIN_DIR}/k3s"
     $SUDO chown root:root ${TMP_BIN}
     $SUDO mv -f ${TMP_BIN} ${BIN_DIR}/k3s
+}
 
-    if ! $SUDO chcon -u system_u -r object_r -t container_runtime_exec_t ${BIN_DIR}/k3s 2>/dev/null 2>&1; then
+# --- setup selinux policy ---
+setup_selinux() {
+    policy_hint="please install:
+    yum install -y container-selinux selinux-policy-base
+    rpm -i https://rpm.rancher.io/k3s-selinux-0.1.1-rc1.el7.noarch.rpm
+"
+    policy_error=fatal
+    if [ "$INSTALL_K3S_SELINUX_WARN" = true ]; then
+        policy_error=warn
+    fi
+
+    if ! $SUDO chcon -u system_u -r object_r -t container_runtime_exec_t ${BIN_DIR}/k3s >/dev/null 2>&1; then
         if $SUDO grep SELINUX=enforcing /etc/selinux/config >/dev/null 2>&1; then
-            fatal "Failed to apply container_runtime_exec_t to ${BIN_DIR}/k3s, please install k3s-selinux RPM"
+            $policy_error "Failed to apply container_runtime_exec_t to ${BIN_DIR}/k3s, ${policy_hint}"
+        fi
+    else
+        if [ ! -f /usr/share/selinux/packages/k3s.pp ]; then
+            $policy_error "Failed to find the k3s-selinux policy, ${policy_hint}"
         fi
     fi
 }
@@ -743,6 +777,7 @@ eval set -- $(escape "${INSTALL_K3S_EXEC}") $(quote "$@")
     verify_system
     setup_env "$@"
     download_and_verify
+    setup_selinux
     create_symlinks
     create_killall
     create_uninstall

@@ -24,7 +24,7 @@ import (
 	"strconv"
 
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 	"gopkg.in/yaml.v2"
 )
 
@@ -63,20 +63,19 @@ func writeConfig(c *Config, filepath string) error {
 	return ioutil.WriteFile(filepath, data, 0644)
 }
 
-var configCommand = cli.Command{
+var configCommand = &cli.Command{
 	Name:                   "config",
 	Usage:                  "Get and set crictl options",
 	ArgsUsage:              "[<options>]",
-	SkipArgReorder:         true,
 	UseShortOptionHandling: true,
 	Flags: []cli.Flag{
-		cli.StringFlag{
+		&cli.StringFlag{
 			Name:  "get",
 			Usage: "get value: name",
 		},
 	},
 	Action: func(context *cli.Context) error {
-		configFile := context.GlobalString("config")
+		configFile := context.String("config")
 		if _, err := os.Stat(configFile); err != nil {
 			if err := writeConfig(nil, configFile); err != nil {
 				return err

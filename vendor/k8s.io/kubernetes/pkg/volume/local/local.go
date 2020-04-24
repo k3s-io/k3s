@@ -342,7 +342,7 @@ func (dm *deviceMounter) mountLocalBlockDevice(spec *volume.Spec, devicePath str
 		if rmErr := os.Remove(deviceMountPath); rmErr != nil {
 			klog.Warningf("local: failed to remove %s: %v", deviceMountPath, rmErr)
 		}
-		return fmt.Errorf("local: failed to mount device %s at %s (fstype: %s), error %v", devicePath, deviceMountPath, fstype, err)
+		return fmt.Errorf("local: failed to mount device %s at %s (fstype: %s), error %w", devicePath, deviceMountPath, fstype, err)
 	}
 	klog.V(3).Infof("local: successfully mount device %s at %s (fstype: %s)", devicePath, deviceMountPath, fstype)
 	return nil
@@ -567,7 +567,7 @@ func (m *localVolumeMounter) SetUpAt(dir string, mounterArgs volume.MounterArgs)
 	if !m.readOnly {
 		// Volume owner will be written only once on the first volume mount
 		if len(refs) == 0 {
-			return volume.SetVolumeOwnership(m, mounterArgs.FsGroup)
+			return volume.SetVolumeOwnership(m, mounterArgs.FsGroup, mounterArgs.FSGroupChangePolicy)
 		}
 	}
 	return nil

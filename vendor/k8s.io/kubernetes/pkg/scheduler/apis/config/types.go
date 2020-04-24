@@ -21,6 +21,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/sets"
 	componentbaseconfig "k8s.io/component-base/config"
 )
 
@@ -45,15 +46,10 @@ const (
 type KubeSchedulerConfiguration struct {
 	metav1.TypeMeta
 
-	// SchedulerName is name of the scheduler, used to select which pods
-	// will be processed by this scheduler, based on pod's "spec.SchedulerName".
-	SchedulerName string
 	// AlgorithmSource specifies the scheduler algorithm source.
+	// TODO(#87526): Remove AlgorithmSource from this package
+	// DEPRECATED: AlgorithmSource is removed in the v1alpha2 ComponentConfig
 	AlgorithmSource SchedulerAlgorithmSource
-	// RequiredDuringScheduling affinity is not symmetric, but there is an implicit PreferredDuringScheduling affinity rule
-	// corresponding to every RequiredDuringScheduling affinity rule.
-	// HardPodAffinitySymmetricWeight represents the weight of implicit PreferredDuringScheduling affinity rule, in the range [0-100].
-	HardPodAffinitySymmetricWeight int32
 
 	// LeaderElection defines the configuration of leader election client.
 	LeaderElection KubeSchedulerLeaderElectionConfiguration
@@ -100,15 +96,37 @@ type KubeSchedulerConfiguration struct {
 	// the default value (10s) will be used.
 	PodMaxBackoffSeconds int64
 
-	// Plugins specify the set of plugins that should be enabled or disabled. Enabled plugins are the
-	// ones that should be enabled in addition to the default plugins. Disabled plugins are any of the
-	// default plugins that should be disabled.
-	// When no enabled or disabled plugin is specified for an extension point, default plugins for
-	// that extension point will be used if there is any.
+	// Profiles are scheduling profiles that kube-scheduler supports. Pods can
+	// choose to be scheduled under a particular profile by setting its associated
+	// scheduler name. Pods that don't specify any scheduler name are scheduled
+	// with the "default-scheduler" profile, if present here.
+	Profiles []KubeSchedulerProfile
+
+	// Extenders are the list of scheduler extenders, each holding the values of how to communicate
+	// with the extender. These extenders are shared by all scheduler profiles.
+	Extenders []Extender
+}
+
+// KubeSchedulerProfile is a scheduling profile.
+type KubeSchedulerProfile struct {
+	// SchedulerName is the name of the scheduler associated to this profile.
+	// If SchedulerName matches with the pod's "spec.schedulerName", then the pod
+	// is scheduled with this profile.
+	SchedulerName string
+
+	// Plugins specify the set of plugins that should be enabled or disabled.
+	// Enabled plugins are the ones that should be enabled in addition to the
+	// default plugins. Disabled plugins are any of the default plugins that
+	// should be disabled.
+	// When no enabled or disabled plugin is specified for an extension point,
+	// default plugins for that extension point will be used if there is any.
+	// If a QueueSort plugin is specified, the same QueueSort Plugin and
+	// PluginConfig must be specified for all profiles.
 	Plugins *Plugins
 
 	// PluginConfig is an optional set of custom plugin arguments for each plugin.
-	// Omitting config args for a plugin is equivalent to using the default config for that plugin.
+	// Omitting config args for a plugin is equivalent to using the default config
+	// for that plugin.
 	PluginConfig []PluginConfig
 }
 
@@ -167,8 +185,8 @@ type Plugins struct {
 	// Filter is a list of plugins that should be invoked when filtering out nodes that cannot run the Pod.
 	Filter *PluginSet
 
-	// PostFilter is a list of plugins that are invoked after filtering out infeasible nodes.
-	PostFilter *PluginSet
+	// PreScore is a list of plugins that are invoked before scoring.
+	PreScore *PluginSet
 
 	// Score is a list of plugins that should be invoked when ranking nodes that have passed the filtering phase.
 	Score *PluginSet
@@ -261,7 +279,7 @@ func (p *Plugins) Append(src *Plugins) {
 	p.QueueSort = appendPluginSet(p.QueueSort, src.QueueSort)
 	p.PreFilter = appendPluginSet(p.PreFilter, src.PreFilter)
 	p.Filter = appendPluginSet(p.Filter, src.Filter)
-	p.PostFilter = appendPluginSet(p.PostFilter, src.PostFilter)
+	p.PreScore = appendPluginSet(p.PreScore, src.PreScore)
 	p.Score = appendPluginSet(p.Score, src.Score)
 	p.Reserve = appendPluginSet(p.Reserve, src.Reserve)
 	p.Permit = appendPluginSet(p.Permit, src.Permit)
@@ -269,4 +287,53 @@ func (p *Plugins) Append(src *Plugins) {
 	p.Bind = appendPluginSet(p.Bind, src.Bind)
 	p.PostBind = appendPluginSet(p.PostBind, src.PostBind)
 	p.Unreserve = appendPluginSet(p.Unreserve, src.Unreserve)
+}
+
+// Apply merges the plugin configuration from custom plugins, handling disabled sets.
+func (p *Plugins) Apply(customPlugins *Plugins) {
+	if customPlugins == nil {
+		return
+	}
+
+	p.QueueSort = mergePluginSets(p.QueueSort, customPlugins.QueueSort)
+	p.PreFilter = mergePluginSets(p.PreFilter, customPlugins.PreFilter)
+	p.Filter = mergePluginSets(p.Filter, customPlugins.Filter)
+	p.PreScore = mergePluginSets(p.PreScore, customPlugins.PreScore)
+	p.Score = mergePluginSets(p.Score, customPlugins.Score)
+	p.Reserve = mergePluginSets(p.Reserve, customPlugins.Reserve)
+	p.Permit = mergePluginSets(p.Permit, customPlugins.Permit)
+	p.PreBind = mergePluginSets(p.PreBind, customPlugins.PreBind)
+	p.Bind = mergePluginSets(p.Bind, customPlugins.Bind)
+	p.PostBind = mergePluginSets(p.PostBind, customPlugins.PostBind)
+	p.Unreserve = mergePluginSets(p.Unreserve, customPlugins.Unreserve)
+}
+
+func mergePluginSets(defaultPluginSet, customPluginSet *PluginSet) *PluginSet {
+	if customPluginSet == nil {
+		customPluginSet = &PluginSet{}
+	}
+
+	if defaultPluginSet == nil {
+		defaultPluginSet = &PluginSet{}
+	}
+
+	disabledPlugins := sets.NewString()
+	for _, disabledPlugin := range customPluginSet.Disabled {
+		disabledPlugins.Insert(disabledPlugin.Name)
+	}
+
+	enabledPlugins := []Plugin{}
+	if !disabledPlugins.Has("*") {
+		for _, defaultEnabledPlugin := range defaultPluginSet.Enabled {
+			if disabledPlugins.Has(defaultEnabledPlugin.Name) {
+				continue
+			}
+
+			enabledPlugins = append(enabledPlugins, defaultEnabledPlugin)
+		}
+	}
+
+	enabledPlugins = append(enabledPlugins, customPluginSet.Enabled...)
+
+	return &PluginSet{Enabled: enabledPlugins}
 }

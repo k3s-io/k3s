@@ -31,6 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	cloudprovider "k8s.io/cloud-provider"
 	"k8s.io/klog"
+	azcache "k8s.io/legacy-cloud-providers/azure/cache"
 	utilnet "k8s.io/utils/net"
 )
 
@@ -117,7 +118,7 @@ func (d *delayedRouteUpdater) updateRoutes() {
 
 	var routeTable network.RouteTable
 	var existsRouteTable bool
-	routeTable, existsRouteTable, err = d.az.getRouteTable(cacheReadTypeDefault)
+	routeTable, existsRouteTable, err = d.az.getRouteTable(azcache.CacheReadTypeDefault)
 	if err != nil {
 		klog.Errorf("getRouteTable() failed with error: %v", err)
 		return
@@ -131,7 +132,7 @@ func (d *delayedRouteUpdater) updateRoutes() {
 			return
 		}
 
-		routeTable, _, err = d.az.getRouteTable(cacheReadTypeDefault)
+		routeTable, _, err = d.az.getRouteTable(azcache.CacheReadTypeDefault)
 		if err != nil {
 			klog.Errorf("getRouteTable() failed with error: %v", err)
 			return
@@ -200,7 +201,7 @@ func (d *delayedRouteUpdater) addRouteOperation(operation routeOperation, route 
 // ListRoutes lists all managed routes that belong to the specified clusterName
 func (az *Cloud) ListRoutes(ctx context.Context, clusterName string) ([]*cloudprovider.Route, error) {
 	klog.V(10).Infof("ListRoutes: START clusterName=%q", clusterName)
-	routeTable, existsRouteTable, err := az.getRouteTable(cacheReadTypeDefault)
+	routeTable, existsRouteTable, err := az.getRouteTable(azcache.CacheReadTypeDefault)
 	routes, err := processRoutes(az.ipv6DualStackEnabled, routeTable, existsRouteTable, err)
 	if err != nil {
 		return nil, err
@@ -286,7 +287,7 @@ func (az *Cloud) CreateRoute(ctx context.Context, clusterName string, nameHint s
 	}
 	if unmanaged {
 		if az.ipv6DualStackEnabled {
-			//TODO (khenidak) add support for unmanaged nodes when the feature reaches  beta
+			//TODO (khenidak) add support for unmanaged nodes when the feature reaches beta
 			return fmt.Errorf("unmanaged nodes are not supported in dual stack mode")
 		}
 		klog.V(2).Infof("CreateRoute: omitting unmanaged node %q", kubeRoute.TargetNode)
@@ -296,16 +297,19 @@ func (az *Cloud) CreateRoute(ctx context.Context, clusterName string, nameHint s
 		return nil
 	}
 
-	if !az.ipv6DualStackEnabled {
+	CIDRv6 := utilnet.IsIPv6CIDRString(string(kubeRoute.DestinationCIDR))
+	// if single stack IPv4 then get the IP for the primary ip config
+	// single stack IPv6 is supported on dual stack host. So the IPv6 IP is secondary IP for both single stack IPv6 and dual stack
+	// Get all private IPs for the machine and find the first one that matches the IPv6 family
+	if !az.ipv6DualStackEnabled && !CIDRv6 {
 		targetIP, _, err = az.getIPForMachine(kubeRoute.TargetNode)
 		if err != nil {
 			return err
 		}
 	} else {
-		// for dual stack we need to select
+		// for dual stack and single stack IPv6 we need to select
 		// a private ip that matches family of the cidr
 		klog.V(4).Infof("CreateRoute: create route instance=%q cidr=%q is in dual stack mode", kubeRoute.TargetNode, kubeRoute.DestinationCIDR)
-		CIDRv6 := utilnet.IsIPv6CIDRString(string(kubeRoute.DestinationCIDR))
 		nodePrivateIPs, err := az.getPrivateIPsForMachine(kubeRoute.TargetNode)
 		if nil != err {
 			klog.V(3).Infof("CreateRoute: create route: failed(GetPrivateIPsByNodeName) instance=%q cidr=%q with error=%v", kubeRoute.TargetNode, kubeRoute.DestinationCIDR, err)

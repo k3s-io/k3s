@@ -25,7 +25,6 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	metav1beta1 "k8s.io/apimachinery/pkg/apis/meta/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer/streaming"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -64,6 +63,8 @@ func (w *realTimeoutFactory) TimeoutCh() (<-chan time.Time, func() bool) {
 // serveWatch will serve a watch response.
 // TODO: the functionality in this method and in WatchServer.Serve is not cleanly decoupled.
 func serveWatch(watcher watch.Interface, scope *RequestScope, mediaTypeOptions negotiation.MediaTypeOptions, req *http.Request, w http.ResponseWriter, timeout time.Duration) {
+	defer watcher.Stop()
+
 	options, err := optionsForTransform(mediaTypeOptions, req)
 	if err != nil {
 		scope.err(err, w, req)
@@ -125,7 +126,7 @@ func serveWatch(watcher watch.Interface, scope *RequestScope, mediaTypeOptions n
 			// When we are transformed to a table, use the table options as the state for whether we
 			// should print headers - on watch, we only want to print table headers on the first object
 			// and omit them on subsequent events.
-			if tableOptions, ok := options.(*metav1beta1.TableOptions); ok {
+			if tableOptions, ok := options.(*metav1.TableOptions); ok {
 				tableOptions.NoHeaders = true
 			}
 			return result
@@ -173,13 +174,6 @@ func (s *WatchServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	cn, ok := w.(http.CloseNotifier)
-	if !ok {
-		err := fmt.Errorf("unable to start watch - can't get http.CloseNotifier: %#v", w)
-		utilruntime.HandleError(err)
-		s.Scope.err(errors.NewInternalError(err), w, req)
-		return
-	}
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		err := fmt.Errorf("unable to start watch - can't get http.Flusher: %#v", w)
@@ -201,7 +195,6 @@ func (s *WatchServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// ensure the connection times out
 	timeoutCh, cleanup := s.TimeoutFactory.TimeoutCh()
 	defer cleanup()
-	defer s.Watching.Stop()
 
 	// begin the stream
 	w.Header().Set("Content-Type", s.MediaType)
@@ -214,9 +207,11 @@ func (s *WatchServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	outEvent := &metav1.WatchEvent{}
 	buf := &bytes.Buffer{}
 	ch := s.Watching.ResultChan()
+	done := req.Context().Done()
+
 	for {
 		select {
-		case <-cn.CloseNotify():
+		case <-done:
 			return
 		case <-timeoutCh:
 			return
@@ -285,8 +280,6 @@ func (s *WatchServer) HandleWS(ws *websocket.Conn) {
 	buf := &bytes.Buffer{}
 	streamBuf := &bytes.Buffer{}
 	ch := s.Watching.ResultChan()
-
-	defer s.Watching.Stop()
 
 	for {
 		select {

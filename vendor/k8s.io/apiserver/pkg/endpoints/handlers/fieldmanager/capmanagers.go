@@ -19,12 +19,11 @@ package fieldmanager
 import (
 	"fmt"
 	"sort"
-	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apiserver/pkg/endpoints/handlers/fieldmanager/internal"
-	"sigs.k8s.io/structured-merge-diff/fieldpath"
+	"sigs.k8s.io/structured-merge-diff/v3/fieldpath"
 )
 
 type capManagersManager struct {
@@ -58,8 +57,8 @@ func (f *capManagersManager) Update(liveObj, newObj runtime.Object, managed Mana
 }
 
 // Apply implements Manager.
-func (f *capManagersManager) Apply(liveObj runtime.Object, patch []byte, managed Managed, fieldManager string, force bool) (runtime.Object, Managed, error) {
-	return f.fieldManager.Apply(liveObj, patch, managed, fieldManager, force)
+func (f *capManagersManager) Apply(liveObj, appliedObj runtime.Object, managed Managed, fieldManager string, force bool) (runtime.Object, Managed, error) {
+	return f.fieldManager.Apply(liveObj, appliedObj, managed, fieldManager, force)
 }
 
 // capUpdateManagers merges a number of the oldest update entries into versioned buckets,
@@ -78,15 +77,15 @@ func (f *capManagersManager) capUpdateManagers(managed Managed) (newManaged Mana
 
 	// If we have more than the maximum, sort the update entries by time, oldest first.
 	sort.Slice(updaters, func(i, j int) bool {
-		iTime, jTime, nTime := managed.Times()[updaters[i]], managed.Times()[updaters[j]], &metav1.Time{Time: time.Time{}}
-		if iTime == nil {
-			iTime = nTime
+		iTime, jTime, iSeconds, jSeconds := managed.Times()[updaters[i]], managed.Times()[updaters[j]], int64(0), int64(0)
+		if iTime != nil {
+			iSeconds = iTime.Unix()
 		}
-		if jTime == nil {
-			jTime = nTime
+		if jTime != nil {
+			jSeconds = jTime.Unix()
 		}
-		if !iTime.Equal(jTime) {
-			return iTime.Before(jTime)
+		if iSeconds != jSeconds {
+			return iSeconds < jSeconds
 		}
 		return updaters[i] < updaters[j]
 	})

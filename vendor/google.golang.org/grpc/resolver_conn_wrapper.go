@@ -92,7 +92,7 @@ func newCCResolverWrapper(cc *ClientConn) (*ccResolverWrapper, error) {
 	if creds := cc.dopts.copts.TransportCredentials; creds != nil {
 		credsClone = creds.Clone()
 	}
-	rbo := resolver.BuildOption{
+	rbo := resolver.BuildOptions{
 		DisableServiceConfig: cc.dopts.disableServiceConfig,
 		DialCreds:            credsClone,
 		CredsBundle:          cc.dopts.copts.CredsBundle,
@@ -105,15 +105,15 @@ func newCCResolverWrapper(cc *ClientConn) (*ccResolverWrapper, error) {
 	// rb.Build-->ccr.ReportError-->ccr.poll-->ccr.resolveNow, would end up
 	// accessing ccr.resolver which is being assigned here.
 	ccr.resolverMu.Lock()
+	defer ccr.resolverMu.Unlock()
 	ccr.resolver, err = rb.Build(cc.parsedTarget, ccr, rbo)
 	if err != nil {
 		return nil, err
 	}
-	ccr.resolverMu.Unlock()
 	return ccr, nil
 }
 
-func (ccr *ccResolverWrapper) resolveNow(o resolver.ResolveNowOption) {
+func (ccr *ccResolverWrapper) resolveNow(o resolver.ResolveNowOptions) {
 	ccr.resolverMu.Lock()
 	if !ccr.done.HasFired() {
 		ccr.resolver.ResolveNow(o)
@@ -149,7 +149,7 @@ func (ccr *ccResolverWrapper) poll(err error) {
 	ccr.polling = p
 	go func() {
 		for i := 0; ; i++ {
-			ccr.resolveNow(resolver.ResolveNowOption{})
+			ccr.resolveNow(resolver.ResolveNowOptions{})
 			t := time.NewTimer(ccr.cc.dopts.resolveNowBackoff(i))
 			select {
 			case <-p:
@@ -217,6 +217,10 @@ func (ccr *ccResolverWrapper) NewServiceConfig(sc string) {
 		return
 	}
 	grpclog.Infof("ccResolverWrapper: got new service config: %v", sc)
+	if ccr.cc.dopts.disableServiceConfig {
+		grpclog.Infof("Service config lookups disabled; ignoring config")
+		return
+	}
 	scpr := parseServiceConfig(sc)
 	if scpr.Err != nil {
 		grpclog.Warningf("ccResolverWrapper: error parsing service config: %v", scpr.Err)

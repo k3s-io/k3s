@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 )
 
 var bashCompletionTemplate = `_cli_bash_autocomplete() {
@@ -47,7 +47,7 @@ func bashCompletion(c *cli.Context) error {
 
 	for _, flag := range c.App.Flags {
 		// only includes full flag name.
-		subcommands = append(subcommands, "--"+strings.Split(flag.GetName(), ",")[0])
+		subcommands = append(subcommands, "--"+flag.Names()[0])
 	}
 
 	fmt.Fprintln(c.App.Writer, fmt.Sprintf(bashCompletionTemplate, strings.Join(subcommands, "\n")))
@@ -83,7 +83,7 @@ func zshCompletion(c *cli.Context) error {
 	opts := []string{}
 	for _, flag := range c.App.Flags {
 		// only includes full flag name.
-		opts = append(opts, "--"+strings.Split(flag.GetName(), ",")[0])
+		opts = append(opts, "--"+flag.Names()[0])
 	}
 
 	fmt.Fprintln(c.App.Writer, fmt.Sprintf(zshCompletionTemplate, strings.Join(subcommands, "' '"), strings.Join(opts, "' '")))
@@ -91,7 +91,7 @@ func zshCompletion(c *cli.Context) error {
 
 }
 
-var completionCommand = cli.Command{
+var completionCommand = &cli.Command{
 	Name:      "completion",
 	Usage:     "Output shell completion code",
 	ArgsUsage: "SHELL",

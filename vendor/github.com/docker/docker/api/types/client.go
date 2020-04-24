@@ -187,15 +187,6 @@ type ImageBuildOptions struct {
 	// build request. The same identifier can be used to gracefully cancel the
 	// build with the cancel request.
 	BuildID string
-	// Outputs defines configurations for exporting build results. Only supported
-	// in BuildKit mode
-	Outputs []ImageBuildOutput
-}
-
-// ImageBuildOutput defines configuration for exporting a build result
-type ImageBuildOutput struct {
-	Type  string
-	Attrs map[string]string
 }
 
 // BuilderVersion sets the version of underlying builder to use
@@ -363,10 +354,6 @@ type ServiceUpdateOptions struct {
 // ServiceListOptions holds parameters to list services with.
 type ServiceListOptions struct {
 	Filters filters.Args
-
-	// Status indicates whether the server should include the service task
-	// count of running and desired tasks.
-	Status bool
 }
 
 // ServiceInspectOptions holds parameters related to the "service inspect"

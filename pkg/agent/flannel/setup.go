@@ -81,7 +81,7 @@ func Run(ctx context.Context, nodeConfig *config.Node, nodes v1.NodeInterface) e
 	nodeName := nodeConfig.AgentConfig.NodeName
 
 	for {
-		node, err := nodes.Get(nodeName, metav1.GetOptions{})
+		node, err := nodes.Get(ctx, nodeName, metav1.GetOptions{})
 		if err == nil && node.Spec.PodCIDR != "" {
 			break
 		}

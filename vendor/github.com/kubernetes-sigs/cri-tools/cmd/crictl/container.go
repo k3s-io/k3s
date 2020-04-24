@@ -27,7 +27,7 @@ import (
 	"github.com/docker/go-units"
 	godigest "github.com/opencontainers/go-digest"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 	"golang.org/x/net/context"
 	pb "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
@@ -73,30 +73,30 @@ type pullOptions struct {
 }
 
 var pullFlags = []cli.Flag{
-	cli.BoolFlag{
+	&cli.BoolFlag{
 		Name:  "no-pull",
 		Usage: "Do not pull the image on container creation",
 	},
-	cli.StringFlag{
+	&cli.StringFlag{
 		Name:  "creds",
 		Value: "",
 		Usage: "Use `USERNAME[:PASSWORD]` for accessing the registry",
 	},
-	cli.StringFlag{
+	&cli.StringFlag{
 		Name:  "auth",
 		Value: "",
 		Usage: "Use `AUTH_STRING` for accessing the registry. AUTH_STRING is a base64 encoded 'USERNAME[:PASSWORD]'",
 	},
 }
 
-var createContainerCommand = cli.Command{
+var createContainerCommand = &cli.Command{
 	Name:      "create",
 	Usage:     "Create a new container",
 	ArgsUsage: "POD container-config.[json|yaml] pod-config.[json|yaml]",
 	Flags:     pullFlags,
 
 	Action: func(context *cli.Context) error {
-		if len(context.Args()) != 3 {
+		if context.Args().Len() != 3 {
 			return cli.ShowSubcommandHelp(context)
 		}
 
@@ -134,7 +134,7 @@ var createContainerCommand = cli.Command{
 	},
 }
 
-var startContainerCommand = cli.Command{
+var startContainerCommand = &cli.Command{
 	Name:      "start",
 	Usage:     "Start one or more created containers",
 	ArgsUsage: "CONTAINER-ID [CONTAINER-ID...]",
@@ -159,32 +159,32 @@ var startContainerCommand = cli.Command{
 	},
 }
 
-var updateContainerCommand = cli.Command{
+var updateContainerCommand = &cli.Command{
 	Name:      "update",
 	Usage:     "Update one or more running containers",
 	ArgsUsage: "CONTAINER-ID [CONTAINER-ID...]",
 	Flags: []cli.Flag{
-		cli.Int64Flag{
+		&cli.Int64Flag{
 			Name:  "cpu-period",
 			Usage: "CPU CFS period to be used for hardcapping (in usecs). 0 to use system default",
 		},
-		cli.Int64Flag{
+		&cli.Int64Flag{
 			Name:  "cpu-quota",
 			Usage: "CPU CFS hardcap limit (in usecs). Allowed cpu time in a given period",
 		},
-		cli.Int64Flag{
+		&cli.Int64Flag{
 			Name:  "cpu-share",
 			Usage: "CPU shares (relative weight vs. other containers)",
 		},
-		cli.Int64Flag{
+		&cli.Int64Flag{
 			Name:  "memory",
 			Usage: "Memory limit (in bytes)",
 		},
-		cli.StringFlag{
+		&cli.StringFlag{
 			Name:  "cpuset-cpus",
 			Usage: "CPU(s) to use",
 		},
-		cli.StringFlag{
+		&cli.StringFlag{
 			Name:  "cpuset-mems",
 			Usage: "Memory node(s) to use",
 		},
@@ -219,17 +219,17 @@ var updateContainerCommand = cli.Command{
 	},
 }
 
-var stopContainerCommand = cli.Command{
+var stopContainerCommand = &cli.Command{
 	Name:                   "stop",
 	Usage:                  "Stop one or more running containers",
 	ArgsUsage:              "CONTAINER-ID [CONTAINER-ID...]",
-	SkipArgReorder:         true,
 	UseShortOptionHandling: true,
 	Flags: []cli.Flag{
-		cli.Int64Flag{
-			Name:  "timeout, t",
-			Value: 10,
-			Usage: "Seconds to wait to kill the container after a graceful stop is requested",
+		&cli.Int64Flag{
+			Name:    "timeout",
+			Aliases: []string{"t"},
+			Value:   10,
+			Usage:   "Seconds to wait to kill the container after a graceful stop is requested",
 		},
 	},
 	Action: func(context *cli.Context) error {
@@ -253,20 +253,21 @@ var stopContainerCommand = cli.Command{
 	},
 }
 
-var removeContainerCommand = cli.Command{
+var removeContainerCommand = &cli.Command{
 	Name:                   "rm",
 	Usage:                  "Remove one or more containers",
 	ArgsUsage:              "CONTAINER-ID [CONTAINER-ID...]",
-	SkipArgReorder:         true,
 	UseShortOptionHandling: true,
 	Flags: []cli.Flag{
-		cli.BoolFlag{
-			Name:  "force, f",
-			Usage: "Force removal of the container, disregarding if running",
+		&cli.BoolFlag{
+			Name:    "force",
+			Aliases: []string{"f"},
+			Usage:   "Force removal of the container, disregarding if running",
 		},
-		cli.BoolFlag{
-			Name:  "all, a",
-			Usage: "Remove all containers",
+		&cli.BoolFlag{
+			Name:    "all",
+			Aliases: []string{"a"},
+			Usage:   "Remove all containers",
 		},
 	},
 	Action: func(ctx *cli.Context) error {
@@ -276,7 +277,7 @@ var removeContainerCommand = cli.Command{
 		}
 		defer closeConnection(ctx, runtimeConn)
 
-		ids := ctx.Args()
+		ids := ctx.Args().Slice()
 		if ctx.Bool("all") {
 			r, err := runtimeClient.ListContainers(context.Background(),
 				&pb.ListContainersRequest{})
@@ -332,18 +333,24 @@ var removeContainerCommand = cli.Command{
 	},
 }
 
-var containerStatusCommand = cli.Command{
+var containerStatusCommand = &cli.Command{
 	Name:      "inspect",
 	Usage:     "Display the status of one or more containers",
 	ArgsUsage: "CONTAINER-ID [CONTAINER-ID...]",
 	Flags: []cli.Flag{
-		cli.StringFlag{
-			Name:  "output, o",
-			Usage: "Output format, One of: json|yaml|table",
+		&cli.StringFlag{
+			Name:    "output",
+			Aliases: []string{"o"},
+			Usage:   "Output format, One of: json|yaml|go-template|table",
 		},
-		cli.BoolFlag{
-			Name:  "quiet, q",
-			Usage: "Do not show verbose information",
+		&cli.BoolFlag{
+			Name:    "quiet",
+			Aliases: []string{"q"},
+			Usage:   "Do not show verbose information",
+		},
+		&cli.StringFlag{
+			Name:  "template",
+			Usage: "The template string is only used when output is go-template; The Template format is golang template",
 		},
 	},
 	Action: func(context *cli.Context) error {
@@ -358,7 +365,7 @@ var containerStatusCommand = cli.Command{
 
 		for i := 0; i < context.NArg(); i++ {
 			containerID := context.Args().Get(i)
-			err := ContainerStatus(runtimeClient, containerID, context.String("output"), context.Bool("quiet"))
+			err := ContainerStatus(runtimeClient, containerID, context.String("output"), context.String("template"), context.Bool("quiet"))
 			if err != nil {
 				return fmt.Errorf("Getting the status of the container %q failed: %v", containerID, err)
 			}
@@ -367,66 +374,73 @@ var containerStatusCommand = cli.Command{
 	},
 }
 
-var listContainersCommand = cli.Command{
+var listContainersCommand = &cli.Command{
 	Name:                   "ps",
 	Usage:                  "List containers",
-	SkipArgReorder:         true,
 	UseShortOptionHandling: true,
 	Flags: []cli.Flag{
-		cli.BoolFlag{
-			Name:  "verbose, v",
-			Usage: "Show verbose information for containers",
+		&cli.BoolFlag{
+			Name:    "verbose",
+			Aliases: []string{"v"},
+			Usage:   "Show verbose information for containers",
 		},
-		cli.StringFlag{
+		&cli.StringFlag{
 			Name:  "id",
 			Value: "",
 			Usage: "Filter by container id",
 		},
-		cli.StringFlag{
+		&cli.StringFlag{
 			Name:  "name",
 			Value: "",
 			Usage: "filter by container name regular expression pattern",
 		},
-		cli.StringFlag{
-			Name:  "pod, p",
-			Value: "",
-			Usage: "Filter by pod id",
+		&cli.StringFlag{
+			Name:    "pod",
+			Aliases: []string{"p"},
+			Value:   "",
+			Usage:   "Filter by pod id",
 		},
-		cli.StringFlag{
+		&cli.StringFlag{
 			Name:  "image",
 			Value: "",
 			Usage: "Filter by container image",
 		},
-		cli.StringFlag{
+		&cli.StringFlag{
 			Name:  "state",
 			Value: "",
 			Usage: "Filter by container state",
 		},
-		cli.StringSliceFlag{
+		&cli.StringSliceFlag{
 			Name:  "label",
 			Usage: "Filter by key=value label",
 		},
-		cli.BoolFlag{
-			Name:  "quiet, q",
-			Usage: "Only display container IDs",
+		&cli.BoolFlag{
+			Name:    "quiet",
+			Aliases: []string{"q"},
+			Usage:   "Only display container IDs",
 		},
-		cli.StringFlag{
-			Name:  "output, o",
-			Usage: "Output format, One of: json|yaml|table",
+		&cli.StringFlag{
+			Name:    "output",
+			Aliases: []string{"o"},
+			Usage:   "Output format, One of: json|yaml|table",
+			Value:   "table",
 		},
-		cli.BoolFlag{
-			Name:  "all, a",
-			Usage: "Show all containers",
+		&cli.BoolFlag{
+			Name:    "all",
+			Aliases: []string{"a"},
+			Usage:   "Show all containers",
 		},
-		cli.BoolFlag{
-			Name:  "latest, l",
-			Usage: "Show the most recently created container (includes all states)",
+		&cli.BoolFlag{
+			Name:    "latest",
+			Aliases: []string{"l"},
+			Usage:   "Show the most recently created container (includes all states)",
 		},
-		cli.IntFlag{
-			Name:  "last, n",
-			Usage: "Show last n recently created containers (includes all states). Set 0 for unlimited.",
+		&cli.IntFlag{
+			Name:    "last",
+			Aliases: []string{"n"},
+			Usage:   "Show last n recently created containers (includes all states). Set 0 for unlimited.",
 		},
-		cli.BoolFlag{
+		&cli.BoolFlag{
 			Name:  "no-trunc",
 			Usage: "Show output without truncating the ID",
 		},
@@ -470,17 +484,18 @@ var listContainersCommand = cli.Command{
 	},
 }
 
-var runContainerCommand = cli.Command{
+var runContainerCommand = &cli.Command{
 	Name:      "run",
 	Usage:     "Run a new container inside a sandbox",
 	ArgsUsage: "container-config.[json|yaml] pod-config.[json|yaml]",
-	Flags: append(pullFlags, cli.StringFlag{
-		Name:  "runtime, r",
-		Usage: "Runtime handler to use. Available options are defined by the container runtime.",
+	Flags: append(pullFlags, &cli.StringFlag{
+		Name:    "runtime",
+		Aliases: []string{"r"},
+		Usage:   "Runtime handler to use. Available options are defined by the container runtime.",
 	}),
 
 	Action: func(context *cli.Context) error {
-		if len(context.Args()) != 2 {
+		if context.Args().Len() != 2 {
 			return cli.ShowSubcommandHelp(context)
 		}
 
@@ -716,7 +731,7 @@ func marshalContainerStatus(cs *pb.ContainerStatus) (string, error) {
 
 // ContainerStatus sends a ContainerStatusRequest to the server, and parses
 // the returned ContainerStatusResponse.
-func ContainerStatus(client pb.RuntimeServiceClient, ID, output string, quiet bool) error {
+func ContainerStatus(client pb.RuntimeServiceClient, ID, output string, tmplStr string, quiet bool) error {
 	verbose := !(quiet)
 	if output == "" { // default to json output
 		output = "json"
@@ -741,8 +756,8 @@ func ContainerStatus(client pb.RuntimeServiceClient, ID, output string, quiet bo
 	}
 
 	switch output {
-	case "json", "yaml":
-		return outputStatusInfo(status, r.Info, output)
+	case "json", "yaml", "go-template":
+		return outputStatusInfo(status, r.Info, output, tmplStr)
 	case "table": // table output is after this switch block
 	default:
 		return fmt.Errorf("output option cannot be %s", output)
@@ -848,7 +863,7 @@ func ListContainers(runtimeClient pb.RuntimeServiceClient, imageClient pb.ImageS
 		return outputProtobufObjAsJSON(r)
 	case "yaml":
 		return outputProtobufObjAsYAML(r)
-	case "table", "":
+	case "table":
 	// continue; output will be generated after the switch block ends.
 	default:
 		return fmt.Errorf("unsupported output format %q", opts.output)

@@ -238,6 +238,7 @@ message CustomResourceDefinitionStatus {
 
   // acceptedNames are the names that are actually being used to serve discovery.
   // They may be different than the names in spec.
+  // +optional
   optional CustomResourceDefinitionNames acceptedNames = 2;
 
   // storedVersions lists all versions of CustomResources that were ever persisted. Tracking these
@@ -246,6 +247,7 @@ message CustomResourceDefinitionStatus {
   // no old objects are left in storage), and then remove the rest of the
   // versions from this list.
   // Versions may not be removed from `spec.versions` while they exist in this list.
+  // +optional
   repeated string storedVersions = 3;
 }
 
@@ -490,6 +492,9 @@ message JSONSchemaProps {
   // This tag MUST only be used on lists that have the "x-kubernetes-list-type"
   // extension set to "map". Also, the values specified for this attribute must
   // be a scalar typed field of the child structure (no nesting is supported).
+  //
+  // The properties specified must either be required or have a default value,
+  // to ensure those properties are present for all list items.
   //
   // +optional
   repeated string xKubernetesListMapKeys = 41;

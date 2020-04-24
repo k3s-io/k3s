@@ -29,16 +29,21 @@ import (
 	"strings"
 	"sync"
 
+	"cloud.google.com/go/compute/metadata"
+
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud"
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud/meta"
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud/mock"
+
+	compute "google.golang.org/api/compute/v1"
+	"google.golang.org/api/googleapi"
+
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
-
-	"cloud.google.com/go/compute/metadata"
-	compute "google.golang.org/api/compute/v1"
-	"google.golang.org/api/googleapi"
+	"k8s.io/client-go/kubernetes/fake"
+	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
+	servicehelper "k8s.io/cloud-provider/service/helpers"
 )
 
 func fakeGCECloud(vals TestClusterValues) (*Cloud, error) {
@@ -46,6 +51,7 @@ func fakeGCECloud(vals TestClusterValues) (*Cloud, error) {
 
 	gce.AlphaFeatureGate = NewAlphaFeatureGate([]string{})
 	gce.nodeInformerSynced = func() bool { return true }
+	gce.client = fake.NewSimpleClientset()
 
 	mockGCE := gce.c.(*cloud.MockGCE)
 	mockGCE.MockTargetPools.AddInstanceHook = mock.AddInstanceHook
@@ -344,4 +350,53 @@ func typeOfNetwork(network *compute.Network) netType {
 
 func getLocationName(project, zoneOrRegion string) string {
 	return fmt.Sprintf("projects/%s/locations/%s", project, zoneOrRegion)
+}
+
+func addFinalizer(service *v1.Service, kubeClient v1core.CoreV1Interface, key string) error {
+	if hasFinalizer(service, key) {
+		return nil
+	}
+
+	// Make a copy so we don't mutate the shared informer cache.
+	updated := service.DeepCopy()
+	updated.ObjectMeta.Finalizers = append(updated.ObjectMeta.Finalizers, key)
+
+	_, err := servicehelper.PatchService(kubeClient, service, updated)
+	return err
+}
+
+// removeFinalizer patches the service to remove finalizer.
+func removeFinalizer(service *v1.Service, kubeClient v1core.CoreV1Interface, key string) error {
+	if !hasFinalizer(service, key) {
+		return nil
+	}
+
+	// Make a copy so we don't mutate the shared informer cache.
+	updated := service.DeepCopy()
+	updated.ObjectMeta.Finalizers = removeString(updated.ObjectMeta.Finalizers, key)
+
+	_, err := servicehelper.PatchService(kubeClient, service, updated)
+	return err
+}
+
+//hasFinalizer returns if the given service has the specified key in its list of finalizers.
+func hasFinalizer(service *v1.Service, key string) bool {
+	for _, finalizer := range service.ObjectMeta.Finalizers {
+		if finalizer == key {
+			return true
+		}
+	}
+	return false
+}
+
+// removeString returns a newly created []string that contains all items from slice that
+// are not equal to s.
+func removeString(slice []string, s string) []string {
+	var newSlice []string
+	for _, item := range slice {
+		if item != s {
+			newSlice = append(newSlice, item)
+		}
+	}
+	return newSlice
 }

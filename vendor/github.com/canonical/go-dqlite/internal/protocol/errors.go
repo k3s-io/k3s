@@ -27,3 +27,13 @@ func (e ErrRequest) Error() string {
 // ErrRowsPart is returned when the first batch of a multi-response result
 // batch is done.
 var ErrRowsPart = fmt.Errorf("not all rows were returned in this response")
+
+// Error holds information about a SQLite error.
+type Error struct {
+	Code    int
+	Message string
+}
+
+func (e Error) Error() string {
+	return e.Message
+}

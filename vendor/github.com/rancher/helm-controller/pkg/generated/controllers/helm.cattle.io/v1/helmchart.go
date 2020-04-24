@@ -176,35 +176,38 @@ func (c *helmChartController) Cache() HelmChartCache {
 }
 
 func (c *helmChartController) Create(obj *v1.HelmChart) (*v1.HelmChart, error) {
-	return c.clientGetter.HelmCharts(obj.Namespace).Create(obj)
+	return c.clientGetter.HelmCharts(obj.Namespace).Create(context.TODO(), obj, metav1.CreateOptions{})
 }
 
 func (c *helmChartController) Update(obj *v1.HelmChart) (*v1.HelmChart, error) {
-	return c.clientGetter.HelmCharts(obj.Namespace).Update(obj)
+	return c.clientGetter.HelmCharts(obj.Namespace).Update(context.TODO(), obj, metav1.UpdateOptions{})
 }
 
 func (c *helmChartController) UpdateStatus(obj *v1.HelmChart) (*v1.HelmChart, error) {
-	return c.clientGetter.HelmCharts(obj.Namespace).UpdateStatus(obj)
+	return c.clientGetter.HelmCharts(obj.Namespace).UpdateStatus(context.TODO(), obj, metav1.UpdateOptions{})
 }
 
 func (c *helmChartController) Delete(namespace, name string, options *metav1.DeleteOptions) error {
-	return c.clientGetter.HelmCharts(namespace).Delete(name, options)
+	if options == nil {
+		options = &metav1.DeleteOptions{}
+	}
+	return c.clientGetter.HelmCharts(namespace).Delete(context.TODO(), name, *options)
 }
 
 func (c *helmChartController) Get(namespace, name string, options metav1.GetOptions) (*v1.HelmChart, error) {
-	return c.clientGetter.HelmCharts(namespace).Get(name, options)
+	return c.clientGetter.HelmCharts(namespace).Get(context.TODO(), name, options)
 }
 
 func (c *helmChartController) List(namespace string, opts metav1.ListOptions) (*v1.HelmChartList, error) {
-	return c.clientGetter.HelmCharts(namespace).List(opts)
+	return c.clientGetter.HelmCharts(namespace).List(context.TODO(), opts)
 }
 
 func (c *helmChartController) Watch(namespace string, opts metav1.ListOptions) (watch.Interface, error) {
-	return c.clientGetter.HelmCharts(namespace).Watch(opts)
+	return c.clientGetter.HelmCharts(namespace).Watch(context.TODO(), opts)
 }
 
 func (c *helmChartController) Patch(namespace, name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.HelmChart, err error) {
-	return c.clientGetter.HelmCharts(namespace).Patch(name, pt, data, subresources...)
+	return c.clientGetter.HelmCharts(namespace).Patch(context.TODO(), name, pt, data, metav1.PatchOptions{}, subresources...)
 }
 
 type helmChartCache struct {
@@ -233,6 +236,7 @@ func (c *helmChartCache) GetByIndex(indexName, key string) (result []*v1.HelmCha
 	if err != nil {
 		return nil, err
 	}
+	result = make([]*v1.HelmChart, 0, len(objs))
 	for _, obj := range objs {
 		result = append(result, obj.(*v1.HelmChart))
 	}

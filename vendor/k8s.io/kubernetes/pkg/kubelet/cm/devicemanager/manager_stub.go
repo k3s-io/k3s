@@ -45,7 +45,12 @@ func (h *ManagerStub) Stop() error {
 }
 
 // Allocate simply returns nil.
-func (h *ManagerStub) Allocate(node *schedulernodeinfo.NodeInfo, attrs *lifecycle.PodAdmitAttributes) error {
+func (h *ManagerStub) Allocate(pod *v1.Pod, container *v1.Container) error {
+	return nil
+}
+
+// UpdatePluginResources simply returns nil.
+func (h *ManagerStub) UpdatePluginResources(node *schedulernodeinfo.NodeInfo, attrs *lifecycle.PodAdmitAttributes) error {
 	return nil
 }
 
@@ -65,7 +70,7 @@ func (h *ManagerStub) GetWatcherHandler() cache.PluginHandler {
 }
 
 // GetTopologyHints returns an empty TopologyHint map
-func (h *ManagerStub) GetTopologyHints(pod v1.Pod, container v1.Container) map[string][]topologymanager.TopologyHint {
+func (h *ManagerStub) GetTopologyHints(pod *v1.Pod, container *v1.Container) map[string][]topologymanager.TopologyHint {
 	return map[string][]topologymanager.TopologyHint{}
 }
 
@@ -77,4 +82,9 @@ func (h *ManagerStub) GetDevices(_, _ string) []*podresourcesapi.ContainerDevice
 // ShouldResetExtendedResourceCapacity returns false
 func (h *ManagerStub) ShouldResetExtendedResourceCapacity() bool {
 	return false
+}
+
+// UpdateAllocatedDevices returns nothing
+func (h *ManagerStub) UpdateAllocatedDevices() {
+	return
 }

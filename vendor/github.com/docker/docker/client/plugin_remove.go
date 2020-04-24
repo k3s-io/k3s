@@ -15,6 +15,6 @@ func (cli *Client) PluginRemove(ctx context.Context, name string, options types.
 	}
 
 	resp, err := cli.delete(ctx, "/plugins/"+name, query, nil)
-	defer ensureReaderClosed(resp)
+	ensureReaderClosed(resp)
 	return wrapResponseError(err, resp, "plugin", name)
 }

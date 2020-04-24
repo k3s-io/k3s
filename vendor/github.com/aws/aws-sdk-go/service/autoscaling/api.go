@@ -1780,10 +1780,12 @@ func (c *AutoScaling) DescribeAutoScalingGroupsPagesWithContext(ctx aws.Context,
 		},
 	}
 
-	cont := true
-	for p.Next() && cont {
-		cont = fn(p.Page().(*DescribeAutoScalingGroupsOutput), !p.HasNextPage())
+	for p.Next() {
+		if !fn(p.Page().(*DescribeAutoScalingGroupsOutput), !p.HasNextPage()) {
+			break
+		}
 	}
+
 	return p.Err()
 }
 
@@ -1919,10 +1921,12 @@ func (c *AutoScaling) DescribeAutoScalingInstancesPagesWithContext(ctx aws.Conte
 		},
 	}
 
-	cont := true
-	for p.Next() && cont {
-		cont = fn(p.Page().(*DescribeAutoScalingInstancesOutput), !p.HasNextPage())
+	for p.Next() {
+		if !fn(p.Page().(*DescribeAutoScalingInstancesOutput), !p.HasNextPage()) {
+			break
+		}
 	}
+
 	return p.Err()
 }
 
@@ -2138,10 +2142,12 @@ func (c *AutoScaling) DescribeLaunchConfigurationsPagesWithContext(ctx aws.Conte
 		},
 	}
 
-	cont := true
-	for p.Next() && cont {
-		cont = fn(p.Page().(*DescribeLaunchConfigurationsOutput), !p.HasNextPage())
+	for p.Next() {
+		if !fn(p.Page().(*DescribeLaunchConfigurationsOutput), !p.HasNextPage()) {
+			break
+		}
 	}
+
 	return p.Err()
 }
 
@@ -2691,10 +2697,12 @@ func (c *AutoScaling) DescribeNotificationConfigurationsPagesWithContext(ctx aws
 		},
 	}
 
-	cont := true
-	for p.Next() && cont {
-		cont = fn(p.Page().(*DescribeNotificationConfigurationsOutput), !p.HasNextPage())
+	for p.Next() {
+		if !fn(p.Page().(*DescribeNotificationConfigurationsOutput), !p.HasNextPage()) {
+			break
+		}
 	}
+
 	return p.Err()
 }
 
@@ -2833,10 +2841,12 @@ func (c *AutoScaling) DescribePoliciesPagesWithContext(ctx aws.Context, input *D
 		},
 	}
 
-	cont := true
-	for p.Next() && cont {
-		cont = fn(p.Page().(*DescribePoliciesOutput), !p.HasNextPage())
+	for p.Next() {
+		if !fn(p.Page().(*DescribePoliciesOutput), !p.HasNextPage()) {
+			break
+		}
 	}
+
 	return p.Err()
 }
 
@@ -2972,10 +2982,12 @@ func (c *AutoScaling) DescribeScalingActivitiesPagesWithContext(ctx aws.Context,
 		},
 	}
 
-	cont := true
-	for p.Next() && cont {
-		cont = fn(p.Page().(*DescribeScalingActivitiesOutput), !p.HasNextPage())
+	for p.Next() {
+		if !fn(p.Page().(*DescribeScalingActivitiesOutput), !p.HasNextPage()) {
+			break
+		}
 	}
+
 	return p.Err()
 }
 
@@ -3193,10 +3205,12 @@ func (c *AutoScaling) DescribeScheduledActionsPagesWithContext(ctx aws.Context, 
 		},
 	}
 
-	cont := true
-	for p.Next() && cont {
-		cont = fn(p.Page().(*DescribeScheduledActionsOutput), !p.HasNextPage())
+	for p.Next() {
+		if !fn(p.Page().(*DescribeScheduledActionsOutput), !p.HasNextPage()) {
+			break
+		}
 	}
+
 	return p.Err()
 }
 
@@ -3341,10 +3355,12 @@ func (c *AutoScaling) DescribeTagsPagesWithContext(ctx aws.Context, input *Descr
 		},
 	}
 
-	cont := true
-	for p.Next() && cont {
-		cont = fn(p.Page().(*DescribeTagsOutput), !p.HasNextPage())
+	for p.Next() {
+		if !fn(p.Page().(*DescribeTagsOutput), !p.HasNextPage()) {
+			break
+		}
 	}
+
 	return p.Err()
 }
 
@@ -3909,6 +3925,15 @@ func (c *AutoScaling) EnterStandbyRequest(input *EnterStandbyInput) (req *reques
 //
 // Moves the specified instances into the standby state.
 //
+// If you choose to decrement the desired capacity of the Auto Scaling group,
+// the instances can enter standby as long as the desired capacity of the Auto
+// Scaling group after the instances are placed into standby is equal to or
+// greater than the minimum capacity of the group.
+//
+// If you choose not to decrement the desired capacity of the Auto Scaling group,
+// the Auto Scaling group launches new instances to replace the instances on
+// standby.
+//
 // For more information, see Temporarily Removing Instances from Your Auto Scaling
 // Group (https://docs.aws.amazon.com/autoscaling/ec2/userguide/as-enter-exit-standby.html)
 // in the Amazon EC2 Auto Scaling User Guide.
@@ -4077,6 +4102,8 @@ func (c *AutoScaling) ExitStandbyRequest(input *ExitStandbyInput) (req *request.
 // ExitStandby API operation for Auto Scaling.
 //
 // Moves the specified instances out of the standby state.
+//
+// After you put the instances back in service, the desired capacity is incremented.
 //
 // For more information, see Temporarily Removing Instances from Your Auto Scaling
 // Group (https://docs.aws.amazon.com/autoscaling/ec2/userguide/as-enter-exit-standby.html)
@@ -5209,8 +5236,7 @@ func (c *AutoScaling) UpdateAutoScalingGroupRequest(input *UpdateAutoScalingGrou
 // To update an Auto Scaling group, specify the name of the group and the parameter
 // that you want to change. Any parameters that you don't specify are not changed
 // by this update request. The new settings take effect on any scaling activities
-// after this call returns. Scaling activities that are currently in progress
-// aren't affected.
+// after this call returns.
 //
 // If you associate a new launch configuration or template with an Auto Scaling
 // group, all new instances will get the updated configuration. Existing instances
@@ -6120,6 +6146,11 @@ type CreateAutoScalingGroupInput struct {
 	// in the Amazon EC2 Auto Scaling User Guide.
 	LoadBalancerNames []*string `type:"list"`
 
+	// The maximum amount of time, in seconds, that an instance can be in service.
+	//
+	// Valid Range: Minimum value of 604800.
+	MaxInstanceLifetime *int64 `type:"integer"`
+
 	// The maximum size of the group.
 	//
 	// MaxSize is a required field
@@ -6354,6 +6385,12 @@ func (s *CreateAutoScalingGroupInput) SetLoadBalancerNames(v []*string) *CreateA
 	return s
 }
 
+// SetMaxInstanceLifetime sets the MaxInstanceLifetime field's value.
+func (s *CreateAutoScalingGroupInput) SetMaxInstanceLifetime(v int64) *CreateAutoScalingGroupInput {
+	s.MaxInstanceLifetime = &v
+	return s
+}
+
 // SetMaxSize sets the MaxSize field's value.
 func (s *CreateAutoScalingGroupInput) SetMaxSize(v int64) *CreateAutoScalingGroupInput {
 	s.MaxSize = &v
@@ -6562,7 +6599,7 @@ type CreateLaunchConfigurationInput struct {
 	// For more information, see Instance Placement Tenancy (https://docs.aws.amazon.com/autoscaling/ec2/userguide/asg-in-vpc.html#as-vpc-tenancy)
 	// in the Amazon EC2 Auto Scaling User Guide.
 	//
-	// Valid values: default | dedicated
+	// Valid Values: default | dedicated
 	PlacementTenancy *string `min:"1" type:"string"`
 
 	// The ID of the RAM disk to select.
@@ -6582,17 +6619,13 @@ type CreateLaunchConfigurationInput struct {
 
 	// The maximum hourly price to be paid for any Spot Instance launched to fulfill
 	// the request. Spot Instances are launched when the price you specify exceeds
-	// the current Spot market price. For more information, see Launching Spot Instances
+	// the current Spot price. For more information, see Launching Spot Instances
 	// in Your Auto Scaling Group (https://docs.aws.amazon.com/autoscaling/ec2/userguide/asg-launch-spot-instances.html)
 	// in the Amazon EC2 Auto Scaling User Guide.
 	//
-	// If a Spot price is set, then the Auto Scaling group will only launch instances
-	// when the Spot price has been met, regardless of the setting in the Auto Scaling
-	// group's DesiredCapacity.
-	//
-	// When you change your Spot price by creating a new launch configuration, running
-	// instances will continue to run as long as the Spot price for those running
-	// instances is higher than the current Spot market price.
+	// When you change your maximum price by creating a new launch configuration,
+	// running instances will continue to run as long as the maximum price for those
+	// running instances is higher than the current Spot price.
 	SpotPrice *string `min:"1" type:"string"`
 
 	// The Base64-encoded user data to make available to the launched EC2 instances.
@@ -9117,7 +9150,7 @@ type Ebs struct {
 	// or sc1 for Cold HDD. For more information, see Amazon EBS Volume Types (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSVolumeTypes.html)
 	// in the Amazon EC2 User Guide for Linux Instances.
 	//
-	// Valid values: standard | io1 | gp2 | st1 | sc1
+	// Valid Values: standard | io1 | gp2 | st1 | sc1
 	VolumeType *string `min:"1" type:"string"`
 }
 
@@ -9749,6 +9782,11 @@ type Group struct {
 	// One or more load balancers associated with the group.
 	LoadBalancerNames []*string `type:"list"`
 
+	// The maximum amount of time, in seconds, that an instance can be in service.
+	//
+	// Valid Range: Minimum value of 604800.
+	MaxInstanceLifetime *int64 `type:"integer"`
+
 	// The maximum size of the group.
 	//
 	// MaxSize is a required field
@@ -9880,6 +9918,12 @@ func (s *Group) SetLoadBalancerNames(v []*string) *Group {
 	return s
 }
 
+// SetMaxInstanceLifetime sets the MaxInstanceLifetime field's value.
+func (s *Group) SetMaxInstanceLifetime(v int64) *Group {
+	s.MaxInstanceLifetime = &v
+	return s
+}
+
 // SetMaxSize sets the MaxSize field's value.
 func (s *Group) SetMaxSize(v int64) *Group {
 	s.MaxSize = &v
@@ -9974,6 +10018,9 @@ type Instance struct {
 	// InstanceId is a required field
 	InstanceId *string `min:"1" type:"string" required:"true"`
 
+	// The instance type of the EC2 instance.
+	InstanceType *string `min:"1" type:"string"`
+
 	// The launch configuration associated with the instance.
 	LaunchConfigurationName *string `min:"1" type:"string"`
 
@@ -9991,6 +10038,12 @@ type Instance struct {
 	//
 	// ProtectedFromScaleIn is a required field
 	ProtectedFromScaleIn *bool `type:"boolean" required:"true"`
+
+	// The number of capacity units contributed by the instance based on its instance
+	// type.
+	//
+	// Valid Range: Minimum value of 1. Maximum value of 999.
+	WeightedCapacity *string `min:"1" type:"string"`
 }
 
 // String returns the string representation
@@ -10021,6 +10074,12 @@ func (s *Instance) SetInstanceId(v string) *Instance {
 	return s
 }
 
+// SetInstanceType sets the InstanceType field's value.
+func (s *Instance) SetInstanceType(v string) *Instance {
+	s.InstanceType = &v
+	return s
+}
+
 // SetLaunchConfigurationName sets the LaunchConfigurationName field's value.
 func (s *Instance) SetLaunchConfigurationName(v string) *Instance {
 	s.LaunchConfigurationName = &v
@@ -10042,6 +10101,12 @@ func (s *Instance) SetLifecycleState(v string) *Instance {
 // SetProtectedFromScaleIn sets the ProtectedFromScaleIn field's value.
 func (s *Instance) SetProtectedFromScaleIn(v bool) *Instance {
 	s.ProtectedFromScaleIn = &v
+	return s
+}
+
+// SetWeightedCapacity sets the WeightedCapacity field's value.
+func (s *Instance) SetWeightedCapacity(v string) *Instance {
+	s.WeightedCapacity = &v
 	return s
 }
 
@@ -10072,6 +10137,9 @@ type InstanceDetails struct {
 	// InstanceId is a required field
 	InstanceId *string `min:"1" type:"string" required:"true"`
 
+	// The instance type of the EC2 instance.
+	InstanceType *string `min:"1" type:"string"`
+
 	// The launch configuration used to launch the instance. This value is not available
 	// if you attached the instance to the Auto Scaling group.
 	LaunchConfigurationName *string `min:"1" type:"string"`
@@ -10089,6 +10157,12 @@ type InstanceDetails struct {
 	//
 	// ProtectedFromScaleIn is a required field
 	ProtectedFromScaleIn *bool `type:"boolean" required:"true"`
+
+	// The number of capacity units contributed by the instance based on its instance
+	// type.
+	//
+	// Valid Range: Minimum value of 1. Maximum value of 999.
+	WeightedCapacity *string `min:"1" type:"string"`
 }
 
 // String returns the string representation
@@ -10125,6 +10199,12 @@ func (s *InstanceDetails) SetInstanceId(v string) *InstanceDetails {
 	return s
 }
 
+// SetInstanceType sets the InstanceType field's value.
+func (s *InstanceDetails) SetInstanceType(v string) *InstanceDetails {
+	s.InstanceType = &v
+	return s
+}
+
 // SetLaunchConfigurationName sets the LaunchConfigurationName field's value.
 func (s *InstanceDetails) SetLaunchConfigurationName(v string) *InstanceDetails {
 	s.LaunchConfigurationName = &v
@@ -10146,6 +10226,12 @@ func (s *InstanceDetails) SetLifecycleState(v string) *InstanceDetails {
 // SetProtectedFromScaleIn sets the ProtectedFromScaleIn field's value.
 func (s *InstanceDetails) SetProtectedFromScaleIn(v bool) *InstanceDetails {
 	s.ProtectedFromScaleIn = &v
+	return s
+}
+
+// SetWeightedCapacity sets the WeightedCapacity field's value.
+func (s *InstanceDetails) SetWeightedCapacity(v string) *InstanceDetails {
+	s.WeightedCapacity = &v
 	return s
 }
 
@@ -10179,6 +10265,14 @@ func (s *InstanceMonitoring) SetEnabled(v bool) *InstanceMonitoring {
 // and Spot Instances, the maximum price to pay for Spot Instances, and how
 // the Auto Scaling group allocates instance types to fulfill On-Demand and
 // Spot capacity.
+//
+// When you update SpotAllocationStrategy, SpotInstancePools, or SpotMaxPrice,
+// this update action does not deploy any changes across the running Amazon
+// EC2 instances in the group. Your existing Spot Instances continue to run
+// as long as the maximum price for those instances is higher than the current
+// Spot price. When scale out occurs, Amazon EC2 Auto Scaling launches instances
+// based on the new settings. When scale in occurs, Amazon EC2 Auto Scaling
+// terminates instances according to the group's termination policies.
 type InstancesDistribution struct {
 	_ struct{} `type:"structure"`
 
@@ -10197,16 +10291,28 @@ type InstancesDistribution struct {
 	// by On-Demand Instances. This base portion is provisioned first as your group
 	// scales.
 	//
-	// The default value is 0. If you leave this parameter set to 0, On-Demand Instances
-	// are launched as a percentage of the Auto Scaling group's desired capacity,
-	// per the OnDemandPercentageAboveBaseCapacity setting.
+	// Default if not set is 0. If you leave it set to 0, On-Demand Instances are
+	// launched as a percentage of the Auto Scaling group's desired capacity, per
+	// the OnDemandPercentageAboveBaseCapacity setting.
+	//
+	// An update to this setting means a gradual replacement of instances to maintain
+	// the specified number of On-Demand Instances for your base capacity. When
+	// replacing instances, Amazon EC2 Auto Scaling launches new instances before
+	// terminating the old ones.
 	OnDemandBaseCapacity *int64 `type:"integer"`
 
 	// Controls the percentages of On-Demand Instances and Spot Instances for your
-	// additional capacity beyond OnDemandBaseCapacity. The range is 0–100.
+	// additional capacity beyond OnDemandBaseCapacity.
 	//
-	// The default value is 100. If you leave this parameter set to 100, the percentages
-	// are 100% for On-Demand Instances and 0% for Spot Instances.
+	// Default if not set is 100. If you leave it set to 100, the percentages are
+	// 100% for On-Demand Instances and 0% for Spot Instances.
+	//
+	// An update to this setting means a gradual replacement of instances to maintain
+	// the percentage of On-Demand Instances for your additional capacity above
+	// the base capacity. When replacing instances, Amazon EC2 Auto Scaling launches
+	// new instances before terminating the old ones.
+	//
+	// Valid Range: Minimum value of 0. Maximum value of 100.
 	OnDemandPercentageAboveBaseCapacity *int64 `type:"integer"`
 
 	// Indicates how to allocate instances across Spot Instance pools.
@@ -10226,9 +10332,11 @@ type InstancesDistribution struct {
 
 	// The number of Spot Instance pools across which to allocate your Spot Instances.
 	// The Spot pools are determined from the different instance types in the Overrides
-	// array of LaunchTemplate. The range is 1–20. The default value is 2.
+	// array of LaunchTemplate. Default if not set is 2.
 	//
-	// Valid only when the Spot allocation strategy is lowest-price.
+	// Used only when the Spot allocation strategy is lowest-price.
+	//
+	// Valid Range: Minimum value of 1. Maximum value of 20.
 	SpotInstancePools *int64 `type:"integer"`
 
 	// The maximum price per unit hour that you are willing to pay for a Spot Instance.
@@ -10402,7 +10510,7 @@ type LaunchConfiguration struct {
 
 	// The maximum hourly price to be paid for any Spot Instance launched to fulfill
 	// the request. Spot Instances are launched when the price you specify exceeds
-	// the current Spot market price.
+	// the current Spot price.
 	//
 	// For more information, see Launching Spot Instances in Your Auto Scaling Group
 	// (https://docs.aws.amazon.com/autoscaling/ec2/userguide/asg-launch-spot-instances.html)
@@ -10545,6 +10653,11 @@ func (s *LaunchConfiguration) SetUserData(v string) *LaunchConfiguration {
 // The overrides are used to override the instance type specified by the launch
 // template with multiple instance types that can be used to launch On-Demand
 // Instances and Spot Instances.
+//
+// When you update the launch template or overrides, existing Amazon EC2 instances
+// continue to run. When scale out occurs, Amazon EC2 Auto Scaling launches
+// instances to match the new settings. When scale in occurs, Amazon EC2 Auto
+// Scaling terminates instances according to the group's termination policies.
 type LaunchTemplate struct {
 	_ struct{} `type:"structure"`
 
@@ -10552,9 +10665,9 @@ type LaunchTemplate struct {
 	// or launch template name in the request.
 	LaunchTemplateSpecification *LaunchTemplateSpecification `type:"structure"`
 
-	// Any parameters that you specify override the same parameters in the launch
-	// template. Currently, the only supported override is instance type. You must
-	// specify between 2 and 20 overrides.
+	// An optional setting. Any parameters that you specify override the same parameters
+	// in the launch template. Currently, the only supported override is instance
+	// type. You can specify between 1 and 20 instance types.
 	Overrides []*LaunchTemplateOverrides `type:"list"`
 }
 
@@ -10615,6 +10728,15 @@ type LaunchTemplateOverrides struct {
 	// (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html#AvailableInstanceTypes)
 	// in the Amazon Elastic Compute Cloud User Guide.
 	InstanceType *string `min:"1" type:"string"`
+
+	// The number of capacity units, which gives the instance type a proportional
+	// weight to other instance types. For example, larger instance types are generally
+	// weighted more than smaller instance types. These are the same units that
+	// you chose to set the desired capacity in terms of instances, or a performance
+	// attribute such as vCPUs, memory, or I/O.
+	//
+	// Valid Range: Minimum value of 1. Maximum value of 999.
+	WeightedCapacity *string `min:"1" type:"string"`
 }
 
 // String returns the string representation
@@ -10633,6 +10755,9 @@ func (s *LaunchTemplateOverrides) Validate() error {
 	if s.InstanceType != nil && len(*s.InstanceType) < 1 {
 		invalidParams.Add(request.NewErrParamMinLen("InstanceType", 1))
 	}
+	if s.WeightedCapacity != nil && len(*s.WeightedCapacity) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("WeightedCapacity", 1))
+	}
 
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -10643,6 +10768,12 @@ func (s *LaunchTemplateOverrides) Validate() error {
 // SetInstanceType sets the InstanceType field's value.
 func (s *LaunchTemplateOverrides) SetInstanceType(v string) *LaunchTemplateOverrides {
 	s.InstanceType = &v
+	return s
+}
+
+// SetWeightedCapacity sets the WeightedCapacity field's value.
+func (s *LaunchTemplateOverrides) SetWeightedCapacity(v string) *LaunchTemplateOverrides {
+	s.WeightedCapacity = &v
 	return s
 }
 
@@ -11234,8 +11365,8 @@ type MixedInstancesPolicy struct {
 
 	// The instances distribution to use.
 	//
-	// If you leave this parameter unspecified when creating a mixed instances policy,
-	// the default values are used.
+	// If you leave this parameter unspecified, the value for each parameter in
+	// InstancesDistribution uses a default value.
 	InstancesDistribution *InstancesDistribution `type:"structure"`
 
 	// The launch template and instance types (overrides).
@@ -11339,13 +11470,7 @@ func (s *NotificationConfiguration) SetTopicARN(v string) *NotificationConfigura
 type PredefinedMetricSpecification struct {
 	_ struct{} `type:"structure"`
 
-	// The metric type.
-	//
-	// PredefinedMetricType is a required field
-	PredefinedMetricType *string `type:"string" required:"true" enum:"MetricType"`
-
-	// Identifies the resource associated with the metric type. The following predefined
-	// metrics are available:
+	// The metric type. The following predefined metrics are available:
 	//
 	//    * ASGAverageCPUUtilization - Average CPU utilization of the Auto Scaling
 	//    group.
@@ -11359,15 +11484,21 @@ type PredefinedMetricSpecification struct {
 	//    * ALBRequestCountPerTarget - Number of requests completed per target in
 	//    an Application Load Balancer target group.
 	//
-	// For predefined metric types ASGAverageCPUUtilization, ASGAverageNetworkIn,
-	// and ASGAverageNetworkOut, the parameter must not be specified as the resource
-	// associated with the metric type is the Auto Scaling group. For predefined
-	// metric type ALBRequestCountPerTarget, the parameter must be specified in
-	// the format: app/load-balancer-name/load-balancer-id/targetgroup/target-group-name/target-group-id
-	// , where app/load-balancer-name/load-balancer-id is the final portion of the
-	// load balancer ARN, and targetgroup/target-group-name/target-group-id is the
-	// final portion of the target group ARN. The target group must be attached
-	// to the Auto Scaling group.
+	// PredefinedMetricType is a required field
+	PredefinedMetricType *string `type:"string" required:"true" enum:"MetricType"`
+
+	// Identifies the resource associated with the metric type. You can't specify
+	// a resource label unless the metric type is ALBRequestCountPerTarget and there
+	// is a target group attached to the Auto Scaling group.
+	//
+	// The format is app/load-balancer-name/load-balancer-id/targetgroup/target-group-name/target-group-id
+	// , where
+	//
+	//    * app/load-balancer-name/load-balancer-id is the final portion of the
+	//    load balancer ARN, and
+	//
+	//    * targetgroup/target-group-name/target-group-id is the final portion of
+	//    the target group ARN.
 	ResourceLabel *string `min:"1" type:"string"`
 }
 
@@ -13419,11 +13550,6 @@ type UpdateAutoScalingGroupInput struct {
 
 	// The name of the launch configuration. If you specify LaunchConfigurationName
 	// in your update request, you can't specify LaunchTemplate or MixedInstancesPolicy.
-	//
-	// To update an Auto Scaling group with a launch configuration with InstanceMonitoring
-	// set to false, you must first disable the collection of group metrics. Otherwise,
-	// you get an error. If you have previously enabled the collection of group
-	// metrics, you can disable it using DisableMetricsCollection.
 	LaunchConfigurationName *string `min:"1" type:"string"`
 
 	// The launch template and version to use to specify the updates. If you specify
@@ -13433,6 +13559,11 @@ type UpdateAutoScalingGroupInput struct {
 	// For more information, see LaunchTemplateSpecification (https://docs.aws.amazon.com/autoscaling/ec2/APIReference/API_LaunchTemplateSpecification.html)
 	// in the Amazon EC2 Auto Scaling API Reference.
 	LaunchTemplate *LaunchTemplateSpecification `type:"structure"`
+
+	// The maximum amount of time, in seconds, that an instance can be in service.
+	//
+	// Valid Range: Minimum value of 604800.
+	MaxInstanceLifetime *int64 `type:"integer"`
 
 	// The maximum size of the Auto Scaling group.
 	MaxSize *int64 `type:"integer"`
@@ -13587,6 +13718,12 @@ func (s *UpdateAutoScalingGroupInput) SetLaunchConfigurationName(v string) *Upda
 // SetLaunchTemplate sets the LaunchTemplate field's value.
 func (s *UpdateAutoScalingGroupInput) SetLaunchTemplate(v *LaunchTemplateSpecification) *UpdateAutoScalingGroupInput {
 	s.LaunchTemplate = v
+	return s
+}
+
+// SetMaxInstanceLifetime sets the MaxInstanceLifetime field's value.
+func (s *UpdateAutoScalingGroupInput) SetMaxInstanceLifetime(v int64) *UpdateAutoScalingGroupInput {
+	s.MaxInstanceLifetime = &v
 	return s
 }
 

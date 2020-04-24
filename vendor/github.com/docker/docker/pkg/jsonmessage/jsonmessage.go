@@ -4,12 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 	"time"
 
+	"github.com/Nvveen/Gotty"
 	"github.com/docker/docker/pkg/term"
-	units "github.com/docker/go-units"
-	"github.com/morikuni/aec"
+	"github.com/docker/go-units"
 )
 
 // RFC3339NanoFixed is time.RFC3339Nano with nanoseconds padded using zeros to
@@ -139,34 +140,71 @@ type JSONMessage struct {
 	Stream          string        `json:"stream,omitempty"`
 	Status          string        `json:"status,omitempty"`
 	Progress        *JSONProgress `json:"progressDetail,omitempty"`
-	ProgressMessage string        `json:"progress,omitempty"` // deprecated
+	ProgressMessage string        `json:"progress,omitempty"` //deprecated
 	ID              string        `json:"id,omitempty"`
 	From            string        `json:"from,omitempty"`
 	Time            int64         `json:"time,omitempty"`
 	TimeNano        int64         `json:"timeNano,omitempty"`
 	Error           *JSONError    `json:"errorDetail,omitempty"`
-	ErrorMessage    string        `json:"error,omitempty"` // deprecated
+	ErrorMessage    string        `json:"error,omitempty"` //deprecated
 	// Aux contains out-of-band data, such as digests for push signing and image id after building.
 	Aux *json.RawMessage `json:"aux,omitempty"`
 }
 
-func clearLine(out io.Writer) {
-	eraseMode := aec.EraseModes.All
-	cl := aec.EraseLine(eraseMode)
-	fmt.Fprint(out, cl)
+/* Satisfied by gotty.TermInfo as well as noTermInfo from below */
+type termInfo interface {
+	Parse(attr string, params ...interface{}) (string, error)
 }
 
-func cursorUp(out io.Writer, l uint) {
-	fmt.Fprint(out, aec.Up(l))
+type noTermInfo struct{} // canary used when no terminfo.
+
+func (ti *noTermInfo) Parse(attr string, params ...interface{}) (string, error) {
+	return "", fmt.Errorf("noTermInfo")
 }
 
-func cursorDown(out io.Writer, l uint) {
-	fmt.Fprint(out, aec.Down(l))
+func clearLine(out io.Writer, ti termInfo) {
+	// el2 (clear whole line) is not exposed by terminfo.
+
+	// First clear line from beginning to cursor
+	if attr, err := ti.Parse("el1"); err == nil {
+		fmt.Fprintf(out, "%s", attr)
+	} else {
+		fmt.Fprintf(out, "\x1b[1K")
+	}
+	// Then clear line from cursor to end
+	if attr, err := ti.Parse("el"); err == nil {
+		fmt.Fprintf(out, "%s", attr)
+	} else {
+		fmt.Fprintf(out, "\x1b[K")
+	}
 }
 
-// Display displays the JSONMessage to `out`. If `isTerminal` is true, it will erase the
-// entire current line when displaying the progressbar.
-func (jm *JSONMessage) Display(out io.Writer, isTerminal bool) error {
+func cursorUp(out io.Writer, ti termInfo, l int) {
+	if l == 0 { // Should never be the case, but be tolerant
+		return
+	}
+	if attr, err := ti.Parse("cuu", l); err == nil {
+		fmt.Fprintf(out, "%s", attr)
+	} else {
+		fmt.Fprintf(out, "\x1b[%dA", l)
+	}
+}
+
+func cursorDown(out io.Writer, ti termInfo, l int) {
+	if l == 0 { // Should never be the case, but be tolerant
+		return
+	}
+	if attr, err := ti.Parse("cud", l); err == nil {
+		fmt.Fprintf(out, "%s", attr)
+	} else {
+		fmt.Fprintf(out, "\x1b[%dB", l)
+	}
+}
+
+// Display displays the JSONMessage to `out`. `termInfo` is non-nil if `out`
+// is a terminal. If this is the case, it will erase the entire current line
+// when displaying the progressbar.
+func (jm *JSONMessage) Display(out io.Writer, termInfo termInfo) error {
 	if jm.Error != nil {
 		if jm.Error.Code == 401 {
 			return fmt.Errorf("authentication is required")
@@ -174,10 +212,10 @@ func (jm *JSONMessage) Display(out io.Writer, isTerminal bool) error {
 		return jm.Error
 	}
 	var endl string
-	if isTerminal && jm.Stream == "" && jm.Progress != nil {
-		clearLine(out)
+	if termInfo != nil && jm.Stream == "" && jm.Progress != nil {
+		clearLine(out, termInfo)
 		endl = "\r"
-		fmt.Fprint(out, endl)
+		fmt.Fprintf(out, endl)
 	} else if jm.Progress != nil && jm.Progress.String() != "" { //disable progressbar in non-terminal
 		return nil
 	}
@@ -192,9 +230,9 @@ func (jm *JSONMessage) Display(out io.Writer, isTerminal bool) error {
 	if jm.From != "" {
 		fmt.Fprintf(out, "(from %s) ", jm.From)
 	}
-	if jm.Progress != nil && isTerminal {
+	if jm.Progress != nil && termInfo != nil {
 		fmt.Fprintf(out, "%s %s%s", jm.Status, jm.Progress.String(), endl)
-	} else if jm.ProgressMessage != "" { // deprecated
+	} else if jm.ProgressMessage != "" { //deprecated
 		fmt.Fprintf(out, "%s %s%s", jm.Status, jm.ProgressMessage, endl)
 	} else if jm.Stream != "" {
 		fmt.Fprintf(out, "%s%s", jm.Stream, endl)
@@ -210,11 +248,25 @@ func (jm *JSONMessage) Display(out io.Writer, isTerminal bool) error {
 func DisplayJSONMessagesStream(in io.Reader, out io.Writer, terminalFd uintptr, isTerminal bool, auxCallback func(JSONMessage)) error {
 	var (
 		dec = json.NewDecoder(in)
-		ids = make(map[string]uint)
+		ids = make(map[string]int)
 	)
 
+	var termInfo termInfo
+
+	if isTerminal {
+		term := os.Getenv("TERM")
+		if term == "" {
+			term = "vt102"
+		}
+
+		var err error
+		if termInfo, err = gotty.OpenTermInfo(term); err != nil {
+			termInfo = &noTermInfo{}
+		}
+	}
+
 	for {
-		var diff uint
+		diff := 0
 		var jm JSONMessage
 		if err := dec.Decode(&jm); err != nil {
 			if err == io.EOF {
@@ -242,15 +294,15 @@ func DisplayJSONMessagesStream(in io.Reader, out io.Writer, terminalFd uintptr, 
 				// when we output something that's not
 				// accounted for in the map, such as a line
 				// with no ID.
-				line = uint(len(ids))
+				line = len(ids)
 				ids[jm.ID] = line
-				if isTerminal {
+				if termInfo != nil {
 					fmt.Fprintf(out, "\n")
 				}
 			}
-			diff = uint(len(ids)) - line
-			if isTerminal {
-				cursorUp(out, diff)
+			diff = len(ids) - line
+			if termInfo != nil {
+				cursorUp(out, termInfo, diff)
 			}
 		} else {
 			// When outputting something that isn't progress
@@ -258,11 +310,11 @@ func DisplayJSONMessagesStream(in io.Reader, out io.Writer, terminalFd uintptr, 
 			// don't want progress entries from some previous
 			// operation to be updated (for example, pull -a
 			// with multiple tags).
-			ids = make(map[string]uint)
+			ids = make(map[string]int)
 		}
-		err := jm.Display(out, isTerminal)
-		if jm.ID != "" && isTerminal {
-			cursorDown(out, diff)
+		err := jm.Display(out, termInfo)
+		if jm.ID != "" && termInfo != nil {
+			cursorDown(out, termInfo, diff)
 		}
 		if err != nil {
 			return err
