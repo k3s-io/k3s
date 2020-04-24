@@ -1,32 +1,43 @@
-k3s - 5 less than k8s
+k3s - Lightweight Kubernetes
 ===============================================
 
-Lightweight Kubernetes.  Easy to install, half the memory, all in a binary less than 40mb.
+Lightweight Kubernetes.  Easy to install, half the memory, all in a binary less than 100 MB.
 
 Great for:
 
 * Edge
 * IoT
 * CI
+* Development
 * ARM
+* Embeddeding k8s
 * Situations where a PhD in k8s clusterology is infeasible
 
 What is this?
 ---
 
-k3s is intended to be a fully compliant Kubernetes distribution with the following changes:
+k3s is a fully compliant Kubernetes distribution with the following changes:
 
-1. Removed most in-tree plugins (cloud providers and storage plugins) which can be replaced
-   with out of tree addons.
-2. Add sqlite3 as the default storage mechanism. etcd3 is still available, but not the default.
-3. Wrapped in simple launcher that handles a lot of the complexity of TLS and options.
-4. Minimal to no OS dependencies (just a sane kernel and cgroup mounts needed). k3s packages required
+1. Packaged as a single binary
+1. Lightweight storage backend based on sqlite3 as the default storage mechanism. etcd3, MySQL, Postgres also still available.
+1. Wrapped in simple launcher that handles a lot of the complexity of TLS and options.
+1. Secure by default with reasonable defaults for lightweight environments.
+1. Minimal to no OS dependencies (just a sane kernel and cgroup mounts needed). k3s packages required
    dependencies
     * containerd
     * Flannel
     * CoreDNS
     * CNI
     * Host utilities (iptables, socat, etc)
+    * Ingress controller (traefik)
+    * Embedded service loadbalancer
+    * Embedded network policy controller
+
+What's with the name?
+--------------------
+We wanted an installation of Kubernetes that was half the size in terms of memory footprint. Kubernetes is a
+10 letter word stylized as k8s. So something half as big as Kubernetes would be a 5 letter word stylized as
+k3s. There is no long form of k3s and no official pronunciation.
 
 Documentation
 -------------
