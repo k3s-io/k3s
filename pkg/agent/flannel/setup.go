@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -147,7 +146,7 @@ func setupStrongSwan(nodeConfig *config.Node) error {
 	if dataDir == "" {
 		dataDir = "/"
 	}
-	dataDir = path.Join(dataDir, "etc", "strongswan")
+	dataDir = filepath.Join(dataDir, "etc", "strongswan")
 
 	info, err := os.Lstat(nodeConfig.AgentConfig.StrongSwanDir)
 	// something exists but is not a symlink, return
