@@ -13,7 +13,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -174,7 +173,7 @@ func apiServer(ctx context.Context, cfg *config.Control, runtime *config.Control
 
 	setupStorageBackend(argsMap, cfg)
 
-	certDir := filepath.Join(cfg.DataDir, "tls/temporary-certs")
+	certDir := filepath.Join(cfg.DataDir, "tls", "temporary-certs")
 	os.MkdirAll(certDir, 0700)
 
 	argsMap["cert-dir"] = certDir
@@ -272,53 +271,53 @@ func prepare(ctx context.Context, config *config.Control, runtime *config.Contro
 		return err
 	}
 
-	os.MkdirAll(path.Join(config.DataDir, "tls"), 0700)
-	os.MkdirAll(path.Join(config.DataDir, "cred"), 0700)
+	os.MkdirAll(filepath.Join(config.DataDir, "tls"), 0700)
+	os.MkdirAll(filepath.Join(config.DataDir, "cred"), 0700)
 
-	runtime.ClientCA = path.Join(config.DataDir, "tls", "client-ca.crt")
-	runtime.ClientCAKey = path.Join(config.DataDir, "tls", "client-ca.key")
-	runtime.ServerCA = path.Join(config.DataDir, "tls", "server-ca.crt")
-	runtime.ServerCAKey = path.Join(config.DataDir, "tls", "server-ca.key")
-	runtime.RequestHeaderCA = path.Join(config.DataDir, "tls", "request-header-ca.crt")
-	runtime.RequestHeaderCAKey = path.Join(config.DataDir, "tls", "request-header-ca.key")
-	runtime.IPSECKey = path.Join(config.DataDir, "cred", "ipsec.psk")
+	runtime.ClientCA = filepath.Join(config.DataDir, "tls", "client-ca.crt")
+	runtime.ClientCAKey = filepath.Join(config.DataDir, "tls", "client-ca.key")
+	runtime.ServerCA = filepath.Join(config.DataDir, "tls", "server-ca.crt")
+	runtime.ServerCAKey = filepath.Join(config.DataDir, "tls", "server-ca.key")
+	runtime.RequestHeaderCA = filepath.Join(config.DataDir, "tls", "request-header-ca.crt")
+	runtime.RequestHeaderCAKey = filepath.Join(config.DataDir, "tls", "request-header-ca.key")
+	runtime.IPSECKey = filepath.Join(config.DataDir, "cred", "ipsec.psk")
 
-	runtime.ServiceKey = path.Join(config.DataDir, "tls", "service.key")
-	runtime.PasswdFile = path.Join(config.DataDir, "cred", "passwd")
-	runtime.NodePasswdFile = path.Join(config.DataDir, "cred", "node-passwd")
+	runtime.ServiceKey = filepath.Join(config.DataDir, "tls", "service.key")
+	runtime.PasswdFile = filepath.Join(config.DataDir, "cred", "passwd")
+	runtime.NodePasswdFile = filepath.Join(config.DataDir, "cred", "node-passwd")
 
-	runtime.KubeConfigAdmin = path.Join(config.DataDir, "cred", "admin.kubeconfig")
-	runtime.KubeConfigController = path.Join(config.DataDir, "cred", "controller.kubeconfig")
-	runtime.KubeConfigScheduler = path.Join(config.DataDir, "cred", "scheduler.kubeconfig")
-	runtime.KubeConfigAPIServer = path.Join(config.DataDir, "cred", "api-server.kubeconfig")
-	runtime.KubeConfigCloudController = path.Join(config.DataDir, "cred", "cloud-controller.kubeconfig")
+	runtime.KubeConfigAdmin = filepath.Join(config.DataDir, "cred", "admin.kubeconfig")
+	runtime.KubeConfigController = filepath.Join(config.DataDir, "cred", "controller.kubeconfig")
+	runtime.KubeConfigScheduler = filepath.Join(config.DataDir, "cred", "scheduler.kubeconfig")
+	runtime.KubeConfigAPIServer = filepath.Join(config.DataDir, "cred", "api-server.kubeconfig")
+	runtime.KubeConfigCloudController = filepath.Join(config.DataDir, "cred", "cloud-controller.kubeconfig")
 
-	runtime.ClientAdminCert = path.Join(config.DataDir, "tls", "client-admin.crt")
-	runtime.ClientAdminKey = path.Join(config.DataDir, "tls", "client-admin.key")
-	runtime.ClientControllerCert = path.Join(config.DataDir, "tls", "client-controller.crt")
-	runtime.ClientControllerKey = path.Join(config.DataDir, "tls", "client-controller.key")
-	runtime.ClientCloudControllerCert = path.Join(config.DataDir, "tls", "client-cloud-controller.crt")
-	runtime.ClientCloudControllerKey = path.Join(config.DataDir, "tls", "client-cloud-controller.key")
-	runtime.ClientSchedulerCert = path.Join(config.DataDir, "tls", "client-scheduler.crt")
-	runtime.ClientSchedulerKey = path.Join(config.DataDir, "tls", "client-scheduler.key")
-	runtime.ClientKubeAPICert = path.Join(config.DataDir, "tls", "client-kube-apiserver.crt")
-	runtime.ClientKubeAPIKey = path.Join(config.DataDir, "tls", "client-kube-apiserver.key")
-	runtime.ClientKubeProxyCert = path.Join(config.DataDir, "tls", "client-kube-proxy.crt")
-	runtime.ClientKubeProxyKey = path.Join(config.DataDir, "tls", "client-kube-proxy.key")
-	runtime.ClientK3sControllerCert = path.Join(config.DataDir, "tls", "client-k3s-controller.crt")
-	runtime.ClientK3sControllerKey = path.Join(config.DataDir, "tls", "client-k3s-controller.key")
+	runtime.ClientAdminCert = filepath.Join(config.DataDir, "tls", "client-admin.crt")
+	runtime.ClientAdminKey = filepath.Join(config.DataDir, "tls", "client-admin.key")
+	runtime.ClientControllerCert = filepath.Join(config.DataDir, "tls", "client-controller.crt")
+	runtime.ClientControllerKey = filepath.Join(config.DataDir, "tls", "client-controller.key")
+	runtime.ClientCloudControllerCert = filepath.Join(config.DataDir, "tls", "client-cloud-controller.crt")
+	runtime.ClientCloudControllerKey = filepath.Join(config.DataDir, "tls", "client-cloud-controller.key")
+	runtime.ClientSchedulerCert = filepath.Join(config.DataDir, "tls", "client-scheduler.crt")
+	runtime.ClientSchedulerKey = filepath.Join(config.DataDir, "tls", "client-scheduler.key")
+	runtime.ClientKubeAPICert = filepath.Join(config.DataDir, "tls", "client-kube-apiserver.crt")
+	runtime.ClientKubeAPIKey = filepath.Join(config.DataDir, "tls", "client-kube-apiserver.key")
+	runtime.ClientKubeProxyCert = filepath.Join(config.DataDir, "tls", "client-kube-proxy.crt")
+	runtime.ClientKubeProxyKey = filepath.Join(config.DataDir, "tls", "client-kube-proxy.key")
+	runtime.ClientK3sControllerCert = filepath.Join(config.DataDir, "tls", "client-k3s-controller.crt")
+	runtime.ClientK3sControllerKey = filepath.Join(config.DataDir, "tls", "client-k3s-controller.key")
 
-	runtime.ServingKubeAPICert = path.Join(config.DataDir, "tls", "serving-kube-apiserver.crt")
-	runtime.ServingKubeAPIKey = path.Join(config.DataDir, "tls", "serving-kube-apiserver.key")
+	runtime.ServingKubeAPICert = filepath.Join(config.DataDir, "tls", "serving-kube-apiserver.crt")
+	runtime.ServingKubeAPIKey = filepath.Join(config.DataDir, "tls", "serving-kube-apiserver.key")
 
-	runtime.ClientKubeletKey = path.Join(config.DataDir, "tls", "client-kubelet.key")
-	runtime.ServingKubeletKey = path.Join(config.DataDir, "tls", "serving-kubelet.key")
+	runtime.ClientKubeletKey = filepath.Join(config.DataDir, "tls", "client-kubelet.key")
+	runtime.ServingKubeletKey = filepath.Join(config.DataDir, "tls", "serving-kubelet.key")
 
-	runtime.ClientAuthProxyCert = path.Join(config.DataDir, "tls", "client-auth-proxy.crt")
-	runtime.ClientAuthProxyKey = path.Join(config.DataDir, "tls", "client-auth-proxy.key")
+	runtime.ClientAuthProxyCert = filepath.Join(config.DataDir, "tls", "client-auth-proxy.crt")
+	runtime.ClientAuthProxyKey = filepath.Join(config.DataDir, "tls", "client-auth-proxy.key")
 
 	if config.EncryptSecrets {
-		runtime.EncryptionConfig = path.Join(config.DataDir, "cred", "encryption-config.json")
+		runtime.EncryptionConfig = filepath.Join(config.DataDir, "cred", "encryption-config.json")
 	}
 
 	cluster := cluster.New(config)
@@ -563,8 +562,8 @@ func genClientCerts(config *config.Control, runtime *config.ControlRuntime) erro
 }
 
 func createServerSigningCertKey(config *config.Control, runtime *config.ControlRuntime) (bool, error) {
-	TokenCA := path.Join(config.DataDir, "tls", "token-ca.crt")
-	TokenCAKey := path.Join(config.DataDir, "tls", "token-ca.key")
+	TokenCA := filepath.Join(config.DataDir, "tls", "token-ca.crt")
+	TokenCAKey := filepath.Join(config.DataDir, "tls", "token-ca.key")
 
 	if exists(TokenCA, TokenCAKey) && !exists(runtime.ServerCA) && !exists(runtime.ServerCAKey) {
 		logrus.Infof("Upgrading token-ca files to server-ca")
