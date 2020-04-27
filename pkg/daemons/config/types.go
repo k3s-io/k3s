@@ -49,6 +49,7 @@ type Containerd struct {
 }
 
 type Agent struct {
+	PodManifests            string
 	NodeName                string
 	NodeConfigPath          string
 	ServingKubeletCert      string

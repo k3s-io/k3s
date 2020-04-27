@@ -29,6 +29,10 @@ import (
 	"k8s.io/apimachinery/pkg/util/net"
 )
 
+const (
+	DefaultPodManifestPath = "pod-manifests"
+)
+
 func Get(ctx context.Context, agent cmds.Agent) *config.Node {
 	for {
 		agentConfig, err := get(&agent)
@@ -475,6 +479,7 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 	nodeConfig.AgentConfig.DisableCCM = controlConfig.DisableCCM
 	nodeConfig.AgentConfig.DisableNPC = controlConfig.DisableNPC
 	nodeConfig.AgentConfig.Rootless = envInfo.Rootless
+	nodeConfig.AgentConfig.PodManifests = filepath.Join(envInfo.DataDir, DefaultPodManifestPath)
 	nodeConfig.DisableSELinux = envInfo.DisableSELinux
 
 	return nodeConfig, nil

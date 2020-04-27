@@ -70,6 +70,12 @@ func startKubelet(cfg *config.Agent) {
 		"anonymous-auth":               "false",
 		"authorization-mode":           modes.ModeWebhook,
 	}
+	if cfg.PodManifests != "" && argsMap["pod-manifest-path"] == "" {
+		argsMap["pod-manifest-path"] = cfg.PodManifests
+	}
+	if err := os.MkdirAll(argsMap["pod-manifest-path"], 0755); err != nil {
+		logrus.Errorf("Failed to mkdir %s: %v", argsMap["pod-manifest-path"], err)
+	}
 	if cfg.RootDir != "" {
 		argsMap["root-dir"] = cfg.RootDir
 		argsMap["cert-dir"] = filepath.Join(cfg.RootDir, "pki")
