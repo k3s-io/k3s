@@ -19,33 +19,31 @@ import (
 	"text/template"
 	"time"
 
-	// registering k3s cloud provider
-	_ "github.com/rancher/k3s/pkg/cloudprovider"
-
 	"github.com/pkg/errors"
 	certutil "github.com/rancher/dynamiclistener/cert"
 	"github.com/rancher/k3s/pkg/clientaccess"
 	"github.com/rancher/k3s/pkg/cluster"
 	"github.com/rancher/k3s/pkg/daemons/config"
+	"github.com/rancher/k3s/pkg/daemons/executor"
 	"github.com/rancher/k3s/pkg/passwd"
 	"github.com/rancher/k3s/pkg/token"
 	"github.com/rancher/wrangler-api/pkg/generated/controllers/rbac"
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	apiserverconfigv1 "k8s.io/apiserver/pkg/apis/config/v1"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
-	_ "k8s.io/component-base/metrics/prometheus/restclient" // for client metric registration
 	ccmapp "k8s.io/kubernetes/cmd/cloud-controller-manager/app"
 	app2 "k8s.io/kubernetes/cmd/controller-manager/app"
-	"k8s.io/kubernetes/cmd/kube-apiserver/app"
-	cmapp "k8s.io/kubernetes/cmd/kube-controller-manager/app"
-	sapp "k8s.io/kubernetes/cmd/kube-scheduler/app"
 	"k8s.io/kubernetes/pkg/kubeapiserver/authorizer/modes"
 	"k8s.io/kubernetes/pkg/master"
 	"k8s.io/kubernetes/pkg/proxy/util"
+
+	// registering k3s cloud provider
+	_ "github.com/rancher/k3s/pkg/cloudprovider"
+	// for client metric registration
+	_ "k8s.io/component-base/metrics/prometheus/restclient"
 )
 
 var (
@@ -106,10 +104,14 @@ func Server(ctx context.Context, cfg *config.Control) error {
 	runtime.Authenticator = auth
 
 	if !cfg.NoScheduler {
-		scheduler(cfg, runtime)
+		if err := scheduler(cfg, runtime); err != nil {
+			return err
+		}
 	}
 
-	controllerManager(cfg, runtime)
+	if err := controllerManager(cfg, runtime); err != nil {
+		return err
+	}
 
 	if !cfg.DisableCCM {
 		cloudControllerManager(ctx, cfg, runtime)
@@ -118,7 +120,7 @@ func Server(ctx context.Context, cfg *config.Control) error {
 	return nil
 }
 
-func controllerManager(cfg *config.Control, runtime *config.ControlRuntime) {
+func controllerManager(cfg *config.Control, runtime *config.ControlRuntime) error {
 	argsMap := map[string]string{
 		"kubeconfig":                       runtime.KubeConfigController,
 		"service-account-private-key-file": runtime.ServiceKey,
@@ -137,17 +139,12 @@ func controllerManager(cfg *config.Control, runtime *config.ControlRuntime) {
 	}
 
 	args := config.GetArgsList(argsMap, cfg.ExtraControllerArgs)
+	logrus.Infof("Running kube-controller-manager %s", config.ArgString(args))
 
-	command := cmapp.NewControllerManagerCommand()
-	command.SetArgs(args)
-
-	go func() {
-		logrus.Infof("Running kube-controller-manager %s", config.ArgString(args))
-		logrus.Fatalf("controller-manager exited: %v", command.Execute())
-	}()
+	return executor.ControllerManager(args)
 }
 
-func scheduler(cfg *config.Control, runtime *config.ControlRuntime) {
+func scheduler(cfg *config.Control, runtime *config.ControlRuntime) error {
 	argsMap := map[string]string{
 		"kubeconfig":   runtime.KubeConfigScheduler,
 		"port":         "10251",
@@ -159,13 +156,8 @@ func scheduler(cfg *config.Control, runtime *config.ControlRuntime) {
 	}
 	args := config.GetArgsList(argsMap, cfg.ExtraSchedulerAPIArgs)
 
-	command := sapp.NewSchedulerCommand()
-	command.SetArgs(args)
-
-	go func() {
-		logrus.Infof("Running kube-scheduler %s", config.ArgString(args))
-		logrus.Fatalf("scheduler exited: %v", command.Execute())
-	}()
+	logrus.Infof("Running kube-scheduler %s", config.ArgString(args))
+	return executor.Scheduler(args)
 }
 
 func apiServer(ctx context.Context, cfg *config.Control, runtime *config.ControlRuntime) (authenticator.Request, http.Handler, error) {
@@ -212,17 +204,8 @@ func apiServer(ctx context.Context, cfg *config.Control, runtime *config.Control
 	}
 	args := config.GetArgsList(argsMap, cfg.ExtraAPIArgs)
 
-	command := app.NewAPIServerCommand(ctx.Done())
-	command.SetArgs(args)
-
-	go func() {
-		logrus.Infof("Running kube-apiserver %s", config.ArgString(args))
-		logrus.Fatalf("apiserver exited: %v", command.Execute())
-	}()
-
-	startupConfig := <-app.StartupConfig
-
-	return startupConfig.Authenticator, startupConfig.Handler, nil
+	logrus.Infof("Running kube-apiserver %s", config.ArgString(args))
+	return executor.APIServer(ctx, args)
 }
 
 func defaults(config *config.Control) {
