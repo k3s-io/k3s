@@ -154,12 +154,14 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	serverConfig.ControlConfig.Skips = map[string]bool{}
 	for _, noDeploy := range app.StringSlice("no-deploy") {
 		for _, v := range strings.Split(noDeploy, ",") {
+			v = strings.TrimSpace(v)
 			serverConfig.ControlConfig.Skips[v] = true
 		}
 	}
 	serverConfig.ControlConfig.Disables = map[string]bool{}
 	for _, disable := range app.StringSlice("disable") {
 		for _, v := range strings.Split(disable, ",") {
+			v = strings.TrimSpace(v)
 			serverConfig.ControlConfig.Skips[v] = true
 			serverConfig.ControlConfig.Disables[v] = true
 		}

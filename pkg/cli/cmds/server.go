@@ -6,6 +6,10 @@ import (
 	"github.com/urfave/cli"
 )
 
+const (
+	DisableItems = "coredns, servicelb, traefik, local-storage, metrics-server"
+)
+
 type Server struct {
 	ClusterCIDR              string
 	AgentToken               string
@@ -194,7 +198,7 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 			},
 			cli.StringSliceFlag{
 				Name:  "disable",
-				Usage: "(components) Do not deploy packaged components and delete any deployed components (valid items: coredns, servicelb, traefik, local-storage, metrics-server)",
+				Usage: "(components) Do not deploy packaged components and delete any deployed components (valid items: " + DisableItems + ")",
 			},
 			cli.BoolFlag{
 				Name:        "disable-scheduler",
@@ -275,7 +279,7 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 			FlannelFlag,
 			cli.StringSliceFlag{
 				Name:  "no-deploy",
-				Usage: "(deprecated) Do not deploy packaged components (valid items: coredns, servicelb, traefik, local-storage, metrics-server)",
+				Usage: "(deprecated) Do not deploy packaged components (valid items: " + DisableItems + ")",
 			},
 			cli.StringFlag{
 				Name:        "cluster-secret",
