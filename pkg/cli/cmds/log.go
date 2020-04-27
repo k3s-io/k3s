@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/docker/docker/pkg/reexec"
@@ -43,19 +44,26 @@ var (
 		Usage:       "(logging) Log to standard error as well as file (if set)",
 		Destination: &LogConfig.AlsoLogToStderr,
 	}
+
+	logSetupOnce sync.Once
 )
 
 func InitLogging() error {
-	if LogConfig.LogFile != "" && os.Getenv("_K3S_LOG_REEXEC_") == "" {
-		return runWithLogging()
-	}
+	var rErr error
+	logSetupOnce.Do(func() {
+		if LogConfig.LogFile != "" && os.Getenv("_K3S_LOG_REEXEC_") == "" {
+			rErr = runWithLogging()
+			return
+		}
 
-	if err := checkUnixTimestamp(); err != nil {
-		return err
-	}
+		if err := checkUnixTimestamp(); err != nil {
+			rErr = err
+			return
+		}
 
-	setupLogging()
-	return nil
+		setupLogging()
+	})
+	return rErr
 }
 
 func checkUnixTimestamp() error {
