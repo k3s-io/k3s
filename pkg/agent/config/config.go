@@ -305,11 +305,6 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 		return nil, err
 	}
 
-	hostLocal, err := exec.LookPath("host-local")
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to find host-local")
-	}
-
 	var flannelIface *sysnet.Interface
 	if !envInfo.NoFlannel && len(envInfo.FlannelIface) > 0 {
 		flannelIface, err = sysnet.InterfaceByName(envInfo.FlannelIface)
@@ -443,6 +438,11 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 	}
 
 	if !nodeConfig.NoFlannel {
+		hostLocal, err := exec.LookPath("host-local")
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to find host-local")
+		}
+
 		if envInfo.FlannelConf == "" {
 			nodeConfig.FlannelConf = filepath.Join(envInfo.DataDir, "etc/flannel/net-conf.json")
 		} else {
