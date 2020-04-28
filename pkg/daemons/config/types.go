@@ -141,7 +141,8 @@ type ControlRuntimeBootstrap struct {
 type ControlRuntime struct {
 	ControlRuntimeBootstrap
 
-	HTTPBootstrap bool
+	HTTPBootstrap  bool
+	APIServerReady <-chan struct{}
 
 	ClientKubeAPICert string
 	ClientKubeAPIKey  string

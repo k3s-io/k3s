@@ -185,11 +185,14 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 		return err
 	}
 
-	logrus.Info("k3s is up and running")
-	if notifySocket != "" {
-		os.Setenv("NOTIFY_SOCKET", notifySocket)
-		systemd.SdNotify(true, "READY=1\n")
-	}
+	go func() {
+		<-serverConfig.ControlConfig.Runtime.APIServerReady
+		logrus.Info("k3s is up and running")
+		if notifySocket != "" {
+			os.Setenv("NOTIFY_SOCKET", notifySocket)
+			systemd.SdNotify(true, "READY=1\n")
+		}
+	}()
 
 	if cfg.DisableAgent {
 		<-ctx.Done()
