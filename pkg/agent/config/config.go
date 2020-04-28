@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/rancher/k3s/pkg/agent/proxy"
 	"github.com/rancher/k3s/pkg/cli/cmds"
 	"github.com/rancher/k3s/pkg/clientaccess"
 	"github.com/rancher/k3s/pkg/daemons/config"
@@ -33,9 +34,9 @@ const (
 	DefaultPodManifestPath = "pod-manifests"
 )
 
-func Get(ctx context.Context, agent cmds.Agent) *config.Node {
+func Get(ctx context.Context, agent cmds.Agent, proxy proxy.Proxy) *config.Node {
 	for {
-		agentConfig, err := get(&agent)
+		agentConfig, err := get(&agent, proxy)
 		if err != nil {
 			logrus.Error(err)
 			select {
@@ -289,17 +290,12 @@ func locateOrGenerateResolvConf(envInfo *cmds.Agent) string {
 	return tmpConf
 }
 
-func get(envInfo *cmds.Agent) (*config.Node, error) {
+func get(envInfo *cmds.Agent, proxy proxy.Proxy) (*config.Node, error) {
 	if envInfo.Debug {
 		logrus.SetLevel(logrus.DebugLevel)
 	}
 
-	serverURLParsed, err := url.Parse(envInfo.ServerURL)
-	if err != nil {
-		return nil, err
-	}
-
-	info, err := clientaccess.ParseAndValidateToken(envInfo.ServerURL, envInfo.Token)
+	info, err := clientaccess.ParseAndValidateToken(proxy.SupervisorURL(), envInfo.Token)
 	if err != nil {
 		return nil, err
 	}
@@ -307,6 +303,12 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 	controlConfig, err := getConfig(info)
 	if err != nil {
 		return nil, err
+	}
+
+	if controlConfig.SupervisorPort != controlConfig.HTTPSPort {
+		if err := proxy.StartAPIServerProxy(controlConfig.HTTPSPort); err != nil {
+			return nil, errors.Wrapf(err, "failed to setup access to API Server port %d on at %s", controlConfig.HTTPSPort, proxy.SupervisorURL())
+		}
 	}
 
 	var flannelIface *sysnet.Interface
@@ -368,7 +370,7 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 	}
 
 	kubeconfigKubelet := filepath.Join(envInfo.DataDir, "kubelet.kubeconfig")
-	if err := control.KubeConfig(kubeconfigKubelet, info.URL, serverCAFile, clientKubeletCert, clientKubeletKey); err != nil {
+	if err := control.KubeConfig(kubeconfigKubelet, proxy.APIServerURL(), serverCAFile, clientKubeletCert, clientKubeletKey); err != nil {
 		return nil, err
 	}
 
@@ -379,7 +381,7 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 	}
 
 	kubeconfigKubeproxy := filepath.Join(envInfo.DataDir, "kubeproxy.kubeconfig")
-	if err := control.KubeConfig(kubeconfigKubeproxy, info.URL, serverCAFile, clientKubeProxyCert, clientKubeProxyKey); err != nil {
+	if err := control.KubeConfig(kubeconfigKubeproxy, proxy.APIServerURL(), serverCAFile, clientKubeProxyCert, clientKubeProxyKey); err != nil {
 		return nil, err
 	}
 
@@ -390,7 +392,7 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 	}
 
 	kubeconfigK3sController := filepath.Join(envInfo.DataDir, "k3scontroller.kubeconfig")
-	if err := control.KubeConfig(kubeconfigK3sController, info.URL, serverCAFile, clientK3sControllerCert, clientK3sControllerKey); err != nil {
+	if err := control.KubeConfig(kubeconfigK3sController, proxy.APIServerURL(), serverCAFile, clientK3sControllerCert, clientK3sControllerKey); err != nil {
 		return nil, err
 	}
 
@@ -432,7 +434,6 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 	nodeConfig.Containerd.State = "/run/k3s/containerd"
 	nodeConfig.Containerd.Address = filepath.Join(nodeConfig.Containerd.State, "containerd.sock")
 	nodeConfig.Containerd.Template = filepath.Join(envInfo.DataDir, "etc/containerd/config.toml.tmpl")
-	nodeConfig.ServerAddress = serverURLParsed.Host
 	nodeConfig.Certificate = servingCert
 
 	if nodeConfig.FlannelBackend == config.FlannelBackendNone {

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/rancher/k3s/pkg/agent/proxy"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/remotedialer"
 	"github.com/sirupsen/logrus"
@@ -50,7 +51,7 @@ func getAddresses(endpoint *v1.Endpoints) []string {
 	return serverAddresses
 }
 
-func Setup(ctx context.Context, config *config.Node, onChange func([]string)) error {
+func Setup(ctx context.Context, config *config.Node, proxy proxy.Proxy) error {
 	restConfig, err := clientcmd.BuildConfigFromFlags("", config.AgentConfig.KubeConfigK3sController)
 	if err != nil {
 		return err
@@ -71,20 +72,15 @@ func Setup(ctx context.Context, config *config.Node, onChange func([]string)) er
 		return err
 	}
 
-	addresses := []string{config.ServerAddress}
-
 	endpoint, _ := client.CoreV1().Endpoints("default").Get(ctx, "kubernetes", metav1.GetOptions{})
 	if endpoint != nil {
-		addresses = getAddresses(endpoint)
-		if onChange != nil {
-			onChange(addresses)
-		}
+		proxy.Update(getAddresses(endpoint))
 	}
 
 	disconnect := map[string]context.CancelFunc{}
 
 	wg := &sync.WaitGroup{}
-	for _, address := range addresses {
+	for _, address := range proxy.SupervisorAddresses() {
 		if _, ok := disconnect[address]; !ok {
 			disconnect[address] = connect(ctx, wg, address, tlsConfig)
 		}
@@ -120,18 +116,14 @@ func Setup(ctx context.Context, config *config.Node, onChange func([]string)) er
 					}
 
 					newAddresses := getAddresses(endpoint)
-					if reflect.DeepEqual(newAddresses, addresses) {
+					if reflect.DeepEqual(newAddresses, proxy.SupervisorAddresses()) {
 						continue watching
 					}
-					addresses = newAddresses
-					logrus.Infof("Tunnel endpoint watch event: %v", addresses)
-					if onChange != nil {
-						onChange(addresses)
-					}
+					proxy.Update(newAddresses)
 
 					validEndpoint := map[string]bool{}
 
-					for _, address := range addresses {
+					for _, address := range proxy.SupervisorAddresses() {
 						validEndpoint[address] = true
 						if _, ok := disconnect[address]; !ok {
 							disconnect[address] = connect(ctx, nil, address, tlsConfig)

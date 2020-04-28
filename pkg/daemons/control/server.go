@@ -186,8 +186,12 @@ func apiServer(ctx context.Context, cfg *config.Control, runtime *config.Control
 		argsMap["advertise-address"] = cfg.AdvertiseIP
 	}
 	argsMap["insecure-port"] = "0"
-	argsMap["secure-port"] = strconv.Itoa(cfg.ListenPort)
-	argsMap["bind-address"] = localhostIP.String()
+	argsMap["secure-port"] = strconv.Itoa(cfg.APIServerPort)
+	if cfg.APIServerBindAddress == "" {
+		argsMap["bind-address"] = localhostIP.String()
+	} else {
+		argsMap["bind-address"] = cfg.APIServerBindAddress
+	}
 	argsMap["tls-cert-file"] = runtime.ServingKubeAPICert
 	argsMap["tls-private-key-file"] = runtime.ServingKubeAPIKey
 	argsMap["service-account-key-file"] = runtime.ServiceKey
@@ -244,11 +248,11 @@ func defaults(config *config.Control) {
 		config.AdvertisePort = config.HTTPSPort
 	}
 
-	if config.ListenPort == 0 {
+	if config.APIServerPort == 0 {
 		if config.HTTPSPort != 0 {
-			config.ListenPort = config.HTTPSPort + 1
+			config.APIServerPort = config.HTTPSPort + 1
 		} else {
-			config.ListenPort = 6444
+			config.APIServerPort = 6444
 		}
 	}
 
@@ -488,7 +492,7 @@ func genClientCerts(config *config.Control, runtime *config.ControlRuntime) erro
 	factory := getSigningCertFactory(regen, nil, []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}, runtime.ClientCA, runtime.ClientCAKey)
 
 	var certGen bool
-	apiEndpoint := fmt.Sprintf("https://127.0.0.1:%d", config.ListenPort)
+	apiEndpoint := fmt.Sprintf("https://127.0.0.1:%d", config.APIServerPort)
 
 	certGen, err = factory("system:admin", []string{"system:masters"}, runtime.ClientAdminCert, runtime.ClientAdminKey)
 	if err != nil {

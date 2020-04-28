@@ -34,7 +34,6 @@ type Node struct {
 	Images                   string
 	AgentConfig              Agent
 	CACerts                  []byte
-	ServerAddress            string
 	Certificate              *tls.Certificate
 }
 
@@ -85,12 +84,17 @@ type Agent struct {
 }
 
 type Control struct {
-	AdvertisePort            int
-	AdvertiseIP              string
-	ListenPort               int
-	HTTPSPort                int
-	AgentToken               string
-	Token                    string
+	AdvertisePort int
+	AdvertiseIP   string
+	// The port which kubectl clients can access k8s
+	HTTPSPort int
+	// The port which custom k3s API runs on
+	SupervisorPort int
+	// The port which kube-apiserver runs on
+	APIServerPort            int
+	APIServerBindAddress     string
+	AgentToken               string `json:"-"`
+	Token                    string `json:"-"`
 	ClusterIPRange           *net.IPNet
 	ServiceIPRange           *net.IPNet
 	ClusterDNS               net.IP

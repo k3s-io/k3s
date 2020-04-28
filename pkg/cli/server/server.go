@@ -83,7 +83,10 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	serverConfig.Rootless = cfg.Rootless
 	serverConfig.ControlConfig.SANs = knownIPs(cfg.TLSSan)
 	serverConfig.ControlConfig.BindAddress = cfg.BindAddress
+	serverConfig.ControlConfig.SupervisorPort = cfg.SupervisorPort
 	serverConfig.ControlConfig.HTTPSPort = cfg.HTTPSPort
+	serverConfig.ControlConfig.APIServerPort = cfg.APIServerPort
+	serverConfig.ControlConfig.APIServerBindAddress = cfg.APIServerBindAddress
 	serverConfig.ControlConfig.ExtraAPIArgs = cfg.ExtraAPIArgs
 	serverConfig.ControlConfig.ExtraControllerArgs = cfg.ExtraControllerArgs
 	serverConfig.ControlConfig.ExtraSchedulerAPIArgs = cfg.ExtraSchedulerArgs
@@ -102,6 +105,10 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	serverConfig.ControlConfig.ClusterInit = cfg.ClusterInit
 	serverConfig.ControlConfig.ClusterReset = cfg.ClusterReset
 	serverConfig.ControlConfig.EncryptSecrets = cfg.EncryptSecrets
+
+	if serverConfig.ControlConfig.SupervisorPort == 0 {
+		serverConfig.ControlConfig.SupervisorPort = serverConfig.ControlConfig.HTTPSPort
+	}
 
 	if cmds.AgentConfig.FlannelIface != "" && cmds.AgentConfig.NodeIP == "" {
 		cmds.AgentConfig.NodeIP = netutil.GetIPFromInterface(cmds.AgentConfig.FlannelIface)
@@ -201,7 +208,7 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 		ip = "127.0.0.1"
 	}
 
-	url := fmt.Sprintf("https://%s:%d", ip, serverConfig.ControlConfig.HTTPSPort)
+	url := fmt.Sprintf("https://%s:%d", ip, serverConfig.ControlConfig.SupervisorPort)
 	token, err := server.FormatToken(serverConfig.ControlConfig.Runtime.AgentToken, serverConfig.ControlConfig.Runtime.ServerCA)
 	if err != nil {
 		return err

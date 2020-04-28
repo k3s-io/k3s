@@ -9,16 +9,22 @@ const (
 )
 
 type Server struct {
-	ClusterCIDR              string
-	AgentToken               string
-	AgentTokenFile           string
-	Token                    string
-	TokenFile                string
-	ClusterSecret            string
-	ServiceCIDR              string
-	ClusterDNS               string
-	ClusterDomain            string
-	HTTPSPort                int
+	ClusterCIDR    string
+	AgentToken     string
+	AgentTokenFile string
+	Token          string
+	TokenFile      string
+	ClusterSecret  string
+	ServiceCIDR    string
+	ClusterDNS     string
+	ClusterDomain  string
+	// The port which kubectl clients can access k8s
+	HTTPSPort int
+	// The port which custom k3s API runs on
+	SupervisorPort int
+	// The port which kube-apiserver runs on
+	APIServerPort            int
+	APIServerBindAddress     string
 	DataDir                  string
 	DisableAgent             bool
 	KubeConfigOutput         string

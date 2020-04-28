@@ -223,7 +223,7 @@ func printTokens(advertiseIP string, config *config.Control) error {
 	}
 
 	if len(nodeFile) > 0 {
-		printToken(config.HTTPSPort, advertiseIP, "To join node to cluster:", "agent")
+		printToken(config.SupervisorPort, advertiseIP, "To join node to cluster:", "agent")
 	}
 
 	return nil
