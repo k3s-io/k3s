@@ -230,11 +230,6 @@ func printTokens(advertiseIP string, config *config.Control) error {
 }
 
 func writeKubeConfig(certs string, config *Config) error {
-	clientToken, err := FormatToken(config.ControlConfig.Runtime.ClientToken, certs)
-	if err != nil {
-		return err
-	}
-
 	ip := config.ControlConfig.BindAddress
 	if ip == "" {
 		ip = "127.0.0.1"
@@ -257,7 +252,8 @@ func writeKubeConfig(certs string, config *Config) error {
 		}
 	}
 
-	if err = clientaccess.AgentAccessInfoToKubeConfig(kubeConfig, url, clientToken); err != nil {
+	if err = clientaccess.WriteClientKubeConfig(kubeConfig, url, config.ControlConfig.Runtime.ServerCA, config.ControlConfig.Runtime.ClientAdminCert,
+		config.ControlConfig.Runtime.ClientAdminKey); err != nil {
 		logrus.Errorf("Failed to generate kubeconfig: %v", err)
 	}
 

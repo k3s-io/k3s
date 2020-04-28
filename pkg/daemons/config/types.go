@@ -153,7 +153,6 @@ type ControlRuntime struct {
 	ServingKubeAPICert string
 	ServingKubeAPIKey  string
 	ServingKubeletKey  string
-	ClientToken        string
 	ServerToken        string
 	AgentToken         string
 	Handler            http.Handler
