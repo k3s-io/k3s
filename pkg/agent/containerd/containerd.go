@@ -19,10 +19,7 @@ import (
 	util2 "github.com/rancher/k3s/pkg/agent/util"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/sirupsen/logrus"
-	"google.golang.org/grpc"
 	yaml "gopkg.in/yaml.v2"
-	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
-	"k8s.io/kubernetes/pkg/kubelet/util"
 )
 
 const (
@@ -74,28 +71,15 @@ func Run(ctx context.Context, cfg *config.Node) error {
 	}()
 
 	for {
-		addr, dialer, err := util.GetAddressAndDialer("unix://" + cfg.Containerd.Address)
-		if err != nil {
-			time.Sleep(1 * time.Second)
-			continue
-		}
-
-		conn, err := grpc.Dial(addr, grpc.WithInsecure(), grpc.WithTimeout(3*time.Second), grpc.WithContextDialer(dialer), grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(maxMsgSize)))
-		if err != nil {
-			time.Sleep(1 * time.Second)
-			continue
-		}
-
-		c := runtimeapi.NewRuntimeServiceClient(conn)
-
-		_, err = c.Version(ctx, &runtimeapi.VersionRequest{
-			Version: "0.1.0",
-		})
+		client, err := containerd.New(cfg.Containerd.Address)
 		if err == nil {
-			conn.Close()
-			break
+			_, err = client.Version(ctx)
+			client.Close()
+			if err == nil {
+				break
+			}
 		}
-		conn.Close()
+
 		logrus.Infof("Waiting for containerd startup: %v", err)
 		select {
 		case <-ctx.Done():
