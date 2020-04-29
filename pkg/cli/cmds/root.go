@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	debug bool
+	Debug bool
 )
 
 func init() {
@@ -32,13 +32,13 @@ func NewApp() *cli.App {
 		cli.BoolFlag{
 			Name:        "debug",
 			Usage:       "Turn on debug logs",
-			Destination: &debug,
+			Destination: &Debug,
 			EnvVar:      "K3S_DEBUG",
 		},
 	}
 
 	app.Before = func(ctx *cli.Context) error {
-		if debug {
+		if Debug {
 			logrus.SetLevel(logrus.DebugLevel)
 		}
 		return nil

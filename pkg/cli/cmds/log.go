@@ -95,6 +95,6 @@ func runWithLogging() error {
 func setupLogging() {
 	flag.Set("v", strconv.Itoa(LogConfig.VLevel))
 	flag.Set("vmodule", LogConfig.VModule)
-	flag.Set("alsologtostderr", strconv.FormatBool(debug))
-	flag.Set("logtostderr", strconv.FormatBool(!debug))
+	flag.Set("alsologtostderr", strconv.FormatBool(Debug))
+	flag.Set("logtostderr", strconv.FormatBool(!Debug))
 }
