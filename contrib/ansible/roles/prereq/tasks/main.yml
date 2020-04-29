@@ -18,6 +18,17 @@
     state: present
     reload: yes
 
+- name: Add br_netfilter to /etc/modules-load.d/
+  copy:
+    content: "br_netfilter"
+    dest: /etc/modules-load.d/br_netfilter.conf
+
+- name: Load br_netfilter
+  modprobe:
+    name: br_netfilter
+    state: present
+  when: ansible_distribution == 'CentOS' or ansible_distribution == 'Red Hat Enterprise Linux'
+
 - name: Set bridge-nf-call-iptables (just to be sure)
   sysctl:
     name: net.bridge.bridge-nf-call-iptables
@@ -32,4 +43,14 @@
     value: "1"
     state: present
     reload: yes
+  when: ansible_distribution == 'CentOS' or ansible_distribution == 'Red Hat Enterprise Linux'
+
+- name: Add /usr/local/bin to sudo secure_path
+  lineinfile:
+    line: 'Defaults    secure_path = /sbin:/bin:/usr/sbin:/usr/bin:/usr/local/bin'
+    regexp: "Defaults(\\s)*secure_path(\\s)*="
+    state: present
+    insertafter: EOF
+    path: /etc/sudoers
+    validate: 'visudo -cf %s'
   when: ansible_distribution == 'CentOS' or ansible_distribution == 'Red Hat Enterprise Linux'
