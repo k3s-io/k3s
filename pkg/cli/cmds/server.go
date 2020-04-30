@@ -1,8 +1,6 @@
 package cmds
 
 import (
-	"fmt"
-
 	"github.com/urfave/cli"
 )
 
@@ -115,7 +113,7 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 			},
 			cli.StringFlag{
 				Name:        "flannel-backend",
-				Usage:       fmt.Sprintf("(networking) One of 'none', 'vxlan', 'ipsec', 'host-gw', or 'wireguard'"),
+				Usage:       "(networking) One of 'none', 'vxlan', 'ipsec', 'host-gw', or 'wireguard'",
 				Destination: &ServerConfig.FlannelBackend,
 				Value:       "vxlan",
 			},
