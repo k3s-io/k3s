@@ -20,16 +20,11 @@
 
 - name: Set bridge-nf-call-iptables (just to be sure)
   sysctl:
-    name: net.bridge.bridge-nf-call-iptables
+    name: "{{ items }}"
     value: "1"
     state: present
     reload: yes
   when: ansible_distribution == 'CentOS' or ansible_distribution == 'Red Hat Enterprise Linux'
-
-- name: Set bridge-nf-call-ip6tables (just to be sure)
-  sysctl:
-    name: net.bridge.bridge-nf-call-iptables
-    value: "1"
-    state: present
-    reload: yes
-  when: ansible_distribution == 'CentOS' or ansible_distribution == 'Red Hat Enterprise Linux'
+  loop:
+    - net.bridge.bridge-nf-call-iptables
+    - net.bridge.bridge-nf-call-ip6tables
