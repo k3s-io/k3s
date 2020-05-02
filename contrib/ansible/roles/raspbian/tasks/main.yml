@@ -11,14 +11,14 @@
     regexp: '^(.*rootwait)$'
     line: '\1 cgroup_enable=cpuset cgroup_memory=1 cgroup_enable=memory'
     backrefs: true
-  when: ( cmdline.stat.path is defined )
-          and
-        ( ansible_facts.architecture is search("arm") )
+  when:
+    - cmdline.stat.path is defined
+    - ansible_facts.architecture is search("arm")
   register: boot_cmdline
 
 - name: Rebooting on Raspbian
   command: reboot now
   ignore_errors: true
-  when: ( boot_cmdline | changed )
-          and
-        ( ansible_facts.architecture is search("arm") )
+  when:
+    - boot_cmdline | changed
+    - ansible_facts.architecture is search("arm")

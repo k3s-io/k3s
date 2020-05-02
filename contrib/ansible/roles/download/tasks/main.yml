@@ -12,7 +12,8 @@
     owner: root
     group: root
     mode: 755
-  when: ( ansible_facts.architecture == "x86_64" )
+  when:
+    - ansible_facts.architecture == "x86_64"
 
 - name: Download k3s binary arm64
   get_url:
@@ -21,9 +22,9 @@
     owner: root
     group: root
     mode: 755
-  when: ( ansible_facts.architecture is search("arm") )
-          and
-        ( ansible_facts.userspace_bits == "64" )
+  when:
+    - ansible_facts.architecture is search("arm")
+    - ansible_facts.userspace_bits == "64"
 
 - name: Download k3s binary armhf
   get_url:
@@ -32,6 +33,6 @@
     owner: root
     group: root
     mode: 755
-  when: ( ansible_facts.architecture is search("arm") )
-          and
-        ( ansible_facts.userspace_bits == "32" )
+  when:
+    - ansible_facts.architecture is search("arm")
+    - ansible_facts.userspace_bits == "32"
