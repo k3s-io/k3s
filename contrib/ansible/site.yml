@@ -1,6 +1,6 @@
 ---
 
-- hosts: k3s-cluster
+- hosts: k3s_cluster
   gather_facts: yes
   become: yes
   roles:
