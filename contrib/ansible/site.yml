@@ -4,19 +4,19 @@
   gather_facts: yes
   become: yes
   roles:
-    - { role: prereq }
-    - { role: download }
-    - { role: raspbian }
+    - role: prereq
+    - role: download
+    - role: raspbian
 
 
 - hosts: master
-#  gather_facts: yes
+  # gather_facts: yes
   become: yes
   roles:
-    - { role: k3s/master }
+    - role: k3s/master
 
 - hosts: node
-#  gather_facts: yes
+  # gather_facts: yes
   become: yes
   roles:
-    - { role: k3s/node }
+    - role: k3s/node

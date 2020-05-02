@@ -1,3 +1,4 @@
+---
 k3s_version: v0.8.1
 ansible_user: debian
 systemd_dir: /etc/systemd/system
