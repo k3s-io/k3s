@@ -646,7 +646,9 @@ Type=${SYSTEMD_TYPE}
 EnvironmentFile=${FILE_K3S_ENV}
 KillMode=process
 Delegate=yes
-LimitNOFILE=infinity
+# Having non-zero Limit*s causes performance problems due to accounting overhead
+# in the kernel. We recommend using cgroups to do container-local accounting.
+LimitNOFILE=1048576
 LimitNPROC=infinity
 LimitCORE=infinity
 TasksMax=infinity

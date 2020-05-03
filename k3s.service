@@ -9,7 +9,9 @@ EnvironmentFile=/etc/systemd/system/k3s.service.env
 ExecStart=/usr/local/bin/k3s server
 KillMode=process
 Delegate=yes
-LimitNOFILE=infinity
+# Having non-zero Limit*s causes performance problems due to accounting overhead
+# in the kernel. We recommend using cgroups to do container-local accounting.
+LimitNOFILE=1048576
 LimitNPROC=infinity
 LimitCORE=infinity
 TasksMax=infinity
