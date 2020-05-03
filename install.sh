@@ -8,7 +8,7 @@ set -e
 #
 # Example:
 #   Installing a server without traefik:
-#     curl ... | INSTALL_K3S_EXEC="--no-deploy=traefik" sh -
+#     curl ... | INSTALL_K3S_EXEC="--disable=traefik" sh -
 #   Installing an agent to point at a server:
 #     curl ... | K3S_TOKEN=xxx K3S_URL=https://server-url:6443 sh -
 #
@@ -59,11 +59,11 @@ set -e
 #     of EXEC and script args ($@).
 #
 #     The following commands result in the same behavior:
-#       curl ... | INSTALL_K3S_EXEC="--no-deploy=traefik" sh -s -
-#       curl ... | INSTALL_K3S_EXEC="server --no-deploy=traefik" sh -s -
-#       curl ... | INSTALL_K3S_EXEC="server" sh -s - --no-deploy=traefik
-#       curl ... | sh -s - server --no-deploy=traefik
-#       curl ... | sh -s - --no-deploy=traefik
+#       curl ... | INSTALL_K3S_EXEC="--disable=traefik" sh -s -
+#       curl ... | INSTALL_K3S_EXEC="server --disable=traefik" sh -s -
+#       curl ... | INSTALL_K3S_EXEC="server" sh -s - --disable=traefik
+#       curl ... | sh -s - server --disable=traefik
+#       curl ... | sh -s - --disable=traefik
 #
 #   - INSTALL_K3S_NAME
 #     Name of systemd service to create, will default from the k3s exec command
