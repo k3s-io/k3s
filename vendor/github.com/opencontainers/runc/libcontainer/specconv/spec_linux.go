@@ -43,7 +43,8 @@ var mountPropagationMapping = map[string]int{
 	"":            0,
 }
 
-var allowedDevices = []*configs.Device{
+// AllowedDevices is exposed for devicefilter_test.go
+var AllowedDevices = []*configs.Device{
 	// allow mknod for any device
 	{
 		Type:        'c',
@@ -195,7 +196,7 @@ func CreateLibcontainerConfig(opts *CreateOpts) (*configs.Config, error) {
 	if err := createDevices(spec, config); err != nil {
 		return nil, err
 	}
-	c, err := createCgroupConfig(opts)
+	c, err := CreateCgroupConfig(opts)
 	if err != nil {
 		return nil, err
 	}
@@ -296,7 +297,7 @@ func createLibcontainerMount(cwd string, m specs.Mount) *configs.Mount {
 	}
 }
 
-func createCgroupConfig(opts *CreateOpts) (*configs.Cgroup, error) {
+func CreateCgroupConfig(opts *CreateOpts) (*configs.Cgroup, error) {
 	var (
 		myCgroupPath string
 
@@ -341,7 +342,7 @@ func createCgroupConfig(opts *CreateOpts) (*configs.Cgroup, error) {
 
 	// In rootless containers, any attempt to make cgroup changes is likely to fail.
 	// libcontainer will validate this but ignores the error.
-	c.Resources.AllowedDevices = allowedDevices
+	c.Resources.AllowedDevices = AllowedDevices
 	if spec.Linux != nil {
 		r := spec.Linux.Resources
 		if r == nil {
@@ -495,7 +496,7 @@ func createCgroupConfig(opts *CreateOpts) (*configs.Cgroup, error) {
 		}
 	}
 	// append the default allowed devices to the end of the list
-	c.Resources.Devices = append(c.Resources.Devices, allowedDevices...)
+	c.Resources.Devices = append(c.Resources.Devices, AllowedDevices...)
 	return c, nil
 }
 
