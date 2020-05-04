@@ -4,7 +4,7 @@ cd $(dirname $0)/..
 
 . ./scripts/version.sh
 
-ROOT_VERSION=v0.3.0
+ROOT_VERSION=v0.4.1
 TRAEFIK_VERSION=1.81.0
 CHARTS_DIR=build/static/charts
 
