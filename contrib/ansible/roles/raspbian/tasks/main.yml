@@ -19,6 +19,6 @@
 - name: Rebooting on Raspbian 
   shell: reboot now
   ignore_errors: true
-  when: ( boot_cmdline | changed )
+  when: ( boot_cmdline is changed )
           and
         ( ansible_facts.architecture is search("arm") )
