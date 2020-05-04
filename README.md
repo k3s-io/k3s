@@ -10,7 +10,7 @@ Great for:
 * CI
 * Development
 * ARM
-* Embeddeding k8s
+* Embedding k8s
 * Situations where a PhD in k8s clusterology is infeasible
 
 What is this?
@@ -18,7 +18,7 @@ What is this?
 
 k3s is a fully compliant Kubernetes distribution with the following changes:
 
-1. Packaged as a single binary
+1. Packaged as a single binary.
 1. Lightweight storage backend based on sqlite3 as the default storage mechanism. etcd3, MySQL, Postgres also still available.
 1. Wrapped in simple launcher that handles a lot of the complexity of TLS and options.
 1. Secure by default with reasonable defaults for lightweight environments.
