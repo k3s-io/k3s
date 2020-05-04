@@ -490,10 +490,10 @@ func (c *criService) generateVolumeMounts(containerRootDir string, criMounts []*
 		src := filepath.Join(containerRootDir, "volumes", volumeID)
 		// addOCIBindMounts will create these volumes.
 		mounts = append(mounts, &runtime.Mount{
-			ContainerPath: dst,
-			HostPath:      src,
+			ContainerPath:  dst,
+			HostPath:       src,
+			SelinuxRelabel: true,
 			// Use default mount propagation.
-			// TODO(random-liu): What about selinux relabel?
 		})
 	}
 	return mounts
