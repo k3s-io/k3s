@@ -115,11 +115,16 @@ func runControllers(ctx context.Context, config *Config) error {
 		return err
 	}
 
+	controlConfig.Runtime.Core = sc.Core
+	if config.ControlConfig.Runtime.ClusterControllerStart != nil {
+		if err := config.ControlConfig.Runtime.ClusterControllerStart(ctx); err != nil {
+			return errors.Wrapf(err, "starting cluster controllers")
+		}
+	}
+
 	if err := sc.Start(ctx); err != nil {
 		return err
 	}
-
-	controlConfig.Runtime.Core = sc.Core
 
 	start := func(ctx context.Context) {
 		if err := masterControllers(ctx, sc, config); err != nil {

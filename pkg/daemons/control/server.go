@@ -309,7 +309,7 @@ func prepare(ctx context.Context, config *config.Control, runtime *config.Contro
 
 	cluster := cluster.New(config)
 
-	if err := cluster.Join(ctx); err != nil {
+	if err := cluster.Bootstrap(ctx); err != nil {
 		return err
 	}
 
@@ -337,7 +337,13 @@ func prepare(ctx context.Context, config *config.Control, runtime *config.Contro
 		return err
 	}
 
-	return cluster.Start(ctx)
+	ready, err := cluster.Start(ctx)
+	if err != nil {
+		return err
+	}
+
+	runtime.ETCDReady = ready
+	return nil
 }
 
 func readTokens(runtime *config.ControlRuntime) error {

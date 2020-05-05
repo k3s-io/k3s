@@ -42,7 +42,7 @@ func (c *Cluster) newListener(ctx context.Context) (net.Listener, http.Handler, 
 	})
 }
 
-func (c *Cluster) startClusterAndHTTPS(ctx context.Context) error {
+func (c *Cluster) initClusterAndHTTPS(ctx context.Context) error {
 	l, handler, err := c.newListener(ctx)
 	if err != nil {
 		return err
