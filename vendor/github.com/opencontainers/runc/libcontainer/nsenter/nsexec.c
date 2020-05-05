@@ -50,9 +50,6 @@ enum sync_t {
 #define JUMP_CHILD  0xA0
 #define JUMP_INIT   0xA1
 
-/* JSON buffer. */
-#define JSON_MAX 4096
-
 /* Assume the stack grows down, so arguments should be above it. */
 struct clone_t {
 	/*
@@ -148,11 +145,11 @@ static void write_log_with_info(const char *level, const char *function, int lin
 
 	va_start(args, format);
 	if (vsnprintf(message, sizeof(message), format, args) < 0)
-		return;
-	va_end(args);
+		goto done;
 
-	if (dprintf(logfd, "{\"level\":\"%s\", \"msg\": \"%s:%d %s\"}\n", level, function, line, message) < 0)
-		return;
+	dprintf(logfd, "{\"level\":\"%s\", \"msg\": \"%s:%d %s\"}\n", level, function, line, message);
+done:
+	va_end(args);
 }
 
 #define write_log(level, fmt, ...) \

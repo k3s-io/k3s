@@ -62,11 +62,6 @@ var signals = [...]string{
 }
 
 const (
-	GENERIC_READ    = 0x80000000
-	GENERIC_WRITE   = 0x40000000
-	GENERIC_EXECUTE = 0x20000000
-	GENERIC_ALL     = 0x10000000
-
 	FILE_LIST_DIRECTORY   = 0x00000001
 	FILE_APPEND_DATA      = 0x00000004
 	FILE_WRITE_ATTRIBUTES = 0x00000100
@@ -157,13 +152,6 @@ const (
 	WAIT_ABANDONED = 0x00000080
 	WAIT_OBJECT_0  = 0x00000000
 	WAIT_FAILED    = 0xFFFFFFFF
-
-	// Standard access rights.
-	DELETE       = 0x00010000
-	READ_CONTROL = 0x00020000
-	SYNCHRONIZE  = 0x00100000
-	WRITE_DAC    = 0x00040000
-	WRITE_OWNER  = 0x00080000
 
 	// Access rights for process.
 	PROCESS_CREATE_PROCESS            = 0x0080
@@ -483,12 +471,6 @@ func NsecToTimeval(nsec int64) (tv Timeval) {
 	return
 }
 
-type SecurityAttributes struct {
-	Length             uint32
-	SecurityDescriptor uintptr
-	InheritHandle      uint32
-}
-
 type Overlapped struct {
 	Internal     uintptr
 	InternalHigh uintptr
@@ -699,18 +681,26 @@ const (
 	AF_UNSPEC  = 0
 	AF_UNIX    = 1
 	AF_INET    = 2
-	AF_INET6   = 23
 	AF_NETBIOS = 17
+	AF_INET6   = 23
+	AF_IRDA    = 26
+	AF_BTH     = 32
 
 	SOCK_STREAM    = 1
 	SOCK_DGRAM     = 2
 	SOCK_RAW       = 3
+	SOCK_RDM       = 4
 	SOCK_SEQPACKET = 5
 
-	IPPROTO_IP   = 0
-	IPPROTO_IPV6 = 0x29
-	IPPROTO_TCP  = 6
-	IPPROTO_UDP  = 17
+	IPPROTO_IP      = 0
+	IPPROTO_ICMP    = 1
+	IPPROTO_IGMP    = 2
+	BTHPROTO_RFCOMM = 3
+	IPPROTO_TCP     = 6
+	IPPROTO_UDP     = 17
+	IPPROTO_IPV6    = 41
+	IPPROTO_ICMPV6  = 58
+	IPPROTO_RM      = 113
 
 	SOL_SOCKET                = 0xffff
 	SO_REUSEADDR              = 4
@@ -719,6 +709,7 @@ const (
 	SO_BROADCAST              = 32
 	SO_LINGER                 = 128
 	SO_RCVBUF                 = 0x1002
+	SO_RCVTIMEO               = 0x1006
 	SO_SNDBUF                 = 0x1001
 	SO_UPDATE_ACCEPT_CONTEXT  = 0x700b
 	SO_UPDATE_CONNECT_CONTEXT = 0x7010
@@ -1752,4 +1743,44 @@ const (
 	SHTDN_REASON_VALID_BIT_MASK                 = 0xc0ffffff
 
 	SHUTDOWN_NORETRY = 0x1
+)
+
+// Flags used for GetModuleHandleEx
+const (
+	GET_MODULE_HANDLE_EX_FLAG_PIN                = 1
+	GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT = 2
+	GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS       = 4
+)
+
+// MUI function flag values
+const (
+	MUI_LANGUAGE_ID                    = 0x4
+	MUI_LANGUAGE_NAME                  = 0x8
+	MUI_MERGE_SYSTEM_FALLBACK          = 0x10
+	MUI_MERGE_USER_FALLBACK            = 0x20
+	MUI_UI_FALLBACK                    = MUI_MERGE_SYSTEM_FALLBACK | MUI_MERGE_USER_FALLBACK
+	MUI_THREAD_LANGUAGES               = 0x40
+	MUI_CONSOLE_FILTER                 = 0x100
+	MUI_COMPLEX_SCRIPT_FILTER          = 0x200
+	MUI_RESET_FILTERS                  = 0x001
+	MUI_USER_PREFERRED_UI_LANGUAGES    = 0x10
+	MUI_USE_INSTALLED_LANGUAGES        = 0x20
+	MUI_USE_SEARCH_ALL_LANGUAGES       = 0x40
+	MUI_LANG_NEUTRAL_PE_FILE           = 0x100
+	MUI_NON_LANG_NEUTRAL_FILE          = 0x200
+	MUI_MACHINE_LANGUAGE_SETTINGS      = 0x400
+	MUI_FILETYPE_NOT_LANGUAGE_NEUTRAL  = 0x001
+	MUI_FILETYPE_LANGUAGE_NEUTRAL_MAIN = 0x002
+	MUI_FILETYPE_LANGUAGE_NEUTRAL_MUI  = 0x004
+	MUI_QUERY_TYPE                     = 0x001
+	MUI_QUERY_CHECKSUM                 = 0x002
+	MUI_QUERY_LANGUAGE_NAME            = 0x004
+	MUI_QUERY_RESOURCE_TYPES           = 0x008
+	MUI_FILEINFO_VERSION               = 0x001
+
+	MUI_FULL_LANGUAGE      = 0x01
+	MUI_PARTIAL_LANGUAGE   = 0x02
+	MUI_LIP_LANGUAGE       = 0x04
+	MUI_LANGUAGE_INSTALLED = 0x20
+	MUI_LANGUAGE_LICENSED  = 0x40
 )

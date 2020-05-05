@@ -143,6 +143,12 @@ github.com/chai2010/gettext-go/gettext/plural
 github.com/chai2010/gettext-go/gettext/po
 # github.com/checkpoint-restore/go-criu v0.0.0-20190109184317-bdb7599cd87b
 github.com/checkpoint-restore/go-criu/rpc
+# github.com/cilium/ebpf v0.0.0-20200501092852-53d52285d8b3
+github.com/cilium/ebpf
+github.com/cilium/ebpf/asm
+github.com/cilium/ebpf/internal
+github.com/cilium/ebpf/internal/btf
+github.com/cilium/ebpf/internal/unix
 # github.com/cloudflare/cfssl v0.0.0-20180726162950-56268a613adf
 github.com/cloudflare/cfssl/auth
 github.com/cloudflare/cfssl/certdb
@@ -376,10 +382,8 @@ github.com/coreos/go-systemd/activation
 github.com/coreos/go-systemd/daemon
 github.com/coreos/go-systemd/dbus
 github.com/coreos/go-systemd/journal
-github.com/coreos/go-systemd/util
 # github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f
 github.com/coreos/pkg/capnslog
-github.com/coreos/pkg/dlopen
 # github.com/cyphar/filepath-securejoin v0.2.2
 github.com/cyphar/filepath-securejoin
 # github.com/davecgh/go-spew v1.1.1
@@ -694,13 +698,17 @@ github.com/opencontainers/go-digest
 github.com/opencontainers/image-spec/identity
 github.com/opencontainers/image-spec/specs-go
 github.com/opencontainers/image-spec/specs-go/v1
-# github.com/opencontainers/runc v1.0.0-rc2.0.20190611121236-6cc515888830
+# github.com/opencontainers/runc v1.0.0-rc2.0.20190611121236-6cc515888830 => github.com/opencontainers/runc v1.0.0-rc10
 github.com/opencontainers/runc
 github.com/opencontainers/runc/contrib/cmd/recvtty
 github.com/opencontainers/runc/libcontainer
 github.com/opencontainers/runc/libcontainer/apparmor
 github.com/opencontainers/runc/libcontainer/cgroups
+github.com/opencontainers/runc/libcontainer/cgroups/ebpf
+github.com/opencontainers/runc/libcontainer/cgroups/ebpf/devicefilter
 github.com/opencontainers/runc/libcontainer/cgroups/fs
+github.com/opencontainers/runc/libcontainer/cgroups/fs2
+github.com/opencontainers/runc/libcontainer/cgroups/fscommon
 github.com/opencontainers/runc/libcontainer/cgroups/systemd
 github.com/opencontainers/runc/libcontainer/configs
 github.com/opencontainers/runc/libcontainer/configs/validate
@@ -716,6 +724,7 @@ github.com/opencontainers/runc/libcontainer/stacktrace
 github.com/opencontainers/runc/libcontainer/system
 github.com/opencontainers/runc/libcontainer/user
 github.com/opencontainers/runc/libcontainer/utils
+github.com/opencontainers/runc/types
 # github.com/opencontainers/runtime-spec v1.0.0 => github.com/opencontainers/runtime-spec v0.0.0-20180911193056-5684b8af48c1
 github.com/opencontainers/runtime-spec/specs-go
 # github.com/opencontainers/selinux v1.2.2
@@ -850,7 +859,7 @@ github.com/spf13/afero/mem
 github.com/spf13/cobra
 # github.com/spf13/pflag v1.0.5
 github.com/spf13/pflag
-# github.com/syndtr/gocapability v0.0.0-20170704070218-db04d3cc01c8
+# github.com/syndtr/gocapability v0.0.0-20180916011248-d98352740cb2
 github.com/syndtr/gocapability/capability
 # github.com/tchap/go-patricia v2.3.0+incompatible
 github.com/tchap/go-patricia/patricia
@@ -967,7 +976,7 @@ golang.org/x/oauth2/jwt
 # golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
 golang.org/x/sync/errgroup
 golang.org/x/sync/semaphore
-# golang.org/x/sys v0.0.0-20190916202348-b4ddaad3f8a3
+# golang.org/x/sys v0.0.0-20200124204421-9fbb57f87de9
 golang.org/x/sys/cpu
 golang.org/x/sys/unix
 golang.org/x/sys/windows
@@ -1002,6 +1011,9 @@ golang.org/x/tools/internal/gopathwalk
 golang.org/x/tools/internal/imports
 golang.org/x/tools/internal/module
 golang.org/x/tools/internal/semver
+# golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543
+golang.org/x/xerrors
+golang.org/x/xerrors/internal
 # gonum.org/v1/gonum v0.0.0-20190331200053-3d26580ed485
 gonum.org/v1/gonum/blas
 gonum.org/v1/gonum/blas/blas64
