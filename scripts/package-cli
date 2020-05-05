@@ -56,9 +56,6 @@ LDFLAGS="
     -w -s
 "
 STATIC="-extldflags '-static'"
-if [ "$DQLITE" = 'true' ]; then
-    DQLITE_TAGS='dqlite'
-fi
-CGO_ENABLED=0 "${GO}" build -tags "$DQLITE_TAGS" -ldflags "$LDFLAGS $STATIC" -o ${CMD_NAME} ./cmd/k3s/main.go
+CGO_ENABLED=0 "${GO}" build -ldflags "$LDFLAGS $STATIC" -o ${CMD_NAME} ./cmd/k3s/main.go
 
 ./scripts/build-upload ${CMD_NAME} ${COMMIT}

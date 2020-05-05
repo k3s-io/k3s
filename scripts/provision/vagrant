@@ -79,18 +79,6 @@ download_go() {
     curl -sL https://storage.googleapis.com/golang/go${goversion}.linux-${ARCH}.tar.gz | tar -xzf - -C /usr/local
 }
 
-# --- Utility function to download dqlite
-download_dqlite() {
-    dqliteURL="https://github.com/$(grep dqlite-build Dockerfile.dapper | sed -e 's/^.*--from=\([^ ]*\).*$/\1/' -e 's|:|/releases/download/|')/dqlite-$ARCH.tgz"
-    if [ -z "$dqliteURL" ]; then
-        echo 'Cannot find dqlite URL to fetch'
-        return 1
-    fi
-    mkdir -p /usr/src/
-    echo "Downloading DQLITE from $dqliteURL"
-    curl -sL $dqliteURL -o /usr/src/dqlite.tgz
-}
-
 # --- Run vagrant provision script if available
 if [ ! -f "${PROVISION}" ]; then
   echo "WARNING: Unable to execute provision script \"${PROVISION}\""
