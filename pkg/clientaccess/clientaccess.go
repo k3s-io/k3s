@@ -34,8 +34,42 @@ type clientToken struct {
 	password string
 }
 
-func AgentAccessInfoToKubeConfig(destFile, server, token string) error {
-	return accessInfoToKubeConfig(destFile, server, token)
+func WriteClientKubeConfig(destFile, url, serverCAFile, clientCertFile, clientKeyFile string) error {
+	serverCA, err := ioutil.ReadFile(serverCAFile)
+	if err != nil {
+		return errors.Wrapf(err, "failed to read %s", serverCAFile)
+	}
+
+	clientCert, err := ioutil.ReadFile(clientCertFile)
+	if err != nil {
+		return errors.Wrapf(err, "failed to read %s", clientCertFile)
+	}
+
+	clientKey, err := ioutil.ReadFile(clientKeyFile)
+	if err != nil {
+		return errors.Wrapf(err, "failed to read %s", clientKeyFile)
+	}
+
+	config := clientcmdapi.NewConfig()
+
+	cluster := clientcmdapi.NewCluster()
+	cluster.CertificateAuthorityData = serverCA
+	cluster.Server = url
+
+	authInfo := clientcmdapi.NewAuthInfo()
+	authInfo.ClientCertificateData = clientCert
+	authInfo.ClientKeyData = clientKey
+
+	context := clientcmdapi.NewContext()
+	context.AuthInfo = "default"
+	context.Cluster = "default"
+
+	config.Clusters["default"] = cluster
+	config.AuthInfos["default"] = authInfo
+	config.Contexts["default"] = context
+	config.CurrentContext = "default"
+
+	return clientcmd.WriteToFile(*config, destFile)
 }
 
 type Info struct {
@@ -48,42 +82,6 @@ type Info struct {
 
 func (i *Info) ToToken() string {
 	return fmt.Sprintf("K10%s::%s:%s", hashCA(i.CACerts), i.username, i.password)
-}
-
-func (i *Info) WriteKubeConfig(destFile string) error {
-	return clientcmd.WriteToFile(*i.KubeConfig(), destFile)
-}
-
-func (i *Info) KubeConfig() *clientcmdapi.Config {
-	config := clientcmdapi.NewConfig()
-
-	cluster := clientcmdapi.NewCluster()
-	cluster.CertificateAuthorityData = i.CACerts
-	cluster.Server = i.URL
-
-	authInfo := clientcmdapi.NewAuthInfo()
-	if i.password != "" {
-		authInfo.Username = i.username
-		authInfo.Password = i.password
-	} else if i.Token != "" {
-		if username, pass, ok := ParseUsernamePassword(i.Token); ok {
-			authInfo.Username = username
-			authInfo.Password = pass
-		} else {
-			authInfo.Token = i.Token
-		}
-	}
-
-	context := clientcmdapi.NewContext()
-	context.AuthInfo = "default"
-	context.Cluster = "default"
-
-	config.Clusters["default"] = cluster
-	config.AuthInfos["default"] = authInfo
-	config.Contexts["default"] = context
-	config.CurrentContext = "default"
-
-	return config
 }
 
 func NormalizeAndValidateTokenForUser(server, token, user string) (string, error) {
@@ -147,15 +145,6 @@ func ParseAndValidateToken(server, token string) (*Info, error) {
 	// normalize token
 	i.Token = i.ToToken()
 	return i, nil
-}
-
-func accessInfoToKubeConfig(destFile, server, token string) error {
-	info, err := ParseAndValidateToken(server, token)
-	if err != nil {
-		return err
-	}
-
-	return info.WriteKubeConfig(destFile)
 }
 
 func validateToken(u url.URL, cacerts []byte, username, password string) error {

@@ -365,9 +365,6 @@ func readTokens(runtime *config.ControlRuntime) error {
 	if serverToken, ok := tokens.Pass("server"); ok {
 		runtime.ServerToken = "server:" + serverToken
 	}
-	if clientToken, ok := tokens.Pass("admin"); ok {
-		runtime.ClientToken = "admin:" + clientToken
-	}
 
 	return nil
 }
@@ -449,10 +446,6 @@ func genUsers(config *config.Control, runtime *config.ControlRuntime) error {
 	}
 
 	nodePass := getNodePass(config, serverPass)
-
-	if err := passwd.EnsureUser("admin", "system:masters", ""); err != nil {
-		return err
-	}
 
 	if err := passwd.EnsureUser("node", "k3s:agent", nodePass); err != nil {
 		return err
