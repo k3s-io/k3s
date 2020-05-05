@@ -26,6 +26,7 @@ replace (
 	github.com/golangci/lint-1 => github.com/golangci/lint-1 v0.0.0-20190420132249-ee948d087217
 	github.com/kubernetes-sigs/cri-tools => github.com/rancher/cri-tools v1.17.0-k3s1
 	github.com/matryer/moq => github.com/rancher/moq v0.0.0-20190404221404-ee5226d43009
+	github.com/opencontainers/runc => github.com/opencontainers/runc v1.0.0-rc10
 	github.com/opencontainers/runtime-spec => github.com/opencontainers/runtime-spec v0.0.0-20180911193056-5684b8af48c1
 	github.com/prometheus/client_golang => github.com/prometheus/client_golang v0.9.2
 	github.com/prometheus/client_model => github.com/prometheus/client_model v0.0.0-20180712105110-5c3871d89910
@@ -65,6 +66,7 @@ require (
 	github.com/bronze1man/goStrongswanVici v0.0.0-20190828090544-27d02f80ba40 // indirect
 	github.com/buger/jsonparser v0.0.0-20181115193947-bf1c66bbce23 // indirect
 	github.com/canonical/go-dqlite v1.5.1
+	github.com/cilium/ebpf v0.0.0-20200501092852-53d52285d8b3 // indirect
 	github.com/containerd/cgroups v0.0.0-00010101000000-000000000000 // indirect
 	github.com/containerd/containerd v1.3.0-beta.2.0.20190828155532-0293cbd26c69
 	github.com/containerd/continuity v0.0.0-20190827140505-75bee3e2ccb6 // indirect
@@ -110,7 +112,7 @@ require (
 	github.com/urfave/cli v1.22.2
 	golang.org/x/crypto v0.0.0-20200220183623-bac4c82f6975
 	golang.org/x/net v0.0.0-20191204025024-5ee1b9f4859a
-	golang.org/x/sys v0.0.0-20191204072324-ce4227a45e2e
+	golang.org/x/sys v0.0.0-20200124204421-9fbb57f87de9
 	google.golang.org/grpc v1.25.1
 	gopkg.in/mgo.v2 v2.0.0-20190816093944-a6b53ec6cb22 // indirect
 	gopkg.in/robfig/cron.v2 v2.0.0-20150107220207-be2e0b0deed5 // indirect

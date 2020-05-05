@@ -186,6 +186,7 @@ struct ltchars {
 #include <sys/select.h>
 #include <sys/signalfd.h>
 #include <sys/socket.h>
+#include <sys/uio.h>
 #include <sys/xattr.h>
 #include <linux/bpf.h>
 #include <linux/can.h>
@@ -526,6 +527,7 @@ ccflags="$@"
 		$2 ~ /^WDIOC_/ ||
 		$2 ~ /^NFN/ ||
 		$2 ~ /^XDP_/ ||
+		$2 ~ /^RWF_/ ||
 		$2 ~ /^(HDIO|WIN|SMART)_/ ||
 		$2 ~ /^CRYPTO_/ ||
 		$2 ~ /^TIPC_/ ||

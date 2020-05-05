@@ -2035,6 +2035,13 @@ const (
 	RUSAGE_CHILDREN                             = -0x1
 	RUSAGE_SELF                                 = 0x0
 	RUSAGE_THREAD                               = 0x1
+	RWF_APPEND                                  = 0x10
+	RWF_DSYNC                                   = 0x2
+	RWF_HIPRI                                   = 0x1
+	RWF_NOWAIT                                  = 0x8
+	RWF_SUPPORTED                               = 0x1f
+	RWF_SYNC                                    = 0x4
+	RWF_WRITE_LIFE_NOT_SET                      = 0x0
 	SCM_CREDENTIALS                             = 0x2
 	SCM_RIGHTS                                  = 0x1
 	SCM_TIMESTAMP                               = 0x1d
