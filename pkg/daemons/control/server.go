@@ -19,6 +19,8 @@ import (
 	"text/template"
 	"time"
 
+	"k8s.io/apimachinery/pkg/util/sets"
+
 	"github.com/pkg/errors"
 	certutil "github.com/rancher/dynamiclistener/cert"
 	"github.com/rancher/k3s/pkg/clientaccess"
@@ -209,7 +211,7 @@ func apiServer(ctx context.Context, cfg *config.Control, runtime *config.Control
 	args := config.GetArgsList(argsMap, cfg.ExtraAPIArgs)
 
 	logrus.Infof("Running kube-apiserver %s", config.ArgString(args))
-	return executor.APIServer(ctx, args)
+	return executor.APIServer(ctx, runtime.ETCDReady, args)
 }
 
 func defaults(config *config.Control) {
@@ -963,6 +965,19 @@ func waitForAPIServerInBackground(ctx context.Context, runtime *config.ControlRu
 
 	go func() {
 		defer close(done)
+
+	etcdLoop:
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-runtime.ETCDReady:
+				break etcdLoop
+			case <-time.After(30 * time.Second):
+				logrus.Infof("Waiting for etcd server to become available")
+			}
+		}
+
 		logrus.Infof("Waiting for API server to become available")
 		for {
 			select {
