@@ -27,6 +27,7 @@ import (
 	"github.com/rancher/k3s/pkg/daemons/executor"
 	"github.com/rancher/k3s/pkg/passwd"
 	"github.com/rancher/k3s/pkg/token"
+	"github.com/rancher/k3s/pkg/version"
 	"github.com/rancher/wrangler-api/pkg/generated/controllers/rbac"
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -186,7 +187,7 @@ func apiServer(ctx context.Context, cfg *config.Control, runtime *config.Control
 	argsMap["tls-cert-file"] = runtime.ServingKubeAPICert
 	argsMap["tls-private-key-file"] = runtime.ServingKubeAPIKey
 	argsMap["service-account-key-file"] = runtime.ServiceKey
-	argsMap["service-account-issuer"] = "k3s"
+	argsMap["service-account-issuer"] = version.Program
 	argsMap["api-audiences"] = "unknown"
 	argsMap["basic-auth-file"] = runtime.PasswdFile
 	argsMap["kubelet-certificate-authority"] = runtime.ServerCA
@@ -290,8 +291,8 @@ func prepare(ctx context.Context, config *config.Control, runtime *config.Contro
 	runtime.ClientKubeAPIKey = filepath.Join(config.DataDir, "tls", "client-kube-apiserver.key")
 	runtime.ClientKubeProxyCert = filepath.Join(config.DataDir, "tls", "client-kube-proxy.crt")
 	runtime.ClientKubeProxyKey = filepath.Join(config.DataDir, "tls", "client-kube-proxy.key")
-	runtime.ClientK3sControllerCert = filepath.Join(config.DataDir, "tls", "client-k3s-controller.crt")
-	runtime.ClientK3sControllerKey = filepath.Join(config.DataDir, "tls", "client-k3s-controller.key")
+	runtime.ClientK3sControllerCert = filepath.Join(config.DataDir, "tls", "client-"+version.Program+"-controller.crt")
+	runtime.ClientK3sControllerKey = filepath.Join(config.DataDir, "tls", "client-"+version.Program+"-controller.key")
 
 	runtime.ServingKubeAPICert = filepath.Join(config.DataDir, "tls", "serving-kube-apiserver.crt")
 	runtime.ServingKubeAPIKey = filepath.Join(config.DataDir, "tls", "serving-kube-apiserver.key")
@@ -382,7 +383,7 @@ func migratePassword(p *passwd.Passwd) error {
 	server, _ := p.Pass("server")
 	node, _ := p.Pass("node")
 	if server == "" && node != "" {
-		return p.EnsureUser("server", "k3s:server", node)
+		return p.EnsureUser("server", version.Program+":server", node)
 	}
 	return nil
 }
@@ -433,11 +434,11 @@ func genUsers(config *config.Control, runtime *config.ControlRuntime) error {
 
 	nodePass := getNodePass(config, serverPass)
 
-	if err := passwd.EnsureUser("node", "k3s:agent", nodePass); err != nil {
+	if err := passwd.EnsureUser("node", version.Program+":agent", nodePass); err != nil {
 		return err
 	}
 
-	if err := passwd.EnsureUser("server", "k3s:server", serverPass); err != nil {
+	if err := passwd.EnsureUser("server", version.Program+":server", serverPass); err != nil {
 		return err
 	}
 
@@ -466,7 +467,7 @@ func getSigningCertFactory(regen bool, altNames *certutil.AltNames, extKeyUsage 
 }
 
 func genClientCerts(config *config.Control, runtime *config.ControlRuntime) error {
-	regen, err := createSigningCertKey("k3s-client", runtime.ClientCA, runtime.ClientCAKey)
+	regen, err := createSigningCertKey(version.Program+"-client", runtime.ClientCA, runtime.ClientCAKey)
 	if err != nil {
 		return err
 	}
@@ -519,6 +520,7 @@ func genClientCerts(config *config.Control, runtime *config.ControlRuntime) erro
 	if _, err = factory("system:kube-proxy", nil, runtime.ClientKubeProxyCert, runtime.ClientKubeProxyKey); err != nil {
 		return err
 	}
+	// this must be hardcoded to k3s-controller because it's hard coded in the rolebindings.yaml
 	if _, err = factory("system:k3s-controller", nil, runtime.ClientK3sControllerCert, runtime.ClientK3sControllerKey); err != nil {
 		return err
 	}
@@ -554,7 +556,7 @@ func createServerSigningCertKey(config *config.Control, runtime *config.ControlR
 		}
 		return true, nil
 	}
-	return createSigningCertKey("k3s-server", runtime.ServerCA, runtime.ServerCAKey)
+	return createSigningCertKey(version.Program+"-server", runtime.ServerCA, runtime.ServerCAKey)
 }
 
 func genServerCerts(config *config.Control, runtime *config.ControlRuntime) error {
@@ -586,7 +588,7 @@ func genServerCerts(config *config.Control, runtime *config.ControlRuntime) erro
 }
 
 func genRequestHeaderCerts(config *config.Control, runtime *config.ControlRuntime) error {
-	regen, err := createSigningCertKey("k3s-request-header", runtime.RequestHeaderCA, runtime.RequestHeaderCAKey)
+	regen, err := createSigningCertKey(version.Program+"-request-header", runtime.RequestHeaderCA, runtime.RequestHeaderCAKey)
 	if err != nil {
 		return err
 	}
@@ -783,7 +785,7 @@ func cloudControllerManager(ctx context.Context, cfg *config.Control, runtime *c
 		"cluster-cidr":                 cfg.ClusterIPRange.String(),
 		"bind-address":                 localhostIP.String(),
 		"secure-port":                  "0",
-		"cloud-provider":               "k3s",
+		"cloud-provider":               version.Program,
 		"allow-untagged-cloud":         "true",
 		"node-status-update-frequency": "1m",
 	}

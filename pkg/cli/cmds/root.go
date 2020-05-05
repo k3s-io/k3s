@@ -33,7 +33,7 @@ func NewApp() *cli.App {
 			Name:        "debug",
 			Usage:       "Turn on debug logs",
 			Destination: &Debug,
-			EnvVar:      "K3S_DEBUG",
+			EnvVar:      version.ProgramUpper + "_DEBUG",
 		},
 	}
 

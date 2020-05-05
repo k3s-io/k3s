@@ -11,6 +11,7 @@ import (
 
 	"github.com/docker/docker/pkg/reexec"
 	"github.com/natefinch/lumberjack"
+	"github.com/rancher/k3s/pkg/version"
 	"github.com/urfave/cli"
 )
 
@@ -90,7 +91,7 @@ func runWithLogging() error {
 		l = io.MultiWriter(l, os.Stderr)
 	}
 
-	args := append([]string{"k3s"}, os.Args[1:]...)
+	args := append([]string{version.Program}, os.Args[1:]...)
 	cmd := reexec.Command(args...)
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, "_K3S_LOG_REEXEC_=true")

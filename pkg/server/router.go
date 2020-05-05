@@ -17,6 +17,7 @@ import (
 	"github.com/rancher/k3s/pkg/bootstrap"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/passwd"
+	"github.com/rancher/k3s/pkg/version"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/json"
 )
@@ -26,28 +27,29 @@ const (
 )
 
 func router(serverConfig *config.Control, tunnel http.Handler, ca []byte) http.Handler {
+	prefix := "/v1-" + version.Program
 	authed := mux.NewRouter()
-	authed.Use(authMiddleware(serverConfig, "k3s:agent"))
+	authed.Use(authMiddleware(serverConfig, version.Program+":agent"))
 	authed.NotFoundHandler = serverConfig.Runtime.Handler
-	authed.Path("/v1-k3s/serving-kubelet.crt").Handler(servingKubeletCert(serverConfig, serverConfig.Runtime.ServingKubeletKey))
-	authed.Path("/v1-k3s/client-kubelet.crt").Handler(clientKubeletCert(serverConfig, serverConfig.Runtime.ClientKubeletKey))
-	authed.Path("/v1-k3s/client-kube-proxy.crt").Handler(fileHandler(serverConfig.Runtime.ClientKubeProxyCert, serverConfig.Runtime.ClientKubeProxyKey))
-	authed.Path("/v1-k3s/client-k3s-controller.crt").Handler(fileHandler(serverConfig.Runtime.ClientK3sControllerCert, serverConfig.Runtime.ClientK3sControllerKey))
-	authed.Path("/v1-k3s/client-ca.crt").Handler(fileHandler(serverConfig.Runtime.ClientCA))
-	authed.Path("/v1-k3s/server-ca.crt").Handler(fileHandler(serverConfig.Runtime.ServerCA))
-	authed.Path("/v1-k3s/config").Handler(configHandler(serverConfig))
+	authed.Path(prefix + "/serving-kubelet.crt").Handler(servingKubeletCert(serverConfig, serverConfig.Runtime.ServingKubeletKey))
+	authed.Path(prefix + "/client-kubelet.crt").Handler(clientKubeletCert(serverConfig, serverConfig.Runtime.ClientKubeletKey))
+	authed.Path(prefix + "/client-kube-proxy.crt").Handler(fileHandler(serverConfig.Runtime.ClientKubeProxyCert, serverConfig.Runtime.ClientKubeProxyKey))
+	authed.Path(prefix + "/client-" + version.Program + "-controller.crt").Handler(fileHandler(serverConfig.Runtime.ClientK3sControllerCert, serverConfig.Runtime.ClientK3sControllerKey))
+	authed.Path(prefix + "/client-ca.crt").Handler(fileHandler(serverConfig.Runtime.ClientCA))
+	authed.Path(prefix + "/server-ca.crt").Handler(fileHandler(serverConfig.Runtime.ServerCA))
+	authed.Path(prefix + "/config").Handler(configHandler(serverConfig))
 
 	nodeAuthed := mux.NewRouter()
 	nodeAuthed.Use(authMiddleware(serverConfig, "system:nodes"))
-	nodeAuthed.Path("/v1-k3s/connect").Handler(tunnel)
+	nodeAuthed.Path(prefix + "/connect").Handler(tunnel)
 	nodeAuthed.NotFoundHandler = authed
 
 	serverAuthed := mux.NewRouter()
-	serverAuthed.Use(authMiddleware(serverConfig, "k3s:server"))
+	serverAuthed.Use(authMiddleware(serverConfig, version.Program+":server"))
 	serverAuthed.NotFoundHandler = nodeAuthed
 	serverAuthed.Path("/db/info").Handler(nodeAuthed)
 	if serverConfig.Runtime.HTTPBootstrap {
-		serverAuthed.Path("/v1-k3s/server-bootstrap").Handler(bootstrap.Handler(&serverConfig.Runtime.ControlRuntimeBootstrap))
+		serverAuthed.Path(prefix + "/server-bootstrap").Handler(bootstrap.Handler(&serverConfig.Runtime.ControlRuntimeBootstrap))
 	}
 
 	staticDir := filepath.Join(serverConfig.DataDir, "static")
@@ -68,17 +70,17 @@ func cacerts(ca []byte) http.Handler {
 }
 
 func getNodeInfo(req *http.Request) (string, string, error) {
-	nodeNames := req.Header["K3s-Node-Name"]
-	if len(nodeNames) != 1 || nodeNames[0] == "" {
+	nodeName := req.Header.Get(version.Program + "-Node-Name")
+	if nodeName == "" {
 		return "", "", errors.New("node name not set")
 	}
 
-	nodePasswords := req.Header["K3s-Node-Password"]
-	if len(nodePasswords) != 1 || nodePasswords[0] == "" {
+	nodePassword := req.Header.Get(version.Program + "-Node-Password")
+	if nodePassword == "" {
 		return "", "", errors.New("node password not set")
 	}
 
-	return strings.ToLower(nodeNames[0]), nodePasswords[0], nil
+	return strings.ToLower(nodeName), nodePassword, nil
 }
 
 func getCACertAndKeys(caCertFile, caKeyFile, signingKeyFile string) ([]*x509.Certificate, crypto.Signer, crypto.Signer, error) {

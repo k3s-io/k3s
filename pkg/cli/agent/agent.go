@@ -11,6 +11,7 @@ import (
 	"github.com/rancher/k3s/pkg/datadir"
 	"github.com/rancher/k3s/pkg/netutil"
 	"github.com/rancher/k3s/pkg/token"
+	"github.com/rancher/k3s/pkg/version"
 	"github.com/rancher/wrangler/pkg/signals"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
@@ -48,7 +49,7 @@ func Run(ctx *cli.Context) error {
 		cmds.AgentConfig.NodeIP = netutil.GetIPFromInterface(cmds.AgentConfig.FlannelIface)
 	}
 
-	logrus.Infof("Starting k3s agent %s", ctx.App.Version)
+	logrus.Infof("Starting "+version.Program+" agent %s", ctx.App.Version)
 
 	dataDir, err := datadir.LocalHome(cmds.AgentConfig.DataDir, cmds.AgentConfig.Rootless)
 	if err != nil {

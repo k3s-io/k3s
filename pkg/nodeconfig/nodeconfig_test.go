@@ -4,6 +4,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/rancher/k3s/pkg/version"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -27,7 +28,7 @@ var FakeNodeWithAnnotation = &corev1.Node{
 		Name: "fakeNode-with-annotation",
 		Annotations: map[string]string{
 			NodeArgsAnnotation:       `["server","--no-flannel"]`,
-			NodeEnvAnnotation:        `{"K3S_NODE_NAME":"fakeNode-with-annotation"}`,
+			NodeEnvAnnotation:        `{"` + version.ProgramUpper + `_NODE_NAME":"fakeNode-with-annotation"}`,
 			NodeConfigHashAnnotation: "LNQOAOIMOQIBRMEMACW7LYHXUNPZADF6RFGOSPIHJCOS47UVUJAA====",
 		},
 	},
@@ -40,8 +41,8 @@ func assertEqual(t *testing.T, a interface{}, b interface{}) {
 }
 
 func TestSetEmptyNodeConfigAnnotations(t *testing.T) {
-	os.Args = []string{"k3s", "server", "--no-flannel"}
-	os.Setenv("K3S_NODE_NAME", "fakeNode-no-annotation")
+	os.Args = []string{version.Program, "server", "--no-flannel"}
+	os.Setenv(version.ProgramUpper+"_NODE_NAME", "fakeNode-no-annotation")
 	nodeUpdated, err := SetNodeConfigAnnotations(FakeNodeWithNoAnnotation)
 	if err != nil {
 		t.Fatalf("Failed to set node config annotation: %v", err)
@@ -52,7 +53,7 @@ func TestSetEmptyNodeConfigAnnotations(t *testing.T) {
 	actualArgs := FakeNodeWithNoAnnotation.Annotations[NodeArgsAnnotation]
 	assertEqual(t, expectedArgs, actualArgs)
 
-	expectedEnv := `{"K3S_NODE_NAME":"fakeNode-no-annotation"}`
+	expectedEnv := `{"` + version.ProgramUpper + `_NODE_NAME":"fakeNode-no-annotation"}`
 	actualEnv := FakeNodeWithNoAnnotation.Annotations[NodeEnvAnnotation]
 	assertEqual(t, expectedEnv, actualEnv)
 
@@ -63,8 +64,8 @@ func TestSetEmptyNodeConfigAnnotations(t *testing.T) {
 
 func TestSetExistingNodeConfigAnnotations(t *testing.T) {
 	// adding same config
-	os.Args = []string{"k3s", "server", "--no-flannel"}
-	os.Setenv("K3S_NODE_NAME", "fakeNode-with-annotation")
+	os.Args = []string{version.Program, "server", "--no-flannel"}
+	os.Setenv(version.ProgramUpper+"_NODE_NAME", "fakeNode-with-annotation")
 	nodeUpdated, err := SetNodeConfigAnnotations(FakeNodeWithAnnotation)
 	if err != nil {
 		t.Fatalf("Failed to set node config annotation: %v", err)
@@ -73,7 +74,7 @@ func TestSetExistingNodeConfigAnnotations(t *testing.T) {
 }
 
 func TestSetArgsWithEqual(t *testing.T) {
-	os.Args = []string{"k3s", "server", "--no-flannel", "--write-kubeconfig-mode=777"}
+	os.Args = []string{version.Program, "server", "--no-flannel", "--write-kubeconfig-mode=777"}
 	os.Setenv("K3S_NODE_NAME", "fakeNode-with-no-annotation")
 	nodeUpdated, err := SetNodeConfigAnnotations(FakeNodeWithNoAnnotation)
 	if err != nil {

@@ -5,14 +5,15 @@ import (
 	"path/filepath"
 
 	"github.com/pkg/errors"
+	"github.com/rancher/k3s/pkg/version"
 	"github.com/rancher/wrangler/pkg/resolvehome"
 )
 
-const (
-	DefaultDataDir     = "/var/lib/rancher/k3s"
-	DefaultHomeDataDir = "${HOME}/.rancher/k3s"
-	HomeConfig         = "${HOME}/.kube/k3s.yaml"
-	GlobalConfig       = "/etc/rancher/k3s/k3s.yaml"
+var (
+	DefaultDataDir     = "/var/lib/rancher/" + version.Program
+	DefaultHomeDataDir = "${HOME}/.rancher/" + version.Program
+	HomeConfig         = "${HOME}/.kube/" + version.Program + ".yaml"
+	GlobalConfig       = "/etc/rancher/" + version.Program + "/" + version.Program + ".yaml"
 )
 
 func Resolve(dataDir string) (string, error) {

@@ -25,6 +25,7 @@ import (
 	"github.com/rancher/k3s/pkg/clientaccess"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/daemons/control"
+	"github.com/rancher/k3s/pkg/version"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/apimachinery/pkg/util/net"
@@ -73,12 +74,12 @@ func getNodeNamedCrt(nodeName, nodePasswordFile string) HTTPRequester {
 			req.SetBasicAuth(username, password)
 		}
 
-		req.Header.Set("K3s-Node-Name", nodeName)
+		req.Header.Set(version.Program+"-Node-Name", nodeName)
 		nodePassword, err := ensureNodePassword(nodePasswordFile)
 		if err != nil {
 			return nil, err
 		}
-		req.Header.Set("K3s-Node-Password", nodePassword)
+		req.Header.Set(version.Program+"-Node-Password", nodePassword)
 
 		resp, err := client.Do(req)
 		if err != nil {
@@ -142,7 +143,7 @@ func upgradeOldNodePasswordPath(oldNodePasswordFile, newNodePasswordFile string)
 }
 
 func getServingCert(nodeName, servingCertFile, servingKeyFile, nodePasswordFile string, info *clientaccess.Info) (*tls.Certificate, error) {
-	servingCert, err := Request("/v1-k3s/serving-kubelet.crt", info, getNodeNamedCrt(nodeName, nodePasswordFile))
+	servingCert, err := Request("/v1-"+version.Program+"/serving-kubelet.crt", info, getNodeNamedCrt(nodeName, nodePasswordFile))
 	if err != nil {
 		return nil, err
 	}
@@ -166,7 +167,7 @@ func getServingCert(nodeName, servingCertFile, servingKeyFile, nodePasswordFile 
 
 func getHostFile(filename, keyFile string, info *clientaccess.Info) error {
 	basename := filepath.Base(filename)
-	fileBytes, err := clientaccess.Get("/v1-k3s/"+basename, info)
+	fileBytes, err := clientaccess.Get("/v1-"+version.Program+"/"+basename, info)
 	if err != nil {
 		return err
 	}
@@ -206,7 +207,7 @@ func splitCertKeyPEM(bytes []byte) (certPem []byte, keyPem []byte) {
 
 func getNodeNamedHostFile(filename, keyFile, nodeName, nodePasswordFile string, info *clientaccess.Info) error {
 	basename := filepath.Base(filename)
-	fileBytes, err := Request("/v1-k3s/"+basename, info, getNodeNamedCrt(nodeName, nodePasswordFile))
+	fileBytes, err := Request("/v1-"+version.Program+"/"+basename, info, getNodeNamedCrt(nodeName, nodePasswordFile))
 	if err != nil {
 		return err
 	}
@@ -282,7 +283,7 @@ func locateOrGenerateResolvConf(envInfo *cmds.Agent) string {
 		}
 	}
 
-	tmpConf := filepath.Join(os.TempDir(), "k3s-resolv.conf")
+	tmpConf := filepath.Join(os.TempDir(), version.Program+"-resolv.conf")
 	if err := ioutil.WriteFile(tmpConf, []byte("nameserver 8.8.8.8\n"), 0444); err != nil {
 		logrus.Error(err)
 		return ""
@@ -385,13 +386,13 @@ func get(envInfo *cmds.Agent, proxy proxy.Proxy) (*config.Node, error) {
 		return nil, err
 	}
 
-	clientK3sControllerCert := filepath.Join(envInfo.DataDir, "client-k3s-controller.crt")
-	clientK3sControllerKey := filepath.Join(envInfo.DataDir, "client-k3s-controller.key")
+	clientK3sControllerCert := filepath.Join(envInfo.DataDir, "client-"+version.Program+"-controller.crt")
+	clientK3sControllerKey := filepath.Join(envInfo.DataDir, "client-"+version.Program+"-controller.key")
 	if err := getHostFile(clientK3sControllerCert, clientK3sControllerKey, info); err != nil {
 		return nil, err
 	}
 
-	kubeconfigK3sController := filepath.Join(envInfo.DataDir, "k3scontroller.kubeconfig")
+	kubeconfigK3sController := filepath.Join(envInfo.DataDir, version.Program+"controller.kubeconfig")
 	if err := control.KubeConfig(kubeconfigK3sController, proxy.APIServerURL(), serverCAFile, clientK3sControllerCert, clientK3sControllerKey); err != nil {
 		return nil, err
 	}
@@ -488,7 +489,7 @@ func get(envInfo *cmds.Agent, proxy proxy.Proxy) (*config.Node, error) {
 }
 
 func getConfig(info *clientaccess.Info) (*config.Control, error) {
-	data, err := clientaccess.Get("/v1-k3s/config", info)
+	data, err := clientaccess.Get("/v1-"+version.Program+"/config", info)
 	if err != nil {
 		return nil, err
 	}

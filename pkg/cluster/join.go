@@ -9,6 +9,7 @@ import (
 
 	"github.com/rancher/k3s/pkg/bootstrap"
 	"github.com/rancher/k3s/pkg/clientaccess"
+	"github.com/rancher/k3s/pkg/version"
 	"github.com/sirupsen/logrus"
 )
 
@@ -44,7 +45,7 @@ func (c *Cluster) shouldJoin() (bool, error) {
 	}
 
 	if dqlite && c.config.Token == "" {
-		return false, fmt.Errorf("K3S_TOKEN is required to join a cluster")
+		return false, fmt.Errorf(version.ProgramUpper + "_TOKEN is required to join a cluster")
 	}
 
 	return true, nil
@@ -79,7 +80,7 @@ func (c *Cluster) httpJoin() error {
 	}
 	c.clientAccessInfo = info
 
-	content, err := clientaccess.Get("/v1-k3s/server-bootstrap", info)
+	content, err := clientaccess.Get("/v1-"+version.Program+"/server-bootstrap", info)
 	if err != nil {
 		return err
 	}
