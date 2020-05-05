@@ -61,7 +61,6 @@ replace (
 )
 
 require (
-	github.com/Azure/go-autorest v14.0.1+incompatible // indirect
 	github.com/NYTimes/gziphandler v1.1.1 // indirect
 	github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 // indirect
 	github.com/bhendo/go-powershell v0.0.0-20190719160123-219e7fb4e41e // indirect
@@ -101,7 +100,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/rakelkar/gonetsh v0.0.0-20190719023240-501daadcadf8 // indirect
 	github.com/rancher/dynamiclistener v0.2.0
-	github.com/rancher/helm-controller v0.5.0
+	github.com/rancher/helm-controller v0.6.0
 	github.com/rancher/kine v0.4.0
 	github.com/rancher/remotedialer v0.2.0
 	github.com/rancher/wrangler v0.6.1
