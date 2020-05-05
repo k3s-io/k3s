@@ -7,11 +7,11 @@ cd $(dirname $0)/..
 
 GO=${GO-go}
 
-rm -rf bin/crictl bin/kubectl bin/k3s-agent bin/k3s-server bin/kubectl bin/k3s build/data
-ln -s containerd bin/k3s-agent
-ln -s containerd bin/k3s-server
-ln -s containerd bin/kubectl
-ln -s containerd bin/crictl
+for i in crictl kubectl k3s-agent k3s-server k3s; do
+    rm -f bin/$i
+    ln -s containerd bin/$i
+done
+
 for i in bridge flannel host-local loopback portmap; do
     rm -f bin/$i
     ln -s cni bin/$i
@@ -56,8 +56,8 @@ LDFLAGS="
     -w -s
 "
 STATIC="-extldflags '-static'"
-if [ "$DQLITE" = "true" ]; then
-    DQLITE_TAGS="dqlite"
+if [ "$DQLITE" = 'true' ]; then
+    DQLITE_TAGS='dqlite'
 fi
 CGO_ENABLED=0 "${GO}" build -tags "$DQLITE_TAGS" -ldflags "$LDFLAGS $STATIC" -o ${CMD_NAME} ./cmd/k3s/main.go
 
