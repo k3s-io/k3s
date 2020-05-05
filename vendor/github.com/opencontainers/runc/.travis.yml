@@ -1,4 +1,4 @@
-dist: xenial
+dist: bionic
 language: go
 go:
   - 1.11.x
@@ -13,6 +13,20 @@ matrix:
       script:
         - make BUILDTAGS="${BUILDTAGS}" all
         - sudo PATH="$PATH" make localintegration RUNC_USE_SYSTEMD=1
+    - go: 1.12.x
+      env:
+        - VIRTUALBOX_VERSION=6.0
+        - VAGRANT_VERSION=2.2.6
+        - FEDORA_VERSION=31
+      before_install:
+        - cat /proc/cpuinfo
+        - wget -q https://www.virtualbox.org/download/oracle_vbox_2016.asc -O- | sudo apt-key add - && sudo sh -c "echo deb https://download.virtualbox.org/virtualbox/debian $(lsb_release -cs) contrib >> /etc/apt/sources.list" && sudo apt-get update && sudo apt-get install -yq build-essential gcc make linux-headers-$(uname -r) virtualbox-${VIRTUALBOX_VERSION} && sudo usermod -aG vboxusers $(whoami)
+        - wget https://releases.hashicorp.com/vagrant/${VAGRANT_VERSION}/vagrant_${VAGRANT_VERSION}_$(uname -m).deb && sudo dpkg -i vagrant_${VAGRANT_VERSION}_$(uname -m).deb
+        - vagrant init bento/fedora-${FEDORA_VERSION} && vagrant up && mkdir -p ~/.ssh && vagrant ssh-config >> ~/.ssh/config
+        - ssh default sudo dnf install -y podman
+      script:
+        - ssh default sudo podman build -t test /vagrant
+        - ssh default sudo podman run --privileged --cgroupns=private test make localunittest
   allow_failures:
     - go: tip
 

@@ -12,124 +12,11 @@ import (
 	"github.com/opencontainers/runc/libcontainer"
 	"github.com/opencontainers/runc/libcontainer/cgroups"
 	"github.com/opencontainers/runc/libcontainer/intelrdt"
+	"github.com/opencontainers/runc/types"
 
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 )
-
-// event struct for encoding the event data to json.
-type event struct {
-	Type string      `json:"type"`
-	ID   string      `json:"id"`
-	Data interface{} `json:"data,omitempty"`
-}
-
-// stats is the runc specific stats structure for stability when encoding and decoding stats.
-type stats struct {
-	CPU      cpu                `json:"cpu"`
-	Memory   memory             `json:"memory"`
-	Pids     pids               `json:"pids"`
-	Blkio    blkio              `json:"blkio"`
-	Hugetlb  map[string]hugetlb `json:"hugetlb"`
-	IntelRdt intelRdt           `json:"intel_rdt"`
-}
-
-type hugetlb struct {
-	Usage   uint64 `json:"usage,omitempty"`
-	Max     uint64 `json:"max,omitempty"`
-	Failcnt uint64 `json:"failcnt"`
-}
-
-type blkioEntry struct {
-	Major uint64 `json:"major,omitempty"`
-	Minor uint64 `json:"minor,omitempty"`
-	Op    string `json:"op,omitempty"`
-	Value uint64 `json:"value,omitempty"`
-}
-
-type blkio struct {
-	IoServiceBytesRecursive []blkioEntry `json:"ioServiceBytesRecursive,omitempty"`
-	IoServicedRecursive     []blkioEntry `json:"ioServicedRecursive,omitempty"`
-	IoQueuedRecursive       []blkioEntry `json:"ioQueueRecursive,omitempty"`
-	IoServiceTimeRecursive  []blkioEntry `json:"ioServiceTimeRecursive,omitempty"`
-	IoWaitTimeRecursive     []blkioEntry `json:"ioWaitTimeRecursive,omitempty"`
-	IoMergedRecursive       []blkioEntry `json:"ioMergedRecursive,omitempty"`
-	IoTimeRecursive         []blkioEntry `json:"ioTimeRecursive,omitempty"`
-	SectorsRecursive        []blkioEntry `json:"sectorsRecursive,omitempty"`
-}
-
-type pids struct {
-	Current uint64 `json:"current,omitempty"`
-	Limit   uint64 `json:"limit,omitempty"`
-}
-
-type throttling struct {
-	Periods          uint64 `json:"periods,omitempty"`
-	ThrottledPeriods uint64 `json:"throttledPeriods,omitempty"`
-	ThrottledTime    uint64 `json:"throttledTime,omitempty"`
-}
-
-type cpuUsage struct {
-	// Units: nanoseconds.
-	Total  uint64   `json:"total,omitempty"`
-	Percpu []uint64 `json:"percpu,omitempty"`
-	Kernel uint64   `json:"kernel"`
-	User   uint64   `json:"user"`
-}
-
-type cpu struct {
-	Usage      cpuUsage   `json:"usage,omitempty"`
-	Throttling throttling `json:"throttling,omitempty"`
-}
-
-type memoryEntry struct {
-	Limit   uint64 `json:"limit"`
-	Usage   uint64 `json:"usage,omitempty"`
-	Max     uint64 `json:"max,omitempty"`
-	Failcnt uint64 `json:"failcnt"`
-}
-
-type memory struct {
-	Cache     uint64            `json:"cache,omitempty"`
-	Usage     memoryEntry       `json:"usage,omitempty"`
-	Swap      memoryEntry       `json:"swap,omitempty"`
-	Kernel    memoryEntry       `json:"kernel,omitempty"`
-	KernelTCP memoryEntry       `json:"kernelTCP,omitempty"`
-	Raw       map[string]uint64 `json:"raw,omitempty"`
-}
-
-type l3CacheInfo struct {
-	CbmMask    string `json:"cbm_mask,omitempty"`
-	MinCbmBits uint64 `json:"min_cbm_bits,omitempty"`
-	NumClosids uint64 `json:"num_closids,omitempty"`
-}
-
-type memBwInfo struct {
-	BandwidthGran uint64 `json:"bandwidth_gran,omitempty"`
-	DelayLinear   uint64 `json:"delay_linear,omitempty"`
-	MinBandwidth  uint64 `json:"min_bandwidth,omitempty"`
-	NumClosids    uint64 `json:"num_closids,omitempty"`
-}
-
-type intelRdt struct {
-	// The read-only L3 cache information
-	L3CacheInfo *l3CacheInfo `json:"l3_cache_info,omitempty"`
-
-	// The read-only L3 cache schema in root
-	L3CacheSchemaRoot string `json:"l3_cache_schema_root,omitempty"`
-
-	// The L3 cache schema in 'container_id' group
-	L3CacheSchema string `json:"l3_cache_schema,omitempty"`
-
-	// The read-only memory bandwidth information
-	MemBwInfo *memBwInfo `json:"mem_bw_info,omitempty"`
-
-	// The read-only memory bandwidth schema in root
-	MemBwSchemaRoot string `json:"mem_bw_schema_root,omitempty"`
-
-	// The memory bandwidth schema in 'container_id' group
-	MemBwSchema string `json:"mem_bw_schema,omitempty"`
-}
 
 var eventsCommand = cli.Command{
 	Name:  "events",
@@ -164,7 +51,7 @@ information is displayed once every 5 seconds.`,
 		}
 		var (
 			stats  = make(chan *libcontainer.Stats, 1)
-			events = make(chan *event, 1024)
+			events = make(chan *types.Event, 1024)
 			group  = &sync.WaitGroup{}
 		)
 		group.Add(1)
@@ -182,7 +69,7 @@ information is displayed once every 5 seconds.`,
 			if err != nil {
 				return err
 			}
-			events <- &event{Type: "stats", ID: container.ID(), Data: convertLibcontainerStats(s)}
+			events <- &types.Event{Type: "stats", ID: container.ID(), Data: convertLibcontainerStats(s)}
 			close(events)
 			group.Wait()
 			return nil
@@ -208,12 +95,12 @@ information is displayed once every 5 seconds.`,
 					// this means an oom event was received, if it is !ok then
 					// the channel was closed because the container stopped and
 					// the cgroups no longer exist.
-					events <- &event{Type: "oom", ID: container.ID()}
+					events <- &types.Event{Type: "oom", ID: container.ID()}
 				} else {
 					n = nil
 				}
 			case s := <-stats:
-				events <- &event{Type: "stats", ID: container.ID(), Data: convertLibcontainerStats(s)}
+				events <- &types.Event{Type: "stats", ID: container.ID(), Data: convertLibcontainerStats(s)}
 			}
 			if n == nil {
 				close(events)
@@ -225,12 +112,12 @@ information is displayed once every 5 seconds.`,
 	},
 }
 
-func convertLibcontainerStats(ls *libcontainer.Stats) *stats {
+func convertLibcontainerStats(ls *libcontainer.Stats) *types.Stats {
 	cg := ls.CgroupStats
 	if cg == nil {
 		return nil
 	}
-	var s stats
+	var s types.Stats
 	s.Pids.Current = cg.PidsStats.Current
 	s.Pids.Limit = cg.PidsStats.Limit
 
@@ -258,7 +145,7 @@ func convertLibcontainerStats(ls *libcontainer.Stats) *stats {
 	s.Blkio.IoTimeRecursive = convertBlkioEntry(cg.BlkioStats.IoTimeRecursive)
 	s.Blkio.SectorsRecursive = convertBlkioEntry(cg.BlkioStats.SectorsRecursive)
 
-	s.Hugetlb = make(map[string]hugetlb)
+	s.Hugetlb = make(map[string]types.Hugetlb)
 	for k, v := range cg.HugetlbStats {
 		s.Hugetlb[k] = convertHugtlb(v)
 	}
@@ -276,19 +163,20 @@ func convertLibcontainerStats(ls *libcontainer.Stats) *stats {
 		}
 	}
 
+	s.NetworkInterfaces = ls.Interfaces
 	return &s
 }
 
-func convertHugtlb(c cgroups.HugetlbStats) hugetlb {
-	return hugetlb{
+func convertHugtlb(c cgroups.HugetlbStats) types.Hugetlb {
+	return types.Hugetlb{
 		Usage:   c.Usage,
 		Max:     c.MaxUsage,
 		Failcnt: c.Failcnt,
 	}
 }
 
-func convertMemoryEntry(c cgroups.MemoryData) memoryEntry {
-	return memoryEntry{
+func convertMemoryEntry(c cgroups.MemoryData) types.MemoryEntry {
+	return types.MemoryEntry{
 		Limit:   c.Limit,
 		Usage:   c.Usage,
 		Max:     c.MaxUsage,
@@ -296,10 +184,10 @@ func convertMemoryEntry(c cgroups.MemoryData) memoryEntry {
 	}
 }
 
-func convertBlkioEntry(c []cgroups.BlkioStatEntry) []blkioEntry {
-	var out []blkioEntry
+func convertBlkioEntry(c []cgroups.BlkioStatEntry) []types.BlkioEntry {
+	var out []types.BlkioEntry
 	for _, e := range c {
-		out = append(out, blkioEntry{
+		out = append(out, types.BlkioEntry{
 			Major: e.Major,
 			Minor: e.Minor,
 			Op:    e.Op,
@@ -309,16 +197,16 @@ func convertBlkioEntry(c []cgroups.BlkioStatEntry) []blkioEntry {
 	return out
 }
 
-func convertL3CacheInfo(i *intelrdt.L3CacheInfo) *l3CacheInfo {
-	return &l3CacheInfo{
+func convertL3CacheInfo(i *intelrdt.L3CacheInfo) *types.L3CacheInfo {
+	return &types.L3CacheInfo{
 		CbmMask:    i.CbmMask,
 		MinCbmBits: i.MinCbmBits,
 		NumClosids: i.NumClosids,
 	}
 }
 
-func convertMemBwInfo(i *intelrdt.MemBwInfo) *memBwInfo {
-	return &memBwInfo{
+func convertMemBwInfo(i *intelrdt.MemBwInfo) *types.MemBwInfo {
+	return &types.MemBwInfo{
 		BandwidthGran: i.BandwidthGran,
 		DelayLinear:   i.DelayLinear,
 		MinBandwidth:  i.MinBandwidth,
