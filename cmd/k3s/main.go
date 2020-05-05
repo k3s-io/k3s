@@ -13,6 +13,7 @@ import (
 	"github.com/rancher/k3s/pkg/data"
 	"github.com/rancher/k3s/pkg/datadir"
 	"github.com/rancher/k3s/pkg/untar"
+	"github.com/rancher/k3s/pkg/version"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 )
@@ -24,8 +25,8 @@ func main() {
 
 	app := cmds.NewApp()
 	app.Commands = []cli.Command{
-		cmds.NewServerCommand(wrap("k3s-server", os.Args)),
-		cmds.NewAgentCommand(wrap("k3s-agent", os.Args)),
+		cmds.NewServerCommand(wrap(version.Program+"-server", os.Args)),
+		cmds.NewAgentCommand(wrap(version.Program+"-agent", os.Args)),
 		cmds.NewKubectlCommand(externalCLIAction("kubectl")),
 		cmds.NewCRICTL(externalCLIAction("crictl")),
 		cmds.NewCtrCommand(externalCLIAction("ctr")),
@@ -88,7 +89,7 @@ func stageAndRun(dataDir string, cmd string, args []string) error {
 	if err := os.Setenv("PATH", filepath.Join(dir, "bin")+":"+os.Getenv("PATH")+":"+filepath.Join(dir, "bin/aux")); err != nil {
 		return err
 	}
-	if err := os.Setenv("K3S_DATA_DIR", dir); err != nil {
+	if err := os.Setenv(version.ProgramUpper+"_DATA_DIR", dir); err != nil {
 		return err
 	}
 

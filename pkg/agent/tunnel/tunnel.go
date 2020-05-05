@@ -13,6 +13,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/rancher/k3s/pkg/agent/proxy"
 	"github.com/rancher/k3s/pkg/daemons/config"
+	"github.com/rancher/k3s/pkg/version"
 	"github.com/rancher/remotedialer"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
@@ -159,7 +160,7 @@ func Setup(ctx context.Context, config *config.Node, proxy proxy.Proxy) error {
 }
 
 func connect(rootCtx context.Context, waitGroup *sync.WaitGroup, address string, tlsConfig *tls.Config) context.CancelFunc {
-	wsURL := fmt.Sprintf("wss://%s/v1-k3s/connect", address)
+	wsURL := fmt.Sprintf("wss://%s/v1-"+version.Program+"/connect", address)
 	ws := &websocket.Dialer{
 		TLSClientConfig: tlsConfig,
 	}

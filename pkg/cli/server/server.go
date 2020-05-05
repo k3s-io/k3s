@@ -17,6 +17,7 @@ import (
 	"github.com/rancher/k3s/pkg/rootless"
 	"github.com/rancher/k3s/pkg/server"
 	"github.com/rancher/k3s/pkg/token"
+	"github.com/rancher/k3s/pkg/version"
 	"github.com/rancher/wrangler/pkg/signals"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
@@ -209,7 +210,7 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 		return errors.Wrapf(err, "Invalid TLS Cipher Suites %s: %v", TLSCipherSuites, err)
 	}
 
-	logrus.Info("Starting k3s ", app.App.Version)
+	logrus.Info("Starting "+version.Program+" ", app.App.Version)
 	notifySocket := os.Getenv("NOTIFY_SOCKET")
 	os.Unsetenv("NOTIFY_SOCKET")
 
@@ -220,7 +221,7 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 
 	go func() {
 		<-serverConfig.ControlConfig.Runtime.APIServerReady
-		logrus.Info("k3s is up and running")
+		logrus.Info("" + version.Program + " is up and running")
 		if notifySocket != "" {
 			os.Setenv("NOTIFY_SOCKET", notifySocket)
 			systemd.SdNotify(true, "READY=1\n")

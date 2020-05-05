@@ -7,17 +7,21 @@ import (
 
 	"github.com/canonical/go-dqlite/client"
 	"github.com/canonical/go-dqlite/driver"
+	"github.com/rancher/k3s/pkg/version"
 	controllerv1 "github.com/rancher/wrangler-api/pkg/generated/controllers/core/v1"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 )
 
+var (
+	nodeID      = "cluster." + version.Program + ".cattle.io/node-id"
+	nodeAddress = "cluster." + version.Program + ".cattle.io/node-address"
+)
+
 const (
-	allKey      = "_all_"
-	nodeID      = "cluster.k3s.cattle.io/node-id"
-	nodeAddress = "cluster.k3s.cattle.io/node-address"
-	master      = "node-role.kubernetes.io/master"
+	allKey = "_all_"
+	master = "node-role.kubernetes.io/master"
 )
 
 func Register(ctx context.Context, nodeName string, nodeInfo client.NodeInfo,
