@@ -29,12 +29,15 @@ func Agent(config *config.Agent) error {
 	defer logs.FlushLogs()
 
 	startKubelet(config)
-	startKubeProxy(config)
+
+	if !config.DisableKubeProxy {
+		return startKubeProxy(config)
+	}
 
 	return nil
 }
 
-func startKubeProxy(cfg *config.Agent) {
+func startKubeProxy(cfg *config.Agent) error {
 	argsMap := map[string]string{
 		"proxy-mode":           "iptables",
 		"healthz-bind-address": "127.0.0.1",
@@ -53,6 +56,8 @@ func startKubeProxy(cfg *config.Agent) {
 		logrus.Infof("Running kube-proxy %s", config.ArgString(args))
 		logrus.Fatalf("kube-proxy exited: %v", command.Execute())
 	}()
+
+	return nil
 }
 
 func startKubelet(cfg *config.Agent) {

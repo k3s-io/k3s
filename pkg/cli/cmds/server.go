@@ -44,6 +44,7 @@ type Server struct {
 	DefaultLocalStoragePath  string
 	DisableCCM               bool
 	DisableNPC               bool
+	DisableKubeProxy         bool
 	ClusterInit              bool
 	ClusterReset             bool
 	EncryptSecrets           bool
@@ -209,6 +210,11 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Name:        "disable-cloud-controller",
 				Usage:       "(components) Disable k3s default cloud controller manager",
 				Destination: &ServerConfig.DisableCCM,
+			},
+			cli.BoolFlag{
+				Name:        "disable-kube-proxy",
+				Usage:       "(components) Disable running kube-proxy",
+				Destination: &ServerConfig.DisableKubeProxy,
 			},
 			cli.BoolFlag{
 				Name:        "disable-network-policy",

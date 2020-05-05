@@ -98,6 +98,7 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	serverConfig.ControlConfig.ExtraCloudControllerArgs = cfg.ExtraCloudControllerArgs
 	serverConfig.ControlConfig.DisableCCM = cfg.DisableCCM
 	serverConfig.ControlConfig.DisableNPC = cfg.DisableNPC
+	serverConfig.ControlConfig.DisableKubeProxy = cfg.DisableKubeProxy
 	serverConfig.ControlConfig.ClusterInit = cfg.ClusterInit
 	serverConfig.ControlConfig.ClusterReset = cfg.ClusterReset
 	serverConfig.ControlConfig.EncryptSecrets = cfg.EncryptSecrets

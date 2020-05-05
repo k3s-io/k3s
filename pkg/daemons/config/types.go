@@ -79,6 +79,7 @@ type Agent struct {
 	PrivateRegistry         string
 	DisableCCM              bool
 	DisableNPC              bool
+	DisableKubeProxy        bool
 	Rootless                bool
 }
 
@@ -112,6 +113,7 @@ type Control struct {
 	DefaultLocalStoragePath  string
 	DisableCCM               bool
 	DisableNPC               bool
+	DisableKubeProxy         bool
 	ClusterInit              bool
 	ClusterReset             bool
 	EncryptSecrets           bool

@@ -474,6 +474,7 @@ func get(envInfo *cmds.Agent) (*config.Node, error) {
 	nodeConfig.AgentConfig.PrivateRegistry = envInfo.PrivateRegistry
 	nodeConfig.AgentConfig.DisableCCM = controlConfig.DisableCCM
 	nodeConfig.AgentConfig.DisableNPC = controlConfig.DisableNPC
+	nodeConfig.AgentConfig.DisableKubeProxy = controlConfig.DisableKubeProxy
 	nodeConfig.AgentConfig.Rootless = envInfo.Rootless
 	nodeConfig.DisableSELinux = envInfo.DisableSELinux
 
