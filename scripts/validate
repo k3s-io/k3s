@@ -21,6 +21,9 @@ echo Running: "${GO}" generate
 echo Running: golangci-lint
 golangci-lint run
 
+GO111MODULE=on go mod tidy
+GO111MODULE=on go mod vendor
+
 . ./scripts/version.sh
 
 if [ -n "$DIRTY" ]; then
