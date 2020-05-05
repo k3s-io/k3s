@@ -171,6 +171,11 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 		serverConfig.DisableServiceLB = true
 	}
 
+	if serverConfig.ControlConfig.DisableCCM {
+		serverConfig.ControlConfig.Skips["ccm"] = true
+		serverConfig.ControlConfig.Disables["ccm"] = true
+	}
+
 	logrus.Info("Starting k3s ", app.App.Version)
 	notifySocket := os.Getenv("NOTIFY_SOCKET")
 	os.Unsetenv("NOTIFY_SOCKET")
