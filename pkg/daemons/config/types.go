@@ -132,6 +132,10 @@ type Control struct {
 }
 
 type ControlRuntimeBootstrap struct {
+	ETCDServerCA       string
+	ETCDServerCAKey    string
+	ETCDPeerCA         string
+	ETCDPeerCAKey      string
 	ServerCA           string
 	ServerCAKey        string
 	ClientCA           string
@@ -187,6 +191,13 @@ type ControlRuntime struct {
 	ClientCloudControllerKey  string
 	ClientK3sControllerCert   string
 	ClientK3sControllerKey    string
+
+	ServerETCDCert           string
+	ServerETCDKey            string
+	PeerServerClientETCDCert string
+	PeerServerClientETCDKey  string
+	ClientETCDCert           string
+	ClientETCDKey            string
 
 	Core *core.Factory
 }

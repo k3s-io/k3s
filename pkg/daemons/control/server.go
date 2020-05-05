@@ -303,6 +303,17 @@ func prepare(ctx context.Context, config *config.Control, runtime *config.Contro
 	runtime.ClientAuthProxyCert = filepath.Join(config.DataDir, "tls", "client-auth-proxy.crt")
 	runtime.ClientAuthProxyKey = filepath.Join(config.DataDir, "tls", "client-auth-proxy.key")
 
+	runtime.ETCDServerCA = filepath.Join(config.DataDir, "tls", "etcd", "server-ca.crt")
+	runtime.ETCDServerCAKey = filepath.Join(config.DataDir, "tls", "etcd", "server-ca.key")
+	runtime.ETCDPeerCA = filepath.Join(config.DataDir, "tls", "etcd", "peer-ca.crt")
+	runtime.ETCDPeerCAKey = filepath.Join(config.DataDir, "tls", "etcd", "peer-ca.key")
+	runtime.ServerETCDCert = filepath.Join(config.DataDir, "tls", "etcd", "server-client.crt")
+	runtime.ServerETCDKey = filepath.Join(config.DataDir, "tls", "etcd", "server-client.key")
+	runtime.PeerServerClientETCDCert = filepath.Join(config.DataDir, "tls", "etcd", "peer-server-client.crt")
+	runtime.PeerServerClientETCDKey = filepath.Join(config.DataDir, "tls", "etcd", "peer-server-client.key")
+	runtime.ClientETCDCert = filepath.Join(config.DataDir, "tls", "etcd", "client.crt")
+	runtime.ClientETCDKey = filepath.Join(config.DataDir, "tls", "etcd", "client.key")
+
 	if config.EncryptSecrets {
 		runtime.EncryptionConfig = filepath.Join(config.DataDir, "cred", "encryption-config.json")
 	}
@@ -461,6 +472,9 @@ func genCerts(config *config.Control, runtime *config.ControlRuntime) error {
 	if err := genRequestHeaderCerts(config, runtime); err != nil {
 		return err
 	}
+	if err := genETCDCerts(config, runtime); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -565,6 +579,17 @@ func createServerSigningCertKey(config *config.Control, runtime *config.ControlR
 	return createSigningCertKey(version.Program+"-server", runtime.ServerCA, runtime.ServerCAKey)
 }
 
+func addSANs(altNames *certutil.AltNames, sans []string) {
+	for _, san := range sans {
+		ip := net.ParseIP(san)
+		if ip == nil {
+			altNames.DNSNames = append(altNames.DNSNames, san)
+		} else {
+			altNames.IPs = append(altNames.IPs, ip)
+		}
+	}
+}
+
 func genServerCerts(config *config.Control, runtime *config.ControlRuntime) error {
 	regen, err := createServerSigningCertKey(config, runtime)
 	if err != nil {
@@ -576,17 +601,61 @@ func genServerCerts(config *config.Control, runtime *config.ControlRuntime) erro
 		return err
 	}
 
+	altNames := &certutil.AltNames{
+		DNSNames: []string{"kubernetes.default.svc", "kubernetes.default", "kubernetes", "localhost"},
+		IPs:      []net.IP{apiServerServiceIP},
+	}
+
+	addSANs(altNames, config.SANs)
+
 	if _, err := createClientCertKey(regen, "kube-apiserver", nil,
-		&certutil.AltNames{
-			DNSNames: []string{"kubernetes.default.svc", "kubernetes.default", "kubernetes", "localhost"},
-			IPs:      []net.IP{apiServerServiceIP, localhostIP},
-		}, []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		altNames, []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		runtime.ServerCA, runtime.ServerCAKey,
 		runtime.ServingKubeAPICert, runtime.ServingKubeAPIKey); err != nil {
 		return err
 	}
 
 	if _, _, err := certutil.LoadOrGenerateKeyFile(runtime.ServingKubeletKey, regen); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func genETCDCerts(config *config.Control, runtime *config.ControlRuntime) error {
+	regen, err := createSigningCertKey("etcd-server", runtime.ETCDServerCA, runtime.ETCDServerCAKey)
+	if err != nil {
+		return err
+	}
+
+	altNames := &certutil.AltNames{
+		DNSNames: []string{"localhost"},
+	}
+	addSANs(altNames, config.SANs)
+
+	if _, err := createClientCertKey(regen, "etcd-server", nil,
+		altNames, []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
+		runtime.ETCDServerCA, runtime.ETCDServerCAKey,
+		runtime.ServerETCDCert, runtime.ServerETCDKey); err != nil {
+		return err
+	}
+
+	if _, err := createClientCertKey(regen, "etcd-client", nil,
+		nil, []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+		runtime.ETCDServerCA, runtime.ETCDServerCAKey,
+		runtime.ClientETCDCert, runtime.ClientETCDKey); err != nil {
+		return err
+	}
+
+	regen, err = createSigningCertKey("etcd-peer", runtime.ETCDPeerCA, runtime.ETCDPeerCAKey)
+	if err != nil {
+		return err
+	}
+
+	if _, err := createClientCertKey(regen, "etcd-peer", nil,
+		altNames, []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
+		runtime.ETCDPeerCA, runtime.ETCDPeerCAKey,
+		runtime.PeerServerClientETCDCert, runtime.PeerServerClientETCDKey); err != nil {
 		return err
 	}
 
@@ -621,6 +690,10 @@ func createClientCertKey(regen bool, commonName string, organization []string, a
 	// check for certificate expiration
 	if !regen {
 		regen = expired(certFile, pool)
+	}
+
+	if !regen {
+		regen = sansChanged(certFile, altNames)
 	}
 
 	if !regen {
@@ -761,6 +834,43 @@ func setupStorageBackend(argsMap map[string]string, cfg *config.Control) {
 	if len(cfg.Datastore.KeyFile) > 0 {
 		argsMap["etcd-keyfile"] = cfg.Datastore.KeyFile
 	}
+}
+
+func sansChanged(certFile string, sans *certutil.AltNames) bool {
+	if sans == nil {
+		return false
+	}
+
+	certBytes, err := ioutil.ReadFile(certFile)
+	if err != nil {
+		return false
+	}
+
+	certificates, err := certutil.ParseCertsPEM(certBytes)
+	if err != nil {
+		return false
+	}
+
+	if len(certificates) == 0 {
+		return false
+	}
+
+	if !sets.NewString(certificates[0].DNSNames...).HasAll(sans.DNSNames...) {
+		return true
+	}
+
+	ips := sets.NewString()
+	for _, ip := range certificates[0].IPAddresses {
+		ips.Insert(ip.String())
+	}
+
+	for _, ip := range sans.IPs {
+		if !ips.Has(ip.String()) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func expired(certFile string, pool *x509.CertPool) bool {
