@@ -3,11 +3,9 @@ set -ve
 
 apk add -q -f curl libc6-compat tzdata
 download_go
-download_dqlite
 # ---
 cat <<EOF >/etc/profile.d/build.sh
 export SELINUX=true
-export DQLITE=true
 export STATIC_BUILD=true
 EOF
 . /etc/profile.d/build.sh

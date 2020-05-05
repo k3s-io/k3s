@@ -5,7 +5,6 @@ download_go
 # ---
 cat <<EOF >/etc/profile.d/build.sh
 export SELINUX=true
-# export DQLITE=true
 # export STATIC_BUILD=true
 EOF
 . /etc/profile.d/build.sh

@@ -27,4 +27,3 @@ E2E_OUTPUT=$artifacts test-run-sonobuoy
 
 test-run-sonobuoy mysql
 test-run-sonobuoy postgres
-# test-run-sonobuoy dqlite

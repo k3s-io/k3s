@@ -431,8 +431,6 @@ github.com/evanphx/json-patch
 github.com/exponent-io/jsonpath
 # github.com/fatih/camelcase v1.0.0
 github.com/fatih/camelcase
-# github.com/flosch/pongo2 v0.0.0-20190707114632-bbf5a6c351f4
-github.com/flosch/pongo2
 # github.com/fsnotify/fsnotify v1.4.7
 github.com/fsnotify/fsnotify
 # github.com/ghodss/yaml v1.0.0
@@ -615,14 +613,6 @@ github.com/lib/pq/scram
 github.com/liggitt/tabwriter
 # github.com/lithammer/dedent v1.1.0
 github.com/lithammer/dedent
-# github.com/lxc/lxd v0.0.0-20191108214106-60ea15630455
-github.com/lxc/lxd/shared
-github.com/lxc/lxd/shared/api
-github.com/lxc/lxd/shared/cancel
-github.com/lxc/lxd/shared/eagain
-github.com/lxc/lxd/shared/ioprogress
-github.com/lxc/lxd/shared/logger
-github.com/lxc/lxd/shared/units
 # github.com/mailru/easyjson v0.7.0
 github.com/mailru/easyjson/buffer
 github.com/mailru/easyjson/jlexer
@@ -1131,8 +1121,6 @@ gopkg.in/gcfg.v1/types
 gopkg.in/inf.v0
 # gopkg.in/natefinch/lumberjack.v2 v2.0.0
 gopkg.in/natefinch/lumberjack.v2
-# gopkg.in/robfig/cron.v2 v2.0.0-20150107220207-be2e0b0deed5
-gopkg.in/robfig/cron.v2
 # gopkg.in/square/go-jose.v2 v2.2.2
 gopkg.in/square/go-jose.v2
 gopkg.in/square/go-jose.v2/cipher
