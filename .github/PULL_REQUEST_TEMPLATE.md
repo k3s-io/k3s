@@ -20,7 +20,7 @@ What types of changes does your code introduce to Rancher?
 
 Verification
 ======
-<!---
+<!--
 
 How can the changes be verified? Please provide whatever additional information necessary to help verify the proposed changes.
 
