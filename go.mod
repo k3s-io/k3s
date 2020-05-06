@@ -125,5 +125,5 @@ require (
 	k8s.io/component-base v0.0.0
 	k8s.io/cri-api v0.0.0
 	k8s.io/klog v1.0.0
-	k8s.io/kubernetes v1.16.0
+	k8s.io/kubernetes v1.17.0
 )
