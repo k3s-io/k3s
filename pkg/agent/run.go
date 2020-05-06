@@ -159,10 +159,14 @@ func validate() error {
 }
 
 func configureNode(ctx context.Context, agentConfig *daemonconfig.Agent, nodes v1.NodeInterface) error {
+	count := 0
 	for {
 		node, err := nodes.Get(ctx, agentConfig.NodeName, metav1.GetOptions{})
 		if err != nil {
-			logrus.Infof("Waiting for kubelet to be ready on node %s: %v", agentConfig.NodeName, err)
+			if count%30 == 0 {
+				logrus.Infof("Waiting for kubelet to be ready on node %s: %v", agentConfig.NodeName, err)
+			}
+			count++
 			time.Sleep(1 * time.Second)
 			continue
 		}
