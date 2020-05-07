@@ -21,6 +21,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 	"k8s.io/apimachinery/pkg/util/net"
+	kubeapiserverflag "k8s.io/component-base/cli/flag"
 	"k8s.io/kubernetes/pkg/master"
 
 	_ "github.com/go-sql-driver/mysql" // ensure we have mysql
@@ -183,6 +184,20 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 		serverConfig.ControlConfig.Disables["ccm"] = true
 	}
 
+	TLSMinVersion := getArgValueFromList("tls-min-version", cfg.ExtraAPIArgs)
+	serverConfig.ControlConfig.TLSMinVersion, err = kubeapiserverflag.TLSVersion(TLSMinVersion)
+	if err != nil {
+		return errors.Wrapf(err, "Invalid TLS Version %s: %v", TLSMinVersion, err)
+	}
+
+	TLSCipherSuites := []string{getArgValueFromList("tls-cipher-suites", cfg.ExtraAPIArgs)}
+	if len(TLSCipherSuites) != 0 && TLSCipherSuites[0] != "" {
+		serverConfig.ControlConfig.TLSCipherSuites, err = kubeapiserverflag.TLSCipherSuites(TLSCipherSuites)
+		if err != nil {
+			return errors.Wrapf(err, "Invalid TLS Cipher Suites %s: %v", TLSCipherSuites, err)
+		}
+	}
+
 	logrus.Info("Starting k3s ", app.App.Version)
 	notifySocket := os.Getenv("NOTIFY_SOCKET")
 	os.Unsetenv("NOTIFY_SOCKET")
@@ -239,4 +254,17 @@ func knownIPs(ips []string) []string {
 		ips = append(ips, ip.String())
 	}
 	return ips
+}
+
+func getArgValueFromList(searchArg string, argList []string) string {
+	var value string
+	for _, arg := range argList {
+		splitArg := strings.SplitN(arg, "=", 2)
+		if splitArg[0] == searchArg {
+			value = splitArg[1]
+			// break if we found our value
+			break
+		}
+	}
+	return value
 }

@@ -33,7 +33,9 @@ func (c *Cluster) newListener(ctx context.Context) (net.Listener, http.Handler, 
 		CN:           "k3s",
 		Organization: []string{"k3s"},
 		TLSConfig: tls.Config{
-			ClientAuth: tls.RequestClientCert,
+			ClientAuth:   tls.RequestClientCert,
+			MinVersion:   c.config.TLSMinVersion,
+			CipherSuites: c.config.TLSCipherSuites,
 		},
 		SANs: append(c.config.SANs, "localhost", "kubernetes", "kubernetes.default", "kubernetes.default.svc."+c.config.ClusterDomain),
 	})

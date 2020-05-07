@@ -122,6 +122,8 @@ type Control struct {
 	ClusterInit              bool
 	ClusterReset             bool
 	EncryptSecrets           bool
+	TLSMinVersion            uint16
+	TLSCipherSuites          []uint16
 
 	BindAddress string
 	SANs        []string
