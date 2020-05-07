@@ -17,6 +17,11 @@ channels:
   excludeRegexp: ^[^+]+-
 - name: v1.17-testing
   latestRegexp: v1\.17\..*
+- name: v1.18
+  latestRegexp: v1\.18\..*
+  excludeRegexp: ^[^+]+-
+- name: v1.18-testing
+  latestRegexp: v1\.18\..*
 github:
   owner: rancher
   repo: k3s
