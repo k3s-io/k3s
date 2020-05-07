@@ -11,8 +11,8 @@ type Executor interface {
 	Kubelet(args []string) error
 	KubeProxy(args []string) error
 	APIServer(ctx context.Context, args []string) (authenticator.Request, http.Handler, error)
-	Scheduler(args []string) error
-	ControllerManager(args []string) error
+	Scheduler(apiReady <-chan struct{}, args []string) error
+	ControllerManager(apiReady <-chan struct{}, args []string) error
 }
 
 var (
@@ -35,10 +35,10 @@ func APIServer(ctx context.Context, args []string) (authenticator.Request, http.
 	return executor.APIServer(ctx, args)
 }
 
-func Scheduler(args []string) error {
-	return executor.Scheduler(args)
+func Scheduler(apiReady <-chan struct{}, args []string) error {
+	return executor.Scheduler(apiReady, args)
 }
 
-func ControllerManager(args []string) error {
-	return executor.ControllerManager(args)
+func ControllerManager(apiReady <-chan struct{}, args []string) error {
+	return executor.ControllerManager(apiReady, args)
 }

@@ -87,6 +87,24 @@ func startWrangler(ctx context.Context, config *Config) error {
 
 	controlConfig.Runtime.Handler = router(controlConfig, controlConfig.Runtime.Tunnel, ca)
 
+	// Start in background
+	go func() {
+		select {
+		case <-ctx.Done():
+			return
+		case <-config.ControlConfig.Runtime.APIServerReady:
+			if err := runControllers(ctx, config); err != nil {
+				logrus.Fatal("failed to start controllers: %v", err)
+			}
+		}
+	}()
+
+	return nil
+}
+
+func runControllers(ctx context.Context, config *Config) error {
+	controlConfig := &config.ControlConfig
+
 	sc, err := newContext(ctx, controlConfig.Runtime.KubeConfigAdmin)
 	if err != nil {
 		return err

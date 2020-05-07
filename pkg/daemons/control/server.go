@@ -73,7 +73,6 @@ users:
 )
 
 const (
-	userTokenSize  = 8
 	ipsecTokenSize = 48
 	aescbcKeySize  = 32
 )
@@ -96,7 +95,7 @@ func Server(ctx context.Context, cfg *config.Control) error {
 		return err
 	}
 
-	if err := waitForAPIServer(ctx, runtime); err != nil {
+	if err := waitForAPIServerInBackground(ctx, runtime); err != nil {
 		return err
 	}
 
@@ -141,7 +140,7 @@ func controllerManager(cfg *config.Control, runtime *config.ControlRuntime) erro
 	args := config.GetArgsList(argsMap, cfg.ExtraControllerArgs)
 	logrus.Infof("Running kube-controller-manager %s", config.ArgString(args))
 
-	return executor.ControllerManager(args)
+	return executor.ControllerManager(runtime.APIServerReady, args)
 }
 
 func scheduler(cfg *config.Control, runtime *config.ControlRuntime) error {
@@ -157,7 +156,7 @@ func scheduler(cfg *config.Control, runtime *config.ControlRuntime) error {
 	args := config.GetArgsList(argsMap, cfg.ExtraSchedulerAPIArgs)
 
 	logrus.Infof("Running kube-scheduler %s", config.ArgString(args))
-	return executor.Scheduler(args)
+	return executor.Scheduler(runtime.APIServerReady, args)
 }
 
 func apiServer(ctx context.Context, cfg *config.Control, runtime *config.ControlRuntime) (authenticator.Request, http.Handler, error) {
@@ -830,7 +829,7 @@ func checkForCloudControllerPrivileges(runtime *config.ControlRuntime) error {
 	return nil
 }
 
-func waitForAPIServer(ctx context.Context, runtime *config.ControlRuntime) error {
+func waitForAPIServerInBackground(ctx context.Context, runtime *config.ControlRuntime) error {
 	restConfig, err := clientcmd.BuildConfigFromFlags("", runtime.KubeConfigAdmin)
 	if err != nil {
 		return err
@@ -841,12 +840,27 @@ func waitForAPIServer(ctx context.Context, runtime *config.ControlRuntime) error
 		return err
 	}
 
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case err := <-promise(func() error { return app2.WaitForAPIServer(k8sClient, 5*time.Minute) }):
-		return err
-	}
+	done := make(chan struct{})
+	runtime.APIServerReady = done
+
+	go func() {
+		defer close(done)
+		logrus.Infof("Waiting for API server to become available")
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case err := <-promise(func() error { return app2.WaitForAPIServer(k8sClient, 30*time.Second) }):
+				if err != nil {
+					logrus.Infof("Waiting for API server to become available")
+					continue
+				}
+				return
+			}
+		}
+	}()
+
+	return nil
 }
 
 func promise(f func() error) <-chan error {

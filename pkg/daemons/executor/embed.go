@@ -57,22 +57,24 @@ func (Embedded) APIServer(ctx context.Context, args []string) (authenticator.Req
 	return startupConfig.Authenticator, startupConfig.Handler, nil
 }
 
-func (Embedded) Scheduler(args []string) error {
+func (Embedded) Scheduler(apiReady <-chan struct{}, args []string) error {
 	command := sapp.NewSchedulerCommand()
 	command.SetArgs(args)
 
 	go func() {
+		<-apiReady
 		logrus.Fatalf("scheduler exited: %v", command.Execute())
 	}()
 
 	return nil
 }
 
-func (Embedded) ControllerManager(args []string) error {
+func (Embedded) ControllerManager(apiReady <-chan struct{}, args []string) error {
 	command := cmapp.NewControllerManagerCommand()
 	command.SetArgs(args)
 
 	go func() {
+		<-apiReady
 		logrus.Fatalf("controller-manager exited: %v", command.Execute())
 	}()
 
