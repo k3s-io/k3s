@@ -32,7 +32,7 @@ Linked Issues
 
 Link any related issues, pull-requests, or commit hashes that are relavent to this pull request.
 
-If you are opening a PR without a corresponding issue please consider creating one first, [here](https://github.com/rancher/k3s/issues). This will help QA massively. PR's opened without linked issues will not be merged until an issue is created and linked here. 
+If you are opening a PR without a corresponding issue please consider creating one first, [here](https://github.com/rancher/k3s/issues). A functional example will greatly help QA with verifying/reproducing a bug or testing new features.
 
 --> 
 
