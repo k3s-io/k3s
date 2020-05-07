@@ -9,14 +9,12 @@ import (
 	"strings"
 	"time"
 
-	"k8s.io/apimachinery/pkg/labels"
-
 	systemd "github.com/coreos/go-systemd/daemon"
 	"github.com/rancher/k3s/pkg/agent/config"
 	"github.com/rancher/k3s/pkg/agent/containerd"
 	"github.com/rancher/k3s/pkg/agent/flannel"
-	"github.com/rancher/k3s/pkg/agent/loadbalancer"
 	"github.com/rancher/k3s/pkg/agent/netpol"
+	"github.com/rancher/k3s/pkg/agent/proxy"
 	"github.com/rancher/k3s/pkg/agent/syssetup"
 	"github.com/rancher/k3s/pkg/agent/tunnel"
 	"github.com/rancher/k3s/pkg/cli/cmds"
@@ -28,6 +26,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/clientcmd"
@@ -39,8 +38,8 @@ const (
 	HostnameLabel   = "k3s.io/hostname"
 )
 
-func run(ctx context.Context, cfg cmds.Agent, lb *loadbalancer.LoadBalancer) error {
-	nodeConfig := config.Get(ctx, cfg)
+func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
+	nodeConfig := config.Get(ctx, cfg, proxy)
 
 	if !nodeConfig.NoFlannel {
 		if err := flannel.Prepare(ctx, nodeConfig); err != nil {
@@ -54,7 +53,7 @@ func run(ctx context.Context, cfg cmds.Agent, lb *loadbalancer.LoadBalancer) err
 		}
 	}
 
-	if err := tunnel.Setup(ctx, nodeConfig, lb.Update); err != nil {
+	if err := tunnel.Setup(ctx, nodeConfig, proxy); err != nil {
 		return err
 	}
 
@@ -112,16 +111,13 @@ func Run(ctx context.Context, cfg cmds.Agent) error {
 		return err
 	}
 
-	lb, err := loadbalancer.Setup(ctx, cfg)
+	proxy, err := proxy.NewAPIProxy(!cfg.DisableLoadBalancer, cfg.DataDir, cfg.ServerURL)
 	if err != nil {
 		return err
 	}
-	if lb != nil {
-		cfg.ServerURL = lb.LoadBalancerServerURL()
-	}
 
 	for {
-		newToken, err := clientaccess.NormalizeAndValidateTokenForUser(cfg.ServerURL, cfg.Token, "node")
+		newToken, err := clientaccess.NormalizeAndValidateTokenForUser(proxy.SupervisorURL(), cfg.Token, "node")
 		if err != nil {
 			logrus.Error(err)
 			select {
@@ -136,7 +132,7 @@ func Run(ctx context.Context, cfg cmds.Agent) error {
 	}
 
 	systemd.SdNotify(true, "READY=1\n")
-	return run(ctx, cfg, lb)
+	return run(ctx, cfg, proxy)
 }
 
 func validate() error {

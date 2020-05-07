@@ -9,4 +9,5 @@ type Config struct {
 	DisableServiceLB bool
 	ControlConfig    config.Control
 	Rootless         bool
+	SupervisorPort   int
 }

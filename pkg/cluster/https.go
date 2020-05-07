@@ -18,7 +18,7 @@ import (
 )
 
 func (c *Cluster) newListener(ctx context.Context) (net.Listener, http.Handler, error) {
-	tcp, err := dynamiclistener.NewTCPListener(c.config.BindAddress, c.config.HTTPSPort)
+	tcp, err := dynamiclistener.NewTCPListener(c.config.BindAddress, c.config.SupervisorPort)
 	if err != nil {
 		return nil, nil, err
 	}

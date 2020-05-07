@@ -106,7 +106,7 @@ func TestFailOver(t *testing.T) {
 		DataDir:   tmpDir,
 	}
 
-	lb, err := Setup(context.Background(), cfg)
+	lb, err := New(context.Background(), cfg.DataDir, SupervisorServiceName, cfg.ServerURL)
 	if err != nil {
 		assertEqual(t, err, nil)
 	}
@@ -157,7 +157,7 @@ func TestFailFast(t *testing.T) {
 		DataDir:   tmpDir,
 	}
 
-	lb, err := Setup(context.Background(), cfg)
+	lb, err := New(context.Background(), cfg.DataDir, SupervisorServiceName, cfg.ServerURL)
 	if err != nil {
 		assertEqual(t, err, nil)
 	}
