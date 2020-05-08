@@ -358,14 +358,14 @@ func parseIPSetSave(ipset *IPSet, result string) map[string]*Set {
 // create KUBE-DST-3YNVZWWGX3UQQ4VQ hash:ip family inet hashsize 1024 maxelem 65536 timeout 0
 // add KUBE-DST-3YNVZWWGX3UQQ4VQ 100.96.1.6 timeout 0
 func buildIPSetRestore(ipset *IPSet) string {
-	ipSetRestore := ""
+	var ipSetRestore strings.Builder
 	for _, set := range ipset.Sets {
-		ipSetRestore += fmt.Sprintf("create %s %s\n", set.Name, strings.Join(set.Options[:], " "))
+		ipSetRestore.WriteString(fmt.Sprintf("create %s %s\n", set.Name, strings.Join(set.Options[:], " ")))
 		for _, entry := range set.Entries {
-			ipSetRestore += fmt.Sprintf("add %s %s\n", set.Name, strings.Join(entry.Options[:], " "))
+			ipSetRestore.WriteString(fmt.Sprintf("add %s %s\n", set.Name, strings.Join(entry.Options[:], " ")))
 		}
 	}
-	return ipSetRestore
+	return ipSetRestore.String()
 }
 
 // Save the given set, or all sets if none is given to stdout in a format that

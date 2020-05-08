@@ -39,7 +39,7 @@ func (h *handler) onRemove(key string, node *core.Node) (*core.Node, error) {
 
 func (h *handler) updateHosts(node *core.Node, removed bool) (*core.Node, error) {
 	var (
-		newHosts    string
+		newHosts    strings.Builder
 		nodeAddress string
 		hostsMap    map[string]string
 	)
@@ -90,9 +90,9 @@ func (h *handler) updateHosts(node *core.Node, removed bool) (*core.Node, error)
 		hostsMap[node.Name] = nodeAddress
 	}
 	for host, ip := range hostsMap {
-		newHosts += ip + " " + host + "\n"
+		newHosts.WriteString(ip + " " + host + "\n")
 	}
-	configMap.Data["NodeHosts"] = newHosts
+	configMap.Data["NodeHosts"] = newHosts.String()
 
 	if _, err := h.configClient.Update(configMap); err != nil {
 		return nil, err

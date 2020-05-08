@@ -8,6 +8,7 @@ import (
 )
 
 func parseURL(serverURL, newHost string) (string, string, error) {
+	var address strings.Builder
 	parsedURL, err := url.Parse(serverURL)
 	if err != nil {
 		return "", "", err
@@ -15,17 +16,17 @@ func parseURL(serverURL, newHost string) (string, string, error) {
 	if parsedURL.Host == "" {
 		return "", "", errors.New("Initial server URL host is not defined for load balancer")
 	}
-	address := parsedURL.Host
+	address.WriteString(parsedURL.Host)
 	if parsedURL.Port() == "" {
 		if strings.ToLower(parsedURL.Scheme) == "http" {
-			address += ":80"
+			address.WriteString(":80")
 		}
 		if strings.ToLower(parsedURL.Scheme) == "https" {
-			address += ":443"
+			address.WriteString(":443")
 		}
 	}
 	parsedURL.Host = newHost
-	return address, parsedURL.String(), nil
+	return address.String(), parsedURL.String(), nil
 }
 
 func sortServers(input []string, search string) ([]string, bool) {
