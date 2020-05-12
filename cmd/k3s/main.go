@@ -138,5 +138,15 @@ func extract(dataDir string) (string, error) {
 		return "", err
 	}
 
+	currentSymLink := filepath.Join(dataDir, "data", "current")
+	if _, err := os.Lstat(currentSymLink); err == nil {
+		if err := os.Rename(currentSymLink, currentSymLink+".prev"); err != nil {
+			return "", err
+		}
+	}
+	if err := os.Symlink(dir, currentSymLink); err != nil {
+		return "", err
+	}
+
 	return dir, os.Rename(tempDest, dir)
 }
