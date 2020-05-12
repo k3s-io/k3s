@@ -1,5 +1,0 @@
-k3s_version: v0.8.1
-ansible_user: debian
-systemd_dir: /etc/systemd/system
-master_ip: "{{ hostvars[groups['master'][0]]['ansible_host'] | default(groups['master'][0]) }}"
-extra_server_args: ""

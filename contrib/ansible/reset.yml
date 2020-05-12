@@ -1,7 +1,0 @@
----
-
-- hosts: k3s-cluster
-  gather_facts: yes
-  become: yes
-  roles:
-    - { role: reset }
