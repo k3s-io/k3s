@@ -139,8 +139,9 @@ func extract(dataDir string) (string, error) {
 	}
 
 	currentSymLink := filepath.Join(dataDir, "data", "current")
+	previousSymLink := filepath.Join(dataDir, "data", "previous")
 	if _, err := os.Lstat(currentSymLink); err == nil {
-		if err := os.Rename(currentSymLink, currentSymLink+".prev"); err != nil {
+		if err := os.Rename(currentSymLink, previousSymLink); err != nil {
 			return "", err
 		}
 	}
