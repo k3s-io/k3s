@@ -190,12 +190,23 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 		return errors.Wrapf(err, "Invalid TLS Version %s: %v", TLSMinVersion, err)
 	}
 
+	// TLS config based on mozilla ssl-config generator
+	// https://ssl-config.mozilla.org/#server=golang&version=1.13.6&config=intermediate&guideline=5.4
+	// Need to disable the TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256 Cipher for TLS1.2
 	TLSCipherSuites := []string{getArgValueFromList("tls-cipher-suites", cfg.ExtraAPIArgs)}
-	if len(TLSCipherSuites) != 0 && TLSCipherSuites[0] != "" {
-		serverConfig.ControlConfig.TLSCipherSuites, err = kubeapiserverflag.TLSCipherSuites(TLSCipherSuites)
-		if err != nil {
-			return errors.Wrapf(err, "Invalid TLS Cipher Suites %s: %v", TLSCipherSuites, err)
+	if len(TLSCipherSuites) == 0 || TLSCipherSuites[0] == "" {
+		TLSCipherSuites = []string{
+			"TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384",
+			"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
+			"TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256",
+			"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
+			"TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305",
+			"TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305",
 		}
+	}
+	serverConfig.ControlConfig.TLSCipherSuites, err = kubeapiserverflag.TLSCipherSuites(TLSCipherSuites)
+	if err != nil {
+		return errors.Wrapf(err, "Invalid TLS Cipher Suites %s: %v", TLSCipherSuites, err)
 	}
 
 	logrus.Info("Starting k3s ", app.App.Version)
