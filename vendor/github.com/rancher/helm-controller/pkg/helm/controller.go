@@ -176,6 +176,7 @@ func job(chart *helmv1.HelmChart) (*batch.Job, *core.ConfigMap) {
 					},
 				},
 				Spec: core.PodSpec{
+					HostNetwork:   chart.Spec.HostNetwork,
 					RestartPolicy: core.RestartPolicyOnFailure,
 					Containers: []core.Container{
 						{
