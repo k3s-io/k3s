@@ -1,10 +1,14 @@
 // +build linux
 
+// Code and documentation copyright 2015 Docker, inc.
+// Code released under the Apache 2.0 license. Docs released under Creative commons.
+
 package ipvs
 
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"net"
 	"os/exec"
@@ -315,6 +319,7 @@ func assembleStats(msg []byte) (SvcStats, error) {
 func assembleService(attrs []syscall.NetlinkRouteAttr) (*Service, error) {
 
 	var s Service
+	var addressBytes []byte
 
 	for _, attr := range attrs {
 
@@ -327,11 +332,7 @@ func assembleService(attrs []syscall.NetlinkRouteAttr) (*Service, error) {
 		case ipvsSvcAttrProtocol:
 			s.Protocol = native.Uint16(attr.Value)
 		case ipvsSvcAttrAddress:
-			ip, err := parseIP(attr.Value, s.AddressFamily)
-			if err != nil {
-				return nil, err
-			}
-			s.Address = ip
+			addressBytes = attr.Value
 		case ipvsSvcAttrPort:
 			s.Port = binary.BigEndian.Uint16(attr.Value)
 		case ipvsSvcAttrFWMark:
@@ -353,6 +354,16 @@ func assembleService(attrs []syscall.NetlinkRouteAttr) (*Service, error) {
 		}
 
 	}
+
+	// parse Address after parse AddressFamily incase of parseIP error
+	if addressBytes != nil {
+		ip, err := parseIP(addressBytes, s.AddressFamily)
+		if err != nil {
+			return nil, err
+		}
+		s.Address = ip
+	}
+
 	return &s, nil
 }
 
@@ -416,18 +427,18 @@ func (i *Handle) doCmdWithoutAttr(cmd uint8) ([][]byte, error) {
 func assembleDestination(attrs []syscall.NetlinkRouteAttr) (*Destination, error) {
 
 	var d Destination
+	var addressBytes []byte
 
 	for _, attr := range attrs {
 
 		attrType := int(attr.Attr.Type)
 
 		switch attrType {
+
+		case ipvsDestAttrAddressFamily:
+			d.AddressFamily = native.Uint16(attr.Value)
 		case ipvsDestAttrAddress:
-			ip, err := parseIP(attr.Value, syscall.AF_INET)
-			if err != nil {
-				return nil, err
-			}
-			d.Address = ip
+			addressBytes = attr.Value
 		case ipvsDestAttrPort:
 			d.Port = binary.BigEndian.Uint16(attr.Value)
 		case ipvsDestAttrForwardingMethod:
@@ -438,8 +449,6 @@ func assembleDestination(attrs []syscall.NetlinkRouteAttr) (*Destination, error)
 			d.UpperThreshold = native.Uint32(attr.Value)
 		case ipvsDestAttrLowerThreshold:
 			d.LowerThreshold = native.Uint32(attr.Value)
-		case ipvsDestAttrAddressFamily:
-			d.AddressFamily = native.Uint16(attr.Value)
 		case ipvsDestAttrActiveConnections:
 			d.ActiveConnections = int(native.Uint16(attr.Value))
 		case ipvsDestAttrInactiveConnections:
@@ -452,7 +461,61 @@ func assembleDestination(attrs []syscall.NetlinkRouteAttr) (*Destination, error)
 			d.Stats = DstStats(stats)
 		}
 	}
+
+	// in older kernels (< 3.18), the destination address family attribute doesn't exist so we must
+	// assume it based on the destination address provided.
+	if d.AddressFamily == 0 {
+		// we can't check the address family using net stdlib because netlink returns
+		// IPv4 addresses as the first 4 bytes in a []byte of length 16 where as
+		// stdlib expects it as the last 4 bytes.
+		addressFamily, err := getIPFamily(addressBytes)
+		if err != nil {
+			return nil, err
+		}
+		d.AddressFamily = addressFamily
+	}
+
+	// parse Address after parse AddressFamily incase of parseIP error
+	if addressBytes != nil {
+		ip, err := parseIP(addressBytes, d.AddressFamily)
+		if err != nil {
+			return nil, err
+		}
+		d.Address = ip
+	}
+
 	return &d, nil
+}
+
+// getIPFamily parses the IP family based on raw data from netlink.
+// For AF_INET, netlink will set the first 4 bytes with trailing zeros
+//   10.0.0.1 -> [10 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0]
+// For AF_INET6, the full 16 byte array is used:
+//   2001:db8:3c4d:15::1a00 -> [32 1 13 184 60 77 0 21 0 0 0 0 0 0 26 0]
+func getIPFamily(address []byte) (uint16, error) {
+	if len(address) == 4 {
+		return syscall.AF_INET, nil
+	}
+
+	if isZeros(address) {
+		return 0, errors.New("could not parse IP family from address data")
+	}
+
+	// assume IPv4 if first 4 bytes are non-zero but rest of the data is trailing zeros
+	if !isZeros(address[:4]) && isZeros(address[4:]) {
+		return syscall.AF_INET, nil
+	}
+
+	return syscall.AF_INET6, nil
+}
+
+func isZeros(b []byte) bool {
+	for i := 0; i < len(b); i++ {
+		if b[i] != 0 {
+			return false
+		}
+	}
+	return true
 }
 
 // parseDestination given a ipvs netlink response this function will respond with a valid destination entry, an error otherwise
