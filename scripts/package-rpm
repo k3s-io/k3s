@@ -54,7 +54,7 @@ if ! grep "BEGIN PGP PRIVATE KEY BLOCK" <<<"$PRIVATE_KEY"; then
   exit 0
 fi
 
-cat <<\EOF >~/.rpmmacros 
+cat <<\EOF >~/.rpmmacros
 %_signature gpg
 %_gpg_name ci@rancher.com
 EOF
