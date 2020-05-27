@@ -389,6 +389,8 @@ func (e *ETCD) cluster(ctx context.Context, forceNew bool, options executor.Init
 			ClientCertAuth: true,
 			TrustedCAFile:  e.config.Runtime.ETCDPeerCA,
 		},
+		ElectionTimeout:   5000,
+		HeartbeatInterval: 500,
 	})
 }
 
