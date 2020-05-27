@@ -1,4 +1,4 @@
-FROM golang:1.13.8-alpine3.10
+FROM golang:1.13.11-alpine3.10
 
 ARG http_proxy=$http_proxy
 ARG https_proxy=$https_proxy
