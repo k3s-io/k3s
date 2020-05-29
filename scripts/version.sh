@@ -37,7 +37,7 @@ if [ -z "$VERSION_K8S" ]; then
     VERSION_K8S="v0.0.0"
 fi
 
-VERSION_CNIPLUGINS="v0.7.6-k3s1"
+VERSION_CNIPLUGINS="v0.8.6-k3s1"
 
 if [[ -n "$GIT_TAG" ]]; then
     if [[ ! "$GIT_TAG" =~ ^"$VERSION_K8S"[+-] ]]; then
