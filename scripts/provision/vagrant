@@ -11,7 +11,7 @@ fi
 if [[ $HOME = /go/* ]]; then
     echo 'Must not launch vagrant from /go/'
     exit 1
-fi 
+fi
 cd
 
 # --- Default to root user for vagrant ssh

@@ -16,7 +16,7 @@ auto-mtu() {
 }
 
 # probe for any modules that may be needed
-modprobe wireguard 
+modprobe wireguard
 modprobe tun
 
 # try wireguard kernel module first
