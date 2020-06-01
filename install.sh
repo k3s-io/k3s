@@ -83,6 +83,20 @@ set -e
 #   - INSTALL_K3S_CHANNEL
 #     Channel to use for fetching k3s download URL.
 #     Defaults to 'stable'.
+#
+#   - INSTALL_K3S_CONF_FILE
+#     Configuration file which holds additional configurations which needs to
+#     set before installation starts.
+#     For example below curl aliases can be kept in a configuration file
+#     and passed to this variable, to handle failures during installation
+#     behind proxy.
+#         alias curl='curl --cacert /path/to/extra/cert/xxx.crt'
+#         or
+#         alias curl='curl --insecure'
+
+if [ -n "$INSTALL_K3S_CONF_FILE" ]; then
+    . ${INSTALL_K3S_CONF_FILE}
+fi
 
 GITHUB_URL=https://github.com/rancher/k3s/releases
 STORAGE_URL=https://storage.googleapis.com/k3s-ci-builds
