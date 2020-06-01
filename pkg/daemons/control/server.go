@@ -570,7 +570,7 @@ func genServerCerts(config *config.Control, runtime *config.ControlRuntime) erro
 
 	if _, err := createClientCertKey(regen, "kube-apiserver", nil,
 		&certutil.AltNames{
-			DNSNames: []string{"kubernetes.default.svc", "kubernetes.default", "kubernetes", "localhost"},
+			DNSNames: append([]string{"kubernetes.default.svc", "kubernetes.default", "kubernetes", "localhost"}, config.SANs...),
 			IPs:      []net.IP{apiServerServiceIP, localhostIP},
 		}, []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		runtime.ServerCA, runtime.ServerCAKey,
