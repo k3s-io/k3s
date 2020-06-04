@@ -44,6 +44,11 @@ Documentation
 
 Please see [the official docs site](https://rancher.com/docs/k3s/latest/en/) for complete documentation on k3s.
 
+## Contributing to the Docs
+
+- **Issues:** Doc issues are raised in this repository, and they are tracked under the `kind/documentation` label. 
+- **Pull Requests:** Pull requests are submitted to the K3s documentation source code in the [Rancher docs repository.](https://github.com/rancher/docs/) The K3s docs content is in the `content/k3s/` directory.
+
 Quick-Start - Install Script
 --------------
 
