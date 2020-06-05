@@ -24,6 +24,7 @@ type HelmChartSpec struct {
 	Set             map[string]intstr.IntOrString `json:"set,omitempty"`
 	ValuesContent   string                        `json:"valuesContent,omitempty"`
 	HelmVersion     string                        `json:"helmVersion,omitempty"`
+	Bootstrap       bool                          `json:"bootstrap,omitempty"`
 }
 
 type HelmChartStatus struct {
