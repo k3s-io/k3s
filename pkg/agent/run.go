@@ -23,6 +23,7 @@ import (
 	daemonconfig "github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/nodeconfig"
 	"github.com/rancher/k3s/pkg/rootless"
+	"github.com/rancher/k3s/pkg/version"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -32,10 +33,10 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-const (
-	InternalIPLabel = "k3s.io/internal-ip"
-	ExternalIPLabel = "k3s.io/external-ip"
-	HostnameLabel   = "k3s.io/hostname"
+var (
+	InternalIPLabel = version.Program + ".io/internal-ip"
+	ExternalIPLabel = version.Program + ".io/external-ip"
+	HostnameLabel   = version.Program + ".io/hostname"
 )
 
 func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {

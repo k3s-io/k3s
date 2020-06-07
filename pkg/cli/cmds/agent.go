@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/rancher/k3s/pkg/version"
 	"github.com/urfave/cli"
 )
 
@@ -57,7 +58,7 @@ var (
 	NodeNameFlag = cli.StringFlag{
 		Name:        "node-name",
 		Usage:       "(agent/node) Node name",
-		EnvVar:      "K3S_NODE_NAME",
+		EnvVar:      version.ProgramUpper + "_NODE_NAME",
 		Destination: &AgentConfig.NodeName,
 	}
 	WithNodeIDFlag = cli.BoolFlag{
@@ -79,7 +80,7 @@ var (
 		Name:        "private-registry",
 		Usage:       "(agent/runtime) Private registry configuration file",
 		Destination: &AgentConfig.PrivateRegistry,
-		Value:       "/etc/rancher/k3s/registries.yaml",
+		Value:       "/etc/rancher/" + version.Program + "/registries.yaml",
 	}
 	PauseImageFlag = cli.StringFlag{
 		Name:        "pause-image",
@@ -105,7 +106,7 @@ var (
 	ResolvConfFlag = cli.StringFlag{
 		Name:        "resolv-conf",
 		Usage:       "(agent/networking) Kubelet resolv.conf file",
-		EnvVar:      "K3S_RESOLV_CONF",
+		EnvVar:      version.ProgramUpper + "_RESOLV_CONF",
 		Destination: &AgentConfig.ResolvConf,
 	}
 	ExtraKubeletArgs = cli.StringSliceFlag{
@@ -150,26 +151,26 @@ func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
 			cli.StringFlag{
 				Name:        "token,t",
 				Usage:       "(cluster) Token to use for authentication",
-				EnvVar:      "K3S_TOKEN",
+				EnvVar:      version.ProgramUpper + "_TOKEN",
 				Destination: &AgentConfig.Token,
 			},
 			cli.StringFlag{
 				Name:        "token-file",
 				Usage:       "(cluster) Token file to use for authentication",
-				EnvVar:      "K3S_TOKEN_FILE",
+				EnvVar:      version.ProgramUpper + "_TOKEN_FILE",
 				Destination: &AgentConfig.TokenFile,
 			},
 			cli.StringFlag{
 				Name:        "server,s",
 				Usage:       "(cluster) Server to connect to",
-				EnvVar:      "K3S_URL",
+				EnvVar:      version.ProgramUpper + "_URL",
 				Destination: &AgentConfig.ServerURL,
 			},
 			cli.StringFlag{
 				Name:        "data-dir,d",
 				Usage:       "(agent/data) Folder to hold state",
 				Destination: &AgentConfig.DataDir,
-				Value:       "/var/lib/rancher/k3s",
+				Value:       "/var/lib/rancher/" + version.Program + "",
 			},
 			NodeNameFlag,
 			WithNodeIDFlag,
@@ -200,7 +201,7 @@ func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
 				Name:        "cluster-secret",
 				Usage:       "(deprecated) use --token",
 				Destination: &AgentConfig.ClusterSecret,
-				EnvVar:      "K3S_CLUSTER_SECRET",
+				EnvVar:      version.ProgramUpper + "_CLUSTER_SECRET",
 			},
 		},
 	}

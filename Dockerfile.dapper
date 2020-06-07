@@ -27,14 +27,6 @@ RUN if [ "${ARCH}" = 'amd64' ]; then \
 ARG SELINUX=true
 ENV SELINUX $SELINUX
 
-ARG DQLITE=true
-ENV DQLITE $DQLITE
-COPY --from=rancher/dqlite-build:v1.4.1-r1 /dist/artifacts /usr/src/
-RUN if [ "$DQLITE" = true ]; then \
-        tar xzf /usr/src/dqlite.tgz -C / && \
-        apk add --allow-untrusted /usr/local/packages/*.apk \
-    ;fi
-
 ENV GO111MODULE off
 ENV DAPPER_RUN_ARGS --privileged -v k3s-cache:/go/src/github.com/rancher/k3s/.cache
 ENV DAPPER_ENV REPO TAG DRONE_TAG IMAGE_NAME SKIP_VALIDATE GCLOUD_AUTH

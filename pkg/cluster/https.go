@@ -13,6 +13,7 @@ import (
 	"github.com/rancher/dynamiclistener/storage/kubernetes"
 	"github.com/rancher/dynamiclistener/storage/memory"
 	"github.com/rancher/k3s/pkg/daemons/config"
+	"github.com/rancher/k3s/pkg/version"
 	"github.com/rancher/wrangler-api/pkg/generated/controllers/core"
 	"github.com/sirupsen/logrus"
 )
@@ -30,8 +31,8 @@ func (c *Cluster) newListener(ctx context.Context) (net.Listener, http.Handler, 
 
 	storage := tlsStorage(ctx, c.config.DataDir, c.runtime)
 	return dynamiclistener.NewListener(tcp, storage, cert, key, dynamiclistener.Config{
-		CN:           "k3s",
-		Organization: []string{"k3s"},
+		CN:           version.Program,
+		Organization: []string{version.Program},
 		TLSConfig: tls.Config{
 			ClientAuth:   tls.RequestClientCert,
 			MinVersion:   c.config.TLSMinVersion,
@@ -41,7 +42,7 @@ func (c *Cluster) newListener(ctx context.Context) (net.Listener, http.Handler, 
 	})
 }
 
-func (c *Cluster) startClusterAndHTTPS(ctx context.Context) error {
+func (c *Cluster) initClusterAndHTTPS(ctx context.Context) error {
 	l, handler, err := c.newListener(ctx)
 	if err != nil {
 		return err
@@ -79,5 +80,5 @@ func tlsStorage(ctx context.Context, dataDir string, runtime *config.ControlRunt
 	cache := memory.NewBacked(fileStorage)
 	return kubernetes.New(ctx, func() *core.Factory {
 		return runtime.Core
-	}, "kube-system", "k3s-serving", cache)
+	}, "kube-system", ""+version.Program+"-serving", cache)
 }

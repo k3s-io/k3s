@@ -6,6 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/rancher/k3s/pkg/clientaccess"
+	"github.com/rancher/k3s/pkg/cluster/managed"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/kine/pkg/client"
 	"github.com/rancher/kine/pkg/endpoint"
@@ -15,8 +16,8 @@ type Cluster struct {
 	clientAccessInfo *clientaccess.Info
 	config           *config.Control
 	runtime          *config.ControlRuntime
-	db               interface{}
-	runJoin          bool
+	managedDB        managed.Driver
+	shouldBootstrap  bool
 	storageStarted   bool
 	etcdConfig       endpoint.ETCDConfig
 	joining          bool
@@ -24,34 +25,33 @@ type Cluster struct {
 	storageClient    client.Client
 }
 
-func (c *Cluster) Start(ctx context.Context) error {
-	if err := c.startClusterAndHTTPS(ctx); err != nil {
-		return errors.Wrap(err, "start cluster and https")
+func (c *Cluster) Start(ctx context.Context) (<-chan struct{}, error) {
+	if err := c.initClusterAndHTTPS(ctx); err != nil {
+		return nil, errors.Wrap(err, "start cluster and https")
 	}
 
-	if c.runJoin {
-		if err := c.postJoin(ctx); err != nil {
-			return errors.Wrap(err, "post join")
-		}
+	if err := c.start(ctx); err != nil {
+		return nil, errors.Wrap(err, "start cluster and https")
 	}
 
-	if err := c.testClusterDB(ctx); err != nil {
-		return err
+	ready, err := c.testClusterDB(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	if c.saveBootstrap {
 		if err := c.save(ctx); err != nil {
-			return err
+			return nil, err
 		}
 	}
 
-	if c.runJoin {
-		if err := c.joined(); err != nil {
-			return err
+	if c.shouldBootstrap {
+		if err := c.bootstrapped(); err != nil {
+			return nil, err
 		}
 	}
 
-	return c.startStorage(ctx)
+	return ready, c.startStorage(ctx)
 }
 
 func (c *Cluster) startStorage(ctx context.Context) error {

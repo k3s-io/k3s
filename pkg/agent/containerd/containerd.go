@@ -20,6 +20,7 @@ import (
 	"github.com/rancher/k3s/pkg/agent/templates"
 	util2 "github.com/rancher/k3s/pkg/agent/util"
 	"github.com/rancher/k3s/pkg/daemons/config"
+	"github.com/rancher/k3s/pkg/version"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	yaml "gopkg.in/yaml.v2"
@@ -233,7 +234,7 @@ func setupContainerdConfig(ctx context.Context, cfg *config.Node) error {
 		containerdConfig.SELinuxEnabled = selEnabled
 	}
 	if containerdConfig.SELinuxEnabled && !selConfigured {
-		logrus.Warnf("SELinux is enabled for k3s but process is not running in context '%s', k3s-selinux policy may need to be applied", SELinuxContextType)
+		logrus.Warnf("SELinux is enabled for "+version.Program+" but process is not running in context '%s', "+version.Program+"-selinux policy may need to be applied", SELinuxContextType)
 	}
 
 	containerdTemplateBytes, err := ioutil.ReadFile(cfg.Containerd.Template)

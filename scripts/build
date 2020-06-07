@@ -39,15 +39,10 @@ STATIC="
     -extldflags '-static'
 "
 
-if [ "$DQLITE" = "true" ]; then
-    DQLITE_TAGS="dqlite"
-    DQLITE_STATIC_SQLITE="-luv -lraft -lco"
-fi
-
 STATIC_SQLITE="
-    -extldflags '-static -lm -ldl -lz -lpthread $DQLITE_STATIC_SQLITE'
+    -extldflags '-static -lm -ldl -lz -lpthread'
 "
-TAGS="ctrd apparmor seccomp no_btrfs netcgo osusergo providerless $DQLITE_TAGS"
+TAGS="ctrd apparmor seccomp no_btrfs netcgo osusergo providerless"
 RUNC_TAGS="apparmor seccomp"
 RUNC_STATIC="static"
 

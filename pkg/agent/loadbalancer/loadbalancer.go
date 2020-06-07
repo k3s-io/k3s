@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/google/tcpproxy"
+	"github.com/rancher/k3s/pkg/version"
 	"github.com/sirupsen/logrus"
 )
 
@@ -27,9 +28,9 @@ type LoadBalancer struct {
 	nextServerIndex       int
 }
 
-const (
-	SupervisorServiceName = "k3s-agent-load-balancer"
-	APIServerServiceName  = "k3s-api-server-agent-load-balancer"
+var (
+	SupervisorServiceName = version.Program + "-agent-load-balancer"
+	APIServerServiceName  = version.Program + "-api-server-agent-load-balancer"
 )
 
 func New(dataDir, serviceName, serverURL string) (_lb *LoadBalancer, _err error) {

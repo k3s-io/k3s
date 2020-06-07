@@ -1,6 +1,7 @@
 package cmds
 
 import (
+	"github.com/rancher/k3s/pkg/version"
 	"github.com/urfave/cli"
 )
 
@@ -69,7 +70,7 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 			AlsoLogToStderr,
 			cli.StringFlag{
 				Name:        "bind-address",
-				Usage:       "(listener) k3s bind address (default: 0.0.0.0)",
+				Usage:       "(listener) " + version.Program + " bind address (default: 0.0.0.0)",
 				Destination: &ServerConfig.BindAddress,
 			},
 			cli.IntFlag{
@@ -95,7 +96,7 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 			},
 			cli.StringFlag{
 				Name:        "data-dir,d",
-				Usage:       "(data) Folder to hold state default /var/lib/rancher/k3s or ${HOME}/.rancher/k3s if not root",
+				Usage:       "(data) Folder to hold state default /var/lib/rancher/" + version.Program + " or ${HOME}/.rancher/" + version.Program + " if not root",
 				Destination: &ServerConfig.DataDir,
 			},
 			cli.StringFlag{
@@ -132,25 +133,25 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Name:        "token,t",
 				Usage:       "(cluster) Shared secret used to join a server or agent to a cluster",
 				Destination: &ServerConfig.Token,
-				EnvVar:      "K3S_TOKEN",
+				EnvVar:      version.ProgramUpper + "_TOKEN",
 			},
 			cli.StringFlag{
 				Name:        "token-file",
 				Usage:       "(cluster) File containing the cluster-secret/token",
 				Destination: &ServerConfig.TokenFile,
-				EnvVar:      "K3S_TOKEN_FILE",
+				EnvVar:      version.ProgramUpper + "_TOKEN_FILE",
 			},
 			cli.StringFlag{
 				Name:        "write-kubeconfig,o",
 				Usage:       "(client) Write kubeconfig for admin client to this file",
 				Destination: &ServerConfig.KubeConfigOutput,
-				EnvVar:      "K3S_KUBECONFIG_OUTPUT",
+				EnvVar:      version.ProgramUpper + "_KUBECONFIG_OUTPUT",
 			},
 			cli.StringFlag{
 				Name:        "write-kubeconfig-mode",
 				Usage:       "(client) Write kubeconfig with this mode",
 				Destination: &ServerConfig.KubeConfigMode,
-				EnvVar:      "K3S_KUBECONFIG_MODE",
+				EnvVar:      version.ProgramUpper + "_KUBECONFIG_MODE",
 			},
 			cli.StringSliceFlag{
 				Name:  "kube-apiserver-arg",
@@ -176,25 +177,25 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Name:        "datastore-endpoint",
 				Usage:       "(db) Specify etcd, Mysql, Postgres, or Sqlite (default) data source name",
 				Destination: &ServerConfig.DatastoreEndpoint,
-				EnvVar:      "K3S_DATASTORE_ENDPOINT",
+				EnvVar:      version.ProgramUpper + "_DATASTORE_ENDPOINT",
 			},
 			cli.StringFlag{
 				Name:        "datastore-cafile",
 				Usage:       "(db) TLS Certificate Authority file used to secure datastore backend communication",
 				Destination: &ServerConfig.DatastoreCAFile,
-				EnvVar:      "K3S_DATASTORE_CAFILE",
+				EnvVar:      version.ProgramUpper + "_DATASTORE_CAFILE",
 			},
 			cli.StringFlag{
 				Name:        "datastore-certfile",
 				Usage:       "(db) TLS certification file used to secure datastore backend communication",
 				Destination: &ServerConfig.DatastoreCertFile,
-				EnvVar:      "K3S_DATASTORE_CERTFILE",
+				EnvVar:      version.ProgramUpper + "_DATASTORE_CERTFILE",
 			},
 			cli.StringFlag{
 				Name:        "datastore-keyfile",
 				Usage:       "(db) TLS key file used to secure datastore backend communication",
 				Destination: &ServerConfig.DatastoreKeyFile,
-				EnvVar:      "K3S_DATASTORE_KEYFILE",
+				EnvVar:      version.ProgramUpper + "_DATASTORE_KEYFILE",
 			},
 			cli.StringFlag{
 				Name:        "default-local-storage-path",
@@ -212,7 +213,7 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 			},
 			cli.BoolFlag{
 				Name:        "disable-cloud-controller",
-				Usage:       "(components) Disable k3s default cloud controller manager",
+				Usage:       "(components) Disable " + version.Program + " default cloud controller manager",
 				Destination: &ServerConfig.DisableCCM,
 			},
 			cli.BoolFlag{
@@ -222,7 +223,7 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 			},
 			cli.BoolFlag{
 				Name:        "disable-network-policy",
-				Usage:       "(components) Disable k3s default network policy controller",
+				Usage:       "(components) Disable " + version.Program + " default network policy controller",
 				Destination: &ServerConfig.DisableNPC,
 			},
 			NodeNameFlag,
@@ -250,32 +251,32 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Name:        "agent-token",
 				Usage:       "(experimental/cluster) Shared secret used to join agents to the cluster, but not servers",
 				Destination: &ServerConfig.AgentToken,
-				EnvVar:      "K3S_AGENT_TOKEN",
+				EnvVar:      version.ProgramUpper + "_AGENT_TOKEN",
 			},
 			cli.StringFlag{
 				Name:        "agent-token-file",
 				Usage:       "(experimental/cluster) File containing the agent secret",
 				Destination: &ServerConfig.AgentTokenFile,
-				EnvVar:      "K3S_AGENT_TOKEN_FILE",
+				EnvVar:      version.ProgramUpper + "_AGENT_TOKEN_FILE",
 			},
 			cli.StringFlag{
 				Name:        "server,s",
 				Usage:       "(experimental/cluster) Server to connect to, used to join a cluster",
-				EnvVar:      "K3S_URL",
+				EnvVar:      version.ProgramUpper + "_URL",
 				Destination: &ServerConfig.ServerURL,
 			},
 			cli.BoolFlag{
 				Name:        "cluster-init",
 				Hidden:      hideDqlite,
 				Usage:       "(experimental/cluster) Initialize new cluster master",
-				EnvVar:      "K3S_CLUSTER_INIT",
+				EnvVar:      version.ProgramUpper + "_CLUSTER_INIT",
 				Destination: &ServerConfig.ClusterInit,
 			},
 			cli.BoolFlag{
 				Name:        "cluster-reset",
 				Hidden:      hideDqlite,
 				Usage:       "(experimental/cluster) Forget all peers and become a single cluster new cluster master",
-				EnvVar:      "K3S_CLUSTER_RESET",
+				EnvVar:      version.ProgramUpper + "_CLUSTER_RESET",
 				Destination: &ServerConfig.ClusterReset,
 			},
 			cli.BoolFlag{
@@ -295,7 +296,7 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Name:        "cluster-secret",
 				Usage:       "(deprecated) use --token",
 				Destination: &ServerConfig.ClusterSecret,
-				EnvVar:      "K3S_CLUSTER_SECRET",
+				EnvVar:      version.ProgramUpper + "_CLUSTER_SECRET",
 			},
 			cli.BoolFlag{
 				Name:        "disable-agent",

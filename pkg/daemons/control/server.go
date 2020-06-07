@@ -19,6 +19,8 @@ import (
 	"text/template"
 	"time"
 
+	"k8s.io/apimachinery/pkg/util/sets"
+
 	"github.com/pkg/errors"
 	certutil "github.com/rancher/dynamiclistener/cert"
 	"github.com/rancher/k3s/pkg/clientaccess"
@@ -27,6 +29,7 @@ import (
 	"github.com/rancher/k3s/pkg/daemons/executor"
 	"github.com/rancher/k3s/pkg/passwd"
 	"github.com/rancher/k3s/pkg/token"
+	"github.com/rancher/k3s/pkg/version"
 	"github.com/rancher/wrangler-api/pkg/generated/controllers/rbac"
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -186,7 +189,7 @@ func apiServer(ctx context.Context, cfg *config.Control, runtime *config.Control
 	argsMap["tls-cert-file"] = runtime.ServingKubeAPICert
 	argsMap["tls-private-key-file"] = runtime.ServingKubeAPIKey
 	argsMap["service-account-key-file"] = runtime.ServiceKey
-	argsMap["service-account-issuer"] = "k3s"
+	argsMap["service-account-issuer"] = version.Program
 	argsMap["api-audiences"] = "unknown"
 	argsMap["basic-auth-file"] = runtime.PasswdFile
 	argsMap["kubelet-certificate-authority"] = runtime.ServerCA
@@ -208,7 +211,7 @@ func apiServer(ctx context.Context, cfg *config.Control, runtime *config.Control
 	args := config.GetArgsList(argsMap, cfg.ExtraAPIArgs)
 
 	logrus.Infof("Running kube-apiserver %s", config.ArgString(args))
-	return executor.APIServer(ctx, args)
+	return executor.APIServer(ctx, runtime.ETCDReady, args)
 }
 
 func defaults(config *config.Control) {
@@ -290,8 +293,8 @@ func prepare(ctx context.Context, config *config.Control, runtime *config.Contro
 	runtime.ClientKubeAPIKey = filepath.Join(config.DataDir, "tls", "client-kube-apiserver.key")
 	runtime.ClientKubeProxyCert = filepath.Join(config.DataDir, "tls", "client-kube-proxy.crt")
 	runtime.ClientKubeProxyKey = filepath.Join(config.DataDir, "tls", "client-kube-proxy.key")
-	runtime.ClientK3sControllerCert = filepath.Join(config.DataDir, "tls", "client-k3s-controller.crt")
-	runtime.ClientK3sControllerKey = filepath.Join(config.DataDir, "tls", "client-k3s-controller.key")
+	runtime.ClientK3sControllerCert = filepath.Join(config.DataDir, "tls", "client-"+version.Program+"-controller.crt")
+	runtime.ClientK3sControllerKey = filepath.Join(config.DataDir, "tls", "client-"+version.Program+"-controller.key")
 
 	runtime.ServingKubeAPICert = filepath.Join(config.DataDir, "tls", "serving-kube-apiserver.crt")
 	runtime.ServingKubeAPIKey = filepath.Join(config.DataDir, "tls", "serving-kube-apiserver.key")
@@ -302,13 +305,24 @@ func prepare(ctx context.Context, config *config.Control, runtime *config.Contro
 	runtime.ClientAuthProxyCert = filepath.Join(config.DataDir, "tls", "client-auth-proxy.crt")
 	runtime.ClientAuthProxyKey = filepath.Join(config.DataDir, "tls", "client-auth-proxy.key")
 
+	runtime.ETCDServerCA = filepath.Join(config.DataDir, "tls", "etcd", "server-ca.crt")
+	runtime.ETCDServerCAKey = filepath.Join(config.DataDir, "tls", "etcd", "server-ca.key")
+	runtime.ETCDPeerCA = filepath.Join(config.DataDir, "tls", "etcd", "peer-ca.crt")
+	runtime.ETCDPeerCAKey = filepath.Join(config.DataDir, "tls", "etcd", "peer-ca.key")
+	runtime.ServerETCDCert = filepath.Join(config.DataDir, "tls", "etcd", "server-client.crt")
+	runtime.ServerETCDKey = filepath.Join(config.DataDir, "tls", "etcd", "server-client.key")
+	runtime.PeerServerClientETCDCert = filepath.Join(config.DataDir, "tls", "etcd", "peer-server-client.crt")
+	runtime.PeerServerClientETCDKey = filepath.Join(config.DataDir, "tls", "etcd", "peer-server-client.key")
+	runtime.ClientETCDCert = filepath.Join(config.DataDir, "tls", "etcd", "client.crt")
+	runtime.ClientETCDKey = filepath.Join(config.DataDir, "tls", "etcd", "client.key")
+
 	if config.EncryptSecrets {
 		runtime.EncryptionConfig = filepath.Join(config.DataDir, "cred", "encryption-config.json")
 	}
 
 	cluster := cluster.New(config)
 
-	if err := cluster.Join(ctx); err != nil {
+	if err := cluster.Bootstrap(ctx); err != nil {
 		return err
 	}
 
@@ -336,7 +350,13 @@ func prepare(ctx context.Context, config *config.Control, runtime *config.Contro
 		return err
 	}
 
-	return cluster.Start(ctx)
+	ready, err := cluster.Start(ctx)
+	if err != nil {
+		return err
+	}
+
+	runtime.ETCDReady = ready
+	return nil
 }
 
 func readTokens(runtime *config.ControlRuntime) error {
@@ -382,7 +402,7 @@ func migratePassword(p *passwd.Passwd) error {
 	server, _ := p.Pass("server")
 	node, _ := p.Pass("node")
 	if server == "" && node != "" {
-		return p.EnsureUser("server", "k3s:server", node)
+		return p.EnsureUser("server", version.Program+":server", node)
 	}
 	return nil
 }
@@ -433,11 +453,11 @@ func genUsers(config *config.Control, runtime *config.ControlRuntime) error {
 
 	nodePass := getNodePass(config, serverPass)
 
-	if err := passwd.EnsureUser("node", "k3s:agent", nodePass); err != nil {
+	if err := passwd.EnsureUser("node", version.Program+":agent", nodePass); err != nil {
 		return err
 	}
 
-	if err := passwd.EnsureUser("server", "k3s:server", serverPass); err != nil {
+	if err := passwd.EnsureUser("server", version.Program+":server", serverPass); err != nil {
 		return err
 	}
 
@@ -454,6 +474,9 @@ func genCerts(config *config.Control, runtime *config.ControlRuntime) error {
 	if err := genRequestHeaderCerts(config, runtime); err != nil {
 		return err
 	}
+	if err := genETCDCerts(config, runtime); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -466,7 +489,7 @@ func getSigningCertFactory(regen bool, altNames *certutil.AltNames, extKeyUsage 
 }
 
 func genClientCerts(config *config.Control, runtime *config.ControlRuntime) error {
-	regen, err := createSigningCertKey("k3s-client", runtime.ClientCA, runtime.ClientCAKey)
+	regen, err := createSigningCertKey(version.Program+"-client", runtime.ClientCA, runtime.ClientCAKey)
 	if err != nil {
 		return err
 	}
@@ -519,6 +542,7 @@ func genClientCerts(config *config.Control, runtime *config.ControlRuntime) erro
 	if _, err = factory("system:kube-proxy", nil, runtime.ClientKubeProxyCert, runtime.ClientKubeProxyKey); err != nil {
 		return err
 	}
+	// this must be hardcoded to k3s-controller because it's hard coded in the rolebindings.yaml
 	if _, err = factory("system:k3s-controller", nil, runtime.ClientK3sControllerCert, runtime.ClientK3sControllerKey); err != nil {
 		return err
 	}
@@ -554,7 +578,18 @@ func createServerSigningCertKey(config *config.Control, runtime *config.ControlR
 		}
 		return true, nil
 	}
-	return createSigningCertKey("k3s-server", runtime.ServerCA, runtime.ServerCAKey)
+	return createSigningCertKey(version.Program+"-server", runtime.ServerCA, runtime.ServerCAKey)
+}
+
+func addSANs(altNames *certutil.AltNames, sans []string) {
+	for _, san := range sans {
+		ip := net.ParseIP(san)
+		if ip == nil {
+			altNames.DNSNames = append(altNames.DNSNames, san)
+		} else {
+			altNames.IPs = append(altNames.IPs, ip)
+		}
+	}
 }
 
 func genServerCerts(config *config.Control, runtime *config.ControlRuntime) error {
@@ -568,11 +603,15 @@ func genServerCerts(config *config.Control, runtime *config.ControlRuntime) erro
 		return err
 	}
 
+	altNames := &certutil.AltNames{
+		DNSNames: []string{"kubernetes.default.svc", "kubernetes.default", "kubernetes", "localhost"},
+		IPs:      []net.IP{apiServerServiceIP},
+	}
+
+	addSANs(altNames, config.SANs)
+
 	if _, err := createClientCertKey(regen, "kube-apiserver", nil,
-		&certutil.AltNames{
-			DNSNames: []string{"kubernetes.default.svc", "kubernetes.default", "kubernetes", "localhost"},
-			IPs:      []net.IP{apiServerServiceIP, localhostIP},
-		}, []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		altNames, []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		runtime.ServerCA, runtime.ServerCAKey,
 		runtime.ServingKubeAPICert, runtime.ServingKubeAPIKey); err != nil {
 		return err
@@ -585,8 +624,48 @@ func genServerCerts(config *config.Control, runtime *config.ControlRuntime) erro
 	return nil
 }
 
+func genETCDCerts(config *config.Control, runtime *config.ControlRuntime) error {
+	regen, err := createSigningCertKey("etcd-server", runtime.ETCDServerCA, runtime.ETCDServerCAKey)
+	if err != nil {
+		return err
+	}
+
+	altNames := &certutil.AltNames{
+		DNSNames: []string{"localhost"},
+	}
+	addSANs(altNames, config.SANs)
+
+	if _, err := createClientCertKey(regen, "etcd-server", nil,
+		altNames, []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
+		runtime.ETCDServerCA, runtime.ETCDServerCAKey,
+		runtime.ServerETCDCert, runtime.ServerETCDKey); err != nil {
+		return err
+	}
+
+	if _, err := createClientCertKey(regen, "etcd-client", nil,
+		nil, []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+		runtime.ETCDServerCA, runtime.ETCDServerCAKey,
+		runtime.ClientETCDCert, runtime.ClientETCDKey); err != nil {
+		return err
+	}
+
+	regen, err = createSigningCertKey("etcd-peer", runtime.ETCDPeerCA, runtime.ETCDPeerCAKey)
+	if err != nil {
+		return err
+	}
+
+	if _, err := createClientCertKey(regen, "etcd-peer", nil,
+		altNames, []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
+		runtime.ETCDPeerCA, runtime.ETCDPeerCAKey,
+		runtime.PeerServerClientETCDCert, runtime.PeerServerClientETCDKey); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func genRequestHeaderCerts(config *config.Control, runtime *config.ControlRuntime) error {
-	regen, err := createSigningCertKey("k3s-request-header", runtime.RequestHeaderCA, runtime.RequestHeaderCAKey)
+	regen, err := createSigningCertKey(version.Program+"-request-header", runtime.RequestHeaderCA, runtime.RequestHeaderCAKey)
 	if err != nil {
 		return err
 	}
@@ -613,6 +692,10 @@ func createClientCertKey(regen bool, commonName string, organization []string, a
 	// check for certificate expiration
 	if !regen {
 		regen = expired(certFile, pool)
+	}
+
+	if !regen {
+		regen = sansChanged(certFile, altNames)
 	}
 
 	if !regen {
@@ -755,6 +838,43 @@ func setupStorageBackend(argsMap map[string]string, cfg *config.Control) {
 	}
 }
 
+func sansChanged(certFile string, sans *certutil.AltNames) bool {
+	if sans == nil {
+		return false
+	}
+
+	certBytes, err := ioutil.ReadFile(certFile)
+	if err != nil {
+		return false
+	}
+
+	certificates, err := certutil.ParseCertsPEM(certBytes)
+	if err != nil {
+		return false
+	}
+
+	if len(certificates) == 0 {
+		return false
+	}
+
+	if !sets.NewString(certificates[0].DNSNames...).HasAll(sans.DNSNames...) {
+		return true
+	}
+
+	ips := sets.NewString()
+	for _, ip := range certificates[0].IPAddresses {
+		ips.Insert(ip.String())
+	}
+
+	for _, ip := range sans.IPs {
+		if !ips.Has(ip.String()) {
+			return true
+		}
+	}
+
+	return false
+}
+
 func expired(certFile string, pool *x509.CertPool) bool {
 	certBytes, err := ioutil.ReadFile(certFile)
 	if err != nil {
@@ -783,7 +903,7 @@ func cloudControllerManager(ctx context.Context, cfg *config.Control, runtime *c
 		"cluster-cidr":                 cfg.ClusterIPRange.String(),
 		"bind-address":                 localhostIP.String(),
 		"secure-port":                  "0",
-		"cloud-provider":               "k3s",
+		"cloud-provider":               version.Program,
 		"allow-untagged-cloud":         "true",
 		"node-status-update-frequency": "1m",
 	}
@@ -845,6 +965,19 @@ func waitForAPIServerInBackground(ctx context.Context, runtime *config.ControlRu
 
 	go func() {
 		defer close(done)
+
+	etcdLoop:
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-runtime.ETCDReady:
+				break etcdLoop
+			case <-time.After(30 * time.Second):
+				logrus.Infof("Waiting for etcd server to become available")
+			}
+		}
+
 		logrus.Infof("Waiting for API server to become available")
 		for {
 			select {

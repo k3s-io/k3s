@@ -45,7 +45,8 @@ func (Embedded) KubeProxy(args []string) error {
 	return nil
 }
 
-func (Embedded) APIServer(ctx context.Context, args []string) (authenticator.Request, http.Handler, error) {
+func (Embedded) APIServer(ctx context.Context, etcdReady <-chan struct{}, args []string) (authenticator.Request, http.Handler, error) {
+	<-etcdReady
 	command := app.NewAPIServerCommand(ctx.Done())
 	command.SetArgs(args)
 

@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strconv"
 
+	"github.com/rancher/k3s/pkg/version"
 	appclient "github.com/rancher/wrangler-api/pkg/generated/controllers/apps/v1"
 	coreclient "github.com/rancher/wrangler-api/pkg/generated/controllers/core/v1"
 	"github.com/rancher/wrangler/pkg/apply"
@@ -26,12 +27,15 @@ import (
 	coregetter "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
+var (
+	svcNameLabel       = "svccontroller." + version.Program + ".cattle.io/svcname"
+	daemonsetNodeLabel = "svccontroller." + version.Program + ".cattle.io/enablelb"
+	nodeSelectorLabel  = "svccontroller." + version.Program + ".cattle.io/nodeselector"
+)
+
 const (
-	image              = "rancher/klipper-lb:v0.1.2"
-	svcNameLabel       = "svccontroller.k3s.cattle.io/svcname"
-	daemonsetNodeLabel = "svccontroller.k3s.cattle.io/enablelb"
-	nodeSelectorLabel  = "svccontroller.k3s.cattle.io/nodeselector"
-	Ready              = condition.Cond("Ready")
+	image = "rancher/klipper-lb:v0.1.2"
+	Ready = condition.Cond("Ready")
 )
 
 var (

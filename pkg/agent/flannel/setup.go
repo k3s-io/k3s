@@ -10,6 +10,7 @@ import (
 
 	"github.com/rancher/k3s/pkg/agent/util"
 	"github.com/rancher/k3s/pkg/daemons/config"
+	"github.com/rancher/k3s/pkg/version"
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -142,7 +143,7 @@ func createFlannelConf(nodeConfig *config.Node) error {
 
 func setupStrongSwan(nodeConfig *config.Node) error {
 	// if data dir env is not set point to root
-	dataDir := os.Getenv("K3S_DATA_DIR")
+	dataDir := os.Getenv(version.ProgramUpper + "_DATA_DIR")
 	if dataDir == "" {
 		dataDir = "/"
 	}

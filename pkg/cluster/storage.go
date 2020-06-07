@@ -22,7 +22,7 @@ func (c *Cluster) save(ctx context.Context) error {
 	return c.storageClient.Create(ctx, storageKey(c.config.Token), data)
 }
 
-func (c *Cluster) storageJoin(ctx context.Context) error {
+func (c *Cluster) storageBootstrap(ctx context.Context) error {
 	if err := c.startStorage(ctx); err != nil {
 		return err
 	}

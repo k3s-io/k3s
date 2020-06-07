@@ -66,7 +66,6 @@ require (
 	github.com/bhendo/go-powershell v0.0.0-20190719160123-219e7fb4e41e // indirect
 	github.com/bronze1man/goStrongswanVici v0.0.0-20190828090544-27d02f80ba40 // indirect
 	github.com/buger/jsonparser v0.0.0-20181115193947-bf1c66bbce23 // indirect
-	github.com/canonical/go-dqlite v1.5.1
 	github.com/containerd/cgroups v0.0.0-00010101000000-000000000000 // indirect
 	github.com/containerd/containerd v1.3.0-beta.2.0.20190828155532-0293cbd26c69
 	github.com/containerd/continuity v0.0.0-20190827140505-75bee3e2ccb6 // indirect
@@ -81,18 +80,17 @@ require (
 	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f
 	github.com/docker/docker v1.4.2-0.20191205034852-d163fbba3c82
 	github.com/docker/go-metrics v0.0.1 // indirect
-	github.com/flosch/pongo2 v0.0.0-20190707114632-bbf5a6c351f4 // indirect
 	github.com/go-bindata/go-bindata v3.1.2+incompatible
 	github.com/go-sql-driver/mysql v1.4.1
 	github.com/gogo/googleapis v1.3.0 // indirect
 	github.com/google/tcpproxy v0.0.0-20180808230851-dfa16c61dad2
+	github.com/google/uuid v1.1.1
 	github.com/gorilla/mux v1.7.3
 	github.com/gorilla/websocket v1.4.1
 	github.com/juju/errors v0.0.0-20190806202954-0232dcc7464d // indirect
 	github.com/juju/testing v0.0.0-20190723135506-ce30eb24acd2 // indirect
 	github.com/kubernetes-sigs/cri-tools v0.0.0-00010101000000-000000000000
 	github.com/lib/pq v1.1.1
-	github.com/lxc/lxd v0.0.0-20191108214106-60ea15630455
 	github.com/mattn/go-sqlite3 v1.13.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/opencontainers/runc v1.0.0-rc10
@@ -110,12 +108,13 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/tchap/go-patricia v2.3.0+incompatible // indirect
 	github.com/urfave/cli v1.22.2
+	// 54ba958 is v3.4.9
+	go.etcd.io/etcd v0.5.0-alpha.5.0.20200520232829-54ba9589114f
 	golang.org/x/crypto v0.0.0-20200220183623-bac4c82f6975
 	golang.org/x/net v0.0.0-20191204025024-5ee1b9f4859a
 	golang.org/x/sys v0.0.0-20191204072324-ce4227a45e2e
 	google.golang.org/grpc v1.26.0
 	gopkg.in/mgo.v2 v2.0.0-20190816093944-a6b53ec6cb22 // indirect
-	gopkg.in/robfig/cron.v2 v2.0.0-20150107220207-be2e0b0deed5 // indirect
 	gopkg.in/yaml.v2 v2.2.8
 	k8s.io/api v0.18.0
 	k8s.io/apimachinery v0.18.0
@@ -126,4 +125,5 @@ require (
 	k8s.io/cri-api v0.0.0
 	k8s.io/klog v1.0.0
 	k8s.io/kubernetes v1.18.0
+	sigs.k8s.io/yaml v1.2.0
 )

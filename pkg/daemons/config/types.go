@@ -1,6 +1,7 @@
 package config
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"net"
@@ -132,6 +133,10 @@ type Control struct {
 }
 
 type ControlRuntimeBootstrap struct {
+	ETCDServerCA       string
+	ETCDServerCAKey    string
+	ETCDPeerCA         string
+	ETCDPeerCAKey      string
 	ServerCA           string
 	ServerCAKey        string
 	ClientCA           string
@@ -147,8 +152,10 @@ type ControlRuntimeBootstrap struct {
 type ControlRuntime struct {
 	ControlRuntimeBootstrap
 
-	HTTPBootstrap  bool
-	APIServerReady <-chan struct{}
+	HTTPBootstrap          bool
+	APIServerReady         <-chan struct{}
+	ETCDReady              <-chan struct{}
+	ClusterControllerStart func(ctx context.Context) error
 
 	ClientKubeAPICert string
 	ClientKubeAPIKey  string
@@ -185,6 +192,13 @@ type ControlRuntime struct {
 	ClientCloudControllerKey  string
 	ClientK3sControllerCert   string
 	ClientK3sControllerKey    string
+
+	ServerETCDCert           string
+	ServerETCDKey            string
+	PeerServerClientETCDCert string
+	PeerServerClientETCDKey  string
+	ClientETCDCert           string
+	ClientETCDKey            string
 
 	Core *core.Factory
 }

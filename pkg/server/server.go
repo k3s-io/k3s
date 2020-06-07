@@ -25,6 +25,7 @@ import (
 	"github.com/rancher/k3s/pkg/servicelb"
 	"github.com/rancher/k3s/pkg/static"
 	"github.com/rancher/k3s/pkg/util"
+	"github.com/rancher/k3s/pkg/version"
 	v1 "github.com/rancher/wrangler-api/pkg/generated/controllers/core/v1"
 	"github.com/rancher/wrangler/pkg/leader"
 	"github.com/rancher/wrangler/pkg/resolvehome"
@@ -114,11 +115,16 @@ func runControllers(ctx context.Context, config *Config) error {
 		return err
 	}
 
+	controlConfig.Runtime.Core = sc.Core
+	if config.ControlConfig.Runtime.ClusterControllerStart != nil {
+		if err := config.ControlConfig.Runtime.ClusterControllerStart(ctx); err != nil {
+			return errors.Wrapf(err, "starting cluster controllers")
+		}
+	}
+
 	if err := sc.Start(ctx); err != nil {
 		return err
 	}
-
-	controlConfig.Runtime.Core = sc.Core
 
 	start := func(ctx context.Context) {
 		if err := masterControllers(ctx, sc, config); err != nil {
@@ -138,7 +144,7 @@ func runControllers(ctx context.Context, config *Config) error {
 			logrus.Fatal("controllers exited")
 		}()
 	} else {
-		go leader.RunOrDie(ctx, "", "k3s", sc.K8s, start)
+		go leader.RunOrDie(ctx, "", version.Program, sc.K8s, start)
 	}
 
 	return nil
@@ -256,7 +262,7 @@ func writeKubeConfig(certs string, config *Config) error {
 	kubeConfig, err := HomeKubeConfig(true, config.Rootless)
 	def := true
 	if err != nil {
-		kubeConfig = filepath.Join(config.ControlConfig.DataDir, "kubeconfig-k3s.yaml")
+		kubeConfig = filepath.Join(config.ControlConfig.DataDir, "kubeconfig-"+version.Program+".yaml")
 		def = false
 	}
 	kubeConfigSymlink := kubeConfig
@@ -333,7 +339,7 @@ func printToken(httpsPort int, advertiseIP, prefix, cmd string) {
 		ip = hostIP.String()
 	}
 
-	logrus.Infof("%s k3s %s -s https://%s:%d -t ${NODE_TOKEN}", prefix, cmd, ip, httpsPort)
+	logrus.Infof("%s %s %s -s https://%s:%d -t ${NODE_TOKEN}", prefix, version.Program, cmd, ip, httpsPort)
 }
 
 func FormatToken(token string, certFile string) (string, error) {
