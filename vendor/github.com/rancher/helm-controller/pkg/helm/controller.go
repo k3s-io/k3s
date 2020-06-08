@@ -155,6 +155,7 @@ func job(chart *helmv1.HelmChart) (*batch.Job, *core.ConfigMap) {
 	if chart.DeletionTimestamp != nil {
 		action = "delete"
 	}
+
 	job := &batch.Job{
 		TypeMeta: meta.TypeMeta{
 			APIVersion: "batch/v1",
@@ -224,6 +225,27 @@ func job(chart *helmv1.HelmChart) (*batch.Job, *core.ConfigMap) {
 			},
 		},
 	}
+
+	if chart.Spec.Bootstrap {
+		job.Spec.Template.Spec.HostNetwork = true
+		job.Spec.Template.Spec.Tolerations = []core.Toleration{
+			{
+				Key:    "node.kubernetes.io/not-ready",
+				Effect: "NoSchedule",
+			},
+		}
+		job.Spec.Template.Spec.Containers[0].Env = append(job.Spec.Template.Spec.Containers[0].Env, []core.EnvVar{
+			{
+				Name:  "KUBERNETES_SERVICE_HOST",
+				Value: "127.0.0.1"},
+			{
+				Name:  "KUBERNETES_SERVICE_PORT",
+				Value: "6443"},
+		}...)
+		job.Spec.Template.Spec.NodeSelector = make(map[string]string)
+		job.Spec.Template.Spec.NodeSelector["node-role.kubernetes.io/master"] = "true"
+	}
+
 	setProxyEnv(job)
 	configMap := configMap(chart)
 	if configMap == nil {
