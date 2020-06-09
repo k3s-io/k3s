@@ -68,6 +68,7 @@ func startKubelet(cfg *config.Agent) error {
 		"anonymous-auth":               "false",
 		"authorization-mode":           modes.ModeWebhook,
 		"protect-kernel-defaults":      "true",
+		"profiling":                    "false",
 	}
 	if cfg.PodManifests != "" && argsMap["pod-manifest-path"] == "" {
 		argsMap["pod-manifest-path"] = cfg.PodManifests
