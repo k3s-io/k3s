@@ -906,6 +906,7 @@ func cloudControllerManager(ctx context.Context, cfg *config.Control, runtime *c
 		"cloud-provider":               version.Program,
 		"allow-untagged-cloud":         "true",
 		"node-status-update-frequency": "1m",
+		"client-cert-auth":             "true",
 	}
 	if cfg.NoLeaderElect {
 		argsMap["leader-elect"] = "false"
