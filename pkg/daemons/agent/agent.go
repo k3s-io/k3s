@@ -138,6 +138,7 @@ func startKubelet(cfg *config.Agent) error {
 	}
 	if system.RunningInUserNS() {
 		argsMap["feature-gates"] = addFeatureGate(argsMap["feature-gates"], "DevicePlugins=false")
+		argsMap["feature-gates"] = addFeatureGate(argsMap["feature-gates"], "RotateKubeletServerCertificate=true")
 	}
 
 	argsMap["node-labels"] = strings.Join(cfg.NodeLabels, ",")
