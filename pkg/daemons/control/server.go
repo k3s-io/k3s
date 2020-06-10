@@ -152,6 +152,7 @@ func scheduler(cfg *config.Control, runtime *config.ControlRuntime) error {
 		"port":         "10251",
 		"bind-address": "127.0.0.1",
 		"secure-port":  "0",
+		"profiling":    "false",
 	}
 	if cfg.NoLeaderElect {
 		argsMap["leader-elect"] = "false"
