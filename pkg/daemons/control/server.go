@@ -25,6 +25,7 @@ import (
 	certutil "github.com/rancher/dynamiclistener/cert"
 	"github.com/rancher/k3s/pkg/clientaccess"
 	"github.com/rancher/k3s/pkg/cluster"
+	"github.com/rancher/k3s/pkg/daemons"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/daemons/executor"
 	"github.com/rancher/k3s/pkg/passwd"
@@ -914,6 +915,7 @@ func cloudControllerManager(ctx context.Context, cfg *config.Control, runtime *c
 	if cfg.NoLeaderElect {
 		argsMap["leader-elect"] = "false"
 	}
+	argsMap["feature-gates"] = daemons.AddFeatureGate(argsMap["feature-gates"], "RotateKubeletServerCertificate=true")
 
 	args := config.GetArgsList(argsMap, cfg.ExtraCloudControllerArgs)
 

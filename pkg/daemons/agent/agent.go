@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/opencontainers/runc/libcontainer/system"
+	"github.com/rancher/k3s/pkg/daemons"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/daemons/executor"
 	"github.com/sirupsen/logrus"
@@ -131,15 +132,15 @@ func startKubelet(cfg *config.Agent) error {
 		logrus.Warn("Disabling pod PIDs limit feature due to missing cgroup pids support")
 		argsMap["cgroups-per-qos"] = "false"
 		argsMap["enforce-node-allocatable"] = ""
-		argsMap["feature-gates"] = addFeatureGate(argsMap["feature-gates"], "SupportPodPidsLimit=false")
+		argsMap["feature-gates"] = daemons.AddFeatureGate(argsMap["feature-gates"], "SupportPodPidsLimit=false")
 	}
 	if root != "" {
 		argsMap["runtime-cgroups"] = root
 		argsMap["kubelet-cgroups"] = root
 	}
 	if system.RunningInUserNS() {
-		argsMap["feature-gates"] = addFeatureGate(argsMap["feature-gates"], "DevicePlugins=false")
-		argsMap["feature-gates"] = addFeatureGate(argsMap["feature-gates"], "RotateKubeletServerCertificate=true")
+		argsMap["feature-gates"] = daemons.AddFeatureGate(argsMap["feature-gates"], "DevicePlugins=false")
+		argsMap["feature-gates"] = daemons.AddFeatureGate(argsMap["feature-gates"], "RotateKubeletServerCertificate=true")
 	}
 
 	argsMap["node-labels"] = strings.Join(cfg.NodeLabels, ",")
@@ -162,13 +163,6 @@ func startKubelet(cfg *config.Agent) error {
 	logrus.Infof("Running kubelet %s", config.ArgString(args))
 
 	return executor.Kubelet(args)
-}
-
-func addFeatureGate(current, new string) string {
-	if current == "" {
-		return new
-	}
-	return current + "," + new
 }
 
 func checkCgroups() (root string, hasCFS bool, hasPIDs bool) {
