@@ -1,0 +1,45 @@
+#!/bin/bash
+set -ve
+
+download_go
+# ---
+cat <<EOF >/etc/profile.d/build.sh
+export SELINUX=true
+# export STATIC_BUILD=true
+EOF
+. /etc/profile.d/build.sh
+# ---
+sed -E 's|apk( -U)?( --no-cache)?( --repository [^ ]*)? add|yum install -y|g' -i /tmp/docker-run
+sed -E 's/-dev/-devel/g' -i /tmp/docker-run
+. /tmp/docker-run
+# ---
+go get -u github.com/go-delve/delve/cmd/dlv
+# ---
+# docker install instructions slightly changed from https://kubernetes.io/docs/setup/production-environment/container-runtimes/
+# default "exec-opts": ["native.cgroupdriver=cgroupfs"], and set "selinux-enabled": true
+yum remove -y docker docker-common
+yum install -y yum-utils device-mapper-persistent-data lvm2
+yum-config-manager --add-repo   https://download.docker.com/linux/centos/docker-ce.repo
+yum update -y && yum install -y   containerd.io-1.2.10   docker-ce-19.03.4   docker-ce-cli-19.03.4
+mkdir -p /etc/docker
+cat > /etc/docker/daemon.json <<EOF
+{
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "100m"
+  },
+  "selinux-enabled": true,
+  "storage-driver": "overlay2",
+  "storage-opts": [
+    "overlay2.override_kernel_check=true"
+  ]
+}
+EOF
+# ---
+systemctl daemon-reload
+systemctl disable --now firewalld
+systemctl disable --now docker
+# ---
+# set selinux to permissive for dev & testing purposes only
+setenforce 0
+sed -i 's/^SELINUX=enforcing$/SELINUX=permissive/' /etc/selinux/config

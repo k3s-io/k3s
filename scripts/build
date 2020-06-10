@@ -1,0 +1,129 @@
+#!/bin/bash
+set -e -x
+
+cd $(dirname $0)/..
+
+. ./scripts/version.sh
+
+GO=${GO-go}
+
+PKG="github.com/rancher/k3s"
+PKG_CONTAINERD="github.com/containerd/containerd"
+PKG_RANCHER_CONTAINERD="github.com/rancher/containerd"
+PKG_CRICTL="github.com/kubernetes-sigs/cri-tools"
+
+buildDate=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+
+VENDOR_PREFIX="${PKG}/vendor/"
+VERSIONFLAGS="
+    -X ${PKG}/pkg/version.Version=${VERSION}
+    -X ${PKG}/pkg/version.GitCommit=${COMMIT:0:8}
+
+    -X ${VENDOR_PREFIX}k8s.io/client-go/pkg/version.gitVersion=${VERSION}
+    -X ${VENDOR_PREFIX}k8s.io/client-go/pkg/version.gitCommit=${COMMIT}
+    -X ${VENDOR_PREFIX}k8s.io/client-go/pkg/version.gitTreeState=${TREE_STATE}
+    -X ${VENDOR_PREFIX}k8s.io/client-go/pkg/version.buildDate=${buildDate}
+
+    -X ${VENDOR_PREFIX}k8s.io/component-base/version.gitVersion=${VERSION}
+    -X ${VENDOR_PREFIX}k8s.io/component-base/version.gitCommit=${COMMIT}
+    -X ${VENDOR_PREFIX}k8s.io/component-base/version.gitTreeState=${TREE_STATE}
+    -X ${VENDOR_PREFIX}k8s.io/component-base/version.buildDate=${buildDate}
+
+    -X ${VENDOR_PREFIX}${PKG_CONTAINERD}/version.Version=${VERSION_CONTAINERD}
+    -X ${VENDOR_PREFIX}${PKG_CONTAINERD}/version.Package=${PKG_RANCHER_CONTAINERD}
+    -X ${VENDOR_PREFIX}${PKG_CRICTL}/pkg/version.Version=${VERSION_CRICTL}
+"
+LDFLAGS="
+    -w -s"
+STATIC="
+    -extldflags '-static'
+"
+
+STATIC_SQLITE="
+    -extldflags '-static -lm -ldl -lz -lpthread'
+"
+TAGS="ctrd apparmor seccomp no_btrfs netcgo osusergo providerless"
+RUNC_TAGS="apparmor seccomp"
+RUNC_STATIC="static"
+
+if [ "$SELINUX" = "true" ]; then
+    TAGS="$TAGS selinux"
+    RUNC_TAGS="$RUNC_TAGS selinux"
+fi
+
+if [ "$STATIC_BUILD" != "true" ]; then
+    STATIC="
+"
+    STATIC_SQLITE="
+"
+    RUNC_STATIC=""
+else
+    TAGS="static_build libsqlite3 $TAGS"
+fi
+
+mkdir -p bin
+
+if [ -z "$GOARM" ] && [ "arm" = "$("${GO}" env GOARCH)" ]; then
+    GOARM=7
+fi
+
+rm -f \
+    bin/k3s-agent \
+    bin/hyperkube \
+    bin/containerd \
+    bin/runc \
+    bin/containerd-shim \
+    bin/containerd-shim-runc-v1 \
+    bin/containerd-shim-runc-v2 \
+    bin/k3s-server \
+    bin/kubectl \
+    bin/crictl \
+    bin/ctr
+
+cleanup() {
+    exit_status=$?
+    rm -rf $TMPDIR
+    exit ${exit_status}
+}
+
+INSTALLBIN=$(pwd)/bin
+if [ ! -x ${INSTALLBIN}/cni ]; then
+(
+    echo Building cni
+    TMPDIR=$(mktemp -d)
+    trap cleanup EXIT
+    WORKDIR=$TMPDIR/src/github.com/containernetworking/plugins
+    git clone -b $VERSION_CNIPLUGINS https://github.com/rancher/plugins.git $WORKDIR
+    cd $WORKDIR
+    GOPATH=$TMPDIR CGO_ENABLED=0 "${GO}" build -tags "$TAGS" -ldflags "$LDFLAGS $STATIC" -o $INSTALLBIN/cni
+)
+fi
+# echo Building agent
+# CGO_ENABLED=1 "${GO}" build -tags "$TAGS" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC" -o bin/k3s-agent ./cmd/agent/main.go
+echo Building server
+CGO_ENABLED=1 "${GO}" build -tags "$TAGS" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC_SQLITE" -o bin/containerd ./cmd/server/main.go
+ln -s containerd ./bin/k3s-agent
+ln -s containerd ./bin/k3s-server
+ln -s containerd ./bin/kubectl
+ln -s containerd ./bin/crictl
+ln -s containerd ./bin/ctr
+#echo Building hyperkube
+#CGO_ENABLED=1 "${GO}" build -tags "$TAGS" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC_SQLITE" -o bin/hyperkube ./vendor/k8s.io/kubernetes/cmd/hyperkube/
+#echo Building ctr
+#CGO_ENABLED=1 "${GO}" build -tags "$TAGS" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC_SQLITE" -o bin/ctr ./cmd/ctr/main.go
+# echo Building containerd
+# CGO_ENABLED=0 "${GO}" build -tags "$TAGS" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC" -o bin/containerd ./cmd/containerd/
+echo Building runc
+rm -f ./vendor/github.com/opencontainers/runc/runc
+make EXTRA_LDFLAGS="-w -s" BUILDTAGS="$RUNC_TAGS" -C ./vendor/github.com/opencontainers/runc $RUNC_STATIC
+cp -f ./vendor/github.com/opencontainers/runc/runc ./bin/runc
+
+echo Building containerd-shim
+rm -f ./vendor/github.com/containerd/containerd/bin/containerd-shim
+make -C ./vendor/github.com/containerd/containerd bin/containerd-shim
+cp -f ./vendor/github.com/containerd/containerd/bin/containerd-shim ./bin/containerd-shim
+
+echo Building containerd-shim-runc-v2
+rm -f ./vendor/github.com/containerd/containerd/bin/containerd-shim-runc-v2
+make -C ./vendor/github.com/containerd/containerd bin/containerd-shim-runc-v2
+cp -f ./vendor/github.com/containerd/containerd/bin/containerd-shim-runc-v2 ./bin/containerd-shim-runc-v2

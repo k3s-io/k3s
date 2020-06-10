@@ -1,0 +1,61 @@
+#!/bin/bash
+set -e -x
+
+cd $(dirname $0)/..
+
+. ./scripts/version.sh
+
+GO=${GO-go}
+
+for i in crictl kubectl k3s-agent k3s-server k3s; do
+    rm -f bin/$i
+    ln -s containerd bin/$i
+done
+
+for i in bridge flannel host-local loopback portmap; do
+    rm -f bin/$i
+    ln -s cni bin/$i
+done
+
+cp contrib/util/check-config.sh bin/check-config
+
+rm -rf build/data
+mkdir -p build/data build/out
+mkdir -p dist/artifacts
+
+(
+    set +x
+    cd bin
+    find . -not -path '*/\.*' -type f -exec sha256sum {} \; | sed -e 's| \./| |' | sort -k2 >.sha256sums
+    (
+        for f in $(find . -type l); do
+            echo $f $(readlink $f)
+        done
+    ) | sed -e 's|^\./||' | sort >.links
+    set -x
+)
+
+tar cvzf ./build/out/data.tar.gz --exclude ./bin/hyperkube ./bin ./etc
+HASH=$(sha256sum ./build/out/data.tar.gz | awk '{print $1}')
+
+cp ./build/out/data.tar.gz ./build/data/${HASH}.tgz
+
+BIN_SUFFIX="-${ARCH}"
+if [ ${ARCH} = amd64 ]; then
+    BIN_SUFFIX=""
+elif [ ${ARCH} = arm ]; then
+    BIN_SUFFIX="-armhf"
+fi
+
+CMD_NAME=dist/artifacts/k3s${BIN_SUFFIX}
+
+"${GO}" generate
+LDFLAGS="
+    -X github.com/rancher/k3s/pkg/version.Version=$VERSION
+    -X github.com/rancher/k3s/pkg/version.GitCommit=${COMMIT:0:8}
+    -w -s
+"
+STATIC="-extldflags '-static'"
+CGO_ENABLED=0 "${GO}" build -ldflags "$LDFLAGS $STATIC" -o ${CMD_NAME} ./cmd/k3s/main.go
+
+./scripts/build-upload ${CMD_NAME} ${COMMIT}

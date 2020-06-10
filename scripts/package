@@ -1,0 +1,12 @@
+#!/bin/bash
+set -e
+
+cd $(dirname $0)
+
+if [ ! -e ../bin/containerd ]; then
+    ./build
+fi
+
+./package-cli
+./package-image
+./package-airgap

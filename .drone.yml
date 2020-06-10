@@ -1,0 +1,370 @@
+---
+kind: pipeline
+name: amd64
+
+platform:
+  os: linux
+  arch: amd64
+
+steps:
+- name: build
+  image: rancher/dapper:v0.4.2
+  secrets: [ gcloud_auth ]
+  environment:
+    GCLOUD_AUTH:
+      from_secret: gcloud_auth
+  commands:
+  - dapper ci
+  - echo "${DRONE_TAG}-amd64" | sed -e 's/+/-/g' >.tags
+  volumes:
+  - name: docker
+    path: /var/run/docker.sock
+
+- name: github_binary_release
+  image: ibuildthecloud/github-release:v0.0.1
+  settings:
+    api_key:
+      from_secret: github_token
+    prerelease: true
+    checksum:
+    - sha256
+    checksum_file: CHECKSUMsum-amd64.txt
+    checksum_flatten: true
+    files:
+    - "dist/artifacts/*"
+  when:
+    instance:
+    - drone-publish.rancher.io
+    ref:
+    - refs/head/master
+    - refs/tags/*
+    event:
+    - tag
+
+- name: docker-publish
+  image: plugins/docker
+  settings:
+    dockerfile: package/Dockerfile
+    password:
+      from_secret: docker_password
+    repo: "rancher/k3s"
+    username:
+      from_secret: docker_username
+  when:
+    instance:
+    - drone-publish.rancher.io
+    ref:
+    - refs/head/master
+    - refs/tags/*
+    event:
+    - tag
+
+- name: rpm-publish
+  image: centos:7
+  environment:
+    PRIVATE_KEY:
+      from_secret: private_key
+    PRIVATE_KEY_PASS_PHRASE:
+      from_secret: private_key_pass_phrase
+    AWS_S3_BUCKET:
+      from_secret: aws_s3_bucket
+    AWS_ACCESS_KEY_ID:
+      from_secret: aws_access_key_id
+    AWS_SECRET_ACCESS_KEY:
+      from_secret: aws_secret_access_key
+  commands:
+  - scripts/provision/generic/centos7/yum-install-rpm-tools
+  - scripts/package-rpm
+  when:
+    instance:
+    - drone-publish.rancher.io
+    ref:
+    - refs/head/master
+    - refs/tags/*
+    event:
+    - tag
+
+- name: test
+  image: rancher/dapper:v0.4.2
+  secrets: [ gcloud_auth ]
+  environment:
+    GCLOUD_AUTH:
+      from_secret: gcloud_auth
+  commands:
+  - dapper -f Dockerfile.test.dapper
+  volumes:
+  - name: docker
+    path: /var/run/docker.sock
+
+- name: github_e2e_logs_release
+  image: ibuildthecloud/github-release:v0.0.1
+  settings:
+    api_key:
+      from_secret: github_token
+    prerelease: true
+    files:
+    - "dist/artifacts/e2e-*.log"
+  when:
+    instance:
+    - drone-publish.rancher.io
+    ref:
+    - refs/head/master
+    - refs/tags/*
+    event:
+    - tag
+
+volumes:
+- name: docker
+  host:
+    path: /var/run/docker.sock
+
+---
+kind: pipeline
+name: arm64
+
+platform:
+  os: linux
+  arch: arm64
+
+steps:
+- name: build
+  image: rancher/dapper:v0.4.2
+  secrets: [ gcloud_auth ]
+  environment:
+    GCLOUD_AUTH:
+      from_secret: gcloud_auth
+  commands:
+  - dapper ci
+  - echo "${DRONE_TAG}-arm64" | sed -e 's/+/-/g' >.tags
+  volumes:
+  - name: docker
+    path: /var/run/docker.sock
+
+- name: github_binary_release
+  image: ibuildthecloud/github-release:v0.0.1
+  settings:
+    api_key:
+      from_secret: github_token
+    prerelease: true
+    checksum:
+    - sha256
+    checksum_file: CHECKSUMsum-arm64.txt
+    checksum_flatten: true
+    files:
+    - "dist/artifacts/*"
+  when:
+    instance:
+    - drone-publish.rancher.io
+    ref:
+    - refs/head/master
+    - refs/tags/*
+    event:
+    - tag
+
+- name: docker-publish
+  image: plugins/docker
+  settings:
+    dockerfile: package/Dockerfile
+    password:
+      from_secret: docker_password
+    repo: "rancher/k3s"
+    username:
+      from_secret: docker_username
+  when:
+    instance:
+    - drone-publish.rancher.io
+    ref:
+    - refs/head/master
+    - refs/tags/*
+    event:
+    - tag
+
+- name: rpm-publish
+  image: centos:7
+  environment:
+    PRIVATE_KEY:
+      from_secret: private_key
+    PRIVATE_KEY_PASS_PHRASE:
+      from_secret: private_key_pass_phrase
+    AWS_S3_BUCKET:
+      from_secret: aws_s3_bucket
+    AWS_ACCESS_KEY_ID:
+      from_secret: aws_access_key_id
+    AWS_SECRET_ACCESS_KEY:
+      from_secret: aws_secret_access_key
+  commands:
+  - scripts/provision/generic/centos7/yum-install-rpm-tools
+  - scripts/package-rpm
+  when:
+    instance:
+    - drone-publish.rancher.io
+    ref:
+    - refs/head/master
+    - refs/tags/*
+    event:
+    - tag
+
+- name: test
+  image: rancher/dapper:v0.4.2
+  secrets: [ gcloud_auth ]
+  environment:
+    GCLOUD_AUTH:
+      from_secret: gcloud_auth
+  commands:
+  - dapper -f Dockerfile.test.dapper
+  volumes:
+  - name: docker
+    path: /var/run/docker.sock
+
+volumes:
+- name: docker
+  host:
+    path: /var/run/docker.sock
+
+---
+kind: pipeline
+name: arm
+
+platform:
+  os: linux
+  arch: arm
+
+steps:
+- name: build
+  image: rancher/dapper:v0.4.2
+  secrets: [ gcloud_auth ]
+  environment:
+    GCLOUD_AUTH:
+      from_secret: gcloud_auth
+  commands:
+  - dapper ci
+  - echo "${DRONE_TAG}-arm" | sed -e 's/+/-/g' >.tags
+  volumes:
+  - name: docker
+    path: /var/run/docker.sock
+
+- name: github_binary_release
+  image: ibuildthecloud/github-release:v0.0.1
+  settings:
+    api_key:
+      from_secret: github_token
+    prerelease: true
+    checksum:
+    - sha256
+    checksum_file: CHECKSUMsum-arm.txt
+    checksum_flatten: true
+    files:
+    - "dist/artifacts/*"
+  when:
+    instance:
+    - drone-publish.rancher.io
+    ref:
+    - refs/head/master
+    - refs/tags/*
+    event:
+    - tag
+
+- name: docker-publish
+  image: plugins/docker
+  settings:
+    dockerfile: package/Dockerfile
+    password:
+      from_secret: docker_password
+    repo: "rancher/k3s"
+    username:
+      from_secret: docker_username
+  when:
+    instance:
+    - drone-publish.rancher.io
+    ref:
+    - refs/head/master
+    - refs/tags/*
+    event:
+    - tag
+
+- name: test
+  image: rancher/dapper:v0.4.2
+  secrets: [ gcloud_auth ]
+  environment:
+    GCLOUD_AUTH:
+      from_secret: gcloud_auth
+  commands:
+  - dapper -f Dockerfile.test.dapper
+  volumes:
+  - name: docker
+    path: /var/run/docker.sock
+
+volumes:
+- name: docker
+  host:
+    path: /var/run/docker.sock
+
+---
+kind: pipeline
+name: manifest
+
+platform:
+  os: linux
+  arch: amd64
+
+steps:
+- name: manifest
+  image: plugins/docker
+  environment:
+    DOCKER_USERNAME:
+      from_secret: docker_username
+    DOCKER_PASSWORD:
+      from_secret: docker_password
+  settings:
+    dry_run: true
+    dockerfile: Dockerfile.manifest
+    repo: "rancher/k3s-manifest"
+    build_args_from_env:
+    - DOCKER_USERNAME
+    - DOCKER_PASSWORD
+    - DRONE_TAG
+
+trigger:
+  instance:
+  - drone-publish.rancher.io
+  ref:
+  - refs/head/master
+  - refs/tags/*
+  event:
+  - tag
+
+depends_on:
+- amd64
+- arm64
+- arm
+
+---
+kind: pipeline
+name: dispatch
+
+platform:
+  os: linux
+  arch: amd64
+
+steps:
+- name: dispatch
+  image: curlimages/curl:7.69.1
+  environment:
+    PAT_USERNAME:
+      from_secret: pat_username
+    PAT_TOKEN:
+      from_secret: github_token
+  commands:
+    - scripts/dispatch
+
+trigger:
+  instance:
+    - drone-publish.rancher.io
+  ref:
+    - refs/head/master
+    - refs/tags/*
+  event:
+    - tag
+
+depends_on:
+- manifest

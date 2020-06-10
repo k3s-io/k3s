@@ -1,0 +1,27 @@
+language: go
+go:
+    - 1.11.x
+    - 1.12.x
+
+go_import_path: github.com/containerd/cgroups
+
+install:
+    - mkdir -p $GOPATH/src/github.com/prometheus $GOPATH/src/github.com/opencontainers $GOPATH/src/github.com/coreos $GOPATH/src/github.com/godbus
+    - cd $GOPATH/src/github.com/opencontainers && git clone https://github.com/opencontainers/runtime-spec && cd runtime-spec && git checkout fa4b36aa9c99e00c2ef7b5c0013c84100ede5f4e
+    - cd $GOPATH/src/github.com/coreos && git clone https://github.com/coreos/go-systemd && cd go-systemd && git checkout 48702e0da86bd25e76cfef347e2adeb434a0d0a6
+    - cd $GOPATH/src/github.com/godbus && git clone https://github.com/godbus/dbus && cd dbus && git checkout c7fdd8b5cd55e87b4e1f4e372cdb1db61dd6c66f
+    - cd $GOPATH/src/github.com/containerd/cgroups
+    - go get -d -t ./...
+    - go get -u github.com/vbatts/git-validation
+    - go get -u github.com/kunalkushwaha/ltag
+
+before_script:
+    - pushd ..; git clone https://github.com/containerd/project; popd
+
+script:
+    - DCO_VERBOSITY=-q ../project/script/validate/dco
+    - ../project/script/validate/fileheader ../project/
+    - go test -race -coverprofile=coverage.txt -covermode=atomic
+
+after_success:
+    - bash <(curl -s https://codecov.io/bash)

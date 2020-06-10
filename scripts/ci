@@ -1,0 +1,11 @@
+#!/bin/bash
+set -e
+
+cd $(dirname $0)
+
+./download
+if [ -z "$SKIP_VALIDATE" ]; then
+    ./validate
+fi
+./build
+./package

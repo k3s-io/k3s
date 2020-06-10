@@ -1,0 +1,29 @@
+#!/bin/bash
+set -e -x
+cd $(dirname $0)/..
+
+. ./scripts/test-helpers
+
+artifacts=$(pwd)/dist/artifacts
+mkdir -p $artifacts
+
+# ---
+
+. ./scripts/test-run-basics
+
+# ---
+
+[ "$ARCH" != 'amd64' ] && \
+  early-exit "Skipping remaining tests, images not available for $ARCH."
+
+E2E_OUTPUT=$artifacts test-run-sonobuoy
+
+# ---
+
+[ "$DRONE_BUILD_EVENT" = 'tag' ] && \
+  early-exit 'Skipping remaining tests on tag.'
+
+# ---
+
+test-run-sonobuoy mysql
+test-run-sonobuoy postgres

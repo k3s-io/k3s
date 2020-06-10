@@ -1,0 +1,27 @@
+language: go
+go:
+  - "1.10.x"
+  - "1.11.x"
+
+go_import_path: github.com/containerd/console
+
+install:
+  - go get -d
+  - GOOS=openbsd go get -d
+  - GOOS=solaris go get -d
+  - GOOS=windows go get -d
+  - go get -u github.com/vbatts/git-validation
+  - go get -u github.com/kunalkushwaha/ltag
+
+before_script:
+  - pushd ..; git clone https://github.com/containerd/project; popd
+
+script:
+  - DCO_VERBOSITY=-q ../project/script/validate/dco
+  - ../project/script/validate/fileheader ../project/
+  - go test -race
+  - GOOS=openbsd go build
+  - GOOS=openbsd go test -c
+  - GOOS=solaris go build
+  - GOOS=solaris go test -c
+  - GOOS=windows go test

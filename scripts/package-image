@@ -1,0 +1,18 @@
+#!/bin/bash
+set -e
+
+cd $(dirname $0)/..
+
+. ./scripts/version.sh
+
+TAG=${TAG:-${VERSION_TAG}${SUFFIX}}
+REPO=${REPO:-rancher}
+IMAGE_NAME=${IMAGE_NAME:-k3s}
+
+IMAGE=${REPO}/${IMAGE_NAME}:${TAG}
+PROXY_OPTS=
+[ -z "$http_proxy" ] || PROXY_OPTS="$PROXY_OPTS --build-arg http_proxy=$http_proxy"
+[ -z "$https_proxy" ] || PROXY_OPTS="$PROXY_OPTS --build-arg https_proxy=$https_proxy"
+[ -z "$no_proxy" ] || PROXY_OPTS="$PROXY_OPTS --build-arg no_proxy=$no_proxy"
+docker build ${PROXY_OPTS} -t ${IMAGE} -f package/Dockerfile .
+echo Built ${IMAGE}

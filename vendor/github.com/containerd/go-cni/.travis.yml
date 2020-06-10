@@ -1,0 +1,22 @@
+language: go
+go:
+  - 1.12.x
+  - tip
+
+go_import_path: github.com/containerd/go-cni
+
+install:
+  - go get -d
+  - go get -u github.com/vbatts/git-validation
+  - go get -u github.com/kunalkushwaha/ltag
+
+before_script:
+  - pushd ..; git clone https://github.com/containerd/project; popd
+
+script:
+    - DCO_VERBOSITY=-q ../project/script/validate/dco
+    - ../project/script/validate/fileheader ../project/
+    - go test -race -coverprofile=coverage.txt -covermode=atomic
+
+after_success:
+    - bash <(curl -s https://codecov.io/bash)

@@ -1,0 +1,25 @@
+#!/bin/bash
+set -ve
+
+download_go
+# ---
+cat <<EOF >/etc/profile.d/build.sh
+export SELINUX=true
+# export STATIC_BUILD=true
+EOF
+. /etc/profile.d/build.sh
+# ---
+apt-get install -y \
+  build-essential \
+  pkg-config \
+  libseccomp-dev \
+  libsqlite3-dev \
+  libselinux1-dev \
+  zlib1g-dev \
+
+# ---
+sed -E 's|apk( -U)?( --no-cache)?( --repository [^ ]*)? add|apt-get install -y|g' -i /tmp/docker-run
+. /tmp/docker-run
+# ---
+go get -u github.com/go-delve/delve/cmd/dlv
+# ---

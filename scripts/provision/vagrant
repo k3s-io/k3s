@@ -1,0 +1,89 @@
+#!/bin/bash
+set -ve
+
+PROVISION="scripts/provision/$BOX/vagrant"
+
+if [ ! -f /etc/vagrant_box_build_time ]; then
+    echo 'This script should only be called during vagrant provisioning'
+    exit 1
+fi
+
+if [[ $HOME = /go/* ]]; then
+    echo 'Must not launch vagrant from /go/'
+    exit 1
+fi
+cd
+
+# --- Default to root user for vagrant ssh
+cat <<\EOF >/etc/profile.d/root.sh
+[ $EUID -ne 0 ] && exec sudo -i
+EOF
+
+# --- Setup go version
+if [ -z "${GOPATH}" ]; then
+    GOPATH=$(realpath $HOME/../../../..)
+    echo "WARNING: Assuming GOPATH=$GOPATH"
+else
+    echo "Using parent GOPATH=$GOPATH"
+fi
+
+# --- Setup basic env
+cat <<EOF >/etc/profile.d/env.sh
+export ARCH=amd64
+export GO111MODULE=off
+export GOPATH=$GOPATH
+export PATH=/usr/local/bin:$PATH:/usr/local/go/bin:$GOPATH/bin
+export HOME=$HOME && cd
+EOF
+. /etc/profile.d/env.sh
+
+# --- Clean go cache
+rm -rf .cache/go-build || true
+
+# --- Set color prompt
+sed -i 's|:/bin/ash$|:/bin/bash|g' /etc/passwd
+cat <<\EOF >/etc/profile.d/color.sh
+alias ls='ls --color=auto'
+export PS1='\033[31m[ \033[90m\D{%F 🐮 %T}\033[31m ]\n\[\033[36m\]\u\[\033[m\]@\[\033[32m\]\h\[\033[35m\]:\[\033[33;1m\]\w\[\033[m\]\$ '
+EOF
+
+# --- Setup install script from docker run commands
+mkdir -p ${GOPATH}/bin
+mkdir -p /go
+ln -sf $GOPATH/bin /go/bin
+sed ':a;N;$!ba;s/\\\n/ /g' <Dockerfile.dapper | grep '^RUN ' | sed -e 's/^RUN //' >/tmp/docker-run
+export BINDIR=/go/bin
+export GOPATH=/go
+export HOME=/tmp
+
+# --- Add k3s motd
+cat <<\EOF >/etc/motd
+               ,        ,
+   ,-----------|'------'| |\    ____
+  /.           '-'@  o|-' | |  /___ \
+ |/|             | .. |   | | __ __) | ____
+   |   .________.'----'   | |/ /|__ < / __/
+   |  ||        |  ||     |   < ___) |\__ \
+   \__|'        \__|'     |_|\_\_____/____/
+
+EOF
+
+# --- Utility function to download go
+download_go() {
+    goversion=$(grep "^FROM " Dockerfile.dapper | sed -e 's/^FROM golang:\(.*\)-.*/\1/')
+    if [ -z "$goversion" ]; then
+        echo 'Cannot find version of go to fetch'
+        return 1
+    fi
+    echo "Installing go $goversion"
+    curl -sL https://storage.googleapis.com/golang/go${goversion}.linux-${ARCH}.tar.gz | tar -xzf - -C /usr/local
+}
+
+# --- Run vagrant provision script if available
+if [ ! -f "${PROVISION}" ]; then
+  echo "WARNING: Unable to execute provision script \"${PROVISION}\""
+  exit
+fi
+echo "running '${PROVISION}'..." && \
+  . ${PROVISION} && \
+  echo "finished '${PROVISION}'!"
