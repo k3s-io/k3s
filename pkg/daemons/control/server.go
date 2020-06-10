@@ -135,6 +135,7 @@ func controllerManager(cfg *config.Control, runtime *config.ControlRuntime) erro
 		"use-service-account-credentials":  "true",
 		"cluster-signing-cert-file":        runtime.ServerCA,
 		"cluster-signing-key-file":         runtime.ServerCAKey,
+		"profiling":                        "false",
 	}
 	if cfg.NoLeaderElect {
 		argsMap["leader-elect"] = "false"
