@@ -95,7 +95,7 @@ func startWrangler(ctx context.Context, config *Config) error {
 			return
 		case <-config.ControlConfig.Runtime.APIServerReady:
 			if err := runControllers(ctx, config); err != nil {
-				logrus.Fatal("failed to start controllers: %v", err)
+				logrus.Fatalf("failed to start controllers: %v", err)
 			}
 		}
 	}()
@@ -419,7 +419,7 @@ func setMasterRoleLabel(ctx context.Context, nodes v1.NodeClient) error {
 		node.Labels[MasterRoleLabelKey] = "true"
 		_, err = nodes.Update(node)
 		if err == nil {
-			logrus.Infof("master role label has been set succesfully on node: %s", nodeName)
+			logrus.Infof("master role label has been set successfully on node: %s", nodeName)
 			break
 		}
 		select {

@@ -11,6 +11,9 @@
 		]
 	},
 	"run": {
+		"skip-dirs": [
+			"(^|/)pkg/generated($|/)"
+		],
 		"skip-files": [
 			"/zz_generated_"
 		],
