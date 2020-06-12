@@ -152,6 +152,7 @@ func scheduler(cfg *config.Control, runtime *config.ControlRuntime) error {
 		"port":         "10251",
 		"bind-address": "127.0.0.1",
 		"secure-port":  "0",
+		"profiling":    "false",
 	}
 	if cfg.NoLeaderElect {
 		argsMap["leader-elect"] = "false"
@@ -205,6 +206,7 @@ func apiServer(ctx context.Context, cfg *config.Control, runtime *config.Control
 	argsMap["client-ca-file"] = runtime.ClientCA
 	argsMap["enable-admission-plugins"] = "NodeRestriction"
 	argsMap["anonymous-auth"] = "false"
+	argsMap["profiling"] = "false"
 	if cfg.EncryptSecrets {
 		argsMap["encryption-provider-config"] = runtime.EncryptionConfig
 	}
@@ -906,6 +908,7 @@ func cloudControllerManager(ctx context.Context, cfg *config.Control, runtime *c
 		"cloud-provider":               version.Program,
 		"allow-untagged-cloud":         "true",
 		"node-status-update-frequency": "1m",
+		"profiling":                    "false",
 	}
 	if cfg.NoLeaderElect {
 		argsMap["leader-elect"] = "false"
