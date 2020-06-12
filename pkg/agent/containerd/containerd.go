@@ -34,9 +34,9 @@ const (
 
 func Run(ctx context.Context, cfg *config.Node) error {
 	args := []string{
-		"containerd",
-		"-c", cfg.Containerd.Config,
-		"-a", cfg.Containerd.Address,
+		"k3c", "daemon", "--cni-bin=" + cfg.AgentConfig.CNIBinDir,
+		"--config", cfg.Containerd.Config,
+		"--address", cfg.Containerd.Address,
 		"--state", cfg.Containerd.State,
 		"--root", cfg.Containerd.Root,
 	}

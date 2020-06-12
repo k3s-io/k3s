@@ -6,6 +6,7 @@ cd $(dirname $0)/..
 
 ROOT_VERSION=v0.4.1
 TRAEFIK_VERSION=1.81.0
+K3C_VERSION=v0.2.1
 CHARTS_DIR=build/static/charts
 
 mkdir -p ${CHARTS_DIR}
@@ -21,3 +22,6 @@ TRAEFIK_FILE=traefik-${TRAEFIK_VERSION}.tgz
 curl -sfL https://kubernetes-charts.storage.googleapis.com/${TRAEFIK_FILE} -o ${CHARTS_DIR}/${TRAEFIK_FILE}
 
 cp scripts/wg-add.sh bin/aux/
+
+curl -fsSL https://github.com/rancher/k3c/releases/download/${K3C_VERSION}/k3c-linux-${ARCH} --output bin/k3c
+chmod +x bin/k3c
