@@ -29,13 +29,21 @@ import (
 	"sync"
 	"sync/atomic"
 	"syscall"
+	"time"
 
 	"github.com/containerd/containerd/log"
 	"github.com/containerd/containerd/namespaces"
 	"github.com/containerd/containerd/pkg/stdio"
+	"github.com/containerd/containerd/pkg/timeout"
+	"github.com/containerd/containerd/sys"
 	"github.com/containerd/fifo"
 	runc "github.com/containerd/go-runc"
+	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
+)
+
+const (
+	shimLoggerTermTimeout = "io.containerd.timeout.shim.logger.shutdown"
 )
 
 var bufPool = sync.Pool{
@@ -174,7 +182,7 @@ func copyPipes(ctx context.Context, rio runc.IO, stdin, stdout, stderr string, w
 			},
 		},
 	} {
-		ok, err := isFifo(i.name)
+		ok, err := sys.IsFifo(i.name)
 		if err != nil {
 			return err
 		}
@@ -240,22 +248,6 @@ func (c *countingWriteCloser) Close() error {
 	return c.WriteCloser.Close()
 }
 
-// isFifo checks if a file is a fifo
-// if the file does not exist then it returns false
-func isFifo(path string) (bool, error) {
-	stat, err := os.Stat(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return false, nil
-		}
-		return false, err
-	}
-	if stat.Mode()&os.ModeNamedPipe == os.ModeNamedPipe {
-		return true, nil
-	}
-	return false, nil
-}
-
 // NewBinaryIO runs a custom binary process for pluggable shim logging
 func NewBinaryIO(ctx context.Context, id string, uri *url.URL) (runc.IO, error) {
 	ns, err := namespaces.NamespaceRequired(ctx)
@@ -269,86 +261,133 @@ func NewBinaryIO(ctx context.Context, id string, uri *url.URL) (runc.IO, error) 
 			args = append(args, vs[0])
 		}
 	}
-	ctx, cancel := context.WithCancel(ctx)
-	cmd := exec.CommandContext(ctx, uri.Path, args...)
+
+	out, err := newPipe()
+	if err != nil {
+		return nil, err
+	}
+
+	serr, err := newPipe()
+	if err != nil {
+		return nil, err
+	}
+
+	r, w, err := os.Pipe()
+	if err != nil {
+		return nil, err
+	}
+
+	cmd := exec.Command(uri.Path, args...)
 	cmd.Env = append(cmd.Env,
 		"CONTAINER_ID="+id,
 		"CONTAINER_NAMESPACE="+ns,
 	)
-	out, err := newPipe()
-	if err != nil {
-		cancel()
-		return nil, err
-	}
-	serr, err := newPipe()
-	if err != nil {
-		cancel()
-		return nil, err
-	}
-	r, w, err := os.Pipe()
-	if err != nil {
-		cancel()
-		return nil, err
-	}
+
 	cmd.ExtraFiles = append(cmd.ExtraFiles, out.r, serr.r, w)
 	// don't need to register this with the reaper or wait when
 	// running inside a shim
 	if err := cmd.Start(); err != nil {
-		cancel()
 		return nil, err
 	}
 	// close our side of the pipe after start
 	if err := w.Close(); err != nil {
-		cancel()
 		return nil, err
 	}
 	// wait for the logging binary to be ready
 	b := make([]byte, 1)
 	if _, err := r.Read(b); err != nil && err != io.EOF {
-		cancel()
 		return nil, err
 	}
 	return &binaryIO{
-		cmd:    cmd,
-		cancel: cancel,
-		out:    out,
-		err:    serr,
+		cmd: cmd,
+		out: out,
+		err: serr,
 	}, nil
 }
 
 type binaryIO struct {
 	cmd      *exec.Cmd
-	cancel   func()
 	out, err *pipe
 }
 
-func (b *binaryIO) CloseAfterStart() (err error) {
-	for _, v := range []*pipe{
-		b.out,
-		b.err,
-	} {
+func (b *binaryIO) CloseAfterStart() error {
+	var (
+		result *multierror.Error
+	)
+
+	for _, v := range []*pipe{b.out, b.err} {
 		if v != nil {
-			if cerr := v.r.Close(); err == nil {
-				err = cerr
+			if err := v.r.Close(); err != nil {
+				result = multierror.Append(result, err)
 			}
 		}
 	}
-	return err
+
+	return result.ErrorOrNil()
 }
 
-func (b *binaryIO) Close() (err error) {
-	b.cancel()
-	for _, v := range []*pipe{
-		b.out,
-		b.err,
-	} {
+func (b *binaryIO) Close() error {
+	var (
+		result *multierror.Error
+	)
+
+	for _, v := range []*pipe{b.out, b.err} {
 		if v != nil {
-			if cerr := v.Close(); err == nil {
-				err = cerr
+			if err := v.Close(); err != nil {
+				result = multierror.Append(result, err)
 			}
 		}
 	}
-	return err
+
+	if err := b.cancel(); err != nil {
+		result = multierror.Append(result, err)
+	}
+
+	return result.ErrorOrNil()
+}
+
+func (b *binaryIO) cancel() error {
+	if b.cmd == nil || b.cmd.Process == nil {
+		return nil
+	}
+
+	// Send SIGTERM first, so logger process has a chance to flush and exit properly
+	if err := b.cmd.Process.Signal(syscall.SIGTERM); err != nil {
+		result := multierror.Append(errors.Wrap(err, "failed to send SIGTERM"))
+
+		log.L.WithError(err).Warn("failed to send SIGTERM signal, killing logging shim")
+
+		if err := b.cmd.Process.Kill(); err != nil {
+			result = multierror.Append(result, errors.Wrap(err, "failed to kill process after faulty SIGTERM"))
+		}
+
+		return result.ErrorOrNil()
+	}
+
+	done := make(chan error)
+	go func() {
+		err := b.cmd.Wait()
+		if err != nil {
+			err = errors.Wrap(err, "failed to wait for shim logger process after SIGTERM")
+		}
+		done <- err
+	}()
+
+	termTimeout := timeout.Get(shimLoggerTermTimeout)
+
+	select {
+	case err := <-done:
+		return err
+	case <-time.After(termTimeout):
+		log.L.Warn("failed to wait for shim logger process to exit, killing")
+
+		err := b.cmd.Process.Kill()
+		if err != nil {
+			return errors.Wrap(err, "failed to kill shim logger process")
+		}
+
+		return nil
+	}
 }
 
 func (b *binaryIO) Stdin() io.WriteCloser {

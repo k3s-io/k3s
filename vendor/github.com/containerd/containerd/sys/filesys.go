@@ -14,16 +14,22 @@
    limitations under the License.
 */
 
-package version
+package sys
 
-var (
-	// Package is filled at linking time
-	Package = "github.com/containerd/containerd"
+import "os"
 
-	// Version holds the complete version number. Filled in at linking time.
-	Version = "1.3.4+unknown"
-
-	// Revision is filled with the VCS (e.g. git) revision being used to build
-	// the program at linking time.
-	Revision = ""
-)
+// IsFifo checks if a file is a (named pipe) fifo
+// if the file does not exist then it returns false
+func IsFifo(path string) (bool, error) {
+	stat, err := os.Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	if stat.Mode()&os.ModeNamedPipe == os.ModeNamedPipe {
+		return true, nil
+	}
+	return false, nil
+}

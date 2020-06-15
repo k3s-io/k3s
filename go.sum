@@ -404,7 +404,9 @@ github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0 h1:Ovs26xHkKqVztRpIrF/92Bcuy
 github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0/go.mod h1:8NvIoxWQoOIhqOTXgfV/d3M/q6VIi02HzZEHgUlZvzk=
 github.com/grpc-ecosystem/grpc-gateway v1.9.5 h1:UImYN5qQ8tuGpGE16ZmjvcTtTw24zw1QAp/SlnNrZhI=
 github.com/grpc-ecosystem/grpc-gateway v1.9.5/go.mod h1:vNeuVxBJEsws4ogUvrchl83t/GYV9WGTSLVdBhOQFDY=
+github.com/hashicorp/errwrap v0.0.0-20141028054710-7554cd9344ce h1:prjrVgOk2Yg6w+PflHoszQNLTUh4kaByUcEWM/9uin4=
 github.com/hashicorp/errwrap v0.0.0-20141028054710-7554cd9344ce/go.mod h1:YH+1FKiLXxHSkmPseP+kNlulaMuP3n2brvKWEqk/Jc4=
+github.com/hashicorp/go-multierror v0.0.0-20161216184304-ed905158d874 h1:cAv7ZbSmyb1wjn6T4TIiyFCkpcfgpbcNNC3bM2srLaI=
 github.com/hashicorp/go-multierror v0.0.0-20161216184304-ed905158d874/go.mod h1:JMRHfdO9jKNzS/+BTlxCjKNQHg/jZAft8U7LloJvN7I=
 github.com/hashicorp/go-syslog v1.0.0/go.mod h1:qPfqrKkXGihmCqbJM2mZgkZGvKG1dFdvsLplgctolz4=
 github.com/hashicorp/golang-lru v0.0.0-20180201235237-0fb14efe8c47/go.mod h1:/m3WP610KZHVQ1SGc6re/UDhFvYD7pJ4Ao+sR/qLZy8=
@@ -616,8 +618,8 @@ github.com/quasilyte/go-consistent v0.0.0-20190521200055-c6f3937de18c/go.mod h1:
 github.com/quobyte/api v0.1.2/go.mod h1:jL7lIHrmqQ7yh05OJ+eEEdHr0u/kmT1Ff9iHd+4H6VI=
 github.com/rakelkar/gonetsh v0.0.0-20190719023240-501daadcadf8 h1:83l9gPhYtgxODlZKU0Odq4pQuDcMZEVgAh364+PV3OU=
 github.com/rakelkar/gonetsh v0.0.0-20190719023240-501daadcadf8/go.mod h1:4XHkfaUj+URzGO9sohoAgt2V9Y8nIW7fugpu0E6gShk=
-github.com/rancher/containerd v1.3.3-k3s2 h1:RZr+TqFt7+YsrSYkyytlhW4HmneWeFNM7IymNOoGW6A=
-github.com/rancher/containerd v1.3.3-k3s2/go.mod h1:ZMfzmqce2Z+QSEqdHMfeJs1TZ/UeJ1aDrazjpQT4ehM=
+github.com/rancher/containerd v1.3.4-k3s1 h1:N0mQe/4d9kqbW6Al61UUJRm9c4qvY4u7wGwEwLJtohg=
+github.com/rancher/containerd v1.3.4-k3s1/go.mod h1:ZMfzmqce2Z+QSEqdHMfeJs1TZ/UeJ1aDrazjpQT4ehM=
 github.com/rancher/cri v1.3.0-k3s.6 h1:jeom53pNYUJHlZBHpax8vpQeBoW19vSVGAQn9jPyIcc=
 github.com/rancher/cri v1.3.0-k3s.6/go.mod h1:Ht5T1dIKzm+4NExmb7wDVG6qR+j0xeXIjjhCv1d9geY=
 github.com/rancher/cri-tools v1.18.0-k3s1 h1:pLYthxpSu6k3Up9tNAMA0MK2ERqB6FC1sZQPRSW1qSg=

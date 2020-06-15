@@ -1,3 +1,5 @@
+// +build !linux
+
 /*
    Copyright The containerd Authors.
 
@@ -14,16 +16,16 @@
    limitations under the License.
 */
 
-package version
+package command
 
-var (
-	// Package is filled at linking time
-	Package = "github.com/containerd/containerd"
-
-	// Version holds the complete version number. Filled in at linking time.
-	Version = "1.3.4+unknown"
-
-	// Revision is filled with the VCS (e.g. git) revision being used to build
-	// the program at linking time.
-	Revision = ""
+import (
+	"context"
 )
+
+func notifyReady(ctx context.Context) error {
+	return nil
+}
+
+func notifyStopping(ctx context.Context) error {
+	return nil
+}
