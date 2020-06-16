@@ -67,6 +67,7 @@ func startKubelet(cfg *config.Agent) error {
 		"authentication-token-webhook": "true",
 		"anonymous-auth":               "false",
 		"authorization-mode":           modes.ModeWebhook,
+		"feature-gates":                "RotateKubeletServerCertificate=true",
 	}
 	if cfg.PodManifests != "" && argsMap["pod-manifest-path"] == "" {
 		argsMap["pod-manifest-path"] = cfg.PodManifests
