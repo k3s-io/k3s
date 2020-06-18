@@ -39,7 +39,7 @@ type Controller struct {
 }
 
 const (
-	image   = "rancher/klipper-helm:v0.2.6"
+	image   = "rancher/klipper-helm:v0.2.7"
 	Label   = "helmcharts.helm.cattle.io/chart"
 	CRDName = "helmcharts.helm.cattle.io"
 	Name    = "helm-controller"
@@ -94,17 +94,20 @@ func (c *Controller) OnHelmChanged(key string, chart *helmv1.HelmChart) (*helmv1
 		return nil, nil
 	}
 
-	if chart.Spec.Chart == "" {
+	if chart.Spec.Chart == "" && chart.Spec.ChartContent == "" {
 		return chart, nil
 	}
 
 	objs := objectset.NewObjectSet()
-	job, configMap := job(chart)
+	job, valuesConfigMap, contentConfigMap := job(chart)
 	objs.Add(serviceAccount(chart))
 	objs.Add(roleBinding(chart))
 	objs.Add(job)
-	if configMap != nil {
-		objs.Add(configMap)
+	if valuesConfigMap != nil {
+		objs.Add(valuesConfigMap)
+	}
+	if contentConfigMap != nil {
+		objs.Add(contentConfigMap)
 	}
 
 	if err := c.apply.WithOwner(chart).Apply(objs); err != nil {
@@ -120,7 +123,7 @@ func (c *Controller) OnHelmRemove(key string, chart *helmv1.HelmChart) (*helmv1.
 	if chart.Spec.Chart == "" {
 		return chart, nil
 	}
-	job, _ := job(chart)
+	job, _, _ := job(chart)
 	job, err := c.jobsCache.Get(chart.Namespace, job.Name)
 
 	if errors.IsNotFound(err) {
@@ -147,7 +150,7 @@ func (c *Controller) OnHelmRemove(key string, chart *helmv1.HelmChart) (*helmv1.
 	return newChart, c.apply.WithOwner(newChart).Apply(objectset.NewObjectSet())
 }
 
-func job(chart *helmv1.HelmChart) (*batch.Job, *core.ConfigMap) {
+func job(chart *helmv1.HelmChart) (*batch.Job, *core.ConfigMap, *core.ConfigMap) {
 	oneThousand := int32(1000)
 	valuesHash := sha256.Sum256([]byte(chart.Spec.ValuesContent))
 
@@ -247,35 +250,13 @@ func job(chart *helmv1.HelmChart) (*batch.Job, *core.ConfigMap) {
 	}
 
 	setProxyEnv(job)
-	configMap := configMap(chart)
-	if configMap == nil {
-		return job, nil
-	}
+	valueConfigMap := setValuesConfigMap(job, chart)
+	contentConfigMap := setContentConfigMap(job, chart)
 
-	job.Spec.Template.Spec.Volumes = []core.Volume{
-		{
-			Name: "values",
-			VolumeSource: core.VolumeSource{
-				ConfigMap: &core.ConfigMapVolumeSource{
-					LocalObjectReference: core.LocalObjectReference{
-						Name: configMap.Name,
-					},
-				},
-			},
-		},
-	}
-
-	job.Spec.Template.Spec.Containers[0].VolumeMounts = []core.VolumeMount{
-		{
-			MountPath: "/config",
-			Name:      "values",
-		},
-	}
-
-	return job, configMap
+	return job, valueConfigMap, contentConfigMap
 }
 
-func configMap(chart *helmv1.HelmChart) *core.ConfigMap {
+func valuesConfigMap(chart *helmv1.HelmChart) *core.ConfigMap {
 	if chart.Spec.ValuesContent == "" {
 		return nil
 	}
@@ -401,4 +382,81 @@ func setProxyEnv(job *batch.Job) {
 			job.Spec.Template.Spec.Containers[0].Env,
 			envar)
 	}
+}
+
+func contentConfigMap(chart *helmv1.HelmChart) *core.ConfigMap {
+	if chart.Spec.ChartContent == "" {
+		return nil
+	}
+	return &core.ConfigMap{
+		TypeMeta: meta.TypeMeta{
+			APIVersion: "v1",
+			Kind:       "ConfigMap",
+		},
+		ObjectMeta: meta.ObjectMeta{
+			Name:      fmt.Sprintf("chart-content-%s", chart.Name),
+			Namespace: chart.Namespace,
+		},
+		Data: map[string]string{
+			fmt.Sprintf("%s.tgz.base64", chart.Name): chart.Spec.ChartContent,
+		},
+	}
+}
+
+func setValuesConfigMap(job *batch.Job, chart *helmv1.HelmChart) *core.ConfigMap {
+	configMap := valuesConfigMap(chart)
+	if configMap == nil {
+		return nil
+	}
+
+	job.Spec.Template.Spec.Volumes = append(job.Spec.Template.Spec.Volumes, []core.Volume{
+		{
+			Name: "values",
+			VolumeSource: core.VolumeSource{
+				ConfigMap: &core.ConfigMapVolumeSource{
+					LocalObjectReference: core.LocalObjectReference{
+						Name: configMap.Name,
+					},
+				},
+			},
+		},
+	}...)
+
+	job.Spec.Template.Spec.Containers[0].VolumeMounts = append(job.Spec.Template.Spec.Containers[0].VolumeMounts, []core.VolumeMount{
+		{
+			MountPath: "/config",
+			Name:      "values",
+		},
+	}...)
+
+	return configMap
+}
+
+func setContentConfigMap(job *batch.Job, chart *helmv1.HelmChart) *core.ConfigMap {
+	configMap := contentConfigMap(chart)
+	if configMap == nil {
+		return nil
+	}
+
+	job.Spec.Template.Spec.Volumes = append(job.Spec.Template.Spec.Volumes, []core.Volume{
+		{
+			Name: "content",
+			VolumeSource: core.VolumeSource{
+				ConfigMap: &core.ConfigMapVolumeSource{
+					LocalObjectReference: core.LocalObjectReference{
+						Name: configMap.Name,
+					},
+				},
+			},
+		},
+	}...)
+
+	job.Spec.Template.Spec.Containers[0].VolumeMounts = append(job.Spec.Template.Spec.Containers[0].VolumeMounts, []core.VolumeMount{
+		{
+			MountPath: "/chart",
+			Name:      "content",
+		},
+	}...)
+
+	return configMap
 }
