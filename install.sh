@@ -689,6 +689,7 @@ error_log=${LOG_FILE}
 
 pidfile="/var/run/${SYSTEM_NAME}.pid"
 respawn_delay=5
+respawn_max=0
 
 set -o allexport
 if [ -f /etc/environment ]; then source /etc/environment; fi
