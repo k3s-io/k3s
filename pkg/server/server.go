@@ -13,6 +13,8 @@ import (
 	"strings"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
+
 	"github.com/pkg/errors"
 	"github.com/rancher/helm-controller/pkg/helm"
 	"github.com/rancher/k3s/pkg/clientaccess"
@@ -137,6 +139,9 @@ func runControllers(ctx context.Context, config *Config) error {
 	if !config.DisableAgent {
 		go setMasterRoleLabel(ctx, sc.Core.Core().V1().Node())
 	}
+
+	go setClusterDNSConfig(ctx, config, sc.Core.Core().V1().ConfigMap())
+
 	if controlConfig.NoLeaderElect {
 		go func() {
 			start(ctx)
@@ -422,6 +427,47 @@ func setMasterRoleLabel(ctx context.Context, nodes v1.NodeClient) error {
 			logrus.Infof("master role label has been set succesfully on node: %s", nodeName)
 			break
 		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(time.Second):
+		}
+	}
+	return nil
+}
+
+func setClusterDNSConfig(ctx context.Context, controlConfig *Config, configMap v1.ConfigMapClient) error {
+	nodeName := os.Getenv("NODE_NAME")
+	// check if configmap already exists
+	_, err := configMap.Get("kube-system", "cluster-dns", metav1.GetOptions{})
+	if err == nil {
+		logrus.Infof("cluster dns configmap already exists")
+		return nil
+	}
+	clusterDNS := controlConfig.ControlConfig.ClusterDNS
+	clusterDomain := controlConfig.ControlConfig.ClusterDomain
+	c := &corev1.ConfigMap{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "ConfigMap",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "cluster-dns",
+			Namespace: "kube-system",
+		},
+		Data: map[string]string{
+			"clusterDNS":    clusterDNS.String(),
+			"clusterDomain": clusterDomain,
+		},
+	}
+	for {
+		_, err = configMap.Create(c)
+		if err == nil {
+			logrus.Infof("cluster dns configmap has been set successfully")
+			break
+		}
+		logrus.Infof("Waiting for master node %s startup: %v", nodeName, err)
+
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
