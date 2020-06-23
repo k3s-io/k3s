@@ -1,81 +1,23 @@
 # Contributing to k3s #
 
-## Getting Help ##
+Thanks for taking the time to contribute to k3s!
 
-If you have a question about k3s or have encountered problems using it,
-start by [asking in slack](https://slack.rancher.io/).
+Contributing is not limited to writing code and submitting a PR. Feel free to submit an [issue](https://github.com/rancher/k3s/issues/new/choose) or comment on an existing one to report a bug, provide feedback, or suggest a new feature. You can also join the discussion on [slack](https://slack.rancher.io/).
 
-## Submitting a Pull Request ##
+Of course, contributing code is more than welcome! To keep things simple, if you're fixing a small issue, you can simply submit a PR and we will pick it up. However, if you're planning to submit a bigger PR to implement a new feature or fix a relatively complex bug, please open an issue that explains the change and the motivation for it. If you're addressing a bug, please explain how to reproduce it.
 
-1. Submit an [issue][issue] describing your proposed change.
-2. We will try to respond to your issue promptly.
-3. Fork this repo, develop and test your code changes. See the project's
-   [README](README.md) for further information about working in this repository.
-4. Submit a pull request against this repo's `master` branch.
-    - Include instructions on how to test your changes.
-5. Your branch may be merged once all configured checks pass, including:
-    - The branch has passed tests in CI.
-    - Two reviews from k3s maintainers
+## Developer Certificate Of Origin ##
 
-## Committing ##
+To contribute to this project, you must agree to the Developer Certificate of Origin (DCO) for each commit you make. The DCO is a simple statement that you, as a contributor, have the legal right to make the contribution.
 
-We prefer squash or rebase commits so that all changes from a branch are
-committed to master as a single commit. All pull requests are squashed when
-merged, but rebasing prior to merge gives you better control over the commit
-message.
+See the [DCO](DCO) file for the full text of what you must agree to.
 
-### Commit messages ###
-
-Finalized commit messages should be in the following format:
+To signify that you agree to the DCO for a commit, you add a line to the git
+commit message:
 
 ```txt
-Subject
-
-Problem
-
-Solution
-
-Validation
-
-Fixes #[GitHub issue ID]
+Signed-off-by: Jane Smith <jane.smith@example.com>
 ```
 
-#### Subject ####
-
-- one line, <= 50 characters
-- describe what is done; not the result
-- use the active voice
-- capitalize first word and proper nouns
-- do not end in a period — this is a title/subject
-- reference the GitHub issue by number
-
-#### Problem ####
-
-Explain the context and why you're making that change.  What is the problem
-you're trying to solve? In some cases there is not a problem and this can be
-thought of as being the motivation for your change.
-
-#### Solution ####
-
-Describe the modifications you've made.
-
-If this PR changes a behavior, it is helpful to describe the difference between
-the old behavior and the new behavior. Provide example CLI output, or changed
-YAML where applicable.
-
-Describe any implementation changes which are particularly complex or
-unintuitive.
-
-List any follow-up work that will need to be done in a future PR and link to any
-relevant Github issues.
-
-#### Validation ####
-
-Describe the testing you've done to validate your change.  Give instructions for
-reviewers to replicate your tests.  Performance-related changes should include
-before- and after- benchmark results.
-
-[issue]: https://github.com/rancher/k3s/issues/new
-[slack]: http://slack.rancher.io/
-
-_This contributing doc adapated from Linkerd2's contributing doc._
+In most cases, you can add this signoff to your commit automatically with the
+`-s` flag to `git commit`. Please use your real name and a reachable email address.
