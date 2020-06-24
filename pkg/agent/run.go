@@ -42,6 +42,12 @@ var (
 func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 	nodeConfig := config.Get(ctx, cfg, proxy)
 
+	if cfg.Docker {
+		if err := os.Symlink("/var/run/dockershim.sock", "/run/k3s/containerd/containerd.sock"); err != nil {
+			return err
+		}
+	}
+
 	if !nodeConfig.NoFlannel {
 		if err := flannel.Prepare(ctx, nodeConfig); err != nil {
 			return err
