@@ -21,6 +21,7 @@ import (
 	"github.com/rancher/k3s/pkg/clientaccess"
 	"github.com/rancher/k3s/pkg/daemons/agent"
 	daemonconfig "github.com/rancher/k3s/pkg/daemons/config"
+	"github.com/rancher/k3s/pkg/datadir"
 	"github.com/rancher/k3s/pkg/nodeconfig"
 	"github.com/rancher/k3s/pkg/rootless"
 	"github.com/rancher/k3s/pkg/version"
@@ -39,8 +40,41 @@ var (
 	HostnameLabel   = version.Program + ".io/hostname"
 )
 
+const (
+	dockershimSock = "unix:///var/run/dockershim.sock"
+	containerdSock = "unix:///run/k3s/containerd/containerd.sock"
+)
+
+// setupCriCtlConfig creates the crictl config file and populates it
+// with the given data from config.
+func setupCriCtlConfig(cfg cmds.Agent, nodeConfig *daemonconfig.Node) error {
+	cre := nodeConfig.ContainerRuntimeEndpoint
+	if cre == "" {
+		switch {
+		case cfg.Docker:
+			cre = dockershimSock
+		default:
+			cre = containerdSock
+		}
+	}
+
+	agentConfDir := datadir.DefaultDataDir + "/agent/etc"
+	if _, err := os.Stat(agentConfDir); os.IsNotExist(err) {
+		if err := os.MkdirAll(agentConfDir, 0755); err != nil {
+			return err
+		}
+	}
+
+	crp := "runtime-endpoint: " + cre + "\n"
+	return ioutil.WriteFile(agentConfDir+"/crictl.yaml", []byte(crp), 0600)
+}
+
 func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 	nodeConfig := config.Get(ctx, cfg, proxy)
+
+	if err := setupCriCtlConfig(cfg, nodeConfig); err != nil {
+		return err
+	}
 
 	if !nodeConfig.NoFlannel {
 		if err := flannel.Prepare(ctx, nodeConfig); err != nil {
