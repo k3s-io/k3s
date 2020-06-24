@@ -40,6 +40,9 @@ func main() {
 }
 
 func runCLIs() bool {
+	if os.Getenv("CRI_CONFIG_FILE") == "" {
+		os.Setenv("CRI_CONFIG_FILE", datadir.DefaultDataDir+"/agent/etc/crictl.yaml")
+	}
 	for _, cmd := range []string{"kubectl", "ctr", "crictl"} {
 		if filepath.Base(os.Args[0]) == cmd {
 			if err := externalCLI(cmd, "", os.Args[1:]); err != nil {
