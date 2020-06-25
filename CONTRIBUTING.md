@@ -6,6 +6,10 @@ Contributing is not limited to writing code and submitting a PR. Feel free to su
 
 Of course, contributing code is more than welcome! To keep things simple, if you're fixing a small issue, you can simply submit a PR and we will pick it up. However, if you're planning to submit a bigger PR to implement a new feature or fix a relatively complex bug, please open an issue that explains the change and the motivation for it. If you're addressing a bug, please explain how to reproduce it.
 
+If you're interesting in contributing documentation, please note the following:
+- Doc issues are raised in this repository, and they are tracked under the `kind/documentation` label.
+- Pull requests are submitted to the K3s documentation source in the [Rancher docs repository.](https://github.com/rancher/docs/) The K3s docs content is in the `content/k3s/` directory.
+
 ## Developer Certificate Of Origin ##
 
 To contribute to this project, you must agree to the Developer Certificate of Origin (DCO) for each commit you make. The DCO is a simple statement that you, as a contributor, have the legal right to make the contribution.
