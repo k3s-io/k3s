@@ -103,6 +103,22 @@ fatal()
     exit 1
 }
 
+# --- helper function for conditional sudo calling ---
+SUDO() {
+    # Conditionally define this on the first call based upon our user ID.
+    # Future calls will leverag
+    if [ $(id -u) -eq 0 ]; then
+        SUDO() {
+            "$@"
+        }
+    else
+        SUDO() {
+            sudo -- "$@"
+        }
+    fi
+    SUDO "$@"
+}
+
 # --- fatal if no systemd or openrc ---
 verify_system() {
     if [ -x /sbin/openrc-run ]; then
@@ -184,12 +200,6 @@ setup_env() {
             ${invalid_chars}"
     fi
 
-    # --- use sudo if we are not already root ---
-    SUDO=sudo
-    if [ $(id -u) -eq 0 ]; then
-        SUDO=
-    fi
-
     # --- use systemd type if defined or create default ---
     if [ -n "${INSTALL_K3S_TYPE}" ]; then
         SYSTEMD_TYPE=${INSTALL_K3S_TYPE}
@@ -225,7 +235,7 @@ setup_env() {
         FILE_K3S_SERVICE=${SYSTEMD_DIR}/${SERVICE_K3S}
         FILE_K3S_ENV=${SYSTEMD_DIR}/${SERVICE_K3S}.env
     elif [ "${HAS_OPENRC}" = true ]; then
-        $SUDO mkdir -p /etc/rancher/k3s
+        SUDO mkdir -p /etc/rancher/k3s
         FILE_K3S_SERVICE=/etc/init.d/${SYSTEM_NAME}
         FILE_K3S_ENV=/etc/rancher/k3s/${SYSTEM_NAME}.env
     fi
@@ -407,8 +417,8 @@ verify_binary() {
 setup_binary() {
     chmod 755 ${TMP_BIN}
     info "Installing k3s to ${BIN_DIR}/k3s"
-    $SUDO chown root:root ${TMP_BIN}
-    $SUDO mv -f ${TMP_BIN} ${BIN_DIR}/k3s
+    SUDO chown root:root ${TMP_BIN}
+    SUDO mv -f ${TMP_BIN} ${BIN_DIR}/k3s
 }
 
 # --- setup selinux policy ---
@@ -422,8 +432,8 @@ setup_selinux() {
         policy_error=warn
     fi
 
-    if ! $SUDO chcon -u system_u -r object_r -t container_runtime_exec_t ${BIN_DIR}/k3s >/dev/null 2>&1; then
-        if $SUDO grep '^\s*SELINUX=enforcing' /etc/selinux/config >/dev/null 2>&1; then
+    if ! SUDO chcon -u system_u -r object_r -t container_runtime_exec_t ${BIN_DIR}/k3s >/dev/null 2>&1; then
+        if SUDO grep '^\s*SELINUX=enforcing' /etc/selinux/config >/dev/null 2>&1; then
             $policy_error "Failed to apply container_runtime_exec_t to ${BIN_DIR}/k3s, ${policy_hint}"
         fi
     else
@@ -467,7 +477,7 @@ create_symlinks() {
             which_cmd=$(which ${cmd} 2>/dev/null || true)
             if [ -z "${which_cmd}" ] || [ "${INSTALL_K3S_SYMLINK}" = force ]; then
                 info "Creating ${BIN_DIR}/${cmd} symlink to k3s"
-                $SUDO ln -sf k3s ${BIN_DIR}/${cmd}
+                SUDO ln -sf k3s ${BIN_DIR}/${cmd}
             else
                 info "Skipping ${BIN_DIR}/${cmd} symlink to k3s, command exists in PATH at ${which_cmd}"
             fi
@@ -481,7 +491,7 @@ create_symlinks() {
 create_killall() {
     [ "${INSTALL_K3S_BIN_DIR_READ_ONLY}" = true ] && return
     info "Creating killall script ${KILLALL_K3S_SH}"
-    $SUDO tee ${KILLALL_K3S_SH} >/dev/null << \EOF
+    SUDO tee ${KILLALL_K3S_SH} >/dev/null << \EOF
 #!/bin/sh
 [ $(id -u) -eq 0 ] || exec sudo $0 $@
 
@@ -559,15 +569,15 @@ ip link delete flannel.1
 rm -rf /var/lib/cni/
 iptables-save | grep -v KUBE- | grep -v CNI- | iptables-restore
 EOF
-    $SUDO chmod 755 ${KILLALL_K3S_SH}
-    $SUDO chown root:root ${KILLALL_K3S_SH}
+    SUDO chmod 755 ${KILLALL_K3S_SH}
+    SUDO chown root:root ${KILLALL_K3S_SH}
 }
 
 # --- create uninstall script ---
 create_uninstall() {
     [ "${INSTALL_K3S_BIN_DIR_READ_ONLY}" = true ] && return
     info "Creating uninstall script ${UNINSTALL_K3S_SH}"
-    $SUDO tee ${UNINSTALL_K3S_SH} >/dev/null << EOF
+    SUDO tee ${UNINSTALL_K3S_SH} >/dev/null << EOF
 #!/bin/sh
 set -x
 [ \$(id -u) -eq 0 ] || exec sudo \$0 \$@
@@ -608,15 +618,15 @@ rm -rf /var/lib/kubelet
 rm -f ${BIN_DIR}/k3s
 rm -f ${KILLALL_K3S_SH}
 EOF
-    $SUDO chmod 755 ${UNINSTALL_K3S_SH}
-    $SUDO chown root:root ${UNINSTALL_K3S_SH}
+    SUDO chmod 755 ${UNINSTALL_K3S_SH}
+    SUDO chown root:root ${UNINSTALL_K3S_SH}
 }
 
 # --- disable current service if loaded --
 systemd_disable() {
-    $SUDO rm -f /etc/systemd/system/${SERVICE_K3S} || true
-    $SUDO rm -f /etc/systemd/system/${SERVICE_K3S}.env || true
-    $SUDO systemctl disable ${SYSTEM_NAME} >/dev/null 2>&1 || true
+    SUDO rm -f /etc/systemd/system/${SERVICE_K3S} || true
+    SUDO rm -f /etc/systemd/system/${SERVICE_K3S}.env || true
+    SUDO systemctl disable ${SYSTEM_NAME} >/dev/null 2>&1 || true
 }
 
 # --- capture current env and create file containing k3s_ variables ---
@@ -624,15 +634,15 @@ create_env_file() {
     info "env: Creating environment file ${FILE_K3S_ENV}"
     UMASK=$(umask)
     umask 0377
-    env | grep '^K3S_' | $SUDO tee ${FILE_K3S_ENV} >/dev/null
-    env | egrep -i '^(NO|HTTP|HTTPS)_PROXY' | $SUDO tee -a ${FILE_K3S_ENV} >/dev/null
+    env | grep '^K3S_' | SUDO tee ${FILE_K3S_ENV} >/dev/null
+    env | egrep -i '^(NO|HTTP|HTTPS)_PROXY' | SUDO tee -a ${FILE_K3S_ENV} >/dev/null
     umask $UMASK
 }
 
 # --- write systemd service file ---
 create_systemd_service_file() {
     info "systemd: Creating service file ${FILE_K3S_SERVICE}"
-    $SUDO tee ${FILE_K3S_SERVICE} >/dev/null << EOF
+    SUDO tee ${FILE_K3S_SERVICE} >/dev/null << EOF
 [Unit]
 Description=Lightweight Kubernetes
 Documentation=https://k3s.io
@@ -668,7 +678,7 @@ create_openrc_service_file() {
     LOG_FILE=/var/log/${SYSTEM_NAME}.log
 
     info "openrc: Creating service file ${FILE_K3S_SERVICE}"
-    $SUDO tee ${FILE_K3S_SERVICE} >/dev/null << EOF
+    SUDO tee ${FILE_K3S_SERVICE} >/dev/null << EOF
 #!/sbin/openrc-run
 
 depend() {
@@ -698,9 +708,9 @@ if [ -f /etc/environment ]; then source /etc/environment; fi
 if [ -f ${FILE_K3S_ENV} ]; then source ${FILE_K3S_ENV}; fi
 set +o allexport
 EOF
-    $SUDO chmod 0755 ${FILE_K3S_SERVICE}
+    SUDO chmod 0755 ${FILE_K3S_SERVICE}
 
-    $SUDO tee /etc/logrotate.d/${SYSTEM_NAME} >/dev/null << EOF
+    SUDO tee /etc/logrotate.d/${SYSTEM_NAME} >/dev/null << EOF
 ${LOG_FILE} {
 	missingok
 	notifempty
@@ -718,30 +728,30 @@ create_service_file() {
 
 # --- get hashes of the current k3s bin and service files
 get_installed_hashes() {
-    $SUDO sha256sum ${BIN_DIR}/k3s ${FILE_K3S_SERVICE} ${FILE_K3S_ENV} 2>&1 || true
+    SUDO sha256sum ${BIN_DIR}/k3s ${FILE_K3S_SERVICE} ${FILE_K3S_ENV} 2>&1 || true
 }
 
 # --- enable and start systemd service ---
 systemd_enable() {
     info "systemd: Enabling ${SYSTEM_NAME} unit"
-    $SUDO systemctl enable ${FILE_K3S_SERVICE} >/dev/null
-    $SUDO systemctl daemon-reload >/dev/null
+    SUDO systemctl enable ${FILE_K3S_SERVICE} >/dev/null
+    SUDO systemctl daemon-reload >/dev/null
 }
 
 systemd_start() {
     info "systemd: Starting ${SYSTEM_NAME}"
-    $SUDO systemctl restart ${SYSTEM_NAME}
+    SUDO systemctl restart ${SYSTEM_NAME}
 }
 
 # --- enable and start openrc service ---
 openrc_enable() {
     info "openrc: Enabling ${SYSTEM_NAME} service for default runlevel"
-    $SUDO rc-update add ${SYSTEM_NAME} default >/dev/null
+    SUDO rc-update add ${SYSTEM_NAME} default >/dev/null
 }
 
 openrc_start() {
     info "openrc: Starting ${SYSTEM_NAME}"
-    $SUDO ${FILE_K3S_SERVICE} restart
+    SUDO ${FILE_K3S_SERVICE} restart
 }
 
 # --- startup systemd or openrc service ---
