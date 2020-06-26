@@ -363,7 +363,7 @@ func (h *handler) newDaemonSet(svc *core.Service) (*apps.DaemonSet, error) {
 
 	// Add toleration to noderole.kubernetes.io/master=*:NoSchedule
 	noScheduleToleration := core.Toleration{
-		Key:      "noderole.kubernetes.io/master",
+		Key:      "node-role.kubernetes.io/master",
 		Operator: "Exists",
 		Effect:   "NoSchedule",
 	}
