@@ -607,7 +607,7 @@ github.com/jmespath/go-jmespath
 github.com/jonboulle/clockwork
 # github.com/json-iterator/go v1.1.8
 github.com/json-iterator/go
-# github.com/juju/errors v0.0.0-20190806202954-0232dcc7464d
+# github.com/juju/errors v0.0.0-20180806074554-22422dad46e1 => github.com/rancher/nocode v0.0.0-20200630202308-cb097102c09f
 github.com/juju/errors
 # github.com/karrick/godirwalk v1.7.5
 github.com/karrick/godirwalk
