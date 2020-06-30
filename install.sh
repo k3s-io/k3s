@@ -153,9 +153,14 @@ setup_env() {
                 if [ -z "${K3S_TOKEN}" ] && [ -z "${K3S_CLUSTER_SECRET}" ]; then
                     fatal "Defaulted k3s exec command to 'agent' because K3S_URL is defined, but K3S_TOKEN or K3S_CLUSTER_SECRET is not defined."
                 fi
-                if ! echo "${K3S_URL}" | grep -q "^https://"; then
-                    fatal "Only https:// URLs are supported for K3S_URL (have ${K3S_URL})"
-                fi
+
+                case "${K3S_URL}" in
+                    https://*)
+                        ;;
+                    *)
+                        fatal "Only https:// URLs are supported for K3S_URL (have ${K3S_URL})"
+                        ;;
+                esac
                 CMD_K3S=agent
             fi
         ;;
