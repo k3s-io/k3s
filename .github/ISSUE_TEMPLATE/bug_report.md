@@ -7,25 +7,30 @@ assignees: ''
 
 ---
 
-<!-- Thanks for helping us to improve k3s! We welcome all bug reports. Please fill out each area of the template so we can better help you.  ***You can delete this message portion of the bug report.*** -->
+<!-- Thanks for helping us to improve K3s! We welcome all bug reports. Please fill out each area of the template so we can better help you. Comments like this will be hidden when you post but you can delete them if you wish. -->
 
-**Version:**
-<!-- Provide the output from `k3s -v` -->
+**Environmental Info:**
+K3s Version: 
+<!-- Provide the output from "k3s -v" -->
 
-**K3s arguments:**
-<!-- Provide the flags used to install or run k3s server. -->
+Node(s) CPU architecture, OS, and Version: 
+<!-- Provide the output from "uname -a" on the node(s) -->
 
-**Describe the bug**
+Cluster Configuration:
+<!-- Provide some basic information on the cluster configuration. For example, "3 masters, 2 workers". -->
+
+**Describe the bug:**
 <!-- A clear and concise description of what the bug is. -->
 
-**To Reproduce**
-<!-- Steps to reproduce the behavior: -->
+**Steps To Reproduce:**
+<!-- Steps to reproduce the behavior. Please include as the first step how you installed K3s on the node(s) (including all flags or environment variables). If you have customized configuration via systemd drop-ins or overrides (https://coreos.com/os/docs/latest/using-systemd-drop-in-units.html) please include those as well. -->
+- Installed K3s: 
 
-**Expected behavior**
+**Expected behavior:**
 <!-- A clear and concise description of what you expected to happen. -->
 
-**Actual behavior**
+**Actual behavior:**
 <!-- A clear and concise description of what actually happened. -->
 
-**Additional context / logs**
+**Additional context / logs:**
 <!-- Add any other context and/or logs about the problem here. -->
