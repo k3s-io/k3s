@@ -1693,7 +1693,11 @@ func NewNetworkPolicyController(
 	npc.syncPeriod = ipTablesSyncPeriod
 
 	npc.v1NetworkPolicy = true
-	v, _ := clientset.Discovery().ServerVersion()
+	v, err := clientset.Discovery().ServerVersion()
+	if err != nil {
+		return nil, err
+	}
+
 	valid := regexp.MustCompile("[0-9]")
 	v.Minor = strings.Join(valid.FindAllString(v.Minor, -1), "")
 	minorVer, _ := strconv.Atoi(v.Minor)
