@@ -100,6 +100,7 @@ require (
 	github.com/rancher/helm-controller v0.6.3
 	github.com/rancher/kine v0.4.0
 	github.com/rancher/remotedialer v0.2.0
+	github.com/rancher/spur v0.0.0-20200617165101-8702c8e4ce7a
 	github.com/rancher/wrangler v0.6.1
 	github.com/rancher/wrangler-api v0.6.0
 	github.com/rootless-containers/rootlesskit v0.7.2
@@ -113,7 +114,7 @@ require (
 	golang.org/x/net v0.0.0-20191204025024-5ee1b9f4859a
 	golang.org/x/sys v0.0.0-20191204072324-ce4227a45e2e
 	google.golang.org/grpc v1.26.0
-	gopkg.in/yaml.v2 v2.2.8
+	gopkg.in/yaml.v2 v2.3.0
 	k8s.io/api v0.18.0
 	k8s.io/apimachinery v0.18.0
 	k8s.io/apiserver v0.0.0

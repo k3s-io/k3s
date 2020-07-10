@@ -5,7 +5,8 @@ import (
 	"path/filepath"
 
 	"github.com/rancher/k3s/pkg/version"
-	"github.com/urfave/cli"
+	"github.com/rancher/spur/cli"
+	"github.com/rancher/spur/cli/altsrc"
 )
 
 type Agent struct {
@@ -30,12 +31,12 @@ type Agent struct {
 	RootlessAlreadyUnshared  bool
 	WithNodeID               bool
 	DisableSELinux           bool
+	ExtraKubeletArgs         []string
+	ExtraKubeProxyArgs       []string
+	Labels                   []string
+	Taints                   []string
+	PrivateRegistry          string
 	AgentShared
-	ExtraKubeletArgs   cli.StringSlice
-	ExtraKubeProxyArgs cli.StringSlice
-	Labels             cli.StringSlice
-	Taints             cli.StringSlice
-	PrivateRegistry    string
 }
 
 type AgentShared struct {
@@ -58,7 +59,7 @@ var (
 	NodeNameFlag = cli.StringFlag{
 		Name:        "node-name",
 		Usage:       "(agent/node) Node name",
-		EnvVar:      version.ProgramUpper + "_NODE_NAME",
+		EnvVars:     []string{version.ProgramUpper + "_NODE_NAME"},
 		Destination: &AgentConfig.NodeName,
 	}
 	WithNodeIDFlag = cli.BoolFlag{
@@ -106,28 +107,28 @@ var (
 	ResolvConfFlag = cli.StringFlag{
 		Name:        "resolv-conf",
 		Usage:       "(agent/networking) Kubelet resolv.conf file",
-		EnvVar:      version.ProgramUpper + "_RESOLV_CONF",
+		EnvVars:     []string{version.ProgramUpper + "_RESOLV_CONF"},
 		Destination: &AgentConfig.ResolvConf,
 	}
 	ExtraKubeletArgs = cli.StringSliceFlag{
-		Name:  "kubelet-arg",
-		Usage: "(agent/flags) Customized flag for kubelet process",
-		Value: &AgentConfig.ExtraKubeletArgs,
+		Name:        "kubelet-arg",
+		Usage:       "(agent/flags) Customized flag for kubelet process",
+		Destination: &AgentConfig.ExtraKubeletArgs,
 	}
 	ExtraKubeProxyArgs = cli.StringSliceFlag{
-		Name:  "kube-proxy-arg",
-		Usage: "(agent/flags) Customized flag for kube-proxy process",
-		Value: &AgentConfig.ExtraKubeProxyArgs,
+		Name:        "kube-proxy-arg",
+		Usage:       "(agent/flags) Customized flag for kube-proxy process",
+		Destination: &AgentConfig.ExtraKubeProxyArgs,
 	}
 	NodeTaints = cli.StringSliceFlag{
-		Name:  "node-taint",
-		Usage: "(agent/node) Registering kubelet with set of taints",
-		Value: &AgentConfig.Taints,
+		Name:        "node-taint",
+		Usage:       "(agent/node) Registering kubelet with set of taints",
+		Destination: &AgentConfig.Taints,
 	}
 	NodeLabels = cli.StringSliceFlag{
-		Name:  "node-label",
-		Usage: "(agent/node) Registering and starting kubelet with set of labels",
-		Value: &AgentConfig.Labels,
+		Name:        "node-label",
+		Usage:       "(agent/node) Registering and starting kubelet with set of labels",
+		Destination: &AgentConfig.Labels,
 	}
 	DisableSELinuxFlag = cli.BoolFlag{
 		Name:        "disable-selinux",
@@ -137,58 +138,61 @@ var (
 	}
 )
 
-func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
-	return cli.Command{
+func NewAgentCommand(action func(ctx *cli.Context) error) *cli.Command {
+	return &cli.Command{
 		Name:      "agent",
 		Usage:     "Run node agent",
 		UsageText: appName + " agent [OPTIONS]",
-		Action:    action,
+		Before:    DebugContext(cli.InitAllInputSource(altsrc.NewConfigFromFlag(ConfigFlag.Name))),
+		Action:    InitLogging(action),
 		Flags: []cli.Flag{
-			VLevel,
-			VModule,
-			LogFile,
-			AlsoLogToStderr,
-			cli.StringFlag{
+			&ConfigFlag,
+			&DebugFlag,
+			&VLevel,
+			&VModule,
+			&LogFile,
+			&AlsoLogToStderr,
+			&cli.StringFlag{
 				Name:        "token,t",
 				Usage:       "(cluster) Token to use for authentication",
-				EnvVar:      version.ProgramUpper + "_TOKEN",
+				EnvVars:     []string{version.ProgramUpper + "_TOKEN"},
 				Destination: &AgentConfig.Token,
 			},
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:        "token-file",
 				Usage:       "(cluster) Token file to use for authentication",
-				EnvVar:      version.ProgramUpper + "_TOKEN_FILE",
+				EnvVars:     []string{version.ProgramUpper + "_TOKEN_FILE"},
 				Destination: &AgentConfig.TokenFile,
 			},
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:        "server,s",
 				Usage:       "(cluster) Server to connect to",
-				EnvVar:      version.ProgramUpper + "_URL",
+				EnvVars:     []string{version.ProgramUpper + "_URL"},
 				Destination: &AgentConfig.ServerURL,
 			},
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:        "data-dir,d",
 				Usage:       "(agent/data) Folder to hold state",
 				Destination: &AgentConfig.DataDir,
 				Value:       "/var/lib/rancher/" + version.Program + "",
 			},
-			NodeNameFlag,
-			WithNodeIDFlag,
-			NodeLabels,
-			NodeTaints,
-			DockerFlag,
-			DisableSELinuxFlag,
-			CRIEndpointFlag,
-			PauseImageFlag,
-			PrivateRegistryFlag,
-			NodeIPFlag,
-			NodeExternalIPFlag,
-			ResolvConfFlag,
-			FlannelIfaceFlag,
-			FlannelConfFlag,
-			ExtraKubeletArgs,
-			ExtraKubeProxyArgs,
-			cli.BoolFlag{
+			&NodeNameFlag,
+			&WithNodeIDFlag,
+			&NodeLabels,
+			&NodeTaints,
+			&DockerFlag,
+			&DisableSELinuxFlag,
+			&CRIEndpointFlag,
+			&PauseImageFlag,
+			&PrivateRegistryFlag,
+			&NodeIPFlag,
+			&NodeExternalIPFlag,
+			&ResolvConfFlag,
+			&FlannelIfaceFlag,
+			&FlannelConfFlag,
+			&ExtraKubeletArgs,
+			&ExtraKubeProxyArgs,
+			&cli.BoolFlag{
 				Name:        "rootless",
 				Usage:       "(experimental) Run rootless",
 				Destination: &AgentConfig.Rootless,
@@ -196,12 +200,12 @@ func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
 
 			// Deprecated/hidden below
 
-			FlannelFlag,
-			cli.StringFlag{
+			&FlannelFlag,
+			&cli.StringFlag{
 				Name:        "cluster-secret",
 				Usage:       "(deprecated) use --token",
 				Destination: &AgentConfig.ClusterSecret,
-				EnvVar:      version.ProgramUpper + "_CLUSTER_SECRET",
+				EnvVars:     []string{version.ProgramUpper + "_CLUSTER_SECRET"},
 			},
 		},
 	}

@@ -5,12 +5,7 @@ import (
 	"os"
 
 	"github.com/rancher/k3s/pkg/version"
-	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli"
-)
-
-var (
-	Debug bool
+	"github.com/rancher/spur/cli"
 )
 
 func init() {
@@ -28,21 +23,8 @@ func NewApp() *cli.App {
 	cli.VersionPrinter = func(c *cli.Context) {
 		fmt.Printf("%s version %s\n", app.Name, app.Version)
 	}
-	app.Flags = []cli.Flag{
-		cli.BoolFlag{
-			Name:        "debug",
-			Usage:       "Turn on debug logs",
-			Destination: &Debug,
-			EnvVar:      version.ProgramUpper + "_DEBUG",
-		},
-	}
-
-	app.Before = func(ctx *cli.Context) error {
-		if Debug {
-			logrus.SetLevel(logrus.DebugLevel)
-		}
-		return nil
-	}
+	app.Flags = []cli.Flag{&DebugFlag}
+	app.Before = DebugContext(nil)
 
 	return app
 }
