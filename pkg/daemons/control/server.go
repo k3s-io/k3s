@@ -130,6 +130,7 @@ func controllerManager(cfg *config.Control, runtime *config.ControlRuntime) erro
 		"cluster-cidr":                     cfg.ClusterIPRange.String(),
 		"root-ca-file":                     runtime.ServerCA,
 		"port":                             "10252",
+		"profiling":                        "false",
 		"bind-address":                     localhostIP.String(),
 		"secure-port":                      "0",
 		"use-service-account-credentials":  "true",
