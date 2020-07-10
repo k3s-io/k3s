@@ -72,7 +72,7 @@ type Agent struct {
 	ExtraKubeletArgs        []string
 	ExtraKubeProxyArgs      []string
 	PauseImage              string
-	SnapShotter             string
+	Snapshotter             string
 	CNIPlugin               bool
 	NodeTaints              []string
 	NodeLabels              []string
