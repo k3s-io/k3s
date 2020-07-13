@@ -1,10 +1,11 @@
 OS = (ENV['OS'] || "alpine310")
 BOX_REPO = (ENV['BOX_REPO'] || "generic")
-HOME = File.dirname(__FILE__)
-PROJECT = File.basename(HOME)
+HOME = ENV['HOME']
+PROJ_HOME = File.dirname(__FILE__)
+PROJECT = File.basename(PROJ_HOME)
 NUM_NODES = (ENV['NUM_NODES'] || 0).to_i
 NODE_CPUS = (ENV['NODE_CPUS'] || 4).to_i
-NODE_MEMORY = (ENV['NODE_MEMORY'] || 4096).to_i
+NODE_MEMORY = (ENV['NODE_MEMORY'] || 8192).to_i
 NETWORK_PREFIX = ENV['NETWORK_PREFIX'] || "10.135.135"
 VAGRANT_PROVISION = ENV['VAGRANT_PROVISION'] || "./scripts/provision/vagrant"
 MOUNT_TYPE = ENV['MOUNT_TYPE'] || "nfs"
@@ -22,7 +23,7 @@ def provision(vm, node_num)
   vm.network "private_network", ip: "#{NETWORK_PREFIX}.#{100+node_num}"
   vm.provision "shell",
       path: VAGRANT_PROVISION,
-      env: { 'HOME' => HOME, 'GOPATH' => ENV['GOPATH'], 'BOX' => vm.box }
+      env: { 'HOME' => PROJ_HOME, 'GOPATH' => ENV['GOPATH'], 'BOX' => vm.box }
 end
 
 Vagrant.configure("2") do |config|
@@ -35,7 +36,7 @@ Vagrant.configure("2") do |config|
   if Vagrant.has_plugin?("vagrant-timezone")
     config.timezone.value = :host
   end
-  config.vm.synced_folder ".", HOME, type: MOUNT_TYPE
+  config.vm.synced_folder HOME, HOME, type: MOUNT_TYPE
 
   if NUM_NODES==0
     provision(config.vm, 0)
