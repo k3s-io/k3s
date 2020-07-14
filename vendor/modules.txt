@@ -361,7 +361,7 @@ github.com/coreos/go-systemd/dbus
 github.com/coreos/go-systemd/journal
 # github.com/coreos/pkg v0.0.0-20180108230652-97fdf19511ea
 github.com/coreos/pkg/capnslog
-# github.com/cpuguy83/go-md2man/v2 v2.0.0-20190314233015-f79a8a8ca69d
+# github.com/cpuguy83/go-md2man/v2 v2.0.0
 github.com/cpuguy83/go-md2man/v2/md2man
 # github.com/cyphar/filepath-securejoin v0.2.2
 github.com/cyphar/filepath-securejoin
@@ -756,6 +756,11 @@ github.com/rancher/kine/pkg/server
 github.com/rancher/kine/pkg/tls
 # github.com/rancher/remotedialer v0.2.0
 github.com/rancher/remotedialer
+# github.com/rancher/spur v0.0.0-20200617165101-8702c8e4ce7a
+github.com/rancher/spur/cli
+github.com/rancher/spur/cli/altsrc
+github.com/rancher/spur/flag
+github.com/rancher/spur/generic
 # github.com/rancher/wrangler v0.6.1
 github.com/rancher/wrangler/pkg/apply
 github.com/rancher/wrangler/pkg/apply/injectors
@@ -1205,7 +1210,7 @@ gopkg.in/square/go-jose.v2/json
 gopkg.in/square/go-jose.v2/jwt
 # gopkg.in/warnings.v0 v0.1.1
 gopkg.in/warnings.v0
-# gopkg.in/yaml.v2 v2.2.8
+# gopkg.in/yaml.v2 v2.3.0
 gopkg.in/yaml.v2
 # k8s.io/api v0.18.0 => github.com/rancher/kubernetes/staging/src/k8s.io/api v1.18.4-k3s1
 k8s.io/api/admission/v1

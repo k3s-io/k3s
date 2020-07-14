@@ -5,8 +5,8 @@ import (
 
 	"github.com/rancher/k3s/pkg/cli/agent"
 	"github.com/rancher/k3s/pkg/cli/cmds"
+	"github.com/rancher/spur/cli"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli"
 )
 
 func main() {

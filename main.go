@@ -14,8 +14,8 @@ import (
 	"github.com/rancher/k3s/pkg/cli/crictl"
 	"github.com/rancher/k3s/pkg/cli/kubectl"
 	"github.com/rancher/k3s/pkg/cli/server"
+	"github.com/rancher/spur/cli"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli"
 )
 
 func main() {

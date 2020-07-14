@@ -15,8 +15,8 @@ import (
 	"github.com/rancher/k3s/pkg/containerd"
 	ctr2 "github.com/rancher/k3s/pkg/ctr"
 	kubectl2 "github.com/rancher/k3s/pkg/kubectl"
+	"github.com/rancher/spur/cli"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli"
 )
 
 func init() {
@@ -35,7 +35,7 @@ func main() {
 	os.Args[0] = cmd
 
 	app := cmds.NewApp()
-	app.Commands = []cli.Command{
+	app.Commands = []*cli.Command{
 		cmds.NewServerCommand(server.Run),
 		cmds.NewAgentCommand(agent.Run),
 		cmds.NewKubectlCommand(kubectl.Run),
