@@ -139,7 +139,7 @@ var (
 	}
 	ProtectKernelDefaultsFlag = cli.BoolFlag{
 		Name:        "protect-kernel-defaults",
-		Usage:       "(agent/node) ",
+		Usage:       "(agent/node) Kernel tuning behavior. If set, error if kernel tunables are different than kubelet defaults.",
 		Destination: &AgentConfig.ProtectKernelDefaults,
 	}
 )
