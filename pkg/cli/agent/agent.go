@@ -56,6 +56,7 @@ func Run(ctx *cli.Context) error {
 	cfg := cmds.AgentConfig
 	cfg.Debug = ctx.Bool("debug")
 	cfg.DataDir = dataDir
+	cfg.ProtectKernelDefaults = true
 
 	contextCtx := signals.SetupSignalHandler(context.Background())
 

@@ -36,6 +36,7 @@ type Agent struct {
 	Labels                   []string
 	Taints                   []string
 	PrivateRegistry          string
+	ProtectKernelDefaults    bool
 	AgentShared
 }
 
@@ -136,6 +137,11 @@ var (
 		Hidden:      true,
 		Destination: &AgentConfig.DisableSELinux,
 	}
+	ProtectKernelDefaultsFlag = cli.BoolFlag{
+		Name:        "protect-kernel-defaults",
+		Usage:       "(agent/node) Kernel tuning behavior. If set, error if kernel tunables are different than kubelet defaults.",
+		Destination: &AgentConfig.ProtectKernelDefaults,
+	}
 )
 
 func NewAgentCommand(action func(ctx *cli.Context) error) *cli.Command {
@@ -192,6 +198,7 @@ func NewAgentCommand(action func(ctx *cli.Context) error) *cli.Command {
 			&FlannelConfFlag,
 			&ExtraKubeletArgs,
 			&ExtraKubeProxyArgs,
+			&ProtectKernelDefaultsFlag,
 			&cli.BoolFlag{
 				Name:        "rootless",
 				Usage:       "(experimental) Run rootless",
