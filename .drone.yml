@@ -273,14 +273,15 @@ steps:
     - DOCKER_USERNAME
     - DOCKER_PASSWORD
     - DRONE_TAG
-  when:
-    instance:
-    - drone-publish.rancher.io
-    ref:
-    - refs/head/master
-    - refs/tags/*
-    event:
-    - tag
+
+trigger:
+  instance:
+  - drone-publish.rancher.io
+  ref:
+  - refs/head/master
+  - refs/tags/*
+  event:
+  - tag
 
 depends_on:
 - amd64
@@ -296,30 +297,24 @@ platform:
   arch: amd64
 
 steps:
-  - name: dispatch
-    image: rancher/dapper:v0.4.2
-    environment:
-      PAT_USERNAME:
-        from_secret: pat_username
-      PAT_TOKEN:
-        from_secret: github_token
-    commands:
-      - dapper dispatch
-    volumes:
-      - name: docker
-        path: /var/run/docker.sock
-    when:
-      instance:
-        - drone-publish.rancher.io
-      ref:
-        - refs/head/master
-        - refs/tags/*
-      event:
-        - tag
-volumes:
-  - name: docker
-    host:
-      path: /var/run/docker.sock
-      
+- name: dispatch
+  image: curlimages/curl:7.69.1
+  environment:
+    PAT_USERNAME:
+      from_secret: pat_username
+    PAT_TOKEN:
+      from_secret: github_token
+  commands:
+    - scripts/dispatch
+
+trigger:
+  instance:
+    - drone-publish.rancher.io
+  ref:
+    - refs/head/master
+    - refs/tags/*
+  event:
+    - tag
+
 depends_on:
 - manifest
