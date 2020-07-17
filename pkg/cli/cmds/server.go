@@ -238,6 +238,7 @@ func NewServerCommand(action func(*cli.Context) error) *cli.Command {
 			&DisableSELinuxFlag,
 			&CRIEndpointFlag,
 			&PauseImageFlag,
+			&SnapshotterFlag,
 			&PrivateRegistryFlag,
 			&NodeIPFlag,
 			&NodeExternalIPFlag,

@@ -21,6 +21,7 @@ type Agent struct {
 	NodeExternalIP           string
 	NodeName                 string
 	PauseImage               string
+	Snapshotter              string
 	Docker                   bool
 	ContainerRuntimeEndpoint string
 	NoFlannel                bool
@@ -89,6 +90,12 @@ var (
 		Usage:       "(agent/runtime) Customized pause image for containerd or docker sandbox",
 		Destination: &AgentConfig.PauseImage,
 		Value:       "docker.io/rancher/pause:3.1",
+	}
+	SnapshotterFlag = cli.StringFlag{
+		Name:        "snapshotter",
+		Usage:       "(agent/runtime) Override default containerd snapshotter",
+		Destination: &AgentConfig.Snapshotter,
+		Value:       "overlayfs",
 	}
 	FlannelFlag = cli.BoolFlag{
 		Name:        "no-flannel",
@@ -190,6 +197,7 @@ func NewAgentCommand(action func(ctx *cli.Context) error) *cli.Command {
 			&DisableSELinuxFlag,
 			&CRIEndpointFlag,
 			&PauseImageFlag,
+			&SnapshotterFlag,
 			&PrivateRegistryFlag,
 			&NodeIPFlag,
 			&NodeExternalIPFlag,

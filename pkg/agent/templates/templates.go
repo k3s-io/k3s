@@ -33,6 +33,11 @@ const ContainerdConfigTemplate = `
   sandbox_image = "{{ .NodeConfig.AgentConfig.PauseImage }}"
 {{end}}
 
+{{- if .NodeConfig.AgentConfig.Snapshotter }}
+[plugins.cri.containerd]
+  snapshotter = "{{ .NodeConfig.AgentConfig.Snapshotter }}"
+{{end}}
+
 {{- if not .NodeConfig.NoFlannel }}
 [plugins.cri.cni]
   bin_dir = "{{ .NodeConfig.AgentConfig.CNIBinDir }}"
