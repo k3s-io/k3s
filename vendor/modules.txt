@@ -123,18 +123,15 @@ github.com/aws/aws-sdk-go/service/elbv2
 github.com/aws/aws-sdk-go/service/kms
 github.com/aws/aws-sdk-go/service/sts
 github.com/aws/aws-sdk-go/service/sts/stsiface
+# github.com/benmoss/go-powershell v0.0.0-00010101000000-000000000000 => github.com/rancher/go-powershell v0.0.0-20200701184732-233247d45373
+github.com/benmoss/go-powershell
+github.com/benmoss/go-powershell/backend
 # github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973
 github.com/beorn7/perks/quantile
-# github.com/bhendo/go-powershell v0.0.0-20190719160123-219e7fb4e41e
-github.com/bhendo/go-powershell
-github.com/bhendo/go-powershell/backend
-github.com/bhendo/go-powershell/utils
 # github.com/blang/semver v3.5.0+incompatible
 github.com/blang/semver
 # github.com/bronze1man/goStrongswanVici v0.0.0-20190828090544-27d02f80ba40
 github.com/bronze1man/goStrongswanVici
-# github.com/buger/jsonparser v0.0.0-20181115193947-bf1c66bbce23
-github.com/buger/jsonparser
 # github.com/canonical/go-dqlite v1.5.1
 github.com/canonical/go-dqlite
 github.com/canonical/go-dqlite/client
@@ -338,7 +335,7 @@ github.com/containernetworking/cni/pkg/types/current
 github.com/containernetworking/cni/pkg/version
 # github.com/containernetworking/plugins v0.8.2
 github.com/containernetworking/plugins/pkg/ns
-# github.com/coreos/flannel v0.11.0 => github.com/rancher/flannel v0.11.0-k3s.2
+# github.com/coreos/flannel v0.11.0 => github.com/rancher/flannel v0.12.0-k3s1
 github.com/coreos/flannel/backend
 github.com/coreos/flannel/backend/extension
 github.com/coreos/flannel/backend/hostgw
@@ -607,8 +604,6 @@ github.com/jmespath/go-jmespath
 github.com/jonboulle/clockwork
 # github.com/json-iterator/go v1.1.8
 github.com/json-iterator/go
-# github.com/juju/errors v0.0.0-20180806074554-22422dad46e1 => github.com/rancher/nocode v0.0.0-20200630202308-cb097102c09f
-github.com/juju/errors
 # github.com/karrick/godirwalk v1.7.5
 github.com/karrick/godirwalk
 # github.com/konsorten/go-windows-terminal-sequences v1.0.2
@@ -717,7 +712,7 @@ github.com/prometheus/procfs
 github.com/prometheus/procfs/internal/util
 github.com/prometheus/procfs/nfs
 github.com/prometheus/procfs/xfs
-# github.com/rakelkar/gonetsh v0.0.0-20190719023240-501daadcadf8
+# github.com/rakelkar/gonetsh v0.0.0-20190930180311-e5c5ffe4bdf0
 github.com/rakelkar/gonetsh/netroute
 github.com/rakelkar/gonetsh/netsh
 # github.com/rancher/dynamiclistener v0.2.0
@@ -727,6 +722,9 @@ github.com/rancher/dynamiclistener/factory
 github.com/rancher/dynamiclistener/storage/file
 github.com/rancher/dynamiclistener/storage/kubernetes
 github.com/rancher/dynamiclistener/storage/memory
+# github.com/rancher/go-powershell v0.0.0-20200701182037-6845e6fcfa79
+github.com/rancher/go-powershell/backend
+github.com/rancher/go-powershell/utils
 # github.com/rancher/helm-controller v0.6.3
 github.com/rancher/helm-controller/pkg/apis/helm.cattle.io
 github.com/rancher/helm-controller/pkg/apis/helm.cattle.io/v1
@@ -1212,7 +1210,7 @@ gopkg.in/square/go-jose.v2/jwt
 gopkg.in/warnings.v0
 # gopkg.in/yaml.v2 v2.3.0
 gopkg.in/yaml.v2
-# k8s.io/api v0.18.0 => github.com/rancher/kubernetes/staging/src/k8s.io/api v1.18.6-k3s1
+# k8s.io/api v0.18.5 => github.com/rancher/kubernetes/staging/src/k8s.io/api v1.18.6-k3s1
 k8s.io/api/admission/v1
 k8s.io/api/admission/v1beta1
 k8s.io/api/admissionregistration/v1
@@ -1296,7 +1294,7 @@ k8s.io/apiextensions-apiserver/pkg/generated/openapi
 k8s.io/apiextensions-apiserver/pkg/registry/customresource
 k8s.io/apiextensions-apiserver/pkg/registry/customresource/tableconvertor
 k8s.io/apiextensions-apiserver/pkg/registry/customresourcedefinition
-# k8s.io/apimachinery v0.18.0 => github.com/rancher/kubernetes/staging/src/k8s.io/apimachinery v1.18.6-k3s1
+# k8s.io/apimachinery v0.18.5 => github.com/rancher/kubernetes/staging/src/k8s.io/apimachinery v1.18.6-k3s1
 k8s.io/apimachinery/pkg/api/equality
 k8s.io/apimachinery/pkg/api/errors
 k8s.io/apimachinery/pkg/api/meta

@@ -150,8 +150,8 @@ func (lw *leaseWatcher) remove(lease *Lease) Event {
 }
 
 func deleteLease(l []Lease, i int) []Lease {
-	l[i] = l[len(l)-1]
-	return l[:len(l)-1]
+	l = append(l[:i], l[i+1:]...)
+	return l
 }
 
 // WatchLease performs a long term watch of the given network's subnet lease
