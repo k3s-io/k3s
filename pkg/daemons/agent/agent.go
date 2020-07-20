@@ -155,6 +155,10 @@ func startKubelet(cfg *config.Agent) error {
 		argsMap["enforce-node-allocatable"] = ""
 	}
 
+	if cfg.ProtectKernelDefaults {
+		argsMap["protect-kernel-defaults"] = "true"
+	}
+
 	args := config.GetArgsList(argsMap, cfg.ExtraKubeletArgs)
 	logrus.Infof("Running kubelet %s", config.ArgString(args))
 

@@ -247,6 +247,7 @@ func NewServerCommand(action func(*cli.Context) error) *cli.Command {
 			&FlannelConfFlag,
 			&ExtraKubeletArgs,
 			&ExtraKubeProxyArgs,
+			&ProtectKernelDefaultsFlag,
 			&cli.BoolFlag{
 				Name:        "rootless",
 				Usage:       "(experimental) Run rootless",

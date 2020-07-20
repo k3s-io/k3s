@@ -83,6 +83,7 @@ type Agent struct {
 	DisableNPC              bool
 	DisableKubeProxy        bool
 	Rootless                bool
+	ProtectKernelDefaults   bool
 }
 
 type Control struct {
