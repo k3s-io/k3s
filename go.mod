@@ -34,6 +34,8 @@ replace (
 	github.com/prometheus/client_model => github.com/prometheus/client_model v0.0.0-20180712105110-5c3871d89910
 	github.com/prometheus/common => github.com/prometheus/common v0.0.0-20181126121408-4724e9255275
 	github.com/prometheus/procfs => github.com/prometheus/procfs v0.0.0-20181204211112-1dc9a6cbc91a
+	github.com/rancher/dynamiclistener => github.com/brandond/dynamiclistener v0.3.1-0.20200722174601-8e612bed7a58
+	github.com/rancher/helm-controller => github.com/brandond/helm-controller v0.6.4-0.20200722213229-29019174fe5e
 	k8s.io/api => github.com/rancher/kubernetes/staging/src/k8s.io/api v1.18.6-k3s1
 	k8s.io/apiextensions-apiserver => github.com/rancher/kubernetes/staging/src/k8s.io/apiextensions-apiserver v1.18.6-k3s1
 	k8s.io/apimachinery => github.com/rancher/kubernetes/staging/src/k8s.io/apimachinery v1.18.6-k3s1
@@ -83,10 +85,13 @@ require (
 	github.com/go-bindata/go-bindata v3.1.2+incompatible
 	github.com/go-sql-driver/mysql v1.4.1
 	github.com/gogo/googleapis v1.3.0 // indirect
+	github.com/golang/groupcache v0.0.0-20190702054246-869f871628b6 // indirect
+	github.com/google/go-cmp v0.3.1 // indirect
 	github.com/google/tcpproxy v0.0.0-20180808230851-dfa16c61dad2
 	github.com/google/uuid v1.1.1
 	github.com/gorilla/mux v1.7.3
 	github.com/gorilla/websocket v1.4.1
+	github.com/hashicorp/golang-lru v0.5.3 // indirect
 	github.com/kubernetes-sigs/cri-tools v0.0.0-00010101000000-000000000000
 	github.com/lib/pq v1.1.1
 	github.com/mattn/go-sqlite3 v1.13.0
@@ -94,13 +99,13 @@ require (
 	github.com/opencontainers/runc v1.0.0-rc10
 	github.com/opencontainers/selinux v1.3.1-0.20190929122143-5215b1806f52
 	github.com/pkg/errors v0.9.1
-	github.com/rancher/dynamiclistener v0.2.0
+	github.com/rancher/dynamiclistener v0.2.1-0.20200714201033-9c1939da3af9
 	github.com/rancher/helm-controller v0.6.3
 	github.com/rancher/kine v0.4.0
+	github.com/rancher/lasso v0.0.0-20200515155337-a34e1e26ad91
 	github.com/rancher/remotedialer v0.2.0
 	github.com/rancher/spur v0.0.0-20200617165101-8702c8e4ce7a
-	github.com/rancher/wrangler v0.6.1
-	github.com/rancher/wrangler-api v0.6.0
+	github.com/rancher/wrangler v0.6.2-0.20200721203632-787d93e49342
 	github.com/rootless-containers/rootlesskit v0.7.2
 	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/pflag v1.0.5
@@ -109,8 +114,10 @@ require (
 	// 54ba958 is v3.4.9
 	go.etcd.io/etcd v0.5.0-alpha.5.0.20200520232829-54ba9589114f
 	golang.org/x/crypto v0.0.0-20200220183623-bac4c82f6975
-	golang.org/x/net v0.0.0-20191204025024-5ee1b9f4859a
+	golang.org/x/net v0.0.0-20200226121028-0de0cce0169b
 	golang.org/x/sys v0.0.0-20191204072324-ce4227a45e2e
+	golang.org/x/tools v0.0.0-20191017205301-920acffc3e65 // indirect
+	google.golang.org/appengine v1.6.1 // indirect
 	google.golang.org/grpc v1.26.0
 	gopkg.in/yaml.v2 v2.3.0
 	k8s.io/api v0.18.5

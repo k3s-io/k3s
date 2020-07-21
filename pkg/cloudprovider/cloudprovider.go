@@ -5,8 +5,8 @@ import (
 	"io"
 
 	"github.com/rancher/k3s/pkg/version"
-	"github.com/rancher/wrangler-api/pkg/generated/controllers/core"
-	coreclient "github.com/rancher/wrangler-api/pkg/generated/controllers/core/v1"
+	"github.com/rancher/wrangler/pkg/generated/controllers/core"
+	coreclient "github.com/rancher/wrangler/pkg/generated/controllers/core/v1"
 	"github.com/rancher/wrangler/pkg/start"
 	cloudprovider "k8s.io/cloud-provider"
 )

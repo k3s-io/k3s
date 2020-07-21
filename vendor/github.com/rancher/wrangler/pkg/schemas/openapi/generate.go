@@ -117,8 +117,10 @@ func typeToProps(typeName string, schemas *types.Schemas, inflight map[string]bo
 		}
 		jsp.Type = "object"
 		jsp.Nullable = true
-		jsp.AdditionalProperties = &v1beta1.JSONSchemaPropsOrBool{
-			Schema: additionalProps,
+		if additionalProps.Type != "object" {
+			jsp.AdditionalProperties = &v1beta1.JSONSchemaPropsOrBool{
+				Schema: additionalProps,
+			}
 		}
 	case "array":
 		items, err := typeToProps(subType, schemas, inflight)

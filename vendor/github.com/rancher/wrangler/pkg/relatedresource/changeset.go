@@ -2,6 +2,7 @@ package relatedresource
 
 import (
 	"context"
+	"time"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 
@@ -20,6 +21,40 @@ func NewKey(namespace, name string) Key {
 	return Key{
 		Namespace: namespace,
 		Name:      name,
+	}
+}
+
+func FromString(key string) Key {
+	return NewKey(kv.RSplit(key, "/"))
+}
+
+func OwnerResolver(namespaced bool, apiVersion, kind string) Resolver {
+	return func(namespace, name string, obj runtime.Object) ([]Key, error) {
+		if obj == nil {
+			return nil, nil
+		}
+
+		meta, err := meta.Accessor(obj)
+		if err != nil {
+			// ignore err
+			return nil, nil
+		}
+
+		var result []Key
+		for _, owner := range meta.GetOwnerReferences() {
+			if owner.Kind == kind && owner.APIVersion == apiVersion {
+				ns := ""
+				if namespaced {
+					ns = meta.GetNamespace()
+				}
+				result = append(result, Key{
+					Namespace: ns,
+					Name:      owner.Name,
+				})
+			}
+		}
+
+		return result, nil
 	}
 }
 
@@ -76,7 +111,10 @@ func watch(ctx context.Context, name string, enq Enqueuer, resolve Resolver, con
 				return
 			}
 
-			runResolve(meta.GetNamespace(), meta.GetName(), ro)
+			go func() {
+				time.Sleep(time.Second)
+				runResolve(meta.GetNamespace(), meta.GetName(), ro)
+			}()
 		},
 	})
 

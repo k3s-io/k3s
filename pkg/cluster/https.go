@@ -14,7 +14,7 @@ import (
 	"github.com/rancher/dynamiclistener/storage/memory"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/version"
-	"github.com/rancher/wrangler-api/pkg/generated/controllers/core"
+	"github.com/rancher/wrangler/pkg/generated/controllers/core"
 	"github.com/sirupsen/logrus"
 )
 
@@ -33,7 +33,7 @@ func (c *Cluster) newListener(ctx context.Context) (net.Listener, http.Handler, 
 	return dynamiclistener.NewListener(tcp, storage, cert, key, dynamiclistener.Config{
 		CN:           version.Program,
 		Organization: []string{version.Program},
-		TLSConfig: tls.Config{
+		TLSConfig: &tls.Config{
 			ClientAuth:   tls.RequestClientCert,
 			MinVersion:   c.config.TLSMinVersion,
 			CipherSuites: c.config.TLSCipherSuites,

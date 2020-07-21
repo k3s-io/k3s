@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/rancher/kine/pkg/endpoint"
-	"github.com/rancher/wrangler-api/pkg/generated/controllers/core"
+	"github.com/rancher/wrangler/pkg/generated/controllers/core"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 )
 

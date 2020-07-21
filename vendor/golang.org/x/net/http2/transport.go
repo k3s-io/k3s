@@ -93,7 +93,7 @@ type Transport struct {
 	// send in the initial settings frame. It is how many bytes
 	// of response headers are allowed. Unlike the http2 spec, zero here
 	// means to use a default limit (currently 10MB). If you actually
-	// want to advertise an ulimited value to the peer, Transport
+	// want to advertise an unlimited value to the peer, Transport
 	// interprets the highest possible value here (0xffffffff or 1<<32-1)
 	// to mean no limit.
 	MaxHeaderListSize uint32
@@ -2198,8 +2198,6 @@ func (rl *clientConnReadLoop) processData(f *DataFrame) error {
 	return nil
 }
 
-var errInvalidTrailers = errors.New("http2: invalid trailers")
-
 func (rl *clientConnReadLoop) endStream(cs *clientStream) {
 	// TODO: check that any declared content-length matches, like
 	// server.go's (*stream).endStream method.
@@ -2430,7 +2428,6 @@ func (cc *ClientConn) writeStreamReset(streamID uint32, code ErrCode, err error)
 var (
 	errResponseHeaderListSize = errors.New("http2: response header list larger than advertised limit")
 	errRequestHeaderListSize  = errors.New("http2: request header list larger than peer's advertised limit")
-	errPseudoTrailers         = errors.New("http2: invalid pseudo header in trailers")
 )
 
 func (cc *ClientConn) logf(format string, args ...interface{}) {

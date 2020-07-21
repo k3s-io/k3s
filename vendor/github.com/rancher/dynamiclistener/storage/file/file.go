@@ -39,4 +39,3 @@ func (s *storage) Update(secret *v1.Secret) error {
 
 	return json.NewEncoder(f).Encode(secret)
 }
-

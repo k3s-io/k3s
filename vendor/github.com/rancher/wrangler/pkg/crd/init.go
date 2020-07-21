@@ -2,6 +2,7 @@ package crd
 
 import (
 	"context"
+	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
@@ -172,6 +173,11 @@ func (c CRD) WithCategories(categories ...string) CRD {
 	return c
 }
 
+func (c CRD) WithGroup(group string) CRD {
+	c.GVK.Group = group
+	return c
+}
+
 func (c CRD) WithShortNames(shortNames ...string) CRD {
 	c.ShortNames = shortNames
 	return c
@@ -181,6 +187,16 @@ func (c CRD) ToCustomResourceDefinition() (apiext.CustomResourceDefinition, erro
 	if c.SchemaObject != nil && c.GVK.Kind == "" {
 		t := getType(c.SchemaObject)
 		c.GVK.Kind = t.Name()
+	}
+
+	if c.SchemaObject != nil && c.GVK.Version == "" {
+		t := getType(c.SchemaObject)
+		c.GVK.Version = filepath.Base(t.PkgPath())
+	}
+
+	if c.SchemaObject != nil && c.GVK.Group == "" {
+		t := getType(c.SchemaObject)
+		c.GVK.Group = filepath.Base(filepath.Dir(t.PkgPath()))
 	}
 
 	plural := c.PluralName
@@ -436,6 +452,7 @@ func (f *Factory) createCRD(ctx context.Context, crdDef CRD, ready map[string]*a
 	if ok {
 		if !equality.Semantic.DeepEqual(crd.Spec.Subresources, existing.Spec.Subresources) ||
 			!equality.Semantic.DeepEqual(crd.Spec.Validation, existing.Spec.Validation) ||
+			!equality.Semantic.DeepEqual(crd.Spec.AdditionalPrinterColumns, existing.Spec.AdditionalPrinterColumns) ||
 			!equality.Semantic.DeepEqual(crd.Spec.Versions, existing.Spec.Versions) {
 			existing.Spec = crd.Spec
 			logrus.Infof("Updating CRD %s", crd.Name)
