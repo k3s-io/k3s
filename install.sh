@@ -141,6 +141,19 @@ escape_dq() {
     printf '%s' "$@" | sed -e 's/"/\\"/g'
 }
 
+# --- ensures $K3S_URL is empty or begins with https://, exiting fatally otherwise ---
+verify_k3s_url() {
+    case "${K3S_URL}" in
+        "")
+            ;;
+        https://*)
+            ;;
+        *)
+            fatal "Only https:// URLs are supported for K3S_URL (have ${K3S_URL})"
+            ;;
+    esac
+}
+
 # --- define needed environment variables ---
 setup_env() {
     # --- use command args if passed or create default ---
@@ -153,14 +166,6 @@ setup_env() {
                 if [ -z "${K3S_TOKEN}" ] && [ -z "${K3S_CLUSTER_SECRET}" ]; then
                     fatal "Defaulted k3s exec command to 'agent' because K3S_URL is defined, but K3S_TOKEN or K3S_CLUSTER_SECRET is not defined."
                 fi
-
-                case "${K3S_URL}" in
-                    https://*)
-                        ;;
-                    *)
-                        fatal "Only https:// URLs are supported for K3S_URL (have ${K3S_URL})"
-                        ;;
-                esac
                 CMD_K3S=agent
             fi
         ;;
@@ -170,6 +175,9 @@ setup_env() {
             shift
         ;;
     esac
+
+    verify_k3s_url
+
     CMD_K3S_EXEC="${CMD_K3S}$(quote_indent "$@")"
 
     # --- use systemd name if defined or create default ---
