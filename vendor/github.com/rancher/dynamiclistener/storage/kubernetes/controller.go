@@ -6,18 +6,27 @@ import (
 	"time"
 
 	"github.com/rancher/dynamiclistener"
-	"github.com/rancher/dynamiclistener/factory"
 	"github.com/rancher/wrangler-api/pkg/generated/controllers/core"
 	v1controller "github.com/rancher/wrangler-api/pkg/generated/controllers/core/v1"
 	"github.com/rancher/wrangler/pkg/start"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type CoreGetter func() *core.Factory
+
+func Load(ctx context.Context, secrets v1controller.SecretController, namespace, name string, backing dynamiclistener.TLSStorage) dynamiclistener.TLSStorage {
+	storage := &storage{
+		name:      name,
+		namespace: namespace,
+		storage:   backing,
+		ctx:       ctx,
+	}
+	storage.init(secrets)
+	return storage
+}
 
 func New(ctx context.Context, core CoreGetter, namespace, name string, backing dynamiclistener.TLSStorage) dynamiclistener.TLSStorage {
 	storage := &storage{
@@ -55,10 +64,10 @@ type storage struct {
 	storage         dynamiclistener.TLSStorage
 	secrets         v1controller.SecretClient
 	ctx             context.Context
-	tls             *factory.TLS
+	tls             dynamiclistener.TLSFactory
 }
 
-func (s *storage) SetFactory(tls *factory.TLS) {
+func (s *storage) SetFactory(tls dynamiclistener.TLSFactory) {
 	s.tls = tls
 }
 
@@ -122,7 +131,7 @@ func (s *storage) saveInK8s(secret *v1.Secret) (*v1.Secret, error) {
 	}
 
 	if existing, err := s.storage.Get(); err == nil && s.tls != nil {
-		if newSecret, updated, err := s.tls.Merge(secret, existing); err == nil && updated {
+		if newSecret, updated, err := s.tls.Merge(existing, secret); err == nil && updated {
 			secret = newSecret
 		}
 	}
@@ -132,9 +141,12 @@ func (s *storage) saveInK8s(secret *v1.Secret) (*v1.Secret, error) {
 		return nil, err
 	}
 
-	if equality.Semantic.DeepEqual(targetSecret.Annotations, secret.Annotations) &&
-		equality.Semantic.DeepEqual(targetSecret.Data, secret.Data) {
-		return secret, nil
+	if newSecret, updated, err := s.tls.Merge(targetSecret, secret); err != nil {
+		return nil, err
+	} else if !updated {
+		return newSecret, nil
+	} else {
+		secret = newSecret
 	}
 
 	targetSecret.Annotations = secret.Annotations

@@ -59,16 +59,7 @@ func loadCA() (*x509.Certificate, crypto.Signer, error) {
 	return LoadCerts("./certs/ca.pem", "./certs/ca.key")
 }
 
-func LoadCerts(certFile, keyFile string) (*x509.Certificate, crypto.Signer, error) {
-	caPem, err := ioutil.ReadFile(certFile)
-	if err != nil {
-		return nil, nil, err
-	}
-	caKey, err := ioutil.ReadFile(keyFile)
-	if err != nil {
-		return nil, nil, err
-	}
-
+func LoadCA(caPem, caKey []byte) (*x509.Certificate, crypto.Signer, error) {
 	key, err := cert.ParsePrivateKeyPEM(caKey)
 	if err != nil {
 		return nil, nil, err
@@ -84,4 +75,17 @@ func LoadCerts(certFile, keyFile string) (*x509.Certificate, crypto.Signer, erro
 	}
 
 	return cert, signer, nil
+}
+
+func LoadCerts(certFile, keyFile string) (*x509.Certificate, crypto.Signer, error) {
+	caPem, err := ioutil.ReadFile(certFile)
+	if err != nil {
+		return nil, nil, err
+	}
+	caKey, err := ioutil.ReadFile(keyFile)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return LoadCA(caPem, caKey)
 }

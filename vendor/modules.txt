@@ -717,7 +717,7 @@ github.com/prometheus/procfs/xfs
 # github.com/rakelkar/gonetsh v0.0.0-20190930180311-e5c5ffe4bdf0
 github.com/rakelkar/gonetsh/netroute
 github.com/rakelkar/gonetsh/netsh
-# github.com/rancher/dynamiclistener v0.2.0
+# github.com/rancher/dynamiclistener v0.2.1-0.20200418023342-52ede5ec9234
 github.com/rancher/dynamiclistener
 github.com/rancher/dynamiclistener/cert
 github.com/rancher/dynamiclistener/factory
