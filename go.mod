@@ -8,11 +8,10 @@ replace (
 	github.com/containerd/btrfs => github.com/containerd/btrfs v0.0.0-20181101203652-af5082808c83
 	github.com/containerd/cgroups => github.com/containerd/cgroups v0.0.0-20190717030353-c4b9ac5c7601
 	github.com/containerd/console => github.com/containerd/console v0.0.0-20181022165439-0650fd9eeb50
-	github.com/containerd/containerd => github.com/rancher/containerd v1.3.3-k3s2
+	github.com/containerd/containerd => github.com/rancher/containerd v1.3.6-k3s1
 	github.com/containerd/continuity => github.com/containerd/continuity v0.0.0-20190815185530-f2a389ac0a02
-	github.com/containerd/cri => github.com/rancher/cri v1.3.0-k3s.6
+	github.com/containerd/cri => github.com/rancher/cri v1.3.0-k3s.7
 	github.com/containerd/fifo => github.com/containerd/fifo v0.0.0-20190816180239-bda0ff6ed73c
-	github.com/containerd/go-runc => github.com/containerd/go-runc v0.0.0-20190911050354-e029b79d8cda
 	github.com/containerd/typeurl => github.com/containerd/typeurl v0.0.0-20180627222232-a93fcdb778cd
 	github.com/coreos/flannel => github.com/rancher/flannel v0.12.0-k3s1
 	github.com/coreos/go-systemd => github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e
@@ -67,12 +66,12 @@ require (
 	github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 // indirect
 	github.com/bronze1man/goStrongswanVici v0.0.0-20190828090544-27d02f80ba40 // indirect
 	github.com/containerd/cgroups v0.0.0-00010101000000-000000000000 // indirect
-	github.com/containerd/containerd v1.3.0-beta.2.0.20190828155532-0293cbd26c69
+	github.com/containerd/containerd v1.3.6
 	github.com/containerd/continuity v0.0.0-20190827140505-75bee3e2ccb6 // indirect
 	github.com/containerd/cri v0.0.0-00010101000000-000000000000
 	github.com/containerd/fifo v0.0.0-20190816180239-bda0ff6ed73c // indirect
-	github.com/containerd/go-cni v0.0.0-20190904155053-d20b7eebc7ee // indirect
-	github.com/containerd/go-runc v0.0.0-20190923131748-a2952bc25f51 // indirect
+	github.com/containerd/go-cni v0.0.0-20190813230227-49fbd9b210f3 // indirect
+	github.com/containerd/go-runc v0.0.0-20190911050354-e029b79d8cda // indirect
 	github.com/containerd/ttrpc v0.0.0-20190828172938-92c8520ef9f8 // indirect
 	github.com/containernetworking/plugins v0.8.2 // indirect
 	github.com/coreos/flannel v0.11.0
@@ -92,7 +91,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.13.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/opencontainers/runc v1.0.0-rc10
-	github.com/opencontainers/selinux v1.3.1-0.20190929122143-5215b1806f52
+	github.com/opencontainers/selinux v1.5.3-0.20200613095409-bb88c45a3863
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/dynamiclistener v0.2.0
 	github.com/rancher/helm-controller v0.6.3

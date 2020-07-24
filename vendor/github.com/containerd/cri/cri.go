@@ -63,6 +63,10 @@ func initCRIService(ic *plugin.InitContext) (interface{}, error) {
 	ic.Meta.Exports = map[string]string{"CRIVersion": constants.CRIVersion}
 	ctx := ic.Context
 	pluginConfig := ic.Config.(*criconfig.PluginConfig)
+	if err := criconfig.ValidatePluginConfig(ctx, pluginConfig); err != nil {
+		return nil, errors.Wrap(err, "invalid plugin config")
+	}
+
 	c := criconfig.Config{
 		PluginConfig:       *pluginConfig,
 		ContainerdRootDir:  filepath.Dir(ic.Root),
@@ -71,10 +75,6 @@ func initCRIService(ic *plugin.InitContext) (interface{}, error) {
 		StateDir:           ic.State,
 	}
 	log.G(ctx).Infof("Start cri plugin with config %+v", c)
-
-	if err := criconfig.ValidatePluginConfig(ctx, pluginConfig); err != nil {
-		return nil, errors.Wrap(err, "invalid plugin config")
-	}
 
 	if err := setGLogLevel(); err != nil {
 		return nil, errors.Wrap(err, "failed to set glog level")

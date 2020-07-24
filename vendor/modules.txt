@@ -157,7 +157,7 @@ github.com/container-storage-interface/spec/lib/go/csi
 github.com/containerd/cgroups
 # github.com/containerd/console v0.0.0-20180822173158-c12b1e7919c1 => github.com/containerd/console v0.0.0-20181022165439-0650fd9eeb50
 github.com/containerd/console
-# github.com/containerd/containerd v1.3.0-beta.2.0.20190828155532-0293cbd26c69 => github.com/rancher/containerd v1.3.3-k3s2
+# github.com/containerd/containerd v1.3.6 => github.com/rancher/containerd v1.3.6-k3s1
 github.com/containerd/containerd
 github.com/containerd/containerd/api/events
 github.com/containerd/containerd/api/services/containers/v1
@@ -294,7 +294,7 @@ github.com/containerd/continuity/pathdriver
 github.com/containerd/continuity/proto
 github.com/containerd/continuity/syscallx
 github.com/containerd/continuity/sysx
-# github.com/containerd/cri v0.0.0-00010101000000-000000000000 => github.com/rancher/cri v1.3.0-k3s.6
+# github.com/containerd/cri v0.0.0-00010101000000-000000000000 => github.com/rancher/cri v1.3.0-k3s.7
 github.com/containerd/cri
 github.com/containerd/cri/pkg/annotations
 github.com/containerd/cri/pkg/api/runtimeoptions/v1
@@ -318,9 +318,9 @@ github.com/containerd/cri/pkg/store/snapshot
 github.com/containerd/cri/pkg/util
 # github.com/containerd/fifo v0.0.0-20190816180239-bda0ff6ed73c => github.com/containerd/fifo v0.0.0-20190816180239-bda0ff6ed73c
 github.com/containerd/fifo
-# github.com/containerd/go-cni v0.0.0-20190904155053-d20b7eebc7ee
+# github.com/containerd/go-cni v0.0.0-20190813230227-49fbd9b210f3
 github.com/containerd/go-cni
-# github.com/containerd/go-runc v0.0.0-20190923131748-a2952bc25f51 => github.com/containerd/go-runc v0.0.0-20190911050354-e029b79d8cda
+# github.com/containerd/go-runc v0.0.0-20190911050354-e029b79d8cda
 github.com/containerd/go-runc
 # github.com/containerd/ttrpc v0.0.0-20190828172938-92c8520ef9f8
 github.com/containerd/ttrpc
@@ -591,6 +591,10 @@ github.com/grpc-ecosystem/go-grpc-prometheus
 github.com/grpc-ecosystem/grpc-gateway/internal
 github.com/grpc-ecosystem/grpc-gateway/runtime
 github.com/grpc-ecosystem/grpc-gateway/utilities
+# github.com/hashicorp/errwrap v0.0.0-20141028054710-7554cd9344ce
+github.com/hashicorp/errwrap
+# github.com/hashicorp/go-multierror v0.0.0-20161216184304-ed905158d874
+github.com/hashicorp/go-multierror
 # github.com/hashicorp/golang-lru v0.5.3
 github.com/hashicorp/golang-lru
 github.com/hashicorp/golang-lru/simplelru
@@ -686,9 +690,10 @@ github.com/opencontainers/runc/libcontainer/utils
 github.com/opencontainers/runc/types
 # github.com/opencontainers/runtime-spec v1.0.0 => github.com/opencontainers/runtime-spec v0.0.0-20180911193056-5684b8af48c1
 github.com/opencontainers/runtime-spec/specs-go
-# github.com/opencontainers/selinux v1.3.1-0.20190929122143-5215b1806f52
+# github.com/opencontainers/selinux v1.5.3-0.20200613095409-bb88c45a3863
 github.com/opencontainers/selinux/go-selinux
 github.com/opencontainers/selinux/go-selinux/label
+github.com/opencontainers/selinux/pkg/pwalk
 # github.com/peterbourgon/diskv v2.0.1+incompatible
 github.com/peterbourgon/diskv
 # github.com/pkg/errors v0.9.1

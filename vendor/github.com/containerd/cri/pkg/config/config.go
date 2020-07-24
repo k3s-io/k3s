@@ -122,9 +122,10 @@ type AuthConfig struct {
 
 // TLSConfig contains the CA/Cert/Key used for a registry
 type TLSConfig struct {
-	CAFile   string `toml:"ca_file" json:"caFile"`
-	CertFile string `toml:"cert_file" json:"certFile"`
-	KeyFile  string `toml:"key_file" json:"keyFile"`
+	InsecureSkipVerify bool   `toml:"insecure_skip_verify" json:"insecure_skip_verify"`
+	CAFile             string `toml:"ca_file" json:"caFile"`
+	CertFile           string `toml:"cert_file" json:"certFile"`
+	KeyFile            string `toml:"key_file" json:"keyFile"`
 }
 
 // Registry is registry settings configured

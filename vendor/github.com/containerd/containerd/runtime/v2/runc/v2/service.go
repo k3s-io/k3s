@@ -256,7 +256,16 @@ func (s *service) Cleanup(ctx context.Context) (*taskAPI.DeleteResponse, error) 
 	if err != nil {
 		return nil, err
 	}
-	r := process.NewRunc(process.RuncRoot, path, ns, runtime, "", false)
+	opts, err := runc.ReadOptions(path)
+	if err != nil {
+		return nil, err
+	}
+	root := process.RuncRoot
+	if opts != nil && opts.Root != "" {
+		root = opts.Root
+	}
+
+	r := process.NewRunc(root, path, ns, runtime, "", false)
 	if err := r.Delete(ctx, s.id, &runcC.DeleteOpts{
 		Force: true,
 	}); err != nil {

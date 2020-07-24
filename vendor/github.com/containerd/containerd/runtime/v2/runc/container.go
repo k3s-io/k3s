@@ -20,6 +20,7 @@ package runc
 
 import (
 	"context"
+	"encoding/json"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -87,6 +88,10 @@ func NewContainer(ctx context.Context, platform stdio.Platform, r *task.CreateTa
 		Options:          r.Options,
 	}
 
+	if err := WriteOptions(r.Bundle, opts); err != nil {
+		return nil, err
+	}
+	// For historical reason, we write opts.BinaryName as well as the entire opts
 	if err := WriteRuntime(r.Bundle, opts.BinaryName); err != nil {
 		return nil, err
 	}
@@ -140,6 +145,39 @@ func NewContainer(ctx context.Context, platform stdio.Platform, r *task.CreateTa
 		container.cgroup = cg
 	}
 	return container, nil
+}
+
+const optionsFilename = "options.json"
+
+// ReadOptions reads the option information from the path.
+// When the file does not exist, ReadOptions returns nil without an error.
+func ReadOptions(path string) (*options.Options, error) {
+	filePath := filepath.Join(path, optionsFilename)
+	if _, err := os.Stat(filePath); err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	data, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		return nil, err
+	}
+	var opts options.Options
+	if err := json.Unmarshal(data, &opts); err != nil {
+		return nil, err
+	}
+	return &opts, nil
+}
+
+// WriteOptions writes the options information into the path
+func WriteOptions(path string, opts options.Options) error {
+	data, err := json.Marshal(opts)
+	if err != nil {
+		return err
+	}
+	return ioutil.WriteFile(filepath.Join(path, optionsFilename), data, 0600)
 }
 
 // ReadRuntime reads the runtime information from the path

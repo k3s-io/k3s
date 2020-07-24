@@ -1,4 +1,4 @@
-// +build !selinux
+// +build !selinux !linux
 
 package selinux
 
@@ -13,6 +13,8 @@ const (
 	Permissive = 0
 	// Disabled constant to indicate SELinux is disabled
 	Disabled = -1
+	// DefaultCategoryRange is the upper bound on the category range
+	DefaultCategoryRange = uint32(1024)
 )
 
 var (
@@ -20,6 +22,8 @@ var (
 	ErrMCSAlreadyExists = errors.New("MCS label already exists")
 	// ErrEmptyPath is returned when an empty path has been specified.
 	ErrEmptyPath = errors.New("empty path")
+	// CategoryRange allows the upper bound on the category range to be adjusted
+	CategoryRange = DefaultCategoryRange
 )
 
 // Context is a representation of the SELinux label broken into 4 parts
@@ -33,6 +37,11 @@ func SetDisabled() {
 // GetEnabled returns whether selinux is currently enabled.
 func GetEnabled() bool {
 	return false
+}
+
+// ClassIndex returns the int index for an object class in the loaded policy, or -1 and an error
+func ClassIndex(class string) (int, error) {
+	return -1, nil
 }
 
 // SetFileLabel sets the SELinux label for this path or returns an error.
@@ -89,6 +98,13 @@ func CanonicalizeContext(val string) (string, error) {
 }
 
 /*
+ComputeCreateContext requests the type transition from source to target for class  from the kernel.
+*/
+func ComputeCreateContext(source string, target string, class string) (string, error) {
+	return "", nil
+}
+
+/*
 SetExecLabel sets the SELinux label that the kernel will use for any programs
 that are executed by the current process thread, or an error.
 */
@@ -101,7 +117,7 @@ SetTaskLabel sets the SELinux label for the current thread, or an error.
 This requires the dyntransition permission.
 */
 func SetTaskLabel(label string) error {
-        return nil
+	return nil
 }
 
 /*
@@ -187,6 +203,18 @@ func ReleaseLabel(label string) {
 // ROFileLabel returns the specified SELinux readonly file label
 func ROFileLabel() string {
 	return ""
+}
+
+// KVMContainerLabels returns the default processLabel and mountLabel to be used
+// for kvm containers by the calling process.
+func KVMContainerLabels() (string, string) {
+	return "", ""
+}
+
+// InitContainerLabels returns the default processLabel and file labels to be
+// used for containers running an init system like systemd by the calling
+func InitContainerLabels() (string, string) {
+	return "", ""
 }
 
 /*
