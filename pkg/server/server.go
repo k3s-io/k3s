@@ -282,8 +282,11 @@ func writeKubeConfig(certs string, config *Config) error {
 	}
 
 	if err = clientaccess.WriteClientKubeConfig(kubeConfig, url, config.ControlConfig.Runtime.ServerCA, config.ControlConfig.Runtime.ClientAdminCert,
-		config.ControlConfig.Runtime.ClientAdminKey); err != nil {
+		config.ControlConfig.Runtime.ClientAdminKey); err == nil {
+		logrus.Infof("Wrote kubeconfig %s", kubeConfig)
+	} else {
 		logrus.Errorf("Failed to generate kubeconfig: %v", err)
+		return err
 	}
 
 	if config.ControlConfig.KubeConfigMode != "" {
@@ -303,7 +306,6 @@ func writeKubeConfig(certs string, config *Config) error {
 		}
 	}
 
-	logrus.Infof("Wrote kubeconfig %s", kubeConfig)
 	if def {
 		logrus.Infof("Run: %s kubectl", filepath.Base(os.Args[0]))
 	}
