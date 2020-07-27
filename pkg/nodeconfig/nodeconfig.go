@@ -26,7 +26,7 @@ const (
 func getNodeArgs() (string, error) {
 	nodeArgsList := []string{}
 	for _, arg := range os.Args[1:] {
-		if strings.Contains(arg, "=") {
+		if strings.HasPrefix(arg, "--") && strings.Contains(arg, "=") {
 			parsedArg := strings.SplitN(arg, "=", 2)
 			nodeArgsList = append(nodeArgsList, parsedArg...)
 			continue
@@ -89,6 +89,7 @@ func SetNodeConfigAnnotations(node *corev1.Node) (bool, error) {
 	if node.Annotations[NodeConfigHashAnnotation] == encoded {
 		return false, nil
 	}
+
 	node.Annotations[NodeEnvAnnotation] = nodeEnv
 	node.Annotations[NodeArgsAnnotation] = nodeArgs
 	node.Annotations[NodeConfigHashAnnotation] = encoded

@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	systemd "github.com/coreos/go-systemd/daemon"
+	"github.com/erikdubbelboer/gspt"
 	"github.com/pkg/errors"
 	"github.com/rancher/k3s/pkg/agent"
 	"github.com/rancher/k3s/pkg/cli/cmds"
@@ -38,6 +39,10 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	var (
 		err error
 	)
+
+	// hide process arguments from ps output, since they may contain
+	// database credentials or other secrets.
+	gspt.SetProcTitle(os.Args[0] + " server")
 
 	if !cfg.DisableAgent && os.Getuid() != 0 && !cfg.Rootless {
 		return fmt.Errorf("must run as root unless --disable-agent is specified")
