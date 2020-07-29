@@ -22,7 +22,7 @@ func (c *Cluster) testClusterDB(ctx context.Context) (<-chan struct{}, error) {
 	go func() {
 		defer close(result)
 		for {
-			if err := c.managedDB.Test(ctx); err != nil {
+			if err := c.managedDB.Test(ctx, c.clientAccessInfo); err != nil {
 				logrus.Infof("Failed to test data store connection: %v", err)
 			} else {
 				logrus.Infof("Data store connection OK")
@@ -46,7 +46,7 @@ func (c *Cluster) start(ctx context.Context) error {
 	}
 
 	if c.config.ClusterReset {
-		return c.managedDB.Reset(ctx)
+		return c.managedDB.Reset(ctx, c.clientAccessInfo)
 	}
 
 	return c.managedDB.Start(ctx, c.clientAccessInfo)
