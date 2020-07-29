@@ -6,6 +6,7 @@ import (
 	"os"
 	"runtime"
 
+	"github.com/erikdubbelboer/gspt"
 	"github.com/rancher/k3s/pkg/agent"
 	"github.com/rancher/k3s/pkg/cli/cmds"
 	"github.com/rancher/k3s/pkg/datadir"
@@ -18,6 +19,10 @@ import (
 )
 
 func Run(ctx *cli.Context) error {
+	// hide process arguments from ps output, since they may contain
+	// database credentials or other secrets.
+	gspt.SetProcTitle(os.Args[0] + " agent")
+
 	if os.Getuid() != 0 && runtime.GOOS != "windows" {
 		return fmt.Errorf("agent must be ran as root")
 	}

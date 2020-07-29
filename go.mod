@@ -80,6 +80,7 @@ require (
 	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f
 	github.com/docker/docker v1.4.2-0.20191205034852-d163fbba3c82
 	github.com/docker/go-metrics v0.0.1 // indirect
+	github.com/erikdubbelboer/gspt v0.0.0-20190125194910-e68493906b83
 	github.com/go-bindata/go-bindata v3.1.2+incompatible
 	github.com/go-sql-driver/mysql v1.4.1
 	github.com/gogo/googleapis v1.3.0 // indirect
