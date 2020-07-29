@@ -15,6 +15,10 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+const (
+	defaultMaxIdleConns = 2 // copied from database/sql
+)
+
 var (
 	columns = "kv.id as theid, kv.name, kv.created, kv.deleted, kv.create_revision, kv.prev_revision, kv.lease, kv.value, kv.old_value"
 	revSQL  = `
@@ -64,6 +68,12 @@ func (s Stripped) String() string {
 type ErrRetry func(error) bool
 type TranslateErr func(error) error
 
+type ConnectionPoolConfig struct {
+	MaxIdle     int           // zero means defaultMaxIdleConns; negative means 0
+	MaxOpen     int           // <= 0 means unlimited
+	MaxLifetime time.Duration // maximum amount of time a connection may be reused
+}
+
 type Generic struct {
 	sync.Mutex
 
@@ -84,6 +94,11 @@ type Generic struct {
 	InsertLastInsertIDSQL string
 	Retry                 ErrRetry
 	TranslateErr          TranslateErr
+}
+
+type GenericTx struct {
+	TX *sql.Tx
+	d  *Generic
 }
 
 func q(sql, param string, numbered bool) string {
@@ -128,6 +143,20 @@ func (d *Generic) Migrate(ctx context.Context) {
 	}
 }
 
+func configureConnectionPooling(connPoolConfig ConnectionPoolConfig, db *sql.DB) {
+	// behavior copied from database/sql - zero means defaultMaxIdleConns; negative means 0
+	if connPoolConfig.MaxIdle < 0 {
+		connPoolConfig.MaxIdle = 0
+	} else if connPoolConfig.MaxIdle == 0 {
+		connPoolConfig.MaxIdle = defaultMaxIdleConns
+	}
+
+	logrus.Infof("Configuring DB connection pooling: maxIdleConns=%d, maxOpenConns=%d, connMaxLifetime=%s", connPoolConfig.MaxIdle, connPoolConfig.MaxOpen, connPoolConfig.MaxLifetime)
+	db.SetMaxIdleConns(connPoolConfig.MaxIdle)
+	db.SetMaxOpenConns(connPoolConfig.MaxOpen)
+	db.SetConnMaxLifetime(connPoolConfig.MaxLifetime)
+}
+
 func openAndTest(driverName, dataSourceName string) (*sql.DB, error) {
 	db, err := sql.Open(driverName, dataSourceName)
 	if err != nil {
@@ -144,7 +173,7 @@ func openAndTest(driverName, dataSourceName string) (*sql.DB, error) {
 	return db, nil
 }
 
-func Open(ctx context.Context, driverName, dataSourceName string, paramCharacter string, numbered bool) (*Generic, error) {
+func Open(ctx context.Context, driverName, dataSourceName string, connPoolConfig ConnectionPoolConfig, paramCharacter string, numbered bool) (*Generic, error) {
 	var (
 		db  *sql.DB
 		err error
@@ -163,6 +192,8 @@ func Open(ctx context.Context, driverName, dataSourceName string, paramCharacter
 		case <-time.After(time.Second):
 		}
 	}
+
+	configureConnectionPooling(connPoolConfig, db)
 
 	return &Generic{
 		DB: db,
@@ -255,6 +286,7 @@ func (d *Generic) GetCompactRevision(ctx context.Context) (int64, error) {
 }
 
 func (d *Generic) SetCompactRevision(ctx context.Context, revision int64) error {
+	logrus.Debugf("SETCOMPACTREVISION %v", revision)
 	_, err := d.execute(ctx, d.UpdateCompactSQL, revision)
 	return err
 }
@@ -264,6 +296,7 @@ func (d *Generic) GetRevision(ctx context.Context, revision int64) (*sql.Rows, e
 }
 
 func (d *Generic) DeleteRevision(ctx context.Context, revision int64) error {
+	logrus.Debugf("DELETEREVISION %v", revision)
 	_, err := d.execute(ctx, d.DeleteSQL, revision)
 	return err
 }
@@ -359,4 +392,67 @@ func (d *Generic) Insert(ctx context.Context, key string, create, delete bool, c
 	row := d.queryRow(ctx, d.InsertSQL, key, cVal, dVal, createRevision, previousRevision, ttl, value, prevValue)
 	err = row.Scan(&id)
 	return id, err
+}
+
+func (d *Generic) BeginTx(ctx context.Context, opts *sql.TxOptions) (*GenericTx, error) {
+	logrus.Debugf("TX BEGIN")
+	tx, err := d.DB.BeginTx(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+	return &GenericTx{
+		TX: tx,
+		d:  d,
+	}, nil
+}
+
+func (t *GenericTx) Commit() error {
+	logrus.Debugf("TX COMMIT")
+	return t.TX.Commit()
+}
+
+func (t *GenericTx) Rollback() error {
+	logrus.Debugf("TX ROLLBACK")
+	return t.TX.Rollback()
+}
+
+func (t *GenericTx) GetCompactRevision(ctx context.Context) (int64, error) {
+	var id int64
+	row := t.queryRow(ctx, compactRevSQL)
+	err := row.Scan(&id)
+	if err == sql.ErrNoRows {
+		return 0, nil
+	}
+	return id, err
+}
+
+func (t *GenericTx) SetCompactRevision(ctx context.Context, revision int64) error {
+	logrus.Debugf("TX SETCOMPACTREVISION %v", revision)
+	_, err := t.execute(ctx, t.d.UpdateCompactSQL, revision)
+	return err
+}
+
+func (t *GenericTx) GetRevision(ctx context.Context, revision int64) (*sql.Rows, error) {
+	return t.query(ctx, t.d.GetRevisionSQL, revision)
+}
+
+func (t *GenericTx) DeleteRevision(ctx context.Context, revision int64) error {
+	logrus.Debugf("TX DELETEREVISION %v", revision)
+	_, err := t.execute(ctx, t.d.DeleteSQL, revision)
+	return err
+}
+
+func (t *GenericTx) query(ctx context.Context, sql string, args ...interface{}) (*sql.Rows, error) {
+	logrus.Tracef("TX QUERY %v : %s", args, Stripped(sql))
+	return t.TX.QueryContext(ctx, sql, args...)
+}
+
+func (t *GenericTx) queryRow(ctx context.Context, sql string, args ...interface{}) *sql.Row {
+	logrus.Tracef("TX QUERY ROW %v : %s", args, Stripped(sql))
+	return t.TX.QueryRowContext(ctx, sql, args...)
+}
+
+func (t *GenericTx) execute(ctx context.Context, sql string, args ...interface{}) (result sql.Result, err error) {
+	logrus.Tracef("TX EXEC %v : %s", args, Stripped(sql))
+	return t.TX.ExecContext(ctx, sql, args...)
 }

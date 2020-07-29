@@ -39,12 +39,12 @@ var (
 	}
 )
 
-func New(ctx context.Context, dataSourceName string) (server.Backend, error) {
-	backend, _, err := NewVariant(ctx, "sqlite3", dataSourceName)
+func New(ctx context.Context, dataSourceName string, connPoolConfig generic.ConnectionPoolConfig) (server.Backend, error) {
+	backend, _, err := NewVariant(ctx, "sqlite3", dataSourceName, connPoolConfig)
 	return backend, err
 }
 
-func NewVariant(ctx context.Context, driverName, dataSourceName string) (server.Backend, *generic.Generic, error) {
+func NewVariant(ctx context.Context, driverName, dataSourceName string, connPoolConfig generic.ConnectionPoolConfig) (server.Backend, *generic.Generic, error) {
 	if dataSourceName == "" {
 		if err := os.MkdirAll("./db", 0700); err != nil {
 			return nil, nil, err
@@ -52,7 +52,7 @@ func NewVariant(ctx context.Context, driverName, dataSourceName string) (server.
 		dataSourceName = "./db/state.db?_journal=WAL&cache=shared"
 	}
 
-	dialect, err := generic.Open(ctx, driverName, dataSourceName, "?", false)
+	dialect, err := generic.Open(ctx, driverName, dataSourceName, connPoolConfig, "?", false)
 	if err != nil {
 		return nil, nil, err
 	}

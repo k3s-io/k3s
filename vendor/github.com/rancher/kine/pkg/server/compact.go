@@ -4,9 +4,11 @@ import (
 	"context"
 
 	"go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/mvcc/mvccpb"
 )
 
 func isCompact(txn *etcdserverpb.TxnRequest) bool {
+	// See https://github.com/kubernetes/kubernetes/blob/442a69c3bdf6fe8e525b05887e57d89db1e2f3a5/staging/src/k8s.io/apiserver/pkg/storage/etcd3/compact.go#L72
 	return len(txn.Compare) == 1 &&
 		txn.Compare[0].Target == etcdserverpb.Compare_VERSION &&
 		txn.Compare[0].Result == etcdserverpb.Compare_EQUAL &&
@@ -18,14 +20,19 @@ func isCompact(txn *etcdserverpb.TxnRequest) bool {
 }
 
 func (l *LimitedServer) compact(ctx context.Context) (*etcdserverpb.TxnResponse, error) {
+	// return comparison failure so that the apiserver does not bother compacting
 	return &etcdserverpb.TxnResponse{
 		Header:    &etcdserverpb.ResponseHeader{},
-		Succeeded: true,
+		Succeeded: false,
 		Responses: []*etcdserverpb.ResponseOp{
 			{
-				Response: &etcdserverpb.ResponseOp_ResponsePut{
-					ResponsePut: &etcdserverpb.PutResponse{
+				Response: &etcdserverpb.ResponseOp_ResponseRange{
+					ResponseRange: &etcdserverpb.RangeResponse{
 						Header: &etcdserverpb.ResponseHeader{},
+						Kvs: []*mvccpb.KeyValue{
+							&mvccpb.KeyValue{},
+						},
+						Count: 1,
 					},
 				},
 			},

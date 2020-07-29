@@ -15,6 +15,7 @@ import (
 	"github.com/canonical/go-dqlite/client"
 	"github.com/canonical/go-dqlite/driver"
 	"github.com/pkg/errors"
+	"github.com/rancher/kine/pkg/drivers/generic"
 	"github.com/rancher/kine/pkg/drivers/sqlite"
 	"github.com/rancher/kine/pkg/server"
 	"github.com/sirupsen/logrus"
@@ -66,7 +67,7 @@ outer:
 	return nil
 }
 
-func New(ctx context.Context, datasourceName string) (server.Backend, error) {
+func New(ctx context.Context, datasourceName string, connPoolConfig generic.ConnectionPoolConfig) (server.Backend, error) {
 	opts, err := parseOpts(datasourceName)
 	if err != nil {
 		return nil, err
@@ -95,7 +96,7 @@ func New(ctx context.Context, datasourceName string) (server.Backend, error) {
 	}
 
 	sql.Register("dqlite", d)
-	backend, generic, err := sqlite.NewVariant(ctx, "dqlite", opts.dsn)
+	backend, generic, err := sqlite.NewVariant(ctx, "dqlite", opts.dsn, connPoolConfig)
 	if err != nil {
 		return nil, errors.Wrap(err, "sqlite client")
 	}

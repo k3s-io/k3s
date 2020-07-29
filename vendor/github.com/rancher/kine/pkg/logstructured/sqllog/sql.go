@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/rancher/kine/pkg/broadcaster"
+	"github.com/rancher/kine/pkg/drivers/generic"
 	"github.com/rancher/kine/pkg/server"
 	"github.com/sirupsen/logrus"
 )
@@ -39,6 +40,7 @@ type Dialect interface {
 	SetCompactRevision(ctx context.Context, revision int64) error
 	Fill(ctx context.Context, revision int64) error
 	IsFill(key string) bool
+	BeginTx(ctx context.Context, opts *sql.TxOptions) (*generic.GenericTx, error)
 }
 
 func (s *SQLLog) Start(ctx context.Context) (err error) {
@@ -47,6 +49,8 @@ func (s *SQLLog) Start(ctx context.Context) (err error) {
 }
 
 func (s *SQLLog) compactStart(ctx context.Context) error {
+	logrus.Debugf("COMPACTSTART")
+
 	rows, err := s.d.After(ctx, "compact_rev_key", 0, 0)
 	if err != nil {
 		return err
@@ -56,6 +60,8 @@ func (s *SQLLog) compactStart(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+
+	logrus.Debugf("COMPACTSTART len(events)=%v", len(events))
 
 	if len(events) == 0 {
 		_, err := s.Append(ctx, &server.Event{
@@ -70,6 +76,11 @@ func (s *SQLLog) compactStart(ctx context.Context) error {
 		return nil
 	}
 
+	t, err := s.d.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
+	if err != nil {
+		return err
+	}
+
 	// this is to work around a bug in which we ended up with two compact_rev_key rows
 	maxRev := int64(0)
 	maxID := int64(0)
@@ -78,26 +89,34 @@ func (s *SQLLog) compactStart(ctx context.Context) error {
 			maxRev = event.PrevKV.ModRevision
 			maxID = event.KV.ModRevision
 		}
+		logrus.Debugf("COMPACTSTART maxRev=%v maxID=%v", maxRev, maxID)
 	}
 
 	for _, event := range events {
+		logrus.Debugf("COMPACTSTART event.KV.ModRevision=%v maxID=%v", event.KV.ModRevision, maxID)
 		if event.KV.ModRevision == maxID {
 			continue
 		}
-		if err := s.d.DeleteRevision(ctx, event.KV.ModRevision); err != nil {
+		if err := t.DeleteRevision(ctx, event.KV.ModRevision); err != nil {
+			if err := t.Rollback(); err != nil {
+				logrus.Errorf("transaction rollback failed: %v", err)
+			}
 			return err
 		}
 	}
 
-	return nil
+	return t.Commit()
 }
 
 func (s *SQLLog) compact() {
 	var (
-		nextEnd int64
+		nextEnd     int64
+		savedCursor int64
 	)
 	t := time.NewTicker(5 * time.Minute)
 	nextEnd, _ = s.d.CurrentRevision(s.ctx)
+	savedCursor, _ = s.d.GetCompactRevision(s.ctx)
+	logrus.Debugf("COMPACT starting nextEnd=%v savedCursor=%v", nextEnd, savedCursor)
 
 outer:
 	for {
@@ -113,25 +132,46 @@ outer:
 			continue
 		}
 
+		deleteCount := 0
 		end := nextEnd
 		nextEnd = currentRev
 
-		cursor, err := s.d.GetCompactRevision(s.ctx)
+		t, err := s.d.BeginTx(s.ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
+		if err != nil {
+			logrus.Errorf("failed to begin transaction: %v", err)
+			continue
+		}
+
+		cursor, err := t.GetCompactRevision(s.ctx)
 		if err != nil {
 			logrus.Errorf("failed to get compact revision: %v", err)
+			if err := t.Rollback(); err != nil {
+				logrus.Errorf("transaction rollback failed: %v", err)
+			}
 			continue
 		}
 
 		// leave the last 1000
 		end = end - 1000
 
-		savedCursor := cursor
-		// Purposefully start at the current and redo the current as
-		// it could have failed before actually compacting
+		if savedCursor != cursor {
+			logrus.Debugf("COMPACT compact revision changed since last iteration: %v => %v", savedCursor, cursor)
+			savedCursor = cursor
+			if err := t.Rollback(); err != nil {
+				logrus.Errorf("transaction rollback failed: %v", err)
+			}
+			continue outer
+		}
+
+		logrus.Debugf("COMPACT cursor=%v end=%v", cursor, end)
 		for ; cursor <= end; cursor++ {
-			rows, err := s.d.GetRevision(s.ctx, cursor)
+			logrus.Debugf("COMPACT currentRev=%v cursor=%v savedCursor=%v end=%v nextEnd=%v", currentRev, cursor, savedCursor, end, nextEnd)
+			rows, err := t.GetRevision(s.ctx, cursor)
 			if err != nil {
 				logrus.Errorf("failed to get revision %d: %v", cursor, err)
+				if err := t.Rollback(); err != nil {
+					logrus.Errorf("transaction rollback failed: %v", err)
+				}
 				continue outer
 			}
 
@@ -154,42 +194,69 @@ outer:
 
 			setRev := false
 			if event.PrevKV != nil && event.PrevKV.ModRevision != 0 {
+				logrus.Debugf("COMPACT OLD cursor=%v Key=%v", cursor, event.KV.Key)
 				if savedCursor != cursor {
-					if err := s.d.SetCompactRevision(s.ctx, cursor); err != nil {
+					if err := t.SetCompactRevision(s.ctx, cursor); err != nil {
 						logrus.Errorf("failed to record compact revision: %v", err)
+						if err := t.Rollback(); err != nil {
+							logrus.Errorf("transaction rollback failed: %v", err)
+						}
 						continue outer
 					}
 					savedCursor = cursor
 					setRev = true
 				}
 
-				if err := s.d.DeleteRevision(s.ctx, event.PrevKV.ModRevision); err != nil {
+				if err := t.DeleteRevision(s.ctx, event.PrevKV.ModRevision); err != nil {
 					logrus.Errorf("failed to delete revision %d: %v", event.PrevKV.ModRevision, err)
+					if err := t.Rollback(); err != nil {
+						logrus.Errorf("transaction rollback failed: %v", err)
+					}
 					continue outer
 				}
+				deleteCount++
 			}
 
 			if event.Delete {
+				logrus.Debugf("COMPACT DELETED cursor=%v Key=%v", cursor, event.KV.Key)
 				if !setRev && savedCursor != cursor {
-					if err := s.d.SetCompactRevision(s.ctx, cursor); err != nil {
+					if err := t.SetCompactRevision(s.ctx, cursor); err != nil {
 						logrus.Errorf("failed to record compact revision: %v", err)
+						if err := t.Rollback(); err != nil {
+							logrus.Errorf("transaction rollback failed: %v", err)
+						}
 						continue outer
 					}
 					savedCursor = cursor
 				}
 
-				if err := s.d.DeleteRevision(s.ctx, cursor); err != nil {
+				if err := t.DeleteRevision(s.ctx, cursor); err != nil {
 					logrus.Errorf("failed to delete current revision %d: %v", cursor, err)
+					if err := t.Rollback(); err != nil {
+						logrus.Errorf("transaction rollback failed: %v", err)
+					}
 					continue outer
 				}
+				deleteCount++
 			}
 		}
 
+		logrus.Debugf("COMPACT deletedCount=%v", deleteCount)
+
 		if savedCursor != cursor {
-			if err := s.d.SetCompactRevision(s.ctx, cursor); err != nil {
+			logrus.Debugf("COMPACT cursor=%v", cursor)
+			if err := t.SetCompactRevision(s.ctx, cursor); err != nil {
 				logrus.Errorf("failed to record compact revision: %v", err)
+				if err := t.Rollback(); err != nil {
+					logrus.Errorf("transaction rollback failed: %v", err)
+				}
 				continue outer
 			}
+			savedCursor = cursor
+		}
+		if err := t.Commit(); err != nil {
+			logrus.Errorf("failed to commit transaction: %v", err)
+			continue outer
 		}
 	}
 }
@@ -395,6 +462,7 @@ func (s *SQLLog) poll(result chan interface{}, pollStart int64) {
 			// Ensure that we are notifying events in a sequential fashion. For example if we find row 4 before 3
 			// we don't want to notify row 4 because 3 is essentially dropped forever.
 			if event.KV.ModRevision != next {
+				logrus.Debugf("MODREVISION GAP: expected %v, got %v", next, event.KV.ModRevision)
 				if canSkipRevision(next, skip, skipTime) {
 					// This situation should never happen, but we have it here as a fallback just for unknown reasons
 					// we don't want to pause all watches forever
@@ -448,7 +516,7 @@ func (s *SQLLog) poll(result chan interface{}, pollStart int64) {
 }
 
 func canSkipRevision(rev, skip int64, skipTime time.Time) bool {
-	return rev == skip && time.Now().Sub(skipTime) > time.Second
+	return rev == skip && time.Since(skipTime) > time.Second
 }
 
 func (s *SQLLog) Count(ctx context.Context, prefix string) (int64, int64, error) {
