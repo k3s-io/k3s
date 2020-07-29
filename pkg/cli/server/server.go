@@ -99,6 +99,9 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	serverConfig.ControlConfig.Datastore.CAFile = cfg.DatastoreCAFile
 	serverConfig.ControlConfig.Datastore.CertFile = cfg.DatastoreCertFile
 	serverConfig.ControlConfig.Datastore.KeyFile = cfg.DatastoreKeyFile
+	serverConfig.ControlConfig.Datastore.ConnectionPoolConfig.MaxIdle = cfg.DatastoreMaxIdle
+	serverConfig.ControlConfig.Datastore.ConnectionPoolConfig.MaxOpen = cfg.DatastoreMaxOpen
+	serverConfig.ControlConfig.Datastore.ConnectionPoolConfig.MaxLifetime = cfg.DatastoreMaxLifetime
 	serverConfig.ControlConfig.AdvertiseIP = cfg.AdvertiseIP
 	serverConfig.ControlConfig.AdvertisePort = cfg.AdvertisePort
 	serverConfig.ControlConfig.FlannelBackend = cfg.FlannelBackend

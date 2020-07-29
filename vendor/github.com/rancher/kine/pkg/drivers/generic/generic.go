@@ -64,6 +64,12 @@ func (s Stripped) String() string {
 type ErrRetry func(error) bool
 type TranslateErr func(error) error
 
+type ConnectionPoolConfig struct {
+	MaxIdle     int
+	MaxOpen     int
+	MaxLifetime time.Duration
+}
+
 type Generic struct {
 	sync.Mutex
 
@@ -128,6 +134,13 @@ func (d *Generic) Migrate(ctx context.Context) {
 	}
 }
 
+func configureConnectionPooling(connPoolConfig ConnectionPoolConfig, db *sql.DB) {
+	logrus.Infof("Configuring DB connection pooling: maxIdleConns=%d, maxOpenConns=%d, connMaxLifetime=%s", connPoolConfig.MaxIdle, connPoolConfig.MaxOpen, connPoolConfig.MaxLifetime)
+	db.SetMaxIdleConns(connPoolConfig.MaxIdle)
+	db.SetMaxOpenConns(connPoolConfig.MaxOpen)
+	db.SetConnMaxLifetime(connPoolConfig.MaxLifetime)
+}
+
 func openAndTest(driverName, dataSourceName string) (*sql.DB, error) {
 	db, err := sql.Open(driverName, dataSourceName)
 	if err != nil {
@@ -144,7 +157,7 @@ func openAndTest(driverName, dataSourceName string) (*sql.DB, error) {
 	return db, nil
 }
 
-func Open(ctx context.Context, driverName, dataSourceName string, paramCharacter string, numbered bool) (*Generic, error) {
+func Open(ctx context.Context, driverName, dataSourceName string, connPoolConfig ConnectionPoolConfig, paramCharacter string, numbered bool) (*Generic, error) {
 	var (
 		db  *sql.DB
 		err error
@@ -163,6 +176,8 @@ func Open(ctx context.Context, driverName, dataSourceName string, paramCharacter
 		case <-time.After(time.Second):
 		}
 	}
+
+	configureConnectionPooling(connPoolConfig, db)
 
 	return &Generic{
 		DB: db,

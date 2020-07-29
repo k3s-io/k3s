@@ -1,6 +1,8 @@
 package cmds
 
 import (
+	"time"
+
 	"github.com/rancher/k3s/pkg/version"
 	"github.com/rancher/spur/cli"
 	"github.com/rancher/spur/cli/altsrc"
@@ -42,6 +44,9 @@ type Server struct {
 	DatastoreCAFile          string
 	DatastoreCertFile        string
 	DatastoreKeyFile         string
+	DatastoreMaxIdle         int
+	DatastoreMaxOpen         int
+	DatastoreMaxLifetime     time.Duration
 	AdvertiseIP              string
 	AdvertisePort            int
 	DisableScheduler         bool
@@ -200,6 +205,24 @@ func NewServerCommand(action func(*cli.Context) error) *cli.Command {
 				Usage:       "(db) TLS key file used to secure datastore backend communication",
 				Destination: &ServerConfig.DatastoreKeyFile,
 				EnvVars:     []string{version.ProgramUpper + "_DATASTORE_KEYFILE"},
+			},
+			&cli.IntFlag{
+				Name:        "datastore-max-idle-connections",
+				Usage:       "(db) Maximum number of idle connections used by datastore. If value <= 0, then no connections are retained",
+				Destination: &ServerConfig.DatastoreMaxIdle,
+				Value:       2,
+			},
+			&cli.IntFlag{
+				Name:        "datastore-max-open-connections",
+				Usage:       "(db) Maximum number of idle connections used by datastore. If value <= 0, then there is no limit",
+				Destination: &ServerConfig.DatastoreMaxOpen,
+				Value:       0,
+			},
+			&cli.DurationFlag{
+				Name:        "datastore-connection-max-lifetime",
+				Usage:       "(db) Maximum amount of time a connection may be reused. If value <= 0, then there is no limit",
+				Destination: &ServerConfig.DatastoreMaxLifetime,
+				Value:       0,
 			},
 			&cli.StringFlag{
 				Name:        "default-local-storage-path",
