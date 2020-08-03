@@ -10,7 +10,7 @@ This repo includes all of Kubernetes history so `--depth 1` will avoid most of t
 
 To build the full release binary run `make` and that will create `./dist/artifacts/k3s`.
 
-Optionally to build the binaries using local go environment without running linting or building docker images:
+Optionally to build the binaries using local Go environment without running linting or building docker images:
 
 ```bash
 ./scripts/download && ./scripts/build && ./scripts/package-cli
