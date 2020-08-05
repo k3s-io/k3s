@@ -19,7 +19,7 @@ What is this?
 K3s is a [fully conformant](https://github.com/cncf/k8s-conformance/pulls?q=is%3Apr+k3s) Kubernetes distribution with the following changes:
 
 1. It is packaged as a single binary.
-1. It swaps out etcd for a lightweight sqlite3 storage backend. etcd3, MySQL, Postgres also available.
+1. It swaps out etcd for a lightweight sqlite3 storage backend. etcd3, MySQL, and Postgres also supported.
 1. It wraps Kubernetes and other components in a single, simple launcher.
 1. It is secure by default with reasonable defaults for lightweight environments.
 1. It has minimal to no OS dependencies (just a sane kernel and cgroup mounts needed).
