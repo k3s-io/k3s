@@ -54,7 +54,7 @@ K3s. There is no long form of K3s and no official pronunciation.
 
 Is this a fork?
 ---------------
-No. A fork implies continued divergence from the original. This is not K3s's goal or practice. K3s seeks to remain as close to upstream Kubernetes as possible. We do maintain a patche (roughly 300 lines) important to K3s's usecase and deployment model. We maintain patches for other components as well. When possible, we contribute these changes back to the upstream projects, for example with [SELinux support in containerd](https://github.com/containerd/cri/pull/1487/commits/24209b91bf361e131478d15cfea1ab05694dc3eb). This is a common practice amongst software distributions.
+No. A fork implies continued divergence from the original. This is not K3s's goal or practice. K3s seeks to remain as close to upstream Kubernetes as possible. We do maintain a small set of patches (well under 1000 lines) important to K3s's usecase and deployment model. We maintain patches for other components as well. When possible, we contribute these changes back to the upstream projects, for example with [SELinux support in containerd](https://github.com/containerd/cri/pull/1487/commits/24209b91bf361e131478d15cfea1ab05694dc3eb). This is a common practice amongst software distributions.
 
 Release cadence
 -------------------
