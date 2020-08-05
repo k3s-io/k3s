@@ -16,7 +16,7 @@ Great for:
 What is this?
 ---
 
-k3s is a fully compliant Kubernetes distribution with the following changes:
+k3s is a [fully conformant](https://github.com/cncf/k8s-conformance/pulls?q=is%3Apr+k3s) Kubernetes distribution with the following changes:
 
 1. Packaged as a single binary.
 1. Lightweight storage backend based on sqlite3 as the default storage mechanism. etcd3, MySQL, Postgres also still available.
@@ -38,6 +38,12 @@ What's with the name?
 We wanted an installation of Kubernetes that was half the size in terms of memory footprint. Kubernetes is a
 10 letter word stylized as k8s. So something half as big as Kubernetes would be a 5 letter word stylized as
 k3s. There is no long form of k3s and no official pronunciation.
+
+Release cadence
+-------------------
+K3s maintains pace with upstream Kubernetes releases. Our goal is to release patch releases on the same day as upstream and minor releases within a few days.
+
+Our release versioning reflects the version of upstream Kubernetes that is being released. For example, the k3s release [v1.18.6+k3s1](https://github.com/rancher/k3s/releases/tag/v1.18.6%2Bk3s1) maps to the `v1.18.6` Kubernetes release. We add a postfix in the form of `+k3s<number>` to allow us to make additional releases of k3s using the same version of upstream Kubernetes, while remaining [semver](https://semver.org/) compliant. For example, if we discovered a high severity bug in `v1.18.6+k3s1` and needed to release an immediate fix for it, we would release `v1.18.6+k3s2`.
 
 Documentation
 -------------
