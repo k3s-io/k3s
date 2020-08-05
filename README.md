@@ -16,28 +16,48 @@ Great for:
 What is this?
 ---
 
-k3s is a [fully conformant](https://github.com/cncf/k8s-conformance/pulls?q=is%3Apr+k3s) Kubernetes distribution with the following changes:
+K3s is a [fully conformant](https://github.com/cncf/k8s-conformance/pulls?q=is%3Apr+k3s) Kubernetes distribution with the following changes:
 
-1. Packaged as a single binary.
-1. Lightweight storage backend based on sqlite3 as the default storage mechanism. etcd3, MySQL, Postgres also still available.
-1. Wrapped in simple launcher that handles a lot of the complexity of TLS and options.
-1. Secure by default with reasonable defaults for lightweight environments.
-1. Minimal to no OS dependencies (just a sane kernel and cgroup mounts needed). k3s packages required
-   dependencies
-    * containerd
-    * Flannel
-    * CoreDNS
-    * CNI
-    * Host utilities (iptables, socat, etc)
-    * Ingress controller (traefik)
-    * Embedded service loadbalancer
-    * Embedded network policy controller
+1. It is packaged as a single binary.
+1. It swaps out etcd for a lightweight sqlite3 storage backend. etcd3, MySQL, Postgres also available.
+1. It wraps Kubernetes and other components in a single, simple launcher.
+1. It is secure by default with reasonable defaults for lightweight environments.
+1. It has minimal to no OS dependencies (just a sane kernel and cgroup mounts needed).
+
+k3s bundles the following technologies together into a single cohesive distibution:
+
+    * [Containerd](https://containerd.io/) & [runc](https://github.com/opencontainers/runc)
+    * [Flannel](https://github.com/coreos/flannel) for CNI
+    * [CoreDNS](https://coredns.io/)
+    * [Traefik](https://containo.us/traefik/) for ingress
+    * [Klipper-lb](https://github.com/rancher/klipper-lb) as an embedded service loadbalancer provider
+    * [Kube-router](https://www.kube-router.io/) for network policy
+    * [Metric-server](https://github.com/kubernetes-sigs/metrics-server)
+    * A [CRD-driven controller for deploying helm manifests](https://github.com/rancher/helm-controller)
+    * A datastore shim called [kine](https://github.com/rancher/kine) that allows etcd to be replaced with other databases
+    * A [provisioner for local volumes](https://github.com/rancher/local-path-provisioner)
+    * [Host utilities](https://github.com/rancher/k3s-root) such as iptables/nftables, ebtables, ethtool, & socat
+
+Additionally, k3s simplifies Kubernetes operations by maintaining functionality for:
+
+    * Managing the TLS certificates of Kubernetes componenents
+    * Managing the connection between worker and server nodes
+    * Managing an embedded etcd cluster
+    * Auto-deploying Kubernetes resources on startup
+
 
 What's with the name?
 --------------------
 We wanted an installation of Kubernetes that was half the size in terms of memory footprint. Kubernetes is a
 10 letter word stylized as k8s. So something half as big as Kubernetes would be a 5 letter word stylized as
 k3s. There is no long form of k3s and no official pronunciation.
+
+Is this a fork?
+---------------
+No. A fork implies continued divergence from the original. This is not k3s's goal or practice. K3s seeks to remain as close to upstream Kubernetes as possible. We do maintain a set of patches important to k3s's usecase and deployment mdoel. We maintain patches for other components as well. When possible, we contribute these changes back to the upstream projects, for example with [SELinux support in containerd](https://github.com/containerd/cri/pull/1487/commits/24209b91bf361e131478d15cfea1ab05694dc3eb). This is a common practice amongst software distributions.
+
+What's in the distribution?
+---------------------------
 
 Release cadence
 -------------------
