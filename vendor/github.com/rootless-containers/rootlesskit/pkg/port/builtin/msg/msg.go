@@ -62,7 +62,16 @@ func ConnectToChild(c *net.UnixConn, spec port.Spec) (int, error) {
 	}
 	oobSpace := unix.CmsgSpace(4)
 	oob := make([]byte, oobSpace)
-	_, oobN, _, _, err := c.ReadMsgUnix(nil, oob)
+	var (
+		oobN int
+		err  error
+	)
+	for {
+		_, oobN, _, _, err = c.ReadMsgUnix(nil, oob)
+		if err != unix.EINTR {
+			break
+		}
+	}
 	if err != nil {
 		return 0, err
 	}

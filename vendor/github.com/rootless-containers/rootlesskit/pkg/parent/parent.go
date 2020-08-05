@@ -2,6 +2,7 @@ package parent
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -12,10 +13,11 @@ import (
 	"strconv"
 	"syscall"
 
+	"github.com/gofrs/flock"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"github.com/theckman/go-flock"
+	"golang.org/x/sys/unix"
 
 	"github.com/rootless-containers/rootlesskit/pkg/api/router"
 	"github.com/rootless-containers/rootlesskit/pkg/common"
@@ -23,16 +25,24 @@ import (
 	"github.com/rootless-containers/rootlesskit/pkg/network"
 	"github.com/rootless-containers/rootlesskit/pkg/parent/idtools"
 	"github.com/rootless-containers/rootlesskit/pkg/port"
+	"github.com/rootless-containers/rootlesskit/pkg/sigproxy"
+	"github.com/rootless-containers/rootlesskit/pkg/sigproxy/signal"
 )
 
 type Opt struct {
-	PipeFDEnvKey   string               // needs to be set
-	StateDir       string               // directory needs to be precreated
-	StateDirEnvKey string               // optional env key to propagate StateDir value
-	NetworkDriver  network.ParentDriver // nil for HostNetwork
-	PortDriver     port.ParentDriver    // nil for --port-driver=none
-	PublishPorts   []port.Spec
-	CreatePIDNS    bool
+	PipeFDEnvKey     string               // needs to be set
+	StateDir         string               // directory needs to be precreated
+	StateDirEnvKey   string               // optional env key to propagate StateDir value
+	NetworkDriver    network.ParentDriver // nil for HostNetwork
+	PortDriver       port.ParentDriver    // nil for --port-driver=none
+	PublishPorts     []port.Spec
+	CreatePIDNS      bool
+	CreateCgroupNS   bool
+	CreateUTSNS      bool
+	CreateIPCNS      bool
+	ParentEUIDEnvKey string // optional env key to propagate geteuid() value
+	ParentEGIDEnvKey string // optional env key to propagate getegid() value
+	Propagation      string
 }
 
 // Documented state files. Undocumented ones are subject to change.
@@ -42,7 +52,7 @@ const (
 	StateFileAPISock  = "api.sock"  // REST API Socket
 )
 
-func Parent(opt Opt) error {
+func checkPreflight(opt Opt) error {
 	if opt.PipeFDEnvKey == "" {
 		return errors.New("pipe FD env key is not set")
 	}
@@ -54,6 +64,22 @@ func Parent(opt Opt) error {
 	}
 	if stat, err := os.Stat(opt.StateDir); err != nil || !stat.IsDir() {
 		return errors.Wrap(err, "state dir is inaccessible")
+	}
+
+	if os.Geteuid() == 0 {
+		logrus.Warn("Running RootlessKit as the root user is unsupported.")
+	}
+
+	warnSysctl()
+
+	// invalid propagation doesn't result in an error
+	warnPropagation(opt.Propagation)
+	return nil
+}
+
+func Parent(opt Opt) error {
+	if err := checkPreflight(opt); err != nil {
+		return err
 	}
 	lockPath := filepath.Join(opt.StateDir, StateFileLock)
 	lock := flock.NewFlock(lockPath)
@@ -81,9 +107,8 @@ func Parent(opt Opt) error {
 	}
 	cmd := exec.Command("/proc/self/exe", os.Args[1:]...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Pdeathsig:    syscall.SIGKILL,
-		Cloneflags:   syscall.CLONE_NEWUSER,
-		Unshareflags: syscall.CLONE_NEWNS,
+		Pdeathsig:  syscall.SIGKILL,
+		Cloneflags: syscall.CLONE_NEWUSER | syscall.CLONE_NEWNS,
 	}
 	if opt.NetworkDriver != nil {
 		cmd.SysProcAttr.Unshareflags |= syscall.CLONE_NEWNET
@@ -91,6 +116,15 @@ func Parent(opt Opt) error {
 	if opt.CreatePIDNS {
 		// cannot be Unshareflags (panics)
 		cmd.SysProcAttr.Cloneflags |= syscall.CLONE_NEWPID
+	}
+	if opt.CreateCgroupNS {
+		cmd.SysProcAttr.Unshareflags |= unix.CLONE_NEWCGROUP
+	}
+	if opt.CreateUTSNS {
+		cmd.SysProcAttr.Unshareflags |= unix.CLONE_NEWUTS
+	}
+	if opt.CreateIPCNS {
+		cmd.SysProcAttr.Unshareflags |= unix.CLONE_NEWIPC
 	}
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
@@ -100,12 +134,21 @@ func Parent(opt Opt) error {
 	if opt.StateDirEnvKey != "" {
 		cmd.Env = append(cmd.Env, opt.StateDirEnvKey+"="+opt.StateDir)
 	}
+	if opt.ParentEUIDEnvKey != "" {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%d", opt.ParentEUIDEnvKey, os.Geteuid()))
+	}
+	if opt.ParentEGIDEnvKey != "" {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%d", opt.ParentEGIDEnvKey, os.Getegid()))
+	}
 	if err := cmd.Start(); err != nil {
 		return errors.Wrap(err, "failed to start the child")
 	}
 	if err := setupUIDGIDMap(cmd.Process.Pid); err != nil {
 		return errors.Wrap(err, "failed to setup UID/GID map")
 	}
+	sigc := sigproxy.ForwardAllSignals(context.TODO(), cmd.Process.Pid)
+	defer signal.StopCatch(sigc)
+
 	// send message 0
 	msg := common.Message{
 		Stage:    0,
@@ -216,11 +259,11 @@ func newugidmapArgs() ([]string, []string, error) {
 		"1",
 	}
 
-	// get both subid maps
-	// uses username for groupname in case primary groupname is not the same
-	// idtools will fall back to getent if /etc/passwd does not contain username
-	// works with external auth, ie sssd, ldap, nis
-	ims, err := idtools.NewIdentityMapping(u.Username, u.Username)
+	uid, err := strconv.Atoi(u.Uid)
+	if err != nil {
+		return nil, nil, err
+	}
+	ims, err := idtools.NewIdentityMapping(uid, u.Username)
 	if err != nil {
 		return nil, nil, err
 	}

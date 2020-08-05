@@ -1,6 +1,7 @@
 package child
 
 import (
+	"context"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -18,7 +19,18 @@ import (
 	"github.com/rootless-containers/rootlesskit/pkg/msgutil"
 	"github.com/rootless-containers/rootlesskit/pkg/network"
 	"github.com/rootless-containers/rootlesskit/pkg/port"
+	"github.com/rootless-containers/rootlesskit/pkg/sigproxy"
+	sigproxysignal "github.com/rootless-containers/rootlesskit/pkg/sigproxy/signal"
 )
+
+var propagationStates = map[string]uintptr{
+	"private":  uintptr(unix.MS_PRIVATE),
+	"rprivate": uintptr(unix.MS_REC | unix.MS_PRIVATE),
+	"shared":   uintptr(unix.MS_SHARED),
+	"rshared":  uintptr(unix.MS_REC | unix.MS_SHARED),
+	"slave":    uintptr(unix.MS_SLAVE),
+	"rslave":   uintptr(unix.MS_REC | unix.MS_SLAVE),
+}
 
 func createCmd(targetCmd []string) (*exec.Cmd, error) {
 	var args []string
@@ -165,7 +177,8 @@ type Opt struct {
 	CopyUpDriver  copyup.ChildDriver  // cannot be nil if len(CopyUpDirs) != 0
 	CopyUpDirs    []string
 	PortDriver    port.ChildDriver
-	MountProcfs   bool // needs to be set if (and only if) parent.Opt.CreatePIDNS is set
+	MountProcfs   bool   // needs to be set if (and only if) parent.Opt.CreatePIDNS is set
+	Propagation   string // mount propagation type
 	Reaper        bool
 }
 
@@ -214,6 +227,9 @@ func Child(opt Opt) error {
 	if msg.StateDir == "" {
 		return errors.New("got empty StateDir")
 	}
+	if err := setMountPropagation(opt.Propagation); err != nil {
+		return err
+	}
 	etcWasCopied, err := setupCopyDir(opt.CopyUpDriver, opt.CopyUpDirs)
 	if err != nil {
 		return err
@@ -243,7 +259,12 @@ func Child(opt Opt) error {
 			return errors.Wrapf(err, "command %v exited", opt.TargetCmd)
 		}
 	} else {
-		if err := cmd.Run(); err != nil {
+		if err := cmd.Start(); err != nil {
+			return errors.Wrapf(err, "command %v exited", opt.TargetCmd)
+		}
+		sigc := sigproxy.ForwardAllSignals(context.TODO(), cmd.Process.Pid)
+		defer sigproxysignal.StopCatch(sigc)
+		if err := cmd.Wait(); err != nil {
 			return errors.Wrapf(err, "command %v exited", opt.TargetCmd)
 		}
 	}
@@ -254,12 +275,25 @@ func Child(opt Opt) error {
 	return nil
 }
 
+func setMountPropagation(propagation string) error {
+	flags, ok := propagationStates[propagation]
+	if ok {
+		if err := unix.Mount("none", "/", "", flags, ""); err != nil {
+			return errors.Wrapf(err, "failed to share mount point: /")
+		}
+	}
+	return nil
+}
+
 func runAndReap(cmd *exec.Cmd) error {
 	c := make(chan os.Signal, 32)
 	signal.Notify(c, syscall.SIGCHLD)
 	if err := cmd.Start(); err != nil {
 		return err
 	}
+	sigc := sigproxy.ForwardAllSignals(context.TODO(), cmd.Process.Pid)
+	defer sigproxysignal.StopCatch(sigc)
+
 	result := make(chan error)
 	go func() {
 		defer close(result)

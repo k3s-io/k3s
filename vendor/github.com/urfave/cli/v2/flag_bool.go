@@ -34,7 +34,7 @@ func (f *BoolFlag) String() string {
 
 // Names returns the names of the flag
 func (f *BoolFlag) Names() []string {
-	return flagNames(f)
+	return flagNames(f.Name, f.Aliases)
 }
 
 // IsRequired returns whether or not the flag is required

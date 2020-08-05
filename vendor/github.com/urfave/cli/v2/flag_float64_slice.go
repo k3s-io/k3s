@@ -90,7 +90,7 @@ func (f *Float64SliceFlag) String() string {
 
 // Names returns the names of the flag
 func (f *Float64SliceFlag) Names() []string {
-	return flagNames(f)
+	return flagNames(f.Name, f.Aliases)
 }
 
 // IsRequired returns whether or not the flag is required
@@ -155,11 +155,9 @@ func (c *Context) Float64Slice(name string) []float64 {
 func lookupFloat64Slice(name string, set *flag.FlagSet) []float64 {
 	f := set.Lookup(name)
 	if f != nil {
-		parsed, err := (f.Value.(*Float64Slice)).Value(), error(nil)
-		if err != nil {
-			return nil
+		if slice, ok := f.Value.(*Float64Slice); ok {
+			return slice.Value()
 		}
-		return parsed
 	}
 	return nil
 }

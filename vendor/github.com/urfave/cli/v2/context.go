@@ -5,10 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"os"
-	"os/signal"
 	"strings"
-	"syscall"
 )
 
 // Context is a type that is passed through to
@@ -20,7 +17,6 @@ type Context struct {
 	App           *App
 	Command       *Command
 	shellComplete bool
-	setFlags      map[string]bool
 	flagSet       *flag.FlagSet
 	parentContext *Context
 }
@@ -31,19 +27,15 @@ func NewContext(app *App, set *flag.FlagSet, parentCtx *Context) *Context {
 	if parentCtx != nil {
 		c.Context = parentCtx.Context
 		c.shellComplete = parentCtx.shellComplete
+		if parentCtx.flagSet == nil {
+			parentCtx.flagSet = &flag.FlagSet{}
+		}
 	}
 
 	c.Command = &Command{}
 
 	if c.Context == nil {
-		ctx, cancel := context.WithCancel(context.Background())
-		go func() {
-			defer cancel()
-			sigs := make(chan os.Signal, 1)
-			signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-			<-sigs
-		}()
-		c.Context = ctx
+		c.Context = context.Background()
 	}
 
 	return c
@@ -114,8 +106,8 @@ func (c *Context) Lineage() []*Context {
 	return lineage
 }
 
-// value returns the value of the flag corresponding to `name`
-func (c *Context) value(name string) interface{} {
+// Value returns the value of the flag corresponding to `name`
+func (c *Context) Value(name string) interface{} {
 	return c.flagSet.Lookup(name).Value.(flag.Getter).Get()
 }
 

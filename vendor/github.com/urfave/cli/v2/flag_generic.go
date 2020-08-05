@@ -39,7 +39,7 @@ func (f *GenericFlag) String() string {
 
 // Names returns the names of the flag
 func (f *GenericFlag) Names() []string {
-	return flagNames(f)
+	return flagNames(f.Name, f.Aliases)
 }
 
 // IsRequired returns whether or not the flag is required

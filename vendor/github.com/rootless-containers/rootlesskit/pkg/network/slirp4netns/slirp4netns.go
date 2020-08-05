@@ -2,6 +2,7 @@ package slirp4netns
 
 import (
 	"context"
+	"io"
 	"net"
 	"os"
 	"os/exec"
@@ -49,8 +50,13 @@ func DetectFeatures(binary string) (*Features, error) {
 	s := string(b)
 	if err != nil {
 		return nil, errors.Wrapf(err,
-			"command \"%s --help\" failed, make sure slirp4netns v0.2.0+ is installed: %q",
+			"command \"%s --help\" failed, make sure slirp4netns v0.4.0+ is installed: %q",
 			realBinary, s)
+	}
+	if !strings.Contains(s, "--netns-type") {
+		// We don't use --netns-type, but we check the presence of --netns-type to
+		// ensure slirp4netns >= v0.4.0: https://github.com/rootless-containers/rootlesskit/issues/143
+		return nil, errors.New("slirp4netns seems older than v0.4.0")
 	}
 	kernelSupportsEnableSeccomp := false
 	if unix.Prctl(unix.PR_GET_SECCOMP, 0, 0, 0, 0) != unix.EINVAL {
@@ -68,24 +74,42 @@ func DetectFeatures(binary string) (*Features, error) {
 }
 
 // NewParentDriver instantiates new parent driver.
-// ipnet is supported only for slirp4netns v0.3.0+.
-// ipnet MUST be nil for slirp4netns < v0.3.0.
-//
-// disableHostLoopback is supported only for slirp4netns v0.3.0+
-// apiSocketPath is supported only for slirp4netns v0.3.0+
-// enableSandbox is supported only for slirp4netns v0.4.0+
-// enableSeccomp is supported only for slirp4netns v0.4.0+
-func NewParentDriver(binary string, mtu int, ipnet *net.IPNet, disableHostLoopback bool, apiSocketPath string, enableSandbox, enableSeccomp bool) network.ParentDriver {
+// Requires slirp4netns v0.4.0 or later.
+func NewParentDriver(logWriter io.Writer, binary string, mtu int, ipnet *net.IPNet, disableHostLoopback bool, apiSocketPath string, enableSandbox, enableSeccomp bool) (network.ParentDriver, error) {
 	if binary == "" {
-		panic("got empty slirp4netns binary")
+		return nil, errors.New("got empty slirp4netns binary")
 	}
 	if mtu < 0 {
-		panic("got negative mtu")
+		return nil, errors.New("got negative mtu")
 	}
 	if mtu == 0 {
 		mtu = 65520
 	}
+	features, err := DetectFeatures(binary)
+	if err != nil {
+		return nil, err
+	}
+	if ipnet != nil && !features.SupportsCIDR {
+		return nil, errors.New("this version of slirp4netns does not support --cidr")
+	}
+	if disableHostLoopback && !features.SupportsDisableHostLoopback {
+		return nil, errors.New("this version of slirp4netns does not support --disable-host-loopback")
+	}
+	if apiSocketPath != "" && !features.SupportsAPISocket {
+		return nil, errors.New("this version of slirp4netns does not support --api-socket")
+	}
+	if enableSandbox && !features.SupportsEnableSandbox {
+		return nil, errors.New("this version of slirp4netns does not support --enable-sandbox")
+	}
+	if enableSeccomp && !features.SupportsEnableSeccomp {
+		return nil, errors.New("this version of slirp4netns does not support --enable-seccomp")
+	}
+	if enableSeccomp && !features.KernelSupportsEnableSeccomp {
+		return nil, errors.New("kernel does not support seccomp")
+	}
+
 	return &parentDriver{
+		logWriter:           logWriter,
 		binary:              binary,
 		mtu:                 mtu,
 		ipnet:               ipnet,
@@ -93,10 +117,11 @@ func NewParentDriver(binary string, mtu int, ipnet *net.IPNet, disableHostLoopba
 		apiSocketPath:       apiSocketPath,
 		enableSandbox:       enableSandbox,
 		enableSeccomp:       enableSeccomp,
-	}
+	}, nil
 }
 
 type parentDriver struct {
+	logWriter           io.Writer
 	binary              string
 	mtu                 int
 	ipnet               *net.IPNet
@@ -123,7 +148,7 @@ func (d *parentDriver) ConfigureNetwork(childPID int, stateDir string) (*common.
 	}
 	defer readyR.Close()
 	defer readyW.Close()
-	// -r: readyFD
+	// -r: readyFD (requires slirp4netns >= v0.4.0: https://github.com/rootless-containers/rootlesskit/issues/143)
 	opts := []string{"--mtu", strconv.Itoa(d.mtu), "-r", "3"}
 	if d.disableHostLoopback {
 		opts = append(opts, "--disable-host-loopback")
@@ -141,6 +166,9 @@ func (d *parentDriver) ConfigureNetwork(childPID int, stateDir string) (*common.
 		opts = append(opts, "--enable-seccomp")
 	}
 	cmd := exec.CommandContext(ctx, d.binary, append(opts, []string{strconv.Itoa(childPID), tap}...)...)
+	// FIXME: Stdout doen't seem captured
+	cmd.Stdout = d.logWriter
+	cmd.Stderr = d.logWriter
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Pdeathsig: syscall.SIGKILL,
 	}
