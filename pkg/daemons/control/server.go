@@ -141,6 +141,8 @@ func controllerManager(cfg *config.Control, runtime *config.ControlRuntime) erro
 		argsMap["leader-elect"] = "false"
 	}
 
+	argsMap["feature-gates"] = "RotateKubeletServerCertificate=true"
+
 	args := config.GetArgsList(argsMap, cfg.ExtraControllerArgs)
 	logrus.Infof("Running kube-controller-manager %s", config.ArgString(args))
 

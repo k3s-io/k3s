@@ -159,8 +159,6 @@ func startKubelet(cfg *config.Agent) error {
 		argsMap["protect-kernel-defaults"] = "true"
 	}
 
-	argsMap["feature-gates"] = addFeatureGate(argsMap["feature-gates"], "RotateKubeletServerCertificate=true")
-
 	args := config.GetArgsList(argsMap, cfg.ExtraKubeletArgs)
 	logrus.Infof("Running kubelet %s", config.ArgString(args))
 
