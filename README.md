@@ -29,7 +29,7 @@ K3s bundles the following technologies together into a single cohesive distibuti
 * [Containerd](https://containerd.io/) & [runc](https://github.com/opencontainers/runc)
 * [Flannel](https://github.com/coreos/flannel) for CNI
 * [CoreDNS](https://coredns.io/)
-* [Metric-server](https://github.com/kubernetes-sigs/metrics-server)
+* [Metrics Server](https://github.com/kubernetes-sigs/metrics-server)
 * [Traefik](https://containo.us/traefik/) for ingress
 * [Klipper-lb](https://github.com/rancher/klipper-lb) as an embedded service loadbalancer provider
 * [Kube-router](https://www.kube-router.io/) for network policy
