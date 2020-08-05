@@ -33,6 +33,10 @@ func (k *k3s) Instances() (cloudprovider.Instances, bool) {
 	return k, true
 }
 
+func (k *k3s) InstancesV2() (cloudprovider.InstancesV2, bool) {
+	return nil, false
+}
+
 func (k *k3s) LoadBalancer() (cloudprovider.LoadBalancer, bool) {
 	return nil, false
 }
