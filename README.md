@@ -26,24 +26,24 @@ K3s is a [fully conformant](https://github.com/cncf/k8s-conformance/pulls?q=is%3
 
 K3s bundles the following technologies together into a single cohesive distibution:
 
-    * [Containerd](https://containerd.io/) & [runc](https://github.com/opencontainers/runc)
-    * [Flannel](https://github.com/coreos/flannel) for CNI
-    * [CoreDNS](https://coredns.io/)
-    * [Traefik](https://containo.us/traefik/) for ingress
-    * [Klipper-lb](https://github.com/rancher/klipper-lb) as an embedded service loadbalancer provider
-    * [Kube-router](https://www.kube-router.io/) for network policy
-    * [Metric-server](https://github.com/kubernetes-sigs/metrics-server)
-    * A [CRD-driven controller for deploying helm manifests](https://github.com/rancher/helm-controller)
-    * A datastore shim called [kine](https://github.com/rancher/kine) that allows etcd to be replaced with other databases
-    * A [provisioner for local volumes](https://github.com/rancher/local-path-provisioner)
-    * [Host utilities](https://github.com/rancher/k3s-root) such as iptables/nftables, ebtables, ethtool, & socat
+* [Containerd](https://containerd.io/) & [runc](https://github.com/opencontainers/runc)
+* [Flannel](https://github.com/coreos/flannel) for CNI
+* [CoreDNS](https://coredns.io/)
+* [Traefik](https://containo.us/traefik/) for ingress
+* [Klipper-lb](https://github.com/rancher/klipper-lb) as an embedded service loadbalancer provider
+* [Kube-router](https://www.kube-router.io/) for network policy
+* [Metric-server](https://github.com/kubernetes-sigs/metrics-server)
+* A [CRD-driven controller for deploying helm manifests](https://github.com/rancher/helm-controller)
+* A datastore shim called [kine](https://github.com/rancher/kine) that allows etcd to be replaced with other databases
+* A [provisioner for local volumes](https://github.com/rancher/local-path-provisioner)
+* [Host utilities](https://github.com/rancher/k3s-root) such as iptables/nftables, ebtables, ethtool, & socat
 
 Additionally, K3s simplifies Kubernetes operations by maintaining functionality for:
 
-    * Managing the TLS certificates of Kubernetes componenents
-    * Managing the connection between worker and server nodes
-    * Managing an embedded etcd cluster
-    * Auto-deploying Kubernetes resources on startup
+* Managing the TLS certificates of Kubernetes componenents
+* Managing the connection between worker and server nodes
+* Managing an embedded etcd cluster
+* Auto-deploying Kubernetes resources on startup
 
 
 What's with the name?
