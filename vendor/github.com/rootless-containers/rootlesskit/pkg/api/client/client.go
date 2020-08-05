@@ -12,8 +12,8 @@ import (
 	"os"
 
 	"github.com/pkg/errors"
-	"golang.org/x/net/context/ctxhttp"
 
+	"github.com/rootless-containers/rootlesskit/pkg/api"
 	"github.com/rootless-containers/rootlesskit/pkg/port"
 )
 
@@ -80,13 +80,40 @@ func readAtMost(r io.Reader, maxBytes int) ([]byte, error) {
 	return b, nil
 }
 
+// HTTPStatusErrorBodyMaxLength specifies the maximum length of HTTPStatusError.Body
+const HTTPStatusErrorBodyMaxLength = 64 * 1024
+
+// HTTPStatusError is created from non-2XX HTTP response
+type HTTPStatusError struct {
+	// StatusCode is non-2XX status code
+	StatusCode int
+	// Body is at most HTTPStatusErrorBodyMaxLength
+	Body string
+}
+
+// Error implements error.
+// If e.Body is a marshalled string of api.ErrorJSON, Error returns ErrorJSON.Message .
+// Otherwise Error returns a human-readable string that contains e.StatusCode and e.Body.
+func (e *HTTPStatusError) Error() string {
+	if e.Body != "" && len(e.Body) < HTTPStatusErrorBodyMaxLength {
+		var ej api.ErrorJSON
+		if json.Unmarshal([]byte(e.Body), &ej) == nil {
+			return ej.Message
+		}
+	}
+	return fmt.Sprintf("unexpected HTTP status %s, body=%q", http.StatusText(e.StatusCode), e.Body)
+}
+
 func successful(resp *http.Response) error {
 	if resp == nil {
 		return errors.New("nil response")
 	}
 	if resp.StatusCode/100 != 2 {
-		b, _ := readAtMost(resp.Body, 64*1024)
-		return errors.Errorf("unexpected HTTP status %s, body=%q", resp.Status, string(b))
+		b, _ := readAtMost(resp.Body, HTTPStatusErrorBodyMaxLength)
+		return &HTTPStatusError{
+			StatusCode: resp.StatusCode,
+			Body:       string(b),
+		}
 	}
 	return nil
 }
@@ -101,7 +128,13 @@ func (pm *portManager) AddPort(ctx context.Context, spec port.Spec) (*port.Statu
 		return nil, err
 	}
 	u := fmt.Sprintf("http://%s/%s/ports", pm.client.dummyHost, pm.client.version)
-	resp, err := ctxhttp.Post(ctx, pm.client.HTTPClient(), u, "application/json", bytes.NewReader(m))
+	req, err := http.NewRequest("POST", u, bytes.NewReader(m))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req = req.WithContext(ctx)
+	resp, err := pm.client.HTTPClient().Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +151,12 @@ func (pm *portManager) AddPort(ctx context.Context, spec port.Spec) (*port.Statu
 }
 func (pm *portManager) ListPorts(ctx context.Context) ([]port.Status, error) {
 	u := fmt.Sprintf("http://%s/%s/ports", pm.client.dummyHost, pm.client.version)
-	resp, err := ctxhttp.Get(ctx, pm.client.HTTPClient(), u)
+	req, err := http.NewRequest("GET", u, nil)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	resp, err := pm.client.HTTPClient().Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -139,7 +177,8 @@ func (pm *portManager) RemovePort(ctx context.Context, id int) error {
 	if err != nil {
 		return err
 	}
-	resp, err := ctxhttp.Do(ctx, pm.client.HTTPClient(), req)
+	req = req.WithContext(ctx)
+	resp, err := pm.client.HTTPClient().Do(req)
 	if err != nil {
 		return err
 	}

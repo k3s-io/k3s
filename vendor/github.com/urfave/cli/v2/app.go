@@ -1,18 +1,18 @@
 package cli
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
-	"reflect"
 	"sort"
 	"time"
 )
 
 var (
-	changeLogURL            = "https://github.com/urfave/cli/blob/master/CHANGELOG.md"
+	changeLogURL            = "https://github.com/urfave/cli/blob/master/docs/CHANGELOG.md"
 	appActionDeprecationURL = fmt.Sprintf("%s#deprecated-cli-app-action-signature", changeLogURL)
 	contactSysadmin         = "This is an error in the application.  Please contact the distributor of this application if this is not you."
 	errInvalidActionType    = NewExitError("ERROR invalid Action type. "+
@@ -43,8 +43,11 @@ type App struct {
 	Flags []Flag
 	// Boolean to enable bash completion commands
 	EnableBashCompletion bool
-	// Boolean to hide built-in help command
+	// Boolean to hide built-in help command and help flag
 	HideHelp bool
+	// Boolean to hide built-in help command but keep help flag.
+	// Ignored if HideHelp is true.
+	HideHelpCommand bool
 	// Boolean to hide built-in version flag and the VERSION section of help
 	HideVersion bool
 	// categories contains the categorized commands and is populated on app startup
@@ -110,7 +113,6 @@ func NewApp() *App {
 		HelpName:     filepath.Base(os.Args[0]),
 		Usage:        "A new cli application",
 		UsageText:    "",
-		Version:      "0.0.0",
 		BashComplete: DefaultAppComplete,
 		Action:       helpCommand.Action,
 		Compiled:     compileTime(),
@@ -141,7 +143,7 @@ func (a *App) Setup() {
 	}
 
 	if a.Version == "" {
-		a.Version = "0.0.0"
+		a.HideVersion = true
 	}
 
 	if a.BashComplete == nil {
@@ -171,7 +173,9 @@ func (a *App) Setup() {
 	a.Commands = newCommands
 
 	if a.Command(helpCommand.Name) == nil && !a.HideHelp {
-		a.appendCommand(helpCommand)
+		if !a.HideHelpCommand {
+			a.appendCommand(helpCommand)
+		}
 
 		if HelpFlag != nil {
 			a.appendFlag(HelpFlag)
@@ -208,6 +212,13 @@ func (a *App) useShortOptionHandling() bool {
 // Run is the entry point to the cli app. Parses the arguments slice and routes
 // to the proper flag/args combination
 func (a *App) Run(arguments []string) (err error) {
+	return a.RunContext(context.Background(), arguments)
+}
+
+// RunContext is like Run except it takes a Context that will be
+// passed to its commands and sub-commands. Through this, you can
+// propagate timeouts and cancellation requests
+func (a *App) RunContext(ctx context.Context, arguments []string) (err error) {
 	a.Setup()
 
 	// handle the completion flag separately from the flagset since
@@ -223,9 +234,9 @@ func (a *App) Run(arguments []string) (err error) {
 		return err
 	}
 
-	err = parseIter(set, a, arguments[1:])
+	err = parseIter(set, a, arguments[1:], shellComplete)
 	nerr := normalizeFlags(a.Flags, set)
-	context := NewContext(a, set, nil)
+	context := NewContext(a, set, &Context{Context: ctx})
 	if nerr != nil {
 		_, _ = fmt.Fprintln(a.Writer, nerr)
 		_ = ShowAppHelp(context)
@@ -322,18 +333,8 @@ func (a *App) RunAndExitOnError() {
 // RunAsSubcommand invokes the subcommand given the context, parses ctx.Args() to
 // generate command-specific flags
 func (a *App) RunAsSubcommand(ctx *Context) (err error) {
+	// Setup also handles HideHelp and HideHelpCommand
 	a.Setup()
-
-	// append help to commands
-	if len(a.Commands) > 0 {
-		if a.Command(helpCommand.Name) == nil && !a.HideHelp {
-			a.appendCommand(helpCommand)
-
-			if HelpFlag != nil {
-				a.appendFlag(HelpFlag)
-			}
-		}
-	}
 
 	var newCmds []*Command
 	for _, c := range a.Commands {
@@ -349,7 +350,7 @@ func (a *App) RunAsSubcommand(ctx *Context) (err error) {
 		return err
 	}
 
-	err = parseIter(set, a, ctx.Args().Tail())
+	err = parseIter(set, a, ctx.Args().Tail(), ctx.shellComplete)
 	nerr := normalizeFlags(a.Flags, set)
 	context := NewContext(a, set, ctx)
 
@@ -476,16 +477,6 @@ func (a *App) VisibleCommands() []*Command {
 // VisibleFlags returns a slice of the Flags with Hidden=false
 func (a *App) VisibleFlags() []Flag {
 	return visibleFlags(a.Flags)
-}
-
-func (a *App) hasFlag(flag Flag) bool {
-	for _, f := range a.Flags {
-		if reflect.DeepEqual(flag, f) {
-			return true
-		}
-	}
-
-	return false
 }
 
 func (a *App) errWriter() io.Writer {

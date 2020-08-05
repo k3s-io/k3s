@@ -34,7 +34,7 @@ func (f *Uint64Flag) String() string {
 
 // Names returns the names of the flag
 func (f *Uint64Flag) Names() []string {
-	return flagNames(f)
+	return flagNames(f.Name, f.Aliases)
 }
 
 // IsRequired returns whether or not the flag is required

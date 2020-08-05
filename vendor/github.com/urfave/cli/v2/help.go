@@ -138,7 +138,7 @@ func printFlagSuggestions(lastArg string, flags []Flag, writer io.Writer) {
 		if bflag, ok := flag.(*BoolFlag); ok && bflag.Hidden {
 			continue
 		}
-		for _, name := range flag.Names(){
+		for _, name := range flag.Names() {
 			name = strings.TrimSpace(name)
 			// this will get total count utf8 letters in flag name
 			count := utf8.RuneCountInString(name)

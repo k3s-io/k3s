@@ -9,6 +9,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 
+	"github.com/rootless-containers/rootlesskit/pkg/api"
 	"github.com/rootless-containers/rootlesskit/pkg/port"
 )
 
@@ -22,10 +23,7 @@ func (b *Backend) onError(w http.ResponseWriter, r *http.Request, err error, ec 
 	w.WriteHeader(ec)
 	w.Header().Set("Content-Type", "application/json")
 	// it is safe to return the err to the client, because the client is reliable
-	type errorJSON struct {
-		Message string `json:"message"`
-	}
-	e := errorJSON{
+	e := api.ErrorJSON{
 		Message: err.Error(),
 	}
 	_ = json.NewEncoder(w).Encode(e)

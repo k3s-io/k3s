@@ -58,8 +58,7 @@ func ValidatePortSpec(spec port.Spec, existingPorts map[int]*port.Status) error 
 		sp := p.Spec
 		sameProto := sp.Proto == spec.Proto
 		sameParent := sp.ParentIP == spec.ParentIP && sp.ParentPort == spec.ParentPort
-		sameChild := sp.ChildPort == spec.ChildPort
-		if sameProto && (sameParent || sameChild) {
+		if sameProto && sameParent {
 			return errors.Errorf("conflict with ID %d", id)
 		}
 	}

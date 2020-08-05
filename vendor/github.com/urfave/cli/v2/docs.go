@@ -48,8 +48,8 @@ func (a *App) writeDocTemplate(w io.Writer) error {
 	return t.ExecuteTemplate(w, name, &cliTemplate{
 		App:          a,
 		Commands:     prepareCommands(a.Commands, 0),
-		GlobalArgs:   prepareArgsWithValues(a.Flags),
-		SynopsisArgs: prepareArgsSynopsis(a.Flags),
+		GlobalArgs:   prepareArgsWithValues(a.VisibleFlags()),
+		SynopsisArgs: prepareArgsSynopsis(a.VisibleFlags()),
 	})
 }
 

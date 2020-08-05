@@ -466,6 +466,8 @@ github.com/go-sql-driver/mysql
 github.com/go-stack/stack
 # github.com/godbus/dbus v0.0.0-20181101234600-2ff6f7ffd60f
 github.com/godbus/dbus
+# github.com/gofrs/flock v0.7.1
+github.com/gofrs/flock
 # github.com/gogo/googleapis v1.3.0
 github.com/gogo/googleapis/google/rpc
 # github.com/gogo/protobuf v1.3.1
@@ -578,7 +580,7 @@ github.com/gophercloud/gophercloud/openstack/networking/v2/networks
 github.com/gophercloud/gophercloud/openstack/networking/v2/ports
 github.com/gophercloud/gophercloud/openstack/utils
 github.com/gophercloud/gophercloud/pagination
-# github.com/gorilla/mux v1.7.3
+# github.com/gorilla/mux v1.7.4
 github.com/gorilla/mux
 # github.com/gorilla/websocket v1.4.1
 github.com/gorilla/websocket
@@ -608,7 +610,7 @@ github.com/jonboulle/clockwork
 github.com/json-iterator/go
 # github.com/karrick/godirwalk v1.7.5
 github.com/karrick/godirwalk
-# github.com/konsorten/go-windows-terminal-sequences v1.0.2
+# github.com/konsorten/go-windows-terminal-sequences v1.0.3
 github.com/konsorten/go-windows-terminal-sequences
 # github.com/kubernetes-sigs/cri-tools v0.0.0-00010101000000-000000000000 => github.com/rancher/cri-tools v1.18.0-k3s1
 github.com/kubernetes-sigs/cri-tools/cmd/crictl
@@ -641,6 +643,8 @@ github.com/mistifyio/go-zfs
 github.com/mitchellh/go-wordwrap
 # github.com/mitchellh/mapstructure v1.1.2
 github.com/mitchellh/mapstructure
+# github.com/moby/sys/mountinfo v0.1.3
+github.com/moby/sys/mountinfo
 # github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd
 github.com/modern-go/concurrent
 # github.com/modern-go/reflect2 v1.0.1
@@ -800,7 +804,8 @@ github.com/rancher/wrangler-api/pkg/generated/controllers/rbac
 github.com/rancher/wrangler-api/pkg/generated/controllers/rbac/v1
 # github.com/robfig/cron v1.1.0
 github.com/robfig/cron
-# github.com/rootless-containers/rootlesskit v0.7.2
+# github.com/rootless-containers/rootlesskit v0.10.0
+github.com/rootless-containers/rootlesskit/pkg/api
 github.com/rootless-containers/rootlesskit/pkg/api/client
 github.com/rootless-containers/rootlesskit/pkg/api/router
 github.com/rootless-containers/rootlesskit/pkg/child
@@ -824,6 +829,8 @@ github.com/rootless-containers/rootlesskit/pkg/port/builtin/parent/tcp
 github.com/rootless-containers/rootlesskit/pkg/port/builtin/parent/udp
 github.com/rootless-containers/rootlesskit/pkg/port/builtin/parent/udp/udpproxy
 github.com/rootless-containers/rootlesskit/pkg/port/portutil
+github.com/rootless-containers/rootlesskit/pkg/sigproxy
+github.com/rootless-containers/rootlesskit/pkg/sigproxy/signal
 # github.com/rubiojr/go-vhd v0.0.0-20160810183302-0bfd3b39853c
 github.com/rubiojr/go-vhd/vhd
 # github.com/russross/blackfriday v1.5.2
@@ -836,7 +843,7 @@ github.com/satori/go.uuid
 github.com/seccomp/libseccomp-golang
 # github.com/shurcooL/sanitized_anchor_name v1.0.0
 github.com/shurcooL/sanitized_anchor_name
-# github.com/sirupsen/logrus v1.4.2
+# github.com/sirupsen/logrus v1.6.0
 github.com/sirupsen/logrus
 # github.com/soheilhy/cmux v0.1.4
 github.com/soheilhy/cmux
@@ -851,13 +858,11 @@ github.com/spf13/pflag
 github.com/syndtr/gocapability/capability
 # github.com/tchap/go-patricia v2.3.0+incompatible
 github.com/tchap/go-patricia/patricia
-# github.com/theckman/go-flock v0.7.1
-github.com/theckman/go-flock
 # github.com/tmc/grpc-websocket-proxy v0.0.0-20170815181823-89b8d40f7ca8
 github.com/tmc/grpc-websocket-proxy/wsproxy
 # github.com/urfave/cli v1.22.2
 github.com/urfave/cli
-# github.com/urfave/cli/v2 v2.0.0
+# github.com/urfave/cli/v2 v2.2.0
 github.com/urfave/cli/v2
 # github.com/vishvananda/netlink v1.0.0
 github.com/vishvananda/netlink
@@ -1027,7 +1032,7 @@ golang.org/x/crypto/salsa20/salsa
 golang.org/x/crypto/ssh
 golang.org/x/crypto/ssh/internal/bcrypt_pbkdf
 golang.org/x/crypto/ssh/terminal
-# golang.org/x/net v0.0.0-20191204025024-5ee1b9f4859a
+# golang.org/x/net v0.0.0-20200506145744-7e3656a0809f
 golang.org/x/net/bpf
 golang.org/x/net/context
 golang.org/x/net/context/ctxhttp
@@ -1056,8 +1061,9 @@ golang.org/x/oauth2/jwt
 golang.org/x/sync/errgroup
 golang.org/x/sync/semaphore
 golang.org/x/sync/singleflight
-# golang.org/x/sys v0.0.0-20191204072324-ce4227a45e2e
+# golang.org/x/sys v0.0.0-20200501145240-bc7a7d42d5c3
 golang.org/x/sys/cpu
+golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix
 golang.org/x/sys/windows
 golang.org/x/sys/windows/registry

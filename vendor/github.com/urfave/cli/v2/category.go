@@ -1,5 +1,6 @@
 package cli
 
+// CommandCategories interface allows for category manipulation
 type CommandCategories interface {
 	// AddCommand adds a command to a category, creating a new category if necessary.
 	AddCommand(category string, command *Command)

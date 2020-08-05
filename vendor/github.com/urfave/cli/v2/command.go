@@ -41,8 +41,11 @@ type Command struct {
 	Flags []Flag
 	// Treat all flags as normal arguments if true
 	SkipFlagParsing bool
-	// Boolean to hide built-in help command
+	// Boolean to hide built-in help command and help flag
 	HideHelp bool
+	// Boolean to hide built-in help command but keep help flag
+	// Ignored if HideHelp is true.
+	HideHelpCommand bool
 	// Boolean to hide this command from help or completion
 	Hidden bool
 	// Boolean to enable short-option handling so user can combine several
@@ -100,7 +103,7 @@ func (c *Command) Run(ctx *Context) (err error) {
 		c.UseShortOptionHandling = true
 	}
 
-	set, err := c.parseFlags(ctx.Args())
+	set, err := c.parseFlags(ctx.Args(), ctx.shellComplete)
 
 	context := NewContext(ctx.App, set, ctx)
 	context.Command = c
@@ -174,7 +177,7 @@ func (c *Command) useShortOptionHandling() bool {
 	return c.UseShortOptionHandling
 }
 
-func (c *Command) parseFlags(args Args) (*flag.FlagSet, error) {
+func (c *Command) parseFlags(args Args, shellComplete bool) (*flag.FlagSet, error) {
 	set, err := c.newFlagSet()
 	if err != nil {
 		return nil, err
@@ -184,7 +187,7 @@ func (c *Command) parseFlags(args Args) (*flag.FlagSet, error) {
 		return set, set.Parse(append([]string{"--"}, args.Tail()...))
 	}
 
-	err = parseIter(set, c, args.Tail())
+	err = parseIter(set, c, args.Tail(), shellComplete)
 	if err != nil {
 		return nil, err
 	}
@@ -236,6 +239,7 @@ func (c *Command) startApp(ctx *Context) error {
 	app.Commands = c.Subcommands
 	app.Flags = c.Flags
 	app.HideHelp = c.HideHelp
+	app.HideHelpCommand = c.HideHelpCommand
 
 	app.Version = ctx.App.Version
 	app.HideVersion = ctx.App.HideVersion

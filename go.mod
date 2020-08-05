@@ -86,7 +86,7 @@ require (
 	github.com/gogo/googleapis v1.3.0 // indirect
 	github.com/google/tcpproxy v0.0.0-20180808230851-dfa16c61dad2
 	github.com/google/uuid v1.1.1
-	github.com/gorilla/mux v1.7.3
+	github.com/gorilla/mux v1.7.4
 	github.com/gorilla/websocket v1.4.1
 	github.com/kubernetes-sigs/cri-tools v0.0.0-00010101000000-000000000000
 	github.com/lib/pq v1.1.1
@@ -102,16 +102,16 @@ require (
 	github.com/rancher/spur v0.0.0-20200617165101-8702c8e4ce7a
 	github.com/rancher/wrangler v0.6.1
 	github.com/rancher/wrangler-api v0.6.0
-	github.com/rootless-containers/rootlesskit v0.7.2
-	github.com/sirupsen/logrus v1.4.2
+	github.com/rootless-containers/rootlesskit v0.10.0
+	github.com/sirupsen/logrus v1.6.0
 	github.com/spf13/pflag v1.0.5
 	github.com/tchap/go-patricia v2.3.0+incompatible // indirect
 	github.com/urfave/cli v1.22.2
 	// 54ba958 is v3.4.9
 	go.etcd.io/etcd v0.5.0-alpha.5.0.20200520232829-54ba9589114f
 	golang.org/x/crypto v0.0.0-20200220183623-bac4c82f6975
-	golang.org/x/net v0.0.0-20191204025024-5ee1b9f4859a
-	golang.org/x/sys v0.0.0-20191204072324-ce4227a45e2e
+	golang.org/x/net v0.0.0-20200506145744-7e3656a0809f
+	golang.org/x/sys v0.0.0-20200501145240-bc7a7d42d5c3
 	google.golang.org/grpc v1.26.0
 	gopkg.in/yaml.v2 v2.3.0
 	k8s.io/api v0.18.5
