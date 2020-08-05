@@ -1,4 +1,4 @@
-k3s - Lightweight Kubernetes
+K3s - Lightweight Kubernetes
 ===============================================
 
 Lightweight Kubernetes.  Easy to install, half the memory, all in a binary less than 100 MB.
@@ -38,7 +38,7 @@ K3s bundles the following technologies together into a single cohesive distibuti
     * A [provisioner for local volumes](https://github.com/rancher/local-path-provisioner)
     * [Host utilities](https://github.com/rancher/k3s-root) such as iptables/nftables, ebtables, ethtool, & socat
 
-Additionally, k3s simplifies Kubernetes operations by maintaining functionality for:
+Additionally, K3s simplifies Kubernetes operations by maintaining functionality for:
 
     * Managing the TLS certificates of Kubernetes componenents
     * Managing the connection between worker and server nodes
@@ -50,27 +50,27 @@ What's with the name?
 --------------------
 We wanted an installation of Kubernetes that was half the size in terms of memory footprint. Kubernetes is a
 10 letter word stylized as k8s. So something half as big as Kubernetes would be a 5 letter word stylized as
-k3s. There is no long form of k3s and no official pronunciation.
+K3s. There is no long form of K3s and no official pronunciation.
 
 Is this a fork?
 ---------------
-No. A fork implies continued divergence from the original. This is not k3s's goal or practice. K3s seeks to remain as close to upstream Kubernetes as possible. We do maintain a set of patches important to k3s's usecase and deployment model. We maintain patches for other components as well. When possible, we contribute these changes back to the upstream projects, for example with [SELinux support in containerd](https://github.com/containerd/cri/pull/1487/commits/24209b91bf361e131478d15cfea1ab05694dc3eb). This is a common practice amongst software distributions.
+No. A fork implies continued divergence from the original. This is not K3s's goal or practice. K3s seeks to remain as close to upstream Kubernetes as possible. We do maintain a set of patches important to K3s's usecase and deployment model. We maintain patches for other components as well. When possible, we contribute these changes back to the upstream projects, for example with [SELinux support in containerd](https://github.com/containerd/cri/pull/1487/commits/24209b91bf361e131478d15cfea1ab05694dc3eb). This is a common practice amongst software distributions.
 
 Release cadence
 -------------------
 K3s maintains pace with upstream Kubernetes releases. Our goal is to release patch releases on the same day as upstream and minor releases within a few days.
 
-Our release versioning reflects the version of upstream Kubernetes that is being released. For example, the k3s release [v1.18.6+k3s1](https://github.com/rancher/k3s/releases/tag/v1.18.6%2Bk3s1) maps to the `v1.18.6` Kubernetes release. We add a postfix in the form of `+k3s<number>` to allow us to make additional releases of k3s using the same version of upstream Kubernetes, while remaining [semver](https://semver.org/) compliant. For example, if we discovered a high severity bug in `v1.18.6+k3s1` and needed to release an immediate fix for it, we would release `v1.18.6+k3s2`.
+Our release versioning reflects the version of upstream Kubernetes that is being released. For example, the K3s release [v1.18.6+k3s1](https://github.com/rancher/k3s/releases/tag/v1.18.6%2Bk3s1) maps to the `v1.18.6` Kubernetes release. We add a postfix in the form of `+k3s<number>` to allow us to make additional releases using the same version of upstream Kubernetes, while remaining [semver](https://semver.org/) compliant. For example, if we discovered a high severity bug in `v1.18.6+k3s1` and needed to release an immediate fix for it, we would release `v1.18.6+k3s2`.
 
 Documentation
 -------------
 
-Please see [the official docs site](https://rancher.com/docs/k3s/latest/en/) for complete documentation on k3s.
+Please see [the official docs site](https://rancher.com/docs/k3s/latest/en/) for complete documentation.
 
 Quick-Start - Install Script
 --------------
 
-The k3s `install.sh` script provides a convenient way for installing to systemd or openrc,
+The `install.sh` script provides a convenient way for installing to systemd or openrc,
 to install k3s as a service just run:
 
 ```bash
@@ -78,7 +78,7 @@ curl -sfL https://get.k3s.io | sh -
 ```
 
 A kubeconfig file is written to `/etc/rancher/k3s/k3s.yaml` and the service is automatically started or restarted.
-The install script will install k3s and additional utilities, such as `kubectl`, `crictl`, `k3s-killall.sh`, and `k3s-uninstall.sh`, for example:
+The install script will install K3s and additional utilities, such as `kubectl`, `crictl`, `k3s-killall.sh`, and `k3s-uninstall.sh`, for example:
 
 ```bash
 sudo kubectl get nodes
