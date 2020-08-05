@@ -24,7 +24,7 @@ K3s is a [fully conformant](https://github.com/cncf/k8s-conformance/pulls?q=is%3
 1. It is secure by default with reasonable defaults for lightweight environments.
 1. It has minimal to no OS dependencies (just a sane kernel and cgroup mounts needed).
 
-k3s bundles the following technologies together into a single cohesive distibution:
+K3s bundles the following technologies together into a single cohesive distibution:
 
     * [Containerd](https://containerd.io/) & [runc](https://github.com/opencontainers/runc)
     * [Flannel](https://github.com/coreos/flannel) for CNI
