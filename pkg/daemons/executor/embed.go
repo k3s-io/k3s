@@ -24,7 +24,7 @@ func init() {
 type Embedded struct{}
 
 func (Embedded) Kubelet(args []string) error {
-	command := kubelet.NewKubeletCommand(context.Background().Done())
+	command := kubelet.NewKubeletCommand(context.Background())
 	command.SetArgs(args)
 
 	go func() {
