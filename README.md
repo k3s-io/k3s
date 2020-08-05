@@ -56,9 +56,6 @@ Is this a fork?
 ---------------
 No. A fork implies continued divergence from the original. This is not k3s's goal or practice. K3s seeks to remain as close to upstream Kubernetes as possible. We do maintain a set of patches important to k3s's usecase and deployment model. We maintain patches for other components as well. When possible, we contribute these changes back to the upstream projects, for example with [SELinux support in containerd](https://github.com/containerd/cri/pull/1487/commits/24209b91bf361e131478d15cfea1ab05694dc3eb). This is a common practice amongst software distributions.
 
-What's in the distribution?
----------------------------
-
 Release cadence
 -------------------
 K3s maintains pace with upstream Kubernetes releases. Our goal is to release patch releases on the same day as upstream and minor releases within a few days.
