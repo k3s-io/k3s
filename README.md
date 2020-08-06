@@ -78,7 +78,9 @@ This is a common point of confusion because it has changed over time. Early vers
 1. In-tree storage drivers
 2. In-tree cloud provider
 
-We remove these to achieve a smaller binary size. They can be removed while remaining conformant because neither affect core Kubernetes functionality. They are also dependent on cloud or data center technologies/services, which are generally not available in K3s's usecases. Finally, both have out-of-tree alternatives in the form of [CSI](https://github.com/container-storage-interface/spec/blob/master/spec.md) and [CCM](https://kubernetes.io/docs/tasks/administer-cluster/running-cloud-controller/), which work in K3s and which upstream is moving towards.
+Both of these have out-of-tree alternatives in the form of [CSI](https://github.com/container-storage-interface/spec/blob/master/spec.md) and [CCM](https://kubernetes.io/docs/tasks/administer-cluster/running-cloud-controller/), which work in K3s and which upstream is moving towards.
+
+We remove these to achieve a smaller binary size. They can be removed while remaining conformant because neither affect core Kubernetes functionality. They are also dependent on third-party cloud or data center technologies/services, which may not be available in many of K3s's usecases.
 
 Release cadence
 -------------------
