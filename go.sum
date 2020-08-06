@@ -630,8 +630,8 @@ github.com/rancher/cri v1.3.0-k3s.7 h1:5V/AVFLCpYIsJMavJKjKpwrQU92e87dhWSX43N4q8
 github.com/rancher/cri v1.3.0-k3s.7/go.mod h1:Ht5T1dIKzm+4NExmb7wDVG6qR+j0xeXIjjhCv1d9geY=
 github.com/rancher/cri-tools v1.18.0-k3s1 h1:pLYthxpSu6k3Up9tNAMA0MK2ERqB6FC1sZQPRSW1qSg=
 github.com/rancher/cri-tools v1.18.0-k3s1/go.mod h1:Ij/GWNRcEDP6zVN6eQpvN/s0nhuJVtPQFy7RAdl+Wu8=
-github.com/rancher/dynamiclistener v0.2.1-0.20200418023342-52ede5ec9234 h1:wZ1Zh7fI7B9hfZw9Ouhz7171CZKu6XffM3ysUhhO6i0=
-github.com/rancher/dynamiclistener v0.2.1-0.20200418023342-52ede5ec9234/go.mod h1:9WusTANoiRr8cDWCTtf5txieulezHbpv4vhLADPp0zU=
+github.com/rancher/dynamiclistener v0.2.1 h1:QiY1jxs2TOLrKB04G36vE2ehEvPMPGiWp8zEHLKB1nE=
+github.com/rancher/dynamiclistener v0.2.1/go.mod h1:9WusTANoiRr8cDWCTtf5txieulezHbpv4vhLADPp0zU=
 github.com/rancher/flannel v0.12.0-k3s1 h1:P23dWSk/9mGT1x2rDWW9JXNrF/0kjftiHwMau/+ZLGM=
 github.com/rancher/flannel v0.12.0-k3s1/go.mod h1:zQ/9Uhaw0yV4Wh6ljVwHVT1x5KuhenZA+6L8lRzOJEY=
 github.com/rancher/go-powershell v0.0.0-20200701182037-6845e6fcfa79 h1:UeC0rjrIel8hHz92cdVN09Cm4Hz+BhsPP/ZvQnPOr58=

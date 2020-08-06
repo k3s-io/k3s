@@ -33,7 +33,7 @@ import (
 	"math"
 	"math/big"
 	"net"
-	"path"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -43,6 +43,10 @@ import (
 const (
 	rsaKeySize   = 2048
 	duration365d = time.Hour * 24 * 365
+)
+
+var (
+	ErrStaticCert = errors.New("cannot renew static certificate")
 )
 
 // Config contains the basic fields required for creating a certificate
@@ -119,7 +123,13 @@ func NewSignedCert(cfg Config, key crypto.Signer, caCert *x509.Certificate, caKe
 	if err != nil {
 		return nil, err
 	}
-	return x509.ParseCertificate(certDERBytes)
+
+	parsedCert, err := x509.ParseCertificate(certDERBytes)
+	if err == nil {
+		logrus.Infof("certificate %s signed by %s: notBefore=%s notAfter=%s",
+			parsedCert.Subject, caCert.Subject, parsedCert.NotBefore, parsedCert.NotAfter)
+	}
+	return parsedCert, err
 }
 
 // MakeEllipticPrivateKeyPEM creates an ECDSA private key
@@ -161,8 +171,8 @@ func GenerateSelfSignedCertKeyWithFixtures(host string, alternateIPs []net.IP, a
 	maxAge := time.Hour * 24 * 365          // one year self-signed certs
 
 	baseName := fmt.Sprintf("%s_%s_%s", host, strings.Join(ipsToStrings(alternateIPs), "-"), strings.Join(alternateDNS, "-"))
-	certFixturePath := path.Join(fixtureDirectory, baseName+".crt")
-	keyFixturePath := path.Join(fixtureDirectory, baseName+".key")
+	certFixturePath := filepath.Join(fixtureDirectory, baseName+".crt")
+	keyFixturePath := filepath.Join(fixtureDirectory, baseName+".key")
 	if len(fixtureDirectory) > 0 {
 		cert, err := ioutil.ReadFile(certFixturePath)
 		if err == nil {
@@ -271,11 +281,11 @@ func ipsToStrings(ips []net.IP) []string {
 }
 
 // IsCertExpired checks if the certificate about to expire
-func IsCertExpired(cert *x509.Certificate) bool {
+func IsCertExpired(cert *x509.Certificate, days int) bool {
 	expirationDate := cert.NotAfter
-	diffDays := expirationDate.Sub(time.Now()).Hours() / 24.0
-	if diffDays <= 90 {
-		logrus.Infof("certificate will expire in %f days", diffDays)
+	diffDays := time.Until(expirationDate).Hours() / 24.0
+	if diffDays <= float64(days) {
+		logrus.Infof("certificate %s will expire in %f days at %s", cert.Subject, diffDays, cert.NotAfter)
 		return true
 	}
 	return false
