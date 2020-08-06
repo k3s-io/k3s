@@ -1,7 +1,7 @@
 K3s - Lightweight Kubernetes
 ===============================================
 
-Lightweight Kubernetes.  Easy to install, half the memory, all in a binary less than 100 MB.
+Lightweight Kubernetes.  Production ready, easy to install, half the memory, all in a binary less than 100 MB.
 
 Great for:
 
@@ -16,7 +16,7 @@ Great for:
 What is this?
 ---
 
-K3s is a [fully conformant](https://github.com/cncf/k8s-conformance/pulls?q=is%3Apr+k3s) Kubernetes distribution with the following changes:
+K3s is a [fully conformant](https://github.com/cncf/k8s-conformance/pulls?q=is%3Apr+k3s) production-ready Kubernetes distribution with the following changes:
 
 1. It is packaged as a single binary.
 1. It adds support for sqlite3 as the default storage backend. Etcd3, MySQL, and Postgres are also supported.
@@ -59,7 +59,7 @@ Is this a fork?
 ---------------
 No, it's a distribution. A fork implies continued divergence from the original. This is not K3s's goal or practice. K3s explicitly intends to not change any core Kubernetes functionality. We seek to remain as close to upstream Kubernetes as possible. We do maintain a small set of patches (well under 1000 lines) important to K3s's usecase and deployment model. We maintain patches for other components as well. When possible, we contribute these changes back to the upstream projects, for example with [SELinux support in containerd](https://github.com/containerd/cri/pull/1487/commits/24209b91bf361e131478d15cfea1ab05694dc3eb). This is a common practice amongst software distributions.
 
-K3s is a distribution because it packages additional components and services necessary for a fully functional cluster that go beyond vanilla Kubernetes. These are opinionated choices on technologies for components like ingress, storage class, network policy, service load balancer, and even container runtime. These choices and technologies are touched on in more detail in the [What is this?](what-is-this) section.
+K3s is a distribution because it packages additional components and services necessary for a fully functional cluster that go beyond vanilla Kubernetes. These are opinionated choices on technologies for components like ingress, storage class, network policy, service load balancer, and even container runtime. These choices and technologies are touched on in more detail in the [What is this?](#what-is-this) section.
 
 
 How is this lightweight or smaller than upstream Kubernetes?
