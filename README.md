@@ -40,6 +40,8 @@ K3s bundles the following technologies together into a single cohesive distibuti
 * [Local-path-provisioner](https://github.com/rancher/local-path-provisioner) for provisioning volumes using local storage
 * [Host utilities](https://github.com/rancher/k3s-root) such as iptables/nftables, ebtables, ethtool, & socat
 
+These technologies can be disabled or swapped out for technolgoies of your choice.
+
 Additionally, K3s simplifies Kubernetes operations by maintaining functionality for:
 
 * Managing the TLS certificates of Kubernetes componenents
@@ -83,7 +85,7 @@ Both of these have out-of-tree alternatives in the form of [CSI](https://github.
 We remove these to achieve a smaller binary size. They can be removed while remaining conformant because neither affect core Kubernetes functionality. They are also dependent on third-party cloud or data center technologies/services, which may not be available in many of K3s's usecases.
 
 Release cadence
--------------------
+---
 K3s maintains pace with upstream Kubernetes releases. Our goal is to release patch releases on the same day as upstream and minor releases within a few days.
 
 Our release versioning reflects the version of upstream Kubernetes that is being released. For example, the K3s release [v1.18.6+k3s1](https://github.com/rancher/k3s/releases/tag/v1.18.6%2Bk3s1) maps to the `v1.18.6` Kubernetes release. We add a postfix in the form of `+k3s<number>` to allow us to make additional releases using the same version of upstream Kubernetes, while remaining [semver](https://semver.org/) compliant. For example, if we discovered a high severity bug in `v1.18.6+k3s1` and needed to release an immediate fix for it, we would release `v1.18.6+k3s2`.
