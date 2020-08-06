@@ -48,6 +48,7 @@ type Server struct {
 	ServerURL                string
 	FlannelBackend           string
 	DefaultLocalStoragePath  string
+	AdmissionPlugins         string
 	DisableCCM               bool
 	DisableNPC               bool
 	DisableKubeProxy         bool
@@ -270,6 +271,11 @@ func NewServerCommand(action func(*cli.Context) error) *cli.Command {
 				Usage:       "(experimental/cluster) Server to connect to, used to join a cluster",
 				EnvVars:     []string{version.ProgramUpper + "_URL"},
 				Destination: &ServerConfig.ServerURL,
+			},
+			&cli.StringFlag{
+				Name:        "admission-plugins",
+				Usage:       "Comma delimited list of admission plugins",
+				Destination: &ServerConfig.AdmissionPlugins,
 			},
 			&cli.BoolFlag{
 				Name:        "cluster-init",

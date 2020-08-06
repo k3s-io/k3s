@@ -207,9 +207,15 @@ func apiServer(ctx context.Context, cfg *config.Control, runtime *config.Control
 	argsMap["requestheader-group-headers"] = "X-Remote-Group"
 	argsMap["requestheader-username-headers"] = "X-Remote-User"
 	argsMap["client-ca-file"] = runtime.ClientCA
-	argsMap["enable-admission-plugins"] = "NodeRestriction"
 	argsMap["anonymous-auth"] = "false"
 	argsMap["profiling"] = "false"
+
+	if cfg.AdmissionPlugins != "" {
+		argsMap["enable-admission-plugins"] = "NodeRestriction" + "," + cfg.AdmissionPlugins
+	} else {
+		argsMap["enable-admission-plugins"] = "NodeRestriction"
+	}
+
 	if cfg.EncryptSecrets {
 		argsMap["encryption-provider-config"] = runtime.EncryptionConfig
 	}

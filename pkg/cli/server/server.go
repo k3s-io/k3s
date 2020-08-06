@@ -109,6 +109,7 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	serverConfig.ControlConfig.ClusterInit = cfg.ClusterInit
 	serverConfig.ControlConfig.ClusterReset = cfg.ClusterReset
 	serverConfig.ControlConfig.EncryptSecrets = cfg.EncryptSecrets
+	serverConfig.ControlConfig.AdmissionPlugins = cfg.AdmissionPlugins
 
 	if serverConfig.ControlConfig.SupervisorPort == 0 {
 		serverConfig.ControlConfig.SupervisorPort = serverConfig.ControlConfig.HTTPSPort

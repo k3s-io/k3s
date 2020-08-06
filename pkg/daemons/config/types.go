@@ -119,6 +119,7 @@ type Control struct {
 	FlannelBackend           string
 	IPSECPSK                 string
 	DefaultLocalStoragePath  string
+	AdmissionPlugins         string
 	DisableCCM               bool
 	DisableNPC               bool
 	DisableKubeProxy         bool
