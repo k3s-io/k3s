@@ -46,8 +46,8 @@ Additionally, K3s simplifies Kubernetes operations by maintaining functionality 
 
 * Managing the TLS certificates of Kubernetes componenents
 * Managing the connection between worker and server nodes
-* Managing an embedded etcd cluster
 * Auto-deploying Kubernetes resources from local manifests, in realtime as they are changed.
+* Managing an embedded etcd cluster (work in progress)
 
 
 What's with the name?
