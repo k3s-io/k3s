@@ -76,7 +76,7 @@ The binary is smaller by removing third-party storage drivers and cloud provider
 
 What have you removed from upstream Kubernetes?
 ---
-This is a common point of confusion because it has changed over time. Early versions of K3s had much more removed than current version. Current versions of K3s removes two things:
+This is a common point of confusion because it has changed over time. Early versions of K3s had much more removed than current version. K3s currently removes two things:
 1. In-tree storage drivers
 2. In-tree cloud provider
 
