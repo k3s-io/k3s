@@ -72,11 +72,11 @@ There are two major ways that K3s is lighter weight than upstream Kubernetes:
 
 The memory footprint is reduced primarily by running many components inside of single process. This eliminates significant overhead that would otherwise be duplicated for each component.
 
-The binary is smaller by disabling third-party storage drivers and cloud providers, which is explained in more detail below.
+The binary is smaller by removing third-party storage drivers and cloud providers, which is explained in more detail below.
 
 What have you removed from upstream Kubernetes?
 ---
-This is a common point of confusion because it has changed over time. Early versions of K3s had much more removed than current version. Current versions of K3s disables two things:
+This is a common point of confusion because it has changed over time. Early versions of K3s had much more removed than current version. Current versions of K3s removes two things:
 1. In-tree storage drivers
 2. In-tree cloud provider
 
