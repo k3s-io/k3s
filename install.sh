@@ -619,12 +619,12 @@ for cmd in kubectl crictl ctr; do
 done
 
 rm -rf /etc/rancher/k3s
+rm -rf /run/k3s
+rm -rf /run/flannel
 rm -rf /var/lib/rancher/k3s
 rm -rf /var/lib/kubelet
 rm -f ${BIN_DIR}/k3s
 rm -f ${KILLALL_K3S_SH}
-rm -f /run/k3s
-rm -f /run/flannel
 EOF
     $SUDO chmod 755 ${UNINSTALL_K3S_SH}
     $SUDO chown root:root ${UNINSTALL_K3S_SH}
