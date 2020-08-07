@@ -98,8 +98,9 @@ Please see [the official docs site](https://rancher.com/docs/k3s/latest/en/) for
 Quick-Start - Install Script
 --------------
 
-The `install.sh` script provides a convenient way to download K3s and add a service to systemd or openrc - 
-to install k3s as a service just run:
+The `install.sh` script provides a convenient way to download K3s and add a service to systemd or openrc.
+
+To install k3s as a service just run:
 
 ```bash
 curl -sfL https://get.k3s.io | sh -
