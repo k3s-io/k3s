@@ -1,7 +1,7 @@
-k3s - Lightweight Kubernetes
+K3s - Lightweight Kubernetes
 ===============================================
 
-Lightweight Kubernetes.  Easy to install, half the memory, all in a binary less than 100 MB.
+Lightweight Kubernetes.  Production ready, easy to install, half the memory, all in a binary less than 100 MB.
 
 Great for:
 
@@ -16,46 +16,98 @@ Great for:
 What is this?
 ---
 
-k3s is a fully compliant Kubernetes distribution with the following changes:
+K3s is a [fully conformant](https://github.com/cncf/k8s-conformance/pulls?q=is%3Apr+k3s) production-ready Kubernetes distribution with the following changes:
 
-1. Packaged as a single binary.
-1. Lightweight storage backend based on sqlite3 as the default storage mechanism. etcd3, MySQL, Postgres also still available.
-1. Wrapped in simple launcher that handles a lot of the complexity of TLS and options.
-1. Secure by default with reasonable defaults for lightweight environments.
-1. Minimal to no OS dependencies (just a sane kernel and cgroup mounts needed). k3s packages required
-   dependencies
-    * containerd
-    * Flannel
-    * CoreDNS
-    * CNI
-    * Host utilities (iptables, socat, etc)
-    * Ingress controller (traefik)
-    * Embedded service loadbalancer
-    * Embedded network policy controller
+1. It is packaged as a single binary.
+1. It adds support for sqlite3 as the default storage backend. Etcd3, MySQL, and Postgres are also supported.
+1. It wraps Kubernetes and other components in a single, simple launcher.
+1. It is secure by default with reasonable defaults for lightweight environments.
+1. It has minimal to no OS dependencies (just a sane kernel and cgroup mounts needed).
+1. It eliminates the need to expose a port on Kubernetes worker nodes for the kubelet API by exposing this API to the Kubernetes control plane nodes over a websocket tunnel.
+
+
+K3s bundles the following technologies together into a single cohesive distibution:
+
+* [Containerd](https://containerd.io/) & [runc](https://github.com/opencontainers/runc)
+* [Flannel](https://github.com/coreos/flannel) for CNI
+* [CoreDNS](https://coredns.io/)
+* [Metrics Server](https://github.com/kubernetes-sigs/metrics-server)
+* [Traefik](https://containo.us/traefik/) for ingress
+* [Klipper-lb](https://github.com/rancher/klipper-lb) as an embedded service loadbalancer provider
+* [Kube-router](https://www.kube-router.io/) for network policy
+* [Helm-controller](https://github.com/rancher/helm-controller) to allow for CRD-driven deployment of helm manifests
+* [Kine](https://github.com/rancher/kine) as a datastore shim that allows etcd to be replaced with other databases
+* [Local-path-provisioner](https://github.com/rancher/local-path-provisioner) for provisioning volumes using local storage
+* [Host utilities](https://github.com/rancher/k3s-root) such as iptables/nftables, ebtables, ethtool, & socat
+
+These technologies can be disabled or swapped out for technolgoies of your choice.
+
+Additionally, K3s simplifies Kubernetes operations by maintaining functionality for:
+
+* Managing the TLS certificates of Kubernetes componenents
+* Managing the connection between worker and server nodes
+* Managing an embedded etcd cluster
+* Auto-deploying Kubernetes resources from local manifests, in realtime as they are changed.
+
 
 What's with the name?
 --------------------
 We wanted an installation of Kubernetes that was half the size in terms of memory footprint. Kubernetes is a
 10 letter word stylized as k8s. So something half as big as Kubernetes would be a 5 letter word stylized as
-k3s. There is no long form of k3s and no official pronunciation.
+K3s. There is no long form of K3s and no official pronunciation.
+
+
+Is this a fork?
+---------------
+No, it's a distribution. A fork implies continued divergence from the original. This is not K3s's goal or practice. K3s explicitly intends to not change any core Kubernetes functionality. We seek to remain as close to upstream Kubernetes as possible. We do maintain a small set of patches (well under 1000 lines) important to K3s's usecase and deployment model. We maintain patches for other components as well. When possible, we contribute these changes back to the upstream projects, for example with [SELinux support in containerd](https://github.com/containerd/cri/pull/1487/commits/24209b91bf361e131478d15cfea1ab05694dc3eb). This is a common practice amongst software distributions.
+
+K3s is a distribution because it packages additional components and services necessary for a fully functional cluster that go beyond vanilla Kubernetes. These are opinionated choices on technologies for components like ingress, storage class, network policy, service load balancer, and even container runtime. These choices and technologies are touched on in more detail in the [What is this?](#what-is-this) section.
+
+
+How is this lightweight or smaller than upstream Kubernetes?
+---
+There are two major ways that K3s is lighter weight than upstream Kubernetes:
+1. The memory footprint to run it is smaller
+2. The binary, which contains all the non-containerized components needed to run a cluster, is smaller
+
+The memory footprint is reduced primarily by running many components inside of single process. This eliminates significant overhead that would otherwise be duplicated for each component.
+
+The binary is smaller by removing third-party storage drivers and cloud providers, which is explained in more detail below.
+
+What have you removed from upstream Kubernetes?
+---
+This is a common point of confusion because it has changed over time. Early versions of K3s had much more removed than current version. K3s currently removes two things:
+1. In-tree storage drivers
+2. In-tree cloud provider
+
+Both of these have out-of-tree alternatives in the form of [CSI](https://github.com/container-storage-interface/spec/blob/master/spec.md) and [CCM](https://kubernetes.io/docs/tasks/administer-cluster/running-cloud-controller/), which work in K3s and which upstream is moving towards.
+
+We remove these to achieve a smaller binary size. They can be removed while remaining conformant because neither affect core Kubernetes functionality. They are also dependent on third-party cloud or data center technologies/services, which may not be available in many of K3s's usecases.
+
+Release cadence
+---
+K3s maintains pace with upstream Kubernetes releases. Our goal is to release patch releases on the same day as upstream and minor releases within a few days.
+
+Our release versioning reflects the version of upstream Kubernetes that is being released. For example, the K3s release [v1.18.6+k3s1](https://github.com/rancher/k3s/releases/tag/v1.18.6%2Bk3s1) maps to the `v1.18.6` Kubernetes release. We add a postfix in the form of `+k3s<number>` to allow us to make additional releases using the same version of upstream Kubernetes, while remaining [semver](https://semver.org/) compliant. For example, if we discovered a high severity bug in `v1.18.6+k3s1` and needed to release an immediate fix for it, we would release `v1.18.6+k3s2`.
 
 Documentation
 -------------
 
-Please see [the official docs site](https://rancher.com/docs/k3s/latest/en/) for complete documentation on k3s.
+Please see [the official docs site](https://rancher.com/docs/k3s/latest/en/) for complete documentation.
 
 Quick-Start - Install Script
 --------------
 
-The k3s `install.sh` script provides a convenient way for installing to systemd or openrc,
-to install k3s as a service just run:
+The `install.sh` script provides a convenient way to download K3s and add a service to systemd or openrc.
+
+To install k3s as a service just run:
 
 ```bash
 curl -sfL https://get.k3s.io | sh -
 ```
 
 A kubeconfig file is written to `/etc/rancher/k3s/k3s.yaml` and the service is automatically started or restarted.
-The install script will install k3s and additional utilities, such as `kubectl`, `crictl`, `k3s-killall.sh`, and `k3s-uninstall.sh`, for example:
+The install script will install K3s and additional utilities, such as `kubectl`, `crictl`, `k3s-killall.sh`, and `k3s-uninstall.sh`, for example:
 
 ```bash
 sudo kubectl get nodes
