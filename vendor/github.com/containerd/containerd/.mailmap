@@ -1,38 +1,76 @@
 Abhinandan Prativadi <abhi@docker.com>
 Abhinandan Prativadi <abhi@docker.com> <aprativadi@gmail.com>
+Ace-Tang <aceapril@126.com>
 Akihiro Suda <akihiro.suda.cz@hco.ntt.co.jp> <suda.akihiro@lab.ntt.co.jp>
 Akihiro Suda <akihiro.suda.cz@hco.ntt.co.jp> <suda.kyoto@gmail.com>
+Allen Sun <shlallen1990@gmail.com> <allensun@AllenSundeMacBook-Pro.local>
+Alexander Morozov <lk4d4math@gmail.com> <lk4d4@docker.com>
+Amit Krishnan <krish.amit@gmail.com> <amit.krishnan@oracle.com>
 Andrei Vagin <avagin@virtuozzo.com> <avagin@openvz.org>
 Andrey Kolomentsev <andrey.kolomentsev@gmail.com>
+Arnaud Porterie <icecrime@gmail.com>
+Arnaud Porterie <icecrime@gmail.com> <arnaud.porterie@docker.com>
+Bob Mader <swapdisk@users.noreply.github.com>
+Boris Popovschi <zyqsempai@mail.ru>
 Brent Baude <bbaude@redhat.com>
+Cao Zhihao <caozhihao@163.com>
+Cao Zhihao <caozhihao@163.com> <caozhihao.xd@bytedance.com>
 Carlos Eduardo <me@carlosedp.com> <me@carlosedp.com>
+Cristian Staretu <cristian.staretu@gmail.com>
+Cristian Staretu <cristian.staretu@gmail.com> <unclejack@users.noreply.github.com>
+Daniel Dao <dqminh89@gmail.com>
+Edgar Lee <edgarl@netflix.com> <edgar.lee@docker.com>
 Eric Ren <renzhen.rz@alibaba-linux.com> <renzhen.rz@alibaba-inc.com>
+Fahed Dorgaa <fahed.dorgaa@gmail.com>
 Frank Yang <yyb196@gmail.com>
+Fupan Li <lifupan@gmail.com>
 Georgia Panoutsakopoulou <gpanoutsak@gmail.com>
 Guangming Wang <guangming.wang@daocloud.io>
 Haiyan Meng <haiyanmeng@google.com>
+Harry Zhang <harryz@hyper.sh> <harryzhang@zju.edu.cn>
+Hu Shuai <hus.fnst@cn.fujitsu.com>
+Hu Shuai <hus.fnst@cn.fujitsu.com> <hushuaiia@qq.com>
+Jaana Burcu Dogan <burcujdogan@gmail.com> <jbd@golang.org>
+Jess Valarezo <valarezo.jessica@gmail.com>
+Jess Valarezo <valarezo.jessica@gmail.com> <jessica.valarezo@docker.com>
 Jian Liao <jliao@alauda.io>
 Jian Liao <jliao@alauda.io> <liaojian@Dabllo.local>
 Ji'an Liu <anthonyliu@zju.edu.cn>
 Jie Zhang <iamkadisi@163.com>
-John Howard <john.howard@microsoft.com> <jhoward@microsoft.com>
-John Howard <john.howard@microsoft.com> <jhowardmsft@users.noreply.github.com>
+John Howard <github@lowenna.com>
+John Howard <github@lowenna.com> <john.howard@microsoft.com>
+John Howard <github@lowenna.com> <jhoward@microsoft.com>
+John Howard <github@lowenna.com> <jhowardmsft@users.noreply.github.com>
+Luc Perkins <lucperkins@gmail.com>
 Julien Balestra <julien.balestra@datadoghq.com>
 Justin Cormack <justin.cormack@docker.com> <justin@specialbusservice.com>
 Justin Terry <juterry@microsoft.com>
 Justin Terry <juterry@microsoft.com> <jterry75@users.noreply.github.com>
 Kenfe-Mickaël Laventure <mickael.laventure@gmail.com>
+Kevin Kern <kaiwentan@harmonycloud.cn>
 Kevin Xu <cming.xu@gmail.com>
+Kohei Tokunaga <ktokunaga.mail@gmail.com>
+Krasi Georgiev <krasi.root@gmail.com> <krasi@vip-consult.solutions>
+Lantao Liu <lantaol@google.com>
 Lantao Liu <lantaol@google.com> <taotaotheripper@gmail.com>
 Lifubang <lifubang@aliyun.com> <lifubang@acmcoder.com>
 Lu Jingxiao <lujingxiao@huawei.com>
 Maksym Pavlenko <makpav@amazon.com> <pavlenko.maksym@gmail.com>
+Mario Hros <spam@k3a.me>
+Mario Hros <spam@k3a.me> <root@k3a.me>
 Mark Gordon <msg555@gmail.com>
 Michael Katsoulis <michaelkatsoulis88@gmail.com>
 Mike Brown <brownwm@us.ibm.com> <mikebrow@users.noreply.github.com>
 Nishchay Kumar <mrawesomenix@gmail.com>
+Oliver Stenbom <oliver@stenbom.eu> <ostenbom@pivotal.io>
 Phil Estes <estesp@gmail.com> <estesp@linux.vnet.ibm.com>
+Reid Li <reid.li@utexas.edu>
+Ross Boucher <rboucher@gmail.com>
+Ruediger Maass <ruediger.maass@de.ibm.com>
 Rui Cao <ruicao@alauda.io> <ruicao@alauda.io>
+Sakeven Jiang <jc5930@sina.cn>
+Seth Pellegrino <spellegrino@newrelic.com> <30441101+sethp-nr@users.noreply.github.com>
+Shengbo Song <thomassong@tencent.com>
 Stephen J Day <stevvooe@gmail.com> <stephen.day@getcruise.com>
 Stephen J Day <stevvooe@gmail.com> <stevvooe@users.noreply.github.com>
 Stephen J Day <stevvooe@gmail.com> <stephen.day@docker.com>
@@ -42,8 +80,11 @@ Tõnis Tiigi <tonistiigi@gmail.com>
 Wei Fu <fuweid89@gmail.com> <fhfuwei@163.com>
 Xiaodong Zhang <a4012017@sina.com>
 Xuean Yan <yan.xuean@zte.com.cn>
+Yue Zhang <zy675793960@yeah.net>
 Yuxing Liu <starnop@163.com>
-zhenguang zhu <zhengguang.zhu@daocloud.io>
-zhongming chang<zhongming.chang@daocloud.io>
-zhoulin xie <zhoulin.xie@daocloud.io>
-zhoulin xie <zhoulin.xie@daocloud.io> <42261994+JoeWrightss@users.noreply.github.com>
+Zhang Wei <zhangwei555@huawei.com>
+Zhenguang Zhu <zhengguang.zhu@daocloud.io>
+Zhongming Chang<zhongming.chang@daocloud.io>
+Zhoulin Xie <zhoulin.xie@daocloud.io>
+Zhoulin Xie <zhoulin.xie@daocloud.io> <42261994+JoeWrightss@users.noreply.github.com>
+张潇 <xiaozhang0210@hotmail.com>

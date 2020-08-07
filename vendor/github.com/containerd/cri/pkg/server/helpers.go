@@ -298,11 +298,15 @@ func (c *criService) ensureImageExists(ctx context.Context, ref string, config *
 	return &newImage, nil
 }
 
-func toLabel(selinuxOptions *runtime.SELinuxOption) (labels []string) {
-	if selinuxOptions == nil {
-		return nil
-	}
+func toLabel(selinuxOptions *runtime.SELinuxOption) ([]string, error) {
+	var labels []string
 
+	if selinuxOptions == nil {
+		return nil, nil
+	}
+	if err := checkSelinuxLevel(selinuxOptions.Level); err != nil {
+		return nil, err
+	}
 	if selinuxOptions.User != "" {
 		labels = append(labels, "user:"+selinuxOptions.User)
 	}
@@ -316,11 +320,15 @@ func toLabel(selinuxOptions *runtime.SELinuxOption) (labels []string) {
 		labels = append(labels, "level:"+selinuxOptions.Level)
 	}
 
-	return
+	return labels, nil
 }
 
 func initLabelsFromOpt(selinuxOpts *runtime.SELinuxOption) (string, string, error) {
-	return initLabels(toLabel(selinuxOpts))
+	labels, err := toLabel(selinuxOpts)
+	if err != nil {
+		return "", "", err
+	}
+	return label.InitLabels(labels)
 }
 
 func initLabels(options []string) (string, string, error) {
@@ -339,7 +347,7 @@ func checkSelinuxLevel(level string) error {
 		return nil
 	}
 
-	matched, err := regexp.MatchString(`^s\d(-s\d)??(:c\d{1,4}((.c\d{1,4})?,c\d{1,4})*(.c\d{1,4})?(,c\d{1,4}(.c\d{1,4})?)*)?$`, level)
+	matched, err := regexp.MatchString(`^s\d(-s\d)??(:c\d{1,4}(\.c\d{1,4})?(,c\d{1,4}(\.c\d{1,4})?)*)?$`, level)
 	if err != nil {
 		return errors.Wrapf(err, "the format of 'level' %q is not correct", level)
 	}
@@ -473,6 +481,7 @@ func unknownContainerStatus() containerstore.Status {
 		FinishedAt: 0,
 		ExitCode:   unknownExitCode,
 		Reason:     unknownExitReason,
+		Unknown:    true,
 	}
 }
 

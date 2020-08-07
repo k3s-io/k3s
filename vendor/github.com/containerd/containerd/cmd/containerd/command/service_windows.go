@@ -49,8 +49,6 @@ var (
 	allocConsole = kernel32.NewProc("AllocConsole")
 	oldStderr    windows.Handle
 	panicFile    *os.File
-
-	service *handler
 )
 
 const defaultServiceName = "containerd"
@@ -282,7 +280,6 @@ func launchService(s *server.Server, done chan struct{}) error {
 		return err
 	}
 
-	service = h
 	go func() {
 		if interactive {
 			err = debug.Run(serviceNameFlag, h)

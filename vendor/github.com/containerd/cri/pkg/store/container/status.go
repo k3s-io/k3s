@@ -94,10 +94,16 @@ type Status struct {
 	// Removing indicates that the container is in removing state.
 	// This field doesn't need to be checkpointed.
 	Removing bool `json:"-"`
+	// Unknown indicates that the container status is not fully loaded.
+	// This field doesn't need to be checkpointed.
+	Unknown bool `json:"-"`
 }
 
 // State returns current state of the container based on the container status.
 func (s Status) State() runtime.ContainerState {
+	if s.Unknown {
+		return runtime.ContainerState_CONTAINER_UNKNOWN
+	}
 	if s.FinishedAt != 0 {
 		return runtime.ContainerState_CONTAINER_EXITED
 	}

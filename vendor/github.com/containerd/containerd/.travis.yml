@@ -4,19 +4,24 @@ sudo: required
 services:
   - docker
 
+branches:
+  except:
+    - master
+    - release/1.3
+
 language: go
 
 os:
 - linux
 
 go:
-  - "1.12.15"
+  - "1.13.12"
 
 env:
-  - TRAVIS_GOOS=linux TEST_RUNTIME=io.containerd.runc.v1 TRAVIS_CGO_ENABLED=1 TRAVIS_DISTRO=bionic
-  - TRAVIS_GOOS=linux TEST_RUNTIME=io.containerd.runc.v2 TRAVIS_CGO_ENABLED=1 TRAVIS_DISTRO=bionic TRAVIS_RELEASE=yes
-  - TRAVIS_GOOS=linux TEST_RUNTIME=io.containerd.runtime.v1.linux TRAVIS_CGO_ENABLED=1 TRAVIS_DISTRO=bionic
-  - TRAVIS_GOOS=darwin TRAVIS_CGO_ENABLED=0
+  - TRAVIS_GOOS=linux TEST_RUNTIME=io.containerd.runc.v1 TRAVIS_CGO_ENABLED=1 TRAVIS_DISTRO=bionic GOPROXY=direct
+  - TRAVIS_GOOS=linux TEST_RUNTIME=io.containerd.runc.v2 TRAVIS_CGO_ENABLED=1 TRAVIS_DISTRO=bionic TRAVIS_RELEASE=yes GOPROXY=direct
+  - TRAVIS_GOOS=linux TEST_RUNTIME=io.containerd.runtime.v1.linux TRAVIS_CGO_ENABLED=1 TRAVIS_DISTRO=bionic GOPROXY=direct
+  - TRAVIS_GOOS=darwin TRAVIS_CGO_ENABLED=0 GOPROXY=direct
 
 matrix:
   include:
@@ -24,7 +29,7 @@ matrix:
     - if: type != pull_request
       os: linux
       dist: xenial
-      env: TRAVIS_GOOS=linux TEST_RUNTIME=io.containerd.runc.v2 TRAVIS_CGO_ENABLED=1 TRAVIS_DISTRO=xenial
+      env: TRAVIS_GOOS=linux TEST_RUNTIME=io.containerd.runc.v2 TRAVIS_CGO_ENABLED=1 TRAVIS_DISTRO=xenial GOPROXY=direct
 
 go_import_path: github.com/containerd/containerd
 
@@ -73,7 +78,7 @@ script:
   - DCO_VERBOSITY=-q ../project/script/validate/dco
   - ../project/script/validate/fileheader ../project/
   - travis_wait ../project/script/validate/vendor
-  - GOOS=linux script/setup/install-dev-tools
+  - GOOS=linux GO111MODULE=off script/setup/install-dev-tools
   - go build -i .
   - make check
   - if [ "$GOOS" = "linux" ]; then make check-protos check-api-descriptors; fi
