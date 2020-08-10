@@ -248,6 +248,12 @@ var infoCommand = cli.Command{
 	Name:      "info",
 	Usage:     "get info about a container",
 	ArgsUsage: "CONTAINER",
+	Flags: []cli.Flag{
+		cli.BoolFlag{
+			Name:  "spec",
+			Usage: "only display the spec",
+		},
+	},
 	Action: func(context *cli.Context) error {
 		id := context.Args().First()
 		if id == "" {
@@ -265,6 +271,14 @@ var infoCommand = cli.Command{
 		info, err := container.Info(ctx, containerd.WithoutRefreshedMetadata)
 		if err != nil {
 			return err
+		}
+		if context.Bool("spec") {
+			v, err := typeurl.UnmarshalAny(info.Spec)
+			if err != nil {
+				return err
+			}
+			commands.PrintAsJSON(v)
+			return nil
 		}
 
 		if info.Spec != nil && info.Spec.Value != nil {

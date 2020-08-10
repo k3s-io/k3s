@@ -247,11 +247,23 @@ func ListNamespacesQuery(query HostComputeQuery) ([]HostComputeNamespace, error)
 
 // GetNamespaceByID returns the Namespace specified by Id.
 func GetNamespaceByID(namespaceId string) (*HostComputeNamespace, error) {
-	g, err := guid.FromString(namespaceId)
+	hcnQuery := defaultQuery()
+	mapA := map[string]string{"ID": namespaceId}
+	filter, err := json.Marshal(mapA)
 	if err != nil {
-		return nil, errInvalidNamespaceID
+		return nil, err
 	}
-	return getNamespace(g, defaultQueryJson())
+	hcnQuery.Filter = string(filter)
+
+	namespaces, err := ListNamespacesQuery(hcnQuery)
+	if err != nil {
+		return nil, err
+	}
+	if len(namespaces) == 0 {
+		return nil, NamespaceNotFoundError{NamespaceID: namespaceId}
+	}
+
+	return &namespaces[0], err
 }
 
 // GetNamespaceEndpointIds returns the endpoints of the Namespace specified by Id.

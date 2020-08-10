@@ -14,8 +14,11 @@
 
 PACKAGES=$(shell go list ./... | grep -v /vendor/)
 
-all:
+all: cgutil
 	go build -v
+
+cgutil:
+	cd cmd/cgctl && go build -v
 
 proto:
 	protobuild --quiet ${PACKAGES}

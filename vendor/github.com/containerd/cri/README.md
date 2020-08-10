@@ -25,9 +25,9 @@ With it, you could run Kubernetes using containerd as the container runtime.
 `cri` is in GA:
 * It is feature complete.
 * It (the GA version) works with Kubernetes 1.10 and above.
-* It has passed all [CRI validation tests](https://github.com/kubernetes/community/blob/master/contributors/devel/cri-validation.md).
-* It has passed all [node e2e tests](https://github.com/kubernetes/community/blob/master/contributors/devel/e2e-node-tests.md).
-* It has passed all [e2e tests](https://github.com/kubernetes/community/blob/master/contributors/devel/e2e-tests.md).
+* It has passed all [CRI validation tests](https://github.com/kubernetes/community/blob/master/contributors/devel/sig-node/cri-validation.md).
+* It has passed all [node e2e tests](https://github.com/kubernetes/community/blob/master/contributors/devel/sig-node/e2e-node-tests.md).
+* It has passed all [e2e tests](https://github.com/kubernetes/community/blob/master/contributors/devel/sig-testing/e2e-tests.md).
 
 See [test dashboard](https://k8s-testgrid.appspot.com/sig-node-containerd)
 ## Support Metrics
@@ -35,22 +35,20 @@ See [test dashboard](https://k8s-testgrid.appspot.com/sig-node-containerd)
 |:----------------------:|:------------------:|:------------------:|:-----------:|
 |     v1.0.0-alpha.x     |                    |      1.7, 1.8      |   v1alpha1  |
 |      v1.0.0-beta.x     |                    |        1.9         |   v1alpha1  |
-|       End-Of-Life      |        v1.1        |        1.10+       |   v1alpha2  |
-|                        |        v1.2        |        1.10+       |   v1alpha2  |
-|                        |        HEAD        |        1.10+       |   v1alpha2  |
+|       End-Of-Life      | v1.1 (End-Of-Life) |        1.10+       |   v1alpha2  |
+|                        |  v1.2 (Extended)   |        1.10+       |   v1alpha2  |
+|                        |        v1.3        |        1.12+       |   v1alpha2  |
+|                        |        v1.4        |      1.19+ (rc)    |   v1alpha2  |
 
 **Note:** The support table above specifies the Kubernetes Version that was supported at time of release of the containerd - cri integration.
 
-The following is the current support table for containerd CRI integration taking into account that Kubernetes only supports n-3 minor release versions and 1.10 and 1.11 are now end-of-life.
+The following is the current support table for containerd CRI integration taking into account that Kubernetes only supports n-3 minor release versions.
 
 | Containerd Version | Kubernetes Version | CRI Version |
 |:------------------:|:------------------:|:-----------:|
-|        v1.1        |        1.12+       |   v1alpha2  |
-|        v1.2        |        1.12+       |   v1alpha2  |
-|        HEAD        |        1.12+       |   v1alpha2  |
-
-***Although not recommended, if you still plan to use containerd 1.2+ with Kubernetes
-<=1.11, please be sure to set `disable_proc_mount=true`.***
+|        v1.2        |        1.15+       |   v1alpha2  |
+|        v1.3        |        1.15+       |   v1alpha2  |
+|        v1.4        |      1.19+ (rc)    |   v1alpha2  |
 
 ## Production Quality Cluster on GCE
 For a production quality cluster on GCE brought up with `kube-up.sh` refer [here](docs/kube-up.md).
@@ -81,10 +79,10 @@ specifications as appropriate.
 (Fedora, CentOS, RHEL). On releases of Ubuntu <=Trusty and Debian <=jessie a
 backport version of `libseccomp-dev` is required. See [travis.yml](.travis.yml) for an example on trusty.
 * **btrfs development library.** Required by containerd btrfs support. `btrfs-tools`(Ubuntu, Debian) / `btrfs-progs-devel`(Fedora, CentOS, RHEL)
-2. Install **`socat`** (required by portforward).
-2. Install and setup a go 1.10 development environment.
-3. Make a local clone of this repository.
-4. Install binary dependencies by running the following command from your cloned `cri/` project directory:
+2. Install **`pkg-config`** (required for linking with `libseccomp`).
+3. Install and setup a Go 1.13.15 development environment.
+4. Make a local clone of this repository.
+5. Install binary dependencies by running the following command from your cloned `cri/` project directory:
 ```bash
 # Note: install.deps installs the above mentioned runc, containerd, and CNI
 # binary dependencies. install.deps is only provided for general use and ease of
@@ -106,7 +104,7 @@ testing purposes. The version tag carries the suffix "-TEST".*
 To add build tags to the make option the `BUILD_TAGS` variable must be set.
 
 ```bash
-make BUILD_TAGS='seccomp apparmor'
+make BUILD_TAGS='seccomp apparmor selinux'
 ```
 
 | Build Tag | Feature                            | Dependency                      |
@@ -118,7 +116,7 @@ make BUILD_TAGS='seccomp apparmor'
 A Kubernetes incubator project called [cri-tools](https://github.com/kubernetes-sigs/cri-tools)
 includes programs for exercising CRI implementations such as the `cri` plugin.
 More importantly, cri-tools includes the program `critest` which is used for running
-[CRI Validation Testing](https://github.com/kubernetes/community/blob/master/contributors/devel/cri-validation.md).
+[CRI Validation Testing](https://github.com/kubernetes/community/blob/master/contributors/devel/sig-node/cri-validation.md).
 
 Run the CRI Validation test to validate your installation of `containerd` with `cri` built in:
 ```bash
@@ -144,18 +142,11 @@ See [here](./docs/crictl.md) for information about using `crictl` to debug
 pods, containers, and images.
 ## Configurations
 See [here](./docs/config.md) for information about how to configure cri plugins
-and [here](https://github.com/containerd/containerd/blob/master/docs/man/containerd-config.1.md)
+and [here](https://github.com/containerd/containerd/blob/master/docs/man/containerd-config.8.md)
 for information about how to configure containerd
 ## Documentation
 See [here](./docs) for additional documentation.
-## Contributing
-Interested in contributing? Check out the [documentation](./CONTRIBUTING.md).
-
 ## Communication
-This project was originally established in April of 2017 in the Kubernetes
-Incubator program. After reaching the Beta stage, In January of 2018, the
-project was merged into [containerd](https://github.com/containerd/containerd).
-
 For async communication and long running discussions please use issues and pull
 requests on this github repo. This will be the best place to discuss design and
 implementation.
@@ -187,5 +178,13 @@ Creative Commons Attribution 4.0 International License under the terms and
 conditions set forth in the file "[LICENSE.docs](https://github.com/containerd/containerd/blob/master/LICENSE.docs)". You may obtain a duplicate
 copy of the same license, titled CC-BY-4.0, at http://creativecommons.org/licenses/by/4.0/.
 
-## Code of Conduct
-This project follows the [CNCF Code of Conduct](https://github.com/cncf/foundation/blob/master/code-of-conduct.md).
+## Project details
+cri is a containerd sub-project. This project was originally established in
+April of 2017 in the Kubernetes Incubator program. After reaching the Beta
+stage, In January of 2018, the project was merged into [containerd](https://github.com/containerd/containerd).
+As a containerd sub-project, you will find the:
+* [Project governance](https://github.com/containerd/project/blob/master/GOVERNANCE.md),
+* [Maintainers](https://github.com/containerd/project/blob/master/MAINTAINERS),
+* and [Contributing guidelines](https://github.com/containerd/project/blob/master/CONTRIBUTING.md)
+
+information in our [`containerd/project`](https://github.com/containerd/project) repository.

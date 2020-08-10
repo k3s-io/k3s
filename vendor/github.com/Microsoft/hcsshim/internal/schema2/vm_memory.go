@@ -14,9 +14,9 @@ type VmMemory struct {
 
 	AvailableMemoryBuffer int32 `json:"AvailableMemoryBuffer,omitempty"`
 
-	ReservedMemory int32 `json:"ReservedMemory,omitempty"`
+	ReservedMemory uint64 `json:"ReservedMemory,omitempty"`
 
-	AssignedMemory int32 `json:"AssignedMemory,omitempty"`
+	AssignedMemory uint64 `json:"AssignedMemory,omitempty"`
 
 	SlpActive bool `json:"SlpActive,omitempty"`
 

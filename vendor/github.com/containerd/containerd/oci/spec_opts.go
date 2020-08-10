@@ -91,6 +91,21 @@ func setResources(s *Spec) {
 	}
 }
 
+// nolint
+func setCPU(s *Spec) {
+	setResources(s)
+	if s.Linux != nil {
+		if s.Linux.Resources.CPU == nil {
+			s.Linux.Resources.CPU = &specs.LinuxCPU{}
+		}
+	}
+	if s.Windows != nil {
+		if s.Windows.Resources.CPU == nil {
+			s.Windows.Resources.CPU = &specs.WindowsCPUResources{}
+		}
+	}
+}
+
 // setCapabilities sets Linux Capabilities to empty if unset
 func setCapabilities(s *Spec) {
 	setProcess(s)
@@ -439,7 +454,7 @@ func WithHostLocaltime(_ context.Context, _ Client, _ *containers.Container, s *
 
 // WithUserNamespace sets the uid and gid mappings for the task
 // this can be called multiple times to add more mappings to the generated spec
-func WithUserNamespace(container, host, size uint32) SpecOpts {
+func WithUserNamespace(uidMap, gidMap []specs.LinuxIDMapping) SpecOpts {
 	return func(_ context.Context, _ Client, _ *containers.Container, s *Spec) error {
 		var hasUserns bool
 		setLinux(s)
@@ -454,13 +469,8 @@ func WithUserNamespace(container, host, size uint32) SpecOpts {
 				Type: specs.UserNamespace,
 			})
 		}
-		mapping := specs.LinuxIDMapping{
-			ContainerID: container,
-			HostID:      host,
-			Size:        size,
-		}
-		s.Linux.UIDMappings = append(s.Linux.UIDMappings, mapping)
-		s.Linux.GIDMappings = append(s.Linux.GIDMappings, mapping)
+		s.Linux.UIDMappings = append(s.Linux.UIDMappings, uidMap...)
+		s.Linux.GIDMappings = append(s.Linux.GIDMappings, gidMap...)
 		return nil
 	}
 }
@@ -1006,6 +1016,21 @@ func WithParentCgroupDevices(_ context.Context, _ Client, _ *containers.Containe
 	return nil
 }
 
+// WithAllDevicesAllowed permits READ WRITE MKNOD on all devices nodes for the container
+func WithAllDevicesAllowed(_ context.Context, _ Client, _ *containers.Container, s *Spec) error {
+	setLinux(s)
+	if s.Linux.Resources == nil {
+		s.Linux.Resources = &specs.LinuxResources{}
+	}
+	s.Linux.Resources.Devices = []specs.LinuxDeviceCgroup{
+		{
+			Allow:  true,
+			Access: rwm,
+		},
+	}
+	return nil
+}
+
 // WithDefaultUnixDevices adds the default devices for unix such as /dev/null, /dev/random to
 // the container's resource cgroup spec
 func WithDefaultUnixDevices(_ context.Context, _ Client, _ *containers.Container, s *Spec) error {
@@ -1100,7 +1125,6 @@ func WithDefaultUnixDevices(_ context.Context, _ Client, _ *containers.Container
 }
 
 // WithPrivileged sets up options for a privileged container
-// TODO(justincormack) device handling
 var WithPrivileged = Compose(
 	WithAllCapabilities,
 	WithMaskedPaths(nil),
@@ -1214,10 +1238,10 @@ func WithEnvFile(path string) SpecOpts {
 
 		sc := bufio.NewScanner(f)
 		for sc.Scan() {
-			if sc.Err() != nil {
-				return sc.Err()
-			}
 			vars = append(vars, sc.Text())
+		}
+		if err = sc.Err(); err != nil {
+			return err
 		}
 		return WithEnv(vars)(nil, nil, nil, s)
 	}

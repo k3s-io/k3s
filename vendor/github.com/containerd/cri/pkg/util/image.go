@@ -1,23 +1,23 @@
 /*
-Copyright 2017 The Kubernetes Authors.
+   Copyright The containerd Authors.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+       http://www.apache.org/licenses/LICENSE-2.0
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
 */
 
 package util
 
 import (
-	"github.com/docker/distribution/reference"
+	"github.com/containerd/containerd/reference/docker"
 )
 
 // NormalizeImageRef normalizes the image reference following the docker convention. This is added
@@ -27,7 +27,7 @@ import (
 // sha256:7cc4b5aefd1d0cadf8d97d4350462ba51c694ebca145b08d7d41b41acc8db5aa will be returned as
 // docker.io/library/busybox@sha256:7cc4b5aefd1d0cadf8d97d4350462ba51c694ebca145b08d7d41b41acc8db5aa.
 //
-// Deprecated: use github.com/docker/reference.ParseDockerRef() instead
-func NormalizeImageRef(ref string) (reference.Named, error) {
-	return reference.ParseDockerRef(ref)
+// Deprecated: use github.com/containerd/containerd/reference/docker.ParseDockerRef() instead
+func NormalizeImageRef(ref string) (docker.Named, error) {
+	return docker.ParseDockerRef(ref)
 }

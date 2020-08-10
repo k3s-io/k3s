@@ -31,7 +31,7 @@ VERSION := $(shell git rev-parse --short HEAD)
 TARBALL_PREFIX := cri-containerd
 TARBALL := $(TARBALL_PREFIX)-$(VERSION).$(GOOS)-$(GOARCH).tar.gz
 ifneq ($(GOOS),windows)
-	BUILD_TAGS := seccomp apparmor selinux no_btrfs
+	BUILD_TAGS := seccomp apparmor selinux
 endif
 export BUILDTAGS := $(BUILD_TAGS)
 # Add `-TEST` suffix to indicate that all binaries built from this repo are for test.

@@ -203,6 +203,7 @@ func getProcess(context *cli.Context, bundle string) (*specs.Process, error) {
 	p.Env = append(p.Env, context.StringSlice("env")...)
 
 	// set the tty
+	p.Terminal = false
 	if context.IsSet("tty") {
 		p.Terminal = context.Bool("tty")
 	}

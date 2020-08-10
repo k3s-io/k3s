@@ -1,13 +1,13 @@
 dist: bionic
 sudo: required
-# setup travis so that we can run containers for integration tests
-services:
-  - docker
 
 branches:
   except:
     - master
-    - release/1.3
+
+# setup travis so that we can run containers for integration tests
+services:
+  - docker
 
 language: go
 
@@ -15,13 +15,13 @@ os:
 - linux
 
 go:
-  - "1.13.12"
+  - "1.13.15"
 
 env:
   - TRAVIS_GOOS=linux TEST_RUNTIME=io.containerd.runc.v1 TRAVIS_CGO_ENABLED=1 TRAVIS_DISTRO=bionic GOPROXY=direct
   - TRAVIS_GOOS=linux TEST_RUNTIME=io.containerd.runc.v2 TRAVIS_CGO_ENABLED=1 TRAVIS_DISTRO=bionic TRAVIS_RELEASE=yes GOPROXY=direct
+  - TRAVIS_GOOS=linux TEST_RUNTIME=io.containerd.runc.v2 TRAVIS_CGO_ENABLED=1 TRAVIS_DISTRO=bionic GOPROXY=direct RUNC_FLAVOR=crun
   - TRAVIS_GOOS=linux TEST_RUNTIME=io.containerd.runtime.v1.linux TRAVIS_CGO_ENABLED=1 TRAVIS_DISTRO=bionic GOPROXY=direct
-  - TRAVIS_GOOS=darwin TRAVIS_CGO_ENABLED=0 GOPROXY=direct
 
 matrix:
   include:
@@ -46,7 +46,6 @@ addons:
       - libaio-dev
       - libprotobuf-c-dev
       - libprotobuf-dev
-      - socat
 
 before_install:
   - uname -r
@@ -57,9 +56,6 @@ install:
   - sudo chmod og+rx /usr/local/include/google /usr/local/include/google/protobuf /usr/local/include/google/protobuf/compiler
   - sudo chmod -R og+r /usr/local/include/google/protobuf/
   - protoc --version
-  - go get -u github.com/vbatts/git-validation
-  - go get -u github.com/kunalkushwaha/ltag
-  - go get -u github.com/LK4D4/vndr
   - if [ "$TRAVIS_GOOS" = "linux" ]; then sudo PATH=$PATH GOPATH=$GOPATH script/setup/install-seccomp ; fi
   - if [ "$TRAVIS_GOOS" = "linux" ]; then sudo PATH=$PATH GOPATH=$GOPATH script/setup/install-runc ; fi
   - if [ "$TRAVIS_GOOS" = "linux" ]; then sudo PATH=$PATH GOPATH=$GOPATH script/setup/install-cni ; fi
@@ -69,20 +65,11 @@ install:
   - if [ "$TRAVIS_GOOS" = "linux" ]; then cd /tmp/criu-3.13 && sudo make install-criu ; fi
   - cd $TRAVIS_BUILD_DIR
 
-before_script:
-  - pushd ..; git clone https://github.com/containerd/project; popd
-
 script:
   - export GOOS=$TRAVIS_GOOS
   - export CGO_ENABLED=$TRAVIS_CGO_ENABLED
-  - DCO_VERBOSITY=-q ../project/script/validate/dco
-  - ../project/script/validate/fileheader ../project/
-  - travis_wait ../project/script/validate/vendor
   - GOOS=linux GO111MODULE=off script/setup/install-dev-tools
   - go build -i .
-  - make check
-  - if [ "$GOOS" = "linux" ]; then make check-protos check-api-descriptors; fi
-  - if [ "$TRAVIS_GOOS" = "linux" ]; then make man ; fi
   - make build
   - make binaries
   - if [ "$TRAVIS_GOOS" = "linux" ]; then sudo make install ; fi

@@ -94,7 +94,7 @@ func loadShim(ctx context.Context, bundle *Bundle, events *exchange.Exchange, rt
 			// When using a multi-container shim the 2nd to Nth container in the
 			// shim will not have a separate log pipe. Ignore the failure log
 			// message here when the shim connect times out.
-			if !os.IsNotExist(errors.Cause(err)) {
+			if !errors.Is(err, os.ErrNotExist) {
 				log.G(ctx).WithError(err).Error("copy shim log")
 			}
 		}
@@ -191,7 +191,7 @@ func (s *shim) Shutdown(ctx context.Context) error {
 	_, err := s.task.Shutdown(ctx, &task.ShutdownRequest{
 		ID: s.ID(),
 	})
-	if err != nil && errors.Cause(err) != ttrpc.ErrClosed {
+	if err != nil && !errors.Is(err, ttrpc.ErrClosed) {
 		return errdefs.FromGRPC(err)
 	}
 	return nil
@@ -226,20 +226,23 @@ func (s *shim) Delete(ctx context.Context) (*runtime.Exit, error) {
 		ID: s.ID(),
 	})
 	if shimErr != nil {
-		shimErr = errdefs.FromGRPC(shimErr)
-		if !errdefs.IsNotFound(shimErr) {
-			return nil, shimErr
+		log.G(ctx).WithField("id", s.ID()).WithError(shimErr).Debug("failed to delete task")
+		if !errors.Is(shimErr, ttrpc.ErrClosed) {
+			shimErr = errdefs.FromGRPC(shimErr)
+			if !errdefs.IsNotFound(shimErr) {
+				return nil, shimErr
+			}
 		}
 	}
 	// remove self from the runtime task list
 	// this seems dirty but it cleans up the API across runtimes, tasks, and the service
 	s.rtTasks.Delete(ctx, s.ID())
 	if err := s.waitShutdown(ctx); err != nil {
-		log.G(ctx).WithError(err).Error("failed to shutdown shim")
+		log.G(ctx).WithField("id", s.ID()).WithError(err).Error("failed to shutdown shim")
 	}
 	s.Close()
 	if err := s.bundle.Delete(); err != nil {
-		log.G(ctx).WithError(err).Error("failed to delete bundle")
+		log.G(ctx).WithField("id", s.ID()).WithError(err).Error("failed to delete bundle")
 	}
 	if shimErr != nil {
 		return nil, shimErr
@@ -441,7 +444,7 @@ func (s *shim) State(ctx context.Context) (runtime.State, error) {
 		ID: s.ID(),
 	})
 	if err != nil {
-		if errors.Cause(err) != ttrpc.ErrClosed {
+		if !errors.Is(err, ttrpc.ErrClosed) {
 			return runtime.State{}, errdefs.FromGRPC(err)
 		}
 		return runtime.State{}, errdefs.ErrNotFound

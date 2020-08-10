@@ -53,3 +53,13 @@ type BandWidth struct {
 	EgressRate   uint64
 	EgressBurst  uint64
 }
+
+// DNS defines the dns config
+type DNS struct {
+	// List of DNS servers of the cluster.
+	Servers []string
+	// List of DNS search domains of the cluster.
+	Searches []string
+	// List of DNS options.
+	Options []string
+}

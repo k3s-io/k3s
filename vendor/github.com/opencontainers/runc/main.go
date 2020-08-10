@@ -64,19 +64,12 @@ func main() {
 	v = append(v, fmt.Sprintf("spec: %s", specs.Version))
 	app.Version = strings.Join(v, "\n")
 
+	xdgRuntimeDir := ""
 	root := "/run/runc"
 	if shouldHonorXDGRuntimeDir() {
 		if runtimeDir := os.Getenv("XDG_RUNTIME_DIR"); runtimeDir != "" {
 			root = runtimeDir + "/runc"
-			// According to the XDG specification, we need to set anything in
-			// XDG_RUNTIME_DIR to have a sticky bit if we don't want it to get
-			// auto-pruned.
-			if err := os.MkdirAll(root, 0700); err != nil {
-				fatal(err)
-			}
-			if err := os.Chmod(root, 0700|os.ModeSticky); err != nil {
-				fatal(err)
-			}
+			xdgRuntimeDir = root
 		}
 	}
 
@@ -135,6 +128,19 @@ func main() {
 		updateCommand,
 	}
 	app.Before = func(context *cli.Context) error {
+		if !context.IsSet("root") && xdgRuntimeDir != "" {
+			// According to the XDG specification, we need to set anything in
+			// XDG_RUNTIME_DIR to have a sticky bit if we don't want it to get
+			// auto-pruned.
+			if err := os.MkdirAll(root, 0700); err != nil {
+				fmt.Fprintln(os.Stderr, "the path in $XDG_RUNTIME_DIR must be writable by the user")
+				fatal(err)
+			}
+			if err := os.Chmod(root, 0700|os.ModeSticky); err != nil {
+				fmt.Fprintln(os.Stderr, "you should check permission of the path in $XDG_RUNTIME_DIR")
+				fatal(err)
+			}
+		}
 		return logs.ConfigureLogging(createLogConfig(context))
 	}
 
@@ -153,7 +159,10 @@ type FatalWriter struct {
 
 func (f *FatalWriter) Write(p []byte) (n int, err error) {
 	logrus.Error(string(p))
-	return f.cliErrWriter.Write(p)
+	if !logrusToStderr() {
+		return f.cliErrWriter.Write(p)
+	}
+	return len(p), nil
 }
 
 func createLogConfig(context *cli.Context) logs.Config {

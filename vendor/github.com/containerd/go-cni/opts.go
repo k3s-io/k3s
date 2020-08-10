@@ -142,6 +142,24 @@ func WithConfFile(fileName string) CNIOpt {
 	}
 }
 
+// WithConfListBytes can be used to load network config list directly
+// from byte
+func WithConfListBytes(bytes []byte) CNIOpt {
+	return func(c *libcni) error {
+		confList, err := cnilibrary.ConfListFromBytes(bytes)
+		if err != nil {
+			return err
+		}
+		i := len(c.networks)
+		c.networks = append(c.networks, &Network{
+			cni:    c.cniConfig,
+			config: confList,
+			ifName: getIfName(c.prefix, i),
+		})
+		return nil
+	}
+}
+
 // WithConfListFile can be used to load network config
 // from an .conflist file. Supported with absolute fileName
 // with path only.

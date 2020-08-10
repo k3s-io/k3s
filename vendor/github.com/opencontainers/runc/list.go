@@ -3,6 +3,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -107,7 +108,7 @@ To list containers created using a non-default value for "--root":
 				return err
 			}
 		default:
-			return fmt.Errorf("invalid format option")
+			return errors.New("invalid format option")
 		}
 		return nil
 	},

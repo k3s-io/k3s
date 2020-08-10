@@ -204,7 +204,9 @@ func HcsShutdownComputeSystem(ctx gcontext.Context, computeSystem HcsSystem, opt
 		if result != "" {
 			span.AddAttributes(trace.StringAttribute("result", result))
 		}
-		oc.SetSpanStatus(span, hr)
+		if hr != errVmcomputeOperationPending {
+			oc.SetSpanStatus(span, hr)
+		}
 	}()
 	span.AddAttributes(trace.StringAttribute("options", options))
 

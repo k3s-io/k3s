@@ -33,17 +33,53 @@ import (
 	"context"
 
 	"github.com/containerd/containerd"
+	"github.com/containerd/containerd/cio"
 	"github.com/containerd/containerd/containers"
 )
 
 const (
 	// StatusLabel sets the restart status label for a container
 	StatusLabel = "containerd.io/restart.status"
+	// LogURILabel sets the restart log uri label for a container
+	LogURILabel = "containerd.io/restart.loguri"
+
 	// LogPathLabel sets the restart log path label for a container
+	//
+	// Deprecated(in release 1.5): use LogURILabel
 	LogPathLabel = "containerd.io/restart.logpath"
 )
 
+// WithBinaryLogURI sets the binary-type log uri for a container.
+func WithBinaryLogURI(binary string, args map[string]string) func(context.Context, *containerd.Client, *containers.Container) error {
+	return func(_ context.Context, _ *containerd.Client, c *containers.Container) error {
+		uri, err := cio.LogURIGenerator("binary", binary, args)
+		if err != nil {
+			return err
+		}
+
+		ensureLabels(c)
+		c.Labels[LogURILabel] = uri.String()
+		return nil
+	}
+}
+
+// WithFileLogURI sets the file-type log uri for a container.
+func WithFileLogURI(path string) func(context.Context, *containerd.Client, *containers.Container) error {
+	return func(_ context.Context, _ *containerd.Client, c *containers.Container) error {
+		uri, err := cio.LogURIGenerator("file", path, nil)
+		if err != nil {
+			return err
+		}
+
+		ensureLabels(c)
+		c.Labels[LogURILabel] = uri.String()
+		return nil
+	}
+}
+
 // WithLogPath sets the log path for a container
+//
+// Deprecated(in release 1.5): use WithFileLogURI.
 func WithLogPath(path string) func(context.Context, *containerd.Client, *containers.Container) error {
 	return func(_ context.Context, _ *containerd.Client, c *containers.Container) error {
 		ensureLabels(c)
@@ -68,6 +104,7 @@ func WithNoRestarts(_ context.Context, _ *containerd.Client, c *containers.Conta
 	}
 	delete(c.Labels, StatusLabel)
 	delete(c.Labels, LogPathLabel)
+	delete(c.Labels, LogURILabel)
 	return nil
 }
 

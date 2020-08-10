@@ -1,24 +1,27 @@
 /*
-Copyright 2018 The Containerd Authors.
+   Copyright The containerd Authors.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+       http://www.apache.org/licenses/LICENSE-2.0
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
 */
 
 package sandbox
 
 import (
+	"strconv"
 	"sync"
 	"time"
+
+	runtime "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
 
 // The sandbox state machine in the CRI plugin:
@@ -63,7 +66,7 @@ type State uint32
 const (
 	// StateReady is ready state, it means sandbox container
 	// is running.
-	StateReady = iota
+	StateReady State = iota
 	// StateNotReady is notready state, it ONLY means sandbox
 	// container is not running.
 	// StopPodSandbox should still be called for NOTREADY sandbox to
@@ -74,6 +77,21 @@ const (
 	// into unknown state when its status fails to be loaded.
 	StateUnknown
 )
+
+// String returns the string representation of the state
+func (s State) String() string {
+	switch s {
+	case StateReady:
+		return runtime.PodSandboxState_SANDBOX_READY.String()
+	case StateNotReady:
+		return runtime.PodSandboxState_SANDBOX_NOTREADY.String()
+	case StateUnknown:
+		// PodSandboxState doesn't have an unknown state, but State does, so return a string using the same convention
+		return "SANDBOX_UNKNOWN"
+	default:
+		return "invalid sandbox state value: " + strconv.Itoa(int(s))
+	}
+}
 
 // Status is the status of a sandbox.
 type Status struct {

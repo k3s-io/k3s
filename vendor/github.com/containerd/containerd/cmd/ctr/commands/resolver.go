@@ -20,15 +20,15 @@ import (
 	"bufio"
 	gocontext "context"
 	"crypto/tls"
+	"crypto/x509"
 	"fmt"
-	"net"
-	"net/http"
+	"io/ioutil"
 	"strings"
-	"time"
 
 	"github.com/containerd/console"
 	"github.com/containerd/containerd/remotes"
 	"github.com/containerd/containerd/remotes/docker"
+	"github.com/containerd/containerd/remotes/docker/config"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -60,8 +60,7 @@ func GetResolver(ctx gocontext.Context, clicontext *cli.Context) (remotes.Resolv
 		username = username[0:i]
 	}
 	options := docker.ResolverOptions{
-		PlainHTTP: clicontext.Bool("plain-http"),
-		Tracker:   PushTracker,
+		Tracker: PushTracker,
 	}
 	if username != "" {
 		if secret == "" {
@@ -79,32 +78,60 @@ func GetResolver(ctx gocontext.Context, clicontext *cli.Context) (remotes.Resolv
 		secret = rt
 	}
 
-	tr := &http.Transport{
-		Proxy: http.ProxyFromEnvironment,
-		DialContext: (&net.Dialer{
-			Timeout:   30 * time.Second,
-			KeepAlive: 30 * time.Second,
-			DualStack: true,
-		}).DialContext,
-		MaxIdleConns:        10,
-		IdleConnTimeout:     30 * time.Second,
-		TLSHandshakeTimeout: 10 * time.Second,
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: clicontext.Bool("skip-verify"),
-		},
-		ExpectContinueTimeout: 5 * time.Second,
-	}
-
-	options.Client = &http.Client{
-		Transport: tr,
-	}
-
-	credentials := func(host string) (string, string, error) {
+	hostOptions := config.HostOptions{}
+	hostOptions.Credentials = func(host string) (string, string, error) {
+		// If host doesn't match...
 		// Only one host
 		return username, secret, nil
 	}
-	authOpts := []docker.AuthorizerOpt{docker.WithAuthClient(options.Client), docker.WithAuthCreds(credentials)}
-	options.Authorizer = docker.NewDockerAuthorizer(authOpts...)
+	if clicontext.Bool("plain-http") {
+		hostOptions.DefaultScheme = "http"
+	}
+	defaultTLS, err := resolverDefaultTLS(clicontext)
+	if err != nil {
+		return nil, err
+	}
+	hostOptions.DefaultTLS = defaultTLS
+	if hostDir := clicontext.String("hosts-dir"); hostDir != "" {
+		hostOptions.HostDir = config.HostDirFromRoot(hostDir)
+	}
+
+	options.Hosts = config.ConfigureHosts(ctx, hostOptions)
 
 	return docker.NewResolver(options), nil
+}
+
+func resolverDefaultTLS(clicontext *cli.Context) (*tls.Config, error) {
+	config := &tls.Config{}
+
+	if clicontext.Bool("skip-verify") {
+		config.InsecureSkipVerify = true
+	}
+
+	if tlsRootPath := clicontext.String("tlscacert"); tlsRootPath != "" {
+		tlsRootData, err := ioutil.ReadFile(tlsRootPath)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to read %q", tlsRootPath)
+		}
+
+		config.RootCAs = x509.NewCertPool()
+		if !config.RootCAs.AppendCertsFromPEM(tlsRootData) {
+			return nil, fmt.Errorf("failed to load TLS CAs from %q: invalid data", tlsRootPath)
+		}
+	}
+
+	tlsCertPath := clicontext.String("tlscert")
+	tlsKeyPath := clicontext.String("tlskey")
+	if tlsCertPath != "" || tlsKeyPath != "" {
+		if tlsCertPath == "" || tlsKeyPath == "" {
+			return nil, errors.New("flags --tlscert and --tlskey must be set together")
+		}
+		keyPair, err := tls.LoadX509KeyPair(tlsCertPath, tlsKeyPath)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to load TLS client credentials (cert=%q, key=%q)", tlsCertPath, tlsKeyPath)
+		}
+		config.Certificates = []tls.Certificate{keyPair}
+	}
+
+	return config, nil
 }

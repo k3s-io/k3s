@@ -65,7 +65,7 @@ func bail(err error) {
 	os.Exit(1)
 }
 
-func handleSingle(path string) error {
+func handleSingle(path string, noStdin bool) error {
 	// Open a socket.
 	ln, err := net.Listen("unix", path)
 	if err != nil {
@@ -113,10 +113,12 @@ func handleSingle(path string) error {
 		io.Copy(os.Stdout, c)
 		quitChan <- struct{}{}
 	}()
-	go func() {
-		io.Copy(c, os.Stdin)
-		quitChan <- struct{}{}
-	}()
+	if !noStdin {
+		go func() {
+			io.Copy(c, os.Stdin)
+			quitChan <- struct{}{}
+		}()
+	}
 
 	// Only close the master fd once we've stopped copying.
 	<-quitChan
@@ -201,6 +203,10 @@ func main() {
 			Value: "",
 			Usage: "Path to write daemon process ID to",
 		},
+		cli.BoolFlag{
+			Name:  "no-stdin",
+			Usage: "Disable stdin handling (no-op for null mode)",
+		},
 	}
 
 	app.Action = func(ctx *cli.Context) error {
@@ -218,9 +224,10 @@ func main() {
 			}
 		}
 
+		noStdin := ctx.Bool("no-stdin")
 		switch ctx.String("mode") {
 		case "single":
-			if err := handleSingle(path); err != nil {
+			if err := handleSingle(path, noStdin); err != nil {
 				return err
 			}
 		case "null":

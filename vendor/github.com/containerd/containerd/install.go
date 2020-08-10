@@ -24,7 +24,6 @@ import (
 	"runtime"
 	"strings"
 
-	introspectionapi "github.com/containerd/containerd/api/services/introspection/v1"
 	"github.com/containerd/containerd/archive"
 	"github.com/containerd/containerd/archive/compression"
 	"github.com/containerd/containerd/content"
@@ -99,11 +98,8 @@ func (c *Client) getInstallPath(ctx context.Context, config InstallConfig) (stri
 	if config.Path != "" {
 		return config.Path, nil
 	}
-	resp, err := c.IntrospectionService().Plugins(ctx, &introspectionapi.PluginsRequest{
-		Filters: []string{
-			"id==opt",
-		},
-	})
+	filters := []string{"id==opt"}
+	resp, err := c.IntrospectionService().Plugins(ctx, filters)
 	if err != nil {
 		return "", err
 	}

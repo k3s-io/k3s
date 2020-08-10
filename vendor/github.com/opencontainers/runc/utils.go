@@ -45,12 +45,20 @@ func checkArgs(context *cli.Context, expected, checkType int) error {
 	return nil
 }
 
+func logrusToStderr() bool {
+	l, ok := logrus.StandardLogger().Out.(*os.File)
+	return ok && l.Fd() == os.Stderr.Fd()
+}
+
 // fatal prints the error's details if it is a libcontainer specific error type
 // then exits the program with an exit status of 1.
 func fatal(err error) {
 	// make sure the error is written to the logger
 	logrus.Error(err)
-	fmt.Fprintln(os.Stderr, err)
+	if !logrusToStderr() {
+		fmt.Fprintln(os.Stderr, err)
+	}
+
 	os.Exit(1)
 }
 

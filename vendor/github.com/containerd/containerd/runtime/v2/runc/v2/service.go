@@ -31,26 +31,27 @@ import (
 	"time"
 
 	"github.com/containerd/cgroups"
+	cgroupsv2 "github.com/containerd/cgroups/v2"
 	eventstypes "github.com/containerd/containerd/api/events"
 	"github.com/containerd/containerd/api/types/task"
 	"github.com/containerd/containerd/errdefs"
-	"github.com/containerd/containerd/log"
 	"github.com/containerd/containerd/mount"
 	"github.com/containerd/containerd/namespaces"
 	"github.com/containerd/containerd/pkg/oom"
+	oomv1 "github.com/containerd/containerd/pkg/oom/v1"
+	oomv2 "github.com/containerd/containerd/pkg/oom/v2"
 	"github.com/containerd/containerd/pkg/process"
 	"github.com/containerd/containerd/pkg/stdio"
 	"github.com/containerd/containerd/runtime/v2/runc"
 	"github.com/containerd/containerd/runtime/v2/runc/options"
 	"github.com/containerd/containerd/runtime/v2/shim"
 	taskAPI "github.com/containerd/containerd/runtime/v2/task"
+	"github.com/containerd/containerd/sys"
 	"github.com/containerd/containerd/sys/reaper"
 	runcC "github.com/containerd/go-runc"
 	"github.com/containerd/typeurl"
 	"github.com/gogo/protobuf/proto"
-	"github.com/gogo/protobuf/types"
 	ptypes "github.com/gogo/protobuf/types"
-	specs "github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
@@ -75,7 +76,15 @@ type spec struct {
 
 // New returns a new shim service that can be used via GRPC
 func New(ctx context.Context, id string, publisher shim.Publisher, shutdown func()) (shim.Shim, error) {
-	ep, err := oom.New(publisher)
+	var (
+		ep  oom.Watcher
+		err error
+	)
+	if cgroups.Mode() == cgroups.Unified {
+		ep, err = oomv2.New(publisher)
+	} else {
+		ep, err = oomv1.New(publisher)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +117,7 @@ type service struct {
 	events   chan interface{}
 	platform stdio.Platform
 	ec       chan runcC.Exit
-	ep       *oom.Epoller
+	ep       oom.Watcher
 
 	// id only used in cleanup case
 	id string
@@ -158,7 +167,7 @@ func readSpec() (*spec, error) {
 	return &s, nil
 }
 
-func (s *service) StartShim(ctx context.Context, id, containerdBinary, containerdAddress, containerdTTRPCAddress string) (string, error) {
+func (s *service) StartShim(ctx context.Context, id, containerdBinary, containerdAddress, containerdTTRPCAddress string) (_ string, retErr error) {
 	cmd, err := newCommand(ctx, id, containerdBinary, containerdAddress, containerdTTRPCAddress)
 	if err != nil {
 		return "", err
@@ -201,7 +210,7 @@ func (s *service) StartShim(ctx context.Context, id, containerdBinary, container
 		return "", err
 	}
 	defer func() {
-		if err != nil {
+		if retErr != nil {
 			cmd.Process.Kill()
 		}
 	}()
@@ -212,7 +221,7 @@ func (s *service) StartShim(ctx context.Context, id, containerdBinary, container
 	}
 	if data, err := ioutil.ReadAll(os.Stdin); err == nil {
 		if len(data) > 0 {
-			var any types.Any
+			var any ptypes.Any
 			if err := proto.Unmarshal(data, &any); err != nil {
 				return "", err
 			}
@@ -222,14 +231,27 @@ func (s *service) StartShim(ctx context.Context, id, containerdBinary, container
 			}
 			if opts, ok := v.(*options.Options); ok {
 				if opts.ShimCgroup != "" {
-					cg, err := cgroups.Load(cgroups.V1, cgroups.StaticPath(opts.ShimCgroup))
-					if err != nil {
-						return "", errors.Wrapf(err, "failed to load cgroup %s", opts.ShimCgroup)
-					}
-					if err := cg.Add(cgroups.Process{
-						Pid: cmd.Process.Pid,
-					}); err != nil {
-						return "", errors.Wrapf(err, "failed to join cgroup %s", opts.ShimCgroup)
+					if cgroups.Mode() == cgroups.Unified {
+						if err := cgroupsv2.VerifyGroupPath(opts.ShimCgroup); err != nil {
+							return "", errors.Wrapf(err, "failed to verify cgroup path %q", opts.ShimCgroup)
+						}
+						cg, err := cgroupsv2.LoadManager("/sys/fs/cgroup", opts.ShimCgroup)
+						if err != nil {
+							return "", errors.Wrapf(err, "failed to load cgroup %s", opts.ShimCgroup)
+						}
+						if err := cg.AddProc(uint64(cmd.Process.Pid)); err != nil {
+							return "", errors.Wrapf(err, "failed to join cgroup %s", opts.ShimCgroup)
+						}
+					} else {
+						cg, err := cgroups.Load(cgroups.V1, cgroups.StaticPath(opts.ShimCgroup))
+						if err != nil {
+							return "", errors.Wrapf(err, "failed to load cgroup %s", opts.ShimCgroup)
+						}
+						if err := cg.Add(cgroups.Process{
+							Pid: cmd.Process.Pid,
+						}); err != nil {
+							return "", errors.Wrapf(err, "failed to join cgroup %s", opts.ShimCgroup)
+						}
 					}
 				}
 			}
@@ -325,10 +347,30 @@ func (s *service) Start(ctx context.Context, r *taskAPI.StartRequest) (*taskAPI.
 		s.eventSendMu.Unlock()
 		return nil, errdefs.ToGRPC(err)
 	}
+
 	switch r.ExecID {
 	case "":
-		if err := s.ep.Add(container.ID, container.Cgroup()); err != nil {
-			logrus.WithError(err).Error("add cg to OOM monitor")
+		switch cg := container.Cgroup().(type) {
+		case cgroups.Cgroup:
+			if err := s.ep.Add(container.ID, cg); err != nil {
+				logrus.WithError(err).Error("add cg to OOM monitor")
+			}
+		case *cgroupsv2.Manager:
+			allControllers, err := cg.RootControllers()
+			if err != nil {
+				logrus.WithError(err).Error("failed to get root controllers")
+			} else {
+				if err := cg.ToggleControllers(allControllers, cgroupsv2.Enable); err != nil {
+					if sys.RunningInUserNS() {
+						logrus.WithError(err).Debugf("failed to enable controllers (%v)", allControllers)
+					} else {
+						logrus.WithError(err).Errorf("failed to enable controllers (%v)", allControllers)
+					}
+				}
+			}
+			if err := s.ep.Add(container.ID, cg); err != nil {
+				logrus.WithError(err).Error("add cg to OOM monitor")
+			}
 		}
 
 		s.send(&eventstypes.TaskStart{
@@ -619,15 +661,28 @@ func (s *service) Stats(ctx context.Context, r *taskAPI.StatsRequest) (*taskAPI.
 	if err != nil {
 		return nil, err
 	}
-	cg := container.Cgroup()
-	if cg == nil {
+	cgx := container.Cgroup()
+	if cgx == nil {
 		return nil, errdefs.ToGRPCf(errdefs.ErrNotFound, "cgroup does not exist")
 	}
-	stats, err := cg.Stat(cgroups.IgnoreNotExist)
-	if err != nil {
-		return nil, err
+	var statsx interface{}
+	switch cg := cgx.(type) {
+	case cgroups.Cgroup:
+		stats, err := cg.Stat(cgroups.IgnoreNotExist)
+		if err != nil {
+			return nil, err
+		}
+		statsx = stats
+	case *cgroupsv2.Manager:
+		stats, err := cg.Stat()
+		if err != nil {
+			return nil, err
+		}
+		statsx = stats
+	default:
+		return nil, errdefs.ToGRPCf(errdefs.ErrNotImplemented, "unsupported cgroup type %T", cg)
 	}
-	data, err := typeurl.MarshalAny(stats)
+	data, err := typeurl.MarshalAny(statsx)
 	if err != nil {
 		return nil, err
 	}
@@ -667,13 +722,8 @@ func (s *service) checkProcesses(e runcC.Exit) {
 			}
 
 			if ip, ok := p.(*process.Init); ok {
-				shouldKillAll, err := shouldKillAllOnExit(container.Bundle)
-				if err != nil {
-					log.G(s.context).WithError(err).Error("failed to check shouldKillAll")
-				}
-
 				// Ensure all children are killed
-				if shouldKillAll {
+				if runc.ShouldKillAllOnExit(s.context, container.Bundle) {
 					if err := ip.KillAll(s.context); err != nil {
 						logrus.WithError(err).WithField("id", ip.ID()).
 							Error("failed to kill init's children")
@@ -693,25 +743,6 @@ func (s *service) checkProcesses(e runcC.Exit) {
 		}
 		return
 	}
-}
-
-func shouldKillAllOnExit(bundlePath string) (bool, error) {
-	var bundleSpec specs.Spec
-	bundleConfigContents, err := ioutil.ReadFile(filepath.Join(bundlePath, "config.json"))
-	if err != nil {
-		return false, err
-	}
-	json.Unmarshal(bundleConfigContents, &bundleSpec)
-
-	if bundleSpec.Linux != nil {
-		for _, ns := range bundleSpec.Linux.Namespaces {
-			if ns.Type == specs.PIDNamespace && ns.Path == "" {
-				return false, nil
-			}
-		}
-	}
-
-	return true, nil
 }
 
 func (s *service) getContainerPids(ctx context.Context, id string) ([]uint32, error) {
@@ -738,9 +769,7 @@ func (s *service) forward(ctx context.Context, publisher shim.Publisher) {
 	ns, _ := namespaces.Namespace(ctx)
 	ctx = namespaces.WithNamespace(context.Background(), ns)
 	for e := range s.events {
-		ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 		err := publisher.Publish(ctx, runc.GetTopic(e), e)
-		cancel()
 		if err != nil {
 			logrus.WithError(err).Error("post event")
 		}
