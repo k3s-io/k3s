@@ -11,7 +11,7 @@ import (
 
 func main() {
 	app := cmds.NewApp()
-	app.Commands = []cli.Command{
+	app.Commands = []*cli.Command{
 		cmds.NewAgentCommand(agent.Run),
 	}
 
