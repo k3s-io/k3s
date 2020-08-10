@@ -4,6 +4,9 @@ set -ve
 apk add -q -f curl libc6-compat tzdata
 download_go
 # ---
+rc-update add cgroups default
+/etc/init.d/cgroups start
+# ---
 cat <<EOF >/etc/profile.d/build.sh
 export SELINUX=true
 export STATIC_BUILD=true
