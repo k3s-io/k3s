@@ -17,12 +17,12 @@ limitations under the License.
 package crictl
 
 import (
-	"errors"
 	"fmt"
 	"sort"
 	"strings"
 
 	"github.com/docker/go-units"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/net/context"
@@ -86,13 +86,13 @@ var pullImageCommand = &cli.Command{
 		if context.IsSet("pod-config") {
 			sandbox, err = loadPodSandboxConfig(context.String("pod-config"))
 			if err != nil {
-				return fmt.Errorf("load podSandboxConfig failed: %v", err)
+				return errors.Wrap(err, "load podSandboxConfig")
 			}
 		}
 
 		r, err := PullImageWithSandbox(imageClient, imageName, auth, sandbox)
 		if err != nil {
-			return fmt.Errorf("pulling image failed: %v", err)
+			return errors.Wrap(err, "pulling image")
 		}
 		fmt.Printf("Image is up to date for %s\n", r.ImageRef)
 		return nil
@@ -139,7 +139,7 @@ var listImageCommand = &cli.Command{
 
 		r, err := ListImages(imageClient, context.Args().First())
 		if err != nil {
-			return fmt.Errorf("listing images failed: %v", err)
+			return errors.Wrap(err, "listing images")
 		}
 		sort.Sort(imageByRef(r.Images))
 
@@ -251,7 +251,7 @@ var imageStatusCommand = &cli.Command{
 
 			r, err := ImageStatus(imageClient, id, verbose)
 			if err != nil {
-				return fmt.Errorf("image status for %q request failed: %v", id, err)
+				return errors.Wrapf(err, "image status for %q request", id)
 			}
 			image := r.Image
 			if image == nil {
@@ -260,12 +260,12 @@ var imageStatusCommand = &cli.Command{
 
 			status, err := protobufObjectToJSON(r.Image)
 			if err != nil {
-				return fmt.Errorf("failed to marshal status to json for %q: %v", id, err)
+				return errors.Wrapf(err, "marshal status to json for %q", id)
 			}
 			switch output {
 			case "json", "yaml", "go-template":
 				if err := outputStatusInfo(status, r.Info, output, tmplStr); err != nil {
-					return fmt.Errorf("failed to output status for %q: %v", id, err)
+					return errors.Wrapf(err, "output status for %q", id)
 				}
 				continue
 			case "table": // table output is after this switch block
@@ -444,18 +444,18 @@ var imageFsInfoCommand = &cli.Command{
 
 		r, err := ImageFsInfo(imageClient)
 		if err != nil {
-			return fmt.Errorf("image filesystem info request failed: %v", err)
+			return errors.Wrap(err, "image filesystem info request")
 		}
 		for _, info := range r.ImageFilesystems {
 			status, err := protobufObjectToJSON(info)
 			if err != nil {
-				return fmt.Errorf("failed to marshal image filesystem info to json: %v", err)
+				return errors.Wrap(err, "marshal image filesystem info to json")
 			}
 
 			switch output {
 			case "json", "yaml", "go-template":
 				if err := outputStatusInfo(status, nil, output, tmplStr); err != nil {
-					return fmt.Errorf("failed to output image filesystem info %v", err)
+					return errors.Wrap(err, "output image filesystem info")
 				}
 				continue
 			case "table": // table output is after this switch block

@@ -28,7 +28,7 @@ import (
 
 var startCommand = cli.Command{
 	Name:      "start",
-	Usage:     "start a container that have been created",
+	Usage:     "start a container that has been created",
 	ArgsUsage: "CONTAINER",
 	Flags: []cli.Flag{
 		cli.BoolFlag{

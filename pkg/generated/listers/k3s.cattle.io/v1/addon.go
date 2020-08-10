@@ -26,8 +26,10 @@ import (
 )
 
 // AddonLister helps list Addons.
+// All objects returned here must be treated as read-only.
 type AddonLister interface {
 	// List lists all Addons in the indexer.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1.Addon, err error)
 	// Addons returns an object that can list and get Addons.
 	Addons(namespace string) AddonNamespaceLister
@@ -58,10 +60,13 @@ func (s *addonLister) Addons(namespace string) AddonNamespaceLister {
 }
 
 // AddonNamespaceLister helps list and get Addons.
+// All objects returned here must be treated as read-only.
 type AddonNamespaceLister interface {
 	// List lists all Addons in the indexer for a given namespace.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1.Addon, err error)
 	// Get retrieves the Addon from the indexer for a given namespace and name.
+	// Objects returned here must be treated as read-only.
 	Get(name string) (*v1.Addon, error)
 	AddonNamespaceListerExpansion
 }

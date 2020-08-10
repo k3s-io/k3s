@@ -18,10 +18,13 @@ package crictl
 
 import (
 	"fmt"
+	"os"
+	"os/signal"
 	"sort"
 	"time"
 
 	"github.com/docker/go-units"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/net/context"
@@ -114,7 +117,7 @@ var statsCommand = &cli.Command{
 		}
 
 		if err = ContainerStats(runtimeClient, opts); err != nil {
-			return fmt.Errorf("get container stats failed: %v", err)
+			return errors.Wrap(err, "get container stats")
 		}
 		return nil
 	},
@@ -151,6 +154,12 @@ func ContainerStats(client pb.RuntimeServiceClient, opts statsOptions) error {
 			return err
 		}
 	} else {
+		s := make(chan os.Signal)
+		signal.Notify(s, os.Interrupt)
+		go func() {
+			<-s
+			os.Exit(0)
+		}()
 		for range time.Tick(500 * time.Millisecond) {
 			if err := displayStats(client, request, display, opts); err != nil {
 				return err

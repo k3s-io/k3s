@@ -25,10 +25,12 @@ import (
 	"time"
 
 	"github.com/docker/go-units"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/net/context"
 
+	errorUtils "k8s.io/apimachinery/pkg/util/errors"
 	pb "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
 
@@ -66,13 +68,13 @@ var runPodCommand = &cli.Command{
 
 		podSandboxConfig, err := loadPodSandboxConfig(sandboxSpec)
 		if err != nil {
-			return fmt.Errorf("load podSandboxConfig failed: %v", err)
+			return errors.Wrap(err, "load podSandboxConfig")
 		}
 
 		// Test RuntimeServiceClient.RunPodSandbox
 		podID, err := RunPodSandbox(runtimeClient, podSandboxConfig, context.String("runtime"))
 		if err != nil {
-			return fmt.Errorf("run pod sandbox failed: %v", err)
+			return errors.Wrap(err, "run pod sandbox")
 		}
 		fmt.Println(podID)
 		return nil
@@ -96,7 +98,7 @@ var stopPodCommand = &cli.Command{
 			id := context.Args().Get(i)
 			err := StopPodSandbox(runtimeClient, id)
 			if err != nil {
-				return fmt.Errorf("stopping the pod sandbox %q failed: %v", id, err)
+				return errors.Wrapf(err, "stopping the pod sandbox %q", id)
 			}
 		}
 		return nil
@@ -140,45 +142,39 @@ var removePodCommand = &cli.Command{
 			}
 		}
 
-		if len(ids) == 0 {
+		lenIDs := len(ids)
+		if lenIDs == 0 {
 			return cli.ShowSubcommandHelp(ctx)
 		}
 
-		errored := false
+		funcs := []func() error{}
 		for _, id := range ids {
-			resp, err := runtimeClient.PodSandboxStatus(context.Background(),
-				&pb.PodSandboxStatusRequest{PodSandboxId: id})
-			if err != nil {
-				logrus.Error(err)
-				errored = true
-				continue
-			}
-			if resp.Status.State == pb.PodSandboxState_SANDBOX_READY {
-				if ctx.Bool("force") {
-					if err := StopPodSandbox(runtimeClient, id); err != nil {
-						logrus.Errorf("stopping the pod sandbox %q failed: %v", id, err)
-						errored = true
-						continue
-					}
-				} else {
-					logrus.Errorf("pod sandbox %q is running, please stop it first", id)
-					errored = true
-					continue
+			funcs = append(funcs, func() error {
+				resp, err := runtimeClient.PodSandboxStatus(context.Background(),
+					&pb.PodSandboxStatusRequest{PodSandboxId: id})
+				if err != nil {
+					return errors.Wrapf(err, "getting sandbox status of pod %q", id)
 				}
-			}
+				if resp.Status.State == pb.PodSandboxState_SANDBOX_READY {
+					if ctx.Bool("force") {
+						if err := StopPodSandbox(runtimeClient, id); err != nil {
+							return errors.Wrapf(err, "stopping the pod sandbox %q failed", id)
+						}
+					} else {
+						return errors.Errorf("pod sandbox %q is running, please stop it first", id)
+					}
+				}
 
-			err = RemovePodSandbox(runtimeClient, id)
-			if err != nil {
-				logrus.Errorf("removing the pod sandbox %q failed: %v", id, err)
-				errored = true
-				continue
-			}
+				err = RemovePodSandbox(runtimeClient, id)
+				if err != nil {
+					return errors.Wrapf(err, "removing the pod sandbox %q", id)
+				}
+
+				return nil
+			})
 		}
 
-		if errored {
-			return fmt.Errorf("unable to remove sandbox(es)")
-		}
-		return nil
+		return errorUtils.AggregateGoroutines(funcs...)
 	},
 }
 
@@ -217,7 +213,7 @@ var podStatusCommand = &cli.Command{
 
 			err := PodSandboxStatus(runtimeClient, id, context.String("output"), context.Bool("quiet"), context.String("template"))
 			if err != nil {
-				return fmt.Errorf("getting the pod sandbox status for %q failed: %v", id, err)
+				return errors.Wrapf(err, "getting the pod sandbox status for %q", id)
 			}
 		}
 		return nil
@@ -310,7 +306,7 @@ var listPodCommand = &cli.Command{
 			return err
 		}
 		if err = ListPodSandboxes(runtimeClient, opts); err != nil {
-			return fmt.Errorf("listing pod sandboxes failed: %v", err)
+			return errors.Wrap(err, "listing pod sandboxes")
 		}
 		return nil
 	},
@@ -508,7 +504,15 @@ func ListPodSandboxes(client pb.RuntimeServiceClient, opts listOptions) error {
 
 	display := newTableDisplay(20, 1, 3, ' ', 0)
 	if !opts.verbose && !opts.quiet {
-		display.AddRow([]string{columnPodID, columnCreated, columnState, columnName, columnNamespace, columnAttempt})
+		display.AddRow([]string{
+			columnPodID,
+			columnCreated,
+			columnState,
+			columnName,
+			columnNamespace,
+			columnAttempt,
+			columnPodRuntime,
+		})
 	}
 	for _, pod := range r.Items {
 		if opts.quiet {
@@ -522,8 +526,15 @@ func ListPodSandboxes(client pb.RuntimeServiceClient, opts listOptions) error {
 			if !opts.noTrunc {
 				id = getTruncatedID(id, "")
 			}
-			display.AddRow([]string{id, ctm, convertPodState(pod.State), pod.Metadata.Name,
-				pod.Metadata.Namespace, fmt.Sprintf("%d", pod.Metadata.Attempt)})
+			display.AddRow([]string{
+				id,
+				ctm,
+				convertPodState(pod.State),
+				pod.Metadata.Name,
+				pod.Metadata.Namespace,
+				fmt.Sprintf("%d", pod.Metadata.Attempt),
+				getSandboxesRuntimeHandler(pod),
+			})
 			continue
 		}
 
@@ -557,6 +568,10 @@ func ListPodSandboxes(client pb.RuntimeServiceClient, opts listOptions) error {
 				fmt.Printf("\t%s -> %s\n", k, pod.Annotations[k])
 			}
 		}
+		fmt.Printf("%s: %s\n",
+			strings.Title(strings.ToLower(columnPodRuntime)),
+			getSandboxesRuntimeHandler(pod))
+
 		fmt.Println()
 	}
 
@@ -574,6 +589,13 @@ func convertPodState(state pb.PodSandboxState) string {
 		log.Fatalf("Unknown pod state %q", state)
 		return ""
 	}
+}
+
+func getSandboxesRuntimeHandler(sandbox *pb.PodSandbox) string {
+	if sandbox.RuntimeHandler == "" {
+		return "(default)"
+	}
+	return sandbox.RuntimeHandler
 }
 
 func getSandboxesList(sandboxesList []*pb.PodSandbox, opts listOptions) []*pb.PodSandbox {

@@ -26,13 +26,14 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/ghodss/yaml"
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
+	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 	"google.golang.org/grpc"
 	utilyaml "k8s.io/apimachinery/pkg/util/yaml"
 	pb "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
+	"sigs.k8s.io/yaml"
 )
 
 const (
@@ -100,7 +101,7 @@ type portforwardOptions struct {
 }
 
 func getSortedKeys(m map[string]string) []string {
-	keys := make([]string, len(m))
+	keys := make([]string, 0, len(m))
 	for k := range m {
 		keys = append(keys, k)
 	}
@@ -152,7 +153,7 @@ func getRuntimeClient(context *cli.Context) (pb.RuntimeServiceClient, *grpc.Clie
 	// Set up a connection to the server.
 	conn, err := getRuntimeClientConnection(context)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to connect: %v", err)
+		return nil, nil, errors.Wrap(err, "connect")
 	}
 	runtimeClient := pb.NewRuntimeServiceClient(conn)
 	return runtimeClient, conn, nil
@@ -162,7 +163,7 @@ func getImageClient(context *cli.Context) (pb.ImageServiceClient, *grpc.ClientCo
 	// Set up a connection to the server.
 	conn, err := getImageClientConnection(context)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to connect: %v", err)
+		return nil, nil, errors.Wrap(err, "connect")
 	}
 	imageClient := pb.NewImageServiceClient(conn)
 	return imageClient, conn, nil

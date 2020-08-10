@@ -2062,7 +2062,7 @@ func (g *Generator) generateInternalStructFields(mc *msgCtx, topLevelFields []to
 
 }
 
-// generateOneofFuncs adds all the utility functions for oneof, including marshalling, unmarshalling and sizer.
+// generateOneofFuncs adds all the utility functions for oneof, including marshaling, unmarshaling and sizer.
 func (g *Generator) generateOneofFuncs(mc *msgCtx, topLevelFields []topLevelField) {
 	ofields := []*oneofField{}
 	for _, f := range topLevelFields {
@@ -2264,7 +2264,7 @@ func (g *Generator) generateMessage(message *Descriptor) {
 			of := oneofField{
 				fieldCommon: fieldCommon{
 					goName:     fname,
-					getterName: "Get"+fname,
+					getterName: "Get" + fname,
 					goType:     dname,
 					tags:       tag,
 					protoName:  odp.GetName(),
@@ -2609,7 +2609,9 @@ func (g *Generator) generateFileDescriptor(file *FileDescriptor) {
 
 	v := file.VarName()
 	g.P()
-	g.P("func init() { ", g.Pkg["proto"], ".RegisterFile(", strconv.Quote(*file.Name), ", ", v, ") }")
+	g.P("func init() {")
+	g.P(g.Pkg["proto"], ".RegisterFile(", strconv.Quote(*file.Name), ", ", v, ")")
+	g.P("}")
 	g.P("var ", v, " = []byte{")
 	g.P("// ", len(b), " bytes of a gzipped FileDescriptorProto")
 	for len(b) > 0 {

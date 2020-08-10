@@ -27,7 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	v1qos "k8s.io/kubernetes/pkg/apis/core/v1/helper/qos"
 	kubefeatures "k8s.io/kubernetes/pkg/features"
 )
@@ -187,7 +187,7 @@ func (m *podContainerManagerImpl) tryKillingCgroupProcesses(podCgroup CgroupName
 func (m *podContainerManagerImpl) Destroy(podCgroup CgroupName) error {
 	// Try killing all the processes attached to the pod cgroup
 	if err := m.tryKillingCgroupProcesses(podCgroup); err != nil {
-		klog.V(3).Infof("failed to kill all the processes attached to the %v cgroups", podCgroup)
+		klog.Warningf("failed to kill all the processes attached to the %v cgroups", podCgroup)
 		return fmt.Errorf("failed to kill all the processes attached to the %v cgroups : %v", podCgroup, err)
 	}
 
@@ -197,6 +197,7 @@ func (m *podContainerManagerImpl) Destroy(podCgroup CgroupName) error {
 		ResourceParameters: &ResourceConfig{},
 	}
 	if err := m.cgroupManager.Destroy(containerConfig); err != nil {
+		klog.Warningf("failed to delete cgroup paths for %v : %v", podCgroup, err)
 		return fmt.Errorf("failed to delete cgroup paths for %v : %v", podCgroup, err)
 	}
 	return nil
@@ -292,7 +293,8 @@ func (m *podContainerManagerImpl) GetAllPodsFromCgroups() (map[types.UID]CgroupN
 // enabled, so Exists() returns true always as the cgroupRoot
 // is expected to always exist.
 type podContainerManagerNoop struct {
-	cgroupRoot CgroupName
+	cgroupRoot      CgroupName
+	rootlessSystemd bool
 }
 
 // Make sure that podContainerManagerStub implements the PodContainerManager interface
@@ -307,6 +309,10 @@ func (m *podContainerManagerNoop) EnsureExists(_ *v1.Pod) error {
 }
 
 func (m *podContainerManagerNoop) GetPodContainerName(_ *v1.Pod) (CgroupName, string) {
+	if m.rootlessSystemd {
+		// "user.slice" is set to PodConfig.Linux.CgroupParent
+		return m.cgroupRoot, "user.slice"
+	}
 	return m.cgroupRoot, ""
 }
 

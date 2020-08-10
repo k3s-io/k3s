@@ -196,7 +196,7 @@ func (container *container) MappedVirtualDisks() (map[int]MappedVirtualDiskContr
 
 // CreateProcess launches a new process within the container.
 func (container *container) CreateProcess(c *ProcessConfig) (Process, error) {
-	p, err := container.system.CreateProcessNoStdio(c)
+	p, err := container.system.CreateProcess(context.Background(), c)
 	if err != nil {
 		return nil, convertSystemError(err, container)
 	}

@@ -5,7 +5,6 @@ package main
 import (
 	"os"
 	"os/signal"
-	"syscall" // only for Signal
 
 	"github.com/opencontainers/runc/libcontainer"
 	"github.com/opencontainers/runc/libcontainer/system"
@@ -70,6 +69,7 @@ func (h *signalHandler) forward(process *libcontainer.Process, tty *tty, detach 
 			h.notifySocket.run(pid1)
 			return 0, nil
 		}
+		h.notifySocket.run(os.Getpid())
 		go h.notifySocket.run(0)
 	}
 
@@ -97,15 +97,12 @@ func (h *signalHandler) forward(process *libcontainer.Process, tty *tty, detach 
 					// status because we must ensure that any of the go specific process
 					// fun such as flushing pipes are complete before we return.
 					process.Wait()
-					if h.notifySocket != nil {
-						h.notifySocket.Close()
-					}
 					return e.status, nil
 				}
 			}
 		default:
 			logrus.Debugf("sending signal to process %s", s)
-			if err := unix.Kill(pid1, s.(syscall.Signal)); err != nil {
+			if err := unix.Kill(pid1, s.(unix.Signal)); err != nil {
 				logrus.Error(err)
 			}
 		}

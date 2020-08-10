@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/containerd/go-cni.svg?branch=master)](https://travis-ci.org/containerd/go-cni)
+[![Build Status](https://travis-ci.org/containerd/go-cni.svg?branch=master)](https://travis-ci.org/containerd/go-cni) [![GoDoc](https://godoc.org/github.com/containerd/go-cni?status.svg)](https://godoc.org/github.com/containerd/go-cni)
 
 # go-cni
 

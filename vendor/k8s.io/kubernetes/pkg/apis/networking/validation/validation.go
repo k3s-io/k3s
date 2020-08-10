@@ -19,9 +19,10 @@ package validation
 import (
 	"fmt"
 	"net"
-	"regexp"
 	"strings"
 
+	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
+	networkingv1beta1 "k8s.io/api/networking/v1beta1"
 	apimachineryvalidation "k8s.io/apimachinery/pkg/api/validation"
 	pathvalidation "k8s.io/apimachinery/pkg/api/validation/path"
 	unversionedvalidation "k8s.io/apimachinery/pkg/apis/meta/v1/validation"
@@ -198,8 +199,11 @@ var ValidateIngressName = apimachineryvalidation.NameIsDNSSubdomain
 
 // IngressValidationOptions cover beta to GA transitions for HTTP PathType
 type IngressValidationOptions struct {
-	requireRegexPath     bool
-	allowResourceBackend bool
+	// AllowInvalidSecretName indicates whether spec.tls[*].secretName values that are not valid Secret names should be allowed
+	AllowInvalidSecretName bool
+
+	// AllowInvalidWildcardHostRule indicates whether invalid rule values are allowed in rules with wildcard hostnames
+	AllowInvalidWildcardHostRule bool
 }
 
 // ValidateIngress validates Ingresses on create and update.
@@ -214,10 +218,8 @@ func ValidateIngressCreate(ingress *networking.Ingress, requestGV schema.GroupVe
 	allErrs := field.ErrorList{}
 	var opts IngressValidationOptions
 	opts = IngressValidationOptions{
-		// TODO(robscott): Remove regex validation for 1.19.
-		requireRegexPath: true,
-		// TODO(cmluciano): Allow resource backend for 1.19.
-		allowResourceBackend: false,
+		AllowInvalidSecretName:       allowInvalidSecretName(requestGV, nil),
+		AllowInvalidWildcardHostRule: allowInvalidWildcardHostRule(requestGV, nil),
 	}
 	allErrs = append(allErrs, validateIngress(ingress, opts, requestGV)...)
 	annotationVal, annotationIsSet := ingress.Annotations[annotationIngressClass]
@@ -233,31 +235,34 @@ func ValidateIngressUpdate(ingress, oldIngress *networking.Ingress, requestGV sc
 	allErrs := apivalidation.ValidateObjectMetaUpdate(&ingress.ObjectMeta, &oldIngress.ObjectMeta, field.NewPath("metadata"))
 	var opts IngressValidationOptions
 	opts = IngressValidationOptions{
-		// TODO(robscott): Remove regex validation for 1.19.
-		// Only require regex path validation for this Ingress if the previous
-		// version of the Ingress also passed that validation.
-		requireRegexPath:     allPathsPassRegexValidation(oldIngress),
-		allowResourceBackend: resourceBackendPresent(oldIngress),
+		AllowInvalidSecretName:       allowInvalidSecretName(requestGV, oldIngress),
+		AllowInvalidWildcardHostRule: allowInvalidWildcardHostRule(requestGV, oldIngress),
 	}
 
 	allErrs = append(allErrs, validateIngress(ingress, opts, requestGV)...)
 	return allErrs
 }
 
-func validateIngressTLS(spec *networking.IngressSpec, fldPath *field.Path) field.ErrorList {
+func validateIngressTLS(spec *networking.IngressSpec, fldPath *field.Path, opts IngressValidationOptions) field.ErrorList {
 	allErrs := field.ErrorList{}
 	// TODO: Perform a more thorough validation of spec.TLS.Hosts that takes
 	// the wildcard spec from RFC 6125 into account.
-	for _, itls := range spec.TLS {
+	for tlsIndex, itls := range spec.TLS {
 		for i, host := range itls.Hosts {
 			if strings.Contains(host, "*") {
 				for _, msg := range validation.IsWildcardDNS1123Subdomain(host) {
-					allErrs = append(allErrs, field.Invalid(fldPath.Index(i).Child("hosts"), host, msg))
+					allErrs = append(allErrs, field.Invalid(fldPath.Index(tlsIndex).Child("hosts").Index(i), host, msg))
 				}
 				continue
 			}
 			for _, msg := range validation.IsDNS1123Subdomain(host) {
-				allErrs = append(allErrs, field.Invalid(fldPath.Index(i).Child("hosts"), host, msg))
+				allErrs = append(allErrs, field.Invalid(fldPath.Index(tlsIndex).Child("hosts").Index(i), host, msg))
+			}
+		}
+
+		if !opts.AllowInvalidSecretName {
+			for _, msg := range validateTLSSecretName(itls.SecretName) {
+				allErrs = append(allErrs, field.Invalid(fldPath.Index(tlsIndex).Child("secretName"), itls.SecretName, msg))
 			}
 		}
 	}
@@ -265,21 +270,32 @@ func validateIngressTLS(spec *networking.IngressSpec, fldPath *field.Path) field
 	return allErrs
 }
 
+// defaultBackendFieldName returns the name of the field used for defaultBackend
+// in the provided GroupVersion.
+func defaultBackendFieldName(gv schema.GroupVersion) string {
+	switch gv {
+	case networkingv1beta1.SchemeGroupVersion, extensionsv1beta1.SchemeGroupVersion:
+		return "backend"
+	default:
+		return "defaultBackend"
+	}
+}
+
 // ValidateIngressSpec tests if required fields in the IngressSpec are set.
 func ValidateIngressSpec(spec *networking.IngressSpec, fldPath *field.Path, opts IngressValidationOptions, requestGV schema.GroupVersion) field.ErrorList {
 	allErrs := field.ErrorList{}
-	if len(spec.Rules) == 0 && spec.Backend == nil {
-		errMsg := "either `backend` or `rules` must be specified"
+	if len(spec.Rules) == 0 && spec.DefaultBackend == nil {
+		errMsg := fmt.Sprintf("either `%s` or `rules` must be specified", defaultBackendFieldName(requestGV))
 		allErrs = append(allErrs, field.Invalid(fldPath, spec.Rules, errMsg))
 	}
-	if spec.Backend != nil {
-		allErrs = append(allErrs, validateIngressBackend(spec.Backend, fldPath.Child("backend"), opts)...)
+	if spec.DefaultBackend != nil {
+		allErrs = append(allErrs, validateIngressBackend(spec.DefaultBackend, fldPath.Child(defaultBackendFieldName(requestGV)), opts, requestGV)...)
 	}
 	if len(spec.Rules) > 0 {
-		allErrs = append(allErrs, validateIngressRules(spec.Rules, fldPath.Child("rules"), opts)...)
+		allErrs = append(allErrs, validateIngressRules(spec.Rules, fldPath.Child("rules"), opts, requestGV)...)
 	}
 	if len(spec.TLS) > 0 {
-		allErrs = append(allErrs, validateIngressTLS(spec, fldPath.Child("tls"))...)
+		allErrs = append(allErrs, validateIngressTLS(spec, fldPath.Child("tls"), opts)...)
 	}
 	if spec.IngressClassName != nil {
 		for _, msg := range ValidateIngressClassName(*spec.IngressClassName, false) {
@@ -296,12 +312,13 @@ func ValidateIngressStatusUpdate(ingress, oldIngress *networking.Ingress) field.
 	return allErrs
 }
 
-func validateIngressRules(ingressRules []networking.IngressRule, fldPath *field.Path, opts IngressValidationOptions) field.ErrorList {
+func validateIngressRules(ingressRules []networking.IngressRule, fldPath *field.Path, opts IngressValidationOptions, requestGV schema.GroupVersion) field.ErrorList {
 	allErrs := field.ErrorList{}
 	if len(ingressRules) == 0 {
 		return append(allErrs, field.Required(fldPath, ""))
 	}
 	for i, ih := range ingressRules {
+		wildcardHost := false
 		if len(ih.Host) > 0 {
 			if isIP := (net.ParseIP(ih.Host) != nil); isIP {
 				allErrs = append(allErrs, field.Invalid(fldPath.Index(i).Child("host"), ih.Host, "must be a DNS name, not an IP address"))
@@ -312,37 +329,41 @@ func validateIngressRules(ingressRules []networking.IngressRule, fldPath *field.
 				for _, msg := range validation.IsWildcardDNS1123Subdomain(ih.Host) {
 					allErrs = append(allErrs, field.Invalid(fldPath.Index(i).Child("host"), ih.Host, msg))
 				}
-				continue
-			}
-			for _, msg := range validation.IsDNS1123Subdomain(ih.Host) {
-				allErrs = append(allErrs, field.Invalid(fldPath.Index(i).Child("host"), ih.Host, msg))
+				wildcardHost = true
+			} else {
+				for _, msg := range validation.IsDNS1123Subdomain(ih.Host) {
+					allErrs = append(allErrs, field.Invalid(fldPath.Index(i).Child("host"), ih.Host, msg))
+				}
 			}
 		}
-		allErrs = append(allErrs, validateIngressRuleValue(&ih.IngressRuleValue, fldPath.Index(0), opts)...)
+
+		if !wildcardHost || !opts.AllowInvalidWildcardHostRule {
+			allErrs = append(allErrs, validateIngressRuleValue(&ih.IngressRuleValue, fldPath.Index(i), opts, requestGV)...)
+		}
 	}
 	return allErrs
 }
 
-func validateIngressRuleValue(ingressRule *networking.IngressRuleValue, fldPath *field.Path, opts IngressValidationOptions) field.ErrorList {
+func validateIngressRuleValue(ingressRule *networking.IngressRuleValue, fldPath *field.Path, opts IngressValidationOptions, requestGV schema.GroupVersion) field.ErrorList {
 	allErrs := field.ErrorList{}
 	if ingressRule.HTTP != nil {
-		allErrs = append(allErrs, validateHTTPIngressRuleValue(ingressRule.HTTP, fldPath.Child("http"), opts)...)
+		allErrs = append(allErrs, validateHTTPIngressRuleValue(ingressRule.HTTP, fldPath.Child("http"), opts, requestGV)...)
 	}
 	return allErrs
 }
 
-func validateHTTPIngressRuleValue(httpIngressRuleValue *networking.HTTPIngressRuleValue, fldPath *field.Path, opts IngressValidationOptions) field.ErrorList {
+func validateHTTPIngressRuleValue(httpIngressRuleValue *networking.HTTPIngressRuleValue, fldPath *field.Path, opts IngressValidationOptions, requestGV schema.GroupVersion) field.ErrorList {
 	allErrs := field.ErrorList{}
 	if len(httpIngressRuleValue.Paths) == 0 {
 		allErrs = append(allErrs, field.Required(fldPath.Child("paths"), ""))
 	}
 	for i, path := range httpIngressRuleValue.Paths {
-		allErrs = append(allErrs, validateHTTPIngressPath(&path, fldPath.Child("paths").Index(i), opts)...)
+		allErrs = append(allErrs, validateHTTPIngressPath(&path, fldPath.Child("paths").Index(i), opts, requestGV)...)
 	}
 	return allErrs
 }
 
-func validateHTTPIngressPath(path *networking.HTTPIngressPath, fldPath *field.Path, opts IngressValidationOptions) field.ErrorList {
+func validateHTTPIngressPath(path *networking.HTTPIngressPath, fldPath *field.Path, opts IngressValidationOptions, requestGV schema.GroupVersion) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	if path.PathType == nil {
@@ -376,42 +397,82 @@ func validateHTTPIngressPath(path *networking.HTTPIngressPath, fldPath *field.Pa
 	default:
 		allErrs = append(allErrs, field.NotSupported(fldPath.Child("pathType"), *path.PathType, supportedPathTypes.List()))
 	}
-
-	// TODO(robscott): Remove regex validation for 1.19.
-	if opts.requireRegexPath {
-		_, err := regexp.CompilePOSIX(path.Path)
-		if err != nil {
-			allErrs = append(allErrs, field.Invalid(fldPath.Child("path"), path.Path, "must be a valid regex"))
-		}
-	}
-
-	allErrs = append(allErrs, validateIngressBackend(&path.Backend, fldPath.Child("backend"), opts)...)
+	allErrs = append(allErrs, validateIngressBackend(&path.Backend, fldPath.Child("backend"), opts, requestGV)...)
 	return allErrs
 }
 
+// numberPortField returns the field path to a service port number field
+// relative to a backend struct in the provided GroupVersion
+func numberPortField(numberPortFieldPath *field.Path, gv schema.GroupVersion) *field.Path {
+	switch gv {
+	case networkingv1beta1.SchemeGroupVersion, extensionsv1beta1.SchemeGroupVersion:
+		return numberPortFieldPath.Child("servicePort")
+	default:
+		return numberPortFieldPath.Child("service", "port", "number")
+	}
+}
+
+// namedPortField returns the field path to a service port name field
+// relative to a backend struct in the provided GroupVersion
+func namedPortField(namedPortFieldPath *field.Path, gv schema.GroupVersion) *field.Path {
+	switch gv {
+	case networkingv1beta1.SchemeGroupVersion, extensionsv1beta1.SchemeGroupVersion:
+		return namedPortFieldPath.Child("servicePort")
+	default:
+		return namedPortFieldPath.Child("service", "port", "name")
+	}
+}
+
+// serviceNameFieldPath returns the name of the field used for a
+// service name in the provided GroupVersion.
+func serviceNameFieldPath(backendFieldPath *field.Path, gv schema.GroupVersion) *field.Path {
+	switch gv {
+	case networkingv1beta1.SchemeGroupVersion, extensionsv1beta1.SchemeGroupVersion:
+		return backendFieldPath.Child("serviceName")
+	default:
+		return backendFieldPath.Child("service", "name")
+	}
+}
+
 // validateIngressBackend tests if a given backend is valid.
-func validateIngressBackend(backend *networking.IngressBackend, fldPath *field.Path, opts IngressValidationOptions) field.ErrorList {
+func validateIngressBackend(backend *networking.IngressBackend, fldPath *field.Path, opts IngressValidationOptions, requestGV schema.GroupVersion) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	hasResourceBackend := backend.Resource != nil
-	hasServiceBackend := len(backend.ServiceName) > 0 || backend.ServicePort.IntVal != 0 || len(backend.ServicePort.StrVal) > 0
+	hasServiceBackend := backend.Service != nil
 
 	switch {
 	case hasResourceBackend && hasServiceBackend:
 		return append(allErrs, field.Invalid(fldPath, "", "cannot set both resource and service backends"))
-	case hasResourceBackend && !opts.allowResourceBackend:
-		return append(allErrs, field.Forbidden(fldPath.Child("resource"), "not supported; only service backends are supported in this version"))
 	case hasResourceBackend:
 		allErrs = append(allErrs, validateIngressTypedLocalObjectReference(backend.Resource, fldPath.Child("resource"))...)
-	default:
-		if len(backend.ServiceName) == 0 {
-			return append(allErrs, field.Required(fldPath.Child("serviceName"), ""))
-		}
-		for _, msg := range apivalidation.ValidateServiceName(backend.ServiceName, false) {
-			allErrs = append(allErrs, field.Invalid(fldPath.Child("serviceName"), backend.ServiceName, msg))
-		}
-		allErrs = append(allErrs, apivalidation.ValidatePortNumOrName(backend.ServicePort, fldPath.Child("servicePort"))...)
+	case hasServiceBackend:
 
+		if len(backend.Service.Name) == 0 {
+			allErrs = append(allErrs, field.Required(serviceNameFieldPath(fldPath, requestGV), ""))
+		} else {
+			for _, msg := range apivalidation.ValidateServiceName(backend.Service.Name, false) {
+				allErrs = append(allErrs, field.Invalid(serviceNameFieldPath(fldPath, requestGV), backend.Service.Name, msg))
+			}
+		}
+
+		hasPortName := len(backend.Service.Port.Name) > 0
+		hasPortNumber := backend.Service.Port.Number != 0
+		if hasPortName && hasPortNumber {
+			allErrs = append(allErrs, field.Invalid(fldPath, "", "cannot set both port name & port number"))
+		} else if hasPortName {
+			for _, msg := range validation.IsValidPortName(backend.Service.Port.Name) {
+				allErrs = append(allErrs, field.Invalid(namedPortField(fldPath, requestGV), backend.Service.Port.Name, msg))
+			}
+		} else if hasPortNumber {
+			for _, msg := range validation.IsValidPortNum(int(backend.Service.Port.Number)) {
+				allErrs = append(allErrs, field.Invalid(numberPortField(fldPath, requestGV), backend.Service.Port.Number, msg))
+			}
+		} else {
+			allErrs = append(allErrs, field.Required(fldPath, "port name or number is required"))
+		}
+	default:
+		allErrs = append(allErrs, field.Invalid(fldPath, "", "resource or service backend is required"))
 	}
 	return allErrs
 }
@@ -485,35 +546,38 @@ func validateIngressTypedLocalObjectReference(params *api.TypedLocalObjectRefere
 	return allErrs
 }
 
-// allPathsPassRegexValidation returns true if the Ingress has paths that all
-// match the Ingress path validation with requireRegexPath enabled.
-func allPathsPassRegexValidation(ingress *networking.Ingress) bool {
-	for _, rule := range ingress.Spec.Rules {
-		if rule.HTTP == nil {
-			continue
-		}
-		for _, path := range rule.HTTP.Paths {
-			if len(path.Path) == 0 {
-				continue
-			}
-			if _, err := regexp.CompilePOSIX(path.Path); err != nil {
-				return false
-			}
-		}
-	}
-	return true
-}
-
-func resourceBackendPresent(ingress *networking.Ingress) bool {
-	if ingress.Spec.Backend != nil && ingress.Spec.Backend.Resource != nil {
+func allowInvalidSecretName(gv schema.GroupVersion, oldIngress *networking.Ingress) bool {
+	if gv == networkingv1beta1.SchemeGroupVersion || gv == extensionsv1beta1.SchemeGroupVersion {
+		// backwards compatibility with released API versions that allowed invalid names
 		return true
 	}
-	for _, rule := range ingress.Spec.Rules {
-		if rule.HTTP == nil {
-			continue
+	if oldIngress != nil {
+		for _, tls := range oldIngress.Spec.TLS {
+			if len(validateTLSSecretName(tls.SecretName)) > 0 {
+				// backwards compatibility with existing persisted object
+				return true
+			}
 		}
-		for _, path := range rule.HTTP.Paths {
-			if path.Backend.Resource != nil {
+	}
+	return false
+}
+
+func validateTLSSecretName(name string) []string {
+	if len(name) == 0 {
+		return nil
+	}
+	return apivalidation.ValidateSecretName(name, false)
+}
+
+func allowInvalidWildcardHostRule(gv schema.GroupVersion, oldIngress *networking.Ingress) bool {
+	if gv == networkingv1beta1.SchemeGroupVersion || gv == extensionsv1beta1.SchemeGroupVersion {
+		// backwards compatibility with released API versions that allowed invalid rules
+		return true
+	}
+	if oldIngress != nil {
+		for _, rule := range oldIngress.Spec.Rules {
+			if strings.Contains(rule.Host, "*") && len(validateIngressRuleValue(&rule.IngressRuleValue, nil, IngressValidationOptions{}, gv)) > 0 {
+				// backwards compatibility with existing invalid data
 				return true
 			}
 		}

@@ -33,6 +33,7 @@ var Command = cli.Command{
 		fmt.Println("Client:")
 		fmt.Println("  Version: ", version.Version)
 		fmt.Println("  Revision:", version.Revision)
+		fmt.Println("  Go version:", version.GoVersion)
 		fmt.Println("")
 		client, ctx, cancel, err := commands.NewClient(context)
 		if err != nil {

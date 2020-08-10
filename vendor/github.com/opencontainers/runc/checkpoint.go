@@ -3,6 +3,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -34,7 +35,7 @@ checkpointed.`,
 		cli.BoolFlag{Name: "ext-unix-sk", Usage: "allow external unix sockets"},
 		cli.BoolFlag{Name: "shell-job", Usage: "allow shell jobs"},
 		cli.BoolFlag{Name: "lazy-pages", Usage: "use userfaultfd to lazily restore memory pages"},
-		cli.StringFlag{Name: "status-fd", Value: "", Usage: "criu writes \\0 to this FD once lazy-pages is ready"},
+		cli.IntFlag{Name: "status-fd", Value: -1, Usage: "criu writes \\0 to this FD once lazy-pages is ready"},
 		cli.StringFlag{Name: "page-server", Value: "", Usage: "ADDRESS:PORT of the page server"},
 		cli.BoolFlag{Name: "file-locks", Usage: "handle file locks, for safety"},
 		cli.BoolFlag{Name: "pre-dump", Usage: "dump container's memory information only, leave the container running after this"},
@@ -60,10 +61,13 @@ checkpointed.`,
 			return err
 		}
 		if status == libcontainer.Created || status == libcontainer.Stopped {
-			fatalf("Container cannot be checkpointed in %s state", status.String())
+			fatal(fmt.Errorf("Container cannot be checkpointed in %s state", status.String()))
 		}
-		defer destroy(container)
 		options := criuOptions(context)
+		if !(options.LeaveRunning || options.PreDump) {
+			// destroy container unless we tell CRIU to keep it
+			defer destroy(container)
+		}
 		// these are the mandatory criu options for a container
 		setPageServer(context, options)
 		setManageCgroupsMode(context, options)
@@ -88,11 +92,11 @@ func setPageServer(context *cli.Context, options *libcontainer.CriuOpts) {
 	if psOpt := context.String("page-server"); psOpt != "" {
 		addressPort := strings.Split(psOpt, ":")
 		if len(addressPort) != 2 {
-			fatal(fmt.Errorf("Use --page-server ADDRESS:PORT to specify page server"))
+			fatal(errors.New("Use --page-server ADDRESS:PORT to specify page server"))
 		}
 		portInt, err := strconv.Atoi(addressPort[1])
 		if err != nil {
-			fatal(fmt.Errorf("Invalid port number"))
+			fatal(errors.New("Invalid port number"))
 		}
 		options.PageServer = libcontainer.CriuPageServerInfo{
 			Address: addressPort[0],
@@ -111,7 +115,7 @@ func setManageCgroupsMode(context *cli.Context, options *libcontainer.CriuOpts) 
 		case "strict":
 			options.ManageCgroupsMode = libcontainer.CRIU_CG_MODE_STRICT
 		default:
-			fatal(fmt.Errorf("Invalid manage cgroups mode"))
+			fatal(errors.New("Invalid manage cgroups mode"))
 		}
 	}
 }

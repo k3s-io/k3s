@@ -129,7 +129,7 @@ func (t *templateContext) annotation(k string) string {
 }
 
 func (t *templateContext) status() string {
-	return t.state.Status
+	return string(t.state.Status)
 }
 
 func render(ctx *templateContext, source string, out io.Writer) error {

@@ -4,6 +4,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -52,11 +53,11 @@ var psCommand = cli.Command{
 		case "json":
 			return json.NewEncoder(os.Stdout).Encode(pids)
 		default:
-			return fmt.Errorf("invalid format option")
+			return errors.New("invalid format option")
 		}
 
 		// [1:] is to remove command name, ex:
-		// context.Args(): [containet_id ps_arg1 ps_arg2 ...]
+		// context.Args(): [container_id ps_arg1 ps_arg2 ...]
 		// psArgs:         [ps_arg1 ps_arg2 ...]
 		//
 		psArgs := context.Args()[1:]
@@ -109,5 +110,5 @@ func getPidIndex(title string) (int, error) {
 		}
 	}
 
-	return pidIndex, fmt.Errorf("couldn't find PID field in ps output")
+	return pidIndex, errors.New("couldn't find PID field in ps output")
 }

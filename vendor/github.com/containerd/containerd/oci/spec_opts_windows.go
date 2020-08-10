@@ -52,7 +52,7 @@ func WithWindowsIgnoreFlushesDuringBoot() SpecOpts {
 	}
 }
 
-// WithWindowNetworksAllowUnqualifiedDNSQuery sets `Windows.IgnoreFlushesDuringBoot`.
+// WithWindowNetworksAllowUnqualifiedDNSQuery sets `Windows.Network.AllowUnqualifiedDNSQuery`.
 func WithWindowNetworksAllowUnqualifiedDNSQuery() SpecOpts {
 	return func(_ context.Context, _ Client, _ *containers.Container, s *Spec) error {
 		if s.Windows == nil {
@@ -65,6 +65,13 @@ func WithWindowNetworksAllowUnqualifiedDNSQuery() SpecOpts {
 		s.Windows.Network.AllowUnqualifiedDNSQuery = true
 		return nil
 	}
+}
+
+// WithHostDevices adds all the hosts device nodes to the container's spec
+//
+// Not supported on windows
+func WithHostDevices(_ context.Context, _ Client, _ *containers.Container, s *Spec) error {
+	return nil
 }
 
 func deviceFromPath(path, permissions string) (*specs.LinuxDevice, error) {

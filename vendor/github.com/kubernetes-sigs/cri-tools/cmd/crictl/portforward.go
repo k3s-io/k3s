@@ -23,6 +23,7 @@ import (
 	"os"
 	"os/signal"
 
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/net/context"
@@ -54,7 +55,7 @@ var runtimePortForwardCommand = &cli.Command{
 		}
 		err = PortForward(runtimeClient, opts)
 		if err != nil {
-			return fmt.Errorf("port forward failed: %v", err)
+			return errors.Wrap(err, "port forward")
 
 		}
 		return nil

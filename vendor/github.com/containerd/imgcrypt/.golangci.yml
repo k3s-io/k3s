@@ -1,0 +1,20 @@
+linters:
+  enable:
+    - structcheck
+    - varcheck
+    - staticcheck
+    - unconvert
+    - gofmt
+    - goimports
+    - golint
+    - ineffassign
+    - vet
+    - unused
+    - misspell
+
+run:
+  skip-dirs:
+    - cmd/ctr/commands/run
+    - cmd/ctr/commands/images
+    - cmd\\ctr\\commands\\run
+    - cmd\\ctr\\commands\\images

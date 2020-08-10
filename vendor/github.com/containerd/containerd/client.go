@@ -54,15 +54,16 @@ import (
 	"github.com/containerd/containerd/plugin"
 	"github.com/containerd/containerd/remotes"
 	"github.com/containerd/containerd/remotes/docker"
+	"github.com/containerd/containerd/services/introspection"
 	"github.com/containerd/containerd/snapshots"
 	snproxy "github.com/containerd/containerd/snapshots/proxy"
 	"github.com/containerd/typeurl"
-	"github.com/gogo/protobuf/types"
 	ptypes "github.com/gogo/protobuf/types"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	specs "github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/backoff"
 	"google.golang.org/grpc/health/grpc_health_v1"
 )
 
@@ -109,11 +110,16 @@ func New(address string, opts ...ClientOpt) (*Client, error) {
 		c.services = *copts.services
 	}
 	if address != "" {
+		backoffConfig := backoff.DefaultConfig
+		backoffConfig.MaxDelay = 3 * time.Second
+		connParams := grpc.ConnectParams{
+			Backoff: backoffConfig,
+		}
 		gopts := []grpc.DialOption{
 			grpc.WithBlock(),
 			grpc.WithInsecure(),
 			grpc.FailOnNonTempDialError(true),
-			grpc.WithBackoffMaxDelay(3 * time.Second),
+			grpc.WithConnectParams(connParams),
 			grpc.WithContextDialer(dialer.ContextDialer),
 
 			// TODO(stevvooe): We may need to allow configuration of this on the client.
@@ -312,6 +318,9 @@ type RemoteContext struct {
 	// Snapshotter used for unpacking
 	Snapshotter string
 
+	// SnapshotterOpts are additional options to be passed to a snapshotter during pull
+	SnapshotterOpts []snapshots.Opt
+
 	// Labels to be applied to the created image
 	Labels map[string]string
 
@@ -342,6 +351,10 @@ type RemoteContext struct {
 
 	// AllMetadata downloads all manifests and known-configuration files
 	AllMetadata bool
+
+	// ChildLabelMap sets the labels used to reference child objects in the content
+	// store. By default, all GC reference labels will be set for all fetched content.
+	ChildLabelMap func(ocispec.Descriptor) []string
 }
 
 func defaultRemoteContext() *RemoteContext {
@@ -389,7 +402,11 @@ func (c *Client) Fetch(ctx context.Context, ref string, opts ...RemoteOpt) (imag
 	}
 	defer done(ctx)
 
-	return c.fetch(ctx, fetchCtx, ref, 0)
+	img, err := c.fetch(ctx, fetchCtx, ref, 0)
+	if err != nil {
+		return images.Image{}, err
+	}
+	return c.createNewImage(ctx, img)
 }
 
 // Push uploads the provided content to a remote resource
@@ -621,10 +638,13 @@ func (c *Client) DiffService() DiffService {
 }
 
 // IntrospectionService returns the underlying Introspection Client
-func (c *Client) IntrospectionService() introspectionapi.IntrospectionClient {
+func (c *Client) IntrospectionService() introspection.Service {
+	if c.introspectionService != nil {
+		return c.introspectionService
+	}
 	c.connMu.Lock()
 	defer c.connMu.Unlock()
-	return introspectionapi.NewIntrospectionClient(c.conn)
+	return introspection.NewIntrospectionServiceFromClient(introspectionapi.NewIntrospectionClient(c.conn))
 }
 
 // LeasesService returns the underlying Leases Client
@@ -706,7 +726,7 @@ func (c *Client) Server(ctx context.Context) (ServerInfo, error) {
 	}
 	c.connMu.Unlock()
 
-	response, err := c.IntrospectionService().Server(ctx, &types.Empty{})
+	response, err := c.IntrospectionService().Server(ctx, &ptypes.Empty{})
 	if err != nil {
 		return ServerInfo{}, err
 	}

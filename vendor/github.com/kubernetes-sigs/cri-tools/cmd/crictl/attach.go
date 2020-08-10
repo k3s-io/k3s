@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"net/url"
 
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/net/context"
@@ -62,7 +63,7 @@ var runtimeAttachCommand = &cli.Command{
 		}
 		err = Attach(runtimeClient, opts)
 		if err != nil {
-			return fmt.Errorf("attaching running container failed: %v", err)
+			return errors.Wrap(err, "attaching running container failed")
 
 		}
 		return nil

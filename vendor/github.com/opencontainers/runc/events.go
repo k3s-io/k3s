@@ -4,6 +4,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"sync"
@@ -40,7 +41,7 @@ information is displayed once every 5 seconds.`,
 		}
 		duration := context.Duration("interval")
 		if duration <= 0 {
-			return fmt.Errorf("duration interval must be greater than 0")
+			return errors.New("duration interval must be greater than 0")
 		}
 		status, err := container.Status()
 		if err != nil {
@@ -125,6 +126,8 @@ func convertLibcontainerStats(ls *libcontainer.Stats) *types.Stats {
 	s.CPU.Usage.User = cg.CpuStats.CpuUsage.UsageInUsermode
 	s.CPU.Usage.Total = cg.CpuStats.CpuUsage.TotalUsage
 	s.CPU.Usage.Percpu = cg.CpuStats.CpuUsage.PercpuUsage
+	s.CPU.Usage.PercpuKernel = cg.CpuStats.CpuUsage.PercpuUsageInKernelmode
+	s.CPU.Usage.PercpuUser = cg.CpuStats.CpuUsage.PercpuUsageInUsermode
 	s.CPU.Throttling.Periods = cg.CpuStats.ThrottlingData.Periods
 	s.CPU.Throttling.ThrottledPeriods = cg.CpuStats.ThrottlingData.ThrottledPeriods
 	s.CPU.Throttling.ThrottledTime = cg.CpuStats.ThrottlingData.ThrottledTime
@@ -160,6 +163,12 @@ func convertLibcontainerStats(ls *libcontainer.Stats) *types.Stats {
 			s.IntelRdt.MemBwInfo = convertMemBwInfo(is.MemBwInfo)
 			s.IntelRdt.MemBwSchemaRoot = is.MemBwSchemaRoot
 			s.IntelRdt.MemBwSchema = is.MemBwSchema
+		}
+		if intelrdt.IsMBMEnabled() {
+			s.IntelRdt.MBMStats = is.MBMStats
+		}
+		if intelrdt.IsCMTEnabled() {
+			s.IntelRdt.CMTStats = is.CMTStats
 		}
 	}
 

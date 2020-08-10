@@ -23,7 +23,6 @@ import (
 	eventtypes "github.com/containerd/containerd/api/events"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/log"
-	cni "github.com/containerd/go-cni"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	runtime "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
@@ -67,8 +66,8 @@ func (c *criService) stopPodSandbox(ctx context.Context, sandbox sandboxstore.Sa
 		}
 	}
 
-	if err := c.unmountSandboxFiles(id, sandbox.Config); err != nil {
-		return errors.Wrap(err, "failed to unmount sandbox files")
+	if err := c.cleanupSandboxFiles(id, sandbox.Config); err != nil {
+		return errors.Wrap(err, "failed to cleanup sandbox files")
 	}
 
 	// Only stop sandbox container when it's running or unknown.
@@ -175,11 +174,12 @@ func (c *criService) teardownPodNetwork(ctx context.Context, sandbox sandboxstor
 		path   = sandbox.NetNSPath
 		config = sandbox.Config
 	)
-	labels := getPodCNILabels(id, config)
-	return c.netPlugin.Remove(ctx, id,
-		path,
-		cni.WithLabels(labels),
-		cni.WithCapabilityPortMap(toCNIPortMappings(config.GetPortMappings())))
+	opts, err := cniNamespaceOpts(id, config)
+	if err != nil {
+		return errors.Wrap(err, "get cni namespace options")
+	}
+
+	return c.netPlugin.Remove(ctx, id, path, opts...)
 }
 
 // cleanupUnknownSandbox cleanup stopped sandbox in unknown state.

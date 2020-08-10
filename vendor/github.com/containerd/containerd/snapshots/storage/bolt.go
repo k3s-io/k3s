@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/containerd/containerd/errdefs"
+	"github.com/containerd/containerd/filters"
 	"github.com/containerd/containerd/metadata/boltutil"
 	"github.com/containerd/containerd/snapshots"
 	"github.com/pkg/errors"
@@ -144,7 +145,12 @@ func UpdateInfo(ctx context.Context, info snapshots.Info, fieldpaths ...string) 
 // WalkInfo iterates through all metadata Info for the stored snapshots and
 // calls the provided function for each. Requires a context with a storage
 // transaction.
-func WalkInfo(ctx context.Context, fn func(context.Context, snapshots.Info) error) error {
+func WalkInfo(ctx context.Context, fn snapshots.WalkFunc, fs ...string) error {
+	filter, err := filters.ParseAll(fs...)
+	if err != nil {
+		return err
+	}
+	// TODO: allow indexes (name, parent, specific labels)
 	return withBucket(ctx, func(ctx context.Context, bkt, pbkt *bolt.Bucket) error {
 		return bkt.ForEach(func(k, v []byte) error {
 			// skip non buckets
@@ -159,6 +165,9 @@ func WalkInfo(ctx context.Context, fn func(context.Context, snapshots.Info) erro
 			)
 			if err := readSnapshot(sbkt, nil, &si); err != nil {
 				return err
+			}
+			if !filter.Match(adaptSnapshot(si)) {
+				return nil
 			}
 
 			return fn(ctx, si)
@@ -603,4 +612,37 @@ func encodeID(id uint64) ([]byte, error) {
 		return nil, fmt.Errorf("failed encoding id = %v", id)
 	}
 	return idEncoded, nil
+}
+
+func adaptSnapshot(info snapshots.Info) filters.Adaptor {
+	return filters.AdapterFunc(func(fieldpath []string) (string, bool) {
+		if len(fieldpath) == 0 {
+			return "", false
+		}
+
+		switch fieldpath[0] {
+		case "kind":
+			switch info.Kind {
+			case snapshots.KindActive:
+				return "active", true
+			case snapshots.KindView:
+				return "view", true
+			case snapshots.KindCommitted:
+				return "committed", true
+			}
+		case "name":
+			return info.Name, true
+		case "parent":
+			return info.Parent, true
+		case "labels":
+			if len(info.Labels) == 0 {
+				return "", false
+			}
+
+			v, ok := info.Labels[strings.Join(fieldpath[1:], ".")]
+			return v, ok
+		}
+
+		return "", false
+	})
 }

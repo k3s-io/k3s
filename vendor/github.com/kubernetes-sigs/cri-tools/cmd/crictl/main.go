@@ -19,17 +19,20 @@ package crictl
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"sort"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
+
 	"google.golang.org/grpc"
+
 	internalapi "k8s.io/cri-api/pkg/apis"
-	"k8s.io/kubernetes/pkg/kubelet/remote"
+	"k8s.io/kubernetes/pkg/kubelet/cri/remote"
 	"k8s.io/kubernetes/pkg/kubelet/util"
 
+	"github.com/kubernetes-sigs/cri-tools/pkg/common"
 	"github.com/kubernetes-sigs/cri-tools/pkg/version"
 )
 
@@ -40,53 +43,102 @@ const (
 var (
 	// RuntimeEndpoint is CRI server runtime endpoint
 	RuntimeEndpoint string
+	// RuntimeEndpointIsSet is true when RuntimeEndpoint is configured
+	RuntimeEndpointIsSet bool
 	// ImageEndpoint is CRI server image endpoint, default same as runtime endpoint
 	ImageEndpoint string
+	// ImageEndpointIsSet is true when ImageEndpoint is configured
+	ImageEndpointIsSet bool
 	// Timeout  of connecting to server (default: 10s)
 	Timeout time.Duration
 	// Debug enable debug output
 	Debug bool
+	// PullImageOnCreate enables pulling image on create requests
+	PullImageOnCreate bool
+	// DisablePullOnRun disable pulling image on run requests
+	DisablePullOnRun bool
 )
 
 func getRuntimeClientConnection(context *cli.Context) (*grpc.ClientConn, error) {
-	if RuntimeEndpoint == "" {
+	if RuntimeEndpointIsSet && RuntimeEndpoint == "" {
 		return nil, fmt.Errorf("--runtime-endpoint is not set")
 	}
-
-	addr, dialer, err := util.GetAddressAndDialer(RuntimeEndpoint)
-	if err != nil {
-		return nil, err
+	logrus.Debug("get runtime connection")
+	// If no EP set then use the default endpoint types
+	if !RuntimeEndpointIsSet {
+		logrus.Warningf("runtime connect using default endpoints: %v. "+
+			"As the default settings are now deprecated, you should set the "+
+			"endpoint instead.", defaultRuntimeEndpoints)
+		logrus.Debug("Note that performance maybe affected as each default " +
+			"connection attempt takes n-seconds to complete before timing out " +
+			"and going to the next in sequence.")
+		return getConnection(defaultRuntimeEndpoints)
 	}
-
-	conn, err := grpc.Dial(addr, grpc.WithInsecure(), grpc.WithBlock(), grpc.WithTimeout(Timeout), grpc.WithContextDialer(dialer))
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect, make sure you are running as root and the runtime has been started: %v", err)
-	}
-	return conn, nil
+	return getConnection([]string{RuntimeEndpoint})
 }
 
 func getImageClientConnection(context *cli.Context) (*grpc.ClientConn, error) {
 	if ImageEndpoint == "" {
-		if RuntimeEndpoint == "" {
+		if RuntimeEndpointIsSet && RuntimeEndpoint == "" {
 			return nil, fmt.Errorf("--image-endpoint is not set")
 		}
 		ImageEndpoint = RuntimeEndpoint
+		ImageEndpointIsSet = RuntimeEndpointIsSet
 	}
-
-	addr, dialer, err := util.GetAddressAndDialer(ImageEndpoint)
-	if err != nil {
-		return nil, err
+	logrus.Debugf("get image connection")
+	// If no EP set then use the default endpoint types
+	if !ImageEndpointIsSet {
+		logrus.Warningf("image connect using default endpoints: %v. "+
+			"As the default settings are now deprecated, you should set the "+
+			"endpoint instead.", defaultRuntimeEndpoints)
+		logrus.Debug("Note that performance maybe affected as each default " +
+			"connection attempt takes n-seconds to complete before timing out " +
+			"and going to the next in sequence.")
+		return getConnection(defaultRuntimeEndpoints)
 	}
+	return getConnection([]string{ImageEndpoint})
+}
 
-	conn, err := grpc.Dial(addr, grpc.WithInsecure(), grpc.WithBlock(), grpc.WithTimeout(Timeout), grpc.WithContextDialer(dialer))
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect, make sure you are running as root and the runtime has been started: %v", err)
+func getConnection(endPoints []string) (*grpc.ClientConn, error) {
+	if endPoints == nil || len(endPoints) == 0 {
+		return nil, fmt.Errorf("endpoint is not set")
+	}
+	endPointsLen := len(endPoints)
+	var conn *grpc.ClientConn
+	for indx, endPoint := range endPoints {
+		logrus.Debugf("connect using endpoint '%s' with '%s' timeout", endPoint, Timeout)
+		addr, dialer, err := util.GetAddressAndDialer(endPoint)
+		if err != nil {
+			if indx == endPointsLen-1 {
+				return nil, err
+			}
+			logrus.Error(err)
+			continue
+		}
+		conn, err = grpc.Dial(addr, grpc.WithInsecure(), grpc.WithBlock(), grpc.WithTimeout(Timeout), grpc.WithContextDialer(dialer))
+		if err != nil {
+			errMsg := errors.Wrapf(err, "connect endpoint '%s', make sure you are running as root and the endpoint has been started", endPoint)
+			if indx == endPointsLen-1 {
+				return nil, errMsg
+			}
+			logrus.Error(errMsg)
+		} else {
+			logrus.Debugf("connected successfully using endpoint: %s", endPoint)
+			break
+		}
 	}
 	return conn, nil
 }
 
 func getRuntimeService(context *cli.Context) (internalapi.RuntimeService, error) {
 	return remote.NewRemoteRuntimeService(RuntimeEndpoint, Timeout)
+}
+
+func getTimeout(timeDuration time.Duration) time.Duration {
+	if timeDuration.Seconds() > 0 {
+		return timeDuration
+	}
+	return defaultTimeout // use default
 }
 
 func Main() {
@@ -125,33 +177,38 @@ func Main() {
 		completionCommand,
 	}
 
+	runtimeEndpointUsage := fmt.Sprintf("Endpoint of CRI container runtime "+
+		"service (default: uses in order the first successful one of %v). "+
+		"Default is now deprecated and the endpoint should be set instead.",
+		defaultRuntimeEndpoints)
+
 	app.Flags = []cli.Flag{
 		&cli.StringFlag{
-			Name:      "config",
-			Aliases:   []string{"c"},
-			EnvVars:   []string{"CRI_CONFIG_FILE"},
-			Value:     defaultConfigPath,
-			Usage:     "Location of the client config file. If not specified and the default does not exist, the program's directory is searched as well",
-			TakesFile: true,
+			Name:    "config",
+			Aliases: []string{"c"},
+			EnvVars: []string{"CRI_CONFIG_FILE"},
+			Value:   defaultConfigPath,
+			Usage:   "Location of the client config file. If not specified and the default does not exist, the program's directory is searched as well",
 		},
 		&cli.StringFlag{
 			Name:    "runtime-endpoint",
 			Aliases: []string{"r"},
 			EnvVars: []string{"CONTAINER_RUNTIME_ENDPOINT"},
-			Value:   defaultRuntimeEndpoint,
-			Usage:   "Endpoint of CRI container runtime service",
+			Usage:   runtimeEndpointUsage,
 		},
 		&cli.StringFlag{
 			Name:    "image-endpoint",
 			Aliases: []string{"i"},
 			EnvVars: []string{"IMAGE_SERVICE_ENDPOINT"},
-			Usage:   "Endpoint of CRI image manager service",
+			Usage: "Endpoint of CRI image manager service (default: uses " +
+				"'runtime-endpoint' setting)",
 		},
 		&cli.DurationFlag{
 			Name:    "timeout",
 			Aliases: []string{"t"},
 			Value:   defaultTimeout,
-			Usage:   "Timeout of connecting to the server",
+			Usage: "Timeout of connecting to the server in seconds (e.g. 2s, 20s.). " +
+				"0 or less is set to default",
 		},
 		&cli.BoolFlag{
 			Name:    "debug",
@@ -160,62 +217,59 @@ func Main() {
 		},
 	}
 
-	app.Before = func(context *cli.Context) error {
-		isUseConfig := false
-		configFile := context.String("config")
-		if _, err := os.Stat(configFile); err == nil {
-			isUseConfig = true
-		} else {
-			if context.IsSet("config") || !os.IsNotExist(err) {
-				// note: the absence of default config file is normal case
-				// when user have not set it in cli
-				logrus.Fatalf("Failed to load config file: %v", err)
-			} else {
-				// If the default config was not found, and the user didn't
-				// explicitly specify a config, try looking in the program's
-				// directory as a fallback. This is a convenience for
-				// deployments of crictl so they don't have to place a file in a
-				// global location.
-				configFile = filepath.Join(filepath.Dir(os.Args[0]), "crictl.yaml")
-				if _, err := os.Stat(configFile); err == nil {
-					isUseConfig = true
-				} else if !os.IsNotExist(err) {
-					logrus.Fatalf("Failed to load config file: %v", err)
-				}
+	app.Before = func(context *cli.Context) (err error) {
+		var config *common.ServerConfiguration
+		var exePath string
+
+		if exePath, err = os.Executable(); err != nil {
+			logrus.Fatal(err)
+		}
+		if config, err = common.GetServerConfigFromFile(context.String("config"), exePath); err != nil {
+			if context.IsSet("config") {
+				logrus.Fatal(err)
 			}
 		}
 
-		if !isUseConfig {
+		if config == nil {
 			RuntimeEndpoint = context.String("runtime-endpoint")
-			ImageEndpoint = context.String("image-endpoint")
-			Timeout = context.Duration("timeout")
-			Debug = context.Bool("debug")
-		} else {
-			// Get config from file.
-			config, err := ReadConfig(configFile)
-			if err != nil {
-				logrus.Fatalf("Falied to load config file: %v", err)
+			if context.IsSet("runtime-endpoint") {
+				RuntimeEndpointIsSet = true
 			}
-
+			ImageEndpoint = context.String("image-endpoint")
+			if context.IsSet("image-endpoint") {
+				ImageEndpointIsSet = true
+			}
+			if context.IsSet("timeout") {
+				Timeout = getTimeout(context.Duration("timeout"))
+			} else {
+				Timeout = context.Duration("timeout")
+			}
+			Debug = context.Bool("debug")
+			DisablePullOnRun = false
+		} else {
 			// Command line flags overrides config file.
 			if context.IsSet("runtime-endpoint") {
 				RuntimeEndpoint = context.String("runtime-endpoint")
+				RuntimeEndpointIsSet = true
 			} else if config.RuntimeEndpoint != "" {
 				RuntimeEndpoint = config.RuntimeEndpoint
+				RuntimeEndpointIsSet = true
 			} else {
 				RuntimeEndpoint = context.String("runtime-endpoint")
 			}
 			if context.IsSet("image-endpoint") {
 				ImageEndpoint = context.String("image-endpoint")
+				ImageEndpointIsSet = true
 			} else if config.ImageEndpoint != "" {
 				ImageEndpoint = config.ImageEndpoint
+				ImageEndpointIsSet = true
 			} else {
 				ImageEndpoint = context.String("image-endpoint")
 			}
 			if context.IsSet("timeout") {
-				Timeout = context.Duration("timeout")
-			} else if config.Timeout != 0 {
-				Timeout = time.Duration(config.Timeout) * time.Second
+				Timeout = getTimeout(context.Duration("timeout"))
+			} else if config.Timeout > 0 { // 0/neg value set to default timeout
+				Timeout = config.Timeout
 			} else {
 				Timeout = context.Duration("timeout")
 			}
@@ -224,6 +278,8 @@ func Main() {
 			} else {
 				Debug = config.Debug
 			}
+			PullImageOnCreate = config.PullImageOnCreate
+			DisablePullOnRun = config.DisablePullOnRun
 		}
 
 		if Debug {

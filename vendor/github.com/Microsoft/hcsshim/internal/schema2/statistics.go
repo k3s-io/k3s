@@ -19,7 +19,7 @@ type Statistics struct {
 
 	ContainerStartTime time.Time `json:"ContainerStartTime,omitempty"`
 
-	Uptime100ns int32 `json:"Uptime100ns,omitempty"`
+	Uptime100ns uint64 `json:"Uptime100ns,omitempty"`
 
 	Processor *ProcessorStats `json:"Processor,omitempty"`
 

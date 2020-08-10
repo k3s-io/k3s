@@ -19,7 +19,7 @@ import (
 	"github.com/opencontainers/runtime-spec/specs-go"
 	selinux "github.com/opencontainers/selinux/go-selinux"
 
-	"github.com/coreos/go-systemd/activation"
+	"github.com/coreos/go-systemd/v22/activation"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
@@ -47,10 +47,12 @@ func loadFactory(context *cli.Context) (libcontainer.Factory, error) {
 		cgroupManager = libcontainer.RootlessCgroupfs
 	}
 	if context.GlobalBool("systemd-cgroup") {
-		if systemd.UseSystemd() {
-			cgroupManager = libcontainer.SystemdCgroups
-		} else {
-			return nil, fmt.Errorf("systemd cgroup flag passed, but systemd support for managing cgroups is not available")
+		if !systemd.IsRunningSystemd() {
+			return nil, errors.New("systemd cgroup flag passed, but systemd support for managing cgroups is not available")
+		}
+		cgroupManager = libcontainer.SystemdCgroups
+		if rootlessCg {
+			cgroupManager = libcontainer.RootlessSystemdCgroups
 		}
 	}
 
@@ -89,10 +91,6 @@ func getContainer(context *cli.Context) (libcontainer.Container, error) {
 		return nil, err
 	}
 	return factory.Load(id)
-}
-
-func fatalf(t string, v ...interface{}) {
-	fatal(fmt.Errorf(t, v...))
 }
 
 func getDefaultImagePath(context *cli.Context) string {
@@ -180,7 +178,7 @@ func setupIO(process *libcontainer.Process, rootuid, rootgid int, createTTY, det
 			}
 			uc, ok := conn.(*net.UnixConn)
 			if !ok {
-				return nil, fmt.Errorf("casting to UnixConn failed")
+				return nil, errors.New("casting to UnixConn failed")
 			}
 			t.postStart = append(t.postStart, uc)
 			socket, err := uc.File()
@@ -349,7 +347,9 @@ func (r *runner) run(config *specs.Process) (int, error) {
 	if detach {
 		return 0, nil
 	}
-	r.destroy()
+	if err == nil {
+		r.destroy()
+	}
 	return status, err
 }
 
@@ -368,26 +368,29 @@ func (r *runner) checkTerminal(config *specs.Process) error {
 	detach := r.detach || (r.action == CT_ACT_CREATE)
 	// Check command-line for sanity.
 	if detach && config.Terminal && r.consoleSocket == "" {
-		return fmt.Errorf("cannot allocate tty if runc will detach without setting console socket")
+		return errors.New("cannot allocate tty if runc will detach without setting console socket")
 	}
 	if (!detach || !config.Terminal) && r.consoleSocket != "" {
-		return fmt.Errorf("cannot use console socket if runc will not detach or allocate tty")
+		return errors.New("cannot use console socket if runc will not detach or allocate tty")
 	}
 	return nil
 }
 
 func validateProcessSpec(spec *specs.Process) error {
+	if spec == nil {
+		return errors.New("process property must not be empty")
+	}
 	if spec.Cwd == "" {
-		return fmt.Errorf("Cwd property must not be empty")
+		return errors.New("Cwd property must not be empty")
 	}
 	if !filepath.IsAbs(spec.Cwd) {
-		return fmt.Errorf("Cwd must be an absolute path")
+		return errors.New("Cwd must be an absolute path")
 	}
 	if len(spec.Args) == 0 {
-		return fmt.Errorf("args must not be empty")
+		return errors.New("args must not be empty")
 	}
 	if spec.SelinuxLabel != "" && !selinux.GetEnabled() {
-		return fmt.Errorf("selinux label is specified in config, but selinux is disabled or not supported")
+		return errors.New("selinux label is specified in config, but selinux is disabled or not supported")
 	}
 	return nil
 }
@@ -408,7 +411,9 @@ func startContainer(context *cli.Context, spec *specs.Spec, action CtAct, criuOp
 
 	notifySocket := newNotifySocket(context, os.Getenv("NOTIFY_SOCKET"), id)
 	if notifySocket != nil {
-		notifySocket.setupSpec(context, spec)
+		if err := notifySocket.setupSpec(context, spec); err != nil {
+			return -1, err
+		}
 	}
 
 	container, err := createContainer(context, id, spec)
@@ -417,9 +422,13 @@ func startContainer(context *cli.Context, spec *specs.Spec, action CtAct, criuOp
 	}
 
 	if notifySocket != nil {
-		err := notifySocket.setupSocket()
-		if err != nil {
+		if err := notifySocket.setupSocketDirectory(); err != nil {
 			return -1, err
+		}
+		if action == CT_ACT_RUN {
+			if err := notifySocket.bindSocket(); err != nil {
+				return -1, err
+			}
 		}
 	}
 

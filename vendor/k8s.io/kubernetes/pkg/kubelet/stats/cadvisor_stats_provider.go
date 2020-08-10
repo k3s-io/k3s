@@ -23,7 +23,7 @@ import (
 	"strings"
 
 	cadvisorapiv2 "github.com/google/cadvisor/info/v2"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -120,7 +120,7 @@ func (p *cadvisorStatsProvider) ListPodStats() ([]statsapi.PodStats, error) {
 		if containerName == leaky.PodInfraContainerName {
 			// Special case for infrastructure container which is hidden from
 			// the user and has network stats.
-			podStats.Network = cadvisorInfoToNetworkStats("pod:"+ref.Namespace+"_"+ref.Name, &cinfo)
+			podStats.Network = cadvisorInfoToNetworkStats(&cinfo)
 		} else {
 			podStats.Containers = append(podStats.Containers, *cadvisorInfoToContainerStats(containerName, &cinfo, &rootFsInfo, &imageFsInfo))
 		}
@@ -135,7 +135,7 @@ func (p *cadvisorStatsProvider) ListPodStats() ([]statsapi.PodStats, error) {
 		if vstats, found := p.resourceAnalyzer.GetPodVolumeStats(podUID); found {
 			ephemeralStats = make([]statsapi.VolumeStats, len(vstats.EphemeralVolumes))
 			copy(ephemeralStats, vstats.EphemeralVolumes)
-			podStats.VolumeStats = append(vstats.EphemeralVolumes, vstats.PersistentVolumes...)
+			podStats.VolumeStats = append(append([]statsapi.VolumeStats{}, vstats.EphemeralVolumes...), vstats.PersistentVolumes...)
 		}
 		podStats.EphemeralStorage = calcEphemeralStorage(podStats.Containers, ephemeralStats, &rootFsInfo, nil, false)
 		// Lookup the pod-level cgroup's CPU and memory stats
@@ -144,6 +144,7 @@ func (p *cadvisorStatsProvider) ListPodStats() ([]statsapi.PodStats, error) {
 			cpu, memory := cadvisorInfoToCPUandMemoryStats(podInfo)
 			podStats.CPU = cpu
 			podStats.Memory = memory
+			podStats.ProcessStats = cadvisorInfoToProcessStats(podInfo)
 		}
 
 		status, found := p.statusProvider.GetPodStatus(podUID)
@@ -289,8 +290,14 @@ func isPodManagedContainer(cinfo *cadvisorapiv2.ContainerInfo) bool {
 // getCadvisorPodInfoFromPodUID returns a pod cgroup information by matching the podUID with its CgroupName identifier base name
 func getCadvisorPodInfoFromPodUID(podUID types.UID, infos map[string]cadvisorapiv2.ContainerInfo) *cadvisorapiv2.ContainerInfo {
 	for key, info := range infos {
-		// Take last component only.
-		key = path.Base(key)
+		if cm.IsSystemdStyleName(key) {
+			// Convert to internal cgroup name and take the last component only.
+			internalCgroupName := cm.ParseSystemdToCgroupName(key)
+			key = internalCgroupName[len(internalCgroupName)-1]
+		} else {
+			// Take last component only.
+			key = path.Base(key)
+		}
 		if cm.GetPodCgroupNameSuffix(podUID) == key {
 			return &info
 		}

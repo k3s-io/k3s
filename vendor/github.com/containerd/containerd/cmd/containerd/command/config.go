@@ -65,10 +65,14 @@ func outputConfig(cfg *srvconfig.Config) error {
 		}
 	}
 
+	if config.Timeouts == nil {
+		config.Timeouts = make(map[string]string)
+	}
 	timeouts := timeout.All()
-	config.Timeouts = make(map[string]string)
 	for k, v := range timeouts {
-		config.Timeouts[k] = v.String()
+		if config.Timeouts[k] == "" {
+			config.Timeouts[k] = v.String()
+		}
 	}
 
 	// for the time being, keep the defaultConfig's version set at 1 so that

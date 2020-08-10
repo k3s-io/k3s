@@ -1,17 +1,17 @@
 /*
-Copyright 2017 The Kubernetes Authors.
+   Copyright The containerd Authors.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+       http://www.apache.org/licenses/LICENSE-2.0
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
 */
 
 package server
@@ -22,7 +22,6 @@ import (
 	goruntime "runtime"
 
 	"github.com/containerd/containerd/log"
-	cni "github.com/containerd/go-cni"
 	"golang.org/x/net/context"
 	runtime "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
@@ -41,11 +40,6 @@ func (c *criService) Status(ctx context.Context, r *runtime.StatusRequest) (*run
 	networkCondition := &runtime.RuntimeCondition{
 		Type:   runtime.NetworkReady,
 		Status: true,
-	}
-
-	// Load the latest cni configuration to be in sync with the latest network configuration
-	if err := c.netPlugin.Load(cni.WithLoNetwork, cni.WithDefaultConf); err != nil {
-		log.G(ctx).WithError(err).Errorf("Failed to load cni configuration")
 	}
 	// Check the status of the cni initialization
 	if err := c.netPlugin.Status(); err != nil {
@@ -78,6 +72,12 @@ func (c *criService) Status(ctx context.Context, r *runtime.StatusRequest) (*run
 			log.G(ctx).WithError(err).Errorf("Failed to marshal CNI config %v", err)
 		}
 		resp.Info["cniconfig"] = string(cniConfig)
+
+		lastCNILoadStatus := "OK"
+		if lerr := c.cniNetConfMonitor.lastStatus(); lerr != nil {
+			lastCNILoadStatus = lerr.Error()
+		}
+		resp.Info["lastCNILoadStatus"] = lastCNILoadStatus
 	}
 	return resp, nil
 }

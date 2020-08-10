@@ -17,8 +17,7 @@ limitations under the License.
 package crictl
 
 import (
-	"fmt"
-
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/net/context"
@@ -56,7 +55,7 @@ var runtimeStatusCommand = &cli.Command{
 
 		err = Info(context, runtimeClient)
 		if err != nil {
-			return fmt.Errorf("getting status of runtime failed: %v", err)
+			return errors.Wrap(err, "getting status of runtime")
 		}
 		return nil
 	},

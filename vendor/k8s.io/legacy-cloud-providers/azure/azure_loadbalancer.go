@@ -34,7 +34,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	cloudprovider "k8s.io/cloud-provider"
 	servicehelpers "k8s.io/cloud-provider/service/helpers"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	azcache "k8s.io/legacy-cloud-providers/azure/cache"
 	utilnet "k8s.io/utils/net"
 )
@@ -267,26 +267,24 @@ func (az *Cloud) getServiceLoadBalancer(service *v1.Service, clusterName string,
 	}
 
 	// check if the service already has a load balancer
-	if existingLBs != nil {
-		for i := range existingLBs {
-			existingLB := existingLBs[i]
-			if strings.EqualFold(*existingLB.Name, defaultLBName) {
-				defaultLB = &existingLB
-			}
-			if isInternalLoadBalancer(&existingLB) != isInternal {
-				continue
-			}
-			status, err = az.getServiceLoadBalancerStatus(service, &existingLB)
-			if err != nil {
-				return nil, nil, false, err
-			}
-			if status == nil {
-				// service is not on this load balancer
-				continue
-			}
-
-			return &existingLB, status, true, nil
+	for i := range existingLBs {
+		existingLB := existingLBs[i]
+		if strings.EqualFold(*existingLB.Name, defaultLBName) {
+			defaultLB = &existingLB
 		}
+		if isInternalLoadBalancer(&existingLB) != isInternal {
+			continue
+		}
+		status, err = az.getServiceLoadBalancerStatus(service, &existingLB)
+		if err != nil {
+			return nil, nil, false, err
+		}
+		if status == nil {
+			// service is not on this load balancer
+			continue
+		}
+
+		return &existingLB, status, true, nil
 	}
 
 	hasMode, _, _ := getServiceLoadBalancerMode(service)
@@ -1736,7 +1734,7 @@ func subnet(service *v1.Service) *string {
 
 // getServiceLoadBalancerMode parses the mode value.
 // if the value is __auto__ it returns isAuto = TRUE.
-// if anything else it returns the unique VM set names after triming spaces.
+// if anything else it returns the unique VM set names after trimming spaces.
 func getServiceLoadBalancerMode(service *v1.Service) (hasMode bool, isAuto bool, vmSetNames []string) {
 	mode, hasMode := service.Annotations[ServiceAnnotationLoadBalancerMode]
 	mode = strings.TrimSpace(mode)

@@ -200,6 +200,7 @@ func (m *monitor) monitor(ctx context.Context) ([]change, error) {
 			changes = append(changes, &startChange{
 				container: c,
 				logPath:   labels[restart.LogPathLabel],
+				logURI:    labels[restart.LogURILabel],
 			})
 		case containerd.Stopped:
 			changes = append(changes, &stopChange{

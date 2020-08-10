@@ -137,6 +137,6 @@ func criuOptions(context *cli.Context) *libcontainer.CriuOpts {
 		PreDump:                 context.Bool("pre-dump"),
 		AutoDedup:               context.Bool("auto-dedup"),
 		LazyPages:               context.Bool("lazy-pages"),
-		StatusFd:                context.String("status-fd"),
+		StatusFd:                context.Int("status-fd"),
 	}
 }

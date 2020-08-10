@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/opencontainers/runc/libcontainer"
 	"github.com/urfave/cli"
@@ -31,7 +32,17 @@ your host.`,
 		}
 		switch status {
 		case libcontainer.Created:
-			return container.Exec()
+			notifySocket, err := notifySocketStart(context, os.Getenv("NOTIFY_SOCKET"), container.ID())
+			if err != nil {
+				return err
+			}
+			if err := container.Exec(); err != nil {
+				return err
+			}
+			if notifySocket != nil {
+				return notifySocket.waitForContainer(container)
+			}
+			return nil
 		case libcontainer.Stopped:
 			return errors.New("cannot start a container that has stopped")
 		case libcontainer.Running:

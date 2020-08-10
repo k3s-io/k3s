@@ -19,10 +19,6 @@ func shouldUseRootlessCgroupManager(context *cli.Context) (bool, error) {
 		if b != nil {
 			return *b, nil
 		}
-
-		if context.GlobalBool("systemd-cgroup") {
-			return false, nil
-		}
 	}
 	if os.Geteuid() != 0 {
 		return true, nil

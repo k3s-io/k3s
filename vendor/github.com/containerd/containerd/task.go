@@ -35,6 +35,7 @@ import (
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/mount"
+	"github.com/containerd/containerd/oci"
 	"github.com/containerd/containerd/plugin"
 	"github.com/containerd/containerd/rootfs"
 	"github.com/containerd/containerd/runtime/linux/runctypes"
@@ -159,7 +160,7 @@ type Task interface {
 	// Pids returns a list of system specific process ids inside the task
 	Pids(context.Context) ([]ProcessInfo, error)
 	// Checkpoint serializes the runtime and memory information of a task into an
-	// OCI Index that can be push and pulled from a remote resource.
+	// OCI Index that can be pushed and pulled from a remote resource.
 	//
 	// Additional software like CRIU maybe required to checkpoint and restore tasks
 	// NOTE: Checkpoint supports to dump task information to a directory, in this way,
@@ -175,16 +176,24 @@ type Task interface {
 	// For the built in Linux runtime, github.com/containerd/cgroups.Metrics
 	// are returned in protobuf format
 	Metrics(context.Context) (*types.Metric, error)
+	// Spec returns the current OCI specification for the task
+	Spec(context.Context) (*oci.Spec, error)
 }
 
 var _ = (Task)(&task{})
 
 type task struct {
 	client *Client
+	c      Container
 
 	io  cio.IO
 	id  string
 	pid uint32
+}
+
+// Spec returns the current OCI specification for the task
+func (t *task) Spec(ctx context.Context) (*oci.Spec, error) {
+	return t.c.Spec(ctx)
 }
 
 // ID of the task

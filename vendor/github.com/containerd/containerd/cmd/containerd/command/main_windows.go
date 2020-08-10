@@ -23,7 +23,6 @@ import (
 	"path/filepath"
 	"unsafe"
 
-	winio "github.com/Microsoft/go-winio"
 	"github.com/Microsoft/go-winio/pkg/etw"
 	"github.com/Microsoft/go-winio/pkg/etwlogrus"
 	"github.com/Microsoft/go-winio/pkg/guid"
@@ -75,7 +74,7 @@ func setupDumpStacks() {
 	// signaled. ACL'd to builtin administrators and local system
 	event := "Global\\stackdump-" + fmt.Sprint(os.Getpid())
 	ev, _ := windows.UTF16PtrFromString(event)
-	sd, err := winio.SddlToSecurityDescriptor("D:P(A;;GA;;;BA)(A;;GA;;;SY)")
+	sd, err := windows.SecurityDescriptorFromString("D:P(A;;GA;;;BA)(A;;GA;;;SY)")
 	if err != nil {
 		logrus.Errorf("failed to get security descriptor for debug stackdump event %s: %s", event, err.Error())
 		return
@@ -83,7 +82,7 @@ func setupDumpStacks() {
 	var sa windows.SecurityAttributes
 	sa.Length = uint32(unsafe.Sizeof(sa))
 	sa.InheritHandle = 1
-	sa.SecurityDescriptor = uintptr(unsafe.Pointer(&sd[0]))
+	sa.SecurityDescriptor = sd
 	h, err := windows.CreateEvent(&sa, 0, 0, ev)
 	if h == 0 || err != nil {
 		logrus.Errorf("failed to create debug stackdump event %s: %s", event, err.Error())
