@@ -63,8 +63,13 @@ func NewServerCommand(action func(*cli.Context) error) *cli.Command {
 		Name:      "server",
 		Usage:     "Run management server",
 		UsageText: appName + " server [OPTIONS]",
-		Before:    DebugContext(cli.InitAllInputSource(altsrc.NewConfigFromFlag(ConfigFlag.Name))),
-		Action:    InitLogging(action),
+		Before: func(ctx *cli.Context) error {
+			if err := CheckSELinuxFlags(ctx); err != nil {
+				return err
+			}
+			return DebugContext(cli.InitAllInputSource(altsrc.NewConfigFromFlag(ConfigFlag.Name)))(ctx)
+		},
+		Action: InitLogging(action),
 		Flags: []cli.Flag{
 			&ConfigFlag,
 			&DebugFlag,
@@ -235,7 +240,6 @@ func NewServerCommand(action func(*cli.Context) error) *cli.Command {
 			&NodeLabels,
 			&NodeTaints,
 			&DockerFlag,
-			&DisableSELinuxFlag,
 			&CRIEndpointFlag,
 			&PauseImageFlag,
 			&SnapshotterFlag,
@@ -290,9 +294,11 @@ func NewServerCommand(action func(*cli.Context) error) *cli.Command {
 				Usage:       "(experimental) Enable Secret encryption at rest",
 				Destination: &ServerConfig.EncryptSecrets,
 			},
+			&SELinuxFlag,
 
 			// Hidden/Deprecated flags below
 
+			&DisableSELinuxFlag,
 			&FlannelFlag,
 			&cli.StringSliceFlag{
 				Name:  "no-deploy",
