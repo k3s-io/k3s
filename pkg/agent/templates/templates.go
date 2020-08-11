@@ -10,7 +10,6 @@ import (
 type ContainerdConfig struct {
 	NodeConfig            *config.Node
 	IsRunningInUserNS     bool
-	SELinuxEnabled        bool
 	PrivateRegistryConfig *Registry
 }
 
@@ -21,7 +20,7 @@ const ContainerdConfigTemplate = `
 [plugins.cri]
   stream_server_address = "127.0.0.1"
   stream_server_port = "10010"
-  enable_selinux = {{ .SELinuxEnabled }}
+  enable_selinux = {{ .NodeConfig.SELinux }}
 
 {{- if .IsRunningInUserNS }}
   disable_cgroup = true

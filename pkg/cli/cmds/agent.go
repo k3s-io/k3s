@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/pkg/errors"
 	"github.com/rancher/k3s/pkg/version"
 	"github.com/rancher/spur/cli"
 	"github.com/rancher/spur/cli/altsrc"
@@ -31,7 +32,7 @@ type Agent struct {
 	Rootless                 bool
 	RootlessAlreadyUnshared  bool
 	WithNodeID               bool
-	DisableSELinux           bool
+	EnableSELinux            bool
 	ExtraKubeletArgs         []string
 	ExtraKubeProxyArgs       []string
 	Labels                   []string
@@ -139,25 +140,47 @@ var (
 		Destination: &AgentConfig.Labels,
 	}
 	DisableSELinuxFlag = cli.BoolFlag{
-		Name:        "disable-selinux",
-		Usage:       "(agent/node) Disable SELinux in containerd if currently enabled",
-		Hidden:      true,
-		Destination: &AgentConfig.DisableSELinux,
+		Name:   "disable-selinux",
+		Usage:  "(deprecated) Use --selinux to explicitly enable SELinux",
+		Hidden: true,
+		Value:  true, // disabled by default
 	}
 	ProtectKernelDefaultsFlag = cli.BoolFlag{
 		Name:        "protect-kernel-defaults",
 		Usage:       "(agent/node) Kernel tuning behavior. If set, error if kernel tunables are different than kubelet defaults.",
 		Destination: &AgentConfig.ProtectKernelDefaults,
 	}
+	SELinuxFlag = cli.BoolFlag{
+		Name:        "selinux",
+		Usage:       "(agent/node) Enable SELinux in containerd",
+		Hidden:      false,
+		Destination: &AgentConfig.EnableSELinux,
+		EnvVars:     []string{version.ProgramUpper + "_SELINUX"},
+	}
 )
 
+func CheckSELinuxFlags(ctx *cli.Context) error {
+	disable, enable := DisableSELinuxFlag.Name, SELinuxFlag.Name
+	switch {
+	case ctx.IsSet(disable) && ctx.IsSet(enable):
+		return errors.Errorf("--%s is deprecated in favor of --%s to affirmatively enable it in containerd", disable, enable)
+	case ctx.IsSet(disable):
+		AgentConfig.EnableSELinux = !ctx.Bool(disable)
+	}
+	return nil
+}
 func NewAgentCommand(action func(ctx *cli.Context) error) *cli.Command {
 	return &cli.Command{
 		Name:      "agent",
 		Usage:     "Run node agent",
 		UsageText: appName + " agent [OPTIONS]",
-		Before:    DebugContext(cli.InitAllInputSource(altsrc.NewConfigFromFlag(ConfigFlag.Name))),
-		Action:    InitLogging(action),
+		Before: func(ctx *cli.Context) error {
+			if err := CheckSELinuxFlags(ctx); err != nil {
+				return err
+			}
+			return DebugContext(cli.InitAllInputSource(altsrc.NewConfigFromFlag(ConfigFlag.Name)))(ctx)
+		},
+		Action: InitLogging(action),
 		Flags: []cli.Flag{
 			&ConfigFlag,
 			&DebugFlag,
@@ -194,7 +217,6 @@ func NewAgentCommand(action func(ctx *cli.Context) error) *cli.Command {
 			&NodeLabels,
 			&NodeTaints,
 			&DockerFlag,
-			&DisableSELinuxFlag,
 			&CRIEndpointFlag,
 			&PauseImageFlag,
 			&SnapshotterFlag,
@@ -212,9 +234,11 @@ func NewAgentCommand(action func(ctx *cli.Context) error) *cli.Command {
 				Usage:       "(experimental) Run rootless",
 				Destination: &AgentConfig.Rootless,
 			},
+			&SELinuxFlag,
 
 			// Deprecated/hidden below
 
+			&DisableSELinuxFlag,
 			&FlannelFlag,
 			&cli.StringFlag{
 				Name:        "cluster-secret",
