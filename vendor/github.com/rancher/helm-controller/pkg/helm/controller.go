@@ -236,6 +236,12 @@ func job(chart *helmv1.HelmChart) (*batch.Job, *core.ConfigMap, *core.ConfigMap)
 				Key:    "node.kubernetes.io/not-ready",
 				Effect: "NoSchedule",
 			},
+			{
+				Key:      "node.cloudprovider.kubernetes.io/uninitialized",
+				Operator: "=",
+				Value:    "true",
+				Effect:   "NoSchedule",
+			},
 		}
 		job.Spec.Template.Spec.Containers[0].Env = append(job.Spec.Template.Spec.Containers[0].Env, []core.EnvVar{
 			{
