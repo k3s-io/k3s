@@ -235,7 +235,7 @@ func setupContainerdConfig(ctx context.Context, cfg *config.Node) error {
 	}
 	switch {
 	case !cfg.SELinux && selEnabled:
-		logrus.Warn("SELinux is enabled for system but has been disabled for containerd")
+		logrus.Warn("SELinux is enabled on this host, but " + version.Program + " has not been started with --selinux - containerd SELinux support is disabled")
 	case cfg.SELinux && !selConfigured:
 		logrus.Warnf("SELinux is enabled for "+version.Program+" but process is not running in context '%s', "+version.Program+"-selinux policy may need to be applied", SELinuxContextType)
 	}
