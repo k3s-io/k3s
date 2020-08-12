@@ -149,7 +149,7 @@ func (e *ETCD) Restore(ctx context.Context) error {
 		os.Exit(0)
 	} else if os.IsNotExist(err) {
 		if e.config.RestorePath == "" {
-			return fmt.Errorf("no etcd restore path was specified")
+			return errors.New("no etcd restore path was specified")
 		}
 		// make sure snapshot exists before restoration
 		if _, err := os.Stat(e.config.RestorePath); err != nil {
@@ -168,7 +168,6 @@ func (e *ETCD) Restore(ctx context.Context) error {
 			PeerURLs:       []string{e.peerURL()},
 			InitialCluster: fmt.Sprintf("%s=%s", e.name, e.peerURL()),
 		}); err != nil {
-			fmt.Println("error here")
 			return err
 		}
 	} else {
