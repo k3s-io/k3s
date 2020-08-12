@@ -49,6 +49,10 @@ func (c *Cluster) start(ctx context.Context) error {
 		return c.managedDB.Reset(ctx, c.clientAccessInfo)
 	}
 
+	if c.config.RestorePath != "" {
+		return c.managedDB.Restore(ctx)
+	}
+
 	return c.managedDB.Start(ctx, c.clientAccessInfo)
 }
 

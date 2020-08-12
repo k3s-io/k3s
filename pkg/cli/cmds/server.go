@@ -4,6 +4,7 @@ import (
 	"github.com/rancher/k3s/pkg/version"
 	"github.com/rancher/spur/cli"
 	"github.com/rancher/spur/cli/altsrc"
+	"time"
 )
 
 const (
@@ -54,6 +55,9 @@ type Server struct {
 	ClusterInit              bool
 	ClusterReset             bool
 	EncryptSecrets           bool
+	SnapshotDir              string
+	SnapshotInterval         time.Duration
+	RestorePath              string
 }
 
 var ServerConfig Server
@@ -200,6 +204,22 @@ func NewServerCommand(action func(*cli.Context) error) *cli.Command {
 				Usage:       "(db) TLS key file used to secure datastore backend communication",
 				Destination: &ServerConfig.DatastoreKeyFile,
 				EnvVars:     []string{version.ProgramUpper + "_DATASTORE_KEYFILE"},
+			},
+			&cli.DurationFlag{
+				Name:        "snapshot-interval",
+				Usage:       "(db) snapshot interval time",
+				Destination: &ServerConfig.SnapshotInterval,
+				Value:       5 * time.Minute,
+			},
+			&cli.StringFlag{
+				Name:        "snapshot-dir",
+				Usage:       "(db) directory to save db snapshots",
+				Destination: &ServerConfig.SnapshotDir,
+			},
+			&cli.StringFlag{
+				Name:        "snapshot-restore-path",
+				Usage:       "(db) Snapshot restore path",
+				Destination: &ServerConfig.RestorePath,
 			},
 			&cli.StringFlag{
 				Name:        "default-local-storage-path",
