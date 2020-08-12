@@ -1,10 +1,11 @@
 package cmds
 
 import (
+	"time"
+
 	"github.com/rancher/k3s/pkg/version"
 	"github.com/rancher/spur/cli"
 	"github.com/rancher/spur/cli/altsrc"
-	"time"
 )
 
 const (

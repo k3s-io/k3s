@@ -546,8 +546,7 @@ func (e *ETCD) clientURLs(ctx context.Context, clientAccessInfo *clientaccess.In
 func (e *ETCD) Snapshot(ctx context.Context) {
 	ticker := time.NewTicker(e.config.SnapshotInterval)
 	defer ticker.Stop()
-	for range ticker.C {
-		snapshotTime := <-ticker.C
+	for snapshotTime := range ticker.C {
 		logrus.Infof("Taking etcd snapshot at %s", snapshotTime.String())
 		sManager := snapshot.NewV3(nil)
 		tlsConfig, err := toTLSConfig(e.runtime)
