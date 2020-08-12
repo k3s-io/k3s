@@ -208,13 +208,13 @@ func NewServerCommand(action func(*cli.Context) error) *cli.Command {
 			},
 			&cli.DurationFlag{
 				Name:        "snapshot-interval",
-				Usage:       "(db) snapshot interval time",
+				Usage:       "(db) Snapshot interval time",
 				Destination: &ServerConfig.SnapshotInterval,
 				Value:       5 * time.Minute,
 			},
 			&cli.StringFlag{
 				Name:        "snapshot-dir",
-				Usage:       "(db) directory to save db snapshots",
+				Usage:       "(db) Directory to save db snapshots",
 				Destination: &ServerConfig.SnapshotDir,
 			},
 			&cli.StringFlag{
