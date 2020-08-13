@@ -84,6 +84,10 @@ Both of these have out-of-tree alternatives in the form of [CSI](https://github.
 
 We remove these to achieve a smaller binary size. They can be removed while remaining conformant because neither affect core Kubernetes functionality. They are also dependent on third-party cloud or data center technologies/services, which may not be available in many of K3s's usecases.
 
+What's next?
+---
+Check out our [roadmap](ROADMAP.md) to see what we have planned moving forward.
+
 Release cadence
 ---
 K3s maintains pace with upstream Kubernetes releases. Our goal is to release patch releases on the same day as upstream and minor releases within a few days.
