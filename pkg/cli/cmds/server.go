@@ -56,8 +56,10 @@ type Server struct {
 	ClusterInit              bool
 	ClusterReset             bool
 	EncryptSecrets           bool
+	DisableSnapshots         bool
 	SnapshotDir              string
 	SnapshotInterval         time.Duration
+	SnapshotRetention        int
 	RestorePath              string
 }
 
@@ -211,6 +213,17 @@ func NewServerCommand(action func(*cli.Context) error) *cli.Command {
 				Usage:       "(db) Snapshot interval time",
 				Destination: &ServerConfig.SnapshotInterval,
 				Value:       5 * time.Minute,
+			},
+			&cli.IntFlag{
+				Name:        "snapshot-retention",
+				Usage:       "(db) Snapshot restore path",
+				Destination: &ServerConfig.SnapshotRetention,
+				Value:       5,
+			},
+			&cli.BoolFlag{
+				Name:        "disable-snapshots",
+				Usage:       "(db) Disable automatic db snapshots",
+				Destination: &ServerConfig.DisableSnapshots,
 			},
 			&cli.StringFlag{
 				Name:        "snapshot-dir",

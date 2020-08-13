@@ -112,6 +112,8 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	serverConfig.ControlConfig.SnapshotInterval = cfg.SnapshotInterval
 	serverConfig.ControlConfig.SnapshotDir = cfg.SnapshotDir
 	serverConfig.ControlConfig.RestorePath = cfg.RestorePath
+	serverConfig.ControlConfig.SnapshotRetention = cfg.SnapshotRetention
+	serverConfig.ControlConfig.DisableSnapshots = cfg.DisableSnapshots
 
 	if serverConfig.ControlConfig.SupervisorPort == 0 {
 		serverConfig.ControlConfig.SupervisorPort = serverConfig.ControlConfig.HTTPSPort

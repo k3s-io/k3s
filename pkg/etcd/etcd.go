@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -36,6 +37,10 @@ type ETCD struct {
 	runtime *config.ControlRuntime
 	address string
 }
+
+const (
+	etcdSnapshotPrefix = "etcd-snapshot"
+)
 
 type Members struct {
 	Members []*etcdserverpb.Member `json:"members"`
@@ -190,8 +195,11 @@ func (e *ETCD) Start(ctx context.Context, clientAccessInfo *clientaccess.Info) e
 		Register(ctx, e, e.config.Runtime.Core.Core().V1().Node())
 		return nil
 	}
-	// starting snapshot thread
-	go e.Snapshot(ctx)
+
+	if !e.config.DisableSnapshots {
+		// starting snapshot thread
+		go e.Snapshot(ctx)
+	}
 
 	if existingCluster {
 		opt, err := executor.CurrentETCDOptions()
@@ -547,6 +555,16 @@ func (e *ETCD) Snapshot(ctx context.Context) {
 	ticker := time.NewTicker(e.config.SnapshotInterval)
 	defer ticker.Stop()
 	for snapshotTime := range ticker.C {
+		logrus.Infof("Snapshot retention check")
+		snapshotDir, err := snapshotDir(e.config)
+		if err != nil {
+			logrus.Errorf("failed to get the snapshot dir: %v", err)
+			continue
+		}
+		if err := snapshotRetention(e.config.SnapshotRetention, snapshotDir); err != nil {
+			logrus.Errorf("failed to apply snapshot retention: %v", err)
+			continue
+		}
 		logrus.Infof("Taking etcd snapshot at %s", snapshotTime.String())
 		sManager := snapshot.NewV3(nil)
 		tlsConfig, err := toTLSConfig(e.runtime)
@@ -559,10 +577,6 @@ func (e *ETCD) Snapshot(ctx context.Context) {
 			TLS:       tlsConfig,
 			Context:   ctx,
 		}
-		snapshotDir, err := snapshotDir(e.config)
-		if err != nil {
-			logrus.Errorf("failed to get the snapshot dir: %v", err)
-		}
 		snapshotPath := filepath.Join(snapshotDir, "etcd-snapshot"+strconv.Itoa(int(snapshotTime.Unix())))
 
 		if err := sManager.Save(ctx, etcdConfig, snapshotPath); err != nil {
@@ -570,4 +584,33 @@ func (e *ETCD) Snapshot(ctx context.Context) {
 			continue
 		}
 	}
+}
+
+func snapshotRetention(retention int, snapshotDir string) error {
+	snapshotFiles := []os.FileInfo{}
+	if err := filepath.Walk(snapshotDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if strings.HasPrefix(info.Name(), etcdSnapshotPrefix) {
+			snapshotFiles = append(snapshotFiles, info)
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+	if len(snapshotFiles) <= retention {
+		return nil
+	}
+	sort.Slice(snapshotFiles, func(i, j int) bool {
+		return snapshotFiles[i].ModTime().Before(snapshotFiles[j].ModTime())
+	})
+	for _, snapshot := range snapshotFiles[:len(snapshotFiles)-retention] {
+		snapshotFile := filepath.Join(snapshotDir, snapshot.Name())
+		logrus.Infof("removing snapshot %s", snapshotFile)
+		if err := os.Remove(snapshotFile); err != nil {
+			return err
+		}
+	}
+	return nil
 }
