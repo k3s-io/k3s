@@ -1,4 +1,4 @@
-BOX = "generic/alpine310"
+BOX = "generic/alpine312"
 HOME = File.dirname(__FILE__)
 PROJECT = File.basename(HOME)
 MOUNT_TYPE = ENV['MOUNT_TYPE'] || "nfs"
