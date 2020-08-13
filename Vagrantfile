@@ -1,4 +1,4 @@
-OS = (ENV['OS'] || "alpine310")
+OS = (ENV['OS'] || "alpine312")
 BOX_REPO = (ENV['BOX_REPO'] || "generic")
 HOME = File.dirname(__FILE__)
 PROJECT = File.basename(HOME)
