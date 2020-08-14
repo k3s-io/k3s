@@ -14,6 +14,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/google/uuid"
@@ -603,7 +604,9 @@ func snapshotRetention(retention int, snapshotDir string) error {
 		return nil
 	}
 	sort.Slice(snapshotFiles, func(i, j int) bool {
-		return snapshotFiles[i].ModTime().Before(snapshotFiles[j].ModTime())
+		fileISec, _ := snapshotFiles[i].Sys().(*syscall.Stat_t).Ctim.Unix()
+		fileJSec, _ := snapshotFiles[j].Sys().(*syscall.Stat_t).Ctim.Unix()
+		return int(fileISec) < int(fileJSec)
 	})
 	for _, snapshot := range snapshotFiles[:len(snapshotFiles)-retention] {
 		snapshotFile := filepath.Join(snapshotDir, snapshot.Name())
