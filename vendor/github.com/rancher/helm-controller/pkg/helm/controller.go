@@ -21,7 +21,6 @@ import (
 	rbac "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -54,7 +53,7 @@ func Register(ctx context.Context, apply apply.Apply,
 	apply = apply.WithSetID(Name).
 		WithCacheTypes(helms, jobs, crbs, sas, cm).
 		WithStrictCaching().WithPatcher(batch.SchemeGroupVersion.WithKind("Job"), func(namespace, name string, pt types.PatchType, data []byte) (runtime.Object, error) {
-		err := jobs.Delete(namespace, name, &metav1.DeleteOptions{})
+		err := jobs.Delete(namespace, name, &meta.DeleteOptions{})
 		if err == nil {
 			return nil, fmt.Errorf("replace job")
 		}
@@ -238,7 +237,7 @@ func job(chart *helmv1.HelmChart) (*batch.Job, *core.ConfigMap, *core.ConfigMap)
 			},
 			{
 				Key:      "node.cloudprovider.kubernetes.io/uninitialized",
-				Operator: "=",
+				Operator: core.TolerationOpEqual,
 				Value:    "true",
 				Effect:   "NoSchedule",
 			},
