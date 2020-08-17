@@ -26,7 +26,7 @@ K3s is a [fully conformant](https://github.com/cncf/k8s-conformance/pulls?q=is%3
 1. It eliminates the need to expose a port on Kubernetes worker nodes for the kubelet API by exposing this API to the Kubernetes control plane nodes over a websocket tunnel.
 
 
-K3s bundles the following technologies together into a single cohesive distibution:
+K3s bundles the following technologies together into a single cohesive distribution:
 
 * [Containerd](https://containerd.io/) & [runc](https://github.com/opencontainers/runc)
 * [Flannel](https://github.com/coreos/flannel) for CNI
