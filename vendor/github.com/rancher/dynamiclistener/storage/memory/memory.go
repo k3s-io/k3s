@@ -32,13 +32,15 @@ func (m *memory) Get() (*v1.Secret, error) {
 }
 
 func (m *memory) Update(secret *v1.Secret) error {
-	if m.storage != nil {
-		if err := m.storage.Update(secret); err != nil {
-			return err
+	if m.secret == nil || m.secret.ResourceVersion != secret.ResourceVersion {
+		if m.storage != nil {
+			if err := m.storage.Update(secret); err != nil {
+				return err
+			}
 		}
-	}
 
-	logrus.Infof("Active TLS secret %s (ver=%s) (count %d): %v", secret.Name, secret.ResourceVersion, len(secret.Annotations)-1, secret.Annotations)
-	m.secret = secret
+		logrus.Infof("Active TLS secret %s (ver=%s) (count %d): %v", secret.Name, secret.ResourceVersion, len(secret.Annotations)-1, secret.Annotations)
+		m.secret = secret
+	}
 	return nil
 }

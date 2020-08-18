@@ -94,7 +94,7 @@ require (
 	github.com/opencontainers/runc v1.0.0-rc10
 	github.com/opencontainers/selinux v1.5.3-0.20200613095409-bb88c45a3863
 	github.com/pkg/errors v0.9.1
-	github.com/rancher/dynamiclistener v0.2.1-0.20200418023342-52ede5ec9234
+	github.com/rancher/dynamiclistener v0.2.1
 	github.com/rancher/helm-controller v0.6.5
 	github.com/rancher/kine v0.4.0
 	github.com/rancher/remotedialer v0.2.0

@@ -898,7 +898,7 @@ func expired(certFile string, pool *x509.CertPool) bool {
 	if err != nil {
 		return true
 	}
-	return certutil.IsCertExpired(certificates[0])
+	return certutil.IsCertExpired(certificates[0], config.CertificateRenewDays)
 }
 
 func cloudControllerManager(ctx context.Context, cfg *config.Control, runtime *config.ControlRuntime) {

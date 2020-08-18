@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/rancher/dynamiclistener/cert"
 	"github.com/rancher/dynamiclistener/factory"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
@@ -22,7 +23,7 @@ type TLSStorage interface {
 }
 
 type TLSFactory interface {
-	Refresh(secret *v1.Secret) (*v1.Secret, error)
+	Renew(secret *v1.Secret) (*v1.Secret, error)
 	AddCN(secret *v1.Secret, cn ...string) (*v1.Secret, bool, error)
 	Merge(target *v1.Secret, additional *v1.Secret) (*v1.Secret, bool, error)
 	Filter(cn ...string) []string
@@ -152,13 +153,18 @@ type listener struct {
 func (l *listener) WrapExpiration(days int) net.Listener {
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
-		time.Sleep(5 * time.Minute)
+		time.Sleep(30 * time.Second)
 
 		for {
 			wait := 6 * time.Hour
 			if err := l.checkExpiration(days); err != nil {
-				logrus.Errorf("failed to check and refresh dynamic cert: %v", err)
-				wait = 5 + time.Minute
+				logrus.Errorf("failed to check and renew dynamic cert: %v", err)
+				// Don't go into short retry loop if we're using a static (user-provided) cert.
+				// We will still check and print an error every six hours until the user updates the secret with
+				// a cert that is not about to expire. Hopefully this will prompt them to take action.
+				if err != cert.ErrStaticCert {
+					wait = 5 * time.Minute
+				}
 			}
 			select {
 			case <-ctx.Done():
@@ -191,22 +197,26 @@ func (l *listener) checkExpiration(days int) error {
 		return err
 	}
 
-	cert, err := tls.X509KeyPair(secret.Data[v1.TLSCertKey], secret.Data[v1.TLSPrivateKeyKey])
+	keyPair, err := tls.X509KeyPair(secret.Data[v1.TLSCertKey], secret.Data[v1.TLSPrivateKeyKey])
 	if err != nil {
 		return err
 	}
 
-	certParsed, err := x509.ParseCertificate(cert.Certificate[0])
+	certParsed, err := x509.ParseCertificate(keyPair.Certificate[0])
 	if err != nil {
 		return err
 	}
 
-	if time.Now().UTC().Add(time.Hour * 24 * time.Duration(days)).After(certParsed.NotAfter) {
-		secret, err := l.factory.Refresh(secret)
+	if cert.IsCertExpired(certParsed, days) {
+		secret, err := l.factory.Renew(secret)
 		if err != nil {
 			return err
 		}
-		return l.storage.Update(secret)
+		if err := l.storage.Update(secret); err != nil {
+			return err
+		}
+		// clear version to force cert reload
+		l.version = ""
 	}
 
 	return nil
@@ -304,7 +314,7 @@ func (l *listener) updateCert(cn ...string) error {
 		return err
 	}
 
-	if !factory.NeedsUpdate(l.maxSANs, secret, cn...) {
+	if !factory.IsStatic(secret) && !factory.NeedsUpdate(l.maxSANs, secret, cn...) {
 		return nil
 	}
 
@@ -324,13 +334,6 @@ func (l *listener) updateCert(cn ...string) error {
 		}
 		// clear version to force cert reload
 		l.version = ""
-		if l.conns != nil {
-			l.connLock.Lock()
-			for _, conn := range l.conns {
-				_ = conn.close()
-			}
-			l.connLock.Unlock()
-		}
 	}
 
 	return nil
@@ -364,6 +367,15 @@ func (l *listener) loadCert() (*tls.Certificate, error) {
 	cert, err := tls.X509KeyPair(secret.Data[v1.TLSCertKey], secret.Data[v1.TLSPrivateKeyKey])
 	if err != nil {
 		return nil, err
+	}
+
+	// cert has changed, close closeWrapper wrapped connections
+	if l.conns != nil {
+		l.connLock.Lock()
+		for _, conn := range l.conns {
+			_ = conn.close()
+		}
+		l.connLock.Unlock()
 	}
 
 	l.cert = &cert

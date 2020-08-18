@@ -39,7 +39,7 @@ func (c *Cluster) newListener(ctx context.Context) (net.Listener, http.Handler, 
 			CipherSuites: c.config.TLSCipherSuites,
 		},
 		SANs:                append(c.config.SANs, "localhost", "kubernetes", "kubernetes.default", "kubernetes.default.svc."+c.config.ClusterDomain),
-		ExpirationDaysCheck: 90,
+		ExpirationDaysCheck: config.CertificateRenewDays,
 	})
 }
 

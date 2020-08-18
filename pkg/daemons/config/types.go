@@ -20,6 +20,7 @@ const (
 	FlannelBackendHostGW    = "host-gw"
 	FlannelBackendIPSEC     = "ipsec"
 	FlannelBackendWireguard = "wireguard"
+	CertificateRenewDays    = 90
 )
 
 type Node struct {

@@ -5,10 +5,10 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
-	"crypto/sha256"
+	"crypto/sha1"
 	"crypto/x509"
-	"encoding/hex"
 	"encoding/pem"
+	"fmt"
 	"net"
 	"regexp"
 	"sort"
@@ -20,9 +20,9 @@ import (
 )
 
 const (
-	cnPrefix = "listener.cattle.io/cn-"
-	Static   = "listener.cattle.io/static"
-	hashKey  = "listener.cattle.io/hash"
+	cnPrefix    = "listener.cattle.io/cn-"
+	Static      = "listener.cattle.io/static"
+	fingerprint = "listener.cattle.io/fingerprint"
 )
 
 var (
@@ -49,16 +49,14 @@ func cns(secret *v1.Secret) (cns []string) {
 	return
 }
 
-func collectCNs(secret *v1.Secret) (domains []string, ips []net.IP, hash string, err error) {
+func collectCNs(secret *v1.Secret) (domains []string, ips []net.IP, err error) {
 	var (
-		cns    = cns(secret)
-		digest = sha256.New()
+		cns = cns(secret)
 	)
 
 	sort.Strings(cns)
 
 	for _, v := range cns {
-		digest.Write([]byte(v))
 		ip := net.ParseIP(v)
 		if ip == nil {
 			domains = append(domains, v)
@@ -67,40 +65,61 @@ func collectCNs(secret *v1.Secret) (domains []string, ips []net.IP, hash string,
 		}
 	}
 
-	hash = hex.EncodeToString(digest.Sum(nil))
 	return
 }
 
+// Merge combines the SAN lists from the target and additional Secrets, and returns a potentially modified Secret,
+// along with a bool indicating if the returned Secret has been updated or not. If the two SAN lists alread matched
+// and no merging was necessary, but the Secrets' certificate fingerprints differed, the second secret is returned
+// and the updated bool is set to true despite neither certificate having actually been modified. This is required
+// to support handling certificate renewal within the kubernetes storage provider.
 func (t *TLS) Merge(target, additional *v1.Secret) (*v1.Secret, bool, error) {
-	return t.AddCN(target, cns(additional)...)
+	secret, updated, err := t.AddCN(target, cns(additional)...)
+	if !updated {
+		if target.Annotations[fingerprint] != additional.Annotations[fingerprint] {
+			secret = additional
+			updated = true
+		}
+	}
+	return secret, updated, err
 }
 
-func (t *TLS) Refresh(secret *v1.Secret) (*v1.Secret, error) {
+// Renew returns a copy of the given certificate that has been re-signed
+// to extend the NotAfter date. It is an error to attempt to renew
+// a static (user-provided) certificate.
+func (t *TLS) Renew(secret *v1.Secret) (*v1.Secret, error) {
+	if IsStatic(secret) {
+		return secret, cert.ErrStaticCert
+	}
 	cns := cns(secret)
 	secret = secret.DeepCopy()
 	secret.Annotations = map[string]string{}
-	secret, _, err := t.AddCN(secret, cns...)
+	secret, _, err := t.generateCert(secret, cns...)
 	return secret, err
 }
 
+// Filter ensures that the CNs are all valid accorting to both internal logic, and any filter callbacks.
+// The returned list will contain only approved CN entries.
 func (t *TLS) Filter(cn ...string) []string {
-	if t.FilterCN == nil {
+	if len(cn) == 0 || t.FilterCN == nil {
 		return cn
 	}
 	return t.FilterCN(cn...)
 }
 
+// AddCN attempts to add a list of CN strings to a given Secret, returning the potentially-modified
+// Secret along with a bool indicating whether or not it has been updated. The Secret will not be changed
+// if it has an attribute indicating that it is static (aka user-provided), or if no new CNs were added.
 func (t *TLS) AddCN(secret *v1.Secret, cn ...string) (*v1.Secret, bool, error) {
-	var (
-		err error
-	)
-
 	cn = t.Filter(cn...)
 
-	if !NeedsUpdate(0, secret, cn...) {
+	if IsStatic(secret) || !NeedsUpdate(0, secret, cn...) {
 		return secret, false, nil
 	}
+	return t.generateCert(secret, cn...)
+}
 
+func (t *TLS) generateCert(secret *v1.Secret, cn ...string) (*v1.Secret, bool, error) {
 	secret = secret.DeepCopy()
 	if secret == nil {
 		secret = &v1.Secret{}
@@ -113,7 +132,7 @@ func (t *TLS) AddCN(secret *v1.Secret, cn ...string) (*v1.Secret, bool, error) {
 		return nil, false, err
 	}
 
-	domains, ips, hash, err := collectCNs(secret)
+	domains, ips, err := collectCNs(secret)
 	if err != nil {
 		return nil, false, err
 	}
@@ -133,7 +152,7 @@ func (t *TLS) AddCN(secret *v1.Secret, cn ...string) (*v1.Secret, bool, error) {
 	}
 	secret.Data[v1.TLSCertKey] = certBytes
 	secret.Data[v1.TLSPrivateKeyKey] = keyBytes
-	secret.Annotations[hashKey] = hash
+	secret.Annotations[fingerprint] = fmt.Sprintf("SHA1=%X", sha1.Sum(newCert.Raw))
 
 	return secret, true, nil
 }
@@ -157,13 +176,19 @@ func populateCN(secret *v1.Secret, cn ...string) *v1.Secret {
 	return secret
 }
 
+// IsStatic returns true if the Secret has an attribute indicating that it contains
+// a static (aka user-provided) certificate, which should not be modified.
+func IsStatic(secret *v1.Secret) bool {
+	return secret.Annotations[Static] == "true"
+}
+
+// NeedsUpdate returns true if any of the CNs are not currently present on the
+// secret's Certificate, as recorded in the cnPrefix annotations. It will return
+// false if all requested CNs are already present, or if maxSANs is non-zero and has
+// been exceeded.
 func NeedsUpdate(maxSANs int, secret *v1.Secret, cn ...string) bool {
 	if secret == nil {
 		return true
-	}
-
-	if secret.Annotations[Static] == "true" {
-		return false
 	}
 
 	for _, cn := range cn {
@@ -192,6 +217,7 @@ func getPrivateKey(secret *v1.Secret) (crypto.Signer, error) {
 	return NewPrivateKey()
 }
 
+// Marshal returns the given cert and key as byte slices.
 func Marshal(x509Cert *x509.Certificate, privateKey crypto.Signer) ([]byte, []byte, error) {
 	certBlock := pem.Block{
 		Type:  CertificateBlockType,
@@ -206,6 +232,7 @@ func Marshal(x509Cert *x509.Certificate, privateKey crypto.Signer) ([]byte, []by
 	return pem.EncodeToMemory(&certBlock), keyBytes, nil
 }
 
+// NewPrivateKey returnes a new ECDSA key
 func NewPrivateKey() (crypto.Signer, error) {
 	return ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 }
