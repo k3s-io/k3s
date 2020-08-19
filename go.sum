@@ -631,8 +631,8 @@ github.com/rancher/dynamiclistener v0.2.0 h1:KucYwJXVVGhZ/NndfMCeQoCafT/VN7kvqSG
 github.com/rancher/dynamiclistener v0.2.0/go.mod h1:fs/dxyNcB3YT6W9fVz4bDGfhmSQS17QQup6BIcGF++s=
 github.com/rancher/flannel v0.11.0-k3s.2 h1:0GVr5ORAIvcri1LYTE8eMQ+NrRbuPeIniPaW51IzLco=
 github.com/rancher/flannel v0.11.0-k3s.2/go.mod h1:Hn4ZV+eq0LhLZP63xZnxdGwXEoRSxs5sxELxu27M3UA=
-github.com/rancher/helm-controller v0.6.0 h1:nFptBZFWpHga65M6bP04BZGLlzeMgezAXdsOwaB8t+4=
-github.com/rancher/helm-controller v0.6.0/go.mod h1:ZylsxIMGNADRPRNW+NiBWhrwwks9vnKLQiCHYWb6Bi0=
+github.com/rancher/helm-controller v0.6.5 h1:gL6R3fbsBFBnrp2Wc36zn0zLQ8q2ckbLpfaN2XkrLVE=
+github.com/rancher/helm-controller v0.6.5/go.mod h1:ZylsxIMGNADRPRNW+NiBWhrwwks9vnKLQiCHYWb6Bi0=
 github.com/rancher/juju-to-pkg-errors v0.0.0-20200701001603-16f3c28b59bd h1:KPnQuOFWU6Jm7dTadhZ9TCVf6Y5NxoSyUjwkbD7En5Q=
 github.com/rancher/juju-to-pkg-errors v0.0.0-20200701001603-16f3c28b59bd/go.mod h1:QYmg8cqWPPfIbpEuhtJbEdWwA6PEKSY016Z6EdfL9+8=
 github.com/rancher/kine v0.4.0 h1:1IhWy3TzjExG8xnj46eyUEWdzqNAD1WrgL4eEBKm6Uc=
