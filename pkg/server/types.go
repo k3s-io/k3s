@@ -10,4 +10,5 @@ type Config struct {
 	ControlConfig    config.Control
 	Rootless         bool
 	SupervisorPort   int
+	SetupHooks       []func(config.Control) error
 }

@@ -1,6 +1,7 @@
 package cmds
 
 import (
+	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/version"
 	"github.com/rancher/spur/cli"
 	"github.com/rancher/spur/cli/altsrc"
@@ -54,6 +55,7 @@ type Server struct {
 	ClusterInit              bool
 	ClusterReset             bool
 	EncryptSecrets           bool
+	SetupHooks               []func(config.Control) error
 }
 
 var ServerConfig Server

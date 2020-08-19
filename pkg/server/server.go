@@ -60,6 +60,10 @@ func StartServer(ctx context.Context, config *Config) error {
 		return errors.Wrap(err, "starting tls server")
 	}
 
+	for _, hook := range config.SetupHooks {
+		hook(config.ControlConfig)
+	}
+
 	ip := net2.ParseIP(config.ControlConfig.BindAddress)
 	if ip == nil {
 		hostIP, err := net.ChooseHostInterface()
