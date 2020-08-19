@@ -736,7 +736,7 @@ github.com/rancher/dynamiclistener/storage/memory
 # github.com/rancher/go-powershell v0.0.0-20200701182037-6845e6fcfa79
 github.com/rancher/go-powershell/backend
 github.com/rancher/go-powershell/utils
-# github.com/rancher/helm-controller v0.6.5
+# github.com/rancher/helm-controller v0.7.0
 github.com/rancher/helm-controller/pkg/apis/helm.cattle.io
 github.com/rancher/helm-controller/pkg/apis/helm.cattle.io/v1
 github.com/rancher/helm-controller/pkg/generated/clientset/versioned

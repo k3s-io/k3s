@@ -26,6 +26,8 @@ import (
 type Interface interface {
 	// HelmCharts returns a HelmChartInformer.
 	HelmCharts() HelmChartInformer
+	// HelmChartConfigs returns a HelmChartConfigInformer.
+	HelmChartConfigs() HelmChartConfigInformer
 }
 
 type version struct {
@@ -42,4 +44,9 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 // HelmCharts returns a HelmChartInformer.
 func (v *version) HelmCharts() HelmChartInformer {
 	return &helmChartInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// HelmChartConfigs returns a HelmChartConfigInformer.
+func (v *version) HelmChartConfigs() HelmChartConfigInformer {
+	return &helmChartConfigInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }

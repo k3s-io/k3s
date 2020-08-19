@@ -31,3 +31,17 @@ type HelmChartSpec struct {
 type HelmChartStatus struct {
 	JobName string `json:"jobName,omitempty"`
 }
+
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type HelmChartConfig struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	Spec HelmChartConfigSpec `json:"spec,omitempty"`
+}
+
+type HelmChartConfigSpec struct {
+	ValuesContent string `json:"valuesContent,omitempty"`
+}
