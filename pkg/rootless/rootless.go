@@ -41,7 +41,7 @@ func Rootless(stateDir string) error {
 			logrus.Fatal(err)
 		}
 		if err := child.Child(*childOpt); err != nil {
-			logrus.Fatal("child died", err)
+			logrus.Fatalf("child died: %v", err)
 		}
 	}
 
