@@ -61,7 +61,9 @@ func StartServer(ctx context.Context, config *Config) error {
 	}
 
 	for _, hook := range config.StartupHooks {
-		hook(config.ControlConfig)
+		if err := hook(ctx, config.ControlConfig); err != nil {
+			return errors.Wrap(err, "startup hook")
+		}
 	}
 
 	ip := net2.ParseIP(config.ControlConfig.BindAddress)
