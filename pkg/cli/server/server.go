@@ -193,7 +193,7 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 		return errors.Wrap(err, "Invalid tls-min-version")
 	}
 
-	serverConfig.SetupHooks = append(serverConfig.SetupHooks, cfg.SetupHooks...)
+	serverConfig.StartupHooks = append(serverConfig.StartupHooks, cfg.StartupHooks...)
 
 	// TLS config based on mozilla ssl-config generator
 	// https://ssl-config.mozilla.org/#server=golang&version=1.13.6&config=intermediate&guideline=5.4

@@ -55,7 +55,7 @@ type Server struct {
 	ClusterInit              bool
 	ClusterReset             bool
 	EncryptSecrets           bool
-	SetupHooks               []func(config.Control) error
+	StartupHooks             []func(config.Control) error
 }
 
 var ServerConfig Server

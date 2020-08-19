@@ -60,7 +60,7 @@ func StartServer(ctx context.Context, config *Config) error {
 		return errors.Wrap(err, "starting tls server")
 	}
 
-	for _, hook := range config.SetupHooks {
+	for _, hook := range config.StartupHooks {
 		hook(config.ControlConfig)
 	}
 
