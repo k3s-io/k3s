@@ -27,6 +27,7 @@ import (
 
 type Interface interface {
 	HelmChart() HelmChartController
+	HelmChartConfig() HelmChartConfigController
 }
 
 func New(controllerManager *generic.ControllerManager, client clientset.HelmV1Interface,
@@ -46,4 +47,7 @@ type version struct {
 
 func (c *version) HelmChart() HelmChartController {
 	return NewHelmChartController(v1.SchemeGroupVersion.WithKind("HelmChart"), c.controllerManager, c.client, c.informers.HelmCharts())
+}
+func (c *version) HelmChartConfig() HelmChartConfigController {
+	return NewHelmChartConfigController(v1.SchemeGroupVersion.WithKind("HelmChartConfig"), c.controllerManager, c.client, c.informers.HelmChartConfigs())
 }
