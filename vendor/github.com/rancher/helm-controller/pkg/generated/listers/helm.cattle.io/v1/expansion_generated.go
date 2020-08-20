@@ -25,3 +25,11 @@ type HelmChartListerExpansion interface{}
 // HelmChartNamespaceListerExpansion allows custom methods to be added to
 // HelmChartNamespaceLister.
 type HelmChartNamespaceListerExpansion interface{}
+
+// HelmChartConfigListerExpansion allows custom methods to be added to
+// HelmChartConfigLister.
+type HelmChartConfigListerExpansion interface{}
+
+// HelmChartConfigNamespaceListerExpansion allows custom methods to be added to
+// HelmChartConfigNamespaceLister.
+type HelmChartConfigNamespaceListerExpansion interface{}

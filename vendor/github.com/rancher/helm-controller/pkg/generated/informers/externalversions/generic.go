@@ -55,6 +55,8 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 	// Group=helm.cattle.io, Version=v1
 	case v1.SchemeGroupVersion.WithResource("helmcharts"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Helm().V1().HelmCharts().Informer()}, nil
+	case v1.SchemeGroupVersion.WithResource("helmchartconfigs"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Helm().V1().HelmChartConfigs().Informer()}, nil
 
 	}
 

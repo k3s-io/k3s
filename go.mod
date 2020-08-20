@@ -95,7 +95,7 @@ require (
 	github.com/opencontainers/selinux v1.5.3-0.20200613095409-bb88c45a3863
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/dynamiclistener v0.2.1
-	github.com/rancher/helm-controller v0.6.5
+	github.com/rancher/helm-controller v0.7.0
 	github.com/rancher/kine v0.4.0
 	github.com/rancher/remotedialer v0.2.0
 	github.com/rancher/spur v0.0.0-20200617165101-8702c8e4ce7a
