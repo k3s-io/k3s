@@ -437,7 +437,7 @@ func contentConfigMap(chart *helmv1.HelmChart) *core.ConfigMap {
 
 	if chart.Spec.ChartContent != "" {
 		key := fmt.Sprintf("%s.tgz.base64", chart.Name)
-		configMap.Data[key] = chart.Spec.ValuesContent
+		configMap.Data[key] = chart.Spec.ChartContent
 	}
 
 	return configMap
