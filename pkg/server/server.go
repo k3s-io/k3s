@@ -391,6 +391,8 @@ func setNoProxyEnv(config *config.Control) error {
 		os.Getenv("NO_PROXY"),
 		config.ClusterIPRange.String(),
 		config.ServiceIPRange.String(),
+		"." + config.ClusterDomain,
+		".svc",
 	}, ",")
 	return os.Setenv("NO_PROXY", envList)
 }
