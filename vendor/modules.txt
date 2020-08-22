@@ -916,6 +916,7 @@ go.etcd.io/etcd/clientv3/balancer/picker
 go.etcd.io/etcd/clientv3/balancer/resolver/endpoint
 go.etcd.io/etcd/clientv3/concurrency
 go.etcd.io/etcd/clientv3/credentials
+go.etcd.io/etcd/clientv3/snapshot
 go.etcd.io/etcd/embed
 go.etcd.io/etcd/etcdserver
 go.etcd.io/etcd/etcdserver/api

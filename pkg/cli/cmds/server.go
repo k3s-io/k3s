@@ -2,6 +2,7 @@ package cmds
 
 import (
 	"context"
+	"time"
 
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/version"
@@ -58,6 +59,11 @@ type Server struct {
 	ClusterReset             bool
 	EncryptSecrets           bool
 	StartupHooks             []func(context.Context, config.Control) error
+	DisableSnapshots         bool
+	SnapshotDir              string
+	SnapshotInterval         time.Duration
+	SnapshotRetention        int
+	RestorePath              string
 }
 
 var ServerConfig Server
@@ -209,6 +215,33 @@ func NewServerCommand(action func(*cli.Context) error) *cli.Command {
 				Usage:       "(db) TLS key file used to secure datastore backend communication",
 				Destination: &ServerConfig.DatastoreKeyFile,
 				EnvVars:     []string{version.ProgramUpper + "_DATASTORE_KEYFILE"},
+			},
+			&cli.DurationFlag{
+				Name:        "snapshot-interval",
+				Usage:       "(db) Snapshot interval time",
+				Destination: &ServerConfig.SnapshotInterval,
+				Value:       5 * time.Minute,
+			},
+			&cli.IntFlag{
+				Name:        "snapshot-retention",
+				Usage:       "(db) Snapshot restore path",
+				Destination: &ServerConfig.SnapshotRetention,
+				Value:       5,
+			},
+			&cli.BoolFlag{
+				Name:        "disable-snapshots",
+				Usage:       "(db) Disable automatic db snapshots",
+				Destination: &ServerConfig.DisableSnapshots,
+			},
+			&cli.StringFlag{
+				Name:        "snapshot-dir",
+				Usage:       "(db) Directory to save db snapshots",
+				Destination: &ServerConfig.SnapshotDir,
+			},
+			&cli.StringFlag{
+				Name:        "snapshot-restore-path",
+				Usage:       "(db) Snapshot restore path",
+				Destination: &ServerConfig.RestorePath,
 			},
 			&cli.StringFlag{
 				Name:        "default-local-storage-path",

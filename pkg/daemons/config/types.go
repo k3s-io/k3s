@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/rancher/kine/pkg/endpoint"
 	"github.com/rancher/wrangler-api/pkg/generated/controllers/core"
@@ -129,6 +130,11 @@ type Control struct {
 	EncryptSecrets           bool
 	TLSMinVersion            uint16
 	TLSCipherSuites          []uint16
+	DisableSnapshots         bool
+	SnapshotDir              string
+	SnapshotInterval         time.Duration
+	SnapshotRetention        int
+	RestorePath              string
 
 	BindAddress string
 	SANs        []string
