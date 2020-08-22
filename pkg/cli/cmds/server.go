@@ -14,7 +14,8 @@ import (
 const (
 	DisableItems = "coredns, servicelb, traefik, local-storage, metrics-server"
 
-	defaultSnapshotRententionDurationDays = 5
+	defaultSnapshotRententionDurationMinutes = 5
+	defaultSnapshotIntervalMinutes           = 5
 )
 
 type Server struct {
@@ -63,7 +64,7 @@ type Server struct {
 	EncryptSecrets           bool
 	StartupHooks             []func(context.Context, config.Control) error
 	DisableSnapshots         bool
-	SnapshotPath             string
+	SnapshotDir              string
 	SnapshotInterval         time.Duration
 	SnapshotRetention        int
 	RestorePath              string
@@ -223,13 +224,13 @@ func NewServerCommand(action func(*cli.Context) error) *cli.Command {
 				Name:        "snapshot-interval",
 				Usage:       "(db) Snapshot interval time",
 				Destination: &ServerConfig.SnapshotInterval,
-				Value:       5 * time.Minute,
+				Value:       defaultSnapshotIntervalMinutes * time.Minute,
 			},
 			&cli.IntFlag{
 				Name:        "snapshot-retention",
-				Usage:       fmt.Sprintf("(db) Snapshot retention period. Default: %d days", defaultSnapshotRententionDurationDays),
+				Usage:       fmt.Sprintf("(db) Snapshot retention period. Default: %d minutes", defaultSnapshotRententionDurationMinutes),
 				Destination: &ServerConfig.SnapshotRetention,
-				Value:       5,
+				Value:       defaultSnapshotRententionDurationMinutes,
 			},
 			&cli.BoolFlag{
 				Name:        "disable-snapshots",
@@ -237,9 +238,9 @@ func NewServerCommand(action func(*cli.Context) error) *cli.Command {
 				Destination: &ServerConfig.DisableSnapshots,
 			},
 			&cli.StringFlag{
-				Name:        "snapshot-path",
-				Usage:       "(db) Path to save db snapshots",
-				Destination: &ServerConfig.SnapshotPath,
+				Name:        "snapshot-dir",
+				Usage:       "(db) Directory to save db snapshots",
+				Destination: &ServerConfig.SnapshotDir,
 			},
 			&cli.StringFlag{
 				Name:        "snapshot-restore-path",
