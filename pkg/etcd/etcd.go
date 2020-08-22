@@ -41,6 +41,8 @@ type ETCD struct {
 
 const (
 	etcdSnapshotPrefix = "etcd-snapshot"
+
+	testTimeout = time.Second * 10
 )
 
 type Members struct {
@@ -52,7 +54,7 @@ func (e *ETCD) EndpointName() string {
 }
 
 func (e *ETCD) Test(ctx context.Context, clientAccessInfo *clientaccess.Info) error {
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, testTimeout)
 	defer cancel()
 	status, err := e.client.Status(ctx, "https://127.0.0.1:2379")
 	if err != nil {
@@ -610,7 +612,7 @@ func snapshotRetention(retention int, snapshotDir string) error {
 	})
 	for _, snapshot := range snapshotFiles[:len(snapshotFiles)-retention] {
 		snapshotFile := filepath.Join(snapshotDir, snapshot.Name())
-		logrus.Infof("removing snapshot %s", snapshotFile)
+		logrus.Info("removing snapshot " + snapshotFile)
 		if err := os.Remove(snapshotFile); err != nil {
 			return err
 		}

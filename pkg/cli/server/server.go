@@ -110,7 +110,7 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	serverConfig.ControlConfig.ClusterReset = cfg.ClusterReset
 	serverConfig.ControlConfig.EncryptSecrets = cfg.EncryptSecrets
 	serverConfig.ControlConfig.SnapshotInterval = cfg.SnapshotInterval
-	serverConfig.ControlConfig.SnapshotDir = cfg.SnapshotDir
+	serverConfig.ControlConfig.SnapshotDir = cfg.SnapshotPath
 	serverConfig.ControlConfig.RestorePath = cfg.RestorePath
 	serverConfig.ControlConfig.SnapshotRetention = cfg.SnapshotRetention
 	serverConfig.ControlConfig.DisableSnapshots = cfg.DisableSnapshots
