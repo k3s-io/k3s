@@ -608,15 +608,16 @@ func snapshotRetention(retention int, snapshotDir string) error {
 	if len(snapshotFiles) <= retention {
 		return nil
 	}
+	const createTimeAssertionErr = "type assertion failed getting snapshot creation time. expected: *syscall.Stat_t"
 	sort.Slice(snapshotFiles, func(i, j int) bool {
 		v, ok := snapshotFiles[i].Sys().(*syscall.Stat_t)
 		if !ok {
-			logrus.Fatal("type assertion failed. expected: *syscall.Stat_t")
+			logrus.Fatal(createTimeAssertionErr)
 		}
 		fileISec, _ := v.Ctim.Unix()
 		v, ok = snapshotFiles[j].Sys().(*syscall.Stat_t)
 		if !ok {
-			logrus.Fatal("type assertion failed. expected: *syscall.Stat_t")
+			logrus.Fatal(createTimeAssertionErr)
 		}
 		fileJSec, _ := v.Ctim.Unix()
 		return int(fileISec) < int(fileJSec)
