@@ -590,9 +590,9 @@ func (e *ETCD) snapshot(ctx context.Context) {
 			continue
 		}
 		etcdConfig := etcd.Config{
+			Context:   ctx,
 			Endpoints: []string{"https://127.0.0.1:2379"},
 			TLS:       tlsConfig,
-			Context:   ctx,
 		}
 		snapshotPath := filepath.Join(snapshotDir, "etcd-snapshot"+strconv.Itoa(int(snapshotTime.Unix())))
 
