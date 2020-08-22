@@ -624,12 +624,18 @@ func snapshotRetention(retention int, snapshotDir string) error {
 		if !ok {
 			logrus.Fatal("type assertion failed. expected: *syscall.Stat_t")
 		}
-		fileISec := v.Ctim.Unix()
-		v, ok = snapshotFiles[j].Sys().(*syscall.Stat_t)
-		if !ok {
+		fileISec, err := v.Ctim.Unix()
+		if err != nil {
 			logrus.Fatal("type assertion failed. expected: *syscall.Stat_t")
 		}
-		fileJSec := v.Ctim.Unix()
+		v, ok = snapshotFiles[j].Sys().(*syscall.Stat_t)
+		if !ok {
+			logrus.Fatal(err)
+		}
+		fileJSec, err := v.Ctim.Unix()
+		if err != nil {
+			logrus.Fatal(err)
+		}
 		return int(fileISec) < int(fileJSec)
 	})
 	for _, snapshot := range snapshotFiles[:len(snapshotFiles)-retention] {
