@@ -82,7 +82,7 @@ func (e *ETCD) Test(ctx context.Context, clientAccessInfo *clientaccess.Info) er
 			clusters = append(clusters, member.Name+"="+member.PeerURLs[0])
 		}
 	}
-	msg := fmt.Sprintf("This server is a not a member of the etcd cluster "+"found %v and expecting to contain %s=%s", clusters, e.name, e.address)
+	msg := fmt.Sprintf("This server is a not a member of the etcd cluster. Found %v, expect: %s=%s", clusters, e.name, e.address)
 	logrus.Error(msg)
 	return fmt.Errorf(msg)
 }
@@ -104,17 +104,6 @@ func snapshotDir(config *config.Control) (string, error) {
 		// we have to create the snapshot dir if we are using
 		// the default snapshot dir if it doesn't exist
 		defaultSnapshotDir := filepath.Join(config.DataDir, "db", "snapshots")
-		// if s, err := os.Stat(defaultSnapshotDir); err == nil && s.IsDir() {
-		// 	return defaultSnapshotDir, nil
-		// } else if os.IsNotExist(err) {
-		// 	if err := os.MkdirAll(defaultSnapshotDir, 0755); err != nil {
-		// 		return "", err
-		// 	}
-		// 	return defaultSnapshotDir, nil
-		// } else {
-		// 	return "", err
-		// }
-
 		s, err := os.Stat(defaultSnapshotDir)
 		if err != nil {
 			if os.IsNotExist(err) {
