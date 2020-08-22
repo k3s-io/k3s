@@ -617,7 +617,7 @@ func snapshotRetention(retention int, snapshotDir string) error {
 		fileISec, _ := v.Ctim.Unix()
 		v, ok = snapshotFiles[j].Sys().(*syscall.Stat_t)
 		if !ok {
-			logrus.Fatalf(createTimeAssertionErr, snapshotFiles[i])
+			logrus.Fatalf(createTimeAssertionErr, snapshotFiles[j])
 		}
 		fileJSec, _ := v.Ctim.Unix()
 		return int(fileISec) < int(fileJSec)
