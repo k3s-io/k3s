@@ -71,7 +71,7 @@ func (e *ETCD) Test(ctx context.Context, clientAccessInfo *clientaccess.Info) er
 		return err
 	}
 
-	var clusters []string
+	var memberNameUrls []string
 	for _, member := range members.Members {
 		for _, peerURL := range member.PeerURLs {
 			if peerURL == e.peerURL() && e.name == member.Name {
@@ -79,10 +79,10 @@ func (e *ETCD) Test(ctx context.Context, clientAccessInfo *clientaccess.Info) er
 			}
 		}
 		if len(member.PeerURLs) > 0 {
-			clusters = append(clusters, member.Name+"="+member.PeerURLs[0])
+			memberNameUrls = append(memberNameUrls, member.Name+"="+member.PeerURLs[0])
 		}
 	}
-	msg := fmt.Sprintf("This server is a not a member of the etcd cluster. Found %v, expect: %s=%s", clusters, e.name, e.address)
+	msg := fmt.Sprintf("This server is a not a member of the etcd cluster. Found %v, expect: %s=%s", memberNameUrls, e.name, e.address)
 	logrus.Error(msg)
 	return fmt.Errorf(msg)
 }
