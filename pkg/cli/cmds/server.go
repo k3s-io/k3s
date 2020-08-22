@@ -2,6 +2,7 @@ package cmds
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/rancher/k3s/pkg/daemons/config"
@@ -12,6 +13,8 @@ import (
 
 const (
 	DisableItems = "coredns, servicelb, traefik, local-storage, metrics-server"
+
+	defaultSnapshotRententionDurationDays = 5
 )
 
 type Server struct {
@@ -60,7 +63,7 @@ type Server struct {
 	EncryptSecrets           bool
 	StartupHooks             []func(context.Context, config.Control) error
 	DisableSnapshots         bool
-	SnapshotDir              string
+	SnapshotPath             string
 	SnapshotInterval         time.Duration
 	SnapshotRetention        int
 	RestorePath              string
@@ -224,7 +227,7 @@ func NewServerCommand(action func(*cli.Context) error) *cli.Command {
 			},
 			&cli.IntFlag{
 				Name:        "snapshot-retention",
-				Usage:       "(db) Snapshot restore path",
+				Usage:       fmt.Sprintf("(db) Snapshot retention period. Default: %d days", defaultSnapshotRententionDurationDays),
 				Destination: &ServerConfig.SnapshotRetention,
 				Value:       5,
 			},
@@ -234,9 +237,9 @@ func NewServerCommand(action func(*cli.Context) error) *cli.Command {
 				Destination: &ServerConfig.DisableSnapshots,
 			},
 			&cli.StringFlag{
-				Name:        "snapshot-dir",
-				Usage:       "(db) Directory to save db snapshots",
-				Destination: &ServerConfig.SnapshotDir,
+				Name:        "snapshot-path",
+				Usage:       "(db) Path to save db snapshots",
+				Destination: &ServerConfig.SnapshotPath,
 			},
 			&cli.StringFlag{
 				Name:        "snapshot-restore-path",
