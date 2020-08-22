@@ -69,7 +69,7 @@ func (e *ETCD) Test(ctx context.Context, clientAccessInfo *clientaccess.Info) er
 		return err
 	}
 
-	var cluster []string
+	var clusters []string
 	for _, member := range members.Members {
 		for _, peerURL := range member.PeerURLs {
 			if peerURL == e.peerURL() && e.name == member.Name {
@@ -77,10 +77,10 @@ func (e *ETCD) Test(ctx context.Context, clientAccessInfo *clientaccess.Info) er
 			}
 		}
 		if len(member.PeerURLs) > 0 {
-			cluster = append(cluster, fmt.Sprintf("%s=%s", member.Name, member.PeerURLs[0]))
+			clusters = append(clusters, member.Name+"="+member.PeerURLs[0])
 		}
 	}
-	msg := fmt.Sprintf("This server is a not a member of the etcd cluster "+"found %v and expecting to contain %s=%s", cluster, e.name, e.address)
+	msg := fmt.Sprintf("This server is a not a member of the etcd cluster "+"found %v and expecting to contain %s=%s", clusters, e.name, e.address)
 	logrus.Error(msg)
 	return fmt.Errorf(msg)
 }
@@ -100,7 +100,7 @@ func nameFile(config *config.Control) string {
 func snapshotDir(config *config.Control) (string, error) {
 	if config.SnapshotDir == "" {
 		// we have to create the snapshot dir if we are using
-		// default snapshot dir if it doesnt exist
+		// the default snapshot dir if it doesn't exist
 		defaultSnapshotDir := filepath.Join(config.DataDir, "db", "snapshots")
 		if s, err := os.Stat(defaultSnapshotDir); err == nil && s.IsDir() {
 			return defaultSnapshotDir, nil
@@ -199,7 +199,7 @@ func (e *ETCD) Start(ctx context.Context, clientAccessInfo *clientaccess.Info) e
 
 	if !e.config.DisableSnapshots {
 		// starting snapshot thread
-		go e.Snapshot(ctx)
+		go e.snapshot(ctx)
 	}
 
 	if existingCluster {
@@ -552,7 +552,7 @@ func (e *ETCD) clientURLs(ctx context.Context, clientAccessInfo *clientaccess.In
 	return clientURLs, memberList, nil
 }
 
-func (e *ETCD) Snapshot(ctx context.Context) {
+func (e *ETCD) snapshot(ctx context.Context) {
 	ticker := time.NewTicker(e.config.SnapshotInterval)
 	defer ticker.Stop()
 	for snapshotTime := range ticker.C {
