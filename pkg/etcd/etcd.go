@@ -104,15 +104,29 @@ func snapshotDir(config *config.Control) (string, error) {
 		// we have to create the snapshot dir if we are using
 		// the default snapshot dir if it doesn't exist
 		defaultSnapshotDir := filepath.Join(config.DataDir, "db", "snapshots")
-		if s, err := os.Stat(defaultSnapshotDir); err == nil && s.IsDir() {
-			return defaultSnapshotDir, nil
-		} else if os.IsNotExist(err) {
-			if err := os.MkdirAll(defaultSnapshotDir, 0755); err != nil {
-				return "", err
+		// if s, err := os.Stat(defaultSnapshotDir); err == nil && s.IsDir() {
+		// 	return defaultSnapshotDir, nil
+		// } else if os.IsNotExist(err) {
+		// 	if err := os.MkdirAll(defaultSnapshotDir, 0755); err != nil {
+		// 		return "", err
+		// 	}
+		// 	return defaultSnapshotDir, nil
+		// } else {
+		// 	return "", err
+		// }
+
+		s, err := os.Stat(defaultSnapshotDir)
+		if err != nil {
+			if os.IsNotExist(err) {
+				if err := os.MkdirAll(defaultSnapshotDir, 0755); err != nil {
+					return "", err
+				}
+				return defaultSnapshotDir, nil
 			}
-			return defaultSnapshotDir, nil
-		} else {
 			return "", err
+		}
+		if s.IsDir() {
+			return defaultSnapshotDir, nil
 		}
 	}
 	return config.SnapshotDir, nil
@@ -153,7 +167,7 @@ func (e *ETCD) Restore(ctx context.Context) error {
 	// check the old etcd data dir
 	oldDataDir := dataDir(e.config) + "-old"
 	if s, err := os.Stat(oldDataDir); err == nil && s.IsDir() {
-		logrus.Infof("etcd already restored from a snapshot, restart without --snapshot-restore-path flag now. Backup and delete ${datadir}/server/db on each peer etcd server and rejoin the nodes")
+		logrus.Infof("etcd already restored from a snapshot. Restart without --snapshot-restore-path flag. Backup and delete ${datadir}/server/db on each peer etcd server and rejoin the nodes")
 		os.Exit(0)
 	} else if os.IsNotExist(err) {
 		if e.config.RestorePath == "" {
@@ -174,7 +188,7 @@ func (e *ETCD) Restore(ctx context.Context) error {
 			OutputDataDir:  dataDir(e.config),
 			OutputWALDir:   walDir(e.config),
 			PeerURLs:       []string{e.peerURL()},
-			InitialCluster: fmt.Sprintf("%s=%s", e.name, e.peerURL()),
+			InitialCluster: e.name + "=" + e.peerURL(),
 		}); err != nil {
 			return err
 		}
@@ -590,7 +604,7 @@ func (e *ETCD) snapshot(ctx context.Context) {
 }
 
 func snapshotRetention(retention int, snapshotDir string) error {
-	snapshotFiles := []os.FileInfo{}
+	var snapshotFiles []os.FileInfo
 	if err := filepath.Walk(snapshotDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -612,7 +626,7 @@ func snapshotRetention(retention int, snapshotDir string) error {
 	})
 	for _, snapshot := range snapshotFiles[:len(snapshotFiles)-retention] {
 		snapshotFile := filepath.Join(snapshotDir, snapshot.Name())
-		logrus.Info("removing snapshot " + snapshotFile)
+		logrus.Info("removing snapshot: " + snapshotFile)
 		if err := os.Remove(snapshotFile); err != nil {
 			return err
 		}

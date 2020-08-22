@@ -14,8 +14,8 @@ import (
 const (
 	DisableItems = "coredns, servicelb, traefik, local-storage, metrics-server"
 
-	defaultSnapshotRententionDurationMinutes = 5
-	defaultSnapshotIntervalMinutes           = 5
+	defaultSnapshotRentention      = 5
+	defaultSnapshotIntervalMinutes = 5
 )
 
 type Server struct {
@@ -228,9 +228,9 @@ func NewServerCommand(action func(*cli.Context) error) *cli.Command {
 			},
 			&cli.IntFlag{
 				Name:        "snapshot-retention",
-				Usage:       fmt.Sprintf("(db) Snapshot retention period. Default: %d minutes", defaultSnapshotRententionDurationMinutes),
+				Usage:       fmt.Sprintf("(db) Snapshot retention. Default: %d", defaultSnapshotRentention),
 				Destination: &ServerConfig.SnapshotRetention,
-				Value:       defaultSnapshotRententionDurationMinutes,
+				Value:       defaultSnapshotRentention,
 			},
 			&cli.BoolFlag{
 				Name:        "disable-snapshots",
@@ -244,7 +244,7 @@ func NewServerCommand(action func(*cli.Context) error) *cli.Command {
 			},
 			&cli.StringFlag{
 				Name:        "snapshot-restore-path",
-				Usage:       "(db) Snapshot restore path",
+				Usage:       "(db) Path to snapshot file to be restored",
 				Destination: &ServerConfig.RestorePath,
 			},
 			&cli.StringFlag{
