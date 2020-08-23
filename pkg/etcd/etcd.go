@@ -451,7 +451,7 @@ func (e *ETCD) cluster(ctx context.Context, forceNew bool, options executor.Init
 		InitialOptions:      options,
 		ForceNewCluster:     forceNew,
 		ListenClientURLs:    fmt.Sprintf(e.clientURL() + ",https://127.0.0.1:2379"),
-		ListenMetricsURLs:   fmt.Sprintf("http://127.0.0.1:2381"),
+		ListenMetricsURLs:   "http://127.0.0.1:2381",
 		ListenPeerURLs:      e.peerURL(),
 		AdvertiseClientURLs: e.clientURL(),
 		DataDir:             dataDir(e.config),
@@ -556,6 +556,9 @@ func (e *ETCD) clientURLs(ctx context.Context, clientAccessInfo *clientaccess.In
 	return clientURLs, memberList, nil
 }
 
+// snapshot performs an ETCD snapshot at the given interval and
+// saves the file to either the default snapshot directory or
+// the user provided directory.
 func (e *ETCD) snapshot(ctx context.Context) {
 	ticker := time.NewTicker(e.config.SnapshotInterval)
 	defer ticker.Stop()
@@ -613,12 +616,5 @@ func snapshotRetention(retention int, snapshotDir string) error {
 	if err := os.Remove(filepath.Join(snapshotDir, snapshotFiles[0].Name())); err != nil {
 		return err
 	}
-	// for _, snapshot := range snapshotFiles[:len(snapshotFiles)-retention] {
-	// 	snapshotFile := filepath.Join(snapshotDir, snapshot.Name())
-	// 	logrus.Info("removing snapshot: " + snapshotFile)
-	// 	if err := os.Remove(snapshotFile); err != nil {
-	// 		return err
-	// 	}
-	// }
 	return nil
 }
