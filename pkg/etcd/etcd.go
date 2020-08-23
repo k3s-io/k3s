@@ -613,8 +613,5 @@ func snapshotRetention(retention int, snapshotDir string) error {
 	sort.Slice(snapshotFiles, func(i, j int) bool {
 		return snapshotFiles[i].Name() < snapshotFiles[j].Name()
 	})
-	if err := os.Remove(filepath.Join(snapshotDir, snapshotFiles[0].Name())); err != nil {
-		return err
-	}
-	return nil
+	return os.Remove(filepath.Join(snapshotDir, snapshotFiles[0].Name()))
 }
