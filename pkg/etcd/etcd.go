@@ -14,7 +14,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/google/uuid"
@@ -40,7 +39,7 @@ type ETCD struct {
 }
 
 const (
-	etcdSnapshotPrefix = "etcd-snapshot"
+	etcdSnapshotPrefix = "etcd-snapshot-"
 
 	testTimeout = time.Second * 10
 )
@@ -583,7 +582,7 @@ func (e *ETCD) snapshot(ctx context.Context) {
 			Endpoints: []string{"https://127.0.0.1:2379"},
 			TLS:       tlsConfig,
 		}
-		snapshotPath := filepath.Join(snapshotDir, "etcd-snapshot"+strconv.Itoa(int(snapshotTime.Unix())))
+		snapshotPath := filepath.Join(snapshotDir, etcdSnapshotPrefix+strconv.Itoa(int(snapshotTime.Unix())))
 
 		if err := sManager.Save(ctx, etcdConfig, snapshotPath); err != nil {
 			logrus.Errorf("failed to save snapshot %s: %v", snapshotPath, err)
@@ -608,19 +607,22 @@ func snapshotRetention(retention int, snapshotDir string) error {
 	if len(snapshotFiles) <= retention {
 		return nil
 	}
-	const createTimeAssertionErr = "type assertion failed getting snapshot creation time for %s. expected: *syscall.Stat_t"
+	// const createTimeAssertionErr = "type assertion failed getting snapshot creation time for %s. expected: *syscall.Stat_t"
+	// sort.Slice(snapshotFiles, func(i, j int) bool {
+	// 	v, ok := snapshotFiles[i].Sys().(*syscall.Stat_t)
+	// 	if !ok {
+	// 		logrus.Fatalf(createTimeAssertionErr, snapshotFiles[i])
+	// 	}
+	// 	fileISec, _ := v.Ctim.Unix()
+	// 	v, ok = snapshotFiles[j].Sys().(*syscall.Stat_t)
+	// 	if !ok {
+	// 		logrus.Fatalf(createTimeAssertionErr, snapshotFiles[j])
+	// 	}
+	// 	fileJSec, _ := v.Ctim.Unix()
+	// 	return int(fileISec) < int(fileJSec)
+	// })
 	sort.Slice(snapshotFiles, func(i, j int) bool {
-		v, ok := snapshotFiles[i].Sys().(*syscall.Stat_t)
-		if !ok {
-			logrus.Fatalf(createTimeAssertionErr, snapshotFiles[i])
-		}
-		fileISec, _ := v.Ctim.Unix()
-		v, ok = snapshotFiles[j].Sys().(*syscall.Stat_t)
-		if !ok {
-			logrus.Fatalf(createTimeAssertionErr, snapshotFiles[j])
-		}
-		fileJSec, _ := v.Ctim.Unix()
-		return int(fileISec) < int(fileJSec)
+		return snapshotFiles[i].Name() < snapshotFiles[j].Name()
 	})
 	for _, snapshot := range snapshotFiles[:len(snapshotFiles)-retention] {
 		snapshotFile := filepath.Join(snapshotDir, snapshot.Name())
