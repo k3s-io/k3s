@@ -607,29 +607,18 @@ func snapshotRetention(retention int, snapshotDir string) error {
 	if len(snapshotFiles) <= retention {
 		return nil
 	}
-	// const createTimeAssertionErr = "type assertion failed getting snapshot creation time for %s. expected: *syscall.Stat_t"
-	// sort.Slice(snapshotFiles, func(i, j int) bool {
-	// 	v, ok := snapshotFiles[i].Sys().(*syscall.Stat_t)
-	// 	if !ok {
-	// 		logrus.Fatalf(createTimeAssertionErr, snapshotFiles[i])
-	// 	}
-	// 	fileISec, _ := v.Ctim.Unix()
-	// 	v, ok = snapshotFiles[j].Sys().(*syscall.Stat_t)
-	// 	if !ok {
-	// 		logrus.Fatalf(createTimeAssertionErr, snapshotFiles[j])
-	// 	}
-	// 	fileJSec, _ := v.Ctim.Unix()
-	// 	return int(fileISec) < int(fileJSec)
-	// })
 	sort.Slice(snapshotFiles, func(i, j int) bool {
 		return snapshotFiles[i].Name() < snapshotFiles[j].Name()
 	})
-	for _, snapshot := range snapshotFiles[:len(snapshotFiles)-retention] {
-		snapshotFile := filepath.Join(snapshotDir, snapshot.Name())
-		logrus.Info("removing snapshot: " + snapshotFile)
-		if err := os.Remove(snapshotFile); err != nil {
-			return err
-		}
+	if err := os.Remove(filepath.Join(snapshotDir, snapshotFiles[0].Name())); err != nil {
+		return err
 	}
+	// for _, snapshot := range snapshotFiles[:len(snapshotFiles)-retention] {
+	// 	snapshotFile := filepath.Join(snapshotDir, snapshot.Name())
+	// 	logrus.Info("removing snapshot: " + snapshotFile)
+	// 	if err := os.Remove(snapshotFile); err != nil {
+	// 		return err
+	// 	}
+	// }
 	return nil
 }
