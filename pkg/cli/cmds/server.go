@@ -2,7 +2,6 @@ package cmds
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/rancher/k3s/pkg/daemons/config"
@@ -228,7 +227,7 @@ func NewServerCommand(action func(*cli.Context) error) *cli.Command {
 			},
 			&cli.IntFlag{
 				Name:        "snapshot-retention",
-				Usage:       fmt.Sprintf("(db) Number of snapshots to retain. Default: %d", defaultSnapshotRentention),
+				Usage:       "(db) Number of snapshots to retain",
 				Destination: &ServerConfig.SnapshotRetention,
 				Value:       defaultSnapshotRentention,
 			},
