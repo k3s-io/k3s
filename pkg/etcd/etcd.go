@@ -99,28 +99,6 @@ func nameFile(config *config.Control) string {
 	return filepath.Join(dataDir(config), "name")
 }
 
-func snapshotDir(config *config.Control) (string, error) {
-	if config.SnapshotDir == "" {
-		// we have to create the snapshot dir if we are using
-		// the default snapshot dir if it doesn't exist
-		defaultSnapshotDir := filepath.Join(config.DataDir, "db", "snapshots")
-		s, err := os.Stat(defaultSnapshotDir)
-		if err != nil {
-			if os.IsNotExist(err) {
-				if err := os.MkdirAll(defaultSnapshotDir, 0755); err != nil {
-					return "", err
-				}
-				return defaultSnapshotDir, nil
-			}
-			return "", err
-		}
-		if s.IsDir() {
-			return defaultSnapshotDir, nil
-		}
-	}
-	return config.SnapshotDir, nil
-}
-
 func (e *ETCD) IsInitialized(ctx context.Context, config *config.Control) (bool, error) {
 	if s, err := os.Stat(walDir(config)); err == nil && s.IsDir() {
 		return true, nil
@@ -516,6 +494,28 @@ func (e *ETCD) clientURLs(ctx context.Context, clientAccessInfo *clientaccess.In
 		clientURLs = append(clientURLs, member.ClientURLs...)
 	}
 	return clientURLs, memberList, nil
+}
+
+func snapshotDir(config *config.Control) (string, error) {
+	if config.SnapshotDir == "" {
+		// we have to create the snapshot dir if we are using
+		// the default snapshot dir if it doesn't exist
+		defaultSnapshotDir := filepath.Join(config.DataDir, "db", "snapshots")
+		s, err := os.Stat(defaultSnapshotDir)
+		if err != nil {
+			if os.IsNotExist(err) {
+				if err := os.MkdirAll(defaultSnapshotDir, 0755); err != nil {
+					return "", err
+				}
+				return defaultSnapshotDir, nil
+			}
+			return "", err
+		}
+		if s.IsDir() {
+			return defaultSnapshotDir, nil
+		}
+	}
+	return config.SnapshotDir, nil
 }
 
 // snapshot performs an ETCD snapshot at the given interval and
