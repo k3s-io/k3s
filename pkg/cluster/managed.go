@@ -4,6 +4,7 @@ import (
 	"context"
 	"net"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -50,7 +51,10 @@ func (c *Cluster) start(ctx context.Context) error {
 	}
 
 	if c.config.RestorePath != "" {
-		return c.managedDB.Restore(ctx)
+		if err := c.managedDB.Restore(ctx); err != nil {
+			logrus.Fatalf("etc restoration: %v", err)
+		}
+		os.Exit(0)
 	}
 
 	return c.managedDB.Start(ctx, c.clientAccessInfo)

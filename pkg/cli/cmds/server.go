@@ -219,32 +219,32 @@ func NewServerCommand(action func(*cli.Context) error) *cli.Command {
 				Destination: &ServerConfig.DatastoreKeyFile,
 				EnvVars:     []string{version.ProgramUpper + "_DATASTORE_KEYFILE"},
 			},
-			&cli.DurationFlag{
-				Name:        "snapshot-interval",
-				Usage:       "(db) Snapshot interval time",
-				Destination: &ServerConfig.SnapshotInterval,
-				Value:       defaultSnapshotIntervalMinutes * time.Minute,
-			},
-			&cli.IntFlag{
-				Name:        "snapshot-retention",
-				Usage:       "(db) Number of snapshots to retain",
-				Destination: &ServerConfig.SnapshotRetention,
-				Value:       defaultSnapshotRentention,
+			&cli.StringFlag{
+				Name:        "etcd-snapshot-restore-path",
+				Usage:       "(db) Path to snapshot file to be restored",
+				Destination: &ServerConfig.RestorePath,
 			},
 			&cli.BoolFlag{
 				Name:        "disable-snapshots",
 				Usage:       "(db) Disable automatic db snapshots",
 				Destination: &ServerConfig.DisableSnapshots,
 			},
-			&cli.StringFlag{
-				Name:        "snapshot-dir",
-				Usage:       "(db) Directory to save db snapshots",
-				Destination: &ServerConfig.SnapshotDir,
+			&cli.DurationFlag{
+				Name:        "etcd-snapshot-interval",
+				Usage:       "(db) Snapshot interval time",
+				Destination: &ServerConfig.SnapshotInterval,
+				Value:       defaultSnapshotIntervalMinutes * time.Minute,
+			},
+			&cli.IntFlag{
+				Name:        "etcd-snapshot-retention",
+				Usage:       "(db) Number of snapshots to retain",
+				Destination: &ServerConfig.SnapshotRetention,
+				Value:       defaultSnapshotRentention,
 			},
 			&cli.StringFlag{
-				Name:        "snapshot-restore-path",
-				Usage:       "(db) Path to snapshot file to be restored",
-				Destination: &ServerConfig.RestorePath,
+				Name:        "etcd-snapshot-dir",
+				Usage:       "(db) Directory to save db snapshots",
+				Destination: &ServerConfig.SnapshotDir,
 			},
 			&cli.StringFlag{
 				Name:        "default-local-storage-path",
