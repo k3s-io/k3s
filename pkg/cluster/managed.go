@@ -55,6 +55,7 @@ func (c *Cluster) start(ctx context.Context) error {
 		if err := c.managedDB.Restore(ctx); err != nil {
 			logrus.Fatalf("etc restoration: %v", err)
 		}
+		logrus.Info("etc restoration complete")
 		os.Exit(0)
 	}
 
