@@ -163,8 +163,8 @@ func (e *ETCD) Start(ctx context.Context, clientAccessInfo *clientaccess.Info) e
 		return nil
 	}
 
-	if !e.config.DisableSnapshots {
-		// starting snapshot thread
+	if !e.config.DisableEtcdSnapshots {
+		// starting snapshot go routine
 		go e.snapshot(ctx)
 	}
 
