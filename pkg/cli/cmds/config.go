@@ -5,7 +5,7 @@ import (
 )
 
 var (
-	DefaultConfig = "/etc/rancher/k3s/flags.conf"
+	DefaultConfig = "/etc/rancher/k3s/config.yaml"
 	ConfigFlag    = cli.StringFlag{
 		Name:    "config",
 		Aliases: []string{"c"},
