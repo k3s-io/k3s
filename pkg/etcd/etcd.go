@@ -141,7 +141,7 @@ func (e *ETCD) Start(ctx context.Context, clientAccessInfo *clientaccess.Info) e
 		return nil
 	}
 
-	if !e.config.DisableEtcdSnapshots {
+	if !e.config.EtcdDisableSnapshots {
 		// starting snapshot go routine
 		go e.snapshot(ctx)
 	}
@@ -497,7 +497,7 @@ func (e *ETCD) clientURLs(ctx context.Context, clientAccessInfo *clientaccess.In
 }
 
 func snapshotDir(config *config.Control) (string, error) {
-	if config.SnapshotDir == "" {
+	if config.EtcdSnapshotDir == "" {
 		// we have to create the snapshot dir if we are using
 		// the default snapshot dir if it doesn't exist
 		defaultSnapshotDir := filepath.Join(config.DataDir, "db", "snapshots")
@@ -515,14 +515,14 @@ func snapshotDir(config *config.Control) (string, error) {
 			return defaultSnapshotDir, nil
 		}
 	}
-	return config.SnapshotDir, nil
+	return config.EtcdSnapshotDir, nil
 }
 
 // snapshot performs an ETCD snapshot at the given interval and
 // saves the file to either the default snapshot directory or
 // the user provided directory.
 func (e *ETCD) snapshot(ctx context.Context) {
-	ticker := time.NewTicker(e.config.SnapshotInterval)
+	ticker := time.NewTicker(e.config.EtcdSnapshotInterval)
 	defer ticker.Stop()
 	for snapshotTime := range ticker.C {
 		logrus.Infof("Snapshot retention check")
@@ -549,7 +549,7 @@ func (e *ETCD) snapshot(ctx context.Context) {
 			logrus.Errorf("failed to save snapshot %s: %v", snapshotPath, err)
 			continue
 		}
-		if err := snapshotRetention(e.config.SnapshotRetention, snapshotDir); err != nil {
+		if err := snapshotRetention(e.config.EtcdSnapshotRetention, snapshotDir); err != nil {
 			logrus.Errorf("failed to apply snapshot retention: %v", err)
 			continue
 		}

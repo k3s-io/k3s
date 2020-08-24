@@ -62,10 +62,10 @@ type Server struct {
 	ClusterReset             bool
 	EncryptSecrets           bool
 	StartupHooks             []func(context.Context, config.Control) error
-	DisableEtcdSnapshots     bool
-	SnapshotDir              string
-	SnapshotInterval         time.Duration
-	SnapshotRetention        int
+	EtcdDisableSnapshots     bool
+	EtcdSnapshotDir          string
+	EtcdSnapshotInterval     time.Duration
+	EtcdSnapshotRetention    int
 	RestorePath              string
 }
 
@@ -227,24 +227,24 @@ func NewServerCommand(action func(*cli.Context) error) *cli.Command {
 			&cli.BoolFlag{
 				Name:        "etcd-disable-snapshots",
 				Usage:       "(db) Disable automatic etcd snapshots",
-				Destination: &ServerConfig.DisableEtcdSnapshots,
+				Destination: &ServerConfig.EtcdDisableSnapshots,
 			},
 			&cli.DurationFlag{
 				Name:        "etcd-snapshot-interval",
 				Usage:       "(db) Snapshot interval time",
-				Destination: &ServerConfig.SnapshotInterval,
+				Destination: &ServerConfig.EtcdSnapshotInterval,
 				Value:       defaultSnapshotIntervalMinutes * time.Minute,
 			},
 			&cli.IntFlag{
 				Name:        "etcd-snapshot-retention",
 				Usage:       "(db) Number of snapshots to retain",
-				Destination: &ServerConfig.SnapshotRetention,
+				Destination: &ServerConfig.EtcdSnapshotRetention,
 				Value:       defaultSnapshotRentention,
 			},
 			&cli.StringFlag{
 				Name:        "etcd-snapshot-dir",
 				Usage:       "(db) Directory to save db snapshots",
-				Destination: &ServerConfig.SnapshotDir,
+				Destination: &ServerConfig.EtcdSnapshotDir,
 			},
 			&cli.StringFlag{
 				Name:        "default-local-storage-path",

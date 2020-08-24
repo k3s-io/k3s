@@ -130,10 +130,10 @@ type Control struct {
 	EncryptSecrets           bool
 	TLSMinVersion            uint16
 	TLSCipherSuites          []uint16
-	DisableEtcdSnapshots     bool
-	SnapshotDir              string
-	SnapshotInterval         time.Duration
-	SnapshotRetention        int
+	EtcdDisableSnapshots     bool
+	EtcdSnapshotDir          string
+	EtcdSnapshotInterval     time.Duration
+	EtcdSnapshotRetention    int
 	RestorePath              string
 
 	BindAddress string
