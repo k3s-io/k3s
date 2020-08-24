@@ -156,7 +156,7 @@ resource "aws_instance" "k3s-server" {
     install_k3s_version = local.install_k3s_version,
     k3s_server_args = var.k3s_server_args,
     db_engine = var.db_engine,
-    db_address = "${var.db_engine == "etcd" ? join(",",aws_instance.k3s_etcd.*.private_ip) : var.db_engine == "dqlite" ? "null" : aws_db_instance.k3s_db[0].address}",
+    db_address = "${var.db_engine == "etcd" ? join(",",aws_instance.k3s_etcd.*.private_ip) : var.db_engine == "embedded-etcd" ? "null" : aws_db_instance.k3s_db[0].address}",
     db_name = var.db_name,
     db_username = var.db_username,
     db_password = var.db_password,
