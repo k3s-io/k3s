@@ -11,7 +11,7 @@ DEBUG=1
 
 ## K3S DB VARIABLES ##
 ##########################
-DB_ENGINE="dqlite"
+DB_ENGINE="embedded-etcd"
 DB_INSTANCE_TYPE="db.m4.4xlarge"
 DB_NAME="k3s"
 DB_USERNAME="k3suser"
