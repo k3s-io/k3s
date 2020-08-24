@@ -39,7 +39,8 @@ type ETCD struct {
 }
 
 const (
-	etcdSnapshotPrefix = "etcd-snapshot-"
+	snapshotPrefix = "etcd-snapshot-"
+	endpoint       = "https://127.0.0.1:2379"
 
 	testTimeout = time.Second * 10
 )
@@ -55,7 +56,7 @@ func (e *ETCD) EndpointName() string {
 func (e *ETCD) Test(ctx context.Context, clientAccessInfo *clientaccess.Info) error {
 	ctx, cancel := context.WithTimeout(ctx, testTimeout)
 	defer cancel()
-	status, err := e.client.Status(ctx, "https://127.0.0.1:2379")
+	status, err := e.client.Status(ctx, endpoint)
 	if err != nil {
 		return err
 	}
@@ -304,7 +305,7 @@ func (e *ETCD) Register(ctx context.Context, config *config.Control, l net.Liste
 	}
 	e.address = address
 
-	e.config.Datastore.Endpoint = "https://127.0.0.1:2379"
+	e.config.Datastore.Endpoint = endpoint
 	e.config.Datastore.Config.CAFile = e.runtime.ETCDServerCA
 	e.config.Datastore.Config.CertFile = e.runtime.ClientETCDCert
 	e.config.Datastore.Config.KeyFile = e.runtime.ClientETCDKey
@@ -392,7 +393,7 @@ func newClient(ctx context.Context, runtime *config.ControlRuntime) (*etcd.Clien
 
 	cfg := etcd.Config{
 		Context:   ctx,
-		Endpoints: []string{"https://127.0.0.1:2379"},
+		Endpoints: []string{endpoint},
 		TLS:       tlsConfig,
 	}
 
@@ -582,10 +583,10 @@ func (e *ETCD) snapshot(ctx context.Context) {
 		}
 		etcdConfig := etcd.Config{
 			Context:   ctx,
-			Endpoints: []string{"https://127.0.0.1:2379"},
+			Endpoints: []string{endpoint},
 			TLS:       tlsConfig,
 		}
-		snapshotPath := filepath.Join(snapshotDir, etcdSnapshotPrefix+strconv.Itoa(int(snapshotTime.Unix())))
+		snapshotPath := filepath.Join(snapshotDir, snapshotPrefix+strconv.Itoa(int(snapshotTime.Unix())))
 
 		if err := sManager.Save(ctx, etcdConfig, snapshotPath); err != nil {
 			logrus.Errorf("failed to save snapshot %s: %v", snapshotPath, err)
@@ -594,13 +595,15 @@ func (e *ETCD) snapshot(ctx context.Context) {
 	}
 }
 
+// snapshotRetention iterates through the snapshots and removes the oldest
+// leaving the desired number of snapshots.
 func snapshotRetention(retention int, snapshotDir string) error {
 	var snapshotFiles []os.FileInfo
 	if err := filepath.Walk(snapshotDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
-		if strings.HasPrefix(info.Name(), etcdSnapshotPrefix) {
+		if strings.HasPrefix(info.Name(), snapshotPrefix) {
 			snapshotFiles = append(snapshotFiles, info)
 		}
 		return nil
