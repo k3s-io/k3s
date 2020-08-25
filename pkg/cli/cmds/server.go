@@ -66,7 +66,7 @@ type Server struct {
 	EtcdSnapshotDir          string
 	EtcdSnapshotInterval     time.Duration
 	EtcdSnapshotRetention    int
-	RestorePath              string
+	EtcdRestorePath          string
 }
 
 var ServerConfig Server
@@ -222,7 +222,7 @@ func NewServerCommand(action func(*cli.Context) error) *cli.Command {
 			&cli.StringFlag{
 				Name:        "etcd-snapshot-restore-path",
 				Usage:       "(db) Path to snapshot file to be restored",
-				Destination: &ServerConfig.RestorePath,
+				Destination: &ServerConfig.EtcdRestorePath,
 			},
 			&cli.BoolFlag{
 				Name:        "etcd-disable-snapshots",

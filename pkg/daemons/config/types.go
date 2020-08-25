@@ -134,7 +134,7 @@ type Control struct {
 	EtcdSnapshotDir          string
 	EtcdSnapshotInterval     time.Duration
 	EtcdSnapshotRetention    int
-	RestorePath              string
+	EtcdRestorePath          string
 
 	BindAddress string
 	SANs        []string

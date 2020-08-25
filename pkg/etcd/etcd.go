@@ -566,11 +566,11 @@ func (e *ETCD) Restore(ctx context.Context) error {
 		logrus.Infof("etcd already restored from a snapshot. Restart without --snapshot-restore-path flag. Backup and delete ${datadir}/server/db on each peer etcd server and rejoin the nodes")
 		os.Exit(0)
 	} else if os.IsNotExist(err) {
-		if e.config.RestorePath == "" {
+		if e.config.EtcdRestorePath == "" {
 			return errors.New("no etcd restore path was specified")
 		}
 		// make sure snapshot exists before restoration
-		if _, err := os.Stat(e.config.RestorePath); err != nil {
+		if _, err := os.Stat(e.config.EtcdRestorePath); err != nil {
 			return err
 		}
 		// move the data directory to a temp path
@@ -579,7 +579,7 @@ func (e *ETCD) Restore(ctx context.Context) error {
 		}
 		sManager := snapshot.NewV3(nil)
 		if err := sManager.Restore(snapshot.RestoreConfig{
-			SnapshotPath:   e.config.RestorePath,
+			SnapshotPath:   e.config.EtcdRestorePath,
 			Name:           e.name,
 			OutputDataDir:  dataDir(e.config),
 			OutputWALDir:   walDir(e.config),

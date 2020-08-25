@@ -109,11 +109,11 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	serverConfig.ControlConfig.ClusterInit = cfg.ClusterInit
 	serverConfig.ControlConfig.ClusterReset = cfg.ClusterReset
 	serverConfig.ControlConfig.EncryptSecrets = cfg.EncryptSecrets
-	serverConfig.ControlConfig.SnapshotInterval = cfg.EtcdSnapshotInterval
-	serverConfig.ControlConfig.SnapshotDir = cfg.EtcdSnapshotDir
-	serverConfig.ControlConfig.RestorePath = cfg.RestorePath
-	serverConfig.ControlConfig.SnapshotRetention = cfg.EtcdSnapshotRetention
-	serverConfig.ControlConfig.DisableSnapshots = cfg.EtcdDisableSnapshots
+	serverConfig.ControlConfig.EtcdSnapshotInterval = cfg.EtcdSnapshotInterval
+	serverConfig.ControlConfig.EtcdSnapshotDir = cfg.EtcdSnapshotDir
+	serverConfig.ControlConfig.EtcdRestorePath = cfg.EtcdRestorePath
+	serverConfig.ControlConfig.EtcdSnapshotRetention = cfg.EtcdSnapshotRetention
+	serverConfig.ControlConfig.EtcdDisableSnapshots = cfg.EtcdDisableSnapshots
 
 	if serverConfig.ControlConfig.SupervisorPort == 0 {
 		serverConfig.ControlConfig.SupervisorPort = serverConfig.ControlConfig.HTTPSPort
