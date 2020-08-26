@@ -504,7 +504,7 @@ func snapshotDir(config *config.Control) (string, error) {
 		s, err := os.Stat(defaultSnapshotDir)
 		if err != nil {
 			if os.IsNotExist(err) {
-				if err := os.MkdirAll(defaultSnapshotDir, 0755); err != nil {
+				if err := os.MkdirAll(defaultSnapshotDir, 0700); err != nil {
 					return "", err
 				}
 				return defaultSnapshotDir, nil
