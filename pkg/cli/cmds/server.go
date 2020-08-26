@@ -13,8 +13,8 @@ import (
 const (
 	DisableItems = "coredns, servicelb, traefik, local-storage, metrics-server"
 
-	defaultSnapshotRentention      = 5
-	defaultSnapshotIntervalMinutes = 12
+	defaultSnapshotRentention    = 5
+	defaultSnapshotIntervalHours = 12
 )
 
 type Server struct {
@@ -233,7 +233,7 @@ func NewServerCommand(action func(*cli.Context) error) *cli.Command {
 				Name:        "etcd-snapshot-interval",
 				Usage:       "(db) Snapshot interval time",
 				Destination: &ServerConfig.EtcdSnapshotInterval,
-				Value:       defaultSnapshotIntervalMinutes * time.Minute,
+				Value:       defaultSnapshotIntervalHours * time.Hour,
 			},
 			&cli.IntFlag{
 				Name:        "etcd-snapshot-retention",
