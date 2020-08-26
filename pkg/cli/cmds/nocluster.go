@@ -1,7 +1,7 @@
-// +build !dqlite
+// +build no_etcd
 
 package cmds
 
 const (
-	hideDqlite = true
+	hideClusterFlags = true
 )
