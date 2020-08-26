@@ -14,7 +14,7 @@ const (
 	DisableItems = "coredns, servicelb, traefik, local-storage, metrics-server"
 
 	defaultSnapshotRentention      = 5
-	defaultSnapshotIntervalMinutes = 5
+	defaultSnapshotIntervalMinutes = 12
 )
 
 type Server struct {
