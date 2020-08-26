@@ -243,7 +243,7 @@ func NewServerCommand(action func(*cli.Context) error) *cli.Command {
 			},
 			&cli.StringFlag{
 				Name:        "etcd-snapshot-dir",
-				Usage:       "(db) Directory to save db snapshots",
+				Usage:       "(db) Directory to save db snapshots. (Default location: ${data-dr}/db/snapshots)",
 				Destination: &ServerConfig.EtcdSnapshotDir,
 			},
 			&cli.StringFlag{
