@@ -190,7 +190,7 @@ func preloadImages(ctx context.Context, cfg *config.Node) error {
 		if strings.HasSuffix(fileInfo.Name(), ".tar.bz2") {
 			imageReader = bzip2.NewReader(file)
 		}
-		if strings.HasSuffix(fileInfo.Name(), ".tar.gz") {
+		if strings.HasSuffix(fileInfo.Name(), ".tar.lz4") {
 			imageReader = lz4.NewReader(file)
 		}
 		if strings.HasSuffix(fileInfo.Name(), ".tar.gz") {
