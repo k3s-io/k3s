@@ -10,12 +10,6 @@ TARGETS := $(shell ls scripts | grep -v \\.sh)
 $(TARGETS): .dapper
 	./.dapper $@
 
-trash: .dapper
-	./.dapper -m bind trash
-
-trash-keep: .dapper
-	./.dapper -m bind trash -k
-
 .PHONY: deps
 deps:
 	go mod vendor
