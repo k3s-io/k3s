@@ -59,13 +59,13 @@ type Server struct {
 	DisableKubeProxy         bool
 	ClusterInit              bool
 	ClusterReset             bool
+	ClusterResetRestorePath  string
 	EncryptSecrets           bool
 	StartupHooks             []func(context.Context, config.Control) error
 	EtcdDisableSnapshots     bool
 	EtcdSnapshotDir          string
 	EtcdSnapshotCron         string
 	EtcdSnapshotRetention    int
-	EtcdRestorePath          string
 }
 
 var ServerConfig Server
@@ -219,9 +219,9 @@ func NewServerCommand(action func(*cli.Context) error) *cli.Command {
 				EnvVars:     []string{version.ProgramUpper + "_DATASTORE_KEYFILE"},
 			},
 			&cli.StringFlag{
-				Name:        "etcd-snapshot-restore-path",
+				Name:        "cluster-reset-restore-path",
 				Usage:       "(db) Path to snapshot file to be restored",
-				Destination: &ServerConfig.EtcdRestorePath,
+				Destination: &ServerConfig.ClusterResetRestorePath,
 			},
 			&cli.BoolFlag{
 				Name:        "etcd-disable-snapshots",

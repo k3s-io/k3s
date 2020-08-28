@@ -43,10 +43,8 @@ type ETCD struct {
 // NewETCD creates a new value of type
 // ETCD with an initialized cron value.
 func NewETCD() *ETCD {
-	c := cron.New()
-	c.Start()
 	return &ETCD{
-		cron: c,
+		cron: cron.New(),
 	}
 }
 
@@ -157,8 +155,7 @@ func (e *ETCD) Start(ctx context.Context, clientAccessInfo *clientaccess.Info) e
 	}
 
 	if !e.config.EtcdDisableSnapshots {
-		// starting snapshot go routine
-		// go e.snapshot(ctx)
+		e.cron.Start()
 	}
 
 	if existingCluster {
@@ -582,11 +579,11 @@ func (e *ETCD) Restore(ctx context.Context) error {
 		logrus.Infof("etcd already restored from a snapshot. Restart without --snapshot-restore-path flag. Backup and delete ${datadir}/server/db on each peer etcd server and rejoin the nodes")
 		os.Exit(0)
 	} else if os.IsNotExist(err) {
-		if e.config.EtcdRestorePath == "" {
+		if e.config.ClusterResetRestorePath == "" {
 			return errors.New("no etcd restore path was specified")
 		}
 		// make sure snapshot exists before restoration
-		if _, err := os.Stat(e.config.EtcdRestorePath); err != nil {
+		if _, err := os.Stat(e.config.ClusterResetRestorePath); err != nil {
 			return err
 		}
 		// move the data directory to a temp path
@@ -595,7 +592,7 @@ func (e *ETCD) Restore(ctx context.Context) error {
 		}
 		sManager := snapshot.NewV3(nil)
 		if err := sManager.Restore(snapshot.RestoreConfig{
-			SnapshotPath:   e.config.EtcdRestorePath,
+			SnapshotPath:   e.config.ClusterResetRestorePath,
 			Name:           e.name,
 			OutputDataDir:  dataDir(e.config),
 			OutputWALDir:   walDir(e.config),

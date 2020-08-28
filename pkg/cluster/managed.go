@@ -51,7 +51,7 @@ func (c *Cluster) start(ctx context.Context) error {
 	}
 
 	// exit at the end of restoration whether success or fail
-	if c.config.EtcdRestorePath != "" {
+	if c.config.ClusterResetRestorePath != "" {
 		if err := c.managedDB.Restore(ctx); err != nil {
 			logrus.Fatalf("etc restoration: %v", err)
 		}
