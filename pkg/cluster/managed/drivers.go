@@ -20,6 +20,7 @@ type Driver interface {
 	Reset(ctx context.Context, clientAccessInfo *clientaccess.Info) error
 	Start(ctx context.Context, clientAccessInfo *clientaccess.Info) error
 	Test(ctx context.Context, clientAccessInfo *clientaccess.Info) error
+	Restore(ctx context.Context) error
 	EndpointName() string
 }
 
