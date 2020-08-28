@@ -80,6 +80,7 @@ require (
 	github.com/docker/docker v1.4.2-0.20191205034852-d163fbba3c82
 	github.com/docker/go-metrics v0.0.1 // indirect
 	github.com/erikdubbelboer/gspt v0.0.0-20190125194910-e68493906b83
+	github.com/frankban/quicktest v1.10.2 // indirect
 	github.com/go-bindata/go-bindata v3.1.2+incompatible
 	github.com/go-sql-driver/mysql v1.4.1
 	github.com/gogo/googleapis v1.3.0 // indirect
@@ -93,6 +94,7 @@ require (
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/opencontainers/runc v1.0.0-rc10
 	github.com/opencontainers/selinux v1.5.3-0.20200613095409-bb88c45a3863
+	github.com/pierrec/lz4 v2.5.2+incompatible
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/dynamiclistener v0.2.1
 	github.com/rancher/helm-controller v0.7.2
