@@ -126,9 +126,14 @@ type Control struct {
 	DisableKubeProxy         bool
 	ClusterInit              bool
 	ClusterReset             bool
+	ClusterResetRestorePath  string
 	EncryptSecrets           bool
 	TLSMinVersion            uint16
 	TLSCipherSuites          []uint16
+	EtcdDisableSnapshots     bool
+	EtcdSnapshotDir          string
+	EtcdSnapshotCron         string
+	EtcdSnapshotRetention    int
 
 	BindAddress string
 	SANs        []string

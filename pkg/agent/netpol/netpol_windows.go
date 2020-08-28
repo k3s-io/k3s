@@ -2,6 +2,7 @@ package netpol
 
 import (
 	"context"
+
 	daemonconfig "github.com/rancher/k3s/pkg/daemons/config"
 )
 

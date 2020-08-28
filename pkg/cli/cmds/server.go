@@ -11,6 +11,9 @@ import (
 
 const (
 	DisableItems = "coredns, servicelb, traefik, local-storage, metrics-server"
+
+	defaultSnapshotRentention    = 5
+	defaultSnapshotIntervalHours = 12
 )
 
 type Server struct {
@@ -56,8 +59,13 @@ type Server struct {
 	DisableKubeProxy         bool
 	ClusterInit              bool
 	ClusterReset             bool
+	ClusterResetRestorePath  string
 	EncryptSecrets           bool
 	StartupHooks             []func(context.Context, config.Control) error
+	EtcdDisableSnapshots     bool
+	EtcdSnapshotDir          string
+	EtcdSnapshotCron         string
+	EtcdSnapshotRetention    int
 }
 
 var ServerConfig Server
@@ -210,6 +218,28 @@ func NewServerCommand(action func(*cli.Context) error) *cli.Command {
 				Destination: &ServerConfig.DatastoreKeyFile,
 				EnvVars:     []string{version.ProgramUpper + "_DATASTORE_KEYFILE"},
 			},
+			&cli.BoolFlag{
+				Name:        "etcd-disable-snapshots",
+				Usage:       "(db) Disable automatic etcd snapshots",
+				Destination: &ServerConfig.EtcdDisableSnapshots,
+			},
+			&cli.StringFlag{
+				Name:        "etcd-snapshot-schedule-cron",
+				Usage:       "(db) Snapshot interval time in cron spec. eg. every 5 hours '* */5 * * *'",
+				Destination: &ServerConfig.EtcdSnapshotCron,
+				Value:       "0 */12 * * *",
+			},
+			&cli.IntFlag{
+				Name:        "etcd-snapshot-retention",
+				Usage:       "(db) Number of snapshots to retain",
+				Destination: &ServerConfig.EtcdSnapshotRetention,
+				Value:       defaultSnapshotRentention,
+			},
+			&cli.StringFlag{
+				Name:        "etcd-snapshot-dir",
+				Usage:       "(db) Directory to save db snapshots. (Default location: ${data-dir}/db/snapshots)",
+				Destination: &ServerConfig.EtcdSnapshotDir,
+			},
 			&cli.StringFlag{
 				Name:        "default-local-storage-path",
 				Usage:       "(storage) Default local storage path for local provisioner storage class",
@@ -293,6 +323,11 @@ func NewServerCommand(action func(*cli.Context) error) *cli.Command {
 				Usage:       "(experimental/cluster) Forget all peers and become sole member of a new cluster",
 				EnvVars:     []string{version.ProgramUpper + "_CLUSTER_RESET"},
 				Destination: &ServerConfig.ClusterReset,
+			},
+			&cli.StringFlag{
+				Name:        "cluster-reset-restore-path",
+				Usage:       "(db) Path to snapshot file to be restored",
+				Destination: &ServerConfig.ClusterResetRestorePath,
 			},
 			&cli.BoolFlag{
 				Name:        "secrets-encryption",
