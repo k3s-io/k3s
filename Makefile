@@ -16,7 +16,10 @@ trash: .dapper
 trash-keep: .dapper
 	./.dapper -m bind trash -k
 
-deps: trash
+.PHONY: deps
+deps:
+	go mod vendor
+	go mod tidy
 
 release:
 	./scripts/release.sh
@@ -24,3 +27,11 @@ release:
 .DEFAULT_GOAL := ci
 
 .PHONY: $(TARGETS)
+
+.PHONY: generate
+generate: build/data 
+	./scripts/download
+	go generate
+
+build/data:
+	mkdir -p $@
