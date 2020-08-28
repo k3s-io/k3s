@@ -2,7 +2,6 @@ package cmds
 
 import (
 	"context"
-	"time"
 
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/version"
@@ -64,7 +63,7 @@ type Server struct {
 	StartupHooks             []func(context.Context, config.Control) error
 	EtcdDisableSnapshots     bool
 	EtcdSnapshotDir          string
-	EtcdSnapshotInterval     time.Duration
+	EtcdSnapshotCron         string
 	EtcdSnapshotRetention    int
 	EtcdRestorePath          string
 }
@@ -229,11 +228,11 @@ func NewServerCommand(action func(*cli.Context) error) *cli.Command {
 				Usage:       "(db) Disable automatic etcd snapshots",
 				Destination: &ServerConfig.EtcdDisableSnapshots,
 			},
-			&cli.DurationFlag{
-				Name:        "etcd-snapshot-interval",
-				Usage:       "(db) Snapshot interval time",
-				Destination: &ServerConfig.EtcdSnapshotInterval,
-				Value:       defaultSnapshotIntervalHours * time.Hour,
+			&cli.StringFlag{
+				Name:        "etcd-snapshot-schedule-cron",
+				Usage:       "(db) Snapshot interval time in cron spec. eg. every 5 hours '* */5 * * *'",
+				Destination: &ServerConfig.EtcdSnapshotCron,
+				Value:       "0 */12 * * *",
 			},
 			&cli.IntFlag{
 				Name:        "etcd-snapshot-retention",

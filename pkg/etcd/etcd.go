@@ -23,6 +23,7 @@ import (
 	"github.com/rancher/k3s/pkg/clientaccess"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/daemons/executor"
+	"github.com/robfig/cron/v3"
 	"github.com/sirupsen/logrus"
 	etcd "go.etcd.io/etcd/clientv3"
 	"go.etcd.io/etcd/clientv3/snapshot"
@@ -36,6 +37,17 @@ type ETCD struct {
 	name    string
 	runtime *config.ControlRuntime
 	address string
+	cron    *cron.Cron
+}
+
+// NewETCD creates a new value of type
+// ETCD with an initialized cron value.
+func NewETCD() *ETCD {
+	c := cron.New()
+	c.Start()
+	return &ETCD{
+		cron: c,
+	}
 }
 
 const (
@@ -45,10 +57,13 @@ const (
 	testTimeout = time.Second * 10
 )
 
+// Members contains a slice that holds all
+// members of the cluster.
 type Members struct {
 	Members []*etcdserverpb.Member `json:"members"`
 }
 
+// EndpointName returns the name of the endpoint.
 func (e *ETCD) EndpointName() string {
 	return "etcd"
 }
@@ -143,7 +158,7 @@ func (e *ETCD) Start(ctx context.Context, clientAccessInfo *clientaccess.Info) e
 
 	if !e.config.EtcdDisableSnapshots {
 		// starting snapshot go routine
-		go e.snapshot(ctx)
+		// go e.snapshot(ctx)
 	}
 
 	if existingCluster {
@@ -518,42 +533,43 @@ func snapshotDir(config *config.Control) (string, error) {
 	return config.EtcdSnapshotDir, nil
 }
 
+func (e *ETCD) snapshot(ctx context.Context) {
+	snapshotTime := time.Now()
+	logrus.Infof("Snapshot retention check")
+	snapshotDir, err := snapshotDir(e.config)
+	if err != nil {
+		logrus.Errorf("failed to get the snapshot dir: %v", err)
+		return
+	}
+	logrus.Infof("Taking etcd snapshot at %s", snapshotTime.String())
+	sManager := snapshot.NewV3(nil)
+	tlsConfig, err := toTLSConfig(e.runtime)
+	if err != nil {
+		logrus.Errorf("failed to get tls config for etcd: %v", err)
+		return
+	}
+	etcdConfig := etcd.Config{
+		Context:   ctx,
+		Endpoints: []string{endpoint},
+		TLS:       tlsConfig,
+	}
+	snapshotPath := filepath.Join(snapshotDir, snapshotPrefix+strconv.Itoa(int(snapshotTime.Unix())))
+
+	if err := sManager.Save(ctx, etcdConfig, snapshotPath); err != nil {
+		logrus.Errorf("failed to save snapshot %s: %v", snapshotPath, err)
+		return
+	}
+	if err := snapshotRetention(e.config.EtcdSnapshotRetention, snapshotDir); err != nil {
+		logrus.Errorf("failed to apply snapshot retention: %v", err)
+		return
+	}
+}
+
 // snapshot performs an ETCD snapshot at the given interval and
 // saves the file to either the default snapshot directory or
 // the user provided directory.
-func (e *ETCD) snapshot(ctx context.Context) {
-	ticker := time.NewTicker(e.config.EtcdSnapshotInterval)
-	defer ticker.Stop()
-	for snapshotTime := range ticker.C {
-		logrus.Infof("Snapshot retention check")
-		snapshotDir, err := snapshotDir(e.config)
-		if err != nil {
-			logrus.Errorf("failed to get the snapshot dir: %v", err)
-			continue
-		}
-		logrus.Infof("Taking etcd snapshot at %s", snapshotTime.String())
-		sManager := snapshot.NewV3(nil)
-		tlsConfig, err := toTLSConfig(e.runtime)
-		if err != nil {
-			logrus.Errorf("failed to get tls config for etcd: %v", err)
-			continue
-		}
-		etcdConfig := etcd.Config{
-			Context:   ctx,
-			Endpoints: []string{endpoint},
-			TLS:       tlsConfig,
-		}
-		snapshotPath := filepath.Join(snapshotDir, snapshotPrefix+strconv.Itoa(int(snapshotTime.Unix())))
-
-		if err := sManager.Save(ctx, etcdConfig, snapshotPath); err != nil {
-			logrus.Errorf("failed to save snapshot %s: %v", snapshotPath, err)
-			continue
-		}
-		if err := snapshotRetention(e.config.EtcdSnapshotRetention, snapshotDir); err != nil {
-			logrus.Errorf("failed to apply snapshot retention: %v", err)
-			continue
-		}
-	}
+func (e *ETCD) setSnapshotFunction(ctx context.Context) {
+	e.cron.AddFunc(e.config.EtcdSnapshotCron, func() { e.snapshot(ctx) })
 }
 
 // Restore performs a restore of the ETCD datastore from

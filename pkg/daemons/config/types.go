@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/rancher/kine/pkg/endpoint"
 	"github.com/rancher/wrangler-api/pkg/generated/controllers/core"
@@ -132,7 +131,7 @@ type Control struct {
 	TLSCipherSuites          []uint16
 	EtcdDisableSnapshots     bool
 	EtcdSnapshotDir          string
-	EtcdSnapshotInterval     time.Duration
+	EtcdSnapshotCron         string
 	EtcdSnapshotRetention    int
 	EtcdRestorePath          string
 
