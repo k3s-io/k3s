@@ -155,6 +155,7 @@ func (e *ETCD) Start(ctx context.Context, clientAccessInfo *clientaccess.Info) e
 	}
 
 	if !e.config.EtcdDisableSnapshots {
+		e.setSnapshotFunction(ctx)
 		e.cron.Start()
 	}
 
