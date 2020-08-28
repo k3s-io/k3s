@@ -2,6 +2,8 @@ package containerd
 
 import (
 	"bufio"
+	"compress/bzip2"
+	"compress/gzip"
 	"context"
 	"fmt"
 	"io"
@@ -16,6 +18,7 @@ import (
 	"github.com/containerd/containerd/namespaces"
 	"github.com/natefinch/lumberjack"
 	"github.com/opencontainers/runc/libcontainer/system"
+	"github.com/pierrec/lz4"
 	"github.com/pkg/errors"
 	"github.com/rancher/k3s/pkg/agent/templates"
 	util2 "github.com/rancher/k3s/pkg/agent/util"
@@ -182,7 +185,24 @@ func preloadImages(ctx context.Context, cfg *config.Node) error {
 		}
 
 		logrus.Debugf("Import %s", filePath)
-		_, err = client.Import(ctxContainerD, file)
+		var imageReader io.Reader
+		imageReader = file
+		if strings.HasSuffix(fileInfo.Name(), ".tar.bz2") {
+			imageReader = bzip2.NewReader(file)
+		}
+		if strings.HasSuffix(fileInfo.Name(), ".tar.lz4") {
+			imageReader = lz4.NewReader(file)
+		}
+		if strings.HasSuffix(fileInfo.Name(), ".tar.gz") {
+			// WARNING: gzip reader close does not close the underlying image
+			imageReader, err = gzip.NewReader(file)
+			if err != nil {
+				logrus.Errorf("Unable to import %s: %v", filePath, err)
+				file.Close()
+				continue
+			}
+		}
+		_, err = client.Import(ctxContainerD, imageReader)
 		file.Close()
 		if err != nil {
 			logrus.Errorf("Unable to import %s: %v", filePath, err)
