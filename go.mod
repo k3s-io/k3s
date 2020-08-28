@@ -101,6 +101,7 @@ require (
 	github.com/rancher/spur v0.0.0-20200617165101-8702c8e4ce7a
 	github.com/rancher/wrangler v0.6.1
 	github.com/rancher/wrangler-api v0.6.0
+	github.com/robfig/cron v1.1.0
 	github.com/robfig/cron/v3 v3.0.0
 	github.com/rootless-containers/rootlesskit v0.10.0
 	github.com/sirupsen/logrus v1.6.0
