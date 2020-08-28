@@ -107,13 +107,18 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	serverConfig.ControlConfig.DisableNPC = cfg.DisableNPC
 	serverConfig.ControlConfig.DisableKubeProxy = cfg.DisableKubeProxy
 	serverConfig.ControlConfig.ClusterInit = cfg.ClusterInit
-	serverConfig.ControlConfig.ClusterReset = cfg.ClusterReset
-	serverConfig.ControlConfig.ClusterResetRestorePath = cfg.ClusterResetRestorePath
 	serverConfig.ControlConfig.EncryptSecrets = cfg.EncryptSecrets
 	serverConfig.ControlConfig.EtcdSnapshotCron = cfg.EtcdSnapshotCron
 	serverConfig.ControlConfig.EtcdSnapshotDir = cfg.EtcdSnapshotDir
 	serverConfig.ControlConfig.EtcdSnapshotRetention = cfg.EtcdSnapshotRetention
 	serverConfig.ControlConfig.EtcdDisableSnapshots = cfg.EtcdDisableSnapshots
+
+	if cfg.ClusterResetRestorePath != "" && !cfg.ClusterReset {
+		return errors.New("Invalid flag use. --cluster-reset required with --cluster-reset-restore-path")
+	}
+
+	serverConfig.ControlConfig.ClusterReset = cfg.ClusterReset
+	serverConfig.ControlConfig.ClusterResetRestorePath = cfg.ClusterResetRestorePath
 
 	if serverConfig.ControlConfig.SupervisorPort == 0 {
 		serverConfig.ControlConfig.SupervisorPort = serverConfig.ControlConfig.HTTPSPort

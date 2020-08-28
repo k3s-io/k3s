@@ -218,11 +218,6 @@ func NewServerCommand(action func(*cli.Context) error) *cli.Command {
 				Destination: &ServerConfig.DatastoreKeyFile,
 				EnvVars:     []string{version.ProgramUpper + "_DATASTORE_KEYFILE"},
 			},
-			&cli.StringFlag{
-				Name:        "cluster-reset-restore-path",
-				Usage:       "(db) Path to snapshot file to be restored",
-				Destination: &ServerConfig.ClusterResetRestorePath,
-			},
 			&cli.BoolFlag{
 				Name:        "etcd-disable-snapshots",
 				Usage:       "(db) Disable automatic etcd snapshots",
@@ -327,6 +322,11 @@ func NewServerCommand(action func(*cli.Context) error) *cli.Command {
 				Usage:       "(experimental/cluster) Forget all peers and become a single cluster new cluster master",
 				EnvVars:     []string{version.ProgramUpper + "_CLUSTER_RESET"},
 				Destination: &ServerConfig.ClusterReset,
+			},
+			&cli.StringFlag{
+				Name:        "cluster-reset-restore-path",
+				Usage:       "(db) Path to snapshot file to be restored",
+				Destination: &ServerConfig.ClusterResetRestorePath,
 			},
 			&cli.BoolFlag{
 				Name:        "secrets-encryption",

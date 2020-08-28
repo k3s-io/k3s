@@ -4,7 +4,6 @@ import (
 	"context"
 	"net"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
@@ -51,13 +50,13 @@ func (c *Cluster) start(ctx context.Context) error {
 	}
 
 	// exit at the end of restoration whether success or fail
-	if c.config.ClusterResetRestorePath != "" {
-		if err := c.managedDB.Restore(ctx); err != nil {
-			logrus.Fatalf("etc restoration: %v", err)
-		}
-		logrus.Info("etc restoration complete")
-		os.Exit(0)
-	}
+	// if c.config.ClusterResetRestorePath != "" {
+	// 	if err := c.managedDB.Restore(ctx); err != nil {
+	// 		logrus.Fatalf("etc restoration: %v", err)
+	// 	}
+	// 	logrus.Info("etc restoration complete")
+	// 	os.Exit(0)
+	// }
 
 	return c.managedDB.Start(ctx, c.clientAccessInfo)
 }

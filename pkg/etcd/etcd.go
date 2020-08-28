@@ -140,7 +140,18 @@ func (e *ETCD) Reset(ctx context.Context, clientAccessInfo *clientaccess.Info) e
 			}
 		}
 	}()
-	return e.newCluster(ctx, true)
+	if e.config.ClusterResetRestorePath != "" {
+		info, err := os.Stat(e.config.ClusterResetRestorePath)
+		if os.IsNotExist(err) {
+			return fmt.Errorf("etcd: snapshot path does not exist: %s", e.config.ClusterResetRestorePath)
+		}
+		if info.IsDir() {
+			return fmt.Errorf("etcd: snapshot path is directory: %s", e.config.ClusterResetRestorePath)
+		}
+		return e.Restore(ctx)
+	} else {
+		return e.newCluster(ctx, true)
+	}
 }
 
 func (e *ETCD) Start(ctx context.Context, clientAccessInfo *clientaccess.Info) error {
