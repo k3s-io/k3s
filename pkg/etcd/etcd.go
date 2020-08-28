@@ -149,9 +149,8 @@ func (e *ETCD) Reset(ctx context.Context, clientAccessInfo *clientaccess.Info) e
 			return fmt.Errorf("etcd: snapshot path is directory: %s", e.config.ClusterResetRestorePath)
 		}
 		return e.Restore(ctx)
-	} else {
-		return e.newCluster(ctx, true)
 	}
+	return e.newCluster(ctx, true)
 }
 
 func (e *ETCD) Start(ctx context.Context, clientAccessInfo *clientaccess.Info) error {
