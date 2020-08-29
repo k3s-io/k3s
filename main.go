@@ -14,13 +14,13 @@ import (
 	"github.com/rancher/k3s/pkg/cli/crictl"
 	"github.com/rancher/k3s/pkg/cli/kubectl"
 	"github.com/rancher/k3s/pkg/cli/server"
-	"github.com/rancher/spur/cli"
 	"github.com/sirupsen/logrus"
+	"github.com/urfave/cli"
 )
 
 func main() {
 	app := cmds.NewApp()
-	app.Commands = []*cli.Command{
+	app.Commands = []cli.Command{
 		cmds.NewServerCommand(server.Run),
 		cmds.NewAgentCommand(agent.Run),
 		cmds.NewKubectlCommand(kubectl.Run),
