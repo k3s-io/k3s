@@ -86,7 +86,6 @@ require (
 	github.com/rancher/helm-controller v0.7.2
 	github.com/rancher/kine v0.4.0
 	github.com/rancher/remotedialer v0.2.0
-	github.com/rancher/spur v0.0.0-20200617165101-8702c8e4ce7a
 	github.com/rancher/wrangler v0.6.1
 	github.com/rancher/wrangler-api v0.6.0
 	github.com/robfig/cron/v3 v3.0.1

@@ -2,7 +2,7 @@ package ctr
 
 import (
 	"github.com/rancher/k3s/pkg/ctr"
-	"github.com/rancher/spur/cli"
+	"github.com/urfave/cli"
 )
 
 func Run(ctx *cli.Context) error {

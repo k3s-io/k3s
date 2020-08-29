@@ -12,7 +12,7 @@ import (
 	"github.com/docker/docker/pkg/reexec"
 	"github.com/natefinch/lumberjack"
 	"github.com/rancher/k3s/pkg/version"
-	"github.com/rancher/spur/cli"
+	"github.com/urfave/cli"
 )
 
 type Log struct {
@@ -49,31 +49,22 @@ var (
 	logSetupOnce sync.Once
 )
 
-func InitLogging(action func(*cli.Context) error) func(*cli.Context) error {
-	return func(ctx *cli.Context) error {
-		var (
-			err    error
-			reExec bool
-		)
-		logSetupOnce.Do(func() {
-			if LogConfig.LogFile != "" && os.Getenv("_K3S_LOG_REEXEC_") == "" {
-				reExec = true
-				err = runWithLogging()
-				return
-			}
-			if err = checkUnixTimestamp(); err != nil {
-				return
-			}
-			setupLogging()
-		})
-		if reExec || err != nil {
-			return err
+func InitLogging() error {
+	var rErr error
+	logSetupOnce.Do(func() {
+		if LogConfig.LogFile != "" && os.Getenv("_K3S_LOG_REEXEC_") == "" {
+			rErr = runWithLogging()
+			return
 		}
-		if action != nil {
-			return action(ctx)
+
+		if err := checkUnixTimestamp(); err != nil {
+			rErr = err
+			return
 		}
-		return nil
-	}
+
+		setupLogging()
+	})
+	return rErr
 }
 
 func checkUnixTimestamp() error {
