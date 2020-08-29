@@ -54,7 +54,7 @@ func (p *process) State(ctx context.Context) (runtime.State, error) {
 		ExecID: p.id,
 	})
 	if err != nil {
-		if errors.Cause(err) != ttrpc.ErrClosed {
+		if !errors.Is(err, ttrpc.ErrClosed) {
 			return runtime.State{}, errdefs.FromGRPC(err)
 		}
 		return runtime.State{}, errdefs.ErrNotFound

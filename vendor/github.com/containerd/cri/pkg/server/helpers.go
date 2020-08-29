@@ -1,17 +1,17 @@
 /*
-Copyright 2017 The Kubernetes Authors.
+   Copyright The containerd Authors.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+       http://www.apache.org/licenses/LICENSE-2.0
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
 */
 
 package server
@@ -20,20 +20,19 @@ import (
 	"fmt"
 	"path"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/BurntSushi/toml"
+	runhcsoptions "github.com/Microsoft/hcsshim/cmd/containerd-shim-runhcs-v1/options"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/plugin"
+	"github.com/containerd/containerd/reference/docker"
 	"github.com/containerd/containerd/runtime/linux/runctypes"
 	runcoptions "github.com/containerd/containerd/runtime/v2/runc/options"
 	"github.com/containerd/typeurl"
-	"github.com/docker/distribution/reference"
 	imagedigest "github.com/opencontainers/go-digest"
-	"github.com/opencontainers/selinux/go-selinux/label"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	runtime "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
@@ -51,6 +50,7 @@ const (
 	errorStartReason = "StartError"
 	// errorStartExitCode is the exit code when fails to start container.
 	// 128 is the same with Docker's behavior.
+	// TODO(windows): Figure out what should be used for windows.
 	errorStartExitCode = 128
 	// completeExitReason is the exit reason when container exits with code 0.
 	completeExitReason = "Completed"
@@ -58,39 +58,16 @@ const (
 	errorExitReason = "Error"
 	// oomExitReason is the exit reason when process in container is oom killed.
 	oomExitReason = "OOMKilled"
-)
 
-const (
-	// defaultSandboxOOMAdj is default omm adj for sandbox container. (kubernetes#47938).
-	defaultSandboxOOMAdj = -998
-	// defaultShmSize is the default size of the sandbox shm.
-	defaultShmSize = int64(1024 * 1024 * 64)
-	// relativeRootfsPath is the rootfs path relative to bundle path.
-	relativeRootfsPath = "rootfs"
 	// sandboxesDir contains all sandbox root. A sandbox root is the running
 	// directory of the sandbox, all files created for the sandbox will be
 	// placed under this directory.
 	sandboxesDir = "sandboxes"
 	// containersDir contains all container root.
 	containersDir = "containers"
-	// According to http://man7.org/linux/man-pages/man5/resolv.conf.5.html:
-	// "The search list is currently limited to six domains with a total of 256 characters."
-	maxDNSSearches = 6
 	// Delimiter used to construct container/sandbox names.
 	nameDelimiter = "_"
-	// devShm is the default path of /dev/shm.
-	devShm = "/dev/shm"
-	// etcHosts is the default path of /etc/hosts file.
-	etcHosts = "/etc/hosts"
-	// etcHostname is the default path of /etc/hostname file.
-	etcHostname = "/etc/hostname"
-	// resolvConfPath is the abs path of resolv.conf on host or container.
-	resolvConfPath = "/etc/resolv.conf"
-	// hostnameEnv is the key for HOSTNAME env.
-	hostnameEnv = "HOSTNAME"
-)
 
-const (
 	// criContainerdPrefix is common prefix for cri-containerd
 	criContainerdPrefix = "io.cri-containerd"
 	// containerKindLabel is a label key indicating container is sandbox container or application container
@@ -107,14 +84,12 @@ const (
 	sandboxMetadataExtension = criContainerdPrefix + ".sandbox.metadata"
 	// containerMetadataExtension is an extension name that identify metadata of container in CreateContainerRequest
 	containerMetadataExtension = criContainerdPrefix + ".container.metadata"
-)
 
-const (
 	// defaultIfName is the default network interface for the pods
 	defaultIfName = "eth0"
-	// networkAttachCount is the minimum number of networks the PodSandbox
-	// attaches to
-	networkAttachCount = 2
+
+	// runtimeRunhcsV1 is the runtime type for runhcs.
+	runtimeRunhcsV1 = "io.containerd.runhcs.v1"
 )
 
 // makeSandboxName generates sandbox name from sandbox metadata. The name
@@ -141,17 +116,6 @@ func makeContainerName(c *runtime.ContainerMetadata, s *runtime.PodSandboxMetada
 	}, nameDelimiter)
 }
 
-// getCgroupsPath generates container cgroups path.
-func getCgroupsPath(cgroupsParent, id string) string {
-	base := path.Base(cgroupsParent)
-	if strings.HasSuffix(base, ".slice") {
-		// For a.slice/b.slice/c.slice, base is c.slice.
-		// runc systemd cgroup path format is "slice:prefix:name".
-		return strings.Join([]string{base, "cri-containerd", id}, ":")
-	}
-	return filepath.Join(cgroupsParent, id)
-}
-
 // getSandboxRootDir returns the root directory for managing sandbox files,
 // e.g. hosts files.
 func (c *criService) getSandboxRootDir(id string) string {
@@ -176,38 +140,18 @@ func (c *criService) getVolatileContainerRootDir(id string) string {
 	return filepath.Join(c.config.StateDir, containersDir, id)
 }
 
-// getSandboxHostname returns the hostname file path inside the sandbox root directory.
-func (c *criService) getSandboxHostname(id string) string {
-	return filepath.Join(c.getSandboxRootDir(id), "hostname")
-}
-
-// getSandboxHosts returns the hosts file path inside the sandbox root directory.
-func (c *criService) getSandboxHosts(id string) string {
-	return filepath.Join(c.getSandboxRootDir(id), "hosts")
-}
-
-// getResolvPath returns resolv.conf filepath for specified sandbox.
-func (c *criService) getResolvPath(id string) string {
-	return filepath.Join(c.getSandboxRootDir(id), "resolv.conf")
-}
-
-// getSandboxDevShm returns the shm file path inside the sandbox root directory.
-func (c *criService) getSandboxDevShm(id string) string {
-	return filepath.Join(c.getVolatileSandboxRootDir(id), "shm")
-}
-
 // criContainerStateToString formats CRI container state to string.
 func criContainerStateToString(state runtime.ContainerState) string {
 	return runtime.ContainerState_name[int32(state)]
 }
 
 // getRepoDigestAngTag returns image repoDigest and repoTag of the named image reference.
-func getRepoDigestAndTag(namedRef reference.Named, digest imagedigest.Digest, schema1 bool) (string, string) {
+func getRepoDigestAndTag(namedRef docker.Named, digest imagedigest.Digest, schema1 bool) (string, string) {
 	var repoTag, repoDigest string
-	if _, ok := namedRef.(reference.NamedTagged); ok {
+	if _, ok := namedRef.(docker.NamedTagged); ok {
 		repoTag = namedRef.String()
 	}
-	if _, ok := namedRef.(reference.Canonical); ok {
+	if _, ok := namedRef.(docker.Canonical); ok {
 		repoDigest = namedRef.String()
 	} else if !schema1 {
 		// digest is not actual repo digest for schema1 image.
@@ -226,7 +170,7 @@ func (c *criService) localResolve(refOrID string) (imagestore.Image, error) {
 		return func(ref string) string {
 			// ref is not image id, try to resolve it locally.
 			// TODO(random-liu): Handle this error better for debugging.
-			normalized, err := reference.ParseDockerRef(ref)
+			normalized, err := docker.ParseDockerRef(ref)
 			if err != nil {
 				return ""
 			}
@@ -298,65 +242,6 @@ func (c *criService) ensureImageExists(ctx context.Context, ref string, config *
 	return &newImage, nil
 }
 
-func toLabel(selinuxOptions *runtime.SELinuxOption) ([]string, error) {
-	var labels []string
-
-	if selinuxOptions == nil {
-		return nil, nil
-	}
-	if err := checkSelinuxLevel(selinuxOptions.Level); err != nil {
-		return nil, err
-	}
-	if selinuxOptions.User != "" {
-		labels = append(labels, "user:"+selinuxOptions.User)
-	}
-	if selinuxOptions.Role != "" {
-		labels = append(labels, "role:"+selinuxOptions.Role)
-	}
-	if selinuxOptions.Type != "" {
-		labels = append(labels, "type:"+selinuxOptions.Type)
-	}
-	if selinuxOptions.Level != "" {
-		labels = append(labels, "level:"+selinuxOptions.Level)
-	}
-
-	return labels, nil
-}
-
-func initLabelsFromOpt(selinuxOpts *runtime.SELinuxOption) (string, string, error) {
-	labels, err := toLabel(selinuxOpts)
-	if err != nil {
-		return "", "", err
-	}
-	return label.InitLabels(labels)
-}
-
-func initLabels(options []string) (string, string, error) {
-	for _, opt := range options {
-		if strings.HasPrefix(opt, "level:") {
-			if err := checkSelinuxLevel(strings.TrimPrefix(opt, "level:")); err != nil {
-				return "", "", err
-			}
-		}
-	}
-	return label.InitLabels(options)
-}
-
-func checkSelinuxLevel(level string) error {
-	if len(level) == 0 {
-		return nil
-	}
-
-	matched, err := regexp.MatchString(`^s\d(-s\d)??(:c\d{1,4}(\.c\d{1,4})?(,c\d{1,4}(\.c\d{1,4})?)*)?$`, level)
-	if err != nil {
-		return errors.Wrapf(err, "the format of 'level' %q is not correct", level)
-	}
-	if !matched {
-		return fmt.Errorf("the format of 'level' %q is not correct", level)
-	}
-	return nil
-}
-
 // isInCRIMounts checks whether a destination is in CRI mount list.
 func isInCRIMounts(dst string, mounts []*runtime.Mount) bool {
 	for _, m := range mounts {
@@ -383,15 +268,6 @@ func buildLabels(configLabels map[string]string, containerType string) map[strin
 	return labels
 }
 
-func getPodCNILabels(id string, config *runtime.PodSandboxConfig) map[string]string {
-	return map[string]string{
-		"K8S_POD_NAMESPACE":          config.GetMetadata().GetNamespace(),
-		"K8S_POD_NAME":               config.GetMetadata().GetName(),
-		"K8S_POD_INFRA_CONTAINER_ID": id,
-		"IgnoreUnknown":              "1",
-	}
-}
-
 // toRuntimeAuthConfig converts cri plugin auth config to runtime auth config.
 func toRuntimeAuthConfig(a criconfig.AuthConfig) *runtime.AuthConfig {
 	return &runtime.AuthConfig{
@@ -407,13 +283,13 @@ func toRuntimeAuthConfig(a criconfig.AuthConfig) *runtime.AuthConfig {
 func parseImageReferences(refs []string) ([]string, []string) {
 	var tags, digests []string
 	for _, ref := range refs {
-		parsed, err := reference.ParseAnyReference(ref)
+		parsed, err := docker.ParseAnyReference(ref)
 		if err != nil {
 			continue
 		}
-		if _, ok := parsed.(reference.Canonical); ok {
+		if _, ok := parsed.(docker.Canonical); ok {
 			digests = append(digests, parsed.String())
-		} else if _, ok := parsed.(reference.Tagged); ok {
+		} else if _, ok := parsed.(docker.Tagged); ok {
 			tags = append(tags, parsed.String())
 		}
 	}
@@ -449,6 +325,8 @@ func getRuntimeOptionsType(t string) interface{} {
 		return &runcoptions.Options{}
 	case plugin.RuntimeLinuxV1:
 		return &runctypes.RuncOptions{}
+	case runtimeRunhcsV1:
+		return &runhcsoptions.Options{}
 	default:
 		return &runtimeoptions.Options{}
 	}

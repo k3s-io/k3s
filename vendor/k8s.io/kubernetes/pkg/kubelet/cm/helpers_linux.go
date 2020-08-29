@@ -27,7 +27,7 @@ import (
 
 	libcontainercgroups "github.com/opencontainers/runc/libcontainer/cgroups"
 
-	v1 "k8s.io/api/core/v1"
+	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/kubernetes/pkg/api/v1/resource"
@@ -38,8 +38,11 @@ import (
 )
 
 const (
-	// Taken from lmctfy https://github.com/google/lmctfy/blob/master/lmctfy/controllers/cpu_controller.cc
-	MinShares     = 2
+	// These limits are defined in the kernel:
+	// https://github.com/torvalds/linux/blob/0bddd227f3dc55975e2b8dfa7fc6f959b062a2c7/kernel/sched/sched.h#L427-L428
+	MinShares = 2
+	MaxShares = 262144
+
 	SharesPerCPU  = 1024
 	MilliCPUToCPU = 1000
 
@@ -87,6 +90,9 @@ func MilliCPUToShares(milliCPU int64) uint64 {
 	shares := (milliCPU * SharesPerCPU) / MilliCPUToCPU
 	if shares < MinShares {
 		return MinShares
+	}
+	if shares > MaxShares {
+		return MaxShares
 	}
 	return uint64(shares)
 }
@@ -276,9 +282,14 @@ func GetPodCgroupNameSuffix(podUID types.UID) string {
 }
 
 // NodeAllocatableRoot returns the literal cgroup path for the node allocatable cgroup
-func NodeAllocatableRoot(cgroupRoot, cgroupDriver string) string {
-	root := ParseCgroupfsToCgroupName(cgroupRoot)
-	nodeAllocatableRoot := NewCgroupName(root, defaultNodeAllocatableCgroupName)
+func NodeAllocatableRoot(cgroupRoot string, cgroupsPerQOS bool, cgroupDriver string) string {
+	nodeAllocatableRoot := ParseCgroupfsToCgroupName(cgroupRoot)
+	if cgroupsPerQOS {
+		nodeAllocatableRoot = NewCgroupName(nodeAllocatableRoot, defaultNodeAllocatableCgroupName)
+	}
+	if libcontainerCgroupManagerType(cgroupDriver) == libcontainerSystemd {
+		return nodeAllocatableRoot.ToSystemd()
+	}
 	return nodeAllocatableRoot.ToCgroupfs()
 }
 

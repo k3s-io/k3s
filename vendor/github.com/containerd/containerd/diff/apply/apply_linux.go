@@ -26,7 +26,7 @@ import (
 	"github.com/containerd/containerd/archive"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/mount"
-	"github.com/opencontainers/runc/libcontainer/system"
+	"github.com/containerd/containerd/sys"
 	"github.com/pkg/errors"
 )
 
@@ -35,7 +35,7 @@ func apply(ctx context.Context, mounts []mount.Mount, r io.Reader) error {
 	case len(mounts) == 1 && mounts[0].Type == "overlay":
 		// OverlayConvertWhiteout (mknod c 0 0) doesn't work in userns.
 		// https://github.com/containerd/containerd/issues/3762
-		if system.RunningInUserNS() {
+		if sys.RunningInUserNS() {
 			break
 		}
 		path, parents, err := getOverlayPath(mounts[0].Options)

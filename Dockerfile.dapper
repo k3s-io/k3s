@@ -1,4 +1,4 @@
-FROM golang:1.13.15-alpine3.12
+FROM golang:1.15.0-alpine3.12
 
 ARG http_proxy=$http_proxy
 ARG https_proxy=$https_proxy
@@ -19,7 +19,7 @@ ARG DAPPER_HOST_ARCH
 ENV ARCH $DAPPER_HOST_ARCH
 
 RUN if [ "${ARCH}" = 'amd64' ]; then \
-        curl -sL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s v1.15.0; \
+        curl -sL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s v1.30.0; \
     fi
 
 ARG SELINUX=true

@@ -5,6 +5,7 @@ import (
 	"io"
 
 	"github.com/Microsoft/hcsshim/internal/schema1"
+	hcsschema "github.com/Microsoft/hcsshim/internal/schema2"
 )
 
 // Process is the interface for an OS process running in a container or utility VM.
@@ -63,8 +64,10 @@ type Container interface {
 	Close() error
 	// ID returns the container ID.
 	ID() string
-	// Properties returns the requested container properties.
+	// Properties returns the requested container properties targeting a V1 schema container.
 	Properties(ctx context.Context, types ...schema1.PropertyType) (*schema1.ContainerProperties, error)
+	// PropertiesV2 returns the requested container properties targeting a V2 schema container.
+	PropertiesV2(ctx context.Context, types ...hcsschema.PropertyType) (*hcsschema.Properties, error)
 	// Start starts a container.
 	Start(ctx context.Context) error
 	// Shutdown sends a shutdown request to the container (but does not wait for

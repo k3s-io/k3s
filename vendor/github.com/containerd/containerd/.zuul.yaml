@@ -10,5 +10,5 @@
     description: |
       Containerd build in openlab cluster.
     run: .zuul/playbooks/containerd-build/run.yaml
-    nodeset: ubuntu-xenial-arm64
+    nodeset: ubuntu-xenial-arm64-openlab
     voting: false

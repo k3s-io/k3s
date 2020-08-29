@@ -31,25 +31,25 @@ var (
 
 // IsCNINotInitialized returns true if the error is due to cni config not being initialized
 func IsCNINotInitialized(err error) bool {
-	return errors.Cause(err) == ErrCNINotInitialized
+	return errors.Is(err, ErrCNINotInitialized)
 }
 
 // IsInvalidConfig returns true if the error is invalid cni config
 func IsInvalidConfig(err error) bool {
-	return errors.Cause(err) == ErrInvalidConfig
+	return errors.Is(err, ErrInvalidConfig)
 }
 
 // IsNotFound returns true if the error is due to a missing config or result
 func IsNotFound(err error) bool {
-	return errors.Cause(err) == ErrNotFound
+	return errors.Is(err, ErrNotFound)
 }
 
 // IsReadFailure return true if the error is a config read failure
 func IsReadFailure(err error) bool {
-	return errors.Cause(err) == ErrRead
+	return errors.Is(err, ErrRead)
 }
 
 // IsInvalidResult return true if the error is due to invalid cni result
 func IsInvalidResult(err error) bool {
-	return errors.Cause(err) == ErrInvalidResult
+	return errors.Is(err, ErrInvalidResult)
 }

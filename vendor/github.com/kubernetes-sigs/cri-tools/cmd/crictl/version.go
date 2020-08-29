@@ -19,6 +19,7 @@ package crictl
 import (
 	"fmt"
 
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/net/context"
@@ -40,7 +41,7 @@ var runtimeVersionCommand = &cli.Command{
 		defer closeConnection(context, runtimeConn)
 		err = Version(runtimeClient, criClientVersion)
 		if err != nil {
-			return fmt.Errorf("getting the runtime version failed: %v", err)
+			return errors.Wrap(err, "getting the runtime version")
 		}
 		return nil
 	},

@@ -4,9 +4,12 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
+
+	"github.com/opencontainers/runc/libcontainer/cgroups"
 
 	"github.com/docker/go-units"
 	"github.com/opencontainers/runc/libcontainer/configs"
@@ -248,11 +251,39 @@ other options are ignored.
 			r.Pids.Limit = int64(context.Int("pids-limit"))
 		}
 
-		// Update the value
+		// Update the values
 		config.Cgroups.Resources.BlkioWeight = *r.BlockIO.Weight
-		config.Cgroups.Resources.CpuPeriod = *r.CPU.Period
-		config.Cgroups.Resources.CpuQuota = *r.CPU.Quota
+
+		// Seting CPU quota and period independently does not make much sense,
+		// but historically runc allowed it and this needs to be supported
+		// to not break compatibility.
+		//
+		// For systemd cgroup drivers to set CPU quota/period correctly,
+		// it needs to know both values. For fs2 cgroup driver to be compatible
+		// with the fs driver, it also needs to know both values.
+		//
+		// Here in update, previously set values are available from config.
+		// If only one of {quota,period} is set and the other is not, leave
+		// the unset parameter at the old value (don't overwrite config).
+		p, q := *r.CPU.Period, *r.CPU.Quota
+		if (p == 0 && q == 0) || (p != 0 && q != 0) {
+			// both values are either set or unset (0)
+			config.Cgroups.Resources.CpuPeriod = p
+			config.Cgroups.Resources.CpuQuota = q
+		} else {
+			// one is set and the other is not
+			if p != 0 {
+				// set new period, leave quota at old value
+				config.Cgroups.Resources.CpuPeriod = p
+			} else if q != 0 {
+				// set new quota, leave period at old value
+				config.Cgroups.Resources.CpuQuota = q
+			}
+		}
+
 		config.Cgroups.Resources.CpuShares = *r.CPU.Shares
+		//CpuWeight is used for cgroupv2 and should be converted
+		config.Cgroups.Resources.CpuWeight = cgroups.ConvertCPUSharesToCgroupV2Value(*r.CPU.Shares)
 		config.Cgroups.Resources.CpuRtPeriod = *r.CPU.RealtimePeriod
 		config.Cgroups.Resources.CpuRtRuntime = *r.CPU.RealtimeRuntime
 		config.Cgroups.Resources.CpusetCpus = r.CPU.Cpus
@@ -268,11 +299,11 @@ other options are ignored.
 		l3CacheSchema := context.String("l3-cache-schema")
 		memBwSchema := context.String("mem-bw-schema")
 		if l3CacheSchema != "" && !intelrdt.IsCatEnabled() {
-			return fmt.Errorf("Intel RDT/CAT: l3 cache schema is not enabled")
+			return errors.New("Intel RDT/CAT: l3 cache schema is not enabled")
 		}
 
 		if memBwSchema != "" && !intelrdt.IsMbaEnabled() {
-			return fmt.Errorf("Intel RDT/MBA: memory bandwidth schema is not enabled")
+			return errors.New("Intel RDT/MBA: memory bandwidth schema is not enabled")
 		}
 
 		if l3CacheSchema != "" || memBwSchema != "" {

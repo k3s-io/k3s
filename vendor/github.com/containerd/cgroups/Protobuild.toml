@@ -18,7 +18,7 @@ plugins = ["grpc"]
   # Paths that will be added untouched to the end of the includes. We use
   # `/usr/local/include` to pickup the common install location of protobuf.
   # This is the default.
-  after = ["/usr/local/include"]
+  after = ["/usr/local/include", "/usr/include"]
 
 # This section maps protobuf imports to Go packages. These will become
 # `-M` directives in the call to the go protobuf generator.
@@ -31,8 +31,15 @@ plugins = ["grpc"]
 
 # Aggregrate the API descriptors to lock down API changes.
 [[descriptors]]
-prefix = "github.com/containerd/cgroups"
-target = "metrics.pb.txt"
+prefix = "github.com/containerd/cgroups/stats/v1"
+target = "stats/v1/metrics.pb.txt"
+ignore_files = [
+	"google/protobuf/descriptor.proto",
+	"gogoproto/gogo.proto"
+]
+[[descriptors]]
+prefix = "github.com/containerd/cgroups/v2/stats"
+target = "v2/stats/metrics.pb.txt"
 ignore_files = [
 	"google/protobuf/descriptor.proto",
 	"gogoproto/gogo.proto"

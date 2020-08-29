@@ -52,6 +52,6 @@ containerd is designed to be embedded into a larger system, hence it only includ
 
 ### How is the scope changed?
 
-The scope of this project is a whitelist.
+The scope of this project is an allowed list.
 If it's not mentioned as being in scope, it is out of scope.
 For the scope of this project to change it requires a 100% vote from all maintainers of the project.

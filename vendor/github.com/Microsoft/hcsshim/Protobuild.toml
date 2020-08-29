@@ -29,6 +29,7 @@ plugins = ["grpc", "fieldpath"]
   "google/protobuf/field_mask.proto" = "github.com/gogo/protobuf/types"
   "google/protobuf/timestamp.proto" = "github.com/gogo/protobuf/types"
   "google/protobuf/duration.proto" = "github.com/gogo/protobuf/types"
+  "github/containerd/cgroups/stats/v1/metrics.proto" = "github.com/containerd/cgroups/stats/v1"
 
 [[overrides]]
 prefixes = ["github.com/Microsoft/hcsshim/internal/shimdiag"]

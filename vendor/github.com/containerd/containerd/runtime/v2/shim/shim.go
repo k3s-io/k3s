@@ -31,6 +31,7 @@ import (
 	"github.com/containerd/containerd/log"
 	"github.com/containerd/containerd/namespaces"
 	shimapi "github.com/containerd/containerd/runtime/v2/task"
+	"github.com/containerd/containerd/version"
 	"github.com/containerd/ttrpc"
 	"github.com/gogo/protobuf/proto"
 	"github.com/pkg/errors"
@@ -84,6 +85,7 @@ type Config struct {
 
 var (
 	debugFlag            bool
+	versionFlag          bool
 	idFlag               string
 	namespaceFlag        string
 	socketFlag           string
@@ -99,6 +101,7 @@ const (
 
 func parseFlags() {
 	flag.BoolVar(&debugFlag, "debug", false, "enable debug output in logs")
+	flag.BoolVar(&versionFlag, "v", false, "show the shim version and exit")
 	flag.StringVar(&namespaceFlag, "namespace", "", "namespace that owns the shim")
 	flag.StringVar(&idFlag, "id", "", "id of the task")
 	flag.StringVar(&socketFlag, "socket", "", "abstract socket path to serve")
@@ -155,6 +158,15 @@ func Run(id string, initFunc Init, opts ...BinaryOpts) {
 
 func run(id string, initFunc Init, config Config) error {
 	parseFlags()
+	if versionFlag {
+		fmt.Printf("%s:\n", os.Args[0])
+		fmt.Println("  Version: ", version.Version)
+		fmt.Println("  Revision:", version.Revision)
+		fmt.Println("  Go version:", version.GoVersion)
+		fmt.Println("")
+		return nil
+	}
+
 	setRuntime()
 
 	signals, err := setupSignals(config)

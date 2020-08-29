@@ -1,0 +1,32 @@
+#!/bin/bash
+set -ve
+
+apk add -q -f curl libc6-compat tzdata
+download_go
+# ---
+rc-update add cgroups default
+/etc/init.d/cgroups start
+# ---
+cat <<EOF >/etc/profile.d/build.sh
+export SELINUX=true
+export STATIC_BUILD=true
+EOF
+. /etc/profile.d/build.sh
+# ---
+. /tmp/docker-run
+# ---
+go get -u github.com/go-delve/delve/cmd/dlv
+# ---
+cat <<EOF >/etc/profile.d/docker.sh
+export DOCKER_HOST=tcp://10.0.2.2:2375
+EOF
+. /etc/profile.d/docker.sh
+# ---
+(
+    if ! docker version --format '{{.Server.Version}}' >/tmp/docker-server-version; then
+        echo "WARNING: Unable to connect to the docker socket, to enable docker in vagrant run the following command on the host:"
+        echo "docker run -d -v /var/run/docker.sock:/var/run/docker.sock -p 127.0.0.1:2375:2375 alpine/socat TCP-LISTEN:2375,fork UNIX-CONNECT:/var/run/docker.sock"
+    else
+        echo "Using host docker server v$(cat /tmp/docker-server-version)"
+    fi
+)

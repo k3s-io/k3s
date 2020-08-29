@@ -14,9 +14,13 @@ including the Balena project listed below.
 
 **_[Google Cloud Kubernetes Engine (GKE)](https://cloud.google.com/kubernetes-engine/)_** - offers containerd as the CRI runtime in **beta** for recent versions of Kubernetes.
 
+**_[AWS Fargate](https://aws.amazon.com/fargate)_** - uses containerd + Firecracker (noted below) as the runtime and isolation technology for containers run in the Fargate platform. Fargate is a serverless, container-native compute offering from Amazon Web Services.
+
 **_Cloud Foundry_** - The [Guardian container manager](https://github.com/cloudfoundry/guardian) for CF has been using OCI runC directly with additional code from CF managing the container image and filesystem interactions, but have recently migrated to use containerd as a replacement for the extra code they had written around runC.
 
 **_Alibaba's PouchContainer_** - The Alibaba [PouchContainer](https://github.com/alibaba/pouch) project uses containerd as its runtime for a cloud native offering that has unique isolation and image distribution capabilities.
+
+**_Rancher's k3s project_** - Rancher Labs [k3s](https://github.com/rancher/k3s) is a lightweight Kubernetes distribution; in their words: "Easy to install, half the memory, all in a binary less than 40mb." k8s uses containerd as the embedded runtime for this popular lightweight Kubernetes variant.
 
 **_Rancher's Rio project_** - Rancher Labs [Rio](https://github.com/rancher/rio) project uses containerd as the runtime for a combined Kubernetes, Istio, and container "Cloud Native Container Distribution" platform.
 

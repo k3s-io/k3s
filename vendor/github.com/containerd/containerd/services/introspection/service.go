@@ -18,21 +18,13 @@ package introspection
 
 import (
 	context "context"
-	"io/ioutil"
-	"os"
-	"path/filepath"
-	"sync"
 
 	api "github.com/containerd/containerd/api/services/introspection/v1"
-	"github.com/containerd/containerd/api/types"
-	"github.com/containerd/containerd/errdefs"
-	"github.com/containerd/containerd/filters"
 	"github.com/containerd/containerd/plugin"
-	"github.com/gogo/googleapis/google/rpc"
+	"github.com/containerd/containerd/services"
 	ptypes "github.com/gogo/protobuf/types"
-	"github.com/google/uuid"
+	"github.com/pkg/errors"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/status"
 )
 
 func init() {
@@ -44,177 +36,50 @@ func init() {
 			// this service works by using the plugin context up till the point
 			// this service is initialized. Since we require this service last,
 			// it should provide the full set of plugins.
-			pluginsPB := pluginsToPB(ic.GetAll())
-			return NewService(pluginsPB, ic.Root), nil
+			plugins, err := ic.GetByType(plugin.ServicePlugin)
+			if err != nil {
+				return nil, err
+			}
+			p, ok := plugins[services.IntrospectionService]
+			if !ok {
+				return nil, errors.New("introspection service not found")
+			}
+
+			i, err := p.Instance()
+			if err != nil {
+				return nil, err
+			}
+
+			allPluginsPB := pluginsToPB(ic.GetAll())
+
+			localClient, ok := i.(*Local)
+			if !ok {
+				return nil, errors.Errorf("Could not create a local client for introspection service")
+			}
+			localClient.UpdateLocal(ic.Root, allPluginsPB)
+
+			return &server{
+				local: localClient,
+			}, nil
 		},
 	})
 }
 
-type service struct {
-	mu      sync.Mutex
-	plugins []api.Plugin
-	root    string
+type server struct {
+	local api.IntrospectionClient
 }
 
-// NewService returns the GRPC introspection server
-func NewService(plugins []api.Plugin, root string) api.IntrospectionServer {
-	return &service{
-		plugins: plugins,
-		root:    root,
-	}
-}
+var _ = (api.IntrospectionServer)(&server{})
 
-func (s *service) Register(server *grpc.Server) error {
+func (s *server) Register(server *grpc.Server) error {
 	api.RegisterIntrospectionServer(server, s)
 	return nil
 }
 
-func (s *service) Plugins(ctx context.Context, req *api.PluginsRequest) (*api.PluginsResponse, error) {
-	filter, err := filters.ParseAll(req.Filters...)
-	if err != nil {
-		return nil, errdefs.ToGRPCf(errdefs.ErrInvalidArgument, err.Error())
-	}
-
-	var plugins []api.Plugin
-	for _, p := range s.plugins {
-		if !filter.Match(adaptPlugin(p)) {
-			continue
-		}
-
-		plugins = append(plugins, p)
-	}
-
-	return &api.PluginsResponse{
-		Plugins: plugins,
-	}, nil
+func (s *server) Plugins(ctx context.Context, req *api.PluginsRequest) (*api.PluginsResponse, error) {
+	return s.local.Plugins(ctx, req)
 }
 
-func (s *service) Server(ctx context.Context, _ *ptypes.Empty) (*api.ServerResponse, error) {
-	u, err := s.getUUID()
-	if err != nil {
-		return nil, errdefs.ToGRPC(err)
-	}
-	return &api.ServerResponse{
-		UUID: u,
-	}, nil
-}
-
-func (s *service) getUUID() (string, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	data, err := ioutil.ReadFile(s.uuidPath())
-	if err != nil {
-		if os.IsNotExist(err) {
-			return s.generateUUID()
-		}
-		return "", err
-	}
-	u := string(data)
-	if _, err := uuid.Parse(u); err != nil {
-		return "", err
-	}
-	return u, nil
-}
-
-func (s *service) generateUUID() (string, error) {
-	u, err := uuid.NewRandom()
-	if err != nil {
-		return "", err
-	}
-	path := s.uuidPath()
-	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
-		return "", err
-	}
-	uu := u.String()
-	if err := ioutil.WriteFile(path, []byte(uu), 0666); err != nil {
-		return "", err
-	}
-	return uu, nil
-}
-
-func (s *service) uuidPath() string {
-	return filepath.Join(s.root, "uuid")
-}
-
-func adaptPlugin(o interface{}) filters.Adaptor {
-	obj := o.(api.Plugin)
-	return filters.AdapterFunc(func(fieldpath []string) (string, bool) {
-		if len(fieldpath) == 0 {
-			return "", false
-		}
-
-		switch fieldpath[0] {
-		case "type":
-			return obj.Type, len(obj.Type) > 0
-		case "id":
-			return obj.ID, len(obj.ID) > 0
-		case "platforms":
-			// TODO(stevvooe): Another case here where have multiple values.
-			// May need to refactor the filter system to allow filtering by
-			// platform, if this is required.
-		case "capabilities":
-			// TODO(stevvooe): Need a better way to match against
-			// collections. We can only return "the value" but really it
-			// would be best if we could return a set of values for the
-			// path, any of which could match.
-		}
-
-		return "", false
-	})
-}
-
-func pluginsToPB(plugins []*plugin.Plugin) []api.Plugin {
-	var pluginsPB []api.Plugin
-	for _, p := range plugins {
-		var platforms []types.Platform
-		for _, p := range p.Meta.Platforms {
-			platforms = append(platforms, types.Platform{
-				OS:           p.OS,
-				Architecture: p.Architecture,
-				Variant:      p.Variant,
-			})
-		}
-
-		var requires []string
-		for _, r := range p.Registration.Requires {
-			requires = append(requires, r.String())
-		}
-
-		var initErr *rpc.Status
-		if err := p.Err(); err != nil {
-			st, ok := status.FromError(errdefs.ToGRPC(err))
-			if ok {
-				var details []*ptypes.Any
-				for _, d := range st.Proto().Details {
-					details = append(details, &ptypes.Any{
-						TypeUrl: d.TypeUrl,
-						Value:   d.Value,
-					})
-				}
-				initErr = &rpc.Status{
-					Code:    int32(st.Code()),
-					Message: st.Message(),
-					Details: details,
-				}
-			} else {
-				initErr = &rpc.Status{
-					Code:    int32(rpc.UNKNOWN),
-					Message: err.Error(),
-				}
-			}
-		}
-
-		pluginsPB = append(pluginsPB, api.Plugin{
-			Type:         p.Registration.Type.String(),
-			ID:           p.Registration.ID,
-			Requires:     requires,
-			Platforms:    platforms,
-			Capabilities: p.Meta.Capabilities,
-			Exports:      p.Meta.Exports,
-			InitErr:      initErr,
-		})
-	}
-
-	return pluginsPB
+func (s *server) Server(ctx context.Context, empty *ptypes.Empty) (*api.ServerResponse, error) {
+	return s.local.Server(ctx, empty)
 }

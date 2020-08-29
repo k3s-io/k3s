@@ -5,12 +5,17 @@
 package specconv
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
+	systemdDbus "github.com/coreos/go-systemd/v22/dbus"
+	dbus "github.com/godbus/dbus/v5"
+	"github.com/opencontainers/runc/libcontainer/cgroups"
 	"github.com/opencontainers/runc/libcontainer/configs"
 	"github.com/opencontainers/runc/libcontainer/seccomp"
 	libcontainerUtils "github.com/opencontainers/runc/libcontainer/utils"
@@ -43,104 +48,147 @@ var mountPropagationMapping = map[string]int{
 	"":            0,
 }
 
-// AllowedDevices is exposed for devicefilter_test.go
+// AllowedDevices is the set of devices which are automatically included for
+// all containers.
+//
+// XXX (cyphar)
+//    This behaviour is at the very least "questionable" (if not outright
+//    wrong) according to the runtime-spec.
+//
+//    Yes, we have to include certain devices other than the ones the user
+//    specifies, but several devices listed here are not part of the spec
+//    (including "mknod for any device"?!). In addition, these rules are
+//    appended to the user-provided set which means that users *cannot disable
+//    this behaviour*.
+//
+//    ... unfortunately I'm too scared to change this now because who knows how
+//    many people depend on this (incorrect and arguably insecure) behaviour.
 var AllowedDevices = []*configs.Device{
 	// allow mknod for any device
 	{
-		Type:        'c',
-		Major:       wildcard,
-		Minor:       wildcard,
-		Permissions: "m",
-		Allow:       true,
+		DeviceRule: configs.DeviceRule{
+			Type:        configs.CharDevice,
+			Major:       configs.Wildcard,
+			Minor:       configs.Wildcard,
+			Permissions: "m",
+			Allow:       true,
+		},
 	},
 	{
-		Type:        'b',
-		Major:       wildcard,
-		Minor:       wildcard,
-		Permissions: "m",
-		Allow:       true,
+		DeviceRule: configs.DeviceRule{
+			Type:        configs.BlockDevice,
+			Major:       configs.Wildcard,
+			Minor:       configs.Wildcard,
+			Permissions: "m",
+			Allow:       true,
+		},
 	},
 	{
-		Type:        'c',
-		Path:        "/dev/null",
-		Major:       1,
-		Minor:       3,
-		Permissions: "rwm",
-		Allow:       true,
+		Path:     "/dev/null",
+		FileMode: 0666,
+		Uid:      0,
+		Gid:      0,
+		DeviceRule: configs.DeviceRule{
+			Type:        configs.CharDevice,
+			Major:       1,
+			Minor:       3,
+			Permissions: "rwm",
+			Allow:       true,
+		},
 	},
 	{
-		Type:        'c',
-		Path:        "/dev/random",
-		Major:       1,
-		Minor:       8,
-		Permissions: "rwm",
-		Allow:       true,
+		Path:     "/dev/random",
+		FileMode: 0666,
+		Uid:      0,
+		Gid:      0,
+		DeviceRule: configs.DeviceRule{
+			Type:        configs.CharDevice,
+			Major:       1,
+			Minor:       8,
+			Permissions: "rwm",
+			Allow:       true,
+		},
 	},
 	{
-		Type:        'c',
-		Path:        "/dev/full",
-		Major:       1,
-		Minor:       7,
-		Permissions: "rwm",
-		Allow:       true,
+		Path:     "/dev/full",
+		FileMode: 0666,
+		Uid:      0,
+		Gid:      0,
+		DeviceRule: configs.DeviceRule{
+			Type:        configs.CharDevice,
+			Major:       1,
+			Minor:       7,
+			Permissions: "rwm",
+			Allow:       true,
+		},
 	},
 	{
-		Type:        'c',
-		Path:        "/dev/tty",
-		Major:       5,
-		Minor:       0,
-		Permissions: "rwm",
-		Allow:       true,
+		Path:     "/dev/tty",
+		FileMode: 0666,
+		Uid:      0,
+		Gid:      0,
+		DeviceRule: configs.DeviceRule{
+			Type:        configs.CharDevice,
+			Major:       5,
+			Minor:       0,
+			Permissions: "rwm",
+			Allow:       true,
+		},
 	},
 	{
-		Type:        'c',
-		Path:        "/dev/zero",
-		Major:       1,
-		Minor:       5,
-		Permissions: "rwm",
-		Allow:       true,
+		Path:     "/dev/zero",
+		FileMode: 0666,
+		Uid:      0,
+		Gid:      0,
+		DeviceRule: configs.DeviceRule{
+			Type:        configs.CharDevice,
+			Major:       1,
+			Minor:       5,
+			Permissions: "rwm",
+			Allow:       true,
+		},
 	},
 	{
-		Type:        'c',
-		Path:        "/dev/urandom",
-		Major:       1,
-		Minor:       9,
-		Permissions: "rwm",
-		Allow:       true,
-	},
-	{
-		Path:        "/dev/console",
-		Type:        'c',
-		Major:       5,
-		Minor:       1,
-		Permissions: "rwm",
-		Allow:       true,
+		Path:     "/dev/urandom",
+		FileMode: 0666,
+		Uid:      0,
+		Gid:      0,
+		DeviceRule: configs.DeviceRule{
+			Type:        configs.CharDevice,
+			Major:       1,
+			Minor:       9,
+			Permissions: "rwm",
+			Allow:       true,
+		},
 	},
 	// /dev/pts/ - pts namespaces are "coming soon"
 	{
-		Path:        "",
-		Type:        'c',
-		Major:       136,
-		Minor:       wildcard,
-		Permissions: "rwm",
-		Allow:       true,
+		DeviceRule: configs.DeviceRule{
+			Type:        configs.CharDevice,
+			Major:       136,
+			Minor:       configs.Wildcard,
+			Permissions: "rwm",
+			Allow:       true,
+		},
 	},
 	{
-		Path:        "",
-		Type:        'c',
-		Major:       5,
-		Minor:       2,
-		Permissions: "rwm",
-		Allow:       true,
+		DeviceRule: configs.DeviceRule{
+			Type:        configs.CharDevice,
+			Major:       5,
+			Minor:       2,
+			Permissions: "rwm",
+			Allow:       true,
+		},
 	},
 	// tuntap
 	{
-		Path:        "",
-		Type:        'c',
-		Major:       10,
-		Minor:       200,
-		Permissions: "rwm",
-		Allow:       true,
+		DeviceRule: configs.DeviceRule{
+			Type:        configs.CharDevice,
+			Major:       10,
+			Minor:       200,
+			Permissions: "rwm",
+			Allow:       true,
+		},
 	},
 }
 
@@ -255,6 +303,7 @@ func CreateLibcontainerConfig(opts *CreateOpts) (*configs.Config, error) {
 	}
 	if spec.Process != nil {
 		config.OomScoreAdj = spec.Process.OOMScoreAdj
+		config.NoNewPrivileges = spec.Process.NoNewPrivileges
 		if spec.Process.SelinuxLabel != "" {
 			config.ProcessLabel = spec.Process.SelinuxLabel
 		}
@@ -297,6 +346,70 @@ func createLibcontainerMount(cwd string, m specs.Mount) *configs.Mount {
 	}
 }
 
+// systemd property name check: latin letters only, at least 3 of them
+var isValidName = regexp.MustCompile(`^[a-zA-Z]{3,}$`).MatchString
+
+var isSecSuffix = regexp.MustCompile(`[a-z]Sec$`).MatchString
+
+// Some systemd properties are documented as having "Sec" suffix
+// (e.g. TimeoutStopSec) but are expected to have "USec" suffix
+// here, so let's provide conversion to improve compatibility.
+func convertSecToUSec(value dbus.Variant) (dbus.Variant, error) {
+	var sec uint64
+	const M = 1000000
+	vi := value.Value()
+	switch value.Signature().String() {
+	case "y":
+		sec = uint64(vi.(byte)) * M
+	case "n":
+		sec = uint64(vi.(int16)) * M
+	case "q":
+		sec = uint64(vi.(uint16)) * M
+	case "i":
+		sec = uint64(vi.(int32)) * M
+	case "u":
+		sec = uint64(vi.(uint32)) * M
+	case "x":
+		sec = uint64(vi.(int64)) * M
+	case "t":
+		sec = vi.(uint64) * M
+	case "d":
+		sec = uint64(vi.(float64) * M)
+	default:
+		return value, errors.New("not a number")
+	}
+	return dbus.MakeVariant(sec), nil
+}
+
+func initSystemdProps(spec *specs.Spec) ([]systemdDbus.Property, error) {
+	const keyPrefix = "org.systemd.property."
+	var sp []systemdDbus.Property
+
+	for k, v := range spec.Annotations {
+		name := strings.TrimPrefix(k, keyPrefix)
+		if len(name) == len(k) { // prefix not there
+			continue
+		}
+		if !isValidName(name) {
+			return nil, fmt.Errorf("Annotation %s name incorrect: %s", k, name)
+		}
+		value, err := dbus.ParseVariant(v, dbus.Signature{})
+		if err != nil {
+			return nil, fmt.Errorf("Annotation %s=%s value parse error: %v", k, v, err)
+		}
+		if isSecSuffix(name) {
+			name = strings.TrimSuffix(name, "Sec") + "USec"
+			value, err = convertSecToUSec(value)
+			if err != nil {
+				return nil, fmt.Errorf("Annotation %s=%s value parse error: %v", k, v, err)
+			}
+		}
+		sp = append(sp, systemdDbus.Property{Name: name, Value: value})
+	}
+
+	return sp, nil
+}
+
 func CreateCgroupConfig(opts *CreateOpts) (*configs.Cgroup, error) {
 	var (
 		myCgroupPath string
@@ -308,6 +421,14 @@ func CreateCgroupConfig(opts *CreateOpts) (*configs.Cgroup, error) {
 
 	c := &configs.Cgroup{
 		Resources: &configs.Resources{},
+	}
+
+	if useSystemdCgroup {
+		sp, err := initSystemdProps(spec)
+		if err != nil {
+			return nil, err
+		}
+		c.SystemdProps = sp
 	}
 
 	if spec.Linux != nil && spec.Linux.CgroupsPath != "" {
@@ -342,251 +463,201 @@ func CreateCgroupConfig(opts *CreateOpts) (*configs.Cgroup, error) {
 
 	// In rootless containers, any attempt to make cgroup changes is likely to fail.
 	// libcontainer will validate this but ignores the error.
-	c.Resources.AllowedDevices = AllowedDevices
 	if spec.Linux != nil {
 		r := spec.Linux.Resources
-		if r == nil {
-			return c, nil
-		}
-		for i, d := range spec.Linux.Resources.Devices {
-			var (
-				t     = "a"
-				major = int64(-1)
-				minor = int64(-1)
-			)
-			if d.Type != "" {
-				t = d.Type
-			}
-			if d.Major != nil {
-				major = *d.Major
-			}
-			if d.Minor != nil {
-				minor = *d.Minor
-			}
-			if d.Access == "" {
-				return nil, fmt.Errorf("device access at %d field cannot be empty", i)
-			}
-			dt, err := stringToCgroupDeviceRune(t)
-			if err != nil {
-				return nil, err
-			}
-			dd := &configs.Device{
-				Type:        dt,
-				Major:       major,
-				Minor:       minor,
-				Permissions: d.Access,
-				Allow:       d.Allow,
-			}
-			c.Resources.Devices = append(c.Resources.Devices, dd)
-		}
-		if r.Memory != nil {
-			if r.Memory.Limit != nil {
-				c.Resources.Memory = *r.Memory.Limit
-			}
-			if r.Memory.Reservation != nil {
-				c.Resources.MemoryReservation = *r.Memory.Reservation
-			}
-			if r.Memory.Swap != nil {
-				c.Resources.MemorySwap = *r.Memory.Swap
-			}
-			if r.Memory.Kernel != nil {
-				c.Resources.KernelMemory = *r.Memory.Kernel
-			}
-			if r.Memory.KernelTCP != nil {
-				c.Resources.KernelMemoryTCP = *r.Memory.KernelTCP
-			}
-			if r.Memory.Swappiness != nil {
-				c.Resources.MemorySwappiness = r.Memory.Swappiness
-			}
-			if r.Memory.DisableOOMKiller != nil {
-				c.Resources.OomKillDisable = *r.Memory.DisableOOMKiller
-			}
-		}
-		if r.CPU != nil {
-			if r.CPU.Shares != nil {
-				c.Resources.CpuShares = *r.CPU.Shares
-			}
-			if r.CPU.Quota != nil {
-				c.Resources.CpuQuota = *r.CPU.Quota
-			}
-			if r.CPU.Period != nil {
-				c.Resources.CpuPeriod = *r.CPU.Period
-			}
-			if r.CPU.RealtimeRuntime != nil {
-				c.Resources.CpuRtRuntime = *r.CPU.RealtimeRuntime
-			}
-			if r.CPU.RealtimePeriod != nil {
-				c.Resources.CpuRtPeriod = *r.CPU.RealtimePeriod
-			}
-			if r.CPU.Cpus != "" {
-				c.Resources.CpusetCpus = r.CPU.Cpus
-			}
-			if r.CPU.Mems != "" {
-				c.Resources.CpusetMems = r.CPU.Mems
-			}
-		}
-		if r.Pids != nil {
-			c.Resources.PidsLimit = r.Pids.Limit
-		}
-		if r.BlockIO != nil {
-			if r.BlockIO.Weight != nil {
-				c.Resources.BlkioWeight = *r.BlockIO.Weight
-			}
-			if r.BlockIO.LeafWeight != nil {
-				c.Resources.BlkioLeafWeight = *r.BlockIO.LeafWeight
-			}
-			if r.BlockIO.WeightDevice != nil {
-				for _, wd := range r.BlockIO.WeightDevice {
-					var weight, leafWeight uint16
-					if wd.Weight != nil {
-						weight = *wd.Weight
-					}
-					if wd.LeafWeight != nil {
-						leafWeight = *wd.LeafWeight
-					}
-					weightDevice := configs.NewWeightDevice(wd.Major, wd.Minor, weight, leafWeight)
-					c.Resources.BlkioWeightDevice = append(c.Resources.BlkioWeightDevice, weightDevice)
+		if r != nil {
+			for i, d := range spec.Linux.Resources.Devices {
+				var (
+					t     = "a"
+					major = int64(-1)
+					minor = int64(-1)
+				)
+				if d.Type != "" {
+					t = d.Type
 				}
-			}
-			if r.BlockIO.ThrottleReadBpsDevice != nil {
-				for _, td := range r.BlockIO.ThrottleReadBpsDevice {
-					rate := td.Rate
-					throttleDevice := configs.NewThrottleDevice(td.Major, td.Minor, rate)
-					c.Resources.BlkioThrottleReadBpsDevice = append(c.Resources.BlkioThrottleReadBpsDevice, throttleDevice)
+				if d.Major != nil {
+					major = *d.Major
 				}
-			}
-			if r.BlockIO.ThrottleWriteBpsDevice != nil {
-				for _, td := range r.BlockIO.ThrottleWriteBpsDevice {
-					rate := td.Rate
-					throttleDevice := configs.NewThrottleDevice(td.Major, td.Minor, rate)
-					c.Resources.BlkioThrottleWriteBpsDevice = append(c.Resources.BlkioThrottleWriteBpsDevice, throttleDevice)
+				if d.Minor != nil {
+					minor = *d.Minor
 				}
-			}
-			if r.BlockIO.ThrottleReadIOPSDevice != nil {
-				for _, td := range r.BlockIO.ThrottleReadIOPSDevice {
-					rate := td.Rate
-					throttleDevice := configs.NewThrottleDevice(td.Major, td.Minor, rate)
-					c.Resources.BlkioThrottleReadIOPSDevice = append(c.Resources.BlkioThrottleReadIOPSDevice, throttleDevice)
+				if d.Access == "" {
+					return nil, fmt.Errorf("device access at %d field cannot be empty", i)
 				}
-			}
-			if r.BlockIO.ThrottleWriteIOPSDevice != nil {
-				for _, td := range r.BlockIO.ThrottleWriteIOPSDevice {
-					rate := td.Rate
-					throttleDevice := configs.NewThrottleDevice(td.Major, td.Minor, rate)
-					c.Resources.BlkioThrottleWriteIOPSDevice = append(c.Resources.BlkioThrottleWriteIOPSDevice, throttleDevice)
+				dt, err := stringToCgroupDeviceRune(t)
+				if err != nil {
+					return nil, err
 				}
-			}
-		}
-		for _, l := range r.HugepageLimits {
-			c.Resources.HugetlbLimit = append(c.Resources.HugetlbLimit, &configs.HugepageLimit{
-				Pagesize: l.Pagesize,
-				Limit:    l.Limit,
-			})
-		}
-		if r.Network != nil {
-			if r.Network.ClassID != nil {
-				c.Resources.NetClsClassid = *r.Network.ClassID
-			}
-			for _, m := range r.Network.Priorities {
-				c.Resources.NetPrioIfpriomap = append(c.Resources.NetPrioIfpriomap, &configs.IfPrioMap{
-					Interface: m.Name,
-					Priority:  int64(m.Priority),
+				c.Resources.Devices = append(c.Resources.Devices, &configs.DeviceRule{
+					Type:        dt,
+					Major:       major,
+					Minor:       minor,
+					Permissions: configs.DevicePermissions(d.Access),
+					Allow:       d.Allow,
 				})
+			}
+			if r.Memory != nil {
+				if r.Memory.Limit != nil {
+					c.Resources.Memory = *r.Memory.Limit
+				}
+				if r.Memory.Reservation != nil {
+					c.Resources.MemoryReservation = *r.Memory.Reservation
+				}
+				if r.Memory.Swap != nil {
+					c.Resources.MemorySwap = *r.Memory.Swap
+				}
+				if r.Memory.Kernel != nil {
+					c.Resources.KernelMemory = *r.Memory.Kernel
+				}
+				if r.Memory.KernelTCP != nil {
+					c.Resources.KernelMemoryTCP = *r.Memory.KernelTCP
+				}
+				if r.Memory.Swappiness != nil {
+					c.Resources.MemorySwappiness = r.Memory.Swappiness
+				}
+				if r.Memory.DisableOOMKiller != nil {
+					c.Resources.OomKillDisable = *r.Memory.DisableOOMKiller
+				}
+			}
+			if r.CPU != nil {
+				if r.CPU.Shares != nil {
+					c.Resources.CpuShares = *r.CPU.Shares
+
+					//CpuWeight is used for cgroupv2 and should be converted
+					c.Resources.CpuWeight = cgroups.ConvertCPUSharesToCgroupV2Value(c.Resources.CpuShares)
+				}
+				if r.CPU.Quota != nil {
+					c.Resources.CpuQuota = *r.CPU.Quota
+				}
+				if r.CPU.Period != nil {
+					c.Resources.CpuPeriod = *r.CPU.Period
+				}
+				if r.CPU.RealtimeRuntime != nil {
+					c.Resources.CpuRtRuntime = *r.CPU.RealtimeRuntime
+				}
+				if r.CPU.RealtimePeriod != nil {
+					c.Resources.CpuRtPeriod = *r.CPU.RealtimePeriod
+				}
+				if r.CPU.Cpus != "" {
+					c.Resources.CpusetCpus = r.CPU.Cpus
+				}
+				if r.CPU.Mems != "" {
+					c.Resources.CpusetMems = r.CPU.Mems
+				}
+			}
+			if r.Pids != nil {
+				c.Resources.PidsLimit = r.Pids.Limit
+			}
+			if r.BlockIO != nil {
+				if r.BlockIO.Weight != nil {
+					c.Resources.BlkioWeight = *r.BlockIO.Weight
+				}
+				if r.BlockIO.LeafWeight != nil {
+					c.Resources.BlkioLeafWeight = *r.BlockIO.LeafWeight
+				}
+				if r.BlockIO.WeightDevice != nil {
+					for _, wd := range r.BlockIO.WeightDevice {
+						var weight, leafWeight uint16
+						if wd.Weight != nil {
+							weight = *wd.Weight
+						}
+						if wd.LeafWeight != nil {
+							leafWeight = *wd.LeafWeight
+						}
+						weightDevice := configs.NewWeightDevice(wd.Major, wd.Minor, weight, leafWeight)
+						c.Resources.BlkioWeightDevice = append(c.Resources.BlkioWeightDevice, weightDevice)
+					}
+				}
+				if r.BlockIO.ThrottleReadBpsDevice != nil {
+					for _, td := range r.BlockIO.ThrottleReadBpsDevice {
+						rate := td.Rate
+						throttleDevice := configs.NewThrottleDevice(td.Major, td.Minor, rate)
+						c.Resources.BlkioThrottleReadBpsDevice = append(c.Resources.BlkioThrottleReadBpsDevice, throttleDevice)
+					}
+				}
+				if r.BlockIO.ThrottleWriteBpsDevice != nil {
+					for _, td := range r.BlockIO.ThrottleWriteBpsDevice {
+						rate := td.Rate
+						throttleDevice := configs.NewThrottleDevice(td.Major, td.Minor, rate)
+						c.Resources.BlkioThrottleWriteBpsDevice = append(c.Resources.BlkioThrottleWriteBpsDevice, throttleDevice)
+					}
+				}
+				if r.BlockIO.ThrottleReadIOPSDevice != nil {
+					for _, td := range r.BlockIO.ThrottleReadIOPSDevice {
+						rate := td.Rate
+						throttleDevice := configs.NewThrottleDevice(td.Major, td.Minor, rate)
+						c.Resources.BlkioThrottleReadIOPSDevice = append(c.Resources.BlkioThrottleReadIOPSDevice, throttleDevice)
+					}
+				}
+				if r.BlockIO.ThrottleWriteIOPSDevice != nil {
+					for _, td := range r.BlockIO.ThrottleWriteIOPSDevice {
+						rate := td.Rate
+						throttleDevice := configs.NewThrottleDevice(td.Major, td.Minor, rate)
+						c.Resources.BlkioThrottleWriteIOPSDevice = append(c.Resources.BlkioThrottleWriteIOPSDevice, throttleDevice)
+					}
+				}
+			}
+			for _, l := range r.HugepageLimits {
+				c.Resources.HugetlbLimit = append(c.Resources.HugetlbLimit, &configs.HugepageLimit{
+					Pagesize: l.Pagesize,
+					Limit:    l.Limit,
+				})
+			}
+			if r.Network != nil {
+				if r.Network.ClassID != nil {
+					c.Resources.NetClsClassid = *r.Network.ClassID
+				}
+				for _, m := range r.Network.Priorities {
+					c.Resources.NetPrioIfpriomap = append(c.Resources.NetPrioIfpriomap, &configs.IfPrioMap{
+						Interface: m.Name,
+						Priority:  int64(m.Priority),
+					})
+				}
 			}
 		}
 	}
-	// append the default allowed devices to the end of the list
-	c.Resources.Devices = append(c.Resources.Devices, AllowedDevices...)
+	// Append the default allowed devices to the end of the list.
+	// XXX: Really this should be prefixed...
+	for _, device := range AllowedDevices {
+		c.Resources.Devices = append(c.Resources.Devices, &device.DeviceRule)
+	}
 	return c, nil
 }
 
-func stringToCgroupDeviceRune(s string) (rune, error) {
+func stringToCgroupDeviceRune(s string) (configs.DeviceType, error) {
 	switch s {
 	case "a":
-		return 'a', nil
+		return configs.WildcardDevice, nil
 	case "b":
-		return 'b', nil
+		return configs.BlockDevice, nil
 	case "c":
-		return 'c', nil
+		return configs.CharDevice, nil
 	default:
 		return 0, fmt.Errorf("invalid cgroup device type %q", s)
 	}
 }
 
-func stringToDeviceRune(s string) (rune, error) {
+func stringToDeviceRune(s string) (configs.DeviceType, error) {
 	switch s {
 	case "p":
-		return 'p', nil
-	case "u":
-		return 'u', nil
+		return configs.FifoDevice, nil
+	case "u", "c":
+		return configs.CharDevice, nil
 	case "b":
-		return 'b', nil
-	case "c":
-		return 'c', nil
+		return configs.BlockDevice, nil
 	default:
 		return 0, fmt.Errorf("invalid device type %q", s)
 	}
 }
 
 func createDevices(spec *specs.Spec, config *configs.Config) error {
-	// add whitelisted devices
-	config.Devices = []*configs.Device{
-		{
-			Type:     'c',
-			Path:     "/dev/null",
-			Major:    1,
-			Minor:    3,
-			FileMode: 0666,
-			Uid:      0,
-			Gid:      0,
-		},
-		{
-			Type:     'c',
-			Path:     "/dev/random",
-			Major:    1,
-			Minor:    8,
-			FileMode: 0666,
-			Uid:      0,
-			Gid:      0,
-		},
-		{
-			Type:     'c',
-			Path:     "/dev/full",
-			Major:    1,
-			Minor:    7,
-			FileMode: 0666,
-			Uid:      0,
-			Gid:      0,
-		},
-		{
-			Type:     'c',
-			Path:     "/dev/tty",
-			Major:    5,
-			Minor:    0,
-			FileMode: 0666,
-			Uid:      0,
-			Gid:      0,
-		},
-		{
-			Type:     'c',
-			Path:     "/dev/zero",
-			Major:    1,
-			Minor:    5,
-			FileMode: 0666,
-			Uid:      0,
-			Gid:      0,
-		},
-		{
-			Type:     'c',
-			Path:     "/dev/urandom",
-			Major:    1,
-			Minor:    9,
-			FileMode: 0666,
-			Uid:      0,
-			Gid:      0,
-		},
+	// Add default set of devices.
+	for _, device := range AllowedDevices {
+		if device.Path != "" {
+			config.Devices = append(config.Devices, device)
+		}
 	}
-	// merge in additional devices from the spec
+	// Merge in additional devices from the spec.
 	if spec.Linux != nil {
 		for _, d := range spec.Linux.Devices {
 			var uid, gid uint32
@@ -606,10 +677,12 @@ func createDevices(spec *specs.Spec, config *configs.Config) error {
 				filemode = *d.FileMode
 			}
 			device := &configs.Device{
-				Type:     dt,
+				DeviceRule: configs.DeviceRule{
+					Type:  dt,
+					Major: d.Major,
+					Minor: d.Minor,
+				},
 				Path:     d.Path,
-				Major:    d.Major,
-				Minor:    d.Minor,
 				FileMode: filemode,
 				Uid:      uid,
 				Gid:      gid,
@@ -779,9 +852,10 @@ func SetupSeccomp(config *specs.LinuxSeccomp) (*configs.Seccomp, error) {
 
 		for _, name := range call.Names {
 			newCall := configs.Syscall{
-				Name:   name,
-				Action: newAction,
-				Args:   []*configs.Arg{},
+				Name:     name,
+				Action:   newAction,
+				ErrnoRet: call.ErrnoRet,
+				Args:     []*configs.Arg{},
 			}
 			// Loop through all the arguments of the syscall and convert them
 			for _, arg := range call.Args {
@@ -807,20 +881,31 @@ func SetupSeccomp(config *specs.LinuxSeccomp) (*configs.Seccomp, error) {
 }
 
 func createHooks(rspec *specs.Spec, config *configs.Config) {
-	config.Hooks = &configs.Hooks{}
+	config.Hooks = configs.Hooks{}
 	if rspec.Hooks != nil {
-
 		for _, h := range rspec.Hooks.Prestart {
 			cmd := createCommandHook(h)
-			config.Hooks.Prestart = append(config.Hooks.Prestart, configs.NewCommandHook(cmd))
+			config.Hooks[configs.Prestart] = append(config.Hooks[configs.Prestart], configs.NewCommandHook(cmd))
+		}
+		for _, h := range rspec.Hooks.CreateRuntime {
+			cmd := createCommandHook(h)
+			config.Hooks[configs.CreateRuntime] = append(config.Hooks[configs.CreateRuntime], configs.NewCommandHook(cmd))
+		}
+		for _, h := range rspec.Hooks.CreateContainer {
+			cmd := createCommandHook(h)
+			config.Hooks[configs.CreateContainer] = append(config.Hooks[configs.CreateContainer], configs.NewCommandHook(cmd))
+		}
+		for _, h := range rspec.Hooks.StartContainer {
+			cmd := createCommandHook(h)
+			config.Hooks[configs.StartContainer] = append(config.Hooks[configs.StartContainer], configs.NewCommandHook(cmd))
 		}
 		for _, h := range rspec.Hooks.Poststart {
 			cmd := createCommandHook(h)
-			config.Hooks.Poststart = append(config.Hooks.Poststart, configs.NewCommandHook(cmd))
+			config.Hooks[configs.Poststart] = append(config.Hooks[configs.Poststart], configs.NewCommandHook(cmd))
 		}
 		for _, h := range rspec.Hooks.Poststop {
 			cmd := createCommandHook(h)
-			config.Hooks.Poststop = append(config.Hooks.Poststop, configs.NewCommandHook(cmd))
+			config.Hooks[configs.Poststop] = append(config.Hooks[configs.Poststop], configs.NewCommandHook(cmd))
 		}
 	}
 }

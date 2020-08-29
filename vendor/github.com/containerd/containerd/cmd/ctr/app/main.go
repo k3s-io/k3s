@@ -27,6 +27,7 @@ import (
 	"github.com/containerd/containerd/cmd/ctr/commands/install"
 	"github.com/containerd/containerd/cmd/ctr/commands/leases"
 	namespacesCmd "github.com/containerd/containerd/cmd/ctr/commands/namespaces"
+	ociCmd "github.com/containerd/containerd/cmd/ctr/commands/oci"
 	"github.com/containerd/containerd/cmd/ctr/commands/plugins"
 	"github.com/containerd/containerd/cmd/ctr/commands/pprof"
 	"github.com/containerd/containerd/cmd/ctr/commands/run"
@@ -71,15 +72,17 @@ stable from release to release of the containerd project.`
 
 containerd CLI
 `
+	app.EnableBashCompletion = true
 	app.Flags = []cli.Flag{
 		cli.BoolFlag{
 			Name:  "debug",
 			Usage: "enable debug output in logs",
 		},
 		cli.StringFlag{
-			Name:  "address, a",
-			Usage: "address for containerd's GRPC server",
-			Value: defaults.DefaultAddress,
+			Name:   "address, a",
+			Usage:  "address for containerd's GRPC server",
+			Value:  defaults.DefaultAddress,
+			EnvVar: "CONTAINERD_ADDRESS",
 		},
 		cli.DurationFlag{
 			Name:  "timeout",
@@ -110,6 +113,7 @@ containerd CLI
 		snapshots.Command,
 		tasks.Command,
 		install.Command,
+		ociCmd.Command,
 	}, extraCmds...)
 	app.Before = func(context *cli.Context) error {
 		if context.GlobalBool("debug") {

@@ -102,8 +102,13 @@ func Server(ctx context.Context, cfg *config.Control) error {
 		return err
 	}
 
+	basicAuth, err := basicAuthenticator(runtime.PasswdFile)
+	if err != nil {
+		return err
+	}
+
+	runtime.Authenticator = combineAuthenticators(basicAuth, auth)
 	runtime.Handler = handler
-	runtime.Authenticator = auth
 
 	if !cfg.NoScheduler {
 		if err := scheduler(cfg, runtime); err != nil {
@@ -195,7 +200,6 @@ func apiServer(ctx context.Context, cfg *config.Control, runtime *config.Control
 	argsMap["service-account-key-file"] = runtime.ServiceKey
 	argsMap["service-account-issuer"] = version.Program
 	argsMap["api-audiences"] = "unknown"
-	argsMap["basic-auth-file"] = runtime.PasswdFile
 	argsMap["kubelet-certificate-authority"] = runtime.ServerCA
 	argsMap["kubelet-client-certificate"] = runtime.ClientKubeAPICert
 	argsMap["kubelet-client-key"] = runtime.ClientKubeAPIKey

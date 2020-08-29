@@ -20,6 +20,8 @@ type Process struct {
 	handle         vmcompute.HcsProcess
 	processID      int
 	system         *System
+	hasCachedStdio bool
+	stdioLock      sync.Mutex
 	stdin          io.WriteCloser
 	stdout         io.ReadCloser
 	stderr         io.ReadCloser
@@ -272,8 +274,8 @@ func (process *Process) ExitCode() (int, error) {
 }
 
 // StdioLegacy returns the stdin, stdout, and stderr pipes, respectively. Closing
-// these pipes does not close the underlying pipes; but this function can only
-// be called once on each Process.
+// these pipes does not close the underlying pipes. Once returned, these pipes
+// are the responsibility of the caller to close.
 func (process *Process) StdioLegacy() (_ io.WriteCloser, _ io.ReadCloser, _ io.ReadCloser, err error) {
 	operation := "hcsshim::Process::StdioLegacy"
 	ctx, span := trace.StartSpan(context.Background(), operation)
@@ -288,6 +290,15 @@ func (process *Process) StdioLegacy() (_ io.WriteCloser, _ io.ReadCloser, _ io.R
 
 	if process.handle == 0 {
 		return nil, nil, nil, makeProcessError(process, operation, ErrAlreadyClosed, nil)
+	}
+
+	process.stdioLock.Lock()
+	defer process.stdioLock.Unlock()
+	if process.hasCachedStdio {
+		stdin, stdout, stderr := process.stdin, process.stdout, process.stderr
+		process.stdin, process.stdout, process.stderr = nil, nil, nil
+		process.hasCachedStdio = false
+		return stdin, stdout, stderr, nil
 	}
 
 	processInfo, resultJSON, err := vmcompute.HcsGetProcessInfo(ctx, process.handle)
@@ -307,6 +318,8 @@ func (process *Process) StdioLegacy() (_ io.WriteCloser, _ io.ReadCloser, _ io.R
 // Stdio returns the stdin, stdout, and stderr pipes, respectively.
 // To close them, close the process handle.
 func (process *Process) Stdio() (stdin io.Writer, stdout, stderr io.Reader) {
+	process.stdioLock.Lock()
+	defer process.stdioLock.Unlock()
 	return process.stdin, process.stdout, process.stderr
 }
 
@@ -340,9 +353,13 @@ func (process *Process) CloseStdin(ctx context.Context) error {
 		return makeProcessError(process, operation, err, events)
 	}
 
+	process.stdioLock.Lock()
 	if process.stdin != nil {
 		process.stdin.Close()
+		process.stdin = nil
 	}
+	process.stdioLock.Unlock()
+
 	return nil
 }
 
@@ -365,15 +382,20 @@ func (process *Process) Close() (err error) {
 		return nil
 	}
 
+	process.stdioLock.Lock()
 	if process.stdin != nil {
 		process.stdin.Close()
+		process.stdin = nil
 	}
 	if process.stdout != nil {
 		process.stdout.Close()
+		process.stdout = nil
 	}
 	if process.stderr != nil {
 		process.stderr.Close()
+		process.stderr = nil
 	}
+	process.stdioLock.Unlock()
 
 	if err = process.unregisterCallback(ctx); err != nil {
 		return makeProcessError(process, operation, err, nil)

@@ -18,10 +18,13 @@ package monitor
 
 import (
 	"context"
+	"net/url"
 	"syscall"
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
+	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 )
 
 type stopChange struct {
@@ -34,14 +37,30 @@ func (s *stopChange) apply(ctx context.Context, client *containerd.Client) error
 
 type startChange struct {
 	container containerd.Container
-	logPath   string
+	logURI    string
+
+	// Deprecated(in release 1.5): but recognized now, prefer to use logURI
+	logPath string
 }
 
 func (s *startChange) apply(ctx context.Context, client *containerd.Client) error {
 	log := cio.NullIO
-	if s.logPath != "" {
+
+	if s.logURI != "" {
+		uri, err := url.Parse(s.logURI)
+		if err != nil {
+			return errors.Wrapf(err, "failed to parse %v into url", s.logURI)
+		}
+		log = cio.LogURI(uri)
+	} else if s.logPath != "" {
 		log = cio.LogFile(s.logPath)
 	}
+
+	if s.logURI != "" && s.logPath != "" {
+		logrus.Warnf("LogPathLabel=%v has been deprecated, using LogURILabel=%v",
+			s.logPath, s.logURI)
+	}
+
 	killTask(ctx, s.container)
 	task, err := s.container.NewTask(ctx, log)
 	if err != nil {
