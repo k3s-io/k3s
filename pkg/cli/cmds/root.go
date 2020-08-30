@@ -10,7 +10,13 @@ import (
 )
 
 var (
-	Debug bool
+	Debug     bool
+	DebugFlag = cli.BoolFlag{
+		Name:        "debug",
+		Usage:       "Turn on debug logs",
+		Destination: &Debug,
+		EnvVar:      version.ProgramUpper + "_DEBUG",
+	}
 )
 
 func init() {
@@ -29,20 +35,21 @@ func NewApp() *cli.App {
 		fmt.Printf("%s version %s\n", app.Name, app.Version)
 	}
 	app.Flags = []cli.Flag{
-		cli.BoolFlag{
-			Name:        "debug",
-			Usage:       "Turn on debug logs",
-			Destination: &Debug,
-			EnvVar:      version.ProgramUpper + "_DEBUG",
-		},
+		DebugFlag,
 	}
+	app.Before = SetupDebug(nil)
 
-	app.Before = func(ctx *cli.Context) error {
+	return app
+}
+
+func SetupDebug(next func(ctx *cli.Context) error) func(ctx *cli.Context) error {
+	return func(ctx *cli.Context) error {
 		if Debug {
 			logrus.SetLevel(logrus.DebugLevel)
 		}
+		if next != nil {
+			return next(ctx)
+		}
 		return nil
 	}
-
-	return app
 }

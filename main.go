@@ -14,6 +14,7 @@ import (
 	"github.com/rancher/k3s/pkg/cli/crictl"
 	"github.com/rancher/k3s/pkg/cli/kubectl"
 	"github.com/rancher/k3s/pkg/cli/server"
+	"github.com/rancher/k3s/pkg/configfilearg"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 )
@@ -27,7 +28,7 @@ func main() {
 		cmds.NewCRICTL(crictl.Run),
 	}
 
-	if err := app.Run(os.Args); err != nil {
+	if err := app.Run(configfilearg.MustParse(os.Args)); err != nil {
 		logrus.Fatal(err)
 	}
 }

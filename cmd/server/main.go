@@ -12,6 +12,7 @@ import (
 	"github.com/rancher/k3s/pkg/cli/ctr"
 	"github.com/rancher/k3s/pkg/cli/kubectl"
 	"github.com/rancher/k3s/pkg/cli/server"
+	"github.com/rancher/k3s/pkg/configfilearg"
 	"github.com/rancher/k3s/pkg/containerd"
 	ctr2 "github.com/rancher/k3s/pkg/ctr"
 	kubectl2 "github.com/rancher/k3s/pkg/kubectl"
@@ -43,7 +44,7 @@ func main() {
 		cmds.NewCtrCommand(ctr.Run),
 	}
 
-	err := app.Run(os.Args)
+	err := app.Run(configfilearg.MustParse(os.Args))
 	if err != nil {
 		logrus.Fatal(err)
 	}
