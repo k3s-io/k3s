@@ -74,7 +74,7 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 		Name:      "server",
 		Usage:     "Run management server",
 		UsageText: appName + " server [OPTIONS]",
-		Before:    CheckSELinuxFlags,
+		Before:    SetupDebug(CheckSELinuxFlags),
 		Action:    action,
 		Flags: []cli.Flag{
 			VLevel,
