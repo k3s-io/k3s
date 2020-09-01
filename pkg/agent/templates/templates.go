@@ -67,6 +67,7 @@ const ContainerdConfigTemplate = `
   {{ if $v.TLS.CAFile }}ca_file = "{{ $v.TLS.CAFile }}"{{end}}
   {{ if $v.TLS.CertFile }}cert_file = "{{ $v.TLS.CertFile }}"{{end}}
   {{ if $v.TLS.KeyFile }}key_file = "{{ $v.TLS.KeyFile }}"{{end}}
+  {{ if $v.TLS.InsecureSkipVerify }}insecure_skip_verify = true{{end}}
 {{end}}
 {{end}}
 {{end}}
