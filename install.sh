@@ -554,7 +554,7 @@ do_unmount() {
     MOUNTS=$(printf $MOUNTS | grep "^$1" | sort -r)
     if [ -n "${MOUNTS}" ]; then
         set -x
-        umount ${MOUNTS}
+        xargs -n 1 umount <<< ${MOUNTS}
     else
         set -x
     fi
