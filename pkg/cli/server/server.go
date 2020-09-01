@@ -266,7 +266,7 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	}
 
 	agentConfig := cmds.AgentConfig
-	agentConfig.Debug = app.GlobalBool("bool")
+	agentConfig.Debug = app.GlobalBool("debug")
 	agentConfig.DataDir = filepath.Dir(serverConfig.ControlConfig.DataDir)
 	agentConfig.ServerURL = url
 	agentConfig.Token = token
