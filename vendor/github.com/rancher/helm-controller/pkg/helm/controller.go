@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 
 	helmv1 "github.com/rancher/helm-controller/pkg/apis/helm.cattle.io/v1"
 	helmcontroller "github.com/rancher/helm-controller/pkg/generated/controllers/helm.cattle.io/v1"
@@ -38,12 +39,12 @@ type Controller struct {
 }
 
 const (
-	image         = "rancher/klipper-helm:v0.3.0"
-	Label         = "helmcharts.helm.cattle.io/chart"
-	Annotation    = "helmcharts.helm.cattle.io/configHash"
-	CRDName       = "helmcharts.helm.cattle.io"
-	ConfigCRDName = "helmchartconfigs.helm.cattle.io"
-	Name          = "helm-controller"
+	DefaultJobImage = "rancher/klipper-helm:v0.3.0"
+	Label           = "helmcharts.helm.cattle.io/chart"
+	Annotation      = "helmcharts.helm.cattle.io/configHash"
+	CRDName         = "helmcharts.helm.cattle.io"
+	ConfigCRDName   = "helmchartconfigs.helm.cattle.io"
+	Name            = "helm-controller"
 )
 
 func Register(ctx context.Context, apply apply.Apply,
@@ -183,6 +184,11 @@ func (c *Controller) OnConfChange(key string, conf *helmv1.HelmChartConfig) (*he
 func job(chart *helmv1.HelmChart) (*batch.Job, *core.ConfigMap, *core.ConfigMap) {
 	oneThousand := int32(1000)
 
+	jobImage := strings.TrimSpace(chart.Spec.JobImage)
+	if jobImage == "" {
+		jobImage = DefaultJobImage
+	}
+
 	action := "install"
 	if chart.DeletionTimestamp != nil {
 		action = "delete"
@@ -214,7 +220,7 @@ func job(chart *helmv1.HelmChart) (*batch.Job, *core.ConfigMap, *core.ConfigMap)
 					Containers: []core.Container{
 						{
 							Name:            "helm",
-							Image:           image,
+							Image:           jobImage,
 							ImagePullPolicy: core.PullIfNotPresent,
 							Args:            args(chart),
 							Env: []core.EnvVar{
