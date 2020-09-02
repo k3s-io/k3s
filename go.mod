@@ -97,7 +97,7 @@ require (
 	github.com/pierrec/lz4 v2.5.2+incompatible
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/dynamiclistener v0.2.1
-	github.com/rancher/helm-controller v0.7.2
+	github.com/rancher/helm-controller v0.7.3
 	github.com/rancher/kine v0.4.0
 	github.com/rancher/remotedialer v0.2.0
 	github.com/rancher/spur v0.0.0-20200617165101-8702c8e4ce7a
