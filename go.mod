@@ -86,13 +86,13 @@ require (
 	github.com/rancher/helm-controller v0.7.2
 	github.com/rancher/kine v0.4.0
 	github.com/rancher/remotedialer v0.2.0
-	github.com/rancher/spur v0.0.0-20200617165101-8702c8e4ce7a
 	github.com/rancher/wrangler v0.6.1
 	github.com/rancher/wrangler-api v0.6.0
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/rootless-containers/rootlesskit v0.10.0
 	github.com/sirupsen/logrus v1.6.0
 	github.com/spf13/pflag v1.0.5
+	github.com/stretchr/testify v1.6.1
 	github.com/tchap/go-patricia v2.3.0+incompatible // indirect
 	github.com/urfave/cli v1.22.2
 	go.etcd.io/etcd v0.5.0-alpha.5.0.20200819165624-17cef6e3e9d5

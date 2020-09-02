@@ -1,16 +1,17 @@
 package cmds
 
 import (
-	"github.com/rancher/spur/cli"
+	"github.com/rancher/k3s/pkg/version"
+	"github.com/urfave/cli"
 )
 
 var (
-	DefaultConfig = "/etc/rancher/k3s/config.yaml"
-	ConfigFlag    = cli.StringFlag{
-		Name:    "config",
-		Aliases: []string{"c"},
-		Usage:   "(config) Load configuration from `FILE`",
-		EnvVars: []string{"K3S_CONFIG_FILE"},
-		Value:   DefaultConfig,
+	// ConfigFlag is here to show to the user, but the actually processing is done by configfileargs before
+	// call urfave
+	ConfigFlag = cli.StringFlag{
+		Name:   "config,c",
+		Usage:  "(config) Load configuration from `FILE`",
+		EnvVar: version.ProgramUpper + "_CONFIG_FILE",
+		Value:  "/etc/rancher/" + version.Program + "/config.yaml",
 	}
 )

@@ -13,9 +13,9 @@ import (
 	"github.com/rancher/k3s/pkg/netutil"
 	"github.com/rancher/k3s/pkg/token"
 	"github.com/rancher/k3s/pkg/version"
-	"github.com/rancher/spur/cli"
 	"github.com/rancher/wrangler/pkg/signals"
 	"github.com/sirupsen/logrus"
+	"github.com/urfave/cli"
 )
 
 func Run(ctx *cli.Context) error {
@@ -23,6 +23,9 @@ func Run(ctx *cli.Context) error {
 	// database credentials or other secrets.
 	gspt.SetProcTitle(os.Args[0] + " agent")
 
+	if err := cmds.InitLogging(); err != nil {
+		return err
+	}
 	if os.Getuid() != 0 && runtime.GOOS != "windows" {
 		return fmt.Errorf("agent must be ran as root")
 	}
@@ -59,7 +62,7 @@ func Run(ctx *cli.Context) error {
 	}
 
 	cfg := cmds.AgentConfig
-	cfg.Debug = ctx.Bool("debug")
+	cfg.Debug = ctx.GlobalBool("debug")
 	cfg.DataDir = dataDir
 
 	contextCtx := signals.SetupSignalHandler(context.Background())

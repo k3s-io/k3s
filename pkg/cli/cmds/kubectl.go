@@ -1,14 +1,15 @@
 package cmds
 
 import (
-	"github.com/rancher/spur/cli"
+	"github.com/urfave/cli"
 )
 
-func NewKubectlCommand(action func(*cli.Context) error) *cli.Command {
-	return &cli.Command{
+func NewKubectlCommand(action func(*cli.Context) error) cli.Command {
+	return cli.Command{
 		Name:            "kubectl",
 		Usage:           "Run kubectl",
 		SkipFlagParsing: true,
+		SkipArgReorder:  true,
 		Action:          action,
 	}
 }

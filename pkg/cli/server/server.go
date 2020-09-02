@@ -19,9 +19,9 @@ import (
 	"github.com/rancher/k3s/pkg/server"
 	"github.com/rancher/k3s/pkg/token"
 	"github.com/rancher/k3s/pkg/version"
-	"github.com/rancher/spur/cli"
 	"github.com/rancher/wrangler/pkg/signals"
 	"github.com/sirupsen/logrus"
+	"github.com/urfave/cli"
 	"k8s.io/apimachinery/pkg/util/net"
 	kubeapiserverflag "k8s.io/component-base/cli/flag"
 	"k8s.io/kubernetes/pkg/master"
@@ -32,6 +32,9 @@ import (
 )
 
 func Run(app *cli.Context) error {
+	if err := cmds.InitLogging(); err != nil {
+		return err
+	}
 	return run(app, &cmds.ServerConfig)
 }
 
@@ -263,7 +266,7 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	}
 
 	agentConfig := cmds.AgentConfig
-	agentConfig.Debug = app.Bool("debug")
+	agentConfig.Debug = app.GlobalBool("debug")
 	agentConfig.DataDir = filepath.Dir(serverConfig.ControlConfig.DataDir)
 	agentConfig.ServerURL = url
 	agentConfig.Token = token

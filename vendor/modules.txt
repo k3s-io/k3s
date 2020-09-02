@@ -759,6 +759,8 @@ github.com/pierrec/lz4
 github.com/pierrec/lz4/internal/xxh32
 # github.com/pkg/errors v0.9.1
 github.com/pkg/errors
+# github.com/pmezard/go-difflib v1.0.0
+github.com/pmezard/go-difflib/difflib
 # github.com/pquerna/cachecontrol v0.0.0-20171018203845-0dec1b30a021
 github.com/pquerna/cachecontrol
 github.com/pquerna/cachecontrol/cacheobject
@@ -820,11 +822,6 @@ github.com/rancher/kine/pkg/server
 github.com/rancher/kine/pkg/tls
 # github.com/rancher/remotedialer v0.2.0
 github.com/rancher/remotedialer
-# github.com/rancher/spur v0.0.0-20200617165101-8702c8e4ce7a
-github.com/rancher/spur/cli
-github.com/rancher/spur/cli/altsrc
-github.com/rancher/spur/flag
-github.com/rancher/spur/generic
 # github.com/rancher/wrangler v0.6.1
 github.com/rancher/wrangler/pkg/apply
 github.com/rancher/wrangler/pkg/apply/injectors
@@ -916,6 +913,8 @@ github.com/spf13/afero/mem
 github.com/spf13/cobra
 # github.com/spf13/pflag v1.0.5
 github.com/spf13/pflag
+# github.com/stretchr/testify v1.6.1
+github.com/stretchr/testify/assert
 # github.com/syndtr/gocapability v0.0.0-20180916011248-d98352740cb2
 github.com/syndtr/gocapability/capability
 # github.com/tchap/go-patricia v2.3.0+incompatible
