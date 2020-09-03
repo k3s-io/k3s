@@ -13,7 +13,7 @@ var (
 	Debug     bool
 	DebugFlag = cli.BoolFlag{
 		Name:        "debug",
-		Usage:       "Turn on debug logs",
+		Usage:       "(logging) Turn on debug logs",
 		Destination: &Debug,
 		EnvVar:      version.ProgramUpper + "_DEBUG",
 	}
