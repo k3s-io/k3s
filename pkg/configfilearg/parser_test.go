@@ -150,14 +150,15 @@ func TestConfigFile(t *testing.T) {
 
 func TestParse(t *testing.T) {
 	testDataOutput := []string{
-		"--foo-bar", "baz",
-		"--a-slice", "1",
-		"--a-slice", "2",
-		"--a-slice", "",
-		"--a-slice", "three",
-		"--isempty",
-		"-c", "b",
-		"--islast", "true",
+		"--foo-bar=baz",
+		"--a-slice=1",
+		"--a-slice=2",
+		"--a-slice=",
+		"--a-slice=three",
+		"--isempty=",
+		"-c=b",
+		"--isfalse=false",
+		"--islast=true",
 	}
 
 	defParser := Parser{
