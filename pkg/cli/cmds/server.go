@@ -77,6 +77,8 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 		Before:    SetupDebug(CheckSELinuxFlags),
 		Action:    action,
 		Flags: []cli.Flag{
+			ConfigFlag,
+			DebugFlag,
 			VLevel,
 			VModule,
 			LogFile,
