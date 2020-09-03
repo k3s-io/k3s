@@ -202,7 +202,7 @@ func preloadImages(ctx context.Context, cfg *config.Node) error {
 				continue
 			}
 		}
-		_, err = client.Import(ctxContainerD, imageReader)
+		_, err = client.Import(ctxContainerD, imageReader, containerd.WithAllPlatforms(true))
 		file.Close()
 		if err != nil {
 			logrus.Errorf("Unable to import %s: %v", filePath, err)
