@@ -6,4 +6,5 @@ a-slice:
 - three
 isempty:
 c: b
+isfalse: false
 islast: true
