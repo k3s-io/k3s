@@ -104,15 +104,11 @@ func readConfigFile(file string) (result []string, _ error) {
 
 		if slice, ok := v.([]interface{}); ok {
 			for _, v := range slice {
-				result = append(result, prefix+k, convert.ToString(v))
-				result = append(result)
+				result = append(result, prefix+k+"="+convert.ToString(v))
 			}
 		} else {
 			str := convert.ToString(v)
-			result = append(result, prefix+k)
-			if str != "" {
-				result = append(result, str)
-			}
+			result = append(result, prefix+k+"="+str)
 		}
 	}
 
