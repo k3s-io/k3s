@@ -80,7 +80,7 @@ func getNodeNamedCrt(nodeName, nodeIP, nodePasswordFile string) HTTPRequester {
 			return nil, err
 		}
 		req.Header.Set(version.Program+"-Node-Password", nodePassword)
-		req.Header.Set("X-K3S-NODE-IP", nodeIP)
+		req.Header.Set("X-"+version.Program+"-NODE-IP", nodeIP)
 
 		resp, err := client.Do(req)
 		if err != nil {

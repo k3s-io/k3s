@@ -142,7 +142,7 @@ func servingKubeletCert(server *config.Control, keyFile string) http.Handler {
 		}
 
 		ips := []net.IP{net.ParseIP("127.0.0.1")}
-		if nodeIP := req.Header.Get("X-K3S-NODE-IP"); nodeIP != "" {
+		if nodeIP := req.Header.Get("X-" + version.Program + "-NODE-IP"); nodeIP != "" {
 			ips = append(ips, net.ParseIP(nodeIP))
 		}
 
