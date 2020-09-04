@@ -12,7 +12,7 @@ If you're interested in contributing documentation, please note the following:
 
 ## Developer Certificate Of Origin ##
 
-To contribute to this project, you must agree to the Developer Certificate of Origin (DCO) for each commit you make. The DCO is a simple statement that you, as a contributor, have the legal rite to make the contribution.
+To contribute to this project, you must agree to the Developer Certificate of Origin (DCO) for each commit you make. The DCO is a simple statement that you, as a contributor, have the legal right to make the contribution.
 
 See the [DCO](DCO) file for the full text of what you must agree to.
 
