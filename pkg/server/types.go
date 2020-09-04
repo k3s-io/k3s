@@ -12,5 +12,5 @@ type Config struct {
 	ControlConfig    config.Control
 	Rootless         bool
 	SupervisorPort   int
-	StartupHooks     []func(context.Context, config.Control) error
+	StartupHooks     []func(context.Context, <-chan struct{}, string) error
 }

@@ -61,7 +61,7 @@ func StartServer(ctx context.Context, config *Config) error {
 	}
 
 	for _, hook := range config.StartupHooks {
-		if err := hook(ctx, config.ControlConfig); err != nil {
+		if err := hook(ctx, config.ControlConfig.Runtime.APIServerReady, config.ControlConfig.Runtime.KubeConfigAdmin); err != nil {
 			return errors.Wrap(err, "startup hook")
 		}
 	}

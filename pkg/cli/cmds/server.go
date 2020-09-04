@@ -3,7 +3,6 @@ package cmds
 import (
 	"context"
 
-	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/version"
 	"github.com/urfave/cli"
 )
@@ -60,7 +59,7 @@ type Server struct {
 	ClusterReset             bool
 	ClusterResetRestorePath  string
 	EncryptSecrets           bool
-	StartupHooks             []func(context.Context, config.Control) error
+	StartupHooks             []func(context.Context, <-chan struct{}, string) error
 	EtcdDisableSnapshots     bool
 	EtcdSnapshotDir          string
 	EtcdSnapshotCron         string
