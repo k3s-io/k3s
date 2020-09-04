@@ -70,7 +70,7 @@ There are two major ways that K3s is lighter weight than upstream Kubernetes:
 1. The memory footprint to run it is smaller
 2. The binary, which contains all the non-containerized components needed to run a cluster, is smaller
 
-The memory footprint is reduced primarily by running many components inside of single process. This eliminates significant overhead that would otherwise be duplicated for each component.
+The memory footprint is reduced primarily by running many components inside of a single process. This eliminates significant overhead that would otherwise be duplicated for each component.
 
 The binary is smaller by removing third-party storage drivers and cloud providers, which is explained in more detail below.
 
