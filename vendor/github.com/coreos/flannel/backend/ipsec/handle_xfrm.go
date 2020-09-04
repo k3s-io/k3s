@@ -30,7 +30,7 @@ func AddXFRMPolicy(myLease, remoteLease *subnet.Lease, dir netlink.Dir, reqID in
 
 	dst := remoteLease.Subnet.ToIPNet()
 
-	policy := netlink.XfrmPolicy{
+	policy := &netlink.XfrmPolicy{
 		Src: src,
 		Dst: dst,
 		Dir: dir,
@@ -47,14 +47,21 @@ func AddXFRMPolicy(myLease, remoteLease *subnet.Lease, dir netlink.Dir, reqID in
 		Reqid: reqID,
 	}
 
-	log.Infof("Adding ipsec policy: %+v", tmpl)
 
 	policy.Tmpls = append(policy.Tmpls, tmpl)
 
-	if err := netlink.XfrmPolicyAdd(&policy); err != nil {
-		return fmt.Errorf("error adding policy: %+v err: %v", policy, err)
+	existingPolicy, err := netlink.XfrmPolicyGet(policy)
+	if err != nil {
+		log.Infof("Adding ipsec policy: %+v", tmpl)
+		if err := netlink.XfrmPolicyAdd(policy); err != nil {
+			return fmt.Errorf("error adding policy: %+v err: %v", policy, err)
+		}
+	} else {
+		log.Info("Updating ipsec policy %+v with %+v", existingPolicy, policy)
+		if err := netlink.XfrmPolicyUpdate(policy); err != nil {
+			return fmt.Errorf("error updating policy: %+v err: %v", policy, err)
+		}
 	}
-
 	return nil
 }
 

@@ -667,8 +667,6 @@ github.com/rancher/cri-tools v1.19.0-k3s1 h1:c6lqNWyoAB5+NaUREbpZxKXCuYl9he24/DZ
 github.com/rancher/cri-tools v1.19.0-k3s1/go.mod h1:bitvtZRi5F7t505Yw3zPzp22LOao1lqJKHfx6x0hnpw=
 github.com/rancher/dynamiclistener v0.2.1 h1:QiY1jxs2TOLrKB04G36vE2ehEvPMPGiWp8zEHLKB1nE=
 github.com/rancher/dynamiclistener v0.2.1/go.mod h1:9WusTANoiRr8cDWCTtf5txieulezHbpv4vhLADPp0zU=
-github.com/rancher/flannel v0.12.0-k3s1 h1:P23dWSk/9mGT1x2rDWW9JXNrF/0kjftiHwMau/+ZLGM=
-github.com/rancher/flannel v0.12.0-k3s1/go.mod h1:zQ/9Uhaw0yV4Wh6ljVwHVT1x5KuhenZA+6L8lRzOJEY=
 github.com/rancher/go-powershell v0.0.0-20200701182037-6845e6fcfa79 h1:UeC0rjrIel8hHz92cdVN09Cm4Hz+BhsPP/ZvQnPOr58=
 github.com/rancher/go-powershell v0.0.0-20200701182037-6845e6fcfa79/go.mod h1:xi4WpK6Op4m1Lknq61/e+VSjYlTs9bulVOaDNyBdzvk=
 github.com/rancher/go-powershell v0.0.0-20200701184732-233247d45373 h1:BePi97poJ4hXnkP9yX96EmNQgMg+dGScvB1sqIheJ7w=
@@ -810,6 +808,8 @@ github.com/tidwall/pretty v1.0.0/go.mod h1:XNkn88O1ChpSDQmQeStsy+sBenx6DDtFZJxhV
 github.com/tmc/grpc-websocket-proxy v0.0.0-20170815181823-89b8d40f7ca8/go.mod h1:ncp9v5uamzpCO7NfCPTXjqaC+bZgJeR0sMTm6dMHP7U=
 github.com/tmc/grpc-websocket-proxy v0.0.0-20190109142713-0ad062ec5ee5 h1:LnC5Kc/wtumK+WB441p7ynQJzVuNRJiqddSIE3IlSEQ=
 github.com/tmc/grpc-websocket-proxy v0.0.0-20190109142713-0ad062ec5ee5/go.mod h1:ncp9v5uamzpCO7NfCPTXjqaC+bZgJeR0sMTm6dMHP7U=
+github.com/txomon/flannel v0.12.1-0.20200819095346-d52c29a8b34b h1:uHv++aI9PAWJSd5FPxaojTZNb4J/FFOv5LuT+TBJL9g=
+github.com/txomon/flannel v0.12.1-0.20200819095346-d52c29a8b34b/go.mod h1:zQ/9Uhaw0yV4Wh6ljVwHVT1x5KuhenZA+6L8lRzOJEY=
 github.com/u-root/u-root v6.0.0+incompatible/go.mod h1:RYkpo8pTHrNjW08opNd/U6p/RJE7K0D8fXO0d47+3YY=
 github.com/ugorji/go v0.0.0-20170107133203-ded73eae5db7/go.mod h1:hnLbHMwcvSihnDhEfx2/BzKp2xb0Y+ErdfYcrs9tkJQ=
 github.com/ugorji/go v1.1.4/go.mod h1:uQMGLiO92mf5W77hV/PUCpI3pbzQx3CRekS0kk+RGrc=

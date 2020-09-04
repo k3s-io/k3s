@@ -374,7 +374,7 @@ github.com/containers/ocicrypt/keywrap/pgp
 github.com/containers/ocicrypt/keywrap/pkcs7
 github.com/containers/ocicrypt/spec
 github.com/containers/ocicrypt/utils
-# github.com/coreos/flannel v0.12.0 => github.com/rancher/flannel v0.12.0-k3s1
+# github.com/coreos/flannel v0.12.0 => github.com/txomon/flannel v0.12.1-0.20200819095346-d52c29a8b34b
 github.com/coreos/flannel/backend
 github.com/coreos/flannel/backend/extension
 github.com/coreos/flannel/backend/hostgw

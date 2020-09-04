@@ -13,7 +13,7 @@ replace (
 	github.com/containerd/fifo => github.com/containerd/fifo v0.0.0-20190816180239-bda0ff6ed73c
 	github.com/containerd/go-runc => github.com/containerd/go-runc v0.0.0-20200220073739-7016d3ce2328
 	github.com/containerd/typeurl => github.com/containerd/typeurl v0.0.0-20180627222232-a93fcdb778cd
-	github.com/coreos/flannel => github.com/rancher/flannel v0.12.0-k3s1
+	github.com/coreos/flannel => github.com/txomon/flannel v0.12.1-0.20200819095346-d52c29a8b34b
 	github.com/coreos/go-systemd => github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e
 	github.com/docker/distribution => github.com/docker/distribution v0.0.0-20190205005809-0d3efadf0154
 	github.com/docker/docker => github.com/docker/docker v17.12.0-ce-rc1.0.20190219214528-cbe11bdc6da8+incompatible
