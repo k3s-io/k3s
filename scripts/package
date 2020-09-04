@@ -10,3 +10,4 @@ fi
 ./package-cli
 ./package-image
 ./package-airgap
+./binary_size_check.sh
