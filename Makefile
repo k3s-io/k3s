@@ -29,3 +29,7 @@ generate: build/data
 
 build/data:
 	mkdir -p $@
+
+.PHONY: binary-size-check
+binary-size-check:
+	scripts/binary_size_check.sh

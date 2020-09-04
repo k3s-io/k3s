@@ -7,5 +7,7 @@ cd $(dirname $0)
 if [ -z "$SKIP_VALIDATE" ]; then
     ./validate
 fi
+
 ./build
 ./package
+./binary_size_check.sh
