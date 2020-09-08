@@ -141,12 +141,17 @@ func servingKubeletCert(server *config.Control, keyFile string) http.Handler {
 			return
 		}
 
+		ips := []net.IP{net.ParseIP("127.0.0.1")}
+		if nodeIP := req.Header.Get(version.Program + "-Node-IP"); nodeIP != "" {
+			ips = append(ips, net.ParseIP(nodeIP))
+		}
+
 		cert, err := certutil.NewSignedCert(certutil.Config{
 			CommonName: nodeName,
 			Usages:     []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 			AltNames: certutil.AltNames{
 				DNSNames: []string{nodeName, "localhost"},
-				IPs:      []net.IP{net.ParseIP("127.0.0.1")},
+				IPs:      ips,
 			},
 		}, key, caCert[0], caKey)
 		if err != nil {
