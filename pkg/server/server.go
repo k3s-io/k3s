@@ -142,11 +142,16 @@ func runControllers(ctx context.Context, config *Config) error {
 			panic(err)
 		}
 	}
+
 	if !config.DisableAgent {
-		go setMasterRoleLabel(ctx, sc.Core.Core().V1().Node())
+		if err := setMasterRoleLabel(ctx, sc.Core.Core().V1().Node()); err != nil {
+			logrus.Warn(err)
+		}
 	}
 
-	go setClusterDNSConfig(ctx, config, sc.Core.Core().V1().ConfigMap())
+	if err := setClusterDNSConfig(ctx, config, sc.Core.Core().V1().ConfigMap()); err != nil {
+		logrus.Warn(err)
+	}
 
 	if controlConfig.NoLeaderElect {
 		go func() {
@@ -446,7 +451,6 @@ func setMasterRoleLabel(ctx context.Context, nodes v1.NodeClient) error {
 }
 
 func setClusterDNSConfig(ctx context.Context, controlConfig *Config, configMap v1.ConfigMapClient) error {
-	nodeName := os.Getenv("NODE_NAME")
 	// check if configmap already exists
 	_, err := configMap.Get("kube-system", "cluster-dns", metav1.GetOptions{})
 	if err == nil {
@@ -470,13 +474,14 @@ func setClusterDNSConfig(ctx context.Context, controlConfig *Config, configMap v
 		},
 	}
 	for {
-		_, err = configMap.Create(c)
-		if err == nil {
-			logrus.Infof("cluster dns configmap has been set successfully")
-			break
+		if nodeName := os.Getenv("NODE_NAME"); nodeName != "" {
+			_, err = configMap.Create(c)
+			if err == nil {
+				logrus.Infof("cluster dns configmap has been set successfully")
+				break
+			}
+			logrus.Infof("Waiting for master node %s startup: %v", nodeName, err)
 		}
-		logrus.Infof("Waiting for master node %s startup: %v", nodeName, err)
-
 		select {
 		case <-ctx.Done():
 			return ctx.Err()

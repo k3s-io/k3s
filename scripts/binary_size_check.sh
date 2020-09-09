@@ -1,8 +1,9 @@
-#!/bin/sh
-
+#!/bin/bash
 set -e
 
-if [ "${DEBUG}" = 1 ]; then
+cd $(dirname $0)/..
+
+if [ -n "${DEBUG}" ]; then
     set -x
 fi
 
