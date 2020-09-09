@@ -13,9 +13,6 @@ import (
 )
 
 func (c *Conn) recvMsgs(ms []Message, flags int) (int, error) {
-	for i := range ms {
-		ms[i].raceWrite()
-	}
 	hs := make(mmsghdrs, len(ms))
 	var parseFn func([]byte, string) (net.Addr, error)
 	if c.network != "tcp" {
@@ -46,9 +43,6 @@ func (c *Conn) recvMsgs(ms []Message, flags int) (int, error) {
 }
 
 func (c *Conn) sendMsgs(ms []Message, flags int) (int, error) {
-	for i := range ms {
-		ms[i].raceRead()
-	}
 	hs := make(mmsghdrs, len(ms))
 	var marshalFn func(net.Addr) []byte
 	if c.network != "tcp" {

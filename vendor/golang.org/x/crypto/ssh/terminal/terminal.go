@@ -7,8 +7,6 @@ package terminal
 import (
 	"bytes"
 	"io"
-	"runtime"
-	"strconv"
 	"sync"
 	"unicode/utf8"
 )
@@ -113,7 +111,6 @@ func NewTerminal(c io.ReadWriter, prompt string) *Terminal {
 }
 
 const (
-	keyCtrlC     = 3
 	keyCtrlD     = 4
 	keyCtrlU     = 21
 	keyEnter     = '\r'
@@ -152,12 +149,8 @@ func bytesToKey(b []byte, pasteActive bool) (rune, []byte) {
 		switch b[0] {
 		case 1: // ^A
 			return keyHome, b[1:]
-		case 2: // ^B
-			return keyLeft, b[1:]
 		case 5: // ^E
 			return keyEnd, b[1:]
-		case 6: // ^F
-			return keyRight, b[1:]
 		case 8: // ^H
 			return keyBackspace, b[1:]
 		case 11: // ^K
@@ -278,44 +271,34 @@ func (t *Terminal) moveCursorToPos(pos int) {
 }
 
 func (t *Terminal) move(up, down, left, right int) {
-	m := []rune{}
-
-	// 1 unit up can be expressed as ^[[A or ^[A
-	// 5 units up can be expressed as ^[[5A
-
-	if up == 1 {
-		m = append(m, keyEscape, '[', 'A')
-	} else if up > 1 {
-		m = append(m, keyEscape, '[')
-		m = append(m, []rune(strconv.Itoa(up))...)
-		m = append(m, 'A')
+	movement := make([]rune, 3*(up+down+left+right))
+	m := movement
+	for i := 0; i < up; i++ {
+		m[0] = keyEscape
+		m[1] = '['
+		m[2] = 'A'
+		m = m[3:]
+	}
+	for i := 0; i < down; i++ {
+		m[0] = keyEscape
+		m[1] = '['
+		m[2] = 'B'
+		m = m[3:]
+	}
+	for i := 0; i < left; i++ {
+		m[0] = keyEscape
+		m[1] = '['
+		m[2] = 'D'
+		m = m[3:]
+	}
+	for i := 0; i < right; i++ {
+		m[0] = keyEscape
+		m[1] = '['
+		m[2] = 'C'
+		m = m[3:]
 	}
 
-	if down == 1 {
-		m = append(m, keyEscape, '[', 'B')
-	} else if down > 1 {
-		m = append(m, keyEscape, '[')
-		m = append(m, []rune(strconv.Itoa(down))...)
-		m = append(m, 'B')
-	}
-
-	if right == 1 {
-		m = append(m, keyEscape, '[', 'C')
-	} else if right > 1 {
-		m = append(m, keyEscape, '[')
-		m = append(m, []rune(strconv.Itoa(right))...)
-		m = append(m, 'C')
-	}
-
-	if left == 1 {
-		m = append(m, keyEscape, '[', 'D')
-	} else if left > 1 {
-		m = append(m, keyEscape, '[')
-		m = append(m, []rune(strconv.Itoa(left))...)
-		m = append(m, 'D')
-	}
-
-	t.queue(m)
+	t.queue(movement)
 }
 
 func (t *Terminal) clearLineToRight() {
@@ -743,9 +726,6 @@ func (t *Terminal) readLine() (line string, err error) {
 						return "", io.EOF
 					}
 				}
-				if key == keyCtrlC {
-					return "", io.EOF
-				}
 				if key == keyPasteStart {
 					t.pasteActive = true
 					if len(t.line) == 0 {
@@ -948,8 +928,6 @@ func (s *stRingBuffer) NthPreviousEntry(n int) (value string, ok bool) {
 // readPasswordLine reads from reader until it finds \n or io.EOF.
 // The slice returned does not include the \n.
 // readPasswordLine also ignores any \r it finds.
-// Windows uses \r as end of line. So, on Windows, readPasswordLine
-// reads until it finds \r and ignores any \n it finds during processing.
 func readPasswordLine(reader io.Reader) ([]byte, error) {
 	var buf [1]byte
 	var ret []byte
@@ -958,20 +936,10 @@ func readPasswordLine(reader io.Reader) ([]byte, error) {
 		n, err := reader.Read(buf[:])
 		if n > 0 {
 			switch buf[0] {
-			case '\b':
-				if len(ret) > 0 {
-					ret = ret[:len(ret)-1]
-				}
 			case '\n':
-				if runtime.GOOS != "windows" {
-					return ret, nil
-				}
-				// otherwise ignore \n
+				return ret, nil
 			case '\r':
-				if runtime.GOOS == "windows" {
-					return ret, nil
-				}
-				// otherwise ignore \r
+				// remove \r from passwords on Windows
 			default:
 				ret = append(ret, buf[0])
 			}

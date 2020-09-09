@@ -35,7 +35,6 @@ func marshalInterface(b []byte, cm *ControlMessage) []byte {
 }
 
 func parseInterface(cm *ControlMessage, b []byte) {
-	var sadl syscall.SockaddrDatalink
-	copy((*[unsafe.Sizeof(sadl)]byte)(unsafe.Pointer(&sadl))[:], b)
+	sadl := (*syscall.SockaddrDatalink)(unsafe.Pointer(&b[0]))
 	cm.IfIndex = int(sadl.Index)
 }

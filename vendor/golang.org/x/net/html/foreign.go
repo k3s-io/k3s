@@ -172,6 +172,7 @@ var svgAttributeAdjustments = map[string]string{
 	"diffuseconstant":           "diffuseConstant",
 	"edgemode":                  "edgeMode",
 	"externalresourcesrequired": "externalResourcesRequired",
+	"filterres":                 "filterRes",
 	"filterunits":               "filterUnits",
 	"glyphref":                  "glyphRef",
 	"gradienttransform":         "gradientTransform",

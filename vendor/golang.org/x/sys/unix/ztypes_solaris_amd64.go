@@ -211,12 +211,6 @@ type Cmsghdr struct {
 	Type  int32
 }
 
-type Inet4Pktinfo struct {
-	Ifindex  uint32
-	Spec_dst [4]byte /* in_addr */
-	Addr     [4]byte /* in_addr */
-}
-
 type Inet6Pktinfo struct {
 	Addr    [16]byte /* in6_addr */
 	Ifindex uint32
@@ -242,7 +236,6 @@ const (
 	SizeofIPv6Mreq         = 0x14
 	SizeofMsghdr           = 0x30
 	SizeofCmsghdr          = 0xc
-	SizeofInet4Pktinfo     = 0xc
 	SizeofInet6Pktinfo     = 0x14
 	SizeofIPv6MTUInfo      = 0x24
 	SizeofICMPv6Filter     = 0x20
