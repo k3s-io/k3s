@@ -11,7 +11,6 @@ import (
 
 	"golang.org/x/net/internal/iana"
 	"golang.org/x/net/internal/socket"
-	"golang.org/x/sys/unix"
 )
 
 var (
@@ -41,7 +40,7 @@ var (
 		ssoLeaveSourceGroup:    {Option: socket.Option{Level: iana.ProtocolIPv6, Name: sysMCAST_LEAVE_SOURCE_GROUP, Len: sizeofGroupSourceReq}, typ: ssoTypeGroupSourceReq},
 		ssoBlockSourceGroup:    {Option: socket.Option{Level: iana.ProtocolIPv6, Name: sysMCAST_BLOCK_SOURCE, Len: sizeofGroupSourceReq}, typ: ssoTypeGroupSourceReq},
 		ssoUnblockSourceGroup:  {Option: socket.Option{Level: iana.ProtocolIPv6, Name: sysMCAST_UNBLOCK_SOURCE, Len: sizeofGroupSourceReq}, typ: ssoTypeGroupSourceReq},
-		ssoAttachFilter:        {Option: socket.Option{Level: unix.SOL_SOCKET, Name: unix.SO_ATTACH_FILTER, Len: unix.SizeofSockFprog}},
+		ssoAttachFilter:        {Option: socket.Option{Level: sysSOL_SOCKET, Name: sysSO_ATTACH_FILTER, Len: sizeofSockFprog}},
 	}
 )
 

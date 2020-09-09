@@ -252,7 +252,7 @@ func ConfigureServer(s *http.Server, conf *Server) error {
 			}
 		}
 		if !haveRequired {
-			return fmt.Errorf("http2: TLSConfig.CipherSuites is missing an HTTP/2-required AES_128_GCM_SHA256 cipher (need at least one of TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256 or TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256).")
+			return fmt.Errorf("http2: TLSConfig.CipherSuites is missing an HTTP/2-required AES_128_GCM_SHA256 cipher.")
 		}
 	}
 
@@ -322,7 +322,7 @@ type ServeConnOpts struct {
 }
 
 func (o *ServeConnOpts) context() context.Context {
-	if o != nil && o.Context != nil {
+	if o.Context != nil {
 		return o.Context
 	}
 	return context.Background()
@@ -581,10 +581,13 @@ type stream struct {
 	cancelCtx func()
 
 	// owned by serverConn's serve loop:
-	bodyBytes        int64 // body bytes seen so far
-	declBodyBytes    int64 // or -1 if undeclared
-	flow             flow  // limits writing from Handler to client
-	inflow           flow  // what the client is allowed to POST/etc to us
+	bodyBytes        int64   // body bytes seen so far
+	declBodyBytes    int64   // or -1 if undeclared
+	flow             flow    // limits writing from Handler to client
+	inflow           flow    // what the client is allowed to POST/etc to us
+	parent           *stream // or nil
+	numTrailerValues int64
+	weight           uint8
 	state            streamState
 	resetQueued      bool        // RST_STREAM queued for write; set by sc.resetStream
 	gotTrailerHeader bool        // HEADER frame for trailers was seen
@@ -761,7 +764,6 @@ func (sc *serverConn) readFrames() {
 
 // frameWriteResult is the message passed from writeFrameAsync to the serve goroutine.
 type frameWriteResult struct {
-	_   incomparable
 	wr  FrameWriteRequest // what was written (or attempted)
 	err error             // result of the writeFrame call
 }
@@ -772,7 +774,7 @@ type frameWriteResult struct {
 // serverConn.
 func (sc *serverConn) writeFrameAsync(wr FrameWriteRequest) {
 	err := wr.write.writeFrame(sc)
-	sc.wroteFrameCh <- frameWriteResult{wr: wr, err: err}
+	sc.wroteFrameCh <- frameWriteResult{wr, err}
 }
 
 func (sc *serverConn) closeAllStreamsOnConnClose() {
@@ -1162,7 +1164,7 @@ func (sc *serverConn) startFrameWrite(wr FrameWriteRequest) {
 	if wr.write.staysWithinBuffer(sc.bw.Available()) {
 		sc.writingFrameAsync = false
 		err := wr.write.writeFrame(sc)
-		sc.wroteFrame(frameWriteResult{wr: wr, err: err})
+		sc.wroteFrame(frameWriteResult{wr, err})
 	} else {
 		sc.writingFrameAsync = true
 		go sc.writeFrameAsync(wr)
@@ -2058,7 +2060,7 @@ func (sc *serverConn) newWriterAndRequestNoBody(st *stream, rp requestParam) (*r
 	var trailer http.Header
 	for _, v := range rp.header["Trailer"] {
 		for _, key := range strings.Split(v, ",") {
-			key = http.CanonicalHeaderKey(textproto.TrimString(key))
+			key = http.CanonicalHeaderKey(strings.TrimSpace(key))
 			switch key {
 			case "Transfer-Encoding", "Trailer", "Content-Length":
 				// Bogus. (copy of http1 rules)
@@ -2276,7 +2278,6 @@ func (sc *serverConn) sendWindowUpdate32(st *stream, n int32) {
 // requestBody is the Handler's Request.Body type.
 // Read and Close may be called concurrently.
 type requestBody struct {
-	_             incomparable
 	stream        *stream
 	conn          *serverConn
 	closed        bool  // for use by Close only
@@ -2414,11 +2415,7 @@ func (rws *responseWriterState) writeChunk(p []byte) (n int, err error) {
 			clen = strconv.Itoa(len(p))
 		}
 		_, hasContentType := rws.snapHeader["Content-Type"]
-		// If the Content-Encoding is non-blank, we shouldn't
-		// sniff the body. See Issue golang.org/issue/31753.
-		ce := rws.snapHeader.Get("Content-Encoding")
-		hasCE := len(ce) > 0
-		if !hasCE && !hasContentType && bodyAllowedForStatus(rws.status) && len(p) > 0 {
+		if !hasContentType && bodyAllowedForStatus(rws.status) && len(p) > 0 {
 			ctype = http.DetectContentType(p)
 		}
 		var date string
@@ -2527,7 +2524,7 @@ const TrailerPrefix = "Trailer:"
 // trailers. That worked for a while, until we found the first major
 // user of Trailers in the wild: gRPC (using them only over http2),
 // and gRPC libraries permit setting trailers mid-stream without
-// predeclaring them. So: change of plans. We still permit the old
+// predeclarnig them. So: change of plans. We still permit the old
 // way, but we also permit this hack: if a Header() key begins with
 // "Trailer:", the suffix of that key is a Trailer. Because ':' is an
 // invalid token byte anyway, there is no ambiguity. (And it's already
@@ -2827,7 +2824,7 @@ func (sc *serverConn) startPush(msg *startPushRequest) {
 	// PUSH_PROMISE frames MUST only be sent on a peer-initiated stream that
 	// is in either the "open" or "half-closed (remote)" state.
 	if msg.parent.state != stateOpen && msg.parent.state != stateHalfClosedRemote {
-		// responseWriter.Push checks that the stream is peer-initiated.
+		// responseWriter.Push checks that the stream is peer-initiaed.
 		msg.done <- errStreamClosed
 		return
 	}

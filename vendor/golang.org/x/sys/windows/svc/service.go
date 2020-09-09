@@ -14,7 +14,6 @@ import (
 	"syscall"
 	"unsafe"
 
-	"golang.org/x/sys/internal/unsafeheader"
 	"golang.org/x/sys/windows"
 )
 
@@ -225,16 +224,10 @@ const (
 func (s *service) run() {
 	s.goWaits.Wait()
 	s.h = windows.Handle(ssHandle)
-
-	var argv []*uint16
-	hdr := (*unsafeheader.Slice)(unsafe.Pointer(&argv))
-	hdr.Data = unsafe.Pointer(sArgv)
-	hdr.Len = int(sArgc)
-	hdr.Cap = int(sArgc)
-
+	argv := (*[100]*int16)(unsafe.Pointer(sArgv))[:sArgc]
 	args := make([]string, len(argv))
 	for i, a := range argv {
-		args[i] = windows.UTF16PtrToString(a)
+		args[i] = syscall.UTF16ToString((*[1 << 20]uint16)(unsafe.Pointer(a))[:])
 	}
 
 	cmdsToHandler := make(chan ChangeRequest)

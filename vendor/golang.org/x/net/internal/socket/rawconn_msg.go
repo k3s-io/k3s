@@ -12,7 +12,6 @@ import (
 )
 
 func (c *Conn) recvMsg(m *Message, flags int) error {
-	m.raceWrite()
 	var h msghdr
 	vs := make([]iovec, len(m.Buffers))
 	var sa []byte
@@ -49,7 +48,6 @@ func (c *Conn) recvMsg(m *Message, flags int) error {
 }
 
 func (c *Conn) sendMsg(m *Message, flags int) error {
-	m.raceRead()
 	var h msghdr
 	vs := make([]iovec, len(m.Buffers))
 	var sa []byte
