@@ -546,18 +546,7 @@ getshims() {
 killtree $({ set +x; } 2>/dev/null; getshims; set -x)
 
 do_unmount() {
-    { set +x; } 2>/dev/null
-    MOUNTS=
-    while read ignore mount ignore; do
-        MOUNTS="$mount\n$MOUNTS"
-    done </proc/self/mounts
-    MOUNTS=$(printf $MOUNTS | grep "^$1" | sort -r)
-    if [ -n "${MOUNTS}" ]; then
-        set -x
-        xargs -n 1 umount <<< ${MOUNTS}
-    else
-        set -x
-    fi
+    awk -v path="$1" '$2 ~ ("^" path) { print $2 }' /proc/self/mounts | sort -r | xargs -r -t -n 1 umount
 }
 
 do_unmount '/run/k3s'
