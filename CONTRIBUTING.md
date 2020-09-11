@@ -26,6 +26,12 @@ The other exception to this single-commit rule is if your PR includes a change t
 ### Writing good commit messages
 Git commit messages should explain the how and why of your change and be separated into a brief subject line followed by a more detailed body. When in doubt, follow this guide for good commit messages and you can’t go wrong: https://chris.beams.io/posts/git-commit/.
 
+One particularly useful point made in the above guide is regarding commit subject lines:
+
+A properly formed Git commit subject line should always be able to complete the following sentence:
+
+- If applied, this commit will <ins>your subject line here</ins>
+
 One simple but effective pattern to follow for commits is the “problem / solution” pattern. It looks like this:
 ```
 <Subject>
