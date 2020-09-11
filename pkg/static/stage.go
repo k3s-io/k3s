@@ -1,3 +1,5 @@
+// +build !no_stage
+
 package static
 
 import (

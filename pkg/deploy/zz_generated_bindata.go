@@ -12,6 +12,8 @@
 // manifests/metrics-server/resource-reader.yaml
 // manifests/rolebindings.yaml
 // manifests/traefik.yaml
+// +build !no_stage
+
 package deploy
 
 import (
