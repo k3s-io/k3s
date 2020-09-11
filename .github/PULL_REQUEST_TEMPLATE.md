@@ -1,4 +1,5 @@
 <!-- HTML Comments can be left in place or removed. -->
+<!-- Please see our contributing guide at https://github.com/rancher/k3s/blob/master/CONTRIBUTING.md for guidance on opening pull requests -->
 
 #### Proposed Changes ####
 
