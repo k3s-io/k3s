@@ -667,6 +667,8 @@ github.com/rancher/cri-tools v1.19.0-k3s1 h1:c6lqNWyoAB5+NaUREbpZxKXCuYl9he24/DZ
 github.com/rancher/cri-tools v1.19.0-k3s1/go.mod h1:bitvtZRi5F7t505Yw3zPzp22LOao1lqJKHfx6x0hnpw=
 github.com/rancher/dynamiclistener v0.2.1 h1:QiY1jxs2TOLrKB04G36vE2ehEvPMPGiWp8zEHLKB1nE=
 github.com/rancher/dynamiclistener v0.2.1/go.mod h1:9WusTANoiRr8cDWCTtf5txieulezHbpv4vhLADPp0zU=
+github.com/rancher/etcd v0.5.0-alpha.5.0.20200911210206-f8fde3601008 h1:n8/76XZnofd91ZXkMzEv7biAbd+N6LTispd4o1TF8BU=
+github.com/rancher/etcd v0.5.0-alpha.5.0.20200911210206-f8fde3601008/go.mod h1:yVHk9ub3CSBatqGNg7GRmsnfLWtoW60w4eDYfh7vHDg=
 github.com/rancher/flannel v0.12.0-k3s1 h1:P23dWSk/9mGT1x2rDWW9JXNrF/0kjftiHwMau/+ZLGM=
 github.com/rancher/flannel v0.12.0-k3s1/go.mod h1:zQ/9Uhaw0yV4Wh6ljVwHVT1x5KuhenZA+6L8lRzOJEY=
 github.com/rancher/go-powershell v0.0.0-20200701182037-6845e6fcfa79 h1:UeC0rjrIel8hHz92cdVN09Cm4Hz+BhsPP/ZvQnPOr58=
@@ -849,8 +851,6 @@ go.etcd.io/bbolt v1.3.2/go.mod h1:IbVyRI1SCnLcuJnV2u8VeU0CEYM7e686BmAb1XKL+uU=
 go.etcd.io/bbolt v1.3.3/go.mod h1:IbVyRI1SCnLcuJnV2u8VeU0CEYM7e686BmAb1XKL+uU=
 go.etcd.io/bbolt v1.3.5 h1:XAzx9gjCb0Rxj7EoqcClPD1d5ZBxZJk0jbuoPHenBt0=
 go.etcd.io/bbolt v1.3.5/go.mod h1:G5EMThwa9y8QZGBClrRx5EY+Yw9kAhnjy3bSjsnlVTQ=
-go.etcd.io/etcd v0.5.0-alpha.5.0.20200824191128-ae9734ed278b h1:3kC4J3eQF6p1UEfQTkC67eEeb3rTk+shQqdX6tFyq9Q=
-go.etcd.io/etcd v0.5.0-alpha.5.0.20200824191128-ae9734ed278b/go.mod h1:yVHk9ub3CSBatqGNg7GRmsnfLWtoW60w4eDYfh7vHDg=
 go.mongodb.org/mongo-driver v1.0.3/go.mod h1:u7ryQJ+DOzQmeO7zB6MHyr8jkEQvC8vH7qLUO4lqsUM=
 go.mongodb.org/mongo-driver v1.1.1/go.mod h1:u7ryQJ+DOzQmeO7zB6MHyr8jkEQvC8vH7qLUO4lqsUM=
 go.mongodb.org/mongo-driver v1.1.2 h1:jxcFYjlkl8xaERsgLo+RNquI0epW6zuy/ZRQs6jnrFA=
