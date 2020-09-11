@@ -32,7 +32,7 @@ One particularly useful point made in the above guide is regarding commit subjec
 > 
 > - If applied, this commit will <ins>your subject line here</ins>
 
-One simple but effective pattern to follow for commits is the “problem / solution” pattern. It looks like this:
+A simple but effective convention to follow for commits is the “problem / solution” pattern. It looks like this:
 ```
 <Subject>
 
