@@ -1,6 +1,8 @@
 // Code generated for package static by go-bindata DO NOT EDIT. (@generated)
 // sources:
 // build/static/charts/traefik-1.81.0.tgz
+// +build !no_stage
+
 package static
 
 import (

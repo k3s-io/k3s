@@ -44,6 +44,7 @@ func main() {
 		NoMetadata: true,
 		Prefix:     "manifests/",
 		Output:     "pkg/deploy/zz_generated_bindata.go",
+		Tags:       "!no_stage",
 	}
 	if err := bindata.Translate(bc); err != nil {
 		logrus.Fatal(err)
@@ -60,6 +61,7 @@ func main() {
 		NoMetadata: true,
 		Prefix:     "build/static/",
 		Output:     "pkg/static/zz_generated_bindata.go",
+		Tags:       "!no_stage",
 	}
 	if err := bindata.Translate(bc); err != nil {
 		logrus.Fatal(err)
