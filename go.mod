@@ -1,6 +1,6 @@
 module github.com/rancher/k3s
 
-go 1.13
+go 1.15
 
 replace (
 	github.com/Microsoft/hcsshim => github.com/Microsoft/hcsshim v0.8.9
