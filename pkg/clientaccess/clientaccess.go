@@ -236,9 +236,14 @@ func GetCACerts(u url.URL) ([]byte, error) {
 	u.Path = "/cacerts"
 	url := u.String()
 
+	_, err := get(url, http.DefaultClient, "", "")
+	if err == nil {
+		return nil, nil
+	}
+
 	cacerts, err := get(url, insecureClient, "", "")
-	if err != nil || cacerts == nil {
-		return nil, errors.Wrapf(err, "failed to get CA certs at url %s", url)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to get CA certs at %s", url)
 	}
 
 	_, err = get(url, GetHTTPClient(cacerts), "", "")
