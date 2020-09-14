@@ -12,7 +12,7 @@ import (
 
 func loadKernelModule(moduleName string) {
 	if _, err := os.Stat("/sys/module/" + moduleName); err == nil {
-		logrus.Infof("Module " + moduleName + " was already loaded")
+		logrus.Info("Module " + moduleName + " was already loaded")
 		return
 	}
 
