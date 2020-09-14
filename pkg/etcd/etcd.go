@@ -134,7 +134,7 @@ func (e *ETCD) Reset(ctx context.Context, clientAccessInfo *clientaccess.Info) e
 				}
 
 				if len(members.Members) == 1 && members.Members[0].Name == e.name {
-					logrus.Infof("etcd is running, restart without --cluster-reset flag now. Backup and delete ${datadir}/server/db on each peer etcd server and rejoin the nodes")
+					logrus.Infof("Etcd is running, restart without --cluster-reset flag now. Backup and delete ${datadir}/server/db on each peer etcd server and rejoin the nodes")
 					os.Exit(0)
 				}
 			}
@@ -205,7 +205,7 @@ func (e *ETCD) join(ctx context.Context, clientAccessInfo *clientaccess.Info) er
 
 	members, err := client.MemberList(ctx)
 	if err != nil {
-		logrus.Errorf("failed to get member list from cluster, will assume this member is already added")
+		logrus.Errorf("Failed to get member list from etcd cluster. Will assume this member is already added")
 		members = &etcd.MemberListResponse{
 			Members: append(memberList.Members, &etcdserverpb.Member{
 				Name:     e.name,
@@ -546,14 +546,14 @@ func (e *ETCD) snapshot(ctx context.Context) {
 	logrus.Infof("Snapshot retention check")
 	snapshotDir, err := snapshotDir(e.config)
 	if err != nil {
-		logrus.Errorf("failed to get the snapshot dir: %v", err)
+		logrus.Errorf("Failed to get the snapshot dir: %v", err)
 		return
 	}
 	logrus.Infof("Taking etcd snapshot at %s", snapshotTime.String())
 	sManager := snapshot.NewV3(nil)
 	tlsConfig, err := toTLSConfig(e.runtime)
 	if err != nil {
-		logrus.Errorf("failed to get tls config for etcd: %v", err)
+		logrus.Errorf("Failed to get tls config for etcd: %v", err)
 		return
 	}
 	etcdConfig := etcd.Config{
@@ -564,11 +564,11 @@ func (e *ETCD) snapshot(ctx context.Context) {
 	snapshotPath := filepath.Join(snapshotDir, snapshotPrefix+strconv.Itoa(int(snapshotTime.Unix())))
 
 	if err := sManager.Save(ctx, etcdConfig, snapshotPath); err != nil {
-		logrus.Errorf("failed to save snapshot %s: %v", snapshotPath, err)
+		logrus.Errorf("Failed to save snapshot %s: %v", snapshotPath, err)
 		return
 	}
 	if err := snapshotRetention(e.config.EtcdSnapshotRetention, snapshotDir); err != nil {
-		logrus.Errorf("failed to apply snapshot retention: %v", err)
+		logrus.Errorf("Failed to apply snapshot retention: %v", err)
 		return
 	}
 }
@@ -587,7 +587,7 @@ func (e *ETCD) Restore(ctx context.Context) error {
 	// check the old etcd data dir
 	oldDataDir := dataDir(e.config) + "-old"
 	if s, err := os.Stat(oldDataDir); err == nil && s.IsDir() {
-		logrus.Infof("etcd already restored from a snapshot. Restart without --snapshot-restore-path flag. Backup and delete ${datadir}/server/db on each peer etcd server and rejoin the nodes")
+		logrus.Infof("Etcd already restored from a snapshot. Restart without --snapshot-restore-path flag. Backup and delete ${datadir}/server/db on each peer etcd server and rejoin the nodes")
 		os.Exit(0)
 	} else if os.IsNotExist(err) {
 		if e.config.ClusterResetRestorePath == "" {

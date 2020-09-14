@@ -21,15 +21,22 @@ func hasRole(mustRoles []string, roles []string) bool {
 }
 
 func doAuth(roles []string, serverConfig *config.Control, next http.Handler, rw http.ResponseWriter, req *http.Request) {
-	if serverConfig == nil || serverConfig.Runtime.Authenticator == nil {
-		logrus.Errorf("authenticate not initialized")
+	switch {
+	case serverConfig == nil:
+		logrus.Errorf("Authenticate not initialized: serverConfig is nil")
 		rw.WriteHeader(http.StatusUnauthorized)
 		return
+	case serverConfig.Runtime.Authenticator == nil:
+		logrus.Errorf("Authenticate not initialized: serverConfig.Runtime.Authenticator is nil")
+		rw.WriteHeader(http.StatusUnauthorized)
+		return
+	default:
+		//
 	}
 
 	resp, ok, err := serverConfig.Runtime.Authenticator.AuthenticateRequest(req)
 	if err != nil {
-		logrus.Errorf("failed to authenticate request: %v", err)
+		logrus.Errorf("Failed to authenticate request from %s: %v", req.RemoteAddr, err)
 		rw.WriteHeader(http.StatusInternalServerError)
 		return
 	}

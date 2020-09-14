@@ -105,6 +105,7 @@ func Run(ctx context.Context, cfg *config.Node) error {
 		case <-time.After(time.Second):
 		}
 	}
+	logrus.Info("Containerd is now running")
 
 	return preloadImages(ctx, cfg)
 }

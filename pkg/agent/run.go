@@ -177,7 +177,7 @@ func validate() error {
 	}
 
 	if !strings.Contains(string(cgroups), "cpuset") {
-		logrus.Warn("Failed to find cpuset cgroup, you may need to add \"cgroup_enable=cpuset\" to your linux cmdline (/boot/cmdline.txt on a Raspberry Pi)")
+		logrus.Warn(`Failed to find cpuset cgroup, you may need to add "cgroup_enable=cpuset" to your linux cmdline (/boot/cmdline.txt on a Raspberry Pi)`)
 	}
 
 	if !strings.Contains(string(cgroups), "memory") {

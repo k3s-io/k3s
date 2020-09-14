@@ -39,7 +39,7 @@ func Get(ctx context.Context, agent cmds.Agent, proxy proxy.Proxy) *config.Node 
 	for {
 		agentConfig, err := get(&agent, proxy)
 		if err != nil {
-			logrus.Error(err)
+			logrus.Error("Failed to retrieve agent config: %v", err)
 			select {
 			case <-time.After(5 * time.Second):
 				continue
@@ -286,7 +286,7 @@ func locateOrGenerateResolvConf(envInfo *cmds.Agent) string {
 
 	tmpConf := filepath.Join(os.TempDir(), version.Program+"-resolv.conf")
 	if err := ioutil.WriteFile(tmpConf, []byte("nameserver 8.8.8.8\n"), 0444); err != nil {
-		logrus.Error(err)
+		logrus.Errorf("Failed to write %s: %v", tmpConf, err)
 		return ""
 	}
 	return tmpConf

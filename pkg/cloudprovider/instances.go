@@ -63,7 +63,7 @@ func (k *k3s) NodeAddresses(ctx context.Context, name types.NodeName) ([]corev1.
 	if node.Labels[InternalIPLabel] != "" {
 		addresses = append(addresses, corev1.NodeAddress{Type: corev1.NodeInternalIP, Address: node.Labels[InternalIPLabel]})
 	} else {
-		logrus.Infof("couldn't find node internal ip label on node %s", name)
+		logrus.Infof("Couldn't find node internal ip label on node %s", name)
 	}
 
 	// check external address
@@ -75,7 +75,7 @@ func (k *k3s) NodeAddresses(ctx context.Context, name types.NodeName) ([]corev1.
 	if node.Labels[HostnameLabel] != "" {
 		addresses = append(addresses, corev1.NodeAddress{Type: corev1.NodeHostName, Address: node.Labels[HostnameLabel]})
 	} else {
-		logrus.Infof("couldn't find node hostname label on node %s", name)
+		logrus.Infof("Couldn't find node hostname label on node %s", name)
 	}
 
 	return addresses, nil
