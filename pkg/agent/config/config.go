@@ -39,7 +39,7 @@ func Get(ctx context.Context, agent cmds.Agent, proxy proxy.Proxy) *config.Node 
 	for {
 		agentConfig, err := get(&agent, proxy)
 		if err != nil {
-			logrus.Error("Failed to retrieve agent config: %v", err)
+			logrus.Errorf("Failed to retrieve agent config: %v", err)
 			select {
 			case <-time.After(5 * time.Second):
 				continue
