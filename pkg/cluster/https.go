@@ -61,9 +61,8 @@ func (c *Cluster) initClusterAndHTTPS(ctx context.Context) error {
 	}
 
 	server := http.Server{
-		Handler: handler,
-		ErrorLog: log.New(logrus.StandardLogger().Writer(), "Cluster-Http-Server", log.LstdFlags),
-
+		Handler:  handler,
+		ErrorLog: log.New(logrus.StandardLogger().Writer(), "Cluster-Http-Server ", log.LstdFlags),
 	}
 
 	go func() {
