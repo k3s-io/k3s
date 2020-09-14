@@ -86,7 +86,7 @@ func Run(ctx context.Context, nodeConfig *config.Node, nodes v1.NodeInterface) e
 			break
 		}
 		if err == nil {
-			logrus.Infof("Waiting for node " + nodeName + " CIDR not assigned yet")
+			logrus.Info("Waiting for node " + nodeName + " CIDR not assigned yet")
 		} else {
 			logrus.Infof("Waiting for node %s: %v", nodeName, err)
 		}
