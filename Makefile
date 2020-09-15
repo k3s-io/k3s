@@ -33,3 +33,7 @@ build/data:
 .PHONY: binary-size-check
 binary-size-check:
 	scripts/binary_size_check.sh
+
+.PHONY: image-scan
+image-scan:
+	scripts/image_scan.sh $(IMAGE)
