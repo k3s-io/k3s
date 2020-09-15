@@ -9,13 +9,13 @@ ENV no_proxy=$no_proxy
 
 RUN apk -U --no-cache add bash git gcc musl-dev docker vim less file curl wget ca-certificates jq linux-headers zlib-dev tar zip squashfs-tools npm coreutils \
     python2 openssl-dev libffi-dev libseccomp libseccomp-dev make libuv-static sqlite-dev sqlite-static libselinux libselinux-dev zlib-dev zlib-static
-RUN if [ "$(go env GOARCH)" = "arm64" ]; then \
+RUN if [ "$(go env GOARCH)" = "arm64" ]; then                                                             \
     wget https://github.com/aquasecurity/trivy/releases/download/v0.7.0/trivy_0.7.0_Linux-ARM64.tar.gz && \
     tar -zxvf trivy_0.7.0_Linux-ARM64.tar.gz                                                           && \
     mv trivy /usr/local/bin;                                                                              \
-    else if [ "$(go env GOARCH)" = "arm" ]; then                                                          \
+    elif [ "$(go env GOARCH)" = "arm" ]; then                                                             \
     wget https://github.com/aquasecurity/trivy/releases/download/v0.7.0/trivy_0.7.0_Linux-ARM.tar.gz   && \
-    tar -zxvf trivy_0.7.0_Linux-ARM.tar.gz &&                                                             \
+    tar -zxvf trivy_0.7.0_Linux-ARM.tar.gz                                                             && \
     mv trivy /usr/local/bin;                                                                              \
     else                                                                                                  \
     wget https://github.com/aquasecurity/trivy/releases/download/v0.7.0/trivy_0.7.0_Linux-64bit.tar.gz && \
