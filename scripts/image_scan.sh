@@ -7,7 +7,7 @@ if [ -n ${DEBUG} ]; then
 fi
 
 if [ -z $1 ]; then
-    echo "error: image tag required as argument. exiting..."
+    echo "error: image name required as argument. exiting..."
     exit 1
 fi
 
