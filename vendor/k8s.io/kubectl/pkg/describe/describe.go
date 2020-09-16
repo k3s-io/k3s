@@ -3640,12 +3640,19 @@ func DescribeEvents(el *corev1.EventList, w PrefixWriter) {
 			interval = fmt.Sprintf("%s (x%d over %s)", translateTimestampSince(e.LastTimestamp), e.Count, translateTimestampSince(e.FirstTimestamp))
 		} else {
 			interval = translateTimestampSince(e.FirstTimestamp)
+			if e.FirstTimestamp.IsZero() {
+				interval = translateMicroTimestampSince(e.EventTime)
+			}
+		}
+		source := e.Source.Component
+		if source == "" {
+			source = e.ReportingController
 		}
 		w.Write(LEVEL_1, "%v\t%v\t%s\t%v\t%v\n",
 			e.Type,
 			e.Reason,
 			interval,
-			formatEventSource(e.Source),
+			source,
 			strings.TrimSpace(e.Message),
 		)
 	}
@@ -4739,6 +4746,16 @@ func shorten(s string, maxLength int) string {
 	return s
 }
 
+// translateMicroTimestampSince returns the elapsed time since timestamp in
+// human-readable approximation.
+func translateMicroTimestampSince(timestamp metav1.MicroTime) string {
+	if timestamp.IsZero() {
+		return "<unknown>"
+	}
+
+	return duration.HumanDuration(time.Since(timestamp.Time))
+}
+
 // translateTimestampSince returns the elapsed time since timestamp in
 // human-readable approximation.
 func translateTimestampSince(timestamp metav1.Time) string {
@@ -4747,15 +4764,6 @@ func translateTimestampSince(timestamp metav1.Time) string {
 	}
 
 	return duration.HumanDuration(time.Since(timestamp.Time))
-}
-
-// formatEventSource formats EventSource as a comma separated string excluding Host when empty
-func formatEventSource(es corev1.EventSource) string {
-	EventSourceString := []string{es.Component}
-	if len(es.Host) > 0 {
-		EventSourceString = append(EventSourceString, es.Host)
-	}
-	return strings.Join(EventSourceString, ", ")
 }
 
 // Pass ports=nil for all ports.
