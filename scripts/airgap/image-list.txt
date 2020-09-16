@@ -1,6 +1,7 @@
 docker.io/rancher/coredns-coredns:1.6.9
 docker.io/rancher/klipper-helm:v0.3.0
 docker.io/rancher/klipper-lb:v0.1.2
+docker.io/rancher/library-busybox:1.31.1
 docker.io/rancher/library-traefik:1.7.19
 docker.io/rancher/local-path-provisioner:v0.0.14
 docker.io/rancher/metrics-server:v0.3.6
