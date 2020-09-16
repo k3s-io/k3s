@@ -14,7 +14,6 @@ fi
 IMAGE=$1
 SEVERITIES="HIGH,CRITICAL"
 
-docker container run --rm --name=image-scan --volume /var/run/docker.sock:/var/run/docker.sock \
-    docker.io/aquasec/trivy:0.10.2 --quiet image --severity ${SEVERITIES}  --no-progress --ignore-unfixed ${IMAGE}
+trivy --quiet image --severity ${SEVERITIES}  --no-progress --ignore-unfixed ${IMAGE}
 
 exit 0
