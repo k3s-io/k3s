@@ -551,8 +551,8 @@ func genClientCerts(config *config.Control, runtime *config.ControlRuntime) erro
 	if _, err = factory("system:kube-proxy", nil, runtime.ClientKubeProxyCert, runtime.ClientKubeProxyKey); err != nil {
 		return err
 	}
-	// this must be hardcoded to k3s-controller because it's hard coded in the rolebindings.yaml
-	if _, err = factory("system:k3s-controller", nil, runtime.ClientK3sControllerCert, runtime.ClientK3sControllerKey); err != nil {
+	// This user (system:k3s-controller by default) must be bound to a role in rolebindings.yaml or the downstream equivalent
+	if _, err = factory("system:"+version.Program+"-controller", nil, runtime.ClientK3sControllerCert, runtime.ClientK3sControllerKey); err != nil {
 		return err
 	}
 
