@@ -8,5 +8,7 @@ cd $(dirname $0)/..
 airgap_image_file='scripts/airgap/image-list.txt'
 images=$(cat "${airgap_image_file}")
 xargs -n1 docker pull <<< "${images}"
-docker save ${images} -o dist/artifacts/k3s-airgap-images-${ARCH}.tar 
-cp "${airgap_image_file}" dist/artifacts/k3s-images.txt
+docker save ${images} -o dist/artifacts/k3s-airgap-images-${ARCH}.tar
+if [ ${ARCH} = amd64 ]; then
+  cp "${airgap_image_file}" dist/artifacts/k3s-images.txt
+fi
