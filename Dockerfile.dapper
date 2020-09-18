@@ -40,7 +40,7 @@ ARG SELINUX=true
 ENV SELINUX $SELINUX
 
 ENV GO111MODULE off
-ENV DAPPER_RUN_ARGS --privileged -v k3s-cache:/go/src/github.com/rancher/k3s/.cache
+ENV DAPPER_RUN_ARGS --privileged -v k3s-cache:/go/src/github.com/rancher/k3s/.cache -v trivy-cache:/root/.cache/trivy
 ENV DAPPER_ENV REPO TAG DRONE_TAG IMAGE_NAME SKIP_VALIDATE GCLOUD_AUTH
 ENV DAPPER_SOURCE /go/src/github.com/rancher/k3s/
 ENV DAPPER_OUTPUT ./bin ./dist ./build/out
