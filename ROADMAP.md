@@ -14,9 +14,10 @@ v1.19 - End of August 2020
 
 v1.20 - December 2020
 ---
-- Disentangle code and docs from Rancher Labs
 - Support a 2-node hot/cold HA model by leveraging etcd's learner node feature
+- Embedded container image registry
 - Introduce `k3s build` feature for easier local image building
+- Disentangle code and docs from Rancher Labs
 - Reduce patch set K3s requires for Kubernetes
 - Migrate to using upstream’s kubelet certificate rotation rather than our own custom logic
 - Migrate to using the kubelet config file for configuring kubelets rather than command line args
