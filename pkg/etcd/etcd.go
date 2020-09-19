@@ -148,8 +148,14 @@ func (e *ETCD) Reset(ctx context.Context, clientAccessInfo *clientaccess.Info) e
 		if info.IsDir() {
 			return fmt.Errorf("etcd: snapshot path is directory: %s", e.config.ClusterResetRestorePath)
 		}
-		return e.Restore(ctx)
+		if err := e.Restore(ctx); err != nil {
+			return err
+		}
 	}
+	if err := e.setName(true); err != nil {
+		return err
+	}
+
 	return e.newCluster(ctx, true)
 }
 
@@ -272,17 +278,17 @@ func (e *ETCD) Register(ctx context.Context, config *config.Control, l net.Liste
 	e.config.Datastore.Config.CertFile = e.runtime.ClientETCDCert
 	e.config.Datastore.Config.KeyFile = e.runtime.ClientETCDKey
 
-	if err := e.setName(); err != nil {
+	if err := e.setName(false); err != nil {
 		return nil, nil, err
 	}
 
 	return l, e.handler(handler), err
 }
 
-func (e *ETCD) setName() error {
+func (e *ETCD) setName(force bool) error {
 	fileName := nameFile(e.config)
 	data, err := ioutil.ReadFile(fileName)
-	if os.IsNotExist(err) {
+	if os.IsNotExist(err) || force {
 		h, err := os.Hostname()
 		if err != nil {
 			return err
@@ -615,11 +621,7 @@ func (e *ETCD) Restore(ctx context.Context) error {
 	} else {
 		return err
 	}
-	if err := e.setName(); err != nil {
-		return err
-	}
-
-	return e.newCluster(ctx, true)
+	return nil
 }
 
 // snapshotRetention iterates through the snapshots and removes the oldest
