@@ -96,7 +96,7 @@ func Setup(ctx context.Context, config *config.Node, proxy proxy.Proxy) error {
 				ResourceVersion: "0",
 			})
 			if err != nil {
-				logrus.Errorf("Unable to watch for tunnel endpoints: %v", err)
+				logrus.Warnf("Unable to watch for tunnel endpoints: %v", err)
 				continue connect
 			}
 		watching:
@@ -151,7 +151,7 @@ func Setup(ctx context.Context, config *config.Node, proxy proxy.Proxy) error {
 
 	select {
 	case <-ctx.Done():
-		logrus.Error("tunnel context canceled while waiting for connection")
+		logrus.Error("Tunnel context canceled while waiting for connection")
 		return ctx.Err()
 	case <-wait:
 	}

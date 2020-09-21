@@ -70,7 +70,7 @@ func (w *watcher) start(ctx context.Context) {
 		if err := w.listFiles(force); err == nil {
 			force = false
 		} else {
-			logrus.Errorf("failed to process config: %v", err)
+			logrus.Errorf("Failed to process config: %v", err)
 		}
 		select {
 		case <-ctx.Done():
