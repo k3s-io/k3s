@@ -34,7 +34,7 @@ func Register(ctx context.Context, serviceController coreClients.ServiceControll
 		if err == nil {
 			break
 		} else {
-			logrus.Infof("waiting for rootless API socket %s: %v", rootless.Sock, err)
+			logrus.Infof("Waiting for rootless API socket %s: %v", rootless.Sock, err)
 			time.Sleep(1 * time.Second)
 		}
 	}

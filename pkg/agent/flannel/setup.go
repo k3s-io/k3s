@@ -86,12 +86,13 @@ func Run(ctx context.Context, nodeConfig *config.Node, nodes v1.NodeInterface) e
 			break
 		}
 		if err == nil {
-			logrus.Infof("waiting for node %s CIDR not assigned yet", nodeName)
+			logrus.Info("Waiting for node " + nodeName + " CIDR not assigned yet")
 		} else {
-			logrus.Infof("waiting for node %s: %v", nodeName, err)
+			logrus.Infof("Waiting for node %s: %v", nodeName, err)
 		}
 		time.Sleep(2 * time.Second)
 	}
+	logrus.Info("Node CIDR assigned for: " + nodeName)
 
 	go func() {
 		err := flannel(ctx, nodeConfig.FlannelIface, nodeConfig.FlannelConf, nodeConfig.AgentConfig.KubeConfigKubelet)

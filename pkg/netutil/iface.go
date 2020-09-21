@@ -13,7 +13,7 @@ func GetIPFromInterface(ifaceName string) string {
 	if err != nil {
 		logrus.Warn(errors.Wrap(err, "unable to get global unicast ip from interface name"))
 	} else {
-		logrus.Infof("found ip %s from iface %s", ip, ifaceName)
+		logrus.Infof("Found ip %s from iface %s", ip, ifaceName)
 	}
 	return ip
 }

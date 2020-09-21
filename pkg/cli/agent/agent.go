@@ -54,7 +54,7 @@ func Run(ctx *cli.Context) error {
 		cmds.AgentConfig.NodeIP = netutil.GetIPFromInterface(cmds.AgentConfig.FlannelIface)
 	}
 
-	logrus.Infof("Starting "+version.Program+" agent %s", ctx.App.Version)
+	logrus.Info("Starting " + version.Program + " agent " + ctx.App.Version)
 
 	dataDir, err := datadir.LocalHome(cmds.AgentConfig.DataDir, cmds.AgentConfig.Rootless)
 	if err != nil {
