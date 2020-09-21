@@ -51,8 +51,12 @@ func NewETCD() *ETCD {
 const (
 	snapshotPrefix = "etcd-snapshot-"
 	endpoint       = "https://127.0.0.1:2379"
+	testTimeout    = time.Second * 10
 
-	testTimeout = time.Second * 10
+	// defaults from etcdctl/ctlv3/ctl.go
+	defaultDialTimeout      = 2 * time.Second
+	defaultKeepAliveTime    = 2 * time.Second
+	defaultKeepAliveTimeOut = 6 * time.Second
 )
 
 // Members contains a slice that holds all
@@ -211,7 +215,7 @@ func (e *ETCD) join(ctx context.Context, clientAccessInfo *clientaccess.Info) er
 		return err
 	}
 
-	client, err := joinClient(ctx, e.runtime, clientURLs)
+	client, err := remoteClient(ctx, e.runtime, clientURLs)
 	if err != nil {
 		return err
 	}
@@ -277,7 +281,7 @@ func (e *ETCD) Register(ctx context.Context, config *config.Control, l net.Liste
 	e.config = config
 	e.runtime = config.Runtime
 
-	client, err := newClient(ctx, e.runtime)
+	client, err := localClient(ctx, e.runtime)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -302,7 +306,7 @@ func (e *ETCD) Register(ctx context.Context, config *config.Control, l net.Liste
 }
 
 // setName sets a unique name for this cluster member. The first time this is called,
-// or if force is set to true, a new name will be generated and written to disk. The peristent
+// or if force is set to true, a new name will be generated and written to disk. The persistent
 // name is used on subsequent calls.
 func (e *ETCD) setName(force bool) error {
 	fileName := nameFile(e.config)
@@ -359,36 +363,41 @@ func (e *ETCD) infoHandler() http.Handler {
 	})
 }
 
-// joinClient returns an etcd client configuration suitable for connecting to an existing set of remote peers
-func joinClient(ctx context.Context, runtime *config.ControlRuntime, peers []string) (*etcd.Client, error) {
-	tlsConfig, err := toTLSConfig(runtime)
+// remoteClient returns an etcd client connected to an existing set of remote peers
+func remoteClient(ctx context.Context, runtime *config.ControlRuntime, peers []string) (*etcd.Client, error) {
+	cfg, err := getClientConfig(ctx, runtime, peers...)
 	if err != nil {
 		return nil, err
 	}
-
-	cfg := etcd.Config{
-		Endpoints: peers,
-		TLS:       tlsConfig,
-		Context:   ctx,
-	}
-
-	return etcd.New(cfg)
+	return etcd.New(*cfg)
 }
 
-// newClient returns etcd client configuration suitable for connecting to the local etcd instance
-func newClient(ctx context.Context, runtime *config.ControlRuntime) (*etcd.Client, error) {
+// localClient returns etcd client connected to the local etcd instance
+func localClient(ctx context.Context, runtime *config.ControlRuntime) (*etcd.Client, error) {
+	cfg, err := getClientConfig(ctx, runtime, endpoint)
+	if err != nil {
+		return nil, err
+	}
+	return etcd.New(*cfg)
+}
+
+//getClientConfig generates an etcd client config connected to the specified endpoints
+func getClientConfig(ctx context.Context, runtime *config.ControlRuntime, endpoints ...string) (*etcd.Config, error) {
 	tlsConfig, err := toTLSConfig(runtime)
 	if err != nil {
 		return nil, err
 	}
 
-	cfg := etcd.Config{
-		Context:   ctx,
-		Endpoints: []string{endpoint},
-		TLS:       tlsConfig,
+	cfg := &etcd.Config{
+		Endpoints:            endpoints,
+		TLS:                  tlsConfig,
+		Context:              ctx,
+		DialTimeout:          defaultDialTimeout,
+		DialKeepAliveTime:    defaultKeepAliveTime,
+		DialKeepAliveTimeout: defaultKeepAliveTimeOut,
 	}
 
-	return etcd.New(cfg)
+	return cfg, nil
 }
 
 // toTLSConcif converts the ControlRuntime configuration to TLS configuration suitable
@@ -511,7 +520,7 @@ func (e *ETCD) promoteMember(ctx context.Context, clientAccessInfo *clientaccess
 	t := time.NewTicker(5 * time.Second)
 	defer t.Stop()
 	for range t.C {
-		client, err := joinClient(ctx, e.runtime, clientURLs)
+		client, err := remoteClient(ctx, e.runtime, clientURLs)
 		// continue on errors to keep trying to promote member
 		// grpc error are shown so no need to re log them
 		if err != nil {
@@ -603,21 +612,17 @@ func (e *ETCD) snapshot(ctx context.Context) {
 		logrus.Errorf("Failed to get the snapshot dir: %v", err)
 		return
 	}
-	sManager := snapshot.NewV3(nil)
-	tlsConfig, err := toTLSConfig(e.runtime)
+
+	cfg, err := getClientConfig(ctx, e.runtime, endpoint)
 	if err != nil {
-		logrus.Errorf("Failed to get tls config for etcd snapshot: %v", err)
+		logrus.Errorf("Failed to get config for etcd snapshot: %v", err)
 		return
 	}
-	etcdConfig := etcd.Config{
-		Context:   ctx,
-		Endpoints: []string{endpoint},
-		TLS:       tlsConfig,
-	}
+
 	snapshotPath := filepath.Join(snapshotDir, snapshotPrefix+strconv.Itoa(int(time.Now().Unix())))
 	logrus.Infof("Saving etcd snapshot to %s", snapshotPath)
 
-	if err := sManager.Save(ctx, etcdConfig, snapshotPath); err != nil {
+	if err := snapshot.NewV3(nil).Save(ctx, *cfg, snapshotPath); err != nil {
 		logrus.Errorf("Failed to save snapshot: %v", err)
 		return
 	}
