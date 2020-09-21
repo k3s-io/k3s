@@ -25,7 +25,7 @@ func (c *Cluster) testClusterDB(ctx context.Context) (<-chan struct{}, error) {
 			if err := c.managedDB.Test(ctx, c.clientAccessInfo); err != nil {
 				logrus.Infof("Failed to test data store connection: %v", err)
 			} else {
-				logrus.Infof("Data store connection OK")
+				logrus.Info(c.managedDB.EndpointName() + " data store connection OK")
 				return
 			}
 

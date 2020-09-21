@@ -12,18 +12,18 @@ import (
 
 func loadKernelModule(moduleName string) {
 	if _, err := os.Stat("/sys/module/" + moduleName); err == nil {
-		logrus.Infof("module %s was already loaded", moduleName)
+		logrus.Info("Module " + moduleName + " was already loaded")
 		return
 	}
 
 	if err := exec.Command("modprobe", moduleName).Run(); err != nil {
-		logrus.Warnf("failed to start %s module", moduleName)
+		logrus.Warn("Failed to start " + moduleName + " module")
 	}
 }
 
 func enableSystemControl(file string) {
 	if err := ioutil.WriteFile(file, []byte("1"), 0640); err != nil {
-		logrus.Warnf("failed to write value 1 at %s: %v", file, err)
+		logrus.Warnf("Failed to write value 1 at "+file+": %v", err)
 	}
 }
 

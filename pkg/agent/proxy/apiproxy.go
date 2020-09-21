@@ -87,7 +87,7 @@ func (p *proxy) setSupervisorPort(addresses []string) []string {
 	for _, address := range addresses {
 		h, _, err := sysnet.SplitHostPort(address)
 		if err != nil {
-			logrus.Errorf("failed to parse address %s, dropping: %v", address, err)
+			logrus.Errorf("Failed to parse address %s, dropping: %v", address, err)
 			continue
 		}
 		newAddresses = append(newAddresses, sysnet.JoinHostPort(h, p.supervisorPort))
