@@ -284,7 +284,7 @@ func writeKubeConfig(certs string, config *Config) error {
 
 	if isSymlink(kubeConfigSymlink) {
 		if err := os.Remove(kubeConfigSymlink); err != nil {
-			logrus.Errorf("failed to remove kubeconfig symlink")
+			logrus.Errorf("Failed to remove kubeconfig symlink")
 		}
 	}
 
@@ -301,7 +301,7 @@ func writeKubeConfig(certs string, config *Config) error {
 		if err == nil {
 			util.SetFileModeForPath(kubeConfig, os.FileMode(mode))
 		} else {
-			logrus.Errorf("failed to set %s to mode %s: %v", kubeConfig, os.FileMode(mode), err)
+			logrus.Errorf("Failed to set %s to mode %s: %v", kubeConfig, os.FileMode(mode), err)
 		}
 	} else {
 		util.SetFileModeForPath(kubeConfig, os.FileMode(0600))
@@ -309,7 +309,7 @@ func writeKubeConfig(certs string, config *Config) error {
 
 	if kubeConfigSymlink != kubeConfig {
 		if err := writeConfigSymlink(kubeConfig, kubeConfigSymlink); err != nil {
-			logrus.Errorf("failed to write kubeconfig symlink: %v", err)
+			logrus.Errorf("Failed to write kubeconfig symlink: %v", err)
 		}
 	}
 
@@ -348,7 +348,7 @@ func printToken(httpsPort int, advertiseIP, prefix, cmd string) {
 	if ip == "" {
 		hostIP, err := net.ChooseHostInterface()
 		if err != nil {
-			logrus.Error(err)
+			logrus.Errorf("Failed to choose interface: %v", err)
 		}
 		ip = hostIP.String()
 	}
@@ -433,7 +433,7 @@ func setMasterRoleLabel(ctx context.Context, nodes v1.NodeClient) error {
 		node.Labels[MasterRoleLabelKey] = "true"
 		_, err = nodes.Update(node)
 		if err == nil {
-			logrus.Infof("master role label has been set successfully on node: %s", nodeName)
+			logrus.Infof("Master role label has been set successfully on node: %s", nodeName)
 			break
 		}
 		select {
@@ -450,7 +450,7 @@ func setClusterDNSConfig(ctx context.Context, controlConfig *Config, configMap v
 	// check if configmap already exists
 	_, err := configMap.Get("kube-system", "cluster-dns", metav1.GetOptions{})
 	if err == nil {
-		logrus.Infof("cluster dns configmap already exists")
+		logrus.Infof("Cluster dns configmap already exists")
 		return nil
 	}
 	clusterDNS := controlConfig.ControlConfig.ClusterDNS
@@ -472,7 +472,7 @@ func setClusterDNSConfig(ctx context.Context, controlConfig *Config, configMap v
 	for {
 		_, err = configMap.Create(c)
 		if err == nil {
-			logrus.Infof("cluster dns configmap has been set successfully")
+			logrus.Infof("Cluster dns configmap has been set successfully")
 			break
 		}
 		logrus.Infof("Waiting for master node %s startup: %v", nodeName, err)

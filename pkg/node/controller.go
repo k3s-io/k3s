@@ -52,7 +52,7 @@ func (h *handler) updateHosts(node *core.Node, removed bool) (*core.Node, error)
 		}
 	}
 	if nodeAddress == "" {
-		logrus.Errorf("No InternalIP found for node %s", node.Name)
+		logrus.Errorf("No InternalIP found for node " + node.Name)
 		return nil, nil
 	}
 
