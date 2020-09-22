@@ -391,7 +391,7 @@ func getClientConfig(ctx context.Context, runtime *config.ControlRuntime, endpoi
 	return cfg, nil
 }
 
-// toTLSConcif converts the ControlRuntime configuration to TLS configuration suitable
+// toTLSConfig converts the ControlRuntime configuration to TLS configuration suitable
 // for use by etcd.
 func toTLSConfig(runtime *config.ControlRuntime) (*tls.Config, error) {
 	clientCert, err := tls.LoadX509KeyPair(runtime.ClientETCDCert, runtime.ClientETCDKey)
