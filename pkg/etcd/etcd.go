@@ -215,7 +215,7 @@ func (e *ETCD) join(ctx context.Context, clientAccessInfo *clientaccess.Info) er
 		return err
 	}
 
-	client, err := remoteClient(ctx, e.runtime, clientURLs)
+	client, err := getClient(ctx, e.runtime, clientURLs...)
 	if err != nil {
 		return err
 	}
@@ -281,7 +281,7 @@ func (e *ETCD) Register(ctx context.Context, config *config.Control, l net.Liste
 	e.config = config
 	e.runtime = config.Runtime
 
-	client, err := localClient(ctx, e.runtime)
+	client, err := getClient(ctx, e.runtime, endpoint)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -363,18 +363,9 @@ func (e *ETCD) infoHandler() http.Handler {
 	})
 }
 
-// remoteClient returns an etcd client connected to an existing set of remote peers
-func remoteClient(ctx context.Context, runtime *config.ControlRuntime, peers []string) (*etcd.Client, error) {
-	cfg, err := getClientConfig(ctx, runtime, peers...)
-	if err != nil {
-		return nil, err
-	}
-	return etcd.New(*cfg)
-}
-
-// localClient returns etcd client connected to the local etcd instance
-func localClient(ctx context.Context, runtime *config.ControlRuntime) (*etcd.Client, error) {
-	cfg, err := getClientConfig(ctx, runtime, endpoint)
+// getClient returns an etcd client connected to the specified endpoints
+func getClient(ctx context.Context, runtime *config.ControlRuntime, endpoints ...string) (*etcd.Client, error) {
+	cfg, err := getClientConfig(ctx, runtime, endpoints...)
 	if err != nil {
 		return nil, err
 	}
@@ -520,7 +511,7 @@ func (e *ETCD) promoteMember(ctx context.Context, clientAccessInfo *clientaccess
 	t := time.NewTicker(5 * time.Second)
 	defer t.Stop()
 	for range t.C {
-		client, err := remoteClient(ctx, e.runtime, clientURLs)
+		client, err := getClient(ctx, e.runtime, clientURLs...)
 		// continue on errors to keep trying to promote member
 		// grpc error are shown so no need to re log them
 		if err != nil {
