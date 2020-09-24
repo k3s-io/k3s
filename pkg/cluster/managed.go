@@ -52,9 +52,10 @@ func (c *Cluster) start(ctx context.Context) error {
 	return c.managedDB.Start(ctx, c.clientAccessInfo)
 }
 
-func (c *Cluster) initClusterDB(ctx context.Context, l net.Listener, handler http.Handler) (net.Listener, http.Handler, error) {
+// initClusterDB registers routes for database info with the http request handler
+func (c *Cluster) initClusterDB(ctx context.Context, handler http.Handler) (http.Handler, error) {
 	if c.managedDB == nil {
-		return l, handler, nil
+		return handler, nil
 	}
 
 	if !strings.HasPrefix(c.config.Datastore.Endpoint, c.managedDB.EndpointName()+"://") {
@@ -63,7 +64,7 @@ func (c *Cluster) initClusterDB(ctx context.Context, l net.Listener, handler htt
 		}
 	}
 
-	return c.managedDB.Register(ctx, c.config, l, handler)
+	return c.managedDB.Register(ctx, c.config, handler)
 }
 
 func (c *Cluster) assignManagedDriver(ctx context.Context) error {

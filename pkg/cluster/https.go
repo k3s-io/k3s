@@ -55,7 +55,8 @@ func (c *Cluster) initClusterAndHTTPS(ctx context.Context) error {
 		return err
 	}
 
-	l, handler, err = c.initClusterDB(ctx, l, handler)
+	// Config the cluster database and allow it to add additional request handlers
+	handler, err = c.initClusterDB(ctx, handler)
 	if err != nil {
 		return err
 	}
