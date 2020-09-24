@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -276,20 +275,20 @@ func (e *ETCD) join(ctx context.Context, clientAccessInfo *clientaccess.Info) er
 	})
 }
 
-// Register configures a new etcd client and adds db info routes for the http listener.
-func (e *ETCD) Register(ctx context.Context, config *config.Control, l net.Listener, handler http.Handler) (net.Listener, http.Handler, error) {
+// Register configures a new etcd client and adds db info routes for the http request handler.
+func (e *ETCD) Register(ctx context.Context, config *config.Control, handler http.Handler) (http.Handler, error) {
 	e.config = config
 	e.runtime = config.Runtime
 
 	client, err := getClient(ctx, e.runtime, endpoint)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	e.client = client
 
 	address, err := getAdvertiseAddress(config.AdvertiseIP)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	e.address = address
 
@@ -299,10 +298,10 @@ func (e *ETCD) Register(ctx context.Context, config *config.Control, l net.Liste
 	e.config.Datastore.Config.KeyFile = e.runtime.ClientETCDKey
 
 	if err := e.setName(false); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	return l, e.handler(handler), err
+	return e.handler(handler), err
 }
 
 // setName sets a unique name for this cluster member. The first time this is called,
