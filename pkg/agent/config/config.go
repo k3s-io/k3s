@@ -54,13 +54,12 @@ func Get(ctx context.Context, agent cmds.Agent, proxy proxy.Proxy) *config.Node 
 type HTTPRequester func(u string, client *http.Client, username, password string) ([]byte, error)
 
 func Request(path string, info *clientaccess.Info, requester HTTPRequester) ([]byte, error) {
-	u, err := url.Parse(info.URL)
+	u, err := url.Parse(info.BaseURL)
 	if err != nil {
 		return nil, err
 	}
 	u.Path = path
-	username, password, _ := clientaccess.ParseUsernamePassword(info.Token)
-	return requester(u.String(), clientaccess.GetHTTPClient(info.CACerts), username, password)
+	return requester(u.String(), clientaccess.GetHTTPClient(info.CACerts), info.Username, info.Password)
 }
 
 func getNodeNamedCrt(nodeName, nodeIP, nodePasswordFile string) HTTPRequester {
