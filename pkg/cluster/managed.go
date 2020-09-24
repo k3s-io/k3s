@@ -58,12 +58,6 @@ func (c *Cluster) initClusterDB(ctx context.Context, handler http.Handler) (http
 		return handler, nil
 	}
 
-	if !strings.HasPrefix(c.config.Datastore.Endpoint, c.managedDB.EndpointName()+"://") {
-		c.config.Datastore = endpoint.Config{
-			Endpoint: c.managedDB.EndpointName(),
-		}
-	}
-
 	return c.managedDB.Register(ctx, c.config, handler)
 }
 
@@ -77,13 +71,6 @@ func (c *Cluster) assignManagedDriver(ctx context.Context) error {
 		}
 	}
 
-	endpointType := strings.SplitN(c.config.Datastore.Endpoint, ":", 2)[0]
-	for _, driver := range managed.Registered() {
-		if endpointType == driver.EndpointName() {
-			c.managedDB = driver
-			return nil
-		}
-	}
 
 	if c.config.Datastore.Endpoint == "" && (c.config.ClusterInit || (c.config.Token != "" && c.config.JoinURL != "")) {
 		for _, driver := range managed.Registered() {
