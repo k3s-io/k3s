@@ -316,10 +316,10 @@ func (e *ETCD) setName(force bool) error {
 			return err
 		}
 		e.name = strings.SplitN(h, ".", 2)[0] + "-" + uuid.New().String()[:8]
-		if err := os.MkdirAll(filepath.Dir(fileName), 0755); err != nil {
+		if err := os.MkdirAll(filepath.Dir(fileName), 0700); err != nil {
 			return err
 		}
-		return ioutil.WriteFile(fileName, []byte(e.name), 0655)
+		return ioutil.WriteFile(fileName, []byte(e.name), 0600)
 	} else if err != nil {
 		return err
 	}
