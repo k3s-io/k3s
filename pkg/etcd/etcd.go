@@ -105,19 +105,19 @@ func (e *ETCD) Test(ctx context.Context, clientAccessInfo *clientaccess.Info) er
 	return fmt.Errorf(msg)
 }
 
-// walDir returns the path to dataDir/member/wal
-func walDir(config *config.Control) string {
-	return filepath.Join(dataDir(config), "member", "wal")
-}
-
-// dataDir returns the path to dataDir/db/etcd
-func dataDir(config *config.Control) string {
+// etcdDBDir returns the path to dataDir/db/etcd
+func etcdDBDir(config *config.Control) string {
 	return filepath.Join(config.DataDir, "db", "etcd")
 }
 
-// nameFile returns the path to dataDir/name
+// walDir returns the path to etcdDBDir/member/wal
+func walDir(config *config.Control) string {
+	return filepath.Join(etcdDBDir(config), "member", "wal")
+}
+
+// nameFile returns the path to etcdDBDir/name
 func nameFile(config *config.Control) string {
-	return filepath.Join(dataDir(config), "name")
+	return filepath.Join(etcdDBDir(config), "name")
 }
 
 // IsInitialized checks to see if a WAL directory exists. If so, we assume that etcd
@@ -452,7 +452,7 @@ func (e *ETCD) cluster(ctx context.Context, forceNew bool, options executor.Init
 		ListenMetricsURLs:   "http://127.0.0.1:2381",
 		ListenPeerURLs:      e.peerURL(),
 		AdvertiseClientURLs: e.clientURL(),
-		DataDir:             dataDir(e.config),
+		DataDir:             etcdDBDir(e.config),
 		ServerTrust: executor.ServerTrust{
 			CertFile:       e.config.Runtime.ServerETCDCert,
 			KeyFile:        e.config.Runtime.ServerETCDKey,
@@ -632,7 +632,7 @@ func (e *ETCD) setSnapshotFunction(ctx context.Context) {
 // completion.
 func (e *ETCD) Restore(ctx context.Context) error {
 	// check the old etcd data dir
-	oldDataDir := dataDir(e.config) + "-old"
+	oldDataDir := etcdDBDir(e.config) + "-old"
 	if s, err := os.Stat(oldDataDir); err == nil && s.IsDir() {
 		logrus.Infof("Etcd already restored from a snapshot. Restart without --snapshot-restore-path flag. Backup and delete ${datadir}/server/db on each peer etcd server and rejoin the nodes")
 		os.Exit(0)
@@ -645,14 +645,14 @@ func (e *ETCD) Restore(ctx context.Context) error {
 			return err
 		}
 		// move the data directory to a temp path
-		if err := os.Rename(dataDir(e.config), oldDataDir); err != nil {
+		if err := os.Rename(etcdDBDir(e.config), oldDataDir); err != nil {
 			return err
 		}
 		sManager := snapshot.NewV3(nil)
 		if err := sManager.Restore(snapshot.RestoreConfig{
 			SnapshotPath:   e.config.ClusterResetRestorePath,
 			Name:           e.name,
-			OutputDataDir:  dataDir(e.config),
+			OutputDataDir:  etcdDBDir(e.config),
 			OutputWALDir:   walDir(e.config),
 			PeerURLs:       []string{e.peerURL()},
 			InitialCluster: e.name + "=" + e.peerURL(),
