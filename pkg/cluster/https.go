@@ -36,22 +36,23 @@ func (c *Cluster) newListener(ctx context.Context) (net.Listener, http.Handler, 
 
 	storage := tlsStorage(ctx, c.config.DataDir, c.runtime)
 	return dynamiclistener.NewListener(tcp, storage, cert, key, dynamiclistener.Config{
-		CN:           version.Program,
-		Organization: []string{version.Program},
+		ExpirationDaysCheck: config.CertificateRenewDays,
+		Organization:        []string{version.Program},
+		SANs:                append(c.config.SANs, "localhost", "kubernetes", "kubernetes.default", "kubernetes.default.svc."+c.config.ClusterDomain),
+		CN:                  version.Program,
 		TLSConfig: &tls.Config{
 			ClientAuth:   tls.RequestClientCert,
 			MinVersion:   c.config.TLSMinVersion,
 			CipherSuites: c.config.TLSCipherSuites,
 		},
-		SANs:                append(c.config.SANs, "localhost", "kubernetes", "kubernetes.default", "kubernetes.default.svc."+c.config.ClusterDomain),
-		ExpirationDaysCheck: config.CertificateRenewDays,
 	})
 }
 
 // initClusterAndHTTPS sets up the dynamic tls listener, request router,
 // and cluster database. Once the database is up, it starts the supervisor http server.
 func (c *Cluster) initClusterAndHTTPS(ctx context.Context) error {
-	l, handler, err := c.newListener(ctx)
+	// Set up dynamiclistener TLS listener and request handler
+	listener, handler, err := c.newListener(ctx)
 	if err != nil {
 		return err
 	}
@@ -76,7 +77,7 @@ func (c *Cluster) initClusterAndHTTPS(ctx context.Context) error {
 
 	// Start the supervisor http server on the tls listener
 	go func() {
-		err := server.Serve(l)
+		err := server.Serve(listener)
 		logrus.Fatalf("server stopped: %v", err)
 	}()
 
