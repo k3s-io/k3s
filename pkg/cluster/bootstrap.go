@@ -13,6 +13,9 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// Bootstrap attempts to load a managed database driver, if one has been initialized or should be created/joined.
+// It then checks to see if the cluster needs to load boostrap data, and if so, loads data into the
+// ControlRuntimeBoostrap struct, either via HTTP or from the datastore.
 func (c *Cluster) Bootstrap(ctx context.Context) error {
 	if err := c.assignManagedDriver(ctx); err != nil {
 		return err
@@ -88,6 +91,7 @@ func (c *Cluster) shouldBootstrapLoad(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
+// bootstrapped touches a file to indicate that bootstrap has been completed.
 func (c *Cluster) bootstrapped() error {
 	if err := os.MkdirAll(filepath.Dir(c.bootstrapStamp()), 0700); err != nil {
 		return err
@@ -105,6 +109,9 @@ func (c *Cluster) bootstrapped() error {
 	return f.Close()
 }
 
+// httpBootstrap retrieves bootstrap data (certs and keys, etc) from the remote server via HTTP
+// and loads it into the ControlRuntimeBootstrap struct. Unlike the storage bootstrap path,
+// this data does not need to be decrypted since it is generated on-demand by an existing server.
 func (c *Cluster) httpBootstrap() error {
 	content, err := clientaccess.Get("/v1-"+version.Program+"/server-bootstrap", c.clientAccessInfo)
 	if err != nil {
@@ -114,9 +121,11 @@ func (c *Cluster) httpBootstrap() error {
 	return bootstrap.Read(bytes.NewBuffer(content), &c.runtime.ControlRuntimeBootstrap)
 }
 
+// bootstrap performs cluster bootstrapping, either via HTTP (for managed databases) or direct load from datastore.
 func (c *Cluster) bootstrap(ctx context.Context) error {
 	c.joining = true
 
+	// bootstrap managed database via HTTP
 	if c.runtime.HTTPBootstrap {
 		return c.httpBootstrap()
 	}
@@ -125,6 +134,9 @@ func (c *Cluster) bootstrap(ctx context.Context) error {
 	return c.storageBootstrap(ctx)
 }
 
+// bootstrapStamp returns the path to a file in datadir/db that is used to record
+// that a cluster has been joined. The filename is based on a portion of the sha256 hash of the token.
+// We hash the token value exactly as it is provided by the user, NOT the normalized version.
 func (c *Cluster) bootstrapStamp() string {
 	return filepath.Join(c.config.DataDir, "db/joined-"+keyHash(c.config.Token))
 }
