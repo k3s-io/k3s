@@ -5,13 +5,10 @@ package cluster
 
 import (
 	"context"
-	"net"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/rancher/k3s/pkg/cluster/managed"
-	"github.com/rancher/kine/pkg/endpoint"
 	"github.com/sirupsen/logrus"
 )
 
