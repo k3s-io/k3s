@@ -327,7 +327,7 @@ func (e *ETCD) setName(force bool) error {
 	return nil
 }
 
-// handler handles request routing for the base http listener
+// handler wraps the handler with routes for database info
 func (e *ETCD) handler(next http.Handler) http.Handler {
 	mux := mux.NewRouter()
 	mux.Handle("/db/info", e.infoHandler())
