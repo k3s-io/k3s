@@ -165,11 +165,14 @@ func validateCACerts(cacerts []byte, hash string) (bool, string, string) {
 	return hash == newHash, hash, newHash
 }
 
+// hashCA returns the hex-encoded SHA256 digest of a byte array.
 func hashCA(cacerts []byte) string {
 	digest := sha256.Sum256(cacerts)
 	return hex.EncodeToString(digest[:])
 }
 
+// ParseUsernamePassword returns the username and password portion of a token string,
+// along with a bool indicating if the token was successfully parsed.
 func ParseUsernamePassword(token string) (string, string, bool) {
 	parsed, err := parseToken(token)
 	if err != nil {
@@ -205,6 +208,10 @@ func parseToken(token string) (clientToken, error) {
 	return result, nil
 }
 
+// GetHTTPClient returns a http client that validates TLS server certificates using the provided CA bundle.
+// If the CA bundle is empty, it validates using the default http client using the OS CA bundle.
+// If the CA bundle is not empty but does not contain any valid certs, it validates using
+// an empty CA bundle (which will always fail).
 func GetHTTPClient(cacerts []byte) *http.Client {
 	if len(cacerts) == 0 {
 		return http.DefaultClient
@@ -223,6 +230,7 @@ func GetHTTPClient(cacerts []byte) *http.Client {
 	}
 }
 
+// Get makes a request to a subpath of info's BaseURL
 func Get(path string, info *Info) ([]byte, error) {
 	u, err := url.Parse(info.URL)
 	if err != nil {
@@ -232,20 +240,30 @@ func Get(path string, info *Info) ([]byte, error) {
 	return get(u.String(), GetHTTPClient(info.CACerts), info.username, info.password)
 }
 
+// getCACerts retrieves the CA bundle from a server.
+// An error is raised if the CA bundle cannot be retrieved,
+// or if the server's cert is not signed by the returned bundle.
 func GetCACerts(u url.URL) ([]byte, error) {
 	u.Path = "/cacerts"
 	url := u.String()
 
+	// This first request is expected to fail. If the server has
+	// a cert that can be validated using the default CA bundle, return
+	// success with no CA certs.
 	_, err := get(url, http.DefaultClient, "", "")
 	if err == nil {
 		return nil, nil
 	}
 
+	// Download the CA bundle using a client that does not validate certs.
 	cacerts, err := get(url, insecureClient, "", "")
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get CA certs at %s", url)
 	}
 
+	// Request the CA bundle again, validating that the CA bundle can be loaded
+	// and used to validate the server certificate. This should only fail if we somehow
+	// get an empty CA bundle. or if the dynamiclistener cert is incorrectly signed.
 	_, err = get(url, GetHTTPClient(cacerts), "", "")
 	if err != nil {
 		return nil, errors.Wrapf(err, "server %s is not trusted", url)
@@ -254,6 +272,8 @@ func GetCACerts(u url.URL) ([]byte, error) {
 	return cacerts, nil
 }
 
+// get makes a request to a url using a provided client, username, and password,
+// returning the response body.
 func get(u string, client *http.Client, username, password string) ([]byte, error) {
 	req, err := http.NewRequest(http.MethodGet, u, nil)
 	if err != nil {
