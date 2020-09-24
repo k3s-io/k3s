@@ -20,6 +20,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// newListener returns a new TCP listener and HTTP reqest handler using dynamiclistener.
+// dynamiclistener will use the cluster's Server CA to sign the dynamically generate certificate,
+// and will sync the certs into the Kubernetes datastore, with a local disk cache.
 func (c *Cluster) newListener(ctx context.Context) (net.Listener, http.Handler, error) {
 	tcp, err := dynamiclistener.NewTCPListener(c.config.BindAddress, c.config.SupervisorPort)
 	if err != nil {
@@ -45,12 +48,15 @@ func (c *Cluster) newListener(ctx context.Context) (net.Listener, http.Handler, 
 	})
 }
 
+// initClusterAndHTTPS sets up the dynamic tls listener, request router,
+// and cluster database. Once the database is up, it starts the supervisor http server.
 func (c *Cluster) initClusterAndHTTPS(ctx context.Context) error {
 	l, handler, err := c.newListener(ctx)
 	if err != nil {
 		return err
 	}
 
+	// Get the base request handler
 	handler, err = c.getHandler(handler)
 	if err != nil {
 		return err
@@ -62,16 +68,19 @@ func (c *Cluster) initClusterAndHTTPS(ctx context.Context) error {
 		return err
 	}
 
+	// Create a HTTP server with the registered request handlers, using logrus for logging
 	server := http.Server{
 		Handler:  handler,
 		ErrorLog: log.New(logrus.StandardLogger().Writer(), "Cluster-Http-Server ", log.LstdFlags),
 	}
 
+	// Start the supervisor http server on the tls listener
 	go func() {
 		err := server.Serve(l)
 		logrus.Fatalf("server stopped: %v", err)
 	}()
 
+	// Shutdown the http server when the context is closed
 	go func() {
 		<-ctx.Done()
 		server.Shutdown(context.Background())
@@ -80,6 +89,8 @@ func (c *Cluster) initClusterAndHTTPS(ctx context.Context) error {
 	return nil
 }
 
+// tlsStorage creates an in-memory cache for dynamiclistener's certificate, backed by a file on disk
+// and the Kubernetes datastore.
 func tlsStorage(ctx context.Context, dataDir string, runtime *config.ControlRuntime) dynamiclistener.TLSStorage {
 	fileStorage := file.New(filepath.Join(dataDir, "tls/dynamic-cert.json"))
 	cache := memory.NewBacked(fileStorage)
