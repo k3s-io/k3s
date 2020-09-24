@@ -152,7 +152,7 @@ func Run(ctx context.Context, cfg cmds.Agent) error {
 	}
 
 	for {
-		newToken, err := clientaccess.NormalizeAndValidateTokenForUser(proxy.SupervisorURL(), cfg.Token, "node")
+		newToken, err := clientaccess.ParseAndValidateTokenForUser(proxy.SupervisorURL(), cfg.Token, "node")
 		if err != nil {
 			logrus.Error(err)
 			select {
@@ -162,7 +162,7 @@ func Run(ctx context.Context, cfg cmds.Agent) error {
 			}
 			continue
 		}
-		cfg.Token = newToken
+		cfg.Token = newToken.String()
 		break
 	}
 

@@ -64,12 +64,9 @@ func (c *Cluster) shouldBootstrapLoad(ctx context.Context) (bool, error) {
 				return false, errors.New(version.ProgramUpper + "_TOKEN is required to join a cluster")
 			}
 
-			token, err := clientaccess.NormalizeAndValidateTokenForUser(c.config.JoinURL, c.config.Token, "server")
-			if err != nil {
-				return false, err
-			}
-
-			info, err := clientaccess.ParseAndValidateToken(c.config.JoinURL, token)
+			// Fail if the token isn't syntactically valid, or if the CA hash on the remote server doesn't match
+			// the hash in the token. The password isn't actually checked until later when actually bootstrapping.
+			info, err := clientaccess.ParseAndValidateTokenForUser(c.config.JoinURL, c.config.Token, "server")
 			if err != nil {
 				return false, err
 			}
