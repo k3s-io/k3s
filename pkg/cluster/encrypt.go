@@ -19,9 +19,7 @@ import (
 // storageKey returns the etcd key for storing bootstrap data for a given passphrase.
 // The key is derived from the sha256 hash of the passphrase.
 func storageKey(passphrase string) string {
-	d := sha256.New()
-	d.Write([]byte(passphrase))
-	return "/bootstrap/" + hex.EncodeToString(d.Sum(nil)[:])[:12]
+	return "/bootstrap/" + keyHash(passphrase)
 }
 
 // keyHash returns the first 12 characters of the sha256 sum of the passphrase.

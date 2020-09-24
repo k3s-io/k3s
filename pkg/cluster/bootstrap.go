@@ -21,13 +21,14 @@ func (c *Cluster) Bootstrap(ctx context.Context) error {
 		return err
 	}
 
-	runBootstrap, err := c.shouldBootstrapLoad(ctx)
+	shouldBootstrap, err := c.shouldBootstrapLoad(ctx)
 	if err != nil {
 		return err
 	}
-	c.shouldBootstrap = runBootstrap
 
-	if runBootstrap {
+	c.shouldBootstrap = shouldBootstrap
+
+	if shouldBootstrap {
 		if err := c.bootstrap(ctx); err != nil {
 			return err
 		}
@@ -93,15 +94,18 @@ func (c *Cluster) shouldBootstrapLoad(ctx context.Context) (bool, error) {
 
 // bootstrapped touches a file to indicate that bootstrap has been completed.
 func (c *Cluster) bootstrapped() error {
-	if err := os.MkdirAll(filepath.Dir(c.bootstrapStamp()), 0700); err != nil {
+	stamp := c.bootstrapStamp()
+	if err := os.MkdirAll(filepath.Dir(stamp), 0700); err != nil {
 		return err
 	}
 
-	if _, err := os.Stat(c.bootstrapStamp()); err == nil {
+	// return if file already exists
+	if _, err := os.Stat(stamp); err == nil {
 		return nil
 	}
 
-	f, err := os.Create(c.bootstrapStamp())
+	// otherwise try to create it
+	f, err := os.Create(stamp)
 	if err != nil {
 		return err
 	}
