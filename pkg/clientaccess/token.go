@@ -10,12 +10,19 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 )
 
 var (
+	defaultClientTimeout = 20 * time.Second
+
+	defaultClient = &http.Client{
+		Timeout: defaultClientTimeout,
+	}
 	insecureClient = &http.Client{
+		Timeout: defaultClientTimeout,
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: true,
@@ -150,13 +157,14 @@ func parseToken(token string) (*Info, error) {
 // an empty CA bundle (which will always fail).
 func GetHTTPClient(cacerts []byte) *http.Client {
 	if len(cacerts) == 0 {
-		return http.DefaultClient
+		return defaultClient
 	}
 
 	pool := x509.NewCertPool()
 	pool.AppendCertsFromPEM(cacerts)
 
 	return &http.Client{
+		Timeout: defaultClientTimeout,
 		Transport: &http.Transport{
 			DisableKeepAlives: true,
 			TLSClientConfig: &tls.Config{
@@ -221,7 +229,7 @@ func getCACerts(u url.URL) ([]byte, error) {
 	// This first request is expected to fail. If the server has
 	// a cert that can be validated using the default CA bundle, return
 	// success with no CA certs.
-	_, err := get(url, http.DefaultClient, "", "")
+	_, err := get(url, defaultClient, "", "")
 	if err == nil {
 		return nil, nil
 	}
