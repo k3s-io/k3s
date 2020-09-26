@@ -644,6 +644,7 @@ create_systemd_service_file() {
 Description=Lightweight Kubernetes
 Documentation=https://k3s.io
 Wants=network-online.target
+After=network-online.target
 
 [Install]
 WantedBy=multi-user.target
