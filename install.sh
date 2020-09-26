@@ -431,7 +431,7 @@ setup_binary() {
 setup_selinux() {
     policy_hint="please install:
     yum install -y container-selinux selinux-policy-base
-    rpm -i https://rpm.rancher.io/k3s-selinux-0.1.1-rc1.el7.noarch.rpm
+    yum install -y https://rpm.rancher.io/k3s-selinux-0.1.1-rc1.el7.noarch.rpm
 "
     policy_error=fatal
     if [ "$INSTALL_K3S_SELINUX_WARN" = true ]; then
