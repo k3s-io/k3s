@@ -16,18 +16,21 @@ import (
 	"golang.org/x/crypto/pbkdf2"
 )
 
+// storageKey returns the etcd key for storing bootstrap data for a given passphrase.
+// The key is derived from the sha256 hash of the passphrase.
 func storageKey(passphrase string) string {
-	d := sha256.New()
-	d.Write([]byte(passphrase))
-	return "/bootstrap/" + hex.EncodeToString(d.Sum(nil)[:])[:12]
+	return "/bootstrap/" + keyHash(passphrase)
 }
 
+// keyHash returns the first 12 characters of the sha256 sum of the passphrase.
 func keyHash(passphrase string) string {
 	d := sha256.New()
 	d.Write([]byte(passphrase))
 	return hex.EncodeToString(d.Sum(nil)[:])[:12]
 }
 
+// encrypt encrypts a byte slice using aes+gcm with a pbkdf2 key derived from the passphrase and a random salt.
+// It returns a byte slice containing the salt and base64-encoded cyphertext.
 func encrypt(passphrase string, plaintext []byte) ([]byte, error) {
 	salt, err := token.Random(8)
 	if err != nil {
@@ -55,6 +58,8 @@ func encrypt(passphrase string, plaintext []byte) ([]byte, error) {
 	return []byte(salt + ":" + base64.StdEncoding.EncodeToString(sealed)), nil
 }
 
+// decrypt attempts to decrypt the byte slice using the supplied passphrase.
+// The input byte slice should be the cyphertext output from the encrypt function.
 func decrypt(passphrase string, ciphertext []byte) ([]byte, error) {
 	parts := strings.SplitN(string(ciphertext), ":", 2)
 	if len(parts) != 2 {
