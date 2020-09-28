@@ -73,8 +73,12 @@ func (c *Cluster) initClusterDB(ctx context.Context, handler http.Handler) (http
 	return c.managedDB.Register(ctx, c.config, handler)
 }
 
-// assignManagedDriver checks to see if any managed databases are already configured or should be created/joined.
-// If a driver has been initialized it is used, otherwise we create or join a cluster using the default driver.
+// assignManagedDriver assigns a driver based on a number of different configuration variables.
+// If a driver has been initialized it is used.
+// If the configured endpoint matches the name of a driver, that driver is used.
+// If no specific endpoint has been requested and creating or joining has been requested,
+// we use the default driver.
+// If none of the above are true, no managed driver is assigned.
 func (c *Cluster) assignManagedDriver(ctx context.Context) error {
 	// Check all managed drivers for an initialized database on disk; use one if found
 	for _, driver := range managed.Registered() {
@@ -86,6 +90,8 @@ func (c *Cluster) assignManagedDriver(ctx context.Context) error {
 		}
 	}
 
+	// This is needed to allow downstreams to override driver selection logic by
+	// setting ServerConfig.Datastore.Endpoint such that it will match a driver's EndpointName
 	endpointType := strings.SplitN(c.config.Datastore.Endpoint, ":", 2)[0]
 	for _, driver := range managed.Registered() {
 		if endpointType == driver.EndpointName() {
