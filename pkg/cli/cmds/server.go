@@ -8,8 +8,6 @@ import (
 )
 
 const (
-	DisableItems = "coredns, servicelb, traefik, local-storage, metrics-server"
-
 	defaultSnapshotRentention    = 5
 	defaultSnapshotIntervalHours = 12
 )
