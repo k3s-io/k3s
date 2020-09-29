@@ -14,6 +14,7 @@ import (
 	"github.com/rancher/k3s/pkg/cli/crictl"
 	"github.com/rancher/k3s/pkg/cli/kubectl"
 	"github.com/rancher/k3s/pkg/cli/server"
+	"github.com/rancher/k3s/pkg/cli/containerd"
 	"github.com/rancher/k3s/pkg/configfilearg"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
@@ -26,6 +27,7 @@ func main() {
 		cmds.NewAgentCommand(agent.Run),
 		cmds.NewKubectlCommand(kubectl.Run),
 		cmds.NewCRICTL(crictl.Run),
+		cmds.NewContainerd(containerd.Run),
 	}
 
 	if err := app.Run(configfilearg.MustParse(os.Args)); err != nil {

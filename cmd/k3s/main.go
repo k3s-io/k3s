@@ -30,6 +30,7 @@ func main() {
 		cmds.NewKubectlCommand(externalCLIAction("kubectl")),
 		cmds.NewCRICTL(externalCLIAction("crictl")),
 		cmds.NewCtrCommand(externalCLIAction("ctr")),
+		cmds.NewContainerd(externalCLIAction("containerd")),
 		cmds.NewCheckConfigCommand(externalCLIAction("check-config")),
 	}
 
@@ -43,7 +44,7 @@ func runCLIs() bool {
 	if os.Getenv("CRI_CONFIG_FILE") == "" {
 		os.Setenv("CRI_CONFIG_FILE", datadir.DefaultDataDir+"/agent/etc/crictl.yaml")
 	}
-	for _, cmd := range []string{"kubectl", "ctr", "crictl"} {
+	for _, cmd := range []string{"kubectl", "ctr", "crictl", "containerd"} {
 		if filepath.Base(os.Args[0]) == cmd {
 			if err := externalCLI(cmd, "", os.Args[1:]); err != nil {
 				logrus.Fatal(err)
