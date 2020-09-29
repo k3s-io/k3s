@@ -8,9 +8,10 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/rancher/k3s/pkg/etcd"
 
 	"github.com/rancher/k3s/pkg/cluster/managed"
 	"github.com/rancher/k3s/pkg/version"
@@ -51,7 +52,7 @@ func (c *Cluster) testClusterDB(ctx context.Context) (<-chan struct{}, error) {
 // start starts the database, unless a cluster reset has been requested, in which case
 // it does that instead.
 func (c *Cluster) start(ctx context.Context) error {
-	resetFile := filepath.Join(c.config.DataDir, "db", "reset-flag")
+	resetFile := etcd.ResetFile(c.config)
 	if c.managedDB == nil {
 		return nil
 	}

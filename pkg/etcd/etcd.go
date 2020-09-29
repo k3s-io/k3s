@@ -120,6 +120,11 @@ func nameFile(config *config.Control) string {
 	return filepath.Join(etcdDBDir(config), "name")
 }
 
+// ResetFile returns the path to etcdDBDir/reset-flag
+func ResetFile(config *config.Control) string {
+	return filepath.Join(config.DataDir, "db", "reset-flag")
+}
+
 // IsInitialized checks to see if a WAL directory exists. If so, we assume that etcd
 // has already been brought up at least once.
 func (e *ETCD) IsInitialized(ctx context.Context, config *config.Control) (bool, error) {
@@ -172,8 +177,7 @@ func (e *ETCD) Reset(ctx context.Context, clientAccessInfo *clientaccess.Info) e
 		return err
 	}
 	// touch a file to avoid multiple resets
-	resetFile := filepath.Join(e.config.DataDir, "db", "reset-flag")
-	if err := ioutil.WriteFile(resetFile, []byte{}, 0600); err != nil {
+	if err := ioutil.WriteFile(ResetFile(e.config), []byte{}, 0600); err != nil {
 		return err
 	}
 	return e.newCluster(ctx, true)
