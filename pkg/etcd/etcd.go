@@ -120,6 +120,11 @@ func nameFile(config *config.Control) string {
 	return filepath.Join(etcdDBDir(config), "name")
 }
 
+// ResetFile returns the path to etcdDBDir/reset-flag
+func ResetFile(config *config.Control) string {
+	return filepath.Join(config.DataDir, "db", "reset-flag")
+}
+
 // IsInitialized checks to see if a WAL directory exists. If so, we assume that etcd
 // has already been brought up at least once.
 func (e *ETCD) IsInitialized(ctx context.Context, config *config.Control) (bool, error) {
@@ -171,7 +176,10 @@ func (e *ETCD) Reset(ctx context.Context, clientAccessInfo *clientaccess.Info) e
 	if err := e.setName(true); err != nil {
 		return err
 	}
-
+	// touch a file to avoid multiple resets
+	if err := ioutil.WriteFile(ResetFile(e.config), []byte{}, 0600); err != nil {
+		return err
+	}
 	return e.newCluster(ctx, true)
 }
 
@@ -632,34 +640,28 @@ func (e *ETCD) setSnapshotFunction(ctx context.Context) {
 // completion.
 func (e *ETCD) Restore(ctx context.Context) error {
 	// check the old etcd data dir
-	oldDataDir := etcdDBDir(e.config) + "-old"
-	if s, err := os.Stat(oldDataDir); err == nil && s.IsDir() {
-		logrus.Infof("Etcd already restored from a snapshot. Restart without --snapshot-restore-path flag. Backup and delete ${datadir}/server/db on each peer etcd server and rejoin the nodes")
-		os.Exit(0)
-	} else if os.IsNotExist(err) {
-		if e.config.ClusterResetRestorePath == "" {
-			return errors.New("no etcd restore path was specified")
-		}
-		// make sure snapshot exists before restoration
-		if _, err := os.Stat(e.config.ClusterResetRestorePath); err != nil {
-			return err
-		}
-		// move the data directory to a temp path
-		if err := os.Rename(etcdDBDir(e.config), oldDataDir); err != nil {
-			return err
-		}
-		sManager := snapshot.NewV3(nil)
-		if err := sManager.Restore(snapshot.RestoreConfig{
-			SnapshotPath:   e.config.ClusterResetRestorePath,
-			Name:           e.name,
-			OutputDataDir:  etcdDBDir(e.config),
-			OutputWALDir:   walDir(e.config),
-			PeerURLs:       []string{e.peerURL()},
-			InitialCluster: e.name + "=" + e.peerURL(),
-		}); err != nil {
-			return err
-		}
-	} else {
+	oldDataDir := etcdDBDir(e.config) + "-old-" + strconv.Itoa(int(time.Now().Unix()))
+	if e.config.ClusterResetRestorePath == "" {
+		return errors.New("no etcd restore path was specified")
+	}
+	// make sure snapshot exists before restoration
+	if _, err := os.Stat(e.config.ClusterResetRestorePath); err != nil {
+		return err
+	}
+	// move the data directory to a temp path
+	if err := os.Rename(etcdDBDir(e.config), oldDataDir); err != nil {
+		return err
+	}
+	logrus.Infof("Pre-restore etcd database moved to %s", oldDataDir)
+	sManager := snapshot.NewV3(nil)
+	if err := sManager.Restore(snapshot.RestoreConfig{
+		SnapshotPath:   e.config.ClusterResetRestorePath,
+		Name:           e.name,
+		OutputDataDir:  etcdDBDir(e.config),
+		OutputWALDir:   walDir(e.config),
+		PeerURLs:       []string{e.peerURL()},
+		InitialCluster: e.name + "=" + e.peerURL(),
+	}); err != nil {
 		return err
 	}
 	return nil
