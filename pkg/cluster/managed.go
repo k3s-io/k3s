@@ -5,11 +5,16 @@ package cluster
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
+	"github.com/rancher/k3s/pkg/etcd"
+
 	"github.com/rancher/k3s/pkg/cluster/managed"
+	"github.com/rancher/k3s/pkg/version"
 	"github.com/rancher/kine/pkg/endpoint"
 	"github.com/sirupsen/logrus"
 )
@@ -47,13 +52,23 @@ func (c *Cluster) testClusterDB(ctx context.Context) (<-chan struct{}, error) {
 // start starts the database, unless a cluster reset has been requested, in which case
 // it does that instead.
 func (c *Cluster) start(ctx context.Context) error {
+	resetFile := etcd.ResetFile(c.config)
 	if c.managedDB == nil {
 		return nil
 	}
 
 	if c.config.ClusterReset {
+		if _, err := os.Stat(resetFile); err != nil {
+			if !os.IsNotExist(err) {
+				return err
+			}
+		} else {
+			return fmt.Errorf("cluster-reset was successfully performed, please remove the cluster-reset flag and start %s normally, if you need to perform another cluster reset, you must first manually delete the %s file", version.Program, resetFile)
+		}
 		return c.managedDB.Reset(ctx, c.clientAccessInfo)
 	}
+	// removing the reset file and ignore error if the file doesnt exist
+	os.Remove(resetFile)
 
 	return c.managedDB.Start(ctx, c.clientAccessInfo)
 }
