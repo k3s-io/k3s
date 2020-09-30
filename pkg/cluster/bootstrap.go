@@ -53,6 +53,12 @@ func (c *Cluster) shouldBootstrapLoad(ctx context.Context) (bool, error) {
 			// If the database is initialized we skip bootstrapping; if the user wants to rejoin a
 			// cluster they need to delete the database.
 			logrus.Infof("Managed %s cluster bootstrap already complete and initialized", c.managedDB.EndpointName())
+			// This is a workaround for an issue that can be caused by terminating the cluster bootstrap before
+			// etcd is promoted from learner. Odds are we won't need this info, and we don't want to fail startup
+			// due to failure to retrieve it as this will break cold cluster restart, so we ignore any errors.
+			if c.config.JoinURL != "" && c.config.Token != "" {
+				c.clientAccessInfo, _ = clientaccess.ParseAndValidateTokenForUser(c.config.JoinURL, c.config.Token, "server")
+			}
 			return false, nil
 		} else if c.config.JoinURL == "" {
 			// Not initialized, not joining - must be initializing (cluster-init)
