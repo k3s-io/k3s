@@ -12,6 +12,8 @@ import (
 	"github.com/rancher/k3s/pkg/cli/cmds"
 	"github.com/rancher/k3s/pkg/data"
 	"github.com/rancher/k3s/pkg/datadir"
+	"github.com/rancher/k3s/pkg/dataverify"
+	"github.com/rancher/k3s/pkg/flock"
 	"github.com/rancher/k3s/pkg/untar"
 	"github.com/rancher/k3s/pkg/version"
 	"github.com/sirupsen/logrus"
@@ -88,6 +90,7 @@ func stageAndRun(dataDir string, cmd string, args []string) error {
 	if err != nil {
 		return errors.Wrap(err, "extracting data")
 	}
+	logrus.Debugf("Asset dir %s", dir)
 
 	if err := os.Setenv("PATH", filepath.Join(dir, "bin")+":"+os.Getenv("PATH")+":"+filepath.Join(dir, "bin/aux")); err != nil {
 		return err
@@ -102,6 +105,7 @@ func stageAndRun(dataDir string, cmd string, args []string) error {
 	}
 
 	logrus.Debugf("Running %s %v", cmd, args)
+
 	return syscall.Exec(cmd, args, os.Environ())
 }
 
@@ -115,13 +119,27 @@ func extract(dataDir string) (string, error) {
 	// first look for global asset folder so we don't create a HOME version if not needed
 	_, dir := getAssetAndDir(datadir.DefaultDataDir)
 	if _, err := os.Stat(dir); err == nil {
-		logrus.Debugf("Asset dir %s", dir)
 		return dir, nil
 	}
 
 	asset, dir := getAssetAndDir(dataDir)
+	// check if target directory already exists
 	if _, err := os.Stat(dir); err == nil {
-		logrus.Debugf("Asset dir %s", dir)
+		return dir, nil
+	}
+
+	// acquire a data directory lock
+	os.MkdirAll(filepath.Join(dataDir, "data"), 0755)
+	lockFile := filepath.Join(dataDir, "data", ".lock")
+	logrus.Infof("Acquiring lock file %s", lockFile)
+	lock, err := flock.Acquire(lockFile)
+	if err != nil {
+		return "", err
+	}
+	defer flock.Release(lock)
+
+	// check again if target directory exists
+	if _, err := os.Stat(dir); err == nil {
 		return dir, nil
 	}
 
@@ -135,10 +153,12 @@ func extract(dataDir string) (string, error) {
 
 	tempDest := dir + "-tmp"
 	defer os.RemoveAll(tempDest)
-
 	os.RemoveAll(tempDest)
 
 	if err := untar.Untar(buf, tempDest); err != nil {
+		return "", err
+	}
+	if err := dataverify.Verify(filepath.Join(tempDest, "bin")); err != nil {
 		return "", err
 	}
 
@@ -152,6 +172,5 @@ func extract(dataDir string) (string, error) {
 	if err := os.Symlink(dir, currentSymLink); err != nil {
 		return "", err
 	}
-
 	return dir, os.Rename(tempDest, dir)
 }
