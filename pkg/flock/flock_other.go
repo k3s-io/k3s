@@ -19,6 +19,11 @@ limitations under the License.
 package flock
 
 // Acquire is not implemented on non-unix systems.
-func Acquire(path string) error {
+func Acquire(path string) (int, error) {
+	return -1, nil
+}
+
+// Release is not implemented on non-unix systems.
+func Release(lock int) error {
 	return nil
 }
