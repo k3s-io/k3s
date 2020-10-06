@@ -159,7 +159,7 @@ func accessInfoToKubeConfig(destFile, server, token string) error {
 }
 
 func validateToken(u url.URL, cacerts []byte, username, password string) error {
-	u.Path = "/apis"
+	u.Path = "/cacerts"
 	_, err := get(u.String(), GetHTTPClient(cacerts), username, password)
 	if err != nil {
 		return errors.Wrap(err, "token is not valid")
