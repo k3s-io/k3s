@@ -1726,12 +1726,15 @@ func NewNetworkPolicyController(
 
 	npc.podLister = podInformer.GetIndexer()
 	npc.PodEventHandler = npc.newPodEventHandler()
+	podInformer.AddEventHandler(npc.PodEventHandler)
 
 	npc.nsLister = nsInformer.GetIndexer()
 	npc.NamespaceEventHandler = npc.newNamespaceEventHandler()
+	nsInformer.AddEventHandler(npc.NamespaceEventHandler)
 
 	npc.npLister = npInformer.GetIndexer()
 	npc.NetworkPolicyEventHandler = npc.newNetworkPolicyEventHandler()
+	npInformer.AddEventHandler(npc.NetworkPolicyEventHandler)
 
 	return &npc, nil
 }
