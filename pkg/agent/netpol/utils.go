@@ -12,8 +12,10 @@ import (
 	"net"
 	"os/exec"
 	"strings"
+	"time"
 
 	apiv1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/informers"
 )
 
 var (
@@ -536,4 +538,20 @@ func GetNodeIP(node *apiv1.Node) (net.IP, error) {
 		return net.ParseIP(addresses[0].Address), nil
 	}
 	return nil, errors.New("host IP unknown")
+}
+
+// CacheSync performs cache synchronization under timeout limit
+func CacheSyncOrTimeout(informerFactory informers.SharedInformerFactory, stopCh <-chan struct{}, cacheSyncTimeout time.Duration) error {
+	syncOverCh := make(chan struct{})
+	go func() {
+		informerFactory.WaitForCacheSync(stopCh)
+		close(syncOverCh)
+	}()
+
+	select {
+	case <-time.After(cacheSyncTimeout):
+		return errors.New(cacheSyncTimeout.String() + " timeout")
+	case <-syncOverCh:
+		return nil
+	}
 }
