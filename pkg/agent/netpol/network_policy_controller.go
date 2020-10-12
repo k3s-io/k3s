@@ -1683,6 +1683,10 @@ func NewNetworkPolicyController(
 	npInformer := informerFactory.Networking().V1().NetworkPolicies().Informer()
 	informerFactory.Start(stopCh)
 
+	if err := CacheSyncOrTimeout(informerFactory, stopCh, 1*time.Minute); err != nil {
+		return nil, errors.New("Failed to synchronize cache: " + err.Error())
+	}
+
 	// if config.MetricsEnabled {
 	// 	//Register the metrics for this controller
 	// 	prometheus.MustRegister(metrics.ControllerIPtablesSyncTime)
@@ -1726,12 +1730,15 @@ func NewNetworkPolicyController(
 
 	npc.podLister = podInformer.GetIndexer()
 	npc.PodEventHandler = npc.newPodEventHandler()
+	podInformer.AddEventHandler(npc.PodEventHandler)
 
 	npc.nsLister = nsInformer.GetIndexer()
 	npc.NamespaceEventHandler = npc.newNamespaceEventHandler()
+	nsInformer.AddEventHandler(npc.NamespaceEventHandler)
 
 	npc.npLister = npInformer.GetIndexer()
 	npc.NetworkPolicyEventHandler = npc.newNetworkPolicyEventHandler()
+	npInformer.AddEventHandler(npc.NetworkPolicyEventHandler)
 
 	return &npc, nil
 }
