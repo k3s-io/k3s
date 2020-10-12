@@ -387,12 +387,20 @@ func writeToken(token, file, certs string) error {
 }
 
 func setNoProxyEnv(config *config.Control) error {
-	envList := strings.Join([]string{
-		os.Getenv("NO_PROXY"),
+	splitter := func(c rune) bool {
+		return c == ','
+	}
+	envList := []string{}
+	envList = append(envList, strings.FieldsFunc(os.Getenv("NO_PROXY"), splitter)...)
+	envList = append(envList, strings.FieldsFunc(os.Getenv("no_proxy"), splitter)...)
+	envList = append(envList,
+		".svc",
+		"."+config.ClusterDomain,
 		config.ClusterIPRange.String(),
 		config.ServiceIPRange.String(),
-	}, ",")
-	return os.Setenv("NO_PROXY", envList)
+	)
+	os.Unsetenv("no_proxy")
+	return os.Setenv("NO_PROXY", strings.Join(envList, ","))
 }
 
 func writeConfigSymlink(kubeconfig, kubeconfigSymlink string) error {
