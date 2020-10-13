@@ -1105,7 +1105,7 @@ func (proxier *Proxier) syncProxyRules() {
 
 				destChain := svcXlbChain
 				// We have to SNAT packets to external IPs if externalTrafficPolicy is cluster.
-				if !(utilfeature.DefaultFeatureGate.Enabled(features.ExternalPolicyForExternalIP) && svcInfo.OnlyNodeLocalEndpoints()) {
+				if !svcInfo.OnlyNodeLocalEndpoints() {
 					destChain = svcChain
 					writeLine(proxier.natRules, append(args, "-j", string(KubeMarkMasqChain))...)
 				}
@@ -1183,9 +1183,10 @@ func (proxier *Proxier) syncProxyRules() {
 						allowFromNode := false
 						for _, src := range svcInfo.LoadBalancerSourceRanges() {
 							writeLine(proxier.natRules, append(args, "-s", src, "-j", string(chosenChain))...)
-							// ignore error because it has been validated
-							_, cidr, _ := net.ParseCIDR(src)
-							if cidr.Contains(proxier.nodeIP) {
+							_, cidr, err := net.ParseCIDR(src)
+							if err != nil {
+								klog.Errorf("Error parsing %s CIDR in LoadBalancerSourceRanges, dropping: %v", cidr, err)
+							} else if cidr.Contains(proxier.nodeIP) {
 								allowFromNode = true
 							}
 						}

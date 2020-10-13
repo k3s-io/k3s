@@ -468,8 +468,6 @@ func (kl *Kubelet) GenerateRunContainerOptions(pod *v1.Pod, container *v1.Contai
 	podName := volumeutil.GetUniquePodName(pod)
 	volumes := kl.volumeManager.GetMountedVolumesForPod(podName)
 
-	opts.PortMappings = kubecontainer.MakePortMappings(container)
-
 	blkutil := volumepathhandler.NewBlockVolumePathHandler()
 	blkVolumes, err := kl.makeBlockVolumes(pod, container, volumes, blkutil)
 	if err != nil {
@@ -969,6 +967,16 @@ func (kl *Kubelet) PodResourcesAreReclaimed(pod *v1.Pod, status v1.PodStatus) bo
 		klog.V(3).Infof("Pod %q is terminated, but some containers have not been cleaned up: %s", format.Pod(pod), statusStr)
 		return false
 	}
+	// pod's sandboxes should be deleted
+	if len(runtimeStatus.SandboxStatuses) > 0 {
+		var sandboxStr string
+		for _, sandbox := range runtimeStatus.SandboxStatuses {
+			sandboxStr += fmt.Sprintf("%+v ", *sandbox)
+		}
+		klog.V(3).Infof("Pod %q is terminated, but some pod sandboxes have not been cleaned up: %s", format.Pod(pod), sandboxStr)
+		return false
+	}
+
 	if kl.podVolumesExist(pod.UID) && !kl.keepTerminatedPodVolumes {
 		// We shouldn't delete pods whose volumes have not been cleaned up if we are not keeping terminated pod volumes
 		klog.V(3).Infof("Pod %q is terminated, but some volumes have not been cleaned up", format.Pod(pod))

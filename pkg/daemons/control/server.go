@@ -39,8 +39,8 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	ccmapp "k8s.io/kubernetes/cmd/cloud-controller-manager/app"
 	app2 "k8s.io/kubernetes/cmd/controller-manager/app"
+	"k8s.io/kubernetes/pkg/controlplane"
 	"k8s.io/kubernetes/pkg/kubeapiserver/authorizer/modes"
-	"k8s.io/kubernetes/pkg/master"
 	"k8s.io/kubernetes/pkg/proxy/util"
 
 	// registering k3s cloud provider
@@ -607,7 +607,7 @@ func genServerCerts(config *config.Control, runtime *config.ControlRuntime) erro
 		return err
 	}
 
-	_, apiServerServiceIP, err := master.ServiceIPRange(*config.ServiceIPRange)
+	_, apiServerServiceIP, err := controlplane.ServiceIPRange(*config.ServiceIPRange)
 	if err != nil {
 		return err
 	}
