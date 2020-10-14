@@ -196,6 +196,8 @@ func (cache *schedulerCache) Dump() *Dump {
 
 // UpdateSnapshot takes a snapshot of cached NodeInfo map. This is called at
 // beginning of every scheduling cycle.
+// The snapshot only includes Nodes that are not deleted at the time this function is called.
+// nodeinfo.Node() is guaranteed to be not nil for all the nodes in the snapshot.
 // This function tracks generation number of NodeInfo and updates only the
 // entries of an existing snapshot that have changed after the snapshot was taken.
 func (cache *schedulerCache) UpdateSnapshot(nodeSnapshot *Snapshot) error {
@@ -213,6 +215,10 @@ func (cache *schedulerCache) UpdateSnapshot(nodeSnapshot *Snapshot) error {
 	// status from having pods with affinity to NOT having pods with affinity or the other
 	// way around.
 	updateNodesHavePodsWithAffinity := false
+	// HavePodsWithRequiredAntiAffinityNodeInfoList must be re-created if a node changed its
+	// status from having pods with required anti-affinity to NOT having pods with required
+	// anti-affinity or the other way around.
+	updateNodesHavePodsWithRequiredAntiAffinity := false
 
 	// Start from the head of the NodeInfo doubly linked list and update snapshot
 	// of NodeInfos updated after the last snapshot.
@@ -239,6 +245,9 @@ func (cache *schedulerCache) UpdateSnapshot(nodeSnapshot *Snapshot) error {
 			if (len(existing.PodsWithAffinity) > 0) != (len(clone.PodsWithAffinity) > 0) {
 				updateNodesHavePodsWithAffinity = true
 			}
+			if (len(existing.PodsWithRequiredAntiAffinity) > 0) != (len(clone.PodsWithRequiredAntiAffinity) > 0) {
+				updateNodesHavePodsWithRequiredAntiAffinity = true
+			}
 			// We need to preserve the original pointer of the NodeInfo struct since it
 			// is used in the NodeInfoList, which we may not update.
 			*existing = *clone
@@ -249,12 +258,15 @@ func (cache *schedulerCache) UpdateSnapshot(nodeSnapshot *Snapshot) error {
 		nodeSnapshot.generation = cache.headNode.info.Generation
 	}
 
-	if len(nodeSnapshot.nodeInfoMap) > len(cache.nodes) {
+	// Comparing to pods in nodeTree.
+	// Deleted nodes get removed from the tree, but they might remain in the nodes map
+	// if they still have non-deleted Pods.
+	if len(nodeSnapshot.nodeInfoMap) > cache.nodeTree.numNodes {
 		cache.removeDeletedNodesFromSnapshot(nodeSnapshot)
 		updateAllLists = true
 	}
 
-	if updateAllLists || updateNodesHavePodsWithAffinity {
+	if updateAllLists || updateNodesHavePodsWithAffinity || updateNodesHavePodsWithRequiredAntiAffinity {
 		cache.updateNodeInfoSnapshotList(nodeSnapshot, updateAllLists)
 	}
 
@@ -276,6 +288,7 @@ func (cache *schedulerCache) UpdateSnapshot(nodeSnapshot *Snapshot) error {
 
 func (cache *schedulerCache) updateNodeInfoSnapshotList(snapshot *Snapshot, updateAll bool) {
 	snapshot.havePodsWithAffinityNodeInfoList = make([]*framework.NodeInfo, 0, cache.nodeTree.numNodes)
+	snapshot.havePodsWithRequiredAntiAffinityNodeInfoList = make([]*framework.NodeInfo, 0, cache.nodeTree.numNodes)
 	if updateAll {
 		// Take a snapshot of the nodes order in the tree
 		snapshot.nodeInfoList = make([]*framework.NodeInfo, 0, cache.nodeTree.numNodes)
@@ -287,6 +300,9 @@ func (cache *schedulerCache) updateNodeInfoSnapshotList(snapshot *Snapshot, upda
 				if len(n.PodsWithAffinity) > 0 {
 					snapshot.havePodsWithAffinityNodeInfoList = append(snapshot.havePodsWithAffinityNodeInfoList, n)
 				}
+				if len(n.PodsWithRequiredAntiAffinity) > 0 {
+					snapshot.havePodsWithRequiredAntiAffinityNodeInfoList = append(snapshot.havePodsWithRequiredAntiAffinityNodeInfoList, n)
+				}
 			} else {
 				klog.Errorf("node %q exist in nodeTree but not in NodeInfoMap, this should not happen.", nodeName)
 			}
@@ -296,18 +312,21 @@ func (cache *schedulerCache) updateNodeInfoSnapshotList(snapshot *Snapshot, upda
 			if len(n.PodsWithAffinity) > 0 {
 				snapshot.havePodsWithAffinityNodeInfoList = append(snapshot.havePodsWithAffinityNodeInfoList, n)
 			}
+			if len(n.PodsWithRequiredAntiAffinity) > 0 {
+				snapshot.havePodsWithRequiredAntiAffinityNodeInfoList = append(snapshot.havePodsWithRequiredAntiAffinityNodeInfoList, n)
+			}
 		}
 	}
 }
 
 // If certain nodes were deleted after the last snapshot was taken, we should remove them from the snapshot.
 func (cache *schedulerCache) removeDeletedNodesFromSnapshot(snapshot *Snapshot) {
-	toDelete := len(snapshot.nodeInfoMap) - len(cache.nodes)
+	toDelete := len(snapshot.nodeInfoMap) - cache.nodeTree.numNodes
 	for name := range snapshot.nodeInfoMap {
 		if toDelete <= 0 {
 			break
 		}
-		if _, ok := cache.nodes[name]; !ok {
+		if n, ok := cache.nodes[name]; !ok || n.info.Node() == nil {
 			delete(snapshot.nodeInfoMap, name)
 			toDelete--
 		}
