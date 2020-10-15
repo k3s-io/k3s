@@ -5,13 +5,21 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/rancher/k3s/pkg/passwd"
 	coreclient "github.com/rancher/wrangler-api/pkg/generated/controllers/core/v1"
 	"github.com/sirupsen/logrus"
 	core "k8s.io/api/core/v1"
 )
 
-func Register(ctx context.Context, configMap coreclient.ConfigMapController, nodes coreclient.NodeController) error {
+func Register(ctx context.Context,
+	modCoreDNS bool,
+	passwordFile string,
+	configMap coreclient.ConfigMapController,
+	nodes coreclient.NodeController,
+) error {
 	h := &handler{
+		modCoreDNS:   modCoreDNS,
+		passwordFile: passwordFile,
 		configCache:  configMap.Cache(),
 		configClient: configMap,
 	}
@@ -22,6 +30,8 @@ func Register(ctx context.Context, configMap coreclient.ConfigMapController, nod
 }
 
 type handler struct {
+	modCoreDNS   bool
+	passwordFile string
 	configCache  coreclient.ConfigMapCache
 	configClient coreclient.ConfigMapClient
 }
@@ -39,27 +49,44 @@ func (h *handler) onRemove(key string, node *core.Node) (*core.Node, error) {
 
 func (h *handler) updateHosts(node *core.Node, removed bool) (*core.Node, error) {
 	var (
-		newHosts    string
+		nodeName    string
 		nodeAddress string
-		hostsMap    map[string]string
 	)
-	hostsMap = make(map[string]string)
-
+	nodeName = node.Name
 	for _, address := range node.Status.Addresses {
 		if address.Type == "InternalIP" {
 			nodeAddress = address.Address
 			break
 		}
 	}
-	if nodeAddress == "" {
-		logrus.Errorf("No InternalIP found for node " + node.Name)
-		return nil, nil
+	if h.modCoreDNS {
+		if err := h.updateCoreDNSConfigMap(nodeName, nodeAddress, removed); err != nil {
+			return nil, err
+		}
 	}
+	if removed {
+		if err := h.removeNodeFromPasswordFile(nodeName); err != nil {
+			return nil, err
+		}
+	}
+	return nil, nil
+}
+
+func (h *handler) updateCoreDNSConfigMap(nodeName, nodeAddress string, removed bool) error {
+	if nodeAddress == "" && !removed {
+		logrus.Errorf("No InternalIP found for node " + nodeName)
+		return nil
+	}
+	var (
+		newHosts string
+		hostsMap map[string]string
+	)
+	hostsMap = make(map[string]string)
 
 	configMapCache, err := h.configCache.Get("kube-system", "coredns")
 	if err != nil || configMapCache == nil {
 		logrus.Warn(errors.Wrap(err, "Unable to fetch coredns config map"))
-		return nil, nil
+		return nil
 	}
 	configMap := configMapCache.DeepCopy()
 
@@ -75,19 +102,19 @@ func (h *handler) updateHosts(node *core.Node, removed bool) (*core.Node, error)
 		}
 		ip := fields[0]
 		host := fields[1]
-		if host == node.Name {
+		if host == nodeName {
 			if removed {
 				continue
 			}
 			if ip == nodeAddress {
-				return nil, nil
+				return nil
 			}
 		}
 		hostsMap[host] = ip
 	}
 
 	if !removed {
-		hostsMap[node.Name] = nodeAddress
+		hostsMap[nodeName] = nodeAddress
 	}
 	for host, ip := range hostsMap {
 		newHosts += ip + " " + host + "\n"
@@ -95,7 +122,7 @@ func (h *handler) updateHosts(node *core.Node, removed bool) (*core.Node, error)
 	configMap.Data["NodeHosts"] = newHosts
 
 	if _, err := h.configClient.Update(configMap); err != nil {
-		return nil, err
+		return err
 	}
 
 	var actionType string
@@ -104,7 +131,19 @@ func (h *handler) updateHosts(node *core.Node, removed bool) (*core.Node, error)
 	} else {
 		actionType = "Updated"
 	}
-	logrus.Infof("%s coredns node hosts entry [%s]", actionType, nodeAddress+" "+node.Name)
+	logrus.Infof("%s coredns node hosts entry [%s]", actionType, nodeAddress+" "+nodeName)
+	return nil
+}
 
-	return nil, nil
+func (h *handler) removeNodeFromPasswordFile(nodeName string) error {
+	if h.passwordFile == "" {
+		return nil
+	}
+	passwd, err := passwd.Read(h.passwordFile)
+	defer passwd.Release()
+	if err != nil {
+		return err
+	}
+	passwd.Remove(nodeName)
+	return passwd.Write(h.passwordFile)
 }

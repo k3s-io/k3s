@@ -162,10 +162,12 @@ func runControllers(ctx context.Context, config *Config) error {
 }
 
 func masterControllers(ctx context.Context, sc *Context, config *Config) error {
-	if !config.ControlConfig.Skips["coredns"] {
-		if err := node.Register(ctx, sc.Core.Core().V1().ConfigMap(), sc.Core.Core().V1().Node()); err != nil {
-			return err
-		}
+	if err := node.Register(ctx,
+		!config.ControlConfig.Skips["coredns"],
+		config.ControlConfig.Runtime.NodePasswdFile,
+		sc.Core.Core().V1().ConfigMap(),
+		sc.Core.Core().V1().Node()); err != nil {
+		return err
 	}
 
 	helm.Register(ctx, sc.Apply,

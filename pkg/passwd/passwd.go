@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"strings"
 
+	"github.com/rancher/k3s/pkg/flock"
 	"github.com/rancher/k3s/pkg/token"
 	"github.com/rancher/k3s/pkg/util"
 )
@@ -19,11 +21,22 @@ type entry struct {
 type Passwd struct {
 	changed bool
 	names   map[string]entry
+	lock    int
 }
 
 func Read(file string) (*Passwd, error) {
+	dirName := path.Dir(file)
+	baseName := path.Base(file)
+	lockFile := path.Join(dirName, "."+baseName+".lock")
+	lock, err := flock.Acquire(lockFile)
+	if err != nil {
+		return nil, err
+	}
+
 	result := &Passwd{
-		names: map[string]entry{},
+		changed: false,
+		names:   map[string]entry{},
+		lock:    lock,
 	}
 
 	f, err := os.Open(file)
@@ -60,12 +73,25 @@ func Read(file string) (*Passwd, error) {
 	return result, nil
 }
 
+func (p *Passwd) Release() error {
+	return flock.Release(p.lock)
+}
+
 func (p *Passwd) Check(name, pass string) (matches bool, exists bool) {
 	e, ok := p.names[name]
 	if !ok {
 		return false, false
 	}
 	return e.pass == pass, true
+}
+
+func (p *Passwd) Remove(name string) bool {
+	if _, ok := p.names[name]; !ok {
+		return false
+	}
+	delete(p.names, name)
+	p.changed = true
+	return true
 }
 
 func (p *Passwd) EnsureUser(name, role, passwd string) error {

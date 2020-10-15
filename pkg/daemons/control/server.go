@@ -370,6 +370,7 @@ func prepare(ctx context.Context, config *config.Control, runtime *config.Contro
 
 func readTokens(runtime *config.ControlRuntime) error {
 	tokens, err := passwd.Read(runtime.PasswdFile)
+	defer tokens.Release()
 	if err != nil {
 		return err
 	}
@@ -447,6 +448,7 @@ func getNodePass(config *config.Control, serverPass string) string {
 
 func genUsers(config *config.Control, runtime *config.ControlRuntime) error {
 	passwd, err := passwd.Read(runtime.PasswdFile)
+	defer passwd.Release()
 	if err != nil {
 		return err
 	}

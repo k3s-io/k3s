@@ -277,6 +277,7 @@ func sendError(err error, resp http.ResponseWriter, status ...int) {
 
 func ensureNodePassword(passwdFile, nodeName, pass string) error {
 	passwd, err := passwd.Read(passwdFile)
+	defer passwd.Release()
 	if err != nil {
 		return err
 	}
