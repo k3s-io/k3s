@@ -41,7 +41,7 @@ var (
 	createDB = "create database "
 )
 
-func New(ctx context.Context, dataSourceName string, tlsInfo tls.Config) (server.Backend, error) {
+func New(ctx context.Context, dataSourceName string, tlsInfo tls.Config, connPoolConfig generic.ConnectionPoolConfig) (server.Backend, error) {
 	parsedDSN, err := prepareDSN(dataSourceName, tlsInfo)
 	if err != nil {
 		return nil, err
@@ -51,7 +51,7 @@ func New(ctx context.Context, dataSourceName string, tlsInfo tls.Config) (server
 		return nil, err
 	}
 
-	dialect, err := generic.Open(ctx, "postgres", parsedDSN, "$", true)
+	dialect, err := generic.Open(ctx, "postgres", parsedDSN, connPoolConfig, "$", true)
 	if err != nil {
 		return nil, err
 	}

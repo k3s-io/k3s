@@ -40,7 +40,7 @@ var (
 	createDB    = "create database if not exists "
 )
 
-func New(ctx context.Context, dataSourceName string, tlsInfo tls.Config) (server.Backend, error) {
+func New(ctx context.Context, dataSourceName string, tlsInfo tls.Config, connPoolConfig generic.ConnectionPoolConfig) (server.Backend, error) {
 	tlsConfig, err := tlsInfo.ClientConfig()
 	if err != nil {
 		return nil, err
@@ -59,7 +59,7 @@ func New(ctx context.Context, dataSourceName string, tlsInfo tls.Config) (server
 		return nil, err
 	}
 
-	dialect, err := generic.Open(ctx, "mysql", parsedDSN, "?", false)
+	dialect, err := generic.Open(ctx, "mysql", parsedDSN, connPoolConfig, "?", false)
 	if err != nil {
 		return nil, err
 	}
