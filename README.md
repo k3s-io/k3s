@@ -145,3 +145,8 @@ Contributing
 ------------
 
 Please check out our [contributing guide](CONTRIBUTING.md) if you're interesting in contributing to k3s.
+
+Security
+--------
+
+Security issues in k3s can be reported by sending an email to [security@rancher.com](mailto:security@rancher.com). Please do not file issues about security issues.
