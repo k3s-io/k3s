@@ -4,7 +4,6 @@ import (
 	"crypto"
 	"crypto/x509"
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -16,8 +15,9 @@ import (
 	certutil "github.com/rancher/dynamiclistener/cert"
 	"github.com/rancher/k3s/pkg/bootstrap"
 	"github.com/rancher/k3s/pkg/daemons/config"
-	"github.com/rancher/k3s/pkg/passwd"
+	"github.com/rancher/k3s/pkg/nodepassword"
 	"github.com/rancher/k3s/pkg/version"
+	coreclient "github.com/rancher/wrangler-api/pkg/generated/controllers/core/v1"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/json"
 )
@@ -26,13 +26,18 @@ const (
 	staticURL = "/static/"
 )
 
-func router(serverConfig *config.Control, tunnel http.Handler, ca []byte) http.Handler {
+func router(serverConfig *config.Control, tunnel http.Handler, secretClient coreclient.SecretClient) (http.Handler, error) {
+	ca, err := ioutil.ReadFile(serverConfig.Runtime.ServerCA)
+	if err != nil {
+		return nil, err
+	}
+
 	prefix := "/v1-" + version.Program
 	authed := mux.NewRouter()
 	authed.Use(authMiddleware(serverConfig, version.Program+":agent"))
 	authed.NotFoundHandler = serverConfig.Runtime.Handler
-	authed.Path(prefix + "/serving-kubelet.crt").Handler(servingKubeletCert(serverConfig, serverConfig.Runtime.ServingKubeletKey))
-	authed.Path(prefix + "/client-kubelet.crt").Handler(clientKubeletCert(serverConfig, serverConfig.Runtime.ClientKubeletKey))
+	authed.Path(prefix + "/serving-kubelet.crt").Handler(servingKubeletCert(serverConfig, serverConfig.Runtime.ServingKubeletKey, secretClient))
+	authed.Path(prefix + "/client-kubelet.crt").Handler(clientKubeletCert(serverConfig, serverConfig.Runtime.ClientKubeletKey, secretClient))
 	authed.Path(prefix + "/client-kube-proxy.crt").Handler(fileHandler(serverConfig.Runtime.ClientKubeProxyCert, serverConfig.Runtime.ClientKubeProxyKey))
 	authed.Path(prefix + "/client-" + version.Program + "-controller.crt").Handler(fileHandler(serverConfig.Runtime.ClientK3sControllerCert, serverConfig.Runtime.ClientK3sControllerKey))
 	authed.Path(prefix + "/client-ca.crt").Handler(fileHandler(serverConfig.Runtime.ClientCA))
@@ -59,7 +64,7 @@ func router(serverConfig *config.Control, tunnel http.Handler, ca []byte) http.H
 	router.Path("/cacerts").Handler(cacerts(ca))
 	router.Path("/ping").Handler(ping())
 
-	return router
+	return router, nil
 }
 
 func cacerts(ca []byte) http.Handler {
@@ -117,7 +122,7 @@ func getCACertAndKeys(caCertFile, caKeyFile, signingKeyFile string) ([]*x509.Cer
 	return caCert, caKey.(crypto.Signer), key.(crypto.Signer), nil
 }
 
-func servingKubeletCert(server *config.Control, keyFile string) http.Handler {
+func servingKubeletCert(server *config.Control, keyFile string, secretClient coreclient.SecretClient) http.Handler {
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 		if req.TLS == nil {
 			resp.WriteHeader(http.StatusNotFound)
@@ -130,7 +135,7 @@ func servingKubeletCert(server *config.Control, keyFile string) http.Handler {
 			return
 		}
 
-		if err := ensureNodePassword(server.Runtime.NodePasswdFile, nodeName, nodePassword); err != nil {
+		if err := nodepassword.Ensure(secretClient, nodeName, nodePassword); err != nil {
 			sendError(err, resp, http.StatusForbidden)
 			return
 		}
@@ -170,7 +175,7 @@ func servingKubeletCert(server *config.Control, keyFile string) http.Handler {
 	})
 }
 
-func clientKubeletCert(server *config.Control, keyFile string) http.Handler {
+func clientKubeletCert(server *config.Control, keyFile string, secretClient coreclient.SecretClient) http.Handler {
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 		if req.TLS == nil {
 			resp.WriteHeader(http.StatusNotFound)
@@ -183,7 +188,7 @@ func clientKubeletCert(server *config.Control, keyFile string) http.Handler {
 			return
 		}
 
-		if err := ensureNodePassword(server.Runtime.NodePasswdFile, nodeName, nodePassword); err != nil {
+		if err := nodepassword.Ensure(secretClient, nodeName, nodePassword); err != nil {
 			sendError(err, resp, http.StatusForbidden)
 			return
 		}
@@ -273,21 +278,4 @@ func sendError(err error, resp http.ResponseWriter, status ...int) {
 	logrus.Error(err)
 	resp.WriteHeader(code)
 	resp.Write([]byte(err.Error()))
-}
-
-func ensureNodePassword(passwdFile, nodeName, pass string) error {
-	passwd, err := passwd.Read(passwdFile)
-	if err != nil {
-		return err
-	}
-	match, exists := passwd.Check(nodeName, pass)
-	if exists {
-		if !match {
-			return fmt.Errorf("Node password validation failed for '%s', using passwd file '%s'", nodeName, passwdFile)
-		}
-		return nil
-	}
-	// If user doesn't exist we save this password for future validation
-	passwd.EnsureUser(nodeName, "", pass)
-	return passwd.Write(passwdFile)
 }

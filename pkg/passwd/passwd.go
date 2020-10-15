@@ -107,6 +107,14 @@ func (p *Passwd) EnsureUser(name, role, passwd string) error {
 	return nil
 }
 
+func (p *Passwd) Users() []string {
+	users := []string{}
+	for user := range p.names {
+		users = append(users, user)
+	}
+	return users
+}
+
 func (p *Passwd) Pass(name string) (string, bool) {
 	e, ok := p.names[name]
 	if !ok {
