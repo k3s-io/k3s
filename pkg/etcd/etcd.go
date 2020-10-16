@@ -52,10 +52,11 @@ const (
 	endpoint       = "https://127.0.0.1:2379"
 	testTimeout    = time.Second * 10
 
-	// defaults from etcdctl/ctlv3/ctl.go
-	defaultDialTimeout      = 2 * time.Second
-	defaultKeepAliveTime    = 2 * time.Second
-	defaultKeepAliveTimeOut = 6 * time.Second
+	// defaultDialTimeout is intentionally short so that connections timeout within the testTimeout defined above
+	defaultDialTimeout = 2 * time.Second
+	// other defaults from k8s.io/apiserver/pkg/storage/storagebackend/factory/etcd3.go
+	defaultKeepAliveTime    = 30 * time.Second
+	defaultKeepAliveTimeout = 10 * time.Second
 )
 
 // Members contains a slice that holds all
@@ -226,6 +227,7 @@ func (e *ETCD) join(ctx context.Context, clientAccessInfo *clientaccess.Info) er
 	if err != nil {
 		return err
 	}
+	defer client.Close()
 
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
@@ -392,7 +394,7 @@ func getClientConfig(ctx context.Context, runtime *config.ControlRuntime, endpoi
 		Context:              ctx,
 		DialTimeout:          defaultDialTimeout,
 		DialKeepAliveTime:    defaultKeepAliveTime,
-		DialKeepAliveTimeout: defaultKeepAliveTimeOut,
+		DialKeepAliveTimeout: defaultKeepAliveTimeout,
 	}
 
 	return cfg, nil
