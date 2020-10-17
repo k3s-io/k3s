@@ -72,19 +72,10 @@ func (e *ETCD) EndpointName() string {
 
 // Test ensures that the local node is a part of the target cluster. If it is a learner, a goroutine
 // will be started to promote it to full member. If it is not a part of the cluster, an error is raised.
-func (e *ETCD) Test(ctx context.Context, clientAccessInfo *clientaccess.Info) error {
+func (e *ETCD) Test(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, testTimeout)
 	defer cancel()
-	status, err := e.client.Status(ctx, endpoint)
-	if err != nil {
-		return err
-	}
 
-	if status.IsLearner {
-		if err := e.promoteMember(ctx, clientAccessInfo); err != nil {
-			return err
-		}
-	}
 	members, err := e.client.MemberList(ctx)
 	if err != nil {
 		return err
@@ -140,13 +131,13 @@ func (e *ETCD) IsInitialized(ctx context.Context, config *config.Control) (bool,
 }
 
 // Reset resets an etcd node
-func (e *ETCD) Reset(ctx context.Context, clientAccessInfo *clientaccess.Info) error {
+func (e *ETCD) Reset(ctx context.Context) error {
 	// Wait for etcd to come up as a new single-node cluster, then exit
 	go func() {
 		t := time.NewTicker(5 * time.Second)
 		defer t.Stop()
 		for range t.C {
-			if err := e.Test(ctx, clientAccessInfo); err == nil {
+			if err := e.Test(ctx); err == nil {
 				members, err := e.client.MemberList(ctx)
 				if err != nil {
 					continue
@@ -275,8 +266,6 @@ func (e *ETCD) join(ctx context.Context, clientAccessInfo *clientaccess.Info) er
 		}
 		cluster = append(cluster, fmt.Sprintf("%s=%s", e.name, e.peerURL()))
 	}
-
-	go e.promoteMember(ctx, clientAccessInfo)
 
 	logrus.Infof("Starting etcd for cluster %v", cluster)
 	return e.cluster(ctx, false, executor.InitialOptions{
@@ -506,46 +495,6 @@ func (e *ETCD) removePeer(ctx context.Context, id, address string) error {
 		}
 	}
 
-	return nil
-}
-
-// promoteMember attempts to promote any learners to full members at 5 second intervals.
-// It will return when a member has been promoted. Usually this function is run on the node
-// that has just been added to the cluster and is trying to promote itself. If it is run when there
-// are no learners, it will never return.
-func (e *ETCD) promoteMember(ctx context.Context, clientAccessInfo *clientaccess.Info) error {
-	clientURLs, _, err := e.clientURLs(ctx, clientAccessInfo)
-	if err != nil {
-		return err
-	}
-	memberPromoted := true
-	t := time.NewTicker(5 * time.Second)
-	defer t.Stop()
-	for range t.C {
-		client, err := getClient(ctx, e.runtime, clientURLs...)
-		// continue on errors to keep trying to promote member
-		// grpc error are shown so no need to re log them
-		if err != nil {
-			continue
-		}
-		members, err := client.MemberList(ctx)
-		if err != nil {
-			continue
-		}
-		for _, member := range members.Members {
-			// only one learner can exist in the cluster
-			if !member.IsLearner {
-				continue
-			}
-			if _, err := client.MemberPromote(ctx, member.ID); err != nil {
-				memberPromoted = false
-				break
-			}
-		}
-		if memberPromoted {
-			break
-		}
-	}
 	return nil
 }
 
