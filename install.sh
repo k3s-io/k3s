@@ -76,6 +76,9 @@ set -e
 #   - INSTALL_K3S_SELINUX_WARN
 #     If set to true will continue if k3s-selinux policy is not found.
 #
+#   - INSTALL_K3S_SKIP_SELINUX_RPM
+#     If set to true will skip automatic installation of the k3s RPM.
+#
 #   - INSTALL_K3S_CHANNEL_URL
 #     Channel URL for fetching k3s download URL.
 #     Defaults to 'https://update.k3s.io/v1-release/channels'.
@@ -429,13 +432,25 @@ setup_binary() {
 
 # --- setup selinux policy ---
 setup_selinux() {
+
+    rpm_site="rpm.rancher.io"
+    if [ "${INSTALL_K3S_CHANNEL}" = "testing" ]; then
+        rpm_site="rpm-${INSTALL_K3S_CHANNEL}.rancher.io"
+    fi
+
     policy_hint="please install:
     yum install -y container-selinux selinux-policy-base
-    yum install -y https://rpm.rancher.io/k3s-selinux-0.1.1-rc1.el7.noarch.rpm
+    yum install -y https://${rpm_site}/k3s/${INSTALL_K3S_CHANNEL}/common/centos/7/noarch/k3s-selinux-0.2-1.el7_8.noarch.rpm
 "
     policy_error=fatal
     if [ "$INSTALL_K3S_SELINUX_WARN" = true ]; then
         policy_error=warn
+    fi
+
+    if [ "$INSTALL_K3S_SKIP_SELINUX_RPM" = true ] || can_skip_download; then
+        info "Skipping installation of SELinux RPM"
+    else
+        install_selinux_rpm ${rpm_site}
     fi
 
     if ! $SUDO chcon -u system_u -r object_r -t container_runtime_exec_t ${BIN_DIR}/k3s >/dev/null 2>&1; then
@@ -447,6 +462,28 @@ setup_selinux() {
             $policy_error "Failed to find the k3s-selinux policy, ${policy_hint}"
         fi
     fi
+}
+
+# --- if on an el7/el8 system, install k3s-selinux
+install_selinux_rpm() {
+    if [ -r /etc/redhat-release ] || [ -r /etc/centos-release ] || [ -r /etc/oracle-release ]; then
+        dist_version="$(. /etc/os-release && echo "$VERSION_ID")"
+        maj_ver=$(echo "$dist_version" | sed -E -e "s/^([0-9]+)\.?[0-9]*$/\1/")
+        if [ -r /etc/redhat-release ] && [ "${maj_ver}" = "7" ]; then
+            yum -y install yum-utils
+            yum-config-manager --enable rhel-7-server-extras-rpms
+        fi
+        cat <<-EOF >"/etc/yum.repos.d/rancher-k3s-common-${INSTALL_K3S_CHANNEL}.repo"
+[rancher-k3s-common-${INSTALL_K3S_CHANNEL}]
+name=Rancher K3s Common (${INSTALL_K3S_CHANNEL})
+baseurl=https://${1}/k3s/${INSTALL_K3S_CHANNEL}/common/centos/${maj_ver}/noarch
+enabled=1
+gpgcheck=1
+gpgkey=https://${1}/public.key
+EOF
+        yum -y install "k3s-selinux"
+    fi
+    return
 }
 
 # --- download and verify k3s ---
