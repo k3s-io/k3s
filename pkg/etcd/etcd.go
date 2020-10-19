@@ -1,6 +1,7 @@
 package etcd
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"encoding/json"
@@ -22,11 +23,14 @@ import (
 	"github.com/rancher/k3s/pkg/clientaccess"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/daemons/executor"
+	"github.com/rancher/k3s/pkg/version"
 	"github.com/robfig/cron/v3"
 	"github.com/sirupsen/logrus"
 	etcd "go.etcd.io/etcd/clientv3"
 	"go.etcd.io/etcd/clientv3/snapshot"
+	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
 	"go.etcd.io/etcd/etcdserver/etcdserverpb"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 )
 
@@ -39,6 +43,13 @@ type ETCD struct {
 	cron    *cron.Cron
 }
 
+type learnerProgress struct {
+	ID               uint64      `json:"id,omitempty"`
+	Name             string      `json:"name,omitempty"`
+	RaftAppliedIndex uint64      `json:"raftAppliedIndex,omitmepty"`
+	LastProgress     metav1.Time `json:"lastProgress,omitempty"`
+}
+
 // NewETCD creates a new value of type
 // ETCD with an initialized cron value.
 func NewETCD() *ETCD {
@@ -47,10 +58,14 @@ func NewETCD() *ETCD {
 	}
 }
 
+var learnerProgressKey = version.Program + "/etcd/learnerProgress"
+
 const (
-	snapshotPrefix = "etcd-snapshot-"
-	endpoint       = "https://127.0.0.1:2379"
-	testTimeout    = time.Second * 10
+	snapshotPrefix      = "etcd-snapshot-"
+	endpoint            = "https://127.0.0.1:2379"
+	testTimeout         = time.Second * 10
+	manageTickerTime    = time.Second * 15
+	learnerMaxStallTime = time.Minute * 1
 
 	// defaultDialTimeout is intentionally short so that connections timeout within the testTimeout defined above
 	defaultDialTimeout = 2 * time.Second
@@ -70,11 +85,20 @@ func (e *ETCD) EndpointName() string {
 	return "etcd"
 }
 
-// Test ensures that the local node is a part of the target cluster. If it is a learner, a goroutine
-// will be started to promote it to full member. If it is not a part of the cluster, an error is raised.
+// Test ensures that the local node is a voting member of the target cluster.
+// If it is still a learner or not a part of the cluster, an error is raised.
 func (e *ETCD) Test(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, testTimeout)
 	defer cancel()
+
+	status, err := e.client.Status(ctx, endpoint)
+	if err != nil {
+		return err
+	}
+
+	if status.IsLearner {
+		return errors.New("this server has not yet been promoted from learner to voting member")
+	}
 
 	members, err := e.client.MemberList(ctx)
 	if err != nil {
@@ -92,9 +116,7 @@ func (e *ETCD) Test(ctx context.Context) error {
 			memberNameUrls = append(memberNameUrls, member.Name+"="+member.PeerURLs[0])
 		}
 	}
-	msg := fmt.Sprintf("This server is a not a member of the etcd cluster. Found %v, expect: %s=%s", memberNameUrls, e.name, e.address)
-	logrus.Error(msg)
-	return fmt.Errorf(msg)
+	return errors.Errorf("this server is a not a member of the etcd cluster. Found %v, expect: %s=%s", memberNameUrls, e.name, e.address)
 }
 
 // etcdDBDir returns the path to dataDir/db/etcd
@@ -191,6 +213,8 @@ func (e *ETCD) Start(ctx context.Context, clientAccessInfo *clientaccess.Info) e
 		e.setSnapshotFunction(ctx)
 		e.cron.Start()
 	}
+
+	go e.manageLearners(ctx)
 
 	if existingCluster {
 		opt, err := executor.CurrentETCDOptions()
@@ -496,6 +520,138 @@ func (e *ETCD) removePeer(ctx context.Context, id, address string) error {
 	}
 
 	return nil
+}
+
+// manageLearners monitors the etc cluster to ensure that learners are making progress towards
+// being promoted to full voting member. The checks only run on the cluster member that is
+// the etcd leader.
+func (e *ETCD) manageLearners(ctx context.Context) error {
+	t := time.NewTicker(manageTickerTime)
+	defer t.Stop()
+
+	for range t.C {
+		ctx, cancel := context.WithTimeout(ctx, testTimeout)
+		defer cancel()
+
+		// Check to see if the local node is the leader. Only the leader should do learner management.
+		if status, err := e.client.Status(ctx, endpoint); err != nil {
+			logrus.Errorf("Failed to check local etcd status for learner management: %v", err)
+			continue
+		} else if status.Header.MemberId != status.Leader {
+			continue
+		}
+
+		progress, err := e.getLearnerProgress(ctx)
+		if err != nil {
+			logrus.Errorf("Failed to get recorded learner progress from etcd: %v", err)
+			continue
+		}
+
+		members, err := e.client.MemberList(ctx)
+		if err != nil {
+			logrus.Errorf("Failed to get etcd members for learner management: %v", err)
+			continue
+		}
+
+		for _, member := range members.Members {
+			if member.IsLearner {
+				if err := e.trackLearnerProgress(ctx, progress, member); err != nil {
+					logrus.Errorf("Failed to track learner progress towards promotion: %v", err)
+				}
+				break
+			}
+		}
+	}
+	return nil
+}
+
+// trackLearnerProcess attempts to promote a learner. If it cannot be promoted, progress through the raft index is tracked.
+// If the learner does not make any progress in a reasonable amount of time, it is evicted from the cluster.
+func (e *ETCD) trackLearnerProgress(ctx context.Context, progress *learnerProgress, member *etcdserverpb.Member) error {
+	// Try to promote it. If it can be promoted, no further tracking is necessary
+	if _, err := e.client.MemberPromote(ctx, member.ID); err != nil {
+		logrus.Debugf("Unable to promote learner %s: %v", member.Name, err)
+	} else {
+		logrus.Infof("Promoted learner %s", member.Name)
+		return nil
+	}
+
+	now := time.Now()
+
+	// If this is the first time we've tracked this member's progress, reset stats
+	if progress.Name != member.Name || progress.ID != member.ID {
+		progress.ID = member.ID
+		progress.Name = member.Name
+		progress.RaftAppliedIndex = 0
+		progress.LastProgress.Time = now
+	}
+
+	// Update progress by retrieving status from the member's first reachable client URL
+	for _, ep := range member.ClientURLs {
+		ctx, cancel := context.WithTimeout(ctx, defaultDialTimeout)
+		defer cancel()
+		status, err := e.client.Status(ctx, ep)
+		if err != nil {
+			logrus.Debugf("Failed to get etcd status from learner %s at %s: %v", member.Name, ep, err)
+			continue
+		}
+
+		if progress.RaftAppliedIndex > status.RaftAppliedIndex {
+			progress.RaftAppliedIndex = status.RaftAppliedIndex
+			progress.LastProgress.Time = now
+		}
+		break
+	}
+
+	// Warn if the learner hasn't made any progress
+	if !progress.LastProgress.Time.Equal(now) {
+		logrus.Warnf("Learner %s stalled at RaftAppliedIndex=%d for %s", progress.Name, progress.RaftAppliedIndex, now.Sub(progress.LastProgress.Time).String())
+	}
+
+	// See if it's time to evict yet
+	if now.Sub(progress.LastProgress.Time) > learnerMaxStallTime {
+		if _, err := e.client.MemberRemove(ctx, member.ID); err != nil {
+			return err
+		}
+		logrus.Warnf("Removed learner %s from etcd cluster", member.Name)
+		return nil
+	}
+
+	return e.setLearnerProgress(ctx, progress)
+}
+
+// getLearnerProgress returns the stored learnerProgress struct as retrieved from etcd
+func (e *ETCD) getLearnerProgress(ctx context.Context) (*learnerProgress, error) {
+	progress := &learnerProgress{}
+
+	value, err := e.client.Get(ctx, learnerProgressKey)
+	if err != nil {
+		if err != rpctypes.ErrGRPCKeyNotFound {
+			return nil, err
+		}
+		return progress, nil
+	}
+
+	if value.Count < 1 {
+		return progress, nil
+	}
+
+	if err := json.NewDecoder(bytes.NewBuffer(value.Kvs[0].Value)).Decode(progress); err != nil {
+		return nil, err
+	}
+	return progress, nil
+}
+
+// setLearnerProgress stores the learnerProgress struct to etcd
+func (e *ETCD) setLearnerProgress(ctx context.Context, status *learnerProgress) error {
+	w := &bytes.Buffer{}
+
+	if err := json.NewEncoder(w).Encode(status); err != nil {
+		return err
+	}
+
+	_, err := e.client.Put(ctx, learnerProgressKey, w.String())
+	return err
 }
 
 // clientURLs returns a list of all non-learner etcd cluster member client access URLs

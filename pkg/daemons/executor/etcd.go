@@ -26,8 +26,12 @@ func (e Embedded) ETCD(args ETCDConfig) error {
 	}
 
 	go func() {
-		err := <-etcd.Err()
-		logrus.Fatalf("etcd exited: %v", err)
+		select {
+		case <-etcd.Server.StopNotify():
+			logrus.Fatalf("etcd stopped - if this node was removed from the cluster, you must backup and delete %s before rejoining", args.DataDir)
+		case err := <-etcd.Err():
+			logrus.Fatalf("etcd exited: %v", err)
+		}
 	}()
 	return nil
 }
