@@ -181,7 +181,7 @@ func validate() error {
 	}
 
 	if !strings.Contains(string(cgroups), "memory") {
-		msg := "ailed to find memory cgroup, you may need to add \"cgroup_memory=1 cgroup_enable=memory\" to your linux cmdline (/boot/cmdline.txt on a Raspberry Pi)"
+		msg := "ailed to find memory cgroup, you may need to add \"cgroup_enable=memory\" to your linux cmdline (/boot/cmdline.txt on a Raspberry Pi)"
 		logrus.Error("F" + msg)
 		return errors.New("f" + msg)
 	}
