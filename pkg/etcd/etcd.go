@@ -495,8 +495,16 @@ func (e *ETCD) removePeer(ctx context.Context, id, address string) error {
 				return err
 			}
 			if u.Hostname() == address {
+				if e.address == address {
+					continue
+				}
 				logrus.Infof("Removing name=%s id=%d address=%s from etcd", member.Name, member.ID, address)
 				_, err := e.client.MemberRemove(ctx, member.ID)
+				if err != nil {
+					if strings.Contains("member not found", err.Error()) {
+						return nil
+					}
+				}
 				return err
 			}
 		}
