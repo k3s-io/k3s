@@ -596,7 +596,8 @@ func (e *ETCD) trackLearnerProgress(ctx context.Context, progress *learnerProgre
 			continue
 		}
 
-		if progress.RaftAppliedIndex > status.RaftAppliedIndex {
+		if progress.RaftAppliedIndex < status.RaftAppliedIndex {
+			logrus.Debugf("Learner %s has progressed from RaftAppliedIndex %d to %d", progress.Name, progress.RaftAppliedIndex, status.RaftAppliedIndex)
 			progress.RaftAppliedIndex = status.RaftAppliedIndex
 			progress.LastProgress.Time = now
 		}
