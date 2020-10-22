@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"go.etcd.io/etcd/v3/etcdserver/api/v3rpc/rpctypes"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -501,7 +502,7 @@ func (e *ETCD) removePeer(ctx context.Context, id, address string) error {
 				logrus.Infof("Removing name=%s id=%d address=%s from etcd", member.Name, member.ID, address)
 				_, err := e.client.MemberRemove(ctx, member.ID)
 				if err != nil {
-					if strings.Contains("member not found", err.Error()) {
+					if err == rpctypes.ErrGRPCMemberNotFound {
 						return nil
 					}
 				}
