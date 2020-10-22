@@ -44,7 +44,7 @@ These technologies can be disabled or swapped out for technolgoies of your choic
 
 Additionally, K3s simplifies Kubernetes operations by maintaining functionality for:
 
-* Managing the TLS certificates of Kubernetes componenents
+* Managing the TLS certificates of Kubernetes components
 * Managing the connection between worker and server nodes
 * Auto-deploying Kubernetes resources from local manifests, in realtime as they are changed.
 * Managing an embedded etcd cluster (work in progress)
