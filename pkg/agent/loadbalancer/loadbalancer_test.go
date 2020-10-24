@@ -152,7 +152,7 @@ func TestFailFast(t *testing.T) {
 	defer os.RemoveAll(tmpDir)
 
 	cfg := cmds.Agent{
-		ServerURL: "http://127.0.0.1:-1/",
+		ServerURL: "http://127.0.0.1:0/",
 		DataDir:   tmpDir,
 	}
 

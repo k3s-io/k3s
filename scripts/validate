@@ -31,3 +31,5 @@ if [ -n "$DIRTY" ]; then
     git status --porcelain --untracked-files=no
     exit 1
 fi
+
+"${GO}" test -v ./...
