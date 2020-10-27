@@ -497,14 +497,12 @@ func (e *ETCD) removePeer(ctx context.Context, id, address string) error {
 			}
 			if u.Hostname() == address {
 				if e.address == address {
-					continue
+					logrus.Fatalf("node has been delete from the cluster. Backup and delete ${datadir}/server/db if you like to rejoin the node")
 				}
 				logrus.Infof("Removing name=%s id=%d address=%s from etcd", member.Name, member.ID, address)
 				_, err := e.client.MemberRemove(ctx, member.ID)
-				if err != nil {
-					if err == rpctypes.ErrGRPCMemberNotFound {
-						return nil
-					}
+				if err == rpctypes.ErrGRPCMemberNotFound {
+					return nil
 				}
 				return err
 			}
