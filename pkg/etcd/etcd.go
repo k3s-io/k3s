@@ -28,7 +28,6 @@ import (
 	"github.com/sirupsen/logrus"
 	etcd "go.etcd.io/etcd/clientv3"
 	"go.etcd.io/etcd/clientv3/snapshot"
-	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
 	"go.etcd.io/etcd/etcdserver/etcdserverpb"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
@@ -522,7 +521,7 @@ func (e *ETCD) removePeer(ctx context.Context, id, address string) error {
 	return nil
 }
 
-// manageLearners monitors the etc cluster to ensure that learners are making progress towards
+// manageLearners monitors the etcd cluster to ensure that learners are making progress towards
 // being promoted to full voting member. The checks only run on the cluster member that is
 // the etcd leader.
 func (e *ETCD) manageLearners(ctx context.Context) error {
@@ -627,10 +626,7 @@ func (e *ETCD) getLearnerProgress(ctx context.Context) (*learnerProgress, error)
 
 	value, err := e.client.Get(ctx, learnerProgressKey)
 	if err != nil {
-		if err != rpctypes.ErrGRPCKeyNotFound {
-			return nil, err
-		}
-		return progress, nil
+		return nil, err
 	}
 
 	if value.Count < 1 {
