@@ -31,7 +31,7 @@ func (c *Cluster) testClusterDB(ctx context.Context) (<-chan struct{}, error) {
 	go func() {
 		defer close(result)
 		for {
-			if err := c.managedDB.Test(ctx, c.clientAccessInfo); err != nil {
+			if err := c.managedDB.Test(ctx); err != nil {
 				logrus.Infof("Failed to test data store connection: %v", err)
 			} else {
 				logrus.Info(c.managedDB.EndpointName() + " data store connection OK")
@@ -65,7 +65,7 @@ func (c *Cluster) start(ctx context.Context) error {
 		} else {
 			return fmt.Errorf("cluster-reset was successfully performed, please remove the cluster-reset flag and start %s normally, if you need to perform another cluster reset, you must first manually delete the %s file", version.Program, resetFile)
 		}
-		return c.managedDB.Reset(ctx, c.clientAccessInfo)
+		return c.managedDB.Reset(ctx)
 	}
 	// removing the reset file and ignore error if the file doesnt exist
 	os.Remove(resetFile)
