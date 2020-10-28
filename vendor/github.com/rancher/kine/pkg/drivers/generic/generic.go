@@ -15,34 +15,37 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+const (
+	defaultMaxIdleConns = 2 // copied from database/sql
+)
+
 var (
-	columns = "kv.id as theid, kv.name, kv.created, kv.deleted, kv.create_revision, kv.prev_revision, kv.lease, kv.value, kv.old_value"
+	columns = "kv.id AS theid, kv.name, kv.created, kv.deleted, kv.create_revision, kv.prev_revision, kv.lease, kv.value, kv.old_value"
 	revSQL  = `
-		SELECT rkv.id
-		FROM kine rkv
-		ORDER BY rkv.id
-		DESC LIMIT 1`
+		SELECT MAX(rkv.id) AS id
+		FROM kine AS rkv`
 
 	compactRevSQL = `
-		SELECT crkv.prev_revision
-		FROM kine crkv
-		WHERE crkv.name = 'compact_rev_key'
-		ORDER BY crkv.id DESC LIMIT 1`
+		SELECT MAX(crkv.prev_revision) AS prev_revision
+		FROM kine AS crkv
+		WHERE crkv.name = 'compact_rev_key'`
 
 	idOfKey = `
-		AND mkv.id <= ? AND mkv.id > (
-			SELECT ikv.id
-			FROM kine ikv
+		AND
+		mkv.id <= ? AND
+		mkv.id > (
+			SELECT MAX(ikv.id) AS id
+			FROM kine AS ikv
 			WHERE
 				ikv.name = ? AND
-				ikv.id <= ?
-			ORDER BY ikv.id DESC LIMIT 1)`
+				ikv.id <= ?)`
 
-	listSQL = fmt.Sprintf(`SELECT (%s), (%s), %s
-		FROM kine kv
+	listSQL = fmt.Sprintf(`
+		SELECT (%s), (%s), %s
+		FROM kine AS kv
 		JOIN (
-			SELECT MAX(mkv.id) as id
-			FROM kine mkv
+			SELECT MAX(mkv.id) AS id
+			FROM kine AS mkv
 			WHERE
 				mkv.name LIKE ?
 				%%s
@@ -64,6 +67,12 @@ func (s Stripped) String() string {
 type ErrRetry func(error) bool
 type TranslateErr func(error) error
 
+type ConnectionPoolConfig struct {
+	MaxIdle     int           // zero means defaultMaxIdleConns; negative means 0
+	MaxOpen     int           // <= 0 means unlimited
+	MaxLifetime time.Duration // maximum amount of time a connection may be reused
+}
+
 type Generic struct {
 	sync.Mutex
 
@@ -78,6 +87,7 @@ type Generic struct {
 	CountSQL              string
 	AfterSQL              string
 	DeleteSQL             string
+	CompactSQL            string
 	UpdateCompactSQL      string
 	InsertSQL             string
 	FillSQL               string
@@ -128,6 +138,20 @@ func (d *Generic) Migrate(ctx context.Context) {
 	}
 }
 
+func configureConnectionPooling(connPoolConfig ConnectionPoolConfig, db *sql.DB, driverName string) {
+	// behavior copied from database/sql - zero means defaultMaxIdleConns; negative means 0
+	if connPoolConfig.MaxIdle < 0 {
+		connPoolConfig.MaxIdle = 0
+	} else if connPoolConfig.MaxIdle == 0 {
+		connPoolConfig.MaxIdle = defaultMaxIdleConns
+	}
+
+	logrus.Infof("Configuring %s database connection pooling: maxIdleConns=%d, maxOpenConns=%d, connMaxLifetime=%s", driverName, connPoolConfig.MaxIdle, connPoolConfig.MaxOpen, connPoolConfig.MaxLifetime)
+	db.SetMaxIdleConns(connPoolConfig.MaxIdle)
+	db.SetMaxOpenConns(connPoolConfig.MaxOpen)
+	db.SetConnMaxLifetime(connPoolConfig.MaxLifetime)
+}
+
 func openAndTest(driverName, dataSourceName string) (*sql.DB, error) {
 	db, err := sql.Open(driverName, dataSourceName)
 	if err != nil {
@@ -144,7 +168,7 @@ func openAndTest(driverName, dataSourceName string) (*sql.DB, error) {
 	return db, nil
 }
 
-func Open(ctx context.Context, driverName, dataSourceName string, paramCharacter string, numbered bool) (*Generic, error) {
+func Open(ctx context.Context, driverName, dataSourceName string, connPoolConfig ConnectionPoolConfig, paramCharacter string, numbered bool) (*Generic, error) {
 	var (
 		db  *sql.DB
 		err error
@@ -164,13 +188,15 @@ func Open(ctx context.Context, driverName, dataSourceName string, paramCharacter
 		}
 	}
 
+	configureConnectionPooling(connPoolConfig, db, driverName)
+
 	return &Generic{
 		DB: db,
 
 		GetRevisionSQL: q(fmt.Sprintf(`
 			SELECT
 			0, 0, %s
-			FROM kine kv
+			FROM kine AS kv
 			WHERE kv.id = ?`, columns), paramCharacter, numbered),
 
 		GetCurrentSQL:        q(fmt.Sprintf(listSQL, ""), paramCharacter, numbered),
@@ -185,15 +211,15 @@ func Open(ctx context.Context, driverName, dataSourceName string, paramCharacter
 
 		AfterSQL: q(fmt.Sprintf(`
 			SELECT (%s), (%s), %s
-			FROM kine kv
+			FROM kine AS kv
 			WHERE
 				kv.name LIKE ? AND
 				kv.id > ?
 			ORDER BY kv.id ASC`, revSQL, compactRevSQL, columns), paramCharacter, numbered),
 
 		DeleteSQL: q(`
-			DELETE FROM kine
-			WHERE id = ?`, paramCharacter, numbered),
+			DELETE FROM kine AS kv
+			WHERE kv.id = ?`, paramCharacter, numbered),
 
 		UpdateCompactSQL: q(`
 			UPDATE kine
@@ -229,11 +255,7 @@ func (d *Generic) execute(ctx context.Context, sql string, args ...interface{}) 
 
 	wait := strategy.Backoff(backoff.Linear(100 + time.Millisecond))
 	for i := uint(0); i < 20; i++ {
-		if i > 2 {
-			logrus.Debugf("EXEC (try: %d) %v : %s", i, args, Stripped(sql))
-		} else {
-			logrus.Tracef("EXEC (try: %d) %v : %s", i, args, Stripped(sql))
-		}
+		logrus.Tracef("EXEC (try: %d) %v : %s", i, args, Stripped(sql))
 		result, err = d.DB.ExecContext(ctx, sql, args...)
 		if err != nil && d.Retry != nil && d.Retry(err) {
 			wait(i)
@@ -255,8 +277,18 @@ func (d *Generic) GetCompactRevision(ctx context.Context) (int64, error) {
 }
 
 func (d *Generic) SetCompactRevision(ctx context.Context, revision int64) error {
+	logrus.Tracef("SETCOMPACTREVISION %v", revision)
 	_, err := d.execute(ctx, d.UpdateCompactSQL, revision)
 	return err
+}
+
+func (d *Generic) Compact(ctx context.Context, revision int64) (int64, error) {
+	logrus.Tracef("COMPACT %v", revision)
+	res, err := d.execute(ctx, d.CompactSQL, revision, revision)
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
 }
 
 func (d *Generic) GetRevision(ctx context.Context, revision int64) (*sql.Rows, error) {
@@ -264,6 +296,7 @@ func (d *Generic) GetRevision(ctx context.Context, revision int64) (*sql.Rows, e
 }
 
 func (d *Generic) DeleteRevision(ctx context.Context, revision int64) error {
+	logrus.Tracef("DELETEREVISION %v", revision)
 	_, err := d.execute(ctx, d.DeleteSQL, revision)
 	return err
 }
