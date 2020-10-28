@@ -59,31 +59,6 @@ steps:
     event:
     - tag
 
-- name: rpm-publish
-  image: centos:7
-  environment:
-    PRIVATE_KEY:
-      from_secret: private_key
-    PRIVATE_KEY_PASS_PHRASE:
-      from_secret: private_key_pass_phrase
-    AWS_S3_BUCKET:
-      from_secret: aws_s3_bucket
-    AWS_ACCESS_KEY_ID:
-      from_secret: aws_access_key_id
-    AWS_SECRET_ACCESS_KEY:
-      from_secret: aws_secret_access_key
-  commands:
-  - scripts/provision/generic/centos7/yum-install-rpm-tools
-  - scripts/package-rpm
-  when:
-    instance:
-    - drone-publish.rancher.io
-    ref:
-    - refs/head/master
-    - refs/tags/*
-    event:
-    - tag
-
 - name: test
   image: rancher/dapper:v0.4.2
   secrets: [ gcloud_auth ]
@@ -170,31 +145,6 @@ steps:
     repo: "rancher/k3s"
     username:
       from_secret: docker_username
-  when:
-    instance:
-    - drone-publish.rancher.io
-    ref:
-    - refs/head/master
-    - refs/tags/*
-    event:
-    - tag
-
-- name: rpm-publish
-  image: centos:7
-  environment:
-    PRIVATE_KEY:
-      from_secret: private_key
-    PRIVATE_KEY_PASS_PHRASE:
-      from_secret: private_key_pass_phrase
-    AWS_S3_BUCKET:
-      from_secret: aws_s3_bucket
-    AWS_ACCESS_KEY_ID:
-      from_secret: aws_access_key_id
-    AWS_SECRET_ACCESS_KEY:
-      from_secret: aws_secret_access_key
-  commands:
-  - scripts/provision/generic/centos7/yum-install-rpm-tools
-  - scripts/package-rpm
   when:
     instance:
     - drone-publish.rancher.io
