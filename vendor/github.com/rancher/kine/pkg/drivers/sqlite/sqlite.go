@@ -24,7 +24,7 @@ var (
 	schema = []string{
 		`CREATE TABLE IF NOT EXISTS kine
 			(
-				id INTEGER primary key autoincrement,
+				id INTEGER PRIMARY KEY AUTOINCREMENT,
 				name INTEGER,
 				created INTEGER,
 				deleted INTEGER,
@@ -35,6 +35,9 @@ var (
 				old_value BLOB
 			)`,
 		`CREATE INDEX IF NOT EXISTS kine_name_index ON kine (name)`,
+		`CREATE INDEX IF NOT EXISTS kine_name_id_index ON kine (name,id)`,
+		`CREATE INDEX IF NOT EXISTS kine_id_deleted_index ON kine (id,deleted)`,
+		`CREATE INDEX IF NOT EXISTS kine_prev_revision_index ON kine (prev_revision)`,
 		`CREATE UNIQUE INDEX IF NOT EXISTS kine_name_prev_revision_uindex ON kine (name, prev_revision)`,
 	}
 )
@@ -56,7 +59,25 @@ func NewVariant(ctx context.Context, driverName, dataSourceName string, connPool
 	if err != nil {
 		return nil, nil, err
 	}
+
 	dialect.LastInsertID = true
+	dialect.CompactSQL = `
+		DELETE FROM kine AS kv
+		WHERE
+			kv.name != 'compact_rev_key' AND
+			kv.id IN (
+				SELECT kp.prev_revision AS id
+				FROM kine AS kp
+				WHERE
+					kp.prev_revision != 0 AND
+					kp.id <= ?
+				UNION
+				SELECT kd.id AS id
+				FROM kine AS kd
+				WHERE
+					kd.deleted != 0 AND
+					kd.id <= ?
+			)`
 	dialect.TranslateErr = func(err error) error {
 		if err, ok := err.(sqlite3.Error); ok && err.ExtendedCode == sqlite3.ErrConstraintUnique {
 			return server.ErrKeyExists
@@ -82,21 +103,22 @@ func NewVariant(ctx context.Context, driverName, dataSourceName string, connPool
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "setup db")
 	}
-	//if err := setup(dialect.DB); err != nil {
-	//	return nil, nil, errors.Wrap(err, "setup db")
-	//}
 
 	dialect.Migrate(context.Background())
 	return logstructured.New(sqllog.New(dialect)), dialect, nil
 }
 
 func setup(db *sql.DB) error {
+	logrus.Infof("Configuring database table schema and indexes, this may take a moment...")
+
 	for _, stmt := range schema {
+		logrus.Tracef("SETUP EXEC : %v", generic.Stripped(stmt))
 		_, err := db.Exec(stmt)
 		if err != nil {
 			return err
 		}
 	}
 
+	logrus.Infof("Database tables and indexes are up to date")
 	return nil
 }
