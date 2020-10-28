@@ -79,8 +79,8 @@ require (
 	github.com/gorilla/mux v1.7.4
 	github.com/gorilla/websocket v1.4.1
 	github.com/kubernetes-sigs/cri-tools v0.0.0-00010101000000-000000000000
-	github.com/lib/pq v1.1.1
-	github.com/mattn/go-sqlite3 v1.13.0
+	github.com/lib/pq v1.8.0
+	github.com/mattn/go-sqlite3 v1.14.4
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/opencontainers/runc v1.0.0-rc92
 	github.com/opencontainers/selinux v1.6.0
@@ -88,7 +88,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/dynamiclistener v0.2.1
 	github.com/rancher/helm-controller v0.7.3
-	github.com/rancher/kine v0.4.1
+	github.com/rancher/kine v0.5.0
 	github.com/rancher/remotedialer v0.2.0
 	github.com/rancher/wrangler v0.6.1
 	github.com/rancher/wrangler-api v0.6.0
