@@ -137,8 +137,8 @@ type Control struct {
 
 	BindAddress string
 	SANs        []string
-
-	Runtime *ControlRuntime `json:"-"`
+	PrivateIP   string
+	Runtime     *ControlRuntime `json:"-"`
 }
 
 type ControlRuntimeBootstrap struct {

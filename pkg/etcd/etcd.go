@@ -309,12 +309,11 @@ func (e *ETCD) Register(ctx context.Context, config *config.Control, handler htt
 	}
 	e.client = client
 
-	address, err := getAdvertiseAddress(config.AdvertiseIP)
+	address, err := getAdvertiseAddress(config.PrivateIP)
 	if err != nil {
 		return nil, err
 	}
 	e.address = address
-
 	e.config.Datastore.Endpoint = endpoint
 	e.config.Datastore.Config.CAFile = e.runtime.ETCDServerCA
 	e.config.Datastore.Config.CertFile = e.runtime.ClientETCDCert
