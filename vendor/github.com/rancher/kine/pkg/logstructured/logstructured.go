@@ -33,7 +33,12 @@ func (l *LogStructured) Start(ctx context.Context) error {
 	if err := l.log.Start(ctx); err != nil {
 		return err
 	}
-	l.Create(ctx, "/registry/health", []byte(`{"health":"true"}`), 0)
+	// See https://github.com/kubernetes/kubernetes/blob/442a69c3bdf6fe8e525b05887e57d89db1e2f3a5/staging/src/k8s.io/apiserver/pkg/storage/storagebackend/factory/etcd3.go#L97
+	if _, err := l.Create(ctx, "/registry/health", []byte(`{"health":"true"}`), 0); err != nil {
+		if err != server.ErrKeyExists {
+			logrus.Errorf("Failed to create health check key: %v", err)
+		}
+	}
 	go l.ttl(ctx)
 	return nil
 }
@@ -304,7 +309,9 @@ func (l *LogStructured) ttl(ctx context.Context) {
 			case <-time.After(time.Duration(event.KV.Lease) * time.Second):
 			}
 			mutex.Lock()
-			l.Delete(ctx, event.KV.Key, event.KV.ModRevision)
+			if _, _, _, err := l.Delete(ctx, event.KV.Key, event.KV.ModRevision); err != nil {
+				logrus.Errorf("failed to delete expired key: %v", err)
+			}
 			mutex.Unlock()
 		}(event)
 	}
