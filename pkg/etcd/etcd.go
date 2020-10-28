@@ -28,6 +28,7 @@ import (
 	"github.com/sirupsen/logrus"
 	etcd "go.etcd.io/etcd/clientv3"
 	"go.etcd.io/etcd/clientv3/snapshot"
+	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
 	"go.etcd.io/etcd/etcdserver/etcdserverpb"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
@@ -511,8 +512,14 @@ func (e *ETCD) removePeer(ctx context.Context, id, address string) error {
 				return err
 			}
 			if u.Hostname() == address {
+				if e.address == address {
+					logrus.Fatalf("node has been delete from the cluster. Backup and delete ${datadir}/server/db if you like to rejoin the node")
+				}
 				logrus.Infof("Removing name=%s id=%d address=%s from etcd", member.Name, member.ID, address)
 				_, err := e.client.MemberRemove(ctx, member.ID)
+				if err == rpctypes.ErrGRPCMemberNotFound {
+					return nil
+				}
 				return err
 			}
 		}
