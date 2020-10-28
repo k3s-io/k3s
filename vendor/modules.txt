@@ -687,7 +687,7 @@ github.com/konsorten/go-windows-terminal-sequences
 github.com/kubernetes-sigs/cri-tools/cmd/crictl
 github.com/kubernetes-sigs/cri-tools/pkg/common
 github.com/kubernetes-sigs/cri-tools/pkg/version
-# github.com/lib/pq v1.1.1
+# github.com/lib/pq v1.8.0
 ## explicit
 github.com/lib/pq
 github.com/lib/pq/oid
@@ -700,7 +700,7 @@ github.com/lithammer/dedent
 github.com/mailru/easyjson/buffer
 github.com/mailru/easyjson/jlexer
 github.com/mailru/easyjson/jwriter
-# github.com/mattn/go-sqlite3 v1.13.0
+# github.com/mattn/go-sqlite3 v1.14.4
 ## explicit
 github.com/mattn/go-sqlite3
 # github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369
@@ -836,7 +836,7 @@ github.com/rancher/helm-controller/pkg/generated/informers/externalversions/helm
 github.com/rancher/helm-controller/pkg/generated/informers/externalversions/internalinterfaces
 github.com/rancher/helm-controller/pkg/generated/listers/helm.cattle.io/v1
 github.com/rancher/helm-controller/pkg/helm
-# github.com/rancher/kine v0.4.1
+# github.com/rancher/kine v0.5.0
 ## explicit
 github.com/rancher/kine/pkg/broadcaster
 github.com/rancher/kine/pkg/client
