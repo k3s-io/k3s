@@ -469,11 +469,21 @@ install_selinux_rpm() {
     if [ -r /etc/redhat-release ] || [ -r /etc/centos-release ] || [ -r /etc/oracle-release ]; then
         dist_version="$(. /etc/os-release && echo "$VERSION_ID")"
         maj_ver=$(echo "$dist_version" | sed -E -e "s/^([0-9]+)\.?[0-9]*$/\1/")
-        if [ -r /etc/redhat-release ] && [ "${maj_ver}" = "7" ]; then
-            yum -y install yum-utils
-            yum-config-manager --enable rhel-7-server-extras-rpms
+        if [ -r /etc/redhat-release ]; then
+            case ${maj_ver} in
+                7)
+                    $SUDO yum -y install yum-utils
+                    $SUDO yum-config-manager --enable rhel-7-server-extras-rpms
+                    ;;
+                8)
+                    :
+                    ;;
+                *)
+                    return
+                    ;;
+            esac
         fi
-        cat <<-EOF >"/etc/yum.repos.d/rancher-k3s-common-${INSTALL_K3S_CHANNEL}.repo"
+        $SUDO tee /etc/yum.repos.d/rancher-k3s-common-${INSTALL_K3S_CHANNEL}.repo >/dev/null << EOF
 [rancher-k3s-common-${INSTALL_K3S_CHANNEL}]
 name=Rancher K3s Common (${INSTALL_K3S_CHANNEL})
 baseurl=https://${1}/k3s/${INSTALL_K3S_CHANNEL}/common/centos/${maj_ver}/noarch
@@ -481,7 +491,7 @@ enabled=1
 gpgcheck=1
 gpgkey=https://${1}/public.key
 EOF
-        yum -y install "k3s-selinux"
+        $SUDO yum -y install "k3s-selinux"
     fi
     return
 }
