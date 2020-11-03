@@ -139,12 +139,17 @@ func controllerManager(cfg *config.Control, runtime *config.ControlRuntime) erro
 		"address":                          localhostIP.String(),
 		"bind-address":                     localhostIP.String(),
 		"secure-port":                      "0",
+		"cloud-provider":                   version.Program,
 		"use-service-account-credentials":  "true",
 		"cluster-signing-cert-file":        runtime.ClientCA,
 		"cluster-signing-key-file":         runtime.ClientCAKey,
 	}
 	if cfg.NoLeaderElect {
 		argsMap["leader-elect"] = "false"
+	}
+	if !cfg.DisableCCM {
+		argsMap["configure-cloud-routes"] = "false"
+		argsMap["controllers"] = "*,-service,-route"
 	}
 
 	args := config.GetArgsList(argsMap, cfg.ExtraControllerArgs)
@@ -909,6 +914,8 @@ func cloudControllerManager(ctx context.Context, cfg *config.Control, runtime *c
 	argsMap := map[string]string{
 		"kubeconfig":                   runtime.KubeConfigCloudController,
 		"allocate-node-cidrs":          "true",
+		"configure-cloud-routes":       "false",
+		"controllers":                  "*,-service,-route",
 		"cluster-cidr":                 cfg.ClusterIPRange.String(),
 		"bind-address":                 localhostIP.String(),
 		"secure-port":                  "0",
