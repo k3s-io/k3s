@@ -21,7 +21,6 @@ import (
 	"github.com/rancher/k3s/pkg/clientaccess"
 	"github.com/rancher/k3s/pkg/daemons/agent"
 	daemonconfig "github.com/rancher/k3s/pkg/daemons/config"
-	"github.com/rancher/k3s/pkg/datadir"
 	"github.com/rancher/k3s/pkg/nodeconfig"
 	"github.com/rancher/k3s/pkg/rootless"
 	"github.com/rancher/k3s/pkg/version"
@@ -58,9 +57,9 @@ func setupCriCtlConfig(cfg cmds.Agent, nodeConfig *daemonconfig.Node) error {
 		}
 	}
 
-	agentConfDir := datadir.DefaultDataDir + "/agent/etc"
+	agentConfDir := filepath.Join(cfg.DataDir, "agent", "etc")
 	if _, err := os.Stat(agentConfDir); os.IsNotExist(err) {
-		if err := os.MkdirAll(agentConfDir, 0755); err != nil {
+		if err := os.MkdirAll(agentConfDir, 0700); err != nil {
 			return err
 		}
 	}
@@ -141,12 +140,12 @@ func Run(ctx context.Context, cfg cmds.Agent) error {
 		}
 	}
 
-	cfg.DataDir = filepath.Join(cfg.DataDir, "agent")
-	if err := os.MkdirAll(cfg.DataDir, 0700); err != nil {
+	agentDir := filepath.Join(cfg.DataDir, "agent")
+	if err := os.MkdirAll(agentDir, 0700); err != nil {
 		return err
 	}
 
-	proxy, err := proxy.NewAPIProxy(!cfg.DisableLoadBalancer, cfg.DataDir, cfg.ServerURL)
+	proxy, err := proxy.NewAPIProxy(!cfg.DisableLoadBalancer, agentDir, cfg.ServerURL)
 	if err != nil {
 		return err
 	}
