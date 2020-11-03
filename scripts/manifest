@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 if [ -z "${DRONE_TAG}" ]; then
   echo "DRONE_TAG not defined" >&2
