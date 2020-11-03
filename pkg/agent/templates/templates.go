@@ -34,6 +34,7 @@ const ContainerdConfigTemplate = `
 
 {{- if .NodeConfig.AgentConfig.Snapshotter }}
 [plugins.cri.containerd]
+  disable_snapshot_annotations = true
   snapshotter = "{{ .NodeConfig.AgentConfig.Snapshotter }}"
 {{end}}
 
