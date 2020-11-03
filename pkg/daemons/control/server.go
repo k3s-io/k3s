@@ -913,7 +913,6 @@ func cloudControllerManager(ctx context.Context, cfg *config.Control, runtime *c
 		"bind-address":                 localhostIP.String(),
 		"secure-port":                  "0",
 		"cloud-provider":               version.Program,
-		"allow-untagged-cloud":         "true",
 		"node-status-update-frequency": "1m",
 		"profiling":                    "false",
 	}

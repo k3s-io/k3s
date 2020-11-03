@@ -58,5 +58,5 @@ func (k *k3s) ProviderName() string {
 }
 
 func (k *k3s) HasClusterID() bool {
-	return false
+	return true
 }
