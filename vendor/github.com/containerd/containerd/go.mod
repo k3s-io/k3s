@@ -3,6 +3,7 @@ module github.com/containerd/containerd
 go 1.14
 
 replace (
+	github.com/containerd/cri => github.com/rancher/cri v1.11.1-0.20201105233134-0486eceb9306 // k3s-release/1.4
 	k8s.io/api => k8s.io/api v0.19.0
 	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.19.0
 	k8s.io/apimachinery => k8s.io/apimachinery v0.19.0
@@ -42,13 +43,13 @@ require (
 	github.com/containerd/continuity v0.0.0-20200710164510-efbc4488d8fe
 	github.com/containerd/cri v1.11.1-0.20200810101850-4e6644c8cf7f
 	github.com/containerd/fifo v0.0.0-20200410184934-f15a3290365b
-	github.com/containerd/go-cni v1.0.0 // indirect
+	github.com/containerd/go-cni v1.0.1 // indirect
 	github.com/containerd/go-runc v0.0.0-20200220073739-7016d3ce2328
 	github.com/containerd/imgcrypt v1.0.1 // indirect
 	github.com/containerd/ttrpc v1.0.1
 	github.com/containerd/typeurl v1.0.1
 	github.com/containerd/zfs v0.0.0-20191030014035-9abf673ca6ff
-	github.com/containernetworking/plugins v0.7.6 // indirect
+	github.com/containernetworking/plugins v0.8.6 // indirect
 	github.com/coreos/go-systemd/v22 v22.1.0
 	github.com/docker/docker v17.12.0-ce-rc1.0.20200310163718-4634ce647cf2+incompatible // indirect
 	github.com/docker/go-events v0.0.0-20190806004212-e31b211e4f1c
