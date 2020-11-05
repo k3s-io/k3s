@@ -8,8 +8,9 @@ replace (
 	github.com/containerd/btrfs => github.com/containerd/btrfs v0.0.0-20181101203652-af5082808c83
 	github.com/containerd/cgroups => github.com/containerd/cgroups v0.0.0-20200531161412-0dbf7f05ba59
 	github.com/containerd/console => github.com/containerd/console v0.0.0-20181022165439-0650fd9eeb50
-	github.com/containerd/containerd => github.com/rancher/containerd v1.4.0-k3s1
+	github.com/containerd/containerd => github.com/rancher/containerd v1.4.1-k3s1
 	github.com/containerd/continuity => github.com/containerd/continuity v0.0.0-20190815185530-f2a389ac0a02
+	github.com/containerd/cri => github.com/rancher/cri v1.4.0-k3s.1 // k3s-release/1.4
 	github.com/containerd/fifo => github.com/containerd/fifo v0.0.0-20190816180239-bda0ff6ed73c
 	github.com/containerd/go-runc => github.com/containerd/go-runc v0.0.0-20200220073739-7016d3ce2328
 	github.com/containerd/typeurl => github.com/containerd/typeurl v0.0.0-20180627222232-a93fcdb778cd
@@ -65,9 +66,8 @@ require (
 	github.com/bronze1man/goStrongswanVici v0.0.0-20190828090544-27d02f80ba40 // indirect
 	github.com/containerd/containerd v1.4.0
 	github.com/containerd/cri v1.11.1-0.20200820101445-b0cc07999aa5
-	github.com/containernetworking/plugins v0.8.2 // indirect
 	github.com/coreos/flannel v0.12.0
-	github.com/coreos/go-iptables v0.4.2
+	github.com/coreos/go-iptables v0.4.5
 	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f
 	github.com/docker/docker v17.12.0-ce-rc1.0.20200821074627-7ae5222c72cc+incompatible
 	github.com/erikdubbelboer/gspt v0.0.0-20190125194910-e68493906b83
