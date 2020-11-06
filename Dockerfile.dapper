@@ -22,7 +22,6 @@ RUN if [ "$(go env GOARCH)" = "arm64" ]; then                                   
     tar -zxvf trivy_0.11.0_Linux-64bit.tar.gz                                                            && \
     mv trivy /usr/local/bin;                                                                                \
     fi
-RUN trivy --download-db-only
 RUN mkdir -p /go/src/golang.org/x && \
     cd /go/src/golang.org/x && git clone https://github.com/golang/tools && cd tools && \
     git checkout -b current aa82965741a9fecd12b026fbb3d3c6ed3231b8f8 && \
@@ -41,7 +40,7 @@ ENV SELINUX $SELINUX
 
 ENV GO111MODULE off
 ENV DAPPER_RUN_ARGS --privileged -v k3s-cache:/go/src/github.com/rancher/k3s/.cache -v trivy-cache:/root/.cache/trivy
-ENV DAPPER_ENV REPO TAG DRONE_TAG IMAGE_NAME SKIP_VALIDATE GCLOUD_AUTH
+ENV DAPPER_ENV REPO TAG DRONE_TAG IMAGE_NAME SKIP_VALIDATE GCLOUD_AUTH GITHUB_TOKEN
 ENV DAPPER_SOURCE /go/src/github.com/rancher/k3s/
 ENV DAPPER_OUTPUT ./bin ./dist ./build/out
 ENV DAPPER_DOCKER_SOCKET true
