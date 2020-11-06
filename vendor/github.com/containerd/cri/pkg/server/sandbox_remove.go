@@ -22,6 +22,7 @@ import (
 	"github.com/containerd/containerd/log"
 	"github.com/docker/docker/pkg/system"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	runtime "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 
@@ -49,7 +50,10 @@ func (c *criService) RemovePodSandbox(ctx context.Context, r *runtime.RemovePodS
 	// Return error if sandbox container is still running or unknown.
 	state := sandbox.Status.Get().State
 	if state == sandboxstore.StateReady || state == sandboxstore.StateUnknown {
-		return nil, errors.Errorf("sandbox container %q is not fully stopped", id)
+		logrus.Infof("Forcibly stopping sandbox %q", id)
+		if err := c.stopPodSandbox(ctx, sandbox); err != nil {
+			return nil, errors.Wrapf(err, "failed to forcibly stop sandbox %q", id)
+		}
 	}
 
 	// Return error if sandbox network namespace is not closed yet.

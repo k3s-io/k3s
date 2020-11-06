@@ -34,7 +34,7 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	imagespec "github.com/opencontainers/image-spec/specs-go/v1"
 	runtimespec "github.com/opencontainers/runtime-spec/specs-go"
-	"github.com/opencontainers/selinux/go-selinux/label"
+	selinux "github.com/opencontainers/selinux/go-selinux"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
@@ -162,7 +162,7 @@ func (c *criService) RunPodSandbox(ctx context.Context, r *runtime.RunPodSandbox
 	sandbox.ProcessLabel = spec.Process.SelinuxLabel
 	defer func() {
 		if retErr != nil {
-			_ = label.ReleaseLabel(sandbox.ProcessLabel)
+			selinux.ReleaseLabel(sandbox.ProcessLabel)
 		}
 	}()
 
@@ -284,7 +284,7 @@ func (c *criService) RunPodSandbox(ctx context.Context, r *runtime.RunPodSandbox
 
 	var taskOpts []containerd.NewTaskOpts
 	// TODO(random-liu): Remove this after shim v1 is deprecated.
-	if c.config.NoPivot && ociRuntime.Type == plugin.RuntimeRuncV1 {
+	if c.config.NoPivot && (ociRuntime.Type == plugin.RuntimeRuncV1 || ociRuntime.Type == plugin.RuntimeRuncV2) {
 		taskOpts = append(taskOpts, containerd.WithNoPivotRoot)
 	}
 	// We don't need stdio for sandbox container.
@@ -422,7 +422,7 @@ func (c *criService) generateSandboxContainerSpec(id string, config *runtime.Pod
 	}
 	defer func() {
 		if retErr != nil && processLabel != "" {
-			_ = label.ReleaseLabel(processLabel)
+			selinux.ReleaseLabel(processLabel)
 		}
 	}()
 
