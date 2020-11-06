@@ -4,10 +4,11 @@ RUN apk -U --no-cache add bash git gcc musl-dev docker curl jq coreutils python2
 
 ARG DAPPER_HOST_ARCH
 ENV ARCH $DAPPER_HOST_ARCH
+ENV SONOBUOY_VERSION 0.19.0
 
 RUN if [ "${ARCH}" == "amd64" ] || [ "${ARCH}" == "arm64" ]; then \
-        VERSION=0.18.4 OS=linux && \
-        curl -sL "https://github.com/vmware-tanzu/sonobuoy/releases/download/v${VERSION}/sonobuoy_${VERSION}_${OS}_${ARCH}.tar.gz" | \
+        OS=linux && \
+        curl -sL "https://github.com/vmware-tanzu/sonobuoy/releases/download/v${SONOBUOY_VERSION}/sonobuoy_${SONOBUOY_VERSION}_${OS}_${ARCH}.tar.gz" | \
         tar -xzf - -C /usr/local/bin; \
     fi
 
@@ -19,7 +20,7 @@ RUN curl -sL https://storage.googleapis.com/kubernetes-release/release/$( \
 ENV TEST_CLEANUP true
 
 ENV DAPPER_RUN_ARGS --privileged --network host
-ENV DAPPER_ENV REPO TAG DRONE_TAG DRONE_BUILD_EVENT IMAGE_NAME GCLOUD_AUTH
+ENV DAPPER_ENV REPO TAG DRONE_TAG DRONE_BUILD_EVENT IMAGE_NAME GCLOUD_AUTH SONOBUOY_VERSION
 ENV DAPPER_SOURCE /go/src/github.com/rancher/k3s/
 ENV DAPPER_OUTPUT ./dist
 ENV DAPPER_DOCKER_SOCKET true
