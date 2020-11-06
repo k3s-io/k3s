@@ -9,8 +9,10 @@ platform:
 steps:
 - name: build
   image: rancher/dapper:v0.4.2
-  secrets: [ gcloud_auth ]
+  secrets: [ gcloud_auth, unprivileged_github_token ]
   environment:
+    GITHUB_TOKEN:
+      from_secret: unprivileged_github_token
     GCLOUD_AUTH:
       from_secret: gcloud_auth
   commands:
