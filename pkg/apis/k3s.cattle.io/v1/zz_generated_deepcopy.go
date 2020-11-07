@@ -110,6 +110,7 @@ func (in *AddonStatus) DeepCopyInto(out *AddonStatus) {
 		*out = make([]schema.GroupVersionKind, len(*in))
 		copy(*out, *in)
 	}
+	in.ModTime.DeepCopyInto(&out.ModTime)
 	return
 }
 

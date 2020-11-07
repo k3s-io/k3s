@@ -22,5 +22,7 @@ type AddonSpec struct {
 }
 
 type AddonStatus struct {
-	GVKs []schema.GroupVersionKind `json:"gvks,omitempty"`
+	GVKs     []schema.GroupVersionKind `json:"gvks,omitempty"`
+	ModTime  metav1.Time               `json:"modTime,omitempty"`
+	NodeName string                    `json:"nodeName,omitempty"`
 }
