@@ -21,35 +21,40 @@ import (
 	"github.com/rancher/wrangler/pkg/apply"
 	"github.com/rancher/wrangler/pkg/merr"
 	"github.com/rancher/wrangler/pkg/objectset"
+	"github.com/rancher/wrangler/pkg/schemes"
 	"github.com/sirupsen/logrus"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
+	"k8s.io/client-go/kubernetes"
+	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/tools/record"
 )
 
 const (
-	ns       = "kube-system"
-	startKey = "_start_"
+	startKey             = "_start_"
+	componentName        = "deploy-controller"
+	checkIntervalMinutes = 1
 )
 
 // WatchFiles sets up an OnChange callback to start a periodic goroutine to watch files for changes once the controller has started up.
-func WatchFiles(ctx context.Context, apply apply.Apply, addons controllersv1.AddonController, disables map[string]bool, bases ...string) error {
+func WatchFiles(ctx context.Context, client kubernetes.Interface, apply apply.Apply, addons controllersv1.AddonController, disables map[string]bool, bases ...string) error {
 	w := &watcher{
 		apply:      apply,
 		addonCache: addons.Cache(),
 		addons:     addons,
 		bases:      bases,
 		disables:   disables,
-		modTime:    map[string]time.Time{},
 	}
 
 	addons.Enqueue(metav1.NamespaceNone, startKey)
 	addons.OnChange(ctx, "addon-start", func(key string, _ *apisv1.Addon) (*apisv1.Addon, error) {
 		if key == startKey {
-			go w.start(ctx)
+			go w.start(ctx, client)
 		}
 		return nil, nil
 	})
@@ -63,11 +68,17 @@ type watcher struct {
 	addons     controllersv1.AddonClient
 	bases      []string
 	disables   map[string]bool
-	modTime    map[string]time.Time
+	recorder   record.EventRecorder
 }
 
 // start calls listFiles at regular intervals to trigger application of manifests that have changed on disk.
-func (w *watcher) start(ctx context.Context) {
+func (w *watcher) start(ctx context.Context, client kubernetes.Interface) {
+	nodeName := os.Getenv("NODE_NAME")
+	broadcaster := record.NewBroadcaster()
+	broadcaster.StartLogging(logrus.Infof)
+	broadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: client.CoreV1().Events(metav1.NamespaceSystem)})
+	w.recorder = broadcaster.NewRecorder(schemes.All, corev1.EventSource{Component: componentName, Host: nodeName})
+
 	force := true
 	for {
 		if err := w.listFiles(force); err == nil {
@@ -78,7 +89,7 @@ func (w *watcher) start(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return
-		case <-time.After(15 * time.Second):
+		case <-time.After(checkIntervalMinutes * time.Minute):
 		}
 	}
 }
@@ -137,13 +148,8 @@ func (w *watcher) listFilesIn(base string, force bool) error {
 			continue
 		}
 		modTime := files[path].ModTime()
-		if !force && modTime.Equal(w.modTime[path]) {
-			continue
-		}
-		if err := w.deploy(path, !force); err != nil {
+		if err := w.deploy(path, modTime, force); err != nil {
 			errs = append(errs, errors2.Wrapf(err, "failed to process %s", path))
-		} else {
-			w.modTime[path] = modTime
 		}
 	}
 
@@ -152,11 +158,8 @@ func (w *watcher) listFilesIn(base string, force bool) error {
 
 // deploy loads yaml from a manifest on disk, creates an AddOn resource to track its application, and then applies
 // all resources contained within to the cluster.
-func (w *watcher) deploy(path string, compareChecksum bool) error {
-	content, err := ioutil.ReadFile(path)
-	if err != nil {
-		return err
-	}
+func (w *watcher) deploy(path string, modTime time.Time, force bool) error {
+	nodeName := os.Getenv("NODE_NAME")
 
 	name := basename(path)
 	addon, err := w.getOrCreateAddon(name)
@@ -164,32 +167,59 @@ func (w *watcher) deploy(path string, compareChecksum bool) error {
 		return err
 	}
 
-	checksum := checksum(content)
-	if compareChecksum && checksum == addon.Spec.Checksum {
-		logrus.Debugf("Skipping existing deployment of %s, check=%v, checksum %s=%s", path, compareChecksum, checksum, addon.Spec.Checksum)
+	// Always skip updating if the Addon applied mtime is the same or newer than the file mtime
+	if addon.Status.ModTime.After(modTime) {
+		logrus.Debugf("Skipping deployment of %s, Addon ModTime %s from %s >= file ModTime %s", path, addon.Status.ModTime.Time, addon.Status.NodeName, modTime)
 		return nil
 	}
 
-	objectSet, err := objectSet(content)
+	content, err := ioutil.ReadFile(path)
 	if err != nil {
 		return err
 	}
 
-	if err := w.apply.WithOwner(&addon).Apply(objectSet); err != nil {
-		return err
+	// Unless force-updating, skip if the checksum hasn't changed
+	checksum := checksum(content)
+	if !force && addon.Spec.Checksum == checksum {
+		logrus.Debugf("Skipping deployment of %s, Addon Checksum %s matches file Checksum", path, addon.Spec.Checksum)
+		return nil
 	}
 
 	addon.Spec.Source = path
-	addon.Spec.Checksum = checksum
+	addon.Status.NodeName = nodeName
 	addon.Status.GVKs = nil
 
 	// Create the new Addon now so that we can use it to report Events when parsing/applying the manifest
 	// Events need the UID and ObjectRevision set to function properly
 	if addon.UID == "" {
-		_, err := w.addons.Create(&addon)
+		newAddon, err := w.addons.Create(&addon)
+		if err != nil {
+			return err
+		}
+		addon = *newAddon
+	}
+
+	// Attempt to parse the YAML/JSON into objects. Failure at this point would be due to bad file content - not YAML/JSON,
+	// YAML/JSON that can't be converted to Kubernetes objects, etc.
+	objectSet, err := objectSet(content)
+	if err != nil {
+		w.recorder.Eventf(&addon, corev1.EventTypeWarning, "ParseManifestFailed", "Parse manifest at %q failed: %v", path, err)
 		return err
 	}
 
+	// Attempt to apply the changes. Failure at this point would be due to more complicated issues - invalid changes to
+	// existing objects, rejected by validating webhooks, etc.
+	w.recorder.Eventf(&addon, corev1.EventTypeNormal, "ApplyingManifest", "Applying manifest at %q", path)
+	err = w.apply.WithOwner(&addon).Apply(objectSet)
+	if err != nil {
+		w.recorder.Eventf(&addon, corev1.EventTypeWarning, "ApplyManifestFailed", "Applying manifest at %q failed: %v", path, err)
+		return err
+	}
+
+	// Emit event, Update Addon checksum and modtime only if apply was successful
+	w.recorder.Eventf(&addon, corev1.EventTypeNormal, "AppliedManifest", "Applied manifest at %q", path)
+	addon.Spec.Checksum = checksum
+	addon.Status.ModTime.Time = modTime
 	_, err = w.addons.Update(&addon)
 	return err
 }
