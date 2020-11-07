@@ -16,8 +16,8 @@ import (
 
 	errors2 "github.com/pkg/errors"
 	"github.com/rancher/k3s/pkg/agent/util"
-	v12 "github.com/rancher/k3s/pkg/apis/k3s.cattle.io/v1"
-	v1 "github.com/rancher/k3s/pkg/generated/controllers/k3s.cattle.io/v1"
+	apisv1 "github.com/rancher/k3s/pkg/apis/k3s.cattle.io/v1"
+	controllersv1 "github.com/rancher/k3s/pkg/generated/controllers/k3s.cattle.io/v1"
 	"github.com/rancher/wrangler/pkg/apply"
 	"github.com/rancher/wrangler/pkg/merr"
 	"github.com/rancher/wrangler/pkg/objectset"
@@ -32,11 +32,11 @@ import (
 
 const (
 	ControllerName = "deploy"
-	ns             = "kube-system"
 	startKey       = "_start_"
 )
 
-func WatchFiles(ctx context.Context, apply apply.Apply, addons v1.AddonController, disables map[string]bool, bases ...string) error {
+// WatchFiles sets up an OnChange callback to start a periodic goroutine to watch files for changes once the controller has started up.
+func WatchFiles(ctx context.Context, apply apply.Apply, addons controllersv1.AddonController, disables map[string]bool, bases ...string) error {
 	w := &watcher{
 		apply:      apply,
 		addonCache: addons.Cache(),
@@ -46,8 +46,8 @@ func WatchFiles(ctx context.Context, apply apply.Apply, addons v1.AddonControlle
 		modTime:    map[string]time.Time{},
 	}
 
-	addons.Enqueue("", startKey)
-	addons.OnChange(ctx, "addon-start", func(key string, _ *v12.Addon) (*v12.Addon, error) {
+	addons.Enqueue(metav1.NamespaceNone, startKey)
+	addons.OnChange(ctx, "addon-start", func(key string, _ *apisv1.Addon) (*apisv1.Addon, error) {
 		if key == startKey {
 			go w.start(ctx)
 		}
@@ -59,13 +59,14 @@ func WatchFiles(ctx context.Context, apply apply.Apply, addons v1.AddonControlle
 
 type watcher struct {
 	apply      apply.Apply
-	addonCache v1.AddonCache
-	addons     v1.AddonClient
+	addonCache controllersv1.AddonCache
+	addons     controllersv1.AddonClient
 	bases      []string
 	disables   map[string]bool
 	modTime    map[string]time.Time
 }
 
+// start calls listFiles at regular intervals to trigger application of manifests that have changed on disk.
 func (w *watcher) start(ctx context.Context) {
 	force := true
 	for {
@@ -82,6 +83,7 @@ func (w *watcher) start(ctx context.Context) {
 	}
 }
 
+// listFiles calls listFilesIn on a list of paths.
 func (w *watcher) listFiles(force bool) error {
 	var errs []error
 	for _, base := range w.bases {
@@ -92,6 +94,8 @@ func (w *watcher) listFiles(force bool) error {
 	return merr.NewErrors(errs...)
 }
 
+// listFilesIn recursively processes all files within a path, and checks them against the disable and skip lists. Files found that
+// are not on either list are loaded as Addons and applied to the cluster.
 func (w *watcher) listFilesIn(base string, force bool) error {
 	files := map[string]os.FileInfo{}
 	if err := filepath.Walk(base, func(path string, info os.FileInfo, err error) error {
@@ -104,6 +108,9 @@ func (w *watcher) listFilesIn(base string, force bool) error {
 		return err
 	}
 
+	// Make a map of .skip files - these are used later to indicate that a given file should be ignored
+	// For example, 'addon.yaml.skip' will cause 'addon.yaml' to be ignored completely - unless it is also
+	// disabled, since disable processing happens first.
 	skips := map[string]bool{}
 	keys := make([]string, len(files))
 	keyIndex := 0
@@ -118,13 +125,15 @@ func (w *watcher) listFilesIn(base string, force bool) error {
 
 	var errs []error
 	for _, path := range keys {
-		if shouldDisableService(base, path, w.disables) {
+		// Disabled files are not just skipped, but actively deleted from the filesystem
+		if shouldDisableFile(base, path, w.disables) {
 			if err := w.delete(path); err != nil {
 				errs = append(errs, errors2.Wrapf(err, "failed to delete %s", path))
 			}
 			continue
 		}
-		if skipFile(files[path].Name(), skips) {
+		// Skipped files are just ignored
+		if shouldSkipFile(files[path].Name(), skips) {
 			continue
 		}
 		modTime := files[path].ModTime()
@@ -141,14 +150,16 @@ func (w *watcher) listFilesIn(base string, force bool) error {
 	return merr.NewErrors(errs...)
 }
 
+// deploy loads yaml from a manifest on disk, creates an AddOn resource to track its application, and then applies
+// all resources contained within to the cluster.
 func (w *watcher) deploy(path string, compareChecksum bool) error {
 	content, err := ioutil.ReadFile(path)
 	if err != nil {
 		return err
 	}
 
-	name := name(path)
-	addon, err := w.addon(name)
+	name := basename(path)
+	addon, err := w.getOrCreateAddon(name)
 	if err != nil {
 		return err
 	}
@@ -172,6 +183,8 @@ func (w *watcher) deploy(path string, compareChecksum bool) error {
 	addon.Spec.Checksum = checksum
 	addon.Status.GVKs = nil
 
+	// Create the new Addon now so that we can use it to report Events when parsing/applying the manifest
+	// Events need the UID and ObjectRevision set to function properly
 	if addon.UID == "" {
 		_, err := w.addons.Create(&addon)
 		return err
@@ -181,9 +194,11 @@ func (w *watcher) deploy(path string, compareChecksum bool) error {
 	return err
 }
 
+// delete completely removes both a manifest, and any resources that it did or would have created. The manifest is
+// parsed, and any resources it specified are deleted. Finally, the file itself is removed from disk.
 func (w *watcher) delete(path string) error {
-	name := name(path)
-	addon, err := w.addon(name)
+	name := basename(path)
+	addon, err := w.getOrCreateAddon(name)
 	if err != nil {
 		return err
 	}
@@ -214,16 +229,19 @@ func (w *watcher) delete(path string) error {
 	return os.Remove(path)
 }
 
-func (w *watcher) addon(name string) (v12.Addon, error) {
-	addon, err := w.addonCache.Get(ns, name)
+// getOrCreateAddon attempts to get an Addon by name from the addon namespace, and creates a new one
+// if it cannot be found.
+func (w *watcher) getOrCreateAddon(name string) (apisv1.Addon, error) {
+	addon, err := w.addonCache.Get(metav1.NamespaceSystem, name)
 	if errors.IsNotFound(err) {
-		addon = v12.NewAddon(ns, name, v12.Addon{})
+		addon = apisv1.NewAddon(metav1.NamespaceSystem, name, apisv1.Addon{})
 	} else if err != nil {
-		return v12.Addon{}, err
+		return apisv1.Addon{}, err
 	}
 	return *addon, nil
 }
 
+// objectSet returns a new ObjectSet containing all resources from a given yaml chunk
 func objectSet(content []byte) (*objectset.ObjectSet, error) {
 	objs, err := yamlToObjects(bytes.NewBuffer(content))
 	if err != nil {
@@ -235,16 +253,19 @@ func objectSet(content []byte) (*objectset.ObjectSet, error) {
 	return os, nil
 }
 
-func name(path string) string {
+// basename returns a file's basename by returning everything before the first period
+func basename(path string) string {
 	name := filepath.Base(path)
 	return strings.SplitN(name, ".", 2)[0]
 }
 
+// checksum returns the hex-encoded SHA256 sum of a byte slice
 func checksum(bytes []byte) string {
 	d := sha256.Sum256(bytes)
 	return hex.EncodeToString(d[:])
 }
 
+// isEmptyYaml returns true if a chunk of YAML contains nothing but whitespace, comments, or document separators
 func isEmptyYaml(yaml []byte) bool {
 	isEmpty := true
 	lines := bytes.Split(yaml, []byte("\n"))
@@ -257,6 +278,7 @@ func isEmptyYaml(yaml []byte) bool {
 	return isEmpty
 }
 
+// yamlToObjects returns an object slice yielded from documents in a chunk of YAML
 func yamlToObjects(in io.Reader) ([]runtime.Object, error) {
 	var result []runtime.Object
 	reader := yamlDecoder.NewYAMLReader(bufio.NewReaderSize(in, 4096))
@@ -282,6 +304,7 @@ func yamlToObjects(in io.Reader) ([]runtime.Object, error) {
 	return result, nil
 }
 
+// Returns one or more objects from a single YAML document
 func toObjects(bytes []byte) ([]runtime.Object, error) {
 	bytes, err := yamlDecoder.ToJSON(bytes)
 	if err != nil {
@@ -305,7 +328,9 @@ func toObjects(bytes []byte) ([]runtime.Object, error) {
 	return []runtime.Object{obj}, nil
 }
 
-func skipFile(fileName string, skips map[string]bool) bool {
+// Returns true if a file should be skipped. Skips anything from the provided skip map,
+// anything that is a dotfile, and anything that does not have a json/yaml/yml extension.
+func shouldSkipFile(fileName string, skips map[string]bool) bool {
 	switch {
 	case strings.HasPrefix(fileName, "."):
 		return true
@@ -318,7 +343,11 @@ func skipFile(fileName string, skips map[string]bool) bool {
 	}
 }
 
-func shouldDisableService(base, fileName string, disables map[string]bool) bool {
+// Returns true if a file should be disabled, by checking the file basename against a disables map.
+// only json/yaml files are checked.
+func shouldDisableFile(base, fileName string, disables map[string]bool) bool {
+	// Check to see if the file is in a subdirectory that is in the disables map.
+	// If a file is nested several levels deep, checks 'parent1', 'parent1/parent2', 'parent1/parent2/parent3', etc.
 	relFile := strings.TrimPrefix(fileName, base)
 	namePath := strings.Split(relFile, string(os.PathSeparator))
 	for i := 1; i < len(namePath); i++ {
@@ -330,6 +359,7 @@ func shouldDisableService(base, fileName string, disables map[string]bool) bool 
 	if !util.HasSuffixI(fileName, ".yaml", ".yml", ".json") {
 		return false
 	}
+	// Check the basename against the disables map
 	baseFile := filepath.Base(fileName)
 	suffix := filepath.Ext(baseFile)
 	baseName := strings.TrimSuffix(baseFile, suffix)
