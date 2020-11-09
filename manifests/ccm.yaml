@@ -78,6 +78,3 @@ subjects:
 - kind: User
   name: cloud-controller-manager
   namespace: kube-system
-- kind: ServiceAccount
-  name: cloud-controller-manager
-  namespace: kube-system

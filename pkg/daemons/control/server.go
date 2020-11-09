@@ -139,7 +139,6 @@ func controllerManager(cfg *config.Control, runtime *config.ControlRuntime) erro
 		"address":                          localhostIP.String(),
 		"bind-address":                     localhostIP.String(),
 		"secure-port":                      "0",
-		"cloud-provider":                   version.Program,
 		"use-service-account-credentials":  "true",
 		"cluster-signing-cert-file":        runtime.ClientCA,
 		"cluster-signing-key-file":         runtime.ClientCAKey,
@@ -149,7 +148,7 @@ func controllerManager(cfg *config.Control, runtime *config.ControlRuntime) erro
 	}
 	if !cfg.DisableCCM {
 		argsMap["configure-cloud-routes"] = "false"
-		argsMap["controllers"] = "*,-service,-route"
+		argsMap["controllers"] = "*,-service,-route,-cloud-node-lifecycle"
 	}
 
 	args := config.GetArgsList(argsMap, cfg.ExtraControllerArgs)
