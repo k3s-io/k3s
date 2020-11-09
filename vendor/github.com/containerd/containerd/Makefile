@@ -68,8 +68,22 @@ RELEASE=containerd-$(VERSION:v%=%).${GOOS}-${GOARCH}
 
 PKG=github.com/containerd/containerd
 
+# Project binaries.
+COMMANDS=ctr containerd containerd-stress
+MANPAGES=ctr.8 containerd.8 containerd-config.8 containerd-config.toml.5
+
+ifdef BUILDTAGS
+    GO_BUILDTAGS = ${BUILDTAGS}
+endif
+# Build tags apparmor and selinux are needed by CRI plugin.
+GO_BUILDTAGS ?= apparmor selinux
+GO_BUILDTAGS += ${DEBUG_TAGS}
+GO_TAGS=$(if $(GO_BUILDTAGS),-tags "$(GO_BUILDTAGS)",)
+GO_LDFLAGS=-ldflags '-X $(PKG)/version.Version=$(VERSION) -X $(PKG)/version.Revision=$(REVISION) -X $(PKG)/version.Package=$(PACKAGE) $(EXTRA_LDFLAGS)'
+SHIM_GO_LDFLAGS=-ldflags '-X $(PKG)/version.Version=$(VERSION) -X $(PKG)/version.Revision=$(REVISION) -X $(PKG)/version.Package=$(PACKAGE) -extldflags "-static" $(EXTRA_LDFLAGS)'
+
 # Project packages.
-PACKAGES=$(shell go list ./... | grep -v /vendor/)
+PACKAGES=$(shell go list ${GO_TAGS} ./... | grep -v /vendor/)
 INTEGRATION_PACKAGE=${PKG}
 TEST_REQUIRES_ROOT_PACKAGES=$(filter \
     ${PACKAGES}, \
@@ -85,20 +99,6 @@ ifdef SKIPTESTS
     PACKAGES:=$(filter-out ${SKIPTESTS},${PACKAGES})
     TEST_REQUIRES_ROOT_PACKAGES:=$(filter-out ${SKIPTESTS},${TEST_REQUIRES_ROOT_PACKAGES})
 endif
-
-# Project binaries.
-COMMANDS=ctr containerd containerd-stress
-MANPAGES=ctr.8 containerd.8 containerd-config.8 containerd-config.toml.5
-
-ifdef BUILDTAGS
-    GO_BUILDTAGS = ${BUILDTAGS}
-endif
-# Build tags apparmor and selinux are needed by CRI plugin.
-GO_BUILDTAGS ?= apparmor selinux
-GO_BUILDTAGS += ${DEBUG_TAGS}
-GO_TAGS=$(if $(GO_BUILDTAGS),-tags "$(GO_BUILDTAGS)",)
-GO_LDFLAGS=-ldflags '-X $(PKG)/version.Version=$(VERSION) -X $(PKG)/version.Revision=$(REVISION) -X $(PKG)/version.Package=$(PACKAGE) $(EXTRA_LDFLAGS)'
-SHIM_GO_LDFLAGS=-ldflags '-X $(PKG)/version.Version=$(VERSION) -X $(PKG)/version.Revision=$(REVISION) -X $(PKG)/version.Package=$(PACKAGE) -extldflags "-static" $(EXTRA_LDFLAGS)'
 
 #Replaces ":" (*nix), ";" (windows) with newline for easy parsing
 GOPATHS=$(shell echo ${GOPATH} | tr ":" "\n" | tr ";" "\n")

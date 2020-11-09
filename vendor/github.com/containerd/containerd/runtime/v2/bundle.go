@@ -121,7 +121,7 @@ func (b *Bundle) Delete() error {
 	if err := mount.UnmountAll(rootfs, 0); err != nil {
 		return errors.Wrapf(err, "unmount rootfs %s", rootfs)
 	}
-	if err := os.Remove(rootfs); err != nil && os.IsNotExist(err) {
+	if err := os.Remove(rootfs); err != nil && !os.IsNotExist(err) {
 		return errors.Wrap(err, "failed to remove bundle rootfs")
 	}
 	err := atomicDelete(b.Path)

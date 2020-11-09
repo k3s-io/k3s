@@ -43,6 +43,7 @@ func DefaultConfig() PluginConfig {
 					Options: new(toml.Primitive),
 				},
 			},
+			DisableSnapshotAnnotations: true,
 		},
 		DisableTCPService:    true,
 		StreamServerAddress:  "127.0.0.1",
