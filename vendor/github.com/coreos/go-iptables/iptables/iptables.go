@@ -48,9 +48,13 @@ func (e *Error) Error() string {
 
 // IsNotExist returns true if the error is due to the chain or rule not existing
 func (e *Error) IsNotExist() bool {
-	return e.ExitStatus() == 1 &&
-		(e.msg == fmt.Sprintf("%s: Bad rule (does a matching rule exist in that chain?).\n", getIptablesCommand(e.proto)) ||
-			e.msg == fmt.Sprintf("%s: No chain/target/match by that name.\n", getIptablesCommand(e.proto)))
+	if e.ExitStatus() != 1 {
+		return false
+	}
+	cmdIptables := getIptablesCommand(e.proto)
+	msgNoRuleExist := fmt.Sprintf("%s: Bad rule (does a matching rule exist in that chain?).\n", cmdIptables)
+	msgNoChainExist := fmt.Sprintf("%s: No chain/target/match by that name.\n", cmdIptables)
+	return strings.Contains(e.msg, msgNoRuleExist) || strings.Contains(e.msg, msgNoChainExist)
 }
 
 // Protocol to differentiate between IPv4 and IPv6
@@ -101,7 +105,13 @@ func NewWithProtocol(proto Protocol) (*IPTables, error) {
 		return nil, err
 	}
 	vstring, err := getIptablesVersionString(path)
+	if err != nil {
+		return nil, fmt.Errorf("could not get iptables version: %v", err)
+	}
 	v1, v2, v3, mode, err := extractIptablesVersion(vstring)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract iptables version from [%s]: %v", vstring, err)
+	}
 
 	checkPresent, waitPresent, randomFullyPresent := getIptablesCommandSupport(v1, v2, v3)
 
@@ -348,18 +358,6 @@ func (ipt *IPTables) executeList(args []string) ([]string, error) {
 		rules = rules[:len(rules)-1]
 	}
 
-	// nftables mode doesn't return an error code when listing a non-existent
-	// chain. Patch that up.
-	if len(rules) == 0 && ipt.mode == "nf_tables" {
-		v := 1
-		return nil, &Error{
-			cmd:        exec.Cmd{Args: args},
-			msg:        fmt.Sprintf("%s: No chain/target/match by that name.\n", getIptablesCommand(ipt.proto)),
-			proto:      ipt.proto,
-			exitStatus: &v,
-		}
-	}
-
 	for i, rule := range rules {
 		rules[i] = filterRuleOutput(rule)
 	}
@@ -437,6 +435,7 @@ func (ipt *IPTables) runWithOutput(args []string, stdout io.Writer) error {
 		}
 		ul, err := fmu.tryLock()
 		if err != nil {
+			syscall.Close(fmu.fd)
 			return err
 		}
 		defer ul.Unlock()

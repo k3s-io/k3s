@@ -118,6 +118,13 @@ func initFunc(ic *plugin.InitContext) (interface{}, error) {
 			l.monitor.Monitor(t)
 		}
 	}
+	v2Tasks, err := l.v2Runtime.Tasks(ic.Context, true)
+	if err != nil {
+		return nil, err
+	}
+	for _, t := range v2Tasks {
+		l.monitor.Monitor(t)
+	}
 	return l, nil
 }
 

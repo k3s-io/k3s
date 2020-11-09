@@ -178,7 +178,16 @@ func (ns *netNS) Do(toRun func(NetNS) error) error {
 		if err = ns.Set(); err != nil {
 			return fmt.Errorf("error switching to ns %v: %v", ns.file.Name(), err)
 		}
-		defer threadNS.Set() // switch back
+		defer func() {
+			err := threadNS.Set() // switch back
+			if err == nil {
+				// Unlock the current thread only when we successfully switched back
+				// to the original namespace; otherwise leave the thread locked which
+				// will force the runtime to scrap the current thread, that is maybe
+				// not as optimal but at least always safe to do.
+				runtime.UnlockOSThread()
+			}
+		}()
 
 		return toRun(hostNS)
 	}
@@ -193,6 +202,10 @@ func (ns *netNS) Do(toRun func(NetNS) error) error {
 	var wg sync.WaitGroup
 	wg.Add(1)
 
+	// Start the callback in a new green thread so that if we later fail
+	// to switch the namespace back to the original one, we can safely
+	// leave the thread locked to die without a risk of the current thread
+	// left lingering with incorrect namespace.
 	var innerError error
 	go func() {
 		defer wg.Done()
