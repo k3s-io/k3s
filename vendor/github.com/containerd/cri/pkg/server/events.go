@@ -333,6 +333,12 @@ func handleContainerExit(ctx context.Context, e *eventtypes.TaskExit, cntr conta
 		status.Pid = 0
 		status.FinishedAt = e.ExitedAt.UnixNano()
 		status.ExitCode = int32(e.ExitStatus)
+		// Unknown state can only transit to EXITED state, so we need
+		// to handle unknown state here.
+		if status.Unknown {
+			logrus.Debugf("Container %q transited from UNKNOWN to EXITED", cntr.ID)
+			status.Unknown = false
+		}
 		return status, nil
 	})
 	if err != nil {

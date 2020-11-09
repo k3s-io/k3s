@@ -39,6 +39,7 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	imagespec "github.com/opencontainers/image-spec/specs-go/v1"
 	runtimespec "github.com/opencontainers/runtime-spec/specs-go"
+	selinux "github.com/opencontainers/selinux/go-selinux"
 	"github.com/opencontainers/selinux/go-selinux/label"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
@@ -182,7 +183,7 @@ func (c *criService) CreateContainer(ctx context.Context, r *runtime.CreateConta
 	}
 	defer func() {
 		if retErr != nil {
-			_ = label.ReleaseLabel(spec.Process.SelinuxLabel)
+			selinux.ReleaseLabel(spec.Process.SelinuxLabel)
 		}
 	}()
 
@@ -379,11 +380,13 @@ func (c *criService) generateContainerSpec(id string, sandboxID string, sandboxP
 	specOpts = append(specOpts, oci.WithEnv(env))
 
 	securityContext := config.GetLinux().GetSecurityContext()
-	labelOptions := toLabel(securityContext.GetSelinuxOptions())
-	if len(labelOptions) == 0 {
-		// Use pod level SELinux config
+	labelOptions, err := toLabel(securityContext.GetSelinuxOptions())
+	if err != nil {
+		return nil, err
+	}
+	if len(labelOptions) == 0 { // Use pod level SELinux config
 		if sandbox, err := c.sandboxStore.Get(sandboxID); err == nil {
-			labelOptions, err = label.DupSecOpt(sandbox.ProcessLabel)
+			labelOptions, err = selinux.DupSecOpt(sandbox.ProcessLabel)
 			if err != nil {
 				return nil, err
 			}
@@ -396,7 +399,7 @@ func (c *criService) generateContainerSpec(id string, sandboxID string, sandboxP
 	}
 	defer func() {
 		if retErr != nil {
-			_ = label.ReleaseLabel(processLabel)
+			selinux.ReleaseLabel(processLabel)
 		}
 	}()
 
@@ -544,9 +547,10 @@ func (c *criService) generateContainerMounts(sandboxID string, config *runtime.C
 			sandboxDevShm = devShm
 		}
 		mounts = append(mounts, &runtime.Mount{
-			ContainerPath: devShm,
-			HostPath:      sandboxDevShm,
-			Readonly:      false,
+			ContainerPath:  devShm,
+			HostPath:       sandboxDevShm,
+			Readonly:       false,
+			SelinuxRelabel: true,
 		})
 	}
 	return mounts
