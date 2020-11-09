@@ -117,13 +117,13 @@ You can build static binaries by providing a few variables to `make`:
 
 ```sudo
 make EXTRA_FLAGS="-buildmode pie" \
-	EXTRA_LDFLAGS='-extldflags "-fno-PIC -static"' \
+	EXTRA_LDFLAGS='-linkmode external -extldflags "-fno-PIC -static"' \
 	BUILDTAGS="netgo osusergo static_build"
 ```
 
 > *Note*:
 > - static build is discouraged
-> - static containerd binary does not support loading plugins
+> - static containerd binary does not support loading shared object plugins (`*.so`)
 
 # Via Docker container
 
