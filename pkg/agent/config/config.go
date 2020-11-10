@@ -320,29 +320,29 @@ func get(envInfo *cmds.Agent, proxy proxy.Proxy) (*config.Node, error) {
 		}
 	}
 
-	clientCAFile := filepath.Join(envInfo.DataDir, "client-ca.crt")
+	clientCAFile := filepath.Join(envInfo.DataDir, "agent", "client-ca.crt")
 	if err := getHostFile(clientCAFile, "", info); err != nil {
 		return nil, err
 	}
 
-	serverCAFile := filepath.Join(envInfo.DataDir, "server-ca.crt")
+	serverCAFile := filepath.Join(envInfo.DataDir, "agent", "server-ca.crt")
 	if err := getHostFile(serverCAFile, "", info); err != nil {
 		return nil, err
 	}
 
-	servingKubeletCert := filepath.Join(envInfo.DataDir, "serving-kubelet.crt")
-	servingKubeletKey := filepath.Join(envInfo.DataDir, "serving-kubelet.key")
+	servingKubeletCert := filepath.Join(envInfo.DataDir, "agent", "serving-kubelet.crt")
+	servingKubeletKey := filepath.Join(envInfo.DataDir, "agent", "serving-kubelet.key")
 
 	nodePasswordRoot := "/"
 	if envInfo.Rootless {
-		nodePasswordRoot = envInfo.DataDir
+		nodePasswordRoot = filepath.Join(envInfo.DataDir, "agent")
 	}
 	nodeConfigPath := filepath.Join(nodePasswordRoot, "etc", "rancher", "node")
 	if err := os.MkdirAll(nodeConfigPath, 0755); err != nil {
 		return nil, err
 	}
 
-	oldNodePasswordFile := filepath.Join(envInfo.DataDir, "node-password.txt")
+	oldNodePasswordFile := filepath.Join(envInfo.DataDir, "agent", "node-password.txt")
 	newNodePasswordFile := filepath.Join(nodeConfigPath, "password")
 	upgradeOldNodePasswordPath(oldNodePasswordFile, newNodePasswordFile)
 
@@ -364,35 +364,35 @@ func get(envInfo *cmds.Agent, proxy proxy.Proxy) (*config.Node, error) {
 		return nil, err
 	}
 
-	clientKubeletCert := filepath.Join(envInfo.DataDir, "client-kubelet.crt")
-	clientKubeletKey := filepath.Join(envInfo.DataDir, "client-kubelet.key")
+	clientKubeletCert := filepath.Join(envInfo.DataDir, "agent", "client-kubelet.crt")
+	clientKubeletKey := filepath.Join(envInfo.DataDir, "agent", "client-kubelet.key")
 	if err := getNodeNamedHostFile(clientKubeletCert, clientKubeletKey, nodeName, nodeIP, newNodePasswordFile, info); err != nil {
 		return nil, err
 	}
 
-	kubeconfigKubelet := filepath.Join(envInfo.DataDir, "kubelet.kubeconfig")
+	kubeconfigKubelet := filepath.Join(envInfo.DataDir, "agent", "kubelet.kubeconfig")
 	if err := control.KubeConfig(kubeconfigKubelet, proxy.APIServerURL(), serverCAFile, clientKubeletCert, clientKubeletKey); err != nil {
 		return nil, err
 	}
 
-	clientKubeProxyCert := filepath.Join(envInfo.DataDir, "client-kube-proxy.crt")
-	clientKubeProxyKey := filepath.Join(envInfo.DataDir, "client-kube-proxy.key")
+	clientKubeProxyCert := filepath.Join(envInfo.DataDir, "agent", "client-kube-proxy.crt")
+	clientKubeProxyKey := filepath.Join(envInfo.DataDir, "agent", "client-kube-proxy.key")
 	if err := getHostFile(clientKubeProxyCert, clientKubeProxyKey, info); err != nil {
 		return nil, err
 	}
 
-	kubeconfigKubeproxy := filepath.Join(envInfo.DataDir, "kubeproxy.kubeconfig")
+	kubeconfigKubeproxy := filepath.Join(envInfo.DataDir, "agent", "kubeproxy.kubeconfig")
 	if err := control.KubeConfig(kubeconfigKubeproxy, proxy.APIServerURL(), serverCAFile, clientKubeProxyCert, clientKubeProxyKey); err != nil {
 		return nil, err
 	}
 
-	clientK3sControllerCert := filepath.Join(envInfo.DataDir, "client-"+version.Program+"-controller.crt")
-	clientK3sControllerKey := filepath.Join(envInfo.DataDir, "client-"+version.Program+"-controller.key")
+	clientK3sControllerCert := filepath.Join(envInfo.DataDir, "agent", "client-"+version.Program+"-controller.crt")
+	clientK3sControllerKey := filepath.Join(envInfo.DataDir, "agent", "client-"+version.Program+"-controller.key")
 	if err := getHostFile(clientK3sControllerCert, clientK3sControllerKey, info); err != nil {
 		return nil, err
 	}
 
-	kubeconfigK3sController := filepath.Join(envInfo.DataDir, version.Program+"controller.kubeconfig")
+	kubeconfigK3sController := filepath.Join(envInfo.DataDir, "agent", version.Program+"controller.kubeconfig")
 	if err := control.KubeConfig(kubeconfigK3sController, proxy.APIServerURL(), serverCAFile, clientK3sControllerCert, clientK3sControllerKey); err != nil {
 		return nil, err
 	}
@@ -404,7 +404,7 @@ func get(envInfo *cmds.Agent, proxy proxy.Proxy) (*config.Node, error) {
 		FlannelBackend:           controlConfig.FlannelBackend,
 	}
 	nodeConfig.FlannelIface = flannelIface
-	nodeConfig.Images = filepath.Join(envInfo.DataDir, "images")
+	nodeConfig.Images = filepath.Join(envInfo.DataDir, "agent", "images")
 	nodeConfig.AgentConfig.NodeIP = nodeIP
 	nodeConfig.AgentConfig.NodeName = nodeName
 	nodeConfig.AgentConfig.NodeConfigPath = nodeConfigPath
@@ -420,22 +420,22 @@ func get(envInfo *cmds.Agent, proxy proxy.Proxy) (*config.Node, error) {
 	nodeConfig.AgentConfig.KubeConfigKubeProxy = kubeconfigKubeproxy
 	nodeConfig.AgentConfig.KubeConfigK3sController = kubeconfigK3sController
 	if envInfo.Rootless {
-		nodeConfig.AgentConfig.RootDir = filepath.Join(envInfo.DataDir, "kubelet")
+		nodeConfig.AgentConfig.RootDir = filepath.Join(envInfo.DataDir, "agent", "kubelet")
 	}
 	nodeConfig.AgentConfig.PauseImage = envInfo.PauseImage
 	nodeConfig.AgentConfig.Snapshotter = envInfo.Snapshotter
 	nodeConfig.AgentConfig.IPSECPSK = controlConfig.IPSECPSK
-	nodeConfig.AgentConfig.StrongSwanDir = filepath.Join(envInfo.DataDir, "strongswan")
+	nodeConfig.AgentConfig.StrongSwanDir = filepath.Join(envInfo.DataDir, "agent", "strongswan")
 	nodeConfig.CACerts = info.CACerts
-	nodeConfig.Containerd.Config = filepath.Join(envInfo.DataDir, "etc/containerd/config.toml")
-	nodeConfig.Containerd.Root = filepath.Join(envInfo.DataDir, "containerd")
-	nodeConfig.Containerd.Opt = filepath.Join(envInfo.DataDir, "containerd")
+	nodeConfig.Containerd.Config = filepath.Join(envInfo.DataDir, "agent", "etc", "containerd", "config.toml")
+	nodeConfig.Containerd.Root = filepath.Join(envInfo.DataDir, "agent", "containerd")
+	nodeConfig.Containerd.Opt = filepath.Join(envInfo.DataDir, "agent", "containerd")
 	if !envInfo.Debug {
-		nodeConfig.Containerd.Log = filepath.Join(envInfo.DataDir, "containerd/containerd.log")
+		nodeConfig.Containerd.Log = filepath.Join(envInfo.DataDir, "agent", "containerd", "containerd.log")
 	}
 	nodeConfig.Containerd.State = "/run/k3s/containerd"
 	nodeConfig.Containerd.Address = filepath.Join(nodeConfig.Containerd.State, "containerd.sock")
-	nodeConfig.Containerd.Template = filepath.Join(envInfo.DataDir, "etc/containerd/config.toml.tmpl")
+	nodeConfig.Containerd.Template = filepath.Join(envInfo.DataDir, "agent", "etc", "containerd", "config.toml.tmpl")
 	nodeConfig.Certificate = servingCert
 
 	if nodeConfig.FlannelBackend == config.FlannelBackendNone {
@@ -451,13 +451,13 @@ func get(envInfo *cmds.Agent, proxy proxy.Proxy) (*config.Node, error) {
 		}
 
 		if envInfo.FlannelConf == "" {
-			nodeConfig.FlannelConf = filepath.Join(envInfo.DataDir, "etc/flannel/net-conf.json")
+			nodeConfig.FlannelConf = filepath.Join(envInfo.DataDir, "agent", "etc", "flannel", "net-conf.json")
 		} else {
 			nodeConfig.FlannelConf = envInfo.FlannelConf
 			nodeConfig.FlannelConfOverride = true
 		}
 		nodeConfig.AgentConfig.CNIBinDir = filepath.Dir(hostLocal)
-		nodeConfig.AgentConfig.CNIConfDir = filepath.Join(envInfo.DataDir, "etc/cni/net.d")
+		nodeConfig.AgentConfig.CNIConfDir = filepath.Join(envInfo.DataDir, "agent", "etc", "cni", "net.d")
 	}
 
 	if !nodeConfig.Docker && nodeConfig.ContainerRuntimeEndpoint == "" {
@@ -483,7 +483,7 @@ func get(envInfo *cmds.Agent, proxy proxy.Proxy) (*config.Node, error) {
 	nodeConfig.AgentConfig.DisableNPC = controlConfig.DisableNPC
 	nodeConfig.AgentConfig.DisableKubeProxy = controlConfig.DisableKubeProxy
 	nodeConfig.AgentConfig.Rootless = envInfo.Rootless
-	nodeConfig.AgentConfig.PodManifests = filepath.Join(envInfo.DataDir, DefaultPodManifestPath)
+	nodeConfig.AgentConfig.PodManifests = filepath.Join(envInfo.DataDir, "agent", DefaultPodManifestPath)
 	nodeConfig.AgentConfig.ProtectKernelDefaults = envInfo.ProtectKernelDefaults
 
 	return nodeConfig, nil
