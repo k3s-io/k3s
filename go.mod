@@ -10,7 +10,7 @@ replace (
 	github.com/containerd/console => github.com/containerd/console v0.0.0-20181022165439-0650fd9eeb50
 	github.com/containerd/containerd => github.com/rancher/containerd v1.4.1-k3s1
 	github.com/containerd/continuity => github.com/containerd/continuity v0.0.0-20190815185530-f2a389ac0a02
-	github.com/containerd/cri => github.com/rancher/cri v1.4.0-k3s.1 // k3s-release/1.4
+	github.com/containerd/cri => github.com/rancher/cri v1.4.0-k3s.2 // k3s-release/1.4
 	github.com/containerd/fifo => github.com/containerd/fifo v0.0.0-20190816180239-bda0ff6ed73c
 	github.com/containerd/go-runc => github.com/containerd/go-runc v0.0.0-20200220073739-7016d3ce2328
 	github.com/containerd/typeurl => github.com/containerd/typeurl v0.0.0-20180627222232-a93fcdb778cd
