@@ -64,11 +64,11 @@ func NewVariant(ctx context.Context, driverName, dataSourceName string, connPool
 	dialect.CompactSQL = `
 		DELETE FROM kine AS kv
 		WHERE
-			kv.name != 'compact_rev_key' AND
 			kv.id IN (
 				SELECT kp.prev_revision AS id
 				FROM kine AS kp
 				WHERE
+					kp.name != 'compact_rev_key' AND
 					kp.prev_revision != 0 AND
 					kp.id <= ?
 				UNION

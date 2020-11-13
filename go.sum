@@ -716,8 +716,8 @@ github.com/rancher/helm-controller v0.4.1 h1:AbI3zXy2Qtw4e4A6IkxKozgnm6T3KKnUo6E
 github.com/rancher/helm-controller v0.4.1/go.mod h1:194LHuZRrxcD82bG1rJtOWsw98U4JbPhDWqvL7l3PAw=
 github.com/rancher/juju-to-pkg-errors v0.0.0-20200701001603-16f3c28b59bd h1:KPnQuOFWU6Jm7dTadhZ9TCVf6Y5NxoSyUjwkbD7En5Q=
 github.com/rancher/juju-to-pkg-errors v0.0.0-20200701001603-16f3c28b59bd/go.mod h1:QYmg8cqWPPfIbpEuhtJbEdWwA6PEKSY016Z6EdfL9+8=
-github.com/rancher/kine v0.5.0 h1:ot9ZInMCb0482aWfvO+3gI2B+e9vGxpY12EDJgpowiY=
-github.com/rancher/kine v0.5.0/go.mod h1:NoqDMfN0Q+Wu23Kk3MfXfgLO2fE6abLaetejZs9HAYo=
+github.com/rancher/kine v0.5.1 h1:pBAD9LVU3oCuRWzY6lKEVqhNi1nZlJV3bbD4G2mrE1c=
+github.com/rancher/kine v0.5.1/go.mod h1:NoqDMfN0Q+Wu23Kk3MfXfgLO2fE6abLaetejZs9HAYo=
 github.com/rancher/kubernetes v1.17.14-k3s1 h1:SPccK6cu0Yc8r0esRXzf+EKwJc6VcixR12o2duJAgYg=
 github.com/rancher/kubernetes v1.17.14-k3s1/go.mod h1:J8bqjhrOYZ/dDhaQU8sEfM+aH81x3Urfw1uODZc7ZfU=
 github.com/rancher/kubernetes/staging/src/k8s.io/api v1.17.14-k3s1 h1:QjImNJsWxkjPq5n+cz8II6qrJJgEhM8uptdXtfxdMAw=
