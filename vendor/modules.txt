@@ -460,7 +460,7 @@ github.com/go-openapi/strfmt
 github.com/go-openapi/swag
 # github.com/go-openapi/validate v0.19.5
 github.com/go-openapi/validate
-# github.com/go-sql-driver/mysql v1.4.1
+# github.com/go-sql-driver/mysql v1.5.1-0.20200818111213-46351a889297
 github.com/go-sql-driver/mysql
 # github.com/go-stack/stack v1.8.0
 github.com/go-stack/stack
@@ -739,7 +739,7 @@ github.com/rancher/helm-controller/pkg/generated/informers/externalversions/helm
 github.com/rancher/helm-controller/pkg/generated/informers/externalversions/internalinterfaces
 github.com/rancher/helm-controller/pkg/generated/listers/helm.cattle.io/v1
 github.com/rancher/helm-controller/pkg/helm
-# github.com/rancher/kine v0.5.0
+# github.com/rancher/kine v0.5.0 => github.com/brandond/kine v0.5.1-0.20201113003841-e14a54f37128
 github.com/rancher/kine/pkg/broadcaster
 github.com/rancher/kine/pkg/client
 github.com/rancher/kine/pkg/drivers/dqlite
@@ -1068,7 +1068,6 @@ google.golang.org/api/transport/http
 google.golang.org/api/transport/http/internal/propagation
 # google.golang.org/appengine v1.6.1
 google.golang.org/appengine
-google.golang.org/appengine/cloudsql
 google.golang.org/appengine/internal
 google.golang.org/appengine/internal/app_identity
 google.golang.org/appengine/internal/base
