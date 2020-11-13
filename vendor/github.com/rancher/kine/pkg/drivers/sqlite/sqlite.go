@@ -64,19 +64,25 @@ func NewVariant(ctx context.Context, driverName, dataSourceName string, connPool
 	dialect.CompactSQL = `
 		DELETE FROM kine AS kv
 		WHERE
-			kv.name != 'compact_rev_key' AND
 			kv.id IN (
-				SELECT kp.prev_revision AS id
-				FROM kine AS kp
-				WHERE
-					kp.prev_revision != 0 AND
-					kp.id <= ?
-				UNION
-				SELECT kd.id AS id
-				FROM kine AS kd
-				WHERE
-					kd.deleted != 0 AND
-					kd.id <= ?
+				(
+					SELECT kp.prev_revision AS id
+					FROM kine AS kp
+					WHERE
+						kp.name != 'compact_rev_key' AND
+						kp.prev_revision != 0 AND
+						kp.id <= ?
+					ORDER BY kp.id ASC
+					LIMIT 1000
+				) UNION ALL (
+					SELECT kd.id AS id
+					FROM kine AS kd
+					WHERE
+						kd.deleted != 0 AND
+						kd.id <= ?
+					ORDER BY kd.id ASC
+					LIMIT 1000
+				)
 			)`
 	dialect.TranslateErr = func(err error) error {
 		if err, ok := err.(sqlite3.Error); ok && err.ExtendedCode == sqlite3.ErrConstraintUnique {

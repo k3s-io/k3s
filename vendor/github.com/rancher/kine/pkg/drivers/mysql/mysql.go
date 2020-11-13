@@ -71,21 +71,26 @@ func New(ctx context.Context, dataSourceName string, tlsInfo tls.Config, connPoo
 	dialect.CompactSQL = `
 		DELETE kv FROM kine AS kv
 		INNER JOIN (
-			SELECT kp.prev_revision AS id
-			FROM kine AS kp
-			WHERE
-				kp.prev_revision != 0 AND
-				kp.id <= ?
-			UNION
-			SELECT kd.id AS id
-			FROM kine AS kd
-			WHERE
-				kd.deleted != 0 AND
-				kd.id <= ?
+			(
+				SELECT kp.prev_revision AS id
+				FROM kine AS kp
+				WHERE
+					kp.name != 'compact_rev_key' AND
+					kp.prev_revision != 0 AND
+					kp.id <= ?
+				ORDER BY kp.id ASC
+				LIMIT 1000
+			) UNION ALL (
+				SELECT kd.id AS id
+				FROM kine AS kd
+				WHERE
+					kd.deleted != 0 AND
+					kd.id <= ?
+				ORDER BY kd.id ASC
+				LIMIT 1000
+			)
 		) AS ks
-		ON
-			kv.id = ks.id AND
-			kv.name != 'compact_rev_key'`
+		ON kv.id = ks.id`
 	dialect.TranslateErr = func(err error) error {
 		if err, ok := err.(*mysql.MySQLError); ok && err.Number == 1062 {
 			return server.ErrKeyExists
