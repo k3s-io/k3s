@@ -2,19 +2,16 @@ FROM golang:1.15.2-alpine3.12
 
 RUN apk -U --no-cache add bash git gcc musl-dev docker curl jq coreutils python2 openssl
 
-ARG DAPPER_HOST_ARCH
-ENV ARCH $DAPPER_HOST_ARCH
 ENV SONOBUOY_VERSION 0.19.0
 
-RUN if [ "${ARCH}" == "amd64" ] || [ "${ARCH}" == "arm64" ]; then \
-        OS=linux && \
-        curl -sL "https://github.com/vmware-tanzu/sonobuoy/releases/download/v${SONOBUOY_VERSION}/sonobuoy_${SONOBUOY_VERSION}_${OS}_${ARCH}.tar.gz" | \
-        tar -xzf - -C /usr/local/bin; \
-    fi
-
-RUN curl -sL https://storage.googleapis.com/kubernetes-release/release/$( \
-            curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt \
-        )/bin/linux/${ARCH}/kubectl -o /usr/local/bin/kubectl && \
+RUN OS=linux; \
+    ARCH=$(go env GOARCH); \
+    RELEASE=$(curl -fs https://storage.googleapis.com/kubernetes-release/release/stable.txt); \
+    if [ "${ARCH}" == "amd64" ] || [ "${ARCH}" == "arm64" ]; then \
+      curl -sL "https://github.com/vmware-tanzu/sonobuoy/releases/download/v${SONOBUOY_VERSION}/sonobuoy_${SONOBUOY_VERSION}_${OS}_${ARCH}.tar.gz" | \
+      tar -xzf - -C /usr/local/bin; \
+    fi; \
+    curl -fsL https://storage.googleapis.com/kubernetes-release/release/${RELEASE}/bin/linux/${ARCH}/kubectl -o /usr/local/bin/kubectl; \
     chmod a+x /usr/local/bin/kubectl
 
 ENV TEST_CLEANUP true

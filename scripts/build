@@ -63,8 +63,9 @@ fi
 
 mkdir -p bin
 
-if [ -z "$GOARM" ] && [ "arm" = "$("${GO}" env GOARCH)" ]; then
-    GOARM=7
+if [ ${ARCH} = armv7l ] || [ ${ARCH} = arm ]; then
+    export GOARCH="arm"
+    export GOARM="7"
 fi
 
 rm -f \
