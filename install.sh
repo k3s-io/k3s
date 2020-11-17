@@ -674,7 +674,7 @@ rm -rf /var/lib/kubelet
 rm -f ${BIN_DIR}/k3s
 rm -f ${KILLALL_K3S_SH}
 
-if [ -r /etc/redhat-release ] || [ -r /etc/centos-release ] || [ -r /etc/oracle-release ]; then
+if type yum >/dev/null 2>&1; then
     yum remove -y k3s-selinux
     rm -f /etc/yum.repos.d/rancher-k3s-common*.repo
 fi
