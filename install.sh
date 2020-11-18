@@ -456,7 +456,7 @@ setup_selinux() {
     yum install -y https://${rpm_site}/k3s/${rpm_channel}/common/centos/7/noarch/k3s-selinux-0.2-1.el7_8.noarch.rpm
 "
     policy_error=fatal
-    if [ "$INSTALL_K3S_SELINUX_WARN" = true ]; then
+    if [ "$INSTALL_K3S_SELINUX_WARN" = true ] || grep -q 'ID=flatcar' /etc/os-release; then
         policy_error=warn
     fi
 
