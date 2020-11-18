@@ -593,8 +593,7 @@ getshims() {
 killtree $({ set +x; } 2>/dev/null; getshims; set -x)
 
 do_unmount_and_remove() {
-    awk -v path="$1" '$2 ~ ("^" path) { print $2 }' /proc/self/mounts | sort -r | xargs -r -t -n 1 umount
-    awk -v path="$1" '$2 ~ ("^" path) { print $2 }' /proc/self/mounts | sort -r | xargs -r -t -n 1 umount rm -f 
+    awk -v path="$1" '$2 ~ ("^" path) { print $2 }' /proc/self/mounts | sort -r | xargs -r -t -n 1 sh -c 'umount $0 && rm -f $0'
 }
 
 do_unmount_and_remove '/run/k3s'
