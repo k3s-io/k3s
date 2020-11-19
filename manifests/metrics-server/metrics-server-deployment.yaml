@@ -22,6 +22,7 @@ spec:
       labels:
         k8s-app: metrics-server
     spec:
+      priorityClassName: "system-node-critical"
       serviceAccountName: metrics-server
       tolerations:
         - key: "CriticalAddonsOnly"

@@ -50,6 +50,7 @@ spec:
       labels:
         app: local-path-provisioner
     spec:
+      priorityClassName: "system-node-critical"
       serviceAccountName: local-path-provisioner-service-account
       tolerations:
           - key: "CriticalAddonsOnly"
