@@ -16,7 +16,7 @@ spec:
     kubernetes:
       ingressEndpoint:
         useDefaultPublishedService: true
-    priorityClassName: "system-node-critical"
+    priorityClassName: "system-cluster-critical"
     image: "rancher/library-traefik"
     tolerations:
       - key: "CriticalAddonsOnly"
