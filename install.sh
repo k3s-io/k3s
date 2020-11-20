@@ -593,7 +593,7 @@ getshims() {
 killtree $({ set +x; } 2>/dev/null; getshims; set -x)
 
 do_unmount_and_remove() {
-    awk -v path="$1" '$2 ~ ("^" path) { print $2 }' /proc/self/mounts | sort -r | xargs -r -t -n 1 sh -c 'umount $0 && rm -f $0'
+    awk -v path="$1" '$2 ~ ("^" path) { print $2 }' /proc/self/mounts | sort -r | xargs -r -t -n 1 sh -c 'umount $0 && rm -rf $0'
 }
 
 do_unmount_and_remove '/run/k3s'
@@ -602,9 +602,7 @@ do_unmount_and_remove '/var/lib/kubelet/pods'
 do_unmount_and_remove '/run/netns/cni-'
 
 # Remove CNI namespaces
-for ns in $(cd /run/netns; ls cni-*); do 
-    $SUDO ip netns del ${ns}
-done
+ip netns show 2>/dev/null | grep cni- | xargs -r -t -n 1 ip netns delete
 
 # Delete network interface(s) that match 'master cni0'
 ip link show 2>/dev/null | grep 'master cni0' | while read ignore iface ignore; do
