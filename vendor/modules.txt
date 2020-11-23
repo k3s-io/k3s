@@ -681,6 +681,21 @@ github.com/json-iterator/go
 # github.com/k3s-io/go-powershell v0.0.0-20200701182037-6845e6fcfa79
 github.com/k3s-io/go-powershell/backend
 github.com/k3s-io/go-powershell/utils
+# github.com/k3s-io/helm-controller v0.8.0
+## explicit
+github.com/k3s-io/helm-controller/pkg/apis/helm.cattle.io
+github.com/k3s-io/helm-controller/pkg/apis/helm.cattle.io/v1
+github.com/k3s-io/helm-controller/pkg/generated/clientset/versioned
+github.com/k3s-io/helm-controller/pkg/generated/clientset/versioned/scheme
+github.com/k3s-io/helm-controller/pkg/generated/clientset/versioned/typed/helm.cattle.io/v1
+github.com/k3s-io/helm-controller/pkg/generated/controllers/helm.cattle.io
+github.com/k3s-io/helm-controller/pkg/generated/controllers/helm.cattle.io/v1
+github.com/k3s-io/helm-controller/pkg/generated/informers/externalversions
+github.com/k3s-io/helm-controller/pkg/generated/informers/externalversions/helm.cattle.io
+github.com/k3s-io/helm-controller/pkg/generated/informers/externalversions/helm.cattle.io/v1
+github.com/k3s-io/helm-controller/pkg/generated/informers/externalversions/internalinterfaces
+github.com/k3s-io/helm-controller/pkg/generated/listers/helm.cattle.io/v1
+github.com/k3s-io/helm-controller/pkg/helm
 # github.com/k3s-io/kine v0.6.0
 ## explicit
 github.com/k3s-io/kine/pkg/broadcaster
@@ -835,21 +850,6 @@ github.com/rancher/dynamiclistener/factory
 github.com/rancher/dynamiclistener/storage/file
 github.com/rancher/dynamiclistener/storage/kubernetes
 github.com/rancher/dynamiclistener/storage/memory
-# github.com/rancher/helm-controller v0.7.3
-## explicit
-github.com/rancher/helm-controller/pkg/apis/helm.cattle.io
-github.com/rancher/helm-controller/pkg/apis/helm.cattle.io/v1
-github.com/rancher/helm-controller/pkg/generated/clientset/versioned
-github.com/rancher/helm-controller/pkg/generated/clientset/versioned/scheme
-github.com/rancher/helm-controller/pkg/generated/clientset/versioned/typed/helm.cattle.io/v1
-github.com/rancher/helm-controller/pkg/generated/controllers/helm.cattle.io
-github.com/rancher/helm-controller/pkg/generated/controllers/helm.cattle.io/v1
-github.com/rancher/helm-controller/pkg/generated/informers/externalversions
-github.com/rancher/helm-controller/pkg/generated/informers/externalversions/helm.cattle.io
-github.com/rancher/helm-controller/pkg/generated/informers/externalversions/helm.cattle.io/v1
-github.com/rancher/helm-controller/pkg/generated/informers/externalversions/internalinterfaces
-github.com/rancher/helm-controller/pkg/generated/listers/helm.cattle.io/v1
-github.com/rancher/helm-controller/pkg/helm
 # github.com/rancher/remotedialer v0.2.0
 ## explicit
 github.com/rancher/remotedialer
