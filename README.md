@@ -36,7 +36,7 @@ K3s bundles the following technologies together into a single cohesive distribut
 * [Klipper-lb](https://github.com/rancher/klipper-lb) as an embedded service loadbalancer provider
 * [Kube-router](https://www.kube-router.io/) for network policy
 * [Helm-controller](https://github.com/rancher/helm-controller) to allow for CRD-driven deployment of helm manifests
-* [Kine](https://github.com/rancher/kine) as a datastore shim that allows etcd to be replaced with other databases
+* [Kine](https://github.com/k3s-io/kine) as a datastore shim that allows etcd to be replaced with other databases
 * [Local-path-provisioner](https://github.com/rancher/local-path-provisioner) for provisioning volumes using local storage
 * [Host utilities](https://github.com/rancher/k3s-root) such as iptables/nftables, ebtables, ethtool, & socat
 

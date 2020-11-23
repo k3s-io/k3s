@@ -4,12 +4,12 @@ import (
 	"context"
 	"strings"
 
+	"github.com/k3s-io/kine/pkg/client"
+	"github.com/k3s-io/kine/pkg/endpoint"
 	"github.com/pkg/errors"
 	"github.com/rancher/k3s/pkg/clientaccess"
 	"github.com/rancher/k3s/pkg/cluster/managed"
 	"github.com/rancher/k3s/pkg/daemons/config"
-	"github.com/rancher/kine/pkg/client"
-	"github.com/rancher/kine/pkg/endpoint"
 )
 
 type Cluster struct {
