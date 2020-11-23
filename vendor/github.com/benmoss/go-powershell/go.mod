@@ -1,4 +1,4 @@
-module github.com/rancher/go-powershell
+module github.com/k3s-io/go-powershell
 
 go 1.14
 

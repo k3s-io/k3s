@@ -472,6 +472,12 @@ github.com/k3s-io/cri-tools v1.19.0-k3s1 h1:FQ1iURavoP3rE/GqND/f3aIL1X59IpFQCRnD
 github.com/k3s-io/cri-tools v1.19.0-k3s1/go.mod h1:bitvtZRi5F7t505Yw3zPzp22LOao1lqJKHfx6x0hnpw=
 github.com/k3s-io/etcd v0.0.0-20200911210206-f8fde3601008 h1:PlAf/spqR2ZVFeWORItuvYk0YNDsjTlmq+e+7TQbtrI=
 github.com/k3s-io/etcd v0.0.0-20200911210206-f8fde3601008/go.mod h1:yVHk9ub3CSBatqGNg7GRmsnfLWtoW60w4eDYfh7vHDg=
+github.com/k3s-io/flannel v0.12.0-k3s2 h1:KEfj4fe+P0qINcYZxo5/C0cga2XBEfeV4nhKrUGDyCg=
+github.com/k3s-io/flannel v0.12.0-k3s2/go.mod h1:2tCkIFWhim43MkRsOcPOxY8/Bcpai9uZLJaywN7ciNg=
+github.com/k3s-io/go-powershell v0.0.0-20200701182037-6845e6fcfa79 h1:9naOL3iAREsJh9mbf9C6Qqu9xuFv7/jIGBFCWvZMg4E=
+github.com/k3s-io/go-powershell v0.0.0-20200701182037-6845e6fcfa79/go.mod h1:lsDHcxq5ugFJff6YHEwpzLh31NDv0B2cIKki1ViQ65o=
+github.com/k3s-io/go-powershell v0.0.0-20201118222746-51f4c451fbd7 h1:C+6IIP6yECS10qkq2EeGQjr2ts0k7UxrutGF+pLPSnU=
+github.com/k3s-io/go-powershell v0.0.0-20201118222746-51f4c451fbd7/go.mod h1:wJnuh+xbDmskSfAM3UikTsGO8kaWLu3iycSgUKAiYjQ=
 github.com/k3s-io/kine v0.6.0 h1:4l7wjgCxb2oD+7Hyf3xIhkGd/6s1sXpRFdQiyy+7Ki8=
 github.com/k3s-io/kine v0.6.0/go.mod h1:rzCs93+rQHZGOiewMd84PDrER92QeZ6eeHbWkfEy4+w=
 github.com/k3s-io/kubernetes v1.19.4-k3s1 h1:6ehWJYzSUobbOoKaSnt9O0vbpunkVKeH7kU38ZtWEno=
@@ -699,12 +705,6 @@ github.com/rakelkar/gonetsh v0.0.0-20190930180311-e5c5ffe4bdf0 h1:iXE9kmlAqhusXx
 github.com/rakelkar/gonetsh v0.0.0-20190930180311-e5c5ffe4bdf0/go.mod h1:4XHkfaUj+URzGO9sohoAgt2V9Y8nIW7fugpu0E6gShk=
 github.com/rancher/dynamiclistener v0.2.1 h1:QiY1jxs2TOLrKB04G36vE2ehEvPMPGiWp8zEHLKB1nE=
 github.com/rancher/dynamiclistener v0.2.1/go.mod h1:9WusTANoiRr8cDWCTtf5txieulezHbpv4vhLADPp0zU=
-github.com/rancher/flannel v0.12.0-k3s1 h1:P23dWSk/9mGT1x2rDWW9JXNrF/0kjftiHwMau/+ZLGM=
-github.com/rancher/flannel v0.12.0-k3s1/go.mod h1:zQ/9Uhaw0yV4Wh6ljVwHVT1x5KuhenZA+6L8lRzOJEY=
-github.com/rancher/go-powershell v0.0.0-20200701182037-6845e6fcfa79 h1:UeC0rjrIel8hHz92cdVN09Cm4Hz+BhsPP/ZvQnPOr58=
-github.com/rancher/go-powershell v0.0.0-20200701182037-6845e6fcfa79/go.mod h1:xi4WpK6Op4m1Lknq61/e+VSjYlTs9bulVOaDNyBdzvk=
-github.com/rancher/go-powershell v0.0.0-20200701184732-233247d45373 h1:BePi97poJ4hXnkP9yX96EmNQgMg+dGScvB1sqIheJ7w=
-github.com/rancher/go-powershell v0.0.0-20200701184732-233247d45373/go.mod h1:Vz8oLnHgttpo/aZrTpjbcpZEDzzElqNau2zmorToY0E=
 github.com/rancher/helm-controller v0.7.3 h1:WTQHcNF2vl9w6Xd1eBtXDe0JUsYMFFstqX9ghGhI5Ac=
 github.com/rancher/helm-controller v0.7.3/go.mod h1:ZylsxIMGNADRPRNW+NiBWhrwwks9vnKLQiCHYWb6Bi0=
 github.com/rancher/moq v0.0.0-20190404221404-ee5226d43009/go.mod h1:wpITyDPTi/Na5h73XkbuEf2AP9fbgrIGqqxVzFhYD6U=
