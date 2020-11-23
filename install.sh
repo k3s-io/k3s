@@ -213,11 +213,7 @@ setup_env() {
     if [ -n "${INSTALL_K3S_TYPE}" ]; then
         SYSTEMD_TYPE=${INSTALL_K3S_TYPE}
     else
-        if [ "${CMD_K3S}" = server ]; then
-            SYSTEMD_TYPE=notify
-        else
-            SYSTEMD_TYPE=exec
-        fi
+        SYSTEMD_TYPE=exec
     fi
 
     # --- use binary install directory if defined or create default ---
