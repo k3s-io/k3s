@@ -52,6 +52,9 @@ func Rootless(stateDir string) error {
 	}
 
 	logrus.Debug("Running rootless parent")
+	if err := validateSysctl(); err != nil {
+		logrus.Fatal(err)
+	}
 	parentOpt, err := createParentOpt(filepath.Join(stateDir, "rootless"))
 	if err != nil {
 		logrus.Fatal(err)
@@ -64,6 +67,40 @@ func Rootless(stateDir string) error {
 	os.Exit(0)
 
 	return nil
+}
+
+func validateSysctl() error {
+	expected := map[string]string{
+		// kernel.unprivileged_userns_clone needs to be 1 to allow userns on some distros.
+		"kernel.unprivileged_userns_clone": "1",
+
+		// net.ipv4.ip_forward should not need to be 1 in the parent namespace.
+		// However, the current k3s implementation has a bug that requires net.ipv4.ip_forward=1
+		// https://github.com/rancher/k3s/issues/2420#issuecomment-715051120
+		"net.ipv4.ip_forward": "1",
+
+		// Currently, kernel.dmesg_restrict needs to be 0 to allow OOM-related messages
+		// https://github.com/rootless-containers/usernetes/issues/204
+		"kernel.dmesg_restrict": "0",
+	}
+	for key, expectedValue := range expected {
+		if actualValue, err := readSysctl(key); err == nil {
+			if expectedValue != actualValue {
+				return errors.Errorf("expected sysctl value %q to be %q, got %q; try adding \"%s=%s\" to /etc/sysctl.conf and running `sudo sysctl --system`",
+					key, expectedValue, actualValue, key, expectedValue)
+			}
+		}
+	}
+	return nil
+}
+
+func readSysctl(key string) (string, error) {
+	p := "/proc/sys/" + strings.ReplaceAll(key, ".", "/")
+	b, err := ioutil.ReadFile(p)
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(b)), nil
 }
 
 func parseCIDR(s string) (*net.IPNet, error) {
