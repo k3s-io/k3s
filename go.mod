@@ -64,6 +64,7 @@ require (
 	github.com/NYTimes/gziphandler v1.1.1 // indirect
 	github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 // indirect
 	github.com/bronze1man/goStrongswanVici v0.0.0-20190828090544-27d02f80ba40 // indirect
+	github.com/containerd/cgroups v0.0.0-20200710171044-318312a37340
 	github.com/containerd/containerd v1.4.1
 	github.com/containerd/cri v1.11.1-0.20200820101445-b0cc07999aa5
 	github.com/coreos/flannel v0.12.0
