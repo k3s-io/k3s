@@ -15,8 +15,6 @@ import (
 
 func setupMounts(stateDir string) error {
 	mountMap := [][]string{
-		{"/run", ""},
-		{"/var/run", ""},
 		{"/var/log", filepath.Join(stateDir, "logs")},
 		{"/var/lib/cni", filepath.Join(stateDir, "cni")},
 		{"/var/lib/kubelet", filepath.Join(stateDir, "kubelet")},
