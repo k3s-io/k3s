@@ -834,8 +834,8 @@ func backupDirWithRetention(dir string, maxBackupRetention int) (string, error) 
 	})
 	count := 0
 	for _, f := range files {
-		count++
 		if strings.HasPrefix(f.Name(), filepath.Base(dir)+"-backup") && f.IsDir() {
+			count++
 			if count > maxBackupRetention {
 				if err := os.RemoveAll(filepath.Join(filepath.Dir(dir), f.Name())); err != nil {
 					return "", err

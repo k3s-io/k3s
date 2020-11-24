@@ -38,7 +38,7 @@ func (e Embedded) ETCD(args ETCDConfig) error {
 				if err := ioutil.WriteFile(tombstoneFile, []byte("10"), 0600); err != nil {
 					logrus.Fatal("failed to write tombstone file to %s", tombstoneFile)
 				}
-				logrus.Infof("this node has been removed from the cluster please restart the %s to rejoin the cluster", version.Program)
+				logrus.Infof("this node has been removed from the cluster please restart %s to rejoin the cluster", version.Program)
 				return
 			}
 
