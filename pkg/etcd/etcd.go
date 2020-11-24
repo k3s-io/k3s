@@ -527,7 +527,7 @@ func (e *ETCD) removePeer(ctx context.Context, id, address string) error {
 			}
 			if u.Hostname() == address {
 				if e.address == address {
-					return fmt.Errorf("node has been delete from the cluster. Backup and delete ${datadir}/server/db if you like to rejoin the node")
+					return errors.New("node has been deleted from the cluster.")
 				}
 				logrus.Infof("Removing name=%s id=%d address=%s from etcd", member.Name, member.ID, address)
 				_, err := e.client.MemberRemove(ctx, member.ID)
@@ -829,7 +829,7 @@ func backupDirWithRetention(dir string, maxBackupRetention int) (string, error) 
 	if err != nil {
 		return "", err
 	}
-	sort.Slice(files, func(i,j int) bool{
+	sort.Slice(files, func(i, j int) bool {
 		return files[i].ModTime().After(files[j].ModTime())
 	})
 	count := 0
