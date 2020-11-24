@@ -166,6 +166,7 @@ github.com/cilium/ebpf/internal/unix
 # github.com/container-storage-interface/spec v1.2.0
 github.com/container-storage-interface/spec/lib/go/csi
 # github.com/containerd/cgroups v0.0.0-20200710171044-318312a37340 => github.com/containerd/cgroups v0.0.0-20200531161412-0dbf7f05ba59
+## explicit
 github.com/containerd/cgroups
 github.com/containerd/cgroups/stats/v1
 github.com/containerd/cgroups/v2

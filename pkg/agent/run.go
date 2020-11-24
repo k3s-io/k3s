@@ -3,12 +3,15 @@ package agent
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/containerd/cgroups"
+	cgroupsv2 "github.com/containerd/cgroups/v2"
 	systemd "github.com/coreos/go-systemd/daemon"
 	"github.com/rancher/k3s/pkg/agent/config"
 	"github.com/rancher/k3s/pkg/agent/containerd"
@@ -170,6 +173,13 @@ func Run(ctx context.Context, cfg cmds.Agent) error {
 }
 
 func validate() error {
+	if cgroups.Mode() == cgroups.Unified {
+		return validateCgroupsV2()
+	}
+	return validateCgroupsV1()
+}
+
+func validateCgroupsV1() error {
 	cgroups, err := ioutil.ReadFile("/proc/self/cgroup")
 	if err != nil {
 		return err
@@ -185,6 +195,27 @@ func validate() error {
 		return errors.New("f" + msg)
 	}
 
+	return nil
+}
+
+func validateCgroupsV2() error {
+	manager, err := cgroupsv2.LoadManager("/sys/fs/cgroup", "/")
+	if err != nil {
+		return err
+	}
+	controllers, err := manager.RootControllers()
+	if err != nil {
+		return err
+	}
+	m := make(map[string]struct{})
+	for _, controller := range controllers {
+		m[controller] = struct{}{}
+	}
+	for _, controller := range []string{"cpu", "cpuset", "memory"} {
+		if _, ok := m[controller]; !ok {
+			return fmt.Errorf("faild to find %s cgroup (v2)", controller)
+		}
+	}
 	return nil
 }
 
