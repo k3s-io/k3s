@@ -3,8 +3,13 @@
 package executor
 
 import (
+	"github.com/rancher/k3s/pkg/version"
 	"github.com/sirupsen/logrus"
 	"go.etcd.io/etcd/embed"
+	"go.etcd.io/etcd/etcdserver"
+	"io/ioutil"
+	"path/filepath"
+	"strings"
 )
 
 func (e Embedded) CurrentETCDOptions() (InitialOptions, error) {
@@ -27,8 +32,18 @@ func (e Embedded) ETCD(args ETCDConfig) error {
 
 	go func() {
 		select {
+		case err := <-etcd.Server.ErrNotify():
+			if strings.Contains(err.Error(), etcdserver.ErrMemberRemoved.Error()) {
+				tombstoneFile := filepath.Join(args.DataDir, "tombstone")
+				if err := ioutil.WriteFile(tombstoneFile, []byte("10"), 0600); err != nil {
+					logrus.Fatal("failed to write tombstone file to %s", tombstoneFile)
+				}
+				logrus.Infof("this node has been removed from the cluster please restart the %s to rejoin the cluster", version.Program)
+				return
+			}
+
 		case <-etcd.Server.StopNotify():
-			logrus.Fatalf("etcd stopped - if this node was removed from the cluster, you must backup and delete %s before rejoining", args.DataDir)
+			logrus.Fatalf("etcd stopped")
 		case err := <-etcd.Err():
 			logrus.Fatalf("etcd exited: %v", err)
 		}
