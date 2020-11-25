@@ -35,7 +35,7 @@ func (e Embedded) ETCD(args ETCDConfig) error {
 		case err := <-etcd.Server.ErrNotify():
 			if strings.Contains(err.Error(), etcdserver.ErrMemberRemoved.Error()) {
 				tombstoneFile := filepath.Join(args.DataDir, "tombstone")
-				if err := ioutil.WriteFile(tombstoneFile, []byte("10"), 0600); err != nil {
+				if err := ioutil.WriteFile(tombstoneFile, []byte{}, 0600); err != nil {
 					logrus.Fatal("failed to write tombstone file to %s", tombstoneFile)
 				}
 				logrus.Infof("this node has been removed from the cluster please restart %s to rejoin the cluster", version.Program)

@@ -327,16 +327,10 @@ func (e *ETCD) Register(ctx context.Context, config *config.Control, handler htt
 
 	tombstoneFile := filepath.Join(etcdDBDir(e.config), "tombstone")
 	if _, err := os.Stat(tombstoneFile); err == nil {
-		errCode, err := ioutil.ReadFile(tombstoneFile)
-		if err != nil {
-			return nil, err
-		}
-		if string(errCode) == "10" {
 			logrus.Infof("tombstone file has been detected, removing data dir to rejoin the cluster")
 			if _, err := backupDirWithRetention(etcdDBDir(e.config), maxBackupRetention); err != nil {
 				return nil, err
 			}
-		}
 	}
 	return e.handler(handler), err
 }

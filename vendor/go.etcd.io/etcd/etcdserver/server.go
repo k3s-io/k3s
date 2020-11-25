@@ -24,7 +24,6 @@ import (
 	"net/http"
 	"os"
 	"path"
-	"path/filepath"
 	"regexp"
 	"sync"
 	"sync/atomic"
