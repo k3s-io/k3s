@@ -19,6 +19,8 @@ import (
 	"strings"
 	"time"
 
+	fuseoverlayfs "github.com/AkihiroSuda/containerd-fuse-overlayfs"
+	"github.com/containerd/containerd/snapshots/overlay"
 	"github.com/pkg/errors"
 	"github.com/rancher/k3s/pkg/agent/proxy"
 	"github.com/rancher/k3s/pkg/cli/cmds"
@@ -429,6 +431,18 @@ func get(envInfo *cmds.Agent, proxy proxy.Proxy) (*config.Node, error) {
 	nodeConfig.CACerts = info.CACerts
 	nodeConfig.Containerd.Config = filepath.Join(envInfo.DataDir, "agent", "etc", "containerd", "config.toml")
 	nodeConfig.Containerd.Root = filepath.Join(envInfo.DataDir, "agent", "containerd")
+	switch nodeConfig.AgentConfig.Snapshotter {
+	case "overlayfs":
+		if err := overlay.Supported(nodeConfig.Containerd.Root); err != nil {
+			return nil, errors.Wrapf(err, "\"overlayfs\" snapshotter cannot be enabled for %q, try using \"fuse-overlayfs\" or \"native\"",
+				nodeConfig.Containerd.Root)
+		}
+	case "fuse-overlayfs":
+		if err := fuseoverlayfs.Supported(nodeConfig.Containerd.Root); err != nil {
+			return nil, errors.Wrapf(err, "\"fuse-overlayfs\" snapshotter cannot be enabled for %q, try using \"native\"",
+				nodeConfig.Containerd.Root)
+		}
+	}
 	nodeConfig.Containerd.Opt = filepath.Join(envInfo.DataDir, "agent", "containerd")
 	if !envInfo.Debug {
 		nodeConfig.Containerd.Log = filepath.Join(envInfo.DataDir, "agent", "containerd", "containerd.log")
