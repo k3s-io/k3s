@@ -61,6 +61,7 @@ replace (
 )
 
 require (
+	github.com/AkihiroSuda/containerd-fuse-overlayfs v1.0.0
 	github.com/NYTimes/gziphandler v1.1.1 // indirect
 	github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 // indirect
 	github.com/bronze1man/goStrongswanVici v0.0.0-20190828090544-27d02f80ba40 // indirect
