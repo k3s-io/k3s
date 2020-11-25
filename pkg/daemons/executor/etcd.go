@@ -3,13 +3,14 @@
 package executor
 
 import (
+	"io/ioutil"
+	"path/filepath"
+	"strings"
+
 	"github.com/rancher/k3s/pkg/version"
 	"github.com/sirupsen/logrus"
 	"go.etcd.io/etcd/embed"
 	"go.etcd.io/etcd/etcdserver"
-	"io/ioutil"
-	"path/filepath"
-	"strings"
 )
 
 func (e Embedded) CurrentETCDOptions() (InitialOptions, error) {
