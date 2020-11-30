@@ -9,7 +9,7 @@ GO=${GO-go}
 
 PKG="github.com/rancher/k3s"
 PKG_CONTAINERD="github.com/containerd/containerd"
-PKG_RANCHER_CONTAINERD="github.com/rancher/containerd"
+PKG_K3S_CONTAINERD="github.com/k3s-io/containerd"
 PKG_CRICTL="github.com/kubernetes-sigs/cri-tools"
 
 buildDate=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
@@ -30,7 +30,7 @@ VERSIONFLAGS="
     -X ${VENDOR_PREFIX}k8s.io/component-base/version.buildDate=${buildDate}
 
     -X ${VENDOR_PREFIX}${PKG_CONTAINERD}/version.Version=${VERSION_CONTAINERD}
-    -X ${VENDOR_PREFIX}${PKG_CONTAINERD}/version.Package=${PKG_RANCHER_CONTAINERD}
+    -X ${VENDOR_PREFIX}${PKG_CONTAINERD}/version.Package=${PKG_K3S_CONTAINERD}
     -X ${VENDOR_PREFIX}${PKG_CRICTL}/pkg/version.Version=${VERSION_CRICTL}
 "
 LDFLAGS="
