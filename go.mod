@@ -8,9 +8,9 @@ replace (
 	github.com/containerd/btrfs => github.com/containerd/btrfs v0.0.0-20181101203652-af5082808c83
 	github.com/containerd/cgroups => github.com/containerd/cgroups v0.0.0-20200531161412-0dbf7f05ba59
 	github.com/containerd/console => github.com/containerd/console v0.0.0-20181022165439-0650fd9eeb50
-	github.com/containerd/containerd => github.com/rancher/containerd v1.4.1-k3s1
+	github.com/containerd/containerd => github.com/k3s-io/containerd v1.4.1-k3s1
 	github.com/containerd/continuity => github.com/containerd/continuity v0.0.0-20190815185530-f2a389ac0a02
-	github.com/containerd/cri => github.com/rancher/cri v1.4.0-k3s.2 // k3s-release/1.4
+	github.com/containerd/cri => github.com/k3s-io/cri v1.4.0-k3s.2 // k3s-release/1.4
 	github.com/containerd/fifo => github.com/containerd/fifo v0.0.0-20190816180239-bda0ff6ed73c
 	github.com/containerd/go-runc => github.com/containerd/go-runc v0.0.0-20200220073739-7016d3ce2328
 	github.com/containerd/typeurl => github.com/containerd/typeurl v0.0.0-20180627222232-a93fcdb778cd
@@ -21,7 +21,7 @@ replace (
 	github.com/docker/libnetwork => github.com/docker/libnetwork v0.8.0-dev.2.0.20190624125649-f0e46a78ea34
 	github.com/golang/protobuf => github.com/golang/protobuf v1.3.5
 	github.com/juju/errors => github.com/k3s-io/nocode v0.0.0-20200630202308-cb097102c09f
-	github.com/kubernetes-sigs/cri-tools => github.com/rancher/cri-tools v1.19.0-k3s1
+	github.com/kubernetes-sigs/cri-tools => github.com/k3s-io/cri-tools v1.19.0-k3s1
 	github.com/matryer/moq => github.com/rancher/moq v0.0.0-20190404221404-ee5226d43009
 	github.com/opencontainers/runc => github.com/opencontainers/runc v1.0.0-rc92
 	github.com/opencontainers/runtime-spec => github.com/opencontainers/runtime-spec v1.0.3-0.20200728170252-4d89ac9fbff6
@@ -64,7 +64,7 @@ require (
 	github.com/NYTimes/gziphandler v1.1.1 // indirect
 	github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 // indirect
 	github.com/bronze1man/goStrongswanVici v0.0.0-20190828090544-27d02f80ba40 // indirect
-	github.com/containerd/containerd v1.4.0
+	github.com/containerd/containerd v1.4.1
 	github.com/containerd/cri v1.11.1-0.20200820101445-b0cc07999aa5
 	github.com/coreos/flannel v0.12.0
 	github.com/coreos/go-iptables v0.4.5
