@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"context"
 
+	"github.com/k3s-io/kine/pkg/client"
 	"github.com/rancher/k3s/pkg/bootstrap"
-	"github.com/rancher/kine/pkg/client"
 )
 
 // save writes the current ControlRuntimeBootstrap data to the datastore. This contains a complete

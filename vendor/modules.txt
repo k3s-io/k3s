@@ -677,6 +677,20 @@ github.com/jmespath/go-jmespath
 github.com/jonboulle/clockwork
 # github.com/json-iterator/go v1.1.10
 github.com/json-iterator/go
+# github.com/k3s-io/kine v0.6.0
+## explicit
+github.com/k3s-io/kine/pkg/broadcaster
+github.com/k3s-io/kine/pkg/client
+github.com/k3s-io/kine/pkg/drivers/dqlite
+github.com/k3s-io/kine/pkg/drivers/generic
+github.com/k3s-io/kine/pkg/drivers/mysql
+github.com/k3s-io/kine/pkg/drivers/pgsql
+github.com/k3s-io/kine/pkg/drivers/sqlite
+github.com/k3s-io/kine/pkg/endpoint
+github.com/k3s-io/kine/pkg/logstructured
+github.com/k3s-io/kine/pkg/logstructured/sqllog
+github.com/k3s-io/kine/pkg/server
+github.com/k3s-io/kine/pkg/tls
 # github.com/karrick/godirwalk v1.7.5
 github.com/karrick/godirwalk
 # github.com/konsorten/go-windows-terminal-sequences v1.0.3
@@ -835,20 +849,6 @@ github.com/rancher/helm-controller/pkg/generated/informers/externalversions/helm
 github.com/rancher/helm-controller/pkg/generated/informers/externalversions/internalinterfaces
 github.com/rancher/helm-controller/pkg/generated/listers/helm.cattle.io/v1
 github.com/rancher/helm-controller/pkg/helm
-# github.com/rancher/kine v0.5.1
-## explicit
-github.com/rancher/kine/pkg/broadcaster
-github.com/rancher/kine/pkg/client
-github.com/rancher/kine/pkg/drivers/dqlite
-github.com/rancher/kine/pkg/drivers/generic
-github.com/rancher/kine/pkg/drivers/mysql
-github.com/rancher/kine/pkg/drivers/pgsql
-github.com/rancher/kine/pkg/drivers/sqlite
-github.com/rancher/kine/pkg/endpoint
-github.com/rancher/kine/pkg/logstructured
-github.com/rancher/kine/pkg/logstructured/sqllog
-github.com/rancher/kine/pkg/server
-github.com/rancher/kine/pkg/tls
 # github.com/rancher/remotedialer v0.2.0
 ## explicit
 github.com/rancher/remotedialer

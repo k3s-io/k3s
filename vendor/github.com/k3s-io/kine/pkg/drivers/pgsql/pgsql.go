@@ -8,12 +8,12 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/k3s-io/kine/pkg/drivers/generic"
+	"github.com/k3s-io/kine/pkg/logstructured"
+	"github.com/k3s-io/kine/pkg/logstructured/sqllog"
+	"github.com/k3s-io/kine/pkg/server"
+	"github.com/k3s-io/kine/pkg/tls"
 	"github.com/lib/pq"
-	"github.com/rancher/kine/pkg/drivers/generic"
-	"github.com/rancher/kine/pkg/logstructured"
-	"github.com/rancher/kine/pkg/logstructured/sqllog"
-	"github.com/rancher/kine/pkg/server"
-	"github.com/rancher/kine/pkg/tls"
 	"github.com/sirupsen/logrus"
 )
 

@@ -6,10 +6,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/k3s-io/kine/pkg/broadcaster"
+	"github.com/k3s-io/kine/pkg/drivers/generic"
+	"github.com/k3s-io/kine/pkg/server"
 	"github.com/pkg/errors"
-	"github.com/rancher/kine/pkg/broadcaster"
-	"github.com/rancher/kine/pkg/drivers/generic"
-	"github.com/rancher/kine/pkg/server"
 	"github.com/sirupsen/logrus"
 )
 
