@@ -9,7 +9,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/rancher/kine/pkg/endpoint"
+	"github.com/k3s-io/kine/pkg/endpoint"
 	"github.com/rancher/wrangler-api/pkg/generated/controllers/core"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 )

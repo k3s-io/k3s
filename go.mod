@@ -78,6 +78,7 @@ require (
 	github.com/google/uuid v1.1.1
 	github.com/gorilla/mux v1.7.4
 	github.com/gorilla/websocket v1.4.1
+	github.com/k3s-io/kine v0.6.0
 	github.com/kubernetes-sigs/cri-tools v0.0.0-00010101000000-000000000000
 	github.com/lib/pq v1.8.0
 	github.com/mattn/go-sqlite3 v1.14.4
@@ -88,7 +89,6 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/dynamiclistener v0.2.1
 	github.com/rancher/helm-controller v0.7.3
-	github.com/rancher/kine v0.5.1
 	github.com/rancher/remotedialer v0.2.0
 	github.com/rancher/wrangler v0.6.1
 	github.com/rancher/wrangler-api v0.6.0

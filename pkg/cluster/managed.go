@@ -11,11 +11,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rancher/k3s/pkg/etcd"
-
+	"github.com/k3s-io/kine/pkg/endpoint"
 	"github.com/rancher/k3s/pkg/cluster/managed"
+	"github.com/rancher/k3s/pkg/etcd"
 	"github.com/rancher/k3s/pkg/version"
-	"github.com/rancher/kine/pkg/endpoint"
 	"github.com/sirupsen/logrus"
 )
 

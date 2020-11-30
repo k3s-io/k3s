@@ -8,12 +8,12 @@ import (
 	"os"
 	"time"
 
+	"github.com/k3s-io/kine/pkg/drivers/generic"
+	"github.com/k3s-io/kine/pkg/logstructured"
+	"github.com/k3s-io/kine/pkg/logstructured/sqllog"
+	"github.com/k3s-io/kine/pkg/server"
 	"github.com/mattn/go-sqlite3"
 	"github.com/pkg/errors"
-	"github.com/rancher/kine/pkg/drivers/generic"
-	"github.com/rancher/kine/pkg/logstructured"
-	"github.com/rancher/kine/pkg/logstructured/sqllog"
-	"github.com/rancher/kine/pkg/server"
 	"github.com/sirupsen/logrus"
 
 	// sqlite db driver

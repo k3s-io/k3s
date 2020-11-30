@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/rancher/kine/pkg/endpoint"
+	"github.com/k3s-io/kine/pkg/endpoint"
 	"go.etcd.io/etcd/clientv3"
 )
 
