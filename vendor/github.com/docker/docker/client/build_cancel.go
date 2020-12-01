@@ -1,9 +1,8 @@
 package client // import "github.com/docker/docker/client"
 
 import (
+	"context"
 	"net/url"
-
-	"golang.org/x/net/context"
 )
 
 // BuildCancel requests the daemon to cancel ongoing build request
@@ -12,10 +11,6 @@ func (cli *Client) BuildCancel(ctx context.Context, id string) error {
 	query.Set("id", id)
 
 	serverResp, err := cli.post(ctx, "/build/cancel", query, nil, nil)
-	if err != nil {
-		return err
-	}
-	defer ensureReaderClosed(serverResp)
-
-	return nil
+	ensureReaderClosed(serverResp)
+	return err
 }

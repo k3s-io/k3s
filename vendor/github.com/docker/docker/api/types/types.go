@@ -39,6 +39,7 @@ type ImageInspect struct {
 	Author          string
 	Config          *container.Config
 	Architecture    string
+	Variant         string `json:",omitempty"`
 	Os              string
 	OsVersion       string `json:",omitempty"`
 	Size            int64
@@ -102,9 +103,10 @@ type ContainerStats struct {
 // Ping contains response of Engine API:
 // GET "/_ping"
 type Ping struct {
-	APIVersion   string
-	OSType       string
-	Experimental bool
+	APIVersion     string
+	OSType         string
+	Experimental   bool
+	BuilderVersion BuilderVersion
 }
 
 // ComponentVersion describes the version information for a specific component.
@@ -152,15 +154,17 @@ type Info struct {
 	Images             int
 	Driver             string
 	DriverStatus       [][2]string
-	SystemStatus       [][2]string
+	SystemStatus       [][2]string `json:",omitempty"` // SystemStatus is only propagated by the Swarm standalone API
 	Plugins            PluginsInfo
 	MemoryLimit        bool
 	SwapLimit          bool
 	KernelMemory       bool
+	KernelMemoryTCP    bool
 	CPUCfsPeriod       bool `json:"CpuCfsPeriod"`
 	CPUCfsQuota        bool `json:"CpuCfsQuota"`
 	CPUShares          bool
 	CPUSet             bool
+	PidsLimit          bool
 	IPv4Forwarding     bool
 	BridgeNfIptables   bool
 	BridgeNfIP6tables  bool `json:"BridgeNfIp6tables"`
@@ -174,6 +178,7 @@ type Info struct {
 	NEventsListener    int
 	KernelVersion      string
 	OperatingSystem    string
+	OSVersion          string
 	OSType             string
 	Architecture       string
 	IndexServerAddress string
@@ -189,8 +194,8 @@ type Info struct {
 	Labels             []string
 	ExperimentalBuild  bool
 	ServerVersion      string
-	ClusterStore       string
-	ClusterAdvertise   string
+	ClusterStore       string `json:",omitempty"` // Deprecated: host-discovery and overlay networks with external k/v stores are deprecated
+	ClusterAdvertise   string `json:",omitempty"` // Deprecated: host-discovery and overlay networks with external k/v stores are deprecated
 	Runtimes           map[string]Runtime
 	DefaultRuntime     string
 	Swarm              swarm.Info
@@ -204,6 +209,8 @@ type Info struct {
 	RuncCommit         Commit
 	InitCommit         Commit
 	SecurityOptions    []string
+	ProductLicense     string `json:",omitempty"`
+	Warnings           []string
 }
 
 // KeyValue holds a key/value pair
@@ -311,7 +318,7 @@ type ContainerState struct {
 }
 
 // ContainerNode stores information about the node that a container
-// is running on.  It's only available in Docker Swarm
+// is running on.  It's only used by the Docker Swarm standalone API
 type ContainerNode struct {
 	ID        string
 	IPAddress string `json:"IP"`
@@ -335,7 +342,7 @@ type ContainerJSONBase struct {
 	HostnamePath    string
 	HostsPath       string
 	LogPath         string
-	Node            *ContainerNode `json:",omitempty"`
+	Node            *ContainerNode `json:",omitempty"` // Node is only propagated by Docker Swarm standalone API
 	Name            string
 	RestartCount    int
 	Driver          string
@@ -540,6 +547,7 @@ type ImagesPruneReport struct {
 // BuildCachePruneReport contains the response for Engine API:
 // POST "/build/prune"
 type BuildCachePruneReport struct {
+	CachesDeleted  []string
 	SpaceReclaimed uint64
 }
 
@@ -589,14 +597,21 @@ type BuildResult struct {
 
 // BuildCache contains information about a build cache record
 type BuildCache struct {
-	ID      string
-	Mutable bool
-	InUse   bool
-	Size    int64
-
+	ID          string
+	Parent      string
+	Type        string
+	Description string
+	InUse       bool
+	Shared      bool
+	Size        int64
 	CreatedAt   time.Time
 	LastUsedAt  *time.Time
 	UsageCount  int
-	Parent      string
-	Description string
+}
+
+// BuildCachePruneOptions hold parameters to prune the build cache
+type BuildCachePruneOptions struct {
+	All         bool
+	KeepStorage int64
+	Filters     filters.Args
 }
