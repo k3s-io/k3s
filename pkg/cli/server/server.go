@@ -24,7 +24,7 @@ import (
 	"github.com/urfave/cli"
 	"k8s.io/apimachinery/pkg/util/net"
 	kubeapiserverflag "k8s.io/component-base/cli/flag"
-	"k8s.io/kubernetes/pkg/master"
+	"k8s.io/kubernetes/pkg/controlplane"
 
 	_ "github.com/go-sql-driver/mysql" // ensure we have mysql
 	_ "github.com/lib/pq"              // ensure we have postgres
@@ -152,7 +152,7 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 		return errors.Wrapf(err, "Invalid CIDR %s: %v", cfg.ServiceCIDR, err)
 	}
 
-	_, apiServerServiceIP, err := master.ServiceIPRange(*serverConfig.ControlConfig.ServiceIPRange)
+	_, apiServerServiceIP, err := controlplane.ServiceIPRange(*serverConfig.ControlConfig.ServiceIPRange)
 	if err != nil {
 		return err
 	}
