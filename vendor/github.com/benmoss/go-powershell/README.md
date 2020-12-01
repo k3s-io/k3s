@@ -1,5 +1,9 @@
 # go-powershell
 
+_NOTE: this repository has been recently (2020-11-18) moved out of the github.com/rancher org to github.com/k3s-io
+supporting the [acceptance of K3s as a CNCF sandbox project](https://github.com/cncf/toc/pull/447)_.
+---
+
 This package is inspired by [jPowerShell](https://github.com/profesorfalken/jPowerShell)
 and allows one to run and remote-control a PowerShell session. Use this if you
 don't have a static script that you want to execute, bur rather run dynamic
@@ -7,7 +11,7 @@ commands.
 
 ## Installation
 
-    go get github.com/rancher/go-powershell
+    go get github.com/k3s-io/go-powershell
 
 ## Usage
 
@@ -21,8 +25,8 @@ package main
 import (
 	"fmt"
 
-	ps "github.com/rancher/go-powershell"
-	"github.com/rancher/go-powershell/backend"
+	ps "github.com/k3s-io/go-powershell"
+	"github.com/k3s-io/go-powershell/backend"
 )
 
 func main() {
@@ -59,9 +63,9 @@ package main
 import (
 	"fmt"
 
-	ps "github.com/rancher/go-powershell"
-	"github.com/rancher/go-powershell/backend"
-	"github.com/rancher/go-powershell/middleware"
+	ps "github.com/k3s-io/go-powershell"
+	"github.com/k3s-io/go-powershell/backend"
+	"github.com/k3s-io/go-powershell/middleware"
 )
 
 func main() {
