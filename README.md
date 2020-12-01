@@ -38,7 +38,7 @@ K3s bundles the following technologies together into a single cohesive distribut
 * [Helm-controller](https://github.com/rancher/helm-controller) to allow for CRD-driven deployment of helm manifests
 * [Kine](https://github.com/k3s-io/kine) as a datastore shim that allows etcd to be replaced with other databases
 * [Local-path-provisioner](https://github.com/rancher/local-path-provisioner) for provisioning volumes using local storage
-* [Host utilities](https://github.com/rancher/k3s-root) such as iptables/nftables, ebtables, ethtool, & socat
+* [Host utilities](https://github.com/k3s-io/k3s-root) such as iptables/nftables, ebtables, ethtool, & socat
 
 These technologies can be disabled or swapped out for technolgoies of your choice.
 
