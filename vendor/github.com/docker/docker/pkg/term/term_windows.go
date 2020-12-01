@@ -7,7 +7,7 @@ import (
 	"syscall" // used for STD_INPUT_HANDLE, STD_OUTPUT_HANDLE and STD_ERROR_HANDLE
 
 	"github.com/Azure/go-ansiterm/winterm"
-	"github.com/docker/docker/pkg/term/windows"
+	windowsconsole "github.com/docker/docker/pkg/term/windows"
 )
 
 // State holds the console mode for the terminal.
@@ -60,13 +60,6 @@ func StdStreams() (stdIn io.ReadCloser, stdOut, stdErr io.Writer) {
 		} else {
 			winterm.SetConsoleMode(fd, mode|winterm.ENABLE_VIRTUAL_TERMINAL_PROCESSING)
 		}
-	}
-
-	if os.Getenv("ConEmuANSI") == "ON" || os.Getenv("ConsoleZVersion") != "" {
-		// The ConEmu and ConsoleZ terminals emulate ANSI on output streams well.
-		emulateStdin = true
-		emulateStdout = false
-		emulateStderr = false
 	}
 
 	// Temporarily use STD_INPUT_HANDLE, STD_OUTPUT_HANDLE and

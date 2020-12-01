@@ -12,7 +12,7 @@ import (
 	"github.com/spf13/pflag"
 	utilflag "k8s.io/component-base/cli/flag"
 	"k8s.io/component-base/logs"
-	"k8s.io/kubernetes/pkg/kubectl/cmd"
+	"k8s.io/kubectl/pkg/cmd"
 )
 
 func Main() {

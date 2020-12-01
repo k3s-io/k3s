@@ -9,7 +9,7 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/swarm"
-	"github.com/opencontainers/go-digest"
+	digest "github.com/opencontainers/go-digest"
 	"github.com/pkg/errors"
 )
 
@@ -72,6 +72,7 @@ func (cli *Client) ServiceCreate(ctx context.Context, service swarm.ServiceSpec,
 
 	var response types.ServiceCreateResponse
 	resp, err := cli.post(ctx, "/services/create", nil, service, headers)
+	defer ensureReaderClosed(resp)
 	if err != nil {
 		return response, err
 	}
@@ -82,7 +83,6 @@ func (cli *Client) ServiceCreate(ctx context.Context, service swarm.ServiceSpec,
 		response.Warnings = append(response.Warnings, digestWarning(service.TaskTemplate.ContainerSpec.Image))
 	}
 
-	ensureReaderClosed(resp)
 	return response, err
 }
 

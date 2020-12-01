@@ -37,10 +37,12 @@ import (
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
-	ccmapp "k8s.io/kubernetes/cmd/cloud-controller-manager/app"
-	app2 "k8s.io/kubernetes/cmd/controller-manager/app"
+	ccm "k8s.io/cloud-provider"
+	ccmapp "k8s.io/cloud-provider/app"
+	ccmopt "k8s.io/cloud-provider/options"
+	app2 "k8s.io/controller-manager/app"
+	"k8s.io/kubernetes/pkg/controlplane"
 	"k8s.io/kubernetes/pkg/kubeapiserver/authorizer/modes"
-	"k8s.io/kubernetes/pkg/master"
 	"k8s.io/kubernetes/pkg/proxy/util"
 
 	// registering k3s cloud provider
@@ -611,7 +613,7 @@ func genServerCerts(config *config.Control, runtime *config.ControlRuntime) erro
 		return err
 	}
 
-	_, apiServerServiceIP, err := master.ServiceIPRange(*config.ServiceIPRange)
+	_, apiServerServiceIP, err := controlplane.ServiceIPRange(*config.ServiceIPRange)
 	if err != nil {
 		return err
 	}
@@ -910,25 +912,57 @@ func expired(certFile string, pool *x509.CertPool) bool {
 }
 
 func cloudControllerManager(ctx context.Context, cfg *config.Control, runtime *config.ControlRuntime) {
-	argsMap := map[string]string{
-		"kubeconfig":                   runtime.KubeConfigCloudController,
-		"allocate-node-cidrs":          "true",
-		"configure-cloud-routes":       "false",
-		"controllers":                  "*,-service,-route",
-		"cluster-cidr":                 cfg.ClusterIPRange.String(),
-		"bind-address":                 localhostIP.String(),
-		"secure-port":                  "0",
-		"cloud-provider":               version.Program,
-		"node-status-update-frequency": "1m",
-		"profiling":                    "false",
-	}
-	if cfg.NoLeaderElect {
-		argsMap["leader-elect"] = "false"
-	}
+	// Reference: https://github.com/kubernetes/kubernetes/pull/93764
+	// The above-linked change made the in-tree cloud-controller-manager command much more flexible
+	// but much more complicated to wrap. It now validates some of the configuration very early on, before
+	// the CLI args are parsed, so some of the configuration needs to be hardcoded instead of set via flags.
 
+	argsMap := map[string]string{
+		"profiling": "false",
+	}
 	args := config.GetArgsList(argsMap, cfg.ExtraCloudControllerArgs)
 
-	command := ccmapp.NewCloudControllerManagerCommand()
+	s, err := ccmopt.NewCloudControllerManagerOptions()
+	if err != nil {
+		logrus.Fatalf("Unable to initialize cloudcontroller options: %v", err)
+	}
+
+	s.KubeCloudShared.AllocateNodeCIDRs = true
+	s.KubeCloudShared.CloudProvider.Name = version.Program
+	s.KubeCloudShared.ClusterCIDR = cfg.ClusterIPRange.String()
+	s.KubeCloudShared.ConfigureCloudRoutes = false
+	s.Kubeconfig = runtime.KubeConfigCloudController
+	s.NodeStatusUpdateFrequency = metav1.Duration{Duration: 1 * time.Minute}
+	s.SecureServing.BindAddress = localhostIP
+	s.SecureServing.BindPort = 0
+
+	if cfg.NoLeaderElect {
+		s.Generic.LeaderElection.LeaderElect = false
+	}
+
+	c, err := s.Config([]string{}, []string{})
+	if err != nil {
+		logrus.Fatalf("Unable to create cloudcontroller config from options: %v", err)
+	}
+
+	cloud, err := ccm.InitCloudProvider(version.Program, runtime.KubeConfigCloudController)
+	if err != nil {
+		logrus.Fatalf("Cloud provider could not be initialized: %v", err)
+	}
+	if cloud == nil {
+		logrus.Fatalf("Cloud provider is nil")
+	}
+
+	cloud.Initialize(c.ClientBuilder, make(chan struct{}))
+	if informerUserCloud, ok := cloud.(ccm.InformerUser); ok {
+		informerUserCloud.SetInformers(c.SharedInformers)
+	}
+
+	controllerInitializers := ccmapp.DefaultControllerInitializers(c.Complete(), cloud)
+	delete(controllerInitializers, "service")
+	delete(controllerInitializers, "route")
+
+	command := ccmapp.NewCloudControllerManagerCommand(s, c, controllerInitializers)
 	command.SetArgs(args)
 	// register k3s cloud provider
 
@@ -946,8 +980,8 @@ func cloudControllerManager(ctx context.Context, cfg *config.Control, runtime *c
 			}
 			break
 		}
-		logrus.Infof("Running cloud-controller-manager %s", config.ArgString(args))
-		logrus.Fatalf("cloud-controller-manager exited: %v", command.Execute())
+		logrus.Infof("Running cloud-controller-manager for provider %v with args %v", cloud.ProviderName(), config.ArgString(args))
+		logrus.Fatalf("cloud-controller-manager exited: %v", command.ExecuteContext(ctx))
 	}()
 }
 
