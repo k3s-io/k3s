@@ -37,7 +37,10 @@ import (
 	"k8s.io/apimachinery/pkg/util/net"
 )
 
-const MasterRoleLabelKey = "node-role.kubernetes.io/master"
+const (
+	MasterRoleLabelKey       = "node-role.kubernetes.io/master"
+	ControlPlaneRoleLabelKey = "node-role.kubernetes.io/control-plane"
+)
 
 func resolveDataDir(dataDir string) (string, error) {
 	dataDir, err := datadir.Resolve(dataDir)
@@ -117,7 +120,7 @@ func runControllers(ctx context.Context, config *Config) error {
 	}
 
 	start := func(ctx context.Context) {
-		if err := masterControllers(ctx, sc, config); err != nil {
+		if err := coreControllers(ctx, sc, config); err != nil {
 			panic(err)
 		}
 		if err := sc.Start(ctx); err != nil {
@@ -130,7 +133,7 @@ func runControllers(ctx context.Context, config *Config) error {
 		controlConfig.Runtime.Handler = handler
 	}
 	if !config.DisableAgent {
-		go setMasterRoleLabel(ctx, sc.Core.Core().V1().Node())
+		go setControlPlaneRoleLabel(ctx, sc.Core.Core().V1().Node())
 	}
 
 	go setClusterDNSConfig(ctx, config, sc.Core.Core().V1().ConfigMap())
@@ -148,7 +151,7 @@ func runControllers(ctx context.Context, config *Config) error {
 	return nil
 }
 
-func masterControllers(ctx context.Context, sc *Context, config *Config) error {
+func coreControllers(ctx context.Context, sc *Context, config *Config) error {
 	if err := nodepassword.MigrateFile(
 		sc.Core.Core().V1().Secret(),
 		sc.Core.Core().V1().Node(),
@@ -419,25 +422,26 @@ func isSymlink(config string) bool {
 	return false
 }
 
-func setMasterRoleLabel(ctx context.Context, nodes v1.NodeClient) error {
+func setControlPlaneRoleLabel(ctx context.Context, nodes v1.NodeClient) error {
 	for {
 		nodeName := os.Getenv("NODE_NAME")
 		node, err := nodes.Get(nodeName, metav1.GetOptions{})
 		if err != nil {
-			logrus.Infof("Waiting for master node %s startup: %v", nodeName, err)
+			logrus.Infof("Waiting for control-plane node %s startup: %v", nodeName, err)
 			time.Sleep(1 * time.Second)
 			continue
 		}
-		if v, ok := node.Labels[MasterRoleLabelKey]; ok && v == "true" {
+		if v, ok := node.Labels[ControlPlaneRoleLabelKey]; ok && v == "true" {
 			break
 		}
 		if node.Labels == nil {
 			node.Labels = make(map[string]string)
 		}
+		node.Labels[ControlPlaneRoleLabelKey] = "true"
 		node.Labels[MasterRoleLabelKey] = "true"
 		_, err = nodes.Update(node)
 		if err == nil {
-			logrus.Infof("Master role label has been set successfully on node: %s", nodeName)
+			logrus.Infof("Control-plane role label has been set successfully on node: %s", nodeName)
 			break
 		}
 		select {
@@ -479,7 +483,7 @@ func setClusterDNSConfig(ctx context.Context, controlConfig *Config, configMap v
 			logrus.Infof("Cluster dns configmap has been set successfully")
 			break
 		}
-		logrus.Infof("Waiting for master node %s startup: %v", nodeName, err)
+		logrus.Infof("Waiting for control-plane node %s startup: %v", nodeName, err)
 
 		select {
 		case <-ctx.Done():

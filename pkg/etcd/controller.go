@@ -11,10 +11,10 @@ import (
 )
 
 const (
-	nodeID      = "etcd.k3s.cattle.io/node-name"
-	nodeAddress = "etcd.k3s.cattle.io/node-address"
-	master      = "node-role.kubernetes.io/master"
-	etcdRole    = "node-role.kubernetes.io/etcd"
+	nodeID       = "etcd.k3s.cattle.io/node-name"
+	nodeAddress  = "etcd.k3s.cattle.io/node-address"
+	controlPlane = "node-role.kubernetes.io/control-plane"
+	etcdRole     = "node-role.kubernetes.io/etcd"
 )
 
 type NodeControllerGetter func() controllerv1.NodeController
@@ -58,7 +58,7 @@ func (h *handler) handleSelf(node *v1.Node) (*v1.Node, error) {
 	if node.Annotations[nodeID] == h.etcd.name &&
 		node.Annotations[nodeAddress] == h.etcd.address &&
 		node.Labels[etcdRole] == "true" &&
-		node.Labels[master] == "true" {
+		node.Labels[controlPlane] == "true" {
 		return node, nil
 	}
 
@@ -69,7 +69,7 @@ func (h *handler) handleSelf(node *v1.Node) (*v1.Node, error) {
 	node.Annotations[nodeID] = h.etcd.name
 	node.Annotations[nodeAddress] = h.etcd.address
 	node.Labels[etcdRole] = "true"
-	node.Labels[master] = "true"
+	node.Labels[controlPlane] = "true"
 
 	return h.nodeController.Update(node)
 }
