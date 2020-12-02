@@ -362,12 +362,20 @@ func (h *handler) newDaemonSet(svc *core.Service) (*apps.DaemonSet, error) {
 	}
 
 	// Add toleration to noderole.kubernetes.io/master=*:NoSchedule
-	noScheduleToleration := core.Toleration{
+	masterToleration := core.Toleration{
 		Key:      "node-role.kubernetes.io/master",
 		Operator: "Exists",
 		Effect:   "NoSchedule",
 	}
-	ds.Spec.Template.Spec.Tolerations = append(ds.Spec.Template.Spec.Tolerations, noScheduleToleration)
+	ds.Spec.Template.Spec.Tolerations = append(ds.Spec.Template.Spec.Tolerations, masterToleration)
+
+	// Add toleration to noderole.kubernetes.io/control-plane=*:NoSchedule
+	controlPlaneToleration := core.Toleration{
+		Key:      "node-role.kubernetes.io/control-plane",
+		Operator: "Exists",
+		Effect:   "NoSchedule",
+	}
+	ds.Spec.Template.Spec.Tolerations = append(ds.Spec.Template.Spec.Tolerations, controlPlaneToleration)
 
 	// Add toleration to CriticalAddonsOnly
 	criticalAddonsOnlyToleration := core.Toleration{
