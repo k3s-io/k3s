@@ -204,6 +204,7 @@ func (p dockerPusher) Push(ctx context.Context, desc ocispec.Descriptor) (conten
 		q.Add("digest", desc.Digest.String())
 
 		req = p.request(lhost, http.MethodPut)
+		req.header.Set("Content-Type", "application/octet-stream")
 		req.path = lurl.Path + "?" + q.Encode()
 	}
 	p.tracker.SetStatus(ref, Status{

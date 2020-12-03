@@ -157,7 +157,7 @@ github.com/container-storage-interface/spec/lib/go/csi
 github.com/containerd/cgroups
 # github.com/containerd/console v0.0.0-20180822173158-c12b1e7919c1 => github.com/containerd/console v0.0.0-20181022165439-0650fd9eeb50
 github.com/containerd/console
-# github.com/containerd/containerd v1.3.0-beta.2.0.20190828155532-0293cbd26c69 => github.com/rancher/containerd v1.3.3-k3s2
+# github.com/containerd/containerd v1.3.0-beta.2.0.20190828155532-0293cbd26c69 => github.com/k3s-io/containerd v1.3.9-k3s1
 github.com/containerd/containerd
 github.com/containerd/containerd/api/events
 github.com/containerd/containerd/api/services/containers/v1
@@ -294,7 +294,7 @@ github.com/containerd/continuity/pathdriver
 github.com/containerd/continuity/proto
 github.com/containerd/continuity/syscallx
 github.com/containerd/continuity/sysx
-# github.com/containerd/cri v0.0.0-00010101000000-000000000000 => github.com/rancher/cri v1.3.0-k3s.5
+# github.com/containerd/cri v0.0.0-00010101000000-000000000000 => github.com/k3s-io/cri v1.3.0-k3s.9
 github.com/containerd/cri
 github.com/containerd/cri/pkg/annotations
 github.com/containerd/cri/pkg/api/runtimeoptions/v1
@@ -307,6 +307,7 @@ github.com/containerd/cri/pkg/ioutil
 github.com/containerd/cri/pkg/netns
 github.com/containerd/cri/pkg/os
 github.com/containerd/cri/pkg/registrar
+github.com/containerd/cri/pkg/seccomp
 github.com/containerd/cri/pkg/server
 github.com/containerd/cri/pkg/server/io
 github.com/containerd/cri/pkg/store
@@ -581,6 +582,10 @@ github.com/gregjones/httpcache
 github.com/gregjones/httpcache/diskcache
 # github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 github.com/grpc-ecosystem/go-grpc-prometheus
+# github.com/hashicorp/errwrap v1.0.0
+github.com/hashicorp/errwrap
+# github.com/hashicorp/go-multierror v1.0.0
+github.com/hashicorp/go-multierror
 # github.com/hashicorp/golang-lru v0.5.3
 github.com/hashicorp/golang-lru
 github.com/hashicorp/golang-lru/simplelru

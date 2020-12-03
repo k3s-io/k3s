@@ -47,7 +47,7 @@ func arches() []specs.Arch {
 	}
 }
 
-// DefaultProfile defines the whitelist for the default seccomp profile.
+// DefaultProfile defines the allowed syscalls for the default seccomp profile.
 func DefaultProfile(sp *specs.Spec) *specs.LinuxSeccomp {
 	syscalls := []specs.LinuxSyscall{
 		{
@@ -55,7 +55,7 @@ func DefaultProfile(sp *specs.Spec) *specs.LinuxSeccomp {
 				"accept",
 				"accept4",
 				"access",
-				"alarm",
+				"adjtimex",
 				"alarm",
 				"bind",
 				"brk",
@@ -65,9 +65,14 @@ func DefaultProfile(sp *specs.Spec) *specs.LinuxSeccomp {
 				"chmod",
 				"chown",
 				"chown32",
+				"clock_adjtime",
+				"clock_adjtime64",
 				"clock_getres",
+				"clock_getres_time64",
 				"clock_gettime",
+				"clock_gettime64",
 				"clock_nanosleep",
+				"clock_nanosleep_time64",
 				"close",
 				"connect",
 				"copy_file_range",
@@ -89,6 +94,7 @@ func DefaultProfile(sp *specs.Spec) *specs.LinuxSeccomp {
 				"exit",
 				"exit_group",
 				"faccessat",
+				"faccessat2",
 				"fadvise64",
 				"fadvise64_64",
 				"fallocate",
@@ -117,6 +123,7 @@ func DefaultProfile(sp *specs.Spec) *specs.LinuxSeccomp {
 				"ftruncate",
 				"ftruncate64",
 				"futex",
+				"futex_time64",
 				"futimesat",
 				"getcpu",
 				"getcwd",
@@ -163,10 +170,14 @@ func DefaultProfile(sp *specs.Spec) *specs.LinuxSeccomp {
 				"io_destroy",
 				"io_getevents",
 				"io_pgetevents",
+				"io_pgetevents_time64",
 				"ioprio_get",
 				"ioprio_set",
 				"io_setup",
 				"io_submit",
+				"io_uring_enter",
+				"io_uring_register",
+				"io_uring_setup",
 				"ipc",
 				"kill",
 				"lchown",
@@ -184,6 +195,7 @@ func DefaultProfile(sp *specs.Spec) *specs.LinuxSeccomp {
 				"lstat",
 				"lstat64",
 				"madvise",
+				"membarrier",
 				"memfd_create",
 				"mincore",
 				"mkdir",
@@ -200,7 +212,9 @@ func DefaultProfile(sp *specs.Spec) *specs.LinuxSeccomp {
 				"mq_notify",
 				"mq_open",
 				"mq_timedreceive",
+				"mq_timedreceive_time64",
 				"mq_timedsend",
+				"mq_timedsend_time64",
 				"mq_unlink",
 				"mremap",
 				"msgctl",
@@ -216,18 +230,23 @@ func DefaultProfile(sp *specs.Spec) *specs.LinuxSeccomp {
 				"_newselect",
 				"open",
 				"openat",
+				"openat2",
 				"pause",
 				"pipe",
 				"pipe2",
 				"poll",
 				"ppoll",
+				"ppoll_time64",
 				"prctl",
 				"pread64",
 				"preadv",
+				"preadv2",
 				"prlimit64",
 				"pselect6",
+				"pselect6_time64",
 				"pwrite64",
 				"pwritev",
+				"pwritev2",
 				"read",
 				"readahead",
 				"readlink",
@@ -236,6 +255,7 @@ func DefaultProfile(sp *specs.Spec) *specs.LinuxSeccomp {
 				"recv",
 				"recvfrom",
 				"recvmmsg",
+				"recvmmsg_time64",
 				"recvmsg",
 				"remap_file_pages",
 				"removexattr",
@@ -244,6 +264,7 @@ func DefaultProfile(sp *specs.Spec) *specs.LinuxSeccomp {
 				"renameat2",
 				"restart_syscall",
 				"rmdir",
+				"rseq",
 				"rt_sigaction",
 				"rt_sigpending",
 				"rt_sigprocmask",
@@ -251,6 +272,7 @@ func DefaultProfile(sp *specs.Spec) *specs.LinuxSeccomp {
 				"rt_sigreturn",
 				"rt_sigsuspend",
 				"rt_sigtimedwait",
+				"rt_sigtimedwait_time64",
 				"rt_tgsigqueueinfo",
 				"sched_getaffinity",
 				"sched_getattr",
@@ -259,6 +281,7 @@ func DefaultProfile(sp *specs.Spec) *specs.LinuxSeccomp {
 				"sched_get_priority_min",
 				"sched_getscheduler",
 				"sched_rr_get_interval",
+				"sched_rr_get_interval_time64",
 				"sched_setaffinity",
 				"sched_setattr",
 				"sched_setparam",
@@ -270,6 +293,7 @@ func DefaultProfile(sp *specs.Spec) *specs.LinuxSeccomp {
 				"semget",
 				"semop",
 				"semtimedop",
+				"semtimedop_time64",
 				"send",
 				"sendfile",
 				"sendfile64",
@@ -329,18 +353,21 @@ func DefaultProfile(sp *specs.Spec) *specs.LinuxSeccomp {
 				"sync_file_range",
 				"syncfs",
 				"sysinfo",
-				"syslog",
 				"tee",
 				"tgkill",
 				"time",
 				"timer_create",
 				"timer_delete",
-				"timerfd_create",
-				"timerfd_gettime",
-				"timerfd_settime",
 				"timer_getoverrun",
 				"timer_gettime",
+				"timer_gettime64",
 				"timer_settime",
+				"timer_settime64",
+				"timerfd_create",
+				"timerfd_gettime",
+				"timerfd_gettime64",
+				"timerfd_settime",
+				"timerfd_settime64",
 				"times",
 				"tkill",
 				"truncate",
@@ -352,6 +379,7 @@ func DefaultProfile(sp *specs.Spec) *specs.LinuxSeccomp {
 				"unlinkat",
 				"utime",
 				"utimensat",
+				"utimensat_time64",
 				"utimes",
 				"vfork",
 				"vmsplice",
@@ -392,6 +420,28 @@ func DefaultProfile(sp *specs.Spec) *specs.LinuxSeccomp {
 			Args: []specs.LinuxSeccompArg{
 				{
 					Index: 0,
+					Value: 0x20000,
+					Op:    specs.OpEqualTo,
+				},
+			},
+		},
+		{
+			Names:  []string{"personality"},
+			Action: specs.ActAllow,
+			Args: []specs.LinuxSeccompArg{
+				{
+					Index: 0,
+					Value: 0x20008,
+					Op:    specs.OpEqualTo,
+				},
+			},
+		},
+		{
+			Names:  []string{"personality"},
+			Action: specs.ActAllow,
+			Args: []specs.LinuxSeccompArg{
+				{
+					Index: 0,
 					Value: 0xffffffff,
 					Op:    specs.OpEqualTo,
 				},
@@ -407,11 +457,20 @@ func DefaultProfile(sp *specs.Spec) *specs.LinuxSeccomp {
 
 	// include by arch
 	switch runtime.GOARCH {
+	case "ppc64le":
+		s.Syscalls = append(s.Syscalls, specs.LinuxSyscall{
+			Names: []string{
+				"sync_file_range2",
+			},
+			Action: specs.ActAllow,
+			Args:   []specs.LinuxSeccompArg{},
+		})
 	case "arm", "arm64":
 		s.Syscalls = append(s.Syscalls, specs.LinuxSyscall{
 			Names: []string{
 				"arm_fadvise64_64",
 				"arm_sync_file_range",
+				"sync_file_range2",
 				"breakpoint",
 				"cacheflush",
 				"set_tls",
@@ -468,9 +527,11 @@ func DefaultProfile(sp *specs.Spec) *specs.LinuxSeccomp {
 					"mount",
 					"name_to_handle_at",
 					"perf_event_open",
+					"quotactl",
 					"setdomainname",
 					"sethostname",
 					"setns",
+					"syslog",
 					"umount",
 					"umount2",
 					"unshare",
@@ -496,7 +557,6 @@ func DefaultProfile(sp *specs.Spec) *specs.LinuxSeccomp {
 					"delete_module",
 					"init_module",
 					"finit_module",
-					"query_module",
 				},
 				Action: specs.ActAllow,
 				Args:   []specs.LinuxSeccompArg{},
@@ -532,7 +592,7 @@ func DefaultProfile(sp *specs.Spec) *specs.LinuxSeccomp {
 				Names: []string{
 					"settimeofday",
 					"stime",
-					"adjtimex",
+					"clock_settime",
 				},
 				Action: specs.ActAllow,
 				Args:   []specs.LinuxSeccompArg{},
@@ -540,6 +600,12 @@ func DefaultProfile(sp *specs.Spec) *specs.LinuxSeccomp {
 		case "CAP_SYS_TTY_CONFIG":
 			s.Syscalls = append(s.Syscalls, specs.LinuxSyscall{
 				Names:  []string{"vhangup"},
+				Action: specs.ActAllow,
+				Args:   []specs.LinuxSeccompArg{},
+			})
+		case "CAP_SYSLOG":
+			s.Syscalls = append(s.Syscalls, specs.LinuxSyscall{
+				Names:  []string{"syslog"},
 				Action: specs.ActAllow,
 				Args:   []specs.LinuxSeccompArg{},
 			})

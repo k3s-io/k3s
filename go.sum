@@ -456,6 +456,7 @@ github.com/grpc-ecosystem/grpc-gateway v1.9.5 h1:UImYN5qQ8tuGpGE16ZmjvcTtTw24zw1
 github.com/grpc-ecosystem/grpc-gateway v1.9.5/go.mod h1:vNeuVxBJEsws4ogUvrchl83t/GYV9WGTSLVdBhOQFDY=
 github.com/hailocab/go-hostpool v0.0.0-20160125115350-e80d13ce29ed/go.mod h1:tMWxXQ9wFIaZeTI9F+hmhFiGpFmhOHzyShyFUhRm0H4=
 github.com/hashicorp/errwrap v0.0.0-20141028054710-7554cd9344ce/go.mod h1:YH+1FKiLXxHSkmPseP+kNlulaMuP3n2brvKWEqk/Jc4=
+github.com/hashicorp/errwrap v1.0.0 h1:hLrqtEDnRye3+sgx6z4qVLNuviH3MR5aQ0ykNJa/UYA=
 github.com/hashicorp/errwrap v1.0.0/go.mod h1:YH+1FKiLXxHSkmPseP+kNlulaMuP3n2brvKWEqk/Jc4=
 github.com/hashicorp/go-cleanhttp v0.5.1/go.mod h1:JpRdi6/HCYpAwUzNwuwqhbovhLtngrth3wmdIIUrZ80=
 github.com/hashicorp/go-hclog v0.0.0-20180709165350-ff2cf002a8dd/go.mod h1:9bjs9uLqI8l75knNv3lV1kA55veR+WUPSiKIWcQHudI=
@@ -463,6 +464,7 @@ github.com/hashicorp/go-hclog v0.8.0/go.mod h1:5CU+agLiy3J7N7QjHK5d05KxGsuXiQLrj
 github.com/hashicorp/go-immutable-radix v1.0.0/go.mod h1:0y9vanUI8NX6FsYoO3zeMjhV/C5i9g4Q3DwcSNZ4P60=
 github.com/hashicorp/go-memdb v1.0.0/go.mod h1:I6dKdmYhZqU0RJSheVEWgTNWdVQH5QvTgIUQ0t/t32M=
 github.com/hashicorp/go-multierror v0.0.0-20161216184304-ed905158d874/go.mod h1:JMRHfdO9jKNzS/+BTlxCjKNQHg/jZAft8U7LloJvN7I=
+github.com/hashicorp/go-multierror v1.0.0 h1:iVjPR7a6H0tWELX5NxNe7bYopibicUzc7uPribsnS6o=
 github.com/hashicorp/go-multierror v1.0.0/go.mod h1:dHtQlpGsu+cZNNAkkCN/P3hoUDHhCYQXV3UM06sGGrk=
 github.com/hashicorp/go-plugin v1.0.0/go.mod h1:++UyYGoz3o5w9ZzAdZxtQKrWWP+iqPBn3cQptSMzBuY=
 github.com/hashicorp/go-rootcerts v1.0.0/go.mod h1:K6zTfqpRlCUIjkwsN4Z+hiSfzSTQa6eBIzfwKfwNnHU=
@@ -515,6 +517,10 @@ github.com/juju/loggo v0.0.0-20180524022052-584905176618/go.mod h1:vgyd7OREkbtVE
 github.com/juju/loggo v0.0.0-20190526231331-6e530bcce5d8/go.mod h1:vgyd7OREkbtVEN/8IXZe5Ooef3LQePvuBm9UWj6ZL8U=
 github.com/juju/testing v0.0.0-20180920084828-472a3e8b2073/go.mod h1:63prj8cnj0tU0S9OHjGJn+b1h0ZghCndfnbQolrYTwA=
 github.com/juju/testing v0.0.0-20190613124551-e81189438503/go.mod h1:63prj8cnj0tU0S9OHjGJn+b1h0ZghCndfnbQolrYTwA=
+github.com/k3s-io/containerd v1.3.9-k3s1 h1:VeMMmcojFZDJlLkgtIr7GAmDUgtGS7ME3KvLo9g/6+s=
+github.com/k3s-io/containerd v1.3.9-k3s1/go.mod h1:eMCLnqhZCzg+cZuvfMLStYPsrx5cWGpdZL6krPhK8RI=
+github.com/k3s-io/cri v1.3.0-k3s.9 h1:1PUJysV7YQElM5JEjnHdOQ2kgwtTiSJ5fpx1j4/WjzU=
+github.com/k3s-io/cri v1.3.0-k3s.9/go.mod h1:fGPUUHMKQik/vIegSe05DtX/m4miovdtvVLqRUFAkK0=
 github.com/k3s-io/kubernetes v1.17.14-k3s1 h1:qI3+vAOjxo1rANfoSqpUf+e/o36tSAgXc/p7JofSYMU=
 github.com/k3s-io/kubernetes v1.17.14-k3s1/go.mod h1:J8bqjhrOYZ/dDhaQU8sEfM+aH81x3Urfw1uODZc7ZfU=
 github.com/k3s-io/kubernetes/staging/src/k8s.io/api v1.17.14-k3s1 h1:Z83y7Wd7Hg6/i+rZJZ0HUf+q2k8u8jE7PJg/aLbcoIA=
@@ -743,10 +749,6 @@ github.com/quasilyte/go-consistent v0.0.0-20190521200055-c6f3937de18c/go.mod h1:
 github.com/quobyte/api v0.1.2/go.mod h1:jL7lIHrmqQ7yh05OJ+eEEdHr0u/kmT1Ff9iHd+4H6VI=
 github.com/rakelkar/gonetsh v0.0.0-20190719023240-501daadcadf8 h1:83l9gPhYtgxODlZKU0Odq4pQuDcMZEVgAh364+PV3OU=
 github.com/rakelkar/gonetsh v0.0.0-20190719023240-501daadcadf8/go.mod h1:4XHkfaUj+URzGO9sohoAgt2V9Y8nIW7fugpu0E6gShk=
-github.com/rancher/containerd v1.3.3-k3s2 h1:RZr+TqFt7+YsrSYkyytlhW4HmneWeFNM7IymNOoGW6A=
-github.com/rancher/containerd v1.3.3-k3s2/go.mod h1:ZMfzmqce2Z+QSEqdHMfeJs1TZ/UeJ1aDrazjpQT4ehM=
-github.com/rancher/cri v1.3.0-k3s.5 h1:qYhzSaOkWbvAvYcXSn2s5/qfcnUDweYy0m1CPUunehQ=
-github.com/rancher/cri v1.3.0-k3s.5/go.mod h1:Ht5T1dIKzm+4NExmb7wDVG6qR+j0xeXIjjhCv1d9geY=
 github.com/rancher/cri-tools v1.17.0-k3s1 h1:jfu97FowbraTDc7b6fxWtO+dq+DU2oW+ABBQSEFiRb0=
 github.com/rancher/cri-tools v1.17.0-k3s1/go.mod h1:bRTZttsvk+nCG8tSFs8D6UUx8CkMXR5TAsRLS0fXAqI=
 github.com/rancher/dynamiclistener v0.2.0 h1:KucYwJXVVGhZ/NndfMCeQoCafT/VN7kvqSGgmlX8Lxk=
