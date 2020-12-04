@@ -430,10 +430,14 @@ func (s *shim) Stats(ctx context.Context) (*ptypes.Any, error) {
 }
 
 func (s *shim) Process(ctx context.Context, id string) (runtime.Process, error) {
-	return &process{
+	p := &process{
 		id:   id,
 		shim: s,
-	}, nil
+	}
+	if _, err := p.State(ctx); err != nil {
+		return nil, err
+	}
+	return p, nil
 }
 
 func (s *shim) State(ctx context.Context) (runtime.State, error) {
