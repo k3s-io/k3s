@@ -1,3 +1,5 @@
+//+build !linux
+
 /*
    Copyright The containerd Authors.
 
@@ -14,16 +16,10 @@
    limitations under the License.
 */
 
-package version
+package commands
 
-var (
-	// Package is filled at linking time
-	Package = "github.com/containerd/containerd"
+import "os"
 
-	// Version holds the complete version number. Filled in at linking time.
-	Version = "1.3.9+unknown"
-
-	// Revision is filled with the VCS (e.g. git) revision being used to build
-	// the program at linking time.
-	Revision = ""
-)
+func canIgnoreSignal(_ os.Signal) bool {
+	return false
+}

@@ -24,6 +24,7 @@ import (
 	"io/ioutil"
 	"net"
 	"path/filepath"
+	"strings"
 
 	"github.com/containerd/console"
 	"github.com/containerd/containerd/cmd/ctr/commands"
@@ -240,10 +241,11 @@ func getTaskService(context *cli.Context) (task.TaskService, error) {
 	s1 := filepath.Join(string(filepath.Separator), "containerd-shim", ns, id, "shim.sock")
 	// this should not error, ctr always get a default ns
 	ctx := namespaces.WithNamespace(gocontext.Background(), ns)
-	s2, _ := shim.SocketAddress(ctx, id)
+	s2, _ := shim.SocketAddress(ctx, context.GlobalString("address"), id)
+	s2 = strings.TrimPrefix(s2, "unix://")
 
-	for _, socket := range []string{s1, s2} {
-		conn, err := net.Dial("unix", "\x00"+socket)
+	for _, socket := range []string{s2, "\x00" + s1} {
+		conn, err := net.Dial("unix", socket)
 		if err == nil {
 			client := ttrpc.NewClient(conn)
 

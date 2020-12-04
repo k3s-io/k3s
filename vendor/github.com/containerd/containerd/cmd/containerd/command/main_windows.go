@@ -51,6 +51,11 @@ func handleSignals(ctx context.Context, signals chan os.Signal, serverC chan *se
 				server = s
 			case s := <-signals:
 				log.G(ctx).WithField("signal", s).Debug("received signal")
+
+				if err := notifyStopping(ctx); err != nil {
+					log.G(ctx).WithError(err).Error("notify stopping failed")
+				}
+
 				if server == nil {
 					close(done)
 					return

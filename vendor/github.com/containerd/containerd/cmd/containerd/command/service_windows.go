@@ -49,8 +49,6 @@ var (
 	allocConsole = kernel32.NewProc("AllocConsole")
 	oldStderr    windows.Handle
 	panicFile    *os.File
-
-	service *handler
 )
 
 const defaultServiceName = "containerd"
@@ -282,7 +280,6 @@ func launchService(s *server.Server, done chan struct{}) error {
 		return err
 	}
 
-	service = h
 	go func() {
 		if interactive {
 			err = debug.Run(serviceNameFlag, h)
@@ -350,8 +347,8 @@ func initPanicFile(path string) error {
 	// Update STD_ERROR_HANDLE to point to the panic file so that Go writes to
 	// it when it panics. Remember the old stderr to restore it before removing
 	// the panic file.
-	sh := windows.STD_ERROR_HANDLE
-	h, err := windows.GetStdHandle(uint32(sh))
+	sh := uint32(windows.STD_ERROR_HANDLE)
+	h, err := windows.GetStdHandle(sh)
 	if err != nil {
 		return err
 	}
@@ -375,7 +372,7 @@ func initPanicFile(path string) error {
 func removePanicFile() {
 	if st, err := panicFile.Stat(); err == nil {
 		if st.Size() == 0 {
-			sh := windows.STD_ERROR_HANDLE
+			sh := uint32(windows.STD_ERROR_HANDLE)
 			setStdHandle.Call(uintptr(sh), uintptr(oldStderr))
 			panicFile.Close()
 			os.Remove(panicFile.Name())
