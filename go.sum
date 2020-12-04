@@ -468,6 +468,8 @@ github.com/jstemmer/go-junit-report v0.9.1/go.mod h1:Brl9GWCQeLvo8nXZwPNNblvFj/X
 github.com/jtolds/gls v4.20.0+incompatible/go.mod h1:QJZ7F/aHp+rZTRtaJ1ow/lLfFfVYBRgL+9YlvaHOwJU=
 github.com/julienschmidt/httprouter v1.2.0/go.mod h1:SYymIcj16QtmaHHD7aYtjjsJG7VTCxuUUipMqKk8s4w=
 github.com/jung-kurt/gofpdf v1.0.3-0.20190309125859-24315acbbda5/go.mod h1:7Id9E/uU8ce6rXgefFLlgrJj/GYY22cpxn+r32jIOes=
+github.com/k3s-io/containerd v1.4.3-k3s1 h1:4n8gpBDXa6IpinjzSl+uJsTPfg0l0Dus6zZBJLl3lDg=
+github.com/k3s-io/containerd v1.4.3-k3s1/go.mod h1:SQt4M1HhVTRsIIYHCfaelw8OGnk1FAkZbfiCx1WpkvE=
 github.com/k3s-io/kubernetes v1.19.4-k3s1 h1:6ehWJYzSUobbOoKaSnt9O0vbpunkVKeH7kU38ZtWEno=
 github.com/k3s-io/kubernetes v1.19.4-k3s1/go.mod h1:yhT1/ltQajQsha3tnYc9QPFYSumGM45nlZdjf7WqE1A=
 github.com/k3s-io/kubernetes/staging/src/k8s.io/api v1.19.4-k3s1 h1:Zl0AMZ6Ni5j900hFRt1Z7Q8tbuB0C+BddAyiHkUn94w=
@@ -696,8 +698,6 @@ github.com/prometheus/tsdb v0.7.1/go.mod h1:qhTCs0VvXwvX/y3TZrWD7rabWM+ijKTux40T
 github.com/quobyte/api v0.1.2/go.mod h1:jL7lIHrmqQ7yh05OJ+eEEdHr0u/kmT1Ff9iHd+4H6VI=
 github.com/rakelkar/gonetsh v0.0.0-20190930180311-e5c5ffe4bdf0 h1:iXE9kmlAqhusXxzkXictdNgWS7p4ZBnmv9SdyMgTf6E=
 github.com/rakelkar/gonetsh v0.0.0-20190930180311-e5c5ffe4bdf0/go.mod h1:4XHkfaUj+URzGO9sohoAgt2V9Y8nIW7fugpu0E6gShk=
-github.com/rancher/containerd v1.4.1-k3s1 h1:LjLaRPbmYma4wvYS1m0MLa77VV/FbqI6sjhREn1K5Ls=
-github.com/rancher/containerd v1.4.1-k3s1/go.mod h1:sp2cwOHbS1O/EQtz0uNbkkkqiWvkyboQRooFTzNN34A=
 github.com/rancher/cri v1.4.0-k3s.2 h1:fX9dGTD9xu6eKB2EDgla2DZHlyusZZzS/hVHvQd3UaQ=
 github.com/rancher/cri v1.4.0-k3s.2/go.mod h1:Ht5T1dIKzm+4NExmb7wDVG6qR+j0xeXIjjhCv1d9geY=
 github.com/rancher/cri-tools v1.19.0-k3s1 h1:c6lqNWyoAB5+NaUREbpZxKXCuYl9he24/DZEgHywg+A=
