@@ -8,7 +8,7 @@ platform:
 
 steps:
 - name: build
-  image: rancher/dapper:v0.4.2
+  image: rancher/dapper:v0.5.0
   secrets: [ gcloud_auth, unprivileged_github_token ]
   environment:
     GITHUB_TOKEN:
@@ -36,7 +36,7 @@ steps:
     - "dist/artifacts/*"
   when:
     instance:
-    - drone-publish.rancher.io
+    - drone-publish.k3s.io
     ref:
     - refs/head/master
     - refs/tags/*
@@ -54,7 +54,7 @@ steps:
       from_secret: docker_username
   when:
     instance:
-    - drone-publish.rancher.io
+    - drone-publish.k3s.io
     ref:
     - refs/head/master
     - refs/tags/*
@@ -62,7 +62,7 @@ steps:
     - tag
 
 - name: test
-  image: rancher/dapper:v0.4.2
+  image: rancher/dapper:v0.5.0
   secrets: [ gcloud_auth ]
   environment:
     GCLOUD_AUTH:
@@ -83,7 +83,7 @@ steps:
     - "dist/artifacts/e2e-*.log"
   when:
     instance:
-    - drone-publish.rancher.io
+    - drone-publish.k3s.io
     ref:
     - refs/head/master
     - refs/tags/*
@@ -105,7 +105,7 @@ platform:
 
 steps:
 - name: build
-  image: rancher/dapper:v0.4.2
+  image: rancher/dapper:v0.5.0
   secrets: [ gcloud_auth ]
   environment:
     GCLOUD_AUTH:
@@ -131,7 +131,7 @@ steps:
     - "dist/artifacts/*"
   when:
     instance:
-    - drone-publish.rancher.io
+    - drone-publish.k3s.io
     ref:
     - refs/head/master
     - refs/tags/*
@@ -149,7 +149,7 @@ steps:
       from_secret: docker_username
   when:
     instance:
-    - drone-publish.rancher.io
+    - drone-publish.k3s.io
     ref:
     - refs/head/master
     - refs/tags/*
@@ -157,7 +157,7 @@ steps:
     - tag
 
 - name: test
-  image: rancher/dapper:v0.4.2
+  image: rancher/dapper:v0.5.0
   secrets: [ gcloud_auth ]
   environment:
     GCLOUD_AUTH:
@@ -183,7 +183,7 @@ platform:
 
 steps:
 - name: build
-  image: rancher/dapper:v0.4.2
+  image: rancher/dapper:v0.5.0
   secrets: [ gcloud_auth ]
   environment:
     GCLOUD_AUTH:
@@ -209,7 +209,7 @@ steps:
     - "dist/artifacts/*"
   when:
     instance:
-    - drone-publish.rancher.io
+    - drone-publish.k3s.io
     ref:
     - refs/head/master
     - refs/tags/*
@@ -227,7 +227,7 @@ steps:
       from_secret: docker_username
   when:
     instance:
-    - drone-publish.rancher.io
+    - drone-publish.k3s.io
     ref:
     - refs/head/master
     - refs/tags/*
@@ -235,7 +235,7 @@ steps:
     - tag
 
 - name: test
-  image: rancher/dapper:v0.4.2
+  image: rancher/dapper:v0.5.0
   secrets: [ gcloud_auth ]
   environment:
     GCLOUD_AUTH:
@@ -278,7 +278,7 @@ steps:
 
 trigger:
   instance:
-  - drone-publish.rancher.io
+  - drone-publish.k3s.io
   ref:
   - refs/head/master
   - refs/tags/*
@@ -311,7 +311,7 @@ steps:
 
 trigger:
   instance:
-    - drone-publish.rancher.io
+    - drone-publish.k3s.io
   ref:
     - refs/head/master
     - refs/tags/*
