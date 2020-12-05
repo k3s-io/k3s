@@ -224,9 +224,13 @@ setup_env() {
     if [ -n "${INSTALL_K3S_BIN_DIR}" ]; then
         BIN_DIR=${INSTALL_K3S_BIN_DIR}
     else
-        # --- use /usr/local/bin if we can write to it, otherwise try /opt
+        # --- use /usr/local/bin if root can write to it, otherwise use /opt/bin if it exists
         BIN_DIR=/usr/local/bin
-	  touch ${BIN_DIR}/k3s-ro-test 2>/dev/null && rm -rf ${BIN_DIR}/k3s-ro-test || BIN_DIR=/opt/bin
+        if ! $SUDO sh -c "touch ${BIN_DIR}/k3s-ro-test && rm -rf ${BIN_DIR}/k3s-ro-test"; then
+            if [ -d /opt/bin ]; then
+                BIN_DIR=/opt/bin
+            fi
+        fi
     fi
 
     # --- use systemd directory if defined or create default ---
