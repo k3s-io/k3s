@@ -1,4 +1,4 @@
-docker.io/rancher/coredns-coredns:1.6.9
+docker.io/rancher/coredns-coredns:1.7.1
 docker.io/rancher/klipper-helm:v0.3.2
 docker.io/rancher/klipper-lb:v0.1.2
 docker.io/rancher/library-busybox:1.31.1
