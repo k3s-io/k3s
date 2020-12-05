@@ -224,7 +224,9 @@ setup_env() {
     if [ -n "${INSTALL_K3S_BIN_DIR}" ]; then
         BIN_DIR=${INSTALL_K3S_BIN_DIR}
     else
+        # --- use /usr/local/bin if we can write to it, otherwise try /opt
         BIN_DIR=/usr/local/bin
+	  touch ${BIN_DIR}/k3s-ro-test 2>/dev/null && rm -rf ${BIN_DIR}/k3s-ro-test || BIN_DIR=/opt/bin
     fi
 
     # --- use systemd directory if defined or create default ---
@@ -454,7 +456,7 @@ setup_selinux() {
     yum install -y https://${rpm_site}/k3s/${rpm_channel}/common/centos/7/noarch/k3s-selinux-0.2-1.el7_8.noarch.rpm
 "
     policy_error=fatal
-    if [ "$INSTALL_K3S_SELINUX_WARN" = true ]; then
+    if [ "$INSTALL_K3S_SELINUX_WARN" = true ] || grep -q 'ID=flatcar' /etc/os-release; then
         policy_error=warn
     fi
 
