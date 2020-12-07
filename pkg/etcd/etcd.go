@@ -813,7 +813,7 @@ func snapshotRetention(retention int, snapshotDir string) error {
 }
 
 // backupDirWithRetention will move the dir to a backup dir
-// and will keep only maxBackupRetention of dirs
+// and will keep only maxBackupRetention of dirs.
 func backupDirWithRetention(dir string, maxBackupRetention int) (string, error) {
 	backupDir := dir + "-backup-" + strconv.Itoa(int(time.Now().Unix()))
 	if _, err := os.Stat(dir); err != nil {
