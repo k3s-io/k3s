@@ -472,8 +472,8 @@ github.com/k3s-io/cri v1.4.0-k3s.2 h1:HiJLH0P7k6sSJwbzjPwIN0CeY0iA6bKlb7OyThMiaE
 github.com/k3s-io/cri v1.4.0-k3s.2/go.mod h1:fGPUUHMKQik/vIegSe05DtX/m4miovdtvVLqRUFAkK0=
 github.com/k3s-io/cri-tools v1.19.0-k3s1 h1:FQ1iURavoP3rE/GqND/f3aIL1X59IpFQCRnDhiwzcZ8=
 github.com/k3s-io/cri-tools v1.19.0-k3s1/go.mod h1:bitvtZRi5F7t505Yw3zPzp22LOao1lqJKHfx6x0hnpw=
-github.com/k3s-io/etcd v0.0.0-20200911210206-f8fde3601008 h1:PlAf/spqR2ZVFeWORItuvYk0YNDsjTlmq+e+7TQbtrI=
-github.com/k3s-io/etcd v0.0.0-20200911210206-f8fde3601008/go.mod h1:yVHk9ub3CSBatqGNg7GRmsnfLWtoW60w4eDYfh7vHDg=
+github.com/k3s-io/etcd v0.5.0-alpha.5.0.20201204203317-251ee41536d8 h1:S+MCp8UM5sS1bpxedfr3Qb907ig0dF1bARZ+UqeM4vk=
+github.com/k3s-io/etcd v0.5.0-alpha.5.0.20201204203317-251ee41536d8/go.mod h1:yVHk9ub3CSBatqGNg7GRmsnfLWtoW60w4eDYfh7vHDg=
 github.com/k3s-io/flannel v0.12.0-k3s2 h1:KEfj4fe+P0qINcYZxo5/C0cga2XBEfeV4nhKrUGDyCg=
 github.com/k3s-io/flannel v0.12.0-k3s2/go.mod h1:2tCkIFWhim43MkRsOcPOxY8/Bcpai9uZLJaywN7ciNg=
 github.com/k3s-io/go-powershell v0.0.0-20200701182037-6845e6fcfa79 h1:9naOL3iAREsJh9mbf9C6Qqu9xuFv7/jIGBFCWvZMg4E=

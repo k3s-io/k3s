@@ -72,6 +72,8 @@ const (
 	// other defaults from k8s.io/apiserver/pkg/storage/storagebackend/factory/etcd3.go
 	defaultKeepAliveTime    = 30 * time.Second
 	defaultKeepAliveTimeout = 10 * time.Second
+
+	maxBackupRetention = 5
 )
 
 // Members contains a slice that holds all
@@ -323,6 +325,13 @@ func (e *ETCD) Register(ctx context.Context, config *config.Control, handler htt
 		return nil, err
 	}
 
+	tombstoneFile := filepath.Join(etcdDBDir(e.config), "tombstone")
+	if _, err := os.Stat(tombstoneFile); err == nil {
+		logrus.Infof("tombstone file has been detected, removing data dir to rejoin the cluster")
+		if _, err := backupDirWithRetention(etcdDBDir(e.config), maxBackupRetention); err != nil {
+			return nil, err
+		}
+	}
 	return e.handler(handler), err
 }
 
@@ -512,7 +521,7 @@ func (e *ETCD) removePeer(ctx context.Context, id, address string) error {
 			}
 			if u.Hostname() == address {
 				if e.address == address {
-					logrus.Fatalf("node has been delete from the cluster. Backup and delete ${datadir}/server/db if you like to rejoin the node")
+					return errors.New("node has been deleted from the cluster")
 				}
 				logrus.Infof("Removing name=%s id=%d address=%s from etcd", member.Name, member.ID, address)
 				_, err := e.client.MemberRemove(ctx, member.ID)
@@ -801,4 +810,36 @@ func snapshotRetention(retention int, snapshotDir string) error {
 		return snapshotFiles[i].Name() < snapshotFiles[j].Name()
 	})
 	return os.Remove(filepath.Join(snapshotDir, snapshotFiles[0].Name()))
+}
+
+// backupDirWithRetention will move the dir to a backup dir
+// and will keep only maxBackupRetention of dirs.
+func backupDirWithRetention(dir string, maxBackupRetention int) (string, error) {
+	backupDir := dir + "-backup-" + strconv.Itoa(int(time.Now().Unix()))
+	if _, err := os.Stat(dir); err != nil {
+		return "", nil
+	}
+	files, err := ioutil.ReadDir(filepath.Dir(dir))
+	if err != nil {
+		return "", err
+	}
+	sort.Slice(files, func(i, j int) bool {
+		return files[i].ModTime().After(files[j].ModTime())
+	})
+	count := 0
+	for _, f := range files {
+		if strings.HasPrefix(f.Name(), filepath.Base(dir)+"-backup") && f.IsDir() {
+			count++
+			if count > maxBackupRetention {
+				if err := os.RemoveAll(filepath.Join(filepath.Dir(dir), f.Name())); err != nil {
+					return "", err
+				}
+			}
+		}
+	}
+	// move the directory to a temp path
+	if err := os.Rename(dir, backupDir); err != nil {
+		return "", err
+	}
+	return backupDir, nil
 }
