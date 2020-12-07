@@ -3,7 +3,7 @@ module github.com/containerd/containerd
 go 1.14
 
 replace (
-	github.com/containerd/cri => github.com/rancher/cri v1.11.1-0.20201105233134-0486eceb9306 // k3s-release/1.4
+	github.com/containerd/cri => github.com/k3s-io/cri v1.4.0-k3s.2 // k3s-release/1.4
 	k8s.io/api => k8s.io/api v0.19.0
 	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.19.0
 	k8s.io/apimachinery => k8s.io/apimachinery v0.19.0

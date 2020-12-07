@@ -25,7 +25,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -105,6 +104,10 @@ func New(ctx context.Context, id string, publisher shim.Publisher, shutdown func
 		return nil, errors.Wrap(err, "failed to initialized platform behavior")
 	}
 	go s.forward(ctx, publisher)
+
+	if address, err := shim.ReadAddress("address"); err == nil {
+		s.shimAddress = address
+	}
 	return s, nil
 }
 
@@ -124,7 +127,8 @@ type service struct {
 
 	containers map[string]*runc.Container
 
-	cancel func()
+	shimAddress string
+	cancel      func()
 }
 
 func newCommand(ctx context.Context, id, containerdBinary, containerdAddress, containerdTTRPCAddress string) (*exec.Cmd, error) {
@@ -183,30 +187,48 @@ func (s *service) StartShim(ctx context.Context, id, containerdBinary, container
 			break
 		}
 	}
-	address, err := shim.SocketAddress(ctx, grouping)
+	address, err := shim.SocketAddress(ctx, containerdAddress, grouping)
 	if err != nil {
 		return "", err
 	}
+
 	socket, err := shim.NewSocket(address)
 	if err != nil {
-		if strings.Contains(err.Error(), "address already in use") {
+		// the only time where this would happen is if there is a bug and the socket
+		// was not cleaned up in the cleanup method of the shim or we are using the
+		// grouping functionality where the new process should be run with the same
+		// shim as an existing container
+		if !shim.SocketEaddrinuse(err) {
+			return "", errors.Wrap(err, "create new shim socket")
+		}
+		if shim.CanConnect(address) {
 			if err := shim.WriteAddress("address", address); err != nil {
-				return "", err
+				return "", errors.Wrap(err, "write existing socket for shim")
 			}
 			return address, nil
 		}
-		return "", err
+		if err := shim.RemoveSocket(address); err != nil {
+			return "", errors.Wrap(err, "remove pre-existing socket")
+		}
+		if socket, err = shim.NewSocket(address); err != nil {
+			return "", errors.Wrap(err, "try create new shim socket 2x")
+		}
 	}
-	defer socket.Close()
+	defer func() {
+		if retErr != nil {
+			socket.Close()
+			_ = shim.RemoveSocket(address)
+		}
+	}()
 	f, err := socket.File()
 	if err != nil {
 		return "", err
 	}
-	defer f.Close()
 
 	cmd.ExtraFiles = append(cmd.ExtraFiles, f)
 
 	if err := cmd.Start(); err != nil {
+		f.Close()
 		return "", err
 	}
 	defer func() {
@@ -273,7 +295,6 @@ func (s *service) Cleanup(ctx context.Context) (*taskAPI.DeleteResponse, error) 
 	if err != nil {
 		return nil, err
 	}
-
 	runtime, err := runc.ReadRuntime(path)
 	if err != nil {
 		return nil, err
@@ -652,7 +673,9 @@ func (s *service) Shutdown(ctx context.Context, r *taskAPI.ShutdownRequest) (*pt
 	if s.platform != nil {
 		s.platform.Close()
 	}
-
+	if s.shimAddress != "" {
+		_ = shim.RemoveSocket(s.shimAddress)
+	}
 	return empty, nil
 }
 

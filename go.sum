@@ -466,8 +466,8 @@ github.com/jstemmer/go-junit-report v0.9.1/go.mod h1:Brl9GWCQeLvo8nXZwPNNblvFj/X
 github.com/jtolds/gls v4.20.0+incompatible/go.mod h1:QJZ7F/aHp+rZTRtaJ1ow/lLfFfVYBRgL+9YlvaHOwJU=
 github.com/julienschmidt/httprouter v1.2.0/go.mod h1:SYymIcj16QtmaHHD7aYtjjsJG7VTCxuUUipMqKk8s4w=
 github.com/jung-kurt/gofpdf v1.0.3-0.20190309125859-24315acbbda5/go.mod h1:7Id9E/uU8ce6rXgefFLlgrJj/GYY22cpxn+r32jIOes=
-github.com/k3s-io/containerd v1.4.1-k3s1 h1:kvBLZEcauSQehZPhJA/qy7GwVt1aAg4OCt14fI5MYik=
-github.com/k3s-io/containerd v1.4.1-k3s1/go.mod h1:sp2cwOHbS1O/EQtz0uNbkkkqiWvkyboQRooFTzNN34A=
+github.com/k3s-io/containerd v1.4.3-k3s1 h1:4n8gpBDXa6IpinjzSl+uJsTPfg0l0Dus6zZBJLl3lDg=
+github.com/k3s-io/containerd v1.4.3-k3s1/go.mod h1:SQt4M1HhVTRsIIYHCfaelw8OGnk1FAkZbfiCx1WpkvE=
 github.com/k3s-io/cri v1.4.0-k3s.2 h1:HiJLH0P7k6sSJwbzjPwIN0CeY0iA6bKlb7OyThMiaEo=
 github.com/k3s-io/cri v1.4.0-k3s.2/go.mod h1:fGPUUHMKQik/vIegSe05DtX/m4miovdtvVLqRUFAkK0=
 github.com/k3s-io/cri-tools v1.19.0-k3s1 h1:FQ1iURavoP3rE/GqND/f3aIL1X59IpFQCRnDhiwzcZ8=
