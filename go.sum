@@ -254,14 +254,6 @@ github.com/fsnotify/fsnotify v1.4.9 h1:hsms1Qyu0jgnwNXIxa+/V/PDsU6CfLf6CNO8H7IWo
 github.com/fsnotify/fsnotify v1.4.9/go.mod h1:znqG4EE+3YCdAaPaxE2ZRY/06pZUdp0tY4IgpuI1SZQ=
 github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa h1:RDBNVkRviHZtvDvId8XSGPu3rmpmSe+wKRcEWNgsfWU=
 github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa/go.mod h1:KnogPXtdwXqoenmZCw6S+25EAm2MkxbG0deNDu4cbSA=
-github.com/galal-hussein/etcd v0.0.8-dev h1:e+JmqT9SVck36W70fpHpDg1+dfUvMzHwHMU1kDEl904=
-github.com/galal-hussein/etcd v0.0.8-dev/go.mod h1:yVHk9ub3CSBatqGNg7GRmsnfLWtoW60w4eDYfh7vHDg=
-github.com/galal-hussein/etcd v0.5.0-alpha.5.0.20201124000623-1b92ee32962b h1:IcL4PNEuCVkJEE7+x7MXuSIDLZpR8APlOC0RXy2tSeQ=
-github.com/galal-hussein/etcd v0.5.0-alpha.5.0.20201124000623-1b92ee32962b/go.mod h1:yVHk9ub3CSBatqGNg7GRmsnfLWtoW60w4eDYfh7vHDg=
-github.com/galal-hussein/etcd v0.5.0-alpha.5.0.20201204194435-8efec616dd49 h1:AEbrFyPB6iP8rHRPx7zFYb0NNJEI73yG5AvNSeOVdPE=
-github.com/galal-hussein/etcd v0.5.0-alpha.5.0.20201204194435-8efec616dd49/go.mod h1:yVHk9ub3CSBatqGNg7GRmsnfLWtoW60w4eDYfh7vHDg=
-github.com/galal-hussein/etcd v0.5.0-alpha.5.0.20201204202204-a56a704c9a31 h1:2efggOfgI/AbuuUrWatKDEiAwlcr+3/p3IdswhoLsmE=
-github.com/galal-hussein/etcd v0.5.0-alpha.5.0.20201204202204-a56a704c9a31/go.mod h1:yVHk9ub3CSBatqGNg7GRmsnfLWtoW60w4eDYfh7vHDg=
 github.com/ghodss/yaml v0.0.0-20150909031657-73d445a93680/go.mod h1:4dBDuWmgqj2HViK6kFavaiC9ZROes6MMH2rRYeMEF04=
 github.com/ghodss/yaml v1.0.0 h1:wQHKEahhL6wmXdzwWG11gIVCkOv05bNOh+Rxn0yngAk=
 github.com/ghodss/yaml v1.0.0/go.mod h1:4dBDuWmgqj2HViK6kFavaiC9ZROes6MMH2rRYeMEF04=
@@ -480,8 +472,6 @@ github.com/k3s-io/cri v1.4.0-k3s.2 h1:HiJLH0P7k6sSJwbzjPwIN0CeY0iA6bKlb7OyThMiaE
 github.com/k3s-io/cri v1.4.0-k3s.2/go.mod h1:fGPUUHMKQik/vIegSe05DtX/m4miovdtvVLqRUFAkK0=
 github.com/k3s-io/cri-tools v1.19.0-k3s1 h1:FQ1iURavoP3rE/GqND/f3aIL1X59IpFQCRnDhiwzcZ8=
 github.com/k3s-io/cri-tools v1.19.0-k3s1/go.mod h1:bitvtZRi5F7t505Yw3zPzp22LOao1lqJKHfx6x0hnpw=
-github.com/k3s-io/etcd v0.0.0-20200911210206-f8fde3601008 h1:PlAf/spqR2ZVFeWORItuvYk0YNDsjTlmq+e+7TQbtrI=
-github.com/k3s-io/etcd v0.0.0-20200911210206-f8fde3601008/go.mod h1:yVHk9ub3CSBatqGNg7GRmsnfLWtoW60w4eDYfh7vHDg=
 github.com/k3s-io/etcd v0.5.0-alpha.5.0.20201204203317-251ee41536d8 h1:S+MCp8UM5sS1bpxedfr3Qb907ig0dF1bARZ+UqeM4vk=
 github.com/k3s-io/etcd v0.5.0-alpha.5.0.20201204203317-251ee41536d8/go.mod h1:yVHk9ub3CSBatqGNg7GRmsnfLWtoW60w4eDYfh7vHDg=
 github.com/k3s-io/flannel v0.12.0-k3s2 h1:KEfj4fe+P0qINcYZxo5/C0cga2XBEfeV4nhKrUGDyCg=
