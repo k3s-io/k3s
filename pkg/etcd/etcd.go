@@ -521,7 +521,7 @@ func (e *ETCD) removePeer(ctx context.Context, id, address string) error {
 			}
 			if u.Hostname() == address {
 				if e.address == address {
-					return errors.New("node has been deleted from the cluster.")
+					return errors.New("node has been deleted from the cluster")
 				}
 				logrus.Infof("Removing name=%s id=%d address=%s from etcd", member.Name, member.ID, address)
 				_, err := e.client.MemberRemove(ctx, member.ID)
