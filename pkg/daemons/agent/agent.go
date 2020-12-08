@@ -200,6 +200,7 @@ func checkCgroups() (root string, hasCFS bool, hasPIDs bool) {
 
 	// Examine process ID 1 to see if there is a cgroup assigned to it.
 	// When we are not in a container, process 1 is likely to be systemd or some other service manager.
+	// It either lives at `/` or `/init.scope` according to https://man7.org/linux/man-pages/man7/systemd.special.7.html
 	// When containerized, process 1 will be generally be in a cgroup, otherwise, we may be running in
 	// a host PID scenario but we don't support this.
 	g, err := os.Open("/proc/1/cgroup")
@@ -218,7 +219,7 @@ func checkCgroups() (root string, hasCFS bool, hasPIDs bool) {
 		for _, system := range systems {
 			if system == "name=systemd" {
 				last := parts[len(parts)-1]
-				if last != "/" {
+				if last != "/" && last != "/init.scope" {
 					root = "/systemd"
 				}
 			}
