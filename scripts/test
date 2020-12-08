@@ -10,25 +10,28 @@ mkdir -p $artifacts
 
 # ---
 
-. ./scripts/test-run-basics
+docker ps
 
 # ---
 
-[ "$ARCH" = 'arm' ] && \
-  early-exit "Skipping sonobuoy, images not available for $ARCH."
+. ./scripts/test-run-basics
+echo "Did test-run-basics $?"
+
+# ---
+
+[ "$ARCH" != 'amd64' ] && \
+  early-exit "Skipping remaining tests, images not available for $ARCH."
 
 E2E_OUTPUT=$artifacts test-run-sonobuoy
-
+echo "Did test-run-sonobuoy $?"
 # ---
 
 [ "$DRONE_BUILD_EVENT" = 'tag' ] && \
   early-exit 'Skipping remaining tests on tag.'
 
-[ "$ARCH" != 'amd64' ] && \
-  early-exit "Skipping remaining tests, images not available for $ARCH."
-
 # ---
 
 test-run-sonobuoy mysql
 test-run-sonobuoy postgres
-# test-run-sonobuoy dqlite
+
+exit 0
