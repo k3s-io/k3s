@@ -23,6 +23,7 @@ import (
 	"github.com/rancher/k3s/pkg/datadir"
 	"github.com/rancher/k3s/pkg/deploy"
 	"github.com/rancher/k3s/pkg/node"
+	"github.com/rancher/k3s/pkg/nodepassword"
 	"github.com/rancher/k3s/pkg/rootlessports"
 	"github.com/rancher/k3s/pkg/servicelb"
 	"github.com/rancher/k3s/pkg/static"
@@ -56,9 +57,7 @@ func StartServer(ctx context.Context, config *Config) error {
 		return errors.Wrap(err, "starting kubernetes")
 	}
 
-	if err := startWrangler(ctx, config); err != nil {
-		return errors.Wrap(err, "starting tls server")
-	}
+	go startOnAPIServerReady(ctx, config)
 
 	for _, hook := range config.StartupHooks {
 		if err := hook(ctx, config.ControlConfig.Runtime.APIServerReady, config.ControlConfig.Runtime.KubeConfigAdmin); err != nil {
@@ -83,32 +82,15 @@ func StartServer(ctx context.Context, config *Config) error {
 	return writeKubeConfig(config.ControlConfig.Runtime.ServerCA, config)
 }
 
-func startWrangler(ctx context.Context, config *Config) error {
-	var (
-		err           error
-		controlConfig = &config.ControlConfig
-	)
-
-	ca, err := ioutil.ReadFile(config.ControlConfig.Runtime.ServerCA)
-	if err != nil {
-		return err
-	}
-
-	controlConfig.Runtime.Handler = router(controlConfig, controlConfig.Runtime.Tunnel, ca)
-
-	// Start in background
-	go func() {
-		select {
-		case <-ctx.Done():
-			return
-		case <-config.ControlConfig.Runtime.APIServerReady:
-			if err := runControllers(ctx, config); err != nil {
-				logrus.Fatalf("failed to start controllers: %v", err)
-			}
+func startOnAPIServerReady(ctx context.Context, config *Config) {
+	select {
+	case <-ctx.Done():
+		return
+	case <-config.ControlConfig.Runtime.APIServerReady:
+		if err := runControllers(ctx, config); err != nil {
+			logrus.Fatalf("failed to start controllers: %v", err)
 		}
-	}()
-
-	return nil
+	}
 }
 
 func runControllers(ctx context.Context, config *Config) error {
@@ -141,6 +123,11 @@ func runControllers(ctx context.Context, config *Config) error {
 		if err := sc.Start(ctx); err != nil {
 			panic(err)
 		}
+		handler, err := router(controlConfig, controlConfig.Runtime.Tunnel, sc.Core.Core().V1().Secret())
+		if err != nil {
+			panic(errors.Wrap(err, "starting router"))
+		}
+		controlConfig.Runtime.Handler = handler
 	}
 	if !config.DisableAgent {
 		go setMasterRoleLabel(ctx, sc.Core.Core().V1().Node())
@@ -162,10 +149,19 @@ func runControllers(ctx context.Context, config *Config) error {
 }
 
 func masterControllers(ctx context.Context, sc *Context, config *Config) error {
-	if !config.ControlConfig.Skips["coredns"] {
-		if err := node.Register(ctx, sc.Core.Core().V1().ConfigMap(), sc.Core.Core().V1().Node()); err != nil {
-			return err
-		}
+	if err := nodepassword.MigrateFile(
+		sc.Core.Core().V1().Secret(),
+		sc.Core.Core().V1().Node(),
+		config.ControlConfig.Runtime.NodePasswdFile); err != nil {
+		logrus.Warn(errors.Wrapf(err, "error migrating node-password file"))
+	}
+
+	if err := node.Register(ctx,
+		!config.ControlConfig.Skips["coredns"],
+		sc.Core.Core().V1().Secret(),
+		sc.Core.Core().V1().ConfigMap(),
+		sc.Core.Core().V1().Node()); err != nil {
+		return err
 	}
 
 	helm.Register(ctx, sc.Apply,
