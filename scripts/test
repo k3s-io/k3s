@@ -10,7 +10,12 @@ mkdir -p $artifacts
 
 # ---
 
+docker ps
+
+# ---
+
 . ./scripts/test-run-basics
+echo "Did test-run-basics $?"
 
 # ---
 
@@ -18,7 +23,7 @@ mkdir -p $artifacts
   early-exit "Skipping remaining tests, images not available for $ARCH."
 
 E2E_OUTPUT=$artifacts test-run-sonobuoy
-
+echo "Did test-run-sonobuoy $?"
 # ---
 
 [ "$DRONE_BUILD_EVENT" = 'tag' ] && \
@@ -28,3 +33,5 @@ E2E_OUTPUT=$artifacts test-run-sonobuoy
 
 test-run-sonobuoy mysql
 test-run-sonobuoy postgres
+
+exit 0
