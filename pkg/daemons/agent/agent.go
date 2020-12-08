@@ -194,12 +194,31 @@ func checkCgroups() (root string, hasCFS bool, hasPIDs bool) {
 				if _, err := os.Stat(p); err == nil {
 					hasCFS = true
 				}
-			} else if system == "name=systemd" {
+			}
+		}
+	}
+
+	// Examine process ID 1 to see if there is a cgroup assigned to it.
+	// When we are not in a container, process 1 is likely to be systemd or some other service manager.
+	// When containerized, process 1 will be generally be in a cgroup, otherwise, we may be running in
+	// a host PID scenario but we don't support this.
+	g, err := os.Open("/proc/1/cgroup")
+	if err != nil {
+		return "", false, false
+	}
+	defer g.Close()
+	root = ""
+	scan = bufio.NewScanner(g)
+	for scan.Scan() {
+		parts := strings.Split(scan.Text(), ":")
+		if len(parts) < 3 {
+			continue
+		}
+		systems := strings.Split(parts[1], ",")
+		for _, system := range systems {
+			if system == "name=systemd" {
 				last := parts[len(parts)-1]
-				i := strings.LastIndex(last, ".slice")
-				if i > 0 {
-					root = "/systemd" + last[:i+len(".slice")]
-				} else {
+				if last != "/" {
 					root = "/systemd"
 				}
 			}
