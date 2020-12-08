@@ -64,7 +64,7 @@ export -f wait-for-nodes
 
 pod-ready() {
     kubectl get pods -n kube-system -o json \
-        | jq ".items[].status.containerStatuses[] | select(.name == \"$1\") | .ready" 2>/dev/null
+        | jq ".items[].status | select(.containerStatuses != null) | .containerStatuses[] | select(.name == \"$1\") | .ready" 2>/dev/null
 }
 export -f pod-ready
 
@@ -72,7 +72,7 @@ export -f pod-ready
 
 wait-for-services() {
     for service in $@; do
-        while [[ "$(pod-ready $service)" != 'true' ]]; do
+        while [[ "$(pod-ready $service | sort -u)" != 'true' ]]; do
             echo "Waiting for service $service to be ready..." >&2
             sleep 5
         done
@@ -122,13 +122,27 @@ dump-logs() {
     echo "#---------------------------------"
     echo "#- Begin: logs for run ($testID)"
     echo
+    local server=$(cat $TEST_DIR/servers/1/metadata/name)
+    docker exec $server kubectl get pods -A -o wide >$TEST_DIR/logs/kubectl-get-pods.txt
+    docker exec $server kubectl get nodes -o wide >$TEST_DIR/logs/kubectl-get-nodes.txt
+    docker exec $server kubectl describe pods -A >$TEST_DIR/logs/kubectl-describe-pods.txt
+
     for node in $TEST_DIR/*/*; do
         [ -d "$node" ] || continue
         local name=$(cat $node/metadata/name 2>/dev/null)
         [ "$name" ] || continue
         mkdir -p $node/logs
+        local hostname=$(docker exec $name hostname)
+        docker exec $server kubectl describe node/$hostname >$node/logs/kubectl-describe-node.txt
         docker cp $name:/var/lib/rancher/k3s/agent/containerd/containerd.log $node/logs/containerd.log 2>/dev/null
         docker logs $name >$node/logs/system.log 2>&1
+        docker exec $name crictl pods >$node/logs/crictl-pods.txt
+        docker exec $name crictl ps -a >$node/logs/crictl-ps.txt
+        docker exec $name crictl ps -a -o json >$node/metadata/crictl-ps.json
+        for container in $(jq -r '.containers[].id' <$node/metadata/crictl-ps.json); do
+            local cname=$(jq -r '.containers[] | select(.id == "'$container'") | .metadata.name' <$node/metadata/crictl-ps.json)
+            docker exec $name crictl logs $container >$node/logs/$cname-$container.log 2>&1
+        done
         for log in $node/logs/*.log; do
             echo
             echo "#- Tail: $log"
@@ -136,6 +150,13 @@ dump-logs() {
             echo "#- Done: $log"
             echo
         done
+    done
+    for txt in $TEST_DIR/logs/*.txt $TEST_DIR/*/*/logs/*.txt; do
+        echo
+        echo "#- Cat: $txt"
+        cat $txt
+        echo "#- Done: $txt"
+        echo
     done
     echo
     echo "#- Finish: logs for run ($testID)"
@@ -176,10 +197,28 @@ retrieve-sonobuoy-logs() {
     if [ -n "$LOG_OUTPUT" ]; then
         cp $e2eLog $(sed -e "s/-STATUS-/-$status-/g" <<< "$LOG_OUTPUT")
     fi
+    tail -11 $e2eLog
     awk '/^Summarizing .* Failures?:$/,0' $e2eLog
     return $code
 }
 export -f retrieve-sonobuoy-logs
+
+# ---
+
+test-wait() {
+    wait $1 || echo "test wait exit code $?"
+    local delay=15
+    sleep $delay
+    while sonobuoy status | grep -q -E ' +e2e +running +'; do
+        sleep $delay
+    done
+    sleep $delay
+    if sonobuoy status | grep -q -E ' +e2e +complete +passed +'; then
+        return 0
+    fi
+    return 1
+}
+export -f test-wait
 
 # ---
 
@@ -193,14 +232,15 @@ sonobuoy-test() {
     sonobuoy run \
         --config=scripts/sonobuoy-config.json \
         --plugin-env=e2e.E2E_USE_GO_RUNNER=true \
+        --sonobuoy-image=rancher/sonobuoy-sonobuoy:v${SONOBUOY_VERSION:-0.19.0} \
         --kube-conformance-image-version=${VERSION_K8S} \
         --wait=30 \
         $@ &
 
     local sonobuoyPID=$!
     local code=0
-    time wait $sonobuoyPID || code=$?
-
+    time timeout --foreground 30m bash -c test-wait $sonobuoyPID || code=$?
+    echo "Sonobuoy finished with code $code"
     retrieve-sonobuoy-logs
     return $code
 }
@@ -210,7 +250,7 @@ export -f sonobuoy-test
 
 test-cleanup() {
     local code=$?
-    set +e +x
+    set +e -x
     echo 'Cleaning up...'
     trap - EXIT INT TERM
     if [[ $code -ne 0 ]]; then
@@ -219,13 +259,14 @@ test-cleanup() {
     for name in $TEST_DIR/*/*/metadata/name; do
         [ -f "$name" ] || continue
         local container=$(cat $name)
-        docker rm -f -v $container >/dev/null 2>&1 &
+        echo "Removing container $container"
+        docker rm -f -v $container
     done
     if [ "$TEST_CLEANUP" = true ]; then
-        echo "Removing $TEST_DIR"
-        rm -rf $TEST_DIR >/dev/null 2>&1 &
+        echo "Removing test directory $TEST_DIR"
+        rm -rf $TEST_DIR
     fi
-    [ -f "$PROVISION_LOCK" ] && rm $PROVISION_LOCK >/dev/null 2>&1 &
+    [ -f "$PROVISION_LOCK" ] && rm $PROVISION_LOCK
     echo
     echo -n "Test $(basename $TEST_DIR) "
     if [ $code -eq 0 ]; then
@@ -246,8 +287,8 @@ test-setup() {
 
     mkdir -p $TEST_DIR/metadata
     if [ "$LABEL" ]; then
-        exec > >(awk "{ printf \"[\033[36m${LABEL}\033[m] %s\n\", \$0 }") \
-            2> >(awk "{ printf \"[\033[35m${LABEL}\033[m] %s\n\", \$0 }" >&2)
+        exec > >(awk -W interactive "{ printf \"[\033[36m${LABEL}\033[m] %s\n\", \$0 }") \
+            2> >(awk -W interactive "{ printf \"[\033[35m${LABEL}\033[m] %s\n\", \$0 }" >&2)
         echo "$LABEL" >$TEST_DIR/metadata/label
     fi
 
@@ -416,7 +457,7 @@ provision-cluster() {
 
     for i in $(seq 1 $NUM_SERVERS); do
         provision-server
-        timeout --foreground 30s bash -c "wait-for-kubeconfig $i"
+        timeout --foreground 120s bash -c "wait-for-kubeconfig $i"
     done
     export KUBECONFIG=$TEST_DIR/servers/1/kubeconfig.yaml
 
@@ -426,8 +467,8 @@ provision-cluster() {
         done
     fi
 
-    timeout --foreground 1m bash -c "wait-for-nodes $(( NUM_SERVERS + NUM_AGENTS ))"
-    timeout --foreground 3m bash -c "wait-for-services $WAIT_SERVICES"
+    timeout --foreground 4m bash -c "wait-for-nodes $(( NUM_SERVERS + NUM_AGENTS ))"
+    timeout --foreground 8m bash -c "wait-for-services $WAIT_SERVICES"
 
     run-function cluster-post-hook
 
@@ -479,10 +520,12 @@ run-e2e-tests() {
     label=PARALLEL \
         logName=e2e-STATUS-${ARCH}-parallel.log \
         e2e-test ${sonobuoyParallelArgs[@]}
+    echo "Exit code $? for parallel start"
 
     label=SERIAL \
         logName=e2e-STATUS-${ARCH}-serial.log \
         e2e-test ${sonobuoySerialArgs[@]}
+    echo "Exit code $? for serial start"
 }
 export -f run-e2e-tests
 
