@@ -805,14 +805,15 @@ func (c *RaftCluster) IsLocalMemberLearner() bool {
 	localMember, ok := c.members[c.localID]
 	if !ok {
 		if c.lg != nil {
-			c.lg.Panic(
+			c.lg.Error(
 				"failed to find local ID in cluster members",
 				zap.String("cluster-id", c.cid.String()),
 				zap.String("local-member-id", c.localID.String()),
 			)
 		} else {
-			plog.Panicf("failed to find local ID %s in cluster %s", c.localID.String(), c.cid.String())
+			plog.Errorf("failed to find local ID %s in cluster %s", c.localID.String(), c.cid.String())
 		}
+		return false
 	}
 	return localMember.IsLearner
 }

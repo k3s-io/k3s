@@ -39,6 +39,7 @@ var (
 	ErrKeyNotFound                = errors.New("etcdserver: key not found")
 	ErrCorrupt                    = errors.New("etcdserver: corrupt cluster")
 	ErrBadLeaderTransferee        = errors.New("etcdserver: bad leader transferee")
+	ErrMemberRemoved              = errors.New("the member has been permanently removed from the cluster")
 )
 
 type DiscoveryError struct {
