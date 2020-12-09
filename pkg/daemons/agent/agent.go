@@ -172,7 +172,7 @@ func addFeatureGate(current, new string) string {
 	return current + "," + new
 }
 
-func checkCgroups() (kubeletRoot string, runtimeRoot string, hasCFS bool, hasPIDs bool) {
+func checkCgroups() (kubeletRoot, runtimeRoot string, hasCFS, hasPIDs bool) {
 	f, err := os.Open("/proc/self/cgroup")
 	if err != nil {
 		return "", "", false, false
