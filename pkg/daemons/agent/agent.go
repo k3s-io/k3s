@@ -20,6 +20,8 @@ import (
 	_ "k8s.io/component-base/metrics/prometheus/version"    // for version metric registration
 )
 
+const k3sCgroupRoot = "/k3s"
+
 func Agent(config *config.Agent) error {
 	rand.Seed(time.Now().UTC().UnixNano())
 
@@ -120,7 +122,7 @@ func startKubelet(cfg *config.Agent) error {
 	if err != nil || defaultIP.String() != cfg.NodeIP {
 		argsMap["node-ip"] = cfg.NodeIP
 	}
-	root, hasCFS, hasPIDs := checkCgroups()
+	kubeletRoot, runtimeRoot, hasCFS, hasPIDs := checkCgroups()
 	if !hasCFS {
 		logrus.Warn("Disabling CPU quotas due to missing cpu.cfs_period_us")
 		argsMap["cpu-cfs-quota"] = "false"
@@ -131,9 +133,11 @@ func startKubelet(cfg *config.Agent) error {
 		argsMap["enforce-node-allocatable"] = ""
 		argsMap["feature-gates"] = addFeatureGate(argsMap["feature-gates"], "SupportPodPidsLimit=false")
 	}
-	if root != "" {
-		argsMap["runtime-cgroups"] = root
-		argsMap["kubelet-cgroups"] = root
+	if kubeletRoot != "" {
+		argsMap["kubelet-cgroups"] = kubeletRoot
+	}
+	if runtimeRoot != "" {
+		argsMap["runtime-cgroups"] = runtimeRoot
 	}
 	if system.RunningInUserNS() {
 		argsMap["feature-gates"] = addFeatureGate(argsMap["feature-gates"], "DevicePlugins=false")
@@ -172,10 +176,10 @@ func addFeatureGate(current, new string) string {
 	return current + "," + new
 }
 
-func checkCgroups() (root string, hasCFS bool, hasPIDs bool) {
+func checkCgroups() (kubeletRoot string, runtimeRoot string, hasCFS bool, hasPIDs bool) {
 	f, err := os.Open("/proc/self/cgroup")
 	if err != nil {
-		return "", false, false
+		return "", "", false, false
 	}
 	defer f.Close()
 
@@ -194,37 +198,52 @@ func checkCgroups() (root string, hasCFS bool, hasPIDs bool) {
 				if _, err := os.Stat(p); err == nil {
 					hasCFS = true
 				}
-			}
-		}
-	}
-
-	// Examine process ID 1 to see if there is a cgroup assigned to it.
-	// When we are not in a container, process 1 is likely to be systemd or some other service manager.
-	// It either lives at `/` or `/init.scope` according to https://man7.org/linux/man-pages/man7/systemd.special.7.html
-	// When containerized, process 1 will be generally be in a cgroup, otherwise, we may be running in
-	// a host PID scenario but we don't support this.
-	g, err := os.Open("/proc/1/cgroup")
-	if err != nil {
-		return "", false, false
-	}
-	defer g.Close()
-	root = ""
-	scan = bufio.NewScanner(g)
-	for scan.Scan() {
-		parts := strings.Split(scan.Text(), ":")
-		if len(parts) < 3 {
-			continue
-		}
-		systems := strings.Split(parts[1], ",")
-		for _, system := range systems {
-			if system == "name=systemd" {
+			} else if system == "name=systemd" {
+				// If we detect that we are running under a `.scope` unit with systemd
+				// we can assume we are being directly invoked from the command line
+				// and thus need to set our kubelet root to something out of the context
+				// of `/user.slice` to ensure that `CPUAccounting` and `MemoryAccounting`
+				// are enabled, as they are generally disabled by default for `user.slice`
+				// Note that we are not setting the `runtimeRoot` as if we are running with
+				// `--docker`, we will inadvertently move the cgroup `dockerd` lives in
+				//  which is not ideal and causes dockerd to become unmanageable by systemd.
 				last := parts[len(parts)-1]
-				if last != "/" && last != "/init.scope" {
-					root = "/systemd"
+				i := strings.LastIndex(last, ".scope")
+				if i > 0 {
+					kubeletRoot = k3sCgroupRoot
 				}
 			}
 		}
 	}
 
-	return root, hasCFS, hasPIDs
+	if kubeletRoot == "" {
+		// Examine process ID 1 to see if there is a cgroup assigned to it.
+		// When we are not in a container, process 1 is likely to be systemd or some other service manager.
+		// It either lives at `/` or `/init.scope` according to https://man7.org/linux/man-pages/man7/systemd.special.7.html
+		// When containerized, process 1 will be generally be in a cgroup, otherwise, we may be running in
+		// a host PID scenario but we don't support this.
+		g, err := os.Open("/proc/1/cgroup")
+		if err != nil {
+			return "", "", false, false
+		}
+		defer g.Close()
+		scan = bufio.NewScanner(g)
+		for scan.Scan() {
+			parts := strings.Split(scan.Text(), ":")
+			if len(parts) < 3 {
+				continue
+			}
+			systems := strings.Split(parts[1], ",")
+			for _, system := range systems {
+				if system == "name=systemd" {
+					last := parts[len(parts)-1]
+					if last != "/" && last != "/init.scope" {
+						kubeletRoot = k3sCgroupRoot
+						runtimeRoot = k3sCgroupRoot
+					}
+				}
+			}
+		}
+	}
+	return kubeletRoot, runtimeRoot, hasCFS, hasPIDs
 }
