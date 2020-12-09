@@ -11,6 +11,7 @@ import (
 	"github.com/opencontainers/runc/libcontainer/system"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/daemons/executor"
+	"github.com/rancher/k3s/pkg/version"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/component-base/logs"
@@ -19,8 +20,6 @@ import (
 	_ "k8s.io/component-base/metrics/prometheus/restclient" // for client metric registration
 	_ "k8s.io/component-base/metrics/prometheus/version"    // for version metric registration
 )
-
-const k3sCgroupRoot = "/k3s"
 
 func Agent(config *config.Agent) error {
 	rand.Seed(time.Now().UTC().UnixNano())
@@ -210,7 +209,7 @@ func checkCgroups() (kubeletRoot, runtimeRoot string, hasCFS, hasPIDs bool) {
 				last := parts[len(parts)-1]
 				i := strings.LastIndex(last, ".scope")
 				if i > 0 {
-					kubeletRoot = k3sCgroupRoot
+					kubeletRoot = "/" + version.Program
 				}
 			}
 		}
@@ -238,8 +237,8 @@ func checkCgroups() (kubeletRoot, runtimeRoot string, hasCFS, hasPIDs bool) {
 				if system == "name=systemd" {
 					last := parts[len(parts)-1]
 					if last != "/" && last != "/init.scope" {
-						kubeletRoot = k3sCgroupRoot
-						runtimeRoot = k3sCgroupRoot
+						kubeletRoot = "/" + version.Program
+						runtimeRoot = "/" + version.Program
 					}
 				}
 			}
