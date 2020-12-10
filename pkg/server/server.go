@@ -60,6 +60,8 @@ func StartServer(ctx context.Context, config *Config) error {
 		return errors.Wrap(err, "starting kubernetes")
 	}
 
+	config.ControlConfig.Runtime.Handler = router(&config.ControlConfig)
+
 	go startOnAPIServerReady(ctx, config)
 
 	for _, hook := range config.StartupHooks {
@@ -108,9 +110,17 @@ func runControllers(ctx context.Context, config *Config) error {
 		return err
 	}
 
+	// run migration before we set controlConfig.Runtime.Core
+	if err := nodepassword.MigrateFile(
+		sc.Core.Core().V1().Secret(),
+		sc.Core.Core().V1().Node(),
+		controlConfig.Runtime.NodePasswdFile); err != nil {
+		logrus.Warn(errors.Wrapf(err, "error migrating node-password file"))
+	}
 	controlConfig.Runtime.Core = sc.Core
-	if config.ControlConfig.Runtime.ClusterControllerStart != nil {
-		if err := config.ControlConfig.Runtime.ClusterControllerStart(ctx); err != nil {
+
+	if controlConfig.Runtime.ClusterControllerStart != nil {
+		if err := controlConfig.Runtime.ClusterControllerStart(ctx); err != nil {
 			return errors.Wrapf(err, "starting cluster controllers")
 		}
 	}
@@ -126,11 +136,6 @@ func runControllers(ctx context.Context, config *Config) error {
 		if err := sc.Start(ctx); err != nil {
 			panic(err)
 		}
-		handler, err := router(controlConfig, controlConfig.Runtime.Tunnel, sc.Core.Core().V1().Secret())
-		if err != nil {
-			panic(errors.Wrap(err, "starting router"))
-		}
-		controlConfig.Runtime.Handler = handler
 	}
 	if !config.DisableAgent {
 		go setControlPlaneRoleLabel(ctx, sc.Core.Core().V1().Node())
@@ -152,13 +157,6 @@ func runControllers(ctx context.Context, config *Config) error {
 }
 
 func coreControllers(ctx context.Context, sc *Context, config *Config) error {
-	if err := nodepassword.MigrateFile(
-		sc.Core.Core().V1().Secret(),
-		sc.Core.Core().V1().Node(),
-		config.ControlConfig.Runtime.NodePasswdFile); err != nil {
-		logrus.Warn(errors.Wrapf(err, "error migrating node-password file"))
-	}
-
 	if err := node.Register(ctx,
 		!config.ControlConfig.Skips["coredns"],
 		sc.Core.Core().V1().Secret(),
@@ -425,6 +423,11 @@ func isSymlink(config string) bool {
 func setControlPlaneRoleLabel(ctx context.Context, nodes v1.NodeClient) error {
 	for {
 		nodeName := os.Getenv("NODE_NAME")
+		if nodeName == "" {
+			logrus.Info("Waiting for control-plane node agent startup")
+			time.Sleep(1 * time.Second)
+			continue
+		}
 		node, err := nodes.Get(nodeName, metav1.GetOptions{})
 		if err != nil {
 			logrus.Infof("Waiting for control-plane node %s startup: %v", nodeName, err)
@@ -454,7 +457,6 @@ func setControlPlaneRoleLabel(ctx context.Context, nodes v1.NodeClient) error {
 }
 
 func setClusterDNSConfig(ctx context.Context, controlConfig *Config, configMap v1.ConfigMapClient) error {
-	nodeName := os.Getenv("NODE_NAME")
 	// check if configmap already exists
 	_, err := configMap.Get("kube-system", "cluster-dns", metav1.GetOptions{})
 	if err == nil {
@@ -483,7 +485,7 @@ func setClusterDNSConfig(ctx context.Context, controlConfig *Config, configMap v
 			logrus.Infof("Cluster dns configmap has been set successfully")
 			break
 		}
-		logrus.Infof("Waiting for control-plane node %s startup: %v", nodeName, err)
+		logrus.Infof("Waiting for control-plane dns startup: %v", err)
 
 		select {
 		case <-ctx.Done():

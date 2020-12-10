@@ -26,18 +26,13 @@ const (
 	staticURL = "/static/"
 )
 
-func router(serverConfig *config.Control, tunnel http.Handler, secretClient coreclient.SecretClient) (http.Handler, error) {
-	ca, err := ioutil.ReadFile(serverConfig.Runtime.ServerCA)
-	if err != nil {
-		return nil, err
-	}
-
+func router(serverConfig *config.Control) http.Handler {
 	prefix := "/v1-" + version.Program
 	authed := mux.NewRouter()
 	authed.Use(authMiddleware(serverConfig, version.Program+":agent"))
 	authed.NotFoundHandler = serverConfig.Runtime.Handler
-	authed.Path(prefix + "/serving-kubelet.crt").Handler(servingKubeletCert(serverConfig, serverConfig.Runtime.ServingKubeletKey, secretClient))
-	authed.Path(prefix + "/client-kubelet.crt").Handler(clientKubeletCert(serverConfig, serverConfig.Runtime.ClientKubeletKey, secretClient))
+	authed.Path(prefix + "/serving-kubelet.crt").Handler(servingKubeletCert(serverConfig, serverConfig.Runtime.ServingKubeletKey, serverConfig.Runtime))
+	authed.Path(prefix + "/client-kubelet.crt").Handler(clientKubeletCert(serverConfig, serverConfig.Runtime.ClientKubeletKey, serverConfig.Runtime))
 	authed.Path(prefix + "/client-kube-proxy.crt").Handler(fileHandler(serverConfig.Runtime.ClientKubeProxyCert, serverConfig.Runtime.ClientKubeProxyKey))
 	authed.Path(prefix + "/client-" + version.Program + "-controller.crt").Handler(fileHandler(serverConfig.Runtime.ClientK3sControllerCert, serverConfig.Runtime.ClientK3sControllerKey))
 	authed.Path(prefix + "/client-ca.crt").Handler(fileHandler(serverConfig.Runtime.ClientCA))
@@ -46,7 +41,7 @@ func router(serverConfig *config.Control, tunnel http.Handler, secretClient core
 
 	nodeAuthed := mux.NewRouter()
 	nodeAuthed.Use(authMiddleware(serverConfig, "system:nodes"))
-	nodeAuthed.Path(prefix + "/connect").Handler(tunnel)
+	nodeAuthed.Path(prefix + "/connect").Handler(serverConfig.Runtime.Tunnel)
 	nodeAuthed.NotFoundHandler = authed
 
 	serverAuthed := mux.NewRouter()
@@ -61,14 +56,23 @@ func router(serverConfig *config.Control, tunnel http.Handler, secretClient core
 	router := mux.NewRouter()
 	router.NotFoundHandler = serverAuthed
 	router.PathPrefix(staticURL).Handler(serveStatic(staticURL, staticDir))
-	router.Path("/cacerts").Handler(cacerts(ca))
+	router.Path("/cacerts").Handler(cacerts(serverConfig.Runtime.ServerCA))
 	router.Path("/ping").Handler(ping())
 
-	return router, nil
+	return router
 }
 
-func cacerts(ca []byte) http.Handler {
+func cacerts(serverCA string) http.Handler {
+	var ca []byte
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
+		if ca == nil {
+			var err error
+			ca, err = ioutil.ReadFile(serverCA)
+			if err != nil {
+				sendError(err, resp)
+				return
+			}
+		}
 		resp.Header().Set("content-type", "text/plain")
 		resp.Write(ca)
 	})
@@ -122,8 +126,17 @@ func getCACertAndKeys(caCertFile, caKeyFile, signingKeyFile string) ([]*x509.Cer
 	return caCert, caKey.(crypto.Signer), key.(crypto.Signer), nil
 }
 
-func servingKubeletCert(server *config.Control, keyFile string, secretClient coreclient.SecretClient) http.Handler {
+func servingKubeletCert(server *config.Control, keyFile string, runtime *config.ControlRuntime) http.Handler {
+	var secretClient coreclient.SecretClient
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
+		if secretClient == nil {
+			if runtime.Core == nil {
+				sendError(errors.New("runtime core not ready"), resp)
+				return
+			}
+			secretClient = runtime.Core.Core().V1().Secret()
+		}
+
 		if req.TLS == nil {
 			resp.WriteHeader(http.StatusNotFound)
 			return
@@ -175,8 +188,17 @@ func servingKubeletCert(server *config.Control, keyFile string, secretClient cor
 	})
 }
 
-func clientKubeletCert(server *config.Control, keyFile string, secretClient coreclient.SecretClient) http.Handler {
+func clientKubeletCert(server *config.Control, keyFile string, runtime *config.ControlRuntime) http.Handler {
+	var secretClient coreclient.SecretClient
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
+		if secretClient == nil {
+			if runtime.Core == nil {
+				sendError(errors.New("runtime core not ready"), resp)
+				return
+			}
+			secretClient = runtime.Core.Core().V1().Secret()
+		}
+
 		if req.TLS == nil {
 			resp.WriteHeader(http.StatusNotFound)
 			return
