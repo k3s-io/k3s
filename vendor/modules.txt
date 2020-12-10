@@ -1146,7 +1146,7 @@ golang.org/x/crypto/ssh/terminal
 # golang.org/x/mod v0.3.0
 golang.org/x/mod/module
 golang.org/x/mod/semver
-# golang.org/x/net v0.0.0-20201110031124-69a78807bb2b => golang.org/x/net v0.0.0-20190813141303-74dc4d7220e7
+# golang.org/x/net v0.0.0-20201110031124-69a78807bb2b => golang.org/x/net v0.0.0-20201110031124-69a78807bb2b
 ## explicit
 golang.org/x/net/bpf
 golang.org/x/net/context
@@ -2946,7 +2946,7 @@ vbom.ml/util/sortorder
 # github.com/opencontainers/runtime-spec => github.com/opencontainers/runtime-spec v1.0.3-0.20200728170252-4d89ac9fbff6
 # go.etcd.io/etcd => github.com/k3s-io/etcd v0.5.0-alpha.5.0.20201208200253-50621aee4aea
 # golang.org/x/crypto => golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2
-# golang.org/x/net => golang.org/x/net v0.0.0-20190813141303-74dc4d7220e7
+# golang.org/x/net => golang.org/x/net v0.0.0-20201110031124-69a78807bb2b
 # golang.org/x/sys => golang.org/x/sys v0.0.0-20190826190057-c7b8b68b1456
 # google.golang.org/genproto => google.golang.org/genproto v0.0.0-20200224152610-e50cd9704f63
 # google.golang.org/grpc => google.golang.org/grpc v1.26.0
