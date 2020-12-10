@@ -22,7 +22,7 @@ func MustParse(args []string) []string {
 func MustFindString(args []string, target string) string {
 	parser := &Parser{
 		After:         []string{},
-		FlagNames:     []string{"--config", "-c"},
+		FlagNames:     []string{},
 		EnvName:       version.ProgramUpper + "_CONFIG_FILE",
 		DefaultConfig: "/etc/rancher/" + version.Program + "/config.yaml",
 	}
