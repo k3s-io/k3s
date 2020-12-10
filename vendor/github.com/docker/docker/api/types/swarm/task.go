@@ -56,6 +56,12 @@ type Task struct {
 	DesiredState        TaskState           `json:",omitempty"`
 	NetworksAttachments []NetworkAttachment `json:",omitempty"`
 	GenericResources    []GenericResource   `json:",omitempty"`
+
+	// JobIteration is the JobIteration of the Service that this Task was
+	// spawned from, if the Service is a ReplicatedJob or GlobalJob. This is
+	// used to determine which Tasks belong to which run of the job. This field
+	// is absent if the Service mode is Replicated or Global.
+	JobIteration *Version `json:",omitempty"`
 }
 
 // TaskSpec represents the spec of a task.
@@ -127,6 +133,7 @@ type ResourceRequirements struct {
 type Placement struct {
 	Constraints []string              `json:",omitempty"`
 	Preferences []PlacementPreference `json:",omitempty"`
+	MaxReplicas uint64                `json:",omitempty"`
 
 	// Platforms stores all the platforms that the image can run on.
 	// This field is used in the platform filter for scheduling. If empty,
