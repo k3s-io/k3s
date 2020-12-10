@@ -2,7 +2,7 @@
 set -e
 set -x
 
-REPO="https://api.github.com/repos/rancher/k3s-upgrade/dispatches"
+REPO="https://api.github.com/repos/k3s-io/k3s-upgrade/dispatches"
 
 # send dispatch event to REPO
 curl -XPOST -u "${PAT_USERNAME}:${PAT_TOKEN}" \
