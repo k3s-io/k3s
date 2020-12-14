@@ -3,7 +3,7 @@
 # ---
 
 port-used() {
-    (cat </dev/null >/dev/tcp/127.0.0.1/$1) 2>/dev/null
+    netstat -tuna | grep -q ":$1 "
 }
 export -f port-used
 
@@ -133,16 +133,18 @@ dump-logs() {
         [ "$name" ] || continue
         mkdir -p $node/logs
         local hostname=$(docker exec $name hostname)
-        docker exec $server kubectl describe node/$hostname >$node/logs/kubectl-describe-node.txt
-        docker cp $name:/var/lib/rancher/k3s/agent/containerd/containerd.log $node/logs/containerd.log 2>/dev/null
         docker logs $name >$node/logs/system.log 2>&1
-        docker exec $name crictl pods >$node/logs/crictl-pods.txt
-        docker exec $name crictl ps -a >$node/logs/crictl-ps.txt
-        docker exec $name crictl ps -a -o json >$node/metadata/crictl-ps.json
-        for container in $(jq -r '.containers[].id' <$node/metadata/crictl-ps.json); do
-            local cname=$(jq -r '.containers[] | select(.id == "'$container'") | .metadata.name' <$node/metadata/crictl-ps.json)
-            docker exec $name crictl logs $container >$node/logs/$cname-$container.log 2>&1
-        done
+        if [[ $name == k3s-* ]]; then
+            docker exec $server kubectl describe node/$hostname >$node/logs/kubectl-describe-node.txt
+            docker cp $name:/var/lib/rancher/k3s/agent/containerd/containerd.log $node/logs/containerd.log 2>/dev/null
+            docker exec $name crictl pods >$node/logs/crictl-pods.txt
+            docker exec $name crictl ps -a >$node/logs/crictl-ps.txt
+            docker exec $name crictl ps -a -o json >$node/metadata/crictl-ps.json
+            for container in $(jq -r '.containers[].id' <$node/metadata/crictl-ps.json); do
+                local cname=$(jq -r '.containers[] | select(.id == "'$container'") | .metadata.name' <$node/metadata/crictl-ps.json)
+                docker exec $name crictl logs $container >$node/logs/$cname-$container.log 2>&1
+            done
+        fi
         for log in $node/logs/*.log; do
             echo
             echo "#- Tail: $log"
@@ -287,8 +289,8 @@ test-setup() {
 
     mkdir -p $TEST_DIR/metadata
     if [ "$LABEL" ]; then
-        exec > >(awk -W interactive "{ printf \"[\033[36m${LABEL}\033[m] %s\n\", \$0 }") \
-            2> >(awk -W interactive "{ printf \"[\033[35m${LABEL}\033[m] %s\n\", \$0 }" >&2)
+        exec > >(awk "{ printf \"[\033[36m${LABEL}\033[m] %s\n\", \$0; fflush() }") \
+            2> >(awk "{ printf \"[\033[35m${LABEL}\033[m] %s\n\", \$0; fflush() }" >&2)
         echo "$LABEL" >$TEST_DIR/metadata/label
     fi
 
