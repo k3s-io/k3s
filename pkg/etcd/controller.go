@@ -13,6 +13,7 @@ import (
 const (
 	nodeID       = "etcd.k3s.cattle.io/node-name"
 	nodeAddress  = "etcd.k3s.cattle.io/node-address"
+	master       = "node-role.kubernetes.io/master"
 	controlPlane = "node-role.kubernetes.io/control-plane"
 	etcdRole     = "node-role.kubernetes.io/etcd"
 )
@@ -69,6 +70,7 @@ func (h *handler) handleSelf(node *v1.Node) (*v1.Node, error) {
 	node.Annotations[nodeID] = h.etcd.name
 	node.Annotations[nodeAddress] = h.etcd.address
 	node.Labels[etcdRole] = "true"
+	node.Labels[master] = "true"
 	node.Labels[controlPlane] = "true"
 
 	return h.nodeController.Update(node)
