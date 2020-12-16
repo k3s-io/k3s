@@ -2,6 +2,8 @@ FROM golang:1.15.5-alpine3.12
 
 COPY --from=plugins/manifest:1.2.3 /bin/* /bin/
 
+RUN apk -U --no-cache add bash
+
 ARG DOCKER_USERNAME
 ENV DOCKER_USERNAME $DOCKER_USERNAME
 
