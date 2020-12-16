@@ -18,3 +18,17 @@ func MustParse(args []string) []string {
 	}
 	return result
 }
+
+func MustFindString(args []string, target string) string {
+	parser := &Parser{
+		After:         []string{},
+		FlagNames:     []string{},
+		EnvName:       version.ProgramUpper + "_CONFIG_FILE",
+		DefaultConfig: "/etc/rancher/" + version.Program + "/config.yaml",
+	}
+	result, err := parser.FindString(args, target)
+	if err != nil {
+		logrus.Fatal(err)
+	}
+	return result
+}
