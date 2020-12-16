@@ -303,13 +303,15 @@ platform:
 
 steps:
 - name: dispatch
-  image: curlimages/curl:7.69.1
+  image: curlimages/curl:7.74.0
+  user: root
   environment:
     PAT_USERNAME:
       from_secret: pat_username
     PAT_TOKEN:
       from_secret: github_token
   commands:
+    - apk -U --no-cache add bash
     - scripts/dispatch
 
 trigger:
