@@ -10,6 +10,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/rancher/k3s/pkg/cli/cmds"
+	"github.com/rancher/k3s/pkg/configfilearg"
 	"github.com/rancher/k3s/pkg/data"
 	"github.com/rancher/k3s/pkg/datadir"
 	"github.com/rancher/k3s/pkg/dataverify"
@@ -21,18 +22,19 @@ import (
 )
 
 func main() {
-	if runCLIs() {
+	dataDir := findDataDir()
+	if runCLIs(dataDir) {
 		return
 	}
 
 	app := cmds.NewApp()
 	app.Commands = []cli.Command{
-		cmds.NewServerCommand(wrap(version.Program+"-server", os.Args)),
-		cmds.NewAgentCommand(wrap(version.Program+"-agent", os.Args)),
-		cmds.NewKubectlCommand(externalCLIAction("kubectl")),
-		cmds.NewCRICTL(externalCLIAction("crictl")),
-		cmds.NewCtrCommand(externalCLIAction("ctr")),
-		cmds.NewCheckConfigCommand(externalCLIAction("check-config")),
+		cmds.NewServerCommand(wrap(version.Program+"-server", dataDir, os.Args)),
+		cmds.NewAgentCommand(wrap(version.Program+"-agent", dataDir, os.Args)),
+		cmds.NewKubectlCommand(externalCLIAction("kubectl", dataDir)),
+		cmds.NewCRICTL(externalCLIAction("crictl", dataDir)),
+		cmds.NewCtrCommand(externalCLIAction("ctr", dataDir)),
+		cmds.NewCheckConfigCommand(externalCLIAction("check-config", dataDir)),
 	}
 
 	err := app.Run(os.Args)
@@ -41,13 +43,33 @@ func main() {
 	}
 }
 
-func runCLIs() bool {
+func findDataDir() string {
+	for i, arg := range os.Args {
+		for _, flagName := range []string{"--data-dir", "-d"} {
+			if flagName == arg {
+				if len(os.Args) > i+1 {
+					return os.Args[i+1]
+				}
+			} else if strings.HasPrefix(arg, flagName+"=") {
+				return arg[len(flagName)+1:]
+			}
+		}
+	}
+	dataDir := configfilearg.MustFindString(os.Args, "data-dir")
+	if dataDir == "" {
+		dataDir = datadir.DefaultDataDir
+		logrus.Debug("Using default data dir in self-extracting wrapper")
+	}
+	return dataDir
+}
+
+func runCLIs(dataDir string) bool {
 	if os.Getenv("CRI_CONFIG_FILE") == "" {
-		os.Setenv("CRI_CONFIG_FILE", datadir.DefaultDataDir+"/agent/etc/crictl.yaml")
+		os.Setenv("CRI_CONFIG_FILE", dataDir+"/agent/etc/crictl.yaml")
 	}
 	for _, cmd := range []string{"kubectl", "ctr", "crictl"} {
 		if filepath.Base(os.Args[0]) == cmd {
-			if err := externalCLI(cmd, "", os.Args[1:]); err != nil {
+			if err := externalCLI(cmd, dataDir, os.Args[1:]); err != nil {
 				logrus.Fatal(err)
 			}
 			return true
@@ -56,9 +78,9 @@ func runCLIs() bool {
 	return false
 }
 
-func externalCLIAction(cmd string) func(cli *cli.Context) error {
+func externalCLIAction(cmd, dataDir string) func(cli *cli.Context) error {
 	return func(cli *cli.Context) error {
-		return externalCLI(cmd, cli.String("data-dir"), cli.Args())
+		return externalCLI(cmd, dataDir, cli.Args())
 	}
 }
 
@@ -70,14 +92,14 @@ func externalCLI(cli, dataDir string, args []string) error {
 	return stageAndRun(dataDir, cli, append([]string{cli}, args...))
 }
 
-func wrap(cmd string, args []string) func(ctx *cli.Context) error {
+func wrap(cmd string, dataDir string, args []string) func(ctx *cli.Context) error {
 	return func(ctx *cli.Context) error {
-		return stageAndRunCLI(ctx, cmd, args)
+		return stageAndRunCLI(ctx, cmd, dataDir, args)
 	}
 }
 
-func stageAndRunCLI(cli *cli.Context, cmd string, args []string) error {
-	dataDir, err := datadir.Resolve(cli.String("data-dir"))
+func stageAndRunCLI(cli *cli.Context, cmd string, dataDir string, args []string) error {
+	dataDir, err := datadir.Resolve(dataDir)
 	if err != nil {
 		return err
 	}
