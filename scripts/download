@@ -13,6 +13,15 @@ mkdir -p ${CHARTS_DIR}
 curl --compressed -sfL https://github.com/rancher/k3s-root/releases/download/${ROOT_VERSION}/k3s-root-${ARCH}.tar | tar xf -
 
 TRAEFIK_FILE=traefik-${TRAEFIK_VERSION}.tgz
-curl -sfL https://kubernetes-charts.storage.googleapis.com/${TRAEFIK_FILE} -o ${CHARTS_DIR}/${TRAEFIK_FILE}
+TRAEFIK_URL=https://kubernetes-charts.storage.googleapis.com/${TRAEFIK_FILE}
+
+echo "Downloading Traefik Helm chart from ${TRAEFIK_URL}"
+curl -sfL ${TRAEFIK_URL} -o ${CHARTS_DIR}/${TRAEFIK_FILE}
+code=$?
+
+if [ $code -ne 0 ]; then
+  echo "Error: Failed to download Traefik Helm chart!"
+  exit $code
+fi
 
 cp scripts/wg-add.sh bin/aux/
