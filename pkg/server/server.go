@@ -60,7 +60,7 @@ func StartServer(ctx context.Context, config *Config) error {
 		return errors.Wrap(err, "starting kubernetes")
 	}
 
-	config.ControlConfig.Runtime.Handler = router(&config.ControlConfig)
+	config.ControlConfig.Runtime.Handler = router(ctx, config)
 
 	go startOnAPIServerReady(ctx, config)
 
