@@ -1,0 +1,15 @@
+#!/bin/bash
+set -e
+
+# Ignore vendor folder and check file names as well
+# Note: ignore "ba" in https://github.com/k3s-io/k3s/blob/4317a91/scripts/provision/vagrant#L54
+codespell --skip=.git,./vendor --check-filenames --ignore-words-list=ba
+
+res=`echo $?`
+if [ "$res" = "0" ]; then
+    echo "Codespell found no problems"
+else
+    echo "Codespell found one or more problems"
+fi
+
+exit $res
