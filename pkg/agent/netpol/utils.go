@@ -31,7 +31,7 @@ const (
 
 	// DefaultMaxElem Default OptionMaxElem value.
 	DefaultMaxElem = "65536"
-	// DefaultHasSize Defaul OptionHashSize value.
+	// DefaultHasSize Default OptionHashSize value.
 	DefaultHasSize = "1024"
 
 	// TypeHashIP The hash:ip set type uses a hash to store IP host addresses (default) or network addresses. Zero valued IP address cannot be stored in a hash:ip type of set.
@@ -96,7 +96,7 @@ type IPSet struct {
 	isIpv6    bool
 }
 
-// Set reprensent a ipset set entry.
+// Set represent a ipset set entry.
 type Set struct {
 	Parent  *IPSet
 	Name    string
@@ -257,7 +257,7 @@ func (entry *Entry) Del() error {
 	return entry.Set.Parent.Save()
 }
 
-// Test wether an entry is in a set or not. Exit status number is zero if the
+// Test whether an entry is in a set or not. Exit status number is zero if the
 // tested entry is in the set and nonzero if it is missing from the set.
 func (set *Set) Test(testOptions ...string) (bool, error) {
 	_, err := set.Parent.run(append([]string{"test", set.name()}, testOptions...)...)
@@ -388,7 +388,7 @@ func (ipset *IPSet) Save() error {
 // stdin. Please note, existing sets and elements are not erased by restore
 // unless specified so in the restore file. All commands are allowed in restore
 // mode except list, help, version, interactive mode and restore itself.
-// Send formated ipset.sets into stdin of "ipset restore" command.
+// Send formatted ipset.sets into stdin of "ipset restore" command.
 func (ipset *IPSet) Restore() error {
 	stdin := bytes.NewBufferString(buildIPSetRestore(ipset))
 	_, err := ipset.runWithStdin(stdin, "restore", "-exist")

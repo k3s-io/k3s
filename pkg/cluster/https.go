@@ -20,7 +20,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// newListener returns a new TCP listener and HTTP reqest handler using dynamiclistener.
+// newListener returns a new TCP listener and HTTP request handler using dynamiclistener.
 // dynamiclistener will use the cluster's Server CA to sign the dynamically generate certificate,
 // and will sync the certs into the Kubernetes datastore, with a local disk cache.
 func (c *Cluster) newListener(ctx context.Context) (net.Listener, http.Handler, error) {
