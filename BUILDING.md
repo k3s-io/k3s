@@ -20,7 +20,7 @@ To build the binaries using without running linting (ie; if you have uncommitted
 SKIP_VALIDATE=true make
 ```
 
-If you make any changes to go.mod and want to update the vendored modules, you should run the following before runnining `make`:
+If you make any changes to go.mod and want to update the vendored modules, you should run the following before running `make`:
 ```bash
 go mod vendor && go mod tidy
 ```
