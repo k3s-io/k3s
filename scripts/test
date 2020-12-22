@@ -2,6 +2,7 @@
 set -e -x
 cd $(dirname $0)/..
 
+. ./scripts/codespell.sh
 . ./scripts/version.sh
 . ./scripts/test-helpers
 

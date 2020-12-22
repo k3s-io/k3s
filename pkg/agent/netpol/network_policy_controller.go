@@ -710,7 +710,7 @@ func (npc *NetworkPolicyController) syncPodFirewallChains(version string) (map[s
 	for _, pod := range *ingressNetworkPolicyEnabledPods {
 
 		// below condition occurs when we get trasient update while removing or adding pod
-		// subseqent update will do the correct action
+		// subsequent update will do the correct action
 		if len(pod.ip) == 0 || pod.ip == "" {
 			continue
 		}
@@ -834,7 +834,7 @@ func (npc *NetworkPolicyController) syncPodFirewallChains(version string) (map[s
 	for _, pod := range *egressNetworkPolicyEnabledPods {
 
 		// below condition occurs when we get trasient update while removing or adding pod
-		// subseqent update will do the correct action
+		// subsequent update will do the correct action
 		if len(pod.ip) == 0 || pod.ip == "" {
 			continue
 		}
@@ -1544,7 +1544,7 @@ func (npc *NetworkPolicyController) Cleanup() {
 		return
 	}
 
-	// TODO: need a better way to delte rule with out using number
+	// TODO: need a better way to delete rule with out using number
 	var realRuleNo int
 	for i, rule := range forwardChainRules {
 		if strings.Contains(rule, kubePodFirewallChainPrefix) {
@@ -1560,7 +1560,7 @@ func (npc *NetworkPolicyController) Cleanup() {
 		return
 	}
 
-	// TODO: need a better way to delte rule with out using number
+	// TODO: need a better way to delete rule with out using number
 	realRuleNo = 0
 	for i, rule := range forwardChainRules {
 		if strings.Contains(rule, kubePodFirewallChainPrefix) {

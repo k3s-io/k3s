@@ -213,7 +213,7 @@ func validateCgroupsV2() error {
 	}
 	for _, controller := range []string{"cpu", "cpuset", "memory"} {
 		if _, ok := m[controller]; !ok {
-			return fmt.Errorf("faild to find %s cgroup (v2)", controller)
+			return fmt.Errorf("failed to find %s cgroup (v2)", controller)
 		}
 	}
 	return nil

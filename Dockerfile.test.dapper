@@ -1,6 +1,6 @@
 FROM golang:1.15.5-alpine3.12
 
-RUN apk -U --no-cache add bash git gcc musl-dev docker curl jq coreutils python2 openssl
+RUN apk -U --no-cache add bash git gcc musl-dev docker curl jq coreutils python2 openssl py-pip
 
 ENV SONOBUOY_VERSION 0.19.0
 
@@ -12,7 +12,8 @@ RUN OS=linux; \
       tar -xzf - -C /usr/local/bin; \
     fi; \
     curl -fsL https://storage.googleapis.com/kubernetes-release/release/${RELEASE}/bin/linux/${ARCH}/kubectl -o /usr/local/bin/kubectl; \
-    chmod a+x /usr/local/bin/kubectl
+    chmod a+x /usr/local/bin/kubectl; \
+    pip install codespell
 
 ENV TEST_CLEANUP true
 
