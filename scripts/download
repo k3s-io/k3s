@@ -18,7 +18,7 @@ done
 mkdir -p bin/aux && rm bin/mount && ln -sf ../busybox bin/aux/mount
 
 TRAEFIK_FILE=traefik-${TRAEFIK_VERSION}.tgz
-TRAEFIK_URL=https://kubernetes-charts.storage.googleapis.com/${TRAEFIK_FILE}
+TRAEFIK_URL=https://charts.helm.sh/stable/packages/${TRAEFIK_FILE}
 
 echo "Downloading Traefik Helm chart from ${TRAEFIK_URL}"
 curl -sfL ${TRAEFIK_URL} -o ${CHARTS_DIR}/${TRAEFIK_FILE}
