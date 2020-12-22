@@ -66,7 +66,7 @@ func (c *Cluster) start(ctx context.Context) error {
 		}
 		return c.managedDB.Reset(ctx)
 	}
-	// removing the reset file and ignore error if the file doesnt exist
+	// removing the reset file and ignore error if the file doesn't exist
 	os.Remove(resetFile)
 
 	return c.managedDB.Start(ctx, c.clientAccessInfo)
