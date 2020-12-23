@@ -140,9 +140,9 @@ func servingKubeletCert(server *config.Control, keyFile string, auth nodePassBoo
 			return
 		}
 
-		nodeName, code, err := auth(req)
-		if err != nil || code != 0 {
-			sendError(err, resp, code)
+		nodeName, errCode, err := auth(req)
+		if err != nil {
+			sendError(err, resp, errCode)
 			return
 		}
 
@@ -188,9 +188,9 @@ func clientKubeletCert(server *config.Control, keyFile string, auth nodePassBoot
 			return
 		}
 
-		nodeName, code, err := auth(req)
-		if err != nil || code != 0 {
-			sendError(err, resp, code)
+		nodeName, errCode, err := auth(req)
+		if err != nil {
+			sendError(err, resp, errCode)
 			return
 		}
 
@@ -271,19 +271,19 @@ func serveStatic(urlPrefix, staticDir string) http.Handler {
 }
 
 func sendError(err error, resp http.ResponseWriter, status ...int) {
-	code := http.StatusInternalServerError
-	if len(status) == 1 && status[0] != 0 {
+	var code int
+	if len(status) == 1 {
 		code = status[0]
 	}
-	if err == nil {
-		err = errors.New("unknown")
+	if code == 0 || code == http.StatusOK {
+		code = http.StatusInternalServerError
 	}
 	logrus.Error(err)
 	resp.WriteHeader(code)
 	resp.Write([]byte(err.Error()))
 }
 
-// nodePassBootstrapper returns a node name, http code, and error
+// nodePassBootstrapper returns a node name, or http error code and error
 type nodePassBootstrapper func(req *http.Request) (string, int, error)
 
 func passwordBootstrap(ctx context.Context, config *Config) nodePassBootstrapper {
@@ -314,7 +314,7 @@ func passwordBootstrap(ctx context.Context, config *Config) nodePassBootstrapper
 			return "", http.StatusForbidden, err
 		}
 
-		return nodeName, 0, nil
+		return nodeName, http.StatusOK, nil
 	})
 }
 
@@ -361,5 +361,5 @@ func verifyLocalPassword(ctx context.Context, config *Config, once *sync.Once, n
 
 	logrus.Debugf("password verified locally for node '%s'", nodeName)
 
-	return nodeName, 0, nil
+	return nodeName, http.StatusOK, nil
 }
