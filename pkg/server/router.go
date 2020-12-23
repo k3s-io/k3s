@@ -329,7 +329,7 @@ func verifyLocalPassword(ctx context.Context, config *Config, once *sync.Once, n
 
 	passBytes, err := ioutil.ReadFile(nodePasswordFile)
 	if err != nil {
-		return "", http.StatusInternalServerError, errors.Wrap(err, "unabled to read node password file")
+		return "", http.StatusInternalServerError, errors.Wrap(err, "unable to read node password file")
 	}
 
 	password := strings.TrimSpace(string(passBytes))
