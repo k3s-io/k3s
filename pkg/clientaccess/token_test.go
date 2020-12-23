@@ -27,7 +27,7 @@ var (
 // that is trusted by the OS CA bundle. This test must be run first, since it mucks with the system root certs.
 func TestTrustedCA(t *testing.T) {
 	assert := assert.New(t)
-	server := newTLSServer(t, defaultUsername, defaultPassword)
+	server := newTLSServer(t, defaultUsername, defaultPassword, false)
 	defer server.Close()
 
 	testInfo := &Info{
@@ -74,15 +74,13 @@ func TestTrustedCA(t *testing.T) {
 	res, err := Get("/v1-k3s/server-bootstrap", testInfo)
 	assert.NoError(err)
 	assert.NotEmpty(res)
-
-	os.Unsetenv("SSL_CERT_FILE")
 }
 
 // TestUntrustedCA confirms that tokens are validated when the server uses a self-signed cert
 // that is NOT trusted by the OS CA bundle.
 func TestUntrustedCA(t *testing.T) {
 	assert := assert.New(t)
-	server := newTLSServer(t, defaultUsername, defaultPassword)
+	server := newTLSServer(t, defaultUsername, defaultPassword, false)
 	defer server.Close()
 
 	testInfo := &Info{
@@ -140,7 +138,7 @@ func TestInvalidServers(t *testing.T) {
 // TestInvalidTokens tests that tokens which are empty, invalid, or incorrect are properly rejected
 func TestInvalidTokens(t *testing.T) {
 	assert := assert.New(t)
-	server := newTLSServer(t, defaultUsername, defaultPassword)
+	server := newTLSServer(t, defaultUsername, defaultPassword, false)
 	defer server.Close()
 
 	testCases := []struct {
@@ -172,8 +170,7 @@ func TestInvalidTokens(t *testing.T) {
 // TestInvalidCredentials tests that tokens which don't have valid credentials are rejected
 func TestInvalidCredentials(t *testing.T) {
 	assert := assert.New(t)
-
-	server := newTLSServer(t, defaultUsername, defaultPassword)
+	server := newTLSServer(t, defaultUsername, defaultPassword, false)
 	defer server.Close()
 
 	testInfo := &Info{
@@ -208,6 +205,21 @@ func TestInvalidCredentials(t *testing.T) {
 	}
 }
 
+// TestWrongCert tests that errors are returned when the server's cert isn't issued by its CA
+func TestWrongCert(t *testing.T) {
+	assert := assert.New(t)
+	server := newTLSServer(t, defaultUsername, defaultPassword, true)
+	defer server.Close()
+
+	info, err := ParseAndValidateToken(server.URL, defaultPassword)
+	assert.Error(err)
+	assert.Nil(info)
+
+	info, err = ParseAndValidateTokenForUser(server.URL, defaultPassword, defaultUsername)
+	assert.Error(err)
+	assert.Nil(info)
+}
+
 // TestConnectionFailures tests that connections are timed out properly
 func TestConnectionFailures(t *testing.T) {
 	testDuration := (defaultClientTimeout * 2) + time.Second
@@ -235,9 +247,70 @@ func TestConnectionFailures(t *testing.T) {
 	}
 }
 
+// TestUserPass tests that usernames and passwords are parsed or not parsed from token strings
+func TestUserPass(t *testing.T) {
+	assert := assert.New(t)
+	testCases := []struct {
+		token    string
+		username string
+		password string
+		expect   bool
+	}{
+		{"K10XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX::username:password", "username", "password", true},
+		{"password", "", "password", true},
+		{"K10X::x", "", "", false},
+	}
+
+	for _, testCase := range testCases {
+		username, password, ok := ParseUsernamePassword(testCase.token)
+		assert.Equal(testCase.expect, ok, testCase)
+		if ok {
+			assert.Equal(testCase.username, username, testCase)
+			assert.Equal(testCase.password, password, testCase)
+		}
+	}
+}
+
+// TestParseAndGet tests URL handling along some hard-to-reach code paths
+func TestParseAndGet(t *testing.T) {
+	assert := assert.New(t)
+	server := newTLSServer(t, defaultUsername, defaultPassword, false)
+	defer server.Close()
+
+	testCases := []struct {
+		extraBasePre  string
+		extraBasePost string
+		path          string
+		parseFail     bool
+		getFail       bool
+	}{
+		{"/", "", "/cacerts", false, false},
+		{"/%2", "", "/cacerts", true, false},
+		{"", "", "/%2", false, true},
+		{"", "/%2", "/cacerts", false, true},
+	}
+
+	for _, testCase := range testCases {
+		info, err := ParseAndValidateTokenForUser(server.URL+testCase.extraBasePre, defaultPassword, defaultUsername)
+		// Check for expected error when parsing server + token
+		if testCase.parseFail {
+			assert.Error(err, testCase)
+		} else if assert.NoError(err, testCase) {
+			info.BaseURL = server.URL + testCase.extraBasePost
+			_, err := Get(testCase.path, info)
+			// Check for expected error when making Get request
+			if testCase.getFail {
+				assert.Error(err, testCase)
+			} else {
+				assert.NoError(err, testCase)
+			}
+		}
+	}
+}
+
 // newTLSServer returns a HTTPS server that mocks the basic functionality required to validate K3s join tokens.
 // Each call to this function will generate new CA and server certificates unique to the returned server.
-func newTLSServer(t *testing.T, username, password string) *httptest.Server {
+func newTLSServer(t *testing.T, username, password string, sendWrongCA bool) *httptest.Server {
 	var server *httptest.Server
 	server = httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/v1-k3s/server-bootstrap" {
@@ -290,6 +363,16 @@ func newTLSServer(t *testing.T, username, password string) *httptest.Server {
 	server.TLS.Certificates = []tls.Certificate{
 		{Certificate: [][]byte{serverCert.Raw}, Leaf: serverCert, PrivateKey: caKey},
 		{Certificate: [][]byte{caCert.Raw}, Leaf: caCert},
+	}
+
+	if sendWrongCA {
+		// Create new CA cert and key and use that as the CA cert instead of the one that actually signed the server cert
+		badCert, _, err := factory.GenCA()
+		if err != nil {
+			t.Fatal(err)
+		}
+		server.TLS.Certificates[1].Certificate[0] = badCert.Raw
+		server.TLS.Certificates[1].Leaf = badCert
 	}
 
 	server.StartTLS()
