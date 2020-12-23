@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	defaultClientTimeout = 20 * time.Second
+	defaultClientTimeout = 10 * time.Second
 
 	defaultClient = &http.Client{
 		Timeout: defaultClientTimeout,
@@ -32,8 +32,9 @@ var (
 )
 
 const (
-	tokenPrefix = "K10"
-	tokenFormat = "%s%s::%s:%s"
+	tokenPrefix  = "K10"
+	tokenFormat  = "%s%s::%s:%s"
+	caHashLength = sha256.Size * 2
 )
 
 type OverrideURLCallback func(config []byte) (*url.URL, error)
@@ -63,7 +64,8 @@ func ParseAndValidateToken(server string, token string) (*Info, error) {
 		return nil, err
 	}
 
-	if info.caHash != "" {
+	// only verify CA hash if the server cert is not trusted by the OS CA bundle
+	if len(info.CACerts) > 0 && len(info.caHash) > 0 {
 		if err := info.validateCAHash(); err != nil {
 			return nil, err
 		}
@@ -86,7 +88,8 @@ func ParseAndValidateTokenForUser(server string, token string, username string) 
 		return nil, err
 	}
 
-	if info.caHash != "" {
+	// only verify CA hash if the server cert is not trusted by the OS CA bundle
+	if len(info.CACerts) > 0 && len(info.caHash) > 0 {
 		if err := info.validateCAHash(); err != nil {
 			return nil, err
 		}
@@ -126,6 +129,10 @@ func ParseUsernamePassword(token string) (string, string, bool) {
 func parseToken(token string) (*Info, error) {
 	var info = &Info{}
 
+	if len(token) == 0 {
+		return nil, errors.New("token must not be empty")
+	}
+
 	if !strings.HasPrefix(token, tokenPrefix) {
 		token = fmt.Sprintf(tokenFormat, tokenPrefix, "", "", token)
 	}
@@ -136,13 +143,17 @@ func parseToken(token string) (*Info, error) {
 	parts := strings.SplitN(token, "::", 2)
 	token = parts[0]
 	if len(parts) > 1 {
+		hashLen := len(parts[0])
+		if hashLen > 0 && hashLen != caHashLength {
+			return nil, errors.New("invalid token CA hash length")
+		}
 		info.caHash = parts[0]
 		token = parts[1]
 	}
 
 	parts = strings.SplitN(token, ":", 2)
-	if len(parts) != 2 {
-		return nil, fmt.Errorf("invalid token format")
+	if len(parts) != 2 || len(parts[1]) == 0 {
+		return nil, errors.New("invalid token format")
 	}
 
 	info.Username = parts[0]
