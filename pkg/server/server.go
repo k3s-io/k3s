@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	net2 "net"
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -203,10 +204,10 @@ func coreControllers(ctx context.Context, sc *Context, config *Config) error {
 
 func stageFiles(ctx context.Context, sc *Context, controlConfig *config.Control) error {
 	dataDir := filepath.Join(controlConfig.DataDir, "static")
-	if err := static.Stage(dataDir); err != nil {
+	stageTraefik := doStageTraefik(sc)
+	if err := static.Stage(dataDir, stageTraefik); err != nil {
 		return err
 	}
-
 	dataDir = filepath.Join(controlConfig.DataDir, "manifests")
 	templateVars := map[string]string{
 		"%{CLUSTER_DNS}%":                controlConfig.ClusterDNS.String(),
@@ -214,11 +215,56 @@ func stageFiles(ctx context.Context, sc *Context, controlConfig *config.Control)
 		"%{DEFAULT_LOCAL_STORAGE_PATH}%": controlConfig.DefaultLocalStoragePath,
 	}
 
-	if err := deploy.Stage(dataDir, templateVars, controlConfig.Skips); err != nil {
+	skip := controlConfig.Skips
+	if !stageTraefik {
+		skip["traefik"] = true
+		skip["traefik-crd"] = true
+	}
+	if err := deploy.Stage(dataDir, templateVars, skip); err != nil {
 		return err
 	}
 
 	return deploy.WatchFiles(ctx, sc.Apply, sc.K3s.K3s().V1().Addon(), controlConfig.Disables, dataDir)
+}
+
+// doStageTraefik checks on running traefik HelmChart version and traefik
+// HelmChartConfig.
+// Traefik should skip stage when it is v1 and have existing customize traefik
+// HelmChartConfig due to the incompatible configuration from v1 to v2.
+// It will progress stage on upgrade or restart when no customized traefik
+// HelmChartConfig exists on the cluster.
+func doStageTraefik(sc *Context) bool {
+	if isHelmChartTraefikV1(sc) && isHelmChartConfigExist(sc, "traefik") {
+		return false
+	}
+	return true
+}
+
+// isHelmChartTraefikV1 checks the chart with "traefik-1." prefix.
+func isHelmChartTraefikV1(sc *Context) bool {
+	prefix := "traefik-1."
+	helmChart, err := sc.Helm.Helm().V1().HelmChart().Get(metav1.NamespaceSystem, "traefik", metav1.GetOptions{})
+	if err != nil {
+		logrus.WithError(err).Info("Not find traefik")
+		return false
+	}
+	chart := path.Base(helmChart.Spec.Chart)
+	if strings.HasPrefix(chart, prefix) {
+		logrus.WithField("chart", chart).Info("Found traefik v1 running")
+		return true
+	}
+	return false
+}
+
+func isHelmChartConfigExist(sc *Context, name string) bool {
+	helmChartConfig := sc.Helm.Helm().V1().HelmChartConfig()
+	_, err := helmChartConfig.Get(metav1.NamespaceSystem, name, metav1.GetOptions{})
+	if err != nil {
+		logrus.WithField("name", name).Info("Not find HelmChartConfig")
+		return false
+	}
+	logrus.WithField("name", name).Info("Found HelmChartConfig ")
+	return true
 }
 
 func HomeKubeConfig(write, rootless bool) (string, error) {

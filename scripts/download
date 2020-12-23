@@ -5,23 +5,93 @@ cd $(dirname $0)/..
 . ./scripts/version.sh
 
 ROOT_VERSION=v0.8.1
-TRAEFIK_VERSION=1.81.0
+TRAEFIK_VERSION=9.12.3  # appVersion: 2.3.6
 CHARTS_DIR=build/static/charts
 
 mkdir -p ${CHARTS_DIR}
 
 curl --compressed -sfL https://github.com/k3s-io/k3s-root/releases/download/${ROOT_VERSION}/k3s-root-${ARCH}.tar | tar xf -
 
+setup_tmp() {
+    TMP_DIR=$(mktemp -d --tmpdir=${CHARTS_DIR})
+    cleanup() {
+        code=$?
+        set +e
+        trap - EXIT
+        rm -rf ${TMP_DIR}
+        exit $code
+    }
+    trap cleanup INT EXIT
+}
+
+download_and_package_traefik () {
+  echo "Downloading Traefik Helm chart from ${TRAEFIK_URL}"
+  curl -sfL ${TRAEFIK_URL} -o ${TMP_DIR}/${TRAEFIK_FILE}
+  code=$?
+
+  if [ $code -ne 0 ]; then
+    echo "Error: Failed to download Traefik Helm chart!"
+    exit $code
+  fi
+
+  echo "Uncompress ${TMP_DIR}/${TRAEFIK_FILE}"
+  tar xf ${TMP_DIR}/${TRAEFIK_FILE} -C ${TMP_DIR}
+
+  echo "Prepare traefik CRD"
+  TRAEFIK_TMP_CHART=${TMP_DIR}/traefik
+  TRAEFIK_TMP_CRD=${TRAEFIK_TMP_CHART}-crd
+
+  # Collect information on chart
+  name=$(cat ${TRAEFIK_TMP_CHART}/Chart.yaml | yq r - 'name')
+  api_version=$(cat ${TRAEFIK_TMP_CHART}/Chart.yaml | yq r - 'apiVersion')
+  chart_version=$(cat ${TRAEFIK_TMP_CHART}/Chart.yaml | yq r - 'version')
+
+  # Collect information on CRDs
+  crd_apis=()
+  for crd_yaml in ${TRAEFIK_TMP_CHART}/crds/*; do
+    crd_group=$(yq r ${crd_yaml} 'spec.group')
+    crd_kind=$(yq r ${crd_yaml} 'spec.names.kind')
+    crd_version=$(yq r ${crd_yaml} 'spec.version')
+    if [[ -z "$crd_version" ]]; then
+      crd_version=$(yq r ${crd_yaml} 'spec.versions[0].name')
+    fi
+    crd_apis+=("${crd_group}/${crd_version}/${crd_kind}")
+  done
+
+  set_found_crd=$(
+  for crd in ${crd_apis[@]}; do
+    echo "# {{- set \$found \"${crd}\" false -}}"
+  done
+  )
+
+  # Copy base template and apply variables to the template
+  mkdir -p ${TRAEFIK_TMP_CRD}
+  cp -R ./scripts/chart-templates/crd-base/* ${TRAEFIK_TMP_CRD}
+  for template_file in $(find ${TRAEFIK_TMP_CRD} -type f); do
+    # Applies any environment variables currently set onto your template file
+    eval "echo \"$(sed 's/"/\\"/g' ${template_file})\"" > ${template_file}
+  done
+
+  # Move anything from ${f}/charts-crd/overlay-upstream to the main chart
+  cp -R ${TRAEFIK_TMP_CRD}/overlay-upstream/* ${TRAEFIK_TMP_CHART}
+  rm -rf ${TRAEFIK_TMP_CRD}/overlay-upstream
+
+  # Move CRDs from main chart to CRD chart
+  mkdir -p ${TRAEFIK_TMP_CRD}/templates
+  mv ${TRAEFIK_TMP_CHART}/crds/* ${TRAEFIK_TMP_CRD}/templates
+  rm -rf ${TRAEFIK_TMP_CHART}/crds
+
+  # Package charts
+  OPTS="--format gnu --sort=name --owner=0 --group=0 --numeric-owner"
+  GZIP=-n tar ${OPTS} --mtime='UTC 2021-01-01' -cz -f ${CHARTS_DIR}/${TRAEFIK_FILE} -C ${TMP_DIR} $(basename ${TRAEFIK_TMP_CHART})
+  GZIP=-n tar ${OPTS} --mtime='UTC 2021-01-01' -cz -f ${CHARTS_DIR}/${TRAEFIK_CRD_FILE} -C ${TMP_DIR} $(basename ${TRAEFIK_TMP_CRD})
+}
+
 TRAEFIK_FILE=traefik-${TRAEFIK_VERSION}.tgz
-TRAEFIK_URL=https://charts.helm.sh/stable/packages/${TRAEFIK_FILE}
+TRAEFIK_CRD_FILE=traefik-crd-${TRAEFIK_VERSION}.tgz
+TRAEFIK_URL=https://helm.traefik.io/traefik/${TRAEFIK_FILE}
 
-echo "Downloading Traefik Helm chart from ${TRAEFIK_URL}"
-curl -sfL ${TRAEFIK_URL} -o ${CHARTS_DIR}/${TRAEFIK_FILE}
-code=$?
-
-if [ $code -ne 0 ]; then
-  echo "Error: Failed to download Traefik Helm chart!"
-  exit $code
-fi
+setup_tmp
+download_and_package_traefik
 
 cp scripts/wg-add.sh bin/aux/
