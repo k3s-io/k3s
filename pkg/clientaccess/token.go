@@ -101,10 +101,6 @@ func ParseAndValidateTokenForUser(server string, token string, username string) 
 // validateCACerts returns a boolean indicating whether or not a CA bundle matches the provided hash,
 // and a string containing the hash of the CA bundle.
 func validateCACerts(cacerts []byte, hash string) (bool, string) {
-	if len(cacerts) == 0 && hash == "" {
-		return true, ""
-	}
-
 	newHash := hashCA(cacerts)
 	return hash == newHash, newHash
 }
