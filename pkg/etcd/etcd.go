@@ -455,10 +455,10 @@ func getAdvertiseAddress(advertiseIP string) (string, error) {
 	return ip, nil
 }
 
-// getEtcdMetricsURL returns the IP address after verification
+// getEtcdMetricsURL returns the URL endpoint address of metrics after verification
 func getEtcdMetricsURL(ip, port string) (string, error) {
 	//
-	ipAddr, err := net.Listen("tcp", fmt.Sprintf("%s:%s", ip, "2381"))
+	ipAddr, err := net.Listen("tcp", fmt.Sprintf("%s:%s", ip, port))
 	if err != nil {
 		// address is not bindable
 		return "", err
