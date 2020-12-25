@@ -131,6 +131,7 @@ type Control struct {
 	TLSMinVersion            uint16
 	TLSCipherSuites          []uint16
 	EtcdDisableSnapshots     bool
+	EtcdListenAdressMetrics  string
 	EtcdSnapshotDir          string
 	EtcdSnapshotCron         string
 	EtcdSnapshotRetention    int

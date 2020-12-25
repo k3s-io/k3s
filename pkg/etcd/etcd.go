@@ -473,6 +473,17 @@ func (e *ETCD) clientURL() string {
 	return fmt.Sprintf("https://%s:2379", e.address)
 }
 
+// metricsURL returns the metrics access address
+func (e *ETCD) metricsURL(config *config.Control) string {
+	if config.EtcdListenAdressMetrics == "" {
+		// we have to check if address is not empty
+		// the default listen address set if it doesn't exist
+		return fmt.Sprintf("https://%s:2381", e.address)
+	}
+
+	return fmt.Sprintf("https://%s:2381", config.EtcdListenAdressMetrics)
+}
+
 // cluster returns ETCDConfig for a cluster
 func (e *ETCD) cluster(ctx context.Context, forceNew bool, options executor.InitialOptions) error {
 	return executor.ETCD(executor.ETCDConfig{
@@ -480,7 +491,7 @@ func (e *ETCD) cluster(ctx context.Context, forceNew bool, options executor.Init
 		InitialOptions:      options,
 		ForceNewCluster:     forceNew,
 		ListenClientURLs:    fmt.Sprintf(e.clientURL() + ",https://127.0.0.1:2379"),
-		ListenMetricsURLs:   "http://127.0.0.1:2381",
+		ListenMetricsURLs:   fmt.Sprintf(e.metricsURL(e.config)),
 		ListenPeerURLs:      e.peerURL(),
 		AdvertiseClientURLs: e.clientURL(),
 		DataDir:             etcdDBDir(e.config),
