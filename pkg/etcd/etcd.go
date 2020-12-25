@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -454,6 +455,20 @@ func getAdvertiseAddress(advertiseIP string) (string, error) {
 	return ip, nil
 }
 
+// getEtcdMetricsURL returns the IP address after verification
+func getEtcdMetricsURL(ip, port string) (string, error) {
+	//
+	ipAddr, err := net.Listen("tcp", fmt.Sprintf("%s:%s", ip, "2381"))
+	if err != nil {
+		// address is not bindable
+		return "", err
+	} else {
+		ipAddr.Close()
+	}
+
+	return fmt.Sprintf("http://%s:%s", ip, port), err
+}
+
 // newCluster returns options to set up etcd for a new cluster
 func (e *ETCD) newCluster(ctx context.Context, reset bool) error {
 	return e.cluster(ctx, reset, executor.InitialOptions{
@@ -476,12 +491,16 @@ func (e *ETCD) clientURL() string {
 // metricsURL returns the metrics access address
 func (e *ETCD) metricsURL(config *config.Control) string {
 	if config.EtcdListenAddressMetrics == "" {
-		// we have to check if address is not empty
-		// the default listen address set if it doesn't exist
-		return fmt.Sprintf("https://%s:2381", e.address)
+		// the default listen address set if flag doesn't exist
+		return "http://127.0.0.1:2381"
+	}
+	url, err := getEtcdMetricsURL(config.EtcdListenAddressMetrics, "2381")
+	if err != nil {
+		// address is not bindable
+		logrus.Fatalf("Failed to bind etcd metircs endpoint: %v", err)
 	}
 
-	return fmt.Sprintf("https://%s:2381", config.EtcdListenAddressMetrics)
+	return url
 }
 
 // cluster returns ETCDConfig for a cluster
@@ -491,7 +510,7 @@ func (e *ETCD) cluster(ctx context.Context, forceNew bool, options executor.Init
 		InitialOptions:      options,
 		ForceNewCluster:     forceNew,
 		ListenClientURLs:    fmt.Sprintf(e.clientURL() + ",https://127.0.0.1:2379"),
-		ListenMetricsURLs:   fmt.Sprintf(e.metricsURL(e.config)),
+		ListenMetricsURLs:   e.metricsURL(e.config),
 		ListenPeerURLs:      e.peerURL(),
 		AdvertiseClientURLs: e.clientURL(),
 		DataDir:             etcdDBDir(e.config),
