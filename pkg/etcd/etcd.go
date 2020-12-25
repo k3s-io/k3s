@@ -475,13 +475,13 @@ func (e *ETCD) clientURL() string {
 
 // metricsURL returns the metrics access address
 func (e *ETCD) metricsURL(config *config.Control) string {
-	if config.EtcdListenAdressMetrics == "" {
+	if config.EtcdListenAddressMetrics == "" {
 		// we have to check if address is not empty
 		// the default listen address set if it doesn't exist
 		return fmt.Sprintf("https://%s:2381", e.address)
 	}
 
-	return fmt.Sprintf("https://%s:2381", config.EtcdListenAdressMetrics)
+	return fmt.Sprintf("https://%s:2381", config.EtcdListenAddressMetrics)
 }
 
 // cluster returns ETCDConfig for a cluster
