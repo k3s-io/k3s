@@ -212,7 +212,7 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 			},
 			&cli.StringFlag{
 				Name:        "etcd-listen-address-metrics",
-				Usage:       "(dc) Listen address etcd metrics. (Default adress 127.0.0.1)",
+				Usage:       "(dc) Listen address etcd metrics. (Default address 127.0.0.1)",
 				Destination: &ServerConfig.EtcdListenAddressMetrics,
 			},
 			&cli.BoolFlag{

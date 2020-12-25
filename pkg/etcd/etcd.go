@@ -462,9 +462,8 @@ func getEtcdMetricsURL(ip, port string) (string, error) {
 	if err != nil {
 		// address is not bindable
 		return "", err
-	} else {
-		ipAddr.Close()
 	}
+	ipAddr.Close()
 
 	return fmt.Sprintf("http://%s:%s", ip, port), err
 }
