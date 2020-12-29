@@ -16,12 +16,8 @@ import (
 )
 
 func Main() {
-	kubenv := os.Getenv("KUBECONFIG")
-	if kubenv == "" {
-		config, err := server.HomeKubeConfig(false, false)
-		if _, serr := os.Stat(config); err == nil && serr == nil {
-			os.Setenv("KUBECONFIG", config)
-		}
+	config, err := server.HomeKubeConfig(false, false)
+	if _, serr := os.Stat(config); err == nil && serr == nil {
 		if err := checkReadConfigPermissions(config); err != nil {
 			logrus.Warn(err)
 		}
