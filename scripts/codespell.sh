@@ -7,6 +7,6 @@ codespell --skip=.git,./vendor --check-filenames --ignore-words-list=ba
 
 code=$?
 if [ $code -ne 0 ]; then
-  echo "Error: codespell found one or moe problems!"
+  echo "Error: codespell found one or more problems!"
   exit $code
 fi
