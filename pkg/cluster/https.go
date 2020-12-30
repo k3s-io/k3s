@@ -50,30 +50,25 @@ func (c *Cluster) newListener(ctx context.Context) (net.Listener, http.Handler, 
 
 // initClusterAndHTTPS sets up the dynamic tls listener, request router,
 // and cluster database. Once the database is up, it starts the supervisor http server.
-func (c *Cluster) initCluster(ctx context.Context) (net.Listener, http.Handler, error) {
+func (c *Cluster) initClusterAndHTTPS(ctx context.Context) error {
 	// Set up dynamiclistener TLS listener and request handler
 	listener, handler, err := c.newListener(ctx)
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
 
 	// Get the base request handler
 	handler, err = c.getHandler(handler)
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
 
 	// Config the cluster database and allow it to add additional request handlers
 	handler, err = c.initClusterDB(ctx, handler)
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
 
-	return listener, handler, nil
-}
-
-// initHTTPS
-func (c *Cluster) initHTTPS(ctx context.Context, listener net.Listener, handler http.Handler) error {
 	// Create a HTTP server with the registered request handlers, using logrus for logging
 	server := http.Server{
 		Handler:  handler,
