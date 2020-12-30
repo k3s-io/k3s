@@ -58,6 +58,8 @@ type Server struct {
 	ClusterResetRestorePath  string
 	EncryptSecrets           bool
 	StartupHooks             []func(context.Context, <-chan struct{}, string) error
+	EtcdSnapshotNow          bool
+	EtcdSnapshotName         string
 	EtcdDisableSnapshots     bool
 	EtcdSnapshotDir          string
 	EtcdSnapshotCron         string
@@ -213,6 +215,16 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Name:        "etcd-disable-snapshots",
 				Usage:       "(db) Disable automatic etcd snapshots",
 				Destination: &ServerConfig.EtcdDisableSnapshots,
+			},
+			&cli.BoolFlag{
+				Name:        "etcd-snapshot-now",
+				Usage:       "(db) Perform an on-demand etcd snapshot",
+				Destination: &ServerConfig.EtcdSnapshotNow,
+			},
+			&cli.StringFlag{
+				Name:        "etcd-snapshot-name",
+				Usage:       "(db) Set the name of etcd snapshots. Default: etcd-snapshot-<unix-timestamp>",
+				Destination: &ServerConfig.EtcdSnapshotName,
 			},
 			&cli.StringFlag{
 				Name:        "etcd-snapshot-schedule-cron",
