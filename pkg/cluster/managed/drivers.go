@@ -21,6 +21,7 @@ type Driver interface {
 	Test(ctx context.Context) error
 	Restore(ctx context.Context) error
 	EndpointName() string
+	Snapshot(ctx context.Context, config *config.Control) error
 }
 
 func RegisterDriver(d Driver) {

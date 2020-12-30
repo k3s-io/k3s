@@ -408,7 +408,6 @@ func getClientConfig(ctx context.Context, runtime *config.ControlRuntime, endpoi
 	if err != nil {
 		return nil, err
 	}
-
 	cfg := &etcd.Config{
 		Endpoints:            endpoints,
 		TLS:                  tlsConfig,
@@ -417,7 +416,6 @@ func getClientConfig(ctx context.Context, runtime *config.ControlRuntime, endpoi
 		DialKeepAliveTime:    defaultKeepAliveTime,
 		DialKeepAliveTimeout: defaultKeepAliveTimeout,
 	}
-
 	return cfg, nil
 }
 
@@ -712,48 +710,81 @@ func snapshotDir(config *config.Control) (string, error) {
 	return config.EtcdSnapshotDir, nil
 }
 
-// snapshot attempts to save a new snapshot to the configured directory, and then clean up any old
-// snapshots in excess of the retention limits.
-func (e *ETCD) snapshot(ctx context.Context) {
+// preSnapshotSetup checks to see if the necessary components are in place
+// to perform an Etcd snapshot. This is necessasry primarily for on-demand
+// snapshots since they're performed before normal Etcd setup is completed.
+func (e *ETCD) preSnapshotSetup(ctx context.Context, config *config.Control) error {
+	if e.client == nil {
+		if e.config == nil {
+			e.config = config
+		}
+		client, err := getClient(ctx, e.config.Runtime, endpoint)
+		if err != nil {
+			return err
+		}
+		e.client = client
+	}
+	if e.runtime == nil {
+		e.runtime = config.Runtime
+	}
+	return nil
+}
+
+// Snapshot attempts to save a new snapshot to the configured directory, and then clean up any old
+// snapshots in excess of the retention limits. This method is used in the internal cron snapshot
+// system as well as used to do on-demand snapshots.
+func (e *ETCD) Snapshot(ctx context.Context, config *config.Control) error {
+	if err := e.preSnapshotSetup(ctx, config); err != nil {
+		return err
+	}
+
 	status, err := e.client.Status(ctx, endpoint)
 	if err != nil {
-		logrus.Errorf("Failed to check etcd status for snapshot: %v", err)
-		return
+		return errors.Wrap(err, "failed to check etcd status for snapshot")
 	}
 
 	if status.IsLearner {
 		logrus.Warnf("Skipping snapshot: not supported for learner")
-		return
+		return nil
 	}
 
 	snapshotDir, err := snapshotDir(e.config)
 	if err != nil {
-		logrus.Errorf("Failed to get the snapshot dir: %v", err)
-		return
+		return errors.Wrap(err, "failed to get the snapshot dir")
 	}
 
 	cfg, err := getClientConfig(ctx, e.runtime, endpoint)
 	if err != nil {
-		logrus.Errorf("Failed to get config for etcd snapshot: %v", err)
-		return
+		return errors.Wrap(err, "failed to get config for etcd snapshot")
 	}
 
-	snapshotPath := filepath.Join(snapshotDir, snapshotPrefix+strconv.Itoa(int(time.Now().Unix())))
+	var snapshotName string
+	if e.config.EtcdSnapshotName != "" {
+		snapshotName = e.config.EtcdSnapshotName
+	} else {
+		snapshotName = snapshotPrefix + strconv.Itoa(int(time.Now().Unix()))
+	}
+	snapshotPath := filepath.Join(snapshotDir, snapshotName)
+
 	logrus.Infof("Saving etcd snapshot to %s", snapshotPath)
 
 	if err := snapshot.NewV3(nil).Save(ctx, *cfg, snapshotPath); err != nil {
-		logrus.Errorf("Failed to save snapshot: %v", err)
-		return
+		return errors.Wrap(err, "failed to save snapshot")
 	}
 	if err := snapshotRetention(e.config.EtcdSnapshotRetention, snapshotDir); err != nil {
-		logrus.Errorf("Failed to apply snapshot retention: %v", err)
-		return
+		return errors.Wrap(err, "failed to apply snapshot retention")
 	}
+
+	return nil
 }
 
 // setSnapshotFunction schedules snapshots at the configured interval
 func (e *ETCD) setSnapshotFunction(ctx context.Context) {
-	e.cron.AddFunc(e.config.EtcdSnapshotCron, func() { e.snapshot(ctx) })
+	e.cron.AddFunc(e.config.EtcdSnapshotCron, func() {
+		if err := e.Snapshot(ctx, e.config); err != nil {
+			logrus.Error(err)
+		}
+	})
 }
 
 // Restore performs a restore of the ETCD datastore from
