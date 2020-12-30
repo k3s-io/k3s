@@ -42,14 +42,9 @@ func (c *Cluster) Start(ctx context.Context) (<-chan struct{}, error) {
 		}
 	}
 
-	listener, handler, err := c.initCluster(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "init cluster datastore")
-	}
-
 	// Set up the dynamiclistener and http request handlers
-	if err := c.initHTTPS(ctx, listener, handler); err != nil {
-		return nil, errors.Wrap(err, "init cluster https")
+	if err := c.initClusterAndHTTPS(ctx); err != nil {
+		return nil, errors.Wrap(err, "init cluster datastore and https")
 	}
 
 	// start managed database (if necessary)
