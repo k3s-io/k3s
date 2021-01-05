@@ -94,7 +94,7 @@ func NewSampleAndWaterMarkHistogramsGenerator(clock clock.PassiveClock, samplePe
 }
 
 func (swg *sampleAndWaterMarkObserverGenerator) quantize(when time.Time) int64 {
-	return int64(when.Sub(swg.t0) / swg.samplePeriod)
+	return when.Sub(swg.t0).Nanoseconds() / int64(swg.samplePeriod)
 }
 
 // Generate makes a new TimedObserver
