@@ -94,6 +94,9 @@ func NewSampleAndWaterMarkHistogramsGenerator(clock clock.PassiveClock, samplePe
 }
 
 func (swg *sampleAndWaterMarkObserverGenerator) quantize(when time.Time) int64 {
+	if when.Before(swg.t0) {
+		klog.Fatalf("Quantize time when=%v is before t0=%v", when, swg.t0)
+	}
 	return when.Sub(swg.t0).Nanoseconds() / int64(swg.samplePeriod)
 }
 
