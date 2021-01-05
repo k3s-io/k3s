@@ -163,14 +163,13 @@ func (saw *sampleAndWaterMarkHistograms) SetX1(x1 float64) {
 }
 
 func (saw *sampleAndWaterMarkHistograms) innerSet(updateXOrX1 func()) {
-	var when time.Time
 	var whenInt int64
 	var acc sampleAndWaterMarkAccumulator
 	var wellOrdered bool
 	func() {
 		saw.Lock()
 		defer saw.Unlock()
-		when = saw.clock.Now()
+		when := saw.clock.Now()
 		whenInt = saw.quantize(when)
 		acc = saw.sampleAndWaterMarkAccumulator
 		wellOrdered = !when.Before(acc.lastSet)
@@ -201,8 +200,7 @@ func (saw *sampleAndWaterMarkHistograms) innerSet(updateXOrX1 func()) {
 	}()
 	if !wellOrdered {
 		lastSetS := acc.lastSet.String()
-		whenS := when.String()
-		klog.Errorf("Time went backwards from %s to %s for labelValues=%#+v", lastSetS, whenS, saw.labelValues)
+		klog.Errorf("Time went backwards from %s for labelValues=%#+v", lastSetS, saw.labelValues)
 	}
 	for acc.lastSetInt < whenInt {
 		saw.samples.WithLabelValues(saw.labelValues...).Observe(acc.relX)
