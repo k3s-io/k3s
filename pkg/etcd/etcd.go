@@ -219,6 +219,17 @@ func (e *ETCD) Start(ctx context.Context, clientAccessInfo *clientaccess.Info) e
 	go e.manageLearners(ctx)
 
 	if existingCluster {
+		//check etcd dir permission
+		etcdDir := etcdDBDir(e.config)
+		info, err := os.Stat(etcdDir)
+		if err != nil {
+			return err
+		}
+		if info.Mode() != 0700 {
+			if err := os.Chmod(etcdDir, 0700); err != nil {
+				return err
+			}
+		}
 		opt, err := executor.CurrentETCDOptions()
 		if err != nil {
 			return err
