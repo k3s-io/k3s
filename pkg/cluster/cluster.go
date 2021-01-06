@@ -37,9 +37,8 @@ func (c *Cluster) Start(ctx context.Context) (<-chan struct{}, error) {
 		if err := c.Snapshot(ctx, c.config); err != nil {
 			logrus.Error(err)
 			os.Exit(1)
-		} else {
-			os.Exit(0)
 		}
+		os.Exit(0)
 	}
 
 	// Set up the dynamiclistener and http request handlers
