@@ -57,7 +57,11 @@ func findDataDir() string {
 	}
 	dataDir := configfilearg.MustFindString(os.Args, "data-dir")
 	if dataDir == "" {
-		dataDir = datadir.DefaultDataDir
+		if os.Getuid() == 0 {
+			dataDir = datadir.DefaultDataDir
+		} else {
+			dataDir = datadir.DefaultHomeDataDir
+		}
 		logrus.Debug("Using default data dir in self-extracting wrapper")
 	}
 	return dataDir
