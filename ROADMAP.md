@@ -1,6 +1,6 @@
 Roadmap
 ---
-This represents the larger, bigger impact features and enhancements we have planned for K3s. There are many more tactical enhancements and fixes that can be found by perusing our [GitHub milestones](https://github.com/rancher/k3s/milestones).
+This represents the larger, bigger impact features and enhancements we have planned for K3s. There are many more tactical enhancements and fixes that can be found by perusing our [GitHub milestones](https://github.com/k3s-io/k3s/milestones).
 
 
 v1.20 - December 2020
