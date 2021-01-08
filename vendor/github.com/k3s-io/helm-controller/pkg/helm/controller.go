@@ -39,7 +39,7 @@ type Controller struct {
 }
 
 const (
-	DefaultJobImage = "rancher/klipper-helm:v0.3.2"
+	DefaultJobImage = "rancher/klipper-helm:v0.4.3"
 	Label           = "helmcharts.helm.cattle.io/chart"
 	Annotation      = "helmcharts.helm.cattle.io/configHash"
 	CRDName         = "helmcharts.helm.cattle.io"
@@ -194,6 +194,11 @@ func job(chart *helmv1.HelmChart) (*batch.Job, *core.ConfigMap, *core.ConfigMap)
 		action = "delete"
 	}
 
+	targetNamespace := chart.Namespace
+	if len(chart.Spec.TargetNamespace) != 0 {
+		targetNamespace = chart.Spec.TargetNamespace
+	}
+
 	job := &batch.Job{
 		TypeMeta: meta.TypeMeta{
 			APIVersion: "batch/v1",
@@ -252,6 +257,10 @@ func job(chart *helmv1.HelmChart) (*batch.Job, *core.ConfigMap, *core.ConfigMap)
 									Name:  "HELM_VERSION",
 									Value: chart.Spec.HelmVersion,
 								},
+								{
+									Name:  "TARGET_NAMESPACE",
+									Value: targetNamespace,
+								},
 							},
 						},
 					},
@@ -273,6 +282,10 @@ func job(chart *helmv1.HelmChart) (*batch.Job, *core.ConfigMap, *core.ConfigMap)
 				Operator: core.TolerationOpEqual,
 				Value:    "true",
 				Effect:   "NoSchedule",
+			},
+			{
+				Key:      "CriticalAddonsOnly",
+				Operator: core.TolerationOpExists,
 			},
 		}
 		job.Spec.Template.Spec.Containers[0].Env = append(job.Spec.Template.Spec.Containers[0].Env, []core.EnvVar{
