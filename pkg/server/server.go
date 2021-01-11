@@ -195,8 +195,7 @@ func coreControllers(ctx context.Context, sc *Context, config *Config) error {
 
 func stageFiles(ctx context.Context, sc *Context, controlConfig *config.Control) error {
 	dataDir := filepath.Join(controlConfig.DataDir, "static")
-	stageTraefik := doStageTraefik(sc)
-	if err := static.Stage(dataDir, stageTraefik); err != nil {
+	if err := static.Stage(dataDir); err != nil {
 		return err
 	}
 	dataDir = filepath.Join(controlConfig.DataDir, "manifests")
@@ -207,7 +206,7 @@ func stageFiles(ctx context.Context, sc *Context, controlConfig *config.Control)
 	}
 
 	skip := controlConfig.Skips
-	if !stageTraefik {
+	if !checkStageTraefik(sc) {
 		skip["traefik"] = true
 		skip["traefik-crd"] = true
 	}
@@ -218,13 +217,13 @@ func stageFiles(ctx context.Context, sc *Context, controlConfig *config.Control)
 	return deploy.WatchFiles(ctx, sc.Apply, sc.K3s.K3s().V1().Addon(), controlConfig.Disables, dataDir)
 }
 
-// doStageTraefik checks on running traefik HelmChart version and traefik
+// checkStageTraefik checks on running traefik HelmChart version and traefik
 // HelmChartConfig.
 // Traefik should skip stage when it is v1 and have existing customize traefik
 // HelmChartConfig due to the incompatible configuration from v1 to v2.
 // It will progress stage on upgrade or restart when no customized traefik
 // HelmChartConfig exists on the cluster.
-func doStageTraefik(sc *Context) bool {
+func checkStageTraefik(sc *Context) bool {
 	if isHelmChartTraefikV1(sc) && isHelmChartConfigExist(sc, "traefik") {
 		return false
 	}

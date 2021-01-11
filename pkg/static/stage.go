@@ -6,18 +6,13 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
-func Stage(dataDir string, isStageTraefik bool) error {
+func Stage(dataDir string) error {
 	for _, name := range AssetNames() {
-		if !isStageTraefik && strings.HasPrefix(name, "charts/traefik-") {
-			logrus.WithField("name", name).Info("Skip staging")
-			continue
-		}
 		content, err := Asset(name)
 		if err != nil {
 			return err
