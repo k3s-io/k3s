@@ -140,6 +140,8 @@ github.com/benmoss/go-powershell
 github.com/benmoss/go-powershell/backend
 # github.com/beorn7/perks v1.0.1
 github.com/beorn7/perks/quantile
+# github.com/bgentry/speakeasy v0.1.0
+github.com/bgentry/speakeasy
 # github.com/blang/semver v3.5.1+incompatible
 github.com/blang/semver
 # github.com/bronze1man/goStrongswanVici v0.0.0-20190828090544-27d02f80ba40
@@ -725,6 +727,8 @@ github.com/lithammer/dedent
 github.com/mailru/easyjson/buffer
 github.com/mailru/easyjson/jlexer
 github.com/mailru/easyjson/jwriter
+# github.com/mattn/go-runewidth v0.0.2
+github.com/mattn/go-runewidth
 # github.com/mattn/go-sqlite3 v1.14.4
 ## explicit
 github.com/mattn/go-sqlite3
@@ -762,6 +766,8 @@ github.com/mxk/go-flowrate/flowrate
 # github.com/natefinch/lumberjack v2.0.0+incompatible
 ## explicit
 github.com/natefinch/lumberjack
+# github.com/olekukonko/tablewriter v0.0.0-20170122224234-a0225b3f23b5
+github.com/olekukonko/tablewriter
 # github.com/opencontainers/go-digest v1.0.0
 github.com/opencontainers/go-digest
 github.com/opencontainers/go-digest/digestset
@@ -1010,8 +1016,13 @@ go.etcd.io/etcd/clientv3/balancer/picker
 go.etcd.io/etcd/clientv3/balancer/resolver/endpoint
 go.etcd.io/etcd/clientv3/concurrency
 go.etcd.io/etcd/clientv3/credentials
+go.etcd.io/etcd/clientv3/mirror
 go.etcd.io/etcd/clientv3/snapshot
 go.etcd.io/etcd/embed
+go.etcd.io/etcd/etcdctl/ctlv2
+go.etcd.io/etcd/etcdctl/ctlv2/command
+go.etcd.io/etcd/etcdctl/ctlv3
+go.etcd.io/etcd/etcdctl/ctlv3/command
 go.etcd.io/etcd/etcdserver
 go.etcd.io/etcd/etcdserver/api
 go.etcd.io/etcd/etcdserver/api/etcdhttp
@@ -1060,6 +1071,7 @@ go.etcd.io/etcd/pkg/logutil
 go.etcd.io/etcd/pkg/netutil
 go.etcd.io/etcd/pkg/pathutil
 go.etcd.io/etcd/pkg/pbutil
+go.etcd.io/etcd/pkg/report
 go.etcd.io/etcd/pkg/runtime
 go.etcd.io/etcd/pkg/schedule
 go.etcd.io/etcd/pkg/srv
@@ -1311,6 +1323,8 @@ google.golang.org/grpc/serviceconfig
 google.golang.org/grpc/stats
 google.golang.org/grpc/status
 google.golang.org/grpc/tap
+# gopkg.in/cheggaaa/pb.v1 v1.0.25
+gopkg.in/cheggaaa/pb.v1
 # gopkg.in/gcfg.v1 v1.2.0
 gopkg.in/gcfg.v1
 gopkg.in/gcfg.v1/scanner
