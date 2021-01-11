@@ -15,6 +15,7 @@ type Agent struct {
 	ClusterSecret            string
 	ServerURL                string
 	DisableLoadBalancer      bool
+	LBServerPort             int
 	ResolvConf               string
 	DataDir                  string
 	NodeIP                   string
@@ -154,6 +155,14 @@ var (
 		Hidden:      false,
 		Destination: &AgentConfig.EnableSELinux,
 		EnvVar:      version.ProgramUpper + "_SELINUX",
+	}
+	LBServerPort = cli.IntFlag{
+		Name:        "lb-server-port",
+		Usage:       "(agent/node) Internal Loadbalancer port",
+		Hidden:      false,
+		Destination: &AgentConfig.LBServerPort,
+		EnvVar:      version.ProgramUpper + "_LB_SERVER_PORT",
+		Value:       0,
 	}
 )
 

@@ -35,6 +35,7 @@ func main() {
 		cmds.NewCRICTL(externalCLIAction("crictl", dataDir)),
 		cmds.NewCtrCommand(externalCLIAction("ctr", dataDir)),
 		cmds.NewCheckConfigCommand(externalCLIAction("check-config", dataDir)),
+		cmds.NewETCDCTLCommand(externalCLIAction("etcdctl", dataDir)),
 	}
 
 	err := app.Run(os.Args)
@@ -71,7 +72,7 @@ func runCLIs(dataDir string) bool {
 	if os.Getenv("CRI_CONFIG_FILE") == "" {
 		os.Setenv("CRI_CONFIG_FILE", dataDir+"/agent/etc/crictl.yaml")
 	}
-	for _, cmd := range []string{"kubectl", "ctr", "crictl"} {
+	for _, cmd := range []string{"kubectl", "ctr", "crictl", "etcdctl"} {
 		if filepath.Base(os.Args[0]) == cmd {
 			if err := externalCLI(cmd, dataDir, os.Args[1:]); err != nil {
 				logrus.Fatal(err)

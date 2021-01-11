@@ -40,6 +40,7 @@ import (
 const (
 	MasterRoleLabelKey       = "node-role.kubernetes.io/master"
 	ControlPlaneRoleLabelKey = "node-role.kubernetes.io/control-plane"
+	ETCDRoleLabelKey         = "node-role.kubernetes.io/etcd"
 )
 
 func resolveDataDir(dataDir string) (string, error) {
@@ -55,7 +56,7 @@ func StartServer(ctx context.Context, config *Config) error {
 	if err := setNoProxyEnv(&config.ControlConfig); err != nil {
 		return err
 	}
-
+	config.ControlConfig.DisableETCD = config.DisableETCD
 	if err := control.Server(ctx, &config.ControlConfig); err != nil {
 		return errors.Wrap(err, "starting kubernetes")
 	}
@@ -442,6 +443,13 @@ func setControlPlaneRoleLabel(ctx context.Context, nodes v1.NodeClient) error {
 		}
 		node.Labels[ControlPlaneRoleLabelKey] = "true"
 		node.Labels[MasterRoleLabelKey] = "true"
+
+		// remove etcd taint if exists
+		for i, taint := range node.Spec.Taints {
+			if taint.Key == "node-role.kubernetes.io/etcd" {
+				node.Spec.Taints = append(node.Spec.Taints[:i], node.Spec.Taints[i+1:]...)
+			}
+		}
 		_, err = nodes.Update(node)
 		if err == nil {
 			logrus.Infof("Control-plane role label has been set successfully on node: %s", nodeName)

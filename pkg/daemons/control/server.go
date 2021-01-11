@@ -27,6 +27,7 @@ import (
 	"github.com/rancher/k3s/pkg/cluster"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/daemons/executor"
+	"github.com/rancher/k3s/pkg/etcd"
 	"github.com/rancher/k3s/pkg/passwd"
 	"github.com/rancher/k3s/pkg/token"
 	"github.com/rancher/k3s/pkg/version"
@@ -91,6 +92,8 @@ func Server(ctx context.Context, cfg *config.Control) error {
 	if err := prepare(ctx, cfg, runtime); err != nil {
 		return errors.Wrap(err, "preparing server")
 	}
+
+	go etcd.SetSelfServerURL(ctx, cfg, cfg.PrivateIP, cfg.SupervisorPort)
 
 	cfg.Runtime.Tunnel = setupTunnel()
 	util.DisableProxyHostnameCheck = true

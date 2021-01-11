@@ -59,6 +59,7 @@ func NewETCD() *ETCD {
 }
 
 var learnerProgressKey = version.Program + "/etcd/learnerProgress"
+var serverKey = version.Program + "/etcd/serverip"
 
 const (
 	snapshotPrefix      = "etcd-snapshot-"
@@ -206,11 +207,6 @@ func (e *ETCD) Start(ctx context.Context, clientAccessInfo *clientaccess.Info) e
 		return errors.Wrapf(err, "configuration validation failed")
 	}
 
-	e.config.Runtime.ClusterControllerStart = func(ctx context.Context) error {
-		Register(ctx, e, e.config.Runtime.Core.Core().V1().Node())
-		return nil
-	}
-
 	if !e.config.EtcdDisableSnapshots {
 		e.setSnapshotFunction(ctx)
 		e.cron.Start()
@@ -322,7 +318,7 @@ func (e *ETCD) Register(ctx context.Context, config *config.Control, handler htt
 	}
 	e.client = client
 
-	address, err := getAdvertiseAddress(config.PrivateIP)
+	address, err := GetAdvertiseAddress(config.PrivateIP)
 	if err != nil {
 		return nil, err
 	}
@@ -334,6 +330,10 @@ func (e *ETCD) Register(ctx context.Context, config *config.Control, handler htt
 
 	if err := e.setName(false); err != nil {
 		return nil, err
+	}
+	e.config.Runtime.ClusterControllerStart = func(ctx context.Context) error {
+		Register(ctx, e, e.config.Runtime.Core.Core().V1().Node())
+		return nil
 	}
 
 	tombstoneFile := filepath.Join(etcdDBDir(e.config), "tombstone")
@@ -452,7 +452,7 @@ func toTLSConfig(runtime *config.ControlRuntime) (*tls.Config, error) {
 }
 
 // getAdvertiseAddress returns the IP address best suited for advertising to clients
-func getAdvertiseAddress(advertiseIP string) (string, error) {
+func GetAdvertiseAddress(advertiseIP string) (string, error) {
 	ip := advertiseIP
 	if ip == "" {
 		ipAddr, err := utilnet.ChooseHostInterface()
@@ -853,4 +853,83 @@ func backupDirWithRetention(dir string, maxBackupRetention int) (string, error) 
 		return "", err
 	}
 	return backupDir, nil
+}
+
+func GetServerURLFromETCD(ctx context.Context, cfg *config.Control) (string, int, error) {
+	if cfg.Runtime == nil {
+		return "", 0, fmt.Errorf("runtime is not ready yet")
+	}
+	cl, err := getClient(ctx, cfg.Runtime, endpoint)
+	if err != nil {
+		return "", 0, err
+	}
+	etcdResp, err := cl.KV.Get(ctx, serverKey)
+	if err != nil {
+		return "", 0, err
+	}
+
+	if etcdResp.Count < 1 {
+		return "", 0, fmt.Errorf("servers urls are not yet set")
+	}
+	serverURL := strings.TrimSuffix(string(etcdResp.Kvs[0].Value), "\n")
+	serverURL = serverURL[1 : len(serverURL)-1]
+
+	serverAddress := strings.Split(serverURL, ":")
+	port, err := strconv.Atoi(serverAddress[1])
+	if err != nil {
+		return "", 0, fmt.Errorf("port is not set correctly: %v", err)
+	}
+	return serverAddress[0], port, nil
+}
+
+func SetSelfServerURL(ctx context.Context, cfg *config.Control, privateIP string, port int) {
+	t := time.NewTicker(5 * time.Second)
+	defer t.Stop()
+	for range t.C {
+		if cfg.Runtime == nil {
+			logrus.Warnf("runtime is not ready yet")
+			continue
+		}
+		cl, err := getClient(ctx, cfg.Runtime, endpoint)
+		if err != nil {
+			logrus.Warn(err)
+			continue
+		}
+		serverIP, err := GetAdvertiseAddress(privateIP)
+		if err != nil {
+			logrus.Warn(err)
+			continue
+		}
+		w := &bytes.Buffer{}
+
+		if err := json.NewEncoder(w).Encode(serverIP + ":" + strconv.Itoa(port)); err != nil {
+			logrus.Warn(err)
+			continue
+		}
+
+		_, err = cl.Put(ctx, serverKey, w.String())
+		if err != nil {
+			logrus.Warn(err)
+			continue
+		}
+		break
+	}
+}
+
+func (e *ETCD) GetMembersClientURLs(ctx context.Context) ([]string, error) {
+	ctx, cancel := context.WithTimeout(ctx, testTimeout)
+	defer cancel()
+
+	members, err := e.client.MemberList(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var memberUrls []string
+	for _, member := range members.Members {
+		for _, clientURL := range member.ClientURLs {
+			memberUrls = append(memberUrls, string(clientURL))
+		}
+	}
+	return memberUrls, nil
 }

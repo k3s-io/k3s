@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	systemd "github.com/coreos/go-systemd/daemon"
 	"github.com/erikdubbelboer/gspt"
@@ -14,6 +15,7 @@ import (
 	"github.com/rancher/k3s/pkg/agent"
 	"github.com/rancher/k3s/pkg/cli/cmds"
 	"github.com/rancher/k3s/pkg/datadir"
+	"github.com/rancher/k3s/pkg/etcd"
 	"github.com/rancher/k3s/pkg/netutil"
 	"github.com/rancher/k3s/pkg/rootless"
 	"github.com/rancher/k3s/pkg/server"
@@ -29,6 +31,13 @@ import (
 	_ "github.com/go-sql-driver/mysql" // ensure we have mysql
 	_ "github.com/lib/pq"              // ensure we have postgres
 	_ "github.com/mattn/go-sqlite3"    // ensure we have sqlite
+)
+
+const (
+	lbServerPort         = 6666
+	etcdRoleName         = "etcd"
+	controlPlaneRoleName = "controlplane"
+	maxRoleCount         = 2
 )
 
 func Run(app *cli.Context) error {
@@ -116,8 +125,15 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	serverConfig.ControlConfig.EtcdSnapshotRetention = cfg.EtcdSnapshotRetention
 	serverConfig.ControlConfig.EtcdDisableSnapshots = cfg.EtcdDisableSnapshots
 
+	if err := setServerRoleConfig(&serverConfig, cfg.Role); err != nil {
+		return errors.Wrap(err, "failed to set server role config")
+	}
+
+	if serverConfig.DisableServer {
+		serverConfig.ControlConfig.APIServerPort = lbServerPort
+	}
 	if cfg.ClusterResetRestorePath != "" && !cfg.ClusterReset {
-		return errors.New("Invalid flag use. --cluster-reset required with --cluster-reset-restore-path")
+		return errors.New("invalid flag use. --cluster-reset required with --cluster-reset-restore-path")
 	}
 
 	serverConfig.ControlConfig.ClusterReset = cfg.ClusterReset
@@ -238,13 +254,24 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	os.Unsetenv("NOTIFY_SOCKET")
 
 	ctx := signals.SetupSignalHandler(context.Background())
-	if err := server.StartServer(ctx, &serverConfig); err != nil {
-		return err
+	if !serverConfig.DisableServer {
+		if err := server.StartServer(ctx, &serverConfig); err != nil {
+			return err
+		}
+	} else {
+		if err := server.StartETCD(ctx, &serverConfig); err != nil {
+			return err
+		}
 	}
 
 	go func() {
-		<-serverConfig.ControlConfig.Runtime.APIServerReady
-		logrus.Info("Kube API server is now running")
+		if serverConfig.DisableServer {
+			<-serverConfig.ControlConfig.Runtime.ETCDReady
+			logrus.Info("ETCD server is now running")
+		} else {
+			<-serverConfig.ControlConfig.Runtime.APIServerReady
+			logrus.Info("Kube API server is now running")
+		}
 		logrus.Info(version.Program + " is up and running")
 		if notifySocket != "" {
 			os.Setenv("NOTIFY_SOCKET", notifySocket)
@@ -273,11 +300,26 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	agentConfig.DataDir = filepath.Dir(serverConfig.ControlConfig.DataDir)
 	agentConfig.ServerURL = url
 	agentConfig.Token = token
-	agentConfig.DisableLoadBalancer = true
+	agentConfig.DisableLoadBalancer = !serverConfig.DisableServer
 	agentConfig.Rootless = cfg.Rootless
-	if agentConfig.Rootless {
-		// let agent specify Rootless kubelet flags, but not unshare twice
-		agentConfig.RootlessAlreadyUnshared = true
+
+	if serverConfig.DisableServer {
+		agentConfig.LBServerPort = lbServerPort
+		agentConfig.Taints = append(agentConfig.Taints, "node-role.kubernetes.io/etcd:NoExecute")
+		for {
+			serverIP, serverPort, err := etcd.GetServerURLFromETCD(ctx, &serverConfig.ControlConfig)
+			if err != nil {
+				logrus.Warn(err)
+				select {
+				case <-ctx.Done():
+					return ctx.Err()
+				case <-time.After(5 * time.Second):
+				}
+				continue
+			}
+			agentConfig.ServerURL = fmt.Sprintf("https://%s:%d", serverIP, serverPort)
+			break
+		}
 	}
 
 	return agent.Run(ctx, agentConfig)
@@ -303,4 +345,34 @@ func getArgValueFromList(searchArg string, argList []string) string {
 		}
 	}
 	return value
+}
+
+func setServerRoleConfig(cfg *server.Config, roles []string) error {
+	if len(roles) > maxRoleCount {
+		return errors.New("server can not have more than two roles")
+	}
+	var etcdRole bool
+	var cpRole bool
+	for _, role := range roles {
+		switch role {
+		case etcdRoleName:
+			etcdRole = true
+		case controlPlaneRoleName:
+			cpRole = true
+		default:
+			return fmt.Errorf("undefined role: %s, available roles are 'etcd', 'controlplane', or 'controlplane,etcd'", role)
+		}
+	}
+	switch {
+	case etcdRole && !cpRole:
+		cfg.DisableServer = true
+		cfg.ControlConfig.ClusterInit = true
+	case cpRole && !etcdRole:
+		if cfg.ControlConfig.JoinURL == "" {
+			return errors.New("please set join url (--server) for controlplane role")
+		}
+		cfg.DisableETCD = true
+		cfg.ControlConfig.ClusterInit = true
+	}
+	return nil
 }

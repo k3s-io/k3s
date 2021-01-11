@@ -8,6 +8,8 @@ import (
 
 type Config struct {
 	DisableAgent     bool
+	DisableServer    bool //etcd only nodes
+	DisableETCD      bool //Server only node
 	DisableServiceLB bool
 	ControlConfig    config.Control
 	Rootless         bool

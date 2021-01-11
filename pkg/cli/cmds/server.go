@@ -10,6 +10,7 @@ import (
 const (
 	defaultSnapshotRentention    = 5
 	defaultSnapshotIntervalHours = 12
+	hideClusterFlags             = true
 )
 
 type Server struct {
@@ -62,6 +63,7 @@ type Server struct {
 	EtcdSnapshotDir          string
 	EtcdSnapshotCron         string
 	EtcdSnapshotRetention    int
+	Role                     cli.StringSlice
 }
 
 var ServerConfig Server
@@ -259,6 +261,11 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Name:        "disable-network-policy",
 				Usage:       "(components) Disable " + version.Program + " default network policy controller",
 				Destination: &ServerConfig.DisableNPC,
+			},
+			cli.StringSliceFlag{
+				Name:  "role",
+				Usage: "(components) Specify the role of the server process (valid items: controlplane etcd or controlplane and etcd)",
+				Value: &ServerConfig.Role,
 			},
 			NodeNameFlag,
 			WithNodeIDFlag,

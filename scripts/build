@@ -79,7 +79,8 @@ rm -f \
     bin/k3s-server \
     bin/kubectl \
     bin/crictl \
-    bin/ctr
+    bin/ctr \
+    bin/etcdctl
 
 cleanup() {
     exit_status=$?
@@ -105,9 +106,11 @@ echo Building server
 CGO_ENABLED=1 "${GO}" build -tags "$TAGS" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC_SQLITE" -o bin/containerd ./cmd/server/main.go
 ln -s containerd ./bin/k3s-agent
 ln -s containerd ./bin/k3s-server
+ln -s containerd ./bin/k3s-etcd
 ln -s containerd ./bin/kubectl
 ln -s containerd ./bin/crictl
 ln -s containerd ./bin/ctr
+ln -s containerd ./bin/etcdctl
 #echo Building hyperkube
 #CGO_ENABLED=1 "${GO}" build -tags "$TAGS" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC_SQLITE" -o bin/hyperkube ./vendor/k8s.io/kubernetes/cmd/hyperkube/
 #echo Building ctr

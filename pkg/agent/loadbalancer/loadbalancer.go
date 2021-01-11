@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net"
 	"path/filepath"
+	"strconv"
 	"sync"
 
 	"github.com/google/tcpproxy"
@@ -31,10 +32,11 @@ type LoadBalancer struct {
 var (
 	SupervisorServiceName = version.Program + "-agent-load-balancer"
 	APIServerServiceName  = version.Program + "-api-server-agent-load-balancer"
+	ETCDServerServiceName = version.Program + "-etcd-server-load-balancer"
 )
 
-func New(dataDir, serviceName, serverURL string) (_lb *LoadBalancer, _err error) {
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
+func New(dataDir, serviceName, serverURL string, lbServerPort int) (_lb *LoadBalancer, _err error) {
+	listener, err := net.Listen("tcp", "127.0.0.1:"+strconv.Itoa(lbServerPort))
 	defer func() {
 		if _err != nil {
 			logrus.Warnf("Error starting load balancer: %s", _err)

@@ -19,17 +19,18 @@ type Proxy interface {
 	APIServerURL() string
 }
 
-func NewAPIProxy(enabled bool, dataDir, supervisorURL string) (Proxy, error) {
+func NewAPIProxy(enabled bool, dataDir, supervisorURL string, lbServerPort int) (Proxy, error) {
 	p := &proxy{
 		lbEnabled:            enabled,
 		dataDir:              dataDir,
 		initialSupervisorURL: supervisorURL,
 		supervisorURL:        supervisorURL,
 		apiServerURL:         supervisorURL,
+		lbServerPort:         lbServerPort,
 	}
 
 	if enabled {
-		lb, err := loadbalancer.New(dataDir, loadbalancer.SupervisorServiceName, supervisorURL)
+		lb, err := loadbalancer.New(dataDir, loadbalancer.SupervisorServiceName, supervisorURL, p.lbServerPort)
 		if err != nil {
 			return nil, err
 		}
@@ -49,8 +50,9 @@ func NewAPIProxy(enabled bool, dataDir, supervisorURL string) (Proxy, error) {
 }
 
 type proxy struct {
-	dataDir   string
-	lbEnabled bool
+	dataDir      string
+	lbEnabled    bool
+	lbServerPort int
 
 	initialSupervisorURL      string
 	supervisorURL             string
@@ -106,7 +108,7 @@ func (p *proxy) StartAPIServerProxy(port int) error {
 	p.apiServerEnabled = true
 
 	if p.lbEnabled {
-		lb, err := loadbalancer.New(p.dataDir, loadbalancer.APIServerServiceName, p.apiServerURL)
+		lb, err := loadbalancer.New(p.dataDir, loadbalancer.APIServerServiceName, p.apiServerURL, p.lbServerPort)
 		if err != nil {
 			return err
 		}

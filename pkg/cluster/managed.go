@@ -126,3 +126,25 @@ func (c *Cluster) assignManagedDriver(ctx context.Context) error {
 
 	return nil
 }
+
+// setupEtcdProxy
+func (c *Cluster) setupEtcdProxy(ctx context.Context, etcdProxy etcd.Proxy) {
+	if c.managedDB == nil {
+		return
+	}
+	go func() {
+		t := time.NewTicker(30 * time.Second)
+		defer t.Stop()
+		for range t.C {
+			newAddresses, err := c.managedDB.GetMembersClientURLs(ctx)
+			if err != nil {
+				logrus.Warnf("failed to get member urls %v", err)
+				continue
+			}
+			logrus.Info(newAddresses)
+			etcdProxy.Update(newAddresses)
+
+		}
+	}()
+	return
+}
