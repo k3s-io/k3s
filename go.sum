@@ -520,8 +520,8 @@ github.com/k3s-io/go-powershell v0.0.0-20200701182037-6845e6fcfa79 h1:9naOL3iARE
 github.com/k3s-io/go-powershell v0.0.0-20200701182037-6845e6fcfa79/go.mod h1:lsDHcxq5ugFJff6YHEwpzLh31NDv0B2cIKki1ViQ65o=
 github.com/k3s-io/go-powershell v0.0.0-20201118222746-51f4c451fbd7 h1:C+6IIP6yECS10qkq2EeGQjr2ts0k7UxrutGF+pLPSnU=
 github.com/k3s-io/go-powershell v0.0.0-20201118222746-51f4c451fbd7/go.mod h1:wJnuh+xbDmskSfAM3UikTsGO8kaWLu3iycSgUKAiYjQ=
-github.com/k3s-io/helm-controller v0.8.0 h1:ZxnXRMiVjerBqpTkZeR0soEtsC3Bcv3Sbq2AIZQPlhk=
-github.com/k3s-io/helm-controller v0.8.0/go.mod h1:nZP8FH3KZrNNUf5r+SwwiMR63HS6lxdHdpHijgPfF74=
+github.com/k3s-io/helm-controller v0.8.3 h1:GWxavyMz7Bw2ClxH5okkeOL8o5U6IBK7uauc44SDCjU=
+github.com/k3s-io/helm-controller v0.8.3/go.mod h1:nZP8FH3KZrNNUf5r+SwwiMR63HS6lxdHdpHijgPfF74=
 github.com/k3s-io/kine v0.6.0 h1:4l7wjgCxb2oD+7Hyf3xIhkGd/6s1sXpRFdQiyy+7Ki8=
 github.com/k3s-io/kine v0.6.0/go.mod h1:rzCs93+rQHZGOiewMd84PDrER92QeZ6eeHbWkfEy4+w=
 github.com/k3s-io/kubernetes v1.20.0-k3s1 h1:m/p4cZPfNoyMiGTMySXRITuHHlWMi6Ts9NLp6yNP97w=
