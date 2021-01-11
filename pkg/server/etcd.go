@@ -25,7 +25,7 @@ func StartETCD(ctx context.Context, config *Config) error {
 		return errors.Wrap(err, "starting etcd")
 	}
 
-	config.ControlConfig.Runtime.Handler = router(&config.ControlConfig)
+	config.ControlConfig.Runtime.Handler = router(ctx, config)
 
 	go setETCDLabelsAndAnnotations(ctx, config)
 
