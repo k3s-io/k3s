@@ -2,7 +2,6 @@ package cluster
 
 import (
 	"context"
-	"os"
 	"strings"
 
 	"github.com/k3s-io/kine/pkg/client"
@@ -11,7 +10,6 @@ import (
 	"github.com/rancher/k3s/pkg/clientaccess"
 	"github.com/rancher/k3s/pkg/cluster/managed"
 	"github.com/rancher/k3s/pkg/daemons/config"
-	"github.com/sirupsen/logrus"
 )
 
 type Cluster struct {
@@ -31,16 +29,6 @@ type Cluster struct {
 // handles starting and writing/reading bootstrap data, and returns a channel
 // that will be closed when datastore is ready.
 func (c *Cluster) Start(ctx context.Context) (<-chan struct{}, error) {
-	// check if we need to perform an on-demand etcd snapshot. If we do,
-	// perform the snapshot and exit accordingly.
-	if c.config.EtcdSnapshotNow {
-		if err := c.Snapshot(ctx, c.config); err != nil {
-			logrus.Error(err)
-			os.Exit(1)
-		}
-		os.Exit(0)
-	}
-
 	// Set up the dynamiclistener and http request handlers
 	if err := c.initClusterAndHTTPS(ctx); err != nil {
 		return nil, errors.Wrap(err, "init cluster datastore and https")
