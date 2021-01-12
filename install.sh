@@ -328,6 +328,7 @@ setup_tmp() {
     TMP_DIR=$(mktemp -d -t k3s-install.XXXXXXXXXX)
     TMP_HASH=${TMP_DIR}/k3s.hash
     TMP_BIN=${TMP_DIR}/k3s.bin
+    TMP_KUBECONFIG=${TMP_DIR}/k3s.kubeconfig
     cleanup() {
         code=$?
         set +e
@@ -845,6 +846,15 @@ service_enable_and_start() {
     return 0
 }
 
+# --- merge kubeconfig(s) to ~/.kube/config and switch context ---
+merge_kubeconfig() {
+    setup_tmp
+    CURRENT_CONTEXT=$(kubectl config current-context --kubeconfig=/etc/rancher/k3s/k3s.yaml)
+    KUBECONFIG=~/.kube/config:/etc/rancher/k3s/k3s.yaml kubectl config view --flatten > ${TMP_KUBECONFIG}
+    cp ${TMP_KUBECONFIG} ~/.kube/config
+    kubectl config use-context ${CURRENT_CONTEXT}
+}
+
 # --- re-evaluate args to include env command ---
 eval set -- $(escape "${INSTALL_K3S_EXEC}") $(quote "$@")
 
@@ -861,4 +871,5 @@ eval set -- $(escape "${INSTALL_K3S_EXEC}") $(quote "$@")
     create_env_file
     create_service_file
     service_enable_and_start
+    merge_kubeconfig
 }
