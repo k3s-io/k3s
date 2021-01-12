@@ -40,13 +40,6 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	serverConfig.ControlConfig.EtcdSnapshotRetention = cfg.EtcdSnapshotRetention
 	serverConfig.ControlConfig.Runtime = &config.ControlRuntime{}
 	serverConfig.ControlConfig.Runtime.ETCDServerCA = filepath.Join(dataDir, "tls", "etcd", "server-ca.crt")
-	serverConfig.ControlConfig.Runtime.ETCDServerCAKey = filepath.Join(dataDir, "tls", "etcd", "server-ca.key")
-	serverConfig.ControlConfig.Runtime.ETCDPeerCA = filepath.Join(dataDir, "tls", "etcd", "peer-ca.crt")
-	serverConfig.ControlConfig.Runtime.ETCDPeerCAKey = filepath.Join(dataDir, "tls", "etcd", "peer-ca.key")
-	serverConfig.ControlConfig.Runtime.ServerETCDCert = filepath.Join(dataDir, "tls", "etcd", "server-client.crt")
-	serverConfig.ControlConfig.Runtime.ServerETCDKey = filepath.Join(dataDir, "tls", "etcd", "server-client.key")
-	serverConfig.ControlConfig.Runtime.PeerServerClientETCDCert = filepath.Join(dataDir, "tls", "etcd", "peer-server-client.crt")
-	serverConfig.ControlConfig.Runtime.PeerServerClientETCDKey = filepath.Join(dataDir, "tls", "etcd", "peer-server-client.key")
 	serverConfig.ControlConfig.Runtime.ClientETCDCert = filepath.Join(dataDir, "tls", "etcd", "client.crt")
 	serverConfig.ControlConfig.Runtime.ClientETCDKey = filepath.Join(dataDir, "tls", "etcd", "client.key")
 
