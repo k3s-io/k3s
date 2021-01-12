@@ -670,6 +670,12 @@ if (ls ${SYSTEMD_DIR}/k3s*.service || ls /etc/init.d/k3s*) >/dev/null 2>&1; then
     exit
 fi
 
+kubectl config view -o jsonpath='{.users[].name}' --kubeconfig=/etc/rancher/k3s/k3s.yaml | xargs -I{} kubectl config unset users.{}
+kubectl config view -o jsonpath='{.contexts[].name}' --kubeconfig=/etc/rancher/k3s/k3s.yaml | xargs -I{} kubectl config unset contexts.{}
+kubectl config view -o jsonpath='{.clusters[].name}' --kubeconfig=/etc/rancher/k3s/k3s.yaml | xargs -I{} kubectl config unset clusters.{}
+kubectl config unset current-context
+kubectl config view -o jsonpath='{.contexts[].name}' | xargs -I{} kubectl config use-context {}
+
 for cmd in kubectl crictl ctr; do
     if [ -L ${BIN_DIR}/\$cmd ]; then
         rm -f ${BIN_DIR}/\$cmd
