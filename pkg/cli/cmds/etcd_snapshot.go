@@ -10,7 +10,7 @@ const EtcdSnapshotCommand = "etcd-snapshot"
 func NewEtcdSnapshotCommand(action func(*cli.Context) error) cli.Command {
 	return cli.Command{
 		Name:            EtcdSnapshotCommand,
-		Usage:           "Run an Etcd snapshot",
+		Usage:           "Trigger an immediate etcd snapshot",
 		SkipFlagParsing: false,
 		SkipArgReorder:  true,
 		Action:          action,
