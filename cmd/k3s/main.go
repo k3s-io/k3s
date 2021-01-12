@@ -35,7 +35,7 @@ func main() {
 		cmds.NewCRICTL(externalCLIAction("crictl", dataDir)),
 		cmds.NewCtrCommand(externalCLIAction("ctr", dataDir)),
 		cmds.NewCheckConfigCommand(externalCLIAction("check-config", dataDir)),
-		cmds.NewEtcdSnapshotCommand(wrap(version.Program+"-server", dataDir, os.Args)),
+		cmds.NewEtcdSnapshotCommand(wrap("k3s-"+cmds.EtcdSnapshotCommand, dataDir, os.Args)),
 	}
 
 	if err := app.Run(os.Args); err != nil {
