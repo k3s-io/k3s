@@ -761,7 +761,6 @@ github.com/munnerz/goautoneg
 # github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f
 github.com/mxk/go-flowrate/flowrate
 # github.com/natefinch/lumberjack v2.0.0+incompatible
-## explicit
 github.com/natefinch/lumberjack
 # github.com/opencontainers/go-digest v1.0.0
 github.com/opencontainers/go-digest
