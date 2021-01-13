@@ -2,6 +2,7 @@ package etcdsnapshot
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 
@@ -9,9 +10,9 @@ import (
 	"github.com/rancher/k3s/pkg/cli/cmds"
 	"github.com/rancher/k3s/pkg/cluster"
 	"github.com/rancher/k3s/pkg/daemons/config"
+	"github.com/rancher/k3s/pkg/etcd"
 	"github.com/rancher/k3s/pkg/server"
 	"github.com/rancher/wrangler/pkg/signals"
-	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 )
 
@@ -33,17 +34,27 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	var serverConfig server.Config
 	serverConfig.DisableAgent = true
 	serverConfig.ControlConfig.DataDir = dataDir
-	serverConfig.ControlConfig.Datastore.Endpoint = "etcd"
 	serverConfig.ControlConfig.EtcdSnapshotNow = true
 	serverConfig.ControlConfig.EtcdSnapshotName = cfg.EtcdSnapshotName
 	serverConfig.ControlConfig.EtcdSnapshotDir = cfg.EtcdSnapshotDir
 	serverConfig.ControlConfig.EtcdSnapshotRetention = cfg.EtcdSnapshotRetention
 	serverConfig.ControlConfig.Runtime = &config.ControlRuntime{}
-	serverConfig.ControlConfig.Runtime.ETCDServerCA = filepath.Join(dataDir, "tls", "etcd", "server-ca.crt")
-	serverConfig.ControlConfig.Runtime.ClientETCDCert = filepath.Join(dataDir, "tls", "etcd", "client.crt")
-	serverConfig.ControlConfig.Runtime.ClientETCDKey = filepath.Join(dataDir, "tls", "etcd", "client.key")
+	etcdServerCA := filepath.Join(dataDir, "tls", "etcd", "server-ca.crt")
+	serverConfig.ControlConfig.Runtime.ETCDServerCA = etcdServerCA
+	etcdClientCrt := filepath.Join(dataDir, "tls", "etcd", "client.crt")
+	serverConfig.ControlConfig.Runtime.ClientETCDCert = etcdClientCrt
+	etcdClientKey := filepath.Join(dataDir, "tls", "etcd", "client.key")
+	serverConfig.ControlConfig.Runtime.ClientETCDKey = etcdClientKey
 
 	ctx := signals.SetupSignalHandler(context.Background())
+
+	initialized, err := etcd.NewETCD().IsInitialized(ctx, &serverConfig.ControlConfig)
+	if err != nil {
+		return err
+	}
+	if !initialized {
+		return errors.New("managed etcd database has not been initialized")
+	}
 
 	cluster := cluster.New(&serverConfig.ControlConfig)
 
@@ -51,10 +62,5 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 		return err
 	}
 
-	if err := cluster.Snapshot(ctx, &serverConfig.ControlConfig); err != nil {
-		logrus.Error(err)
-		os.Exit(1)
-	}
-
-	return nil
+	return cluster.Snapshot(ctx, &serverConfig.ControlConfig)
 }
