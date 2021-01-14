@@ -657,7 +657,6 @@ github.com/grpc-ecosystem/grpc-gateway/utilities
 # github.com/hashicorp/errwrap v1.0.0
 github.com/hashicorp/errwrap
 # github.com/hashicorp/go-multierror v1.0.0
-## explicit
 github.com/hashicorp/go-multierror
 # github.com/hashicorp/golang-lru v0.5.3
 github.com/hashicorp/golang-lru
@@ -761,6 +760,7 @@ github.com/munnerz/goautoneg
 # github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f
 github.com/mxk/go-flowrate/flowrate
 # github.com/natefinch/lumberjack v2.0.0+incompatible
+## explicit
 github.com/natefinch/lumberjack
 # github.com/opencontainers/go-digest v1.0.0
 github.com/opencontainers/go-digest
