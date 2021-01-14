@@ -52,6 +52,12 @@ var runPodCommand = &cli.Command{
 			Aliases: []string{"r"},
 			Usage:   "Runtime handler to use. Available options are defined by the container runtime.",
 		},
+		&cli.DurationFlag{
+			Name:    "cancel-timeout",
+			Aliases: []string{"T"},
+			Value:   0,
+			Usage:   "Seconds to wait for a run pod sandbox request to complete before cancelling the request",
+		},
 	},
 
 	Action: func(context *cli.Context) error {
@@ -72,7 +78,7 @@ var runPodCommand = &cli.Command{
 		}
 
 		// Test RuntimeServiceClient.RunPodSandbox
-		podID, err := RunPodSandbox(runtimeClient, podSandboxConfig, context.String("runtime"))
+		podID, err := RunPodSandbox(runtimeClient, podSandboxConfig, context.String("runtime"), context.Duration("cancel-timeout"))
 		if err != nil {
 			return errors.Wrap(err, "run pod sandbox")
 		}
@@ -149,25 +155,26 @@ var removePodCommand = &cli.Command{
 
 		funcs := []func() error{}
 		for _, id := range ids {
+			podId := id
 			funcs = append(funcs, func() error {
 				resp, err := runtimeClient.PodSandboxStatus(context.Background(),
-					&pb.PodSandboxStatusRequest{PodSandboxId: id})
+					&pb.PodSandboxStatusRequest{PodSandboxId: podId})
 				if err != nil {
-					return errors.Wrapf(err, "getting sandbox status of pod %q", id)
+					return errors.Wrapf(err, "getting sandbox status of pod %q", podId)
 				}
 				if resp.Status.State == pb.PodSandboxState_SANDBOX_READY {
 					if ctx.Bool("force") {
-						if err := StopPodSandbox(runtimeClient, id); err != nil {
-							return errors.Wrapf(err, "stopping the pod sandbox %q failed", id)
+						if err := StopPodSandbox(runtimeClient, podId); err != nil {
+							return errors.Wrapf(err, "stopping the pod sandbox %q failed", podId)
 						}
 					} else {
-						return errors.Errorf("pod sandbox %q is running, please stop it first", id)
+						return errors.Errorf("pod sandbox %q is running, please stop it first", podId)
 					}
 				}
 
-				err = RemovePodSandbox(runtimeClient, id)
+				err = RemovePodSandbox(runtimeClient, podId)
 				if err != nil {
-					return errors.Wrapf(err, "removing the pod sandbox %q", id)
+					return errors.Wrapf(err, "removing the pod sandbox %q", podId)
 				}
 
 				return nil
@@ -314,13 +321,15 @@ var listPodCommand = &cli.Command{
 
 // RunPodSandbox sends a RunPodSandboxRequest to the server, and parses
 // the returned RunPodSandboxResponse.
-func RunPodSandbox(client pb.RuntimeServiceClient, config *pb.PodSandboxConfig, runtime string) (string, error) {
+func RunPodSandbox(client pb.RuntimeServiceClient, config *pb.PodSandboxConfig, runtime string, timeout time.Duration) (string, error) {
 	request := &pb.RunPodSandboxRequest{
 		Config:         config,
 		RuntimeHandler: runtime,
 	}
 	logrus.Debugf("RunPodSandboxRequest: %v", request)
-	r, err := client.RunPodSandbox(context.Background(), request)
+	ctx, cancel := ctxWithTimeout(timeout)
+	defer cancel()
+	r, err := client.RunPodSandbox(ctx, request)
 	logrus.Debugf("RunPodSandboxResponse: %v", r)
 	if err != nil {
 		return "", err

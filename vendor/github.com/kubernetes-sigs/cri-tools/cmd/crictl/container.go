@@ -57,6 +57,9 @@ type runOptions struct {
 	// podConfig is path to the config for sandbox
 	podConfig string
 
+	// the create timeout
+	timeout time.Duration
+
 	// the image pull options
 	*pullOptions
 }
@@ -120,7 +123,11 @@ var createContainerCommand = &cli.Command{
 	Name:      "create",
 	Usage:     "Create a new container",
 	ArgsUsage: "POD container-config.[json|yaml] pod-config.[json|yaml]",
-	Flags:     createPullFlags,
+	Flags: append(createPullFlags, &cli.DurationFlag{
+		Name:    "cancel-timeout",
+		Aliases: []string{"T"},
+		Usage:   "Seconds to wait for a container create request to complete before cancelling the request",
+	}),
 
 	Action: func(context *cli.Context) error {
 		if context.Args().Len() != 3 {
@@ -159,6 +166,7 @@ var createContainerCommand = &cli.Command{
 					creds:    context.String("creds"),
 					auth:     context.String("auth"),
 				},
+				timeout: context.Duration("cancel-timeout"),
 			},
 		}
 
@@ -265,7 +273,6 @@ var stopContainerCommand = &cli.Command{
 		&cli.Int64Flag{
 			Name:    "timeout",
 			Aliases: []string{"t"},
-			Value:   10,
 			Usage:   "Seconds to wait to kill the container after a graceful stop is requested",
 		},
 	},
@@ -530,6 +537,10 @@ var runContainerCommand = &cli.Command{
 		Name:    "runtime",
 		Aliases: []string{"r"},
 		Usage:   "Runtime handler to use. Available options are defined by the container runtime.",
+	}, &cli.DurationFlag{
+		Name:    "timeout",
+		Aliases: []string{"t"},
+		Usage:   "Seconds to wait for a container create request before cancelling the request",
 	}),
 
 	Action: func(context *cli.Context) error {
@@ -569,6 +580,7 @@ var runContainerCommand = &cli.Command{
 				creds:    context.String("creds"),
 				auth:     context.String("auth"),
 			},
+			timeout: context.Duration("timeout"),
 		}
 
 		err = RunContainer(imageClient, runtimeClient, opts, context.String("runtime"))
@@ -591,7 +603,9 @@ func RunContainer(
 	if err != nil {
 		return errors.Wrap(err, "load podSandboxConfig")
 	}
-	podID, err := RunPodSandbox(rClient, podSandboxConfig, runtime)
+	// set the timeout for the RunPodSandbox request to 0, because the
+	// timeout option is documented as being for container creation.
+	podID, err := RunPodSandbox(rClient, podSandboxConfig, runtime, 0)
 	if err != nil {
 		return errors.Wrap(err, "run pod sandbox")
 	}
@@ -655,7 +669,9 @@ func CreateContainer(
 		SandboxConfig: podConfig,
 	}
 	logrus.Debugf("CreateContainerRequest: %v", request)
-	r, err := rClient.CreateContainer(context.Background(), request)
+	ctx, cancel := ctxWithTimeout(opts.timeout)
+	defer cancel()
+	r, err := rClient.CreateContainer(ctx, request)
 	logrus.Debugf("CreateContainerResponse: %v", r)
 	if err != nil {
 		return "", err
