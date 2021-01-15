@@ -212,7 +212,7 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 			},
 			&cli.BoolFlag{
 				Name:        "etcd-expose-metrics",
-				Usage:       "(dc) Expose etcd metrics to client interface. (Default false)",
+				Usage:       "(db) Expose etcd metrics to client interface. (Default false)",
 				Destination: &ServerConfig.EtcdExposeMetrics,
 			},
 			&cli.BoolFlag{
