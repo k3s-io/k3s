@@ -59,7 +59,7 @@ type Server struct {
 	EncryptSecrets           bool
 	StartupHooks             []func(context.Context, <-chan struct{}, string) error
 	EtcdDisableSnapshots     bool
-	EtcdListenAddressMetrics string
+	EtcdExposeMetrics        bool
 	EtcdSnapshotDir          string
 	EtcdSnapshotCron         string
 	EtcdSnapshotRetention    int
@@ -210,10 +210,10 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Destination: &ServerConfig.DatastoreKeyFile,
 				EnvVar:      version.ProgramUpper + "_DATASTORE_KEYFILE",
 			},
-			&cli.StringFlag{
-				Name:        "etcd-listen-address-metrics",
-				Usage:       "(dc) Listen address etcd metrics. (Default address 127.0.0.1)",
-				Destination: &ServerConfig.EtcdListenAddressMetrics,
+			&cli.BoolFlag{
+				Name:        "etcd-expose-metrics",
+				Usage:       "(dc) Expose etcd metrics to client interface. (Default false)",
+				Destination: &ServerConfig.EtcdExposeMetrics,
 			},
 			&cli.BoolFlag{
 				Name:        "etcd-disable-snapshots",
