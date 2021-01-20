@@ -711,7 +711,7 @@ func snapshotDir(config *config.Control) (string, error) {
 }
 
 // preSnapshotSetup checks to see if the necessary components are in place
-// to perform an Etcd snapshot. This is necessasry primarily for on-demand
+// to perform an Etcd snapshot. This is necessary primarily for on-demand
 // snapshots since they're performed before normal Etcd setup is completed.
 func (e *ETCD) preSnapshotSetup(ctx context.Context, config *config.Control) error {
 	if e.client == nil {
