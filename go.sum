@@ -454,6 +454,8 @@ github.com/k3s-io/containerd v1.3.9-k3s1 h1:VeMMmcojFZDJlLkgtIr7GAmDUgtGS7ME3KvL
 github.com/k3s-io/containerd v1.3.9-k3s1/go.mod h1:eMCLnqhZCzg+cZuvfMLStYPsrx5cWGpdZL6krPhK8RI=
 github.com/k3s-io/cri v1.3.0-k3s.9 h1:1PUJysV7YQElM5JEjnHdOQ2kgwtTiSJ5fpx1j4/WjzU=
 github.com/k3s-io/cri v1.3.0-k3s.9/go.mod h1:fGPUUHMKQik/vIegSe05DtX/m4miovdtvVLqRUFAkK0=
+github.com/k3s-io/helm-controller v0.8.3 h1:GWxavyMz7Bw2ClxH5okkeOL8o5U6IBK7uauc44SDCjU=
+github.com/k3s-io/helm-controller v0.8.3/go.mod h1:nZP8FH3KZrNNUf5r+SwwiMR63HS6lxdHdpHijgPfF74=
 github.com/k3s-io/kubernetes v1.18.15-k3s1 h1:hcQXepHGxTP7G3FyoHFbOjDKni1xq2vWIIoFhlBG83M=
 github.com/k3s-io/kubernetes v1.18.15-k3s1/go.mod h1:1uB7+7NGbXMLX7XOjMcXnk2Lc1v2J3NcBFDUTn1JkX8=
 github.com/k3s-io/kubernetes/staging/src/k8s.io/api v1.18.15-k3s1 h1:ERXYS6TQ2qlSyPhlxJbv6n/2/aZ0WEu0AIGufSy2afQ=
@@ -667,8 +669,6 @@ github.com/rancher/dynamiclistener v0.2.0 h1:KucYwJXVVGhZ/NndfMCeQoCafT/VN7kvqSG
 github.com/rancher/dynamiclistener v0.2.0/go.mod h1:fs/dxyNcB3YT6W9fVz4bDGfhmSQS17QQup6BIcGF++s=
 github.com/rancher/flannel v0.11.0-k3s.2 h1:0GVr5ORAIvcri1LYTE8eMQ+NrRbuPeIniPaW51IzLco=
 github.com/rancher/flannel v0.11.0-k3s.2/go.mod h1:Hn4ZV+eq0LhLZP63xZnxdGwXEoRSxs5sxELxu27M3UA=
-github.com/rancher/helm-controller v0.6.5 h1:gL6R3fbsBFBnrp2Wc36zn0zLQ8q2ckbLpfaN2XkrLVE=
-github.com/rancher/helm-controller v0.6.5/go.mod h1:ZylsxIMGNADRPRNW+NiBWhrwwks9vnKLQiCHYWb6Bi0=
 github.com/rancher/juju-to-pkg-errors v0.0.0-20200701001603-16f3c28b59bd h1:KPnQuOFWU6Jm7dTadhZ9TCVf6Y5NxoSyUjwkbD7En5Q=
 github.com/rancher/juju-to-pkg-errors v0.0.0-20200701001603-16f3c28b59bd/go.mod h1:QYmg8cqWPPfIbpEuhtJbEdWwA6PEKSY016Z6EdfL9+8=
 github.com/rancher/kine v0.5.1 h1:pBAD9LVU3oCuRWzY6lKEVqhNi1nZlJV3bbD4G2mrE1c=
