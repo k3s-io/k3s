@@ -771,8 +771,12 @@ func (e *ETCD) Snapshot(ctx context.Context, config *config.Control) error {
 	if err := snapshot.NewV3(nil).Save(ctx, *cfg, snapshotPath); err != nil {
 		return errors.Wrap(err, "failed to save snapshot")
 	}
-	if err := snapshotRetention(e.config.EtcdSnapshotRetention, snapshotDir); err != nil {
-		return errors.Wrap(err, "failed to apply snapshot retention")
+
+	// check if we need to perform a retention check
+	if e.config.EtcdSnapshotRetention >= 1 {
+		if err := snapshotRetention(e.config.EtcdSnapshotRetention, snapshotDir); err != nil {
+			return errors.Wrap(err, "failed to apply snapshot retention")
+		}
 	}
 
 	return nil

@@ -220,6 +220,7 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Name:        "etcd-snapshot-name",
 				Usage:       "(db) Set the name of etcd snapshots. Default: etcd-snapshot-<unix-timestamp>",
 				Destination: &ServerConfig.EtcdSnapshotName,
+				Value:       "etcd-snapshot-",
 			},
 			&cli.StringFlag{
 				Name:        "etcd-snapshot-schedule-cron",

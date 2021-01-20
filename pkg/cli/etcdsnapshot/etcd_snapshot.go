@@ -37,14 +37,11 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	serverConfig.ControlConfig.EtcdSnapshotNow = true
 	serverConfig.ControlConfig.EtcdSnapshotName = cfg.EtcdSnapshotName
 	serverConfig.ControlConfig.EtcdSnapshotDir = cfg.EtcdSnapshotDir
-	serverConfig.ControlConfig.EtcdSnapshotRetention = cfg.EtcdSnapshotRetention
+	serverConfig.ControlConfig.EtcdSnapshotRetention = 0 // disable retention check
 	serverConfig.ControlConfig.Runtime = &config.ControlRuntime{}
-	etcdServerCA := filepath.Join(dataDir, "tls", "etcd", "server-ca.crt")
-	serverConfig.ControlConfig.Runtime.ETCDServerCA = etcdServerCA
-	etcdClientCrt := filepath.Join(dataDir, "tls", "etcd", "client.crt")
-	serverConfig.ControlConfig.Runtime.ClientETCDCert = etcdClientCrt
-	etcdClientKey := filepath.Join(dataDir, "tls", "etcd", "client.key")
-	serverConfig.ControlConfig.Runtime.ClientETCDKey = etcdClientKey
+	serverConfig.ControlConfig.Runtime.ETCDServerCA = filepath.Join(dataDir, "tls", "etcd", "server-ca.crt")
+	serverConfig.ControlConfig.Runtime.ClientETCDCert = filepath.Join(dataDir, "tls", "etcd", "client.crt")
+	serverConfig.ControlConfig.Runtime.ClientETCDKey = filepath.Join(dataDir, "tls", "etcd", "client.key")
 
 	ctx := signals.SetupSignalHandler(context.Background())
 

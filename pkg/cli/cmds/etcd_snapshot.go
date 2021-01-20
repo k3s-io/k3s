@@ -1,6 +1,9 @@
 package cmds
 
 import (
+	"strconv"
+	"time"
+
 	"github.com/rancher/k3s/pkg/version"
 	"github.com/urfave/cli"
 )
@@ -24,19 +27,14 @@ func NewEtcdSnapshotCommand(action func(*cli.Context) error) cli.Command {
 				Destination: &ServerConfig.DataDir,
 			},
 			&cli.StringFlag{
-				Name:        "etcd-snapshot-name",
-				Usage:       "(db) Set the name of etcd snapshots. Default: etcd-snapshot-<unix-timestamp>",
+				Name:        "name",
+				Usage:       "(db) Set the name of the etcd on-demand snapshot. Default: on-demand-<unix-timestamp>",
 				Destination: &ServerConfig.EtcdSnapshotName,
-			},
-			&cli.IntFlag{
-				Name:        "etcd-snapshot-retention",
-				Usage:       "(db) Number of snapshots to retain",
-				Destination: &ServerConfig.EtcdSnapshotRetention,
-				Value:       defaultSnapshotRentention,
+				Value:       "on-demand-" + strconv.Itoa(int(time.Now().Unix())),
 			},
 			&cli.StringFlag{
-				Name:        "etcd-snapshot-dir",
-				Usage:       "(db) Directory to save db snapshots. (Default location: ${data-dir}/db/snapshots)",
+				Name:        "dir",
+				Usage:       "(db) Directory to save etcd on-demand snapshot. (Default location: ${data-dir}/db/snapshots)",
 				Destination: &ServerConfig.EtcdSnapshotDir,
 			},
 		},
