@@ -28,11 +28,19 @@ type ControllerWrapper interface {
 	AddGenericHandler(ctx context.Context, name string, handler generic.Handler)
 }
 
+type ClusterScopedEnqueuer interface {
+	Enqueue(name string)
+}
+
 type Enqueuer interface {
 	Enqueue(namespace, name string)
 }
 
 type Resolver func(namespace, name string, obj runtime.Object) ([]Key, error)
+
+func WatchClusterScoped(ctx context.Context, name string, resolve Resolver, enq ClusterScopedEnqueuer, watching ...ControllerWrapper) {
+	Watch(ctx, name, resolve, &wrapper{ClusterScopedEnqueuer: enq}, watching...)
+}
 
 func Watch(ctx context.Context, name string, resolve Resolver, enq Enqueuer, watching ...ControllerWrapper) {
 	for _, c := range watching {
@@ -76,4 +84,12 @@ func watch(ctx context.Context, name string, enq Enqueuer, resolve Resolver, con
 		ns, name := kv.Split(key, "/")
 		return obj, runResolve(ns, name, obj)
 	})
+}
+
+type wrapper struct {
+	ClusterScopedEnqueuer
+}
+
+func (w *wrapper) Enqueue(namespace, name string) {
+	w.ClusterScopedEnqueuer.Enqueue(name)
 }

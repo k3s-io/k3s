@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"sort"
 
+	"github.com/pkg/errors"
 	"github.com/rancher/wrangler/pkg/gvk"
 
 	"github.com/rancher/wrangler/pkg/merr"
@@ -32,6 +33,8 @@ func (o ObjectKey) String() string {
 	}
 	return fmt.Sprintf("%s/%s", o.Namespace, o.Name)
 }
+
+type ObjectKeyByGVK map[schema.GroupVersionKind][]ObjectKey
 
 type ObjectByGVK map[schema.GroupVersionKind]map[ObjectKey]runtime.Object
 
@@ -68,14 +71,19 @@ type ObjectSet struct {
 	gvkSeen  map[schema.GroupVersionKind]bool
 }
 
-func NewObjectSet() *ObjectSet {
-	return &ObjectSet{
+func NewObjectSet(objs ...runtime.Object) *ObjectSet {
+	os := &ObjectSet{
 		objects: ObjectByGVK{},
 		gvkSeen: map[schema.GroupVersionKind]bool{},
 	}
+	os.Add(objs...)
+	return os
 }
 
 func (o *ObjectSet) ObjectsByGVK() ObjectByGVK {
+	if o == nil {
+		return nil
+	}
 	return o.objects
 }
 
@@ -97,7 +105,7 @@ func (o *ObjectSet) add(obj runtime.Object) {
 
 	gvk, err := o.objects.Add(obj)
 	if err != nil {
-		o.err(fmt.Errorf("failed to add %v", obj))
+		o.err(errors.Wrapf(err, "failed to add %T", obj))
 		return
 	}
 
@@ -123,6 +131,10 @@ func (o *ObjectSet) Err() error {
 
 func (o *ObjectSet) Len() int {
 	return len(o.objects)
+}
+
+func (o *ObjectSet) GVKs() []schema.GroupVersionKind {
+	return o.GVKOrder()
 }
 
 func (o *ObjectSet) GVKOrder(known ...schema.GroupVersionKind) []schema.GroupVersionKind {

@@ -25,6 +25,7 @@ import (
 	"github.com/rancher/wrangler/pkg/apply"
 	"github.com/rancher/wrangler/pkg/condition"
 	"github.com/rancher/wrangler/pkg/generic"
+	"github.com/rancher/wrangler/pkg/kv"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -176,35 +177,38 @@ func (c *nodeController) Cache() NodeCache {
 }
 
 func (c *nodeController) Create(obj *v1.Node) (*v1.Node, error) {
-	return c.clientGetter.Nodes().Create(obj)
+	return c.clientGetter.Nodes().Create(context.TODO(), obj, metav1.CreateOptions{})
 }
 
 func (c *nodeController) Update(obj *v1.Node) (*v1.Node, error) {
-	return c.clientGetter.Nodes().Update(obj)
+	return c.clientGetter.Nodes().Update(context.TODO(), obj, metav1.UpdateOptions{})
 }
 
 func (c *nodeController) UpdateStatus(obj *v1.Node) (*v1.Node, error) {
-	return c.clientGetter.Nodes().UpdateStatus(obj)
+	return c.clientGetter.Nodes().UpdateStatus(context.TODO(), obj, metav1.UpdateOptions{})
 }
 
 func (c *nodeController) Delete(name string, options *metav1.DeleteOptions) error {
-	return c.clientGetter.Nodes().Delete(name, options)
+	if options == nil {
+		options = &metav1.DeleteOptions{}
+	}
+	return c.clientGetter.Nodes().Delete(context.TODO(), name, *options)
 }
 
 func (c *nodeController) Get(name string, options metav1.GetOptions) (*v1.Node, error) {
-	return c.clientGetter.Nodes().Get(name, options)
+	return c.clientGetter.Nodes().Get(context.TODO(), name, options)
 }
 
 func (c *nodeController) List(opts metav1.ListOptions) (*v1.NodeList, error) {
-	return c.clientGetter.Nodes().List(opts)
+	return c.clientGetter.Nodes().List(context.TODO(), opts)
 }
 
 func (c *nodeController) Watch(opts metav1.ListOptions) (watch.Interface, error) {
-	return c.clientGetter.Nodes().Watch(opts)
+	return c.clientGetter.Nodes().Watch(context.TODO(), opts)
 }
 
 func (c *nodeController) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.Node, err error) {
-	return c.clientGetter.Nodes().Patch(name, pt, data, subresources...)
+	return c.clientGetter.Nodes().Patch(context.TODO(), name, pt, data, metav1.PatchOptions{}, subresources...)
 }
 
 type nodeCache struct {
@@ -233,6 +237,7 @@ func (c *nodeCache) GetByIndex(indexName, key string) (result []*v1.Node, err er
 	if err != nil {
 		return nil, err
 	}
+	result = make([]*v1.Node, 0, len(objs))
 	for _, obj := range objs {
 		result = append(result, obj.(*v1.Node))
 	}
@@ -263,6 +268,7 @@ func RegisterNodeGeneratingHandler(ctx context.Context, controller NodeControlle
 	if opts != nil {
 		statusHandler.opts = *opts
 	}
+	controller.OnChange(ctx, name, statusHandler.Remove)
 	RegisterNodeStatusHandler(ctx, controller, condition, name, statusHandler.Handle)
 }
 
@@ -277,7 +283,7 @@ func (a *nodeStatusHandler) sync(key string, obj *v1.Node) (*v1.Node, error) {
 		return obj, nil
 	}
 
-	origStatus := obj.Status
+	origStatus := obj.Status.DeepCopy()
 	obj = obj.DeepCopy()
 	newStatus, err := a.handler(obj, obj.Status)
 	if err != nil {
@@ -285,16 +291,16 @@ func (a *nodeStatusHandler) sync(key string, obj *v1.Node) (*v1.Node, error) {
 		newStatus = *origStatus.DeepCopy()
 	}
 
-	obj.Status = newStatus
 	if a.condition != "" {
 		if errors.IsConflict(err) {
-			a.condition.SetError(obj, "", nil)
+			a.condition.SetError(&newStatus, "", nil)
 		} else {
-			a.condition.SetError(obj, "", err)
+			a.condition.SetError(&newStatus, "", err)
 		}
 	}
-	if !equality.Semantic.DeepEqual(origStatus, obj.Status) {
+	if !equality.Semantic.DeepEqual(origStatus, &newStatus) {
 		var newErr error
+		obj.Status = newStatus
 		obj, newErr = a.client.UpdateStatus(obj)
 		if err == nil {
 			err = newErr
@@ -311,29 +317,28 @@ type nodeGeneratingHandler struct {
 	name  string
 }
 
+func (a *nodeGeneratingHandler) Remove(key string, obj *v1.Node) (*v1.Node, error) {
+	if obj != nil {
+		return obj, nil
+	}
+
+	obj = &v1.Node{}
+	obj.Namespace, obj.Name = kv.RSplit(key, "/")
+	obj.SetGroupVersionKind(a.gvk)
+
+	return nil, generic.ConfigureApplyForObject(a.apply, obj, &a.opts).
+		WithOwner(obj).
+		WithSetID(a.name).
+		ApplyObjects()
+}
+
 func (a *nodeGeneratingHandler) Handle(obj *v1.Node, status v1.NodeStatus) (v1.NodeStatus, error) {
 	objs, newStatus, err := a.NodeGeneratingHandler(obj, status)
 	if err != nil {
 		return newStatus, err
 	}
 
-	apply := a.apply
-
-	if !a.opts.DynamicLookup {
-		apply = apply.WithStrictCaching()
-	}
-
-	if !a.opts.AllowCrossNamespace && !a.opts.AllowClusterScoped {
-		apply = apply.WithSetOwnerReference(true, false).
-			WithDefaultNamespace(obj.GetNamespace()).
-			WithListerNamespace(obj.GetNamespace())
-	}
-
-	if !a.opts.AllowClusterScoped {
-		apply = apply.WithRestrictClusterScoped()
-	}
-
-	return newStatus, apply.
+	return newStatus, generic.ConfigureApplyForObject(a.apply, obj, &a.opts).
 		WithOwner(obj).
 		WithSetID(a.name).
 		ApplyObjects(objs...)

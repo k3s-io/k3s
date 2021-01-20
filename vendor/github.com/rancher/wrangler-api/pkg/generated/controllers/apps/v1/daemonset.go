@@ -25,6 +25,7 @@ import (
 	"github.com/rancher/wrangler/pkg/apply"
 	"github.com/rancher/wrangler/pkg/condition"
 	"github.com/rancher/wrangler/pkg/generic"
+	"github.com/rancher/wrangler/pkg/kv"
 	v1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -176,35 +177,38 @@ func (c *daemonSetController) Cache() DaemonSetCache {
 }
 
 func (c *daemonSetController) Create(obj *v1.DaemonSet) (*v1.DaemonSet, error) {
-	return c.clientGetter.DaemonSets(obj.Namespace).Create(obj)
+	return c.clientGetter.DaemonSets(obj.Namespace).Create(context.TODO(), obj, metav1.CreateOptions{})
 }
 
 func (c *daemonSetController) Update(obj *v1.DaemonSet) (*v1.DaemonSet, error) {
-	return c.clientGetter.DaemonSets(obj.Namespace).Update(obj)
+	return c.clientGetter.DaemonSets(obj.Namespace).Update(context.TODO(), obj, metav1.UpdateOptions{})
 }
 
 func (c *daemonSetController) UpdateStatus(obj *v1.DaemonSet) (*v1.DaemonSet, error) {
-	return c.clientGetter.DaemonSets(obj.Namespace).UpdateStatus(obj)
+	return c.clientGetter.DaemonSets(obj.Namespace).UpdateStatus(context.TODO(), obj, metav1.UpdateOptions{})
 }
 
 func (c *daemonSetController) Delete(namespace, name string, options *metav1.DeleteOptions) error {
-	return c.clientGetter.DaemonSets(namespace).Delete(name, options)
+	if options == nil {
+		options = &metav1.DeleteOptions{}
+	}
+	return c.clientGetter.DaemonSets(namespace).Delete(context.TODO(), name, *options)
 }
 
 func (c *daemonSetController) Get(namespace, name string, options metav1.GetOptions) (*v1.DaemonSet, error) {
-	return c.clientGetter.DaemonSets(namespace).Get(name, options)
+	return c.clientGetter.DaemonSets(namespace).Get(context.TODO(), name, options)
 }
 
 func (c *daemonSetController) List(namespace string, opts metav1.ListOptions) (*v1.DaemonSetList, error) {
-	return c.clientGetter.DaemonSets(namespace).List(opts)
+	return c.clientGetter.DaemonSets(namespace).List(context.TODO(), opts)
 }
 
 func (c *daemonSetController) Watch(namespace string, opts metav1.ListOptions) (watch.Interface, error) {
-	return c.clientGetter.DaemonSets(namespace).Watch(opts)
+	return c.clientGetter.DaemonSets(namespace).Watch(context.TODO(), opts)
 }
 
 func (c *daemonSetController) Patch(namespace, name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.DaemonSet, err error) {
-	return c.clientGetter.DaemonSets(namespace).Patch(name, pt, data, subresources...)
+	return c.clientGetter.DaemonSets(namespace).Patch(context.TODO(), name, pt, data, metav1.PatchOptions{}, subresources...)
 }
 
 type daemonSetCache struct {
@@ -233,6 +237,7 @@ func (c *daemonSetCache) GetByIndex(indexName, key string) (result []*v1.DaemonS
 	if err != nil {
 		return nil, err
 	}
+	result = make([]*v1.DaemonSet, 0, len(objs))
 	for _, obj := range objs {
 		result = append(result, obj.(*v1.DaemonSet))
 	}
@@ -263,6 +268,7 @@ func RegisterDaemonSetGeneratingHandler(ctx context.Context, controller DaemonSe
 	if opts != nil {
 		statusHandler.opts = *opts
 	}
+	controller.OnChange(ctx, name, statusHandler.Remove)
 	RegisterDaemonSetStatusHandler(ctx, controller, condition, name, statusHandler.Handle)
 }
 
@@ -277,7 +283,7 @@ func (a *daemonSetStatusHandler) sync(key string, obj *v1.DaemonSet) (*v1.Daemon
 		return obj, nil
 	}
 
-	origStatus := obj.Status
+	origStatus := obj.Status.DeepCopy()
 	obj = obj.DeepCopy()
 	newStatus, err := a.handler(obj, obj.Status)
 	if err != nil {
@@ -285,16 +291,16 @@ func (a *daemonSetStatusHandler) sync(key string, obj *v1.DaemonSet) (*v1.Daemon
 		newStatus = *origStatus.DeepCopy()
 	}
 
-	obj.Status = newStatus
 	if a.condition != "" {
 		if errors.IsConflict(err) {
-			a.condition.SetError(obj, "", nil)
+			a.condition.SetError(&newStatus, "", nil)
 		} else {
-			a.condition.SetError(obj, "", err)
+			a.condition.SetError(&newStatus, "", err)
 		}
 	}
-	if !equality.Semantic.DeepEqual(origStatus, obj.Status) {
+	if !equality.Semantic.DeepEqual(origStatus, &newStatus) {
 		var newErr error
+		obj.Status = newStatus
 		obj, newErr = a.client.UpdateStatus(obj)
 		if err == nil {
 			err = newErr
@@ -311,29 +317,28 @@ type daemonSetGeneratingHandler struct {
 	name  string
 }
 
+func (a *daemonSetGeneratingHandler) Remove(key string, obj *v1.DaemonSet) (*v1.DaemonSet, error) {
+	if obj != nil {
+		return obj, nil
+	}
+
+	obj = &v1.DaemonSet{}
+	obj.Namespace, obj.Name = kv.RSplit(key, "/")
+	obj.SetGroupVersionKind(a.gvk)
+
+	return nil, generic.ConfigureApplyForObject(a.apply, obj, &a.opts).
+		WithOwner(obj).
+		WithSetID(a.name).
+		ApplyObjects()
+}
+
 func (a *daemonSetGeneratingHandler) Handle(obj *v1.DaemonSet, status v1.DaemonSetStatus) (v1.DaemonSetStatus, error) {
 	objs, newStatus, err := a.DaemonSetGeneratingHandler(obj, status)
 	if err != nil {
 		return newStatus, err
 	}
 
-	apply := a.apply
-
-	if !a.opts.DynamicLookup {
-		apply = apply.WithStrictCaching()
-	}
-
-	if !a.opts.AllowCrossNamespace && !a.opts.AllowClusterScoped {
-		apply = apply.WithSetOwnerReference(true, false).
-			WithDefaultNamespace(obj.GetNamespace()).
-			WithListerNamespace(obj.GetNamespace())
-	}
-
-	if !a.opts.AllowClusterScoped {
-		apply = apply.WithRestrictClusterScoped()
-	}
-
-	return newStatus, apply.
+	return newStatus, generic.ConfigureApplyForObject(a.apply, obj, &a.opts).
 		WithOwner(obj).
 		WithSetID(a.name).
 		ApplyObjects(objs...)

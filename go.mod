@@ -62,7 +62,11 @@ replace (
 )
 
 require (
+	cloud.google.com/go v0.43.0 // indirect
+	github.com/Azure/go-autorest/autorest/to v0.3.0 // indirect
+	github.com/Azure/go-autorest/autorest/validation v0.2.0 // indirect
 	github.com/NYTimes/gziphandler v1.1.1 // indirect
+	github.com/aws/aws-sdk-go v1.24.1 // indirect
 	github.com/bhendo/go-powershell v0.0.0-20190719160123-219e7fb4e41e // indirect
 	github.com/bronze1man/goStrongswanVici v0.0.0-20190828090544-27d02f80ba40 // indirect
 	github.com/buger/jsonparser v0.0.0-20181115193947-bf1c66bbce23 // indirect
@@ -81,6 +85,7 @@ require (
 	github.com/coreos/go-iptables v0.4.2
 	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f
 	github.com/docker/docker v1.4.2-0.20191205034852-d163fbba3c82
+	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-metrics v0.0.1 // indirect
 	github.com/flosch/pongo2 v0.0.0-20190707114632-bbf5a6c351f4 // indirect
 	github.com/go-bindata/go-bindata v3.1.2+incompatible
@@ -89,6 +94,9 @@ require (
 	github.com/google/tcpproxy v0.0.0-20180808230851-dfa16c61dad2
 	github.com/gorilla/mux v1.7.3
 	github.com/gorilla/websocket v1.4.1
+	github.com/gregjones/httpcache v0.0.0-20190212212710-3befbb6ad0cc // indirect
+	github.com/hashicorp/go-multierror v1.0.0 // indirect
+	github.com/k3s-io/helm-controller v0.8.3
 	github.com/kubernetes-sigs/cri-tools v0.0.0-00010101000000-000000000000
 	github.com/lib/pq v1.8.0
 	github.com/lxc/lxd v0.0.0-20191108214106-60ea15630455
@@ -99,11 +107,10 @@ require (
 	github.com/pkg/errors v0.8.1
 	github.com/rakelkar/gonetsh v0.0.0-20190719023240-501daadcadf8 // indirect
 	github.com/rancher/dynamiclistener v0.2.0
-	github.com/rancher/helm-controller v0.4.1
 	github.com/rancher/kine v0.5.1
 	github.com/rancher/remotedialer v0.2.0
-	github.com/rancher/wrangler v0.4.0
-	github.com/rancher/wrangler-api v0.4.0
+	github.com/rancher/wrangler v0.6.1
+	github.com/rancher/wrangler-api v0.6.0
 	github.com/rootless-containers/rootlesskit v0.7.2
 	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/pflag v1.0.5
@@ -115,8 +122,8 @@ require (
 	google.golang.org/grpc v1.25.1
 	gopkg.in/robfig/cron.v2 v2.0.0-20150107220207-be2e0b0deed5 // indirect
 	gopkg.in/yaml.v2 v2.2.8
-	k8s.io/api v0.17.0
-	k8s.io/apimachinery v0.17.0
+	k8s.io/api v0.18.0
+	k8s.io/apimachinery v0.18.0
 	k8s.io/apiserver v0.0.0
 	k8s.io/client-go v11.0.1-0.20190409021438-1a26190bd76a+incompatible
 	k8s.io/cloud-provider v0.0.0

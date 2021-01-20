@@ -3,6 +3,7 @@ package gvk
 import (
 	"fmt"
 
+	"github.com/pkg/errors"
 	"github.com/rancher/wrangler/pkg/schemes"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -16,17 +17,26 @@ func Get(obj runtime.Object) (schema.GroupVersionKind, error) {
 
 	gvks, _, err := schemes.All.ObjectKinds(obj)
 	if err != nil {
-		return schema.GroupVersionKind{}, err
+		return schema.GroupVersionKind{}, errors.Wrapf(err, "failed to find gvk for %T, you may need to import the wrangler generated controller package", obj)
 	}
 
 	if len(gvks) == 0 {
-		return schema.GroupVersionKind{}, fmt.Errorf("failed to find gvk for %v", obj.GetObjectKind())
+		return schema.GroupVersionKind{}, fmt.Errorf("failed to find gvk for %T", obj)
 	}
 
 	return gvks[0], nil
 }
 
-func Set(obj runtime.Object) error {
+func Set(objs ...runtime.Object) error {
+	for _, obj := range objs {
+		if err := setObject(obj); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func setObject(obj runtime.Object) error {
 	gvk := obj.GetObjectKind().GroupVersionKind()
 	if gvk.Kind != "" {
 		return nil

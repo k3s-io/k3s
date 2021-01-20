@@ -173,31 +173,34 @@ func (c *serviceAccountController) Cache() ServiceAccountCache {
 }
 
 func (c *serviceAccountController) Create(obj *v1.ServiceAccount) (*v1.ServiceAccount, error) {
-	return c.clientGetter.ServiceAccounts(obj.Namespace).Create(obj)
+	return c.clientGetter.ServiceAccounts(obj.Namespace).Create(context.TODO(), obj, metav1.CreateOptions{})
 }
 
 func (c *serviceAccountController) Update(obj *v1.ServiceAccount) (*v1.ServiceAccount, error) {
-	return c.clientGetter.ServiceAccounts(obj.Namespace).Update(obj)
+	return c.clientGetter.ServiceAccounts(obj.Namespace).Update(context.TODO(), obj, metav1.UpdateOptions{})
 }
 
 func (c *serviceAccountController) Delete(namespace, name string, options *metav1.DeleteOptions) error {
-	return c.clientGetter.ServiceAccounts(namespace).Delete(name, options)
+	if options == nil {
+		options = &metav1.DeleteOptions{}
+	}
+	return c.clientGetter.ServiceAccounts(namespace).Delete(context.TODO(), name, *options)
 }
 
 func (c *serviceAccountController) Get(namespace, name string, options metav1.GetOptions) (*v1.ServiceAccount, error) {
-	return c.clientGetter.ServiceAccounts(namespace).Get(name, options)
+	return c.clientGetter.ServiceAccounts(namespace).Get(context.TODO(), name, options)
 }
 
 func (c *serviceAccountController) List(namespace string, opts metav1.ListOptions) (*v1.ServiceAccountList, error) {
-	return c.clientGetter.ServiceAccounts(namespace).List(opts)
+	return c.clientGetter.ServiceAccounts(namespace).List(context.TODO(), opts)
 }
 
 func (c *serviceAccountController) Watch(namespace string, opts metav1.ListOptions) (watch.Interface, error) {
-	return c.clientGetter.ServiceAccounts(namespace).Watch(opts)
+	return c.clientGetter.ServiceAccounts(namespace).Watch(context.TODO(), opts)
 }
 
 func (c *serviceAccountController) Patch(namespace, name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.ServiceAccount, err error) {
-	return c.clientGetter.ServiceAccounts(namespace).Patch(name, pt, data, subresources...)
+	return c.clientGetter.ServiceAccounts(namespace).Patch(context.TODO(), name, pt, data, metav1.PatchOptions{}, subresources...)
 }
 
 type serviceAccountCache struct {
@@ -226,6 +229,7 @@ func (c *serviceAccountCache) GetByIndex(indexName, key string) (result []*v1.Se
 	if err != nil {
 		return nil, err
 	}
+	result = make([]*v1.ServiceAccount, 0, len(objs))
 	for _, obj := range objs {
 		result = append(result, obj.(*v1.ServiceAccount))
 	}

@@ -155,6 +155,20 @@ func (g *ControllerManager) getController(gvk schema.GroupVersionKind, informer 
 }
 
 func (g *ControllerManager) AddHandler(ctx context.Context, gvk schema.GroupVersionKind, informer cache.SharedIndexInformer, name string, handler Handler) {
+	t := getHandlerTransaction(ctx)
+	if t == nil {
+		g.addHandler(ctx, gvk, informer, name, handler)
+		return
+	}
+
+	go func() {
+		if t.shouldContinue() {
+			g.addHandler(ctx, gvk, informer, name, handler)
+		}
+	}()
+}
+
+func (g *ControllerManager) addHandler(ctx context.Context, gvk schema.GroupVersionKind, informer cache.SharedIndexInformer, name string, handler Handler) {
 	g.lock.Lock()
 	defer g.lock.Unlock()
 

@@ -239,37 +239,40 @@ func (c *{{.lowerName}}Controller) Cache() {{.type}}Cache {
 }
 
 func (c *{{.lowerName}}Controller) Create(obj *{{.version}}.{{.type}}) (*{{.version}}.{{.type}}, error) {
-	return c.clientGetter.{{.plural}}({{ if .namespaced}}obj.Namespace{{end}}).Create(obj)
+	return c.clientGetter.{{.plural}}({{ if .namespaced}}obj.Namespace{{end}}).Create(context.TODO(), obj, metav1.CreateOptions{})
 }
 
 func (c *{{.lowerName}}Controller) Update(obj *{{.version}}.{{.type}}) (*{{.version}}.{{.type}}, error) {
-	return c.clientGetter.{{.plural}}({{ if .namespaced}}obj.Namespace{{end}}).Update(obj)
+	return c.clientGetter.{{.plural}}({{ if .namespaced}}obj.Namespace{{end}}).Update(context.TODO(), obj, metav1.UpdateOptions{})
 }
 
 {{ if .hasStatus -}}
 func (c *{{.lowerName}}Controller) UpdateStatus(obj *{{.version}}.{{.type}}) (*{{.version}}.{{.type}}, error) {
-	return c.clientGetter.{{.plural}}({{ if .namespaced}}obj.Namespace{{end}}).UpdateStatus(obj)
+	return c.clientGetter.{{.plural}}({{ if .namespaced}}obj.Namespace{{end}}).UpdateStatus(context.TODO(), obj, metav1.UpdateOptions{})
 }
 {{- end }}
 
 func (c *{{.lowerName}}Controller) Delete({{ if .namespaced}}namespace, {{end}}name string, options *metav1.DeleteOptions) error {
-	return c.clientGetter.{{.plural}}({{ if .namespaced}}namespace{{end}}).Delete(name, options)
+	if options == nil {
+		options = &metav1.DeleteOptions{}
+	}
+	return c.clientGetter.{{.plural}}({{ if .namespaced}}namespace{{end}}).Delete(context.TODO(), name, *options)
 }
 
 func (c *{{.lowerName}}Controller) Get({{ if .namespaced}}namespace, {{end}}name string, options metav1.GetOptions) (*{{.version}}.{{.type}}, error) {
-	return c.clientGetter.{{.plural}}({{ if .namespaced}}namespace{{end}}).Get(name, options)
+	return c.clientGetter.{{.plural}}({{ if .namespaced}}namespace{{end}}).Get(context.TODO(), name, options)
 }
 
 func (c *{{.lowerName}}Controller) List({{ if .namespaced}}namespace string, {{end}}opts metav1.ListOptions) (*{{.version}}.{{.type}}List, error) {
-	return c.clientGetter.{{.plural}}({{ if .namespaced}}namespace{{end}}).List(opts)
+	return c.clientGetter.{{.plural}}({{ if .namespaced}}namespace{{end}}).List(context.TODO(), opts)
 }
 
 func (c *{{.lowerName}}Controller) Watch({{ if .namespaced}}namespace string, {{end}}opts metav1.ListOptions) (watch.Interface, error) {
-	return c.clientGetter.{{.plural}}({{ if .namespaced}}namespace{{end}}).Watch(opts)
+	return c.clientGetter.{{.plural}}({{ if .namespaced}}namespace{{end}}).Watch(context.TODO(), opts)
 }
 
 func (c *{{.lowerName}}Controller) Patch({{ if .namespaced}}namespace, {{end}}name string, pt types.PatchType, data []byte, subresources ...string) (result *{{.version}}.{{.type}}, err error) {
-	return c.clientGetter.{{.plural}}({{ if .namespaced}}namespace{{end}}).Patch(name, pt, data, subresources...)
+	return c.clientGetter.{{.plural}}({{ if .namespaced}}namespace{{end}}).Patch(context.TODO(), name, pt, data, metav1.PatchOptions{}, subresources...)
 }
 
 type {{.lowerName}}Cache struct {
@@ -298,6 +301,7 @@ func (c *{{.lowerName}}Cache) GetByIndex(indexName, key string) (result []*{{.ve
 	if err != nil {
 		return nil, err
 	}
+	result = make([]*{{.version}}.{{.type}}, 0, len(objs))
 	for _, obj := range objs {
 		result = append(result, obj.(*{{.version}}.{{.type}}))
 	}
@@ -329,6 +333,7 @@ func Register{{.type}}GeneratingHandler(ctx context.Context, controller {{.type}
 	if opts != nil {
 		statusHandler.opts = *opts
 	}
+	controller.OnChange(ctx, name, statusHandler.Remove)
 	Register{{.type}}StatusHandler(ctx, controller, condition, name, statusHandler.Handle)
 }
 
@@ -343,7 +348,7 @@ func (a *{{.lowerName}}StatusHandler) sync(key string, obj *{{.version}}.{{.type
 		return obj, nil
 	}
 
-	origStatus := obj.Status
+	origStatus := obj.Status.DeepCopy()
 	obj = obj.DeepCopy()
 	newStatus, err := a.handler(obj, obj.Status)
 	if err != nil {
@@ -351,16 +356,16 @@ func (a *{{.lowerName}}StatusHandler) sync(key string, obj *{{.version}}.{{.type
 		newStatus = *origStatus.DeepCopy()
 	}
 
-	obj.Status = newStatus
 	if a.condition != "" {
 		if errors.IsConflict(err) {
-			a.condition.SetError(obj, "", nil)
+			a.condition.SetError(&newStatus, "", nil)
 		} else {
-			a.condition.SetError(obj, "", err)
+			a.condition.SetError(&newStatus, "", err)
 		}
 	}
-	if !equality.Semantic.DeepEqual(origStatus, obj.Status) {
+	if !equality.Semantic.DeepEqual(origStatus, &newStatus) {
 		var newErr error
+		obj.Status = newStatus
 		obj, newErr = a.client.UpdateStatus(obj)
 		if err == nil {
 			err = newErr
@@ -377,29 +382,28 @@ type {{.lowerName}}GeneratingHandler struct {
 	name  string
 }
 
+func (a *{{.lowerName}}GeneratingHandler) Remove(key string, obj *{{.version}}.{{.type}}) (*{{.version}}.{{.type}}, error) {
+	if obj != nil {
+		return obj, nil
+	}
+
+	obj = &{{.version}}.{{.type}}{}
+	obj.Namespace, obj.Name = kv.RSplit(key, "/")
+	obj.SetGroupVersionKind(a.gvk)
+
+	return nil, generic.ConfigureApplyForObject(a.apply, obj, &a.opts).
+		WithOwner(obj).
+		WithSetID(a.name).
+		ApplyObjects()
+}
+
 func (a *{{.lowerName}}GeneratingHandler) Handle(obj *{{.version}}.{{.type}}, status {{.version}}.{{.statusType}}) ({{.version}}.{{.statusType}}, error) {
 	objs, newStatus, err := a.{{.type}}GeneratingHandler(obj, status)
 	if err != nil {
 		return newStatus, err
 	}
 
-	apply := a.apply
-
-	if !a.opts.DynamicLookup {
-		apply = apply.WithStrictCaching()
-	}
-
-	if !a.opts.AllowCrossNamespace && !a.opts.AllowClusterScoped {
-		apply = apply.WithSetOwnerReference(true, false).
-			WithDefaultNamespace(obj.GetNamespace()).
-			WithListerNamespace(obj.GetNamespace())
-	}
-
-	if !a.opts.AllowClusterScoped {
-		apply = apply.WithRestrictClusterScoped()
-	}
-
-	return newStatus, apply.
+	return newStatus, generic.ConfigureApplyForObject(a.apply, obj, &a.opts).
 		WithOwner(obj).
 		WithSetID(a.name).
 		ApplyObjects(objs...)

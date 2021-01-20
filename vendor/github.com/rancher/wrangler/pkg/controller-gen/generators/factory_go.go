@@ -85,18 +85,23 @@ func NewFactoryFromConfigOrDie(config *rest.Config) *Factory {
 }
 
 func NewFactoryFromConfig(config *rest.Config) (*Factory, error) {
-	cs, err := clientset.NewForConfig(config)
-	if err != nil {
-		return nil, err
-	}
-
-	informerFactory := informers.NewSharedInformerFactory(cs, 2*time.Hour)
-	return NewFactory(cs, informerFactory), nil
+	return NewFactoryFromConfigWithOptions(config, nil)
 }
 
 func NewFactoryFromConfigWithNamespace(config *rest.Config, namespace string) (*Factory, error) {
-	if namespace == "" {
-		return NewFactoryFromConfig(config)
+	return NewFactoryFromConfigWithOptions(config, &FactoryOptions{
+		Namespace: namespace,
+	})
+}
+
+type FactoryOptions struct {
+	Namespace string
+    Resync time.Duration
+}
+
+func NewFactoryFromConfigWithOptions(config *rest.Config, opts *FactoryOptions) (*Factory, error) {
+	if opts == nil {
+		opts = &FactoryOptions{}
 	}
 
 	cs, err := clientset.NewForConfig(config)
@@ -104,7 +109,17 @@ func NewFactoryFromConfigWithNamespace(config *rest.Config, namespace string) (*
 		return nil, err
 	}
 
-	informerFactory := informers.NewSharedInformerFactoryWithOptions(cs, 2*time.Hour, informers.WithNamespace(namespace))
+	resync := opts.Resync
+	if resync == 0 {
+		resync = 2*time.Hour
+	}
+
+	if opts.Namespace == "" {
+		informerFactory := informers.NewSharedInformerFactory(cs, resync)
+		return NewFactory(cs, informerFactory), nil
+	}
+
+	informerFactory := informers.NewSharedInformerFactoryWithOptions(cs, resync, informers.WithNamespace(opts.Namespace))
 	return NewFactory(cs, informerFactory), nil
 }
 

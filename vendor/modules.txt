@@ -601,6 +601,20 @@ github.com/jonboulle/clockwork
 github.com/json-iterator/go
 # github.com/juju/errors v0.0.0-20181118221551-089d3ea4e4d5 => github.com/rancher/juju-to-pkg-errors v0.0.0-20200701001603-16f3c28b59bd
 github.com/juju/errors
+# github.com/k3s-io/helm-controller v0.8.3
+github.com/k3s-io/helm-controller/pkg/apis/helm.cattle.io
+github.com/k3s-io/helm-controller/pkg/apis/helm.cattle.io/v1
+github.com/k3s-io/helm-controller/pkg/generated/clientset/versioned
+github.com/k3s-io/helm-controller/pkg/generated/clientset/versioned/scheme
+github.com/k3s-io/helm-controller/pkg/generated/clientset/versioned/typed/helm.cattle.io/v1
+github.com/k3s-io/helm-controller/pkg/generated/controllers/helm.cattle.io
+github.com/k3s-io/helm-controller/pkg/generated/controllers/helm.cattle.io/v1
+github.com/k3s-io/helm-controller/pkg/generated/informers/externalversions
+github.com/k3s-io/helm-controller/pkg/generated/informers/externalversions/helm.cattle.io
+github.com/k3s-io/helm-controller/pkg/generated/informers/externalversions/helm.cattle.io/v1
+github.com/k3s-io/helm-controller/pkg/generated/informers/externalversions/internalinterfaces
+github.com/k3s-io/helm-controller/pkg/generated/listers/helm.cattle.io/v1
+github.com/k3s-io/helm-controller/pkg/helm
 # github.com/karrick/godirwalk v1.7.5
 github.com/karrick/godirwalk
 # github.com/konsorten/go-windows-terminal-sequences v1.0.2
@@ -728,20 +742,6 @@ github.com/rancher/dynamiclistener/factory
 github.com/rancher/dynamiclistener/storage/file
 github.com/rancher/dynamiclistener/storage/kubernetes
 github.com/rancher/dynamiclistener/storage/memory
-# github.com/rancher/helm-controller v0.4.1
-github.com/rancher/helm-controller/pkg/apis/helm.cattle.io
-github.com/rancher/helm-controller/pkg/apis/helm.cattle.io/v1
-github.com/rancher/helm-controller/pkg/generated/clientset/versioned
-github.com/rancher/helm-controller/pkg/generated/clientset/versioned/scheme
-github.com/rancher/helm-controller/pkg/generated/clientset/versioned/typed/helm.cattle.io/v1
-github.com/rancher/helm-controller/pkg/generated/controllers/helm.cattle.io
-github.com/rancher/helm-controller/pkg/generated/controllers/helm.cattle.io/v1
-github.com/rancher/helm-controller/pkg/generated/informers/externalversions
-github.com/rancher/helm-controller/pkg/generated/informers/externalversions/helm.cattle.io
-github.com/rancher/helm-controller/pkg/generated/informers/externalversions/helm.cattle.io/v1
-github.com/rancher/helm-controller/pkg/generated/informers/externalversions/internalinterfaces
-github.com/rancher/helm-controller/pkg/generated/listers/helm.cattle.io/v1
-github.com/rancher/helm-controller/pkg/helm
 # github.com/rancher/kine v0.5.1
 github.com/rancher/kine/pkg/broadcaster
 github.com/rancher/kine/pkg/client
@@ -757,7 +757,7 @@ github.com/rancher/kine/pkg/server
 github.com/rancher/kine/pkg/tls
 # github.com/rancher/remotedialer v0.2.0
 github.com/rancher/remotedialer
-# github.com/rancher/wrangler v0.4.0
+# github.com/rancher/wrangler v0.6.1
 github.com/rancher/wrangler/pkg/apply
 github.com/rancher/wrangler/pkg/apply/injectors
 github.com/rancher/wrangler/pkg/cleanup
@@ -766,6 +766,8 @@ github.com/rancher/wrangler/pkg/controller-gen
 github.com/rancher/wrangler/pkg/controller-gen/args
 github.com/rancher/wrangler/pkg/controller-gen/generators
 github.com/rancher/wrangler/pkg/crd
+github.com/rancher/wrangler/pkg/data
+github.com/rancher/wrangler/pkg/data/convert
 github.com/rancher/wrangler/pkg/generic
 github.com/rancher/wrangler/pkg/gvk
 github.com/rancher/wrangler/pkg/kv
@@ -773,13 +775,17 @@ github.com/rancher/wrangler/pkg/leader
 github.com/rancher/wrangler/pkg/merr
 github.com/rancher/wrangler/pkg/name
 github.com/rancher/wrangler/pkg/objectset
+github.com/rancher/wrangler/pkg/patch
 github.com/rancher/wrangler/pkg/relatedresource
 github.com/rancher/wrangler/pkg/resolvehome
+github.com/rancher/wrangler/pkg/schemas
+github.com/rancher/wrangler/pkg/schemas/definition
+github.com/rancher/wrangler/pkg/schemas/openapi
 github.com/rancher/wrangler/pkg/schemes
 github.com/rancher/wrangler/pkg/signals
 github.com/rancher/wrangler/pkg/slice
 github.com/rancher/wrangler/pkg/start
-# github.com/rancher/wrangler-api v0.4.0
+# github.com/rancher/wrangler-api v0.6.0
 github.com/rancher/wrangler-api/pkg/generated/controllers/apps
 github.com/rancher/wrangler-api/pkg/generated/controllers/apps/v1
 github.com/rancher/wrangler-api/pkg/generated/controllers/batch
@@ -1137,7 +1143,7 @@ gopkg.in/square/go-jose.v2/jwt
 gopkg.in/warnings.v0
 # gopkg.in/yaml.v2 v2.2.8
 gopkg.in/yaml.v2
-# k8s.io/api v0.17.0 => github.com/k3s-io/kubernetes/staging/src/k8s.io/api v1.17.17-k3s1
+# k8s.io/api v0.18.0 => github.com/k3s-io/kubernetes/staging/src/k8s.io/api v1.17.17-k3s1
 k8s.io/api/admission/v1
 k8s.io/api/admission/v1beta1
 k8s.io/api/admissionregistration/v1
@@ -1181,7 +1187,7 @@ k8s.io/api/settings/v1alpha1
 k8s.io/api/storage/v1
 k8s.io/api/storage/v1alpha1
 k8s.io/api/storage/v1beta1
-# k8s.io/apiextensions-apiserver v0.17.0 => github.com/k3s-io/kubernetes/staging/src/k8s.io/apiextensions-apiserver v1.17.17-k3s1
+# k8s.io/apiextensions-apiserver v0.18.0 => github.com/k3s-io/kubernetes/staging/src/k8s.io/apiextensions-apiserver v1.17.17-k3s1
 k8s.io/apiextensions-apiserver/pkg/apihelpers
 k8s.io/apiextensions-apiserver/pkg/apis/apiextensions
 k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/install
@@ -1229,7 +1235,7 @@ k8s.io/apiextensions-apiserver/pkg/generated/openapi
 k8s.io/apiextensions-apiserver/pkg/registry/customresource
 k8s.io/apiextensions-apiserver/pkg/registry/customresource/tableconvertor
 k8s.io/apiextensions-apiserver/pkg/registry/customresourcedefinition
-# k8s.io/apimachinery v0.17.0 => github.com/k3s-io/kubernetes/staging/src/k8s.io/apimachinery v1.17.17-k3s1
+# k8s.io/apimachinery v0.18.0 => github.com/k3s-io/kubernetes/staging/src/k8s.io/apimachinery v1.17.17-k3s1
 k8s.io/apimachinery/pkg/api/equality
 k8s.io/apimachinery/pkg/api/errors
 k8s.io/apimachinery/pkg/api/meta
@@ -1627,7 +1633,7 @@ k8s.io/cluster-bootstrap/token/jws
 k8s.io/cluster-bootstrap/token/util
 k8s.io/cluster-bootstrap/util/secrets
 k8s.io/cluster-bootstrap/util/tokens
-# k8s.io/code-generator v0.17.0 => github.com/k3s-io/kubernetes/staging/src/k8s.io/code-generator v1.17.17-k3s1
+# k8s.io/code-generator v0.18.0 => github.com/k3s-io/kubernetes/staging/src/k8s.io/code-generator v1.17.17-k3s1
 k8s.io/code-generator/cmd/client-gen/args
 k8s.io/code-generator/cmd/client-gen/generators
 k8s.io/code-generator/cmd/client-gen/generators/fake
@@ -1665,7 +1671,7 @@ k8s.io/cri-api/pkg/apis/runtime/v1alpha2
 # k8s.io/csi-translation-lib v0.0.0 => github.com/k3s-io/kubernetes/staging/src/k8s.io/csi-translation-lib v1.17.17-k3s1
 k8s.io/csi-translation-lib
 k8s.io/csi-translation-lib/plugins
-# k8s.io/gengo v0.0.0-20191120174120-e74f70b9b27e
+# k8s.io/gengo v0.0.0-20200114144118-36b2048a9120
 k8s.io/gengo/args
 k8s.io/gengo/examples/deepcopy-gen/generators
 k8s.io/gengo/examples/set-gen/sets
@@ -1677,7 +1683,7 @@ k8s.io/gengo/types
 k8s.io/heapster/metrics/api/v1/types
 # k8s.io/klog v1.0.0
 k8s.io/klog
-# k8s.io/kube-aggregator v0.17.0 => github.com/k3s-io/kubernetes/staging/src/k8s.io/kube-aggregator v1.17.17-k3s1
+# k8s.io/kube-aggregator v0.18.0 => github.com/k3s-io/kubernetes/staging/src/k8s.io/kube-aggregator v1.17.17-k3s1
 k8s.io/kube-aggregator/pkg/apis/apiregistration
 k8s.io/kube-aggregator/pkg/apis/apiregistration/install
 k8s.io/kube-aggregator/pkg/apis/apiregistration/v1

@@ -3,7 +3,7 @@ package server
 import (
 	"context"
 
-	"github.com/rancher/helm-controller/pkg/generated/controllers/helm.cattle.io"
+	"github.com/k3s-io/helm-controller/pkg/generated/controllers/helm.cattle.io"
 	"github.com/rancher/k3s/pkg/generated/controllers/k3s.cattle.io"
 	"github.com/rancher/wrangler-api/pkg/generated/controllers/apps"
 	"github.com/rancher/wrangler-api/pkg/generated/controllers/batch"
@@ -63,7 +63,8 @@ func crds(ctx context.Context, config *rest.Config) error {
 
 	factory.BatchCreateCRDs(ctx, crd.NamespacedTypes(
 		"Addon.k3s.cattle.io/v1",
-		"HelmChart.helm.cattle.io/v1")...)
+		"HelmChart.helm.cattle.io/v1",
+		"HelmChartConfig.helm.cattle.io/v1")...)
 
 	return factory.BatchWait()
 }

@@ -199,7 +199,7 @@ func (c *Controller) enqueue(obj interface{}) {
 		utilruntime.HandleError(err)
 		return
 	}
-	c.workqueue.AddRateLimited(key)
+	c.workqueue.Add(key)
 }
 
 func (c *Controller) handleObject(obj interface{}) {

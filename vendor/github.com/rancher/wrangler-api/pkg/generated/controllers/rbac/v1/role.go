@@ -173,31 +173,34 @@ func (c *roleController) Cache() RoleCache {
 }
 
 func (c *roleController) Create(obj *v1.Role) (*v1.Role, error) {
-	return c.clientGetter.Roles(obj.Namespace).Create(obj)
+	return c.clientGetter.Roles(obj.Namespace).Create(context.TODO(), obj, metav1.CreateOptions{})
 }
 
 func (c *roleController) Update(obj *v1.Role) (*v1.Role, error) {
-	return c.clientGetter.Roles(obj.Namespace).Update(obj)
+	return c.clientGetter.Roles(obj.Namespace).Update(context.TODO(), obj, metav1.UpdateOptions{})
 }
 
 func (c *roleController) Delete(namespace, name string, options *metav1.DeleteOptions) error {
-	return c.clientGetter.Roles(namespace).Delete(name, options)
+	if options == nil {
+		options = &metav1.DeleteOptions{}
+	}
+	return c.clientGetter.Roles(namespace).Delete(context.TODO(), name, *options)
 }
 
 func (c *roleController) Get(namespace, name string, options metav1.GetOptions) (*v1.Role, error) {
-	return c.clientGetter.Roles(namespace).Get(name, options)
+	return c.clientGetter.Roles(namespace).Get(context.TODO(), name, options)
 }
 
 func (c *roleController) List(namespace string, opts metav1.ListOptions) (*v1.RoleList, error) {
-	return c.clientGetter.Roles(namespace).List(opts)
+	return c.clientGetter.Roles(namespace).List(context.TODO(), opts)
 }
 
 func (c *roleController) Watch(namespace string, opts metav1.ListOptions) (watch.Interface, error) {
-	return c.clientGetter.Roles(namespace).Watch(opts)
+	return c.clientGetter.Roles(namespace).Watch(context.TODO(), opts)
 }
 
 func (c *roleController) Patch(namespace, name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.Role, err error) {
-	return c.clientGetter.Roles(namespace).Patch(name, pt, data, subresources...)
+	return c.clientGetter.Roles(namespace).Patch(context.TODO(), name, pt, data, metav1.PatchOptions{}, subresources...)
 }
 
 type roleCache struct {
@@ -226,6 +229,7 @@ func (c *roleCache) GetByIndex(indexName, key string) (result []*v1.Role, err er
 	if err != nil {
 		return nil, err
 	}
+	result = make([]*v1.Role, 0, len(objs))
 	for _, obj := range objs {
 		result = append(result, obj.(*v1.Role))
 	}

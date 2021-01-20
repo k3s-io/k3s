@@ -56,7 +56,7 @@ func Run(opts cgargs.Options) {
 	clientGen := generators.NewClientGenerator()
 
 	if err := genericArgs.Execute(
-		clientgenerators.NameSystems(),
+		clientgenerators.NameSystems(nil),
 		clientgenerators.DefaultNameSystem(),
 		clientGen.Packages,
 	); err != nil {
@@ -235,7 +235,7 @@ func generateClientset(groups map[string]bool, customArgs *cgargs.CustomArgs) er
 		})
 	}
 
-	return args.Execute(cs.NameSystems(),
+	return args.Execute(cs.NameSystems(nil),
 		cs.DefaultNameSystem(),
 		cs.Packages)
 }
@@ -255,7 +255,7 @@ func generateInformers(groups map[string]bool, customArgs *cgargs.CustomArgs) er
 		args.InputDirs = append(args.InputDirs, names[0].Package)
 	}
 
-	return args.Execute(inf.NameSystems(),
+	return args.Execute(inf.NameSystems(nil),
 		inf.DefaultNameSystem(),
 		inf.Packages)
 }
@@ -273,7 +273,7 @@ func generateListers(groups map[string]bool, customArgs *cgargs.CustomArgs) erro
 		args.InputDirs = append(args.InputDirs, names[0].Package)
 	}
 
-	return args.Execute(ls.NameSystems(),
+	return args.Execute(ls.NameSystems(nil),
 		ls.DefaultNameSystem(),
 		ls.Packages)
 }
