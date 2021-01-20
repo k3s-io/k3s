@@ -25,13 +25,13 @@ func NewEtcdSnapshotCommand(action func(*cli.Context) error) cli.Command {
 			},
 			&cli.StringFlag{
 				Name:        "name",
-				Usage:       "(db) Set the base name of the etcd on-demand snapshot. Default: on-demand-<unix-timestamp>",
+				Usage:       "(db) Set the base name of the etcd on-demand snapshot (appended with UNIX timestamp).",
 				Destination: &ServerConfig.EtcdSnapshotName,
 				Value:       "on-demand",
 			},
 			&cli.StringFlag{
 				Name:        "dir",
-				Usage:       "(db) Directory to save etcd on-demand snapshot. (Default location: ${data-dir}/db/snapshots)",
+				Usage:       "(db) Directory to save etcd on-demand snapshot. (default: ${data-dir}/db/snapshots)",
 				Destination: &ServerConfig.EtcdSnapshotDir,
 			},
 		},
