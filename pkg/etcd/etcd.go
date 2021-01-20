@@ -758,7 +758,7 @@ func (e *ETCD) Snapshot(ctx context.Context, config *config.Control) error {
 		return errors.Wrap(err, "failed to get config for etcd snapshot")
 	}
 
-	snapshotName := e.config.EtcdSnapshotName + "-" + strconv.Itoa(int(time.Now().Unix()))
+	snapshotName := fmt.Sprintf("%s-%d", e.config.EtcdSnapshotName, time.Now().Unix())
 	snapshotPath := filepath.Join(snapshotDir, snapshotName)
 
 	logrus.Infof("Saving etcd snapshot to %s", snapshotPath)
