@@ -15,8 +15,8 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
+	"github.com/k3s-io/helm-controller/pkg/helm"
 	"github.com/pkg/errors"
-	"github.com/rancher/helm-controller/pkg/helm"
 	"github.com/rancher/k3s/pkg/clientaccess"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/daemons/control"

@@ -470,6 +470,8 @@ github.com/k3s-io/containerd v1.4.3-k3s1 h1:4n8gpBDXa6IpinjzSl+uJsTPfg0l0Dus6zZB
 github.com/k3s-io/containerd v1.4.3-k3s1/go.mod h1:SQt4M1HhVTRsIIYHCfaelw8OGnk1FAkZbfiCx1WpkvE=
 github.com/k3s-io/etcd v0.5.0-alpha.5.0.20201208200253-50621aee4aea h1:7cwby0GoNAi8IsVrT0q+JfQpB6V76ZaEGhj6qts/mvU=
 github.com/k3s-io/etcd v0.5.0-alpha.5.0.20201208200253-50621aee4aea/go.mod h1:yVHk9ub3CSBatqGNg7GRmsnfLWtoW60w4eDYfh7vHDg=
+github.com/k3s-io/helm-controller v0.8.3 h1:GWxavyMz7Bw2ClxH5okkeOL8o5U6IBK7uauc44SDCjU=
+github.com/k3s-io/helm-controller v0.8.3/go.mod h1:nZP8FH3KZrNNUf5r+SwwiMR63HS6lxdHdpHijgPfF74=
 github.com/k3s-io/kubernetes v1.19.7-k3s1 h1:eHp4p64Wg8KbtPW0kfakunWcDDkfFF1h1i5MCCUq17g=
 github.com/k3s-io/kubernetes v1.19.7-k3s1/go.mod h1:gKuOq0UXDNqdLqmNMmMqFebiI7OUIcvh7XYngH4Oy2s=
 github.com/k3s-io/kubernetes/staging/src/k8s.io/api v1.19.7-k3s1 h1:KbLOeUOueG9Hw/FP17RVFzF7ZwG/7AbErcAnKiIcJXk=
@@ -706,8 +708,6 @@ github.com/rancher/go-powershell v0.0.0-20200701182037-6845e6fcfa79 h1:UeC0rjrIe
 github.com/rancher/go-powershell v0.0.0-20200701182037-6845e6fcfa79/go.mod h1:xi4WpK6Op4m1Lknq61/e+VSjYlTs9bulVOaDNyBdzvk=
 github.com/rancher/go-powershell v0.0.0-20200701184732-233247d45373 h1:BePi97poJ4hXnkP9yX96EmNQgMg+dGScvB1sqIheJ7w=
 github.com/rancher/go-powershell v0.0.0-20200701184732-233247d45373/go.mod h1:Vz8oLnHgttpo/aZrTpjbcpZEDzzElqNau2zmorToY0E=
-github.com/rancher/helm-controller v0.7.3 h1:WTQHcNF2vl9w6Xd1eBtXDe0JUsYMFFstqX9ghGhI5Ac=
-github.com/rancher/helm-controller v0.7.3/go.mod h1:ZylsxIMGNADRPRNW+NiBWhrwwks9vnKLQiCHYWb6Bi0=
 github.com/rancher/kine v0.5.1 h1:pBAD9LVU3oCuRWzY6lKEVqhNi1nZlJV3bbD4G2mrE1c=
 github.com/rancher/kine v0.5.1/go.mod h1:NoqDMfN0Q+Wu23Kk3MfXfgLO2fE6abLaetejZs9HAYo=
 github.com/rancher/moq v0.0.0-20190404221404-ee5226d43009/go.mod h1:wpITyDPTi/Na5h73XkbuEf2AP9fbgrIGqqxVzFhYD6U=
