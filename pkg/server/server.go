@@ -13,8 +13,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/k3s-io/helm-controller/pkg/helm"
 	"github.com/pkg/errors"
-	"github.com/rancher/helm-controller/pkg/helm"
 	"github.com/rancher/k3s/pkg/clientaccess"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/daemons/control"
@@ -135,6 +135,7 @@ func masterControllers(ctx context.Context, sc *Context, config *Config) error {
 
 	helm.Register(ctx, sc.Apply,
 		sc.Helm.Helm().V1().HelmChart(),
+		sc.Helm.Helm().V1().HelmChartConfig(),
 		sc.Batch.Batch().V1().Job(),
 		sc.Auth.Rbac().V1().ClusterRoleBinding(),
 		sc.Core.Core().V1().ServiceAccount(),
