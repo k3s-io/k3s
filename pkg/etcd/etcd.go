@@ -758,12 +758,7 @@ func (e *ETCD) Snapshot(ctx context.Context, config *config.Control) error {
 		return errors.Wrap(err, "failed to get config for etcd snapshot")
 	}
 
-	var snapshotName string
-	if e.config.EtcdSnapshotName != "" {
-		snapshotName = e.config.EtcdSnapshotName
-	} else {
-		snapshotName = snapshotPrefix + strconv.Itoa(int(time.Now().Unix()))
-	}
+	snapshotName := e.config.EtcdSnapshotName + "-" + strconv.Itoa(int(time.Now().Unix()))
 	snapshotPath := filepath.Join(snapshotDir, snapshotName)
 
 	logrus.Infof("Saving etcd snapshot to %s", snapshotPath)

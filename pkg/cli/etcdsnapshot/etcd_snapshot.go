@@ -34,7 +34,6 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	var serverConfig server.Config
 	serverConfig.DisableAgent = true
 	serverConfig.ControlConfig.DataDir = dataDir
-	serverConfig.ControlConfig.EtcdSnapshotNow = true
 	serverConfig.ControlConfig.EtcdSnapshotName = cfg.EtcdSnapshotName
 	serverConfig.ControlConfig.EtcdSnapshotDir = cfg.EtcdSnapshotDir
 	serverConfig.ControlConfig.EtcdSnapshotRetention = 0 // disable retention check
