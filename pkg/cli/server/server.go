@@ -111,6 +111,7 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	serverConfig.ControlConfig.DisableKubeProxy = cfg.DisableKubeProxy
 	serverConfig.ControlConfig.ClusterInit = cfg.ClusterInit
 	serverConfig.ControlConfig.EncryptSecrets = cfg.EncryptSecrets
+	serverConfig.ControlConfig.EtcdSnapshotName = cfg.EtcdSnapshotName
 	serverConfig.ControlConfig.EtcdSnapshotCron = cfg.EtcdSnapshotCron
 	serverConfig.ControlConfig.EtcdSnapshotDir = cfg.EtcdSnapshotDir
 	serverConfig.ControlConfig.EtcdSnapshotRetention = cfg.EtcdSnapshotRetention
