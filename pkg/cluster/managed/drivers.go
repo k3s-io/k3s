@@ -23,6 +23,7 @@ type Driver interface {
 	EndpointName() string
 	GetMembersClientURLs(ctx context.Context) ([]string, error)
 	RemoveSelf(ctx context.Context) error
+	Snapshot(ctx context.Context, config *config.Control) error
 }
 
 func RegisterDriver(d Driver) {
