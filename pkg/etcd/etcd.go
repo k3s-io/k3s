@@ -46,7 +46,7 @@ type ETCD struct {
 type learnerProgress struct {
 	ID               uint64      `json:"id,omitempty"`
 	Name             string      `json:"name,omitempty"`
-	RaftAppliedIndex uint64      `json:"raftAppliedIndex,omitmepty"`
+	RaftAppliedIndex uint64      `json:"raftAppliedIndex,omitempty"`
 	LastProgress     metav1.Time `json:"lastProgress,omitempty"`
 }
 
