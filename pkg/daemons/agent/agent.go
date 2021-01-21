@@ -21,6 +21,8 @@ import (
 	_ "k8s.io/component-base/metrics/prometheus/version"    // for version metric registration
 )
 
+const unixPrefix = "unix://"
+
 func Agent(config *config.Agent) error {
 	rand.Seed(time.Now().UTC().UnixNano())
 
@@ -97,9 +99,13 @@ func startKubelet(cfg *config.Agent) error {
 	}
 	if cfg.RuntimeSocket != "" {
 		argsMap["container-runtime"] = "remote"
-		argsMap["container-runtime-endpoint"] = cfg.RuntimeSocket
 		argsMap["containerd"] = cfg.RuntimeSocket
 		argsMap["serialize-image-pulls"] = "false"
+		if strings.HasPrefix(argsMap["container-runtime-endpoint"], unixPrefix) {
+			argsMap["container-runtime-endpoint"] = cfg.RuntimeSocket
+		} else {
+			argsMap["container-runtime-endpoint"] = unixPrefix + cfg.RuntimeSocket
+		}
 	} else if cfg.PauseImage != "" {
 		argsMap["pod-infra-container-image"] = cfg.PauseImage
 	}
