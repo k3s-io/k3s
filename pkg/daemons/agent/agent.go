@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/containerd/cgroups"
+	cgroupsv2 "github.com/containerd/cgroups/v2"
 	"github.com/opencontainers/runc/libcontainer/system"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/daemons/executor"
@@ -182,6 +184,26 @@ func checkCgroups() (kubeletRoot, runtimeRoot string, hasCFS, hasPIDs bool) {
 	}
 	defer f.Close()
 
+	v2 := cgroups.Mode() == cgroups.Unified
+	if v2 {
+		m, err := cgroupsv2.LoadManager("/sys/fs/cgroup", "/")
+		if err != nil {
+			return "", "", false, false
+		}
+		controllers, err := m.Controllers()
+		if err != nil {
+			return "", "", false, false
+		}
+		for _, c := range controllers {
+			switch c {
+			case "cpu":
+				hasCFS = true
+			case "pids":
+				hasPIDs = true
+			}
+		}
+	}
+
 	scan := bufio.NewScanner(f)
 	for scan.Scan() {
 		parts := strings.Split(scan.Text(), ":")
@@ -189,6 +211,7 @@ func checkCgroups() (kubeletRoot, runtimeRoot string, hasCFS, hasPIDs bool) {
 			continue
 		}
 		systems := strings.Split(parts[1], ",")
+		// when v2, systems = {""} (only contains a single empty string)
 		for _, system := range systems {
 			if system == "pids" {
 				hasPIDs = true
@@ -197,7 +220,7 @@ func checkCgroups() (kubeletRoot, runtimeRoot string, hasCFS, hasPIDs bool) {
 				if _, err := os.Stat(p); err == nil {
 					hasCFS = true
 				}
-			} else if system == "name=systemd" {
+			} else if system == "name=systemd" || v2 {
 				// If we detect that we are running under a `.scope` unit with systemd
 				// we can assume we are being directly invoked from the command line
 				// and thus need to set our kubelet root to something out of the context
@@ -233,8 +256,9 @@ func checkCgroups() (kubeletRoot, runtimeRoot string, hasCFS, hasPIDs bool) {
 				continue
 			}
 			systems := strings.Split(parts[1], ",")
+			// when v2, systems = {""} (only contains a single empty string)
 			for _, system := range systems {
-				if system == "name=systemd" {
+				if system == "name=systemd" || v2 {
 					last := parts[len(parts)-1]
 					if last != "/" && last != "/init.scope" {
 						kubeletRoot = "/" + version.Program
