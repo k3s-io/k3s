@@ -15,6 +15,9 @@ type k3s struct {
 	nodeInformerHasSynced cache.InformerSynced
 }
 
+var _ cloudprovider.Interface = &k3s{}
+var _ cloudprovider.InformerUser = &k3s{}
+
 func init() {
 	cloudprovider.RegisterCloudProvider(version.Program, func(config io.Reader) (cloudprovider.Interface, error) {
 		return &k3s{}, nil
