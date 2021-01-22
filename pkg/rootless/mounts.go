@@ -14,6 +14,16 @@ import (
 )
 
 func setupMounts(stateDir string) error {
+	// Remove symlinks to the rootful files, so that we can create our own files.
+	removeList := []string{
+		"/var/run/netns",
+		"/run/containerd",
+		"/run/xtables.lock",
+	}
+	for _, f := range removeList {
+		_ = os.RemoveAll(f)
+	}
+
 	mountMap := [][]string{
 		{"/var/log", filepath.Join(stateDir, "logs")},
 		{"/var/lib/cni", filepath.Join(stateDir, "cni")},
