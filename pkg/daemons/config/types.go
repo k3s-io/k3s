@@ -132,6 +132,7 @@ type Control struct {
 	TLSCipherSuites          []uint16
 	EtcdSnapshotName         string
 	EtcdDisableSnapshots     bool
+	EtcdExposeMetrics        bool
 	EtcdSnapshotDir          string
 	EtcdSnapshotCron         string
 	EtcdSnapshotRetention    int

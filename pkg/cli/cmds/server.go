@@ -60,6 +60,7 @@ type Server struct {
 	StartupHooks             []func(context.Context, <-chan struct{}, string) error
 	EtcdSnapshotName         string
 	EtcdDisableSnapshots     bool
+	EtcdExposeMetrics        bool
 	EtcdSnapshotDir          string
 	EtcdSnapshotCron         string
 	EtcdSnapshotRetention    int
@@ -209,6 +210,11 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Usage:       "(db) TLS key file used to secure datastore backend communication",
 				Destination: &ServerConfig.DatastoreKeyFile,
 				EnvVar:      version.ProgramUpper + "_DATASTORE_KEYFILE",
+			},
+			&cli.BoolFlag{
+				Name:        "etcd-expose-metrics",
+				Usage:       "(db) Expose etcd metrics to client interface. (Default false)",
+				Destination: &ServerConfig.EtcdExposeMetrics,
 			},
 			&cli.BoolFlag{
 				Name:        "etcd-disable-snapshots",
