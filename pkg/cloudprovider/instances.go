@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/pkg/errors"
 	"github.com/rancher/k3s/pkg/version"
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
@@ -30,7 +31,11 @@ func (k *k3s) InstanceExistsByProviderID(ctx context.Context, providerID string)
 }
 
 func (k *k3s) InstanceID(ctx context.Context, nodeName types.NodeName) (string, error) {
-	_, err := k.NodeCache.Get(string(nodeName))
+	if k.nodeInformerHasSynced == nil || !k.nodeInformerHasSynced() {
+		return "", errors.New("Node informer has not synced yet")
+	}
+
+	_, err := k.nodeInformer.Lister().Get(string(nodeName))
 	if err != nil {
 		return "", fmt.Errorf("Failed to find node %s: %v", nodeName, err)
 	}
@@ -55,7 +60,11 @@ func (k *k3s) InstanceTypeByProviderID(ctx context.Context, providerID string) (
 
 func (k *k3s) NodeAddresses(ctx context.Context, name types.NodeName) ([]corev1.NodeAddress, error) {
 	addresses := []corev1.NodeAddress{}
-	node, err := k.NodeCache.Get(string(name))
+	if k.nodeInformerHasSynced == nil || !k.nodeInformerHasSynced() {
+		return nil, errors.New("Node informer has not synced yet")
+	}
+
+	node, err := k.nodeInformer.Lister().Get(string(name))
 	if err != nil {
 		return nil, fmt.Errorf("Failed to find node %s: %v", name, err)
 	}

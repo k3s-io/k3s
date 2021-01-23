@@ -1,19 +1,22 @@
 package cloudprovider
 
 import (
-	"context"
 	"io"
 
 	"github.com/rancher/k3s/pkg/version"
-	"github.com/rancher/wrangler-api/pkg/generated/controllers/core"
-	coreclient "github.com/rancher/wrangler-api/pkg/generated/controllers/core/v1"
-	"github.com/rancher/wrangler/pkg/start"
+	"k8s.io/client-go/informers"
+	informercorev1 "k8s.io/client-go/informers/core/v1"
+	"k8s.io/client-go/tools/cache"
 	cloudprovider "k8s.io/cloud-provider"
 )
 
 type k3s struct {
-	NodeCache coreclient.NodeCache
+	nodeInformer          informercorev1.NodeInformer
+	nodeInformerHasSynced cache.InformerSynced
 }
+
+var _ cloudprovider.Interface = &k3s{}
+var _ cloudprovider.InformerUser = &k3s{}
 
 func init() {
 	cloudprovider.RegisterCloudProvider(version.Program, func(config io.Reader) (cloudprovider.Interface, error) {
@@ -22,11 +25,11 @@ func init() {
 }
 
 func (k *k3s) Initialize(clientBuilder cloudprovider.ControllerClientBuilder, stop <-chan struct{}) {
-	coreFactory := core.NewFactoryFromConfigOrDie(clientBuilder.ConfigOrDie("cloud-controller-manager"))
+}
 
-	go start.All(context.Background(), 1, coreFactory)
-
-	k.NodeCache = coreFactory.Core().V1().Node().Cache()
+func (k *k3s) SetInformers(informerFactory informers.SharedInformerFactory) {
+	k.nodeInformer = informerFactory.Core().V1().Nodes()
+	k.nodeInformerHasSynced = k.nodeInformer.Informer().HasSynced
 }
 
 func (k *k3s) Instances() (cloudprovider.Instances, bool) {
