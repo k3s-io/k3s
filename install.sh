@@ -65,6 +65,10 @@ set -e
 #       curl ... | sh -s - server --disable=traefik
 #       curl ... | sh -s - --disable=traefik
 #
+#   - INSTALL_K3S_EXEC_USER
+#     Name of user running on k3s
+#     Defaults to 'root'.
+#
 #   - INSTALL_K3S_NAME
 #     Name of systemd service to create, will default from the k3s exec command
 #     if not specified. If specified the name will be prefixed with 'k3s-'.
@@ -266,6 +270,8 @@ setup_env() {
     # --- setup channel values
     INSTALL_K3S_CHANNEL_URL=${INSTALL_K3S_CHANNEL_URL:-'https://update.k3s.io/v1-release/channels'}
     INSTALL_K3S_CHANNEL=${INSTALL_K3S_CHANNEL:-'stable'}
+
+    INSTALL_K3S_EXEC_USER=${INSTALL_K3S_EXEC_USER:-'root'}
 }
 
 # --- check if skip download environment variable set ---
@@ -724,6 +730,7 @@ WantedBy=multi-user.target
 
 [Service]
 Type=${SYSTEMD_TYPE}
+User=${INSTALL_K3S_EXEC_USER}
 EnvironmentFile=${FILE_K3S_ENV}
 KillMode=process
 Delegate=yes
@@ -763,6 +770,7 @@ start_pre() {
 
 supervisor=supervise-daemon
 name=${SYSTEM_NAME}
+command_user=${INSTALL_K3S_EXEC_USER}
 command="${BIN_DIR}/k3s"
 command_args="$(escape_dq "${CMD_K3S_EXEC}")
     >>${LOG_FILE} 2>&1"
