@@ -41,7 +41,7 @@ const (
 // filter table a rule is added to jump the traffic originating (in case of egress network policy) from the pod
 // or destined (in case of ingress network policy) to the pod specific iptables chain. Each
 // pod specific iptables chain has rules to jump to the network polices chains, that pod matches. So packet
-// originating/destined from/to pod goes through fitler table's, FORWARD chain, followed by pod specific chain,
+// originating/destined from/to pod goes through filter table's, FORWARD chain, followed by pod specific chain,
 // followed by one or more network policy chains, till there is a match which will accept the packet, or gets
 // dropped by the rule in the pod chain, if there is no match.
 
@@ -130,7 +130,7 @@ type numericPort2eps map[string]*endPoints
 type protocol2eps map[string]numericPort2eps
 type namedPort2eps map[string]protocol2eps
 
-// Run runs forver till we receive notification on stopCh
+// Run runs forever till we receive notification on stopCh
 func (npc *NetworkPolicyController) Run(healthChan chan<- *healthcheck.ControllerHeartbeat, stopCh <-chan struct{}, wg *sync.WaitGroup) {
 	t := time.NewTicker(npc.syncPeriod)
 	defer t.Stop()
@@ -500,7 +500,7 @@ func (npc *NetworkPolicyController) Cleanup() {
 		return
 	}
 
-	// TODO: need a better way to delte rule with out using number
+	// TODO: need a better way to delete rule with out using number
 	var realRuleNo int
 	for i, rule := range forwardChainRules {
 		if strings.Contains(rule, kubePodFirewallChainPrefix) {
@@ -519,7 +519,7 @@ func (npc *NetworkPolicyController) Cleanup() {
 		return
 	}
 
-	// TODO: need a better way to delte rule with out using number
+	// TODO: need a better way to delete rule with out using number
 	realRuleNo = 0
 	for i, rule := range forwardChainRules {
 		if strings.Contains(rule, kubePodFirewallChainPrefix) {

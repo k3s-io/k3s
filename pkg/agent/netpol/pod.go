@@ -102,7 +102,7 @@ func (npc *NetworkPolicyController) syncPodFirewallChains(networkPoliciesInfo []
 	for _, pod := range *ingressNetworkPolicyEnabledPods {
 
 		// below condition occurs when we get trasient update while removing or adding pod
-		// subseqent update will do the correct action
+		// subsequent update will do the correct action
 		if len(pod.ip) == 0 || pod.ip == "" {
 			continue
 		}
@@ -223,7 +223,7 @@ func (npc *NetworkPolicyController) syncPodFirewallChains(networkPoliciesInfo []
 	for _, pod := range *egressNetworkPolicyEnabledPods {
 
 		// below condition occurs when we get trasient update while removing or adding pod
-		// subseqent update will do the correct action
+		// subsequent update will do the correct action
 		if len(pod.ip) == 0 || pod.ip == "" {
 			continue
 		}
