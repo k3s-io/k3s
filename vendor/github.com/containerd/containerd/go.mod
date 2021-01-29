@@ -4,31 +4,33 @@ go 1.14
 
 replace (
 	github.com/containerd/cri => github.com/k3s-io/cri v1.4.0-k3s.2 // k3s-release/1.4
-	k8s.io/api => k8s.io/api v0.19.0
-	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.19.0
-	k8s.io/apimachinery => k8s.io/apimachinery v0.19.0
-	k8s.io/apiserver => k8s.io/apiserver v0.19.0
-	k8s.io/cli-runtime => k8s.io/cli-runtime v0.19.0
-	k8s.io/client-go => k8s.io/client-go v0.19.0
-	k8s.io/cloud-provider => k8s.io/cloud-provider v0.19.0
-	k8s.io/cluster-bootstrap => k8s.io/cluster-bootstrap v0.19.0
-	k8s.io/code-generator => k8s.io/code-generator v0.19.0
-	k8s.io/component-base => k8s.io/component-base v0.19.0
-	k8s.io/cri-api => k8s.io/cri-api v0.19.0
-	k8s.io/csi-translation-lib => k8s.io/csi-translation-lib v0.19.0
-	k8s.io/kube-aggregator => k8s.io/kube-aggregator v0.19.0
-	k8s.io/kube-controller-manager => k8s.io/kube-controller-manager v0.19.0
-	k8s.io/kube-proxy => k8s.io/kube-proxy v0.19.0
-	k8s.io/kube-scheduler => k8s.io/kube-scheduler v0.19.0
-	k8s.io/kubectl => k8s.io/kubectl v0.19.0
-	k8s.io/kubelet => k8s.io/kubelet v0.19.0
-	k8s.io/kubernetes => k8s.io/kubernetes v1.19.0-rc.3
-	k8s.io/legacy-cloud-providers => k8s.io/legacy-cloud-providers v0.19.0
-	k8s.io/metrics => k8s.io/metrics v0.19.0
-	k8s.io/node-api => k8s.io/node-api v0.19.0
-	k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.19.0
-	k8s.io/sample-cli-plugin => k8s.io/sample-cli-plugin v0.19.0
-	k8s.io/sample-controller => k8s.io/sample-controller v0.19.0
+	github.com/golang/protobuf => github.com/golang/protobuf v1.3.5
+	google.golang.org/genproto => google.golang.org/genproto v0.0.0-20200224152610-e50cd9704f63
+	k8s.io/api => k8s.io/api v0.19.5
+	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.19.5
+	k8s.io/apimachinery => k8s.io/apimachinery v0.19.5
+	k8s.io/apiserver => k8s.io/apiserver v0.19.5
+	k8s.io/cli-runtime => k8s.io/cli-runtime v0.19.5
+	k8s.io/client-go => k8s.io/client-go v0.19.5
+	k8s.io/cloud-provider => k8s.io/cloud-provider v0.19.5
+	k8s.io/cluster-bootstrap => k8s.io/cluster-bootstrap v0.19.5
+	k8s.io/code-generator => k8s.io/code-generator v0.19.5
+	k8s.io/component-base => k8s.io/component-base v0.19.5
+	k8s.io/cri-api => k8s.io/cri-api v0.19.5
+	k8s.io/csi-translation-lib => k8s.io/csi-translation-lib v0.19.5
+	k8s.io/kube-aggregator => k8s.io/kube-aggregator v0.19.5
+	k8s.io/kube-controller-manager => k8s.io/kube-controller-manager v0.19.5
+	k8s.io/kube-proxy => k8s.io/kube-proxy v0.19.5
+	k8s.io/kube-scheduler => k8s.io/kube-scheduler v0.19.5
+	k8s.io/kubectl => k8s.io/kubectl v0.19.5
+	k8s.io/kubelet => k8s.io/kubelet v0.19.5
+	k8s.io/kubernetes => k8s.io/kubernetes v1.19.5
+	k8s.io/legacy-cloud-providers => k8s.io/legacy-cloud-providers v0.19.5
+	k8s.io/metrics => k8s.io/metrics v0.19.5
+	k8s.io/node-api => k8s.io/node-api v0.19.5
+	k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.19.5
+	k8s.io/sample-cli-plugin => k8s.io/sample-cli-plugin v0.19.5
+	k8s.io/sample-controller => k8s.io/sample-controller v0.19.5
 )
 
 require (
@@ -37,7 +39,7 @@ require (
 	github.com/Microsoft/hcsshim v0.8.10-0.20200715222032-5eafd1556990
 	github.com/Microsoft/hcsshim/test v0.0.0-20200803203718-d80bc7196cb0
 	github.com/containerd/aufs v0.0.0-20191030083217-371312c1e31c
-	github.com/containerd/btrfs v0.0.0-20200117014249-153935315f4a
+	github.com/containerd/btrfs v0.0.0-20201111183144-404b9149801e
 	github.com/containerd/cgroups v0.0.0-20200710171044-318312a37340
 	github.com/containerd/console v1.0.0
 	github.com/containerd/continuity v0.0.0-20200710164510-efbc4488d8fe
@@ -74,9 +76,9 @@ require (
 	github.com/tchap/go-patricia v2.2.6+incompatible // indirect
 	github.com/urfave/cli v1.22.2
 	go.etcd.io/bbolt v1.3.5
-	golang.org/x/net v0.0.0-20200707034311-ab3426394381
+	golang.org/x/net v0.0.0-20201110031124-69a78807bb2b
 	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
-	golang.org/x/sys v0.0.0-20200728102440-3e129f6d46b1
+	golang.org/x/sys v0.0.0-20201112073958-5cba982894dd
 	google.golang.org/grpc v1.27.1
 	gotest.tools/v3 v3.0.2
 )
