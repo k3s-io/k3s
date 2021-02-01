@@ -1,11 +1,16 @@
+// Apache License v2.0 (copyright Cloud Native Labs & Rancher Labs)
+// - modified from https://github.com/cloudnativelabs/kube-router/blob/ee9f6d890d10609284098229fa1e283ab5d83b93/pkg/controllers/netpol/namespace.go
+
+// +build !windows
+
 package netpol
 
 import (
 	"reflect"
 
-	"github.com/golang/glog"
 	api "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/cache"
+	glog "k8s.io/klog"
 )
 
 func (npc *NetworkPolicyController) newNamespaceEventHandler() cache.ResourceEventHandler {
