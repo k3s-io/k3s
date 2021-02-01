@@ -1,21 +1,11 @@
-// Apache License v2.0 (copyright Cloud Native Labs & Rancher Labs)
-// - modified from https://github.com/cloudnativelabs/kube-router/tree/d6f9f31a7b/pkg/utils
-
-// +build !windows
-
-package netpol
+package utils
 
 import (
 	"bytes"
 	"errors"
 	"fmt"
-	"net"
 	"os/exec"
 	"strings"
-	"time"
-
-	apiv1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/informers"
 )
 
 var (
@@ -31,7 +21,7 @@ const (
 
 	// DefaultMaxElem Default OptionMaxElem value.
 	DefaultMaxElem = "65536"
-	// DefaultHasSize Default OptionHashSize value.
+	// DefaultHasSize Defaul OptionHashSize value.
 	DefaultHasSize = "1024"
 
 	// TypeHashIP The hash:ip set type uses a hash to store IP host addresses (default) or network addresses. Zero valued IP address cannot be stored in a hash:ip type of set.
@@ -96,7 +86,7 @@ type IPSet struct {
 	isIpv6    bool
 }
 
-// Set represent a ipset set entry.
+// Set reprensent a ipset set entry.
 type Set struct {
 	Parent  *IPSet
 	Name    string
@@ -156,8 +146,8 @@ func (ipset *IPSet) runWithStdin(stdin *bytes.Buffer, args ...string) (string, e
 	return stdout.String(), nil
 }
 
-// NewSavedIPSet create a new IPSet with ipSetPath initialized.
-func NewSavedIPSet(isIpv6 bool) (*IPSet, error) {
+// NewIPSet create a new IPSet with ipSetPath initialized.
+func NewIPSet(isIpv6 bool) (*IPSet, error) {
 	ipSetPath, err := getIPSetPath()
 	if err != nil {
 		return nil, err
@@ -166,9 +156,6 @@ func NewSavedIPSet(isIpv6 bool) (*IPSet, error) {
 		ipSetPath: ipSetPath,
 		Sets:      make(map[string]*Set),
 		isIpv6:    isIpv6,
-	}
-	if err := ipSet.Save(); err != nil {
-		return nil, err
 	}
 	return ipSet, nil
 }
@@ -221,11 +208,14 @@ func (ipset *IPSet) Add(set *Set) error {
 		return err
 	}
 
-	for _, entry := range set.Entries {
-		_, err := ipset.Get(set.Name).Add(entry.Options...)
-		if err != nil {
-			return err
-		}
+	options := make([][]string, len(set.Entries))
+	for index, entry := range set.Entries {
+		options[index] = entry.Options
+	}
+
+	err = ipset.Get(set.Name).BatchAdd(options)
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -233,6 +223,8 @@ func (ipset *IPSet) Add(set *Set) error {
 
 // Add a given entry to the set. If the -exist option is specified, ipset
 // ignores if the entry already added to the set.
+// Note: if you need to add multiple entries (e.g., in a loop), use BatchAdd instead,
+// as it’s much more performant.
 func (set *Set) Add(addOptions ...string) (*Entry, error) {
 	entry := &Entry{
 		Set:     set,
@@ -246,6 +238,35 @@ func (set *Set) Add(addOptions ...string) (*Entry, error) {
 	return entry, nil
 }
 
+// Adds given entries (with their options) to the set.
+// For multiple items, this is much faster than Add().
+func (set *Set) BatchAdd(addOptions [][]string) error {
+	newEntries := make([]*Entry, len(addOptions))
+	for index, options := range addOptions {
+		entry := &Entry{
+			Set:     set,
+			Options: options,
+		}
+		newEntries[index] = entry
+	}
+	set.Entries = append(set.Entries, newEntries...)
+
+	// Build the `restore` command contents
+	var builder strings.Builder
+	for _, options := range addOptions {
+		line := strings.Join(append([]string{"add", "-exist", set.name()}, options...), " ")
+		builder.WriteString(line + "\n")
+	}
+	restoreContents := builder.String()
+
+	// Invoke the command
+	_, err := set.Parent.runWithStdin(bytes.NewBufferString(restoreContents), "restore")
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // Del an entry from a set. If the -exist option is specified and the entry is
 // not in the set (maybe already expired), then the command is ignored.
 func (entry *Entry) Del() error {
@@ -253,11 +274,14 @@ func (entry *Entry) Del() error {
 	if err != nil {
 		return err
 	}
-
-	return entry.Set.Parent.Save()
+	err = entry.Set.Parent.Save()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-// Test whether an entry is in a set or not. Exit status number is zero if the
+// Test wether an entry is in a set or not. Exit status number is zero if the
 // tested entry is in the set and nonzero if it is missing from the set.
 func (set *Set) Test(testOptions ...string) (bool, error) {
 	_, err := set.Parent.run(append([]string{"test", set.name()}, testOptions...)...)
@@ -388,7 +412,7 @@ func (ipset *IPSet) Save() error {
 // stdin. Please note, existing sets and elements are not erased by restore
 // unless specified so in the restore file. All commands are allowed in restore
 // mode except list, help, version, interactive mode and restore itself.
-// Send formatted ipset.sets into stdin of "ipset restore" command.
+// Send formated ipset.sets into stdin of "ipset restore" command.
 func (ipset *IPSet) Restore() error {
 	stdin := bytes.NewBufferString(buildIPSetRestore(ipset))
 	_, err := ipset.runWithStdin(stdin, "restore", "-exist")
@@ -451,7 +475,19 @@ func (set *Set) Swap(setTo *Set) error {
 
 // Refresh a Set with new entries.
 func (set *Set) Refresh(entries []string, extraOptions ...string) error {
+	entriesWithOptions := make([][]string, len(entries))
+
+	for index, entry := range entries {
+		entriesWithOptions[index] = append([]string{entry}, extraOptions...)
+	}
+
+	return set.RefreshWithBuiltinOptions(entriesWithOptions)
+}
+
+// Refresh a Set with new entries with built-in options.
+func (set *Set) RefreshWithBuiltinOptions(entries [][]string) error {
 	var err error
+
 	// The set-name must be < 32 characters!
 	tempName := set.Name + "-"
 
@@ -466,11 +502,9 @@ func (set *Set) Refresh(entries []string, extraOptions ...string) error {
 		return err
 	}
 
-	for _, entry := range entries {
-		_, err = newSet.Add(entry)
-		if err != nil {
-			return err
-		}
+	err = newSet.BatchAdd(entries)
+	if err != nil {
+		return err
 	}
 
 	err = set.Swap(newSet)
@@ -484,74 +518,4 @@ func (set *Set) Refresh(entries []string, extraOptions ...string) error {
 	}
 
 	return nil
-}
-
-// Refresh a Set with new entries with built-in options.
-func (set *Set) RefreshWithBuiltinOptions(entries [][]string) error {
-	var err error
-	tempName := set.Name + "-temp"
-	newSet := &Set{
-		Parent:  set.Parent,
-		Name:    tempName,
-		Options: set.Options,
-	}
-
-	err = set.Parent.Add(newSet)
-	if err != nil {
-		return err
-	}
-
-	for _, entry := range entries {
-		_, err = newSet.Add(entry...)
-		if err != nil {
-			return err
-		}
-	}
-
-	err = set.Swap(newSet)
-	if err != nil {
-		return err
-	}
-
-	err = set.Parent.Destroy(tempName)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// GetNodeIP returns the most valid external facing IP address for a node.
-// Order of preference:
-// 1. NodeInternalIP
-// 2. NodeExternalIP (Only set on cloud providers usually)
-func GetNodeIP(node *apiv1.Node) (net.IP, error) {
-	addresses := node.Status.Addresses
-	addressMap := make(map[apiv1.NodeAddressType][]apiv1.NodeAddress)
-	for i := range addresses {
-		addressMap[addresses[i].Type] = append(addressMap[addresses[i].Type], addresses[i])
-	}
-	if addresses, ok := addressMap[apiv1.NodeInternalIP]; ok {
-		return net.ParseIP(addresses[0].Address), nil
-	}
-	if addresses, ok := addressMap[apiv1.NodeExternalIP]; ok {
-		return net.ParseIP(addresses[0].Address), nil
-	}
-	return nil, errors.New("host IP unknown")
-}
-
-// CacheSync performs cache synchronization under timeout limit
-func CacheSyncOrTimeout(informerFactory informers.SharedInformerFactory, stopCh <-chan struct{}, cacheSyncTimeout time.Duration) error {
-	syncOverCh := make(chan struct{})
-	go func() {
-		informerFactory.WaitForCacheSync(stopCh)
-		close(syncOverCh)
-	}()
-
-	select {
-	case <-time.After(cacheSyncTimeout):
-		return errors.New(cacheSyncTimeout.String() + " timeout")
-	case <-syncOverCh:
-		return nil
-	}
 }
