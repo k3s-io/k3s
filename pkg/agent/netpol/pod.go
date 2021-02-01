@@ -1,3 +1,8 @@
+// Apache License v2.0 (copyright Cloud Native Labs & Rancher Labs)
+// - modified from https://github.com/cloudnativelabs/kube-router/blob/ee9f6d890d10609284098229fa1e283ab5d83b93/pkg/controllers/netpol/pod.go
+
+// +build !windows
+
 package netpol
 
 import (
@@ -7,9 +12,9 @@ import (
 	"strings"
 
 	"github.com/coreos/go-iptables/iptables"
-	"github.com/golang/glog"
 	api "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/cache"
+	glog "k8s.io/klog"
 )
 
 func (npc *NetworkPolicyController) newPodEventHandler() cache.ResourceEventHandler {

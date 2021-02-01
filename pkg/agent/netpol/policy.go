@@ -1,3 +1,8 @@
+// Apache License v2.0 (copyright Cloud Native Labs & Rancher Labs)
+// - modified from https://github.com/cloudnativelabs/kube-router/blob/ee9f6d890d10609284098229fa1e283ab5d83b93/pkg/controllers/netpol/pod.go
+
+// +build !windows
+
 package netpol
 
 import (
@@ -9,10 +14,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cloudnativelabs/kube-router/pkg/metrics"
-	"github.com/cloudnativelabs/kube-router/pkg/utils"
 	"github.com/coreos/go-iptables/iptables"
-	"github.com/golang/glog"
+	"github.com/rancher/k3s/pkg/agent/netpol/utils"
 	api "k8s.io/api/core/v1"
 	networking "k8s.io/api/networking/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -20,6 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
+	glog "k8s.io/klog"
 )
 
 func (npc *NetworkPolicyController) newNetworkPolicyEventHandler() cache.ResourceEventHandler {
@@ -73,7 +77,6 @@ func (npc *NetworkPolicyController) syncNetworkPolicyChains(networkPoliciesInfo 
 	start := time.Now()
 	defer func() {
 		endTime := time.Since(start)
-		metrics.ControllerPolicyChainsSyncTime.Observe(endTime.Seconds())
 		glog.V(2).Infof("Syncing network policy chains took %v", endTime)
 	}()
 	activePolicyChains := make(map[string]bool)
