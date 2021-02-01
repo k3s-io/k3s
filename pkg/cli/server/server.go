@@ -3,7 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
-	net2 "net"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -22,7 +22,7 @@ import (
 	"github.com/rancher/wrangler/pkg/signals"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
-	"k8s.io/apimachinery/pkg/util/net"
+	utilnet "k8s.io/apimachinery/pkg/util/net"
 	kubeapiserverflag "k8s.io/component-base/cli/flag"
 	"k8s.io/kubernetes/pkg/controlplane"
 
@@ -145,13 +145,18 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 		serverConfig.ControlConfig.SANs = append(serverConfig.ControlConfig.SANs, serverConfig.ControlConfig.AdvertiseIP)
 	}
 
-	_, serverConfig.ControlConfig.ClusterIPRange, err = net2.ParseCIDR(cfg.ClusterCIDR)
+	_, serverConfig.ControlConfig.ClusterIPRange, err = net.ParseCIDR(cfg.ClusterCIDR)
 	if err != nil {
 		return errors.Wrapf(err, "Invalid CIDR %s: %v", cfg.ClusterCIDR, err)
 	}
-	_, serverConfig.ControlConfig.ServiceIPRange, err = net2.ParseCIDR(cfg.ServiceCIDR)
+	_, serverConfig.ControlConfig.ServiceIPRange, err = net.ParseCIDR(cfg.ServiceCIDR)
 	if err != nil {
 		return errors.Wrapf(err, "Invalid CIDR %s: %v", cfg.ServiceCIDR, err)
+	}
+
+	serverConfig.ControlConfig.ServiceNodePortRange, err = utilnet.ParsePortRange(cfg.ServiceNodePortRange)
+	if err != nil {
+		return errors.Wrapf(err, "Invalid port range %s: %v", cfg.ServiceNodePortRange, err)
 	}
 
 	_, apiServerServiceIP, err := controlplane.ServiceIPRange(*serverConfig.ControlConfig.ServiceIPRange)
@@ -163,11 +168,11 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	// If cluster-dns CLI arg is not set, we set ClusterDNS address to be ServiceCIDR network + 10,
 	// i.e. when you set service-cidr to 192.168.0.0/16 and don't provide cluster-dns, it will be set to 192.168.0.10
 	if cfg.ClusterDNS == "" {
-		serverConfig.ControlConfig.ClusterDNS = make(net2.IP, 4)
+		serverConfig.ControlConfig.ClusterDNS = make(net.IP, 4)
 		copy(serverConfig.ControlConfig.ClusterDNS, serverConfig.ControlConfig.ServiceIPRange.IP.To4())
 		serverConfig.ControlConfig.ClusterDNS[3] = 10
 	} else {
-		serverConfig.ControlConfig.ClusterDNS = net2.ParseIP(cfg.ClusterDNS)
+		serverConfig.ControlConfig.ClusterDNS = net.ParseIP(cfg.ClusterDNS)
 	}
 
 	if cfg.DefaultLocalStoragePath == "" {
@@ -287,7 +292,7 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 
 func knownIPs(ips []string) []string {
 	ips = append(ips, "127.0.0.1")
-	ip, err := net.ChooseHostInterface()
+	ip, err := utilnet.ChooseHostInterface()
 	if err == nil {
 		ips = append(ips, ip.String())
 	}

@@ -13,15 +13,16 @@ const (
 )
 
 type Server struct {
-	ClusterCIDR    string
-	AgentToken     string
-	AgentTokenFile string
-	Token          string
-	TokenFile      string
-	ClusterSecret  string
-	ServiceCIDR    string
-	ClusterDNS     string
-	ClusterDomain  string
+	ClusterCIDR          string
+	AgentToken           string
+	AgentTokenFile       string
+	Token                string
+	TokenFile            string
+	ClusterSecret        string
+	ServiceCIDR          string
+	ServiceNodePortRange string
+	ClusterDNS           string
+	ClusterDomain        string
 	// The port which kubectl clients can access k8s
 	HTTPSPort int
 	// The port which custom k3s API runs on
@@ -124,6 +125,12 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Usage:       "(networking) Network CIDR to use for services IPs",
 				Destination: &ServerConfig.ServiceCIDR,
 				Value:       "10.43.0.0/16",
+			},
+			cli.StringFlag{
+				Name:        "service-node-port-range",
+				Usage:       "(networking) Port range to reserve for services with NodePort visibility",
+				Destination: &ServerConfig.ServiceNodePortRange,
+				Value:       "30000-32767",
 			},
 			cli.StringFlag{
 				Name:        "cluster-dns",
