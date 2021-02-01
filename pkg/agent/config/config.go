@@ -489,6 +489,14 @@ func get(envInfo *cmds.Agent, proxy proxy.Proxy) (*config.Node, error) {
 		nodeConfig.AgentConfig.ClusterCIDR = *controlConfig.ClusterIPRange
 	}
 
+	if controlConfig.ServiceIPRange != nil {
+		nodeConfig.AgentConfig.ServiceCIDR = *controlConfig.ServiceIPRange
+	}
+
+	if controlConfig.ServiceNodePortRange != nil {
+		nodeConfig.AgentConfig.ServiceNodePortRange = *controlConfig.ServiceNodePortRange
+	}
+
 	nodeConfig.AgentConfig.ExtraKubeletArgs = envInfo.ExtraKubeletArgs
 	nodeConfig.AgentConfig.ExtraKubeProxyArgs = envInfo.ExtraKubeProxyArgs
 

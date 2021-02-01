@@ -11,6 +11,7 @@ import (
 
 	"github.com/k3s-io/kine/pkg/endpoint"
 	"github.com/rancher/wrangler-api/pkg/generated/controllers/core"
+	utilnet "k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 )
 
@@ -56,6 +57,8 @@ type Agent struct {
 	NodeConfigPath          string
 	ServingKubeletCert      string
 	ServingKubeletKey       string
+	ServiceCIDR             net.IPNet
+	ServiceNodePortRange    utilnet.PortRange
 	ClusterCIDR             net.IPNet
 	ClusterDNS              net.IP
 	ClusterDomain           string
@@ -102,6 +105,7 @@ type Control struct {
 	Token                    string `json:"-"`
 	ClusterIPRange           *net.IPNet
 	ServiceIPRange           *net.IPNet
+	ServiceNodePortRange     *utilnet.PortRange
 	ClusterDNS               net.IP
 	ClusterDomain            string
 	NoCoreDNS                bool
