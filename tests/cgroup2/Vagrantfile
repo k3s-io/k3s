@@ -1,0 +1,34 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+# Vagrant box for testing k3s with cgroup v2.
+# Invoked via k3s/.github/workflows/cgroup2.yaml .
+#
+# The following files need to be present in this directory:
+# - k3s
+# - k3s.service
+Vagrant.configure("2") do |config|
+  config.vm.box = "fedora/33-cloud-base"
+  memory = 2048
+  cpus = 2
+  config.vm.provider :virtualbox do |v|
+    v.memory = memory
+    v.cpus = cpus
+  end
+  config.vm.provider :libvirt do |v|
+    v.memory = memory
+    v.cpus = cpus
+  end
+  config.vm.provision "install-k3s", type: "shell", run: "once" do |sh|
+    sh.inline = <<~SHELL
+    set -eux -o pipefail
+    install -m 755  /vagrant/k3s /usr/local/bin
+    cp -f /vagrant/k3s.service /etc/systemd/system/k3s.service
+    touch /etc/systemd/system/k3s.service.env
+    systemctl daemon-reload
+    systemctl enable --now k3s.service || { systemctl status --full --no-pager k3s.service ; exit 1; }
+
+    curl -fsSL https://github.com/vmware-tanzu/sonobuoy/releases/download/v0.20.0/sonobuoy_0.20.0_linux_amd64.tar.gz | tar xzvC /usr/local/bin sonobuoy
+    SHELL
+  end
+end

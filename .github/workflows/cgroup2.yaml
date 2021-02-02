@@ -1,0 +1,60 @@
+name: cgroup2
+on: [push, pull_request]
+jobs:
+  build:
+    name: "Build"
+    runs-on: ubuntu-20.04
+    timeout-minutes: 40
+    steps:
+    - name: "Checkout"
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 1
+    - name: "Make"
+      run: DOCKER_BUILDKIT=1 SKIP_VALIDATE=1 make
+    - name: "Upload k3s binary"
+      uses: actions/upload-artifact@v2
+      with:
+        name: k3s
+        path: dist/artifacts/k3s
+  test:
+    name: "Test"
+    needs: build
+    # nested virtualization is only available on macOS hosts
+    runs-on: macos-10.15
+    timeout-minutes: 40
+    steps:
+    - name: "Checkout"
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 1
+    - name: "Download k3s binary"
+      uses: actions/download-artifact@v2
+      with:
+        name: k3s
+        path: ./tests/cgroup2
+    - name: "Boot Fedora VM"
+      run: |
+        cp k3s.service ./tests/cgroup2
+        cd ./tests/cgroup2
+        vagrant up
+        vagrant ssh-config >> ~/.ssh/config
+    # Sonobuoy requires CoreDNS to be ready
+    - name: "Waiting fore CoreDNS to be ready"
+      run: |
+        counter=0
+        # `kubectl wait` fails when the pods with the specified label are not created yet
+        until ssh default -- sudo k3s kubectl wait --for=condition=ready pods --namespace=kube-system -l k8s-app=kube-dns; do
+          sleep 10
+          ((counter++))
+          if [[ $counter -eq 10 ]]; then
+            echo "CoreDNS not running?"
+            ssh default -- sudo k3s kubectl get pods -A
+            ssh default -- sudo k3s kubectl get nodes -o wide
+            exit 1
+          fi
+        done
+    # Vagrant is slow, so we set --mode=quick here
+    - name: "Run Sonobuoy (--mode=quick)"
+      run: |
+        ssh default -- sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml /usr/local/bin/sonobuoy run --mode=quick --wait
