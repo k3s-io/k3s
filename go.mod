@@ -88,6 +88,7 @@ require (
 	github.com/kubernetes-sigs/cri-tools v0.0.0-00010101000000-000000000000
 	github.com/lib/pq v1.8.0
 	github.com/mattn/go-sqlite3 v1.14.4
+	github.com/minio/minio-go/v7 v7.0.7
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/opencontainers/runc v1.0.0-rc92
 	github.com/opencontainers/selinux v1.6.0

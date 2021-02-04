@@ -69,6 +69,15 @@ type Server struct {
 	EtcdSnapshotDir          string
 	EtcdSnapshotCron         string
 	EtcdSnapshotRetention    int
+	EtcdS3                   bool
+	EtcdS3Endpoint           string
+	EtcdS3EndpointCA         string
+	EtcdS3SkipSSLVerify      bool
+	EtcdS3AccessKey          string
+	EtcdS3SecretKey          string
+	EtcdS3BucketName         string
+	EtcdS3Region             string
+	EtcdS3Folder             string
 }
 
 var ServerConfig Server
@@ -254,6 +263,53 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Name:        "etcd-snapshot-dir",
 				Usage:       "(db) Directory to save db snapshots. (Default location: ${data-dir}/db/snapshots)",
 				Destination: &ServerConfig.EtcdSnapshotDir,
+			},
+			&cli.BoolFlag{
+				Name:        "etcd-s3",
+				Usage:       "(db) Enable backup to S3",
+				Destination: &ServerConfig.EtcdS3,
+			},
+			&cli.StringFlag{
+				Name:        "etcd-s3-endpoint",
+				Usage:       "(db) S3 endpoint url",
+				Destination: &ServerConfig.EtcdS3Endpoint,
+				Value:       "s3.amazonaws.com",
+			},
+			&cli.StringFlag{
+				Name:        "etcd-s3-endpoint-ca",
+				Usage:       "(db) S3 custom CA cert to connect to S3 endpoint",
+				Destination: &ServerConfig.EtcdS3EndpointCA,
+			},
+			&cli.BoolFlag{
+				Name:        "s3-skip-ssl-verify",
+				Usage:       "(db) Disables S3 SSL certificate validation",
+				Destination: &ServerConfig.EtcdS3SkipSSLVerify,
+			},
+			&cli.StringFlag{
+				Name:        "etcd-s3-access-key",
+				Usage:       "(db) S3 access key",
+				Destination: &ServerConfig.EtcdS3AccessKey,
+			},
+			&cli.StringFlag{
+				Name:        "etcd-s3-secret-key",
+				Usage:       "(db) S3 secret key",
+				Destination: &ServerConfig.EtcdS3SecretKey,
+			},
+			&cli.StringFlag{
+				Name:        "etcd-s3-bucket-name",
+				Usage:       "(db) S3 bucket name",
+				Destination: &ServerConfig.EtcdS3BucketName,
+			},
+			&cli.StringFlag{
+				Name:        "etcd-s3-region",
+				Usage:       "(db) S3 region / bucket location (optional)",
+				Destination: &ServerConfig.EtcdS3Region,
+				Value:       "us-east-1",
+			},
+			&cli.StringFlag{
+				Name:        "etcd-s3-folder",
+				Usage:       "(db) S3 folder",
+				Destination: &ServerConfig.EtcdS3Folder,
 			},
 			cli.StringFlag{
 				Name:        "default-local-storage-path",

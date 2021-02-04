@@ -41,6 +41,7 @@ type ETCD struct {
 	runtime *config.ControlRuntime
 	address string
 	cron    *cron.Cron
+	s3      *s3
 }
 
 type learnerProgress struct {
@@ -787,6 +788,19 @@ func (e *ETCD) Snapshot(ctx context.Context, config *config.Control) error {
 
 	if err := snapshot.NewV3(nil).Save(ctx, *cfg, snapshotPath); err != nil {
 		return errors.Wrap(err, "failed to save snapshot")
+	}
+
+	if e.config.EtcdS3 {
+		if e.s3 == nil {
+			s3, err := newS3(config)
+			if err != nil {
+				return err
+			}
+			e.s3 = s3
+		}
+		if err := e.s3.upload(ctx, snapshotPath); err != nil {
+			return err
+		}
 	}
 
 	// check if we need to perform a retention check

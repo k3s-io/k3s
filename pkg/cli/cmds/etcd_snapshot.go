@@ -34,6 +34,53 @@ func NewEtcdSnapshotCommand(action func(*cli.Context) error) cli.Command {
 				Usage:       "(db) Directory to save etcd on-demand snapshot. (default: ${data-dir}/db/snapshots)",
 				Destination: &ServerConfig.EtcdSnapshotDir,
 			},
+			&cli.BoolFlag{
+				Name:        "s3",
+				Usage:       "(db) Enable backup to S3",
+				Destination: &ServerConfig.EtcdS3,
+			},
+			&cli.StringFlag{
+				Name:        "endpoint",
+				Usage:       "(db) S3 endpoint url",
+				Destination: &ServerConfig.EtcdS3Endpoint,
+				Value:       "s3.amazonaws.com",
+			},
+			&cli.StringFlag{
+				Name:        "endpoint-ca",
+				Usage:       "(db) S3 custom CA cert to connect to S3 endpoint",
+				Destination: &ServerConfig.EtcdS3EndpointCA,
+			},
+			&cli.BoolFlag{
+				Name:        "s3-skip-ssl-verify",
+				Usage:       "(db) Disables S3 SSL certificate validation",
+				Destination: &ServerConfig.EtcdS3SkipSSLVerify,
+			},
+			&cli.StringFlag{
+				Name:        "access-key",
+				Usage:       "(db) S3 access key",
+				Destination: &ServerConfig.EtcdS3AccessKey,
+			},
+			&cli.StringFlag{
+				Name:        "secret-key",
+				Usage:       "(db) S3 secret key",
+				Destination: &ServerConfig.EtcdS3SecretKey,
+			},
+			&cli.StringFlag{
+				Name:        "bucket-name",
+				Usage:       "(db) S3 bucket name",
+				Destination: &ServerConfig.EtcdS3BucketName,
+			},
+			&cli.StringFlag{
+				Name:        "region",
+				Usage:       "(db) S3 region / bucket location (optional)",
+				Destination: &ServerConfig.EtcdS3Region,
+				Value:       "us-east-1",
+			},
+			&cli.StringFlag{
+				Name:        "folder",
+				Usage:       "(db) S3 folder",
+				Destination: &ServerConfig.EtcdS3Folder,
+			},
 		},
 	}
 }
