@@ -543,7 +543,7 @@ create_symlinks() {
     [ "${INSTALL_K3S_BIN_DIR_READ_ONLY}" = true ] && return
     [ "${INSTALL_K3S_SYMLINK}" = skip ] && return
 
-    for cmd in kubectl crictl ctr; do
+    for cmd in kubectl crictl ctr etcdctl; do
         if [ ! -e ${BIN_DIR}/${cmd} ] || [ "${INSTALL_K3S_SYMLINK}" = force ]; then
             which_cmd=$(which ${cmd} 2>/dev/null || true)
             if [ -z "${which_cmd}" ] || [ "${INSTALL_K3S_SYMLINK}" = force ]; then
@@ -669,7 +669,7 @@ if (ls ${SYSTEMD_DIR}/k3s*.service || ls /etc/init.d/k3s*) >/dev/null 2>&1; then
     exit
 fi
 
-for cmd in kubectl crictl ctr; do
+for cmd in kubectl crictl ctr etcdctl; do
     if [ -L ${BIN_DIR}/\$cmd ]; then
         rm -f ${BIN_DIR}/\$cmd
     fi

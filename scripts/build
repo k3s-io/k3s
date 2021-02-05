@@ -80,7 +80,8 @@ rm -f \
     bin/k3s-etcd-snapshot \
     bin/kubectl \
     bin/crictl \
-    bin/ctr
+    bin/ctr \
+    bin/etcdctl
 
 cleanup() {
     exit_status=$?
@@ -110,6 +111,7 @@ ln -s containerd ./bin/k3s-etcd-snapshot
 ln -s containerd ./bin/kubectl
 ln -s containerd ./bin/crictl
 ln -s containerd ./bin/ctr
+ln -s containerd ./bin/etcdctl
 #echo Building hyperkube
 #CGO_ENABLED=1 "${GO}" build -tags "$TAGS" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC_SQLITE" -o bin/hyperkube ./vendor/k8s.io/kubernetes/cmd/hyperkube/
 #echo Building ctr

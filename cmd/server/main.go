@@ -10,12 +10,14 @@ import (
 	"github.com/rancher/k3s/pkg/cli/cmds"
 	"github.com/rancher/k3s/pkg/cli/crictl"
 	"github.com/rancher/k3s/pkg/cli/ctr"
+	"github.com/rancher/k3s/pkg/cli/etcdctl"
 	"github.com/rancher/k3s/pkg/cli/etcdsnapshot"
 	"github.com/rancher/k3s/pkg/cli/kubectl"
 	"github.com/rancher/k3s/pkg/cli/server"
 	"github.com/rancher/k3s/pkg/configfilearg"
 	"github.com/rancher/k3s/pkg/containerd"
 	ctr2 "github.com/rancher/k3s/pkg/ctr"
+	etcdctl2 "github.com/rancher/k3s/pkg/etcdctl"
 	kubectl2 "github.com/rancher/k3s/pkg/kubectl"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
@@ -26,6 +28,7 @@ func init() {
 	reexec.Register("kubectl", kubectl2.Main)
 	reexec.Register("crictl", crictl2.Main)
 	reexec.Register("ctr", ctr2.Main)
+	reexec.Register("etcdctl", etcdctl2.Main)
 }
 
 func main() {
@@ -44,6 +47,7 @@ func main() {
 		cmds.NewCRICTL(crictl.Run),
 		cmds.NewCtrCommand(ctr.Run),
 		cmds.NewEtcdSnapshotCommand(etcdsnapshot.Run),
+		cmds.NewETCDCTLCommand(etcdctl.Run),
 	}
 
 	err := app.Run(configfilearg.MustParse(os.Args))

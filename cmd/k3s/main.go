@@ -43,6 +43,7 @@ func main() {
 		cmds.NewCtrCommand(externalCLIAction("ctr", dataDir)),
 		cmds.NewCheckConfigCommand(externalCLIAction("check-config", dataDir)),
 		cmds.NewEtcdSnapshotCommand(internalCLIAction(version.Program+"-"+cmds.EtcdSnapshotCommand, dataDir, os.Args)),
+		cmds.NewETCDCTLCommand(externalCLIAction("etcdctl", dataDir)),
 	}
 
 	if err := app.Run(os.Args); err != nil {
@@ -79,11 +80,15 @@ func findDataDir() string {
 // binaries, it calls it directly and returns true. If it's not an external binary,
 // it returns false so that standard CLI wrapping can occur.
 func runCLIs(dataDir string) bool {
-	progName := filepath.Base(os.Args[0])
-	switch progName {
-	case "crictl", "ctr", "kubectl":
-		if err := externalCLI(progName, dataDir, os.Args[1:]); err != nil {
-			logrus.Fatal(err)
+	if os.Getenv("CRI_CONFIG_FILE") == "" {
+		os.Setenv("CRI_CONFIG_FILE", dataDir+"/agent/etc/crictl.yaml")
+	}
+	for _, cmd := range []string{"kubectl", "ctr", "crictl", "etcdctl"} {
+		if filepath.Base(os.Args[0]) == cmd {
+			if err := externalCLI(cmd, dataDir, os.Args[1:]); err != nil {
+				logrus.Fatal(err)
+			}
+			return true
 		}
 		return true
 	}
