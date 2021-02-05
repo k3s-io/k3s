@@ -99,15 +99,15 @@ func (s *s3) upload(ctx context.Context, snapshot string) error {
 
 // download downloads the given snapshot from the configured S3
 // compatible backend.
-func (s *s3) download(ctx context.Context, snapshot string) error {
-	var snapshotFileName string
+func (s *s3) download(ctx context.Context) error {
+	var remotePath string
 	if s.config.EtcdS3Folder != "" {
-		snapshotFileName = filepath.Join(s.config.EtcdS3Folder, snapshot)
+		remotePath = filepath.Join(s.config.EtcdS3Folder, s.config.ClusterResetRestorePath)
 	} else {
-		snapshotFileName = snapshot
+		remotePath = s.config.ClusterResetRestorePath
 	}
 
-	r, err := s.client.GetObject(ctx, s.config.EtcdS3BucketName, snapshotFileName, minio.GetObjectOptions{})
+	r, err := s.client.GetObject(ctx, s.config.EtcdS3BucketName, remotePath, minio.GetObjectOptions{})
 	if err != nil {
 		return nil
 	}
@@ -118,7 +118,7 @@ func (s *s3) download(ctx context.Context, snapshot string) error {
 		return errors.Wrap(err, "failed to get the snapshot dir")
 	}
 
-	fullSnapshotPath := filepath.Join(snapshotDir, snapshot)
+	fullSnapshotPath := filepath.Join(snapshotDir, s.config.ClusterResetRestorePath)
 	sf, err := os.Create(fullSnapshotPath)
 	if err != nil {
 		return err
@@ -133,6 +133,8 @@ func (s *s3) download(ctx context.Context, snapshot string) error {
 	if _, err := io.CopyN(sf, r, stat.Size); err != nil {
 		return err
 	}
+
+	s.config.ClusterResetRestorePath = fullSnapshotPath
 
 	return os.Chmod(fullSnapshotPath, 0600)
 }

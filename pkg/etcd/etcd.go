@@ -182,6 +182,21 @@ func (e *ETCD) Reset(ctx context.Context) error {
 
 	// If asked to restore from a snapshot, do so
 	if e.config.ClusterResetRestorePath != "" {
+		if e.config.EtcdS3 {
+			if e.s3 == nil {
+				s3, err := newS3(ctx, e.config)
+				if err != nil {
+					return err
+				}
+				e.s3 = s3
+			}
+			logrus.Infof("Retrieving etcd snapshot %s from S3", e.config.ClusterResetRestorePath)
+			if err := e.s3.download(ctx); err != nil {
+				return err
+			}
+			logrus.Infof("S3 download complete for %s", e.config.ClusterResetRestorePath)
+		}
+
 		info, err := os.Stat(e.config.ClusterResetRestorePath)
 		if os.IsNotExist(err) {
 			return fmt.Errorf("etcd: snapshot path does not exist: %s", e.config.ClusterResetRestorePath)
