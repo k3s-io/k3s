@@ -281,7 +281,7 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Destination: &ServerConfig.EtcdS3EndpointCA,
 			},
 			&cli.BoolFlag{
-				Name:        "s3-skip-ssl-verify",
+				Name:        "etcd-s3-skip-ssl-verify",
 				Usage:       "(db) Disables S3 SSL certificate validation",
 				Destination: &ServerConfig.EtcdS3SkipSSLVerify,
 			},

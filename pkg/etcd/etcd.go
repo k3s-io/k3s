@@ -791,8 +791,9 @@ func (e *ETCD) Snapshot(ctx context.Context, config *config.Control) error {
 	}
 
 	if e.config.EtcdS3 {
+		logrus.Infof("Saving etcd snapshot %s to S3", snapshotName)
 		if e.s3 == nil {
-			s3, err := newS3(config)
+			s3, err := newS3(ctx, config)
 			if err != nil {
 				return err
 			}
@@ -801,6 +802,15 @@ func (e *ETCD) Snapshot(ctx context.Context, config *config.Control) error {
 		if err := e.s3.upload(ctx, snapshotPath); err != nil {
 			return err
 		}
+		logrus.Infof("S3 upload complete for %s", snapshotName)
+
+		if e.config.EtcdSnapshotRetention >= 1 {
+			if err := e.s3.snapshotRetention(ctx); err != nil {
+				return errors.Wrap(err, "failed to apply s3 snapshot retention")
+			}
+		}
+
+		return nil
 	}
 
 	// check if we need to perform a retention check
@@ -875,7 +885,15 @@ func snapshotRetention(retention int, snapshotDir string) error {
 	sort.Slice(snapshotFiles, func(i, j int) bool {
 		return snapshotFiles[i].Name() < snapshotFiles[j].Name()
 	})
-	return os.Remove(filepath.Join(snapshotDir, snapshotFiles[0].Name()))
+
+	delCount := len(snapshotFiles) - retention
+	for _, df := range snapshotFiles[:delCount] {
+		if err := os.Remove(filepath.Join(snapshotDir, df.Name())); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // backupDirWithRetention will move the dir to a backup dir

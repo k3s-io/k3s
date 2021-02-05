@@ -129,6 +129,7 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	serverConfig.ControlConfig.EtcdS3 = cfg.EtcdS3
 	serverConfig.ControlConfig.EtcdS3Endpoint = cfg.EtcdS3Endpoint
 	serverConfig.ControlConfig.EtcdS3EndpointCA = cfg.EtcdS3EndpointCA
+	serverConfig.ControlConfig.EtcdS3SkipSSLVerify = cfg.EtcdS3SkipSSLVerify
 	serverConfig.ControlConfig.EtcdS3AccessKey = cfg.EtcdS3AccessKey
 	serverConfig.ControlConfig.EtcdS3SecretKey = cfg.EtcdS3SecretKey
 	serverConfig.ControlConfig.EtcdS3BucketName = cfg.EtcdS3BucketName
