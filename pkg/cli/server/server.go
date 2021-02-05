@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	systemd "github.com/coreos/go-systemd/daemon"
 	"github.com/erikdubbelboer/gspt"
@@ -14,6 +15,7 @@ import (
 	"github.com/rancher/k3s/pkg/agent"
 	"github.com/rancher/k3s/pkg/cli/cmds"
 	"github.com/rancher/k3s/pkg/datadir"
+	"github.com/rancher/k3s/pkg/etcd"
 	"github.com/rancher/k3s/pkg/netutil"
 	"github.com/rancher/k3s/pkg/rootless"
 	"github.com/rancher/k3s/pkg/server"
@@ -29,6 +31,13 @@ import (
 	_ "github.com/go-sql-driver/mysql" // ensure we have mysql
 	_ "github.com/lib/pq"              // ensure we have postgres
 	_ "github.com/mattn/go-sqlite3"    // ensure we have sqlite
+)
+
+const (
+	lbServerPort         = 6444
+	etcdRoleName         = "etcd"
+	controlPlaneRoleName = "controlplane"
+	maxRoleCount         = 2
 )
 
 func Run(app *cli.Context) error {
@@ -86,7 +95,6 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	serverConfig.ControlConfig.DataDir = cfg.DataDir
 	serverConfig.ControlConfig.KubeConfigOutput = cfg.KubeConfigOutput
 	serverConfig.ControlConfig.KubeConfigMode = cfg.KubeConfigMode
-	serverConfig.ControlConfig.NoScheduler = cfg.DisableScheduler
 	serverConfig.Rootless = cfg.Rootless
 	serverConfig.ControlConfig.SANs = knownIPs(cfg.TLSSan)
 	serverConfig.ControlConfig.BindAddress = cfg.BindAddress
@@ -109,6 +117,10 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	serverConfig.ControlConfig.DisableCCM = cfg.DisableCCM
 	serverConfig.ControlConfig.DisableNPC = cfg.DisableNPC
 	serverConfig.ControlConfig.DisableKubeProxy = cfg.DisableKubeProxy
+	serverConfig.ControlConfig.DisableETCD = cfg.DisableETCD
+	serverConfig.ControlConfig.DisableAPIServer = cfg.DisableAPIServer
+	serverConfig.ControlConfig.DisableScheduler = cfg.DisableScheduler
+	serverConfig.ControlConfig.DisableControllerManager = cfg.DisableControllerManager
 	serverConfig.ControlConfig.ClusterInit = cfg.ClusterInit
 	serverConfig.ControlConfig.EncryptSecrets = cfg.EncryptSecrets
 	serverConfig.ControlConfig.EtcdSnapshotName = cfg.EtcdSnapshotName
@@ -119,7 +131,7 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	serverConfig.ControlConfig.EtcdExposeMetrics = cfg.EtcdExposeMetrics
 
 	if cfg.ClusterResetRestorePath != "" && !cfg.ClusterReset {
-		return errors.New("Invalid flag use. --cluster-reset required with --cluster-reset-restore-path")
+		return errors.New("invalid flag use. --cluster-reset required with --cluster-reset-restore-path")
 	}
 
 	serverConfig.ControlConfig.ClusterReset = cfg.ClusterReset
@@ -127,6 +139,13 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 
 	if serverConfig.ControlConfig.SupervisorPort == 0 {
 		serverConfig.ControlConfig.SupervisorPort = serverConfig.ControlConfig.HTTPSPort
+	}
+
+	if serverConfig.ControlConfig.DisableAPIServer {
+		serverConfig.ControlConfig.APIServerPort = lbServerPort
+		if serverConfig.ControlConfig.SupervisorPort != serverConfig.ControlConfig.HTTPSPort {
+			serverConfig.ControlConfig.APIServerPort = lbServerPort + 1
+		}
 	}
 
 	if cmds.AgentConfig.FlannelIface != "" && cmds.AgentConfig.NodeIP == "" {
@@ -245,6 +264,7 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	os.Unsetenv("NOTIFY_SOCKET")
 
 	ctx := signals.SetupSignalHandler(context.Background())
+
 	if err := server.StartServer(ctx, &serverConfig); err != nil {
 		return err
 	}
@@ -280,14 +300,15 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	agentConfig.DataDir = filepath.Dir(serverConfig.ControlConfig.DataDir)
 	agentConfig.ServerURL = url
 	agentConfig.Token = token
-	agentConfig.DisableLoadBalancer = true
-	agentConfig.Rootless = cfg.Rootless
-	if agentConfig.Rootless {
-		// let agent specify Rootless kubelet flags, but not unshare twice
-		agentConfig.RootlessAlreadyUnshared = true
-	}
+	agentConfig.DisableLoadBalancer = !serverConfig.ControlConfig.DisableAPIServer
+	agentConfig.ETCDAgent = serverConfig.ControlConfig.DisableAPIServer
 
-	return agent.Run(ctx, agentConfig)
+	agentConfig.Rootless = cfg.Rootless
+
+	if serverConfig.ControlConfig.DisableAPIServer {
+		getServerURLFromEtcd(ctx, &serverConfig, &agentConfig)
+	}
+	return agent.Run(ctx, &agentConfig)
 }
 
 func knownIPs(ips []string) []string {
@@ -310,4 +331,33 @@ func getArgValueFromList(searchArg string, argList []string) string {
 		}
 	}
 	return value
+}
+
+func getServerURLFromEtcd(ctx context.Context, serverConfig *server.Config, agentConfig *cmds.Agent) {
+	// setting LBServerPort to a prespecified port to initalize the kubeconfigs with the right address
+	agentConfig.LBServerPort = lbServerPort
+	// start a thread to check for the server ip if set from etcd
+	if serverConfig.ControlConfig.HTTPSPort != serverConfig.ControlConfig.SupervisorPort {
+		go setServerURLTmp(ctx, serverConfig, agentConfig)
+		return
+	}
+	setServerURLTmp(ctx, serverConfig, agentConfig)
+	agentConfig.ServerURL = agentConfig.ServerURLTmp
+}
+
+func setServerURLTmp(ctx context.Context, serverConfig *server.Config, agentConfig *cmds.Agent) {
+	for {
+		serverIP, serverPort, err := etcd.GetServerURLFromETCD(ctx, &serverConfig.ControlConfig)
+		if err != nil {
+			logrus.Warn(err)
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(5 * time.Second):
+			}
+			continue
+		}
+		agentConfig.ServerURLTmp = fmt.Sprintf("https://%s:%d", serverIP, serverPort)
+		break
+	}
 }

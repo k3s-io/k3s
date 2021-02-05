@@ -67,5 +67,5 @@ func Run(ctx *cli.Context) error {
 
 	contextCtx := signals.SetupSignalHandler(context.Background())
 
-	return agent.Run(contextCtx, cfg)
+	return agent.Run(contextCtx, &cfg)
 }

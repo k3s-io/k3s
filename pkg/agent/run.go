@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -71,10 +72,10 @@ func setupCriCtlConfig(cfg cmds.Agent, nodeConfig *daemonconfig.Node) error {
 	return ioutil.WriteFile(agentConfDir+"/crictl.yaml", []byte(crp), 0600)
 }
 
-func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
-	nodeConfig := config.Get(ctx, cfg, proxy)
+func run(ctx context.Context, cfg *cmds.Agent, proxy proxy.Proxy) error {
+	nodeConfig := config.Get(ctx, *cfg, proxy)
 
-	if err := setupCriCtlConfig(cfg, nodeConfig); err != nil {
+	if err := setupCriCtlConfig(*cfg, nodeConfig); err != nil {
 		return err
 	}
 
@@ -89,12 +90,7 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 			return err
 		}
 	}
-
-	if err := tunnel.Setup(ctx, nodeConfig, proxy); err != nil {
-		return err
-	}
-
-	if err := agent.Agent(&nodeConfig.AgentConfig); err != nil {
+	if err := setupTunnelAndRunAgent(ctx, nodeConfig, cfg, proxy); err != nil {
 		return err
 	}
 
@@ -131,7 +127,7 @@ func coreClient(cfg string) (kubernetes.Interface, error) {
 	return kubernetes.NewForConfig(restConfig)
 }
 
-func Run(ctx context.Context, cfg cmds.Agent) error {
+func Run(ctx context.Context, cfg *cmds.Agent) error {
 	if err := validate(); err != nil {
 		return err
 	}
@@ -148,7 +144,7 @@ func Run(ctx context.Context, cfg cmds.Agent) error {
 		return err
 	}
 
-	proxy, err := proxy.NewAPIProxy(!cfg.DisableLoadBalancer, agentDir, cfg.ServerURL)
+	proxy, err := proxy.NewAPIProxy(!cfg.DisableLoadBalancer, cfg.DataDir, cfg.ServerURL, cfg.LBServerPort)
 	if err != nil {
 		return err
 	}
@@ -167,7 +163,6 @@ func Run(ctx context.Context, cfg cmds.Agent) error {
 		cfg.Token = newToken.String()
 		break
 	}
-
 	systemd.SdNotify(true, "READY=1\n")
 	return run(ctx, cfg, proxy)
 }
@@ -299,4 +294,42 @@ func updateAddressLabels(agentConfig *daemonconfig.Agent, nodeLabels map[string]
 
 	result = labels.Merge(nodeLabels, result)
 	return result, !equality.Semantic.DeepEqual(nodeLabels, result)
+}
+
+// setupTunnelAndRunAgent should start the setup tunnel before starting kubelet and kubeproxy
+// there are special case for etcd agents, it will wait until it can find the serverURLch stub
+// and update the proxy with the servers addresses, if in rke2 we need to start the agent before
+// the tunnel is setup to allow kubelet to start first and start the pods
+func setupTunnelAndRunAgent(ctx context.Context, nodeConfig *daemonconfig.Node, cfg *cmds.Agent, proxy proxy.Proxy) error {
+	var agentRan bool
+	if cfg.ETCDAgent {
+		// only in rke2 run the agent before the tunnel setup and check for that later in the function
+		if proxy.IsAPIServerLBEnabled() {
+			if err := agent.Agent(&nodeConfig.AgentConfig); err != nil {
+				return err
+			}
+			agentRan = true
+		}
+		for {
+			time.Sleep(5 * time.Second)
+			if cfg.ServerURLTmp != "" {
+				cfg.ServerURL = cfg.ServerURLTmp
+				u, err := url.Parse(cfg.ServerURL)
+				if err != nil {
+					logrus.Warn(err)
+					continue
+				}
+				proxy.Update([]string{fmt.Sprintf("%s:%d", u.Hostname(), nodeConfig.ServerHTTPSPort)})
+				break
+			}
+		}
+	}
+
+	if err := tunnel.Setup(ctx, nodeConfig, proxy); err != nil {
+		return err
+	}
+	if !agentRan {
+		return agent.Agent(&nodeConfig.AgentConfig)
+	}
+	return nil
 }

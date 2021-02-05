@@ -65,7 +65,7 @@ const (
 	endpoint            = "https://127.0.0.1:2379"
 	testTimeout         = time.Second * 10
 	manageTickerTime    = time.Second * 15
-	learnerMaxStallTime = time.Minute * 1
+	learnerMaxStallTime = time.Minute * 5
 
 	// defaultDialTimeout is intentionally short so that connections timeout within the testTimeout defined above
 	defaultDialTimeout = 2 * time.Second
@@ -206,11 +206,6 @@ func (e *ETCD) Start(ctx context.Context, clientAccessInfo *clientaccess.Info) e
 		return errors.Wrapf(err, "configuration validation failed")
 	}
 
-	e.config.Runtime.ClusterControllerStart = func(ctx context.Context) error {
-		Register(ctx, e, e.config.Runtime.Core.Core().V1().Node())
-		return nil
-	}
-
 	if !e.config.EtcdDisableSnapshots {
 		e.setSnapshotFunction(ctx)
 		e.cron.Start()
@@ -251,7 +246,7 @@ func (e *ETCD) join(ctx context.Context, clientAccessInfo *clientaccess.Info) er
 		return err
 	}
 
-	client, err := getClient(ctx, e.runtime, clientURLs...)
+	client, err := GetClient(ctx, e.runtime, clientURLs...)
 	if err != nil {
 		return err
 	}
@@ -316,13 +311,13 @@ func (e *ETCD) Register(ctx context.Context, config *config.Control, handler htt
 	e.config = config
 	e.runtime = config.Runtime
 
-	client, err := getClient(ctx, e.runtime, endpoint)
+	client, err := GetClient(ctx, e.runtime, endpoint)
 	if err != nil {
 		return nil, err
 	}
 	e.client = client
 
-	address, err := getAdvertiseAddress(config.PrivateIP)
+	address, err := GetAdvertiseAddress(config.PrivateIP)
 	if err != nil {
 		return nil, err
 	}
@@ -334,6 +329,10 @@ func (e *ETCD) Register(ctx context.Context, config *config.Control, handler htt
 
 	if err := e.setName(false); err != nil {
 		return nil, err
+	}
+	e.config.Runtime.ClusterControllerStart = func(ctx context.Context) error {
+		Register(ctx, e, e.config.Runtime.Core.Core().V1().Node())
+		return nil
 	}
 
 	tombstoneFile := filepath.Join(etcdDBDir(e.config), "tombstone")
@@ -405,7 +404,7 @@ func (e *ETCD) infoHandler() http.Handler {
 }
 
 // getClient returns an etcd client connected to the specified endpoints
-func getClient(ctx context.Context, runtime *config.ControlRuntime, endpoints ...string) (*etcd.Client, error) {
+func GetClient(ctx context.Context, runtime *config.ControlRuntime, endpoints ...string) (*etcd.Client, error) {
 	cfg, err := getClientConfig(ctx, runtime, endpoints...)
 	if err != nil {
 		return nil, err
@@ -450,7 +449,7 @@ func toTLSConfig(runtime *config.ControlRuntime) (*tls.Config, error) {
 }
 
 // getAdvertiseAddress returns the IP address best suited for advertising to clients
-func getAdvertiseAddress(advertiseIP string) (string, error) {
+func GetAdvertiseAddress(advertiseIP string) (string, error) {
 	ip := advertiseIP
 	if ip == "" {
 		ipAddr, err := utilnet.ChooseHostInterface()
@@ -737,7 +736,7 @@ func (e *ETCD) preSnapshotSetup(ctx context.Context, config *config.Control) err
 		if e.config == nil {
 			e.config = config
 		}
-		client, err := getClient(ctx, e.config.Runtime, endpoint)
+		client, err := GetClient(ctx, e.config.Runtime, endpoint)
 		if err != nil {
 			return err
 		}
@@ -891,4 +890,58 @@ func backupDirWithRetention(dir string, maxBackupRetention int) (string, error) 
 		return "", err
 	}
 	return backupDir, nil
+}
+
+func GetServerURLFromETCD(ctx context.Context, cfg *config.Control) (string, int, error) {
+	if cfg.Runtime == nil {
+		return "", 0, fmt.Errorf("runtime is not ready yet")
+	}
+	cl, err := GetClient(ctx, cfg.Runtime, endpoint)
+	if err != nil {
+		return "", 0, err
+	}
+	etcdResp, err := cl.KV.Get(ctx, version.Program+"/etcd/apiaddresses")
+	if err != nil {
+		return "", 0, err
+	}
+
+	if etcdResp.Count < 1 {
+		return "", 0, fmt.Errorf("servers addresses are not yet set")
+	}
+	var addresses []string
+	if err := json.Unmarshal(etcdResp.Kvs[0].Value, &addresses); err != nil {
+		return "", 0, fmt.Errorf("failed to unmarshal etcd key: %v", err)
+	}
+
+	var address string
+	var port int
+	if len(addresses) > 0 {
+		addressPort := strings.Split(addresses[0], ":")
+
+		address = addressPort[0]
+		port, err = strconv.Atoi(addressPort[1])
+		if err != nil {
+			return "", 0, fmt.Errorf("port is not set correctly: %v", err)
+		}
+	}
+
+	return address, port, nil
+}
+
+func (e *ETCD) GetMembersClientURLs(ctx context.Context) ([]string, error) {
+	ctx, cancel := context.WithTimeout(ctx, testTimeout)
+	defer cancel()
+
+	members, err := e.client.MemberList(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var memberUrls []string
+	for _, member := range members.Members {
+		for _, clientURL := range member.ClientURLs {
+			memberUrls = append(memberUrls, string(clientURL))
+		}
+	}
+	return memberUrls, nil
 }

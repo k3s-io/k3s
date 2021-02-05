@@ -17,6 +17,7 @@ import (
 
 	"github.com/k3s-io/helm-controller/pkg/helm"
 	"github.com/pkg/errors"
+	"github.com/rancher/k3s/pkg/apiaddresses"
 	"github.com/rancher/k3s/pkg/clientaccess"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/daemons/control"
@@ -40,6 +41,7 @@ import (
 const (
 	MasterRoleLabelKey       = "node-role.kubernetes.io/master"
 	ControlPlaneRoleLabelKey = "node-role.kubernetes.io/control-plane"
+	ETCDRoleLabelKey         = "node-role.kubernetes.io/etcd"
 )
 
 func ResolveDataDir(dataDir string) (string, error) {
@@ -62,7 +64,11 @@ func StartServer(ctx context.Context, config *Config) error {
 
 	config.ControlConfig.Runtime.Handler = router(ctx, config)
 
-	go startOnAPIServerReady(ctx, config)
+	if config.ControlConfig.DisableAPIServer {
+		go setETCDLabelsAndAnnotations(ctx, config)
+	} else {
+		go startOnAPIServerReady(ctx, config)
+	}
 
 	for _, hook := range config.StartupHooks {
 		if err := hook(ctx, config.ControlConfig.Runtime.APIServerReady, config.ControlConfig.Runtime.KubeConfigAdmin); err != nil {
@@ -137,7 +143,7 @@ func runControllers(ctx context.Context, config *Config) error {
 			panic(err)
 		}
 	}
-	if !config.DisableAgent {
+	if !config.DisableAgent && !config.ControlConfig.DisableAPIServer {
 		go setControlPlaneRoleLabel(ctx, sc.Core.Core().V1().Node())
 	}
 
@@ -182,6 +188,10 @@ func coreControllers(ctx context.Context, sc *Context, config *Config) error {
 		sc.Core.Core().V1().Service(),
 		sc.Core.Core().V1().Endpoints(),
 		!config.DisableServiceLB, config.Rootless); err != nil {
+		return err
+	}
+
+	if err := apiaddresses.Register(ctx, config.ControlConfig.Runtime, sc.Core.Core().V1().Endpoints()); err != nil {
 		return err
 	}
 
@@ -442,6 +452,13 @@ func setControlPlaneRoleLabel(ctx context.Context, nodes v1.NodeClient) error {
 		}
 		node.Labels[ControlPlaneRoleLabelKey] = "true"
 		node.Labels[MasterRoleLabelKey] = "true"
+
+		// remove etcd taint if exists
+		for i, taint := range node.Spec.Taints {
+			if taint.Key == "node-role.kubernetes.io/etcd" {
+				node.Spec.Taints = append(node.Spec.Taints[:i], node.Spec.Taints[i+1:]...)
+			}
+		}
 		_, err = nodes.Update(node)
 		if err == nil {
 			logrus.Infof("Control-plane role label has been set successfully on node: %s", nodeName)
