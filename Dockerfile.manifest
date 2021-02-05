@@ -1,4 +1,4 @@
-FROM golang:1.15.5-alpine3.12
+FROM golang:1.15.8-alpine3.12
 
 COPY --from=plugins/manifest:1.2.3 /bin/* /bin/
 
