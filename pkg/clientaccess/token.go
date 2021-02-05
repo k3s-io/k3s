@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -60,15 +61,8 @@ func ParseAndValidateToken(server string, token string) (*Info, error) {
 		return nil, err
 	}
 
-	if err := info.setServer(server); err != nil {
+	if err := info.setAndValidateServer(server); err != nil {
 		return nil, err
-	}
-
-	// only verify CA hash if the server cert is not trusted by the OS CA bundle
-	if len(info.CACerts) > 0 && len(info.caHash) > 0 {
-		if err := info.validateCAHash(); err != nil {
-			return nil, err
-		}
 	}
 
 	return info, nil
@@ -84,18 +78,19 @@ func ParseAndValidateTokenForUser(server string, token string, username string) 
 
 	info.Username = username
 
-	if err := info.setServer(server); err != nil {
+	if err := info.setAndValidateServer(server); err != nil {
 		return nil, err
 	}
 
-	// only verify CA hash if the server cert is not trusted by the OS CA bundle
-	if len(info.CACerts) > 0 && len(info.caHash) > 0 {
-		if err := info.validateCAHash(); err != nil {
-			return nil, err
-		}
-	}
-
 	return info, nil
+}
+
+// setAndValidateServer updates the remote server's cert info, and validates it against the provided hash
+func (info *Info) setAndValidateServer(server string) error {
+	if err := info.setServer(server); err != nil {
+		return err
+	}
+	return info.validateCAHash()
 }
 
 // validateCACerts returns a boolean indicating whether or not a CA bundle matches the provided hash,
@@ -219,10 +214,20 @@ func (info *Info) setServer(server string) error {
 
 // ValidateCAHash validates that info's caHash matches the CACerts hash.
 func (info *Info) validateCAHash() error {
-	if ok, serverHash := validateCACerts(info.CACerts, info.caHash); !ok {
-		return fmt.Errorf("token CA hash does not match the server CA hash: %s != %s", info.caHash, serverHash)
+	if len(info.caHash) > 0 && len(info.CACerts) == 0 {
+		// Warn if the user provided a CA hash but we're not going to validate because it's already trusted
+		logrus.Warn("Cluster CA certificate is trusted by the host CA bundle. " +
+			"Token CA hash will not be validated.")
+	} else if len(info.caHash) == 0 && len(info.CACerts) > 0 {
+		// Warn if the CA is self-signed but the user didn't provide a hash to validate it against
+		logrus.Warn("Cluster CA certificate is not trusted by the host CA bundle, but the token does not include a CA hash. " +
+			"Use the full token from the server's node-token file to enable Cluster CA validation.")
+	} else if len(info.CACerts) > 0 && len(info.caHash) > 0 {
+		// only verify CA hash if the server cert is not trusted by the OS CA bundle
+		if ok, serverHash := validateCACerts(info.CACerts, info.caHash); !ok {
+			return fmt.Errorf("token CA hash does not match the Cluster CA certificate hash: %s != %s", info.caHash, serverHash)
+		}
 	}
-
 	return nil
 }
 

@@ -153,7 +153,7 @@ func TestInvalidTokens(t *testing.T) {
 		{server.URL, "K10XX::x:y", "invalid token CA hash length"},
 		{server.URL,
 			"K10XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX::x:y",
-			"token CA hash does not match the server CA hash: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX != " + hashCA(getServerCA(server))},
+			"token CA hash does not match the Cluster CA certificate hash: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX != " + hashCA(getServerCA(server))},
 	}
 
 	for _, testCase := range testCases {
