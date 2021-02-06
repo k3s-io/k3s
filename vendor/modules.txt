@@ -705,6 +705,13 @@ github.com/k3s-io/kine/pkg/server
 github.com/k3s-io/kine/pkg/tls
 # github.com/karrick/godirwalk v1.16.1
 github.com/karrick/godirwalk
+# github.com/klauspost/compress v1.11.7
+## explicit
+github.com/klauspost/compress/fse
+github.com/klauspost/compress/huff0
+github.com/klauspost/compress/snappy
+github.com/klauspost/compress/zstd
+github.com/klauspost/compress/zstd/internal/xxhash
 # github.com/kubernetes-sigs/cri-tools v0.0.0-00010101000000-000000000000 => github.com/k3s-io/cri-tools v1.20.0-k3s1
 ## explicit
 github.com/kubernetes-sigs/cri-tools/cmd/crictl

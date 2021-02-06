@@ -35,10 +35,11 @@ mkdir -p dist/artifacts
     set -x
 )
 
-tar cvzf ./build/out/data.tar.gz --exclude ./bin/hyperkube ./bin ./etc
-HASH=$(sha256sum ./build/out/data.tar.gz | awk '{print $1}')
+tar cvf ./build/out/data.tar --exclude ./bin/hyperkube ./bin ./etc 
+zstd -v -T0 -16 -f --long --rm ./build/out/data.tar -o ./build/out/data.tar.zst
+HASH=$(sha256sum ./build/out/data.tar.zst | awk '{print $1}')
 
-cp ./build/out/data.tar.gz ./build/data/${HASH}.tgz
+cp ./build/out/data.tar.zst ./build/data/${HASH}.tar.zst
 
 BIN_SUFFIX="-${ARCH}"
 if [ ${ARCH} = amd64 ]; then
