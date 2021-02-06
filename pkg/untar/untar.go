@@ -7,7 +7,6 @@ package untar
 
 import (
 	"archive/tar"
-	"compress/gzip"
 	"fmt"
 	"io"
 	"os"
@@ -15,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/klauspost/compress/zstd"
 	"github.com/sirupsen/logrus"
 )
 
@@ -23,7 +23,7 @@ import (
 // forked for now.  Unfork and add some opts arguments here, so the
 // buildlet can use this code somehow.
 
-// Untar reads the gzip-compressed tar file from r and writes it into dir.
+// Untar reads the zstd-compressed tar file from r and writes it into dir.
 func Untar(r io.Reader, dir string) error {
 	return untar(r, dir)
 }
@@ -38,10 +38,11 @@ func untar(r io.Reader, dir string) (err error) {
 			logrus.Printf("error extracting tarball into %s after %d files, %d dirs, %v: %v", dir, nFiles, len(madeDir), td, err)
 		}
 	}()
-	zr, err := gzip.NewReader(r)
+	zr, err := zstd.NewReader(r)
 	if err != nil {
-		return fmt.Errorf("requires gzip-compressed body: %v", err)
+		return fmt.Errorf("requires zstd-compressed body: %v", err)
 	}
+	defer zr.Close()
 	tr := tar.NewReader(zr)
 	loggedChtimesError := false
 	for {
