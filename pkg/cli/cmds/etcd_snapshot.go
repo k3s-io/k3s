@@ -58,11 +58,13 @@ func NewEtcdSnapshotCommand(action func(*cli.Context) error) cli.Command {
 			&cli.StringFlag{
 				Name:        "access-key",
 				Usage:       "(db) S3 access key",
+				EnvVar:      "AWS_ACCESS_KEY_ID",
 				Destination: &ServerConfig.EtcdS3AccessKey,
 			},
 			&cli.StringFlag{
 				Name:        "secret-key",
 				Usage:       "(db) S3 secret key",
+				EnvVar:      "AWS_SECRET_ACCESS_KEY",
 				Destination: &ServerConfig.EtcdS3SecretKey,
 			},
 			&cli.StringFlag{
