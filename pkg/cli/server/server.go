@@ -334,7 +334,7 @@ func getArgValueFromList(searchArg string, argList []string) string {
 }
 
 func getServerURLFromEtcd(ctx context.Context, serverConfig *server.Config, agentConfig *cmds.Agent) {
-	// setting LBServerPort to a prespecified port to initalize the kubeconfigs with the right address
+	// setting LBServerPort to a prespecified port to initialize the kubeconfigs with the right address
 	agentConfig.LBServerPort = lbServerPort
 	// start a thread to check for the server ip if set from etcd
 	if serverConfig.ControlConfig.HTTPSPort != serverConfig.ControlConfig.SupervisorPort {
