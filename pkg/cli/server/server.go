@@ -34,10 +34,7 @@ import (
 )
 
 const (
-	lbServerPort         = 6444
-	etcdRoleName         = "etcd"
-	controlPlaneRoleName = "controlplane"
-	maxRoleCount         = 2
+	lbServerPort = 6444
 )
 
 func Run(app *cli.Context) error {
