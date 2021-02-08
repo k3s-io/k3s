@@ -207,7 +207,8 @@ func serviceIPs(svc *core.Service) []string {
 }
 
 func (h *handler) podIPs(pods []*core.Pod) ([]string, error) {
-	ips := map[string]bool{}
+	extIPs := map[string]bool{}
+	intIPs := map[string]bool{}
 
 	for _, pod := range pods {
 		if pod.Spec.NodeName == "" || pod.Status.PodIP == "" {
@@ -226,21 +227,25 @@ func (h *handler) podIPs(pods []*core.Pod) ([]string, error) {
 
 		for _, addr := range node.Status.Addresses {
 			if addr.Type == core.NodeExternalIP {
-				ips[addr.Address] = true
-			}
-		}
-		if len(ips) == 0 {
-			for _, addr := range node.Status.Addresses {
-				if addr.Type == core.NodeInternalIP {
-					ips[addr.Address] = true
-				}
+				extIPs[addr.Address] = true
+			} else if addr.Type == core.NodeInternalIP {
+				intIPs[addr.Address] = true
 			}
 		}
 	}
 
+	keys := func(addrMap map[string]bool) (addrs []string) {
+		for k := range addrMap {
+			addrs = append(addrs, k)
+		}
+		return addrs
+	}
+
 	var ipList []string
-	for k := range ips {
-		ipList = append(ipList, k)
+	if len(extIPs) > 0 {
+		ipList = keys(extIPs)
+	} else {
+		ipList = keys(intIPs)
 	}
 
 	if len(ipList) > 0 && h.rootless {
