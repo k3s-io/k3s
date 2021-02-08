@@ -40,7 +40,7 @@ func NewEtcdSnapshotCommand(action func(*cli.Context) error) cli.Command {
 				Destination: &ServerConfig.EtcdS3,
 			},
 			&cli.StringFlag{
-				Name:        "endpoint",
+				Name:        "s3-endpoint",
 				Usage:       "(db) S3 endpoint url",
 				Destination: &ServerConfig.EtcdS3Endpoint,
 				Value:       "s3.amazonaws.com",
