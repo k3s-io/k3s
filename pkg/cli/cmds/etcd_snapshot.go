@@ -46,7 +46,7 @@ func NewEtcdSnapshotCommand(action func(*cli.Context) error) cli.Command {
 				Value:       "s3.amazonaws.com",
 			},
 			&cli.StringFlag{
-				Name:        "endpoint-ca",
+				Name:        "s3-endpoint-ca",
 				Usage:       "(db) S3 custom CA cert to connect to S3 endpoint",
 				Destination: &ServerConfig.EtcdS3EndpointCA,
 			},
