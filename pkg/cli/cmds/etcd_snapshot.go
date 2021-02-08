@@ -68,7 +68,7 @@ func NewEtcdSnapshotCommand(action func(*cli.Context) error) cli.Command {
 				Destination: &ServerConfig.EtcdS3SecretKey,
 			},
 			&cli.StringFlag{
-				Name:        "bucket-name",
+				Name:        "s3-bucket",
 				Usage:       "(db) S3 bucket name",
 				Destination: &ServerConfig.EtcdS3BucketName,
 			},
