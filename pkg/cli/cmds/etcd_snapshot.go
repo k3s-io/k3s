@@ -73,7 +73,7 @@ func NewEtcdSnapshotCommand(action func(*cli.Context) error) cli.Command {
 				Destination: &ServerConfig.EtcdS3BucketName,
 			},
 			&cli.StringFlag{
-				Name:        "region",
+				Name:        "s3-region",
 				Usage:       "(db) S3 region / bucket location (optional)",
 				Destination: &ServerConfig.EtcdS3Region,
 				Value:       "us-east-1",
