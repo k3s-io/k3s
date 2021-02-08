@@ -59,13 +59,14 @@ func newS3(ctx context.Context, config *config.Control) (*s3, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	logrus.Infof("Checking if S3 bucket %s exists", config.EtcdS3BucketName)
 	exists, err := c.BucketExists(ctx, config.EtcdS3BucketName)
 	if err != nil {
 		return nil, err
 	}
 	if !exists {
-		return nil, fmt.Errorf("the given bucket: %s does not exist", config.EtcdS3BucketName)
+		return nil, fmt.Errorf("bucket: %s does not exist", config.EtcdS3BucketName)
 	}
 	logrus.Infof("S3 bucket %s exists", config.EtcdS3BucketName)
 
@@ -107,6 +108,7 @@ func (s *s3) download(ctx context.Context) error {
 		remotePath = s.config.ClusterResetRestorePath
 	}
 
+	logrus.Debugf("retrieving snapshot: %s", remotePath)
 	r, err := s.client.GetObject(ctx, s.config.EtcdS3BucketName, remotePath, minio.GetObjectOptions{})
 	if err != nil {
 		return nil
@@ -172,7 +174,7 @@ func (s *s3) snapshotRetention(ctx context.Context) error {
 
 	delCount := len(snapshotFiles) - s.config.EtcdSnapshotRetention
 	for _, df := range snapshotFiles[:delCount] {
-		logrus.Debugf("Removing file: %s", df.Key)
+		logrus.Debugf("Removing snapshot: %s", df.Key)
 		if err := s.client.RemoveObject(ctx, s.config.EtcdS3BucketName, df.Key, minio.RemoveObjectOptions{}); err != nil {
 			return err
 		}
@@ -223,7 +225,7 @@ func isValidCertificate(c []byte) bool {
 }
 
 func bucketLookupType(endpoint string) minio.BucketLookupType {
-	if strings.Contains(endpoint, "aliyun") {
+	if strings.Contains(endpoint, "aliyun") { // backwards compt with RKE1
 		return minio.BucketLookupDNS
 	}
 	return minio.BucketLookupAuto
