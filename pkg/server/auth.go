@@ -30,19 +30,17 @@ func doAuth(roles []string, serverConfig *config.Control, next http.Handler, rw 
 		logrus.Errorf("Authenticate not initialized: serverConfig.Runtime.Authenticator is nil")
 		rw.WriteHeader(http.StatusUnauthorized)
 		return
-	default:
-		//
 	}
 
 	resp, ok, err := serverConfig.Runtime.Authenticator.AuthenticateRequest(req)
 	if err != nil {
 		logrus.Errorf("Failed to authenticate request from %s: %v", req.RemoteAddr, err)
-		rw.WriteHeader(http.StatusInternalServerError)
+		rw.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
 	if !ok || !hasRole(roles, resp.User.GetGroups()) {
-		rw.WriteHeader(http.StatusUnauthorized)
+		rw.WriteHeader(http.StatusForbidden)
 		return
 	}
 
