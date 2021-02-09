@@ -14,6 +14,8 @@ type Proxy interface {
 	ETCDServerURL() string
 }
 
+// NewETCDProxy initializes a new proxy structure that contain a load balancer
+// which listens on port 2379 and proxy between etcd cluster members
 func NewETCDProxy(enabled bool, dataDir, etcdURL string) (Proxy, error) {
 	e := &etcdproxy{
 		dataDir:        dataDir,

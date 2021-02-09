@@ -341,6 +341,10 @@ func getArgValueFromList(searchArg string, argList []string) string {
 	return value
 }
 
+// setAPIAddressChannel will try to get the api address key from etcd and when it succeed it will
+// set the APIAddressCh channel with its value, the function works for both k3s and rke2 in case
+// of k3s we block returning back to the agent.Run until we get the api address, however in rke2
+// the code will not block operation and will run the operation in a goroutine
 func setAPIAddressChannel(ctx context.Context, serverConfig *server.Config, agentConfig *cmds.Agent) {
 	// start a goroutine to check for the server ip if set from etcd in case of rke2
 	if serverConfig.ControlConfig.HTTPSPort != serverConfig.ControlConfig.SupervisorPort {

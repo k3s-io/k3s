@@ -60,7 +60,8 @@ func NewETCD() *ETCD {
 
 var (
 	learnerProgressKey = version.Program + "/etcd/learnerProgress"
-	AddressKey         = version.Program + "/apiaddresses"
+	// AddressKey will contain the value of api addresses list
+	AddressKey = version.Program + "/apiaddresses"
 )
 
 const (
@@ -895,6 +896,8 @@ func backupDirWithRetention(dir string, maxBackupRetention int) (string, error) 
 	return backupDir, nil
 }
 
+// GetAPIServerURLFromETCD will try to fetch the version.Program/apiaddresses key from etcd
+// when it succeed it will parse the first address in the list and return back an IP and Port
 func GetAPIServerURLFromETCD(ctx context.Context, cfg *config.Control) (string, int, error) {
 	if cfg.Runtime == nil {
 		return "", 0, fmt.Errorf("runtime is not ready yet")
@@ -931,6 +934,8 @@ func GetAPIServerURLFromETCD(ctx context.Context, cfg *config.Control) (string, 
 	return address, port, nil
 }
 
+// GetMembersClientURLs will list through the member lists in etcd and return
+// back a combined list of client urls for each member in the cluster
 func (e *ETCD) GetMembersClientURLs(ctx context.Context) ([]string, error) {
 	ctx, cancel := context.WithTimeout(ctx, testTimeout)
 	defer cancel()

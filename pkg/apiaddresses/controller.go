@@ -42,6 +42,8 @@ type handler struct {
 	etcdClient          *etcdv3.Client
 }
 
+// This controller will update the version.program/apiaddresses etcd key with a list of
+// api addresses endpoints found in the kubernetes service in the default namespace
 func (h *handler) sync(key string, endpoint *v1.Endpoints) (*v1.Endpoints, error) {
 	if endpoint == nil {
 		return nil, nil
