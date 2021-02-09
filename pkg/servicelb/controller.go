@@ -122,7 +122,7 @@ func (h *handler) onResourceChange(name, namespace string, obj runtime.Object) (
 	}, nil
 }
 
-// onChangeService handles changes to Services
+// onChangeService handles changes to Services.
 func (h *handler) onChangeService(key string, svc *core.Service) (*core.Service, error) {
 	if svc == nil {
 		return nil, nil
