@@ -302,10 +302,21 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 
 	agentConfig.Rootless = cfg.Rootless
 
-	if serverConfig.ControlConfig.DisableAPIServer {
-		getServerURLFromEtcd(ctx, &serverConfig, &agentConfig)
+	if agentConfig.Rootless {
+		// let agent specify Rootless kubelet flags, but not unshare twice
+		agentConfig.RootlessAlreadyUnshared = true
 	}
-	return agent.Run(ctx, &agentConfig)
+
+	if serverConfig.ControlConfig.DisableAPIServer {
+		// setting LBServerPort to a prespecified port to initialize the kubeconfigs with the right address
+		agentConfig.LBServerPort = lbServerPort
+		// initialize the apiAddress Channel for recieving the api address from etcd
+		agentConfig.APIAddressCh = make(chan string, 1)
+		defer close(agentConfig.APIAddressCh)
+
+		setAPIAddressChannel(ctx, &serverConfig, &agentConfig)
+	}
+	return agent.Run(ctx, agentConfig)
 }
 
 func knownIPs(ips []string) []string {
@@ -330,21 +341,19 @@ func getArgValueFromList(searchArg string, argList []string) string {
 	return value
 }
 
-func getServerURLFromEtcd(ctx context.Context, serverConfig *server.Config, agentConfig *cmds.Agent) {
-	// setting LBServerPort to a prespecified port to initialize the kubeconfigs with the right address
-	agentConfig.LBServerPort = lbServerPort
-	// start a thread to check for the server ip if set from etcd
+func setAPIAddressChannel(ctx context.Context, serverConfig *server.Config, agentConfig *cmds.Agent) {
+	// start a goroutine to check for the server ip if set from etcd in case of rke2
 	if serverConfig.ControlConfig.HTTPSPort != serverConfig.ControlConfig.SupervisorPort {
-		go setServerURLTmp(ctx, serverConfig, agentConfig)
+		go getAPIAddressFromEtcd(ctx, serverConfig, agentConfig)
 		return
 	}
-	setServerURLTmp(ctx, serverConfig, agentConfig)
-	agentConfig.ServerURL = agentConfig.ServerURLTmp
+	getAPIAddressFromEtcd(ctx, serverConfig, agentConfig)
+	agentConfig.ServerURL = <-agentConfig.APIAddressCh
 }
 
-func setServerURLTmp(ctx context.Context, serverConfig *server.Config, agentConfig *cmds.Agent) {
+func getAPIAddressFromEtcd(ctx context.Context, serverConfig *server.Config, agentConfig *cmds.Agent) {
 	for {
-		serverIP, serverPort, err := etcd.GetServerURLFromETCD(ctx, &serverConfig.ControlConfig)
+		serverIP, serverPort, err := etcd.GetAPIServerURLFromETCD(ctx, &serverConfig.ControlConfig)
 		if err != nil {
 			logrus.Warn(err)
 			select {
@@ -354,7 +363,7 @@ func setServerURLTmp(ctx context.Context, serverConfig *server.Config, agentConf
 			}
 			continue
 		}
-		agentConfig.ServerURLTmp = fmt.Sprintf("https://%s:%d", serverIP, serverPort)
+		agentConfig.APIAddressCh <- fmt.Sprintf("https://%s:%d", serverIP, serverPort)
 		break
 	}
 }

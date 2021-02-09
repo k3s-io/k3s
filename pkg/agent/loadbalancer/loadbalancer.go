@@ -30,6 +30,8 @@ type LoadBalancer struct {
 	Listener              net.Listener
 }
 
+const RandomPort = 0
+
 var (
 	SupervisorServiceName = version.Program + "-agent-load-balancer"
 	APIServerServiceName  = version.Program + "-api-server-agent-load-balancer"

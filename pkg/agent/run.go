@@ -72,10 +72,10 @@ func setupCriCtlConfig(cfg cmds.Agent, nodeConfig *daemonconfig.Node) error {
 	return ioutil.WriteFile(agentConfDir+"/crictl.yaml", []byte(crp), 0600)
 }
 
-func run(ctx context.Context, cfg *cmds.Agent, proxy proxy.Proxy) error {
-	nodeConfig := config.Get(ctx, *cfg, proxy)
+func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
+	nodeConfig := config.Get(ctx, cfg, proxy)
 
-	if err := setupCriCtlConfig(*cfg, nodeConfig); err != nil {
+	if err := setupCriCtlConfig(cfg, nodeConfig); err != nil {
 		return err
 	}
 
@@ -127,7 +127,7 @@ func coreClient(cfg string) (kubernetes.Interface, error) {
 	return kubernetes.NewForConfig(restConfig)
 }
 
-func Run(ctx context.Context, cfg *cmds.Agent) error {
+func Run(ctx context.Context, cfg cmds.Agent) error {
 	if err := validate(); err != nil {
 		return err
 	}
@@ -297,10 +297,10 @@ func updateAddressLabels(agentConfig *daemonconfig.Agent, nodeLabels map[string]
 }
 
 // setupTunnelAndRunAgent should start the setup tunnel before starting kubelet and kubeproxy
-// there are special case for etcd agents, it will wait until it can find the serverURLch stub
-// and update the proxy with the servers addresses, if in rke2 we need to start the agent before
-// the tunnel is setup to allow kubelet to start first and start the pods
-func setupTunnelAndRunAgent(ctx context.Context, nodeConfig *daemonconfig.Node, cfg *cmds.Agent, proxy proxy.Proxy) error {
+// there are special case for etcd agents, it will wait until it can find the apiaddress from
+// the address channel and update the proxy with the servers addresses, if in rke2 we need to
+// start the agent before the tunnel is setup to allow kubelet to start first and start the pods
+func setupTunnelAndRunAgent(ctx context.Context, nodeConfig *daemonconfig.Node, cfg cmds.Agent, proxy proxy.Proxy) error {
 	var agentRan bool
 	if cfg.ETCDAgent {
 		// only in rke2 run the agent before the tunnel setup and check for that later in the function
@@ -310,19 +310,21 @@ func setupTunnelAndRunAgent(ctx context.Context, nodeConfig *daemonconfig.Node, 
 			}
 			agentRan = true
 		}
+	readAddressChannel:
 		for {
-			time.Sleep(5 * time.Second)
-			if cfg.ServerURLTmp != "" {
-				cfg.ServerURL = cfg.ServerURLTmp
-				u, err := url.Parse(cfg.ServerURL)
-				if err != nil {
-					logrus.Warn(err)
-					continue
-				}
-				proxy.Update([]string{fmt.Sprintf("%s:%d", u.Hostname(), nodeConfig.ServerHTTPSPort)})
-				break
+			select {
+			case cfg.ServerURL = <-cfg.APIAddressCh:
+				break readAddressChannel
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(5 * time.Second):
 			}
 		}
+		u, err := url.Parse(cfg.ServerURL)
+		if err != nil {
+			logrus.Warn(err)
+		}
+		proxy.Update([]string{fmt.Sprintf("%s:%d", u.Hostname(), nodeConfig.ServerHTTPSPort)})
 	}
 
 	if err := tunnel.Setup(ctx, nodeConfig, proxy); err != nil {

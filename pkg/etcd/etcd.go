@@ -58,7 +58,10 @@ func NewETCD() *ETCD {
 	}
 }
 
-var learnerProgressKey = version.Program + "/etcd/learnerProgress"
+var (
+	learnerProgressKey = version.Program + "/etcd/learnerProgress"
+	AddressKey         = version.Program + "/apiaddresses"
+)
 
 const (
 	snapshotPrefix      = "etcd-snapshot-"
@@ -892,7 +895,7 @@ func backupDirWithRetention(dir string, maxBackupRetention int) (string, error) 
 	return backupDir, nil
 }
 
-func GetServerURLFromETCD(ctx context.Context, cfg *config.Control) (string, int, error) {
+func GetAPIServerURLFromETCD(ctx context.Context, cfg *config.Control) (string, int, error) {
 	if cfg.Runtime == nil {
 		return "", 0, fmt.Errorf("runtime is not ready yet")
 	}
@@ -900,7 +903,7 @@ func GetServerURLFromETCD(ctx context.Context, cfg *config.Control) (string, int
 	if err != nil {
 		return "", 0, err
 	}
-	etcdResp, err := cl.KV.Get(ctx, version.Program+"/etcd/apiaddresses")
+	etcdResp, err := cl.KV.Get(ctx, AddressKey)
 	if err != nil {
 		return "", 0, err
 	}

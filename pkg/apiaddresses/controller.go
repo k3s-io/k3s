@@ -11,11 +11,8 @@ import (
 	"github.com/rancher/k3s/pkg/etcd"
 	"github.com/rancher/k3s/pkg/version"
 	controllerv1 "github.com/rancher/wrangler-api/pkg/generated/controllers/core/v1"
+	etcdv3 "go.etcd.io/etcd/clientv3"
 	v1 "k8s.io/api/core/v1"
-)
-
-var (
-	addressKey = version.Program + "/etcd/apiaddresses"
 )
 
 type EndpointsControllerGetter func() controllerv1.EndpointsController
@@ -26,7 +23,15 @@ func Register(ctx context.Context, runtime *config.ControlRuntime, endpoints con
 		runtime:             runtime,
 		ctx:                 ctx,
 	}
-	endpoints.OnChange(ctx, "endpoints-controller", h.sync)
+	endpoints.OnChange(ctx, version.Program+"-apiserver-lb-controller", h.sync)
+
+	cl, err := etcd.GetClient(h.ctx, h.runtime, "https://127.0.0.1:2379")
+	if err != nil {
+		return err
+	}
+
+	h.etcdClient = cl
+
 	return nil
 }
 
@@ -34,6 +39,7 @@ type handler struct {
 	endpointsController controllerv1.EndpointsController
 	runtime             *config.ControlRuntime
 	ctx                 context.Context
+	etcdClient          *etcdv3.Client
 }
 
 func (h *handler) sync(key string, endpoint *v1.Endpoints) (*v1.Endpoints, error) {
@@ -45,17 +51,12 @@ func (h *handler) sync(key string, endpoint *v1.Endpoints) (*v1.Endpoints, error
 		return nil, nil
 	}
 
-	cl, err := etcd.GetClient(h.ctx, h.runtime, "https://127.0.0.1:2379")
-	if err != nil {
-		return nil, err
-	}
-
 	w := &bytes.Buffer{}
 	if err := json.NewEncoder(w).Encode(getAddresses(endpoint)); err != nil {
 		return nil, err
 	}
 
-	_, err = cl.Put(h.ctx, addressKey, w.String())
+	_, err := h.etcdClient.Put(h.ctx, etcd.AddressKey, w.String())
 	if err != nil {
 		return nil, err
 	}

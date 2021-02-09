@@ -14,7 +14,7 @@ type Agent struct {
 	TokenFile                string
 	ClusterSecret            string
 	ServerURL                string
-	ServerURLTmp             string
+	APIAddressCh             chan string
 	DisableLoadBalancer      bool
 	ETCDAgent                bool
 	LBServerPort             int
