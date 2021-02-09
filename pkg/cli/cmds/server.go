@@ -298,7 +298,7 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Destination: &ServerConfig.EtcdS3SecretKey,
 			},
 			&cli.StringFlag{
-				Name:        "etcd-s3-bucket-name",
+				Name:        "etcd-s3-bucket",
 				Usage:       "(db) S3 bucket name",
 				Destination: &ServerConfig.EtcdS3BucketName,
 			},

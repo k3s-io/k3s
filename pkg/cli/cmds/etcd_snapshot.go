@@ -79,7 +79,7 @@ func NewEtcdSnapshotCommand(action func(*cli.Context) error) cli.Command {
 				Value:       "us-east-1",
 			},
 			&cli.StringFlag{
-				Name:        "folder",
+				Name:        "s3-folder",
 				Usage:       "(db) S3 folder",
 				Destination: &ServerConfig.EtcdS3Folder,
 			},
