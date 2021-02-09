@@ -8,7 +8,7 @@ NODE_CPUS = (ENV['NODE_CPUS'] || 4).to_i
 NODE_MEMORY = (ENV['NODE_MEMORY'] || 8192).to_i
 NETWORK_PREFIX = ENV['NETWORK_PREFIX'] || "10.135.135"
 VAGRANT_PROVISION = ENV['VAGRANT_PROVISION'] || "./scripts/provision/vagrant"
-MOUNT_TYPE = ENV['MOUNT_TYPE'] || "nfs"
+MOUNT_TYPE = ENV['MOUNT_TYPE'] || "virtualbox"
 
 # --- Rules for /etc/sudoers to avoid password entry configuring NFS:
 # %admin	ALL = (root) NOPASSWD: /usr/bin/sed -E -e * -ibak /etc/exports
@@ -19,7 +19,7 @@ MOUNT_TYPE = ENV['MOUNT_TYPE'] || "nfs"
 def provision(vm, node_num)
   node_os = (ENV["OS_#{node_num}"] || OS)
   vm.box = (ENV["BOX_#{node_num}"] || ENV["BOX"] || "#{BOX_REPO}/#{node_os}")
-  vm.hostname = "#{PROJECT}-#{node_num}-#{node_os}"
+  vm.hostname = "#{PROJECT}-#{node_num}-#{vm.box.gsub(/^.*\//,"")}"
   vm.network "private_network", ip: "#{NETWORK_PREFIX}.#{100+node_num}"
   vm.provision "shell",
       path: VAGRANT_PROVISION,
