@@ -1,0 +1,23 @@
+#!/bin/bash
+set -ve
+
+download_go
+# ---
+cat <<EOF >/etc/profile.d/build.sh
+export SELINUX=true
+# export STATIC_BUILD=true
+EOF
+. /etc/profile.d/build.sh
+# ---
+zypper -q install -y \
+  git \
+  libseccomp-devel \
+  libselinux-devel \
+  zstd \
+
+# ---
+sed -E 's|apk( -U)?( --no-cache)?( --repository [^ ]*)? add .*||g' -i /tmp/docker-run
+. /tmp/docker-run
+# ---
+go get -u github.com/go-delve/delve/cmd/dlv
+# ---
