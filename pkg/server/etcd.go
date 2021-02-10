@@ -84,7 +84,6 @@ func setETCDLabelsAndAnnotations(ctx context.Context, config *Config) error {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case <-time.After(time.Second):
 		}
 	}
 	return nil

@@ -145,5 +145,4 @@ func (c *Cluster) setupEtcdProxy(ctx context.Context, etcdProxy etcd.Proxy) {
 
 		}
 	}()
-	return
 }

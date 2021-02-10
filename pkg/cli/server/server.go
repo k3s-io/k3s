@@ -354,19 +354,15 @@ func setAPIAddressChannel(ctx context.Context, serverConfig *server.Config, agen
 }
 
 func getAPIAddressFromEtcd(ctx context.Context, serverConfig *server.Config, agentConfig *cmds.Agent) {
-	for {
+	t := time.NewTicker(5 * time.Second)
+	defer t.Stop()
+	for range t.C {
 		serverAddress, err := etcd.GetAPIServerURLFromETCD(ctx, &serverConfig.ControlConfig)
-		if err != nil {
-			logrus.Warn(err)
-			select {
-			case <-ctx.Done():
-				return
-			case <-time.After(5 * time.Second):
-			}
-			continue
+		if err == nil {
+			agentConfig.ServerURL = "https://" + serverAddress
+			agentConfig.APIAddressCh <- agentConfig.ServerURL
+			break
 		}
-		agentConfig.ServerURL = fmt.Sprintf("https://%s", serverAddress)
-		agentConfig.APIAddressCh <- agentConfig.ServerURL
-		break
+		logrus.Warn(err)
 	}
 }
