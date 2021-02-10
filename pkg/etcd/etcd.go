@@ -897,41 +897,29 @@ func backupDirWithRetention(dir string, maxBackupRetention int) (string, error) 
 }
 
 // GetAPIServerURLFromETCD will try to fetch the version.Program/apiaddresses key from etcd
-// when it succeed it will parse the first address in the list and return back an IP and Port
-func GetAPIServerURLFromETCD(ctx context.Context, cfg *config.Control) (string, int, error) {
+// when it succeed it will parse the first address in the list and return back an address
+func GetAPIServerURLFromETCD(ctx context.Context, cfg *config.Control) (string, error) {
 	if cfg.Runtime == nil {
-		return "", 0, fmt.Errorf("runtime is not ready yet")
+		return "", fmt.Errorf("runtime is not ready yet")
 	}
 	cl, err := GetClient(ctx, cfg.Runtime, endpoint)
 	if err != nil {
-		return "", 0, err
+		return "", err
 	}
 	etcdResp, err := cl.KV.Get(ctx, AddressKey)
 	if err != nil {
-		return "", 0, err
+		return "", err
 	}
 
 	if etcdResp.Count < 1 {
-		return "", 0, fmt.Errorf("servers addresses are not yet set")
+		return "", fmt.Errorf("servers addresses are not yet set")
 	}
 	var addresses []string
 	if err := json.Unmarshal(etcdResp.Kvs[0].Value, &addresses); err != nil {
-		return "", 0, fmt.Errorf("failed to unmarshal etcd key: %v", err)
+		return "", fmt.Errorf("failed to unmarshal etcd key: %v", err)
 	}
 
-	var address string
-	var port int
-	if len(addresses) > 0 {
-		addressPort := strings.Split(addresses[0], ":")
-
-		address = addressPort[0]
-		port, err = strconv.Atoi(addressPort[1])
-		if err != nil {
-			return "", 0, fmt.Errorf("port is not set correctly: %v", err)
-		}
-	}
-
-	return address, port, nil
+	return addresses[0], nil
 }
 
 // GetMembersClientURLs will list through the member lists in etcd and return
