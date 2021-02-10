@@ -324,7 +324,7 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 			cli.BoolFlag{
 				Name:        "cluster-init",
 				Hidden:      hideClusterFlags,
-				Usage:       "(experimental/cluster) Initialize a new cluster",
+				Usage:       "(experimental/cluster) Initialize a new cluster using embedded Etcd",
 				EnvVar:      version.ProgramUpper + "_CLUSTER_INIT",
 				Destination: &ServerConfig.ClusterInit,
 			},
