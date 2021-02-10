@@ -184,14 +184,11 @@ func addFeatureGate(current, new string) string {
 }
 
 func checkCgroups() (kubeletRoot, runtimeRoot string, hasCFS, hasPIDs bool) {
-	f, err := os.Open("/proc/self/cgroup")
-	if err != nil {
-		return "", "", false, false
-	}
-	defer f.Close()
+	cgroupsModeV2 := cgroups.Mode() == cgroups.Unified
 
-	v2 := cgroups.Mode() == cgroups.Unified
-	if v2 {
+	// For Unified (v2) cgroups we can directly check to see what controllers are mounted
+	// under the unified hierarchy.
+	if cgroupsModeV2 {
 		m, err := cgroupsv2.LoadManager("/sys/fs/cgroup", "/")
 		if err != nil {
 			return "", "", false, false
@@ -200,15 +197,22 @@ func checkCgroups() (kubeletRoot, runtimeRoot string, hasCFS, hasPIDs bool) {
 		if err != nil {
 			return "", "", false, false
 		}
-		for _, c := range controllers {
-			switch c {
-			case "cpu":
+		// Intentionally using an expressionless switch to match the logic below
+		for _, controller := range controllers {
+			switch {
+			case controller == "cpu":
 				hasCFS = true
-			case "pids":
+			case controller == "pids":
 				hasPIDs = true
 			}
 		}
 	}
+
+	f, err := os.Open("/proc/self/cgroup")
+	if err != nil {
+		return "", "", false, false
+	}
+	defer f.Close()
 
 	scan := bufio.NewScanner(f)
 	for scan.Scan() {
@@ -216,17 +220,12 @@ func checkCgroups() (kubeletRoot, runtimeRoot string, hasCFS, hasPIDs bool) {
 		if len(parts) < 3 {
 			continue
 		}
-		systems := strings.Split(parts[1], ",")
-		// when v2, systems = {""} (only contains a single empty string)
-		for _, system := range systems {
-			if system == "pids" {
-				hasPIDs = true
-			} else if system == "cpu" {
-				p := filepath.Join("/sys/fs/cgroup", parts[1], parts[2], "cpu.cfs_period_us")
-				if _, err := os.Stat(p); err == nil {
-					hasCFS = true
-				}
-			} else if system == "name=systemd" || v2 {
+		controllers := strings.Split(parts[1], ",")
+		// For v1 or hybrid, controller can be a single value {"blkio"}, or a comounted set {"cpu","cpuacct"}
+		// For v2, controllers = {""} (only contains a single empty string)
+		for _, controller := range controllers {
+			switch {
+			case controller == "name=systemd" || cgroupsModeV2:
 				// If we detect that we are running under a `.scope` unit with systemd
 				// we can assume we are being directly invoked from the command line
 				// and thus need to set our kubelet root to something out of the context
@@ -240,10 +239,23 @@ func checkCgroups() (kubeletRoot, runtimeRoot string, hasCFS, hasPIDs bool) {
 				if i > 0 {
 					kubeletRoot = "/" + version.Program
 				}
+			case controller == "cpu":
+				// It is common for this to show up multiple times in /sys/fs/cgroup if the controllers are comounted:
+				// as "cpu" and "cpuacct", symlinked to the actual hierarchy at "cpu,cpuacct". Unfortunately the order
+				// listed in /proc/self/cgroups may not be the same order used in /sys/fs/cgroup, so this check
+				// can fail if we use the comma-separated name. Instead, we check for the controller using the symlink.
+				p := filepath.Join("/sys/fs/cgroup", controller, parts[2], "cpu.cfs_period_us")
+				if _, err := os.Stat(p); err == nil {
+					hasCFS = true
+				}
+			case controller == "pids":
+				hasPIDs = true
 			}
 		}
 	}
 
+	// If we're running with v1 and didn't find a scope assigned by systemd, we need to create our own root cgroup to avoid
+	// just inheriting from the parent process. The kubelet will take care of moving us into it when we start it up later.
 	if kubeletRoot == "" {
 		// Examine process ID 1 to see if there is a cgroup assigned to it.
 		// When we are not in a container, process 1 is likely to be systemd or some other service manager.
@@ -261,10 +273,12 @@ func checkCgroups() (kubeletRoot, runtimeRoot string, hasCFS, hasPIDs bool) {
 			if len(parts) < 3 {
 				continue
 			}
-			systems := strings.Split(parts[1], ",")
-			// when v2, systems = {""} (only contains a single empty string)
-			for _, system := range systems {
-				if system == "name=systemd" || v2 {
+			controllers := strings.Split(parts[1], ",")
+			// For v1 or hybrid, controller can be a single value {"blkio"}, or a comounted set {"cpu","cpuacct"}
+			// For v2, controllers = {""} (only contains a single empty string)
+			for _, controller := range controllers {
+				switch {
+				case controller == "name=systemd" || cgroupsModeV2:
 					last := parts[len(parts)-1]
 					if last != "/" && last != "/init.scope" {
 						kubeletRoot = "/" + version.Program
