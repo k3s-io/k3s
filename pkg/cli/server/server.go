@@ -310,7 +310,7 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	if serverConfig.ControlConfig.DisableAPIServer {
 		// setting LBServerPort to a prespecified port to initialize the kubeconfigs with the right address
 		agentConfig.LBServerPort = lbServerPort
-		// initialize the apiAddress Channel for recieving the api address from etcd
+		// initialize the apiAddress Channel for receiving the api address from etcd
 		agentConfig.APIAddressCh = make(chan string, 1)
 		setAPIAddressChannel(ctx, &serverConfig, &agentConfig)
 		defer close(agentConfig.APIAddressCh)
