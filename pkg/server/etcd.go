@@ -20,17 +20,17 @@ func setETCDLabelsAndAnnotations(ctx context.Context, config *Config) error {
 
 		sc, err := newContext(ctx, controlConfig.Runtime.KubeConfigAdmin)
 		if err != nil {
-			logrus.Infof("Waiting for control-plane node agent startup %v", err)
+			logrus.Infof("Failed to set etcd role label %v", err)
 			continue
 		}
 
 		if err := stageFiles(ctx, sc, controlConfig); err != nil {
-			logrus.Infof("Waiting for control-plane node agent startup %v", err)
+			logrus.Infof("Failed to set etcd role label %v", err)
 			continue
 		}
 
 		if err := sc.Start(ctx); err != nil {
-			logrus.Infof("Waiting for control-plane node agent startup %v", err)
+			logrus.Infof("Failed to set etcd role label %v", err)
 			continue
 		}
 
@@ -39,12 +39,12 @@ func setETCDLabelsAndAnnotations(ctx context.Context, config *Config) error {
 
 		nodeName := os.Getenv("NODE_NAME")
 		if nodeName == "" {
-			logrus.Info("Waiting for control-plane node agent startup")
+			logrus.Info("Failed to set etcd role label")
 			continue
 		}
 		node, err := nodes.Get(nodeName, metav1.GetOptions{})
 		if err != nil {
-			logrus.Infof("Waiting for control-plane node %s startup: %v", nodeName, err)
+			logrus.Infof("Failed to set etcd role label: %v", err)
 			continue
 		}
 		if v, ok := node.Labels[ETCDRoleLabelKey]; ok && v == "true" {

@@ -310,21 +310,17 @@ func setupTunnelAndRunAgent(ctx context.Context, nodeConfig *daemonconfig.Node, 
 			}
 			agentRan = true
 		}
-	readAddressChannel:
-		for {
-			select {
-			case cfg.ServerURL = <-cfg.APIAddressCh:
-				break readAddressChannel
-			case <-ctx.Done():
-				return ctx.Err()
-			case <-time.After(5 * time.Second):
+		select {
+		case address := <-cfg.APIAddressCh:
+			cfg.ServerURL = address
+			u, err := url.Parse(cfg.ServerURL)
+			if err != nil {
+				logrus.Warn(err)
 			}
+			proxy.Update([]string{fmt.Sprintf("%s:%d", u.Hostname(), nodeConfig.ServerHTTPSPort)})
+		case <-ctx.Done():
+			return ctx.Err()
 		}
-		u, err := url.Parse(cfg.ServerURL)
-		if err != nil {
-			logrus.Warn(err)
-		}
-		proxy.Update([]string{fmt.Sprintf("%s:%d", u.Hostname(), nodeConfig.ServerHTTPSPort)})
 	}
 
 	if err := tunnel.Setup(ctx, nodeConfig, proxy); err != nil {

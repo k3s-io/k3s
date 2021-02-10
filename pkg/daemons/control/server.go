@@ -982,7 +982,7 @@ func cloudControllerManager(ctx context.Context, cfg *config.Control, runtime *c
 				select {
 				case <-ctx.Done():
 					logrus.Fatalf("cloud-controller-manager context canceled: %v", ctx.Err())
-				case <-time.After(time.Second):
+				case <-time.After(5 * time.Second):
 					continue
 				}
 			}

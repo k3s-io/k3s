@@ -39,7 +39,17 @@ func (c *Cluster) Start(ctx context.Context) (<-chan struct{}, error) {
 	if c.config.DisableETCD {
 		ready := make(chan struct{})
 		defer close(ready)
-		etcdAddress, err := url.Parse(c.config.JoinURL)
+
+		// try to get /db/info urls first before attempting to use join url
+		joinURL := c.config.JoinURL
+		clientURLs, _, err := etcd.ClientURLs(ctx, c.clientAccessInfo)
+		if err != nil {
+			return nil, err
+		}
+		if len(clientURLs) > 0 {
+			joinURL = clientURLs[0]
+		}
+		etcdAddress, err := url.Parse(joinURL)
 		if err != nil {
 			return nil, err
 		}

@@ -312,9 +312,8 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 		agentConfig.LBServerPort = lbServerPort
 		// initialize the apiAddress Channel for recieving the api address from etcd
 		agentConfig.APIAddressCh = make(chan string, 1)
-		defer close(agentConfig.APIAddressCh)
-
 		setAPIAddressChannel(ctx, &serverConfig, &agentConfig)
+		defer close(agentConfig.APIAddressCh)
 	}
 	return agent.Run(ctx, agentConfig)
 }
@@ -352,7 +351,6 @@ func setAPIAddressChannel(ctx context.Context, serverConfig *server.Config, agen
 		return
 	}
 	getAPIAddressFromEtcd(ctx, serverConfig, agentConfig)
-	agentConfig.ServerURL = <-agentConfig.APIAddressCh
 }
 
 func getAPIAddressFromEtcd(ctx context.Context, serverConfig *server.Config, agentConfig *cmds.Agent) {
@@ -367,7 +365,8 @@ func getAPIAddressFromEtcd(ctx context.Context, serverConfig *server.Config, age
 			}
 			continue
 		}
-		agentConfig.APIAddressCh <- fmt.Sprintf("https://%s:%d", serverIP, serverPort)
+		agentConfig.ServerURL = fmt.Sprintf("https://%s:%d", serverIP, serverPort)
+		agentConfig.APIAddressCh <- agentConfig.ServerURL
 		break
 	}
 }

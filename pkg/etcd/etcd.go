@@ -245,7 +245,7 @@ func (e *ETCD) Start(ctx context.Context, clientAccessInfo *clientaccess.Info) e
 
 // join attempts to add a member to an existing cluster
 func (e *ETCD) join(ctx context.Context, clientAccessInfo *clientaccess.Info) error {
-	clientURLs, memberList, err := e.clientURLs(ctx, clientAccessInfo)
+	clientURLs, memberList, err := ClientURLs(ctx, clientAccessInfo)
 	if err != nil {
 		return err
 	}
@@ -687,7 +687,7 @@ func (e *ETCD) setLearnerProgress(ctx context.Context, status *learnerProgress) 
 }
 
 // clientURLs returns a list of all non-learner etcd cluster member client access URLs
-func (e *ETCD) clientURLs(ctx context.Context, clientAccessInfo *clientaccess.Info) ([]string, Members, error) {
+func ClientURLs(ctx context.Context, clientAccessInfo *clientaccess.Info) ([]string, Members, error) {
 	var memberList Members
 	resp, err := clientaccess.Get("/db/info", clientAccessInfo)
 	if err != nil {
