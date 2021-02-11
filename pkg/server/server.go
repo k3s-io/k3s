@@ -215,28 +215,15 @@ func stageFiles(ctx context.Context, sc *Context, controlConfig *config.Control)
 	}
 
 	skip := controlConfig.Skips
-	if !checkStageTraefik(sc) {
+	if !skip["traefik"] && isHelmChartTraefikV1(sc) {
+		logrus.Warn("Skipping Traefik v2 deployment due to existing Traefik v1 installation")
 		skip["traefik"] = true
-		skip["traefik-crd"] = true
 	}
 	if err := deploy.Stage(dataDir, templateVars, skip); err != nil {
 		return err
 	}
 
 	return deploy.WatchFiles(ctx, sc.Apply, sc.K3s.K3s().V1().Addon(), controlConfig.Disables, dataDir)
-}
-
-// checkStageTraefik checks on running traefik HelmChart version and traefik
-// HelmChartConfig.
-// Traefik should skip stage when it is v1 and have existing customize traefik
-// HelmChartConfig due to the incompatible configuration from v1 to v2.
-// It will progress stage on upgrade or restart when no customized traefik
-// HelmChartConfig exists on the cluster.
-func checkStageTraefik(sc *Context) bool {
-	if isHelmChartTraefikV1(sc) && isHelmChartConfigExist(sc, "traefik") {
-		return false
-	}
-	return true
 }
 
 // isHelmChartTraefikV1 checks the chart with "traefik-1." prefix.
@@ -253,17 +240,6 @@ func isHelmChartTraefikV1(sc *Context) bool {
 		return true
 	}
 	return false
-}
-
-func isHelmChartConfigExist(sc *Context, name string) bool {
-	helmChartConfig := sc.Helm.Helm().V1().HelmChartConfig()
-	_, err := helmChartConfig.Get(metav1.NamespaceSystem, name, metav1.GetOptions{})
-	if err != nil {
-		logrus.WithField("name", name).Info("Not find HelmChartConfig")
-		return false
-	}
-	logrus.WithField("name", name).Info("Found HelmChartConfig ")
-	return true
 }
 
 func HomeKubeConfig(write, rootless bool) (string, error) {
