@@ -34,7 +34,7 @@ func NewETCDProxy(enabled bool, dataDir, etcdURL string) (Proxy, error) {
 
 	u, err := url.Parse(e.initialETCDURL)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to parse %s", e.initialETCDURL)
+		return nil, errors.Wrap(err, "failed to parse etcd client URL")
 	}
 	e.fallbackETCDAddress = u.Host
 	e.etcdPort = u.Port()

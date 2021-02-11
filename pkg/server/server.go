@@ -143,9 +143,8 @@ func runControllers(ctx context.Context, config *Config) error {
 			panic(err)
 		}
 	}
-	if !config.DisableAgent && !config.ControlConfig.DisableAPIServer {
-		go setControlPlaneRoleLabel(ctx, sc.Core.Core().V1().Node())
-	}
+
+	go setControlPlaneRoleLabel(ctx, sc.Core.Core().V1().Node(), config)
 
 	go setClusterDNSConfig(ctx, config, sc.Core.Core().V1().ConfigMap())
 
@@ -430,7 +429,10 @@ func isSymlink(config string) bool {
 	return false
 }
 
-func setControlPlaneRoleLabel(ctx context.Context, nodes v1.NodeClient) error {
+func setControlPlaneRoleLabel(ctx context.Context, nodes v1.NodeClient, config *Config) error {
+	if config.DisableAgent || config.ControlConfig.DisableAPIServer {
+		return nil
+	}
 	for {
 		nodeName := os.Getenv("NODE_NAME")
 		if nodeName == "" {
@@ -444,7 +446,15 @@ func setControlPlaneRoleLabel(ctx context.Context, nodes v1.NodeClient) error {
 			time.Sleep(1 * time.Second)
 			continue
 		}
-		if v, ok := node.Labels[ControlPlaneRoleLabelKey]; ok && v == "true" {
+		// remove etcd label if etcd is disabled
+		var etcdRoleLabelExists bool
+		if config.ControlConfig.DisableETCD {
+			if _, ok := node.Labels[ETCDRoleLabelKey]; ok {
+				delete(node.Labels, ETCDRoleLabelKey)
+				etcdRoleLabelExists = true
+			}
+		}
+		if v, ok := node.Labels[ControlPlaneRoleLabelKey]; ok && v == "true" && !etcdRoleLabelExists {
 			break
 		}
 		if node.Labels == nil {
@@ -453,12 +463,6 @@ func setControlPlaneRoleLabel(ctx context.Context, nodes v1.NodeClient) error {
 		node.Labels[ControlPlaneRoleLabelKey] = "true"
 		node.Labels[MasterRoleLabelKey] = "true"
 
-		// remove etcd taint if exists
-		for i, taint := range node.Spec.Taints {
-			if taint.Key == "node-role.kubernetes.io/etcd" {
-				node.Spec.Taints = append(node.Spec.Taints[:i], node.Spec.Taints[i+1:]...)
-			}
-		}
 		_, err = nodes.Update(node)
 		if err == nil {
 			logrus.Infof("Control-plane role label has been set successfully on node: %s", nodeName)

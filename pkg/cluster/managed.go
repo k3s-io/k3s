@@ -138,7 +138,7 @@ func (c *Cluster) setupEtcdProxy(ctx context.Context, etcdProxy etcd.Proxy) {
 		for range t.C {
 			newAddresses, err := c.managedDB.GetMembersClientURLs(ctx)
 			if err != nil {
-				logrus.Warnf("failed to get member urls %v", err)
+				logrus.Warnf("failed to get etcd client URLs: %v", err)
 				continue
 			}
 			etcdProxy.Update(newAddresses)

@@ -20,17 +20,17 @@ func setETCDLabelsAndAnnotations(ctx context.Context, config *Config) error {
 
 		sc, err := newContext(ctx, controlConfig.Runtime.KubeConfigAdmin)
 		if err != nil {
-			logrus.Infof("Failed to set etcd role label %v", err)
+			logrus.Infof("Failed to set etcd role label: %v", err)
 			continue
 		}
 
 		if err := stageFiles(ctx, sc, controlConfig); err != nil {
-			logrus.Infof("Failed to set etcd role label %v", err)
+			logrus.Infof("Failed to set etcd role label: %v", err)
 			continue
 		}
 
 		if err := sc.Start(ctx); err != nil {
-			logrus.Infof("Failed to set etcd role label %v", err)
+			logrus.Infof("Failed to set etcd role label: %v", err)
 			continue
 		}
 
@@ -39,7 +39,7 @@ func setETCDLabelsAndAnnotations(ctx context.Context, config *Config) error {
 
 		nodeName := os.Getenv("NODE_NAME")
 		if nodeName == "" {
-			logrus.Info("Failed to set etcd role label")
+			logrus.Info("Failed to set etcd role label: node name not set")
 			continue
 		}
 		node, err := nodes.Get(nodeName, metav1.GetOptions{})
@@ -47,7 +47,19 @@ func setETCDLabelsAndAnnotations(ctx context.Context, config *Config) error {
 			logrus.Infof("Failed to set etcd role label: %v", err)
 			continue
 		}
-		if v, ok := node.Labels[ETCDRoleLabelKey]; ok && v == "true" {
+
+		// remove controlplane label if role label exists
+		var controlRoleLabelExists bool
+		if _, ok := node.Labels[MasterRoleLabelKey]; ok {
+			delete(node.Labels, MasterRoleLabelKey)
+			controlRoleLabelExists = true
+		}
+		if _, ok := node.Labels[ControlPlaneRoleLabelKey]; ok {
+			delete(node.Labels, ControlPlaneRoleLabelKey)
+			controlRoleLabelExists = true
+		}
+
+		if v, ok := node.Labels[ETCDRoleLabelKey]; ok && v == "true" && !controlRoleLabelExists {
 			break
 		}
 		if node.Labels == nil {
@@ -78,7 +90,7 @@ func setETCDLabelsAndAnnotations(ctx context.Context, config *Config) error {
 
 		_, err = nodes.Update(node)
 		if err == nil {
-			logrus.Infof("ETCD role label and annotations has been set successfully on node: %s", nodeName)
+			logrus.Infof("Successfully set etcd role label and annotations on node %s", nodeName)
 			break
 		}
 		select {
