@@ -41,19 +41,19 @@ func (c *Cluster) Start(ctx context.Context) (<-chan struct{}, error) {
 		defer close(ready)
 
 		// try to get /db/info urls first before attempting to use join url
-		joinURL := c.config.JoinURL
 		clientURLs, _, err := etcd.ClientURLs(ctx, c.clientAccessInfo)
 		if err != nil {
 			return nil, err
 		}
-		if len(clientURLs) > 0 {
-			joinURL = clientURLs[0]
+		if len(clientURLs) < 1 {
+			clientURL, err := url.Parse(c.config.JoinURL)
+			if err != nil {
+				return nil, err
+			}
+			clientURL.Host = clientURL.Hostname() + ":2379"
+			clientURLs = append(clientURLs, clientURL.String())
 		}
-		etcdAddress, err := url.Parse(joinURL)
-		if err != nil {
-			return nil, err
-		}
-		etcdProxy, err := etcd.NewETCDProxy(true, c.config.DataDir, "https://"+etcdAddress.Hostname()+":2379")
+		etcdProxy, err := etcd.NewETCDProxy(true, c.config.DataDir, clientURLs[0])
 		if err != nil {
 			return nil, err
 		}

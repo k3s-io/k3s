@@ -12,6 +12,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// setETCDLabelsAndAnnotations will set the etcd role label if not exists also it
+// sets special annotaitons on the node object which are etcd node id and etcd node
+// address, the function will also remove the controlplane and master role labels if
+// they exist on the node
 func setETCDLabelsAndAnnotations(ctx context.Context, config *Config) error {
 	t := time.NewTicker(5 * time.Second)
 	defer t.Stop()
@@ -48,6 +52,10 @@ func setETCDLabelsAndAnnotations(ctx context.Context, config *Config) error {
 			continue
 		}
 
+		if node.Labels == nil {
+			node.Labels = make(map[string]string)
+		}
+
 		// remove controlplane label if role label exists
 		var controlRoleLabelExists bool
 		if _, ok := node.Labels[MasterRoleLabelKey]; ok {
@@ -62,9 +70,7 @@ func setETCDLabelsAndAnnotations(ctx context.Context, config *Config) error {
 		if v, ok := node.Labels[ETCDRoleLabelKey]; ok && v == "true" && !controlRoleLabelExists {
 			break
 		}
-		if node.Labels == nil {
-			node.Labels = make(map[string]string)
-		}
+
 		node.Labels[ETCDRoleLabelKey] = "true"
 
 		// this is replacement to the etcd controller handleself function
