@@ -2,6 +2,7 @@ package cluster
 
 import (
 	"context"
+	"net/url"
 	"strings"
 
 	"github.com/k3s-io/kine/pkg/client"
@@ -10,6 +11,7 @@ import (
 	"github.com/rancher/k3s/pkg/clientaccess"
 	"github.com/rancher/k3s/pkg/cluster/managed"
 	"github.com/rancher/k3s/pkg/daemons/config"
+	"github.com/rancher/k3s/pkg/etcd"
 )
 
 type Cluster struct {
@@ -32,6 +34,31 @@ func (c *Cluster) Start(ctx context.Context) (<-chan struct{}, error) {
 	// Set up the dynamiclistener and http request handlers
 	if err := c.initClusterAndHTTPS(ctx); err != nil {
 		return nil, errors.Wrap(err, "init cluster datastore and https")
+	}
+
+	if c.config.DisableETCD {
+		ready := make(chan struct{})
+		defer close(ready)
+
+		// try to get /db/info urls first before attempting to use join url
+		clientURLs, _, err := etcd.ClientURLs(ctx, c.clientAccessInfo)
+		if err != nil {
+			return nil, err
+		}
+		if len(clientURLs) < 1 {
+			clientURL, err := url.Parse(c.config.JoinURL)
+			if err != nil {
+				return nil, err
+			}
+			clientURL.Host = clientURL.Hostname() + ":2379"
+			clientURLs = append(clientURLs, clientURL.String())
+		}
+		etcdProxy, err := etcd.NewETCDProxy(true, c.config.DataDir, clientURLs[0])
+		if err != nil {
+			return nil, err
+		}
+		c.setupEtcdProxy(ctx, etcdProxy)
+		return ready, nil
 	}
 
 	// start managed database (if necessary)

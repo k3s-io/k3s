@@ -17,19 +17,21 @@ type Proxy interface {
 	SupervisorURL() string
 	SupervisorAddresses() []string
 	APIServerURL() string
+	IsAPIServerLBEnabled() bool
 }
 
-func NewAPIProxy(enabled bool, dataDir, supervisorURL string) (Proxy, error) {
-	p := &proxy{
+func NewAPIProxy(enabled bool, dataDir, supervisorURL string, lbServerPort int) (Proxy, error) {
+	p := proxy{
 		lbEnabled:            enabled,
 		dataDir:              dataDir,
 		initialSupervisorURL: supervisorURL,
 		supervisorURL:        supervisorURL,
 		apiServerURL:         supervisorURL,
+		lbServerPort:         lbServerPort,
 	}
 
 	if enabled {
-		lb, err := loadbalancer.New(dataDir, loadbalancer.SupervisorServiceName, supervisorURL)
+		lb, err := loadbalancer.New(dataDir, loadbalancer.SupervisorServiceName, supervisorURL, p.lbServerPort)
 		if err != nil {
 			return nil, err
 		}
@@ -45,12 +47,13 @@ func NewAPIProxy(enabled bool, dataDir, supervisorURL string) (Proxy, error) {
 	p.fallbackSupervisorAddress = u.Host
 	p.supervisorPort = u.Port()
 
-	return p, nil
+	return &p, nil
 }
 
 type proxy struct {
-	dataDir   string
-	lbEnabled bool
+	dataDir      string
+	lbEnabled    bool
+	lbServerPort int
 
 	initialSupervisorURL      string
 	supervisorURL             string
@@ -71,14 +74,12 @@ func (p *proxy) Update(addresses []string) {
 	if p.apiServerEnabled {
 		supervisorAddresses = p.setSupervisorPort(supervisorAddresses)
 	}
-
 	if p.apiServerLB != nil {
 		p.apiServerLB.Update(apiServerAddresses)
 	}
 	if p.supervisorLB != nil {
 		p.supervisorLB.Update(supervisorAddresses)
 	}
-
 	p.supervisorAddresses = supervisorAddresses
 }
 
@@ -106,7 +107,11 @@ func (p *proxy) StartAPIServerProxy(port int) error {
 	p.apiServerEnabled = true
 
 	if p.lbEnabled {
-		lb, err := loadbalancer.New(p.dataDir, loadbalancer.APIServerServiceName, p.apiServerURL)
+		lbServerPort := p.lbServerPort
+		if lbServerPort != 0 {
+			lbServerPort = lbServerPort + 1
+		}
+		lb, err := loadbalancer.New(p.dataDir, loadbalancer.APIServerServiceName, p.apiServerURL, lbServerPort)
 		if err != nil {
 			return err
 		}
@@ -130,4 +135,8 @@ func (p *proxy) SupervisorAddresses() []string {
 
 func (p *proxy) APIServerURL() string {
 	return p.apiServerURL
+}
+
+func (p *proxy) IsAPIServerLBEnabled() bool {
+	return p.apiServerLB != nil
 }
