@@ -85,6 +85,7 @@ type Agent struct {
 	IPSECPSK                string
 	StrongSwanDir           string
 	PrivateRegistry         string
+	AirgapExtraRegistry     []string
 	DisableCCM              bool
 	DisableNPC              bool
 	DisableKubeProxy        bool
