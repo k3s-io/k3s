@@ -93,15 +93,20 @@ func Server(ctx context.Context, cfg *config.Control) error {
 	cfg.Runtime.Tunnel = setupTunnel()
 	util.DisableProxyHostnameCheck = true
 
-	auth, handler, err := apiServer(ctx, cfg, runtime)
-	if err != nil {
-		return err
-	}
+	var auth authenticator.Request
+	var handler http.Handler
+	var err error
 
-	if err := waitForAPIServerInBackground(ctx, runtime); err != nil {
-		return err
-	}
+	if !cfg.DisableAPIServer {
+		auth, handler, err = apiServer(ctx, cfg, runtime)
+		if err != nil {
+			return err
+		}
 
+		if err := waitForAPIServerInBackground(ctx, runtime); err != nil {
+			return err
+		}
+	}
 	basicAuth, err := basicAuthenticator(runtime.PasswdFile)
 	if err != nil {
 		return err
@@ -110,14 +115,15 @@ func Server(ctx context.Context, cfg *config.Control) error {
 	runtime.Authenticator = combineAuthenticators(basicAuth, auth)
 	runtime.Handler = handler
 
-	if !cfg.NoScheduler {
+	if !cfg.DisableScheduler {
 		if err := scheduler(cfg, runtime); err != nil {
 			return err
 		}
 	}
-
-	if err := controllerManager(cfg, runtime); err != nil {
-		return err
+	if !cfg.DisableControllerManager {
+		if err := controllerManager(cfg, runtime); err != nil {
+			return err
+		}
 	}
 
 	if !cfg.DisableCCM {
@@ -935,7 +941,7 @@ func cloudControllerManager(ctx context.Context, cfg *config.Control, runtime *c
 				select {
 				case <-ctx.Done():
 					logrus.Fatalf("cloud-controller-manager context canceled: %v", ctx.Err())
-				case <-time.After(time.Second):
+				case <-time.After(5 * time.Second):
 					continue
 				}
 			}

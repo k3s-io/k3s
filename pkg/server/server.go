@@ -17,6 +17,7 @@ import (
 
 	"github.com/k3s-io/helm-controller/pkg/helm"
 	"github.com/pkg/errors"
+	"github.com/rancher/k3s/pkg/apiaddresses"
 	"github.com/rancher/k3s/pkg/clientaccess"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/daemons/control"
@@ -36,7 +37,10 @@ import (
 	"k8s.io/apimachinery/pkg/util/net"
 )
 
-const MasterRoleLabelKey = "node-role.kubernetes.io/master"
+const (
+	MasterRoleLabelKey = "node-role.kubernetes.io/master"
+	ETCDRoleLabelKey   = "node-role.kubernetes.io/etcd"
+)
 
 func resolveDataDir(dataDir string) (string, error) {
 	dataDir, err := datadir.Resolve(dataDir)
@@ -54,6 +58,10 @@ func StartServer(ctx context.Context, config *Config) error {
 
 	if err := control.Server(ctx, &config.ControlConfig); err != nil {
 		return errors.Wrap(err, "starting kubernetes")
+	}
+
+	if config.ControlConfig.DisableAPIServer {
+		go setETCDLabelsAndAnnotations(ctx, config)
 	}
 
 	if err := startWrangler(ctx, config); err != nil {
@@ -143,7 +151,7 @@ func runControllers(ctx context.Context, config *Config) error {
 		}
 	}
 	if !config.DisableAgent {
-		go setMasterRoleLabel(ctx, sc.Core.Core().V1().Node())
+		go setMasterRoleLabel(ctx, sc.Core.Core().V1().Node(), config)
 	}
 
 	go setClusterDNSConfig(ctx, config, sc.Core.Core().V1().ConfigMap())
@@ -185,6 +193,10 @@ func masterControllers(ctx context.Context, sc *Context, config *Config) error {
 		sc.Core.Core().V1().Service(),
 		sc.Core.Core().V1().Endpoints(),
 		!config.DisableServiceLB, config.Rootless); err != nil {
+		return err
+	}
+
+	if err := apiaddresses.Register(ctx, config.ControlConfig.Runtime, sc.Core.Core().V1().Endpoints()); err != nil {
 		return err
 	}
 
@@ -423,7 +435,7 @@ func isSymlink(config string) bool {
 	return false
 }
 
-func setMasterRoleLabel(ctx context.Context, nodes v1.NodeClient) error {
+func setMasterRoleLabel(ctx context.Context, nodes v1.NodeClient, config *Config) error {
 	for {
 		nodeName := os.Getenv("NODE_NAME")
 		node, err := nodes.Get(nodeName, metav1.GetOptions{})
@@ -432,13 +444,22 @@ func setMasterRoleLabel(ctx context.Context, nodes v1.NodeClient) error {
 			time.Sleep(1 * time.Second)
 			continue
 		}
-		if v, ok := node.Labels[MasterRoleLabelKey]; ok && v == "true" {
+		// remove etcd label if etcd is disabled
+		var etcdRoleLabelExists bool
+		if config.ControlConfig.DisableETCD {
+			if _, ok := node.Labels[ETCDRoleLabelKey]; ok {
+				delete(node.Labels, ETCDRoleLabelKey)
+				etcdRoleLabelExists = true
+			}
+		}
+		if v, ok := node.Labels[MasterRoleLabelKey]; ok && v == "true" && !etcdRoleLabelExists {
 			break
 		}
 		if node.Labels == nil {
 			node.Labels = make(map[string]string)
 		}
 		node.Labels[MasterRoleLabelKey] = "true"
+
 		_, err = nodes.Update(node)
 		if err == nil {
 			logrus.Infof("Master role label has been set successfully on node: %s", nodeName)

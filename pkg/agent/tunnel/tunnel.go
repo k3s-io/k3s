@@ -75,7 +75,10 @@ func Setup(ctx context.Context, config *config.Node, proxy proxy.Proxy) error {
 
 	endpoint, _ := client.CoreV1().Endpoints("default").Get(ctx, "kubernetes", metav1.GetOptions{})
 	if endpoint != nil {
-		proxy.Update(getAddresses(endpoint))
+		addresses := getAddresses(endpoint)
+		if len(addresses) > 0 {
+			proxy.Update(getAddresses(endpoint))
+		}
 	}
 
 	disconnect := map[string]context.CancelFunc{}
