@@ -308,6 +308,7 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 			PauseImageFlag,
 			SnapshotterFlag,
 			PrivateRegistryFlag,
+			AirgapExtraRegistryFlag,
 			NodeIPFlag,
 			NodeExternalIPFlag,
 			ResolvConfFlag,

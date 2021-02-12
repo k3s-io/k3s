@@ -36,12 +36,13 @@ type Agent struct {
 	WithNodeID               bool
 	EnableSELinux            bool
 	ProtectKernelDefaults    bool
+	PrivateRegistry          string
+	AirgapExtraRegistry      cli.StringSlice
+	ExtraKubeletArgs         cli.StringSlice
+	ExtraKubeProxyArgs       cli.StringSlice
+	Labels                   cli.StringSlice
+	Taints                   cli.StringSlice
 	AgentShared
-	ExtraKubeletArgs   cli.StringSlice
-	ExtraKubeProxyArgs cli.StringSlice
-	Labels             cli.StringSlice
-	Taints             cli.StringSlice
-	PrivateRegistry    string
 }
 
 type AgentShared struct {
@@ -87,6 +88,11 @@ var (
 		Usage:       "(agent/runtime) Private registry configuration file",
 		Destination: &AgentConfig.PrivateRegistry,
 		Value:       "/etc/rancher/" + version.Program + "/registries.yaml",
+	}
+	AirgapExtraRegistryFlag = cli.StringSliceFlag{
+		Name:  "airgap-extra-registry",
+		Usage: "(agent/runtime) Additional registry to tag airgap images as being sourced from",
+		Value: &AgentConfig.AirgapExtraRegistry,
 	}
 	PauseImageFlag = cli.StringFlag{
 		Name:        "pause-image",
@@ -225,6 +231,7 @@ func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
 			PauseImageFlag,
 			SnapshotterFlag,
 			PrivateRegistryFlag,
+			AirgapExtraRegistryFlag,
 			NodeIPFlag,
 			NodeExternalIPFlag,
 			ResolvConfFlag,
