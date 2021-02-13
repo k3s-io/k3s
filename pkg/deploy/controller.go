@@ -15,6 +15,7 @@ import (
 	"time"
 
 	errors2 "github.com/pkg/errors"
+	"github.com/rancher/k3s/pkg/agent/util"
 	v12 "github.com/rancher/k3s/pkg/apis/k3s.cattle.io/v1"
 	v1 "github.com/rancher/k3s/pkg/generated/controllers/k3s.cattle.io/v1"
 	"github.com/rancher/wrangler/pkg/apply"
@@ -309,11 +310,7 @@ func skipFile(fileName string, skips map[string]bool) bool {
 		return true
 	case skips[fileName]:
 		return true
-	case strings.HasSuffix(fileName, ".json"):
-		return false
-	case strings.HasSuffix(fileName, ".yml"):
-		return false
-	case strings.HasSuffix(fileName, ".yaml"):
+	case util.HasSuffixI(fileName, ".yaml", ".yml", ".json"):
 		return false
 	default:
 		return true
@@ -329,11 +326,7 @@ func shouldDisableService(base, fileName string, disables map[string]bool) bool 
 			return true
 		}
 	}
-	switch {
-	case strings.HasSuffix(fileName, ".json"):
-	case strings.HasSuffix(fileName, ".yml"):
-	case strings.HasSuffix(fileName, ".yaml"):
-	default:
+	if !util.HasSuffixI(fileName, ".yaml", ".yml", ".json") {
 		return false
 	}
 	baseFile := filepath.Base(fileName)
