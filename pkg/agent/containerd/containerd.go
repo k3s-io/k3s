@@ -27,6 +27,7 @@ import (
 	"github.com/rancher/k3s/pkg/agent/templates"
 	util2 "github.com/rancher/k3s/pkg/agent/util"
 	"github.com/rancher/k3s/pkg/daemons/config"
+	"github.com/rancher/k3s/pkg/untar"
 	"github.com/rancher/k3s/pkg/version"
 	"github.com/rancher/wrangler/pkg/merr"
 	"github.com/sirupsen/logrus"
@@ -229,7 +230,7 @@ func preloadFile(ctx context.Context, cfg *config.Node, client *containerd.Clien
 		defer zr.Close()
 		imageReader = zr
 	case util2.HasSuffixI(filePath, "tar.zst", ".tzst"):
-		zr, err := zstd.NewReader(file)
+		zr, err := zstd.NewReader(file, zstd.WithDecoderMaxMemory(untar.MaxDecoderMemory))
 		if err != nil {
 			return err
 		}

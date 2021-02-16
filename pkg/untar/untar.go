@@ -18,6 +18,17 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+const (
+	// The zstd decoder will attempt to use up to 1GB memory for streaming operations by default,
+	// which is excessive and will OOM low-memory devices.
+	// NOTE: This must be at least as large as the window size used when compressing tarballs, or you
+	// will see a "window size exceeded" error when decompressing. The zstd CLI tool uses 4MB by
+	// default; the --long option defaults to 27 or 128M, which is still too much for a Pi3. 32MB
+	// (--long=25) has been tested to work acceptably while still compressing by an additional 3-6% on
+	// our datasets.
+	MaxDecoderMemory = 1 << 25
+)
+
 // TODO(bradfitz): this was copied from x/build/cmd/buildlet/buildlet.go
 // but there were some buildlet-specific bits in there, so the code is
 // forked for now.  Unfork and add some opts arguments here, so the
@@ -38,9 +49,9 @@ func untar(r io.Reader, dir string) (err error) {
 			logrus.Printf("error extracting tarball into %s after %d files, %d dirs, %v: %v", dir, nFiles, len(madeDir), td, err)
 		}
 	}()
-	zr, err := zstd.NewReader(r)
+	zr, err := zstd.NewReader(r, zstd.WithDecoderMaxMemory(MaxDecoderMemory))
 	if err != nil {
-		return fmt.Errorf("requires zstd-compressed body: %v", err)
+		return fmt.Errorf("error extracting zstd-compressed body: %v", err)
 	}
 	defer zr.Close()
 	tr := tar.NewReader(zr)
