@@ -22,6 +22,7 @@ import (
 	certutil "github.com/rancher/dynamiclistener/cert"
 	"github.com/rancher/k3s/pkg/clientaccess"
 	"github.com/rancher/k3s/pkg/daemons/config"
+	"github.com/rancher/k3s/pkg/daemons/control/deps"
 	"github.com/rancher/k3s/pkg/daemons/executor"
 	"github.com/rancher/k3s/pkg/version"
 	"github.com/robfig/cron/v3"
@@ -136,12 +137,12 @@ func walDir(config *config.Control) string {
 	return filepath.Join(etcdDBDir(config), "member", "wal")
 }
 
-// nameFile returns the path to etcdDBDir/name
+// nameFile returns the path to etcdDBDir/name.
 func nameFile(config *config.Control) string {
 	return filepath.Join(etcdDBDir(config), "name")
 }
 
-// ResetFile returns the path to etcdDBDir/reset-flag
+// ResetFile returns the path to etcdDBDir/reset-flag.
 func ResetFile(config *config.Control) string {
 	return filepath.Join(config.DataDir, "db", "reset-flag")
 }
@@ -160,7 +161,7 @@ func (e *ETCD) IsInitialized(ctx context.Context, config *config.Control) (bool,
 }
 
 // Reset resets an etcd node
-func (e *ETCD) Reset(ctx context.Context) error {
+func (e *ETCD) Reset(ctx context.Context, rebootstrap func() error, cleanCerts func()) error {
 	// Wait for etcd to come up as a new single-node cluster, then exit
 	go func() {
 		t := time.NewTicker(5 * time.Second)
@@ -170,6 +171,21 @@ func (e *ETCD) Reset(ctx context.Context) error {
 				members, err := e.client.MemberList(ctx)
 				if err != nil {
 					continue
+				}
+
+				logrus.Warnf("XXX - rebootstrapping cluster")
+				// storageBootstrap() - runtime structure has been written with correct certificate data
+				if err := rebootstrap(); err != nil {
+					logrus.Fatal(err)
+				}
+
+				logrus.Warnf("XXX - deleting all certs")
+				cleanCerts()
+
+				logrus.Warnf("XXX - generating all certs")
+				// call functions to rewrite them from daemons/control/server.go (prepare())
+				if err := deps.GenServerDeps(e.config, e.runtime); err != nil {
+					logrus.Fatal(err)
 				}
 
 				if len(members.Members) == 1 && members.Members[0].Name == e.name {
