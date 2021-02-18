@@ -140,6 +140,14 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 		return errors.New("invalid flag use. --cluster-reset required with --cluster-reset-restore-path")
 	}
 
+	if cfg.ClusterResetRestorePath != "" && cfg.ClusterReset {
+		serverConfig.ControlConfig.ClusterInit = true
+		serverConfig.ControlConfig.DisableAPIServer = true
+		serverConfig.ControlConfig.DisableControllerManager = true
+		serverConfig.ControlConfig.DisableScheduler = true
+		serverConfig.ControlConfig.DisableCCM = true
+	}
+
 	serverConfig.ControlConfig.ClusterReset = cfg.ClusterReset
 	serverConfig.ControlConfig.ClusterResetRestorePath = cfg.ClusterResetRestorePath
 
