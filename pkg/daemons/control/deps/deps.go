@@ -90,7 +90,7 @@ func KubeConfig(dest, url, caCert, clientCert, clientKey string) error {
 	return kubeconfigTemplate.Execute(output, &data)
 }
 
-// GenServerDeps is responsible for generating the cluster depenencies
+// GenServerDeps is responsible for generating the cluster dependencies
 // needed to successfully bootstrap a cluster.
 func GenServerDeps(config *config.Control, runtime *config.ControlRuntime) error {
 	if err := genCerts(config, runtime); err != nil {
