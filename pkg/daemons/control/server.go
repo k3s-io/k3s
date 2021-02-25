@@ -2,6 +2,7 @@ package control
 
 import (
 	"context"
+	"fmt"
 	"math/rand"
 	"net"
 	"net/http"
@@ -190,6 +191,7 @@ func apiServer(ctx context.Context, cfg *config.Control, runtime *config.Control
 	args := config.GetArgsList(argsMap, cfg.ExtraAPIArgs)
 
 	logrus.Infof("Running kube-apiserver %s", config.ArgString(args))
+	fmt.Println("XXX - Made it to here")
 	return executor.APIServer(ctx, runtime.ETCDReady, args)
 }
 
