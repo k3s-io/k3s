@@ -173,16 +173,13 @@ func (e *ETCD) Reset(ctx context.Context, rebootstrap func() error, cleanCerts f
 					continue
 				}
 
-				logrus.Warnf("XXX - rebootstrapping cluster")
 				// storageBootstrap() - runtime structure has been written with correct certificate data
 				if err := rebootstrap(); err != nil {
 					logrus.Fatal(err)
 				}
 
-				logrus.Warnf("XXX - deleting all certs")
 				cleanCerts()
 
-				logrus.Warnf("XXX - generating all certs")
 				// call functions to rewrite them from daemons/control/server.go (prepare())
 				if err := deps.GenServerDeps(e.config, e.runtime); err != nil {
 					logrus.Fatal(err)

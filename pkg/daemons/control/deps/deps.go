@@ -39,14 +39,14 @@ var (
 	kubeconfigTemplate = template.Must(template.New("kubeconfig").Parse(`apiVersion: v1
 clusters:
 - cluster:
-  server: {{.URL}}
-  certificate-authority: {{.CACert}}
+    server: {{.URL}}
+    certificate-authority: {{.CACert}}
   name: local
 contexts:
 - context:
-  cluster: local
-  namespace: default
-  user: user
+    cluster: local
+    namespace: default
+    user: user
   name: Default
 current-context: Default
 kind: Config
@@ -54,8 +54,8 @@ preferences: {}
 users:
 - name: user
   user:
-  client-certificate: {{.ClientCert}}
-  client-key: {{.ClientKey}}
+    client-certificate: {{.ClientCert}}
+    client-key: {{.ClientKey}}
 `))
 )
 
