@@ -35,6 +35,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/controller-manager/app"
 )
 
 var (
@@ -98,6 +99,9 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 	if err != nil {
 		return err
 	}
+
+	app.WaitForAPIServer(coreClient, 30*time.Second)
+
 	if !nodeConfig.NoFlannel {
 		if err := flannel.Run(ctx, nodeConfig, coreClient.CoreV1().Nodes()); err != nil {
 			return err
