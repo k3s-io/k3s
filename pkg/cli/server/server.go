@@ -260,8 +260,13 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	}
 
 	go func() {
-		<-serverConfig.ControlConfig.Runtime.APIServerReady
-		logrus.Info("Kube API server is now running")
+		if !serverConfig.ControlConfig.DisableAPIServer {
+			<-serverConfig.ControlConfig.Runtime.APIServerReady
+			logrus.Info("Kube API server is now running")
+		} else {
+			<-serverConfig.ControlConfig.Runtime.ETCDReady
+			logrus.Info("ETCD server is now running")
+		}
 		logrus.Info(version.Program + " is up and running")
 		if notifySocket != "" {
 			os.Setenv("NOTIFY_SOCKET", notifySocket)

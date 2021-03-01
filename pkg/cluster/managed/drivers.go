@@ -22,6 +22,7 @@ type Driver interface {
 	Restore(ctx context.Context) error
 	EndpointName() string
 	GetMembersClientURLs(ctx context.Context) ([]string, error)
+	RemoveSelf(ctx context.Context) error
 }
 
 func RegisterDriver(d Driver) {

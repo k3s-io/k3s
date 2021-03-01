@@ -243,7 +243,7 @@ func (e *ETCD) Start(ctx context.Context, clientAccessInfo *clientaccess.Info) e
 
 // join attempts to add a member to an existing cluster
 func (e *ETCD) join(ctx context.Context, clientAccessInfo *clientaccess.Info) error {
-	clientURLs, memberList, err := ClientURLs(ctx, clientAccessInfo)
+	clientURLs, memberList, err := ClientURLs(ctx, clientAccessInfo, e.config.PrivateIP)
 	if err != nil {
 		return err
 	}
@@ -509,7 +509,7 @@ func (e *ETCD) cluster(ctx context.Context, forceNew bool, options executor.Init
 }
 
 // removePeer removes a peer from the cluster. The peer ID and IP address must both match.
-func (e *ETCD) removePeer(ctx context.Context, id, address string, force bool) error {
+func (e *ETCD) removePeer(ctx context.Context, id, address string, removeSelf bool) error {
 	members, err := e.client.MemberList(ctx)
 	if err != nil {
 		return err
@@ -525,8 +525,8 @@ func (e *ETCD) removePeer(ctx context.Context, id, address string, force bool) e
 				return err
 			}
 			if u.Hostname() == address {
-				if e.address == address && !force {
-					logrus.Fatalf("node has been delete from the cluster. Backup and delete ${datadir}/server/db if you like to rejoin the node")
+				if e.address == address && !removeSelf {
+					return errors.New("node has been deleted from the cluster")
 				}
 				logrus.Infof("Removing name=%s id=%d address=%s from etcd", member.Name, member.ID, address)
 				_, err := e.client.MemberRemove(ctx, member.ID)
@@ -672,7 +672,7 @@ func (e *ETCD) setLearnerProgress(ctx context.Context, status *learnerProgress) 
 }
 
 // clientURLs returns a list of all non-learner etcd cluster member client access URLs
-func ClientURLs(ctx context.Context, clientAccessInfo *clientaccess.Info) ([]string, Members, error) {
+func ClientURLs(ctx context.Context, clientAccessInfo *clientaccess.Info, selfIP string) ([]string, Members, error) {
 	var memberList Members
 	resp, err := clientaccess.Get("/db/info", clientAccessInfo)
 	if err != nil {
@@ -682,12 +682,21 @@ func ClientURLs(ctx context.Context, clientAccessInfo *clientaccess.Info) ([]str
 	if err := json.Unmarshal(resp, &memberList); err != nil {
 		return nil, memberList, err
 	}
-
+	ip, err := GetAdvertiseAddress(selfIP)
+	if err != nil {
+		return nil, memberList, err
+	}
 	var clientURLs []string
+members:
 	for _, member := range memberList.Members {
 		// excluding learner member from the client list
 		if member.IsLearner {
 			continue
+		}
+		for _, url := range member.ClientURLs {
+			if strings.Contains(url, ip) {
+				continue members
+			}
 		}
 		clientURLs = append(clientURLs, member.ClientURLs...)
 	}

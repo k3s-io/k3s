@@ -41,7 +41,7 @@ func (c *Cluster) Start(ctx context.Context) (<-chan struct{}, error) {
 		defer close(ready)
 
 		// try to get /db/info urls first before attempting to use join url
-		clientURLs, _, err := etcd.ClientURLs(ctx, c.clientAccessInfo)
+		clientURLs, _, err := etcd.ClientURLs(ctx, c.clientAccessInfo, c.config.PrivateIP)
 		if err != nil {
 			return nil, err
 		}
@@ -58,6 +58,12 @@ func (c *Cluster) Start(ctx context.Context) (<-chan struct{}, error) {
 			return nil, err
 		}
 		c.setupEtcdProxy(ctx, etcdProxy)
+
+		// remove etcd member if it exists
+		if err := c.managedDB.RemoveSelf(ctx); err != nil {
+			return nil, err
+		}
+
 		return ready, nil
 	}
 
