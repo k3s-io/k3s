@@ -17,6 +17,15 @@ start-test() {
 }
 export -f start-test
 
+# --- suppress test failures if the agent is intentionally incompatible with the server version
+test-post-hook() {
+  if [[ $1 -eq 0 ]]; then
+    return
+  fi
+  grep -sqF 'incompatible down-level server detected' $TEST_DIR/agents/*/logs/system.log
+}
+export -f test-post-hook
+
 REPO=${REPO:-rancher}
 IMAGE_NAME=${IMAGE_NAME:-k3s}
 PREVIOUS_CHANNEL=$(curl -s https://update.k3s.io/v1-release/channels/stable -o /dev/null -w '%{redirect_url}' | awk -F. '{print "v1." ($(NF - 1) - 1)}')
