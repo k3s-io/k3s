@@ -419,7 +419,7 @@ provision-server() {
         -e K3S_TOKEN=$(cat $TEST_DIR/metadata/secret) \
         -e K3S_DEBUG=true \
         ${REGISTRY_CLUSTER_ARGS:-} \
-        $K3S_IMAGE server $ARGS $SERVER_ARGS ${!SERVER_INSTANCE_ARGS}
+        ${K3S_IMAGE_SERVER:-$K3S_IMAGE} server $ARGS $SERVER_ARGS ${!SERVER_INSTANCE_ARGS}
 
     local ip=$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' $name | tee $TEST_DIR/servers/$count/metadata/ip)
     local url=$(echo "https://$ip:6443" | tee $TEST_DIR/servers/$count/metadata/url)
@@ -446,7 +446,7 @@ provision-agent() {
         -e K3S_TOKEN=$(cat $TEST_DIR/metadata/secret) \
         -e K3S_URL=$K3S_URL \
         ${REGISTRY_CLUSTER_ARGS:-} \
-        $K3S_IMAGE agent $ARGS $AGENT_ARGS ${!AGENT_INSTANCE_ARGS}
+        ${K3S_IMAGE_AGENT:-$K3S_IMAGE} agent $ARGS $AGENT_ARGS ${!AGENT_INSTANCE_ARGS}
 
     echo "Started $name"
     run-function agent-post-hook $count
