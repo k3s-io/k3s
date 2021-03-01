@@ -87,5 +87,5 @@ func (h *handler) onRemove(key string, node *v1.Node) (*v1.Node, error) {
 	if !ok {
 		return node, nil
 	}
-	return node, h.etcd.removePeer(h.ctx, id, address)
+	return node, h.etcd.removePeer(h.ctx, id, address, false)
 }
