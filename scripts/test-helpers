@@ -134,7 +134,7 @@ dump-logs() {
         mkdir -p $node/logs
         local hostname=$(docker exec $name hostname)
         docker logs $name >$node/logs/system.log 2>&1
-        if [[ $name == k3s-* ]]; then
+        if [[ ! -z "$hostname" && $name == k3s-* ]]; then
             docker exec $server kubectl describe node/$hostname >$node/logs/kubectl-describe-node.txt
             docker cp $name:/var/lib/rancher/k3s/agent/containerd/containerd.log $node/logs/containerd.log 2>/dev/null
             docker exec $name crictl pods >$node/logs/crictl-pods.txt
@@ -263,12 +263,16 @@ test-cleanup() {
         echo "Removing container $container"
         docker rm -f -v $container
     done
+    echo
+    if has-function test-post-hook; then
+      test-post-hook $code
+      code=$?
+    fi
     if [ "$TEST_CLEANUP" = true ]; then
         echo "Removing test directory $TEST_DIR"
         rm -rf $TEST_DIR
     fi
     [ -f "$PROVISION_LOCK" ] && rm $PROVISION_LOCK
-    echo
     echo -n "Test $(basename $TEST_DIR) "
     if [ $code -eq 0 ]; then
         echo "passed."
@@ -392,8 +396,15 @@ export -f inc-count
 
 # ---
 
+has-function() {
+  [[ ! -z "$1" && $(type -t $1) == "function" ]]
+} 2> /dev/null
+export -f has-function
+
+# ---
+
 run-function() {
-    declare -f $1 >/dev/null 2>&1 || return 0
+    has-function $1 || return 0
     $@
 }
 export -f run-function
