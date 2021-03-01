@@ -498,6 +498,13 @@ func get(envInfo *cmds.Agent, proxy proxy.Proxy) (*config.Node, error) {
 		nodeConfig.AgentConfig.ServiceNodePortRange = *controlConfig.ServiceNodePortRange
 	}
 
+	// Old versions of the server do not send enough information to correctly start the NPC. Users
+	// need to upgrade the server to at least the same version as the agent, or disable the NPC
+	// cluster-wide.
+	if controlConfig.DisableNPC == false && (controlConfig.ServiceIPRange == nil || controlConfig.ServiceNodePortRange == nil) {
+		return nil, fmt.Errorf("incompatible down-level server detected; servers must be upgraded to at least %s, or restarted with --disable-network-policy", version.Version)
+	}
+
 	nodeConfig.AgentConfig.ExtraKubeletArgs = envInfo.ExtraKubeletArgs
 	nodeConfig.AgentConfig.ExtraKubeProxyArgs = envInfo.ExtraKubeProxyArgs
 
