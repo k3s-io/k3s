@@ -12,6 +12,7 @@ import (
 	"github.com/rancher/k3s/pkg/cluster/managed"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/etcd"
+	"github.com/sirupsen/logrus"
 )
 
 type Cluster struct {
@@ -61,7 +62,7 @@ func (c *Cluster) Start(ctx context.Context) (<-chan struct{}, error) {
 
 		// remove etcd member if it exists
 		if err := c.managedDB.RemoveSelf(ctx); err != nil {
-			return nil, err
+			logrus.Warnf("Failed to remove this node from etcd members")
 		}
 
 		return ready, nil
