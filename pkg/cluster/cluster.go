@@ -61,7 +61,7 @@ func (c *Cluster) Start(ctx context.Context) (<-chan struct{}, error) {
 
 		// remove etcd member if it exists
 		if err := c.managedDB.RemoveSelf(ctx); err != nil {
-			return nil, err
+			logrus.Warnf("Failed to remove this node from etcd members")
 		}
 
 		return ready, nil
