@@ -1,29 +1,41 @@
 apiVersion: helm.cattle.io/v1
 kind: HelmChart
 metadata:
+  name: traefik-crd
+  namespace: kube-system
+spec:
+  chart: https://%{KUBERNETES_API}%/static/charts/traefik-crd-9.14.2.tgz
+---
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
   name: traefik
   namespace: kube-system
 spec:
-  chart: https://%{KUBERNETES_API}%/static/charts/traefik-1.81.0.tgz
+  chart: https://%{KUBERNETES_API}%/static/charts/traefik-9.14.2.tgz
   valuesContent: |-
     rbac:
       enabled: true
-    ssl:
-      enabled: true
-    metrics:
-      prometheus:
-        enabled: true
-    kubernetes:
-      ingressEndpoint:
-        useDefaultPublishedService: true
+    ports:
+      websecure:
+        tls:
+          enabled: true
+    podAnnotations:
+      prometheus.io/port: "8082"
+      prometheus.io/scrape: "true"
+    providers:
+      kubernetesIngress:
+        publishedService:
+          enabled: true
     priorityClassName: "system-cluster-critical"
-    image: "rancher/library-traefik"
+    image:
+      name: "rancher/library-traefik"
     tolerations:
-      - key: "CriticalAddonsOnly"
-        operator: "Exists"
-      - key: "node-role.kubernetes.io/control-plane"
-        operator: "Exists"
-        effect: "NoSchedule"
-      - key: "node-role.kubernetes.io/master"
-        operator: "Exists"
-        effect: "NoSchedule"
+    - key: "CriticalAddonsOnly"
+      operator: "Exists"
+    - key: "node-role.kubernetes.io/control-plane"
+      operator: "Exists"
+      effect: "NoSchedule"
+    - key: "node-role.kubernetes.io/master"
+      operator: "Exists"
+      effect: "NoSchedule"

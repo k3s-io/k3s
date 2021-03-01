@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	net2 "net"
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -206,7 +207,6 @@ func stageFiles(ctx context.Context, sc *Context, controlConfig *config.Control)
 	if err := static.Stage(dataDir); err != nil {
 		return err
 	}
-
 	dataDir = filepath.Join(controlConfig.DataDir, "manifests")
 	templateVars := map[string]string{
 		"%{CLUSTER_DNS}%":                controlConfig.ClusterDNS.String(),
@@ -214,11 +214,33 @@ func stageFiles(ctx context.Context, sc *Context, controlConfig *config.Control)
 		"%{DEFAULT_LOCAL_STORAGE_PATH}%": controlConfig.DefaultLocalStoragePath,
 	}
 
-	if err := deploy.Stage(dataDir, templateVars, controlConfig.Skips); err != nil {
+	skip := controlConfig.Skips
+	if !skip["traefik"] && isHelmChartTraefikV1(sc) {
+		logrus.Warn("Skipping Traefik v2 deployment due to existing Traefik v1 installation")
+		skip["traefik"] = true
+	}
+	if err := deploy.Stage(dataDir, templateVars, skip); err != nil {
 		return err
 	}
 
 	return deploy.WatchFiles(ctx, sc.Apply, sc.K3s.K3s().V1().Addon(), controlConfig.Disables, dataDir)
+}
+
+// isHelmChartTraefikV1 checks for an existing HelmChart resource with spec.chart containing traefik-1,
+// as deployed by the legacy chart (https://%{KUBERNETES_API}%/static/charts/traefik-1.81.0.tgz)
+func isHelmChartTraefikV1(sc *Context) bool {
+	prefix := "traefik-1."
+	helmChart, err := sc.Helm.Helm().V1().HelmChart().Get(metav1.NamespaceSystem, "traefik", metav1.GetOptions{})
+	if err != nil {
+		logrus.WithError(err).Info("Failed to get existing traefik HelmChart")
+		return false
+	}
+	chart := path.Base(helmChart.Spec.Chart)
+	if strings.HasPrefix(chart, prefix) {
+		logrus.WithField("chart", chart).Info("Found existing traefik v1 HelmChart")
+		return true
+	}
+	return false
 }
 
 func HomeKubeConfig(write, rootless bool) (string, error) {
