@@ -2,7 +2,7 @@
 
 Thanks for taking the time to contribute to k3s!
 
-Contributing is not limited to writing code and submitting a PR. Feel free to submit an [issue](https://github.com/rancher/k3s/issues/new/choose) or comment on an existing one to report a bug, provide feedback, or suggest a new feature. You can also join the discussion on [slack](https://slack.rancher.io/).
+Contributing is not limited to writing code and submitting a PR. Feel free to submit an [issue](https://github.com/k3s-io/k3s/issues/new/choose) or comment on an existing one to report a bug, provide feedback, or suggest a new feature. You can also join the discussion on [slack](https://slack.rancher.io/).
 
 Of course, contributing code is more than welcome! To keep things simple, if you're fixing a small issue, you can simply submit a PR and we will pick it up. However, if you're planning to submit a bigger PR to implement a new feature or fix a relatively complex bug, please open an issue that explains the change and the motivation for it. If you're addressing a bug, please explain how to reproduce it.
 

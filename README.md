@@ -33,7 +33,7 @@ K3s bundles the following technologies together into a single cohesive distribut
 * [CoreDNS](https://coredns.io/)
 * [Metrics Server](https://github.com/kubernetes-sigs/metrics-server)
 * [Traefik](https://containo.us/traefik/) for ingress
-* [Klipper-lb](https://github.com/rancher/klipper-lb) as an embedded service loadbalancer provider
+* [Klipper-lb](https://github.com/k3s-io/klipper-lb) as an embedded service loadbalancer provider
 * [Kube-router](https://www.kube-router.io/) for network policy
 * [Helm-controller](https://github.com/k3s-io/helm-controller) to allow for CRD-driven deployment of helm manifests
 * [Kine](https://github.com/k3s-io/kine) as a datastore shim that allows etcd to be replaced with other databases
@@ -92,7 +92,7 @@ Release cadence
 ---
 K3s maintains pace with upstream Kubernetes releases. Our goal is to release patch releases on the same day as upstream and minor releases within a few days.
 
-Our release versioning reflects the version of upstream Kubernetes that is being released. For example, the K3s release [v1.18.6+k3s1](https://github.com/rancher/k3s/releases/tag/v1.18.6%2Bk3s1) maps to the `v1.18.6` Kubernetes release. We add a postfix in the form of `+k3s<number>` to allow us to make additional releases using the same version of upstream Kubernetes, while remaining [semver](https://semver.org/) compliant. For example, if we discovered a high severity bug in `v1.18.6+k3s1` and needed to release an immediate fix for it, we would release `v1.18.6+k3s2`.
+Our release versioning reflects the version of upstream Kubernetes that is being released. For example, the K3s release [v1.18.6+k3s1](https://github.com/k3s-io/k3s/releases/tag/v1.18.6%2Bk3s1) maps to the `v1.18.6` Kubernetes release. We add a postfix in the form of `+k3s<number>` to allow us to make additional releases using the same version of upstream Kubernetes, while remaining [semver](https://semver.org/) compliant. For example, if we discovered a high severity bug in `v1.18.6+k3s1` and needed to release an immediate fix for it, we would release `v1.18.6+k3s2`.
 
 Documentation
 -------------
@@ -128,7 +128,7 @@ curl -sfL https://get.k3s.io | K3S_URL=https://myserver:6443 K3S_TOKEN=XXX sh -
 Manual Download
 ---------------
 
-1. Download `k3s` from latest [release](https://github.com/rancher/k3s/releases/latest), x86_64, armhf, and arm64 are supported.
+1. Download `k3s` from latest [release](https://github.com/k3s-io/k3s/releases/latest), x86_64, armhf, and arm64 are supported.
 2. Run server.
 
 ```bash
@@ -144,9 +144,9 @@ sudo k3s agent --server https://myserver:6443 --token ${NODE_TOKEN}
 Contributing
 ------------
 
-Please check out our [contributing guide](CONTRIBUTING.md) if you're interesting in contributing to k3s.
+Please check out our [contributing guide](CONTRIBUTING.md) if you're interested in contributing to K3s.
 
 Security
 --------
 
-Security issues in k3s can be reported by sending an email to [security@rancher.com](mailto:security@rancher.com). Please do not file issues about security issues.
+Security issues in K3s can be reported by sending an email to [security@k3s.io](mailto:security@k3s.io). Please do not file issues about security issues.

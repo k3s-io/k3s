@@ -32,7 +32,7 @@ Conduct may be permanently removed from the project team.
 This code of conduct applies both within project spaces and in public spaces
 when an individual is representing the project or its community.
 
-Instances of abusive, harassing, or otherwise unacceptable behavior may be reported by contacting a Rancher administrator  on [Slack](https://slack.rancher.io), or <conduct@rancher.com>.
+Instances of abusive, harassing, or otherwise unacceptable behavior may be reported by contacting a Rancher administrator  on [Slack](https://slack.rancher.io), or <conduct@suse.com>.
 
 This Code of Conduct is adapted from the Contributor Covenant
 (http://contributor-covenant.org), version 1.2.0, available at

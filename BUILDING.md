@@ -1,4 +1,4 @@
-See the [release](https://github.com/rancher/k3s/releases/latest) page for pre-built releases.
+See the [release](https://github.com/k3s-io/k3s/releases/latest) page for pre-built releases.
 
 The clone will be much faster on this repo if you do
 ```bash
