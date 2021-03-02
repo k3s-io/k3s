@@ -23,6 +23,7 @@ import (
 	"github.com/rootless-containers/rootlesskit/pkg/common"
 	"github.com/rootless-containers/rootlesskit/pkg/msgutil"
 	"github.com/rootless-containers/rootlesskit/pkg/network"
+	"github.com/rootless-containers/rootlesskit/pkg/parent/cgrouputil"
 	"github.com/rootless-containers/rootlesskit/pkg/parent/idtools"
 	"github.com/rootless-containers/rootlesskit/pkg/port"
 	"github.com/rootless-containers/rootlesskit/pkg/sigproxy"
@@ -43,6 +44,7 @@ type Opt struct {
 	ParentEUIDEnvKey string // optional env key to propagate geteuid() value
 	ParentEGIDEnvKey string // optional env key to propagate getegid() value
 	Propagation      string
+	EvacuateCgroup2  string // e.g. "rootlesskit_evacuation"
 }
 
 // Documented state files. Undocumented ones are subject to change.
@@ -77,29 +79,59 @@ func checkPreflight(opt Opt) error {
 	return nil
 }
 
+// createCleanupLock uses LOCK_SH for preventing automatic cleanup of
+// "/tmp/<Our State Dir>" caused by by systemd.
+//
+// This LOCK_SH lock is different from our lock file in the state dir.
+// We could unify the lock file into LOCK_SH, but we are still keeping
+// the lock file for a historical reason.
+//
+// See:
+// - https://github.com/rootless-containers/rootlesskit/issues/185
+// - https://github.com/rootless-containers/rootlesskit/pull/188
+func createCleanupLock(sDir string) error {
+	//lock state dir when using /tmp/ path
+	stateDir, err := os.Open(sDir)
+	if err != nil {
+		return err
+	}
+	err = unix.Flock(int(stateDir.Fd()), unix.LOCK_SH)
+	if err != nil {
+		logrus.Warnf("Failed to lock the state dir %s", sDir)
+	}
+	return nil
+}
+
+// LockStateDir creates and locks "lock" file in the state dir.
+func LockStateDir(stateDir string) (*flock.Flock, error) {
+	lockPath := filepath.Join(stateDir, StateFileLock)
+	lock := flock.New(lockPath)
+	locked, err := lock.TryLock()
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to lock %s", lockPath)
+	}
+	if !locked {
+		return nil, errors.Errorf("failed to lock %s, another RootlessKit is running with the same state directory?", lockPath)
+	}
+	return lock, nil
+}
+
 func Parent(opt Opt) error {
 	if err := checkPreflight(opt); err != nil {
 		return err
 	}
-	lockPath := filepath.Join(opt.StateDir, StateFileLock)
-	lock := flock.NewFlock(lockPath)
-	locked, err := lock.TryLock()
+
+	err := createCleanupLock(opt.StateDir)
 	if err != nil {
-		return errors.Wrapf(err, "failed to lock %s", lockPath)
+		return err
 	}
-	if !locked {
-		return errors.Errorf("failed to lock %s, another RootlessKit is running with the same state directory?", lockPath)
+
+	lock, err := LockStateDir(opt.StateDir)
+	if err != nil {
+		return err
 	}
 	defer os.RemoveAll(opt.StateDir)
 	defer lock.Unlock()
-	// when the previous execution crashed, the state dir may not be removed successfully.
-	// explicitly remove everything in the state dir except the lock file here.
-	for _, f := range []string{StateFileChildPID} {
-		p := filepath.Join(opt.StateDir, f)
-		if err := os.RemoveAll(p); err != nil {
-			return errors.Wrapf(err, "failed to remove %s", p)
-		}
-	}
 
 	pipeR, pipeW, err := os.Pipe()
 	if err != nil {
@@ -148,6 +180,12 @@ func Parent(opt Opt) error {
 	}
 	sigc := sigproxy.ForwardAllSignals(context.TODO(), cmd.Process.Pid)
 	defer signal.StopCatch(sigc)
+
+	if opt.EvacuateCgroup2 != "" {
+		if err := cgrouputil.EvacuateCgroup2(opt.EvacuateCgroup2); err != nil {
+			return err
+		}
+	}
 
 	// send message 0
 	msg := common.Message{
@@ -223,7 +261,12 @@ func Parent(opt Opt) error {
 	}
 	// listens the API
 	apiSockPath := filepath.Join(opt.StateDir, StateFileAPISock)
-	apiCloser, err := listenServeAPI(apiSockPath, &router.Backend{PortDriver: opt.PortDriver})
+	apiCloser, err := listenServeAPI(apiSockPath, &router.Backend{
+		StateDir:      opt.StateDir,
+		ChildPID:      cmd.Process.Pid,
+		NetworkDriver: opt.NetworkDriver,
+		PortDriver:    opt.PortDriver,
+	})
 	if err != nil {
 		return err
 	}
@@ -329,4 +372,33 @@ func listenServeAPI(socketPath string, backend *router.Backend) (apiCloser, erro
 	}
 	go srv.Serve(l)
 	return srv, nil
+}
+
+// InitStateDir removes everything in the state dir except the lock file.
+// This is needed because when the previous execution crashed, the state dir may not be removed successfully.
+//
+// InitStateDir must be called before calling parent functions.
+func InitStateDir(stateDir string) error {
+	if err := os.MkdirAll(stateDir, 0755); err != nil {
+		return err
+	}
+	lk, err := LockStateDir(stateDir)
+	if err != nil {
+		return err
+	}
+	defer lk.Unlock()
+	stateDirStuffs, err := ioutil.ReadDir(stateDir)
+	if err != nil {
+		return err
+	}
+	for _, f := range stateDirStuffs {
+		if f.Name() == StateFileLock {
+			continue
+		}
+		p := filepath.Join(stateDir, f.Name())
+		if err := os.RemoveAll(p); err != nil {
+			return errors.Wrapf(err, "failed to remove %s", p)
+		}
+	}
+	return nil
 }

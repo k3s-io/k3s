@@ -9,12 +9,18 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// ErrorWithSys is implemented by *exec.ExitError and *child.reaperErr
+type ErrorWithSys interface {
+	error
+	Sys() interface{}
+}
+
 func GetExecExitStatus(err error) (int, bool) {
 	err = errors.Cause(err)
 	if err == nil {
 		return 0, false
 	}
-	exitErr, ok := err.(*exec.ExitError)
+	exitErr, ok := err.(ErrorWithSys)
 	if !ok {
 		return 0, false
 	}

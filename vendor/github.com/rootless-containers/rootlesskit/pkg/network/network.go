@@ -1,11 +1,15 @@
 package network
 
 import (
+	"context"
+
+	"github.com/rootless-containers/rootlesskit/pkg/api"
 	"github.com/rootless-containers/rootlesskit/pkg/common"
 )
 
 // ParentDriver is called from the parent namespace
 type ParentDriver interface {
+	Info(ctx context.Context) (*api.NetworkDriverInfo, error)
 	// MTU returns MTU
 	MTU() int
 	// ConfigureNetwork sets up Slirp, updates msg, and returns destructor function.
