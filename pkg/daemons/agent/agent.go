@@ -15,6 +15,7 @@ import (
 	"github.com/rancher/k3s/pkg/daemons/executor"
 	"github.com/rancher/k3s/pkg/version"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/sys/unix"
 	"k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/component-base/logs"
 	"k8s.io/kubernetes/pkg/kubeapiserver/authorizer/modes"
@@ -128,7 +129,7 @@ func startKubelet(cfg *config.Agent) error {
 	if err != nil || defaultIP.String() != cfg.NodeIP {
 		argsMap["node-ip"] = cfg.NodeIP
 	}
-	kubeletRoot, runtimeRoot, hasCFS, hasPIDs := checkCgroups()
+	kubeletRoot, runtimeRoot, hasCFS, hasPIDs := CheckCgroups()
 	if !hasCFS {
 		logrus.Warn("Disabling CPU quotas due to missing cpu.cfs_period_us")
 		argsMap["cpu-cfs-quota"] = "false"
@@ -158,11 +159,20 @@ func startKubelet(cfg *config.Agent) error {
 	}
 
 	if cfg.Rootless {
-		// flags are from https://github.com/rootless-containers/usernetes/blob/v20190826.0/boot/kubelet.sh
-		argsMap["cgroup-driver"] = "none"
-		argsMap["feature-gates=SupportNoneCgroupDriver"] = "true"
-		argsMap["cgroups-per-qos"] = "false"
-		argsMap["enforce-node-allocatable"] = ""
+		// "/sys/fs/cgroup" is namespaced
+		cgroupfsWritable := unix.Access("/sys/fs/cgroup", unix.W_OK) == nil
+		if hasCFS && hasPIDs && cgroupfsWritable {
+			logrus.Info("cgroup v2 controllers are delegated for rootless.")
+			// cgroupfs v2, delegated for rootless by systemd
+			argsMap["cgroup-driver"] = "cgroupfs"
+		} else {
+			logrus.Warn("cgroup v2 controllers are not delegated for rootless. Setting cgroup driver to \"none\".")
+			// flags are from https://github.com/rootless-containers/usernetes/blob/v20190826.0/boot/kubelet.sh
+			argsMap["cgroup-driver"] = "none"
+			argsMap["feature-gates=SupportNoneCgroupDriver"] = "true"
+			argsMap["cgroups-per-qos"] = "false"
+			argsMap["enforce-node-allocatable"] = ""
+		}
 	}
 
 	if cfg.ProtectKernelDefaults {
@@ -182,7 +192,7 @@ func addFeatureGate(current, new string) string {
 	return current + "," + new
 }
 
-func checkCgroups() (kubeletRoot, runtimeRoot string, hasCFS, hasPIDs bool) {
+func CheckCgroups() (kubeletRoot, runtimeRoot string, hasCFS, hasPIDs bool) {
 	cgroupsModeV2 := cgroups.Mode() == cgroups.Unified
 
 	// For Unified (v2) cgroups we can directly check to see what controllers are mounted
