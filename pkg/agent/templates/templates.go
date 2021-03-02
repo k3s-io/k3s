@@ -9,6 +9,7 @@ import (
 
 type ContainerdConfig struct {
 	NodeConfig            *config.Node
+	DisableCgroup         bool
 	IsRunningInUserNS     bool
 	PrivateRegistryConfig *Registry
 }
@@ -22,8 +23,10 @@ const ContainerdConfigTemplate = `
   stream_server_port = "10010"
   enable_selinux = {{ .NodeConfig.SELinux }}
 
-{{- if .IsRunningInUserNS }}
+{{- if .DisableCgroup}}
   disable_cgroup = true
+{{end}}
+{{- if .IsRunningInUserNS }}
   disable_apparmor = true
   restrict_oom_score_adj = true
 {{end}}

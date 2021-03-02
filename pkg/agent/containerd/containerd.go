@@ -26,11 +26,13 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rancher/k3s/pkg/agent/templates"
 	util2 "github.com/rancher/k3s/pkg/agent/util"
+	"github.com/rancher/k3s/pkg/daemons/agent"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/untar"
 	"github.com/rancher/k3s/pkg/version"
 	"github.com/rancher/wrangler/pkg/merr"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/sys/unix"
 	"google.golang.org/grpc"
 	yaml "gopkg.in/yaml.v2"
 	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
@@ -336,10 +338,21 @@ func setupContainerdConfig(ctx context.Context, cfg *config.Node) error {
 	if err != nil {
 		return err
 	}
+
+	isRunningInUserNS := system.RunningInUserNS()
+	_, _, hasCFS, hasPIDs := agent.CheckCgroups()
+	// "/sys/fs/cgroup" is namespaced
+	cgroupfsWritable := unix.Access("/sys/fs/cgroup", unix.W_OK) == nil
+	disableCgroup := isRunningInUserNS && (!hasCFS || !hasPIDs || !cgroupfsWritable)
+	if disableCgroup {
+		logrus.Warn("cgroup v2 controllers are not delegated for rootless. Disabling cgroup.")
+	}
+
 	var containerdTemplate string
 	containerdConfig := templates.ContainerdConfig{
 		NodeConfig:            cfg,
-		IsRunningInUserNS:     system.RunningInUserNS(),
+		DisableCgroup:         disableCgroup,
+		IsRunningInUserNS:     isRunningInUserNS,
 		PrivateRegistryConfig: privRegistries,
 	}
 
