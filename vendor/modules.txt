@@ -514,7 +514,7 @@ github.com/go-openapi/swag
 github.com/go-sql-driver/mysql
 # github.com/godbus/dbus/v5 v5.0.3
 github.com/godbus/dbus/v5
-# github.com/gofrs/flock v0.7.1
+# github.com/gofrs/flock v0.8.0
 github.com/gofrs/flock
 # github.com/gogo/googleapis v1.3.2
 github.com/gogo/googleapis/google/rpc
@@ -595,7 +595,7 @@ github.com/google/gofuzz
 # github.com/google/tcpproxy v0.0.0-20180808230851-dfa16c61dad2
 ## explicit
 github.com/google/tcpproxy
-# github.com/google/uuid v1.1.2
+# github.com/google/uuid v1.2.0
 ## explicit
 github.com/google/uuid
 # github.com/googleapis/gax-go/v2 v2.0.5
@@ -767,7 +767,7 @@ github.com/mitchellh/go-wordwrap
 github.com/mitchellh/mapstructure
 # github.com/moby/ipvs v1.0.1
 github.com/moby/ipvs
-# github.com/moby/sys/mountinfo v0.1.3
+# github.com/moby/sys/mountinfo v0.4.1 => github.com/moby/sys/mountinfo v0.1.3
 github.com/moby/sys/mountinfo
 # github.com/moby/term v0.0.0-20200312100748-672ec06f55cd
 github.com/moby/term
@@ -917,7 +917,7 @@ github.com/robfig/cron
 # github.com/robfig/cron/v3 v3.0.1
 ## explicit
 github.com/robfig/cron/v3
-# github.com/rootless-containers/rootlesskit v0.10.0
+# github.com/rootless-containers/rootlesskit v0.14.0
 ## explicit
 github.com/rootless-containers/rootlesskit/pkg/api
 github.com/rootless-containers/rootlesskit/pkg/api/client
@@ -932,6 +932,7 @@ github.com/rootless-containers/rootlesskit/pkg/network/iputils
 github.com/rootless-containers/rootlesskit/pkg/network/parentutils
 github.com/rootless-containers/rootlesskit/pkg/network/slirp4netns
 github.com/rootless-containers/rootlesskit/pkg/parent
+github.com/rootless-containers/rootlesskit/pkg/parent/cgrouputil
 github.com/rootless-containers/rootlesskit/pkg/parent/idtools
 github.com/rootless-containers/rootlesskit/pkg/port
 github.com/rootless-containers/rootlesskit/pkg/port/builtin
@@ -945,21 +946,20 @@ github.com/rootless-containers/rootlesskit/pkg/port/builtin/parent/udp/udpproxy
 github.com/rootless-containers/rootlesskit/pkg/port/portutil
 github.com/rootless-containers/rootlesskit/pkg/sigproxy
 github.com/rootless-containers/rootlesskit/pkg/sigproxy/signal
+github.com/rootless-containers/rootlesskit/pkg/version
 # github.com/rs/xid v1.2.1
 github.com/rs/xid
 # github.com/rubiojr/go-vhd v0.0.0-20200706105327-02e210299021
 github.com/rubiojr/go-vhd/vhd
 # github.com/russross/blackfriday v1.5.2
 github.com/russross/blackfriday
-# github.com/russross/blackfriday/v2 v2.0.1
+# github.com/russross/blackfriday/v2 v2.1.0
 github.com/russross/blackfriday/v2
 # github.com/satori/go.uuid v1.2.0
 github.com/satori/go.uuid
 # github.com/seccomp/libseccomp-golang v0.9.1
 github.com/seccomp/libseccomp-golang
-# github.com/shurcooL/sanitized_anchor_name v1.0.0
-github.com/shurcooL/sanitized_anchor_name
-# github.com/sirupsen/logrus v1.7.0
+# github.com/sirupsen/logrus v1.8.1
 ## explicit
 github.com/sirupsen/logrus
 # github.com/soheilhy/cmux v0.1.4
@@ -972,7 +972,7 @@ github.com/spf13/cobra
 # github.com/spf13/pflag v1.0.5
 ## explicit
 github.com/spf13/pflag
-# github.com/stretchr/testify v1.6.1
+# github.com/stretchr/testify v1.7.0
 ## explicit
 github.com/stretchr/testify/assert
 # github.com/syndtr/gocapability v0.0.0-20180916011248-d98352740cb2
@@ -1166,7 +1166,7 @@ golang.org/x/crypto/ssh/terminal
 # golang.org/x/mod v0.3.0
 golang.org/x/mod/module
 golang.org/x/mod/semver
-# golang.org/x/net v0.0.0-20201110031124-69a78807bb2b => golang.org/x/net v0.0.0-20201110031124-69a78807bb2b
+# golang.org/x/net v0.0.0-20210119194325-5f4716e94777 => golang.org/x/net v0.0.0-20201110031124-69a78807bb2b
 ## explicit
 golang.org/x/net/bpf
 golang.org/x/net/context
@@ -1197,7 +1197,7 @@ golang.org/x/oauth2/jwt
 golang.org/x/sync/errgroup
 golang.org/x/sync/semaphore
 golang.org/x/sync/singleflight
-# golang.org/x/sys v0.0.0-20201201145000-ef89a241ccb3 => golang.org/x/sys v0.0.0-20201112073958-5cba982894dd
+# golang.org/x/sys v0.0.0-20210119212857-b64e53b001e4 => golang.org/x/sys v0.0.0-20201112073958-5cba982894dd
 ## explicit
 golang.org/x/sys/cpu
 golang.org/x/sys/internal/unsafeheader
@@ -3011,6 +3011,7 @@ sigs.k8s.io/yaml
 # github.com/juju/errors => github.com/k3s-io/nocode v0.0.0-20200630202308-cb097102c09f
 # github.com/kubernetes-sigs/cri-tools => github.com/k3s-io/cri-tools v1.20.0-k3s1
 # github.com/matryer/moq => github.com/rancher/moq v0.0.0-20190404221404-ee5226d43009
+# github.com/moby/sys/mountinfo => github.com/moby/sys/mountinfo v0.1.3
 # github.com/opencontainers/runc => github.com/opencontainers/runc v1.0.0-rc92
 # github.com/opencontainers/runtime-spec => github.com/opencontainers/runtime-spec v1.0.3-0.20200728170252-4d89ac9fbff6
 # go.etcd.io/etcd => github.com/k3s-io/etcd v0.5.0-alpha.5.0.20201208200253-50621aee4aea

@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -15,6 +16,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 
+	"github.com/rootless-containers/rootlesskit/pkg/api"
 	"github.com/rootless-containers/rootlesskit/pkg/common"
 	"github.com/rootless-containers/rootlesskit/pkg/network"
 	"github.com/rootless-containers/rootlesskit/pkg/network/iputils"
@@ -22,6 +24,8 @@ import (
 )
 
 type Features struct {
+	// SupportsEnableIPv6 --enable-ipv6 (v0.2.0)
+	SupportsEnableIPv6 bool
 	// SupportsCIDR --cidr (v0.3.0)
 	SupportsCIDR bool
 	// SupportsDisableHostLoopback --disable-host-loopback (v0.3.0)
@@ -63,6 +67,7 @@ func DetectFeatures(binary string) (*Features, error) {
 		kernelSupportsEnableSeccomp = unix.Prctl(unix.PR_SET_SECCOMP, unix.SECCOMP_MODE_FILTER, 0, 0, 0) != unix.EINVAL
 	}
 	f := Features{
+		SupportsEnableIPv6:          strings.Contains(s, "--enable-ipv6"),
 		SupportsCIDR:                strings.Contains(s, "--cidr"),
 		SupportsDisableHostLoopback: strings.Contains(s, "--disable-host-loopback"),
 		SupportsAPISocket:           strings.Contains(s, "--api-socket"),
@@ -75,7 +80,8 @@ func DetectFeatures(binary string) (*Features, error) {
 
 // NewParentDriver instantiates new parent driver.
 // Requires slirp4netns v0.4.0 or later.
-func NewParentDriver(logWriter io.Writer, binary string, mtu int, ipnet *net.IPNet, disableHostLoopback bool, apiSocketPath string, enableSandbox, enableSeccomp bool) (network.ParentDriver, error) {
+func NewParentDriver(logWriter io.Writer, binary string, mtu int, ipnet *net.IPNet, ifname string, disableHostLoopback bool, apiSocketPath string,
+	enableSandbox, enableSeccomp, enableIPv6 bool) (network.ParentDriver, error) {
 	if binary == "" {
 		return nil, errors.New("got empty slirp4netns binary")
 	}
@@ -85,9 +91,17 @@ func NewParentDriver(logWriter io.Writer, binary string, mtu int, ipnet *net.IPN
 	if mtu == 0 {
 		mtu = 65520
 	}
+
+	if ifname == "" {
+		ifname = "tap0"
+	}
+
 	features, err := DetectFeatures(binary)
 	if err != nil {
 		return nil, err
+	}
+	if enableIPv6 && !features.SupportsEnableIPv6 {
+		return nil, errors.New("this version of slirp4netns does not support --enable-sandbox")
 	}
 	if ipnet != nil && !features.SupportsCIDR {
 		return nil, errors.New("this version of slirp4netns does not support --cidr")
@@ -117,6 +131,8 @@ func NewParentDriver(logWriter io.Writer, binary string, mtu int, ipnet *net.IPN
 		apiSocketPath:       apiSocketPath,
 		enableSandbox:       enableSandbox,
 		enableSeccomp:       enableSeccomp,
+		enableIPv6:          enableIPv6,
+		ifname:              ifname,
 	}, nil
 }
 
@@ -129,6 +145,25 @@ type parentDriver struct {
 	apiSocketPath       string
 	enableSandbox       bool
 	enableSeccomp       bool
+	enableIPv6          bool
+	ifname              string
+	infoMu              sync.RWMutex
+	info                func() *api.NetworkDriverInfo
+}
+
+const DriverName = "slirp4netns"
+
+func (d *parentDriver) Info(ctx context.Context) (*api.NetworkDriverInfo, error) {
+	d.infoMu.RLock()
+	infoFn := d.info
+	d.infoMu.RUnlock()
+	if infoFn == nil {
+		return &api.NetworkDriverInfo{
+			Driver: DriverName,
+		}, nil
+	}
+
+	return infoFn(), nil
 }
 
 func (d *parentDriver) MTU() int {
@@ -136,7 +171,7 @@ func (d *parentDriver) MTU() int {
 }
 
 func (d *parentDriver) ConfigureNetwork(childPID int, stateDir string) (*common.NetworkMessage, func() error, error) {
-	tap := "tap0"
+	tap := d.ifname
 	var cleanups []func() error
 	if err := parentutils.PrepareTap(childPID, tap); err != nil {
 		return nil, common.Seq(cleanups), errors.Wrapf(err, "setting up tap %s", tap)
@@ -164,6 +199,9 @@ func (d *parentDriver) ConfigureNetwork(childPID int, stateDir string) (*common.
 	}
 	if d.enableSeccomp {
 		opts = append(opts, "--enable-seccomp")
+	}
+	if d.enableIPv6 {
+		opts = append(opts, "--enable-ipv6")
 	}
 	cmd := exec.CommandContext(ctx, d.binary, append(opts, []string{strconv.Itoa(childPID), tap}...)...)
 	// FIXME: Stdout doen't seem captured
@@ -215,6 +253,15 @@ func (d *parentDriver) ConfigureNetwork(childPID int, stateDir string) (*common.
 		netmsg.Gateway = "10.0.2.2"
 		netmsg.DNS = "10.0.2.3"
 	}
+
+	d.infoMu.Lock()
+	d.info = func() *api.NetworkDriverInfo {
+		return &api.NetworkDriverInfo{
+			Driver: DriverName,
+			DNS:    []net.IP{net.ParseIP(netmsg.DNS)},
+		}
+	}
+	d.infoMu.Unlock()
 	return &netmsg, common.Seq(cleanups), nil
 }
 

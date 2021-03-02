@@ -3,13 +3,22 @@ package port
 import (
 	"context"
 	"net"
+
+	"github.com/rootless-containers/rootlesskit/pkg/api"
 )
 
 type Spec struct {
-	Proto      string `json:"proto,omitempty"`    // either "tcp" or "udp". in future "sctp" will be supported as well.
-	ParentIP   string `json:"parentIP,omitempty"` // IPv4 address. can be empty (0.0.0.0).
+	// Proto is one of ["tcp", "tcp4", "tcp6", "udp", "udp4", "udp6"].
+	// "tcp" may cause listening on both IPv4 and IPv6. (Corresponds to Go's net.Listen .)
+	Proto      string `json:"proto,omitempty"`
+	ParentIP   string `json:"parentIP,omitempty"` // IPv4 or IPv6 address. can be empty (0.0.0.0).
 	ParentPort int    `json:"parentPort,omitempty"`
 	ChildPort  int    `json:"childPort,omitempty"`
+	// ChildIP is an IPv4 or IPv6 address.
+	// Default values:
+	// - builtin     driver: 127.0.0.1
+	// - slirp4netns driver: slirp4netns's child IP, e.g., 10.0.2.100
+	ChildIP string `json:"childIP,omitempty"`
 }
 
 type Status struct {
@@ -35,6 +44,7 @@ type ChildContext struct {
 // ParentDriver is a driver for the parent process.
 type ParentDriver interface {
 	Manager
+	Info(ctx context.Context) (*api.PortDriverInfo, error)
 	// OpaqueForChild typically consists of socket path
 	// for controlling child from parent
 	OpaqueForChild() map[string]string

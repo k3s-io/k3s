@@ -5,6 +5,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"strconv"
 	"sync"
 
 	"github.com/rootless-containers/rootlesskit/pkg/port"
@@ -12,7 +13,7 @@ import (
 )
 
 func Run(socketPath string, spec port.Spec, stopCh <-chan struct{}, logWriter io.Writer) error {
-	ln, err := net.Listen("tcp", fmt.Sprintf("%s:%d", spec.ParentIP, spec.ParentPort))
+	ln, err := net.Listen(spec.Proto, net.JoinHostPort(spec.ParentIP, strconv.Itoa(spec.ParentPort)))
 	if err != nil {
 		fmt.Fprintf(logWriter, "listen: %v\n", err)
 		return err

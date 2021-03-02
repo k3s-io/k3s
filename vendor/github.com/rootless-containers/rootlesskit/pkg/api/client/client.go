@@ -20,6 +20,7 @@ import (
 type Client interface {
 	HTTPClient() *http.Client
 	PortManager() port.Manager
+	Info(context.Context) (*api.Info, error)
 }
 
 // New creates a client.
@@ -63,6 +64,29 @@ func (c *client) PortManager() port.Manager {
 	return &portManager{
 		client: c,
 	}
+}
+
+func (c *client) Info(ctx context.Context) (*api.Info, error) {
+	u := fmt.Sprintf("http://%s/%s/info", c.dummyHost, c.version)
+	req, err := http.NewRequest("GET", u, nil)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	resp, err := c.HTTPClient().Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if err := successful(resp); err != nil {
+		return nil, err
+	}
+	var info api.Info
+	dec := json.NewDecoder(resp.Body)
+	if err := dec.Decode(&info); err != nil {
+		return nil, err
+	}
+	return &info, nil
 }
 
 func readAtMost(r io.Reader, maxBytes int) ([]byte, error) {

@@ -1,10 +1,10 @@
 package udp
 
 import (
-	"fmt"
 	"io"
 	"net"
 	"os"
+	"strconv"
 
 	"github.com/pkg/errors"
 
@@ -14,11 +14,11 @@ import (
 )
 
 func Run(socketPath string, spec port.Spec, stopCh <-chan struct{}, logWriter io.Writer) error {
-	addr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", spec.ParentIP, spec.ParentPort))
+	addr, err := net.ResolveUDPAddr(spec.Proto, net.JoinHostPort(spec.ParentIP, strconv.Itoa(spec.ParentPort)))
 	if err != nil {
 		return err
 	}
-	c, err := net.ListenUDP("udp", addr)
+	c, err := net.ListenUDP(spec.Proto, addr)
 	if err != nil {
 		return err
 	}

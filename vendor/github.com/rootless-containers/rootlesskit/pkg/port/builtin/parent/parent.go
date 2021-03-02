@@ -15,6 +15,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/rootless-containers/rootlesskit/pkg/api"
 	"github.com/rootless-containers/rootlesskit/pkg/port"
 	"github.com/rootless-containers/rootlesskit/pkg/port/builtin/msg"
 	"github.com/rootless-containers/rootlesskit/pkg/port/builtin/opaque"
@@ -54,6 +55,14 @@ type driver struct {
 	ports              map[int]*port.Status
 	stoppers           map[int]func() error
 	nextID             int
+}
+
+func (d *driver) Info(ctx context.Context) (*api.PortDriverInfo, error) {
+	info := &api.PortDriverInfo{
+		Driver: "builtin",
+		Protos: []string{"tcp", "tcp4", "tcp6", "udp", "udp4", "udp6"},
+	}
+	return info, nil
 }
 
 func (d *driver) OpaqueForChild() map[string]string {
@@ -111,7 +120,7 @@ func annotateEPERM(origErr error, spec port.Spec) error {
 		// origErr is unrelated to ip_unprivileged_port_start
 		return origErr
 	}
-	text := fmt.Sprintf("cannot expose privileged port %d, you might need to add \"net.ipv4.ip_unprivileged_port_start=0\" (currently %d) to /etc/sysctl.conf", spec.ParentPort, start)
+	text := fmt.Sprintf("cannot expose privileged port %d, you can add 'net.ipv4.ip_unprivileged_port_start=%d' to /etc/sysctl.conf (currently %d)", spec.ParentPort, spec.ParentPort, start)
 	if filepath.Base(os.Args[0]) == "rootlesskit" {
 		// NOTE: The following sentence is appended only if Args[0] == "rootlesskit", because it does not apply to Podman (as of Podman v1.9).
 		// Podman launches the parent driver in the child user namespace (but in the parent network namespace), which disables the file capability.
@@ -134,9 +143,9 @@ func (d *driver) AddPort(ctx context.Context, spec port.Spec) (*port.Status, err
 		return nil // FIXME
 	}
 	switch spec.Proto {
-	case "tcp":
+	case "tcp", "tcp4", "tcp6":
 		err = tcp.Run(d.socketPath, spec, routineStopCh, d.logWriter)
-	case "udp":
+	case "udp", "udp4", "udp6":
 		err = udp.Run(d.socketPath, spec, routineStopCh, d.logWriter)
 	default:
 		// NOTREACHED
