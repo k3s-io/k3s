@@ -37,6 +37,15 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	serverConfig.ControlConfig.EtcdSnapshotName = cfg.EtcdSnapshotName
 	serverConfig.ControlConfig.EtcdSnapshotDir = cfg.EtcdSnapshotDir
 	serverConfig.ControlConfig.EtcdSnapshotRetention = 0 // disable retention check
+	serverConfig.ControlConfig.EtcdS3 = cfg.EtcdS3
+	serverConfig.ControlConfig.EtcdS3Endpoint = cfg.EtcdS3Endpoint
+	serverConfig.ControlConfig.EtcdS3EndpointCA = cfg.EtcdS3EndpointCA
+	serverConfig.ControlConfig.EtcdS3SkipSSLVerify = cfg.EtcdS3SkipSSLVerify
+	serverConfig.ControlConfig.EtcdS3AccessKey = cfg.EtcdS3AccessKey
+	serverConfig.ControlConfig.EtcdS3SecretKey = cfg.EtcdS3SecretKey
+	serverConfig.ControlConfig.EtcdS3BucketName = cfg.EtcdS3BucketName
+	serverConfig.ControlConfig.EtcdS3Region = cfg.EtcdS3Region
+	serverConfig.ControlConfig.EtcdS3Folder = cfg.EtcdS3Folder
 	serverConfig.ControlConfig.Runtime = &config.ControlRuntime{}
 	serverConfig.ControlConfig.Runtime.ETCDServerCA = filepath.Join(dataDir, "tls", "etcd", "server-ca.crt")
 	serverConfig.ControlConfig.Runtime.ClientETCDCert = filepath.Join(dataDir, "tls", "etcd", "client.crt")
