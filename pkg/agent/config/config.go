@@ -24,7 +24,7 @@ import (
 	"github.com/rancher/k3s/pkg/cli/cmds"
 	"github.com/rancher/k3s/pkg/clientaccess"
 	"github.com/rancher/k3s/pkg/daemons/config"
-	"github.com/rancher/k3s/pkg/daemons/control"
+	"github.com/rancher/k3s/pkg/daemons/control/deps"
 	"github.com/rancher/k3s/pkg/version"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/json"
@@ -371,7 +371,7 @@ func get(envInfo *cmds.Agent, proxy proxy.Proxy) (*config.Node, error) {
 	}
 
 	kubeconfigKubelet := filepath.Join(envInfo.DataDir, "kubelet.kubeconfig")
-	if err := control.KubeConfig(kubeconfigKubelet, proxy.APIServerURL(), serverCAFile, clientKubeletCert, clientKubeletKey); err != nil {
+	if err := deps.KubeConfig(kubeconfigKubelet, proxy.APIServerURL(), serverCAFile, clientKubeletCert, clientKubeletKey); err != nil {
 		return nil, err
 	}
 
@@ -382,7 +382,7 @@ func get(envInfo *cmds.Agent, proxy proxy.Proxy) (*config.Node, error) {
 	}
 
 	kubeconfigKubeproxy := filepath.Join(envInfo.DataDir, "kubeproxy.kubeconfig")
-	if err := control.KubeConfig(kubeconfigKubeproxy, proxy.APIServerURL(), serverCAFile, clientKubeProxyCert, clientKubeProxyKey); err != nil {
+	if err := deps.KubeConfig(kubeconfigKubeproxy, proxy.APIServerURL(), serverCAFile, clientKubeProxyCert, clientKubeProxyKey); err != nil {
 		return nil, err
 	}
 
@@ -393,7 +393,7 @@ func get(envInfo *cmds.Agent, proxy proxy.Proxy) (*config.Node, error) {
 	}
 
 	kubeconfigK3sController := filepath.Join(envInfo.DataDir, version.Program+"controller.kubeconfig")
-	if err := control.KubeConfig(kubeconfigK3sController, proxy.APIServerURL(), serverCAFile, clientK3sControllerCert, clientK3sControllerKey); err != nil {
+	if err := deps.KubeConfig(kubeconfigK3sController, proxy.APIServerURL(), serverCAFile, clientK3sControllerCert, clientK3sControllerKey); err != nil {
 		return nil, err
 	}
 
