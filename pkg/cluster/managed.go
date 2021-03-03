@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -48,6 +49,53 @@ func (c *Cluster) testClusterDB(ctx context.Context) (<-chan struct{}, error) {
 	return result, nil
 }
 
+// cleanCerts removes existing certificatates previously
+// generated for use by the cluster.
+func (c *Cluster) cleanCerts() {
+	certs := []string{filepath.Join(c.config.DataDir, "tls", "client-ca.crt"),
+		filepath.Join(c.config.DataDir, "tls", "client-ca.key"),
+		filepath.Join(c.config.DataDir, "tls", "server-ca.crt"),
+		filepath.Join(c.config.DataDir, "tls", "server-ca.key"),
+		filepath.Join(c.config.DataDir, "tls", "request-header-ca.crt"),
+		filepath.Join(c.config.DataDir, "tls", "request-header-ca.key"),
+		filepath.Join(c.config.DataDir, "tls", "service.key"),
+		filepath.Join(c.config.DataDir, "tls", "client-admin.crt"),
+		filepath.Join(c.config.DataDir, "tls", "client-admin.key"),
+		filepath.Join(c.config.DataDir, "tls", "client-controller.crt"),
+		filepath.Join(c.config.DataDir, "tls", "client-controller.key"),
+		filepath.Join(c.config.DataDir, "tls", "client-cloud-controller.crt"),
+		filepath.Join(c.config.DataDir, "tls", "client-cloud-controller.key"),
+		filepath.Join(c.config.DataDir, "tls", "client-scheduler.crt"),
+		filepath.Join(c.config.DataDir, "tls", "client-scheduler.key"),
+		filepath.Join(c.config.DataDir, "tls", "client-kube-apiserver.crt"),
+		filepath.Join(c.config.DataDir, "tls", "client-kube-apiserver.key"),
+		filepath.Join(c.config.DataDir, "tls", "client-kube-proxy.crt"),
+		filepath.Join(c.config.DataDir, "tls", "client-kube-proxy.key"),
+		filepath.Join(c.config.DataDir, "tls", "client-"+version.Program+"-controller.crt"),
+		filepath.Join(c.config.DataDir, "tls", "client-"+version.Program+"-controller.key"),
+		filepath.Join(c.config.DataDir, "tls", "serving-kube-apiserver.crt"),
+		filepath.Join(c.config.DataDir, "tls", "serving-kube-apiserver.key"),
+		filepath.Join(c.config.DataDir, "tls", "client-kubelet.key"),
+		filepath.Join(c.config.DataDir, "tls", "serving-kubelet.key"),
+		filepath.Join(c.config.DataDir, "tls", "serving-kubelet.key"),
+		filepath.Join(c.config.DataDir, "tls", "client-auth-proxy.key"),
+		filepath.Join(c.config.DataDir, "tls", "etcd", "server-ca.crt"),
+		filepath.Join(c.config.DataDir, "tls", "etcd", "server-ca.key"),
+		filepath.Join(c.config.DataDir, "tls", "etcd", "peer-ca.crt"),
+		filepath.Join(c.config.DataDir, "tls", "etcd", "peer-ca.key"),
+		filepath.Join(c.config.DataDir, "tls", "etcd", "server-client.crt"),
+		filepath.Join(c.config.DataDir, "tls", "etcd", "server-client.key"),
+		filepath.Join(c.config.DataDir, "tls", "etcd", "peer-server-client.crt"),
+		filepath.Join(c.config.DataDir, "tls", "etcd", "peer-server-client.key"),
+		filepath.Join(c.config.DataDir, "tls", "etcd", "client.crt"),
+		filepath.Join(c.config.DataDir, "tls", "etcd", "client.key"),
+	}
+
+	for _, cert := range certs {
+		os.Remove(cert)
+	}
+}
+
 // start starts the database, unless a cluster reset has been requested, in which case
 // it does that instead.
 func (c *Cluster) start(ctx context.Context) error {
@@ -64,7 +112,13 @@ func (c *Cluster) start(ctx context.Context) error {
 		} else {
 			return fmt.Errorf("cluster-reset was successfully performed, please remove the cluster-reset flag and start %s normally, if you need to perform another cluster reset, you must first manually delete the %s file", version.Program, resetFile)
 		}
-		return c.managedDB.Reset(ctx)
+
+		rebootstrap := func() error {
+			return c.storageBootstrap(ctx)
+		}
+		if err := c.managedDB.Reset(ctx, rebootstrap, c.cleanCerts); err != nil {
+			return err
+		}
 	}
 	// removing the reset file and ignore error if the file doesn't exist
 	os.Remove(resetFile)

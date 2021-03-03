@@ -144,6 +144,15 @@ type Control struct {
 	EtcdSnapshotDir          string
 	EtcdSnapshotCron         string
 	EtcdSnapshotRetention    int
+	EtcdS3                   bool
+	EtcdS3Endpoint           string
+	EtcdS3EndpointCA         string
+	EtcdS3SkipSSLVerify      bool
+	EtcdS3AccessKey          string
+	EtcdS3SecretKey          string
+	EtcdS3BucketName         string
+	EtcdS3Region             string
+	EtcdS3Folder             string
 
 	BindAddress string
 	SANs        []string
