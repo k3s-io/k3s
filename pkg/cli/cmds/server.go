@@ -10,6 +10,7 @@ import (
 const (
 	defaultSnapshotRentention    = 5
 	defaultSnapshotIntervalHours = 12
+	hideClusterFlags             = true
 )
 
 type Server struct {
@@ -54,6 +55,9 @@ type Server struct {
 	DisableCCM               bool
 	DisableNPC               bool
 	DisableKubeProxy         bool
+	DisableAPIServer         bool
+	DisableControllerManager bool
+	DisableETCD              bool
 	ClusterInit              bool
 	ClusterReset             bool
 	ClusterResetRestorePath  string
@@ -279,6 +283,21 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Name:        "disable-network-policy",
 				Usage:       "(components) Disable " + version.Program + " default network policy controller",
 				Destination: &ServerConfig.DisableNPC,
+			},
+			cli.BoolFlag{
+				Name:        "disable-api-server",
+				Usage:       "(experimental/components) Disable running api server",
+				Destination: &ServerConfig.DisableAPIServer,
+			},
+			cli.BoolFlag{
+				Name:        "disable-controller-manager",
+				Usage:       "(experimental/components) Disable running kube-controller-manager",
+				Destination: &ServerConfig.DisableControllerManager,
+			},
+			cli.BoolFlag{
+				Name:        "disable-etcd",
+				Usage:       "(experimental/components) Disable running etcd",
+				Destination: &ServerConfig.DisableETCD,
 			},
 			NodeNameFlag,
 			WithNodeIDFlag,

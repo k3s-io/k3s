@@ -17,6 +17,7 @@ import (
 
 	"github.com/k3s-io/helm-controller/pkg/helm"
 	"github.com/pkg/errors"
+	"github.com/rancher/k3s/pkg/apiaddresses"
 	"github.com/rancher/k3s/pkg/clientaccess"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/daemons/control"
@@ -40,6 +41,7 @@ import (
 const (
 	MasterRoleLabelKey       = "node-role.kubernetes.io/master"
 	ControlPlaneRoleLabelKey = "node-role.kubernetes.io/control-plane"
+	ETCDRoleLabelKey         = "node-role.kubernetes.io/etcd"
 )
 
 func ResolveDataDir(dataDir string) (string, error) {
@@ -62,7 +64,11 @@ func StartServer(ctx context.Context, config *Config) error {
 
 	config.ControlConfig.Runtime.Handler = router(ctx, config)
 
-	go startOnAPIServerReady(ctx, config)
+	if config.ControlConfig.DisableAPIServer {
+		go setETCDLabelsAndAnnotations(ctx, config)
+	} else {
+		go startOnAPIServerReady(ctx, config)
+	}
 
 	for _, hook := range config.StartupHooks {
 		if err := hook(ctx, config.ControlConfig.Runtime.APIServerReady, config.ControlConfig.Runtime.KubeConfigAdmin); err != nil {
@@ -137,9 +143,8 @@ func runControllers(ctx context.Context, config *Config) error {
 			panic(err)
 		}
 	}
-	if !config.DisableAgent {
-		go setControlPlaneRoleLabel(ctx, sc.Core.Core().V1().Node())
-	}
+
+	go setControlPlaneRoleLabel(ctx, sc.Core.Core().V1().Node(), config)
 
 	go setClusterDNSConfig(ctx, config, sc.Core.Core().V1().ConfigMap())
 
@@ -182,6 +187,10 @@ func coreControllers(ctx context.Context, sc *Context, config *Config) error {
 		sc.Core.Core().V1().Service(),
 		sc.Core.Core().V1().Endpoints(),
 		!config.DisableServiceLB, config.Rootless); err != nil {
+		return err
+	}
+
+	if err := apiaddresses.Register(ctx, config.ControlConfig.Runtime, sc.Core.Core().V1().Endpoints()); err != nil {
 		return err
 	}
 
@@ -420,7 +429,10 @@ func isSymlink(config string) bool {
 	return false
 }
 
-func setControlPlaneRoleLabel(ctx context.Context, nodes v1.NodeClient) error {
+func setControlPlaneRoleLabel(ctx context.Context, nodes v1.NodeClient, config *Config) error {
+	if config.DisableAgent || config.ControlConfig.DisableAPIServer {
+		return nil
+	}
 	for {
 		nodeName := os.Getenv("NODE_NAME")
 		if nodeName == "" {
@@ -434,7 +446,15 @@ func setControlPlaneRoleLabel(ctx context.Context, nodes v1.NodeClient) error {
 			time.Sleep(1 * time.Second)
 			continue
 		}
-		if v, ok := node.Labels[ControlPlaneRoleLabelKey]; ok && v == "true" {
+		// remove etcd label if etcd is disabled
+		var etcdRoleLabelExists bool
+		if config.ControlConfig.DisableETCD {
+			if _, ok := node.Labels[ETCDRoleLabelKey]; ok {
+				delete(node.Labels, ETCDRoleLabelKey)
+				etcdRoleLabelExists = true
+			}
+		}
+		if v, ok := node.Labels[ControlPlaneRoleLabelKey]; ok && v == "true" && !etcdRoleLabelExists {
 			break
 		}
 		if node.Labels == nil {
@@ -442,6 +462,7 @@ func setControlPlaneRoleLabel(ctx context.Context, nodes v1.NodeClient) error {
 		}
 		node.Labels[ControlPlaneRoleLabelKey] = "true"
 		node.Labels[MasterRoleLabelKey] = "true"
+
 		_, err = nodes.Update(node)
 		if err == nil {
 			logrus.Infof("Control-plane role label has been set successfully on node: %s", nodeName)

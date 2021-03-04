@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	systemd "github.com/coreos/go-systemd/daemon"
 	"github.com/erikdubbelboer/gspt"
@@ -14,6 +15,7 @@ import (
 	"github.com/rancher/k3s/pkg/agent"
 	"github.com/rancher/k3s/pkg/cli/cmds"
 	"github.com/rancher/k3s/pkg/datadir"
+	"github.com/rancher/k3s/pkg/etcd"
 	"github.com/rancher/k3s/pkg/netutil"
 	"github.com/rancher/k3s/pkg/rootless"
 	"github.com/rancher/k3s/pkg/server"
@@ -29,6 +31,10 @@ import (
 	_ "github.com/go-sql-driver/mysql" // ensure we have mysql
 	_ "github.com/lib/pq"              // ensure we have postgres
 	_ "github.com/mattn/go-sqlite3"    // ensure we have sqlite
+)
+
+const (
+	lbServerPort = 6444
 )
 
 func Run(app *cli.Context) error {
@@ -86,7 +92,6 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	serverConfig.ControlConfig.DataDir = cfg.DataDir
 	serverConfig.ControlConfig.KubeConfigOutput = cfg.KubeConfigOutput
 	serverConfig.ControlConfig.KubeConfigMode = cfg.KubeConfigMode
-	serverConfig.ControlConfig.NoScheduler = cfg.DisableScheduler
 	serverConfig.Rootless = cfg.Rootless
 	serverConfig.ControlConfig.SANs = knownIPs(cfg.TLSSan)
 	serverConfig.ControlConfig.BindAddress = cfg.BindAddress
@@ -109,6 +114,10 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	serverConfig.ControlConfig.DisableCCM = cfg.DisableCCM
 	serverConfig.ControlConfig.DisableNPC = cfg.DisableNPC
 	serverConfig.ControlConfig.DisableKubeProxy = cfg.DisableKubeProxy
+	serverConfig.ControlConfig.DisableETCD = cfg.DisableETCD
+	serverConfig.ControlConfig.DisableAPIServer = cfg.DisableAPIServer
+	serverConfig.ControlConfig.DisableScheduler = cfg.DisableScheduler
+	serverConfig.ControlConfig.DisableControllerManager = cfg.DisableControllerManager
 	serverConfig.ControlConfig.ClusterInit = cfg.ClusterInit
 	serverConfig.ControlConfig.EncryptSecrets = cfg.EncryptSecrets
 	serverConfig.ControlConfig.EtcdSnapshotName = cfg.EtcdSnapshotName
@@ -119,7 +128,7 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	serverConfig.ControlConfig.EtcdExposeMetrics = cfg.EtcdExposeMetrics
 
 	if cfg.ClusterResetRestorePath != "" && !cfg.ClusterReset {
-		return errors.New("Invalid flag use. --cluster-reset required with --cluster-reset-restore-path")
+		return errors.New("invalid flag use. --cluster-reset required with --cluster-reset-restore-path")
 	}
 
 	serverConfig.ControlConfig.ClusterReset = cfg.ClusterReset
@@ -127,6 +136,13 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 
 	if serverConfig.ControlConfig.SupervisorPort == 0 {
 		serverConfig.ControlConfig.SupervisorPort = serverConfig.ControlConfig.HTTPSPort
+	}
+
+	if serverConfig.ControlConfig.DisableAPIServer {
+		serverConfig.ControlConfig.APIServerPort = lbServerPort
+		if serverConfig.ControlConfig.SupervisorPort != serverConfig.ControlConfig.HTTPSPort {
+			serverConfig.ControlConfig.APIServerPort = lbServerPort + 1
+		}
 	}
 
 	if cmds.AgentConfig.FlannelIface != "" && cmds.AgentConfig.NodeIP == "" {
@@ -245,13 +261,19 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	os.Unsetenv("NOTIFY_SOCKET")
 
 	ctx := signals.SetupSignalHandler(context.Background())
+
 	if err := server.StartServer(ctx, &serverConfig); err != nil {
 		return err
 	}
 
 	go func() {
-		<-serverConfig.ControlConfig.Runtime.APIServerReady
-		logrus.Info("Kube API server is now running")
+		if !serverConfig.ControlConfig.DisableAPIServer {
+			<-serverConfig.ControlConfig.Runtime.APIServerReady
+			logrus.Info("Kube API server is now running")
+		} else {
+			<-serverConfig.ControlConfig.Runtime.ETCDReady
+			logrus.Info("ETCD server is now running")
+		}
 		logrus.Info(version.Program + " is up and running")
 		if notifySocket != "" {
 			os.Setenv("NOTIFY_SOCKET", notifySocket)
@@ -280,13 +302,24 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	agentConfig.DataDir = filepath.Dir(serverConfig.ControlConfig.DataDir)
 	agentConfig.ServerURL = url
 	agentConfig.Token = token
-	agentConfig.DisableLoadBalancer = true
+	agentConfig.DisableLoadBalancer = !serverConfig.ControlConfig.DisableAPIServer
+	agentConfig.ETCDAgent = serverConfig.ControlConfig.DisableAPIServer
+
 	agentConfig.Rootless = cfg.Rootless
+
 	if agentConfig.Rootless {
 		// let agent specify Rootless kubelet flags, but not unshare twice
 		agentConfig.RootlessAlreadyUnshared = true
 	}
 
+	if serverConfig.ControlConfig.DisableAPIServer {
+		// setting LBServerPort to a prespecified port to initialize the kubeconfigs with the right address
+		agentConfig.LBServerPort = lbServerPort
+		// initialize the apiAddress Channel for receiving the api address from etcd
+		agentConfig.APIAddressCh = make(chan string, 1)
+		setAPIAddressChannel(ctx, &serverConfig, &agentConfig)
+		defer close(agentConfig.APIAddressCh)
+	}
 	return agent.Run(ctx, agentConfig)
 }
 
@@ -310,4 +343,31 @@ func getArgValueFromList(searchArg string, argList []string) string {
 		}
 	}
 	return value
+}
+
+// setAPIAddressChannel will try to get the api address key from etcd and when it succeed it will
+// set the APIAddressCh channel with its value, the function works for both k3s and rke2 in case
+// of k3s we block returning back to the agent.Run until we get the api address, however in rke2
+// the code will not block operation and will run the operation in a goroutine
+func setAPIAddressChannel(ctx context.Context, serverConfig *server.Config, agentConfig *cmds.Agent) {
+	// start a goroutine to check for the server ip if set from etcd in case of rke2
+	if serverConfig.ControlConfig.HTTPSPort != serverConfig.ControlConfig.SupervisorPort {
+		go getAPIAddressFromEtcd(ctx, serverConfig, agentConfig)
+		return
+	}
+	getAPIAddressFromEtcd(ctx, serverConfig, agentConfig)
+}
+
+func getAPIAddressFromEtcd(ctx context.Context, serverConfig *server.Config, agentConfig *cmds.Agent) {
+	t := time.NewTicker(5 * time.Second)
+	defer t.Stop()
+	for range t.C {
+		serverAddress, err := etcd.GetAPIServerURLFromETCD(ctx, &serverConfig.ControlConfig)
+		if err == nil {
+			agentConfig.ServerURL = "https://" + serverAddress
+			agentConfig.APIAddressCh <- agentConfig.ServerURL
+			break
+		}
+		logrus.Warn(err)
+	}
 }

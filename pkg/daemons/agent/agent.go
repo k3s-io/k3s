@@ -30,7 +30,6 @@ func Agent(config *config.Agent) error {
 
 	logs.InitLogs()
 	defer logs.FlushLogs()
-
 	if err := startKubelet(config); err != nil {
 		return err
 	}

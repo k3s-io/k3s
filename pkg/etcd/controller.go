@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	nodeID       = "etcd.k3s.cattle.io/node-name"
-	nodeAddress  = "etcd.k3s.cattle.io/node-address"
+	NodeID       = "etcd.k3s.cattle.io/node-name"
+	NodeAddress  = "etcd.k3s.cattle.io/node-address"
 	master       = "node-role.kubernetes.io/master"
 	controlPlane = "node-role.kubernetes.io/control-plane"
 	etcdRole     = "node-role.kubernetes.io/etcd"
@@ -56,10 +56,11 @@ func (h *handler) sync(key string, node *v1.Node) (*v1.Node, error) {
 }
 
 func (h *handler) handleSelf(node *v1.Node) (*v1.Node, error) {
-	if node.Annotations[nodeID] == h.etcd.name &&
-		node.Annotations[nodeAddress] == h.etcd.address &&
+	if node.Annotations[NodeID] == h.etcd.name &&
+		node.Annotations[NodeAddress] == h.etcd.address &&
 		node.Labels[etcdRole] == "true" &&
-		node.Labels[controlPlane] == "true" {
+		node.Labels[controlPlane] == "true" ||
+		h.etcd.config.DisableETCD {
 		return node, nil
 	}
 
@@ -67,8 +68,8 @@ func (h *handler) handleSelf(node *v1.Node) (*v1.Node, error) {
 	if node.Annotations == nil {
 		node.Annotations = map[string]string{}
 	}
-	node.Annotations[nodeID] = h.etcd.name
-	node.Annotations[nodeAddress] = h.etcd.address
+	node.Annotations[NodeID] = h.etcd.name
+	node.Annotations[NodeAddress] = h.etcd.address
 	node.Labels[etcdRole] = "true"
 	node.Labels[master] = "true"
 	node.Labels[controlPlane] = "true"
@@ -81,11 +82,10 @@ func (h *handler) onRemove(key string, node *v1.Node) (*v1.Node, error) {
 		return node, nil
 	}
 
-	id := node.Annotations[nodeID]
-	address := node.Annotations[nodeAddress]
-	if address == "" {
+	id := node.Annotations[NodeID]
+	address, ok := node.Annotations[NodeAddress]
+	if !ok {
 		return node, nil
 	}
-
-	return node, h.etcd.removePeer(h.ctx, id, address)
+	return node, h.etcd.removePeer(h.ctx, id, address, false)
 }

@@ -38,6 +38,7 @@ type Node struct {
 	AgentConfig              Agent
 	CACerts                  []byte
 	Certificate              *tls.Certificate
+	ServerHTTPSPort          int
 }
 
 type Containerd struct {
@@ -115,7 +116,6 @@ type Control struct {
 	Skips                    map[string]bool
 	Disables                 map[string]bool
 	Datastore                endpoint.Config
-	NoScheduler              bool
 	ExtraAPIArgs             []string
 	ExtraControllerArgs      []string
 	ExtraCloudControllerArgs []string
@@ -128,6 +128,10 @@ type Control struct {
 	DisableCCM               bool
 	DisableNPC               bool
 	DisableKubeProxy         bool
+	DisableAPIServer         bool
+	DisableControllerManager bool
+	DisableScheduler         bool
+	DisableETCD              bool
 	ClusterInit              bool
 	ClusterReset             bool
 	ClusterResetRestorePath  string
