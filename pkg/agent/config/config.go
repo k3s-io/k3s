@@ -402,6 +402,7 @@ func get(envInfo *cmds.Agent, proxy proxy.Proxy) (*config.Node, error) {
 		SELinux:                  envInfo.EnableSELinux,
 		ContainerRuntimeEndpoint: envInfo.ContainerRuntimeEndpoint,
 		FlannelBackend:           controlConfig.FlannelBackend,
+		ServerHTTPSPort:          controlConfig.HTTPSPort,
 	}
 	nodeConfig.FlannelIface = flannelIface
 	nodeConfig.Images = filepath.Join(envInfo.DataDir, "images")
