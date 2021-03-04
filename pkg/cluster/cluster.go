@@ -12,6 +12,7 @@ import (
 	"github.com/rancher/k3s/pkg/etcd"
 	"github.com/rancher/kine/pkg/client"
 	"github.com/rancher/kine/pkg/endpoint"
+	"github.com/sirupsen/logrus"
 )
 
 type Cluster struct {
