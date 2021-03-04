@@ -268,17 +268,17 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 			},
 			cli.BoolFlag{
 				Name:        "disable-api-server",
-				Usage:       "(components) Disable running api server",
+				Usage:       "(experimental/components) Disable running api server",
 				Destination: &ServerConfig.DisableAPIServer,
 			},
 			cli.BoolFlag{
 				Name:        "disable-controller-manager",
-				Usage:       "(components) Disable running kube-controller-manager",
+				Usage:       "(experimental/components) Disable running kube-controller-manager",
 				Destination: &ServerConfig.DisableControllerManager,
 			},
 			cli.BoolFlag{
 				Name:        "disable-etcd",
-				Usage:       "(components) Disable running etcd",
+				Usage:       "(experimental/components) Disable running etcd",
 				Destination: &ServerConfig.DisableETCD,
 			},
 			NodeNameFlag,
