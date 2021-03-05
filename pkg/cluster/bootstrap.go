@@ -121,7 +121,7 @@ func (c *Cluster) bootstrapped() error {
 // and loads it into the ControlRuntimeBootstrap struct. Unlike the storage bootstrap path,
 // this data does not need to be decrypted since it is generated on-demand by an existing server.
 func (c *Cluster) httpBootstrap() error {
-	content, err := clientaccess.Get("/v1-"+version.Program+"/server-bootstrap", c.clientAccessInfo)
+	content, err := c.clientAccessInfo.Get("/v1-" + version.Program + "/server-bootstrap")
 	if err != nil {
 		return err
 	}

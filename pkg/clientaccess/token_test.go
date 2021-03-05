@@ -71,7 +71,7 @@ func TestTrustedCA(t *testing.T) {
 	// Confirm that the cert is actually trusted by the OS CA bundle by making a request
 	// with empty cert pool
 	testInfo.CACerts = nil
-	res, err := Get("/v1-k3s/server-bootstrap", testInfo)
+	res, err := testInfo.Get("/v1-k3s/server-bootstrap")
 	assert.NoError(err)
 	assert.NotEmpty(res)
 }
@@ -190,7 +190,7 @@ func TestInvalidCredentials(t *testing.T) {
 		info, err := ParseAndValidateToken(server.URL, testCase)
 		assert.NoError(err, testCase)
 		if assert.NotNil(info) {
-			res, err := Get("/v1-k3s/server-bootstrap", info)
+			res, err := info.Get("/v1-k3s/server-bootstrap")
 			assert.Error(err, testCase)
 			assert.Empty(res, testCase)
 		}
@@ -198,7 +198,7 @@ func TestInvalidCredentials(t *testing.T) {
 		info, err = ParseAndValidateTokenForUser(server.URL, testCase, defaultUsername)
 		assert.NoError(err, testCase)
 		if assert.NotNil(info) {
-			res, err := Get("/v1-k3s/server-bootstrap", info)
+			res, err := info.Get("/v1-k3s/server-bootstrap")
 			assert.Error(err, testCase)
 			assert.Empty(res, testCase)
 		}
@@ -297,7 +297,7 @@ func TestParseAndGet(t *testing.T) {
 			assert.Error(err, testCase)
 		} else if assert.NoError(err, testCase) {
 			info.BaseURL = server.URL + testCase.extraBasePost
-			_, err := Get(testCase.path, info)
+			_, err := info.Get(testCase.path)
 			// Check for expected error when making Get request
 			if testCase.getFail {
 				assert.Error(err, testCase)

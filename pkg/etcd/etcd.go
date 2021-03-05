@@ -718,7 +718,7 @@ func (e *ETCD) setLearnerProgress(ctx context.Context, status *learnerProgress) 
 // clientURLs returns a list of all non-learner etcd cluster member client access URLs
 func ClientURLs(ctx context.Context, clientAccessInfo *clientaccess.Info, selfIP string) ([]string, Members, error) {
 	var memberList Members
-	resp, err := clientaccess.Get("/db/info", clientAccessInfo)
+	resp, err := clientAccessInfo.Get("/db/info")
 	if err != nil {
 		return nil, memberList, err
 	}

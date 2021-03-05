@@ -169,7 +169,7 @@ func getServingCert(nodeName, nodeIP, servingCertFile, servingKeyFile, nodePassw
 
 func getHostFile(filename, keyFile string, info *clientaccess.Info) error {
 	basename := filepath.Base(filename)
-	fileBytes, err := clientaccess.Get("/v1-"+version.Program+"/"+basename, info)
+	fileBytes, err := info.Get("/v1-" + version.Program + "/" + basename)
 	if err != nil {
 		return err
 	}
@@ -524,7 +524,7 @@ func get(envInfo *cmds.Agent, proxy proxy.Proxy) (*config.Node, error) {
 }
 
 func getConfig(info *clientaccess.Info) (*config.Control, error) {
-	data, err := clientaccess.Get("/v1-"+version.Program+"/config", info)
+	data, err := info.Get("/v1-" + version.Program + "/config")
 	if err != nil {
 		return nil, err
 	}

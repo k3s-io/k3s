@@ -153,6 +153,10 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 		serverConfig.ControlConfig.SupervisorPort = serverConfig.ControlConfig.HTTPSPort
 	}
 
+	if serverConfig.ControlConfig.DisableETCD && serverConfig.ControlConfig.JoinURL == "" {
+		return errors.New("invalid flag use. --server required with --disable-etcd")
+	}
+
 	if serverConfig.ControlConfig.DisableAPIServer {
 		// Servers without a local apiserver need to connect to the apiserver via the proxy load-balancer.
 		serverConfig.ControlConfig.APIServerPort = cmds.AgentConfig.LBServerPort
