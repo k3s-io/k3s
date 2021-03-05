@@ -167,11 +167,11 @@ var (
 	}
 	LBServerPort = cli.IntFlag{
 		Name:        "lb-server-port",
-		Usage:       "(agent/node) Internal Loadbalancer port",
+		Usage:       "(agent/node) Local port for supervisor client load-balancer. If the supervisor and apiserver are not colocated an additional port 1 less than this port will also be used for the apiserver client load-balancer.",
 		Hidden:      false,
 		Destination: &AgentConfig.LBServerPort,
 		EnvVar:      version.ProgramUpper + "_LB_SERVER_PORT",
-		Value:       0,
+		Value:       6444,
 	}
 )
 
