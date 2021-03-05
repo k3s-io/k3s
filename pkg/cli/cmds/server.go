@@ -424,6 +424,7 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Destination: &ServerConfig.EncryptSecrets,
 			},
 			&SELinuxFlag,
+			LBServerPortFlag,
 
 			// Hidden/Deprecated flags below
 
