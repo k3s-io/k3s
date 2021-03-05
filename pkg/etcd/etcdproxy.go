@@ -29,7 +29,7 @@ func NewETCDProxy(enabled bool, dataDir, etcdURL string) (Proxy, error) {
 	}
 
 	if enabled {
-		lb, err := loadbalancer.New(dataDir, loadbalancer.ETCDServerServiceName, u.Host, 2379)
+		lb, err := loadbalancer.New(dataDir, loadbalancer.ETCDServerServiceName, etcdURL, 2379)
 		if err != nil {
 			return nil, err
 		}
