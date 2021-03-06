@@ -28,11 +28,6 @@ func setETCDLabelsAndAnnotations(ctx context.Context, config *Config) error {
 			continue
 		}
 
-		if err := stageFiles(ctx, sc, controlConfig); err != nil {
-			logrus.Infof("Failed to set etcd role label: %v", err)
-			continue
-		}
-
 		if err := sc.Start(ctx); err != nil {
 			logrus.Infof("Failed to set etcd role label: %v", err)
 			continue

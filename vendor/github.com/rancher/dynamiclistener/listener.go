@@ -347,7 +347,7 @@ func (l *listener) loadCert() (*tls.Certificate, error) {
 	if err != nil {
 		return nil, err
 	}
-	if l.cert != nil && l.version == secret.ResourceVersion {
+	if l.cert != nil && l.version == secret.ResourceVersion && secret.ResourceVersion != "" {
 		return l.cert, nil
 	}
 
@@ -360,7 +360,7 @@ func (l *listener) loadCert() (*tls.Certificate, error) {
 	if err != nil {
 		return nil, err
 	}
-	if l.cert != nil && l.version == secret.ResourceVersion {
+	if l.cert != nil && l.version == secret.ResourceVersion && secret.ResourceVersion != "" {
 		return l.cert, nil
 	}
 

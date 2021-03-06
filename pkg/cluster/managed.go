@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -195,8 +196,17 @@ func (c *Cluster) setupEtcdProxy(ctx context.Context, etcdProxy etcd.Proxy) {
 				logrus.Warnf("failed to get etcd client URLs: %v", err)
 				continue
 			}
-			etcdProxy.Update(newAddresses)
-
+			// client URLs are a full URI, but the proxy only wants host:port
+			var hosts []string
+			for _, address := range newAddresses {
+				u, err := url.Parse(address)
+				if err != nil {
+					logrus.Warnf("failed to parse etcd client URL: %v", err)
+					continue
+				}
+				hosts = append(hosts, u.Host)
+			}
+			etcdProxy.Update(hosts)
 		}
 	}()
 }

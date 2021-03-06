@@ -177,7 +177,7 @@ func GetHTTPClient(cacerts []byte) *http.Client {
 }
 
 // Get makes a request to a subpath of info's BaseURL
-func Get(path string, info *Info) ([]byte, error) {
+func (info *Info) Get(path string) ([]byte, error) {
 	u, err := url.Parse(info.BaseURL)
 	if err != nil {
 		return nil, err

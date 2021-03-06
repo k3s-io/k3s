@@ -33,10 +33,6 @@ import (
 	_ "github.com/mattn/go-sqlite3"    // ensure we have sqlite
 )
 
-const (
-	lbServerPort = 6444
-)
-
 func Run(app *cli.Context) error {
 	if err := cmds.InitLogging(); err != nil {
 		return err
@@ -157,10 +153,17 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 		serverConfig.ControlConfig.SupervisorPort = serverConfig.ControlConfig.HTTPSPort
 	}
 
+	if serverConfig.ControlConfig.DisableETCD && serverConfig.ControlConfig.JoinURL == "" {
+		return errors.New("invalid flag use. --server required with --disable-etcd")
+	}
+
 	if serverConfig.ControlConfig.DisableAPIServer {
-		serverConfig.ControlConfig.APIServerPort = lbServerPort
+		// Servers without a local apiserver need to connect to the apiserver via the proxy load-balancer.
+		serverConfig.ControlConfig.APIServerPort = cmds.AgentConfig.LBServerPort
+		// If the supervisor and externally-facing apiserver are not on the same port, the proxy will
+		// have a separate load-balancer for the apiserver that we need to use instead.
 		if serverConfig.ControlConfig.SupervisorPort != serverConfig.ControlConfig.HTTPSPort {
-			serverConfig.ControlConfig.APIServerPort = lbServerPort + 1
+			serverConfig.ControlConfig.APIServerPort = cmds.AgentConfig.LBServerPort - 1
 		}
 	}
 
@@ -332,8 +335,6 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	}
 
 	if serverConfig.ControlConfig.DisableAPIServer {
-		// setting LBServerPort to a prespecified port to initialize the kubeconfigs with the right address
-		agentConfig.LBServerPort = lbServerPort
 		// initialize the apiAddress Channel for receiving the api address from etcd
 		agentConfig.APIAddressCh = make(chan string, 1)
 		setAPIAddressChannel(ctx, &serverConfig, &agentConfig)

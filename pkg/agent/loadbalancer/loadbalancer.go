@@ -58,6 +58,11 @@ func New(dataDir, serviceName, serverURL string, lbServerPort int) (_lb *LoadBal
 		return nil, err
 	}
 
+	if serverURL == localServerURL {
+		logrus.Debugf("Initial server URL for load balancer points at local server URL - starting with empty original server address")
+		originalServerAddress = ""
+	}
+
 	lb := &LoadBalancer{
 		dialer:                &net.Dialer{},
 		configFile:            filepath.Join(dataDir, "etc", serviceName+".json"),
