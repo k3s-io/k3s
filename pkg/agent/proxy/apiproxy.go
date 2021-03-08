@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"context"
 	sysnet "net"
 	"net/url"
 	"strconv"
@@ -13,7 +14,7 @@ import (
 
 type Proxy interface {
 	Update(addresses []string)
-	SetAPIServerPort(port int) error
+	SetAPIServerPort(ctx context.Context, port int) error
 	SupervisorURL() string
 	SupervisorAddresses() []string
 	APIServerURL() string
@@ -27,7 +28,7 @@ type Proxy interface {
 // NOTE: This is a proxy in the API sense - it returns either actual server URLs, or the URL of the
 // local load-balancer. It is not actually responsible for proxying requests at the network level;
 // this is handled by the load-balancers that the proxy optionally steers connections towards.
-func NewSupervisorProxy(lbEnabled bool, dataDir, supervisorURL string, lbServerPort int) (Proxy, error) {
+func NewSupervisorProxy(ctx context.Context, lbEnabled bool, dataDir, supervisorURL string, lbServerPort int) (Proxy, error) {
 	p := proxy{
 		lbEnabled:            lbEnabled,
 		dataDir:              dataDir,
@@ -38,7 +39,7 @@ func NewSupervisorProxy(lbEnabled bool, dataDir, supervisorURL string, lbServerP
 	}
 
 	if lbEnabled {
-		lb, err := loadbalancer.New(dataDir, loadbalancer.SupervisorServiceName, supervisorURL, p.lbServerPort)
+		lb, err := loadbalancer.New(ctx, dataDir, loadbalancer.SupervisorServiceName, supervisorURL, p.lbServerPort)
 		if err != nil {
 			return nil, err
 		}
@@ -108,7 +109,7 @@ func (p *proxy) setSupervisorPort(addresses []string) []string {
 // load-balancing is enabled, another load-balancer is started on a port one below the supervisor
 // load-balancer, and the address of this load-balancer is returned instead of the actual apiserver
 // addresses.
-func (p *proxy) SetAPIServerPort(port int) error {
+func (p *proxy) SetAPIServerPort(ctx context.Context, port int) error {
 	u, err := url.Parse(p.initialSupervisorURL)
 	if err != nil {
 		return errors.Wrapf(err, "failed to parse server URL %s", p.initialSupervisorURL)
@@ -123,7 +124,7 @@ func (p *proxy) SetAPIServerPort(port int) error {
 		if lbServerPort != 0 {
 			lbServerPort = lbServerPort - 1
 		}
-		lb, err := loadbalancer.New(p.dataDir, loadbalancer.APIServerServiceName, p.apiServerURL, lbServerPort)
+		lb, err := loadbalancer.New(ctx, p.dataDir, loadbalancer.APIServerServiceName, p.apiServerURL, lbServerPort)
 		if err != nil {
 			return err
 		}

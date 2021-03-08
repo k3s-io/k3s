@@ -54,7 +54,7 @@ func (c *Cluster) Start(ctx context.Context) (<-chan struct{}, error) {
 			clientURL.Host = clientURL.Hostname() + ":2379"
 			clientURLs = append(clientURLs, clientURL.String())
 		}
-		etcdProxy, err := etcd.NewETCDProxy(true, c.config.DataDir, clientURLs[0])
+		etcdProxy, err := etcd.NewETCDProxy(ctx, true, c.config.DataDir, clientURLs[0])
 		if err != nil {
 			return nil, err
 		}

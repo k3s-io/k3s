@@ -39,7 +39,7 @@ const (
 
 func Get(ctx context.Context, agent cmds.Agent, proxy proxy.Proxy) *config.Node {
 	for {
-		agentConfig, err := get(&agent, proxy)
+		agentConfig, err := get(ctx, &agent, proxy)
 		if err != nil {
 			logrus.Errorf("Failed to retrieve agent config: %v", err)
 			select {
@@ -293,7 +293,7 @@ func locateOrGenerateResolvConf(envInfo *cmds.Agent) string {
 	return tmpConf
 }
 
-func get(envInfo *cmds.Agent, proxy proxy.Proxy) (*config.Node, error) {
+func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.Node, error) {
 	if envInfo.Debug {
 		logrus.SetLevel(logrus.DebugLevel)
 	}
@@ -310,7 +310,7 @@ func get(envInfo *cmds.Agent, proxy proxy.Proxy) (*config.Node, error) {
 
 	// If the supervisor and externally-facing apiserver are not on the same port, tell the proxy where to find the apiserver.
 	if controlConfig.SupervisorPort != controlConfig.HTTPSPort {
-		if err := proxy.SetAPIServerPort(controlConfig.HTTPSPort); err != nil {
+		if err := proxy.SetAPIServerPort(ctx, controlConfig.HTTPSPort); err != nil {
 			return nil, errors.Wrapf(err, "failed to setup access to API Server port %d on at %s", controlConfig.HTTPSPort, proxy.SupervisorURL())
 		}
 	}
