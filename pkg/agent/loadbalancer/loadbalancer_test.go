@@ -2,6 +2,7 @@ package loadbalancer
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -105,7 +106,7 @@ func TestFailOver(t *testing.T) {
 		DataDir:   tmpDir,
 	}
 
-	lb, err := New(cfg.DataDir, SupervisorServiceName, cfg.ServerURL, RandomPort)
+	lb, err := New(context.TODO(), cfg.DataDir, SupervisorServiceName, cfg.ServerURL, RandomPort)
 	if err != nil {
 		assertEqual(t, err, nil)
 	}
@@ -156,7 +157,7 @@ func TestFailFast(t *testing.T) {
 		DataDir:   tmpDir,
 	}
 
-	lb, err := New(cfg.DataDir, SupervisorServiceName, cfg.ServerURL, RandomPort)
+	lb, err := New(context.TODO(), cfg.DataDir, SupervisorServiceName, cfg.ServerURL, RandomPort)
 	if err != nil {
 		assertEqual(t, err, nil)
 	}

@@ -1,6 +1,7 @@
 package etcd
 
 import (
+	"context"
 	"net/url"
 
 	"github.com/pkg/errors"
@@ -16,7 +17,7 @@ type Proxy interface {
 
 // NewETCDProxy initializes a new proxy structure that contain a load balancer
 // which listens on port 2379 and proxy between etcd cluster members
-func NewETCDProxy(enabled bool, dataDir, etcdURL string) (Proxy, error) {
+func NewETCDProxy(ctx context.Context, enabled bool, dataDir, etcdURL string) (Proxy, error) {
 	u, err := url.Parse(etcdURL)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse etcd client URL")
@@ -29,7 +30,7 @@ func NewETCDProxy(enabled bool, dataDir, etcdURL string) (Proxy, error) {
 	}
 
 	if enabled {
-		lb, err := loadbalancer.New(dataDir, loadbalancer.ETCDServerServiceName, etcdURL, 2379)
+		lb, err := loadbalancer.New(ctx, dataDir, loadbalancer.ETCDServerServiceName, etcdURL, 2379)
 		if err != nil {
 			return nil, err
 		}

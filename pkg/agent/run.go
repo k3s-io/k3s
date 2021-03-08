@@ -148,7 +148,7 @@ func Run(ctx context.Context, cfg cmds.Agent) error {
 		return err
 	}
 
-	proxy, err := proxy.NewSupervisorProxy(!cfg.DisableLoadBalancer, agentDir, cfg.ServerURL, cfg.LBServerPort)
+	proxy, err := proxy.NewSupervisorProxy(ctx, !cfg.DisableLoadBalancer, agentDir, cfg.ServerURL, cfg.LBServerPort)
 	if err != nil {
 		return err
 	}
