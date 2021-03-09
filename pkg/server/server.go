@@ -138,6 +138,12 @@ func runControllers(ctx context.Context, config *Config) error {
 		}
 	}
 
+	for _, controller := range config.Controllers {
+		if err := controller(ctx, sc); err != nil {
+			return errors.Wrap(err, "controller")
+		}
+	}
+
 	if err := sc.Start(ctx); err != nil {
 		return err
 	}
@@ -145,6 +151,11 @@ func runControllers(ctx context.Context, config *Config) error {
 	start := func(ctx context.Context) {
 		if err := masterControllers(ctx, sc, config); err != nil {
 			panic(err)
+		}
+		for _, controller := range config.LeaderControllers {
+			if err := controller(ctx, sc); err != nil {
+				panic(errors.Wrap(err, "leader controller"))
+			}
 		}
 		if err := sc.Start(ctx); err != nil {
 			panic(err)
