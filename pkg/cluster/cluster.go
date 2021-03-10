@@ -93,7 +93,17 @@ func (c *Cluster) Start(ctx context.Context) (<-chan struct{}, error) {
 		}
 	}
 
-	return ready, c.startStorage(ctx)
+	if err := c.startStorage(ctx); err != nil {
+		return nil, err
+	}
+
+	if c.managedDB != nil {
+		if err := c.save(ctx); err != nil {
+			return nil, err
+		}
+	}
+
+	return ready, nil
 }
 
 // startStorage starts the kine listener and configures the endpoints, if necessary.

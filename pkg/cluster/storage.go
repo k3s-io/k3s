@@ -6,6 +6,7 @@ import (
 
 	"github.com/k3s-io/kine/pkg/client"
 	"github.com/rancher/k3s/pkg/bootstrap"
+	"github.com/sirupsen/logrus"
 )
 
 // save writes the current ControlRuntimeBootstrap data to the datastore. This contains a complete
@@ -22,8 +23,21 @@ func (c *Cluster) save(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	storageClient, err := client.New(c.etcdConfig)
+	if err != nil {
+		return err
+	}
+	c.storageClient = storageClient
 
-	return c.storageClient.Create(ctx, storageKey(c.config.Token), data)
+	if err := c.storageClient.Create(ctx, storageKey(c.config.Token), data); err != nil {
+		if err.Error() == "key exists" {
+			logrus.Warnln("Bootstrap key exists. Please follow documentation to on updating a node after restore.")
+			return nil
+		}
+		return err
+	}
+
+	return nil
 }
 
 // storageBootstrap loads data from the datastore into the ControlRuntimeBootstrap struct.
