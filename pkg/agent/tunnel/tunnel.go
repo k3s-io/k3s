@@ -6,13 +6,13 @@ import (
 	"fmt"
 	"net"
 	"reflect"
-	"strconv"
 	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/rancher/k3s/pkg/agent/proxy"
 	"github.com/rancher/k3s/pkg/daemons/config"
+	"github.com/rancher/k3s/pkg/util"
 	"github.com/rancher/k3s/pkg/version"
 	"github.com/rancher/remotedialer"
 	"github.com/sirupsen/logrus"
@@ -31,26 +31,6 @@ var (
 		"10010": true,
 	}
 )
-
-func getAddresses(endpoint *v1.Endpoints) []string {
-	serverAddresses := []string{}
-	if endpoint == nil {
-		return serverAddresses
-	}
-	for _, subset := range endpoint.Subsets {
-		var port string
-		if len(subset.Ports) > 0 {
-			port = strconv.Itoa(int(subset.Ports[0].Port))
-		}
-		if port == "" {
-			port = "443"
-		}
-		for _, address := range subset.Addresses {
-			serverAddresses = append(serverAddresses, net.JoinHostPort(address.IP, port))
-		}
-	}
-	return serverAddresses
-}
 
 func Setup(ctx context.Context, config *config.Node, proxy proxy.Proxy) error {
 	restConfig, err := clientcmd.BuildConfigFromFlags("", config.AgentConfig.KubeConfigK3sController)
@@ -75,9 +55,9 @@ func Setup(ctx context.Context, config *config.Node, proxy proxy.Proxy) error {
 
 	endpoint, _ := client.CoreV1().Endpoints("default").Get(ctx, "kubernetes", metav1.GetOptions{})
 	if endpoint != nil {
-		addresses := getAddresses(endpoint)
+		addresses := util.GetAddresses(endpoint)
 		if len(addresses) > 0 {
-			proxy.Update(getAddresses(endpoint))
+			proxy.Update(util.GetAddresses(endpoint))
 		}
 	}
 
@@ -119,7 +99,7 @@ func Setup(ctx context.Context, config *config.Node, proxy proxy.Proxy) error {
 						continue watching
 					}
 
-					newAddresses := getAddresses(endpoint)
+					newAddresses := util.GetAddresses(endpoint)
 					if reflect.DeepEqual(newAddresses, proxy.SupervisorAddresses()) {
 						continue watching
 					}
