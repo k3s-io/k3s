@@ -27,9 +27,8 @@ func (c *Cluster) save(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	c.storageClient = storageClient
 
-	if err := c.storageClient.Create(ctx, storageKey(c.config.Token), data); err != nil {
+	if err := storageClient.Create(ctx, storageKey(c.config.Token), data); err != nil {
 		if err.Error() == "key exists" {
 			logrus.Warnln("Bootstrap key exists. Please follow documentation to on updating a node after restore.")
 			return nil
@@ -51,7 +50,6 @@ func (c *Cluster) storageBootstrap(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	c.storageClient = storageClient
 
 	value, err := storageClient.Get(ctx, storageKey(c.config.Token))
 	if err == client.ErrNotFound {
