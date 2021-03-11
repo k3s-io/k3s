@@ -118,7 +118,7 @@ func createFlannelConf(nodeConfig *config.Node) error {
 		logrus.Infof("Using custom flannel conf defined at %s", nodeConfig.FlannelConf)
 		return nil
 	}
-	confJSON := strings.Replace(flannelConf, "%CIDR%", nodeConfig.AgentConfig.ClusterCIDR.String(), -1)
+	confJSON := strings.Replace(flannelConf, "%CIDR%", nodeConfig.AgentConfig.ClusterCIDRs[0].String(), -1)
 
 	var backendConf string
 

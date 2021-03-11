@@ -96,7 +96,8 @@ func controllerManager(cfg *config.Control, runtime *config.ControlRuntime) erro
 		"kubeconfig":                       runtime.KubeConfigController,
 		"service-account-private-key-file": runtime.ServiceKey,
 		"allocate-node-cidrs":              "true",
-		"cluster-cidr":                     cfg.ClusterIPRange.String(),
+		"cluster-cidr":                     cfg.ClusterIPRanges.String(),
+		"service-cluster-ip-range":         cfg.ServiceIPRanges.String(),
 		"root-ca-file":                     runtime.ServerCA,
 		"port":                             "10252",
 		"profiling":                        "false",
@@ -151,7 +152,7 @@ func apiServer(ctx context.Context, cfg *config.Control, runtime *config.Control
 	argsMap["allow-privileged"] = "true"
 	argsMap["authorization-mode"] = strings.Join([]string{modes.ModeNode, modes.ModeRBAC}, ",")
 	argsMap["service-account-signing-key-file"] = runtime.ServiceKey
-	argsMap["service-cluster-ip-range"] = cfg.ServiceIPRange.String()
+	argsMap["service-cluster-ip-range"] = cfg.ServiceIPRanges.String()
 	argsMap["service-node-port-range"] = cfg.ServiceNodePortRange.String()
 	argsMap["advertise-port"] = strconv.Itoa(cfg.AdvertisePort)
 	if cfg.AdvertiseIP != "" {
@@ -195,14 +196,14 @@ func apiServer(ctx context.Context, cfg *config.Control, runtime *config.Control
 }
 
 func defaults(config *config.Control) {
-	if config.ClusterIPRange == nil {
+	if config.ClusterIPRanges == nil {
 		_, clusterIPNet, _ := net.ParseCIDR("10.42.0.0/16")
-		config.ClusterIPRange = clusterIPNet
+		config.ClusterIPRanges = []*net.IPNet{clusterIPNet}
 	}
 
-	if config.ServiceIPRange == nil {
+	if config.ServiceIPRanges == nil {
 		_, serviceIPNet, _ := net.ParseCIDR("10.43.0.0/16")
-		config.ServiceIPRange = serviceIPNet
+		config.ServiceIPRanges = []*net.IPNet{serviceIPNet}
 	}
 
 	if len(config.ClusterDNS) == 0 {
@@ -355,7 +356,7 @@ func cloudControllerManager(ctx context.Context, cfg *config.Control, runtime *c
 
 	s.KubeCloudShared.AllocateNodeCIDRs = true
 	s.KubeCloudShared.CloudProvider.Name = version.Program
-	s.KubeCloudShared.ClusterCIDR = cfg.ClusterIPRange.String()
+	s.KubeCloudShared.ClusterCIDR = cfg.ClusterIPRanges.String()
 	s.KubeCloudShared.ConfigureCloudRoutes = false
 	s.Kubeconfig = runtime.KubeConfigCloudController
 	s.NodeStatusUpdateFrequency = metav1.Duration{Duration: 1 * time.Minute}

@@ -52,15 +52,17 @@ type Containerd struct {
 	SELinux  bool
 }
 
+type NetIPNets []*net.IPNet
+
 type Agent struct {
 	PodManifests            string
 	NodeName                string
 	NodeConfigPath          string
 	ServingKubeletCert      string
 	ServingKubeletKey       string
-	ServiceCIDR             net.IPNet
+	ServiceCIDRs            NetIPNets
 	ServiceNodePortRange    utilnet.PortRange
-	ClusterCIDR             net.IPNet
+	ClusterCIDRs            NetIPNets
 	ClusterDNS              net.IP
 	ClusterDomain           string
 	ResolvConf              string
@@ -68,8 +70,8 @@ type Agent struct {
 	KubeConfigKubelet       string
 	KubeConfigKubeProxy     string
 	KubeConfigK3sController string
-	NodeIP                  string
-	NodeExternalIP          string
+	NodeIPs                 []string
+	NodeExternalIPs         []string
 	RuntimeSocket           string
 	ListenAddress           string
 	ClientCA                string
@@ -101,12 +103,15 @@ type Control struct {
 	// The port which custom k3s API runs on
 	SupervisorPort int
 	// The port which kube-apiserver runs on
-	APIServerPort            int
-	APIServerBindAddress     string
-	AgentToken               string `json:"-"`
-	Token                    string `json:"-"`
+	APIServerPort        int
+	APIServerBindAddress string
+	AgentToken           string `json:"-"`
+	Token                string `json:"-"`
+	// IPRange to enable compatibility with older agents
 	ClusterIPRange           *net.IPNet
 	ServiceIPRange           *net.IPNet
+	ClusterIPRanges          NetIPNets
+	ServiceIPRanges          NetIPNets
 	ServiceNodePortRange     *utilnet.PortRange
 	ClusterDNS               net.IP
 	ClusterDomain            string
@@ -262,4 +267,12 @@ func GetArgsList(argsMap map[string]string, extraArgs []string) []string {
 	}
 	sort.Strings(args)
 	return args
+}
+
+func (ipNets NetIPNets) String() string {
+	ranges := make([]string, len(ipNets))
+	for i, nets := range ipNets {
+		ranges[i] = nets.String()
+	}
+	return strings.Join(ranges, ",")
 }

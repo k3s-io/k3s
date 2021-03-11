@@ -87,8 +87,12 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 		Name:      "server",
 		Usage:     "Run management server",
 		UsageText: appName + " server [OPTIONS]",
-		Before:    SetupDebug(CheckSELinuxFlags),
-		Action:    action,
+		Before: func(c *cli.Context) error {
+			AgentConfig.NodeExternalIPs = c.StringSlice("node-external-ip")
+			AgentConfig.NodeIPs = c.StringSlice("node-ip")
+			return SetupDebug(CheckSELinuxFlags)(c)
+		},
+		Action: action,
 		Flags: []cli.Flag{
 			ConfigFlag,
 			DebugFlag,

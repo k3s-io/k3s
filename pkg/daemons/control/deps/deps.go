@@ -313,7 +313,7 @@ func genServerCerts(config *config.Control, runtime *config.ControlRuntime) erro
 		return err
 	}
 
-	_, apiServerServiceIP, err := controlplane.ServiceIPRange(*config.ServiceIPRange)
+	_, apiServerServiceIP, err := controlplane.ServiceIPRange(*config.ServiceIPRanges[0])
 	if err != nil {
 		return err
 	}

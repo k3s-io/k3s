@@ -261,7 +261,7 @@ func newMinimalNodeConfig(clusterIPCIDR string, nodePortRange string, hostNameOv
 		if err != nil {
 			panic("failed to get parse --service-cluster-ip-range parameter: " + err.Error())
 		}
-		nodeConfig.AgentConfig.ClusterCIDR = *cidr
+		nodeConfig.AgentConfig.ClusterCIDRs = config.NetIPNets{cidr}
 	}
 	if nodePortRange != "" {
 		portRange, err := utilnet.ParsePortRange(nodePortRange)

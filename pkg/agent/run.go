@@ -39,9 +39,9 @@ import (
 )
 
 var (
-	InternalIPLabel = version.Program + ".io/internal-ip"
-	ExternalIPLabel = version.Program + ".io/external-ip"
-	HostnameLabel   = version.Program + ".io/hostname"
+	InternalIPAnnotation = version.Program + ".io/internal-ip"
+	ExternalIPAnnotation = version.Program + ".io/external-ip"
+	HostnameAnnotation   = version.Program + ".io/hostname"
 )
 
 const (
@@ -233,17 +233,16 @@ func configureNode(ctx context.Context, agentConfig *daemonconfig.Agent, nodes v
 
 		newLabels, updateMutables := updateMutableLabels(agentConfig, node.Labels)
 
-		updateAddresses := !agentConfig.DisableCCM
-		if updateAddresses {
-			newLabels, updateAddresses = updateAddressLabels(agentConfig, newLabels)
-		}
+		updateLabels := !agentConfig.DisableCCM
+		newAnnotations, updateAddresses := updateAddressAnnotations(agentConfig, node.Annotations)
 
 		// inject node config
 		updateNode, err := nodeconfig.SetNodeConfigAnnotations(node)
 		if err != nil {
 			return err
 		}
-		if updateAddresses || updateMutables {
+		if updateAddresses || updateMutables || updateLabels {
+			node.Annotations = newAnnotations
 			node.Labels = newLabels
 			updateNode = true
 		}
@@ -257,9 +256,10 @@ func configureNode(ctx context.Context, agentConfig *daemonconfig.Agent, nodes v
 					continue
 				}
 			}
-			logrus.Infof("labels have been set successfully on node: %s", agentConfig.NodeName)
+			logrus.Infof("annotations and labels have been set successfully on node: %s", agentConfig.NodeName)
+			logrus.Infof("new annotations: %v", node.Annotations)
 		} else {
-			logrus.Infof("labels have already set on node: %s", agentConfig.NodeName)
+			logrus.Infof("annotations and labels have already set on node: %s", agentConfig.NodeName)
 		}
 
 		break
@@ -286,18 +286,23 @@ func updateMutableLabels(agentConfig *daemonconfig.Agent, nodeLabels map[string]
 	return result, !equality.Semantic.DeepEqual(nodeLabels, result)
 }
 
-func updateAddressLabels(agentConfig *daemonconfig.Agent, nodeLabels map[string]string) (map[string]string, bool) {
+func updateAddressAnnotations(agentConfig *daemonconfig.Agent, nodeAnnotations map[string]string) (map[string]string, bool) {
 	result := map[string]string{
-		InternalIPLabel: agentConfig.NodeIP,
-		HostnameLabel:   agentConfig.NodeName,
+		InternalIPAnnotation: strings.Join(agentConfig.NodeIPs, ","),
+		HostnameAnnotation:   agentConfig.NodeName,
 	}
 
-	if agentConfig.NodeExternalIP != "" {
-		result[ExternalIPLabel] = agentConfig.NodeExternalIP
+	if len(agentConfig.NodeExternalIPs) > 0 {
+		result[ExternalIPAnnotation] = strings.Join(agentConfig.NodeExternalIPs, ",")
 	}
 
-	result = labels.Merge(nodeLabels, result)
-	return result, !equality.Semantic.DeepEqual(nodeLabels, result)
+	for k, v := range nodeAnnotations {
+		if _, ok := result[k]; !ok {
+			result[k] = v
+		}
+	}
+
+	return result, !equality.Semantic.DeepEqual(nodeAnnotations, result)
 }
 
 // setupTunnelAndRunAgent should start the setup tunnel before starting kubelet and kubeproxy

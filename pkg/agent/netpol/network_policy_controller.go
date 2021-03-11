@@ -51,7 +51,7 @@ const (
 type NetworkPolicyController struct {
 	nodeIP                  net.IP
 	nodeHostName            string
-	serviceClusterIPRange   net.IPNet
+	serviceClusterIPRanges  config.NetIPNets
 	serviceExternalIPRanges []net.IPNet
 	serviceNodePortRange    string
 	mu                      sync.Mutex
@@ -313,13 +313,17 @@ func (npc *NetworkPolicyController) ensureTopLevelChains() {
 		}
 		ensureRuleAtPosition(builtinChain, args, uuid, 1)
 	}
-
-	whitelistServiceVips := []string{"-m", "comment", "--comment", "allow traffic to cluster IP", "-d", npc.serviceClusterIPRange.String(), "-j", "RETURN"}
-	uuid, err := addUUIDForRuleSpec(kubeInputChainName, &whitelistServiceVips)
-	if err != nil {
-		glog.Fatalf("Failed to get uuid for rule: %s", err.Error())
+	kubeInputChainPos := 1
+	var uuid string
+	for _, r := range npc.serviceClusterIPRanges {
+		whitelistServiceVips := []string{"-m", "comment", "--comment", "allow traffic to cluster IP", "-d", r.String(), "-j", "RETURN"}
+		uuid, err = addUUIDForRuleSpec(kubeInputChainName, &whitelistServiceVips)
+		if err != nil {
+			glog.Fatalf("Failed to get uuid for rule: %s", err.Error())
+		}
+		ensureRuleAtPosition(kubeInputChainName, whitelistServiceVips, uuid, kubeInputChainPos)
+		kubeInputChainPos++
 	}
-	ensureRuleAtPosition(kubeInputChainName, whitelistServiceVips, uuid, 1)
 
 	whitelistTCPNodeports := []string{"-p", "tcp", "-m", "comment", "--comment", "allow LOCAL TCP traffic to node ports", "-m", "addrtype", "--dst-type", "LOCAL",
 		"-m", "multiport", "--dports", npc.serviceNodePortRange, "-j", "RETURN"}
@@ -327,7 +331,8 @@ func (npc *NetworkPolicyController) ensureTopLevelChains() {
 	if err != nil {
 		glog.Fatalf("Failed to get uuid for rule: %s", err.Error())
 	}
-	ensureRuleAtPosition(kubeInputChainName, whitelistTCPNodeports, uuid, 2)
+	ensureRuleAtPosition(kubeInputChainName, whitelistTCPNodeports, uuid, kubeInputChainPos)
+	kubeInputChainPos++
 
 	whitelistUDPNodeports := []string{"-p", "udp", "-m", "comment", "--comment", "allow LOCAL UDP traffic to node ports", "-m", "addrtype", "--dst-type", "LOCAL",
 		"-m", "multiport", "--dports", npc.serviceNodePortRange, "-j", "RETURN"}
@@ -335,15 +340,17 @@ func (npc *NetworkPolicyController) ensureTopLevelChains() {
 	if err != nil {
 		glog.Fatalf("Failed to get uuid for rule: %s", err.Error())
 	}
-	ensureRuleAtPosition(kubeInputChainName, whitelistUDPNodeports, uuid, 3)
+	ensureRuleAtPosition(kubeInputChainName, whitelistUDPNodeports, uuid, kubeInputChainPos)
+	kubeInputChainPos++
 
-	for externalIPIndex, externalIPRange := range npc.serviceExternalIPRanges {
+	for _, externalIPRange := range npc.serviceExternalIPRanges {
 		whitelistServiceVips := []string{"-m", "comment", "--comment", "allow traffic to external IP range: " + externalIPRange.String(), "-d", externalIPRange.String(), "-j", "RETURN"}
 		uuid, err = addUUIDForRuleSpec(kubeInputChainName, &whitelistServiceVips)
 		if err != nil {
 			glog.Fatalf("Failed to get uuid for rule: %s", err.Error())
 		}
-		ensureRuleAtPosition(kubeInputChainName, whitelistServiceVips, uuid, externalIPIndex+4)
+		ensureRuleAtPosition(kubeInputChainName, whitelistServiceVips, uuid, kubeInputChainPos)
+		kubeInputChainPos++
 	}
 
 }
@@ -592,7 +599,7 @@ func NewNetworkPolicyController(clientset kubernetes.Interface,
 	// be up to date with all of the policy changes from any enqueued request after that
 	npc.fullSyncRequestChan = make(chan struct{}, 1)
 
-	npc.serviceClusterIPRange = config.AgentConfig.ServiceCIDR
+	npc.serviceClusterIPRanges = config.AgentConfig.ServiceCIDRs
 	npc.serviceNodePortRange = strings.ReplaceAll(config.AgentConfig.ServiceNodePortRange.String(), "-", ":")
 	npc.syncPeriod = defaultSyncPeriod
 

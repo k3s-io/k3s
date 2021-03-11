@@ -173,8 +173,8 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	if serverConfig.ControlConfig.PrivateIP == "" && cmds.AgentConfig.NodeIP != "" {
 		serverConfig.ControlConfig.PrivateIP = cmds.AgentConfig.NodeIP
 	}
-	if serverConfig.ControlConfig.AdvertiseIP == "" && cmds.AgentConfig.NodeExternalIP != "" {
-		serverConfig.ControlConfig.AdvertiseIP = cmds.AgentConfig.NodeExternalIP
+	if serverConfig.ControlConfig.AdvertiseIP == "" && len(cmds.AgentConfig.NodeExternalIPs) != 0 {
+		serverConfig.ControlConfig.AdvertiseIP = cmds.AgentConfig.NodeExternalIPs[0]
 	}
 	if serverConfig.ControlConfig.AdvertiseIP == "" && cmds.AgentConfig.NodeIP != "" {
 		serverConfig.ControlConfig.AdvertiseIP = cmds.AgentConfig.NodeIP
@@ -183,21 +183,24 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 		serverConfig.ControlConfig.SANs = append(serverConfig.ControlConfig.SANs, serverConfig.ControlConfig.AdvertiseIP)
 	}
 
-	_, serverConfig.ControlConfig.ClusterIPRange, err = net.ParseCIDR(cfg.ClusterCIDR)
+	serverConfig.ControlConfig.ClusterIPRanges, err = parseCIDRs(cfg.ClusterCIDR)
 	if err != nil {
 		return errors.Wrapf(err, "Invalid CIDR %s: %v", cfg.ClusterCIDR, err)
 	}
-	_, serverConfig.ControlConfig.ServiceIPRange, err = net.ParseCIDR(cfg.ServiceCIDR)
+	serverConfig.ControlConfig.ServiceIPRanges, err = parseCIDRs(cfg.ServiceCIDR)
 	if err != nil {
 		return errors.Wrapf(err, "Invalid CIDR %s: %v", cfg.ServiceCIDR, err)
 	}
+	// For agent/server backwards compatibility
+	serverConfig.ControlConfig.ClusterIPRange = serverConfig.ControlConfig.ClusterIPRanges[0]
+	serverConfig.ControlConfig.ServiceIPRange = serverConfig.ControlConfig.ServiceIPRanges[0]
 
 	serverConfig.ControlConfig.ServiceNodePortRange, err = utilnet.ParsePortRange(cfg.ServiceNodePortRange)
 	if err != nil {
 		return errors.Wrapf(err, "Invalid port range %s: %v", cfg.ServiceNodePortRange, err)
 	}
 
-	_, apiServerServiceIP, err := controlplane.ServiceIPRange(*serverConfig.ControlConfig.ServiceIPRange)
+	_, apiServerServiceIP, err := controlplane.ServiceIPRange(*serverConfig.ControlConfig.ServiceIPRanges[0])
 	if err != nil {
 		return err
 	}
@@ -207,7 +210,7 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	// i.e. when you set service-cidr to 192.168.0.0/16 and don't provide cluster-dns, it will be set to 192.168.0.10
 	if cfg.ClusterDNS == "" {
 		serverConfig.ControlConfig.ClusterDNS = make(net.IP, 4)
-		copy(serverConfig.ControlConfig.ClusterDNS, serverConfig.ControlConfig.ServiceIPRange.IP.To4())
+		copy(serverConfig.ControlConfig.ClusterDNS, serverConfig.ControlConfig.ServiceIPRanges[0].IP.To4())
 		serverConfig.ControlConfig.ClusterDNS[3] = 10
 	} else {
 		serverConfig.ControlConfig.ClusterDNS = net.ParseIP(cfg.ClusterDNS)
@@ -390,4 +393,17 @@ func getAPIAddressFromEtcd(ctx context.Context, serverConfig *server.Config, age
 		}
 		logrus.Warn(err)
 	}
+}
+
+func parseCIDRs(CIDR string) ([]*net.IPNet, error) {
+	var err error
+	cidrs := strings.Split(CIDR, ",")
+	nets := make([]*net.IPNet, len(cidrs))
+	for i, cidr := range cidrs {
+		_, nets[i], err = net.ParseCIDR(cidr)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return nets, nil
 }

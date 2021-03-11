@@ -224,21 +224,21 @@ func getNodeNamedHostFile(filename, keyFile, nodeName, nodeIP, nodePasswordFile 
 	return nil
 }
 
-func getHostnameAndIP(info cmds.Agent) (string, string, error) {
-	ip := info.NodeIP
-	if ip == "" {
+func getHostnameAndIP(info cmds.Agent) (string, []string, error) {
+	ips := info.NodeIPs
+	if len(ips) == 0 {
 		hostIP, err := net.ChooseHostInterface()
 		if err != nil {
-			return "", "", err
+			return "", []string{}, err
 		}
-		ip = hostIP.String()
+		ips = []string{hostIP.String()}
 	}
 
 	name := info.NodeName
 	if name == "" {
 		hostname, err := os.Hostname()
 		if err != nil {
-			return "", "", err
+			return "", []string{}, err
 		}
 		name = hostname
 	}
@@ -247,7 +247,7 @@ func getHostnameAndIP(info cmds.Agent) (string, string, error) {
 	// https://github.com/kubernetes/kubernetes/issues/71140
 	name = strings.ToLower(name)
 
-	return name, ip, nil
+	return name, ips, nil
 }
 
 func isValidResolvConf(resolvConfFile string) bool {
@@ -307,6 +307,13 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	if err != nil {
 		return nil, err
 	}
+	// To enable compatibility with older agents
+	if controlConfig.ClusterIPRanges == nil && controlConfig.ClusterIPRange != nil {
+		controlConfig.ClusterIPRanges = config.NetIPNets{controlConfig.ClusterIPRange}
+	}
+	if controlConfig.ServiceIPRanges == nil && controlConfig.ServiceIPRange != nil {
+		controlConfig.ServiceIPRanges = config.NetIPNets{controlConfig.ServiceIPRange}
+	}
 
 	// If the supervisor and externally-facing apiserver are not on the same port, tell the proxy where to find the apiserver.
 	if controlConfig.SupervisorPort != controlConfig.HTTPSPort {
@@ -349,7 +356,7 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	newNodePasswordFile := filepath.Join(nodeConfigPath, "password")
 	upgradeOldNodePasswordPath(oldNodePasswordFile, newNodePasswordFile)
 
-	nodeName, nodeIP, err := getHostnameAndIP(*envInfo)
+	nodeName, nodeIPs, err := getHostnameAndIP(*envInfo)
 	if err != nil {
 		return nil, err
 	}
@@ -364,14 +371,14 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 
 	os.Setenv("NODE_NAME", nodeName)
 
-	servingCert, err := getServingCert(nodeName, nodeIP, servingKubeletCert, servingKubeletKey, newNodePasswordFile, info)
+	servingCert, err := getServingCert(nodeName, nodeIPs[0], servingKubeletCert, servingKubeletKey, newNodePasswordFile, info)
 	if err != nil {
 		return nil, err
 	}
 
 	clientKubeletCert := filepath.Join(envInfo.DataDir, "agent", "client-kubelet.crt")
 	clientKubeletKey := filepath.Join(envInfo.DataDir, "agent", "client-kubelet.key")
-	if err := getNodeNamedHostFile(clientKubeletCert, clientKubeletKey, nodeName, nodeIP, newNodePasswordFile, info); err != nil {
+	if err := getNodeNamedHostFile(clientKubeletCert, clientKubeletKey, nodeName, nodeIPs[0], newNodePasswordFile, info); err != nil {
 		return nil, err
 	}
 
@@ -411,10 +418,10 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	}
 	nodeConfig.FlannelIface = flannelIface
 	nodeConfig.Images = filepath.Join(envInfo.DataDir, "agent", "images")
-	nodeConfig.AgentConfig.NodeIP = nodeIP
+	nodeConfig.AgentConfig.NodeIPs = nodeIPs
 	nodeConfig.AgentConfig.NodeName = nodeName
 	nodeConfig.AgentConfig.NodeConfigPath = nodeConfigPath
-	nodeConfig.AgentConfig.NodeExternalIP = envInfo.NodeExternalIP
+	nodeConfig.AgentConfig.NodeExternalIPs = envInfo.NodeExternalIPs
 	nodeConfig.AgentConfig.ServingKubeletCert = servingKubeletCert
 	nodeConfig.AgentConfig.ServingKubeletKey = servingKubeletKey
 	nodeConfig.AgentConfig.ClusterDNS = controlConfig.ClusterDNS
@@ -487,12 +494,12 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 		nodeConfig.AgentConfig.CNIPlugin = true
 	}
 
-	if controlConfig.ClusterIPRange != nil {
-		nodeConfig.AgentConfig.ClusterCIDR = *controlConfig.ClusterIPRange
+	if controlConfig.ClusterIPRanges != nil {
+		nodeConfig.AgentConfig.ClusterCIDRs = controlConfig.ClusterIPRanges
 	}
 
-	if controlConfig.ServiceIPRange != nil {
-		nodeConfig.AgentConfig.ServiceCIDR = *controlConfig.ServiceIPRange
+	if controlConfig.ServiceIPRanges != nil {
+		nodeConfig.AgentConfig.ServiceCIDRs = controlConfig.ServiceIPRanges
 	}
 
 	if controlConfig.ServiceNodePortRange != nil {
@@ -502,7 +509,7 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	// Old versions of the server do not send enough information to correctly start the NPC. Users
 	// need to upgrade the server to at least the same version as the agent, or disable the NPC
 	// cluster-wide.
-	if controlConfig.DisableNPC == false && (controlConfig.ServiceIPRange == nil || controlConfig.ServiceNodePortRange == nil) {
+	if controlConfig.DisableNPC == false && (len(controlConfig.ServiceIPRanges) == 0 || controlConfig.ServiceNodePortRange == nil) {
 		return nil, fmt.Errorf("incompatible down-level server detected; servers must be upgraded to at least %s, or restarted with --disable-network-policy", version.Version)
 	}
 
