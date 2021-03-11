@@ -37,10 +37,17 @@ func Run(app *cli.Context) error {
 	if err := cmds.InitLogging(); err != nil {
 		return err
 	}
-	return run(app, &cmds.ServerConfig)
+	return run(app, &cmds.ServerConfig, server.CustomControllers{}, server.CustomControllers{})
 }
 
-func run(app *cli.Context, cfg *cmds.Server) error {
+func RunWithControllers(app *cli.Context, leaderControllers server.CustomControllers, controllers server.CustomControllers) error {
+	if err := cmds.InitLogging(); err != nil {
+		return err
+	}
+	return run(app, &cmds.ServerConfig, leaderControllers, controllers)
+}
+
+func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomControllers, controllers server.CustomControllers) error {
 	var (
 		err error
 	)
@@ -254,6 +261,9 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	}
 
 	serverConfig.StartupHooks = append(serverConfig.StartupHooks, cfg.StartupHooks...)
+
+	serverConfig.LeaderControllers = append(serverConfig.LeaderControllers, leaderControllers...)
+	serverConfig.Controllers = append(serverConfig.Controllers, controllers...)
 
 	// TLS config based on mozilla ssl-config generator
 	// https://ssl-config.mozilla.org/#server=golang&version=1.13.6&config=intermediate&guideline=5.4
