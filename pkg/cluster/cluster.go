@@ -5,13 +5,12 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/k3s-io/kine/pkg/endpoint"
 	"github.com/pkg/errors"
 	"github.com/rancher/k3s/pkg/clientaccess"
 	"github.com/rancher/k3s/pkg/cluster/managed"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/etcd"
-	"github.com/rancher/kine/pkg/client"
-	"github.com/rancher/kine/pkg/endpoint"
 	"github.com/sirupsen/logrus"
 )
 
@@ -25,12 +24,12 @@ type Cluster struct {
 	etcdConfig       endpoint.ETCDConfig
 	joining          bool
 	saveBootstrap    bool
-	storageClient    client.Client
 }
 
 // Start creates the dynamic tls listener, http request handler,
 // handles starting and writing/reading bootstrap data, and returns a channel
-// that will be closed when datastore is ready.
+// that will be closed when datastore is ready. If embedded etcd is in use,
+// a secondary call to Cluster.save is made.
 func (c *Cluster) Start(ctx context.Context) (<-chan struct{}, error) {
 	// Set up the dynamiclistener and http request handlers
 	if err := c.initClusterAndHTTPS(ctx); err != nil {
@@ -82,8 +81,21 @@ func (c *Cluster) Start(ctx context.Context) (<-chan struct{}, error) {
 			}
 		}
 	}
-	return ready, c.startStorage(ctx)
 
+	if err := c.startStorage(ctx); err != nil {
+		return nil, err
+	}
+
+	// at this point, if etcd is in use, it's up, ready,
+	// and bootstrapping is complete so save the bootstrap
+	// data
+	if c.managedDB != nil {
+		if err := c.save(ctx); err != nil {
+			return nil, err
+		}
+	}
+
+	return ready, nil
 }
 
 // startStorage starts the kine listener and configures the endpoints, if necessary.

@@ -26,7 +26,6 @@ func (c *Cluster) Bootstrap(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-
 	c.shouldBootstrap = shouldBootstrap
 
 	if shouldBootstrap {
