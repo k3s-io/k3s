@@ -28,7 +28,7 @@ func (c *Cluster) save(ctx context.Context) error {
 	}
 
 	if status.IsLearner {
-		logrus.Infof("this server is a learner server, skipping saving bootstrap data")
+		logrus.Infof("this server is a learner. Skipping saving bootstrap data")
 		return nil
 	}
 
