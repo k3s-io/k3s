@@ -3,10 +3,10 @@ package cluster
 import (
 	"bytes"
 	"context"
+	"strings"
 
 	"github.com/k3s-io/kine/pkg/client"
 	"github.com/rancher/k3s/pkg/bootstrap"
-	"github.com/rancher/k3s/pkg/etcd"
 	"github.com/sirupsen/logrus"
 )
 
@@ -15,23 +15,6 @@ import (
 // This is used when bootstrapping a cluster from a managed database or external etcd cluster.
 // This is NOT used with embedded etcd, which bootstraps over HTTP.
 func (c *Cluster) save(ctx context.Context) error {
-	// check if etcd is still learner
-	localEndpoint := "https://127.0.0.1:2379"
-	etcdClient, err := etcd.GetClient(ctx, c.runtime, localEndpoint)
-	if err != nil {
-		return err
-	}
-
-	status, err := etcdClient.Status(ctx, localEndpoint)
-	if err != nil {
-		return err
-	}
-
-	if status.IsLearner {
-		logrus.Infof("this server is a learner. Skipping saving bootstrap data")
-		return nil
-	}
-
 	buf := &bytes.Buffer{}
 	if err := bootstrap.Write(buf, &c.runtime.ControlRuntimeBootstrap); err != nil {
 		return err
@@ -50,6 +33,9 @@ func (c *Cluster) save(ctx context.Context) error {
 	if err := storageClient.Create(ctx, storageKey(c.config.Token), data); err != nil {
 		if err.Error() == "key exists" {
 			logrus.Warnln("Bootstrap key exists. Please follow documentation updating a node after restore.")
+			return nil
+		} else if strings.Contains(err.Error(), "not supported for learner") {
+			logrus.Infof("this server is a learner. Skipping saving bootstrap data")
 			return nil
 		}
 		return err
