@@ -35,7 +35,7 @@ func (c *Cluster) save(ctx context.Context) error {
 			logrus.Warnln("Bootstrap key exists. Please follow documentation updating a node after restore.")
 			return nil
 		} else if strings.Contains(err.Error(), "not supported for learner") {
-			logrus.Infof("this server is a learner. Skipping saving bootstrap data")
+			logrus.Debug("Skipping bootstrap data save on learner.")
 			return nil
 		}
 		return err
