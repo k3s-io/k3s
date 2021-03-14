@@ -692,11 +692,10 @@ EOF
     $SUDO chown root:root ${UNINSTALL_K3S_SH}
 }
 
-# --- disable current service if loaded --
-systemd_disable() {
+# --- delete current systemd service and environment files --
+delete_systemd_files() {
     $SUDO rm -f /etc/systemd/system/${SERVICE_K3S} || true
     $SUDO rm -f /etc/systemd/system/${SERVICE_K3S}.env || true
-    $SUDO systemctl disable ${SYSTEM_NAME} >/dev/null 2>&1 || true
 }
 
 # --- capture current env and create file containing k3s_ variables ---
@@ -857,7 +856,7 @@ eval set -- $(escape "${INSTALL_K3S_EXEC}") $(quote "$@")
     create_symlinks
     create_killall
     create_uninstall
-    systemd_disable
+    delete_systemd_files
     create_env_file
     create_service_file
     service_enable_and_start
