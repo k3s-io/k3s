@@ -118,6 +118,23 @@ type Mirror struct {
 	// with host specified.
 	// The scheme, host and path from the endpoint URL will be used.
 	Endpoints []string `toml:"endpoint" json:"endpoint"`
+
+	// Rewrites are repository rewrite rules for a namespace. When fetching image resources
+	// from an endpoint and a key matches the repository via regular expression matching
+	// it will be replaced with the corresponding value from the map in the resource request.
+	//
+	// This example configures CRI to pull docker.io/library/* images from docker.io/my-org/*:
+	//
+	// [plugins]
+	//   [plugins."io.containerd.grpc.v1.cri"]
+	//     [plugins."io.containerd.grpc.v1.cri".registry]
+	//       [plugins."io.containerd.grpc.v1.cri".registry.mirrors]
+	//         [plugins."io.containerd.grpc.v1.cri".registry.mirrors."docker.io"]
+	//           endpoint = ["https://registry-1.docker.io/v2"]
+	//           [plugins."io.containerd.grpc.v1.cri".registry.mirrors."docker.io".rewrite]
+	//             "^library/(.*)" = "my-org/$1"
+	//
+	Rewrites map[string]string `toml:"rewrite" json:"rewrite"`
 }
 
 // AuthConfig contains the config related to authentication to a specific registry

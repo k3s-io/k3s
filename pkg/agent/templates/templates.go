@@ -53,6 +53,12 @@ const ContainerdConfigTemplate = `
 {{range $k, $v := .PrivateRegistryConfig.Mirrors }}
 [plugins.cri.registry.mirrors."{{$k}}"]
   endpoint = [{{range $i, $j := $v.Endpoints}}{{if $i}}, {{end}}{{printf "%q" .}}{{end}}]
+{{if $v.Rewrites}}
+  [plugins.cri.registry.mirrors."{{$k}}".rewrite]
+{{range $pattern, $replace := $v.Rewrites}}
+    "{{$pattern}}" = "{{$replace}}"
+{{end}}
+{{end}}
 {{end}}
 
 {{range $k, $v := .PrivateRegistryConfig.Configs }}

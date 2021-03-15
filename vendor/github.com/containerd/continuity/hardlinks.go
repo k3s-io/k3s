@@ -53,7 +53,7 @@ func (hlm *hardlinkManager) Add(fi os.FileInfo, resource Resource) error {
 }
 
 // Merge processes the current state of the hardlink manager and merges any
-// shared nodes into hardlinked resources.
+// shared nodes into hard linked resources.
 func (hlm *hardlinkManager) Merge() ([]Resource, error) {
 	var resources []Resource
 	for key, linked := range hlm.hardlinks {

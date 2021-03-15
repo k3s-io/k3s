@@ -1,4 +1,4 @@
-// +build darwin freebsd openbsd
+// +build linux darwin solaris
 
 /*
    Copyright The containerd Authors.
@@ -16,10 +16,10 @@
    limitations under the License.
 */
 
-package sysx
+package devices
 
-import (
-	"syscall"
-)
+import "golang.org/x/sys/unix"
 
-const ENODATA = syscall.ENOATTR
+func mknod(path string, mode uint32, dev uint64) (err error) {
+	return unix.Mknod(path, mode, int(dev))
+}

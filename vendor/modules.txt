@@ -178,7 +178,7 @@ github.com/containerd/cgroups/v2
 github.com/containerd/cgroups/v2/stats
 # github.com/containerd/console v1.0.0 => github.com/containerd/console v0.0.0-20181022165439-0650fd9eeb50
 github.com/containerd/console
-# github.com/containerd/containerd v1.4.1 => github.com/k3s-io/containerd v1.4.3-k3s3
+# github.com/containerd/containerd v1.4.1 => github.com/k3s-io/containerd v1.4.3-k3s5
 ## explicit
 github.com/containerd/containerd
 github.com/containerd/containerd/api/events
@@ -314,16 +314,15 @@ github.com/containerd/containerd/snapshots/storage
 github.com/containerd/containerd/sys
 github.com/containerd/containerd/sys/reaper
 github.com/containerd/containerd/version
-# github.com/containerd/continuity v0.0.0-20200710164510-efbc4488d8fe => github.com/containerd/continuity v0.0.0-20190815185530-f2a389ac0a02
+# github.com/containerd/continuity v0.0.0-20200710164510-efbc4488d8fe => github.com/k3s-io/continuity v0.0.0-20210309170710-f93269e0d5c1
 github.com/containerd/continuity
 github.com/containerd/continuity/devices
 github.com/containerd/continuity/driver
 github.com/containerd/continuity/fs
 github.com/containerd/continuity/pathdriver
 github.com/containerd/continuity/proto
-github.com/containerd/continuity/syscallx
 github.com/containerd/continuity/sysx
-# github.com/containerd/cri v1.11.1-0.20200820101445-b0cc07999aa5 => github.com/k3s-io/cri v1.4.0-k3s.2
+# github.com/containerd/cri v1.11.1-0.20200820101445-b0cc07999aa5 => github.com/k3s-io/cri v1.4.0-k3s.4
 ## explicit
 github.com/containerd/cri
 github.com/containerd/cri/pkg/annotations
@@ -1198,7 +1197,7 @@ golang.org/x/oauth2/jwt
 golang.org/x/sync/errgroup
 golang.org/x/sync/semaphore
 golang.org/x/sync/singleflight
-# golang.org/x/sys v0.0.0-20201112073958-5cba982894dd => golang.org/x/sys v0.0.0-20201112073958-5cba982894dd
+# golang.org/x/sys v0.0.0-20201201145000-ef89a241ccb3 => golang.org/x/sys v0.0.0-20201112073958-5cba982894dd
 ## explicit
 golang.org/x/sys/cpu
 golang.org/x/sys/internal/unsafeheader
@@ -2997,9 +2996,9 @@ sigs.k8s.io/yaml
 # github.com/containerd/btrfs => github.com/containerd/btrfs v0.0.0-20181101203652-af5082808c83
 # github.com/containerd/cgroups => github.com/containerd/cgroups v0.0.0-20200531161412-0dbf7f05ba59
 # github.com/containerd/console => github.com/containerd/console v0.0.0-20181022165439-0650fd9eeb50
-# github.com/containerd/containerd => github.com/k3s-io/containerd v1.4.3-k3s3
-# github.com/containerd/continuity => github.com/containerd/continuity v0.0.0-20190815185530-f2a389ac0a02
-# github.com/containerd/cri => github.com/k3s-io/cri v1.4.0-k3s.2
+# github.com/containerd/containerd => github.com/k3s-io/containerd v1.4.3-k3s5
+# github.com/containerd/continuity => github.com/k3s-io/continuity v0.0.0-20210309170710-f93269e0d5c1
+# github.com/containerd/cri => github.com/k3s-io/cri v1.4.0-k3s.4
 # github.com/containerd/fifo => github.com/containerd/fifo v0.0.0-20190816180239-bda0ff6ed73c
 # github.com/containerd/go-runc => github.com/containerd/go-runc v0.0.0-20200220073739-7016d3ce2328
 # github.com/containerd/typeurl => github.com/containerd/typeurl v0.0.0-20180627222232-a93fcdb778cd
