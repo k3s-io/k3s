@@ -319,6 +319,10 @@ func (c *criService) registryHosts(auth *runtime.AuthConfig) docker.RegistryHost
 		if err != nil {
 			return nil, errors.Wrap(err, "get registry endpoints")
 		}
+		rewrites, err := c.registryRewrites(host)
+		if err != nil {
+			return nil, errors.Wrap(err, "get registry rewrites")
+		}
 		for _, e := range endpoints {
 			u, err := url.Parse(e)
 			if err != nil {
@@ -357,6 +361,7 @@ func (c *criService) registryHosts(auth *runtime.AuthConfig) docker.RegistryHost
 				Scheme:       u.Scheme,
 				Path:         u.Path,
 				Capabilities: docker.HostCapabilityResolve | docker.HostCapabilityPull,
+				Rewrites:     rewrites,
 			})
 		}
 		return registries, nil
@@ -420,6 +425,20 @@ func (c *criService) registryEndpoints(host string) ([]string, error) {
 		}
 	}
 	return append(endpoints, defaultScheme(defaultHost)+"://"+defaultHost), nil
+}
+
+func (c *criService) registryRewrites(host string) (map[string]string, error) {
+	var rewrites map[string]string
+	_, ok := c.config.Registry.Mirrors[host]
+	if ok {
+		rewrites = c.config.Registry.Mirrors[host].Rewrites
+	} else {
+		rewrites = c.config.Registry.Mirrors["*"].Rewrites
+	}
+	if rewrites == nil {
+		rewrites = map[string]string{}
+	}
+	return rewrites, nil
 }
 
 // newTransport returns a new HTTP transport used to pull image.
