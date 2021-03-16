@@ -1011,5 +1011,13 @@ func (e *ETCD) GetMembersClientURLs(ctx context.Context) ([]string, error) {
 
 // RemoveSelf will remove the member if it exists in the cluster
 func (e *ETCD) RemoveSelf(ctx context.Context) error {
-	return e.removePeer(ctx, e.name, e.address, true)
+	if err := e.removePeer(ctx, e.name, e.address, true); err != nil {
+		return err
+	}
+
+	// backup the data dir to avoid issues when re-enabling etcd
+	oldDataDir := etcdDBDir(e.config) + "-old-" + strconv.Itoa(int(time.Now().Unix()))
+
+	// move the data directory to a temp path
+	return os.Rename(etcdDBDir(e.config), oldDataDir)
 }

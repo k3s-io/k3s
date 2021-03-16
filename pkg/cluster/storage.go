@@ -3,6 +3,7 @@ package cluster
 import (
 	"bytes"
 	"context"
+	"strings"
 
 	"github.com/k3s-io/kine/pkg/client"
 	"github.com/rancher/k3s/pkg/bootstrap"
@@ -23,6 +24,7 @@ func (c *Cluster) save(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+
 	storageClient, err := client.New(c.etcdConfig)
 	if err != nil {
 		return err
@@ -31,6 +33,9 @@ func (c *Cluster) save(ctx context.Context) error {
 	if err := storageClient.Create(ctx, storageKey(c.config.Token), data); err != nil {
 		if err.Error() == "key exists" {
 			logrus.Warnln("Bootstrap key exists. Please follow documentation updating a node after restore.")
+			return nil
+		} else if strings.Contains(err.Error(), "not supported for learner") {
+			logrus.Debug("Skipping bootstrap data save on learner.")
 			return nil
 		}
 		return err
