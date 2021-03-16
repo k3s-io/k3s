@@ -61,6 +61,8 @@ type Metadata struct {
 	RuntimeHandler string
 	// CNIresult resulting configuration for attached network namespace interfaces
 	CNIResult *cni.CNIResult
+	// ProcessLabel is the SELinux process label for the container
+	ProcessLabel string
 }
 
 // MarshalJSON encodes Metadata into bytes in json format.

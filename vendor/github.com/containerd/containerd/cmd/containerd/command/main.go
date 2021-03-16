@@ -227,6 +227,10 @@ can be used and modified as necessary as a custom configuration.`
 		}
 		serve(ctx, l, server.ServeGRPC)
 
+		if err := notifyReady(ctx); err != nil {
+			log.G(ctx).WithError(err).Warn("notify ready failed")
+		}
+
 		log.G(ctx).Infof("containerd successfully booted in %fs", time.Since(start).Seconds())
 		<-done
 		return nil

@@ -307,7 +307,9 @@ func (c *criService) loadContainer(ctx context.Context, cntr containerd.Containe
 	}()
 	if err != nil {
 		log.G(ctx).WithError(err).Errorf("Failed to load container status for %q", id)
-		status = unknownContainerStatus()
+		// Only set the unknown field in this case, because other fields may
+		// contain useful information loaded from the checkpoint.
+		status.Unknown = true
 	}
 	opts := []containerstore.Opts{
 		containerstore.WithStatus(status, containerDir),

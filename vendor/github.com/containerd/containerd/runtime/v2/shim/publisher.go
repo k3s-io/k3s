@@ -128,7 +128,9 @@ func (l *RemoteEventsPublisher) Publish(ctx context.Context, topic string, event
 }
 
 func (l *RemoteEventsPublisher) forwardRequest(ctx context.Context, req *v1.ForwardRequest) error {
-	_, err := l.client.EventsService().Forward(ctx, req)
+	fCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	_, err := l.client.EventsService().Forward(fCtx, req)
+	cancel()
 	if err == nil {
 		return nil
 	}
@@ -142,9 +144,9 @@ func (l *RemoteEventsPublisher) forwardRequest(ctx context.Context, req *v1.Forw
 		return err
 	}
 
-	if _, err := l.client.EventsService().Forward(ctx, req); err != nil {
-		return err
-	}
+	fCtx, cancel = context.WithTimeout(ctx, 5*time.Second)
+	_, err = l.client.EventsService().Forward(fCtx, req)
+	cancel()
 
-	return nil
+	return err
 }

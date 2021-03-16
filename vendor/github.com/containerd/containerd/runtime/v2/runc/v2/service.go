@@ -25,7 +25,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -96,6 +95,10 @@ func New(ctx context.Context, id string, publisher shim.Publisher, shutdown func
 		return nil, errors.Wrap(err, "failed to initialized platform behavior")
 	}
 	go s.forward(ctx, publisher)
+
+	if address, err := shim.ReadAddress("address"); err == nil {
+		s.shimAddress = address
+	}
 	return s, nil
 }
 
@@ -115,7 +118,8 @@ type service struct {
 
 	containers map[string]*runc.Container
 
-	cancel func()
+	shimAddress string
+	cancel      func()
 }
 
 func newCommand(ctx context.Context, id, containerdBinary, containerdAddress, containerdTTRPCAddress string) (*exec.Cmd, error) {
@@ -158,7 +162,7 @@ func readSpec() (*spec, error) {
 	return &s, nil
 }
 
-func (s *service) StartShim(ctx context.Context, id, containerdBinary, containerdAddress, containerdTTRPCAddress string) (string, error) {
+func (s *service) StartShim(ctx context.Context, id, containerdBinary, containerdAddress, containerdTTRPCAddress string) (_ string, retErr error) {
 	cmd, err := newCommand(ctx, id, containerdBinary, containerdAddress, containerdTTRPCAddress)
 	if err != nil {
 		return "", err
@@ -174,34 +178,52 @@ func (s *service) StartShim(ctx context.Context, id, containerdBinary, container
 			break
 		}
 	}
-	address, err := shim.SocketAddress(ctx, grouping)
+	address, err := shim.SocketAddress(ctx, containerdAddress, grouping)
 	if err != nil {
 		return "", err
 	}
+
 	socket, err := shim.NewSocket(address)
 	if err != nil {
-		if strings.Contains(err.Error(), "address already in use") {
+		// the only time where this would happen is if there is a bug and the socket
+		// was not cleaned up in the cleanup method of the shim or we are using the
+		// grouping functionality where the new process should be run with the same
+		// shim as an existing container
+		if !shim.SocketEaddrinuse(err) {
+			return "", errors.Wrap(err, "create new shim socket")
+		}
+		if shim.CanConnect(address) {
 			if err := shim.WriteAddress("address", address); err != nil {
-				return "", err
+				return "", errors.Wrap(err, "write existing socket for shim")
 			}
 			return address, nil
 		}
-		return "", err
+		if err := shim.RemoveSocket(address); err != nil {
+			return "", errors.Wrap(err, "remove pre-existing socket")
+		}
+		if socket, err = shim.NewSocket(address); err != nil {
+			return "", errors.Wrap(err, "try create new shim socket 2x")
+		}
 	}
-	defer socket.Close()
+	defer func() {
+		if retErr != nil {
+			socket.Close()
+			_ = shim.RemoveSocket(address)
+		}
+	}()
 	f, err := socket.File()
 	if err != nil {
 		return "", err
 	}
-	defer f.Close()
 
 	cmd.ExtraFiles = append(cmd.ExtraFiles, f)
 
 	if err := cmd.Start(); err != nil {
+		f.Close()
 		return "", err
 	}
 	defer func() {
-		if err != nil {
+		if retErr != nil {
 			cmd.Process.Kill()
 		}
 	}()
@@ -251,12 +273,20 @@ func (s *service) Cleanup(ctx context.Context) (*taskAPI.DeleteResponse, error) 
 	if err != nil {
 		return nil, err
 	}
-
 	runtime, err := runc.ReadRuntime(path)
 	if err != nil {
 		return nil, err
 	}
-	r := process.NewRunc(process.RuncRoot, path, ns, runtime, "", false)
+	opts, err := runc.ReadOptions(path)
+	if err != nil {
+		return nil, err
+	}
+	root := process.RuncRoot
+	if opts != nil && opts.Root != "" {
+		root = opts.Root
+	}
+
+	r := process.NewRunc(root, path, ns, runtime, "", false)
 	if err := r.Delete(ctx, s.id, &runcC.DeleteOpts{
 		Force: true,
 	}); err != nil {
@@ -316,11 +346,12 @@ func (s *service) Start(ctx context.Context, r *taskAPI.StartRequest) (*taskAPI.
 		s.eventSendMu.Unlock()
 		return nil, errdefs.ToGRPC(err)
 	}
-	if err := s.ep.Add(container.ID, container.Cgroup()); err != nil {
-		logrus.WithError(err).Error("add cg to OOM monitor")
-	}
 	switch r.ExecID {
 	case "":
+		if err := s.ep.Add(container.ID, container.Cgroup()); err != nil {
+			logrus.WithError(err).Error("add cg to OOM monitor")
+		}
+
 		s.send(&eventstypes.TaskStart{
 			ContainerID: container.ID,
 			Pid:         uint32(p.Pid()),
@@ -348,15 +379,11 @@ func (s *service) Delete(ctx context.Context, r *taskAPI.DeleteRequest) (*taskAP
 	if err != nil {
 		return nil, errdefs.ToGRPC(err)
 	}
-	// if we deleted our init task, close the platform and send the task delete event
+	// if we deleted an init task, send the task delete event
 	if r.ExecID == "" {
 		s.mu.Lock()
 		delete(s.containers, r.ID)
-		hasContainers := len(s.containers) > 0
 		s.mu.Unlock()
-		if s.platform != nil && !hasContainers {
-			s.platform.Close()
-		}
 		s.send(&eventstypes.TaskDelete{
 			ContainerID: container.ID,
 			Pid:         uint32(p.Pid()),
@@ -593,13 +620,21 @@ func (s *service) Connect(ctx context.Context, r *taskAPI.ConnectRequest) (*task
 
 func (s *service) Shutdown(ctx context.Context, r *taskAPI.ShutdownRequest) (*ptypes.Empty, error) {
 	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	// return out if the shim is still servicing containers
 	if len(s.containers) > 0 {
-		s.mu.Unlock()
 		return empty, nil
 	}
 	s.cancel()
 	close(s.events)
+
+	if s.platform != nil {
+		s.platform.Close()
+	}
+	if s.shimAddress != "" {
+		_ = shim.RemoveSocket(s.shimAddress)
+	}
 	return empty, nil
 }
 
@@ -727,9 +762,7 @@ func (s *service) forward(ctx context.Context, publisher shim.Publisher) {
 	ns, _ := namespaces.Namespace(ctx)
 	ctx = namespaces.WithNamespace(context.Background(), ns)
 	for e := range s.events {
-		ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 		err := publisher.Publish(ctx, runc.GetTopic(e), e)
-		cancel()
 		if err != nil {
 			logrus.WithError(err).Error("post event")
 		}

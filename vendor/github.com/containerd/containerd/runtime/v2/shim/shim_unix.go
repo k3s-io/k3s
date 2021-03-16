@@ -58,15 +58,15 @@ func serveListener(path string) (net.Listener, error) {
 		l, err = net.FileListener(os.NewFile(3, "socket"))
 		path = "[inherited from parent]"
 	} else {
-		if len(path) > 106 {
-			return nil, errors.Errorf("%q: unix socket path too long (> 106)", path)
+		if len(path) > socketPathLimit {
+			return nil, errors.Errorf("%q: unix socket path too long (> %d)", path, socketPathLimit)
 		}
-		l, err = net.Listen("unix", "\x00"+path)
+		l, err = net.Listen("unix", path)
 	}
 	if err != nil {
 		return nil, err
 	}
-	logrus.WithField("socket", path).Debug("serving api on abstract socket")
+	logrus.WithField("socket", path).Debug("serving api on socket")
 	return l, nil
 }
 

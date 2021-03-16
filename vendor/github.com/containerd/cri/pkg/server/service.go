@@ -25,9 +25,9 @@ import (
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/plugin"
+	"github.com/containerd/cri/pkg/store/label"
 	cni "github.com/containerd/go-cni"
 	runcapparmor "github.com/opencontainers/runc/libcontainer/apparmor"
-	runcseccomp "github.com/opencontainers/runc/libcontainer/seccomp"
 	runcsystem "github.com/opencontainers/runc/libcontainer/system"
 	"github.com/opencontainers/selinux/go-selinux"
 	"github.com/pkg/errors"
@@ -41,6 +41,7 @@ import (
 	ctrdutil "github.com/containerd/cri/pkg/containerd/util"
 	osinterface "github.com/containerd/cri/pkg/os"
 	"github.com/containerd/cri/pkg/registrar"
+	"github.com/containerd/cri/pkg/seccomp"
 	containerstore "github.com/containerd/cri/pkg/store/container"
 	imagestore "github.com/containerd/cri/pkg/store/image"
 	sandboxstore "github.com/containerd/cri/pkg/store/sandbox"
@@ -104,14 +105,15 @@ type criService struct {
 // NewCRIService returns a new instance of CRIService
 func NewCRIService(config criconfig.Config, client *containerd.Client) (CRIService, error) {
 	var err error
+	labels := label.NewStore()
 	c := &criService{
 		config:             config,
 		client:             client,
 		apparmorEnabled:    runcapparmor.IsEnabled() && !config.DisableApparmor,
-		seccompEnabled:     runcseccomp.IsEnabled(),
+		seccompEnabled:     seccomp.IsEnabled(),
 		os:                 osinterface.RealOS{},
-		sandboxStore:       sandboxstore.NewStore(),
-		containerStore:     containerstore.NewStore(),
+		sandboxStore:       sandboxstore.NewStore(labels),
+		containerStore:     containerstore.NewStore(labels),
 		imageStore:         imagestore.NewStore(client),
 		snapshotStore:      snapshotstore.NewStore(),
 		sandboxNameIndex:   registrar.NewRegistrar(),

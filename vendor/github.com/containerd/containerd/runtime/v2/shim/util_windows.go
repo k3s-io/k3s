@@ -79,3 +79,9 @@ func AnonDialer(address string, timeout time.Duration) (net.Conn, error) {
 		return c, nil
 	}
 }
+
+// RemoveSocket removes the socket at the specified address if
+// it exists on the filesystem
+func RemoveSocket(address string) error {
+	return nil
+}

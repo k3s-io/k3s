@@ -4,19 +4,24 @@ sudo: required
 services:
   - docker
 
+branches:
+  except:
+    - master
+    - release/1.3
+
 language: go
 
 os:
 - linux
 
 go:
-  - "1.12.12"
+  - "1.13.15"
 
 env:
-  - TRAVIS_GOOS=linux TEST_RUNTIME=io.containerd.runc.v1 TRAVIS_CGO_ENABLED=1 TRAVIS_DISTRO=bionic
-  - TRAVIS_GOOS=linux TEST_RUNTIME=io.containerd.runc.v2 TRAVIS_CGO_ENABLED=1 TRAVIS_DISTRO=bionic
-  - TRAVIS_GOOS=linux TEST_RUNTIME=io.containerd.runtime.v1.linux TRAVIS_CGO_ENABLED=1 TRAVIS_DISTRO=bionic
-  - TRAVIS_GOOS=darwin TRAVIS_CGO_ENABLED=0
+  - TRAVIS_GOOS=linux TEST_RUNTIME=io.containerd.runc.v1 TRAVIS_CGO_ENABLED=1 TRAVIS_DISTRO=bionic GOPROXY=direct
+  - TRAVIS_GOOS=linux TEST_RUNTIME=io.containerd.runc.v2 TRAVIS_CGO_ENABLED=1 TRAVIS_DISTRO=bionic TRAVIS_RELEASE=yes GOPROXY=direct
+  - TRAVIS_GOOS=linux TEST_RUNTIME=io.containerd.runtime.v1.linux TRAVIS_CGO_ENABLED=1 TRAVIS_DISTRO=bionic GOPROXY=direct
+  - TRAVIS_GOOS=darwin TRAVIS_CGO_ENABLED=0 GOPROXY=direct
 
 matrix:
   include:
@@ -24,7 +29,7 @@ matrix:
     - if: type != pull_request
       os: linux
       dist: xenial
-      env: TRAVIS_GOOS=linux TEST_RUNTIME=io.containerd.runc.v2 TRAVIS_CGO_ENABLED=1 TRAVIS_DISTRO=xenial
+      env: TRAVIS_GOOS=linux TEST_RUNTIME=io.containerd.runc.v2 TRAVIS_CGO_ENABLED=1 TRAVIS_DISTRO=xenial GOPROXY=direct
 
 go_import_path: github.com/containerd/containerd
 
@@ -59,9 +64,9 @@ install:
   - if [ "$TRAVIS_GOOS" = "linux" ]; then sudo PATH=$PATH GOPATH=$GOPATH script/setup/install-runc ; fi
   - if [ "$TRAVIS_GOOS" = "linux" ]; then sudo PATH=$PATH GOPATH=$GOPATH script/setup/install-cni ; fi
   - if [ "$TRAVIS_GOOS" = "linux" ]; then sudo PATH=$PATH GOPATH=$GOPATH script/setup/install-critools ; fi
-  - if [ "$TRAVIS_GOOS" = "linux" ]; then wget https://github.com/checkpoint-restore/criu/archive/v3.12.tar.gz -O /tmp/criu.tar.gz ; fi
+  - if [ "$TRAVIS_GOOS" = "linux" ]; then wget https://github.com/checkpoint-restore/criu/archive/v3.13.tar.gz -O /tmp/criu.tar.gz ; fi
   - if [ "$TRAVIS_GOOS" = "linux" ]; then tar -C /tmp/ -zxf /tmp/criu.tar.gz ; fi
-  - if [ "$TRAVIS_GOOS" = "linux" ]; then cd /tmp/criu-3.12 && sudo make install-criu ; fi
+  - if [ "$TRAVIS_GOOS" = "linux" ]; then cd /tmp/criu-3.13 && sudo make install-criu ; fi
   - cd $TRAVIS_BUILD_DIR
 
 before_script:
@@ -73,7 +78,7 @@ script:
   - DCO_VERBOSITY=-q ../project/script/validate/dco
   - ../project/script/validate/fileheader ../project/
   - travis_wait ../project/script/validate/vendor
-  - GOOS=linux script/setup/install-dev-tools
+  - GOOS=linux GO111MODULE=off script/setup/install-dev-tools
   - go build -i .
   - make check
   - if [ "$GOOS" = "linux" ]; then make check-protos check-api-descriptors; fi
@@ -83,9 +88,9 @@ script:
   - if [ "$TRAVIS_GOOS" = "linux" ]; then sudo make install ; fi
   - if [ "$TRAVIS_GOOS" = "linux" ]; then make coverage ; fi
   - if [ "$TRAVIS_GOOS" = "linux" ]; then sudo PATH=$PATH GOPATH=$GOPATH make root-coverage ; fi
-  - if [ "$TRAVIS_GOOS" = "linux" ]; then sudo PATH=$PATH GOPATH=$GOPATH make integration ; fi
+  - if [ "$TRAVIS_GOOS" = "linux" ]; then sudo PATH=$PATH GOPATH=$GOPATH make integration EXTRA_TESTFLAGS=-no-criu ; fi
   # Run the integration suite a second time. See discussion in github.com/containerd/containerd/pull/1759
-  - if [ "$TRAVIS_GOOS" = "linux" ]; then sudo PATH=$PATH GOPATH=$GOPATH TESTFLAGS_PARALLEL=1 make integration ; fi
+  - if [ "$TRAVIS_GOOS" = "linux" ]; then sudo PATH=$PATH GOPATH=$GOPATH TESTFLAGS_PARALLEL=1 make integration EXTRA_TESTFLAGS=-no-criu ; fi
   - |
     if [ "$TRAVIS_GOOS" = "linux" ]; then
       sudo mkdir -p /etc/containerd
@@ -107,8 +112,7 @@ after_success:
   - bash <(curl -s https://codecov.io/bash) -F linux
 
 before_deploy:
-  - make release
-  - if [ "$TRAVIS_GOOS" = "linux" ]; then make cri-release; fi
+  - if [ "$TRAVIS_RELEASE" = "yes" ]; then make release cri-release; fi
 
 deploy:
   - provider: releases
