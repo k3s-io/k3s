@@ -78,10 +78,6 @@ func validateSysctl() error {
 		// However, the current k3s implementation has a bug that requires net.ipv4.ip_forward=1
 		// https://github.com/rancher/k3s/issues/2420#issuecomment-715051120
 		"net.ipv4.ip_forward": "1",
-
-		// Currently, kernel.dmesg_restrict needs to be 0 to allow OOM-related messages
-		// https://github.com/rootless-containers/usernetes/issues/204
-		"kernel.dmesg_restrict": "0",
 	}
 	for key, expectedValue := range expected {
 		if actualValue, err := readSysctl(key); err == nil {

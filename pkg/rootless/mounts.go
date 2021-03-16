@@ -37,6 +37,18 @@ func setupMounts(stateDir string) error {
 		}
 	}
 
+	if devKmsg, err := os.Open("/dev/kmsg"); err == nil {
+		devKmsg.Close()
+	} else {
+		// kubelet requires /dev/kmsg to be readable
+		// https://github.com/rootless-containers/usernetes/issues/204
+		// https://github.com/rootless-containers/usernetes/pull/214
+		logrus.Debugf("`kernel.dmesg_restrict` seems to be set, bind-mounting /dev/null into /dev/kmsg")
+		if err := unix.Mount("/dev/null", "/dev/kmsg", "none", unix.MS_BIND, ""); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
