@@ -52,6 +52,7 @@ func SetScore(pid int) error {
 
 // AdjustOOMScore sets the OOM score for the process to the parents OOM score +1
 // to ensure that they parent has a lower* score than the shim
+// if not already at the maximum OOM Score
 func AdjustOOMScore(pid int) error {
 	parent := os.Getppid()
 	score, err := sys.GetOOMScoreAdj(parent)
@@ -59,6 +60,9 @@ func AdjustOOMScore(pid int) error {
 		return errors.Wrap(err, "get parent OOM score")
 	}
 	shimScore := score + 1
+	if shimScore > sys.OOMScoreAdjMax {
+		shimScore = sys.OOMScoreAdjMax
+	}
 	if err := sys.SetOOMScore(pid, shimScore); err != nil {
 		return errors.Wrap(err, "set shim OOM score")
 	}

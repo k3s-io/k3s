@@ -517,10 +517,10 @@ github.com/juju/loggo v0.0.0-20180524022052-584905176618/go.mod h1:vgyd7OREkbtVE
 github.com/juju/loggo v0.0.0-20190526231331-6e530bcce5d8/go.mod h1:vgyd7OREkbtVEN/8IXZe5Ooef3LQePvuBm9UWj6ZL8U=
 github.com/juju/testing v0.0.0-20180920084828-472a3e8b2073/go.mod h1:63prj8cnj0tU0S9OHjGJn+b1h0ZghCndfnbQolrYTwA=
 github.com/juju/testing v0.0.0-20190613124551-e81189438503/go.mod h1:63prj8cnj0tU0S9OHjGJn+b1h0ZghCndfnbQolrYTwA=
-github.com/k3s-io/containerd v1.3.9-k3s1 h1:VeMMmcojFZDJlLkgtIr7GAmDUgtGS7ME3KvLo9g/6+s=
-github.com/k3s-io/containerd v1.3.9-k3s1/go.mod h1:eMCLnqhZCzg+cZuvfMLStYPsrx5cWGpdZL6krPhK8RI=
-github.com/k3s-io/cri v1.3.0-k3s.9 h1:1PUJysV7YQElM5JEjnHdOQ2kgwtTiSJ5fpx1j4/WjzU=
-github.com/k3s-io/cri v1.3.0-k3s.9/go.mod h1:fGPUUHMKQik/vIegSe05DtX/m4miovdtvVLqRUFAkK0=
+github.com/k3s-io/containerd v1.3.10-k3s1 h1:udmDeUJVbz4zFdN+fCih+GSY35iFpb7Yk0K+ph2oc9c=
+github.com/k3s-io/containerd v1.3.10-k3s1/go.mod h1:eMCLnqhZCzg+cZuvfMLStYPsrx5cWGpdZL6krPhK8RI=
+github.com/k3s-io/cri v1.3.0-k3s.10 h1:K4pIza6Fnv9ucC2DigmTDHeW/v7nBT8cF2M3a1N6uHQ=
+github.com/k3s-io/cri v1.3.0-k3s.10/go.mod h1:fGPUUHMKQik/vIegSe05DtX/m4miovdtvVLqRUFAkK0=
 github.com/k3s-io/kubernetes v1.17.17-k3s1 h1:z8OnWFDurLPRqhlTf4EdmWm06IYsZLuhVQmofrL7Reo=
 github.com/k3s-io/kubernetes v1.17.17-k3s1/go.mod h1:J8bqjhrOYZ/dDhaQU8sEfM+aH81x3Urfw1uODZc7ZfU=
 github.com/k3s-io/kubernetes/staging/src/k8s.io/api v1.17.17-k3s1 h1:u73fKSBMXqZ7sMYcKwySceqrQMMTYhMnkCfLiCfusGo=
