@@ -694,9 +694,9 @@ EOF
 
 # --- disable current service if loaded --
 systemd_disable() {
+    $SUDO systemctl disable ${SYSTEM_NAME} >/dev/null 2>&1 || true
     $SUDO rm -f /etc/systemd/system/${SERVICE_K3S} || true
     $SUDO rm -f /etc/systemd/system/${SERVICE_K3S}.env || true
-    $SUDO systemctl disable ${SYSTEM_NAME} >/dev/null 2>&1 || true
 }
 
 # --- capture current env and create file containing k3s_ variables ---
