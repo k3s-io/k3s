@@ -114,11 +114,13 @@ func BuildManifest(ctx Context) (*Manifest, error) {
 	}
 
 	// merge and post-process the hardlinks.
+	// nolint:misspell
 	hardlinked, err := hardlinks.Merge()
 	if err != nil {
 		return nil, err
 	}
 
+	// nolint:misspell
 	for _, resource := range hardlinked {
 		resourcesByPath[resource.Path()] = resource
 	}

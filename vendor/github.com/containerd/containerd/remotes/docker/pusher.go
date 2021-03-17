@@ -136,7 +136,7 @@ func (p dockerPusher) Push(ctx context.Context, desc ocispec.Descriptor) (conten
 			//
 			// for the private repo, we should remove mount-from
 			// query and send the request again.
-			resp, err = preq.do(pctx)
+			resp, err = preq.doWithRetries(pctx, nil)
 			if err != nil {
 				return nil, err
 			}
@@ -235,7 +235,7 @@ func (p dockerPusher) Push(ctx context.Context, desc ocispec.Descriptor) (conten
 
 	go func() {
 		defer close(respC)
-		resp, err := req.do(ctx)
+		resp, err := req.doWithRetries(ctx, nil)
 		if err != nil {
 			pr.CloseWithError(err)
 			return

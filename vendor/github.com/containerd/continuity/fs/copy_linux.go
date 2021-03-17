@@ -51,7 +51,10 @@ func copyFileInfo(fi os.FileInfo, name string) error {
 		}
 	}
 
-	timespec := []unix.Timespec{unix.Timespec(StatAtime(st)), unix.Timespec(StatMtime(st))}
+	timespec := []unix.Timespec{
+		unix.NsecToTimespec(syscall.TimespecToNsec(StatAtime(st))),
+		unix.NsecToTimespec(syscall.TimespecToNsec(StatMtime(st))),
+	}
 	if err := unix.UtimesNanoAt(unix.AT_FDCWD, name, timespec, unix.AT_SYMLINK_NOFOLLOW); err != nil {
 		return errors.Wrapf(err, "failed to utime %s", name)
 	}
@@ -101,21 +104,24 @@ func copyFileContent(dst, src *os.File) error {
 	return nil
 }
 
-func copyXAttrs(dst, src string, xeh XAttrErrorHandler) error {
+func copyXAttrs(dst, src string, excludes map[string]struct{}, errorHandler XAttrErrorHandler) error {
 	xattrKeys, err := sysx.LListxattr(src)
 	if err != nil {
 		e := errors.Wrapf(err, "failed to list xattrs on %s", src)
-		if xeh != nil {
-			e = xeh(dst, src, "", e)
+		if errorHandler != nil {
+			e = errorHandler(dst, src, "", e)
 		}
 		return e
 	}
 	for _, xattr := range xattrKeys {
+		if _, exclude := excludes[xattr]; exclude {
+			continue
+		}
 		data, err := sysx.LGetxattr(src, xattr)
 		if err != nil {
 			e := errors.Wrapf(err, "failed to get xattr %q on %s", xattr, src)
-			if xeh != nil {
-				if e = xeh(dst, src, xattr, e); e == nil {
+			if errorHandler != nil {
+				if e = errorHandler(dst, src, xattr, e); e == nil {
 					continue
 				}
 			}
@@ -123,8 +129,8 @@ func copyXAttrs(dst, src string, xeh XAttrErrorHandler) error {
 		}
 		if err := sysx.LSetxattr(dst, xattr, data, 0); err != nil {
 			e := errors.Wrapf(err, "failed to set xattr %q on %s", xattr, dst)
-			if xeh != nil {
-				if e = xeh(dst, src, xattr, e); e == nil {
+			if errorHandler != nil {
+				if e = errorHandler(dst, src, xattr, e); e == nil {
 					continue
 				}
 			}

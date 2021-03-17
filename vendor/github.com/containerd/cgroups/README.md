@@ -1,6 +1,6 @@
 # cgroups
 
-[![Build Status](https://travis-ci.org/containerd/cgroups.svg?branch=master)](https://travis-ci.org/containerd/cgroups)
+[![Build Status](https://github.com/containerd/cgroups/workflows/CI/badge.svg)](https://github.com/containerd/cgroups/actions?query=workflow%3ACI)
 [![codecov](https://codecov.io/gh/containerd/cgroups/branch/master/graph/badge.svg)](https://codecov.io/gh/containerd/cgroups)
 [![GoDoc](https://godoc.org/github.com/containerd/cgroups?status.svg)](https://godoc.org/github.com/containerd/cgroups)
 [![Go Report Card](https://goreportcard.com/badge/github.com/containerd/cgroups)](https://goreportcard.com/report/github.com/containerd/cgroups)
@@ -65,7 +65,7 @@ To update the resources applied in the cgroup
 ```go
 shares = uint64(200)
 if err := control.Update(&specs.LinuxResources{
-    CPU: &specs.CPU{
+    CPU: &specs.LinuxCPU{
         Shares: &shares,
     },
 }); err != nil {
