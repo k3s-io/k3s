@@ -46,7 +46,7 @@ See [test dashboard](https://k8s-testgrid.appspot.com/sig-node-containerd)
 |       End-Of-Life      | v1.1 (End-Of-Life) |        1.10+       |   v1alpha2  |
 |                        |  v1.2 (Extended)   |        1.10+       |   v1alpha2  |
 |                        |        v1.3        |        1.12+       |   v1alpha2  |
-|                        |        v1.4        |      1.19+ (rc)    |   v1alpha2  |
+|                        |        v1.4        |        1.19+       |   v1alpha2  |
 
 **Note:** The support table above specifies the Kubernetes Version that was supported at time of release of the containerd - cri integration.
 
@@ -56,7 +56,7 @@ The following is the current support table for containerd CRI integration taking
 |:------------------:|:------------------:|:-----------:|
 |        v1.2        |        1.15+       |   v1alpha2  |
 |        v1.3        |        1.15+       |   v1alpha2  |
-|        v1.4        |      1.19+ (rc)    |   v1alpha2  |
+|        v1.4        |        1.19+       |   v1alpha2  |
 
 ## Production Quality Cluster on GCE
 For a production quality cluster on GCE brought up with `kube-up.sh` refer [here](docs/kube-up.md).
@@ -88,7 +88,7 @@ specifications as appropriate.
 backport version of `libseccomp-dev` is required. See [travis.yml](.travis.yml) for an example on trusty.
 * **btrfs development library.** Required by containerd btrfs support. `btrfs-tools`(Ubuntu, Debian) / `btrfs-progs-devel`(Fedora, CentOS, RHEL)
 2. Install **`pkg-config`** (required for linking with `libseccomp`).
-3. Install and setup a Go 1.13.15 development environment.
+3. Install and setup a Go 1.15.5 development environment.
 4. Make a local clone of this repository.
 5. Install binary dependencies by running the following command from your cloned `cri/` project directory:
 ```bash

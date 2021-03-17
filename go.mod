@@ -5,12 +5,12 @@ go 1.15
 replace (
 	github.com/Microsoft/hcsshim => github.com/Microsoft/hcsshim v0.8.9
 	github.com/benmoss/go-powershell => github.com/k3s-io/go-powershell v0.0.0-20201118222746-51f4c451fbd7
-	github.com/containerd/btrfs => github.com/containerd/btrfs v0.0.0-20181101203652-af5082808c83
-	github.com/containerd/cgroups => github.com/containerd/cgroups v0.0.0-20200531161412-0dbf7f05ba59
-	github.com/containerd/console => github.com/containerd/console v0.0.0-20181022165439-0650fd9eeb50
-	github.com/containerd/containerd => github.com/k3s-io/containerd v1.4.3-k3s5 // k3s-release/1.4
-	github.com/containerd/continuity => github.com/k3s-io/continuity v0.0.0-20210309170710-f93269e0d5c1 // see rancher/rke2#690
-	github.com/containerd/cri => github.com/k3s-io/cri v1.4.0-k3s.4 // k3s-release/1.4
+	github.com/containerd/btrfs => github.com/containerd/btrfs v0.0.0-20201111183144-404b9149801e
+	github.com/containerd/cgroups => github.com/containerd/cgroups v0.0.0-20200710171044-318312a37340
+	github.com/containerd/console => github.com/containerd/console v1.0.0
+	github.com/containerd/containerd => github.com/k3s-io/containerd v1.4.4-k3s1
+	github.com/containerd/continuity => github.com/k3s-io/continuity v0.0.0-20210309170710-f93269e0d5c1
+	github.com/containerd/cri => github.com/k3s-io/cri v1.4.0-k3s.5 // k3s-release/1.4
 	github.com/containerd/fifo => github.com/containerd/fifo v0.0.0-20190816180239-bda0ff6ed73c
 	github.com/containerd/go-runc => github.com/containerd/go-runc v0.0.0-20200220073739-7016d3ce2328
 	github.com/containerd/typeurl => github.com/containerd/typeurl v0.0.0-20180627222232-a93fcdb778cd
