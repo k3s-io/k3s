@@ -88,13 +88,9 @@ func digestsMatch(as, bs []digest.Digest) bool {
 	}
 
 	disjoint := len(as) + len(bs)
-	if len(uniqified) == disjoint {
-		// if these two sets have the same cardinality, we know both sides
-		// didn't share any digests.
-		return false
-	}
-
-	return true
+	// if these two sets have the same cardinality, we know both sides
+	// didn't share any digests.
+	return len(uniqified) != disjoint
 }
 
 type digestSlice []digest.Digest

@@ -115,6 +115,7 @@ func (b *binary) Start(ctx context.Context, opts *types.Any, onClose func()) (_ 
 	onCloseWithShimLog := func() {
 		onClose()
 		cancelShimLog()
+		f.Close()
 	}
 	client := ttrpc.NewClient(conn, ttrpc.WithOnClose(onCloseWithShimLog))
 	return &shim{
