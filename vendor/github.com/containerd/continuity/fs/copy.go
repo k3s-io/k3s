@@ -39,6 +39,8 @@ type XAttrErrorHandler func(dst, src, xattrKey string, err error) error
 
 type copyDirOpts struct {
 	xeh XAttrErrorHandler
+	// xex contains a set of xattrs to exclude when copying
+	xex map[string]struct{}
 }
 
 type CopyDirOpt func(*copyDirOpts) error
@@ -61,6 +63,19 @@ func WithAllowXAttrErrors() CopyDirOpt {
 	return WithXAttrErrorHandler(xeh)
 }
 
+// WithXAttrExclude allows for exclusion of specified xattr during CopyDir operation.
+func WithXAttrExclude(keys ...string) CopyDirOpt {
+	return func(o *copyDirOpts) error {
+		if o.xex == nil {
+			o.xex = make(map[string]struct{}, len(keys))
+		}
+		for _, key := range keys {
+			o.xex[key] = struct{}{}
+		}
+		return nil
+	}
+}
+
 // CopyDir copies the directory from src to dst.
 // Most efficient copy of files is attempted.
 func CopyDir(dst, src string, opts ...CopyDirOpt) error {
@@ -80,7 +95,7 @@ func copyDirectory(dst, src string, inodes map[uint64]string, o *copyDirOpts) er
 		return errors.Wrapf(err, "failed to stat %s", src)
 	}
 	if !stat.IsDir() {
-		return errors.Errorf("source is not directory")
+		return errors.Errorf("source %s is not directory", src)
 	}
 
 	if st, err := os.Stat(dst); err != nil {
@@ -102,6 +117,10 @@ func copyDirectory(dst, src string, inodes map[uint64]string, o *copyDirOpts) er
 
 	if err := copyFileInfo(stat, dst); err != nil {
 		return errors.Wrapf(err, "failed to copy file info for %s", dst)
+	}
+
+	if err := copyXAttrs(dst, src, o.xex, o.xeh); err != nil {
+		return errors.Wrap(err, "failed to copy xattrs")
 	}
 
 	for _, fi := range fis {
@@ -146,7 +165,7 @@ func copyDirectory(dst, src string, inodes map[uint64]string, o *copyDirOpts) er
 			return errors.Wrap(err, "failed to copy file info")
 		}
 
-		if err := copyXAttrs(target, source, o.xeh); err != nil {
+		if err := copyXAttrs(target, source, o.xex, o.xeh); err != nil {
 			return errors.Wrap(err, "failed to copy xattrs")
 		}
 	}

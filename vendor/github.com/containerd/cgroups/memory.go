@@ -20,7 +20,6 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -214,7 +213,7 @@ func (m *memoryController) Create(path string, resources *specs.LinuxResources) 
 		// until a limit is set on the cgroup and limit cannot be set once the
 		// cgroup has children, or if there are already tasks in the cgroup.
 		for _, i := range []int64{1, -1} {
-			if err := ioutil.WriteFile(
+			if err := retryingWriteFile(
 				filepath.Join(m.Path(path), "memory.kmem.limit_in_bytes"),
 				[]byte(strconv.FormatInt(i, 10)),
 				defaultFilePerm,
@@ -378,8 +377,8 @@ func (m *memoryController) parseStats(r io.Reader, stat *v1.MemoryStat) error {
 func (m *memoryController) set(path string, settings []memorySettings) error {
 	for _, t := range settings {
 		if t.value != nil {
-			if err := ioutil.WriteFile(
-				filepath.Join(m.Path(path), fmt.Sprintf("memory.%s", t.name)),
+			if err := retryingWriteFile(
+				filepath.Join(m.Path(path), "memory."+t.name),
 				[]byte(strconv.FormatInt(*t.value, 10)),
 				defaultFilePerm,
 			); err != nil {
@@ -468,7 +467,7 @@ func (m *memoryController) memoryEvent(path string, event MemoryEvent) (uintptr,
 	defer evtFile.Close()
 	data := fmt.Sprintf("%d %d %s", efd, evtFile.Fd(), event.Arg())
 	evctlPath := filepath.Join(root, "cgroup.event_control")
-	if err := ioutil.WriteFile(evctlPath, []byte(data), 0700); err != nil {
+	if err := retryingWriteFile(evctlPath, []byte(data), 0700); err != nil {
 		unix.Close(efd)
 		return 0, err
 	}

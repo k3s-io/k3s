@@ -26,6 +26,7 @@ import (
 
 	"github.com/containerd/containerd/log"
 	"github.com/containerd/containerd/mount"
+	"github.com/containerd/containerd/sys"
 	"github.com/containerd/continuity/fs"
 	"github.com/pkg/errors"
 )
@@ -85,4 +86,85 @@ func Supported(root string) error {
 		return fmt.Errorf("%s does not support d_type. If the backing filesystem is xfs, please reformat with ftype=1 to enable d_type support", root)
 	}
 	return supportsMultipleLowerDir(root)
+}
+
+// NeedsUserXAttr returns whether overlayfs should be mounted with the "userxattr" mount option.
+//
+// The "userxattr" option is needed for mounting overlayfs inside a user namespace with kernel >= 5.11.
+//
+// The "userxattr" option is NOT needed for the initial user namespace (aka "the host").
+//
+// Also, Ubuntu (since circa 2015) and Debian (since 10) with kernel < 5.11 can mount
+// the overlayfs in a user namespace without the "userxattr" option.
+//
+// The corresponding kernel commit: https://github.com/torvalds/linux/commit/2d2f2d7322ff43e0fe92bf8cccdc0b09449bf2e1
+// > ovl: user xattr
+// >
+// > Optionally allow using "user.overlay." namespace instead of "trusted.overlay."
+// > ...
+// > Disable redirect_dir and metacopy options, because these would allow privilege escalation through direct manipulation of the
+// > "user.overlay.redirect" or "user.overlay.metacopy" xattrs.
+// > ...
+//
+// The "userxattr" support is not exposed in "/sys/module/overlay/parameters".
+func NeedsUserXAttr(d string) (bool, error) {
+	if !sys.RunningInUserNS() {
+		// we are the real root (i.e., the root in the initial user NS),
+		// so we do never need "userxattr" opt.
+		return false, nil
+	}
+
+	// TODO: add fast path for kernel >= 5.11 .
+	//
+	// Keep in mind that distro vendors might be going to backport the patch to older kernels.
+	// So we can't completely remove the check.
+
+	tdRoot := filepath.Join(d, "userxattr-check")
+	if err := os.RemoveAll(tdRoot); err != nil {
+		log.L.WithError(err).Warnf("Failed to remove check directory %v", tdRoot)
+	}
+
+	if err := os.MkdirAll(tdRoot, 0700); err != nil {
+		return false, err
+	}
+
+	defer func() {
+		if err := os.RemoveAll(tdRoot); err != nil {
+			log.L.WithError(err).Warnf("Failed to remove check directory %v", tdRoot)
+		}
+	}()
+
+	td, err := ioutil.TempDir(tdRoot, "")
+	if err != nil {
+		return false, err
+	}
+
+	for _, dir := range []string{"lower1", "lower2", "upper", "work", "merged"} {
+		if err := os.Mkdir(filepath.Join(td, dir), 0755); err != nil {
+			return false, err
+		}
+	}
+
+	opts := []string{
+		fmt.Sprintf("lowerdir=%s:%s,upperdir=%s,workdir=%s", filepath.Join(td, "lower2"), filepath.Join(td, "lower1"), filepath.Join(td, "upper"), filepath.Join(td, "work")),
+		"userxattr",
+	}
+
+	m := mount.Mount{
+		Type:    "overlay",
+		Source:  "overlay",
+		Options: opts,
+	}
+
+	dest := filepath.Join(td, "merged")
+	if err := m.Mount(dest); err != nil {
+		// Probably the host is running Ubuntu/Debian kernel (< 5.11) with the userns patch but without the userxattr patch.
+		// Return false without error.
+		log.L.WithError(err).Debugf("cannot mount overlay with \"userxattr\", probably the kernel does not support userxattr")
+		return false, nil
+	}
+	if err := mount.UnmountAll(dest, 0); err != nil {
+		log.L.WithError(err).Warnf("Failed to unmount check directory %v", dest)
+	}
+	return true, nil
 }

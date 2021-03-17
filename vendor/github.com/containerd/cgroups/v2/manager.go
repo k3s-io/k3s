@@ -18,26 +18,22 @@ package v2
 
 import (
 	"bufio"
-	"fmt"
 	"io/ioutil"
 	"math"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
-	"sync"
 	"syscall"
 	"time"
 
-	"golang.org/x/sys/unix"
-
 	"github.com/containerd/cgroups/v2/stats"
+	systemdDbus "github.com/coreos/go-systemd/v22/dbus"
 	"github.com/godbus/dbus/v5"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-
-	systemdDbus "github.com/coreos/go-systemd/v22/dbus"
+	"golang.org/x/sys/unix"
 )
 
 const (
@@ -49,12 +45,7 @@ const (
 
 var (
 	canDelegate bool
-	once        sync.Once
 )
-
-type cgValuer interface {
-	Values() []Value
-}
 
 type Event struct {
 	Low     uint64
@@ -149,11 +140,21 @@ func (c *Value) write(path string, perm os.FileMode) error {
 	default:
 		return ErrInvalidFormat
 	}
-	return ioutil.WriteFile(
-		filepath.Join(path, c.filename),
-		data,
-		perm,
-	)
+
+	// Retry writes on EINTR; see:
+	//    https://github.com/golang/go/issues/38033
+	for {
+		err := ioutil.WriteFile(
+			filepath.Join(path, c.filename),
+			data,
+			perm,
+		)
+		if err == nil {
+			return nil
+		} else if !errors.Is(err, syscall.EINTR) {
+			return err
+		}
+	}
 }
 
 func writeValues(path string, values []Value) error {
@@ -259,7 +260,7 @@ func (c *Manager) ToggleControllers(controllers []string, t ControllerToggle) er
 	// Note that /sys/fs/cgroup/foo/bar/baz/cgroup.subtree_control does not need to be written.
 	split := strings.Split(c.path, "/")
 	var lastErr error
-	for i, _ := range split {
+	for i := range split {
 		f := strings.Join(split[:i], "/")
 		if !strings.HasPrefix(f, c.unifiedMountpoint) || f == c.path {
 			continue
@@ -362,8 +363,7 @@ func (c *Manager) Stat() (*stats.Metrics, error) {
 	for _, controller := range controllers {
 		switch controller {
 		case "cpu", "memory":
-			filename := fmt.Sprintf("%s.stat", controller)
-			if err := readKVStatsFile(c.path, filename, out); err != nil {
+			if err := readKVStatsFile(c.path, controller+".stat", out); err != nil {
 				if os.IsNotExist(err) {
 					continue
 				}
@@ -670,7 +670,7 @@ func NewSystemd(slice, group string, pid int, resources *Resources) (*Manager, e
 	defer conn.Close()
 
 	properties := []systemdDbus.Property{
-		systemdDbus.PropDescription(fmt.Sprintf("cgroup %s", group)),
+		systemdDbus.PropDescription("cgroup " + group),
 		newSystemdProperty("DefaultDependencies", false),
 		newSystemdProperty("MemoryAccounting", true),
 		newSystemdProperty("CPUAccounting", true),

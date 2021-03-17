@@ -5,12 +5,12 @@ go 1.15
 replace (
 	github.com/Microsoft/hcsshim => github.com/Microsoft/hcsshim v0.8.9
 	github.com/benmoss/go-powershell => github.com/rancher/go-powershell v0.0.0-20200701184732-233247d45373
-	github.com/containerd/btrfs => github.com/containerd/btrfs v0.0.0-20181101203652-af5082808c83
-	github.com/containerd/cgroups => github.com/containerd/cgroups v0.0.0-20200531161412-0dbf7f05ba59
-	github.com/containerd/console => github.com/containerd/console v0.0.0-20181022165439-0650fd9eeb50
-	github.com/containerd/containerd => github.com/k3s-io/containerd v1.4.3-k3s3
-	github.com/containerd/continuity => github.com/containerd/continuity v0.0.0-20190815185530-f2a389ac0a02
-	github.com/containerd/cri => github.com/rancher/cri v1.4.0-k3s.2 // k3s-release/1.4
+	github.com/containerd/btrfs => github.com/containerd/btrfs v0.0.0-20201111183144-404b9149801e
+	github.com/containerd/cgroups => github.com/containerd/cgroups v0.0.0-20200710171044-318312a37340
+	github.com/containerd/console => github.com/containerd/console v1.0.0
+	github.com/containerd/containerd => github.com/k3s-io/containerd v1.4.4-k3s1
+	github.com/containerd/continuity => github.com/k3s-io/continuity v0.0.0-20210309170710-f93269e0d5c1
+	github.com/containerd/cri => github.com/k3s-io/cri v1.4.0-k3s.5 // k3s-release/1.4
 	github.com/containerd/fifo => github.com/containerd/fifo v0.0.0-20190816180239-bda0ff6ed73c
 	github.com/containerd/go-runc => github.com/containerd/go-runc v0.0.0-20200220073739-7016d3ce2328
 	github.com/containerd/typeurl => github.com/containerd/typeurl v0.0.0-20180627222232-a93fcdb778cd
@@ -63,7 +63,7 @@ replace (
 require (
 	github.com/NYTimes/gziphandler v1.1.1 // indirect
 	github.com/bronze1man/goStrongswanVici v0.0.0-20190828090544-27d02f80ba40 // indirect
-	github.com/containerd/containerd v1.4.0
+	github.com/containerd/containerd v1.4.4
 	github.com/containerd/cri v1.11.1-0.20200820101445-b0cc07999aa5
 	github.com/coreos/flannel v0.12.0
 	github.com/coreos/go-iptables v0.4.5
@@ -93,7 +93,7 @@ require (
 	github.com/rancher/wrangler-api v0.6.0
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/rootless-containers/rootlesskit v0.10.0
-	github.com/sirupsen/logrus v1.6.0
+	github.com/sirupsen/logrus v1.7.0
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.6.1
 	github.com/tchap/go-patricia v2.3.0+incompatible // indirect
@@ -101,7 +101,7 @@ require (
 	go.etcd.io/etcd v0.5.0-alpha.5.0.20200819165624-17cef6e3e9d5
 	golang.org/x/crypto v0.0.0-20201002170205-7f63de1d35b0
 	golang.org/x/net v0.0.0-20201110031124-69a78807bb2b
-	golang.org/x/sys v0.0.0-20201112073958-5cba982894dd
+	golang.org/x/sys v0.0.0-20201201145000-ef89a241ccb3
 	google.golang.org/grpc v1.31.1
 	gopkg.in/yaml.v2 v2.3.0
 	k8s.io/api v0.19.0

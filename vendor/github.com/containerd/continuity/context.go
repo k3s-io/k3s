@@ -596,7 +596,7 @@ func (c *context) Walk(fn filepath.WalkFunc) error {
 			return err
 		}
 	}
-	return c.pathDriver.Walk(root, func(p string, fi os.FileInfo, err error) error {
+	return c.pathDriver.Walk(root, func(p string, fi os.FileInfo, _ error) error {
 		contained, err := c.containWithRoot(p, root)
 		return fn(contained, fi, err)
 	})
@@ -611,12 +611,6 @@ func (c *context) fullpath(p string) (string, error) {
 	}
 
 	return p, nil
-}
-
-// contain cleans and santizes the filesystem path p to be an absolute path,
-// effectively relative to the context root.
-func (c *context) contain(p string) (string, error) {
-	return c.containWithRoot(p, c.root)
 }
 
 // containWithRoot cleans and santizes the filesystem path p to be an absolute path,
