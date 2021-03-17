@@ -86,13 +86,18 @@ func (c *Cluster) Start(ctx context.Context) (<-chan struct{}, error) {
 		return nil, err
 	}
 
-	// at this point, if etcd is in use, it's up, ready,
-	// and bootstrapping is complete so save the bootstrap
-	// data
+	// at this point, if etcd is in use, it's bootstrapping is complete
+	// so save the bootstrap data. We will need for etcd to be up. If
+	// the save call returns an error, we panic since subsequent etcd
+	// snapshots will be empty.
 	if c.managedDB != nil {
-		if err := c.save(ctx); err != nil {
-			return nil, err
-		}
+		go func() {
+			for range ready {
+				if err := c.save(ctx); err != nil {
+					panic(err)
+				}
+			}
+		}()
 	}
 
 	return ready, nil
