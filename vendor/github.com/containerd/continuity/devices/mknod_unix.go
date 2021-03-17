@@ -1,3 +1,5 @@
+// +build linux darwin solaris
+
 /*
    Copyright The containerd Authors.
 
@@ -14,23 +16,10 @@
    limitations under the License.
 */
 
-package sys
+package devices
 
-const (
-	// OOMScoreAdjMax is not implemented on Windows
-	OOMScoreAdjMax = 0
-)
+import "golang.org/x/sys/unix"
 
-// SetOOMScore sets the oom score for the process
-//
-// Not implemented on Windows
-func SetOOMScore(pid, score int) error {
-	return nil
-}
-
-// GetOOMScoreAdj gets the oom score for a process
-//
-// Not implemented on Windows
-func GetOOMScoreAdj(pid int) (int, error) {
-	return 0, nil
+func mknod(path string, mode uint32, dev uint64) (err error) {
+	return unix.Mknod(path, mode, int(dev))
 }

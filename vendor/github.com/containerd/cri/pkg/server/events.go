@@ -325,14 +325,11 @@ func handleContainerExit(ctx context.Context, e *eventtypes.TaskExit, cntr conta
 		}
 	}
 	err = cntr.Status.UpdateSync(func(status containerstore.Status) (containerstore.Status, error) {
-		// If FinishedAt has been set (e.g. with start failure), keep as
-		// it is.
-		if status.FinishedAt != 0 {
-			return status, nil
+		if status.FinishedAt == 0 {
+			status.Pid = 0
+			status.FinishedAt = e.ExitedAt.UnixNano()
+			status.ExitCode = int32(e.ExitStatus)
 		}
-		status.Pid = 0
-		status.FinishedAt = e.ExitedAt.UnixNano()
-		status.ExitCode = int32(e.ExitStatus)
 		// Unknown state can only transit to EXITED state, so we need
 		// to handle unknown state here.
 		if status.Unknown {

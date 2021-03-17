@@ -28,9 +28,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/godbus/dbus/v5"
-
 	"github.com/containerd/cgroups/v2/stats"
+	"github.com/godbus/dbus/v5"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -106,14 +105,6 @@ func parseKV(raw string) (string, interface{}, error) {
 	}
 }
 
-func readUint(path string) (uint64, error) {
-	v, err := ioutil.ReadFile(path)
-	if err != nil {
-		return 0, err
-	}
-	return parseUint(strings.TrimSpace(string(v)), 10, 64)
-}
-
 func parseUint(s string, base, bitSize int) (uint64, error) {
 	v, err := strconv.ParseUint(s, base, bitSize)
 	if err != nil {
@@ -178,7 +169,7 @@ func ToResources(spec *specs.LinuxResources) *Resources {
 			Mems: cpu.Mems,
 		}
 		if shares := cpu.Shares; shares != nil {
-			convertedWeight := (1 + ((*shares-2)*9999)/262142)
+			convertedWeight := 1 + ((*shares-2)*9999)/262142
 			resources.CPU.Weight = &convertedWeight
 		}
 		if period := cpu.Period; period != nil {
@@ -301,8 +292,8 @@ func readIoStats(path string) []*stats.IOEntry {
 			Major: major,
 			Minor: minor,
 		}
-		for _, stats := range parts {
-			keyPairValue := strings.Split(stats, "=")
+		for _, s := range parts {
+			keyPairValue := strings.Split(s, "=")
 			if len(keyPairValue) != 2 {
 				continue
 			}

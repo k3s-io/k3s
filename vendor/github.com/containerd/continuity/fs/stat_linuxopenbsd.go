@@ -1,3 +1,5 @@
+// +build linux openbsd
+
 /*
    Copyright The containerd Authors.
 
@@ -17,33 +19,27 @@
 package fs
 
 import (
-	"io"
-	"os"
-
-	"github.com/pkg/errors"
+	"syscall"
+	"time"
 )
 
-func copyFileInfo(fi os.FileInfo, name string) error {
-	if err := os.Chmod(name, fi.Mode()); err != nil {
-		return errors.Wrapf(err, "failed to chmod %s", name)
-	}
-
-	// TODO: copy windows specific metadata
-
-	return nil
+// StatAtime returns the Atim
+func StatAtime(st *syscall.Stat_t) syscall.Timespec {
+	return st.Atim
 }
 
-func copyFileContent(dst, src *os.File) error {
-	buf := bufferPool.Get().(*[]byte)
-	_, err := io.CopyBuffer(dst, src, *buf)
-	bufferPool.Put(buf)
-	return err
+// StatCtime returns the Ctim
+func StatCtime(st *syscall.Stat_t) syscall.Timespec {
+	return st.Ctim
 }
 
-func copyXAttrs(dst, src string, excludes map[string]struct{}, errorHandler XAttrErrorHandler) error {
-	return nil
+// StatMtime returns the Mtim
+func StatMtime(st *syscall.Stat_t) syscall.Timespec {
+	return st.Mtim
 }
 
-func copyDevice(dst string, fi os.FileInfo) error {
-	return errors.New("device copy not supported")
+// StatATimeAsTime returns st.Atim as a time.Time
+func StatATimeAsTime(st *syscall.Stat_t) time.Time {
+	// The int64 conversions ensure the line compiles for 32-bit systems as well.
+	return time.Unix(int64(st.Atim.Sec), int64(st.Atim.Nsec)) // nolint: unconvert
 }

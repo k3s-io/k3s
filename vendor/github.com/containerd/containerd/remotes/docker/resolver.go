@@ -24,6 +24,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"regexp"
 	"strings"
 
 	"github.com/containerd/containerd/errdefs"
@@ -462,7 +463,19 @@ func (r *dockerBase) request(host RegistryHost, method string, ps ...string) *re
 	for key, value := range host.Header {
 		header[key] = append(header[key], value...)
 	}
-	parts := append([]string{"/", host.Path, r.repository}, ps...)
+	repository := r.repository
+	for pattern, replace := range host.Rewrites {
+		exp, err := regexp.Compile(pattern)
+		if err != nil {
+			logrus.Warnf("failed to compile rewrite, `%s`, for %s", pattern, host.Host)
+			continue
+		}
+		if rr := exp.ReplaceAllString(repository, replace); rr != repository {
+			repository = rr
+			break
+		}
+	}
+	parts := append([]string{"/", host.Path, repository}, ps...)
 	p := path.Join(parts...)
 	// Join strips trailing slash, re-add ending "/" if included
 	if len(parts) > 0 && strings.HasSuffix(parts[len(parts)-1], "/") {
@@ -525,7 +538,10 @@ func (r *request) do(ctx context.Context) (*http.Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	req.Header = r.header
+	req.Header = http.Header{} // headers need to be copied to avoid concurrent map access
+	for k, v := range r.header {
+		req.Header[k] = v
+	}
 	if r.body != nil {
 		body, err := r.body()
 		if err != nil {
