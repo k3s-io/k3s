@@ -373,7 +373,7 @@ func (c *criService) generateContainerSpec(id string, sandboxID string, sandboxP
 
 	// Apply envs from image config first, so that envs from container config
 	// can override them.
-	env := imageConfig.Env
+	env := append([]string{}, imageConfig.Env...)
 	for _, e := range config.GetEnvs() {
 		env = append(env, e.GetKey()+"="+e.GetValue())
 	}

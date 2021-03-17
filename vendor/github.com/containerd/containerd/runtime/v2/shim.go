@@ -235,11 +235,11 @@ func (s *shim) Delete(ctx context.Context) (*runtime.Exit, error) {
 	// this seems dirty but it cleans up the API across runtimes, tasks, and the service
 	s.rtTasks.Delete(ctx, s.ID())
 	if err := s.waitShutdown(ctx); err != nil {
-		log.G(ctx).WithError(err).Error("failed to shutdown shim")
+		log.G(ctx).WithField("id", s.ID()).WithError(err).Error("failed to shutdown shim")
 	}
 	s.Close()
 	if err := s.bundle.Delete(); err != nil {
-		log.G(ctx).WithError(err).Error("failed to delete bundle")
+		log.G(ctx).WithField("id", s.ID()).WithError(err).Error("failed to delete bundle")
 	}
 	if shimErr != nil {
 		return nil, shimErr

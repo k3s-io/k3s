@@ -620,9 +620,10 @@ func (s *service) Connect(ctx context.Context, r *taskAPI.ConnectRequest) (*task
 
 func (s *service) Shutdown(ctx context.Context, r *taskAPI.ShutdownRequest) (*ptypes.Empty, error) {
 	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	// return out if the shim is still servicing containers
 	if len(s.containers) > 0 {
-		s.mu.Unlock()
 		return empty, nil
 	}
 	s.cancel()
