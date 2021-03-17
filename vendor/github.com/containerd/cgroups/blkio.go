@@ -20,7 +20,6 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -72,8 +71,8 @@ func (b *blkioController) Create(path string, resources *specs.LinuxResources) e
 	}
 	for _, t := range createBlkioSettings(resources.BlockIO) {
 		if t.value != nil {
-			if err := ioutil.WriteFile(
-				filepath.Join(b.Path(path), fmt.Sprintf("blkio.%s", t.name)),
+			if err := retryingWriteFile(
+				filepath.Join(b.Path(path), "blkio."+t.name),
 				t.format(t.value),
 				defaultFilePerm,
 			); err != nil {
@@ -94,7 +93,7 @@ func (b *blkioController) Stat(path string, stats *v1.Metrics) error {
 	var settings []blkioStatSettings
 
 	// Try to read CFQ stats available on all CFQ enabled kernels first
-	if _, err := os.Lstat(filepath.Join(b.Path(path), fmt.Sprintf("blkio.io_serviced_recursive"))); err == nil {
+	if _, err := os.Lstat(filepath.Join(b.Path(path), "blkio.io_serviced_recursive")); err == nil {
 		settings = []blkioStatSettings{
 			{
 				name:  "sectors_recursive",
@@ -174,7 +173,7 @@ func (b *blkioController) Stat(path string, stats *v1.Metrics) error {
 }
 
 func (b *blkioController) readEntry(devices map[deviceKey]string, path, name string, entry *[]*v1.BlkIOEntry) error {
-	f, err := os.Open(filepath.Join(b.Path(path), fmt.Sprintf("blkio.%s", name)))
+	f, err := os.Open(filepath.Join(b.Path(path), "blkio."+name))
 	if err != nil {
 		return err
 	}
@@ -188,7 +187,7 @@ func (b *blkioController) readEntry(devices map[deviceKey]string, path, name str
 				// skip total line
 				continue
 			} else {
-				return fmt.Errorf("Invalid line found while parsing %s: %s", path, sc.Text())
+				return fmt.Errorf("invalid line found while parsing %s: %s", path, sc.Text())
 			}
 		}
 		major, err := strconv.ParseUint(fields[0], 10, 64)
@@ -356,12 +355,4 @@ func getDevices(r io.Reader) (map[deviceKey]string, error) {
 		devices[key] = filepath.Join("/dev", fields[2])
 	}
 	return devices, s.Err()
-}
-
-func major(devNumber uint64) uint64 {
-	return (devNumber >> 8) & 0xfff
-}
-
-func minor(devNumber uint64) uint64 {
-	return (devNumber & 0xff) | ((devNumber >> 12) & 0xfff00)
 }

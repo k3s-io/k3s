@@ -103,7 +103,7 @@ When '--all-platforms' is given all images in a manifest list must be available.
 		} else {
 			w, err = os.Create(out)
 			if err != nil {
-				return nil
+				return err
 			}
 		}
 		defer w.Close()
