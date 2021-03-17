@@ -39,6 +39,8 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	imagespec "github.com/opencontainers/image-spec/specs-go/v1"
 	runtimespec "github.com/opencontainers/runtime-spec/specs-go"
+	selinux "github.com/opencontainers/selinux/go-selinux"
+	"github.com/opencontainers/selinux/go-selinux/label"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	runtime "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
@@ -172,6 +174,18 @@ func (c *criService) CreateContainer(ctx context.Context, r *runtime.CreateConta
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to generate container %q spec", id)
 	}
+
+	meta.ProcessLabel = spec.Process.SelinuxLabel
+	if config.GetLinux().GetSecurityContext().GetPrivileged() {
+		// If privileged don't set the SELinux label but still record it on the container so
+		// the unused MCS label can be release later
+		spec.Process.SelinuxLabel = ""
+	}
+	defer func() {
+		if retErr != nil {
+			selinux.ReleaseLabel(spec.Process.SelinuxLabel)
+		}
+	}()
 
 	log.G(ctx).Debugf("Container %q spec: %#+v", id, spew.NewFormatter(spec))
 
@@ -324,7 +338,7 @@ func (c *criService) CreateContainer(ctx context.Context, r *runtime.CreateConta
 
 func (c *criService) generateContainerSpec(id string, sandboxID string, sandboxPid uint32, config *runtime.ContainerConfig,
 	sandboxConfig *runtime.PodSandboxConfig, imageConfig *imagespec.ImageConfig, extraMounts []*runtime.Mount,
-	ociRuntime config.Runtime) (*runtimespec.Spec, error) {
+	ociRuntime config.Runtime) (retSpec *runtimespec.Spec, retErr error) {
 
 	specOpts := []oci.SpecOpts{
 		customopts.WithoutRunMount,
@@ -359,18 +373,36 @@ func (c *criService) generateContainerSpec(id string, sandboxID string, sandboxP
 
 	// Apply envs from image config first, so that envs from container config
 	// can override them.
-	env := imageConfig.Env
+	env := append([]string{}, imageConfig.Env...)
 	for _, e := range config.GetEnvs() {
 		env = append(env, e.GetKey()+"="+e.GetValue())
 	}
 	specOpts = append(specOpts, oci.WithEnv(env))
 
 	securityContext := config.GetLinux().GetSecurityContext()
-	selinuxOpt := securityContext.GetSelinuxOptions()
-	processLabel, mountLabel, err := initSelinuxOpts(selinuxOpt)
+	labelOptions, err := toLabel(securityContext.GetSelinuxOptions())
+	if err != nil {
+		return nil, err
+	}
+	if len(labelOptions) == 0 { // Use pod level SELinux config
+		if sandbox, err := c.sandboxStore.Get(sandboxID); err == nil {
+			labelOptions, err = selinux.DupSecOpt(sandbox.ProcessLabel)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	processLabel, mountLabel, err := label.InitLabels(labelOptions)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to init selinux options %+v", securityContext.GetSelinuxOptions())
 	}
+	defer func() {
+		if retErr != nil {
+			selinux.ReleaseLabel(processLabel)
+		}
+	}()
+
 	specOpts = append(specOpts, customopts.WithMounts(c.os, config, extraMounts, mountLabel))
 
 	if !c.config.DisableProcMount {
@@ -461,10 +493,10 @@ func (c *criService) generateVolumeMounts(containerRootDir string, criMounts []*
 		src := filepath.Join(containerRootDir, "volumes", volumeID)
 		// addOCIBindMounts will create these volumes.
 		mounts = append(mounts, &runtime.Mount{
-			ContainerPath: dst,
-			HostPath:      src,
+			ContainerPath:  dst,
+			HostPath:       src,
+			SelinuxRelabel: true,
 			// Use default mount propagation.
-			// TODO(random-liu): What about selinux relabel?
 		})
 	}
 	return mounts
@@ -515,9 +547,10 @@ func (c *criService) generateContainerMounts(sandboxID string, config *runtime.C
 			sandboxDevShm = devShm
 		}
 		mounts = append(mounts, &runtime.Mount{
-			ContainerPath: devShm,
-			HostPath:      sandboxDevShm,
-			Readonly:      false,
+			ContainerPath:  devShm,
+			HostPath:       sandboxDevShm,
+			Readonly:       false,
+			SelinuxRelabel: sandboxDevShm != devShm,
 		})
 	}
 	return mounts

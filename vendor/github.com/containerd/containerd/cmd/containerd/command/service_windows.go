@@ -42,15 +42,16 @@ var (
 	registerServiceFlag   bool
 	unregisterServiceFlag bool
 	runServiceFlag        bool
+	logFileFlag           string
 
 	kernel32     = windows.NewLazySystemDLL("kernel32.dll")
 	setStdHandle = kernel32.NewProc("SetStdHandle")
 	allocConsole = kernel32.NewProc("AllocConsole")
 	oldStderr    windows.Handle
 	panicFile    *os.File
-
-	service *handler
 )
+
+const defaultServiceName = "containerd"
 
 // serviceFlags returns an array of flags for configuring containerd to run
 // as a Windows service under control of SCM.
@@ -59,7 +60,7 @@ func serviceFlags() []cli.Flag {
 		cli.StringFlag{
 			Name:  "service-name",
 			Usage: "Set the Windows service name",
-			Value: "containerd",
+			Value: defaultServiceName,
 		},
 		cli.BoolFlag{
 			Name:  "register-service",
@@ -74,14 +75,18 @@ func serviceFlags() []cli.Flag {
 			Usage:  "",
 			Hidden: true,
 		},
+		cli.StringFlag{
+			Name:  "log-file",
+			Usage: "Path to the containerd log file",
+		},
 	}
 }
 
 // applyPlatformFlags applies platform-specific flags.
 func applyPlatformFlags(context *cli.Context) {
-
-	if s := context.GlobalString("service-name"); s != "" {
-		serviceNameFlag = s
+	serviceNameFlag = context.GlobalString("service-name")
+	if serviceNameFlag == "" {
+		serviceNameFlag = defaultServiceName
 	}
 	for _, v := range []struct {
 		name string
@@ -102,6 +107,7 @@ func applyPlatformFlags(context *cli.Context) {
 	} {
 		*v.d = context.GlobalBool(v.name)
 	}
+	logFileFlag = context.GlobalString("log-file")
 }
 
 type handler struct {
@@ -243,7 +249,15 @@ func registerUnregisterService(root string) (bool, error) {
 			return true, err
 		}
 
-		logrus.SetOutput(ioutil.Discard)
+		logOutput := ioutil.Discard
+		if logFileFlag != "" {
+			f, err := os.OpenFile(logFileFlag, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+			if err != nil {
+				return true, errors.Wrapf(err, "open log file %q", logFileFlag)
+			}
+			logOutput = f
+		}
+		logrus.SetOutput(logOutput)
 	}
 	return false, nil
 }
@@ -266,7 +280,6 @@ func launchService(s *server.Server, done chan struct{}) error {
 		return err
 	}
 
-	service = h
 	go func() {
 		if interactive {
 			err = debug.Run(serviceNameFlag, h)
@@ -334,8 +347,8 @@ func initPanicFile(path string) error {
 	// Update STD_ERROR_HANDLE to point to the panic file so that Go writes to
 	// it when it panics. Remember the old stderr to restore it before removing
 	// the panic file.
-	sh := windows.STD_ERROR_HANDLE
-	h, err := windows.GetStdHandle(uint32(sh))
+	sh := uint32(windows.STD_ERROR_HANDLE)
+	h, err := windows.GetStdHandle(sh)
 	if err != nil {
 		return err
 	}
@@ -359,7 +372,7 @@ func initPanicFile(path string) error {
 func removePanicFile() {
 	if st, err := panicFile.Stat(); err == nil {
 		if st.Size() == 0 {
-			sh := windows.STD_ERROR_HANDLE
+			sh := uint32(windows.STD_ERROR_HANDLE)
 			setStdHandle.Call(uintptr(sh), uintptr(oldStderr))
 			panicFile.Close()
 			os.Remove(panicFile.Name())

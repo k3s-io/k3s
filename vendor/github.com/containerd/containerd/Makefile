@@ -80,9 +80,14 @@ TEST_REQUIRES_ROOT_PACKAGES=$(filter \
 	done | sort -u) \
     )
 
+ifdef SKIPTESTS
+    PACKAGES:=$(filter-out ${SKIPTESTS},${PACKAGES})
+    TEST_REQUIRES_ROOT_PACKAGES:=$(filter-out ${SKIPTESTS},${TEST_REQUIRES_ROOT_PACKAGES})
+endif
+
 # Project binaries.
 COMMANDS=ctr containerd containerd-stress
-MANPAGES=ctr.1 containerd.1 containerd-config.1 containerd-config.toml.5
+MANPAGES=ctr.8 containerd.8 containerd-config.8 containerd-config.toml.5
 
 ifdef BUILDTAGS
     GO_BUILDTAGS = ${BUILDTAGS}
@@ -111,7 +116,7 @@ GO_GCFLAGS=$(shell				\
 BINARIES=$(addprefix bin/,$(COMMANDS))
 
 # Flags passed to `go test`
-TESTFLAGS ?= $(TESTFLAGS_RACE)
+TESTFLAGS ?= $(TESTFLAGS_RACE) $(EXTRA_TESTFLAGS)
 TESTFLAGS_PARALLEL ?= 8
 
 .PHONY: clean all AUTHORS build binaries test integration generate protos checkprotos coverage ci check help install uninstall vendor release mandir install-man genman
@@ -204,15 +209,15 @@ mandir:
 	@mkdir -p man
 
 # Kept for backwards compatability
-genman: man/containerd.1 man/ctr.1
+genman: man/containerd.8 man/ctr.8
 
-man/containerd.1: FORCE
+man/containerd.8: FORCE
 	@echo "$(WHALE) $@"
-	go run cmd/gen-manpages/main.go containerd man/
+	go run cmd/gen-manpages/main.go $(@F) $(@D)
 
-man/ctr.1: FORCE
+man/ctr.8: FORCE
 	@echo "$(WHALE) $@"
-	go run cmd/gen-manpages/main.go ctr man/
+	go run cmd/gen-manpages/main.go $(@F) $(@D)
 
 man/%: docs/man/%.md FORCE
 	@echo "$(WHALE) $@"

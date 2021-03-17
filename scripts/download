@@ -18,6 +18,6 @@ done
 mkdir -p bin/aux && rm bin/mount && ln -sf ../busybox bin/aux/mount
 
 TRAEFIK_FILE=traefik-${TRAEFIK_VERSION}.tgz
-curl -sfL https://kubernetes-charts.storage.googleapis.com/${TRAEFIK_FILE} -o ${CHARTS_DIR}/${TRAEFIK_FILE}
+curl -sfL https://charts.helm.sh/stable/packages/${TRAEFIK_FILE} -o ${CHARTS_DIR}/${TRAEFIK_FILE}
 
 cp scripts/wg-add.sh bin/aux/
