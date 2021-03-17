@@ -15,7 +15,7 @@ os:
 - linux
 
 go:
-  - "1.15.5"
+  - "1.15.8"
 
 env:
   - TRAVIS_GOOS=linux TEST_RUNTIME=io.containerd.runc.v1 TRAVIS_CGO_ENABLED=1 TRAVIS_DISTRO=bionic GOPROXY=direct

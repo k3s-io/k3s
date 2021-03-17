@@ -1,3 +1,5 @@
+// +build freebsd
+
 /*
    Copyright The containerd Authors.
 
@@ -17,27 +19,24 @@
 package fs
 
 import (
+	"os"
 	"syscall"
-	"time"
+
+	"github.com/pkg/errors"
+	"golang.org/x/sys/unix"
 )
 
-// StatAtime returns the Atim
-func StatAtime(st *syscall.Stat_t) syscall.Timespec {
-	return st.Atim
+func copyDevice(dst string, fi os.FileInfo) error {
+	st, ok := fi.Sys().(*syscall.Stat_t)
+	if !ok {
+		return errors.New("unsupported stat type")
+	}
+	return unix.Mknod(dst, uint32(fi.Mode()), st.Rdev)
 }
 
-// StatCtime returns the Ctim
-func StatCtime(st *syscall.Stat_t) syscall.Timespec {
-	return st.Ctim
-}
-
-// StatMtime returns the Mtim
-func StatMtime(st *syscall.Stat_t) syscall.Timespec {
-	return st.Mtim
-}
-
-// StatATimeAsTime returns st.Atim as a time.Time
-func StatATimeAsTime(st *syscall.Stat_t) time.Time {
-	// The int64 conversions ensure the line compiles for 32-bit systems as well.
-	return time.Unix(int64(st.Atim.Sec), int64(st.Atim.Nsec)) // nolint: unconvert
+func utimesNano(name string, atime, mtime syscall.Timespec) error {
+	at := unix.NsecToTimespec(atime.Nano())
+	mt := unix.NsecToTimespec(mtime.Nano())
+	utimes := [2]unix.Timespec{at, mt}
+	return unix.UtimesNanoAt(unix.AT_FDCWD, name, utimes[0:], unix.AT_SYMLINK_NOFOLLOW)
 }
