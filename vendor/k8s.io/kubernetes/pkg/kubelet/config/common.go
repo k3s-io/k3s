@@ -58,24 +58,26 @@ func generatePodName(name string, nodeName types.NodeName) string {
 func applyDefaults(pod *api.Pod, source string, isFile bool, nodeName types.NodeName) error {
 	if len(pod.UID) == 0 {
 		hasher := md5.New()
+		hash.DeepHashObject(hasher, pod)
+		// DeepHashObject resets the hash, so we should write the pod source
+		// information AFTER it.
 		if isFile {
 			fmt.Fprintf(hasher, "host:%s", nodeName)
 			fmt.Fprintf(hasher, "file:%s", source)
 		} else {
 			fmt.Fprintf(hasher, "url:%s", source)
 		}
-		hash.DeepHashObject(hasher, pod)
 		pod.UID = types.UID(hex.EncodeToString(hasher.Sum(nil)[0:]))
-		klog.V(5).Infof("Generated UID %q pod %q from %s", pod.UID, pod.Name, source)
+		klog.V(5).InfoS("Generated UID", "pod", klog.KObj(pod), "podUID", pod.UID, "source", source)
 	}
 
 	pod.Name = generatePodName(pod.Name, nodeName)
-	klog.V(5).Infof("Generated Name %q for UID %q from URL %s", pod.Name, pod.UID, source)
+	klog.V(5).InfoS("Generated pod name", "pod", klog.KObj(pod), "podUID", pod.UID, "source", source)
 
 	if pod.Namespace == "" {
 		pod.Namespace = metav1.NamespaceDefault
 	}
-	klog.V(5).Infof("Using namespace %q for pod %q from %s", pod.Namespace, pod.Name, source)
+	klog.V(5).InfoS("Set namespace for pod", "pod", klog.KObj(pod), "source", source)
 
 	// Set the Host field to indicate this pod is scheduled on the current node.
 	pod.Spec.NodeName = string(nodeName)
@@ -143,7 +145,7 @@ func tryDecodeSinglePod(data []byte, defaultFn defaultFunc) (parsed bool, pod *v
 	}
 	v1Pod := &v1.Pod{}
 	if err := k8s_api_v1.Convert_core_Pod_To_v1_Pod(newPod, v1Pod, nil); err != nil {
-		klog.Errorf("Pod %q failed to convert to v1", newPod.Name)
+		klog.ErrorS(err, "Pod failed to convert to v1", "pod", klog.KObj(newPod))
 		return true, nil, err
 	}
 	return true, v1Pod, nil

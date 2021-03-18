@@ -290,16 +290,16 @@ func (s *DelegatingAuthenticationOptions) ApplyTo(authenticationInfo *server.Aut
 	}
 
 	// get the clientCA information
-	clientCAFileSpecified := len(s.ClientCert.ClientCA) > 0
+	clientCASpecified := s.ClientCert != ClientCertAuthenticationOptions{}
 	var clientCAProvider dynamiccertificates.CAContentProvider
-	if clientCAFileSpecified {
+	if clientCASpecified {
 		clientCAProvider, err = s.ClientCert.GetClientCAContentProvider()
 		if err != nil {
-			return fmt.Errorf("unable to load client CA file %q: %v", s.ClientCert.ClientCA, err)
+			return fmt.Errorf("unable to load client CA provider: %v", err)
 		}
 		cfg.ClientCertificateCAContentProvider = clientCAProvider
 		if err = authenticationInfo.ApplyClientCert(cfg.ClientCertificateCAContentProvider, servingInfo); err != nil {
-			return fmt.Errorf("unable to assign  client CA file: %v", err)
+			return fmt.Errorf("unable to assign client CA provider: %v", err)
 		}
 
 	} else if !s.SkipInClusterLookup {
@@ -334,8 +334,8 @@ func (s *DelegatingAuthenticationOptions) ApplyTo(authenticationInfo *server.Aut
 			if err != nil {
 				if s.TolerateInClusterLookupFailure {
 					klog.Warningf("Error looking up in-cluster authentication configuration: %v", err)
-					klog.Warningf("Continuing without authentication configuration. This may treat all requests as anonymous.")
-					klog.Warningf("To require authentication configuration lookup to succeed, set --authentication-tolerate-lookup-failure=false")
+					klog.Warning("Continuing without authentication configuration. This may treat all requests as anonymous.")
+					klog.Warning("To require authentication configuration lookup to succeed, set --authentication-tolerate-lookup-failure=false")
 				} else {
 					return fmt.Errorf("unable to load configmap based request-header-client-ca-file: %v", err)
 				}

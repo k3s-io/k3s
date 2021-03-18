@@ -137,8 +137,7 @@ func NewAttachDetachController(
 		filteredDialOptions: filteredDialOptions,
 	}
 
-	if utilfeature.DefaultFeatureGate.Enabled(features.CSIMigration) &&
-		utilfeature.DefaultFeatureGate.Enabled(features.CSINodeInfo) {
+	if utilfeature.DefaultFeatureGate.Enabled(features.CSIMigration) {
 		adc.csiNodeLister = csiNodeInformer.Lister()
 		adc.csiNodeSynced = csiNodeInformer.Informer().HasSynced
 	}
@@ -185,7 +184,7 @@ func NewAttachDetachController(
 
 	csiTranslator := csitrans.New()
 	adc.intreeToCSITranslator = csiTranslator
-	adc.csiMigratedPluginManager = csimigration.NewPluginManager(csiTranslator)
+	adc.csiMigratedPluginManager = csimigration.NewPluginManager(csiTranslator, utilfeature.DefaultFeatureGate)
 
 	adc.desiredStateOfWorldPopulator = populator.NewDesiredStateOfWorldPopulator(
 		timerConfig.DesiredStateOfWorldPopulatorLoopSleepPeriod,

@@ -158,7 +158,7 @@ type Info struct {
 	Plugins            PluginsInfo
 	MemoryLimit        bool
 	SwapLimit          bool
-	KernelMemory       bool
+	KernelMemory       bool // Deprecated: kernel 5.4 deprecated kmem.limit_in_bytes
 	KernelMemoryTCP    bool
 	CPUCfsPeriod       bool `json:"CpuCfsPeriod"`
 	CPUCfsQuota        bool `json:"CpuCfsQuota"`
@@ -175,6 +175,7 @@ type Info struct {
 	SystemTime         string
 	LoggingDriver      string
 	CgroupDriver       string
+	CgroupVersion      string `json:",omitempty"`
 	NEventsListener    int
 	KernelVersion      string
 	OperatingSystem    string
@@ -202,20 +203,27 @@ type Info struct {
 	// LiveRestoreEnabled determines whether containers should be kept
 	// running when the daemon is shutdown or upon daemon start if
 	// running containers are detected
-	LiveRestoreEnabled bool
-	Isolation          container.Isolation
-	InitBinary         string
-	ContainerdCommit   Commit
-	RuncCommit         Commit
-	InitCommit         Commit
-	SecurityOptions    []string
-	ProductLicense     string `json:",omitempty"`
-	Warnings           []string
+	LiveRestoreEnabled  bool
+	Isolation           container.Isolation
+	InitBinary          string
+	ContainerdCommit    Commit
+	RuncCommit          Commit
+	InitCommit          Commit
+	SecurityOptions     []string
+	ProductLicense      string               `json:",omitempty"`
+	DefaultAddressPools []NetworkAddressPool `json:",omitempty"`
+	Warnings            []string
 }
 
 // KeyValue holds a key/value pair
 type KeyValue struct {
 	Key, Value string
+}
+
+// NetworkAddressPool is a temp struct used by Info struct
+type NetworkAddressPool struct {
+	Base string
+	Size int
 }
 
 // SecurityOpt contains the name and options of a security option
@@ -510,6 +518,16 @@ type Checkpoint struct {
 type Runtime struct {
 	Path string   `json:"path"`
 	Args []string `json:"runtimeArgs,omitempty"`
+
+	// This is exposed here only for internal use
+	// It is not currently supported to specify custom shim configs
+	Shim *ShimConfig `json:"-"`
+}
+
+// ShimConfig is used by runtime to configure containerd shims
+type ShimConfig struct {
+	Binary string
+	Opts   interface{}
 }
 
 // DiskUsage contains response of Engine API:

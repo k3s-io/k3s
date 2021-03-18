@@ -21,18 +21,18 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/coreos/flannel/backend"
-	"github.com/coreos/flannel/network"
-	"github.com/coreos/flannel/pkg/ip"
-	"github.com/coreos/flannel/subnet/kube"
+	"github.com/flannel-io/flannel/backend"
+	"github.com/flannel-io/flannel/network"
+	"github.com/flannel-io/flannel/pkg/ip"
+	"github.com/flannel-io/flannel/subnet/kube"
 	"golang.org/x/net/context"
 	log "k8s.io/klog"
 
 	// Backends need to be imported for their init() to get executed and them to register
-	_ "github.com/coreos/flannel/backend/extension"
-	_ "github.com/coreos/flannel/backend/hostgw"
-	_ "github.com/coreos/flannel/backend/ipsec"
-	_ "github.com/coreos/flannel/backend/vxlan"
+	_ "github.com/flannel-io/flannel/backend/extension"
+	_ "github.com/flannel-io/flannel/backend/hostgw"
+	_ "github.com/flannel-io/flannel/backend/ipsec"
+	_ "github.com/flannel-io/flannel/backend/vxlan"
 )
 
 const (
@@ -40,12 +40,12 @@ const (
 )
 
 func flannel(ctx context.Context, flannelIface *net.Interface, flannelConf, kubeConfigFile string) error {
-	extIface, err := LookupExtIface(flannelIface)
+	extIface, err := LookupExtInterface(flannelIface)
 	if err != nil {
 		return err
 	}
 
-	sm, err := kube.NewSubnetManager("", kubeConfigFile, "flannel.alpha.coreos.com", flannelConf)
+	sm, err := kube.NewSubnetManager(ctx, "", kubeConfigFile, "flannel.alpha.coreos.com", flannelConf)
 	if err != nil {
 		return err
 	}
@@ -63,7 +63,7 @@ func flannel(ctx context.Context, flannelIface *net.Interface, flannelConf, kube
 		return err
 	}
 
-	bn, err := be.RegisterNetwork(ctx, sync.WaitGroup{}, config)
+	bn, err := be.RegisterNetwork(ctx, &sync.WaitGroup{}, config)
 	if err != nil {
 		return err
 	}
@@ -84,20 +84,20 @@ func flannel(ctx context.Context, flannelIface *net.Interface, flannelConf, kube
 	return nil
 }
 
-func LookupExtIface(iface *net.Interface) (*backend.ExternalInterface, error) {
+func LookupExtInterface(iface *net.Interface) (*backend.ExternalInterface, error) {
 	var ifaceAddr net.IP
 	var err error
 
 	if iface == nil {
 		log.Info("Determining IP address of default interface")
-		if iface, err = ip.GetDefaultGatewayIface(); err != nil {
+		if iface, err = ip.GetDefaultGatewayInterface(); err != nil {
 			return nil, fmt.Errorf("failed to get default interface: %s", err)
 		}
 	} else {
 		log.Info("Determining IP address of specified interface: ", iface.Name)
 	}
 
-	ifaceAddr, err = ip.GetIfaceIP4Addr(iface)
+	ifaceAddr, err = ip.GetInterfaceIP4Addr(iface)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find IPv4 address for interface %s", iface.Name)
 	}

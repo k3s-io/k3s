@@ -246,7 +246,7 @@ func cadvisorInfoToUserDefinedMetrics(info *cadvisorapiv2.ContainerInfo) []stats
 		for name, values := range stat.CustomMetrics {
 			specVal, ok := udmMap[name]
 			if !ok {
-				klog.Warningf("spec for custom metric %q is missing from cAdvisor output. Spec: %+v, Metrics: %+v", name, info.Spec, stat.CustomMetrics)
+				klog.InfoS("Spec for custom metric is missing from cAdvisor output", "metric", name, "spec", info.Spec, "metrics", stat.CustomMetrics)
 				continue
 			}
 			for _, value := range values {
@@ -372,7 +372,7 @@ func uint64Ptr(i uint64) *uint64 {
 }
 
 func calcEphemeralStorage(containers []statsapi.ContainerStats, volumes []statsapi.VolumeStats, rootFsInfo *cadvisorapiv2.FsInfo,
-	podLogStats *statsapi.FsStats, isCRIStatsProvider bool) *statsapi.FsStats {
+	podLogStats *statsapi.FsStats, etcHostsStats *statsapi.FsStats, isCRIStatsProvider bool) *statsapi.FsStats {
 	result := &statsapi.FsStats{
 		Time:           metav1.NewTime(rootFsInfo.Timestamp),
 		AvailableBytes: &rootFsInfo.Available,
@@ -392,6 +392,11 @@ func calcEphemeralStorage(containers []statsapi.ContainerStats, volumes []statsa
 		result.UsedBytes = addUsage(result.UsedBytes, podLogStats.UsedBytes)
 		result.InodesUsed = addUsage(result.InodesUsed, podLogStats.InodesUsed)
 		result.Time = maxUpdateTime(&result.Time, &podLogStats.Time)
+	}
+	if etcHostsStats != nil {
+		result.UsedBytes = addUsage(result.UsedBytes, etcHostsStats.UsedBytes)
+		result.InodesUsed = addUsage(result.InodesUsed, etcHostsStats.InodesUsed)
+		result.Time = maxUpdateTime(&result.Time, &etcHostsStats.Time)
 	}
 	return result
 }

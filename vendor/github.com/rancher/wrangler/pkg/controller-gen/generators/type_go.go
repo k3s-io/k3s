@@ -51,6 +51,7 @@ func (f *typeGo) Imports(*generator.Context) []string {
 		"k8s.io/client-go/tools/cache",
 		"github.com/rancher/wrangler/pkg/apply",
 		"github.com/rancher/wrangler/pkg/condition",
+		"github.com/rancher/wrangler/pkg/kv",
 		fmt.Sprintf("%s \"%s\"", f.gv.Version, f.name.Package),
 		GenericPackage,
 		fmt.Sprintf("clientset \"%s/typed/%s/%s\"", group.ClientSetPackage, groupPackageName(f.gv.Group, group.PackageName), f.gv.Version),
