@@ -67,7 +67,7 @@ func (o *DeprecatedOptions) AddFlags(fs *pflag.FlagSet, cfg *kubeschedulerconfig
 		"DEPRECATED: RequiredDuringScheduling affinity is not symmetric, but there is an implicit PreferredDuringScheduling affinity rule corresponding "+
 			"to every RequiredDuringScheduling affinity rule. --hard-pod-affinity-symmetric-weight represents the weight of implicit PreferredDuringScheduling affinity rule. Must be in the range 0-100."+
 			"This parameter is ignored if a config file is specified in --config.")
-	fs.StringVar(&o.SchedulerName, "scheduler-name", o.SchedulerName, "DEPRECATED: name of the scheduler, used to select which pods will be processed by this scheduler, based on pod's \"spec.schedulerName\".This parameter is ignored if a config file is specified in --config.")
+	fs.StringVar(&o.SchedulerName, "scheduler-name", o.SchedulerName, "DEPRECATED: name of the scheduler, used to select which pods will be processed by this scheduler, based on pod's \"spec.schedulerName\". This parameter is ignored if a config file is specified in --config.")
 	// MarkDeprecated hides the flag from the help. We don't want that:
 	// fs.MarkDeprecated("hard-pod-affinity-symmetric-weight", "This option was moved to the policy configuration file")
 }

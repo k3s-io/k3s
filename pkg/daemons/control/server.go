@@ -20,12 +20,16 @@ import (
 	"github.com/rancher/wrangler-api/pkg/generated/controllers/rbac"
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	ccm "k8s.io/cloud-provider"
+	cloudprovider "k8s.io/cloud-provider"
 	ccmapp "k8s.io/cloud-provider/app"
+	cloudcontrollerconfig "k8s.io/cloud-provider/app/config"
 	ccmopt "k8s.io/cloud-provider/options"
+	cliflag "k8s.io/component-base/cli/flag"
 	app2 "k8s.io/controller-manager/app"
 	"k8s.io/kubernetes/pkg/kubeapiserver/authorizer/modes"
 	"k8s.io/kubernetes/pkg/proxy/util"
@@ -183,7 +187,6 @@ func apiServer(ctx context.Context, cfg *config.Control, runtime *config.Control
 	argsMap["enable-admission-plugins"] = "NodeRestriction"
 	argsMap["anonymous-auth"] = "false"
 	argsMap["profiling"] = "false"
-	argsMap["feature-gates=ServiceAccountIssuerDiscovery"] = "false"
 	if cfg.EncryptSecrets {
 		argsMap["encryption-provider-config"] = runtime.EncryptionConfig
 	}
@@ -342,55 +345,55 @@ func cloudControllerManager(ctx context.Context, cfg *config.Control, runtime *c
 	// The above-linked change made the in-tree cloud-controller-manager command much more flexible
 	// but much more complicated to wrap. It now validates some of the configuration very early on, before
 	// the CLI args are parsed, so some of the configuration needs to be hardcoded instead of set via flags.
+	// Reference: https://github.com/kubernetes/kubernetes/pull/98210
+	// The above-linked change further clarifies the intent of the example cloud-controller-manager.
 
 	argsMap := map[string]string{
 		"profiling": "false",
 	}
 	args := config.GetArgsList(argsMap, cfg.ExtraCloudControllerArgs)
 
-	s, err := ccmopt.NewCloudControllerManagerOptions()
+	ccmOptions, err := ccmopt.NewCloudControllerManagerOptions()
 	if err != nil {
 		logrus.Fatalf("Unable to initialize cloudcontroller options: %v", err)
 	}
 
-	s.KubeCloudShared.AllocateNodeCIDRs = true
-	s.KubeCloudShared.CloudProvider.Name = version.Program
-	s.KubeCloudShared.ClusterCIDR = cfg.ClusterIPRange.String()
-	s.KubeCloudShared.ConfigureCloudRoutes = false
-	s.Kubeconfig = runtime.KubeConfigCloudController
-	s.NodeStatusUpdateFrequency = metav1.Duration{Duration: 1 * time.Minute}
-	s.SecureServing.BindAddress = localhostIP
-	s.SecureServing.BindPort = 0
+	ccmOptions.KubeCloudShared.AllocateNodeCIDRs = true
+	ccmOptions.KubeCloudShared.CloudProvider.Name = version.Program
+	ccmOptions.KubeCloudShared.ClusterCIDR = cfg.ClusterIPRange.String()
+	ccmOptions.KubeCloudShared.ConfigureCloudRoutes = false
+	ccmOptions.Kubeconfig = runtime.KubeConfigCloudController
+	ccmOptions.NodeStatusUpdateFrequency = metav1.Duration{Duration: 1 * time.Minute}
+	ccmOptions.SecureServing.BindAddress = localhostIP
+	ccmOptions.SecureServing.BindPort = 0
 
 	if cfg.NoLeaderElect {
-		s.Generic.LeaderElection.LeaderElect = false
+		ccmOptions.Generic.LeaderElection.LeaderElect = false
 	}
 
-	c, err := s.Config([]string{}, []string{})
-	if err != nil {
-		logrus.Fatalf("Unable to create cloudcontroller config from options: %v", err)
-	}
-
-	cloud, err := ccm.InitCloudProvider(version.Program, runtime.KubeConfigCloudController)
-	if err != nil {
-		logrus.Fatalf("Cloud provider could not be initialized: %v", err)
-	}
-	if cloud == nil {
-		logrus.Fatalf("Cloud provider is nil")
-	}
-
-	cloud.Initialize(c.ClientBuilder, make(chan struct{}))
-	if informerUserCloud, ok := cloud.(ccm.InformerUser); ok {
-		informerUserCloud.SetInformers(c.SharedInformers)
-	}
-
-	controllerInitializers := ccmapp.DefaultControllerInitializers(c.Complete(), cloud)
+	controllerInitializers := ccmapp.DefaultInitFuncConstructors
 	delete(controllerInitializers, "service")
 	delete(controllerInitializers, "route")
 
-	command := ccmapp.NewCloudControllerManagerCommand(s, c, controllerInitializers)
+	cloudInitializer := func(config *cloudcontrollerconfig.CompletedConfig) cloudprovider.Interface {
+		cloud, err := ccm.InitCloudProvider(version.Program, runtime.KubeConfigCloudController)
+		if err != nil {
+			logrus.Fatalf("Cloud provider could not be initialized: %v", err)
+		}
+		if cloud == nil {
+			logrus.Fatalf("Cloud provider is nil")
+		}
+
+		cloud.Initialize(config.ClientBuilder, make(chan struct{}))
+		if informerUserCloud, ok := cloud.(ccm.InformerUser); ok {
+			informerUserCloud.SetInformers(config.SharedInformers)
+		}
+
+		return cloud
+	}
+
+	command := ccmapp.NewCloudControllerManagerCommand(ccmOptions, cloudInitializer, controllerInitializers, cliflag.NamedFlagSets{}, wait.NeverStop)
 	command.SetArgs(args)
-	// register k3s cloud provider
 
 	go func() {
 		for {
@@ -406,7 +409,7 @@ func cloudControllerManager(ctx context.Context, cfg *config.Control, runtime *c
 			}
 			break
 		}
-		logrus.Infof("Running cloud-controller-manager for provider %v with args %v", cloud.ProviderName(), config.ArgString(args))
+		logrus.Infof("Running cloud-controller-manager with args %v", config.ArgString(args))
 		logrus.Fatalf("cloud-controller-manager exited: %v", command.ExecuteContext(ctx))
 	}()
 }

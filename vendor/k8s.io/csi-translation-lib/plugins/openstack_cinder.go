@@ -120,7 +120,7 @@ func (t *osCinderCSITranslator) TranslateInTreePVToCSI(pv *v1.PersistentVolume) 
 		VolumeAttributes: map[string]string{},
 	}
 
-	if err := translateTopology(pv, CinderTopologyKey); err != nil {
+	if err := translateTopologyFromInTreeToCSI(pv, CinderTopologyKey); err != nil {
 		return nil, fmt.Errorf("failed to translate topology: %v", err)
 	}
 
@@ -142,6 +142,12 @@ func (t *osCinderCSITranslator) TranslateCSIPVToInTree(pv *v1.PersistentVolume) 
 		VolumeID: csiSource.VolumeHandle,
 		FSType:   csiSource.FSType,
 		ReadOnly: csiSource.ReadOnly,
+	}
+
+	// translate CSI topology to In-tree topology for rollback compatibility.
+	// It is not possible to guess Cinder Region from the Zone, therefore leave it empty.
+	if err := translateTopologyFromCSIToInTree(pv, CinderTopologyKey, nil); err != nil {
+		return nil, fmt.Errorf("failed to translate topology. PV:%+v. Error:%v", *pv, err)
 	}
 
 	pv.Spec.CSI = nil

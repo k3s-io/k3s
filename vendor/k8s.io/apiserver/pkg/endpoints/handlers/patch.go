@@ -61,7 +61,7 @@ const (
 func PatchResource(r rest.Patcher, scope *RequestScope, admit admission.Interface, patchTypes []string) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		// For performance tracking purposes.
-		trace := utiltrace.New("Patch", utiltrace.Field{Key: "url", Value: req.URL.Path}, utiltrace.Field{Key: "user-agent", Value: &lazyTruncatedUserAgent{req}}, utiltrace.Field{Key: "client", Value: &lazyClientIP{req}})
+		trace := utiltrace.New("Patch", traceFields(req)...)
 		defer trace.LogIfLong(500 * time.Millisecond)
 
 		if isDryRun(req.URL) && !utilfeature.DefaultFeatureGate.Enabled(features.DryRun) {
@@ -84,19 +84,17 @@ func PatchResource(r rest.Patcher, scope *RequestScope, admit admission.Interfac
 			return
 		}
 
-		// TODO: we either want to remove timeout or document it (if we
-		// document, move timeout out of this function and declare it in
-		// api_installer)
-		timeout := parseTimeout(req.URL.Query().Get("timeout"))
-
 		namespace, name, err := scope.Namer.Name(req)
 		if err != nil {
 			scope.err(err, w, req)
 			return
 		}
 
-		ctx, cancel := context.WithTimeout(req.Context(), timeout)
+		// enforce a timeout of at most requestTimeoutUpperBound (34s) or less if the user-provided
+		// timeout inside the parent context is lower than requestTimeoutUpperBound.
+		ctx, cancel := context.WithTimeout(req.Context(), requestTimeoutUpperBound)
 		defer cancel()
+
 		ctx = request.WithNamespace(ctx, namespace)
 
 		outputMediaType, _, err := negotiation.NegotiateOutputMediaType(req, scope.Serializer, scope)
@@ -173,6 +171,9 @@ func PatchResource(r rest.Patcher, scope *RequestScope, admit admission.Interfac
 			userInfo,
 		)
 
+		if scope.FieldManager != nil {
+			admit = fieldmanager.NewManagedFieldsValidatingAdmissionController(admit)
+		}
 		mutatingAdmission, _ := admit.(admission.MutationInterface)
 		createAuthorizerAttributes := authorizer.AttributesRecord{
 			User:            userInfo,
@@ -208,7 +209,6 @@ func PatchResource(r rest.Patcher, scope *RequestScope, admit admission.Interfac
 
 			codec: codec,
 
-			timeout: timeout,
 			options: options,
 
 			restPatcher: r,
@@ -271,7 +271,6 @@ type patcher struct {
 
 	codec runtime.Codec
 
-	timeout time.Duration
 	options *metav1.PatchOptions
 
 	// Operation information
@@ -591,7 +590,7 @@ func (p *patcher) patchResource(ctx context.Context, scope *RequestScope) (runti
 		wasCreated = created
 		return updateObject, updateErr
 	}
-	result, err := finishRequest(p.timeout, func() (runtime.Object, error) {
+	result, err := finishRequest(ctx, func() (runtime.Object, error) {
 		result, err := requestFunc()
 		// If the object wasn't committed to storage because it's serialized size was too large,
 		// it is safe to remove managedFields (which can be large) and try again.

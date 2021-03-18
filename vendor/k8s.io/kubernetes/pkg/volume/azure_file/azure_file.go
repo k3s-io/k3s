@@ -55,8 +55,8 @@ var _ volume.PersistentVolumePlugin = &azureFilePlugin{}
 var _ volume.ExpandableVolumePlugin = &azureFilePlugin{}
 
 const (
-	azureFilePluginName    = "kubernetes.io/azure-file"
-	defaultSecretNamespace = "default"
+	azureFilePluginName     = "kubernetes.io/azure-file"
+	minimumPremiumShareSize = 100 // GB
 )
 
 func getPath(uid types.UID, volName string, host volume.VolumeHost) string {
@@ -116,7 +116,7 @@ func (plugin *azureFilePlugin) newMounterInternal(spec *volume.Spec, pod *v1.Pod
 	if err != nil {
 		return nil, err
 	}
-	secretName, secretNamespace, err := getSecretNameAndNamespace(spec, defaultSecretNamespace)
+	secretName, secretNamespace, err := getSecretNameAndNamespace(spec, pod.Namespace)
 	if err != nil {
 		// Log-and-continue instead of returning an error for now
 		// due to unspecified backwards compatibility concerns (a subject to revise)
@@ -174,7 +174,7 @@ func (plugin *azureFilePlugin) ExpandVolumeDevice(
 		resourceGroup = spec.PersistentVolume.ObjectMeta.Annotations[resourceGroupAnnotation]
 	}
 
-	secretName, secretNamespace, err := getSecretNameAndNamespace(spec, defaultSecretNamespace)
+	secretName, secretNamespace, err := getSecretNameAndNamespace(spec, spec.PersistentVolume.Spec.ClaimRef.Namespace)
 	if err != nil {
 		return oldSize, err
 	}
