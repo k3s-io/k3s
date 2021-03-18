@@ -178,7 +178,7 @@ github.com/containerd/cgroups/v2
 github.com/containerd/cgroups/v2/stats
 # github.com/containerd/console v1.0.0 => github.com/containerd/console v1.0.0
 github.com/containerd/console
-# github.com/containerd/containerd v1.4.1 => github.com/k3s-io/containerd v1.4.4-k3s1
+# github.com/containerd/containerd v1.4.4 => github.com/k3s-io/containerd v1.4.4-k3s1
 ## explicit
 github.com/containerd/containerd
 github.com/containerd/containerd/api/events
@@ -351,7 +351,7 @@ github.com/containerd/cri/pkg/streaming
 github.com/containerd/cri/pkg/streaming/portforward
 github.com/containerd/cri/pkg/streaming/remotecommand
 github.com/containerd/cri/pkg/util
-# github.com/containerd/fifo v0.0.0-20200410184934-f15a3290365b => github.com/containerd/fifo v0.0.0-20190816180239-bda0ff6ed73c
+# github.com/containerd/fifo v0.0.0-20200410184934-f15a3290365b => github.com/containerd/fifo v0.0.0-20200410184934-f15a3290365b
 github.com/containerd/fifo
 # github.com/containerd/go-cni v1.0.1
 github.com/containerd/go-cni
@@ -360,9 +360,9 @@ github.com/containerd/go-runc
 # github.com/containerd/imgcrypt v1.0.1
 github.com/containerd/imgcrypt
 github.com/containerd/imgcrypt/images/encryption
-# github.com/containerd/ttrpc v1.0.2
+# github.com/containerd/ttrpc v1.0.2 => github.com/containerd/ttrpc v1.0.1
 github.com/containerd/ttrpc
-# github.com/containerd/typeurl v1.0.1 => github.com/containerd/typeurl v0.0.0-20180627222232-a93fcdb778cd
+# github.com/containerd/typeurl v1.0.1 => github.com/containerd/typeurl v1.0.1
 github.com/containerd/typeurl
 # github.com/containernetworking/cni v0.8.0
 github.com/containernetworking/cni/libcni
@@ -1336,7 +1336,7 @@ gopkg.in/warnings.v0
 gopkg.in/yaml.v2
 # gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776
 gopkg.in/yaml.v3
-# k8s.io/api v0.19.0 => github.com/dweomer/kubernetes/staging/src/k8s.io/api v1.20.5-k3s1
+# k8s.io/api v1.20.5 => github.com/dweomer/kubernetes/staging/src/k8s.io/api v1.20.5-k3s1
 ## explicit
 k8s.io/api/admission/v1
 k8s.io/api/admission/v1beta1
@@ -1424,7 +1424,7 @@ k8s.io/apiextensions-apiserver/pkg/generated/openapi
 k8s.io/apiextensions-apiserver/pkg/registry/customresource
 k8s.io/apiextensions-apiserver/pkg/registry/customresource/tableconvertor
 k8s.io/apiextensions-apiserver/pkg/registry/customresourcedefinition
-# k8s.io/apimachinery v0.19.0 => github.com/dweomer/kubernetes/staging/src/k8s.io/apimachinery v1.20.5-k3s1
+# k8s.io/apimachinery v1.20.5 => github.com/dweomer/kubernetes/staging/src/k8s.io/apimachinery v1.20.5-k3s1
 ## explicit
 k8s.io/apimachinery/pkg/api/equality
 k8s.io/apimachinery/pkg/api/errors
@@ -1488,7 +1488,7 @@ k8s.io/apimachinery/pkg/watch
 k8s.io/apimachinery/third_party/forked/golang/json
 k8s.io/apimachinery/third_party/forked/golang/netutil
 k8s.io/apimachinery/third_party/forked/golang/reflect
-# k8s.io/apiserver v0.19.0 => github.com/dweomer/kubernetes/staging/src/k8s.io/apiserver v1.20.5-k3s1
+# k8s.io/apiserver v1.20.0 => github.com/dweomer/kubernetes/staging/src/k8s.io/apiserver v1.20.5-k3s1
 ## explicit
 k8s.io/apiserver/pkg/admission
 k8s.io/apiserver/pkg/admission/configuration
@@ -1887,7 +1887,7 @@ k8s.io/client-go/util/jsonpath
 k8s.io/client-go/util/keyutil
 k8s.io/client-go/util/retry
 k8s.io/client-go/util/workqueue
-# k8s.io/cloud-provider v0.0.0 => github.com/dweomer/kubernetes/staging/src/k8s.io/cloud-provider v1.20.5-k3s1
+# k8s.io/cloud-provider v1.20.0 => github.com/dweomer/kubernetes/staging/src/k8s.io/cloud-provider v1.20.5-k3s1
 ## explicit
 k8s.io/cloud-provider
 k8s.io/cloud-provider/api
@@ -1929,7 +1929,7 @@ k8s.io/code-generator/cmd/lister-gen/args
 k8s.io/code-generator/cmd/lister-gen/generators
 k8s.io/code-generator/pkg/namer
 k8s.io/code-generator/pkg/util
-# k8s.io/component-base v0.19.0 => github.com/dweomer/kubernetes/staging/src/k8s.io/component-base v1.20.5-k3s1
+# k8s.io/component-base v1.20.0 => github.com/dweomer/kubernetes/staging/src/k8s.io/component-base v1.20.5-k3s1
 ## explicit
 k8s.io/component-base/cli/flag
 k8s.io/component-base/cli/globalflag
@@ -1961,7 +1961,7 @@ k8s.io/component-helpers/auth/rbac/reconciliation
 k8s.io/component-helpers/auth/rbac/validation
 k8s.io/component-helpers/scheduling/corev1
 k8s.io/component-helpers/scheduling/corev1/nodeaffinity
-# k8s.io/controller-manager v0.0.0 => github.com/dweomer/kubernetes/staging/src/k8s.io/controller-manager v1.20.5-k3s1
+# k8s.io/controller-manager v1.20.0 => github.com/dweomer/kubernetes/staging/src/k8s.io/controller-manager v1.20.5-k3s1
 ## explicit
 k8s.io/controller-manager/app
 k8s.io/controller-manager/config
@@ -1971,7 +1971,7 @@ k8s.io/controller-manager/pkg/clientbuilder
 k8s.io/controller-manager/pkg/features
 k8s.io/controller-manager/pkg/features/register
 k8s.io/controller-manager/pkg/informerfactory
-# k8s.io/cri-api v0.19.0 => github.com/dweomer/kubernetes/staging/src/k8s.io/cri-api v1.20.5-k3s1
+# k8s.io/cri-api v1.20.0 => github.com/dweomer/kubernetes/staging/src/k8s.io/cri-api v1.20.5-k3s1
 ## explicit
 k8s.io/cri-api/pkg/apis
 k8s.io/cri-api/pkg/apis/runtime/v1alpha2
@@ -2043,7 +2043,7 @@ k8s.io/kube-proxy/config/v1alpha1
 k8s.io/kube-scheduler/config/v1
 k8s.io/kube-scheduler/config/v1beta1
 k8s.io/kube-scheduler/extender/v1
-# k8s.io/kubectl v0.0.0 => github.com/dweomer/kubernetes/staging/src/k8s.io/kubectl v1.20.5-k3s1
+# k8s.io/kubectl v1.20.5 => github.com/dweomer/kubernetes/staging/src/k8s.io/kubectl v1.20.5-k3s1
 ## explicit
 k8s.io/kubectl/pkg/apps
 k8s.io/kubectl/pkg/cmd
@@ -2971,9 +2971,10 @@ sigs.k8s.io/yaml
 # github.com/containerd/containerd => github.com/k3s-io/containerd v1.4.4-k3s1
 # github.com/containerd/continuity => github.com/k3s-io/continuity v0.0.0-20210309170710-f93269e0d5c1
 # github.com/containerd/cri => github.com/k3s-io/cri v1.4.0-k3s.5
-# github.com/containerd/fifo => github.com/containerd/fifo v0.0.0-20190816180239-bda0ff6ed73c
+# github.com/containerd/fifo => github.com/containerd/fifo v0.0.0-20200410184934-f15a3290365b
 # github.com/containerd/go-runc => github.com/containerd/go-runc v0.0.0-20200220073739-7016d3ce2328
-# github.com/containerd/typeurl => github.com/containerd/typeurl v0.0.0-20180627222232-a93fcdb778cd
+# github.com/containerd/ttrpc => github.com/containerd/ttrpc v1.0.1
+# github.com/containerd/typeurl => github.com/containerd/typeurl v1.0.1
 # github.com/coreos/flannel => github.com/k3s-io/flannel v0.12.0-k3s2
 # github.com/coreos/go-systemd => github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e
 # github.com/docker/distribution => github.com/docker/distribution v2.7.1-0.20190205005809-0d3efadf0154+incompatible
