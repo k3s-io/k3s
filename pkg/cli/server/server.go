@@ -132,7 +132,6 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	serverConfig.ControlConfig.EtcdSnapshotDir = cfg.EtcdSnapshotDir
 	serverConfig.ControlConfig.EtcdSnapshotRetention = cfg.EtcdSnapshotRetention
 	serverConfig.ControlConfig.EtcdDisableSnapshots = cfg.EtcdDisableSnapshots
-	serverConfig.ControlConfig.EtcdExposeMetrics = cfg.EtcdExposeMetrics
 	serverConfig.ControlConfig.EtcdS3 = cfg.EtcdS3
 	serverConfig.ControlConfig.EtcdS3Endpoint = cfg.EtcdS3Endpoint
 	serverConfig.ControlConfig.EtcdS3EndpointCA = cfg.EtcdS3EndpointCA

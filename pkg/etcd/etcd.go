@@ -759,7 +759,7 @@ func (e *ETCD) preSnapshotSetup(ctx context.Context, config *config.Control) err
 		if e.config == nil {
 			e.config = config
 		}
-		client, err := getClient(ctx, e.config.Runtime, endpoint)
+		client, err := GetClient(ctx, e.config.Runtime, endpoint)
 		if err != nil {
 			return err
 		}

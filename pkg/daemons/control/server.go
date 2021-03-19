@@ -26,7 +26,6 @@ import (
 	ccmapp "k8s.io/kubernetes/cmd/cloud-controller-manager/app"
 	app2 "k8s.io/kubernetes/cmd/controller-manager/app"
 	"k8s.io/kubernetes/pkg/kubeapiserver/authorizer/modes"
-	"k8s.io/kubernetes/pkg/master"
 	"k8s.io/kubernetes/pkg/proxy/util"
 
 	// registering k3s cloud provider
