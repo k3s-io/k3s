@@ -25,7 +25,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	apiserverconfigv1 "k8s.io/apiserver/pkg/apis/config/v1"
-	"k8s.io/kubernetes/pkg/controlplane"
+	"k8s.io/kubernetes/pkg/master"
 )
 
 const (
@@ -313,7 +313,7 @@ func genServerCerts(config *config.Control, runtime *config.ControlRuntime) erro
 		return err
 	}
 
-	_, apiServerServiceIP, err := controlplane.ServiceIPRange(*config.ServiceIPRange)
+	_, apiServerServiceIP, err := master.ServiceIPRange(*config.ServiceIPRange)
 	if err != nil {
 		return err
 	}

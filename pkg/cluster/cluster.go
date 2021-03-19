@@ -5,12 +5,12 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/k3s-io/kine/pkg/endpoint"
 	"github.com/pkg/errors"
 	"github.com/rancher/k3s/pkg/clientaccess"
 	"github.com/rancher/k3s/pkg/cluster/managed"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/etcd"
+	"github.com/rancher/kine/pkg/endpoint"
 	"github.com/sirupsen/logrus"
 )
 
