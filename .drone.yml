@@ -190,6 +190,7 @@ steps:
   environment:
     GCLOUD_AUTH:
       from_secret: gcloud_auth
+    GOLANG: golang:1.16.2-alpine3.12
   commands:
   - dapper ci
   - echo "${DRONE_TAG}-arm" | sed -e 's/+/-/g' >.tags
