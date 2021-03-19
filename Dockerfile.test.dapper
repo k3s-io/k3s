@@ -1,4 +1,5 @@
-FROM golang:1.15.8-alpine3.12
+ARG GOLANG=golang:1.15.10-alpine3.12
+FROM ${GOLANG}
 
 RUN apk -U --no-cache add bash git gcc musl-dev docker curl jq coreutils python2 openssl py-pip
 
