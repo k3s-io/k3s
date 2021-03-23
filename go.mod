@@ -65,12 +65,12 @@ replace (
 )
 
 require (
-	github.com/AkihiroSuda/containerd-fuse-overlayfs v1.0.0
 	github.com/NYTimes/gziphandler v1.1.1 // indirect
 	github.com/bronze1man/goStrongswanVici v0.0.0-20190828090544-27d02f80ba40 // indirect
 	github.com/containerd/cgroups v0.0.0-20200710171044-318312a37340
-	github.com/containerd/containerd v1.4.1
+	github.com/containerd/containerd v1.5.0-beta.4
 	github.com/containerd/cri v1.11.1-0.20200820101445-b0cc07999aa5
+	github.com/containerd/fuse-overlayfs-snapshotter v1.0.2
 	github.com/coreos/flannel v0.12.0
 	github.com/coreos/go-iptables v0.4.5
 	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f

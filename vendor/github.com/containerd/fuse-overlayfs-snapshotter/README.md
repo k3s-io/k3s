@@ -1,6 +1,14 @@
 # [`fuse-overlayfs`](https://github.com/containers/fuse-overlayfs) snapshotter plugin for [containerd](https://containerd.io)
 
-Unlike `overlayfs`, `fuse-overlayfs` can be used as a non-root user without patching the kernel.
+Unlike `overlayfs`, `fuse-overlayfs` can be used as a non-root user on almost all recent distros.
+
+You do NOT need this `fuse-overlayfs` plugin on the following environments, because they support the real `overlayfs` for non-root users:
+- [kernel >= 5.11](https://github.com/torvalds/linux/commit/459c7c565ac36ba09ffbf24231147f408fde4203)
+- [Ubuntu kernel, since circa 2015](https://kernel.ubuntu.com/git/ubuntu/ubuntu-bionic.git/commit/fs/overlayfs?id=3b7da90f28fe1ed4b79ef2d994c81efbc58f1144)
+- [Debian 10 kernel](https://salsa.debian.org/kernel-team/linux/blob/283390e7feb21b47779b48e0c8eb0cc409d2c815/debian/patches/debian/overlayfs-permit-mounts-in-userns.patch)
+  - Debian 10 needs `sudo modprobe overlay permit_mounts_in_userns=1`. Future release of Debian with kernel >= 5.11 will not need this `modprobe` hack.
+
+fuse-overlayfs-snapshotter is a **non-core** sub-project of containerd.
 
 ## Requirements
 * kernel >= 4.18
@@ -23,10 +31,13 @@ with the following content, and recompile the containerd binary:
 ```go
 /*
    Copyright The containerd Authors.
+
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
    You may obtain a copy of the License at
+
        http://www.apache.org/licenses/LICENSE-2.0
+
    Unless required by applicable law or agreed to in writing, software
    distributed under the License is distributed on an "AS IS" BASIS,
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -36,8 +47,7 @@ with the following content, and recompile the containerd binary:
 
 package main
 
-// NOTE: the package name was "github.com/AkihiroSuda/containerd-fuse-overlayfs" before v1.0.0
-import _ "github.com/AkihiroSuda/containerd-fuse-overlayfs/plugin"
+import _ "github.com/containerd/fuse-overlayfs-snapshotter/plugin"
 ```
 
 No extra configuration is needed.
@@ -45,6 +55,37 @@ No extra configuration is needed.
 See https://github.com/containerd/containerd/blob/master/docs/rootless.md for how to run containerd as a non-root user.
 
 ### Option 2: Execute `fuse-overlayfs` plugin as a separate binary
+
+#### "Easy way"
+
+The easiest way is to use `containerd-rootless-setuptool.sh` included in [nerdctl](https://github.com/containerd/nerdctl).
+
+```console
+$ containerd-rootless-setuptool.sh install
+$ containerd-rootless-setuptool.sh install-fuse-overlayfs
+[INFO] Creating "/home/exampleuser/.config/systemd/user/containerd-fuse-overlayfs.service"
+...
+[INFO] Installed "containerd-fuse-overlayfs.service" successfully.
+[INFO] To control "containerd-fuse-overlayfs.service", run: `systemctl --user (start|stop|restart) containerd-fuse-overlayfs.service`
+[INFO] Add the following lines to "/home/exampleuser/.config/containerd/config.toml" manually:
+### BEGIN ###
+[proxy_plugins]
+  [proxy_plugins."fuse-overlayfs"]
+    type = "snapshot"
+    address = "/run/user/1000/containerd-fuse-overlayfs.sock"
+###  END  ###
+[INFO] Set `export CONTAINERD_SNAPSHOTTER="fuse-overlayfs"` to use the fuse-overlayfs snapshotter.
+```
+
+Add the `[proxy_plugins."fuse-overlayfs"]` configuration shown above to `~/.config/containerd/config.toml`.
+"1000" needs to be replaced with your actual UID.
+
+#### "Hard way"
+
+<details>
+<summary>Click here to show the "hard way"</summary>
+
+<p>
 
 * Install `containerd-fuse-overlayfs-grpc` binary. The binary will be installed under `$DESTDIR/bin`.
 ```console
@@ -90,12 +131,14 @@ $ nsenter -U --preserve-credentials -m -n -t $(cat $XDG_RUNTIME_DIR/rootlesskit-
   containerd -c $HOME/.config/containerd/config.toml
 ```
 
+</p>
+</details>
+
 ## Usage
 
 ```console
 $ export CONTAINERD_SNAPSHOTTER=fuse-overlayfs
-$ ctr pull ...
-$ ctr run ...
+$ nerdctl run ...
 ```
 
 ## How to test
@@ -105,3 +148,12 @@ To run the test as a non-root user, [RootlessKit](https://github.com/rootless-co
 ```console
 $ go test -exec rootlesskit -test.v -test.root
 ```
+
+## Project details
+fuse-overlayfs-snapshotter is a containerd **non-core** sub-project, licensed under the [Apache 2.0 license](./LICENSE).
+As a containerd non-core sub-project, you will find the:
+ * [Project governance](https://github.com/containerd/project/blob/master/GOVERNANCE.md),
+ * [Maintainers](./MAINTAINERS),
+ * and [Contributing guidelines](https://github.com/containerd/project/blob/master/CONTRIBUTING.md)
+
+information in our [`containerd/project`](https://github.com/containerd/project) repository.

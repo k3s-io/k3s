@@ -19,8 +19,8 @@ import (
 	"strings"
 	"time"
 
-	fuseoverlayfs "github.com/AkihiroSuda/containerd-fuse-overlayfs"
 	"github.com/containerd/containerd/snapshots/overlay"
+	fuseoverlayfs "github.com/containerd/fuse-overlayfs-snapshotter"
 	"github.com/pkg/errors"
 	"github.com/rancher/k3s/pkg/agent/proxy"
 	"github.com/rancher/k3s/pkg/cli/cmds"

@@ -1,2 +1,3 @@
 *.test
 bin
+/_output
