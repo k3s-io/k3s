@@ -1,9 +1,5 @@
 # cloud.google.com/go v0.54.0
 cloud.google.com/go/compute/metadata
-# github.com/AkihiroSuda/containerd-fuse-overlayfs v1.0.0
-## explicit
-github.com/AkihiroSuda/containerd-fuse-overlayfs
-github.com/AkihiroSuda/containerd-fuse-overlayfs/plugin
 # github.com/Azure/azure-sdk-for-go v43.0.0+incompatible
 github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2019-12-01/compute
 github.com/Azure/azure-sdk-for-go/services/containerservice/mgmt/2020-04-01/containerservice
@@ -178,7 +174,7 @@ github.com/containerd/cgroups/v2
 github.com/containerd/cgroups/v2/stats
 # github.com/containerd/console v1.0.0 => github.com/containerd/console v1.0.0
 github.com/containerd/console
-# github.com/containerd/containerd v1.4.1 => github.com/k3s-io/containerd v1.4.4-k3s1
+# github.com/containerd/containerd v1.5.0-beta.4 => github.com/k3s-io/containerd v1.4.4-k3s1
 ## explicit
 github.com/containerd/containerd
 github.com/containerd/containerd/api/events
@@ -314,7 +310,7 @@ github.com/containerd/containerd/snapshots/storage
 github.com/containerd/containerd/sys
 github.com/containerd/containerd/sys/reaper
 github.com/containerd/containerd/version
-# github.com/containerd/continuity v0.0.0-20200710164510-efbc4488d8fe => github.com/k3s-io/continuity v0.0.0-20210309170710-f93269e0d5c1
+# github.com/containerd/continuity v0.0.0-20210208174643-50096c924a4e => github.com/k3s-io/continuity v0.0.0-20210309170710-f93269e0d5c1
 github.com/containerd/continuity
 github.com/containerd/continuity/devices
 github.com/containerd/continuity/driver
@@ -353,6 +349,10 @@ github.com/containerd/cri/pkg/streaming/remotecommand
 github.com/containerd/cri/pkg/util
 # github.com/containerd/fifo v0.0.0-20200410184934-f15a3290365b => github.com/containerd/fifo v0.0.0-20190816180239-bda0ff6ed73c
 github.com/containerd/fifo
+# github.com/containerd/fuse-overlayfs-snapshotter v1.0.2
+## explicit
+github.com/containerd/fuse-overlayfs-snapshotter
+github.com/containerd/fuse-overlayfs-snapshotter/plugin
 # github.com/containerd/go-cni v1.0.1
 github.com/containerd/go-cni
 # github.com/containerd/go-runc v0.0.0-20200220073739-7016d3ce2328 => github.com/containerd/go-runc v0.0.0-20200220073739-7016d3ce2328

@@ -25,8 +25,6 @@ cloud.google.com/go/storage v1.0.0/go.mod h1:IhtSnM/ZTZV8YYJWCY8RULGVqBDmpoyjwiy
 cloud.google.com/go/storage v1.5.0/go.mod h1:tpKbwo567HUNpVclU5sGELwQWBDZ8gh0ZeosJ0Rtdos=
 cloud.google.com/go/storage v1.6.0/go.mod h1:N7U0C8pVQ/+NIKOBQyamJIeKQKkZ+mxpohlUTyfDhBk=
 dmitri.shuralyov.com/gpu/mtl v0.0.0-20190408044501-666a987793e9/go.mod h1:H6x//7gZCb22OMCxBHrMx7a5I7Hp++hsVxbQ4BYO7hU=
-github.com/AkihiroSuda/containerd-fuse-overlayfs v1.0.0 h1:LhS8BiMh7ULa6zkkF5XI6piLV5XVTR7mSm9j3hTUB/k=
-github.com/AkihiroSuda/containerd-fuse-overlayfs v1.0.0/go.mod h1:0mMDvQFeLbbn1Wy8P2j3hwFhqBq+FKn8OZPno8WLmp8=
 github.com/Azure/azure-sdk-for-go v43.0.0+incompatible h1:/wSNCu0e6EsHFR4Qa3vBEBbicaprEHMyyga9g8RTULI=
 github.com/Azure/azure-sdk-for-go v43.0.0+incompatible/go.mod h1:9XXNKU+eRnpl9moKnB4QOLf1HestfXbmab5FXxiDBjc=
 github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78 h1:w+iIsaOQNcT7OZ575w+acHgRric5iCyQh+xv+KJ4HB8=
@@ -152,6 +150,8 @@ github.com/containerd/console v1.0.0 h1:fU3UuQapBs+zLJu82NhR11Rif1ny2zfMMAyPJzSN
 github.com/containerd/console v1.0.0/go.mod h1:8Pf4gM6VEbTNRIT26AyyU7hxdQU3MvAvxVI0sc00XBE=
 github.com/containerd/fifo v0.0.0-20190816180239-bda0ff6ed73c h1:KFbqHhDeaHM7IfFtXHfUHMDaUStpM2YwBR+iJCIOsKk=
 github.com/containerd/fifo v0.0.0-20190816180239-bda0ff6ed73c/go.mod h1:ODA38xgv3Kuk8dQz2ZQXpnv/UZZUHUCL7pnLehbXgQI=
+github.com/containerd/fuse-overlayfs-snapshotter v1.0.2 h1:Xy9Tkx0tk/SsMfLDFc69wzqSrxQHYEFELHBO/Z8XO3M=
+github.com/containerd/fuse-overlayfs-snapshotter v1.0.2/go.mod h1:nRZceC8a7dRm3Ao6cJAwuJWPFiBPaibHiFntRUnzhwU=
 github.com/containerd/go-cni v1.0.1 h1:VXr2EkOPD0v1gu7CKfof6XzEIDzsE/dI9yj/W7PSWLs=
 github.com/containerd/go-cni v1.0.1/go.mod h1:+vUpYxKvAF72G9i1WoDOiPGRtQpqsNW/ZHtSlv++smU=
 github.com/containerd/go-runc v0.0.0-20200220073739-7016d3ce2328 h1:PRTagVMbJcCezLcHXe8UJvR1oBzp2lG3CEumeFOLOds=
