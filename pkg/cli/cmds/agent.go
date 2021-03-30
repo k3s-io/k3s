@@ -102,7 +102,7 @@ var (
 	}
 	FlannelFlag = cli.BoolFlag{
 		Name:        "no-flannel",
-		Usage:       "(deprecated) use --flannel-backend=none",
+		Usage:       "(deprecated) Use --flannel-backend=none",
 		Destination: &AgentConfig.NoFlannel,
 	}
 	FlannelIfaceFlag = cli.StringFlag{
