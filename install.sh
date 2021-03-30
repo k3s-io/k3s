@@ -316,7 +316,7 @@ setup_verify_arch() {
 # --- verify existence of network downloader executable ---
 verify_downloader() {
     # Return failure if it doesn't exist or is no executable
-    [ -x "$(which $1)" ] || return 1
+    [ -x "$(command -v $1)" ] || return 1
 
     # Set verified executable as our downloader program and return success
     DOWNLOADER=$1
@@ -545,7 +545,7 @@ create_symlinks() {
 
     for cmd in kubectl crictl ctr; do
         if [ ! -e ${BIN_DIR}/${cmd} ] || [ "${INSTALL_K3S_SYMLINK}" = force ]; then
-            which_cmd=$(which ${cmd} 2>/dev/null || true)
+            which_cmd=$(command -v ${cmd} 2>/dev/null || true)
             if [ -z "${which_cmd}" ] || [ "${INSTALL_K3S_SYMLINK}" = force ]; then
                 info "Creating ${BIN_DIR}/${cmd} symlink to k3s"
                 $SUDO ln -sf k3s ${BIN_DIR}/${cmd}
@@ -647,12 +647,12 @@ set -x
 
 ${KILLALL_K3S_SH}
 
-if which systemctl; then
+if command -v systemctl; then
     systemctl disable ${SYSTEM_NAME}
     systemctl reset-failed ${SYSTEM_NAME}
     systemctl daemon-reload
 fi
-if which rc-update; then
+if command -v rc-update; then
     rc-update delete ${SYSTEM_NAME} default
 fi
 
