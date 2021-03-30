@@ -73,15 +73,25 @@ func (c *Cluster) Start(ctx context.Context) (<-chan struct{}, error) {
 		return nil, errors.Wrap(err, "start managed database")
 	}
 
-	// get the wait channel for testing managed database readiness
 	ready, err := c.testClusterDB(ctx)
 	if err != nil {
-		if c.shouldBootstrap {
-			if err := c.bootstrapped(); err != nil {
-				return nil, err
-			}
+		return nil, err
+	}
+
+	// if necessary, store bootstrap data to datastore
+	if c.saveBootstrap {
+		if err := c.save(ctx); err != nil {
+			return nil, err
 		}
 	}
+
+	// if necessary, record successful bootstrap
+	if c.shouldBootstrap {
+		if err := c.bootstrapped(); err != nil {
+			return nil, err
+		}
+	}
+
 	return ready, c.startStorage(ctx)
 
 }
