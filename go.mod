@@ -7,7 +7,7 @@ replace (
 	github.com/containerd/btrfs => github.com/containerd/btrfs v0.0.0-20181101203652-af5082808c83
 	github.com/containerd/cgroups => github.com/containerd/cgroups v0.0.0-20190717030353-c4b9ac5c7601
 	github.com/containerd/console => github.com/containerd/console v0.0.0-20181022165439-0650fd9eeb50
-	github.com/containerd/containerd => github.com/k3s-io/containerd v1.3.10-k3s1
+	github.com/containerd/containerd => github.com/k3s-io/containerd v1.3.10-k3s2
 	github.com/containerd/continuity => github.com/containerd/continuity v0.0.0-20190815185530-f2a389ac0a02
 	github.com/containerd/cri => github.com/k3s-io/cri v1.3.0-k3s.10 // k3s-release/1.3
 	github.com/containerd/fifo => github.com/containerd/fifo v0.0.0-20190816180239-bda0ff6ed73c
@@ -86,7 +86,6 @@ require (
 	github.com/go-bindata/go-bindata v3.1.2+incompatible
 	github.com/go-sql-driver/mysql v1.4.1
 	github.com/gogo/googleapis v1.3.0 // indirect
-	github.com/google/go-cmp v0.4.0 // indirect
 	github.com/google/tcpproxy v0.0.0-20180808230851-dfa16c61dad2
 	github.com/gorilla/mux v1.7.3
 	github.com/gorilla/websocket v1.4.1
@@ -116,6 +115,7 @@ require (
 	google.golang.org/grpc v1.26.0
 	gopkg.in/robfig/cron.v2 v2.0.0-20150107220207-be2e0b0deed5 // indirect
 	gopkg.in/yaml.v2 v2.2.8
+	gotest.tools/v3 v3.0.3 // indirect
 	k8s.io/api v0.18.0
 	k8s.io/apimachinery v0.18.0
 	k8s.io/apiserver v0.0.0
