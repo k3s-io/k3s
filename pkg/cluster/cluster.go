@@ -10,6 +10,7 @@ import (
 	"github.com/rancher/k3s/pkg/cluster/managed"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/etcd"
+	"github.com/rancher/kine/pkg/client"
 	"github.com/rancher/kine/pkg/endpoint"
 	"github.com/sirupsen/logrus"
 )
@@ -24,12 +25,12 @@ type Cluster struct {
 	etcdConfig       endpoint.ETCDConfig
 	joining          bool
 	saveBootstrap    bool
+	storageClient    client.Client
 }
 
 // Start creates the dynamic tls listener, http request handler,
 // handles starting and writing/reading bootstrap data, and returns a channel
-// that will be closed when datastore is ready. If embedded etcd is in use,
-// a secondary call to Cluster.save is made.
+// that will be closed when datastore is ready.
 func (c *Cluster) Start(ctx context.Context) (<-chan struct{}, error) {
 	// Set up the dynamiclistener and http request handlers
 	if err := c.initClusterAndHTTPS(ctx); err != nil {
@@ -72,35 +73,27 @@ func (c *Cluster) Start(ctx context.Context) (<-chan struct{}, error) {
 		return nil, errors.Wrap(err, "start managed database")
 	}
 
-	// get the wait channel for testing managed database readiness
 	ready, err := c.testClusterDB(ctx)
 	if err != nil {
-		if c.shouldBootstrap {
-			if err := c.bootstrapped(); err != nil {
-				return nil, err
-			}
-		}
-	}
-
-	if err := c.startStorage(ctx); err != nil {
 		return nil, err
 	}
 
-	// at this point, if etcd is in use, it's bootstrapping is complete
-	// so save the bootstrap data. We will need for etcd to be up. If
-	// the save call returns an error, we panic since subsequent etcd
-	// snapshots will be empty.
-	if c.managedDB != nil {
-		go func() {
-			for range ready {
-				if err := c.save(ctx); err != nil {
-					panic(err)
-				}
-			}
-		}()
+	// if necessary, store bootstrap data to datastore
+	if c.saveBootstrap {
+		if err := c.save(ctx); err != nil {
+			return nil, err
+		}
 	}
 
-	return ready, nil
+	// if necessary, record successful bootstrap
+	if c.shouldBootstrap {
+		if err := c.bootstrapped(); err != nil {
+			return nil, err
+		}
+	}
+
+	return ready, c.startStorage(ctx)
+
 }
 
 // startStorage starts the kine listener and configures the endpoints, if necessary.
