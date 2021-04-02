@@ -61,6 +61,7 @@ type Server struct {
 	ClusterInit              bool
 	ClusterReset             bool
 	ClusterResetRestorePath  string
+	RKE1Snapshot             bool
 	EncryptSecrets           bool
 	StartupHooks             []func(context.Context, <-chan struct{}, string) error
 	EtcdSnapshotName         string
@@ -417,6 +418,11 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Name:        "cluster-reset-restore-path",
 				Usage:       "(db) Path to snapshot file to be restored",
 				Destination: &ServerConfig.ClusterResetRestorePath,
+			},
+			&cli.BoolFlag{
+				Name:        "rke1-snapshot",
+				Usage:       "(db) Enable rke1 snapshot restore",
+				Destination: &ServerConfig.RKE1Snapshot,
 			},
 			cli.BoolFlag{
 				Name:        "secrets-encryption",

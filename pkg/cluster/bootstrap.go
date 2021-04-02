@@ -3,9 +3,11 @@ package cluster
 import (
 	"bytes"
 	"context"
-	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/pkg/errors"
 
 	"github.com/rancher/k3s/pkg/bootstrap"
 	"github.com/rancher/k3s/pkg/clientaccess"
@@ -33,7 +35,11 @@ func (c *Cluster) Bootstrap(ctx context.Context) error {
 			return err
 		}
 	}
-
+	if c.config.ClusterResetRestorePath != "" && c.config.RKE1Snapshot {
+		// we should recover ca certs from rke1 snapshot before
+		// generating certificates
+		return c.bootstrapFromSnapshot(ctx)
+	}
 	return nil
 }
 
@@ -155,4 +161,30 @@ func (c *Cluster) Snapshot(ctx context.Context, config *config.Control) error {
 		return errors.New("unable to perform etcd snapshot on non-etcd system")
 	}
 	return c.managedDB.Snapshot(ctx, config)
+}
+
+func (c *Cluster) bootstrapFromSnapshot(ctx context.Context) error {
+	if !isCompressed(c.config.ClusterResetRestorePath) {
+		return fmt.Errorf("snapshot file is not compressed")
+	}
+
+	// unzip compressed snapshot
+	if err := unzip(c.config.ClusterResetRestorePath, backupDest); err != nil {
+		return err
+	}
+	stateFile, err := findStateFile(backupDest)
+	if err != nil {
+		return err
+	}
+	// save rke1 certs to memory
+	if err := recoverCerts(ctx, c.config.Runtime, stateFile); err != nil {
+		return err
+	}
+	snapshotFile, err := findSnapshotFile(backupDest)
+	if err != nil {
+		return err
+	}
+	c.config.ClusterResetRestorePath = snapshotFile
+
+	return nil
 }
