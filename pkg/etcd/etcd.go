@@ -22,6 +22,7 @@ import (
 	certutil "github.com/rancher/dynamiclistener/cert"
 	"github.com/rancher/k3s/pkg/clientaccess"
 	"github.com/rancher/k3s/pkg/daemons/config"
+	"github.com/rancher/k3s/pkg/daemons/control/deps"
 	"github.com/rancher/k3s/pkg/daemons/executor"
 	"github.com/rancher/k3s/pkg/version"
 	"github.com/robfig/cron/v3"
@@ -41,6 +42,7 @@ type ETCD struct {
 	runtime *config.ControlRuntime
 	address string
 	cron    *cron.Cron
+	s3      *s3
 }
 
 type learnerProgress struct {
@@ -135,12 +137,12 @@ func walDir(config *config.Control) string {
 	return filepath.Join(etcdDBDir(config), "member", "wal")
 }
 
-// nameFile returns the path to etcdDBDir/name
+// nameFile returns the path to etcdDBDir/name.
 func nameFile(config *config.Control) string {
 	return filepath.Join(etcdDBDir(config), "name")
 }
 
-// ResetFile returns the path to etcdDBDir/reset-flag
+// ResetFile returns the path to etcdDBDir/reset-flag.
 func ResetFile(config *config.Control) string {
 	return filepath.Join(config.DataDir, "db", "reset-flag")
 }
@@ -159,7 +161,7 @@ func (e *ETCD) IsInitialized(ctx context.Context, config *config.Control) (bool,
 }
 
 // Reset resets an etcd node
-func (e *ETCD) Reset(ctx context.Context) error {
+func (e *ETCD) Reset(ctx context.Context, rebootstrap func() error) error {
 	// Wait for etcd to come up as a new single-node cluster, then exit
 	go func() {
 		t := time.NewTicker(5 * time.Second)
@@ -169,6 +171,16 @@ func (e *ETCD) Reset(ctx context.Context) error {
 				members, err := e.client.MemberList(ctx)
 				if err != nil {
 					continue
+				}
+
+				// storageBootstrap() - runtime structure has been written with correct certificate data
+				if err := rebootstrap(); err != nil {
+					logrus.Fatal(err)
+				}
+
+				// call functions to rewrite them from daemons/control/server.go (prepare())
+				if err := deps.GenServerDeps(e.config, e.runtime); err != nil {
+					logrus.Fatal(err)
 				}
 
 				if len(members.Members) == 1 && members.Members[0].Name == e.name {
@@ -181,6 +193,21 @@ func (e *ETCD) Reset(ctx context.Context) error {
 
 	// If asked to restore from a snapshot, do so
 	if e.config.ClusterResetRestorePath != "" {
+		if e.config.EtcdS3 {
+			if e.s3 == nil {
+				s3, err := newS3(ctx, e.config)
+				if err != nil {
+					return err
+				}
+				e.s3 = s3
+			}
+			logrus.Infof("Retrieving etcd snapshot %s from S3", e.config.ClusterResetRestorePath)
+			if err := e.s3.download(ctx); err != nil {
+				return err
+			}
+			logrus.Infof("S3 download complete for %s", e.config.ClusterResetRestorePath)
+		}
+
 		info, err := os.Stat(e.config.ClusterResetRestorePath)
 		if os.IsNotExist(err) {
 			return fmt.Errorf("etcd: snapshot path does not exist: %s", e.config.ClusterResetRestorePath)
@@ -798,6 +825,29 @@ func (e *ETCD) Snapshot(ctx context.Context, config *config.Control) error {
 		return errors.Wrap(err, "failed to save snapshot")
 	}
 
+	if e.config.EtcdS3 {
+		logrus.Infof("Saving etcd snapshot %s to S3", snapshotName)
+		if e.s3 == nil {
+			s3, err := newS3(ctx, config)
+			if err != nil {
+				return err
+			}
+			e.s3 = s3
+		}
+		if err := e.s3.upload(ctx, snapshotPath); err != nil {
+			return err
+		}
+		logrus.Infof("S3 upload complete for %s", snapshotName)
+
+		if e.config.EtcdSnapshotRetention >= 1 {
+			if err := e.s3.snapshotRetention(ctx); err != nil {
+				return errors.Wrap(err, "failed to apply s3 snapshot retention")
+			}
+		}
+
+		return nil
+	}
+
 	// check if we need to perform a retention check
 	if e.config.EtcdSnapshotRetention >= 1 {
 		if err := snapshotRetention(e.config.EtcdSnapshotRetention, snapshotDir); err != nil {
@@ -870,7 +920,15 @@ func snapshotRetention(retention int, snapshotDir string) error {
 	sort.Slice(snapshotFiles, func(i, j int) bool {
 		return snapshotFiles[i].Name() < snapshotFiles[j].Name()
 	})
-	return os.Remove(filepath.Join(snapshotDir, snapshotFiles[0].Name()))
+
+	delCount := len(snapshotFiles) - retention
+	for _, df := range snapshotFiles[:delCount] {
+		if err := os.Remove(filepath.Join(snapshotDir, df.Name())); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // backupDirWithRetention will move the dir to a backup dir
