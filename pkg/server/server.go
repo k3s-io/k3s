@@ -42,7 +42,7 @@ const (
 	ETCDRoleLabelKey   = "node-role.kubernetes.io/etcd"
 )
 
-func resolveDataDir(dataDir string) (string, error) {
+func ResolveDataDir(dataDir string) (string, error) {
 	dataDir, err := datadir.Resolve(dataDir)
 	return filepath.Join(dataDir, "server"), err
 }
@@ -348,7 +348,7 @@ func setupDataDirAndChdir(config *config.Control) error {
 		err error
 	)
 
-	config.DataDir, err = resolveDataDir(config.DataDir)
+	config.DataDir, err = ResolveDataDir(config.DataDir)
 	if err != nil {
 		return err
 	}

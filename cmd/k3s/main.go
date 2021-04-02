@@ -33,10 +33,10 @@ func main() {
 		cmds.NewCRICTL(externalCLIAction("crictl")),
 		cmds.NewCtrCommand(externalCLIAction("ctr")),
 		cmds.NewCheckConfigCommand(externalCLIAction("check-config")),
+		cmds.NewEtcdSnapshotCommand(wrap(version.Program+"-"+cmds.EtcdSnapshotCommand, os.Args)),
 	}
 
-	err := app.Run(os.Args)
-	if err != nil {
+	if err := app.Run(os.Args); err != nil {
 		logrus.Fatal(err)
 	}
 }
@@ -85,7 +85,7 @@ func stageAndRunCLI(cli *cli.Context, cmd string, args []string) error {
 	return stageAndRun(dataDir, cmd, args)
 }
 
-func stageAndRun(dataDir string, cmd string, args []string) error {
+func stageAndRun(dataDir, cmd string, args []string) error {
 	dir, err := extract(dataDir)
 	if err != nil {
 		return errors.Wrap(err, "extracting data")

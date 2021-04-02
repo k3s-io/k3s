@@ -127,13 +127,33 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	serverConfig.ControlConfig.DisableControllerManager = cfg.DisableControllerManager
 	serverConfig.ControlConfig.ClusterInit = cfg.ClusterInit
 	serverConfig.ControlConfig.EncryptSecrets = cfg.EncryptSecrets
+	serverConfig.ControlConfig.EtcdSnapshotName = cfg.EtcdSnapshotName
 	serverConfig.ControlConfig.EtcdSnapshotCron = cfg.EtcdSnapshotCron
 	serverConfig.ControlConfig.EtcdSnapshotDir = cfg.EtcdSnapshotDir
 	serverConfig.ControlConfig.EtcdSnapshotRetention = cfg.EtcdSnapshotRetention
 	serverConfig.ControlConfig.EtcdDisableSnapshots = cfg.EtcdDisableSnapshots
+	serverConfig.ControlConfig.EtcdS3 = cfg.EtcdS3
+	serverConfig.ControlConfig.EtcdS3Endpoint = cfg.EtcdS3Endpoint
+	serverConfig.ControlConfig.EtcdS3EndpointCA = cfg.EtcdS3EndpointCA
+	serverConfig.ControlConfig.EtcdS3SkipSSLVerify = cfg.EtcdS3SkipSSLVerify
+	serverConfig.ControlConfig.EtcdS3AccessKey = cfg.EtcdS3AccessKey
+	serverConfig.ControlConfig.EtcdS3SecretKey = cfg.EtcdS3SecretKey
+	serverConfig.ControlConfig.EtcdS3BucketName = cfg.EtcdS3BucketName
+	serverConfig.ControlConfig.EtcdS3Region = cfg.EtcdS3Region
+	serverConfig.ControlConfig.EtcdS3Folder = cfg.EtcdS3Folder
 
 	if cfg.ClusterResetRestorePath != "" && !cfg.ClusterReset {
 		return errors.New("invalid flag use. --cluster-reset required with --cluster-reset-restore-path")
+	}
+
+	// make sure components are disabled so we only perform a restore
+	// and bail out
+	if cfg.ClusterResetRestorePath != "" && cfg.ClusterReset {
+		serverConfig.ControlConfig.ClusterInit = true
+		serverConfig.ControlConfig.DisableAPIServer = true
+		serverConfig.ControlConfig.DisableControllerManager = true
+		serverConfig.ControlConfig.DisableScheduler = true
+		serverConfig.ControlConfig.DisableCCM = true
 	}
 
 	serverConfig.ControlConfig.ClusterReset = cfg.ClusterReset

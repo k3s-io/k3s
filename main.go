@@ -12,6 +12,7 @@ import (
 	"github.com/rancher/k3s/pkg/cli/agent"
 	"github.com/rancher/k3s/pkg/cli/cmds"
 	"github.com/rancher/k3s/pkg/cli/crictl"
+	"github.com/rancher/k3s/pkg/cli/etcdsnapshot"
 	"github.com/rancher/k3s/pkg/cli/kubectl"
 	"github.com/rancher/k3s/pkg/cli/server"
 	"github.com/rancher/k3s/pkg/configfilearg"
@@ -26,6 +27,7 @@ func main() {
 		cmds.NewAgentCommand(agent.Run),
 		cmds.NewKubectlCommand(kubectl.Run),
 		cmds.NewCRICTL(crictl.Run),
+		cmds.NewEtcdSnapshotCommand(etcdsnapshot.Run),
 	}
 
 	if err := app.Run(configfilearg.MustParse(os.Args)); err != nil {

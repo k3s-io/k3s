@@ -689,6 +689,8 @@ github.com/k3s-io/helm-controller/pkg/generated/listers/helm.cattle.io/v1
 github.com/k3s-io/helm-controller/pkg/helm
 # github.com/karrick/godirwalk v1.7.5
 github.com/karrick/godirwalk
+# github.com/klauspost/cpuid v1.3.1
+github.com/klauspost/cpuid
 # github.com/kubernetes-sigs/cri-tools v0.0.0-00010101000000-000000000000 => github.com/rancher/cri-tools v1.19.0-k3s1
 ## explicit
 github.com/kubernetes-sigs/cri-tools/cmd/crictl
@@ -716,8 +718,27 @@ github.com/matttproud/golang_protobuf_extensions/pbutil
 github.com/miekg/dns
 # github.com/mindprince/gonvml v0.0.0-20190828220739-9ebdce4bb989
 github.com/mindprince/gonvml
+# github.com/minio/md5-simd v1.1.0
+github.com/minio/md5-simd
+# github.com/minio/minio-go/v7 v7.0.7
+## explicit
+github.com/minio/minio-go/v7
+github.com/minio/minio-go/v7/pkg/credentials
+github.com/minio/minio-go/v7/pkg/encrypt
+github.com/minio/minio-go/v7/pkg/lifecycle
+github.com/minio/minio-go/v7/pkg/notification
+github.com/minio/minio-go/v7/pkg/replication
+github.com/minio/minio-go/v7/pkg/s3utils
+github.com/minio/minio-go/v7/pkg/set
+github.com/minio/minio-go/v7/pkg/signer
+github.com/minio/minio-go/v7/pkg/sse
+github.com/minio/minio-go/v7/pkg/tags
+# github.com/minio/sha256-simd v0.1.1
+github.com/minio/sha256-simd
 # github.com/mistifyio/go-zfs v2.1.2-0.20190413222219-f784269be439+incompatible
 github.com/mistifyio/go-zfs
+# github.com/mitchellh/go-homedir v1.1.0
+github.com/mitchellh/go-homedir
 # github.com/mitchellh/go-wordwrap v1.0.0
 github.com/mitchellh/go-wordwrap
 # github.com/mitchellh/mapstructure v1.1.2
@@ -919,6 +940,8 @@ github.com/rootless-containers/rootlesskit/pkg/port/builtin/parent/udp/udpproxy
 github.com/rootless-containers/rootlesskit/pkg/port/portutil
 github.com/rootless-containers/rootlesskit/pkg/sigproxy
 github.com/rootless-containers/rootlesskit/pkg/sigproxy/signal
+# github.com/rs/xid v1.2.1
+github.com/rs/xid
 # github.com/rubiojr/go-vhd v0.0.0-20200706105327-02e210299021
 github.com/rubiojr/go-vhd/vhd
 # github.com/russross/blackfriday v1.5.2
@@ -1114,7 +1137,9 @@ go.uber.org/zap/internal/exit
 go.uber.org/zap/zapcore
 # golang.org/x/crypto v0.0.0-20201002170205-7f63de1d35b0 => golang.org/x/crypto v0.0.0-20201002170205-7f63de1d35b0
 ## explicit
+golang.org/x/crypto/argon2
 golang.org/x/crypto/bcrypt
+golang.org/x/crypto/blake2b
 golang.org/x/crypto/blowfish
 golang.org/x/crypto/cast5
 golang.org/x/crypto/chacha20
@@ -1160,6 +1185,7 @@ golang.org/x/net/internal/timeseries
 golang.org/x/net/ipv4
 golang.org/x/net/ipv6
 golang.org/x/net/proxy
+golang.org/x/net/publicsuffix
 golang.org/x/net/trace
 golang.org/x/net/websocket
 # golang.org/x/oauth2 v0.0.0-20191202225959-858c2ad4c8b6
@@ -1321,6 +1347,8 @@ gopkg.in/gcfg.v1/token
 gopkg.in/gcfg.v1/types
 # gopkg.in/inf.v0 v0.9.1
 gopkg.in/inf.v0
+# gopkg.in/ini.v1 v1.57.0
+gopkg.in/ini.v1
 # gopkg.in/natefinch/lumberjack.v2 v2.0.0
 gopkg.in/natefinch/lumberjack.v2
 # gopkg.in/square/go-jose.v2 v2.3.1 => gopkg.in/square/go-jose.v2 v2.2.2

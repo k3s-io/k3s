@@ -77,6 +77,7 @@ rm -f \
     bin/containerd-shim-runc-v1 \
     bin/containerd-shim-runc-v2 \
     bin/k3s-server \
+    bin/k3s-etcd-snapshot \
     bin/kubectl \
     bin/crictl \
     bin/ctr
@@ -105,6 +106,7 @@ echo Building server
 CGO_ENABLED=1 "${GO}" build -tags "$TAGS" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC_SQLITE" -o bin/containerd ./cmd/server/main.go
 ln -s containerd ./bin/k3s-agent
 ln -s containerd ./bin/k3s-server
+ln -s containerd ./bin/k3s-etcd-snapshot
 ln -s containerd ./bin/kubectl
 ln -s containerd ./bin/crictl
 ln -s containerd ./bin/ctr

@@ -9,6 +9,7 @@ import (
 
 	"github.com/rancher/k3s/pkg/bootstrap"
 	"github.com/rancher/k3s/pkg/clientaccess"
+	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/version"
 	"github.com/sirupsen/logrus"
 )
@@ -25,7 +26,6 @@ func (c *Cluster) Bootstrap(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-
 	c.shouldBootstrap = shouldBootstrap
 
 	if shouldBootstrap {
@@ -146,4 +146,13 @@ func (c *Cluster) bootstrap(ctx context.Context) error {
 // We hash the token value exactly as it is provided by the user, NOT the normalized version.
 func (c *Cluster) bootstrapStamp() string {
 	return filepath.Join(c.config.DataDir, "db/joined-"+keyHash(c.config.Token))
+}
+
+// Snapshot is a proxy method to call the snapshot method on the managedb
+// interface for etcd clusters.
+func (c *Cluster) Snapshot(ctx context.Context, config *config.Control) error {
+	if c.managedDB == nil {
+		return errors.New("unable to perform etcd snapshot on non-etcd system")
+	}
+	return c.managedDB.Snapshot(ctx, config)
 }
