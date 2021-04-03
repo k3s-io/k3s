@@ -82,6 +82,15 @@ type Server struct {
 
 var ServerConfig Server
 
+var (
+	FlannelBackendFlag = cli.StringFlag{
+		Name:        "flannel-backend",
+		Usage:       "(networking) One of 'none', 'vxlan', 'ipsec', 'host-gw', or 'wireguard'",
+		Destination: &ServerConfig.FlannelBackend,
+		Value:       "vxlan",
+	}
+)
+
 func NewServerCommand(action func(*cli.Context) error) cli.Command {
 	return cli.Command{
 		Name:      "server",
@@ -157,12 +166,7 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Destination: &ServerConfig.ClusterDomain,
 				Value:       "cluster.local",
 			},
-			cli.StringFlag{
-				Name:        "flannel-backend",
-				Usage:       "(networking) One of 'none', 'vxlan', 'ipsec', 'host-gw', or 'wireguard'",
-				Destination: &ServerConfig.FlannelBackend,
-				Value:       "vxlan",
-			},
+			FlannelBackendFlag,
 			cli.StringFlag{
 				Name:        "token,t",
 				Usage:       "(cluster) Shared secret used to join a server or agent to a cluster",

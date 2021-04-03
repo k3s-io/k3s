@@ -199,6 +199,7 @@ func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
 			VModule,
 			LogFile,
 			AlsoLogToStderr,
+			FlannelBackendFlag,
 			cli.StringFlag{
 				Name:        "token,t",
 				Usage:       "(cluster) Token to use for authentication",
