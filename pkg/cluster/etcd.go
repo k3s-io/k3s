@@ -1,5 +1,3 @@
-// +build !no_etcd
-
 package cluster
 
 import (
