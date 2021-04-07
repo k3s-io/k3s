@@ -10,7 +10,6 @@ import (
 const (
 	defaultSnapshotRentention    = 5
 	defaultSnapshotIntervalHours = 12
-	hideClusterFlags             = true
 )
 
 type Server struct {
@@ -393,21 +392,18 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 			},
 			cli.StringFlag{
 				Name:        "server,s",
-				Hidden:      hideClusterFlags,
 				Usage:       "(experimental/cluster) Server to connect to, used to join a cluster",
 				EnvVar:      version.ProgramUpper + "_URL",
 				Destination: &ServerConfig.ServerURL,
 			},
 			cli.BoolFlag{
 				Name:        "cluster-init",
-				Hidden:      hideClusterFlags,
-				Usage:       "(experimental/cluster) Initialize a new cluster",
+				Usage:       "(experimental/cluster) Initialize a new cluster using embedded Etcd",
 				EnvVar:      version.ProgramUpper + "_CLUSTER_INIT",
 				Destination: &ServerConfig.ClusterInit,
 			},
 			cli.BoolFlag{
 				Name:        "cluster-reset",
-				Hidden:      hideClusterFlags,
 				Usage:       "(experimental/cluster) Forget all peers and become sole member of a new cluster",
 				EnvVar:      version.ProgramUpper + "_CLUSTER_RESET",
 				Destination: &ServerConfig.ClusterReset,
