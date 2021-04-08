@@ -7,8 +7,12 @@ cd $(dirname $0)/..
 ROOT_VERSION=v0.8.1
 TRAEFIK_VERSION=9.14.2  # appVersion: 2.4.2
 CHARTS_DIR=build/static/charts
+DATA_DIR=build/data
+export TZ=UTC
 
+umask 022
 mkdir -p ${CHARTS_DIR}
+mkdir -p ${DATA_DIR}
 
 curl --compressed -sfL https://github.com/k3s-io/k3s-root/releases/download/${ROOT_VERSION}/k3s-root-${ARCH}.tar | tar xf -
 
@@ -42,18 +46,19 @@ download_and_package_traefik () {
   TRAEFIK_TMP_CRD=${TRAEFIK_TMP_CHART}-crd
 
   # Collect information on chart
-  name=$(cat ${TRAEFIK_TMP_CHART}/Chart.yaml | yq r - 'name')
-  api_version=$(cat ${TRAEFIK_TMP_CHART}/Chart.yaml | yq r - 'apiVersion')
-  chart_version=$(cat ${TRAEFIK_TMP_CHART}/Chart.yaml | yq r - 'version')
+  name=$(yq e '.name' ${TRAEFIK_TMP_CHART}/Chart.yaml)
+  api_version=$(yq e '.apiVersion' ${TRAEFIK_TMP_CHART}/Chart.yaml)
+  chart_version=$(yq e '.version' ${TRAEFIK_TMP_CHART}/Chart.yaml)
 
   # Collect information on CRDs
   crd_apis=()
-  for crd_yaml in ${TRAEFIK_TMP_CHART}/crds/*; do
-    crd_group=$(yq r ${crd_yaml} 'spec.group')
-    crd_kind=$(yq r ${crd_yaml} 'spec.names.kind')
-    crd_version=$(yq r ${crd_yaml} 'spec.version')
+  for crd_yaml in $(find ${TRAEFIK_TMP_CHART}/crds -type f | sort); do
+    echo "Processing CRD at ${crd_yaml}"
+    crd_group=$(yq e '.spec.group' ${crd_yaml})
+    crd_kind=$(yq e '.spec.names.kind' ${crd_yaml})
+    crd_version=$(yq e '.spec.version' ${crd_yaml})
     if [[ -z "$crd_version" ]]; then
-      crd_version=$(yq r ${crd_yaml} 'spec.versions[0].name')
+      crd_version=$(yq e '.spec.versions[0].name' ${crd_yaml})
     fi
     crd_apis+=("${crd_group}/${crd_version}/${crd_kind}")
   done
@@ -67,8 +72,9 @@ download_and_package_traefik () {
   # Copy base template and apply variables to the template
   mkdir -p ${TRAEFIK_TMP_CRD}
   cp -R ./scripts/chart-templates/crd-base/* ${TRAEFIK_TMP_CRD}
-  for template_file in $(find ${TRAEFIK_TMP_CRD} -type f); do
+  for template_file in $(find ${TRAEFIK_TMP_CRD} -type f | sort); do
     # Applies any environment variables currently set onto your template file
+    echo "Templating ${template_file}"
     eval "echo \"$(sed 's/"/\\"/g' ${template_file})\"" > ${template_file}
   done
 
@@ -82,9 +88,14 @@ download_and_package_traefik () {
   rm -rf ${TRAEFIK_TMP_CHART}/crds
 
   # Package charts
-  OPTS="--format gnu --sort=name --owner=0 --group=0 --numeric-owner"
-  GZIP=-n tar ${OPTS} --mtime='UTC 2021-01-01' -cz -f ${CHARTS_DIR}/${TRAEFIK_FILE} -C ${TMP_DIR} $(basename ${TRAEFIK_TMP_CHART})
-  GZIP=-n tar ${OPTS} --mtime='UTC 2021-01-01' -cz -f ${CHARTS_DIR}/${TRAEFIK_CRD_FILE} -C ${TMP_DIR} $(basename ${TRAEFIK_TMP_CRD})
+  OPTS="--format=gnu --sort=name --owner=0 --group=0 --mode=gou-s --numeric-owner --no-acls --no-selinux --no-xattrs"
+  tar ${OPTS} --mtime='2021-01-01 00:00:00Z' -cf - -C ${TMP_DIR} $(basename ${TRAEFIK_TMP_CHART}) | gzip -n > ${CHARTS_DIR}/${TRAEFIK_FILE}
+  tar ${OPTS} --mtime='2021-01-01 00:00:00Z' -cf - -C ${TMP_DIR} $(basename ${TRAEFIK_TMP_CRD}) | gzip -n > ${CHARTS_DIR}/${TRAEFIK_CRD_FILE}
+  for TAR in ${CHARTS_DIR}/${TRAEFIK_FILE} ${CHARTS_DIR}/${TRAEFIK_CRD_FILE}; do
+    sha256sum ${TAR}
+    stat ${TAR}
+    tar -vtf ${TAR}
+  done
 }
 
 TRAEFIK_FILE=traefik-${TRAEFIK_VERSION}.tgz
