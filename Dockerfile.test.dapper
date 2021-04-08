@@ -3,7 +3,7 @@ FROM ${GOLANG}
 
 RUN apk -U --no-cache add bash git gcc musl-dev docker curl jq coreutils python2 openssl py-pip
 
-ENV SONOBUOY_VERSION 0.20.0
+ENV SONOBUOY_VERSION 0.50.0
 
 RUN OS=linux; \
     ARCH=$(go env GOARCH); \

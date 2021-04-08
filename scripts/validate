@@ -19,7 +19,7 @@ echo Running: "${GO}" generate
 "${GO}" generate
 
 echo Running: golangci-lint
-golangci-lint run
+golangci-lint run -v
 
 GO111MODULE=on go mod tidy
 GO111MODULE=on go mod vendor
@@ -29,6 +29,7 @@ GO111MODULE=on go mod vendor
 if [ -n "$DIRTY" ]; then
     echo Source dir is dirty
     git status --porcelain --untracked-files=no
+    git diff
     exit 1
 fi
 
