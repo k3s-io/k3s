@@ -51,7 +51,7 @@ EOF
 mkdir -p ${GOPATH}/bin
 mkdir -p /go
 ln -sf $GOPATH/bin /go/bin
-sed ':a;N;$!ba;s/\\\n/ /g' <Dockerfile.dapper | grep '^RUN ' | sed -e 's/^RUN //' >/tmp/docker-run
+sed ':a;N;$!ba;s/\\\n/ /g' <Dockerfile.dapper | grep -E '^(ARG|ENV|RUN) ' | sed -E -e 's/^RUN //' -e 's/^(ARG|ENV) +([^ =]*) *=? *(.*)/export \2="\3"/' >/tmp/docker-run
 export BINDIR=/go/bin
 export GOPATH=/go
 export HOME=/tmp
@@ -70,7 +70,7 @@ EOF
 
 # --- Utility function to download go
 download_go() {
-    goversion=$(grep "^FROM " Dockerfile.dapper | sed -e 's/^FROM golang:\(.*\)-.*/\1/')
+    goversion=$(grep "golang:" Dockerfile.dapper | sed -e 's/.*golang:\(.*\)-.*/\1/')
     if [ -z "$goversion" ]; then
         echo 'Cannot find version of go to fetch'
         return 1

@@ -5,7 +5,7 @@ cd $(dirname $0)/..
 . ./scripts/version.sh
 
 ROOT_VERSION=v0.8.1
-TRAEFIK_VERSION=9.14.2  # appVersion: 2.4.2
+TRAEFIK_VERSION=9.18.2  # appVersion: 2.4.8
 CHARTS_DIR=build/static/charts
 DATA_DIR=build/data
 export TZ=UTC
