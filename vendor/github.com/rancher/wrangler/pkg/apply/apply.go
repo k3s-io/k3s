@@ -80,6 +80,8 @@ type Apply interface {
 	WithNoDelete() Apply
 	WithGVK(gvks ...schema.GroupVersionKind) Apply
 	WithSetOwnerReference(controller, block bool) Apply
+	WithIgnorePreviousApplied() Apply
+	WithDiffPatch(gvk schema.GroupVersionKind, namespace, name string, patch []byte) Apply
 
 	FindOwner(obj runtime.Object) (runtime.Object, error)
 	PurgeOrphan(obj runtime.Object) error
@@ -129,10 +131,22 @@ type clients struct {
 	clients       map[schema.GroupVersionKind]dynamic.NamespaceableResourceInterface
 }
 
-func (c *clients) IsNamespaced(gvk schema.GroupVersionKind) bool {
+func (c *clients) IsNamespaced(gvk schema.GroupVersionKind) (bool, error) {
+	c.Lock()
+	ok, exists := c.namespaced[gvk]
+	c.Unlock()
+
+	if exists {
+		return ok, nil
+	}
+	_, err := c.client(gvk)
+	if err != nil {
+		return false, err
+	}
+
 	c.Lock()
 	defer c.Unlock()
-	return c.namespaced[gvk]
+	return c.namespaced[gvk], nil
 }
 
 func (c *clients) gvr(gvk schema.GroupVersionKind) schema.GroupVersionResource {
@@ -274,10 +288,18 @@ func (a *apply) WithContext(ctx context.Context) Apply {
 	return a.newDesiredSet().WithContext(ctx)
 }
 
+func (a *apply) WithIgnorePreviousApplied() Apply {
+	return a.newDesiredSet().WithIgnorePreviousApplied()
+}
+
 func (a *apply) FindOwner(obj runtime.Object) (runtime.Object, error) {
 	return a.newDesiredSet().FindOwner(obj)
 }
 
 func (a *apply) PurgeOrphan(obj runtime.Object) error {
 	return a.newDesiredSet().PurgeOrphan(obj)
+}
+
+func (a *apply) WithDiffPatch(gvk schema.GroupVersionKind, namespace, name string, patch []byte) Apply {
+	return a.newDesiredSet().WithDiffPatch(gvk, namespace, name, patch)
 }

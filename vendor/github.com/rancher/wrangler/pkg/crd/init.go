@@ -2,12 +2,14 @@ package crd
 
 import (
 	"context"
+	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/rancher/wrangler/pkg/apply"
 	"github.com/rancher/wrangler/pkg/data/convert"
 	"github.com/rancher/wrangler/pkg/kv"
 	"github.com/rancher/wrangler/pkg/name"
@@ -16,9 +18,10 @@ import (
 	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	apiext "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
-	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/rest"
@@ -28,11 +31,13 @@ type Factory struct {
 	wg        sync.WaitGroup
 	err       error
 	CRDClient clientset.Interface
+	apply     apply.Apply
 }
 
 type CRD struct {
 	GVK          schema.GroupVersionKind
 	PluralName   string
+	SingularName string
 	NonNamespace bool
 	Schema       *v1beta1.JSONSchemaProps
 	SchemaObject interface{}
@@ -41,6 +46,9 @@ type CRD struct {
 	Scale        bool
 	Categories   []string
 	ShortNames   []string
+	Labels       map[string]string
+
+	Override runtime.Object
 }
 
 func (c CRD) WithSchema(schema *v1beta1.JSONSchemaProps) CRD {
@@ -172,20 +180,44 @@ func (c CRD) WithCategories(categories ...string) CRD {
 	return c
 }
 
+func (c CRD) WithGroup(group string) CRD {
+	c.GVK.Group = group
+	return c
+}
+
 func (c CRD) WithShortNames(shortNames ...string) CRD {
 	c.ShortNames = shortNames
 	return c
 }
 
-func (c CRD) ToCustomResourceDefinition() (apiext.CustomResourceDefinition, error) {
+func (c CRD) ToCustomResourceDefinition() (runtime.Object, error) {
+	if c.Override != nil {
+		return c.Override, nil
+	}
+
 	if c.SchemaObject != nil && c.GVK.Kind == "" {
 		t := getType(c.SchemaObject)
 		c.GVK.Kind = t.Name()
 	}
 
+	if c.SchemaObject != nil && c.GVK.Version == "" {
+		t := getType(c.SchemaObject)
+		c.GVK.Version = filepath.Base(t.PkgPath())
+	}
+
+	if c.SchemaObject != nil && c.GVK.Group == "" {
+		t := getType(c.SchemaObject)
+		c.GVK.Group = filepath.Base(filepath.Dir(t.PkgPath()))
+	}
+
 	plural := c.PluralName
 	if plural == "" {
 		plural = strings.ToLower(name.GuessPluralName(c.GVK.Kind))
+	}
+
+	singular := c.SingularName
+	if singular == "" {
+		singular = strings.ToLower(c.GVK.Kind)
 	}
 
 	name := strings.ToLower(plural + "." + c.GVK.Group)
@@ -207,6 +239,7 @@ func (c CRD) ToCustomResourceDefinition() (apiext.CustomResourceDefinition, erro
 			},
 			Names: apiext.CustomResourceDefinitionNames{
 				Plural:     plural,
+				Singular:   singular,
 				Kind:       c.GVK.Kind,
 				Categories: c.Categories,
 				ShortNames: c.ShortNames,
@@ -223,7 +256,7 @@ func (c CRD) ToCustomResourceDefinition() (apiext.CustomResourceDefinition, erro
 	if c.SchemaObject != nil {
 		schema, err := openapi.ToOpenAPIFromStruct(c.SchemaObject)
 		if err != nil {
-			return apiext.CustomResourceDefinition{}, err
+			return nil, err
 		}
 		crd.Spec.Validation = &apiext.CustomResourceValidation{
 			OpenAPIV3Schema: schema,
@@ -250,7 +283,8 @@ func (c CRD) ToCustomResourceDefinition() (apiext.CustomResourceDefinition, erro
 		crd.Spec.Scope = apiext.NamespaceScoped
 	}
 
-	return crd, nil
+	crd.Labels = c.Labels
+	return &crd, nil
 }
 
 func NamespacedType(name string) CRD {
@@ -309,13 +343,12 @@ func FromGV(gv schema.GroupVersion, kind string) CRD {
 	}
 }
 
-func NewFactoryFromClientGetter(client clientset.Interface) *Factory {
-	return &Factory{
-		CRDClient: client,
-	}
-}
-
 func NewFactoryFromClient(config *rest.Config) (*Factory, error) {
+	apply, err := apply.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+
 	f, err := clientset.NewForConfig(config)
 	if err != nil {
 		return nil, err
@@ -323,6 +356,7 @@ func NewFactoryFromClient(config *rest.Config) (*Factory, error) {
 
 	return &Factory{
 		CRDClient: f,
+		apply:     apply.WithDynamicLookup().WithNoDelete(),
 	}, nil
 }
 
@@ -422,36 +456,22 @@ func (f *Factory) waitCRD(ctx context.Context, crdName string, gvk schema.GroupV
 }
 
 func (f *Factory) createCRD(ctx context.Context, crdDef CRD, ready map[string]*apiext.CustomResourceDefinition) (*apiext.CustomResourceDefinition, error) {
-	plural := crdDef.PluralName
-	if plural == "" {
-		plural = strings.ToLower(name.GuessPluralName(crdDef.GVK.Kind))
-	}
-
 	crd, err := crdDef.ToCustomResourceDefinition()
 	if err != nil {
 		return nil, err
 	}
 
-	existing, ok := ready[crd.Name]
-	if ok {
-		if !equality.Semantic.DeepEqual(crd.Spec.Subresources, existing.Spec.Subresources) ||
-			!equality.Semantic.DeepEqual(crd.Spec.Validation, existing.Spec.Validation) ||
-			!equality.Semantic.DeepEqual(crd.Spec.Versions, existing.Spec.Versions) {
-			existing.Spec = crd.Spec
-			logrus.Infof("Updating CRD %s", crd.Name)
-			return f.CRDClient.ApiextensionsV1beta1().CustomResourceDefinitions().Update(ctx, existing, metav1.UpdateOptions{})
-		}
-		return existing, nil
+	meta, err := meta.Accessor(crd)
+	if err != nil {
+		return nil, err
 	}
 
-	logrus.Infof("Creating CRD %s", crd.Name)
-	if newCrd, err := f.CRDClient.ApiextensionsV1beta1().CustomResourceDefinitions().Create(ctx, &crd, metav1.CreateOptions{}); apierrors.IsAlreadyExists(err) {
-		return f.CRDClient.ApiextensionsV1beta1().CustomResourceDefinitions().Get(ctx, crd.Name, metav1.GetOptions{})
-	} else if err != nil {
+	logrus.Infof("Applying CRD %s", meta.GetName())
+	if err := f.apply.WithOwner(crd).ApplyObjects(crd); err != nil {
 		return nil, err
-	} else {
-		return newCrd, nil
 	}
+
+	return f.CRDClient.ApiextensionsV1beta1().CustomResourceDefinitions().Get(ctx, meta.GetName(), metav1.GetOptions{})
 }
 
 func (f *Factory) ensureAccess(ctx context.Context) (bool, error) {

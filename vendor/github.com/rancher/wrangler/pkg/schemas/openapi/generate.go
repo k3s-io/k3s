@@ -3,18 +3,11 @@ package openapi
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 
 	types "github.com/rancher/wrangler/pkg/schemas"
 	"github.com/rancher/wrangler/pkg/schemas/definition"
 	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
-)
-
-var (
-	blacklistFields = map[string]bool{
-		"kind":       true,
-		"apiVersion": true,
-		"metadata":   true,
-	}
 )
 
 func MustGenerate(obj interface{}) *v1beta1.JSONSchemaProps {
@@ -35,10 +28,10 @@ func ToOpenAPIFromStruct(obj interface{}) (*v1beta1.JSONSchemaProps, error) {
 		return nil, err
 	}
 
-	return toOpenAPI(schema.ID, schemas)
+	return ToOpenAPI(schema.ID, schemas)
 }
 
-func toOpenAPI(name string, schemas *types.Schemas) (*v1beta1.JSONSchemaProps, error) {
+func ToOpenAPI(name string, schemas *types.Schemas) (*v1beta1.JSONSchemaProps, error) {
 	schema := schemas.Schema(name)
 	if schema == nil {
 		return nil, fmt.Errorf("failed to find schema: %s", name)
@@ -117,8 +110,11 @@ func typeToProps(typeName string, schemas *types.Schemas, inflight map[string]bo
 		}
 		jsp.Type = "object"
 		jsp.Nullable = true
-		jsp.AdditionalProperties = &v1beta1.JSONSchemaPropsOrBool{
-			Schema: additionalProps,
+		if additionalProps.Type != "object" {
+			jsp.AdditionalProperties = &v1beta1.JSONSchemaPropsOrBool{
+				Allows: true,
+				Schema: additionalProps,
+			}
 		}
 	case "array":
 		items, err := typeToProps(subType, schemas, inflight)
@@ -130,6 +126,9 @@ func typeToProps(typeName string, schemas *types.Schemas, inflight map[string]bo
 		jsp.Items = &v1beta1.JSONSchemaPropsOrArray{
 			Schema: items,
 		}
+	case "string":
+		jsp.Type = t
+		jsp.Nullable = true
 	default:
 		jsp.Type = t
 	}
@@ -166,6 +165,7 @@ func schemaToProps(schema *types.Schema, schemas *types.Schemas, inflight map[st
 		jsp.Properties[name] = *fieldJSP
 	}
 
+	sort.Strings(jsp.Required)
 	return jsp, nil
 }
 

@@ -10,6 +10,7 @@ import (
 	"math"
 	"math/big"
 	"net"
+	"strings"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -57,6 +58,12 @@ func NewSignedClientCert(signer crypto.Signer, caCert *x509.Certificate, caKey c
 		Subject: pkix.Name{
 			CommonName: cn,
 		},
+	}
+
+	parts := strings.Split(cn, ",o=")
+	if len(parts) > 1 {
+		parent.Subject.CommonName = parts[0]
+		parent.Subject.Organization = parts[1:]
 	}
 
 	cert, err := x509.CreateCertificate(rand.Reader, &parent, caCert, signer.Public(), caKey)

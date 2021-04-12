@@ -505,7 +505,7 @@ github.com/go-logr/logr
 github.com/go-openapi/jsonpointer
 # github.com/go-openapi/jsonreference v0.19.3
 github.com/go-openapi/jsonreference
-# github.com/go-openapi/spec v0.19.3
+# github.com/go-openapi/spec v0.19.5
 github.com/go-openapi/spec
 # github.com/go-openapi/swag v0.19.5
 github.com/go-openapi/swag
@@ -657,7 +657,7 @@ github.com/grpc-ecosystem/grpc-gateway/utilities
 github.com/hashicorp/errwrap
 # github.com/hashicorp/go-multierror v1.0.0
 github.com/hashicorp/go-multierror
-# github.com/hashicorp/golang-lru v0.5.3
+# github.com/hashicorp/golang-lru v0.5.1
 github.com/hashicorp/golang-lru
 github.com/hashicorp/golang-lru/simplelru
 # github.com/imdario/mergo v0.3.8
@@ -673,20 +673,12 @@ github.com/json-iterator/go
 # github.com/k3s-io/go-powershell v0.0.0-20200701182037-6845e6fcfa79
 github.com/k3s-io/go-powershell/backend
 github.com/k3s-io/go-powershell/utils
-# github.com/k3s-io/helm-controller v0.8.3
+# github.com/k3s-io/helm-controller v0.0.0 => github.com/ibuildthecloud/helm-controller-1 v0.1.2-0.20210412215338-ce765a413e0a
 ## explicit
 github.com/k3s-io/helm-controller/pkg/apis/helm.cattle.io
 github.com/k3s-io/helm-controller/pkg/apis/helm.cattle.io/v1
-github.com/k3s-io/helm-controller/pkg/generated/clientset/versioned
-github.com/k3s-io/helm-controller/pkg/generated/clientset/versioned/scheme
-github.com/k3s-io/helm-controller/pkg/generated/clientset/versioned/typed/helm.cattle.io/v1
 github.com/k3s-io/helm-controller/pkg/generated/controllers/helm.cattle.io
 github.com/k3s-io/helm-controller/pkg/generated/controllers/helm.cattle.io/v1
-github.com/k3s-io/helm-controller/pkg/generated/informers/externalversions
-github.com/k3s-io/helm-controller/pkg/generated/informers/externalversions/helm.cattle.io
-github.com/k3s-io/helm-controller/pkg/generated/informers/externalversions/helm.cattle.io/v1
-github.com/k3s-io/helm-controller/pkg/generated/informers/externalversions/internalinterfaces
-github.com/k3s-io/helm-controller/pkg/generated/listers/helm.cattle.io/v1
 github.com/k3s-io/helm-controller/pkg/helm
 # github.com/k3s-io/kine v0.6.0
 ## explicit
@@ -862,7 +854,7 @@ github.com/prometheus/procfs/internal/util
 # github.com/rakelkar/gonetsh v0.0.0-20190930180311-e5c5ffe4bdf0
 github.com/rakelkar/gonetsh/netroute
 github.com/rakelkar/gonetsh/netsh
-# github.com/rancher/dynamiclistener v0.2.3
+# github.com/rancher/dynamiclistener v0.3.0
 ## explicit
 github.com/rancher/dynamiclistener
 github.com/rancher/dynamiclistener/cert
@@ -870,10 +862,18 @@ github.com/rancher/dynamiclistener/factory
 github.com/rancher/dynamiclistener/storage/file
 github.com/rancher/dynamiclistener/storage/kubernetes
 github.com/rancher/dynamiclistener/storage/memory
+# github.com/rancher/lasso v0.0.0-20210408231703-9ddd9378d08d
+## explicit
+github.com/rancher/lasso/pkg/cache
+github.com/rancher/lasso/pkg/client
+github.com/rancher/lasso/pkg/controller
+github.com/rancher/lasso/pkg/log
+github.com/rancher/lasso/pkg/mapper
+github.com/rancher/lasso/pkg/scheme
 # github.com/rancher/remotedialer v0.2.0
 ## explicit
 github.com/rancher/remotedialer
-# github.com/rancher/wrangler v0.6.1
+# github.com/rancher/wrangler v0.8.0
 ## explicit
 github.com/rancher/wrangler/pkg/apply
 github.com/rancher/wrangler/pkg/apply/injectors
@@ -885,6 +885,14 @@ github.com/rancher/wrangler/pkg/controller-gen/generators
 github.com/rancher/wrangler/pkg/crd
 github.com/rancher/wrangler/pkg/data
 github.com/rancher/wrangler/pkg/data/convert
+github.com/rancher/wrangler/pkg/generated/controllers/apps
+github.com/rancher/wrangler/pkg/generated/controllers/apps/v1
+github.com/rancher/wrangler/pkg/generated/controllers/batch
+github.com/rancher/wrangler/pkg/generated/controllers/batch/v1
+github.com/rancher/wrangler/pkg/generated/controllers/core
+github.com/rancher/wrangler/pkg/generated/controllers/core/v1
+github.com/rancher/wrangler/pkg/generated/controllers/rbac
+github.com/rancher/wrangler/pkg/generated/controllers/rbac/v1
 github.com/rancher/wrangler/pkg/generic
 github.com/rancher/wrangler/pkg/gvk
 github.com/rancher/wrangler/pkg/kv
@@ -902,16 +910,7 @@ github.com/rancher/wrangler/pkg/schemes
 github.com/rancher/wrangler/pkg/signals
 github.com/rancher/wrangler/pkg/slice
 github.com/rancher/wrangler/pkg/start
-# github.com/rancher/wrangler-api v0.6.0
-## explicit
-github.com/rancher/wrangler-api/pkg/generated/controllers/apps
-github.com/rancher/wrangler-api/pkg/generated/controllers/apps/v1
-github.com/rancher/wrangler-api/pkg/generated/controllers/batch
-github.com/rancher/wrangler-api/pkg/generated/controllers/batch/v1
-github.com/rancher/wrangler-api/pkg/generated/controllers/core
-github.com/rancher/wrangler-api/pkg/generated/controllers/core/v1
-github.com/rancher/wrangler-api/pkg/generated/controllers/rbac
-github.com/rancher/wrangler-api/pkg/generated/controllers/rbac/v1
+github.com/rancher/wrangler/pkg/yaml
 # github.com/robfig/cron v1.1.0
 github.com/robfig/cron
 # github.com/robfig/cron/v3 v3.0.1
@@ -1133,7 +1132,7 @@ go.uber.org/zap/internal/bufferpool
 go.uber.org/zap/internal/color
 go.uber.org/zap/internal/exit
 go.uber.org/zap/zapcore
-# golang.org/x/crypto v0.0.0-20201002170205-7f63de1d35b0 => golang.org/x/crypto v0.0.0-20201002170205-7f63de1d35b0
+# golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2 => golang.org/x/crypto v0.0.0-20201002170205-7f63de1d35b0
 ## explicit
 golang.org/x/crypto/argon2
 golang.org/x/crypto/bcrypt
@@ -1224,6 +1223,10 @@ golang.org/x/time/rate
 # golang.org/x/tools v0.0.0-20200616133436-c1934b75d054
 golang.org/x/tools/container/intsets
 golang.org/x/tools/go/ast/astutil
+golang.org/x/tools/go/gcexportdata
+golang.org/x/tools/go/internal/gcimporter
+golang.org/x/tools/go/internal/packagesdriver
+golang.org/x/tools/go/packages
 golang.org/x/tools/imports
 golang.org/x/tools/internal/event
 golang.org/x/tools/internal/event/core
@@ -1233,6 +1236,8 @@ golang.org/x/tools/internal/fastwalk
 golang.org/x/tools/internal/gocommand
 golang.org/x/tools/internal/gopathwalk
 golang.org/x/tools/internal/imports
+golang.org/x/tools/internal/packagesinternal
+golang.org/x/tools/internal/typesinternal
 # golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1
 golang.org/x/xerrors
 golang.org/x/xerrors/internal
@@ -1655,7 +1660,7 @@ k8s.io/apiserver/plugin/pkg/audit/webhook
 k8s.io/apiserver/plugin/pkg/authenticator/token/oidc
 k8s.io/apiserver/plugin/pkg/authenticator/token/webhook
 k8s.io/apiserver/plugin/pkg/authorizer/webhook
-# k8s.io/cli-runtime v0.0.0 => github.com/k3s-io/kubernetes/staging/src/k8s.io/cli-runtime v1.20.5-k3s1
+# k8s.io/cli-runtime v0.17.2 => github.com/k3s-io/kubernetes/staging/src/k8s.io/cli-runtime v1.20.5-k3s1
 k8s.io/cli-runtime/pkg/genericclioptions
 k8s.io/cli-runtime/pkg/kustomize
 k8s.io/cli-runtime/pkg/kustomize/k8sdeps
@@ -3051,3 +3056,4 @@ sigs.k8s.io/yaml
 # k8s.io/sample-cli-plugin => github.com/k3s-io/kubernetes/staging/src/k8s.io/sample-cli-plugin v1.20.5-k3s1
 # k8s.io/sample-controller => github.com/k3s-io/kubernetes/staging/src/k8s.io/sample-controller v1.20.5-k3s1
 # mvdan.cc/unparam => mvdan.cc/unparam v0.0.0-20190209190245-fbb59629db34
+# github.com/k3s-io/helm-controller => github.com/ibuildthecloud/helm-controller-1 v0.1.2-0.20210412215338-ce765a413e0a

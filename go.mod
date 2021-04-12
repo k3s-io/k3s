@@ -84,7 +84,7 @@ require (
 	github.com/google/uuid v1.2.0
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.4.2
-	github.com/k3s-io/helm-controller v0.8.3
+	github.com/k3s-io/helm-controller v0.0.0
 	github.com/k3s-io/kine v0.6.0
 	github.com/klauspost/compress v1.11.7
 	github.com/kubernetes-sigs/cri-tools v0.0.0-00010101000000-000000000000
@@ -96,10 +96,10 @@ require (
 	github.com/opencontainers/selinux v1.6.0
 	github.com/pierrec/lz4 v2.5.2+incompatible
 	github.com/pkg/errors v0.9.1
-	github.com/rancher/dynamiclistener v0.2.3
+	github.com/rancher/dynamiclistener v0.3.0
+	github.com/rancher/lasso v0.0.0-20210408231703-9ddd9378d08d
 	github.com/rancher/remotedialer v0.2.0
-	github.com/rancher/wrangler v0.6.1
-	github.com/rancher/wrangler-api v0.6.0
+	github.com/rancher/wrangler v0.8.0
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/rootless-containers/rootlesskit v0.14.0
 	github.com/sirupsen/logrus v1.8.1
@@ -108,7 +108,7 @@ require (
 	github.com/tchap/go-patricia v2.3.0+incompatible // indirect
 	github.com/urfave/cli v1.22.2
 	go.etcd.io/etcd v0.5.0-alpha.5.0.20201208200253-50621aee4aea
-	golang.org/x/crypto v0.0.0-20201002170205-7f63de1d35b0
+	golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2
 	golang.org/x/net v0.0.0-20210119194325-5f4716e94777
 	golang.org/x/sys v0.0.0-20210119212857-b64e53b001e4
 	google.golang.org/grpc v1.33.2
@@ -126,3 +126,5 @@ require (
 	k8s.io/kubernetes v1.20.5
 	sigs.k8s.io/yaml v1.2.0
 )
+
+replace github.com/k3s-io/helm-controller => github.com/ibuildthecloud/helm-controller-1 v0.1.2-0.20210412215338-ce765a413e0a
