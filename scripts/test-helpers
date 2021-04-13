@@ -485,8 +485,8 @@ provision-cluster() {
         done
     fi
 
-    timeout --foreground 4m bash -c "wait-for-nodes $(( NUM_SERVERS + NUM_AGENTS ))"
-    timeout --foreground 8m bash -c "wait-for-services $WAIT_SERVICES"
+    timeout --foreground 2m bash -c "wait-for-nodes $(( NUM_SERVERS + NUM_AGENTS ))"
+    timeout --foreground 4m bash -c "wait-for-services $WAIT_SERVICES"
 
     run-function cluster-post-hook
 
