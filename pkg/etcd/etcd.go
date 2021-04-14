@@ -844,8 +844,6 @@ func (e *ETCD) Snapshot(ctx context.Context, config *config.Control) error {
 				return errors.Wrap(err, "failed to apply s3 snapshot retention")
 			}
 		}
-
-		return nil
 	}
 
 	// check if we need to perform a retention check
