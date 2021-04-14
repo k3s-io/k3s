@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/opencontainers/runc/libcontainer"
-	"github.com/opencontainers/runc/libcontainer/system"
+	"github.com/opencontainers/runc/libcontainer/userns"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 )
@@ -97,7 +97,7 @@ using the runc checkpoint command.`,
 			return err
 		}
 		// XXX: Currently this is untested with rootless containers.
-		if os.Geteuid() != 0 || system.RunningInUserNS() {
+		if os.Geteuid() != 0 || userns.RunningInUserNS() {
 			logrus.Warn("runc checkpoint is untested with rootless containers")
 		}
 

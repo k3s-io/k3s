@@ -10,6 +10,7 @@ import (
 	"strconv"
 
 	"github.com/opencontainers/runc/libcontainer/cgroups"
+	"github.com/sirupsen/logrus"
 
 	"github.com/docker/go-units"
 	"github.com/opencontainers/runc/libcontainer/configs"
@@ -38,9 +39,7 @@ The accepted format is as follow (unchanged values can be omitted):
   "memory": {
     "limit": 0,
     "reservation": 0,
-    "swap": 0,
-    "kernel": 0,
-    "kernelTCP": 0
+    "swap": 0
   },
   "cpu": {
     "shares": 0,
@@ -95,11 +94,11 @@ other options are ignored.
 		},
 		cli.StringFlag{
 			Name:  "kernel-memory",
-			Usage: "Kernel memory limit (in bytes)",
+			Usage: "(obsoleted; do not use)",
 		},
 		cli.StringFlag{
 			Name:  "kernel-memory-tcp",
-			Usage: "Kernel memory limit (in bytes) for tcp buffer",
+			Usage: "(obsoleted; do not use)",
 		},
 		cli.StringFlag{
 			Name:  "memory",
@@ -248,7 +247,12 @@ other options are ignored.
 					*pair.dest = v
 				}
 			}
+
 			r.Pids.Limit = int64(context.Int("pids-limit"))
+		}
+
+		if *r.Memory.Kernel != 0 || *r.Memory.KernelTCP != 0 {
+			logrus.Warn("Kernel memory settings are ignored and will be removed")
 		}
 
 		// Update the values
@@ -288,21 +292,20 @@ other options are ignored.
 		config.Cgroups.Resources.CpuRtRuntime = *r.CPU.RealtimeRuntime
 		config.Cgroups.Resources.CpusetCpus = r.CPU.Cpus
 		config.Cgroups.Resources.CpusetMems = r.CPU.Mems
-		config.Cgroups.Resources.KernelMemory = *r.Memory.Kernel
-		config.Cgroups.Resources.KernelMemoryTCP = *r.Memory.KernelTCP
 		config.Cgroups.Resources.Memory = *r.Memory.Limit
 		config.Cgroups.Resources.MemoryReservation = *r.Memory.Reservation
 		config.Cgroups.Resources.MemorySwap = *r.Memory.Swap
 		config.Cgroups.Resources.PidsLimit = r.Pids.Limit
+		config.Cgroups.Resources.Unified = r.Unified
 
 		// Update Intel RDT
 		l3CacheSchema := context.String("l3-cache-schema")
 		memBwSchema := context.String("mem-bw-schema")
-		if l3CacheSchema != "" && !intelrdt.IsCatEnabled() {
+		if l3CacheSchema != "" && !intelrdt.IsCATEnabled() {
 			return errors.New("Intel RDT/CAT: l3 cache schema is not enabled")
 		}
 
-		if memBwSchema != "" && !intelrdt.IsMbaEnabled() {
+		if memBwSchema != "" && !intelrdt.IsMBAEnabled() {
 			return errors.New("Intel RDT/MBA: memory bandwidth schema is not enabled")
 		}
 
@@ -317,11 +320,7 @@ other options are ignored.
 					return err
 				}
 				config.IntelRdt = &configs.IntelRdt{}
-				intelRdtManager := intelrdt.IntelRdtManager{
-					Config: &config,
-					Id:     container.ID(),
-					Path:   state.IntelRdtPath,
-				}
+				intelRdtManager := intelrdt.NewManager(&config, container.ID(), state.IntelRdtPath)
 				if err := intelRdtManager.Apply(state.InitProcessPid); err != nil {
 					return err
 				}

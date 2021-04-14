@@ -132,6 +132,8 @@ func convertLibcontainerStats(ls *libcontainer.Stats) *types.Stats {
 	s.CPU.Throttling.ThrottledPeriods = cg.CpuStats.ThrottlingData.ThrottledPeriods
 	s.CPU.Throttling.ThrottledTime = cg.CpuStats.ThrottlingData.ThrottledTime
 
+	s.CPUSet = types.CPUSet(cg.CPUSetStats)
+
 	s.Memory.Cache = cg.MemoryStats.Cache
 	s.Memory.Kernel = convertMemoryEntry(cg.MemoryStats.KernelUsage)
 	s.Memory.KernelTCP = convertMemoryEntry(cg.MemoryStats.KernelTCPUsage)
@@ -154,12 +156,12 @@ func convertLibcontainerStats(ls *libcontainer.Stats) *types.Stats {
 	}
 
 	if is := ls.IntelRdtStats; is != nil {
-		if intelrdt.IsCatEnabled() {
+		if intelrdt.IsCATEnabled() {
 			s.IntelRdt.L3CacheInfo = convertL3CacheInfo(is.L3CacheInfo)
 			s.IntelRdt.L3CacheSchemaRoot = is.L3CacheSchemaRoot
 			s.IntelRdt.L3CacheSchema = is.L3CacheSchema
 		}
-		if intelrdt.IsMbaEnabled() {
+		if intelrdt.IsMBAEnabled() {
 			s.IntelRdt.MemBwInfo = convertMemBwInfo(is.MemBwInfo)
 			s.IntelRdt.MemBwSchemaRoot = is.MemBwSchemaRoot
 			s.IntelRdt.MemBwSchema = is.MemBwSchema
@@ -196,29 +198,17 @@ func convertMemoryEntry(c cgroups.MemoryData) types.MemoryEntry {
 func convertBlkioEntry(c []cgroups.BlkioStatEntry) []types.BlkioEntry {
 	var out []types.BlkioEntry
 	for _, e := range c {
-		out = append(out, types.BlkioEntry{
-			Major: e.Major,
-			Minor: e.Minor,
-			Op:    e.Op,
-			Value: e.Value,
-		})
+		out = append(out, types.BlkioEntry(e))
 	}
 	return out
 }
 
 func convertL3CacheInfo(i *intelrdt.L3CacheInfo) *types.L3CacheInfo {
-	return &types.L3CacheInfo{
-		CbmMask:    i.CbmMask,
-		MinCbmBits: i.MinCbmBits,
-		NumClosids: i.NumClosids,
-	}
+	ci := types.L3CacheInfo(*i)
+	return &ci
 }
 
 func convertMemBwInfo(i *intelrdt.MemBwInfo) *types.MemBwInfo {
-	return &types.MemBwInfo{
-		BandwidthGran: i.BandwidthGran,
-		DelayLinear:   i.DelayLinear,
-		MinBandwidth:  i.MinBandwidth,
-		NumClosids:    i.NumClosids,
-	}
+	mi := types.MemBwInfo(*i)
+	return &mi
 }

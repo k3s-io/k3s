@@ -23,6 +23,7 @@ import (
 	"net"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/containerd/console"
 	"github.com/opencontainers/runc/libcontainer/utils"
@@ -105,25 +106,37 @@ func handleSingle(path string, noStdin bool) error {
 	if err != nil {
 		return err
 	}
-	console.ClearONLCR(c.Fd())
+	if err := console.ClearONLCR(c.Fd()); err != nil {
+		return err
+	}
 
 	// Copy from our stdio to the master fd.
-	quitChan := make(chan struct{})
+	var (
+		wg            sync.WaitGroup
+		inErr, outErr error
+	)
+	wg.Add(1)
 	go func() {
-		io.Copy(os.Stdout, c)
-		quitChan <- struct{}{}
+		_, outErr = io.Copy(os.Stdout, c)
+		wg.Done()
 	}()
 	if !noStdin {
+		wg.Add(1)
 		go func() {
-			io.Copy(c, os.Stdin)
-			quitChan <- struct{}{}
+			_, inErr = io.Copy(c, os.Stdin)
+			wg.Done()
 		}()
 	}
 
 	// Only close the master fd once we've stopped copying.
-	<-quitChan
+	wg.Wait()
 	c.Close()
-	return nil
+
+	if outErr != nil {
+		return outErr
+	}
+
+	return inErr
 }
 
 func handleNull(path string) error {
@@ -163,15 +176,7 @@ func handleNull(path string) error {
 				return
 			}
 
-			// Just do a dumb copy to /dev/null.
-			devnull, err := os.OpenFile("/dev/null", os.O_RDWR, 0)
-			if err != nil {
-				// TODO: Handle this nicely.
-				return
-			}
-
-			io.Copy(devnull, master)
-			devnull.Close()
+			_, _ = io.Copy(ioutil.Discard, master)
 		}(conn)
 	}
 }
@@ -187,7 +192,7 @@ func main() {
 		v = append(v, version)
 	}
 	if gitCommit != "" {
-		v = append(v, fmt.Sprintf("commit: %s", gitCommit))
+		v = append(v, "commit: "+gitCommit)
 	}
 	app.Version = strings.Join(v, "\n")
 

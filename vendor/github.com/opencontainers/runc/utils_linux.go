@@ -13,7 +13,6 @@ import (
 	"github.com/opencontainers/runc/libcontainer"
 	"github.com/opencontainers/runc/libcontainer/cgroups/systemd"
 	"github.com/opencontainers/runc/libcontainer/configs"
-	"github.com/opencontainers/runc/libcontainer/intelrdt"
 	"github.com/opencontainers/runc/libcontainer/specconv"
 	"github.com/opencontainers/runc/libcontainer/utils"
 	"github.com/opencontainers/runtime-spec/specs-go"
@@ -57,9 +56,6 @@ func loadFactory(context *cli.Context) (libcontainer.Factory, error) {
 	}
 
 	intelRdtManager := libcontainer.IntelRdtFs
-	if !intelrdt.IsCatEnabled() && !intelrdt.IsMbaEnabled() {
-		intelRdtManager = nil
-	}
 
 	// We resolve the paths for {newuidmap,newgidmap} from the context of runc,
 	// to avoid doing a path lookup in the nsexec context. TODO: The binary
@@ -157,6 +153,9 @@ func setupIO(process *libcontainer.Process, rootuid, rootgid int, createTTY, det
 		process.Stderr = nil
 		t := &tty{}
 		if !detach {
+			if err := t.initHostConsole(); err != nil {
+				return nil, err
+			}
 			parent, child, err := utils.NewSockPair("console")
 			if err != nil {
 				return nil, err
@@ -165,10 +164,7 @@ func setupIO(process *libcontainer.Process, rootuid, rootgid int, createTTY, det
 			t.postStart = append(t.postStart, parent, child)
 			t.consoleC = make(chan error, 1)
 			go func() {
-				if err := t.recvtty(process, parent); err != nil {
-					t.consoleC <- err
-				}
-				t.consoleC <- nil
+				t.consoleC <- t.recvtty(process, parent)
 			}()
 		} else {
 			// the caller of runc will handle receiving the console master
@@ -211,13 +207,13 @@ func createPidFile(path string, process *libcontainer.Process) error {
 	}
 	var (
 		tmpDir  = filepath.Dir(path)
-		tmpName = filepath.Join(tmpDir, fmt.Sprintf(".%s", filepath.Base(path)))
+		tmpName = filepath.Join(tmpDir, "."+filepath.Base(path))
 	)
 	f, err := os.OpenFile(tmpName, os.O_RDWR|os.O_CREATE|os.O_EXCL|os.O_SYNC, 0666)
 	if err != nil {
 		return err
 	}
-	_, err = fmt.Fprintf(f, "%d", pid)
+	_, err = f.WriteString(strconv.Itoa(pid))
 	f.Close()
 	if err != nil {
 		return err
@@ -281,12 +277,12 @@ func (r *runner) run(config *specs.Process) (int, error) {
 		return -1, err
 	}
 	if len(r.listenFDs) > 0 {
-		process.Env = append(process.Env, fmt.Sprintf("LISTEN_FDS=%d", len(r.listenFDs)), "LISTEN_PID=1")
+		process.Env = append(process.Env, "LISTEN_FDS="+strconv.Itoa(len(r.listenFDs)), "LISTEN_PID=1")
 		process.ExtraFiles = append(process.ExtraFiles, r.listenFDs...)
 	}
 	baseFd := 3 + len(process.ExtraFiles)
 	for i := baseFd; i < baseFd+r.preserveFDs; i++ {
-		_, err = os.Stat(fmt.Sprintf("/proc/self/fd/%d", i))
+		_, err = os.Stat("/proc/self/fd/" + strconv.Itoa(i))
 		if err != nil {
 			return -1, errors.Wrapf(err, "please check that preserved-fd %d (of %d) is present", i-baseFd, r.preserveFDs)
 		}

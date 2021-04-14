@@ -1,9 +1,10 @@
 # runc
 
-[![Build Status](https://travis-ci.org/opencontainers/runc.svg?branch=master)](https://travis-ci.org/opencontainers/runc)
 [![Go Report Card](https://goreportcard.com/badge/github.com/opencontainers/runc)](https://goreportcard.com/report/github.com/opencontainers/runc)
 [![GoDoc](https://godoc.org/github.com/opencontainers/runc?status.svg)](https://godoc.org/github.com/opencontainers/runc)
 [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/588/badge)](https://bestpractices.coreinfrastructure.org/projects/588)
+[![gha/validate](https://github.com/opencontainers/runc/workflows/validate/badge.svg)](https://github.com/opencontainers/runc/actions?query=workflow%3Avalidate)
+[![gha/ci](https://github.com/opencontainers/runc/workflows/ci/badge.svg)](https://github.com/opencontainers/runc/actions?query=workflow%3Aci)
 
 ## Introduction
 
@@ -17,10 +18,6 @@ This means that `runc` 1.0.0 should implement the 1.0 version of the specificati
 
 You can find official releases of `runc` on the [release](https://github.com/opencontainers/runc/releases) page.
 
-Currently, the following features are not considered to be production-ready:
-
-* [Support for cgroup v2](./docs/cgroup-v2.md)
-
 ## Security
 
 The reporting process and disclosure communications are outlined [here](https://github.com/opencontainers/org/blob/master/SECURITY.md).
@@ -31,7 +28,7 @@ A third party security audit was performed by Cure53, you can see the full repor
 ## Building
 
 `runc` currently supports the Linux platform with various architecture support.
-It must be built with Go version 1.13 or higher.
+It must be built with Go version 1.14 or higher.
 
 In order to enable seccomp support you will need to install `libseccomp` on your platform.
 > e.g. `libseccomp-devel` for CentOS, or `libseccomp-dev` for Ubuntu
@@ -64,19 +61,20 @@ sudo make install
 with some of them enabled by default (see `BUILDTAGS` in top-level `Makefile`).
 
 To change build tags from the default, set the `BUILDTAGS` variable for make,
-e.g.
+e.g. to disable seccomp:
 
 ```bash
-make BUILDTAGS='seccomp apparmor'
+make BUILDTAGS=""
 ```
 
 | Build Tag | Feature                            | Enabled by default | Dependency |
 |-----------|------------------------------------|--------------------|------------|
 | seccomp   | Syscall filtering                  | yes                | libseccomp |
-| selinux   | selinux process and mount labeling | yes                | <none>     |
-| apparmor  | apparmor profile support           | yes                | <none>     |
-| nokmem    | disable kernel memory accounting   | no                 | <none>     |
 
+The following build tags were used earlier, but are now obsoleted:
+ - **nokmem** (since runc v1.0.0-rc94 kernel memory settings are ignored)
+ - **apparmor** (since runc v1.0.0-rc93 the feature is always enabled)
+ - **selinux**  (since runc v1.0.0-rc93 the feature is always enabled)
 
 ### Running the test suite
 
@@ -128,6 +126,14 @@ make verify-dependencies
 
 ## Using runc
 
+Please note that runc is a low level tool not designed with an end user
+in mind. It is mostly employed by other higher level container software.
+
+Therefore, unless there is some specific use case that prevents the use
+of tools like Docker or Podman, it is not recommended to use runc directly.
+
+If you still want to use runc, here's how.
+
 ### Creating an OCI Bundle
 
 In order to use runc you must have your container in the format of an OCI bundle.
@@ -169,7 +175,9 @@ If you used the unmodified `runc spec` template this should give you a `sh` sess
 
 The second way to start a container is using the specs lifecycle operations.
 This gives you more power over how the container is created and managed while it is running.
-This will also launch the container in the background so you will have to edit the `config.json` to remove the `terminal` setting for the simple examples here.
+This will also launch the container in the background so you will have to edit
+the `config.json` to remove the `terminal` setting for the simple examples
+below (see more details about [runc terminal handling](docs/terminals.md)).
 Your process field in the `config.json` should look like this below with `"terminal": false` and `"args": ["sleep", "5"]`.
 
 
@@ -292,8 +300,12 @@ PIDFile=/run/mycontainerid.pid
 WantedBy=multi-user.target
 ```
 
-#### cgroup v2
-See [`./docs/cgroup-v2.md`](./docs/cgroup-v2.md).
+## More documentation
+
+* [cgroup v2](./docs/cgroup-v2.md)
+* [Checkpoint and restore](./docs/checkpoint-restore.md)
+* [systemd cgroup driver](./docs/systemd.md)
+* [Terminals and standard IO](./docs/terminals.md)
 
 ## License
 

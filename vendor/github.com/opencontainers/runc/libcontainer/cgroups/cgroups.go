@@ -48,4 +48,7 @@ type Manager interface {
 
 	// Whether the cgroup path exists or not
 	Exists() bool
+
+	// OOMKillCount reports OOM kill count for the cgroup.
+	OOMKillCount() (uint64, error)
 }

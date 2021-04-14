@@ -15,27 +15,25 @@ Vagrant.configure("2") do |config|
     set -e -u -o pipefail
 
     # configuration
-    GO_VERSION="1.13.11"
-    BATS_VERSION="v1.2.0"
+    GO_VERSION="1.15"
+    BATS_VERSION="v1.2.1"
 
     # install yum packages
     yum install -y -q epel-release
     (cd /etc/yum.repos.d && curl -O https://copr.fedorainfracloud.org/coprs/adrian/criu-el7/repo/epel-7/adrian-criu-el7-epel-7.repo)
-    yum install -y -q gcc git iptables jq libseccomp-devel make skopeo criu
+    yum install -y -q gcc git iptables jq glibc-static libseccomp-devel make criu
     yum clean all
 
     # install Go
     curl -fsSL "https://dl.google.com/go/go${GO_VERSION}.linux-amd64.tar.gz" | tar Cxz /usr/local
-
-    # Install umoci
-    curl -o /usr/local/bin/umoci -fsSL https://github.com/opencontainers/umoci/releases/download/v0.4.5/umoci.amd64
-    chmod +x /usr/local/bin/umoci
 
     # install bats
     git clone https://github.com/bats-core/bats-core
     cd bats-core
     git checkout $BATS_VERSION
     ./install.sh /usr/local
+    cd ..
+    rm -rf bats-core
 
     # set PATH (NOTE: sudo without -i ignores this PATH)
     cat >> /etc/profile.d/sh.local <<EOF
@@ -50,10 +48,5 @@ EOF
 
     # Add a user for rootless tests
     useradd -u2000 -m -d/home/rootless -s/bin/bash rootless
-
-    # Add busybox for libcontainer/integration tests
-    . /vagrant/tests/integration/multi-arch.bash \
-        && mkdir /busybox \
-        && curl -fsSL $(get_busybox) | tar xfJC - /busybox
   SHELL
 end
