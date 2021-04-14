@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -26,13 +27,13 @@ import (
 	"github.com/opencontainers/runc/libcontainer/utils"
 	"github.com/opencontainers/runtime-spec/specs-go"
 
-	"github.com/checkpoint-restore/go-criu/v4"
-	criurpc "github.com/checkpoint-restore/go-criu/v4/rpc"
-	"github.com/golang/protobuf/proto"
+	"github.com/checkpoint-restore/go-criu/v5"
+	criurpc "github.com/checkpoint-restore/go-criu/v5/rpc"
 	errorsf "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/vishvananda/netlink/nl"
 	"golang.org/x/sys/unix"
+	"google.golang.org/protobuf/proto"
 )
 
 const stdioFdCount = 3
@@ -54,6 +55,7 @@ type linuxContainer struct {
 	criuVersion          int
 	state                containerState
 	created              time.Time
+	fifo                 *os.File
 }
 
 // State represents a running container's state
@@ -356,31 +358,30 @@ type openResult struct {
 	err  error
 }
 
-func (c *linuxContainer) start(process *Process) error {
+func (c *linuxContainer) start(process *Process) (retErr error) {
 	parent, err := c.newParentProcess(process)
 	if err != nil {
 		return newSystemErrorWithCause(err, "creating new parent process")
 	}
-	parent.forwardChildLogs()
+
+	logsDone := parent.forwardChildLogs()
+	if logsDone != nil {
+		defer func() {
+			// Wait for log forwarder to finish. This depends on
+			// runc init closing the _LIBCONTAINER_LOGPIPE log fd.
+			err := <-logsDone
+			if err != nil && retErr == nil {
+				retErr = newSystemErrorWithCause(err, "forwarding init logs")
+			}
+		}()
+	}
+
 	if err := parent.start(); err != nil {
-		// terminate the process to ensure that it properly is reaped.
-		if err := ignoreTerminateErrors(parent.terminate()); err != nil {
-			logrus.Warn(err)
-		}
 		return newSystemErrorWithCause(err, "starting container process")
 	}
-	// generate a timestamp indicating when the container was started
-	c.created = time.Now().UTC()
-	if process.Init {
-		c.state = &createdState{
-			c: c,
-		}
-		state, err := c.updateState(parent)
-		if err != nil {
-			return err
-		}
-		c.initProcessStartTime = state.InitProcessStartTime
 
+	if process.Init {
+		c.fifo.Close()
 		if c.config.Hooks != nil {
 			s, err := c.currentOCIState()
 			if err != nil {
@@ -456,14 +457,15 @@ func (c *linuxContainer) deleteExecFifo() {
 // fd, with _LIBCONTAINER_FIFOFD set to its fd number.
 func (c *linuxContainer) includeExecFifo(cmd *exec.Cmd) error {
 	fifoName := filepath.Join(c.root, execFifoFilename)
-	fifoFd, err := unix.Open(fifoName, unix.O_PATH|unix.O_CLOEXEC, 0)
+	fifo, err := os.OpenFile(fifoName, unix.O_PATH|unix.O_CLOEXEC, 0)
 	if err != nil {
 		return err
 	}
+	c.fifo = fifo
 
-	cmd.ExtraFiles = append(cmd.ExtraFiles, os.NewFile(uintptr(fifoFd), fifoName))
+	cmd.ExtraFiles = append(cmd.ExtraFiles, fifo)
 	cmd.Env = append(cmd.Env,
-		fmt.Sprintf("_LIBCONTAINER_FIFOFD=%d", stdioFdCount+len(cmd.ExtraFiles)-1))
+		"_LIBCONTAINER_FIFOFD="+strconv.Itoa(stdioFdCount+len(cmd.ExtraFiles)-1))
 	return nil
 }
 
@@ -506,24 +508,24 @@ func (c *linuxContainer) commandTemplate(p *Process, childInitPipe *os.File, chi
 	if cmd.SysProcAttr == nil {
 		cmd.SysProcAttr = &unix.SysProcAttr{}
 	}
-	cmd.Env = append(cmd.Env, fmt.Sprintf("GOMAXPROCS=%s", os.Getenv("GOMAXPROCS")))
+	cmd.Env = append(cmd.Env, "GOMAXPROCS="+os.Getenv("GOMAXPROCS"))
 	cmd.ExtraFiles = append(cmd.ExtraFiles, p.ExtraFiles...)
 	if p.ConsoleSocket != nil {
 		cmd.ExtraFiles = append(cmd.ExtraFiles, p.ConsoleSocket)
 		cmd.Env = append(cmd.Env,
-			fmt.Sprintf("_LIBCONTAINER_CONSOLE=%d", stdioFdCount+len(cmd.ExtraFiles)-1),
+			"_LIBCONTAINER_CONSOLE="+strconv.Itoa(stdioFdCount+len(cmd.ExtraFiles)-1),
 		)
 	}
 	cmd.ExtraFiles = append(cmd.ExtraFiles, childInitPipe)
 	cmd.Env = append(cmd.Env,
-		fmt.Sprintf("_LIBCONTAINER_INITPIPE=%d", stdioFdCount+len(cmd.ExtraFiles)-1),
-		fmt.Sprintf("_LIBCONTAINER_STATEDIR=%s", c.root),
+		"_LIBCONTAINER_INITPIPE="+strconv.Itoa(stdioFdCount+len(cmd.ExtraFiles)-1),
+		"_LIBCONTAINER_STATEDIR="+c.root,
 	)
 
 	cmd.ExtraFiles = append(cmd.ExtraFiles, childLogPipe)
 	cmd.Env = append(cmd.Env,
-		fmt.Sprintf("_LIBCONTAINER_LOGPIPE=%d", stdioFdCount+len(cmd.ExtraFiles)-1),
-		fmt.Sprintf("_LIBCONTAINER_LOGLEVEL=%s", p.LogLevel),
+		"_LIBCONTAINER_LOGPIPE="+strconv.Itoa(stdioFdCount+len(cmd.ExtraFiles)-1),
+		"_LIBCONTAINER_LOGLEVEL="+p.LogLevel,
 	)
 
 	// NOTE: when running a container with no PID namespace and the parent process spawning the container is
@@ -583,6 +585,7 @@ func (c *linuxContainer) newSetnsProcess(p *Process, cmd *exec.Cmd, messageSockP
 		intelRdtPath:    state.IntelRdtPath,
 		messageSockPair: messageSockPair,
 		logFilePair:     logFilePair,
+		manager:         c.cgroupManager,
 		config:          c.newInitConfig(p),
 		process:         p,
 		bootstrapData:   data,
@@ -693,8 +696,7 @@ var criuFeatures *criurpc.CriuFeatures
 
 func (c *linuxContainer) checkCriuFeatures(criuOpts *CriuOpts, rpcOpts *criurpc.CriuOpts, criuFeat *criurpc.CriuFeatures) error {
 
-	var t criurpc.CriuReqType
-	t = criurpc.CriuReqType_FEATURE_CHECK
+	t := criurpc.CriuReqType_FEATURE_CHECK
 
 	// make sure the features we are looking for are really not from
 	// some previous check
@@ -715,7 +717,6 @@ func (c *linuxContainer) checkCriuFeatures(criuOpts *CriuOpts, rpcOpts *criurpc.
 		return errors.New("CRIU feature check failed")
 	}
 
-	logrus.Debugf("Feature check says: %s", criuFeatures)
 	missingFeatures := false
 
 	// The outer if checks if the fields actually exist
@@ -777,11 +778,7 @@ func (c *linuxContainer) checkCriuVersion(minVersion int) error {
 const descriptorsFilename = "descriptors.json"
 
 func (c *linuxContainer) addCriuDumpMount(req *criurpc.CriuReq, m *configs.Mount) {
-	mountDest := m.Destination
-	if strings.HasPrefix(mountDest, c.config.Rootfs) {
-		mountDest = mountDest[len(c.config.Rootfs):]
-	}
-
+	mountDest := strings.TrimPrefix(m.Destination, c.config.Rootfs)
 	extMnt := &criurpc.ExtMountMap{
 		Key: proto.String(mountDest),
 		Val: proto.String(mountDest),
@@ -853,7 +850,7 @@ func (c *linuxContainer) criuSupportsExtNS(t configs.NamespaceType) bool {
 	return c.checkCriuVersion(minVersion) == nil
 }
 
-func (c *linuxContainer) criuNsToKey(t configs.NamespaceType) string {
+func criuNsToKey(t configs.NamespaceType) string {
 	return "extRoot" + strings.Title(configs.NsName(t)) + "NS"
 }
 
@@ -873,8 +870,46 @@ func (c *linuxContainer) handleCheckpointingExternalNamespaces(rpcOpts *criurpc.
 	if err := unix.Stat(nsPath, &ns); err != nil {
 		return err
 	}
-	criuExternal := fmt.Sprintf("%s[%d]:%s", configs.NsName(t), ns.Ino, c.criuNsToKey(t))
+	criuExternal := fmt.Sprintf("%s[%d]:%s", configs.NsName(t), ns.Ino, criuNsToKey(t))
 	rpcOpts.External = append(rpcOpts.External, criuExternal)
+
+	return nil
+}
+
+func (c *linuxContainer) handleRestoringNamespaces(rpcOpts *criurpc.CriuOpts, extraFiles *[]*os.File) error {
+	for _, ns := range c.config.Namespaces {
+		switch ns.Type {
+		case configs.NEWNET, configs.NEWPID:
+			// If the container is running in a network or PID namespace and has
+			// a path to the network or PID namespace configured, we will dump
+			// that network or PID namespace as an external namespace and we
+			// will expect that the namespace exists during restore.
+			// This basically means that CRIU will ignore the namespace
+			// and expect it to be setup correctly.
+			if err := c.handleRestoringExternalNamespaces(rpcOpts, extraFiles, ns.Type); err != nil {
+				return err
+			}
+		default:
+			// For all other namespaces except NET and PID CRIU has
+			// a simpler way of joining the existing namespace if set
+			nsPath := c.config.Namespaces.PathOf(ns.Type)
+			if nsPath == "" {
+				continue
+			}
+			if ns.Type == configs.NEWCGROUP {
+				// CRIU has no code to handle NEWCGROUP
+				return fmt.Errorf("Do not know how to handle namespace %v", ns.Type)
+			}
+			// CRIU has code to handle NEWTIME, but it does not seem to be defined in runc
+
+			// CRIU will issue a warning for NEWUSER:
+			// criu/namespaces.c: 'join-ns with user-namespace is not fully tested and dangerous'
+			rpcOpts.JoinNs = append(rpcOpts.JoinNs, &criurpc.JoinNamespace{
+				Ns:     proto.String(configs.NsName(ns.Type)),
+				NsFile: proto.String(nsPath),
+			})
+		}
+	}
 
 	return nil
 }
@@ -897,11 +932,12 @@ func (c *linuxContainer) handleRestoringExternalNamespaces(rpcOpts *criurpc.Criu
 		logrus.Errorf("If a specific network namespace is defined it must exist: %s", err)
 		return fmt.Errorf("Requested network namespace %v does not exist", nsPath)
 	}
-	inheritFd := new(criurpc.InheritFd)
-	inheritFd.Key = proto.String(c.criuNsToKey(t))
-	// The offset of four is necessary because 0, 1, 2 and 3 is already
-	// used by stdin, stdout, stderr, 'criu swrk' socket.
-	inheritFd.Fd = proto.Int32(int32(4 + len(*extraFiles)))
+	inheritFd := &criurpc.InheritFd{
+		Key: proto.String(criuNsToKey(t)),
+		// The offset of four is necessary because 0, 1, 2 and 3 are
+		// already used by stdin, stdout, stderr, 'criu swrk' socket.
+		Fd: proto.Int32(int32(4 + len(*extraFiles))),
+	}
 	rpcOpts.InheritFd = append(rpcOpts.InheritFd, inheritFd)
 	// All open FDs need to be transferred to CRIU via extraFiles
 	*extraFiles = append(*extraFiles, nsFd)
@@ -1120,11 +1156,7 @@ func (c *linuxContainer) Checkpoint(criuOpts *CriuOpts) error {
 }
 
 func (c *linuxContainer) addCriuRestoreMount(req *criurpc.CriuReq, m *configs.Mount) {
-	mountDest := m.Destination
-	if strings.HasPrefix(mountDest, c.config.Rootfs) {
-		mountDest = mountDest[len(c.config.Rootfs):]
-	}
-
+	mountDest := strings.TrimPrefix(m.Destination, c.config.Rootfs)
 	extMnt := &criurpc.ExtMountMap{
 		Key: proto.String(mountDest),
 		Val: proto.String(m.Source),
@@ -1218,10 +1250,37 @@ func (c *linuxContainer) prepareCriuRestoreMounts(mounts []*configs.Mount) error
 	// Now go through all mounts and create the mountpoints
 	// if the mountpoints are not on a tmpfs, as CRIU will
 	// restore the complete tmpfs content from its checkpoint.
+	umounts := []string{}
+	defer func() {
+		for _, u := range umounts {
+			if e := unix.Unmount(u, unix.MNT_DETACH); e != nil {
+				if e != unix.EINVAL {
+					// Ignore EINVAL as it means 'target is not a mount point.'
+					// It probably has already been unmounted.
+					logrus.Warnf("Error during cleanup unmounting of %q (%v)", u, e)
+				}
+			}
+		}
+	}()
 	for _, m := range mounts {
 		if !isPathInPrefixList(m.Destination, tmpfs) {
 			if err := c.makeCriuRestoreMountpoints(m); err != nil {
 				return err
+			}
+			// If the mount point is a bind mount, we need to mount
+			// it now so that runc can create the necessary mount
+			// points for mounts in bind mounts.
+			// This also happens during initial container creation.
+			// Without this CRIU restore will fail
+			// See: https://github.com/opencontainers/runc/issues/2748
+			// It is also not necessary to order the mount points
+			// because during initial container creation mounts are
+			// set up in the order they are configured.
+			if m.Device == "bind" {
+				if err := unix.Mount(m.Source, m.Destination, "", unix.MS_BIND|unix.MS_REC, ""); err != nil {
+					return errorsf.Wrapf(err, "unable to bind mount %q to %q", m.Source, m.Destination)
+				}
+				umounts = append(umounts, m.Destination)
 			}
 		}
 	}
@@ -1309,15 +1368,7 @@ func (c *linuxContainer) Restore(process *Process, criuOpts *CriuOpts) error {
 
 	c.handleCriuConfigurationFile(req.Opts)
 
-	// Same as during checkpointing. If the container has a specific network namespace
-	// assigned to it, this now expects that the checkpoint will be restored in a
-	// already created network namespace.
-	if err := c.handleRestoringExternalNamespaces(req.Opts, &extraFiles, configs.NEWNET); err != nil {
-		return err
-	}
-
-	// Same for PID namespaces.
-	if err := c.handleRestoringExternalNamespaces(req.Opts, &extraFiles, configs.NEWPID); err != nil {
+	if err := c.handleRestoringNamespaces(req.Opts, &extraFiles); err != nil {
 		return err
 	}
 
@@ -1466,7 +1517,6 @@ func (c *linuxContainer) criuSwrk(process *Process, req *criurpc.CriuReq, opts *
 		// the initial CRIU run to detect the version. Skip it.
 		logrus.Debugf("Using CRIU %d at: %s", c.criuVersion, c.criuPath)
 	}
-	logrus.Debugf("Using CRIU with following args: %s", args)
 	cmd := exec.Command(c.criuPath, args...)
 	if process != nil {
 		cmd.Stdin = process.Stdin
@@ -1514,19 +1564,19 @@ func (c *linuxContainer) criuSwrk(process *Process, req *criurpc.CriuReq, opts *
 	// should be empty. For older CRIU versions it still will be
 	// available but empty. criurpc.CriuReqType_VERSION actually
 	// has no req.GetOpts().
-	if !(req.GetType() == criurpc.CriuReqType_FEATURE_CHECK ||
-		req.GetType() == criurpc.CriuReqType_VERSION) {
+	if logrus.GetLevel() >= logrus.DebugLevel &&
+		!(req.GetType() == criurpc.CriuReqType_FEATURE_CHECK ||
+			req.GetType() == criurpc.CriuReqType_VERSION) {
 
 		val := reflect.ValueOf(req.GetOpts())
 		v := reflect.Indirect(val)
 		for i := 0; i < v.NumField(); i++ {
 			st := v.Type()
 			name := st.Field(i).Name
-			if strings.HasPrefix(name, "XXX_") {
-				continue
+			if 'A' <= name[0] && name[0] <= 'Z' {
+				value := val.MethodByName("Get" + name).Call([]reflect.Value{})
+				logrus.Debugf("CRIU option %s with value %v", name, value[0])
 			}
-			value := val.MethodByName("Get" + name).Call([]reflect.Value{})
-			logrus.Debugf("CRIU option %s with value %v", name, value[0])
 		}
 	}
 	data, err := proto.Marshal(req)
@@ -1540,7 +1590,7 @@ func (c *linuxContainer) criuSwrk(process *Process, req *criurpc.CriuReq, opts *
 
 	buf := make([]byte, 10*4096)
 	oob := make([]byte, 4096)
-	for true {
+	for {
 		n, oobn, _, _, err := criuClientCon.ReadMsgUnix(buf, oob)
 		if req.Opts != nil && req.Opts.StatusFd != nil {
 			// Close status_fd as soon as we got something back from criu,
@@ -1792,10 +1842,6 @@ func (c *linuxContainer) saveState(s *State) (retErr error) {
 	return os.Rename(tmpFile.Name(), stateFilePath)
 }
 
-func (c *linuxContainer) deleteState() error {
-	return os.Remove(filepath.Join(c.root, stateFilename))
-}
-
 func (c *linuxContainer) currentStatus() (Status, error) {
 	if err := c.refreshState(); err != nil {
 		return -1, err
@@ -2042,7 +2088,7 @@ func (c *linuxContainer) bootstrapData(cloneFlags uintptr, nsMaps map[configs.Na
 		// write oom_score_adj
 		r.AddData(&Bytemsg{
 			Type:  OomScoreAdjAttr,
-			Value: []byte(fmt.Sprintf("%d", *c.config.OomScoreAdj)),
+			Value: []byte(strconv.Itoa(*c.config.OomScoreAdj)),
 		})
 	}
 
@@ -2062,9 +2108,21 @@ func ignoreTerminateErrors(err error) error {
 	if err == nil {
 		return nil
 	}
+	// terminate() might return an error from ether Kill or Wait.
+	// The (*Cmd).Wait documentation says: "If the command fails to run
+	// or doesn't complete successfully, the error is of type *ExitError".
+	// Filter out such errors (like "exit status 1" or "signal: killed").
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) {
+		return nil
+	}
+	// TODO: use errors.Is(err, os.ErrProcessDone) here and
+	// remove "process already finished" string comparison below
+	// once go 1.16 is minimally supported version.
+
 	s := err.Error()
-	switch {
-	case strings.Contains(s, "process already finished"), strings.Contains(s, "Wait was already called"):
+	if strings.Contains(s, "process already finished") ||
+		strings.Contains(s, "Wait was already called") {
 		return nil
 	}
 	return err

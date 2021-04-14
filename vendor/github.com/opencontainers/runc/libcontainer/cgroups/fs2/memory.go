@@ -5,9 +5,7 @@ package fs2
 import (
 	"bufio"
 	"os"
-	"path/filepath"
 	"strconv"
-	"strings"
 
 	"github.com/opencontainers/runc/libcontainer/cgroups"
 	"github.com/opencontainers/runc/libcontainer/cgroups/fscommon"
@@ -76,7 +74,7 @@ func setMemory(dirPath string, cgroup *configs.Cgroup) error {
 
 func statMemory(dirPath string, stats *cgroups.Stats) error {
 	// Set stats from memory.stat.
-	statsFile, err := os.Open(filepath.Join(dirPath, "memory.stat"))
+	statsFile, err := fscommon.OpenFile(dirPath, "memory.stat", os.O_RDONLY)
 	if err != nil {
 		return err
 	}
@@ -84,13 +82,13 @@ func statMemory(dirPath string, stats *cgroups.Stats) error {
 
 	sc := bufio.NewScanner(statsFile)
 	for sc.Scan() {
-		t, v, err := fscommon.GetCgroupParamKeyValue(sc.Text())
+		t, v, err := fscommon.ParseKeyValue(sc.Text())
 		if err != nil {
 			return errors.Wrapf(err, "failed to parse memory.stat (%q)", sc.Text())
 		}
 		stats.MemoryStats.Stats[t] = v
 	}
-	stats.MemoryStats.Cache = stats.MemoryStats.Stats["cache"]
+	stats.MemoryStats.Cache = stats.MemoryStats.Stats["file"]
 
 	memoryUsage, err := getMemoryDataV2(dirPath, "")
 	if err != nil {
@@ -112,10 +110,10 @@ func getMemoryDataV2(path, name string) (cgroups.MemoryData, error) {
 
 	moduleName := "memory"
 	if name != "" {
-		moduleName = strings.Join([]string{"memory", name}, ".")
+		moduleName = "memory." + name
 	}
-	usage := strings.Join([]string{moduleName, "current"}, ".")
-	limit := strings.Join([]string{moduleName, "max"}, ".")
+	usage := moduleName + ".current"
+	limit := moduleName + ".max"
 
 	value, err := fscommon.GetCgroupParamUint(path, usage)
 	if err != nil {

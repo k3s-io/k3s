@@ -5,7 +5,6 @@ package fs2
 import (
 	"bufio"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -30,8 +29,16 @@ func setIo(dirPath string, cgroup *configs.Cgroup) error {
 	if cgroup.Resources.BlkioWeight != 0 {
 		filename := "io.bfq.weight"
 		if err := fscommon.WriteFile(dirPath, filename,
-			strconv.FormatUint(cgroups.ConvertBlkIOToCgroupV2Value(cgroup.Resources.BlkioWeight), 10)); err != nil {
-			return err
+			strconv.FormatUint(uint64(cgroup.Resources.BlkioWeight), 10)); err != nil {
+			// if io.bfq.weight does not exist, then bfq module is not loaded.
+			// Fallback to use io.weight with a conversion scheme
+			if !os.IsNotExist(err) {
+				return err
+			}
+			v := cgroups.ConvertBlkIOToIOWeightValue(cgroup.Resources.BlkioWeight)
+			if err := fscommon.WriteFile(dirPath, "io.weight", strconv.FormatUint(v, 10)); err != nil {
+				return err
+			}
 		}
 	}
 	for _, td := range cgroup.Resources.BlkioThrottleReadBpsDevice {
@@ -60,8 +67,7 @@ func setIo(dirPath string, cgroup *configs.Cgroup) error {
 
 func readCgroup2MapFile(dirPath string, name string) (map[string][]string, error) {
 	ret := map[string][]string{}
-	p := filepath.Join(dirPath, name)
-	f, err := os.Open(p)
+	f, err := fscommon.OpenFile(dirPath, name, os.O_RDONLY)
 	if err != nil {
 		return nil, err
 	}

@@ -12,16 +12,17 @@ import (
 	"github.com/containerd/console"
 	"github.com/opencontainers/runc/libcontainer"
 	"github.com/opencontainers/runc/libcontainer/utils"
+	"github.com/pkg/errors"
 )
 
 type tty struct {
-	epoller   *console.Epoller
-	console   *console.EpollConsole
-	stdin     console.Console
-	closers   []io.Closer
-	postStart []io.Closer
-	wg        sync.WaitGroup
-	consoleC  chan error
+	epoller     *console.Epoller
+	console     *console.EpollConsole
+	hostConsole console.Console
+	closers     []io.Closer
+	postStart   []io.Closer
+	wg          sync.WaitGroup
+	consoleC    chan error
 }
 
 func (t *tty) copyIO(w io.Writer, r io.ReadCloser) {
@@ -71,6 +72,37 @@ func inheritStdio(process *libcontainer.Process) error {
 	return nil
 }
 
+func (t *tty) initHostConsole() error {
+	// Usually all three (stdin, stdout, and stderr) streams are open to
+	// the terminal, but they might be redirected, so try them all.
+	for _, s := range []*os.File{os.Stderr, os.Stdout, os.Stdin} {
+		c, err := console.ConsoleFromFile(s)
+		switch err {
+		case nil:
+			t.hostConsole = c
+			return nil
+		case console.ErrNotAConsole:
+			continue
+		default:
+			// should not happen
+			return errors.Wrap(err, "unable to get console")
+		}
+	}
+	// If all streams are redirected, but we still have a controlling
+	// terminal, it can be obtained by opening /dev/tty.
+	tty, err := os.Open("/dev/tty")
+	if err != nil {
+		return err
+	}
+	c, err := console.ConsoleFromFile(tty)
+	if err != nil {
+		return errors.Wrap(err, "unable to get console")
+	}
+
+	t.hostConsole = c
+	return nil
+}
+
 func (t *tty) recvtty(process *libcontainer.Process, socket *os.File) (Err error) {
 	f, err := utils.RecvFd(socket)
 	if err != nil {
@@ -80,7 +112,10 @@ func (t *tty) recvtty(process *libcontainer.Process, socket *os.File) (Err error
 	if err != nil {
 		return err
 	}
-	console.ClearONLCR(cons.Fd())
+	err = console.ClearONLCR(cons.Fd())
+	if err != nil {
+		return err
+	}
 	epoller, err := console.NewEpoller()
 	if err != nil {
 		return err
@@ -99,18 +134,13 @@ func (t *tty) recvtty(process *libcontainer.Process, socket *os.File) (Err error
 	t.wg.Add(1)
 	go t.copyIO(os.Stdout, epollConsole)
 
-	// set raw mode to stdin and also handle interrupt
-	stdin, err := console.ConsoleFromFile(os.Stdin)
-	if err != nil {
-		return err
-	}
-	if err := stdin.SetRaw(); err != nil {
+	// Set raw mode for the controlling terminal.
+	if err := t.hostConsole.SetRaw(); err != nil {
 		return fmt.Errorf("failed to set the terminal from the stdin: %v", err)
 	}
-	go handleInterrupt(stdin)
+	go handleInterrupt(t.hostConsole)
 
 	t.epoller = epoller
-	t.stdin = stdin
 	t.console = epollConsole
 	t.closers = []io.Closer{epollConsole}
 	return nil
@@ -156,15 +186,15 @@ func (t *tty) Close() error {
 	for _, c := range t.closers {
 		c.Close()
 	}
-	if t.stdin != nil {
-		t.stdin.Reset()
+	if t.hostConsole != nil {
+		t.hostConsole.Reset()
 	}
 	return nil
 }
 
 func (t *tty) resize() error {
-	if t.console == nil {
+	if t.console == nil || t.hostConsole == nil {
 		return nil
 	}
-	return t.console.ResizeFrom(console.Current())
+	return t.console.ResizeFrom(t.hostConsole)
 }

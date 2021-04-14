@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"strconv"
 
 	"github.com/opencontainers/runc/libcontainer"
 	"github.com/opencontainers/runc/libcontainer/logs"
@@ -23,8 +24,13 @@ func init() {
 			panic(fmt.Sprintf("libcontainer: failed to parse log level: %q: %v", level, err))
 		}
 
+		logPipeFdStr := os.Getenv("_LIBCONTAINER_LOGPIPE")
+		logPipeFd, err := strconv.Atoi(logPipeFdStr)
+		if err != nil {
+			panic(fmt.Sprintf("libcontainer: failed to convert environment variable _LIBCONTAINER_LOGPIPE=%s to int: %s", logPipeFdStr, err))
+		}
 		err = logs.ConfigureLogging(logs.Config{
-			LogPipeFd: os.Getenv("_LIBCONTAINER_LOGPIPE"),
+			LogPipeFd: logPipeFd,
 			LogFormat: "json",
 			LogLevel:  logLevel,
 		})

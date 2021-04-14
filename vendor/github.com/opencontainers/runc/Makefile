@@ -1,7 +1,7 @@
 CONTAINER_ENGINE := docker
 GO := go
 
-PREFIX ?= $(DESTDIR)/usr/local
+PREFIX ?= /usr/local
 BINDIR := $(PREFIX)/sbin
 MANDIR := $(PREFIX)/share/man
 
@@ -9,23 +9,21 @@ GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD 2>/dev/null)
 GIT_BRANCH_CLEAN := $(shell echo $(GIT_BRANCH) | sed -e "s/[^[:alnum:]]/-/g")
 RUNC_IMAGE := runc_dev$(if $(GIT_BRANCH_CLEAN),:$(GIT_BRANCH_CLEAN))
 PROJECT := github.com/opencontainers/runc
-BUILDTAGS ?= seccomp selinux apparmor
+BUILDTAGS ?= seccomp
 COMMIT_NO := $(shell git rev-parse HEAD 2> /dev/null || true)
 COMMIT ?= $(if $(shell git status --porcelain --untracked-files=no),"$(COMMIT_NO)-dirty","$(COMMIT_NO)")
 VERSION := $(shell cat ./VERSION)
 
-# TODO: rm -mod=vendor once go 1.13 is unsupported
-ifneq ($(GO111MODULE),off)
-	MOD_VENDOR := "-mod=vendor"
-endif
 ifeq ($(shell $(GO) env GOOS),linux)
 	ifeq (,$(filter $(shell $(GO) env GOARCH),mips mipsle mips64 mips64le ppc64))
-		GO_BUILDMODE := "-buildmode=pie"
+		ifeq (,$(findstring -race,$(EXTRA_FLAGS)))
+			GO_BUILDMODE := "-buildmode=pie"
+		endif
 	endif
 endif
-GO_BUILD := $(GO) build $(MOD_VENDOR) $(GO_BUILDMODE) $(EXTRA_FLAGS) -tags "$(BUILDTAGS)" \
+GO_BUILD := $(GO) build -trimpath $(GO_BUILDMODE) $(EXTRA_FLAGS) -tags "$(BUILDTAGS)" \
 	-ldflags "-X main.gitCommit=$(COMMIT) -X main.version=$(VERSION) $(EXTRA_LDFLAGS)"
-GO_BUILD_STATIC := CGO_ENABLED=1 $(GO) build $(MOD_VENDOR) $(EXTRA_FLAGS) -tags "$(BUILDTAGS) netgo osusergo" \
+GO_BUILD_STATIC := CGO_ENABLED=1 $(GO) build -trimpath $(EXTRA_FLAGS) -tags "$(BUILDTAGS) netgo osusergo" \
 	-ldflags "-w -extldflags -static -X main.gitCommit=$(COMMIT) -X main.version=$(VERSION) $(EXTRA_LDFLAGS)"
 
 .DEFAULT: runc
@@ -52,8 +50,7 @@ dbuild: runcimage
 		$(RUNC_IMAGE) make clean all
 
 lint:
-	$(GO) vet ./...
-	$(GO) fmt ./...
+	golangci-lint run ./...
 
 man:
 	man/md2man-all.sh
@@ -73,7 +70,7 @@ unittest: runcimage
 		$(RUNC_IMAGE) make localunittest TESTFLAGS=$(TESTFLAGS)
 
 localunittest: all
-	$(GO) test $(MOD_VENDOR) -timeout 3m -tags "$(BUILDTAGS)" $(TESTFLAGS) -v ./...
+	$(GO) test -timeout 3m -tags "$(BUILDTAGS)" $(TESTFLAGS) -v ./...
 
 integration: runcimage
 	$(CONTAINER_ENGINE) run $(CONTAINER_ENGINE_RUN_FLAGS) \
@@ -102,14 +99,14 @@ shell: runcimage
 		$(RUNC_IMAGE) bash
 
 install:
-	install -D -m0755 runc $(BINDIR)/runc
+	install -D -m0755 runc $(DESTDIR)$(BINDIR)/runc
 
 install-bash:
-	install -D -m0644 contrib/completions/bash/runc $(PREFIX)/share/bash-completion/completions/runc
+	install -D -m0644 contrib/completions/bash/runc $(DESTDIR)$(PREFIX)/share/bash-completion/completions/runc
 
 install-man: man
-	install -d -m 755 $(MANDIR)/man8
-	install -D -m 644 man/man8/*.8 $(MANDIR)/man8
+	install -d -m 755 $(DESTDIR)$(MANDIR)/man8
+	install -D -m 644 man/man8/*.8 $(DESTDIR)$(MANDIR)/man8
 
 clean:
 	rm -f runc runc-*
@@ -117,17 +114,21 @@ clean:
 	rm -rf release
 	rm -rf man/man8
 
-validate:
-	script/validate-gofmt
-	script/validate-c
-	$(GO) vet ./...
+cfmt: C_SRC=$(shell git ls-files '*.c' | grep -v '^vendor/')
+cfmt:
+	indent -linux -l120 -il0 -ppi2 -cp1 -T size_t -T jmp_buf $(C_SRC)
 
-ci: validate test release
+shellcheck:
+	shellcheck tests/integration/*.bats tests/integration/*.sh tests/*.sh script/release.sh
+	# TODO: add shellcheck for more sh files
+
+shfmt:
+	shfmt -ln bats -d -w tests/integration/*.bats
+	shfmt -ln bash -d -w man/*.sh script/* tests/*.sh tests/integration/*.bash
 
 vendor:
-	export GO111MODULE=on \
-	$(GO) mod tidy && \
-	$(GO) mod vendor && \
+	$(GO) mod tidy
+	$(GO) mod vendor
 	$(GO) mod verify
 
 verify-dependencies: vendor
@@ -150,5 +151,5 @@ localcross:
 .PHONY: runc all recvtty static release dbuild lint man runcimage \
 	test localtest unittest localunittest integration localintegration \
 	rootlessintegration localrootlessintegration shell install install-bash \
-	install-man clean validate ci \
+	install-man clean cfmt shfmt shellcheck \
 	vendor verify-dependencies cross localcross

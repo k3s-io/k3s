@@ -6,7 +6,6 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strconv"
 
 	"github.com/opencontainers/runc/libcontainer/cgroups"
@@ -87,7 +86,7 @@ func (s *CpuGroup) Set(path string, cgroup *configs.Cgroup) error {
 }
 
 func (s *CpuGroup) GetStats(path string, stats *cgroups.Stats) error {
-	f, err := os.Open(filepath.Join(path, "cpu.stat"))
+	f, err := fscommon.OpenFile(path, "cpu.stat", os.O_RDONLY)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil
@@ -98,7 +97,7 @@ func (s *CpuGroup) GetStats(path string, stats *cgroups.Stats) error {
 
 	sc := bufio.NewScanner(f)
 	for sc.Scan() {
-		t, v, err := fscommon.GetCgroupParamKeyValue(sc.Text())
+		t, v, err := fscommon.ParseKeyValue(sc.Text())
 		if err != nil {
 			return err
 		}

@@ -3,6 +3,8 @@
 package systemd
 
 import (
+	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -32,6 +34,132 @@ func NewUnifiedManager(config *configs.Cgroup, path string, rootless bool) cgrou
 		path:     path,
 		rootless: rootless,
 	}
+}
+
+// unifiedResToSystemdProps tries to convert from Cgroup.Resources.Unified
+// key/value map (where key is cgroupfs file name) to systemd unit properties.
+// This is on a best-effort basis, so the properties that are not known
+// (to this function and/or systemd) are ignored (but logged with "debug"
+// log level).
+//
+// For the list of keys, see https://www.kernel.org/doc/Documentation/cgroup-v2.txt
+//
+// For the list of systemd unit properties, see systemd.resource-control(5).
+func unifiedResToSystemdProps(conn *systemdDbus.Conn, res map[string]string) (props []systemdDbus.Property, _ error) {
+	var err error
+
+	for k, v := range res {
+		if strings.Contains(k, "/") {
+			return nil, fmt.Errorf("unified resource %q must be a file name (no slashes)", k)
+		}
+		sk := strings.SplitN(k, ".", 2)
+		if len(sk) != 2 {
+			return nil, fmt.Errorf("unified resource %q must be in the form CONTROLLER.PARAMETER", k)
+		}
+		// Kernel is quite forgiving to extra whitespace
+		// around the value, and so should we.
+		v = strings.TrimSpace(v)
+		// Please keep cases in alphabetical order.
+		switch k {
+		case "cpu.max":
+			// value: quota [period]
+			quota := int64(0) // 0 means "unlimited" for addCpuQuota, if period is set
+			period := defCPUQuotaPeriod
+			sv := strings.Fields(v)
+			if len(sv) < 1 || len(sv) > 2 {
+				return nil, fmt.Errorf("unified resource %q value invalid: %q", k, v)
+			}
+			// quota
+			if sv[0] != "max" {
+				quota, err = strconv.ParseInt(sv[0], 10, 64)
+				if err != nil {
+					return nil, fmt.Errorf("unified resource %q period value conversion error: %w", k, err)
+				}
+			}
+			// period
+			if len(sv) == 2 {
+				period, err = strconv.ParseUint(sv[1], 10, 64)
+				if err != nil {
+					return nil, fmt.Errorf("unified resource %q quota value conversion error: %w", k, err)
+				}
+			}
+			addCpuQuota(conn, &props, quota, period)
+
+		case "cpu.weight":
+			num, err := strconv.ParseUint(v, 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("unified resource %q value conversion error: %w", k, err)
+			}
+			props = append(props,
+				newProp("CPUWeight", num))
+
+		case "cpuset.cpus", "cpuset.mems":
+			bits, err := rangeToBits(v)
+			if err != nil {
+				return nil, fmt.Errorf("unified resource %q=%q conversion error: %w", k, v, err)
+			}
+			m := map[string]string{
+				"cpuset.cpus": "AllowedCPUs",
+				"cpuset.mems": "AllowedMemoryNodes",
+			}
+			// systemd only supports these properties since v244
+			sdVer := systemdVersion(conn)
+			if sdVer >= 244 {
+				props = append(props,
+					newProp(m[k], bits))
+			} else {
+				logrus.Debugf("systemd v%d is too old to support %s"+
+					" (setting will still be applied to cgroupfs)",
+					sdVer, m[k])
+			}
+
+		case "memory.high", "memory.low", "memory.min", "memory.max", "memory.swap.max":
+			num := uint64(math.MaxUint64)
+			if v != "max" {
+				num, err = strconv.ParseUint(v, 10, 64)
+				if err != nil {
+					return nil, fmt.Errorf("unified resource %q value conversion error: %w", k, err)
+				}
+			}
+			m := map[string]string{
+				"memory.high":     "MemoryHigh",
+				"memory.low":      "MemoryLow",
+				"memory.min":      "MemoryMin",
+				"memory.max":      "MemoryMax",
+				"memory.swap.max": "MemorySwapMax",
+			}
+			props = append(props,
+				newProp(m[k], num))
+
+		case "pids.max":
+			num := uint64(math.MaxUint64)
+			if v != "max" {
+				var err error
+				num, err = strconv.ParseUint(v, 10, 64)
+				if err != nil {
+					return nil, fmt.Errorf("unified resource %q value conversion error: %w", k, err)
+				}
+			}
+			props = append(props,
+				newProp("TasksMax", num))
+
+		case "memory.oom.group":
+			// Setting this to 1 is roughly equivalent to OOMPolicy=kill
+			// (as per systemd.service(5) and
+			// https://www.kernel.org/doc/html/latest/admin-guide/cgroup-v2.html),
+			// but it's not clear what to do if it is unset or set
+			// to 0 in runc update, as there are two other possible
+			// values for OOMPolicy (continue/stop).
+			fallthrough
+
+		default:
+			// Ignore the unknown resource here -- will still be
+			// applied in Set which calls fs2.Set.
+			logrus.Debugf("don't know how to convert unified resource %q=%q to systemd unit property; skipping (will still be applied to cgroupfs)", k, v)
+		}
+	}
+
+	return props, nil
 }
 
 func genV2ResourcesProperties(c *configs.Cgroup, conn *systemdDbus.Conn) ([]systemdDbus.Property, error) {
@@ -76,11 +204,24 @@ func genV2ResourcesProperties(c *configs.Cgroup, conn *systemdDbus.Conn) ([]syst
 
 	if r.PidsLimit > 0 || r.PidsLimit == -1 {
 		properties = append(properties,
-			newProp("TasksAccounting", true),
 			newProp("TasksMax", uint64(r.PidsLimit)))
 	}
 
+	err = addCpuset(conn, &properties, r.CpusetCpus, r.CpusetMems)
+	if err != nil {
+		return nil, err
+	}
+
 	// ignore r.KernelMemory
+
+	// convert Resources.Unified map to systemd properties
+	if r.Unified != nil {
+		unifiedProps, err := unifiedResToSystemdProps(conn, r.Unified)
+		if err != nil {
+			return nil, err
+		}
+		properties = append(properties, unifiedProps...)
+	}
 
 	return properties, nil
 }
@@ -130,7 +271,9 @@ func (m *unifiedManager) Apply(pid int) error {
 	properties = append(properties,
 		newProp("MemoryAccounting", true),
 		newProp("CPUAccounting", true),
-		newProp("IOAccounting", true))
+		newProp("IOAccounting", true),
+		newProp("TasksAccounting", true),
+	)
 
 	// Assume DefaultDependencies= will always work (the check for it was previously broken.)
 	properties = append(properties,
@@ -140,11 +283,6 @@ func (m *unifiedManager) Apply(pid int) error {
 	if err != nil {
 		return err
 	}
-	resourcesProperties, err := genV2ResourcesProperties(c, dbusConnection)
-	if err != nil {
-		return err
-	}
-	properties = append(properties, resourcesProperties...)
 	properties = append(properties, c.SystemdProps...)
 
 	if err := startUnit(dbusConnection, unitName, properties); err != nil {
@@ -357,4 +495,8 @@ func (m *unifiedManager) GetFreezerState() (configs.FreezerState, error) {
 
 func (m *unifiedManager) Exists() bool {
 	return cgroups.PathExists(m.path)
+}
+
+func (m *unifiedManager) OOMKillCount() (uint64, error) {
+	return fs2.OOMKillCount(m.path)
 }
