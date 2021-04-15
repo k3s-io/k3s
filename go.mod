@@ -33,34 +33,34 @@ replace (
 	google.golang.org/genproto => google.golang.org/genproto v0.0.0-20200224152610-e50cd9704f63
 	google.golang.org/grpc => google.golang.org/grpc v1.27.1
 	gopkg.in/square/go-jose.v2 => gopkg.in/square/go-jose.v2 v2.2.2
-	k8s.io/api => github.com/k3s-io/kubernetes/staging/src/k8s.io/api v1.20.5-k3s1
-	k8s.io/apiextensions-apiserver => github.com/k3s-io/kubernetes/staging/src/k8s.io/apiextensions-apiserver v1.20.5-k3s1
-	k8s.io/apimachinery => github.com/k3s-io/kubernetes/staging/src/k8s.io/apimachinery v1.20.5-k3s1
-	k8s.io/apiserver => github.com/k3s-io/kubernetes/staging/src/k8s.io/apiserver v1.20.5-k3s1
-	k8s.io/cli-runtime => github.com/k3s-io/kubernetes/staging/src/k8s.io/cli-runtime v1.20.5-k3s1
-	k8s.io/client-go => github.com/k3s-io/kubernetes/staging/src/k8s.io/client-go v1.20.5-k3s1
-	k8s.io/cloud-provider => github.com/k3s-io/kubernetes/staging/src/k8s.io/cloud-provider v1.20.5-k3s1
-	k8s.io/cluster-bootstrap => github.com/k3s-io/kubernetes/staging/src/k8s.io/cluster-bootstrap v1.20.5-k3s1
-	k8s.io/code-generator => github.com/k3s-io/kubernetes/staging/src/k8s.io/code-generator v1.20.5-k3s1
-	k8s.io/component-base => github.com/k3s-io/kubernetes/staging/src/k8s.io/component-base v1.20.5-k3s1
-	k8s.io/component-helpers => github.com/k3s-io/kubernetes/staging/src/k8s.io/component-helpers v1.20.5-k3s1
-	k8s.io/controller-manager => github.com/k3s-io/kubernetes/staging/src/k8s.io/controller-manager v1.20.5-k3s1
-	k8s.io/cri-api => github.com/k3s-io/kubernetes/staging/src/k8s.io/cri-api v1.20.5-k3s1
-	k8s.io/csi-translation-lib => github.com/k3s-io/kubernetes/staging/src/k8s.io/csi-translation-lib v1.20.5-k3s1
-	k8s.io/kube-aggregator => github.com/k3s-io/kubernetes/staging/src/k8s.io/kube-aggregator v1.20.5-k3s1
-	k8s.io/kube-controller-manager => github.com/k3s-io/kubernetes/staging/src/k8s.io/kube-controller-manager v1.20.5-k3s1
-	k8s.io/kube-proxy => github.com/k3s-io/kubernetes/staging/src/k8s.io/kube-proxy v1.20.5-k3s1
-	k8s.io/kube-scheduler => github.com/k3s-io/kubernetes/staging/src/k8s.io/kube-scheduler v1.20.5-k3s1
-	k8s.io/kubectl => github.com/k3s-io/kubernetes/staging/src/k8s.io/kubectl v1.20.5-k3s1
-	k8s.io/kubelet => github.com/k3s-io/kubernetes/staging/src/k8s.io/kubelet v1.20.5-k3s1
-	k8s.io/kubernetes => github.com/k3s-io/kubernetes v1.20.5-k3s1
-	k8s.io/legacy-cloud-providers => github.com/k3s-io/kubernetes/staging/src/k8s.io/legacy-cloud-providers v1.20.5-k3s1
-	k8s.io/metrics => github.com/k3s-io/kubernetes/staging/src/k8s.io/metrics v1.20.5-k3s1
-	k8s.io/mount-utils => github.com/k3s-io/kubernetes/staging/src/k8s.io/mount-utils v1.20.5-k3s1
-	k8s.io/node-api => github.com/k3s-io/kubernetes/staging/src/k8s.io/node-api v1.20.5-k3s1
-	k8s.io/sample-apiserver => github.com/k3s-io/kubernetes/staging/src/k8s.io/sample-apiserver v1.20.5-k3s1
-	k8s.io/sample-cli-plugin => github.com/k3s-io/kubernetes/staging/src/k8s.io/sample-cli-plugin v1.20.5-k3s1
-	k8s.io/sample-controller => github.com/k3s-io/kubernetes/staging/src/k8s.io/sample-controller v1.20.5-k3s1
+	k8s.io/api => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/api v1.20.6-k3s1
+	k8s.io/apiextensions-apiserver => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/apiextensions-apiserver v1.20.6-k3s1
+	k8s.io/apimachinery => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/apimachinery v1.20.6-k3s1
+	k8s.io/apiserver => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/apiserver v1.20.6-k3s1
+	k8s.io/cli-runtime => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/cli-runtime v1.20.6-k3s1
+	k8s.io/client-go => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/client-go v1.20.6-k3s1
+	k8s.io/cloud-provider => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/cloud-provider v1.20.6-k3s1
+	k8s.io/cluster-bootstrap => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/cluster-bootstrap v1.20.6-k3s1
+	k8s.io/code-generator => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/code-generator v1.20.6-k3s1
+	k8s.io/component-base => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/component-base v1.20.6-k3s1
+	k8s.io/component-helpers => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/component-helpers v1.20.6-k3s1
+	k8s.io/controller-manager => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/controller-manager v1.20.6-k3s1
+	k8s.io/cri-api => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/cri-api v1.20.6-k3s1
+	k8s.io/csi-translation-lib => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/csi-translation-lib v1.20.6-k3s1
+	k8s.io/kube-aggregator => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/kube-aggregator v1.20.6-k3s1
+	k8s.io/kube-controller-manager => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/kube-controller-manager v1.20.6-k3s1
+	k8s.io/kube-proxy => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/kube-proxy v1.20.6-k3s1
+	k8s.io/kube-scheduler => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/kube-scheduler v1.20.6-k3s1
+	k8s.io/kubectl => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/kubectl v1.20.6-k3s1
+	k8s.io/kubelet => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/kubelet v1.20.6-k3s1
+	k8s.io/kubernetes => github.com/MonzElmasry/kubernetes v1.20.6-k3s1
+	k8s.io/legacy-cloud-providers => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/legacy-cloud-providers v1.20.6-k3s1
+	k8s.io/metrics => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/metrics v1.20.6-k3s1
+	k8s.io/mount-utils => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/mount-utils v1.20.6-k3s1
+	k8s.io/node-api => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/node-api v1.20.6-k3s1
+	k8s.io/sample-apiserver => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/sample-apiserver v1.20.6-k3s1
+	k8s.io/sample-cli-plugin => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/sample-cli-plugin v1.20.6-k3s1
+	k8s.io/sample-controller => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/sample-controller v1.20.6-k3s1
 	mvdan.cc/unparam => mvdan.cc/unparam v0.0.0-20190209190245-fbb59629db34
 )
 
@@ -97,7 +97,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/dynamiclistener v0.2.2
 	github.com/rancher/remotedialer v0.2.0
-	github.com/rancher/wrangler v0.6.1
+	github.com/rancher/wrangler v0.6.2
 	github.com/rancher/wrangler-api v0.6.0
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/rootless-containers/rootlesskit v0.10.0
@@ -122,6 +122,6 @@ require (
 	k8s.io/cri-api v1.20.0
 	k8s.io/klog v1.0.0
 	k8s.io/kubectl v1.20.5
-	k8s.io/kubernetes v1.20.5
+	k8s.io/kubernetes v1.20.6
 	sigs.k8s.io/yaml v1.2.0
 )
