@@ -6,8 +6,10 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 
+	"github.com/rancher/k3s/pkg/agent/util"
 	"github.com/rancher/wrangler/pkg/data/convert"
 	"gopkg.in/yaml.v2"
 )
@@ -19,7 +21,7 @@ type Parser struct {
 	DefaultConfig string
 }
 
-// Parser will parse an os.Args style slice looking for Parser.FlagNames after Parse.After.
+// Parse will parse an os.Args style slice looking for Parser.FlagNames after Parse.After.
 // It will read the parameter value of Parse.FlagNames and read the file, appending all flags directly after
 // the Parser.After value. This means a the non-config file flags will override, or if a slice append to, the config
 // file values.
@@ -110,31 +112,69 @@ func (p *Parser) findStart(args []string) ([]string, []string, bool) {
 	return args, nil, false
 }
 
+func dotDFiles(basefile string) (result []string, _ error) {
+	files, err := ioutil.ReadDir(basefile + ".d")
+	if os.IsNotExist(err) {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
+	for _, file := range files {
+		if file.IsDir() || !util.HasSuffixI(file.Name(), ".yaml", ".yml") {
+			continue
+		}
+		result = append(result, filepath.Join(basefile+".d", file.Name()))
+	}
+	return
+}
+
 func readConfigFile(file string) (result []string, _ error) {
-	bytes, err := readConfigFileData(file)
+	files, err := dotDFiles(file)
 	if err != nil {
 		return nil, err
 	}
 
-	data := yaml.MapSlice{}
-	if err := yaml.Unmarshal(bytes, &data); err != nil {
+	_, err = os.Stat(file)
+	if os.IsNotExist(err) && len(files) > 0 {
+	} else if err != nil {
 		return nil, err
+	} else {
+		files = append([]string{file}, files...)
 	}
 
-	for _, i := range data {
-		k, v := convert.ToString(i.Key), i.Value
-		prefix := "--"
-		if len(k) == 1 {
-			prefix = "-"
+	keySeen := map[string]bool{}
+	for i := len(files) - 1; i >= 0; i-- {
+		file := files[i]
+		bytes, err := readConfigFileData(file)
+		if err != nil {
+			return nil, err
 		}
 
-		if slice, ok := v.([]interface{}); ok {
-			for _, v := range slice {
-				result = append(result, prefix+k+"="+convert.ToString(v))
+		data := yaml.MapSlice{}
+		if err := yaml.Unmarshal(bytes, &data); err != nil {
+			return nil, err
+		}
+
+		for _, i := range data {
+			k, v := convert.ToString(i.Key), i.Value
+			if keySeen[k] {
+				continue
 			}
-		} else {
-			str := convert.ToString(v)
-			result = append(result, prefix+k+"="+str)
+			keySeen[k] = true
+
+			prefix := "--"
+			if len(k) == 1 {
+				prefix = "-"
+			}
+
+			if slice, ok := v.([]interface{}); ok {
+				for _, v := range slice {
+					result = append(result, prefix+k+"="+convert.ToString(v))
+				}
+			} else {
+				str := convert.ToString(v)
+				result = append(result, prefix+k+"="+str)
+			}
 		}
 	}
 
