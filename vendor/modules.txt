@@ -468,7 +468,7 @@ github.com/go-stack/stack
 github.com/godbus/dbus
 # github.com/gogo/googleapis v1.3.0
 github.com/gogo/googleapis/google/rpc
-# github.com/gogo/protobuf v1.3.1
+# github.com/gogo/protobuf v1.3.2
 github.com/gogo/protobuf/gogoproto
 github.com/gogo/protobuf/proto
 github.com/gogo/protobuf/protoc-gen-gogo/descriptor
@@ -942,7 +942,7 @@ go.uber.org/zap/internal/bufferpool
 go.uber.org/zap/internal/color
 go.uber.org/zap/internal/exit
 go.uber.org/zap/zapcore
-# golang.org/x/crypto v0.0.0-20200220183623-bac4c82f6975
+# golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
 golang.org/x/crypto/blowfish
 golang.org/x/crypto/chacha20
 golang.org/x/crypto/cryptobyte
@@ -960,7 +960,10 @@ golang.org/x/crypto/salsa20/salsa
 golang.org/x/crypto/ssh
 golang.org/x/crypto/ssh/internal/bcrypt_pbkdf
 golang.org/x/crypto/ssh/terminal
-# golang.org/x/net v0.0.0-20191204025024-5ee1b9f4859a
+# golang.org/x/mod v0.3.0
+golang.org/x/mod/module
+golang.org/x/mod/semver
+# golang.org/x/net v0.0.0-20201110031124-69a78807bb2b
 golang.org/x/net/bpf
 golang.org/x/net/context
 golang.org/x/net/context/ctxhttp
@@ -985,19 +988,20 @@ golang.org/x/oauth2/google
 golang.org/x/oauth2/internal
 golang.org/x/oauth2/jws
 golang.org/x/oauth2/jwt
-# golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
+# golang.org/x/sync v0.0.0-20201020160332-67f06af15bc9
 golang.org/x/sync/errgroup
 golang.org/x/sync/semaphore
 golang.org/x/sync/singleflight
-# golang.org/x/sys v0.0.0-20191204072324-ce4227a45e2e
+# golang.org/x/sys v0.0.0-20201112073958-5cba982894dd
 golang.org/x/sys/cpu
+golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix
 golang.org/x/sys/windows
 golang.org/x/sys/windows/registry
 golang.org/x/sys/windows/svc
 golang.org/x/sys/windows/svc/debug
 golang.org/x/sys/windows/svc/mgr
-# golang.org/x/text v0.3.2
+# golang.org/x/text v0.3.3
 golang.org/x/text/encoding
 golang.org/x/text/encoding/internal
 golang.org/x/text/encoding/internal/identifier
@@ -1011,20 +1015,21 @@ golang.org/x/text/unicode/norm
 golang.org/x/text/width
 # golang.org/x/time v0.0.0-20190308202827-9d24e82272b4
 golang.org/x/time/rate
-# golang.org/x/tools v0.0.0-20191017205301-920acffc3e65
+# golang.org/x/tools v0.0.0-20210106214847-113979e3529a
 golang.org/x/tools/container/intsets
 golang.org/x/tools/go/ast/astutil
-golang.org/x/tools/go/gcexportdata
-golang.org/x/tools/go/internal/gcimporter
-golang.org/x/tools/go/internal/packagesdriver
-golang.org/x/tools/go/packages
 golang.org/x/tools/imports
+golang.org/x/tools/internal/event
+golang.org/x/tools/internal/event/core
+golang.org/x/tools/internal/event/keys
+golang.org/x/tools/internal/event/label
 golang.org/x/tools/internal/fastwalk
+golang.org/x/tools/internal/gocommand
 golang.org/x/tools/internal/gopathwalk
 golang.org/x/tools/internal/imports
-golang.org/x/tools/internal/module
-golang.org/x/tools/internal/semver
-golang.org/x/tools/internal/span
+# golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1
+golang.org/x/xerrors
+golang.org/x/xerrors/internal
 # gonum.org/v1/gonum v0.6.2
 gonum.org/v1/gonum/blas
 gonum.org/v1/gonum/blas/blas64
@@ -1145,7 +1150,7 @@ gopkg.in/square/go-jose.v2/jwt
 gopkg.in/warnings.v0
 # gopkg.in/yaml.v2 v2.2.8
 gopkg.in/yaml.v2
-# k8s.io/api v0.18.0 => github.com/k3s-io/kubernetes/staging/src/k8s.io/api v1.18.17-k3s1
+# k8s.io/api v0.18.0 => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/api v1.18.18-k3s1
 k8s.io/api/admission/v1
 k8s.io/api/admission/v1beta1
 k8s.io/api/admissionregistration/v1
@@ -1189,7 +1194,7 @@ k8s.io/api/settings/v1alpha1
 k8s.io/api/storage/v1
 k8s.io/api/storage/v1alpha1
 k8s.io/api/storage/v1beta1
-# k8s.io/apiextensions-apiserver v0.18.0 => github.com/k3s-io/kubernetes/staging/src/k8s.io/apiextensions-apiserver v1.18.17-k3s1
+# k8s.io/apiextensions-apiserver v0.18.0 => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/apiextensions-apiserver v1.18.18-k3s1
 k8s.io/apiextensions-apiserver/pkg/apihelpers
 k8s.io/apiextensions-apiserver/pkg/apis/apiextensions
 k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/install
@@ -1229,7 +1234,7 @@ k8s.io/apiextensions-apiserver/pkg/generated/openapi
 k8s.io/apiextensions-apiserver/pkg/registry/customresource
 k8s.io/apiextensions-apiserver/pkg/registry/customresource/tableconvertor
 k8s.io/apiextensions-apiserver/pkg/registry/customresourcedefinition
-# k8s.io/apimachinery v0.18.0 => github.com/k3s-io/kubernetes/staging/src/k8s.io/apimachinery v1.18.17-k3s1
+# k8s.io/apimachinery v0.18.0 => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/apimachinery v1.18.18-k3s1
 k8s.io/apimachinery/pkg/api/equality
 k8s.io/apimachinery/pkg/api/errors
 k8s.io/apimachinery/pkg/api/meta
@@ -1291,7 +1296,7 @@ k8s.io/apimachinery/pkg/watch
 k8s.io/apimachinery/third_party/forked/golang/json
 k8s.io/apimachinery/third_party/forked/golang/netutil
 k8s.io/apimachinery/third_party/forked/golang/reflect
-# k8s.io/apiserver v0.0.0 => github.com/k3s-io/kubernetes/staging/src/k8s.io/apiserver v1.18.17-k3s1
+# k8s.io/apiserver v0.0.0 => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/apiserver v1.18.18-k3s1
 k8s.io/apiserver/pkg/admission
 k8s.io/apiserver/pkg/admission/configuration
 k8s.io/apiserver/pkg/admission/initializer
@@ -1421,7 +1426,7 @@ k8s.io/apiserver/plugin/pkg/authenticator/request/basicauth
 k8s.io/apiserver/plugin/pkg/authenticator/token/oidc
 k8s.io/apiserver/plugin/pkg/authenticator/token/webhook
 k8s.io/apiserver/plugin/pkg/authorizer/webhook
-# k8s.io/cli-runtime v0.0.0 => github.com/k3s-io/kubernetes/staging/src/k8s.io/cli-runtime v1.18.17-k3s1
+# k8s.io/cli-runtime v0.0.0 => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/cli-runtime v1.18.18-k3s1
 k8s.io/cli-runtime/pkg/genericclioptions
 k8s.io/cli-runtime/pkg/kustomize
 k8s.io/cli-runtime/pkg/kustomize/k8sdeps
@@ -1434,7 +1439,7 @@ k8s.io/cli-runtime/pkg/kustomize/k8sdeps/transformer/patch
 k8s.io/cli-runtime/pkg/kustomize/k8sdeps/validator
 k8s.io/cli-runtime/pkg/printers
 k8s.io/cli-runtime/pkg/resource
-# k8s.io/client-go v11.0.1-0.20190409021438-1a26190bd76a+incompatible => github.com/k3s-io/kubernetes/staging/src/k8s.io/client-go v1.18.17-k3s1
+# k8s.io/client-go v11.0.1-0.20190409021438-1a26190bd76a+incompatible => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/client-go v1.18.18-k3s1
 k8s.io/client-go/discovery
 k8s.io/client-go/discovery/cached
 k8s.io/client-go/discovery/cached/disk
@@ -1668,7 +1673,7 @@ k8s.io/client-go/util/jsonpath
 k8s.io/client-go/util/keyutil
 k8s.io/client-go/util/retry
 k8s.io/client-go/util/workqueue
-# k8s.io/cloud-provider v0.0.0 => github.com/k3s-io/kubernetes/staging/src/k8s.io/cloud-provider v1.18.17-k3s1
+# k8s.io/cloud-provider v0.0.0 => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/cloud-provider v1.18.18-k3s1
 k8s.io/cloud-provider
 k8s.io/cloud-provider/api
 k8s.io/cloud-provider/node/helpers
@@ -1676,13 +1681,13 @@ k8s.io/cloud-provider/service/helpers
 k8s.io/cloud-provider/volume
 k8s.io/cloud-provider/volume/errors
 k8s.io/cloud-provider/volume/helpers
-# k8s.io/cluster-bootstrap v0.0.0 => github.com/k3s-io/kubernetes/staging/src/k8s.io/cluster-bootstrap v1.18.17-k3s1
+# k8s.io/cluster-bootstrap v0.0.0 => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/cluster-bootstrap v1.18.18-k3s1
 k8s.io/cluster-bootstrap/token/api
 k8s.io/cluster-bootstrap/token/jws
 k8s.io/cluster-bootstrap/token/util
 k8s.io/cluster-bootstrap/util/secrets
 k8s.io/cluster-bootstrap/util/tokens
-# k8s.io/code-generator v0.18.0 => github.com/k3s-io/kubernetes/staging/src/k8s.io/code-generator v1.18.17-k3s1
+# k8s.io/code-generator v0.18.0 => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/code-generator v1.18.18-k3s1
 k8s.io/code-generator/cmd/client-gen/args
 k8s.io/code-generator/cmd/client-gen/generators
 k8s.io/code-generator/cmd/client-gen/generators/fake
@@ -1697,7 +1702,7 @@ k8s.io/code-generator/cmd/lister-gen/args
 k8s.io/code-generator/cmd/lister-gen/generators
 k8s.io/code-generator/pkg/namer
 k8s.io/code-generator/pkg/util
-# k8s.io/component-base v0.0.0 => github.com/k3s-io/kubernetes/staging/src/k8s.io/component-base v1.18.17-k3s1
+# k8s.io/component-base v0.0.0 => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/component-base v1.18.18-k3s1
 k8s.io/component-base/cli/flag
 k8s.io/component-base/cli/globalflag
 k8s.io/component-base/codec
@@ -1715,10 +1720,10 @@ k8s.io/component-base/metrics/prometheus/workqueue
 k8s.io/component-base/metrics/testutil
 k8s.io/component-base/version
 k8s.io/component-base/version/verflag
-# k8s.io/cri-api v0.0.0 => github.com/k3s-io/kubernetes/staging/src/k8s.io/cri-api v1.18.17-k3s1
+# k8s.io/cri-api v0.0.0 => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/cri-api v1.18.18-k3s1
 k8s.io/cri-api/pkg/apis
 k8s.io/cri-api/pkg/apis/runtime/v1alpha2
-# k8s.io/csi-translation-lib v0.0.0 => github.com/k3s-io/kubernetes/staging/src/k8s.io/csi-translation-lib v1.18.17-k3s1
+# k8s.io/csi-translation-lib v0.0.0 => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/csi-translation-lib v1.18.18-k3s1
 k8s.io/csi-translation-lib
 k8s.io/csi-translation-lib/plugins
 # k8s.io/gengo v0.0.0-20200114144118-36b2048a9120
@@ -1733,7 +1738,7 @@ k8s.io/gengo/types
 k8s.io/heapster/metrics/api/v1/types
 # k8s.io/klog v1.0.0
 k8s.io/klog
-# k8s.io/kube-aggregator v0.18.0 => github.com/k3s-io/kubernetes/staging/src/k8s.io/kube-aggregator v1.18.17-k3s1
+# k8s.io/kube-aggregator v0.18.0 => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/kube-aggregator v1.18.18-k3s1
 k8s.io/kube-aggregator/pkg/apis/apiregistration
 k8s.io/kube-aggregator/pkg/apis/apiregistration/install
 k8s.io/kube-aggregator/pkg/apis/apiregistration/v1
@@ -1761,7 +1766,7 @@ k8s.io/kube-aggregator/pkg/controllers/status
 k8s.io/kube-aggregator/pkg/registry/apiservice
 k8s.io/kube-aggregator/pkg/registry/apiservice/etcd
 k8s.io/kube-aggregator/pkg/registry/apiservice/rest
-# k8s.io/kube-controller-manager v0.0.0 => github.com/k3s-io/kubernetes/staging/src/k8s.io/kube-controller-manager v1.18.17-k3s1
+# k8s.io/kube-controller-manager v0.0.0 => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/kube-controller-manager v1.18.18-k3s1
 k8s.io/kube-controller-manager/config/v1alpha1
 # k8s.io/kube-openapi v0.0.0-20200410145947-61e04a5be9a6
 k8s.io/kube-openapi/pkg/aggregator
@@ -1772,14 +1777,14 @@ k8s.io/kube-openapi/pkg/schemaconv
 k8s.io/kube-openapi/pkg/util
 k8s.io/kube-openapi/pkg/util/proto
 k8s.io/kube-openapi/pkg/util/proto/validation
-# k8s.io/kube-proxy v0.0.0 => github.com/k3s-io/kubernetes/staging/src/k8s.io/kube-proxy v1.18.17-k3s1
+# k8s.io/kube-proxy v0.0.0 => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/kube-proxy v1.18.18-k3s1
 k8s.io/kube-proxy/config/v1alpha1
-# k8s.io/kube-scheduler v0.0.0 => github.com/k3s-io/kubernetes/staging/src/k8s.io/kube-scheduler v1.18.17-k3s1
+# k8s.io/kube-scheduler v0.0.0 => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/kube-scheduler v1.18.18-k3s1
 k8s.io/kube-scheduler/config/v1
 k8s.io/kube-scheduler/config/v1alpha1
 k8s.io/kube-scheduler/config/v1alpha2
 k8s.io/kube-scheduler/extender/v1
-# k8s.io/kubectl v0.0.0 => github.com/k3s-io/kubernetes/staging/src/k8s.io/kubectl v1.18.17-k3s1
+# k8s.io/kubectl v0.0.0 => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/kubectl v1.18.18-k3s1
 k8s.io/kubectl/pkg/apps
 k8s.io/kubectl/pkg/cmd
 k8s.io/kubectl/pkg/cmd/annotate
@@ -1854,11 +1859,11 @@ k8s.io/kubectl/pkg/util/storage
 k8s.io/kubectl/pkg/util/templates
 k8s.io/kubectl/pkg/util/term
 k8s.io/kubectl/pkg/validation
-# k8s.io/kubelet v0.0.0 => github.com/k3s-io/kubernetes/staging/src/k8s.io/kubelet v1.18.17-k3s1
+# k8s.io/kubelet v0.0.0 => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/kubelet v1.18.18-k3s1
 k8s.io/kubelet/config/v1beta1
 k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1
 k8s.io/kubelet/pkg/apis/pluginregistration/v1
-# k8s.io/kubernetes v1.18.17 => github.com/k3s-io/kubernetes v1.18.17-k3s1
+# k8s.io/kubernetes v1.18.18 => github.com/MonzElmasry/kubernetes v1.18.18-k3s1
 k8s.io/kubernetes/cmd/cloud-controller-manager/app
 k8s.io/kubernetes/cmd/cloud-controller-manager/app/apis/config
 k8s.io/kubernetes/cmd/cloud-controller-manager/app/apis/config/scheme
@@ -2601,7 +2606,7 @@ k8s.io/kubernetes/third_party/forked/gonum/graph/internal/linear
 k8s.io/kubernetes/third_party/forked/gonum/graph/simple
 k8s.io/kubernetes/third_party/forked/gonum/graph/traverse
 k8s.io/kubernetes/third_party/forked/ipvs
-# k8s.io/legacy-cloud-providers v0.0.0 => github.com/k3s-io/kubernetes/staging/src/k8s.io/legacy-cloud-providers v1.18.17-k3s1
+# k8s.io/legacy-cloud-providers v0.0.0 => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/legacy-cloud-providers v1.18.18-k3s1
 k8s.io/legacy-cloud-providers/aws
 k8s.io/legacy-cloud-providers/azure
 k8s.io/legacy-cloud-providers/azure/auth
@@ -2632,7 +2637,7 @@ k8s.io/legacy-cloud-providers/openstack
 k8s.io/legacy-cloud-providers/vsphere
 k8s.io/legacy-cloud-providers/vsphere/vclib
 k8s.io/legacy-cloud-providers/vsphere/vclib/diskmanagers
-# k8s.io/metrics v0.0.0 => github.com/k3s-io/kubernetes/staging/src/k8s.io/metrics v1.18.17-k3s1
+# k8s.io/metrics v0.0.0 => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/metrics v1.18.18-k3s1
 k8s.io/metrics/pkg/apis/custom_metrics
 k8s.io/metrics/pkg/apis/custom_metrics/v1beta1
 k8s.io/metrics/pkg/apis/custom_metrics/v1beta2

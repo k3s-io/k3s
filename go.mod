@@ -33,31 +33,31 @@ replace (
 	github.com/prometheus/client_model => github.com/prometheus/client_model v0.0.0-20180712105110-5c3871d89910
 	github.com/prometheus/common => github.com/prometheus/common v0.0.0-20181126121408-4724e9255275
 	github.com/prometheus/procfs => github.com/prometheus/procfs v0.0.0-20181204211112-1dc9a6cbc91a
-	k8s.io/api => github.com/k3s-io/kubernetes/staging/src/k8s.io/api v1.18.17-k3s1
-	k8s.io/apiextensions-apiserver => github.com/k3s-io/kubernetes/staging/src/k8s.io/apiextensions-apiserver v1.18.17-k3s1
-	k8s.io/apimachinery => github.com/k3s-io/kubernetes/staging/src/k8s.io/apimachinery v1.18.17-k3s1
-	k8s.io/apiserver => github.com/k3s-io/kubernetes/staging/src/k8s.io/apiserver v1.18.17-k3s1
-	k8s.io/cli-runtime => github.com/k3s-io/kubernetes/staging/src/k8s.io/cli-runtime v1.18.17-k3s1
-	k8s.io/client-go => github.com/k3s-io/kubernetes/staging/src/k8s.io/client-go v1.18.17-k3s1
-	k8s.io/cloud-provider => github.com/k3s-io/kubernetes/staging/src/k8s.io/cloud-provider v1.18.17-k3s1
-	k8s.io/cluster-bootstrap => github.com/k3s-io/kubernetes/staging/src/k8s.io/cluster-bootstrap v1.18.17-k3s1
-	k8s.io/code-generator => github.com/k3s-io/kubernetes/staging/src/k8s.io/code-generator v1.18.17-k3s1
-	k8s.io/component-base => github.com/k3s-io/kubernetes/staging/src/k8s.io/component-base v1.18.17-k3s1
-	k8s.io/cri-api => github.com/k3s-io/kubernetes/staging/src/k8s.io/cri-api v1.18.17-k3s1
-	k8s.io/csi-translation-lib => github.com/k3s-io/kubernetes/staging/src/k8s.io/csi-translation-lib v1.18.17-k3s1
-	k8s.io/kube-aggregator => github.com/k3s-io/kubernetes/staging/src/k8s.io/kube-aggregator v1.18.17-k3s1
-	k8s.io/kube-controller-manager => github.com/k3s-io/kubernetes/staging/src/k8s.io/kube-controller-manager v1.18.17-k3s1
-	k8s.io/kube-proxy => github.com/k3s-io/kubernetes/staging/src/k8s.io/kube-proxy v1.18.17-k3s1
-	k8s.io/kube-scheduler => github.com/k3s-io/kubernetes/staging/src/k8s.io/kube-scheduler v1.18.17-k3s1
-	k8s.io/kubectl => github.com/k3s-io/kubernetes/staging/src/k8s.io/kubectl v1.18.17-k3s1
-	k8s.io/kubelet => github.com/k3s-io/kubernetes/staging/src/k8s.io/kubelet v1.18.17-k3s1
-	k8s.io/kubernetes => github.com/k3s-io/kubernetes v1.18.17-k3s1
-	k8s.io/legacy-cloud-providers => github.com/k3s-io/kubernetes/staging/src/k8s.io/legacy-cloud-providers v1.18.17-k3s1
-	k8s.io/metrics => github.com/k3s-io/kubernetes/staging/src/k8s.io/metrics v1.18.17-k3s1
-	k8s.io/node-api => github.com/k3s-io/kubernetes/staging/src/k8s.io/node-api v1.18.17-k3s1
-	k8s.io/sample-apiserver => github.com/k3s-io/kubernetes/staging/src/k8s.io/sample-apiserver v1.18.17-k3s1
-	k8s.io/sample-cli-plugin => github.com/k3s-io/kubernetes/staging/src/k8s.io/sample-cli-plugin v1.18.17-k3s1
-	k8s.io/sample-controller => github.com/k3s-io/kubernetes/staging/src/k8s.io/sample-controller v1.18.17-k3s1
+	k8s.io/api => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/api v1.18.18-k3s1
+	k8s.io/apiextensions-apiserver => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/apiextensions-apiserver v1.18.18-k3s1
+	k8s.io/apimachinery => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/apimachinery v1.18.18-k3s1
+	k8s.io/apiserver => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/apiserver v1.18.18-k3s1
+	k8s.io/cli-runtime => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/cli-runtime v1.18.18-k3s1
+	k8s.io/client-go => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/client-go v1.18.18-k3s1
+	k8s.io/cloud-provider => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/cloud-provider v1.18.18-k3s1
+	k8s.io/cluster-bootstrap => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/cluster-bootstrap v1.18.18-k3s1
+	k8s.io/code-generator => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/code-generator v1.18.18-k3s1
+	k8s.io/component-base => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/component-base v1.18.18-k3s1
+	k8s.io/cri-api => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/cri-api v1.18.18-k3s1
+	k8s.io/csi-translation-lib => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/csi-translation-lib v1.18.18-k3s1
+	k8s.io/kube-aggregator => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/kube-aggregator v1.18.18-k3s1
+	k8s.io/kube-controller-manager => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/kube-controller-manager v1.18.18-k3s1
+	k8s.io/kube-proxy => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/kube-proxy v1.18.18-k3s1
+	k8s.io/kube-scheduler => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/kube-scheduler v1.18.18-k3s1
+	k8s.io/kubectl => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/kubectl v1.18.18-k3s1
+	k8s.io/kubelet => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/kubelet v1.18.18-k3s1
+	k8s.io/kubernetes => github.com/MonzElmasry/kubernetes v1.18.18-k3s1
+	k8s.io/legacy-cloud-providers => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/legacy-cloud-providers v1.18.18-k3s1
+	k8s.io/metrics => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/metrics v1.18.18-k3s1
+	k8s.io/node-api => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/node-api v1.18.18-k3s1
+	k8s.io/sample-apiserver => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/sample-apiserver v1.18.18-k3s1
+	k8s.io/sample-cli-plugin => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/sample-cli-plugin v1.18.18-k3s1
+	k8s.io/sample-controller => github.com/MonzElmasry/kubernetes/staging/src/k8s.io/sample-controller v1.18.18-k3s1
 	mvdan.cc/unparam => mvdan.cc/unparam v0.0.0-20190209190245-fbb59629db34
 )
 
@@ -109,9 +109,9 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/tchap/go-patricia v2.3.0+incompatible // indirect
 	github.com/urfave/cli v1.22.2
-	golang.org/x/crypto v0.0.0-20200220183623-bac4c82f6975
-	golang.org/x/net v0.0.0-20191204025024-5ee1b9f4859a
-	golang.org/x/sys v0.0.0-20191204072324-ce4227a45e2e
+	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
+	golang.org/x/net v0.0.0-20201110031124-69a78807bb2b
+	golang.org/x/sys v0.0.0-20201112073958-5cba982894dd
 	google.golang.org/grpc v1.26.0
 	gopkg.in/robfig/cron.v2 v2.0.0-20150107220207-be2e0b0deed5 // indirect
 	gopkg.in/yaml.v2 v2.2.8
@@ -124,5 +124,5 @@ require (
 	k8s.io/component-base v0.0.0
 	k8s.io/cri-api v0.0.0
 	k8s.io/klog v1.0.0
-	k8s.io/kubernetes v1.18.17
+	k8s.io/kubernetes v1.18.18
 )
