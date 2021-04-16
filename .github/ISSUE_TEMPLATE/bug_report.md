@@ -7,7 +7,7 @@ assignees: ''
 
 ---
 
-<!-- Thanks for helping us to improve K3s! We welcome all bug reports. Please fill out each area of the template so we can better help you. Comments like this will be hidden when you post but you can delete them if you wish. -->
+<!-- Thanks for helping us to improve K3S! We welcome all bug reports. Please fill out each area of the template so we can better help you. Comments like this will be hidden when you post but you can delete them if you wish. -->
 
 **Environmental Info:**
 K3s Version: 
@@ -17,7 +17,7 @@ Node(s) CPU architecture, OS, and Version:
 <!-- Provide the output from "uname -a" on the node(s) -->
 
 Cluster Configuration:
-<!-- Provide some basic information on the cluster configuration. For example, "3 masters, 2 workers". -->
+<!-- Provide some basic information on the cluster configuration. For example, "3 servers, 2 agents". -->
 
 **Describe the bug:**
 <!-- A clear and concise description of what the bug is. -->
