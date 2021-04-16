@@ -3,7 +3,7 @@
 # ---
 
 port-used() {
-    (cat </dev/null >/dev/tcp/127.0.0.1/$1) 2>/dev/null
+    netstat -tuna | grep -q ":$1 "
 }
 export -f port-used
 
@@ -133,16 +133,18 @@ dump-logs() {
         [ "$name" ] || continue
         mkdir -p $node/logs
         local hostname=$(docker exec $name hostname)
-        docker exec $server kubectl describe node/$hostname >$node/logs/kubectl-describe-node.txt
-        docker cp $name:/var/lib/rancher/k3s/agent/containerd/containerd.log $node/logs/containerd.log 2>/dev/null
         docker logs $name >$node/logs/system.log 2>&1
-        docker exec $name crictl pods >$node/logs/crictl-pods.txt
-        docker exec $name crictl ps -a >$node/logs/crictl-ps.txt
-        docker exec $name crictl ps -a -o json >$node/metadata/crictl-ps.json
-        for container in $(jq -r '.containers[].id' <$node/metadata/crictl-ps.json); do
-            local cname=$(jq -r '.containers[] | select(.id == "'$container'") | .metadata.name' <$node/metadata/crictl-ps.json)
-            docker exec $name crictl logs $container >$node/logs/$cname-$container.log 2>&1
-        done
+        if [[ $name == k3s-* ]]; then
+            docker exec $server kubectl describe node/$hostname >$node/logs/kubectl-describe-node.txt
+            docker cp $name:/var/lib/rancher/k3s/agent/containerd/containerd.log $node/logs/containerd.log 2>/dev/null
+            docker exec $name crictl pods >$node/logs/crictl-pods.txt
+            docker exec $name crictl ps -a >$node/logs/crictl-ps.txt
+            docker exec $name crictl ps -a -o json >$node/metadata/crictl-ps.json
+            for container in $(jq -r '.containers[].id' <$node/metadata/crictl-ps.json); do
+                local cname=$(jq -r '.containers[] | select(.id == "'$container'") | .metadata.name' <$node/metadata/crictl-ps.json)
+                docker exec $name crictl logs $container >$node/logs/$cname-$container.log 2>&1
+            done
+        fi
         for log in $node/logs/*.log; do
             echo
             echo "#- Tail: $log"
@@ -234,7 +236,7 @@ sonobuoy-test() {
         --plugin-env=e2e.E2E_USE_GO_RUNNER=true \
         --sonobuoy-image=rancher/sonobuoy-sonobuoy:v${SONOBUOY_VERSION:-0.19.0} \
         --kube-conformance-image-version=${VERSION_K8S} \
-        --wait=30 \
+        --wait=90 \
         $@ &
 
     local sonobuoyPID=$!
@@ -287,8 +289,8 @@ test-setup() {
 
     mkdir -p $TEST_DIR/metadata
     if [ "$LABEL" ]; then
-        exec > >(awk -W interactive "{ printf \"[\033[36m${LABEL}\033[m] %s\n\", \$0 }") \
-            2> >(awk -W interactive "{ printf \"[\033[35m${LABEL}\033[m] %s\n\", \$0 }" >&2)
+        exec > >(awk "{ printf \"[\033[36m${LABEL}\033[m] %s\n\", \$0; fflush() }") \
+            2> >(awk "{ printf \"[\033[35m${LABEL}\033[m] %s\n\", \$0; fflush() }" >&2)
         echo "$LABEL" >$TEST_DIR/metadata/label
     fi
 
@@ -417,6 +419,7 @@ provision-server() {
         -p 6443 \
         -e K3S_TOKEN=$(cat $TEST_DIR/metadata/secret) \
         -e K3S_DEBUG=true \
+        ${REGISTRY_CLUSTER_ARGS:-} \
         $K3S_IMAGE server $ARGS $SERVER_ARGS ${!SERVER_INSTANCE_ARGS}
 
     local ip=$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' $name | tee $TEST_DIR/servers/$count/metadata/ip)
@@ -443,6 +446,7 @@ provision-agent() {
         --privileged \
         -e K3S_TOKEN=$(cat $TEST_DIR/metadata/secret) \
         -e K3S_URL=$K3S_URL \
+        ${REGISTRY_CLUSTER_ARGS:-} \
         $K3S_IMAGE agent $ARGS $AGENT_ARGS ${!AGENT_INSTANCE_ARGS}
 
     echo "Started $name"
@@ -454,6 +458,10 @@ export -f provision-agent
 
 provision-cluster() {
     run-function cluster-pre-hook
+
+    if [ "${ENABLE_REGISTRY}" == 'true' ]; then
+      provision-registry-proxy
+    fi
 
     for i in $(seq 1 $NUM_SERVERS); do
         provision-server
@@ -475,6 +483,50 @@ provision-cluster() {
     [ -f "$PROVISION_LOCK" ] && rm $PROVISION_LOCK
 }
 export -f provision-cluster
+
+# ---
+
+provision-registry-proxy() {
+    set -e -o pipefail
+    local image="docker.io/library/registry:2.7.1"
+    local prefix="docker-registry-"
+    local registries="docker.io:registry-1.docker.io k8s.gcr.io gcr.io quay.io ghcr.io"
+    local registries_yaml="$TEST_DIR/registries.yaml"
+
+    echo "mirrors:" > $registries_yaml
+
+    for registry in $registries; do
+        IFS=: read registry_name registry_endpoint <<< $registry
+        if [ -z "$registry_endpoint" ]; then
+            registry_endpoint=$registry_name
+        fi
+
+        local name="registry_${registry_name//./_}"
+        local status=$(docker inspect $name --format '{{ .State.Status }} {{ .Config.Image }} {{ (index .HostConfig.PortBindings "5000/tcp" 0).HostPort }}' 2>/dev/null || true)
+
+        read state_status config_image hostport <<< $status
+        if [ "$state_status" != "running" ] || [ "$config_image" != "$image" ]; then
+            hostport=$(timeout --foreground 5s bash -c get-port)
+            docker rm --force $name 2>/dev/null || true
+            docker run \
+                -d --name $name \
+                -p 0.0.0.0:$hostport:5000 \
+                -v "registry-cache:/var/lib/registry" \
+                -e "REGISTRY_HTTP_SECRET=shared-secret" \
+                -e "REGISTRY_PROXY_REMOTEURL=https://$registry_endpoint" \
+                -e "REGISTRY_STORAGE_CACHE_BLOBDESCRIPTOR=inmemory" \
+                -e "REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY=/var/lib/registry/$registry_name" \
+                $image
+        fi
+        echo -e "  $registry_name:\n    endpoint:\n    - http://172.17.0.1:$hostport" >> $registries_yaml
+    done
+
+    echo "Using registry mirror with cluster registries.yaml:"
+    cat $registries_yaml
+
+    export REGISTRY_CLUSTER_ARGS="-v $registries_yaml:/etc/rancher/k3s/registries.yaml"
+}
+export -f provision-registry-proxy
 
 # ---
 

@@ -65,6 +65,7 @@ steps:
   image: rancher/dapper:v0.5.0
   secrets: [ gcloud_auth ]
   environment:
+    ENABLE_REGISTRY: 'true'
     GCLOUD_AUTH:
       from_secret: gcloud_auth
   commands:
@@ -160,6 +161,7 @@ steps:
   image: rancher/dapper:v0.5.0
   secrets: [ gcloud_auth ]
   environment:
+    ENABLE_REGISTRY: 'true'
     GCLOUD_AUTH:
       from_secret: gcloud_auth
   commands:
@@ -239,6 +241,7 @@ steps:
   image: rancher/dapper:v0.5.0
   secrets: [ gcloud_auth ]
   environment:
+    ENABLE_REGISTRY: 'true'
     GCLOUD_AUTH:
       from_secret: gcloud_auth
   commands:
