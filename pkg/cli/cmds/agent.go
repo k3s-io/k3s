@@ -20,8 +20,8 @@ type Agent struct {
 	LBServerPort             int
 	ResolvConf               string
 	DataDir                  string
-	NodeIP                   string
-	NodeExternalIP           string
+	NodeIP                   cli.StringSlice
+	NodeExternalIP           cli.StringSlice
 	NodeName                 string
 	PauseImage               string
 	Snapshotter              string
@@ -52,15 +52,15 @@ type AgentShared struct {
 var (
 	appName     = filepath.Base(os.Args[0])
 	AgentConfig Agent
-	NodeIPFlag  = cli.StringFlag{
-		Name:        "node-ip,i",
-		Usage:       "(agent/networking) IP address to advertise for node",
-		Destination: &AgentConfig.NodeIP,
+	NodeIPFlag  = cli.StringSliceFlag{
+		Name:  "node-ip,i",
+		Usage: "(agent/networking) IPv4/IPv6 addresses to advertise for node",
+		Value: &AgentConfig.NodeIP,
 	}
-	NodeExternalIPFlag = cli.StringFlag{
-		Name:        "node-external-ip",
-		Usage:       "(agent/networking) External IP address to advertise for node",
-		Destination: &AgentConfig.NodeExternalIP,
+	NodeExternalIPFlag = cli.StringSliceFlag{
+		Name:  "node-external-ip",
+		Usage: "(agent/networking) IPv4/IPv6 external IP addresses to advertise for node",
+		Value: &AgentConfig.NodeExternalIP,
 	}
 	NodeNameFlag = cli.StringFlag{
 		Name:        "node-name",

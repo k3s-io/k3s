@@ -27,6 +27,7 @@ import (
 	"github.com/rancher/k3s/pkg/clientaccess"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/daemons/control/deps"
+	"github.com/rancher/k3s/pkg/util"
 	"github.com/rancher/k3s/pkg/version"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/json"
@@ -41,7 +42,7 @@ func Get(ctx context.Context, agent cmds.Agent, proxy proxy.Proxy) *config.Node 
 	for {
 		agentConfig, err := get(ctx, &agent, proxy)
 		if err != nil {
-			logrus.Errorf("Failed to retrieve agent config: %v", err)
+			logrus.Errorf("Failed to configure agent: %v", err)
 			select {
 			case <-time.After(5 * time.Second):
 				continue
@@ -64,7 +65,7 @@ func Request(path string, info *clientaccess.Info, requester HTTPRequester) ([]b
 	return requester(u.String(), clientaccess.GetHTTPClient(info.CACerts), info.Username, info.Password)
 }
 
-func getNodeNamedCrt(nodeName, nodeIP, nodePasswordFile string) HTTPRequester {
+func getNodeNamedCrt(nodeName string, nodeIPs []sysnet.IP, nodePasswordFile string) HTTPRequester {
 	return func(u string, client *http.Client, username, password string) ([]byte, error) {
 		req, err := http.NewRequest(http.MethodGet, u, nil)
 		if err != nil {
@@ -81,7 +82,7 @@ func getNodeNamedCrt(nodeName, nodeIP, nodePasswordFile string) HTTPRequester {
 			return nil, err
 		}
 		req.Header.Set(version.Program+"-Node-Password", nodePassword)
-		req.Header.Set(version.Program+"-Node-IP", nodeIP)
+		req.Header.Set(version.Program+"-Node-IP", util.JoinIPs(nodeIPs))
 
 		resp, err := client.Do(req)
 		if err != nil {
@@ -144,8 +145,8 @@ func upgradeOldNodePasswordPath(oldNodePasswordFile, newNodePasswordFile string)
 	}
 }
 
-func getServingCert(nodeName, nodeIP, servingCertFile, servingKeyFile, nodePasswordFile string, info *clientaccess.Info) (*tls.Certificate, error) {
-	servingCert, err := Request("/v1-"+version.Program+"/serving-kubelet.crt", info, getNodeNamedCrt(nodeName, nodeIP, nodePasswordFile))
+func getServingCert(nodeName string, nodeIPs []sysnet.IP, servingCertFile, servingKeyFile, nodePasswordFile string, info *clientaccess.Info) (*tls.Certificate, error) {
+	servingCert, err := Request("/v1-"+version.Program+"/serving-kubelet.crt", info, getNodeNamedCrt(nodeName, nodeIPs, nodePasswordFile))
 	if err != nil {
 		return nil, err
 	}
@@ -207,9 +208,9 @@ func splitCertKeyPEM(bytes []byte) (certPem []byte, keyPem []byte) {
 	return
 }
 
-func getNodeNamedHostFile(filename, keyFile, nodeName, nodeIP, nodePasswordFile string, info *clientaccess.Info) error {
+func getNodeNamedHostFile(filename, keyFile, nodeName string, nodeIPs []sysnet.IP, nodePasswordFile string, info *clientaccess.Info) error {
 	basename := filepath.Base(filename)
-	fileBytes, err := Request("/v1-"+version.Program+"/"+basename, info, getNodeNamedCrt(nodeName, nodeIP, nodePasswordFile))
+	fileBytes, err := Request("/v1-"+version.Program+"/"+basename, info, getNodeNamedCrt(nodeName, nodeIPs, nodePasswordFile))
 	if err != nil {
 		return err
 	}
@@ -224,21 +225,31 @@ func getNodeNamedHostFile(filename, keyFile, nodeName, nodeIP, nodePasswordFile 
 	return nil
 }
 
-func getHostnameAndIP(info cmds.Agent) (string, string, error) {
-	ip := info.NodeIP
-	if ip == "" {
+func getHostnameAndIPs(info cmds.Agent) (string, []sysnet.IP, error) {
+	ips := []sysnet.IP{}
+	if len(info.NodeIP) == 0 {
 		hostIP, err := net.ChooseHostInterface()
 		if err != nil {
-			return "", "", err
+			return "", nil, err
 		}
-		ip = hostIP.String()
+		ips = append(ips, hostIP)
+	} else {
+		for _, hostIP := range info.NodeIP {
+			for _, v := range strings.Split(hostIP, ",") {
+				ip := sysnet.ParseIP(v)
+				if ip == nil {
+					return "", nil, fmt.Errorf("invalid node-ip %s", v)
+				}
+				ips = append(ips, ip)
+			}
+		}
 	}
 
 	name := info.NodeName
 	if name == "" {
 		hostname, err := os.Hostname()
 		if err != nil {
-			return "", "", err
+			return "", nil, err
 		}
 		name = hostname
 	}
@@ -247,7 +258,7 @@ func getHostnameAndIP(info cmds.Agent) (string, string, error) {
 	// https://github.com/kubernetes/kubernetes/issues/71140
 	name = strings.ToLower(name)
 
-	return name, ip, nil
+	return name, ips, nil
 }
 
 func isValidResolvConf(resolvConfFile string) bool {
@@ -305,7 +316,7 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 
 	controlConfig, err := getConfig(info)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to retrieve configuration from server")
 	}
 
 	// If the supervisor and externally-facing apiserver are not on the same port, tell the proxy where to find the apiserver.
@@ -349,7 +360,7 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	newNodePasswordFile := filepath.Join(nodeConfigPath, "password")
 	upgradeOldNodePasswordPath(oldNodePasswordFile, newNodePasswordFile)
 
-	nodeName, nodeIP, err := getHostnameAndIP(*envInfo)
+	nodeName, nodeIPs, err := getHostnameAndIPs(*envInfo)
 	if err != nil {
 		return nil, err
 	}
@@ -364,14 +375,14 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 
 	os.Setenv("NODE_NAME", nodeName)
 
-	servingCert, err := getServingCert(nodeName, nodeIP, servingKubeletCert, servingKubeletKey, newNodePasswordFile, info)
+	servingCert, err := getServingCert(nodeName, nodeIPs, servingKubeletCert, servingKubeletKey, newNodePasswordFile, info)
 	if err != nil {
 		return nil, err
 	}
 
 	clientKubeletCert := filepath.Join(envInfo.DataDir, "agent", "client-kubelet.crt")
 	clientKubeletKey := filepath.Join(envInfo.DataDir, "agent", "client-kubelet.key")
-	if err := getNodeNamedHostFile(clientKubeletCert, clientKubeletKey, nodeName, nodeIP, newNodePasswordFile, info); err != nil {
+	if err := getNodeNamedHostFile(clientKubeletCert, clientKubeletKey, nodeName, nodeIPs, newNodePasswordFile, info); err != nil {
 		return nil, err
 	}
 
@@ -411,10 +422,8 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	}
 	nodeConfig.FlannelIface = flannelIface
 	nodeConfig.Images = filepath.Join(envInfo.DataDir, "agent", "images")
-	nodeConfig.AgentConfig.NodeIP = nodeIP
 	nodeConfig.AgentConfig.NodeName = nodeName
 	nodeConfig.AgentConfig.NodeConfigPath = nodeConfigPath
-	nodeConfig.AgentConfig.NodeExternalIP = envInfo.NodeExternalIP
 	nodeConfig.AgentConfig.ServingKubeletCert = servingKubeletCert
 	nodeConfig.AgentConfig.ServingKubeletKey = servingKubeletKey
 	nodeConfig.AgentConfig.ClusterDNS = controlConfig.ClusterDNS
@@ -458,6 +467,32 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	nodeConfig.Containerd.Template = filepath.Join(envInfo.DataDir, "agent", "etc", "containerd", "config.toml.tmpl")
 	nodeConfig.Certificate = servingCert
 
+	nodeConfig.AgentConfig.NodeIPs = nodeIPs
+	nodeIP, err := util.GetFirst4(nodeIPs)
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot configure IPv4 node-ip")
+	}
+	nodeConfig.AgentConfig.NodeIP = nodeIP.String()
+
+	for _, externalIP := range envInfo.NodeExternalIP {
+		for _, v := range strings.Split(externalIP, ",") {
+			ip := sysnet.ParseIP(v)
+			if ip == nil {
+				return nil, fmt.Errorf("invalid node-external-ip %s", v)
+			}
+			nodeConfig.AgentConfig.NodeExternalIPs = append(nodeConfig.AgentConfig.NodeExternalIPs, ip)
+		}
+	}
+
+	// if configured, set NodeExternalIP to the first IPv4 address, for legacy clients
+	if len(nodeConfig.AgentConfig.NodeExternalIPs) > 0 {
+		nodeExternalIP, err := util.GetFirst4(nodeConfig.AgentConfig.NodeExternalIPs)
+		if err != nil {
+			return nil, errors.Wrap(err, "cannot configure IPv4 node-external-ip")
+		}
+		nodeConfig.AgentConfig.NodeExternalIP = nodeExternalIP.String()
+	}
+
 	if nodeConfig.FlannelBackend == config.FlannelBackendNone {
 		nodeConfig.NoFlannel = true
 	} else {
@@ -488,27 +523,35 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	}
 
 	if controlConfig.ClusterIPRange != nil {
-		nodeConfig.AgentConfig.ClusterCIDR = *controlConfig.ClusterIPRange
+		nodeConfig.AgentConfig.ClusterCIDR = controlConfig.ClusterIPRange
+		nodeConfig.AgentConfig.ClusterCIDRs = []*sysnet.IPNet{controlConfig.ClusterIPRange}
+	}
+
+	if len(controlConfig.ClusterIPRanges) > 0 {
+		nodeConfig.AgentConfig.ClusterCIDRs = controlConfig.ClusterIPRanges
 	}
 
 	if controlConfig.ServiceIPRange != nil {
-		nodeConfig.AgentConfig.ServiceCIDR = *controlConfig.ServiceIPRange
+		nodeConfig.AgentConfig.ServiceCIDR = controlConfig.ServiceIPRange
+		nodeConfig.AgentConfig.ServiceCIDRs = []*sysnet.IPNet{controlConfig.ServiceIPRange}
+	}
+
+	if len(controlConfig.ServiceIPRanges) > 0 {
+		nodeConfig.AgentConfig.ServiceCIDRs = controlConfig.ServiceIPRanges
 	}
 
 	if controlConfig.ServiceNodePortRange != nil {
 		nodeConfig.AgentConfig.ServiceNodePortRange = *controlConfig.ServiceNodePortRange
 	}
 
-	// Old versions of the server do not send enough information to correctly start the NPC. Users
-	// need to upgrade the server to at least the same version as the agent, or disable the NPC
-	// cluster-wide.
-	if controlConfig.DisableNPC == false && (controlConfig.ServiceIPRange == nil || controlConfig.ServiceNodePortRange == nil) {
-		return nil, fmt.Errorf("incompatible down-level server detected; servers must be upgraded to at least %s, or restarted with --disable-network-policy", version.Version)
+	if len(controlConfig.ClusterDNSs) == 0 {
+		nodeConfig.AgentConfig.ClusterDNSs = []sysnet.IP{controlConfig.ClusterDNS}
+	} else {
+		nodeConfig.AgentConfig.ClusterDNSs = controlConfig.ClusterDNSs
 	}
 
 	nodeConfig.AgentConfig.ExtraKubeletArgs = envInfo.ExtraKubeletArgs
 	nodeConfig.AgentConfig.ExtraKubeProxyArgs = envInfo.ExtraKubeProxyArgs
-
 	nodeConfig.AgentConfig.NodeTaints = envInfo.Taints
 	nodeConfig.AgentConfig.NodeLabels = envInfo.Labels
 	nodeConfig.AgentConfig.PrivateRegistry = envInfo.PrivateRegistry
@@ -519,6 +562,10 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	nodeConfig.AgentConfig.Rootless = envInfo.Rootless
 	nodeConfig.AgentConfig.PodManifests = filepath.Join(envInfo.DataDir, "agent", DefaultPodManifestPath)
 	nodeConfig.AgentConfig.ProtectKernelDefaults = envInfo.ProtectKernelDefaults
+
+	if err := validateNetworkConfig(nodeConfig); err != nil {
+		return nil, err
+	}
 
 	return nodeConfig, nil
 }
@@ -531,4 +578,16 @@ func getConfig(info *clientaccess.Info) (*config.Control, error) {
 
 	controlControl := &config.Control{}
 	return controlControl, json.Unmarshal(data, controlControl)
+}
+
+// validateNetworkConfig ensures that the network configuration values provided by the server make sense.
+func validateNetworkConfig(nodeConfig *config.Node) error {
+	// Old versions of the server do not send enough information to correctly start the NPC. Users
+	// need to upgrade the server to at least the same version as the agent, or disable the NPC
+	// cluster-wide.
+	if nodeConfig.AgentConfig.DisableNPC == false && (nodeConfig.AgentConfig.ServiceCIDR == nil || nodeConfig.AgentConfig.ServiceNodePortRange.Size == 0) {
+		return fmt.Errorf("incompatible down-level server detected; servers must be upgraded to at least %s, or restarted with --disable-network-policy", version.Version)
+	}
+
+	return nil
 }

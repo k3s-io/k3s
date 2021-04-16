@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto"
 	"crypto/x509"
+	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -153,8 +154,16 @@ func servingKubeletCert(server *config.Control, keyFile string, auth nodePassBoo
 		}
 
 		ips := []net.IP{net.ParseIP("127.0.0.1")}
+
 		if nodeIP := req.Header.Get(version.Program + "-Node-IP"); nodeIP != "" {
-			ips = append(ips, net.ParseIP(nodeIP))
+			for _, v := range strings.Split(nodeIP, ",") {
+				ip := net.ParseIP(v)
+				if ip == nil {
+					sendError(fmt.Errorf("invalid IP address %s", ip), resp)
+					return
+				}
+				ips = append(ips, ip)
+			}
 		}
 
 		cert, err := certutil.NewSignedCert(certutil.Config{

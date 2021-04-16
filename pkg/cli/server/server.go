@@ -20,6 +20,7 @@ import (
 	"github.com/rancher/k3s/pkg/rootless"
 	"github.com/rancher/k3s/pkg/server"
 	"github.com/rancher/k3s/pkg/token"
+	"github.com/rancher/k3s/pkg/util"
 	"github.com/rancher/k3s/pkg/version"
 	"github.com/rancher/wrangler/pkg/signals"
 	"github.com/sirupsen/logrus"
@@ -27,6 +28,7 @@ import (
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	kubeapiserverflag "k8s.io/component-base/cli/flag"
 	"k8s.io/kubernetes/pkg/controlplane"
+	utilsnet "k8s.io/utils/net"
 
 	_ "github.com/go-sql-driver/mysql" // ensure we have mysql
 	_ "github.com/lib/pq"              // ensure we have postgres
@@ -140,7 +142,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	serverConfig.ControlConfig.EtcdS3Folder = cfg.EtcdS3Folder
 
 	if cfg.ClusterResetRestorePath != "" && !cfg.ClusterReset {
-		return errors.New("invalid flag use. --cluster-reset required with --cluster-reset-restore-path")
+		return errors.New("invalid flag use; --cluster-reset required with --cluster-reset-restore-path")
 	}
 
 	// make sure components are disabled so we only perform a restore
@@ -161,7 +163,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	}
 
 	if serverConfig.ControlConfig.DisableETCD && serverConfig.ControlConfig.JoinURL == "" {
-		return errors.New("invalid flag use. --server required with --disable-etcd")
+		return errors.New("invalid flag use; --server is required with --disable-etcd")
 	}
 
 	if serverConfig.ControlConfig.DisableAPIServer {
@@ -174,50 +176,116 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		}
 	}
 
-	if cmds.AgentConfig.FlannelIface != "" && cmds.AgentConfig.NodeIP == "" {
-		cmds.AgentConfig.NodeIP = netutil.GetIPFromInterface(cmds.AgentConfig.FlannelIface)
+	if cmds.AgentConfig.FlannelIface != "" && len(cmds.AgentConfig.NodeIP) == 0 {
+		cmds.AgentConfig.NodeIP.Set(netutil.GetIPFromInterface(cmds.AgentConfig.FlannelIface))
 	}
-	if serverConfig.ControlConfig.PrivateIP == "" && cmds.AgentConfig.NodeIP != "" {
-		serverConfig.ControlConfig.PrivateIP = cmds.AgentConfig.NodeIP
+
+	if serverConfig.ControlConfig.PrivateIP == "" && len(cmds.AgentConfig.NodeIP) != 0 {
+		// ignoring the error here is fine since etcd will fall back to the interface's IPv4 address
+		serverConfig.ControlConfig.PrivateIP, _ = util.GetFirst4String(cmds.AgentConfig.NodeIP)
 	}
-	if serverConfig.ControlConfig.AdvertiseIP == "" && cmds.AgentConfig.NodeExternalIP != "" {
-		serverConfig.ControlConfig.AdvertiseIP = cmds.AgentConfig.NodeExternalIP
+
+	// if not set, try setting advertise-ip from agent node-external-ip
+	if serverConfig.ControlConfig.AdvertiseIP == "" && len(cmds.AgentConfig.NodeExternalIP) != 0 {
+		serverConfig.ControlConfig.AdvertiseIP, _ = util.GetFirst4String(cmds.AgentConfig.NodeExternalIP)
 	}
-	if serverConfig.ControlConfig.AdvertiseIP == "" && cmds.AgentConfig.NodeIP != "" {
-		serverConfig.ControlConfig.AdvertiseIP = cmds.AgentConfig.NodeIP
+
+	// if not set, try setting advertise-up from agent node-ip
+	if serverConfig.ControlConfig.AdvertiseIP == "" && len(cmds.AgentConfig.NodeIP) != 0 {
+		serverConfig.ControlConfig.AdvertiseIP, _ = util.GetFirst4String(cmds.AgentConfig.NodeIP)
 	}
+
+	// if we ended up with any advertise-ips, ensure they're added to the SAN list;
+	// note that kube-apiserver does not support dual-stack advertise-ip as of 1.21.0:
+	/// https://github.com/kubernetes/kubeadm/issues/1612#issuecomment-772583989
 	if serverConfig.ControlConfig.AdvertiseIP != "" {
 		serverConfig.ControlConfig.SANs = append(serverConfig.ControlConfig.SANs, serverConfig.ControlConfig.AdvertiseIP)
 	}
 
-	_, serverConfig.ControlConfig.ClusterIPRange, err = net.ParseCIDR(cfg.ClusterCIDR)
-	if err != nil {
-		return errors.Wrapf(err, "Invalid CIDR %s: %v", cfg.ClusterCIDR, err)
+	// configure ClusterIPRanges
+	if len(cmds.ServerConfig.ClusterCIDR) == 0 {
+		cmds.ServerConfig.ClusterCIDR.Set("10.42.0.0/16")
 	}
-	_, serverConfig.ControlConfig.ServiceIPRange, err = net.ParseCIDR(cfg.ServiceCIDR)
-	if err != nil {
-		return errors.Wrapf(err, "Invalid CIDR %s: %v", cfg.ServiceCIDR, err)
+	for _, cidr := range cmds.ServerConfig.ClusterCIDR {
+		for _, v := range strings.Split(cidr, ",") {
+			_, parsed, err := net.ParseCIDR(v)
+			if err != nil {
+				return errors.Wrapf(err, "invalid cluster-cidr %s", v)
+			}
+			serverConfig.ControlConfig.ClusterIPRanges = append(serverConfig.ControlConfig.ClusterIPRanges, parsed)
+		}
 	}
+
+	// set ClusterIPRange to the first IPv4 block, for legacy clients
+	clusterIPRange, err := util.GetFirst4Net(serverConfig.ControlConfig.ClusterIPRanges)
+	if err != nil {
+		return errors.Wrap(err, "cannot configure IPv4 cluster-cidr")
+	}
+	serverConfig.ControlConfig.ClusterIPRange = clusterIPRange
+
+	// configure ServiceIPRanges
+	if len(cmds.ServerConfig.ServiceCIDR) == 0 {
+		cmds.ServerConfig.ServiceCIDR.Set("10.43.0.0/16")
+	}
+	for _, cidr := range cmds.ServerConfig.ServiceCIDR {
+		for _, v := range strings.Split(cidr, ",") {
+			_, parsed, err := net.ParseCIDR(v)
+			if err != nil {
+				return errors.Wrapf(err, "invalid service-cidr %s", v)
+			}
+			serverConfig.ControlConfig.ServiceIPRanges = append(serverConfig.ControlConfig.ServiceIPRanges, parsed)
+		}
+	}
+
+	// set ServiceIPRange to the first IPv4 block, for legacy clients
+	serviceIPRange, err := util.GetFirst4Net(serverConfig.ControlConfig.ServiceIPRanges)
+	if err != nil {
+		return errors.Wrap(err, "cannot configure IPv4 service-cidr")
+	}
+	serverConfig.ControlConfig.ServiceIPRange = serviceIPRange
 
 	serverConfig.ControlConfig.ServiceNodePortRange, err = utilnet.ParsePortRange(cfg.ServiceNodePortRange)
 	if err != nil {
-		return errors.Wrapf(err, "Invalid port range %s: %v", cfg.ServiceNodePortRange, err)
+		return errors.Wrapf(err, "invalid port range %s", cfg.ServiceNodePortRange)
 	}
 
+	// the apiserver service does not yet support dual-stack operation
 	_, apiServerServiceIP, err := controlplane.ServiceIPRange(*serverConfig.ControlConfig.ServiceIPRange)
 	if err != nil {
 		return err
 	}
 	serverConfig.ControlConfig.SANs = append(serverConfig.ControlConfig.SANs, apiServerServiceIP.String())
 
-	// If cluster-dns CLI arg is not set, we set ClusterDNS address to be ServiceCIDR network + 10,
+	// If cluster-dns CLI arg is not set, we set ClusterDNS address to be the first IPv4 ServiceCIDR network + 10,
 	// i.e. when you set service-cidr to 192.168.0.0/16 and don't provide cluster-dns, it will be set to 192.168.0.10
-	if cfg.ClusterDNS == "" {
-		serverConfig.ControlConfig.ClusterDNS = make(net.IP, 4)
-		copy(serverConfig.ControlConfig.ClusterDNS, serverConfig.ControlConfig.ServiceIPRange.IP.To4())
-		serverConfig.ControlConfig.ClusterDNS[3] = 10
+	// If there are no IPv4 ServiceCIDRs, an error will be raised.
+	if len(cmds.ServerConfig.ClusterDNS) == 0 {
+		clusterDNS, err := utilsnet.GetIndexedIP(serverConfig.ControlConfig.ServiceIPRange, 10)
+		if err != nil {
+			return errors.Wrap(err, "cannot configure default cluster-dns address")
+		}
+		serverConfig.ControlConfig.ClusterDNS = clusterDNS
+		serverConfig.ControlConfig.ClusterDNSs = []net.IP{serverConfig.ControlConfig.ClusterDNS}
 	} else {
-		serverConfig.ControlConfig.ClusterDNS = net.ParseIP(cfg.ClusterDNS)
+		for _, ip := range cmds.ServerConfig.ClusterDNS {
+			for _, v := range strings.Split(ip, ",") {
+				parsed := net.ParseIP(v)
+				if parsed == nil {
+					return fmt.Errorf("invalid cluster-dns address %s", v)
+				}
+				serverConfig.ControlConfig.ClusterDNSs = append(serverConfig.ControlConfig.ClusterDNSs, parsed)
+			}
+		}
+		// Set ClusterDNS to the first IPv4 address, for legacy clients
+		clusterDNS, err := util.GetFirst4(serverConfig.ControlConfig.ClusterDNSs)
+		if err != nil {
+			return errors.Wrap(err, "cannot configure IPv4 cluster-dns address")
+		}
+		serverConfig.ControlConfig.ClusterDNS = clusterDNS
+	}
+
+	if err := validateNetworkConfiguration(serverConfig); err != nil {
+		return err
 	}
 
 	if cfg.DefaultLocalStoragePath == "" {
@@ -257,7 +325,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	tlsMinVersionArg := getArgValueFromList("tls-min-version", cfg.ExtraAPIArgs)
 	serverConfig.ControlConfig.TLSMinVersion, err = kubeapiserverflag.TLSVersion(tlsMinVersionArg)
 	if err != nil {
-		return errors.Wrap(err, "Invalid tls-min-version")
+		return errors.Wrap(err, "invalid tls-min-version")
 	}
 
 	serverConfig.StartupHooks = append(serverConfig.StartupHooks, cfg.StartupHooks...)
@@ -285,7 +353,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	}
 	serverConfig.ControlConfig.TLSCipherSuites, err = kubeapiserverflag.TLSCipherSuites(tlsCipherSuites)
 	if err != nil {
-		return errors.Wrap(err, "Invalid tls-cipher-suites")
+		return errors.Wrap(err, "invalid tls-cipher-suites")
 	}
 
 	logrus.Info("Starting " + version.Program + " " + app.App.Version)
@@ -351,6 +419,34 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		defer close(agentConfig.APIAddressCh)
 	}
 	return agent.Run(ctx, agentConfig)
+}
+
+// validateNetworkConfig ensures that the network configuration values make sense.
+func validateNetworkConfiguration(serverConfig server.Config) error {
+	// Dual-stack operation requires fairly extensive manual configuration at the moment - do some
+	// preflight checks to make sure that the user isn't trying to use flannel/npc, or trying to
+	// enable dual-stack DNS (which we don't currently support since it's not easy to template)
+	dualCluster, err := utilsnet.IsDualStackCIDRs(serverConfig.ControlConfig.ClusterIPRanges)
+	if err != nil {
+		return errors.Wrap(err, "failed to validate cluster-cidr")
+	}
+	dualService, err := utilsnet.IsDualStackCIDRs(serverConfig.ControlConfig.ServiceIPRanges)
+	if err != nil {
+		return errors.Wrap(err, "failed to validate service-cidr")
+	}
+	dualDNS, err := utilsnet.IsDualStackIPs(serverConfig.ControlConfig.ClusterDNSs)
+	if err != nil {
+		return errors.Wrap(err, "failed to validate cluster-dns")
+	}
+
+	if (serverConfig.ControlConfig.FlannelBackend != "none" || serverConfig.ControlConfig.DisableNPC == false) && (dualCluster || dualService) {
+		return errors.New("flannel CNI and network policy enforcement are not compatible with dual-stack operation; server must be restarted with --flannel-backend=none --disable-network-policy and an alternative CNI plugin deployed")
+	}
+	if dualDNS == true {
+		return errors.New("dual-stack cluster-dns is not supported")
+	}
+
+	return nil
 }
 
 func knownIPs(ips []string) []string {

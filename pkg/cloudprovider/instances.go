@@ -3,6 +3,7 @@ package cloudprovider
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/rancher/k3s/pkg/version"
@@ -13,9 +14,9 @@ import (
 )
 
 var (
-	InternalIPLabel = version.Program + ".io/internal-ip"
-	ExternalIPLabel = version.Program + ".io/external-ip"
-	HostnameLabel   = version.Program + ".io/hostname"
+	InternalIPKey = version.Program + ".io/internal-ip"
+	ExternalIPKey = version.Program + ".io/external-ip"
+	HostnameKey   = version.Program + ".io/hostname"
 )
 
 func (k *k3s) AddSSHKeyToAllInstances(ctx context.Context, user string, keyData []byte) error {
@@ -69,22 +70,32 @@ func (k *k3s) NodeAddresses(ctx context.Context, name types.NodeName) ([]corev1.
 		return nil, fmt.Errorf("Failed to find node %s: %v", name, err)
 	}
 	// check internal address
-	if node.Labels[InternalIPLabel] != "" {
-		addresses = append(addresses, corev1.NodeAddress{Type: corev1.NodeInternalIP, Address: node.Labels[InternalIPLabel]})
+	if address := node.Annotations[InternalIPKey]; address != "" {
+		for _, v := range strings.Split(address, ",") {
+			addresses = append(addresses, corev1.NodeAddress{Type: corev1.NodeInternalIP, Address: v})
+		}
+	} else if address = node.Labels[InternalIPKey]; address != "" {
+		addresses = append(addresses, corev1.NodeAddress{Type: corev1.NodeInternalIP, Address: address})
 	} else {
-		logrus.Infof("Couldn't find node internal ip label on node %s", name)
+		logrus.Infof("Couldn't find node internal ip annotation or label on node %s", name)
 	}
 
 	// check external address
-	if node.Labels[ExternalIPLabel] != "" {
-		addresses = append(addresses, corev1.NodeAddress{Type: corev1.NodeExternalIP, Address: node.Labels[ExternalIPLabel]})
+	if address := node.Annotations[ExternalIPKey]; address != "" {
+		for _, v := range strings.Split(address, ",") {
+			addresses = append(addresses, corev1.NodeAddress{Type: corev1.NodeExternalIP, Address: v})
+		}
+	} else if address = node.Labels[ExternalIPKey]; address != "" {
+		addresses = append(addresses, corev1.NodeAddress{Type: corev1.NodeExternalIP, Address: address})
 	}
 
 	// check hostname
-	if node.Labels[HostnameLabel] != "" {
-		addresses = append(addresses, corev1.NodeAddress{Type: corev1.NodeHostName, Address: node.Labels[HostnameLabel]})
+	if address := node.Annotations[HostnameKey]; address != "" {
+		addresses = append(addresses, corev1.NodeAddress{Type: corev1.NodeHostName, Address: address})
+	} else if address = node.Labels[HostnameKey]; address != "" {
+		addresses = append(addresses, corev1.NodeAddress{Type: corev1.NodeHostName, Address: address})
 	} else {
-		logrus.Infof("Couldn't find node hostname label on node %s", name)
+		logrus.Infof("Couldn't find node hostname annotation or label on node %s", name)
 	}
 
 	return addresses, nil

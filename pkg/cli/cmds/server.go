@@ -13,15 +13,15 @@ const (
 )
 
 type Server struct {
-	ClusterCIDR          string
+	ClusterCIDR          cli.StringSlice
 	AgentToken           string
 	AgentTokenFile       string
 	Token                string
 	TokenFile            string
 	ClusterSecret        string
-	ServiceCIDR          string
+	ServiceCIDR          cli.StringSlice
 	ServiceNodePortRange string
-	ClusterDNS           string
+	ClusterDNS           cli.StringSlice
 	ClusterDomain        string
 	// The port which kubectl clients can access k8s
 	HTTPSPort int
@@ -108,7 +108,7 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 			},
 			cli.StringFlag{
 				Name:        "advertise-address",
-				Usage:       "(listener) IP address that apiserver uses to advertise to members of the cluster (default: node-external-ip/node-ip)",
+				Usage:       "(listener) IPv4 address that apiserver uses to advertise to members of the cluster (default: node-external-ip/node-ip)",
 				Destination: &ServerConfig.AdvertiseIP,
 			},
 			cli.IntFlag{
@@ -118,7 +118,7 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 			},
 			cli.StringSliceFlag{
 				Name:  "tls-san",
-				Usage: "(listener) Add additional hostname or IP as a Subject Alternative Name in the TLS cert",
+				Usage: "(listener) Add additional hostname or IPv4/IPv6 address as a Subject Alternative Name in the TLS cert",
 				Value: &ServerConfig.TLSSan,
 			},
 			cli.StringFlag{
@@ -126,17 +126,15 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Usage:       "(data) Folder to hold state default /var/lib/rancher/" + version.Program + " or ${HOME}/.rancher/" + version.Program + " if not root",
 				Destination: &ServerConfig.DataDir,
 			},
-			cli.StringFlag{
-				Name:        "cluster-cidr",
-				Usage:       "(networking) Network CIDR to use for pod IPs",
-				Destination: &ServerConfig.ClusterCIDR,
-				Value:       "10.42.0.0/16",
+			cli.StringSliceFlag{
+				Name:  "cluster-cidr",
+				Usage: "(networking) IPv4/IPv6 network CIDRs to use for pod IPs (default: 10.42.0.0/16)",
+				Value: &ServerConfig.ClusterCIDR,
 			},
-			cli.StringFlag{
-				Name:        "service-cidr",
-				Usage:       "(networking) Network CIDR to use for services IPs",
-				Destination: &ServerConfig.ServiceCIDR,
-				Value:       "10.43.0.0/16",
+			cli.StringSliceFlag{
+				Name:  "service-cidr",
+				Usage: "(networking) IPv4/IPv6 network CIDRs to use for service IPs (default: 10.43.0.0/16)",
+				Value: &ServerConfig.ServiceCIDR,
 			},
 			cli.StringFlag{
 				Name:        "service-node-port-range",
@@ -144,11 +142,10 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Destination: &ServerConfig.ServiceNodePortRange,
 				Value:       "30000-32767",
 			},
-			cli.StringFlag{
-				Name:        "cluster-dns",
-				Usage:       "(networking) Cluster IP for coredns service. Should be in your service-cidr range (default: 10.43.0.10)",
-				Destination: &ServerConfig.ClusterDNS,
-				Value:       "",
+			cli.StringSliceFlag{
+				Name:  "cluster-dns",
+				Usage: "(networking) IPv4/IPv6 Cluster IPs for coredns service. Should be in your service-cidr range (default: 10.43.0.10)",
+				Value: &ServerConfig.ClusterDNS,
 			},
 			cli.StringFlag{
 				Name:        "cluster-domain",

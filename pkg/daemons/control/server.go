@@ -16,6 +16,7 @@ import (
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/daemons/control/deps"
 	"github.com/rancher/k3s/pkg/daemons/executor"
+	util2 "github.com/rancher/k3s/pkg/util"
 	"github.com/rancher/k3s/pkg/version"
 	"github.com/rancher/wrangler-api/pkg/generated/controllers/rbac"
 	"github.com/sirupsen/logrus"
@@ -100,7 +101,7 @@ func controllerManager(cfg *config.Control, runtime *config.ControlRuntime) erro
 		"kubeconfig":                       runtime.KubeConfigController,
 		"service-account-private-key-file": runtime.ServiceKey,
 		"allocate-node-cidrs":              "true",
-		"cluster-cidr":                     cfg.ClusterIPRange.String(),
+		"cluster-cidr":                     util2.JoinIPNets(cfg.ClusterIPRanges),
 		"root-ca-file":                     runtime.ServerCA,
 		"port":                             "10252",
 		"profiling":                        "false",
@@ -155,7 +156,7 @@ func apiServer(ctx context.Context, cfg *config.Control, runtime *config.Control
 	argsMap["allow-privileged"] = "true"
 	argsMap["authorization-mode"] = strings.Join([]string{modes.ModeNode, modes.ModeRBAC}, ",")
 	argsMap["service-account-signing-key-file"] = runtime.ServiceKey
-	argsMap["service-cluster-ip-range"] = cfg.ServiceIPRange.String()
+	argsMap["service-cluster-ip-range"] = util2.JoinIPNets(cfg.ServiceIPRanges)
 	argsMap["service-node-port-range"] = cfg.ServiceNodePortRange.String()
 	argsMap["advertise-port"] = strconv.Itoa(cfg.AdvertisePort)
 	if cfg.AdvertiseIP != "" {
@@ -360,7 +361,7 @@ func cloudControllerManager(ctx context.Context, cfg *config.Control, runtime *c
 
 	ccmOptions.KubeCloudShared.AllocateNodeCIDRs = true
 	ccmOptions.KubeCloudShared.CloudProvider.Name = version.Program
-	ccmOptions.KubeCloudShared.ClusterCIDR = cfg.ClusterIPRange.String()
+	ccmOptions.KubeCloudShared.ClusterCIDR = util2.JoinIPNets(cfg.ClusterIPRanges)
 	ccmOptions.KubeCloudShared.ConfigureCloudRoutes = false
 	ccmOptions.Kubeconfig = runtime.KubeConfigCloudController
 	ccmOptions.NodeStatusUpdateFrequency = metav1.Duration{Duration: 1 * time.Minute}

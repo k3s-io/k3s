@@ -32,6 +32,7 @@ func Configure() {
 	loadKernelModule("nf_conntrack")
 	loadKernelModule("br_netfilter")
 	loadKernelModule("iptable_nat")
+	loadKernelModule("ip6table_nat")
 
 	// Kernel is inconsistent about how devconf is configured for
 	// new network namespaces between ipv4 and ipv6. Make sure to

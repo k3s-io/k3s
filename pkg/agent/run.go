@@ -23,11 +23,12 @@ import (
 	"github.com/rancher/k3s/pkg/agent/tunnel"
 	"github.com/rancher/k3s/pkg/cli/cmds"
 	"github.com/rancher/k3s/pkg/clientaccess"
+	cp "github.com/rancher/k3s/pkg/cloudprovider"
 	"github.com/rancher/k3s/pkg/daemons/agent"
 	daemonconfig "github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/nodeconfig"
 	"github.com/rancher/k3s/pkg/rootless"
-	"github.com/rancher/k3s/pkg/version"
+	"github.com/rancher/k3s/pkg/util"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -36,12 +37,6 @@ import (
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/controller-manager/app"
-)
-
-var (
-	InternalIPLabel = version.Program + ".io/internal-ip"
-	ExternalIPLabel = version.Program + ".io/external-ip"
-	HostnameLabel   = version.Program + ".io/hostname"
 )
 
 const (
@@ -231,22 +226,30 @@ func configureNode(ctx context.Context, agentConfig *daemonconfig.Agent, nodes v
 			continue
 		}
 
-		newLabels, updateMutables := updateMutableLabels(agentConfig, node.Labels)
+		updateNode := false
+		if labels, changed := updateMutableLabels(agentConfig, node.Labels); changed {
+			node.Labels = labels
+			updateNode = true
+		}
 
-		updateAddresses := !agentConfig.DisableCCM
-		if updateAddresses {
-			newLabels, updateAddresses = updateAddressLabels(agentConfig, newLabels)
+		if !agentConfig.DisableCCM {
+			if annotations, changed := updateAddressAnnotations(agentConfig, node.Annotations); changed {
+				node.Annotations = annotations
+				updateNode = true
+			}
+			if labels, changed := updateLegacyAddressLabels(agentConfig, node.Labels); changed {
+				node.Labels = labels
+				updateNode = true
+			}
 		}
 
 		// inject node config
-		updateNode, err := nodeconfig.SetNodeConfigAnnotations(node)
-		if err != nil {
+		if changed, err := nodeconfig.SetNodeConfigAnnotations(node); err != nil {
 			return err
-		}
-		if updateAddresses || updateMutables {
-			node.Labels = newLabels
+		} else if changed {
 			updateNode = true
 		}
+
 		if updateNode {
 			if _, err := nodes.Update(ctx, node, metav1.UpdateOptions{}); err != nil {
 				logrus.Infof("Failed to update node %s: %v", agentConfig.NodeName, err)
@@ -286,18 +289,36 @@ func updateMutableLabels(agentConfig *daemonconfig.Agent, nodeLabels map[string]
 	return result, !equality.Semantic.DeepEqual(nodeLabels, result)
 }
 
-func updateAddressLabels(agentConfig *daemonconfig.Agent, nodeLabels map[string]string) (map[string]string, bool) {
+func updateLegacyAddressLabels(agentConfig *daemonconfig.Agent, nodeLabels map[string]string) (map[string]string, bool) {
+	ls := labels.Set(nodeLabels)
+	if ls.Has(cp.InternalIPKey) || ls.Has(cp.HostnameKey) {
+		result := map[string]string{
+			cp.InternalIPKey: agentConfig.NodeIP,
+			cp.HostnameKey:   agentConfig.NodeName,
+		}
+
+		if agentConfig.NodeExternalIP != "" {
+			result[cp.ExternalIPKey] = agentConfig.NodeExternalIP
+		}
+
+		result = labels.Merge(nodeLabels, result)
+		return result, !equality.Semantic.DeepEqual(nodeLabels, result)
+	}
+	return nil, false
+}
+
+func updateAddressAnnotations(agentConfig *daemonconfig.Agent, nodeAnnotations map[string]string) (map[string]string, bool) {
 	result := map[string]string{
-		InternalIPLabel: agentConfig.NodeIP,
-		HostnameLabel:   agentConfig.NodeName,
+		cp.InternalIPKey: util.JoinIPs(agentConfig.NodeIPs),
+		cp.HostnameKey:   agentConfig.NodeName,
 	}
 
 	if agentConfig.NodeExternalIP != "" {
-		result[ExternalIPLabel] = agentConfig.NodeExternalIP
+		result[cp.ExternalIPKey] = util.JoinIPs(agentConfig.NodeExternalIPs)
 	}
 
-	result = labels.Merge(nodeLabels, result)
-	return result, !equality.Semantic.DeepEqual(nodeLabels, result)
+	result = labels.Merge(nodeAnnotations, result)
+	return result, !equality.Semantic.DeepEqual(nodeAnnotations, result)
 }
 
 // setupTunnelAndRunAgent should start the setup tunnel before starting kubelet and kubeproxy

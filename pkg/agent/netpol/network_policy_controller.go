@@ -592,7 +592,7 @@ func NewNetworkPolicyController(clientset kubernetes.Interface,
 	// be up to date with all of the policy changes from any enqueued request after that
 	npc.fullSyncRequestChan = make(chan struct{}, 1)
 
-	npc.serviceClusterIPRange = config.AgentConfig.ServiceCIDR
+	npc.serviceClusterIPRange = *config.AgentConfig.ServiceCIDR
 	npc.serviceNodePortRange = strings.ReplaceAll(config.AgentConfig.ServiceNodePortRange.String(), "-", ":")
 	npc.syncPeriod = defaultSyncPeriod
 

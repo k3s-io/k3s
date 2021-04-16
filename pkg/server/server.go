@@ -435,8 +435,8 @@ func setNoProxyEnv(config *config.Control) error {
 	envList = append(envList,
 		".svc",
 		"."+config.ClusterDomain,
-		config.ClusterIPRange.String(),
-		config.ServiceIPRange.String(),
+		util.JoinIPNets(config.ClusterIPRanges),
+		util.JoinIPNets(config.ServiceIPRanges),
 	)
 	os.Unsetenv("no_proxy")
 	return os.Setenv("NO_PROXY", strings.Join(envList, ","))
