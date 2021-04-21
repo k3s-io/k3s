@@ -118,7 +118,7 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 			},
 			cli.StringSliceFlag{
 				Name:  "tls-san",
-				Usage: "(listener) Add additional hostname or IPv4/IPv6 address as a Subject Alternative Name in the TLS cert",
+				Usage: "(listener) Add additional hostnames or IPv4/IPv6 addresses as Subject Alternative Names on the server TLS cert",
 				Value: &ServerConfig.TLSSan,
 			},
 			cli.StringFlag{
@@ -144,7 +144,7 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 			},
 			cli.StringSliceFlag{
 				Name:  "cluster-dns",
-				Usage: "(networking) IPv4/IPv6 Cluster IPs for coredns service. Should be in your service-cidr range (default: 10.43.0.10)",
+				Usage: "(networking) IPv4 Cluster IP for coredns service. Should be in your service-cidr range (default: 10.43.0.10)",
 				Value: &ServerConfig.ClusterDNS,
 			},
 			cli.StringFlag{

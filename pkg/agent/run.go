@@ -2,7 +2,6 @@ package agent
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/url"
@@ -14,6 +13,7 @@ import (
 	"github.com/containerd/cgroups"
 	cgroupsv2 "github.com/containerd/cgroups/v2"
 	systemd "github.com/coreos/go-systemd/daemon"
+	"github.com/pkg/errors"
 	"github.com/rancher/k3s/pkg/agent/config"
 	"github.com/rancher/k3s/pkg/agent/containerd"
 	"github.com/rancher/k3s/pkg/agent/flannel"
@@ -37,6 +37,7 @@ import (
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/controller-manager/app"
+	utilsnet "k8s.io/utils/net"
 )
 
 const (
@@ -70,6 +71,21 @@ func setupCriCtlConfig(cfg cmds.Agent, nodeConfig *daemonconfig.Node) error {
 
 func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 	nodeConfig := config.Get(ctx, cfg, proxy)
+
+	dualCluster, err := utilsnet.IsDualStackCIDRs(nodeConfig.AgentConfig.ClusterCIDRs)
+	if err != nil {
+		return errors.Wrap(err, "failed to validate cluster-cidr")
+	}
+	dualService, err := utilsnet.IsDualStackCIDRs(nodeConfig.AgentConfig.ServiceCIDRs)
+	if err != nil {
+		return errors.Wrap(err, "failed to validate service-cidr")
+	}
+	dualNode, err := utilsnet.IsDualStackIPs(nodeConfig.AgentConfig.NodeIPs)
+	if err != nil {
+		return errors.Wrap(err, "failed to validate node-ip")
+	}
+
+	syssetup.Configure(dualCluster || dualService || dualNode)
 
 	if err := setupCriCtlConfig(cfg, nodeConfig); err != nil {
 		return err
@@ -130,7 +146,6 @@ func Run(ctx context.Context, cfg cmds.Agent) error {
 	if err := validate(); err != nil {
 		return err
 	}
-	syssetup.Configure()
 
 	if cfg.Rootless && !cfg.RootlessAlreadyUnshared {
 		if err := rootless.Rootless(cfg.DataDir); err != nil {

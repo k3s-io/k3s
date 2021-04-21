@@ -27,20 +27,24 @@ func enableSystemControl(file string) {
 	}
 }
 
-func Configure() {
+func Configure(enableIPv6 bool) {
 	loadKernelModule("overlay")
 	loadKernelModule("nf_conntrack")
 	loadKernelModule("br_netfilter")
 	loadKernelModule("iptable_nat")
-	loadKernelModule("ip6table_nat")
+	if enableIPv6 {
+		loadKernelModule("ip6table_nat")
+	}
 
 	// Kernel is inconsistent about how devconf is configured for
 	// new network namespaces between ipv4 and ipv6. Make sure to
-	// enable forwarding on all and default for both ipv4 and ipv8.
+	// enable forwarding on all and default for both ipv4 and ipv6.
 	enableSystemControl("/proc/sys/net/ipv4/conf/all/forwarding")
 	enableSystemControl("/proc/sys/net/ipv4/conf/default/forwarding")
-	enableSystemControl("/proc/sys/net/ipv6/conf/all/forwarding")
-	enableSystemControl("/proc/sys/net/ipv6/conf/default/forwarding")
 	enableSystemControl("/proc/sys/net/bridge/bridge-nf-call-iptables")
-	enableSystemControl("/proc/sys/net/bridge/bridge-nf-call-ip6tables")
+	if enableIPv6 {
+		enableSystemControl("/proc/sys/net/ipv6/conf/all/forwarding")
+		enableSystemControl("/proc/sys/net/ipv6/conf/default/forwarding")
+		enableSystemControl("/proc/sys/net/bridge/bridge-nf-call-ip6tables")
+	}
 }
