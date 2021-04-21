@@ -50,8 +50,8 @@ func Run(ctx *cli.Context) error {
 		return fmt.Errorf("--server is required")
 	}
 
-	if cmds.AgentConfig.FlannelIface != "" && cmds.AgentConfig.NodeIP == "" {
-		cmds.AgentConfig.NodeIP = netutil.GetIPFromInterface(cmds.AgentConfig.FlannelIface)
+	if cmds.AgentConfig.FlannelIface != "" && len(cmds.AgentConfig.NodeIP) == 0 {
+		cmds.AgentConfig.NodeIP.Set(netutil.GetIPFromInterface(cmds.AgentConfig.FlannelIface))
 	}
 
 	logrus.Info("Starting " + version.Program + " agent " + ctx.App.Version)

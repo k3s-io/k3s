@@ -253,15 +253,17 @@ func testForMissingOrUnwanted(t *testing.T, targetMsg string, got []podInfo, wan
 	}
 }
 
-func newMinimalNodeConfig(clusterIPCIDR string, nodePortRange string, hostNameOverride string, externalIPs []string) *config.Node {
+func newMinimalNodeConfig(serviceIPCIDR string, nodePortRange string, hostNameOverride string, externalIPs []string) *config.Node {
 	nodeConfig := &config.Node{AgentConfig: config.Agent{}}
 
-	if clusterIPCIDR != "" {
-		_, cidr, err := net.ParseCIDR(clusterIPCIDR)
+	if serviceIPCIDR != "" {
+		_, cidr, err := net.ParseCIDR(serviceIPCIDR)
 		if err != nil {
 			panic("failed to get parse --service-cluster-ip-range parameter: " + err.Error())
 		}
-		nodeConfig.AgentConfig.ClusterCIDR = *cidr
+		nodeConfig.AgentConfig.ServiceCIDR = cidr
+	} else {
+		nodeConfig.AgentConfig.ServiceCIDR = &net.IPNet{}
 	}
 	if nodePortRange != "" {
 		portRange, err := utilnet.ParsePortRange(nodePortRange)

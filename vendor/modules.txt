@@ -3053,6 +3053,7 @@ k8s.io/metrics/pkg/client/external_metrics
 # k8s.io/mount-utils v0.0.0 => github.com/k3s-io/kubernetes/staging/src/k8s.io/mount-utils v1.21.0-k3s1
 k8s.io/mount-utils
 # k8s.io/utils v0.0.0-20201110183641-67b214c5f920
+## explicit
 k8s.io/utils/buffer
 k8s.io/utils/clock
 k8s.io/utils/exec

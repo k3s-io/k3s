@@ -13,6 +13,7 @@ import (
 	"github.com/opencontainers/runc/libcontainer/system"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/daemons/executor"
+	"github.com/rancher/k3s/pkg/util"
 	"github.com/rancher/k3s/pkg/version"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
@@ -47,7 +48,7 @@ func startKubeProxy(cfg *config.Agent) error {
 		"proxy-mode":           "iptables",
 		"healthz-bind-address": "127.0.0.1",
 		"kubeconfig":           cfg.KubeConfigKubeProxy,
-		"cluster-cidr":         cfg.ClusterCIDR.String(),
+		"cluster-cidr":         util.JoinIPNets(cfg.ClusterCIDRs),
 	}
 	if cfg.NodeName != "" {
 		argsMap["hostname-override"] = cfg.NodeName
@@ -94,7 +95,7 @@ func startKubelet(cfg *config.Agent) error {
 		argsMap["network-plugin"] = "cni"
 	}
 	if len(cfg.ClusterDNS) > 0 {
-		argsMap["cluster-dns"] = cfg.ClusterDNS.String()
+		argsMap["cluster-dns"] = util.JoinIPs(cfg.ClusterDNSs)
 	}
 	if cfg.ResolvConf != "" {
 		argsMap["resolv-conf"] = cfg.ResolvConf
