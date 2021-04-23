@@ -35,7 +35,7 @@ K3s bundles the following technologies together into a single cohesive distribut
 * [Traefik](https://containo.us/traefik/) for ingress
 * [Klipper-lb](https://github.com/k3s-io/klipper-lb) as an embedded service loadbalancer provider
 * [Kube-router](https://www.kube-router.io/) for network policy
-* [Helm-controller](https://github.com/k3s-io/helm-controller) to allow Customer Resource Definition (CRD) driven deployment of helm manifests
+* [Helm-controller](https://github.com/k3s-io/helm-controller) to allow Custom Resource Definition (CRD) driven deployment of helm manifests
 * [Kine](https://github.com/k3s-io/kine) as a datastore shim that allows etcd to be replaced with other databases
 * [Local-path-provisioner](https://github.com/rancher/local-path-provisioner) for provisioning volumes using local storage
 * [Host utilities](https://github.com/k3s-io/k3s-root) such as iptables/nftables, ebtables, ethtool, & socat
