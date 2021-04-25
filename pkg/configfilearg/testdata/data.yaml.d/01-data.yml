@@ -5,3 +5,10 @@ a-slice:
 - "2"
 - ""
 - three
+b-string: one
+c-slice:
+- one
+- two
+d-slice:
+- one
+- two
