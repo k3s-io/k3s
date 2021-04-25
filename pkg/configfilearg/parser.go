@@ -142,9 +142,12 @@ func readConfigFile(file string) (result []string, _ error) {
 		files = append([]string{file}, files...)
 	}
 
-	keySeen := map[string]bool{}
-	for i := len(files) - 1; i >= 0; i-- {
-		file := files[i]
+	var (
+		keySeen  = map[string]bool{}
+		keyOrder []string
+		values   = map[string]interface{}{}
+	)
+	for _, file := range files {
 		bytes, err := readConfigFileData(file)
 		if err != nil {
 			return nil, err
@@ -157,28 +160,56 @@ func readConfigFile(file string) (result []string, _ error) {
 
 		for _, i := range data {
 			k, v := convert.ToString(i.Key), i.Value
-			if keySeen[k] {
-				continue
-			}
-			keySeen[k] = true
+			isAppend := strings.HasSuffix(k, "+")
+			k = strings.TrimSuffix(k, "+")
 
-			prefix := "--"
-			if len(k) == 1 {
-				prefix = "-"
+			if !keySeen[k] {
+				keySeen[k] = true
+				keyOrder = append(keyOrder, k)
 			}
 
-			if slice, ok := v.([]interface{}); ok {
-				for _, v := range slice {
-					result = append(result, prefix+k+"="+convert.ToString(v))
-				}
+			if oldValue, ok := values[k]; ok && isAppend {
+				values[k] = append(toSlice(oldValue), toSlice(v)...)
 			} else {
-				str := convert.ToString(v)
-				result = append(result, prefix+k+"="+str)
+				values[k] = v
 			}
 		}
 	}
 
+	for _, k := range keyOrder {
+		v := values[k]
+
+		prefix := "--"
+		if len(k) == 1 {
+			prefix = "-"
+		}
+
+		if slice, ok := v.([]interface{}); ok {
+			for _, v := range slice {
+				result = append(result, prefix+k+"="+convert.ToString(v))
+			}
+		} else {
+			str := convert.ToString(v)
+			result = append(result, prefix+k+"="+str)
+		}
+	}
+
 	return
+}
+
+func toSlice(v interface{}) []interface{} {
+	switch k := v.(type) {
+	case string:
+		return []interface{}{k}
+	case []interface{}:
+		return k
+	default:
+		str := strings.TrimSpace(convert.ToString(v))
+		if str == "" {
+			return nil
+		}
+		return []interface{}{str}
+	}
 }
 
 func readConfigFileData(file string) ([]byte, error) {

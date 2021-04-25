@@ -160,6 +160,15 @@ func TestParse(t *testing.T) {
 		"-c=b",
 		"--isfalse=false",
 		"--islast=true",
+		"--b-string=one",
+		"--b-string=two",
+		"--c-slice=one",
+		"--c-slice=two",
+		"--c-slice=three",
+		"--d-slice=three",
+		"--d-slice=four",
+		"--e-slice=one",
+		"--e-slice=two",
 	}
 
 	defParser := Parser{
@@ -224,9 +233,17 @@ func TestParse(t *testing.T) {
 				FlagNames:     []string{"-c", "--config"},
 				DefaultConfig: "missing",
 			},
-			input:  []string{"before", "server", "before", "-c", "./testdata/data.yaml.d/02-data.yaml", "after"},
-			output: []string{"before", "server", "--foo-bar=bar-foo", "before", "-c", "./testdata/data.yaml.d/02-data.yaml", "after"},
-			what:   "read single config file",
+			input: []string{"before", "server", "before", "-c", "./testdata/data.yaml.d/02-data.yaml", "after"},
+			output: []string{"before", "server",
+				"--foo-bar=bar-foo",
+				"--b-string=two",
+				"--c-slice=three",
+				"--d-slice=three",
+				"--d-slice=four",
+				"--e-slice=one",
+				"--e-slice=two",
+				"before", "-c", "./testdata/data.yaml.d/02-data.yaml", "after"},
+			what: "read single config file",
 		},
 	}
 
