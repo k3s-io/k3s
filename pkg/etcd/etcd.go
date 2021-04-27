@@ -18,6 +18,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/minio/minio-go/v7"
 	"github.com/pkg/errors"
 	certutil "github.com/rancher/dynamiclistener/cert"
 	"github.com/rancher/k3s/pkg/clientaccess"
@@ -853,7 +854,66 @@ func (e *ETCD) Snapshot(ctx context.Context, config *config.Control) error {
 		}
 	}
 
+	snapshots, err := e.listSnapshots(ctx, snapshotDir)
+	if err != nil {
+		return err
+	}
+
+	logrus.Warnf("%#v\n", snapshots)
+
 	return nil
+}
+
+// snapshotFile represents a single snapshot and it's
+// metadata.
+type snapshotFile struct {
+	Name      string `json:"name"`
+	CreatedAt string `json:"createdAt"`
+	Size      int64  `json:"size"`
+}
+
+// listSnapshots provides a list of the currently stored
+// snapshots on disk or in S3 along with their relevant
+// metadata.
+func (e *ETCD) listSnapshots(ctx context.Context, snapshotDir string) ([]snapshotFile, error) {
+	var snapshots []snapshotFile
+
+	if e.config.EtcdS3 {
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+
+		objects := e.s3.client.ListObjects(ctx, e.config.EtcdS3BucketName, minio.ListObjectsOptions{
+			Prefix: e.s3.snapshotPrefix(),
+		})
+
+		for obj := range objects {
+			if obj.Err != nil {
+				return nil, obj.Err
+			}
+			snapshots = append(snapshots, snapshotFile{
+				Name:      obj.Key,
+				CreatedAt: obj.LastModified.String(),
+				Size:      obj.Size,
+			})
+		}
+
+		return snapshots, nil
+	}
+
+	files, err := ioutil.ReadDir(snapshotDir)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, f := range files {
+		snapshots = append(snapshots, snapshotFile{
+			Name:      f.Name(),
+			CreatedAt: f.ModTime().String(),
+			Size:      f.Size(),
+		})
+	}
+
+	return snapshots, nil
 }
 
 // setSnapshotFunction schedules snapshots at the configured interval
