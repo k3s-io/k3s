@@ -15,7 +15,6 @@ if [ -f /sys/fs/cgroup/cgroup.controllers ]; then
   # otherwise writing subtree_control fails with EBUSY.
   mkdir -p /sys/fs/cgroup/init
   echo 1 > /sys/fs/cgroup/init/cgroup.procs
-  sleep 3
   # enable controllers
   sed -e 's/ / +/g' -e 's/^/+/' <"/sys/fs/cgroup/cgroup.controllers" >"/sys/fs/cgroup/cgroup.subtree_control"
 fi
