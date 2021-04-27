@@ -22,6 +22,9 @@ set -e
 #   - INSTALL_K3S_SKIP_DOWNLOAD
 #     If set to true will not download k3s hash or binary.
 #
+#   - INSTALL_K3S_FORCE_RESTART
+#     If set to true will always restart the K3s service
+#
 #   - INSTALL_K3S_SYMLINK
 #     If set to 'skip' will not create symlinks, 'force' will overwrite,
 #     default will symlink if command does not exist in path.
@@ -835,7 +838,7 @@ service_enable_and_start() {
     [ "${INSTALL_K3S_SKIP_START}" = true ] && return
 
     POST_INSTALL_HASHES=$(get_installed_hashes)
-    if [ "${PRE_INSTALL_HASHES}" = "${POST_INSTALL_HASHES}" ]; then
+    if [ "${PRE_INSTALL_HASHES}" = "${POST_INSTALL_HASHES}" ] && [ "${INSTALL_K3S_FORCE_RESTART}" != true ]; then
         info 'No change detected so skipping service start'
         return
     fi
