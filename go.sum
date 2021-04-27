@@ -380,7 +380,9 @@ github.com/golang/mock v1.4.0/go.mod h1:UOMv5ysSaYNkG+OFQykRIcU/QvvxJf3p21QfJ2Bt
 github.com/golang/mock v1.4.1/go.mod h1:UOMv5ysSaYNkG+OFQykRIcU/QvvxJf3p21QfJ2Bt3cw=
 github.com/golang/mock v1.4.4 h1:l75CXGRSwbaYNpl/Z2X1XIIAMSCquvXgpVZDhwEIJsc=
 github.com/golang/mock v1.4.4/go.mod h1:l3mdAwkq5BuhzHwde/uurv3sEJeZMXNpwsxVWU71h+4=
+github.com/golangplus/bytes v0.0.0-20160111154220-45c989fe5450 h1:7xqw01UYS+KCI25bMrPxwNYkSns2Db1ziQPpVq99FpE=
 github.com/golangplus/bytes v0.0.0-20160111154220-45c989fe5450/go.mod h1:Bk6SMAONeMXrxql8uvOKuAZSu8aM5RUGv+1C6IJaEho=
+github.com/golangplus/fmt v1.0.0 h1:FnUKtw86lXIPfBMc3FimNF3+ABcV+aH5F17OOitTN+E=
 github.com/golangplus/fmt v1.0.0/go.mod h1:zpM0OfbMCjPtd2qkTD/jX2MgiFCqklhSUFyDW44gVQE=
 github.com/golangplus/testing v0.0.0-20180327235837-af21d9c3145e/go.mod h1:0AA//k/eakGydO4jKRoRL2j92ZKSzTgj9tclaCrvXHk=
 github.com/golangplus/testing v1.0.0 h1:+ZeeiKZENNOMkTTELoSySazi+XaEhVO0mb+eanrSEUQ=
