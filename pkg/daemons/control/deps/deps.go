@@ -319,7 +319,7 @@ func genServerCerts(config *config.Control, runtime *config.ControlRuntime) erro
 	}
 
 	altNames := &certutil.AltNames{
-		DNSNames: []string{"kubernetes.default.svc", "kubernetes.default", "kubernetes", "localhost"},
+		DNSNames: []string{"localhost", "kubernetes", "kubernetes.default", "kubernetes.default.svc." + config.ClusterDomain},
 		IPs:      []net.IP{apiServerServiceIP},
 	}
 
