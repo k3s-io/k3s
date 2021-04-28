@@ -6,5 +6,5 @@ import (
 )
 
 func init() {
-	managed.RegisterDriver(etcd.NewETCD())
+	managed.RegisterDriver(etcd.NewETCD(""))
 }

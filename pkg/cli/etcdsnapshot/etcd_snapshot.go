@@ -53,7 +53,7 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 
 	ctx := signals.SetupSignalHandler(context.Background())
 
-	initialized, err := etcd.NewETCD().IsInitialized(ctx, &serverConfig.ControlConfig)
+	initialized, err := etcd.NewETCD("").IsInitialized(ctx, &serverConfig.ControlConfig)
 	if err != nil {
 		return err
 	}
