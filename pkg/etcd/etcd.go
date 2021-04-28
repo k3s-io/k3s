@@ -886,6 +886,8 @@ type snapshotFile struct {
 // snapshots on disk or in S3 along with their relevant
 // metadata.
 func (e *ETCD) listSnapshots(ctx context.Context, snapshotDir string) ([]snapshotFile, error) {
+	nodeName := os.Getenv("NODE_NAME")
+
 	var snapshots []snapshotFile
 
 	if e.config.EtcdS3 {
@@ -907,6 +909,7 @@ func (e *ETCD) listSnapshots(ctx context.Context, snapshotDir string) ([]snapsho
 			snapshots = append(snapshots, snapshotFile{
 				Name:     obj.Key,
 				Location: "s3://" + filepath.Join(e.config.EtcdS3BucketName, obj.Key),
+				NodeName: nodeName,
 				CreatedAt: &metav1.Time{
 					Time: ca,
 				},
@@ -921,8 +924,6 @@ func (e *ETCD) listSnapshots(ctx context.Context, snapshotDir string) ([]snapsho
 	if err != nil {
 		return nil, err
 	}
-
-	nodeName := os.Getenv("NODE_NAME")
 
 	for _, f := range files {
 		snapshots = append(snapshots, snapshotFile{
