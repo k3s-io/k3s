@@ -865,6 +865,7 @@ func (e *ETCD) Snapshot(ctx context.Context, config *config.Control) error {
 		return err
 	}
 
+	logrus.Infof("Saving current etcd snapshot set to %s ConfigMap", snapshotConfigMapName)
 	return e.storeSnapshotData(ctx, snapshots)
 }
 
@@ -902,7 +903,7 @@ func (e *ETCD) listSnapshots(ctx context.Context, snapshotDir string) ([]snapsho
 			}
 			snapshots = append(snapshots, snapshotFile{
 				Name:     obj.Key,
-				Location: "s3://" + e.config.EtcdS3BucketName + "/" + obj.Key,
+				Location: "s3://" + filepath.Join(e.config.EtcdS3BucketName, obj.Key),
 				CreatedAt: &metav1.Time{
 					Time: ca,
 				},
