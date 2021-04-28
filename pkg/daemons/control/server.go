@@ -172,8 +172,8 @@ func apiServer(ctx context.Context, cfg *config.Control, runtime *config.Control
 	argsMap["tls-cert-file"] = runtime.ServingKubeAPICert
 	argsMap["tls-private-key-file"] = runtime.ServingKubeAPIKey
 	argsMap["service-account-key-file"] = runtime.ServiceKey
-	argsMap["service-account-issuer"] = "https://kubernetes.default.svc.cluster.local"
-	argsMap["api-audiences"] = "https://kubernetes.default.svc.cluster.local," + version.Program
+	argsMap["service-account-issuer"] = "https://kubernetes.default.svc." + cfg.ClusterDomain
+	argsMap["api-audiences"] = "https://kubernetes.default.svc." + cfg.ClusterDomain + "," + version.Program
 	argsMap["kubelet-certificate-authority"] = runtime.ServerCA
 	argsMap["kubelet-client-certificate"] = runtime.ClientKubeAPICert
 	argsMap["kubelet-client-key"] = runtime.ClientKubeAPIKey
