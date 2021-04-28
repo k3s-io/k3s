@@ -29,3 +29,5 @@ __pycache__
 /tests/.vscode
 /sonobuoy-output
 *.tmp
+/.vscode
+/.local
