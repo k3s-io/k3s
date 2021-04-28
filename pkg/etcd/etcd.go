@@ -36,9 +36,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/transport"
 	"k8s.io/client-go/util/retry"
 )
 
@@ -56,11 +53,6 @@ const (
 	defaultKeepAliveTimeout = 10 * time.Second
 
 	maxBackupRetention = 5
-
-	defaultRetries          = 5
-	defaultWaitSeconds      = 5
-	defaultTimeout          = 30
-	k8sWrapTransportTimeout = 30
 )
 
 var (
@@ -79,7 +71,6 @@ type ETCD struct {
 	address string
 	cron    *cron.Cron
 	s3      *s3
-	cs      *kubernetes.Clientset
 }
 
 type learnerProgress struct {
@@ -95,29 +86,11 @@ type Members struct {
 	Members []*etcdserverpb.Member `json:"members"`
 }
 
-// newClient create a new Kubernetes client from configuration.
-func newClient(kubeConfigPath string, k8sWrapTransport transport.WrapperFunc) (*kubernetes.Clientset, error) {
-	config, err := clientcmd.BuildConfigFromFlags("", kubeConfigPath)
-	if err != nil {
-		return nil, err
-	}
-	if k8sWrapTransport != nil {
-		config.WrapTransport = k8sWrapTransport
-	}
-	config.Timeout = time.Second * defaultTimeout
-	return kubernetes.NewForConfig(config)
-}
-
 // NewETCD creates a new value of type
 // ETCD with an initialized cron value.
-func NewETCD(kubeConfigAdmin string) *ETCD {
-	cs, err := newClient(kubeConfigAdmin, nil)
-	if err != nil {
-		logrus.Fatalf("etcd: new k8s client: %s", err.Error())
-	}
+func NewETCD() *ETCD {
 	return &ETCD{
 		cron: cron.New(),
-		cs:   cs,
 	}
 }
 
@@ -892,19 +865,17 @@ func (e *ETCD) Snapshot(ctx context.Context, config *config.Control) error {
 		return err
 	}
 
-	// store the snapshot data somewhere
-	_ = snapshots
-
-	return nil
+	return e.storeSnapshotData(ctx, snapshots)
 }
 
 // snapshotFile represents a single snapshot and it's
 // metadata.
 type snapshotFile struct {
-	Name      string `json:"name"`
-	NodeName  string `json:"nodeName"`
-	CreatedAt string `json:"createdAt"`
-	Size      int64  `json:"size"`
+	Name      string       `json:"name"`
+	Location  string       `json:"location"`
+	NodeName  string       `json:"nodeName"`
+	CreatedAt *metav1.Time `json:"createdAt"`
+	Size      int64        `json:"size"`
 }
 
 // listSnapshots provides a list of the currently stored
@@ -925,10 +896,17 @@ func (e *ETCD) listSnapshots(ctx context.Context, snapshotDir string) ([]snapsho
 			if obj.Err != nil {
 				return nil, obj.Err
 			}
+			ca, err := time.Parse(time.RFC3339, obj.LastModified.Format(time.RFC3339))
+			if err != nil {
+				return nil, err
+			}
 			snapshots = append(snapshots, snapshotFile{
-				Name:      "s3://" + e.config.EtcdS3BucketName + "/" + obj.Key,
-				CreatedAt: obj.LastModified.String(),
-				Size:      obj.Size,
+				Name:     obj.Key,
+				Location: "s3://" + e.config.EtcdS3BucketName + "/" + obj.Key,
+				CreatedAt: &metav1.Time{
+					Time: ca,
+				},
+				Size: obj.Size,
 			})
 		}
 
@@ -944,18 +922,21 @@ func (e *ETCD) listSnapshots(ctx context.Context, snapshotDir string) ([]snapsho
 
 	for _, f := range files {
 		snapshots = append(snapshots, snapshotFile{
-			Name:      filepath.Join(snapshotDir, f.Name()),
-			NodeName:  nodeName,
-			CreatedAt: f.ModTime().String(),
-			Size:      f.Size(),
+			Name:     f.Name(),
+			Location: "file://" + filepath.Join(snapshotDir, f.Name()),
+			NodeName: nodeName,
+			CreatedAt: &metav1.Time{
+				Time: f.ModTime(),
+			},
+			Size: f.Size(),
 		})
 	}
 
 	return snapshots, nil
 }
 
-// updateConfigMap
-func updateConfigMap(data map[string]string, snapshotFiles []snapshotFile) error {
+// updateSnapshotData
+func updateSnapshotData(data map[string]string, snapshotFiles []snapshotFile) error {
 	for _, v := range snapshotFiles {
 		b, err := json.Marshal(v)
 		if err != nil {
@@ -969,80 +950,31 @@ func updateConfigMap(data map[string]string, snapshotFiles []snapshotFile) error
 
 // storeSnapshotData stores the given snapshot data in the "snapshots" ConfigMap.
 func (e *ETCD) storeSnapshotData(ctx context.Context, snapshotFiles []snapshotFile) error {
-	snapshotConfigMap, err := e.cs.CoreV1().ConfigMaps(metav1.NamespaceSystem).Get(ctx, "snapshots", metav1.GetOptions{})
-	if err != nil {
+	return retry.OnError(retry.DefaultBackoff, func(err error) bool {
+		return apierrors.IsConflict(err) || apierrors.IsAlreadyExists(err) || !apierrors.IsNotFound(err)
+	}, func() error {
+		data := make(map[string]string, len(snapshotFiles))
+		if err := updateSnapshotData(data, snapshotFiles); err != nil {
+			return err
+		}
+
+		snapshotConfigMap, err := e.config.Runtime.Core.Core().V1().ConfigMap().Get(metav1.NamespaceSystem, snapshotConfigMapName, metav1.GetOptions{})
 		if apierrors.IsNotFound(err) {
-			data := make(map[string]string, len(snapshotFiles))
-			if err := updateConfigMap(data, snapshotFiles); err != nil {
-				return err
-			}
 			cm := v1.ConfigMap{
-				TypeMeta: metav1.TypeMeta{
-					Kind:       "ConfigMap",
-					APIVersion: "v1",
-				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      snapshotConfigMapName,
 					Namespace: metav1.NamespaceSystem,
 				},
 				Data: data,
 			}
-			if err := retry.OnError(retry.DefaultBackoff,
-				func(err error) bool {
-					return !apierrors.IsAlreadyExists(err)
-				}, func() error {
-					_, err = e.cs.CoreV1().ConfigMaps(metav1.NamespaceSystem).Create(ctx, &cm, metav1.CreateOptions{})
-					return err
-				},
-			); err != nil && apierrors.IsAlreadyExists(err) {
-				return retry.RetryOnConflict(retry.DefaultBackoff, func() error {
-					snapshotConfigMap, err := e.cs.CoreV1().ConfigMaps(metav1.NamespaceSystem).Get(ctx, snapshotConfigMapName, metav1.GetOptions{})
-					if err != nil {
-						return err
-					}
-					snapshotConfigMap.Data = make(map[string]string, len(snapshotFiles))
-					if err := updateConfigMap(snapshotConfigMap.Data, snapshotFiles); err != nil {
-						return err
-					}
-					_, err = e.cs.CoreV1().ConfigMaps(metav1.NamespaceSystem).Update(ctx, snapshotConfigMap, metav1.UpdateOptions{})
-					return err
-				})
-			} else if err != nil {
-				return err
-			}
-			return nil
+			_, err := e.config.Runtime.Core.Core().V1().ConfigMap().Create(&cm)
+			return err
 		}
-		return err
-	}
 
-	if err := retry.OnError(retry.DefaultBackoff,
-		func(err error) bool {
-			return !apierrors.IsConflict(err)
-		}, func() error {
-			snapshotConfigMap.Data = make(map[string]string, len(snapshotFiles))
-			if err := updateConfigMap(snapshotConfigMap.Data, snapshotFiles); err != nil {
-				return err
-			}
-			_, err = e.cs.CoreV1().ConfigMaps(metav1.NamespaceSystem).Update(ctx, snapshotConfigMap, metav1.UpdateOptions{})
-			return err
-		},
-	); err != nil && apierrors.IsConflict(err) {
-		return retry.RetryOnConflict(retry.DefaultBackoff, func() error {
-			snapshotConfigMap, err := e.cs.CoreV1().ConfigMaps(metav1.NamespaceSystem).Get(ctx, snapshotConfigMapName, metav1.GetOptions{})
-			if err != nil {
-				return err
-			}
-			snapshotConfigMap.Data = make(map[string]string, len(snapshotFiles))
-			if err := updateConfigMap(snapshotConfigMap.Data, snapshotFiles); err != nil {
-				return err
-			}
-			_, err = e.cs.CoreV1().ConfigMaps(metav1.NamespaceSystem).Update(ctx, snapshotConfigMap, metav1.UpdateOptions{})
-			return err
-		})
-	} else if err != nil {
+		snapshotConfigMap.Data = data
+		_, err = e.config.Runtime.Core.Core().V1().ConfigMap().Update(snapshotConfigMap)
 		return err
-	}
-	return nil
+	})
 }
 
 // setSnapshotFunction schedules snapshots at the configured interval
@@ -1089,12 +1021,14 @@ func (e *ETCD) Restore(ctx context.Context) error {
 // snapshotRetention iterates through the snapshots and removes the oldest
 // leaving the desired number of snapshots.
 func snapshotRetention(retention int, snapshotDir string) error {
+	nodeName := os.Getenv("NODE_NAME")
+
 	var snapshotFiles []os.FileInfo
 	if err := filepath.Walk(snapshotDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
-		if strings.HasPrefix(info.Name(), snapshotPrefix) {
+		if strings.HasPrefix(info.Name(), snapshotPrefix+nodeName) {
 			snapshotFiles = append(snapshotFiles, info)
 		}
 		return nil
