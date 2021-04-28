@@ -67,6 +67,8 @@ var (
 	learnerProgressKey = version.Program + "/etcd/learnerProgress"
 	// AddressKey will contain the value of api addresses list
 	AddressKey = version.Program + "/apiaddresses"
+
+	snapshotConfigMapName = version.Program + "-etcd-snapshots"
 )
 
 type ETCD struct {
@@ -980,7 +982,7 @@ func (e *ETCD) storeSnapshotData(ctx context.Context, snapshotFiles []snapshotFi
 					APIVersion: "v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "snapshots",
+					Name:      snapshotConfigMapName,
 					Namespace: metav1.NamespaceSystem,
 				},
 				Data: data,
@@ -994,7 +996,7 @@ func (e *ETCD) storeSnapshotData(ctx context.Context, snapshotFiles []snapshotFi
 				},
 			); err != nil && apierrors.IsAlreadyExists(err) {
 				return retry.RetryOnConflict(retry.DefaultBackoff, func() error {
-					snapshotConfigMap, err := e.cs.CoreV1().ConfigMaps(metav1.NamespaceSystem).Get(ctx, "snapshots", metav1.GetOptions{})
+					snapshotConfigMap, err := e.cs.CoreV1().ConfigMaps(metav1.NamespaceSystem).Get(ctx, snapshotConfigMapName, metav1.GetOptions{})
 					if err != nil {
 						return err
 					}
@@ -1026,7 +1028,7 @@ func (e *ETCD) storeSnapshotData(ctx context.Context, snapshotFiles []snapshotFi
 		},
 	); err != nil && apierrors.IsConflict(err) {
 		return retry.RetryOnConflict(retry.DefaultBackoff, func() error {
-			snapshotConfigMap, err := e.cs.CoreV1().ConfigMaps(metav1.NamespaceSystem).Get(ctx, "snapshots", metav1.GetOptions{})
+			snapshotConfigMap, err := e.cs.CoreV1().ConfigMaps(metav1.NamespaceSystem).Get(ctx, snapshotConfigMapName, metav1.GetOptions{})
 			if err != nil {
 				return err
 			}
