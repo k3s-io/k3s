@@ -938,10 +938,12 @@ func (e *ETCD) listSnapshots(ctx context.Context, snapshotDir string) ([]snapsho
 		return nil, err
 	}
 
+	nodeName := os.Getenv("NODE_NAME")
+
 	for _, f := range files {
 		snapshots = append(snapshots, snapshotFile{
 			Name:      filepath.Join(snapshotDir, f.Name()),
-			NodeName:  "",
+			NodeName:  nodeName,
 			CreatedAt: f.ModTime().String(),
 			Size:      f.Size(),
 		})
