@@ -32,39 +32,14 @@ import (
 	"go.etcd.io/etcd/clientv3/snapshot"
 	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
 	"go.etcd.io/etcd/etcdserver/etcdserverpb"
+	v1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
-)
-
-type ETCD struct {
-	client  *etcd.Client
-	config  *config.Control
-	name    string
-	runtime *config.ControlRuntime
-	address string
-	cron    *cron.Cron
-	s3      *s3
-}
-
-type learnerProgress struct {
-	ID               uint64      `json:"id,omitempty"`
-	Name             string      `json:"name,omitempty"`
-	RaftAppliedIndex uint64      `json:"raftAppliedIndex,omitempty"`
-	LastProgress     metav1.Time `json:"lastProgress,omitempty"`
-}
-
-// NewETCD creates a new value of type
-// ETCD with an initialized cron value.
-func NewETCD() *ETCD {
-	return &ETCD{
-		cron: cron.New(),
-	}
-}
-
-var (
-	learnerProgressKey = version.Program + "/etcd/learnerProgress"
-	// AddressKey will contain the value of api addresses list
-	AddressKey = version.Program + "/apiaddresses"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/transport"
+	"k8s.io/client-go/util/retry"
 )
 
 const (
@@ -81,12 +56,67 @@ const (
 	defaultKeepAliveTimeout = 10 * time.Second
 
 	maxBackupRetention = 5
+
+	defaultRetries          = 5
+	defaultWaitSeconds      = 5
+	defaultTimeout          = 30
+	k8sWrapTransportTimeout = 30
 )
+
+var (
+	learnerProgressKey = version.Program + "/etcd/learnerProgress"
+	// AddressKey will contain the value of api addresses list
+	AddressKey = version.Program + "/apiaddresses"
+)
+
+type ETCD struct {
+	client  *etcd.Client
+	config  *config.Control
+	name    string
+	runtime *config.ControlRuntime
+	address string
+	cron    *cron.Cron
+	s3      *s3
+	cs      *kubernetes.Clientset
+}
+
+type learnerProgress struct {
+	ID               uint64      `json:"id,omitempty"`
+	Name             string      `json:"name,omitempty"`
+	RaftAppliedIndex uint64      `json:"raftAppliedIndex,omitempty"`
+	LastProgress     metav1.Time `json:"lastProgress,omitempty"`
+}
 
 // Members contains a slice that holds all
 // members of the cluster.
 type Members struct {
 	Members []*etcdserverpb.Member `json:"members"`
+}
+
+// newClient create a new Kubernetes client from configuration.
+func newClient(kubeConfigPath string, k8sWrapTransport transport.WrapperFunc) (*kubernetes.Clientset, error) {
+	config, err := clientcmd.BuildConfigFromFlags("", kubeConfigPath)
+	if err != nil {
+		return nil, err
+	}
+	if k8sWrapTransport != nil {
+		config.WrapTransport = k8sWrapTransport
+	}
+	config.Timeout = time.Second * defaultTimeout
+	return kubernetes.NewForConfig(config)
+}
+
+// NewETCD creates a new value of type
+// ETCD with an initialized cron value.
+func NewETCD(kubeConfigAdmin string) *ETCD {
+	cs, err := newClient(kubeConfigAdmin, nil)
+	if err != nil {
+		logrus.Fatalf("etcd: new k8s client: %s", err.Error())
+	}
+	return &ETCD{
+		cron: cron.New(),
+		cs:   cs,
+	}
 }
 
 // EndpointName returns the name of the endpoint.
@@ -817,7 +847,8 @@ func (e *ETCD) Snapshot(ctx context.Context, config *config.Control) error {
 		return errors.Wrap(err, "failed to get config for etcd snapshot")
 	}
 
-	snapshotName := fmt.Sprintf("%s-%d", e.config.EtcdSnapshotName, time.Now().Unix())
+	nodeName := os.Getenv("NODE_NAME")
+	snapshotName := fmt.Sprintf("%s-%s-%d", e.config.EtcdSnapshotName, nodeName, time.Now().Unix())
 	snapshotPath := filepath.Join(snapshotDir, snapshotName)
 
 	logrus.Infof("Saving etcd snapshot to %s", snapshotPath)
@@ -859,7 +890,8 @@ func (e *ETCD) Snapshot(ctx context.Context, config *config.Control) error {
 		return err
 	}
 
-	logrus.Warnf("%#v\n", snapshots)
+	// store the snapshot data somewhere
+	_ = snapshots
 
 	return nil
 }
@@ -868,6 +900,7 @@ func (e *ETCD) Snapshot(ctx context.Context, config *config.Control) error {
 // metadata.
 type snapshotFile struct {
 	Name      string `json:"name"`
+	NodeName  string `json:"nodeName"`
 	CreatedAt string `json:"createdAt"`
 	Size      int64  `json:"size"`
 }
@@ -891,7 +924,7 @@ func (e *ETCD) listSnapshots(ctx context.Context, snapshotDir string) ([]snapsho
 				return nil, obj.Err
 			}
 			snapshots = append(snapshots, snapshotFile{
-				Name:      obj.Key,
+				Name:      "s3://" + e.config.EtcdS3BucketName + "/" + obj.Key,
 				CreatedAt: obj.LastModified.String(),
 				Size:      obj.Size,
 			})
@@ -907,13 +940,105 @@ func (e *ETCD) listSnapshots(ctx context.Context, snapshotDir string) ([]snapsho
 
 	for _, f := range files {
 		snapshots = append(snapshots, snapshotFile{
-			Name:      f.Name(),
+			Name:      filepath.Join(snapshotDir, f.Name()),
+			NodeName:  "",
 			CreatedAt: f.ModTime().String(),
 			Size:      f.Size(),
 		})
 	}
 
 	return snapshots, nil
+}
+
+// updateConfigMap
+func updateConfigMap(data map[string]string, snapshotFiles []snapshotFile) error {
+	for _, v := range snapshotFiles {
+		b, err := json.Marshal(v)
+		if err != nil {
+			return err
+		}
+		data[v.Name] = string(b)
+	}
+
+	return nil
+}
+
+// storeSnapshotData stores the given snapshot data in the "snapshots" ConfigMap.
+func (e *ETCD) storeSnapshotData(ctx context.Context, snapshotFiles []snapshotFile) error {
+	snapshotConfigMap, err := e.cs.CoreV1().ConfigMaps(metav1.NamespaceSystem).Get(ctx, "snapshots", metav1.GetOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			data := make(map[string]string, len(snapshotFiles))
+			if err := updateConfigMap(data, snapshotFiles); err != nil {
+				return err
+			}
+			cm := v1.ConfigMap{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ConfigMap",
+					APIVersion: "v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "snapshots",
+					Namespace: metav1.NamespaceSystem,
+				},
+				Data: data,
+			}
+			if err := retry.OnError(retry.DefaultBackoff,
+				func(err error) bool {
+					return !apierrors.IsAlreadyExists(err)
+				}, func() error {
+					_, err = e.cs.CoreV1().ConfigMaps(metav1.NamespaceSystem).Create(ctx, &cm, metav1.CreateOptions{})
+					return err
+				},
+			); err != nil && apierrors.IsAlreadyExists(err) {
+				return retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+					snapshotConfigMap, err := e.cs.CoreV1().ConfigMaps(metav1.NamespaceSystem).Get(ctx, "snapshots", metav1.GetOptions{})
+					if err != nil {
+						return err
+					}
+					snapshotConfigMap.Data = make(map[string]string, len(snapshotFiles))
+					if err := updateConfigMap(snapshotConfigMap.Data, snapshotFiles); err != nil {
+						return err
+					}
+					_, err = e.cs.CoreV1().ConfigMaps(metav1.NamespaceSystem).Update(ctx, snapshotConfigMap, metav1.UpdateOptions{})
+					return err
+				})
+			} else if err != nil {
+				return err
+			}
+			return nil
+		}
+		return err
+	}
+
+	if err := retry.OnError(retry.DefaultBackoff,
+		func(err error) bool {
+			return !apierrors.IsConflict(err)
+		}, func() error {
+			snapshotConfigMap.Data = make(map[string]string, len(snapshotFiles))
+			if err := updateConfigMap(snapshotConfigMap.Data, snapshotFiles); err != nil {
+				return err
+			}
+			_, err = e.cs.CoreV1().ConfigMaps(metav1.NamespaceSystem).Update(ctx, snapshotConfigMap, metav1.UpdateOptions{})
+			return err
+		},
+	); err != nil && apierrors.IsConflict(err) {
+		return retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+			snapshotConfigMap, err := e.cs.CoreV1().ConfigMaps(metav1.NamespaceSystem).Get(ctx, "snapshots", metav1.GetOptions{})
+			if err != nil {
+				return err
+			}
+			snapshotConfigMap.Data = make(map[string]string, len(snapshotFiles))
+			if err := updateConfigMap(snapshotConfigMap.Data, snapshotFiles); err != nil {
+				return err
+			}
+			_, err = e.cs.CoreV1().ConfigMaps(metav1.NamespaceSystem).Update(ctx, snapshotConfigMap, metav1.UpdateOptions{})
+			return err
+		})
+	} else if err != nil {
+		return err
+	}
+	return nil
 }
 
 // setSnapshotFunction schedules snapshots at the configured interval
