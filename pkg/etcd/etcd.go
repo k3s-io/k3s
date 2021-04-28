@@ -872,7 +872,10 @@ func (e *ETCD) Snapshot(ctx context.Context, config *config.Control) error {
 // snapshotFile represents a single snapshot and it's
 // metadata.
 type snapshotFile struct {
-	Name      string       `json:"name"`
+	Name string `json:"name"`
+	// Location contains the full path of the snapshot. For
+	// local paths, the location will be prefixed with "file://"
+	// and for S3 will be "s3://".
 	Location  string       `json:"location"`
 	NodeName  string       `json:"nodeName"`
 	CreatedAt *metav1.Time `json:"createdAt"`
