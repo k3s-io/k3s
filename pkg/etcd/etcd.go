@@ -910,6 +910,9 @@ func (e *ETCD) listSnapshots(ctx context.Context, snapshotDir string) ([]snapsho
 			if obj.Err != nil {
 				return nil, obj.Err
 			}
+			if obj.Size == 0 {
+				continue
+			}
 			ca, err := time.Parse(time.RFC3339, obj.LastModified.Format(time.RFC3339))
 			if err != nil {
 				return nil, err
