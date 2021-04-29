@@ -99,7 +99,7 @@ func Run(ctx context.Context, cfg *config.Node) error {
 
 	first := true
 	for {
-		conn, err := criConnection(ctx, cfg.Containerd.Address)
+		conn, err := CriConnection(ctx, cfg.Containerd.Address)
 		if err == nil {
 			conn.Close()
 			break
@@ -121,7 +121,7 @@ func Run(ctx context.Context, cfg *config.Node) error {
 }
 
 // criConnection connects to a CRI socket at the given path.
-func criConnection(ctx context.Context, address string) (*grpc.ClientConn, error) {
+func CriConnection(ctx context.Context, address string) (*grpc.ClientConn, error) {
 	addr, dialer, err := util.GetAddressAndDialer("unix://" + address)
 	if err != nil {
 		return nil, err
@@ -173,7 +173,7 @@ func preloadImages(ctx context.Context, cfg *config.Node) error {
 	}
 	defer client.Close()
 
-	criConn, err := criConnection(ctx, cfg.Containerd.Address)
+	criConn, err := CriConnection(ctx, cfg.Containerd.Address)
 	if err != nil {
 		return err
 	}
