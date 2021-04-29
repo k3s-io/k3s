@@ -940,7 +940,7 @@ func (e *ETCD) listSnapshots(ctx context.Context, snapshotDir string) ([]snapsho
 	return snapshots, nil
 }
 
-// updateSnapshotData
+// updateSnapshotData populates the given map with the contents of the given slice.
 func updateSnapshotData(data map[string]string, snapshotFiles []snapshotFile) error {
 	for _, v := range snapshotFiles {
 		b, err := json.Marshal(v)
@@ -982,7 +982,7 @@ func (e *ETCD) storeSnapshotData(ctx context.Context, snapshotFiles []snapshotFi
 	})
 }
 
-// setSnapshotFunction schedules snapshots at the configured interval
+// setSnapshotFunction schedules snapshots at the configured interval.
 func (e *ETCD) setSnapshotFunction(ctx context.Context) {
 	e.cron.AddFunc(e.config.EtcdSnapshotCron, func() {
 		if err := e.Snapshot(ctx, e.config); err != nil {
