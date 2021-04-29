@@ -904,9 +904,7 @@ func (e *ETCD) listSnapshots(ctx context.Context, snapshotDir string) ([]snapsho
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
-		objects := e.s3.client.ListObjects(ctx, e.config.EtcdS3BucketName, minio.ListObjectsOptions{
-			Prefix: e.s3.snapshotPrefix(),
-		})
+		objects := e.s3.client.ListObjects(ctx, e.config.EtcdS3BucketName, minio.ListObjectsOptions{})
 
 		for obj := range objects {
 			if obj.Err != nil {
