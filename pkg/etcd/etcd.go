@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -869,6 +870,15 @@ func (e *ETCD) Snapshot(ctx context.Context, config *config.Control) error {
 	return e.storeSnapshotData(ctx, snapshots)
 }
 
+type s3Config struct {
+	Endpoint      string `json:"endpoint,omitempty"`
+	EndpointCA    string `json:"endpointCA,omitempty"`
+	SkipSSLVerify bool   `json:"skipSSLVerify,omitempty"`
+	Bucket        string `json:"bucket,omitempty"`
+	Region        string `json:"region,omitempty"`
+	Folder        string `json:"folder,omitempty"`
+}
+
 // snapshotFile represents a single snapshot and it's
 // metadata.
 type snapshotFile struct {
@@ -876,10 +886,11 @@ type snapshotFile struct {
 	// Location contains the full path of the snapshot. For
 	// local paths, the location will be prefixed with "file://"
 	// and for S3 will be "s3://".
-	Location  string       `json:"location"`
-	NodeName  string       `json:"nodeName"`
-	CreatedAt *metav1.Time `json:"createdAt"`
-	Size      int64        `json:"size"`
+	Location  string       `json:"location,omitempty"`
+	NodeName  string       `json:"nodeName,omitempty"`
+	CreatedAt *metav1.Time `json:"createdAt,omitempty"`
+	Size      int64        `json:"size,omitempty"`
+	S3        *s3Config    `json:"s3Config,omitempty"`
 }
 
 // listSnapshots provides a list of the currently stored
@@ -908,12 +919,19 @@ func (e *ETCD) listSnapshots(ctx context.Context, snapshotDir string) ([]snapsho
 			}
 			snapshots = append(snapshots, snapshotFile{
 				Name:     obj.Key,
-				Location: "s3://" + filepath.Join(e.config.EtcdS3BucketName, obj.Key),
 				NodeName: nodeName,
 				CreatedAt: &metav1.Time{
 					Time: ca,
 				},
 				Size: obj.Size,
+				S3: &s3Config{
+					Endpoint:      e.config.EtcdS3Endpoint,
+					EndpointCA:    e.config.EtcdS3EndpointCA,
+					SkipSSLVerify: e.config.EtcdS3SkipSSLVerify,
+					Bucket:        e.config.EtcdS3BucketName,
+					Region:        e.config.EtcdS3Region,
+					Folder:        e.config.EtcdS3Folder,
+				},
 			})
 		}
 
@@ -961,6 +979,12 @@ func (e *ETCD) storeSnapshotData(ctx context.Context, snapshotFiles []snapshotFi
 		data := make(map[string]string, len(snapshotFiles))
 		if err := updateSnapshotData(data, snapshotFiles); err != nil {
 			return err
+		}
+
+		// make sure the core.Factory is initialize. There can
+		// be a race between this core code startup.
+		for e.config.Runtime.Core == nil {
+			runtime.Gosched()
 		}
 
 		snapshotConfigMap, err := e.config.Runtime.Core.Core().V1().ConfigMap().Get(metav1.NamespaceSystem, snapshotConfigMapName, metav1.GetOptions{})
