@@ -884,8 +884,7 @@ type s3Config struct {
 type snapshotFile struct {
 	Name string `json:"name"`
 	// Location contains the full path of the snapshot. For
-	// local paths, the location will be prefixed with "file://"
-	// and for S3 will be "s3://".
+	// local paths, the location will be prefixed with "file://".
 	Location  string       `json:"location,omitempty"`
 	NodeName  string       `json:"nodeName,omitempty"`
 	CreatedAt *metav1.Time `json:"createdAt,omitempty"`
@@ -918,7 +917,7 @@ func (e *ETCD) listSnapshots(ctx context.Context, snapshotDir string) ([]snapsho
 				return nil, err
 			}
 			snapshots = append(snapshots, snapshotFile{
-				Name:     obj.Key,
+				Name:     filepath.Base(obj.Key),
 				NodeName: nodeName,
 				CreatedAt: &metav1.Time{
 					Time: ca,
