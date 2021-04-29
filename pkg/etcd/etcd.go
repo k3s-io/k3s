@@ -956,7 +956,7 @@ func updateSnapshotData(data map[string]string, snapshotFiles []snapshotFile) er
 // storeSnapshotData stores the given snapshot data in the "snapshots" ConfigMap.
 func (e *ETCD) storeSnapshotData(ctx context.Context, snapshotFiles []snapshotFile) error {
 	return retry.OnError(retry.DefaultBackoff, func(err error) bool {
-		return apierrors.IsConflict(err) || apierrors.IsAlreadyExists(err) || !apierrors.IsNotFound(err)
+		return apierrors.IsConflict(err) || apierrors.IsAlreadyExists(err)
 	}, func() error {
 		data := make(map[string]string, len(snapshotFiles))
 		if err := updateSnapshotData(data, snapshotFiles); err != nil {
