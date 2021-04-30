@@ -40,7 +40,7 @@ K3s bundles the following technologies together into a single cohesive distribut
 * [Local-path-provisioner](https://github.com/rancher/local-path-provisioner) for provisioning volumes using local storage
 * [Host utilities](https://github.com/k3s-io/k3s-root) such as iptables/nftables, ebtables, ethtool, & socat
 
-These technologies can be disabled or swapped out for technolgoies of your choice.
+These technologies can be disabled or swapped out for technologies of your choice.
 
 Additionally, K3s simplifies Kubernetes operations by maintaining functionality for:
 
