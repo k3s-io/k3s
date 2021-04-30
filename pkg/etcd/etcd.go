@@ -1018,6 +1018,10 @@ func (e *ETCD) StoreSnapshotData(ctx context.Context) error {
 			return err
 		}
 
+		if snapshotConfigMap.Data == nil {
+			snapshotConfigMap.Data = make(map[string]string, 0)
+		}
+
 		// remove entries for this node only
 		for k, v := range snapshotConfigMap.Data {
 			var sf snapshotFile
@@ -1027,10 +1031,6 @@ func (e *ETCD) StoreSnapshotData(ctx context.Context) error {
 			if sf.NodeName == e.nodeName || sf.NodeName == "s3" {
 				delete(snapshotConfigMap.Data, k)
 			}
-		}
-
-		if snapshotConfigMap.Data == nil {
-			snapshotConfigMap.Data = make(map[string]string, 0)
 		}
 
 		// this node's entries to the ConfigMap
