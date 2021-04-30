@@ -112,7 +112,7 @@ func (c *Cluster) Start(ctx context.Context) (<-chan struct{}, error) {
 
 	go func() {
 		if err := c.managedDB.StoreSnapshotData(ctx); err != nil {
-			logrus.Errorf("Failed to record snapshots for cluster: %w", err)
+			logrus.Errorf("Failed to record snapshots for cluster: %v", err)
 		}
 	}()
 
