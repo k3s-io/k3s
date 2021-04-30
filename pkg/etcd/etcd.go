@@ -862,7 +862,7 @@ func (e *ETCD) Snapshot(ctx context.Context, config *config.Control) error {
 		}
 	}
 
-	return e.StoreSnapshotData(ctx, snapshotDir)
+	return e.StoreSnapshotData(ctx)
 }
 
 type s3Config struct {
@@ -899,8 +899,16 @@ func (e *ETCD) listSnapshots(ctx context.Context, snapshotDir string) ([]snapsho
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
+		if e.s3 == nil {
+			s3, err := newS3(ctx, e.config)
+			if err != nil {
+				return nil, err
+			}
+			e.s3 = s3
+		}
+
 		objects := e.s3.client.ListObjects(ctx, e.config.EtcdS3BucketName, minio.ListObjectsOptions{})
-		logrus.Warn("XXX - after s3 call\n")
+
 		for obj := range objects {
 			if obj.Err != nil {
 				return nil, obj.Err
@@ -969,10 +977,15 @@ func updateSnapshotData(data map[string]string, snapshotFiles []snapshotFile) er
 }
 
 // StoreSnapshotData stores the given snapshot data in the "snapshots" ConfigMap.
-func (e *ETCD) StoreSnapshotData(ctx context.Context, snapshotDir string) error {
+func (e *ETCD) StoreSnapshotData(ctx context.Context) error {
 	logrus.Infof("Saving current etcd snapshot set to %s ConfigMap", snapshotConfigMapName)
 
 	nodeName := os.Getenv("NODE_NAME")
+
+	snapshotDir, err := snapshotDir(e.config)
+	if err != nil {
+		return errors.Wrap(err, "failed to get the snapshot dir")
+	}
 
 	return retry.OnError(retry.DefaultBackoff, func(err error) bool {
 		return apierrors.IsConflict(err) || apierrors.IsAlreadyExists(err)
