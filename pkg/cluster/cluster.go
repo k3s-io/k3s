@@ -110,6 +110,12 @@ func (c *Cluster) Start(ctx context.Context) (<-chan struct{}, error) {
 		}()
 	}
 
+	go func() {
+		if err := c.managedDB.StoreSnapshotData(ctx); err != nil {
+			logrus.Error(err)
+		}
+	}()
+
 	return ready, nil
 }
 
