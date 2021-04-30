@@ -273,6 +273,7 @@ func (e *ETCD) Start(ctx context.Context, clientAccessInfo *clientaccess.Info) e
 	if clientAccessInfo == nil {
 		return e.newCluster(ctx, false)
 	}
+
 	err = e.join(ctx, clientAccessInfo)
 	return errors.Wrap(err, "joining etcd cluster")
 }
@@ -861,13 +862,7 @@ func (e *ETCD) Snapshot(ctx context.Context, config *config.Control) error {
 		}
 	}
 
-	snapshots, err := e.listSnapshots(ctx, snapshotDir)
-	if err != nil {
-		return err
-	}
-
-	logrus.Infof("Saving current etcd snapshot set to %s ConfigMap", snapshotConfigMapName)
-	return e.storeSnapshotData(ctx, snapshots)
+	return e.StoreSnapshotData(ctx, snapshotDir)
 }
 
 type s3Config struct {
@@ -905,7 +900,7 @@ func (e *ETCD) listSnapshots(ctx context.Context, snapshotDir string) ([]snapsho
 		defer cancel()
 
 		objects := e.s3.client.ListObjects(ctx, e.config.EtcdS3BucketName, minio.ListObjectsOptions{})
-
+		logrus.Warn("XXX - after s3 call\n")
 		for obj := range objects {
 			if obj.Err != nil {
 				return nil, obj.Err
@@ -913,10 +908,12 @@ func (e *ETCD) listSnapshots(ctx context.Context, snapshotDir string) ([]snapsho
 			if obj.Size == 0 {
 				continue
 			}
+
 			ca, err := time.Parse(time.RFC3339, obj.LastModified.Format(time.RFC3339))
 			if err != nil {
 				return nil, err
 			}
+
 			snapshots = append(snapshots, snapshotFile{
 				Name:     filepath.Base(obj.Key),
 				NodeName: nodeName,
@@ -971,11 +968,20 @@ func updateSnapshotData(data map[string]string, snapshotFiles []snapshotFile) er
 	return nil
 }
 
-// storeSnapshotData stores the given snapshot data in the "snapshots" ConfigMap.
-func (e *ETCD) storeSnapshotData(ctx context.Context, snapshotFiles []snapshotFile) error {
+// StoreSnapshotData stores the given snapshot data in the "snapshots" ConfigMap.
+func (e *ETCD) StoreSnapshotData(ctx context.Context, snapshotDir string) error {
+	logrus.Infof("Saving current etcd snapshot set to %s ConfigMap", snapshotConfigMapName)
+
+	nodeName := os.Getenv("NODE_NAME")
+
 	return retry.OnError(retry.DefaultBackoff, func(err error) bool {
 		return apierrors.IsConflict(err) || apierrors.IsAlreadyExists(err)
 	}, func() error {
+		snapshotFiles, err := e.listSnapshots(ctx, snapshotDir)
+		if err != nil {
+			return err
+		}
+
 		data := make(map[string]string, len(snapshotFiles))
 		if err := updateSnapshotData(data, snapshotFiles); err != nil {
 			return err
@@ -1000,7 +1006,22 @@ func (e *ETCD) storeSnapshotData(ctx context.Context, snapshotFiles []snapshotFi
 			return err
 		}
 
-		snapshotConfigMap.Data = data
+		// remove entries for this node only
+		for k, v := range snapshotConfigMap.Data {
+			var sf snapshotFile
+			if err := json.Unmarshal([]byte(v), &sf); err != nil {
+				return err
+			}
+			if sf.NodeName == nodeName {
+				delete(snapshotConfigMap.Data, k)
+			}
+		}
+
+		// this node's entries to the ConfigMap
+		for k, v := range data {
+			snapshotConfigMap.Data[k] = v
+		}
+
 		_, err = e.config.Runtime.Core.Core().V1().ConfigMap().Update(snapshotConfigMap)
 		return err
 	})

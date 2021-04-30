@@ -31,6 +31,17 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 		return err
 	}
 
+	nodeName := app.String("node-name")
+	if nodeName == "" {
+		h, err := os.Hostname()
+		if err != nil {
+			return err
+		}
+		nodeName = h
+	}
+
+	os.Setenv("NODE_NAME", nodeName)
+
 	var serverConfig server.Config
 	serverConfig.DisableAgent = true
 	serverConfig.ControlConfig.DataDir = dataDir
