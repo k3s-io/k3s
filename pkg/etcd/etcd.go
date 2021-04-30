@@ -826,8 +826,7 @@ func (e *ETCD) Snapshot(ctx context.Context, config *config.Control) error {
 		return errors.Wrap(err, "failed to get config for etcd snapshot")
 	}
 
-	nodeName := os.Getenv("NODE_NAME")
-	snapshotName := fmt.Sprintf("%s-%s-%d", e.config.EtcdSnapshotName, nodeName, time.Now().Unix())
+	snapshotName := fmt.Sprintf("%s-%s-%d", e.config.EtcdSnapshotName, e.nodeName, time.Now().Unix())
 	snapshotPath := filepath.Join(snapshotDir, snapshotName)
 
 	logrus.Infof("Saving etcd snapshot to %s", snapshotPath)
@@ -924,7 +923,7 @@ func (e *ETCD) listSnapshots(ctx context.Context, snapshotDir string) ([]snapsho
 
 			snapshots = append(snapshots, snapshotFile{
 				Name:     filepath.Base(obj.Key),
-				NodeName: e.nodeName,
+				NodeName: "s3",
 				CreatedAt: &metav1.Time{
 					Time: ca,
 				},
@@ -980,8 +979,6 @@ func updateSnapshotData(data map[string]string, snapshotFiles []snapshotFile) er
 func (e *ETCD) StoreSnapshotData(ctx context.Context) error {
 	logrus.Infof("Saving current etcd snapshot set to %s ConfigMap", snapshotConfigMapName)
 
-	nodeName := os.Getenv("NODE_NAME")
-
 	snapshotDir, err := snapshotDir(e.config)
 	if err != nil {
 		return errors.Wrap(err, "failed to get the snapshot dir")
@@ -990,6 +987,14 @@ func (e *ETCD) StoreSnapshotData(ctx context.Context) error {
 	return retry.OnError(retry.DefaultBackoff, func(err error) bool {
 		return apierrors.IsConflict(err) || apierrors.IsAlreadyExists(err)
 	}, func() error {
+		// make sure the core.Factory is initialize. There can
+		// be a race between this core code startup.
+		for e.config.Runtime.Core == nil {
+			runtime.Gosched()
+		}
+
+		snapshotConfigMap, getErr := e.config.Runtime.Core.Core().V1().ConfigMap().Get(metav1.NamespaceSystem, snapshotConfigMapName, metav1.GetOptions{})
+
 		snapshotFiles, err := e.listSnapshots(ctx, snapshotDir)
 		if err != nil {
 			return err
@@ -1000,14 +1005,7 @@ func (e *ETCD) StoreSnapshotData(ctx context.Context) error {
 			return err
 		}
 
-		// make sure the core.Factory is initialize. There can
-		// be a race between this core code startup.
-		for e.config.Runtime.Core == nil {
-			runtime.Gosched()
-		}
-
-		snapshotConfigMap, err := e.config.Runtime.Core.Core().V1().ConfigMap().Get(metav1.NamespaceSystem, snapshotConfigMapName, metav1.GetOptions{})
-		if apierrors.IsNotFound(err) {
+		if apierrors.IsNotFound(getErr) {
 			cm := v1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      snapshotConfigMapName,
@@ -1025,7 +1023,7 @@ func (e *ETCD) StoreSnapshotData(ctx context.Context) error {
 			if err := json.Unmarshal([]byte(v), &sf); err != nil {
 				return err
 			}
-			if sf.NodeName == nodeName {
+			if sf.NodeName == e.nodeName || sf.NodeName == "s3" {
 				delete(snapshotConfigMap.Data, k)
 			}
 		}
