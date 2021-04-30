@@ -826,7 +826,8 @@ func (e *ETCD) Snapshot(ctx context.Context, config *config.Control) error {
 		return errors.Wrap(err, "failed to get config for etcd snapshot")
 	}
 
-	snapshotName := fmt.Sprintf("%s-%s-%d", e.config.EtcdSnapshotName, e.nodeName, time.Now().Unix())
+	nodeName := os.Getenv("NODE_NAME")
+	snapshotName := fmt.Sprintf("%s-%s-%d", e.config.EtcdSnapshotName, nodeName, time.Now().Unix())
 	snapshotPath := filepath.Join(snapshotDir, snapshotName)
 
 	logrus.Infof("Saving etcd snapshot to %s", snapshotPath)
@@ -1026,6 +1027,10 @@ func (e *ETCD) StoreSnapshotData(ctx context.Context) error {
 			if sf.NodeName == e.nodeName || sf.NodeName == "s3" {
 				delete(snapshotConfigMap.Data, k)
 			}
+		}
+
+		if snapshotConfigMap.Data == nil {
+			snapshotConfigMap.Data = make(map[string]string, 0)
 		}
 
 		// this node's entries to the ConfigMap
