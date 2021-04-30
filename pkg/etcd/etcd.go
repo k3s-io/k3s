@@ -65,13 +65,14 @@ var (
 )
 
 type ETCD struct {
-	client  *etcd.Client
-	config  *config.Control
-	name    string
-	runtime *config.ControlRuntime
-	address string
-	cron    *cron.Cron
-	s3      *s3
+	client   *etcd.Client
+	config   *config.Control
+	name     string
+	runtime  *config.ControlRuntime
+	address  string
+	cron     *cron.Cron
+	s3       *s3
+	nodeName string
 }
 
 type learnerProgress struct {
@@ -91,7 +92,8 @@ type Members struct {
 // ETCD with an initialized cron value.
 func NewETCD() *ETCD {
 	return &ETCD{
-		cron: cron.New(),
+		cron:     cron.New(),
+		nodeName: os.Getenv("NODE_NAME"),
 	}
 }
 
@@ -891,8 +893,6 @@ type snapshotFile struct {
 // snapshots on disk or in S3 along with their relevant
 // metadata.
 func (e *ETCD) listSnapshots(ctx context.Context, snapshotDir string) ([]snapshotFile, error) {
-	nodeName := os.Getenv("NODE_NAME")
-
 	var snapshots []snapshotFile
 
 	if e.config.EtcdS3 {
@@ -924,7 +924,7 @@ func (e *ETCD) listSnapshots(ctx context.Context, snapshotDir string) ([]snapsho
 
 			snapshots = append(snapshots, snapshotFile{
 				Name:     filepath.Base(obj.Key),
-				NodeName: nodeName,
+				NodeName: e.nodeName,
 				CreatedAt: &metav1.Time{
 					Time: ca,
 				},
@@ -952,7 +952,7 @@ func (e *ETCD) listSnapshots(ctx context.Context, snapshotDir string) ([]snapsho
 		snapshots = append(snapshots, snapshotFile{
 			Name:     f.Name(),
 			Location: "file://" + filepath.Join(snapshotDir, f.Name()),
-			NodeName: nodeName,
+			NodeName: e.nodeName,
 			CreatedAt: &metav1.Time{
 				Time: f.ModTime(),
 			},
