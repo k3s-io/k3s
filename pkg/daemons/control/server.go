@@ -109,8 +109,14 @@ func controllerManager(cfg *config.Control, runtime *config.ControlRuntime) erro
 		"bind-address":                     localhostIP.String(),
 		"secure-port":                      "0",
 		"use-service-account-credentials":  "true",
-		"cluster-signing-cert-file":        runtime.ClientCA,
-		"cluster-signing-key-file":         runtime.ClientCAKey,
+		"cluster-signing-kube-apiserver-client-cert-file": runtime.ClientCA,
+		"cluster-signing-kube-apiserver-client-key-file":  runtime.ClientCAKey,
+		"cluster-signing-kubelet-client-cert-file":        runtime.ClientCA,
+		"cluster-signing-kubelet-client-key-file":         runtime.ClientCAKey,
+		"cluster-signing-kubelet-serving-cert-file":       runtime.ServerCA,
+		"cluster-signing-kubelet-serving-key-file":        runtime.ServerCAKey,
+		"cluster-signing-legacy-unknown-cert-file":        runtime.ClientCA,
+		"cluster-signing-legacy-unknown-key-file":         runtime.ClientCAKey,
 	}
 	if cfg.NoLeaderElect {
 		argsMap["leader-elect"] = "false"
