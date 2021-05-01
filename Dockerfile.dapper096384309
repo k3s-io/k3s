@@ -1,2 +1,0 @@
-FROM k3s:issue-3234
-COPY . /go/src/github.com/rancher/k3s/
