@@ -19,6 +19,12 @@ func NewEtcdSnapshotCommand(action func(*cli.Context) error) cli.Command {
 			LogFile,
 			AlsoLogToStderr,
 			cli.StringFlag{
+				Name:        "node-name",
+				Usage:       "(agent/node) Node name",
+				EnvVar:      version.ProgramUpper + "_NODE_NAME",
+				Destination: &AgentConfig.NodeName,
+			},
+			cli.StringFlag{
 				Name:        "data-dir,d",
 				Usage:       "(data) Folder to hold state default /var/lib/rancher/" + version.Program + " or ${HOME}/.rancher/" + version.Program + " if not root",
 				Destination: &ServerConfig.DataDir,

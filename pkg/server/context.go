@@ -32,7 +32,7 @@ func (c *Context) Start(ctx context.Context) error {
 	return start.All(ctx, 5, c.K3s, c.Helm, c.Apps, c.Auth, c.Batch, c.Core)
 }
 
-func newContext(ctx context.Context, cfg string) (*Context, error) {
+func NewContext(ctx context.Context, cfg string) (*Context, error) {
 	restConfig, err := clientcmd.BuildConfigFromFlags("", cfg)
 	if err != nil {
 		return nil, err
