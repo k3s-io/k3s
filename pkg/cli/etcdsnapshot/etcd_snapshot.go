@@ -31,6 +31,17 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 		return err
 	}
 
+	nodeName := app.String("node-name")
+	if nodeName == "" {
+		h, err := os.Hostname()
+		if err != nil {
+			return err
+		}
+		nodeName = h
+	}
+
+	os.Setenv("NODE_NAME", nodeName)
+
 	var serverConfig server.Config
 	serverConfig.DisableAgent = true
 	serverConfig.ControlConfig.DataDir = dataDir
@@ -50,6 +61,7 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	serverConfig.ControlConfig.Runtime.ETCDServerCA = filepath.Join(dataDir, "tls", "etcd", "server-ca.crt")
 	serverConfig.ControlConfig.Runtime.ClientETCDCert = filepath.Join(dataDir, "tls", "etcd", "client.crt")
 	serverConfig.ControlConfig.Runtime.ClientETCDKey = filepath.Join(dataDir, "tls", "etcd", "client.key")
+	serverConfig.ControlConfig.Runtime.KubeConfigAdmin = filepath.Join(dataDir, "cred", "admin.kubeconfig")
 
 	ctx := signals.SetupSignalHandler(context.Background())
 
@@ -66,6 +78,12 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	if err := cluster.Bootstrap(ctx); err != nil {
 		return err
 	}
+
+	sc, err := server.NewContext(ctx, serverConfig.ControlConfig.Runtime.KubeConfigAdmin)
+	if err != nil {
+		return err
+	}
+	serverConfig.ControlConfig.Runtime.Core = sc.Core
 
 	return cluster.Snapshot(ctx, &serverConfig.ControlConfig)
 }

@@ -92,7 +92,27 @@ func (c *Cluster) Start(ctx context.Context) (<-chan struct{}, error) {
 		}
 	}
 
-	return ready, c.startStorage(ctx)
+	if err := c.startStorage(ctx); err != nil {
+		return nil, err
+	}
+
+	// at this point, if etcd is in use, it's bootstrapping is complete
+	// so save the bootstrap data. We will need for etcd to be up. If
+	// the save call returns an error, we panic since subsequent etcd
+	// snapshots will be empty.
+	if c.managedDB != nil {
+		go func() {
+			for range ready {
+				if err := c.save(ctx); err != nil {
+					panic(err)
+				}
+			}
+
+			if err := c.managedDB.StoreSnapshotData(ctx); err != nil {
+				logrus.Errorf("Failed to record snapshots for cluster: %v", err)
+			}
+		}()
+	}
 
 }
 

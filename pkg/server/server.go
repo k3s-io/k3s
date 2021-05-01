@@ -122,7 +122,7 @@ func startWrangler(ctx context.Context, config *Config) error {
 func runControllers(ctx context.Context, config *Config) error {
 	controlConfig := &config.ControlConfig
 
-	sc, err := newContext(ctx, controlConfig.Runtime.KubeConfigAdmin)
+	sc, err := NewContext(ctx, controlConfig.Runtime.KubeConfigAdmin)
 	if err != nil {
 		return err
 	}

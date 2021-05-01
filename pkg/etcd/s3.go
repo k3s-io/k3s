@@ -141,21 +141,28 @@ func (s *s3) download(ctx context.Context) error {
 	return os.Chmod(fullSnapshotPath, 0600)
 }
 
+// snapshotPrefix returns the prefix used in the
+// naming of the snapshots.
+func (s *s3) snapshotPrefix() string {
+	nodeName := os.Getenv("NODE_NAME")
+	fullSnapshotPrefix := snapshotPrefix + nodeName
+	var prefix string
+	if s.config.EtcdS3Folder != "" {
+		prefix = filepath.Join(s.config.EtcdS3Folder, fullSnapshotPrefix)
+	} else {
+		prefix = fullSnapshotPrefix
+	}
+	return prefix
+}
+
 // snapshotRetention deletes the given snapshot from the configured S3
 // compatible backend.
 func (s *s3) snapshotRetention(ctx context.Context) error {
 	var snapshotFiles []minio.ObjectInfo
 
-	var prefix string
-	if s.config.EtcdS3Folder != "" {
-		prefix = filepath.Join(s.config.EtcdS3Folder, snapshotPrefix)
-	} else {
-		prefix = snapshotPrefix
-	}
-
 	loo := minio.ListObjectsOptions{
 		Recursive: true,
-		Prefix:    prefix,
+		Prefix:    s.snapshotPrefix(),
 	}
 	for info := range s.client.ListObjects(ctx, s.config.EtcdS3BucketName, loo) {
 		if info.Err != nil {

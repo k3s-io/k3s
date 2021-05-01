@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -18,6 +19,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/minio/minio-go/v7"
 	"github.com/pkg/errors"
 	certutil "github.com/rancher/dynamiclistener/cert"
 	"github.com/rancher/k3s/pkg/clientaccess"
@@ -31,39 +33,11 @@ import (
 	"go.etcd.io/etcd/clientv3/snapshot"
 	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
 	"go.etcd.io/etcd/etcdserver/etcdserverpb"
+	v1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
-)
-
-type ETCD struct {
-	client  *etcd.Client
-	config  *config.Control
-	name    string
-	runtime *config.ControlRuntime
-	address string
-	cron    *cron.Cron
-	s3      *s3
-}
-
-type learnerProgress struct {
-	ID               uint64      `json:"id,omitempty"`
-	Name             string      `json:"name,omitempty"`
-	RaftAppliedIndex uint64      `json:"raftAppliedIndex,omitmepty"`
-	LastProgress     metav1.Time `json:"lastProgress,omitempty"`
-}
-
-// NewETCD creates a new value of type
-// ETCD with an initialized cron value.
-func NewETCD() *ETCD {
-	return &ETCD{
-		cron: cron.New(),
-	}
-}
-
-var (
-	learnerProgressKey = version.Program + "/etcd/learnerProgress"
-	// AddressKey will contain the value of api addresses list
-	AddressKey = version.Program + "/apiaddresses"
+	"k8s.io/client-go/util/retry"
 )
 
 const (
@@ -80,10 +54,45 @@ const (
 	defaultKeepAliveTimeout = 10 * time.Second
 )
 
+var (
+	learnerProgressKey = version.Program + "/etcd/learnerProgress"
+	// AddressKey will contain the value of api addresses list
+	AddressKey = version.Program + "/apiaddresses"
+
+	snapshotConfigMapName = version.Program + "-etcd-snapshots"
+)
+
+type ETCD struct {
+	client   *etcd.Client
+	config   *config.Control
+	name     string
+	runtime  *config.ControlRuntime
+	address  string
+	cron     *cron.Cron
+	s3       *s3
+	nodeName string
+}
+
+type learnerProgress struct {
+	ID               uint64      `json:"id,omitempty"`
+	Name             string      `json:"name,omitempty"`
+	RaftAppliedIndex uint64      `json:"raftAppliedIndex,omitempty"`
+	LastProgress     metav1.Time `json:"lastProgress,omitempty"`
+}
+
 // Members contains a slice that holds all
 // members of the cluster.
 type Members struct {
 	Members []*etcdserverpb.Member `json:"members"`
+}
+
+// NewETCD creates a new value of type
+// ETCD with an initialized cron value.
+func NewETCD() *ETCD {
+	return &ETCD{
+		cron:     cron.New(),
+		nodeName: os.Getenv("NODE_NAME"),
+	}
 }
 
 // EndpointName returns the name of the endpoint.
@@ -264,6 +273,7 @@ func (e *ETCD) Start(ctx context.Context, clientAccessInfo *clientaccess.Info) e
 	if clientAccessInfo == nil {
 		return e.newCluster(ctx, false)
 	}
+
 	err = e.join(ctx, clientAccessInfo)
 	return errors.Wrap(err, "joining etcd cluster")
 }
@@ -799,7 +809,8 @@ func (e *ETCD) Snapshot(ctx context.Context, config *config.Control) error {
 		return errors.Wrap(err, "failed to get config for etcd snapshot")
 	}
 
-	snapshotName := fmt.Sprintf("%s-%d", e.config.EtcdSnapshotName, time.Now().Unix())
+	nodeName := os.Getenv("NODE_NAME")
+	snapshotName := fmt.Sprintf("%s-%s-%d", e.config.EtcdSnapshotName, nodeName, time.Now().Unix())
 	snapshotPath := filepath.Join(snapshotDir, snapshotName)
 
 	logrus.Infof("Saving etcd snapshot to %s", snapshotPath)
@@ -836,10 +847,186 @@ func (e *ETCD) Snapshot(ctx context.Context, config *config.Control) error {
 		}
 	}
 
+	return e.StoreSnapshotData(ctx)
+}
+
+type s3Config struct {
+	Endpoint      string `json:"endpoint,omitempty"`
+	EndpointCA    string `json:"endpointCA,omitempty"`
+	SkipSSLVerify bool   `json:"skipSSLVerify,omitempty"`
+	Bucket        string `json:"bucket,omitempty"`
+	Region        string `json:"region,omitempty"`
+	Folder        string `json:"folder,omitempty"`
+}
+
+// snapshotFile represents a single snapshot and it's
+// metadata.
+type snapshotFile struct {
+	Name string `json:"name"`
+	// Location contains the full path of the snapshot. For
+	// local paths, the location will be prefixed with "file://".
+	Location  string       `json:"location,omitempty"`
+	NodeName  string       `json:"nodeName,omitempty"`
+	CreatedAt *metav1.Time `json:"createdAt,omitempty"`
+	Size      int64        `json:"size,omitempty"`
+	S3        *s3Config    `json:"s3Config,omitempty"`
+}
+
+// listSnapshots provides a list of the currently stored
+// snapshots on disk or in S3 along with their relevant
+// metadata.
+func (e *ETCD) listSnapshots(ctx context.Context, snapshotDir string) ([]snapshotFile, error) {
+	var snapshots []snapshotFile
+
+	if e.config.EtcdS3 {
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+
+		if e.s3 == nil {
+			s3, err := newS3(ctx, e.config)
+			if err != nil {
+				return nil, err
+			}
+			e.s3 = s3
+		}
+
+		objects := e.s3.client.ListObjects(ctx, e.config.EtcdS3BucketName, minio.ListObjectsOptions{})
+
+		for obj := range objects {
+			if obj.Err != nil {
+				return nil, obj.Err
+			}
+			if obj.Size == 0 {
+				continue
+			}
+
+			ca, err := time.Parse(time.RFC3339, obj.LastModified.Format(time.RFC3339))
+			if err != nil {
+				return nil, err
+			}
+
+			snapshots = append(snapshots, snapshotFile{
+				Name:     filepath.Base(obj.Key),
+				NodeName: "s3",
+				CreatedAt: &metav1.Time{
+					Time: ca,
+				},
+				Size: obj.Size,
+				S3: &s3Config{
+					Endpoint:      e.config.EtcdS3Endpoint,
+					EndpointCA:    e.config.EtcdS3EndpointCA,
+					SkipSSLVerify: e.config.EtcdS3SkipSSLVerify,
+					Bucket:        e.config.EtcdS3BucketName,
+					Region:        e.config.EtcdS3Region,
+					Folder:        e.config.EtcdS3Folder,
+				},
+			})
+		}
+
+		return snapshots, nil
+	}
+
+	files, err := ioutil.ReadDir(snapshotDir)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, f := range files {
+		snapshots = append(snapshots, snapshotFile{
+			Name:     f.Name(),
+			Location: "file://" + filepath.Join(snapshotDir, f.Name()),
+			NodeName: e.nodeName,
+			CreatedAt: &metav1.Time{
+				Time: f.ModTime(),
+			},
+			Size: f.Size(),
+		})
+	}
+
+	return snapshots, nil
+}
+
+// updateSnapshotData populates the given map with the contents of the given slice.
+func updateSnapshotData(data map[string]string, snapshotFiles []snapshotFile) error {
+	for _, v := range snapshotFiles {
+		b, err := json.Marshal(v)
+		if err != nil {
+			return err
+		}
+		data[v.Name] = string(b)
+	}
+
 	return nil
 }
 
-// setSnapshotFunction schedules snapshots at the configured interval
+// StoreSnapshotData stores the given snapshot data in the "snapshots" ConfigMap.
+func (e *ETCD) StoreSnapshotData(ctx context.Context) error {
+	logrus.Infof("Saving current etcd snapshot set to %s ConfigMap", snapshotConfigMapName)
+
+	snapshotDir, err := snapshotDir(e.config)
+	if err != nil {
+		return errors.Wrap(err, "failed to get the snapshot dir")
+	}
+
+	return retry.OnError(retry.DefaultBackoff, func(err error) bool {
+		return apierrors.IsConflict(err) || apierrors.IsAlreadyExists(err)
+	}, func() error {
+		// make sure the core.Factory is initialize. There can
+		// be a race between this core code startup.
+		for e.config.Runtime.Core == nil {
+			runtime.Gosched()
+		}
+
+		snapshotConfigMap, getErr := e.config.Runtime.Core.Core().V1().ConfigMap().Get(metav1.NamespaceSystem, snapshotConfigMapName, metav1.GetOptions{})
+
+		snapshotFiles, err := e.listSnapshots(ctx, snapshotDir)
+		if err != nil {
+			return err
+		}
+
+		data := make(map[string]string, len(snapshotFiles))
+		if err := updateSnapshotData(data, snapshotFiles); err != nil {
+			return err
+		}
+
+		if apierrors.IsNotFound(getErr) {
+			cm := v1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      snapshotConfigMapName,
+					Namespace: metav1.NamespaceSystem,
+				},
+				Data: data,
+			}
+			_, err := e.config.Runtime.Core.Core().V1().ConfigMap().Create(&cm)
+			return err
+		}
+
+		if snapshotConfigMap.Data == nil {
+			snapshotConfigMap.Data = make(map[string]string, 0)
+		}
+
+		// remove entries for this node only
+		for k, v := range snapshotConfigMap.Data {
+			var sf snapshotFile
+			if err := json.Unmarshal([]byte(v), &sf); err != nil {
+				return err
+			}
+			if sf.NodeName == e.nodeName || sf.NodeName == "s3" {
+				delete(snapshotConfigMap.Data, k)
+			}
+		}
+
+		// this node's entries to the ConfigMap
+		for k, v := range data {
+			snapshotConfigMap.Data[k] = v
+		}
+
+		_, err = e.config.Runtime.Core.Core().V1().ConfigMap().Update(snapshotConfigMap)
+		return err
+	})
+}
+
+// setSnapshotFunction schedules snapshots at the configured interval.
 func (e *ETCD) setSnapshotFunction(ctx context.Context) {
 	e.cron.AddFunc(e.config.EtcdSnapshotCron, func() {
 		if err := e.Snapshot(ctx, e.config); err != nil {
@@ -883,12 +1070,14 @@ func (e *ETCD) Restore(ctx context.Context) error {
 // snapshotRetention iterates through the snapshots and removes the oldest
 // leaving the desired number of snapshots.
 func snapshotRetention(retention int, snapshotDir string) error {
+	nodeName := os.Getenv("NODE_NAME")
+
 	var snapshotFiles []os.FileInfo
 	if err := filepath.Walk(snapshotDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
-		if strings.HasPrefix(info.Name(), snapshotPrefix) {
+		if strings.HasPrefix(info.Name(), snapshotPrefix+nodeName) {
 			snapshotFiles = append(snapshotFiles, info)
 		}
 		return nil
