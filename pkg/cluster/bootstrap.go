@@ -156,3 +156,9 @@ func (c *Cluster) Snapshot(ctx context.Context, config *config.Control) error {
 	}
 	return c.managedDB.Snapshot(ctx, config)
 }
+
+// DeleteSnapshots is a proxy method to call the DeleteSnapshot method on
+// the manageddb interface for etcd clusters.
+func (c *Cluster) DeleteSnapshots(ctx context.Context, snapshots []string) error {
+	return c.managedDB.DeleteSnapshots(ctx, snapshots)
+}

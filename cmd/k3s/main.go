@@ -10,6 +10,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/rancher/k3s/pkg/cli/cmds"
+	"github.com/rancher/k3s/pkg/cli/etcdsnapshot"
 	"github.com/rancher/k3s/pkg/configfilearg"
 	"github.com/rancher/k3s/pkg/data"
 	"github.com/rancher/k3s/pkg/datadir"
@@ -42,7 +43,7 @@ func main() {
 		cmds.NewCRICTL(externalCLIAction("crictl", dataDir)),
 		cmds.NewCtrCommand(externalCLIAction("ctr", dataDir)),
 		cmds.NewCheckConfigCommand(externalCLIAction("check-config", dataDir)),
-		cmds.NewEtcdSnapshotCommand(internalCLIAction(version.Program+"-"+cmds.EtcdSnapshotCommand, dataDir, os.Args)),
+		cmds.NewEtcdSnapshotCommand(internalCLIAction(version.Program+"-"+cmds.EtcdSnapshotCommand, dataDir, os.Args), etcdsnapshot.Delete),
 	}
 
 	if err := app.Run(os.Args); err != nil {

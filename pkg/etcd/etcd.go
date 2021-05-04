@@ -102,6 +102,11 @@ func (e *ETCD) EndpointName() string {
 	return "etcd"
 }
 
+// SetControlConfig sets the given config on the etcd struct.
+func (e *ETCD) SetControlConfig(config *config.Control) {
+	e.config = config
+}
+
 // Test ensures that the local node is a voting member of the target cluster.
 // If it is still a learner or not a part of the cluster, an error is raised.
 func (e *ETCD) Test(ctx context.Context) error {
@@ -203,12 +208,8 @@ func (e *ETCD) Reset(ctx context.Context, rebootstrap func() error) error {
 	// If asked to restore from a snapshot, do so
 	if e.config.ClusterResetRestorePath != "" {
 		if e.config.EtcdS3 {
-			if e.s3 == nil {
-				s3, err := newS3(ctx, e.config)
-				if err != nil {
-					return err
-				}
-				e.s3 = s3
+			if err := e.initS3IfNil(ctx); err != nil {
+				return err
 			}
 			logrus.Infof("Retrieving etcd snapshot %s from S3", e.config.ClusterResetRestorePath)
 			if err := e.s3.download(ctx); err != nil {
@@ -838,12 +839,8 @@ func (e *ETCD) Snapshot(ctx context.Context, config *config.Control) error {
 
 	if e.config.EtcdS3 {
 		logrus.Infof("Saving etcd snapshot %s to S3", snapshotName)
-		if e.s3 == nil {
-			s3, err := newS3(ctx, config)
-			if err != nil {
-				return err
-			}
-			e.s3 = s3
+		if err := e.initS3IfNil(ctx); err != nil {
+			return err
 		}
 		if err := e.s3.upload(ctx, snapshotPath); err != nil {
 			return err
@@ -899,12 +896,8 @@ func (e *ETCD) listSnapshots(ctx context.Context, snapshotDir string) ([]snapsho
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
-		if e.s3 == nil {
-			s3, err := newS3(ctx, e.config)
-			if err != nil {
-				return nil, err
-			}
-			e.s3 = s3
+		if err := e.initS3IfNil(ctx); err != nil {
+			return nil, err
 		}
 
 		objects := e.s3.client.ListObjects(ctx, e.config.EtcdS3BucketName, minio.ListObjectsOptions{})
@@ -961,6 +954,78 @@ func (e *ETCD) listSnapshots(ctx context.Context, snapshotDir string) ([]snapsho
 	}
 
 	return snapshots, nil
+}
+
+// initS3IfNil initializes the S3 client
+// if it hasn't yet been initialized.
+func (e *ETCD) initS3IfNil(ctx context.Context) error {
+	if e.s3 == nil {
+		s3, err := newS3(ctx, e.config)
+		if err != nil {
+			return err
+		}
+		e.s3 = s3
+	}
+
+	return nil
+}
+
+// deleteSnapshots removes the given snapshots from
+// either local storage or S3.
+func (e *ETCD) DeleteSnapshots(ctx context.Context, snapshots []string) error {
+	snapshotDir, err := snapshotDir(e.config)
+	if err != nil {
+		return errors.Wrap(err, "failed to get the snapshot dir")
+	}
+
+	if e.config.EtcdS3 {
+		if e.initS3IfNil(ctx); err != nil {
+			return err
+		}
+
+		if len(snapshots) > 1 {
+			objectsCh := make(chan minio.ObjectInfo)
+
+			go func() {
+				for obj := range e.s3.client.ListObjects(ctx, e.config.EtcdS3BucketName, minio.ListObjectsOptions{}) {
+					if obj.Err != nil {
+						logrus.Error(obj.Err)
+					}
+					objectsCh <- obj
+				}
+			}()
+
+			opts := minio.RemoveObjectsOptions{
+				GovernanceBypass: true,
+			}
+			for roErr := range e.s3.client.RemoveObjects(context.Background(), e.config.EtcdS3BucketName, objectsCh, opts) {
+				logrus.Errorf("Error detected during deletion: %v", roErr)
+			}
+
+			return e.StoreSnapshotData(ctx)
+		}
+
+		opts := minio.RemoveObjectOptions{
+			GovernanceBypass: true,
+		}
+		if err = e.s3.client.RemoveObject(context.Background(), e.config.EtcdS3BucketName, snapshots[0], opts); err != nil {
+			return errors.Wrap(err, "error detected during deletion")
+		}
+
+		return e.StoreSnapshotData(ctx)
+	}
+
+	for _, s := range snapshots {
+		sf := filepath.Join(snapshotDir, s)
+		if _, err := os.Stat(sf); os.IsNotExist(err) {
+			continue
+		}
+		if err := os.Remove(sf); err != nil {
+			return err
+		}
+	}
+
+	return e.StoreSnapshotData(ctx)
 }
 
 // updateSnapshotData populates the given map with the contents of the given slice.
