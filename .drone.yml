@@ -257,6 +257,28 @@ volumes:
 
 ---
 kind: pipeline
+name: validate_go_mods
+
+platform:
+  os: linux
+  arch: amd64
+
+steps:
+  - name: validate_go_mods
+    image: rancher/dapper:v0.5.0
+    commands:
+      - dapper -f Dockerfile.test.mod.dapper
+
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+volumes:
+  - name: docker
+    host:
+      path: /var/run/docker.sock
+
+---
+kind: pipeline
 name: manifest
 
 platform:
