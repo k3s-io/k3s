@@ -7,7 +7,7 @@ import (
 
 const EtcdSnapshotCommand = "etcd-snapshot"
 
-var etcdSnapshotFlags = []cli.Flag{
+var EtcdSnapshotFlags = []cli.Flag{
 	DebugFlag,
 	LogFile,
 	AlsoLogToStderr,
@@ -79,27 +79,31 @@ var etcdSnapshotFlags = []cli.Flag{
 	},
 }
 
-func NewEtcdSnapshotCommand(action func(*cli.Context) error, subcommandAction func(*cli.Context) error) cli.Command {
+func NewEtcdSnapshotCommand(action func(*cli.Context) error, subcommands []cli.Command) cli.Command {
 	return cli.Command{
 		Name:            EtcdSnapshotCommand,
 		Usage:           "Trigger an immediate etcd snapshot",
 		SkipFlagParsing: false,
 		SkipArgReorder:  true,
 		Action:          action,
-		Subcommands: []cli.Command{
-			{
-				Name:            "delete",
-				Usage:           "Delete an etcd snapshot",
-				SkipFlagParsing: false,
-				SkipArgReorder:  true,
-				Action:          subcommandAction,
-				Flags:           etcdSnapshotFlags,
-			},
-		},
-		Flags: append(etcdSnapshotFlags, &cli.StringFlag{
+		Subcommands:     subcommands,
+		Flags: append(EtcdSnapshotFlags, &cli.StringFlag{
 			Name:        "dir",
 			Usage:       "(db) Directory to save etcd on-demand snapshot. (default: ${data-dir}/db/snapshots)",
 			Destination: &ServerConfig.EtcdSnapshotDir,
 		}),
+	}
+}
+
+func NewEtcdSnapshotSubcommands(delete func(ctx *cli.Context) error) []cli.Command {
+	return []cli.Command{
+		{
+			Name:            "delete",
+			Usage:           "Delete given snapshot(s)",
+			SkipFlagParsing: false,
+			SkipArgReorder:  true,
+			Action:          delete,
+			Flags:           EtcdSnapshotFlags,
+		},
 	}
 }

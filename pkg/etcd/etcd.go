@@ -979,43 +979,58 @@ func (e *ETCD) DeleteSnapshots(ctx context.Context, snapshots []string) error {
 	}
 
 	if e.config.EtcdS3 {
+		logrus.Info("Removing the given etcd snapshot from S3")
+		logrus.Debugf("Removing the given etcd snapshot from S3: %v", snapshots)
+
 		if e.initS3IfNil(ctx); err != nil {
 			return err
 		}
 
 		if len(snapshots) > 1 {
+			logrus.Info("Removing the given etcd snapshot(s) from S3")
+
 			objectsCh := make(chan minio.ObjectInfo)
 
 			go func() {
 				for obj := range e.s3.client.ListObjects(ctx, e.config.EtcdS3BucketName, minio.ListObjectsOptions{}) {
 					if obj.Err != nil {
 						logrus.Error(obj.Err)
+						continue
 					}
-					objectsCh <- obj
+
+					// iterate through the given snapshots and only
+					// add them to the channel for remove if they're
+					// actually found from the bucket listing.
+					for _, snapshot := range snapshots {
+						if snapshot == obj.Key {
+							objectsCh <- obj
+						}
+					}
 				}
+
+				close(objectsCh)
 			}()
 
-			opts := minio.RemoveObjectsOptions{
-				GovernanceBypass: true,
-			}
-			for roErr := range e.s3.client.RemoveObjects(context.Background(), e.config.EtcdS3BucketName, objectsCh, opts) {
+			for roErr := range e.s3.client.RemoveObjects(ctx, e.config.EtcdS3BucketName, objectsCh, minio.RemoveObjectsOptions{}) {
 				logrus.Errorf("Error detected during deletion: %v", roErr)
 			}
 
 			return e.StoreSnapshotData(ctx)
 		}
 
-		opts := minio.RemoveObjectOptions{
-			GovernanceBypass: true,
-		}
-		if err = e.s3.client.RemoveObject(context.Background(), e.config.EtcdS3BucketName, snapshots[0], opts); err != nil {
+		if err = e.s3.client.RemoveObject(ctx, e.config.EtcdS3BucketName, snapshots[0], minio.RemoveObjectOptions{}); err != nil {
 			return errors.Wrap(err, "error detected during deletion")
 		}
 
 		return e.StoreSnapshotData(ctx)
 	}
 
+	logrus.Info("Removing the given locally stored etcd snapshot(s)")
+	logrus.Debugf("Removing the given locally stored etcd snapshot(s): %v", snapshots)
+
 	for _, s := range snapshots {
+		// check if the given snapshot exists. If it does,
+		// remove it, otherwise continue.
 		sf := filepath.Join(snapshotDir, s)
 		if _, err := os.Stat(sf); os.IsNotExist(err) {
 			continue
