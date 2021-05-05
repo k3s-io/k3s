@@ -16,20 +16,9 @@ import (
 	"github.com/urfave/cli"
 )
 
-func Run(app *cli.Context) error {
-	if err := cmds.InitLogging(); err != nil {
-		return err
-	}
-	return run(app, &cmds.ServerConfig)
-}
-
-func run(app *cli.Context, cfg *cmds.Server) error {
+// commandSetup
+func commandSetup(app *cli.Context) error {
 	gspt.SetProcTitle(os.Args[0])
-
-	dataDir, err := server.ResolveDataDir(cfg.DataDir)
-	if err != nil {
-		return err
-	}
 
 	nodeName := app.String("node-name")
 	if nodeName == "" {
@@ -41,6 +30,30 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	}
 
 	os.Setenv("NODE_NAME", nodeName)
+
+	return nil
+}
+
+func Run(app *cli.Context) error {
+	if err := cmds.InitLogging(); err != nil {
+		return err
+	}
+	return run(app, &cmds.ServerConfig)
+}
+
+func run(app *cli.Context, cfg *cmds.Server) error {
+	if err := commandSetup(app); err != nil {
+		return err
+	}
+
+	if len(app.Args()) > 0 {
+		return errors.New("this command doesn't take arguments")
+	}
+
+	dataDir, err := server.ResolveDataDir(cfg.DataDir)
+	if err != nil {
+		return err
+	}
 
 	var serverConfig server.Config
 	serverConfig.DisableAgent = true
@@ -98,30 +111,25 @@ func Delete(app *cli.Context) error {
 }
 
 func delete(app *cli.Context, cfg *cmds.Server) error {
-	//gspt.SetProcTitle(os.Args[0])
+	if err := commandSetup(app); err != nil {
+		return err
+	}
+
+	snapshots := app.Args()
+	if len(snapshots) == 0 {
+		return errors.New("no snapshots given for removal")
+	}
 
 	dataDir, err := server.ResolveDataDir(cfg.DataDir)
 	if err != nil {
 		return err
 	}
 
-	nodeName := app.String("node-name")
-	if nodeName == "" {
-		h, err := os.Hostname()
-		if err != nil {
-			return err
-		}
-		nodeName = h
-	}
-
-	os.Setenv("NODE_NAME", nodeName)
-
 	var serverConfig server.Config
 	serverConfig.DisableAgent = true
 	serverConfig.ControlConfig.DataDir = dataDir
 	serverConfig.ControlConfig.EtcdSnapshotName = cfg.EtcdSnapshotName
 	serverConfig.ControlConfig.EtcdSnapshotDir = cfg.EtcdSnapshotDir
-	serverConfig.ControlConfig.EtcdSnapshotRetention = 0 // disable retention check
 	serverConfig.ControlConfig.EtcdS3 = cfg.EtcdS3
 	serverConfig.ControlConfig.EtcdS3Endpoint = cfg.EtcdS3Endpoint
 	serverConfig.ControlConfig.EtcdS3EndpointCA = cfg.EtcdS3EndpointCA
@@ -132,28 +140,11 @@ func delete(app *cli.Context, cfg *cmds.Server) error {
 	serverConfig.ControlConfig.EtcdS3Region = cfg.EtcdS3Region
 	serverConfig.ControlConfig.EtcdS3Folder = cfg.EtcdS3Folder
 	serverConfig.ControlConfig.Runtime = &config.ControlRuntime{}
-	serverConfig.ControlConfig.Runtime.ETCDServerCA = filepath.Join(dataDir, "tls", "etcd", "server-ca.crt")
-	serverConfig.ControlConfig.Runtime.ClientETCDCert = filepath.Join(dataDir, "tls", "etcd", "client.crt")
-	serverConfig.ControlConfig.Runtime.ClientETCDKey = filepath.Join(dataDir, "tls", "etcd", "client.key")
 	serverConfig.ControlConfig.Runtime.KubeConfigAdmin = filepath.Join(dataDir, "cred", "admin.kubeconfig")
 
 	ctx := signals.SetupSignalHandler(context.Background())
 	e := etcd.NewETCD()
 	e.SetControlConfig(&serverConfig.ControlConfig)
-
-	initialized, err := e.IsInitialized(ctx, &serverConfig.ControlConfig)
-	if err != nil {
-		return err
-	}
-	if !initialized {
-		return errors.New("managed etcd database has not been initialized")
-	}
-
-	cluster := cluster.New(&serverConfig.ControlConfig)
-
-	if err := cluster.Bootstrap(ctx); err != nil {
-		return err
-	}
 
 	sc, err := server.NewContext(ctx, serverConfig.ControlConfig.Runtime.KubeConfigAdmin)
 	if err != nil {
@@ -161,5 +152,5 @@ func delete(app *cli.Context, cfg *cmds.Server) error {
 	}
 	serverConfig.ControlConfig.Runtime.Core = sc.Core
 
-	return cluster.DeleteSnapshots(ctx, app.Args())
+	return e.DeleteSnapshots(ctx, app.Args())
 }
