@@ -43,6 +43,7 @@ type Agent struct {
 	Labels                   cli.StringSlice
 	Taints                   cli.StringSlice
 	AgentShared
+	ClusterReset bool
 }
 
 type AgentShared struct {

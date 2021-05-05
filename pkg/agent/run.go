@@ -361,6 +361,11 @@ func setupTunnelAndRunAgent(ctx context.Context, nodeConfig *daemonconfig.Node, 
 		case <-ctx.Done():
 			return ctx.Err()
 		}
+	} else if cfg.ClusterReset && proxy.IsAPIServerLBEnabled() {
+		if err := agent.Agent(&nodeConfig.AgentConfig); err != nil {
+			return err
+		}
+		agentRan = true
 	}
 
 	if err := tunnel.Setup(ctx, nodeConfig, proxy); err != nil {
