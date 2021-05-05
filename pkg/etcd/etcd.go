@@ -991,25 +991,36 @@ func (e *ETCD) DeleteSnapshots(ctx context.Context, snapshots []string) error {
 
 			objectsCh := make(chan minio.ObjectInfo)
 
-			go func() {
-				for obj := range e.s3.client.ListObjects(ctx, e.config.EtcdS3BucketName, minio.ListObjectsOptions{}) {
-					if obj.Err != nil {
-						logrus.Error(obj.Err)
-						continue
-					}
+			toCtx, cancel := context.WithTimeout(ctx, time.Second*30)
+			defer cancel()
 
-					// iterate through the given snapshots and only
-					// add them to the channel for remove if they're
-					// actually found from the bucket listing.
-					for _, snapshot := range snapshots {
-						if snapshot == obj.Key {
-							objectsCh <- obj
+			go func(ctx context.Context) {
+				defer close(objectsCh)
+
+				for {
+					select {
+					case <-ctx.Done():
+						return
+					default:
+						for obj := range e.s3.client.ListObjects(ctx, e.config.EtcdS3BucketName, minio.ListObjectsOptions{}) {
+							if obj.Err != nil {
+								logrus.Error(obj.Err)
+								continue
+							}
+
+							// iterate through the given snapshots and only
+							// add them to the channel for remove if they're
+							// actually found from the bucket listing.
+							for _, snapshot := range snapshots {
+								if snapshot == obj.Key {
+									objectsCh <- obj
+								}
+							}
 						}
 					}
 				}
 
-				close(objectsCh)
-			}()
+			}(toCtx)
 
 			for roErr := range e.s3.client.RemoveObjects(ctx, e.config.EtcdS3BucketName, objectsCh, minio.RemoveObjectsOptions{}) {
 				logrus.Errorf("Error detected during deletion: %v", roErr)
