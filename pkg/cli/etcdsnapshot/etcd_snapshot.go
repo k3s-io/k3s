@@ -18,21 +18,21 @@ import (
 
 // commandSetup setups up common things needed
 // for each etcd command.
-func commandSetup(app *cli.Context) error {
+func commandSetup(app *cli.Context, cfg *cmds.Server) (string, error) {
 	gspt.SetProcTitle(os.Args[0])
 
 	nodeName := app.String("node-name")
 	if nodeName == "" {
 		h, err := os.Hostname()
 		if err != nil {
-			return err
+			return "", err
 		}
 		nodeName = h
 	}
 
 	os.Setenv("NODE_NAME", nodeName)
 
-	return nil
+	return server.ResolveDataDir(cfg.DataDir)
 }
 
 func Run(app *cli.Context) error {
@@ -43,17 +43,13 @@ func Run(app *cli.Context) error {
 }
 
 func run(app *cli.Context, cfg *cmds.Server) error {
-	if err := commandSetup(app); err != nil {
+	dataDir, err := commandSetup(app, cfg)
+	if err != nil {
 		return err
 	}
 
 	if len(app.Args()) > 0 {
-		return errors.New("the etcd-snapshot command does not take any arguments")
-	}
-
-	dataDir, err := server.ResolveDataDir(cfg.DataDir)
-	if err != nil {
-		return err
+		return cmds.ErrCommandNoArgs
 	}
 
 	var serverConfig server.Config
@@ -112,18 +108,14 @@ func Delete(app *cli.Context) error {
 }
 
 func delete(app *cli.Context, cfg *cmds.Server) error {
-	if err := commandSetup(app); err != nil {
+	dataDir, err := commandSetup(app, cfg)
+	if err != nil {
 		return err
 	}
 
 	snapshots := app.Args()
 	if len(snapshots) == 0 {
 		return errors.New("no snapshots given for removal")
-	}
-
-	dataDir, err := server.ResolveDataDir(cfg.DataDir)
-	if err != nil {
-		return err
 	}
 
 	var serverConfig server.Config
