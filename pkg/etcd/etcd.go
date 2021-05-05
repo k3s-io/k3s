@@ -1013,7 +1013,6 @@ func (e *ETCD) DeleteSnapshots(ctx context.Context, snapshots []string) error {
 						// add them to the channel for remove if they're
 						// actually found from the bucket listing.
 						for _, snapshot := range snapshots {
-							logrus.Warnf("snapshot: %s - obj.Key: %s\n", snapshot, obj.Key)
 							if snapshot == obj.Key {
 								objectsCh <- obj
 							}
