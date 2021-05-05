@@ -404,6 +404,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	agentConfig.Token = token
 	agentConfig.DisableLoadBalancer = !serverConfig.ControlConfig.DisableAPIServer
 	agentConfig.ETCDAgent = serverConfig.ControlConfig.DisableAPIServer
+	agentConfig.ClusterReset = serverConfig.ControlConfig.ClusterReset
 
 	agentConfig.Rootless = cfg.Rootless
 

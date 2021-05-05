@@ -70,9 +70,12 @@ func (c *Cluster) start(ctx context.Context) error {
 			if !os.IsNotExist(err) {
 				return err
 			}
-		} else {
-			return fmt.Errorf("cluster-reset was successfully performed, please remove the cluster-reset flag and start %s normally, if you need to perform another cluster reset, you must first manually delete the %s file", version.Program, resetFile)
+			rebootstrap := func() error {
+				return c.storageBootstrap(ctx)
+			}
+			return c.managedDB.Reset(ctx, rebootstrap)
 		}
+		return fmt.Errorf("cluster-reset was successfully performed, please remove the cluster-reset flag and start %s normally, if you need to perform another cluster reset, you must first manually delete the %s file", version.Program, resetFile)
 	}
 
 	// removing the reset file and ignore error if the file doesn't exist
