@@ -16,7 +16,8 @@ import (
 	"github.com/urfave/cli"
 )
 
-// commandSetup
+// commandSetup setups up common things needed
+// for each etcd command.
 func commandSetup(app *cli.Context) error {
 	gspt.SetProcTitle(os.Args[0])
 
@@ -47,7 +48,7 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	}
 
 	if len(app.Args()) > 0 {
-		return errors.New("this command doesn't take arguments")
+		return errors.New("the etcd-snapshot command does not take any arguments")
 	}
 
 	dataDir, err := server.ResolveDataDir(cfg.DataDir)
