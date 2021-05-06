@@ -980,7 +980,7 @@ func (e *ETCD) DeleteSnapshots(ctx context.Context, snapshots []string) error {
 
 	if e.config.EtcdS3 {
 		logrus.Info("Removing the given etcd snapshot(s) from S3")
-		logrus.Debugf("Removing the given etcd snapshot from S3: %v", snapshots)
+		logrus.Debugf("Removing the given etcd snapshot(s) from S3: %v", snapshots)
 
 		if e.initS3IfNil(ctx); err != nil {
 			return err
