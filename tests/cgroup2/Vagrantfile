@@ -7,8 +7,10 @@
 # The following files need to be present in this directory:
 # - k3s
 # - k3s.service
+# - k3s-rootless.service
+# - testutil/
 Vagrant.configure("2") do |config|
-  config.vm.box = "fedora/33-cloud-base"
+  config.vm.box = "fedora/34-cloud-base"
   memory = 2048
   cpus = 2
   config.vm.provider :virtualbox do |v|
@@ -22,13 +24,38 @@ Vagrant.configure("2") do |config|
   config.vm.provision "install-k3s", type: "shell", run: "once" do |sh|
     sh.inline = <<~SHELL
     set -eux -o pipefail
+
+    # Install k3s binary
     install -m 755  /vagrant/k3s /usr/local/bin
+    ln -sf /usr/local/bin/k3s /usr/local/bin/kubectl
+
+    # Install k3s systemd service (not launched here)
     cp -f /vagrant/k3s.service /etc/systemd/system/k3s.service
     touch /etc/systemd/system/k3s.service.env
     systemctl daemon-reload
-    systemctl enable --now k3s.service || { systemctl status --full --no-pager k3s.service ; exit 1; }
 
+    # Install sonobuoy binary
     curl -fsSL https://github.com/vmware-tanzu/sonobuoy/releases/download/v0.20.0/sonobuoy_0.20.0_linux_amd64.tar.gz | tar xzvC /usr/local/bin sonobuoy
+
+    # [Rootless] Configure sysctl
+    echo "net.ipv4.ip_forward=1" > /etc/sysctl.d/rootless.conf
+    sysctl --system
+
+    # [Rootless] Enable cgroup v2 delegation
+    mkdir -p /etc/systemd/system/user@.service.d
+    cat <<-EOF > /etc/systemd/system/user@.service.d/delegate.conf
+[Service]
+Delegate=yes
+EOF
+    systemctl daemon-reload
+
+    # [Rootless] Enable systemd lingering
+    loginctl enable-linger vagrant
+
+    # [Rootless] Install k3s-rootless systemd service (not launched here)
+    mkdir -p /home/vagrant/.config/systemd/user
+    cp -f /vagrant/k3s-rootless.service /home/vagrant/.config/systemd/user/k3s-rootless.service
+    chown -R vagrant:vagrant /home/vagrant/.config
     SHELL
   end
 end

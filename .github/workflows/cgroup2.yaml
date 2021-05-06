@@ -35,26 +35,35 @@ jobs:
         path: ./tests/cgroup2
     - name: "Boot Fedora VM"
       run: |
-        cp k3s.service ./tests/cgroup2
+        cp -r k3s.service k3s-rootless.service ./tests/testutil ./tests/cgroup2
         cd ./tests/cgroup2
         vagrant up
         vagrant ssh-config >> ~/.ssh/config
-    # Sonobuoy requires CoreDNS to be ready
-    - name: "Waiting fore CoreDNS to be ready"
+    - name: "Starting k3s"
       run: |
-        counter=0
-        # `kubectl wait` fails when the pods with the specified label are not created yet
-        until ssh default -- sudo k3s kubectl wait --for=condition=ready pods --namespace=kube-system -l k8s-app=kube-dns; do
-          sleep 10
-          ((counter++))
-          if [[ $counter -eq 10 ]]; then
-            echo "CoreDNS not running?"
-            ssh default -- sudo k3s kubectl get pods -A
-            ssh default -- sudo k3s kubectl get nodes -o wide
-            exit 1
-          fi
-        done
+        ssh default -- sudo systemctl start k3s
+    # Sonobuoy requires CoreDNS to be ready
+    - name: "Waiting for CoreDNS to be ready"
+      run: |
+        ssh default -- sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml /vagrant/testutil/wait-for-coredns.sh
     # Vagrant is slow, so we set --mode=quick here
     - name: "Run Sonobuoy (--mode=quick)"
       run: |
-        ssh default -- sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml /usr/local/bin/sonobuoy run --mode=quick --wait
+        ssh default -- sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml sonobuoy run --mode=quick --wait
+    - name: "Stopping k3s"
+      run: |
+        ssh default -- sudo systemctl stop k3s
+        # FIXME: rootful k3s processes are still running even after `systemctl stop k3s`, so we reboot the VM here.
+        # This reboot is also useful for ensuring `systemctl daemon-reload`: https://github.com/rootless-containers/rootlesscontaine.rs/issues/32
+        cd ./tests/cgroup2
+        vagrant halt
+        vagrant up
+    - name: "[Rootless] Starting k3s-rootless"
+      run: |
+        ssh default -- systemctl --user start k3s-rootless
+    - name: "[Rootless] Waiting for CoreDNS to be ready"
+      run: |
+        ssh default -- KUBECONFIG=/home/vagrant/.kube/k3s.yaml /vagrant/testutil/wait-for-coredns.sh
+    - name: "[Rootless] Run Sonobuoy (--mode=quick)"
+      run: |
+        ssh default -- KUBECONFIG=/home/vagrant/.kube/k3s.yaml sonobuoy run --mode=quick --wait
