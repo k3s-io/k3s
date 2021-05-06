@@ -1022,7 +1022,6 @@ func (e *ETCD) DeleteSnapshots(ctx context.Context, snapshots []string) error {
 			case <-time.After(time.Millisecond * 100):
 				continue
 			case err, ok := <-e.s3.client.RemoveObjects(ctx, e.config.EtcdS3BucketName, objectsCh, minio.RemoveObjectsOptions{}):
-				fmt.Printf("%#v - %#v\n", err, ok)
 				if err.Err != nil {
 					logrus.Errorf("Unable to delete snapshot: %v", err.Err)
 				}
