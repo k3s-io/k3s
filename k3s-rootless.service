@@ -26,7 +26,7 @@ Description=k3s (Rootless)
 Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 # NOTE: Don't try to run `k3s server --rootless` on a terminal, as it doesn't enable cgroup v2 delegation.
 # If you really need to try it on a terminal, prepend `systemd-run --user -p Delegate=yes --tty` to create a systemd scope.
-ExecStart=/usr/local/bin/k3s server --rootless
+ExecStart=/usr/local/bin/k3s server --rootless --snapshotter=fuse-overlayfs
 ExecReload=/bin/kill -s HUP $MAINPID
 TimeoutSec=0
 RestartSec=2
