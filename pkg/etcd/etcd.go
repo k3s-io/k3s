@@ -987,47 +987,50 @@ func (e *ETCD) DeleteSnapshots(ctx context.Context, snapshots []string) error {
 		}
 
 		objectsCh := make(chan minio.ObjectInfo)
+		defer close(objectsCh)
 
-		toCtx, cancel := context.WithTimeout(ctx, defaultS3OpTimeout)
+		ctx, cancel := context.WithTimeout(ctx, defaultS3OpTimeout)
 		defer cancel()
 
 		go func(ctx context.Context) {
-			defer close(objectsCh)
+			opts := minio.ListObjectsOptions{
+				Recursive: true,
+			}
 
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				default:
-					opts := minio.ListObjectsOptions{
-						Recursive: true,
-					}
-
-					for obj := range e.s3.client.ListObjects(ctx, e.config.EtcdS3BucketName, opts) {
-						if obj.Err != nil {
-							logrus.Error(obj.Err)
-							continue
-						}
-
-						// iterate through the given snapshots and only
-						// add them to the channel for remove if they're
-						// actually found from the bucket listing.
-						for _, snapshot := range snapshots {
-							if snapshot == obj.Key {
-								objectsCh <- obj
-							}
-						}
-					}
+			for obj := range e.s3.client.ListObjects(ctx, e.config.EtcdS3BucketName, opts) {
+				if obj.Err != nil {
+					logrus.Error(obj.Err)
 					return
 				}
+
+				// iterate through the given snapshots and only
+				// add them to the channel for remove if they're
+				// actually found from the bucket listing.
+				for _, snapshot := range snapshots {
+					if snapshot == obj.Key {
+						objectsCh <- obj
+					}
+				}
 			}
-		}(toCtx)
+		}(ctx)
 
-		for roErr := range e.s3.client.RemoveObjects(ctx, e.config.EtcdS3BucketName, objectsCh, minio.RemoveObjectsOptions{}) {
-			logrus.Errorf("Unable to delete snapshot: %v", roErr)
+		for {
+			select {
+			case <-ctx.Done():
+				logrus.Errorf("Unable to delete snapshot: %v", ctx.Err)
+				return e.StoreSnapshotData(ctx)
+			case <-time.After(time.Millisecond * 100):
+				continue
+			case err, ok := <-e.s3.client.RemoveObjects(ctx, e.config.EtcdS3BucketName, objectsCh, minio.RemoveObjectsOptions{}):
+				fmt.Printf("%#v - %#v\n", err, ok)
+				if err.Err != nil {
+					logrus.Errorf("Unable to delete snapshot: %v", err.Err)
+				}
+				if !ok {
+					return e.StoreSnapshotData(ctx)
+				}
+			}
 		}
-
-		return e.StoreSnapshotData(ctx)
 	}
 
 	logrus.Info("Removing the given locally stored etcd snapshot(s)")

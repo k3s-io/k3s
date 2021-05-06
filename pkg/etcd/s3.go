@@ -65,10 +65,10 @@ func newS3(ctx context.Context, config *config.Control) (*s3, error) {
 
 	logrus.Infof("Checking if S3 bucket %s exists", config.EtcdS3BucketName)
 
-	toCtx, cancel := context.WithTimeout(ctx, defaultS3OpTimeout)
+	ctx, cancel := context.WithTimeout(ctx, defaultS3OpTimeout)
 	defer cancel()
 
-	exists, err := c.BucketExists(toCtx, config.EtcdS3BucketName)
+	exists, err := c.BucketExists(ctx, config.EtcdS3BucketName)
 	if err != nil {
 		return nil, err
 	}
