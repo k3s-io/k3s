@@ -992,7 +992,7 @@ func (e *ETCD) DeleteSnapshots(ctx context.Context, snapshots []string) error {
 		ctx, cancel := context.WithTimeout(ctx, defaultS3OpTimeout)
 		defer cancel()
 
-		go func(ctx context.Context) {
+		go func() {
 			opts := minio.ListObjectsOptions{
 				Recursive: true,
 			}
@@ -1012,7 +1012,7 @@ func (e *ETCD) DeleteSnapshots(ctx context.Context, snapshots []string) error {
 					}
 				}
 			}
-		}(ctx)
+		}()
 
 		for {
 			select {
