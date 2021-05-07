@@ -30,11 +30,11 @@ import (
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/untar"
 	"github.com/rancher/k3s/pkg/version"
+	"github.com/rancher/wharfie/pkg/registries"
 	"github.com/rancher/wrangler/pkg/merr"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 	"google.golang.org/grpc"
-	yaml "gopkg.in/yaml.v2"
 	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 	"k8s.io/kubernetes/pkg/kubelet/util"
 )
@@ -334,7 +334,7 @@ func prePullImages(ctx context.Context, conn *grpc.ClientConn, images io.Reader)
 // setupContainerdConfig generates the containerd.toml, using a template combined with various
 // runtime configurations and registry mirror settings provided by the administrator.
 func setupContainerdConfig(ctx context.Context, cfg *config.Node) error {
-	privRegistries, err := getPrivateRegistries(ctx, cfg)
+	privRegistries, err := registries.GetPrivateRegistries(cfg.AgentConfig.PrivateRegistry)
 	if err != nil {
 		return err
 	}
@@ -382,21 +382,4 @@ func setupContainerdConfig(ctx context.Context, cfg *config.Node) error {
 	}
 
 	return util2.WriteFile(cfg.Containerd.Config, parsedTemplate)
-}
-
-// getPrivateRegistries loads the registry mirror configuration from registries.yaml
-func getPrivateRegistries(ctx context.Context, cfg *config.Node) (*templates.Registry, error) {
-	privRegistries := &templates.Registry{}
-	privRegistryFile, err := ioutil.ReadFile(cfg.AgentConfig.PrivateRegistry)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	logrus.Infof("Using registry config file at %s", cfg.AgentConfig.PrivateRegistry)
-	if err := yaml.Unmarshal(privRegistryFile, &privRegistries); err != nil {
-		return nil, err
-	}
-	return privRegistries, nil
 }

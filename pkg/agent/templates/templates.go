@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"text/template"
 
+	"github.com/rancher/wharfie/pkg/registries"
+
 	"github.com/rancher/k3s/pkg/daemons/config"
 )
 
@@ -11,7 +13,7 @@ type ContainerdConfig struct {
 	NodeConfig            *config.Node
 	DisableCgroup         bool
 	IsRunningInUserNS     bool
-	PrivateRegistryConfig *Registry
+	PrivateRegistryConfig *registries.Registry
 }
 
 const ContainerdConfigTemplate = `
