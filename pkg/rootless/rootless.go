@@ -21,10 +21,9 @@ import (
 )
 
 var (
-	pipeFD             = "_K3S_ROOTLESS_FD"
-	childEnv           = "_K3S_ROOTLESS_SOCK"
-	evacuateCgroup2Env = "_K3S_ROOTLESS_EVACUATE_CGROUP2" // boolean
-	Sock               = ""
+	pipeFD   = "_K3S_ROOTLESS_FD"
+	childEnv = "_K3S_ROOTLESS_SOCK"
+	Sock     = ""
 )
 
 func Rootless(stateDir string) error {
