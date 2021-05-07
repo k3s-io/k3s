@@ -33,6 +33,8 @@ func main() {
 		return
 	}
 
+	etcdsnapshotCommand := internalCLIAction(version.Program+"-"+cmds.EtcdSnapshotCommand, dataDir, os.Args)
+
 	// Handle subcommand invocation (k3s server, k3s crictl, etc)
 	app := cmds.NewApp()
 	app.Commands = []cli.Command{
@@ -42,7 +44,7 @@ func main() {
 		cmds.NewCRICTL(externalCLIAction("crictl", dataDir)),
 		cmds.NewCtrCommand(externalCLIAction("ctr", dataDir)),
 		cmds.NewCheckConfigCommand(externalCLIAction("check-config", dataDir)),
-		cmds.NewEtcdSnapshotCommand(internalCLIAction(version.Program+"-"+cmds.EtcdSnapshotCommand, dataDir, os.Args)),
+		cmds.NewEtcdSnapshotCommand(etcdsnapshotCommand, cmds.NewEtcdSnapshotSubcommands(etcdsnapshotCommand)),
 	}
 
 	if err := app.Run(os.Args); err != nil {

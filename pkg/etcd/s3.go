@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -21,6 +22,8 @@ import (
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/sirupsen/logrus"
 )
+
+const defaultS3OpTimeout = time.Second * 30
 
 // s3 maintains state for S3 functionality.
 type s3 struct {
@@ -61,6 +64,10 @@ func newS3(ctx context.Context, config *config.Control) (*s3, error) {
 	}
 
 	logrus.Infof("Checking if S3 bucket %s exists", config.EtcdS3BucketName)
+
+	ctx, cancel := context.WithTimeout(ctx, defaultS3OpTimeout)
+	defer cancel()
+
 	exists, err := c.BucketExists(ctx, config.EtcdS3BucketName)
 	if err != nil {
 		return nil, err
@@ -87,11 +94,13 @@ func (s *s3) upload(ctx context.Context, snapshot string) error {
 		snapshotFileName = basename
 	}
 
+	toCtx, cancel := context.WithTimeout(ctx, defaultS3OpTimeout)
+	defer cancel()
 	opts := minio.PutObjectOptions{
 		ContentType: "application/zip",
 		NumThreads:  2,
 	}
-	if _, err := s.client.FPutObject(ctx, s.config.EtcdS3BucketName, snapshotFileName, snapshot, opts); err != nil {
+	if _, err := s.client.FPutObject(toCtx, s.config.EtcdS3BucketName, snapshotFileName, snapshot, opts); err != nil {
 		logrus.Errorf("Error received in attempt to upload snapshot to S3: %s", err)
 	}
 
@@ -109,7 +118,10 @@ func (s *s3) download(ctx context.Context) error {
 	}
 
 	logrus.Debugf("retrieving snapshot: %s", remotePath)
-	r, err := s.client.GetObject(ctx, s.config.EtcdS3BucketName, remotePath, minio.GetObjectOptions{})
+	toCtx, cancel := context.WithTimeout(ctx, defaultS3OpTimeout)
+	defer cancel()
+
+	r, err := s.client.GetObject(toCtx, s.config.EtcdS3BucketName, remotePath, minio.GetObjectOptions{})
 	if err != nil {
 		return nil
 	}
@@ -160,11 +172,14 @@ func (s *s3) snapshotPrefix() string {
 func (s *s3) snapshotRetention(ctx context.Context) error {
 	var snapshotFiles []minio.ObjectInfo
 
+	toCtx, cancel := context.WithTimeout(ctx, defaultS3OpTimeout)
+	defer cancel()
+
 	loo := minio.ListObjectsOptions{
 		Recursive: true,
 		Prefix:    s.snapshotPrefix(),
 	}
-	for info := range s.client.ListObjects(ctx, s.config.EtcdS3BucketName, loo) {
+	for info := range s.client.ListObjects(toCtx, s.config.EtcdS3BucketName, loo) {
 		if info.Err != nil {
 			return info.Err
 		}
