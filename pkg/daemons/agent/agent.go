@@ -18,6 +18,15 @@ const (
 	windowsPrefix = "npipe://"
 )
 
+type CgroupCheck struct {
+	KubeletRoot string
+	RuntimeRoot string
+	HasCFS      bool
+	HasPIDs     bool
+	IsV2        bool
+	V2Evac      bool // cgroupv2 needs evacuation of procs from /
+}
+
 func Agent(config *config.Agent) error {
 	rand.Seed(time.Now().UTC().UnixNano())
 
