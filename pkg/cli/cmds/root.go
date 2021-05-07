@@ -1,6 +1,7 @@
 package cmds
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -18,6 +19,8 @@ var (
 		EnvVar:      version.ProgramUpper + "_DEBUG",
 	}
 )
+
+var ErrCommandNoArgs = errors.New("this command does not take any arguments")
 
 func init() {
 	// hack - force "file,dns" lookup order if go dns is used
