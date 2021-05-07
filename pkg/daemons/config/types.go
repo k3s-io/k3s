@@ -90,6 +90,7 @@ type Agent struct {
 	IPSECPSK                string
 	StrongSwanDir           string
 	PrivateRegistry         string
+	SystemDefaultRegistry   string
 	AirgapExtraRegistry     []string
 	DisableCCM              bool
 	DisableNPC              bool
@@ -134,6 +135,7 @@ type Control struct {
 	FlannelBackend           string
 	IPSECPSK                 string
 	DefaultLocalStoragePath  string
+	SystemDefaultRegistry    string
 	DisableCCM               bool
 	DisableNPC               bool
 	DisableKubeProxy         bool

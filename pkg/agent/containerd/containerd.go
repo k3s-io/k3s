@@ -353,7 +353,7 @@ func setupContainerdConfig(ctx context.Context, cfg *config.Node) error {
 		NodeConfig:            cfg,
 		DisableCgroup:         disableCgroup,
 		IsRunningInUserNS:     isRunningInUserNS,
-		PrivateRegistryConfig: privRegistries,
+		PrivateRegistryConfig: privRegistries.Registry(),
 	}
 
 	selEnabled, selConfigured, err := selinuxStatus()

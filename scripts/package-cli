@@ -36,7 +36,7 @@ mkdir -p dist/artifacts
 )
 
 tar cvf ./build/out/data.tar --exclude ./bin/hyperkube ./bin ./etc 
-zstd -v -T0 -16 -f --long=25 --rm ./build/out/data.tar -o ./build/out/data.tar.zst
+zstd --no-progress -T0 -16 -f --long=25 --rm ./build/out/data.tar -o ./build/out/data.tar.zst
 HASH=$(sha256sum ./build/out/data.tar.zst | awk '{print $1}')
 
 cp ./build/out/data.tar.zst ./build/data/${HASH}.tar.zst

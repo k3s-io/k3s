@@ -81,7 +81,7 @@ require (
 	github.com/google/uuid v1.2.0
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.4.2
-	github.com/k3s-io/helm-controller v0.8.3
+	github.com/k3s-io/helm-controller v0.9.1
 	github.com/k3s-io/kine v0.6.0
 	github.com/klauspost/compress v1.12.2
 	github.com/kubernetes-sigs/cri-tools v0.0.0-00010101000000-000000000000
@@ -96,7 +96,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/dynamiclistener v0.2.3
 	github.com/rancher/remotedialer v0.2.0
-	github.com/rancher/wharfie v0.3.3
+	github.com/rancher/wharfie v0.3.4
 	github.com/rancher/wrangler v0.6.2
 	github.com/rancher/wrangler-api v0.6.0
 	github.com/robfig/cron/v3 v3.0.1

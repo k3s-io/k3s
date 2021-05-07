@@ -36,14 +36,15 @@ type Agent struct {
 	WithNodeID               bool
 	EnableSELinux            bool
 	ProtectKernelDefaults    bool
+	ClusterReset             bool
 	PrivateRegistry          string
+	SystemDefaultRegistry    string
 	AirgapExtraRegistry      cli.StringSlice
 	ExtraKubeletArgs         cli.StringSlice
 	ExtraKubeProxyArgs       cli.StringSlice
 	Labels                   cli.StringSlice
 	Taints                   cli.StringSlice
 	AgentShared
-	ClusterReset bool
 }
 
 type AgentShared struct {
@@ -100,7 +101,7 @@ var (
 		Name:        "pause-image",
 		Usage:       "(agent/runtime) Customized pause image for containerd or docker sandbox",
 		Destination: &AgentConfig.PauseImage,
-		Value:       "docker.io/rancher/pause:3.1",
+		Value:       "rancher/pause:3.2",
 	}
 	SnapshotterFlag = cli.StringFlag{
 		Name:        "snapshotter",

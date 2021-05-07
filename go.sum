@@ -540,8 +540,8 @@ github.com/k3s-io/cri-tools v1.21.0-k3s1 h1:MWQtAsx4HCNXenqU/B4V9eU6HMyafkd1PnW6
 github.com/k3s-io/cri-tools v1.21.0-k3s1/go.mod h1:Qsz54zxINPR+WVWX9Kc3CTmuDFB1dNLCNV8jE8lUbtU=
 github.com/k3s-io/etcd v0.5.0-alpha.5.0.20201208200253-50621aee4aea h1:7cwby0GoNAi8IsVrT0q+JfQpB6V76ZaEGhj6qts/mvU=
 github.com/k3s-io/etcd v0.5.0-alpha.5.0.20201208200253-50621aee4aea/go.mod h1:yVHk9ub3CSBatqGNg7GRmsnfLWtoW60w4eDYfh7vHDg=
-github.com/k3s-io/helm-controller v0.8.3 h1:GWxavyMz7Bw2ClxH5okkeOL8o5U6IBK7uauc44SDCjU=
-github.com/k3s-io/helm-controller v0.8.3/go.mod h1:nZP8FH3KZrNNUf5r+SwwiMR63HS6lxdHdpHijgPfF74=
+github.com/k3s-io/helm-controller v0.9.1 h1:qtHWTNHiuCPRbA2YZ7z7jTgSHo7Yc5He52oMga72yUk=
+github.com/k3s-io/helm-controller v0.9.1/go.mod h1:nZP8FH3KZrNNUf5r+SwwiMR63HS6lxdHdpHijgPfF74=
 github.com/k3s-io/kine v0.6.0 h1:4l7wjgCxb2oD+7Hyf3xIhkGd/6s1sXpRFdQiyy+7Ki8=
 github.com/k3s-io/kine v0.6.0/go.mod h1:rzCs93+rQHZGOiewMd84PDrER92QeZ6eeHbWkfEy4+w=
 github.com/k3s-io/kubernetes v1.21.0-k3s1 h1:pIE2vo7wrwC7nuuislJ9PRWNL/48/Xka2z9MHcdzR7M=
@@ -830,8 +830,8 @@ github.com/rancher/dynamiclistener v0.2.3/go.mod h1:9WusTANoiRr8cDWCTtf5txieulez
 github.com/rancher/moq v0.0.0-20190404221404-ee5226d43009/go.mod h1:wpITyDPTi/Na5h73XkbuEf2AP9fbgrIGqqxVzFhYD6U=
 github.com/rancher/remotedialer v0.2.0 h1:xD7t3K6JYwTdAsxmGtTHQMkEkFgKouQ1foLxVW424Dc=
 github.com/rancher/remotedialer v0.2.0/go.mod h1:tkU8ZvrR5lRgaKWaX71nAy6daeqvPFx/lJEnbW7tXSI=
-github.com/rancher/wharfie v0.3.3 h1:67TAIS9varn19NXQV2Rn6qqE54dZEwcwuQ6QNQWKOJk=
-github.com/rancher/wharfie v0.3.3/go.mod h1:cb8mSczpmw7ItbPF3K1W7crWuJLVdyV49sZZuaY4BS8=
+github.com/rancher/wharfie v0.3.4 h1:wVqFW1cyRA20zY90Z56VrjG0lWg3oFmf/4ryr5Dkkis=
+github.com/rancher/wharfie v0.3.4/go.mod h1:cb8mSczpmw7ItbPF3K1W7crWuJLVdyV49sZZuaY4BS8=
 github.com/rancher/wrangler v0.1.4/go.mod h1:EYP7cqpg42YqElaCm+U9ieSrGQKAXxUH5xsr+XGpWyE=
 github.com/rancher/wrangler v0.4.0/go.mod h1:1cR91WLhZgkZ+U4fV9nVuXqKurWbgXcIReU4wnQvTN8=
 github.com/rancher/wrangler v0.6.0/go.mod h1:L4HtjPeX8iqLgsxfJgz+JjKMcX2q3qbRXSeTlC/CSd4=

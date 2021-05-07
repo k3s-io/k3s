@@ -182,6 +182,12 @@ func coreControllers(ctx context.Context, sc *Context, config *Config) error {
 		return err
 	}
 
+	// apply SystemDefaultRegistry setting to Helm and ServiceLB before starting controllers
+	if config.ControlConfig.SystemDefaultRegistry != "" {
+		helm.DefaultJobImage = config.ControlConfig.SystemDefaultRegistry + "/" + helm.DefaultJobImage
+		servicelb.DefaultLBImage = config.ControlConfig.SystemDefaultRegistry + "/" + servicelb.DefaultLBImage
+	}
+
 	helm.Register(ctx, sc.Apply,
 		sc.Helm.Helm().V1().HelmChart(),
 		sc.Helm.Helm().V1().HelmChartConfig(),
@@ -220,9 +226,11 @@ func stageFiles(ctx context.Context, sc *Context, controlConfig *config.Control)
 	}
 	dataDir = filepath.Join(controlConfig.DataDir, "manifests")
 	templateVars := map[string]string{
-		"%{CLUSTER_DNS}%":                controlConfig.ClusterDNS.String(),
-		"%{CLUSTER_DOMAIN}%":             controlConfig.ClusterDomain,
-		"%{DEFAULT_LOCAL_STORAGE_PATH}%": controlConfig.DefaultLocalStoragePath,
+		"%{CLUSTER_DNS}%":                 controlConfig.ClusterDNS.String(),
+		"%{CLUSTER_DOMAIN}%":              controlConfig.ClusterDomain,
+		"%{DEFAULT_LOCAL_STORAGE_PATH}%":  controlConfig.DefaultLocalStoragePath,
+		"%{SYSTEM_DEFAULT_REGISTRY}%":     registryTemplate(controlConfig.SystemDefaultRegistry),
+		"%{SYSTEM_DEFAULT_REGISTRY_RAW}%": controlConfig.SystemDefaultRegistry,
 	}
 
 	skip := controlConfig.Skips
@@ -235,6 +243,16 @@ func stageFiles(ctx context.Context, sc *Context, controlConfig *config.Control)
 	}
 
 	return deploy.WatchFiles(ctx, sc.Apply, sc.K3s.K3s().V1().Addon(), controlConfig.Disables, dataDir)
+}
+
+// registryTemplate behaves like the system_default_registry template in Rancher helm charts,
+// and returns the registry value with a trailing forward slash if the registry string is not empty.
+// If it is empty, it is passed through as a no-op.
+func registryTemplate(registry string) string {
+	if registry == "" {
+		return registry
+	}
+	return registry + "/"
 }
 
 // isHelmChartTraefikV1 checks for an existing HelmChart resource with spec.chart containing traefik-1,

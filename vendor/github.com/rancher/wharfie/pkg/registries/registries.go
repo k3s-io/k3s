@@ -55,6 +55,11 @@ func GetPrivateRegistries(path string) (*registry, error) {
 	return registry, nil
 }
 
+// Registry provides access to the raw Registry loaded from the deserialized yaml
+func (r *registry) Registry() *Registry {
+	return r.r
+}
+
 // Rewrite applies repository rewrites to the given image reference.
 func (r *registry) Rewrite(ref name.Reference) name.Reference {
 	host := ref.Context().RegistryStr()
