@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/opencontainers/runc/libcontainer/cgroups"
@@ -64,9 +63,6 @@ func Rootless(stateDir string) error {
 	}
 
 	os.Setenv(childEnv, filepath.Join(parentOpt.StateDir, parent.StateFileAPISock))
-	if parentOpt.EvacuateCgroup2 != "" {
-		os.Setenv(evacuateCgroup2Env, "1")
-	}
 	if err := parent.Parent(*parentOpt); err != nil {
 		logrus.Fatal(err)
 	}
@@ -190,12 +186,5 @@ func createChildOpt() (*child.Opt, error) {
 	opt.CopyUpDriver = tmpfssymlink.NewChildDriver()
 	opt.MountProcfs = true
 	opt.Reaper = true
-	if v := os.Getenv(evacuateCgroup2Env); v != "" {
-		var err error
-		opt.EvacuateCgroup2, err = strconv.ParseBool(v)
-		if err != nil {
-			return nil, err
-		}
-	}
 	return opt, nil
 }

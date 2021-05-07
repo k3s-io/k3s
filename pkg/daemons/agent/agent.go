@@ -6,13 +6,7 @@ import (
 	"time"
 
 	"github.com/rancher/k3s/pkg/daemons/config"
-	"github.com/rancher/k3s/pkg/daemons/executor"
-<<<<<<< HEAD
-=======
-	"github.com/rancher/k3s/pkg/util"
-	"github.com/rancher/k3s/pkg/version"
-	"github.com/rootless-containers/rootlesskit/pkg/parent/cgrouputil"
->>>>>>> cee14fa1dd (use cgrouputil.ecavuatecgroup2 instead of custom code)
+	"github.com/rancher/k3s/pkg/daemons/executor" // used for cgroup2 evacuation, not specific to rootless mode
 	"github.com/sirupsen/logrus"
 	"k8s.io/component-base/logs"
 	_ "k8s.io/component-base/metrics/prometheus/restclient" // for client metric registration
