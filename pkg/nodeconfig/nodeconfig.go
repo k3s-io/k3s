@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/rancher/k3s/pkg/configfilearg"
 	"github.com/rancher/k3s/pkg/version"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -25,7 +26,7 @@ const (
 
 func getNodeArgs() (string, error) {
 	nodeArgsList := []string{}
-	for _, arg := range os.Args[1:] {
+	for _, arg := range configfilearg.MustParse(os.Args[1:]) {
 		if strings.HasPrefix(arg, "--") && strings.Contains(arg, "=") {
 			parsedArg := strings.SplitN(arg, "=", 2)
 			nodeArgsList = append(nodeArgsList, parsedArg...)
