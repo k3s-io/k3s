@@ -44,6 +44,8 @@ type Agent struct {
 	ExtraKubeProxyArgs       cli.StringSlice
 	Labels                   cli.StringSlice
 	Taints                   cli.StringSlice
+	ImageCredProvBinDir      string
+	ImageCredProvConfig      string
 	AgentShared
 }
 
@@ -150,6 +152,18 @@ var (
 		Usage: "(agent/node) Registering and starting kubelet with set of labels",
 		Value: &AgentConfig.Labels,
 	}
+	ImageCredProvBinDirFlag = cli.StringFlag{
+		Name:        "image-credential-provider-bin-dir",
+		Usage:       "(agent/node) The path to the directory where credential provider plugin binaries are located",
+		Destination: &AgentConfig.ImageCredProvBinDir,
+		Value:       "/var/lib/rancher/credentialprovider/bin",
+	}
+	ImageCredProvConfigFlag = cli.StringFlag{
+		Name:        "image-credential-provider-config",
+		Usage:       "(agent/node) The path to the credential provider plugin config file",
+		Destination: &AgentConfig.ImageCredProvConfig,
+		Value:       "/var/lib/rancher/credentialprovider/config.yaml",
+	}
 	DisableSELinuxFlag = cli.BoolTFlag{
 		Name:   "disable-selinux",
 		Usage:  "(deprecated) Use --selinux to explicitly enable SELinux",
@@ -229,6 +243,8 @@ func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
 			WithNodeIDFlag,
 			NodeLabels,
 			NodeTaints,
+			ImageCredProvBinDirFlag,
+			ImageCredProvConfigFlag,
 			DockerFlag,
 			CRIEndpointFlag,
 			PauseImageFlag,

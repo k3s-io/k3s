@@ -87,6 +87,8 @@ type Agent struct {
 	CNIPlugin               bool
 	NodeTaints              []string
 	NodeLabels              []string
+	ImageCredProvBinDir     string
+	ImageCredProvConfig     string
 	IPSECPSK                string
 	StrongSwanDir           string
 	PrivateRegistry         string

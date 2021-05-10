@@ -159,6 +159,13 @@ func startKubelet(cfg *config.Agent) error {
 		argsMap["cloud-provider"] = "external"
 	}
 
+	if ImageCredProvAvailable(cfg) {
+		logrus.Infof("Kubelet image credential provider bin dir and configuration file found.")
+		argsMap["feature-gates"] = addFeatureGate(argsMap["feature-gates"], "KubeletCredentialProviders=true")
+		argsMap["image-credential-provider-bin-dir"] = cfg.ImageCredProvBinDir
+		argsMap["image-credential-provider-config"] = cfg.ImageCredProvConfig
+	}
+
 	if cfg.Rootless {
 		// "/sys/fs/cgroup" is namespaced
 		cgroupfsWritable := unix.Access("/sys/fs/cgroup", unix.W_OK) == nil
@@ -191,6 +198,20 @@ func addFeatureGate(current, new string) string {
 		return new
 	}
 	return current + "," + new
+}
+
+// ImageCredProvAvailable checks to see if the kubelet image credential provider bin dir and config
+// files exist and are of the correct types. This is exported so that it may be used by downstream projects.
+func ImageCredProvAvailable(cfg *config.Agent) bool {
+	if info, err := os.Stat(cfg.ImageCredProvBinDir); err != nil || !info.IsDir() {
+		logrus.Debugf("Kubelet image credential provider bin directory check failed: %v", err)
+		return false
+	}
+	if info, err := os.Stat(cfg.ImageCredProvConfig); err != nil || info.IsDir() {
+		logrus.Debugf("Kubelet image credential provider config file check failed: %v", err)
+		return false
+	}
+	return true
 }
 
 func CheckCgroups() (kubeletRoot, runtimeRoot string, hasCFS, hasPIDs bool) {

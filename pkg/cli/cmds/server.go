@@ -361,6 +361,8 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 			WithNodeIDFlag,
 			NodeLabels,
 			NodeTaints,
+			ImageCredProvBinDirFlag,
+			ImageCredProvConfigFlag,
 			DockerFlag,
 			CRIEndpointFlag,
 			PauseImageFlag,
