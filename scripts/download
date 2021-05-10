@@ -82,6 +82,10 @@ download_and_package_traefik () {
   cp -R ${TRAEFIK_TMP_CRD}/overlay-upstream/* ${TRAEFIK_TMP_CHART}
   rm -rf ${TRAEFIK_TMP_CRD}/overlay-upstream
 
+  # Modify charts to support system-default-registry
+  echo -e 'global:\n  systemDefaultRegistry: ""' >> ${TRAEFIK_TMP_CHART}/values.yaml
+  find ${TRAEFIK_TMP_CHART} -type f | xargs sed -i 's/{{ .Values.image.name }}/{{ template "system_default_registry" .}}&/g'
+
   # Move CRDs from main chart to CRD chart
   mkdir -p ${TRAEFIK_TMP_CRD}/templates
   mv ${TRAEFIK_TMP_CHART}/crds/* ${TRAEFIK_TMP_CRD}/templates

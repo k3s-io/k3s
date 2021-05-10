@@ -61,6 +61,7 @@ type Server struct {
 	ClusterReset             bool
 	ClusterResetRestorePath  string
 	EncryptSecrets           bool
+	SystemDefaultRegistry    string
 	StartupHooks             []func(context.Context, <-chan struct{}, string) error
 	EtcdSnapshotName         string
 	EtcdDisableSnapshots     bool
@@ -360,6 +361,8 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 			WithNodeIDFlag,
 			NodeLabels,
 			NodeTaints,
+			ImageCredProvBinDirFlag,
+			ImageCredProvConfigFlag,
 			DockerFlag,
 			CRIEndpointFlag,
 			PauseImageFlag,
@@ -418,6 +421,12 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Name:        "secrets-encryption",
 				Usage:       "(experimental) Enable Secret encryption at rest",
 				Destination: &ServerConfig.EncryptSecrets,
+			},
+			cli.StringFlag{
+				Name:        "system-default-registry",
+				Usage:       "(image) Private registry to be used for all system images",
+				EnvVar:      version.ProgramUpper + "_SYSTEM_DEFAULT_REGISTRY",
+				Destination: &ServerConfig.SystemDefaultRegistry,
 			},
 			&SELinuxFlag,
 			LBServerPortFlag,

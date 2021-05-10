@@ -31,10 +31,10 @@ var (
 	svcNameLabel       = "svccontroller." + version.Program + ".cattle.io/svcname"
 	daemonsetNodeLabel = "svccontroller." + version.Program + ".cattle.io/enablelb"
 	nodeSelectorLabel  = "svccontroller." + version.Program + ".cattle.io/nodeselector"
+	DefaultLBImage     = "rancher/klipper-lb:v0.2.0"
 )
 
 const (
-	image = "rancher/klipper-lb:v0.1.2"
 	Ready = condition.Cond("Ready")
 )
 
@@ -341,7 +341,7 @@ func (h *handler) newDaemonSet(svc *core.Service) (*apps.DaemonSet, error) {
 		portName := fmt.Sprintf("lb-port-%d", port.Port)
 		container := core.Container{
 			Name:            portName,
-			Image:           image,
+			Image:           DefaultLBImage,
 			ImagePullPolicy: core.PullIfNotPresent,
 			Ports: []core.ContainerPort{
 				{
