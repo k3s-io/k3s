@@ -62,9 +62,7 @@ func (c *Cluster) start(ctx context.Context) error {
 		rebootstrap := func() error {
 			return c.storageBootstrap(ctx)
 		}
-		if err := c.managedDB.Reset(ctx, rebootstrap); err != nil {
-			return err
-		}
+		return c.managedDB.Reset(ctx, rebootstrap)
 	case c.config.ClusterReset:
 		if _, err := os.Stat(resetFile); err != nil {
 			if !os.IsNotExist(err) {
