@@ -1116,7 +1116,7 @@ func (e *ETCD) StoreSnapshotData(ctx context.Context) error {
 		}
 
 		if snapshotConfigMap.Data == nil {
-			snapshotConfigMap.Data = make(map[string]string, 0)
+			snapshotConfigMap.Data = make(map[string]string)
 		}
 
 		nodeName := os.Getenv("NODE_NAME")

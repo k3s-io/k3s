@@ -72,6 +72,7 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 		return cmds.ErrCommandNoArgs
 	}
 
+	serverConfig.ControlConfig.DataDir = dataDir
 	serverConfig.ControlConfig.EtcdSnapshotRetention = 0 // disable retention check
 	serverConfig.ControlConfig.Runtime.ETCDServerCA = filepath.Join(dataDir, "tls", "etcd", "server-ca.crt")
 	serverConfig.ControlConfig.Runtime.ClientETCDCert = filepath.Join(dataDir, "tls", "etcd", "client.crt")
@@ -125,6 +126,7 @@ func delete(app *cli.Context, cfg *cmds.Server) error {
 		return errors.New("no snapshots given for removal")
 	}
 
+	serverConfig.ControlConfig.DataDir = dataDir
 	serverConfig.ControlConfig.Runtime.KubeConfigAdmin = filepath.Join(dataDir, "cred", "admin.kubeconfig")
 
 	ctx := signals.SetupSignalHandler(context.Background())
@@ -150,9 +152,12 @@ func List(app *cli.Context) error {
 func list(app *cli.Context, cfg *cmds.Server) error {
 	var serverConfig server.Config
 
-	if _, err := commandSetup(app, cfg, &serverConfig); err != nil {
+	dataDir, err := commandSetup(app, cfg, &serverConfig)
+	if err != nil {
 		return err
 	}
+
+	serverConfig.ControlConfig.DataDir = dataDir
 
 	ctx := signals.SetupSignalHandler(context.Background())
 	e := etcd.NewETCD()
