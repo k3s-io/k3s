@@ -11,6 +11,8 @@ import (
 	proxy "k8s.io/kubernetes/cmd/kube-proxy/app"
 	kubelet "k8s.io/kubernetes/cmd/kubelet/app"
 
+	"github.com/rancher/k3s/pkg/cli/cmds"
+	daemonconfig "github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/sirupsen/logrus"
 	"k8s.io/kubernetes/cmd/kube-apiserver/app"
 	cmapp "k8s.io/kubernetes/cmd/kube-controller-manager/app"
@@ -22,6 +24,10 @@ func init() {
 }
 
 type Embedded struct{}
+
+func (Embedded) Bootstrap(ctx context.Context, nodeConfig *daemonconfig.Node, cfg cmds.Agent) error {
+	return nil
+}
 
 func (Embedded) Kubelet(args []string) error {
 	command := kubelet.NewKubeletCommand(context.Background())
