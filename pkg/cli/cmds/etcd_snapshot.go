@@ -95,7 +95,7 @@ func NewEtcdSnapshotCommand(action func(*cli.Context) error, subcommands []cli.C
 	}
 }
 
-func NewEtcdSnapshotSubcommands(delete func(ctx *cli.Context) error) []cli.Command {
+func NewEtcdSnapshotSubcommands(delete, list func(ctx *cli.Context) error) []cli.Command {
 	return []cli.Command{
 		{
 			Name:            "delete",
@@ -103,6 +103,15 @@ func NewEtcdSnapshotSubcommands(delete func(ctx *cli.Context) error) []cli.Comma
 			SkipFlagParsing: false,
 			SkipArgReorder:  true,
 			Action:          delete,
+			Flags:           EtcdSnapshotFlags,
+		},
+		{
+			Name:            "ls",
+			Aliases:         []string{"list", "l"},
+			Usage:           "List etcd snapshots",
+			SkipFlagParsing: false,
+			SkipArgReorder:  true,
+			Action:          list,
 			Flags:           EtcdSnapshotFlags,
 		},
 	}

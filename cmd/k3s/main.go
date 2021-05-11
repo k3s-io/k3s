@@ -44,7 +44,7 @@ func main() {
 		cmds.NewCRICTL(externalCLIAction("crictl", dataDir)),
 		cmds.NewCtrCommand(externalCLIAction("ctr", dataDir)),
 		cmds.NewCheckConfigCommand(externalCLIAction("check-config", dataDir)),
-		cmds.NewEtcdSnapshotCommand(etcdsnapshotCommand, cmds.NewEtcdSnapshotSubcommands(etcdsnapshotCommand)),
+		cmds.NewEtcdSnapshotCommand(etcdsnapshotCommand, cmds.NewEtcdSnapshotSubcommands(etcdsnapshotCommand, etcdsnapshotCommand)),
 	}
 
 	if err := app.Run(os.Args); err != nil {

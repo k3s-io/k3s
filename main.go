@@ -27,7 +27,7 @@ func main() {
 		cmds.NewAgentCommand(agent.Run),
 		cmds.NewKubectlCommand(kubectl.Run),
 		cmds.NewCRICTL(crictl.Run),
-		cmds.NewEtcdSnapshotCommand(etcdsnapshot.Run, cmds.NewEtcdSnapshotSubcommands(etcdsnapshot.Delete)),
+		cmds.NewEtcdSnapshotCommand(etcdsnapshot.Run, cmds.NewEtcdSnapshotSubcommands(etcdsnapshot.Delete, etcdsnapshot.List)),
 	}
 
 	if err := app.Run(configfilearg.MustParse(os.Args)); err != nil {
