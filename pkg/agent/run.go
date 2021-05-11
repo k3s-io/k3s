@@ -26,6 +26,7 @@ import (
 	cp "github.com/rancher/k3s/pkg/cloudprovider"
 	"github.com/rancher/k3s/pkg/daemons/agent"
 	daemonconfig "github.com/rancher/k3s/pkg/daemons/config"
+	"github.com/rancher/k3s/pkg/daemons/executor"
 	"github.com/rancher/k3s/pkg/nodeconfig"
 	"github.com/rancher/k3s/pkg/rootless"
 	"github.com/rancher/k3s/pkg/util"
@@ -88,6 +89,10 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 	syssetup.Configure(dualCluster || dualService || dualNode)
 
 	if err := setupCriCtlConfig(cfg, nodeConfig); err != nil {
+		return err
+	}
+
+	if err := executor.Bootstrap(ctx, nodeConfig, cfg); err != nil {
 		return err
 	}
 
