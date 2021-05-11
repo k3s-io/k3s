@@ -970,7 +970,8 @@ func (e *ETCD) initS3IfNil(ctx context.Context) error {
 	return nil
 }
 
-// ListSnapshots
+// ListSnapshots is an exported wrapper method that wraps an
+// unexported method of the same name.
 func (e *ETCD) ListSnapshots(ctx context.Context) ([]SnapshotFile, error) {
 	snapshotDir, err := snapshotDir(e.config)
 	if err != nil {
