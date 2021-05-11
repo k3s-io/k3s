@@ -854,9 +854,9 @@ type s3Config struct {
 	Folder        string `json:"folder,omitempty"`
 }
 
-// snapshotFile represents a single snapshot and it's
+// SnapshotFile represents a single snapshot and it's
 // metadata.
-type snapshotFile struct {
+type SnapshotFile struct {
 	Name string `json:"name"`
 	// Location contains the full path of the snapshot. For
 	// local paths, the location will be prefixed with "file://".
@@ -870,8 +870,8 @@ type snapshotFile struct {
 // listSnapshots provides a list of the currently stored
 // snapshots on disk or in S3 along with their relevant
 // metadata.
-func (e *ETCD) listSnapshots(ctx context.Context, snapshotDir string) ([]snapshotFile, error) {
-	var snapshots []snapshotFile
+func (e *ETCD) listSnapshots(ctx context.Context, snapshotDir string) ([]SnapshotFile, error) {
+	var snapshots []SnapshotFile
 
 	if e.config.EtcdS3 {
 		ctx, cancel := context.WithCancel(ctx)
@@ -896,7 +896,7 @@ func (e *ETCD) listSnapshots(ctx context.Context, snapshotDir string) ([]snapsho
 				return nil, err
 			}
 
-			snapshots = append(snapshots, snapshotFile{
+			snapshots = append(snapshots, SnapshotFile{
 				Name:     filepath.Base(obj.Key),
 				NodeName: "s3",
 				CreatedAt: &metav1.Time{
@@ -925,7 +925,7 @@ func (e *ETCD) listSnapshots(ctx context.Context, snapshotDir string) ([]snapsho
 	nodeName := os.Getenv("NODE_NAME")
 
 	for _, f := range files {
-		snapshots = append(snapshots, snapshotFile{
+		snapshots = append(snapshots, SnapshotFile{
 			Name:     f.Name(),
 			Location: "file://" + filepath.Join(snapshotDir, f.Name()),
 			NodeName: nodeName,
@@ -951,6 +951,17 @@ func (e *ETCD) initS3IfNil(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// ListSnapshots is an exported wrapper method that wraps an
+// unexported method of the same name.
+func (e *ETCD) ListSnapshots(ctx context.Context) ([]SnapshotFile, error) {
+	snapshotDir, err := snapshotDir(e.config)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get the snapshot dir")
+	}
+
+	return e.listSnapshots(ctx, snapshotDir)
 }
 
 // deleteSnapshots removes the given snapshots from
@@ -1034,7 +1045,7 @@ func (e *ETCD) DeleteSnapshots(ctx context.Context, snapshots []string) error {
 }
 
 // updateSnapshotData populates the given map with the contents of the given slice.
-func updateSnapshotData(data map[string]string, snapshotFiles []snapshotFile) error {
+func updateSnapshotData(data map[string]string, snapshotFiles []SnapshotFile) error {
 	for _, v := range snapshotFiles {
 		b, err := json.Marshal(v)
 		if err != nil {
@@ -1089,14 +1100,14 @@ func (e *ETCD) StoreSnapshotData(ctx context.Context) error {
 		}
 
 		if snapshotConfigMap.Data == nil {
-			snapshotConfigMap.Data = make(map[string]string, 0)
+			snapshotConfigMap.Data = make(map[string]string)
 		}
 
 		nodeName := os.Getenv("NODE_NAME")
 
 		// remove entries for this node only
 		for k, v := range snapshotConfigMap.Data {
-			var sf snapshotFile
+			var sf SnapshotFile
 			if err := json.Unmarshal([]byte(v), &sf); err != nil {
 				return err
 			}
