@@ -95,6 +95,7 @@ require (
 	github.com/lxc/lxd v0.0.0-20191108214106-60ea15630455
 	github.com/mattn/go-sqlite3 v1.14.4
 	github.com/natefinch/lumberjack v2.0.0+incompatible
+	// LOOK TO scripts/download FOR THE VERSION OF runc THAT WE ARE BUILDING/SHIPPING
 	github.com/opencontainers/runc v1.0.0-rc10
 	github.com/opencontainers/selinux v1.3.1-0.20190929122143-5215b1806f52
 	github.com/pkg/errors v0.9.1
