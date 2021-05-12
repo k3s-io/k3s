@@ -43,7 +43,12 @@ func main() {
 		cmds.NewKubectlCommand(kubectl.Run),
 		cmds.NewCRICTL(crictl.Run),
 		cmds.NewCtrCommand(ctr.Run),
-		cmds.NewEtcdSnapshotCommand(etcdsnapshot.Run, cmds.NewEtcdSnapshotSubcommands(etcdsnapshot.Delete, etcdsnapshot.List)),
+		cmds.NewEtcdSnapshotCommand(etcdsnapshot.Run,
+			cmds.NewEtcdSnapshotSubcommands(
+				etcdsnapshot.Delete,
+				etcdsnapshot.List,
+				etcdsnapshot.Prune),
+		),
 	}
 
 	err := app.Run(configfilearg.MustParse(os.Args))
