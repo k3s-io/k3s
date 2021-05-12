@@ -117,9 +117,9 @@ ln -s containerd ./bin/ctr
 # echo Building containerd
 # CGO_ENABLED=0 "${GO}" build -tags "$TAGS" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC" -o bin/containerd ./cmd/containerd/
 echo Building runc
-rm -f ./vendor/github.com/opencontainers/runc/runc
-make EXTRA_LDFLAGS="-w -s" BUILDTAGS="$RUNC_TAGS" -C ./vendor/github.com/opencontainers/runc $RUNC_STATIC
-cp -f ./vendor/github.com/opencontainers/runc/runc ./bin/runc
+rm -f ./build/src/github.com/opencontainers/runc/runc
+make GOPATH=$(pwd)/build EXTRA_LDFLAGS="-w -s" BUILDTAGS="$RUNC_TAGS" -C ./build/src/github.com/opencontainers/runc $RUNC_STATIC
+cp -f ./build/src/github.com/opencontainers/runc/runc ./bin/runc
 
 echo Building containerd-shim
 rm -f ./vendor/github.com/containerd/containerd/bin/containerd-shim
