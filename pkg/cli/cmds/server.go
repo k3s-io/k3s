@@ -331,7 +331,7 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Destination: &ServerConfig.DisableNPC,
 			},
 			cli.BoolFlag{
-				Name:        "disable-api-server",
+				Name:        "disable-apiserver",
 				Hidden:      true,
 				Usage:       "(experimental/components) Disable running api server",
 				Destination: &ServerConfig.DisableAPIServer,
