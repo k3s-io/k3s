@@ -11,6 +11,9 @@
 		]
 	},
 	"run": {
+		"skip-dirs": [
+			"build", "/go/src/github.com/rancher/k3s/build"
+		],
 		"skip-files": [
 			"/zz_generated_"
 		],
