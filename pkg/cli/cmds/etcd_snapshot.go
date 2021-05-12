@@ -116,7 +116,7 @@ func NewEtcdSnapshotSubcommands(delete, list, prune func(ctx *cli.Context) error
 		},
 		{
 			Name:            "prune",
-			Usage:           "Run retention policy",
+			Usage:           "Remove snapshots that exceed the configured retention count",
 			SkipFlagParsing: false,
 			SkipArgReorder:  true,
 			Action:          prune,
