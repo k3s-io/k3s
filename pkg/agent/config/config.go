@@ -552,10 +552,11 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 
 	nodeConfig.AgentConfig.PauseImage = envInfo.PauseImage
 	nodeConfig.AgentConfig.AirgapExtraRegistry = envInfo.AirgapExtraRegistry
+	nodeConfig.AgentConfig.SystemDefaultRegistry = controlConfig.SystemDefaultRegistry
 
 	// Apply SystemDefaultRegistry to PauseImage and AirgapExtraRegistry
 	if controlConfig.SystemDefaultRegistry != "" {
-		if !strings.HasPrefix(nodeConfig.AgentConfig.PauseImage, controlConfig.SystemDefaultRegistry) {
+		if nodeConfig.AgentConfig.PauseImage != "" && !strings.HasPrefix(nodeConfig.AgentConfig.PauseImage, controlConfig.SystemDefaultRegistry) {
 			nodeConfig.AgentConfig.PauseImage = controlConfig.SystemDefaultRegistry + "/" + nodeConfig.AgentConfig.PauseImage
 		}
 		if !slice.ContainsString(nodeConfig.AgentConfig.AirgapExtraRegistry, controlConfig.SystemDefaultRegistry) {
