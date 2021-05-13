@@ -95,7 +95,7 @@ func NewEtcdSnapshotCommand(action func(*cli.Context) error, subcommands []cli.C
 	}
 }
 
-func NewEtcdSnapshotSubcommands(delete, list func(ctx *cli.Context) error) []cli.Command {
+func NewEtcdSnapshotSubcommands(delete, list, prune func(ctx *cli.Context) error) []cli.Command {
 	return []cli.Command{
 		{
 			Name:            "delete",
@@ -108,11 +108,24 @@ func NewEtcdSnapshotSubcommands(delete, list func(ctx *cli.Context) error) []cli
 		{
 			Name:            "ls",
 			Aliases:         []string{"list", "l"},
-			Usage:           "List etcd snapshots",
+			Usage:           "List snapshots",
 			SkipFlagParsing: false,
 			SkipArgReorder:  true,
 			Action:          list,
 			Flags:           EtcdSnapshotFlags,
+		},
+		{
+			Name:            "prune",
+			Usage:           "Remove snapshots that exceed the configured retention count",
+			SkipFlagParsing: false,
+			SkipArgReorder:  true,
+			Action:          prune,
+			Flags: append(EtcdSnapshotFlags, &cli.IntFlag{
+				Name:        "snapshot-retention",
+				Usage:       "(db) Number of snapshots to retain",
+				Destination: &ServerConfig.EtcdSnapshotRetention,
+				Value:       defaultSnapshotRentention,
+			}),
 		},
 	}
 }

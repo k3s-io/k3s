@@ -181,3 +181,28 @@ func list(app *cli.Context, cfg *cmds.Server) error {
 
 	return nil
 }
+
+func Prune(app *cli.Context) error {
+	if err := cmds.InitLogging(); err != nil {
+		return err
+	}
+	return prune(app, &cmds.ServerConfig)
+}
+
+func prune(app *cli.Context, cfg *cmds.Server) error {
+	var serverConfig server.Config
+
+	dataDir, err := commandSetup(app, cfg, &serverConfig)
+	if err != nil {
+		return err
+	}
+
+	serverConfig.ControlConfig.DataDir = dataDir
+	serverConfig.ControlConfig.EtcdSnapshotRetention = cfg.EtcdSnapshotRetention
+
+	ctx := signals.SetupSignalHandler(context.Background())
+	e := etcd.NewETCD()
+	e.SetControlConfig(&serverConfig.ControlConfig)
+
+	return e.PruneSnapshots(ctx)
+}

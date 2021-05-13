@@ -953,6 +953,17 @@ func (e *ETCD) initS3IfNil(ctx context.Context) error {
 	return nil
 }
 
+// PruneSnapshots perfrorms a retention run with the given
+// retention duration and removes expired snapshots.
+func (e *ETCD) PruneSnapshots(ctx context.Context) error {
+	snapshotDir, err := snapshotDir(e.config)
+	if err != nil {
+		return errors.Wrap(err, "failed to get the snapshot dir")
+	}
+
+	return snapshotRetention(e.config.EtcdSnapshotRetention, snapshotDir)
+}
+
 // ListSnapshots is an exported wrapper method that wraps an
 // unexported method of the same name.
 func (e *ETCD) ListSnapshots(ctx context.Context) ([]SnapshotFile, error) {
