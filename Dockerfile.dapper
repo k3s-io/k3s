@@ -28,7 +28,7 @@ RUN GO111MODULE=on go get golang.org/x/tools/cmd/goimports@aa82965741a9fecd12b02
 RUN rm -rf /go/src /go/pkg
 
 RUN if [ "$(go env GOARCH)" = "amd64" ]; then \
-    curl -sL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s v1.30.0; \
+    curl -sL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s v1.40.0; \
     fi
 
 ARG SELINUX=true
