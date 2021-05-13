@@ -1,0 +1,11 @@
+ARG GOLANG=golang:1.16.2-alpine3.12
+FROM ${GOLANG}
+
+RUN apk -U --no-cache add bash jq
+ENV DAPPER_SOURCE /go/src/github.com/rancher/k3s/
+ENV HOME ${DAPPER_SOURCE}
+WORKDIR ${DAPPER_SOURCE}
+
+COPY ./scripts/test-mods /bin/
+
+ENTRYPOINT ["/bin/test-mods"]
