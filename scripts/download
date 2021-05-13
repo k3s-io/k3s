@@ -4,6 +4,7 @@ cd $(dirname $0)/..
 
 . ./scripts/version.sh
 
+RUNC_VERSION=v1.0.0-rc94
 ROOT_VERSION=v0.8.1
 TRAEFIK_VERSION=1.81.0
 CHARTS_DIR=build/static/charts
@@ -11,6 +12,12 @@ CHARTS_DIR=build/static/charts
 mkdir -p ${CHARTS_DIR}
 
 curl --compressed -sfL https://github.com/k3s-io/k3s-root/releases/download/${ROOT_VERSION}/k3s-root-${ARCH}.tar | tar xf -
+
+git clone --depth=1 https://github.com/opencontainers/runc build/src/github.com/opencontainers/runc || true
+pushd build/src/github.com/opencontainers/runc
+git fetch --all --tags
+git checkout ${RUNC_VERSION} -b k3s
+popd
 
 TRAEFIK_FILE=traefik-${TRAEFIK_VERSION}.tgz
 TRAEFIK_URL=https://charts.helm.sh/stable/packages/${TRAEFIK_FILE}
