@@ -360,6 +360,12 @@ func newProxyServer(
 		}
 	}
 
+	useEndpointSlices := utilfeature.DefaultFeatureGate.Enabled(features.EndpointSliceProxying)
+	if proxyMode == proxyModeUserspace {
+		// userspace mode doesn't support endpointslice.
+		useEndpointSlices = false
+	}
+
 	var connTracker Conntracker
 	if !libcontainersystem.RunningInUserNS() {
 		// if we are in userns, sysctl does not work and connTracker should be kept nil
@@ -386,7 +392,7 @@ func newProxyServer(
 		OOMScoreAdj:            config.OOMScoreAdj,
 		ConfigSyncPeriod:       config.ConfigSyncPeriod.Duration,
 		HealthzServer:          healthzServer,
-		UseEndpointSlices:      utilfeature.DefaultFeatureGate.Enabled(features.EndpointSliceProxying),
+		UseEndpointSlices:      useEndpointSlices,
 	}, nil
 }
 
