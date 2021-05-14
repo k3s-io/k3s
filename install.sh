@@ -728,7 +728,9 @@ WantedBy=multi-user.target
 
 [Service]
 Type=${SYSTEMD_TYPE}
-EnvironmentFile=${FILE_K3S_ENV}
+EnvironmentFile=-/etc/default/%N
+EnvironmentFile=-/etc/sysconfig/%N
+EnvironmentFile=-${FILE_K3S_ENV}
 KillMode=process
 Delegate=yes
 # Having non-zero Limit*s causes performance problems due to accounting overhead
