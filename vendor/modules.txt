@@ -554,6 +554,7 @@ github.com/golang/snappy
 # github.com/google/btree v1.0.0
 github.com/google/btree
 # github.com/google/cadvisor v0.39.0
+## explicit
 github.com/google/cadvisor/accelerators
 github.com/google/cadvisor/cache/memory
 github.com/google/cadvisor/collector
@@ -3195,6 +3196,7 @@ sigs.k8s.io/yaml
 # github.com/matryer/moq => github.com/rancher/moq v0.0.0-20190404221404-ee5226d43009
 # github.com/opencontainers/runc => github.com/opencontainers/runc v1.0.0-rc93.0.20210414171415-3397a09ee932
 # github.com/opencontainers/runtime-spec => github.com/opencontainers/runtime-spec v1.0.3-0.20210316141917-a8c4a9ee0f6b
+# github.com/rancher/k3s/pkg/data => ./pkg/data
 # go.etcd.io/etcd => github.com/k3s-io/etcd v0.5.0-alpha.5.0.20201208200253-50621aee4aea
 # golang.org/x/crypto => golang.org/x/crypto v0.0.0-20210220033148-5ea612d1eb83
 # golang.org/x/net => golang.org/x/net v0.0.0-20210224082022-3d97a244fca7
