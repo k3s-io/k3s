@@ -40,6 +40,7 @@ func main() {
 			cmds.NewEtcdSnapshotSubcommands(
 				etcdsnapshotCommand,
 				etcdsnapshotCommand,
+				etcdsnapshotCommand,
 				etcdsnapshotCommand),
 		),
 	}
