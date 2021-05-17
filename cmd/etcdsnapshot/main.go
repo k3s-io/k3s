@@ -17,7 +17,8 @@ func main() {
 			cmds.NewEtcdSnapshotSubcommands(
 				etcdsnapshot.Delete,
 				etcdsnapshot.List,
-				etcdsnapshot.Prune),
+				etcdsnapshot.Prune,
+				etcdsnapshot.Run),
 		),
 	}
 
