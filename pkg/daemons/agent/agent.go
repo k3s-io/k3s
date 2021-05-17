@@ -45,10 +45,13 @@ func Agent(config *config.Agent) error {
 
 func startKubeProxy(cfg *config.Agent) error {
 	argsMap := map[string]string{
-		"proxy-mode":           "iptables",
-		"healthz-bind-address": "127.0.0.1",
-		"kubeconfig":           cfg.KubeConfigKubeProxy,
-		"cluster-cidr":         util.JoinIPNets(cfg.ClusterCIDRs),
+		"proxy-mode":                        "iptables",
+		"healthz-bind-address":              "127.0.0.1",
+		"kubeconfig":                        cfg.KubeConfigKubeProxy,
+		"cluster-cidr":                      util.JoinIPNets(cfg.ClusterCIDRs),
+		"conntrack-max-per-core":            "0",
+		"conntrack-tcp-timeout-established": "0s",
+		"conntrack-tcp-timeout-close-wait":  "0s",
 	}
 	if cfg.NodeName != "" {
 		argsMap["hostname-override"] = cfg.NodeName
