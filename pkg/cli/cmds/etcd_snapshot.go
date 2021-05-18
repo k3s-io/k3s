@@ -122,7 +122,7 @@ func NewEtcdSnapshotSubcommands(delete, list, prune, save func(ctx *cli.Context)
 			Action:          prune,
 			Flags: append(EtcdSnapshotFlags, &cli.IntFlag{
 				Name:        "snapshot-retention",
-				Usage:       "(db) Number of snapshots to retain",
+				Usage:       "(db) Number of snapshots to retain. Default: 5",
 				Destination: &ServerConfig.EtcdSnapshotRetention,
 				Value:       defaultSnapshotRentention,
 			}),
