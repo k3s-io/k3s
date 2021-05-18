@@ -961,6 +961,14 @@ func (e *ETCD) PruneSnapshots(ctx context.Context) error {
 		return errors.Wrap(err, "failed to get the snapshot dir")
 	}
 
+	if e.config.EtcdS3 {
+		if e.initS3IfNil(ctx); err != nil {
+			return err
+		}
+
+		return e.s3.snapshotRetention(ctx)
+	}
+
 	return snapshotRetention(e.config.EtcdSnapshotRetention, snapshotDir)
 }
 

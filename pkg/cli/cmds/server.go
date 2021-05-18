@@ -243,7 +243,7 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 			},
 			&cli.IntFlag{
 				Name:        "etcd-snapshot-retention",
-				Usage:       "(db) Number of snapshots to retain",
+				Usage:       "(db) Number of snapshots to retain Default: 5",
 				Destination: &ServerConfig.EtcdSnapshotRetention,
 				Value:       defaultSnapshotRentention,
 			},
