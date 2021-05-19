@@ -1000,12 +1000,13 @@ func (e *ETCD) DeleteSnapshots(ctx context.Context, snapshots []string) error {
 		}
 
 		objectsCh := make(chan minio.ObjectInfo)
-		defer close(objectsCh)
 
 		ctx, cancel := context.WithTimeout(ctx, defaultS3OpTimeout)
 		defer cancel()
 
 		go func() {
+			defer close(objectsCh)
+
 			opts := minio.ListObjectsOptions{
 				Recursive: true,
 			}
