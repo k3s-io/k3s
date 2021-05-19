@@ -1,5 +1,6 @@
 #!/bin/sh
 set -e
+set -o noglob
 
 # Usage:
 #   curl ... | ENV_VAR=... sh -
@@ -489,6 +490,9 @@ install_selinux_rpm() {
     if [ -r /etc/redhat-release ] || [ -r /etc/centos-release ] || [ -r /etc/oracle-release ]; then
         dist_version="$(. /etc/os-release && echo "$VERSION_ID")"
         maj_ver=$(echo "$dist_version" | sed -E -e "s/^([0-9]+)\.?[0-9]*$/\1/")
+        set +o noglob
+        $SUDO rm -f /etc/yum.repos.d/rancher-k3s-common*.repo
+        set -o noglob
         if [ -r /etc/redhat-release ]; then
             case ${maj_ver} in
                 7)
@@ -503,7 +507,6 @@ install_selinux_rpm() {
                     ;;
             esac
         fi
-        $SUDO rm -f /etc/yum.repos.d/rancher-k3s-common*.repo
         $SUDO tee /etc/yum.repos.d/rancher-k3s-common.repo >/dev/null << EOF
 [rancher-k3s-common-${2}]
 name=Rancher K3s Common (${2})
@@ -706,11 +709,10 @@ systemd_disable() {
 # --- capture current env and create file containing k3s_ variables ---
 create_env_file() {
     info "env: Creating environment file ${FILE_K3S_ENV}"
-    UMASK=$(umask)
-    umask 0377
+    $SUDO touch ${FILE_K3S_ENV}
+    $SUDO chmod 0600 ${FILE_K3S_ENV}
     env | grep '^K3S_' | $SUDO tee ${FILE_K3S_ENV} >/dev/null
-    env | egrep -i '^(NO|HTTP|HTTPS)_PROXY' | $SUDO tee -a ${FILE_K3S_ENV} >/dev/null
-    umask $UMASK
+    env | grep -Ei '^(NO|HTTP|HTTPS)_PROXY' | $SUDO tee -a ${FILE_K3S_ENV} >/dev/null
 }
 
 # --- write systemd service file ---
