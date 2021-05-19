@@ -546,6 +546,7 @@ github.com/golang/protobuf/ptypes/wrappers
 # github.com/google/btree v1.0.0
 github.com/google/btree
 # github.com/google/cadvisor v0.37.5
+## explicit
 github.com/google/cadvisor/accelerators
 github.com/google/cadvisor/cache/memory
 github.com/google/cadvisor/collector
@@ -2896,6 +2897,7 @@ k8s.io/metrics/pkg/client/custom_metrics
 k8s.io/metrics/pkg/client/custom_metrics/scheme
 k8s.io/metrics/pkg/client/external_metrics
 # k8s.io/utils v0.0.0-20200729134348-d5654de09c73
+## explicit
 k8s.io/utils/buffer
 k8s.io/utils/clock
 k8s.io/utils/exec
@@ -2969,6 +2971,7 @@ vbom.ml/util/sortorder
 # github.com/matryer/moq => github.com/rancher/moq v0.0.0-20190404221404-ee5226d43009
 # github.com/opencontainers/runc => github.com/opencontainers/runc v1.0.0-rc92
 # github.com/opencontainers/runtime-spec => github.com/opencontainers/runtime-spec v1.0.3-0.20200728170252-4d89ac9fbff6
+# github.com/rancher/k3s/pkg/data => ./pkg/data
 # go.etcd.io/etcd => github.com/k3s-io/etcd v0.5.0-alpha.5.0.20201208200253-50621aee4aea
 # golang.org/x/crypto => golang.org/x/crypto v0.0.0-20201002170205-7f63de1d35b0
 # golang.org/x/net => golang.org/x/net v0.0.0-20201110031124-69a78807bb2b

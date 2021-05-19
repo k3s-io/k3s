@@ -2,7 +2,6 @@ package agent
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/url"
@@ -12,6 +11,8 @@ import (
 	"time"
 
 	systemd "github.com/coreos/go-systemd/daemon"
+
+	"github.com/pkg/errors"
 	"github.com/rancher/k3s/pkg/agent/config"
 	"github.com/rancher/k3s/pkg/agent/containerd"
 	"github.com/rancher/k3s/pkg/agent/flannel"
@@ -34,6 +35,9 @@ import (
 	"k8s.io/client-go/kubernetes"
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/clientcmd"
+	app2 "k8s.io/kubernetes/cmd/kube-proxy/app"
+	kubeproxyconfig "k8s.io/kubernetes/pkg/proxy/apis/config"
+	utilpointer "k8s.io/utils/pointer"
 )
 
 var (
@@ -73,6 +77,12 @@ func setupCriCtlConfig(cfg cmds.Agent, nodeConfig *daemonconfig.Node) error {
 
 func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 	nodeConfig := config.Get(ctx, cfg, proxy)
+
+	conntrackConfig, err := getConntrackConfig(nodeConfig)
+	if err != nil {
+		return errors.Wrap(err, "failed to validate kube-proxy conntrack configuration")
+	}
+	syssetup.Configure(conntrackConfig)
 
 	if err := setupCriCtlConfig(cfg, nodeConfig); err != nil {
 		return err
@@ -117,6 +127,49 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 	return ctx.Err()
 }
 
+// getConntrackConfig uses the kube-proxy code to parse the user-provided kube-proxy-arg values, and
+// extract the conntrack settings so that K3s can set them itself. This allows us to soft-fail when
+// running K3s in Docker, where kube-proxy is no longer allowed to set conntrack sysctls on newer kernels.
+// When running rootless, we do not attempt to set conntrack sysctls - this behavior is copied from kubeadm.
+func getConntrackConfig(nodeConfig *daemonconfig.Node) (*kubeproxyconfig.KubeProxyConntrackConfiguration, error) {
+	ctConfig := &kubeproxyconfig.KubeProxyConntrackConfiguration{
+		MaxPerCore:            utilpointer.Int32Ptr(0),
+		Min:                   utilpointer.Int32Ptr(0),
+		TCPEstablishedTimeout: &metav1.Duration{},
+		TCPCloseWaitTimeout:   &metav1.Duration{},
+	}
+
+	if nodeConfig.AgentConfig.Rootless {
+		return ctConfig, nil
+	}
+
+	cmd := app2.NewProxyCommand()
+	if err := cmd.ParseFlags(daemonconfig.GetArgsList(map[string]string{}, nodeConfig.AgentConfig.ExtraKubeProxyArgs)); err != nil {
+		return nil, err
+	}
+	maxPerCore, err := cmd.Flags().GetInt32("conntrack-max-per-core")
+	if err != nil {
+		return nil, err
+	}
+	ctConfig.MaxPerCore = &maxPerCore
+	min, err := cmd.Flags().GetInt32("conntrack-min")
+	if err != nil {
+		return nil, err
+	}
+	ctConfig.Min = &min
+	establishedTimeout, err := cmd.Flags().GetDuration("conntrack-tcp-timeout-established")
+	if err != nil {
+		return nil, err
+	}
+	ctConfig.TCPEstablishedTimeout.Duration = establishedTimeout
+	closeWaitTimeout, err := cmd.Flags().GetDuration("conntrack-tcp-timeout-close-wait")
+	if err != nil {
+		return nil, err
+	}
+	ctConfig.TCPCloseWaitTimeout.Duration = closeWaitTimeout
+	return ctConfig, nil
+}
+
 func coreClient(cfg string) (kubernetes.Interface, error) {
 	restConfig, err := clientcmd.BuildConfigFromFlags("", cfg)
 	if err != nil {
@@ -130,7 +183,6 @@ func Run(ctx context.Context, cfg cmds.Agent) error {
 	if err := validate(); err != nil {
 		return err
 	}
-	syssetup.Configure()
 
 	if cfg.Rootless && !cfg.RootlessAlreadyUnshared {
 		if err := rootless.Rootless(cfg.DataDir); err != nil {
