@@ -33,6 +33,7 @@ replace (
 	github.com/prometheus/client_model => github.com/prometheus/client_model v0.0.0-20180712105110-5c3871d89910
 	github.com/prometheus/common => github.com/prometheus/common v0.0.0-20181126121408-4724e9255275
 	github.com/prometheus/procfs => github.com/prometheus/procfs v0.0.0-20181204211112-1dc9a6cbc91a
+	github.com/rancher/k3s/pkg/data => ./pkg/data
 	k8s.io/api => github.com/k3s-io/kubernetes/staging/src/k8s.io/api v1.18.19-k3s1
 	k8s.io/apiextensions-apiserver => github.com/k3s-io/kubernetes/staging/src/k8s.io/apiextensions-apiserver v1.18.19-k3s1
 	k8s.io/apimachinery => github.com/k3s-io/kubernetes/staging/src/k8s.io/apimachinery v1.18.19-k3s1
@@ -86,6 +87,7 @@ require (
 	github.com/go-bindata/go-bindata v3.1.2+incompatible
 	github.com/go-sql-driver/mysql v1.4.1
 	github.com/gogo/googleapis v1.3.0 // indirect
+	github.com/google/cadvisor v0.35.0
 	github.com/google/tcpproxy v0.0.0-20180808230851-dfa16c61dad2
 	github.com/gorilla/mux v1.7.3
 	github.com/gorilla/websocket v1.4.1
@@ -126,4 +128,5 @@ require (
 	k8s.io/cri-api v0.18.19
 	k8s.io/klog v1.0.0
 	k8s.io/kubernetes v1.18.19
+	k8s.io/utils v0.0.0-20200324210504-a9aa75ae1b89
 )

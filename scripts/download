@@ -8,13 +8,19 @@ RUNC_VERSION=v1.0.0-rc94
 ROOT_VERSION=v0.8.1
 TRAEFIK_VERSION=1.81.0
 CHARTS_DIR=build/static/charts
+RUNC_DIR=build/src/github.com/opencontainers/runc
+DATA_DIR=build/data
 
+umask 022
+rm -rf ${CHARTS_DIR}
+rm -rf ${RUNC_DIR}
 mkdir -p ${CHARTS_DIR}
+mkdir -p ${DATA_DIR}
 
 curl --compressed -sfL https://github.com/rancher/k3s-root/releases/download/${ROOT_VERSION}/k3s-root-${ARCH}.tar | tar xf -
 
-git clone --depth=1 https://github.com/opencontainers/runc build/src/github.com/opencontainers/runc || true
-pushd build/src/github.com/opencontainers/runc
+git clone --depth=1 https://github.com/opencontainers/runc ${RUNC_DIR} || true
+pushd ${RUNC_DIR}
 git fetch --all --tags
 git checkout ${RUNC_VERSION} -b k3s
 popd
