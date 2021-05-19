@@ -113,7 +113,7 @@ func (c *Cluster) Start(ctx context.Context) (<-chan struct{}, error) {
 			}
 		}()
 	}
-
+	return ready, nil
 }
 
 // startStorage starts the kine listener and configures the endpoints, if necessary.
