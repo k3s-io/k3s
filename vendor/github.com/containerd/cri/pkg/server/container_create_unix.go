@@ -203,10 +203,10 @@ func (c *criService) containerSpec(id string, sandboxID string, sandboxPid uint3
 			specOpts = append(specOpts, oci.WithHostDevices, oci.WithAllDevicesAllowed)
 		} else {
 			// add requested devices by the config as host devices are not automatically added
-			specOpts = append(specOpts, customopts.WithDevices(c.os, config), customopts.WithCapabilities(securityContext))
+			specOpts = append(specOpts, customopts.WithDevices(c.os, config), customopts.WithCapabilities(securityContext, c.allCaps))
 		}
 	} else { // not privileged
-		specOpts = append(specOpts, customopts.WithDevices(c.os, config), customopts.WithCapabilities(securityContext))
+		specOpts = append(specOpts, customopts.WithDevices(c.os, config), customopts.WithCapabilities(securityContext, c.allCaps))
 	}
 
 	// Clear all ambient capabilities. The implication of non-root + caps

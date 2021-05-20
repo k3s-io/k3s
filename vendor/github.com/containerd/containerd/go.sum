@@ -402,8 +402,8 @@ github.com/julienschmidt/httprouter v1.2.0/go.mod h1:SYymIcj16QtmaHHD7aYtjjsJG7V
 github.com/jung-kurt/gofpdf v1.0.3-0.20190309125859-24315acbbda5/go.mod h1:7Id9E/uU8ce6rXgefFLlgrJj/GYY22cpxn+r32jIOes=
 github.com/k3s-io/continuity v0.0.0-20210309170710-f93269e0d5c1 h1:KEz2rd9IDbrQT8w6RibEYlwfTXiu0P6hQDE+6O4IJdI=
 github.com/k3s-io/continuity v0.0.0-20210309170710-f93269e0d5c1/go.mod h1:EXlVlkqNba9rJe3j7w3Xa924itAMLgZH4UD/Q4PExuQ=
-github.com/k3s-io/cri v1.4.0-k3s.5 h1:Uh7QkRKibPJqSBbtCtgpjYsdNVcx3Tx+7HHlhxKBtu8=
-github.com/k3s-io/cri v1.4.0-k3s.5/go.mod h1:fGPUUHMKQik/vIegSe05DtX/m4miovdtvVLqRUFAkK0=
+github.com/k3s-io/cri v1.4.0-k3s.6 h1:Hn/0KRtv62B/KNT8oULl1hWnViyuJ+RB0x9y9zZsmCw=
+github.com/k3s-io/cri v1.4.0-k3s.6/go.mod h1:fGPUUHMKQik/vIegSe05DtX/m4miovdtvVLqRUFAkK0=
 github.com/karrick/godirwalk v1.7.5/go.mod h1:2c9FRhkDxdIbgkOnCEvnSWs71Bhugbl46shStcFDJ34=
 github.com/kisielk/errcheck v1.1.0/go.mod h1:EZBBE59ingxPouuu3KfxchcWSUPOHkagtvWXihfKN4Q=
 github.com/kisielk/errcheck v1.2.0/go.mod h1:/BMXB+zMLi60iA8Vv6Ksmxu/1UDYcXs4uQLJ+jE2L00=
