@@ -4,7 +4,7 @@ go 1.14
 
 replace (
 	github.com/containerd/continuity => github.com/k3s-io/continuity v0.0.0-20210309170710-f93269e0d5c1
-	github.com/containerd/cri => github.com/k3s-io/cri v1.4.0-k3s.5 // k3s-release/1.4
+	github.com/containerd/cri => github.com/k3s-io/cri v1.4.0-k3s.6 // k3s-release/1.4
 	github.com/golang/protobuf => github.com/golang/protobuf v1.3.5
 	google.golang.org/genproto => google.golang.org/genproto v0.0.0-20200224152610-e50cd9704f63
 	k8s.io/api => k8s.io/api v0.19.5
@@ -73,7 +73,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.7.1
 	github.com/sirupsen/logrus v1.7.0
-	github.com/syndtr/gocapability v0.0.0-20180916011248-d98352740cb2
+	github.com/stretchr/testify v1.4.0
 	github.com/tchap/go-patricia v2.2.6+incompatible // indirect
 	github.com/urfave/cli v1.22.2
 	go.etcd.io/bbolt v1.3.5
