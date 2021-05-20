@@ -101,6 +101,9 @@ type criService struct {
 	cniNetConfMonitor *cniNetConfSyncer
 	// baseOCISpecs contains cached OCI specs loaded via `Runtime.BaseRuntimeSpec`
 	baseOCISpecs map[string]*oci.Spec
+	// allCaps is the list of the capabilities.
+	// When nil, parsed from CapEff of /proc/self/status.
+	allCaps []string // nolint
 }
 
 // NewCRIService returns a new instance of CRIService
