@@ -7,7 +7,14 @@ import (
 )
 
 func SetFileModeForPath(name string, mode os.FileMode) error {
-	return os.Chmod(name, mode)
+	fi, err := os.Stat(name)
+	if err != nil {
+		return err
+	}
+	if fi.Mode().Perm() != mode.Perm() {
+		return os.Chmod(name, mode)
+	}
+	return nil
 }
 
 func SetFileModeForFile(file *os.File, mode os.FileMode) error {
