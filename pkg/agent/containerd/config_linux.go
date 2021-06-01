@@ -1,0 +1,73 @@
+// +build linux
+
+package containerd
+
+import (
+	"context"
+	"io/ioutil"
+	"os"
+
+	"github.com/opencontainers/runc/libcontainer/system"
+	"github.com/pkg/errors"
+	"github.com/rancher/k3s/pkg/agent/templates"
+	util2 "github.com/rancher/k3s/pkg/agent/util"
+	"github.com/rancher/k3s/pkg/cgroups"
+	"github.com/rancher/k3s/pkg/daemons/config"
+	"github.com/rancher/k3s/pkg/version"
+	"github.com/rancher/wharfie/pkg/registries"
+	"github.com/sirupsen/logrus"
+	"golang.org/x/sys/unix"
+)
+
+// setupContainerdConfig generates the containerd.toml, using a template combined with various
+// runtime configurations and registry mirror settings provided by the administrator.
+func setupContainerdConfig(ctx context.Context, cfg *config.Node) error {
+	privRegistries, err := registries.GetPrivateRegistries(cfg.AgentConfig.PrivateRegistry)
+	if err != nil {
+		return err
+	}
+
+	isRunningInUserNS := system.RunningInUserNS()
+	_, _, hasCFS, hasPIDs := cgroups.CheckCgroups()
+	// "/sys/fs/cgroup" is namespaced
+	cgroupfsWritable := unix.Access("/sys/fs/cgroup", unix.W_OK) == nil
+	disableCgroup := isRunningInUserNS && (!hasCFS || !hasPIDs || !cgroupfsWritable)
+	if disableCgroup {
+		logrus.Warn("cgroup v2 controllers are not delegated for rootless. Disabling cgroup.")
+	}
+
+	var containerdTemplate string
+	containerdConfig := templates.ContainerdConfig{
+		NodeConfig:            cfg,
+		DisableCgroup:         disableCgroup,
+		IsRunningInUserNS:     isRunningInUserNS,
+		PrivateRegistryConfig: privRegistries.Registry(),
+	}
+
+	selEnabled, selConfigured, err := selinuxStatus()
+	if err != nil {
+		return errors.Wrap(err, "failed to detect selinux")
+	}
+	switch {
+	case !cfg.SELinux && selEnabled:
+		logrus.Warn("SELinux is enabled on this host, but " + version.Program + " has not been started with --selinux - containerd SELinux support is disabled")
+	case cfg.SELinux && !selConfigured:
+		logrus.Warnf("SELinux is enabled for "+version.Program+" but process is not running in context '%s', "+version.Program+"-selinux policy may need to be applied", SELinuxContextType)
+	}
+
+	containerdTemplateBytes, err := ioutil.ReadFile(cfg.Containerd.Template)
+	if err == nil {
+		logrus.Infof("Using containerd template at %s", cfg.Containerd.Template)
+		containerdTemplate = string(containerdTemplateBytes)
+	} else if os.IsNotExist(err) {
+		containerdTemplate = templates.ContainerdConfigTemplate
+	} else {
+		return err
+	}
+	parsedTemplate, err := templates.ParseTemplateFromConfig(containerdTemplate, containerdConfig)
+	if err != nil {
+		return err
+	}
+
+	return util2.WriteFile(cfg.Containerd.Config, parsedTemplate)
+}

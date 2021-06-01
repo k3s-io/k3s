@@ -19,12 +19,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/containerd/containerd/snapshots/overlay"
-	fuseoverlayfs "github.com/containerd/fuse-overlayfs-snapshotter"
 	"github.com/pkg/errors"
 	"github.com/rancher/k3s/pkg/agent/proxy"
 	"github.com/rancher/k3s/pkg/cli/cmds"
 	"github.com/rancher/k3s/pkg/clientaccess"
+	"github.com/rancher/k3s/pkg/containerd"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/daemons/control/deps"
 	"github.com/rancher/k3s/pkg/util"
@@ -447,12 +446,12 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	if !nodeConfig.Docker && nodeConfig.ContainerRuntimeEndpoint == "" {
 		switch nodeConfig.AgentConfig.Snapshotter {
 		case "overlayfs":
-			if err := overlay.Supported(nodeConfig.Containerd.Root); err != nil {
+			if err := containerd.OverlaySupported(nodeConfig.Containerd.Root); err != nil {
 				return nil, errors.Wrapf(err, "\"overlayfs\" snapshotter cannot be enabled for %q, try using \"fuse-overlayfs\" or \"native\"",
 					nodeConfig.Containerd.Root)
 			}
 		case "fuse-overlayfs":
-			if err := fuseoverlayfs.Supported(nodeConfig.Containerd.Root); err != nil {
+			if err := containerd.FuseoverlayfsSupported(nodeConfig.Containerd.Root); err != nil {
 				return nil, errors.Wrapf(err, "\"fuse-overlayfs\" snapshotter cannot be enabled for %q, try using \"native\"",
 					nodeConfig.Containerd.Root)
 			}
