@@ -76,5 +76,5 @@ roleRef:
   name: k3s-cloud-controller-manager
 subjects:
 - kind: User
-  name: k3s-cloud-controller-manager
+  name: cloud-controller-manager
   namespace: kube-system
