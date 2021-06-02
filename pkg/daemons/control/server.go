@@ -427,7 +427,7 @@ func checkForCloudControllerPrivileges(runtime *config.ControlRuntime) error {
 		return err
 	}
 	crb := rbac.NewFactoryFromConfigOrDie(restConfig).Rbac().V1().ClusterRoleBinding()
-	_, err = crb.Get("k3s-cloud-controller-manager", metav1.GetOptions{})
+	_, err = crb.Get(version.Program+"-cloud-controller-manager", metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
