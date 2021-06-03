@@ -82,13 +82,19 @@ func (c *Cluster) shouldBootstrapLoad(ctx context.Context) (bool, error) {
 		}
 	}
 
+	// if the TLS directory is missing, return true to force rebootstrapping.
+	if _, err := os.Stat(filepath.Join(c.config.DataDir, "tls")); os.IsNotExist(err) {
+		logrus.Warn("TLS directory not found. Rebootstrapping.")
+		return false, nil
+	}
+
 	// Check the stamp file to see if we have successfully bootstrapped using this token.
 	// NOTE: The fact that we use a hash of the token to generate the stamp
 	//       means that it is unsafe to use the same token for multiple clusters.
 	stamp := c.bootstrapStamp()
 	if _, err := os.Stat(stamp); err == nil {
 		logrus.Info("Cluster bootstrap already complete")
-		return false, nil
+		return true, nil
 	}
 
 	// No errors and no bootstrap stamp, need to bootstrap.
