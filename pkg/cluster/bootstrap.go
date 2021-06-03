@@ -3,7 +3,10 @@ package cluster
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"errors"
+	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -82,10 +85,8 @@ func (c *Cluster) shouldBootstrapLoad(ctx context.Context) (bool, error) {
 		}
 	}
 
-	// if the TLS directory is missing, return true to force rebootstrapping.
-	if _, err := os.Stat(filepath.Join(c.config.DataDir, "tls")); os.IsNotExist(err) {
-		logrus.Warn("TLS directory not found. Rebootstrapping.")
-		return false, nil
+	if err := c.validateBootstrapCertificates(); err != nil {
+		return true, nil
 	}
 
 	// Check the stamp file to see if we have successfully bootstrapped using this token.
@@ -99,6 +100,121 @@ func (c *Cluster) shouldBootstrapLoad(ctx context.Context) (bool, error) {
 
 	// No errors and no bootstrap stamp, need to bootstrap.
 	return true, nil
+}
+
+// isDirEmpty checks to see if the given directory
+// is empty.
+func isDirEmpty(name string) (bool, error) {
+	f, err := os.Open(name)
+	if err != nil {
+		return false, err
+	}
+	defer f.Close()
+
+	_, err = f.Readdir(1)
+	if err == io.EOF {
+		return true, nil
+	}
+	return false, err
+}
+
+func (c *Cluster) validateBootstrapCertificates() error {
+	bootstrapDirs := []string{
+		"tls",
+		"tls/etcd",
+	}
+
+	for _, dir := range bootstrapDirs {
+		if _, err := os.Stat(filepath.Join(c.config.DataDir, dir)); os.IsNotExist(err) {
+			logrus.Debugf("missing %s directory from ${data-dir}", dir)
+			return fmt.Errorf("missing %s directory from ${data-dir}", dir)
+		}
+
+		ok, err := isDirEmpty(filepath.Join(c.config.DataDir, dir))
+		if err != nil {
+			return err
+		}
+		if ok {
+			logrus.Debugf("%s directory is empty", dir)
+			return fmt.Errorf("%s directory is empty", dir)
+		}
+	}
+
+	// check existence of certificate and contents against known bootstrap data and
+	// if there are any differences, return an error to trigger a rebootstrap
+	bootstrapCertificateAndFile := map[string]string{
+		c.config.Runtime.ControlRuntimeBootstrap.ETCDServerCA:    "etcd/server-ca.crt",
+		c.config.Runtime.ControlRuntimeBootstrap.ETCDServerCAKey: "etcd/server-ca.key",
+		c.config.Runtime.ControlRuntimeBootstrap.ETCDPeerCA:      "etcd/peer-ca.crt",
+		c.config.Runtime.ControlRuntimeBootstrap.ETCDPeerCAKey:   "etcd/peer-ca.key",
+		c.config.Runtime.ClientETCDCert:                          "etcd/client.crt",
+		c.config.Runtime.ClientETCDKey:                           "etcd/client.key",
+		c.config.Runtime.PeerServerClientETCDCert:                "etcd/peer-server-client.crt",
+		c.config.Runtime.PeerServerClientETCDKey:                 "etcd/peer-server-client.key",
+		c.config.Runtime.ServerETCDCert:                          "etcd/server-client.crt",
+		c.config.Runtime.ServerETCDKey:                           "etcd/server-client.key",
+
+		c.config.Runtime.ClientAdminCert:                  "client-admin.crt",
+		c.config.Runtime.ClientAdminKey:                   "client-admin.key",
+		c.config.Runtime.ClientAuthProxyCert:              "client-auth-proxy.crt",
+		c.config.Runtime.ClientAuthProxyKey:               "client-auth-proxy.key",
+		c.config.Runtime.ClientCA:                         "client-ca.crt",
+		c.config.Runtime.ClientCAKey:                      "client-ca.key",
+		c.config.Runtime.ClientCloudControllerCert:        "client-cloud-controller.crt",
+		c.config.Runtime.ClientCloudControllerKey:         "client-cloud-controller.key",
+		c.config.Runtime.ClientControllerCert:             "client-controller.crt",
+		c.config.Runtime.ClientControllerKey:              "client-controller.key",
+		c.config.Runtime.ClientK3sControllerCert:          "client-k3s-controller.crt",
+		c.config.Runtime.ClientK3sControllerKey:           "client-k3s-controller.key",
+		c.config.Runtime.ClientKubeAPICert:                "client-kube-apiserver.crt",
+		c.config.Runtime.ClientKubeAPIKey:                 "client-kube-apiserver.key",
+		c.config.Runtime.ClientKubeletKey:                 "client-kubelet.key",
+		c.config.Runtime.ClientKubeProxyCert:              "client-kube-proxy.crt",
+		c.config.Runtime.ClientKubeProxyKey:               "client-kube-proxy.key",
+		c.config.Runtime.ClientSchedulerCert:              "client-scheduler.crt",
+		c.config.Runtime.ClientSchedulerKey:               "client-scheduler.key",
+		c.config.Runtime.ControlRuntimeBootstrap.ServerCA: "dynamic-cert.json", // ?
+		c.config.Runtime.RequestHeaderCA:                  "request-header-ca.crt",
+		c.config.Runtime.RequestHeaderCAKey:               "request-header-ca.key",
+		c.config.Runtime.ServerCA:                         "server-ca.crt",
+		c.config.Runtime.ServerCAKey:                      "server-ca.key",
+		c.config.Runtime.ServiceKey:                       "service.key",
+		c.config.Runtime.ServingKubeAPICert:               "serving-kube-apiserver.crt",
+		c.config.Runtime.ServingKubeAPIKey:                "serving-kube-apiserver.key",
+		c.config.Runtime.ServingKubeletKey:                "serving-kubelet.key",
+	}
+
+	for content, filename := range bootstrapCertificateAndFile {
+		if err := c.checkBootstrapCertificate(content, filename); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// checkBootstrapCertificate checks the given content string against what's
+// read in the file given, hashes them, and compares the hashes. If they don't
+// match an error is returned.
+func (c *Cluster) checkBootstrapCertificate(content, filename string) error {
+	bootstrapHash := sha256.Sum256([]byte(content))
+
+	fileHash := sha256.New()
+	f, err := os.Open(filepath.Join(c.config.DataDir, "tls", filename))
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	if _, err := io.Copy(fileHash, f); err != nil {
+		return err
+	}
+
+	if ret := bytes.Compare(bootstrapHash[:], fileHash.Sum(nil)); ret != 0 {
+		return fmt.Errorf("%s doesn't match bootstrap data", filename)
+	}
+
+	return nil
 }
 
 // bootstrapped touches a file to indicate that bootstrap has been completed.
