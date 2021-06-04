@@ -479,7 +479,7 @@ github.com/evanphx/json-patch
 github.com/exponent-io/jsonpath
 # github.com/fatih/camelcase v1.0.0
 github.com/fatih/camelcase
-# github.com/flannel-io/flannel v0.13.1-rc2.0.20210324170423-273b36ca57dc
+# github.com/flannel-io/flannel v0.14.0
 ## explicit
 github.com/flannel-io/flannel/backend
 github.com/flannel-io/flannel/backend/extension
