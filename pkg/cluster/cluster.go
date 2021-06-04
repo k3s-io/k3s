@@ -3,6 +3,7 @@ package cluster
 import (
 	"context"
 	"net/url"
+	"runtime"
 	"strings"
 
 	"github.com/k3s-io/kine/pkg/endpoint"
@@ -102,14 +103,21 @@ func (c *Cluster) Start(ctx context.Context) (<-chan struct{}, error) {
 	// snapshots will be empty.
 	if c.managedDB != nil {
 		go func() {
-			for range ready {
-				if err := c.save(ctx); err != nil {
-					panic(err)
-				}
-			}
+			for {
+				select {
+				case <-ready:
+					if err := c.save(ctx); err != nil {
+						panic(err)
+					}
 
-			if err := c.managedDB.StoreSnapshotData(ctx); err != nil {
-				logrus.Errorf("Failed to record snapshots for cluster: %v", err)
+					if err := c.managedDB.StoreSnapshotData(ctx); err != nil {
+						logrus.Errorf("Failed to record snapshots for cluster: %v", err)
+					}
+
+					return
+				default:
+					runtime.Gosched()
+				}
 			}
 		}()
 	}
