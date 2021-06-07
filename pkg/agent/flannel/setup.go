@@ -118,7 +118,7 @@ func createFlannelConf(nodeConfig *config.Node) error {
 		logrus.Infof("Using custom flannel conf defined at %s", nodeConfig.FlannelConf)
 		return nil
 	}
-	confJSON := strings.Replace(flannelConf, "%CIDR%", nodeConfig.AgentConfig.ClusterCIDR.String(), -1)
+	confJSON := strings.ReplaceAll(flannelConf, "%CIDR%", nodeConfig.AgentConfig.ClusterCIDR.String())
 
 	var backendConf string
 
@@ -128,7 +128,7 @@ func createFlannelConf(nodeConfig *config.Node) error {
 	case config.FlannelBackendHostGW:
 		backendConf = hostGWBackend
 	case config.FlannelBackendIPSEC:
-		backendConf = strings.Replace(ipsecBackend, "%psk%", nodeConfig.AgentConfig.IPSECPSK, -1)
+		backendConf = strings.ReplaceAll(ipsecBackend, "%psk%", nodeConfig.AgentConfig.IPSECPSK)
 		if err := setupStrongSwan(nodeConfig); err != nil {
 			return err
 		}
@@ -137,7 +137,7 @@ func createFlannelConf(nodeConfig *config.Node) error {
 	default:
 		return fmt.Errorf("Cannot configure unknown flannel backend '%s'", nodeConfig.FlannelBackend)
 	}
-	confJSON = strings.Replace(confJSON, "%backend%", backendConf, -1)
+	confJSON = strings.ReplaceAll(confJSON, "%backend%", backendConf)
 
 	return util.WriteFile(nodeConfig.FlannelConf, confJSON)
 }
