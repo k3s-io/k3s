@@ -294,7 +294,7 @@ func genClientCerts(config *config.Control, runtime *config.ControlRuntime) erro
 		return err
 	}
 
-	certGen, err = factory("cloud-controller-manager", nil, runtime.ClientCloudControllerCert, runtime.ClientCloudControllerKey)
+	certGen, err = factory(version.Program+"-cloud-controller-manager", nil, runtime.ClientCloudControllerCert, runtime.ClientCloudControllerKey)
 	if err != nil {
 		return err
 	}
