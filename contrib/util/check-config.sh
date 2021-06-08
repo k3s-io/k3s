@@ -197,6 +197,9 @@ echo
   version_ge() {
     [ "$1" = "$2" ] || [ "$(printf '%s\n' "$@" | sort -V | head -n 1)" != "$1" ]
   }
+  version_less() {
+    [ "$(printf '%s\n' "$@" | sort -rV | head -n 1)" != "$1" ]
+  }
   which_iptables() {
     (
       localIPtables=$(command -v iptables)
@@ -224,8 +227,8 @@ echo
     wrap_warn "- $iptablesCmd" "unknown version: $iptablesInfo"
   elif version_ge $iptablesVersion v1.8.0; then
     iptablesMode=$(echo $iptablesInfo | awk '{ print $3 }')
-    if [ "$iptablesMode" != "(legacy)" ]; then
-      wrap_bad "- $label" 'should be older than v1.8.0 or in legacy mode'
+    if [ "$iptablesMode" != "(legacy)" ] && version_less $iptablesVersion v1.8.4; then 
+      wrap_bad "- $label" 'should be older than v1.8.0, newer than v1.8.3, or in legacy mode'
     else
       wrap_good "- $label" 'ok'
     fi
