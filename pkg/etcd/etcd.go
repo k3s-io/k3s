@@ -978,6 +978,14 @@ func (e *ETCD) PruneSnapshots(ctx context.Context) error {
 		return errors.Wrap(err, "failed to get the snapshot dir")
 	}
 
+	if e.config.EtcdS3 {
+		if e.initS3IfNil(ctx); err != nil {
+			return err
+		}
+
+		return e.s3.snapshotRetention(ctx)
+	}
+
 	return snapshotRetention(e.config.EtcdSnapshotRetention, snapshotDir)
 }
 
@@ -1009,12 +1017,13 @@ func (e *ETCD) DeleteSnapshots(ctx context.Context, snapshots []string) error {
 		}
 
 		objectsCh := make(chan minio.ObjectInfo)
-		defer close(objectsCh)
 
 		ctx, cancel := context.WithTimeout(ctx, defaultS3OpTimeout)
 		defer cancel()
 
 		go func() {
+			defer close(objectsCh)
+
 			opts := minio.ListObjectsOptions{
 				Recursive: true,
 			}
