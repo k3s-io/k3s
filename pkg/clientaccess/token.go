@@ -56,7 +56,7 @@ func (info *Info) String() string {
 // ParseAndValidateToken parses a token, downloads and validates the server's CA bundle,
 // and validates it according to the caHash from the token if set.
 func ParseAndValidateToken(server string, token string) (*Info, error) {
-	info, err := parseToken(token)
+	info, err := ParseToken(token)
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +71,7 @@ func ParseAndValidateToken(server string, token string) (*Info, error) {
 // ParseAndValidateToken parses a token with user override, downloads and
 // validates the server's CA bundle, and validates it according to the caHash from the token if set.
 func ParseAndValidateTokenForUser(server string, token string, username string) (*Info, error) {
-	info, err := parseToken(token)
+	info, err := ParseToken(token)
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +109,7 @@ func hashCA(cacerts []byte) string {
 // ParseUsernamePassword returns the username and password portion of a token string,
 // along with a bool indicating if the token was successfully parsed.
 func ParseUsernamePassword(token string) (string, string, bool) {
-	info, err := parseToken(token)
+	info, err := ParseToken(token)
 	if err != nil {
 		return "", "", false
 	}
@@ -117,7 +117,7 @@ func ParseUsernamePassword(token string) (string, string, bool) {
 }
 
 // parseToken parses a token into an Info struct
-func parseToken(token string) (*Info, error) {
+func ParseToken(token string) (*Info, error) {
 	var info = &Info{}
 
 	if len(token) == 0 {
