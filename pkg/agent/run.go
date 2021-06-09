@@ -238,7 +238,7 @@ func Run(ctx context.Context, cfg cmds.Agent) error {
 		cfg.Token = newToken.String()
 		break
 	}
-	//systemd.SdNotify(true, "READY=1\n")
+
 	return run(ctx, cfg, proxy)
 }
 
