@@ -141,6 +141,12 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 		}
 	}
 
+	notifySocket := os.Getenv("NOTIFY_SOCKET")
+	os.Unsetenv("NOTIFY_SOCKET")
+
+	os.Setenv("NOTIFY_SOCKET", notifySocket)
+	systemd.SdNotify(true, "READY=1\n")
+
 	<-ctx.Done()
 	return ctx.Err()
 }
@@ -232,7 +238,7 @@ func Run(ctx context.Context, cfg cmds.Agent) error {
 		cfg.Token = newToken.String()
 		break
 	}
-	systemd.SdNotify(true, "READY=1\n")
+	//systemd.SdNotify(true, "READY=1\n")
 	return run(ctx, cfg, proxy)
 }
 
