@@ -31,8 +31,9 @@ import (
 )
 
 const (
-	ns       = "kube-system"
-	startKey = "_start_"
+	ControllerName = "deploy"
+	ns             = "kube-system"
+	startKey       = "_start_"
 )
 
 func WatchFiles(ctx context.Context, apply apply.Apply, addons v1.AddonController, disables map[string]bool, bases ...string) error {
