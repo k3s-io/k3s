@@ -109,6 +109,9 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 		}
 	}
 
+	notifySocket := os.Getenv("NOTIFY_SOCKET")
+	os.Unsetenv("NOTIFY_SOCKET")
+
 	if !nodeConfig.Docker && nodeConfig.ContainerRuntimeEndpoint == "" {
 		if err := containerd.Run(ctx, nodeConfig); err != nil {
 			return err
@@ -141,6 +144,7 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 		}
 	}
 
+	os.Setenv("NOTIFY_SOCKET", notifySocket)
 	systemd.SdNotify(true, "READY=1\n")
 
 	<-ctx.Done()
