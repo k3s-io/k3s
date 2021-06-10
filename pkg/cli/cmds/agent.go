@@ -103,13 +103,13 @@ var (
 		Name:        "pause-image",
 		Usage:       "(agent/runtime) Customized pause image for containerd or docker sandbox",
 		Destination: &AgentConfig.PauseImage,
-		Value:       "rancher/pause:3.1",
+		Value:       DefaultPauseImage,
 	}
 	SnapshotterFlag = cli.StringFlag{
 		Name:        "snapshotter",
 		Usage:       "(agent/runtime) Override default containerd snapshotter",
 		Destination: &AgentConfig.Snapshotter,
-		Value:       "overlayfs",
+		Value:       DefaultSnapshotter,
 	}
 	FlannelFlag = cli.BoolFlag{
 		Name:        "no-flannel",
