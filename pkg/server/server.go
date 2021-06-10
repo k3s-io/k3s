@@ -248,6 +248,7 @@ func stageFiles(ctx context.Context, sc *Context, controlConfig *config.Control)
 	}
 
 	return deploy.WatchFiles(ctx,
+		sc.K8s,
 		sc.Apply,
 		sc.K3s.K3s().V1().Addon(),
 		controlConfig.Disables,
