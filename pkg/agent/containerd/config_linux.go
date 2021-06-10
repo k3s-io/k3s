@@ -6,6 +6,7 @@ import (
 	"context"
 	"io/ioutil"
 	"os"
+	"time"
 
 	"github.com/opencontainers/runc/libcontainer/system"
 	"github.com/pkg/errors"
@@ -17,7 +18,21 @@ import (
 	"github.com/rancher/wharfie/pkg/registries"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
+	"google.golang.org/grpc"
+	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
+	"k8s.io/kubernetes/pkg/kubelet/util"
 )
+
+func getContainerdArgs(cfg *config.Node) []string {
+	args := []string{
+		"containerd",
+		"-c", cfg.Containerd.Config,
+		"-a", cfg.Containerd.Address,
+		"--state", cfg.Containerd.State,
+		"--root", cfg.Containerd.Root,
+	}
+	return args
+}
 
 // setupContainerdConfig generates the containerd.toml, using a template combined with various
 // runtime configurations and registry mirror settings provided by the administrator.
@@ -70,4 +85,28 @@ func setupContainerdConfig(ctx context.Context, cfg *config.Node) error {
 	}
 
 	return util2.WriteFile(cfg.Containerd.Config, parsedTemplate)
+}
+
+// criConnection connects to a CRI socket at the given path.
+func CriConnection(ctx context.Context, address string) (*grpc.ClientConn, error) {
+	addr, dialer, err := util.GetAddressAndDialer("unix://" + address)
+	if err != nil {
+		return nil, err
+	}
+
+	conn, err := grpc.Dial(addr, grpc.WithInsecure(), grpc.WithTimeout(3*time.Second), grpc.WithContextDialer(dialer), grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(maxMsgSize)))
+	if err != nil {
+		return nil, err
+	}
+
+	c := runtimeapi.NewRuntimeServiceClient(conn)
+	_, err = c.Version(ctx, &runtimeapi.VersionRequest{
+		Version: "0.1.0",
+	})
+	if err != nil {
+		conn.Close()
+		return nil, err
+	}
+
+	return conn, nil
 }

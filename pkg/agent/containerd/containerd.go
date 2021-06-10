@@ -32,7 +32,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
-	"k8s.io/kubernetes/pkg/kubelet/util"
 )
 
 const (
@@ -42,13 +41,7 @@ const (
 // Run configures and starts containerd as a child process. Once it is up, images are preloaded
 // or pulled from files found in the agent images directory.
 func Run(ctx context.Context, cfg *config.Node) error {
-	args := []string{
-		"containerd",
-		"-c", cfg.Containerd.Config,
-		"-a", cfg.Containerd.Address,
-		"--state", cfg.Containerd.State,
-		"--root", cfg.Containerd.Root,
-	}
+	args := getContainerdArgs(cfg)
 
 	if err := setupContainerdConfig(ctx, cfg); err != nil {
 		return err
@@ -114,30 +107,6 @@ func Run(ctx context.Context, cfg *config.Node) error {
 	logrus.Info("Containerd is now running")
 
 	return preloadImages(ctx, cfg)
-}
-
-// criConnection connects to a CRI socket at the given path.
-func CriConnection(ctx context.Context, address string) (*grpc.ClientConn, error) {
-	addr, dialer, err := util.GetAddressAndDialer("unix://" + address)
-	if err != nil {
-		return nil, err
-	}
-
-	conn, err := grpc.Dial(addr, grpc.WithInsecure(), grpc.WithTimeout(3*time.Second), grpc.WithContextDialer(dialer), grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(maxMsgSize)))
-	if err != nil {
-		return nil, err
-	}
-
-	c := runtimeapi.NewRuntimeServiceClient(conn)
-	_, err = c.Version(ctx, &runtimeapi.VersionRequest{
-		Version: "0.1.0",
-	})
-	if err != nil {
-		conn.Close()
-		return nil, err
-	}
-
-	return conn, nil
 }
 
 // preloadImages reads the contents of the agent images directory, and attempts to
