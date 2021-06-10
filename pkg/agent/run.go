@@ -141,10 +141,6 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 		}
 	}
 
-	notifySocket := os.Getenv("NOTIFY_SOCKET")
-	os.Unsetenv("NOTIFY_SOCKET")
-
-	os.Setenv("NOTIFY_SOCKET", notifySocket)
 	systemd.SdNotify(true, "READY=1\n")
 
 	<-ctx.Done()
