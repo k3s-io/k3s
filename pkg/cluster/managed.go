@@ -79,7 +79,7 @@ func (c *Cluster) start(ctx context.Context) error {
 	}
 
 	if _, err := os.Stat(resetFile); err == nil {
-		// before removing reset file we ned to wipe the node passwd secret
+		// before removing reset file we need to delete the node passwd secret
 		go c.deleteNodePasswdSecret(ctx)
 	}
 	// removing the reset file and ignore error if the file doesn't exist
