@@ -3,7 +3,7 @@ package cluster
 import (
 	"bytes"
 	"context"
-	"fmt"
+	"errors"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -26,13 +26,18 @@ func (c *Cluster) save(ctx context.Context) error {
 	}
 	token := c.config.Token
 	if token == "" {
-		tokenFromFile, err := getTokenFromFile(c.runtime.ServerToken, c.config.DataDir)
+		tokenFromFile, err := readTokenFromFile(c.runtime.ServerToken, c.config.DataDir)
 		if err != nil {
 			return err
 		}
 		token = tokenFromFile
 	}
-	data, err := encrypt(token, buf.Bytes())
+	normalizedToken, err := normalizeToken(token)
+	if err != nil {
+		return err
+	}
+
+	data, err := encrypt(normalizedToken, buf.Bytes())
 	if err != nil {
 		return err
 	}
@@ -42,12 +47,12 @@ func (c *Cluster) save(ctx context.Context) error {
 		return err
 	}
 
-	_, _, err = c.getBootstrapKeyFromStorage(ctx, storageClient, token)
+	_, _, err = c.getBootstrapKeyFromStorage(ctx, storageClient, normalizedToken)
 	if err != nil {
 		return err
 	}
 
-	if err := storageClient.Create(ctx, storageKey(token), data); err != nil {
+	if err := storageClient.Create(ctx, storageKey(normalizedToken), data); err != nil {
 		if err.Error() == "key exists" {
 			logrus.Warnln("Bootstrap key exists. Please follow documentation updating a node after restore.")
 			return nil
@@ -63,6 +68,7 @@ func (c *Cluster) save(ctx context.Context) error {
 
 // storageBootstrap loads data from the datastore into the ControlRuntimeBootstrap struct.
 // The storage key and encryption passphrase are both derived from the join token.
+// token is either passed
 func (c *Cluster) storageBootstrap(ctx context.Context) error {
 	if err := c.startStorage(ctx); err != nil {
 		return err
@@ -74,15 +80,25 @@ func (c *Cluster) storageBootstrap(ctx context.Context) error {
 	}
 
 	token := c.config.Token
+	logrus.Info(token)
 	if token == "" {
-		tokenFromFile, err := getTokenFromFile(c.runtime.ServerToken, c.config.DataDir)
+		tokenFromFile, err := readTokenFromFile(c.runtime.ServerToken, c.config.DataDir)
 		if err != nil {
 			return err
 		}
+		if tokenFromFile == "" {
+			// at this point this is a fresh start in a non managed environment
+			c.saveBootstrap = true
+			return nil
+		}
 		token = tokenFromFile
 	}
+	normalizedToken, err := normalizeToken(token)
+	if err != nil {
+		return err
+	}
 
-	value, emptyKey, err := c.getBootstrapKeyFromStorage(ctx, storageClient, token)
+	value, emptyKey, err := c.getBootstrapKeyFromStorage(ctx, storageClient, normalizedToken)
 	if err != nil {
 		return err
 	}
@@ -90,9 +106,9 @@ func (c *Cluster) storageBootstrap(ctx context.Context) error {
 		return nil
 	}
 	if emptyKey {
-		token = ""
+		normalizedToken = ""
 	}
-	data, err := decrypt(token, value.Data)
+	data, err := decrypt(normalizedToken, value.Data)
 	if err != nil {
 		return err
 	}
@@ -108,50 +124,64 @@ func (c *Cluster) getBootstrapKeyFromStorage(ctx context.Context, storageClient 
 	emptyStringKey := storageKey("")
 	tokenKey := storageKey(token)
 
-	oldBootstrapValues, err := storageClient.List(ctx, "/bootstrap", 0)
+	bootstrapList, err := storageClient.List(ctx, "/bootstrap", 0)
 	if err != nil {
-		if err != client.ErrNotFound {
-			c.saveBootstrap = true
-			return nil, false, nil
-		}
 		return nil, false, err
 	}
-	for _, v := range oldBootstrapValues {
-		switch string(v.Key) {
-		case emptyStringKey:
-			logrus.Warnf("Bootstrap data already found and encrypted with empty string")
-			c.saveBootstrap = true
-			return &v, true, nil
-		case tokenKey:
-			return &v, false, nil
-		default:
-			return nil, false, fmt.Errorf("Bootstrap data already found and encrypted with different token")
-		}
+	if len(bootstrapList) == 0 {
+		c.saveBootstrap = true
+		return nil, false, nil
 	}
-	return nil, false, nil
+	if len(bootstrapList) > 1 {
+		return nil, false, errors.New("Found more than one bootstrap keys in storage")
+	}
+	bootstrapKV := bootstrapList[0]
+	// checking for empty string bootstrap key
+	if string(bootstrapKV.Key) == emptyStringKey {
+		logrus.Warnf("Bootstrap data already found and encrypted with empty string, deleting empty key")
+		c.saveBootstrap = true
+		if err := storageClient.Delete(ctx, emptyStringKey); err != nil {
+			return nil, false, err
+		}
+		return &bootstrapKV, true, nil
+	} else if string(bootstrapKV.Key) == tokenKey {
+		return &bootstrapKV, false, nil
+	}
+
+	return nil, false, errors.New("Bootstrap data already found and encrypted with different token")
 }
 
-// getToken will attempt to get the token from <data-dir>/token if it the file not found
+// readTokenFromFile will attempt to get the token from <data-dir>/token if it the file not found
 // in case of fresh installation it will try to use the runtime serverToken saved in memory
 // after stripping it from any additional information like the username or cahash, if the file
 // found then it will still strip the token from any additional info
-func getTokenFromFile(serverToken, dataDir string) (string, error) {
+func readTokenFromFile(serverToken, dataDir string) (string, error) {
 	tokenFile := filepath.Join(dataDir, "token")
-	tokenByte, err := ioutil.ReadFile(tokenFile)
+	b, err := ioutil.ReadFile(tokenFile)
 	if err != nil {
 		if os.IsNotExist(err) {
-			// attempt to use the serverToken
-			parts := strings.Split(serverToken, ":")
-			if len(parts) > 0 {
-				return strings.TrimSuffix(parts[1], "\n"), nil
-			}
-			return "", fmt.Errorf("server token is invalid")
+			return serverToken, nil
 		}
 		return "", err
 	}
-	info, err := clientaccess.ParseToken(strings.TrimSuffix(string(tokenByte), "\n"))
+	return string(b), nil
+}
+
+// normalizeToken will normalize the token read from file or passed as a cli flag
+func normalizeToken(token string) (string, error) {
+	var normalizedToken string
+	// strip the token from any new line if its read from file
+	t := strings.TrimSuffix(string(token), "\n")
+	info, err := clientaccess.ParseToken(t)
 	if err != nil {
-		return "", err
+		return normalizedToken, err
 	}
-	return info.Password, nil
+	// handle runtime.ServerToken being in the format of "server:<token>"
+	// if its in that format then user the <token> only
+	normalizedToken = info.Password
+	parts := strings.SplitN(info.Password, ":", 2)
+	if len(parts) > 1 && parts[0] == "server" {
+		normalizedToken = parts[1]
+	}
+	return normalizedToken, nil
 }
