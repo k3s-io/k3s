@@ -80,7 +80,6 @@ func (c *Cluster) storageBootstrap(ctx context.Context) error {
 	}
 
 	token := c.config.Token
-	logrus.Info(token)
 	if token == "" {
 		tokenFromFile, err := readTokenFromFile(c.runtime.ServerToken, c.config.DataDir)
 		if err != nil {
