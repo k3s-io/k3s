@@ -380,6 +380,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 
 		logrus.Info(version.Program + " is up and running")
 		if cfg.DisableAgent && os.Getenv("NOTIFY_SOCKET") != "" {
+			logrus.Warn("XXX - here?!")
 			systemd.SdNotify(true, "READY=1\n")
 		}
 	}()

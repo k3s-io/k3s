@@ -114,9 +114,17 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 			return err
 		}
 	}
+
+	notifySocket := os.Getenv("NOTIFY_SOCKET")
+	os.Unsetenv("NOTIFY_SOCKET")
+
 	if err := setupTunnelAndRunAgent(ctx, nodeConfig, cfg, proxy); err != nil {
 		return err
 	}
+
+	os.Setenv("NOTIFY_SOCKET", notifySocket)
+	logrus.Warn("XXX - got here")
+	systemd.SdNotify(true, "READY=1\n")
 
 	coreClient, err := coreClient(nodeConfig.AgentConfig.KubeConfigKubelet)
 	if err != nil {
@@ -233,15 +241,11 @@ func Run(ctx context.Context, cfg cmds.Agent) error {
 		break
 	}
 
-	notifySocket := os.Getenv("NOTIFY_SOCKET")
-	os.Unsetenv("NOTIFY_SOCKET")
+	logrus.Warn("XXX - before it all in agent")
 
 	if err := run(ctx, cfg, proxy); err != nil {
 		return err
 	}
-
-	os.Setenv("NOTIFY_SOCKET", notifySocket)
-	systemd.SdNotify(true, "READY=1\n")
 
 	return nil
 }
