@@ -240,11 +240,7 @@ func Run(ctx context.Context, cfg cmds.Agent) error {
 		break
 	}
 
-	if err := run(ctx, cfg, proxy); err != nil {
-		return err
-	}
-
-	return nil
+	return run(ctx, cfg, proxy)
 }
 
 func configureNode(ctx context.Context, agentConfig *daemonconfig.Agent, nodes v1.NodeInterface) error {
