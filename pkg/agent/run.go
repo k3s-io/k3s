@@ -122,9 +122,6 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 		return err
 	}
 
-	os.Setenv("NOTIFY_SOCKET", notifySocket)
-	systemd.SdNotify(true, "READY=1\n")
-
 	coreClient, err := coreClient(nodeConfig.AgentConfig.KubeConfigKubelet)
 	if err != nil {
 		return err
@@ -147,6 +144,9 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 			return err
 		}
 	}
+
+	os.Setenv("NOTIFY_SOCKET", notifySocket)
+	systemd.SdNotify(true, "READY=1\n")
 
 	<-ctx.Done()
 	return ctx.Err()
