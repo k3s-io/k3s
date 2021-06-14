@@ -17,6 +17,7 @@ import (
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/images"
+	"github.com/containerd/containerd/leases"
 	"github.com/containerd/containerd/namespaces"
 	"github.com/containerd/containerd/reference/docker"
 	"github.com/klauspost/compress/zstd"
@@ -175,11 +176,24 @@ func preloadImages(ctx context.Context, cfg *config.Node) error {
 
 	// Ensure that nothing else can modify the image store while we're importing,
 	// and that our images are imported into the k8s.io namespace
-	ctx, done, err := client.WithLease(namespaces.WithNamespace(ctx, "k8s.io"))
+	ctxWithNs := namespaces.WithNamespace(ctx, "k8s.io")
+	// At startup all images in the store with a lease are cleared
+	ls := client.LeasesService()
+	existingLeases, err := ls.List(ctxWithNs)
 	if err != nil {
 		return err
 	}
-	defer done(ctx)
+
+	for _, lease := range existingLeases {
+		logrus.Debugf("Deleting existing lease: %v", lease)
+		ls.Delete(ctxWithNs, lease)
+	}
+
+	// Any images found on import are given a lease that never expires
+	_, err = ls.Create(ctxWithNs, leases.WithRandomID())
+	if err != nil {
+		return err
+	}
 
 	for _, fileInfo := range fileInfos {
 		if fileInfo.IsDir() {
@@ -189,7 +203,7 @@ func preloadImages(ctx context.Context, cfg *config.Node) error {
 		start := time.Now()
 		filePath := filepath.Join(cfg.Images, fileInfo.Name())
 
-		if err := preloadFile(ctx, cfg, client, criConn, filePath); err != nil {
+		if err := preloadFile(ctxWithNs, cfg, client, criConn, filePath); err != nil {
 			logrus.Errorf("Error encountered while importing %s: %v", filePath, err)
 			continue
 		}
