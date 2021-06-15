@@ -188,7 +188,8 @@ func coreControllers(ctx context.Context, sc *Context, config *Config) error {
 		servicelb.DefaultLBImage = config.ControlConfig.SystemDefaultRegistry + "/" + servicelb.DefaultLBImage
 	}
 
-	helm.Register(ctx, sc.Apply,
+	helm.Register(ctx,
+		sc.Apply,
 		sc.Helm.Helm().V1().HelmChart(),
 		sc.Helm.Helm().V1().HelmChartConfig(),
 		sc.Batch.Batch().V1().Job(),
@@ -204,7 +205,8 @@ func coreControllers(ctx context.Context, sc *Context, config *Config) error {
 		sc.Core.Core().V1().Pod(),
 		sc.Core.Core().V1().Service(),
 		sc.Core.Core().V1().Endpoints(),
-		!config.DisableServiceLB, config.Rootless); err != nil {
+		!config.DisableServiceLB,
+		config.Rootless); err != nil {
 		return err
 	}
 
@@ -213,7 +215,10 @@ func coreControllers(ctx context.Context, sc *Context, config *Config) error {
 	}
 
 	if config.Rootless {
-		return rootlessports.Register(ctx, sc.Core.Core().V1().Service(), !config.DisableServiceLB, config.ControlConfig.HTTPSPort)
+		return rootlessports.Register(ctx,
+			sc.Core.Core().V1().Service(),
+			!config.DisableServiceLB,
+			config.ControlConfig.HTTPSPort)
 	}
 
 	return nil
@@ -242,7 +247,12 @@ func stageFiles(ctx context.Context, sc *Context, controlConfig *config.Control)
 		return err
 	}
 
-	return deploy.WatchFiles(ctx, sc.Apply, sc.K3s.K3s().V1().Addon(), controlConfig.Disables, dataDir)
+	return deploy.WatchFiles(ctx,
+		sc.K8s,
+		sc.Apply,
+		sc.K3s.K3s().V1().Addon(),
+		controlConfig.Disables,
+		dataDir)
 }
 
 // registryTemplate behaves like the system_default_registry template in Rancher helm charts,
