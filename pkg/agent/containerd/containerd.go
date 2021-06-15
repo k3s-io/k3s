@@ -27,6 +27,7 @@ import (
 	util2 "github.com/rancher/k3s/pkg/agent/util"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/untar"
+	"github.com/rancher/k3s/pkg/version"
 	"github.com/rancher/wrangler/pkg/merr"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
@@ -185,12 +186,14 @@ func preloadImages(ctx context.Context, cfg *config.Node) error {
 	}
 
 	for _, lease := range existingLeases {
-		logrus.Debugf("Deleting existing lease: %v", lease)
-		ls.Delete(ctx, lease)
+		if lease.ID == version.Program {
+			logrus.Debugf("Deleting existing lease: %v", lease)
+			ls.Delete(ctx, lease)
+		}
 	}
 
 	// Any images found on import are given a lease that never expires
-	_, err = ls.Create(ctx, leases.WithRandomID())
+	_, err = ls.Create(ctx, leases.WithID(version.Program))
 	if err != nil {
 		return err
 	}
