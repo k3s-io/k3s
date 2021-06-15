@@ -397,6 +397,7 @@ github.com/coreos/go-semver/semver
 ## explicit
 github.com/coreos/go-systemd/activation
 github.com/coreos/go-systemd/daemon
+github.com/coreos/go-systemd/dbus
 github.com/coreos/go-systemd/journal
 # github.com/coreos/go-systemd/v22 v22.3.1
 github.com/coreos/go-systemd/v22/activation
@@ -521,6 +522,8 @@ github.com/go-openapi/swag
 # github.com/go-sql-driver/mysql v1.4.1
 ## explicit
 github.com/go-sql-driver/mysql
+# github.com/godbus/dbus v0.0.0-20180201030542-885f9cc04c9c
+github.com/godbus/dbus
 # github.com/godbus/dbus/v5 v5.0.4
 github.com/godbus/dbus/v5
 # github.com/gofrs/flock v0.8.0

@@ -452,7 +452,7 @@ func validateNetworkConfiguration(serverConfig server.Config) error {
 		return errors.New("dual-stack cluster-dns is not supported")
 	}
 
-	return nil
+	return netutil.CheckForbiddenServices()
 }
 
 func knownIPs(ips []string) []string {
