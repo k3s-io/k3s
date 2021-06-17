@@ -1150,7 +1150,7 @@ gopkg.in/square/go-jose.v2/jwt
 gopkg.in/warnings.v0
 # gopkg.in/yaml.v2 v2.2.8
 gopkg.in/yaml.v2
-# k8s.io/api v0.18.19 => github.com/k3s-io/kubernetes/staging/src/k8s.io/api v1.18.20-k3s1
+# k8s.io/api v0.18.20 => github.com/k3s-io/kubernetes/staging/src/k8s.io/api v1.18.20-k3s1
 k8s.io/api/admission/v1
 k8s.io/api/admission/v1beta1
 k8s.io/api/admissionregistration/v1
@@ -1234,7 +1234,7 @@ k8s.io/apiextensions-apiserver/pkg/generated/openapi
 k8s.io/apiextensions-apiserver/pkg/registry/customresource
 k8s.io/apiextensions-apiserver/pkg/registry/customresource/tableconvertor
 k8s.io/apiextensions-apiserver/pkg/registry/customresourcedefinition
-# k8s.io/apimachinery v0.18.19 => github.com/k3s-io/kubernetes/staging/src/k8s.io/apimachinery v1.18.20-k3s1
+# k8s.io/apimachinery v0.18.20 => github.com/k3s-io/kubernetes/staging/src/k8s.io/apimachinery v1.18.20-k3s1
 k8s.io/apimachinery/pkg/api/equality
 k8s.io/apimachinery/pkg/api/errors
 k8s.io/apimachinery/pkg/api/meta
@@ -1296,7 +1296,7 @@ k8s.io/apimachinery/pkg/watch
 k8s.io/apimachinery/third_party/forked/golang/json
 k8s.io/apimachinery/third_party/forked/golang/netutil
 k8s.io/apimachinery/third_party/forked/golang/reflect
-# k8s.io/apiserver v0.18.19 => github.com/k3s-io/kubernetes/staging/src/k8s.io/apiserver v1.18.20-k3s1
+# k8s.io/apiserver v0.18.20 => github.com/k3s-io/kubernetes/staging/src/k8s.io/apiserver v1.18.20-k3s1
 k8s.io/apiserver/pkg/admission
 k8s.io/apiserver/pkg/admission/configuration
 k8s.io/apiserver/pkg/admission/initializer
@@ -1673,7 +1673,7 @@ k8s.io/client-go/util/jsonpath
 k8s.io/client-go/util/keyutil
 k8s.io/client-go/util/retry
 k8s.io/client-go/util/workqueue
-# k8s.io/cloud-provider v0.18.19 => github.com/k3s-io/kubernetes/staging/src/k8s.io/cloud-provider v1.18.20-k3s1
+# k8s.io/cloud-provider v0.18.20 => github.com/k3s-io/kubernetes/staging/src/k8s.io/cloud-provider v1.18.20-k3s1
 k8s.io/cloud-provider
 k8s.io/cloud-provider/api
 k8s.io/cloud-provider/node/helpers
@@ -1702,7 +1702,7 @@ k8s.io/code-generator/cmd/lister-gen/args
 k8s.io/code-generator/cmd/lister-gen/generators
 k8s.io/code-generator/pkg/namer
 k8s.io/code-generator/pkg/util
-# k8s.io/component-base v0.18.19 => github.com/k3s-io/kubernetes/staging/src/k8s.io/component-base v1.18.20-k3s1
+# k8s.io/component-base v0.18.20 => github.com/k3s-io/kubernetes/staging/src/k8s.io/component-base v1.18.20-k3s1
 k8s.io/component-base/cli/flag
 k8s.io/component-base/cli/globalflag
 k8s.io/component-base/codec
@@ -1720,7 +1720,7 @@ k8s.io/component-base/metrics/prometheus/workqueue
 k8s.io/component-base/metrics/testutil
 k8s.io/component-base/version
 k8s.io/component-base/version/verflag
-# k8s.io/cri-api v0.18.19 => github.com/k3s-io/kubernetes/staging/src/k8s.io/cri-api v1.18.20-k3s1
+# k8s.io/cri-api v0.18.20 => github.com/k3s-io/kubernetes/staging/src/k8s.io/cri-api v1.18.20-k3s1
 k8s.io/cri-api/pkg/apis
 k8s.io/cri-api/pkg/apis/runtime/v1alpha2
 # k8s.io/csi-translation-lib v0.0.0 => github.com/k3s-io/kubernetes/staging/src/k8s.io/csi-translation-lib v1.18.20-k3s1
