@@ -15,8 +15,8 @@ Vagrant.configure("2") do |config|
     set -e -u -o pipefail
 
     # configuration
-    GO_VERSION="1.15"
-    BATS_VERSION="v1.2.1"
+    GO_VERSION="1.16.4"
+    BATS_VERSION="v1.3.0"
 
     # install yum packages
     yum install -y -q epel-release

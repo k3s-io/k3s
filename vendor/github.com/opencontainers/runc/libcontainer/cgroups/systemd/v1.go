@@ -20,12 +20,14 @@ type legacyManager struct {
 	mu      sync.Mutex
 	cgroups *configs.Cgroup
 	paths   map[string]string
+	dbus    *dbusConnManager
 }
 
 func NewLegacyManager(cg *configs.Cgroup, paths map[string]string) cgroups.Manager {
 	return &legacyManager{
 		cgroups: cg,
 		paths:   paths,
+		dbus:    newDbusConnManager(false),
 	}
 }
 
@@ -34,8 +36,8 @@ type subsystem interface {
 	Name() string
 	// Returns the stats, as 'stats', corresponding to the cgroup under 'path'.
 	GetStats(path string, stats *cgroups.Stats) error
-	// Set the cgroup represented by cgroup.
-	Set(path string, cgroup *configs.Cgroup) error
+	// Set sets cgroup resource limits.
+	Set(path string, r *configs.Resources) error
 }
 
 var errSubsystemDoesNotExist = errors.New("cgroup: subsystem does not exist")
@@ -56,9 +58,8 @@ var legacySubsystems = []subsystem{
 	&fs.NameGroup{GroupName: "name=systemd"},
 }
 
-func genV1ResourcesProperties(c *configs.Cgroup, conn *systemdDbus.Conn) ([]systemdDbus.Property, error) {
+func genV1ResourcesProperties(r *configs.Resources, cm *dbusConnManager) ([]systemdDbus.Property, error) {
 	var properties []systemdDbus.Property
-	r := c.Resources
 
 	deviceProperties, err := generateDeviceProperties(r.Devices)
 	if err != nil {
@@ -76,7 +77,7 @@ func genV1ResourcesProperties(c *configs.Cgroup, conn *systemdDbus.Conn) ([]syst
 			newProp("CPUShares", r.CpuShares))
 	}
 
-	addCpuQuota(conn, &properties, r.CpuQuota, r.CpuPeriod)
+	addCpuQuota(cm, &properties, r.CpuQuota, r.CpuPeriod)
 
 	if r.BlkioWeight != 0 {
 		properties = append(properties,
@@ -88,7 +89,7 @@ func genV1ResourcesProperties(c *configs.Cgroup, conn *systemdDbus.Conn) ([]syst
 			newProp("TasksMax", uint64(r.PidsLimit)))
 	}
 
-	err = addCpuset(conn, &properties, r.CpusetCpus, r.CpusetMems)
+	err = addCpuset(cm, &properties, r.CpusetCpus, r.CpusetMems)
 	if err != nil {
 		return nil, err
 	}
@@ -164,13 +165,9 @@ func (m *legacyManager) Apply(pid int) error {
 	properties = append(properties,
 		newProp("DefaultDependencies", false))
 
-	dbusConnection, err := getDbusConnection(false)
-	if err != nil {
-		return err
-	}
 	properties = append(properties, c.SystemdProps...)
 
-	if err := startUnit(dbusConnection, unitName, properties); err != nil {
+	if err := startUnit(m.dbus, unitName, properties); err != nil {
 		return err
 	}
 
@@ -208,13 +205,8 @@ func (m *legacyManager) Destroy() error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	dbusConnection, err := getDbusConnection(false)
-	if err != nil {
-		return err
-	}
-	unitName := getUnitName(m.cgroups)
+	stopErr := stopUnit(m.dbus, getUnitName(m.cgroups))
 
-	stopErr := stopUnit(dbusConnection, unitName)
 	// Both on success and on error, cleanup all the cgroups we are aware of.
 	// Some of them were created directly by Apply() and are not managed by systemd.
 	if err := cgroups.RemovePaths(m.paths); err != nil {
@@ -239,7 +231,7 @@ func (m *legacyManager) joinCgroups(pid int) error {
 		case "cpuset":
 			if path, ok := m.paths[name]; ok {
 				s := &fs.CpusetGroup{}
-				if err := s.ApplyDir(path, m.cgroups, pid); err != nil {
+				if err := s.ApplyDir(path, m.cgroups.Resources, pid); err != nil {
 					return err
 				}
 			}
@@ -292,7 +284,7 @@ func (m *legacyManager) Freeze(state configs.FreezerState) error {
 	prevState := m.cgroups.Resources.Freezer
 	m.cgroups.Resources.Freezer = state
 	freezer := &fs.FreezerGroup{}
-	if err := freezer.Set(path, m.cgroups); err != nil {
+	if err := freezer.Set(path, m.cgroups.Resources); err != nil {
 		m.cgroups.Resources.Freezer = prevState
 		return err
 	}
@@ -332,20 +324,16 @@ func (m *legacyManager) GetStats() (*cgroups.Stats, error) {
 	return stats, nil
 }
 
-func (m *legacyManager) Set(container *configs.Config) error {
+func (m *legacyManager) Set(r *configs.Resources) error {
 	// If Paths are set, then we are just joining cgroups paths
 	// and there is no need to set any values.
 	if m.cgroups.Paths != nil {
 		return nil
 	}
-	if container.Cgroups.Resources.Unified != nil {
+	if r.Unified != nil {
 		return cgroups.ErrV1NoUnified
 	}
-	dbusConnection, err := getDbusConnection(false)
-	if err != nil {
-		return err
-	}
-	properties, err := genV1ResourcesProperties(container.Cgroups, dbusConnection)
+	properties, err := genV1ResourcesProperties(r, m.dbus)
 	if err != nil {
 		return err
 	}
@@ -373,7 +361,7 @@ func (m *legacyManager) Set(container *configs.Config) error {
 		}
 	}
 
-	if err := dbusConnection.SetUnitProperties(getUnitName(container.Cgroups), true, properties...); err != nil {
+	if err := setUnitProperties(m.dbus, getUnitName(m.cgroups), properties...); err != nil {
 		_ = m.Freeze(targetFreezerState)
 		return err
 	}
@@ -388,7 +376,7 @@ func (m *legacyManager) Set(container *configs.Config) error {
 		if !ok {
 			continue
 		}
-		if err := sys.Set(path, container.Cgroups); err != nil {
+		if err := sys.Set(path, r); err != nil {
 			return err
 		}
 	}
