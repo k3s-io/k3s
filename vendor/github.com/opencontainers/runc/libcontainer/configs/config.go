@@ -31,9 +31,10 @@ type IDMap struct {
 // for syscalls. Additional architectures can be added by specifying them in
 // Architectures.
 type Seccomp struct {
-	DefaultAction Action     `json:"default_action"`
-	Architectures []string   `json:"architectures"`
-	Syscalls      []*Syscall `json:"syscalls"`
+	DefaultAction   Action     `json:"default_action"`
+	Architectures   []string   `json:"architectures"`
+	Syscalls        []*Syscall `json:"syscalls"`
+	DefaultErrnoRet *uint      `json:"default_errno_ret"`
 }
 
 // Action is taken upon rule match in Seccomp
