@@ -26,6 +26,7 @@ type unifiedManager struct {
 	// path is like "/sys/fs/cgroup/user.slice/user-1001.slice/session-1.scope"
 	path     string
 	rootless bool
+	dbus     *dbusConnManager
 }
 
 func NewUnifiedManager(config *configs.Cgroup, path string, rootless bool) cgroups.Manager {
@@ -33,6 +34,7 @@ func NewUnifiedManager(config *configs.Cgroup, path string, rootless bool) cgrou
 		cgroups:  config,
 		path:     path,
 		rootless: rootless,
+		dbus:     newDbusConnManager(rootless),
 	}
 }
 
@@ -45,7 +47,7 @@ func NewUnifiedManager(config *configs.Cgroup, path string, rootless bool) cgrou
 // For the list of keys, see https://www.kernel.org/doc/Documentation/cgroup-v2.txt
 //
 // For the list of systemd unit properties, see systemd.resource-control(5).
-func unifiedResToSystemdProps(conn *systemdDbus.Conn, res map[string]string) (props []systemdDbus.Property, _ error) {
+func unifiedResToSystemdProps(cm *dbusConnManager, res map[string]string) (props []systemdDbus.Property, _ error) {
 	var err error
 
 	for k, v := range res {
@@ -83,7 +85,7 @@ func unifiedResToSystemdProps(conn *systemdDbus.Conn, res map[string]string) (pr
 					return nil, fmt.Errorf("unified resource %q quota value conversion error: %w", k, err)
 				}
 			}
-			addCpuQuota(conn, &props, quota, period)
+			addCpuQuota(cm, &props, quota, period)
 
 		case "cpu.weight":
 			num, err := strconv.ParseUint(v, 10, 64)
@@ -103,7 +105,7 @@ func unifiedResToSystemdProps(conn *systemdDbus.Conn, res map[string]string) (pr
 				"cpuset.mems": "AllowedMemoryNodes",
 			}
 			// systemd only supports these properties since v244
-			sdVer := systemdVersion(conn)
+			sdVer := systemdVersion(cm)
 			if sdVer >= 244 {
 				props = append(props,
 					newProp(m[k], bits))
@@ -162,9 +164,8 @@ func unifiedResToSystemdProps(conn *systemdDbus.Conn, res map[string]string) (pr
 	return props, nil
 }
 
-func genV2ResourcesProperties(c *configs.Cgroup, conn *systemdDbus.Conn) ([]systemdDbus.Property, error) {
+func genV2ResourcesProperties(r *configs.Resources, cm *dbusConnManager) ([]systemdDbus.Property, error) {
 	var properties []systemdDbus.Property
-	r := c.Resources
 
 	// NOTE: This is of questionable correctness because we insert our own
 	//       devices eBPF program later. Two programs with identical rules
@@ -200,14 +201,14 @@ func genV2ResourcesProperties(c *configs.Cgroup, conn *systemdDbus.Conn) ([]syst
 			newProp("CPUWeight", r.CpuWeight))
 	}
 
-	addCpuQuota(conn, &properties, r.CpuQuota, r.CpuPeriod)
+	addCpuQuota(cm, &properties, r.CpuQuota, r.CpuPeriod)
 
 	if r.PidsLimit > 0 || r.PidsLimit == -1 {
 		properties = append(properties,
 			newProp("TasksMax", uint64(r.PidsLimit)))
 	}
 
-	err = addCpuset(conn, &properties, r.CpusetCpus, r.CpusetMems)
+	err = addCpuset(cm, &properties, r.CpusetCpus, r.CpusetMems)
 	if err != nil {
 		return nil, err
 	}
@@ -216,7 +217,7 @@ func genV2ResourcesProperties(c *configs.Cgroup, conn *systemdDbus.Conn) ([]syst
 
 	// convert Resources.Unified map to systemd properties
 	if r.Unified != nil {
-		unifiedProps, err := unifiedResToSystemdProps(conn, r.Unified)
+		unifiedProps, err := unifiedResToSystemdProps(cm, r.Unified)
 		if err != nil {
 			return nil, err
 		}
@@ -279,17 +280,13 @@ func (m *unifiedManager) Apply(pid int) error {
 	properties = append(properties,
 		newProp("DefaultDependencies", false))
 
-	dbusConnection, err := getDbusConnection(m.rootless)
-	if err != nil {
-		return err
-	}
 	properties = append(properties, c.SystemdProps...)
 
-	if err := startUnit(dbusConnection, unitName, properties); err != nil {
+	if err := startUnit(m.dbus, unitName, properties); err != nil {
 		return errors.Wrapf(err, "error while starting unit %q with properties %+v", unitName, properties)
 	}
 
-	if err = m.initPath(); err != nil {
+	if err := m.initPath(); err != nil {
 		return err
 	}
 	if err := fs2.CreateCgroupPath(m.path, m.cgroups); err != nil {
@@ -305,17 +302,13 @@ func (m *unifiedManager) Destroy() error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	dbusConnection, err := getDbusConnection(m.rootless)
-	if err != nil {
-		return err
-	}
 	unitName := getUnitName(m.cgroups)
-	if err := stopUnit(dbusConnection, unitName); err != nil {
+	if err := stopUnit(m.dbus, unitName); err != nil {
 		return err
 	}
 
 	// XXX this is probably not needed, systemd should handle it
-	err = os.Remove(m.path)
+	err := os.Remove(m.path)
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
@@ -324,6 +317,7 @@ func (m *unifiedManager) Destroy() error {
 }
 
 func (m *unifiedManager) Path(_ string) string {
+	_ = m.initPath()
 	return m.path
 }
 
@@ -344,16 +338,8 @@ func (m *unifiedManager) getSliceFull() (string, error) {
 	}
 
 	if m.rootless {
-		dbusConnection, err := getDbusConnection(m.rootless)
-		if err != nil {
-			return "", err
-		}
-		// managerCGQuoted is typically "/user.slice/user-${uid}.slice/user@${uid}.service" including the quote symbols
-		managerCGQuoted, err := dbusConnection.GetManagerProperty("ControlGroup")
-		if err != nil {
-			return "", err
-		}
-		managerCG, err := strconv.Unquote(managerCGQuoted)
+		// managerCG is typically "/user.slice/user-${uid}.slice/user@${uid}.service".
+		managerCG, err := getManagerProperty(m.dbus, "ControlGroup")
 		if err != nil {
 			return "", err
 		}
@@ -426,12 +412,8 @@ func (m *unifiedManager) GetStats() (*cgroups.Stats, error) {
 	return fsMgr.GetStats()
 }
 
-func (m *unifiedManager) Set(container *configs.Config) error {
-	dbusConnection, err := getDbusConnection(m.rootless)
-	if err != nil {
-		return err
-	}
-	properties, err := genV2ResourcesProperties(m.cgroups, dbusConnection)
+func (m *unifiedManager) Set(r *configs.Resources) error {
+	properties, err := genV2ResourcesProperties(r, m.dbus)
 	if err != nil {
 		return err
 	}
@@ -459,7 +441,7 @@ func (m *unifiedManager) Set(container *configs.Config) error {
 		}
 	}
 
-	if err := dbusConnection.SetUnitProperties(getUnitName(m.cgroups), true, properties...); err != nil {
+	if err := setUnitProperties(m.dbus, getUnitName(m.cgroups), properties...); err != nil {
 		_ = m.Freeze(targetFreezerState)
 		return errors.Wrap(err, "error while setting unit properties")
 	}
@@ -472,7 +454,7 @@ func (m *unifiedManager) Set(container *configs.Config) error {
 	if err != nil {
 		return err
 	}
-	return fsMgr.Set(container)
+	return fsMgr.Set(r)
 }
 
 func (m *unifiedManager) GetPaths() map[string]string {
@@ -498,5 +480,9 @@ func (m *unifiedManager) Exists() bool {
 }
 
 func (m *unifiedManager) OOMKillCount() (uint64, error) {
-	return fs2.OOMKillCount(m.path)
+	fsMgr, err := m.fsManager()
+	if err != nil {
+		return 0, err
+	}
+	return fsMgr.OOMKillCount()
 }

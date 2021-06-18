@@ -523,6 +523,11 @@ func assemble(program []bpf.Instruction) ([]unix.SockFilter, error) {
 }
 
 func generatePatch(config *configs.Seccomp) ([]bpf.Instruction, error) {
+	// Patch the generated cBPF only when there is not a defaultErrnoRet set
+	// and it is different from ENOSYS
+	if config.DefaultErrnoRet != nil && *config.DefaultErrnoRet == uint(retErrnoEnosys) {
+		return nil, nil
+	}
 	// We only add the stub if the default action is not permissive.
 	if isAllowAction(config.DefaultAction) {
 		logrus.Debugf("seccomp: skipping -ENOSYS stub filter generation")

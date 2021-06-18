@@ -448,7 +448,7 @@ func (p *initProcess) start() (retErr error) {
 			// call prestart and CreateRuntime hooks
 			if !p.config.Config.Namespaces.Contains(configs.NEWNS) {
 				// Setup cgroup before the hook, so that the prestart and CreateRuntime hook could apply cgroup permissions.
-				if err := p.manager.Set(p.config.Config); err != nil {
+				if err := p.manager.Set(p.config.Config.Cgroups.Resources); err != nil {
 					return newSystemErrorWithCause(err, "setting cgroup config for ready process")
 				}
 				if p.intelRdtManager != nil {
@@ -504,7 +504,7 @@ func (p *initProcess) start() (retErr error) {
 			sentRun = true
 		case procHooks:
 			// Setup cgroup before prestart hook, so that the prestart hook could apply cgroup permissions.
-			if err := p.manager.Set(p.config.Config); err != nil {
+			if err := p.manager.Set(p.config.Config.Cgroups.Resources); err != nil {
 				return newSystemErrorWithCause(err, "setting cgroup config for procHooks process")
 			}
 			if p.intelRdtManager != nil {

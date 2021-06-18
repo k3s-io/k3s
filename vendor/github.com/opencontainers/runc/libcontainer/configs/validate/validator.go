@@ -39,6 +39,7 @@ func (v *ConfigValidator) Validate(config *configs.Config) error {
 		v.sysctl,
 		v.intelrdt,
 		v.rootlessEUID,
+		v.mounts,
 	}
 	for _, c := range checks {
 		if err := c(config); err != nil {
@@ -240,6 +241,16 @@ func (v *ConfigValidator) cgroups(config *configs.Config) error {
 		_, err := cgroups.ConvertMemorySwapToCgroupV2Value(r.MemorySwap, r.Memory)
 		if err != nil {
 			return err
+		}
+	}
+
+	return nil
+}
+
+func (v *ConfigValidator) mounts(config *configs.Config) error {
+	for _, m := range config.Mounts {
+		if !filepath.IsAbs(m.Destination) {
+			return fmt.Errorf("invalid mount %+v: mount destination not absolute", m)
 		}
 	}
 

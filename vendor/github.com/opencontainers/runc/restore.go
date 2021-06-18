@@ -121,14 +121,15 @@ using the runc checkpoint command.`,
 }
 
 func criuOptions(context *cli.Context) *libcontainer.CriuOpts {
-	imagePath := getCheckpointImagePath(context)
-	if err := os.MkdirAll(imagePath, 0755); err != nil {
+	imagePath, parentPath, err := prepareImagePaths(context)
+	if err != nil {
 		fatal(err)
 	}
+
 	return &libcontainer.CriuOpts{
 		ImagesDirectory:         imagePath,
 		WorkDirectory:           context.String("work-path"),
-		ParentImage:             context.String("parent-path"),
+		ParentImage:             parentPath,
 		LeaveRunning:            context.Bool("leave-running"),
 		TcpEstablished:          context.Bool("tcp-established"),
 		ExternalUnixConnections: context.Bool("ext-unix-sk"),

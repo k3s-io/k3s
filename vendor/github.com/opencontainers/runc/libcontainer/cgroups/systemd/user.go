@@ -17,8 +17,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-// NewUserSystemdDbus creates a connection for systemd user-instance.
-func NewUserSystemdDbus() (*systemdDbus.Conn, error) {
+// newUserSystemdDbus creates a connection for systemd user-instance.
+func newUserSystemdDbus() (*systemdDbus.Conn, error) {
 	addr, err := DetectUserDbusSessionBusAddress()
 	if err != nil {
 		return nil, err

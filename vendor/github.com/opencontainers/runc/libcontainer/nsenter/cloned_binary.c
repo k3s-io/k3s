@@ -75,12 +75,12 @@
 #      define SYS_memfd_create 385
 #    elif defined(__aarch64__)
 #      define SYS_memfd_create 279
-#    elif defined(__ppc__) || defined(__ppc64__)
+#    elif defined(__ppc__) || defined(__PPC64__) || defined(__powerpc64__)
 #      define SYS_memfd_create 360
 #    elif defined(__s390__) || defined(__s390x__)
 #      define SYS_memfd_create 350
 #    else
-#      error "unknown architecture -- cannot hard-code SYS_memfd_create"
+#      warning "unknown architecture -- cannot hard-code SYS_memfd_create"
 #    endif
 #  endif
 #endif

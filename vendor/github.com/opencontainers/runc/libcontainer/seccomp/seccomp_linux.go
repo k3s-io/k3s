@@ -36,7 +36,7 @@ func InitSeccomp(config *configs.Seccomp) error {
 		return errors.New("cannot initialize Seccomp - nil config passed")
 	}
 
-	defaultAction, err := getAction(config.DefaultAction, nil)
+	defaultAction, err := getAction(config.DefaultAction, config.DefaultErrnoRet)
 	if err != nil {
 		return errors.New("error initializing seccomp - invalid default action")
 	}

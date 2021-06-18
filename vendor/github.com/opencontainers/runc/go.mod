@@ -1,6 +1,6 @@
 module github.com/opencontainers/runc
 
-go 1.14
+go 1.13
 
 require (
 	github.com/checkpoint-restore/go-criu/v5 v5.0.0
@@ -23,6 +23,6 @@ require (
 	github.com/vishvananda/netlink v1.1.0
 	github.com/willf/bitset v1.1.11
 	golang.org/x/net v0.0.0-20201224014010-6772e930b67b
-	golang.org/x/sys v0.0.0-20210124154548-22da62e12c0c
+	golang.org/x/sys v0.0.0-20210426230700-d19ff857e887
 	google.golang.org/protobuf v1.25.0
 )
