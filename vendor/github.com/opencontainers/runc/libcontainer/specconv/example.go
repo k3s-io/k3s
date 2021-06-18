@@ -2,6 +2,7 @@ package specconv
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/opencontainers/runc/libcontainer/cgroups"
@@ -200,8 +201,14 @@ func ToRootless(spec *specs.Spec) {
 	// Fix up mounts.
 	var mounts []specs.Mount
 	for _, mount := range spec.Mounts {
-		// Ignore all mounts that are under /sys.
-		if strings.HasPrefix(mount.Destination, "/sys") {
+		// Replace the /sys mount with an rbind.
+		if filepath.Clean(mount.Destination) == "/sys" {
+			mounts = append(mounts, specs.Mount{
+				Source:      "/sys",
+				Destination: "/sys",
+				Type:        "none",
+				Options:     []string{"rbind", "nosuid", "noexec", "nodev", "ro"},
+			})
 			continue
 		}
 
@@ -216,13 +223,6 @@ func ToRootless(spec *specs.Spec) {
 		mount.Options = options
 		mounts = append(mounts, mount)
 	}
-	// Add the sysfs mount as an rbind.
-	mounts = append(mounts, specs.Mount{
-		Source:      "/sys",
-		Destination: "/sys",
-		Type:        "none",
-		Options:     []string{"rbind", "nosuid", "noexec", "nodev", "ro"},
-	})
 	spec.Mounts = mounts
 
 	// Remove cgroup settings.

@@ -238,7 +238,11 @@ func CreateLibcontainerConfig(opts *CreateOpts) (*configs.Config, error) {
 	}
 
 	for _, m := range spec.Mounts {
-		config.Mounts = append(config.Mounts, createLibcontainerMount(cwd, m))
+		cm, err := createLibcontainerMount(cwd, m)
+		if err != nil {
+			return nil, fmt.Errorf("invalid mount %+v: %w", m, err)
+		}
+		config.Mounts = append(config.Mounts, cm)
 	}
 
 	defaultDevs, err := createDevices(spec, config)
@@ -327,7 +331,10 @@ func CreateLibcontainerConfig(opts *CreateOpts) (*configs.Config, error) {
 	return config, nil
 }
 
-func createLibcontainerMount(cwd string, m specs.Mount) *configs.Mount {
+func createLibcontainerMount(cwd string, m specs.Mount) (*configs.Mount, error) {
+	if !filepath.IsAbs(m.Destination) {
+		return nil, fmt.Errorf("mount destination %s not absolute", m.Destination)
+	}
 	flags, pgflags, data, ext := parseMountOptions(m.Options)
 	source := m.Source
 	device := m.Type
@@ -348,7 +355,7 @@ func createLibcontainerMount(cwd string, m specs.Mount) *configs.Mount {
 		Flags:            flags,
 		PropagationFlags: pgflags,
 		Extensions:       ext,
-	}
+	}, nil
 }
 
 // systemd property name check: latin letters only, at least 3 of them
@@ -871,6 +878,7 @@ func SetupSeccomp(config *specs.LinuxSeccomp) (*configs.Seccomp, error) {
 		return nil, err
 	}
 	newConfig.DefaultAction = newDefaultAction
+	newConfig.DefaultErrnoRet = config.DefaultErrnoRet
 
 	// Loop through all syscall blocks and convert them to libcontainer format
 	for _, call := range config.Syscalls {

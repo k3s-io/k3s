@@ -12,15 +12,15 @@ import (
 	"github.com/opencontainers/runc/libcontainer/configs"
 )
 
-func isHugeTlbSet(cgroup *configs.Cgroup) bool {
-	return len(cgroup.Resources.HugetlbLimit) > 0
+func isHugeTlbSet(r *configs.Resources) bool {
+	return len(r.HugetlbLimit) > 0
 }
 
-func setHugeTlb(dirPath string, cgroup *configs.Cgroup) error {
-	if !isHugeTlbSet(cgroup) {
+func setHugeTlb(dirPath string, r *configs.Resources) error {
+	if !isHugeTlbSet(r) {
 		return nil
 	}
-	for _, hugetlb := range cgroup.Resources.HugetlbLimit {
+	for _, hugetlb := range r.HugetlbLimit {
 		if err := fscommon.WriteFile(dirPath, "hugetlb."+hugetlb.Pagesize+".max", strconv.FormatUint(hugetlb.Limit, 10)); err != nil {
 			return err
 		}

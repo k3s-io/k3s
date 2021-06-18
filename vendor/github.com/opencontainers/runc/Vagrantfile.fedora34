@@ -3,7 +3,7 @@
 
 Vagrant.configure("2") do |config|
 # Fedora box is used for testing cgroup v2 support
-  config.vm.box = "fedora/33-cloud-base"
+  config.vm.box = "fedora/34-cloud-base"
   config.vm.provider :virtualbox do |v|
     v.memory = 2048
     v.cpus = 2
@@ -41,8 +41,8 @@ EOF
     cat > /etc/systemd/system/user@.service.d/delegate.conf << EOF
 [Service]
 # default: Delegate=pids memory
-# NOTE: delegation of cpuset requires systemd >= 244 (Fedora >= 32, Ubuntu >= 20.04). cpuset is ignored on Fedora 31.
-Delegate=cpu cpuset io memory pids
+# NOTE: delegation of cpuset requires systemd >= 244 (Fedora >= 32, Ubuntu >= 20.04).
+Delegate=yes
 EOF
     systemctl daemon-reload
   SHELL
