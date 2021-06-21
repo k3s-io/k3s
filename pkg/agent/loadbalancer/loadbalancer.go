@@ -8,9 +8,9 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/google/tcpproxy"
 	"github.com/rancher/k3s/pkg/version"
 	"github.com/sirupsen/logrus"
+	"inet.af/tcpproxy"
 )
 
 type LoadBalancer struct {

@@ -616,9 +616,6 @@ github.com/google/go-containerregistry/pkg/name
 github.com/google/gofuzz
 # github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 github.com/google/shlex
-# github.com/google/tcpproxy v0.0.0-20180808230851-dfa16c61dad2
-## explicit
-github.com/google/tcpproxy
 # github.com/google/uuid v1.2.0
 ## explicit
 github.com/google/uuid
@@ -1446,6 +1443,9 @@ gopkg.in/warnings.v0
 gopkg.in/yaml.v2
 # gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
 gopkg.in/yaml.v3
+# inet.af/tcpproxy v0.0.0-20200125044825-b6bb9b5b8252
+## explicit
+inet.af/tcpproxy
 # k8s.io/api v0.21.2 => github.com/k3s-io/kubernetes/staging/src/k8s.io/api v1.21.2-k3s1
 ## explicit
 k8s.io/api/admission/v1
