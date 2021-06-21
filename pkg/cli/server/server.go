@@ -14,6 +14,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rancher/k3s/pkg/agent"
 	"github.com/rancher/k3s/pkg/cli/cmds"
+	"github.com/rancher/k3s/pkg/clientaccess"
 	"github.com/rancher/k3s/pkg/datadir"
 	"github.com/rancher/k3s/pkg/etcd"
 	"github.com/rancher/k3s/pkg/netutil"
@@ -397,7 +398,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	}
 
 	url := fmt.Sprintf("https://%s:%d", ip, serverConfig.ControlConfig.SupervisorPort)
-	token, err := server.FormatToken(serverConfig.ControlConfig.Runtime.AgentToken, serverConfig.ControlConfig.Runtime.ServerCA)
+	token, err := clientaccess.FormatToken(serverConfig.ControlConfig.Runtime.AgentToken, serverConfig.ControlConfig.Runtime.ServerCA)
 	if err != nil {
 		return err
 	}
