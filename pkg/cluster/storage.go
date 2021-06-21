@@ -54,7 +54,7 @@ func (c *Cluster) save(ctx context.Context) error {
 
 	if err := storageClient.Create(ctx, storageKey(normalizedToken), data); err != nil {
 		if err.Error() == "key exists" {
-			logrus.Warnln("bootstrap key exists please follow documentation updating a node after restore")
+			logrus.Warnln("bootstrap key exists; please follow documentation on updating a node after snapshot restore")
 			return nil
 		} else if strings.Contains(err.Error(), "not supported for learner") {
 			logrus.Debug("skipping bootstrap data save on learner")
@@ -169,7 +169,7 @@ func readTokenFromFile(serverToken, certs, dataDir string) (string, error) {
 		return "", err
 	}
 	// strip the token from any new line if its read from file
-	return string(bytes.TrimSuffix(b, []byte("\n"))), nil
+	return string(bytes.TrimRight(b, "\n")), nil
 }
 
 // normalizeToken will normalize the token read from file or passed as a cli flag
