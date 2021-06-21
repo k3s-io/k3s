@@ -54,8 +54,8 @@ func buildEmulator(rules []*devices.Rule) (*cgroupdevices.Emulator, error) {
 	return emu, nil
 }
 
-func (s *DevicesGroup) Set(path string, cgroup *configs.Cgroup) error {
-	if userns.RunningInUserNS() || cgroup.SkipDevices {
+func (s *DevicesGroup) Set(path string, r *configs.Resources) error {
+	if userns.RunningInUserNS() || r.SkipDevices {
 		return nil
 	}
 
@@ -65,7 +65,7 @@ func (s *DevicesGroup) Set(path string, cgroup *configs.Cgroup) error {
 	if err != nil {
 		return err
 	}
-	target, err := buildEmulator(cgroup.Resources.Devices)
+	target, err := buildEmulator(r.Devices)
 	if err != nil {
 		return err
 	}
