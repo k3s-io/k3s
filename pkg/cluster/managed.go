@@ -185,6 +185,7 @@ func (c *Cluster) deleteNodePasswdSecret(ctx context.Context) {
 		secretsClient := c.runtime.Core.Core().V1().Secret()
 		if err := nodepassword.Delete(secretsClient, nodeName); err != nil {
 			if apierrors.IsNotFound(err) {
+				logrus.Debugf("node password secret is not found for node %s", nodeName)
 				return
 			}
 			logrus.Warnf("failed to delete old node password secret: %v", err)

@@ -163,15 +163,14 @@ func readTokenFromFile(serverToken, dataDir string) (string, error) {
 		}
 		return "", err
 	}
-	return string(b), nil
+	// strip the token from any new line if its read from file
+	return strings.TrimSuffix(string(b), "\n"), nil
 }
 
 // normalizeToken will normalize the token read from file or passed as a cli flag
 func normalizeToken(token string) (string, error) {
 	var normalizedToken string
-	// strip the token from any new line if its read from file
-	t := strings.TrimSuffix(string(token), "\n")
-	info, err := clientaccess.ParseToken(t)
+	info, err := clientaccess.ParseToken(token)
 	if err != nil {
 		return normalizedToken, err
 	}
