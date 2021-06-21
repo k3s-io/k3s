@@ -81,7 +81,6 @@ require (
 	github.com/go-sql-driver/mysql v1.4.1
 	github.com/golangplus/testing v1.0.0 // indirect
 	github.com/google/cadvisor v0.39.0
-	github.com/google/tcpproxy v0.0.0-20180808230851-dfa16c61dad2
 	github.com/google/uuid v1.2.0
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.4.2
@@ -117,6 +116,7 @@ require (
 	golang.org/x/sys v0.0.0-20210426230700-d19ff857e887
 	google.golang.org/grpc v1.37.0
 	gopkg.in/yaml.v2 v2.4.0
+	inet.af/tcpproxy v0.0.0-20200125044825-b6bb9b5b8252
 	k8s.io/api v0.21.2
 	k8s.io/apimachinery v0.21.2
 	k8s.io/apiserver v0.21.2

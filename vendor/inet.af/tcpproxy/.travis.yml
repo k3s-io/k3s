@@ -1,6 +1,7 @@
 language: go
 go:
-- 1.8
+- "1.12"
+- "1.13"
 - tip
 os:
 - linux
@@ -17,7 +18,7 @@ script:
 jobs:
   include:
     - stage: deploy
-      go: 1.8
+      go: "1.13"
       install:
       - gem install fpm
       script:
@@ -27,7 +28,7 @@ jobs:
         --vendor "David Anderson <dave@natulte.net>"
         --maintainer "David Anderson <dave@natulte.net>"
         --description "TLS SNI router"
-        --url "https://github.com/google/tlsrouter"
+        --url "https://github.com/inetaf/tcpproxy/tree/master/cmd/tlsrouter"
         ./tlsrouter=/usr/bin/tlsrouter
         ./systemd/tlsrouter.service=/lib/systemd/system/tlsrouter.service
       deploy:
