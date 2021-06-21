@@ -293,15 +293,14 @@ func FormatToken(token string, certFile string) (string, error) {
 		return token, nil
 	}
 
-	prefix := "K10"
+	certHash := ""
 	if len(certFile) > 0 {
 		bytes, err := ioutil.ReadFile(certFile)
 		if err != nil {
 			return "", nil
 		}
 		digest := sha256.Sum256(bytes)
-		prefix = "K10" + hex.EncodeToString(digest[:]) + "::"
+		certHash = tokenPrefix + hex.EncodeToString(digest[:]) + "::"
 	}
-
-	return prefix + token, nil
+	return certHash + token, nil
 }
