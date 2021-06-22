@@ -26,6 +26,7 @@ type Client interface {
 	Put(ctx context.Context, key string, value []byte) error
 	Create(ctx context.Context, key string, value []byte) error
 	Update(ctx context.Context, key string, revision int64, value []byte) error
+	Delete(ctx context.Context, key string) error
 	Close() error
 }
 
@@ -126,6 +127,11 @@ func (c *client) Update(ctx context.Context, key string, revision int64, value [
 		return fmt.Errorf("revision %d doesnt match", revision)
 	}
 	return nil
+}
+
+func (c *client) Delete(ctx context.Context, key string) error {
+	_, err := c.c.Delete(ctx, key)
+	return err
 }
 
 func (c *client) Close() error {
