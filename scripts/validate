@@ -32,5 +32,3 @@ if [ -n "$DIRTY" ]; then
     git diff
     exit 1
 fi
-
-"${GO}" test -v ./pkg/...
