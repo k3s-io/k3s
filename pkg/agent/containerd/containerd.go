@@ -17,6 +17,7 @@ import (
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/images"
+	"github.com/containerd/containerd/leases"
 	"github.com/containerd/containerd/namespaces"
 	"github.com/containerd/containerd/reference/docker"
 	"github.com/klauspost/compress/zstd"
@@ -26,6 +27,7 @@ import (
 	util2 "github.com/rancher/k3s/pkg/agent/util"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/untar"
+	"github.com/rancher/k3s/pkg/version"
 	"github.com/rancher/wrangler/pkg/merr"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
@@ -175,11 +177,26 @@ func preloadImages(ctx context.Context, cfg *config.Node) error {
 
 	// Ensure that nothing else can modify the image store while we're importing,
 	// and that our images are imported into the k8s.io namespace
-	ctx, done, err := client.WithLease(namespaces.WithNamespace(ctx, "k8s.io"))
+	ctx = namespaces.WithNamespace(ctx, "k8s.io")
+	// At startup all leases from k3s are cleared
+	ls := client.LeasesService()
+	existingLeases, err := ls.List(ctx)
 	if err != nil {
 		return err
 	}
-	defer done(ctx)
+
+	for _, lease := range existingLeases {
+		if lease.ID == version.Program {
+			logrus.Debugf("Deleting existing lease: %v", lease)
+			ls.Delete(ctx, lease)
+		}
+	}
+
+	// Any images found on import are given a lease that never expires
+	_, err = ls.Create(ctx, leases.WithID(version.Program))
+	if err != nil {
+		return err
+	}
 
 	for _, fileInfo := range fileInfos {
 		if fileInfo.IsDir() {
