@@ -182,6 +182,10 @@ func (c *Cluster) deleteNodePasswdSecret(ctx context.Context) {
 			logrus.Infof("waiting for node name to be set")
 			continue
 		}
+		if c.runtime == nil {
+			logrus.Infof("runtime is not yet initialized")
+			continue
+		}
 		secretsClient := c.runtime.Core.Core().V1().Secret()
 		if err := nodepassword.Delete(secretsClient, nodeName); err != nil {
 			if apierrors.IsNotFound(err) {
