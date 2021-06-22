@@ -132,7 +132,7 @@ func (c *Cluster) httpBootstrap() error {
 func (c *Cluster) bootstrap(ctx context.Context) error {
 	c.joining = true
 
-	// bootstrap managed database via HTTP
+	// bootstrap managed database via HTTPS
 	if c.runtime.HTTPBootstrap {
 		return c.httpBootstrap()
 	}
