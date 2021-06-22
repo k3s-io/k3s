@@ -22,3 +22,4 @@ jobs:
         files: ./coverage.out
         flags: unittests # optional
         verbose: true # optional (default = false)
+        
