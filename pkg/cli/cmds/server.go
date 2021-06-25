@@ -53,6 +53,7 @@ type Server struct {
 	DefaultLocalStoragePath  string
 	DisableCCM               bool
 	DisableNPC               bool
+	DisableHelmController    bool
 	DisableKubeProxy         bool
 	DisableAPIServer         bool
 	DisableControllerManager bool
@@ -338,6 +339,11 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Name:        "disable-network-policy",
 				Usage:       "(components) Disable " + version.Program + " default network policy controller",
 				Destination: &ServerConfig.DisableNPC,
+			},
+			cli.BoolFlag{
+				Name:        "disable-helm-controller",
+				Usage:       "(components) Disable Helm controller",
+				Destination: &ServerConfig.DisableHelmController,
 			},
 			cli.BoolFlag{
 				Name:        "disable-apiserver",
