@@ -3,7 +3,10 @@ on: [push, pull_request]
 jobs:
   test:
     name: Unit Tests
-    runs-on: ubuntu-20.04
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-18.04, ubuntu-20.04]
     timeout-minutes: 20
     steps:
     - name: Install Go
