@@ -18,8 +18,9 @@ deps:
 release:
 	./scripts/release.sh
 
-test:
-	go test -v ./pkg/...
+.PHONY: test
+test: 
+	scripts/test
 
 .DEFAULT_GOAL := ci
 
