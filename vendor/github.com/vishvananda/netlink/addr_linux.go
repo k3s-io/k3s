@@ -271,7 +271,7 @@ func parseAddr(m []byte) (addr Addr, family, index int, err error) {
 	// But obviously, as there are IPv6 PtP addresses, too,
 	// IFA_LOCAL should also be handled for IPv6.
 	if local != nil {
-		if family == FAMILY_V4 && local.IP.Equal(dst.IP) {
+		if family == FAMILY_V4 && dst != nil && local.IP.Equal(dst.IP) {
 			addr.IPNet = dst
 		} else {
 			addr.IPNet = local
