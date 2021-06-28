@@ -43,7 +43,10 @@ const (
 	InterfaceConstraint NetworkPolicyType = "InterfaceConstraint"
 	ProviderAddress     NetworkPolicyType = "ProviderAddress"
 	RemoteSubnetRoute   NetworkPolicyType = "RemoteSubnetRoute"
+	VxlanPort           NetworkPolicyType = "VxlanPort"
 	HostRoute           NetworkPolicyType = "HostRoute"
+	SetPolicy           NetworkPolicyType = "SetPolicy"
+	NetworkL4Proxy      NetworkPolicyType = "L4Proxy"
 )
 
 // NetworkPolicy is a collection of Policy settings for a Network.
@@ -139,7 +142,7 @@ type SDNRoutePolicySetting struct {
 	NeedEncap         bool   `json:",omitempty"`
 }
 
-// FiveTuple is nested in L4ProxyPolicySetting for WFP support.
+// FiveTuple is nested in L4ProxyPolicySetting  for WFP support.
 type FiveTuple struct {
 	Protocols       string `json:",omitempty"`
 	LocalAddresses  string `json:",omitempty"`
@@ -229,4 +232,46 @@ type RemoteSubnetRoutePolicySetting struct {
 	IsolationId                 uint16
 	ProviderAddress             string
 	DistributedRouterMacAddress string
+}
+
+// SetPolicyTypes associated with SetPolicy. Value is IPSET.
+type SetPolicyType string
+
+const (
+	SetPolicyTypeIpSet SetPolicyType = "IPSET"
+)
+
+// SetPolicySetting creates IPSets on network
+type SetPolicySetting struct {
+	Id     string
+	Name   string
+	Type   SetPolicyType
+	Values string
+}
+
+// VxlanPortPolicySetting allows configuring the VXLAN TCP port
+type VxlanPortPolicySetting struct {
+	Port uint16
+}
+
+// ProtocolType associated with L4ProxyPolicy
+type ProtocolType uint32
+
+const (
+	ProtocolTypeUnknown ProtocolType = 0
+	ProtocolTypeICMPv4  ProtocolType = 1
+	ProtocolTypeIGMP    ProtocolType = 2
+	ProtocolTypeTCP     ProtocolType = 6
+	ProtocolTypeUDP     ProtocolType = 17
+	ProtocolTypeICMPv6  ProtocolType = 58
+)
+
+//L4ProxyPolicySetting applies proxy policy on network/endpoint
+type L4ProxyPolicySetting struct {
+	IP          string       `json:",omitempty"`
+	Port        string       `json:",omitempty"`
+	Protocol    ProtocolType `json:",omitempty"`
+	Exceptions  []string     `json:",omitempty"`
+	Destination string
+	OutboundNAT bool `json:",omitempty"`
 }

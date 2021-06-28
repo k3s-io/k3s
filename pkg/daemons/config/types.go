@@ -140,6 +140,7 @@ type Control struct {
 	SystemDefaultRegistry    string
 	DisableCCM               bool
 	DisableNPC               bool
+	DisableHelmController    bool
 	DisableKubeProxy         bool
 	DisableAPIServer         bool
 	DisableControllerManager bool

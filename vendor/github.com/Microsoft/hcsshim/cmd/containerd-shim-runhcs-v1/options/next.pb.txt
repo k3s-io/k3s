@@ -1,207 +1,214 @@
-file {	
-  name: "google/protobuf/timestamp.proto"	
-  package: "google.protobuf"	
-  message_type {	
-    name: "Timestamp"	
-    field {	
-      name: "seconds"	
-      number: 1	
-      label: LABEL_OPTIONAL	
-      type: TYPE_INT64	
-      json_name: "seconds"	
-    }	
-    field {	
-      name: "nanos"	
-      number: 2	
-      label: LABEL_OPTIONAL	
-      type: TYPE_INT32	
-      json_name: "nanos"	
-    }	
-  }	
-  options {	
-    java_package: "com.google.protobuf"	
-    java_outer_classname: "TimestampProto"	
-    java_multiple_files: true	
-    go_package: "github.com/golang/protobuf/ptypes/timestamp"	
-    cc_enable_arenas: true	
-    objc_class_prefix: "GPB"	
-    csharp_namespace: "Google.Protobuf.WellKnownTypes"	
-  }	
-  syntax: "proto3"	
-}	
-file {	
-  name: "github.com/Microsoft/hcsshim/cmd/containerd-shim-runhcs-v1/options/runhcs.proto"	
-  package: "containerd.runhcs.v1"	
-  dependency: "gogoproto/gogo.proto"	
-  dependency: "google/protobuf/timestamp.proto"	
-  message_type {	
-    name: "Options"	
-    field {	
-      name: "debug"	
-      number: 1	
-      label: LABEL_OPTIONAL	
-      type: TYPE_BOOL	
-      json_name: "debug"	
-    }	
-    field {	
-      name: "debug_type"	
-      number: 2	
-      label: LABEL_OPTIONAL	
-      type: TYPE_ENUM	
-      type_name: ".containerd.runhcs.v1.Options.DebugType"	
-      json_name: "debugType"	
-    }	
-    field {	
-      name: "registry_root"	
-      number: 3	
-      label: LABEL_OPTIONAL	
-      type: TYPE_STRING	
-      json_name: "registryRoot"	
-    }	
-    field {	
-      name: "sandbox_image"	
-      number: 4	
-      label: LABEL_OPTIONAL	
-      type: TYPE_STRING	
-      json_name: "sandboxImage"	
-    }	
-    field {	
-      name: "sandbox_platform"	
-      number: 5	
-      label: LABEL_OPTIONAL	
-      type: TYPE_STRING	
-      json_name: "sandboxPlatform"	
-    }	
-    field {	
-      name: "sandbox_isolation"	
-      number: 6	
-      label: LABEL_OPTIONAL	
-      type: TYPE_ENUM	
-      type_name: ".containerd.runhcs.v1.Options.SandboxIsolation"	
-      json_name: "sandboxIsolation"	
-    }	
-    field {	
-      name: "boot_files_root_path"	
-      number: 7	
-      label: LABEL_OPTIONAL	
-      type: TYPE_STRING	
-      json_name: "bootFilesRootPath"	
-    }	
-    field {	
-      name: "vm_processor_count"	
-      number: 8	
-      label: LABEL_OPTIONAL	
-      type: TYPE_INT32	
-      json_name: "vmProcessorCount"	
-    }	
-    field {	
-      name: "vm_memory_size_in_mb"	
-      number: 9	
-      label: LABEL_OPTIONAL	
-      type: TYPE_INT32	
-      json_name: "vmMemorySizeInMb"	
-    }	
-    enum_type {	
-      name: "DebugType"	
-      value {	
-        name: "NPIPE"	
-        number: 0	
-      }	
-      value {	
-        name: "FILE"	
-        number: 1	
-      }	
-      value {	
-        name: "ETW"	
-        number: 2	
-      }	
-    }	
-    enum_type {	
-      name: "SandboxIsolation"	
-      value {	
-        name: "PROCESS"	
-        number: 0	
-      }	
-      value {	
-        name: "HYPERVISOR"	
-        number: 1	
-      }	
-    }	
-  }	
-  message_type {	
-    name: "ProcessDetails"	
-    field {	
-      name: "image_name"	
-      number: 1	
-      label: LABEL_OPTIONAL	
-      type: TYPE_STRING	
-      json_name: "imageName"	
-    }	
-    field {	
-      name: "created_at"	
-      number: 2	
-      label: LABEL_OPTIONAL	
-      type: TYPE_MESSAGE	
-      type_name: ".google.protobuf.Timestamp"	
-      options {	
-        65001: 0	
-        65010: 1	
-      }	
-      json_name: "createdAt"	
-    }	
-    field {	
-      name: "kernel_time_100_ns"	
-      number: 3	
-      label: LABEL_OPTIONAL	
-      type: TYPE_UINT64	
-      json_name: "kernelTime100Ns"	
-    }	
-    field {	
-      name: "memory_commit_bytes"	
-      number: 4	
-      label: LABEL_OPTIONAL	
-      type: TYPE_UINT64	
-      json_name: "memoryCommitBytes"	
-    }	
-    field {	
-      name: "memory_working_set_private_bytes"	
-      number: 5	
-      label: LABEL_OPTIONAL	
-      type: TYPE_UINT64	
-      json_name: "memoryWorkingSetPrivateBytes"	
-    }	
-    field {	
-      name: "memory_working_set_shared_bytes"	
-      number: 6	
-      label: LABEL_OPTIONAL	
-      type: TYPE_UINT64	
-      json_name: "memoryWorkingSetSharedBytes"	
-    }	
-    field {	
-      name: "process_id"	
-      number: 7	
-      label: LABEL_OPTIONAL	
-      type: TYPE_UINT32	
-      json_name: "processId"	
-    }	
-    field {	
-      name: "user_time_100_ns"	
-      number: 8	
-      label: LABEL_OPTIONAL	
-      type: TYPE_UINT64	
-      json_name: "userTime100Ns"	
-    }	
-    field {	
-      name: "exec_id"	
-      number: 9	
-      label: LABEL_OPTIONAL	
-      type: TYPE_STRING	
-      json_name: "execId"	
-    }	
-  }	
-  options {	
-    go_package: "github.com/Microsoft/hcsshim/cmd/containerd-shim-runhcs-v1/options;options"	
-  }	
-  weak_dependency: 0	
-  syntax: "proto3"	
+file {
+  name: "google/protobuf/timestamp.proto"
+  package: "google.protobuf"
+  message_type {
+    name: "Timestamp"
+    field {
+      name: "seconds"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_INT64
+      json_name: "seconds"
+    }
+    field {
+      name: "nanos"
+      number: 2
+      label: LABEL_OPTIONAL
+      type: TYPE_INT32
+      json_name: "nanos"
+    }
+  }
+  options {
+    java_package: "com.google.protobuf"
+    java_outer_classname: "TimestampProto"
+    java_multiple_files: true
+    go_package: "github.com/golang/protobuf/ptypes/timestamp"
+    cc_enable_arenas: true
+    objc_class_prefix: "GPB"
+    csharp_namespace: "Google.Protobuf.WellKnownTypes"
+  }
+  syntax: "proto3"
+}
+file {
+  name: "github.com/Microsoft/hcsshim/cmd/containerd-shim-runhcs-v1/options/runhcs.proto"
+  package: "containerd.runhcs.v1"
+  dependency: "gogoproto/gogo.proto"
+  dependency: "google/protobuf/timestamp.proto"
+  message_type {
+    name: "Options"
+    field {
+      name: "debug"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_BOOL
+      json_name: "debug"
+    }
+    field {
+      name: "debug_type"
+      number: 2
+      label: LABEL_OPTIONAL
+      type: TYPE_ENUM
+      type_name: ".containerd.runhcs.v1.Options.DebugType"
+      json_name: "debugType"
+    }
+    field {
+      name: "registry_root"
+      number: 3
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "registryRoot"
+    }
+    field {
+      name: "sandbox_image"
+      number: 4
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "sandboxImage"
+    }
+    field {
+      name: "sandbox_platform"
+      number: 5
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "sandboxPlatform"
+    }
+    field {
+      name: "sandbox_isolation"
+      number: 6
+      label: LABEL_OPTIONAL
+      type: TYPE_ENUM
+      type_name: ".containerd.runhcs.v1.Options.SandboxIsolation"
+      json_name: "sandboxIsolation"
+    }
+    field {
+      name: "boot_files_root_path"
+      number: 7
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "bootFilesRootPath"
+    }
+    field {
+      name: "vm_processor_count"
+      number: 8
+      label: LABEL_OPTIONAL
+      type: TYPE_INT32
+      json_name: "vmProcessorCount"
+    }
+    field {
+      name: "vm_memory_size_in_mb"
+      number: 9
+      label: LABEL_OPTIONAL
+      type: TYPE_INT32
+      json_name: "vmMemorySizeInMb"
+    }
+    field {
+      name: "GPUVHDPath"
+      number: 10
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "GPUVHDPath"
+    }
+    enum_type {
+      name: "DebugType"
+      value {
+        name: "NPIPE"
+        number: 0
+      }
+      value {
+        name: "FILE"
+        number: 1
+      }
+      value {
+        name: "ETW"
+        number: 2
+      }
+    }
+    enum_type {
+      name: "SandboxIsolation"
+      value {
+        name: "PROCESS"
+        number: 0
+      }
+      value {
+        name: "HYPERVISOR"
+        number: 1
+      }
+    }
+  }
+  message_type {
+    name: "ProcessDetails"
+    field {
+      name: "image_name"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "imageName"
+    }
+    field {
+      name: "created_at"
+      number: 2
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      type_name: ".google.protobuf.Timestamp"
+      options {
+        65001: 0
+        65010: 1
+      }
+      json_name: "createdAt"
+    }
+    field {
+      name: "kernel_time_100_ns"
+      number: 3
+      label: LABEL_OPTIONAL
+      type: TYPE_UINT64
+      json_name: "kernelTime100Ns"
+    }
+    field {
+      name: "memory_commit_bytes"
+      number: 4
+      label: LABEL_OPTIONAL
+      type: TYPE_UINT64
+      json_name: "memoryCommitBytes"
+    }
+    field {
+      name: "memory_working_set_private_bytes"
+      number: 5
+      label: LABEL_OPTIONAL
+      type: TYPE_UINT64
+      json_name: "memoryWorkingSetPrivateBytes"
+    }
+    field {
+      name: "memory_working_set_shared_bytes"
+      number: 6
+      label: LABEL_OPTIONAL
+      type: TYPE_UINT64
+      json_name: "memoryWorkingSetSharedBytes"
+    }
+    field {
+      name: "process_id"
+      number: 7
+      label: LABEL_OPTIONAL
+      type: TYPE_UINT32
+      json_name: "processId"
+    }
+    field {
+      name: "user_time_100_ns"
+      number: 8
+      label: LABEL_OPTIONAL
+      type: TYPE_UINT64
+      json_name: "userTime100Ns"
+    }
+    field {
+      name: "exec_id"
+      number: 9
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "execId"
+    }
+  }
+  options {
+    go_package: "github.com/Microsoft/hcsshim/cmd/containerd-shim-runhcs-v1/options;options"
+  }
+  weak_dependency: 0
+  syntax: "proto3"
 }

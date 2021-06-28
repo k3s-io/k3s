@@ -3,7 +3,7 @@ module github.com/rancher/k3s
 go 1.16
 
 replace (
-	github.com/Microsoft/hcsshim => github.com/Microsoft/hcsshim v0.8.9
+	github.com/Microsoft/hcsshim => github.com/Microsoft/hcsshim v0.8.10
 	github.com/benmoss/go-powershell => github.com/k3s-io/go-powershell v0.0.0-20201118222746-51f4c451fbd7
 	github.com/containerd/btrfs => github.com/containerd/btrfs v0.0.0-20201111183144-404b9149801e
 	github.com/containerd/cgroups => github.com/containerd/cgroups v0.0.0-20200710171044-318312a37340
@@ -66,6 +66,7 @@ replace (
 )
 
 require (
+	github.com/Microsoft/hcsshim v0.8.10-0.20200715222032-5eafd1556990
 	github.com/bronze1man/goStrongswanVici v0.0.0-20190828090544-27d02f80ba40 // indirect
 	github.com/containerd/cgroups v0.0.0-20200710171044-318312a37340
 	github.com/containerd/containerd v1.5.0-beta.4
@@ -85,7 +86,7 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.4.2
 	github.com/k3s-io/helm-controller v0.9.1
-	github.com/k3s-io/kine v0.6.0
+	github.com/k3s-io/kine v0.6.1
 	github.com/klauspost/compress v1.12.2
 	github.com/kubernetes-sigs/cri-tools v0.0.0-00010101000000-000000000000
 	github.com/lib/pq v1.8.0

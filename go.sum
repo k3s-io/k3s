@@ -61,10 +61,11 @@ github.com/MakeNowJust/heredoc v0.0.0-20170808103936-bb23615498cd/go.mod h1:64YH
 github.com/Microsoft/go-winio v0.4.11/go.mod h1:VhR8bwka0BXejwEJY73c50VrPtXAaKcyvVC4A4RozmA=
 github.com/Microsoft/go-winio v0.4.14/go.mod h1:qXqCSQ3Xa7+6tgxaGTIe4Kpcdsi+P8jBhyzoq1bpyYA=
 github.com/Microsoft/go-winio v0.4.15-0.20190919025122-fc70bd9a86b5/go.mod h1:tTuCMEN+UleMWgg9dVx4Hu52b1bJo+59jBh3ajtinzw=
+github.com/Microsoft/go-winio v0.4.15-0.20200908182639-5b44b70ab3ab/go.mod h1:tTuCMEN+UleMWgg9dVx4Hu52b1bJo+59jBh3ajtinzw=
 github.com/Microsoft/go-winio v0.4.15 h1:qkLXKzb1QoVatRyd/YlXZ/Kg0m5K3SPuoD82jjSOaBc=
 github.com/Microsoft/go-winio v0.4.15/go.mod h1:tTuCMEN+UleMWgg9dVx4Hu52b1bJo+59jBh3ajtinzw=
-github.com/Microsoft/hcsshim v0.8.9 h1:VrfodqvztU8YSOvygU+DN1BGaSGxmrNfqOv5oOuX2Bk=
-github.com/Microsoft/hcsshim v0.8.9/go.mod h1:5692vkUqntj1idxauYlpoINNKeqCiG6Sg38RRsjT5y8=
+github.com/Microsoft/hcsshim v0.8.10 h1:k5wTrpnVU2/xv8ZuzGkbXVd3js5zJ8RnumPo5RxiIxU=
+github.com/Microsoft/hcsshim v0.8.10/go.mod h1:g5uw8EV2mAlzqe94tfNBNdr89fnbD/n3HV0OhsddkmM=
 github.com/Microsoft/hcsshim/test v0.0.0-20200803203718-d80bc7196cb0 h1:+qqN+HZE55Zap8OE1BmcVStbX6JHVhqeWKPi0kzF1eA=
 github.com/Microsoft/hcsshim/test v0.0.0-20200803203718-d80bc7196cb0/go.mod h1:30A5igQ91GEmhYJF8TaRP79pMBOYynRsyOByfVV0dU4=
 github.com/NYTimes/gziphandler v0.0.0-20170623195520-56545f4a5d46/go.mod h1:3wb06e3pkSAbeQ52E9H9iFoQsEEwGN64994WTCIhntQ=
@@ -542,8 +543,8 @@ github.com/k3s-io/etcd v0.5.0-alpha.5.0.20201208200253-50621aee4aea h1:7cwby0GoN
 github.com/k3s-io/etcd v0.5.0-alpha.5.0.20201208200253-50621aee4aea/go.mod h1:yVHk9ub3CSBatqGNg7GRmsnfLWtoW60w4eDYfh7vHDg=
 github.com/k3s-io/helm-controller v0.9.1 h1:qtHWTNHiuCPRbA2YZ7z7jTgSHo7Yc5He52oMga72yUk=
 github.com/k3s-io/helm-controller v0.9.1/go.mod h1:nZP8FH3KZrNNUf5r+SwwiMR63HS6lxdHdpHijgPfF74=
-github.com/k3s-io/kine v0.6.0 h1:4l7wjgCxb2oD+7Hyf3xIhkGd/6s1sXpRFdQiyy+7Ki8=
-github.com/k3s-io/kine v0.6.0/go.mod h1:rzCs93+rQHZGOiewMd84PDrER92QeZ6eeHbWkfEy4+w=
+github.com/k3s-io/kine v0.6.1 h1:GcxxxtfmXIRiVqImZoGCHgJl6+S4Be3tY9nm2ArY7/U=
+github.com/k3s-io/kine v0.6.1/go.mod h1:rzCs93+rQHZGOiewMd84PDrER92QeZ6eeHbWkfEy4+w=
 github.com/k3s-io/kubernetes v1.21.1-k3s1 h1:X8nEv12/bI3iR2+ARLuzvosPW8iMOisMlklOAeovISw=
 github.com/k3s-io/kubernetes v1.21.1-k3s1/go.mod h1:ef++isEL1PW0taH6z7DXrSztPglrZ7jQhyvcMEtm0gQ=
 github.com/k3s-io/kubernetes/staging/src/k8s.io/api v1.21.1-k3s1 h1:7iwn62FGlOqG9oRHwTY/+AbFlSZffWMqx6WUXjRpQPk=
@@ -940,7 +941,6 @@ github.com/tmc/grpc-websocket-proxy v0.0.0-20190109142713-0ad062ec5ee5/go.mod h1
 github.com/u-root/u-root v7.0.0+incompatible/go.mod h1:RYkpo8pTHrNjW08opNd/U6p/RJE7K0D8fXO0d47+3YY=
 github.com/ugorji/go v0.0.0-20170107133203-ded73eae5db7/go.mod h1:hnLbHMwcvSihnDhEfx2/BzKp2xb0Y+ErdfYcrs9tkJQ=
 github.com/ugorji/go v1.1.4/go.mod h1:uQMGLiO92mf5W77hV/PUCpI3pbzQx3CRekS0kk+RGrc=
-github.com/urfave/cli v0.0.0-20171014202726-7bc6a0acffa5/go.mod h1:70zkFmudgCuE/ngEzBv17Jvp/497gISqfk5gWijbERA=
 github.com/urfave/cli v1.20.0/go.mod h1:70zkFmudgCuE/ngEzBv17Jvp/497gISqfk5gWijbERA=
 github.com/urfave/cli v1.21.0/go.mod h1:lxDj6qX9Q6lWQxIrbrT0nwecwUtRnhVZAJjJZrVUZZQ=
 github.com/urfave/cli v1.22.1/go.mod h1:Gos4lmkARVdJ6EkW0WaNv/tZAAMe9V7XWyB60NtXRu0=

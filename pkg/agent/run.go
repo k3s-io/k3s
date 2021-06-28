@@ -3,7 +3,6 @@ package agent
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -42,35 +41,6 @@ import (
 	utilsnet "k8s.io/utils/net"
 	utilpointer "k8s.io/utils/pointer"
 )
-
-const (
-	dockershimSock = "unix:///var/run/dockershim.sock"
-	containerdSock = "unix:///run/k3s/containerd/containerd.sock"
-)
-
-// setupCriCtlConfig creates the crictl config file and populates it
-// with the given data from config.
-func setupCriCtlConfig(cfg cmds.Agent, nodeConfig *daemonconfig.Node) error {
-	cre := nodeConfig.ContainerRuntimeEndpoint
-	if cre == "" {
-		switch {
-		case cfg.Docker:
-			cre = dockershimSock
-		default:
-			cre = containerdSock
-		}
-	}
-
-	agentConfDir := filepath.Join(cfg.DataDir, "agent", "etc")
-	if _, err := os.Stat(agentConfDir); os.IsNotExist(err) {
-		if err := os.MkdirAll(agentConfDir, 0700); err != nil {
-			return err
-		}
-	}
-
-	crp := "runtime-endpoint: " + cre + "\n"
-	return ioutil.WriteFile(agentConfDir+"/crictl.yaml", []byte(crp), 0600)
-}
 
 func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 	nodeConfig := config.Get(ctx, cfg, proxy)
