@@ -6,7 +6,15 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/rancher/k3s/pkg/version"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
+	ccm "k8s.io/cloud-provider"
+	cloudprovider "k8s.io/cloud-provider"
+	ccmapp "k8s.io/cloud-provider/app"
+	cloudcontrollerconfig "k8s.io/cloud-provider/app/config"
+	ccmopt "k8s.io/cloud-provider/options"
+	cliflag "k8s.io/component-base/cli/flag"
 
 	proxy "k8s.io/kubernetes/cmd/kube-proxy/app"
 	kubelet "k8s.io/kubernetes/cmd/kubelet/app"
@@ -83,6 +91,44 @@ func (Embedded) ControllerManager(apiReady <-chan struct{}, args []string) error
 	go func() {
 		<-apiReady
 		logrus.Fatalf("controller-manager exited: %v", command.Execute())
+	}()
+
+	return nil
+}
+
+func (Embedded) CloudControllerManager(ccmRBACReady <-chan struct{}, args []string) error {
+	ccmOptions, err := ccmopt.NewCloudControllerManagerOptions()
+	if err != nil {
+		logrus.Fatalf("unable to initialize command options: %v", err)
+	}
+
+	cloudInitializer := func(config *cloudcontrollerconfig.CompletedConfig) cloudprovider.Interface {
+		cloud, err := ccm.InitCloudProvider(version.Program, "")
+		if err != nil {
+			logrus.Fatalf("Cloud provider could not be initialized: %v", err)
+		}
+		if cloud == nil {
+			logrus.Fatalf("Cloud provider is nil")
+		}
+
+		cloud.Initialize(config.ClientBuilder, make(chan struct{}))
+		if informerUserCloud, ok := cloud.(ccm.InformerUser); ok {
+			informerUserCloud.SetInformers(config.SharedInformers)
+		}
+
+		return cloud
+	}
+
+	controllerInitializers := ccmapp.DefaultInitFuncConstructors
+	delete(controllerInitializers, "service")
+	delete(controllerInitializers, "route")
+
+	command := ccmapp.NewCloudControllerManagerCommand(ccmOptions, cloudInitializer, controllerInitializers, cliflag.NamedFlagSets{}, wait.NeverStop)
+	command.SetArgs(args)
+
+	go func() {
+		<-ccmRBACReady
+		logrus.Fatalf("cloud-controller-manager exited: %v", command.Execute())
 	}()
 
 	return nil
