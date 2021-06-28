@@ -186,14 +186,17 @@ func coreControllers(ctx context.Context, sc *Context, config *Config) error {
 		servicelb.DefaultLBImage = config.ControlConfig.SystemDefaultRegistry + "/" + servicelb.DefaultLBImage
 	}
 
-	helm.Register(ctx,
-		sc.Apply,
-		sc.Helm.Helm().V1().HelmChart(),
-		sc.Helm.Helm().V1().HelmChartConfig(),
-		sc.Batch.Batch().V1().Job(),
-		sc.Auth.Rbac().V1().ClusterRoleBinding(),
-		sc.Core.Core().V1().ServiceAccount(),
-		sc.Core.Core().V1().ConfigMap())
+	if !config.ControlConfig.DisableHelmController {
+		helm.Register(ctx,
+			sc.Apply,
+			sc.Helm.Helm().V1().HelmChart(),
+			sc.Helm.Helm().V1().HelmChartConfig(),
+			sc.Batch.Batch().V1().Job(),
+			sc.Auth.Rbac().V1().ClusterRoleBinding(),
+			sc.Core.Core().V1().ServiceAccount(),
+			sc.Core.Core().V1().ConfigMap())
+	}
+
 	if err := servicelb.Register(ctx,
 		sc.K8s,
 		sc.Apply,
