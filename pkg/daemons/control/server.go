@@ -11,8 +11,6 @@ import (
 	"strings"
 	"time"
 
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-
 	"github.com/pkg/errors"
 	"github.com/rancher/k3s/pkg/cluster"
 	"github.com/rancher/k3s/pkg/daemons/config"
@@ -22,6 +20,7 @@ import (
 	"github.com/rancher/k3s/pkg/version"
 	"github.com/rancher/wrangler-api/pkg/generated/controllers/rbac"
 	"github.com/sirupsen/logrus"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
@@ -31,8 +30,6 @@ import (
 	"k8s.io/kubernetes/pkg/kubeapiserver/authorizer/modes"
 	"k8s.io/kubernetes/pkg/proxy/util"
 
-	// registering k3s cloud provider
-	_ "github.com/rancher/k3s/pkg/cloudprovider"
 	// for client metric registration
 	_ "k8s.io/component-base/metrics/prometheus/restclient"
 )
