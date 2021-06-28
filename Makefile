@@ -18,10 +18,6 @@ deps:
 release:
 	./scripts/release.sh
 
-.PHONY: test
-test: 
-	scripts/test
-
 .DEFAULT_GOAL := ci
 
 .PHONY: $(TARGETS)
