@@ -6,7 +6,10 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/rancher/k3s/pkg/cli/cmds"
+	daemonconfig "github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/version"
+	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 	ccm "k8s.io/cloud-provider"
@@ -15,16 +18,14 @@ import (
 	cloudcontrollerconfig "k8s.io/cloud-provider/app/config"
 	ccmopt "k8s.io/cloud-provider/options"
 	cliflag "k8s.io/component-base/cli/flag"
-
-	proxy "k8s.io/kubernetes/cmd/kube-proxy/app"
-	kubelet "k8s.io/kubernetes/cmd/kubelet/app"
-
-	"github.com/rancher/k3s/pkg/cli/cmds"
-	daemonconfig "github.com/rancher/k3s/pkg/daemons/config"
-	"github.com/sirupsen/logrus"
 	"k8s.io/kubernetes/cmd/kube-apiserver/app"
 	cmapp "k8s.io/kubernetes/cmd/kube-controller-manager/app"
+	proxy "k8s.io/kubernetes/cmd/kube-proxy/app"
 	sapp "k8s.io/kubernetes/cmd/kube-scheduler/app"
+	kubelet "k8s.io/kubernetes/cmd/kubelet/app"
+
+	// registering k3s cloud provider
+	_ "github.com/rancher/k3s/pkg/cloudprovider"
 )
 
 func init() {
