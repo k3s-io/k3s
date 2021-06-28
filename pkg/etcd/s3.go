@@ -34,7 +34,7 @@ type s3 struct {
 // newS3 creates a new value of type s3 pointer with a
 // copy of the config.Control pointer and initializes
 // a new Minio client.
-func newS3(ctx context.Context, config *config.Control) (*s3, error) {
+func NewS3(ctx context.Context, config *config.Control) (*s3, error) {
 	tr := http.DefaultTransport
 	if config.EtcdS3EndpointCA != "" {
 		trCA, err := setTransportCA(tr, config.EtcdS3EndpointCA, config.EtcdS3SkipSSLVerify)
@@ -109,7 +109,7 @@ func (s *s3) upload(ctx context.Context, snapshot string) error {
 
 // download downloads the given snapshot from the configured S3
 // compatible backend.
-func (s *s3) download(ctx context.Context) error {
+func (s *s3) Download(ctx context.Context) error {
 	var remotePath string
 	if s.config.EtcdS3Folder != "" {
 		remotePath = filepath.Join(s.config.EtcdS3Folder, s.config.ClusterResetRestorePath)
