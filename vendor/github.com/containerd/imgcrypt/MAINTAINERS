@@ -1,0 +1,9 @@
+# imgcrypt maintainers
+#
+# As a containerd sub-project, containerd maintainers are also included from https://github.com/containerd/project/blob/master/MAINTAINERS.
+# See https://github.com/containerd/project/blob/master/GOVERNANCE.md for description of maintainer role
+#
+# MAINTAINERS
+# GitHub ID, Name, Email address
+stefanberger, Stefan Berger, stefanb@linux.ibm.com
+lumjjb, Brandon Lum, lumjjb@gmail.com

@@ -1,0 +1,32 @@
+dist: bionic
+language: go
+
+addons:
+  apt:
+    sources:
+    - sourceline: 'ppa:dqlite/master'
+    packages:
+    - golint
+    - libsqlite3-dev
+    - libuv1-dev
+    - libraft-dev
+    - libco-dev
+    - libdqlite-dev
+
+before_install:
+  - go get github.com/go-playground/overalls
+  - go get github.com/mattn/goveralls
+  - go get github.com/tsenart/deadcode
+
+script:
+  - go get -t -tags libsqlite3 ./...
+  - go vet -tags libsqlite3 ./...
+  - golint
+  - deadcode
+  - project=github.com/canonical/go-dqlite
+  - $GOPATH/bin/overalls -project $project -covermode=count -- -tags libsqlite3 -timeout 240s
+  - $GOPATH/bin/goveralls -coverprofile overalls.coverprofile -service=travis-ci
+
+go:
+  - "1.12"
+  - "1.13"

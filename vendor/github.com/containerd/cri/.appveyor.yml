@@ -1,0 +1,30 @@
+version: "{build}"
+
+image: Visual Studio 2019
+
+clone_folder: c:\gopath\src\github.com\containerd\cri
+
+environment:
+  GOPATH: C:\gopath
+  PATH: C:\go\bin;C:\tools\mingw64\bin;$(PATH)
+  CGO_ENABLED: 1
+  GO111MODULE: off
+  matrix:
+    - GO_VERSION: 1.15.5
+
+install:
+  # Install Mingw
+  - choco install -y mingw --version 5.3.0
+  # Install Go
+  - rd C:\Go /s /q
+  - appveyor DownloadFile https://storage.googleapis.com/golang/go%GO_VERSION%.windows-amd64.zip
+  - 7z x go%GO_VERSION%.windows-amd64.zip -oC:\ >nul
+  - go version
+  # Print powershell version
+  - ps: $psversiontable
+
+build_script:
+  - bash.exe -elc "mingw32-make.exe"
+
+test_script:
+  - bash.exe -elc "mingw32-make.exe test"
