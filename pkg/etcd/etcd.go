@@ -1017,7 +1017,7 @@ func (e *ETCD) DeleteSnapshots(ctx context.Context, snapshots []string) error {
 		for {
 			select {
 			case <-ctx.Done():
-				logrus.Errorf("Unable to delete snapshot: %v", ctx.Err)
+				logrus.Errorf("Unable to delete snapshot: %v", ctx.Err())
 				return e.StoreSnapshotData(ctx)
 			case <-time.After(time.Millisecond * 100):
 				continue
