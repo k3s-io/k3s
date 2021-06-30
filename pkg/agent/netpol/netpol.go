@@ -1,9 +1,13 @@
+// Apache License v2.0 (copyright Cloud Native Labs & Rancher Labs)
+// - modified from https://github.com/cloudnativelabs/kube-router/blob/73b1b03b32c5755b240f6c077bb097abe3888314/pkg/controllers/netpol.go
+
 // +build !windows
 
 package netpol
 
 import (
 	"context"
+	"sync"
 
 	"github.com/rancher/k3s/pkg/agent/netpol/utils"
 	"github.com/rancher/k3s/pkg/daemons/config"
@@ -48,7 +52,7 @@ func Run(ctx context.Context, nodeConfig *config.Node) error {
 	informerFactory.Start(stopCh)
 	informerFactory.WaitForCacheSync(stopCh)
 
-	npc, err := NewNetworkPolicyController(client, nodeConfig, podInformer, npInformer, nsInformer)
+	npc, err := NewNetworkPolicyController(client, nodeConfig, podInformer, npInformer, nsInformer, &sync.Mutex{})
 	if err != nil {
 		return err
 	}

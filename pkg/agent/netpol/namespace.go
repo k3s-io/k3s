@@ -1,5 +1,5 @@
 // Apache License v2.0 (copyright Cloud Native Labs & Rancher Labs)
-// - modified from https://github.com/cloudnativelabs/kube-router/blob/ee9f6d890d10609284098229fa1e283ab5d83b93/pkg/controllers/netpol/namespace.go
+// - modified from https://github.com/cloudnativelabs/kube-router/blob/73b1b03b32c5755b240f6c077bb097abe3888314/pkg/controllers/netpol/namespace.go
 
 // +build !windows
 
@@ -10,7 +10,7 @@ import (
 
 	api "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/cache"
-	glog "k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 func (npc *NetworkPolicyController) newNamespaceEventHandler() cache.ResourceEventHandler {
@@ -32,7 +32,7 @@ func (npc *NetworkPolicyController) newNamespaceEventHandler() cache.ResourceEve
 					return
 				}
 			default:
-				glog.Errorf("unexpected object type: %v", obj)
+				klog.Errorf("unexpected object type: %v", obj)
 			}
 		},
 	}
@@ -42,7 +42,7 @@ func (npc *NetworkPolicyController) handleNamespaceAdd(obj *api.Namespace) {
 	if obj.Labels == nil {
 		return
 	}
-	glog.V(2).Infof("Received update for namespace: %s", obj.Name)
+	klog.V(2).Infof("Received update for namespace: %s", obj.Name)
 
 	npc.RequestFullSync()
 }
@@ -51,7 +51,7 @@ func (npc *NetworkPolicyController) handleNamespaceUpdate(oldObj, newObj *api.Na
 	if reflect.DeepEqual(oldObj.Labels, newObj.Labels) {
 		return
 	}
-	glog.V(2).Infof("Received update for namespace: %s", newObj.Name)
+	klog.V(2).Infof("Received update for namespace: %s", newObj.Name)
 
 	npc.RequestFullSync()
 }
@@ -60,7 +60,7 @@ func (npc *NetworkPolicyController) handleNamespaceDelete(obj *api.Namespace) {
 	if obj.Labels == nil {
 		return
 	}
-	glog.V(2).Infof("Received namespace: %s delete event", obj.Name)
+	klog.V(2).Infof("Received namespace: %s delete event", obj.Name)
 
 	npc.RequestFullSync()
 }
