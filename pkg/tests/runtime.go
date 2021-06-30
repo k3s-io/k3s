@@ -1,4 +1,4 @@
-package unit_tests
+package tests
 
 import (
 	"net"
@@ -10,11 +10,11 @@ import (
 	"github.com/rancher/k3s/pkg/version"
 )
 
-// All certs and other files are stored in /tmp/k3s/<RANDOM_STRING>/
-// for testing
+// GenerateTestDataDir creates a temporary directory at "/tmp/k3s/<RANDOM_STRING>/".
+// The latest directory created with this function is soft linked to "/tmp/k3s/latest/".
+// This allows tests to replicate the "/var/lib/rancher/k3s" directory structure
 func GenerateTestDataDir(cnf *config.Control) error {
-	var err error
-	if err = os.MkdirAll(cnf.DataDir, 0700); err != nil {
+	if err := os.MkdirAll(cnf.DataDir, 0700); err != nil {
 		return err
 	}
 	testDir, err := os.MkdirTemp(cnf.DataDir, "*")
@@ -34,12 +34,15 @@ func GenerateTestDataDir(cnf *config.Control) error {
 	return nil
 }
 
+// CleanupTestDataDir removes the associated "/tmp/k3s/<RANDOM_STRING>"
+// directory.
 func CleanupTestDataDir(cnf *config.Control) {
 	os.RemoveAll(cnf.DataDir)
 }
 
+// GenerateTestRuntime creates a temporary data dir and configures
+// config.ControlRuntime with all the appropriate certificate keys.
 func GenerateTestRuntime(cnf *config.Control) error {
-	var err error
 
 	// Setup defaults for the config
 	_, clusterIPNet, _ := net.ParseCIDR("10.42.0.0/16")
@@ -51,7 +54,7 @@ func GenerateTestRuntime(cnf *config.Control) error {
 	cnf.AdvertisePort = cnf.HTTPSPort
 
 	runtime := &config.ControlRuntime{}
-	if err = GenerateTestDataDir(cnf); err != nil {
+	if err := GenerateTestDataDir(cnf); err != nil {
 		return err
 	}
 
