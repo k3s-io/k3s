@@ -9,7 +9,7 @@ import (
 
 	"github.com/rancher/k3s/pkg/clientaccess"
 	"github.com/rancher/k3s/pkg/daemons/config"
-	"github.com/rancher/k3s/pkg/tests"
+	"github.com/rancher/k3s/pkg/util/tests"
 	"github.com/robfig/cron/v3"
 	etcd "go.etcd.io/etcd/clientv3"
 )
@@ -216,9 +216,8 @@ func TestETCD_Start(t *testing.T) {
 				clientAccessInfo: nil,
 			},
 			setup: func(cnf *config.Control) error {
-				err := tests.GenerateTestRuntime(cnf)
 				cnf.EtcdDisableSnapshots = true
-				return err
+				return tests.GenerateTestRuntime(cnf)
 			},
 			teardown: func(cnf *config.Control) error {
 				tests.CleanupTestDataDir(cnf)
