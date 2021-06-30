@@ -27,6 +27,7 @@ type Executor interface {
 	ControllerManager(apiReady <-chan struct{}, args []string) error
 	CurrentETCDOptions() (InitialOptions, error)
 	ETCD(args ETCDConfig) error
+	CloudControllerManager(ccmRBACReady <-chan struct{}, args []string) error
 }
 
 type ETCDConfig struct {
@@ -114,4 +115,8 @@ func CurrentETCDOptions() (InitialOptions, error) {
 
 func ETCD(args ETCDConfig) error {
 	return executor.ETCD(args)
+}
+
+func CloudControllerManager(ccmRBACReady <-chan struct{}, args []string) error {
+	return executor.CloudControllerManager(ccmRBACReady, args)
 }
