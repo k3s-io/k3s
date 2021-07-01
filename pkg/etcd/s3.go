@@ -25,8 +25,8 @@ import (
 
 const defaultS3OpTimeout = time.Second * 30
 
-// s3 maintains state for S3 functionality.
-type s3 struct {
+// S3 maintains state for S3 functionality.
+type S3 struct {
 	config *config.Control
 	client *minio.Client
 }
@@ -34,7 +34,7 @@ type s3 struct {
 // newS3 creates a new value of type s3 pointer with a
 // copy of the config.Control pointer and initializes
 // a new Minio client.
-func newS3(ctx context.Context, config *config.Control) (*s3, error) {
+func NewS3(ctx context.Context, config *config.Control) (*S3, error) {
 	tr := http.DefaultTransport
 	if config.EtcdS3EndpointCA != "" {
 		trCA, err := setTransportCA(tr, config.EtcdS3EndpointCA, config.EtcdS3SkipSSLVerify)
@@ -77,7 +77,7 @@ func newS3(ctx context.Context, config *config.Control) (*s3, error) {
 	}
 	logrus.Infof("S3 bucket %s exists", config.EtcdS3BucketName)
 
-	return &s3{
+	return &S3{
 		config: config,
 		client: c,
 	}, nil
@@ -85,7 +85,7 @@ func newS3(ctx context.Context, config *config.Control) (*s3, error) {
 
 // upload uploads the given snapshot to the configured S3
 // compatible backend.
-func (s *s3) upload(ctx context.Context, snapshot string) error {
+func (s *S3) upload(ctx context.Context, snapshot string) error {
 	basename := filepath.Base(snapshot)
 	var snapshotFileName string
 	if s.config.EtcdS3Folder != "" {
@@ -109,7 +109,7 @@ func (s *s3) upload(ctx context.Context, snapshot string) error {
 
 // download downloads the given snapshot from the configured S3
 // compatible backend.
-func (s *s3) download(ctx context.Context) error {
+func (s *S3) Download(ctx context.Context) error {
 	var remotePath string
 	if s.config.EtcdS3Folder != "" {
 		remotePath = filepath.Join(s.config.EtcdS3Folder, s.config.ClusterResetRestorePath)
@@ -155,7 +155,7 @@ func (s *s3) download(ctx context.Context) error {
 
 // snapshotPrefix returns the prefix used in the
 // naming of the snapshots.
-func (s *s3) snapshotPrefix() string {
+func (s *S3) snapshotPrefix() string {
 	nodeName := os.Getenv("NODE_NAME")
 	fullSnapshotPrefix := snapshotPrefix + nodeName
 	var prefix string
@@ -169,7 +169,7 @@ func (s *s3) snapshotPrefix() string {
 
 // snapshotRetention deletes the given snapshot from the configured S3
 // compatible backend.
-func (s *s3) snapshotRetention(ctx context.Context) error {
+func (s *S3) snapshotRetention(ctx context.Context) error {
 	var snapshotFiles []minio.ObjectInfo
 
 	toCtx, cancel := context.WithTimeout(ctx, defaultS3OpTimeout)
