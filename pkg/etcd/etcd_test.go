@@ -252,7 +252,7 @@ func TestETCD_Start(t *testing.T) {
 			},
 		},
 		{
-			name: "Start etcd with an exisitng cluster",
+			name: "Start etcd with an existing cluster",
 			fields: fields{
 				config:  generateTestConfig(),
 				address: "192.168.1.123", // Local IP address
