@@ -21,6 +21,9 @@ jobs:
       run: | 
         go test ./pkg/...  -coverprofile coverage.out
         go tool cover -func coverage.out
+    - name: On Failure Setup Debug
+      if: ${{ failure() }}
+      uses: mxschmitt/action-tmate@v3
     - name: Upload Results To Codecov
       uses: codecov/codecov-action@v1
       with:
