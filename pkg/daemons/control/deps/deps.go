@@ -91,7 +91,7 @@ func KubeConfig(dest, url, caCert, clientCert, clientKey string) error {
 }
 
 // FillRuntimeCerts is responsible for filling out all the
-// .crt and .key filenames for a ControlRuntime
+// .crt and .key filenames for a ControlRuntime.
 func FillRuntimeCerts(config *config.Control, runtime *config.ControlRuntime) {
 	runtime.ClientCA = filepath.Join(config.DataDir, "tls", "client-ca.crt")
 	runtime.ClientCAKey = filepath.Join(config.DataDir, "tls", "client-ca.key")

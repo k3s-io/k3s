@@ -199,7 +199,7 @@ func TestETCD_Start(t *testing.T) {
 		runtime *config.ControlRuntime
 		address string
 		cron    *cron.Cron
-		s3      *s3
+		s3      *S3
 	}
 	type args struct {
 		ctx              context.Context
