@@ -1,3 +1,57 @@
+## Version 1.6 (2021-04-01)
+
+Changes:
+
+  - Migrate the CI service from travis-ci to GitHub Actions (#1176, #1183, #1190)
+  - `NullTime` is deprecated (#960, #1144)
+  - Reduce allocations when building SET command (#1111)
+  - Performance improvement for time formatting (#1118)
+  - Performance improvement for time parsing (#1098, #1113)
+
+New Features:
+
+  - Implement `driver.Validator` interface (#1106, #1174)
+  - Support returning `uint64` from `Valuer` in `ConvertValue` (#1143)
+  - Add `json.RawMessage` for converter and prepared statement (#1059)
+  - Interpolate `json.RawMessage` as `string` (#1058)
+  - Implements `CheckNamedValue` (#1090)
+
+Bugfixes:
+
+  - Stop rounding times (#1121, #1172)
+  - Put zero filler into the SSL handshake packet (#1066)
+  - Fix checking cancelled connections back into the connection pool (#1095)
+  - Fix remove last 0 byte for mysql_old_password when password is empty (#1133)
+
+
+## Version 1.5 (2020-01-07)
+
+Changes:
+
+  - Dropped support Go 1.9 and lower (#823, #829, #886, #1016, #1017)
+  - Improve buffer handling (#890)
+  - Document potentially insecure TLS configs (#901)
+  - Use a double-buffering scheme to prevent data races (#943)
+  - Pass uint64 values without converting them to string (#838, #955)
+  - Update collations and make utf8mb4 default (#877, #1054)
+  - Make NullTime compatible with sql.NullTime in Go 1.13+ (#995)
+  - Removed CloudSQL support (#993, #1007)
+  - Add Go Module support (#1003)
+
+New Features:
+
+  - Implement support of optional TLS (#900)
+  - Check connection liveness (#934, #964, #997, #1048, #1051, #1052)
+  - Implement Connector Interface (#941, #958, #1020, #1035)
+
+Bugfixes:
+
+  - Mark connections as bad on error during ping (#875)
+  - Mark connections as bad on error during dial (#867)
+  - Fix connection leak caused by rapid context cancellation (#1024)
+  - Mark connections as bad on error during Conn.Prepare (#1030)
+
+
 ## Version 1.4.1 (2018-11-14)
 
 Bugfixes:

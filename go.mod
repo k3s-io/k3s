@@ -86,18 +86,18 @@ require (
 	github.com/erikdubbelboer/gspt v0.0.0-20190125194910-e68493906b83
 	github.com/flannel-io/flannel v0.14.0
 	github.com/go-bindata/go-bindata v3.1.2+incompatible
-	github.com/go-sql-driver/mysql v1.4.1
+	github.com/go-sql-driver/mysql v1.6.0
 	github.com/golangplus/testing v1.0.0 // indirect
 	github.com/google/cadvisor v0.39.2
 	github.com/google/uuid v1.2.0
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.4.2
 	github.com/k3s-io/helm-controller v0.10.5
-	github.com/k3s-io/kine v0.6.2
+	github.com/k3s-io/kine v0.7.3
 	github.com/klauspost/compress v1.12.2
 	github.com/kubernetes-sigs/cri-tools v0.0.0-00010101000000-000000000000
-	github.com/lib/pq v1.8.0
-	github.com/mattn/go-sqlite3 v1.14.4
+	github.com/lib/pq v1.10.2
+	github.com/mattn/go-sqlite3 v1.14.8
 	github.com/minio/minio-go/v7 v7.0.7
 	github.com/moby/sys/symlink v0.1.0 // indirect
 	github.com/natefinch/lumberjack v2.0.0+incompatible
@@ -111,7 +111,7 @@ require (
 	github.com/rancher/dynamiclistener v0.2.3
 	github.com/rancher/remotedialer v0.2.0
 	github.com/rancher/wharfie v0.3.4
-	github.com/rancher/wrangler v0.6.2
+	github.com/rancher/wrangler v0.8.3
 	github.com/rancher/wrangler-api v0.6.0
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/rootless-containers/rootlesskit v0.14.0
