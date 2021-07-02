@@ -64,6 +64,12 @@ func (mounter *Mounter) MountSensitiveWithoutSystemd(source string, target strin
 	return mounter.MountSensitive(source, target, fstype, options, sensitiveOptions /* sensitiveOptions */)
 }
 
+// MountSensitiveWithoutSystemdWithMountFlags is the same as MountSensitiveWithoutSystemd with additional mount flags
+// Windows not supported systemd mount, this function degrades to MountSensitive().
+func (mounter *Mounter) MountSensitiveWithoutSystemdWithMountFlags(source string, target string, fstype string, options []string, sensitiveOptions []string, mountFlags []string) error {
+	return mounter.MountSensitive(source, target, fstype, options, sensitiveOptions /* sensitiveOptions */)
+}
+
 // MountSensitive is the same as Mount() but this method allows
 // sensitiveOptions to be passed in a separate parameter from the normal
 // mount options and ensures the sensitiveOptions are never logged. This
@@ -267,7 +273,7 @@ func (mounter *SafeFormatAndMount) formatAndMountSensitive(source string, target
 	}
 
 	// format disk if it is unformatted(raw)
-	cmd := fmt.Sprintf("Get-Disk -Number %s | Where partitionstyle -eq 'raw' | Initialize-Disk -PartitionStyle MBR -PassThru"+
+	cmd := fmt.Sprintf("Get-Disk -Number %s | Where partitionstyle -eq 'raw' | Initialize-Disk -PartitionStyle GPT -PassThru"+
 		" | New-Partition -UseMaximumSize | Format-Volume -FileSystem %s -Confirm:$false", source, fstype)
 	if output, err := mounter.Exec.Command("powershell", "/c", cmd).CombinedOutput(); err != nil {
 		return fmt.Errorf("diskMount: format disk failed, error: %v, output: %q", err, string(output))
