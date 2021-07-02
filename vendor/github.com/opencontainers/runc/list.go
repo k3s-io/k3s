@@ -3,6 +3,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -11,8 +12,6 @@ import (
 	"syscall"
 	"text/tabwriter"
 	"time"
-
-	"encoding/json"
 
 	"github.com/opencontainers/runc/libcontainer"
 	"github.com/opencontainers/runc/libcontainer/user"
