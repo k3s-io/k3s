@@ -11,10 +11,10 @@ import (
 
 	helmv1 "github.com/k3s-io/helm-controller/pkg/apis/helm.cattle.io/v1"
 	helmcontroller "github.com/k3s-io/helm-controller/pkg/generated/controllers/helm.cattle.io/v1"
-	batchcontroller "github.com/rancher/wrangler-api/pkg/generated/controllers/batch/v1"
-	corecontroller "github.com/rancher/wrangler-api/pkg/generated/controllers/core/v1"
-	rbaccontroller "github.com/rancher/wrangler-api/pkg/generated/controllers/rbac/v1"
 	"github.com/rancher/wrangler/pkg/apply"
+	batchcontroller "github.com/rancher/wrangler/pkg/generated/controllers/batch/v1"
+	corecontroller "github.com/rancher/wrangler/pkg/generated/controllers/core/v1"
+	rbaccontroller "github.com/rancher/wrangler/pkg/generated/controllers/rbac/v1"
 	"github.com/rancher/wrangler/pkg/objectset"
 	"github.com/rancher/wrangler/pkg/relatedresource"
 	batch "k8s.io/api/batch/v1"
@@ -30,7 +30,7 @@ import (
 var (
 	trueVal         = true
 	commaRE         = regexp.MustCompile(`\\*,`)
-	DefaultJobImage = "rancher/klipper-helm:v0.6.6-build20211022"
+	DefaultJobImage = "rancher/klipper-helm:v0.6.4-build20210813"
 )
 
 type Controller struct {
@@ -47,11 +47,6 @@ const (
 	CRDName       = "helmcharts.helm.cattle.io"
 	ConfigCRDName = "helmchartconfigs.helm.cattle.io"
 	Name          = "helm-controller"
-
-	TaintExternalCloudProvider = "node.cloudprovider.kubernetes.io/uninitialized"
-	LabelNodeRolePrefix        = "node-role.kubernetes.io/"
-	LabelControlPlaneSuffix    = "control-plane"
-	LabelEtcdSuffix            = "etcd"
 )
 
 func Register(ctx context.Context, apply apply.Apply,
@@ -284,19 +279,15 @@ func job(chart *helmv1.HelmChart) (*batch.Job, *core.ConfigMap, *core.ConfigMap)
 		})
 	}
 
-	job.Spec.Template.Spec.NodeSelector = make(map[string]string)
-	job.Spec.Template.Spec.NodeSelector[core.LabelOSStable] = "linux"
-
 	if chart.Spec.Bootstrap {
-		job.Spec.Template.Spec.NodeSelector[LabelNodeRolePrefix+LabelControlPlaneSuffix] = "true"
 		job.Spec.Template.Spec.HostNetwork = true
 		job.Spec.Template.Spec.Tolerations = []core.Toleration{
 			{
-				Key:    core.TaintNodeNotReady,
+				Key:    "node.kubernetes.io/not-ready",
 				Effect: core.TaintEffectNoSchedule,
 			},
 			{
-				Key:      TaintExternalCloudProvider,
+				Key:      "node.cloudprovider.kubernetes.io/uninitialized",
 				Operator: core.TolerationOpEqual,
 				Value:    "true",
 				Effect:   core.TaintEffectNoSchedule,
@@ -306,12 +297,12 @@ func job(chart *helmv1.HelmChart) (*batch.Job, *core.ConfigMap, *core.ConfigMap)
 				Operator: core.TolerationOpExists,
 			},
 			{
-				Key:      LabelNodeRolePrefix + LabelEtcdSuffix,
+				Key:      "node-role.kubernetes.io/etcd",
 				Operator: core.TolerationOpExists,
 				Effect:   core.TaintEffectNoExecute,
 			},
 			{
-				Key:      LabelNodeRolePrefix + LabelControlPlaneSuffix,
+				Key:      "node-role.kubernetes.io/control-plane",
 				Operator: core.TolerationOpExists,
 				Effect:   core.TaintEffectNoSchedule,
 			},
@@ -327,6 +318,8 @@ func job(chart *helmv1.HelmChart) (*batch.Job, *core.ConfigMap, *core.ConfigMap)
 				Name:  "BOOTSTRAP",
 				Value: "true"},
 		}...)
+		job.Spec.Template.Spec.NodeSelector = make(map[string]string)
+		job.Spec.Template.Spec.NodeSelector["node-role.kubernetes.io/master"] = "true"
 	}
 
 	setProxyEnv(job)

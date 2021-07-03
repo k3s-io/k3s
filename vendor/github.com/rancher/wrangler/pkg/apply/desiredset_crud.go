@@ -6,6 +6,7 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/client-go/dynamic"
 )
@@ -51,9 +52,14 @@ func (o *desiredSet) get(nsed bool, namespace, name string, client dynamic.Names
 	return client.Get(o.ctx, name, v1.GetOptions{})
 }
 
-func (o *desiredSet) delete(nsed bool, namespace, name string, client dynamic.NamespaceableResourceInterface, force bool) error {
-	if o.noDelete && !force {
-		return nil
+func (o *desiredSet) delete(nsed bool, namespace, name string, client dynamic.NamespaceableResourceInterface, force bool, gvk schema.GroupVersionKind) error {
+	if !force {
+		if o.noDelete {
+			return nil
+		}
+		if _, ok := o.noDeleteGVK[gvk]; ok {
+			return nil
+		}
 	}
 	opts := v1.DeleteOptions{
 		PropagationPolicy: &deletePolicy,

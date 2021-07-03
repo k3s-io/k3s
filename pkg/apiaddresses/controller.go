@@ -9,8 +9,7 @@ import (
 	"github.com/rancher/k3s/pkg/etcd"
 	"github.com/rancher/k3s/pkg/util"
 	"github.com/rancher/k3s/pkg/version"
-	controllerv1 "github.com/rancher/wrangler-api/pkg/generated/controllers/core/v1"
-	etcdv3 "go.etcd.io/etcd/clientv3"
+	controllerv1 "github.com/rancher/wrangler/pkg/generated/controllers/core/v1"
 	v1 "k8s.io/api/core/v1"
 )
 
