@@ -706,20 +706,12 @@ github.com/jonboulle/clockwork
 github.com/josharian/intern
 # github.com/json-iterator/go v1.1.11
 github.com/json-iterator/go
-# github.com/k3s-io/helm-controller v0.10.5
+# github.com/k3s-io/helm-controller v0.11.3
 ## explicit
 github.com/k3s-io/helm-controller/pkg/apis/helm.cattle.io
 github.com/k3s-io/helm-controller/pkg/apis/helm.cattle.io/v1
-github.com/k3s-io/helm-controller/pkg/generated/clientset/versioned
-github.com/k3s-io/helm-controller/pkg/generated/clientset/versioned/scheme
-github.com/k3s-io/helm-controller/pkg/generated/clientset/versioned/typed/helm.cattle.io/v1
 github.com/k3s-io/helm-controller/pkg/generated/controllers/helm.cattle.io
 github.com/k3s-io/helm-controller/pkg/generated/controllers/helm.cattle.io/v1
-github.com/k3s-io/helm-controller/pkg/generated/informers/externalversions
-github.com/k3s-io/helm-controller/pkg/generated/informers/externalversions/helm.cattle.io
-github.com/k3s-io/helm-controller/pkg/generated/informers/externalversions/helm.cattle.io/v1
-github.com/k3s-io/helm-controller/pkg/generated/informers/externalversions/internalinterfaces
-github.com/k3s-io/helm-controller/pkg/generated/listers/helm.cattle.io/v1
 github.com/k3s-io/helm-controller/pkg/helm
 # github.com/k3s-io/kine v0.7.3
 ## explicit
@@ -947,7 +939,7 @@ github.com/prometheus/common/model
 github.com/prometheus/procfs
 github.com/prometheus/procfs/internal/fs
 github.com/prometheus/procfs/internal/util
-# github.com/rancher/dynamiclistener v0.2.3
+# github.com/rancher/dynamiclistener v0.2.6
 ## explicit
 github.com/rancher/dynamiclistener
 github.com/rancher/dynamiclistener/cert
@@ -956,6 +948,7 @@ github.com/rancher/dynamiclistener/storage/file
 github.com/rancher/dynamiclistener/storage/kubernetes
 github.com/rancher/dynamiclistener/storage/memory
 # github.com/rancher/lasso v0.0.0-20210616224652-fc3ebd901c08
+## explicit
 github.com/rancher/lasso/pkg/cache
 github.com/rancher/lasso/pkg/client
 github.com/rancher/lasso/pkg/controller
@@ -968,7 +961,7 @@ github.com/rancher/remotedialer
 # github.com/rancher/wharfie v0.3.4
 ## explicit
 github.com/rancher/wharfie/pkg/registries
-# github.com/rancher/wrangler v0.8.3
+# github.com/rancher/wrangler v0.8.3 => github.com/rancher/wrangler v0.8.5
 ## explicit
 github.com/rancher/wrangler/pkg/apply
 github.com/rancher/wrangler/pkg/apply/injectors
@@ -981,6 +974,14 @@ github.com/rancher/wrangler/pkg/crd
 github.com/rancher/wrangler/pkg/data
 github.com/rancher/wrangler/pkg/data/convert
 github.com/rancher/wrangler/pkg/generated/controllers/apiextensions.k8s.io/v1
+github.com/rancher/wrangler/pkg/generated/controllers/apps
+github.com/rancher/wrangler/pkg/generated/controllers/apps/v1
+github.com/rancher/wrangler/pkg/generated/controllers/batch
+github.com/rancher/wrangler/pkg/generated/controllers/batch/v1
+github.com/rancher/wrangler/pkg/generated/controllers/core
+github.com/rancher/wrangler/pkg/generated/controllers/core/v1
+github.com/rancher/wrangler/pkg/generated/controllers/rbac
+github.com/rancher/wrangler/pkg/generated/controllers/rbac/v1
 github.com/rancher/wrangler/pkg/generic
 github.com/rancher/wrangler/pkg/gvk
 github.com/rancher/wrangler/pkg/kv
@@ -999,16 +1000,6 @@ github.com/rancher/wrangler/pkg/signals
 github.com/rancher/wrangler/pkg/slice
 github.com/rancher/wrangler/pkg/start
 github.com/rancher/wrangler/pkg/yaml
-# github.com/rancher/wrangler-api v0.6.0
-## explicit
-github.com/rancher/wrangler-api/pkg/generated/controllers/apps
-github.com/rancher/wrangler-api/pkg/generated/controllers/apps/v1
-github.com/rancher/wrangler-api/pkg/generated/controllers/batch
-github.com/rancher/wrangler-api/pkg/generated/controllers/batch/v1
-github.com/rancher/wrangler-api/pkg/generated/controllers/core
-github.com/rancher/wrangler-api/pkg/generated/controllers/core/v1
-github.com/rancher/wrangler-api/pkg/generated/controllers/rbac
-github.com/rancher/wrangler-api/pkg/generated/controllers/rbac/v1
 # github.com/robfig/cron/v3 v3.0.1
 ## explicit
 github.com/robfig/cron/v3
@@ -3385,6 +3376,7 @@ sigs.k8s.io/yaml
 # github.com/opencontainers/runc => github.com/opencontainers/runc v1.0.1
 # github.com/opencontainers/runtime-spec => github.com/opencontainers/runtime-spec v1.0.3-0.20210316141917-a8c4a9ee0f6b
 # github.com/rancher/k3s/pkg/data => ./pkg/data
+# github.com/rancher/wrangler => github.com/rancher/wrangler v0.8.5
 # go.etcd.io/etcd/api/v3 => github.com/k3s-io/etcd/api/v3 v3.5.0-k3s1
 # go.etcd.io/etcd/client/v3 => github.com/k3s-io/etcd/client/v3 v3.5.0-k3s1
 # go.etcd.io/etcd/etcdutl/v3 => github.com/k3s-io/etcd/etcdutl/v3 v3.5.0-k3s1

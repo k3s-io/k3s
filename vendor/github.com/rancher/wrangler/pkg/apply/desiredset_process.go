@@ -304,7 +304,7 @@ func (o *desiredSet) process(debugID string, set labels.Selector, gvk schema.Gro
 	}
 
 	deleteF := func(k objectset.ObjectKey, force bool) {
-		if err := o.delete(nsed, k.Namespace, k.Name, client, force); err != nil {
+		if err := o.delete(nsed, k.Namespace, k.Name, client, force, gvk); err != nil {
 			o.err(errors.Wrapf(err, "failed to delete %s %s for %s", k, gvk, debugID))
 			return
 		}
