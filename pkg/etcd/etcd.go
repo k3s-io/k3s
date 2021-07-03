@@ -27,7 +27,7 @@ import (
 	"github.com/rancher/k3s/pkg/daemons/control/deps"
 	"github.com/rancher/k3s/pkg/daemons/executor"
 	"github.com/rancher/k3s/pkg/version"
-	controllerv1 "github.com/rancher/wrangler-api/pkg/generated/controllers/core/v1"
+	controllerv1 "github.com/rancher/wrangler/pkg/generated/controllers/core/v1"
 	"github.com/robfig/cron/v3"
 	"github.com/sirupsen/logrus"
 	etcd "go.etcd.io/etcd/clientv3"

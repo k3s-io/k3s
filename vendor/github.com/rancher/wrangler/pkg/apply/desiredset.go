@@ -2,6 +2,7 @@ package apply
 
 import (
 	"context"
+
 	"github.com/rancher/wrangler/pkg/apply/injectors"
 	"github.com/rancher/wrangler/pkg/kv"
 	"github.com/rancher/wrangler/pkg/merr"
@@ -12,11 +13,17 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
+type patchKey struct {
+	schema.GroupVersionKind
+	objectset.ObjectKey
+}
+
 type desiredSet struct {
 	a                        *apply
 	ctx                      context.Context
 	defaultNamespace         string
 	listerNamespace          string
+	ignorePreviousApplied    bool
 	setOwnerReference        bool
 	ownerReferenceController bool
 	ownerReferenceBlock      bool
@@ -25,9 +32,11 @@ type desiredSet struct {
 	pruneTypes               map[schema.GroupVersionKind]cache.SharedIndexInformer
 	patchers                 map[schema.GroupVersionKind]Patcher
 	reconcilers              map[schema.GroupVersionKind]Reconciler
+	diffPatches              map[patchKey][][]byte
 	informerFactory          InformerFactory
 	remove                   bool
 	noDelete                 bool
+	noDeleteGVK              map[schema.GroupVersionKind]struct{}
 	setID                    string
 	objs                     *objectset.ObjectSet
 	codeVersion              string
@@ -68,6 +77,23 @@ func (o desiredSet) ApplyObjects(objs ...runtime.Object) error {
 	os := objectset.NewObjectSet()
 	os.Add(objs...)
 	return o.Apply(os)
+}
+
+func (o desiredSet) WithDiffPatch(gvk schema.GroupVersionKind, namespace, name string, patch []byte) Apply {
+	patches := map[patchKey][][]byte{}
+	for k, v := range o.diffPatches {
+		patches[k] = v
+	}
+	key := patchKey{
+		GroupVersionKind: gvk,
+		ObjectKey: objectset.ObjectKey{
+			Name:      name,
+			Namespace: namespace,
+		},
+	}
+	patches[key] = append(patches[key], patch)
+	o.diffPatches = patches
+	return o
 }
 
 // WithGVK uses a known listing of existing gvks to modify the the prune types to allow for deletion of objects
@@ -120,6 +146,11 @@ func (o desiredSet) WithInjectorName(injs ...string) Apply {
 
 func (o desiredSet) WithCacheTypeFactory(factory InformerFactory) Apply {
 	o.informerFactory = factory
+	return o
+}
+
+func (o desiredSet) WithIgnorePreviousApplied() Apply {
+	o.ignorePreviousApplied = true
 	return o
 }
 
@@ -192,6 +223,16 @@ func (o desiredSet) WithRateLimiting(ratelimitingQps float32) Apply {
 
 func (o desiredSet) WithNoDelete() Apply {
 	o.noDelete = true
+	return o
+}
+
+func (o desiredSet) WithNoDeleteGVK(gvks ...schema.GroupVersionKind) Apply {
+	if o.noDeleteGVK == nil {
+		o.noDeleteGVK = make(map[schema.GroupVersionKind]struct{})
+	}
+	for _, curr := range gvks {
+		o.noDeleteGVK[curr] = struct{}{}
+	}
 	return o
 }
 
