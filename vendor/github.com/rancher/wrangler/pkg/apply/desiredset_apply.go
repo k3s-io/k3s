@@ -177,6 +177,17 @@ func (o *desiredSet) runInjectors(objList []runtime.Object) ([]runtime.Object, e
 	return objList, nil
 }
 
+// GetSelectorFromOwner returns the label selector for the owner object which is useful
+// to list the dependents
+func GetSelectorFromOwner(setID string, owner runtime.Object) (labels.Selector, error) {
+	// Build the labels, we want the hash label for the lister
+	ownerLabel, _, err := GetLabelsAndAnnotations(setID, owner)
+	if err != nil {
+		return nil, err
+	}
+	return GetSelector(ownerLabel)
+}
+
 func GetSelector(labelSet map[string]string) (labels.Selector, error) {
 	req, err := labels.NewRequirement(LabelHash, selection.Equals, []string{labelSet[LabelHash]})
 	if err != nil {

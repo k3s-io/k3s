@@ -77,6 +77,7 @@ type Apply interface {
 	WithListerNamespace(ns string) Apply
 	WithRateLimiting(ratelimitingQps float32) Apply
 	WithNoDelete() Apply
+	WithNoDeleteGVK(gvks ...schema.GroupVersionKind) Apply
 	WithGVK(gvks ...schema.GroupVersionKind) Apply
 	WithSetOwnerReference(controller, block bool) Apply
 	WithIgnorePreviousApplied() Apply
@@ -277,6 +278,10 @@ func (a *apply) WithRateLimiting(ratelimitingQps float32) Apply {
 
 func (a *apply) WithNoDelete() Apply {
 	return a.newDesiredSet().WithNoDelete()
+}
+
+func (a *apply) WithNoDeleteGVK(gvks ...schema.GroupVersionKind) Apply {
+	return a.newDesiredSet().WithNoDeleteGVK(gvks...)
 }
 
 func (a *apply) WithSetOwnerReference(controller, block bool) Apply {

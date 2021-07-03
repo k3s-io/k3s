@@ -36,6 +36,7 @@ type desiredSet struct {
 	informerFactory          InformerFactory
 	remove                   bool
 	noDelete                 bool
+	noDeleteGVK              map[schema.GroupVersionKind]struct{}
 	setID                    string
 	objs                     *objectset.ObjectSet
 	codeVersion              string
@@ -222,6 +223,16 @@ func (o desiredSet) WithRateLimiting(ratelimitingQps float32) Apply {
 
 func (o desiredSet) WithNoDelete() Apply {
 	o.noDelete = true
+	return o
+}
+
+func (o desiredSet) WithNoDeleteGVK(gvks ...schema.GroupVersionKind) Apply {
+	if o.noDeleteGVK == nil {
+		o.noDeleteGVK = make(map[schema.GroupVersionKind]struct{})
+	}
+	for _, curr := range gvks {
+		o.noDeleteGVK[curr] = struct{}{}
+	}
 	return o
 }
 
