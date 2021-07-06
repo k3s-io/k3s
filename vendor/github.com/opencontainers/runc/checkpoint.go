@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"path/filepath"
 	"strconv"
 
 	criu "github.com/checkpoint-restore/go-criu/v5/rpc"
@@ -78,12 +79,37 @@ checkpointed.`,
 	},
 }
 
-func getCheckpointImagePath(context *cli.Context) string {
+func prepareImagePaths(context *cli.Context) (string, string, error) {
 	imagePath := context.String("image-path")
 	if imagePath == "" {
 		imagePath = getDefaultImagePath(context)
 	}
-	return imagePath
+
+	if err := os.MkdirAll(imagePath, 0600); err != nil {
+		return "", "", err
+	}
+
+	parentPath := context.String("parent-path")
+	if parentPath == "" {
+		return imagePath, parentPath, nil
+	}
+
+	if filepath.IsAbs(parentPath) {
+		return "", "", errors.New("--parent-path must be relative")
+	}
+
+	realParent := filepath.Join(imagePath, parentPath)
+	fi, err := os.Stat(realParent)
+	if err == nil && !fi.IsDir() {
+		err = &os.PathError{Path: realParent, Err: unix.ENOTDIR}
+	}
+
+	if err != nil {
+		return "", "", fmt.Errorf("invalid --parent-path: %w", err)
+	}
+
+	return imagePath, parentPath, nil
+
 }
 
 func setPageServer(context *cli.Context, options *libcontainer.CriuOpts) {

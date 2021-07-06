@@ -110,32 +110,32 @@ func setMemoryAndSwap(path string, r *configs.Resources) error {
 	return nil
 }
 
-func (s *MemoryGroup) Set(path string, cgroup *configs.Cgroup) error {
-	if err := setMemoryAndSwap(path, cgroup.Resources); err != nil {
+func (s *MemoryGroup) Set(path string, r *configs.Resources) error {
+	if err := setMemoryAndSwap(path, r); err != nil {
 		return err
 	}
 
 	// ignore KernelMemory and KernelMemoryTCP
 
-	if cgroup.Resources.MemoryReservation != 0 {
-		if err := fscommon.WriteFile(path, "memory.soft_limit_in_bytes", strconv.FormatInt(cgroup.Resources.MemoryReservation, 10)); err != nil {
+	if r.MemoryReservation != 0 {
+		if err := fscommon.WriteFile(path, "memory.soft_limit_in_bytes", strconv.FormatInt(r.MemoryReservation, 10)); err != nil {
 			return err
 		}
 	}
 
-	if cgroup.Resources.OomKillDisable {
+	if r.OomKillDisable {
 		if err := fscommon.WriteFile(path, "memory.oom_control", "1"); err != nil {
 			return err
 		}
 	}
-	if cgroup.Resources.MemorySwappiness == nil || int64(*cgroup.Resources.MemorySwappiness) == -1 {
+	if r.MemorySwappiness == nil || int64(*r.MemorySwappiness) == -1 {
 		return nil
-	} else if *cgroup.Resources.MemorySwappiness <= 100 {
-		if err := fscommon.WriteFile(path, "memory.swappiness", strconv.FormatUint(*cgroup.Resources.MemorySwappiness, 10)); err != nil {
+	} else if *r.MemorySwappiness <= 100 {
+		if err := fscommon.WriteFile(path, "memory.swappiness", strconv.FormatUint(*r.MemorySwappiness, 10)); err != nil {
 			return err
 		}
 	} else {
-		return fmt.Errorf("invalid value:%d. valid memory swappiness range is 0-100", *cgroup.Resources.MemorySwappiness)
+		return fmt.Errorf("invalid value:%d. valid memory swappiness range is 0-100", *r.MemorySwappiness)
 	}
 
 	return nil
@@ -224,7 +224,9 @@ func getMemoryData(path, name string) (cgroups.MemoryData, error) {
 
 	value, err := fscommon.GetCgroupParamUint(path, usage)
 	if err != nil {
-		if moduleName != "memory" && os.IsNotExist(err) {
+		if name != "" && os.IsNotExist(err) {
+			// Ignore ENOENT as swap and kmem controllers
+			// are optional in the kernel.
 			return cgroups.MemoryData{}, nil
 		}
 		return cgroups.MemoryData{}, fmt.Errorf("failed to parse %s - %v", usage, err)
@@ -232,25 +234,16 @@ func getMemoryData(path, name string) (cgroups.MemoryData, error) {
 	memoryData.Usage = value
 	value, err = fscommon.GetCgroupParamUint(path, maxUsage)
 	if err != nil {
-		if moduleName != "memory" && os.IsNotExist(err) {
-			return cgroups.MemoryData{}, nil
-		}
 		return cgroups.MemoryData{}, fmt.Errorf("failed to parse %s - %v", maxUsage, err)
 	}
 	memoryData.MaxUsage = value
 	value, err = fscommon.GetCgroupParamUint(path, failcnt)
 	if err != nil {
-		if moduleName != "memory" && os.IsNotExist(err) {
-			return cgroups.MemoryData{}, nil
-		}
 		return cgroups.MemoryData{}, fmt.Errorf("failed to parse %s - %v", failcnt, err)
 	}
 	memoryData.Failcnt = value
 	value, err = fscommon.GetCgroupParamUint(path, limit)
 	if err != nil {
-		if moduleName != "memory" && os.IsNotExist(err) {
-			return cgroups.MemoryData{}, nil
-		}
 		return cgroups.MemoryData{}, fmt.Errorf("failed to parse %s - %v", limit, err)
 	}
 	memoryData.Limit = value

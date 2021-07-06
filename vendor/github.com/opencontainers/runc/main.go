@@ -190,6 +190,7 @@ func createLogConfig(context *cli.Context) logs.Config {
 		LogLevel:    logrus.InfoLevel,
 		LogFilePath: logFilePath,
 		LogFormat:   context.GlobalString("log-format"),
+		LogCaller:   context.GlobalBool("debug"),
 	}
 	if context.GlobalBool("debug") {
 		config.LogLevel = logrus.DebugLevel

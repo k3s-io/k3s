@@ -1,0 +1,33 @@
+name: Unit Test Coverage
+on: [push, pull_request]
+jobs:
+  test:
+    name: Unit Tests
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-18.04, ubuntu-20.04]
+    timeout-minutes: 20
+    steps:
+    - name: Install Go
+      uses: actions/setup-go@v2 
+      with: 
+        go-version: '1.16.5'
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 1
+    - name: Run Unit Tests
+      run: | 
+        go test -coverpkg=./... -covermode=atomic -coverprofile=coverage.out ./pkg/...
+        go tool cover -func coverage.out
+    - name: On Failure, Launch Debug Session
+      if: ${{ failure() }}
+      uses: mxschmitt/action-tmate@v3
+      timeout-minutes: 2
+    - name: Upload Results To Codecov
+      uses: codecov/codecov-action@v1
+      with:
+        files: ./coverage.out
+        flags: unittests # optional
+        verbose: true # optional (default = false)

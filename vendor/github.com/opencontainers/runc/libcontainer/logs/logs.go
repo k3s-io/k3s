@@ -24,6 +24,7 @@ type Config struct {
 	LogFormat   string
 	LogFilePath string
 	LogPipeFd   int
+	LogCaller   bool
 }
 
 func ForwardLogs(logPipe io.ReadCloser) chan error {
@@ -77,6 +78,7 @@ func ConfigureLogging(config Config) error {
 	}
 
 	logrus.SetLevel(config.LogLevel)
+	logrus.SetReportCaller(config.LogCaller)
 
 	// XXX: while 0 is a valid fd (usually stdin), here we assume
 	// that we never deliberately set LogPipeFd to 0.

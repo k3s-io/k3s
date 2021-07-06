@@ -225,9 +225,9 @@ func (c *linuxContainer) Set(config configs.Config) error {
 	if status == Stopped {
 		return newGenericError(errors.New("container not running"), ContainerNotRunning)
 	}
-	if err := c.cgroupManager.Set(&config); err != nil {
+	if err := c.cgroupManager.Set(config.Cgroups.Resources); err != nil {
 		// Set configs back
-		if err2 := c.cgroupManager.Set(c.config); err2 != nil {
+		if err2 := c.cgroupManager.Set(c.config.Cgroups.Resources); err2 != nil {
 			logrus.Warnf("Setting back cgroup configs failed due to error: %v, your state.json and actual configs might be inconsistent.", err2)
 		}
 		return err
@@ -235,7 +235,7 @@ func (c *linuxContainer) Set(config configs.Config) error {
 	if c.intelRdtManager != nil {
 		if err := c.intelRdtManager.Set(&config); err != nil {
 			// Set configs back
-			if err2 := c.cgroupManager.Set(c.config); err2 != nil {
+			if err2 := c.cgroupManager.Set(c.config.Cgroups.Resources); err2 != nil {
 				logrus.Warnf("Setting back cgroup configs failed due to error: %v, your state.json and actual configs might be inconsistent.", err2)
 			}
 			if err2 := c.intelRdtManager.Set(c.config); err2 != nil {
@@ -610,6 +610,9 @@ func (c *linuxContainer) newInitConfig(process *Process) *initConfig {
 		AppArmorProfile:  c.config.AppArmorProfile,
 		ProcessLabel:     c.config.ProcessLabel,
 		Rlimits:          c.config.Rlimits,
+		CreateConsole:    process.ConsoleSocket != nil,
+		ConsoleWidth:     process.ConsoleWidth,
+		ConsoleHeight:    process.ConsoleHeight,
 	}
 	if process.NoNewPrivileges != nil {
 		cfg.NoNewPrivileges = *process.NoNewPrivileges
@@ -623,9 +626,10 @@ func (c *linuxContainer) newInitConfig(process *Process) *initConfig {
 	if len(process.Rlimits) > 0 {
 		cfg.Rlimits = process.Rlimits
 	}
-	cfg.CreateConsole = process.ConsoleSocket != nil
-	cfg.ConsoleWidth = process.ConsoleWidth
-	cfg.ConsoleHeight = process.ConsoleHeight
+	if cgroups.IsCgroup2UnifiedMode() {
+		cfg.Cgroup2Path = c.cgroupManager.Path("")
+	}
+
 	return cfg
 }
 
@@ -1213,7 +1217,6 @@ func (c *linuxContainer) makeCriuRestoreMountpoints(m *configs.Mount) error {
 		if err := checkProcMount(c.config.Rootfs, dest, ""); err != nil {
 			return err
 		}
-		m.Destination = dest
 		if err := os.MkdirAll(dest, 0755); err != nil {
 			return err
 		}
@@ -1253,13 +1256,16 @@ func (c *linuxContainer) prepareCriuRestoreMounts(mounts []*configs.Mount) error
 	umounts := []string{}
 	defer func() {
 		for _, u := range umounts {
-			if e := unix.Unmount(u, unix.MNT_DETACH); e != nil {
-				if e != unix.EINVAL {
-					// Ignore EINVAL as it means 'target is not a mount point.'
-					// It probably has already been unmounted.
-					logrus.Warnf("Error during cleanup unmounting of %q (%v)", u, e)
+			_ = utils.WithProcfd(c.config.Rootfs, u, func(procfd string) error {
+				if e := unix.Unmount(procfd, unix.MNT_DETACH); e != nil {
+					if e != unix.EINVAL {
+						// Ignore EINVAL as it means 'target is not a mount point.'
+						// It probably has already been unmounted.
+						logrus.Warnf("Error during cleanup unmounting of %s (%s): %v", procfd, u, e)
+					}
 				}
-			}
+				return nil
+			})
 		}
 	}()
 	for _, m := range mounts {
@@ -1277,8 +1283,13 @@ func (c *linuxContainer) prepareCriuRestoreMounts(mounts []*configs.Mount) error
 			// because during initial container creation mounts are
 			// set up in the order they are configured.
 			if m.Device == "bind" {
-				if err := unix.Mount(m.Source, m.Destination, "", unix.MS_BIND|unix.MS_REC, ""); err != nil {
-					return errorsf.Wrapf(err, "unable to bind mount %q to %q", m.Source, m.Destination)
+				if err := utils.WithProcfd(c.config.Rootfs, m.Destination, func(procfd string) error {
+					if err := unix.Mount(m.Source, procfd, "", unix.MS_BIND|unix.MS_REC, ""); err != nil {
+						return errorsf.Wrapf(err, "unable to bind mount %q to %q (through %q)", m.Source, m.Destination, procfd)
+					}
+					return nil
+				}); err != nil {
+					return err
 				}
 				umounts = append(umounts, m.Destination)
 			}
@@ -1458,7 +1469,7 @@ func (c *linuxContainer) criuApplyCgroups(pid int, req *criurpc.CriuReq) error {
 		return err
 	}
 
-	if err := c.cgroupManager.Set(c.config); err != nil {
+	if err := c.cgroupManager.Set(c.config.Cgroups.Resources); err != nil {
 		return newSystemError(err)
 	}
 

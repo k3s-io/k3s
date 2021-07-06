@@ -47,10 +47,6 @@ func Run(ctx context.Context, cfg *config.Node) error {
 		return err
 	}
 
-	if os.Getenv("CONTAINERD_LOG_LEVEL") != "" {
-		args = append(args, "-l", os.Getenv("CONTAINERD_LOG_LEVEL"))
-	}
-
 	stdOut := io.Writer(os.Stdout)
 	stdErr := io.Writer(os.Stderr)
 
@@ -67,18 +63,33 @@ func Run(ctx context.Context, cfg *config.Node) error {
 	}
 
 	go func() {
+		env := []string{}
+
+		for _, e := range os.Environ() {
+			pair := strings.SplitN(e, "=", 2)
+			switch {
+			case pair[0] == "NOTIFY_SOCKET":
+				// elide NOTIFY_SOCKET to prevent spurious notifications to systemd
+			case pair[0] == "CONTAINERD_LOG_LEVEL":
+				// Turn CONTAINERD_LOG_LEVEL variable into log-level flag
+				args = append(args, "--log-level", pair[1])
+			case strings.HasPrefix(pair[0], "CONTAINERD_"):
+				// Strip variables with CONTAINERD_ prefix before passing through
+				// This allows doing things like setting a proxy for image pulls by setting
+				// CONTAINERD_https_proxy=http://proxy.example.com:8080
+				pair[0] = strings.TrimPrefix(pair[0], "CONTAINERD_")
+				fallthrough
+			default:
+				env = append(env, strings.Join(pair, "="))
+			}
+		}
+
 		logrus.Infof("Running containerd %s", config.ArgString(args[1:]))
 		cmd := exec.Command(args[0], args[1:]...)
 		cmd.Stdout = stdOut
 		cmd.Stderr = stdErr
-		cmd.Env = os.Environ()
-		// elide NOTIFY_SOCKET to prevent spurious notifications to systemd
-		for i := range cmd.Env {
-			if strings.HasPrefix(cmd.Env[i], "NOTIFY_SOCKET=") {
-				cmd.Env = append(cmd.Env[:i], cmd.Env[i+1:]...)
-				break
-			}
-		}
+		cmd.Env = env
+
 		addDeathSig(cmd)
 		if err := cmd.Run(); err != nil {
 			fmt.Fprintf(os.Stderr, "containerd: %s\n", err)
