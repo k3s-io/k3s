@@ -30,7 +30,7 @@ func keyHash(passphrase string) string {
 }
 
 // encrypt encrypts a byte slice using aes+gcm with a pbkdf2 key derived from the passphrase and a random salt.
-// It returns a byte slice containing the salt and base64-encoded cyphertext.
+// It returns a byte slice containing the salt and base64-encoded ciphertext.
 func encrypt(passphrase string, plaintext []byte) ([]byte, error) {
 	salt, err := token.Random(8)
 	if err != nil {
@@ -59,7 +59,7 @@ func encrypt(passphrase string, plaintext []byte) ([]byte, error) {
 }
 
 // decrypt attempts to decrypt the byte slice using the supplied passphrase.
-// The input byte slice should be the cyphertext output from the encrypt function.
+// The input byte slice should be the ciphertext output from the encrypt function.
 func decrypt(passphrase string, ciphertext []byte) ([]byte, error) {
 	parts := strings.SplitN(string(ciphertext), ":", 2)
 	if len(parts) != 2 {

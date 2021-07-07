@@ -1,5 +1,5 @@
 // Apache License v2.0 (copyright Cloud Native Labs & Rancher Labs)
-// - modified from https://github.com/cloudnativelabs/kube-router/blob/ee9f6d890d10609284098229fa1e283ab5d83b93/pkg/utils/node.go
+// - modified from https://github.com/cloudnativelabs/kube-router/blob/73b1b03b32c5755b240f6c077bb097abe3888314/pkg/utils/node.go
 
 // +build !windows
 
@@ -43,7 +43,7 @@ func GetNodeObject(clientset kubernetes.Interface, hostnameOverride string) (*ap
 		}
 	}
 
-	return nil, fmt.Errorf("Failed to identify the node by NODE_NAME, hostname or --hostname-override")
+	return nil, fmt.Errorf("failed to identify the node by NODE_NAME, hostname or --hostname-override")
 }
 
 // GetNodeIP returns the most valid external facing IP address for a node.
