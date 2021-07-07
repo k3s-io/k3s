@@ -126,6 +126,7 @@ require (
 	k8s.io/controller-manager v0.21.2
 	k8s.io/cri-api v0.21.2
 	k8s.io/klog v1.0.0
+	k8s.io/klog/v2 v2.8.0
 	k8s.io/kubectl v0.21.2
 	k8s.io/kubernetes v1.21.2
 	k8s.io/utils v0.0.0-20201110183641-67b214c5f920
