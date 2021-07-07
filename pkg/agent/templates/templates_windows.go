@@ -4,6 +4,7 @@ package templates
 
 import (
 	"bytes"
+	"net/url"
 	"strings"
 	"text/template"
 )
@@ -18,7 +19,7 @@ required_plugins = []
 oom_score = 0
 
 [grpc]
-  address = "{{ replace .NodeConfig.Containerd.Address }}"
+  address = "{{ deschemify .NodeConfig.Containerd.Address }}"
   tcp_address = ""
   tcp_tls_cert = ""
   tcp_tls_key = ""
@@ -164,6 +165,16 @@ func ParseTemplateFromConfig(templateBuffer string, config interface{}) (string,
 	funcs := template.FuncMap{
 		"replace": func(s string) string {
 			return strings.ReplaceAll(s, "\\", "\\\\")
+		},
+		"deschemify": func(s string) string {
+			if strings.HasPrefix(s, "npipe:") {
+				u, err := url.Parse(s)
+				if err != nil {
+					return ""
+				}
+				return u.Path
+			}
+			return s
 		},
 	}
 	t := template.Must(template.New("compiled_template").Funcs(funcs).Parse(templateBuffer))
