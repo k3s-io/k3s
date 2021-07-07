@@ -9,3 +9,11 @@ curl -XPOST -u "${PAT_USERNAME}:${PAT_TOKEN}" \
         -H "Accept: application/vnd.github.everest-preview+json"  \
         -H "Content-Type: application/json" $REPO \
         --data '{"event_type": "create_tag", "client_payload": {"tag":"'"$DRONE_TAG"'"}}'
+
+SYSTEM_AGENT_INSTALLER_K3S_REPO="https://api.github.com/repos/rancher/system-agent-installer-k3s/dispatches"
+
+# send dispatch event to SYSTEM_AGENT_INSTALLER_K3S_REPO
+curl -XPOST -u "${PAT_USERNAME}:${PAT_TOKEN}" \
+        -H "Accept: application/vnd.github.everest-preview+json"  \
+        -H "Content-Type: application/json" $SYSTEM_AGENT_INSTALLER_K3S_REPO \
+        --data '{"event_type": "create_tag", "client_payload": {"tag":"'"$DRONE_TAG"'"}}'
