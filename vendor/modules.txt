@@ -2140,6 +2140,7 @@ k8s.io/heapster/metrics/api/v1/types
 ## explicit
 k8s.io/klog
 # k8s.io/klog/v2 v2.8.0
+## explicit
 k8s.io/klog/v2
 # k8s.io/kube-aggregator v0.18.0 => github.com/k3s-io/kubernetes/staging/src/k8s.io/kube-aggregator v1.21.2-k3s1
 k8s.io/kube-aggregator/pkg/apis/apiregistration
