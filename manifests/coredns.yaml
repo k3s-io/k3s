@@ -22,11 +22,12 @@ rules:
   - list
   - watch
 - apiGroups:
-  - ""
+  - discovery.k8s.io
   resources:
-  - nodes
+  - endpointslices
   verbs:
-  - get
+  - list
+  - watch
 ---
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRoleBinding
@@ -58,11 +59,11 @@ data:
         ready
         kubernetes %{CLUSTER_DOMAIN}% in-addr.arpa ip6.arpa {
           pods insecure
-          upstream
           fallthrough in-addr.arpa ip6.arpa
         }
         hosts /etc/coredns/NodeHosts {
-          reload 1s
+          ttl 60
+          reload 15s
           fallthrough
         }
         prometheus :9153
@@ -106,7 +107,7 @@ spec:
         beta.kubernetes.io/os: linux
       containers:
       - name: coredns
-        image: rancher/coredns-coredns:1.6.9
+        image: rancher/coredns-coredns:1.8.3
         imagePullPolicy: IfNotPresent
         resources:
           limits:
