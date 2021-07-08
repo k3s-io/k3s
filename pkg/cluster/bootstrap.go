@@ -95,22 +95,6 @@ func (c *Cluster) shouldBootstrapLoad(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
-// isDirEmpty checks to see if the given directory
-// is empty.
-// func isDirEmpty(name string) (bool, error) {
-// 	f, err := os.Open(name)
-// 	if err != nil {
-// 		return false, err
-// 	}
-// 	defer f.Close()
-
-// 	_, err = f.Readdir(1)
-// 	if err == io.EOF {
-// 		return true, nil
-// 	}
-// 	return false, err
-// }
-
 // func (c *Cluster) validateBootstrapCertificates() error {
 // 	bootstrapDirs := []string{
 // 		"tls",
@@ -218,7 +202,7 @@ func (c *Cluster) httpBootstrap() error {
 		return err
 	}
 
-	return bootstrap.Read(bytes.NewBuffer(content), &c.runtime.ControlRuntimeBootstrap)
+	return bootstrap.WriteToDisk(bytes.NewBuffer(content), &c.runtime.ControlRuntimeBootstrap)
 }
 
 // bootstrap performs cluster bootstrapping, either via HTTP (for managed databases) or direct load from datastore.
@@ -238,18 +222,6 @@ func (c *Cluster) bootstrap(ctx context.Context) error {
 // that a cluster has been joined. The filename is based on a portion of the sha256 hash of the token.
 // We hash the token value exactly as it is provided by the user, NOT the normalized version.
 func (c *Cluster) bootstrapStamp() string {
-	// We need to update this logic...
-	//
-	// 1. Get bootstrap data from HTTP or from data store as raw bytes
-	// 2. Hash it
-	// 3. Compare that hash to the db/bootstrap-hash (hash as content of file)
-	// 4. If they're not the same, call bootstrap.Read()
-	// if the node has newer files than what the data store has, save to the data store,
-	// if the data store is newer, write to the disk,
-	// if they are the same, NOOP
-	// new idea...
-	//
-	// store each
 	return filepath.Join(c.config.DataDir, "db/joined-"+keyHash(c.config.Token))
 }
 
