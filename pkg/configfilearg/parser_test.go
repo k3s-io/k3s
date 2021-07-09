@@ -4,8 +4,6 @@ import (
 	"os"
 	"reflect"
 	"testing"
-
-	"github.com/rancher/k3s/pkg/version"
 )
 
 func TestParser_findStart(t *testing.T) {
@@ -307,13 +305,6 @@ func TestParser_Parse(t *testing.T) {
 	}
 }
 
-var testDefaultConfigYaml = `write-kubeconfig-mode: "0644"
-node-label:
-  - "foo=bar"
-  - "something=amazing"
-`
-var testEtcDefaultLoc = "/tmp/etc/rancher/k3s"
-
 func TestParser_FindString(t *testing.T) {
 	type fields struct {
 		After         []string
@@ -326,68 +317,51 @@ func TestParser_FindString(t *testing.T) {
 		target  string
 	}
 	tests := []struct {
-		name     string
-		fields   fields
-		args     args
-		setup    func() error // Optional, delete if unused
-		teardown func() error // Optional, delete if unused
-		want     string
-		wantErr  bool
+		name    string
+		fields  fields
+		args    args
+		want    string
+		wantErr bool
 	}{
 		{
 			name: "Default config does not exist",
 			fields: fields{
-				EnvName:       version.ProgramUpper + "_CONFIG_FILE",
-				DefaultConfig: "/etc/rancher/" + version.Program + "/config.yaml",
+				After:         []string{"server", "agent"},
+				FlagNames:     []string{"-c", "--config"},
+				EnvName:       "_TEST_ENV",
+				DefaultConfig: "missing",
 			},
 			args: args{
-				os_args: []string{"n/a"},
+				os_args: []string{},
 				target:  "",
 			},
-
-			want:     "",
-			setup:    func() error { return nil },
-			teardown: func() error { return nil },
+			want: "",
 		},
 		{
 			name: "A custom config yaml exists, target exists",
 			fields: fields{
-				FlagNames: []string{"-c"},
+				FlagNames:     []string{"-c", "--config"},
+				EnvName:       "_TEST_ENV",
+				DefaultConfig: "./testdata/data.yaml",
 			},
 			args: args{
-				os_args: []string{"-c", testEtcDefaultLoc + "/config.yaml"},
-				target:  "write-kubeconfig-mode",
+				os_args: []string{"-c", "./testdata/data.yaml"},
+				target:  "foo-bar",
 			},
-			want: "0644",
-			setup: func() error {
-				if err := os.MkdirAll(testEtcDefaultLoc, 0700); err != nil {
-					return err
-				}
-				return os.WriteFile(testEtcDefaultLoc+"/config.yaml", []byte(testDefaultConfigYaml), 0777)
-			},
-			teardown: func() error {
-				return os.RemoveAll(testEtcDefaultLoc)
-			},
+			want: "baz",
 		},
 		{
 			name: "A custom config yaml exists, target does not exist",
 			fields: fields{
-				FlagNames: []string{"-c"},
+				FlagNames:     []string{"-c", "--config"},
+				EnvName:       "_TEST_ENV",
+				DefaultConfig: "./testdata/data.yaml",
 			},
 			args: args{
-				os_args: []string{"-c", testEtcDefaultLoc + "/config.yaml"},
-				target:  "tls-san",
+				os_args: []string{"-c", "./testdata/data.yaml"},
+				target:  "tls",
 			},
 			want: "",
-			setup: func() error {
-				if err := os.MkdirAll(testEtcDefaultLoc, 0700); err != nil {
-					return err
-				}
-				return os.WriteFile(testEtcDefaultLoc+"/config.yaml", []byte(testDefaultConfigYaml), 0777)
-			},
-			teardown: func() error {
-				return os.RemoveAll(testEtcDefaultLoc)
-			},
 		},
 	}
 	for _, tt := range tests {
@@ -397,11 +371,6 @@ func TestParser_FindString(t *testing.T) {
 				FlagNames:     tt.fields.FlagNames,
 				EnvName:       tt.fields.EnvName,
 				DefaultConfig: tt.fields.DefaultConfig,
-			}
-			defer tt.teardown()
-			if err := tt.setup(); err != nil {
-				t.Errorf("Setup for Parser.FindString() failed = %v", err)
-				return
 			}
 			got, err := p.FindString(tt.args.os_args, tt.args.target)
 			if (err != nil) != tt.wantErr {
