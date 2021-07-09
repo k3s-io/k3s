@@ -71,7 +71,7 @@ type ETCD struct {
 	runtime *config.ControlRuntime
 	address string
 	cron    *cron.Cron
-	s3      *s3
+	s3      *S3
 }
 
 type learnerProgress struct {
@@ -210,7 +210,7 @@ func (e *ETCD) Reset(ctx context.Context, rebootstrap func() error) error {
 				return err
 			}
 			logrus.Infof("Retrieving etcd snapshot %s from S3", e.config.ClusterResetRestorePath)
-			if err := e.s3.download(ctx); err != nil {
+			if err := e.s3.Download(ctx); err != nil {
 				return err
 			}
 			logrus.Infof("S3 download complete for %s", e.config.ClusterResetRestorePath)
@@ -960,7 +960,7 @@ func (e *ETCD) listSnapshots(ctx context.Context, snapshotDir string) ([]Snapsho
 // if it hasn't yet been initialized.
 func (e *ETCD) initS3IfNil(ctx context.Context) error {
 	if e.s3 == nil {
-		s3, err := newS3(ctx, e.config)
+		s3, err := NewS3(ctx, e.config)
 		if err != nil {
 			return err
 		}

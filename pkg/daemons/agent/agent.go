@@ -15,7 +15,7 @@ import (
 
 const (
 	unixPrefix    = "unix://"
-	windowsPrefix = "npipe:"
+	windowsPrefix = "npipe://"
 )
 
 func Agent(config *config.Agent) error {

@@ -16,8 +16,12 @@ import (
 	"k8s.io/kubernetes/pkg/kubeapiserver/authorizer/modes"
 )
 
+var (
+	NetworkName string = "vxlan0"
+)
+
 func checkRuntimeEndpoint(cfg *config.Agent, argsMap map[string]string) {
-	if strings.HasPrefix(argsMap["container-runtime-endpoint"], windowsPrefix) {
+	if strings.HasPrefix(cfg.RuntimeSocket, windowsPrefix) {
 		argsMap["container-runtime-endpoint"] = cfg.RuntimeSocket
 	} else {
 		argsMap["container-runtime-endpoint"] = windowsPrefix + cfg.RuntimeSocket
@@ -35,9 +39,7 @@ func kubeProxyArgs(cfg *config.Agent) map[string]string {
 		argsMap["hostname-override"] = cfg.NodeName
 	}
 
-	argsMap["feature-gates"] = addFeatureGate(argsMap["feature-gates"], "WinOverlay=true")
-
-	if sourceVip := waitForManagementIp("vxlan0"); sourceVip != "" {
+	if sourceVip := waitForManagementIp(NetworkName); sourceVip != "" {
 		argsMap["source-vip"] = sourceVip
 	}
 
@@ -133,7 +135,7 @@ func waitForManagementIp(networkName string) string {
 	for range time.Tick(time.Second * 5) {
 		network, err := hcsshim.GetHNSEndpointByName(networkName)
 		if err != nil {
-			logrus.WithError(err).Warning("can't find %s, retrying", networkName)
+			logrus.WithError(err).Warning("can't find HNS endpoint for network, retrying", networkName)
 			continue
 		}
 		return network.IPAddress.String()

@@ -28,7 +28,7 @@ A third party security audit was performed by Cure53, you can see the full repor
 ## Building
 
 `runc` currently supports the Linux platform with various architecture support.
-It must be built with Go version 1.14 or higher.
+It must be built with Go version 1.13 or higher.
 
 In order to enable seccomp support you will need to install `libseccomp` on your platform.
 > e.g. `libseccomp-devel` for CentOS, or `libseccomp-dev` for Ubuntu

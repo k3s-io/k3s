@@ -1,5 +1,5 @@
 // Apache License v2.0 (copyright Cloud Native Labs & Rancher Labs)
-// - modified from https://github.com/cloudnativelabs/kube-router/blob/ee9f6d890d10609284098229fa1e283ab5d83b93/pkg/utils/ipset.go
+// - modified from https://github.com/cloudnativelabs/kube-router/blob/73b1b03b32c5755b240f6c077bb097abe3888314/pkg/utils/ipset.go
 
 // +build !windows
 
@@ -7,15 +7,18 @@ package utils
 
 import (
 	"bytes"
+	"crypto/sha1"
+	"encoding/base32"
 	"errors"
 	"fmt"
 	"os/exec"
+	"sort"
 	"strings"
 )
 
 var (
 	// Error returned when ipset binary is not found.
-	errIpsetNotFound = errors.New("Ipset utility not found")
+	errIpsetNotFound = errors.New("ipset utility not found")
 )
 
 const (
@@ -82,6 +85,9 @@ const (
 	OptionNoMatch = "nomatch"
 	// OptionForceAdd All hash set types support the optional forceadd parameter when creating a set. When sets created with this option become full the next addition to the set may succeed and evict a random entry from the set.
 	OptionForceAdd = "forceadd"
+
+	// tmpIPSetPrefix Is the prefix added to temporary ipset names used in the atomic swap operations during ipset restore. You should never see these on your system because they only exist during the restore.
+	tmpIPSetPrefix = "TMP-"
 )
 
 // IPSet represent ipset sets managed by.
@@ -181,7 +187,7 @@ func (ipset *IPSet) Create(setName string, createOptions ...string) (*Set, error
 	// Determine if set with the same name is already active on the system
 	setIsActive, err := ipset.Sets[setName].IsActive()
 	if err != nil {
-		return nil, fmt.Errorf("Failed to determine if ipset set %s exists: %s",
+		return nil, fmt.Errorf("failed to determine if ipset set %s exists: %s",
 			setName, err)
 	}
 
@@ -193,20 +199,20 @@ func (ipset *IPSet) Create(setName string, createOptions ...string) (*Set, error
 			args = append(args, createOptions...)
 			args = append(args, "family", "inet6")
 			if _, err := ipset.run(args...); err != nil {
-				return nil, fmt.Errorf("Failed to create ipset set on system: %s", err)
+				return nil, fmt.Errorf("failed to create ipset set on system: %s", err)
 			}
 		} else {
 			_, err := ipset.run(append([]string{"create", "-exist", setName},
 				createOptions...)...)
 			if err != nil {
-				return nil, fmt.Errorf("Failed to create ipset set on system: %s", err)
+				return nil, fmt.Errorf("failed to create ipset set on system: %s", err)
 			}
 		}
 	}
 	return ipset.Sets[setName], nil
 }
 
-// Adds a given Set to an IPSet
+// Add a given Set to an IPSet
 func (ipset *IPSet) Add(set *Set) error {
 	_, err := ipset.Create(set.Name, set.Options...)
 	if err != nil {
@@ -226,6 +232,22 @@ func (ipset *IPSet) Add(set *Set) error {
 	return nil
 }
 
+// RefreshSet add/update internal Sets with a Set of entries but does not run restore command
+func (ipset *IPSet) RefreshSet(setName string, entriesWithOptions [][]string, setType string) {
+	if ipset.Get(setName) == nil {
+		ipset.Sets[setName] = &Set{
+			Name:    setName,
+			Options: []string{setType, OptionTimeout, "0"},
+			Parent:  ipset,
+		}
+	}
+	entries := make([]*Entry, len(entriesWithOptions))
+	for i, entry := range entriesWithOptions {
+		entries[i] = &Entry{Set: ipset.Sets[setName], Options: entry}
+	}
+	ipset.Get(setName).Entries = entries
+}
+
 // Add a given entry to the set. If the -exist option is specified, ipset
 // ignores if the entry already added to the set.
 // Note: if you need to add multiple entries (e.g., in a loop), use BatchAdd instead,
@@ -243,7 +265,7 @@ func (set *Set) Add(addOptions ...string) (*Entry, error) {
 	return entry, nil
 }
 
-// Adds given entries (with their options) to the set.
+// BatchAdd given entries (with their options) to the set.
 // For multiple items, this is much faster than Add().
 func (set *Set) BatchAdd(addOptions [][]string) error {
 	newEntries := make([]*Entry, len(addOptions))
@@ -389,14 +411,59 @@ func parseIPSetSave(ipset *IPSet, result string) map[string]*Set {
 // create KUBE-DST-3YNVZWWGX3UQQ4VQ hash:ip family inet hashsize 1024 maxelem 65536 timeout 0
 // add KUBE-DST-3YNVZWWGX3UQQ4VQ 100.96.1.6 timeout 0
 func buildIPSetRestore(ipset *IPSet) string {
-	ipSetRestore := ""
-	for _, set := range ipset.Sets {
-		ipSetRestore += fmt.Sprintf("create %s %s\n", set.Name, strings.Join(set.Options[:], " "))
-		for _, entry := range set.Entries {
-			ipSetRestore += fmt.Sprintf("add %s %s\n", set.Name, strings.Join(entry.Options[:], " "))
-		}
+	setNames := make([]string, 0, len(ipset.Sets))
+	for setName := range ipset.Sets {
+		// we need setNames in some consistent order so that we can unit-test this method has a predictable output:
+		setNames = append(setNames, setName)
 	}
-	return ipSetRestore
+
+	sort.Strings(setNames)
+
+	tmpSets := map[string]string{}
+	ipSetRestore := &strings.Builder{}
+	for _, setName := range setNames {
+		set := ipset.Sets[setName]
+		setOptions := strings.Join(set.Options, " ")
+
+		tmpSetName := tmpSets[setOptions]
+		if tmpSetName == "" {
+			// create a temporary set per unique set-options:
+			hash := sha1.Sum([]byte("tmp:" + setOptions))
+			tmpSetName = tmpIPSetPrefix + base32.StdEncoding.EncodeToString(hash[:10])
+			ipSetRestore.WriteString(fmt.Sprintf("create %s %s\n", tmpSetName, setOptions))
+			// just in case we are starting up after a crash, we should flush the TMP ipset to be safe if it
+			// already existed, so we do not pollute other ipsets:
+			ipSetRestore.WriteString(fmt.Sprintf("flush %s\n", tmpSetName))
+			tmpSets[setOptions] = tmpSetName
+		}
+
+		for _, entry := range set.Entries {
+			// add entries to the tmp set:
+			ipSetRestore.WriteString(fmt.Sprintf("add %s %s\n", tmpSetName, strings.Join(entry.Options, " ")))
+		}
+
+		// now create the actual IPSet (this is a noop if it already exists, because we run with -exists):
+		ipSetRestore.WriteString(fmt.Sprintf("create %s %s\n", set.Name, setOptions))
+
+		// now that both exist, we can swap them:
+		ipSetRestore.WriteString(fmt.Sprintf("swap %s %s\n", tmpSetName, set.Name))
+
+		// empty the tmp set (which is actually the old one now):
+		ipSetRestore.WriteString(fmt.Sprintf("flush %s\n", tmpSetName))
+	}
+
+	setsToDestroy := make([]string, 0, len(tmpSets))
+	for _, tmpSetName := range tmpSets {
+		setsToDestroy = append(setsToDestroy, tmpSetName)
+	}
+	// need to destroy the sets in a predictable order for unit test!
+	sort.Strings(setsToDestroy)
+	for _, tmpSetName := range setsToDestroy {
+		// finally, destroy the tmp sets.
+		ipSetRestore.WriteString(fmt.Sprintf("destroy %s\n", tmpSetName))
+	}
+
+	return ipSetRestore.String()
 }
 
 // Save the given set, or all sets if none is given to stdout in a format that
@@ -489,7 +556,7 @@ func (set *Set) Refresh(entries []string, extraOptions ...string) error {
 	return set.RefreshWithBuiltinOptions(entriesWithOptions)
 }
 
-// Refresh a Set with new entries with built-in options.
+// RefreshWithBuiltinOptions refresh a Set with new entries with built-in options.
 func (set *Set) RefreshWithBuiltinOptions(entries [][]string) error {
 	var err error
 
