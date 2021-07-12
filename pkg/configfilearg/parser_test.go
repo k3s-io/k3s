@@ -309,8 +309,8 @@ func TestParser_FindString(t *testing.T) {
 		DefaultConfig string
 	}
 	type args struct {
-		os_args []string
-		target  string
+		osArgs []string
+		target string
 	}
 	tests := []struct {
 		name    string
@@ -328,8 +328,8 @@ func TestParser_FindString(t *testing.T) {
 				DefaultConfig: "missing",
 			},
 			args: args{
-				os_args: []string{},
-				target:  "",
+				osArgs: []string{},
+				target: "",
 			},
 			want: "",
 		},
@@ -341,8 +341,8 @@ func TestParser_FindString(t *testing.T) {
 				DefaultConfig: "./testdata/data.yaml",
 			},
 			args: args{
-				os_args: []string{"-c", "./testdata/data.yaml"},
-				target:  "foo-bar",
+				osArgs: []string{"-c", "./testdata/data.yaml"},
+				target: "foo-bar",
 			},
 			want: "baz",
 		},
@@ -354,8 +354,8 @@ func TestParser_FindString(t *testing.T) {
 				DefaultConfig: "./testdata/data.yaml",
 			},
 			args: args{
-				os_args: []string{"-c", "./testdata/data.yaml"},
-				target:  "tls",
+				osArgs: []string{"-c", "./testdata/data.yaml"},
+				target: "tls",
 			},
 			want: "",
 		},
@@ -368,7 +368,7 @@ func TestParser_FindString(t *testing.T) {
 				EnvName:       tt.fields.EnvName,
 				DefaultConfig: tt.fields.DefaultConfig,
 			}
-			got, err := p.FindString(tt.args.os_args, tt.args.target)
+			got, err := p.FindString(tt.args.osArgs, tt.args.target)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Parser.FindString() error = %v, wantErr %v", err, tt.wantErr)
 				return
