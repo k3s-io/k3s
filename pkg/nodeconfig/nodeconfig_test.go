@@ -53,11 +53,6 @@ func Test_SetNodeConfigAnnotations(t *testing.T) {
 		node   *corev1.Node
 		osArgs []string
 	}
-	type annotations struct {
-		nodeArgs       string
-		nodeEnv        string
-		nodeConfigHash string
-	}
 	setup := func(osArgs []string) error {
 		os.Args = osArgs
 		return os.Setenv(TestEnvName, "fakeNode-with-no-annotation")
@@ -66,11 +61,13 @@ func Test_SetNodeConfigAnnotations(t *testing.T) {
 		return os.Unsetenv(TestEnvName)
 	}
 	tests := []struct {
-		name    string
-		args    args
-		want    bool
-		wantErr bool
-		wantAnn annotations
+		name               string
+		args               args
+		want               bool
+		wantErr            bool
+		wantNodeArgs       string
+		wantNodeEnv        string
+		wantNodeConfigHash string
 	}{
 		{
 			name: "Set empty NodeConfigAnnotations",
@@ -78,12 +75,10 @@ func Test_SetNodeConfigAnnotations(t *testing.T) {
 				node:   FakeNodeWithAnnotation,
 				osArgs: []string{version.Program, "server", "--no-flannel"},
 			},
-			want: true,
-			wantAnn: annotations{
-				nodeArgs:       `["server","--no-flannel"]`,
-				nodeEnv:        `{"` + TestEnvName + `":"fakeNode-with-no-annotation"}`,
-				nodeConfigHash: "FBV4UQYLF2N7NH7EK42GKOTU5YA24TXB4WAYZHA5ZOFNGZHC4ZPA====",
-			},
+			want:               true,
+			wantNodeArgs:       `["server","--no-flannel"]`,
+			wantNodeEnv:        `{"` + TestEnvName + `":"fakeNode-with-no-annotation"}`,
+			wantNodeConfigHash: "FBV4UQYLF2N7NH7EK42GKOTU5YA24TXB4WAYZHA5ZOFNGZHC4ZPA====",
 		},
 		{
 			name: "Set args with equal",
@@ -91,11 +86,9 @@ func Test_SetNodeConfigAnnotations(t *testing.T) {
 				node:   FakeNodeWithNoAnnotation,
 				osArgs: []string{version.Program, "server", "--no-flannel", "--write-kubeconfig-mode=777"},
 			},
-			want: true,
-			wantAnn: annotations{
-				nodeArgs: `["server","--no-flannel","--write-kubeconfig-mode","777"]`,
-				nodeEnv:  `{"` + TestEnvName + `":"fakeNode-with-no-annotation"}`,
-			},
+			want:         true,
+			wantNodeArgs: `["server","--no-flannel","--write-kubeconfig-mode","777"]`,
+			wantNodeEnv:  `{"` + TestEnvName + `":"fakeNode-with-no-annotation"}`,
 		},
 	}
 	for _, tt := range tests {
@@ -114,14 +107,14 @@ func Test_SetNodeConfigAnnotations(t *testing.T) {
 				t.Errorf("SetNodeConfigAnnotations() = %+v\nWantRes = %+v", got, tt.want)
 			}
 			nodeAnn := tt.args.node.Annotations
-			if nodeAnn[NodeArgsAnnotation] != tt.wantAnn.nodeArgs {
-				t.Errorf("SetNodeConfigAnnotations() = %+v\nWantAnn.nodeArgs = %+v", nodeAnn[NodeArgsAnnotation], tt.wantAnn.nodeArgs)
+			if nodeAnn[NodeArgsAnnotation] != tt.wantNodeArgs {
+				t.Errorf("SetNodeConfigAnnotations() = %+v\nWantAnn.nodeArgs = %+v", nodeAnn[NodeArgsAnnotation], tt.wantNodeArgs)
 			}
-			if nodeAnn[NodeEnvAnnotation] != tt.wantAnn.nodeEnv {
-				t.Errorf("SetNodeConfigAnnotations() = %+v\nWantAnn.nodeEnv = %+v", nodeAnn[NodeEnvAnnotation], tt.wantAnn.nodeEnv)
+			if nodeAnn[NodeEnvAnnotation] != tt.wantNodeEnv {
+				t.Errorf("SetNodeConfigAnnotations() = %+v\nWantAnn.nodeEnv = %+v", nodeAnn[NodeEnvAnnotation], tt.wantNodeEnv)
 			}
-			if tt.wantAnn.nodeConfigHash != "" && nodeAnn[NodeConfigHashAnnotation] != tt.wantAnn.nodeConfigHash {
-				t.Errorf("SetNodeConfigAnnotations() = %+v\nWantAnn.nodeConfigHash = %+v", nodeAnn[NodeConfigHashAnnotation], tt.wantAnn.nodeConfigHash)
+			if tt.wantNodeConfigHash != "" && nodeAnn[NodeConfigHashAnnotation] != tt.wantNodeConfigHash {
+				t.Errorf("SetNodeConfigAnnotations() = %+v\nWantAnn.nodeConfigHash = %+v", nodeAnn[NodeConfigHashAnnotation], tt.wantNodeConfigHash)
 			}
 		})
 	}
