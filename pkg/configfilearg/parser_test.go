@@ -74,13 +74,11 @@ func TestParser_findConfigFileFlag(t *testing.T) {
 		env           string
 	}
 	tests := []struct {
-		name     string
-		fields   fields
-		arg      []string
-		setup    func() error // Optional, delete if unused
-		teardown func() error // Optional, delete if unused
-		want     string
-		found    bool
+		name   string
+		fields fields
+		arg    []string
+		want   string
+		found  bool
 	}{
 		{
 			name:  "default case",
@@ -207,13 +205,11 @@ func TestParser_Parse(t *testing.T) {
 		DefaultConfig string
 	}
 	tests := []struct {
-		name     string
-		fields   fields
-		arg      []string
-		setup    func() error // Optional, delete if unused
-		teardown func() error // Optional, delete if unused
-		want     []string
-		wantErr  bool
+		name    string
+		fields  fields
+		arg     []string
+		want    []string
+		wantErr bool
 	}{
 		{
 			name: "default case",
