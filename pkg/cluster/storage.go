@@ -139,7 +139,7 @@ func (c *Cluster) getBootstrapKeyFromStorage(ctx context.Context, storageClient 
 	case emptyStringKey:
 		logrus.Warn("bootstrap data already found and encrypted with empty string, deleting empty key")
 		c.saveBootstrap = true
-		if err := storageClient.Delete(ctx, emptyStringKey); err != nil {
+		if err := storageClient.Delete(ctx, emptyStringKey, bootstrapKV.Modified); err != nil {
 			return nil, false, err
 		}
 		return &bootstrapKV, true, nil
