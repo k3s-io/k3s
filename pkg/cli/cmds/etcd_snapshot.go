@@ -95,7 +95,7 @@ func NewEtcdSnapshotCommand(action func(*cli.Context) error, subcommands []cli.C
 	}
 }
 
-func NewEtcdSnapshotSubcommands(delete func(ctx *cli.Context) error) []cli.Command {
+func NewEtcdSnapshotSubcommands(delete, list, prune, save func(ctx *cli.Context) error) []cli.Command {
 	return []cli.Command{
 		{
 			Name:            "delete",
@@ -104,6 +104,40 @@ func NewEtcdSnapshotSubcommands(delete func(ctx *cli.Context) error) []cli.Comma
 			SkipArgReorder:  true,
 			Action:          delete,
 			Flags:           EtcdSnapshotFlags,
+		},
+		{
+			Name:            "ls",
+			Aliases:         []string{"list", "l"},
+			Usage:           "List snapshots",
+			SkipFlagParsing: false,
+			SkipArgReorder:  true,
+			Action:          list,
+			Flags:           EtcdSnapshotFlags,
+		},
+		{
+			Name:            "prune",
+			Usage:           "Remove snapshots that exceed the configured retention count",
+			SkipFlagParsing: false,
+			SkipArgReorder:  true,
+			Action:          prune,
+			Flags: append(EtcdSnapshotFlags, &cli.IntFlag{
+				Name:        "snapshot-retention",
+				Usage:       "(db) Number of snapshots to retain. Default: 5",
+				Destination: &ServerConfig.EtcdSnapshotRetention,
+				Value:       defaultSnapshotRentention,
+			}),
+		},
+		{
+			Name:            "save",
+			Usage:           "Trigger an immediate etcd snapshot",
+			SkipFlagParsing: false,
+			SkipArgReorder:  true,
+			Action:          save,
+			Flags: append(EtcdSnapshotFlags, &cli.StringFlag{
+				Name:        "dir",
+				Usage:       "(db) Directory to save etcd on-demand snapshot. (default: ${data-dir}/db/snapshots)",
+				Destination: &ServerConfig.EtcdSnapshotDir,
+			}),
 		},
 	}
 }

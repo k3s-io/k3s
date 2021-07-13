@@ -13,7 +13,13 @@ import (
 func main() {
 	app := cmds.NewApp()
 	app.Commands = []cli.Command{
-		cmds.NewEtcdSnapshotCommand(etcdsnapshot.Run, cmds.NewEtcdSnapshotSubcommands(etcdsnapshot.Delete)),
+		cmds.NewEtcdSnapshotCommand(etcdsnapshot.Run,
+			cmds.NewEtcdSnapshotSubcommands(
+				etcdsnapshot.Delete,
+				etcdsnapshot.List,
+				etcdsnapshot.Prune,
+				etcdsnapshot.Run),
+		),
 	}
 
 	if err := app.Run(configfilearg.MustParse(os.Args)); err != nil {
