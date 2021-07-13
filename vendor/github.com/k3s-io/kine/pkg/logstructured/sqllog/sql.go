@@ -53,9 +53,9 @@ type Dialect interface {
 	BeginTx(ctx context.Context, opts *sql.TxOptions) (*generic.Tx, error)
 }
 
-func (s *SQLLog) Start(ctx context.Context) (err error) {
+func (s *SQLLog) Start(ctx context.Context) error {
 	s.ctx = ctx
-	return
+	return s.compactStart(s.ctx)
 }
 
 func (s *SQLLog) compactStart(ctx context.Context) error {
@@ -365,10 +365,6 @@ func filter(events interface{}, checkPrefix bool, prefix string) ([]*server.Even
 }
 
 func (s *SQLLog) startWatch() (chan interface{}, error) {
-	if err := s.compactStart(s.ctx); err != nil {
-		return nil, err
-	}
-
 	pollStart, err := s.d.GetCompactRevision(s.ctx)
 	if err != nil {
 		return nil, err
