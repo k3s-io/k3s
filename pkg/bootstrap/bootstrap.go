@@ -90,8 +90,11 @@ func ReconcileStorage(r io.Reader, bootstrap *config.ControlRuntimeBootstrap) er
 
 			if info.ModTime().After(files[pathKey].timestamp) {
 				logrus.Warnf("XXX - on disk file newer than database")
+				// write contents of disk to database
 			} else {
 				logrus.Warnf("XXX - database newer than on disk file")
+				// write contents of database to disk
+				return WriteToDisk(r, bootstrap)
 			}
 		}
 	}
@@ -106,22 +109,6 @@ func ReconcileStorage(r io.Reader, bootstrap *config.ControlRuntimeBootstrap) er
 
 // 	return nil
 // }
-
-// isDirEmpty checks to see if the given directory
-// is empty.
-func isDirEmpty(name string) (bool, error) {
-	f, err := os.Open(name)
-	if err != nil {
-		return false, err
-	}
-	defer f.Close()
-
-	_, err = f.Readdir(1)
-	if err == io.EOF {
-		return true, nil
-	}
-	return false, err
-}
 
 // bootstrapFile
 type bootstrapFile struct {
