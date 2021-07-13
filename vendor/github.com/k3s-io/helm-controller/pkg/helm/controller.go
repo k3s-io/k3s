@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"os"
-	"regexp"
 	"sort"
 	"strings"
 
@@ -28,9 +27,7 @@ import (
 )
 
 var (
-	trueVal         = true
-	commaRE         = regexp.MustCompile(`\\*,`)
-	DefaultJobImage = "rancher/klipper-helm:v0.5.0-build20210505"
+	trueVal = true
 )
 
 type Controller struct {
@@ -42,11 +39,12 @@ type Controller struct {
 }
 
 const (
-	Label         = "helmcharts.helm.cattle.io/chart"
-	Annotation    = "helmcharts.helm.cattle.io/configHash"
-	CRDName       = "helmcharts.helm.cattle.io"
-	ConfigCRDName = "helmchartconfigs.helm.cattle.io"
-	Name          = "helm-controller"
+	DefaultJobImage = "rancher/klipper-helm:v0.4.3"
+	Label           = "helmcharts.helm.cattle.io/chart"
+	Annotation      = "helmcharts.helm.cattle.io/configHash"
+	CRDName         = "helmcharts.helm.cattle.io"
+	ConfigCRDName   = "helmchartconfigs.helm.cattle.io"
+	Name            = "helm-controller"
 )
 
 func Register(ctx context.Context, apply apply.Apply,
@@ -402,7 +400,7 @@ func args(chart *helmv1.HelmChart) []string {
 		if val.StrVal == "false" || val.StrVal == "true" {
 			args = append(args, "--set", fmt.Sprintf("%s=%s", k, val.StrVal))
 		} else if val.StrVal != "" {
-			args = append(args, "--set-string", fmt.Sprintf("%s=%s", k, commaRE.ReplaceAllStringFunc(val.StrVal, escapeComma)))
+			args = append(args, "--set-string", fmt.Sprintf("%s=%s", k, val.StrVal))
 		} else {
 			args = append(args, "--set", fmt.Sprintf("%s=%d", k, val.IntVal))
 		}
@@ -418,18 +416,6 @@ func keys(val map[string]intstr.IntOrString) []string {
 	}
 	sort.Strings(keys)
 	return keys
-}
-
-// escapeComma should be passed a string consisting of zero or more backslashes, followed by a comma.
-// If there are an even number of characters (such as `\,` or `\\\,`) then the comma is escaped.
-// If there are an uneven number of characters (such as `,` or `\\,` then the comma is not escaped,
-// and we need to escape it by adding an additional backslash.
-// This logic is difficult if not impossible to accomplish with a simple regex submatch replace.
-func escapeComma(match string) string {
-	if len(match)%2 == 1 {
-		match = `\` + match
-	}
-	return match
 }
 
 func setProxyEnv(job *batch.Job) {

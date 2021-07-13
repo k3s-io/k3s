@@ -676,7 +676,7 @@ github.com/json-iterator/go
 # github.com/k3s-io/go-powershell v0.0.0-20200701182037-6845e6fcfa79
 github.com/k3s-io/go-powershell/backend
 github.com/k3s-io/go-powershell/utils
-# github.com/k3s-io/helm-controller v0.9.1
+# github.com/k3s-io/helm-controller v0.8.3
 ## explicit
 github.com/k3s-io/helm-controller/pkg/apis/helm.cattle.io
 github.com/k3s-io/helm-controller/pkg/apis/helm.cattle.io/v1
