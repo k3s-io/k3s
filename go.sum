@@ -542,8 +542,8 @@ github.com/k3s-io/etcd v0.5.0-alpha.5.0.20201208200253-50621aee4aea h1:7cwby0GoN
 github.com/k3s-io/etcd v0.5.0-alpha.5.0.20201208200253-50621aee4aea/go.mod h1:yVHk9ub3CSBatqGNg7GRmsnfLWtoW60w4eDYfh7vHDg=
 github.com/k3s-io/helm-controller v0.10.1 h1:w98iQsKfA5RnvzdVzU4LTDuLzA3SyoN31ebDUKQUDpM=
 github.com/k3s-io/helm-controller v0.10.1/go.mod h1:nZP8FH3KZrNNUf5r+SwwiMR63HS6lxdHdpHijgPfF74=
-github.com/k3s-io/kine v0.6.0 h1:4l7wjgCxb2oD+7Hyf3xIhkGd/6s1sXpRFdQiyy+7Ki8=
-github.com/k3s-io/kine v0.6.0/go.mod h1:rzCs93+rQHZGOiewMd84PDrER92QeZ6eeHbWkfEy4+w=
+github.com/k3s-io/kine v0.6.2 h1:1aJTPfB8HG4exqMKFVE5H0z4bepF05tJHtYNXotWXa4=
+github.com/k3s-io/kine v0.6.2/go.mod h1:rzCs93+rQHZGOiewMd84PDrER92QeZ6eeHbWkfEy4+w=
 github.com/k3s-io/kubernetes v1.21.2-k3s1 h1:e5R77BWsEEiZqoZ68t9iKF08KwSVBqASwy4N9Uq4FHw=
 github.com/k3s-io/kubernetes v1.21.2-k3s1/go.mod h1:HevHCwYnT2nf/6w8I+b2tpz1NvzJmHZ9nOjh9ng7Rwg=
 github.com/k3s-io/kubernetes/staging/src/k8s.io/api v1.21.2-k3s1 h1:CAhRjFSPftQWJXLDtuP9y2bpOhTrGtCvfa+oN2iNY7k=

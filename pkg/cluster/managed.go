@@ -15,8 +15,10 @@ import (
 	"github.com/k3s-io/kine/pkg/endpoint"
 	"github.com/rancher/k3s/pkg/cluster/managed"
 	"github.com/rancher/k3s/pkg/etcd"
+	"github.com/rancher/k3s/pkg/nodepassword"
 	"github.com/rancher/k3s/pkg/version"
 	"github.com/sirupsen/logrus"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
 // testClusterDB returns a channel that will be closed when the datastore connection is available.
@@ -76,6 +78,10 @@ func (c *Cluster) start(ctx context.Context) error {
 		return fmt.Errorf("cluster-reset was successfully performed, please remove the cluster-reset flag and start %s normally, if you need to perform another cluster reset, you must first manually delete the %s file", version.Program, resetFile)
 	}
 
+	if _, err := os.Stat(resetFile); err == nil {
+		// before removing reset file we need to delete the node passwd secret
+		go c.deleteNodePasswdSecret(ctx)
+	}
 	// removing the reset file and ignore error if the file doesn't exist
 	os.Remove(resetFile)
 
@@ -164,4 +170,34 @@ func (c *Cluster) setupEtcdProxy(ctx context.Context, etcdProxy etcd.Proxy) {
 			etcdProxy.Update(hosts)
 		}
 	}()
+}
+
+// deleteNodePasswdSecret wipes out the node password secret after restoration
+func (c *Cluster) deleteNodePasswdSecret(ctx context.Context) {
+	t := time.NewTicker(5 * time.Second)
+	defer t.Stop()
+	for range t.C {
+		nodeName := os.Getenv("NODE_NAME")
+		if nodeName == "" {
+			logrus.Infof("waiting for node name to be set")
+			continue
+		}
+		// the core factory may not yet be initialized so we
+		// want to wait until it is so not to evoke a panic.
+		if c.runtime.Core == nil {
+			logrus.Infof("runtime is not yet initialized")
+			continue
+		}
+		secretsClient := c.runtime.Core.Core().V1().Secret()
+		if err := nodepassword.Delete(secretsClient, nodeName); err != nil {
+			if apierrors.IsNotFound(err) {
+				logrus.Debugf("node password secret is not found for node %s", nodeName)
+				return
+			}
+			logrus.Warnf("failed to delete old node password secret: %v", err)
+			continue
+		}
+		return
+	}
+
 }

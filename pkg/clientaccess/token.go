@@ -287,3 +287,20 @@ func get(u string, client *http.Client, username, password string) ([]byte, erro
 
 	return ioutil.ReadAll(resp.Body)
 }
+
+func FormatToken(token string, certFile string) (string, error) {
+	if len(token) == 0 {
+		return token, nil
+	}
+
+	certHash := ""
+	if len(certFile) > 0 {
+		bytes, err := ioutil.ReadFile(certFile)
+		if err != nil {
+			return "", nil
+		}
+		digest := sha256.Sum256(bytes)
+		certHash = tokenPrefix + hex.EncodeToString(digest[:]) + "::"
+	}
+	return certHash + token, nil
+}
