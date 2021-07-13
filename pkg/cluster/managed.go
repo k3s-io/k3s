@@ -182,7 +182,9 @@ func (c *Cluster) deleteNodePasswdSecret(ctx context.Context) {
 			logrus.Infof("waiting for node name to be set")
 			continue
 		}
-		if c.runtime == nil {
+		// the core factory may not yet be initialized so we
+		// want to wait until it is so not to evoke a panic.
+		if c.runtime.Core == nil {
 			logrus.Infof("runtime is not yet initialized")
 			continue
 		}
