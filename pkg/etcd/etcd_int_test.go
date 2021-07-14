@@ -1,37 +1,116 @@
 package etcd_test
 
 import (
-	"context"
-	"net/http"
+	"bufio"
+	"os/exec"
+	"regexp"
+	"strings"
 	"testing"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/rancher/k3s/pkg/cluster"
-	"github.com/rancher/k3s/pkg/daemons/config"
+	"github.com/rancher/k3s/pkg/util/tests"
 )
 
-var ctx context.Context
-var cnf *config.Control
-var testCluster *cluster.Cluster
-var httpHandler http.Handler
+var serverCmd *exec.Cmd
+var serverScan *bufio.Scanner
 var _ = BeforeSuite(func() {
+	var err error
+	serverCmd, serverScan, err = tests.K3sCmdAsync("server", "--cluster-init")
+	Expect(err).NotTo(HaveOccurred())
 })
 
-var _ = Describe("etcd", func() {
-	Context("when a new etcd is created", func() {
-		BeforeEach(func() {
-		})
+var _ = Describe("etcd snapshots", func() {
+	When("a new etcd is created", func() {
 		It("starts up with no problems", func() {
-
+			tests.FindStringInCmdAsync(serverScan, "etcd data store connection OK")
+			Eventually(func() (string, error) {
+				return tests.K3sCmd("kubectl", "get", "pods", "-A")
+			}, "10s", "2s").Should(MatchRegexp("kube-system.+coredns.+Running"))
 		})
-		It("reset with no problems", func() {
-
+		It("saves an etcd snapshot", func() {
+			result, err := tests.K3sCmd("etcd-snapshot", "save")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result).To(ContainSubstring("Saving current etcd snapshot set to k3s-etcd-snapshots"))
+		})
+		It("list snapshots", func() {
+			result, err := tests.K3sCmd("etcd-snapshot", "ls")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result).To(MatchRegexp(`:///var/lib/rancher/k3s/server/db/snapshots/on-demand`))
+		})
+		It("deletes a snapshot", func() {
+			lsResult, err := tests.K3sCmd("etcd-snapshot", "ls")
+			Expect(err).NotTo(HaveOccurred())
+			reg, err := regexp.Compile(`on-demand[^\s]+`)
+			Expect(err).NotTo(HaveOccurred())
+			snapshotName := reg.FindString(lsResult)
+			delResult, err := tests.K3sCmd("etcd-snapshot", "delete", snapshotName)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(delResult).To(ContainSubstring("Removing the given locally stored etcd snapshot"))
+		})
+	})
+	When("saving a custom name", func() {
+		It("starts with no snapshots", func() {
+			result, err := tests.K3sCmd("etcd-snapshot", "ls")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result).To(BeEmpty())
+		})
+		It("saves an etcd snapshot with a custom name", func() {
+			result, err := tests.K3sCmd("etcd-snapshot", "save", "--name", "ALIVEBEEF")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result).To(ContainSubstring("Saving etcd snapshot to /var/lib/rancher/k3s/server/db/snapshots/ALIVEBEEF"))
+		})
+		It("deletes that snapshot", func() {
+			lsResult, err := tests.K3sCmd("etcd-snapshot", "ls")
+			Expect(err).NotTo(HaveOccurred())
+			reg, err := regexp.Compile(`ALIVEBEEF[^\s]+`)
+			Expect(err).NotTo(HaveOccurred())
+			snapshotName := reg.FindString(lsResult)
+			delResult, err := tests.K3sCmd("etcd-snapshot", "delete", snapshotName)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(delResult).To(ContainSubstring("Removing the given locally stored etcd snapshot"))
+		})
+	})
+	When("using etcd snapshot prune", func() {
+		It("starts with no snapshots", func() {
+			result, err := tests.K3sCmd("etcd-snapshot", "ls")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result).To(BeEmpty())
+		})
+		It("saves 3 different snapshots", func() {
+			result, err := tests.K3sCmd("etcd-snapshot", "save")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result).To(ContainSubstring("Saving current etcd snapshot set to k3s-etcd-snapshots"))
+			result, err = tests.K3sCmd("etcd-snapshot", "save")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result).To(ContainSubstring("Saving current etcd snapshot set to k3s-etcd-snapshots"))
+			result, err = tests.K3sCmd("etcd-snapshot", "save")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result).To(ContainSubstring("Saving current etcd snapshot set to k3s-etcd-snapshots"))
+		})
+		It("lists all 3 snapshots", func() {
+			lsResult, err := tests.K3sCmd("etcd-snapshot", "ls")
+			Expect(err).NotTo(HaveOccurred())
+			sepLines := strings.FieldsFunc(lsResult, func(c rune) bool {
+				return c == '\n'
+			})
+			Expect(lsResult).To(MatchRegexp(`:///var/lib/rancher/k3s/server/db/snapshots/on-demand`))
+			Expect(len(sepLines)).To(Equal(3))
+			reg, _ := regexp.Compile(`on-demand[^\s]+`)
+			for _, snap := range reg.FindAllString(lsResult, -1) {
+				delResult, err := tests.K3sCmd("etcd-snapshot", "delete", snap)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(delResult).To(ContainSubstring("Removing the given locally stored etcd snapshot"))
+			}
 		})
 	})
 })
 
-func TestEtcd(t *testing.T) {
+var _ = AfterSuite(func() {
+	serverCmd.Process.Kill()
+})
+
+func TestIntegration_Etcd(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Etcd Suite")
 }
