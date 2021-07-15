@@ -1064,18 +1064,20 @@ func (e *ETCD) DeleteSnapshots(ctx context.Context, snapshots []string) error {
 	}
 
 	logrus.Info("Removing the given locally stored etcd snapshot(s)")
-	logrus.Debugf("Removing the given locally stored etcd snapshot(s): %v", snapshots)
+	logrus.Debugf("Attempting to remove the given locally stored etcd snapshot(s): %v", snapshots)
 
 	for _, s := range snapshots {
 		// check if the given snapshot exists. If it does,
 		// remove it, otherwise continue.
 		sf := filepath.Join(snapshotDir, s)
 		if _, err := os.Stat(sf); os.IsNotExist(err) {
+			logrus.Infof("Snapshot %s, does not exist", s)
 			continue
 		}
 		if err := os.Remove(sf); err != nil {
 			return err
 		}
+		logrus.Debug("Removed snapshot ", s)
 	}
 
 	return e.StoreSnapshotData(ctx)

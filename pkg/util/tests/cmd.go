@@ -8,6 +8,25 @@ import (
 	"strings"
 )
 
+// func K3sApp(cmdArgs ...string) (*logrustest.Hook, error) {
+// 	app := cmds.NewApp()
+// 	app.Commands = []cli.Command{
+// 		cmds.NewServerCommand(server.Run),
+// 		cmds.NewAgentCommand(agent.Run),
+// 		cmds.NewKubectlCommand(kubectl.Run),
+// 		cmds.NewCRICTL(crictl.Run),
+// 		cmds.NewEtcdSnapshotCommand(etcdsnapshot.Run,
+// 			cmds.NewEtcdSnapshotSubcommands(
+// 				etcdsnapshot.Delete,
+// 				etcdsnapshot.List,
+// 				etcdsnapshot.Prune,
+// 				etcdsnapshot.Run),
+// 		),
+// 	}
+// 	_, hook := logrustest.NewNullLogger()
+// 	return hook, app.Run(configfilearg.MustParse(cmdArgs))
+// }
+
 func findK3sExecutable() string {
 	k3sBin := "dist/artifacts/k3s"
 	for {
@@ -19,15 +38,6 @@ func findK3sExecutable() string {
 		break
 	}
 	return k3sBin
-}
-
-func FindStringInCmdAsync(scanner *bufio.Scanner, target string) bool {
-	for scanner.Scan() {
-		if strings.Contains(scanner.Text(), target) {
-			return true
-		}
-	}
-	return false
 }
 
 func K3sCmd(cmdName string, cmdArgs ...string) (string, error) {
@@ -47,6 +57,15 @@ func K3sCmd(cmdName string, cmdArgs ...string) (string, error) {
 	}
 	byteOut, err := cmd.CombinedOutput()
 	return string(byteOut), err
+}
+
+func FindStringInCmdAsync(scanner *bufio.Scanner, target string) bool {
+	for scanner.Scan() {
+		if strings.Contains(scanner.Text(), target) {
+			return true
+		}
+	}
+	return false
 }
 
 //Launch a k3s command asynchronously
