@@ -27,6 +27,7 @@ type HelmChartSpec struct {
 	Bootstrap       bool                          `json:"bootstrap,omitempty"`
 	ChartContent    string                        `json:"chartContent,omitempty"`
 	JobImage        string                        `json:"jobImage,omitempty"`
+	Timeout         *metav1.Duration              `json:"timeout,omitempty"`
 }
 
 type HelmChartStatus struct {
