@@ -33,6 +33,11 @@ var _ = Describe("etcd snapshots", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result).To(ContainSubstring("Saving current etcd snapshot set to k3s-etcd-snapshots"))
 		})
+		// It("saves an etcd snapshot", func() {
+		// 	result, err := tests.K3sApp("etcd-snapshot", "save")
+		// 	Expect(err).NotTo(HaveOccurred())
+		// 	Expect(result.AllEntries()).To(ContainElement("Saving current etcd"))
+		// })
 		It("list snapshots", func() {
 			result, err := tests.K3sCmd("etcd-snapshot", "ls")
 			Expect(err).NotTo(HaveOccurred())
@@ -77,8 +82,8 @@ var _ = Describe("etcd snapshots", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result).To(BeEmpty())
 		})
-		It("saves 3 different snapshots", func() {
-			result, err := tests.K3sCmd("etcd-snapshot", "save")
+		It("saves 3 different snapshots, hardcoded with the default CLI name", func() {
+			result, err := tests.K3sCmd("etcd-snapshot", "save", "--")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result).To(ContainSubstring("Saving current etcd snapshot set to k3s-etcd-snapshots"))
 			result, err = tests.K3sCmd("etcd-snapshot", "save")
@@ -95,8 +100,9 @@ var _ = Describe("etcd snapshots", func() {
 				return c == '\n'
 			})
 			Expect(lsResult).To(MatchRegexp(`:///var/lib/rancher/k3s/server/db/snapshots/on-demand`))
-			Expect(len(sepLines)).To(Equal(3))
+			Expect(sepLines).To(HaveLen(3))
 			reg, _ := regexp.Compile(`on-demand[^\s]+`)
+			// Cleanup all test snapshots
 			for _, snap := range reg.FindAllString(lsResult, -1) {
 				delResult, err := tests.K3sCmd("etcd-snapshot", "delete", snap)
 				Expect(err).NotTo(HaveOccurred())
