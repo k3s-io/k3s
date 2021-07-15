@@ -41,7 +41,6 @@ import (
 )
 
 const (
-	snapshotPrefix      = "etcd-snapshot-"
 	endpoint            = "https://127.0.0.1:2379"
 	testTimeout         = time.Second * 10
 	manageTickerTime    = time.Second * 15
@@ -854,7 +853,7 @@ func (e *ETCD) Snapshot(ctx context.Context, config *config.Control) error {
 
 	// check if we need to perform a retention check
 	if e.config.EtcdSnapshotRetention >= 1 {
-		if err := snapshotRetention(e.config.EtcdSnapshotRetention, snapshotDir); err != nil {
+		if err := snapshotRetention(e.config.EtcdSnapshotRetention, e.config.EtcdSnapshotName, snapshotDir); err != nil {
 			return errors.Wrap(err, "failed to apply snapshot retention")
 		}
 	}
@@ -986,7 +985,7 @@ func (e *ETCD) PruneSnapshots(ctx context.Context) error {
 		return e.s3.snapshotRetention(ctx)
 	}
 
-	return snapshotRetention(e.config.EtcdSnapshotRetention, snapshotDir)
+	return snapshotRetention(e.config.EtcdSnapshotRetention, e.config.EtcdSnapshotName, snapshotDir)
 }
 
 // ListSnapshots is an exported wrapper method that wraps an
@@ -1208,7 +1207,7 @@ func (e *ETCD) Restore(ctx context.Context) error {
 
 // snapshotRetention iterates through the snapshots and removes the oldest
 // leaving the desired number of snapshots.
-func snapshotRetention(retention int, snapshotDir string) error {
+func snapshotRetention(retention int, snapshotPrefix string, snapshotDir string) error {
 	nodeName := os.Getenv("NODE_NAME")
 
 	var snapshotFiles []os.FileInfo
@@ -1216,7 +1215,7 @@ func snapshotRetention(retention int, snapshotDir string) error {
 		if err != nil {
 			return err
 		}
-		if strings.HasPrefix(info.Name(), snapshotPrefix+nodeName) {
+		if strings.HasPrefix(info.Name(), snapshotPrefix+"-"+nodeName) {
 			snapshotFiles = append(snapshotFiles, info)
 		}
 		return nil
