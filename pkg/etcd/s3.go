@@ -157,7 +157,7 @@ func (s *S3) Download(ctx context.Context) error {
 // naming of the snapshots.
 func (s *S3) snapshotPrefix() string {
 	nodeName := os.Getenv("NODE_NAME")
-	fullSnapshotPrefix := snapshotPrefix + nodeName
+	fullSnapshotPrefix := s.config.EtcdSnapshotName + "-" + nodeName
 	var prefix string
 	if s.config.EtcdS3Folder != "" {
 		prefix = filepath.Join(s.config.EtcdS3Folder, fullSnapshotPrefix)
