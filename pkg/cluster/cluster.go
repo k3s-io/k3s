@@ -153,7 +153,7 @@ func (c *Cluster) startStorage(ctx context.Context) error {
 	return nil
 }
 
-// New creates an initial cluster using the provided configuration
+// New creates an initial cluster using the provided configuration.
 func New(config *config.Control) *Cluster {
 	return &Cluster{
 		config:  config,

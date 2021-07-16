@@ -3,10 +3,11 @@ package cluster
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -25,23 +26,31 @@ func (c *Cluster) Bootstrap(ctx context.Context) error {
 		return err
 	}
 
-	// shouldBootstrap, err := c.shouldBootstrapLoad(ctx)
-	// if err != nil {
-	// 	return err
-	// }
-	// c.shouldBootstrap = shouldBootstrap
+	logrus.Warn("XXX - checking if cluster is initialized")
 
-	// if shouldBootstrap {
-	// 	if err := c.bootstrap(ctx); err != nil {
-	// 		return err
-	// 	}
-	// }
+	shouldBootstrap, err := c.shouldBootstrapLoad(ctx)
+	if err != nil {
+		return err
+	}
+	c.shouldBootstrap = shouldBootstrap
+
+	logrus.Warn("XXX - bootstrapping")
 
 	c.joining = true
 
 	// bootstrap managed database via HTTPS
 	if c.runtime.HTTPBootstrap {
-		return c.httpBootstrap()
+		// Fail if the token isn't syntactically valid, or if the CA hash on the remote server doesn't match
+		// the hash in the token. The password isn't actually checked until later when actually bootstrapping.
+		info, err := clientaccess.ParseAndValidateTokenForUser(c.config.JoinURL, c.config.Token, "server")
+		if err != nil {
+			return err
+		}
+
+		logrus.Infof("Managed %s cluster not yet initialized", c.managedDB.EndpointName())
+		c.clientAccessInfo = info
+
+		return c.httpBootstrap(ctx)
 	}
 
 	// Bootstrap directly from datastore
@@ -96,11 +105,11 @@ func (c *Cluster) shouldBootstrapLoad(ctx context.Context) (bool, error) {
 	// Check the stamp file to see if we have successfully bootstrapped using this token.
 	// NOTE: The fact that we use a hash of the token to generate the stamp
 	//       means that it is unsafe to use the same token for multiple clusters.
-	stamp := c.bootstrapStamp()
-	if _, err := os.Stat(stamp); err == nil {
-		logrus.Info("Cluster bootstrap already complete")
-		return true, nil
-	}
+	// stamp := c.bootstrapStamp()
+	// if _, err := os.Stat(stamp); err == nil {
+	// 	logrus.Info("Cluster bootstrap already complete")
+	// 	return true, nil
+	// }
 
 	// No errors and no bootstrap stamp, need to bootstrap.
 	return true, nil
@@ -123,6 +132,8 @@ func isDirEmpty(name string) (bool, error) {
 	return false, err
 }
 
+// certDirsExist checks to see if the directories
+// that contain the needed certificates exist.
 func (c *Cluster) certDirsExist() error {
 	bootstrapDirs := []string{
 		"tls",
@@ -138,7 +149,7 @@ func (c *Cluster) certDirsExist() error {
 		if _, err := os.Stat(dir); os.IsNotExist(err) {
 			errMsg := fmt.Sprintf(missingTLSDir, dir)
 			logrus.Debug(errMsg)
-			return fmt.Errorf(errMsg)
+			return errors.New(errMsg)
 		}
 
 		ok, err := isDirEmpty(filepath.Join(c.config.DataDir, dir))
@@ -149,68 +160,130 @@ func (c *Cluster) certDirsExist() error {
 		if ok {
 			errMsg := fmt.Sprintf(emptyTLSDir, dir)
 			logrus.Debug(errMsg)
-			return fmt.Errorf(errMsg)
+			return errors.New(errMsg)
 		}
 	}
 
 	return nil
 }
 
-func (c *Cluster) validateBootstrapCertificates() error {
-	if err := c.certDirsExist(); err != nil {
-		return err
-	}
+// func (c *Cluster) validateBootstrapCertificates() error {
+// 	if err := c.certDirsExist(); err != nil {
+// 		return err
+// 	}
 
-	// check existence of certificate and contents against known bootstrap data and
-	// if there are any differences, return an error to trigger a rebootstrap
-	bootstrapFileAndCertificate := map[string]string{
-		c.config.Runtime.ControlRuntimeBootstrap.ETCDServerCA:       "",
-		c.config.Runtime.ControlRuntimeBootstrap.ETCDServerCAKey:    "",
-		c.config.Runtime.ControlRuntimeBootstrap.ETCDPeerCA:         "",
-		c.config.Runtime.ControlRuntimeBootstrap.ETCDPeerCAKey:      "",
-		c.config.Runtime.ControlRuntimeBootstrap.ServerCA:           "",
-		c.config.Runtime.ControlRuntimeBootstrap.ServerCAKey:        "",
-		c.config.Runtime.ControlRuntimeBootstrap.ClientCA:           "",
-		c.config.Runtime.ControlRuntimeBootstrap.ClientCAKey:        "",
-		c.config.Runtime.ControlRuntimeBootstrap.ServiceKey:         "",
-		c.config.Runtime.ControlRuntimeBootstrap.PasswdFile:         "",
-		c.config.Runtime.ControlRuntimeBootstrap.RequestHeaderCA:    "",
-		c.config.Runtime.ControlRuntimeBootstrap.RequestHeaderCAKey: "",
-		c.config.Runtime.ControlRuntimeBootstrap.IPSECKey:           "",
-	}
+// 	// check existence of certificate and contents against known bootstrap data and
+// 	// if there are any differences, return an error to trigger a rebootstrap
+// 	bootstrapFileAndCertificate := map[string]string{
+// 		c.config.Runtime.ControlRuntimeBootstrap.ETCDServerCA:       "",
+// 		c.config.Runtime.ControlRuntimeBootstrap.ETCDServerCAKey:    "",
+// 		c.config.Runtime.ControlRuntimeBootstrap.ETCDPeerCA:         "",
+// 		c.config.Runtime.ControlRuntimeBootstrap.ETCDPeerCAKey:      "",
+// 		c.config.Runtime.ControlRuntimeBootstrap.ServerCA:           "",
+// 		c.config.Runtime.ControlRuntimeBootstrap.ServerCAKey:        "",
+// 		c.config.Runtime.ControlRuntimeBootstrap.ClientCA:           "",
+// 		c.config.Runtime.ControlRuntimeBootstrap.ClientCAKey:        "",
+// 		c.config.Runtime.ControlRuntimeBootstrap.ServiceKey:         "",
+// 		c.config.Runtime.ControlRuntimeBootstrap.PasswdFile:         "",
+// 		c.config.Runtime.ControlRuntimeBootstrap.RequestHeaderCA:    "",
+// 		c.config.Runtime.ControlRuntimeBootstrap.RequestHeaderCAKey: "",
+// 		c.config.Runtime.ControlRuntimeBootstrap.IPSECKey:           "",
+// 	}
 
-	if c.config.EncryptSecrets {
-		bootstrapFileAndCertificate[c.config.Runtime.ControlRuntimeBootstrap.EncryptionConfig] = ""
-	}
+// 	if c.config.EncryptSecrets {
+// 		bootstrapFileAndCertificate[c.config.Runtime.ControlRuntimeBootstrap.EncryptionConfig] = ""
+// 	}
 
-	for content, filename := range bootstrapFileAndCertificate {
-		if err := c.checkBootstrapCertificate(content, filename); err != nil {
-			return err
-		}
-	}
+// 	for content, filename := range bootstrapFileAndCertificate {
+// 		if err := c.checkBootstrapCertificate(content, filename); err != nil {
+// 			return err
+// 		}
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
 // checkBootstrapCertificate checks the given content string against what's
 // read in the file given, hashes them, and compares the hashes. If they don't
 // match an error is returned.
-func (c *Cluster) checkBootstrapCertificate(filename, content string) error {
-	bootstrapHash := sha256.Sum256([]byte(content))
+// func (c *Cluster) checkBootstrapCertificate(filename, content string) error {
+// 	bootstrapHash := sha256.Sum256([]byte(content))
 
-	fileHash := sha256.New()
-	f, err := os.Open(filepath.Join(c.config.DataDir, "tls", filename))
+// 	fileHash := sha256.New()
+// 	f, err := os.Open(filepath.Join(c.config.DataDir, "tls", filename))
+// 	if err != nil {
+// 		return err
+// 	}
+// 	defer f.Close()
+
+// 	if _, err := io.Copy(fileHash, f); err != nil {
+// 		return err
+// 	}
+
+// 	if ret := bytes.Compare(bootstrapHash[:], fileHash.Sum(nil)); ret != 0 {
+// 		return fmt.Errorf("%s doesn't match bootstrap data", filename)
+// 	}
+
+// 	return nil
+// }
+
+// ReconcileStorage
+func (c *Cluster) ReconcileStorage(ctx context.Context, r io.Reader, crb *config.ControlRuntimeBootstrap) error {
+	if err := c.certDirsExist(); err != nil {
+		logrus.Warn(err.Error())
+	}
+
+	paths, err := bootstrap.ObjToMap(crb)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
 
-	if _, err := io.Copy(fileHash, f); err != nil {
+	files := make(map[string]bootstrap.BootstrapFile)
+	if err := json.NewDecoder(r).Decode(&files); err != nil {
 		return err
 	}
 
-	if ret := bytes.Compare(bootstrapHash[:], fileHash.Sum(nil)); ret != 0 {
-		return fmt.Errorf("%s doesn't match bootstrap data", filename)
+	for pathKey, data := range files {
+		path, ok := paths[pathKey]
+		if !ok {
+			continue
+		}
+
+		f, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+
+		fd, err := ioutil.ReadAll(f)
+		if err != nil {
+			return err
+		}
+
+		logrus.Warnf("XXX - checking %s", path)
+		if !bytes.Equal(data.Content, fd) {
+			logrus.Warn("%s and database out of sync", path)
+
+			info, err := os.Stat(path)
+			if err != nil {
+				return err
+			}
+
+			// TODO(): allow for a few seconds between the 2 so get
+			// seconds
+
+			switch {
+			//case (info.ModTime().Unix() - files[pathKey].Timestamp.Unix()) <= 4 || (info.ModTime().Unix() - files[pathKey].Timestamp.Unix()) >= -4:
+			case info.ModTime().Unix() < files[pathKey].Timestamp.Unix():
+				logrus.Warn("on disk file newer than database")
+				return bootstrap.WriteToDisk(r, crb)
+			case info.ModTime().Unix() > files[pathKey].Timestamp.Unix():
+				logrus.Warn("database newer than on disk file")
+				return c.save(ctx)
+			default:
+				// on disk matches storage, noop
+			}
+		}
 	}
 
 	return nil
@@ -240,27 +313,28 @@ func (c *Cluster) bootstrapped() error {
 // httpBootstrap retrieves bootstrap data (certs and keys, etc) from the remote server via HTTP
 // and loads it into the ControlRuntimeBootstrap struct. Unlike the storage bootstrap path,
 // this data does not need to be decrypted since it is generated on-demand by an existing server.
-func (c *Cluster) httpBootstrap() error {
+func (c *Cluster) httpBootstrap(ctx context.Context) error {
+	logrus.Warn("XXX - http boostrapping")
 	content, err := c.clientAccessInfo.Get("/v1-" + version.Program + "/server-bootstrap")
 	if err != nil {
 		return err
 	}
 
-	return bootstrap.ReconcileStorage(bytes.NewBuffer(content), &c.runtime.ControlRuntimeBootstrap)
+	return c.ReconcileStorage(ctx, bytes.NewBuffer(content), &c.runtime.ControlRuntimeBootstrap)
 }
 
 // bootstrap performs cluster bootstrapping, either via HTTP (for managed databases) or direct load from datastore.
-// func (c *Cluster) bootstrap(ctx context.Context) error {
-// 	c.joining = true
+func (c *Cluster) bootstrap(ctx context.Context) error {
+	c.joining = true
 
-// 	// bootstrap managed database via HTTPS
-// 	if c.runtime.HTTPBootstrap {
-// 		return c.httpBootstrap()
-// 	}
+	// bootstrap managed database via HTTPS
+	if c.runtime.HTTPBootstrap {
+		return c.httpBootstrap(ctx)
+	}
 
-// 	// Bootstrap directly from datastore
-// 	return c.storageBootstrap(ctx)
-// }
+	// Bootstrap directly from datastore
+	return c.storageBootstrap(ctx)
+}
 
 // bootstrapStamp returns the path to a file in datadir/db that is used to record
 // that a cluster has been joined. The filename is based on a portion of the sha256 hash of the token.

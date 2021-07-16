@@ -70,6 +70,7 @@ func (c *Cluster) save(ctx context.Context) error {
 // The storage key and encryption passphrase are both derived from the join token.
 // token is either passed
 func (c *Cluster) storageBootstrap(ctx context.Context) error {
+	logrus.Warn("XXX - storage bootstrapping")
 	if err := c.startStorage(ctx); err != nil {
 		return err
 	}
@@ -110,7 +111,8 @@ func (c *Cluster) storageBootstrap(ctx context.Context) error {
 		return err
 	}
 
-	return bootstrap.WriteToDisk(bytes.NewBuffer(data), &c.runtime.ControlRuntimeBootstrap)
+	return c.ReconcileStorage(ctx, bytes.NewBuffer(data), &c.runtime.ControlRuntimeBootstrap)
+	//return bootstrap.WriteToDisk(bytes.NewBuffer(data), &c.runtime.ControlRuntimeBootstrap)
 }
 
 // getBootstrapKeyFromStorage will list all keys that has prefix /bootstrap and will check for key that is
