@@ -1,4 +1,4 @@
-K3s - Lightweight Kubernetes
+K3s - Lightweight Kubernetes aka Kubẻs
 ===============================================
 
 Lightweight Kubernetes.  Production ready, easy to install, half the memory, all in a binary less than 100 MB.
