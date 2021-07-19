@@ -37,6 +37,6 @@ Cluster Configuration:
 
 **Backporting**
 <!--
-Does this PR need to be backported to older releases?  If so, please check this box to ensure no necessary backports are missed."
+Does this fix need to be backported to older releases?  If so, please check this box and list the branches it should be backported to.
 -->
 - [ ] Needs backporting to older releases
