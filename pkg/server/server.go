@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -69,10 +68,8 @@ func StartServer(ctx context.Context, config *Config) error {
 		return errors.Wrap(err, "starting tls server")
 	}
 
-	config.StartupHooksWg = &sync.WaitGroup{}
-	config.StartupHooksWg.Add(len(config.StartupHooks))
 	for _, hook := range config.StartupHooks {
-		if err := hook(ctx, config.StartupHooksWg, config.ControlConfig.Runtime.APIServerReady, config.ControlConfig.Runtime.KubeConfigAdmin); err != nil {
+		if err := hook(ctx, config.ControlConfig.Runtime.APIServerReady, config.ControlConfig.Runtime.KubeConfigAdmin); err != nil {
 			return errors.Wrap(err, "startup hook")
 		}
 	}
@@ -130,7 +127,6 @@ func runControllers(ctx context.Context, config *Config) error {
 		return err
 	}
 
-	config.StartupHooksWg.Wait()
 	if err := stageFiles(ctx, sc, controlConfig); err != nil {
 		return err
 	}

@@ -2,7 +2,6 @@ package cmds
 
 import (
 	"context"
-	"sync"
 
 	"github.com/rancher/k3s/pkg/version"
 	"github.com/urfave/cli"
@@ -63,8 +62,7 @@ type Server struct {
 	ClusterReset             bool
 	ClusterResetRestorePath  string
 	EncryptSecrets           bool
-	SystemDefaultRegistry    string
-	StartupHooks             []func(context.Context, *sync.WaitGroup, <-chan struct{}, string) error
+	StartupHooks             []func(context.Context, <-chan struct{}, string) error
 	EtcdSnapshotName         string
 	EtcdDisableSnapshots     bool
 	EtcdSnapshotDir          string
