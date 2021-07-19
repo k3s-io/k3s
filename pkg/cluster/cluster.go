@@ -3,15 +3,16 @@ package cluster
 import (
 	"context"
 	"net/url"
+	"runtime"
 	"strings"
 
+	"github.com/k3s-io/kine/pkg/client"
+	"github.com/k3s-io/kine/pkg/endpoint"
 	"github.com/pkg/errors"
 	"github.com/rancher/k3s/pkg/clientaccess"
 	"github.com/rancher/k3s/pkg/cluster/managed"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/etcd"
-	"github.com/rancher/kine/pkg/client"
-	"github.com/rancher/kine/pkg/endpoint"
 	"github.com/sirupsen/logrus"
 )
 
@@ -77,7 +78,6 @@ func (c *Cluster) Start(ctx context.Context) (<-chan struct{}, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	// if necessary, store bootstrap data to datastore
 	if c.saveBootstrap {
 		if err := c.save(ctx); err != nil {
@@ -92,7 +92,31 @@ func (c *Cluster) Start(ctx context.Context) (<-chan struct{}, error) {
 		}
 	}
 
-	return ready, c.startStorage(ctx)
+	if err := c.startStorage(ctx); err != nil {
+		return nil, err
+	}
+
+	// at this point, if etcd is in use, it's bootstrapping is complete
+	// so save the bootstrap data. We will need for etcd to be up. If
+	// the save call returns an error, we panic since subsequent etcd
+	// snapshots will be empty.
+	if c.managedDB != nil {
+		go func() {
+			for {
+				select {
+				case <-ready:
+					if err := c.save(ctx); err != nil {
+						panic(err)
+					}
+					return
+				default:
+					runtime.Gosched()
+				}
+			}
+		}()
+	}
+
+	return ready, nil
 
 }
 
