@@ -41,6 +41,7 @@ jobs:
         path: ./dist/artifacts
     - name: Run Unit Tests
       run: | 
+        chmod +x ./dist/artifacts/k3s
         go test -coverpkg=./... -covermode=atomic -coverprofile=coverage.out ./pkg/...
         go tool cover -func coverage.out
     - name: On Failure, Launch Debug Session
