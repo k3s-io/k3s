@@ -113,7 +113,7 @@ func handleTarTypeBlockCharFifo(hdr *tar.Header, path string) error {
 
 func handleLChmod(hdr *tar.Header, path string, hdrInfo os.FileInfo) error {
 	if hdr.Typeflag == tar.TypeLink {
-		if fi, err := os.Lstat(hdr.Linkname); err == nil && (fi.Mode()&os.ModeSymlink == 0) {
+		if fi, err := os.Lstat(path); err == nil && (fi.Mode()&os.ModeSymlink == 0) {
 			if err := os.Chmod(path, hdrInfo.Mode()); err != nil && !os.IsNotExist(err) {
 				return err
 			}

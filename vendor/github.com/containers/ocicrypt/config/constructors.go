@@ -17,7 +17,11 @@
 package config
 
 import (
+	"github.com/containers/ocicrypt/crypto/pkcs11"
+	"strings"
+
 	"github.com/pkg/errors"
+	"gopkg.in/yaml.v2"
 )
 
 // EncryptWithJwe returns a CryptoConfig to encrypt with jwe public keys
@@ -61,6 +65,88 @@ func EncryptWithGpg(gpgRecipients [][]byte, gpgPubRingFile []byte) (CryptoConfig
 		"gpg-pubkeyringfile": {gpgPubRingFile},
 	}
 
+	return CryptoConfig{
+		EncryptConfig: &EncryptConfig{
+			Parameters:    ep,
+			DecryptConfig: dc,
+		},
+		DecryptConfig: &dc,
+	}, nil
+}
+
+// EncryptWithPkcs11 returns a CryptoConfig to encrypt with configured pkcs11 parameters
+func EncryptWithPkcs11(pkcs11Config *pkcs11.Pkcs11Config, pkcs11Pubkeys, pkcs11Yamls [][]byte) (CryptoConfig, error) {
+	dc := DecryptConfig{}
+	ep := map[string][][]byte{}
+
+	if len(pkcs11Yamls) > 0 {
+		if pkcs11Config == nil {
+			return CryptoConfig{}, errors.New("pkcs11Config must not be nil")
+		}
+		p11confYaml, err := yaml.Marshal(pkcs11Config)
+		if err != nil {
+			return CryptoConfig{}, errors.Wrapf(err, "Could not marshal Pkcs11Config to Yaml")
+		}
+
+		dc = DecryptConfig{
+			Parameters: map[string][][]byte{
+				"pkcs11-config": {p11confYaml},
+			},
+		}
+		ep["pkcs11-yamls"] = pkcs11Yamls
+	}
+	if len(pkcs11Pubkeys) > 0 {
+		ep["pkcs11-pubkeys"] = pkcs11Pubkeys
+	}
+
+	return CryptoConfig{
+		EncryptConfig: &EncryptConfig{
+			Parameters:    ep,
+			DecryptConfig: dc,
+		},
+		DecryptConfig: &dc,
+	}, nil
+}
+
+// EncryptWithKeyProvider returns a CryptoConfig to encrypt with configured keyprovider parameters
+func EncryptWithKeyProvider(keyProviders [][]byte) (CryptoConfig, error) {
+	dc := DecryptConfig{}
+	ep := make(map[string][][]byte)
+	for _, keyProvider := range keyProviders {
+		keyProvidersStr := string(keyProvider)
+		idx := strings.Index(keyProvidersStr, ":")
+		if idx > 0 {
+			ep[keyProvidersStr[:idx]] = append(ep[keyProvidersStr[:idx]], []byte(keyProvidersStr[idx+1:]))
+		} else {
+			ep[keyProvidersStr] = append(ep[keyProvidersStr], []byte("Enabled"))
+		}
+	}
+
+	return CryptoConfig{
+		EncryptConfig: &EncryptConfig{
+			Parameters:    ep,
+			DecryptConfig: dc,
+		},
+		DecryptConfig: &dc,
+	}, nil
+}
+
+// DecryptWithKeyProvider returns a CryptoConfig to decrypt with configured keyprovider parameters
+func DecryptWithKeyProvider(keyProviders [][]byte) (CryptoConfig, error) {
+	dp := make(map[string][][]byte)
+	ep := map[string][][]byte{}
+	for _, keyProvider := range keyProviders {
+		keyProvidersStr := string(keyProvider)
+		idx := strings.Index(keyProvidersStr, ":")
+		if idx > 0 {
+			dp[keyProvidersStr[:idx]] = append(dp[keyProvidersStr[:idx]], []byte(keyProvidersStr[idx+1:]))
+		} else {
+			dp[keyProvidersStr] = append(dp[keyProvidersStr], []byte("Enabled"))
+		}
+	}
+	dc := DecryptConfig{
+		Parameters: dp,
+	}
 	return CryptoConfig{
 		EncryptConfig: &EncryptConfig{
 			Parameters:    ep,
@@ -119,6 +205,31 @@ func DecryptWithGpgPrivKeys(gpgPrivKeys, gpgPrivKeysPwds [][]byte) (CryptoConfig
 		Parameters: map[string][][]byte{
 			"gpg-privatekeys":           gpgPrivKeys,
 			"gpg-privatekeys-passwords": gpgPrivKeysPwds,
+		},
+	}
+
+	ep := map[string][][]byte{}
+
+	return CryptoConfig{
+		EncryptConfig: &EncryptConfig{
+			Parameters:    ep,
+			DecryptConfig: dc,
+		},
+		DecryptConfig: &dc,
+	}, nil
+}
+
+// DecryptWithPkcs11Yaml returns a CryptoConfig to decrypt with pkcs11 YAML formatted key files
+func DecryptWithPkcs11Yaml(pkcs11Config *pkcs11.Pkcs11Config, pkcs11Yamls [][]byte) (CryptoConfig, error) {
+	p11confYaml, err := yaml.Marshal(pkcs11Config)
+	if err != nil {
+		return CryptoConfig{}, errors.Wrapf(err, "Could not marshal Pkcs11Config to Yaml")
+	}
+
+	dc := DecryptConfig{
+		Parameters: map[string][][]byte{
+			"pkcs11-yamls":  pkcs11Yamls,
+			"pkcs11-config": {p11confYaml},
 		},
 	}
 

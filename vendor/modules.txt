@@ -39,20 +39,24 @@ github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud/mock
 github.com/JeffAshton/win_pdh
 # github.com/MakeNowJust/heredoc v0.0.0-20170808103936-bb23615498cd
 github.com/MakeNowJust/heredoc
-# github.com/Microsoft/go-winio v0.4.15-0.20190919025122-fc70bd9a86b5
+# github.com/Microsoft/go-winio v0.4.19
 github.com/Microsoft/go-winio
 github.com/Microsoft/go-winio/pkg/etw
 github.com/Microsoft/go-winio/pkg/etwlogrus
 github.com/Microsoft/go-winio/pkg/guid
+github.com/Microsoft/go-winio/pkg/security
 github.com/Microsoft/go-winio/vhd
-# github.com/Microsoft/hcsshim v0.8.10-0.20200715222032-5eafd1556990 => github.com/Microsoft/hcsshim v0.8.9
+# github.com/Microsoft/hcsshim v0.8.20 => github.com/Microsoft/hcsshim v0.8.20
 github.com/Microsoft/hcsshim
 github.com/Microsoft/hcsshim/cmd/containerd-shim-runhcs-v1/options
 github.com/Microsoft/hcsshim/cmd/containerd-shim-runhcs-v1/stats
+github.com/Microsoft/hcsshim/computestorage
 github.com/Microsoft/hcsshim/hcn
 github.com/Microsoft/hcsshim/internal/cni
 github.com/Microsoft/hcsshim/internal/cow
 github.com/Microsoft/hcsshim/internal/hcs
+github.com/Microsoft/hcsshim/internal/hcs/schema1
+github.com/Microsoft/hcsshim/internal/hcs/schema2
 github.com/Microsoft/hcsshim/internal/hcserror
 github.com/Microsoft/hcsshim/internal/hns
 github.com/Microsoft/hcsshim/internal/interop
@@ -64,11 +68,10 @@ github.com/Microsoft/hcsshim/internal/oc
 github.com/Microsoft/hcsshim/internal/regstate
 github.com/Microsoft/hcsshim/internal/runhcs
 github.com/Microsoft/hcsshim/internal/safefile
-github.com/Microsoft/hcsshim/internal/schema1
-github.com/Microsoft/hcsshim/internal/schema2
 github.com/Microsoft/hcsshim/internal/timeout
 github.com/Microsoft/hcsshim/internal/vmcompute
 github.com/Microsoft/hcsshim/internal/wclayer
+github.com/Microsoft/hcsshim/internal/winapi
 github.com/Microsoft/hcsshim/osversion
 # github.com/NYTimes/gziphandler v1.1.1
 ## explicit
@@ -154,22 +157,23 @@ github.com/chai2010/gettext-go/gettext/po
 # github.com/checkpoint-restore/go-criu/v4 v4.1.0
 github.com/checkpoint-restore/go-criu/v4
 github.com/checkpoint-restore/go-criu/v4/rpc
-# github.com/cilium/ebpf v0.0.0-20200702112145-1c8d4c9ef775
+# github.com/cilium/ebpf v0.4.0
 github.com/cilium/ebpf
 github.com/cilium/ebpf/asm
 github.com/cilium/ebpf/internal
 github.com/cilium/ebpf/internal/btf
 github.com/cilium/ebpf/internal/unix
+github.com/cilium/ebpf/link
 # github.com/container-storage-interface/spec v1.2.0
 github.com/container-storage-interface/spec/lib/go/csi
-# github.com/containerd/cgroups v0.0.0-20200710171044-318312a37340 => github.com/containerd/cgroups v0.0.0-20200710171044-318312a37340
+# github.com/containerd/cgroups v1.0.1 => github.com/containerd/cgroups v1.0.1
 github.com/containerd/cgroups
 github.com/containerd/cgroups/stats/v1
 github.com/containerd/cgroups/v2
 github.com/containerd/cgroups/v2/stats
-# github.com/containerd/console v1.0.0 => github.com/containerd/console v1.0.0
+# github.com/containerd/console v1.0.2 => github.com/containerd/console v1.0.2
 github.com/containerd/console
-# github.com/containerd/containerd v1.4.4 => github.com/k3s-io/containerd v1.4.4-k3s1
+# github.com/containerd/containerd v1.5.1 => github.com/k3s-io/containerd v1.4.8-k3s1
 ## explicit
 github.com/containerd/containerd
 github.com/containerd/containerd/api/events
@@ -245,6 +249,7 @@ github.com/containerd/containerd/metrics/types/v2
 github.com/containerd/containerd/mount
 github.com/containerd/containerd/namespaces
 github.com/containerd/containerd/oci
+github.com/containerd/containerd/pkg/cap
 github.com/containerd/containerd/pkg/dialer
 github.com/containerd/containerd/pkg/oom
 github.com/containerd/containerd/pkg/oom/v1
@@ -305,7 +310,7 @@ github.com/containerd/containerd/snapshots/storage
 github.com/containerd/containerd/sys
 github.com/containerd/containerd/sys/reaper
 github.com/containerd/containerd/version
-# github.com/containerd/continuity v0.0.0-20200710164510-efbc4488d8fe => github.com/k3s-io/continuity v0.0.0-20210309170710-f93269e0d5c1
+# github.com/containerd/continuity v0.1.0 => github.com/k3s-io/continuity v0.0.0-20210309170710-f93269e0d5c1
 github.com/containerd/continuity
 github.com/containerd/continuity/devices
 github.com/containerd/continuity/driver
@@ -313,12 +318,13 @@ github.com/containerd/continuity/fs
 github.com/containerd/continuity/pathdriver
 github.com/containerd/continuity/proto
 github.com/containerd/continuity/sysx
-# github.com/containerd/cri v1.11.1-0.20200820101445-b0cc07999aa5 => github.com/k3s-io/cri v1.4.0-k3s.5
+# github.com/containerd/cri v1.11.1-0.20200820101445-b0cc07999aa5 => github.com/k3s-io/cri v1.4.0-k3s.7
 ## explicit
 github.com/containerd/cri
 github.com/containerd/cri/pkg/annotations
 github.com/containerd/cri/pkg/api/runtimeoptions/v1
 github.com/containerd/cri/pkg/atomic
+github.com/containerd/cri/pkg/cap
 github.com/containerd/cri/pkg/config
 github.com/containerd/cri/pkg/constants
 github.com/containerd/cri/pkg/containerd/opts
@@ -342,20 +348,22 @@ github.com/containerd/cri/pkg/streaming
 github.com/containerd/cri/pkg/streaming/portforward
 github.com/containerd/cri/pkg/streaming/remotecommand
 github.com/containerd/cri/pkg/util
-# github.com/containerd/fifo v0.0.0-20200410184934-f15a3290365b => github.com/containerd/fifo v0.0.0-20190816180239-bda0ff6ed73c
+# github.com/containerd/fifo v1.0.0 => github.com/containerd/fifo v1.0.0
 github.com/containerd/fifo
-# github.com/containerd/go-cni v1.0.1
+# github.com/containerd/go-cni v1.0.2
+## explicit
 github.com/containerd/go-cni
-# github.com/containerd/go-runc v0.0.0-20200220073739-7016d3ce2328 => github.com/containerd/go-runc v0.0.0-20200220073739-7016d3ce2328
+# github.com/containerd/go-runc v1.0.0 => github.com/containerd/go-runc v1.0.0
 github.com/containerd/go-runc
-# github.com/containerd/imgcrypt v1.0.1
+# github.com/containerd/imgcrypt v1.1.1
+## explicit
 github.com/containerd/imgcrypt
 github.com/containerd/imgcrypt/images/encryption
-# github.com/containerd/ttrpc v1.0.1
+# github.com/containerd/ttrpc v1.0.2 => github.com/containerd/ttrpc v1.0.2
 github.com/containerd/ttrpc
-# github.com/containerd/typeurl v1.0.1 => github.com/containerd/typeurl v0.0.0-20180627222232-a93fcdb778cd
+# github.com/containerd/typeurl v1.0.2 => github.com/containerd/typeurl v1.0.2
 github.com/containerd/typeurl
-# github.com/containernetworking/cni v0.8.0
+# github.com/containernetworking/cni v0.8.1
 github.com/containernetworking/cni/libcni
 github.com/containernetworking/cni/pkg/invoke
 github.com/containernetworking/cni/pkg/types
@@ -363,18 +371,24 @@ github.com/containernetworking/cni/pkg/types/020
 github.com/containernetworking/cni/pkg/types/current
 github.com/containernetworking/cni/pkg/utils
 github.com/containernetworking/cni/pkg/version
-# github.com/containernetworking/plugins v0.8.6
+# github.com/containernetworking/plugins v0.9.1
+## explicit
 github.com/containernetworking/plugins/pkg/ns
-# github.com/containers/ocicrypt v1.0.1
+# github.com/containers/ocicrypt v1.1.1
 github.com/containers/ocicrypt
 github.com/containers/ocicrypt/blockcipher
 github.com/containers/ocicrypt/config
+github.com/containers/ocicrypt/config/keyprovider-config
+github.com/containers/ocicrypt/crypto/pkcs11
 github.com/containers/ocicrypt/keywrap
 github.com/containers/ocicrypt/keywrap/jwe
+github.com/containers/ocicrypt/keywrap/keyprovider
 github.com/containers/ocicrypt/keywrap/pgp
+github.com/containers/ocicrypt/keywrap/pkcs11
 github.com/containers/ocicrypt/keywrap/pkcs7
 github.com/containers/ocicrypt/spec
 github.com/containers/ocicrypt/utils
+github.com/containers/ocicrypt/utils/keyprovider
 # github.com/coreos/flannel v0.12.0 => github.com/rancher/flannel v0.12.0-k3s1
 ## explicit
 github.com/coreos/flannel/backend
@@ -386,7 +400,7 @@ github.com/coreos/flannel/network
 github.com/coreos/flannel/pkg/ip
 github.com/coreos/flannel/subnet
 github.com/coreos/flannel/subnet/kube
-# github.com/coreos/go-iptables v0.4.5
+# github.com/coreos/go-iptables v0.5.0
 ## explicit
 github.com/coreos/go-iptables/iptables
 # github.com/coreos/go-oidc v2.1.0+incompatible
@@ -474,12 +488,8 @@ github.com/evanphx/json-patch
 github.com/exponent-io/jsonpath
 # github.com/fatih/camelcase v1.0.0
 github.com/fatih/camelcase
-# github.com/frankban/quicktest v1.10.2
-## explicit
 # github.com/fsnotify/fsnotify v1.4.9
 github.com/fsnotify/fsnotify
-# github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa
-github.com/fullsailor/pkcs7
 # github.com/ghodss/yaml v1.0.0
 github.com/ghodss/yaml
 # github.com/go-bindata/go-bindata v3.1.2+incompatible
@@ -518,7 +528,7 @@ github.com/go-stack/stack
 github.com/godbus/dbus/v5
 # github.com/gofrs/flock v0.7.1
 github.com/gofrs/flock
-# github.com/gogo/googleapis v1.3.2
+# github.com/gogo/googleapis v1.4.0
 github.com/gogo/googleapis/google/rpc
 # github.com/gogo/protobuf v1.3.2
 github.com/gogo/protobuf/gogoproto
@@ -530,7 +540,7 @@ github.com/gogo/protobuf/types
 github.com/golang/groupcache/lru
 # github.com/golang/mock v1.3.1
 github.com/golang/mock/gomock
-# github.com/golang/protobuf v1.4.2 => github.com/golang/protobuf v1.3.5
+# github.com/golang/protobuf v1.4.3 => github.com/golang/protobuf v1.3.5
 github.com/golang/protobuf/jsonpb
 github.com/golang/protobuf/proto
 github.com/golang/protobuf/protoc-gen-go/descriptor
@@ -587,7 +597,7 @@ github.com/google/cadvisor/utils/sysinfo
 github.com/google/cadvisor/version
 github.com/google/cadvisor/watcher
 github.com/google/cadvisor/zfs
-# github.com/google/go-cmp v0.5.2
+# github.com/google/go-cmp v0.5.4
 github.com/google/go-cmp/cmp
 github.com/google/go-cmp/cmp/internal/diff
 github.com/google/go-cmp/cmp/internal/flags
@@ -598,7 +608,7 @@ github.com/google/gofuzz
 # github.com/google/tcpproxy v0.0.0-20180808230851-dfa16c61dad2
 ## explicit
 github.com/google/tcpproxy
-# github.com/google/uuid v1.1.1
+# github.com/google/uuid v1.2.0
 ## explicit
 github.com/google/uuid
 # github.com/googleapis/gax-go/v2 v2.0.5
@@ -663,7 +673,7 @@ github.com/hashicorp/go-multierror
 # github.com/hashicorp/golang-lru v0.5.3
 github.com/hashicorp/golang-lru
 github.com/hashicorp/golang-lru/simplelru
-# github.com/imdario/mergo v0.3.8
+# github.com/imdario/mergo v0.3.11
 github.com/imdario/mergo
 # github.com/inconshreveable/mousetrap v1.0.0
 github.com/inconshreveable/mousetrap
@@ -731,6 +741,8 @@ github.com/mattn/go-sqlite3
 github.com/matttproud/golang_protobuf_extensions/pbutil
 # github.com/miekg/dns v1.1.4
 github.com/miekg/dns
+# github.com/miekg/pkcs11 v1.0.3
+github.com/miekg/pkcs11
 # github.com/mindprince/gonvml v0.0.0-20190828220739-9ebdce4bb989
 github.com/mindprince/gonvml
 # github.com/minio/md5-simd v1.1.0
@@ -787,7 +799,7 @@ github.com/opencontainers/go-digest/digestset
 github.com/opencontainers/image-spec/identity
 github.com/opencontainers/image-spec/specs-go
 github.com/opencontainers/image-spec/specs-go/v1
-# github.com/opencontainers/runc v1.0.0-rc92 => github.com/opencontainers/runc v1.0.0-rc92
+# github.com/opencontainers/runc v1.0.0-rc93 => github.com/opencontainers/runc v1.0.0-rc92
 ## explicit
 github.com/opencontainers/runc
 github.com/opencontainers/runc/contrib/cmd/recvtty
@@ -815,9 +827,9 @@ github.com/opencontainers/runc/libcontainer/system
 github.com/opencontainers/runc/libcontainer/user
 github.com/opencontainers/runc/libcontainer/utils
 github.com/opencontainers/runc/types
-# github.com/opencontainers/runtime-spec v1.0.3-0.20200728170252-4d89ac9fbff6 => github.com/opencontainers/runtime-spec v1.0.3-0.20200728170252-4d89ac9fbff6
+# github.com/opencontainers/runtime-spec v1.0.3-0.20200929063507-e6143ca7d51d => github.com/opencontainers/runtime-spec v1.0.3-0.20200728170252-4d89ac9fbff6
 github.com/opencontainers/runtime-spec/specs-go
-# github.com/opencontainers/selinux v1.6.0
+# github.com/opencontainers/selinux v1.8.0
 ## explicit
 github.com/opencontainers/selinux/go-selinux
 github.com/opencontainers/selinux/go-selinux/label
@@ -968,6 +980,8 @@ github.com/spf13/cobra
 # github.com/spf13/pflag v1.0.5
 ## explicit
 github.com/spf13/pflag
+# github.com/stefanberger/go-pkcs11uri v0.0.0-20201008174630-78d3cae3a980
+github.com/stefanberger/go-pkcs11uri
 # github.com/stretchr/testify v1.6.1
 ## explicit
 github.com/stretchr/testify/assert
@@ -983,10 +997,10 @@ github.com/tmc/grpc-websocket-proxy/wsproxy
 github.com/urfave/cli
 # github.com/urfave/cli/v2 v2.2.0
 github.com/urfave/cli/v2
-# github.com/vishvananda/netlink v1.1.0
+# github.com/vishvananda/netlink v1.1.1-0.20201029203352-d40f9887b852
 github.com/vishvananda/netlink
 github.com/vishvananda/netlink/nl
-# github.com/vishvananda/netns v0.0.0-20200520041808-52d707b772fe
+# github.com/vishvananda/netns v0.0.0-20200728191858-db3c7e526aae
 github.com/vishvananda/netns
 # github.com/vmware/govmomi v0.20.3
 github.com/vmware/govmomi/find
@@ -1015,7 +1029,7 @@ github.com/vmware/govmomi/vim25/progress
 github.com/vmware/govmomi/vim25/soap
 github.com/vmware/govmomi/vim25/types
 github.com/vmware/govmomi/vim25/xml
-# github.com/willf/bitset v1.1.11-0.20200630133818-d5bec3311243
+# github.com/willf/bitset v1.1.11
 github.com/willf/bitset
 # github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2
 github.com/xiang90/probing
@@ -1108,7 +1122,9 @@ go.mongodb.org/mongo-driver/bson/bsonrw
 go.mongodb.org/mongo-driver/bson/bsontype
 go.mongodb.org/mongo-driver/bson/primitive
 go.mongodb.org/mongo-driver/x/bsonx/bsoncore
-# go.opencensus.io v0.22.2
+# go.mozilla.org/pkcs7 v0.0.0-20200128120323-432b2356ecb1
+go.mozilla.org/pkcs7
+# go.opencensus.io v0.22.3
 go.opencensus.io
 go.opencensus.io/internal
 go.opencensus.io/internal/tagencoding
@@ -1136,7 +1152,7 @@ go.uber.org/zap/internal/bufferpool
 go.uber.org/zap/internal/color
 go.uber.org/zap/internal/exit
 go.uber.org/zap/zapcore
-# golang.org/x/crypto v0.0.0-20201002170205-7f63de1d35b0 => golang.org/x/crypto v0.0.0-20201002170205-7f63de1d35b0
+# golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2 => golang.org/x/crypto v0.0.0-20210220033148-5ea612d1eb83
 ## explicit
 golang.org/x/crypto/argon2
 golang.org/x/crypto/bcrypt
@@ -1168,7 +1184,7 @@ golang.org/x/crypto/ssh/terminal
 # golang.org/x/mod v0.3.0
 golang.org/x/mod/module
 golang.org/x/mod/semver
-# golang.org/x/net v0.0.0-20201110031124-69a78807bb2b => golang.org/x/net v0.0.0-20201110031124-69a78807bb2b
+# golang.org/x/net v0.0.0-20210226172049-e18ecbb05110 => golang.org/x/net v0.0.0-20210224082022-3d97a244fca7
 ## explicit
 golang.org/x/net/bpf
 golang.org/x/net/context
@@ -1195,20 +1211,23 @@ golang.org/x/oauth2/google
 golang.org/x/oauth2/internal
 golang.org/x/oauth2/jws
 golang.org/x/oauth2/jwt
-# golang.org/x/sync v0.0.0-20201020160332-67f06af15bc9
+# golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
 golang.org/x/sync/errgroup
 golang.org/x/sync/semaphore
 golang.org/x/sync/singleflight
-# golang.org/x/sys v0.0.0-20201201145000-ef89a241ccb3 => golang.org/x/sys v0.0.0-20201112073958-5cba982894dd
+# golang.org/x/sys v0.0.0-20210324051608-47abb6519492 => golang.org/x/sys v0.0.0-20210225134936-a50acf3fe073
 ## explicit
 golang.org/x/sys/cpu
 golang.org/x/sys/internal/unsafeheader
+golang.org/x/sys/plan9
 golang.org/x/sys/unix
 golang.org/x/sys/windows
 golang.org/x/sys/windows/registry
 golang.org/x/sys/windows/svc
 golang.org/x/sys/windows/svc/debug
 golang.org/x/sys/windows/svc/mgr
+# golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1
+golang.org/x/term
 # golang.org/x/text v0.3.3
 golang.org/x/text/encoding
 golang.org/x/text/encoding/internal
@@ -1299,7 +1318,7 @@ google.golang.org/appengine/urlfetch
 google.golang.org/genproto/googleapis/api/httpbody
 google.golang.org/genproto/googleapis/rpc/status
 google.golang.org/genproto/protobuf/field_mask
-# google.golang.org/grpc v1.31.1 => google.golang.org/grpc v1.27.1
+# google.golang.org/grpc v1.33.2 => google.golang.org/grpc v1.27.1
 ## explicit
 google.golang.org/grpc
 google.golang.org/grpc/attributes
@@ -1352,14 +1371,14 @@ gopkg.in/inf.v0
 gopkg.in/ini.v1
 # gopkg.in/natefinch/lumberjack.v2 v2.0.0
 gopkg.in/natefinch/lumberjack.v2
-# gopkg.in/square/go-jose.v2 v2.3.1 => gopkg.in/square/go-jose.v2 v2.2.2
+# gopkg.in/square/go-jose.v2 v2.5.1 => gopkg.in/square/go-jose.v2 v2.2.2
 gopkg.in/square/go-jose.v2
 gopkg.in/square/go-jose.v2/cipher
 gopkg.in/square/go-jose.v2/json
 gopkg.in/square/go-jose.v2/jwt
 # gopkg.in/warnings.v0 v0.1.1
 gopkg.in/warnings.v0
-# gopkg.in/yaml.v2 v2.3.0
+# gopkg.in/yaml.v2 v2.4.0
 ## explicit
 gopkg.in/yaml.v2
 # gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776
@@ -1952,7 +1971,7 @@ k8s.io/component-base/metrics/testutil
 k8s.io/component-base/term
 k8s.io/component-base/version
 k8s.io/component-base/version/verflag
-# k8s.io/cri-api v0.19.13 => github.com/k3s-io/kubernetes/staging/src/k8s.io/cri-api v1.19.13-k3s1
+# k8s.io/cri-api v0.20.1 => github.com/k3s-io/kubernetes/staging/src/k8s.io/cri-api v1.19.13-k3s1
 ## explicit
 k8s.io/cri-api/pkg/apis
 k8s.io/cri-api/pkg/apis/runtime/v1alpha2
@@ -2949,17 +2968,20 @@ sigs.k8s.io/structured-merge-diff/v4/value
 sigs.k8s.io/yaml
 # vbom.ml/util v0.0.0-20160121211510-db5cfe13f5cc
 vbom.ml/util/sortorder
-# github.com/Microsoft/hcsshim => github.com/Microsoft/hcsshim v0.8.9
+# github.com/Microsoft/hcsshim => github.com/Microsoft/hcsshim v0.8.20
 # github.com/benmoss/go-powershell => github.com/rancher/go-powershell v0.0.0-20200701184732-233247d45373
-# github.com/containerd/btrfs => github.com/containerd/btrfs v0.0.0-20201111183144-404b9149801e
-# github.com/containerd/cgroups => github.com/containerd/cgroups v0.0.0-20200710171044-318312a37340
-# github.com/containerd/console => github.com/containerd/console v1.0.0
-# github.com/containerd/containerd => github.com/k3s-io/containerd v1.4.4-k3s1
+# github.com/containerd/aufs => github.com/containerd/aufs v1.0.0
+# github.com/containerd/btrfs => github.com/containerd/btrfs v1.0.0
+# github.com/containerd/cgroups => github.com/containerd/cgroups v1.0.1
+# github.com/containerd/console => github.com/containerd/console v1.0.2
+# github.com/containerd/containerd => github.com/k3s-io/containerd v1.4.8-k3s1
 # github.com/containerd/continuity => github.com/k3s-io/continuity v0.0.0-20210309170710-f93269e0d5c1
-# github.com/containerd/cri => github.com/k3s-io/cri v1.4.0-k3s.5
-# github.com/containerd/fifo => github.com/containerd/fifo v0.0.0-20190816180239-bda0ff6ed73c
-# github.com/containerd/go-runc => github.com/containerd/go-runc v0.0.0-20200220073739-7016d3ce2328
-# github.com/containerd/typeurl => github.com/containerd/typeurl v0.0.0-20180627222232-a93fcdb778cd
+# github.com/containerd/cri => github.com/k3s-io/cri v1.4.0-k3s.7
+# github.com/containerd/fifo => github.com/containerd/fifo v1.0.0
+# github.com/containerd/go-runc => github.com/containerd/go-runc v1.0.0
+# github.com/containerd/ttrpc => github.com/containerd/ttrpc v1.0.2
+# github.com/containerd/typeurl => github.com/containerd/typeurl v1.0.2
+# github.com/containerd/zfs => github.com/containerd/zfs v1.0.0
 # github.com/coreos/flannel => github.com/rancher/flannel v0.12.0-k3s1
 # github.com/coreos/go-systemd => github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e
 # github.com/docker/distribution => github.com/docker/distribution v2.7.1-0.20190205005809-0d3efadf0154+incompatible
@@ -2973,9 +2995,9 @@ vbom.ml/util/sortorder
 # github.com/opencontainers/runtime-spec => github.com/opencontainers/runtime-spec v1.0.3-0.20200728170252-4d89ac9fbff6
 # github.com/rancher/k3s/pkg/data => ./pkg/data
 # go.etcd.io/etcd => github.com/k3s-io/etcd v0.5.0-alpha.5.0.20201208200253-50621aee4aea
-# golang.org/x/crypto => golang.org/x/crypto v0.0.0-20201002170205-7f63de1d35b0
-# golang.org/x/net => golang.org/x/net v0.0.0-20201110031124-69a78807bb2b
-# golang.org/x/sys => golang.org/x/sys v0.0.0-20201112073958-5cba982894dd
+# golang.org/x/crypto => golang.org/x/crypto v0.0.0-20210220033148-5ea612d1eb83
+# golang.org/x/net => golang.org/x/net v0.0.0-20210224082022-3d97a244fca7
+# golang.org/x/sys => golang.org/x/sys v0.0.0-20210225134936-a50acf3fe073
 # google.golang.org/genproto => google.golang.org/genproto v0.0.0-20200224152610-e50cd9704f63
 # google.golang.org/grpc => google.golang.org/grpc v1.27.1
 # gopkg.in/square/go-jose.v2 => gopkg.in/square/go-jose.v2 v2.2.2
