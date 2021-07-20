@@ -14,14 +14,13 @@ const (
 )
 
 type StartupHookArgs struct {
-	Wg              *sync.WaitGroup
 	APIServerReady  <-chan struct{}
 	KubeConfigAdmin string
 	Skips           map[string]bool
 	Disables        map[string]bool
 }
 
-type StartupHook func(context.Context, StartupHookArgs) error
+type StartupHook func(context.Context, *sync.WaitGroup, StartupHookArgs) error
 
 type Server struct {
 	ClusterCIDR          cli.StringSlice
