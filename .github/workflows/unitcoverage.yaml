@@ -4,7 +4,7 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-20.04
-    timeout-minutes: 40
+    timeout-minutes: 20
     steps:
     - name: "Checkout"
       uses: actions/checkout@v2
@@ -24,7 +24,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-18.04, ubuntu-20.04]
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
     - name: Install Go
       uses: actions/setup-go@v2 
