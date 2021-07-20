@@ -27,7 +27,7 @@ import (
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
-	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/term"
 )
 
 // GPGVersion enum representing the GPG client version to use.
@@ -170,7 +170,7 @@ func (gc *gpgv2Client) getKeyDetails(option string, keyid uint64) ([]byte, bool,
 	var args []string
 
 	if gc.gpgHomeDir != "" {
-		args = append([]string{"--homedir", gc.gpgHomeDir})
+		args = []string{"--homedir", gc.gpgHomeDir}
 	}
 	args = append(args, option, fmt.Sprintf("0x%x", keyid))
 
@@ -180,13 +180,13 @@ func (gc *gpgv2Client) getKeyDetails(option string, keyid uint64) ([]byte, bool,
 	return keydata, err == nil, err
 }
 
-// GetSecretKeyDetails retrives the secret key details of key with keyid.
+// GetSecretKeyDetails retrieves the secret key details of key with keyid.
 // returns a byte array of the details and a bool if the key exists
 func (gc *gpgv2Client) GetSecretKeyDetails(keyid uint64) ([]byte, bool, error) {
 	return gc.getKeyDetails("-K", keyid)
 }
 
-// GetKeyDetails retrives the public key details of key with keyid.
+// GetKeyDetails retrieves the public key details of key with keyid.
 // returns a byte array of the details and a bool if the key exists
 func (gc *gpgv2Client) GetKeyDetails(keyid uint64) ([]byte, bool, error) {
 	return gc.getKeyDetails("-k", keyid)
@@ -229,7 +229,7 @@ func (gc *gpgv1Client) getKeyDetails(option string, keyid uint64) ([]byte, bool,
 	var args []string
 
 	if gc.gpgHomeDir != "" {
-		args = append([]string{"--homedir", gc.gpgHomeDir})
+		args = []string{"--homedir", gc.gpgHomeDir}
 	}
 	args = append(args, option, fmt.Sprintf("0x%x", keyid))
 
@@ -240,13 +240,13 @@ func (gc *gpgv1Client) getKeyDetails(option string, keyid uint64) ([]byte, bool,
 	return keydata, err == nil, err
 }
 
-// GetSecretKeyDetails retrives the secret key details of key with keyid.
+// GetSecretKeyDetails retrieves the secret key details of key with keyid.
 // returns a byte array of the details and a bool if the key exists
 func (gc *gpgv1Client) GetSecretKeyDetails(keyid uint64) ([]byte, bool, error) {
 	return gc.getKeyDetails("-K", keyid)
 }
 
-// GetKeyDetails retrives the public key details of key with keyid.
+// GetKeyDetails retrieves the public key details of key with keyid.
 // returns a byte array of the details and a bool if the key exists
 func (gc *gpgv1Client) GetKeyDetails(keyid uint64) ([]byte, bool, error) {
 	return gc.getKeyDetails("-k", keyid)
@@ -387,7 +387,7 @@ func GPGGetPrivateKey(descs []ocispec.Descriptor, gpgClient GPGClient, gpgVault 
 						fmt.Printf("Passphrase required for Key id 0x%x: \n%v", keyid, string(keyinfo))
 						fmt.Printf("Enter passphrase for key with Id 0x%x: ", keyid)
 
-						password, err := terminal.ReadPassword(int(os.Stdin.Fd()))
+						password, err := term.ReadPassword(int(os.Stdin.Fd()))
 						fmt.Printf("\n")
 						if err != nil {
 							return nil, nil, err
