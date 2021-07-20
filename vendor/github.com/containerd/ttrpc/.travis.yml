@@ -3,6 +3,7 @@ language: go
 
 go:
   - "1.13.x"
+  - "1.15.x"
 
 install:
   # Don't change local go.{mod, sum} by go get tools.

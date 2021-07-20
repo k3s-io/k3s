@@ -88,7 +88,7 @@ specifications as appropriate.
 backport version of `libseccomp-dev` is required. See [travis.yml](.travis.yml) for an example on trusty.
 * **btrfs development library.** Required by containerd btrfs support. `btrfs-tools`(Ubuntu, Debian) / `btrfs-progs-devel`(Fedora, CentOS, RHEL)
 2. Install **`pkg-config`** (required for linking with `libseccomp`).
-3. Install and setup a Go 1.15.5 development environment.
+3. Install and setup a Go 1.15.14 development environment.
 4. Make a local clone of this repository.
 5. Install binary dependencies by running the following command from your cloned `cri/` project directory:
 ```bash
