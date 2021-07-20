@@ -441,7 +441,7 @@ func (p *Init) checkpoint(ctx context.Context, r *CheckpointConfig) error {
 	}, actions...); err != nil {
 		dumpLog := filepath.Join(p.Bundle, "criu-dump.log")
 		if cerr := copyFile(dumpLog, filepath.Join(work, "dump.log")); cerr != nil {
-			log.G(ctx).Error(err)
+			log.G(ctx).WithError(cerr).Error("failed to copy dump.log to criu-dump.log")
 		}
 		return fmt.Errorf("%s path= %s", criuError(err), dumpLog)
 	}

@@ -155,6 +155,7 @@ func (p dockerPusher) Push(ctx context.Context, desc ocispec.Descriptor) (conten
 				return nil, err
 			}
 		}
+		defer resp.Body.Close()
 
 		switch resp.StatusCode {
 		case http.StatusOK, http.StatusAccepted, http.StatusNoContent:
@@ -338,6 +339,7 @@ func (pw *pushWriter) Commit(ctx context.Context, size int64, expected digest.Di
 	if resp == nil {
 		return errors.New("no response")
 	}
+	defer resp.Body.Close()
 
 	// 201 is specified return status, some registries return
 	// 200, 202 or 204.

@@ -67,7 +67,7 @@ func CreateRSATestKey(bits int, password []byte, pemencode bool) ([]byte, []byte
 
 	typ := "RSA PRIVATE KEY"
 	if len(password) > 0 {
-		block, err = x509.EncryptPEMBlock(rand.Reader, typ, privData, password, x509.PEMCipherAES256)
+		block, err = x509.EncryptPEMBlock(rand.Reader, typ, privData, password, x509.PEMCipherAES256) //nolint:staticcheck // ignore SA1019, which is kept for backward compatibility
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "x509.EncryptPEMBlock failed")
 		}
