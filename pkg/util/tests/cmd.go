@@ -65,7 +65,6 @@ func K3sCmdAsync(cmdName string, cmdArgs ...string) (*exec.Cmd, *bufio.Scanner, 
 		cmd = exec.Command("sudo", k3sCmd...)
 	}
 	cmdOut, _ := cmd.StderrPipe()
-	cmd.Stderr = os.Stderr
 	err := cmd.Start()
 	return cmd, bufio.NewScanner(cmdOut), err
 }
