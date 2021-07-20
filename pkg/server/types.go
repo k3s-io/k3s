@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/rancher/k3s/pkg/cli/cmds"
 	"github.com/rancher/k3s/pkg/daemons/config"
 )
 
@@ -13,7 +14,7 @@ type Config struct {
 	ControlConfig     config.Control
 	Rootless          bool
 	SupervisorPort    int
-	StartupHooks      []func(context.Context, *sync.WaitGroup, <-chan struct{}, string) error
+	StartupHooks      []cmds.StartupHook
 	StartupHooksWg    *sync.WaitGroup
 	LeaderControllers CustomControllers
 	Controllers       CustomControllers
