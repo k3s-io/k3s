@@ -34,6 +34,11 @@ jobs:
       uses: actions/checkout@v2
       with:
         fetch-depth: 1
+    - name: "Download k3s binary"
+      uses: actions/download-artifact@v2
+      with:
+        name: k3s
+        path: ./dist/artifacts
     - name: Run Unit Tests
       run: | 
         go test -coverpkg=./... -covermode=atomic -coverprofile=coverage.out ./pkg/...
