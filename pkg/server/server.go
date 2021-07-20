@@ -13,11 +13,10 @@ import (
 	"sync"
 	"time"
 
-	corev1 "k8s.io/api/core/v1"
-
 	"github.com/k3s-io/helm-controller/pkg/helm"
 	"github.com/pkg/errors"
 	"github.com/rancher/k3s/pkg/apiaddresses"
+	"github.com/rancher/k3s/pkg/cli/cmds"
 	"github.com/rancher/k3s/pkg/clientaccess"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/daemons/control"
@@ -34,6 +33,7 @@ import (
 	"github.com/rancher/wrangler/pkg/leader"
 	"github.com/rancher/wrangler/pkg/resolvehome"
 	"github.com/sirupsen/logrus"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/net"
 )
@@ -72,8 +72,15 @@ func StartServer(ctx context.Context, config *Config) error {
 
 	config.StartupHooksWg = &sync.WaitGroup{}
 	config.StartupHooksWg.Add(len(config.StartupHooks))
+	shArgs := cmds.StartupHookArgs{
+		Wg:              config.StartupHooksWg,
+		APIServerReady:  config.ControlConfig.Runtime.APIServerReady,
+		KubeConfigAdmin: config.ControlConfig.Runtime.KubeConfigAdmin,
+		Skips:           config.ControlConfig.Skips,
+		Disables:        config.ControlConfig.Disables,
+	}
 	for _, hook := range config.StartupHooks {
-		if err := hook(ctx, config.StartupHooksWg, config.ControlConfig.Runtime.APIServerReady, config.ControlConfig.Runtime.KubeConfigAdmin); err != nil {
+		if err := hook(ctx, shArgs); err != nil {
 			return errors.Wrap(err, "startup hook")
 		}
 	}

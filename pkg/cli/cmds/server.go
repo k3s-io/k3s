@@ -13,6 +13,16 @@ const (
 	defaultSnapshotIntervalHours = 12
 )
 
+type StartupHookArgs struct {
+	Wg              *sync.WaitGroup
+	APIServerReady  <-chan struct{}
+	KubeConfigAdmin string
+	Skips           map[string]bool
+	Disables        map[string]bool
+}
+
+type StartupHook func(context.Context, StartupHookArgs) error
+
 type Server struct {
 	ClusterCIDR          cli.StringSlice
 	AgentToken           string
@@ -64,7 +74,7 @@ type Server struct {
 	ClusterResetRestorePath  string
 	EncryptSecrets           bool
 	SystemDefaultRegistry    string
-	StartupHooks             []func(context.Context, *sync.WaitGroup, <-chan struct{}, string) error
+	StartupHooks             []StartupHook
 	EtcdSnapshotName         string
 	EtcdDisableSnapshots     bool
 	EtcdExposeMetrics        bool
