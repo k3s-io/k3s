@@ -42,20 +42,24 @@ github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud/mock
 github.com/JeffAshton/win_pdh
 # github.com/MakeNowJust/heredoc v0.0.0-20170808103936-bb23615498cd
 github.com/MakeNowJust/heredoc
-# github.com/Microsoft/go-winio v0.4.15
+# github.com/Microsoft/go-winio v0.4.19
 github.com/Microsoft/go-winio
 github.com/Microsoft/go-winio/pkg/etw
 github.com/Microsoft/go-winio/pkg/etwlogrus
 github.com/Microsoft/go-winio/pkg/guid
+github.com/Microsoft/go-winio/pkg/security
 github.com/Microsoft/go-winio/vhd
-# github.com/Microsoft/hcsshim v0.8.10-0.20200715222032-5eafd1556990 => github.com/Microsoft/hcsshim v0.8.9
+# github.com/Microsoft/hcsshim v0.8.20 => github.com/Microsoft/hcsshim v0.8.20
 github.com/Microsoft/hcsshim
 github.com/Microsoft/hcsshim/cmd/containerd-shim-runhcs-v1/options
 github.com/Microsoft/hcsshim/cmd/containerd-shim-runhcs-v1/stats
+github.com/Microsoft/hcsshim/computestorage
 github.com/Microsoft/hcsshim/hcn
 github.com/Microsoft/hcsshim/internal/cni
 github.com/Microsoft/hcsshim/internal/cow
 github.com/Microsoft/hcsshim/internal/hcs
+github.com/Microsoft/hcsshim/internal/hcs/schema1
+github.com/Microsoft/hcsshim/internal/hcs/schema2
 github.com/Microsoft/hcsshim/internal/hcserror
 github.com/Microsoft/hcsshim/internal/hns
 github.com/Microsoft/hcsshim/internal/interop
@@ -67,11 +71,10 @@ github.com/Microsoft/hcsshim/internal/oc
 github.com/Microsoft/hcsshim/internal/regstate
 github.com/Microsoft/hcsshim/internal/runhcs
 github.com/Microsoft/hcsshim/internal/safefile
-github.com/Microsoft/hcsshim/internal/schema1
-github.com/Microsoft/hcsshim/internal/schema2
 github.com/Microsoft/hcsshim/internal/timeout
 github.com/Microsoft/hcsshim/internal/vmcompute
 github.com/Microsoft/hcsshim/internal/wclayer
+github.com/Microsoft/hcsshim/internal/winapi
 github.com/Microsoft/hcsshim/osversion
 # github.com/NYTimes/gziphandler v1.1.1
 github.com/NYTimes/gziphandler
@@ -165,15 +168,15 @@ github.com/cilium/ebpf/internal/unix
 github.com/cilium/ebpf/link
 # github.com/container-storage-interface/spec v1.3.0
 github.com/container-storage-interface/spec/lib/go/csi
-# github.com/containerd/cgroups v0.0.0-20200710171044-318312a37340 => github.com/containerd/cgroups v0.0.0-20200710171044-318312a37340
+# github.com/containerd/cgroups v1.0.1 => github.com/containerd/cgroups v1.0.1
 ## explicit
 github.com/containerd/cgroups
 github.com/containerd/cgroups/stats/v1
 github.com/containerd/cgroups/v2
 github.com/containerd/cgroups/v2/stats
-# github.com/containerd/console v1.0.2 => github.com/containerd/console v1.0.0
+# github.com/containerd/console v1.0.2 => github.com/containerd/console v1.0.2
 github.com/containerd/console
-# github.com/containerd/containerd v1.5.0-beta.4 => github.com/k3s-io/containerd v1.4.4-k3s2
+# github.com/containerd/containerd v1.5.1 => github.com/k3s-io/containerd v1.4.8-k3s1
 ## explicit
 github.com/containerd/containerd
 github.com/containerd/containerd/api/events
@@ -310,7 +313,7 @@ github.com/containerd/containerd/snapshots/storage
 github.com/containerd/containerd/sys
 github.com/containerd/containerd/sys/reaper
 github.com/containerd/containerd/version
-# github.com/containerd/continuity v0.0.0-20210208174643-50096c924a4e => github.com/k3s-io/continuity v0.0.0-20210309170710-f93269e0d5c1
+# github.com/containerd/continuity v0.1.0 => github.com/k3s-io/continuity v0.0.0-20210309170710-f93269e0d5c1
 github.com/containerd/continuity
 github.com/containerd/continuity/devices
 github.com/containerd/continuity/driver
@@ -318,7 +321,7 @@ github.com/containerd/continuity/fs
 github.com/containerd/continuity/pathdriver
 github.com/containerd/continuity/proto
 github.com/containerd/continuity/sysx
-# github.com/containerd/cri v1.11.1-0.20200820101445-b0cc07999aa5 => github.com/k3s-io/cri v1.4.0-k3s.6
+# github.com/containerd/cri v1.11.1-0.20200820101445-b0cc07999aa5 => github.com/k3s-io/cri v1.4.0-k3s.7
 ## explicit
 github.com/containerd/cri
 github.com/containerd/cri/pkg/annotations
@@ -348,22 +351,24 @@ github.com/containerd/cri/pkg/streaming
 github.com/containerd/cri/pkg/streaming/portforward
 github.com/containerd/cri/pkg/streaming/remotecommand
 github.com/containerd/cri/pkg/util
-# github.com/containerd/fifo v0.0.0-20200410184934-f15a3290365b => github.com/containerd/fifo v0.0.0-20200410184934-f15a3290365b
+# github.com/containerd/fifo v1.0.0 => github.com/containerd/fifo v1.0.0
 github.com/containerd/fifo
 # github.com/containerd/fuse-overlayfs-snapshotter v1.0.2
 ## explicit
 github.com/containerd/fuse-overlayfs-snapshotter
 github.com/containerd/fuse-overlayfs-snapshotter/plugin
-# github.com/containerd/go-cni v1.0.1
+# github.com/containerd/go-cni v1.0.2
+## explicit
 github.com/containerd/go-cni
-# github.com/containerd/go-runc v0.0.0-20200220073739-7016d3ce2328 => github.com/containerd/go-runc v0.0.0-20200220073739-7016d3ce2328
+# github.com/containerd/go-runc v1.0.0 => github.com/containerd/go-runc v1.0.0
 github.com/containerd/go-runc
-# github.com/containerd/imgcrypt v1.0.1
+# github.com/containerd/imgcrypt v1.1.1
+## explicit
 github.com/containerd/imgcrypt
 github.com/containerd/imgcrypt/images/encryption
-# github.com/containerd/ttrpc v1.0.2 => github.com/containerd/ttrpc v1.0.1
+# github.com/containerd/ttrpc v1.0.2 => github.com/containerd/ttrpc v1.0.2
 github.com/containerd/ttrpc
-# github.com/containerd/typeurl v1.0.1 => github.com/containerd/typeurl v1.0.1
+# github.com/containerd/typeurl v1.0.2 => github.com/containerd/typeurl v1.0.2
 github.com/containerd/typeurl
 # github.com/containernetworking/cni v0.8.0
 github.com/containernetworking/cni/libcni
@@ -376,16 +381,21 @@ github.com/containernetworking/cni/pkg/version
 # github.com/containernetworking/plugins v0.8.6
 github.com/containernetworking/plugins/pkg/ns
 github.com/containernetworking/plugins/pkg/utils/sysctl
-# github.com/containers/ocicrypt v1.0.1
+# github.com/containers/ocicrypt v1.1.1
 github.com/containers/ocicrypt
 github.com/containers/ocicrypt/blockcipher
 github.com/containers/ocicrypt/config
+github.com/containers/ocicrypt/config/keyprovider-config
+github.com/containers/ocicrypt/crypto/pkcs11
 github.com/containers/ocicrypt/keywrap
 github.com/containers/ocicrypt/keywrap/jwe
+github.com/containers/ocicrypt/keywrap/keyprovider
 github.com/containers/ocicrypt/keywrap/pgp
+github.com/containers/ocicrypt/keywrap/pkcs11
 github.com/containers/ocicrypt/keywrap/pkcs7
 github.com/containers/ocicrypt/spec
 github.com/containers/ocicrypt/utils
+github.com/containers/ocicrypt/utils/keyprovider
 # github.com/coreos/go-iptables v0.4.5
 ## explicit
 github.com/coreos/go-iptables/iptables
@@ -496,8 +506,6 @@ github.com/flannel-io/flannel/subnet/kube
 github.com/form3tech-oss/jwt-go
 # github.com/fsnotify/fsnotify v1.4.9
 github.com/fsnotify/fsnotify
-# github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa
-github.com/fullsailor/pkcs7
 # github.com/fvbommel/sortorder v1.0.1
 github.com/fvbommel/sortorder
 # github.com/ghodss/yaml v1.0.0
@@ -525,7 +533,7 @@ github.com/go-sql-driver/mysql
 github.com/godbus/dbus/v5
 # github.com/gofrs/flock v0.8.0
 github.com/gofrs/flock
-# github.com/gogo/googleapis v1.3.2
+# github.com/gogo/googleapis v1.4.0
 github.com/gogo/googleapis/google/rpc
 # github.com/gogo/protobuf v1.3.2
 github.com/gogo/protobuf/gogoproto
@@ -682,7 +690,7 @@ github.com/hashicorp/go-multierror
 # github.com/hashicorp/golang-lru v0.5.3
 github.com/hashicorp/golang-lru
 github.com/hashicorp/golang-lru/simplelru
-# github.com/imdario/mergo v0.3.8
+# github.com/imdario/mergo v0.3.11
 github.com/imdario/mergo
 # github.com/inconshreveable/mousetrap v1.0.0
 github.com/inconshreveable/mousetrap
@@ -756,6 +764,8 @@ github.com/mattn/go-sqlite3
 github.com/matttproud/golang_protobuf_extensions/pbutil
 # github.com/miekg/dns v1.1.35
 github.com/miekg/dns
+# github.com/miekg/pkcs11 v1.0.3
+github.com/miekg/pkcs11
 # github.com/mindprince/gonvml v0.0.0-20190828220739-9ebdce4bb989
 github.com/mindprince/gonvml
 # github.com/minio/md5-simd v1.1.0
@@ -1001,6 +1011,8 @@ github.com/spf13/cobra
 # github.com/spf13/pflag v1.0.5
 ## explicit
 github.com/spf13/pflag
+# github.com/stefanberger/go-pkcs11uri v0.0.0-20201008174630-78d3cae3a980
+github.com/stefanberger/go-pkcs11uri
 # github.com/stretchr/objx v0.2.0
 github.com/stretchr/objx
 # github.com/stretchr/testify v1.7.0
@@ -1139,6 +1151,8 @@ go.etcd.io/etcd/raft/tracker
 go.etcd.io/etcd/version
 go.etcd.io/etcd/wal
 go.etcd.io/etcd/wal/walpb
+# go.mozilla.org/pkcs7 v0.0.0-20200128120323-432b2356ecb1
+go.mozilla.org/pkcs7
 # go.opencensus.io v0.22.3
 go.opencensus.io
 go.opencensus.io/internal
@@ -1174,7 +1188,7 @@ go.uber.org/zap/internal/bufferpool
 go.uber.org/zap/internal/color
 go.uber.org/zap/internal/exit
 go.uber.org/zap/zapcore
-# golang.org/x/crypto v0.0.0-20210220033148-5ea612d1eb83 => golang.org/x/crypto v0.0.0-20210220033148-5ea612d1eb83
+# golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2 => golang.org/x/crypto v0.0.0-20210220033148-5ea612d1eb83
 ## explicit
 golang.org/x/crypto/argon2
 golang.org/x/crypto/bcrypt
@@ -1203,7 +1217,6 @@ golang.org/x/crypto/salsa20/salsa
 golang.org/x/crypto/scrypt
 golang.org/x/crypto/ssh
 golang.org/x/crypto/ssh/internal/bcrypt_pbkdf
-golang.org/x/crypto/ssh/terminal
 # golang.org/x/mod v0.3.1-0.20200828183125-ce943fd02449
 golang.org/x/mod/module
 golang.org/x/mod/semver
@@ -1432,7 +1445,7 @@ gopkg.in/inf.v0
 gopkg.in/ini.v1
 # gopkg.in/natefinch/lumberjack.v2 v2.0.0
 gopkg.in/natefinch/lumberjack.v2
-# gopkg.in/square/go-jose.v2 v2.3.1 => gopkg.in/square/go-jose.v2 v2.2.2
+# gopkg.in/square/go-jose.v2 v2.5.1 => gopkg.in/square/go-jose.v2 v2.2.2
 gopkg.in/square/go-jose.v2
 gopkg.in/square/go-jose.v2/cipher
 gopkg.in/square/go-jose.v2/json
@@ -3177,18 +3190,20 @@ sigs.k8s.io/structured-merge-diff/v4/value
 # sigs.k8s.io/yaml v1.2.0
 ## explicit
 sigs.k8s.io/yaml
-# github.com/Microsoft/hcsshim => github.com/Microsoft/hcsshim v0.8.9
+# github.com/Microsoft/hcsshim => github.com/Microsoft/hcsshim v0.8.20
 # github.com/benmoss/go-powershell => github.com/k3s-io/go-powershell v0.0.0-20201118222746-51f4c451fbd7
-# github.com/containerd/btrfs => github.com/containerd/btrfs v0.0.0-20201111183144-404b9149801e
-# github.com/containerd/cgroups => github.com/containerd/cgroups v0.0.0-20200710171044-318312a37340
-# github.com/containerd/console => github.com/containerd/console v1.0.0
-# github.com/containerd/containerd => github.com/k3s-io/containerd v1.4.4-k3s2
+# github.com/containerd/aufs => github.com/containerd/aufs v1.0.0
+# github.com/containerd/btrfs => github.com/containerd/btrfs v1.0.0
+# github.com/containerd/cgroups => github.com/containerd/cgroups v1.0.1
+# github.com/containerd/console => github.com/containerd/console v1.0.2
+# github.com/containerd/containerd => github.com/k3s-io/containerd v1.4.8-k3s1
 # github.com/containerd/continuity => github.com/k3s-io/continuity v0.0.0-20210309170710-f93269e0d5c1
-# github.com/containerd/cri => github.com/k3s-io/cri v1.4.0-k3s.6
-# github.com/containerd/fifo => github.com/containerd/fifo v0.0.0-20200410184934-f15a3290365b
-# github.com/containerd/go-runc => github.com/containerd/go-runc v0.0.0-20200220073739-7016d3ce2328
-# github.com/containerd/ttrpc => github.com/containerd/ttrpc v1.0.1
-# github.com/containerd/typeurl => github.com/containerd/typeurl v1.0.1
+# github.com/containerd/cri => github.com/k3s-io/cri v1.4.0-k3s.7
+# github.com/containerd/fifo => github.com/containerd/fifo v1.0.0
+# github.com/containerd/go-runc => github.com/containerd/go-runc v1.0.0
+# github.com/containerd/ttrpc => github.com/containerd/ttrpc v1.0.2
+# github.com/containerd/typeurl => github.com/containerd/typeurl v1.0.2
+# github.com/containerd/zfs => github.com/containerd/zfs v1.0.0
 # github.com/coreos/go-systemd => github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e
 # github.com/docker/distribution => github.com/docker/distribution v2.7.1+incompatible
 # github.com/docker/docker => github.com/docker/docker v20.10.2+incompatible
