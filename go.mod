@@ -3,18 +3,20 @@ module github.com/rancher/k3s
 go 1.16
 
 replace (
-	github.com/Microsoft/hcsshim => github.com/Microsoft/hcsshim v0.8.10
+	github.com/Microsoft/hcsshim => github.com/Microsoft/hcsshim v0.8.20
 	github.com/benmoss/go-powershell => github.com/k3s-io/go-powershell v0.0.0-20201118222746-51f4c451fbd7
-	github.com/containerd/btrfs => github.com/containerd/btrfs v0.0.0-20201111183144-404b9149801e
-	github.com/containerd/cgroups => github.com/containerd/cgroups v0.0.0-20200710171044-318312a37340
-	github.com/containerd/console => github.com/containerd/console v1.0.0
-	github.com/containerd/containerd => github.com/k3s-io/containerd v1.4.4-k3s2 // k3s-release/1.4
+	github.com/containerd/aufs => github.com/containerd/aufs v1.0.0
+	github.com/containerd/btrfs => github.com/containerd/btrfs v1.0.0
+	github.com/containerd/cgroups => github.com/containerd/cgroups v1.0.1
+	github.com/containerd/console => github.com/containerd/console v1.0.2
+	github.com/containerd/containerd => github.com/k3s-io/containerd v1.4.8-k3s1 // k3s-release/1.4
 	github.com/containerd/continuity => github.com/k3s-io/continuity v0.0.0-20210309170710-f93269e0d5c1
-	github.com/containerd/cri => github.com/k3s-io/cri v1.4.0-k3s.6 // k3s-release/1.4
-	github.com/containerd/fifo => github.com/containerd/fifo v0.0.0-20200410184934-f15a3290365b
-	github.com/containerd/go-runc => github.com/containerd/go-runc v0.0.0-20200220073739-7016d3ce2328
-	github.com/containerd/ttrpc => github.com/containerd/ttrpc v1.0.1
-	github.com/containerd/typeurl => github.com/containerd/typeurl v1.0.1
+	github.com/containerd/cri => github.com/k3s-io/cri v1.4.0-k3s.7 // k3s-release/1.4
+	github.com/containerd/fifo => github.com/containerd/fifo v1.0.0
+	github.com/containerd/go-runc => github.com/containerd/go-runc v1.0.0
+	github.com/containerd/ttrpc => github.com/containerd/ttrpc v1.0.2
+	github.com/containerd/typeurl => github.com/containerd/typeurl v1.0.2
+	github.com/containerd/zfs => github.com/containerd/zfs v1.0.0
 	github.com/coreos/go-systemd => github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e
 	github.com/docker/distribution => github.com/docker/distribution v2.7.1+incompatible
 	github.com/docker/docker => github.com/docker/docker v20.10.2+incompatible
@@ -66,12 +68,14 @@ replace (
 )
 
 require (
-	github.com/Microsoft/hcsshim v0.8.10-0.20200715222032-5eafd1556990
+	github.com/Microsoft/hcsshim v0.8.20
 	github.com/bronze1man/goStrongswanVici v0.0.0-20190828090544-27d02f80ba40 // indirect
-	github.com/containerd/cgroups v0.0.0-20200710171044-318312a37340
-	github.com/containerd/containerd v1.5.0-beta.4
+	github.com/containerd/cgroups v1.0.1
+	github.com/containerd/containerd v1.5.1
 	github.com/containerd/cri v1.11.1-0.20200820101445-b0cc07999aa5
 	github.com/containerd/fuse-overlayfs-snapshotter v1.0.2
+	github.com/containerd/go-cni v1.0.2 // indirect
+	github.com/containerd/imgcrypt v1.1.1 // indirect
 	github.com/coreos/go-iptables v0.4.5
 	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f
 	github.com/docker/docker v20.10.5+incompatible
@@ -111,7 +115,7 @@ require (
 	github.com/tchap/go-patricia v2.3.0+incompatible // indirect
 	github.com/urfave/cli v1.22.2
 	go.etcd.io/etcd v0.5.0-alpha.5.0.20201208200253-50621aee4aea
-	golang.org/x/crypto v0.0.0-20210220033148-5ea612d1eb83
+	golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2
 	golang.org/x/net v0.0.0-20210226172049-e18ecbb05110
 	golang.org/x/sys v0.0.0-20210426230700-d19ff857e887
 	google.golang.org/grpc v1.37.0
