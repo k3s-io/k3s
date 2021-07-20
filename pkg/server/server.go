@@ -62,27 +62,26 @@ func StartServer(ctx context.Context, config *Config) error {
 		return errors.Wrap(err, "starting kubernetes")
 	}
 
+	wg := &sync.WaitGroup{}
+	wg.Add(len(config.StartupHooks))
+
 	config.ControlConfig.Runtime.Handler = router(ctx, config)
-
-	if config.ControlConfig.DisableAPIServer {
-		go setETCDLabelsAndAnnotations(ctx, config)
-	} else {
-		go startOnAPIServerReady(ctx, config)
-	}
-
-	config.StartupHooksWg = &sync.WaitGroup{}
-	config.StartupHooksWg.Add(len(config.StartupHooks))
 	shArgs := cmds.StartupHookArgs{
-		Wg:              config.StartupHooksWg,
 		APIServerReady:  config.ControlConfig.Runtime.APIServerReady,
 		KubeConfigAdmin: config.ControlConfig.Runtime.KubeConfigAdmin,
 		Skips:           config.ControlConfig.Skips,
 		Disables:        config.ControlConfig.Disables,
 	}
 	for _, hook := range config.StartupHooks {
-		if err := hook(ctx, shArgs); err != nil {
+		if err := hook(ctx, wg, shArgs); err != nil {
 			return errors.Wrap(err, "startup hook")
 		}
+	}
+
+	if config.ControlConfig.DisableAPIServer {
+		go setETCDLabelsAndAnnotations(ctx, config)
+	} else {
+		go startOnAPIServerReady(ctx, wg, config)
 	}
 
 	ip := net2.ParseIP(config.ControlConfig.BindAddress)
@@ -102,18 +101,18 @@ func StartServer(ctx context.Context, config *Config) error {
 	return writeKubeConfig(config.ControlConfig.Runtime.ServerCA, config)
 }
 
-func startOnAPIServerReady(ctx context.Context, config *Config) {
+func startOnAPIServerReady(ctx context.Context, wg *sync.WaitGroup, config *Config) {
 	select {
 	case <-ctx.Done():
 		return
 	case <-config.ControlConfig.Runtime.APIServerReady:
-		if err := runControllers(ctx, config); err != nil {
+		if err := runControllers(ctx, wg, config); err != nil {
 			logrus.Fatalf("failed to start controllers: %v", err)
 		}
 	}
 }
 
-func runControllers(ctx context.Context, config *Config) error {
+func runControllers(ctx context.Context, wg *sync.WaitGroup, config *Config) error {
 	controlConfig := &config.ControlConfig
 
 	sc, err := NewContext(ctx, controlConfig.Runtime.KubeConfigAdmin)
@@ -121,7 +120,7 @@ func runControllers(ctx context.Context, config *Config) error {
 		return err
 	}
 
-	config.StartupHooksWg.Wait()
+	wg.Wait()
 	if err := stageFiles(ctx, sc, controlConfig); err != nil {
 		return err
 	}
