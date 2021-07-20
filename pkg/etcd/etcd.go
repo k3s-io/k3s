@@ -603,6 +603,10 @@ func (e *ETCD) manageLearners(ctx context.Context) error {
 		defer cancel()
 
 		// Check to see if the local node is the leader. Only the leader should do learner management.
+		if e.client == nil {
+			logrus.Error("Etcd client was nil")
+			continue
+		}
 		if status, err := e.client.Status(ctx, endpoint); err != nil {
 			logrus.Errorf("Failed to check local etcd status for learner management: %v", err)
 			continue
