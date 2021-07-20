@@ -1,7 +1,6 @@
 package etcd_test
 
 import (
-	"bufio"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -14,20 +13,15 @@ import (
 )
 
 var serverCmd *exec.Cmd
-var serverScan *bufio.Scanner
 var _ = BeforeSuite(func() {
 	var err error
-	// if !tests.IsRoot() {
-	// 	Fail("User is not root")
-	// }
-	serverCmd, serverScan, err = tests.K3sCmdAsync("server", "--cluster-init")
+	serverCmd, _, err = tests.K3sCmdAsync("server", "--cluster-init")
 	Expect(err).ToNot(HaveOccurred())
 })
 
 var _ = Describe("etcd snapshots", func() {
 	When("a new etcd is created", func() {
 		It("starts up with no problems", func() {
-			// tests.FindStringInCmdAsync(serverScan, "etcd data store connection OK")
 			Eventually(func() (string, error) {
 				return tests.K3sCmd("kubectl", "get", "pods", "-A")
 			}, "90s", "1s").Should(MatchRegexp("kube-system.+coredns.+1\\/1.+Running"))
@@ -117,9 +111,7 @@ var _ = Describe("etcd snapshots", func() {
 })
 
 var _ = AfterSuite(func() {
-	if serverCmd != nil {
-		Expect(serverCmd.Process.Kill()).To(Succeed())
-	}
+	Expect(tests.K3sKillAsync(serverCmd)).To(Succeed())
 })
 
 func TestIntegration_Etcd(t *testing.T) {

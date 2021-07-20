@@ -6,8 +6,6 @@ import (
 	"os/exec"
 	"os/user"
 	"strings"
-
-	"github.com/sirupsen/logrus"
 )
 
 func findK3sExecutable() string {
@@ -48,7 +46,6 @@ func K3sCmd(cmdName string, cmdArgs ...string) (string, error) {
 
 func FindStringInCmdAsync(scanner *bufio.Scanner, target string) bool {
 	for scanner.Scan() {
-		logrus.Info(scanner.Text())
 		if strings.Contains(scanner.Text(), target) {
 			return true
 		}
@@ -59,7 +56,6 @@ func FindStringInCmdAsync(scanner *bufio.Scanner, target string) bool {
 //Launch a k3s command asynchronously
 func K3sCmdAsync(cmdName string, cmdArgs ...string) (*exec.Cmd, *bufio.Scanner, error) {
 	k3sBin := findK3sExecutable()
-	// Only run sudo if not root
 	var cmd *exec.Cmd
 	if IsRoot() {
 		k3sCmd := append([]string{cmdName}, cmdArgs...)
@@ -68,10 +64,17 @@ func K3sCmdAsync(cmdName string, cmdArgs ...string) (*exec.Cmd, *bufio.Scanner, 
 		k3sCmd := append([]string{k3sBin, cmdName}, cmdArgs...)
 		cmd = exec.Command("sudo", k3sCmd...)
 	}
-	// cmdOut, _ := cmd.StderrPipe()
+	cmdOut, _ := cmd.StderrPipe()
 	cmd.Stderr = os.Stderr
-	cmd.Stdout = os.Stdout
 	err := cmd.Start()
-	// return cmd, bufio.NewScanner(cmdOut), err
-	return cmd, nil, err
+	return cmd, bufio.NewScanner(cmdOut), err
+}
+
+func K3sKillAsync(cmd *exec.Cmd) error {
+	if IsRoot() {
+		return cmd.Process.Kill()
+	}
+	// Since k3s was launched as sudo, we can't just kill the process
+	killCmd := exec.Command("sudo", "pkill", "k3s")
+	return killCmd.Run()
 }
