@@ -216,7 +216,7 @@ func doMigrateToken(ctx context.Context, storageClient client.Client, keyValue c
 	// saving the new encrypted data with the right token key
 	if err := storageClient.Create(ctx, newTokenKey, encryptedData); err != nil {
 		if err.Error() == "key exists" {
-			logrus.Warnln("bootstrap key exists")
+			logrus.Warn("bootstrap key exists")
 		} else if strings.Contains(err.Error(), "not supported for learner") {
 			logrus.Debug("skipping bootstrap data save on learner")
 			return nil
