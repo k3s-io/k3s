@@ -226,5 +226,8 @@ func doMigrateToken(ctx context.Context, storageClient client.Client, keyValue c
 	}
 	logrus.Infof("created bootstrap key %s", newTokenKey)
 	// deleting the old key
-	return storageClient.Delete(ctx, oldTokenKey, keyValue.Modified)
+	if err := storageClient.Delete(ctx, oldTokenKey, keyValue.Modified); err != nil {
+		logrus.Warnf("failed to delete old bootstrap key %s", oldTokenKey)
+	}
+	return nil
 }
