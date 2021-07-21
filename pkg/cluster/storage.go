@@ -143,8 +143,7 @@ func (c *Cluster) getBootstrapKeyFromStorage(ctx context.Context, storageClient 
 	}
 	for _, bootstrapKV := range bootstrapList {
 		// checking for empty string bootstrap key
-		switch string(bootstrapKV.Key) {
-		case tokenKey:
+		if string(bootstrapKV.Key) == tokenKey {
 			return &bootstrapKV, nil
 		}
 	}
@@ -189,7 +188,7 @@ func (c *Cluster) migrateEmptyStringToken(ctx context.Context, bootstrapList []c
 		// checking for empty string bootstrap key
 		if string(bootstrapKV.Key) == emptyStringKey {
 			logrus.Warn("bootstrap data encrypted with empty string, deleting and resaving with token")
-			// making sure that the process is autonmous by decrypting and rencrypting the data first
+			// make sure that the process is non-destructive by decrypting/re-encrypting/storing the data before deleting the old key
 			data, err := decrypt("", bootstrapKV.Data)
 			if err != nil {
 				return err
@@ -210,10 +209,7 @@ func (c *Cluster) migrateEmptyStringToken(ctx context.Context, bootstrapList []c
 				return err
 			}
 			// deleting the empty string key
-			if err := storageClient.Delete(ctx, emptyStringKey, bootstrapKV.Modified); err != nil {
-				return err
-			}
-			return nil
+			return storageClient.Delete(ctx, emptyStringKey, bootstrapKV.Modified)
 		}
 	}
 
