@@ -3,28 +3,37 @@ package hash
 import (
 	"strings"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
-var hasher = NewSCrypt()
-
-func TestBasicHash(t *testing.T) {
-	secretKey := "hello world"
-	hash, err := hasher.CreateHash(secretKey)
-	assert.Nil(t, err)
-	assert.NotNil(t, hash)
-
-	assert.Nil(t, hasher.VerifyHash(hash, secretKey))
-	assert.NotNil(t, hasher.VerifyHash(hash, "goodbye"))
-}
-
-func TestLongKey(t *testing.T) {
-	secretKey := strings.Repeat("A", 720)
-	hash, err := hasher.CreateHash(secretKey)
-	assert.Nil(t, err)
-	assert.NotNil(t, hash)
-
-	assert.Nil(t, hasher.VerifyHash(hash, secretKey))
-	assert.NotNil(t, hasher.VerifyHash(hash, secretKey+":wrong!"))
+func TestSCrypt_VerifyHash(t *testing.T) {
+	type args struct {
+		secretKey string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "Basic Hash Test",
+			args: args{
+				secretKey: "hello world",
+			},
+		},
+		{
+			name: "Long Hash Test",
+			args: args{
+				secretKey: strings.Repeat("A", 720),
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			hasher := NewSCrypt()
+			hash, _ := hasher.CreateHash(tt.args.secretKey)
+			if err := hasher.VerifyHash(hash, tt.args.secretKey); (err != nil) != tt.wantErr {
+				t.Errorf("SCrypt.VerifyHash() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
 }

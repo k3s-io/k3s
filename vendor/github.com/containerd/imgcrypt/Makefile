@@ -37,6 +37,7 @@ bin/ctr-enc: cmd/ctr FORCE
 check:
 	@echo "$@"
 	@golangci-lint run
+	@script/check_format.sh
 
 install:
 	@echo "$@"
