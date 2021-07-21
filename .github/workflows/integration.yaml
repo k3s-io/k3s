@@ -40,7 +40,6 @@ jobs:
       run: | 
         chmod +x ./dist/artifacts/k3s
         go test ./pkg/... -run TestIntegration_
-        go tool cover -func coverage.out
     - name: On Failure, Launch Debug Session
       if: ${{ failure() }}
       uses: mxschmitt/action-tmate@v3
