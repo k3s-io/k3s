@@ -142,7 +142,7 @@ func (c *Cluster) getBootstrapKeyFromStorage(ctx context.Context, storageClient 
 		return nil, err
 	}
 	for _, bootstrapKV := range bootstrapList {
-		// checking for empty string bootstrap key
+		// ensure bootstrap is stored in the current token's key
 		if string(bootstrapKV.Key) == tokenKey {
 			return &bootstrapKV, nil
 		}
