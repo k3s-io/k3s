@@ -54,7 +54,7 @@ func (c *Cluster) save(ctx context.Context) error {
 
 	if err := storageClient.Create(ctx, storageKey(normalizedToken), data); err != nil {
 		if err.Error() == "key exists" {
-			logrus.Warnln("bootstrap key exists; please follow documentation on updating a node after snapshot restore")
+			logrus.Warnln("bootstrap key already exists")
 			return nil
 		} else if strings.Contains(err.Error(), "not supported for learner") {
 			logrus.Debug("skipping bootstrap data save on learner")
