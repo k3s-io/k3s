@@ -47,7 +47,7 @@ func (c *Cluster) save(ctx context.Context) error {
 		return err
 	}
 
-	_, _, err = c.getBootstrapKeyFromStorage(ctx, storageClient, normalizedToken)
+	_, err = c.getBootstrapKeyFromStorage(ctx, storageClient, normalizedToken)
 	if err != nil {
 		return err
 	}
@@ -97,16 +97,14 @@ func (c *Cluster) storageBootstrap(ctx context.Context) error {
 		return err
 	}
 
-	value, emptyKey, err := c.getBootstrapKeyFromStorage(ctx, storageClient, normalizedToken)
+	value, err := c.getBootstrapKeyFromStorage(ctx, storageClient, normalizedToken)
 	if err != nil {
 		return err
 	}
 	if value == nil {
 		return nil
 	}
-	if emptyKey {
-		normalizedToken = ""
-	}
+
 	data, err := decrypt(normalizedToken, value.Data)
 	if err != nil {
 		return err
@@ -119,37 +117,39 @@ func (c *Cluster) storageBootstrap(ctx context.Context) error {
 // hashed with empty string and will check for any key that is hashed by different token than the one
 // passed to it, it will return error if it finds a key that is hashed with different token and will return
 // value if it finds the key hashed by passed token or empty string
-func (c *Cluster) getBootstrapKeyFromStorage(ctx context.Context, storageClient client.Client, token string) (*client.Value, bool, error) {
+func (c *Cluster) getBootstrapKeyFromStorage(ctx context.Context, storageClient client.Client, normalizedToken string) (*client.Value, error) {
 	emptyStringKey := storageKey("")
-	tokenKey := storageKey(token)
-
+	tokenKey := storageKey(normalizedToken)
 	bootstrapList, err := storageClient.List(ctx, "/bootstrap", 0)
 	if err != nil {
-		return nil, false, err
+		return nil, err
 	}
 	if len(bootstrapList) == 0 {
 		c.saveBootstrap = true
-		return nil, false, nil
+		return nil, nil
 	}
 	if len(bootstrapList) > 1 {
 		logrus.Warn("found multiple bootstrap keys in storage")
 	}
+	// check for empty string key
+	if err := c.migrateEmptyStringToken(ctx, bootstrapList, storageClient, emptyStringKey, tokenKey, normalizedToken); err != nil {
+		return nil, err
+	}
+
+	// getting the list of bootstrap again after migrating the empty key
+	bootstrapList, err = storageClient.List(ctx, "/bootstrap", 0)
+	if err != nil {
+		return nil, err
+	}
 	for _, bootstrapKV := range bootstrapList {
 		// checking for empty string bootstrap key
 		switch string(bootstrapKV.Key) {
-		case emptyStringKey:
-			logrus.Warn("bootstrap data encrypted with empty string, deleting and resaving with token")
-			c.saveBootstrap = true
-			if err := storageClient.Delete(ctx, emptyStringKey, bootstrapKV.Modified); err != nil {
-				return nil, false, err
-			}
-			return &bootstrapKV, true, nil
 		case tokenKey:
-			return &bootstrapKV, false, nil
+			return &bootstrapKV, nil
 		}
 	}
 
-	return nil, false, errors.New("bootstrap data already found and encrypted with different token")
+	return nil, errors.New("bootstrap data already found and encrypted with different token")
 }
 
 // readTokenFromFile will attempt to get the token from <data-dir>/token if it the file not found
@@ -180,4 +180,42 @@ func normalizeToken(token string) (string, error) {
 		return password, errors.New("failed to normalize token")
 	}
 	return password, nil
+}
+
+// migrateEmptyStringToken will list all keys that has prefix /bootstrap and will check for key that is
+// hashed with empty string and then migrate this empty string key and resave it with the right token
+func (c *Cluster) migrateEmptyStringToken(ctx context.Context, bootstrapList []client.Value, storageClient client.Client, emptyStringKey, tokenKey, token string) error {
+	for _, bootstrapKV := range bootstrapList {
+		// checking for empty string bootstrap key
+		if string(bootstrapKV.Key) == emptyStringKey {
+			logrus.Warn("bootstrap data encrypted with empty string, deleting and resaving with token")
+			// making sure that the process is autonmous by decrypting and rencrypting the data first
+			data, err := decrypt("", bootstrapKV.Data)
+			if err != nil {
+				return err
+			}
+			encryptedData, err := encrypt(token, data)
+			if err != nil {
+				return err
+			}
+			// saving the new encrypted data with the right token key
+			if err := storageClient.Create(ctx, tokenKey, encryptedData); err != nil {
+				if err.Error() == "key exists" {
+					logrus.Warnln("bootstrap key exists; please follow documentation on updating a node after snapshot restore")
+					return nil
+				} else if strings.Contains(err.Error(), "not supported for learner") {
+					logrus.Debug("skipping bootstrap data save on learner")
+					return nil
+				}
+				return err
+			}
+			// deleting the empty string key
+			if err := storageClient.Delete(ctx, emptyStringKey, bootstrapKV.Modified); err != nil {
+				return err
+			}
+			return nil
+		}
+	}
+
+	return nil
 }
