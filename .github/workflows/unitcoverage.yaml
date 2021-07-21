@@ -19,7 +19,7 @@ jobs:
         fetch-depth: 1
     - name: Run Unit Tests
       run: | 
-        go test -coverpkg=./... -covermode=atomic -coverprofile=coverage.out ./pkg/... -run Test_
+        go test -coverpkg=./... -coverprofile=coverage.out ./pkg/... -run Test_
         go tool cover -func coverage.out
     - name: On Failure, Launch Debug Session
       if: ${{ failure() }}
