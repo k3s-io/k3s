@@ -10,13 +10,13 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
-
-	corev1 "k8s.io/api/core/v1"
 
 	"github.com/k3s-io/helm-controller/pkg/helm"
 	"github.com/pkg/errors"
 	"github.com/rancher/k3s/pkg/apiaddresses"
+	"github.com/rancher/k3s/pkg/cli/cmds"
 	"github.com/rancher/k3s/pkg/clientaccess"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/daemons/control"
@@ -33,6 +33,7 @@ import (
 	"github.com/rancher/wrangler/pkg/leader"
 	"github.com/rancher/wrangler/pkg/resolvehome"
 	"github.com/sirupsen/logrus"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/net"
 )
@@ -61,18 +62,26 @@ func StartServer(ctx context.Context, config *Config) error {
 		return errors.Wrap(err, "starting kubernetes")
 	}
 
+	wg := &sync.WaitGroup{}
+	wg.Add(len(config.StartupHooks))
+
 	config.ControlConfig.Runtime.Handler = router(ctx, config)
+	shArgs := cmds.StartupHookArgs{
+		APIServerReady:  config.ControlConfig.Runtime.APIServerReady,
+		KubeConfigAdmin: config.ControlConfig.Runtime.KubeConfigAdmin,
+		Skips:           config.ControlConfig.Skips,
+		Disables:        config.ControlConfig.Disables,
+	}
+	for _, hook := range config.StartupHooks {
+		if err := hook(ctx, wg, shArgs); err != nil {
+			return errors.Wrap(err, "startup hook")
+		}
+	}
 
 	if config.ControlConfig.DisableAPIServer {
 		go setETCDLabelsAndAnnotations(ctx, config)
 	} else {
-		go startOnAPIServerReady(ctx, config)
-	}
-
-	for _, hook := range config.StartupHooks {
-		if err := hook(ctx, config.ControlConfig.Runtime.APIServerReady, config.ControlConfig.Runtime.KubeConfigAdmin); err != nil {
-			return errors.Wrap(err, "startup hook")
-		}
+		go startOnAPIServerReady(ctx, wg, config)
 	}
 
 	ip := net2.ParseIP(config.ControlConfig.BindAddress)
@@ -92,18 +101,18 @@ func StartServer(ctx context.Context, config *Config) error {
 	return writeKubeConfig(config.ControlConfig.Runtime.ServerCA, config)
 }
 
-func startOnAPIServerReady(ctx context.Context, config *Config) {
+func startOnAPIServerReady(ctx context.Context, wg *sync.WaitGroup, config *Config) {
 	select {
 	case <-ctx.Done():
 		return
 	case <-config.ControlConfig.Runtime.APIServerReady:
-		if err := runControllers(ctx, config); err != nil {
+		if err := runControllers(ctx, wg, config); err != nil {
 			logrus.Fatalf("failed to start controllers: %v", err)
 		}
 	}
 }
 
-func runControllers(ctx context.Context, config *Config) error {
+func runControllers(ctx context.Context, wg *sync.WaitGroup, config *Config) error {
 	controlConfig := &config.ControlConfig
 
 	sc, err := NewContext(ctx, controlConfig.Runtime.KubeConfigAdmin)
@@ -111,6 +120,7 @@ func runControllers(ctx context.Context, config *Config) error {
 		return err
 	}
 
+	wg.Wait()
 	if err := stageFiles(ctx, sc, controlConfig); err != nil {
 		return err
 	}
