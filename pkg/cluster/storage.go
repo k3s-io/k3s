@@ -19,7 +19,7 @@ import (
 // snapshot of the cluster's CA certs and keys, encryption passphrases, etc - encrypted with the join token.
 // This is used when bootstrapping a cluster from a managed database or external etcd cluster.
 // This is NOT used with embedded etcd, which bootstraps over HTTP.
-func (c *Cluster) save(ctx context.Context) error {
+func (c *Cluster) save(ctx context.Context, override bool) error {
 	buf := &bytes.Buffer{}
 	if err := bootstrap.ReadFromDisk(buf, &c.runtime.ControlRuntimeBootstrap); err != nil {
 		return err
@@ -55,6 +55,15 @@ func (c *Cluster) save(ctx context.Context) error {
 	if err := storageClient.Create(ctx, storageKey(normalizedToken), data); err != nil {
 		if err.Error() == "key exists" {
 			logrus.Warnln("bootstrap key already exists")
+			if override {
+				bsd, err := c.bootstrapKeyData(ctx, storageClient)
+				if err != nil {
+					return err
+				}
+				logrus.Warn("updating datastore bootstrap data from disk")
+				return storageClient.Update(ctx, storageKey(normalizedToken), bsd.Modified, data)
+			}
+			logrus.Warn("bootstrap key exists; please follow documentation on updating a node after snapshot restore")
 			return nil
 		} else if strings.Contains(err.Error(), "not supported for learner") {
 			logrus.Debug("skipping bootstrap data save on learner")
@@ -64,6 +73,24 @@ func (c *Cluster) save(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// bootstrapKeyData retrieves and returns the data stored in
+// the datastore with the key "/bootstrap". This should only
+// exist with 1 entry and will return an error if more than
+// 1 entry is found.
+func (c *Cluster) bootstrapKeyData(ctx context.Context, storageClient client.Client) (*client.Value, error) {
+	bootstrapList, err := storageClient.List(ctx, "/bootstrap", 0)
+	if err != nil {
+		return nil, err
+	}
+	if len(bootstrapList) == 0 {
+		return nil, errors.New("no bootstrap data found")
+	}
+	if len(bootstrapList) > 1 {
+		return nil, errors.New("found multiple bootstrap keys in storage")
+	}
+	return &bootstrapList[0], nil
 }
 
 // storageBootstrap loads data from the datastore into the ControlRuntimeBootstrap struct.
@@ -112,7 +139,6 @@ func (c *Cluster) storageBootstrap(ctx context.Context) error {
 	}
 
 	return c.ReconcileStorage(ctx, bytes.NewBuffer(data), &c.runtime.ControlRuntimeBootstrap)
-	//return bootstrap.WriteToDisk(bytes.NewBuffer(data), &c.runtime.ControlRuntimeBootstrap)
 }
 
 // getBootstrapKeyFromStorage will list all keys that has prefix /bootstrap and will check for key that is

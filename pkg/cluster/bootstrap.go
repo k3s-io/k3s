@@ -26,35 +26,66 @@ func (c *Cluster) Bootstrap(ctx context.Context) error {
 		return err
 	}
 
-	logrus.Warn("XXX - checking if cluster is initialized")
+	// shouldBootstrap, err := c.shouldBootstrapLoad(ctx)
+	// if err != nil {
+	// 	return err
+	// }
+	// c.shouldBootstrap = shouldBootstrap
 
-	shouldBootstrap, err := c.shouldBootstrapLoad(ctx)
-	if err != nil {
+	if err := c.bootstrapSetup(ctx); err != nil {
 		return err
 	}
-	c.shouldBootstrap = shouldBootstrap
 
-	logrus.Warn("XXX - bootstrapping")
+	return c.bootstrap(ctx)
+}
 
-	c.joining = true
+// shouldBootstrapLoad returns true if we need to load ControlRuntimeBootstrap data again.
+// This is controlled by a stamp file on disk that records successful bootstrap using a hash of the join token.
+func (c *Cluster) bootstrapSetup(ctx context.Context) error {
+	// Non-nil managedDB indicates that the database is either initialized, initializing, or joining
+	if c.managedDB != nil {
+		c.runtime.HTTPBootstrap = true
 
-	// bootstrap managed database via HTTPS
-	if c.runtime.HTTPBootstrap {
-		// Fail if the token isn't syntactically valid, or if the CA hash on the remote server doesn't match
-		// the hash in the token. The password isn't actually checked until later when actually bootstrapping.
-		info, err := clientaccess.ParseAndValidateTokenForUser(c.config.JoinURL, c.config.Token, "server")
+		isInitialized, err := c.managedDB.IsInitialized(ctx, c.config)
 		if err != nil {
 			return err
 		}
 
-		logrus.Infof("Managed %s cluster not yet initialized", c.managedDB.EndpointName())
-		c.clientAccessInfo = info
+		if isInitialized {
+			// If the database is initialized we skip bootstrapping; if the user wants to rejoin a
+			// cluster they need to delete the database.
+			logrus.Infof("Managed %s cluster bootstrap already complete and initialized", c.managedDB.EndpointName())
+			// This is a workaround for an issue that can be caused by terminating the cluster bootstrap before
+			// etcd is promoted from learner. Odds are we won't need this info, and we don't want to fail startup
+			// due to failure to retrieve it as this will break cold cluster restart, so we ignore any errors.
+			if c.config.JoinURL != "" && c.config.Token != "" {
+				c.clientAccessInfo, _ = clientaccess.ParseAndValidateTokenForUser(c.config.JoinURL, c.config.Token, "server")
+			}
+			return nil
+		}
+		if c.config.JoinURL == "" {
+			// Not initialized, not joining - must be initializing (cluster-init)
+			logrus.Infof("Managed %s cluster initializing", c.managedDB.EndpointName())
+			return nil
+		} else {
+			// Not initialized, but have a Join URL - fail if there's no token; if there is then validate it.
+			if c.config.Token == "" {
+				return errors.New(version.ProgramUpper + "_TOKEN is required to join a cluster")
+			}
 
-		return c.httpBootstrap(ctx)
+			// Fail if the token isn't syntactically valid, or if the CA hash on the remote server doesn't match
+			// the hash in the token. The password isn't actually checked until later when actually bootstrapping.
+			info, err := clientaccess.ParseAndValidateTokenForUser(c.config.JoinURL, c.config.Token, "server")
+			if err != nil {
+				return err
+			}
+
+			logrus.Infof("Managed %s cluster not yet initialized", c.managedDB.EndpointName())
+			c.clientAccessInfo = info
+		}
 	}
 
-	// Bootstrap directly from datastore
-	return c.storageBootstrap(ctx)
+	return nil
 }
 
 // shouldBootstrapLoad returns true if we need to load ControlRuntimeBootstrap data again.
@@ -102,15 +133,6 @@ func (c *Cluster) shouldBootstrapLoad(ctx context.Context) (bool, error) {
 		}
 	}
 
-	// Check the stamp file to see if we have successfully bootstrapped using this token.
-	// NOTE: The fact that we use a hash of the token to generate the stamp
-	//       means that it is unsafe to use the same token for multiple clusters.
-	// stamp := c.bootstrapStamp()
-	// if _, err := os.Stat(stamp); err == nil {
-	// 	logrus.Info("Cluster bootstrap already complete")
-	// 	return true, nil
-	// }
-
 	// No errors and no bootstrap stamp, need to bootstrap.
 	return true, nil
 }
@@ -141,13 +163,13 @@ func (c *Cluster) certDirsExist() error {
 	}
 
 	const (
-		missingTLSDir = "missing %s directory from ${data-dir}"
-		emptyTLSDir   = "%s directory is empty"
+		missingDir = "missing %s directory from ${data-dir}"
+		emptyDir   = "%s directory is empty"
 	)
 
 	for _, dir := range bootstrapDirs {
 		if _, err := os.Stat(dir); os.IsNotExist(err) {
-			errMsg := fmt.Sprintf(missingTLSDir, dir)
+			errMsg := fmt.Sprintf(missingDir, dir)
 			logrus.Debug(errMsg)
 			return errors.New(errMsg)
 		}
@@ -158,7 +180,7 @@ func (c *Cluster) certDirsExist() error {
 		}
 
 		if ok {
-			errMsg := fmt.Sprintf(emptyTLSDir, dir)
+			errMsg := fmt.Sprintf(emptyDir, dir)
 			logrus.Debug(errMsg)
 			return errors.New(errMsg)
 		}
@@ -167,70 +189,14 @@ func (c *Cluster) certDirsExist() error {
 	return nil
 }
 
-// func (c *Cluster) validateBootstrapCertificates() error {
-// 	if err := c.certDirsExist(); err != nil {
-// 		return err
-// 	}
-
-// 	// check existence of certificate and contents against known bootstrap data and
-// 	// if there are any differences, return an error to trigger a rebootstrap
-// 	bootstrapFileAndCertificate := map[string]string{
-// 		c.config.Runtime.ControlRuntimeBootstrap.ETCDServerCA:       "",
-// 		c.config.Runtime.ControlRuntimeBootstrap.ETCDServerCAKey:    "",
-// 		c.config.Runtime.ControlRuntimeBootstrap.ETCDPeerCA:         "",
-// 		c.config.Runtime.ControlRuntimeBootstrap.ETCDPeerCAKey:      "",
-// 		c.config.Runtime.ControlRuntimeBootstrap.ServerCA:           "",
-// 		c.config.Runtime.ControlRuntimeBootstrap.ServerCAKey:        "",
-// 		c.config.Runtime.ControlRuntimeBootstrap.ClientCA:           "",
-// 		c.config.Runtime.ControlRuntimeBootstrap.ClientCAKey:        "",
-// 		c.config.Runtime.ControlRuntimeBootstrap.ServiceKey:         "",
-// 		c.config.Runtime.ControlRuntimeBootstrap.PasswdFile:         "",
-// 		c.config.Runtime.ControlRuntimeBootstrap.RequestHeaderCA:    "",
-// 		c.config.Runtime.ControlRuntimeBootstrap.RequestHeaderCAKey: "",
-// 		c.config.Runtime.ControlRuntimeBootstrap.IPSECKey:           "",
-// 	}
-
-// 	if c.config.EncryptSecrets {
-// 		bootstrapFileAndCertificate[c.config.Runtime.ControlRuntimeBootstrap.EncryptionConfig] = ""
-// 	}
-
-// 	for content, filename := range bootstrapFileAndCertificate {
-// 		if err := c.checkBootstrapCertificate(content, filename); err != nil {
-// 			return err
-// 		}
-// 	}
-
-// 	return nil
-// }
-
-// checkBootstrapCertificate checks the given content string against what's
-// read in the file given, hashes them, and compares the hashes. If they don't
-// match an error is returned.
-// func (c *Cluster) checkBootstrapCertificate(filename, content string) error {
-// 	bootstrapHash := sha256.Sum256([]byte(content))
-
-// 	fileHash := sha256.New()
-// 	f, err := os.Open(filepath.Join(c.config.DataDir, "tls", filename))
-// 	if err != nil {
-// 		return err
-// 	}
-// 	defer f.Close()
-
-// 	if _, err := io.Copy(fileHash, f); err != nil {
-// 		return err
-// 	}
-
-// 	if ret := bytes.Compare(bootstrapHash[:], fileHash.Sum(nil)); ret != 0 {
-// 		return fmt.Errorf("%s doesn't match bootstrap data", filename)
-// 	}
-
-// 	return nil
-// }
-
-// ReconcileStorage
+// ReconcileStorage is called before any data is saved to the datastore
+// or locally. It checks to see if the contents of the bootstrap data
+// in the datastore is newer than on disk or different and depending
+// on where the difference is, the newer data is written to the older.
 func (c *Cluster) ReconcileStorage(ctx context.Context, r io.Reader, crb *config.ControlRuntimeBootstrap) error {
 	if err := c.certDirsExist(); err != nil {
 		logrus.Warn(err.Error())
+		return bootstrap.WriteToDiskFromStorage(r, crb)
 	}
 
 	paths, err := bootstrap.ObjToMap(crb)
@@ -262,27 +228,29 @@ func (c *Cluster) ReconcileStorage(ctx context.Context, r io.Reader, crb *config
 
 		logrus.Warnf("XXX - checking %s", path)
 		if !bytes.Equal(data.Content, fd) {
-			logrus.Warn("%s and database out of sync", path)
+			logrus.Warnf("%s is out of sync with datastore", path)
 
-			info, err := os.Stat(path)
-			if err != nil {
-				return err
-			}
+			return c.save(ctx, true)
+		}
 
-			// TODO(): allow for a few seconds between the 2 so get
-			// seconds
+		info, err := os.Stat(path)
+		if err != nil {
+			return err
+		}
 
-			switch {
-			//case (info.ModTime().Unix() - files[pathKey].Timestamp.Unix()) <= 4 || (info.ModTime().Unix() - files[pathKey].Timestamp.Unix()) >= -4:
-			case info.ModTime().Unix() < files[pathKey].Timestamp.Unix():
-				logrus.Warn("on disk file newer than database")
-				return bootstrap.WriteToDisk(r, crb)
-			case info.ModTime().Unix() > files[pathKey].Timestamp.Unix():
-				logrus.Warn("database newer than on disk file")
-				return c.save(ctx)
-			default:
-				// on disk matches storage, noop
-			}
+		// TODO(): allow for a few seconds between the 2 so get
+		// seconds
+
+		switch {
+		//case (info.ModTime().Unix() - files[pathKey].Timestamp.Unix()) <= 4 || (info.ModTime().Unix() - files[pathKey].Timestamp.Unix()) >= -4:
+		case info.ModTime().Unix() > files[pathKey].Timestamp.Unix():
+			logrus.Warn("on disk file newer than database")
+			return c.save(ctx, true)
+		case info.ModTime().Unix() < files[pathKey].Timestamp.Unix():
+			logrus.Warn("database newer than on disk file")
+			return bootstrap.WriteToDiskFromStorage(r, crb)
+		default:
+			// on disk certificates match what is in storage, noop
 		}
 	}
 

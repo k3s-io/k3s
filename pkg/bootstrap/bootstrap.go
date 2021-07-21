@@ -66,8 +66,8 @@ type BootstrapFile struct {
 	Content   []byte
 }
 
-// WriteToDisk
-func WriteToDisk(r io.Reader, bootstrap *config.ControlRuntimeBootstrap) error {
+// WriteToDiskFromStorage
+func WriteToDiskFromStorage(r io.Reader, bootstrap *config.ControlRuntimeBootstrap) error {
 	paths, err := ObjToMap(bootstrap)
 	if err != nil {
 		return err

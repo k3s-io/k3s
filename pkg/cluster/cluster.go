@@ -20,9 +20,9 @@ type Cluster struct {
 	config           *config.Control
 	runtime          *config.ControlRuntime
 	managedDB        managed.Driver
+	etcdConfig       endpoint.ETCDConfig
 	shouldBootstrap  bool
 	storageStarted   bool
-	etcdConfig       endpoint.ETCDConfig
 	joining          bool
 	saveBootstrap    bool
 }
@@ -81,7 +81,7 @@ func (c *Cluster) Start(ctx context.Context) (<-chan struct{}, error) {
 
 	// if necessary, store bootstrap data to datastore
 	if c.saveBootstrap {
-		if err := c.save(ctx); err != nil {
+		if err := c.save(ctx, false); err != nil {
 			return nil, err
 		}
 	}
@@ -106,7 +106,7 @@ func (c *Cluster) Start(ctx context.Context) (<-chan struct{}, error) {
 			for {
 				select {
 				case <-ready:
-					if err := c.save(ctx); err != nil {
+					if err := c.save(ctx, false); err != nil {
 						panic(err)
 					}
 
