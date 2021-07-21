@@ -1,4 +1,4 @@
-name: Unit Test Coverage
+name: Integration Test Coverage
 on: [push, pull_request]
 jobs:
   build:
@@ -19,11 +19,8 @@ jobs:
         path: dist/artifacts/k3s
   test:
     needs: build
-    name: Unit Tests
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-20.04]
+    name: Integration Tests
+    runs-on: ubuntu-20.04
     timeout-minutes: 30
     steps:
     - name: Install Go
