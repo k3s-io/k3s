@@ -32,10 +32,6 @@ func (c *Cluster) Bootstrap(ctx context.Context) error {
 	// }
 	// c.shouldBootstrap = shouldBootstrap
 
-	if err := c.bootstrapSetup(ctx); err != nil {
-		return err
-	}
-
 	return c.bootstrap(ctx)
 }
 
