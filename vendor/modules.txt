@@ -1041,7 +1041,6 @@ github.com/seccomp/libseccomp-golang
 # github.com/sirupsen/logrus v1.8.1
 ## explicit
 github.com/sirupsen/logrus
-github.com/sirupsen/logrus/hooks/test
 # github.com/soheilhy/cmux v0.1.4
 github.com/soheilhy/cmux
 # github.com/spf13/afero v1.2.2
