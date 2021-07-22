@@ -21,14 +21,19 @@ func findK3sExecutable() string {
 	return k3sBin
 }
 
+// IsRoot return true if the user is root (UID 0)
 func IsRoot() bool {
 	currentUser, err := user.Current()
 	if err != nil {
 		return false
 	}
-	return currentUser.Username == "root"
+	return currentUser.Uid == "0"
 }
 
+// K3sCmd launches the provided K3s command via exec. Command blocks until finished.
+// Command output from both Stderr and Stdout is provided via string.
+//   cmdEx1, err := K3sCmd("etcd-snapshot", "ls")
+//   cmdEx2, err := K3sCmd("kubectl", "get", "pods", "-A")
 func K3sCmd(cmdName string, cmdArgs ...string) (string, error) {
 	k3sBin := findK3sExecutable()
 	// Only run sudo if not root
@@ -53,7 +58,8 @@ func FindStringInCmdAsync(scanner *bufio.Scanner, target string) bool {
 	return false
 }
 
-//Launch a k3s command asynchronously
+// K3sCmdAsync launches a k3s command asynchronously. Output of the command can be retrieved via
+// the provided scanner. The command can be ended via cmd.Wait() or via K3sKillAsync()
 func K3sCmdAsync(cmdName string, cmdArgs ...string) (*exec.Cmd, *bufio.Scanner, error) {
 	k3sBin := findK3sExecutable()
 	var cmd *exec.Cmd
@@ -70,6 +76,7 @@ func K3sCmdAsync(cmdName string, cmdArgs ...string) (*exec.Cmd, *bufio.Scanner, 
 	return cmd, bufio.NewScanner(cmdOut), err
 }
 
+// K3sKillAsync terminates a command started by K3sCmdAsync(). This is
 func K3sKillAsync(cmd *exec.Cmd) error {
 	if IsRoot() {
 		return cmd.Process.Kill()

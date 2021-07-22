@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func Test_SCrypt_VerifyHash(t *testing.T) {
+func Test_UnitSCrypt_VerifyHash(t *testing.T) {
 	type args struct {
 		secretKey string
 	}

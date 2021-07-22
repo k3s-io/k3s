@@ -114,7 +114,7 @@ var _ = AfterSuite(func() {
 	Expect(tests.K3sKillAsync(serverCmd)).To(Succeed())
 })
 
-func TestIntegration_Etcd(t *testing.T) {
+func Test_IntegrationEtcd(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Etcd Suite")
 }

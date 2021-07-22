@@ -19,12 +19,12 @@ import (
 const migrateNumNodes = 10
 const createNumNodes = 3
 
-func Test_Asserts(t *testing.T) {
+func Test_UnitAsserts(t *testing.T) {
 	assertEqual(t, 1, 1)
 	assertNotEqual(t, 1, 0)
 }
 
-func Test_EnsureDelete(t *testing.T) {
+func Test_UnitEnsureDelete(t *testing.T) {
 	logMemUsage(t)
 
 	secretClient := &mockSecretClient{}
@@ -45,7 +45,7 @@ func Test_EnsureDelete(t *testing.T) {
 	logMemUsage(t)
 }
 
-func Test_MigrateFile(t *testing.T) {
+func Test_UnitMigrateFile(t *testing.T) {
 	nodePasswordFile := generateNodePasswordFile(migrateNumNodes)
 	defer os.Remove(nodePasswordFile)
 
@@ -63,7 +63,7 @@ func Test_MigrateFile(t *testing.T) {
 	assertEqual(t, Ensure(secretClient, "node1", "node1"), nil)
 }
 
-func Test_MigrateFileNodes(t *testing.T) {
+func Test_UnitMigrateFileNodes(t *testing.T) {
 	nodePasswordFile := generateNodePasswordFile(migrateNumNodes)
 	defer os.Remove(nodePasswordFile)
 

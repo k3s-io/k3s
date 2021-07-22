@@ -84,7 +84,7 @@ func assertNotEqual(t *testing.T, a interface{}, b interface{}) {
 	}
 }
 
-func Test_FailOver(t *testing.T) {
+func Test_UnitFailOver(t *testing.T) {
 	tmpDir, err := ioutil.TempDir("", "lb-test")
 	if err != nil {
 		assertEqual(t, err, nil)
@@ -145,7 +145,7 @@ func Test_FailOver(t *testing.T) {
 	assertEqual(t, result2, "og:ping")
 }
 
-func Test_FailFast(t *testing.T) {
+func Test_UnitFailFast(t *testing.T) {
 	tmpDir, err := ioutil.TempDir("", "lb-test")
 	if err != nil {
 		assertEqual(t, err, nil)
