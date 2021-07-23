@@ -19,6 +19,7 @@ type SupportedFeatures struct {
 	VxlanPort                bool        `json:"VxlanPort"`
 	L4Proxy                  bool        `json:"L4Proxy"`    // network policy that applies VFP rules to all endpoints on the network to redirect traffic
 	L4WfpProxy               bool        `json:"L4WfpProxy"` // endpoint policy that applies WFP filters to redirect traffic to/from that endpoint
+	TierAcl                  bool        `json:"TierAcl"`
 }
 
 // AclFeatures are the supported ACL possibilities.
@@ -69,6 +70,7 @@ func GetSupportedFeatures() SupportedFeatures {
 	features.VxlanPort = isFeatureSupported(globals.Version, VxlanPortVersion)
 	features.L4Proxy = isFeatureSupported(globals.Version, L4ProxyPolicyVersion)
 	features.L4WfpProxy = isFeatureSupported(globals.Version, L4WfpProxyPolicyVersion)
+	features.TierAcl = isFeatureSupported(globals.Version, TierAclPolicyVersion)
 
 	return features
 }
