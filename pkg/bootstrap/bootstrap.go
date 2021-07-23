@@ -52,21 +52,17 @@ func ReadFromDisk(w io.Writer, bootstrap *config.ControlRuntimeBootstrap) error 
 	return json.NewEncoder(w).Encode(dataMap)
 }
 
-// func WriteBootstrapFiles() error {
-// 	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
-// 		return errors.Wrapf(err, "failed to mkdir %s", filepath.Dir(path))
-// 	}
-
-// 	return nil
-// }
-
-// BootstrapFile
+// BootstrapFile is a representation of a certificate
+// or key file within the bootstrap context that contains
+// the contents of the file as well as a timestamp from
+// when the file was last modified.
 type BootstrapFile struct {
 	Timestamp time.Time
 	Content   []byte
 }
 
-// WriteToDiskFromStorage
+// WriteToDiskFromStorage writes the contents of the given reader to the paths
+// derived from within the ControlRuntimeBootstrap.
 func WriteToDiskFromStorage(r io.Reader, bootstrap *config.ControlRuntimeBootstrap) error {
 	paths, err := ObjToMap(bootstrap)
 	if err != nil {

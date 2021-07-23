@@ -54,7 +54,7 @@ func (c *Cluster) save(ctx context.Context, override bool) error {
 
 	if err := storageClient.Create(ctx, storageKey(normalizedToken), data); err != nil {
 		if err.Error() == "key exists" {
-			logrus.Warnln("bootstrap key already exists")
+			logrus.Warn("bootstrap key already exists")
 			if override {
 				bsd, err := c.bootstrapKeyData(ctx, storageClient)
 				if err != nil {
@@ -63,7 +63,6 @@ func (c *Cluster) save(ctx context.Context, override bool) error {
 				logrus.Warn("updating datastore bootstrap data from disk")
 				return storageClient.Update(ctx, storageKey(normalizedToken), bsd.Modified, data)
 			}
-			logrus.Warn("bootstrap key exists; please follow documentation on updating a node after snapshot restore")
 			return nil
 		} else if strings.Contains(err.Error(), "not supported for learner") {
 			logrus.Debug("skipping bootstrap data save on learner")
@@ -138,7 +137,7 @@ func (c *Cluster) storageBootstrap(ctx context.Context) error {
 		return err
 	}
 
-	return c.ReconcileStorage(ctx, bytes.NewBuffer(data), &c.runtime.ControlRuntimeBootstrap)
+	return c.ReconcileBootstrapData(ctx, bytes.NewBuffer(data), &c.runtime.ControlRuntimeBootstrap)
 }
 
 // getBootstrapKeyFromStorage will list all keys that has prefix /bootstrap and will check for key that is
