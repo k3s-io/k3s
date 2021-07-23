@@ -23,8 +23,8 @@ import (
 	"github.com/containers/ocicrypt/config"
 	"github.com/containers/ocicrypt/keywrap"
 	"github.com/containers/ocicrypt/utils"
-	"github.com/fullsailor/pkcs7"
 	"github.com/pkg/errors"
+	"go.mozilla.org/pkcs7"
 )
 
 type pkcs7KeyWrapper struct {
