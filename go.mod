@@ -97,6 +97,8 @@ require (
 	github.com/minio/minio-go/v7 v7.0.7
 	github.com/moby/sys/symlink v0.1.0 // indirect
 	github.com/natefinch/lumberjack v2.0.0+incompatible
+	github.com/onsi/ginkgo v1.16.4
+	github.com/onsi/gomega v1.11.0
 	// LOOK TO scripts/download FOR THE VERSION OF runc THAT WE ARE BUILDING/SHIPPING
 	github.com/opencontainers/runc v1.0.0-rc95
 	github.com/opencontainers/selinux v1.8.0
