@@ -2,6 +2,7 @@ package cmds
 
 import (
 	"context"
+	"sync"
 
 	"github.com/rancher/k3s/pkg/version"
 	"github.com/urfave/cli"
@@ -11,6 +12,15 @@ const (
 	defaultSnapshotRentention    = 5
 	defaultSnapshotIntervalHours = 12
 )
+
+type StartupHookArgs struct {
+	APIServerReady  <-chan struct{}
+	KubeConfigAdmin string
+	Skips           map[string]bool
+	Disables        map[string]bool
+}
+
+type StartupHook func(context.Context, *sync.WaitGroup, StartupHookArgs) error
 
 type Server struct {
 	ClusterCIDR          cli.StringSlice
@@ -63,7 +73,7 @@ type Server struct {
 	ClusterResetRestorePath  string
 	EncryptSecrets           bool
 	SystemDefaultRegistry    string
-	StartupHooks             []func(context.Context, <-chan struct{}, string) error
+	StartupHooks             []StartupHook
 	EtcdSnapshotName         string
 	EtcdDisableSnapshots     bool
 	EtcdExposeMetrics        bool
@@ -263,7 +273,7 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 			},
 			&cli.IntFlag{
 				Name:        "etcd-snapshot-retention",
-				Usage:       "(db) Number of snapshots to retain Default: 5",
+				Usage:       "(db) Number of snapshots to retain",
 				Destination: &ServerConfig.EtcdSnapshotRetention,
 				Value:       defaultSnapshotRentention,
 			},

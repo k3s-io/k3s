@@ -176,7 +176,13 @@ RUN apt-get update && \
 
 ```
 
-In our Docker container we will use a specific `runc` build which includes [seccomp](https://en.wikipedia.org/wiki/seccomp) and [apparmor](https://en.wikipedia.org/wiki/AppArmor) support. Hence why our Dockerfile includes `libseccomp-dev` as a dependency (apparmor support doesn't require external libraries). Please refer to [RUNC.md](/RUNC.md) for the currently supported version of `runc` that is used by containerd.
+In our Docker container we will build `runc` build, which includes
+[seccomp](https://en.wikipedia.org/wiki/seccomp), [SELinux](https://en.wikipedia.org/wiki/Security-Enhanced_Linux),
+and [AppArmor](https://en.wikipedia.org/wiki/AppArmor) support. Seccomp support
+in runc requires `libseccomp-dev` as a dependency (AppArmor and SELinux support
+do not require external libraries at build time). Refer to [RUNC.md](docs/RUNC.md)
+in the docs directory to for details about building runc, and to learn about
+supported versions of `runc` as used by containerd.
 
 Let's suppose you build an image called `containerd/build` from the above Dockerfile. You can run the following command:
 
@@ -205,8 +211,11 @@ Next, let's build `runc`:
 
 ```sh
 cd /go/src/github.com/opencontainers/runc
-make BUILDTAGS='seccomp apparmor selinux' && make install
+make && make install
 ```
+
+For further details about building runc, refer to [RUNC.md](docs/RUNC.md) in the
+docs directory.
 
 When working with `ctr`, the simple test client we just built, don't forget to start the daemon!
 

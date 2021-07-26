@@ -17,7 +17,10 @@
 package utils
 
 import (
+	"bytes"
 	"io"
+	"os/exec"
+	"github.com/pkg/errors"
 )
 
 // FillBuffer fills the given buffer with as many bytes from the reader as possible. It returns
@@ -28,4 +31,26 @@ func FillBuffer(reader io.Reader, buffer []byte) (int, error) {
 		return n, io.EOF
 	}
 	return n, err
+}
+
+// first argument is the command, like cat or echo,
+// the second is the list of args to pass to it
+type CommandExecuter interface {
+	Exec(string, []string, []byte) ([]byte, error)
+}
+
+type Runner struct{}
+
+// ExecuteCommand is used to execute a linux command line command and return the output of the command with an error if it exists.
+func (r Runner) Exec(cmdName string, args []string, input []byte) ([]byte, error) {
+	var out bytes.Buffer
+	stdInputBuffer := bytes.NewBuffer(input)
+	cmd := exec.Command(cmdName, args...)
+	cmd.Stdin = stdInputBuffer
+	cmd.Stdout = &out
+	err := cmd.Run()
+	if err != nil {
+		return nil, errors.Wrapf(err, "Error while running command: %s", cmdName)
+	}
+	return out.Bytes(), nil
 }

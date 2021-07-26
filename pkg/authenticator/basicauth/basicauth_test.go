@@ -43,7 +43,7 @@ func (t *testPassword) AuthenticatePassword(ctx context.Context, user, password 
 	return &authenticator.Response{User: t.User}, t.OK, t.Err
 }
 
-func TestBasicAuth(t *testing.T) {
+func Test_UnitBasicAuth(t *testing.T) {
 	testCases := map[string]struct {
 		Header   string
 		Password testPassword

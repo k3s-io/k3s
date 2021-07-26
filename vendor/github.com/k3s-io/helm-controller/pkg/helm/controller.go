@@ -30,7 +30,7 @@ import (
 var (
 	trueVal         = true
 	commaRE         = regexp.MustCompile(`\\*,`)
-	DefaultJobImage = "rancher/klipper-helm:v0.5.0-build20210505"
+	DefaultJobImage = "rancher/klipper-helm:v0.6.1-build20210616"
 )
 
 type Controller struct {
@@ -272,22 +272,39 @@ func job(chart *helmv1.HelmChart) (*batch.Job, *core.ConfigMap, *core.ConfigMap)
 		},
 	}
 
+	if chart.Spec.Timeout != nil {
+		job.Spec.Template.Spec.Containers[0].Env = append(job.Spec.Template.Spec.Containers[0].Env, core.EnvVar{
+			Name:  "TIMEOUT",
+			Value: chart.Spec.Timeout.String(),
+		})
+	}
+
 	if chart.Spec.Bootstrap {
 		job.Spec.Template.Spec.HostNetwork = true
 		job.Spec.Template.Spec.Tolerations = []core.Toleration{
 			{
 				Key:    "node.kubernetes.io/not-ready",
-				Effect: "NoSchedule",
+				Effect: core.TaintEffectNoSchedule,
 			},
 			{
 				Key:      "node.cloudprovider.kubernetes.io/uninitialized",
 				Operator: core.TolerationOpEqual,
 				Value:    "true",
-				Effect:   "NoSchedule",
+				Effect:   core.TaintEffectNoSchedule,
 			},
 			{
 				Key:      "CriticalAddonsOnly",
 				Operator: core.TolerationOpExists,
+			},
+			{
+				Key:      "node-role.kubernetes.io/etcd",
+				Operator: core.TolerationOpExists,
+				Effect:   core.TaintEffectNoExecute,
+			},
+			{
+				Key:      "node-role.kubernetes.io/control-plane",
+				Operator: core.TolerationOpExists,
+				Effect:   core.TaintEffectNoSchedule,
 			},
 		}
 		job.Spec.Template.Spec.Containers[0].Env = append(job.Spec.Template.Spec.Containers[0].Env, []core.EnvVar{
@@ -399,12 +416,10 @@ func args(chart *helmv1.HelmChart) []string {
 
 	for _, k := range keys(spec.Set) {
 		val := spec.Set[k]
-		if val.StrVal == "false" || val.StrVal == "true" {
-			args = append(args, "--set", fmt.Sprintf("%s=%s", k, val.StrVal))
-		} else if val.StrVal != "" {
-			args = append(args, "--set-string", fmt.Sprintf("%s=%s", k, commaRE.ReplaceAllStringFunc(val.StrVal, escapeComma)))
+		if typedVal(val) {
+			args = append(args, "--set", fmt.Sprintf("%s=%s", k, val.String()))
 		} else {
-			args = append(args, "--set", fmt.Sprintf("%s=%d", k, val.IntVal))
+			args = append(args, "--set-string", fmt.Sprintf("%s=%s", k, commaRE.ReplaceAllStringFunc(val.String(), escapeComma)))
 		}
 	}
 
@@ -418,6 +433,21 @@ func keys(val map[string]intstr.IntOrString) []string {
 	}
 	sort.Strings(keys)
 	return keys
+}
+
+// typedVal is a modified version of helm's typedVal function that operates on kubernetes IntOrString types.
+// Things that look like an integer, boolean, or null should use --set; everything else should use --set-string.
+// Ref: https://github.com/helm/helm/blob/v3.5.4/pkg/strvals/parser.go#L415
+func typedVal(val intstr.IntOrString) bool {
+	if intstr.Int == val.Type {
+		return true
+	}
+	switch strings.ToLower(val.StrVal) {
+	case "true", "false", "null":
+		return true
+	default:
+		return false
+	}
 }
 
 // escapeComma should be passed a string consisting of zero or more backslashes, followed by a comma.

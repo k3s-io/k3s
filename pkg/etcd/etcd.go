@@ -41,7 +41,6 @@ import (
 )
 
 const (
-	snapshotPrefix      = "etcd-snapshot-"
 	endpoint            = "https://127.0.0.1:2379"
 	testTimeout         = time.Second * 10
 	manageTickerTime    = time.Second * 15
@@ -604,6 +603,10 @@ func (e *ETCD) manageLearners(ctx context.Context) error {
 		defer cancel()
 
 		// Check to see if the local node is the leader. Only the leader should do learner management.
+		if e.client == nil {
+			logrus.Error("Etcd client was nil")
+			continue
+		}
 		if status, err := e.client.Status(ctx, endpoint); err != nil {
 			logrus.Errorf("Failed to check local etcd status for learner management: %v", err)
 			continue
@@ -854,7 +857,7 @@ func (e *ETCD) Snapshot(ctx context.Context, config *config.Control) error {
 
 	// check if we need to perform a retention check
 	if e.config.EtcdSnapshotRetention >= 1 {
-		if err := snapshotRetention(e.config.EtcdSnapshotRetention, snapshotDir); err != nil {
+		if err := snapshotRetention(e.config.EtcdSnapshotRetention, e.config.EtcdSnapshotName, snapshotDir); err != nil {
 			return errors.Wrap(err, "failed to apply snapshot retention")
 		}
 	}
@@ -986,7 +989,7 @@ func (e *ETCD) PruneSnapshots(ctx context.Context) error {
 		return e.s3.snapshotRetention(ctx)
 	}
 
-	return snapshotRetention(e.config.EtcdSnapshotRetention, snapshotDir)
+	return snapshotRetention(e.config.EtcdSnapshotRetention, e.config.EtcdSnapshotName, snapshotDir)
 }
 
 // ListSnapshots is an exported wrapper method that wraps an
@@ -1064,18 +1067,20 @@ func (e *ETCD) DeleteSnapshots(ctx context.Context, snapshots []string) error {
 	}
 
 	logrus.Info("Removing the given locally stored etcd snapshot(s)")
-	logrus.Debugf("Removing the given locally stored etcd snapshot(s): %v", snapshots)
+	logrus.Debugf("Attempting to remove the given locally stored etcd snapshot(s): %v", snapshots)
 
 	for _, s := range snapshots {
 		// check if the given snapshot exists. If it does,
 		// remove it, otherwise continue.
 		sf := filepath.Join(snapshotDir, s)
 		if _, err := os.Stat(sf); os.IsNotExist(err) {
+			logrus.Infof("Snapshot %s, does not exist", s)
 			continue
 		}
 		if err := os.Remove(sf); err != nil {
 			return err
 		}
+		logrus.Debug("Removed snapshot ", s)
 	}
 
 	return e.StoreSnapshotData(ctx)
@@ -1206,7 +1211,7 @@ func (e *ETCD) Restore(ctx context.Context) error {
 
 // snapshotRetention iterates through the snapshots and removes the oldest
 // leaving the desired number of snapshots.
-func snapshotRetention(retention int, snapshotDir string) error {
+func snapshotRetention(retention int, snapshotPrefix string, snapshotDir string) error {
 	nodeName := os.Getenv("NODE_NAME")
 
 	var snapshotFiles []os.FileInfo
@@ -1214,7 +1219,7 @@ func snapshotRetention(retention int, snapshotDir string) error {
 		if err != nil {
 			return err
 		}
-		if strings.HasPrefix(info.Name(), snapshotPrefix+nodeName) {
+		if strings.HasPrefix(info.Name(), snapshotPrefix+"-"+nodeName) {
 			snapshotFiles = append(snapshotFiles, info)
 		}
 		return nil
