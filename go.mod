@@ -71,7 +71,7 @@ require (
 	github.com/Microsoft/hcsshim v0.8.20
 	github.com/bronze1man/goStrongswanVici v0.0.0-20190828090544-27d02f80ba40 // indirect
 	github.com/containerd/cgroups v1.0.1
-	github.com/containerd/containerd v1.5.1
+	github.com/containerd/containerd v1.5.4
 	github.com/containerd/cri v1.11.1-0.20200820101445-b0cc07999aa5
 	github.com/containerd/fuse-overlayfs-snapshotter v1.0.2
 	github.com/containerd/go-cni v1.0.2 // indirect
