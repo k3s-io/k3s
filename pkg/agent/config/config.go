@@ -38,6 +38,10 @@ const (
 	DefaultPodManifestPath = "pod-manifests"
 )
 
+// Get returns a pointer to a completed Node configuration struct,
+// containing a merging of the local CLI configuration with settings from the server.
+// A call to this will bock until agent configuration is successfully returned by the
+// server.
 func Get(ctx context.Context, agent cmds.Agent, proxy proxy.Proxy) *config.Node {
 	for {
 		agentConfig, err := get(ctx, &agent, proxy)
@@ -47,10 +51,30 @@ func Get(ctx context.Context, agent cmds.Agent, proxy proxy.Proxy) *config.Node 
 			case <-time.After(5 * time.Second):
 				continue
 			case <-ctx.Done():
-				logrus.Fatalf("Interrupted")
+				logrus.Fatal("Interrupted")
 			}
 		}
 		return agentConfig
+	}
+}
+
+// GetKubeProxyDisabled returns true if kube-proxy has been disabled in the server configuration.
+// The server may not have a complete view of cluster configuration until after all startup
+// hooks have completed, so a call to this will block until after the server's readyz endpoint
+// returns OK.
+func GetKubeProxyDisabled(ctx context.Context, node *config.Node, proxy proxy.Proxy) bool {
+	for {
+		disabled, err := getKubeProxyDisabled(ctx, node, proxy)
+		if err != nil {
+			logrus.Errorf("Failed to configure kube-proxy: %v", err)
+			select {
+			case <-time.After(5 * time.Second):
+				continue
+			case <-ctx.Done():
+				logrus.Fatal("Interrupted")
+			}
+		}
+		return disabled
 	}
 }
 
@@ -419,6 +443,7 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 		ContainerRuntimeEndpoint: envInfo.ContainerRuntimeEndpoint,
 		FlannelBackend:           controlConfig.FlannelBackend,
 		ServerHTTPSPort:          controlConfig.HTTPSPort,
+		Token:                    info.String(),
 	}
 	nodeConfig.FlannelIface = flannelIface
 	nodeConfig.Images = filepath.Join(envInfo.DataDir, "agent", "images")
@@ -440,7 +465,6 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	nodeConfig.AgentConfig.Snapshotter = envInfo.Snapshotter
 	nodeConfig.AgentConfig.IPSECPSK = controlConfig.IPSECPSK
 	nodeConfig.AgentConfig.StrongSwanDir = filepath.Join(envInfo.DataDir, "agent", "strongswan")
-	nodeConfig.CACerts = info.CACerts
 	nodeConfig.Containerd.Config = filepath.Join(envInfo.DataDir, "agent", "etc", "containerd", "config.toml")
 	nodeConfig.Containerd.Root = filepath.Join(envInfo.DataDir, "agent", "containerd")
 	if !nodeConfig.Docker && nodeConfig.ContainerRuntimeEndpoint == "" {
@@ -571,7 +595,6 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	nodeConfig.AgentConfig.PrivateRegistry = envInfo.PrivateRegistry
 	nodeConfig.AgentConfig.DisableCCM = controlConfig.DisableCCM
 	nodeConfig.AgentConfig.DisableNPC = controlConfig.DisableNPC
-	nodeConfig.AgentConfig.DisableKubeProxy = controlConfig.DisableKubeProxy
 	nodeConfig.AgentConfig.Rootless = envInfo.Rootless
 	nodeConfig.AgentConfig.PodManifests = filepath.Join(envInfo.DataDir, "agent", DefaultPodManifestPath)
 	nodeConfig.AgentConfig.ProtectKernelDefaults = envInfo.ProtectKernelDefaults
@@ -583,6 +606,24 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	return nodeConfig, nil
 }
 
+func getKubeProxyDisabled(ctx context.Context, node *config.Node, proxy proxy.Proxy) (bool, error) {
+	info, err := clientaccess.ParseAndValidateToken(proxy.SupervisorURL(), node.Token)
+	if err != nil {
+		return false, err
+	}
+
+	if err := getReadyz(info); err != nil {
+		return false, err
+	}
+
+	controlConfig, err := getConfig(info)
+	if err != nil {
+		return false, errors.Wrap(err, "failed to retrieve configuration from server")
+	}
+
+	return controlConfig.DisableKubeProxy, nil
+}
+
 func getConfig(info *clientaccess.Info) (*config.Control, error) {
 	data, err := info.Get("/v1-" + version.Program + "/config")
 	if err != nil {
@@ -591,6 +632,11 @@ func getConfig(info *clientaccess.Info) (*config.Control, error) {
 
 	controlControl := &config.Control{}
 	return controlControl, json.Unmarshal(data, controlControl)
+}
+
+func getReadyz(info *clientaccess.Info) error {
+	_, err := info.Get("/v1-" + version.Program + "/readyz")
+	return err
 }
 
 // validateNetworkConfig ensures that the network configuration values provided by the server make sense.
