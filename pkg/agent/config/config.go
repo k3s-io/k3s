@@ -43,15 +43,15 @@ const (
 // A call to this will bock until agent configuration is successfully returned by the
 // server.
 func Get(ctx context.Context, agent cmds.Agent, proxy proxy.Proxy) *config.Node {
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+RETRY:
 	for {
 		agentConfig, err := get(ctx, &agent, proxy)
 		if err != nil {
 			logrus.Infof("Failed to retrieve agent configuration: %v", err)
-			select {
-			case <-time.After(5 * time.Second):
-				continue
-			case <-ctx.Done():
-				logrus.Fatal("Interrupted")
+			for range ticker.C {
+				continue RETRY
 			}
 		}
 		return agentConfig
@@ -63,15 +63,15 @@ func Get(ctx context.Context, agent cmds.Agent, proxy proxy.Proxy) *config.Node 
 // after all startup hooks have completed, so a call to this will block until after the server's
 // readyz endpoint returns OK.
 func KubeProxyDisabled(ctx context.Context, node *config.Node, proxy proxy.Proxy) bool {
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+RETRY:
 	for {
 		disabled, err := getKubeProxyDisabled(ctx, node, proxy)
 		if err != nil {
 			logrus.Infof("Failed to retrieve kube-proxy configuration: %v", err)
-			select {
-			case <-time.After(5 * time.Second):
-				continue
-			case <-ctx.Done():
-				logrus.Fatal("Interrupted")
+			for range ticker.C {
+				continue RETRY
 			}
 		}
 		return disabled
