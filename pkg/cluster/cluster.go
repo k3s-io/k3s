@@ -23,7 +23,6 @@ type Cluster struct {
 	etcdConfig       endpoint.ETCDConfig
 	shouldBootstrap  bool
 	storageStarted   bool
-	joining          bool
 	saveBootstrap    bool
 }
 

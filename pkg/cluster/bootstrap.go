@@ -58,19 +58,21 @@ func (c *Cluster) certDirsExist() error {
 	)
 
 	for _, dir := range bootstrapDirs {
-		if _, err := os.Stat(dir); os.IsNotExist(err) {
-			errMsg := fmt.Sprintf(missingDir, dir)
+		d := filepath.Join(c.config.DataDir, "server", dir)
+
+		if _, err := os.Stat(d); os.IsNotExist(err) {
+			errMsg := fmt.Sprintf(missingDir, d)
 			logrus.Debug(errMsg)
 			return errors.New(errMsg)
 		}
 
-		ok, err := isDirEmpty(filepath.Join(c.config.DataDir, dir))
+		ok, err := isDirEmpty(d)
 		if err != nil {
 			return err
 		}
 
 		if ok {
-			errMsg := fmt.Sprintf(emptyDir, dir)
+			errMsg := fmt.Sprintf(emptyDir, d)
 			logrus.Debug(errMsg)
 			return errors.New(errMsg)
 		}

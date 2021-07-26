@@ -47,8 +47,7 @@ func (c *Cluster) save(ctx context.Context, override bool) error {
 		return err
 	}
 
-	_, err = c.getBootstrapKeyFromStorage(ctx, storageClient, normalizedToken, token)
-	if err != nil {
+	if _, err := c.getBootstrapKeyFromStorage(ctx, storageClient, normalizedToken, token); err != nil {
 		return err
 	}
 
@@ -183,6 +182,7 @@ func (c *Cluster) getBootstrapKeyFromStorage(ctx context.Context, storageClient 
 // found then it will still strip the token from any additional info
 func readTokenFromFile(serverToken, certs, dataDir string) (string, error) {
 	tokenFile := filepath.Join(dataDir, "token")
+
 	b, err := ioutil.ReadFile(tokenFile)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -194,6 +194,7 @@ func readTokenFromFile(serverToken, certs, dataDir string) (string, error) {
 		}
 		return "", err
 	}
+
 	// strip the token from any new line if its read from file
 	return string(bytes.TrimRight(b, "\n")), nil
 }
@@ -204,6 +205,7 @@ func normalizeToken(token string) (string, error) {
 	if !ok {
 		return password, errors.New("failed to normalize token")
 	}
+
 	return password, nil
 }
 
@@ -212,6 +214,7 @@ func normalizeToken(token string) (string, error) {
 // then migrate those and resave only with the normalized token
 func (c *Cluster) migrateOldTokens(ctx context.Context, bootstrapList []client.Value, storageClient client.Client, emptyStringKey, tokenKey, token, oldToken string) error {
 	oldTokenKey := storageKey(oldToken)
+
 	for _, bootstrapKV := range bootstrapList {
 		// checking for empty string bootstrap key
 		if string(bootstrapKV.Key) == emptyStringKey {
@@ -226,6 +229,7 @@ func (c *Cluster) migrateOldTokens(ctx context.Context, bootstrapList []client.V
 			}
 		}
 	}
+
 	return nil
 }
 
@@ -235,10 +239,12 @@ func doMigrateToken(ctx context.Context, storageClient client.Client, keyValue c
 	if err != nil {
 		return err
 	}
+
 	encryptedData, err := encrypt(newToken, data)
 	if err != nil {
 		return err
 	}
+
 	// saving the new encrypted data with the right token key
 	if err := storageClient.Create(ctx, newTokenKey, encryptedData); err != nil {
 		if err.Error() == "key exists" {
@@ -250,10 +256,12 @@ func doMigrateToken(ctx context.Context, storageClient client.Client, keyValue c
 			return err
 		}
 	}
+
 	logrus.Infof("created bootstrap key %s", newTokenKey)
 	// deleting the old key
 	if err := storageClient.Delete(ctx, oldTokenKey, keyValue.Modified); err != nil {
 		logrus.Warnf("failed to delete old bootstrap key %s", oldTokenKey)
 	}
+
 	return nil
 }
