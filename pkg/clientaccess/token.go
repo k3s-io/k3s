@@ -193,7 +193,7 @@ func (i *Info) setServer(server string) error {
 	if err != nil {
 		return errors.Wrapf(err, "Invalid server url, failed to parse: %s", server)
 	}
-	logrus.Warn("XXX - scheme: " + url.Scheme)
+
 	if url.Scheme != "https" {
 		return errors.New("only https:// URLs are supported, invalid scheme: " + server)
 	}

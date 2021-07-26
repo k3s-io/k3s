@@ -96,7 +96,6 @@ func (c *Cluster) bootstrapKeyData(ctx context.Context, storageClient client.Cli
 // The storage key and encryption passphrase are both derived from the join token.
 // token is either passed
 func (c *Cluster) storageBootstrap(ctx context.Context) error {
-	logrus.Warn("XXX - storage bootstrapping")
 	if err := c.startStorage(ctx); err != nil {
 		return err
 	}
