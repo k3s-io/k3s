@@ -297,7 +297,7 @@ type tNetPolConfigTestCase struct {
 	errorText   string
 }
 
-func Test_UnitNewNetworkPolicySelectors(t *testing.T) {
+func TestNewNetworkPolicySelectors(t *testing.T) {
 	testCases := []tNetpolTestCase{
 		{
 			name:       "Non-Existent Namespace",
@@ -421,7 +421,7 @@ func Test_UnitNewNetworkPolicySelectors(t *testing.T) {
 	}
 }
 
-func Test_UnitNetworkPolicyBuilder(t *testing.T) {
+func TestNetworkPolicyBuilder(t *testing.T) {
 	port, port1 := intstr.FromInt(30000), intstr.FromInt(34000)
 	ingressPort := intstr.FromInt(37000)
 	endPort, endPort1 := int32(31000), int32(35000)
@@ -597,7 +597,7 @@ func Test_UnitNetworkPolicyBuilder(t *testing.T) {
 
 }
 
-func Test_UnitNetworkPolicyController(t *testing.T) {
+func TestNetworkPolicyController(t *testing.T) {
 	testCases := []tNetPolConfigTestCase{
 		{
 			"Default options are successful",

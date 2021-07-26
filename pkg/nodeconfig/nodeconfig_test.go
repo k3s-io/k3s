@@ -35,7 +35,7 @@ var FakeNodeWithAnnotation = &corev1.Node{
 	},
 }
 
-func Test_UnitSetExistingNodeConfigAnnotations(t *testing.T) {
+func TestSetExistingNodeConfigAnnotations(t *testing.T) {
 	// adding same config
 	os.Args = []string{version.Program, "server", "--no-flannel"}
 	os.Setenv(version.ProgramUpper+"_NODE_NAME", "fakeNode-with-annotation")
@@ -44,11 +44,11 @@ func Test_UnitSetExistingNodeConfigAnnotations(t *testing.T) {
 		t.Fatalf("Failed to set node config annotation: %v", err)
 	}
 	if nodeUpdated {
-		t.Errorf("Test_UnitSetExistingNodeConfigAnnotations() expected false")
+		t.Errorf("TestSetExistingNodeConfigAnnotations() expected false")
 	}
 }
 
-func Test_UnitSetNodeConfigAnnotations(t *testing.T) {
+func Test_SetNodeConfigAnnotations(t *testing.T) {
 	type args struct {
 		node   *corev1.Node
 		osArgs []string

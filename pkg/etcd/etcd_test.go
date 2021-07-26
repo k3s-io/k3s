@@ -42,7 +42,7 @@ func generateTestHandler() http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {})
 }
 
-func Test_UnitETCD_IsInitialized(t *testing.T) {
+func TestETCD_IsInitialized(t *testing.T) {
 	type args struct {
 		ctx    context.Context
 		config *config.Control
@@ -117,7 +117,7 @@ func Test_UnitETCD_IsInitialized(t *testing.T) {
 	}
 }
 
-func Test_UnitETCD_Register(t *testing.T) {
+func TestETCD_Register(t *testing.T) {
 	type args struct {
 		ctx     context.Context
 		config  *config.Control
@@ -191,7 +191,7 @@ func Test_UnitETCD_Register(t *testing.T) {
 	}
 }
 
-func Test_UnitETCD_Start(t *testing.T) {
+func TestETCD_Start(t *testing.T) {
 	type fields struct {
 		client  *etcd.Client
 		config  *config.Control

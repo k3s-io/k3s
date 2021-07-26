@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func Test_UnitGetArgsList(t *testing.T) {
+func TestGetArgsList(t *testing.T) {
 	type args struct {
 		argsMap   map[string]string
 		extraArgs []string

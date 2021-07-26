@@ -25,12 +25,12 @@ jobs:
         fetch-depth: 1
     - name: Run Unit Tests
       run: | 
-        go test -coverpkg=./... -coverprofile=coverage.out ./pkg/... -run Unit
+        go test -coverpkg=./... -covermode=atomic -coverprofile=coverage.out ./pkg/...
         go tool cover -func coverage.out
     - name: On Failure, Launch Debug Session
       if: ${{ failure() }}
       uses: mxschmitt/action-tmate@v3
-      timeout-minutes: 5
+      timeout-minutes: 2
     - name: Upload Results To Codecov
       uses: codecov/codecov-action@v1
       with:

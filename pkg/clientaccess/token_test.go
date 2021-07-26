@@ -23,9 +23,9 @@ var (
 	defaultPassword = "token"
 )
 
-// Test_UnitTrustedCA confirms that tokens are validated when the server uses a cert (self-signed or otherwise)
+// TestTrustedCA confirms that tokens are validated when the server uses a cert (self-signed or otherwise)
 // that is trusted by the OS CA bundle. This test must be run first, since it mucks with the system root certs.
-func Test_UnitTrustedCA(t *testing.T) {
+func TestTrustedCA(t *testing.T) {
 	assert := assert.New(t)
 	server := newTLSServer(t, defaultUsername, defaultPassword, false)
 	defer server.Close()
@@ -76,9 +76,9 @@ func Test_UnitTrustedCA(t *testing.T) {
 	assert.NotEmpty(res)
 }
 
-// Test_UnitUntrustedCA confirms that tokens are validated when the server uses a self-signed cert
+// TestUntrustedCA confirms that tokens are validated when the server uses a self-signed cert
 // that is NOT trusted by the OS CA bundle.
-func Test_UnitUntrustedCA(t *testing.T) {
+func TestUntrustedCA(t *testing.T) {
 	assert := assert.New(t)
 	server := newTLSServer(t, defaultUsername, defaultPassword, false)
 	defer server.Close()
@@ -114,8 +114,8 @@ func Test_UnitUntrustedCA(t *testing.T) {
 	}
 }
 
-// Test_UnitInvalidServers tests that invalid server URLs are properly rejected
-func Test_UnitInvalidServers(t *testing.T) {
+// TestInvalidServers tests that invalid server URLs are properly rejected
+func TestInvalidServers(t *testing.T) {
 	assert := assert.New(t)
 	testCases := []struct {
 		server   string
@@ -135,8 +135,8 @@ func Test_UnitInvalidServers(t *testing.T) {
 	}
 }
 
-// Test_UnitInvalidTokens tests that tokens which are empty, invalid, or incorrect are properly rejected
-func Test_UnitInvalidTokens(t *testing.T) {
+// TestInvalidTokens tests that tokens which are empty, invalid, or incorrect are properly rejected
+func TestInvalidTokens(t *testing.T) {
 	assert := assert.New(t)
 	server := newTLSServer(t, defaultUsername, defaultPassword, false)
 	defer server.Close()
@@ -167,8 +167,8 @@ func Test_UnitInvalidTokens(t *testing.T) {
 	}
 }
 
-// Test_UnitInvalidCredentials tests that tokens which don't have valid credentials are rejected
-func Test_UnitInvalidCredentials(t *testing.T) {
+// TestInvalidCredentials tests that tokens which don't have valid credentials are rejected
+func TestInvalidCredentials(t *testing.T) {
 	assert := assert.New(t)
 	server := newTLSServer(t, defaultUsername, defaultPassword, false)
 	defer server.Close()
@@ -205,8 +205,8 @@ func Test_UnitInvalidCredentials(t *testing.T) {
 	}
 }
 
-// Test_UnitWrongCert tests that errors are returned when the server's cert isn't issued by its CA
-func Test_UnitWrongCert(t *testing.T) {
+// TestWrongCert tests that errors are returned when the server's cert isn't issued by its CA
+func TestWrongCert(t *testing.T) {
 	assert := assert.New(t)
 	server := newTLSServer(t, defaultUsername, defaultPassword, true)
 	defer server.Close()
@@ -220,8 +220,8 @@ func Test_UnitWrongCert(t *testing.T) {
 	assert.Nil(info)
 }
 
-// Test_UnitConnectionFailures tests that connections are timed out properly
-func Test_UnitConnectionFailures(t *testing.T) {
+// TestConnectionFailures tests that connections are timed out properly
+func TestConnectionFailures(t *testing.T) {
 	testDuration := (defaultClientTimeout * 2) + time.Second
 	assert := assert.New(t)
 	testCases := []struct {
@@ -247,8 +247,8 @@ func Test_UnitConnectionFailures(t *testing.T) {
 	}
 }
 
-// Test_UnitUserPass tests that usernames and passwords are parsed or not parsed from token strings
-func Test_UnitUserPass(t *testing.T) {
+// TestUserPass tests that usernames and passwords are parsed or not parsed from token strings
+func TestUserPass(t *testing.T) {
 	assert := assert.New(t)
 	testCases := []struct {
 		token    string
@@ -271,8 +271,8 @@ func Test_UnitUserPass(t *testing.T) {
 	}
 }
 
-// Test_UnitParseAndGet tests URL handling along some hard-to-reach code paths
-func Test_UnitParseAndGet(t *testing.T) {
+// TestParseAndGet tests URL handling along some hard-to-reach code paths
+func TestParseAndGet(t *testing.T) {
 	assert := assert.New(t)
 	server := newTLSServer(t, defaultUsername, defaultPassword, false)
 	defer server.Close()

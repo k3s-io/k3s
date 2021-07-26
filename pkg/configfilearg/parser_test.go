@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func Test_UnitParser_findStart(t *testing.T) {
+func TestParser_findStart(t *testing.T) {
 	tests := []struct {
 		name   string
 		args   []string
@@ -68,7 +68,7 @@ func Test_UnitParser_findStart(t *testing.T) {
 	}
 }
 
-func Test_UnitParser_findConfigFileFlag(t *testing.T) {
+func TestParser_findConfigFileFlag(t *testing.T) {
 	type fields struct {
 		DefaultConfig string
 		env           string
@@ -176,7 +176,7 @@ func Test_UnitParser_findConfigFileFlag(t *testing.T) {
 	}
 }
 
-func Test_UnitParser_Parse(t *testing.T) {
+func TestParser_Parse(t *testing.T) {
 	testDataOutput := []string{
 		"--foo-bar=bar-foo",
 		"--a-slice=1",
@@ -301,7 +301,7 @@ func Test_UnitParser_Parse(t *testing.T) {
 	}
 }
 
-func Test_UnitParser_FindString(t *testing.T) {
+func TestParser_FindString(t *testing.T) {
 	type fields struct {
 		After         []string
 		FlagNames     []string

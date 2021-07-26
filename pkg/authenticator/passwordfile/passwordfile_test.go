@@ -26,7 +26,7 @@ import (
 	"k8s.io/apiserver/pkg/authentication/user"
 )
 
-func Test_UnitPasswordFile(t *testing.T) {
+func TestPasswordFile(t *testing.T) {
 	auth, err := newWithContents(t, `
 password1,user1,uid1
 password2,user2,uid2
@@ -128,7 +128,7 @@ password7,user7,uid7,"group1,group2",otherdata
 	}
 }
 
-func Test_UnitBadPasswordFile(t *testing.T) {
+func TestBadPasswordFile(t *testing.T) {
 	if _, err := newWithContents(t, `
 password1,user1,uid1
 password2,user2,uid2
@@ -139,7 +139,7 @@ password4
 	}
 }
 
-func Test_UnitInsufficientColumnsPasswordFile(t *testing.T) {
+func TestInsufficientColumnsPasswordFile(t *testing.T) {
 	if _, err := newWithContents(t, "password4\n"); err == nil {
 		t.Fatalf("unexpected non error")
 	}

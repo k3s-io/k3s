@@ -5,7 +5,7 @@ package utils
 
 import "testing"
 
-func Test_UnitbuildIPSetRestore(t *testing.T) {
+func Test_buildIPSetRestore(t *testing.T) {
 	type args struct {
 		ipset *IPSet
 	}
