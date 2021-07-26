@@ -31,7 +31,7 @@ func Agent(ctx context.Context, nodeConfig *daemonconfig.Node, proxy proxy.Proxy
 	}
 
 	go func() {
-		if !config.GetKubeProxyDisabled(ctx, nodeConfig, proxy) {
+		if !config.KubeProxyDisabled(ctx, nodeConfig, proxy) {
 			if err := startKubeProxy(&nodeConfig.AgentConfig); err != nil {
 				logrus.Fatalf("Failed to start kube-proxy: %v", err)
 			}

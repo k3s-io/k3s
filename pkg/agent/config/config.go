@@ -46,7 +46,7 @@ func Get(ctx context.Context, agent cmds.Agent, proxy proxy.Proxy) *config.Node 
 	for {
 		agentConfig, err := get(ctx, &agent, proxy)
 		if err != nil {
-			logrus.Errorf("Failed to configure agent: %v", err)
+			logrus.Infof("Failed to retrieve agent configuration: %v", err)
 			select {
 			case <-time.After(5 * time.Second):
 				continue
@@ -58,15 +58,15 @@ func Get(ctx context.Context, agent cmds.Agent, proxy proxy.Proxy) *config.Node 
 	}
 }
 
-// GetKubeProxyDisabled returns true if kube-proxy has been disabled in the server configuration.
-// The server may not have a complete view of cluster configuration until after all startup
-// hooks have completed, so a call to this will block until after the server's readyz endpoint
-// returns OK.
-func GetKubeProxyDisabled(ctx context.Context, node *config.Node, proxy proxy.Proxy) bool {
+// KubeProxyDisabled returns a bool indicating whether or not kube-proxy has been disabled in the
+// server configuration. The server may not have a complete view of cluster configuration until
+// after all startup hooks have completed, so a call to this will block until after the server's
+// readyz endpoint returns OK.
+func KubeProxyDisabled(ctx context.Context, node *config.Node, proxy proxy.Proxy) bool {
 	for {
 		disabled, err := getKubeProxyDisabled(ctx, node, proxy)
 		if err != nil {
-			logrus.Errorf("Failed to configure kube-proxy: %v", err)
+			logrus.Infof("Failed to retrieve kube-proxy configuration: %v", err)
 			select {
 			case <-time.After(5 * time.Second):
 				continue
@@ -606,6 +606,8 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	return nodeConfig, nil
 }
 
+// getKubeProxyDisabled attempts to return the DisableKubeProxy setting from the server configuration data.
+// It first checks the server readyz endpoint, to ensure that the configuration has stabilized before use.
 func getKubeProxyDisabled(ctx context.Context, node *config.Node, proxy proxy.Proxy) (bool, error) {
 	info, err := clientaccess.ParseAndValidateToken(proxy.SupervisorURL(), node.Token)
 	if err != nil {
@@ -624,6 +626,9 @@ func getKubeProxyDisabled(ctx context.Context, node *config.Node, proxy proxy.Pr
 	return controlConfig.DisableKubeProxy, nil
 }
 
+// getConfig returns server configuration data. Note that this may be mutated during system startup; anything that needs
+// to ensure stable system state should check the readyz endpoint first. This is required because RKE2 starts up the
+// kubelet early, before the apiserver is available.
 func getConfig(info *clientaccess.Info) (*config.Control, error) {
 	data, err := info.Get("/v1-" + version.Program + "/config")
 	if err != nil {
@@ -634,6 +639,7 @@ func getConfig(info *clientaccess.Info) (*config.Control, error) {
 	return controlControl, json.Unmarshal(data, controlControl)
 }
 
+// getReadyz returns nil if the server is ready, or an error if not.
 func getReadyz(info *clientaccess.Info) error {
 	_, err := info.Get("/v1-" + version.Program + "/readyz")
 	return err
