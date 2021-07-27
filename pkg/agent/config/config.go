@@ -614,7 +614,10 @@ func getKubeProxyDisabled(ctx context.Context, node *config.Node, proxy proxy.Pr
 		return false, err
 	}
 
-	if err := getReadyz(info); err != nil {
+	// 500 error indicates that the health check has failed; other errors (for example 401 Unauthorized)
+	// indicate that the server is down-level and doesn't support readyz, so we should just use whatever
+	// the server has for us.
+	if err := getReadyz(info); err != nil && strings.HasSuffix(err.Error(), "500 Internal Server Error") {
 		return false, err
 	}
 
