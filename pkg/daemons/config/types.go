@@ -39,7 +39,7 @@ type Node struct {
 	Containerd               Containerd
 	Images                   string
 	AgentConfig              Agent
-	CACerts                  []byte
+	Token                    string
 	Certificate              *tls.Certificate
 	ServerHTTPSPort          int
 }
@@ -99,7 +99,6 @@ type Agent struct {
 	AirgapExtraRegistry     []string
 	DisableCCM              bool
 	DisableNPC              bool
-	DisableKubeProxy        bool
 	Rootless                bool
 	ProtectKernelDefaults   bool
 	DisableServiceLB        bool
