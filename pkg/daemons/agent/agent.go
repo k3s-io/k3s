@@ -1,11 +1,14 @@
 package agent
 
 import (
+	"context"
 	"math/rand"
 	"os"
 	"time"
 
-	"github.com/rancher/k3s/pkg/daemons/config"
+	"github.com/rancher/k3s/pkg/agent/config"
+	"github.com/rancher/k3s/pkg/agent/proxy"
+	daemonconfig "github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/daemons/executor"
 	"github.com/sirupsen/logrus"
 	"k8s.io/component-base/logs"
@@ -18,34 +21,38 @@ const (
 	windowsPrefix = "npipe://"
 )
 
-func Agent(config *config.Agent) error {
+func Agent(ctx context.Context, nodeConfig *daemonconfig.Node, proxy proxy.Proxy) error {
 	rand.Seed(time.Now().UTC().UnixNano())
 
 	logs.InitLogs()
 	defer logs.FlushLogs()
-	if err := startKubelet(config); err != nil {
+	if err := startKubelet(&nodeConfig.AgentConfig); err != nil {
 		return err
 	}
 
-	if !config.DisableKubeProxy {
-		return startKubeProxy(config)
-	}
+	go func() {
+		if !config.KubeProxyDisabled(ctx, nodeConfig, proxy) {
+			if err := startKubeProxy(&nodeConfig.AgentConfig); err != nil {
+				logrus.Fatalf("Failed to start kube-proxy: %v", err)
+			}
+		}
+	}()
 
 	return nil
 }
 
-func startKubeProxy(cfg *config.Agent) error {
+func startKubeProxy(cfg *daemonconfig.Agent) error {
 	argsMap := kubeProxyArgs(cfg)
-	args := config.GetArgsList(argsMap, cfg.ExtraKubeProxyArgs)
-	logrus.Infof("Running kube-proxy %s", config.ArgString(args))
+	args := daemonconfig.GetArgsList(argsMap, cfg.ExtraKubeProxyArgs)
+	logrus.Infof("Running kube-proxy %s", daemonconfig.ArgString(args))
 	return executor.KubeProxy(args)
 }
 
-func startKubelet(cfg *config.Agent) error {
+func startKubelet(cfg *daemonconfig.Agent) error {
 	argsMap := kubeletArgs(cfg)
 
-	args := config.GetArgsList(argsMap, cfg.ExtraKubeletArgs)
-	logrus.Infof("Running kubelet %s", config.ArgString(args))
+	args := daemonconfig.GetArgsList(argsMap, cfg.ExtraKubeletArgs)
+	logrus.Infof("Running kubelet %s", daemonconfig.ArgString(args))
 
 	return executor.Kubelet(args)
 }
@@ -59,7 +66,7 @@ func addFeatureGate(current, new string) string {
 
 // ImageCredProvAvailable checks to see if the kubelet image credential provider bin dir and config
 // files exist and are of the correct types. This is exported so that it may be used by downstream projects.
-func ImageCredProvAvailable(cfg *config.Agent) bool {
+func ImageCredProvAvailable(cfg *daemonconfig.Agent) bool {
 	if info, err := os.Stat(cfg.ImageCredProvBinDir); err != nil || !info.IsDir() {
 		logrus.Debugf("Kubelet image credential provider bin directory check failed: %v", err)
 		return false

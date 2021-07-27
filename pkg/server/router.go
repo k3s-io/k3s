@@ -46,6 +46,7 @@ func router(ctx context.Context, config *Config) http.Handler {
 	authed.Path(prefix + "/client-ca.crt").Handler(fileHandler(serverConfig.Runtime.ClientCA))
 	authed.Path(prefix + "/server-ca.crt").Handler(fileHandler(serverConfig.Runtime.ServerCA))
 	authed.Path(prefix + "/config").Handler(configHandler(serverConfig))
+	authed.Path(prefix + "/readyz").Handler(readyzHandler(serverConfig))
 
 	nodeAuthed := mux.NewRouter()
 	nodeAuthed.Use(authMiddleware(serverConfig, "system:nodes"))
@@ -263,6 +264,21 @@ func configHandler(server *config.Control) http.Handler {
 		}
 		resp.Header().Set("content-type", "application/json")
 		json.NewEncoder(resp).Encode(server)
+	})
+}
+
+func readyzHandler(server *config.Control) http.Handler {
+	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
+		code := http.StatusOK
+		data := []byte("ok")
+		if server.Runtime.Core == nil {
+			code = http.StatusInternalServerError
+			data = []byte("runtime core not ready")
+		}
+		resp.WriteHeader(code)
+		resp.Header().Set("Content-Type", "text/plain")
+		resp.Header().Set("Content-length", strconv.Itoa(len(data)))
+		resp.Write(data)
 	})
 }
 
