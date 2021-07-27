@@ -21,9 +21,11 @@ type Cluster struct {
 	runtime          *config.ControlRuntime
 	managedDB        managed.Driver
 	etcdConfig       endpoint.ETCDConfig
-	shouldBootstrap  bool
+	joining          bool
 	storageStarted   bool
 	saveBootstrap    bool
+	shouldBootstrap  bool
+	isFirstRun       bool
 }
 
 // Start creates the dynamic tls listener, http request handler,
@@ -86,11 +88,11 @@ func (c *Cluster) Start(ctx context.Context) (<-chan struct{}, error) {
 	}
 
 	// if necessary, record successful bootstrap
-	if c.shouldBootstrap {
-		if err := c.bootstrapped(); err != nil {
-			return nil, err
-		}
-	}
+	// if c.shouldBootstrap {
+	// 	if err := c.bootstrapped(); err != nil {
+	// 		return nil, err
+	// 	}
+	// }
 
 	if err := c.startStorage(ctx); err != nil {
 		return nil, err

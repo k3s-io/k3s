@@ -93,7 +93,7 @@ func (c *Cluster) bootstrapKeyData(ctx context.Context, storageClient client.Cli
 
 // storageBootstrap loads data from the datastore into the ControlRuntimeBootstrap struct.
 // The storage key and encryption passphrase are both derived from the join token.
-// token is either passed
+// token is either passed.
 func (c *Cluster) storageBootstrap(ctx context.Context) error {
 	if err := c.startStorage(ctx); err != nil {
 		return err
@@ -135,7 +135,7 @@ func (c *Cluster) storageBootstrap(ctx context.Context) error {
 		return err
 	}
 
-	return c.ReconcileBootstrapData(ctx, bytes.NewBuffer(data), &c.runtime.ControlRuntimeBootstrap)
+	return bootstrap.WriteToDiskFromStorage(bytes.NewBuffer(data), &c.runtime.ControlRuntimeBootstrap)
 }
 
 // getBootstrapKeyFromStorage will list all keys that has prefix /bootstrap and will check for key that is

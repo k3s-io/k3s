@@ -1,7 +1,6 @@
 package cluster
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -109,13 +108,9 @@ func TestCluster_certDirsExist(t *testing.T) {
 			setup: func() error {
 				os.MkdirAll(testTLSEtcdDir, 0700)
 
-				testTLSFileFullPath := filepath.Join(testTLSDir, "test_file")
-				testEtcdTLSFullPath := filepath.Join(testTLSEtcdDir, "test_file")
+				_, _ = os.Create(filepath.Join(testTLSDir, "test_file"))
+				_, _ = os.Create(filepath.Join(testTLSEtcdDir, "test_file"))
 
-				_, _ = os.Create(testTLSFileFullPath)
-				_, _ = os.Create(testEtcdTLSFullPath)
-
-				fmt.Println(testEtcdTLSFullPath + "  --  " + testTLSFileFullPath)
 				return nil
 			},
 			teardown: func() error {
@@ -132,7 +127,6 @@ func TestCluster_certDirsExist(t *testing.T) {
 				runtime:          tt.fields.runtime,
 				managedDB:        tt.fields.managedDB,
 				etcdConfig:       tt.fields.etcdConfig,
-				shouldBootstrap:  tt.fields.shouldBootstrap,
 				storageStarted:   tt.fields.storageStarted,
 				saveBootstrap:    tt.fields.saveBootstrap,
 			}
