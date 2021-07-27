@@ -38,19 +38,43 @@ const (
 	DefaultPodManifestPath = "pod-manifests"
 )
 
+// Get returns a pointer to a completed Node configuration struct,
+// containing a merging of the local CLI configuration with settings from the server.
+// A call to this will bock until agent configuration is successfully returned by the
+// server.
 func Get(ctx context.Context, agent cmds.Agent, proxy proxy.Proxy) *config.Node {
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+RETRY:
 	for {
 		agentConfig, err := get(ctx, &agent, proxy)
 		if err != nil {
-			logrus.Errorf("Failed to configure agent: %v", err)
-			select {
-			case <-time.After(5 * time.Second):
-				continue
-			case <-ctx.Done():
-				logrus.Fatalf("Interrupted")
+			logrus.Infof("Failed to retrieve agent configuration: %v", err)
+			for range ticker.C {
+				continue RETRY
 			}
 		}
 		return agentConfig
+	}
+}
+
+// KubeProxyDisabled returns a bool indicating whether or not kube-proxy has been disabled in the
+// server configuration. The server may not have a complete view of cluster configuration until
+// after all startup hooks have completed, so a call to this will block until after the server's
+// readyz endpoint returns OK.
+func KubeProxyDisabled(ctx context.Context, node *config.Node, proxy proxy.Proxy) bool {
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+RETRY:
+	for {
+		disabled, err := getKubeProxyDisabled(ctx, node, proxy)
+		if err != nil {
+			logrus.Infof("Failed to retrieve kube-proxy configuration: %v", err)
+			for range ticker.C {
+				continue RETRY
+			}
+		}
+		return disabled
 	}
 }
 
@@ -390,6 +414,7 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 		FlannelBackend:           controlConfig.FlannelBackend,
 		FlannelIPv6Masq:          controlConfig.FlannelIPv6Masq,
 		ServerHTTPSPort:          controlConfig.HTTPSPort,
+		Token:                    info.String(),
 	}
 	nodeConfig.FlannelIface = flannelIface
 	nodeConfig.Images = filepath.Join(envInfo.DataDir, "agent", "images")
@@ -411,7 +436,6 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	nodeConfig.AgentConfig.Snapshotter = envInfo.Snapshotter
 	nodeConfig.AgentConfig.IPSECPSK = controlConfig.IPSECPSK
 	nodeConfig.AgentConfig.StrongSwanDir = filepath.Join(envInfo.DataDir, "agent", "strongswan")
-	nodeConfig.CACerts = info.CACerts
 	nodeConfig.Containerd.Config = filepath.Join(envInfo.DataDir, "agent", "etc", "containerd", "config.toml")
 	nodeConfig.Containerd.Root = filepath.Join(envInfo.DataDir, "agent", "containerd")
 	if !nodeConfig.Docker && nodeConfig.ContainerRuntimeEndpoint == "" {
@@ -534,7 +558,6 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	nodeConfig.AgentConfig.PrivateRegistry = envInfo.PrivateRegistry
 	nodeConfig.AgentConfig.DisableCCM = controlConfig.DisableCCM
 	nodeConfig.AgentConfig.DisableNPC = controlConfig.DisableNPC
-	nodeConfig.AgentConfig.DisableKubeProxy = controlConfig.DisableKubeProxy
 	nodeConfig.AgentConfig.Rootless = envInfo.Rootless
 	nodeConfig.AgentConfig.PodManifests = filepath.Join(envInfo.DataDir, "agent", DefaultPodManifestPath)
 	nodeConfig.AgentConfig.ProtectKernelDefaults = envInfo.ProtectKernelDefaults
@@ -547,6 +570,32 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	return nodeConfig, nil
 }
 
+// getKubeProxyDisabled attempts to return the DisableKubeProxy setting from the server configuration data.
+// It first checks the server readyz endpoint, to ensure that the configuration has stabilized before use.
+func getKubeProxyDisabled(ctx context.Context, node *config.Node, proxy proxy.Proxy) (bool, error) {
+	info, err := clientaccess.ParseAndValidateToken(proxy.SupervisorURL(), node.Token)
+	if err != nil {
+		return false, err
+	}
+
+	// 500 error indicates that the health check has failed; other errors (for example 401 Unauthorized)
+	// indicate that the server is down-level and doesn't support readyz, so we should just use whatever
+	// the server has for us.
+	if err := getReadyz(info); err != nil && strings.HasSuffix(err.Error(), "500 Internal Server Error") {
+		return false, err
+	}
+
+	controlConfig, err := getConfig(info)
+	if err != nil {
+		return false, errors.Wrap(err, "failed to retrieve configuration from server")
+	}
+
+	return controlConfig.DisableKubeProxy, nil
+}
+
+// getConfig returns server configuration data. Note that this may be mutated during system startup; anything that needs
+// to ensure stable system state should check the readyz endpoint first. This is required because RKE2 starts up the
+// kubelet early, before the apiserver is available.
 func getConfig(info *clientaccess.Info) (*config.Control, error) {
 	data, err := info.Get("/v1-" + version.Program + "/config")
 	if err != nil {
@@ -555,6 +604,12 @@ func getConfig(info *clientaccess.Info) (*config.Control, error) {
 
 	controlControl := &config.Control{}
 	return controlControl, json.Unmarshal(data, controlControl)
+}
+
+// getReadyz returns nil if the server is ready, or an error if not.
+func getReadyz(info *clientaccess.Info) error {
+	_, err := info.Get("/v1-" + version.Program + "/readyz")
+	return err
 }
 
 // validateNetworkConfig ensures that the network configuration values provided by the server make sense.
