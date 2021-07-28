@@ -31,7 +31,7 @@ var _ = Describe("local storage", func() {
 			Expect(tests.K3sCmd("kubectl", "create", "-f", "testdata/localstorage_pvc.yaml")).
 				To(ContainSubstring("persistentvolumeclaim/local-path-pvc created"))
 		})
-		It("creats a new pod", func() {
+		It("creates a new pod", func() {
 			Expect(tests.K3sCmd("kubectl", "create", "-f", "testdata/localstorage_pod.yaml")).
 				To(ContainSubstring("pod/volume-test created"))
 		})
