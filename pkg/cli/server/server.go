@@ -368,7 +368,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 
 	ctx := signals.SetupSignalHandler(context.Background())
 
-	if err := server.StartServer(ctx, &serverConfig); err != nil {
+	if err := server.StartServer(ctx, &serverConfig, cfg); err != nil {
 		return err
 	}
 
