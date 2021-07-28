@@ -43,7 +43,7 @@ func Agent(ctx context.Context, nodeConfig *daemonconfig.Node, proxy proxy.Proxy
 
 func startKubeProxy(cfg *daemonconfig.Agent) error {
 	argsMap := kubeProxyArgs(cfg)
-	args := daemonconfig.GetArgsList(argsMap, cfg.ExtraKubeProxyArgs)
+	args := daemonconfig.GetArgs(argsMap, cfg.ExtraKubeProxyArgs)
 	logrus.Infof("Running kube-proxy %s", daemonconfig.ArgString(args))
 	return executor.KubeProxy(args)
 }
@@ -51,7 +51,7 @@ func startKubeProxy(cfg *daemonconfig.Agent) error {
 func startKubelet(cfg *daemonconfig.Agent) error {
 	argsMap := kubeletArgs(cfg)
 
-	args := daemonconfig.GetArgsList(argsMap, cfg.ExtraKubeletArgs)
+	args := daemonconfig.GetArgs(argsMap, cfg.ExtraKubeletArgs)
 	logrus.Infof("Running kubelet %s", daemonconfig.ArgString(args))
 
 	return executor.Kubelet(args)
