@@ -57,13 +57,6 @@ func startKubelet(cfg *daemonconfig.Agent) error {
 	return executor.Kubelet(args)
 }
 
-func addFeatureGate(current, new string) string {
-	if current == "" {
-		return new
-	}
-	return current + "," + new
-}
-
 // ImageCredProvAvailable checks to see if the kubelet image credential provider bin dir and config
 // files exist and are of the correct types. This is exported so that it may be used by downstream projects.
 func ImageCredProvAvailable(cfg *daemonconfig.Agent) bool {
