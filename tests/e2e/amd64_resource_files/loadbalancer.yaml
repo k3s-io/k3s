@@ -1,0 +1,36 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-loadbalancer
+spec:
+  selector:
+    matchLabels:
+      k8s-app: nginx-app-loadbalancer
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        k8s-app: nginx-app-loadbalancer
+    spec:
+      containers:
+      - name: nginx
+        image: ranchertest/mytestcontainer
+        ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+ name: nginx-loadbalancer-svc
+ labels:
+   k8s-app: nginx-app-loadbalancer
+spec:
+ type: LoadBalancer
+ ports:
+ - port: 81
+   targetPort: 80
+   protocol: TCP
+   name: http
+ selector:
+   k8s-app: nginx-app-loadbalancer
