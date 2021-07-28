@@ -45,7 +45,7 @@ func router(ctx context.Context, config *Config, cfg *cmds.Server) http.Handler 
 	authed.Path(prefix + "/client-" + version.Program + "-controller.crt").Handler(fileHandler(serverConfig.Runtime.ClientK3sControllerCert, serverConfig.Runtime.ClientK3sControllerKey))
 	authed.Path(prefix + "/client-ca.crt").Handler(fileHandler(serverConfig.Runtime.ClientCA))
 	authed.Path(prefix + "/server-ca.crt").Handler(fileHandler(serverConfig.Runtime.ServerCA))
-	authed.Path(prefix + "/config").Handler(configHandler(serverConfig))
+	authed.Path(prefix + "/config").Handler(configHandler(serverConfig, cfg))
 	authed.Path(prefix + "/readyz").Handler(readyzHandler(serverConfig))
 
 	if cfg.DisableAPIServer {
@@ -288,12 +288,17 @@ func fileHandler(fileName ...string) http.Handler {
 	})
 }
 
-func configHandler(server *config.Control) http.Handler {
+func configHandler(server *config.Control, cfg *cmds.Server) http.Handler {
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 		if req.TLS == nil {
 			resp.WriteHeader(http.StatusNotFound)
 			return
 		}
+		// Startup hooks may read and modify cmds.Server in a goroutine, but as these are copied into
+		// config.Control before the startup hooks are called, any modifications need to be sync'd back
+		// into the struct before it is sent to agents.
+		// At this time we don't sync all the fields, just those known to be touched by startup hooks.
+		server.DisableKubeProxy = cfg.DisableKubeProxy
 		resp.Header().Set("content-type", "application/json")
 		if err := json.NewEncoder(resp).Encode(server); err != nil {
 			logrus.Errorf("Failed to encode agent config: %v", err)
