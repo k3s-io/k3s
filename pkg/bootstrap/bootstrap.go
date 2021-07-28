@@ -61,6 +61,8 @@ type BootstrapFile struct {
 	Content   []byte
 }
 
+type BootstrapDataFormat map[string]BootstrapFile
+
 // WriteToDiskFromStorage writes the contents of the given reader to the paths
 // derived from within the ControlRuntimeBootstrap.
 func WriteToDiskFromStorage(r io.Reader, bootstrap *config.ControlRuntimeBootstrap) error {

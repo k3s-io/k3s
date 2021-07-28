@@ -25,7 +25,6 @@ type Cluster struct {
 	storageStarted   bool
 	saveBootstrap    bool
 	shouldBootstrap  bool
-	isFirstRun       bool
 }
 
 // Start creates the dynamic tls listener, http request handler,

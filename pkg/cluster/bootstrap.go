@@ -51,7 +51,6 @@ func (c *Cluster) shouldBootstrapLoad(ctx context.Context) (bool, error) {
 
 		isInitialized, err := c.managedDB.IsInitialized(ctx, c.config)
 		if err != nil {
-			c.isFirstRun = true
 			return false, err
 		}
 
@@ -154,12 +153,36 @@ func (c *Cluster) certDirsExist() error {
 	return nil
 }
 
+// migrateBootstrapData migrates bootstrap data from the old format to the new format.
+func (c *Cluster) migrateBootstrapData(ctx context.Context, sc client.Client, data []byte, files bootstrap.BootstrapDataFormat, normalizedToken string, rev int64) error {
+	logrus.Info("Migrating to new bootstrap data format")
+
+	var oldBootstrapData map[string][]byte
+	if err := json.NewDecoder(bytes.NewBuffer(data)).Decode(&oldBootstrapData); err != nil {
+		// if this errors here, we can assume that the error being thrown
+		// is not related to the needing to perform a migration.
+		return err
+	}
+
+	// iterate through the old bootstrap data structure
+	// and copy into the new boostrap data structure
+	for k, v := range oldBootstrapData {
+		files[k] = bootstrap.BootstrapFile{
+			Content: v,
+		}
+	}
+
+	return sc.Update(ctx, storageKey(normalizedToken), rev, data)
+}
+
 // ReconcileBootstrapData is called before any data is saved to the
 // datastore or locally. It checks to see if the contents of the
 // bootstrap data in the datastore is newer than on disk or different
 //  and dependingon where the difference is, the newer data is written
 // to the older.
 func (c *Cluster) ReconcileBootstrapData(ctx context.Context, crb *config.ControlRuntimeBootstrap) error {
+	logrus.Info("Reconciling bootstrap data between database and disk")
+
 	storageClient, err := client.New(c.etcdConfig)
 	if err != nil {
 		return err
@@ -218,9 +241,15 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, crb *config.Contro
 		return err
 	}
 
-	files := make(map[string]bootstrap.BootstrapFile)
+	files := make(bootstrap.BootstrapDataFormat)
 	if err := json.NewDecoder(bytes.NewBuffer(data)).Decode(&files); err != nil {
-		return err
+		// This will fail if data is being pulled from old an cluster since
+		// older clusters used a map[string][]byte for the data structure.
+		// Therefore, we need to perform a migration to the newer bootstrap
+		// format; bootstrap.BootstrapFile.
+		if err := c.migrateBootstrapData(ctx, storageClient, data, files, normalizedToken, value.Modified); err != nil {
+			return err
+		}
 	}
 
 	for pathKey, fileData := range files {
@@ -243,27 +272,21 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, crb *config.Contro
 		if !bytes.Equal(fileData.Content, fd) {
 			logrus.Warnf("%s is out of sync with datastore", path)
 
-			return c.save(ctx, true)
-		}
+			info, err := os.Stat(path)
+			if err != nil {
+				return err
+			}
 
-		info, err := os.Stat(path)
-		if err != nil {
-			return err
-		}
-
-		// TODO(): allow for a few seconds between the 2 so get
-		// seconds
-
-		switch {
-		//case (info.ModTime().Unix() - files[pathKey].Timestamp.Unix()) <= 4 || (info.ModTime().Unix() - files[pathKey].Timestamp.Unix()) >= -4:
-		case info.ModTime().Unix() > files[pathKey].Timestamp.Unix():
-			logrus.Warn(info.Name() + " newer than within database")
-			return c.save(ctx, true)
-		case info.ModTime().Unix() < files[pathKey].Timestamp.Unix():
-			logrus.Warn("database newer than " + info.Name())
-			return bootstrap.WriteToDiskFromStorage(bytes.NewBuffer(data), crb)
-		default:
-			// on disk certificates match what is in storage, noop
+			switch {
+			case info.ModTime().Unix() > files[pathKey].Timestamp.Unix():
+				logrus.Warn(info.Name() + " newer than within database")
+				return c.save(ctx, true)
+			case info.ModTime().Unix() < files[pathKey].Timestamp.Unix():
+				logrus.Warn("database newer than " + info.Name())
+				return bootstrap.WriteToDiskFromStorage(bytes.NewBuffer(data), crb)
+			default:
+				// on disk certificates match timestamps in storage. noop.
+			}
 		}
 	}
 
@@ -274,7 +297,6 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, crb *config.Contro
 // and loads it into the ControlRuntimeBootstrap struct. Unlike the storage bootstrap path,
 // this data does not need to be decrypted since it is generated on-demand by an existing server.
 func (c *Cluster) httpBootstrap(ctx context.Context) error {
-	logrus.Warn("XXX - httpbootstrapping...")
 	content, err := c.clientAccessInfo.Get("/v1-" + version.Program + "/server-bootstrap")
 	if err != nil {
 		return err
