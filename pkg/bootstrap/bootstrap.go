@@ -28,7 +28,7 @@ func ReadFromDisk(w io.Writer, bootstrap *config.ControlRuntimeBootstrap) error 
 		return nil
 	}
 
-	dataMap := make(map[string]BootstrapFile)
+	dataMap := make(map[string]File)
 	for pathKey, path := range paths {
 		if path == "" {
 			continue
@@ -43,7 +43,7 @@ func ReadFromDisk(w io.Writer, bootstrap *config.ControlRuntimeBootstrap) error 
 			return err
 		}
 
-		dataMap[pathKey] = BootstrapFile{
+		dataMap[pathKey] = File{
 			Timestamp: info.ModTime(),
 			Content:   data,
 		}
@@ -52,16 +52,16 @@ func ReadFromDisk(w io.Writer, bootstrap *config.ControlRuntimeBootstrap) error 
 	return json.NewEncoder(w).Encode(dataMap)
 }
 
-// BootstrapFile is a representation of a certificate
+// File is a representation of a certificate
 // or key file within the bootstrap context that contains
 // the contents of the file as well as a timestamp from
 // when the file was last modified.
-type BootstrapFile struct {
+type File struct {
 	Timestamp time.Time
 	Content   []byte
 }
 
-type BootstrapDataFormat map[string]BootstrapFile
+type DataFormat map[string]File
 
 // WriteToDiskFromStorage writes the contents of the given reader to the paths
 // derived from within the ControlRuntimeBootstrap.
@@ -71,7 +71,7 @@ func WriteToDiskFromStorage(r io.Reader, bootstrap *config.ControlRuntimeBootstr
 		return err
 	}
 
-	files := make(map[string]BootstrapFile)
+	files := make(map[string]File)
 	if err := json.NewDecoder(r).Decode(&files); err != nil {
 		return err
 	}
