@@ -71,7 +71,7 @@ func WriteToDiskFromStorage(r io.Reader, bootstrap *config.ControlRuntimeBootstr
 		return err
 	}
 
-	files := make(map[string]File)
+	files := make(DataFormat)
 	if err := json.NewDecoder(r).Decode(&files); err != nil {
 		return err
 	}
