@@ -73,10 +73,8 @@ func (c *Cluster) save(ctx context.Context, override bool) error {
 	return nil
 }
 
-// bootstrapKeyData retrieves and returns the data stored in
-// the datastore with the key "/bootstrap". This should only
-// exist with 1 entry and will return an error if more than
-// 1 entry is found.
+// bootstrapKeyData lists keys stored in the datastore with the prefix "/bootstrap", and
+// will return the first such key. It will return an error if not exactly one key is found.
 func (c *Cluster) bootstrapKeyData(ctx context.Context, storageClient client.Client) (*client.Value, error) {
 	bootstrapList, err := storageClient.List(ctx, "/bootstrap", 0)
 	if err != nil {
