@@ -155,12 +155,12 @@ func (c *Cluster) certDirsExist() error {
 
 // migrateBootstrapData migrates bootstrap data from the old format to the new format.
 func (c *Cluster) migrateBootstrapData(ctx context.Context, sc client.Client, data []byte, files bootstrap.DataFormat, normalizedToken string, rev int64) error {
-	logrus.Info("Migrating to new bootstrap data format")
+	logrus.Info("Migrating boostrap data to new format")
 
 	var oldBootstrapData map[string][]byte
 	if err := json.NewDecoder(bytes.NewBuffer(data)).Decode(&oldBootstrapData); err != nil {
 		// if this errors here, we can assume that the error being thrown
-		// is not related to the needing to perform a migration.
+		// is not related to needing to perform a migration.
 		return err
 	}
 
@@ -195,7 +195,7 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, crb *config.Contro
 			return err
 		}
 		if tokenFromFile == "" {
-			// at this point this is a fresh start in a non managed environment
+			// at this point this is a fresh start in a non-managed environment
 			c.saveBootstrap = true
 			return nil
 		}
@@ -317,34 +317,6 @@ func (c *Cluster) bootstrap(ctx context.Context) error {
 	// Bootstrap directly from datastore
 	return c.storageBootstrap(ctx)
 }
-
-// bootstrapped touches a file to indicate that bootstrap has been completed.
-// func (c *Cluster) bootstrapped() error {
-// 	stamp := c.bootstrapStamp()
-// 	if err := os.MkdirAll(filepath.Dir(stamp), 0700); err != nil {
-// 		return err
-// 	}
-
-// 	// return if file already exists
-// 	if _, err := os.Stat(stamp); err == nil {
-// 		return nil
-// 	}
-
-// 	// otherwise try to create it
-// 	f, err := os.Create(stamp)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	return f.Close()
-// }
-
-// bootstrapStamp returns the path to a file in datadir/db that is used to record
-// that a cluster has been joined. The filename is based on a portion of the sha256 hash of the token.
-// We hash the token value exactly as it is provided by the user, NOT the normalized version.
-// func (c *Cluster) bootstrapStamp() string {
-// 	return filepath.Join(c.config.DataDir, "db/joined-"+keyHash(c.config.Token))
-// }
 
 // Snapshot is a proxy method to call the snapshot method on the managedb
 // interface for etcd clusters.

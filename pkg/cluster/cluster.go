@@ -86,13 +86,6 @@ func (c *Cluster) Start(ctx context.Context) (<-chan struct{}, error) {
 		}
 	}
 
-	// if necessary, record successful bootstrap
-	// if c.shouldBootstrap {
-	// 	if err := c.bootstrapped(); err != nil {
-	// 		return nil, err
-	// 	}
-	// }
-
 	if err := c.startStorage(ctx); err != nil {
 		return nil, err
 	}
