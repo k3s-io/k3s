@@ -13,7 +13,6 @@ import (
 	"github.com/rancher/k3s/pkg/daemons/config"
 )
 
-// Handler
 func Handler(bootstrap *config.ControlRuntimeBootstrap) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		rw.Header().Set("Content-Type", "application/json")
@@ -21,7 +20,8 @@ func Handler(bootstrap *config.ControlRuntimeBootstrap) http.Handler {
 	})
 }
 
-// ReadFromDisk
+// ReadFromDisk reads the bootstrap data from the files on disk and
+// writes their content in JSON form to the given io.Writer.
 func ReadFromDisk(w io.Writer, bootstrap *config.ControlRuntimeBootstrap) error {
 	paths, err := ObjToMap(bootstrap)
 	if err != nil {
