@@ -49,7 +49,7 @@ RETRY:
 	for {
 		agentConfig, err := get(ctx, &agent, proxy)
 		if err != nil {
-			logrus.Infof("Failed to retrieve agent configuration: %v", err)
+			logrus.Infof("Waiting to retrieve agent configuration; server is not ready: %v", err)
 			for range ticker.C {
 				continue RETRY
 			}
@@ -69,7 +69,7 @@ RETRY:
 	for {
 		disabled, err := getKubeProxyDisabled(ctx, node, proxy)
 		if err != nil {
-			logrus.Infof("Failed to retrieve kube-proxy configuration: %v", err)
+			logrus.Infof("Waiting to retrieve kube-proxy configuration; server is not ready: %v", err)
 			for range ticker.C {
 				continue RETRY
 			}
