@@ -3,6 +3,6 @@ docker.io/rancher/klipper-helm:v0.6.1-build20210616
 docker.io/rancher/klipper-lb:v0.2.0
 docker.io/rancher/library-busybox:1.32.1
 docker.io/rancher/library-traefik:2.4.8
-docker.io/rancher/local-path-provisioner:v0.0.19
+docker.io/rancher/local-path-provisioner:v0.0.20
 docker.io/rancher/metrics-server:v0.3.6
 docker.io/rancher/pause:3.1
