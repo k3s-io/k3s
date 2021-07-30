@@ -17,6 +17,7 @@ exemptLabels:
   - kind/bug-qa
   - kind/task
   - kind/feature
+  - kind/enhancement
   - kind/design
   - kind/ci-improvements
   - kind/performance
