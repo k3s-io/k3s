@@ -252,6 +252,8 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, crb *config.Contro
 		}
 	}
 
+	const systemTimeSkew = int64(3)
+
 	for pathKey, fileData := range files {
 		path, ok := paths[pathKey]
 		if !ok {
@@ -278,10 +280,10 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, crb *config.Contro
 			}
 
 			switch {
-			case info.ModTime().Unix() > files[pathKey].Timestamp.Unix():
+			case info.ModTime().Unix()-files[pathKey].Timestamp.Unix() >= systemTimeSkew:
 				logrus.Warn(info.Name() + " newer than within database")
 				return c.save(ctx, true)
-			case info.ModTime().Unix() < files[pathKey].Timestamp.Unix():
+			case info.ModTime().Unix()-files[pathKey].Timestamp.Unix() <= systemTimeSkew:
 				logrus.Warn("database newer than " + info.Name())
 				return bootstrap.WriteToDiskFromStorage(bytes.NewBuffer(data), crb)
 			default:
