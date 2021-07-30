@@ -455,7 +455,7 @@ setup_selinux() {
         rpm_site="rpm-testing.rancher.io"
     fi
 
-    . /etc/os-release
+    [ -r /etc/os-release ] && . /etc/os-release
     if [ "${ID_LIKE:-}" = suse ] ; then
         policy_hint='k3s with SELinux is currently not supported on SUSE/openSUSE systems.
     please disable SELinux before installing k3s
