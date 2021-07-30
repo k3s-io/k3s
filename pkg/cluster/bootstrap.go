@@ -175,13 +175,15 @@ func (c *Cluster) migrateBootstrapData(ctx context.Context, sc client.Client, da
 	return sc.Update(ctx, storageKey(normalizedToken), rev, data)
 }
 
+const systemTimeSkew = int64(3)
+
 // ReconcileBootstrapData is called before any data is saved to the
 // datastore or locally. It checks to see if the contents of the
 // bootstrap data in the datastore is newer than on disk or different
 //  and dependingon where the difference is, the newer data is written
 // to the older.
 func (c *Cluster) ReconcileBootstrapData(ctx context.Context, crb *config.ControlRuntimeBootstrap) error {
-	logrus.Info("Reconciling bootstrap data between database and disk")
+	logrus.Info("Reconciling bootstrap data between datastore and disk")
 
 	storageClient, err := client.New(c.etcdConfig)
 	if err != nil {
@@ -252,7 +254,13 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, crb *config.Contro
 		}
 	}
 
-	const systemTimeSkew = int64(3)
+	type update struct {
+		db, disk, conflict bool
+	}
+
+	var updateDatastore, updateDisk bool
+
+	results := make(map[string]update)
 
 	for pathKey, fileData := range files {
 		path, ok := paths[pathKey]
@@ -266,14 +274,12 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, crb *config.Contro
 		}
 		defer f.Close()
 
-		fd, err := ioutil.ReadAll(f)
+		fData, err := ioutil.ReadAll(f)
 		if err != nil {
 			return err
 		}
 
-		if !bytes.Equal(fileData.Content, fd) {
-			logrus.Warnf("%s is out of sync with datastore", path)
-
+		if !bytes.Equal(fileData.Content, fData) {
 			info, err := os.Stat(path)
 			if err != nil {
 				return err
@@ -281,15 +287,94 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, crb *config.Contro
 
 			switch {
 			case info.ModTime().Unix()-files[pathKey].Timestamp.Unix() >= systemTimeSkew:
-				logrus.Warn(info.Name() + " newer than within database")
-				return c.save(ctx, true)
+				if _, ok := results[path]; !ok {
+					results[path] = update{
+						db: true,
+					}
+				}
+
+				for pk := range files {
+					p, ok := paths[pk]
+					if !ok {
+						continue
+					}
+
+					if filepath.Base(p) == info.Name() {
+						continue
+					}
+
+					i, err := os.Stat(p)
+					if err != nil {
+						return err
+					}
+
+					if i.ModTime().Unix()-files[pk].Timestamp.Unix() >= systemTimeSkew {
+						if _, ok := results[path]; !ok {
+							results[path] = update{
+								conflict: true,
+							}
+						}
+					}
+				}
 			case info.ModTime().Unix()-files[pathKey].Timestamp.Unix() <= systemTimeSkew:
-				logrus.Warn("database newer than " + info.Name())
-				return bootstrap.WriteToDiskFromStorage(bytes.NewBuffer(data), crb)
+				if _, ok := results[info.Name()]; !ok {
+					results[path] = update{
+						disk: true,
+					}
+				}
+
+				for pk := range files {
+					p, ok := paths[pk]
+					if !ok {
+						continue
+					}
+
+					if filepath.Base(p) == info.Name() {
+						continue
+					}
+
+					i, err := os.Stat(p)
+					if err != nil {
+						return err
+					}
+
+					if i.ModTime().Unix()-files[pk].Timestamp.Unix() <= systemTimeSkew {
+						if _, ok := results[path]; !ok {
+							results[path] = update{
+								conflict: true,
+							}
+						}
+					}
+				}
 			default:
-				// on disk certificates match timestamps in storage. noop.
+				if _, ok := results[path]; ok {
+					results[path] = update{}
+				}
 			}
 		}
+	}
+
+	for path, res := range results {
+		if res.db {
+			updateDatastore = true
+			logrus.Warn(path + " newer than datastore")
+		} else if res.disk {
+			updateDisk = true
+			logrus.Warn("datastore newer than " + path)
+		} else if res.conflict {
+			logrus.Warnf("datastore / disk conflict: %s newer than in the datastore", path)
+		}
+	}
+
+	switch {
+	case updateDatastore:
+		logrus.Warn("updating bootstrap data in datastore from disk")
+		return c.save(ctx, true)
+	case updateDisk:
+		logrus.Warn("updating bootstrap data on disk from datastore")
+		return bootstrap.WriteToDiskFromStorage(bytes.NewBuffer(data), crb)
+	default:
+		// on disk certificates match timestamps in storage. noop.
 	}
 
 	return nil
