@@ -26,7 +26,7 @@ exemptLabels:
 exemptProjects: true
 
 # Set to true to ignore issues in a milestone (defaults to false)
-exemptMilestones: true
+exemptMilestones: false
 
 # Set to true to ignore issues with an assignee (defaults to false)
 exemptAssignees: true
