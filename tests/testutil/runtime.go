@@ -1,4 +1,4 @@
-package tests
+package testutil
 
 import (
 	"os"
