@@ -127,7 +127,7 @@ func (s *S3) Download(ctx context.Context) error {
 	}
 	defer r.Close()
 
-	snapshotDir, err := snapshotDir(s.config)
+	snapshotDir, err := snapshotDir(s.config, true)
 	if err != nil {
 		return errors.Wrap(err, "failed to get the snapshot dir")
 	}

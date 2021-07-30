@@ -758,14 +758,14 @@ members:
 }
 
 // snapshotDir ensures that the snapshot directory exists, and then returns its path.
-func snapshotDir(config *config.Control) (string, error) {
+func snapshotDir(config *config.Control, create bool) (string, error) {
 	if config.EtcdSnapshotDir == "" {
 		// we have to create the snapshot dir if we are using
 		// the default snapshot dir if it doesn't exist
 		defaultSnapshotDir := filepath.Join(config.DataDir, "db", "snapshots")
 		s, err := os.Stat(defaultSnapshotDir)
 		if err != nil {
-			if os.IsNotExist(err) {
+			if create && os.IsNotExist(err) {
 				if err := os.MkdirAll(defaultSnapshotDir, 0700); err != nil {
 					return "", err
 				}
@@ -818,7 +818,7 @@ func (e *ETCD) Snapshot(ctx context.Context, config *config.Control) error {
 		return nil
 	}
 
-	snapshotDir, err := snapshotDir(e.config)
+	snapshotDir, err := snapshotDir(e.config, true)
 	if err != nil {
 		return errors.Wrap(err, "failed to get the snapshot dir")
 	}
@@ -976,7 +976,7 @@ func (e *ETCD) initS3IfNil(ctx context.Context) error {
 // PruneSnapshots perfrorms a retention run with the given
 // retention duration and removes expired snapshots.
 func (e *ETCD) PruneSnapshots(ctx context.Context) error {
-	snapshotDir, err := snapshotDir(e.config)
+	snapshotDir, err := snapshotDir(e.config, false)
 	if err != nil {
 		return errors.Wrap(err, "failed to get the snapshot dir")
 	}
@@ -995,7 +995,7 @@ func (e *ETCD) PruneSnapshots(ctx context.Context) error {
 // ListSnapshots is an exported wrapper method that wraps an
 // unexported method of the same name.
 func (e *ETCD) ListSnapshots(ctx context.Context) ([]SnapshotFile, error) {
-	snapshotDir, err := snapshotDir(e.config)
+	snapshotDir, err := snapshotDir(e.config, false)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get the snapshot dir")
 	}
@@ -1006,7 +1006,7 @@ func (e *ETCD) ListSnapshots(ctx context.Context) ([]SnapshotFile, error) {
 // deleteSnapshots removes the given snapshots from
 // either local storage or S3.
 func (e *ETCD) DeleteSnapshots(ctx context.Context, snapshots []string) error {
-	snapshotDir, err := snapshotDir(e.config)
+	snapshotDir, err := snapshotDir(e.config, false)
 	if err != nil {
 		return errors.Wrap(err, "failed to get the snapshot dir")
 	}
@@ -1103,7 +1103,7 @@ func updateSnapshotData(data map[string]string, snapshotFiles []SnapshotFile) er
 func (e *ETCD) StoreSnapshotData(ctx context.Context) error {
 	logrus.Infof("Saving current etcd snapshot set to %s ConfigMap", snapshotConfigMapName)
 
-	snapshotDir, err := snapshotDir(e.config)
+	snapshotDir, err := snapshotDir(e.config, true)
 	if err != nil {
 		return errors.Wrap(err, "failed to get the snapshot dir")
 	}
