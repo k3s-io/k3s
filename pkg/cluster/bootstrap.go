@@ -154,7 +154,7 @@ func (c *Cluster) certDirsExist() error {
 }
 
 // migrateBootstrapData migrates bootstrap data from the old format to the new format.
-func (c *Cluster) migrateBootstrapData(ctx context.Context, sc client.Client, data []byte, files bootstrap.DataFormat, normalizedToken string, rev int64) error {
+func (c *Cluster) migrateBootstrapData(ctx context.Context, sc client.Client, data []byte, files bootstrap.PathsDataformat, normalizedToken string, rev int64) error {
 	logrus.Info("Migrating bootstrap data to new format")
 
 	var oldBootstrapData map[string][]byte
@@ -243,7 +243,7 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, crb *config.Contro
 		return err
 	}
 
-	files := make(bootstrap.DataFormat)
+	files := make(bootstrap.PathsDataformat)
 	if err := json.NewDecoder(bytes.NewBuffer(data)).Decode(&files); err != nil {
 		// This will fail if data is being pulled from old an cluster since
 		// older clusters used a map[string][]byte for the data structure.

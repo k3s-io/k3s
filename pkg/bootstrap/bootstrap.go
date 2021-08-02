@@ -61,7 +61,7 @@ type File struct {
 	Content   []byte
 }
 
-type DataFormat map[string]File
+type PathsDataformat map[string]File
 
 // WriteToDiskFromStorage writes the contents of the given reader to the paths
 // derived from within the ControlRuntimeBootstrap.
@@ -71,7 +71,7 @@ func WriteToDiskFromStorage(r io.Reader, bootstrap *config.ControlRuntimeBootstr
 		return err
 	}
 
-	files := make(DataFormat)
+	files := make(PathsDataformat)
 	if err := json.NewDecoder(r).Decode(&files); err != nil {
 		return err
 	}
