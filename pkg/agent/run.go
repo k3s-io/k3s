@@ -85,10 +85,6 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 		}
 	}
 
-	if cfg.ETCDAgent && os.Getenv("NOTIFY_SOCKET") != "" {
-		systemd.SdNotify(false, "READY=1\n")
-	}
-
 	notifySocket := os.Getenv("NOTIFY_SOCKET")
 	os.Unsetenv("NOTIFY_SOCKET")
 
@@ -120,7 +116,7 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 	}
 
 	os.Setenv("NOTIFY_SOCKET", notifySocket)
-	systemd.SdNotify(true, "READY=1\n")
+	systemd.SdNotify(false, "READY=1\n")
 
 	<-ctx.Done()
 	return ctx.Err()

@@ -366,6 +366,8 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 
 	logrus.Info("Starting " + version.Program + " " + app.App.Version)
 
+	notifySocket := os.Getenv("NOTIFY_SOCKET")
+
 	ctx := signals.SetupSignalHandler(context.Background())
 
 	if err := server.StartServer(ctx, &serverConfig, cfg); err != nil {
@@ -382,7 +384,8 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		}
 
 		logrus.Info(version.Program + " is up and running")
-		if cfg.DisableAgent && os.Getenv("NOTIFY_SOCKET") != "" {
+		if (cfg.DisableAgent || cfg.DisableAPIServer) && notifySocket != "" {
+			os.Setenv("NOTIFY_SOCKET", notifySocket)
 			systemd.SdNotify(true, "READY=1\n")
 		}
 	}()
