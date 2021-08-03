@@ -213,18 +213,21 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, crb *config.Contro
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 
-	for range ticker.C {
+RETRY:
+	for {
 		value, err = c.getBootstrapKeyFromStorage(ctx, storageClient, normalizedToken, token)
 		if err != nil {
-			if strings.Contains(err.Error(), "not supported for learner") { // create error value
-				continue
+			if strings.Contains(err.Error(), "not supported for learner") {
+				for range ticker.C {
+					continue RETRY
+				}
+				return err
 			}
-			return err
-		}
-		if value == nil {
-			return nil
-		}
 
+			if value == nil {
+				return nil
+			}
+		}
 		break
 	}
 
