@@ -220,11 +220,15 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf *bytes.Buffer,
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 
-	for range ticker.C {
+RETRY:
+	for {
 		value, err = c.getBootstrapKeyFromStorage(ctx, storageClient, normalizedToken, token)
 		if err != nil {
 			if strings.Contains(err.Error(), "not supported for learner") {
-				continue
+				for range ticker.C {
+					continue RETRY
+				}
+
 			}
 			return err
 		}
