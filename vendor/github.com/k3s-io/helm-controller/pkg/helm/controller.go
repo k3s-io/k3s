@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"os"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -27,7 +28,9 @@ import (
 )
 
 var (
-	trueVal = true
+	trueVal         = true
+	commaRE         = regexp.MustCompile(`\\*,`)
+	DefaultJobImage = "rancher/klipper-helm:v0.6.3-build20210804"
 )
 
 type Controller struct {
@@ -39,12 +42,11 @@ type Controller struct {
 }
 
 const (
-	DefaultJobImage = "rancher/klipper-helm:v0.4.3"
-	Label           = "helmcharts.helm.cattle.io/chart"
-	Annotation      = "helmcharts.helm.cattle.io/configHash"
-	CRDName         = "helmcharts.helm.cattle.io"
-	ConfigCRDName   = "helmchartconfigs.helm.cattle.io"
-	Name            = "helm-controller"
+	Label         = "helmcharts.helm.cattle.io/chart"
+	Annotation    = "helmcharts.helm.cattle.io/configHash"
+	CRDName       = "helmcharts.helm.cattle.io"
+	ConfigCRDName = "helmchartconfigs.helm.cattle.io"
+	Name          = "helm-controller"
 )
 
 func Register(ctx context.Context, apply apply.Apply,
@@ -270,22 +272,39 @@ func job(chart *helmv1.HelmChart) (*batch.Job, *core.ConfigMap, *core.ConfigMap)
 		},
 	}
 
+	if chart.Spec.Timeout != nil {
+		job.Spec.Template.Spec.Containers[0].Env = append(job.Spec.Template.Spec.Containers[0].Env, core.EnvVar{
+			Name:  "TIMEOUT",
+			Value: chart.Spec.Timeout.String(),
+		})
+	}
+
 	if chart.Spec.Bootstrap {
 		job.Spec.Template.Spec.HostNetwork = true
 		job.Spec.Template.Spec.Tolerations = []core.Toleration{
 			{
 				Key:    "node.kubernetes.io/not-ready",
-				Effect: "NoSchedule",
+				Effect: core.TaintEffectNoSchedule,
 			},
 			{
 				Key:      "node.cloudprovider.kubernetes.io/uninitialized",
 				Operator: core.TolerationOpEqual,
 				Value:    "true",
-				Effect:   "NoSchedule",
+				Effect:   core.TaintEffectNoSchedule,
 			},
 			{
 				Key:      "CriticalAddonsOnly",
 				Operator: core.TolerationOpExists,
+			},
+			{
+				Key:      "node-role.kubernetes.io/etcd",
+				Operator: core.TolerationOpExists,
+				Effect:   core.TaintEffectNoExecute,
+			},
+			{
+				Key:      "node-role.kubernetes.io/control-plane",
+				Operator: core.TolerationOpExists,
+				Effect:   core.TaintEffectNoSchedule,
 			},
 		}
 		job.Spec.Template.Spec.Containers[0].Env = append(job.Spec.Template.Spec.Containers[0].Env, []core.EnvVar{
@@ -397,12 +416,10 @@ func args(chart *helmv1.HelmChart) []string {
 
 	for _, k := range keys(spec.Set) {
 		val := spec.Set[k]
-		if val.StrVal == "false" || val.StrVal == "true" {
-			args = append(args, "--set", fmt.Sprintf("%s=%s", k, val.StrVal))
-		} else if val.StrVal != "" {
-			args = append(args, "--set-string", fmt.Sprintf("%s=%s", k, val.StrVal))
+		if typedVal(val) {
+			args = append(args, "--set", fmt.Sprintf("%s=%s", k, val.String()))
 		} else {
-			args = append(args, "--set", fmt.Sprintf("%s=%d", k, val.IntVal))
+			args = append(args, "--set-string", fmt.Sprintf("%s=%s", k, commaRE.ReplaceAllStringFunc(val.String(), escapeComma)))
 		}
 	}
 
@@ -416,6 +433,33 @@ func keys(val map[string]intstr.IntOrString) []string {
 	}
 	sort.Strings(keys)
 	return keys
+}
+
+// typedVal is a modified version of helm's typedVal function that operates on kubernetes IntOrString types.
+// Things that look like an integer, boolean, or null should use --set; everything else should use --set-string.
+// Ref: https://github.com/helm/helm/blob/v3.5.4/pkg/strvals/parser.go#L415
+func typedVal(val intstr.IntOrString) bool {
+	if intstr.Int == val.Type {
+		return true
+	}
+	switch strings.ToLower(val.StrVal) {
+	case "true", "false", "null":
+		return true
+	default:
+		return false
+	}
+}
+
+// escapeComma should be passed a string consisting of zero or more backslashes, followed by a comma.
+// If there are an even number of characters (such as `\,` or `\\\,`) then the comma is escaped.
+// If there are an uneven number of characters (such as `,` or `\\,` then the comma is not escaped,
+// and we need to escape it by adding an additional backslash.
+// This logic is difficult if not impossible to accomplish with a simple regex submatch replace.
+func escapeComma(match string) string {
+	if len(match)%2 == 1 {
+		match = `\` + match
+	}
+	return match
 }
 
 func setProxyEnv(job *batch.Job) {
