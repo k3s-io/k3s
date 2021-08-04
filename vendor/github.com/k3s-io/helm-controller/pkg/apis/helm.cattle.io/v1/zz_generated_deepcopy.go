@@ -21,6 +21,7 @@ limitations under the License.
 package v1
 
 import (
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	intstr "k8s.io/apimachinery/pkg/util/intstr"
 )
@@ -171,6 +172,11 @@ func (in *HelmChartSpec) DeepCopyInto(out *HelmChartSpec) {
 		for key, val := range *in {
 			(*out)[key] = val
 		}
+	}
+	if in.Timeout != nil {
+		in, out := &in.Timeout, &out.Timeout
+		*out = new(metav1.Duration)
+		**out = **in
 	}
 	return
 }
