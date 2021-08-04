@@ -394,7 +394,6 @@ func (c *Cluster) httpBootstrap(ctx context.Context) error {
 	}
 
 	return c.ReconcileBootstrapData(ctx, bytes.NewBuffer(content), &c.config.Runtime.ControlRuntimeBootstrap)
-	//return bootstrap.WriteToDiskFromStorage(bytes.NewBuffer(content), &c.runtime.ControlRuntimeBootstrap)
 }
 
 // bootstrap performs cluster bootstrapping, either via HTTP (for managed databases) or direct load from datastore.
