@@ -34,7 +34,7 @@ var (
 )
 
 const (
-	image = "rancher/klipper-lb:v0.1.2"
+	image = "rancher/klipper-lb:v0.2.0"
 	Ready = condition.Cond("Ready")
 )
 

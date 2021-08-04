@@ -75,7 +75,7 @@ spec:
             fieldRef:
               fieldPath: metadata.namespace
         - name: HELPER_IMAGE
-          value: rancher/library-busybox:1.31.1
+          value: rancher/library-busybox:1.32.1
       volumes:
         - name: config-volume
           configMap:
