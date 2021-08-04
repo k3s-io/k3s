@@ -154,7 +154,6 @@ func (c *Cluster) certDirsExist() error {
 }
 
 // migrateBootstrapData migrates bootstrap data from the old format to the new format.
-// func (c *Cluster) migrateBootstrapData(ctx context.Context, sc client.Client, data []byte, files bootstrap.PathsDataformat, normalizedToken string, rev int64) error {
 func (c *Cluster) migrateBootstrapData(ctx context.Context, data *bytes.Buffer, files bootstrap.PathsDataformat) error {
 	logrus.Info("Migrating bootstrap data to new format")
 
