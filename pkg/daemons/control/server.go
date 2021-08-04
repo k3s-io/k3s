@@ -261,10 +261,6 @@ func prepare(ctx context.Context, config *config.Control, runtime *config.Contro
 		return err
 	}
 
-	if err := cluster.ReconcileBootstrapData(ctx, &runtime.ControlRuntimeBootstrap); err != nil {
-		return err
-	}
-
 	runtime.ETCDReady = ready
 	return nil
 }

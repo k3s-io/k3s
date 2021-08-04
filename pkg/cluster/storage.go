@@ -59,7 +59,6 @@ func (c *Cluster) save(ctx context.Context, override bool) error {
 				if err != nil {
 					return err
 				}
-				logrus.Warn("updating datastore bootstrap data from disk")
 				return storageClient.Update(ctx, storageKey(normalizedToken), bsd.Modified, data)
 			}
 			return nil
@@ -133,7 +132,8 @@ func (c *Cluster) storageBootstrap(ctx context.Context) error {
 		return err
 	}
 
-	return bootstrap.WriteToDiskFromStorage(bytes.NewBuffer(data), &c.runtime.ControlRuntimeBootstrap)
+	return c.ReconcileBootstrapData(ctx, bytes.NewBuffer(data), &c.config.Runtime.ControlRuntimeBootstrap)
+	//return bootstrap.WriteToDiskFromStorage(bytes.NewBuffer(data), &c.runtime.ControlRuntimeBootstrap)
 }
 
 // getBootstrapKeyFromStorage will list all keys that has prefix /bootstrap and will check for key that is
