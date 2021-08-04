@@ -28,7 +28,7 @@ export -f test-post-hook
 
 REPO=${REPO:-rancher}
 IMAGE_NAME=${IMAGE_NAME:-k3s}
-PREVIOUS_CHANNEL=$(curl -s https://update.k3s.io/v1-release/channels/stable -o /dev/null -w '%{redirect_url}' | awk -F. '{print "v1." ($(NF - 1) - 1)}')
+PREVIOUS_CHANNEL=$(grep 'k8s.io/kubernetes v' go.mod | head -n1 | awk '{print $2}' | awk -F. '{print "v1." ($(NF - 1) - 1)}')
 PREVIOUS_VERSION=$(curl -s https://update.k3s.io/v1-release/channels/${PREVIOUS_CHANNEL} -o /dev/null -w '%{redirect_url}' | awk -F/ '{print gensub(/\+/, "-", "g", $NF)}')
 STABLE_VERSION=$(curl -s https://update.k3s.io/v1-release/channels/stable -o /dev/null -w '%{redirect_url}' | awk -F/ '{print gensub(/\+/, "-", "g", $NF)}')
 LATEST_VERSION=$(curl -s https://update.k3s.io/v1-release/channels/latest -o /dev/null -w '%{redirect_url}' | awk -F/ '{print gensub(/\+/, "-", "g", $NF)}')
