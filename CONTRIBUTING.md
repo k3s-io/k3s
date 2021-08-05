@@ -10,6 +10,8 @@ If you're interested in contributing documentation, please note the following:
 - Doc issues are raised in this repository, and they are tracked under the `kind/documentation` label.
 - Pull requests are submitted to the K3s documentation source in the [Rancher docs repository.](https://github.com/rancher/docs/) The K3s docs content is in the `content/k3s/` directory.
 
+If you're interested in contributing testing, see the `tests/TESTING.md` documentation.
+
 ## Pull request and git commit guidance
 
 ### Opening PRs and organizing commits
