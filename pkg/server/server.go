@@ -49,7 +49,7 @@ func ResolveDataDir(dataDir string) (string, error) {
 	return filepath.Join(dataDir, "server"), err
 }
 
-func StartServer(ctx context.Context, config *Config) error {
+func StartServer(ctx context.Context, config *Config, cfg *cmds.Server) error {
 	if err := setupDataDirAndChdir(&config.ControlConfig); err != nil {
 		return err
 	}
@@ -65,7 +65,7 @@ func StartServer(ctx context.Context, config *Config) error {
 	wg := &sync.WaitGroup{}
 	wg.Add(len(config.StartupHooks))
 
-	config.ControlConfig.Runtime.Handler = router(ctx, config)
+	config.ControlConfig.Runtime.Handler = router(ctx, config, cfg)
 	shArgs := cmds.StartupHookArgs{
 		APIServerReady:  config.ControlConfig.Runtime.APIServerReady,
 		KubeConfigAdmin: config.ControlConfig.Runtime.KubeConfigAdmin,
