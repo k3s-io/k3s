@@ -560,7 +560,9 @@ func (e *ETCD) cluster(ctx context.Context, forceNew bool, options executor.Init
 
 // removePeer removes a peer from the cluster. The peer ID and IP address must both match.
 func (e *ETCD) removePeer(ctx context.Context, id, address string, removeSelf bool) error {
-	members, err := e.client.MemberList(ctx)
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, 1*time.Minute)
+	defer cancel()
+	members, err := e.client.MemberList(ctxWithTimeout)
 	if err != nil {
 		return err
 	}
@@ -579,7 +581,7 @@ func (e *ETCD) removePeer(ctx context.Context, id, address string, removeSelf bo
 					return errors.New("node has been deleted from the cluster")
 				}
 				logrus.Infof("Removing name=%s id=%d address=%s from etcd", member.Name, member.ID, address)
-				_, err := e.client.MemberRemove(ctx, member.ID)
+				_, err := e.client.MemberRemove(ctxWithTimeout, member.ID)
 				if err == rpctypes.ErrGRPCMemberNotFound {
 					return nil
 				}
