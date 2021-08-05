@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-clusterip
+spec:
+  selector:
+    matchLabels:
+      k8s-app: nginx-app-clusterip
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        k8s-app: nginx-app-clusterip
+    spec:
+      containers:
+      - name: nginx
+        image: ranchertest/mytestcontainer
+        ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    k8s-app: nginx-app-clusterip
+  name: nginx-clusterip-svc
+  namespace: default 
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+  selector:
+    k8s-app: nginx-app-clusterip
