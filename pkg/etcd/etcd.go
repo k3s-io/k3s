@@ -41,10 +41,11 @@ import (
 )
 
 const (
-	endpoint            = "https://127.0.0.1:2379"
-	testTimeout         = time.Second * 10
-	manageTickerTime    = time.Second * 15
-	learnerMaxStallTime = time.Minute * 5
+	endpoint             = "https://127.0.0.1:2379"
+	testTimeout          = time.Second * 10
+	manageTickerTime     = time.Second * 15
+	learnerMaxStallTime  = time.Minute * 5
+	memberRemovalTimeout = time.Minute * 1
 
 	// defaultDialTimeout is intentionally short so that connections timeout within the testTimeout defined above
 	defaultDialTimeout = 2 * time.Second
