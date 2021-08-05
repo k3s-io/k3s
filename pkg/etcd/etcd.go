@@ -41,10 +41,11 @@ import (
 )
 
 const (
-	endpoint            = "https://127.0.0.1:2379"
-	testTimeout         = time.Second * 10
-	manageTickerTime    = time.Second * 15
-	learnerMaxStallTime = time.Minute * 5
+	endpoint             = "https://127.0.0.1:2379"
+	testTimeout          = time.Second * 10
+	manageTickerTime     = time.Second * 15
+	learnerMaxStallTime  = time.Minute * 5
+	memberRemovalTimeout = time.Minute * 1
 
 	// defaultDialTimeout is intentionally short so that connections timeout within the testTimeout defined above
 	defaultDialTimeout = 2 * time.Second
@@ -560,9 +561,9 @@ func (e *ETCD) cluster(ctx context.Context, forceNew bool, options executor.Init
 
 // removePeer removes a peer from the cluster. The peer ID and IP address must both match.
 func (e *ETCD) removePeer(ctx context.Context, id, address string, removeSelf bool) error {
-	ctxWithTimeout, cancel := context.WithTimeout(ctx, 1*time.Minute)
+	ctx, cancel := context.WithTimeout(ctx, memberRemovalTimeout)
 	defer cancel()
-	members, err := e.client.MemberList(ctxWithTimeout)
+	members, err := e.client.MemberList(ctx)
 	if err != nil {
 		return err
 	}
@@ -581,7 +582,7 @@ func (e *ETCD) removePeer(ctx context.Context, id, address string, removeSelf bo
 					return errors.New("node has been deleted from the cluster")
 				}
 				logrus.Infof("Removing name=%s id=%d address=%s from etcd", member.Name, member.ID, address)
-				_, err := e.client.MemberRemove(ctxWithTimeout, member.ID)
+				_, err := e.client.MemberRemove(ctx, member.ID)
 				if err == rpctypes.ErrGRPCMemberNotFound {
 					return nil
 				}
