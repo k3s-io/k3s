@@ -67,7 +67,7 @@ How is this lightweight or smaller than upstream Kubernetes?
 
 There are two major ways that K3s is lighter weight than upstream Kubernetes:
 1. The memory footprint to run it is smaller
-1. The binary, which contains all the non-containerized components needed to run a cluster, is smaller
+2. The binary, which contains all the non-containerized components needed to run a cluster, is smaller
 
 The memory footprint is reduced primarily by running many components inside of a single process. This eliminates significant overhead that would otherwise be duplicated for each component.
 
@@ -79,7 +79,7 @@ What have you removed from upstream Kubernetes?
 This is a common point of confusion because it has changed over time. Early versions of K3s had much more removed than the current version. K3s currently removes two things:
 
 1. In-tree storage drivers
-1. In-tree cloud provider
+2. In-tree cloud provider
 
 Both of these have out-of-tree alternatives in the form of [CSI](https://github.com/container-storage-interface/spec/blob/master/spec.md) and [CCM](https://kubernetes.io/docs/tasks/administer-cluster/running-cloud-controller/), which work in K3s and which upstream is moving towards.
 
