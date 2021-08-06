@@ -151,4 +151,4 @@ data:
     spec:
       containers:
       - name: helper-pod
-        image: %{SYSTEM_DEFAULT_REGISTRY}%rancher/library-busybox:1.32.1
+        image: %{SYSTEM_DEFAULT_REGISTRY}%rancher/mirrored-library-busybox:1.32.1
