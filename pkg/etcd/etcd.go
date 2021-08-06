@@ -41,10 +41,11 @@ import (
 )
 
 const (
-	endpoint            = "https://127.0.0.1:2379"
-	testTimeout         = time.Second * 10
-	manageTickerTime    = time.Second * 15
-	learnerMaxStallTime = time.Minute * 5
+	endpoint             = "https://127.0.0.1:2379"
+	testTimeout          = time.Second * 10
+	manageTickerTime     = time.Second * 15
+	learnerMaxStallTime  = time.Minute * 5
+	memberRemovalTimeout = time.Minute * 1
 
 	// defaultDialTimeout is intentionally short so that connections timeout within the testTimeout defined above
 	defaultDialTimeout = 2 * time.Second
@@ -560,6 +561,8 @@ func (e *ETCD) cluster(ctx context.Context, forceNew bool, options executor.Init
 
 // removePeer removes a peer from the cluster. The peer ID and IP address must both match.
 func (e *ETCD) removePeer(ctx context.Context, id, address string, removeSelf bool) error {
+	ctx, cancel := context.WithTimeout(ctx, memberRemovalTimeout)
+	defer cancel()
 	members, err := e.client.MemberList(ctx)
 	if err != nil {
 		return err
