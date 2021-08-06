@@ -10,7 +10,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/rancher/k3s/tests/testutil"
+	testutil "github.com/rancher/k3s/tests/util"
 )
 
 var serverCmd *exec.Cmd

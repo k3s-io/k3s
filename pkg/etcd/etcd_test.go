@@ -10,7 +10,7 @@ import (
 
 	"github.com/rancher/k3s/pkg/clientaccess"
 	"github.com/rancher/k3s/pkg/daemons/config"
-	"github.com/rancher/k3s/tests/testutil"
+	testutil "github.com/rancher/k3s/tests/util"
 	"github.com/robfig/cron/v3"
 	etcd "go.etcd.io/etcd/clientv3"
 )

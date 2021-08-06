@@ -9,7 +9,7 @@ ___
 
 ## Unit Tests
 
-Unit tests should be written when a complex component or function of a package needs testing.
+Unit tests should be written when a component or function of a package needs testing.
 Unit tests should be used for "white box" testing.
 
 ### Framework
@@ -21,9 +21,9 @@ gotests --template_dir=<PATH_TO_K3S>/contrib/gotests_templates
 ```
 
 Or in vscode, edit the golang extension setting `Go: Generate Tests Flags`  
-and add `--template_dir=<PATH_TO_K3S>/contrib/gotests_templates` as an item.
+and add `--template_dir=<PATH_TO_K3S>/contrib/gotests_templates` as an item. `gotests` also has documented integrations for other popular editors used to write Go.
 
-To facilitate unit test creation, see `tests/testutil/runtime.go` helper functions.
+To facilitate unit test creation, see `tests/util/runtime.go` helper functions.
 
 ### Format
 
@@ -53,7 +53,7 @@ Integration tests should be used for "black box" testing.
 All integration tests in K3s follow a [Behavior Diven Development (BDD)](https://en.wikipedia.org/wiki/Behavior-driven_development) style. Specifically, K3s uses [Ginkgo](https://onsi.github.io/ginkgo/) and [Gomega](https://github.com/onsi/gomega) to drive the tests.  
 To generate an initial test, the command `ginkgo bootstrap` can be used.
 
-To facilitate K3s CLI testing, see `tests/testutil/cmd.go` helper functions.
+To facilitate K3s CLI testing, see `tests/util/cmd.go` helper functions.
 
 ### Format
 

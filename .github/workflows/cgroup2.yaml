@@ -41,7 +41,7 @@ jobs:
         path: ./tests/cgroup2
     - name: "Boot Fedora VM"
       run: |
-        cp -r k3s.service k3s-rootless.service ./tests/testutil ./tests/cgroup2
+        cp -r k3s.service k3s-rootless.service ./tests/util ./tests/cgroup2
         cd ./tests/cgroup2
         vagrant up
         vagrant ssh-config >> ~/.ssh/config
