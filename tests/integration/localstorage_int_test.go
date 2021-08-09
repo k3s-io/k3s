@@ -28,11 +28,11 @@ var _ = Describe("local storage", func() {
 			}, "90s", "1s").Should(MatchRegexp("kube-system.+coredns.+1\\/1.+Running"))
 		})
 		It("creates a new pvc", func() {
-			Expect(testutil.K3sCmd("kubectl", "create", "-f", "testdata/localstorage_pvc.yaml")).
+			Expect(testutil.K3sCmd("kubectl", "create", "-f", "../testdata/localstorage_pvc.yaml")).
 				To(ContainSubstring("persistentvolumeclaim/local-path-pvc created"))
 		})
 		It("creates a new pod", func() {
-			Expect(testutil.K3sCmd("kubectl", "create", "-f", "testdata/localstorage_pod.yaml")).
+			Expect(testutil.K3sCmd("kubectl", "create", "-f", "../testdata/localstorage_pod.yaml")).
 				To(ContainSubstring("pod/volume-test created"))
 		})
 		time.Sleep(30 * time.Second)
