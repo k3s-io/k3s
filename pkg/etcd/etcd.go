@@ -904,11 +904,10 @@ func (e *ETCD) listSnapshots(ctx context.Context, snapshotDir string) ([]Snapsho
 			return nil, err
 		}
 
-		s3FolderInUse := e.config.EtcdS3Folder != ""
-
 		var loo minio.ListObjectsOptions
-		if s3FolderInUse {
+		if e.config.EtcdS3Folder != "" {
 			loo = minio.ListObjectsOptions{
+				Prefix:    e.config.EtcdS3Folder,
 				Recursive: true,
 			}
 		}
@@ -921,12 +920,6 @@ func (e *ETCD) listSnapshots(ctx context.Context, snapshotDir string) ([]Snapsho
 			}
 			if obj.Size == 0 {
 				continue
-			}
-
-			if s3FolderInUse {
-				if !strings.Contains(obj.Key, e.config.EtcdS3Folder) {
-					continue
-				}
 			}
 
 			ca, err := time.Parse(time.RFC3339, obj.LastModified.Format(time.RFC3339))
