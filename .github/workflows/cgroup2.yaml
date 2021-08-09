@@ -51,7 +51,7 @@ jobs:
     # Sonobuoy requires CoreDNS to be ready
     - name: "Waiting for CoreDNS to be ready"
       run: |
-        ssh default -- sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml /vagrant/testutil/wait-for-coredns.sh
+        ssh default -- sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml /vagrant/util/wait-for-coredns.sh
     # Vagrant is slow, so we set --mode=quick here
     - name: "Run Sonobuoy (--mode=quick)"
       run: |
@@ -69,7 +69,7 @@ jobs:
         ssh default -- systemctl --user start k3s-rootless
     - name: "[Rootless] Waiting for CoreDNS to be ready"
       run: |
-        ssh default -- KUBECONFIG=/home/vagrant/.kube/k3s.yaml /vagrant/testutil/wait-for-coredns.sh
+        ssh default -- KUBECONFIG=/home/vagrant/.kube/k3s.yaml /vagrant/util/wait-for-coredns.sh
     - name: "[Rootless] Run Sonobuoy (--mode=quick)"
       run: |
         ssh default -- KUBECONFIG=/home/vagrant/.kube/k3s.yaml sonobuoy run --mode=quick --wait
