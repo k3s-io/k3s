@@ -904,7 +904,15 @@ func (e *ETCD) listSnapshots(ctx context.Context, snapshotDir string) ([]Snapsho
 			return nil, err
 		}
 
-		objects := e.s3.client.ListObjects(ctx, e.config.EtcdS3BucketName, minio.ListObjectsOptions{})
+		var loo minio.ListObjectsOptions
+		if e.config.EtcdS3Folder != "" {
+			loo = minio.ListObjectsOptions{
+				Prefix:    e.config.EtcdS3Folder,
+				Recursive: true,
+			}
+		}
+
+		objects := e.s3.client.ListObjects(ctx, e.config.EtcdS3BucketName, loo)
 
 		for obj := range objects {
 			if obj.Err != nil {
