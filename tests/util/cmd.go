@@ -6,6 +6,9 @@ import (
 	"os/exec"
 	"os/user"
 	"strings"
+
+	"github.com/rancher/k3s/pkg/flock"
+	"github.com/sirupsen/logrus"
 )
 
 func findK3sExecutable() string {
@@ -58,30 +61,50 @@ func FindStringInCmdAsync(scanner *bufio.Scanner, target string) bool {
 	return false
 }
 
-// K3sCmdAsync launches a k3s command asynchronously. Output of the command can be retrieved via
-// the provided scanner. The command can be ended via cmd.Wait() or via K3sKillAsync()
-func K3sCmdAsync(cmdName string, cmdArgs ...string) (*exec.Cmd, *bufio.Scanner, error) {
+type K3sServer struct {
+	cmd     *exec.Cmd
+	scanner *bufio.Scanner
+	lock    int
+}
+
+// K3sStartServer acquires an exclusive lock on a temporary file, then launches a k3s cluster
+// with the provided arguments. Subsequent/parallel calls to this function will block until
+// the original lock is cleared using K3sKillServer
+func K3sStartServer(cmdArgs ...string) (*K3sServer, error) {
+	logrus.Info("waiting to get server lock")
+	k3sLock, err := flock.Acquire("/var/lock/k3s-test.lock")
+	if err != nil {
+		return nil, err
+	}
+
 	k3sBin := findK3sExecutable()
 	var cmd *exec.Cmd
 	if IsRoot() {
-		k3sCmd := append([]string{cmdName}, cmdArgs...)
+		k3sCmd := append([]string{"server"}, cmdArgs...)
 		cmd = exec.Command(k3sBin, k3sCmd...)
 	} else {
-		k3sCmd := append([]string{k3sBin, cmdName}, cmdArgs...)
+		k3sCmd := append([]string{k3sBin, "server"}, cmdArgs...)
 		cmd = exec.Command("sudo", k3sCmd...)
 	}
 	cmdOut, _ := cmd.StderrPipe()
 	cmd.Stderr = os.Stderr
-	err := cmd.Start()
-	return cmd, bufio.NewScanner(cmdOut), err
+	err = cmd.Start()
+	return &K3sServer{cmd, bufio.NewScanner(cmdOut), k3sLock}, err
 }
 
-// K3sKillAsync terminates a command started by K3sCmdAsync(). This is
-func K3sKillAsync(cmd *exec.Cmd) error {
+// K3sKillServer terminates the running K3s server and unlocks the file for
+// other tests
+func K3sKillServer(server *K3sServer) error {
 	if IsRoot() {
-		return cmd.Process.Kill()
+		if err := server.cmd.Process.Kill(); err != nil {
+			return err
+		}
+	} else {
+		// Since k3s was launched as sudo, we can't just kill the process
+		killCmd := exec.Command("sudo", "pkill", "k3s")
+		if err := killCmd.Run(); err != nil {
+			return err
+		}
 	}
-	// Since k3s was launched as sudo, we can't just kill the process
-	killCmd := exec.Command("sudo", "pkill", "k3s")
-	return killCmd.Run()
+	return flock.Release(server.lock)
 }
