@@ -1,7 +1,6 @@
 package etcd_test
 
 import (
-	"os/exec"
 	"regexp"
 	"strings"
 	"testing"
@@ -12,10 +11,10 @@ import (
 	testutil "github.com/rancher/k3s/tests/util"
 )
 
-var serverCmd *exec.Cmd
+var server *testutil.K3sServer
 var _ = BeforeSuite(func() {
 	var err error
-	serverCmd, _, err = testutil.K3sCmdAsync("server", "--cluster-init")
+	server, err = testutil.K3sStartServer("--cluster-init")
 	Expect(err).ToNot(HaveOccurred())
 })
 
@@ -111,7 +110,7 @@ var _ = Describe("etcd snapshots", func() {
 })
 
 var _ = AfterSuite(func() {
-	Expect(testutil.K3sKillAsync(serverCmd)).To(Succeed())
+	Expect(testutil.K3sKillServer(server)).To(Succeed())
 })
 
 func Test_IntegrationEtcd(t *testing.T) {
