@@ -36,7 +36,7 @@ var _ = Describe("local storage", func() {
 		It("shows storage up in kubectl", func() {
 			Eventually(func() (string, error) {
 				return testutil.K3sCmd("kubectl", "get", "pvc")
-			}, "30s", "1s").Should(MatchRegexp(`local-path-pvc.+Bound`))
+			}, "45s", "1s").Should(MatchRegexp(`local-path-pvc.+Bound`))
 			Eventually(func() (string, error) {
 				return testutil.K3sCmd("kubectl", "get", "pv")
 			}, "10s", "1s").Should(MatchRegexp(`pvc.+2Gi.+Bound`))
