@@ -133,12 +133,15 @@ func kubeletArgs(cfg *config.Agent) map[string]string {
 
 func waitForManagementIp(networkName string) string {
 	for range time.Tick(time.Second * 5) {
-		network, err := hcsshim.GetHNSEndpointByName(networkName)
+		network, err := hcsshim.GetHNSNetworkByName(networkName)
 		if err != nil {
-			logrus.WithError(err).Warning("can't find HNS endpoint for network, retrying", networkName)
+			logrus.WithError(err).Warning("can't find HNS network, retrying", networkName)
 			continue
 		}
-		return network.IPAddress.String()
+		if network.ManagementIP == "" {
+			continue
+		}
+		return network.ManagementIP
 	}
 	return ""
 }
