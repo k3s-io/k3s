@@ -14,13 +14,13 @@ Unit tests should be used for "white box" testing.
 
 ### Framework
 
-All unit tests in K3s follow a [Table Driven Test](https://github.com/golang/go/wiki/TableDrivenTests) style. Specifically, K3s unit tests are automatically generated using the [gotests](https://github.com/cweill/gotests) tool. This is built into the Golang vscode extension or can be run via command line. Additionally, a set of custom templates is provided to the tool to extend the generated test's functionality. To use these templates, call:
+All unit tests in K3s follow a [Table Driven Test](https://github.com/golang/go/wiki/TableDrivenTests) style. Specifically, K3s unit tests are automatically generated using the [gotests](https://github.com/cweill/gotests) tool. This is built into the Go vscode extension or can be run via command line. Additionally, a set of custom templates is provided to the tool to extend the generated test's functionality. To use these templates, call:
 
 ```bash
 gotests --template_dir=<PATH_TO_K3S>/contrib/gotests_templates
 ```
 
-Or in vscode, edit the golang extension setting `Go: Generate Tests Flags`  
+Or in vscode, edit the Go extension setting `Go: Generate Tests Flags`  
 and add `--template_dir=<PATH_TO_K3S>/contrib/gotests_templates` as an item. `gotests` also has documented integrations for other popular editors used to write Go.
 
 To facilitate unit test creation, see `tests/util/runtime.go` helper functions.
@@ -45,7 +45,7 @@ ___
 
 ## Integration Tests
 
-Integration tests should be used to test a specific functionality of k3s that exists across multiple go packages, either via exported function calls, or more often, CLI comands.
+Integration tests should be used to test a specific functionality of k3s that exists across multiple Go packages, either via exported function calls, or more often, CLI comands.
 Integration tests should be used for "black box" testing. 
 
 ### Framework
@@ -96,10 +96,8 @@ Generally, E2E tests are run as a nightly Jenkins job for QA. They can still be 
 go test ./tests/... -run E2E
 ```
 
-## Contributing New Tests
+## Contributing New Or Updated Tests
 
 ___
-We gladly accept new tests of all types. If you wish to create
-a new test, please submit a PR with a title that includes the words `<NAME_OF_TEST> Created`. Additionally, the final merge commit into K3s should also include those keywords. This
-helps us track and identify which release a test was first created. If a test needs to
-be backported into a previous release, the commit description should note that.
+We gladly accept new and updated tests of all types. If you wish to create
+a new test or update an existing test, please submit a PR with a title that includes the words `<NAME_OF_TEST> (Created/Updated)`.
