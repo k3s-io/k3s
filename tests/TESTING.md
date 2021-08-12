@@ -14,14 +14,14 @@ Unit tests should be used for "white box" testing.
 
 ### Framework
 
-All unit tests in K3s follow a [Table Driven Test](https://github.com/golang/go/wiki/TableDrivenTests) style. Specifically, K3s unit tests are automatically generated using the [gotests](https://github.com/cweill/gotests) tool. This is built into the Go vscode extension or can be run via command line. Additionally, a set of custom templates is provided to the tool to extend the generated test's functionality. To use these templates, call:
+All unit tests in K3s follow a [Table Driven Test](https://github.com/golang/go/wiki/TableDrivenTests) style. Specifically, K3s unit tests are automatically generated using the [gotests](https://github.com/cweill/gotests) tool. This is built into the Go vscode extension, has documented integrations for other popular editors, or can be run via command line. Additionally, a set of custom templates are provided to extend the generated test's functionality. To use these templates, call:
 
 ```bash
 gotests --template_dir=<PATH_TO_K3S>/contrib/gotests_templates
 ```
 
 Or in vscode, edit the Go extension setting `Go: Generate Tests Flags`  
-and add `--template_dir=<PATH_TO_K3S>/contrib/gotests_templates` as an item. `gotests` also has documented integrations for other popular editors used to write Go.
+and add `--template_dir=<PATH_TO_K3S>/contrib/gotests_templates` as an item.
 
 To facilitate unit test creation, see `tests/util/runtime.go` helper functions.
 
@@ -38,7 +38,7 @@ See the [etcd unit test](https://github.com/k3s-io/k3s/blob/master/pkg/etcd/etcd
 go test ./pkg/... -run Unit
 ```
 
-Note that as unit tests call functions directly, they are the primary drivers of K3s's code coverage
+Note: As unit tests call functions directly, they are the primary drivers of K3s's code coverage
 metric.
 
 ___
@@ -50,7 +50,7 @@ Integration tests should be used for "black box" testing.
 
 ### Framework
 
-All integration tests in K3s follow a [Behavior Diven Development (BDD)](https://en.wikipedia.org/wiki/Behavior-driven_development) style. Specifically, K3s uses [Ginkgo](https://onsi.github.io/ginkgo/) and [Gomega](https://github.com/onsi/gomega) to drive the tests.  
+All integration tests in K3s follow a [Behavior Diven Development (BDD)](https://en.wikipedia.org/wiki/Behavior-driven_development) style. Specifically, K3s uses [Ginkgo](https://onsi.github.io/ginkgo/) and [Gomega](https://onsi.github.io/gomega/) to drive the tests.  
 To generate an initial test, the command `ginkgo bootstrap` can be used.
 
 To facilitate K3s CLI testing, see `tests/util/cmd.go` helper functions.
@@ -79,7 +79,7 @@ ___
 
 ## End-to-End (E2E) Tests
 
-End-to-end tests utilize Ginkgo and Gomega like the integration tests, but rely on separate testing utilities and are self-contained within the `test/e2e` directory. E2E tests cover complete K3s single and multi-cluster configuration and administration: bringup, update, teardown etc.  
+End-to-end tests utilize [Ginkgo](https://onsi.github.io/ginkgo/) and [Gomega](https://onsi.github.io/gomega/) like the integration tests, but rely on separate testing utilities and are self-contained within the `test/e2e` directory. E2E tests cover complete K3s single and multi-cluster configuration and administration: bringup, update, teardown etc.  
 E2E tests are run nightly as part of K3s quality assurance (QA).
 
 ### Format
