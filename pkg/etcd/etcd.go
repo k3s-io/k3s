@@ -724,8 +724,12 @@ members:
 		if member.IsLearner {
 			continue
 		}
-		for _, url := range member.ClientURLs {
-			if strings.Contains(url, ip) {
+		for _, clientURL := range member.ClientURLs {
+			u, err := url.Parse(clientURL)
+			if err != nil {
+				continue
+			}
+			if u.Hostname() == ip {
 				continue members
 			}
 		}
