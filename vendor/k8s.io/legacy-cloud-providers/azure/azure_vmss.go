@@ -74,7 +74,8 @@ type scaleSet struct {
 	*Cloud
 
 	// availabilitySet is also required for scaleSet because some instances
-	// (e.g. master nodes) may not belong to any scale sets.
+	// (e.g. control plane nodes) may not belong to any scale sets.
+	// this also allows for clusters with both VM and VMSS nodes.
 	availabilitySet VMSet
 
 	vmssCache                 *azcache.TimedCache
@@ -1376,8 +1377,17 @@ func (ss *scaleSet) ensureBackendPoolDeletedFromNode(nodeName, backendPoolID str
 func (ss *scaleSet) GetNodeNameByIPConfigurationID(ipConfigurationID string) (string, string, error) {
 	matches := vmssIPConfigurationRE.FindStringSubmatch(ipConfigurationID)
 	if len(matches) != 4 {
+		if ss.DisableAvailabilitySetNodes {
+			return "", "", ErrorNotVmssInstance
+		}
+
 		klog.V(4).Infof("Can not extract scale set name from ipConfigurationID (%s), assuming it is managed by availability set", ipConfigurationID)
-		return "", "", ErrorNotVmssInstance
+		name, rg, err := ss.availabilitySet.GetNodeNameByIPConfigurationID(ipConfigurationID)
+		if err != nil {
+			klog.Errorf("GetNodeNameByIPConfigurationID: failed to invoke availabilitySet.GetNodeNameByIPConfigurationID: %s", err.Error())
+			return "", "", err
+		}
+		return name, rg, nil
 	}
 
 	resourceGroup := matches[1]
