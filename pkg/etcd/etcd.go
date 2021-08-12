@@ -750,8 +750,8 @@ members:
 		if member.IsLearner {
 			continue
 		}
-		for _, clientUrl := range member.ClientURLs {
-			u, err := url.Parse(clientUrl)
+		for _, clientURL := range member.ClientURLs {
+			u, err := url.Parse(clientURL)
 			if err != nil {
 				continue
 			}
