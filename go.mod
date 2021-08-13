@@ -85,7 +85,7 @@ require (
 	github.com/google/uuid v1.2.0
 	github.com/gorilla/mux v1.7.4
 	github.com/gorilla/websocket v1.4.1
-	github.com/k3s-io/helm-controller v0.10.3
+	github.com/k3s-io/helm-controller v0.10.5
 	github.com/k3s-io/kine v0.6.2
 	github.com/kubernetes-sigs/cri-tools v0.0.0-00010101000000-000000000000
 	github.com/lib/pq v1.8.0
