@@ -524,8 +524,8 @@ github.com/jtolds/gls v4.20.0+incompatible h1:xdiiI2gbIgH/gLH7ADydsJ1uDOEzR8yvV7
 github.com/jtolds/gls v4.20.0+incompatible/go.mod h1:QJZ7F/aHp+rZTRtaJ1ow/lLfFfVYBRgL+9YlvaHOwJU=
 github.com/julienschmidt/httprouter v1.2.0/go.mod h1:SYymIcj16QtmaHHD7aYtjjsJG7VTCxuUUipMqKk8s4w=
 github.com/jung-kurt/gofpdf v1.0.3-0.20190309125859-24315acbbda5/go.mod h1:7Id9E/uU8ce6rXgefFLlgrJj/GYY22cpxn+r32jIOes=
-github.com/k3s-io/containerd v1.4.8-k3s1 h1:p4Z22iGEy7EaOCDChlgojqm6Jnziv19EuqnnLnK4tpk=
-github.com/k3s-io/containerd v1.4.8-k3s1/go.mod h1:FxLYZ8JAZ2kqHz/1mpWp1wkcquVwfNbDlUKjrT1B0iI=
+github.com/k3s-io/containerd v1.4.9-k3s1 h1:gV6EDgGcp4sxeZ+5dOaul+K+Z6nSx3rfzmC28DIDSSo=
+github.com/k3s-io/containerd v1.4.9-k3s1/go.mod h1:O7TXIlGKEOd9pX4UfoQW7kzPLmpjWSRRE1V0qZ+XZFw=
 github.com/k3s-io/continuity v0.0.0-20210309170710-f93269e0d5c1 h1:KEz2rd9IDbrQT8w6RibEYlwfTXiu0P6hQDE+6O4IJdI=
 github.com/k3s-io/continuity v0.0.0-20210309170710-f93269e0d5c1/go.mod h1:EXlVlkqNba9rJe3j7w3Xa924itAMLgZH4UD/Q4PExuQ=
 github.com/k3s-io/cri v1.4.0-k3s.7 h1:1ycdF3dMDJMW/k/UxDC6eMsyGSMZ/p0AoUBVdJvNGQs=

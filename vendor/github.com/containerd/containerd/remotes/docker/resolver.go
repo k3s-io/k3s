@@ -239,10 +239,10 @@ func (r *dockerResolver) Resolve(ctx context.Context, ref string) (string, ocisp
 	}
 
 	var (
-		lastErr error
-		paths   [][]string
-		dgst    = refspec.Digest()
-		caps    = HostCapabilityPull
+		firstErr error
+		paths    [][]string
+		dgst     = refspec.Digest()
+		caps     = HostCapabilityPull
 	)
 
 	if dgst != "" {
@@ -293,8 +293,8 @@ func (r *dockerResolver) Resolve(ctx context.Context, ref string) (string, ocisp
 					err = errors.Wrapf(err, "pull access denied, repository does not exist or may require authorization")
 				}
 				// Store the error for referencing later
-				if lastErr == nil {
-					lastErr = err
+				if firstErr == nil {
+					firstErr = err
 				}
 				log.G(ctx).WithError(err).Info("trying next host")
 				continue // try another host
@@ -306,7 +306,14 @@ func (r *dockerResolver) Resolve(ctx context.Context, ref string) (string, ocisp
 					log.G(ctx).Info("trying next host - response was http.StatusNotFound")
 					continue
 				}
-				return "", ocispec.Descriptor{}, errors.Errorf("unexpected status code %v: %v", u, resp.Status)
+				if resp.StatusCode > 399 {
+					// Set firstErr when encountering the first non-404 status code.
+					if firstErr == nil {
+						firstErr = errors.Errorf("pulling from host %s failed with status code %v: %v", host.Host, u, resp.Status)
+					}
+					continue // try another host
+				}
+				return "", ocispec.Descriptor{}, errors.Errorf("pulling from host %s failed with unexpected status code %v: %v", host.Host, u, resp.Status)
 			}
 			size := resp.ContentLength
 			contentType := getManifestMediaType(resp)
@@ -369,8 +376,8 @@ func (r *dockerResolver) Resolve(ctx context.Context, ref string) (string, ocisp
 			}
 			// Prevent resolving to excessively large manifests
 			if size > MaxManifestSize {
-				if lastErr == nil {
-					lastErr = errors.Wrapf(errdefs.ErrNotFound, "rejecting %d byte manifest for %s", size, ref)
+				if firstErr == nil {
+					firstErr = errors.Wrapf(errdefs.ErrNotFound, "rejecting %d byte manifest for %s", size, ref)
 				}
 				continue
 			}
@@ -386,11 +393,15 @@ func (r *dockerResolver) Resolve(ctx context.Context, ref string) (string, ocisp
 		}
 	}
 
-	if lastErr == nil {
-		lastErr = errors.Wrap(errdefs.ErrNotFound, ref)
+	// If above loop terminates without return, then there was an error.
+	// "firstErr" contains the first non-404 error. That is, "firstErr == nil"
+	// means that either no registries were given or each registry returned 404.
+
+	if firstErr == nil {
+		firstErr = errors.Wrap(errdefs.ErrNotFound, ref)
 	}
 
-	return "", ocispec.Descriptor{}, lastErr
+	return "", ocispec.Descriptor{}, firstErr
 }
 
 func (r *dockerResolver) Fetcher(ctx context.Context, ref string) (remotes.Fetcher, error) {
@@ -561,7 +572,21 @@ func (r *request) do(ctx context.Context) (*http.Response, error) {
 	if err := r.authorize(ctx, req); err != nil {
 		return nil, errors.Wrap(err, "failed to authorize")
 	}
-	resp, err := ctxhttp.Do(ctx, r.host.Client, req)
+
+	var client = &http.Client{}
+	if r.host.Client != nil {
+		*client = *r.host.Client
+	}
+	if client.CheckRedirect == nil {
+		client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+			if len(via) >= 10 {
+				return errors.New("stopped after 10 redirects")
+			}
+			return errors.Wrap(r.authorize(ctx, req), "failed to authorize redirect")
+		}
+	}
+
+	resp, err := ctxhttp.Do(ctx, client, req)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to do request")
 	}
