@@ -9,7 +9,7 @@ replace (
 	github.com/containerd/btrfs => github.com/containerd/btrfs v1.0.0
 	github.com/containerd/cgroups => github.com/containerd/cgroups v1.0.1
 	github.com/containerd/console => github.com/containerd/console v1.0.2
-	github.com/containerd/containerd => github.com/k3s-io/containerd v1.4.8-k3s1 // k3s-release/1.4
+	github.com/containerd/containerd => github.com/k3s-io/containerd v1.4.9-k3s1 // k3s-release/1.4
 	github.com/containerd/continuity => github.com/k3s-io/continuity v0.0.0-20210309170710-f93269e0d5c1
 	github.com/containerd/cri => github.com/k3s-io/cri v1.4.0-k3s.7 // k3s-release/1.4
 	github.com/containerd/fifo => github.com/containerd/fifo v1.0.0
@@ -99,7 +99,7 @@ require (
 	github.com/minio/minio-go/v7 v7.0.7
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	// LOOK TO scripts/download FOR THE VERSION OF runc THAT WE ARE BUILDING/SHIPPING
-	github.com/opencontainers/runc v1.0.0-rc93
+	github.com/opencontainers/runc v1.0.0-rc94
 	github.com/opencontainers/selinux v1.8.0
 	github.com/pierrec/lz4 v2.5.2+incompatible
 	github.com/pkg/errors v0.9.1
@@ -117,7 +117,7 @@ require (
 	go.etcd.io/etcd v0.5.0-alpha.5.0.20201208200253-50621aee4aea
 	golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2
 	golang.org/x/net v0.0.0-20210226172049-e18ecbb05110
-	golang.org/x/sys v0.0.0-20210324051608-47abb6519492
+	golang.org/x/sys v0.0.0-20210426230700-d19ff857e887
 	google.golang.org/grpc v1.33.2
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v1.20.5
