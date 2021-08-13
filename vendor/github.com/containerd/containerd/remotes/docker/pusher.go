@@ -109,12 +109,15 @@ func (p dockerPusher) Push(ctx context.Context, desc ocispec.Descriptor) (conten
 						// TODO: Set updated time?
 					},
 				})
+				resp.Body.Close()
 				return nil, errors.Wrapf(errdefs.ErrAlreadyExists, "content %v on remote", desc.Digest)
 			}
 		} else if resp.StatusCode != http.StatusNotFound {
+			resp.Body.Close()
 			// TODO: log error
 			return nil, errors.Errorf("unexpected response: %s", resp.Status)
 		}
+		resp.Body.Close()
 	}
 
 	if isManifest {
