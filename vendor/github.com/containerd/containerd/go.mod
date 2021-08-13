@@ -3,9 +3,12 @@ module github.com/containerd/containerd
 go 1.14
 
 replace (
+	github.com/Microsoft/go-winio => github.com/Microsoft/go-winio v0.4.19
+	github.com/Microsoft/hcsshim => github.com/Microsoft/hcsshim v0.8.16
 	github.com/containerd/continuity => github.com/k3s-io/continuity v0.0.0-20210309170710-f93269e0d5c1
 	github.com/containerd/cri => github.com/k3s-io/cri v1.4.0-k3s.7 // k3s-release/1.4
 	github.com/golang/protobuf => github.com/golang/protobuf v1.3.5
+	github.com/opencontainers/runc => github.com/opencontainers/runc v1.0.0-rc94
 	google.golang.org/genproto => google.golang.org/genproto v0.0.0-20200224152610-e50cd9704f63
 	k8s.io/api => k8s.io/api v0.19.10
 	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.19.10
@@ -32,12 +35,13 @@ replace (
 	k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.19.10
 	k8s.io/sample-cli-plugin => k8s.io/sample-cli-plugin v0.19.10
 	k8s.io/sample-controller => k8s.io/sample-controller v0.19.10
+
 )
 
 require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/Microsoft/go-winio v0.4.19
-	github.com/Microsoft/hcsshim v0.8.20
+	github.com/Microsoft/hcsshim v0.8.16
 	github.com/Microsoft/hcsshim/test v0.0.0-20210227013316-43a75bb4edd3
 	github.com/containerd/aufs v1.0.0
 	github.com/containerd/btrfs v1.0.0
@@ -50,7 +54,7 @@ require (
 	github.com/containerd/ttrpc v1.0.2
 	github.com/containerd/typeurl v1.0.2
 	github.com/containerd/zfs v1.0.0
-	github.com/coreos/go-systemd/v22 v22.1.0
+	github.com/coreos/go-systemd/v22 v22.3.1
 	github.com/docker/docker v17.12.0-ce-rc1.0.20200310163718-4634ce647cf2+incompatible // indirect
 	github.com/docker/go-events v0.0.0-20190806004212-e31b211e4f1c
 	github.com/docker/go-metrics v0.0.1
@@ -64,8 +68,8 @@ require (
 	github.com/imdario/mergo v0.3.11
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.0.1
-	github.com/opencontainers/runc v1.0.0-rc93
-	github.com/opencontainers/runtime-spec v1.0.3-0.20200929063507-e6143ca7d51d
+	github.com/opencontainers/runc v1.0.0-rc94
+	github.com/opencontainers/runtime-spec v1.0.3-0.20210326190908-1c3f411f0417
 	github.com/opencontainers/selinux v1.8.0
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.7.1
@@ -75,7 +79,7 @@ require (
 	go.etcd.io/bbolt v1.3.5
 	golang.org/x/net v0.0.0-20210226172049-e18ecbb05110
 	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
-	golang.org/x/sys v0.0.0-20210324051608-47abb6519492
+	golang.org/x/sys v0.0.0-20210426230700-d19ff857e887
 	google.golang.org/grpc v1.33.2
 	gotest.tools/v3 v3.0.3
 )
