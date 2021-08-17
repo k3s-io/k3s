@@ -31,21 +31,11 @@ type IPTablesRule struct {
 	rulespec []string
 }
 
-func MasqRules(ipn ip.IP4Net, lease *subnet.Lease) []IPTablesRule {
-	return nil
-}
-
-func ForwardRules(flannelNetwork string) []IPTablesRule {
-	return nil
-}
-
-func SetupAndEnsureIPTables(rules []IPTablesRule, resyncPeriod int) {
-
-}
-
-func DeleteIPTables(rules []IPTablesRule) error {
-	return nil
-}
-
-func teardownIPTables(ipt IPTables, rules []IPTablesRule) {
-}
+func MasqRules(ipn ip.IP4Net, lease *subnet.Lease) []IPTablesRule    { return nil }
+func ForwardRules(flannelNetwork string) []IPTablesRule              { return nil }
+func SetupAndEnsureIPTables(rules []IPTablesRule, resyncPeriod int)  {}
+func DeleteIPTables(rules []IPTablesRule) error                      { return nil }
+func teardownIPTables(ipt IPTables, rules []IPTablesRule)            {}
+func SetupAndEnsureIP6Tables(rules []IPTablesRule, resyncPeriod int) {}
+func MasqIP6Rules(ipn ip.IP6Net, lease *subnet.Lease) []IPTablesRule { return nil }
+func DeleteIP6Tables(rules []IPTablesRule) error                     { return nil }

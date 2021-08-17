@@ -68,7 +68,6 @@ replace (
 )
 
 require (
-	github.com/bronze1man/goStrongswanVici v0.0.0-20190828090544-27d02f80ba40 // indirect
 	github.com/containerd/cgroups v1.0.1
 	github.com/containerd/containerd v1.5.1
 	github.com/containerd/cri v1.11.1-0.20200820101445-b0cc07999aa5
@@ -79,7 +78,7 @@ require (
 	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f
 	github.com/docker/docker v20.10.5+incompatible
 	github.com/erikdubbelboer/gspt v0.0.0-20190125194910-e68493906b83
-	github.com/flannel-io/flannel v0.14.0
+	github.com/flannel-io/flannel v0.14.1-0.20210827074410-fca1560c91cc
 	github.com/go-bindata/go-bindata v3.1.2+incompatible
 	github.com/go-sql-driver/mysql v1.4.1
 	github.com/golangplus/testing v1.0.0 // indirect

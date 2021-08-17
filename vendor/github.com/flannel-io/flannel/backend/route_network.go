@@ -22,10 +22,9 @@ import (
 	"sync"
 	"time"
 
-	"golang.org/x/net/context"
-
 	"github.com/flannel-io/flannel/subnet"
 	"github.com/vishvananda/netlink"
+	"golang.org/x/net/context"
 	log "k8s.io/klog"
 )
 
@@ -37,8 +36,10 @@ type RouteNetwork struct {
 	SimpleNetwork
 	BackendType string
 	routes      []netlink.Route
+	v6Routes    []netlink.Route
 	SM          subnet.Manager
 	GetRoute    func(lease *subnet.Lease) *netlink.Route
+	GetV6Route  func(lease *subnet.Lease) *netlink.Route
 	Mtu         int
 	LinkIndex   int
 }
@@ -83,54 +84,53 @@ func (n *RouteNetwork) handleSubnetEvents(batch []subnet.Event) {
 	for _, evt := range batch {
 		switch evt.Type {
 		case subnet.EventAdded:
-			log.Infof("Subnet added: %v via %v", evt.Lease.Subnet, evt.Lease.Attrs.PublicIP)
-
 			if evt.Lease.Attrs.BackendType != n.BackendType {
 				log.Warningf("Ignoring non-%v subnet: type=%v", n.BackendType, evt.Lease.Attrs.BackendType)
 				continue
 			}
-			route := n.GetRoute(&evt.Lease)
 
-			n.addToRouteList(*route)
-			// Check if route exists before attempting to add it
-			routeList, err := netlink.RouteListFiltered(netlink.FAMILY_V4, &netlink.Route{Dst: route.Dst}, netlink.RT_FILTER_DST)
-			if err != nil {
-				log.Warningf("Unable to list routes: %v", err)
+			if evt.Lease.EnableIPv4 {
+				log.Infof("Subnet added: %v via %v", evt.Lease.Subnet, evt.Lease.Attrs.PublicIP)
+
+				route := n.GetRoute(&evt.Lease)
+				routeAdd(route, netlink.FAMILY_V4, n.addToRouteList, n.removeFromV4RouteList)
 			}
 
-			if len(routeList) > 0 && !routeEqual(routeList[0], *route) {
-				// Same Dst different Gw or different link index. Remove it, correct route will be added below.
-				log.Warningf("Replacing existing route to %v via %v dev index %d with %v via %v dev index %d.", evt.Lease.Subnet, routeList[0].Gw, routeList[0].LinkIndex, evt.Lease.Subnet, evt.Lease.Attrs.PublicIP, route.LinkIndex)
-				if err := netlink.RouteDel(&routeList[0]); err != nil {
-					log.Errorf("Error deleting route to %v: %v", evt.Lease.Subnet, err)
-					continue
-				}
-				n.removeFromRouteList(routeList[0])
-			}
+			if evt.Lease.EnableIPv6 {
+				log.Infof("Subnet added: %v via %v", evt.Lease.IPv6Subnet, evt.Lease.Attrs.PublicIPv6)
 
-			if len(routeList) > 0 && routeEqual(routeList[0], *route) {
-				// Same Dst and same Gw, keep it and do not attempt to add it.
-				log.Infof("Route to %v via %v dev index %d already exists, skipping.", evt.Lease.Subnet, evt.Lease.Attrs.PublicIP, routeList[0].LinkIndex)
-			} else if err := netlink.RouteAdd(route); err != nil {
-				log.Errorf("Error adding route to %v via %v dev index %d: %v", evt.Lease.Subnet, evt.Lease.Attrs.PublicIP, route.LinkIndex, err)
-				continue
+				route := n.GetV6Route(&evt.Lease)
+				routeAdd(route, netlink.FAMILY_V6, n.addToV6RouteList, n.removeFromV6RouteList)
 			}
 
 		case subnet.EventRemoved:
-			log.Info("Subnet removed: ", evt.Lease.Subnet)
-
 			if evt.Lease.Attrs.BackendType != n.BackendType {
 				log.Warningf("Ignoring non-%v subnet: type=%v", n.BackendType, evt.Lease.Attrs.BackendType)
 				continue
 			}
 
-			route := n.GetRoute(&evt.Lease)
-			// Always remove the route from the route list.
-			n.removeFromRouteList(*route)
+			if evt.Lease.EnableIPv4 {
+				log.Info("Subnet removed: ", evt.Lease.Subnet)
 
-			if err := netlink.RouteDel(route); err != nil {
-				log.Errorf("Error deleting route to %v: %v", evt.Lease.Subnet, err)
-				continue
+				route := n.GetRoute(&evt.Lease)
+				// Always remove the route from the route list.
+				n.removeFromV4RouteList(*route)
+
+				if err := netlink.RouteDel(route); err != nil {
+					log.Errorf("Error deleting route to %v: %v", evt.Lease.Subnet, err)
+				}
+			}
+
+			if evt.Lease.EnableIPv6 {
+				log.Info("Subnet removed: ", evt.Lease.IPv6Subnet)
+
+				route := n.GetV6Route(&evt.Lease)
+				// Always remove the route from the route list.
+				n.removeFromV6RouteList(*route)
+
+				if err := netlink.RouteDel(route); err != nil {
+					log.Errorf("Error deleting route to %v: %v", evt.Lease.IPv6Subnet, err)
+				}
 			}
 
 		default:
@@ -139,22 +139,74 @@ func (n *RouteNetwork) handleSubnetEvents(batch []subnet.Event) {
 	}
 }
 
-func (n *RouteNetwork) addToRouteList(route netlink.Route) {
-	for _, r := range n.routes {
-		if routeEqual(r, route) {
+func routeAdd(route *netlink.Route, ipFamily int, addToRouteList, removeFromRouteList func(netlink.Route)) {
+	addToRouteList(*route)
+	// Check if route exists before attempting to add it
+	routeList, err := netlink.RouteListFiltered(ipFamily, &netlink.Route{Dst: route.Dst}, netlink.RT_FILTER_DST)
+	if err != nil {
+		log.Warningf("Unable to list routes: %v", err)
+	}
+
+	if len(routeList) > 0 && !routeEqual(routeList[0], *route) {
+		// Same Dst different Gw or different link index. Remove it, correct route will be added below.
+		log.Warningf("Replacing existing route to %v with %v", routeList[0], route)
+		if err := netlink.RouteDel(&routeList[0]); err != nil {
+			log.Errorf("Effor deleteing route to %v: %v", routeList[0].Dst, err)
 			return
 		}
+		removeFromRouteList(routeList[0])
 	}
-	n.routes = append(n.routes, route)
+	routeList, err = netlink.RouteListFiltered(ipFamily, &netlink.Route{Dst: route.Dst}, netlink.RT_FILTER_DST)
+	if err != nil {
+		log.Warningf("Unable to list routes: %v", err)
+	}
+
+	if len(routeList) > 0 && routeEqual(routeList[0], *route) {
+		// Same Dst and same Gw, keep it and do not attempt to add it.
+		log.Infof("Route to %v already exists, skipping.", route)
+	} else if err := netlink.RouteAdd(route); err != nil {
+		log.Errorf("Error adding route to %v", route)
+		return
+	}
+	routeList, err = netlink.RouteListFiltered(ipFamily, &netlink.Route{Dst: route.Dst}, netlink.RT_FILTER_DST)
+	if err != nil {
+		log.Warningf("Unable to list routes: %v", err)
+	}
 }
 
-func (n *RouteNetwork) removeFromRouteList(route netlink.Route) {
-	for index, r := range n.routes {
-		if routeEqual(r, route) {
-			n.routes = append(n.routes[:index], n.routes[index+1:]...)
-			return
+func (n *RouteNetwork) addToRouteList(route netlink.Route) {
+	n.routes = addToRouteList(&route, n.routes)
+}
+
+func (n *RouteNetwork) addToV6RouteList(route netlink.Route) {
+	n.v6Routes = addToRouteList(&route, n.v6Routes)
+}
+
+func addToRouteList(route *netlink.Route, routes []netlink.Route) []netlink.Route {
+	for _, r := range routes {
+		if routeEqual(r, *route) {
+			return routes
 		}
 	}
+	return append(routes, *route)
+}
+
+func (n *RouteNetwork) removeFromV4RouteList(route netlink.Route) {
+	n.routes = n.removeFromRouteList(&route, n.routes)
+}
+
+func (n *RouteNetwork) removeFromV6RouteList(route netlink.Route) {
+	n.v6Routes = n.removeFromRouteList(&route, n.v6Routes)
+}
+
+func (n *RouteNetwork) removeFromRouteList(route *netlink.Route, routes []netlink.Route) []netlink.Route {
+	for index, r := range routes {
+		if routeEqual(r, *route) {
+			routes = append(routes[:index], routes[index+1:]...)
+			return routes
+		}
+	}
+	return routes
 }
 
 func (n *RouteNetwork) routeCheck(ctx context.Context) {
@@ -163,15 +215,24 @@ func (n *RouteNetwork) routeCheck(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-time.After(routeCheckRetries * time.Second):
-			n.checkSubnetExistInRoutes()
+			n.checkSubnetExistInV4Routes()
+			n.checkSubnetExistInV6Routes()
 		}
 	}
 }
 
-func (n *RouteNetwork) checkSubnetExistInRoutes() {
-	routeList, err := netlink.RouteList(nil, netlink.FAMILY_V4)
+func (n *RouteNetwork) checkSubnetExistInV4Routes() {
+	n.checkSubnetExistInRoutes(n.routes, netlink.FAMILY_V4)
+}
+
+func (n *RouteNetwork) checkSubnetExistInV6Routes() {
+	n.checkSubnetExistInRoutes(n.v6Routes, netlink.FAMILY_V6)
+}
+
+func (n *RouteNetwork) checkSubnetExistInRoutes(routes []netlink.Route, ipFamily int) {
+	routeList, err := netlink.RouteList(nil, ipFamily)
 	if err == nil {
-		for _, route := range n.routes {
+		for _, route := range routes {
 			exist := false
 			for _, r := range routeList {
 				if r.Dst == nil {
