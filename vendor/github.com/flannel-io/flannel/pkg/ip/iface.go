@@ -36,6 +36,16 @@ func getIfaceAddrs(iface *net.Interface) ([]netlink.Addr, error) {
 	return netlink.AddrList(link, syscall.AF_INET)
 }
 
+func getIfaceV6Addrs(iface *net.Interface) ([]netlink.Addr, error) {
+	link := &netlink.Device{
+		netlink.LinkAttrs{
+			Index: iface.Index,
+		},
+	}
+
+	return netlink.AddrList(link, syscall.AF_INET6)
+}
+
 func GetInterfaceIP4Addr(iface *net.Interface) (net.IP, error) {
 	addrs, err := getIfaceAddrs(iface)
 	if err != nil {
@@ -67,6 +77,37 @@ func GetInterfaceIP4Addr(iface *net.Interface) (net.IP, error) {
 	return nil, errors.New("No IPv4 address found for given interface")
 }
 
+func GetInterfaceIP6Addr(iface *net.Interface) (net.IP, error) {
+	addrs, err := getIfaceV6Addrs(iface)
+	if err != nil {
+		return nil, err
+	}
+
+	// prefer non link-local addr
+	var ll net.IP
+
+	for _, addr := range addrs {
+		if addr.IP.To16() == nil {
+			continue
+		}
+
+		if addr.IP.IsGlobalUnicast() {
+			return addr.IP, nil
+		}
+
+		if addr.IP.IsLinkLocalUnicast() {
+			ll = addr.IP
+		}
+	}
+
+	if ll != nil {
+		// didn't find global but found link-local. it'll do.
+		return ll, nil
+	}
+
+	return nil, errors.New("No IPv6 address found for given interface")
+}
+
 func GetInterfaceIP4AddrMatch(iface *net.Interface, matchAddr net.IP) error {
 	addrs, err := getIfaceAddrs(iface)
 	if err != nil {
@@ -84,6 +125,25 @@ func GetInterfaceIP4AddrMatch(iface *net.Interface, matchAddr net.IP) error {
 	}
 
 	return errors.New("No IPv4 address found for given interface")
+}
+
+func GetInterfaceIP6AddrMatch(iface *net.Interface, matchAddr net.IP) error {
+	addrs, err := getIfaceV6Addrs(iface)
+	if err != nil {
+		return err
+	}
+
+	for _, addr := range addrs {
+		// Attempt to parse the address in CIDR notation
+		// and assert it is IPv6
+		if addr.IP.To16() != nil {
+			if addr.IP.To16().Equal(matchAddr) {
+				return nil
+			}
+		}
+	}
+
+	return errors.New("No IPv6 address found for given interface")
 }
 
 func GetDefaultGatewayInterface() (*net.Interface, error) {
@@ -104,6 +164,24 @@ func GetDefaultGatewayInterface() (*net.Interface, error) {
 	return nil, errors.New("Unable to find default route")
 }
 
+func GetDefaultV6GatewayInterface() (*net.Interface, error) {
+	routes, err := netlink.RouteList(nil, syscall.AF_INET6)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, route := range routes {
+		if route.Dst == nil || route.Dst.String() == "::/0" {
+			if route.LinkIndex <= 0 {
+				return nil, errors.New("Found default v6 route but could not determine interface")
+			}
+			return net.InterfaceByIndex(route.LinkIndex)
+		}
+	}
+
+	return nil, errors.New("Unable to find default v6 route")
+}
+
 func GetInterfaceByIP(ip net.IP) (*net.Interface, error) {
 	ifaces, err := net.Interfaces()
 	if err != nil {
@@ -118,6 +196,22 @@ func GetInterfaceByIP(ip net.IP) (*net.Interface, error) {
 	}
 
 	return nil, errors.New("No interface with given IP found")
+}
+
+func GetInterfaceByIP6(ip net.IP) (*net.Interface, error) {
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, iface := range ifaces {
+		err := GetInterfaceIP6AddrMatch(&iface, ip)
+		if err == nil {
+			return &iface, nil
+		}
+	}
+
+	return nil, errors.New("No interface with given IPv6 found")
 }
 
 func DirectRouting(ip net.IP) (bool, error) {
@@ -159,6 +253,44 @@ func EnsureV4AddressOnLink(ipa IP4Net, ipn IP4Net, link netlink.Link) error {
 	if !hasAddr {
 		if err := netlink.AddrAdd(link, &addr); err != nil {
 			return fmt.Errorf("failed to add IP address %s to %s: %s", addr.String(), link.Attrs().Name, err)
+		}
+	}
+
+	return nil
+}
+
+// EnsureV6AddressOnLink ensures that there is only one v6 Addr on `link` and it equals `ipn`.
+// If there exist multiple addresses on link, it returns an error message to tell callers to remove additional address.
+func EnsureV6AddressOnLink(ipa IP6Net, ipn IP6Net, link netlink.Link) error {
+	addr := netlink.Addr{IPNet: ipa.ToIPNet()}
+	existingAddrs, err := netlink.AddrList(link, netlink.FAMILY_V6)
+	if err != nil {
+		return err
+	}
+
+	onlyLinkLocal := true
+	for _, existingAddr := range existingAddrs {
+		if !existingAddr.IP.IsLinkLocalUnicast() {
+			if !existingAddr.Equal(addr) {
+				if err := netlink.AddrDel(link, &existingAddr); err != nil {
+					return fmt.Errorf("failed to remove v6 IP address %s from %s: %w", ipn.String(), link.Attrs().Name, err)
+				}
+				existingAddrs = []netlink.Addr{}
+				onlyLinkLocal = false
+			} else {
+				return nil
+			}
+		}
+	}
+
+	if onlyLinkLocal {
+		existingAddrs = []netlink.Addr{}
+	}
+
+	// Actually add the desired address to the interface if needed.
+	if len(existingAddrs) == 0 {
+		if err := netlink.AddrAdd(link, &addr); err != nil {
+			return fmt.Errorf("failed to add v6 IP address %s to %s: %w", ipn.String(), link.Attrs().Name, err)
 		}
 	}
 

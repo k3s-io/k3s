@@ -31,35 +31,38 @@ type EventIkeSAUpDown struct {
 	Remote_id     string                         `json:"remote-id"`
 	Remote_host   string                         `json:"remote-host"`
 	Remote_port   string                         `json:"remote-port"`
+	Remote_vips   []string                       `json:"remote-vips"`
 	Responder_spi string                         `json:"responder-spi"`
 	State         string                         `json:"state"`
 	Task_Active   []string                       `json:"tasks-active"`
 	Uniqueid      string                         `json:"uniqueid"`
 	Version       string                         `json:"version"`
+	Remote_eap_id string                         `json:"remote-eap-id"` // client user name
 }
 
 type EventChildSAUpDown struct {
-	Bytes_in     string   `json:"bytes-in"`
-	Bytes_out    string   `json:"bytes-out"`
-	Encap        string   `json:"encap"`
-	Encr_alg     string   `json:"encr-alg"`
-	Encr_keysize string   `json:"encr-keysize"`
-	Integ_alg    string   `json:"integ-alg"`
-	Install_time string   `json:"install-time"`
-	Life_time    string   `json:"life-time"`
-	Local_ts     []string `json:"local-ts"`
-	Mode         string   `json:"mode"`
-	Name         string   `json:"name"`
-	Protocol     string   `json:"protocol"`
-	Packets_out  string   `json:"packets-out"`
-	Packets_in   string   `json:"packets-in"`
-	Rekey_time   string   `json:"rekey-time"`
-	Remote_ts    []string `json:"remote-ts"`
-	Reqid        string   `json:"reqid"`
-	Spi_in       string   `json:"spi-in"`
-	Spi_out      string   `json:"spi-out"`
-	State        string   `json:"state"`
-	UniqueId     string   `json:"uniqueid"`
+	Bytes_in      string   `json:"bytes-in"`
+	Bytes_out     string   `json:"bytes-out"`
+	Encap         string   `json:"encap"`
+	Encr_alg      string   `json:"encr-alg"`
+	Encr_keysize  string   `json:"encr-keysize"`
+	Integ_alg     string   `json:"integ-alg"`
+	Install_time  string   `json:"install-time"`
+	Life_time     string   `json:"life-time"`
+	Local_ts      []string `json:"local-ts"`
+	Mode          string   `json:"mode"`
+	Name          string   `json:"name"`
+	Protocol      string   `json:"protocol"`
+	Packets_out   string   `json:"packets-out"`
+	Packets_in    string   `json:"packets-in"`
+	Rekey_time    string   `json:"rekey-time"`
+	Remote_ts     []string `json:"remote-ts"`
+	Reqid         string   `json:"reqid"`
+	Spi_in        string   `json:"spi-in"`
+	Spi_out       string   `json:"spi-out"`
+	State         string   `json:"state"`
+	UniqueId      string   `json:"uniqueid"`
+	Remote_eap_id string   `json:"remote-eap-id"` // client user name
 }
 
 type EventIkeRekeyPair struct {
@@ -85,12 +88,14 @@ type EventIkeRekeySA struct {
 	Remote_id     string                          `json:"remote-id"`
 	Remote_host   string                          `json:"remote-host"`
 	Remote_port   string                          `json:"remote-port"`
+	Remote_vips   []string                        `json:"remote-vips"`
 	Responder_spi string                          `json:"responder-spi"`
 	State         string                          `json:"state"`
 	Task_Active   []string                        `json:"tasks-active"`
 	Task_Passive  []string                        `json:"tasks-passive"`
 	Uniqueid      string                          `json:"uniqueid"`
 	Version       string                          `json:"version"`
+	Remote_eap_id string                          `json:"remote-eap-id"` // client user name
 }
 
 type EventChildRekeyPair struct {
@@ -160,7 +165,6 @@ func prettyprint(b []byte) string {
 
 type monitorCallBack func(event string, info interface{})
 
-
 func handleIkeUpDown(eventName string, callback monitorCallBack, response map[string]interface{}) {
 	event := &EventIkeUpDown{}
 	event.Ike = map[string]*EventIkeSAUpDown{}
@@ -221,7 +225,7 @@ func handleChildRekey(eventName string, callback monitorCallBack, response map[s
 	callback(eventName, event)
 }
 
-func (c *ClientConn) MonitorSA(callback monitorCallBack,watchdog time.Duration) (err error) {
+func (c *ClientConn) MonitorSA(callback monitorCallBack, watchdog time.Duration) (err error) {
 	//register event
 	c.RegisterEvent(EVENT_CHILD_UPDOWN, func(response map[string]interface{}) {
 		//dumpResponse(response)
