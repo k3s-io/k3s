@@ -11,7 +11,18 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// Compile-time variable
+var existingServer string = "False"
+
 func findK3sExecutable() string {
+	// if running on an existing cluster, it maybe installed via k3s.service
+	// or run manually from dist/artifacts/k3s
+	if IsExistingServer() {
+		k3sBin, err := exec.LookPath("k3s")
+		if err == nil {
+			return k3sBin
+		}
+	}
 	k3sBin := "dist/artifacts/k3s"
 	for {
 		_, err := os.Stat(k3sBin)
@@ -31,6 +42,10 @@ func IsRoot() bool {
 		return false
 	}
 	return currentUser.Uid == "0"
+}
+
+func IsExistingServer() bool {
+	return existingServer == "True"
 }
 
 // K3sCmd launches the provided K3s command via exec. Command blocks until finished.
