@@ -157,7 +157,10 @@ func onDialError(src net.Conn, dstDialErr error) {
 }
 
 // ResetLoadBalancer will delete the local state file for the load balacner on disk
-func ResetLoadBalancer(dataDir, serviceName string) {
+func ResetLoadBalancer(dataDir, serviceName string) error {
 	stateFile := filepath.Join(dataDir, "etc", serviceName+".json")
-	os.Remove(stateFile)
+	if err := os.Remove(stateFile); err != nil {
+		logrus.Warn(err)
+	}
+	return nil
 }
