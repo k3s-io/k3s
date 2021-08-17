@@ -17,9 +17,8 @@ package subnet
 import (
 	"time"
 
-	"golang.org/x/net/context"
-
 	"github.com/flannel-io/flannel/pkg/ip"
+	"golang.org/x/net/context"
 	log "k8s.io/klog"
 )
 
@@ -76,13 +75,39 @@ func (lw *leaseWatcher) reset(leases []Lease) []Event {
 	batch := []Event{}
 
 	for _, nl := range leases {
-		if lw.ownLease != nil && nl.Subnet.Equal(lw.ownLease.Subnet) {
+		if lw.ownLease != nil && nl.EnableIPv4 && !nl.EnableIPv6 &&
+			nl.Subnet.Equal(lw.ownLease.Subnet) {
+			continue
+		} else if lw.ownLease != nil && !nl.EnableIPv4 && nl.EnableIPv6 &&
+			nl.IPv6Subnet.Equal(lw.ownLease.IPv6Subnet) {
+			continue
+		} else if lw.ownLease != nil && nl.EnableIPv4 && nl.EnableIPv6 &&
+			nl.Subnet.Equal(lw.ownLease.Subnet) &&
+			nl.IPv6Subnet.Equal(lw.ownLease.IPv6Subnet) {
+			continue
+		} else if lw.ownLease != nil && !nl.EnableIPv4 && !nl.EnableIPv6 &&
+			nl.Subnet.Equal(lw.ownLease.Subnet) {
+			//TODO - dual-stack temporarily only compatible with kube subnet manager
 			continue
 		}
 
 		found := false
 		for i, ol := range lw.leases {
-			if ol.Subnet.Equal(nl.Subnet) {
+			if ol.EnableIPv4 && !ol.EnableIPv6 && ol.Subnet.Equal(nl.Subnet) {
+				lw.leases = deleteLease(lw.leases, i)
+				found = true
+				break
+			} else if ol.EnableIPv4 && !ol.EnableIPv6 && ol.IPv6Subnet.Equal(nl.IPv6Subnet) {
+				lw.leases = deleteLease(lw.leases, i)
+				found = true
+				break
+			} else if ol.EnableIPv4 && ol.EnableIPv6 && ol.Subnet.Equal(nl.Subnet) &&
+				ol.IPv6Subnet.Equal(nl.IPv6Subnet) {
+				lw.leases = deleteLease(lw.leases, i)
+				found = true
+				break
+			} else if !ol.EnableIPv4 && !ol.EnableIPv6 && ol.Subnet.Equal(nl.Subnet) {
+				//TODO - dual-stack temporarily only compatible with kube subnet manager
 				lw.leases = deleteLease(lw.leases, i)
 				found = true
 				break
@@ -97,7 +122,19 @@ func (lw *leaseWatcher) reset(leases []Lease) []Event {
 
 	// everything left in sm.leases has been deleted
 	for _, l := range lw.leases {
-		if lw.ownLease != nil && l.Subnet.Equal(lw.ownLease.Subnet) {
+		if lw.ownLease != nil && l.EnableIPv4 && !l.EnableIPv6 &&
+			l.Subnet.Equal(lw.ownLease.Subnet) {
+			continue
+		} else if lw.ownLease != nil && !l.EnableIPv4 && l.EnableIPv6 &&
+			l.IPv6Subnet.Equal(lw.ownLease.IPv6Subnet) {
+			continue
+		} else if lw.ownLease != nil && l.EnableIPv4 && l.EnableIPv6 &&
+			l.Subnet.Equal(lw.ownLease.Subnet) &&
+			l.IPv6Subnet.Equal(lw.ownLease.IPv6Subnet) {
+			continue
+		} else if lw.ownLease != nil && !l.EnableIPv4 && !l.EnableIPv6 &&
+			l.Subnet.Equal(lw.ownLease.Subnet) {
+			//TODO - dual-stack temporarily only compatible with kube subnet manager
 			continue
 		}
 		batch = append(batch, Event{EventRemoved, l})
@@ -114,7 +151,19 @@ func (lw *leaseWatcher) update(events []Event) []Event {
 	batch := []Event{}
 
 	for _, e := range events {
-		if lw.ownLease != nil && e.Lease.Subnet.Equal(lw.ownLease.Subnet) {
+		if lw.ownLease != nil && e.Lease.EnableIPv4 && !e.Lease.EnableIPv6 &&
+			e.Lease.Subnet.Equal(lw.ownLease.Subnet) {
+			continue
+		} else if lw.ownLease != nil && !e.Lease.EnableIPv4 && e.Lease.EnableIPv6 &&
+			e.Lease.IPv6Subnet.Equal(lw.ownLease.IPv6Subnet) {
+			continue
+		} else if lw.ownLease != nil && e.Lease.EnableIPv4 && e.Lease.EnableIPv6 &&
+			e.Lease.Subnet.Equal(lw.ownLease.Subnet) &&
+			e.Lease.IPv6Subnet.Equal(lw.ownLease.IPv6Subnet) {
+			continue
+		} else if lw.ownLease != nil && !e.Lease.EnableIPv4 && !e.Lease.EnableIPv6 &&
+			e.Lease.Subnet.Equal(lw.ownLease.Subnet) {
+			//TODO - dual-stack temporarily only compatible with kube subnet manager
 			continue
 		}
 
@@ -132,12 +181,22 @@ func (lw *leaseWatcher) update(events []Event) []Event {
 
 func (lw *leaseWatcher) add(lease *Lease) Event {
 	for i, l := range lw.leases {
-		if l.Subnet.Equal(lease.Subnet) {
+		if l.EnableIPv4 && !l.EnableIPv6 && l.Subnet.Equal(lease.Subnet) {
+			lw.leases[i] = *lease
+			return Event{EventAdded, lw.leases[i]}
+		} else if !l.EnableIPv4 && l.EnableIPv6 && l.IPv6Subnet.Equal(lease.IPv6Subnet) {
+			lw.leases[i] = *lease
+			return Event{EventAdded, lw.leases[i]}
+		} else if l.EnableIPv4 && l.EnableIPv6 && l.Subnet.Equal(lease.Subnet) &&
+			l.IPv6Subnet.Equal(lease.IPv6Subnet) {
+			lw.leases[i] = *lease
+			return Event{EventAdded, lw.leases[i]}
+		} else if !l.EnableIPv4 && !l.EnableIPv6 && l.Subnet.Equal(lease.Subnet) {
+			//TODO - dual-stack temporarily only compatible with kube subnet manager
 			lw.leases[i] = *lease
 			return Event{EventAdded, lw.leases[i]}
 		}
 	}
-
 	lw.leases = append(lw.leases, *lease)
 
 	return Event{EventAdded, lw.leases[len(lw.leases)-1]}
@@ -145,13 +204,24 @@ func (lw *leaseWatcher) add(lease *Lease) Event {
 
 func (lw *leaseWatcher) remove(lease *Lease) Event {
 	for i, l := range lw.leases {
-		if l.Subnet.Equal(lease.Subnet) {
+		if l.EnableIPv4 && !l.EnableIPv6 && l.Subnet.Equal(lease.Subnet) {
+			lw.leases = deleteLease(lw.leases, i)
+			return Event{EventRemoved, l}
+		} else if !l.EnableIPv4 && l.EnableIPv6 && l.IPv6Subnet.Equal(lease.IPv6Subnet) {
+			lw.leases = deleteLease(lw.leases, i)
+			return Event{EventRemoved, l}
+		} else if l.EnableIPv4 && l.EnableIPv6 && l.Subnet.Equal(lease.Subnet) &&
+			l.IPv6Subnet.Equal(lease.IPv6Subnet) {
+			lw.leases = deleteLease(lw.leases, i)
+			return Event{EventRemoved, l}
+		} else if !l.EnableIPv4 && !l.EnableIPv6 && l.Subnet.Equal(lease.Subnet) {
+			//TODO - dual-stack temporarily only compatible with kube subnet manager
 			lw.leases = deleteLease(lw.leases, i)
 			return Event{EventRemoved, l}
 		}
 	}
 
-	log.Errorf("Removed subnet (%s) was not found", lease.Subnet)
+	log.Errorf("Removed subnet (%s) and ipv6 subnet (%s) were not found", lease.Subnet, lease.IPv6Subnet)
 	return Event{EventRemoved, *lease}
 }
 

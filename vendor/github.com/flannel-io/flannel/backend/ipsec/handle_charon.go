@@ -156,14 +156,15 @@ func (charon *CharonIKEDaemon) LoadConnection(localLease, remoteLease *subnet.Le
 
 	childConfMap := make(map[string]goStrongswanVici.ChildSAConf)
 	childSAConf := goStrongswanVici.ChildSAConf{
-		Local_ts:     []string{localLease.Subnet.String()},
-		Remote_ts:    []string{remoteLease.Subnet.String()},
-		ESPProposals: []string{charon.espProposal},
-		StartAction:  "start",
-		CloseAction:  "trap",
-		Mode:         "tunnel",
-		ReqID:        reqID,
-		//		RekeyTime:     rekeyTime,
+		Local_ts:      []string{localLease.Subnet.String()},
+		Remote_ts:     []string{remoteLease.Subnet.String()},
+		ESPProposals:  []string{charon.espProposal},
+		StartAction:   "start",
+		CloseAction:   "trap",
+		DpdAction:     "restart",
+		Mode:          "tunnel",
+		ReqID:         reqID,
+		RekeyTime:     "1h",
 		InstallPolicy: "no",
 	}
 

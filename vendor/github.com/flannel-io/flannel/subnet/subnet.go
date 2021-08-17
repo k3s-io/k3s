@@ -34,13 +34,18 @@ var (
 )
 
 type LeaseAttrs struct {
-	PublicIP    ip.IP4
-	BackendType string          `json:",omitempty"`
-	BackendData json.RawMessage `json:",omitempty"`
+	PublicIP      ip.IP4
+	PublicIPv6    *ip.IP6
+	BackendType   string          `json:",omitempty"`
+	BackendData   json.RawMessage `json:",omitempty"`
+	BackendV6Data json.RawMessage `json:",omitempty"`
 }
 
 type Lease struct {
+	EnableIPv4 bool
+	EnableIPv6 bool
 	Subnet     ip.IP4Net
+	IPv6Subnet ip.IP6Net
 	Attrs      LeaseAttrs
 	Expiration time.Time
 
