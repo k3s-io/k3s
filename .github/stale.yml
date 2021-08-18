@@ -22,6 +22,12 @@ exemptLabels:
   - kind/ci-improvements
   - kind/performance
   - kind/flaky-test
+  - kind/documentation
+  - kind/backport
+  - priority/backlog
+  - priority/critical-urgent
+  - priority/important-longterm
+  - priority/important-soon
 
 # Set to true to ignore issues in a project (defaults to false)
 exemptProjects: true
