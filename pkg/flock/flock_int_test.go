@@ -8,7 +8,8 @@ import (
 	"github.com/rancher/k3s/pkg/flock"
 )
 
-var lockfile string = "/tmp/testlock.test"
+const lockfile string = "/tmp/testlock.test"
+
 var lock int
 var _ = Describe("file locks", func() {
 	When("a new exclusive lock is created", func() {
