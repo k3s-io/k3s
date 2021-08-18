@@ -8,20 +8,21 @@ import (
 	"github.com/rancher/k3s/pkg/flock"
 )
 
+var lockfile string = "/tmp/testlock.test"
 var lock int
 var _ = Describe("file locks", func() {
 	When("a new exclusive lock is created", func() {
 		It("starts up with no problems", func() {
 			var err error
-			lock, err = flock.Acquire("/tmp/testlock.test")
+			lock, err = flock.Acquire(lockfile)
 			Expect(err).ToNot(HaveOccurred())
 		})
 		It("has a write lock on the file", func() {
-			Expect(flock.CheckLock("/tmp/testlock.test")).To(BeTrue())
+			Expect(flock.CheckLock(lockfile)).To(BeTrue())
 		})
 		It("release the lock correctly", func() {
 			Expect(flock.Release(lock)).To(Succeed())
-			Expect(flock.CheckLock("/tmp/testlock.test")).To(BeFalse())
+			Expect(flock.CheckLock(lockfile)).To(BeFalse())
 		})
 	})
 })
