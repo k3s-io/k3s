@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net"
+	"os"
 	"path/filepath"
 	"strconv"
 	"sync"
@@ -161,4 +162,13 @@ func reusePort(network, address string, conn syscall.RawConn) error {
 	return conn.Control(func(descriptor uintptr) {
 		syscall.SetsockoptInt(int(descriptor), unix.SOL_SOCKET, unix.SO_REUSEPORT, 1)
 	})
+}
+
+// ResetLoadBalancer will delete the local state file for the load balacner on disk
+func ResetLoadBalancer(dataDir, serviceName string) error {
+	stateFile := filepath.Join(dataDir, "etc", serviceName+".json")
+	if err := os.Remove(stateFile); err != nil {
+		logrus.Warn(err)
+	}
+	return nil
 }
