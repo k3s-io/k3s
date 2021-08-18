@@ -8,7 +8,7 @@ import (
 	"github.com/rancher/k3s/pkg/flock"
 )
 
-const lockfile string = "/tmp/testlock.test"
+const lockfile = "/tmp/testlock.test"
 
 var lock int
 var _ = Describe("file locks", func() {
