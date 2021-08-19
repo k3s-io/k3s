@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net"
+	"os"
 	"path/filepath"
 	"strconv"
 	"sync"
@@ -153,4 +154,13 @@ func (lb *LoadBalancer) dialContext(ctx context.Context, network, address string
 func onDialError(src net.Conn, dstDialErr error) {
 	logrus.Debugf("Incoming conn %v, error dialing load balancer servers: %v", src.RemoteAddr().String(), dstDialErr)
 	src.Close()
+}
+
+// ResetLoadBalancer will delete the local state file for the load balacner on disk
+func ResetLoadBalancer(dataDir, serviceName string) error {
+	stateFile := filepath.Join(dataDir, "etc", serviceName+".json")
+	if err := os.Remove(stateFile); err != nil {
+		logrus.Warn(err)
+	}
+	return nil
 }
