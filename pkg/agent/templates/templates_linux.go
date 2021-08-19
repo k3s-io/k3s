@@ -114,9 +114,9 @@ enable_keychain = true
 {{end}}
 
 {{range $k, $v := .ExtraRuntimes}}
-[plugins.cri.containerd.runtimes."{{$v.Name}}"]
+[plugins.cri.containerd.runtimes."{{$k}}"]
   runtime_type = "{{$v.RuntimeType}}"
-[plugins.cri.containerd.runtimes."{{$v.Name}}".options]
+[plugins.cri.containerd.runtimes."{{$k}}".options]
   BinaryName = "{{$v.BinaryName}}"
 {{end}}
 `

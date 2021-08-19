@@ -57,7 +57,7 @@ func setupContainerdConfig(ctx context.Context, cfg *config.Node) error {
 		DisableCgroup:         disableCgroup,
 		IsRunningInUserNS:     isRunningInUserNS,
 		PrivateRegistryConfig: privRegistries.Registry(),
-		ExtraRuntimes:         findNvidiaContainerRuntimes(nil),
+		ExtraRuntimes:         findNvidiaContainerRuntimes(os.DirFS("/")),
 	}
 
 	selEnabled, selConfigured, err := selinuxStatus()

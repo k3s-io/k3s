@@ -7,7 +7,6 @@ import (
 )
 
 type ContainerdRuntimeConfig struct {
-	Name        string
 	RuntimeType string
 	BinaryName  string
 }
@@ -17,5 +16,5 @@ type ContainerdConfig struct {
 	DisableCgroup         bool
 	IsRunningInUserNS     bool
 	PrivateRegistryConfig *registries.Registry
-	ExtraRuntimes         []ContainerdRuntimeConfig
+	ExtraRuntimes         map[string]ContainerdRuntimeConfig
 }
