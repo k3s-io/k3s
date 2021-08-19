@@ -112,6 +112,13 @@ enable_keychain = true
 {{end}}
 {{end}}
 {{end}}
+
+{{range $k, $v := .ExtraRuntimes}}
+[plugins.cri.containerd.runtimes."{{$v.Name}}"]
+  runtime_type = "{{$v.RuntimeType}}"
+[plugins.cri.containerd.runtimes."{{$v.Name}}".options]
+  BinaryName = "{{$v.BinaryName}}"
+{{end}}
 `
 
 func ParseTemplateFromConfig(templateBuffer string, config interface{}) (string, error) {
