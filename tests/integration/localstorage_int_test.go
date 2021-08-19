@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	. "github.com/onsi/ginkgo"
-	"github.com/onsi/ginkgo/reporters"
 	. "github.com/onsi/gomega"
 	testutil "github.com/rancher/k3s/tests/util"
 )
@@ -30,7 +29,6 @@ var _ = Describe("local storage", func() {
 		}
 	})
 	When("a new local storage is created", func() {
-
 		It("starts up with no problems", func() {
 			Eventually(func() (string, error) {
 				return testutil.K3sCmd("kubectl", "get", "pods", "-A")
@@ -84,7 +82,5 @@ var _ = AfterSuite(func() {
 
 func Test_IntegrationLocalStorage(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecsWithDefaultAndCustomReporters(t, "Local Storage Suite", []Reporter{
-		reporters.NewJUnitReporter("/tmp/results/local_storage_junit.xml"),
-	})
+	RunSpecs(t, "Local Storage Suite")
 }

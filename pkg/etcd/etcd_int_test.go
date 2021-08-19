@@ -7,7 +7,6 @@ import (
 	"time"
 
 	. "github.com/onsi/ginkgo"
-	"github.com/onsi/ginkgo/reporters"
 	. "github.com/onsi/gomega"
 	testutil "github.com/rancher/k3s/tests/util"
 )
@@ -118,7 +117,5 @@ var _ = AfterSuite(func() {
 
 func Test_IntegrationEtcd(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecsWithDefaultAndCustomReporters(t, "Etcd Suite", []Reporter{
-		reporters.NewJUnitReporter("/tmp/results/etcd_junit.xml"),
-	})
+	RunSpecs(t, "Etcd Suite")
 }
