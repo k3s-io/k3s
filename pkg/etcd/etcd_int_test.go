@@ -1,13 +1,13 @@
 package etcd_test
 
 import (
-	"fmt"
 	"regexp"
 	"strings"
 	"testing"
 	"time"
 
 	. "github.com/onsi/ginkgo"
+	"github.com/onsi/ginkgo/reporters"
 	. "github.com/onsi/gomega"
 	testutil "github.com/rancher/k3s/tests/util"
 )
@@ -15,9 +15,7 @@ import (
 var server *testutil.K3sServer
 var serverArgs = []string{"--cluster-init"}
 var _ = BeforeSuite(func() {
-	if testutil.IsExistingServer() {
-		fmt.Println("Test needs k3s server with: " + strings.Join(serverArgs, " "))
-	} else {
+	if !testutil.IsExistingServer() {
 		var err error
 		server, err = testutil.K3sStartServer(serverArgs...)
 		Expect(err).ToNot(HaveOccurred())
@@ -25,6 +23,11 @@ var _ = BeforeSuite(func() {
 })
 
 var _ = Describe("etcd snapshots", func() {
+	BeforeEach(func() {
+		if !testutil.ServerArgsPresent(serverArgs) {
+			Skip("Test needs k3s server with: " + strings.Join(serverArgs, " "))
+		}
+	})
 	When("a new etcd is created", func() {
 		It("starts up with no problems", func() {
 			Eventually(func() (string, error) {
@@ -115,5 +118,7 @@ var _ = AfterSuite(func() {
 
 func Test_IntegrationEtcd(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Etcd Suite")
+	RunSpecsWithDefaultAndCustomReporters(t, "Etcd Suite", []Reporter{
+		reporters.NewJUnitReporter("/tmp/results/etcd_junit.xml"),
+	})
 }

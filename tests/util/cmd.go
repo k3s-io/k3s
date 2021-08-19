@@ -2,6 +2,7 @@ package util
 
 import (
 	"bufio"
+	"encoding/json"
 	"os"
 	"os/exec"
 	"os/user"
@@ -65,6 +66,41 @@ func K3sCmd(cmdName string, cmdArgs ...string) (string, error) {
 	}
 	byteOut, err := cmd.CombinedOutput()
 	return string(byteOut), err
+}
+
+func contains(source []string, target string) bool {
+	for _, s := range source {
+		if s == target {
+			return true
+		}
+	}
+	return false
+}
+
+// ServerArgsPresent checks if the given arguments are found in the running k3s server
+func ServerArgsPresent(neededArgs []string) bool {
+	currentArgs := K3sServerArgs()
+	for _, arg := range neededArgs {
+		if !contains(currentArgs, arg) {
+			return false
+		}
+	}
+	return true
+}
+
+// K3sServerArgs returns the list of arguments that the k3s server launched with
+func K3sServerArgs() []string {
+	results, err := K3sCmd("kubectl", "get", "nodes", "-o", `jsonpath='{.items[0].metadata.annotations.k3s\.io/node-args}'`)
+	if err != nil {
+		return nil
+	}
+	res := strings.Replace(results, "'", "", -1)
+	var args []string
+	if err := json.Unmarshal([]byte(res), &args); err != nil {
+		logrus.Error(err)
+		return nil
+	}
+	return args
 }
 
 func FindStringInCmdAsync(scanner *bufio.Scanner, target string) bool {
