@@ -44,6 +44,10 @@ When '--all-platforms' is given all images in a manifest list must be available.
 			Name:  "skip-manifest-json",
 			Usage: "do not add Docker compatible manifest.json to archive",
 		},
+		cli.BoolFlag{
+			Name:  "skip-non-distributable",
+			Usage: "do not add non-distributable blobs such as Windows layers to archive",
+		},
 		cli.StringSliceFlag{
 			Name:  "platform",
 			Usage: "Pull content from a specific platform",
@@ -84,6 +88,10 @@ When '--all-platforms' is given all images in a manifest list must be available.
 
 		if context.Bool("skip-manifest-json") {
 			exportOpts = append(exportOpts, archive.WithSkipDockerManifest())
+		}
+
+		if context.Bool("skip-non-distributable") {
+			exportOpts = append(exportOpts, archive.WithSkipNonDistributableBlobs())
 		}
 
 		client, ctx, cancel, err := commands.NewClient(context)

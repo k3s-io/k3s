@@ -9,9 +9,8 @@ replace (
 	github.com/containerd/btrfs => github.com/containerd/btrfs v1.0.0
 	github.com/containerd/cgroups => github.com/containerd/cgroups v1.0.1
 	github.com/containerd/console => github.com/containerd/console v1.0.2
-	github.com/containerd/containerd => github.com/k3s-io/containerd v1.4.9-k3s1 // k3s-release/1.4
+	github.com/containerd/containerd => github.com/k3s-io/containerd v1.5.5-k3s1 // k3s-release/1.5
 	github.com/containerd/continuity => github.com/k3s-io/continuity v0.0.0-20210309170710-f93269e0d5c1
-	github.com/containerd/cri => github.com/k3s-io/cri v1.4.0-k3s.7 // k3s-release/1.4
 	github.com/containerd/fifo => github.com/containerd/fifo v1.0.0
 	github.com/containerd/go-runc => github.com/containerd/go-runc v1.0.0
 	github.com/containerd/ttrpc => github.com/containerd/ttrpc v1.0.2
@@ -75,12 +74,9 @@ require (
 	github.com/Microsoft/hcsshim v0.8.20
 	github.com/bronze1man/goStrongswanVici v0.0.0-20190828090544-27d02f80ba40 // indirect
 	github.com/containerd/cgroups v1.0.1
-	github.com/containerd/containerd v1.5.1
-	github.com/containerd/cri v1.11.1-0.20200820101445-b0cc07999aa5
-	github.com/containerd/fuse-overlayfs-snapshotter v1.0.2
-	github.com/containerd/go-cni v1.0.2 // indirect
-	github.com/containerd/imgcrypt v1.1.1 // indirect
-	github.com/coreos/go-iptables v0.4.5
+	github.com/containerd/containerd v1.5.5
+	github.com/containerd/fuse-overlayfs-snapshotter v1.0.3
+	github.com/coreos/go-iptables v0.5.0
 	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f
 	github.com/docker/docker v20.10.5+incompatible
 	github.com/erikdubbelboer/gspt v0.0.0-20190125194910-e68493906b83
@@ -99,7 +95,6 @@ require (
 	github.com/lib/pq v1.10.2
 	github.com/mattn/go-sqlite3 v1.14.8
 	github.com/minio/minio-go/v7 v7.0.7
-	github.com/moby/sys/symlink v0.1.0 // indirect
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/onsi/ginkgo v1.16.4
 	github.com/onsi/gomega v1.11.0
@@ -126,7 +121,7 @@ require (
 	go.etcd.io/etcd/server/v3 v3.5.0
 	golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2
 	golang.org/x/net v0.0.0-20210520170846-37e1c6afe023
-	golang.org/x/sys v0.0.0-20210616094352-59db8d763f22
+	golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c
 	google.golang.org/grpc v1.38.0
 	gopkg.in/yaml.v2 v2.4.0
 	inet.af/tcpproxy v0.0.0-20200125044825-b6bb9b5b8252

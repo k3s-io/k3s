@@ -43,7 +43,7 @@ var unmountCommand = cli.Command{
 			target = context.Args().First()
 		)
 		if target == "" {
-			return fmt.Errorf("please provide a target path to mount to")
+			return fmt.Errorf("please provide a target path to unmount from")
 		}
 
 		client, ctx, cancel, err := commands.NewClient(context)

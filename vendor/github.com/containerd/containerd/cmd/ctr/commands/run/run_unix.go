@@ -20,15 +20,18 @@ package run
 
 import (
 	gocontext "context"
+	"fmt"
 	"path/filepath"
 	"strconv"
 	"strings"
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cmd/ctr/commands"
+	"github.com/containerd/containerd/contrib/apparmor"
 	"github.com/containerd/containerd/contrib/nvidia"
 	"github.com/containerd/containerd/contrib/seccomp"
 	"github.com/containerd/containerd/oci"
+	runtimeoptions "github.com/containerd/containerd/pkg/runtimeoptions/v1"
 	"github.com/containerd/containerd/platforms"
 	"github.com/containerd/containerd/runtime/v2/runc/options"
 	"github.com/opencontainers/runtime-spec/specs-go"
@@ -41,6 +44,10 @@ var platformRunFlags = []cli.Flag{
 	cli.StringFlag{
 		Name:  "runc-binary",
 		Usage: "specify runc-compatible binary",
+	},
+	cli.StringFlag{
+		Name:  "runc-root",
+		Usage: "specify runc-compatible root",
 	},
 	cli.BoolFlag{
 		Name:  "runc-systemd-cgroup",
@@ -60,8 +67,12 @@ var platformRunFlags = []cli.Flag{
 	},
 	cli.Float64Flag{
 		Name:  "cpus",
-		Usage: "set the CFS cpu qouta",
+		Usage: "set the CFS cpu quota",
 		Value: 0.0,
+	},
+	cli.BoolFlag{
+		Name:  "cni",
+		Usage: "enable cni networking for the container",
 	},
 }
 
@@ -181,9 +192,32 @@ func NewContainer(ctx gocontext.Context, client *containerd.Client, context *cli
 		if context.Bool("net-host") {
 			opts = append(opts, oci.WithHostNamespace(specs.NetworkNamespace), oci.WithHostHostsFile, oci.WithHostResolvconf)
 		}
-		if context.Bool("seccomp") {
-			opts = append(opts, seccomp.WithDefaultProfile())
+
+		seccompProfile := context.String("seccomp-profile")
+
+		if !context.Bool("seccomp") && seccompProfile != "" {
+			return nil, fmt.Errorf("seccomp must be set to true, if using a custom seccomp-profile")
 		}
+
+		if context.Bool("seccomp") {
+			if seccompProfile != "" {
+				opts = append(opts, seccomp.WithProfile(seccompProfile))
+			} else {
+				opts = append(opts, seccomp.WithDefaultProfile())
+			}
+		}
+
+		if s := context.String("apparmor-default-profile"); len(s) > 0 {
+			opts = append(opts, apparmor.WithDefaultProfile(s))
+		}
+
+		if s := context.String("apparmor-profile"); len(s) > 0 {
+			if len(context.String("apparmor-default-profile")) > 0 {
+				return nil, fmt.Errorf("apparmor-profile conflicts with apparmor-default-profile")
+			}
+			opts = append(opts, apparmor.WithProfile(s))
+		}
+
 		if cpus := context.Float64("cpus"); cpus > 0.0 {
 			var (
 				period = uint64(100000)
@@ -230,7 +264,7 @@ func NewContainer(ctx gocontext.Context, client *containerd.Client, context *cli
 			opts = append(opts, oci.WithMemoryLimit(limit))
 		}
 		for _, dev := range context.StringSlice("device") {
-			opts = append(opts, oci.WithLinuxDevice(dev, "rwm"))
+			opts = append(opts, oci.WithDevices(dev, "", "rwm"))
 		}
 	}
 
@@ -263,6 +297,9 @@ func getRuncOptions(context *cli.Context) (*options.Options, error) {
 		}
 		runtimeOpts.SystemdCgroup = true
 	}
+	if root := context.String("runc-root"); root != "" {
+		runtimeOpts.Root = root
+	}
 
 	return runtimeOpts, nil
 }
@@ -276,6 +313,12 @@ func getRuntimeOptions(context *cli.Context) (interface{}, error) {
 
 	if context.String("runtime") == "io.containerd.runc.v2" {
 		return getRuncOptions(context)
+	}
+
+	if configPath := context.String("runtime-config-path"); configPath != "" {
+		return &runtimeoptions.Options{
+			ConfigPath: configPath,
+		}, nil
 	}
 
 	return nil, nil
