@@ -31,8 +31,6 @@ github.com/Azure/go-autorest/autorest/validation
 github.com/Azure/go-autorest/logger
 # github.com/Azure/go-autorest/tracing v0.6.0
 github.com/Azure/go-autorest/tracing
-# github.com/BurntSushi/toml v0.3.1
-github.com/BurntSushi/toml
 # github.com/GoogleCloudPlatform/k8s-cloud-provider v0.0.0-20200415212048-7901bc822317
 github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud
 github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud/filter
@@ -42,8 +40,9 @@ github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud/mock
 github.com/JeffAshton/win_pdh
 # github.com/MakeNowJust/heredoc v0.0.0-20170808103936-bb23615498cd
 github.com/MakeNowJust/heredoc
-# github.com/Microsoft/go-winio v0.4.19
+# github.com/Microsoft/go-winio v0.4.17
 github.com/Microsoft/go-winio
+github.com/Microsoft/go-winio/backuptar
 github.com/Microsoft/go-winio/pkg/etw
 github.com/Microsoft/go-winio/pkg/etwlogrus
 github.com/Microsoft/go-winio/pkg/guid
@@ -77,6 +76,7 @@ github.com/Microsoft/hcsshim/internal/vmcompute
 github.com/Microsoft/hcsshim/internal/wclayer
 github.com/Microsoft/hcsshim/internal/winapi
 github.com/Microsoft/hcsshim/osversion
+github.com/Microsoft/hcsshim/pkg/ociwclayer
 # github.com/NYTimes/gziphandler v1.1.1
 github.com/NYTimes/gziphandler
 # github.com/PuerkitoBio/purell v1.1.1
@@ -183,7 +183,7 @@ github.com/containerd/cgroups/v2
 github.com/containerd/cgroups/v2/stats
 # github.com/containerd/console v1.0.2 => github.com/containerd/console v1.0.2
 github.com/containerd/console
-# github.com/containerd/containerd v1.5.1 => github.com/k3s-io/containerd v1.4.9-k3s1
+# github.com/containerd/containerd v1.5.5 => github.com/k3s-io/containerd v1.5.5-k3s1
 ## explicit
 github.com/containerd/containerd
 github.com/containerd/containerd/api/events
@@ -245,6 +245,8 @@ github.com/containerd/containerd/gc/scheduler
 github.com/containerd/containerd/identifiers
 github.com/containerd/containerd/images
 github.com/containerd/containerd/images/archive
+github.com/containerd/containerd/images/converter
+github.com/containerd/containerd/images/converter/uncompress
 github.com/containerd/containerd/labels
 github.com/containerd/containerd/leases
 github.com/containerd/containerd/leases/proxy
@@ -259,25 +261,57 @@ github.com/containerd/containerd/metrics/types/v2
 github.com/containerd/containerd/mount
 github.com/containerd/containerd/namespaces
 github.com/containerd/containerd/oci
+github.com/containerd/containerd/pkg/apparmor
+github.com/containerd/containerd/pkg/atomic
 github.com/containerd/containerd/pkg/cap
+github.com/containerd/containerd/pkg/cri
+github.com/containerd/containerd/pkg/cri/annotations
+github.com/containerd/containerd/pkg/cri/config
+github.com/containerd/containerd/pkg/cri/constants
+github.com/containerd/containerd/pkg/cri/io
+github.com/containerd/containerd/pkg/cri/opts
+github.com/containerd/containerd/pkg/cri/platforms
+github.com/containerd/containerd/pkg/cri/server
+github.com/containerd/containerd/pkg/cri/server/bandwidth
+github.com/containerd/containerd/pkg/cri/store
+github.com/containerd/containerd/pkg/cri/store/container
+github.com/containerd/containerd/pkg/cri/store/image
+github.com/containerd/containerd/pkg/cri/store/label
+github.com/containerd/containerd/pkg/cri/store/sandbox
+github.com/containerd/containerd/pkg/cri/store/snapshot
+github.com/containerd/containerd/pkg/cri/store/truncindex
+github.com/containerd/containerd/pkg/cri/streaming
+github.com/containerd/containerd/pkg/cri/streaming/portforward
+github.com/containerd/containerd/pkg/cri/streaming/remotecommand
+github.com/containerd/containerd/pkg/cri/util
 github.com/containerd/containerd/pkg/dialer
+github.com/containerd/containerd/pkg/ioutil
+github.com/containerd/containerd/pkg/netns
 github.com/containerd/containerd/pkg/oom
 github.com/containerd/containerd/pkg/oom/v1
 github.com/containerd/containerd/pkg/oom/v2
+github.com/containerd/containerd/pkg/os
 github.com/containerd/containerd/pkg/process
 github.com/containerd/containerd/pkg/progress
+github.com/containerd/containerd/pkg/registrar
+github.com/containerd/containerd/pkg/runtimeoptions/v1
+github.com/containerd/containerd/pkg/seccomp
 github.com/containerd/containerd/pkg/seed
+github.com/containerd/containerd/pkg/seutil
 github.com/containerd/containerd/pkg/stdio
 github.com/containerd/containerd/pkg/timeout
 github.com/containerd/containerd/pkg/ttrpcutil
+github.com/containerd/containerd/pkg/userns
 github.com/containerd/containerd/platforms
 github.com/containerd/containerd/plugin
 github.com/containerd/containerd/reference
 github.com/containerd/containerd/reference/docker
 github.com/containerd/containerd/remotes
 github.com/containerd/containerd/remotes/docker
+github.com/containerd/containerd/remotes/docker/auth
 github.com/containerd/containerd/remotes/docker/config
 github.com/containerd/containerd/remotes/docker/schema1
+github.com/containerd/containerd/remotes/errors
 github.com/containerd/containerd/rootfs
 github.com/containerd/containerd/runtime
 github.com/containerd/containerd/runtime/linux/runctypes
@@ -314,7 +348,10 @@ github.com/containerd/containerd/services/tasks
 github.com/containerd/containerd/services/version
 github.com/containerd/containerd/snapshots
 github.com/containerd/containerd/snapshots/native
+github.com/containerd/containerd/snapshots/native/plugin
 github.com/containerd/containerd/snapshots/overlay
+github.com/containerd/containerd/snapshots/overlay/overlayutils
+github.com/containerd/containerd/snapshots/overlay/plugin
 github.com/containerd/containerd/snapshots/proxy
 github.com/containerd/containerd/snapshots/storage
 github.com/containerd/containerd/sys
@@ -328,51 +365,22 @@ github.com/containerd/continuity/fs
 github.com/containerd/continuity/pathdriver
 github.com/containerd/continuity/proto
 github.com/containerd/continuity/sysx
-# github.com/containerd/cri v1.11.1-0.20200820101445-b0cc07999aa5 => github.com/k3s-io/cri v1.4.0-k3s.7
-## explicit
-github.com/containerd/cri
-github.com/containerd/cri/pkg/annotations
-github.com/containerd/cri/pkg/api/runtimeoptions/v1
-github.com/containerd/cri/pkg/atomic
-github.com/containerd/cri/pkg/cap
-github.com/containerd/cri/pkg/config
-github.com/containerd/cri/pkg/constants
-github.com/containerd/cri/pkg/containerd/opts
-github.com/containerd/cri/pkg/containerd/platforms
-github.com/containerd/cri/pkg/containerd/util
-github.com/containerd/cri/pkg/ioutil
-github.com/containerd/cri/pkg/netns
-github.com/containerd/cri/pkg/os
-github.com/containerd/cri/pkg/registrar
-github.com/containerd/cri/pkg/seccomp
-github.com/containerd/cri/pkg/server
-github.com/containerd/cri/pkg/server/bandwidth
-github.com/containerd/cri/pkg/server/io
-github.com/containerd/cri/pkg/store
-github.com/containerd/cri/pkg/store/container
-github.com/containerd/cri/pkg/store/image
-github.com/containerd/cri/pkg/store/label
-github.com/containerd/cri/pkg/store/sandbox
-github.com/containerd/cri/pkg/store/snapshot
-github.com/containerd/cri/pkg/streaming
-github.com/containerd/cri/pkg/streaming/portforward
-github.com/containerd/cri/pkg/streaming/remotecommand
-github.com/containerd/cri/pkg/util
 # github.com/containerd/fifo v1.0.0 => github.com/containerd/fifo v1.0.0
 github.com/containerd/fifo
-# github.com/containerd/fuse-overlayfs-snapshotter v1.0.2
+# github.com/containerd/fuse-overlayfs-snapshotter v1.0.3
 ## explicit
 github.com/containerd/fuse-overlayfs-snapshotter
 github.com/containerd/fuse-overlayfs-snapshotter/plugin
 # github.com/containerd/go-cni v1.0.2
-## explicit
 github.com/containerd/go-cni
 # github.com/containerd/go-runc v1.0.0 => github.com/containerd/go-runc v1.0.0
 github.com/containerd/go-runc
 # github.com/containerd/imgcrypt v1.1.1
-## explicit
 github.com/containerd/imgcrypt
 github.com/containerd/imgcrypt/images/encryption
+# github.com/containerd/nri v0.1.0
+github.com/containerd/nri
+github.com/containerd/nri/types/v1
 # github.com/containerd/ttrpc v1.0.2 => github.com/containerd/ttrpc v1.0.2
 github.com/containerd/ttrpc
 # github.com/containerd/typeurl v1.0.2 => github.com/containerd/typeurl v1.0.2
@@ -385,7 +393,7 @@ github.com/containernetworking/cni/pkg/types/020
 github.com/containernetworking/cni/pkg/types/current
 github.com/containernetworking/cni/pkg/utils
 github.com/containernetworking/cni/pkg/version
-# github.com/containernetworking/plugins v0.8.6
+# github.com/containernetworking/plugins v0.9.1
 github.com/containernetworking/plugins/pkg/ns
 github.com/containernetworking/plugins/pkg/utils/sysctl
 # github.com/containers/ocicrypt v1.1.1
@@ -403,7 +411,7 @@ github.com/containers/ocicrypt/keywrap/pkcs7
 github.com/containers/ocicrypt/spec
 github.com/containers/ocicrypt/utils
 github.com/containers/ocicrypt/utils/keyprovider
-# github.com/coreos/go-iptables v0.4.5
+# github.com/coreos/go-iptables v0.5.0
 ## explicit
 github.com/coreos/go-iptables/iptables
 # github.com/coreos/go-oidc v2.1.0+incompatible
@@ -460,9 +468,7 @@ github.com/docker/docker/pkg/homedir
 github.com/docker/docker/pkg/jsonmessage
 github.com/docker/docker/pkg/reexec
 github.com/docker/docker/pkg/stdcopy
-github.com/docker/docker/pkg/symlink
 github.com/docker/docker/pkg/term
-github.com/docker/docker/pkg/truncindex
 # github.com/docker/docker-credential-helpers v0.6.3
 github.com/docker/docker-credential-helpers/client
 github.com/docker/docker-credential-helpers/credentials
@@ -611,7 +617,7 @@ github.com/google/cadvisor/utils/sysinfo
 github.com/google/cadvisor/version
 github.com/google/cadvisor/watcher
 github.com/google/cadvisor/zfs
-# github.com/google/go-cmp v0.5.5
+# github.com/google/go-cmp v0.5.6
 github.com/google/go-cmp/cmp
 github.com/google/go-cmp/cmp/cmpopts
 github.com/google/go-cmp/cmp/internal/diff
@@ -688,7 +694,7 @@ github.com/grpc-ecosystem/grpc-gateway/utilities
 github.com/hashicorp/errwrap
 # github.com/hashicorp/go-multierror v1.0.0
 github.com/hashicorp/go-multierror
-# github.com/imdario/mergo v0.3.11
+# github.com/imdario/mergo v0.3.12
 github.com/imdario/mergo
 # github.com/inconshreveable/mousetrap v1.0.0
 github.com/inconshreveable/mousetrap
@@ -793,13 +799,14 @@ github.com/mitchellh/go-wordwrap
 github.com/mitchellh/mapstructure
 # github.com/moby/ipvs v1.0.1
 github.com/moby/ipvs
+# github.com/moby/locker v1.0.1
+github.com/moby/locker
 # github.com/moby/spdystream v0.2.0
 github.com/moby/spdystream
 github.com/moby/spdystream/spdy
 # github.com/moby/sys/mountinfo v0.4.1
 github.com/moby/sys/mountinfo
 # github.com/moby/sys/symlink v0.1.0
-## explicit
 github.com/moby/sys/symlink
 # github.com/moby/term v0.0.0-20210610120745-9d4ed1856297
 github.com/moby/term
@@ -908,6 +915,8 @@ github.com/opencontainers/runtime-spec/specs-go
 github.com/opencontainers/selinux/go-selinux
 github.com/opencontainers/selinux/go-selinux/label
 github.com/opencontainers/selinux/pkg/pwalk
+# github.com/pelletier/go-toml v1.8.1
+github.com/pelletier/go-toml
 # github.com/peterbourgon/diskv v2.0.1+incompatible
 github.com/peterbourgon/diskv
 # github.com/pierrec/lz4 v2.6.0+incompatible
@@ -1073,7 +1082,7 @@ github.com/tmc/grpc-websocket-proxy/wsproxy
 github.com/urfave/cli
 # github.com/urfave/cli/v2 v2.3.0
 github.com/urfave/cli/v2
-# github.com/vishvananda/netlink v1.1.0
+# github.com/vishvananda/netlink v1.1.1-0.20201029203352-d40f9887b852
 github.com/vishvananda/netlink
 github.com/vishvananda/netlink/nl
 # github.com/vishvananda/netns v0.0.0-20200728191858-db3c7e526aae
@@ -1360,7 +1369,7 @@ golang.org/x/oauth2/jwt
 golang.org/x/sync/errgroup
 golang.org/x/sync/semaphore
 golang.org/x/sync/singleflight
-# golang.org/x/sys v0.0.0-20210616094352-59db8d763f22 => golang.org/x/sys v0.0.0-20210616094352-59db8d763f22
+# golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c => golang.org/x/sys v0.0.0-20210616094352-59db8d763f22
 ## explicit
 golang.org/x/sys/cpu
 golang.org/x/sys/execabs
@@ -3358,9 +3367,8 @@ sigs.k8s.io/yaml
 # github.com/containerd/btrfs => github.com/containerd/btrfs v1.0.0
 # github.com/containerd/cgroups => github.com/containerd/cgroups v1.0.1
 # github.com/containerd/console => github.com/containerd/console v1.0.2
-# github.com/containerd/containerd => github.com/k3s-io/containerd v1.4.9-k3s1
+# github.com/containerd/containerd => github.com/k3s-io/containerd v1.5.5-k3s1
 # github.com/containerd/continuity => github.com/k3s-io/continuity v0.0.0-20210309170710-f93269e0d5c1
-# github.com/containerd/cri => github.com/k3s-io/cri v1.4.0-k3s.7
 # github.com/containerd/fifo => github.com/containerd/fifo v1.0.0
 # github.com/containerd/go-runc => github.com/containerd/go-runc v1.0.0
 # github.com/containerd/ttrpc => github.com/containerd/ttrpc v1.0.2

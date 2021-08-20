@@ -181,7 +181,7 @@ func (cs *contentStore) Walk(ctx context.Context, fn content.WalkFunc, fs ...str
 			if err := readInfo(&info, bkt.Bucket(k)); err != nil {
 				return err
 			}
-			if filter.Match(adaptContentInfo(info)) {
+			if filter.Match(content.AdaptInfo(info)) {
 				infos = append(infos, info)
 			}
 			return nil
@@ -573,10 +573,6 @@ func (nw *namespacedWriter) Commit(ctx context.Context, size int64, expected dig
 	defer nw.l.RUnlock()
 
 	var innerErr error
-
-	if expected != "" {
-		size = 0
-	}
 
 	if err := update(ctx, nw.db, func(tx *bolt.Tx) error {
 		dgst, err := nw.commit(ctx, tx, size, expected, opts...)

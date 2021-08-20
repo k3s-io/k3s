@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/http/httptrace"
 	"os"
 	"sync"
 	"text/tabwriter"
@@ -108,6 +109,10 @@ type FetchConfig struct {
 	Platforms []string
 	// Whether or not download all metadata
 	AllMetadata bool
+	// RemoteOpts to configure object resolutions and transfers with remote content providers
+	RemoteOpts []containerd.RemoteOpt
+	// TraceHTTP writes DNS and connection information to the log when dealing with a container registry
+	TraceHTTP bool
 }
 
 // NewFetchConfig returns the default FetchConfig from cli flags
@@ -117,8 +122,9 @@ func NewFetchConfig(ctx context.Context, clicontext *cli.Context) (*FetchConfig,
 		return nil, err
 	}
 	config := &FetchConfig{
-		Resolver: resolver,
-		Labels:   clicontext.StringSlice("label"),
+		Resolver:  resolver,
+		Labels:    clicontext.StringSlice("label"),
+		TraceHTTP: clicontext.Bool("http-trace"),
 	}
 	if !clicontext.GlobalBool("debug") {
 		config.ProgressOutput = os.Stdout
@@ -139,12 +145,26 @@ func NewFetchConfig(ctx context.Context, clicontext *cli.Context) (*FetchConfig,
 		config.AllMetadata = true
 	}
 
+	if clicontext.IsSet("max-concurrent-downloads") {
+		mcd := clicontext.Int("max-concurrent-downloads")
+		config.RemoteOpts = append(config.RemoteOpts, containerd.WithMaxConcurrentDownloads(mcd))
+	}
+
+	if clicontext.IsSet("max-concurrent-uploaded-layers") {
+		mcu := clicontext.Int("max-concurrent-uploaded-layers")
+		config.RemoteOpts = append(config.RemoteOpts, containerd.WithMaxConcurrentUploadedLayers(mcu))
+	}
+
 	return config, nil
 }
 
 // Fetch loads all resources into the content store and returns the image
 func Fetch(ctx context.Context, client *containerd.Client, ref string, config *FetchConfig) (images.Image, error) {
-	ongoing := newJobs(ref)
+	ongoing := NewJobs(ref)
+
+	if config.TraceHTTP {
+		ctx = httptrace.WithClientTrace(ctx, commands.NewDebugClientTrace(ctx))
+	}
 
 	pctx, stopProgress := context.WithCancel(ctx)
 	progress := make(chan struct{})
@@ -152,14 +172,14 @@ func Fetch(ctx context.Context, client *containerd.Client, ref string, config *F
 	go func() {
 		if config.ProgressOutput != nil {
 			// no progress bar, because it hides some debug logs
-			showProgress(pctx, ongoing, client.ContentStore(), config.ProgressOutput)
+			ShowProgress(pctx, ongoing, client.ContentStore(), config.ProgressOutput)
 		}
 		close(progress)
 	}()
 
 	h := images.HandlerFunc(func(ctx context.Context, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 		if desc.MediaType != images.MediaTypeDockerSchema1Manifest {
-			ongoing.add(desc)
+			ongoing.Add(desc)
 		}
 		return nil, nil
 	})
@@ -172,6 +192,7 @@ func Fetch(ctx context.Context, client *containerd.Client, ref string, config *F
 		containerd.WithImageHandler(h),
 		containerd.WithSchema1Conversion,
 	}
+	opts = append(opts, config.RemoteOpts...)
 
 	if config.AllMetadata {
 		opts = append(opts, containerd.WithAllMetadata())
@@ -195,7 +216,9 @@ func Fetch(ctx context.Context, client *containerd.Client, ref string, config *F
 	return img, nil
 }
 
-func showProgress(ctx context.Context, ongoing *jobs, cs content.Store, out io.Writer) {
+// ShowProgress continuously updates the output with job progress
+// by checking status in the content store.
+func ShowProgress(ctx context.Context, ongoing *Jobs, cs content.Store, out io.Writer) {
 	var (
 		ticker   = time.NewTicker(100 * time.Millisecond)
 		fw       = progress.NewWriter(out)
@@ -214,7 +237,7 @@ outer:
 			tw := tabwriter.NewWriter(fw, 1, 8, 1, ' ', 0)
 
 			resolved := "resolved"
-			if !ongoing.isResolved() {
+			if !ongoing.IsResolved() {
 				resolved = "resolving"
 			}
 			statuses[ongoing.name] = StatusInfo{
@@ -245,7 +268,7 @@ outer:
 			}
 
 			// now, update the items in jobs that are not in active
-			for _, j := range ongoing.jobs() {
+			for _, j := range ongoing.Jobs() {
 				key := remotes.MakeRefKey(ctx, j)
 				keys = append(keys, key)
 				if _, ok := activeSeen[key]; ok {
@@ -312,12 +335,12 @@ outer:
 	}
 }
 
-// jobs provides a way of identifying the download keys for a particular task
+// Jobs provides a way of identifying the download keys for a particular task
 // encountering during the pull walk.
 //
 // This is very minimal and will probably be replaced with something more
 // featured.
-type jobs struct {
+type Jobs struct {
 	name     string
 	added    map[digest.Digest]struct{}
 	descs    []ocispec.Descriptor
@@ -325,14 +348,16 @@ type jobs struct {
 	resolved bool
 }
 
-func newJobs(name string) *jobs {
-	return &jobs{
+// NewJobs creates a new instance of the job status tracker
+func NewJobs(name string) *Jobs {
+	return &Jobs{
 		name:  name,
 		added: map[digest.Digest]struct{}{},
 	}
 }
 
-func (j *jobs) add(desc ocispec.Descriptor) {
+// Add adds a descriptor to be tracked
+func (j *Jobs) Add(desc ocispec.Descriptor) {
 	j.mu.Lock()
 	defer j.mu.Unlock()
 	j.resolved = true
@@ -344,7 +369,8 @@ func (j *jobs) add(desc ocispec.Descriptor) {
 	j.added[desc.Digest] = struct{}{}
 }
 
-func (j *jobs) jobs() []ocispec.Descriptor {
+// Jobs returns a list of all tracked descriptors
+func (j *Jobs) Jobs() []ocispec.Descriptor {
 	j.mu.Lock()
 	defer j.mu.Unlock()
 
@@ -352,7 +378,8 @@ func (j *jobs) jobs() []ocispec.Descriptor {
 	return append(descs, j.descs...)
 }
 
-func (j *jobs) isResolved() bool {
+// IsResolved checks whether a descriptor has been resolved
+func (j *Jobs) IsResolved() bool {
 	j.mu.Lock()
 	defer j.mu.Unlock()
 	return j.resolved

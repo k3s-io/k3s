@@ -26,6 +26,7 @@ import (
 	"github.com/containerd/containerd/api/types"
 	"github.com/containerd/containerd/cmd/ctr/commands"
 	"github.com/containerd/containerd/platforms"
+	pluginutils "github.com/containerd/containerd/plugin"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/urfave/cli"
 	"google.golang.org/grpc/codes"
@@ -121,7 +122,11 @@ var listCommand = cli.Command{
 			status := "ok"
 
 			if plugin.InitErr != nil {
-				status = "error"
+				if strings.Contains(plugin.InitErr.Message, pluginutils.ErrSkipPlugin.Error()) {
+					status = "skip"
+				} else {
+					status = "error"
+				}
 			}
 
 			var platformColumn = "-"

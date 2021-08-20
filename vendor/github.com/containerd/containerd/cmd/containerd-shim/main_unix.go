@@ -297,7 +297,10 @@ func (l *remoteEventsPublisher) Publish(ctx context.Context, topic string, event
 	cmd := exec.CommandContext(ctx, containerdBinaryFlag, "--address", l.address, "publish", "--topic", topic, "--namespace", ns)
 	cmd.Stdin = bytes.NewReader(data)
 	b := bufPool.Get().(*bytes.Buffer)
-	defer bufPool.Put(b)
+	defer func() {
+		b.Reset()
+		bufPool.Put(b)
+	}()
 	cmd.Stdout = b
 	cmd.Stderr = b
 	c, err := reaper.Default.Start(cmd)

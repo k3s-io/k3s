@@ -18,6 +18,7 @@ package images
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cmd/ctr/commands"
@@ -25,6 +26,7 @@ import (
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/log"
 	"github.com/containerd/containerd/platforms"
+	"github.com/opencontainers/image-spec/identity"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
@@ -56,6 +58,14 @@ command. As part of this process, we do the following:
 		cli.BoolFlag{
 			Name:  "all-metadata",
 			Usage: "Pull metadata for all platforms",
+		},
+		cli.BoolFlag{
+			Name:  "print-chainid",
+			Usage: "Print the resulting image's chain ID",
+		},
+		cli.IntFlag{
+			Name:  "max-concurrent-downloads",
+			Usage: "Set the max concurrent downloads for each pull",
 		},
 	),
 	Action: func(context *cli.Context) error {
@@ -111,6 +121,7 @@ command. As part of this process, we do the following:
 			p = append(p, platforms.DefaultSpec())
 		}
 
+		start := time.Now()
 		for _, platform := range p {
 			fmt.Printf("unpacking %s %s...\n", platforms.Format(platform), img.Target.Digest)
 			i := containerd.NewImageWithPlatform(client, img, platforms.Only(platform))
@@ -118,9 +129,16 @@ command. As part of this process, we do the following:
 			if err != nil {
 				return err
 			}
+			if context.Bool("print-chainid") {
+				diffIDs, err := i.RootFS(ctx)
+				if err != nil {
+					return err
+				}
+				chainID := identity.ChainID(diffIDs).String()
+				fmt.Printf("image chain ID: %s\n", chainID)
+			}
 		}
-
-		fmt.Println("done")
+		fmt.Printf("done: %s\t\n", time.Since(start))
 		return nil
 	},
 }
