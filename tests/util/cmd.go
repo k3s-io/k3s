@@ -13,7 +13,7 @@ import (
 )
 
 // Compile-time variable
-var existingServer string = "False"
+var existingServer = "False"
 
 func findK3sExecutable() string {
 	// if running on an existing cluster, it maybe installed via k3s.service
