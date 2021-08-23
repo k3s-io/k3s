@@ -157,7 +157,7 @@ func (p *Init) Create(ctx context.Context, r *CreateConfig) error {
 		if err != nil {
 			return errors.Wrap(err, "failed to retrieve console master")
 		}
-		console, err = p.Platform.CopyConsole(ctx, console, r.Stdin, r.Stdout, r.Stderr, &p.wg)
+		console, err = p.Platform.CopyConsole(ctx, console, p.id, r.Stdin, r.Stdout, r.Stderr, &p.wg)
 		if err != nil {
 			return errors.Wrap(err, "failed to start console copy")
 		}
@@ -193,11 +193,15 @@ func (p *Init) createCheckpointedState(r *CreateConfig, pidFile *pidFile) error 
 			ParentPath: r.ParentCheckpoint,
 		},
 		PidFile:     pidFile.Path(),
-		IO:          p.io.IO(),
 		NoPivot:     p.NoPivotRoot,
 		Detach:      true,
 		NoSubreaper: true,
 	}
+
+	if p.io != nil {
+		opts.IO = p.io.IO()
+	}
+
 	p.initState = &createdCheckpointState{
 		p:    p,
 		opts: opts,

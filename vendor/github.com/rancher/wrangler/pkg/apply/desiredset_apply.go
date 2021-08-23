@@ -5,13 +5,15 @@ import (
 	"encoding/hex"
 	"fmt"
 	"sync"
+	"time"
+
+	"github.com/sirupsen/logrus"
 
 	gvk2 "github.com/rancher/wrangler/pkg/gvk"
 
 	"github.com/pkg/errors"
 	"github.com/rancher/wrangler/pkg/apply/injectors"
 	"github.com/rancher/wrangler/pkg/objectset"
-	errors2 "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -83,8 +85,12 @@ func (o *desiredSet) apply() error {
 	}
 
 	rl := o.getRateLimit(labelSet[LabelHash])
-	if rl != nil && !rl.TryAccept() {
-		return errors2.NewConflict(schema.GroupResource{}, o.setID, errors.New("delaying object set"))
+	if rl != nil {
+		t := time.Now()
+		rl.Accept()
+		if d := time.Now().Sub(t); d.Seconds() > 1 {
+			logrus.Infof("rate limited %s(%s) %s", o.setID, labelSet, d)
+		}
 	}
 
 	objList, err := o.injectLabelsAndAnnotations(labelSet, annotationSet)
@@ -171,6 +177,17 @@ func (o *desiredSet) runInjectors(objList []runtime.Object) ([]runtime.Object, e
 	return objList, nil
 }
 
+// GetSelectorFromOwner returns the label selector for the owner object which is useful
+// to list the dependents
+func GetSelectorFromOwner(setID string, owner runtime.Object) (labels.Selector, error) {
+	// Build the labels, we want the hash label for the lister
+	ownerLabel, _, err := GetLabelsAndAnnotations(setID, owner)
+	if err != nil {
+		return nil, err
+	}
+	return GetSelector(ownerLabel)
+}
+
 func GetSelector(labelSet map[string]string) (labels.Selector, error) {
 	req, err := labels.NewRequirement(LabelHash, selection.Equals, []string{labelSet[LabelHash]})
 	if err != nil {
@@ -180,6 +197,10 @@ func GetSelector(labelSet map[string]string) (labels.Selector, error) {
 }
 
 func GetLabelsAndAnnotations(setID string, owner runtime.Object) (map[string]string, map[string]string, error) {
+	if setID == "" && owner == nil {
+		return nil, nil, fmt.Errorf("set ID or owner must be set")
+	}
+
 	annotations := map[string]string{
 		LabelID: setID,
 	}

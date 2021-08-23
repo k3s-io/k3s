@@ -50,6 +50,7 @@ var Command = cli.Command{
 		removeCommand,
 		tagCommand,
 		setLabelsCommand,
+		convertCommand,
 	},
 }
 
@@ -198,29 +199,41 @@ var setLabelsCommand = cli.Command{
 
 var checkCommand = cli.Command{
 	Name:        "check",
-	Usage:       "check that an image has all content available locally",
+	Usage:       "check existing images to ensure all content is available locally",
 	ArgsUsage:   "[flags] [<filter>, ...]",
-	Description: "check that an image has all content available locally",
-	Flags:       commands.SnapshotterFlags,
+	Description: "check existing images to ensure all content is available locally",
+	Flags: append([]cli.Flag{
+		cli.BoolFlag{
+			Name:  "quiet, q",
+			Usage: "print only the ready image refs (fully downloaded and unpacked)",
+		},
+	}, commands.SnapshotterFlags...),
 	Action: func(context *cli.Context) error {
 		var (
 			exitErr error
+			quiet   = context.Bool("quiet")
 		)
 		client, ctx, cancel, err := commands.NewClient(context)
 		if err != nil {
 			return err
 		}
 		defer cancel()
-		var (
-			contentStore = client.ContentStore()
-			tw           = tabwriter.NewWriter(os.Stdout, 1, 8, 1, ' ', 0)
-		)
-		fmt.Fprintln(tw, "REF\tTYPE\tDIGEST\tSTATUS\tSIZE\tUNPACKED\t")
+
+		var contentStore = client.ContentStore()
 
 		args := []string(context.Args())
 		imageList, err := client.ListImages(ctx, args...)
 		if err != nil {
 			return errors.Wrap(err, "failed listing images")
+		}
+		if len(imageList) == 0 {
+			log.G(ctx).Debugf("no images found")
+			return exitErr
+		}
+
+		var tw = tabwriter.NewWriter(os.Stdout, 1, 8, 1, ' ', 0)
+		if !quiet {
+			fmt.Fprintln(tw, "REF\tTYPE\tDIGEST\tSTATUS\tSIZE\tUNPACKED\t")
 		}
 
 		for _, image := range imageList {
@@ -229,6 +242,7 @@ var checkCommand = cli.Command{
 				size         string
 				requiredSize int64
 				presentSize  int64
+				complete     bool = true
 			)
 
 			available, required, present, missing, err := images.Check(ctx, contentStore, image.Target(), platforms.Default())
@@ -238,6 +252,7 @@ var checkCommand = cli.Command{
 				}
 				log.G(ctx).WithError(err).Errorf("unable to check %v", image.Name())
 				status = "error"
+				complete = false
 			}
 
 			if status != "error" {
@@ -251,6 +266,7 @@ var checkCommand = cli.Command{
 
 				if len(missing) > 0 {
 					status = "incomplete"
+					complete = false
 				}
 
 				if available {
@@ -259,6 +275,7 @@ var checkCommand = cli.Command{
 				} else {
 					status = fmt.Sprintf("unavailable (%v/?)", len(present))
 					size = fmt.Sprintf("%v/?", progress.Bytes(presentSize))
+					complete = false
 				}
 			} else {
 				size = "-"
@@ -272,16 +289,23 @@ var checkCommand = cli.Command{
 				log.G(ctx).WithError(err).Errorf("unable to check unpack for %v", image.Name())
 			}
 
-			fmt.Fprintf(tw, "%v\t%v\t%v\t%v\t%v\t%t\n",
-				image.Name(),
-				image.Target().MediaType,
-				image.Target().Digest,
-				status,
-				size,
-				unpacked)
+			if !quiet {
+				fmt.Fprintf(tw, "%v\t%v\t%v\t%v\t%v\t%t\n",
+					image.Name(),
+					image.Target().MediaType,
+					image.Target().Digest,
+					status,
+					size,
+					unpacked)
+			} else {
+				if complete {
+					fmt.Println(image.Name())
+				}
+			}
 		}
-		tw.Flush()
-
+		if !quiet {
+			tw.Flush()
+		}
 		return exitErr
 	},
 }

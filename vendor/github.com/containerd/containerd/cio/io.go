@@ -80,7 +80,7 @@ type FIFOSet struct {
 
 // Close the FIFOSet
 func (f *FIFOSet) Close() error {
-	if f.close != nil {
+	if f != nil && f.close != nil {
 		return f.close()
 	}
 	return nil
@@ -255,6 +255,26 @@ func BinaryIO(binary string, args map[string]string) Creator {
 			config: Config{
 				Stdout: res,
 				Stderr: res,
+			},
+		}, nil
+	}
+}
+
+// TerminalBinaryIO forwards container STDOUT|STDERR directly to a logging binary
+// It also sets the terminal option to true
+func TerminalBinaryIO(binary string, args map[string]string) Creator {
+	return func(_ string) (IO, error) {
+		uri, err := LogURIGenerator("binary", binary, args)
+		if err != nil {
+			return nil, err
+		}
+
+		res := uri.String()
+		return &logURI{
+			config: Config{
+				Stdout:   res,
+				Stderr:   res,
+				Terminal: true,
 			},
 		}, nil
 	}

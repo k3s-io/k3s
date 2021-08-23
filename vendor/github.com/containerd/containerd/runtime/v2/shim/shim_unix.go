@@ -90,5 +90,5 @@ func handleSignals(ctx context.Context, logger *logrus.Entry, signals chan os.Si
 }
 
 func openLog(ctx context.Context, _ string) (io.Writer, error) {
-	return fifo.OpenFifo(ctx, "log", unix.O_WRONLY, 0700)
+	return fifo.OpenFifoDup2(ctx, "log", unix.O_WRONLY, 0700, int(os.Stderr.Fd()))
 }

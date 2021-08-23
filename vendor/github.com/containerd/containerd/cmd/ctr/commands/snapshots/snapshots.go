@@ -280,6 +280,10 @@ var prepareCommand = cli.Command{
 			Name:  "target, t",
 			Usage: "mount target path, will print mount, if provided",
 		},
+		cli.BoolFlag{
+			Name:  "mounts",
+			Usage: "Print out snapshot mounts as JSON",
+		},
 	},
 	Action: func(context *cli.Context) error {
 		if narg := context.NArg(); narg < 1 || narg > 2 {
@@ -310,6 +314,10 @@ var prepareCommand = cli.Command{
 			printMounts(target, mounts)
 		}
 
+		if context.Bool("mounts") {
+			commands.PrintAsJSON(mounts)
+		}
+
 		return nil
 	},
 }
@@ -322,6 +330,10 @@ var viewCommand = cli.Command{
 		cli.StringFlag{
 			Name:  "target, t",
 			Usage: "mount target path, will print mount, if provided",
+		},
+		cli.BoolFlag{
+			Name:  "mounts",
+			Usage: "Print out snapshot mounts as JSON",
 		},
 	},
 	Action: func(context *cli.Context) error {
@@ -347,6 +359,10 @@ var viewCommand = cli.Command{
 
 		if target != "" {
 			printMounts(target, mounts)
+		}
+
+		if context.Bool("mounts") {
+			commands.PrintAsJSON(mounts)
 		}
 
 		return nil
