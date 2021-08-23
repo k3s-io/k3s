@@ -2,6 +2,7 @@ package util
 
 import (
 	"bufio"
+	"encoding/json"
 	"os"
 	"os/exec"
 	"os/user"
@@ -11,7 +12,18 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// Compile-time variable
+var existingServer string = "False"
+
 func findK3sExecutable() string {
+	// if running on an existing cluster, it maybe installed via k3s.service
+	// or run manually from dist/artifacts/k3s
+	if IsExistingServer() {
+		k3sBin, err := exec.LookPath("k3s")
+		if err == nil {
+			return k3sBin
+		}
+	}
 	k3sBin := "dist/artifacts/k3s"
 	for {
 		_, err := os.Stat(k3sBin)
@@ -33,6 +45,10 @@ func IsRoot() bool {
 	return currentUser.Uid == "0"
 }
 
+func IsExistingServer() bool {
+	return existingServer == "True"
+}
+
 // K3sCmd launches the provided K3s command via exec. Command blocks until finished.
 // Command output from both Stderr and Stdout is provided via string.
 //   cmdEx1, err := K3sCmd("etcd-snapshot", "ls")
@@ -50,6 +66,41 @@ func K3sCmd(cmdName string, cmdArgs ...string) (string, error) {
 	}
 	byteOut, err := cmd.CombinedOutput()
 	return string(byteOut), err
+}
+
+func contains(source []string, target string) bool {
+	for _, s := range source {
+		if s == target {
+			return true
+		}
+	}
+	return false
+}
+
+// ServerArgsPresent checks if the given arguments are found in the running k3s server
+func ServerArgsPresent(neededArgs []string) bool {
+	currentArgs := K3sServerArgs()
+	for _, arg := range neededArgs {
+		if !contains(currentArgs, arg) {
+			return false
+		}
+	}
+	return true
+}
+
+// K3sServerArgs returns the list of arguments that the k3s server launched with
+func K3sServerArgs() []string {
+	results, err := K3sCmd("kubectl", "get", "nodes", "-o", `jsonpath='{.items[0].metadata.annotations.k3s\.io/node-args}'`)
+	if err != nil {
+		return nil
+	}
+	res := strings.Replace(results, "'", "", -1)
+	var args []string
+	if err := json.Unmarshal([]byte(res), &args); err != nil {
+		logrus.Error(err)
+		return nil
+	}
+	return args
 }
 
 func FindStringInCmdAsync(scanner *bufio.Scanner, target string) bool {
