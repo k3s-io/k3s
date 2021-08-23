@@ -24,6 +24,7 @@ import (
 	"path/filepath"
 
 	"github.com/containerd/containerd/containers"
+	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/events/exchange"
 	"github.com/containerd/containerd/log"
 	"github.com/containerd/containerd/metadata"
@@ -34,6 +35,7 @@ import (
 	"github.com/containerd/containerd/plugin"
 	"github.com/containerd/containerd/runtime"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/pkg/errors"
 )
 
 // Config for the v2 runtime
@@ -116,20 +118,45 @@ func (m *TaskManager) ID() string {
 }
 
 // Create a new task
-func (m *TaskManager) Create(ctx context.Context, id string, opts runtime.CreateOpts) (_ runtime.Task, err error) {
-	ns, err := namespaces.NamespaceRequired(ctx)
-	if err != nil {
-		return nil, err
-	}
+func (m *TaskManager) Create(ctx context.Context, id string, opts runtime.CreateOpts) (_ runtime.Task, retErr error) {
 	bundle, err := NewBundle(ctx, m.root, m.state, id, opts.Spec.Value)
 	if err != nil {
 		return nil, err
 	}
 	defer func() {
-		if err != nil {
+		if retErr != nil {
 			bundle.Delete()
 		}
 	}()
+
+	shim, err := m.startShim(ctx, bundle, id, opts)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if retErr != nil {
+			m.deleteShim(shim)
+		}
+	}()
+
+	t, err := shim.Create(ctx, opts)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create shim")
+	}
+
+	if err := m.tasks.Add(ctx, t); err != nil {
+		return nil, errors.Wrap(err, "failed to add task")
+	}
+
+	return t, nil
+}
+
+func (m *TaskManager) startShim(ctx context.Context, bundle *Bundle, id string, opts runtime.CreateOpts) (*shim, error) {
+	ns, err := namespaces.NamespaceRequired(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	topts := opts.TaskOptions
 	if topts == nil {
 		topts = opts.RuntimeOptions
@@ -138,12 +165,8 @@ func (m *TaskManager) Create(ctx context.Context, id string, opts runtime.Create
 	b := shimBinary(ctx, bundle, opts.Runtime, m.containerdAddress, m.containerdTTRPCAddress, m.events, m.tasks)
 	shim, err := b.Start(ctx, topts, func() {
 		log.G(ctx).WithField("id", id).Info("shim disconnected")
-		_, err := m.tasks.Get(ctx, id)
-		if err != nil {
-			// Task was never started or was already successfully deleted
-			return
-		}
-		cleanupAfterDeadShim(context.Background(), id, ns, m.events, b)
+
+		cleanupAfterDeadShim(context.Background(), id, ns, m.tasks, m.events, b)
 		// Remove self from the runtime task list. Even though the cleanupAfterDeadShim()
 		// would publish taskExit event, but the shim.Delete() would always failed with ttrpc
 		// disconnect and there is no chance to remove this dead task from runtime task lists.
@@ -151,25 +174,26 @@ func (m *TaskManager) Create(ctx context.Context, id string, opts runtime.Create
 		m.tasks.Delete(ctx, id)
 	})
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "start failed")
 	}
-	defer func() {
-		if err != nil {
-			dctx, cancel := timeout.WithContext(context.Background(), cleanupTimeout)
+
+	return shim, nil
+}
+
+// deleteShim attempts to properly delete and cleanup shim after error
+func (m *TaskManager) deleteShim(shim *shim) {
+	dctx, cancel := timeout.WithContext(context.Background(), cleanupTimeout)
+	defer cancel()
+
+	_, errShim := shim.Delete(dctx)
+	if errShim != nil {
+		if errdefs.IsDeadlineExceeded(errShim) {
+			dctx, cancel = timeout.WithContext(context.Background(), cleanupTimeout)
 			defer cancel()
-			_, errShim := shim.Delete(dctx)
-			if errShim != nil {
-				shim.Shutdown(dctx)
-				shim.Close()
-			}
 		}
-	}()
-	t, err := shim.Create(ctx, opts)
-	if err != nil {
-		return nil, err
+		shim.Shutdown(dctx)
+		shim.Close()
 	}
-	m.tasks.Add(ctx, t)
-	return t, nil
 }
 
 // Get a specific task
@@ -266,17 +290,13 @@ func (m *TaskManager) loadTasks(ctx context.Context) error {
 		binaryCall := shimBinary(ctx, bundle, container.Runtime.Name, m.containerdAddress, m.containerdTTRPCAddress, m.events, m.tasks)
 		shim, err := loadShim(ctx, bundle, m.events, m.tasks, func() {
 			log.G(ctx).WithField("id", id).Info("shim disconnected")
-			_, err := m.tasks.Get(ctx, id)
-			if err != nil {
-				// Task was never started or was already successfully deleted
-				return
-			}
-			cleanupAfterDeadShim(context.Background(), id, ns, m.events, binaryCall)
+
+			cleanupAfterDeadShim(context.Background(), id, ns, m.tasks, m.events, binaryCall)
 			// Remove self from the runtime task list.
 			m.tasks.Delete(ctx, id)
 		})
 		if err != nil {
-			cleanupAfterDeadShim(ctx, id, ns, m.events, binaryCall)
+			cleanupAfterDeadShim(ctx, id, ns, m.tasks, m.events, binaryCall)
 			continue
 		}
 		m.tasks.Add(ctx, shim)

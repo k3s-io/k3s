@@ -41,11 +41,11 @@ import (
 	oomv2 "github.com/containerd/containerd/pkg/oom/v2"
 	"github.com/containerd/containerd/pkg/process"
 	"github.com/containerd/containerd/pkg/stdio"
+	"github.com/containerd/containerd/pkg/userns"
 	"github.com/containerd/containerd/runtime/v2/runc"
 	"github.com/containerd/containerd/runtime/v2/runc/options"
 	"github.com/containerd/containerd/runtime/v2/shim"
 	taskAPI "github.com/containerd/containerd/runtime/v2/task"
-	"github.com/containerd/containerd/sys"
 	"github.com/containerd/containerd/sys/reaper"
 	runcC "github.com/containerd/go-runc"
 	"github.com/containerd/typeurl"
@@ -171,12 +171,12 @@ func readSpec() (*spec, error) {
 	return &s, nil
 }
 
-func (s *service) StartShim(ctx context.Context, id, containerdBinary, containerdAddress, containerdTTRPCAddress string) (_ string, retErr error) {
-	cmd, err := newCommand(ctx, id, containerdBinary, containerdAddress, containerdTTRPCAddress)
+func (s *service) StartShim(ctx context.Context, opts shim.StartOpts) (_ string, retErr error) {
+	cmd, err := newCommand(ctx, opts.ID, opts.ContainerdBinary, opts.Address, opts.TTRPCAddress)
 	if err != nil {
 		return "", err
 	}
-	grouping := id
+	grouping := opts.ID
 	spec, err := readSpec()
 	if err != nil {
 		return "", err
@@ -187,7 +187,7 @@ func (s *service) StartShim(ctx context.Context, id, containerdBinary, container
 			break
 		}
 	}
-	address, err := shim.SocketAddress(ctx, containerdAddress, grouping)
+	address, err := shim.SocketAddress(ctx, opts.Address, grouping)
 	if err != nil {
 		return "", err
 	}
@@ -386,7 +386,7 @@ func (s *service) Start(ctx context.Context, r *taskAPI.StartRequest) (*taskAPI.
 				logrus.WithError(err).Error("failed to get root controllers")
 			} else {
 				if err := cg.ToggleControllers(allControllers, cgroupsv2.Enable); err != nil {
-					if sys.RunningInUserNS() {
+					if userns.RunningInUserNS() {
 						logrus.WithError(err).Debugf("failed to enable controllers (%v)", allControllers)
 					} else {
 						logrus.WithError(err).Errorf("failed to enable controllers (%v)", allControllers)
