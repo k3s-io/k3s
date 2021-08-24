@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"strings"
 	"testing"
 
 	. "github.com/onsi/ginkgo"
@@ -12,13 +13,21 @@ import (
 )
 
 var server *testutil.K3sServer
+var serverArgs = []string{"--cluster-init"}
 var _ = BeforeSuite(func() {
-	var err error
-	server, err = testutil.K3sStartServer("--cluster-init")
-	Expect(err).ToNot(HaveOccurred())
+	if !testutil.IsExistingServer() {
+		var err error
+		server, err = testutil.K3sStartServer(serverArgs...)
+		Expect(err).ToNot(HaveOccurred())
+	}
 })
 
 var _ = Describe("local storage", func() {
+	BeforeEach(func() {
+		if !testutil.ServerArgsPresent(serverArgs) {
+			Skip("Test needs k3s server with: " + strings.Join(serverArgs, " "))
+		}
+	})
 	When("a new local storage is created", func() {
 		It("starts up with no problems", func() {
 			Eventually(func() (string, error) {
@@ -66,11 +75,12 @@ var _ = Describe("local storage", func() {
 })
 
 var _ = AfterSuite(func() {
-	Expect(testutil.K3sKillServer(server)).To(Succeed())
+	if !testutil.IsExistingServer() {
+		Expect(testutil.K3sKillServer(server)).To(Succeed())
+	}
 })
 
 func Test_IntegrationLocalStorage(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Local Storage Suite")
-
 }
