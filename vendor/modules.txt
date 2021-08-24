@@ -204,7 +204,6 @@ github.com/containerd/containerd/api/types/task
 github.com/containerd/containerd/archive
 github.com/containerd/containerd/archive/compression
 github.com/containerd/containerd/cio
-github.com/containerd/containerd/cmd/containerd-shim
 github.com/containerd/containerd/cmd/containerd-shim-runc-v2
 github.com/containerd/containerd/cmd/containerd/command
 github.com/containerd/containerd/cmd/ctr/app

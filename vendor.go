@@ -3,7 +3,6 @@
 package main
 
 import (
-	_ "github.com/containerd/containerd/cmd/containerd-shim"
 	_ "github.com/containerd/containerd/cmd/containerd-shim-runc-v2"
 	_ "github.com/coreos/go-systemd/activation"
 	_ "github.com/go-bindata/go-bindata"
