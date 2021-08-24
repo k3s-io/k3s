@@ -13,7 +13,7 @@ import (
 	"github.com/rootless-containers/rootlesskit/pkg/port/builtin/parent/udp/udpproxy"
 )
 
-func Run(socketPath string, spec port.Spec, stopCh <-chan struct{}, logWriter io.Writer) error {
+func Run(socketPath string, spec port.Spec, stopCh <-chan struct{}, stoppedCh chan error, logWriter io.Writer) error {
 	addr, err := net.ResolveUDPAddr(spec.Proto, net.JoinHostPort(spec.ParentIP, strconv.Itoa(spec.ParentPort)))
 	if err != nil {
 		return err
@@ -51,6 +51,8 @@ func Run(socketPath string, spec port.Spec, stopCh <-chan struct{}, logWriter io
 			case <-stopCh:
 				// udpp.Close closes ln as well
 				udpp.Close()
+				stoppedCh <- nil
+				close(stoppedCh)
 				return
 			}
 		}
