@@ -19,6 +19,7 @@ package monitor
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/containerd/containerd"
@@ -152,10 +153,10 @@ func (m *monitor) run(interval time.Duration) {
 		interval = 10 * time.Second
 	}
 	for {
-		time.Sleep(interval)
 		if err := m.reconcile(context.Background()); err != nil {
 			logrus.WithError(err).Error("reconcile")
 		}
+		time.Sleep(interval)
 	}
 }
 
@@ -164,19 +165,33 @@ func (m *monitor) reconcile(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	var wgNSLoop sync.WaitGroup
 	for _, name := range ns {
-		ctx = namespaces.WithNamespace(ctx, name)
-		changes, err := m.monitor(ctx)
-		if err != nil {
-			logrus.WithError(err).Error("monitor for changes")
-			continue
-		}
-		for _, c := range changes {
-			if err := c.apply(ctx, m.client); err != nil {
-				logrus.WithError(err).Error("apply change")
+		name := name
+		wgNSLoop.Add(1)
+		go func() {
+			defer wgNSLoop.Done()
+			ctx := namespaces.WithNamespace(ctx, name)
+			changes, err := m.monitor(ctx)
+			if err != nil {
+				logrus.WithError(err).Error("monitor for changes")
+				return
 			}
-		}
+			var wgChangesLoop sync.WaitGroup
+			for _, c := range changes {
+				c := c
+				wgChangesLoop.Add(1)
+				go func() {
+					defer wgChangesLoop.Done()
+					if err := c.apply(ctx, m.client); err != nil {
+						logrus.WithError(err).Error("apply change")
+					}
+				}()
+			}
+			wgChangesLoop.Wait()
+		}()
 	}
+	wgNSLoop.Wait()
 	return nil
 }
 

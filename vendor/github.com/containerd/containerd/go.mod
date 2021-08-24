@@ -1,81 +1,79 @@
 module github.com/containerd/containerd
 
-go 1.14
-
-replace (
-	github.com/containerd/continuity => github.com/k3s-io/continuity v0.0.0-20210309170710-f93269e0d5c1
-	github.com/containerd/cri => github.com/k3s-io/cri v1.4.0-k3s.7 // k3s-release/1.4
-	github.com/golang/protobuf => github.com/golang/protobuf v1.3.5
-	google.golang.org/genproto => google.golang.org/genproto v0.0.0-20200224152610-e50cd9704f63
-	k8s.io/api => k8s.io/api v0.19.10
-	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.19.10
-	k8s.io/apimachinery => k8s.io/apimachinery v0.19.10
-	k8s.io/apiserver => k8s.io/apiserver v0.19.10
-	k8s.io/cli-runtime => k8s.io/cli-runtime v0.19.10
-	k8s.io/client-go => k8s.io/client-go v0.19.10
-	k8s.io/cloud-provider => k8s.io/cloud-provider v0.19.10
-	k8s.io/cluster-bootstrap => k8s.io/cluster-bootstrap v0.19.10
-	k8s.io/code-generator => k8s.io/code-generator v0.19.10
-	k8s.io/component-base => k8s.io/component-base v0.19.10
-	k8s.io/cri-api => k8s.io/cri-api v0.19.10
-	k8s.io/csi-translation-lib => k8s.io/csi-translation-lib v0.19.10
-	k8s.io/kube-aggregator => k8s.io/kube-aggregator v0.19.10
-	k8s.io/kube-controller-manager => k8s.io/kube-controller-manager v0.19.10
-	k8s.io/kube-proxy => k8s.io/kube-proxy v0.19.10
-	k8s.io/kube-scheduler => k8s.io/kube-scheduler v0.19.10
-	k8s.io/kubectl => k8s.io/kubectl v0.19.10
-	k8s.io/kubelet => k8s.io/kubelet v0.19.10
-	k8s.io/kubernetes => k8s.io/kubernetes v1.19.5
-	k8s.io/legacy-cloud-providers => k8s.io/legacy-cloud-providers v0.19.10
-	k8s.io/metrics => k8s.io/metrics v0.19.10
-	k8s.io/node-api => k8s.io/node-api v0.19.10
-	k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.19.10
-	k8s.io/sample-cli-plugin => k8s.io/sample-cli-plugin v0.19.10
-	k8s.io/sample-controller => k8s.io/sample-controller v0.19.10
-)
+go 1.16
 
 require (
-	github.com/BurntSushi/toml v0.3.1
-	github.com/Microsoft/go-winio v0.4.19
-	github.com/Microsoft/hcsshim v0.8.20
-	github.com/Microsoft/hcsshim/test v0.0.0-20210227013316-43a75bb4edd3
+	github.com/Microsoft/go-winio v0.4.17
+	github.com/Microsoft/hcsshim v0.8.18
 	github.com/containerd/aufs v1.0.0
 	github.com/containerd/btrfs v1.0.0
 	github.com/containerd/cgroups v1.0.1
 	github.com/containerd/console v1.0.2
 	github.com/containerd/continuity v0.1.0
-	github.com/containerd/cri v1.11.1-0.20200810101850-4e6644c8cf7f
 	github.com/containerd/fifo v1.0.0
+	github.com/containerd/go-cni v1.0.2
 	github.com/containerd/go-runc v1.0.0
+	github.com/containerd/imgcrypt v1.1.1
+	github.com/containerd/nri v0.1.0
 	github.com/containerd/ttrpc v1.0.2
 	github.com/containerd/typeurl v1.0.2
 	github.com/containerd/zfs v1.0.0
-	github.com/coreos/go-systemd/v22 v22.1.0
-	github.com/docker/docker v17.12.0-ce-rc1.0.20200310163718-4634ce647cf2+incompatible // indirect
+	github.com/containernetworking/plugins v0.9.1
+	github.com/coreos/go-systemd/v22 v22.3.2
+	github.com/davecgh/go-spew v1.1.1
 	github.com/docker/go-events v0.0.0-20190806004212-e31b211e4f1c
 	github.com/docker/go-metrics v0.0.1
 	github.com/docker/go-units v0.4.0
+	github.com/emicklei/go-restful v2.9.5+incompatible
+	github.com/fsnotify/fsnotify v1.4.9
 	github.com/gogo/googleapis v1.4.0
 	github.com/gogo/protobuf v1.3.2
-	github.com/google/go-cmp v0.5.4
+	github.com/google/go-cmp v0.5.6
 	github.com/google/uuid v1.2.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/hashicorp/go-multierror v1.0.0
-	github.com/imdario/mergo v0.3.11
+	github.com/imdario/mergo v0.3.12
+	github.com/klauspost/compress v1.11.13
+	github.com/moby/locker v1.0.1
+	github.com/moby/sys/mountinfo v0.4.1
+	github.com/moby/sys/symlink v0.1.0
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.0.1
-	github.com/opencontainers/runc v1.0.0-rc93
-	github.com/opencontainers/runtime-spec v1.0.3-0.20200929063507-e6143ca7d51d
-	github.com/opencontainers/selinux v1.8.0
+	github.com/opencontainers/runc v1.0.1
+	github.com/opencontainers/runtime-spec v1.0.3-0.20210326190908-1c3f411f0417
+	github.com/opencontainers/selinux v1.8.2
+	github.com/pelletier/go-toml v1.8.1
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus/client_golang v1.7.1
-	github.com/sirupsen/logrus v1.7.0
-	github.com/stretchr/testify v1.6.1
+	github.com/prometheus/client_golang v1.11.0
+	github.com/satori/go.uuid v1.2.0 // indirect
+	github.com/sirupsen/logrus v1.8.1
+	github.com/stretchr/testify v1.7.0
+	github.com/tchap/go-patricia v2.2.6+incompatible
 	github.com/urfave/cli v1.22.2
-	go.etcd.io/bbolt v1.3.5
-	golang.org/x/net v0.0.0-20210226172049-e18ecbb05110
-	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
-	golang.org/x/sys v0.0.0-20210324051608-47abb6519492
-	google.golang.org/grpc v1.33.2
+	go.etcd.io/bbolt v1.3.6
+	golang.org/x/net v0.0.0-20210520170846-37e1c6afe023
+	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
+	golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c
+	google.golang.org/grpc v1.38.0
+	google.golang.org/protobuf v1.26.0
 	gotest.tools/v3 v3.0.3
+	k8s.io/api v0.22.0
+	k8s.io/apimachinery v0.22.0
+	k8s.io/apiserver v0.22.0
+	k8s.io/client-go v0.22.0
+	k8s.io/component-base v0.22.0
+	k8s.io/cri-api v0.22.0
+	k8s.io/klog/v2 v2.9.0
+	k8s.io/utils v0.0.0-20210707171843-4b05e18ac7d9
+)
+
+// When updating replace rules, make sure to also update the rules in integration/client/go.mod
+replace (
+	// prevent transitional dependencies due to containerd having a circular
+	// dependency on itself through plugins. see .empty-mod/go.mod for details
+	github.com/containerd/containerd => ./.empty-mod/
+	github.com/gogo/googleapis => github.com/gogo/googleapis v1.3.2
+	// urfave/cli must be <= v1.22.1 due to a regression: https://github.com/urfave/cli/issues/1092
+	github.com/urfave/cli => github.com/urfave/cli v1.22.1
+	google.golang.org/genproto => google.golang.org/genproto v0.0.0-20200224152610-e50cd9704f63
 )

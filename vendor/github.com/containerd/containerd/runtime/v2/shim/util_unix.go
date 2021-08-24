@@ -46,11 +46,6 @@ func getSysProcAttr() *syscall.SysProcAttr {
 	}
 }
 
-// SetScore sets the oom score for a process
-func SetScore(pid int) error {
-	return sys.SetOOMScore(pid, sys.OOMScoreMaxKillable)
-}
-
 // AdjustOOMScore sets the OOM score for the process to the parents OOM score +1
 // to ensure that they parent has a lower* score than the shim
 // if not already at the maximum OOM Score
@@ -61,10 +56,7 @@ func AdjustOOMScore(pid int) error {
 		return errors.Wrap(err, "get parent OOM score")
 	}
 	shimScore := score + 1
-	if shimScore > sys.OOMScoreAdjMax {
-		shimScore = sys.OOMScoreAdjMax
-	}
-	if err := sys.SetOOMScore(pid, shimScore); err != nil {
+	if err := sys.AdjustOOMScore(pid, shimScore); err != nil {
 		return errors.Wrap(err, "set shim OOM score")
 	}
 	return nil
@@ -87,6 +79,7 @@ func AnonDialer(address string, timeout time.Duration) (net.Conn, error) {
 	return dialer.Dialer(socket(address).path(), timeout)
 }
 
+// AnonReconnectDialer returns a dialer for an existing socket on reconnection
 func AnonReconnectDialer(address string, timeout time.Duration) (net.Conn, error) {
 	return AnonDialer(address, timeout)
 }

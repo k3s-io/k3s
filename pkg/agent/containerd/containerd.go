@@ -19,6 +19,7 @@ import (
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/leases"
 	"github.com/containerd/containerd/namespaces"
+	"github.com/containerd/containerd/pkg/cri/constants"
 	"github.com/containerd/containerd/reference/docker"
 	"github.com/klauspost/compress/zstd"
 	"github.com/natefinch/lumberjack"
@@ -155,9 +156,9 @@ func preloadImages(ctx context.Context, cfg *config.Node) error {
 	}
 	defer criConn.Close()
 
-	// Ensure that nothing else can modify the image store while we're importing,
-	// and that our images are imported into the k8s.io namespace
-	ctx = namespaces.WithNamespace(ctx, "k8s.io")
+	// Ensure that our images are imported into the correct namespace
+	ctx = namespaces.WithNamespace(ctx, constants.K8sContainerdNamespace)
+
 	// At startup all leases from k3s are cleared
 	ls := client.LeasesService()
 	existingLeases, err := ls.List(ctx)
@@ -173,10 +174,13 @@ func preloadImages(ctx context.Context, cfg *config.Node) error {
 	}
 
 	// Any images found on import are given a lease that never expires
-	_, err = ls.Create(ctx, leases.WithID(version.Program))
+	lease, err := ls.Create(ctx, leases.WithID(version.Program))
 	if err != nil {
 		return err
 	}
+
+	// Ensure that our images are locked by the lease
+	ctx = leases.WithLease(ctx, lease.ID)
 
 	for _, fileInfo := range fileInfos {
 		if fileInfo.IsDir() {

@@ -29,10 +29,10 @@ import (
 	"github.com/rancher/k3s/pkg/version"
 	"github.com/robfig/cron/v3"
 	"github.com/sirupsen/logrus"
-	etcd "go.etcd.io/etcd/clientv3"
-	"go.etcd.io/etcd/clientv3/snapshot"
-	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
-	"go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
+	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/etcdutl/v3/snapshot"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -41,10 +41,11 @@ import (
 )
 
 const (
-	endpoint            = "https://127.0.0.1:2379"
-	testTimeout         = time.Second * 10
-	manageTickerTime    = time.Second * 15
-	learnerMaxStallTime = time.Minute * 5
+	endpoint             = "https://127.0.0.1:2379"
+	testTimeout          = time.Second * 10
+	manageTickerTime     = time.Second * 15
+	learnerMaxStallTime  = time.Minute * 5
+	memberRemovalTimeout = time.Minute * 1
 
 	// defaultDialTimeout is intentionally short so that connections timeout within the testTimeout defined above
 	defaultDialTimeout = 2 * time.Second
@@ -64,7 +65,7 @@ var (
 )
 
 type ETCD struct {
-	client  *etcd.Client
+	client  *clientv3.Client
 	config  *config.Control
 	name    string
 	runtime *config.ControlRuntime
@@ -302,7 +303,7 @@ func (e *ETCD) join(ctx context.Context, clientAccessInfo *clientaccess.Info) er
 	members, err := client.MemberList(ctx)
 	if err != nil {
 		logrus.Errorf("Failed to get member list from etcd cluster. Will assume this member is already added")
-		members = &etcd.MemberListResponse{
+		members = &clientv3.MemberListResponse{
 			Members: append(memberList.Members, &etcdserverpb.Member{
 				Name:     e.name,
 				PeerURLs: []string{e.peerURL()},
@@ -443,21 +444,21 @@ func (e *ETCD) infoHandler() http.Handler {
 }
 
 // getClient returns an etcd client connected to the specified endpoints
-func GetClient(ctx context.Context, runtime *config.ControlRuntime, endpoints ...string) (*etcd.Client, error) {
+func GetClient(ctx context.Context, runtime *config.ControlRuntime, endpoints ...string) (*clientv3.Client, error) {
 	cfg, err := getClientConfig(ctx, runtime, endpoints...)
 	if err != nil {
 		return nil, err
 	}
-	return etcd.New(*cfg)
+	return clientv3.New(*cfg)
 }
 
 //getClientConfig generates an etcd client config connected to the specified endpoints
-func getClientConfig(ctx context.Context, runtime *config.ControlRuntime, endpoints ...string) (*etcd.Config, error) {
+func getClientConfig(ctx context.Context, runtime *config.ControlRuntime, endpoints ...string) (*clientv3.Config, error) {
 	tlsConfig, err := toTLSConfig(runtime)
 	if err != nil {
 		return nil, err
 	}
-	cfg := &etcd.Config{
+	cfg := &clientv3.Config{
 		Endpoints:            endpoints,
 		TLS:                  tlsConfig,
 		Context:              ctx,
@@ -560,6 +561,8 @@ func (e *ETCD) cluster(ctx context.Context, forceNew bool, options executor.Init
 
 // removePeer removes a peer from the cluster. The peer ID and IP address must both match.
 func (e *ETCD) removePeer(ctx context.Context, id, address string, removeSelf bool) error {
+	ctx, cancel := context.WithTimeout(ctx, memberRemovalTimeout)
+	defer cancel()
 	members, err := e.client.MemberList(ctx)
 	if err != nil {
 		return err
@@ -747,8 +750,12 @@ members:
 		if member.IsLearner {
 			continue
 		}
-		for _, url := range member.ClientURLs {
-			if strings.Contains(url, ip) {
+		for _, clientURL := range member.ClientURLs {
+			u, err := url.Parse(clientURL)
+			if err != nil {
+				continue
+			}
+			if u.Hostname() == ip {
 				continue members
 			}
 		}
@@ -758,14 +765,14 @@ members:
 }
 
 // snapshotDir ensures that the snapshot directory exists, and then returns its path.
-func snapshotDir(config *config.Control) (string, error) {
+func snapshotDir(config *config.Control, create bool) (string, error) {
 	if config.EtcdSnapshotDir == "" {
 		// we have to create the snapshot dir if we are using
 		// the default snapshot dir if it doesn't exist
 		defaultSnapshotDir := filepath.Join(config.DataDir, "db", "snapshots")
 		s, err := os.Stat(defaultSnapshotDir)
 		if err != nil {
-			if os.IsNotExist(err) {
+			if create && os.IsNotExist(err) {
 				if err := os.MkdirAll(defaultSnapshotDir, 0700); err != nil {
 					return "", err
 				}
@@ -818,7 +825,7 @@ func (e *ETCD) Snapshot(ctx context.Context, config *config.Control) error {
 		return nil
 	}
 
-	snapshotDir, err := snapshotDir(e.config)
+	snapshotDir, err := snapshotDir(e.config, true)
 	if err != nil {
 		return errors.Wrap(err, "failed to get the snapshot dir")
 	}
@@ -901,7 +908,15 @@ func (e *ETCD) listSnapshots(ctx context.Context, snapshotDir string) ([]Snapsho
 			return nil, err
 		}
 
-		objects := e.s3.client.ListObjects(ctx, e.config.EtcdS3BucketName, minio.ListObjectsOptions{})
+		var loo minio.ListObjectsOptions
+		if e.config.EtcdS3Folder != "" {
+			loo = minio.ListObjectsOptions{
+				Prefix:    e.config.EtcdS3Folder,
+				Recursive: true,
+			}
+		}
+
+		objects := e.s3.client.ListObjects(ctx, e.config.EtcdS3BucketName, loo)
 
 		for obj := range objects {
 			if obj.Err != nil {
@@ -976,7 +991,7 @@ func (e *ETCD) initS3IfNil(ctx context.Context) error {
 // PruneSnapshots perfrorms a retention run with the given
 // retention duration and removes expired snapshots.
 func (e *ETCD) PruneSnapshots(ctx context.Context) error {
-	snapshotDir, err := snapshotDir(e.config)
+	snapshotDir, err := snapshotDir(e.config, false)
 	if err != nil {
 		return errors.Wrap(err, "failed to get the snapshot dir")
 	}
@@ -995,7 +1010,7 @@ func (e *ETCD) PruneSnapshots(ctx context.Context) error {
 // ListSnapshots is an exported wrapper method that wraps an
 // unexported method of the same name.
 func (e *ETCD) ListSnapshots(ctx context.Context) ([]SnapshotFile, error) {
-	snapshotDir, err := snapshotDir(e.config)
+	snapshotDir, err := snapshotDir(e.config, false)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get the snapshot dir")
 	}
@@ -1006,7 +1021,7 @@ func (e *ETCD) ListSnapshots(ctx context.Context) ([]SnapshotFile, error) {
 // deleteSnapshots removes the given snapshots from
 // either local storage or S3.
 func (e *ETCD) DeleteSnapshots(ctx context.Context, snapshots []string) error {
-	snapshotDir, err := snapshotDir(e.config)
+	snapshotDir, err := snapshotDir(e.config, false)
 	if err != nil {
 		return errors.Wrap(err, "failed to get the snapshot dir")
 	}
@@ -1103,7 +1118,7 @@ func updateSnapshotData(data map[string]string, snapshotFiles []SnapshotFile) er
 func (e *ETCD) StoreSnapshotData(ctx context.Context) error {
 	logrus.Infof("Saving current etcd snapshot set to %s ConfigMap", snapshotConfigMapName)
 
-	snapshotDir, err := snapshotDir(e.config)
+	snapshotDir, err := snapshotDir(e.config, true)
 	if err != nil {
 		return errors.Wrap(err, "failed to get the snapshot dir")
 	}
@@ -1195,18 +1210,14 @@ func (e *ETCD) Restore(ctx context.Context) error {
 		return err
 	}
 	logrus.Infof("Pre-restore etcd database moved to %s", oldDataDir)
-	sManager := snapshot.NewV3(nil)
-	if err := sManager.Restore(snapshot.RestoreConfig{
+	return snapshot.NewV3(nil).Restore(snapshot.RestoreConfig{
 		SnapshotPath:   e.config.ClusterResetRestorePath,
 		Name:           e.name,
 		OutputDataDir:  etcdDBDir(e.config),
 		OutputWALDir:   walDir(e.config),
 		PeerURLs:       []string{e.peerURL()},
 		InitialCluster: e.name + "=" + e.peerURL(),
-	}); err != nil {
-		return err
-	}
-	return nil
+	})
 }
 
 // snapshotRetention iterates through the snapshots and removes the oldest

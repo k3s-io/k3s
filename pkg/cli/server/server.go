@@ -13,6 +13,7 @@ import (
 	"github.com/erikdubbelboer/gspt"
 	"github.com/pkg/errors"
 	"github.com/rancher/k3s/pkg/agent"
+	"github.com/rancher/k3s/pkg/agent/loadbalancer"
 	"github.com/rancher/k3s/pkg/cli/cmds"
 	"github.com/rancher/k3s/pkg/clientaccess"
 	"github.com/rancher/k3s/pkg/datadir"
@@ -160,6 +161,10 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		serverConfig.ControlConfig.DisableControllerManager = true
 		serverConfig.ControlConfig.DisableScheduler = true
 		serverConfig.ControlConfig.DisableCCM = true
+
+		// delete local loadbalancers state for apiserver and supervisor servers
+		loadbalancer.ResetLoadBalancer(filepath.Join(cfg.DataDir, "agent"), loadbalancer.SupervisorServiceName)
+		loadbalancer.ResetLoadBalancer(filepath.Join(cfg.DataDir, "agent"), loadbalancer.APIServerServiceName)
 	}
 
 	serverConfig.ControlConfig.ClusterReset = cfg.ClusterReset
@@ -366,9 +371,11 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 
 	logrus.Info("Starting " + version.Program + " " + app.App.Version)
 
+	notifySocket := os.Getenv("NOTIFY_SOCKET")
+
 	ctx := signals.SetupSignalHandler(context.Background())
 
-	if err := server.StartServer(ctx, &serverConfig); err != nil {
+	if err := server.StartServer(ctx, &serverConfig, cfg); err != nil {
 		return err
 	}
 
@@ -382,7 +389,8 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		}
 
 		logrus.Info(version.Program + " is up and running")
-		if cfg.DisableAgent && os.Getenv("NOTIFY_SOCKET") != "" {
+		if (cfg.DisableAgent || cfg.DisableAPIServer) && notifySocket != "" {
+			os.Setenv("NOTIFY_SOCKET", notifySocket)
 			systemd.SdNotify(true, "READY=1\n")
 		}
 	}()

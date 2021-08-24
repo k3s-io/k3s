@@ -16,7 +16,9 @@ import (
 	"github.com/k3s-io/kine/pkg/tls"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"go.etcd.io/etcd/server/v3/embed"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/keepalive"
 )
 
 const (
@@ -114,7 +116,18 @@ func grpcServer(config Config) *grpc.Server {
 	if config.GRPCServer != nil {
 		return config.GRPCServer
 	}
-	return grpc.NewServer()
+	gopts := []grpc.ServerOption{
+		grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
+			MinTime:             embed.DefaultGRPCKeepAliveMinTime,
+			PermitWithoutStream: false,
+		}),
+		grpc.KeepaliveParams(keepalive.ServerParameters{
+			Time:    embed.DefaultGRPCKeepAliveInterval,
+			Timeout: embed.DefaultGRPCKeepAliveTimeout,
+		}),
+	}
+
+	return grpc.NewServer(gopts...)
 }
 
 func getKineStorageBackend(ctx context.Context, driver, dsn string, cfg Config) (bool, server.Backend, error) {

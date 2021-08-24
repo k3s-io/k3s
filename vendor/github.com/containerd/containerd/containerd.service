@@ -30,7 +30,7 @@ RestartSec=5
 # in the kernel. We recommend using cgroups to do container-local accounting.
 LimitNPROC=infinity
 LimitCORE=infinity
-LimitNOFILE=1048576
+LimitNOFILE=infinity
 # Comment TasksMax if your systemd version does not supports it.
 # Only systemd 226 and above support this version.
 TasksMax=infinity

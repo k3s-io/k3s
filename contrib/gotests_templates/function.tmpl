@@ -1,7 +1,7 @@
 {{define "function"}}
 {{- $f := .}}
 
-func {{.TestName}}(t *testing.T) {
+func Test_Unit{{.FullName}}(t *testing.T) {
 	{{- with .Receiver}}
 		{{- if .IsStruct}}
 			{{- if .Fields}}

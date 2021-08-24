@@ -12,6 +12,8 @@ If you're interested in contributing documentation, please note the following:
 - Doc issues are raised in this repository, and they are tracked under the `kind/documentation` label.
 - Pull requests are submitted to the K3s documentation source in the [Rancher docs repository.](https://github.com/rancher/docs/) The K3s docs content is in the `content/k3s/` directory.
 
+If you're interested in contributing new tests, please see the `TESTING.md` in the tests directory.
+
 ### Opening PRs and organizing commits
 PRs should generally address only 1 issue at a time. If you need to fix two bugs, open two separate PRs. This will keep the scope of your pull requests smaller and allow them to be reviewed and merged more quickly.
 

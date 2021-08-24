@@ -4,7 +4,7 @@ metadata:
   name: coredns
   namespace: kube-system
 ---
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   labels:
@@ -29,7 +29,7 @@ rules:
   - list
   - watch
 ---
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   annotations:
@@ -111,7 +111,7 @@ spec:
         beta.kubernetes.io/os: linux
       containers:
       - name: coredns
-        image: %{SYSTEM_DEFAULT_REGISTRY}%rancher/coredns-coredns:1.8.3
+        image: %{SYSTEM_DEFAULT_REGISTRY}%rancher/mirrored-coredns-coredns:1.8.4
         imagePullPolicy: IfNotPresent
         resources:
           limits:

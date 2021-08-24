@@ -27,6 +27,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/containerd/containerd/defaults"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/log"
 	"github.com/containerd/containerd/mount"
@@ -51,11 +52,6 @@ high performance container runtime
 `
 
 func init() {
-	logrus.SetFormatter(&logrus.TextFormatter{
-		TimestampFormat: log.RFC3339NanoFixed,
-		FullTimestamp:   true,
-	})
-
 	// Discard grpc logs so that they don't mess with our stdio
 	grpclog.SetLoggerV2(grpclog.NewLoggerV2(ioutil.Discard, ioutil.Discard, ioutil.Discard))
 
@@ -85,7 +81,7 @@ can be used and modified as necessary as a custom configuration.`
 		cli.StringFlag{
 			Name:  "config,c",
 			Usage: "path to the configuration file",
-			Value: defaultConfigPath,
+			Value: filepath.Join(defaults.DefaultConfigDir, "config.toml"),
 		},
 		cli.StringFlag{
 			Name:  "log-level,l",
@@ -119,8 +115,14 @@ can be used and modified as necessary as a custom configuration.`
 			config  = defaultConfig()
 		)
 
-		if err := srvconfig.LoadConfig(context.GlobalString("config"), config); err != nil && !os.IsNotExist(err) {
-			return err
+		// Only try to load the config if it either exists, or the user explicitly
+		// told us to load this path.
+		configPath := context.GlobalString("config")
+		_, err := os.Stat(configPath)
+		if !os.IsNotExist(err) || context.GlobalIsSet("config") {
+			if err := srvconfig.LoadConfig(configPath, config); err != nil {
+				return err
+			}
 		}
 
 		// Apply flags to the config
@@ -188,7 +190,7 @@ can be used and modified as necessary as a custom configuration.`
 
 		if config.Debug.Address != "" {
 			var l net.Listener
-			if filepath.IsAbs(config.Debug.Address) {
+			if isLocalAddress(config.Debug.Address) {
 				if l, err = sys.GetLocalListener(config.Debug.Address, config.Debug.UID, config.Debug.GID); err != nil {
 					return errors.Wrapf(err, "failed to get listener for debug endpoint")
 				}
@@ -252,7 +254,10 @@ func serve(ctx gocontext.Context, l net.Listener, serveFunc func(net.Listener) e
 func applyFlags(context *cli.Context, config *srvconfig.Config) error {
 	// the order for config vs flag values is that flags will always override
 	// the config values if they are set
-	if err := setLevel(context, config); err != nil {
+	if err := setLogLevel(context, config); err != nil {
+		return err
+	}
+	if err := setLogFormat(config); err != nil {
 		return err
 	}
 	for _, v := range []struct {
@@ -282,7 +287,7 @@ func applyFlags(context *cli.Context, config *srvconfig.Config) error {
 	return nil
 }
 
-func setLevel(context *cli.Context, config *srvconfig.Config) error {
+func setLogLevel(context *cli.Context, config *srvconfig.Config) error {
 	l := context.GlobalString("log-level")
 	if l == "" {
 		l = config.Debug.Level
@@ -294,6 +299,29 @@ func setLevel(context *cli.Context, config *srvconfig.Config) error {
 		}
 		logrus.SetLevel(lvl)
 	}
+	return nil
+}
+
+func setLogFormat(config *srvconfig.Config) error {
+	f := config.Debug.Format
+	if f == "" {
+		f = log.TextFormat
+	}
+
+	switch f {
+	case log.TextFormat:
+		logrus.SetFormatter(&logrus.TextFormatter{
+			TimestampFormat: log.RFC3339NanoFixed,
+			FullTimestamp:   true,
+		})
+	case log.JSONFormat:
+		logrus.SetFormatter(&logrus.JSONFormatter{
+			TimestampFormat: log.RFC3339NanoFixed,
+		})
+	default:
+		return errors.Errorf("unknown log format: %s", f)
+	}
+
 	return nil
 }
 

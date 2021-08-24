@@ -22,12 +22,12 @@ To build the `containerd` daemon, and the `ctr` simple test client, the followin
 
 First you need to setup your Go development environment. You can follow this
 guideline [How to write go code](https://golang.org/doc/code.html) and at the
-end you need to have `GOPATH` and `GOROOT` set in your environment.
+end you have `go` command in your `PATH`.
 
-At this point you can use `go` to checkout `containerd` in your `GOPATH`:
+You need `git` to checkout the source code:
 
 ```sh
-go get github.com/containerd/containerd
+git clone https://github.com/containerd/containerd
 ```
 
 For proper results, install the `protoc` release into `/usr/local` on your build system. For example, the following commands will download and install the 3.11.4 release for a 64-bit Linux host:
@@ -38,12 +38,11 @@ $ sudo unzip protoc-3.11.4-linux-x86_64.zip -d /usr/local
 ```
 
 `containerd` uses [Btrfs](https://en.wikipedia.org/wiki/Btrfs) it means that you
-need to satisfy this dependencies in your system:
+need to satisfy these dependencies in your system:
 
 * CentOS/Fedora: `yum install btrfs-progs-devel`
-* Debian/Ubuntu: `apt-get install btrfs-tools`
-	* Debian Buster/Ubuntu 19.10:
-	    `apt-get install btrfs-progs libbtrfs-dev`
+* Debian/Ubuntu: `apt-get install btrfs-progs libbtrfs-dev`
+  * Debian(before Buster)/Ubuntu(before 19.10): `apt-get install btrfs-tools`
 
 At this point you are ready to build `containerd` yourself!
 
@@ -55,21 +54,23 @@ the system, sometimes it is necessary to build runc directly when working with
 container runtime development. You can skip this step if you already have the
 correct version of `runc` installed.
 
+`runc` requires `libseccomp`. You may need to install the missing dependencies:
+
+* CentOS/Fedora: `yum install libseccomp libseccomp-devel`
+* Debian/Ubuntu: `apt-get install libseccomp libseccomp-dev`
+
+
 For the quick and dirty installation, you can use the following:
 
-    go get github.com/opencontainers/runc
+```
+git clone https://github.com/opencontainers/runc
+cd runc
+make
+sudo make install
+```
 
-This is not recommended, as the generated binary will not have version
-information. Instead, cd into the source directory and use make to build and
-install the binary:
-
-	cd $GOPATH/src/github.com/opencontainers/runc
-	make
-	make install
-
-Make sure to follow the guidelines for versioning in [RUNC.md](RUNC.md) for the
-best results. Some pointers on proper build tag setupVersion mismatches can
-result in undefined behavior.
+Make sure to follow the guidelines for versioning in [RUNC.md](/docs/RUNC.md) for the
+best results.
 
 ## Build containerd
 
@@ -77,7 +78,7 @@ result in undefined behavior.
 can run:
 
 ```
-cd $GOPATH/src/github.com/containerd/containerd
+cd containerd
 make
 ```
 
@@ -101,15 +102,16 @@ make generate
 > * `no_cri`: A build tag disables building Kubernetes [CRI](http://blog.kubernetes.io/2016/12/container-runtime-interface-cri-in-kubernetes.html) support into containerd.
 > See [here](https://github.com/containerd/cri-containerd#build-tags) for build tags of CRI plugin.
 > * `no_devmapper`: A build tag disables building the device mapper snapshot driver.
-> * `apparmor`: Enables apparmor support in the cri plugin
-> * `selinux`: Enables selinux support in the cri plugin
 >
 > For example, adding `BUILDTAGS=no_btrfs` to your environment before calling the **binaries**
 > Makefile target will disable the btrfs driver within the containerd Go build.
 
-Vendoring of external imports uses the [`vndr` tool](https://github.com/LK4D4/vndr) which uses a simple config file, `vendor.conf`, to provide the URL and version or hash details for each vendored import. After modifying `vendor.conf` run the `vndr` tool to update the `vendor/` directory contents. Combining the `vendor.conf` update with the changeset in `vendor/` after running `vndr` should become a single commit for a PR which relies on vendored updates.
+Vendoring of external imports uses the [Go Modules](https://golang.org/ref/mod#vendoring). You need
+to use `go mod` command to modify the dependencies. After modifition, you should run `go mod tidy`
+and `go mod vendor` to ensure the `go.mod`, `go.sum` files and `vendor` directory are up to date.
+Changes to these files should become a single commit for a PR which relies on vendored updates.
 
-Please refer to [RUNC.md](/RUNC.md) for the currently supported version of `runc` that is used by containerd.
+Please refer to [RUNC.md](/docs/RUNC.md) for the currently supported version of `runc` that is used by containerd.
 
 ### Static binaries
 
@@ -126,6 +128,8 @@ make EXTRA_FLAGS="-buildmode pie" \
 > - static containerd binary does not support loading shared object plugins (`*.so`)
 
 # Via Docker container
+
+The following instructions assume you are at the parent directory of containerd source directory.
 
 ## Build containerd
 
@@ -144,7 +148,7 @@ containerd source root directory you can run the following command:
 
 ```sh
 docker run -it \
-    -v ${PWD}:/go/src/github.com/containerd/containerd \
+    -v ${PWD}/containerd:/go/src/github.com/containerd/containerd \
     -e GOPATH=/go \
     -w /go/src/github.com/containerd/containerd containerd/build sh
 ```
@@ -160,10 +164,10 @@ You are now ready to [build](#build-containerd):
 ## Build containerd and runc
 To have complete core container runtime, you will need both `containerd` and `runc`. It is possible to build both of these via Docker container.
 
-You can use `go` to checkout `runc` in your `GOPATH`:
+You can use `git` to checkout `runc`:
 
 ```sh
-go get github.com/opencontainers/runc
+git clone https://github.com/opencontainers/runc
 ```
 
 We can build an image from this `Dockerfile`:
@@ -189,8 +193,8 @@ Let's suppose you build an image called `containerd/build` from the above Docker
 ```sh
 docker run -it --privileged \
     -v /var/lib/containerd \
-    -v ${GOPATH}/src/github.com/opencontainers/runc:/go/src/github.com/opencontainers/runc \
-    -v ${GOPATH}/src/github.com/containerd/containerd:/go/src/github.com/containerd/containerd \
+    -v ${PWD}/runc:/go/src/github.com/opencontainers/runc \
+    -v ${PWD}/containerd:/go/src/github.com/containerd/containerd \
     -e GOPATH=/go \
     -w /go/src/github.com/containerd/containerd containerd/build sh
 ```

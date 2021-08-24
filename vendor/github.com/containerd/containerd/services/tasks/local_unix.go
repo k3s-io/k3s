@@ -1,4 +1,4 @@
-// +build !windows
+// +build !windows,!freebsd
 
 /*
    Copyright The containerd Authors.
