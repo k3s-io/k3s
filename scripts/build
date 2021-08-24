@@ -121,11 +121,6 @@ rm -f ./build/src/github.com/opencontainers/runc/runc
 make GOPATH=$(pwd)/build EXTRA_LDFLAGS="-w -s" BUILDTAGS="$RUNC_TAGS" -C ./build/src/github.com/opencontainers/runc $RUNC_STATIC
 cp -f ./build/src/github.com/opencontainers/runc/runc ./bin/runc
 
-echo Building containerd-shim
-rm -f ./vendor/github.com/containerd/containerd/bin/containerd-shim
-make -C ./vendor/github.com/containerd/containerd bin/containerd-shim
-cp -f ./vendor/github.com/containerd/containerd/bin/containerd-shim ./bin/containerd-shim
-
 echo Building containerd-shim-runc-v2
 rm -f ./vendor/github.com/containerd/containerd/bin/containerd-shim-runc-v2
 make -C ./vendor/github.com/containerd/containerd bin/containerd-shim-runc-v2
