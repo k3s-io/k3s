@@ -18,6 +18,7 @@ import (
 )
 
 func createRootlessConfig(argsMap map[string]string, hasCFS, hasPIDs bool) {
+	argsMap["feature-gates=KubeletInUserNamespace"] = "true"
 	// "/sys/fs/cgroup" is namespaced
 	cgroupfsWritable := unix.Access("/sys/fs/cgroup", unix.W_OK) == nil
 	if hasCFS && hasPIDs && cgroupfsWritable {
