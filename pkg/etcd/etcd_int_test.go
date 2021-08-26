@@ -7,6 +7,7 @@ import (
 	"time"
 
 	. "github.com/onsi/ginkgo"
+	"github.com/onsi/ginkgo/reporters"
 	. "github.com/onsi/gomega"
 	testutil "github.com/rancher/k3s/tests/util"
 )
@@ -23,7 +24,7 @@ var _ = BeforeSuite(func() {
 
 var _ = Describe("etcd snapshots", func() {
 	BeforeEach(func() {
-		if !testutil.ServerArgsPresent(serverArgs) {
+		if testutil.IsExistingServer() && !testutil.ServerArgsPresent(serverArgs) {
 			Skip("Test needs k3s server with: " + strings.Join(serverArgs, " "))
 		}
 	})
@@ -117,5 +118,7 @@ var _ = AfterSuite(func() {
 
 func Test_IntegrationEtcd(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Etcd Suite")
+	RunSpecsWithDefaultAndCustomReporters(t, "Etcd Suite", []Reporter{
+		reporters.NewJUnitReporter("/tmp/results/junit-etcd.xml"),
+	})
 }

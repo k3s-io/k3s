@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	. "github.com/onsi/ginkgo"
+	"github.com/onsi/ginkgo/reporters"
 	. "github.com/onsi/gomega"
 	testutil "github.com/rancher/k3s/tests/util"
 )
@@ -24,7 +25,7 @@ var _ = BeforeSuite(func() {
 
 var _ = Describe("local storage", func() {
 	BeforeEach(func() {
-		if !testutil.ServerArgsPresent(serverArgs) {
+		if testutil.IsExistingServer() && !testutil.ServerArgsPresent(serverArgs) {
 			Skip("Test needs k3s server with: " + strings.Join(serverArgs, " "))
 		}
 	})
@@ -35,8 +36,9 @@ var _ = Describe("local storage", func() {
 			}, "90s", "1s").Should(MatchRegexp("kube-system.+coredns.+1\\/1.+Running"))
 		})
 		It("creates a new pvc", func() {
-			Expect(testutil.K3sCmd("kubectl", "create", "-f", "../testdata/localstorage_pvc.yaml")).
-				To(ContainSubstring("persistentvolumeclaim/local-path-pvc created"))
+			result, err := testutil.K3sCmd("kubectl", "create", "-f", "../testdata/localstorage_pvc.yaml")
+			Expect(result).To(ContainSubstring("persistentvolumeclaim/local-path-pvc created"))
+			Expect(err).NotTo(HaveOccurred())
 		})
 		It("creates a new pod", func() {
 			Expect(testutil.K3sCmd("kubectl", "create", "-f", "../testdata/localstorage_pod.yaml")).
@@ -49,6 +51,9 @@ var _ = Describe("local storage", func() {
 			Eventually(func() (string, error) {
 				return testutil.K3sCmd("kubectl", "get", "pv")
 			}, "10s", "1s").Should(MatchRegexp(`pvc.+2Gi.+Bound`))
+			Eventually(func() (string, error) {
+				return testutil.K3sCmd("kubectl", "get", "pod")
+			}, "10s", "1s").Should(MatchRegexp(`volume-test.+Running`))
 		})
 		It("has proper folder permissions", func() {
 			var k3sStorage = "/var/lib/rancher/k3s/storage"
@@ -66,8 +71,8 @@ var _ = Describe("local storage", func() {
 			Expect(fmt.Sprintf("%04o", fileStat.Mode().Perm())).To(Equal("0777"))
 		})
 		It("deletes properly", func() {
-			Expect(testutil.K3sCmd("kubectl", "delete", "pod", "volume-test")).
-				To(ContainSubstring("pod \"volume-test\" deleted"))
+			Expect(testutil.K3sCmd("kubectl", "delete", "--force", "pod", "volume-test")).
+				To(ContainSubstring("pod \"volume-test\" force deleted"))
 			Expect(testutil.K3sCmd("kubectl", "delete", "pvc", "local-path-pvc")).
 				To(ContainSubstring("persistentvolumeclaim \"local-path-pvc\" deleted"))
 		})
@@ -82,5 +87,7 @@ var _ = AfterSuite(func() {
 
 func Test_IntegrationLocalStorage(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Local Storage Suite")
+	RunSpecsWithDefaultAndCustomReporters(t, "Local Storage Suite", []Reporter{
+		reporters.NewJUnitReporter("/tmp/results/junit-ls.xml"),
+	})
 }
