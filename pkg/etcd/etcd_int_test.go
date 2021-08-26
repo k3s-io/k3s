@@ -23,7 +23,7 @@ var _ = BeforeSuite(func() {
 
 var _ = Describe("etcd snapshots", func() {
 	BeforeEach(func() {
-		if !testutil.ServerArgsPresent(serverArgs) {
+		if testutil.IsExistingServer() && !testutil.ServerArgsPresent(serverArgs) {
 			Skip("Test needs k3s server with: " + strings.Join(serverArgs, " "))
 		}
 	})

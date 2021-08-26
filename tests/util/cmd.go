@@ -94,7 +94,7 @@ func K3sServerArgs() []string {
 	if err != nil {
 		return nil
 	}
-	res := strings.Replace(results, "'", "", -1)
+	res := strings.ReplaceAll(results, "'", "")
 	var args []string
 	if err := json.Unmarshal([]byte(res), &args); err != nil {
 		logrus.Error(err)
