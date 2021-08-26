@@ -460,19 +460,19 @@ setup_selinux() {
     fi
 
     [ -r /etc/os-release ] && . /etc/os-release
-    if [ "${ID_LIKE:-}" = suse ] ; then
-        policy_hint='k3s with SELinux is currently not supported on SUSE/openSUSE systems.
-    please disable SELinux before installing k3s
-'
+    if [ "${ID_LIKE:-}" = suse ]; then
+        policy_hint="k3s with SELinux is currently not supported on SUSE/openSUSE systems.
+    Please disable SELinux before installing k3s.
+"
     else
         policy_hint="please install:
     yum install -y container-selinux selinux-policy-base
-    yum install -y https://${rpm_site}/k3s/${rpm_channel}/common/centos/7/noarch/k3s-selinux-0.2-1.el7_8.noarch.rpm
+    yum install -y https://${rpm_site}/k3s/${rpm_channel}/common/centos/${VERSION_ID:-7}/noarch/k3s-selinux-0.3-0.el${VERSION_ID:-7}.noarch.rpm
 "
     fi
 
     policy_error=fatal
-    if [ "$INSTALL_K3S_SELINUX_WARN" = true ] || grep -q 'ID=flatcar' /etc/os-release; then
+    if [ "$INSTALL_K3S_SELINUX_WARN" = true ] || [ "${ID_LIKE:-}" = coreos ]; then
         policy_error=warn
     fi
 
