@@ -1,7 +1,7 @@
 # When you made a change to this YAML, please validate with https://editor.swagger.io
 openapi: 3.0.3
 info:
-  version: 1.1.0
+  version: 1.1.1
   title: RootlessKit API
 servers:
   - url: 'http://rootlesskit/v1'
@@ -144,6 +144,13 @@ components:
           items:
             type: string
           example: ["10.0.2.3"]
+        childIP:
+          type: string
+          description: "Child IP (v4)"
+          example: "10.0.2.100"
+        dynamicChildIP:
+          type: boolean
+          description: "Child IP may change"
     PortDriverInfo:
       required:
         - driver
@@ -159,3 +166,6 @@ components:
           example: ["tcp","udp"]
           items:
             $ref: '#/components/schemas/Proto'
+        disallowLoopbackChildIP:
+          type: boolean
+          description: "If this field is set to true, loopback IP such as 127.0.0.1 cannot be specified as a child IP"

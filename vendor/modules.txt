@@ -204,7 +204,6 @@ github.com/containerd/containerd/api/types/task
 github.com/containerd/containerd/archive
 github.com/containerd/containerd/archive/compression
 github.com/containerd/containerd/cio
-github.com/containerd/containerd/cmd/containerd-shim
 github.com/containerd/containerd/cmd/containerd-shim-runc-v2
 github.com/containerd/containerd/cmd/containerd/command
 github.com/containerd/containerd/cmd/ctr/app
@@ -540,7 +539,7 @@ github.com/go-openapi/swag
 github.com/go-sql-driver/mysql
 # github.com/godbus/dbus/v5 v5.0.4
 github.com/godbus/dbus/v5
-# github.com/gofrs/flock v0.8.0
+# github.com/gofrs/flock v0.8.1
 github.com/gofrs/flock
 # github.com/gofrs/uuid v4.0.0+incompatible
 github.com/gofrs/uuid
@@ -631,7 +630,7 @@ github.com/google/go-containerregistry/pkg/name
 github.com/google/gofuzz
 # github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 github.com/google/shlex
-# github.com/google/uuid v1.2.0
+# github.com/google/uuid v1.3.0
 ## explicit
 github.com/google/uuid
 # github.com/googleapis/gax-go/v2 v2.0.5
@@ -1003,7 +1002,7 @@ github.com/rancher/wrangler/pkg/yaml
 # github.com/robfig/cron/v3 v3.0.1
 ## explicit
 github.com/robfig/cron/v3
-# github.com/rootless-containers/rootlesskit v0.14.0
+# github.com/rootless-containers/rootlesskit v0.14.5
 ## explicit
 github.com/rootless-containers/rootlesskit/pkg/api
 github.com/rootless-containers/rootlesskit/pkg/api/client
