@@ -257,8 +257,10 @@ func (d *parentDriver) ConfigureNetwork(childPID int, stateDir string) (*common.
 	d.infoMu.Lock()
 	d.info = func() *api.NetworkDriverInfo {
 		return &api.NetworkDriverInfo{
-			Driver: DriverName,
-			DNS:    []net.IP{net.ParseIP(netmsg.DNS)},
+			Driver:    DriverName,
+			DNS:       []net.IP{net.ParseIP(netmsg.DNS)},
+			ChildIP:        net.ParseIP(netmsg.IP),
+			DynamicChildIP: false,
 		}
 	}
 	d.infoMu.Unlock()

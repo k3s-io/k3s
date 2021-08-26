@@ -86,7 +86,7 @@ require (
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/golangplus/testing v1.0.0 // indirect
 	github.com/google/cadvisor v0.39.2
-	github.com/google/uuid v1.2.0
+	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.4.2
 	github.com/k3s-io/helm-controller v0.11.3
@@ -110,7 +110,7 @@ require (
 	github.com/rancher/wharfie v0.3.4
 	github.com/rancher/wrangler v0.8.3
 	github.com/robfig/cron/v3 v3.0.1
-	github.com/rootless-containers/rootlesskit v0.14.0
+	github.com/rootless-containers/rootlesskit v0.14.5
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.7.0
