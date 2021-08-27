@@ -21,12 +21,12 @@ go test -c -v -ldflags "-X 'github.com/rancher/k3s/tests/util.existingServer=Tru
 docker build -f ./tests/integration/Dockerfile.test -t $REPO .
 docker save $REPO -o ./dist/artifacts/$REPO.tar
 
-sudo mkdir -p /var/lib/rancher/k3s/agents/images
-sudo mv ./dist/artifacts/$REPO.tar /var/lib/rancher/k3s/agents/images/
+sudo mkdir -p /var/lib/rancher/k3s/agent/images
+sudo mv ./dist/artifacts/$REPO.tar /var/lib/rancher/k3s/agent/images/
 
 # If k3s is already running, attempt to import the image
-if [[ 'pgrep k3s' ]]; then
-    sudo ./dist/artifacts/k3s ctr images import /var/lib/rancher/k3s/agents/images/$REPO.tar
+if [[ "$(pgrep k3s | wc -l)" -gt 0 ]]; then
+    sudo ./dist/artifacts/k3s ctr images import /var/lib/rancher/k3s/agent/images/$REPO.tar
 fi
 
 # Cleanup compiled tests
