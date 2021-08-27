@@ -3,8 +3,8 @@ set -e
 
 cd $(dirname $0)/..
 
-REPO="dereknola/k3s-int-tests"
-OUTFILE="./dist/artifacts/k3s-int.yaml"
+REPO="k3s-int-tests"
+OUTFILE="./dist/artifacts/k3s-int-tests.yaml"
 
 # Compile all integration tests and containerize them
 mkdir -p dist/artifacts
@@ -18,9 +18,16 @@ for i in $PKG_TO_TEST; do
     INDEX=$(expr $INDEX + 1)
 done
 go test -c -v -ldflags "-X 'github.com/rancher/k3s/tests/util.existingServer=True'" -o dist/artifacts/k3s-integration-$INDEX.test ./tests/integration/... -run Integration
-docker build -f ./tests/integration/Dockerfile.test -t k3s-int-tests .
-docker tag k3s-int-tests ${REPO}
-docker push ${REPO}
+docker build -f ./tests/integration/Dockerfile.test -t $REPO .
+docker save $REPO -o ./dist/artifacts/$REPO.tar
+
+sudo mkdir -p /var/lib/rancher/k3s/agents/images
+sudo mv ./dist/artifacts/$REPO.tar /var/lib/rancher/k3s/agents/images/
+
+# If k3s is already running, attempt to import the image
+if [[ 'pgrep k3s' ]]; then
+    sudo ./dist/artifacts/k3s ctr images import /var/lib/rancher/k3s/agents/images/$REPO.tar
+fi
 
 # Cleanup compiled tests
 rm dist/artifacts/k3s-integration-*
@@ -52,14 +59,14 @@ sonobuoy gen plugin \
     --type job \
     --cmd ./test-runner.sh \
     --env KUBECONFIG=/etc/rancher/k3s/k3s.yaml \
-    > ./dist/artifacts/k3s-int.yaml
+    > $OUTFILE
 awk -v PS="$PODSPEC" '/podSpec:/{print;print PS;next}1' $OUTFILE > ./dist/artifacts/temp.yaml
 mv ./dist/artifacts/temp.yaml $OUTFILE
 awk -v VM="$VOLMOUNTS" '/volumeMounts:/{print;print VM;next}1' $OUTFILE  > ./dist/artifacts/temp.yaml
 mv ./dist/artifacts/temp.yaml $OUTFILE
 
 # Use this command to run the plugin
-# sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml sonobuoy run --plugin ./dist/artifacts/k3s-int.yaml
+# sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml sonobuoy run --plugin ./dist/artifacts/k3s-int-tests.yaml
 # And to get the results
 # sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml sonobuoy retrieve
 # sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml sonobuoy results <TAR_FILE_FROM_RETRIEVE>
