@@ -46,13 +46,13 @@ var _ = Describe("local storage", func() {
 		})
 		It("shows storage up in kubectl", func() {
 			Eventually(func() (string, error) {
-				return testutil.K3sCmd("kubectl", "get", "pvc")
+				return testutil.K3sCmd("kubectl", "get", "--namespace=default", "pvc")
 			}, "45s", "1s").Should(MatchRegexp(`local-path-pvc.+Bound`))
 			Eventually(func() (string, error) {
-				return testutil.K3sCmd("kubectl", "get", "pv")
+				return testutil.K3sCmd("kubectl", "get", "--namespace=default", "pv")
 			}, "10s", "1s").Should(MatchRegexp(`pvc.+2Gi.+Bound`))
 			Eventually(func() (string, error) {
-				return testutil.K3sCmd("kubectl", "get", "pod")
+				return testutil.K3sCmd("kubectl", "get", "--namespace=default", "pod")
 			}, "10s", "1s").Should(MatchRegexp(`volume-test.+Running`))
 		})
 		It("has proper folder permissions", func() {
@@ -61,7 +61,7 @@ var _ = Describe("local storage", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(fmt.Sprintf("%04o", fileStat.Mode().Perm())).To(Equal("0701"))
 
-			pvResult, err := testutil.K3sCmd("kubectl", "get", "pv")
+			pvResult, err := testutil.K3sCmd("kubectl", "get", "--namespace=default", "pv")
 			Expect(err).ToNot(HaveOccurred())
 			reg, err := regexp.Compile(`pvc[^\s]+`)
 			Expect(err).ToNot(HaveOccurred())
@@ -71,9 +71,9 @@ var _ = Describe("local storage", func() {
 			Expect(fmt.Sprintf("%04o", fileStat.Mode().Perm())).To(Equal("0777"))
 		})
 		It("deletes properly", func() {
-			Expect(testutil.K3sCmd("kubectl", "delete", "--force", "pod", "volume-test")).
+			Expect(testutil.K3sCmd("kubectl", "delete", "--namespace=default", "--force", "pod", "volume-test")).
 				To(ContainSubstring("pod \"volume-test\" force deleted"))
-			Expect(testutil.K3sCmd("kubectl", "delete", "pvc", "local-path-pvc")).
+			Expect(testutil.K3sCmd("kubectl", "delete", "--namespace=default", "pvc", "local-path-pvc")).
 				To(ContainSubstring("persistentvolumeclaim \"local-path-pvc\" deleted"))
 		})
 	})

@@ -3,6 +3,10 @@ set -e
 
 cd $(dirname $0)/..
 
+REPO="dereknola/k3s-int-tests"
+OUTFILE="./dist/artifacts/k3s-int.yaml"
+
+# Compile all integration tests and containerize them
 mkdir -p dist/artifacts
 go test -c -v -ldflags "-X 'github.com/rancher/k3s/tests/util.existingServer=True'" -o dist/artifacts/k3s-integration-1.test ./tests/integration/... -run Integration
 
@@ -15,5 +19,47 @@ for i in $PKG_TO_TEST; do
 done
 go test -c -v -ldflags "-X 'github.com/rancher/k3s/tests/util.existingServer=True'" -o dist/artifacts/k3s-integration-$INDEX.test ./tests/integration/... -run Integration
 docker build -f ./tests/integration/Dockerfile.test -t k3s-int-tests .
-docker tag k3s-int-tests dereknola/k3s-int-tests
-docker push dereknola/k3s-int-tests
+docker tag k3s-int-tests ${REPO}
+docker push ${REPO}
+
+# Cleanup compiled tests
+rm dist/artifacts/k3s-integration-*
+
+# Generate the sonobuoy plugin and inject the necessary 
+# podSpec and volume mount modifications
+PODSPEC=\
+'  hostNetwork: true
+  volumes:
+  - name: var-k3s
+    hostPath:
+      path: /var/lib/rancher/k3s/
+      type: Directory
+  - name: etc-k3s
+    hostPath:
+      path: /etc/rancher/k3s/
+      type: Directory'
+VOLMOUNTS=\
+'  - mountPath: /var/lib/rancher/k3s/
+    name: var-k3s
+  - mountPath: /etc/rancher/k3s/
+    name: etc-k3s'
+
+sonobuoy gen plugin \
+    --format=junit \
+    --image ${REPO} \
+    --show-default-podspec \
+    --name k3s-int \
+    --type job \
+    --cmd ./test-runner.sh \
+    --env KUBECONFIG=/etc/rancher/k3s/k3s.yaml \
+    > ./dist/artifacts/k3s-int.yaml
+awk -v PS="$PODSPEC" '/podSpec:/{print;print PS;next}1' $OUTFILE > ./dist/artifacts/temp.yaml
+mv ./dist/artifacts/temp.yaml $OUTFILE
+awk -v VM="$VOLMOUNTS" '/volumeMounts:/{print;print VM;next}1' $OUTFILE  > ./dist/artifacts/temp.yaml
+mv ./dist/artifacts/temp.yaml $OUTFILE
+
+# Use this command to run the plugin
+# sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml sonobuoy run --plugin ./dist/artifacts/k3s-int.yaml
+# And to get the results
+# sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml sonobuoy retrieve
+# sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml sonobuoy results <TAR_FILE_FROM_RETRIEVE>

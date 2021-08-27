@@ -26,3 +26,4 @@ runTests() {
         ./$t
     done
 }
+runTests
