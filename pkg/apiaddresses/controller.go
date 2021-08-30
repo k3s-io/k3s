@@ -44,27 +44,17 @@ type handler struct {
 // This controller will update the version.program/apiaddresses etcd key with a list of
 // api addresses endpoints found in the kubernetes service in the default namespace
 func (h *handler) sync(key string, endpoint *v1.Endpoints) (*v1.Endpoints, error) {
-	if endpoint == nil {
-		return nil, nil
+	if endpoint != nil &&
+		endpoint.Namespace == "default" &&
+		endpoint.Name == "kubernetes" {
+		w := &bytes.Buffer{}
+		if err := json.NewEncoder(w).Encode(util.GetAddresses(endpoint)); err != nil {
+			return nil, err
+		}
+		_, err := h.etcdClient.Put(h.ctx, etcd.AddressKey, w.String())
+		if err != nil {
+			return nil, err
+		}
 	}
-
-	if endpoint.Name != "kubernetes" {
-		return nil, nil
-	}
-
-	if endpoint.Namespace != "default" {
-		return nil, nil
-	}
-
-	w := &bytes.Buffer{}
-	if err := json.NewEncoder(w).Encode(util.GetAddresses(endpoint)); err != nil {
-		return nil, err
-	}
-
-	_, err := h.etcdClient.Put(h.ctx, etcd.AddressKey, w.String())
-	if err != nil {
-		return nil, err
-	}
-
 	return endpoint, nil
 }
