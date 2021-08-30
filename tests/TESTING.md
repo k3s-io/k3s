@@ -76,9 +76,21 @@ Integration tests can be run with no k3s cluster present, each test will spin up
 go test ./pkg/... ./tests/... -run Integration
 ```
 
-Integration tests can also be run on an existing single-node cluster via compile time flag, tests will skip if the server is not configured correctly.
-```
+Integration tests can be run on an existing single-node cluster via compile time flag, tests will skip if the server is not configured correctly.
+```bash
 go test -ldflags "-X 'github.com/rancher/k3s/tests/util.existingServer=True'" ./pkg/... ./tests/... -run Integration
+```
+
+Integration tests can also be run via a [Sonobuoy](https://sonobuoy.io/docs/v0.53.2/) plugin on an existing single-node cluster.
+```bash
+./scripts/build-tests-sonobuoy
+sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml sonobuoy run --plugin ./dist/artifacts/k3s-int-tests.yaml
+```
+Check the sonobuoy status and retrieve results
+``` 
+sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml sonobuoy status
+sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml sonobuoy retrieve
+sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml sonobuoy results <TAR_FILE_FROM_RETRIEVE>
 ```
 
 ___
