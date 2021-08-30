@@ -9,6 +9,7 @@ import (
 
 type LimitedServer struct {
 	backend Backend
+	scheme  string
 }
 
 func (l *LimitedServer) Range(ctx context.Context, r *etcdserverpb.RangeRequest) (*RangeResponse, error) {

@@ -272,14 +272,14 @@ func setupStorageBackend(argsMap map[string]string, cfg *config.Control) {
 		argsMap["etcd-servers"] = cfg.Datastore.Endpoint
 	}
 	// storage backend tls configuration
-	if len(cfg.Datastore.CAFile) > 0 {
-		argsMap["etcd-cafile"] = cfg.Datastore.CAFile
+	if len(cfg.Datastore.BackendTLSConfig.CAFile) > 0 {
+		argsMap["etcd-cafile"] = cfg.Datastore.BackendTLSConfig.CAFile
 	}
-	if len(cfg.Datastore.CertFile) > 0 {
-		argsMap["etcd-certfile"] = cfg.Datastore.CertFile
+	if len(cfg.Datastore.BackendTLSConfig.CertFile) > 0 {
+		argsMap["etcd-certfile"] = cfg.Datastore.BackendTLSConfig.CertFile
 	}
-	if len(cfg.Datastore.KeyFile) > 0 {
-		argsMap["etcd-keyfile"] = cfg.Datastore.KeyFile
+	if len(cfg.Datastore.BackendTLSConfig.KeyFile) > 0 {
+		argsMap["etcd-keyfile"] = cfg.Datastore.BackendTLSConfig.KeyFile
 	}
 }
 

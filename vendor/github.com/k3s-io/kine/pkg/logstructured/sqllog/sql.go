@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/k3s-io/kine/pkg/broadcaster"
-	"github.com/k3s-io/kine/pkg/drivers/generic"
 	"github.com/k3s-io/kine/pkg/server"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -22,35 +21,18 @@ const (
 )
 
 type SQLLog struct {
-	d           Dialect
+	d           server.Dialect
 	broadcaster broadcaster.Broadcaster
 	ctx         context.Context
 	notify      chan int64
 }
 
-func New(d Dialect) *SQLLog {
+func New(d server.Dialect) *SQLLog {
 	l := &SQLLog{
 		d:      d,
 		notify: make(chan int64, 1024),
 	}
 	return l
-}
-
-type Dialect interface {
-	ListCurrent(ctx context.Context, prefix string, limit int64, includeDeleted bool) (*sql.Rows, error)
-	List(ctx context.Context, prefix, startKey string, limit, revision int64, includeDeleted bool) (*sql.Rows, error)
-	Count(ctx context.Context, prefix string) (int64, int64, error)
-	CurrentRevision(ctx context.Context) (int64, error)
-	After(ctx context.Context, prefix string, rev, limit int64) (*sql.Rows, error)
-	Insert(ctx context.Context, key string, create, delete bool, createRevision, previousRevision int64, ttl int64, value, prevValue []byte) (int64, error)
-	GetRevision(ctx context.Context, revision int64) (*sql.Rows, error)
-	DeleteRevision(ctx context.Context, revision int64) error
-	GetCompactRevision(ctx context.Context) (int64, error)
-	SetCompactRevision(ctx context.Context, revision int64) error
-	Compact(ctx context.Context, revision int64) (int64, error)
-	Fill(ctx context.Context, revision int64) error
-	IsFill(key string) bool
-	BeginTx(ctx context.Context, opts *sql.TxOptions) (*generic.Tx, error)
 }
 
 func (s *SQLLog) Start(ctx context.Context) error {
@@ -567,4 +549,8 @@ func safeCompactRev(targetCompactRev int64, currentRev int64) int64 {
 		safeRev = 0
 	}
 	return safeRev
+}
+
+func (s *SQLLog) DbSize(ctx context.Context) (int64, error) {
+	return s.d.GetSize(ctx)
 }

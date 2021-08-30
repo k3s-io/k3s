@@ -363,9 +363,9 @@ func (e *ETCD) Register(ctx context.Context, config *config.Control, handler htt
 	}
 	e.address = address
 	e.config.Datastore.Endpoint = endpoint
-	e.config.Datastore.Config.CAFile = e.runtime.ETCDServerCA
-	e.config.Datastore.Config.CertFile = e.runtime.ClientETCDCert
-	e.config.Datastore.Config.KeyFile = e.runtime.ClientETCDKey
+	e.config.Datastore.BackendTLSConfig.CAFile = e.runtime.ETCDServerCA
+	e.config.Datastore.BackendTLSConfig.CertFile = e.runtime.ClientETCDCert
+	e.config.Datastore.BackendTLSConfig.KeyFile = e.runtime.ClientETCDKey
 
 	if err := e.setName(false); err != nil {
 		return nil, err
