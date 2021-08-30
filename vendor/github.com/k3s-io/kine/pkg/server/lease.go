@@ -7,6 +7,9 @@ import (
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 )
 
+// explicit interface check
+var _ etcdserverpb.LeaseServer = (*KVServerBridge)(nil)
+
 func (s *KVServerBridge) LeaseGrant(ctx context.Context, req *etcdserverpb.LeaseGrantRequest) (*etcdserverpb.LeaseGrantResponse, error) {
 	return &etcdserverpb.LeaseGrantResponse{
 		Header: &etcdserverpb.ResponseHeader{},

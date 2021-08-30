@@ -61,6 +61,7 @@ func NewVariant(ctx context.Context, driverName, dataSourceName string, connPool
 	}
 
 	dialect.LastInsertID = true
+	dialect.GetSizeSQL = `SELECT SUM(pgsize) FROM dbstat`
 	dialect.CompactSQL = `
 		DELETE FROM kine AS kv
 		WHERE
