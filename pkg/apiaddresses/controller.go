@@ -48,7 +48,11 @@ func (h *handler) sync(key string, endpoint *v1.Endpoints) (*v1.Endpoints, error
 		return nil, nil
 	}
 
-	if endpoint.Namespace != "default" && endpoint.Name != "kubernetes" {
+	if endpoint.Name != "kubernetes" {
+		return nil, nil
+	}
+
+	if endpoint.Namespace != "default" {
 		return nil, nil
 	}
 
