@@ -49,7 +49,7 @@ func (h *handler) sync(key string, endpoint *v1.Endpoints) (*v1.Endpoints, error
 		endpoint.Namespace == "default" &&
 		endpoint.Name == "kubernetes" {
 		w := &bytes.Buffer{}
-		if err := json.NewEncoder(w).Encode(util.GetAddresses(endpoint)); err != nil {
+		if err := json.NewEncoder(w).Encode(getAddresses(endpoint)); err != nil {
 			return nil, err
 		}
 		_, err := h.etcdClient.Put(h.ctx, etcd.AddressKey, w.String())
