@@ -9,7 +9,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io/ioutil"
-	sysnet "net"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -31,7 +31,6 @@ import (
 	"github.com/rancher/wrangler/pkg/slice"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/json"
-	"k8s.io/apimachinery/pkg/util/net"
 )
 
 const (
@@ -89,7 +88,7 @@ func Request(path string, info *clientaccess.Info, requester HTTPRequester) ([]b
 	return requester(u.String(), clientaccess.GetHTTPClient(info.CACerts), info.Username, info.Password)
 }
 
-func getNodeNamedCrt(nodeName string, nodeIPs []sysnet.IP, nodePasswordFile string) HTTPRequester {
+func getNodeNamedCrt(nodeName string, nodeIPs []net.IP, nodePasswordFile string) HTTPRequester {
 	return func(u string, client *http.Client, username, password string) ([]byte, error) {
 		req, err := http.NewRequest(http.MethodGet, u, nil)
 		if err != nil {
@@ -169,7 +168,7 @@ func upgradeOldNodePasswordPath(oldNodePasswordFile, newNodePasswordFile string)
 	}
 }
 
-func getServingCert(nodeName string, nodeIPs []sysnet.IP, servingCertFile, servingKeyFile, nodePasswordFile string, info *clientaccess.Info) (*tls.Certificate, error) {
+func getServingCert(nodeName string, nodeIPs []net.IP, servingCertFile, servingKeyFile, nodePasswordFile string, info *clientaccess.Info) (*tls.Certificate, error) {
 	servingCert, err := Request("/v1-"+version.Program+"/serving-kubelet.crt", info, getNodeNamedCrt(nodeName, nodeIPs, nodePasswordFile))
 	if err != nil {
 		return nil, err
@@ -232,7 +231,7 @@ func splitCertKeyPEM(bytes []byte) (certPem []byte, keyPem []byte) {
 	return
 }
 
-func getNodeNamedHostFile(filename, keyFile, nodeName string, nodeIPs []sysnet.IP, nodePasswordFile string, info *clientaccess.Info) error {
+func getNodeNamedHostFile(filename, keyFile, nodeName string, nodeIPs []net.IP, nodePasswordFile string, info *clientaccess.Info) error {
 	basename := filepath.Base(filename)
 	fileBytes, err := Request("/v1-"+version.Program+"/"+basename, info, getNodeNamedCrt(nodeName, nodeIPs, nodePasswordFile))
 	if err != nil {
@@ -249,42 +248,6 @@ func getNodeNamedHostFile(filename, keyFile, nodeName string, nodeIPs []sysnet.I
 	return nil
 }
 
-func getHostnameAndIPs(info cmds.Agent) (string, []sysnet.IP, error) {
-	ips := []sysnet.IP{}
-	if len(info.NodeIP) == 0 {
-		hostIP, err := net.ChooseHostInterface()
-		if err != nil {
-			return "", nil, err
-		}
-		ips = append(ips, hostIP)
-	} else {
-		for _, hostIP := range info.NodeIP {
-			for _, v := range strings.Split(hostIP, ",") {
-				ip := sysnet.ParseIP(v)
-				if ip == nil {
-					return "", nil, fmt.Errorf("invalid node-ip %s", v)
-				}
-				ips = append(ips, ip)
-			}
-		}
-	}
-
-	name := info.NodeName
-	if name == "" {
-		hostname, err := os.Hostname()
-		if err != nil {
-			return "", nil, err
-		}
-		name = hostname
-	}
-
-	// Use lower case hostname to comply with kubernetes constraint:
-	// https://github.com/kubernetes/kubernetes/issues/71140
-	name = strings.ToLower(name)
-
-	return name, ips, nil
-}
-
 func isValidResolvConf(resolvConfFile string) bool {
 	file, err := os.Open(resolvConfFile)
 	if err != nil {
@@ -297,7 +260,7 @@ func isValidResolvConf(resolvConfFile string) bool {
 	for scanner.Scan() {
 		ipMatch := nameserver.FindStringSubmatch(scanner.Text())
 		if len(ipMatch) == 2 {
-			ip := sysnet.ParseIP(ipMatch[1])
+			ip := net.ParseIP(ipMatch[1])
 			if ip == nil || !ip.IsGlobalUnicast() {
 				return false
 			}
@@ -350,9 +313,9 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 		}
 	}
 
-	var flannelIface *sysnet.Interface
+	var flannelIface *net.Interface
 	if !envInfo.NoFlannel && len(envInfo.FlannelIface) > 0 {
-		flannelIface, err = sysnet.InterfaceByName(envInfo.FlannelIface)
+		flannelIface, err = net.InterfaceByName(envInfo.FlannelIface)
 		if err != nil {
 			return nil, errors.Wrapf(err, "unable to find interface")
 		}
@@ -384,7 +347,7 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	newNodePasswordFile := filepath.Join(nodeConfigPath, "password")
 	upgradeOldNodePasswordPath(oldNodePasswordFile, newNodePasswordFile)
 
-	nodeName, nodeIPs, err := getHostnameAndIPs(*envInfo)
+	nodeName, nodeIPs, err := util.GetHostnameAndIPs(envInfo.NodeName, envInfo.NodeIP)
 	if err != nil {
 		return nil, err
 	}
@@ -498,7 +461,7 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 
 	for _, externalIP := range envInfo.NodeExternalIP {
 		for _, v := range strings.Split(externalIP, ",") {
-			ip := sysnet.ParseIP(v)
+			ip := net.ParseIP(v)
 			if ip == nil {
 				return nil, fmt.Errorf("invalid node-external-ip %s", v)
 			}
@@ -546,7 +509,7 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 
 	if controlConfig.ClusterIPRange != nil {
 		nodeConfig.AgentConfig.ClusterCIDR = controlConfig.ClusterIPRange
-		nodeConfig.AgentConfig.ClusterCIDRs = []*sysnet.IPNet{controlConfig.ClusterIPRange}
+		nodeConfig.AgentConfig.ClusterCIDRs = []*net.IPNet{controlConfig.ClusterIPRange}
 	}
 
 	if len(controlConfig.ClusterIPRanges) > 0 {
@@ -555,7 +518,7 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 
 	if controlConfig.ServiceIPRange != nil {
 		nodeConfig.AgentConfig.ServiceCIDR = controlConfig.ServiceIPRange
-		nodeConfig.AgentConfig.ServiceCIDRs = []*sysnet.IPNet{controlConfig.ServiceIPRange}
+		nodeConfig.AgentConfig.ServiceCIDRs = []*net.IPNet{controlConfig.ServiceIPRange}
 	}
 
 	if len(controlConfig.ServiceIPRanges) > 0 {
@@ -567,7 +530,7 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	}
 
 	if len(controlConfig.ClusterDNSs) == 0 {
-		nodeConfig.AgentConfig.ClusterDNSs = []sysnet.IP{controlConfig.ClusterDNS}
+		nodeConfig.AgentConfig.ClusterDNSs = []net.IP{controlConfig.ClusterDNS}
 	} else {
 		nodeConfig.AgentConfig.ClusterDNSs = controlConfig.ClusterDNSs
 	}
