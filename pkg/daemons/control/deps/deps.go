@@ -25,7 +25,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	apiserverconfigv1 "k8s.io/apiserver/pkg/apis/config/v1"
-	"k8s.io/kubernetes/pkg/controlplane"
 )
 
 const (
@@ -313,14 +312,8 @@ func genServerCerts(config *config.Control, runtime *config.ControlRuntime) erro
 		return err
 	}
 
-	_, apiServerServiceIP, err := controlplane.ServiceIPRange(*config.ServiceIPRange)
-	if err != nil {
-		return err
-	}
-
 	altNames := &certutil.AltNames{
-		DNSNames: []string{"localhost", "kubernetes", "kubernetes.default", "kubernetes.default.svc", "kubernetes.default.svc." + config.ClusterDomain},
-		IPs:      []net.IP{apiServerServiceIP},
+		DNSNames: []string{"kubernetes", "kubernetes.default", "kubernetes.default.svc", "kubernetes.default.svc." + config.ClusterDomain},
 	}
 
 	addSANs(altNames, config.SANs)
@@ -345,9 +338,7 @@ func genETCDCerts(config *config.Control, runtime *config.ControlRuntime) error 
 		return err
 	}
 
-	altNames := &certutil.AltNames{
-		DNSNames: []string{"localhost"},
-	}
+	altNames := &certutil.AltNames{}
 	addSANs(altNames, config.SANs)
 
 	if _, err := createClientCertKey(regen, "etcd-server", nil,
