@@ -28,8 +28,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"crypto/sha256"
-	"encoding/binary"
-	"encoding/json"
 	"fmt"
 	"hash"
 	"io"
@@ -37,7 +35,6 @@ import (
 	"os"
 	"path"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -50,7 +47,7 @@ import (
 // A Reader permits random access reads from a stargz file.
 type Reader struct {
 	sr        *io.SectionReader
-	toc       *jtoc
+	toc       *JTOC
 	tocDigest digest.Digest
 
 	// m stores all non-chunk entries, keyed by name.
@@ -60,39 +57,116 @@ type Reader struct {
 	// are split up. For a file with a single chunk, it's only
 	// stored in m.
 	chunks map[string][]*TOCEntry
+
+	decompressor Decompressor
+}
+
+type openOpts struct {
+	tocOffset     int64
+	decompressors []Decompressor
+	telemetry     *Telemetry
+}
+
+// OpenOption is an option used during opening the layer
+type OpenOption func(o *openOpts) error
+
+// WithTOCOffset option specifies the offset of TOC
+func WithTOCOffset(tocOffset int64) OpenOption {
+	return func(o *openOpts) error {
+		o.tocOffset = tocOffset
+		return nil
+	}
+}
+
+// WithDecompressors option specifies decompressors to use.
+// Default is gzip-based decompressor.
+func WithDecompressors(decompressors ...Decompressor) OpenOption {
+	return func(o *openOpts) error {
+		o.decompressors = decompressors
+		return nil
+	}
+}
+
+// WithTelemetry option specifies the telemetry hooks
+func WithTelemetry(telemetry *Telemetry) OpenOption {
+	return func(o *openOpts) error {
+		o.telemetry = telemetry
+		return nil
+	}
+}
+
+// A func which takes start time and records the diff
+type MeasureLatencyHook func(time.Time)
+
+// A struct which defines telemetry hooks. By implementing these hooks you should be able to record
+// the latency metrics of the respective steps of estargz open operation. To be used with estargz.OpenWithTelemetry(...)
+type Telemetry struct {
+	GetFooterLatency      MeasureLatencyHook // measure time to get stargz footer (in milliseconds)
+	GetTocLatency         MeasureLatencyHook // measure time to GET TOC JSON (in milliseconds)
+	DeserializeTocLatency MeasureLatencyHook // measure time to deserialize TOC JSON (in milliseconds)
 }
 
 // Open opens a stargz file for reading.
+// The behaviour is configurable using options.
 //
 // Note that each entry name is normalized as the path that is relative to root.
-func Open(sr *io.SectionReader) (*Reader, error) {
-	tocOff, footerSize, err := OpenFooter(sr)
-	if err != nil {
-		return nil, errors.Wrapf(err, "error parsing footer")
+func Open(sr *io.SectionReader, opt ...OpenOption) (*Reader, error) {
+	var opts openOpts
+	for _, o := range opt {
+		if err := o(&opts); err != nil {
+			return nil, err
+		}
 	}
-	tocTargz := make([]byte, sr.Size()-tocOff-footerSize)
-	if _, err := sr.ReadAt(tocTargz, tocOff); err != nil {
-		return nil, fmt.Errorf("error reading %d byte TOC targz: %v", len(tocTargz), err)
+
+	gzipCompressors := []Decompressor{new(GzipDecompressor), new(legacyGzipDecompressor)}
+	decompressors := append(gzipCompressors, opts.decompressors...)
+
+	// Determine the size to fetch. Try to fetch as many bytes as possible.
+	fetchSize := maxFooterSize(sr.Size(), decompressors...)
+	if maybeTocOffset := opts.tocOffset; maybeTocOffset > fetchSize {
+		if maybeTocOffset > sr.Size() {
+			return nil, fmt.Errorf("blob size %d is smaller than the toc offset", sr.Size())
+		}
+		fetchSize = sr.Size() - maybeTocOffset
 	}
-	zr, err := gzip.NewReader(bytes.NewReader(tocTargz))
-	if err != nil {
-		return nil, fmt.Errorf("malformed TOC gzip header: %v", err)
+
+	start := time.Now() // before getting layer footer
+	footer := make([]byte, fetchSize)
+	if _, err := sr.ReadAt(footer, sr.Size()-fetchSize); err != nil {
+		return nil, fmt.Errorf("error reading footer: %v", err)
 	}
-	zr.Multistream(false)
-	tr := tar.NewReader(zr)
-	h, err := tr.Next()
-	if err != nil {
-		return nil, fmt.Errorf("failed to find tar header in TOC gzip stream: %v", err)
+	if opts.telemetry != nil && opts.telemetry.GetFooterLatency != nil {
+		opts.telemetry.GetFooterLatency(start)
 	}
-	if h.Name != TOCTarName {
-		return nil, fmt.Errorf("TOC tar entry had name %q; expected %q", h.Name, TOCTarName)
+
+	var allErr []error
+	var found bool
+	var r *Reader
+	for _, d := range decompressors {
+		fSize := d.FooterSize()
+		fOffset := positive(int64(len(footer)) - fSize)
+		maybeTocBytes := footer[:fOffset]
+		tocOffset, tocSize, err := d.ParseFooter(footer[fOffset:])
+		if err != nil {
+			allErr = append(allErr, err)
+			continue
+		}
+		if tocSize <= 0 {
+			tocSize = sr.Size() - tocOffset - fSize
+		}
+		if tocSize < int64(len(maybeTocBytes)) {
+			maybeTocBytes = maybeTocBytes[:tocSize]
+		}
+		r, err = parseTOC(d, sr, tocOffset, tocSize, maybeTocBytes, opts)
+		if err == nil {
+			found = true
+			break
+		}
+		allErr = append(allErr, err)
 	}
-	dgstr := digest.Canonical.Digester()
-	toc := new(jtoc)
-	if err := json.NewDecoder(io.TeeReader(tr, dgstr.Hash())).Decode(&toc); err != nil {
-		return nil, fmt.Errorf("error decoding TOC JSON: %v", err)
+	if !found {
+		return nil, errorutil.Aggregate(allErr)
 	}
-	r := &Reader{sr: sr, toc: toc, tocDigest: dgstr.Digest()}
 	if err := r.initFields(); err != nil {
 		return nil, fmt.Errorf("failed to initialize fields of entries: %v", err)
 	}
@@ -100,17 +174,26 @@ func Open(sr *io.SectionReader) (*Reader, error) {
 }
 
 // OpenFooter extracts and parses footer from the given blob.
+// only supports gzip-based eStargz.
 func OpenFooter(sr *io.SectionReader) (tocOffset int64, footerSize int64, rErr error) {
 	if sr.Size() < FooterSize && sr.Size() < legacyFooterSize {
 		return 0, 0, fmt.Errorf("blob size %d is smaller than the footer size", sr.Size())
 	}
-	// TODO: read a bigger chunk (1MB?) at once here to hopefully
-	// get the TOC + footer in one go.
 	var footer [FooterSize]byte
 	if _, err := sr.ReadAt(footer[:], sr.Size()-FooterSize); err != nil {
 		return 0, 0, fmt.Errorf("error reading footer: %v", err)
 	}
-	return parseFooter(footer[:])
+	var allErr []error
+	for _, d := range []Decompressor{new(GzipDecompressor), new(legacyGzipDecompressor)} {
+		fSize := d.FooterSize()
+		fOffset := positive(int64(len(footer)) - fSize)
+		tocOffset, _, err := d.ParseFooter(footer[fOffset:])
+		if err == nil {
+			return tocOffset, fSize, err
+		}
+		allErr = append(allErr, err)
+	}
+	return 0, 0, errorutil.Aggregate(allErr)
 }
 
 // initFields populates the Reader from r.toc after decoding it from
@@ -252,33 +335,68 @@ func (r *Reader) VerifyTOC(tocDigest digest.Digest) (TOCEntryVerifier, error) {
 	if r.tocDigest != tocDigest {
 		return nil, fmt.Errorf("invalid TOC JSON %q; want %q", r.tocDigest, tocDigest)
 	}
-	digestMap := make(map[int64]digest.Digest) // map from chunk offset to the digest
+
+	chunkDigestMap := make(map[int64]digest.Digest) // map from chunk offset to the chunk digest
+	regDigestMap := make(map[int64]digest.Digest)   // map from chunk offset to the reg file digest
+	var chunkDigestMapIncomplete bool
+	var regDigestMapIncomplete bool
+	var containsChunk bool
 	for _, e := range r.toc.Entries {
-		if e.Type == "reg" || e.Type == "chunk" {
-			if e.Type == "reg" && e.Size == 0 {
+		if e.Type != "reg" && e.Type != "chunk" {
+			continue
+		}
+
+		// offset must be unique in stargz blob
+		_, dOK := chunkDigestMap[e.Offset]
+		_, rOK := regDigestMap[e.Offset]
+		if dOK || rOK {
+			return nil, fmt.Errorf("offset %d found twice", e.Offset)
+		}
+
+		if e.Type == "reg" {
+			if e.Size == 0 {
 				continue // ignores empty file
 			}
 
-			// offset must be unique in stargz blob
-			if _, ok := digestMap[e.Offset]; ok {
-				return nil, fmt.Errorf("offset %d found twice", e.Offset)
+			// record the digest of regular file payload
+			if e.Digest != "" {
+				d, err := digest.Parse(e.Digest)
+				if err != nil {
+					return nil, errors.Wrapf(err,
+						"failed to parse regular file digest %q", e.Digest)
+				}
+				regDigestMap[e.Offset] = d
+			} else {
+				regDigestMapIncomplete = true
 			}
+		} else {
+			containsChunk = true // this layer contains "chunk" entries.
+		}
 
-			// all chunk entries must contain digest
-			if e.ChunkDigest == "" {
-				return nil, fmt.Errorf("ChunkDigest of %q(off=%d) not found in TOC JSON",
-					e.Name, e.Offset)
-			}
-
+		// "reg" also can contain ChunkDigest (e.g. when "reg" is the first entry of
+		// chunked file)
+		if e.ChunkDigest != "" {
 			d, err := digest.Parse(e.ChunkDigest)
 			if err != nil {
-				return nil, errors.Wrapf(err, "failed to parse digest %q", e.ChunkDigest)
+				return nil, errors.Wrapf(err,
+					"failed to parse chunk digest %q", e.ChunkDigest)
 			}
-			digestMap[e.Offset] = d
+			chunkDigestMap[e.Offset] = d
+		} else {
+			chunkDigestMapIncomplete = true
 		}
 	}
 
-	return &verifier{digestMap: digestMap}, nil
+	if chunkDigestMapIncomplete {
+		// Though some chunk digests are not found, if this layer doesn't contain
+		// "chunk"s and all digest of "reg" files are recorded, we can use them instead.
+		if !containsChunk && !regDigestMapIncomplete {
+			return &verifier{digestMap: regDigestMap}, nil
+		}
+		return nil, fmt.Errorf("some ChunkDigest not found in TOC JSON")
+	}
+
+	return &verifier{digestMap: chunkDigestMap}, nil
 }
 
 // verifier is an implementation of TOCEntryVerifier which holds verifiers keyed by
@@ -413,17 +531,17 @@ func (fr *fileReader) ReadAt(p []byte, off int64) (n int, err error) {
 	off -= ent.ChunkOffset
 
 	finalEnt := fr.ents[len(fr.ents)-1]
-	gzOff := ent.Offset
-	// gzBytesRemain is the number of compressed gzip bytes in this
-	// file remaining, over 1+ gzip chunks.
-	gzBytesRemain := finalEnt.NextOffset() - gzOff
+	compressedOff := ent.Offset
+	// compressedBytesRemain is the number of compressed bytes in this
+	// file remaining, over 1+ chunks.
+	compressedBytesRemain := finalEnt.NextOffset() - compressedOff
 
-	sr := io.NewSectionReader(fr.r.sr, gzOff, gzBytesRemain)
+	sr := io.NewSectionReader(fr.r.sr, compressedOff, compressedBytesRemain)
 
-	const maxGZread = 2 << 20
-	var bufSize = maxGZread
-	if gzBytesRemain < maxGZread {
-		bufSize = int(gzBytesRemain)
+	const maxRead = 2 << 20
+	var bufSize = maxRead
+	if compressedBytesRemain < maxRead {
+		bufSize = int(compressedBytesRemain)
 	}
 
 	br := bufio.NewReaderSize(sr, bufSize)
@@ -431,14 +549,15 @@ func (fr *fileReader) ReadAt(p []byte, off int64) (n int, err error) {
 		return 0, fmt.Errorf("fileReader.ReadAt.peek: %v", err)
 	}
 
-	gz, err := gzip.NewReader(br)
+	dr, err := fr.r.decompressor.Reader(br)
 	if err != nil {
-		return 0, fmt.Errorf("fileReader.ReadAt.gzipNewReader: %v", err)
+		return 0, fmt.Errorf("fileReader.ReadAt.decompressor.Reader: %v", err)
 	}
-	if n, err := io.CopyN(ioutil.Discard, gz, off); n != off || err != nil {
+	defer dr.Close()
+	if n, err := io.CopyN(ioutil.Discard, dr, off); n != off || err != nil {
 		return 0, fmt.Errorf("discard of %d bytes = %v, %v", off, n, err)
 	}
-	return io.ReadFull(gz, p)
+	return io.ReadFull(dr, p)
 }
 
 // A Writer writes stargz files.
@@ -447,14 +566,14 @@ func (fr *fileReader) ReadAt(p []byte, off int64) (n int, err error) {
 type Writer struct {
 	bw       *bufio.Writer
 	cw       *countWriter
-	toc      *jtoc
+	toc      *JTOC
 	diffHash hash.Hash // SHA-256 of uncompressed tar
 
-	closed           bool
-	gz               *gzip.Writer
-	lastUsername     map[int]string
-	lastGroupname    map[int]string
-	compressionLevel int
+	closed        bool
+	gz            io.WriteCloser
+	lastUsername  map[int]string
+	lastGroupname map[int]string
+	compressor    Compressor
 
 	// ChunkSize optionally controls the maximum number of bytes
 	// of data of a regular file that can be written in one gzip
@@ -463,16 +582,16 @@ type Writer struct {
 	ChunkSize int
 }
 
-// currentGzipWriter writes to the current w.gz field, which can
+// currentCompressionWriter writes to the current w.gz field, which can
 // change throughout writing a tar entry.
 //
 // Additionally, it updates w's SHA-256 of the uncompressed bytes
 // of the tar file.
-type currentGzipWriter struct{ w *Writer }
+type currentCompressionWriter struct{ w *Writer }
 
-func (cgw currentGzipWriter) Write(p []byte) (int, error) {
-	cgw.w.diffHash.Write(p)
-	return cgw.w.gz.Write(p)
+func (ccw currentCompressionWriter) Write(p []byte) (int, error) {
+	ccw.w.diffHash.Write(p)
+	return ccw.w.gz.Write(p)
 }
 
 func (w *Writer) chunkSize() int {
@@ -482,26 +601,34 @@ func (w *Writer) chunkSize() int {
 	return w.ChunkSize
 }
 
-// NewWriter returns a new stargz writer writing to w.
+// NewWriter returns a new stargz writer (gzip-based) writing to w.
 //
 // The writer must be closed to write its trailing table of contents.
 func NewWriter(w io.Writer) *Writer {
 	return NewWriterLevel(w, gzip.BestCompression)
 }
 
-// NewWriterLevel returns a new stargz writer writing to w.
+// NewWriterLevel returns a new stargz writer (gzip-based) writing to w.
 // The compression level is configurable.
 //
 // The writer must be closed to write its trailing table of contents.
 func NewWriterLevel(w io.Writer, compressionLevel int) *Writer {
+	return NewWriterWithCompressor(w, NewGzipCompressorWithLevel(compressionLevel))
+}
+
+// NewWriterLevel returns a new stargz writer writing to w.
+// The compression method is configurable.
+//
+// The writer must be closed to write its trailing table of contents.
+func NewWriterWithCompressor(w io.Writer, c Compressor) *Writer {
 	bw := bufio.NewWriter(w)
 	cw := &countWriter{w: bw}
 	return &Writer{
-		bw:               bw,
-		cw:               cw,
-		toc:              &jtoc{Version: 1},
-		diffHash:         sha256.New(),
-		compressionLevel: compressionLevel,
+		bw:         bw,
+		cw:         cw,
+		toc:        &JTOC{Version: 1},
+		diffHash:   sha256.New(),
+		compressor: c,
 	}
 }
 
@@ -517,42 +644,16 @@ func (w *Writer) Close() (digest.Digest, error) {
 		return "", err
 	}
 
-	// Write the TOC index.
-	tocOff := w.cw.n
-	w.gz, _ = gzip.NewWriterLevel(w.cw, w.compressionLevel)
-	tw := tar.NewWriter(currentGzipWriter{w})
-	tocJSON, err := json.MarshalIndent(w.toc, "", "\t")
+	// Write the TOC index and footer.
+	tocDigest, err := w.compressor.WriteTOCAndFooter(w.cw, w.cw.n, w.toc, w.diffHash)
 	if err != nil {
 		return "", err
 	}
-	if err := tw.WriteHeader(&tar.Header{
-		Typeflag: tar.TypeReg,
-		Name:     TOCTarName,
-		Size:     int64(len(tocJSON)),
-	}); err != nil {
-		return "", err
-	}
-	if _, err := tw.Write(tocJSON); err != nil {
-		return "", err
-	}
-
-	if err := tw.Close(); err != nil {
-		return "", err
-	}
-	if err := w.closeGz(); err != nil {
-		return "", err
-	}
-
-	// And a little footer with pointer to the TOC gzip stream.
-	if _, err := w.bw.Write(footerBytes(tocOff)); err != nil {
-		return "", err
-	}
-
 	if err := w.bw.Flush(); err != nil {
 		return "", err
 	}
 
-	return digest.FromBytes(tocJSON), nil
+	return tocDigest, nil
 }
 
 func (w *Writer) closeGz() error {
@@ -584,10 +685,11 @@ func (w *Writer) nameIfChanged(mp *map[int]string, id int, name string) string {
 	return name
 }
 
-func (w *Writer) condOpenGz() {
+func (w *Writer) condOpenGz() (err error) {
 	if w.gz == nil {
-		w.gz, _ = gzip.NewWriterLevel(w.cw, w.compressionLevel)
+		w.gz, err = w.compressor.Writer(w.cw)
 	}
+	return
 }
 
 // AppendTar reads the tar or tar.gz file from r and appends
@@ -639,8 +741,10 @@ func (w *Writer) AppendTar(r io.Reader) error {
 			ModTime3339: formatModtime(h.ModTime),
 			Xattrs:      xattrs,
 		}
-		w.condOpenGz()
-		tw := tar.NewWriter(currentGzipWriter{w})
+		if err := w.condOpenGz(); err != nil {
+			return err
+		}
+		tw := tar.NewWriter(currentCompressionWriter{w})
 		if err := tw.WriteHeader(h); err != nil {
 			return err
 		}
@@ -699,7 +803,9 @@ func (w *Writer) AppendTar(r io.Reader) error {
 				ent.ChunkOffset = written
 				chunkDigest := digest.Canonical.Digester()
 
-				w.condOpenGz()
+				if err := w.condOpenGz(); err != nil {
+					return err
+				}
 
 				teeChunk := io.TeeReader(tee, chunkDigest.Hash())
 				if _, err := io.CopyN(tw, teeChunk, chunkSize); err != nil {
@@ -732,83 +838,54 @@ func (w *Writer) DiffID() string {
 	return fmt.Sprintf("sha256:%x", w.diffHash.Sum(nil))
 }
 
-// footerBytes returns the 51 bytes footer.
-func footerBytes(tocOff int64) []byte {
-	buf := bytes.NewBuffer(make([]byte, 0, FooterSize))
-	gz, _ := gzip.NewWriterLevel(buf, gzip.NoCompression) // MUST be NoCompression to keep 51 bytes
-
-	// Extra header indicating the offset of TOCJSON
-	// https://tools.ietf.org/html/rfc1952#section-2.3.1.1
-	header := make([]byte, 4)
-	header[0], header[1] = 'S', 'G'
-	subfield := fmt.Sprintf("%016xSTARGZ", tocOff)
-	binary.LittleEndian.PutUint16(header[2:4], uint16(len(subfield))) // little-endian per RFC1952
-	gz.Header.Extra = append(header, []byte(subfield)...)
-	gz.Close()
-	if buf.Len() != FooterSize {
-		panic(fmt.Sprintf("footer buffer = %d, not %d", buf.Len(), FooterSize))
+func maxFooterSize(blobSize int64, decompressors ...Decompressor) (res int64) {
+	for _, d := range decompressors {
+		if s := d.FooterSize(); res < s && s <= blobSize {
+			res = s
+		}
 	}
-	return buf.Bytes()
+	return
 }
 
-func parseFooter(p []byte) (tocOffset int64, footerSize int64, rErr error) {
-	var allErr []error
+func parseTOC(d Decompressor, sr *io.SectionReader, tocOff, tocSize int64, tocBytes []byte, opts openOpts) (*Reader, error) {
+	if len(tocBytes) > 0 {
+		start := time.Now()
+		toc, tocDgst, err := d.ParseTOC(bytes.NewReader(tocBytes))
+		if err == nil {
+			if opts.telemetry != nil && opts.telemetry.DeserializeTocLatency != nil {
+				opts.telemetry.DeserializeTocLatency(start)
+			}
+			return &Reader{
+				sr:           sr,
+				toc:          toc,
+				tocDigest:    tocDgst,
+				decompressor: d,
+			}, nil
+		}
+	}
 
-	tocOffset, err := parseEStargzFooter(p)
-	if err == nil {
-		return tocOffset, FooterSize, nil
+	start := time.Now()
+	tocBytes = make([]byte, tocSize)
+	if _, err := sr.ReadAt(tocBytes, tocOff); err != nil {
+		return nil, fmt.Errorf("error reading %d byte TOC targz: %v", len(tocBytes), err)
 	}
-	allErr = append(allErr, err)
-
-	pad := len(p) - legacyFooterSize
-	if pad < 0 {
-		pad = 0
+	if opts.telemetry != nil && opts.telemetry.GetTocLatency != nil {
+		opts.telemetry.GetTocLatency(start)
 	}
-	tocOffset, err = parseLegacyFooter(p[pad:])
-	if err == nil {
-		return tocOffset, legacyFooterSize, nil
-	}
-	return 0, 0, errorutil.Aggregate(append(allErr, err))
-}
-
-func parseEStargzFooter(p []byte) (tocOffset int64, err error) {
-	if len(p) != FooterSize {
-		return 0, fmt.Errorf("invalid length %d cannot be parsed", len(p))
-	}
-	zr, err := gzip.NewReader(bytes.NewReader(p))
+	start = time.Now()
+	toc, tocDgst, err := d.ParseTOC(bytes.NewReader(tocBytes))
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
-	extra := zr.Header.Extra
-	si1, si2, subfieldlen, subfield := extra[0], extra[1], extra[2:4], extra[4:]
-	if si1 != 'S' || si2 != 'G' {
-		return 0, fmt.Errorf("invalid subfield IDs: %q, %q; want E, S", si1, si2)
+	if opts.telemetry != nil && opts.telemetry.DeserializeTocLatency != nil {
+		opts.telemetry.DeserializeTocLatency(start)
 	}
-	if slen := binary.LittleEndian.Uint16(subfieldlen); slen != uint16(16+len("STARGZ")) {
-		return 0, fmt.Errorf("invalid length of subfield %d; want %d", slen, 16+len("STARGZ"))
-	}
-	if string(subfield[16:]) != "STARGZ" {
-		return 0, fmt.Errorf("STARGZ magic string must be included in the footer subfield")
-	}
-	return strconv.ParseInt(string(subfield[:16]), 16, 64)
-}
-
-func parseLegacyFooter(p []byte) (tocOffset int64, err error) {
-	if len(p) != legacyFooterSize {
-		return 0, fmt.Errorf("legacy: invalid length %d cannot be parsed", len(p))
-	}
-	zr, err := gzip.NewReader(bytes.NewReader(p))
-	if err != nil {
-		return 0, errors.Wrapf(err, "legacy: failed to get footer gzip reader")
-	}
-	extra := zr.Header.Extra
-	if len(extra) != 16+len("STARGZ") {
-		return 0, fmt.Errorf("legacy: invalid stargz's extra field size")
-	}
-	if string(extra[16:]) != "STARGZ" {
-		return 0, fmt.Errorf("legacy: magic string STARGZ not found")
-	}
-	return strconv.ParseInt(string(extra[:16]), 16, 64)
+	return &Reader{
+		sr:           sr,
+		toc:          toc,
+		tocDigest:    tocDgst,
+		decompressor: d,
+	}, nil
 }
 
 func formatModtime(t time.Time) string {
@@ -846,4 +923,11 @@ func isGzip(br *bufio.Reader) bool {
 	)
 	peek, _ := br.Peek(3)
 	return len(peek) >= 3 && peek[0] == gzipID1 && peek[1] == gzipID2 && peek[2] == gzipDeflate
+}
+
+func positive(n int64) int64 {
+	if n < 0 {
+		return 0
+	}
+	return n
 }

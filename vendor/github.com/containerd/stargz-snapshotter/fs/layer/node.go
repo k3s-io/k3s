@@ -269,6 +269,8 @@ type file struct {
 var _ = (fusefs.FileReader)((*file)(nil))
 
 func (f *file) Read(ctx context.Context, dest []byte, off int64) (fuse.ReadResult, syscall.Errno) {
+	defer commonmetrics.MeasureLatency(commonmetrics.ReadOnDemand, f.n.layerSha, time.Now())   // measure time for on-demand file reads (in milliseconds)
+	defer commonmetrics.IncOperationCount(commonmetrics.OnDemandReadAccessCount, f.n.layerSha) // increment the counter for on-demand file accesses
 	n, err := f.ra.ReadAt(dest, off)
 	if err != nil && err != io.EOF {
 		f.n.s.report(fmt.Errorf("failed to read node: %v", err))

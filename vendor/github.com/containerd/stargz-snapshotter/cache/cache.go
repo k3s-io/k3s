@@ -101,10 +101,10 @@ type cacheOpt struct {
 
 type Option func(o *cacheOpt) *cacheOpt
 
-// When Direct option is specified for FetchAt and Add methods, these operation
-// won't use on-memory caches. When you know that the targeting value won't be
-// used immediately, you can prevent the limited space of on-memory caches from
-// being polluted by these unimportant values.
+// Direct option lets FetchAt and Add methods not to use on-memory caches. When
+// you know that the targeting value won't be  used immediately, you can prevent
+// the limited space of on-memory caches from being polluted by these unimportant
+// values.
 func Direct() Option {
 	return func(o *cacheOpt) *cacheOpt {
 		o.direct = true
@@ -346,10 +346,7 @@ func (dc *directoryCache) Close() error {
 		return nil
 	}
 	dc.closed = true
-	if err := os.RemoveAll(dc.directory); err != nil {
-		return err
-	}
-	return nil
+	return os.RemoveAll(dc.directory)
 }
 
 func (dc *directoryCache) isClosed() bool {

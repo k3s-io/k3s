@@ -246,9 +246,9 @@ func (o *snapshotter) Prepare(ctx context.Context, key, parent string, opts ...s
 		//       or not, using the key `remoteSnapshotLogKey` defined in the above. This
 		//       log is used by tests in this project.
 		lCtx := log.WithLogger(ctx, log.G(ctx).WithField("key", key).WithField("parent", parent))
-		if err := o.prepareRemoteSnapshot(ctx, key, base.Labels); err != nil {
+		if err := o.prepareRemoteSnapshot(lCtx, key, base.Labels); err != nil {
 			log.G(lCtx).WithField(remoteSnapshotLogKey, prepareFailed).
-				WithError(err).Debug("failed to prepare remote snapshot")
+				WithError(err).Warn("failed to prepare remote snapshot")
 		} else {
 			base.Labels[remoteLabel] = remoteLabelVal // Mark this snapshot as remote
 			err := o.Commit(ctx, target, key, append(opts, snapshots.WithLabels(base.Labels))...)
@@ -258,13 +258,12 @@ func (o *snapshotter) Prepare(ctx context.Context, key, parent string, opts ...s
 				return nil, errors.Wrapf(errdefs.ErrAlreadyExists, "target snapshot %q", target)
 			}
 			log.G(lCtx).WithField(remoteSnapshotLogKey, prepareFailed).
-				WithError(err).Debug("failed to internally commit remote snapshot")
+				WithError(err).Warn("failed to internally commit remote snapshot")
 			// Don't fallback here (= prohibit to use this key again) because the FileSystem
 			// possible has done some work on this "upper" directory.
 			return nil, err
 		}
 	}
-
 	return o.mounts(ctx, s, parent)
 }
 
@@ -653,11 +652,10 @@ func (o *snapshotter) prepareRemoteSnapshot(ctx context.Context, key string, lab
 		return err
 	}
 
-	if err := o.fs.Mount(ctx, o.upperPath(id), labels); err != nil {
-		return err
-	}
+	mountpoint := o.upperPath(id)
+	log.G(ctx).Infof("preparing filesystem mount at mountpoint=%v", mountpoint)
 
-	return nil
+	return o.fs.Mount(ctx, mountpoint, labels)
 }
 
 // checkAvailability checks avaiability of the specified layer and all lower

@@ -32,9 +32,12 @@ import (
 	"path/filepath"
 	"runtime"
 	"sync"
+	"time"
 
 	"github.com/containerd/stargz-snapshotter/cache"
 	"github.com/containerd/stargz-snapshotter/estargz"
+	"github.com/containerd/stargz-snapshotter/estargz/zstdchunked"
+	commonmetrics "github.com/containerd/stargz-snapshotter/fs/metrics/common"
 	digest "github.com/opencontainers/go-digest"
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
@@ -48,6 +51,7 @@ type Reader interface {
 	Lookup(name string) (*estargz.TOCEntry, bool)
 	Cache(opts ...CacheOption) error
 	Close() error
+	LastOnDemandReadTime() time.Time
 }
 
 // VerifiableReader produces a Reader with a given verifier.
@@ -92,8 +96,8 @@ func (nv nopVerifier) Verified() bool {
 // NewReader creates a Reader based on the given stargz blob and cache implementation.
 // It returns VerifiableReader so the caller must provide a estargz.TOCEntryVerifier
 // to use for verifying file or chunk contained in this stargz blob.
-func NewReader(sr *io.SectionReader, cache cache.BlobCache) (*VerifiableReader, error) {
-	r, err := estargz.Open(sr)
+func NewReader(sr *io.SectionReader, cache cache.BlobCache, layerSha digest.Digest, telemetry *estargz.Telemetry, esgzOpts ...estargz.OpenOption) (*VerifiableReader, error) {
+	r, err := estargz.Open(sr, append(esgzOpts, estargz.WithTelemetry(telemetry), estargz.WithDecompressors(new(zstdchunked.Decompressor)))...)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse stargz")
 	}
@@ -107,6 +111,8 @@ func NewReader(sr *io.SectionReader, cache cache.BlobCache) (*VerifiableReader, 
 				return new(bytes.Buffer)
 			},
 		},
+		layerSha:  layerSha,
+		telemetry: telemetry,
 	}
 
 	return &VerifiableReader{vr}, nil
@@ -118,9 +124,28 @@ type reader struct {
 	cache    cache.BlobCache
 	bufPool  sync.Pool
 	verifier estargz.TOCEntryVerifier
+	layerSha digest.Digest
+
+	telemetry *estargz.Telemetry
+
+	lastReadTime   time.Time
+	lastReadTimeMu sync.Mutex
 
 	closed   bool
 	closedMu sync.Mutex
+}
+
+func (gr *reader) setLastReadTime(lastReadTime time.Time) {
+	gr.lastReadTimeMu.Lock()
+	gr.lastReadTime = lastReadTime
+	gr.lastReadTimeMu.Unlock()
+}
+
+func (gr *reader) LastOnDemandReadTime() time.Time {
+	gr.lastReadTimeMu.Lock()
+	t := gr.lastReadTime
+	gr.lastReadTimeMu.Unlock()
+	return t
 }
 
 func (gr *reader) OpenFile(name string) (io.ReaderAt, error) {
@@ -162,7 +187,11 @@ func (gr *reader) Cache(opts ...CacheOption) (err error) {
 
 	r := gr.r
 	if cacheOpts.reader != nil {
-		if r, err = estargz.Open(cacheOpts.reader); err != nil {
+		if r, err = estargz.Open(cacheOpts.reader,
+			// TODO: apply other options used in NewReader when needed.
+			estargz.WithTelemetry(gr.telemetry),
+			estargz.WithDecompressors(new(zstdchunked.Decompressor)),
+		); err != nil {
 			return errors.Wrap(err, "failed to parse stargz")
 		}
 	}
@@ -353,6 +382,10 @@ func (sf *file) ReadAt(p []byte, offset int64) (int, error) {
 				return 0, errors.Wrap(err, "failed to read data")
 			}
 
+			commonmetrics.IncOperationCount(commonmetrics.OnDemandRemoteRegistryFetchCount, sf.gr.layerSha) // increment the number of on demand file fetches from remote registry
+			commonmetrics.AddBytesCount(commonmetrics.OnDemandBytesFetched, sf.gr.layerSha, int64(n))       // record total bytes fetched
+			sf.gr.setLastReadTime(time.Now())
+
 			// Verify this chunk
 			if err := sf.verify(ip, ce); err != nil {
 				return 0, errors.Wrap(err, "invalid chunk")
@@ -381,6 +414,11 @@ func (sf *file) ReadAt(p []byte, offset int64) (int, error) {
 			return 0, errors.Wrap(err, "failed to read data")
 		}
 
+		// We can end up doing on demand registry fetch when aligning the chunk
+		commonmetrics.IncOperationCount(commonmetrics.OnDemandRemoteRegistryFetchCount, sf.gr.layerSha) // increment the number of on demand file fetches from remote registry
+		commonmetrics.AddBytesCount(commonmetrics.OnDemandBytesFetched, sf.gr.layerSha, int64(len(ip))) // record total bytes fetched
+		sf.gr.setLastReadTime(time.Now())
+
 		// Verify this chunk
 		if err := sf.verify(ip, ce); err != nil {
 			sf.gr.bufPool.Put(b)
@@ -403,6 +441,8 @@ func (sf *file) ReadAt(p []byte, offset int64) (int, error) {
 		}
 		nr += n
 	}
+
+	commonmetrics.AddBytesCount(commonmetrics.OnDemandBytesServed, sf.gr.layerSha, int64(nr)) // measure the number of on demand bytes served
 
 	return nr, nil
 }

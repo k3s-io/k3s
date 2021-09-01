@@ -39,6 +39,7 @@ import (
 	"time"
 
 	"github.com/containerd/containerd/errdefs"
+	"github.com/containerd/containerd/log"
 	"github.com/containerd/containerd/reference"
 	"github.com/containerd/containerd/remotes/docker"
 	"github.com/containerd/stargz-snapshotter/cache"
@@ -89,14 +90,15 @@ func (r *Resolver) Resolve(ctx context.Context, hosts source.RegistryHosts, refs
 		fetcher.singleRangeMode()
 	}
 	return &blob{
-		fetcher:       fetcher,
-		size:          size,
-		chunkSize:     r.blobConfig.ChunkSize,
-		cache:         blobCache,
-		lastCheck:     time.Now(),
-		checkInterval: time.Duration(r.blobConfig.ValidInterval) * time.Second,
-		resolver:      r,
-		fetchTimeout:  time.Duration(r.blobConfig.FetchTimeoutSec) * time.Second,
+		fetcher:           fetcher,
+		size:              size,
+		chunkSize:         r.blobConfig.ChunkSize,
+		prefetchChunkSize: r.blobConfig.PrefetchChunkSize,
+		cache:             blobCache,
+		lastCheck:         time.Now(),
+		checkInterval:     time.Duration(r.blobConfig.ValidInterval) * time.Second,
+		resolver:          r,
+		fetchTimeout:      time.Duration(r.blobConfig.FetchTimeoutSec) * time.Second,
 	}, nil
 }
 
@@ -150,7 +152,9 @@ func newFetcher(ctx context.Context, hosts source.RegistryHosts, refspec referen
 
 		// Get size information
 		// TODO: we should try to use the Size field in the descriptor here.
+		start := time.Now() // start time before getting layer header
 		size, err := getSize(ctx, url, tr, timeout)
+		commonmetrics.MeasureLatency(commonmetrics.StargzHeaderGet, digest, start) // time to get layer header
 		if err != nil {
 			rErr = errors.Wrapf(rErr, "failed to get size (host %q, ref:%q, digest:%q): %v",
 				host.Host, refspec, digest, err)
@@ -195,6 +199,7 @@ func (tr *transport) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	// TODO: support more status codes and retries
 	if resp.StatusCode == http.StatusUnauthorized {
+		log.G(ctx).Infof("Received status code: %v. Refreshing creds...", resp.Status)
 
 		// prepare authorization for the target host using docker.Authorizer
 		if err := tr.auth.AddResponses(ctx, []*http.Response{resp}); err != nil {
@@ -391,12 +396,16 @@ func (f *fetcher) fetch(ctx context.Context, rs []region, retry bool, opts *opti
 		}
 		return singlePartReader(reg, res.Body), nil
 	} else if retry && res.StatusCode == http.StatusForbidden {
+		log.G(ctx).Infof("Received status code: %v. Refreshing URL and retrying...", res.Status)
+
 		// re-redirect and retry this once.
 		if err := f.refreshURL(ctx); err != nil {
 			return nil, errors.Wrapf(err, "failed to refresh URL on %v", res.Status)
 		}
 		return f.fetch(ctx, rs, false, opts)
 	} else if retry && res.StatusCode == http.StatusBadRequest && !singleRangeMode {
+		log.G(ctx).Infof("Received status code: %v. Setting single range mode and retrying...", res.Status)
+
 		// gcr.io (https://storage.googleapis.com) returns 400 on multi-range request (2020 #81)
 		f.singleRangeMode()                  // fallbacks to singe range request mode
 		return f.fetch(ctx, rs, false, opts) // retries with the single range mode

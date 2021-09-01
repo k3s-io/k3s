@@ -76,7 +76,14 @@ func NewStargzSnapshotterService(ctx context.Context, root string, config *Confi
 		log.G(ctx).WithError(err).Fatalf("failed to configure filesystem")
 	}
 
-	return snbase.NewSnapshotter(ctx, snapshotterRoot(root), fs, snbase.AsynchronousRemove)
+	var snapshotter snapshots.Snapshotter
+
+	snapshotter, err = snbase.NewSnapshotter(ctx, snapshotterRoot(root), fs, snbase.AsynchronousRemove)
+	if err != nil {
+		log.G(ctx).WithError(err).Fatalf("failed to create new snapshotter")
+	}
+
+	return snapshotter, err
 }
 
 func snapshotterRoot(root string) string {

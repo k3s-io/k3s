@@ -52,14 +52,23 @@ type Config struct {
 
 	// DirectoryCacheConfig is config for directory-based cache.
 	DirectoryCacheConfig `toml:"directory_cache"`
+
+	FuseConfig `toml:"fuse"`
 }
 
 type BlobConfig struct {
-	ValidInterval        int64 `toml:"valid_interval"`
-	CheckAlways          bool  `toml:"check_always"`
+	ValidInterval int64 `toml:"valid_interval"`
+	CheckAlways   bool  `toml:"check_always"`
+	// ChunkSize is the granularity at which background fetch and on-demand reads
+	// are fetched from the remote registry.
 	ChunkSize            int64 `toml:"chunk_size"`
 	FetchTimeoutSec      int64 `toml:"fetching_timeout_sec"`
 	ForceSingleRangeMode bool  `toml:"force_single_range_mode"`
+	// PrefetchChunkSize is the maximum bytes transferred per http GET from remote registry
+	// during prefetch. It is recommended to have PrefetchChunkSize > ChunkSize.
+	// If PrefetchChunkSize < ChunkSize prefetch bytes will be fetched as a single http GET,
+	// else total GET requests for prefetch = ceil(PrefetchSize / PrefetchChunkSize).
+	PrefetchChunkSize int64 `toml:"prefetch_chunk_size"`
 }
 
 type DirectoryCacheConfig struct {
@@ -67,4 +76,12 @@ type DirectoryCacheConfig struct {
 	MaxCacheFds      int  `toml:"max_cache_fds"`
 	SyncAdd          bool `toml:"sync_add"`
 	Direct           bool `toml:"direct"`
+}
+
+type FuseConfig struct {
+	// AttrTimeout defines overall timeout attribute for a file system in seconds.
+	AttrTimeout int64 `toml:"attr_timeout"`
+
+	// EntryTimeout defines TTL for directory, name lookup in seconds.
+	EntryTimeout int64 `toml:"entry_timeout"`
 }

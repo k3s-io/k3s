@@ -36,6 +36,7 @@ import (
 	"github.com/containerd/stargz-snapshotter/fs/source"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
+	"golang.org/x/sync/errgroup"
 )
 
 var contentRangeRegexp = regexp.MustCompile(`bytes ([0-9]+)-([0-9]+)/([0-9]+|\\*)`)
@@ -54,13 +55,14 @@ type blob struct {
 	fetcher   *fetcher
 	fetcherMu sync.Mutex
 
-	size          int64
-	chunkSize     int64
-	cache         cache.BlobCache
-	lastCheck     time.Time
-	lastCheckMu   sync.Mutex
-	checkInterval time.Duration
-	fetchTimeout  time.Duration
+	size              int64
+	chunkSize         int64
+	prefetchChunkSize int64
+	cache             cache.BlobCache
+	lastCheck         time.Time
+	lastCheckMu       sync.Mutex
+	checkInterval     time.Duration
+	fetchTimeout      time.Duration
 
 	fetchedRegionSet   regionSet
 	fetchedRegionSetMu sync.Mutex
@@ -151,6 +153,24 @@ func (b *blob) FetchedSize() int64 {
 	return sz
 }
 
+func (b *blob) cacheAt(offset int64, size int64, fr *fetcher, cacheOpts *options) error {
+	fetchReg := region{floor(offset, b.chunkSize), ceil(offset+size-1, b.chunkSize) - 1}
+	discard := make(map[region]io.Writer)
+
+	err := b.walkChunks(fetchReg, func(reg region) error {
+		if r, err := b.cache.Get(fr.genID(reg), cacheOpts.cacheOpts...); err == nil {
+			return r.Close() // nop if the cache hits
+		}
+		discard[reg] = ioutil.Discard
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	return b.fetchRange(discard, cacheOpts)
+}
+
 func (b *blob) Cache(offset int64, size int64, opts ...Option) error {
 	if b.isClosed() {
 		return fmt.Errorf("blob is already closed")
@@ -165,20 +185,26 @@ func (b *blob) Cache(offset int64, size int64, opts ...Option) error {
 	fr := b.fetcher
 	b.fetcherMu.Unlock()
 
-	fetchReg := region{floor(offset, b.chunkSize), ceil(offset+size-1, b.chunkSize) - 1}
-	discard := make(map[region]io.Writer)
-	b.walkChunks(fetchReg, func(reg region) error {
-		if r, err := b.cache.Get(fr.genID(reg), cacheOpts.cacheOpts...); err == nil {
-			return r.Close() // nop if the cache hits
-		}
-		discard[reg] = ioutil.Discard
-		return nil
-	})
-	if err := b.fetchRange(discard, &cacheOpts); err != nil {
-		return err
+	if b.prefetchChunkSize <= b.chunkSize {
+		return b.cacheAt(offset, size, fr, &cacheOpts)
 	}
 
-	return nil
+	eg, _ := errgroup.WithContext(context.Background())
+
+	fetchSize := b.chunkSize * (b.prefetchChunkSize / b.chunkSize)
+
+	end := offset + size
+	for i := offset; i < end; i += fetchSize {
+		i, l := i, fetchSize
+		if i+l > end {
+			l = end - i
+		}
+		eg.Go(func() error {
+			return b.cacheAt(i, l, fr, &cacheOpts)
+		})
+	}
+
+	return eg.Wait()
 }
 
 // ReadAt reads remote chunks from specified offset for the buffer size.

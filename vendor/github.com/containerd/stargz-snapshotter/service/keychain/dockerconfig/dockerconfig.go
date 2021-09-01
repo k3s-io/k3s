@@ -26,14 +26,13 @@ import (
 )
 
 func NewDockerconfigKeychain(ctx context.Context) resolver.Credential {
-	cf, err := config.Load("")
-	if err != nil {
-		log.G(ctx).WithError(err).Warnf("failed to load docker config file")
-		return func(string, reference.Spec) (string, string, error) {
+	return func(host string, refspec reference.Spec) (string, string, error) {
+		cf, err := config.Load("")
+		if err != nil {
+			log.G(ctx).WithError(err).Warnf("failed to load docker config file")
 			return "", "", nil
 		}
-	}
-	return func(host string, refspec reference.Spec) (string, string, error) {
+
 		if host == "docker.io" || host == "registry-1.docker.io" {
 			// Creds of docker.io is stored keyed by "https://index.docker.io/v1/".
 			host = "https://index.docker.io/v1/"

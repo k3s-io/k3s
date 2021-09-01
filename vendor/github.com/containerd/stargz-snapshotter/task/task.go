@@ -87,7 +87,9 @@ func (ts *BackgroundTaskManager) DonePrioritizedTask() {
 		// so that background tasks aren't invoked immediately.
 		time.Sleep(ts.prioritizedTaskSilencePeriod)
 		atomic.AddInt64(&ts.prioritizedTasks, -1)
+		ts.prioritizedTaskDoneCond.L.Lock()
 		ts.prioritizedTaskDoneCond.Broadcast()
+		ts.prioritizedTaskDoneCond.L.Unlock()
 	}()
 }
 

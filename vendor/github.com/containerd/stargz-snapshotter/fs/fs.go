@@ -65,6 +65,7 @@ import (
 )
 
 const (
+	defaultFuseTimeout    = time.Second
 	defaultMaxConcurrency = 2
 	fusermountBin         = "fusermount"
 )
@@ -90,6 +91,17 @@ func NewFilesystem(root string, cfg config.Config, opts ...Option) (_ snapshot.F
 	if maxConcurrency == 0 {
 		maxConcurrency = defaultMaxConcurrency
 	}
+
+	attrTimeout := time.Duration(cfg.FuseConfig.AttrTimeout) * time.Second
+	if attrTimeout == 0 {
+		attrTimeout = defaultFuseTimeout
+	}
+
+	entryTimeout := time.Duration(cfg.FuseConfig.EntryTimeout) * time.Second
+	if entryTimeout == 0 {
+		entryTimeout = defaultFuseTimeout
+	}
+
 	getSources := fsOpts.getSources
 	if getSources == nil {
 		getSources = source.FromDefaultLabels(func(refspec reference.Spec) (hosts []docker.RegistryHost, _ error) {
@@ -124,6 +136,8 @@ func NewFilesystem(root string, cfg config.Config, opts ...Option) (_ snapshot.F
 		allowNoVerification:   cfg.AllowNoVerification,
 		disableVerification:   cfg.DisableVerification,
 		metricsController:     c,
+		attrTimeout:           attrTimeout,
+		entryTimeout:          entryTimeout,
 	}, nil
 }
 
@@ -140,6 +154,8 @@ type filesystem struct {
 	disableVerification   bool
 	getSources            source.GetSources
 	metricsController     *layermetrics.Controller
+	attrTimeout           time.Duration
+	entryTimeout          time.Duration
 }
 
 func (fs *filesystem) Mount(ctx context.Context, mountpoint string, labels map[string]string) (retErr error) {
@@ -216,7 +232,7 @@ func (fs *filesystem) Mount(ctx context.Context, mountpoint string, labels map[s
 	if fs.disableVerification {
 		// Skip if verification is disabled completely
 		l.SkipVerify()
-		log.G(ctx).Debugf("Verification forcefully skipped")
+		log.G(ctx).Infof("Verification forcefully skipped")
 	} else if tocDigest, ok := labels[estargz.TOCJSONDigestAnnotation]; ok {
 		// Verify this layer using the TOC JSON digest passed through label.
 		dgst, err := digest.Parse(tocDigest)
@@ -268,7 +284,7 @@ func (fs *filesystem) Mount(ctx context.Context, mountpoint string, labels map[s
 			fs.backgroundTaskManager.DoPrioritizedTask()
 			defer fs.backgroundTaskManager.DonePrioritizedTask()
 			if err := l.Prefetch(prefetchSize); err != nil {
-				log.G(ctx).WithError(err).Debug("failed to prefetched layer")
+				log.G(ctx).WithError(err).Warnf("failed to prefetch layer=%v", digest)
 				return
 			}
 			log.G(ctx).Debug("completed to prefetch")
@@ -282,19 +298,19 @@ func (fs *filesystem) Mount(ctx context.Context, mountpoint string, labels map[s
 	if !fs.noBackgroundFetch {
 		go func() {
 			if err := l.BackgroundFetch(); err != nil {
-				log.G(ctx).WithError(err).Debug("failed to fetch whole layer")
+				log.G(ctx).WithError(err).Warnf("failed to fetch whole layer=%v", digest)
 				return
 			}
+			commonmetrics.LogLatencyForLastOnDemandFetch(ctx, digest, start, l.Info().ReadTime) // write log record for the latency between mount start and last on demand fetch
 			log.G(ctx).Debug("completed to fetch all layer data in background")
 		}()
 	}
 
 	// mount the node to the specified mountpoint
 	// TODO: bind mount the state directory as a read-only fs on snapshotter's side
-	timeSec := time.Second
 	rawFS := fusefs.NewNodeFS(node, &fusefs.Options{
-		AttrTimeout:     &timeSec,
-		EntryTimeout:    &timeSec,
+		AttrTimeout:     &fs.attrTimeout,
+		EntryTimeout:    &fs.entryTimeout,
 		NullPermissions: true,
 	})
 	mountOpts := &fuse.MountOptions{
@@ -305,7 +321,7 @@ func (fs *filesystem) Mount(ctx context.Context, mountpoint string, labels map[s
 	if _, err := exec.LookPath(fusermountBin); err == nil {
 		mountOpts.Options = []string{"suid"} // option for fusermount; allow setuid inside container
 	} else {
-		log.G(ctx).WithError(err).Debugf("%s not installed; trying direct mount", fusermountBin)
+		log.G(ctx).WithError(err).Infof("%s not installed; trying direct mount", fusermountBin)
 		mountOpts.DirectMount = true
 	}
 	server, err := fuse.NewServer(rawFS, mountpoint, mountOpts)
@@ -324,6 +340,8 @@ func (fs *filesystem) Check(ctx context.Context, mountpoint string, labels map[s
 	// tasks.
 	fs.backgroundTaskManager.DoPrioritizedTask()
 	defer fs.backgroundTaskManager.DonePrioritizedTask()
+
+	defer commonmetrics.MeasureLatency(commonmetrics.PrefetchesCompleted, digest.FromString(""), time.Now()) // measuring the time the container launch is blocked on prefetch to complete
 
 	ctx = log.WithLogger(ctx, log.G(ctx).WithField("mountpoint", mountpoint))
 

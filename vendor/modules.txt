@@ -181,7 +181,7 @@ github.com/containerd/cgroups
 github.com/containerd/cgroups/stats/v1
 github.com/containerd/cgroups/v2
 github.com/containerd/cgroups/v2/stats
-# github.com/containerd/console v1.0.2 => github.com/containerd/console v1.0.2
+# github.com/containerd/console v1.0.3 => github.com/containerd/console v1.0.2
 github.com/containerd/console
 # github.com/containerd/containerd v1.5.5 => github.com/k3s-io/containerd v1.5.5-k3s1
 ## explicit
@@ -380,7 +380,7 @@ github.com/containerd/imgcrypt/images/encryption
 # github.com/containerd/nri v0.1.0
 github.com/containerd/nri
 github.com/containerd/nri/types/v1
-# github.com/containerd/stargz-snapshotter v0.7.0
+# github.com/containerd/stargz-snapshotter v0.8.0
 ## explicit
 github.com/containerd/stargz-snapshotter/cache
 github.com/containerd/stargz-snapshotter/fs
@@ -402,9 +402,10 @@ github.com/containerd/stargz-snapshotter/snapshot/overlayutils
 github.com/containerd/stargz-snapshotter/task
 github.com/containerd/stargz-snapshotter/util/lrucache
 github.com/containerd/stargz-snapshotter/util/namedmutex
-# github.com/containerd/stargz-snapshotter/estargz v0.7.0
+# github.com/containerd/stargz-snapshotter/estargz v0.8.0
 github.com/containerd/stargz-snapshotter/estargz
 github.com/containerd/stargz-snapshotter/estargz/errorutil
+github.com/containerd/stargz-snapshotter/estargz/zstdchunked
 # github.com/containerd/ttrpc v1.0.2 => github.com/containerd/ttrpc v1.0.2
 github.com/containerd/ttrpc
 # github.com/containerd/typeurl v1.0.2 => github.com/containerd/typeurl v1.0.2
@@ -459,7 +460,7 @@ github.com/cyphar/filepath-securejoin
 github.com/davecgh/go-spew/spew
 # github.com/daviddengcn/go-colortext v0.0.0-20160507010035-511bcaf42ccd
 github.com/daviddengcn/go-colortext
-# github.com/docker/cli v20.10.7+incompatible
+# github.com/docker/cli v20.10.8+incompatible
 github.com/docker/cli/cli/config
 github.com/docker/cli/cli/config/configfile
 github.com/docker/cli/cli/config/credentials
@@ -590,8 +591,6 @@ github.com/golang/protobuf/ptypes/any
 github.com/golang/protobuf/ptypes/duration
 github.com/golang/protobuf/ptypes/timestamp
 github.com/golang/protobuf/ptypes/wrappers
-# github.com/golang/snappy v0.0.3
-github.com/golang/snappy
 # github.com/golangplus/testing v1.0.0
 ## explicit
 # github.com/google/btree v1.0.1
@@ -759,10 +758,12 @@ github.com/k3s-io/kine/pkg/server
 github.com/k3s-io/kine/pkg/tls
 # github.com/karrick/godirwalk v1.16.1
 github.com/karrick/godirwalk
-# github.com/klauspost/compress v1.12.3
+# github.com/klauspost/compress v1.13.5
 ## explicit
+github.com/klauspost/compress
 github.com/klauspost/compress/fse
 github.com/klauspost/compress/huff0
+github.com/klauspost/compress/internal/snapref
 github.com/klauspost/compress/zstd
 github.com/klauspost/compress/zstd/internal/xxhash
 # github.com/klauspost/cpuid v1.3.1
@@ -895,7 +896,7 @@ github.com/onsi/gomega/types
 # github.com/opencontainers/go-digest v1.0.0
 github.com/opencontainers/go-digest
 github.com/opencontainers/go-digest/digestset
-# github.com/opencontainers/image-spec v1.0.1
+# github.com/opencontainers/image-spec v1.0.2-0.20210819154149-5ad6f50d6283
 github.com/opencontainers/image-spec/identity
 github.com/opencontainers/image-spec/specs-go
 github.com/opencontainers/image-spec/specs-go/v1
@@ -1512,7 +1513,7 @@ google.golang.org/genproto/googleapis/api/annotations
 google.golang.org/genproto/googleapis/api/httpbody
 google.golang.org/genproto/googleapis/rpc/status
 google.golang.org/genproto/protobuf/field_mask
-# google.golang.org/grpc v1.39.0 => google.golang.org/grpc v1.38.0
+# google.golang.org/grpc v1.40.0 => google.golang.org/grpc v1.38.0
 ## explicit
 google.golang.org/grpc
 google.golang.org/grpc/attributes
