@@ -100,7 +100,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	serverConfig.ControlConfig.KubeConfigOutput = cfg.KubeConfigOutput
 	serverConfig.ControlConfig.KubeConfigMode = cfg.KubeConfigMode
 	serverConfig.Rootless = cfg.Rootless
-	serverConfig.ControlConfig.SANs = knownIPs(cfg.TLSSan)
+	serverConfig.ControlConfig.SANs = cfg.TLSSan
 	serverConfig.ControlConfig.BindAddress = cfg.BindAddress
 	serverConfig.ControlConfig.SupervisorPort = cfg.SupervisorPort
 	serverConfig.ControlConfig.HTTPSPort = cfg.HTTPSPort
@@ -212,6 +212,18 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	/// https://github.com/kubernetes/kubeadm/issues/1612#issuecomment-772583989
 	if serverConfig.ControlConfig.AdvertiseIP != "" {
 		serverConfig.ControlConfig.SANs = append(serverConfig.ControlConfig.SANs, serverConfig.ControlConfig.AdvertiseIP)
+	}
+
+	// Ensure that we add the localhost name/ip and node name/ip to the SAN list. This list is shared by the
+	// certs for the supervisor, kube-apiserver cert, and etcd. DNS entries for the in-cluster kubernetes
+	// service endpoint are added later when the certificates are created.
+	nodeName, nodeIPs, err := util.GetHostnameAndIPs(cmds.AgentConfig.NodeName, cmds.AgentConfig.NodeIP)
+	if err != nil {
+		return err
+	}
+	serverConfig.ControlConfig.SANs = append(serverConfig.ControlConfig.SANs, "127.0.0.1", "localhost", nodeName)
+	for _, ip := range nodeIPs {
+		serverConfig.ControlConfig.SANs = append(serverConfig.ControlConfig.SANs, ip.String())
 	}
 
 	// configure ClusterIPRanges
@@ -458,15 +470,6 @@ func validateNetworkConfiguration(serverConfig server.Config) error {
 	}
 
 	return nil
-}
-
-func knownIPs(ips []string) []string {
-	ips = append(ips, "127.0.0.1")
-	ip, err := utilnet.ChooseHostInterface()
-	if err == nil {
-		ips = append(ips, ip.String())
-	}
-	return ips
 }
 
 func getArgValueFromList(searchArg string, argList []string) string {

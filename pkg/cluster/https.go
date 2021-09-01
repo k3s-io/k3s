@@ -45,7 +45,7 @@ func (c *Cluster) newListener(ctx context.Context) (net.Listener, http.Handler, 
 	return dynamiclistener.NewListener(tcp, storage, cert, key, dynamiclistener.Config{
 		ExpirationDaysCheck: config.CertificateRenewDays,
 		Organization:        []string{version.Program},
-		SANs:                append(c.config.SANs, "localhost", "kubernetes", "kubernetes.default", "kubernetes.default.svc", "kubernetes.default.svc."+c.config.ClusterDomain),
+		SANs:                append(c.config.SANs, "kubernetes", "kubernetes.default", "kubernetes.default.svc", "kubernetes.default.svc."+c.config.ClusterDomain),
 		CN:                  version.Program,
 		TLSConfig: &tls.Config{
 			ClientAuth:   tls.RequestClientCert,
