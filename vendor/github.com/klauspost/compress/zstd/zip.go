@@ -13,8 +13,9 @@ import (
 // See https://www.winzip.com/win/en/comp_info.html
 const ZipMethodWinZip = 93
 
-// ZipMethodPKWare is the method number used by PKWARE to indicate Zstandard compression.
-// See https://pkware.cachefly.net/webdocs/APPNOTE/APPNOTE-6.3.7.TXT
+// ZipMethodPKWare is the original method number used by PKWARE to indicate Zstandard compression.
+// Deprecated: This has been deprecated by PKWARE, use ZipMethodWinZip instead for compression.
+// See https://pkware.cachefly.net/webdocs/APPNOTE/APPNOTE-6.3.9.TXT
 const ZipMethodPKWare = 20
 
 var zipReaderPool sync.Pool
@@ -63,8 +64,9 @@ func (r *pooledZipReader) Close() error {
 }
 
 type pooledZipWriter struct {
-	mu  sync.Mutex // guards Close and Read
-	enc *Encoder
+	mu   sync.Mutex // guards Close and Read
+	enc  *Encoder
+	pool *sync.Pool
 }
 
 func (w *pooledZipWriter) Write(p []byte) (n int, err error) {
@@ -82,7 +84,7 @@ func (w *pooledZipWriter) Close() error {
 	var err error
 	if w.enc != nil {
 		err = w.enc.Close()
-		zipReaderPool.Put(w.enc)
+		w.pool.Put(w.enc)
 		w.enc = nil
 	}
 	return err
@@ -103,7 +105,7 @@ func ZipCompressor(opts ...EOption) func(w io.Writer) (io.WriteCloser, error) {
 				return nil, err
 			}
 		}
-		return &pooledZipWriter{enc: enc}, nil
+		return &pooledZipWriter{enc: enc, pool: &pool}, nil
 	}
 }
 

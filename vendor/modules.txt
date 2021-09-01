@@ -181,7 +181,7 @@ github.com/containerd/cgroups
 github.com/containerd/cgroups/stats/v1
 github.com/containerd/cgroups/v2
 github.com/containerd/cgroups/v2/stats
-# github.com/containerd/console v1.0.2 => github.com/containerd/console v1.0.2
+# github.com/containerd/console v1.0.3 => github.com/containerd/console v1.0.2
 github.com/containerd/console
 # github.com/containerd/containerd v1.5.5 => github.com/k3s-io/containerd v1.5.5-k3s1
 ## explicit
@@ -380,6 +380,32 @@ github.com/containerd/imgcrypt/images/encryption
 # github.com/containerd/nri v0.1.0
 github.com/containerd/nri
 github.com/containerd/nri/types/v1
+# github.com/containerd/stargz-snapshotter v0.8.0
+## explicit
+github.com/containerd/stargz-snapshotter/cache
+github.com/containerd/stargz-snapshotter/fs
+github.com/containerd/stargz-snapshotter/fs/config
+github.com/containerd/stargz-snapshotter/fs/layer
+github.com/containerd/stargz-snapshotter/fs/metrics/common
+github.com/containerd/stargz-snapshotter/fs/metrics/layer
+github.com/containerd/stargz-snapshotter/fs/reader
+github.com/containerd/stargz-snapshotter/fs/remote
+github.com/containerd/stargz-snapshotter/fs/source
+github.com/containerd/stargz-snapshotter/service
+github.com/containerd/stargz-snapshotter/service/keychain/cri
+github.com/containerd/stargz-snapshotter/service/keychain/dockerconfig
+github.com/containerd/stargz-snapshotter/service/keychain/kubeconfig
+github.com/containerd/stargz-snapshotter/service/plugin
+github.com/containerd/stargz-snapshotter/service/resolver
+github.com/containerd/stargz-snapshotter/snapshot
+github.com/containerd/stargz-snapshotter/snapshot/overlayutils
+github.com/containerd/stargz-snapshotter/task
+github.com/containerd/stargz-snapshotter/util/lrucache
+github.com/containerd/stargz-snapshotter/util/namedmutex
+# github.com/containerd/stargz-snapshotter/estargz v0.8.0
+github.com/containerd/stargz-snapshotter/estargz
+github.com/containerd/stargz-snapshotter/estargz/errorutil
+github.com/containerd/stargz-snapshotter/estargz/zstdchunked
 # github.com/containerd/ttrpc v1.0.2 => github.com/containerd/ttrpc v1.0.2
 github.com/containerd/ttrpc
 # github.com/containerd/typeurl v1.0.2 => github.com/containerd/typeurl v1.0.2
@@ -434,7 +460,7 @@ github.com/cyphar/filepath-securejoin
 github.com/davecgh/go-spew/spew
 # github.com/daviddengcn/go-colortext v0.0.0-20160507010035-511bcaf42ccd
 github.com/daviddengcn/go-colortext
-# github.com/docker/cli v0.0.0-20191017083524-a8ff7f821017
+# github.com/docker/cli v20.10.8+incompatible
 github.com/docker/cli/cli/config
 github.com/docker/cli/cli/config/configfile
 github.com/docker/cli/cli/config/credentials
@@ -443,7 +469,7 @@ github.com/docker/cli/cli/config/types
 github.com/docker/distribution/digestset
 github.com/docker/distribution/reference
 github.com/docker/distribution/registry/api/errcode
-# github.com/docker/docker v20.10.5+incompatible => github.com/docker/docker v20.10.2+incompatible
+# github.com/docker/docker v20.10.7+incompatible => github.com/docker/docker v20.10.2+incompatible
 ## explicit
 github.com/docker/docker/api
 github.com/docker/docker/api/types
@@ -468,7 +494,7 @@ github.com/docker/docker/pkg/jsonmessage
 github.com/docker/docker/pkg/reexec
 github.com/docker/docker/pkg/stdcopy
 github.com/docker/docker/pkg/term
-# github.com/docker/docker-credential-helpers v0.6.3
+# github.com/docker/docker-credential-helpers v0.6.4
 github.com/docker/docker-credential-helpers/client
 github.com/docker/docker-credential-helpers/credentials
 # github.com/docker/go-connections v0.4.0
@@ -565,8 +591,6 @@ github.com/golang/protobuf/ptypes/any
 github.com/golang/protobuf/ptypes/duration
 github.com/golang/protobuf/ptypes/timestamp
 github.com/golang/protobuf/ptypes/wrappers
-# github.com/golang/snappy v0.0.3
-github.com/golang/snappy
 # github.com/golangplus/testing v1.0.0
 ## explicit
 # github.com/google/btree v1.0.1
@@ -689,9 +713,15 @@ github.com/grpc-ecosystem/go-grpc-prometheus
 github.com/grpc-ecosystem/grpc-gateway/internal
 github.com/grpc-ecosystem/grpc-gateway/runtime
 github.com/grpc-ecosystem/grpc-gateway/utilities
+# github.com/hanwen/go-fuse/v2 v2.1.0
+github.com/hanwen/go-fuse/v2/fs
+github.com/hanwen/go-fuse/v2/fuse
+github.com/hanwen/go-fuse/v2/internal
+github.com/hanwen/go-fuse/v2/internal/utimens
+github.com/hanwen/go-fuse/v2/splice
 # github.com/hashicorp/errwrap v1.0.0
 github.com/hashicorp/errwrap
-# github.com/hashicorp/go-multierror v1.0.0
+# github.com/hashicorp/go-multierror v1.1.1
 github.com/hashicorp/go-multierror
 # github.com/imdario/mergo v0.3.12
 github.com/imdario/mergo
@@ -728,10 +758,12 @@ github.com/k3s-io/kine/pkg/server
 github.com/k3s-io/kine/pkg/tls
 # github.com/karrick/godirwalk v1.16.1
 github.com/karrick/godirwalk
-# github.com/klauspost/compress v1.12.2
+# github.com/klauspost/compress v1.13.5
 ## explicit
+github.com/klauspost/compress
 github.com/klauspost/compress/fse
 github.com/klauspost/compress/huff0
+github.com/klauspost/compress/internal/snapref
 github.com/klauspost/compress/zstd
 github.com/klauspost/compress/zstd/internal/xxhash
 # github.com/klauspost/cpuid v1.3.1
@@ -864,7 +896,7 @@ github.com/onsi/gomega/types
 # github.com/opencontainers/go-digest v1.0.0
 github.com/opencontainers/go-digest
 github.com/opencontainers/go-digest/digestset
-# github.com/opencontainers/image-spec v1.0.1
+# github.com/opencontainers/image-spec v1.0.2-0.20210819154149-5ad6f50d6283
 github.com/opencontainers/image-spec/identity
 github.com/opencontainers/image-spec/specs-go
 github.com/opencontainers/image-spec/specs-go/v1
@@ -906,7 +938,7 @@ github.com/opencontainers/runtime-spec/specs-go
 github.com/opencontainers/selinux/go-selinux
 github.com/opencontainers/selinux/go-selinux/label
 github.com/opencontainers/selinux/pkg/pwalk
-# github.com/pelletier/go-toml v1.8.1
+# github.com/pelletier/go-toml v1.9.3
 github.com/pelletier/go-toml
 # github.com/peterbourgon/diskv v2.0.1+incompatible
 github.com/peterbourgon/diskv
@@ -1032,7 +1064,7 @@ github.com/rootless-containers/rootlesskit/pkg/port/portutil
 github.com/rootless-containers/rootlesskit/pkg/sigproxy
 github.com/rootless-containers/rootlesskit/pkg/sigproxy/signal
 github.com/rootless-containers/rootlesskit/pkg/version
-# github.com/rs/xid v1.2.1
+# github.com/rs/xid v1.3.0
 github.com/rs/xid
 # github.com/rubiojr/go-vhd v0.0.0-20200706105327-02e210299021
 github.com/rubiojr/go-vhd/vhd
@@ -1481,7 +1513,7 @@ google.golang.org/genproto/googleapis/api/annotations
 google.golang.org/genproto/googleapis/api/httpbody
 google.golang.org/genproto/googleapis/rpc/status
 google.golang.org/genproto/protobuf/field_mask
-# google.golang.org/grpc v1.38.0 => google.golang.org/grpc v1.38.0
+# google.golang.org/grpc v1.40.0 => google.golang.org/grpc v1.38.0
 ## explicit
 google.golang.org/grpc
 google.golang.org/grpc/attributes

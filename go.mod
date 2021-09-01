@@ -77,9 +77,10 @@ require (
 	github.com/containerd/cgroups v1.0.1
 	github.com/containerd/containerd v1.5.5
 	github.com/containerd/fuse-overlayfs-snapshotter v1.0.3
+	github.com/containerd/stargz-snapshotter v0.8.0
 	github.com/coreos/go-iptables v0.5.0
 	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f
-	github.com/docker/docker v20.10.5+incompatible
+	github.com/docker/docker v20.10.7+incompatible
 	github.com/erikdubbelboer/gspt v0.0.0-20190125194910-e68493906b83
 	github.com/flannel-io/flannel v0.14.0
 	github.com/go-bindata/go-bindata v3.1.2+incompatible
@@ -91,7 +92,7 @@ require (
 	github.com/gorilla/websocket v1.4.2
 	github.com/k3s-io/helm-controller v0.11.3
 	github.com/k3s-io/kine v0.8.0
-	github.com/klauspost/compress v1.12.2
+	github.com/klauspost/compress v1.13.5
 	github.com/kubernetes-sigs/cri-tools v0.0.0-00010101000000-000000000000
 	github.com/lib/pq v1.10.2
 	github.com/mattn/go-sqlite3 v1.14.8
@@ -123,7 +124,7 @@ require (
 	golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2
 	golang.org/x/net v0.0.0-20210520170846-37e1c6afe023
 	golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c
-	google.golang.org/grpc v1.38.0
+	google.golang.org/grpc v1.40.0
 	gopkg.in/yaml.v2 v2.4.0
 	inet.af/tcpproxy v0.0.0-20200125044825-b6bb9b5b8252
 	k8s.io/api v0.22.1
