@@ -2,10 +2,12 @@
 set -e
 
 mkdir -p bin dist
-if [ -e ./scripts/$1 ]; then
-    ./scripts/"$@"
+
+ARGS=("$@")
+if [ -e "./scripts/${ARGS[-1]}" ]; then
+    ./scripts/"${ARGS[-1]}"
 else
-    exec "$@"
+    exec "${ARGS[-1]}"
 fi
 
-chown -R $DAPPER_UID:$DAPPER_GID .
+chown -R "$DAPPER_UID":"$DAPPER_GID" .

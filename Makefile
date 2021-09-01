@@ -8,7 +8,11 @@ TARGETS := $(shell ls scripts | grep -v \\.sh)
 	@mv .dapper.tmp .dapper
 
 $(TARGETS): .dapper
+ifneq (${BUILD_IMAGE}, "")
+	GOLANG=${BUILD_IMAGE} ./.dapper $@
+else
 	./.dapper $@
+endif
 
 .PHONY: deps
 deps:
