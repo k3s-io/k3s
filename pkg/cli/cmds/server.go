@@ -89,6 +89,7 @@ type Server struct {
 	EtcdS3BucketName         string
 	EtcdS3Region             string
 	EtcdS3Folder             string
+	EtcdS3Insecure           bool
 }
 
 var (
@@ -330,6 +331,11 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Name:        "etcd-s3-folder",
 				Usage:       "(db) S3 folder",
 				Destination: &ServerConfig.EtcdS3Folder,
+			},
+			&cli.BoolFlag{
+				Name:        "etcd-s3-insecure",
+				Usage:       "(db) Disables S3 over HTTPS",
+				Destination: &ServerConfig.EtcdS3Insecure,
 			},
 			cli.StringFlag{
 				Name:        "default-local-storage-path",

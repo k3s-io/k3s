@@ -77,6 +77,11 @@ var EtcdSnapshotFlags = []cli.Flag{
 		Usage:       "(db) S3 folder",
 		Destination: &ServerConfig.EtcdS3Folder,
 	},
+	&cli.BoolFlag{
+		Name:        "s3-insecure",
+		Usage:       "(db) Disables S3 over HTTPS",
+		Destination: &ServerConfig.EtcdS3Insecure,
+	},
 }
 
 func NewEtcdSnapshotCommand(action func(*cli.Context) error, subcommands []cli.Command) cli.Command {

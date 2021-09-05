@@ -167,6 +167,7 @@ type Control struct {
 	EtcdS3BucketName         string
 	EtcdS3Region             string
 	EtcdS3Folder             string
+	EtcdS3Insecure           bool
 
 	BindAddress string
 	SANs        []string
