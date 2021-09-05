@@ -1007,6 +1007,7 @@ type s3Config struct {
 	Bucket        string `json:"bucket,omitempty"`
 	Region        string `json:"region,omitempty"`
 	Folder        string `json:"folder,omitempty"`
+	Insecure      bool   `json:"insecure,omitempty"`
 }
 
 type SnapshotStatus string
@@ -1116,6 +1117,7 @@ func (e *ETCD) listS3Snapshots(ctx context.Context) (map[string]SnapshotFile, er
 					Bucket:        e.config.EtcdS3BucketName,
 					Region:        e.config.EtcdS3Region,
 					Folder:        e.config.EtcdS3Folder,
+					Insecure:      e.config.EtcdS3Insecure,
 				},
 				Status: SuccessfulSnapshotStatus,
 			}
