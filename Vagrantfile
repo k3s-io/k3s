@@ -33,6 +33,10 @@ Vagrant.configure("2") do |config|
     v.memory = NODE_MEMORY
     v.customize ["modifyvm", :id, "--audio", "none"]
   end
+  config.vm.provider "libvirt" do |v|
+    v.cpus = NODE_CPUS
+    v.memory = NODE_MEMORY
+  end
   if Vagrant.has_plugin?("vagrant-timezone")
     config.timezone.value = :host
   end
