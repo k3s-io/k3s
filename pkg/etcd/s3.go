@@ -53,7 +53,7 @@ func NewS3(ctx context.Context, config *config.Control) (*S3, error) {
 
 	opt := minio.Options{
 		Creds:        creds,
-		Secure:       true,
+		Secure:       !config.EtcdS3Insecure,
 		Region:       config.EtcdS3Region,
 		Transport:    tr,
 		BucketLookup: bucketLookupType(config.EtcdS3Endpoint),

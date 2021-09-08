@@ -879,6 +879,7 @@ type s3Config struct {
 	Bucket        string `json:"bucket,omitempty"`
 	Region        string `json:"region,omitempty"`
 	Folder        string `json:"folder,omitempty"`
+	Insecure      bool   `json:"insecure,omitempty"`
 }
 
 // SnapshotFile represents a single snapshot and it's
@@ -945,6 +946,7 @@ func (e *ETCD) listSnapshots(ctx context.Context, snapshotDir string) ([]Snapsho
 					Bucket:        e.config.EtcdS3BucketName,
 					Region:        e.config.EtcdS3Region,
 					Folder:        e.config.EtcdS3Folder,
+					Insecure:      e.config.EtcdS3Insecure,
 				},
 			})
 		}
