@@ -29,6 +29,7 @@ import (
 	"github.com/rancher/k3s/pkg/daemons/control/deps"
 	"github.com/rancher/k3s/pkg/daemons/executor"
 	"github.com/rancher/k3s/pkg/version"
+	controllerv1 "github.com/rancher/wrangler/pkg/generated/controllers/core/v1"
 	"github.com/robfig/cron/v3"
 	"github.com/sirupsen/logrus"
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -56,6 +57,10 @@ const (
 	defaultKeepAliveTimeout = 10 * time.Second
 
 	maxBackupRetention = 5
+
+	MasterLabel       = "node-role.kubernetes.io/master"
+	ControlPlaneLabel = "node-role.kubernetes.io/control-plane"
+	EtcdRoleLabel     = "node-role.kubernetes.io/etcd"
 )
 
 var (
@@ -64,7 +69,12 @@ var (
 	AddressKey = version.Program + "/apiaddresses"
 
 	snapshotConfigMapName = version.Program + "-etcd-snapshots"
+
+	NodeNameAnnotation    = "etcd." + version.Program + ".cattle.io/node-name"
+	NodeAddressAnnotation = "etcd." + version.Program + ".cattle.io/node-address"
 )
+
+type NodeControllerGetter func() controllerv1.NodeController
 
 type ETCD struct {
 	client  *clientv3.Client
@@ -373,14 +383,6 @@ func (e *ETCD) Register(ctx context.Context, config *config.Control, handler htt
 	e.config.Datastore.BackendTLSConfig.CertFile = e.runtime.ClientETCDCert
 	e.config.Datastore.BackendTLSConfig.KeyFile = e.runtime.ClientETCDKey
 
-	if err := e.setName(false); err != nil {
-		return nil, err
-	}
-	e.config.Runtime.ClusterControllerStart = func(ctx context.Context) error {
-		Register(ctx, e, e.config.Runtime.Core.Core().V1().Node())
-		return nil
-	}
-
 	tombstoneFile := filepath.Join(etcdDBDir(e.config), "tombstone")
 	if _, err := os.Stat(tombstoneFile); err == nil {
 		logrus.Infof("tombstone file has been detected, removing data dir to rejoin the cluster")
@@ -388,6 +390,20 @@ func (e *ETCD) Register(ctx context.Context, config *config.Control, handler htt
 			return nil, err
 		}
 	}
+
+	if err := e.setName(false); err != nil {
+		return nil, err
+	}
+	e.config.Runtime.ClusterControllerStart = func(ctx context.Context) error {
+		RegisterMetadataHandlers(ctx, e, e.config.Runtime.Core.Core().V1().Node())
+		return nil
+	}
+
+	e.config.Runtime.LeaderElectedClusterControllerStart = func(ctx context.Context) error {
+		RegisterMemberHandlers(ctx, e, e.config.Runtime.Core.Core().V1().Node())
+		return nil
+	}
+
 	return e.handler(handler), err
 }
 
@@ -449,7 +465,7 @@ func (e *ETCD) infoHandler() http.Handler {
 	})
 }
 
-// getClient returns an etcd client connected to the specified endpoints
+// GetClient returns an etcd client connected to the specified endpoints
 func GetClient(ctx context.Context, runtime *config.ControlRuntime, endpoints ...string) (*clientv3.Client, error) {
 	cfg, err := getClientConfig(ctx, runtime, endpoints...)
 	if err != nil {
@@ -458,7 +474,7 @@ func GetClient(ctx context.Context, runtime *config.ControlRuntime, endpoints ..
 	return clientv3.New(*cfg)
 }
 
-//getClientConfig generates an etcd client config connected to the specified endpoints
+// getClientConfig generates an etcd client config connected to the specified endpoints
 func getClientConfig(ctx context.Context, runtime *config.ControlRuntime, endpoints ...string) (*clientv3.Config, error) {
 	tlsConfig, err := toTLSConfig(runtime)
 	if err != nil {
@@ -623,8 +639,8 @@ func (e *ETCD) cluster(ctx context.Context, forceNew bool, options executor.Init
 	})
 }
 
-// removePeer removes a peer from the cluster. The peer ID and IP address must both match.
-func (e *ETCD) removePeer(ctx context.Context, id, address string, removeSelf bool) error {
+// RemovePeer removes a peer from the cluster. The peer name and IP address must both match.
+func (e *ETCD) RemovePeer(ctx context.Context, name, address string, allowSelfRemoval bool) error {
 	ctx, cancel := context.WithTimeout(ctx, memberRemovalTimeout)
 	defer cancel()
 	members, err := e.client.MemberList(ctx)
@@ -633,7 +649,7 @@ func (e *ETCD) removePeer(ctx context.Context, id, address string, removeSelf bo
 	}
 
 	for _, member := range members.Members {
-		if member.Name != id {
+		if member.Name != name {
 			continue
 		}
 		for _, peerURL := range member.PeerURLs {
@@ -642,8 +658,8 @@ func (e *ETCD) removePeer(ctx context.Context, id, address string, removeSelf bo
 				return err
 			}
 			if u.Hostname() == address {
-				if e.address == address && !removeSelf {
-					return errors.New("node has been deleted from the cluster")
+				if e.address == address && !allowSelfRemoval {
+					return errors.New("not removing self from etcd cluster")
 				}
 				logrus.Infof("Removing name=%s id=%d address=%s from etcd", member.Name, member.ID, address)
 				_, err := e.client.MemberRemove(ctx, member.ID)
@@ -1398,9 +1414,27 @@ func (e *ETCD) GetMembersClientURLs(ctx context.Context) ([]string, error) {
 	return memberUrls, nil
 }
 
+// GetMembersNames will list through the member lists in etcd and return
+// back a combined list of member names
+func (e *ETCD) GetMembersNames(ctx context.Context) ([]string, error) {
+	ctx, cancel := context.WithTimeout(ctx, testTimeout)
+	defer cancel()
+
+	members, err := e.client.MemberList(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var memberNames []string
+	for _, member := range members.Members {
+		memberNames = append(memberNames, member.Name)
+	}
+	return memberNames, nil
+}
+
 // RemoveSelf will remove the member if it exists in the cluster
 func (e *ETCD) RemoveSelf(ctx context.Context) error {
-	if err := e.removePeer(ctx, e.name, e.address, true); err != nil {
+	if err := e.RemovePeer(ctx, e.name, e.address, true); err != nil {
 		return err
 	}
 
