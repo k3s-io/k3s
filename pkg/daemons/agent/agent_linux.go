@@ -139,10 +139,7 @@ func kubeletArgs(cfg *config.Agent) map[string]string {
 		argsMap["cpu-cfs-quota"] = "false"
 	}
 	if !hasPIDs {
-		logrus.Warn("Disabling pod PIDs limit feature due to missing cgroup pids support")
-		argsMap["cgroups-per-qos"] = "false"
-		argsMap["enforce-node-allocatable"] = ""
-		argsMap["feature-gates"] = util.AddFeatureGate(argsMap["feature-gates"], "SupportPodPidsLimit=false")
+		logrus.Fatal("PIDS cgroup support not found")
 	}
 	if kubeletRoot != "" {
 		argsMap["kubelet-cgroups"] = kubeletRoot
