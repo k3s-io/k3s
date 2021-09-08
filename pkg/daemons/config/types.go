@@ -193,10 +193,11 @@ type ControlRuntimeBootstrap struct {
 type ControlRuntime struct {
 	ControlRuntimeBootstrap
 
-	HTTPBootstrap          bool
-	APIServerReady         <-chan struct{}
-	ETCDReady              <-chan struct{}
-	ClusterControllerStart func(ctx context.Context) error
+	HTTPBootstrap                       bool
+	APIServerReady                      <-chan struct{}
+	ETCDReady                           <-chan struct{}
+	ClusterControllerStart              func(ctx context.Context) error
+	LeaderElectedClusterControllerStart func(ctx context.Context) error
 
 	ClientKubeAPICert string
 	ClientKubeAPIKey  string

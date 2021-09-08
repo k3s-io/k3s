@@ -80,14 +80,14 @@ func setETCDLabelsAndAnnotations(ctx context.Context, config *Config) error {
 			continue
 		}
 		etcdNodeName := string(data)
-		node.Annotations[etcd.NodeID] = etcdNodeName
+		node.Annotations[etcd.NodeNameAnnotation] = etcdNodeName
 
 		address, err := etcd.GetAdvertiseAddress(controlConfig.PrivateIP)
 		if err != nil {
 			logrus.Infof("Waiting for etcd node address to be available: %v", err)
 			continue
 		}
-		node.Annotations[etcd.NodeAddress] = address
+		node.Annotations[etcd.NodeAddressAnnotation] = address
 
 		_, err = nodes.Update(node)
 		if err == nil {
