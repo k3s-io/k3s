@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"os"
 	"path/filepath"
 
@@ -52,8 +54,7 @@ func main() {
 		),
 	}
 
-	err := app.Run(configfilearg.MustParse(os.Args))
-	if err != nil {
+	if err := app.Run(configfilearg.MustParse(os.Args)); err != nil && !errors.Is(err, context.Canceled) {
 		logrus.Fatal(err)
 	}
 }

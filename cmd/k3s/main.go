@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -53,7 +54,7 @@ func main() {
 		),
 	}
 
-	if err := app.Run(os.Args); err != nil {
+	if err := app.Run(os.Args); err != nil && !errors.Is(err, context.Canceled) {
 		logrus.Fatal(err)
 	}
 }
@@ -90,7 +91,7 @@ func runCLIs(dataDir string) bool {
 	progName := filepath.Base(os.Args[0])
 	switch progName {
 	case "crictl", "ctr", "kubectl":
-		if err := externalCLI(progName, dataDir, os.Args[1:]); err != nil {
+		if err := externalCLI(progName, dataDir, os.Args[1:]); err != nil && !errors.Is(err, context.Canceled) {
 			logrus.Fatal(err)
 		}
 		return true

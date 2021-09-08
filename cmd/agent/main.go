@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"os"
 
 	"github.com/rancher/k3s/pkg/cli/agent"
@@ -16,8 +18,7 @@ func main() {
 		cmds.NewAgentCommand(agent.Run),
 	}
 
-	err := app.Run(configfilearg.MustParse(os.Args))
-	if err != nil {
+	if err := app.Run(configfilearg.MustParse(os.Args)); err != nil && !errors.Is(err, context.Canceled) {
 		logrus.Fatal(err)
 	}
 }
