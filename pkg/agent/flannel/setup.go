@@ -2,6 +2,7 @@ package flannel
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -96,7 +97,9 @@ func Run(ctx context.Context, nodeConfig *config.Node, nodes v1.NodeInterface) e
 
 	go func() {
 		err := flannel(ctx, nodeConfig.FlannelIface, nodeConfig.FlannelConf, nodeConfig.AgentConfig.KubeConfigKubelet)
-		logrus.Fatalf("flannel exited: %v", err)
+		if err != nil && !errors.Is(err, context.Canceled) {
+			logrus.Fatalf("flannel exited: %v", err)
+		}
 	}()
 
 	return nil
