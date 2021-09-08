@@ -177,7 +177,9 @@ func runControllers(ctx context.Context, wg *sync.WaitGroup, config *Config) err
 		go func() {
 			start(ctx)
 			<-ctx.Done()
-			logrus.Fatal("controllers exited")
+			if err := ctx.Err(); err != nil && !errors.Is(err, context.Canceled) {
+				logrus.Fatalf("controllers exited: %v", err)
+			}
 		}()
 	} else {
 		go leader.RunOrDie(ctx, "", version.Program, sc.K8s, start)

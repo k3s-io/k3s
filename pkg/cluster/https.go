@@ -3,6 +3,7 @@ package cluster
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"io/ioutil"
 	"log"
 	"net"
@@ -90,7 +91,9 @@ func (c *Cluster) initClusterAndHTTPS(ctx context.Context) error {
 	// Start the supervisor http server on the tls listener
 	go func() {
 		err := server.Serve(listener)
-		logrus.Fatalf("server stopped: %v", err)
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			logrus.Fatalf("server stopped: %v", err)
+		}
 	}()
 
 	// Shutdown the http server when the context is closed

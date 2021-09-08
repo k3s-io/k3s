@@ -86,7 +86,9 @@ func Run(ctx context.Context, nodeConfig *config.Node, nodes typedcorev1.NodeInt
 
 	go func() {
 		err := flannel(ctx, nodeConfig.FlannelIface, nodeConfig.FlannelConf, nodeConfig.AgentConfig.KubeConfigKubelet)
-		logrus.Fatalf("flannel exited: %v", err)
+		if err != nil && !errors.Is(err, context.Canceled) {
+			logrus.Fatalf("flannel exited: %v", err)
+		}
 	}()
 
 	return nil

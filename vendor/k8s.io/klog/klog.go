@@ -812,30 +812,7 @@ func (l *loggingT) output(s severity, buf *buffer, file string, line int, alsoTo
 		}
 	}
 	if s == fatalLog {
-		// If we got here via Exit rather than Fatal, print no stacks.
-		if atomic.LoadUint32(&fatalNoStacks) > 0 {
-			l.mu.Unlock()
-			timeoutFlush(10 * time.Second)
-			os.Exit(1)
-		}
-		// Dump all goroutine stacks before exiting.
-		// First, make sure we see the trace for the current goroutine on standard error.
-		// If -logtostderr has been specified, the loop below will do that anyway
-		// as the first stack in the full dump.
-		if !l.toStderr {
-			os.Stderr.Write(stacks(false))
-		}
-		// Write the stack trace for all goroutines to the files.
-		trace := stacks(true)
-		logExitFunc = func(error) {} // If we get a write error, we'll still exit below.
-		for log := fatalLog; log >= infoLog; log-- {
-			if f := l.file[log]; f != nil { // Can be nil if -logtostderr is set.
-				f.Write(trace)
-			}
-		}
-		l.mu.Unlock()
-		timeoutFlush(10 * time.Second)
-		os.Exit(255) // C++ uses -1, which is silly because it's anded with 255 anyway.
+		panic(string(data))
 	}
 	l.putBuffer(buf)
 	l.mu.Unlock()

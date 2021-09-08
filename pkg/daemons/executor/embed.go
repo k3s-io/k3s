@@ -55,6 +55,11 @@ func (*Embedded) Kubelet(args []string) error {
 	command.SetArgs(args)
 
 	go func() {
+		defer func() {
+			if err := recover(); err != nil {
+				logrus.Fatalf("kubelet panic: %v", err)
+			}
+		}()
 		logrus.Fatalf("kubelet exited: %v", command.Execute())
 	}()
 
@@ -66,6 +71,11 @@ func (*Embedded) KubeProxy(args []string) error {
 	command.SetArgs(args)
 
 	go func() {
+		defer func() {
+			if err := recover(); err != nil {
+				logrus.Fatalf("kube-proxy panic: %v", err)
+			}
+		}()
 		logrus.Fatalf("kube-proxy exited: %v", command.Execute())
 	}()
 
@@ -83,6 +93,11 @@ func (*Embedded) APIServer(ctx context.Context, etcdReady <-chan struct{}, args 
 
 	go func() {
 		<-etcdReady
+		defer func() {
+			if err := recover(); err != nil {
+				logrus.Fatalf("apiserver panic: %v", err)
+			}
+		}()
 		logrus.Fatalf("apiserver exited: %v", command.Execute())
 	}()
 
@@ -107,6 +122,11 @@ func (e *Embedded) Scheduler(apiReady <-chan struct{}, args []string) error {
 				logrus.Fatalf("failed to wait for untained node: %v", err)
 			}
 		}
+		defer func() {
+			if err := recover(); err != nil {
+				logrus.Fatalf("scheduler panic: %v", err)
+			}
+		}()
 		logrus.Fatalf("scheduler exited: %v", command.Execute())
 	}()
 
@@ -119,6 +139,11 @@ func (*Embedded) ControllerManager(apiReady <-chan struct{}, args []string) erro
 
 	go func() {
 		<-apiReady
+		defer func() {
+			if err := recover(); err != nil {
+				logrus.Fatalf("controller-manager panic: %v", err)
+			}
+		}()
 		logrus.Fatalf("controller-manager exited: %v", command.Execute())
 	}()
 
@@ -157,6 +182,11 @@ func (*Embedded) CloudControllerManager(ccmRBACReady <-chan struct{}, args []str
 
 	go func() {
 		<-ccmRBACReady
+		defer func() {
+			if err := recover(); err != nil {
+				logrus.Fatalf("cloud-controller-manager panic: %v", err)
+			}
+		}()
 		logrus.Fatalf("cloud-controller-manager exited: %v", command.Execute())
 	}()
 
