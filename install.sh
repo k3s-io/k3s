@@ -465,9 +465,13 @@ setup_selinux() {
     Please disable SELinux before installing k3s.
 "
     else
+        maj_ver=$(echo "$VERSION_ID" | sed -E -e "s/^([0-9]+)\.?[0-9]*$/\1/")
+        if [ "${maj_ver:-7}" != 7 ]; then
+            maj_ver=8
+        fi
         policy_hint="please install:
     yum install -y container-selinux selinux-policy-base
-    yum install -y https://${rpm_site}/k3s/${rpm_channel}/common/centos/${VERSION_ID:-7}/noarch/k3s-selinux-0.3-0.el${VERSION_ID:-7}.noarch.rpm
+    yum install -y https://${rpm_site}/k3s/${rpm_channel}/common/centos/${maj_ver}/noarch/k3s-selinux-0.3-0.el${maj_ver}.noarch.rpm
 "
     fi
 
@@ -496,8 +500,7 @@ setup_selinux() {
 # --- if on an el7/el8 system, install k3s-selinux
 install_selinux_rpm() {
     if [ -r /etc/redhat-release ] || [ -r /etc/centos-release ] || [ -r /etc/oracle-release ]; then
-        dist_version="$(. /etc/os-release && echo "$VERSION_ID")"
-        maj_ver=$(echo "$dist_version" | sed -E -e "s/^([0-9]+)\.?[0-9]*$/\1/")
+        maj_ver=$(echo "$VERSION_ID" | sed -E -e "s/^([0-9]+)\.?[0-9]*$/\1/")
         set +o noglob
         $SUDO rm -f /etc/yum.repos.d/rancher-k3s-common*.repo
         set -o noglob
