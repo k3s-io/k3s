@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/pkg/errors"
+	"github.com/rancher/wrangler/pkg/merr"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -38,12 +40,13 @@ func GetAddresses(endpoint *v1.Endpoints) []string {
 // This is cribbed from the Kubernetes controller-manager app, but checks the readyz endpoint instead of the deprecated healthz endpoint.
 func WaitForAPIServerReady(client clientset.Interface, timeout time.Duration) error {
 	var lastErr error
+	restClient := client.Discovery().RESTClient()
 
 	err := wait.PollImmediate(time.Second, timeout, func() (bool, error) {
 		healthStatus := 0
-		result := client.Discovery().RESTClient().Get().AbsPath("/readyz").Do(context.TODO()).StatusCode(&healthStatus)
-		if result.Error() != nil {
-			lastErr = fmt.Errorf("failed to get apiserver /readyz status: %v", result.Error())
+		result := restClient.Get().AbsPath("/readyz").Do(context.TODO()).StatusCode(&healthStatus)
+		if rerr := result.Error(); rerr != nil {
+			lastErr = errors.Wrap(rerr, "failed to get apiserver /readyz status")
 			return false, nil
 		}
 		if healthStatus != http.StatusOK {
@@ -57,7 +60,7 @@ func WaitForAPIServerReady(client clientset.Interface, timeout time.Duration) er
 	})
 
 	if err != nil {
-		return fmt.Errorf("%v: %v", err, lastErr)
+		return merr.NewErrors(err, lastErr)
 	}
 
 	return nil
