@@ -523,10 +523,11 @@ func (e *ETCD) clientURL() string {
 
 // metricsURL returns the metrics access address
 func (e *ETCD) metricsURL(expose bool) string {
+	address := "http://127.0.0.1:2381"
 	if expose {
-		return fmt.Sprintf("http://%s:2381", e.address)
+		address = fmt.Sprintf("http://%s:2381,%s", e.address, address)
 	}
-	return "http://127.0.0.1:2381"
+	return address
 }
 
 // cluster returns ETCDConfig for a cluster
@@ -535,7 +536,7 @@ func (e *ETCD) cluster(ctx context.Context, forceNew bool, options executor.Init
 		Name:                e.name,
 		InitialOptions:      options,
 		ForceNewCluster:     forceNew,
-		ListenClientURLs:    fmt.Sprintf(e.clientURL() + ",https://127.0.0.1:2379"),
+		ListenClientURLs:    e.clientURL() + ",https://127.0.0.1:2379",
 		ListenMetricsURLs:   e.metricsURL(e.config.EtcdExposeMetrics),
 		ListenPeerURLs:      e.peerURL(),
 		AdvertiseClientURLs: e.clientURL(),
