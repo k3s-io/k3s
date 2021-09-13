@@ -18,13 +18,13 @@ import (
 	"github.com/rancher/k3s/pkg/daemons/executor"
 	"github.com/rancher/k3s/pkg/util"
 	"github.com/rancher/k3s/pkg/version"
-	"github.com/rancher/wrangler/pkg/generated/controllers/rbac"
 	"github.com/sirupsen/logrus"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	authorizationv1 "k8s.io/api/authorization/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 	"k8s.io/client-go/kubernetes"
+	authorizationv1client "k8s.io/client-go/kubernetes/typed/authorization/v1"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/kubernetes/pkg/kubeapiserver/authorizer/modes"
 	proxyutil "k8s.io/kubernetes/pkg/proxy/util"
@@ -352,16 +352,28 @@ func checkForCloudControllerPrivileges(ctx context.Context, runtime *config.Cont
 	if err != nil {
 		return err
 	}
+	authClient := authorizationv1client.NewForConfigOrDie(restConfig)
+	sar := &authorizationv1.SubjectAccessReview{
+		Spec: authorizationv1.SubjectAccessReviewSpec{
+			User: version.Program + "-cloud-controller-manager",
+			ResourceAttributes: &authorizationv1.ResourceAttributes{
+				Namespace: metav1.NamespaceSystem,
+				Verb:      "get",
+				Resource:  "configmaps",
+				Name:      "extension-apiserver-authentication",
+			},
+		},
+	}
+
 	err = wait.PollImmediate(time.Second, timeout, func() (bool, error) {
-		crb := rbac.NewFactoryFromConfigOrDie(restConfig).Rbac().V1().ClusterRoleBinding()
-		_, err = crb.Get(version.Program+"-cloud-controller-manager", metav1.GetOptions{})
+		r, err := authClient.SubjectAccessReviews().Create(ctx, sar, metav1.CreateOptions{})
 		if err != nil {
-			if apierrors.IsNotFound(err) {
-				return false, nil
-			}
 			return false, err
 		}
-		return true, nil
+		if r.Status.Allowed {
+			return true, nil
+		}
+		return false, nil
 	})
 
 	if err != nil {
