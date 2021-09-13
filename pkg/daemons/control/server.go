@@ -331,7 +331,7 @@ func cloudControllerManager(ctx context.Context, cfg *config.Control, runtime *c
 				return
 			case err := <-promise(func() error { return checkForCloudControllerPrivileges(ctx, runtime, 5*time.Second) }):
 				if err != nil {
-					logrus.Infof("Waiting for cloud-controller-manager privileges to become available")
+					logrus.Infof("Waiting for cloud-controller-manager privileges to become available: %v", err)
 					continue
 				}
 				return
@@ -375,11 +375,7 @@ func checkForCloudControllerPrivileges(ctx context.Context, runtime *config.Cont
 		}
 		return false, nil
 	})
-
-	if err != nil {
-		logrus.Errorf("error encountered waitng for cloud-controller-manager privileges: %v", err)
-	}
-	return nil
+	return err
 }
 
 func waitForAPIServerInBackground(ctx context.Context, runtime *config.ControlRuntime) error {
