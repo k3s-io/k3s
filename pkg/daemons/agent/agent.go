@@ -26,13 +26,13 @@ func Agent(ctx context.Context, nodeConfig *daemonconfig.Node, proxy proxy.Proxy
 
 	logs.InitLogs()
 	defer logs.FlushLogs()
-	if err := startKubelet(&nodeConfig.AgentConfig); err != nil {
+	if err := startKubelet(ctx, &nodeConfig.AgentConfig); err != nil {
 		return err
 	}
 
 	go func() {
 		if !config.KubeProxyDisabled(ctx, nodeConfig, proxy) {
-			if err := startKubeProxy(&nodeConfig.AgentConfig); err != nil {
+			if err := startKubeProxy(ctx, &nodeConfig.AgentConfig); err != nil {
 				logrus.Fatalf("Failed to start kube-proxy: %v", err)
 			}
 		}
@@ -41,20 +41,20 @@ func Agent(ctx context.Context, nodeConfig *daemonconfig.Node, proxy proxy.Proxy
 	return nil
 }
 
-func startKubeProxy(cfg *daemonconfig.Agent) error {
+func startKubeProxy(ctx context.Context, cfg *daemonconfig.Agent) error {
 	argsMap := kubeProxyArgs(cfg)
 	args := daemonconfig.GetArgs(argsMap, cfg.ExtraKubeProxyArgs)
 	logrus.Infof("Running kube-proxy %s", daemonconfig.ArgString(args))
-	return executor.KubeProxy(args)
+	return executor.KubeProxy(ctx, args)
 }
 
-func startKubelet(cfg *daemonconfig.Agent) error {
+func startKubelet(ctx context.Context, cfg *daemonconfig.Agent) error {
 	argsMap := kubeletArgs(cfg)
 
 	args := daemonconfig.GetArgs(argsMap, cfg.ExtraKubeletArgs)
 	logrus.Infof("Running kubelet %s", daemonconfig.ArgString(args))
 
-	return executor.Kubelet(args)
+	return executor.Kubelet(ctx, args)
 }
 
 // ImageCredProvAvailable checks to see if the kubelet image credential provider bin dir and config
