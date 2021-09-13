@@ -20,15 +20,15 @@ var (
 
 type Executor interface {
 	Bootstrap(ctx context.Context, nodeConfig *daemonconfig.Node, cfg cmds.Agent) error
-	Kubelet(args []string) error
-	KubeProxy(args []string) error
+	Kubelet(ctx context.Context, args []string) error
+	KubeProxy(ctx context.Context, args []string) error
 	APIServerHandlers() (authenticator.Request, http.Handler, error)
 	APIServer(ctx context.Context, etcdReady <-chan struct{}, args []string) error
-	Scheduler(apiReady <-chan struct{}, args []string) error
-	ControllerManager(apiReady <-chan struct{}, args []string) error
+	Scheduler(ctx context.Context, apiReady <-chan struct{}, args []string) error
+	ControllerManager(ctx context.Context, apiReady <-chan struct{}, args []string) error
 	CurrentETCDOptions() (InitialOptions, error)
 	ETCD(ctx context.Context, args ETCDConfig) error
-	CloudControllerManager(ccmRBACReady <-chan struct{}, args []string) error
+	CloudControllerManager(ctx context.Context, ccmRBACReady <-chan struct{}, args []string) error
 }
 
 type ETCDConfig struct {
@@ -90,12 +90,12 @@ func Bootstrap(ctx context.Context, nodeConfig *daemonconfig.Node, cfg cmds.Agen
 	return executor.Bootstrap(ctx, nodeConfig, cfg)
 }
 
-func Kubelet(args []string) error {
-	return executor.Kubelet(args)
+func Kubelet(ctx context.Context, args []string) error {
+	return executor.Kubelet(ctx, args)
 }
 
-func KubeProxy(args []string) error {
-	return executor.KubeProxy(args)
+func KubeProxy(ctx context.Context, args []string) error {
+	return executor.KubeProxy(ctx, args)
 }
 
 func APIServerHandlers() (authenticator.Request, http.Handler, error) {
@@ -106,12 +106,12 @@ func APIServer(ctx context.Context, etcdReady <-chan struct{}, args []string) er
 	return executor.APIServer(ctx, etcdReady, args)
 }
 
-func Scheduler(apiReady <-chan struct{}, args []string) error {
-	return executor.Scheduler(apiReady, args)
+func Scheduler(ctx context.Context, apiReady <-chan struct{}, args []string) error {
+	return executor.Scheduler(ctx, apiReady, args)
 }
 
-func ControllerManager(apiReady <-chan struct{}, args []string) error {
-	return executor.ControllerManager(apiReady, args)
+func ControllerManager(ctx context.Context, apiReady <-chan struct{}, args []string) error {
+	return executor.ControllerManager(ctx, apiReady, args)
 }
 
 func CurrentETCDOptions() (InitialOptions, error) {
@@ -122,6 +122,6 @@ func ETCD(ctx context.Context, args ETCDConfig) error {
 	return executor.ETCD(ctx, args)
 }
 
-func CloudControllerManager(ccmRBACReady <-chan struct{}, args []string) error {
-	return executor.CloudControllerManager(ccmRBACReady, args)
+func CloudControllerManager(ctx context.Context, ccmRBACReady <-chan struct{}, args []string) error {
+	return executor.CloudControllerManager(ctx, ccmRBACReady, args)
 }

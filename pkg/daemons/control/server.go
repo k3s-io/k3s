@@ -63,12 +63,12 @@ func Server(ctx context.Context, cfg *config.Control) error {
 	}
 
 	if !cfg.DisableScheduler {
-		if err := scheduler(cfg, runtime); err != nil {
+		if err := scheduler(ctx, cfg, runtime); err != nil {
 			return err
 		}
 	}
 	if !cfg.DisableControllerManager {
-		if err := controllerManager(cfg, runtime); err != nil {
+		if err := controllerManager(ctx, cfg, runtime); err != nil {
 			return err
 		}
 	}
@@ -82,7 +82,7 @@ func Server(ctx context.Context, cfg *config.Control) error {
 	return nil
 }
 
-func controllerManager(cfg *config.Control, runtime *config.ControlRuntime) error {
+func controllerManager(ctx context.Context, cfg *config.Control, runtime *config.ControlRuntime) error {
 	argsMap := map[string]string{
 		"kubeconfig":                       runtime.KubeConfigController,
 		"service-account-private-key-file": runtime.ServiceKey,
@@ -115,10 +115,10 @@ func controllerManager(cfg *config.Control, runtime *config.ControlRuntime) erro
 	args := config.GetArgs(argsMap, cfg.ExtraControllerArgs)
 	logrus.Infof("Running kube-controller-manager %s", config.ArgString(args))
 
-	return executor.ControllerManager(runtime.APIServerReady, args)
+	return executor.ControllerManager(ctx, runtime.APIServerReady, args)
 }
 
-func scheduler(cfg *config.Control, runtime *config.ControlRuntime) error {
+func scheduler(ctx context.Context, cfg *config.Control, runtime *config.ControlRuntime) error {
 	argsMap := map[string]string{
 		"kubeconfig":   runtime.KubeConfigScheduler,
 		"port":         "10251",
@@ -133,7 +133,7 @@ func scheduler(cfg *config.Control, runtime *config.ControlRuntime) error {
 	args := config.GetArgs(argsMap, cfg.ExtraSchedulerAPIArgs)
 
 	logrus.Infof("Running kube-scheduler %s", config.ArgString(args))
-	return executor.Scheduler(runtime.APIServerReady, args)
+	return executor.Scheduler(ctx, runtime.APIServerReady, args)
 }
 
 func apiServer(ctx context.Context, cfg *config.Control, runtime *config.ControlRuntime) error {
@@ -319,7 +319,7 @@ func cloudControllerManager(ctx context.Context, cfg *config.Control, runtime *c
 			select {
 			case <-ctx.Done():
 				return
-			case err := <-promise(func() error { return checkForCloudControllerPrivileges(runtime, 5*time.Second) }):
+			case err := <-promise(func() error { return checkForCloudControllerPrivileges(ctx, runtime, 5*time.Second) }):
 				if err != nil {
 					logrus.Infof("Waiting for cloud-controller-manager privileges to become available")
 					continue
@@ -329,10 +329,15 @@ func cloudControllerManager(ctx context.Context, cfg *config.Control, runtime *c
 		}
 	}()
 
-	return executor.CloudControllerManager(ccmRBACReady, args)
+	return executor.CloudControllerManager(ctx, ccmRBACReady, args)
 }
 
-func checkForCloudControllerPrivileges(runtime *config.ControlRuntime, timeout time.Duration) error {
+// checkForCloudControllerPrivileges makes a SubjectAccessReview request to the apiserver
+// to validate that the embedded cloud controller manager has the required privileges,
+// and does not return until the requested access is granted.
+// If the CCM RBAC changes, the ResourceAttributes checked for by this function should
+// be modified to check for the most recently added privilege.
+func checkForCloudControllerPrivileges(ctx context.Context, runtime *config.ControlRuntime, timeout time.Duration) error {
 	restConfig, err := clientcmd.BuildConfigFromFlags("", runtime.KubeConfigAdmin)
 	if err != nil {
 		return err
