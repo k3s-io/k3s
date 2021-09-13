@@ -93,6 +93,8 @@ func Server(ctx context.Context, cfg *config.Control) error {
 func controllerManager(ctx context.Context, cfg *config.Control, runtime *config.ControlRuntime) error {
 	argsMap := map[string]string{
 		"kubeconfig":                       runtime.KubeConfigController,
+		"authorization-kubeconfig":         runtime.KubeConfigController,
+		"authentication-kubeconfig":        runtime.KubeConfigController,
 		"service-account-private-key-file": runtime.ServiceKey,
 		"allocate-node-cidrs":              "true",
 		"cluster-cidr":                     util.JoinIPNets(cfg.ClusterIPRanges),
@@ -126,10 +128,12 @@ func controllerManager(ctx context.Context, cfg *config.Control, runtime *config
 
 func scheduler(ctx context.Context, cfg *config.Control, runtime *config.ControlRuntime) error {
 	argsMap := map[string]string{
-		"kubeconfig":   runtime.KubeConfigScheduler,
-		"bind-address": localhostIP.String(),
-		"secure-port":  "10259",
-		"profiling":    "false",
+		"kubeconfig":                runtime.KubeConfigScheduler,
+		"authorization-kubeconfig":  runtime.KubeConfigScheduler,
+		"authentication-kubeconfig": runtime.KubeConfigScheduler,
+		"bind-address":              localhostIP.String(),
+		"secure-port":               "10259",
+		"profiling":                 "false",
 	}
 	if cfg.NoLeaderElect {
 		argsMap["leader-elect"] = "false"
@@ -290,6 +294,8 @@ func cloudControllerManager(ctx context.Context, cfg *config.Control, runtime *c
 		"cluster-cidr":                 util.JoinIPNets(cfg.ClusterIPRanges),
 		"configure-cloud-routes":       "false",
 		"kubeconfig":                   runtime.KubeConfigCloudController,
+		"authorization-kubeconfig":     runtime.KubeConfigCloudController,
+		"authentication-kubeconfig":    runtime.KubeConfigCloudController,
 		"node-status-update-frequency": "1m0s",
 		"bind-address":                 "127.0.0.1",
 		"port":                         "0",
