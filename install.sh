@@ -727,6 +727,7 @@ create_env_file() {
     $SUDO touch ${FILE_K3S_ENV}
     $SUDO chmod 0600 ${FILE_K3S_ENV}
     env | grep '^K3S_' | $SUDO tee ${FILE_K3S_ENV} >/dev/null
+    env | grep '^CONTAINERD_' | $SUDO tee -a ${FILE_K3S_ENV} >/dev/null
     env | grep -Ei '^(NO|HTTP|HTTPS)_PROXY' | $SUDO tee -a ${FILE_K3S_ENV} >/dev/null
 }
 
