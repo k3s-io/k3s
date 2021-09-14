@@ -154,6 +154,11 @@ func runControllers(ctx context.Context, wg *sync.WaitGroup, config *Config) err
 		if err := coreControllers(ctx, sc, config); err != nil {
 			panic(err)
 		}
+		if controlConfig.Runtime.LeaderElectedClusterControllerStart != nil {
+			if err := controlConfig.Runtime.LeaderElectedClusterControllerStart(ctx); err != nil {
+				panic(errors.Wrap(err, "failed to start leader elected cluster controllers"))
+			}
+		}
 		for _, controller := range config.LeaderControllers {
 			if err := controller(ctx, sc); err != nil {
 				panic(errors.Wrap(err, "leader controller"))
