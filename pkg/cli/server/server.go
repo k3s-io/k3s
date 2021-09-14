@@ -467,8 +467,8 @@ func validateNetworkConfiguration(serverConfig server.Config) error {
 		return errors.Wrap(err, "failed to validate cluster-dns")
 	}
 
-	if (serverConfig.ControlConfig.FlannelBackend != "none" || serverConfig.ControlConfig.DisableNPC == false) && (dualCluster || dualService) {
-		return errors.New("flannel CNI and network policy enforcement are not compatible with dual-stack operation; server must be restarted with --flannel-backend=none --disable-network-policy and an alternative CNI plugin deployed")
+	if (serverConfig.ControlConfig.DisableNPC == false) && (dualCluster || dualService) {
+		return errors.New("network policy enforcement is not compatible with dual-stack operation; server must be restarted with --disable-network-policy")
 	}
 	if dualDNS == true {
 		return errors.New("dual-stack cluster-dns is not supported")
