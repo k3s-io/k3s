@@ -1144,7 +1144,7 @@ github.com/xlab/treeprint
 go.etcd.io/bbolt
 # go.etcd.io/etcd v0.0.0-20191023171146-3cf2f69b5738
 go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes
-# go.etcd.io/etcd/api/v3 v3.5.0 => github.com/k3s-io/etcd/api/v3 v3.5.0-k3s1
+# go.etcd.io/etcd/api/v3 v3.5.0 => github.com/k3s-io/etcd/api/v3 v3.5.0-k3s2
 ## explicit
 go.etcd.io/etcd/api/v3/authpb
 go.etcd.io/etcd/api/v3/etcdserverpb
@@ -1164,7 +1164,7 @@ go.etcd.io/etcd/client/pkg/v3/transport
 go.etcd.io/etcd/client/pkg/v3/types
 # go.etcd.io/etcd/client/v2 v2.305.0
 go.etcd.io/etcd/client/v2
-# go.etcd.io/etcd/client/v3 v3.5.0 => github.com/k3s-io/etcd/client/v3 v3.5.0-k3s1
+# go.etcd.io/etcd/client/v3 v3.5.0 => github.com/k3s-io/etcd/client/v3 v3.5.0-k3s2
 ## explicit
 go.etcd.io/etcd/client/v3
 go.etcd.io/etcd/client/v3/concurrency
@@ -1172,7 +1172,7 @@ go.etcd.io/etcd/client/v3/credentials
 go.etcd.io/etcd/client/v3/internal/endpoint
 go.etcd.io/etcd/client/v3/internal/resolver
 go.etcd.io/etcd/client/v3/snapshot
-# go.etcd.io/etcd/etcdutl/v3 v3.5.0 => github.com/k3s-io/etcd/etcdutl/v3 v3.5.0-k3s1
+# go.etcd.io/etcd/etcdutl/v3 v3.5.0 => github.com/k3s-io/etcd/etcdutl/v3 v3.5.0-k3s2
 ## explicit
 go.etcd.io/etcd/etcdutl/v3/snapshot
 # go.etcd.io/etcd/pkg/v3 v3.5.0
@@ -1197,7 +1197,7 @@ go.etcd.io/etcd/raft/v3/confchange
 go.etcd.io/etcd/raft/v3/quorum
 go.etcd.io/etcd/raft/v3/raftpb
 go.etcd.io/etcd/raft/v3/tracker
-# go.etcd.io/etcd/server/v3 v3.5.0 => github.com/k3s-io/etcd/server/v3 v3.5.0-k3s1
+# go.etcd.io/etcd/server/v3 v3.5.0 => github.com/k3s-io/etcd/server/v3 v3.5.0-k3s2
 ## explicit
 go.etcd.io/etcd/server/v3/auth
 go.etcd.io/etcd/server/v3/config
@@ -3408,10 +3408,10 @@ sigs.k8s.io/yaml
 # github.com/opencontainers/runtime-spec => github.com/opencontainers/runtime-spec v1.0.3-0.20210316141917-a8c4a9ee0f6b
 # github.com/rancher/k3s/pkg/data => ./pkg/data
 # github.com/rancher/wrangler => github.com/rancher/wrangler v0.8.5
-# go.etcd.io/etcd/api/v3 => github.com/k3s-io/etcd/api/v3 v3.5.0-k3s1
-# go.etcd.io/etcd/client/v3 => github.com/k3s-io/etcd/client/v3 v3.5.0-k3s1
-# go.etcd.io/etcd/etcdutl/v3 => github.com/k3s-io/etcd/etcdutl/v3 v3.5.0-k3s1
-# go.etcd.io/etcd/server/v3 => github.com/k3s-io/etcd/server/v3 v3.5.0-k3s1
+# go.etcd.io/etcd/api/v3 => github.com/k3s-io/etcd/api/v3 v3.5.0-k3s2
+# go.etcd.io/etcd/client/v3 => github.com/k3s-io/etcd/client/v3 v3.5.0-k3s2
+# go.etcd.io/etcd/etcdutl/v3 => github.com/k3s-io/etcd/etcdutl/v3 v3.5.0-k3s2
+# go.etcd.io/etcd/server/v3 => github.com/k3s-io/etcd/server/v3 v3.5.0-k3s2
 # golang.org/x/crypto => golang.org/x/crypto v0.0.0-20210220033148-5ea612d1eb83
 # golang.org/x/net => golang.org/x/net v0.0.0-20210405180319-a5a99cb37ef4
 # golang.org/x/sys => golang.org/x/sys v0.0.0-20210616094352-59db8d763f22
