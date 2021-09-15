@@ -51,7 +51,7 @@ func startKubeProxy(ctx context.Context, cfg *daemonconfig.Agent) error {
 }
 
 func startKubelet(ctx context.Context, cfg *daemonconfig.Agent) error {
-  cgroupsCheck := cgroups.CheckCgroups()
+	cgroupsCheck := cgroups.CheckCgroups()
 	if cgroupsCheck.V2Evac {
 		// evacuate processes from cgroup / to /init
 		if err := cgrouputil.EvacuateCgroup2("init"); err != nil {
