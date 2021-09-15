@@ -329,7 +329,8 @@ func (e *ETCD) join(ctx context.Context, clientAccessInfo *clientaccess.Info) er
 	}
 
 	for _, member := range members.Members {
-		memberNodeName := strings.Split(member.Name, "-")[0]
+		lastHyphen := strings.LastIndex(member.Name, "-")
+		memberNodeName := member.Name[:lastHyphen]
 		if memberNodeName == e.config.ServerNodeName {
 			// make sure to remove the name file if a duplicate node name is used
 			nameFile := nameFile(e.config)
