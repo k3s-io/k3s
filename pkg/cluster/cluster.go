@@ -147,7 +147,7 @@ func (c *Cluster) startStorage(ctx context.Context) error {
 	// based on what the kine wrapper tells us about the datastore. Single-node datastores like sqlite don't require
 	// leader election, while basically all others (etcd, external database, etc) do since they allow multiple servers.
 	c.etcdConfig = etcdConfig
-	c.config.Datastore.Config = etcdConfig.TLSConfig
+	c.config.Datastore.BackendTLSConfig = etcdConfig.TLSConfig
 	c.config.Datastore.Endpoint = strings.Join(etcdConfig.Endpoints, ",")
 	c.config.NoLeaderElect = !etcdConfig.LeaderElect
 	return nil

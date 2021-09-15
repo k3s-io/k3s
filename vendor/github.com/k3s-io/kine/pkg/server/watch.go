@@ -6,13 +6,14 @@ import (
 	"sync/atomic"
 
 	"github.com/sirupsen/logrus"
-	"go.etcd.io/etcd/etcdserver/etcdserverpb"
-	"go.etcd.io/etcd/mvcc/mvccpb"
+	"go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/api/v3/mvccpb"
 )
 
-var (
-	watchID int64
-)
+var watchID int64
+
+// explicit interface check
+var _ etcdserverpb.WatchServer = (*KVServerBridge)(nil)
 
 func (s *KVServerBridge) Watch(ws etcdserverpb.Watch_WatchServer) error {
 	w := watcher{

@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/opencontainers/runc/libcontainer/system"
+	"github.com/opencontainers/runc/libcontainer/userns"
 	"github.com/pkg/errors"
 	"github.com/rancher/k3s/pkg/agent/templates"
 	util2 "github.com/rancher/k3s/pkg/agent/util"
@@ -42,7 +42,7 @@ func setupContainerdConfig(ctx context.Context, cfg *config.Node) error {
 		return err
 	}
 
-	isRunningInUserNS := system.RunningInUserNS()
+	isRunningInUserNS := userns.RunningInUserNS()
 	cgroupsCheck := cgroups.CheckCgroups()
 	// "/sys/fs/cgroup" is namespaced
 	cgroupfsWritable := unix.Access("/sys/fs/cgroup", unix.W_OK) == nil

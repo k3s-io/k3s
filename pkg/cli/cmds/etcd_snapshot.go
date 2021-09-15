@@ -77,6 +77,11 @@ var EtcdSnapshotFlags = []cli.Flag{
 		Usage:       "(db) S3 folder",
 		Destination: &ServerConfig.EtcdS3Folder,
 	},
+	&cli.BoolFlag{
+		Name:        "s3-insecure",
+		Usage:       "(db) Disables S3 over HTTPS",
+		Destination: &ServerConfig.EtcdS3Insecure,
+	},
 }
 
 func NewEtcdSnapshotCommand(action func(*cli.Context) error, subcommands []cli.Command) cli.Command {
@@ -122,7 +127,7 @@ func NewEtcdSnapshotSubcommands(delete, list, prune, save func(ctx *cli.Context)
 			Action:          prune,
 			Flags: append(EtcdSnapshotFlags, &cli.IntFlag{
 				Name:        "snapshot-retention",
-				Usage:       "(db) Number of snapshots to retain. Default: 5",
+				Usage:       "(db) Number of snapshots to retain.",
 				Destination: &ServerConfig.EtcdSnapshotRetention,
 				Value:       defaultSnapshotRentention,
 			}),

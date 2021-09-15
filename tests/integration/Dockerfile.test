@@ -1,0 +1,16 @@
+FROM golang:buster
+
+
+RUN apt update && \
+    apt install -y curl git lsof bash openssh-server gcc g++ make ca-certificates && \
+    curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+
+WORKDIR $GOPATH/src/github.com/rancher/k3s-io/k3s/
+
+COPY ./tests/testdata ./testdata
+COPY ./tests/integration/test-runner.sh .
+COPY ./dist/artifacts/k3s /usr/local/bin
+COPY ./dist/artifacts/k3s-integration-* ./tests/
+
+RUN go get -u github.com/onsi/gomega
+RUN go get -u github.com/onsi/ginkgo

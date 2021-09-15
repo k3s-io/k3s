@@ -10,9 +10,9 @@ import (
 
 	"github.com/rancher/k3s/pkg/clientaccess"
 	"github.com/rancher/k3s/pkg/daemons/config"
-	"github.com/rancher/k3s/pkg/util/tests"
+	testutil "github.com/rancher/k3s/tests/util"
 	"github.com/robfig/cron/v3"
-	etcd "go.etcd.io/etcd/clientv3"
+	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
 func generateTestConfig() *config.Control {
@@ -42,7 +42,7 @@ func generateTestHandler() http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {})
 }
 
-func TestETCD_IsInitialized(t *testing.T) {
+func Test_UnitETCD_IsInitialized(t *testing.T) {
 	type args struct {
 		ctx    context.Context
 		config *config.Control
@@ -62,13 +62,13 @@ func TestETCD_IsInitialized(t *testing.T) {
 				config: generateTestConfig(),
 			},
 			setup: func(cnf *config.Control) error {
-				if err := tests.GenerateDataDir(cnf); err != nil {
+				if err := testutil.GenerateDataDir(cnf); err != nil {
 					return err
 				}
 				return os.MkdirAll(walDir(cnf), 0700)
 			},
 			teardown: func(cnf *config.Control) error {
-				tests.CleanupDataDir(cnf)
+				testutil.CleanupDataDir(cnf)
 				return os.Remove(walDir(cnf))
 			},
 			wantErr: false,
@@ -81,7 +81,7 @@ func TestETCD_IsInitialized(t *testing.T) {
 				config: generateTestConfig(),
 			},
 			setup: func(cnf *config.Control) error {
-				if err := tests.GenerateDataDir(cnf); err != nil {
+				if err := testutil.GenerateDataDir(cnf); err != nil {
 					return err
 				}
 				// We don't care if removal fails to find the dir
@@ -89,7 +89,7 @@ func TestETCD_IsInitialized(t *testing.T) {
 				return nil
 			},
 			teardown: func(cnf *config.Control) error {
-				tests.CleanupDataDir(cnf)
+				testutil.CleanupDataDir(cnf)
 				return nil
 			},
 			wantErr: false,
@@ -117,7 +117,7 @@ func TestETCD_IsInitialized(t *testing.T) {
 	}
 }
 
-func TestETCD_Register(t *testing.T) {
+func Test_UnitETCD_Register(t *testing.T) {
 	type args struct {
 		ctx     context.Context
 		config  *config.Control
@@ -138,10 +138,10 @@ func TestETCD_Register(t *testing.T) {
 				handler: generateTestHandler(),
 			},
 			setup: func(cnf *config.Control) error {
-				return tests.GenerateRuntime(cnf)
+				return testutil.GenerateRuntime(cnf)
 			},
 			teardown: func(cnf *config.Control) error {
-				tests.CleanupDataDir(cnf)
+				testutil.CleanupDataDir(cnf)
 				return nil
 			},
 		},
@@ -153,7 +153,7 @@ func TestETCD_Register(t *testing.T) {
 				handler: generateTestHandler(),
 			},
 			setup: func(cnf *config.Control) error {
-				if err := tests.GenerateRuntime(cnf); err != nil {
+				if err := testutil.GenerateRuntime(cnf); err != nil {
 					return err
 				}
 				if err := os.MkdirAll(etcdDBDir(cnf), 0700); err != nil {
@@ -168,7 +168,7 @@ func TestETCD_Register(t *testing.T) {
 			teardown: func(cnf *config.Control) error {
 				tombstoneFile := filepath.Join(etcdDBDir(cnf), "tombstone")
 				os.Remove(tombstoneFile)
-				tests.CleanupDataDir(cnf)
+				testutil.CleanupDataDir(cnf)
 				return nil
 			},
 		},
@@ -191,9 +191,9 @@ func TestETCD_Register(t *testing.T) {
 	}
 }
 
-func TestETCD_Start(t *testing.T) {
+func Test_UnitETCD_Start(t *testing.T) {
 	type fields struct {
-		client  *etcd.Client
+		client  *clientv3.Client
 		config  *config.Control
 		name    string
 		runtime *config.ControlRuntime
@@ -225,10 +225,10 @@ func TestETCD_Start(t *testing.T) {
 			},
 			setup: func(cnf *config.Control) error {
 				cnf.EtcdDisableSnapshots = true
-				return tests.GenerateRuntime(cnf)
+				return testutil.GenerateRuntime(cnf)
 			},
 			teardown: func(cnf *config.Control) error {
-				tests.CleanupDataDir(cnf)
+				testutil.CleanupDataDir(cnf)
 				return nil
 			},
 		},
@@ -244,10 +244,10 @@ func TestETCD_Start(t *testing.T) {
 				clientAccessInfo: nil,
 			},
 			setup: func(cnf *config.Control) error {
-				return tests.GenerateRuntime(cnf)
+				return testutil.GenerateRuntime(cnf)
 			},
 			teardown: func(cnf *config.Control) error {
-				tests.CleanupDataDir(cnf)
+				testutil.CleanupDataDir(cnf)
 				return nil
 			},
 		},
@@ -263,13 +263,13 @@ func TestETCD_Start(t *testing.T) {
 				clientAccessInfo: nil,
 			},
 			setup: func(cnf *config.Control) error {
-				if err := tests.GenerateRuntime(cnf); err != nil {
+				if err := testutil.GenerateRuntime(cnf); err != nil {
 					return err
 				}
 				return os.MkdirAll(walDir(cnf), 0700)
 			},
 			teardown: func(cnf *config.Control) error {
-				tests.CleanupDataDir(cnf)
+				testutil.CleanupDataDir(cnf)
 				os.Remove(walDir(cnf))
 				return nil
 			},

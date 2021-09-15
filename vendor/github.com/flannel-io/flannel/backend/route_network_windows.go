@@ -19,10 +19,9 @@ import (
 	"sync"
 	"time"
 
-	"golang.org/x/net/context"
-
 	"github.com/flannel-io/flannel/pkg/routing"
 	"github.com/flannel-io/flannel/subnet"
+	"golang.org/x/net/context"
 	log "k8s.io/klog"
 )
 

@@ -30,7 +30,7 @@ func (c *ClientConn) LoadCertificate(s string, typ string, flag string) (err err
 	}
 
 	if msg["success"] != "yes" {
-		return fmt.Errorf("unsuccessful loadCert: %v", msg["success"])
+		return fmt.Errorf("unsuccessful loadCert: %v", msg["errmsg"])
 	}
 
 	return nil

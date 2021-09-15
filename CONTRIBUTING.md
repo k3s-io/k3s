@@ -1,6 +1,8 @@
-# Contributing to k3s #
+# Contributing to K3s #
 
-Thanks for taking the time to contribute to k3s!
+Thanks for taking the time to contribute to K3s!
+
+Please review and follow the [Code of Conduct](https://github.com/k3s-io/k3s/blob/master/CODE_OF_CONDUCT.md).
 
 Contributing is not limited to writing code and submitting a PR. Feel free to submit an [issue](https://github.com/k3s-io/k3s/issues/new/choose) or comment on an existing one to report a bug, provide feedback, or suggest a new feature. You can also join the discussion on [slack](https://slack.rancher.io/).
 
@@ -10,7 +12,7 @@ If you're interested in contributing documentation, please note the following:
 - Doc issues are raised in this repository, and they are tracked under the `kind/documentation` label.
 - Pull requests are submitted to the K3s documentation source in the [Rancher docs repository.](https://github.com/rancher/docs/) The K3s docs content is in the `content/k3s/` directory.
 
-## Pull request and git commit guidance
+If you're interested in contributing new tests, please see the `TESTING.md` in the tests directory.
 
 ### Opening PRs and organizing commits
 PRs should generally address only 1 issue at a time. If you need to fix two bugs, open two separate PRs. This will keep the scope of your pull requests smaller and allow them to be reviewed and merged more quickly.
@@ -22,6 +24,8 @@ When possible, fill out as much detail in the pull request template as is reason
 Generally, pull requests should consist of a single logical commit. However, if your PR is for a large feature, you may need a more logical breakdown of commits. This is fine as long as each commit is a single logical unit.
 
 The other exception to this single-commit rule is if your PR includes a change to a vendored dependency or generated code. To make reviewing easier, these changes should be segregated into their own commit. Note that as we migrate from using the vendor directory to a pure go module model for our projects, this will be less of an issue.
+
+For each commit, please ensure you sign off as mentioned below in the [Developer Certificate Of Origin section](#developer-certificate-of-origin).
 
 ### Writing good commit messages
 Git commit messages should explain the how and why of your change and be separated into a brief subject line followed by a more detailed body. When in doubt, follow this guide for good commit messages and you can’t go wrong: https://chris.beams.io/posts/git-commit/.

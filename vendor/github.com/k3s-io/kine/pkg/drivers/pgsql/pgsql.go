@@ -58,6 +58,7 @@ func New(ctx context.Context, dataSourceName string, tlsInfo tls.Config, connPoo
 	if err != nil {
 		return nil, err
 	}
+	dialect.GetSizeSQL = `SELECT pg_total_relation_size('kine')`
 	dialect.CompactSQL = `
 		DELETE FROM kine AS kv
 		USING	(

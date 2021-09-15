@@ -14,3 +14,7 @@ func OverlaySupported(root string) error {
 func FuseoverlayfsSupported(root string) error {
 	return errors.Wrapf(util2.ErrUnsupportedPlatform, "fuse-overlayfs is not supported")
 }
+
+func StargzSupported(root string) error {
+	return errors.Wrapf(util2.ErrUnsupportedPlatform, "stargz is not supported")
+}

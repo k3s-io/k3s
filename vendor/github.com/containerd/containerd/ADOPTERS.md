@@ -38,6 +38,10 @@ including the Balena project listed below.
 
 **_Kata Containers_** - The [Kata containers](https://katacontainers.io/) lightweight-virtualized container runtime project integrates with containerd via a custom v2 shim implementation that drives the Kata container runtime.
 
+**_D2iQ Konvoy_** - D2iQ Inc [Konvoy](https://d2iq.com/products/konvoy) product uses containerd as the container runtime for its Kubernetes distribution.
+
+**_Inclavare Containers_** - [Inclavare Containers](https://github.com/alibaba/inclavare-containers) is an innovation of container runtime with the novel approach for launching protected containers in hardware-assisted Trusted Execution Environment (TEE) technology, aka Enclave, which can prevent the untrusted entity, such as Cloud Service Provider (CSP), from accessing the sensitive and confidential assets in use.
+
 **_Other Projects_** - While the above list provides a cross-section of well known uses of containerd, the simplicity and clear API layer for containerd has inspired many smaller projects around providing simple container management platforms. Several examples of building higher layer functionality on top of the containerd base have come from various containerd community participants:
  - Michael Crosby's [boss](https://github.com/crosbymichael/boss) project,
  - Evan Hazlett's [stellar](https://github.com/ehazlett/stellar) project,

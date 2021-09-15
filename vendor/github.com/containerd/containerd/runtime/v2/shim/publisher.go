@@ -41,6 +41,7 @@ type item struct {
 	count int
 }
 
+// NewPublisher creates a new remote events publisher
 func NewPublisher(address string) (*RemoteEventsPublisher, error) {
 	client, err := ttrpcutil.NewClient(address)
 	if err != nil {
@@ -57,6 +58,7 @@ func NewPublisher(address string) (*RemoteEventsPublisher, error) {
 	return l, nil
 }
 
+// RemoteEventsPublisher forwards events to a ttrpc server
 type RemoteEventsPublisher struct {
 	client  *ttrpcutil.Client
 	closed  chan struct{}
@@ -64,10 +66,12 @@ type RemoteEventsPublisher struct {
 	requeue chan *item
 }
 
+// Done returns a channel which closes when done
 func (l *RemoteEventsPublisher) Done() <-chan struct{} {
 	return l.closed
 }
 
+// Close closes the remote connection and closes the done channel
 func (l *RemoteEventsPublisher) Close() (err error) {
 	err = l.client.Close()
 	l.closer.Do(func() {
@@ -100,6 +104,7 @@ func (l *RemoteEventsPublisher) queue(i *item) {
 	}()
 }
 
+// Publish publishes the event by forwarding it to the configured ttrpc server
 func (l *RemoteEventsPublisher) Publish(ctx context.Context, topic string, event events.Event) error {
 	ns, err := namespaces.NamespaceRequired(ctx)
 	if err != nil {

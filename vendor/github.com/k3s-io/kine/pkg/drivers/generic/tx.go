@@ -4,15 +4,19 @@ import (
 	"context"
 	"database/sql"
 
+	"github.com/k3s-io/kine/pkg/server"
 	"github.com/sirupsen/logrus"
 )
+
+// explicit interface check
+var _ server.Transaction = (*Tx)(nil)
 
 type Tx struct {
 	x *sql.Tx
 	d *Generic
 }
 
-func (d *Generic) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) {
+func (d *Generic) BeginTx(ctx context.Context, opts *sql.TxOptions) (server.Transaction, error) {
 	logrus.Tracef("TX BEGIN")
 	x, err := d.DB.BeginTx(ctx, opts)
 	if err != nil {

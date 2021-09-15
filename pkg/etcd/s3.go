@@ -53,7 +53,7 @@ func NewS3(ctx context.Context, config *config.Control) (*S3, error) {
 
 	opt := minio.Options{
 		Creds:        creds,
-		Secure:       true,
+		Secure:       !config.EtcdS3Insecure,
 		Region:       config.EtcdS3Region,
 		Transport:    tr,
 		BucketLookup: bucketLookupType(config.EtcdS3Endpoint),
@@ -127,7 +127,7 @@ func (s *S3) Download(ctx context.Context) error {
 	}
 	defer r.Close()
 
-	snapshotDir, err := snapshotDir(s.config)
+	snapshotDir, err := snapshotDir(s.config, true)
 	if err != nil {
 		return errors.Wrap(err, "failed to get the snapshot dir")
 	}

@@ -85,7 +85,7 @@ var AllowedDevices = []*devices.Device{
 	},
 	{
 		Path:     "/dev/null",
-		FileMode: 0666,
+		FileMode: 0o666,
 		Uid:      0,
 		Gid:      0,
 		Rule: devices.Rule{
@@ -98,7 +98,7 @@ var AllowedDevices = []*devices.Device{
 	},
 	{
 		Path:     "/dev/random",
-		FileMode: 0666,
+		FileMode: 0o666,
 		Uid:      0,
 		Gid:      0,
 		Rule: devices.Rule{
@@ -111,7 +111,7 @@ var AllowedDevices = []*devices.Device{
 	},
 	{
 		Path:     "/dev/full",
-		FileMode: 0666,
+		FileMode: 0o666,
 		Uid:      0,
 		Gid:      0,
 		Rule: devices.Rule{
@@ -124,7 +124,7 @@ var AllowedDevices = []*devices.Device{
 	},
 	{
 		Path:     "/dev/tty",
-		FileMode: 0666,
+		FileMode: 0o666,
 		Uid:      0,
 		Gid:      0,
 		Rule: devices.Rule{
@@ -137,7 +137,7 @@ var AllowedDevices = []*devices.Device{
 	},
 	{
 		Path:     "/dev/zero",
-		FileMode: 0666,
+		FileMode: 0o666,
 		Uid:      0,
 		Gid:      0,
 		Rule: devices.Rule{
@@ -150,7 +150,7 @@ var AllowedDevices = []*devices.Device{
 	},
 	{
 		Path:     "/dev/urandom",
-		FileMode: 0666,
+		FileMode: 0o666,
 		Uid:      0,
 		Gid:      0,
 		Rule: devices.Rule{
@@ -333,7 +333,10 @@ func CreateLibcontainerConfig(opts *CreateOpts) (*configs.Config, error) {
 
 func createLibcontainerMount(cwd string, m specs.Mount) (*configs.Mount, error) {
 	if !filepath.IsAbs(m.Destination) {
-		return nil, fmt.Errorf("mount destination %s not absolute", m.Destination)
+		// Relax validation for backward compatibility
+		// TODO (runc v1.x.x): change warning to an error
+		// return nil, fmt.Errorf("mount destination %s is not absolute", m.Destination)
+		logrus.Warnf("mount destination %s is not absolute. Support for non-absolute mount destinations will be removed in a future release.", m.Destination)
 	}
 	flags, pgflags, data, ext := parseMountOptions(m.Options)
 	source := m.Source
@@ -533,7 +536,7 @@ func CreateCgroupConfig(opts *CreateOpts, defaultDevs []*devices.Device) (*confi
 				if r.CPU.Shares != nil {
 					c.Resources.CpuShares = *r.CPU.Shares
 
-					//CpuWeight is used for cgroupv2 and should be converted
+					// CpuWeight is used for cgroupv2 and should be converted
 					c.Resources.CpuWeight = cgroups.ConvertCPUSharesToCgroupV2Value(c.Resources.CpuShares)
 				}
 				if r.CPU.Quota != nil {
@@ -691,7 +694,7 @@ next:
 	if spec.Linux != nil {
 		for _, d := range spec.Linux.Devices {
 			var uid, gid uint32
-			var filemode os.FileMode = 0666
+			var filemode os.FileMode = 0o666
 
 			if d.UID != nil {
 				uid = *d.UID

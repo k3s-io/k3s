@@ -19,10 +19,11 @@ import (
 	"github.com/pkg/errors"
 	certutil "github.com/rancher/dynamiclistener/cert"
 	"github.com/rancher/k3s/pkg/bootstrap"
+	"github.com/rancher/k3s/pkg/cli/cmds"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/nodepassword"
 	"github.com/rancher/k3s/pkg/version"
-	coreclient "github.com/rancher/wrangler-api/pkg/generated/controllers/core/v1"
+	coreclient "github.com/rancher/wrangler/pkg/generated/controllers/core/v1"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/json"
 )
@@ -31,7 +32,7 @@ const (
 	staticURL = "/static/"
 )
 
-func router(ctx context.Context, config *Config) http.Handler {
+func router(ctx context.Context, config *Config, cfg *cmds.Server) http.Handler {
 	serverConfig := &config.ControlConfig
 	nodeAuth := passwordBootstrap(ctx, config)
 
@@ -45,7 +46,8 @@ func router(ctx context.Context, config *Config) http.Handler {
 	authed.Path(prefix + "/client-" + version.Program + "-controller.crt").Handler(fileHandler(serverConfig.Runtime.ClientK3sControllerCert, serverConfig.Runtime.ClientK3sControllerKey))
 	authed.Path(prefix + "/client-ca.crt").Handler(fileHandler(serverConfig.Runtime.ClientCA))
 	authed.Path(prefix + "/server-ca.crt").Handler(fileHandler(serverConfig.Runtime.ServerCA))
-	authed.Path(prefix + "/config").Handler(configHandler(serverConfig))
+	authed.Path(prefix + "/config").Handler(configHandler(serverConfig, cfg))
+	authed.Path(prefix + "/readyz").Handler(readyzHandler(serverConfig))
 
 	nodeAuthed := mux.NewRouter()
 	nodeAuthed.Use(authMiddleware(serverConfig, "system:nodes"))
@@ -255,14 +257,34 @@ func fileHandler(fileName ...string) http.Handler {
 	})
 }
 
-func configHandler(server *config.Control) http.Handler {
+func configHandler(server *config.Control, cfg *cmds.Server) http.Handler {
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 		if req.TLS == nil {
 			resp.WriteHeader(http.StatusNotFound)
 			return
 		}
+		// Startup hooks may read and modify cmds.Server in a goroutine, but as these are copied into
+		// config.Control before the startup hooks are called, any modifications need to be sync'd back
+		// into the struct before it is sent to agents.
+		// At this time we don't sync all the fields, just those known to be touched by startup hooks.
+		server.DisableKubeProxy = cfg.DisableKubeProxy
 		resp.Header().Set("content-type", "application/json")
 		json.NewEncoder(resp).Encode(server)
+	})
+}
+
+func readyzHandler(server *config.Control) http.Handler {
+	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
+		code := http.StatusOK
+		data := []byte("ok")
+		if server.Runtime.Core == nil {
+			code = http.StatusInternalServerError
+			data = []byte("runtime core not ready")
+		}
+		resp.WriteHeader(code)
+		resp.Header().Set("Content-Type", "text/plain")
+		resp.Header().Set("Content-length", strconv.Itoa(len(data)))
+		resp.Write(data)
 	})
 }
 

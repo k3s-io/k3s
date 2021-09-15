@@ -35,7 +35,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/controller-manager/app"
 	app2 "k8s.io/kubernetes/cmd/kube-proxy/app"
 	kubeproxyconfig "k8s.io/kubernetes/pkg/proxy/apis/config"
 	utilsnet "k8s.io/utils/net"
@@ -97,7 +96,7 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 		return err
 	}
 
-	app.WaitForAPIServer(coreClient, 30*time.Second)
+	util.WaitForAPIServerReady(coreClient, 30*time.Second)
 
 	if !nodeConfig.NoFlannel {
 		if err := flannel.Run(ctx, nodeConfig, coreClient.CoreV1().Nodes()); err != nil {
@@ -139,7 +138,7 @@ func getConntrackConfig(nodeConfig *daemonconfig.Node) (*kubeproxyconfig.KubePro
 	}
 
 	cmd := app2.NewProxyCommand()
-	if err := cmd.ParseFlags(daemonconfig.GetArgsList(map[string]string{}, nodeConfig.AgentConfig.ExtraKubeProxyArgs)); err != nil {
+	if err := cmd.ParseFlags(daemonconfig.GetArgs(map[string]string{}, nodeConfig.AgentConfig.ExtraKubeProxyArgs)); err != nil {
 		return nil, err
 	}
 	maxPerCore, err := cmd.Flags().GetInt32("conntrack-max-per-core")
@@ -327,14 +326,22 @@ func updateAddressAnnotations(agentConfig *daemonconfig.Agent, nodeAnnotations m
 // start the agent before the tunnel is setup to allow kubelet to start first and start the pods
 func setupTunnelAndRunAgent(ctx context.Context, nodeConfig *daemonconfig.Node, cfg cmds.Agent, proxy proxy.Proxy) error {
 	var agentRan bool
+	// IsAPIServerLBEnabled is used as a shortcut for detecting RKE2, where the kubelet needs to
+	// be run earlier in order to manage static pods. This should probably instead query a
+	// flag on the executor or something.
 	if cfg.ETCDAgent {
-		// only in rke2 run the agent before the tunnel setup and check for that later in the function
+		// ETCDAgent is only set to true on servers that are started with --disable-apiserver.
+		// In this case, we may be running without an apiserver available in the cluster, and need
+		// to wait for one to register and post it's address into APIAddressCh so that we can update
+		// the LB proxy with its address.
 		if proxy.IsAPIServerLBEnabled() {
-			if err := agent.Agent(&nodeConfig.AgentConfig); err != nil {
+			// On RKE2, the agent needs to be started early to run the etcd static pod.
+			if err := agent.Agent(ctx, nodeConfig, proxy); err != nil {
 				return err
 			}
 			agentRan = true
 		}
+
 		select {
 		case address := <-cfg.APIAddressCh:
 			cfg.ServerURL = address
@@ -347,7 +354,9 @@ func setupTunnelAndRunAgent(ctx context.Context, nodeConfig *daemonconfig.Node, 
 			return ctx.Err()
 		}
 	} else if cfg.ClusterReset && proxy.IsAPIServerLBEnabled() {
-		if err := agent.Agent(&nodeConfig.AgentConfig); err != nil {
+		// If we're doing a cluster-reset on RKE2, the kubelet needs to be started early to clean
+		// up static pods.
+		if err := agent.Agent(ctx, nodeConfig, proxy); err != nil {
 			return err
 		}
 		agentRan = true
@@ -357,7 +366,7 @@ func setupTunnelAndRunAgent(ctx context.Context, nodeConfig *daemonconfig.Node, 
 		return err
 	}
 	if !agentRan {
-		return agent.Agent(&nodeConfig.AgentConfig)
+		return agent.Agent(ctx, nodeConfig, proxy)
 	}
 	return nil
 }

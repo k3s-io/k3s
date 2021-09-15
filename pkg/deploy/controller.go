@@ -212,8 +212,9 @@ func (w *watcher) deploy(path string, compareChecksum bool) error {
 		return err
 	}
 
-	// Emit event, Update Addon checksum and modtime only if apply was successful
+	// Emit event, Update Addon checksum only if apply was successful
 	w.recorder.Eventf(&addon, corev1.EventTypeNormal, "AppliedManifest", "Applied manifest at %q", path)
+	addon.Spec.Checksum = checksum
 	_, err = w.addons.Update(&addon)
 	return err
 }

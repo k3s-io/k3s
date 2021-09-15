@@ -25,6 +25,7 @@ import (
 	"github.com/containerd/containerd/oci"
 )
 
+// Command is the parent for all OCI related tools under 'oci'
 var Command = cli.Command{
 	Name:  "oci",
 	Usage: "OCI tools",

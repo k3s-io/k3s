@@ -13,6 +13,7 @@ import (
 	"github.com/erikdubbelboer/gspt"
 	"github.com/pkg/errors"
 	"github.com/rancher/k3s/pkg/agent"
+	"github.com/rancher/k3s/pkg/agent/loadbalancer"
 	"github.com/rancher/k3s/pkg/cli/cmds"
 	"github.com/rancher/k3s/pkg/clientaccess"
 	"github.com/rancher/k3s/pkg/datadir"
@@ -99,7 +100,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	serverConfig.ControlConfig.KubeConfigOutput = cfg.KubeConfigOutput
 	serverConfig.ControlConfig.KubeConfigMode = cfg.KubeConfigMode
 	serverConfig.Rootless = cfg.Rootless
-	serverConfig.ControlConfig.SANs = knownIPs(cfg.TLSSan)
+	serverConfig.ControlConfig.SANs = cfg.TLSSan
 	serverConfig.ControlConfig.BindAddress = cfg.BindAddress
 	serverConfig.ControlConfig.SupervisorPort = cfg.SupervisorPort
 	serverConfig.ControlConfig.HTTPSPort = cfg.HTTPSPort
@@ -110,9 +111,9 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	serverConfig.ControlConfig.ExtraSchedulerAPIArgs = cfg.ExtraSchedulerArgs
 	serverConfig.ControlConfig.ClusterDomain = cfg.ClusterDomain
 	serverConfig.ControlConfig.Datastore.Endpoint = cfg.DatastoreEndpoint
-	serverConfig.ControlConfig.Datastore.CAFile = cfg.DatastoreCAFile
-	serverConfig.ControlConfig.Datastore.CertFile = cfg.DatastoreCertFile
-	serverConfig.ControlConfig.Datastore.KeyFile = cfg.DatastoreKeyFile
+	serverConfig.ControlConfig.Datastore.BackendTLSConfig.CAFile = cfg.DatastoreCAFile
+	serverConfig.ControlConfig.Datastore.BackendTLSConfig.CertFile = cfg.DatastoreCertFile
+	serverConfig.ControlConfig.Datastore.BackendTLSConfig.KeyFile = cfg.DatastoreKeyFile
 	serverConfig.ControlConfig.AdvertiseIP = cfg.AdvertiseIP
 	serverConfig.ControlConfig.AdvertisePort = cfg.AdvertisePort
 	serverConfig.ControlConfig.FlannelBackend = cfg.FlannelBackend
@@ -144,6 +145,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		serverConfig.ControlConfig.EtcdS3BucketName = cfg.EtcdS3BucketName
 		serverConfig.ControlConfig.EtcdS3Region = cfg.EtcdS3Region
 		serverConfig.ControlConfig.EtcdS3Folder = cfg.EtcdS3Folder
+		serverConfig.ControlConfig.EtcdS3Insecure = cfg.EtcdS3Insecure
 	} else {
 		logrus.Info("ETCD snapshots are disabled")
 	}
@@ -160,6 +162,10 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		serverConfig.ControlConfig.DisableControllerManager = true
 		serverConfig.ControlConfig.DisableScheduler = true
 		serverConfig.ControlConfig.DisableCCM = true
+
+		// delete local loadbalancers state for apiserver and supervisor servers
+		loadbalancer.ResetLoadBalancer(filepath.Join(cfg.DataDir, "agent"), loadbalancer.SupervisorServiceName)
+		loadbalancer.ResetLoadBalancer(filepath.Join(cfg.DataDir, "agent"), loadbalancer.APIServerServiceName)
 	}
 
 	serverConfig.ControlConfig.ClusterReset = cfg.ClusterReset
@@ -208,6 +214,18 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	/// https://github.com/kubernetes/kubeadm/issues/1612#issuecomment-772583989
 	if serverConfig.ControlConfig.AdvertiseIP != "" {
 		serverConfig.ControlConfig.SANs = append(serverConfig.ControlConfig.SANs, serverConfig.ControlConfig.AdvertiseIP)
+	}
+
+	// Ensure that we add the localhost name/ip and node name/ip to the SAN list. This list is shared by the
+	// certs for the supervisor, kube-apiserver cert, and etcd. DNS entries for the in-cluster kubernetes
+	// service endpoint are added later when the certificates are created.
+	nodeName, nodeIPs, err := util.GetHostnameAndIPs(cmds.AgentConfig.NodeName, cmds.AgentConfig.NodeIP)
+	if err != nil {
+		return err
+	}
+	serverConfig.ControlConfig.SANs = append(serverConfig.ControlConfig.SANs, "127.0.0.1", "localhost", nodeName)
+	for _, ip := range nodeIPs {
+		serverConfig.ControlConfig.SANs = append(serverConfig.ControlConfig.SANs, ip.String())
 	}
 
 	// configure ClusterIPRanges
@@ -366,9 +384,11 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 
 	logrus.Info("Starting " + version.Program + " " + app.App.Version)
 
+	notifySocket := os.Getenv("NOTIFY_SOCKET")
+
 	ctx := signals.SetupSignalHandler(context.Background())
 
-	if err := server.StartServer(ctx, &serverConfig); err != nil {
+	if err := server.StartServer(ctx, &serverConfig, cfg); err != nil {
 		return err
 	}
 
@@ -382,7 +402,8 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		}
 
 		logrus.Info(version.Program + " is up and running")
-		if cfg.DisableAgent && os.Getenv("NOTIFY_SOCKET") != "" {
+		if (cfg.DisableAgent || cfg.DisableAPIServer) && notifySocket != "" {
+			os.Setenv("NOTIFY_SOCKET", notifySocket)
 			systemd.SdNotify(true, "READY=1\n")
 		}
 	}()
@@ -446,23 +467,14 @@ func validateNetworkConfiguration(serverConfig server.Config) error {
 		return errors.Wrap(err, "failed to validate cluster-dns")
 	}
 
-	if (serverConfig.ControlConfig.FlannelBackend != "none" || serverConfig.ControlConfig.DisableNPC == false) && (dualCluster || dualService) {
-		return errors.New("flannel CNI and network policy enforcement are not compatible with dual-stack operation; server must be restarted with --flannel-backend=none --disable-network-policy and an alternative CNI plugin deployed")
+	if (serverConfig.ControlConfig.DisableNPC == false) && (dualCluster || dualService) {
+		return errors.New("network policy enforcement is not compatible with dual-stack operation; server must be restarted with --disable-network-policy")
 	}
 	if dualDNS == true {
 		return errors.New("dual-stack cluster-dns is not supported")
 	}
 
 	return nil
-}
-
-func knownIPs(ips []string) []string {
-	ips = append(ips, "127.0.0.1")
-	ip, err := utilnet.ChooseHostInterface()
-	if err == nil {
-		ips = append(ips, ip.String())
-	}
-	return ips
 }
 
 func getArgValueFromList(searchArg string, argList []string) string {

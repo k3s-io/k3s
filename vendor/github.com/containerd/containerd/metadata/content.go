@@ -181,7 +181,7 @@ func (cs *contentStore) Walk(ctx context.Context, fn content.WalkFunc, fs ...str
 			if err := readInfo(&info, bkt.Bucket(k)); err != nil {
 				return err
 			}
-			if filter.Match(adaptContentInfo(info)) {
+			if filter.Match(content.AdaptInfo(info)) {
 				infos = append(infos, info)
 			}
 			return nil
@@ -574,10 +574,6 @@ func (nw *namespacedWriter) Commit(ctx context.Context, size int64, expected dig
 
 	var innerErr error
 
-	if expected != "" {
-		size = 0
-	}
-
 	if err := update(ctx, nw.db, func(tx *bolt.Tx) error {
 		dgst, err := nw.commit(ctx, tx, size, expected, opts...)
 		if err != nil {
@@ -712,7 +708,7 @@ func (cs *contentStore) checkAccess(ctx context.Context, dgst digest.Digest) err
 
 func validateInfo(info *content.Info) error {
 	for k, v := range info.Labels {
-		if err := labels.Validate(k, v); err == nil {
+		if err := labels.Validate(k, v); err != nil {
 			return errors.Wrapf(err, "info.Labels")
 		}
 	}

@@ -8,7 +8,7 @@
 # - k3s
 # - k3s.service
 # - k3s-rootless.service
-# - testutil/
+# - util/
 Vagrant.configure("2") do |config|
   config.vm.box = "fedora/34-cloud-base"
   memory = 2048

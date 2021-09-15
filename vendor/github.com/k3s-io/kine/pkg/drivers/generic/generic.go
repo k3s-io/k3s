@@ -3,6 +3,7 @@ package generic
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -12,12 +13,16 @@ import (
 
 	"github.com/Rican7/retry/backoff"
 	"github.com/Rican7/retry/strategy"
+	"github.com/k3s-io/kine/pkg/server"
 	"github.com/sirupsen/logrus"
 )
 
 const (
 	defaultMaxIdleConns = 2 // copied from database/sql
 )
+
+// explicit interface check
+var _ server.Dialect = (*Generic)(nil)
 
 var (
 	columns = "kv.id AS theid, kv.name, kv.created, kv.deleted, kv.create_revision, kv.prev_revision, kv.lease, kv.value, kv.old_value"
@@ -92,6 +97,7 @@ type Generic struct {
 	InsertSQL             string
 	FillSQL               string
 	InsertLastInsertIDSQL string
+	GetSizeSQL            string
 	Retry                 ErrRetry
 	TranslateErr          TranslateErr
 }
@@ -392,4 +398,16 @@ func (d *Generic) Insert(ctx context.Context, key string, create, delete bool, c
 	row := d.queryRow(ctx, d.InsertSQL, key, cVal, dVal, createRevision, previousRevision, ttl, value, prevValue)
 	err = row.Scan(&id)
 	return id, err
+}
+
+func (d *Generic) GetSize(ctx context.Context) (int64, error) {
+	if d.GetSizeSQL == "" {
+		return 0, errors.New("driver does not support size reporting")
+	}
+	var size int64
+	row := d.queryRow(ctx, d.GetSizeSQL)
+	if err := row.Scan(&size); err != nil {
+		return 0, err
+	}
+	return size, nil
 }

@@ -18,6 +18,7 @@ package tasks
 
 import (
 	gocontext "context"
+	"net/url"
 	"time"
 
 	"github.com/containerd/console"
@@ -67,6 +68,12 @@ func NewTask(ctx gocontext.Context, client *containerd.Client, container contain
 		ioCreator = cio.NewCreator(append([]cio.Opt{cio.WithStreams(con, con, nil), cio.WithTerminal}, ioOpts...)...)
 	} else if nullIO {
 		ioCreator = cio.NullIO
+	} else if logURI != "" {
+		u, err := url.Parse(logURI)
+		if err != nil {
+			return nil, err
+		}
+		ioCreator = cio.LogURI(u)
 	} else {
 		ioCreator = cio.NewCreator(append([]cio.Opt{cio.WithStdio}, ioOpts...)...)
 	}

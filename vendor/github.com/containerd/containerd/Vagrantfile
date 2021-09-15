@@ -17,7 +17,7 @@
 
 # Vagrantfile for cgroup2 and SELinux
 Vagrant.configure("2") do |config|
-  config.vm.box = "fedora/32-cloud-base"
+  config.vm.box = "fedora/34-cloud-base"
   memory = 4096
   cpus = 2
   config.vm.provider :virtualbox do |v|
@@ -77,7 +77,7 @@ Vagrant.configure("2") do |config|
   config.vm.provision "install-golang", type: "shell", run: "once" do |sh|
     sh.upload_path = "/tmp/vagrant-install-golang"
     sh.env = {
-        'GO_VERSION': ENV['GO_VERSION'] || "1.15.8",
+        'GO_VERSION': ENV['GO_VERSION'] || "1.16.7",
     }
     sh.inline = <<~SHELL
         #!/usr/bin/env bash
@@ -85,7 +85,6 @@ Vagrant.configure("2") do |config|
         curl -fsSL "https://dl.google.com/go/go${GO_VERSION}.linux-amd64.tar.gz" | tar Cxz /usr/local
         cat >> /etc/environment <<EOF
 PATH=/usr/local/go/bin:$PATH
-GO111MODULE=off
 EOF
         source /etc/environment
         cat >> /etc/profile.d/sh.local <<EOF
@@ -174,6 +173,18 @@ EOF
     SHELL
   end
 
+  config.vm.provision "install-gotestsum", type: "shell",  run: "once" do |sh|
+      sh.upload_path = "/tmp/vagrant-install-gotestsum"
+      sh.inline = <<~SHELL
+        #!/usr/bin/env bash
+        source /etc/environment
+        source /etc/profile.d/sh.local
+        set -eux -o pipefail
+        ${GOPATH}/src/github.com/containerd/containerd/script/setup/install-gotestsum
+        sudo cp ${GOPATH}/bin/gotestsum /usr/local/bin/
+      SHELL
+  end
+
   # SELinux is Enforcing by default.
   # To set SELinux as Disabled on a VM that has already been provisioned:
   #   SELINUX=Disabled vagrant up --provision-with=selinux
@@ -197,6 +208,8 @@ EOF
     sh.upload_path = "/tmp/test-integration"
     sh.env = {
         'RUNC_FLAVOR': ENV['RUNC_FLAVOR'] || "runc",
+        'GOTEST': ENV['GOTEST'] || "go test",
+        'GOTESTSUM_JUNITFILE': ENV['GOTESTSUM_JUNITFILE'],
     }
     sh.inline = <<~SHELL
         #!/usr/bin/env bash
@@ -205,7 +218,7 @@ EOF
         set -eux -o pipefail
         rm -rf /var/lib/containerd-test /run/containerd-test
         cd ${GOPATH}/src/github.com/containerd/containerd
-        make integration EXTRA_TESTFLAGS="-no-criu -test.v" TEST_RUNTIME=io.containerd.runc.v2 RUNC_FLAVOR=$RUNC_FLAVOR
+        make integration EXTRA_TESTFLAGS="-timeout 15m -no-criu -test.v" TEST_RUNTIME=io.containerd.runc.v2 RUNC_FLAVOR=$RUNC_FLAVOR
     SHELL
   end
 
@@ -215,7 +228,8 @@ EOF
   config.vm.provision "test-cri", type: "shell", run: "never" do |sh|
     sh.upload_path = "/tmp/test-cri"
     sh.env = {
-        'CRITEST_ARGS': ENV['CRITEST_ARGS'],
+        'GOTEST': ENV['GOTEST'] || "go test",
+        'REPORT_DIR': ENV['REPORT_DIR'],
     }
     sh.inline = <<~SHELL
         #!/usr/bin/env bash
@@ -239,7 +253,7 @@ EOF
         fi
         trap cleanup EXIT
         ctr version
-        critest --parallel=$(nproc) ${CRITEST_ARGS}
+        critest --parallel=$(nproc) --report-dir="${REPORT_DIR}" --ginkgo.skip='HostIpc is true'
     SHELL
   end
 

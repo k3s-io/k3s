@@ -99,11 +99,6 @@ const (
 	// to enable the high availability ports on the standard internal load balancer.
 	ServiceAnnotationLoadBalancerEnableHighAvailabilityPorts = "service.beta.kubernetes.io/azure-load-balancer-enable-high-availability-ports"
 
-	// ServiceAnnotationLoadBalancerDisableTCPReset is the annotation used on the service
-	// to set enableTcpReset to false in load balancer rule. This only works for Azure standard load balancer backed service.
-	// TODO(feiskyer): disable-tcp-reset annotations has been depracated since v1.18, it would removed on v1.20.
-	ServiceAnnotationLoadBalancerDisableTCPReset = "service.beta.kubernetes.io/azure-load-balancer-disable-tcp-reset"
-
 	// ServiceAnnotationLoadBalancerHealthProbeProtocol determines the network protocol that the load balancer health probe use.
 	// If not set, the local service would use the HTTP and the cluster service would use the TCP by default.
 	ServiceAnnotationLoadBalancerHealthProbeProtocol = "service.beta.kubernetes.io/azure-load-balancer-health-probe-protocol"
@@ -1258,13 +1253,6 @@ func (az *Cloud) reconcileLoadBalancer(clusterName string, service *v1.Service, 
 			// construct FrontendIPConfigurationPropertiesFormat
 			var fipConfigurationProperties *network.FrontendIPConfigurationPropertiesFormat
 			if isInternal {
-				// azure does not support ILB for IPv6 yet.
-				// TODO: remove this check when ILB supports IPv6 *and* the SDK
-				// have been rev'ed to 2019* version
-				if utilnet.IsIPv6String(service.Spec.ClusterIP) {
-					return nil, fmt.Errorf("ensure(%s): lb(%s) - internal load balancers does not support IPv6", serviceName, lbName)
-				}
-
 				subnetName := subnet(service)
 				if subnetName == nil {
 					subnetName = &az.SubnetName
@@ -1280,6 +1268,10 @@ func (az *Cloud) reconcileLoadBalancer(clusterName string, service *v1.Service, 
 
 				configProperties := network.FrontendIPConfigurationPropertiesFormat{
 					Subnet: &subnet,
+				}
+
+				if utilnet.IsIPv6String(service.Spec.ClusterIP) {
+					configProperties.PrivateIPAddressVersion = network.IPv6
 				}
 
 				loadBalancerIP := service.Spec.LoadBalancerIP
@@ -1627,9 +1619,6 @@ func (az *Cloud) reconcileLoadBalancerRule(
 	var enableTCPReset *bool
 	if az.useStandardLoadBalancer() {
 		enableTCPReset = to.BoolPtr(true)
-		if _, ok := service.Annotations[ServiceAnnotationLoadBalancerDisableTCPReset]; ok {
-			klog.Warning("annotation service.beta.kubernetes.io/azure-load-balancer-disable-tcp-reset has been removed as of Kubernetes 1.20. TCP Resets are always enabled on Standard SKU load balancers.")
-		}
 	}
 
 	var expectedProbes []network.Probe

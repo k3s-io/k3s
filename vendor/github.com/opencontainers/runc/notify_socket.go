@@ -68,7 +68,7 @@ func (s *notifySocket) bindSocket() error {
 		return err
 	}
 
-	err = os.Chmod(s.socketPath, 0777)
+	err = os.Chmod(s.socketPath, 0o777)
 	if err != nil {
 		socket.Close()
 		return err
@@ -79,7 +79,7 @@ func (s *notifySocket) bindSocket() error {
 }
 
 func (s *notifySocket) setupSocketDirectory() error {
-	return os.Mkdir(path.Dir(s.socketPath), 0755)
+	return os.Mkdir(path.Dir(s.socketPath), 0o755)
 }
 
 func notifySocketStart(context *cli.Context, notifySocketHost, id string) (*notifySocket, error) {

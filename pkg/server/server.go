@@ -29,7 +29,7 @@ import (
 	"github.com/rancher/k3s/pkg/static"
 	"github.com/rancher/k3s/pkg/util"
 	"github.com/rancher/k3s/pkg/version"
-	v1 "github.com/rancher/wrangler-api/pkg/generated/controllers/core/v1"
+	v1 "github.com/rancher/wrangler/pkg/generated/controllers/core/v1"
 	"github.com/rancher/wrangler/pkg/leader"
 	"github.com/rancher/wrangler/pkg/resolvehome"
 	"github.com/sirupsen/logrus"
@@ -49,7 +49,7 @@ func ResolveDataDir(dataDir string) (string, error) {
 	return filepath.Join(dataDir, "server"), err
 }
 
-func StartServer(ctx context.Context, config *Config) error {
+func StartServer(ctx context.Context, config *Config, cfg *cmds.Server) error {
 	if err := setupDataDirAndChdir(&config.ControlConfig); err != nil {
 		return err
 	}
@@ -62,27 +62,26 @@ func StartServer(ctx context.Context, config *Config) error {
 		return errors.Wrap(err, "starting kubernetes")
 	}
 
-	config.ControlConfig.Runtime.Handler = router(ctx, config)
+	wg := &sync.WaitGroup{}
+	wg.Add(len(config.StartupHooks))
 
-	if config.ControlConfig.DisableAPIServer {
-		go setETCDLabelsAndAnnotations(ctx, config)
-	} else {
-		go startOnAPIServerReady(ctx, config)
-	}
-
-	config.StartupHooksWg = &sync.WaitGroup{}
-	config.StartupHooksWg.Add(len(config.StartupHooks))
+	config.ControlConfig.Runtime.Handler = router(ctx, config, cfg)
 	shArgs := cmds.StartupHookArgs{
-		Wg:              config.StartupHooksWg,
 		APIServerReady:  config.ControlConfig.Runtime.APIServerReady,
 		KubeConfigAdmin: config.ControlConfig.Runtime.KubeConfigAdmin,
 		Skips:           config.ControlConfig.Skips,
 		Disables:        config.ControlConfig.Disables,
 	}
 	for _, hook := range config.StartupHooks {
-		if err := hook(ctx, shArgs); err != nil {
+		if err := hook(ctx, wg, shArgs); err != nil {
 			return errors.Wrap(err, "startup hook")
 		}
+	}
+
+	if config.ControlConfig.DisableAPIServer {
+		go setETCDLabelsAndAnnotations(ctx, config)
+	} else {
+		go startOnAPIServerReady(ctx, wg, config)
 	}
 
 	ip := net2.ParseIP(config.ControlConfig.BindAddress)
@@ -102,28 +101,28 @@ func StartServer(ctx context.Context, config *Config) error {
 	return writeKubeConfig(config.ControlConfig.Runtime.ServerCA, config)
 }
 
-func startOnAPIServerReady(ctx context.Context, config *Config) {
+func startOnAPIServerReady(ctx context.Context, wg *sync.WaitGroup, config *Config) {
 	select {
 	case <-ctx.Done():
 		return
 	case <-config.ControlConfig.Runtime.APIServerReady:
-		if err := runControllers(ctx, config); err != nil {
+		if err := runControllers(ctx, wg, config); err != nil {
 			logrus.Fatalf("failed to start controllers: %v", err)
 		}
 	}
 }
 
-func runControllers(ctx context.Context, config *Config) error {
+func runControllers(ctx context.Context, wg *sync.WaitGroup, config *Config) error {
 	controlConfig := &config.ControlConfig
 
 	sc, err := NewContext(ctx, controlConfig.Runtime.KubeConfigAdmin)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to create new server context")
 	}
 
-	config.StartupHooksWg.Wait()
+	wg.Wait()
 	if err := stageFiles(ctx, sc, controlConfig); err != nil {
-		return err
+		return errors.Wrap(err, "failed to stage files")
 	}
 
 	// run migration before we set controlConfig.Runtime.Core
@@ -131,29 +130,34 @@ func runControllers(ctx context.Context, config *Config) error {
 		sc.Core.Core().V1().Secret(),
 		sc.Core.Core().V1().Node(),
 		controlConfig.Runtime.NodePasswdFile); err != nil {
-		logrus.Warn(errors.Wrapf(err, "error migrating node-password file"))
+		logrus.Warn(errors.Wrap(err, "error migrating node-password file"))
 	}
 	controlConfig.Runtime.Core = sc.Core
 
 	if controlConfig.Runtime.ClusterControllerStart != nil {
 		if err := controlConfig.Runtime.ClusterControllerStart(ctx); err != nil {
-			return errors.Wrapf(err, "starting cluster controllers")
+			return errors.Wrap(err, "failed to start cluster controllers")
 		}
 	}
 
 	for _, controller := range config.Controllers {
 		if err := controller(ctx, sc); err != nil {
-			return errors.Wrap(err, "controller")
+			return errors.Wrapf(err, "failed to start custom controller %s", util.GetFunctionName(controller))
 		}
 	}
 
 	if err := sc.Start(ctx); err != nil {
-		return err
+		return errors.Wrap(err, "failed to start wranger controllers")
 	}
 
 	start := func(ctx context.Context) {
 		if err := coreControllers(ctx, sc, config); err != nil {
 			panic(err)
+		}
+		if controlConfig.Runtime.LeaderElectedClusterControllerStart != nil {
+			if err := controlConfig.Runtime.LeaderElectedClusterControllerStart(ctx); err != nil {
+				panic(errors.Wrap(err, "failed to start leader elected cluster controllers"))
+			}
 		}
 		for _, controller := range config.LeaderControllers {
 			if err := controller(ctx, sc); err != nil {
@@ -173,7 +177,9 @@ func runControllers(ctx context.Context, config *Config) error {
 		go func() {
 			start(ctx)
 			<-ctx.Done()
-			logrus.Fatal("controllers exited")
+			if err := ctx.Err(); err != nil && !errors.Is(err, context.Canceled) {
+				logrus.Fatalf("controllers exited: %v", err)
+			}
 		}()
 	} else {
 		go leader.RunOrDie(ctx, "", version.Program, sc.K8s, start)

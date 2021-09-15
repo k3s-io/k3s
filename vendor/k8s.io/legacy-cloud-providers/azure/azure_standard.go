@@ -381,7 +381,7 @@ func (az *Cloud) serviceOwnsFrontendIP(fip network.FrontendIPConfiguration, serv
 			return false, isPrimaryService, nil
 		}
 
-		return false, isPrimaryService, fmt.Errorf("serviceOwnsFrontendIP: wrong parameters")
+		return false, isPrimaryService, nil
 	}
 
 	// for internal secondary service the private IP address on the frontend IP config should be checked
@@ -1034,6 +1034,11 @@ func (as *availabilitySet) EnsureBackendPoolDeleted(service *v1.Service, backend
 }
 
 func getAvailabilitySetNameByID(asID string) (string, error) {
+	// for standalone VM
+	if asID == "" {
+		return "", nil
+	}
+
 	matches := vmasIDRE.FindStringSubmatch(asID)
 	if len(matches) != 2 {
 		return "", fmt.Errorf("getAvailabilitySetNameByID: failed to parse the VMAS ID %s", asID)

@@ -120,7 +120,7 @@ func kubeletArgs(cfg *config.Agent) map[string]string {
 
 	if ImageCredProvAvailable(cfg) {
 		logrus.Infof("Kubelet image credential provider bin dir and configuration file found.")
-		argsMap["feature-gates"] = addFeatureGate(argsMap["feature-gates"], "KubeletCredentialProviders=true")
+		argsMap["feature-gates"] = util.AddFeatureGate(argsMap["feature-gates"], "KubeletCredentialProviders=true")
 		argsMap["image-credential-provider-bin-dir"] = cfg.ImageCredProvBinDir
 		argsMap["image-credential-provider-config"] = cfg.ImageCredProvConfig
 	}
@@ -133,12 +133,15 @@ func kubeletArgs(cfg *config.Agent) map[string]string {
 
 func waitForManagementIp(networkName string) string {
 	for range time.Tick(time.Second * 5) {
-		network, err := hcsshim.GetHNSEndpointByName(networkName)
+		network, err := hcsshim.GetHNSNetworkByName(networkName)
 		if err != nil {
-			logrus.WithError(err).Warning("can't find HNS endpoint for network, retrying", networkName)
+			logrus.WithError(err).Warning("can't find HNS network, retrying", networkName)
 			continue
 		}
-		return network.IPAddress.String()
+		if network.ManagementIP == "" {
+			continue
+		}
+		return network.ManagementIP
 	}
 	return ""
 }

@@ -18,6 +18,7 @@ package images
 
 import (
 	gocontext "context"
+	"net/http/httptrace"
 	"os"
 	"sync"
 	"text/tabwriter"
@@ -63,6 +64,9 @@ var pushCommand = cli.Command{
 		Name:  "platform",
 		Usage: "push content from a specific platform",
 		Value: &cli.StringSlice{},
+	}, cli.IntFlag{
+		Name:  "max-concurrent-uploaded-layers",
+		Usage: "Set the max concurrent uploaded layers for each push",
 	}),
 	Action: func(context *cli.Context) error {
 		var (
@@ -119,6 +123,9 @@ var pushCommand = cli.Command{
 			}
 		}
 
+		if context.Bool("http-trace") {
+			ctx = httptrace.WithClientTrace(ctx, commands.NewDebugClientTrace(ctx))
+		}
 		resolver, err := commands.GetResolver(ctx, context)
 		if err != nil {
 			return err
@@ -140,10 +147,17 @@ var pushCommand = cli.Command{
 				return nil, nil
 			})
 
-			return client.Push(ctx, ref, desc,
+			ropts := []containerd.RemoteOpt{
 				containerd.WithResolver(resolver),
 				containerd.WithImageHandler(jobHandler),
-			)
+			}
+
+			if context.IsSet("max-concurrent-uploaded-layers") {
+				mcu := context.Int("max-concurrent-uploaded-layers")
+				ropts = append(ropts, containerd.WithMaxConcurrentUploadedLayers(mcu))
+			}
+
+			return client.Push(ctx, ref, desc, ropts...)
 		})
 
 		// don't show progress if debug mode is set

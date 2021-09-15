@@ -459,12 +459,24 @@ setup_selinux() {
         rpm_site="rpm-testing.rancher.io"
     fi
 
-    policy_hint="please install:
-    yum install -y container-selinux selinux-policy-base
-    yum install -y https://${rpm_site}/k3s/${rpm_channel}/common/centos/7/noarch/k3s-selinux-0.2-1.el7_8.noarch.rpm
+    [ -r /etc/os-release ] && . /etc/os-release
+    if [ "${ID_LIKE:-}" = suse ]; then
+        policy_hint="k3s with SELinux is currently not supported on SUSE/openSUSE systems.
+    Please disable SELinux before installing k3s.
 "
+    else
+        maj_ver=$(echo "$VERSION_ID" | sed -E -e "s/^([0-9]+)\.?[0-9]*$/\1/")
+        if [ "${maj_ver:-7}" != 7 ]; then
+            maj_ver=8
+        fi
+        policy_hint="please install:
+    yum install -y container-selinux selinux-policy-base
+    yum install -y https://${rpm_site}/k3s/${rpm_channel}/common/centos/${maj_ver}/noarch/k3s-selinux-0.3-0.el${maj_ver}.noarch.rpm
+"
+    fi
+
     policy_error=fatal
-    if [ "$INSTALL_K3S_SELINUX_WARN" = true ] || grep -q 'ID=flatcar' /etc/os-release; then
+    if [ "$INSTALL_K3S_SELINUX_WARN" = true ] || [ "${ID_LIKE:-}" = coreos ]; then
         policy_error=warn
     fi
 
@@ -488,8 +500,7 @@ setup_selinux() {
 # --- if on an el7/el8 system, install k3s-selinux
 install_selinux_rpm() {
     if [ -r /etc/redhat-release ] || [ -r /etc/centos-release ] || [ -r /etc/oracle-release ]; then
-        dist_version="$(. /etc/os-release && echo "$VERSION_ID")"
-        maj_ver=$(echo "$dist_version" | sed -E -e "s/^([0-9]+)\.?[0-9]*$/\1/")
+        maj_ver=$(echo "$VERSION_ID" | sed -E -e "s/^([0-9]+)\.?[0-9]*$/\1/")
         set +o noglob
         $SUDO rm -f /etc/yum.repos.d/rancher-k3s-common*.repo
         set -o noglob
@@ -617,7 +628,11 @@ getshims() {
 killtree $({ set +x; } 2>/dev/null; getshims; set -x)
 
 do_unmount_and_remove() {
-    awk -v path="$1" '$2 ~ ("^" path) { print $2 }' /proc/self/mounts | sort -r | xargs -r -t -n 1 sh -c 'umount "$0" && rm -rf "$0"'
+    set +x
+    while read -r _ path _; do
+        case "$path" in $1*) echo "$path" ;; esac
+    done < /proc/self/mounts | sort -r | xargs -r -t -n 1 sh -c 'umount "$0" && rm -rf "$0"'
+    set -x
 }
 
 do_unmount_and_remove '/run/k3s'
@@ -636,6 +651,7 @@ ip link show 2>/dev/null | grep 'master cni0' | while read ignore iface ignore; 
 done
 ip link delete cni0
 ip link delete flannel.1
+ip link delete flannel-v6.1
 rm -rf /var/lib/cni/
 iptables-save | grep -v KUBE- | grep -v CNI- | iptables-restore
 EOF
@@ -712,6 +728,7 @@ create_env_file() {
     $SUDO touch ${FILE_K3S_ENV}
     $SUDO chmod 0600 ${FILE_K3S_ENV}
     env | grep '^K3S_' | $SUDO tee ${FILE_K3S_ENV} >/dev/null
+    env | grep '^CONTAINERD_' | $SUDO tee -a ${FILE_K3S_ENV} >/dev/null
     env | grep -Ei '^(NO|HTTP|HTTPS)_PROXY' | $SUDO tee -a ${FILE_K3S_ENV} >/dev/null
 }
 
@@ -836,6 +853,11 @@ openrc_start() {
 
 # --- startup systemd or openrc service ---
 service_enable_and_start() {
+    if [ -f "/proc/cgroups" ] && [ "$(grep memory /proc/cgroups | while read -r n n n enabled; do echo $enabled; done)" -eq 0 ];
+    then
+        info 'Failed to find memory cgroup, you may need to add "cgroup_memory=1 cgroup_enable=memory" to your linux cmdline (/boot/cmdline.txt on a Raspberry Pi)'
+    fi
+
     [ "${INSTALL_K3S_SKIP_ENABLE}" = true ] && return
 
     [ "${HAS_SYSTEMD}" = true ] && systemd_enable

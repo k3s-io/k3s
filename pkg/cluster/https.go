@@ -3,6 +3,7 @@ package cluster
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"log"
 	"net"
 	"net/http"
@@ -17,7 +18,7 @@ import (
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/etcd"
 	"github.com/rancher/k3s/pkg/version"
-	"github.com/rancher/wrangler-api/pkg/generated/controllers/core"
+	"github.com/rancher/wrangler/pkg/generated/controllers/core"
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -45,7 +46,7 @@ func (c *Cluster) newListener(ctx context.Context) (net.Listener, http.Handler, 
 	return dynamiclistener.NewListener(tcp, storage, cert, key, dynamiclistener.Config{
 		ExpirationDaysCheck: config.CertificateRenewDays,
 		Organization:        []string{version.Program},
-		SANs:                append(c.config.SANs, "localhost", "kubernetes", "kubernetes.default", "kubernetes.default.svc", "kubernetes.default.svc."+c.config.ClusterDomain),
+		SANs:                append(c.config.SANs, "kubernetes", "kubernetes.default", "kubernetes.default.svc", "kubernetes.default.svc."+c.config.ClusterDomain),
 		CN:                  version.Program,
 		TLSConfig: &tls.Config{
 			ClientAuth:   tls.RequestClientCert,
@@ -85,7 +86,9 @@ func (c *Cluster) initClusterAndHTTPS(ctx context.Context) error {
 	// Start the supervisor http server on the tls listener
 	go func() {
 		err := server.Serve(listener)
-		logrus.Fatalf("server stopped: %v", err)
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			logrus.Fatalf("server stopped: %v", err)
+		}
 	}()
 
 	// Shutdown the http server when the context is closed

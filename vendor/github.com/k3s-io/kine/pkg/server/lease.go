@@ -4,8 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	"go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/api/v3/etcdserverpb"
 )
+
+// explicit interface check
+var _ etcdserverpb.LeaseServer = (*KVServerBridge)(nil)
 
 func (s *KVServerBridge) LeaseGrant(ctx context.Context, req *etcdserverpb.LeaseGrantRequest) (*etcdserverpb.LeaseGrantResponse, error) {
 	return &etcdserverpb.LeaseGrantResponse{

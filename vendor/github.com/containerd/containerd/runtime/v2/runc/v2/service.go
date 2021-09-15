@@ -41,11 +41,11 @@ import (
 	oomv2 "github.com/containerd/containerd/pkg/oom/v2"
 	"github.com/containerd/containerd/pkg/process"
 	"github.com/containerd/containerd/pkg/stdio"
+	"github.com/containerd/containerd/pkg/userns"
 	"github.com/containerd/containerd/runtime/v2/runc"
 	"github.com/containerd/containerd/runtime/v2/runc/options"
 	"github.com/containerd/containerd/runtime/v2/shim"
 	taskAPI "github.com/containerd/containerd/runtime/v2/task"
-	"github.com/containerd/containerd/sys"
 	"github.com/containerd/containerd/sys/reaper"
 	runcC "github.com/containerd/go-runc"
 	"github.com/containerd/typeurl"
@@ -171,12 +171,12 @@ func readSpec() (*spec, error) {
 	return &s, nil
 }
 
-func (s *service) StartShim(ctx context.Context, id, containerdBinary, containerdAddress, containerdTTRPCAddress string) (_ string, retErr error) {
-	cmd, err := newCommand(ctx, id, containerdBinary, containerdAddress, containerdTTRPCAddress)
+func (s *service) StartShim(ctx context.Context, opts shim.StartOpts) (_ string, retErr error) {
+	cmd, err := newCommand(ctx, opts.ID, opts.ContainerdBinary, opts.Address, opts.TTRPCAddress)
 	if err != nil {
 		return "", err
 	}
-	grouping := id
+	grouping := opts.ID
 	spec, err := readSpec()
 	if err != nil {
 		return "", err
@@ -187,7 +187,7 @@ func (s *service) StartShim(ctx context.Context, id, containerdBinary, container
 			break
 		}
 	}
-	address, err := shim.SocketAddress(ctx, containerdAddress, grouping)
+	address, err := shim.SocketAddress(ctx, opts.Address, grouping)
 	if err != nil {
 		return "", err
 	}
@@ -220,6 +220,12 @@ func (s *service) StartShim(ctx context.Context, id, containerdBinary, container
 			_ = shim.RemoveSocket(address)
 		}
 	}()
+
+	// make sure that reexec shim-v2 binary use the value if need
+	if err := shim.WriteAddress("address", address); err != nil {
+		return "", err
+	}
+
 	f, err := socket.File()
 	if err != nil {
 		return "", err
@@ -238,9 +244,6 @@ func (s *service) StartShim(ctx context.Context, id, containerdBinary, container
 	}()
 	// make sure to wait after start
 	go cmd.Wait()
-	if err := shim.WriteAddress("address", address); err != nil {
-		return "", err
-	}
 	if data, err := ioutil.ReadAll(os.Stdin); err == nil {
 		if len(data) > 0 {
 			var any ptypes.Any
@@ -290,6 +293,7 @@ func (s *service) Cleanup(ctx context.Context) (*taskAPI.DeleteResponse, error) 
 	if err != nil {
 		return nil, err
 	}
+
 	path := filepath.Join(filepath.Dir(cwd), s.id)
 	ns, err := namespaces.NamespaceRequired(ctx)
 	if err != nil {
@@ -382,7 +386,7 @@ func (s *service) Start(ctx context.Context, r *taskAPI.StartRequest) (*taskAPI.
 				logrus.WithError(err).Error("failed to get root controllers")
 			} else {
 				if err := cg.ToggleControllers(allControllers, cgroupsv2.Enable); err != nil {
-					if sys.RunningInUserNS() {
+					if userns.RunningInUserNS() {
 						logrus.WithError(err).Debugf("failed to enable controllers (%v)", allControllers)
 					} else {
 						logrus.WithError(err).Errorf("failed to enable controllers (%v)", allControllers)
@@ -668,15 +672,19 @@ func (s *service) Shutdown(ctx context.Context, r *taskAPI.ShutdownRequest) (*pt
 	if len(s.containers) > 0 {
 		return empty, nil
 	}
-	s.cancel()
-	close(s.events)
 
 	if s.platform != nil {
 		s.platform.Close()
 	}
+
 	if s.shimAddress != "" {
 		_ = shim.RemoveSocket(s.shimAddress)
 	}
+
+	// please make sure that temporary resource has been cleanup
+	// before shutdown service.
+	s.cancel()
+	close(s.events)
 	return empty, nil
 }
 

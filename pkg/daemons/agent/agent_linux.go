@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/opencontainers/runc/libcontainer/system"
+	"github.com/opencontainers/runc/libcontainer/userns"
 	"github.com/rancher/k3s/pkg/cgroups"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/util"
@@ -18,6 +18,7 @@ import (
 )
 
 func createRootlessConfig(argsMap map[string]string, hasCFS, hasPIDs bool) {
+	argsMap["feature-gates=KubeletInUserNamespace"] = "true"
 	// "/sys/fs/cgroup" is namespaced
 	cgroupfsWritable := unix.Access("/sys/fs/cgroup", unix.W_OK) == nil
 	if hasCFS && hasPIDs && cgroupfsWritable {
@@ -107,6 +108,13 @@ func kubeletArgs(cfg *config.Agent, cgroupsInfo cgroups.CgroupCheck) map[string]
 	} else if cfg.PauseImage != "" {
 		argsMap["pod-infra-container-image"] = cfg.PauseImage
 	}
+	if cfg.ImageServiceSocket != "" {
+		if strings.HasPrefix(cfg.ImageServiceSocket, unixPrefix) {
+			argsMap["image-service-endpoint"] = cfg.ImageServiceSocket
+		} else {
+			argsMap["image-service-endpoint"] = unixPrefix + cfg.ImageServiceSocket
+		}
+	}
 	if cfg.ListenAddress != "" {
 		argsMap["address"] = cfg.ListenAddress
 	}
@@ -130,10 +138,7 @@ func kubeletArgs(cfg *config.Agent, cgroupsInfo cgroups.CgroupCheck) map[string]
 		argsMap["cpu-cfs-quota"] = "false"
 	}
 	if !cgroupsInfo.HasPIDs {
-		logrus.Warn("Disabling pod PIDs limit feature due to missing cgroup pids support")
-		argsMap["cgroups-per-qos"] = "false"
-		argsMap["enforce-node-allocatable"] = ""
-		argsMap["feature-gates"] = addFeatureGate(argsMap["feature-gates"], "SupportPodPidsLimit=false")
+		logrus.Fatal("PIDS cgroup support not found")
 	}
 	if cgroupsInfo.KubeletRoot != "" {
 		argsMap["kubelet-cgroups"] = cgroupsInfo.KubeletRoot
@@ -141,8 +146,8 @@ func kubeletArgs(cfg *config.Agent, cgroupsInfo cgroups.CgroupCheck) map[string]
 	if cgroupsInfo.RuntimeRoot != "" {
 		argsMap["runtime-cgroups"] = cgroupsInfo.RuntimeRoot
 	}
-	if system.RunningInUserNS() {
-		argsMap["feature-gates"] = addFeatureGate(argsMap["feature-gates"], "DevicePlugins=false")
+	if userns.RunningInUserNS() {
+		argsMap["feature-gates"] = util.AddFeatureGate(argsMap["feature-gates"], "DevicePlugins=false")
 	}
 
 	argsMap["node-labels"] = strings.Join(cfg.NodeLabels, ",")
@@ -155,7 +160,7 @@ func kubeletArgs(cfg *config.Agent, cgroupsInfo cgroups.CgroupCheck) map[string]
 
 	if ImageCredProvAvailable(cfg) {
 		logrus.Infof("Kubelet image credential provider bin dir and configuration file found.")
-		argsMap["feature-gates"] = addFeatureGate(argsMap["feature-gates"], "KubeletCredentialProviders=true")
+		argsMap["feature-gates"] = util.AddFeatureGate(argsMap["feature-gates"], "KubeletCredentialProviders=true")
 		argsMap["image-credential-provider-bin-dir"] = cfg.ImageCredProvBinDir
 		argsMap["image-credential-provider-config"] = cfg.ImageCredProvConfig
 	}
