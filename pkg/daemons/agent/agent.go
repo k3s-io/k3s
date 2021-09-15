@@ -6,9 +6,9 @@ import (
 	"os"
 	"time"
 
-  "github.com/rancher/k3s/pkg/cgroups"
 	"github.com/rancher/k3s/pkg/agent/config"
 	"github.com/rancher/k3s/pkg/agent/proxy"
+	"github.com/rancher/k3s/pkg/cgroups"
 	daemonconfig "github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/daemons/executor"
 	"github.com/rootless-containers/rootlesskit/pkg/parent/cgrouputil" // used for cgroup2 evacuation, not specific to rootless mode
@@ -60,7 +60,7 @@ func startKubelet(ctx context.Context, cfg *daemonconfig.Agent) error {
 		}
 	}
   
-	argsMap := kubeletArgs(cfg)
+	argsMap := kubeletArgs(cfg, cgroupsCheck)
 
 	args := daemonconfig.GetArgs(argsMap, cfg.ExtraKubeletArgs)
 	logrus.Infof("Running kubelet %s", daemonconfig.ArgString(args))
