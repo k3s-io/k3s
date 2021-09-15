@@ -1,3 +1,4 @@
+//go:build linux
 // +build linux
 
 package containerd
@@ -57,7 +58,7 @@ func setupContainerdConfig(ctx context.Context, cfg *config.Node) error {
 		DisableCgroup:         disableCgroup,
 		IsRunningInUserNS:     isRunningInUserNS,
 		PrivateRegistryConfig: privRegistries.Registry(),
-		ExtraRuntimes:         findNvidiaContainerRuntimes(os.DirFS("/")),
+		ExtraRuntimes:         findNvidiaContainerRuntimes(os.DirFS(string(os.PathSeparator))),
 	}
 
 	selEnabled, selConfigured, err := selinuxStatus()
