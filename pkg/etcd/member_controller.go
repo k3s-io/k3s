@@ -17,8 +17,8 @@ func RegisterMemberHandlers(ctx context.Context, etcd *ETCD, nodes controllerv1.
 		nodeController: nodes,
 		ctx:            ctx,
 	}
-	nodes.OnChange(ctx, "managed-etcd-member-controller", e.sync)
-	nodes.OnRemove(ctx, "managed-etcd-member-controller", e.onRemove)
+	nodes.OnChange(ctx, "managed-etcd-controller", e.sync)
+	nodes.OnRemove(ctx, "managed-etcd-controller", e.onRemove)
 }
 
 var (
@@ -99,7 +99,19 @@ func (e *etcdMemberHandler) onRemove(key string, node *v1.Node) (*v1.Node, error
 		logrus.Debugf("Node %s was not labeled etcd node, skipping etcd member removal", key)
 		return node, nil
 	}
-
+	logrus.Infof("Removing etcd member %s from cluster", key)
+	if removalRequested, ok := node.Annotations[removalAnnotation]; ok {
+		if strings.ToLower(removalRequested) == "true" {
+			if removedNodeName, ok := node.Annotations[removedNodeNameAnnotation]; ok {
+				if len(removedNodeName) > 0 {
+					// If we received a node to delete that has already been removed via annotation, it will be missing
+					// the corresponding node name and address annotations.
+					logrus.Infof("etcd member %s was already removed as member name %s via annotation from the cluster", key, removedNodeName)
+					return node, nil
+				}
+			}
+		}
+	}
 	name, ok := node.Annotations[NodeNameAnnotation]
 	if !ok {
 		return node, fmt.Errorf("node name annotation for node %s not found", key)
@@ -108,6 +120,5 @@ func (e *etcdMemberHandler) onRemove(key string, node *v1.Node) (*v1.Node, error
 	if !ok {
 		return node, fmt.Errorf("node address annotation for node %s not found", key)
 	}
-
 	return node, e.etcd.RemovePeer(e.ctx, name, address, true)
 }
