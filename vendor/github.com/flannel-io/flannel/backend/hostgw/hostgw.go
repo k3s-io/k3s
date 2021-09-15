@@ -19,7 +19,6 @@ package hostgw
 
 import (
 	"fmt"
-
 	"sync"
 
 	"github.com/flannel-io/flannel/backend"
@@ -60,17 +59,31 @@ func (be *HostgwBackend) RegisterNetwork(ctx context.Context, wg *sync.WaitGroup
 		Mtu:         be.extIface.Iface.MTU,
 		LinkIndex:   be.extIface.Iface.Index,
 	}
-	n.GetRoute = func(lease *subnet.Lease) *netlink.Route {
-		return &netlink.Route{
-			Dst:       lease.Subnet.ToIPNet(),
-			Gw:        lease.Attrs.PublicIP.ToIP(),
-			LinkIndex: n.LinkIndex,
+
+	attrs := subnet.LeaseAttrs{
+		BackendType: "host-gw",
+	}
+
+	if config.EnableIPv4 {
+		attrs.PublicIP = ip.FromIP(be.extIface.ExtAddr)
+		n.GetRoute = func(lease *subnet.Lease) *netlink.Route {
+			return &netlink.Route{
+				Dst:       lease.Subnet.ToIPNet(),
+				Gw:        lease.Attrs.PublicIP.ToIP(),
+				LinkIndex: n.LinkIndex,
+			}
 		}
 	}
 
-	attrs := subnet.LeaseAttrs{
-		PublicIP:    ip.FromIP(be.extIface.ExtAddr),
-		BackendType: "host-gw",
+	if config.EnableIPv6 {
+		attrs.PublicIPv6 = ip.FromIP6(be.extIface.ExtV6Addr)
+		n.GetV6Route = func(lease *subnet.Lease) *netlink.Route {
+			return &netlink.Route{
+				Dst:       lease.IPv6Subnet.ToIPNet(),
+				Gw:        lease.Attrs.PublicIPv6.ToIP(),
+				LinkIndex: n.LinkIndex,
+			}
+		}
 	}
 
 	l, err := be.sm.AcquireLease(ctx, &attrs)

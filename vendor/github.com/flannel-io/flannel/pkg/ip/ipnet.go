@@ -127,6 +127,11 @@ func (n IP4Net) Next() IP4Net {
 	}
 }
 
+// IncrementIP() increments the IP of IP4Net CIDR by 1
+func (n *IP4Net) IncrementIP() {
+	n.IP++
+}
+
 func FromIPNet(n *net.IPNet) IP4Net {
 	prefixLen, _ := n.Mask.Size()
 	return IP4Net{

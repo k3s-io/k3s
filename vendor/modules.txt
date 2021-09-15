@@ -146,8 +146,7 @@ github.com/beorn7/perks/quantile
 github.com/bits-and-blooms/bitset
 # github.com/blang/semver v3.5.1+incompatible
 github.com/blang/semver
-# github.com/bronze1man/goStrongswanVici v0.0.0-20190828090544-27d02f80ba40
-## explicit
+# github.com/bronze1man/goStrongswanVici v0.0.0-20201105010758-936f38b697fd
 github.com/bronze1man/goStrongswanVici
 # github.com/canonical/go-dqlite v1.5.1
 github.com/canonical/go-dqlite
@@ -525,7 +524,7 @@ github.com/exponent-io/jsonpath
 github.com/fatih/camelcase
 # github.com/felixge/httpsnoop v1.0.1
 github.com/felixge/httpsnoop
-# github.com/flannel-io/flannel v0.14.0
+# github.com/flannel-io/flannel v0.14.1-0.20210827074410-fca1560c91cc
 ## explicit
 github.com/flannel-io/flannel/backend
 github.com/flannel-io/flannel/backend/extension
