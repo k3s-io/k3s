@@ -297,18 +297,7 @@ func (e *ETCD) Start(ctx context.Context, clientAccessInfo *clientaccess.Info) e
 
 // join attempts to add a member to an existing cluster
 func (e *ETCD) join(ctx context.Context, clientAccessInfo *clientaccess.Info) error {
-	clientURLs, memberList, err := ClientURLs(ctx, clientAccessInfo, e.config.PrivateIP)
-	if err != nil {
-		return err
-	}
-
-	client, err := GetClient(ctx, e.runtime, clientURLs...)
-	if err != nil {
-		return err
-	}
-	defer client.Close()
-
-	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
+	clientCtx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
 
 	var (
@@ -316,7 +305,18 @@ func (e *ETCD) join(ctx context.Context, clientAccessInfo *clientaccess.Info) er
 		add     = true
 	)
 
-	members, err := client.MemberList(ctx)
+	clientURLs, memberList, err := ClientURLs(clientCtx, clientAccessInfo, e.config.PrivateIP)
+	if err != nil {
+		return err
+	}
+
+	client, err := GetClient(clientCtx, e.runtime, clientURLs...)
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+
+	members, err := client.MemberList(clientCtx)
 	if err != nil {
 		logrus.Errorf("Failed to get member list from etcd cluster. Will assume this member is already added")
 		members = &clientv3.MemberListResponse{
@@ -349,7 +349,7 @@ func (e *ETCD) join(ctx context.Context, clientAccessInfo *clientaccess.Info) er
 
 	if add {
 		logrus.Infof("Adding %s to etcd cluster %v", e.peerURL(), cluster)
-		if _, err = client.MemberAddAsLearner(ctx, []string{e.peerURL()}); err != nil {
+		if _, err = client.MemberAddAsLearner(clientCtx, []string{e.peerURL()}); err != nil {
 			return err
 		}
 		cluster = append(cluster, fmt.Sprintf("%s=%s", e.name, e.peerURL()))
