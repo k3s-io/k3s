@@ -329,6 +329,15 @@ func (e *ETCD) join(ctx context.Context, clientAccessInfo *clientaccess.Info) er
 	}
 
 	for _, member := range members.Members {
+		memberNodeName := strings.Split(member.Name, "-")[0]
+		if memberNodeName == e.config.ServerNodeName {
+			// make sure to remove the name file if a duplicate node name is used
+			nameFile := nameFile(e.config)
+			if err := os.Remove(nameFile); err != nil {
+				return err
+			}
+			return errors.New("Failed to join etcd cluster due to duplicate node names, please use unique node name for the server")
+		}
 		for _, peer := range member.PeerURLs {
 			u, err := url.Parse(peer)
 			if err != nil {
@@ -414,11 +423,7 @@ func (e *ETCD) setName(force bool) error {
 	fileName := nameFile(e.config)
 	data, err := ioutil.ReadFile(fileName)
 	if os.IsNotExist(err) || force {
-		h, err := os.Hostname()
-		if err != nil {
-			return err
-		}
-		e.name = strings.SplitN(h, ".", 2)[0] + "-" + uuid.New().String()[:8]
+		e.name = strings.SplitN(e.config.ServerNodeName, ".", 2)[0] + "-" + uuid.New().String()[:8]
 		if err := os.MkdirAll(filepath.Dir(fileName), 0700); err != nil {
 			return err
 		}

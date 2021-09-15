@@ -223,6 +223,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	if err != nil {
 		return err
 	}
+	serverConfig.ControlConfig.ServerNodeName = nodeName
 	serverConfig.ControlConfig.SANs = append(serverConfig.ControlConfig.SANs, "127.0.0.1", "localhost", nodeName)
 	for _, ip := range nodeIPs {
 		serverConfig.ControlConfig.SANs = append(serverConfig.ControlConfig.SANs, ip.String())
