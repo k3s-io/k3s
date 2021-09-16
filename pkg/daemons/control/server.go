@@ -92,6 +92,7 @@ func Server(ctx context.Context, cfg *config.Control) error {
 
 func controllerManager(ctx context.Context, cfg *config.Control, runtime *config.ControlRuntime) error {
 	argsMap := map[string]string{
+		"feature-gates":                    "JobTrackingWithFinalizers=true",
 		"kubeconfig":                       runtime.KubeConfigController,
 		"authorization-kubeconfig":         runtime.KubeConfigController,
 		"authentication-kubeconfig":        runtime.KubeConfigController,
@@ -145,7 +146,9 @@ func scheduler(ctx context.Context, cfg *config.Control, runtime *config.Control
 }
 
 func apiServer(ctx context.Context, cfg *config.Control, runtime *config.ControlRuntime) (authenticator.Request, http.Handler, error) {
-	argsMap := make(map[string]string)
+	argsMap := map[string]string{
+		"feature-gates": "JobTrackingWithFinalizers=true",
+	}
 
 	setupStorageBackend(argsMap, cfg)
 
