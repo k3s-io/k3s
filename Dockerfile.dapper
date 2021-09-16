@@ -1,4 +1,4 @@
-ARG GOLANG=golang:1.16.6-alpine3.13
+ARG GOLANG=golang:1.16.8-alpine3.13
 FROM ${GOLANG}
 
 ARG http_proxy=$http_proxy
