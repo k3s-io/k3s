@@ -424,7 +424,7 @@ func (e *ETCD) setName(force bool) error {
 	fileName := nameFile(e.config)
 	data, err := ioutil.ReadFile(fileName)
 	if os.IsNotExist(err) || force {
-		e.name = strings.SplitN(e.config.ServerNodeName, ".", 2)[0] + "-" + uuid.New().String()[:8]
+		e.name = e.config.ServerNodeName + "-" + uuid.New().String()[:8]
 		if err := os.MkdirAll(filepath.Dir(fileName), 0700); err != nil {
 			return err
 		}
