@@ -59,7 +59,7 @@ func startKubelet(ctx context.Context, cfg *daemonconfig.Agent) error {
 			return err
 		}
 	}
-  
+
 	argsMap := kubeletArgs(cfg, cgroupsCheck)
 
 	args := daemonconfig.GetArgs(argsMap, cfg.ExtraKubeletArgs)
