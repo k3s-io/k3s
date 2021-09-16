@@ -91,6 +91,11 @@ using the runc checkpoint command.`,
 			Name:  "lazy-pages",
 			Usage: "use userfaultfd to lazily restore memory pages",
 		},
+		cli.StringFlag{
+			Name:  "lsm-profile",
+			Value: "",
+			Usage: "Specify an LSM profile to be used during restore in the form of TYPE:NAME.",
+		},
 	},
 	Action: func(context *cli.Context) error {
 		if err := checkArgs(context, 1, exactArgs); err != nil {
@@ -139,5 +144,6 @@ func criuOptions(context *cli.Context) *libcontainer.CriuOpts {
 		AutoDedup:               context.Bool("auto-dedup"),
 		LazyPages:               context.Bool("lazy-pages"),
 		StatusFd:                context.Int("status-fd"),
+		LsmProfile:              context.String("lsm-profile"),
 	}
 }

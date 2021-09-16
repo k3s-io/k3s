@@ -21,7 +21,7 @@ import (
 	"github.com/containerd/containerd/reference/docker"
 	"github.com/klauspost/compress/zstd"
 	"github.com/natefinch/lumberjack"
-	"github.com/opencontainers/runc/libcontainer/system"
+	"github.com/opencontainers/runc/libcontainer/userns"
 	"github.com/pierrec/lz4"
 	"github.com/pkg/errors"
 	"github.com/rancher/k3s/pkg/agent/templates"
@@ -339,7 +339,7 @@ func setupContainerdConfig(ctx context.Context, cfg *config.Node) error {
 		return err
 	}
 
-	isRunningInUserNS := system.RunningInUserNS()
+	isRunningInUserNS := userns.RunningInUserNS()
 	_, _, hasCFS, hasPIDs := agent.CheckCgroups()
 	// "/sys/fs/cgroup" is namespaced
 	cgroupfsWritable := unix.Access("/sys/fs/cgroup", unix.W_OK) == nil

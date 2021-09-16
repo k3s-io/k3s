@@ -209,7 +209,7 @@ func createPidFile(path string, process *libcontainer.Process) error {
 		tmpDir  = filepath.Dir(path)
 		tmpName = filepath.Join(tmpDir, "."+filepath.Base(path))
 	)
-	f, err := os.OpenFile(tmpName, os.O_RDWR|os.O_CREATE|os.O_EXCL|os.O_SYNC, 0666)
+	f, err := os.OpenFile(tmpName, os.O_RDWR|os.O_CREATE|os.O_EXCL|os.O_SYNC, 0o666)
 	if err != nil {
 		return err
 	}
@@ -296,9 +296,7 @@ func (r *runner) run(config *specs.Process) (int, error) {
 	if err != nil {
 		return -1, err
 	}
-	var (
-		detach = r.detach || (r.action == CT_ACT_CREATE)
-	)
+	detach := r.detach || (r.action == CT_ACT_CREATE)
 	// Setting up IO is a two stage process. We need to modify process to deal
 	// with detaching containers, and then we get a tty after the container has
 	// started.

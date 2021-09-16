@@ -10,7 +10,7 @@ import (
 
 	"github.com/containerd/cgroups"
 	cgroupsv2 "github.com/containerd/cgroups/v2"
-	"github.com/opencontainers/runc/libcontainer/system"
+	"github.com/opencontainers/runc/libcontainer/userns"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/daemons/executor"
 	"github.com/rancher/k3s/pkg/util"
@@ -150,7 +150,7 @@ func startKubelet(cfg *config.Agent) error {
 	if runtimeRoot != "" {
 		argsMap["runtime-cgroups"] = runtimeRoot
 	}
-	if system.RunningInUserNS() {
+	if userns.RunningInUserNS() {
 		argsMap["feature-gates"] = addFeatureGate(argsMap["feature-gates"], "DevicePlugins=false")
 	}
 
