@@ -25,6 +25,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	v1getter "k8s.io/client-go/kubernetes/typed/apps/v1"
 	coregetter "k8s.io/client-go/kubernetes/typed/core/v1"
+	utilpointer "k8s.io/utils/pointer"
 )
 
 var (
@@ -326,6 +327,9 @@ func (h *handler) newDaemonSet(svc *core.Service) (*apps.DaemonSet, error) {
 						"app":        name,
 						svcNameLabel: svc.Name,
 					},
+				},
+				Spec: core.PodSpec{
+					AutomountServiceAccountToken: utilpointer.Bool(false),
 				},
 			},
 			UpdateStrategy: apps.DaemonSetUpdateStrategy{
