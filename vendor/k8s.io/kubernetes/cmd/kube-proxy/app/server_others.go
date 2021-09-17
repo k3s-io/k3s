@@ -38,7 +38,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/fields"
 
-	libcontainersystem "github.com/opencontainers/runc/libcontainer/system"
+	libcontaineruserns "github.com/opencontainers/runc/libcontainer/userns"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -372,7 +372,7 @@ func newProxyServer(
 	}
 
 	var connTracker Conntracker
-	if !libcontainersystem.RunningInUserNS() {
+	if !libcontaineruserns.RunningInUserNS() {
 		// if we are in userns, sysctl does not work and connTracker should be kept nil
 		connTracker = &realConntracker{}
 	}

@@ -1,7 +1,10 @@
 package main
 
-import "fmt"
-import "golang.org/x/sys/unix"
+import (
+	"fmt"
+
+	"golang.org/x/sys/unix"
+)
 
 var rlimitMap = map[string]int{
 	"RLIMIT_CPU":        unix.RLIMIT_CPU,

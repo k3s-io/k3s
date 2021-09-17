@@ -85,7 +85,7 @@ func prepareImagePaths(context *cli.Context) (string, string, error) {
 		imagePath = getDefaultImagePath(context)
 	}
 
-	if err := os.MkdirAll(imagePath, 0600); err != nil {
+	if err := os.MkdirAll(imagePath, 0o600); err != nil {
 		return "", "", err
 	}
 
@@ -109,7 +109,6 @@ func prepareImagePaths(context *cli.Context) (string, string, error) {
 	}
 
 	return imagePath, parentPath, nil
-
 }
 
 func setPageServer(context *cli.Context, options *libcontainer.CriuOpts) {
