@@ -168,6 +168,7 @@ type Control struct {
 	EtcdS3Region             string
 	EtcdS3Folder             string
 	EtcdS3Insecure           bool
+	ServerNodeName           string
 
 	BindAddress string
 	SANs        []string
