@@ -341,7 +341,7 @@ case "${cgroupVariant}" in
         cgroupFile='/proc/self/cgroup'
         ;;
     esac
-    if [ "$(tr -s ' ' '\n' <"${cgroupFile}" 2>/dev/null | grep -Ec "^(${cgroupMatch})\$")" -eq ${cgroupMatchNum} ]; then
+    if [ "$(tr -s ' ' '\n' <"${cgroupFile}" 2>/dev/null | grep -Ec "(^|:)(${cgroupMatch})(\$|:)")" -eq ${cgroupMatchNum} ]; then
       cgroupStatus='good'
     else
       cgroupStatus='bad'
