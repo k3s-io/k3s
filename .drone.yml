@@ -22,6 +22,28 @@ steps:
   - name: docker
     path: /var/run/docker.sock
 
+- name: fossa
+  image: rancher/dapper:v0.5.4
+  failure: ignore
+  environment:
+    FOSSA_API_KEY:
+      from_secret: FOSSA_API_KEY
+  commands:
+    - dapper fossa
+  volumes:
+    - name: docker
+      path: /var/run/docker.sock
+  when:
+    instance:
+      - drone-publish.k3s.io
+    ref:
+      include:
+        - "refs/heads/master"
+        - "refs/heads/release-*"
+    event:
+      - push
+      - tag
+
 - name: github_binary_release
   image: ibuildthecloud/github-release:v0.0.1
   settings:
