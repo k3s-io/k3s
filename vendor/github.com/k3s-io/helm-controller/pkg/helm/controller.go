@@ -30,6 +30,7 @@ import (
 var (
 	trueVal         = true
 	commaRE         = regexp.MustCompile(`\\*,`)
+	deletePolicy    = meta.DeletePropagationForeground
 	DefaultJobImage = "rancher/klipper-helm:v0.6.5-build20210915"
 )
 
@@ -64,7 +65,7 @@ func Register(ctx context.Context, apply apply.Apply,
 	apply = apply.WithSetID(Name).
 		WithCacheTypes(helms, confs, jobs, crbs, sas, cm).
 		WithStrictCaching().WithPatcher(batch.SchemeGroupVersion.WithKind("Job"), func(namespace, name string, pt types.PatchType, data []byte) (runtime.Object, error) {
-		err := jobs.Delete(namespace, name, &meta.DeleteOptions{})
+		err := jobs.Delete(namespace, name, &meta.DeleteOptions{PropagationPolicy: &deletePolicy})
 		if err == nil {
 			return nil, fmt.Errorf("replace job")
 		}
