@@ -42,7 +42,7 @@ steps:
       - refs/head/master
       - refs/tags/*
       exclude:
-      - ref/tags/*engine*
+      - refs/tags/*engine*
     event:
     - tag
 
@@ -63,7 +63,7 @@ steps:
       - refs/head/master
       - refs/tags/*
       exclude:
-      - ref/tags/*engine*
+      - refs/tags/*engine*
     event:
     - tag
 
@@ -96,7 +96,7 @@ steps:
       - refs/head/master
       - refs/tags/*
       exclude:
-      - ref/tags/*engine*
+      - refs/tags/*engine*
     event:
     - tag
 
@@ -147,7 +147,7 @@ steps:
       - refs/head/master
       - refs/tags/*
       exclude:
-      - ref/tags/*engine*
+      - refs/tags/*engine*
     event:
     - tag
 
@@ -168,7 +168,7 @@ steps:
       - refs/head/master
       - refs/tags/*
       exclude:
-      - ref/tags/*engine*
+      - refs/tags/*engine*
     event:
     - tag
 
@@ -232,7 +232,7 @@ steps:
       - refs/head/master
       - refs/tags/*
       exclude:
-      - ref/tags/*engine*
+      - refs/tags/*engine*
     event:
     - tag
 
@@ -327,7 +327,7 @@ trigger:
       - refs/head/master
       - refs/tags/*
     exclude:
-      - ref/tags/*engine*
+      - refs/tags/*engine*
   event:
   - tag
 
@@ -365,7 +365,7 @@ trigger:
     - refs/head/master
     - refs/tags/*
     exclude:
-    - ref/tags/*engine*
+    - refs/tags/*engine*
   event:
     - tag
 
