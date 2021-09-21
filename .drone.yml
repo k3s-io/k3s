@@ -38,8 +38,11 @@ steps:
     instance:
     - drone-publish.k3s.io
     ref:
-    - refs/head/master
-    - refs/tags/*
+      include:
+      - refs/head/master
+      - refs/tags/*
+      exclude:
+      - ref/tags/*engine*
     event:
     - tag
 
@@ -56,8 +59,11 @@ steps:
     instance:
     - drone-publish.k3s.io
     ref:
-    - refs/head/master
-    - refs/tags/*
+      include:
+      - refs/head/master
+      - refs/tags/*
+      exclude:
+      - ref/tags/*engine*
     event:
     - tag
 
@@ -86,8 +92,11 @@ steps:
     instance:
     - drone-publish.k3s.io
     ref:
-    - refs/head/master
-    - refs/tags/*
+      include:
+      - refs/head/master
+      - refs/tags/*
+      exclude:
+      - ref/tags/*engine*
     event:
     - tag
 
@@ -134,8 +143,11 @@ steps:
     instance:
     - drone-publish.k3s.io
     ref:
-    - refs/head/master
-    - refs/tags/*
+      include:
+      - refs/head/master
+      - refs/tags/*
+      exclude:
+      - ref/tags/*engine*
     event:
     - tag
 
@@ -152,8 +164,11 @@ steps:
     instance:
     - drone-publish.k3s.io
     ref:
-    - refs/head/master
-    - refs/tags/*
+      include:
+      - refs/head/master
+      - refs/tags/*
+      exclude:
+      - ref/tags/*engine*
     event:
     - tag
 
@@ -213,8 +228,11 @@ steps:
     instance:
     - drone-publish.k3s.io
     ref:
-    - refs/head/master
-    - refs/tags/*
+      include:
+      - refs/head/master
+      - refs/tags/*
+      exclude:
+      - ref/tags/*engine*
     event:
     - tag
 
@@ -305,8 +323,11 @@ trigger:
   instance:
   - drone-publish.k3s.io
   ref:
-  - refs/head/master
-  - refs/tags/*
+    include:
+      - refs/head/master
+      - refs/tags/*
+    exclude:
+      - ref/tags/*engine*
   event:
   - tag
 
@@ -340,8 +361,11 @@ trigger:
   instance:
     - drone-publish.k3s.io
   ref:
+    include:
     - refs/head/master
     - refs/tags/*
+    exclude:
+    - ref/tags/*engine*
   event:
     - tag
 
