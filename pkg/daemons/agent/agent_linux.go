@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/opencontainers/runc/libcontainer/system"
+	"github.com/opencontainers/runc/libcontainer/userns"
 	"github.com/rancher/k3s/pkg/cgroups"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/util"
@@ -142,7 +142,7 @@ func kubeletArgs(cfg *config.Agent) map[string]string {
 	if runtimeRoot != "" {
 		argsMap["runtime-cgroups"] = runtimeRoot
 	}
-	if system.RunningInUserNS() {
+	if userns.RunningInUserNS() {
 		argsMap["feature-gates"] = util.AddFeatureGate(argsMap["feature-gates"], "DevicePlugins=false")
 	}
 
