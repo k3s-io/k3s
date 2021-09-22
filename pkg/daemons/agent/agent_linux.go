@@ -26,12 +26,7 @@ func createRootlessConfig(argsMap map[string]string, hasCFS, hasPIDs bool) {
 		// cgroupfs v2, delegated for rootless by systemd
 		argsMap["cgroup-driver"] = "cgroupfs"
 	} else {
-		logrus.Warn("cgroup v2 controllers are not delegated for rootless. Setting cgroup driver to \"none\".")
-		// flags are from https://github.com/rootless-containers/usernetes/blob/v20190826.0/boot/kubelet.sh
-		argsMap["cgroup-driver"] = "none"
-		argsMap["feature-gates=SupportNoneCgroupDriver"] = "true"
-		argsMap["cgroups-per-qos"] = "false"
-		argsMap["enforce-node-allocatable"] = ""
+		logrus.Fatal("delegated cgroup v2 controllers are required for rootless.")
 	}
 }
 
