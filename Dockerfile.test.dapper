@@ -1,7 +1,7 @@
-ARG GOLANG=golang:1.15.13-alpine3.13
+ARG GOLANG=golang:1.15.14-alpine3.13
 FROM ${GOLANG}
 
-RUN apk -U --no-cache add bash git gcc musl-dev docker curl jq coreutils python2 openssl
+RUN apk -U --no-cache add bash git gcc musl-dev docker curl jq coreutils python3 openssl py3-pip
 
 ENV SONOBUOY_VERSION 0.19.0
 
