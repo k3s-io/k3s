@@ -9,7 +9,7 @@ ENV https_proxy=$https_proxy
 ENV no_proxy=$no_proxy
 
 RUN apk -U --no-cache add bash git gcc musl-dev docker vim less file curl wget ca-certificates jq linux-headers \
-    zlib-dev tar zip squashfs-tools npm coreutils python2 openssl-dev libffi-dev libseccomp libseccomp-dev \
+    zlib-dev tar zip squashfs-tools npm coreutils python3 openssl-dev libffi-dev libseccomp libseccomp-dev \
     libseccomp-static make libuv-static sqlite-dev sqlite-static libselinux libselinux-dev zlib-dev zlib-static \
     zstd gzip alpine-sdk binutils-gold
 RUN if [ "$(go env GOARCH)" = "arm64" ]; then                                                               \
