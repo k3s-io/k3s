@@ -9,7 +9,7 @@ ENV https_proxy=$https_proxy
 ENV no_proxy=$no_proxy
 
 RUN apk -U --no-cache add bash git gcc musl-dev docker vim less file curl wget ca-certificates jq linux-headers zlib-dev tar zip squashfs-tools npm coreutils \
-    python2 openssl-dev libffi-dev libseccomp libseccomp-dev libseccomp-static make libuv-static sqlite-dev sqlite-static libselinux libselinux-dev zlib-dev \
+    python3 openssl-dev libffi-dev libseccomp libseccomp-dev libseccomp-static make libuv-static sqlite-dev sqlite-static libselinux libselinux-dev zlib-dev \
     zlib-static zstd
 RUN if [ "$(go env GOARCH)" = "arm64" ]; then                                                               \
     wget https://github.com/aquasecurity/trivy/releases/download/v0.11.0/trivy_0.11.0_Linux-ARM64.tar.gz && \
