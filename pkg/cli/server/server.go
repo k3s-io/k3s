@@ -38,16 +38,10 @@ import (
 )
 
 func Run(app *cli.Context) error {
-	if err := cmds.InitLogging(); err != nil {
-		return err
-	}
 	return run(app, &cmds.ServerConfig, server.CustomControllers{}, server.CustomControllers{})
 }
 
 func RunWithControllers(app *cli.Context, leaderControllers server.CustomControllers, controllers server.CustomControllers) error {
-	if err := cmds.InitLogging(); err != nil {
-		return err
-	}
 	return run(app, &cmds.ServerConfig, leaderControllers, controllers)
 }
 
@@ -59,6 +53,16 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	// hide process arguments from ps output, since they may contain
 	// database credentials or other secrets.
 	gspt.SetProcTitle(os.Args[0] + " server")
+
+	// Do init stuff if pid 1.
+	// This must be done before InitLogging as that may reexec in order to capture log output
+	if err := cmds.HandleInit(); err != nil {
+		return err
+	}
+
+	if err := cmds.InitLogging(); err != nil {
+		return err
+	}
 
 	if !cfg.DisableAgent && os.Getuid() != 0 && !cfg.Rootless {
 		return fmt.Errorf("must run as root unless --disable-agent is specified")
