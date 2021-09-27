@@ -23,9 +23,16 @@ func Run(ctx *cli.Context) error {
 	// database credentials or other secrets.
 	gspt.SetProcTitle(os.Args[0] + " agent")
 
+	// Do init stuff if pid 1.
+	// This must be done before InitLogging as that may reexec in order to capture log output
+	if err := cmds.HandleInit(); err != nil {
+		return err
+	}
+
 	if err := cmds.InitLogging(); err != nil {
 		return err
 	}
+
 	if os.Getuid() != 0 && runtime.GOOS != "windows" {
 		return fmt.Errorf("agent must be ran as root")
 	}
