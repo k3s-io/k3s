@@ -26,6 +26,7 @@ replace (
 	github.com/juju/errors => github.com/k3s-io/nocode v0.0.0-20200630202308-cb097102c09f
 	github.com/kubernetes-sigs/cri-tools => github.com/k3s-io/cri-tools v1.20.0-k3s1
 	github.com/matryer/moq => github.com/rancher/moq v0.0.0-20190404221404-ee5226d43009
+	github.com/moby/sys/mountinfo => github.com/moby/sys/mountinfo v0.1.3
 	// LOOK TO scripts/download FOR THE VERSION OF runc THAT WE ARE BUILDING/SHIPPING
 	github.com/opencontainers/runc => github.com/opencontainers/runc v1.0.0-rc92
 	github.com/opencontainers/runtime-spec => github.com/opencontainers/runtime-spec v1.0.3-0.20200728170252-4d89ac9fbff6
@@ -87,7 +88,7 @@ require (
 	github.com/go-sql-driver/mysql v1.4.1
 	github.com/google/cadvisor v0.38.8
 	github.com/google/tcpproxy v0.0.0-20180808230851-dfa16c61dad2
-	github.com/google/uuid v1.2.0
+	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.4.2
 	github.com/k3s-io/helm-controller v0.10.5
@@ -108,10 +109,10 @@ require (
 	github.com/rancher/wrangler v0.6.2
 	github.com/rancher/wrangler-api v0.6.0
 	github.com/robfig/cron/v3 v3.0.1
-	github.com/rootless-containers/rootlesskit v0.10.0
-	github.com/sirupsen/logrus v1.7.0
+	github.com/rootless-containers/rootlesskit v0.14.5
+	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/pflag v1.0.5
-	github.com/stretchr/testify v1.6.1
+	github.com/stretchr/testify v1.7.0
 	github.com/tchap/go-patricia v2.3.0+incompatible // indirect
 	github.com/urfave/cli v1.22.2
 	go.etcd.io/etcd v0.5.0-alpha.5.0.20201208200253-50621aee4aea

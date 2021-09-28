@@ -19,7 +19,8 @@ const (
 // Request and Response are encoded as JSON with uint32le length header.
 type Request struct {
 	Type  string // "init" or "connect"
-	Proto string // "tcp" or "udp"
+	Proto string // "tcp", "tcp4", "tcp6", "udp", "udp4", "udp6"
+	IP    string
 	Port  int
 }
 
@@ -53,6 +54,7 @@ func ConnectToChild(c *net.UnixConn, spec port.Spec) (int, error) {
 		Type:  RequestTypeConnect,
 		Proto: spec.Proto,
 		Port:  spec.ChildPort,
+		IP:    spec.ChildIP,
 	}
 	if _, err := msgutil.MarshalToWriter(c, &req); err != nil {
 		return 0, err

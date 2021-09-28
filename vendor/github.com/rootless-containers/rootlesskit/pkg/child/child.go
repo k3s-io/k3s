@@ -2,6 +2,7 @@ package child
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -50,15 +51,31 @@ func createCmd(targetCmd []string) (*exec.Cmd, error) {
 
 // mountSysfs is needed for mounting /sys/class/net
 // when netns is unshared.
-func mountSysfs() error {
+func mountSysfs(hostNetwork, evacuateCgroup2 bool) error {
+	const cgroupDir = "/sys/fs/cgroup"
+	if hostNetwork {
+		if evacuateCgroup2 {
+			// We need to mount tmpfs before cgroup2 to avoid EBUSY
+			if err := unix.Mount("none", cgroupDir, "tmpfs", 0, ""); err != nil {
+				return errors.Wrapf(err, "failed to mount tmpfs on %s", cgroupDir)
+			}
+			if err := unix.Mount("none", cgroupDir, "cgroup2", 0, ""); err != nil {
+				return errors.Wrapf(err, "failed to mount cgroup2 on %s", cgroupDir)
+			}
+		}
+		// NOP
+		return nil
+	}
+
 	tmp, err := ioutil.TempDir("/tmp", "rksys")
 	if err != nil {
 		return errors.Wrap(err, "creating a directory under /tmp")
 	}
 	defer os.RemoveAll(tmp)
-	cgroupDir := "/sys/fs/cgroup"
-	if err := unix.Mount(cgroupDir, tmp, "", uintptr(unix.MS_BIND|unix.MS_REC), ""); err != nil {
-		return errors.Wrapf(err, "failed to create bind mount on %s", cgroupDir)
+	if !evacuateCgroup2 {
+		if err := unix.Mount(cgroupDir, tmp, "", uintptr(unix.MS_BIND|unix.MS_REC), ""); err != nil {
+			return errors.Wrapf(err, "failed to create bind mount on %s", cgroupDir)
+		}
 	}
 
 	if err := unix.Mount("none", "/sys", "sysfs", 0, ""); err != nil {
@@ -72,8 +89,14 @@ func mountSysfs() error {
 			logrus.Warnf("failed to mount sysfs: %v", err)
 		}
 	}
-	if err := unix.Mount(tmp, cgroupDir, "", uintptr(unix.MS_MOVE), ""); err != nil {
-		return errors.Wrapf(err, "failed to move mount point from %s to %s", tmp, cgroupDir)
+	if evacuateCgroup2 {
+		if err := unix.Mount("none", cgroupDir, "cgroup2", 0, ""); err != nil {
+			return errors.Wrapf(err, "failed to mount cgroup2 on %s", cgroupDir)
+		}
+	} else {
+		if err := unix.Mount(tmp, cgroupDir, "", uintptr(unix.MS_MOVE), ""); err != nil {
+			return errors.Wrapf(err, "failed to move mount point from %s to %s", tmp, cgroupDir)
+		}
 	}
 	return nil
 }
@@ -134,10 +157,6 @@ func setupNet(msg common.Message, etcWasCopied bool, driver network.ChildDriver)
 	if driver == nil {
 		return nil
 	}
-	// for /sys/class/net
-	if err := mountSysfs(); err != nil {
-		return err
-	}
 	if err := activateLoopback(); err != nil {
 		return err
 	}
@@ -171,15 +190,16 @@ func setupNet(msg common.Message, etcWasCopied bool, driver network.ChildDriver)
 }
 
 type Opt struct {
-	PipeFDEnvKey  string              // needs to be set
-	TargetCmd     []string            // needs to be set
-	NetworkDriver network.ChildDriver // nil for HostNetwork
-	CopyUpDriver  copyup.ChildDriver  // cannot be nil if len(CopyUpDirs) != 0
-	CopyUpDirs    []string
-	PortDriver    port.ChildDriver
-	MountProcfs   bool   // needs to be set if (and only if) parent.Opt.CreatePIDNS is set
-	Propagation   string // mount propagation type
-	Reaper        bool
+	PipeFDEnvKey    string              // needs to be set
+	TargetCmd       []string            // needs to be set
+	NetworkDriver   network.ChildDriver // nil for HostNetwork
+	CopyUpDriver    copyup.ChildDriver  // cannot be nil if len(CopyUpDirs) != 0
+	CopyUpDirs      []string
+	PortDriver      port.ChildDriver
+	MountProcfs     bool   // needs to be set if (and only if) parent.Opt.CreatePIDNS is set
+	Propagation     string // mount propagation type
+	Reaper          bool
+	EvacuateCgroup2 bool // needs to correspond to parent.Opt.EvacuateCgroup2 is set
 }
 
 func Child(opt Opt) error {
@@ -232,6 +252,9 @@ func Child(opt Opt) error {
 	}
 	etcWasCopied, err := setupCopyDir(opt.CopyUpDriver, opt.CopyUpDirs)
 	if err != nil {
+		return err
+	}
+	if err := mountSysfs(opt.NetworkDriver == nil, opt.EvacuateCgroup2); err != nil {
 		return err
 	}
 	if err := setupNet(msg, etcWasCopied, opt.NetworkDriver); err != nil {
@@ -288,6 +311,7 @@ func setMountPropagation(propagation string) error {
 func runAndReap(cmd *exec.Cmd) error {
 	c := make(chan os.Signal, 32)
 	signal.Notify(c, syscall.SIGCHLD)
+	cmd.SysProcAttr.Setsid = true
 	if err := cmd.Start(); err != nil {
 		return err
 	}
@@ -297,17 +321,54 @@ func runAndReap(cmd *exec.Cmd) error {
 	result := make(chan error)
 	go func() {
 		defer close(result)
-		for range c {
-			for {
-				if pid, err := syscall.Wait4(-1, nil, syscall.WNOHANG, nil); err != nil || pid <= 0 {
-					break
-				} else {
-					if pid == cmd.Process.Pid {
-						result <- cmd.Wait()
-					}
+		for cEntry := range c {
+			logrus.Debugf("reaper: got signal %q", cEntry)
+			if wsPtr := reap(cmd.Process.Pid); wsPtr != nil {
+				ws := *wsPtr
+				if ws.Exited() && ws.ExitStatus() == 0 {
+					result <- nil
+					continue
 				}
+				var resultErr common.ErrorWithSys = &reaperErr{
+					ws: ws,
+				}
+				result <- resultErr
 			}
 		}
 	}()
 	return <-result
+}
+
+func reap(myPid int) *syscall.WaitStatus {
+	var res *syscall.WaitStatus
+	for {
+		var ws syscall.WaitStatus
+		pid, err := syscall.Wait4(-1, &ws, syscall.WNOHANG, nil)
+		logrus.Debugf("reaper: got ws=%+v, pid=%d, err=%+v", ws, pid, err)
+		if err != nil || pid <= 0 {
+			break
+		}
+		if pid == myPid {
+			res = &ws
+		}
+	}
+	return res
+}
+
+type reaperErr struct {
+	ws syscall.WaitStatus
+}
+
+func (e *reaperErr) Sys() interface{} {
+	return e.ws
+}
+
+func (e *reaperErr) Error() string {
+	if e.ws.Exited() {
+		return fmt.Sprintf("exit status %d", e.ws.ExitStatus())
+	}
+	if e.ws.Signaled() {
+		return fmt.Sprintf("signal: %s", e.ws.Signal())
+	}
+	return fmt.Sprintf("exited with WAITSTATUS=0x%08x", e.ws)
 }

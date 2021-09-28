@@ -143,7 +143,7 @@ func createParentOpt(stateDir string) (*parent.Opt, error) {
 		return nil, err
 	}
 	debugWriter := &logrusDebugWriter{}
-	opt.NetworkDriver, err = slirp4netns.NewParentDriver(debugWriter, binary, mtu, ipnet, disableHostLoopback, "", false, false)
+	opt.NetworkDriver, err = slirp4netns.NewParentDriver(debugWriter, binary, mtu, ipnet, "tap0", disableHostLoopback, "", false, false, false)
 	if err != nil {
 		return nil, err
 	}
