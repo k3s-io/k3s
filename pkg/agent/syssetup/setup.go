@@ -50,6 +50,7 @@ func Configure(enableIPv6 bool, config *kubeproxyconfig.KubeProxyConntrackConfig
 		sysctls["net/ipv6/conf/all/forwarding"] = 1
 		sysctls["net/ipv6/conf/default/forwarding"] = 1
 		sysctls["net/bridge/bridge-nf-call-ip6tables"] = 1
+		sysctls["net/core/devconf_inherit_init_net"] = 1
 	}
 
 	if conntrackMax := getConntrackMax(config); conntrackMax > 0 {
