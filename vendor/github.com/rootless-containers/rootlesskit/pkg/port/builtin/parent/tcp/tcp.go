@@ -5,14 +5,15 @@ import (
 	"io"
 	"net"
 	"os"
+	"strconv"
 	"sync"
 
 	"github.com/rootless-containers/rootlesskit/pkg/port"
 	"github.com/rootless-containers/rootlesskit/pkg/port/builtin/msg"
 )
 
-func Run(socketPath string, spec port.Spec, stopCh <-chan struct{}, logWriter io.Writer) error {
-	ln, err := net.Listen("tcp", fmt.Sprintf("%s:%d", spec.ParentIP, spec.ParentPort))
+func Run(socketPath string, spec port.Spec, stopCh <-chan struct{}, stoppedCh chan error, logWriter io.Writer) error {
+	ln, err := net.Listen(spec.Proto, net.JoinHostPort(spec.ParentIP, strconv.Itoa(spec.ParentPort)))
 	if err != nil {
 		fmt.Fprintf(logWriter, "listen: %v\n", err)
 		return err
@@ -30,7 +31,10 @@ func Run(socketPath string, spec port.Spec, stopCh <-chan struct{}, logWriter io
 		}
 	}()
 	go func() {
-		defer ln.Close()
+		defer func() {
+			stoppedCh <- ln.Close()
+			close(stoppedCh)
+		}()
 		for {
 			select {
 			case c, ok := <-newConns:

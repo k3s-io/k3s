@@ -11,12 +11,28 @@ import (
 
 	"github.com/rootless-containers/rootlesskit/pkg/api"
 	"github.com/rootless-containers/rootlesskit/pkg/port"
+	"github.com/rootless-containers/rootlesskit/pkg/version"
 )
 
+// NetworkDriver is implemented by network.ParentDriver
+type NetworkDriver interface {
+	Info(context.Context) (*api.NetworkDriverInfo, error)
+}
+
+// PortDriver is implemented by port.ParentDriver
+type PortDriver interface {
+	Info(context.Context) (*api.PortDriverInfo, error)
+	port.Manager
+}
+
 type Backend struct {
+	StateDir string
+	ChildPID int
+	// NetworkDriver can be nil
+	NetworkDriver NetworkDriver
 	// PortDriver MUST be thread-safe.
 	// PortDriver can be nil
-	PortDriver port.ParentDriver
+	PortDriver PortDriver
 }
 
 func (b *Backend) onError(w http.ResponseWriter, r *http.Request, err error, ec int) {
@@ -104,9 +120,43 @@ func (b *Backend) DeletePort(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+func (b *Backend) GetInfo(w http.ResponseWriter, r *http.Request) {
+	info := &api.Info{
+		APIVersion: api.Version,
+		Version:    version.Version,
+		StateDir:   b.StateDir,
+		ChildPID:   b.ChildPID,
+	}
+	if b.NetworkDriver != nil {
+		ndInfo, err := b.NetworkDriver.Info(context.Background())
+		if err != nil {
+			b.onError(w, r, err, http.StatusInternalServerError)
+			return
+		}
+		info.NetworkDriver = ndInfo
+	}
+	if b.PortDriver != nil {
+		pdInfo, err := b.PortDriver.Info(context.Background())
+		if err != nil {
+			b.onError(w, r, err, http.StatusInternalServerError)
+			return
+		}
+		info.PortDriver = pdInfo
+	}
+	m, err := json.Marshal(info)
+	if err != nil {
+		b.onError(w, r, err, http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(m)
+}
+
 func AddRoutes(r *mux.Router, b *Backend) {
 	v1 := r.PathPrefix("/v1").Subrouter()
 	v1.Path("/ports").Methods("GET").HandlerFunc(b.GetPorts)
 	v1.Path("/ports").Methods("POST").HandlerFunc(b.PostPort)
 	v1.Path("/ports/{id}").Methods("DELETE").HandlerFunc(b.DeletePort)
+	v1.Path("/info").Methods("GET").HandlerFunc(b.GetInfo)
 }
