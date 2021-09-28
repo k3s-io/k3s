@@ -36,12 +36,18 @@ type s3 struct {
 // a new Minio client.
 func newS3(ctx context.Context, config *config.Control) (*s3, error) {
 	tr := http.DefaultTransport
-	if config.EtcdS3EndpointCA != "" {
+
+	switch {
+	case config.EtcdS3EndpointCA != "":
 		trCA, err := setTransportCA(tr, config.EtcdS3EndpointCA, config.EtcdS3SkipSSLVerify)
 		if err != nil {
 			return nil, err
 		}
 		tr = trCA
+	case config.EtcdS3 && config.EtcdS3SkipSSLVerify:
+		tr.(*http.Transport).TLSClientConfig = &tls.Config{
+			InsecureSkipVerify: config.EtcdS3SkipSSLVerify,
+		}
 	}
 
 	var creds *credentials.Credentials
