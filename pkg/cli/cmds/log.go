@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	systemd "github.com/coreos/go-systemd/daemon"
 	"github.com/docker/docker/pkg/reexec"
 	"github.com/natefinch/lumberjack"
 	"github.com/rancher/k3s/pkg/version"
@@ -98,7 +99,11 @@ func runWithLogging() error {
 	cmd.Stderr = l
 	cmd.Stdout = l
 	cmd.Stdin = os.Stdin
-	return cmd.Run()
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	systemd.SdNotify(false, fmt.Sprintf("MAINPID=%d\n", cmd.Process.Pid))
+	return cmd.Wait()
 }
 
 func setupLogging() {
