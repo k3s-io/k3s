@@ -109,6 +109,13 @@ spec:
           effect: "NoSchedule"
       nodeSelector:
         beta.kubernetes.io/os: linux
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              k8s-app: kube-dns
       containers:
       - name: coredns
         image: %{SYSTEM_DEFAULT_REGISTRY}%rancher/mirrored-coredns-coredns:1.8.4
