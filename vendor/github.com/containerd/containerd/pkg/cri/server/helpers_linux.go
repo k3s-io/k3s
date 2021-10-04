@@ -48,9 +48,6 @@ const (
 	defaultShmSize = int64(1024 * 1024 * 64)
 	// relativeRootfsPath is the rootfs path relative to bundle path.
 	relativeRootfsPath = "rootfs"
-	// According to http://man7.org/linux/man-pages/man5/resolv.conf.5.html:
-	// "The search list is currently limited to six domains with a total of 256 characters."
-	maxDNSSearches = 6
 	// devShm is the default path of /dev/shm.
 	devShm = "/dev/shm"
 	// etcHosts is the default path of /etc/hosts file.

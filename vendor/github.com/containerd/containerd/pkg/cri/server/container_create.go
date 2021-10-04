@@ -230,7 +230,7 @@ func (c *criService) CreateContainer(ctx context.Context, r *runtime.CreateConta
 		return nil, errors.Wrap(err, "failed to get container spec opts")
 	}
 
-	containerLabels := buildLabels(config.Labels, containerKindContainer)
+	containerLabels := buildLabels(config.Labels, image.ImageSpec.Config.Labels, containerKindContainer)
 
 	runtimeOptions, err := getRuntimeOptions(sandboxInfo)
 	if err != nil {
