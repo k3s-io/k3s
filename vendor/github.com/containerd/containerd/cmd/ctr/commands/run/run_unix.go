@@ -94,8 +94,8 @@ func NewContainer(ctx gocontext.Context, client *containerd.Client, context *cli
 		spec  containerd.NewContainerOpts
 	)
 
-	cOpts = append(cOpts, containerd.WithContainerLabels(commands.LabelArgs(context.StringSlice("label"))))
 	if config {
+		cOpts = append(cOpts, containerd.WithContainerLabels(commands.LabelArgs(context.StringSlice("labels"))))
 		opts = append(opts, oci.WithSpecFromFile(context.String("config")))
 	} else {
 		var (
@@ -116,6 +116,7 @@ func NewContainer(ctx gocontext.Context, client *containerd.Client, context *cli
 				return nil, err
 			}
 			opts = append(opts, oci.WithRootFSPath(rootfs))
+			cOpts = append(cOpts, containerd.WithContainerLabels(commands.LabelArgs(context.StringSlice("labels"))))
 		} else {
 			snapshotter := context.String("snapshotter")
 			var image containerd.Image
@@ -142,9 +143,12 @@ func NewContainer(ctx gocontext.Context, client *containerd.Client, context *cli
 					return nil, err
 				}
 			}
+			labels := buildLabels(commands.LabelArgs(context.StringSlice("label")), image.Labels())
 			opts = append(opts, oci.WithImageConfig(image))
 			cOpts = append(cOpts,
 				containerd.WithImage(image),
+				containerd.WithImageConfigLabels(image),
+				containerd.WithAdditionalContainerLabels(labels),
 				containerd.WithSnapshotter(snapshotter))
 			if uidmap, gidmap := context.String("uidmap"), context.String("gidmap"); uidmap != "" && gidmap != "" {
 				uidMap, err := parseIDMapping(uidmap)
