@@ -51,6 +51,7 @@ func NewContainer(ctx gocontext.Context, client *containerd.Client, context *cli
 	if config {
 		id = context.Args().First()
 		opts = append(opts, oci.WithSpecFromFile(context.String("config")))
+		cOpts = append(cOpts, containerd.WithContainerLabels(commands.LabelArgs(context.StringSlice("label"))))
 	} else {
 		var (
 			ref  = context.Args().First()
@@ -88,9 +89,13 @@ func NewContainer(ctx gocontext.Context, client *containerd.Client, context *cli
 			}
 		}
 		opts = append(opts, oci.WithImageConfig(image))
-		cOpts = append(cOpts, containerd.WithImage(image))
-		cOpts = append(cOpts, containerd.WithSnapshotter(snapshotter))
-		cOpts = append(cOpts, containerd.WithNewSnapshot(id, image))
+		labels := buildLabels(commands.LabelArgs(context.StringSlice("label")), image.Labels())
+		cOpts = append(cOpts,
+			containerd.WithImage(image),
+			containerd.WithImageConfigLabels(image),
+			containerd.WithSnapshotter(snapshotter),
+			containerd.WithNewSnapshot(id, image),
+			containerd.WithAdditionalContainerLabels(labels))
 
 		if len(args) > 0 {
 			opts = append(opts, oci.WithProcessArgs(args...))
@@ -124,7 +129,6 @@ func NewContainer(ctx gocontext.Context, client *containerd.Client, context *cli
 		}
 	}
 
-	cOpts = append(cOpts, containerd.WithContainerLabels(commands.LabelArgs(context.StringSlice("label"))))
 	runtime := context.String("runtime")
 	var runtimeOpts interface{}
 	if runtime == "io.containerd.runhcs.v1" {

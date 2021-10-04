@@ -283,8 +283,12 @@ func filterLabel(k, v string) string {
 }
 
 // buildLabel builds the labels from config to be passed to containerd
-func buildLabels(configLabels map[string]string, containerType string) map[string]string {
+func buildLabels(configLabels, imageConfigLabels map[string]string, containerType string) map[string]string {
 	labels := make(map[string]string)
+	for k, v := range imageConfigLabels {
+		labels[k] = v
+	}
+	// labels from the CRI request (config) will override labels in the image config
 	for k, v := range configLabels {
 		labels[k] = v
 	}
