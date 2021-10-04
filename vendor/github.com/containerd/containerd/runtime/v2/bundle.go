@@ -72,7 +72,10 @@ func NewBundle(ctx context.Context, root, state, id string, spec []byte) (b *Bun
 	if err := os.MkdirAll(filepath.Dir(b.Path), 0711); err != nil {
 		return nil, err
 	}
-	if err := os.Mkdir(b.Path, 0711); err != nil {
+	if err := os.Mkdir(b.Path, 0700); err != nil {
+		return nil, err
+	}
+	if err := prepareBundleDirectoryPermissions(b.Path, spec); err != nil {
 		return nil, err
 	}
 	paths = append(paths, b.Path)
