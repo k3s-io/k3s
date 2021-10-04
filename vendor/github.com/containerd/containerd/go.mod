@@ -4,7 +4,7 @@ go 1.14
 
 replace (
 	github.com/Microsoft/go-winio => github.com/Microsoft/go-winio v0.4.19
-	github.com/Microsoft/hcsshim => github.com/Microsoft/hcsshim v0.8.16
+	github.com/Microsoft/hcsshim => github.com/Microsoft/hcsshim v0.8.21
 	github.com/containerd/continuity => github.com/k3s-io/continuity v0.0.0-20210309170710-f93269e0d5c1
 	github.com/containerd/cri => github.com/k3s-io/cri v1.4.0-k3s.7 // k3s-release/1.4
 	github.com/golang/protobuf => github.com/golang/protobuf v1.3.5
