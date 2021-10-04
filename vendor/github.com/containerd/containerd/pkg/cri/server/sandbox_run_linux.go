@@ -275,10 +275,6 @@ func (c *criService) setupSandboxFiles(id string, config *runtime.PodSandboxConf
 func parseDNSOptions(servers, searches, options []string) (string, error) {
 	resolvContent := ""
 
-	if len(searches) > maxDNSSearches {
-		return "", errors.Errorf("DNSOption.Searches has more than %d domains", maxDNSSearches)
-	}
-
 	if len(searches) > 0 {
 		resolvContent += fmt.Sprintf("search %s\n", strings.Join(searches, " "))
 	}

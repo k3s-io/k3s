@@ -247,3 +247,16 @@ func fullID(ctx context.Context, c containerd.Container) string {
 	}
 	return fmt.Sprintf("%s-%s", ns, id)
 }
+
+// buildLabel builds the labels from command line labels and the image labels
+func buildLabels(cmdLabels, imageLabels map[string]string) map[string]string {
+	labels := make(map[string]string)
+	for k, v := range imageLabels {
+		labels[k] = v
+	}
+	// labels from the command line will override image and the initial image config labels
+	for k, v := range cmdLabels {
+		labels[k] = v
+	}
+	return labels
+}
