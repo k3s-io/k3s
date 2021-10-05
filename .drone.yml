@@ -23,16 +23,16 @@ steps:
     path: /var/run/docker.sock
 
 - name: fossa
-  image: rancher/dapper:v0.5.4
+  image: registry.suse.com/suse/sle15:15.3.17.8.1
   failure: ignore
   environment:
     FOSSA_API_KEY:
       from_secret: FOSSA_API_KEY
   commands:
-    - dapper fossa
-  volumes:
-    - name: docker
-      path: /var/run/docker.sock
+    - zypper -n install curl unzip
+    - "curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/spectrometer/master/install.sh | sh"
+    - fossa analyze
+    - fossa test
   when:
     instance:
       - drone-publish.k3s.io
