@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/rancher/k3s/pkg/version"
 	"github.com/rancher/wrangler/pkg/apply"
@@ -17,7 +18,7 @@ import (
 	"github.com/sirupsen/logrus"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -32,7 +33,7 @@ var (
 	svcNameLabel       = "svccontroller." + version.Program + ".cattle.io/svcname"
 	daemonsetNodeLabel = "svccontroller." + version.Program + ".cattle.io/enablelb"
 	nodeSelectorLabel  = "svccontroller." + version.Program + ".cattle.io/nodeselector"
-	DefaultLBImage     = "rancher/klipper-lb:v0.3.0"
+	DefaultLBImage     = "rancher/klipper-lb:v0.3.2"
 )
 
 const (
@@ -231,7 +232,7 @@ func (h *handler) podIPs(pods []*core.Pod) ([]string, error) {
 		}
 
 		node, err := h.nodeCache.Get(pod.Spec.NodeName)
-		if errors.IsNotFound(err) {
+		if apierrors.IsNotFound(err) {
 			continue
 		} else if err != nil {
 			return nil, err
@@ -369,8 +370,8 @@ func (h *handler) newDaemonSet(svc *core.Service) (*apps.DaemonSet, error) {
 					Value: strconv.Itoa(int(port.Port)),
 				},
 				{
-					Name:  "DEST_IP",
-					Value: svc.Spec.ClusterIP,
+					Name:  "DEST_IPS",
+					Value: strings.Join(svc.Spec.ClusterIPs, " "),
 				},
 			},
 			SecurityContext: &core.SecurityContext{
@@ -453,7 +454,7 @@ func (h *handler) updateDaemonSets() error {
 func (h *handler) deleteOldDeployments(svc *core.Service) error {
 	name := fmt.Sprintf("svclb-%s", svc.Name)
 	if _, err := h.deploymentCache.Get(svc.Namespace, name); err != nil {
-		if errors.IsNotFound(err) {
+		if apierrors.IsNotFound(err) {
 			return nil
 		}
 		return err
