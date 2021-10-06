@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -176,7 +177,12 @@ func readTokenFromFile(serverToken, certs, dataDir string) (string, error) {
 func normalizeToken(token string) (string, error) {
 	_, password, ok := clientaccess.ParseUsernamePassword(token)
 	if !ok {
-		return password, errors.New("failed to normalize token")
+		err := errors.New("failed to normalize token")
+		if strings.HasPrefix(token, "K10") {
+			err = fmt.Errorf("%w; 'K10' prefixed strings should not be used with --token", err)
+		}
+		return password, err
+
 	}
 	return password, nil
 }
