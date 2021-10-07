@@ -9,7 +9,7 @@ import (
 )
 
 // WriteClientKubeConfig generates a kubeconfig at destFile that can be used to connect to a server at url with the given certs and keys
-func WriteClientKubeConfig(destFile string, url string, serverCAFile string, clientCertFile string, clientKeyFile string) error {
+func WriteClientKubeConfig(destFile, url, serverCAFile, clientCertFile, clientKeyFile string) error {
 	serverCA, err := ioutil.ReadFile(serverCAFile)
 	if err != nil {
 		return errors.Wrapf(err, "failed to read %s", serverCAFile)
