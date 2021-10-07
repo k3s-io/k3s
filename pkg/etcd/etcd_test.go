@@ -16,16 +16,13 @@ import (
 )
 
 func generateTestConfig() *config.Control {
-	_, clusterIPNet, _ := net.ParseCIDR("10.42.0.0/16")
-	_, serviceIPNet, _ := net.ParseCIDR("10.43.0.0/16")
-
 	return &config.Control{
 		HTTPSPort:             6443,
 		SupervisorPort:        6443,
 		AdvertisePort:         6443,
 		ClusterDomain:         "cluster.local",
 		ClusterDNS:            net.ParseIP("10.43.0.10"),
-		ClusterIPRange:        clusterIPNet,
+		ClusterIPRange:        testutil.ClusterIPNet(),
 		DataDir:               "/tmp/k3s/", // Different than the default value
 		FlannelBackend:        "vxlan",
 		EtcdSnapshotName:      "etcd-snapshot",
@@ -34,7 +31,7 @@ func generateTestConfig() *config.Control {
 		EtcdS3Endpoint:        "s3.amazonaws.com",
 		EtcdS3Region:          "us-east-1",
 		SANs:                  []string{"127.0.0.1"},
-		ServiceIPRange:        serviceIPNet,
+		ServiceIPRange:        testutil.ServiceIPNet(),
 	}
 }
 
