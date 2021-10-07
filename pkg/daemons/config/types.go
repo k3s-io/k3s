@@ -166,6 +166,7 @@ type Control struct {
 	EtcdS3BucketName         string
 	EtcdS3Region             string
 	EtcdS3Folder             string
+	ServerNodeName           string
 
 	BindAddress string
 	SANs        []string
