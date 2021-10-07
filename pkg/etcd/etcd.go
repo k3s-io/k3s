@@ -178,7 +178,7 @@ func (e *ETCD) IsInitialized(ctx context.Context, config *config.Control) (bool,
 	} else if os.IsNotExist(err) {
 		return false, nil
 	} else {
-		return false, errors.Wrapf(err, "invalid state for wal directory %s", dir)
+		return false, errors.Wrap(err, "invalid state for wal directory "+dir)
 	}
 }
 
