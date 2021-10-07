@@ -20,11 +20,11 @@ type Cluster struct {
 	config           *config.Control
 	runtime          *config.ControlRuntime
 	managedDB        managed.Driver
-	shouldBootstrap  bool
-	storageStarted   bool
 	etcdConfig       endpoint.ETCDConfig
 	joining          bool
+	storageStarted   bool
 	saveBootstrap    bool
+	shouldBootstrap  bool
 }
 
 // Start creates the dynamic tls listener, http request handler,
@@ -81,14 +81,7 @@ func (c *Cluster) Start(ctx context.Context) (<-chan struct{}, error) {
 
 	// if necessary, store bootstrap data to datastore
 	if c.saveBootstrap {
-		if err := c.save(ctx); err != nil {
-			return nil, err
-		}
-	}
-
-	// if necessary, record successful bootstrap
-	if c.shouldBootstrap {
-		if err := c.bootstrapped(); err != nil {
+		if err := c.save(ctx, false); err != nil {
 			return nil, err
 		}
 	}
@@ -106,7 +99,7 @@ func (c *Cluster) Start(ctx context.Context) (<-chan struct{}, error) {
 			for {
 				select {
 				case <-ready:
-					if err := c.save(ctx); err != nil {
+					if err := c.save(ctx, false); err != nil {
 						panic(err)
 					}
 
@@ -153,7 +146,7 @@ func (c *Cluster) startStorage(ctx context.Context) error {
 	return nil
 }
 
-// New creates an initial cluster using the provided configuration
+// New creates an initial cluster using the provided configuration.
 func New(config *config.Control) *Cluster {
 	return &Cluster{
 		config:  config,
