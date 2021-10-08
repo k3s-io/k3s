@@ -56,12 +56,13 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	// database credentials or other secrets.
 	gspt.SetProcTitle(os.Args[0] + " server")
 
-	// Do init stuff if pid 1.
-	// This must be done before InitLogging as that may reexec in order to capture log output
-	if err := cmds.HandleInit(); err != nil {
+	// Evacuate cgroup v2 before doing anything else that may fork.
+	if err := cmds.EvacuateCgroup2(); err != nil {
 		return err
 	}
 
+	// Initialize logging, and subprocess reaping if necessary.
+	// Log output redirection and subprocess reaping both require forking.
 	if err := cmds.InitLogging(); err != nil {
 		return err
 	}
