@@ -4,9 +4,11 @@ import (
 	"github.com/urfave/cli"
 )
 
+const EncryptCommand = "encrypt"
+
 func NewEncryptCommand(action func(*cli.Context) error, subcommands []cli.Command) cli.Command {
 	return cli.Command{
-		Name:            "encrypt",
+		Name:            EncryptCommand,
 		Usage:           "(experimental) Enable secrets encryption at rest",
 		SkipFlagParsing: false,
 		SkipArgReorder:  true,
