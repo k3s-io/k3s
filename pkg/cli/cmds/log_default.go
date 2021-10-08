@@ -2,6 +2,6 @@
 
 package cmds
 
-func EvacuateCgroup2() error {
+func forkIfLoggingOrReaping() error {
 	return nil
 }
