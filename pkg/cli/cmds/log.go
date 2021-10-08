@@ -3,15 +3,10 @@ package cmds
 import (
 	"flag"
 	"fmt"
-	"io"
-	"os"
 	"strconv"
 	"sync"
 	"time"
 
-	"github.com/docker/docker/pkg/reexec"
-	"github.com/natefinch/lumberjack"
-	"github.com/rancher/k3s/pkg/version"
 	"github.com/urfave/cli"
 )
 
@@ -52,8 +47,8 @@ var (
 func InitLogging() error {
 	var rErr error
 	logSetupOnce.Do(func() {
-		if LogConfig.LogFile != "" && os.Getenv("_K3S_LOG_REEXEC_") == "" {
-			rErr = runWithLogging()
+		if err := forkIfLoggingOrReaping(); err != nil {
+			rErr = err
 			return
 		}
 
@@ -74,31 +69,6 @@ func checkUnixTimestamp() error {
 		return fmt.Errorf("server time isn't set properly: %v", timeNow)
 	}
 	return nil
-}
-
-func runWithLogging() error {
-	var (
-		l io.Writer
-	)
-	l = &lumberjack.Logger{
-		Filename:   LogConfig.LogFile,
-		MaxSize:    50,
-		MaxBackups: 3,
-		MaxAge:     28,
-		Compress:   true,
-	}
-	if LogConfig.AlsoLogToStderr {
-		l = io.MultiWriter(l, os.Stderr)
-	}
-
-	args := append([]string{version.Program}, os.Args[1:]...)
-	cmd := reexec.Command(args...)
-	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, "_K3S_LOG_REEXEC_=true")
-	cmd.Stderr = l
-	cmd.Stdout = l
-	cmd.Stdin = os.Stdin
-	return cmd.Run()
 }
 
 func setupLogging() {
