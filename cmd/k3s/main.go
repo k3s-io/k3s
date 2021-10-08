@@ -52,6 +52,12 @@ func main() {
 				etcdsnapshotCommand,
 				etcdsnapshotCommand),
 		),
+		cmds.NewEncryptCommand(internalCLIAction(version.Program+"-"+cmds.EtcdSnapshotCommand, dataDir, os.Args),
+			cmds.NewEncryptSubcommands(
+				etcdsnapshotCommand,
+				etcdsnapshotCommand,
+				etcdsnapshotCommand),
+		),
 	}
 
 	if err := app.Run(os.Args); err != nil && !errors.Is(err, context.Canceled) {
