@@ -12,6 +12,7 @@ import (
 	"github.com/rancher/k3s/pkg/cli/cmds"
 	"github.com/rancher/k3s/pkg/cli/crictl"
 	"github.com/rancher/k3s/pkg/cli/ctr"
+	"github.com/rancher/k3s/pkg/cli/encrypt"
 	"github.com/rancher/k3s/pkg/cli/etcdsnapshot"
 	"github.com/rancher/k3s/pkg/cli/kubectl"
 	"github.com/rancher/k3s/pkg/cli/server"
@@ -51,6 +52,12 @@ func main() {
 				etcdsnapshot.List,
 				etcdsnapshot.Prune,
 				etcdsnapshot.Run),
+		),
+		cmds.NewEncryptCommand(encrypt.Run,
+			cmds.NewEncryptSubcommands(
+				encrypt.Prepare,
+				encrypt.Rotate,
+				encrypt.Reencrypt),
 		),
 	}
 
