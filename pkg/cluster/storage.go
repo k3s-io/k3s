@@ -201,7 +201,7 @@ func readTokenFromFile(serverToken, certs, dataDir string) (string, error) {
 func normalizeToken(token string) (string, error) {
 	_, password, ok := clientaccess.ParseUsernamePassword(token)
 	if !ok {
-		return password, errors.New("failed to normalize token")
+		return password, errors.New("failed to normalize token; must be in format K10<CA-HASH>::<USERNAME>:<PASSWORD> or <PASSWORD>")
 	}
 
 	return password, nil
