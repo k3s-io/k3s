@@ -186,6 +186,7 @@ func (e *ETCD) IsInitialized(ctx context.Context, config *config.Control) (bool,
 func (e *ETCD) Reset(ctx context.Context, rebootstrap func() error) error {
 	// Wait for etcd to come up as a new single-node cluster, then exit
 	go func() {
+		<-e.runtime.AgentReady
 		t := time.NewTicker(5 * time.Second)
 		defer t.Stop()
 		for range t.C {
@@ -285,8 +286,14 @@ func (e *ETCD) Start(ctx context.Context, clientAccessInfo *clientaccess.Info) e
 		return e.newCluster(ctx, false)
 	}
 
-	err = e.join(ctx, clientAccessInfo)
-	return errors.Wrap(err, "joining etcd cluster")
+	go func() {
+		<-e.runtime.AgentReady
+		if err := e.join(ctx, clientAccessInfo); err != nil {
+			logrus.Fatalf("ETCD join failed: %v", err)
+		}
+	}()
+
+	return nil
 }
 
 // join attempts to add a member to an existing cluster
@@ -329,9 +336,9 @@ func (e *ETCD) join(ctx context.Context, clientAccessInfo *clientaccess.Info) er
 			// make sure to remove the name file if a duplicate node name is used
 			nameFile := nameFile(e.config)
 			if err := os.Remove(nameFile); err != nil {
-				return err
+				logrus.Errorf("Failed to remove etcd name file %s: %v", nameFile, err)
 			}
-			return errors.New("Failed to join etcd cluster due to duplicate node names, please use unique node name for the server")
+			return errors.New("duplicate node name found, please use a unique name for this node")
 		}
 		for _, peer := range member.PeerURLs {
 			u, err := url.Parse(peer)
@@ -352,7 +359,7 @@ func (e *ETCD) join(ctx context.Context, clientAccessInfo *clientaccess.Info) er
 	}
 
 	if add {
-		logrus.Infof("Adding %s to etcd cluster %v", e.peerURL(), cluster)
+		logrus.Infof("Adding member %s=%s to etcd cluster %v", e.name, e.peerURL(), cluster)
 		if _, err = client.MemberAddAsLearner(clientCtx, []string{e.peerURL()}); err != nil {
 			return err
 		}
@@ -438,7 +445,7 @@ func (e *ETCD) handler(next http.Handler) http.Handler {
 	return mux
 }
 
-// infoHandler returns etcd cluster information. This is used by new members when joining the custer.
+// infoHandler returns etcd cluster information. This is used by new members when joining the cluster.
 func (e *ETCD) infoHandler() http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		ctx, cancel := context.WithTimeout(req.Context(), 2*time.Second)
@@ -494,6 +501,10 @@ func getClientConfig(ctx context.Context, runtime *config.ControlRuntime, endpoi
 // toTLSConfig converts the ControlRuntime configuration to TLS configuration suitable
 // for use by etcd.
 func toTLSConfig(runtime *config.ControlRuntime) (*tls.Config, error) {
+	if runtime.ClientETCDCert == "" || runtime.ClientETCDKey == "" || runtime.ETCDServerCA == "" {
+		return nil, errors.New("runtime is not ready yet")
+	}
+
 	clientCert, err := tls.LoadX509KeyPair(runtime.ClientETCDCert, runtime.ClientETCDKey)
 	if err != nil {
 		return nil, err
@@ -527,8 +538,8 @@ func GetAdvertiseAddress(advertiseIP string) (string, error) {
 // newCluster returns options to set up etcd for a new cluster
 func (e *ETCD) newCluster(ctx context.Context, reset bool) error {
 	return e.cluster(ctx, reset, executor.InitialOptions{
-		AdvertisePeerURL: fmt.Sprintf("https://%s:2380", e.address),
-		Cluster:          fmt.Sprintf("%s=https://%s:2380", e.name, e.address),
+		AdvertisePeerURL: e.peerURL(),
+		Cluster:          fmt.Sprintf("%s=%s", e.name, e.peerURL()),
 		State:            "new",
 	})
 }
@@ -621,6 +632,7 @@ func (e *ETCD) RemovePeer(ctx context.Context, name, address string, allowSelfRe
 // being promoted to full voting member. The checks only run on the cluster member that is
 // the etcd leader.
 func (e *ETCD) manageLearners(ctx context.Context) error {
+	<-e.runtime.AgentReady
 	t := time.NewTicker(manageTickerTime)
 	defer t.Stop()
 
@@ -1310,9 +1322,6 @@ func backupDirWithRetention(dir string, maxBackupRetention int) (string, error) 
 // GetAPIServerURLFromETCD will try to fetch the version.Program/apiaddresses key from etcd
 // when it succeed it will parse the first address in the list and return back an address
 func GetAPIServerURLFromETCD(ctx context.Context, cfg *config.Control) (string, error) {
-	if cfg.Runtime == nil {
-		return "", fmt.Errorf("runtime is not ready yet")
-	}
 	cl, err := GetClient(ctx, cfg.Runtime, endpoint)
 	if err != nil {
 		return "", err

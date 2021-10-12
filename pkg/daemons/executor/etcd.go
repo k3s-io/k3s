@@ -28,7 +28,7 @@ func (e Embedded) ETCD(args ETCDConfig) error {
 	}
 	etcd, err := embed.StartEtcd(cfg)
 	if err != nil {
-		return nil
+		return err
 	}
 
 	go func() {
