@@ -53,6 +53,9 @@ func Setup(ctx context.Context, config *config.Node, proxy proxy.Proxy) error {
 		return err
 	}
 
+	// Do an immediate fill of proxy addresses from the server endpoint list, before going into the
+	// watch loop. This will fail on the first server, as the apiserver won't be started yet - but
+	// that's fine because the local server is already seeded into the proxy address list.
 	endpoint, _ := client.CoreV1().Endpoints("default").Get(ctx, "kubernetes", metav1.GetOptions{})
 	if endpoint != nil {
 		addresses := util.GetAddresses(endpoint)
@@ -61,8 +64,9 @@ func Setup(ctx context.Context, config *config.Node, proxy proxy.Proxy) error {
 		}
 	}
 
+	// Attempt to connect to supervisors, storing their cancellation function for later when we
+	// need to disconnect.
 	disconnect := map[string]context.CancelFunc{}
-
 	wg := &sync.WaitGroup{}
 	for _, address := range proxy.SupervisorAddresses() {
 		if _, ok := disconnect[address]; !ok {
@@ -70,7 +74,11 @@ func Setup(ctx context.Context, config *config.Node, proxy proxy.Proxy) error {
 		}
 	}
 
+	// Once the apiserver is up, go into a watch loop, adding and removing tunnels as endpoints come
+	// and go from the cluster. We go into a faster but noisier connect loop if the watch fails
+	// following a successful connection.
 	go func() {
+		util.WaitForAPIServerReady(client, 30*time.Second)
 	connect:
 		for {
 			time.Sleep(5 * time.Second)

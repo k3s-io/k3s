@@ -34,8 +34,9 @@ func GenerateDataDir(cnf *config.Control) error {
 }
 
 // CleanupDataDir removes the associated "/tmp/k3s/<RANDOM_STRING>"
-// directory.
+// directory along with the 'latest' symlink that points at it.
 func CleanupDataDir(cnf *config.Control) {
+	os.Remove(filepath.Join(cnf.DataDir, "..", "latest"))
 	os.RemoveAll(cnf.DataDir)
 }
 
