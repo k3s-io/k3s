@@ -72,6 +72,7 @@ type Server struct {
 	ClusterReset             bool
 	ClusterResetRestorePath  string
 	EncryptSecrets           bool
+	EncryptForceRotation     bool
 	SystemDefaultRegistry    string
 	StartupHooks             []StartupHook
 	EtcdSnapshotName         string

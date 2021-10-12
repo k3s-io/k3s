@@ -43,7 +43,11 @@ func NewEncryptSubcommands(prepare, rotate, reencrypt func(ctx *cli.Context) err
 			SkipFlagParsing: false,
 			SkipArgReorder:  true,
 			Action:          rotate,
-			Flags:           EncryptFlags,
+			Flags: append(EncryptFlags, &cli.BoolFlag{
+				Name:        "f,force",
+				Usage:       "Force key rotation.",
+				Destination: &ServerConfig.EncryptForceRotation,
+			}),
 		},
 		{
 			Name:            "reencrypt",
