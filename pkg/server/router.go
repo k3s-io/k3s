@@ -39,7 +39,7 @@ func router(ctx context.Context, config *Config, cfg *cmds.Server) http.Handler 
 	prefix := "/v1-" + version.Program
 	authed := mux.NewRouter()
 	authed.Use(authMiddleware(serverConfig, version.Program+":agent"))
-	authed.NotFoundHandler = serverConfig.Runtime.Handler
+	authed.NotFoundHandler = apiserver(serverConfig.Runtime)
 	authed.Path(prefix + "/serving-kubelet.crt").Handler(servingKubeletCert(serverConfig, serverConfig.Runtime.ServingKubeletKey, nodeAuth))
 	authed.Path(prefix + "/client-kubelet.crt").Handler(clientKubeletCert(serverConfig, serverConfig.Runtime.ClientKubeletKey, nodeAuth))
 	authed.Path(prefix + "/client-kube-proxy.crt").Handler(fileHandler(serverConfig.Runtime.ClientKubeProxyCert, serverConfig.Runtime.ClientKubeProxyKey))
@@ -70,6 +70,20 @@ func router(ctx context.Context, config *Config, cfg *cmds.Server) http.Handler 
 	router.Path("/ping").Handler(ping())
 
 	return router
+}
+
+func apiserver(runtime *config.ControlRuntime) http.Handler {
+	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
+		if runtime != nil && runtime.APIServer != nil {
+			runtime.APIServer.ServeHTTP(resp, req)
+		} else {
+			data := []byte("apiserver not ready")
+			resp.WriteHeader(http.StatusInternalServerError)
+			resp.Header().Set("Content-Type", "text/plain")
+			resp.Header().Set("Content-length", strconv.Itoa(len(data)))
+			resp.Write(data)
+		}
+	})
 }
 
 func cacerts(serverCA string) http.Handler {
@@ -269,7 +283,10 @@ func configHandler(server *config.Control, cfg *cmds.Server) http.Handler {
 		// At this time we don't sync all the fields, just those known to be touched by startup hooks.
 		server.DisableKubeProxy = cfg.DisableKubeProxy
 		resp.Header().Set("content-type", "application/json")
-		json.NewEncoder(resp).Encode(server)
+		if err := json.NewEncoder(resp).Encode(server); err != nil {
+			logrus.Errorf("Failed to encode agent config: %v", err)
+			resp.WriteHeader(http.StatusInternalServerError)
+		}
 	})
 }
 

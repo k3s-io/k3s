@@ -60,17 +60,21 @@ func (Embedded) KubeProxy(args []string) error {
 	return nil
 }
 
-func (Embedded) APIServer(ctx context.Context, etcdReady <-chan struct{}, args []string) (authenticator.Request, http.Handler, error) {
-	<-etcdReady
+func (Embedded) APIServerHandlers() (authenticator.Request, http.Handler, error) {
+	startupConfig := <-app.StartupConfig
+	return startupConfig.Authenticator, startupConfig.Handler, nil
+}
+
+func (Embedded) APIServer(ctx context.Context, etcdReady <-chan struct{}, args []string) error {
 	command := app.NewAPIServerCommand(ctx.Done())
 	command.SetArgs(args)
 
 	go func() {
+		<-etcdReady
 		logrus.Fatalf("apiserver exited: %v", command.Execute())
 	}()
 
-	startupConfig := <-app.StartupConfig
-	return startupConfig.Authenticator, startupConfig.Handler, nil
+	return nil
 }
 
 func (Embedded) Scheduler(apiReady <-chan struct{}, args []string) error {
