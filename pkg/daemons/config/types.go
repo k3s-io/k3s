@@ -198,6 +198,7 @@ type ControlRuntime struct {
 
 	HTTPBootstrap                       bool
 	APIServerReady                      <-chan struct{}
+	AgentReady                          <-chan struct{}
 	ETCDReady                           <-chan struct{}
 	ClusterControllerStart              func(ctx context.Context) error
 	LeaderElectedClusterControllerStart func(ctx context.Context) error
@@ -217,6 +218,7 @@ type ControlRuntime struct {
 	ServingKubeletKey  string
 	ServerToken        string
 	AgentToken         string
+	APIServer          http.Handler
 	Handler            http.Handler
 	Tunnel             http.Handler
 	Authenticator      authenticator.Request
