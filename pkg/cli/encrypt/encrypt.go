@@ -59,31 +59,18 @@ func Run(app *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	if !configControl.EncryptSecrets {
-		fmt.Println("Encryption Status: Disabled")
-		// return nil
-	}
-	fmt.Println("Encryption Status: Enabled")
+	return encryptionStatus(configControl)
+}
 
-	providers, err := getEncryptionProviders(configControl)
+func Status(app *cli.Context) error {
+	if err := cmds.InitLogging(); err != nil {
+		return err
+	}
+	configControl, err := commandPrep(&cmds.ServerConfig)
 	if err != nil {
 		return err
 	}
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(w, "Key Type\tName\tSecret\n")
-
-	for _, p := range providers {
-		if p.AESCBC != nil {
-			for _, aesKey := range p.AESCBC.Keys {
-				fmt.Fprintf(w, "%s\t%s\t%s\n", "AES-CBC", aesKey.Name, aesKey.Secret)
-			}
-		}
-		if p.Identity != nil {
-			fmt.Fprintf(w, "Identity\tidentity\tN/A\n")
-		}
-	}
-
-	return w.Flush()
+	return encryptionStatus(configControl)
 }
 
 func Prepare(app *cli.Context) error {
@@ -110,10 +97,10 @@ func Prepare(app *cli.Context) error {
 	if err != nil {
 		return err
 	}
-
 	if len(providers) > 2 {
 		return fmt.Errorf("more than 2 providers (%d) found in secrets encryption", len(providers))
 	}
+
 	var curKeys []apiserverconfigv1.Key
 	for _, p := range providers {
 		if p.AESCBC != nil {
@@ -124,13 +111,37 @@ func Prepare(app *cli.Context) error {
 	appendNewEncryptionKey(&curKeys)
 	fmt.Println("Adding key: ", curKeys[len(curKeys)-1])
 
-	return writeEncryptionConfigAndHash(configControl, hashFile, curKeys)
+	return writeEncryptionConfigAndHash(configControl, hashFile, curKeys, true)
 }
 
 func Rotate(app *cli.Context) error {
 	if err := cmds.InitLogging(); err != nil {
 		return err
 	}
+	configControl, err := commandPrep(&cmds.ServerConfig)
+	if err != nil {
+		return err
+	}
+
+	providers, err := getEncryptionProviders(configControl)
+	if err != nil {
+		return err
+	}
+	if len(providers) > 2 {
+		return fmt.Errorf("more than 2 providers (%d) found in secrets encryption", len(providers))
+	}
+
+	var curKeys []apiserverconfigv1.Key
+	for _, p := range providers {
+		if p.AESCBC != nil {
+			curKeys = append(curKeys, p.AESCBC.Keys...)
+		}
+	}
+	fmt.Println(curKeys)
+	// Right rotate elements
+	var rotatedKeys []apiserverconfigv1.Key
+	rotatedKeys = append(curKeys[len(curKeys)-1:], curKeys[:len(curKeys)-1]...)
+	fmt.Println(rotatedKeys)
 	return nil
 }
 
@@ -182,7 +193,33 @@ func appendNewEncryptionKey(keys *[]apiserverconfigv1.Key) error {
 	return nil
 }
 
-func writeEncryptionConfigAndHash(configControl config.Control, hashFile string, keys []apiserverconfigv1.Key) error {
+func writeEncryptionConfigAndHash(configControl config.Control, hashFile string, keys []apiserverconfigv1.Key, enable bool) error {
+
+	// Placing the identity provider first disables encryption
+	var providers []apiserverconfigv1.ProviderConfiguration
+	if enable {
+		providers = []apiserverconfigv1.ProviderConfiguration{
+			{
+				AESCBC: &apiserverconfigv1.AESConfiguration{
+					Keys: keys,
+				},
+			},
+			{
+				Identity: &apiserverconfigv1.IdentityConfiguration{},
+			},
+		}
+	} else {
+		providers = []apiserverconfigv1.ProviderConfiguration{
+			{
+				Identity: &apiserverconfigv1.IdentityConfiguration{},
+			},
+			{
+				AESCBC: &apiserverconfigv1.AESConfiguration{
+					Keys: keys,
+				},
+			},
+		}
+	}
 
 	encConfig := apiserverconfigv1.EncryptionConfiguration{
 		TypeMeta: metav1.TypeMeta{
@@ -192,16 +229,7 @@ func writeEncryptionConfigAndHash(configControl config.Control, hashFile string,
 		Resources: []apiserverconfigv1.ResourceConfiguration{
 			{
 				Resources: []string{"secrets"},
-				Providers: []apiserverconfigv1.ProviderConfiguration{
-					{
-						AESCBC: &apiserverconfigv1.AESConfiguration{
-							Keys: keys,
-						},
-					},
-					{
-						Identity: &apiserverconfigv1.IdentityConfiguration{},
-					},
-				},
+				Providers: providers,
 			},
 		},
 	}
@@ -222,4 +250,32 @@ func getEncryptionHash(configControl config.Control) [32]byte {
 		logrus.Fatal("no secrets encryption file found")
 	}
 	return sha256.Sum256(curEncryptionByte)
+}
+
+func encryptionStatus(configControl config.Control) error {
+	if !configControl.EncryptSecrets {
+		fmt.Println("Encryption Status: Disabled")
+		// return nil
+	}
+	fmt.Println("Encryption Status: Enabled")
+
+	providers, err := getEncryptionProviders(configControl)
+	if err != nil {
+		return err
+	}
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	fmt.Fprintf(w, "Key Type\tName\tSecret\n")
+
+	for _, p := range providers {
+		if p.AESCBC != nil {
+			for _, aesKey := range p.AESCBC.Keys {
+				fmt.Fprintf(w, "%s\t%s\t%s\n", "AES-CBC", aesKey.Name, aesKey.Secret)
+			}
+		}
+		if p.Identity != nil {
+			fmt.Fprintf(w, "Identity\tidentity\tN/A\n")
+		}
+	}
+
+	return w.Flush()
 }

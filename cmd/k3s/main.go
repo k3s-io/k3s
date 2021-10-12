@@ -57,6 +57,7 @@ func main() {
 			cmds.NewEncryptSubcommands(
 				encryptCommand,
 				encryptCommand,
+				encryptCommand,
 				encryptCommand),
 		),
 	}

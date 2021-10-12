@@ -55,6 +55,7 @@ func main() {
 		),
 		cmds.NewEncryptCommand(encrypt.Run,
 			cmds.NewEncryptSubcommands(
+				encrypt.Status,
 				encrypt.Prepare,
 				encrypt.Rotate,
 				encrypt.Reencrypt),

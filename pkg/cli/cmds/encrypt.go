@@ -27,8 +27,16 @@ func NewEncryptCommand(action func(*cli.Context) error, subcommands []cli.Comman
 	}
 }
 
-func NewEncryptSubcommands(prepare, rotate, reencrypt func(ctx *cli.Context) error) []cli.Command {
+func NewEncryptSubcommands(status, prepare, rotate, reencrypt func(ctx *cli.Context) error) []cli.Command {
 	return []cli.Command{
+		{
+			Name:            "status",
+			Usage:           "(experimental) Print current status of secrets encryption",
+			SkipFlagParsing: false,
+			SkipArgReorder:  true,
+			Action:          status,
+			Flags:           EncryptFlags,
+		},
 		{
 			Name:            "prepare",
 			Usage:           "(experimental) Prepare for encryption keys rotation",

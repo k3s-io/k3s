@@ -17,6 +17,7 @@ func main() {
 	app.Commands = []cli.Command{
 		cmds.NewEncryptCommand(encrypt.Run,
 			cmds.NewEncryptSubcommands(
+				encrypt.Status,
 				encrypt.Prepare,
 				encrypt.Rotate,
 				encrypt.Reencrypt),
