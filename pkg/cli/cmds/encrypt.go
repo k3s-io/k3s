@@ -1,18 +1,28 @@
 package cmds
 
 import (
+	"github.com/rancher/k3s/pkg/version"
 	"github.com/urfave/cli"
 )
 
 const EncryptCommand = "encrypt"
 
+var EncryptFlags = []cli.Flag{
+	cli.StringFlag{
+		Name:        "data-dir,d",
+		Usage:       "(data) Folder to hold state default /var/lib/rancher/" + version.Program + " or ${HOME}/.rancher/" + version.Program + " if not root",
+		Destination: &ServerConfig.DataDir,
+	},
+}
+
 func NewEncryptCommand(action func(*cli.Context) error, subcommands []cli.Command) cli.Command {
 	return cli.Command{
 		Name:            EncryptCommand,
-		Usage:           "(experimental) Enable secrets encryption at rest",
+		Usage:           "(experimental) Print current status of secrets encryption",
 		SkipFlagParsing: false,
 		SkipArgReorder:  true,
 		Action:          action,
+		Flags:           EncryptFlags,
 		Subcommands:     subcommands,
 	}
 }
@@ -25,7 +35,7 @@ func NewEncryptSubcommands(prepare, rotate, reencrypt func(ctx *cli.Context) err
 			SkipFlagParsing: false,
 			SkipArgReorder:  true,
 			Action:          prepare,
-			// Flags:           EtcdSnapshotFlags,
+			Flags:           EncryptFlags,
 		},
 		{
 			Name:            "rotate",
@@ -33,6 +43,7 @@ func NewEncryptSubcommands(prepare, rotate, reencrypt func(ctx *cli.Context) err
 			SkipFlagParsing: false,
 			SkipArgReorder:  true,
 			Action:          rotate,
+			Flags:           EncryptFlags,
 		},
 		{
 			Name:            "reencrypt",
@@ -40,6 +51,7 @@ func NewEncryptSubcommands(prepare, rotate, reencrypt func(ctx *cli.Context) err
 			SkipFlagParsing: false,
 			SkipArgReorder:  true,
 			Action:          reencrypt,
+			Flags:           EncryptFlags,
 		},
 	}
 }
