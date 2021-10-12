@@ -22,7 +22,8 @@ type Executor interface {
 	Bootstrap(ctx context.Context, nodeConfig *daemonconfig.Node, cfg cmds.Agent) error
 	Kubelet(ctx context.Context, args []string) error
 	KubeProxy(ctx context.Context, args []string) error
-	APIServer(ctx context.Context, etcdReady <-chan struct{}, args []string) (authenticator.Request, http.Handler, error)
+	APIServerHandlers(ctx context.Context) (authenticator.Request, http.Handler, error)
+	APIServer(ctx context.Context, etcdReady <-chan struct{}, args []string) error
 	Scheduler(ctx context.Context, apiReady <-chan struct{}, args []string) error
 	ControllerManager(ctx context.Context, apiReady <-chan struct{}, args []string) error
 	CurrentETCDOptions() (InitialOptions, error)
@@ -97,7 +98,11 @@ func KubeProxy(ctx context.Context, args []string) error {
 	return executor.KubeProxy(ctx, args)
 }
 
-func APIServer(ctx context.Context, etcdReady <-chan struct{}, args []string) (authenticator.Request, http.Handler, error) {
+func APIServerHandlers(ctx context.Context) (authenticator.Request, http.Handler, error) {
+	return executor.APIServerHandlers(ctx)
+}
+
+func APIServer(ctx context.Context, etcdReady <-chan struct{}, args []string) error {
 	return executor.APIServer(ctx, etcdReady, args)
 }
 
