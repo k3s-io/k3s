@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"text/tabwriter"
 	"time"
 
@@ -44,6 +45,7 @@ func commandPrep(cfg *cmds.Server) (config.Control, error) {
 	}
 	configControl.Runtime = &config.ControlRuntime{}
 	configControl.EncryptSecrets = cfg.EncryptSecrets
+	configControl.EncryptForceRotation = cfg.EncryptForceRotation
 	fmt.Println("HELP ", cfg.EncryptSecrets)
 	configControl.Runtime.EncryptionConfig = filepath.Join(configControl.DataDir, "cred", "encryption-config.json")
 	configControl.Runtime.KubeConfigAdmin = filepath.Join(configControl.DataDir, "cred", "admin.kubeconfig")
@@ -82,13 +84,47 @@ func Prepare(app *cli.Context) error {
 		return err
 	}
 
-	// If hash exists, check that they don't match to prevent prepare running twice
+	providers, err := getEncryptionProviders(configControl)
+	if err != nil {
+		return err
+	}
+	if len(providers) > 2 {
+		return fmt.Errorf("more than 2 providers (%d) found in secrets encryption", len(providers))
+	}
+
+	var curKeys []apiserverconfigv1.Key
+	for _, p := range providers {
+		if p.AESCBC != nil {
+			curKeys = append(curKeys, p.AESCBC.Keys...)
+		}
+	}
+
+	if len(curKeys) > 1 && !askForConfirmation("Warning: More than one key detected! Are you sure you want to add a new key?") {
+		return nil
+	}
+
+	appendNewEncryptionKey(&curKeys)
+	fmt.Println("Adding key: ", curKeys[len(curKeys)-1])
+
+	return writeEncryptionConfig(configControl, curKeys, true)
+}
+
+func Rotate(app *cli.Context) error {
+	if err := cmds.InitLogging(); err != nil {
+		return err
+	}
+	configControl, err := commandPrep(&cmds.ServerConfig)
+	if err != nil {
+		return err
+	}
+
+	// If hash exists, check that they don't match to prevent rotate running twice
 	hashFile := filepath.Join(configControl.DataDir, "cred", "encryption-config.sha256")
-	if existingHash, err := ioutil.ReadFile(hashFile); err == nil {
+	if existingHash, err := ioutil.ReadFile(hashFile); err == nil && !configControl.EncryptForceRotation {
 		currentHash := getEncryptionHash(configControl)
 		logrus.Debugf("Existing hash: %x, current hash: %x", existingHash, currentHash)
 		if reflect.DeepEqual(existingHash, currentHash[:]) {
-			fmt.Println("Existing prepare operation detected, aborting prepare")
+			fmt.Println("Existing rotate operation detected, aborting rotate")
 			return nil
 		}
 	}
@@ -107,42 +143,15 @@ func Prepare(app *cli.Context) error {
 			curKeys = append(curKeys, p.AESCBC.Keys...)
 		}
 	}
-
-	appendNewEncryptionKey(&curKeys)
-	fmt.Println("Adding key: ", curKeys[len(curKeys)-1])
-
-	return writeEncryptionConfigAndHash(configControl, hashFile, curKeys, true)
-}
-
-func Rotate(app *cli.Context) error {
-	if err := cmds.InitLogging(); err != nil {
-		return err
-	}
-	configControl, err := commandPrep(&cmds.ServerConfig)
-	if err != nil {
-		return err
-	}
-
-	providers, err := getEncryptionProviders(configControl)
-	if err != nil {
-		return err
-	}
-	if len(providers) > 2 {
-		return fmt.Errorf("more than 2 providers (%d) found in secrets encryption", len(providers))
-	}
-
-	var curKeys []apiserverconfigv1.Key
-	for _, p := range providers {
-		if p.AESCBC != nil {
-			curKeys = append(curKeys, p.AESCBC.Keys...)
-		}
-	}
-	fmt.Println(curKeys)
 	// Right rotate elements
-	var rotatedKeys []apiserverconfigv1.Key
-	rotatedKeys = append(curKeys[len(curKeys)-1:], curKeys[:len(curKeys)-1]...)
-	fmt.Println(rotatedKeys)
-	return nil
+	rotatedKeys := append(curKeys[len(curKeys)-1:], curKeys[:len(curKeys)-1]...)
+
+	if err = writeEncryptionConfig(configControl, rotatedKeys, true); err != nil {
+		return err
+	}
+	fmt.Println("Encryption keys rotated")
+	encryptionHash := getEncryptionHash(configControl)
+	return ioutil.WriteFile(hashFile, encryptionHash[:], 0600)
 }
 
 func Reencrypt(app *cli.Context) error {
@@ -193,7 +202,7 @@ func appendNewEncryptionKey(keys *[]apiserverconfigv1.Key) error {
 	return nil
 }
 
-func writeEncryptionConfigAndHash(configControl config.Control, hashFile string, keys []apiserverconfigv1.Key, enable bool) error {
+func writeEncryptionConfig(configControl config.Control, keys []apiserverconfigv1.Key, enable bool) error {
 
 	// Placing the identity provider first disables encryption
 	var providers []apiserverconfigv1.ProviderConfiguration
@@ -237,11 +246,7 @@ func writeEncryptionConfigAndHash(configControl config.Control, hashFile string,
 	if err != nil {
 		return err
 	}
-	if err = ioutil.WriteFile(configControl.Runtime.EncryptionConfig, jsonfile, 0600); err != nil {
-		return err
-	}
-	encryptionHash := getEncryptionHash(configControl)
-	return ioutil.WriteFile(hashFile, encryptionHash[:], 0600)
+	return ioutil.WriteFile(configControl.Runtime.EncryptionConfig, jsonfile, 0600)
 }
 
 func getEncryptionHash(configControl config.Control) [32]byte {
@@ -278,4 +283,22 @@ func encryptionStatus(configControl config.Control) error {
 	}
 
 	return w.Flush()
+}
+
+func askForConfirmation(message string) bool {
+	var s string
+
+	fmt.Printf("%s (y/N): ", message)
+	_, err := fmt.Scan(&s)
+	if err != nil {
+		panic(err)
+	}
+
+	s = strings.TrimSpace(s)
+	s = strings.ToLower(s)
+
+	if s == "y" || s == "yes" {
+		return true
+	}
+	return false
 }
