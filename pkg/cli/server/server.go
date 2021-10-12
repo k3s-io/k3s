@@ -16,6 +16,7 @@ import (
 	"github.com/rancher/k3s/pkg/agent/loadbalancer"
 	"github.com/rancher/k3s/pkg/cli/cmds"
 	"github.com/rancher/k3s/pkg/clientaccess"
+	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/datadir"
 	"github.com/rancher/k3s/pkg/etcd"
 	"github.com/rancher/k3s/pkg/netutil"
@@ -83,8 +84,11 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		cfg.Token = cfg.ClusterSecret
 	}
 
+	agentReady := make(chan struct{})
+
 	serverConfig := server.Config{}
 	serverConfig.DisableAgent = cfg.DisableAgent
+	serverConfig.ControlConfig.Runtime = &config.ControlRuntime{AgentReady: agentReady}
 	serverConfig.ControlConfig.Token = cfg.Token
 	serverConfig.ControlConfig.AgentToken = cfg.AgentToken
 	serverConfig.ControlConfig.JoinURL = cfg.ServerURL
@@ -411,6 +415,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	}()
 
 	if cfg.DisableAgent {
+		close(agentReady)
 		<-ctx.Done()
 		return nil
 	}
@@ -427,6 +432,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	}
 
 	agentConfig := cmds.AgentConfig
+	agentConfig.AgentReady = agentReady
 	agentConfig.Debug = app.GlobalBool("debug")
 	agentConfig.DataDir = filepath.Dir(serverConfig.ControlConfig.DataDir)
 	agentConfig.ServerURL = url

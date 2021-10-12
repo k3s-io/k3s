@@ -4,7 +4,6 @@ import (
 	"context"
 	"math/rand"
 	"net"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -23,7 +22,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/apiserver/pkg/authentication/authenticator"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/kubernetes/pkg/kubeapiserver/authorizer/modes"
@@ -37,9 +35,7 @@ var localhostIP = net.ParseIP("127.0.0.1")
 
 func Server(ctx context.Context, cfg *config.Control) error {
 	rand.Seed(time.Now().UTC().UnixNano())
-
-	runtime := &config.ControlRuntime{}
-	cfg.Runtime = runtime
+	runtime := cfg.Runtime
 
 	if err := prepare(ctx, cfg, runtime); err != nil {
 		return errors.Wrap(err, "preparing server")
@@ -48,13 +44,16 @@ func Server(ctx context.Context, cfg *config.Control) error {
 	cfg.Runtime.Tunnel = setupTunnel()
 	proxyutil.DisableProxyHostnameCheck = true
 
-	var auth authenticator.Request
-	var handler http.Handler
-	var err error
+	basicAuth, err := basicAuthenticator(runtime.PasswdFile)
+	if err != nil {
+		return err
+	}
+	runtime.Authenticator = basicAuth
 
 	if !cfg.DisableAPIServer {
-		auth, handler, err = apiServer(ctx, cfg, runtime)
-		if err != nil {
+		go waitForAPIServerHandlers(ctx, runtime)
+
+		if err := apiServer(ctx, cfg, runtime); err != nil {
 			return err
 		}
 
@@ -62,13 +61,6 @@ func Server(ctx context.Context, cfg *config.Control) error {
 			return err
 		}
 	}
-	basicAuth, err := basicAuthenticator(runtime.PasswdFile)
-	if err != nil {
-		return err
-	}
-
-	runtime.Authenticator = combineAuthenticators(basicAuth, auth)
-	runtime.Handler = handler
 
 	if !cfg.DisableScheduler {
 		if err := scheduler(cfg, runtime); err != nil {
@@ -144,7 +136,7 @@ func scheduler(cfg *config.Control, runtime *config.ControlRuntime) error {
 	return executor.Scheduler(runtime.APIServerReady, args)
 }
 
-func apiServer(ctx context.Context, cfg *config.Control, runtime *config.ControlRuntime) (authenticator.Request, http.Handler, error) {
+func apiServer(ctx context.Context, cfg *config.Control, runtime *config.ControlRuntime) error {
 	argsMap := make(map[string]string)
 
 	setupStorageBackend(argsMap, cfg)
@@ -416,6 +408,15 @@ func checkForCloudControllerPrivileges(runtime *config.ControlRuntime, timeout t
 		logrus.Errorf("error encountered waitng for cloud-controller-manager privileges: %v", err)
 	}
 	return nil
+}
+
+func waitForAPIServerHandlers(ctx context.Context, runtime *config.ControlRuntime) {
+	auth, handler, err := executor.APIServerHandlers()
+	if err != nil {
+		logrus.Fatalf("Failed to get request handlers from apiserver: %v", err)
+	}
+	runtime.Authenticator = combineAuthenticators(runtime.Authenticator, auth)
+	runtime.APIServer = handler
 }
 
 func waitForAPIServerInBackground(ctx context.Context, runtime *config.ControlRuntime) error {
