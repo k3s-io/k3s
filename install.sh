@@ -706,9 +706,13 @@ rm -rf /var/lib/kubelet
 rm -f ${BIN_DIR}/k3s
 rm -f ${KILLALL_K3S_SH}
 
-if type yum >/dev/null 2>&1; then
-    yum remove -y k3s-selinux
-    rm -f /etc/yum.repos.d/rancher-k3s-common*.repo
+if [ "$INSTALL_K3S_SKIP_SELINUX_RPM" = true ] || can_skip_download; then
+    info "Skipping uninstall of SELinux RPM becuase we didn't install it"
+else
+    if type yum >/dev/null 2>&1; then
+        yum remove -y k3s-selinux
+        rm -f /etc/yum.repos.d/rancher-k3s-common*.repo
+    fi
 fi
 EOF
     $SUDO chmod 755 ${UNINSTALL_K3S_SH}
