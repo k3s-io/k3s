@@ -812,6 +812,8 @@ func (l *loggingT) output(s severity, buf *buffer, file string, line int, alsoTo
 		}
 	}
 	if s == fatalLog {
+		l.mu.Unlock()
+		timeoutFlush(10 * time.Second)
 		panic(string(data))
 	}
 	l.putBuffer(buf)
