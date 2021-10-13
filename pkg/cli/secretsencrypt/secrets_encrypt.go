@@ -1,4 +1,4 @@
-package encrypt
+package secretsencrypt
 
 import (
 	"context"

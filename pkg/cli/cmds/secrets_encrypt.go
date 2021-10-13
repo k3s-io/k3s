@@ -5,7 +5,7 @@ import (
 	"github.com/urfave/cli"
 )
 
-const EncryptCommand = "encrypt"
+const SecretsEncryptCommand = "secrets-encrypt"
 
 var EncryptFlags = []cli.Flag{
 	cli.StringFlag{
@@ -15,9 +15,9 @@ var EncryptFlags = []cli.Flag{
 	},
 }
 
-func NewEncryptCommand(action func(*cli.Context) error, subcommands []cli.Command) cli.Command {
+func NewSecretsEncryptCommand(action func(*cli.Context) error, subcommands []cli.Command) cli.Command {
 	return cli.Command{
-		Name:            EncryptCommand,
+		Name:            SecretsEncryptCommand,
 		Usage:           "(experimental) Print current status of secrets encryption",
 		SkipFlagParsing: false,
 		SkipArgReorder:  true,
@@ -27,7 +27,7 @@ func NewEncryptCommand(action func(*cli.Context) error, subcommands []cli.Comman
 	}
 }
 
-func NewEncryptSubcommands(status, prepare, rotate, reencrypt func(ctx *cli.Context) error) []cli.Command {
+func NewSecretsEncryptSubcommands(status, prepare, rotate, reencrypt func(ctx *cli.Context) error) []cli.Command {
 	return []cli.Command{
 		{
 			Name:            "status",
