@@ -15,6 +15,9 @@ docker ps
 
 # ---
 
+. ./scripts/test-unit
+echo "Did test-unit $?"
+
 . ./scripts/test-run-basics
 echo "Did test-run-basics $?"
 
@@ -40,7 +43,5 @@ echo "Did test-run-sonobuoy $?"
 
 test-run-sonobuoy mysql
 test-run-sonobuoy postgres
-
-. ./scripts/test-unit
 
 exit 0

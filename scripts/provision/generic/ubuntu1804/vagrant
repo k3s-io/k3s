@@ -9,17 +9,32 @@ export SELINUX=true
 EOF
 . /etc/profile.d/build.sh
 # ---
+apt-get update
 apt-get install -y \
   build-essential \
-  pkg-config \
+  ca-certificates \
+  curl \
+  docker.io \
+  gcc \
+  git \
+  jq \
+  libffi-dev \
   libseccomp-dev \
   libsqlite3-dev \
   libselinux1-dev \
+  libuv1-dev \
+  make \
+  npm \
+  pkg-config \
+  python3 \
+  squashfs-tools \
+  tar \
+  wget \
+  vim \
+  zip \
   zlib1g-dev \
+  zstd
 
-# ---
-sed -E 's|apk( -U)?( --no-cache)?( --repository [^ ]*)? add|apt-get install -y|g' -i /tmp/docker-run
-. /tmp/docker-run
 # ---
 go get -u github.com/go-delve/delve/cmd/dlv
 # ---

@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
@@ -79,8 +80,12 @@ func (c *Cluster) initClusterAndHTTPS(ctx context.Context) error {
 
 	// Create a HTTP server with the registered request handlers, using logrus for logging
 	server := http.Server{
-		Handler:  handler,
-		ErrorLog: log.New(logrus.StandardLogger().Writer(), "Cluster-Http-Server ", log.LstdFlags),
+		Handler: handler}
+
+	if logrus.IsLevelEnabled(logrus.DebugLevel) {
+		server.ErrorLog = log.New(logrus.StandardLogger().Writer(), "Cluster-Http-Server ", log.LstdFlags)
+	} else {
+		server.ErrorLog = log.New(ioutil.Discard, "Cluster-Http-Server", 0)
 	}
 
 	// Start the supervisor http server on the tls listener

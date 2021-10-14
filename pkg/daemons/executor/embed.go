@@ -70,12 +70,17 @@ func (Embedded) KubeProxy(ctx context.Context, args []string) error {
 	return nil
 }
 
-func (Embedded) APIServer(ctx context.Context, etcdReady <-chan struct{}, args []string) (authenticator.Request, http.Handler, error) {
-	<-etcdReady
+func (Embedded) APIServerHandlers(ctx context.Context) (authenticator.Request, http.Handler, error) {
+	startupConfig := <-app.StartupConfig
+	return startupConfig.Authenticator, startupConfig.Handler, nil
+}
+
+func (Embedded) APIServer(ctx context.Context, etcdReady <-chan struct{}, args []string) error {
 	command := app.NewAPIServerCommand(ctx.Done())
 	command.SetArgs(args)
 
 	go func() {
+		<-etcdReady
 		defer func() {
 			if err := recover(); err != nil {
 				logrus.Fatalf("apiserver panic: %v", err)
@@ -84,8 +89,7 @@ func (Embedded) APIServer(ctx context.Context, etcdReady <-chan struct{}, args [
 		logrus.Fatalf("apiserver exited: %v", command.ExecuteContext(ctx))
 	}()
 
-	startupConfig := <-app.StartupConfig
-	return startupConfig.Authenticator, startupConfig.Handler, nil
+	return nil
 }
 
 func (Embedded) Scheduler(ctx context.Context, apiReady <-chan struct{}, args []string) error {

@@ -84,6 +84,14 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 		}
 	}
 
+	// the agent runtime is ready to host workloads when containerd is up and the airgap
+	// images have finished loading, as that portion of startup may block for an arbitrary
+	// amount of time depending on how long it takes to import whatever the user has placed
+	// in the images directory.
+	if cfg.AgentReady != nil {
+		close(cfg.AgentReady)
+	}
+
 	notifySocket := os.Getenv("NOTIFY_SOCKET")
 	os.Unsetenv("NOTIFY_SOCKET")
 

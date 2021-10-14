@@ -1,4 +1,4 @@
-OS = (ENV['OS'] || "alpine312")
+DISTRO = (ENV['DISTRO'] || "alpine312")
 BOX_REPO = (ENV['BOX_REPO'] || "generic")
 HOME = ENV['HOME']
 PROJ_HOME = File.dirname(__FILE__)
@@ -17,7 +17,7 @@ MOUNT_TYPE = ENV['MOUNT_TYPE'] || "virtualbox"
 # --- May need to add terminal to System Preferences -> Security & Privacy -> Privacy -> Full Disk Access
 
 def provision(vm, node_num)
-  node_os = (ENV["OS_#{node_num}"] || OS)
+  node_os = (ENV["DISTRO_#{node_num}"] || DISTRO)
   vm.box = (ENV["BOX_#{node_num}"] || ENV["BOX"] || "#{BOX_REPO}/#{node_os}")
   vm.hostname = "#{PROJECT}-#{node_num}-#{vm.box.gsub(/^.*\//,"")}"
   vm.network "private_network", ip: "#{NETWORK_PREFIX}.#{100+node_num}"
@@ -32,6 +32,10 @@ Vagrant.configure("2") do |config|
     v.cpus = NODE_CPUS
     v.memory = NODE_MEMORY
     v.customize ["modifyvm", :id, "--audio", "none"]
+  end
+  config.vm.provider "libvirt" do |v|
+    v.cpus = NODE_CPUS
+    v.memory = NODE_MEMORY
   end
   if Vagrant.has_plugin?("vagrant-timezone")
     config.timezone.value = :host
