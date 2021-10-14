@@ -167,6 +167,7 @@ type Control struct {
 	EtcdS3BucketName         string
 	EtcdS3Region             string
 	EtcdS3Folder             string
+	EtcdS3Timeout            uint
 	EtcdS3Insecure           bool
 	ServerNodeName           string
 

@@ -89,6 +89,7 @@ type Server struct {
 	EtcdS3BucketName         string
 	EtcdS3Region             string
 	EtcdS3Folder             string
+	EtcdS3Timeout            uint
 	EtcdS3Insecure           bool
 }
 
@@ -336,6 +337,12 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Name:        "etcd-s3-insecure",
 				Usage:       "(db) Disables S3 over HTTPS",
 				Destination: &ServerConfig.EtcdS3Insecure,
+			},
+			&cli.UintFlag{
+				Name:        "etcd-s3-timeout",
+				Usage:       "(db) S3 timeout in seconds",
+				Destination: &ServerConfig.EtcdS3Timeout,
+				Value:       30,
 			},
 			cli.StringFlag{
 				Name:        "default-local-storage-path",

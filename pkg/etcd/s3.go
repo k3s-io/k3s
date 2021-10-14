@@ -27,8 +27,9 @@ const defaultS3OpTimeout = time.Second * 30
 
 // S3 maintains state for S3 functionality.
 type S3 struct {
-	config *config.Control
-	client *minio.Client
+	config  *config.Control
+	client  *minio.Client
+	timeout time.Duration
 }
 
 // newS3 creates a new value of type s3 pointer with a
@@ -71,7 +72,16 @@ func NewS3(ctx context.Context, config *config.Control) (*S3, error) {
 
 	logrus.Infof("Checking if S3 bucket %s exists", config.EtcdS3BucketName)
 
-	ctx, cancel := context.WithTimeout(ctx, defaultS3OpTimeout)
+	s := S3{
+		config: config,
+	}
+	if config.EtcdS3Timeout == 0 {
+		s.timeout = defaultS3OpTimeout
+	} else {
+		s.timeout = time.Second * time.Duration(config.EtcdS3Timeout)
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, s.timeout)
 	defer cancel()
 
 	exists, err := c.BucketExists(ctx, config.EtcdS3BucketName)
@@ -83,10 +93,9 @@ func NewS3(ctx context.Context, config *config.Control) (*S3, error) {
 	}
 	logrus.Infof("S3 bucket %s exists", config.EtcdS3BucketName)
 
-	return &S3{
-		config: config,
-		client: c,
-	}, nil
+	s.client = c
+
+	return &s, nil
 }
 
 // upload uploads the given snapshot to the configured S3
@@ -100,7 +109,7 @@ func (s *S3) upload(ctx context.Context, snapshot string) error {
 		snapshotFileName = basename
 	}
 
-	toCtx, cancel := context.WithTimeout(ctx, defaultS3OpTimeout)
+	toCtx, cancel := context.WithTimeout(ctx, s.timeout)
 	defer cancel()
 	opts := minio.PutObjectOptions{
 		ContentType: "application/zip",
@@ -124,7 +133,7 @@ func (s *S3) Download(ctx context.Context) error {
 	}
 
 	logrus.Debugf("retrieving snapshot: %s", remotePath)
-	toCtx, cancel := context.WithTimeout(ctx, defaultS3OpTimeout)
+	toCtx, cancel := context.WithTimeout(ctx, s.timeout)
 	defer cancel()
 
 	r, err := s.client.GetObject(toCtx, s.config.EtcdS3BucketName, remotePath, minio.GetObjectOptions{})
@@ -178,7 +187,7 @@ func (s *S3) snapshotPrefix() string {
 func (s *S3) snapshotRetention(ctx context.Context) error {
 	var snapshotFiles []minio.ObjectInfo
 
-	toCtx, cancel := context.WithTimeout(ctx, defaultS3OpTimeout)
+	toCtx, cancel := context.WithTimeout(ctx, s.timeout)
 	defer cancel()
 
 	loo := minio.ListObjectsOptions{
