@@ -133,7 +133,6 @@ func (c *Cluster) storageBootstrap(ctx context.Context) error {
 	}
 
 	return c.ReconcileBootstrapData(ctx, bytes.NewBuffer(data), &c.config.Runtime.ControlRuntimeBootstrap)
-	//return bootstrap.WriteToDiskFromStorage(bytes.NewBuffer(data), &c.runtime.ControlRuntimeBootstrap)
 }
 
 // getBootstrapKeyFromStorage will list all keys that has prefix /bootstrap and will check for key that is
