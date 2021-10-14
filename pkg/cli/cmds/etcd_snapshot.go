@@ -82,7 +82,7 @@ var EtcdSnapshotFlags = []cli.Flag{
 		Usage:       "(db) Disables S3 over HTTPS",
 		Destination: &ServerConfig.EtcdS3Insecure,
 	},
-	&cli.UintFlag{
+	&cli.DurationFlag{
 		Name:        "s3-timeout,etcd-s3-timeout",
 		Usage:       "(db) S3 timeout in seconds",
 		Destination: &ServerConfig.EtcdS3Timeout,
