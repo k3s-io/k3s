@@ -82,6 +82,12 @@ var EtcdSnapshotFlags = []cli.Flag{
 		Usage:       "(db) Disables S3 over HTTPS",
 		Destination: &ServerConfig.EtcdS3Insecure,
 	},
+	&cli.DurationFlag{
+		Name:        "s3-timeout,etcd-s3-timeout",
+		Usage:       "(db) S3 timeout in seconds",
+		Destination: &ServerConfig.EtcdS3Timeout,
+		Value:       30,
+	},
 }
 
 func NewEtcdSnapshotCommand(action func(*cli.Context) error, subcommands []cli.Command) cli.Command {
