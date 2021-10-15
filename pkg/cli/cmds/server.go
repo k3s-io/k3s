@@ -343,7 +343,7 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Name:        "etcd-s3-timeout",
 				Usage:       "(db) S3 timeout in seconds",
 				Destination: &ServerConfig.EtcdS3Timeout,
-				Value:       30,
+				Value:       30 * time.Second,
 			},
 			cli.StringFlag{
 				Name:        "default-local-storage-path",
