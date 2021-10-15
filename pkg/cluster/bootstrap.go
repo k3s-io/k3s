@@ -182,7 +182,7 @@ const systemTimeSkew = int64(3)
 // bootstrap data in the datastore is newer than on disk or different
 //  and dependingon where the difference is, the newer data is written
 // to the older.
-func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf *bytes.Buffer, crb *config.ControlRuntimeBootstrap) error {
+func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker, crb *config.ControlRuntimeBootstrap) error {
 	logrus.Info("Reconciling bootstrap data between datastore and disk")
 
 	if err := c.certDirsExist(); err != nil {
@@ -243,15 +243,14 @@ RETRY:
 	}
 
 	files := make(bootstrap.PathsDataformat)
-	r := bytes.NewReader(buf.Bytes())
 
-	if err := json.NewDecoder(r).Decode(&files); err != nil {
+	if err := json.NewDecoder(buf).Decode(&files); err != nil {
 		// This will fail if data is being pulled from old an cluster since
 		// older clusters used a map[string][]byte for the data structure.
 		// Therefore, we need to perform a migration to the newer bootstrap
 		// format; bootstrap.BootstrapFile.
-		r.Seek(0, 0)
-		if err := migrateBootstrapData(ctx, r, files); err != nil {
+		buf.Seek(0, 0)
+		if err := migrateBootstrapData(ctx, buf, files); err != nil {
 			return err
 		}
 	}
@@ -398,7 +397,7 @@ func (c *Cluster) httpBootstrap(ctx context.Context) error {
 		return err
 	}
 
-	return c.ReconcileBootstrapData(ctx, bytes.NewBuffer(content), &c.config.Runtime.ControlRuntimeBootstrap)
+	return c.ReconcileBootstrapData(ctx, bytes.NewReader(content), &c.config.Runtime.ControlRuntimeBootstrap)
 }
 
 // bootstrap performs cluster bootstrapping, either via HTTP (for managed databases) or direct load from datastore.
