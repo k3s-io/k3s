@@ -48,13 +48,8 @@ func commandSetup(app *cli.Context, cfg *cmds.Server, sc *server.Config) (string
 	sc.ControlConfig.EtcdS3BucketName = cfg.EtcdS3BucketName
 	sc.ControlConfig.EtcdS3Region = cfg.EtcdS3Region
 	sc.ControlConfig.EtcdS3Folder = cfg.EtcdS3Folder
-<<<<<<< HEAD
-||||||| parent of 0452f017c1... Add etcd s3 timeout (#4207)
-	sc.ControlConfig.EtcdS3Insecure = cfg.EtcdS3Insecure
-=======
 	sc.ControlConfig.EtcdS3Insecure = cfg.EtcdS3Insecure
 	sc.ControlConfig.EtcdS3Timeout = cfg.EtcdS3Timeout
->>>>>>> 0452f017c1... Add etcd s3 timeout (#4207)
 	sc.ControlConfig.Runtime = &config.ControlRuntime{}
 
 	return server.ResolveDataDir(cfg.DataDir)

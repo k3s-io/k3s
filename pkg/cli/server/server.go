@@ -148,13 +148,8 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		serverConfig.ControlConfig.EtcdS3BucketName = cfg.EtcdS3BucketName
 		serverConfig.ControlConfig.EtcdS3Region = cfg.EtcdS3Region
 		serverConfig.ControlConfig.EtcdS3Folder = cfg.EtcdS3Folder
-<<<<<<< HEAD
-||||||| parent of 0452f017c1... Add etcd s3 timeout (#4207)
-		serverConfig.ControlConfig.EtcdS3Insecure = cfg.EtcdS3Insecure
-=======
 		serverConfig.ControlConfig.EtcdS3Insecure = cfg.EtcdS3Insecure
 		serverConfig.ControlConfig.EtcdS3Timeout = cfg.EtcdS3Timeout
->>>>>>> 0452f017c1... Add etcd s3 timeout (#4207)
 	} else {
 		logrus.Info("ETCD snapshots are disabled")
 	}
