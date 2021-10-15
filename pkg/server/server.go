@@ -2,6 +2,8 @@ package server
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io/ioutil"
 	net2 "net"
@@ -43,6 +45,8 @@ const (
 	ControlPlaneRoleLabelKey = "node-role.kubernetes.io/control-plane"
 	ETCDRoleLabelKey         = "node-role.kubernetes.io/etcd"
 )
+
+var EncryptionConfigHashAnnotation = version.Program + ".io/encryption-config-hash"
 
 func ResolveDataDir(dataDir string) (string, error) {
 	dataDir, err := datadir.Resolve(dataDir)
@@ -172,6 +176,8 @@ func runControllers(ctx context.Context, wg *sync.WaitGroup, config *Config) err
 	go setControlPlaneRoleLabel(ctx, sc.Core.Core().V1().Node(), config)
 
 	go setClusterDNSConfig(ctx, config, sc.Core.Core().V1().ConfigMap())
+
+	go setEncryptionConfigHashAnnotation(ctx, sc.Core.Core().V1().Node(), controlConfig)
 
 	if controlConfig.NoLeaderElect {
 		go func() {
@@ -569,6 +575,48 @@ func setClusterDNSConfig(ctx context.Context, controlConfig *Config, configMap v
 		}
 		logrus.Infof("Waiting for control-plane dns startup: %v", err)
 
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(time.Second):
+		}
+	}
+	return nil
+}
+
+func setEncryptionConfigHashAnnotation(ctx context.Context, nodes v1.NodeClient, controlConfig *config.Control) error {
+	if !controlConfig.EncryptSecrets {
+		return nil
+	}
+	curEncryptionByte, err := ioutil.ReadFile(controlConfig.Runtime.EncryptionConfig)
+	if err != nil {
+		return err
+	}
+	encryptionConfigHash := sha256.Sum256(curEncryptionByte)
+	for {
+		nodeName := os.Getenv("NODE_NAME")
+		if nodeName == "" {
+			logrus.Info("Waiting for control-plane node agent startup")
+			time.Sleep(1 * time.Second)
+			continue
+		}
+		node, err := nodes.Get(nodeName, metav1.GetOptions{})
+		if err != nil {
+			logrus.Infof("Waiting for control-plane node %s startup: %v", nodeName, err)
+			time.Sleep(1 * time.Second)
+			continue
+		}
+
+		if node.Annotations == nil {
+			node.Annotations = make(map[string]string)
+		}
+		node.Annotations[EncryptionConfigHashAnnotation] = hex.EncodeToString(encryptionConfigHash[:])
+
+		_, err = nodes.Update(node)
+		if err == nil {
+			logrus.Infof("encryption config hash annotation has been set successfully on node: %s", nodeName)
+			break
+		}
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
