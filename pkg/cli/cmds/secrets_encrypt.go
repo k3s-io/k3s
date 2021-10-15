@@ -18,7 +18,7 @@ var EncryptFlags = []cli.Flag{
 func NewSecretsEncryptCommand(action func(*cli.Context) error, subcommands []cli.Command) cli.Command {
 	return cli.Command{
 		Name:            SecretsEncryptCommand,
-		Usage:           "(experimental) Print current status of secrets encryption",
+		Usage:           "(experimental) Toggle secrets encryption",
 		SkipFlagParsing: false,
 		SkipArgReorder:  true,
 		Action:          action,

@@ -57,7 +57,6 @@ func commandPrep(app *cli.Context, cfg *cmds.Server) (config.Control, error) {
 	controlConfig.Runtime = &config.ControlRuntime{}
 	controlConfig.EncryptSecrets = cfg.EncryptSecrets
 	controlConfig.EncryptForceRotation = cfg.EncryptForceRotation
-	fmt.Println("HELP ", cfg.EncryptSecrets)
 	controlConfig.Runtime.EncryptionConfig = filepath.Join(controlConfig.DataDir, "cred", "encryption-config.json")
 	controlConfig.Runtime.KubeConfigAdmin = filepath.Join(controlConfig.DataDir, "cred", "admin.kubeconfig")
 
@@ -72,50 +71,26 @@ func Run(app *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	ctx := signals.SetupSignalHandler(context.Background())
-	sc, err := server.NewContext(ctx, controlConfig.Runtime.KubeConfigAdmin)
+
+	providers, err := getEncryptionProviders(controlConfig)
 	if err != nil {
 		return err
 	}
-	// serverNodes, err := getServerNodes(ctx, sc.K8s)
-	// if err != nil {
-	// 	return err
-	// }
-	// for _, node := range serverNodes {
-	// 	fmt.Println(pp(node.Annotations))
-
-	// }
-	return encryptionStatus(ctx, sc.K8s, controlConfig)
-}
-
-func getServerNodes(ctx context.Context, k8s kubernetes.Interface) ([]corev1.Node, error) {
-
-	nodes, err := k8s.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+	if len(providers) > 2 {
+		return fmt.Errorf("more than 2 providers (%d) found in secrets encryption", len(providers))
+	}
+	curKeys, err := getEncryptionKeys(controlConfig)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	var serverNodes []corev1.Node
-	for _, node := range nodes.Items {
-		if v, ok := node.Labels[server.ControlPlaneRoleLabelKey]; ok && v == "true" {
-			serverNodes = append(serverNodes, node)
-		}
+	if providers[1].Identity != nil && providers[0].AESCBC != nil {
+		fmt.Println("Disabling secrets encryption")
+		return writeEncryptionConfig(controlConfig, curKeys, false)
+	} else if providers[0].Identity != nil && providers[1].AESCBC != nil {
+		fmt.Println("Enabling secrets encryption")
+		return writeEncryptionConfig(controlConfig, curKeys, true)
 	}
-	return serverNodes, nil
-}
-
-func verifyEncryptionHash(nodes []corev1.Node) error {
-	var firstHash string
-	first := true
-	for _, node := range nodes {
-		hash, ok := node.Annotations[server.EncryptionConfigHashAnnotation]
-		if ok && first {
-			firstHash = hash
-			first = false
-		} else if ok && hash != firstHash {
-			return fmt.Errorf("server nodes have different secrets encryption keys")
-		}
-	}
-	return nil
+	return fmt.Errorf("unable to toggle secrets encryption, unknown configuration")
 }
 
 func Status(app *cli.Context) error {
@@ -126,12 +101,8 @@ func Status(app *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	ctx := signals.SetupSignalHandler(context.Background())
-	sc, err := server.NewContext(ctx, controlConfig.Runtime.KubeConfigAdmin)
-	if err != nil {
-		return err
-	}
-	return encryptionStatus(ctx, sc.K8s, controlConfig)
+
+	return encryptionStatus(controlConfig)
 }
 
 func Prepare(app *cli.Context) error {
@@ -236,6 +207,36 @@ func Reencrypt(app *cli.Context) error {
 	// Cleanup rotate protection file
 	rotateHashFile := filepath.Join(controlConfig.DataDir, "cred", "encryption-rotate.sha256")
 	os.Remove(rotateHashFile)
+	return nil
+}
+
+func getServerNodes(ctx context.Context, k8s kubernetes.Interface) ([]corev1.Node, error) {
+
+	nodes, err := k8s.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	var serverNodes []corev1.Node
+	for _, node := range nodes.Items {
+		if v, ok := node.Labels[server.ControlPlaneRoleLabelKey]; ok && v == "true" {
+			serverNodes = append(serverNodes, node)
+		}
+	}
+	return serverNodes, nil
+}
+
+func verifyEncryptionHash(nodes []corev1.Node) error {
+	var firstHash string
+	first := true
+	for _, node := range nodes {
+		hash, ok := node.Annotations[server.EncryptionConfigHashAnnotation]
+		if ok && first {
+			firstHash = hash
+			first = false
+		} else if ok && hash != firstHash {
+			return fmt.Errorf("server nodes have different secrets encryption keys")
+		}
+	}
 	return nil
 }
 
@@ -372,21 +373,32 @@ func getEncryptionHashAnnotations(ctx context.Context, k8s kubernetes.Interface)
 	return node.Annotations[server.EncryptionConfigHashAnnotation], nil
 }
 
-func encryptionStatus(ctx context.Context, k8s kubernetes.Interface, controlConfig config.Control) error {
-	if !controlConfig.EncryptSecrets {
-		fmt.Println("Encryption Status: Disabled")
-		// return nil
+func encryptionStatus(controlConfig config.Control) error {
+	providers, err := getEncryptionProviders(controlConfig)
+	if os.IsNotExist(err) {
+		fmt.Println("Encryption Status: Disabled, no configuration file found")
+		return nil
+	} else if err != nil {
+		return err
 	}
-	fmt.Println("Encryption Status: Enabled")
-	cur, err := getEncryptionHashAnnotations(ctx, k8s)
+	if providers[1].Identity != nil && providers[0].AESCBC != nil {
+		fmt.Println("Encryption Status: Enabled")
+	} else if providers[0].Identity != nil && providers[1].AESCBC != nil {
+		//} else if providers[0].Identity != nil && providers[1].AESCBC != nil || !controlConfig.EncryptSecrets {
+		fmt.Println("Encryption Status: Disabled")
+	}
+
+	ctx := signals.SetupSignalHandler(context.Background())
+	sc, err := server.NewContext(ctx, controlConfig.Runtime.KubeConfigAdmin)
+	if err != nil {
+		return err
+	}
+	cur, err := getEncryptionHashAnnotations(ctx, sc.K8s)
 	if err != nil {
 		return err
 	}
 	fmt.Println("Current Encryption Hash: ", cur)
-	providers, err := getEncryptionProviders(controlConfig)
-	if err != nil {
-		return err
-	}
+
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	fmt.Fprintf(w, "Key Type\tName\tSecret\n")
 
