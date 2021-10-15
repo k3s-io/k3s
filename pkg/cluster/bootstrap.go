@@ -242,20 +242,16 @@ RETRY:
 		return err
 	}
 
-	// in the event that the a migration needs to happen, the passed
-	// buffer gets read and isn't readable again so we need to copy
-	// its contents to be passed to the migration function. If it's
-	// not used, we reclaim the memory.
-	tmpBuf := make([]byte, buf.Len())
-	copy(tmpBuf, buf.Bytes())
-
 	files := make(bootstrap.PathsDataformat)
-	if err := json.NewDecoder(buf).Decode(&files); err != nil {
+	r := bytes.NewReader(buf.Bytes())
+
+	if err := json.NewDecoder(r).Decode(&files); err != nil {
 		// This will fail if data is being pulled from old an cluster since
 		// older clusters used a map[string][]byte for the data structure.
 		// Therefore, we need to perform a migration to the newer bootstrap
 		// format; bootstrap.BootstrapFile.
-		if err := migrateBootstrapData(ctx, bytes.NewReader(tmpBuf), files); err != nil {
+		r.Seek(0, 0)
+		if err := migrateBootstrapData(ctx, r, files); err != nil {
 			return err
 		}
 	}
