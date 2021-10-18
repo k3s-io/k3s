@@ -17,7 +17,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/clientcmd"
 )
 
 func pp(i interface{}) string {
@@ -103,19 +102,6 @@ func Prepare(app *cli.Context) error {
 	}
 	controlConfig, err := commandPrep(app, &cmds.ServerConfig)
 	if err != nil {
-		return err
-	}
-	ctx := signals.SetupSignalHandler(context.Background())
-	restConfig, err := clientcmd.BuildConfigFromFlags("", controlConfig.Runtime.KubeConfigAdmin)
-	if err != nil {
-		return err
-	}
-	k8s := kubernetes.NewForConfigOrDie(restConfig)
-	serverNodes, err := getServerNodes(ctx, k8s)
-	if err != nil {
-		return err
-	}
-	if err := verifyEncryptionHash(serverNodes); err != nil {
 		return err
 	}
 
@@ -225,21 +211,6 @@ func getServerNodes(ctx context.Context, k8s *kubernetes.Clientset) ([]corev1.No
 	return serverNodes, nil
 }
 
-func verifyEncryptionHash(nodes []corev1.Node) error {
-	var firstHash string
-	first := true
-	for _, node := range nodes {
-		hash, ok := node.Annotations[server.EncryptionConfigHashAnnotation]
-		if ok && first {
-			firstHash = hash
-			first = false
-		} else if ok && hash != firstHash {
-			return fmt.Errorf("server nodes have different secrets encryption keys")
-		}
-	}
-	return nil
-}
-
 func updateSecrets(ctx context.Context, controlConfig config.Control, k8s kubernetes.Interface) error {
 	secrets, err := k8s.CoreV1().Secrets("").List(ctx, metav1.ListOptions{})
 	if err != nil {
@@ -269,19 +240,6 @@ func encryptionStatus(controlConfig config.Control) error {
 		//} else if providers[0].Identity != nil && providers[1].AESCBC != nil || !controlConfig.EncryptSecrets {
 		fmt.Println("Encryption Status: Disabled")
 	}
-
-	ctx := signals.SetupSignalHandler(context.Background())
-	restConfig, err := clientcmd.BuildConfigFromFlags("", controlConfig.Runtime.KubeConfigAdmin)
-	k8s := kubernetes.NewForConfigOrDie(restConfig)
-
-	if err != nil {
-		return err
-	}
-	cur, err := server.GetEncryptionHashAnnotations(ctx, k8s)
-	if err != nil {
-		return err
-	}
-	fmt.Println("Current Encryption Hash: ", cur)
 
 	stage, _, err := server.GetEncryptionState(controlConfig)
 	if err != nil {

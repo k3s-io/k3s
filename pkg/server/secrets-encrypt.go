@@ -1,19 +1,16 @@
 package server
 
 import (
-	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"os"
 	"time"
 
 	"github.com/rancher/k3s/pkg/daemons/config"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apiserverconfigv1 "k8s.io/apiserver/pkg/apis/config/v1"
-	"k8s.io/client-go/kubernetes"
 )
 
 const (
@@ -152,17 +149,4 @@ func GetEncryptionState(controlConfig config.Control) (string, apiserverconfigv1
 		return "", apiserverconfigv1.Key{}, err
 	}
 	return curEncryption.Stage, curEncryption.CurrentKey, nil
-}
-
-func GetEncryptionHashAnnotations(ctx context.Context, k8s kubernetes.Interface) (string, error) {
-	nodeName := os.Getenv("NODE_NAME")
-	// Try hostname
-	if nodeName == "" {
-		return "", fmt.Errorf("NODE_NAME not found")
-	}
-	node, err := k8s.CoreV1().Nodes().Get(ctx, nodeName, metav1.GetOptions{})
-	if err != nil {
-		return "", err
-	}
-	return node.Annotations[EncryptionConfigHashAnnotation], nil
 }
