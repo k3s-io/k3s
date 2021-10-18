@@ -81,7 +81,7 @@ type ETCD struct {
 	runtime *config.ControlRuntime
 	address string
 	cron    *cron.Cron
-	s3      *s3
+	s3      *S3
 }
 
 type learnerProgress struct {
@@ -1055,7 +1055,7 @@ func (e *ETCD) DeleteSnapshots(ctx context.Context, snapshots []string) error {
 
 		objectsCh := make(chan minio.ObjectInfo)
 
-		ctx, cancel := context.WithTimeout(ctx, defaultS3OpTimeout)
+		ctx, cancel := context.WithTimeout(ctx, e.config.EtcdS3Timeout)
 		defer cancel()
 
 		go func() {

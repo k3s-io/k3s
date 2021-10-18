@@ -14,7 +14,6 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -23,10 +22,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const defaultS3OpTimeout = time.Second * 30
-
-// s3 maintains state for S3 functionality.
-type s3 struct {
+// S3 maintains state for S3 functionality.
+type S3 struct {
 	config *config.Control
 	client *minio.Client
 }
@@ -34,7 +31,7 @@ type s3 struct {
 // newS3 creates a new value of type s3 pointer with a
 // copy of the config.Control pointer and initializes
 // a new Minio client.
-func newS3(ctx context.Context, config *config.Control) (*s3, error) {
+func newS3(ctx context.Context, config *config.Control) (*S3, error) {
 	tr := http.DefaultTransport
 
 	switch {
@@ -71,7 +68,7 @@ func newS3(ctx context.Context, config *config.Control) (*s3, error) {
 
 	logrus.Infof("Checking if S3 bucket %s exists", config.EtcdS3BucketName)
 
-	ctx, cancel := context.WithTimeout(ctx, defaultS3OpTimeout)
+	ctx, cancel := context.WithTimeout(ctx, config.EtcdS3Timeout)
 	defer cancel()
 
 	exists, err := c.BucketExists(ctx, config.EtcdS3BucketName)
@@ -83,7 +80,7 @@ func newS3(ctx context.Context, config *config.Control) (*s3, error) {
 	}
 	logrus.Infof("S3 bucket %s exists", config.EtcdS3BucketName)
 
-	return &s3{
+	return &S3{
 		config: config,
 		client: c,
 	}, nil
@@ -91,7 +88,7 @@ func newS3(ctx context.Context, config *config.Control) (*s3, error) {
 
 // upload uploads the given snapshot to the configured S3
 // compatible backend.
-func (s *s3) upload(ctx context.Context, snapshot string) error {
+func (s *S3) upload(ctx context.Context, snapshot string) error {
 	basename := filepath.Base(snapshot)
 	var snapshotFileName string
 	if s.config.EtcdS3Folder != "" {
@@ -100,7 +97,7 @@ func (s *s3) upload(ctx context.Context, snapshot string) error {
 		snapshotFileName = basename
 	}
 
-	toCtx, cancel := context.WithTimeout(ctx, defaultS3OpTimeout)
+	toCtx, cancel := context.WithTimeout(ctx, s.config.EtcdS3Timeout)
 	defer cancel()
 	opts := minio.PutObjectOptions{
 		ContentType: "application/zip",
@@ -115,7 +112,7 @@ func (s *s3) upload(ctx context.Context, snapshot string) error {
 
 // download downloads the given snapshot from the configured S3
 // compatible backend.
-func (s *s3) download(ctx context.Context) error {
+func (s *S3) download(ctx context.Context) error {
 	var remotePath string
 	if s.config.EtcdS3Folder != "" {
 		remotePath = filepath.Join(s.config.EtcdS3Folder, s.config.ClusterResetRestorePath)
@@ -124,7 +121,7 @@ func (s *s3) download(ctx context.Context) error {
 	}
 
 	logrus.Debugf("retrieving snapshot: %s", remotePath)
-	toCtx, cancel := context.WithTimeout(ctx, defaultS3OpTimeout)
+	toCtx, cancel := context.WithTimeout(ctx, s.config.EtcdS3Timeout)
 	defer cancel()
 
 	r, err := s.client.GetObject(toCtx, s.config.EtcdS3BucketName, remotePath, minio.GetObjectOptions{})
@@ -161,7 +158,7 @@ func (s *s3) download(ctx context.Context) error {
 
 // snapshotPrefix returns the prefix used in the
 // naming of the snapshots.
-func (s *s3) snapshotPrefix() string {
+func (s *S3) snapshotPrefix() string {
 	nodeName := os.Getenv("NODE_NAME")
 	fullSnapshotPrefix := s.config.EtcdSnapshotName + "-" + nodeName
 	var prefix string
@@ -175,10 +172,10 @@ func (s *s3) snapshotPrefix() string {
 
 // snapshotRetention deletes the given snapshot from the configured S3
 // compatible backend.
-func (s *s3) snapshotRetention(ctx context.Context) error {
+func (s *S3) snapshotRetention(ctx context.Context) error {
 	var snapshotFiles []minio.ObjectInfo
 
-	toCtx, cancel := context.WithTimeout(ctx, defaultS3OpTimeout)
+	toCtx, cancel := context.WithTimeout(ctx, s.config.EtcdS3Timeout)
 	defer cancel()
 
 	loo := minio.ListObjectsOptions{
