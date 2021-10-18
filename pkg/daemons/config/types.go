@@ -192,6 +192,7 @@ type ControlRuntimeBootstrap struct {
 	RequestHeaderCAKey string
 	IPSECKey           string
 	EncryptionConfig   string
+	EncryptionState    string
 }
 
 type ControlRuntime struct {

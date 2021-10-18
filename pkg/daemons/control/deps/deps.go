@@ -31,7 +31,8 @@ const (
 	ipsecTokenSize = 48
 	aescbcKeySize  = 32
 
-	RequestHeaderCN = "system:auth-proxy"
+	RequestHeaderCN      = "system:auth-proxy"
+	EncryptionStartState = "start"
 )
 
 var (
@@ -147,6 +148,7 @@ func CreateRuntimeCertFiles(config *config.Control, runtime *config.ControlRunti
 
 	if config.EncryptSecrets {
 		runtime.EncryptionConfig = filepath.Join(config.DataDir, "cred", "encryption-config.json")
+		runtime.EncryptionState = filepath.Join(config.DataDir, "cred", "encryption-state.json")
 	}
 }
 
@@ -169,7 +171,7 @@ func GenServerDeps(config *config.Control, runtime *config.ControlRuntime) error
 		return err
 	}
 
-	if err := genEncryptionConfig(config, runtime); err != nil {
+	if err := genEncryptionConfigAndState(config, runtime); err != nil {
 		return err
 	}
 
@@ -649,7 +651,7 @@ func expired(certFile string, pool *x509.CertPool) bool {
 	return certutil.IsCertExpired(certificates[0], config.CertificateRenewDays)
 }
 
-func genEncryptionConfig(controlConfig *config.Control, runtime *config.ControlRuntime) error {
+func genEncryptionConfigAndState(controlConfig *config.Control, runtime *config.ControlRuntime) error {
 	if !controlConfig.EncryptSecrets {
 		return nil
 	}
@@ -694,5 +696,22 @@ func genEncryptionConfig(controlConfig *config.Control, runtime *config.ControlR
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(runtime.EncryptionConfig, jsonfile, 0600)
+	if err := ioutil.WriteFile(runtime.EncryptionConfig, jsonfile, 0600); err != nil {
+		return err
+	}
+	encState := struct {
+		Stage      string `json:"stage"`
+		CurrentKey apiserverconfigv1.Key
+	}{
+		Stage: "start",
+		CurrentKey: apiserverconfigv1.Key{
+			Name:   "aescbckey",
+			Secret: encodedKey,
+		},
+	}
+	jsonfile, err = json.Marshal(encState)
+	if err != nil {
+		return err
+	}
+	return ioutil.WriteFile(controlConfig.Runtime.EncryptionState, jsonfile, 0600)
 }
