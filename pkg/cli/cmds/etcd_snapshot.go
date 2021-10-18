@@ -1,6 +1,8 @@
 package cmds
 
 import (
+	"time"
+
 	"github.com/rancher/k3s/pkg/version"
 	"github.com/urfave/cli"
 )
@@ -81,6 +83,12 @@ var EtcdSnapshotFlags = []cli.Flag{
 		Name:        "s3-insecure,etcd-s3-insecure",
 		Usage:       "(db) Disables S3 over HTTPS",
 		Destination: &ServerConfig.EtcdS3Insecure,
+	},
+	&cli.DurationFlag{
+		Name:        "s3-timeout,etcd-s3-timeout",
+		Usage:       "(db) S3 timeout",
+		Destination: &ServerConfig.EtcdS3Timeout,
+		Value:       30 * time.Second,
 	},
 }
 

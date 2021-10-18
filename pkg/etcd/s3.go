@@ -14,7 +14,6 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -22,8 +21,6 @@ import (
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/sirupsen/logrus"
 )
-
-const defaultS3OpTimeout = time.Second * 30
 
 // S3 maintains state for S3 functionality.
 type S3 struct {
@@ -71,7 +68,7 @@ func NewS3(ctx context.Context, config *config.Control) (*S3, error) {
 
 	logrus.Infof("Checking if S3 bucket %s exists", config.EtcdS3BucketName)
 
-	ctx, cancel := context.WithTimeout(ctx, defaultS3OpTimeout)
+	ctx, cancel := context.WithTimeout(ctx, config.EtcdS3Timeout)
 	defer cancel()
 
 	exists, err := c.BucketExists(ctx, config.EtcdS3BucketName)
@@ -100,7 +97,7 @@ func (s *S3) upload(ctx context.Context, snapshot string) error {
 		snapshotFileName = basename
 	}
 
-	toCtx, cancel := context.WithTimeout(ctx, defaultS3OpTimeout)
+	toCtx, cancel := context.WithTimeout(ctx, s.config.EtcdS3Timeout)
 	defer cancel()
 	opts := minio.PutObjectOptions{
 		ContentType: "application/zip",
@@ -124,7 +121,7 @@ func (s *S3) Download(ctx context.Context) error {
 	}
 
 	logrus.Debugf("retrieving snapshot: %s", remotePath)
-	toCtx, cancel := context.WithTimeout(ctx, defaultS3OpTimeout)
+	toCtx, cancel := context.WithTimeout(ctx, s.config.EtcdS3Timeout)
 	defer cancel()
 
 	r, err := s.client.GetObject(toCtx, s.config.EtcdS3BucketName, remotePath, minio.GetObjectOptions{})
@@ -178,7 +175,7 @@ func (s *S3) snapshotPrefix() string {
 func (s *S3) snapshotRetention(ctx context.Context) error {
 	var snapshotFiles []minio.ObjectInfo
 
-	toCtx, cancel := context.WithTimeout(ctx, defaultS3OpTimeout)
+	toCtx, cancel := context.WithTimeout(ctx, s.config.EtcdS3Timeout)
 	defer cancel()
 
 	loo := minio.ListObjectsOptions{
