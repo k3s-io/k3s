@@ -36,9 +36,12 @@ func (k *k3s) InstanceID(ctx context.Context, nodeName types.NodeName) (string, 
 		return "", errors.New("Node informer has not synced yet")
 	}
 
-	_, err := k.nodeInformer.Lister().Get(string(nodeName))
+	node, err := k.nodeInformer.Lister().Get(string(nodeName))
 	if err != nil {
-		return "", fmt.Errorf("Failed to find node %s: %v", nodeName, err)
+		return "", fmt.Errorf("failed to get node %s: %w", nodeName, err)
+	}
+	if (node.Annotations[InternalIPKey] == "") && (node.Labels[InternalIPKey] == "") {
+		return string(nodeName), errors.New("address annotations not yet set")
 	}
 	return string(nodeName), nil
 }
