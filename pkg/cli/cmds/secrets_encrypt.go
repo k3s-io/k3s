@@ -49,7 +49,11 @@ func NewSecretsEncryptSubcommands(status, prepare, rotate, reencrypt func(ctx *c
 			SkipFlagParsing: false,
 			SkipArgReorder:  true,
 			Action:          prepare,
-			Flags:           EncryptFlags,
+			Flags: append(EncryptFlags, &cli.BoolFlag{
+				Name:        "f,force",
+				Usage:       "Force preparation.",
+				Destination: &ServerConfig.EncryptForce,
+			}),
 		},
 		{
 			Name:            "rotate",
@@ -69,7 +73,11 @@ func NewSecretsEncryptSubcommands(status, prepare, rotate, reencrypt func(ctx *c
 			SkipFlagParsing: false,
 			SkipArgReorder:  true,
 			Action:          reencrypt,
-			Flags:           EncryptFlags,
+			Flags: append(EncryptFlags, &cli.BoolFlag{
+				Name:        "f,force",
+				Usage:       "Force secrets reencryption.",
+				Destination: &ServerConfig.EncryptForce,
+			}),
 		},
 	}
 }

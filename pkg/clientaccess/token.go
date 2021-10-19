@@ -299,7 +299,7 @@ func get(u string, client *http.Client, username, password string) ([]byte, erro
 }
 
 // put makes a request to a url using a provided client, username, and password
-// only a error is returned
+// only an error is returned
 func put(u string, client *http.Client, username, password string) error {
 	req, err := http.NewRequest(http.MethodPut, u, nil)
 	if err != nil {
@@ -316,8 +316,9 @@ func put(u string, client *http.Client, username, password string) error {
 	}
 	defer resp.Body.Close()
 
+	body, _ := ioutil.ReadAll(resp.Body)
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("%s: %s", u, resp.Status)
+		return fmt.Errorf("%s: %s %s", u, resp.Status, string(body))
 	}
 
 	return nil

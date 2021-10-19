@@ -51,6 +51,10 @@ func router(ctx context.Context, config *Config, cfg *cmds.Server) http.Handler 
 	authed.Path(prefix + "/encrypt-status").Handler(encryptionStatusHandler(serverConfig))
 	authed.Path(prefix + "/encrypt-prepare").Handler(encryptionPrepareHandler(serverConfig, false))
 	authed.Path(prefix + "/encrypt-prepare-force").Handler(encryptionPrepareHandler(serverConfig, true))
+	authed.Path(prefix + "/encrypt-rotate").Handler(encryptionRotateHandler(serverConfig, false))
+	authed.Path(prefix + "/encrypt-rotate-force").Handler(encryptionRotateHandler(serverConfig, true))
+	authed.Path(prefix + "/encrypt-reencrypt").Handler(encryptionReencryptHandler(serverConfig, false))
+	authed.Path(prefix + "/encrypt-reencrypt-force").Handler(encryptionReencryptHandler(serverConfig, true))
 
 	nodeAuthed := mux.NewRouter()
 	nodeAuthed.Use(authMiddleware(serverConfig, "system:nodes"))
