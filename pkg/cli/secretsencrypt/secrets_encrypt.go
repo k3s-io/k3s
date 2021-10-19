@@ -2,7 +2,6 @@ package secretsencrypt
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -16,9 +15,6 @@ import (
 	"github.com/rancher/k3s/pkg/server"
 	"github.com/rancher/k3s/pkg/version"
 	"github.com/urfave/cli"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
 )
 
 func commandPrep(app *cli.Context, cfg *cmds.Server) (config.Control, error) {
@@ -200,21 +196,6 @@ func Reencrypt(app *cli.Context) error {
 	}
 	fmt.Println("reencrypt completed successfully")
 	return nil
-}
-
-func getServerNodes(ctx context.Context, k8s *kubernetes.Clientset) ([]corev1.Node, error) {
-
-	nodes, err := k8s.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
-	var serverNodes []corev1.Node
-	for _, node := range nodes.Items {
-		if v, ok := node.Labels[server.ControlPlaneRoleLabelKey]; ok && v == "true" {
-			serverNodes = append(serverNodes, node)
-		}
-	}
-	return serverNodes, nil
 }
 
 func askForConfirmation(question string) bool {

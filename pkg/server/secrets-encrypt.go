@@ -15,6 +15,7 @@ import (
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/wrangler/pkg/generated/controllers/core"
 	"github.com/sirupsen/logrus"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apiserverconfigv1 "k8s.io/apiserver/pkg/apis/config/v1"
 )
@@ -69,6 +70,11 @@ func encryptionStatus(server *config.Control) (string, error) {
 	}
 	statusOutput += fmt.Sprintln("Current Rotation Stage:", stage)
 
+	if err := verifyServerEncryptionHash(server.Runtime.Core.Core()); err != nil {
+		statusOutput += fmt.Sprintf("Server Encryption Hashes: %s\n", err.Error())
+	} else {
+		statusOutput += fmt.Sprintln("Server Encryption Hashes: All hashes match")
+	}
 	var tabBuffer bytes.Buffer
 	w := tabwriter.NewWriter(&tabBuffer, 0, 0, 2, ' ', 0)
 	fmt.Fprintf(w, "Key Type\tName\tSecret\n")
@@ -156,6 +162,10 @@ func encryptionPrepare(server *config.Control, force bool) error {
 		return fmt.Errorf("error, incorrect stage %s found with key %s", stage, key.Name)
 	}
 
+	if err := verifyServerEncryptionHash(server.Runtime.Core.Core()); err != nil {
+		return err
+	}
+
 	curKeys, err := getEncryptionKeys(server)
 	if err != nil {
 		return err
@@ -199,6 +209,10 @@ func encryptionRotate(server *config.Control, force bool) error {
 		return fmt.Errorf("error, incorrect stage %s found with key %s", stage, key.Name)
 	}
 
+	if err := verifyServerEncryptionHash(server.Runtime.Core.Core()); err != nil {
+		return err
+	}
+
 	curKeys, err := getEncryptionKeys(server)
 	if err != nil {
 		return err
@@ -240,10 +254,10 @@ func encryptionReencrypt(server *config.Control, force bool) error {
 	} else if !force && stage != EncryptionRotate {
 		return fmt.Errorf("error, incorrect stage %s found with key %s", stage, key.Name)
 	}
-
-	if err != nil {
+	if err := verifyServerEncryptionHash(server.Runtime.Core.Core()); err != nil {
 		return err
 	}
+
 	updateSecrets(server.Runtime.Core.Core())
 
 	// Remove last key
@@ -398,4 +412,32 @@ func getEncryptionState(controlConfig *config.Control) (string, apiserverconfigv
 		return "", apiserverconfigv1.Key{}, err
 	}
 	return curEncryption.Stage, curEncryption.CurrentKey, nil
+}
+
+func verifyServerEncryptionHash(core core.Interface) error {
+	nodes, err := core.V1().Node().List(metav1.ListOptions{})
+	if err != nil {
+		return err
+	}
+	var serverNodes []corev1.Node
+	for _, node := range nodes.Items {
+		if v, ok := node.Labels[ControlPlaneRoleLabelKey]; ok && v == "true" {
+			serverNodes = append(serverNodes, node)
+		}
+	}
+
+	var firstHash string
+	var firstNodeName string
+	first := true
+	for _, node := range serverNodes {
+		hash, ok := node.Annotations[EncryptionConfigHashAnnotation]
+		if ok && first {
+			firstHash = hash
+			first = false
+			firstNodeName = node.ObjectMeta.Name
+		} else if ok && hash != firstHash {
+			return fmt.Errorf("server hash do not match between %s and %s", firstNodeName, node.ObjectMeta.Name)
+		}
+	}
+	return nil
 }

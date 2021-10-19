@@ -48,6 +48,7 @@ func NewSecretsEncryptSubcommands(status, enable, disable, prepare, rotate, reen
 			SkipFlagParsing: false,
 			SkipArgReorder:  true,
 			Action:          enable,
+			Flags:           EncryptFlags,
 		},
 		{
 			Name:            "disable",
@@ -55,6 +56,7 @@ func NewSecretsEncryptSubcommands(status, enable, disable, prepare, rotate, reen
 			SkipFlagParsing: false,
 			SkipArgReorder:  true,
 			Action:          disable,
+			Flags:           EncryptFlags,
 		},
 		{
 			Name:            "prepare",
