@@ -24,11 +24,10 @@ var EncryptFlags = []cli.Flag{
 func NewSecretsEncryptCommand(action func(*cli.Context) error, subcommands []cli.Command) cli.Command {
 	return cli.Command{
 		Name:            SecretsEncryptCommand,
-		Usage:           "(experimental) Toggle secrets encryption",
+		Usage:           "(experimental) Control secrets encryption and keys rotation",
 		SkipFlagParsing: false,
 		SkipArgReorder:  true,
 		Action:          action,
-		Flags:           EncryptFlags,
 		Subcommands:     subcommands,
 	}
 }
