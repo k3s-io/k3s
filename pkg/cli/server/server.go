@@ -155,6 +155,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		serverConfig.ControlConfig.EtcdS3Region = cfg.EtcdS3Region
 		serverConfig.ControlConfig.EtcdS3Folder = cfg.EtcdS3Folder
 		serverConfig.ControlConfig.EtcdS3Insecure = cfg.EtcdS3Insecure
+		serverConfig.ControlConfig.EtcdS3Timeout = cfg.EtcdS3Timeout
 	} else {
 		logrus.Info("ETCD snapshots are disabled")
 	}

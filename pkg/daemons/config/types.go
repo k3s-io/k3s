@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/k3s-io/kine/pkg/endpoint"
 	"github.com/rancher/wrangler/pkg/generated/controllers/core"
@@ -168,6 +169,7 @@ type Control struct {
 	EtcdS3BucketName         string
 	EtcdS3Region             string
 	EtcdS3Folder             string
+	EtcdS3Timeout            time.Duration
 	EtcdS3Insecure           bool
 	ServerNodeName           string
 

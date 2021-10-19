@@ -3,6 +3,7 @@ package cmds
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/rancher/k3s/pkg/version"
 	"github.com/urfave/cli"
@@ -90,6 +91,7 @@ type Server struct {
 	EtcdS3BucketName         string
 	EtcdS3Region             string
 	EtcdS3Folder             string
+	EtcdS3Timeout            time.Duration
 	EtcdS3Insecure           bool
 }
 
@@ -337,6 +339,12 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Name:        "etcd-s3-insecure",
 				Usage:       "(db) Disables S3 over HTTPS",
 				Destination: &ServerConfig.EtcdS3Insecure,
+			},
+			&cli.DurationFlag{
+				Name:        "etcd-s3-timeout",
+				Usage:       "(db) S3 timeout",
+				Destination: &ServerConfig.EtcdS3Timeout,
+				Value:       30 * time.Second,
 			},
 			cli.StringFlag{
 				Name:        "default-local-storage-path",
