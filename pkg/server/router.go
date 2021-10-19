@@ -49,6 +49,8 @@ func router(ctx context.Context, config *Config, cfg *cmds.Server) http.Handler 
 	authed.Path(prefix + "/config").Handler(configHandler(serverConfig, cfg))
 	authed.Path(prefix + "/readyz").Handler(readyzHandler(serverConfig))
 	authed.Path(prefix + "/encrypt-status").Handler(encryptionStatusHandler(serverConfig))
+	authed.Path(prefix + "/encrypt-enable").Handler(encryptionToggleHandler(serverConfig, true))
+	authed.Path(prefix + "/encrypt-disable").Handler(encryptionToggleHandler(serverConfig, false))
 	authed.Path(prefix + "/encrypt-prepare").Handler(encryptionPrepareHandler(serverConfig, false))
 	authed.Path(prefix + "/encrypt-prepare-force").Handler(encryptionPrepareHandler(serverConfig, true))
 	authed.Path(prefix + "/encrypt-rotate").Handler(encryptionRotateHandler(serverConfig, false))

@@ -33,7 +33,7 @@ func NewSecretsEncryptCommand(action func(*cli.Context) error, subcommands []cli
 	}
 }
 
-func NewSecretsEncryptSubcommands(status, prepare, rotate, reencrypt func(ctx *cli.Context) error) []cli.Command {
+func NewSecretsEncryptSubcommands(status, enable, disable, prepare, rotate, reencrypt func(ctx *cli.Context) error) []cli.Command {
 	return []cli.Command{
 		{
 			Name:            "status",
@@ -42,6 +42,20 @@ func NewSecretsEncryptSubcommands(status, prepare, rotate, reencrypt func(ctx *c
 			SkipArgReorder:  true,
 			Action:          status,
 			Flags:           EncryptFlags,
+		},
+		{
+			Name:            "enable",
+			Usage:           "(experimental) Enable secrets encryption",
+			SkipFlagParsing: false,
+			SkipArgReorder:  true,
+			Action:          enable,
+		},
+		{
+			Name:            "disable",
+			Usage:           "(experimental) Disable secrets encryption",
+			SkipFlagParsing: false,
+			SkipArgReorder:  true,
+			Action:          disable,
 		},
 		{
 			Name:            "prepare",

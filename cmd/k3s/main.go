@@ -58,6 +58,8 @@ func main() {
 				secretsencryptCommand,
 				secretsencryptCommand,
 				secretsencryptCommand,
+				secretsencryptCommand,
+				secretsencryptCommand,
 				secretsencryptCommand),
 		),
 	}

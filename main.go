@@ -40,6 +40,8 @@ func main() {
 		cmds.NewSecretsEncryptCommand(secretsencrypt.Run,
 			cmds.NewSecretsEncryptSubcommands(
 				secretsencrypt.Status,
+				secretsencrypt.Enable,
+				secretsencrypt.Disable,
 				secretsencrypt.Prepare,
 				secretsencrypt.Rotate,
 				secretsencrypt.Reencrypt),

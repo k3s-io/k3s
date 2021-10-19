@@ -33,138 +33,6 @@ type EncryptionState struct {
 	CurrentKey apiserverconfigv1.Key
 }
 
-func encryptionPrepareHandler(server *config.Control, force bool) http.Handler {
-	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
-		if req.TLS == nil {
-			resp.WriteHeader(http.StatusNotFound)
-			return
-		}
-		if req.Method != http.MethodPut {
-			resp.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		if err := encryptionPrepare(server, force); err != nil {
-			resp.WriteHeader(http.StatusInternalServerError)
-			resp.Write([]byte(err.Error()))
-			return
-		}
-		resp.WriteHeader(http.StatusOK)
-	})
-}
-
-func encryptionPrepare(server *config.Control, force bool) error {
-	stage, key, err := GetEncryptionState(*server)
-	if err != nil {
-		return err
-	} else if !force && (stage != EncryptionStart && stage != EncryptionReencrypt) {
-		return fmt.Errorf("error, incorrect stage %s found with key %s", stage, key.Name)
-	}
-
-	curKeys, err := GetEncryptionKeys(*server)
-	if err != nil {
-		return err
-	}
-
-	if err := AppendNewEncryptionKey(&curKeys); err != nil {
-		return err
-	}
-	logrus.Infoln("Adding secrets-encryption key: ", curKeys[len(curKeys)-1])
-
-	if err := WriteEncryptionConfig(*server, curKeys, true); err != nil {
-		return err
-	}
-	return WriteEncryptionState(*server, EncryptionPrepare, curKeys[0])
-}
-
-func encryptionRotateHandler(server *config.Control, force bool) http.Handler {
-	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
-		if req.TLS == nil {
-			resp.WriteHeader(http.StatusNotFound)
-			return
-		}
-		if req.Method != http.MethodPut {
-			resp.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		if err := encryptionRotate(server, force); err != nil {
-			resp.WriteHeader(http.StatusBadRequest)
-			resp.Write([]byte(err.Error()))
-			return
-		}
-		resp.WriteHeader(http.StatusOK)
-	})
-}
-
-func encryptionRotate(server *config.Control, force bool) error {
-	stage, key, err := GetEncryptionState(*server)
-	if err != nil {
-		return err
-	} else if !force && stage != EncryptionPrepare {
-		return fmt.Errorf("error, incorrect stage %s found with key %s", stage, key.Name)
-	}
-
-	curKeys, err := GetEncryptionKeys(*server)
-	if err != nil {
-		return err
-	}
-
-	// Right rotate elements
-	rotatedKeys := append(curKeys[len(curKeys)-1:], curKeys[:len(curKeys)-1]...)
-
-	if err = WriteEncryptionConfig(*server, rotatedKeys, true); err != nil {
-		return err
-	}
-	logrus.Infoln("Encryption keys right rotated")
-	return WriteEncryptionState(*server, EncryptionRotate, curKeys[0])
-}
-
-func encryptionReencryptHandler(server *config.Control, force bool) http.Handler {
-	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
-		if req.TLS == nil {
-			resp.WriteHeader(http.StatusNotFound)
-			return
-		}
-		if req.Method != http.MethodPut {
-			resp.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		if err := encryptionReencrypt(server, force); err != nil {
-			resp.WriteHeader(http.StatusBadRequest)
-			resp.Write([]byte(err.Error()))
-			return
-		}
-		resp.WriteHeader(http.StatusOK)
-	})
-}
-
-func encryptionReencrypt(server *config.Control, force bool) error {
-	stage, key, err := GetEncryptionState(*server)
-	if err != nil {
-		return err
-	} else if !force && stage != EncryptionRotate {
-		return fmt.Errorf("error, incorrect stage %s found with key %s", stage, key.Name)
-	}
-
-	if err != nil {
-		return err
-	}
-	updateSecrets(server.Runtime.Core.Core())
-
-	// Remove last key
-	curKeys, err := GetEncryptionKeys(*server)
-	if err != nil {
-		return err
-	}
-
-	logrus.Infoln("Removing key: ", curKeys[len(curKeys)-1])
-	curKeys = curKeys[:len(curKeys)-1]
-	if err = WriteEncryptionConfig(*server, curKeys, true); err != nil {
-		return err
-	}
-
-	return WriteEncryptionState(*server, EncryptionReencrypt, curKeys[0])
-}
-
 func encryptionStatusHandler(server *config.Control) http.Handler {
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 		if req.TLS == nil {
@@ -181,8 +49,8 @@ func encryptionStatusHandler(server *config.Control) http.Handler {
 	})
 }
 
-func encryptionStatus(controlConfig *config.Control) (string, error) {
-	providers, err := GetEncryptionProviders(*controlConfig)
+func encryptionStatus(server *config.Control) (string, error) {
+	providers, err := getEncryptionProviders(server)
 	if os.IsNotExist(err) {
 		return "Encryption Status: Disabled, no configuration file found", nil
 	} else if err != nil {
@@ -191,11 +59,11 @@ func encryptionStatus(controlConfig *config.Control) (string, error) {
 	var statusOutput string
 	if providers[1].Identity != nil && providers[0].AESCBC != nil {
 		statusOutput += "Encryption Status: Enabled\n"
-	} else if providers[0].Identity != nil && providers[1].AESCBC != nil || !controlConfig.EncryptSecrets {
+	} else if providers[0].Identity != nil && providers[1].AESCBC != nil || !server.EncryptSecrets {
 		statusOutput += "Encryption Status: Disabled"
 	}
 
-	stage, _, err := GetEncryptionState(*controlConfig)
+	stage, _, err := getEncryptionState(server)
 	if err != nil {
 		return "", err
 	}
@@ -220,6 +88,179 @@ func encryptionStatus(controlConfig *config.Control) (string, error) {
 	return statusOutput + tabBuffer.String(), nil
 }
 
+func encryptionToggleHandler(server *config.Control, enable bool) http.Handler {
+	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
+		if req.TLS == nil {
+			resp.WriteHeader(http.StatusNotFound)
+			return
+		}
+		if req.Method != http.MethodPut {
+			resp.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		if err := encryptionToggle(server, enable); err != nil {
+			resp.WriteHeader(http.StatusInternalServerError)
+			resp.Write([]byte(err.Error()))
+			return
+		}
+		resp.WriteHeader(http.StatusOK)
+	})
+}
+
+func encryptionToggle(server *config.Control, enable bool) error {
+	providers, err := getEncryptionProviders(server)
+	if err != nil {
+		return err
+	}
+	if len(providers) > 2 {
+		return fmt.Errorf("more than 2 providers (%d) found in secrets encryption", len(providers))
+	}
+	curKeys, err := getEncryptionKeys(server)
+	if err != nil {
+		return err
+	}
+	if providers[1].Identity != nil && providers[0].AESCBC != nil {
+		fmt.Println("Disabling secrets encryption")
+		return writeEncryptionConfig(server, curKeys, false)
+	} else if providers[0].Identity != nil && providers[1].AESCBC != nil {
+		fmt.Println("Enabling secrets encryption")
+		return writeEncryptionConfig(server, curKeys, true)
+	}
+	return fmt.Errorf("unable to enable/disable secrets encryption, unknown configuration")
+}
+
+func encryptionPrepareHandler(server *config.Control, force bool) http.Handler {
+	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
+		if req.TLS == nil {
+			resp.WriteHeader(http.StatusNotFound)
+			return
+		}
+		if req.Method != http.MethodPut {
+			resp.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		if err := encryptionPrepare(server, force); err != nil {
+			resp.WriteHeader(http.StatusInternalServerError)
+			resp.Write([]byte(err.Error()))
+			return
+		}
+		resp.WriteHeader(http.StatusOK)
+	})
+}
+
+func encryptionPrepare(server *config.Control, force bool) error {
+	stage, key, err := getEncryptionState(server)
+	if err != nil {
+		return err
+	} else if !force && (stage != EncryptionStart && stage != EncryptionReencrypt) {
+		return fmt.Errorf("error, incorrect stage %s found with key %s", stage, key.Name)
+	}
+
+	curKeys, err := getEncryptionKeys(server)
+	if err != nil {
+		return err
+	}
+
+	if err := AppendNewEncryptionKey(&curKeys); err != nil {
+		return err
+	}
+	logrus.Infoln("Adding secrets-encryption key: ", curKeys[len(curKeys)-1])
+
+	if err := writeEncryptionConfig(server, curKeys, true); err != nil {
+		return err
+	}
+	return writeEncryptionState(server, EncryptionPrepare, curKeys[0])
+}
+
+func encryptionRotateHandler(server *config.Control, force bool) http.Handler {
+	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
+		if req.TLS == nil {
+			resp.WriteHeader(http.StatusNotFound)
+			return
+		}
+		if req.Method != http.MethodPut {
+			resp.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		if err := encryptionRotate(server, force); err != nil {
+			resp.WriteHeader(http.StatusBadRequest)
+			resp.Write([]byte(err.Error()))
+			return
+		}
+		resp.WriteHeader(http.StatusOK)
+	})
+}
+
+func encryptionRotate(server *config.Control, force bool) error {
+	stage, key, err := getEncryptionState(server)
+	if err != nil {
+		return err
+	} else if !force && stage != EncryptionPrepare {
+		return fmt.Errorf("error, incorrect stage %s found with key %s", stage, key.Name)
+	}
+
+	curKeys, err := getEncryptionKeys(server)
+	if err != nil {
+		return err
+	}
+
+	// Right rotate elements
+	rotatedKeys := append(curKeys[len(curKeys)-1:], curKeys[:len(curKeys)-1]...)
+
+	if err = writeEncryptionConfig(server, rotatedKeys, true); err != nil {
+		return err
+	}
+	logrus.Infoln("Encryption keys right rotated")
+	return writeEncryptionState(server, EncryptionRotate, curKeys[0])
+}
+
+func encryptionReencryptHandler(server *config.Control, force bool) http.Handler {
+	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
+		if req.TLS == nil {
+			resp.WriteHeader(http.StatusNotFound)
+			return
+		}
+		if req.Method != http.MethodPut {
+			resp.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		if err := encryptionReencrypt(server, force); err != nil {
+			resp.WriteHeader(http.StatusBadRequest)
+			resp.Write([]byte(err.Error()))
+			return
+		}
+		resp.WriteHeader(http.StatusOK)
+	})
+}
+
+func encryptionReencrypt(server *config.Control, force bool) error {
+	stage, key, err := getEncryptionState(server)
+	if err != nil {
+		return err
+	} else if !force && stage != EncryptionRotate {
+		return fmt.Errorf("error, incorrect stage %s found with key %s", stage, key.Name)
+	}
+
+	if err != nil {
+		return err
+	}
+	updateSecrets(server.Runtime.Core.Core())
+
+	// Remove last key
+	curKeys, err := getEncryptionKeys(server)
+	if err != nil {
+		return err
+	}
+
+	logrus.Infoln("Removing key: ", curKeys[len(curKeys)-1])
+	curKeys = curKeys[:len(curKeys)-1]
+	if err = writeEncryptionConfig(server, curKeys, true); err != nil {
+		return err
+	}
+
+	return writeEncryptionState(server, EncryptionReencrypt, curKeys[0])
+}
+
 func updateSecrets(core core.Interface) error {
 	secrets, err := core.V1().Secret().List("", metav1.ListOptions{})
 	if err != nil {
@@ -235,7 +276,7 @@ func updateSecrets(core core.Interface) error {
 	return nil
 }
 
-func GetEncryptionProviders(controlConfig config.Control) ([]apiserverconfigv1.ProviderConfiguration, error) {
+func getEncryptionProviders(controlConfig *config.Control) ([]apiserverconfigv1.ProviderConfiguration, error) {
 	curEncryptionByte, err := ioutil.ReadFile(controlConfig.Runtime.EncryptionConfig)
 	if err != nil {
 		return nil, err
@@ -248,9 +289,9 @@ func GetEncryptionProviders(controlConfig config.Control) ([]apiserverconfigv1.P
 	return curEncryption.Resources[0].Providers, nil
 }
 
-func GetEncryptionKeys(controlConfig config.Control) ([]apiserverconfigv1.Key, error) {
+func getEncryptionKeys(controlConfig *config.Control) ([]apiserverconfigv1.Key, error) {
 
-	providers, err := GetEncryptionProviders(controlConfig)
+	providers, err := getEncryptionProviders(controlConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -286,7 +327,7 @@ func AppendNewEncryptionKey(keys *[]apiserverconfigv1.Key) error {
 	return nil
 }
 
-func WriteEncryptionConfig(controlConfig config.Control, keys []apiserverconfigv1.Key, enable bool) error {
+func writeEncryptionConfig(controlConfig *config.Control, keys []apiserverconfigv1.Key, enable bool) error {
 
 	// Placing the identity provider first disables encryption
 	var providers []apiserverconfigv1.ProviderConfiguration
@@ -333,7 +374,7 @@ func WriteEncryptionConfig(controlConfig config.Control, keys []apiserverconfigv
 	return ioutil.WriteFile(controlConfig.Runtime.EncryptionConfig, jsonfile, 0600)
 }
 
-func WriteEncryptionState(controlConfig config.Control, stage string, key apiserverconfigv1.Key) error {
+func writeEncryptionState(controlConfig *config.Control, stage string, key apiserverconfigv1.Key) error {
 
 	encStatus := EncryptionState{
 		Stage:      stage,
@@ -346,7 +387,7 @@ func WriteEncryptionState(controlConfig config.Control, stage string, key apiser
 	return ioutil.WriteFile(controlConfig.Runtime.EncryptionState, jsonfile, 0600)
 }
 
-func GetEncryptionState(controlConfig config.Control) (string, apiserverconfigv1.Key, error) {
+func getEncryptionState(controlConfig *config.Control) (string, apiserverconfigv1.Key, error) {
 	curEncryptionByte, err := ioutil.ReadFile(controlConfig.Runtime.EncryptionState)
 	if err != nil {
 		return "", apiserverconfigv1.Key{}, err

@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/erikdubbelboer/gspt"
 	"github.com/rancher/k3s/pkg/cli/cmds"
@@ -55,46 +56,55 @@ func commandPrep(app *cli.Context, cfg *cmds.Server) (config.Control, error) {
 	} else {
 		controlConfig.Token = cmds.ServerConfig.Token
 	}
-
-	controlConfig.Runtime = &config.ControlRuntime{}
-	controlConfig.EncryptSecrets = cfg.EncryptSecrets
 	controlConfig.EncryptForce = cfg.EncryptForce
-
-	controlConfig.Runtime.EncryptionConfig = filepath.Join(controlConfig.DataDir, "cred", "encryption-config.json")
-	controlConfig.Runtime.EncryptionState = filepath.Join(controlConfig.DataDir, "cred", "encryption-state.json")
-	controlConfig.Runtime.KubeConfigAdmin = filepath.Join(controlConfig.DataDir, "cred", "admin.kubeconfig")
 
 	return controlConfig, nil
 }
 
 func Run(app *cli.Context) error {
-	if err := cmds.InitLogging(); err != nil {
+	fmt.Println("This command does nothing, use the subcommands")
+	return nil
+}
+
+func Enable(app *cli.Context) error {
+	var err error
+	if err = cmds.InitLogging(); err != nil {
 		return err
 	}
 	controlConfig, err := commandPrep(app, &cmds.ServerConfig)
 	if err != nil {
 		return err
 	}
+	info, err := clientaccess.ParseAndValidateTokenForUser(cmds.ServerConfig.ServerURL, controlConfig.Token, "node")
+	if err != nil {
+		return err
+	}
+	if err = info.Put("/v1-" + version.Program + "/encrypt-enable"); err != nil {
+		return err
+	}
+	fmt.Println("secrets-encryption enabled")
+	return nil
+}
 
-	providers, err := server.GetEncryptionProviders(controlConfig)
+func Disable(app *cli.Context) error {
+	var err error
+	if err = cmds.InitLogging(); err != nil {
+		return err
+	}
+	controlConfig, err := commandPrep(app, &cmds.ServerConfig)
 	if err != nil {
 		return err
 	}
-	if len(providers) > 2 {
-		return fmt.Errorf("more than 2 providers (%d) found in secrets encryption", len(providers))
-	}
-	curKeys, err := server.GetEncryptionKeys(controlConfig)
+	info, err := clientaccess.ParseAndValidateTokenForUser(cmds.ServerConfig.ServerURL, controlConfig.Token, "node")
 	if err != nil {
 		return err
 	}
-	if providers[1].Identity != nil && providers[0].AESCBC != nil {
-		fmt.Println("Disabling secrets encryption")
-		return server.WriteEncryptionConfig(controlConfig, curKeys, false)
-	} else if providers[0].Identity != nil && providers[1].AESCBC != nil {
-		fmt.Println("Enabling secrets encryption")
-		return server.WriteEncryptionConfig(controlConfig, curKeys, true)
+	if err = info.Put("/v1-" + version.Program + "/encrypt-enable"); err != nil {
+		return err
 	}
-	return fmt.Errorf("unable to toggle secrets encryption, unknown configuration")
+	fmt.Println("secrets-encryption disabled")
+	fmt.Println("run 'kubectl get secrets --all-namespaces -o json | kubectl replace -f -' to decrypt secrets")
+	return nil
 }
 
 func Status(app *cli.Context) error {
@@ -205,4 +215,22 @@ func getServerNodes(ctx context.Context, k8s *kubernetes.Clientset) ([]corev1.No
 		}
 	}
 	return serverNodes, nil
+}
+
+func askForConfirmation(question string) bool {
+	var s string
+
+	fmt.Printf("%s(y/N): ", question)
+	_, err := fmt.Scan(&s)
+	if err != nil {
+		panic(err)
+	}
+
+	s = strings.TrimSpace(s)
+	s = strings.ToLower(s)
+
+	if s == "y" || s == "yes" {
+		return true
+	}
+	return false
 }
