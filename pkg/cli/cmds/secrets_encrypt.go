@@ -13,6 +13,12 @@ var EncryptFlags = []cli.Flag{
 		Usage:       "(data) Folder to hold state default /var/lib/rancher/" + version.Program + " or ${HOME}/.rancher/" + version.Program + " if not root",
 		Destination: &ServerConfig.DataDir,
 	},
+	cli.StringFlag{
+		Name:        "token,t",
+		Usage:       "(cluster) Token to use for authentication",
+		EnvVar:      version.ProgramUpper + "_TOKEN",
+		Destination: &ServerConfig.Token,
+	},
 }
 
 func NewSecretsEncryptCommand(action func(*cli.Context) error, subcommands []cli.Command) cli.Command {
@@ -54,7 +60,7 @@ func NewSecretsEncryptSubcommands(status, prepare, rotate, reencrypt func(ctx *c
 			Flags: append(EncryptFlags, &cli.BoolFlag{
 				Name:        "f,force",
 				Usage:       "Force key rotation.",
-				Destination: &ServerConfig.EncryptForceRotation,
+				Destination: &ServerConfig.EncryptForce,
 			}),
 		},
 		{

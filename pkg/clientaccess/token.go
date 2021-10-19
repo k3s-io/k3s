@@ -186,6 +186,16 @@ func (i *Info) Get(path string) ([]byte, error) {
 	return get(u.String(), GetHTTPClient(i.CACerts), i.Username, i.Password)
 }
 
+// Put makes a request to a subpath of info's BaseURL
+func (i *Info) Put(path string) error {
+	u, err := url.Parse(i.BaseURL)
+	if err != nil {
+		return err
+	}
+	u.Path = path
+	return put(u.String(), GetHTTPClient(i.CACerts), i.Username, i.Password)
+}
+
 // setServer sets the BaseURL and CACerts fields of the Info by connecting to the server
 // and storing the CA bundle.
 func (i *Info) setServer(server string) error {
@@ -286,6 +296,31 @@ func get(u string, client *http.Client, username, password string) ([]byte, erro
 	}
 
 	return ioutil.ReadAll(resp.Body)
+}
+
+// put makes a request to a url using a provided client, username, and password
+// only a error is returned
+func put(u string, client *http.Client, username, password string) error {
+	req, err := http.NewRequest(http.MethodPut, u, nil)
+	if err != nil {
+		return err
+	}
+
+	if username != "" {
+		req.SetBasicAuth(username, password)
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("%s: %s", u, resp.Status)
+	}
+
+	return nil
 }
 
 func FormatToken(token, certFile string) (string, error) {

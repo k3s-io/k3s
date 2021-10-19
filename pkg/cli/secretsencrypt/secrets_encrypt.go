@@ -1,17 +1,20 @@
 package secretsencrypt
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
-	"text/tabwriter"
 
 	"github.com/erikdubbelboer/gspt"
 	"github.com/rancher/k3s/pkg/cli/cmds"
+	"github.com/rancher/k3s/pkg/clientaccess"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/server"
+	"github.com/rancher/k3s/pkg/version"
 	"github.com/rancher/wrangler/pkg/signals"
 	"github.com/urfave/cli"
 	corev1 "k8s.io/api/core/v1"
@@ -44,9 +47,25 @@ func commandPrep(app *cli.Context, cfg *cmds.Server) (config.Control, error) {
 	if err != nil {
 		return controlConfig, err
 	}
+	if cmds.ServerConfig.ServerURL == "" {
+		cmds.ServerConfig.ServerURL = "https://127.0.0.1:6443"
+	}
+
+	if cmds.ServerConfig.Token == "" {
+		fp := filepath.Join(controlConfig.DataDir, "token")
+		tokenByte, err := ioutil.ReadFile(fp)
+		if err != nil {
+			return controlConfig, err
+		}
+		controlConfig.Token = string(bytes.TrimRight(tokenByte, "\n"))
+	} else {
+		controlConfig.Token = cmds.ServerConfig.Token
+	}
+
 	controlConfig.Runtime = &config.ControlRuntime{}
 	controlConfig.EncryptSecrets = cfg.EncryptSecrets
-	controlConfig.EncryptForceRotation = cfg.EncryptForceRotation
+	controlConfig.EncryptForce = cfg.EncryptForce
+
 	controlConfig.Runtime.EncryptionConfig = filepath.Join(controlConfig.DataDir, "cred", "encryption-config.json")
 	controlConfig.Runtime.EncryptionState = filepath.Join(controlConfig.DataDir, "cred", "encryption-state.json")
 	controlConfig.Runtime.KubeConfigAdmin = filepath.Join(controlConfig.DataDir, "cred", "admin.kubeconfig")
@@ -92,38 +111,41 @@ func Status(app *cli.Context) error {
 	if err != nil {
 		return err
 	}
-
-	return encryptionStatus(controlConfig)
+	info, err := clientaccess.ParseAndValidateTokenForUser(cmds.ServerConfig.ServerURL, controlConfig.Token, "node")
+	if err != nil {
+		return err
+	}
+	data, err := info.Get("/v1-" + version.Program + "/encrypt-status")
+	if err != nil {
+		return err
+	}
+	fmt.Print(string(data))
+	return nil
 }
 
 func Prepare(app *cli.Context) error {
-	if err := cmds.InitLogging(); err != nil {
+	var err error
+	if err = cmds.InitLogging(); err != nil {
 		return err
 	}
 	controlConfig, err := commandPrep(app, &cmds.ServerConfig)
 	if err != nil {
 		return err
 	}
-
-	stage, key, err := server.GetEncryptionState(controlConfig)
-	if err != nil {
-		return err
-	} else if stage != server.Start && stage != server.Reencrypt {
-		return fmt.Errorf("error, incorrect stage %s found with key %s", stage, key.Name)
-	}
-
-	curKeys, err := server.GetEncryptionKeys(controlConfig)
+	info, err := clientaccess.ParseAndValidateTokenForUser(cmds.ServerConfig.ServerURL, controlConfig.Token, "node")
 	if err != nil {
 		return err
 	}
-
-	server.AppendNewEncryptionKey(&curKeys)
-	fmt.Println("Adding key: ", curKeys[len(curKeys)-1])
-
-	if err := server.WriteEncryptionConfig(controlConfig, curKeys, true); err != nil {
+	if controlConfig.EncryptForce {
+		err = info.Put("/v1-" + version.Program + "/encrypt-prepare-force")
+	} else {
+		err = info.Put("/v1-" + version.Program + "/encrypt-prepare")
+	}
+	if err != nil {
 		return err
 	}
-	return server.WriteEncryptionState(controlConfig, server.Prepare, curKeys[0])
+	fmt.Println("prepare completed sucessfully")
+	return nil
 }
 
 func Rotate(app *cli.Context) error {
@@ -138,7 +160,7 @@ func Rotate(app *cli.Context) error {
 	stage, key, err := server.GetEncryptionState(controlConfig)
 	if err != nil {
 		return err
-	} else if stage != server.Prepare {
+	} else if !controlConfig.EncryptForce && stage != server.Prepare {
 		return fmt.Errorf("error, incorrect stage %s found with key %s", stage, key.Name)
 	}
 
@@ -169,7 +191,7 @@ func Reencrypt(app *cli.Context) error {
 	stage, key, err := server.GetEncryptionState(controlConfig)
 	if err != nil {
 		return err
-	} else if stage != server.Rotate {
+	} else if !controlConfig.EncryptForce && stage != server.Rotate {
 		return fmt.Errorf("error, incorrect stage %s found with key %s", stage, key.Name)
 	}
 
@@ -224,42 +246,4 @@ func updateSecrets(ctx context.Context, controlConfig config.Control, k8s kubern
 	}
 	fmt.Printf("Updated %d secrets\n", len(secrets.Items))
 	return nil
-}
-
-func encryptionStatus(controlConfig config.Control) error {
-	providers, err := server.GetEncryptionProviders(controlConfig)
-	if os.IsNotExist(err) {
-		fmt.Println("Encryption Status: Disabled, no configuration file found")
-		return nil
-	} else if err != nil {
-		return err
-	}
-	if providers[1].Identity != nil && providers[0].AESCBC != nil {
-		fmt.Println("Encryption Status: Enabled")
-	} else if providers[0].Identity != nil && providers[1].AESCBC != nil {
-		//} else if providers[0].Identity != nil && providers[1].AESCBC != nil || !controlConfig.EncryptSecrets {
-		fmt.Println("Encryption Status: Disabled")
-	}
-
-	stage, _, err := server.GetEncryptionState(controlConfig)
-	if err != nil {
-		return err
-	}
-	fmt.Println("Current Rotation Stage:", stage)
-
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(w, "Key Type\tName\tSecret\n")
-
-	for _, p := range providers {
-		if p.AESCBC != nil {
-			for _, aesKey := range p.AESCBC.Keys {
-				fmt.Fprintf(w, "%s\t%s\t%s\n", "AES-CBC", aesKey.Name, aesKey.Secret)
-			}
-		}
-		if p.Identity != nil {
-			fmt.Fprintf(w, "Identity\tidentity\tN/A\n")
-		}
-	}
-
-	return w.Flush()
 }

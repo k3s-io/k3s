@@ -1,14 +1,19 @@
 package server
 
 import (
+	"bytes"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net/http"
+	"os"
+	"text/tabwriter"
 	"time"
 
 	"github.com/rancher/k3s/pkg/daemons/config"
+	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apiserverconfigv1 "k8s.io/apiserver/pkg/apis/config/v1"
 )
@@ -25,6 +30,104 @@ const aescbcKeySize = 32
 type EncryptionState struct {
 	Stage      string `json:"stage"`
 	CurrentKey apiserverconfigv1.Key
+}
+
+func encryptionPrepareHandler(server *config.Control, force bool) http.Handler {
+	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
+		if req.TLS == nil {
+			resp.WriteHeader(http.StatusNotFound)
+			return
+		}
+		if req.Method != http.MethodPut {
+			resp.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		if err := encryptionPrepare(server, force); err != nil {
+			resp.WriteHeader(http.StatusInternalServerError)
+			resp.Write([]byte(err.Error()))
+			return
+		}
+		resp.WriteHeader(http.StatusOK)
+	})
+}
+
+func encryptionPrepare(server *config.Control, force bool) error {
+	stage, key, err := GetEncryptionState(*server)
+	if err != nil {
+		return err
+	} else if !force && (stage != Start && stage != Reencrypt) {
+		return fmt.Errorf("error, incorrect stage %s found with key %s", stage, key.Name)
+	}
+
+	curKeys, err := GetEncryptionKeys(*server)
+	if err != nil {
+		return err
+	}
+
+	if err := AppendNewEncryptionKey(&curKeys); err != nil {
+		return err
+	}
+	logrus.Infoln("Adding secrets-encryption key: ", curKeys[len(curKeys)-1])
+
+	if err := WriteEncryptionConfig(*server, curKeys, true); err != nil {
+		return err
+	}
+	return WriteEncryptionState(*server, Prepare, curKeys[0])
+}
+
+func encryptionStatusHandler(server *config.Control) http.Handler {
+	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
+		if req.TLS == nil {
+			resp.WriteHeader(http.StatusNotFound)
+			return
+		}
+		status, err := encryptionStatus(server)
+		if err != nil {
+			resp.WriteHeader(http.StatusInternalServerError)
+			resp.Write([]byte(err.Error()))
+			return
+		}
+		resp.Write([]byte(status))
+	})
+}
+
+func encryptionStatus(controlConfig *config.Control) (string, error) {
+	providers, err := GetEncryptionProviders(*controlConfig)
+	if os.IsNotExist(err) {
+		return "Encryption Status: Disabled, no configuration file found", nil
+	} else if err != nil {
+		return "", err
+	}
+	var statusOutput string
+	if providers[1].Identity != nil && providers[0].AESCBC != nil {
+		statusOutput += "Encryption Status: Enabled\n"
+	} else if providers[0].Identity != nil && providers[1].AESCBC != nil || !controlConfig.EncryptSecrets {
+		statusOutput += "Encryption Status: Disabled"
+	}
+
+	stage, _, err := GetEncryptionState(*controlConfig)
+	if err != nil {
+		return "", err
+	}
+	statusOutput += fmt.Sprintln("Current Rotation Stage:", stage)
+
+	var tabBuffer bytes.Buffer
+	w := tabwriter.NewWriter(&tabBuffer, 0, 0, 2, ' ', 0)
+	fmt.Fprintf(w, "Key Type\tName\tSecret\n")
+
+	for _, p := range providers {
+		if p.AESCBC != nil {
+			for _, aesKey := range p.AESCBC.Keys {
+				fmt.Fprintf(w, "%s\t%s\t%s\n", "AES-CBC", aesKey.Name, aesKey.Secret)
+			}
+		}
+		if p.Identity != nil {
+			fmt.Fprintf(w, "Identity\tidentity\tN/A\n")
+		}
+	}
+	w.Flush()
+
+	return statusOutput + tabBuffer.String(), nil
 }
 
 func GetEncryptionProviders(controlConfig config.Control) ([]apiserverconfigv1.ProviderConfiguration, error) {
