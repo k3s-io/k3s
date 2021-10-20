@@ -554,7 +554,7 @@ func (e *ETCD) metricsURL(expose bool) string {
 
 // cluster returns ETCDConfig for a cluster
 func (e *ETCD) cluster(ctx context.Context, forceNew bool, options executor.InitialOptions) error {
-	return executor.ETCD(executor.ETCDConfig{
+	return executor.ETCD(ctx, executor.ETCDConfig{
 		Name:                e.name,
 		InitialOptions:      options,
 		ForceNewCluster:     forceNew,
