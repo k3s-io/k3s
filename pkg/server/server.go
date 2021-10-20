@@ -46,7 +46,7 @@ const (
 	ETCDRoleLabelKey         = "node-role.kubernetes.io/etcd"
 )
 
-var EncryptionConfigHashAnnotation = version.Program + ".io/encryption-config-hash"
+var EncryptionHashAnnotation = version.Program + ".io/encryption-config-hash"
 
 func ResolveDataDir(dataDir string) (string, error) {
 	dataDir, err := datadir.Resolve(dataDir)
@@ -177,7 +177,7 @@ func runControllers(ctx context.Context, wg *sync.WaitGroup, config *Config) err
 
 	go setClusterDNSConfig(ctx, config, sc.Core.Core().V1().ConfigMap())
 
-	go setEncryptionConfigHashAnnotation(ctx, sc.Core.Core().V1().Node(), controlConfig)
+	go setEncryptionHashAnnotation(ctx, sc.Core.Core().V1().Node(), controlConfig)
 
 	if controlConfig.NoLeaderElect {
 		go func() {
@@ -584,7 +584,7 @@ func setClusterDNSConfig(ctx context.Context, controlConfig *Config, configMap v
 	return nil
 }
 
-func setEncryptionConfigHashAnnotation(ctx context.Context, nodes v1.NodeClient, controlConfig *config.Control) error {
+func setEncryptionHashAnnotation(ctx context.Context, nodes v1.NodeClient, controlConfig *config.Control) error {
 	if !controlConfig.EncryptSecrets {
 		return nil
 	}
@@ -610,11 +610,11 @@ func setEncryptionConfigHashAnnotation(ctx context.Context, nodes v1.NodeClient,
 		if node.Annotations == nil {
 			node.Annotations = make(map[string]string)
 		}
-		node.Annotations[EncryptionConfigHashAnnotation] = hex.EncodeToString(encryptionConfigHash[:])
+		node.Annotations[EncryptionHashAnnotation] = hex.EncodeToString(encryptionConfigHash[:])
 
 		_, err = nodes.Update(node)
 		if err == nil {
-			logrus.Infof("encryption config hash annotation has been set successfully on node: %s", nodeName)
+			logrus.Infof("encryption hash annotation set successfully on node: %s\n", nodeName)
 			break
 		}
 		select {
