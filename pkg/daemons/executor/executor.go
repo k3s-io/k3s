@@ -30,7 +30,7 @@ type Executor interface {
 	Scheduler(apiReady <-chan struct{}, args []string) error
 	ControllerManager(apiReady <-chan struct{}, args []string) error
 	CurrentETCDOptions() (InitialOptions, error)
-	ETCD(args ETCDConfig, extraArgs []string) error
+	ETCD(ctx context.Context, args ETCDConfig, extraArgs []string) error
 	CloudControllerManager(ccmRBACReady <-chan struct{}, args []string) error
 }
 
@@ -161,8 +161,8 @@ func CurrentETCDOptions() (InitialOptions, error) {
 	return executor.CurrentETCDOptions()
 }
 
-func ETCD(args ETCDConfig, extraArgs []string) error {
-	return executor.ETCD(args, extraArgs)
+func ETCD(ctx context.Context, args ETCDConfig, extraArgs []string) error {
+	return executor.ETCD(ctx, args, extraArgs)
 }
 
 func CloudControllerManager(ccmRBACReady <-chan struct{}, args []string) error {
