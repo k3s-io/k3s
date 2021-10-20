@@ -13,7 +13,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-// +build !windows
 
 package vxlan
 
@@ -24,6 +23,7 @@ import (
 
 	"github.com/containernetworking/plugins/pkg/utils/sysctl"
 	"github.com/flannel-io/flannel/pkg/ip"
+	"github.com/flannel-io/flannel/pkg/mac"
 	"github.com/vishvananda/netlink"
 	log "k8s.io/klog"
 )
@@ -44,9 +44,15 @@ type vxlanDevice struct {
 }
 
 func newVXLANDevice(devAttrs *vxlanDeviceAttrs) (*vxlanDevice, error) {
+	hardwareAddr, err := mac.NewHardwareAddr()
+	if err != nil {
+		return nil, err
+	}
+
 	link := &netlink.Vxlan{
 		LinkAttrs: netlink.LinkAttrs{
-			Name: devAttrs.name,
+			Name:         devAttrs.name,
+			HardwareAddr: hardwareAddr,
 		},
 		VxlanId:      int(devAttrs.vni),
 		VtepDevIndex: devAttrs.vtepIndex,
@@ -56,7 +62,7 @@ func newVXLANDevice(devAttrs *vxlanDeviceAttrs) (*vxlanDevice, error) {
 		GBP:          devAttrs.gbp,
 	}
 
-	link, err := ensureLink(link)
+	link, err = ensureLink(link)
 	if err != nil {
 		return nil, err
 	}
@@ -124,6 +130,18 @@ func (dev *vxlanDevice) Configure(ipa ip.IP4Net, flannelnet ip.IP4Net) error {
 	return nil
 }
 
+func (dev *vxlanDevice) ConfigureIPv6(ipn ip.IP6Net, flannelnet ip.IP6Net) error {
+	if err := ip.EnsureV6AddressOnLink(ipn, flannelnet, dev.link); err != nil {
+		return fmt.Errorf("failed to ensure v6 address of interface %s: %w", dev.link.Attrs().Name, err)
+	}
+
+	if err := netlink.LinkSetUp(dev.link); err != nil {
+		return fmt.Errorf("failed to set v6 interface %s to UP state: %w", dev.link.Attrs().Name, err)
+	}
+
+	return nil
+}
+
 func (dev *vxlanDevice) MACAddr() net.HardwareAddr {
 	return dev.link.HardwareAddr
 }
@@ -131,6 +149,7 @@ func (dev *vxlanDevice) MACAddr() net.HardwareAddr {
 type neighbor struct {
 	MAC net.HardwareAddr
 	IP  ip.IP4
+	IP6 *ip.IP6
 }
 
 func (dev *vxlanDevice) AddFDB(n neighbor) error {
@@ -141,6 +160,18 @@ func (dev *vxlanDevice) AddFDB(n neighbor) error {
 		Family:       syscall.AF_BRIDGE,
 		Flags:        netlink.NTF_SELF,
 		IP:           n.IP.ToIP(),
+		HardwareAddr: n.MAC,
+	})
+}
+
+func (dev *vxlanDevice) AddV6FDB(n neighbor) error {
+	log.V(4).Infof("calling AddV6FDB: %v, %v", n.IP6, n.MAC)
+	return netlink.NeighSet(&netlink.Neigh{
+		LinkIndex:    dev.link.Index,
+		State:        netlink.NUD_PERMANENT,
+		Family:       syscall.AF_BRIDGE,
+		Flags:        netlink.NTF_SELF,
+		IP:           n.IP6.ToIP(),
 		HardwareAddr: n.MAC,
 	})
 }
@@ -156,6 +187,17 @@ func (dev *vxlanDevice) DelFDB(n neighbor) error {
 	})
 }
 
+func (dev *vxlanDevice) DelV6FDB(n neighbor) error {
+	log.V(4).Infof("calling DelV6FDB: %v, %v", n.IP6, n.MAC)
+	return netlink.NeighDel(&netlink.Neigh{
+		LinkIndex:    dev.link.Index,
+		Family:       syscall.AF_BRIDGE,
+		Flags:        netlink.NTF_SELF,
+		IP:           n.IP6.ToIP(),
+		HardwareAddr: n.MAC,
+	})
+}
+
 func (dev *vxlanDevice) AddARP(n neighbor) error {
 	log.V(4).Infof("calling AddARP: %v, %v", n.IP, n.MAC)
 	return netlink.NeighSet(&netlink.Neigh{
@@ -167,6 +209,17 @@ func (dev *vxlanDevice) AddARP(n neighbor) error {
 	})
 }
 
+func (dev *vxlanDevice) AddV6ARP(n neighbor) error {
+	log.V(4).Infof("calling AddV6ARP: %v, %v", n.IP6, n.MAC)
+	return netlink.NeighSet(&netlink.Neigh{
+		LinkIndex:    dev.link.Index,
+		State:        netlink.NUD_PERMANENT,
+		Type:         syscall.RTN_UNICAST,
+		IP:           n.IP6.ToIP(),
+		HardwareAddr: n.MAC,
+	})
+}
+
 func (dev *vxlanDevice) DelARP(n neighbor) error {
 	log.V(4).Infof("calling DelARP: %v, %v", n.IP, n.MAC)
 	return netlink.NeighDel(&netlink.Neigh{
@@ -174,6 +227,17 @@ func (dev *vxlanDevice) DelARP(n neighbor) error {
 		State:        netlink.NUD_PERMANENT,
 		Type:         syscall.RTN_UNICAST,
 		IP:           n.IP.ToIP(),
+		HardwareAddr: n.MAC,
+	})
+}
+
+func (dev *vxlanDevice) DelV6ARP(n neighbor) error {
+	log.V(4).Infof("calling DelV6ARP: %v, %v", n.IP6, n.MAC)
+	return netlink.NeighDel(&netlink.Neigh{
+		LinkIndex:    dev.link.Index,
+		State:        netlink.NUD_PERMANENT,
+		Type:         syscall.RTN_UNICAST,
+		IP:           n.IP6.ToIP(),
 		HardwareAddr: n.MAC,
 	})
 }

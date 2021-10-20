@@ -9,6 +9,7 @@ type TerminateRequest struct {
 	Ike      string `json:"ike,omitempty"`
 	Child_id string `json:"child-id,omitempty"`
 	Ike_id   string `json:"ike-id,omitempty"`
+	Force    string `json:"force,omitempty"`
 	Timeout  string `json:"timeout,omitempty"`
 	Loglevel string `json:"loglevel,omitempty"`
 }
