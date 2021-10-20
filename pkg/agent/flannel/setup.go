@@ -2,6 +2,7 @@ package flannel
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"os"
