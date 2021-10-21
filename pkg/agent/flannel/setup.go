@@ -2,7 +2,9 @@ package flannel
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,6 +16,7 @@ import (
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	utilsnet "k8s.io/utils/net"
 )
 
 const (
@@ -41,6 +44,8 @@ const (
 
 	flannelConf = `{
 	"Network": "%CIDR%",
+	"EnableIPv6": %DUALSTACK%,
+	"IPv6Network": "%CIDR_IPV6%",
 	"Backend": %backend%
 }
 `
@@ -67,6 +72,11 @@ const (
 	"SubnetAddCommand": "read PUBLICKEY; wg set flannel.1 peer $PUBLICKEY endpoint $PUBLIC_IP:51820 allowed-ips $SUBNET persistent-keepalive 25",
 	"SubnetRemoveCommand": "read PUBLICKEY; wg set flannel.1 peer $PUBLICKEY remove"
 }`
+
+	emptyIPv6Network = "::/0"
+
+	ipv4 = iota
+	ipv6
 )
 
 func Prepare(ctx context.Context, nodeConfig *config.Node) error {
@@ -94,9 +104,16 @@ func Run(ctx context.Context, nodeConfig *config.Node, nodes v1.NodeInterface) e
 	}
 	logrus.Info("Node CIDR assigned for: " + nodeName)
 
+	netMode, err := findNetMode(nodeConfig.AgentConfig.ClusterCIDRs)
+	if err != nil {
+		logrus.Fatalf("Error checking netMode")
+		return err
+	}
 	go func() {
-		err := flannel(ctx, nodeConfig.FlannelIface, nodeConfig.FlannelConf, nodeConfig.AgentConfig.KubeConfigKubelet)
-		logrus.Fatalf("flannel exited: %v", err)
+		err := flannel(ctx, nodeConfig.FlannelIface, nodeConfig.FlannelConf, nodeConfig.AgentConfig.KubeConfigKubelet, netMode)
+		if err != nil && !errors.Is(err, context.Canceled) {
+			logrus.Fatalf("flannel exited: %v", err)
+		}
 	}()
 
 	return nil
@@ -139,6 +156,24 @@ func createFlannelConf(nodeConfig *config.Node) error {
 	}
 	confJSON = strings.Replace(confJSON, "%backend%", backendConf, -1)
 
+	netMode, err := findNetMode(nodeConfig.AgentConfig.ClusterCIDRs)
+	if err != nil {
+		logrus.Fatalf("Error checking netMode")
+		return err
+	}
+
+	if netMode == (ipv4 + ipv6) {
+		confJSON = strings.ReplaceAll(confJSON, "%DUALSTACK%", "true")
+		for _, cidr := range nodeConfig.AgentConfig.ClusterCIDRs {
+			if utilsnet.IsIPv6(cidr.IP) {
+				// Only one ipv6 range available. This might change in future: https://github.com/kubernetes/enhancements/issues/2593
+				confJSON = strings.ReplaceAll(confJSON, "%CIDR_IPV6%", cidr.String())
+			}
+		}
+	} else {
+		confJSON = strings.ReplaceAll(confJSON, "%DUALSTACK%", "false")
+		confJSON = strings.ReplaceAll(confJSON, "%CIDR_IPV6%", emptyIPv6Network)
+	}
 	return util.WriteFile(nodeConfig.FlannelConf, confJSON)
 }
 
@@ -168,4 +203,25 @@ func setupStrongSwan(nodeConfig *config.Node) error {
 
 	// make new strongswan link
 	return os.Symlink(dataDir, nodeConfig.AgentConfig.StrongSwanDir)
+}
+
+// fundNetMode returns the mode (ipv4, ipv6 or dual-stack) in which flannel is operating
+func findNetMode(cidrs []*net.IPNet) (int, error) {
+	dualStack, err := utilsnet.IsDualStackCIDRs(cidrs)
+	if err != nil {
+		return 0, err
+	}
+	if dualStack {
+		return ipv4 + ipv6, nil
+	}
+
+	for _, cidr := range cidrs {
+		if utilsnet.IsIPv4CIDR(cidr) {
+			return ipv4, nil
+		}
+		if utilsnet.IsIPv6CIDR(cidr) {
+			return ipv6, nil
+		}
+	}
+	return 0, errors.New("Failed checking netMode")
 }

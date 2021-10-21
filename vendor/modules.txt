@@ -141,8 +141,7 @@ github.com/beorn7/perks/quantile
 github.com/bits-and-blooms/bitset
 # github.com/blang/semver v3.5.1+incompatible
 github.com/blang/semver
-# github.com/bronze1man/goStrongswanVici v0.0.0-20190828090544-27d02f80ba40
-## explicit
+# github.com/bronze1man/goStrongswanVici v0.0.0-20201105010758-936f38b697fd
 github.com/bronze1man/goStrongswanVici
 # github.com/canonical/go-dqlite v1.5.1
 github.com/canonical/go-dqlite
@@ -491,7 +490,7 @@ github.com/evanphx/json-patch
 github.com/exponent-io/jsonpath
 # github.com/fatih/camelcase v1.0.0
 github.com/fatih/camelcase
-# github.com/flannel-io/flannel v0.14.0
+# github.com/flannel-io/flannel v0.15.1
 ## explicit
 github.com/flannel-io/flannel/backend
 github.com/flannel-io/flannel/backend/extension
@@ -500,6 +499,7 @@ github.com/flannel-io/flannel/backend/ipsec
 github.com/flannel-io/flannel/backend/vxlan
 github.com/flannel-io/flannel/network
 github.com/flannel-io/flannel/pkg/ip
+github.com/flannel-io/flannel/pkg/mac
 github.com/flannel-io/flannel/pkg/powershell
 github.com/flannel-io/flannel/pkg/routing
 github.com/flannel-io/flannel/subnet

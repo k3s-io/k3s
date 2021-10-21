@@ -29,7 +29,7 @@ func (c *ClientConn) LoadPool(ph Pool) error {
 	msg, err := c.Request("load-pool", requestMap)
 
 	if msg["success"] != "yes" {
-		return fmt.Errorf("unsuccessful LoadPool: %v", msg["success"])
+		return fmt.Errorf("unsuccessful LoadPool: %v", msg["errmsg"])
 	}
 
 	return nil

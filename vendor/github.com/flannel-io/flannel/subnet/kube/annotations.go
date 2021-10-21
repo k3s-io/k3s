@@ -21,11 +21,14 @@ import (
 )
 
 type annotations struct {
-	SubnetKubeManaged        string
-	BackendData              string
-	BackendType              string
-	BackendPublicIP          string
-	BackendPublicIPOverwrite string
+	SubnetKubeManaged          string
+	BackendData                string
+	BackendV6Data              string
+	BackendType                string
+	BackendPublicIP            string
+	BackendPublicIPv6          string
+	BackendPublicIPOverwrite   string
+	BackendPublicIPv6Overwrite string
 }
 
 func newAnnotations(prefix string) (annotations, error) {
@@ -55,11 +58,14 @@ func newAnnotations(prefix string) (annotations, error) {
 	}
 
 	a := annotations{
-		SubnetKubeManaged:        prefix + "kube-subnet-manager",
-		BackendData:              prefix + "backend-data",
-		BackendType:              prefix + "backend-type",
-		BackendPublicIP:          prefix + "public-ip",
-		BackendPublicIPOverwrite: prefix + "public-ip-overwrite",
+		SubnetKubeManaged:          prefix + "kube-subnet-manager",
+		BackendData:                prefix + "backend-data",
+		BackendV6Data:              prefix + "backend-v6-data",
+		BackendType:                prefix + "backend-type",
+		BackendPublicIP:            prefix + "public-ip",
+		BackendPublicIPOverwrite:   prefix + "public-ip-overwrite",
+		BackendPublicIPv6:          prefix + "public-ipv6",
+		BackendPublicIPv6Overwrite: prefix + "public-ipv6-overwrite",
 	}
 
 	return a, nil

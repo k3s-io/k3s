@@ -1,4 +1,4 @@
-// Copyright 2017 flannel authors
+// Copyright 2021 flannel authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,26 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package backend
+package mac
 
 import (
-	"github.com/flannel-io/flannel/subnet"
-	"golang.org/x/net/context"
+	"crypto/rand"
+	"fmt"
+	"net"
 )
 
-type SimpleNetwork struct {
-	SubnetLease *subnet.Lease
-	ExtIface    *ExternalInterface
-}
+// NewHardwareAddr generates a new random hardware (MAC) address, local and
+// unicast.
+func NewHardwareAddr() (net.HardwareAddr, error) {
+	hardwareAddr := make(net.HardwareAddr, 6)
+	if _, err := rand.Read(hardwareAddr); err != nil {
+		return nil, fmt.Errorf("could not generate random MAC address: %w", err)
+	}
 
-func (n *SimpleNetwork) Lease() *subnet.Lease {
-	return n.SubnetLease
-}
+	// Ensure that address is locally administered and unicast.
+	hardwareAddr[0] = (hardwareAddr[0] & 0xfe) | 0x02
 
-func (n *SimpleNetwork) MTU() int {
-	return n.ExtIface.Iface.MTU
-}
-
-func (_ *SimpleNetwork) Run(ctx context.Context) {
-	<-ctx.Done()
+	return hardwareAddr, nil
 }
