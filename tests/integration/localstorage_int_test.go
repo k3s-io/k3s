@@ -13,20 +13,20 @@ import (
 	testutil "github.com/rancher/k3s/tests/util"
 )
 
-var server *testutil.K3sServer
-var serverArgs = []string{"--cluster-init"}
+var localStorageServer *testutil.K3sServer
+var localStorageServerArgs = []string{"--cluster-init"}
 var _ = BeforeSuite(func() {
 	if !testutil.IsExistingServer() {
 		var err error
-		server, err = testutil.K3sStartServer(serverArgs...)
+		localStorageServer, err = testutil.K3sStartServer(localStorageServerArgs...)
 		Expect(err).ToNot(HaveOccurred())
 	}
 })
 
 var _ = Describe("local storage", func() {
 	BeforeEach(func() {
-		if testutil.IsExistingServer() && !testutil.ServerArgsPresent(serverArgs) {
-			Skip("Test needs k3s server with: " + strings.Join(serverArgs, " "))
+		if testutil.IsExistingServer() && !testutil.ServerArgsPresent(localStorageServerArgs) {
+			Skip("Test needs k3s server with: " + strings.Join(localStorageServerArgs, " "))
 		}
 	})
 	When("a new local storage is created", func() {
@@ -81,7 +81,7 @@ var _ = Describe("local storage", func() {
 
 var _ = AfterSuite(func() {
 	if !testutil.IsExistingServer() {
-		Expect(testutil.K3sKillServer(server)).To(Succeed())
+		Expect(testutil.K3sKillServer(localStorageServer)).To(Succeed())
 	}
 })
 

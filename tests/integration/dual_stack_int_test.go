@@ -10,11 +10,12 @@ import (
 	testutil "github.com/rancher/k3s/tests/util"
 )
 
+var dualStackServer *testutil.K3sServer
 var dualStackServerArgs = []string{"--cluster-init", "--cluster-cidr 10.42.0.0/16,2001:cafe:42:0::/56", "--service-cidr 10.43.0.0/16,2001:cafe:42:1::/112"}
 var _ = BeforeSuite(func() {
 	if !testutil.IsExistingServer() {
 		var err error
-		server, err = testutil.K3sStartServer(dualStackServerArgs...)
+		dualStackServer, err = testutil.K3sStartServer(dualStackServerArgs...)
 		Expect(err).ToNot(HaveOccurred())
 	}
 })
@@ -43,7 +44,7 @@ var _ = Describe("dual stack", func() {
 
 var _ = AfterSuite(func() {
 	if !testutil.IsExistingServer() {
-		Expect(testutil.K3sKillServer(server)).To(Succeed())
+		Expect(testutil.K3sKillServer(dualStackServer)).To(Succeed())
 	}
 })
 
