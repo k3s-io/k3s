@@ -13,7 +13,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-// +build !windows
 
 package vxlan
 
@@ -24,6 +23,7 @@ import (
 
 	"github.com/containernetworking/plugins/pkg/utils/sysctl"
 	"github.com/flannel-io/flannel/pkg/ip"
+	"github.com/flannel-io/flannel/pkg/mac"
 	"github.com/vishvananda/netlink"
 	log "k8s.io/klog"
 )
@@ -44,9 +44,15 @@ type vxlanDevice struct {
 }
 
 func newVXLANDevice(devAttrs *vxlanDeviceAttrs) (*vxlanDevice, error) {
+	hardwareAddr, err := mac.NewHardwareAddr()
+	if err != nil {
+		return nil, err
+	}
+
 	link := &netlink.Vxlan{
 		LinkAttrs: netlink.LinkAttrs{
-			Name: devAttrs.name,
+			Name:         devAttrs.name,
+			HardwareAddr: hardwareAddr,
 		},
 		VxlanId:      int(devAttrs.vni),
 		VtepDevIndex: devAttrs.vtepIndex,
@@ -56,7 +62,7 @@ func newVXLANDevice(devAttrs *vxlanDeviceAttrs) (*vxlanDevice, error) {
 		GBP:          devAttrs.gbp,
 	}
 
-	link, err := ensureLink(link)
+	link, err = ensureLink(link)
 	if err != nil {
 		return nil, err
 	}

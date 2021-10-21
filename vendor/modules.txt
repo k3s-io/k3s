@@ -524,7 +524,7 @@ github.com/exponent-io/jsonpath
 github.com/fatih/camelcase
 # github.com/felixge/httpsnoop v1.0.1
 github.com/felixge/httpsnoop
-# github.com/flannel-io/flannel v0.14.1-0.20210827074410-fca1560c91cc
+# github.com/flannel-io/flannel v0.15.1
 ## explicit
 github.com/flannel-io/flannel/backend
 github.com/flannel-io/flannel/backend/extension
@@ -533,6 +533,7 @@ github.com/flannel-io/flannel/backend/ipsec
 github.com/flannel-io/flannel/backend/vxlan
 github.com/flannel-io/flannel/network
 github.com/flannel-io/flannel/pkg/ip
+github.com/flannel-io/flannel/pkg/mac
 github.com/flannel-io/flannel/pkg/powershell
 github.com/flannel-io/flannel/pkg/routing
 github.com/flannel-io/flannel/subnet
