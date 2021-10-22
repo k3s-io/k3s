@@ -1,5 +1,5 @@
 docker.io/rancher/coredns-coredns:1.8.3
-docker.io/rancher/klipper-helm:v0.6.4-build20210813
+docker.io/rancher/klipper-helm:v0.6.6-build20211022
 docker.io/rancher/klipper-lb:v0.2.0
 docker.io/rancher/library-busybox:1.32.1
 docker.io/rancher/library-traefik:2.4.8
