@@ -130,23 +130,25 @@ func (s *storage) saveInK8s(secret *v1.Secret) (*v1.Secret, error) {
 		return secret, nil
 	}
 
-	if existing, err := s.storage.Get(); err == nil && s.tls != nil {
-		if newSecret, updated, err := s.tls.Merge(existing, secret); err == nil && updated {
-			secret = newSecret
-		}
-	}
-
 	targetSecret, err := s.targetSecret()
 	if err != nil {
 		return nil, err
 	}
 
-	if newSecret, updated, err := s.tls.Merge(targetSecret, secret); err != nil {
-		return nil, err
-	} else if !updated {
-		return newSecret, nil
-	} else {
-		secret = newSecret
+	if s.tls != nil {
+		if existing, err := s.storage.Get(); err == nil {
+			if newSecret, updated, err := s.tls.Merge(existing, secret); err == nil && updated {
+				secret = newSecret
+			}
+		}
+
+		if newSecret, updated, err := s.tls.Merge(targetSecret, secret); err != nil {
+			return nil, err
+		} else if !updated {
+			return newSecret, nil
+		} else {
+			secret = newSecret
+		}
 	}
 
 	targetSecret.Annotations = secret.Annotations

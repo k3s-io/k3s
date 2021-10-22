@@ -369,8 +369,8 @@ func (l *listener) loadCert() (*tls.Certificate, error) {
 		return nil, err
 	}
 
-	// cert has changed, close closeWrapper wrapped connections
-	if l.conns != nil {
+	// cert has changed, close closeWrapper wrapped connections if this isn't the first load
+	if l.conns != nil && l.cert != nil {
 		l.connLock.Lock()
 		for _, conn := range l.conns {
 			_ = conn.close()

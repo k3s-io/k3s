@@ -179,7 +179,10 @@ func populateCN(secret *v1.Secret, cn ...string) *v1.Secret {
 // IsStatic returns true if the Secret has an attribute indicating that it contains
 // a static (aka user-provided) certificate, which should not be modified.
 func IsStatic(secret *v1.Secret) bool {
-	return secret.Annotations[Static] == "true"
+	if secret != nil && secret.Annotations != nil {
+		return secret.Annotations[Static] == "true"
+	}
+	return false
 }
 
 // NeedsUpdate returns true if any of the CNs are not currently present on the
