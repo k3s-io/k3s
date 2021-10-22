@@ -9,6 +9,7 @@ const EtcdSnapshotCommand = "etcd-snapshot"
 
 var EtcdSnapshotFlags = []cli.Flag{
 	DebugFlag,
+	ConfigFlag,
 	LogFile,
 	AlsoLogToStderr,
 	cli.StringFlag{
@@ -23,7 +24,7 @@ var EtcdSnapshotFlags = []cli.Flag{
 		Destination: &ServerConfig.DataDir,
 	},
 	&cli.StringFlag{
-		Name:        "name,etcd-snapshot-name",
+		Name:        "name",
 		Usage:       "(db) Set the base name of the etcd on-demand snapshot (appended with UNIX timestamp).",
 		Destination: &ServerConfig.EtcdSnapshotName,
 		Value:       "on-demand",
