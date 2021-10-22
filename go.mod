@@ -17,7 +17,6 @@ replace (
 	github.com/containerd/ttrpc => github.com/containerd/ttrpc v1.0.2
 	github.com/containerd/typeurl => github.com/containerd/typeurl v1.0.2
 	github.com/containerd/zfs => github.com/containerd/zfs v1.0.0
-	github.com/coreos/flannel => github.com/rancher/flannel v0.12.0-k3s1
 	github.com/coreos/go-systemd => github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e
 	github.com/docker/distribution => github.com/docker/distribution v2.7.1-0.20190205005809-0d3efadf0154+incompatible
 	github.com/docker/docker => github.com/docker/docker v17.12.0-ce-rc1.0.20200310163718-4634ce647cf2+incompatible
@@ -73,11 +72,11 @@ require (
 	github.com/containerd/go-cni v1.0.2 // indirect
 	github.com/containerd/imgcrypt v1.1.1 // indirect
 	github.com/containernetworking/plugins v0.9.1 // indirect
-	github.com/coreos/flannel v0.12.0
 	github.com/coreos/go-iptables v0.5.0
 	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f
 	github.com/docker/docker v17.12.0-ce-rc1.0.20200916142827-bd33bbf0497b+incompatible
 	github.com/erikdubbelboer/gspt v0.0.0-20190125194910-e68493906b83
+	github.com/flannel-io/flannel v0.14.1
 	github.com/go-bindata/go-bindata v3.1.2+incompatible
 	github.com/go-sql-driver/mysql v1.4.1
 	github.com/google/cadvisor v0.37.5
