@@ -30,7 +30,7 @@ import (
 var (
 	trueVal         = true
 	commaRE         = regexp.MustCompile(`\\*,`)
-	DefaultJobImage = "rancher/klipper-helm:v0.6.4-build20210813"
+	DefaultJobImage = "rancher/klipper-helm:v0.6.6-build20211022"
 )
 
 type Controller struct {
@@ -47,6 +47,11 @@ const (
 	CRDName       = "helmcharts.helm.cattle.io"
 	ConfigCRDName = "helmchartconfigs.helm.cattle.io"
 	Name          = "helm-controller"
+
+	TaintExternalCloudProvider = "node.cloudprovider.kubernetes.io/uninitialized"
+	LabelNodeRolePrefix        = "node-role.kubernetes.io/"
+	LabelControlPlaneSuffix    = "control-plane"
+	LabelEtcdSuffix            = "etcd"
 )
 
 func Register(ctx context.Context, apply apply.Apply,
@@ -279,15 +284,19 @@ func job(chart *helmv1.HelmChart) (*batch.Job, *core.ConfigMap, *core.ConfigMap)
 		})
 	}
 
+	job.Spec.Template.Spec.NodeSelector = make(map[string]string)
+	job.Spec.Template.Spec.NodeSelector[core.LabelOSStable] = "linux"
+
 	if chart.Spec.Bootstrap {
+		job.Spec.Template.Spec.NodeSelector[LabelNodeRolePrefix+LabelControlPlaneSuffix] = "true"
 		job.Spec.Template.Spec.HostNetwork = true
 		job.Spec.Template.Spec.Tolerations = []core.Toleration{
 			{
-				Key:    "node.kubernetes.io/not-ready",
+				Key:    core.TaintNodeNotReady,
 				Effect: core.TaintEffectNoSchedule,
 			},
 			{
-				Key:      "node.cloudprovider.kubernetes.io/uninitialized",
+				Key:      TaintExternalCloudProvider,
 				Operator: core.TolerationOpEqual,
 				Value:    "true",
 				Effect:   core.TaintEffectNoSchedule,
@@ -297,12 +306,12 @@ func job(chart *helmv1.HelmChart) (*batch.Job, *core.ConfigMap, *core.ConfigMap)
 				Operator: core.TolerationOpExists,
 			},
 			{
-				Key:      "node-role.kubernetes.io/etcd",
+				Key:      LabelNodeRolePrefix + LabelEtcdSuffix,
 				Operator: core.TolerationOpExists,
 				Effect:   core.TaintEffectNoExecute,
 			},
 			{
-				Key:      "node-role.kubernetes.io/control-plane",
+				Key:      LabelNodeRolePrefix + LabelControlPlaneSuffix,
 				Operator: core.TolerationOpExists,
 				Effect:   core.TaintEffectNoSchedule,
 			},
@@ -318,8 +327,6 @@ func job(chart *helmv1.HelmChart) (*batch.Job, *core.ConfigMap, *core.ConfigMap)
 				Name:  "BOOTSTRAP",
 				Value: "true"},
 		}...)
-		job.Spec.Template.Spec.NodeSelector = make(map[string]string)
-		job.Spec.Template.Spec.NodeSelector["node-role.kubernetes.io/master"] = "true"
 	}
 
 	setProxyEnv(job)
