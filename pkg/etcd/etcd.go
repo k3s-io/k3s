@@ -189,7 +189,23 @@ func (e *ETCD) Reset(ctx context.Context, rebootstrap func() error) error {
 					logrus.Infof("Etcd is running, restart without --cluster-reset flag now. Backup and delete ${datadir}/server/db on each peer etcd server and rejoin the nodes")
 					os.Exit(0)
 				}
+			} else {
+				// make sure that peer ips are updated to the node ip in case the test fails
+				members, err := e.client.MemberList(ctx)
+				if err != nil {
+					logrus.Warnf("failed to list etcd members: %v", err)
+					continue
+				}
+				if len(members.Members) > 1 {
+					logrus.Warnf("failed to update peer url: etcd still has more than one member")
+					continue
+				}
+				if _, err := e.client.MemberUpdate(ctx, members.Members[0].ID, []string{e.peerURL()}); err != nil {
+					logrus.Warnf("failed to update peer url: %v", err)
+					continue
+				}
 			}
+
 		}
 	}()
 
