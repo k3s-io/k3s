@@ -114,10 +114,11 @@ require (
 	github.com/tchap/go-patricia v2.3.0+incompatible // indirect
 	github.com/urfave/cli v1.22.2
 	go.etcd.io/etcd v0.5.0-alpha.5.0.20201208200253-50621aee4aea
+	go.etcd.io/etcd/client/v3 v3.5.1
 	golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2
 	golang.org/x/net v0.0.0-20210226172049-e18ecbb05110
-	golang.org/x/sys v0.0.0-20210426230700-d19ff857e887
-	google.golang.org/grpc v1.37.0
+	golang.org/x/sys v0.0.0-20210603081109-ebe580a85c40
+	google.golang.org/grpc v1.38.0
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.21.5
 	k8s.io/apimachinery v0.21.5
