@@ -3,10 +3,17 @@ package cluster
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
+	"time"
 
+	"github.com/k3s-io/kine/pkg/client"
 	"github.com/rancher/k3s/pkg/bootstrap"
 	"github.com/rancher/k3s/pkg/clientaccess"
 	"github.com/rancher/k3s/pkg/daemons/config"
@@ -28,10 +35,8 @@ func (c *Cluster) Bootstrap(ctx context.Context) error {
 	}
 	c.shouldBootstrap = shouldBootstrap
 
-	if shouldBootstrap {
-		if err := c.bootstrap(ctx); err != nil {
-			return err
-		}
+	if c.shouldBootstrap {
+		return c.bootstrap(ctx)
 	}
 
 	return nil
@@ -85,47 +90,314 @@ func (c *Cluster) shouldBootstrapLoad(ctx context.Context) (bool, error) {
 	// Check the stamp file to see if we have successfully bootstrapped using this token.
 	// NOTE: The fact that we use a hash of the token to generate the stamp
 	//       means that it is unsafe to use the same token for multiple clusters.
-	stamp := c.bootstrapStamp()
-	if _, err := os.Stat(stamp); err == nil {
-		logrus.Info("Cluster bootstrap already complete")
-		return false, nil
-	}
+	// stamp := c.bootstrapStamp()
+	// if _, err := os.Stat(stamp); err == nil {
+	// 	logrus.Info("Cluster bootstrap already complete")
+	// 	return false, nil
+	// }
 
 	// No errors and no bootstrap stamp, need to bootstrap.
 	return true, nil
 }
 
-// bootstrapped touches a file to indicate that bootstrap has been completed.
-func (c *Cluster) bootstrapped() error {
-	stamp := c.bootstrapStamp()
-	if err := os.MkdirAll(filepath.Dir(stamp), 0700); err != nil {
+// isDirEmpty checks to see if the given directory
+// is empty.
+func isDirEmpty(name string) (bool, error) {
+	f, err := os.Open(name)
+	if err != nil {
+		return false, err
+	}
+	defer f.Close()
+
+	_, err = f.Readdir(1)
+	if err == io.EOF {
+		return true, nil
+	}
+
+	return false, err
+}
+
+// certDirsExist checks to see if the directories
+// that contain the needed certificates exist.
+func (c *Cluster) certDirsExist() error {
+	bootstrapDirs := []string{
+		"tls",
+		"tls/etcd",
+	}
+
+	const (
+		missingDir = "missing %s directory from ${data-dir}"
+		emptyDir   = "%s directory is empty"
+	)
+
+	for _, dir := range bootstrapDirs {
+		d := filepath.Join(c.config.DataDir, dir)
+		if _, err := os.Stat(d); os.IsNotExist(err) {
+			errMsg := fmt.Sprintf(missingDir, d)
+			logrus.Debug(errMsg)
+			return errors.New(errMsg)
+		}
+
+		ok, err := isDirEmpty(d)
+		if err != nil {
+			return err
+		}
+
+		if ok {
+			errMsg := fmt.Sprintf(emptyDir, d)
+			logrus.Debug(errMsg)
+			return errors.New(errMsg)
+		}
+	}
+
+	return nil
+}
+
+// migrateBootstrapData migrates bootstrap data from the old format to the new format.
+func migrateBootstrapData(ctx context.Context, data io.Reader, files bootstrap.PathsDataformat) error {
+	logrus.Info("Migrating bootstrap data to new format")
+
+	var oldBootstrapData map[string][]byte
+	if err := json.NewDecoder(data).Decode(&oldBootstrapData); err != nil {
+		// if this errors here, we can assume that the error being thrown
+		// is not related to needing to perform a migration.
 		return err
 	}
 
-	// return if file already exists
-	if _, err := os.Stat(stamp); err == nil {
-		return nil
+	// iterate through the old bootstrap data structure
+	// and copy into the new bootstrap data structure
+	for k, v := range oldBootstrapData {
+		files[k] = bootstrap.File{
+			Content: v,
+		}
 	}
 
-	// otherwise try to create it
-	f, err := os.Create(stamp)
+	return nil
+}
+
+const systemTimeSkew = int64(3)
+
+// ReconcileBootstrapData is called before any data is saved to the
+// datastore or locally. It checks to see if the contents of the
+// bootstrap data in the datastore is newer than on disk or different
+//  and dependingon where the difference is, the newer data is written
+// to the older.
+func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker, crb *config.ControlRuntimeBootstrap) error {
+	logrus.Info("Reconciling bootstrap data between datastore and disk")
+
+	if err := c.certDirsExist(); err != nil {
+		logrus.Warn(err.Error())
+		return bootstrap.WriteToDiskFromStorage(buf, crb)
+	}
+
+	token := c.config.Token
+	if token == "" {
+		tokenFromFile, err := readTokenFromFile(c.runtime.ServerToken, c.runtime.ServerCA, c.config.DataDir)
+		if err != nil {
+			return err
+		}
+		if tokenFromFile == "" {
+			// at this point this is a fresh start in a non-managed environment
+			c.saveBootstrap = true
+			return nil
+		}
+		token = tokenFromFile
+	}
+	normalizedToken, err := normalizeToken(token)
 	if err != nil {
 		return err
 	}
 
-	return f.Close()
+	var value *client.Value
+
+	storageClient, err := client.New(c.etcdConfig)
+	if err != nil {
+		return err
+	}
+
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+
+RETRY:
+	for {
+		value, err = c.getBootstrapKeyFromStorage(ctx, storageClient, normalizedToken, token)
+		if err != nil {
+			if strings.Contains(err.Error(), "not supported for learner") {
+				for range ticker.C {
+					continue RETRY
+				}
+
+			}
+			return err
+		}
+		if value == nil {
+			return nil
+		}
+
+		break
+	}
+
+	paths, err := bootstrap.ObjToMap(crb)
+	if err != nil {
+		return err
+	}
+
+	files := make(bootstrap.PathsDataformat)
+	if err := json.NewDecoder(buf).Decode(&files); err != nil {
+		// This will fail if data is being pulled from old an cluster since
+		// older clusters used a map[string][]byte for the data structure.
+		// Therefore, we need to perform a migration to the newer bootstrap
+		// format; bootstrap.BootstrapFile.
+		buf.Seek(0, 0)
+		if err := migrateBootstrapData(ctx, buf, files); err != nil {
+			return err
+		}
+	}
+	buf.Seek(0, 0)
+
+	type update struct {
+		db, disk, conflict bool
+	}
+
+	var updateDatastore, updateDisk bool
+
+	results := make(map[string]update)
+
+	for pathKey, fileData := range files {
+		path, ok := paths[pathKey]
+		if !ok {
+			continue
+		}
+
+		f, err := os.Open(path)
+		if err != nil {
+			if os.IsNotExist(err) {
+				logrus.Warn(path + " doesn't exist. continuing...")
+				updateDisk = true
+				continue
+			}
+			return err
+		}
+		defer f.Close()
+
+		fData, err := ioutil.ReadAll(f)
+		if err != nil {
+			return err
+		}
+
+		if !bytes.Equal(fileData.Content, fData) {
+			logrus.Warnf("%s is out of sync with datastore", path)
+
+			info, err := os.Stat(path)
+			if err != nil {
+				return err
+			}
+
+			switch {
+			case info.ModTime().Unix()-files[pathKey].Timestamp.Unix() >= systemTimeSkew:
+				if _, ok := results[path]; !ok {
+					results[path] = update{
+						db: true,
+					}
+				}
+
+				for pk := range files {
+					p, ok := paths[pk]
+					if !ok {
+						continue
+					}
+
+					if filepath.Base(p) == info.Name() {
+						continue
+					}
+
+					i, err := os.Stat(p)
+					if err != nil {
+						return err
+					}
+
+					if i.ModTime().Unix()-files[pk].Timestamp.Unix() >= systemTimeSkew {
+						if _, ok := results[path]; !ok {
+							results[path] = update{
+								conflict: true,
+							}
+						}
+					}
+				}
+			case info.ModTime().Unix()-files[pathKey].Timestamp.Unix() <= systemTimeSkew:
+				if _, ok := results[info.Name()]; !ok {
+					results[path] = update{
+						disk: true,
+					}
+				}
+
+				for pk := range files {
+					p, ok := paths[pk]
+					if !ok {
+						continue
+					}
+
+					if filepath.Base(p) == info.Name() {
+						continue
+					}
+
+					i, err := os.Stat(p)
+					if err != nil {
+						return err
+					}
+
+					if i.ModTime().Unix()-files[pk].Timestamp.Unix() <= systemTimeSkew {
+						if _, ok := results[path]; !ok {
+							results[path] = update{
+								conflict: true,
+							}
+						}
+					}
+				}
+			default:
+				if _, ok := results[path]; ok {
+					results[path] = update{}
+				}
+			}
+		}
+	}
+
+	for path, res := range results {
+		if res.db {
+			updateDatastore = true
+			logrus.Warn(path + " newer than datastore")
+		} else if res.disk {
+			updateDisk = true
+			logrus.Warn("datastore newer than " + path)
+		} else if res.conflict {
+			logrus.Warnf("datastore / disk conflict: %s newer than in the datastore", path)
+		}
+	}
+
+	switch {
+	case updateDatastore:
+		logrus.Warn("updating bootstrap data in datastore from disk")
+		return c.save(ctx, true)
+	case updateDisk:
+		logrus.Warn("updating bootstrap data on disk from datastore")
+		return bootstrap.WriteToDiskFromStorage(buf, crb)
+	default:
+		// on disk certificates match timestamps in storage. noop.
+	}
+
+	return nil
 }
 
 // httpBootstrap retrieves bootstrap data (certs and keys, etc) from the remote server via HTTP
 // and loads it into the ControlRuntimeBootstrap struct. Unlike the storage bootstrap path,
 // this data does not need to be decrypted since it is generated on-demand by an existing server.
-func (c *Cluster) httpBootstrap() error {
+func (c *Cluster) httpBootstrap(ctx context.Context) error {
 	content, err := c.clientAccessInfo.Get("/v1-" + version.Program + "/server-bootstrap")
 	if err != nil {
 		return err
 	}
 
-	return bootstrap.Read(bytes.NewBuffer(content), &c.runtime.ControlRuntimeBootstrap)
+	return c.ReconcileBootstrapData(ctx, bytes.NewReader(content), &c.config.Runtime.ControlRuntimeBootstrap)
 }
 
 // bootstrap performs cluster bootstrapping, either via HTTP (for managed databases) or direct load from datastore.
@@ -134,18 +406,11 @@ func (c *Cluster) bootstrap(ctx context.Context) error {
 
 	// bootstrap managed database via HTTPS
 	if c.runtime.HTTPBootstrap {
-		return c.httpBootstrap()
+		return c.httpBootstrap(ctx)
 	}
 
 	// Bootstrap directly from datastore
 	return c.storageBootstrap(ctx)
-}
-
-// bootstrapStamp returns the path to a file in datadir/db that is used to record
-// that a cluster has been joined. The filename is based on a portion of the sha256 hash of the token.
-// We hash the token value exactly as it is provided by the user, NOT the normalized version.
-func (c *Cluster) bootstrapStamp() string {
-	return filepath.Join(c.config.DataDir, "db/joined-"+keyHash(c.config.Token))
 }
 
 // Snapshot is a proxy method to call the snapshot method on the managedb
