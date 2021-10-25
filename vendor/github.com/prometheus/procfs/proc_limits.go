@@ -26,55 +26,55 @@ import (
 // http://man7.org/linux/man-pages/man2/getrlimit.2.html.
 type ProcLimits struct {
 	// CPU time limit in seconds.
-	CPUTime uint64
+	CPUTime int64
 	// Maximum size of files that the process may create.
-	FileSize uint64
+	FileSize int64
 	// Maximum size of the process's data segment (initialized data,
 	// uninitialized data, and heap).
-	DataSize uint64
+	DataSize int64
 	// Maximum size of the process stack in bytes.
-	StackSize uint64
+	StackSize int64
 	// Maximum size of a core file.
-	CoreFileSize uint64
+	CoreFileSize int64
 	// Limit of the process's resident set in pages.
-	ResidentSet uint64
+	ResidentSet int64
 	// Maximum number of processes that can be created for the real user ID of
 	// the calling process.
-	Processes uint64
+	Processes int64
 	// Value one greater than the maximum file descriptor number that can be
 	// opened by this process.
-	OpenFiles uint64
+	OpenFiles int64
 	// Maximum number of bytes of memory that may be locked into RAM.
-	LockedMemory uint64
+	LockedMemory int64
 	// Maximum size of the process's virtual memory address space in bytes.
-	AddressSpace uint64
+	AddressSpace int64
 	// Limit on the combined number of flock(2) locks and fcntl(2) leases that
 	// this process may establish.
-	FileLocks uint64
+	FileLocks int64
 	// Limit of signals that may be queued for the real user ID of the calling
 	// process.
-	PendingSignals uint64
+	PendingSignals int64
 	// Limit on the number of bytes that can be allocated for POSIX message
 	// queues for the real user ID of the calling process.
-	MsqqueueSize uint64
+	MsqqueueSize int64
 	// Limit of the nice priority set using setpriority(2) or nice(2).
-	NicePriority uint64
+	NicePriority int64
 	// Limit of the real-time priority set using sched_setscheduler(2) or
 	// sched_setparam(2).
-	RealtimePriority uint64
+	RealtimePriority int64
 	// Limit (in microseconds) on the amount of CPU time that a process
 	// scheduled under a real-time scheduling policy may consume without making
 	// a blocking system call.
-	RealtimeTimeout uint64
+	RealtimeTimeout int64
 }
 
 const (
-	limitsFields    = 4
+	limitsFields    = 3
 	limitsUnlimited = "unlimited"
 )
 
 var (
-	limitsMatch = regexp.MustCompile(`(Max \w+\s{0,1}?\w*\s{0,1}\w*)\s{2,}(\w+)\s+(\w+)`)
+	limitsDelimiter = regexp.MustCompile("  +")
 )
 
 // NewLimits returns the current soft limits of the process.
@@ -96,49 +96,46 @@ func (p Proc) Limits() (ProcLimits, error) {
 		l = ProcLimits{}
 		s = bufio.NewScanner(f)
 	)
-
-	s.Scan() // Skip limits header
-
 	for s.Scan() {
-		//fields := limitsMatch.Split(s.Text(), limitsFields)
-		fields := limitsMatch.FindStringSubmatch(s.Text())
+		fields := limitsDelimiter.Split(s.Text(), limitsFields)
 		if len(fields) != limitsFields {
-			return ProcLimits{}, fmt.Errorf("couldn't parse %q line %q", f.Name(), s.Text())
+			return ProcLimits{}, fmt.Errorf(
+				"couldn't parse %s line %s", f.Name(), s.Text())
 		}
 
-		switch fields[1] {
+		switch fields[0] {
 		case "Max cpu time":
-			l.CPUTime, err = parseUint(fields[2])
+			l.CPUTime, err = parseInt(fields[1])
 		case "Max file size":
-			l.FileSize, err = parseUint(fields[2])
+			l.FileSize, err = parseInt(fields[1])
 		case "Max data size":
-			l.DataSize, err = parseUint(fields[2])
+			l.DataSize, err = parseInt(fields[1])
 		case "Max stack size":
-			l.StackSize, err = parseUint(fields[2])
+			l.StackSize, err = parseInt(fields[1])
 		case "Max core file size":
-			l.CoreFileSize, err = parseUint(fields[2])
+			l.CoreFileSize, err = parseInt(fields[1])
 		case "Max resident set":
-			l.ResidentSet, err = parseUint(fields[2])
+			l.ResidentSet, err = parseInt(fields[1])
 		case "Max processes":
-			l.Processes, err = parseUint(fields[2])
+			l.Processes, err = parseInt(fields[1])
 		case "Max open files":
-			l.OpenFiles, err = parseUint(fields[2])
+			l.OpenFiles, err = parseInt(fields[1])
 		case "Max locked memory":
-			l.LockedMemory, err = parseUint(fields[2])
+			l.LockedMemory, err = parseInt(fields[1])
 		case "Max address space":
-			l.AddressSpace, err = parseUint(fields[2])
+			l.AddressSpace, err = parseInt(fields[1])
 		case "Max file locks":
-			l.FileLocks, err = parseUint(fields[2])
+			l.FileLocks, err = parseInt(fields[1])
 		case "Max pending signals":
-			l.PendingSignals, err = parseUint(fields[2])
+			l.PendingSignals, err = parseInt(fields[1])
 		case "Max msgqueue size":
-			l.MsqqueueSize, err = parseUint(fields[2])
+			l.MsqqueueSize, err = parseInt(fields[1])
 		case "Max nice priority":
-			l.NicePriority, err = parseUint(fields[2])
+			l.NicePriority, err = parseInt(fields[1])
 		case "Max realtime priority":
-			l.RealtimePriority, err = parseUint(fields[2])
+			l.RealtimePriority, err = parseInt(fields[1])
 		case "Max realtime timeout":
-			l.RealtimeTimeout, err = parseUint(fields[2])
+			l.RealtimeTimeout, err = parseInt(fields[1])
 		}
 		if err != nil {
 			return ProcLimits{}, err
@@ -148,13 +145,13 @@ func (p Proc) Limits() (ProcLimits, error) {
 	return l, s.Err()
 }
 
-func parseUint(s string) (uint64, error) {
+func parseInt(s string) (int64, error) {
 	if s == limitsUnlimited {
-		return 18446744073709551615, nil
+		return -1, nil
 	}
-	i, err := strconv.ParseUint(s, 10, 64)
+	i, err := strconv.ParseInt(s, 10, 64)
 	if err != nil {
-		return 0, fmt.Errorf("couldn't parse value %q: %w", s, err)
+		return 0, fmt.Errorf("couldn't parse value %s: %s", s, err)
 	}
 	return i, nil
 }

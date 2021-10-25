@@ -145,29 +145,15 @@ func (enc *jsonEncoder) resetReflectBuf() {
 	}
 }
 
-var nullLiteralBytes = []byte("null")
-
-// Only invoke the standard JSON encoder if there is actually something to
-// encode; otherwise write JSON null literal directly.
-func (enc *jsonEncoder) encodeReflected(obj interface{}) ([]byte, error) {
-	if obj == nil {
-		return nullLiteralBytes, nil
-	}
-	enc.resetReflectBuf()
-	if err := enc.reflectEnc.Encode(obj); err != nil {
-		return nil, err
-	}
-	enc.reflectBuf.TrimNewline()
-	return enc.reflectBuf.Bytes(), nil
-}
-
 func (enc *jsonEncoder) AddReflected(key string, obj interface{}) error {
-	valueBytes, err := enc.encodeReflected(obj)
+	enc.resetReflectBuf()
+	err := enc.reflectEnc.Encode(obj)
 	if err != nil {
 		return err
 	}
+	enc.reflectBuf.TrimNewline()
 	enc.addKey(key)
-	_, err = enc.buf.Write(valueBytes)
+	_, err = enc.buf.Write(enc.reflectBuf.Bytes())
 	return err
 }
 
@@ -236,9 +222,7 @@ func (enc *jsonEncoder) AppendComplex128(val complex128) {
 
 func (enc *jsonEncoder) AppendDuration(val time.Duration) {
 	cur := enc.buf.Len()
-	if e := enc.EncodeDuration; e != nil {
-		e(val, enc)
-	}
+	enc.EncodeDuration(val, enc)
 	if cur == enc.buf.Len() {
 		// User-supplied EncodeDuration is a no-op. Fall back to nanoseconds to keep
 		// JSON valid.
@@ -252,12 +236,14 @@ func (enc *jsonEncoder) AppendInt64(val int64) {
 }
 
 func (enc *jsonEncoder) AppendReflected(val interface{}) error {
-	valueBytes, err := enc.encodeReflected(val)
+	enc.resetReflectBuf()
+	err := enc.reflectEnc.Encode(val)
 	if err != nil {
 		return err
 	}
+	enc.reflectBuf.TrimNewline()
 	enc.addElementSeparator()
-	_, err = enc.buf.Write(valueBytes)
+	_, err = enc.buf.Write(enc.reflectBuf.Bytes())
 	return err
 }
 
@@ -268,18 +254,9 @@ func (enc *jsonEncoder) AppendString(val string) {
 	enc.buf.AppendByte('"')
 }
 
-func (enc *jsonEncoder) AppendTimeLayout(time time.Time, layout string) {
-	enc.addElementSeparator()
-	enc.buf.AppendByte('"')
-	enc.buf.AppendTime(time, layout)
-	enc.buf.AppendByte('"')
-}
-
 func (enc *jsonEncoder) AppendTime(val time.Time) {
 	cur := enc.buf.Len()
-	if e := enc.EncodeTime; e != nil {
-		e(val, enc)
-	}
+	enc.EncodeTime(val, enc)
 	if cur == enc.buf.Len() {
 		// User-supplied EncodeTime is a no-op. Fall back to nanos since epoch to keep
 		// output JSON valid.
@@ -366,20 +343,14 @@ func (enc *jsonEncoder) EncodeEntry(ent Entry, fields []Field) (*buffer.Buffer, 
 			final.AppendString(ent.LoggerName)
 		}
 	}
-	if ent.Caller.Defined {
-		if final.CallerKey != "" {
-			final.addKey(final.CallerKey)
-			cur := final.buf.Len()
-			final.EncodeCaller(ent.Caller, final)
-			if cur == final.buf.Len() {
-				// User-supplied EncodeCaller was a no-op. Fall back to strings to
-				// keep output JSON valid.
-				final.AppendString(ent.Caller.String())
-			}
-		}
-		if final.FunctionKey != "" {
-			final.addKey(final.FunctionKey)
-			final.AppendString(ent.Caller.Function)
+	if ent.Caller.Defined && final.CallerKey != "" {
+		final.addKey(final.CallerKey)
+		cur := final.buf.Len()
+		final.EncodeCaller(ent.Caller, final)
+		if cur == final.buf.Len() {
+			// User-supplied EncodeCaller was a no-op. Fall back to strings to
+			// keep output JSON valid.
+			final.AppendString(ent.Caller.String())
 		}
 	}
 	if final.MessageKey != "" {

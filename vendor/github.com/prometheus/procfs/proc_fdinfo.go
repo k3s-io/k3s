@@ -16,7 +16,7 @@ package procfs
 import (
 	"bufio"
 	"bytes"
-	"fmt"
+	"errors"
 	"regexp"
 
 	"github.com/prometheus/procfs/internal/util"
@@ -112,7 +112,7 @@ func parseInotifyInfo(line string) (*InotifyInfo, error) {
 		}
 		return i, nil
 	}
-	return nil, fmt.Errorf("invalid inode entry: %q", line)
+	return nil, errors.New("invalid inode entry: " + line)
 }
 
 // ProcFDInfos represents a list of ProcFDInfo structs.

@@ -1075,11 +1075,6 @@ type stringModeNumberDecoder struct {
 }
 
 func (decoder *stringModeNumberDecoder) Decode(ptr unsafe.Pointer, iter *Iterator) {
-	if iter.WhatIsNext() == NilValue {
-		decoder.elemDecoder.Decode(ptr, iter)
-		return
-	}
-
 	c := iter.nextToken()
 	if c != '"' {
 		iter.ReportError("stringModeNumberDecoder", `expect ", but found `+string([]byte{c}))

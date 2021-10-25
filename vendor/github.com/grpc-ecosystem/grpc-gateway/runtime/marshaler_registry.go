@@ -2,10 +2,7 @@ package runtime
 
 import (
 	"errors"
-	"mime"
 	"net/http"
-
-	"google.golang.org/grpc/grpclog"
 )
 
 // MIMEWildcard is the fallback MIME type used for requests which do not match
@@ -34,12 +31,7 @@ func MarshalerForRequest(mux *ServeMux, r *http.Request) (inbound Marshaler, out
 	}
 
 	for _, contentTypeVal := range r.Header[contentTypeHeader] {
-		contentType, _, err := mime.ParseMediaType(contentTypeVal)
-		if err != nil {
-			grpclog.Infof("Failed to parse Content-Type %s: %v", contentTypeVal, err)
-			continue
-		}
-		if m, ok := mux.marshalers.mimeMap[contentType]; ok {
+		if m, ok := mux.marshalers.mimeMap[contentTypeVal]; ok {
 			inbound = m
 			break
 		}

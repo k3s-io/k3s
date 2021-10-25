@@ -19,7 +19,6 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
-	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -78,7 +77,7 @@ func parseCPUInfoX86(info []byte) ([]CPUInfo, error) {
 	// find the first "processor" line
 	firstLine := firstNonEmptyLine(scanner)
 	if !strings.HasPrefix(firstLine, "processor") || !strings.Contains(firstLine, ":") {
-		return nil, fmt.Errorf("invalid cpuinfo file: %q", firstLine)
+		return nil, errors.New("invalid cpuinfo file: " + firstLine)
 	}
 	field := strings.SplitN(firstLine, ": ", 2)
 	v, err := strconv.ParseUint(field[1], 0, 32)
@@ -193,7 +192,7 @@ func parseCPUInfoARM(info []byte) ([]CPUInfo, error) {
 	firstLine := firstNonEmptyLine(scanner)
 	match, _ := regexp.MatchString("^[Pp]rocessor", firstLine)
 	if !match || !strings.Contains(firstLine, ":") {
-		return nil, fmt.Errorf("invalid cpuinfo file: %q", firstLine)
+		return nil, errors.New("invalid cpuinfo file: " + firstLine)
 	}
 	field := strings.SplitN(firstLine, ": ", 2)
 	cpuinfo := []CPUInfo{}
@@ -257,7 +256,7 @@ func parseCPUInfoS390X(info []byte) ([]CPUInfo, error) {
 
 	firstLine := firstNonEmptyLine(scanner)
 	if !strings.HasPrefix(firstLine, "vendor_id") || !strings.Contains(firstLine, ":") {
-		return nil, fmt.Errorf("invalid cpuinfo file: %q", firstLine)
+		return nil, errors.New("invalid cpuinfo file: " + firstLine)
 	}
 	field := strings.SplitN(firstLine, ": ", 2)
 	cpuinfo := []CPUInfo{}
@@ -282,7 +281,7 @@ func parseCPUInfoS390X(info []byte) ([]CPUInfo, error) {
 		if strings.HasPrefix(line, "processor") {
 			match := cpuinfoS390XProcessorRegexp.FindStringSubmatch(line)
 			if len(match) < 2 {
-				return nil, fmt.Errorf("invalid cpuinfo file: %q", firstLine)
+				return nil, errors.New("Invalid line found in cpuinfo: " + line)
 			}
 			cpu := commonCPUInfo
 			v, err := strconv.ParseUint(match[1], 0, 32)
@@ -314,22 +313,6 @@ func parseCPUInfoS390X(info []byte) ([]CPUInfo, error) {
 				return nil, err
 			}
 			cpuinfo[i].CPUMHz = v
-		case "physical id":
-			cpuinfo[i].PhysicalID = field[1]
-		case "core id":
-			cpuinfo[i].CoreID = field[1]
-		case "cpu cores":
-			v, err := strconv.ParseUint(field[1], 0, 32)
-			if err != nil {
-				return nil, err
-			}
-			cpuinfo[i].CPUCores = uint(v)
-		case "siblings":
-			v, err := strconv.ParseUint(field[1], 0, 32)
-			if err != nil {
-				return nil, err
-			}
-			cpuinfo[i].Siblings = uint(v)
 		}
 	}
 
@@ -342,7 +325,7 @@ func parseCPUInfoMips(info []byte) ([]CPUInfo, error) {
 	// find the first "processor" line
 	firstLine := firstNonEmptyLine(scanner)
 	if !strings.HasPrefix(firstLine, "system type") || !strings.Contains(firstLine, ":") {
-		return nil, fmt.Errorf("invalid cpuinfo file: %q", firstLine)
+		return nil, errors.New("invalid cpuinfo file: " + firstLine)
 	}
 	field := strings.SplitN(firstLine, ": ", 2)
 	cpuinfo := []CPUInfo{}
@@ -384,7 +367,7 @@ func parseCPUInfoPPC(info []byte) ([]CPUInfo, error) {
 
 	firstLine := firstNonEmptyLine(scanner)
 	if !strings.HasPrefix(firstLine, "processor") || !strings.Contains(firstLine, ":") {
-		return nil, fmt.Errorf("invalid cpuinfo file: %q", firstLine)
+		return nil, errors.New("invalid cpuinfo file: " + firstLine)
 	}
 	field := strings.SplitN(firstLine, ": ", 2)
 	v, err := strconv.ParseUint(field[1], 0, 32)
@@ -429,7 +412,7 @@ func parseCPUInfoRISCV(info []byte) ([]CPUInfo, error) {
 
 	firstLine := firstNonEmptyLine(scanner)
 	if !strings.HasPrefix(firstLine, "processor") || !strings.Contains(firstLine, ":") {
-		return nil, fmt.Errorf("invalid cpuinfo file: %q", firstLine)
+		return nil, errors.New("invalid cpuinfo file: " + firstLine)
 	}
 	field := strings.SplitN(firstLine, ": ", 2)
 	v, err := strconv.ParseUint(field[1], 0, 32)

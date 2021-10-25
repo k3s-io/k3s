@@ -12,7 +12,7 @@ import (
 	"github.com/rancher/k3s/pkg/daemons/config"
 	testutil "github.com/rancher/k3s/tests/util"
 	"github.com/robfig/cron/v3"
-	clientv3 "go.etcd.io/etcd/client/v3"
+	etcd "go.etcd.io/etcd/clientv3"
 )
 
 func generateTestConfig() *config.Control {
@@ -190,7 +190,7 @@ func Test_UnitETCD_Register(t *testing.T) {
 
 func Test_UnitETCD_Start(t *testing.T) {
 	type fields struct {
-		client  *clientv3.Client
+		client  *etcd.Client
 		config  *config.Control
 		name    string
 		runtime *config.ControlRuntime

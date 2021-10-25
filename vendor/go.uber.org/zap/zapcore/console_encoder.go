@@ -56,10 +56,6 @@ type consoleEncoder struct {
 // encoder configuration, it will omit any element whose key is set to the empty
 // string.
 func NewConsoleEncoder(cfg EncoderConfig) Encoder {
-	if cfg.ConsoleSeparator == "" {
-		// Use a default delimiter of '\t' for backwards compatibility
-		cfg.ConsoleSeparator = "\t"
-	}
 	return consoleEncoder{newJSONEncoder(cfg, true)}
 }
 
@@ -93,17 +89,12 @@ func (c consoleEncoder) EncodeEntry(ent Entry, fields []Field) (*buffer.Buffer, 
 
 		nameEncoder(ent.LoggerName, arr)
 	}
-	if ent.Caller.Defined {
-		if c.CallerKey != "" && c.EncodeCaller != nil {
-			c.EncodeCaller(ent.Caller, arr)
-		}
-		if c.FunctionKey != "" {
-			arr.AppendString(ent.Caller.Function)
-		}
+	if ent.Caller.Defined && c.CallerKey != "" && c.EncodeCaller != nil {
+		c.EncodeCaller(ent.Caller, arr)
 	}
 	for i := range arr.elems {
 		if i > 0 {
-			line.AppendString(c.ConsoleSeparator)
+			line.AppendByte('\t')
 		}
 		fmt.Fprint(line, arr.elems[i])
 	}
@@ -111,7 +102,7 @@ func (c consoleEncoder) EncodeEntry(ent Entry, fields []Field) (*buffer.Buffer, 
 
 	// Add the message itself.
 	if c.MessageKey != "" {
-		c.addSeparatorIfNecessary(line)
+		c.addTabIfNecessary(line)
 		line.AppendString(ent.Message)
 	}
 
@@ -135,12 +126,7 @@ func (c consoleEncoder) EncodeEntry(ent Entry, fields []Field) (*buffer.Buffer, 
 
 func (c consoleEncoder) writeContext(line *buffer.Buffer, extra []Field) {
 	context := c.jsonEncoder.Clone().(*jsonEncoder)
-	defer func() {
-		// putJSONEncoder assumes the buffer is still used, but we write out the buffer so
-		// we can free it.
-		context.buf.Free()
-		putJSONEncoder(context)
-	}()
+	defer context.buf.Free()
 
 	addFields(context, extra)
 	context.closeOpenNamespaces()
@@ -148,14 +134,14 @@ func (c consoleEncoder) writeContext(line *buffer.Buffer, extra []Field) {
 		return
 	}
 
-	c.addSeparatorIfNecessary(line)
+	c.addTabIfNecessary(line)
 	line.AppendByte('{')
 	line.Write(context.buf.Bytes())
 	line.AppendByte('}')
 }
 
-func (c consoleEncoder) addSeparatorIfNecessary(line *buffer.Buffer) {
+func (c consoleEncoder) addTabIfNecessary(line *buffer.Buffer) {
 	if line.Len() > 0 {
-		line.AppendString(c.ConsoleSeparator)
+		line.AppendByte('\t')
 	}
 }
