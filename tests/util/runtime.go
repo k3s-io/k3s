@@ -46,6 +46,7 @@ func GenerateRuntime(cnf *config.Control) error {
 	if err := GenerateDataDir(cnf); err != nil {
 		return err
 	}
+	runtime.AgentReady = make(<-chan struct{})
 
 	os.MkdirAll(filepath.Join(cnf.DataDir, "tls"), 0700)
 	os.MkdirAll(filepath.Join(cnf.DataDir, "cred"), 0700)
