@@ -19,9 +19,9 @@ import (
 // snapshot of the cluster's CA certs and keys, encryption passphrases, etc - encrypted with the join token.
 // This is used when bootstrapping a cluster from a managed database or external etcd cluster.
 // This is NOT used with embedded etcd, which bootstraps over HTTP.
-func (c *Cluster) save(ctx context.Context) error {
+func (c *Cluster) save(ctx context.Context, override bool) error {
 	buf := &bytes.Buffer{}
-	if err := bootstrap.Write(buf, &c.runtime.ControlRuntimeBootstrap); err != nil {
+	if err := bootstrap.ReadFromDisk(buf, &c.runtime.ControlRuntimeBootstrap); err != nil {
 		return err
 	}
 	token := c.config.Token
@@ -47,14 +47,20 @@ func (c *Cluster) save(ctx context.Context) error {
 		return err
 	}
 
-	_, err = c.getBootstrapKeyFromStorage(ctx, storageClient, normalizedToken, token)
-	if err != nil {
+	if _, err := c.getBootstrapKeyFromStorage(ctx, storageClient, normalizedToken, token); err != nil {
 		return err
 	}
 
 	if err := storageClient.Create(ctx, storageKey(normalizedToken), data); err != nil {
 		if err.Error() == "key exists" {
-			logrus.Warnln("bootstrap key already exists")
+			logrus.Warn("bootstrap key already exists")
+			if override {
+				bsd, err := c.bootstrapKeyData(ctx, storageClient)
+				if err != nil {
+					return err
+				}
+				return storageClient.Update(ctx, storageKey(normalizedToken), bsd.Modified, data)
+			}
 			return nil
 		} else if strings.Contains(err.Error(), "not supported for learner") {
 			logrus.Debug("skipping bootstrap data save on learner")
@@ -66,9 +72,25 @@ func (c *Cluster) save(ctx context.Context) error {
 	return nil
 }
 
+// bootstrapKeyData lists keys stored in the datastore with the prefix "/bootstrap", and
+// will return the first such key. It will return an error if not exactly one key is found.
+func (c *Cluster) bootstrapKeyData(ctx context.Context, storageClient client.Client) (*client.Value, error) {
+	bootstrapList, err := storageClient.List(ctx, "/bootstrap", 0)
+	if err != nil {
+		return nil, err
+	}
+	if len(bootstrapList) == 0 {
+		return nil, errors.New("no bootstrap data found")
+	}
+	if len(bootstrapList) > 1 {
+		return nil, errors.New("found multiple bootstrap keys in storage")
+	}
+	return &bootstrapList[0], nil
+}
+
 // storageBootstrap loads data from the datastore into the ControlRuntimeBootstrap struct.
 // The storage key and encryption passphrase are both derived from the join token.
-// token is either passed
+// token is either passed.
 func (c *Cluster) storageBootstrap(ctx context.Context) error {
 	if err := c.startStorage(ctx); err != nil {
 		return err
@@ -110,7 +132,7 @@ func (c *Cluster) storageBootstrap(ctx context.Context) error {
 		return err
 	}
 
-	return bootstrap.Read(bytes.NewBuffer(data), &c.runtime.ControlRuntimeBootstrap)
+	return c.ReconcileBootstrapData(ctx, bytes.NewReader(data), &c.config.Runtime.ControlRuntimeBootstrap)
 }
 
 // getBootstrapKeyFromStorage will list all keys that has prefix /bootstrap and will check for key that is
@@ -157,6 +179,7 @@ func (c *Cluster) getBootstrapKeyFromStorage(ctx context.Context, storageClient 
 // found then it will still strip the token from any additional info
 func readTokenFromFile(serverToken, certs, dataDir string) (string, error) {
 	tokenFile := filepath.Join(dataDir, "token")
+
 	b, err := ioutil.ReadFile(tokenFile)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -168,6 +191,7 @@ func readTokenFromFile(serverToken, certs, dataDir string) (string, error) {
 		}
 		return "", err
 	}
+
 	// strip the token from any new line if its read from file
 	return string(bytes.TrimRight(b, "\n")), nil
 }
@@ -178,6 +202,7 @@ func normalizeToken(token string) (string, error) {
 	if !ok {
 		return password, errors.New("failed to normalize token")
 	}
+
 	return password, nil
 }
 
@@ -186,6 +211,7 @@ func normalizeToken(token string) (string, error) {
 // then migrate those and resave only with the normalized token
 func (c *Cluster) migrateOldTokens(ctx context.Context, bootstrapList []client.Value, storageClient client.Client, emptyStringKey, tokenKey, token, oldToken string) error {
 	oldTokenKey := storageKey(oldToken)
+
 	for _, bootstrapKV := range bootstrapList {
 		// checking for empty string bootstrap key
 		if string(bootstrapKV.Key) == emptyStringKey {
@@ -200,6 +226,7 @@ func (c *Cluster) migrateOldTokens(ctx context.Context, bootstrapList []client.V
 			}
 		}
 	}
+
 	return nil
 }
 
@@ -209,10 +236,12 @@ func doMigrateToken(ctx context.Context, storageClient client.Client, keyValue c
 	if err != nil {
 		return err
 	}
+
 	encryptedData, err := encrypt(newToken, data)
 	if err != nil {
 		return err
 	}
+
 	// saving the new encrypted data with the right token key
 	if err := storageClient.Create(ctx, newTokenKey, encryptedData); err != nil {
 		if err.Error() == "key exists" {
@@ -224,10 +253,12 @@ func doMigrateToken(ctx context.Context, storageClient client.Client, keyValue c
 			return err
 		}
 	}
+
 	logrus.Infof("created bootstrap key %s", newTokenKey)
 	// deleting the old key
 	if err := storageClient.Delete(ctx, oldTokenKey, keyValue.Modified); err != nil {
 		logrus.Warnf("failed to delete old bootstrap key %s", oldTokenKey)
 	}
+
 	return nil
 }
