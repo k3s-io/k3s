@@ -21,7 +21,6 @@
 package zapcore
 
 import (
-	"encoding/json"
 	"time"
 
 	"go.uber.org/zap/buffer"
@@ -31,9 +30,6 @@ import (
 // Alternate line endings specified in EncoderConfig can override this
 // behavior.
 const DefaultLineEnding = "\n"
-
-// OmitKey defines the key to use when callers want to remove a key from log output.
-const OmitKey = ""
 
 // A LevelEncoder serializes a Level to a primitive type.
 type LevelEncoder func(Level, PrimitiveArrayEncoder)
@@ -113,66 +109,17 @@ func EpochNanosTimeEncoder(t time.Time, enc PrimitiveArrayEncoder) {
 	enc.AppendInt64(t.UnixNano())
 }
 
-func encodeTimeLayout(t time.Time, layout string, enc PrimitiveArrayEncoder) {
-	type appendTimeEncoder interface {
-		AppendTimeLayout(time.Time, string)
-	}
-
-	if enc, ok := enc.(appendTimeEncoder); ok {
-		enc.AppendTimeLayout(t, layout)
-		return
-	}
-
-	enc.AppendString(t.Format(layout))
-}
-
 // ISO8601TimeEncoder serializes a time.Time to an ISO8601-formatted string
 // with millisecond precision.
-//
-// If enc supports AppendTimeLayout(t time.Time,layout string), it's used
-// instead of appending a pre-formatted string value.
 func ISO8601TimeEncoder(t time.Time, enc PrimitiveArrayEncoder) {
-	encodeTimeLayout(t, "2006-01-02T15:04:05.000Z0700", enc)
+	enc.AppendString(t.Format("2006-01-02T15:04:05.000Z0700"))
 }
 
-// RFC3339TimeEncoder serializes a time.Time to an RFC3339-formatted string.
-//
-// If enc supports AppendTimeLayout(t time.Time,layout string), it's used
-// instead of appending a pre-formatted string value.
-func RFC3339TimeEncoder(t time.Time, enc PrimitiveArrayEncoder) {
-	encodeTimeLayout(t, time.RFC3339, enc)
-}
-
-// RFC3339NanoTimeEncoder serializes a time.Time to an RFC3339-formatted string
-// with nanosecond precision.
-//
-// If enc supports AppendTimeLayout(t time.Time,layout string), it's used
-// instead of appending a pre-formatted string value.
-func RFC3339NanoTimeEncoder(t time.Time, enc PrimitiveArrayEncoder) {
-	encodeTimeLayout(t, time.RFC3339Nano, enc)
-}
-
-// TimeEncoderOfLayout returns TimeEncoder which serializes a time.Time using
-// given layout.
-func TimeEncoderOfLayout(layout string) TimeEncoder {
-	return func(t time.Time, enc PrimitiveArrayEncoder) {
-		encodeTimeLayout(t, layout, enc)
-	}
-}
-
-// UnmarshalText unmarshals text to a TimeEncoder.
-// "rfc3339nano" and "RFC3339Nano" are unmarshaled to RFC3339NanoTimeEncoder.
-// "rfc3339" and "RFC3339" are unmarshaled to RFC3339TimeEncoder.
-// "iso8601" and "ISO8601" are unmarshaled to ISO8601TimeEncoder.
-// "millis" is unmarshaled to EpochMillisTimeEncoder.
-// "nanos" is unmarshaled to EpochNanosEncoder.
-// Anything else is unmarshaled to EpochTimeEncoder.
+// UnmarshalText unmarshals text to a TimeEncoder. "iso8601" and "ISO8601" are
+// unmarshaled to ISO8601TimeEncoder, "millis" is unmarshaled to
+// EpochMillisTimeEncoder, and anything else is unmarshaled to EpochTimeEncoder.
 func (e *TimeEncoder) UnmarshalText(text []byte) error {
 	switch string(text) {
-	case "rfc3339nano", "RFC3339Nano":
-		*e = RFC3339NanoTimeEncoder
-	case "rfc3339", "RFC3339":
-		*e = RFC3339TimeEncoder
 	case "iso8601", "ISO8601":
 		*e = ISO8601TimeEncoder
 	case "millis":
@@ -183,35 +130,6 @@ func (e *TimeEncoder) UnmarshalText(text []byte) error {
 		*e = EpochTimeEncoder
 	}
 	return nil
-}
-
-// UnmarshalYAML unmarshals YAML to a TimeEncoder.
-// If value is an object with a "layout" field, it will be unmarshaled to  TimeEncoder with given layout.
-//     timeEncoder:
-//       layout: 06/01/02 03:04pm
-// If value is string, it uses UnmarshalText.
-//     timeEncoder: iso8601
-func (e *TimeEncoder) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	var o struct {
-		Layout string `json:"layout" yaml:"layout"`
-	}
-	if err := unmarshal(&o); err == nil {
-		*e = TimeEncoderOfLayout(o.Layout)
-		return nil
-	}
-
-	var s string
-	if err := unmarshal(&s); err != nil {
-		return err
-	}
-	return e.UnmarshalText([]byte(s))
-}
-
-// UnmarshalJSON unmarshals JSON to a TimeEncoder as same way UnmarshalYAML does.
-func (e *TimeEncoder) UnmarshalJSON(data []byte) error {
-	return e.UnmarshalYAML(func(v interface{}) error {
-		return json.Unmarshal(data, v)
-	})
 }
 
 // A DurationEncoder serializes a time.Duration to a primitive type.
@@ -226,12 +144,6 @@ func SecondsDurationEncoder(d time.Duration, enc PrimitiveArrayEncoder) {
 // nanoseconds elapsed.
 func NanosDurationEncoder(d time.Duration, enc PrimitiveArrayEncoder) {
 	enc.AppendInt64(int64(d))
-}
-
-// MillisDurationEncoder serializes a time.Duration to an integer number of
-// milliseconds elapsed.
-func MillisDurationEncoder(d time.Duration, enc PrimitiveArrayEncoder) {
-	enc.AppendInt64(d.Nanoseconds() / 1e6)
 }
 
 // StringDurationEncoder serializes a time.Duration using its built-in String
@@ -249,8 +161,6 @@ func (e *DurationEncoder) UnmarshalText(text []byte) error {
 		*e = StringDurationEncoder
 	case "nanos":
 		*e = NanosDurationEncoder
-	case "ms":
-		*e = MillisDurationEncoder
 	default:
 		*e = SecondsDurationEncoder
 	}
@@ -317,7 +227,6 @@ type EncoderConfig struct {
 	TimeKey       string `json:"timeKey" yaml:"timeKey"`
 	NameKey       string `json:"nameKey" yaml:"nameKey"`
 	CallerKey     string `json:"callerKey" yaml:"callerKey"`
-	FunctionKey   string `json:"functionKey" yaml:"functionKey"`
 	StacktraceKey string `json:"stacktraceKey" yaml:"stacktraceKey"`
 	LineEnding    string `json:"lineEnding" yaml:"lineEnding"`
 	// Configure the primitive representations of common complex types. For
@@ -330,9 +239,6 @@ type EncoderConfig struct {
 	// Unlike the other primitive type encoders, EncodeName is optional. The
 	// zero value falls back to FullNameEncoder.
 	EncodeName NameEncoder `json:"nameEncoder" yaml:"nameEncoder"`
-	// Configures the field separator used by the console encoder. Defaults
-	// to tab.
-	ConsoleSeparator string `json:"consoleSeparator" yaml:"consoleSeparator"`
 }
 
 // ObjectEncoder is a strongly-typed, encoding-agnostic interface for adding a
@@ -366,8 +272,8 @@ type ObjectEncoder interface {
 	AddUint8(key string, value uint8)
 	AddUintptr(key string, value uintptr)
 
-	// AddReflected uses reflection to serialize arbitrary objects, so it can be
-	// slow and allocation-heavy.
+	// AddReflected uses reflection to serialize arbitrary objects, so it's slow
+	// and allocation-heavy.
 	AddReflected(key string, value interface{}) error
 	// OpenNamespace opens an isolated namespace where all subsequent fields will
 	// be added. Applications can use namespaces to prevent key collisions when
@@ -437,7 +343,6 @@ type Encoder interface {
 	Clone() Encoder
 
 	// EncodeEntry encodes an entry and fields, along with any accumulated
-	// context, into a byte buffer and returns it. Any fields that are empty,
-	// including fields on the `Entry` type, should be omitted.
+	// context, into a byte buffer and returns it.
 	EncodeEntry(Entry, []Field) (*buffer.Buffer, error)
 }

@@ -19,7 +19,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	//nolint:staticcheck // Ignore SA1019. Need to keep deprecated package for compatibility.
+	//lint:ignore SA1019 Need to keep deprecated package for compatibility.
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 
@@ -63,7 +63,7 @@ func newValueFunc(desc *Desc, valueType ValueType, function func() float64) *val
 		desc:       desc,
 		valType:    valueType,
 		function:   function,
-		labelPairs: MakeLabelPairs(desc, nil),
+		labelPairs: makeLabelPairs(desc, nil),
 	}
 	result.init(result)
 	return result
@@ -95,7 +95,7 @@ func NewConstMetric(desc *Desc, valueType ValueType, value float64, labelValues 
 		desc:       desc,
 		valType:    valueType,
 		val:        value,
-		labelPairs: MakeLabelPairs(desc, labelValues),
+		labelPairs: makeLabelPairs(desc, labelValues),
 	}, nil
 }
 
@@ -145,14 +145,7 @@ func populateMetric(
 	return nil
 }
 
-// MakeLabelPairs is a helper function to create protobuf LabelPairs from the
-// variable and constant labels in the provided Desc. The values for the
-// variable labels are defined by the labelValues slice, which must be in the
-// same order as the corresponding variable labels in the Desc.
-//
-// This function is only needed for custom Metric implementations. See MetricVec
-// example.
-func MakeLabelPairs(desc *Desc, labelValues []string) []*dto.LabelPair {
+func makeLabelPairs(desc *Desc, labelValues []string) []*dto.LabelPair {
 	totalLen := len(desc.variableLabels) + len(desc.constLabelPairs)
 	if totalLen == 0 {
 		// Super fast path.

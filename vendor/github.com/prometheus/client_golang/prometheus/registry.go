@@ -26,7 +26,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/cespare/xxhash/v2"
-	//nolint:staticcheck // Ignore SA1019. Need to keep deprecated package for compatibility.
+	//lint:ignore SA1019 Need to keep deprecated package for compatibility.
 	"github.com/golang/protobuf/proto"
 	"github.com/prometheus/common/expfmt"
 
@@ -215,8 +215,6 @@ func (err AlreadyRegisteredError) Error() string {
 // by a Gatherer to report multiple errors during MetricFamily gathering.
 type MultiError []error
 
-// Error formats the contained errors as a bullet point list, preceded by the
-// total number of errors. Note that this results in a multi-line string.
 func (errs MultiError) Error() string {
 	if len(errs) == 0 {
 		return ""

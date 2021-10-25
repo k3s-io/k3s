@@ -42,13 +42,11 @@ type Logger struct {
 	core zapcore.Core
 
 	development bool
-	addCaller   bool
-	onFatal     zapcore.CheckWriteAction // default is WriteThenFatal
-
 	name        string
 	errorOutput zapcore.WriteSyncer
 
-	addStack zapcore.LevelEnabler
+	addCaller bool
+	addStack  zapcore.LevelEnabler
 
 	callerSkip int
 }
@@ -260,12 +258,6 @@ func (log *Logger) check(lvl zapcore.Level, msg string) *zapcore.CheckedEntry {
 	// (e.g., Check, Info, Fatal).
 	const callerSkipOffset = 2
 
-	// Check the level first to reduce the cost of disabled log calls.
-	// Since Panic and higher may exit, we skip the optimization for those levels.
-	if lvl < zapcore.DPanicLevel && !log.core.Enabled(lvl) {
-		return nil
-	}
-
 	// Create basic checked entry thru the core; this will be non-nil if the
 	// log message will actually be written somewhere.
 	ent := zapcore.Entry{
@@ -282,13 +274,7 @@ func (log *Logger) check(lvl zapcore.Level, msg string) *zapcore.CheckedEntry {
 	case zapcore.PanicLevel:
 		ce = ce.Should(ent, zapcore.WriteThenPanic)
 	case zapcore.FatalLevel:
-		onFatal := log.onFatal
-		// Noop is the default value for CheckWriteAction, and it leads to
-		// continued execution after a Fatal which is unexpected.
-		if onFatal == zapcore.WriteThenNoop {
-			onFatal = zapcore.WriteThenFatal
-		}
-		ce = ce.Should(ent, onFatal)
+		ce = ce.Should(ent, zapcore.WriteThenFatal)
 	case zapcore.DPanicLevel:
 		if log.development {
 			ce = ce.Should(ent, zapcore.WriteThenPanic)
@@ -305,41 +291,15 @@ func (log *Logger) check(lvl zapcore.Level, msg string) *zapcore.CheckedEntry {
 	// Thread the error output through to the CheckedEntry.
 	ce.ErrorOutput = log.errorOutput
 	if log.addCaller {
-		frame, defined := getCallerFrame(log.callerSkip + callerSkipOffset)
-		if !defined {
+		ce.Entry.Caller = zapcore.NewEntryCaller(runtime.Caller(log.callerSkip + callerSkipOffset))
+		if !ce.Entry.Caller.Defined {
 			fmt.Fprintf(log.errorOutput, "%v Logger.check error: failed to get caller\n", time.Now().UTC())
 			log.errorOutput.Sync()
 		}
-
-		ce.Entry.Caller = zapcore.EntryCaller{
-			Defined:  defined,
-			PC:       frame.PC,
-			File:     frame.File,
-			Line:     frame.Line,
-			Function: frame.Function,
-		}
 	}
 	if log.addStack.Enabled(ce.Entry.Level) {
-		ce.Entry.Stack = StackSkip("", log.callerSkip+callerSkipOffset).String
+		ce.Entry.Stack = Stack("").String
 	}
 
 	return ce
-}
-
-// getCallerFrame gets caller frame. The argument skip is the number of stack
-// frames to ascend, with 0 identifying the caller of getCallerFrame. The
-// boolean ok is false if it was not possible to recover the information.
-//
-// Note: This implementation is similar to runtime.Caller, but it returns the whole frame.
-func getCallerFrame(skip int) (frame runtime.Frame, ok bool) {
-	const skipOffset = 2 // skip getCallerFrame and Callers
-
-	pc := make([]uintptr, 1)
-	numFrames := runtime.Callers(skip+skipOffset, pc)
-	if numFrames < 1 {
-		return
-	}
-
-	frame, _ = runtime.CallersFrames(pc).Next()
-	return frame, frame.PC != 0
 }

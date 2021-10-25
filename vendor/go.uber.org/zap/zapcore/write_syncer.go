@@ -91,7 +91,8 @@ func NewMultiWriteSyncer(ws ...WriteSyncer) WriteSyncer {
 	if len(ws) == 1 {
 		return ws[0]
 	}
-	return multiWriteSyncer(ws)
+	// Copy to protect against https://github.com/golang/go/issues/7809
+	return multiWriteSyncer(append([]WriteSyncer(nil), ws...))
 }
 
 // See https://golang.org/src/io/multi.go
