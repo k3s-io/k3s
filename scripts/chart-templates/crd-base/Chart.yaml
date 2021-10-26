@@ -4,4 +4,4 @@ description: Installs the CRDs for ${name}.
 name: ${name}-crd
 type: application
 annotations:
-  catalog.cattle.io/hidden: "true"
+  fleet.cattle.io/bundle-id: k3s
