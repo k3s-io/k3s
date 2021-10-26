@@ -243,7 +243,6 @@ RETRY:
 	}
 
 	files := make(bootstrap.PathsDataformat)
-
 	if err := json.NewDecoder(buf).Decode(&files); err != nil {
 		// This will fail if data is being pulled from old an cluster since
 		// older clusters used a map[string][]byte for the data structure.
@@ -254,6 +253,7 @@ RETRY:
 			return err
 		}
 	}
+	buf.Seek(0, 0)
 
 	type update struct {
 		db, disk, conflict bool

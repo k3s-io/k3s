@@ -83,7 +83,7 @@ require (
 	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f
 	github.com/docker/docker v20.10.7+incompatible
 	github.com/erikdubbelboer/gspt v0.0.0-20190125194910-e68493906b83
-	github.com/flannel-io/flannel v0.14.1-0.20210827074410-fca1560c91cc
+	github.com/flannel-io/flannel v0.15.1
 	github.com/go-bindata/go-bindata v3.1.2+incompatible
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/golangplus/testing v1.0.0 // indirect
@@ -91,7 +91,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.4.2
-	github.com/k3s-io/helm-controller v0.11.5
+	github.com/k3s-io/helm-controller v0.11.7
 	github.com/k3s-io/kine v0.8.0
 	github.com/klauspost/compress v1.13.5
 	github.com/kubernetes-sigs/cri-tools v0.0.0-00010101000000-000000000000
