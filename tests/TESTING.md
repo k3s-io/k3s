@@ -73,7 +73,7 @@ See the [local storage test](https://github.com/k3s-io/k3s/blob/master/tests/int
 
 Integration tests can be run with no k3s cluster present, each test will spin up and kill the appropriate k3s server it needs.
 ```bash
-go test ./pkg/... ./tests/... -run Integration
+go test ./pkg/... ./tests/integration/... -run Integration
 ```
 
 Integration tests can be run on an existing single-node cluster via compile time flag, tests will skip if the server is not configured correctly.

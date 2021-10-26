@@ -15,6 +15,14 @@ import (
 // Compile-time variable
 var existingServer = "False"
 
+const lockFile = "/var/lock/k3s-test.lock"
+
+type K3sServer struct {
+	cmd     *exec.Cmd
+	scanner *bufio.Scanner
+	lock    int
+}
+
 func findK3sExecutable() string {
 	// if running on an existing cluster, it maybe installed via k3s.service
 	// or run manually from dist/artifacts/k3s
@@ -112,20 +120,19 @@ func FindStringInCmdAsync(scanner *bufio.Scanner, target string) bool {
 	return false
 }
 
-type K3sServer struct {
-	cmd     *exec.Cmd
-	scanner *bufio.Scanner
-	lock    int
-}
-
 // K3sStartServer acquires an exclusive lock on a temporary file, then launches a k3s cluster
 // with the provided arguments. Subsequent/parallel calls to this function will block until
 // the original lock is cleared using K3sKillServer
-func K3sStartServer(cmdArgs ...string) (*K3sServer, error) {
+func K3sStartServer(inputArgs ...string) (*K3sServer, error) {
 	logrus.Info("waiting to get server lock")
-	k3sLock, err := flock.Acquire("/var/lock/k3s-test.lock")
+	k3sLock, err := flock.Acquire(lockFile)
 	if err != nil {
 		return nil, err
+	}
+
+	var cmdArgs []string
+	for _, arg := range inputArgs {
+		cmdArgs = append(cmdArgs, strings.Fields(arg)...)
 	}
 
 	k3sBin := findK3sExecutable()
@@ -157,5 +164,11 @@ func K3sKillServer(server *K3sServer) error {
 			return err
 		}
 	}
-	return flock.Release(server.lock)
+	if err := flock.Release(server.lock); err != nil {
+		return err
+	}
+	if !flock.CheckLock(lockFile) {
+		return os.Remove(lockFile)
+	}
+	return nil
 }
