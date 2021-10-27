@@ -60,14 +60,14 @@ To facilitate K3s CLI testing, see `tests/util/cmd.go` helper functions.
 Integration tests can be placed in two areas:  
 
 1. Next to the go package they intend to test.
-2. In `tests/integration/` for package agnostic testing.  
+2. In `tests/integration/<TESTNAME>` for package agnostic testing.  
 
 Package specific integration tests should use the `<PACKAGE_UNDER_TEST>_test` package.  
 Package agnostic integration tests should use the `integration` package.  
 All integration test files should be named: `<TEST_NAME>_int_test.go`  
 All integration test functions should be named: `Test_Integration<Test_Name>`.  
 See the [etcd snapshot test](https://github.com/k3s-io/k3s/blob/master/pkg/etcd/etcd_int_test.go) as a package specific example.  
-See the [local storage test](https://github.com/k3s-io/k3s/blob/master/tests/integration/localstorage_int_test.go) as a package agnostic example.
+See the [local storage test](https://github.com/k3s-io/k3s/blob/master/tests/integration/localstorage/localstorage_int_test.go) as a package agnostic example.
 
 ### Running
 
@@ -78,7 +78,7 @@ go test ./pkg/... ./tests/integration/... -run Integration
 
 Integration tests can be run on an existing single-node cluster via compile time flag, tests will skip if the server is not configured correctly.
 ```bash
-go test -ldflags "-X 'github.com/rancher/k3s/tests/util.existingServer=True'" ./pkg/... ./tests/... -run Integration
+go test -ldflags "-X 'github.com/rancher/k3s/tests/util.existingServer=True'" ./pkg/... ./tests/integration/... -run Integration
 ```
 
 Integration tests can also be run via a [Sonobuoy](https://sonobuoy.io/docs/v0.53.2/) plugin on an existing single-node cluster.
@@ -111,7 +111,7 @@ See the [upgrade cluster test](https://github.com/k3s-io/k3s/blob/master/tests/e
 Generally, E2E tests are run as a nightly Jenkins job for QA. They can still be run locally but additional setup may be required.
 
 ```bash
-go test ./tests/... -run E2E
+go test ./tests/e2e... -run E2E
 ```
 
 ## Contributing New Or Updated Tests
