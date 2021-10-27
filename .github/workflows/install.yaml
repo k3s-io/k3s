@@ -1,0 +1,95 @@
+name: Installer
+on:
+  push:
+    paths:
+      - "install.sh"
+      - "tests/install"
+  pull_request:
+    paths:
+      - "install.sh"
+      - "tests/install"
+  workflow_dispatch: {}
+jobs:
+  install-centos-7:
+    name: "CentOS 7"
+    # nested virtualization is only available on macOS hosts
+    runs-on: macos-10.15
+    timeout-minutes: 40
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 1
+      - name: "VagrantPlugin::K3S"
+        working-directory: tests/install/centos-7
+        run: vagrant plugin install vagrant-k3s
+      - name: "Vagrant::⬆"
+        working-directory: tests/install/centos-7
+        run: vagrant up
+  install-centos-8:
+    name: "CentOS 8"
+    # nested virtualization is only available on macOS hosts
+    runs-on: macos-10.15
+    timeout-minutes: 40
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 1
+      - name: "VagrantPlugin::K3S"
+        working-directory: tests/install/centos-8
+        run: vagrant plugin install vagrant-k3s
+      - name: "Vagrant::⬆"
+        working-directory: tests/install/centos-8
+        run: vagrant up
+  install-opensuse-leap:
+    name: "openSUSE Leap"
+    # nested virtualization is only available on macOS hosts
+    runs-on: macos-10.15
+    timeout-minutes: 40
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 1
+      - name: "VagrantPlugin::K3S"
+        working-directory: tests/install/opensuse-leap
+        run: vagrant plugin install vagrant-k3s
+      - name: "Vagrant::⬆"
+        working-directory: tests/install/opensuse-leap
+        run: vagrant up
+#  install-opensuse-microos:
+#    name: "openSUSE MicroOS"
+#    # nested virtualization is only available on macOS hosts
+#    runs-on: macos-10.15
+#    timeout-minutes: 40
+#    steps:
+#      - name: "Checkout"
+#        uses: actions/checkout@v2
+#        with:
+#          fetch-depth: 1
+#      - name: "VagrantPlugin::Reload"
+#        working-directory: tests/install/opensuse-microos
+#        run: vagrant plugin install vagrant-reload
+#      - name: "VagrantPlugin::K3S"
+#        working-directory: tests/install/opensuse-microos
+#        run: vagrant plugin install vagrant-k3s
+#      - name: "Vagrant::⬆"
+#        working-directory: tests/install/opensuse-microos
+#        run: vagrant up
+  install-ubuntu-focal:
+    name: "Ubuntu Focal"
+    # nested virtualization is only available on macOS hosts
+    runs-on: macos-10.15
+    timeout-minutes: 40
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 1
+      - name: "VagrantPlugin::K3S"
+        working-directory: tests/install/ubuntu-focal
+        run: vagrant plugin install vagrant-k3s
+      - name: "Vagrant::⬆"
+        working-directory: tests/install/ubuntu-focal
+        run: vagrant up
