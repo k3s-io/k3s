@@ -51,7 +51,7 @@ func GenerateRuntime(cnf *config.Control) error {
 	os.MkdirAll(filepath.Join(cnf.DataDir, "tls"), 0700)
 	os.MkdirAll(filepath.Join(cnf.DataDir, "cred"), 0700)
 
-	deps.CreateRuntimeCertFiles(cnf, runtime)
+	deps.FillRuntimeCerts(cnf, runtime)
 
 	if err := deps.GenServerDeps(cnf, runtime); err != nil {
 		return err

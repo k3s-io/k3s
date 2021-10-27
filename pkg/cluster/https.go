@@ -79,8 +79,7 @@ func (c *Cluster) initClusterAndHTTPS(ctx context.Context) error {
 
 	// Create a HTTP server with the registered request handlers, using logrus for logging
 	server := http.Server{
-		Handler: handler,
-	}
+		Handler: handler}
 
 	if logrus.IsLevelEnabled(logrus.DebugLevel) {
 		server.ErrorLog = log.New(logrus.StandardLogger().Writer(), "Cluster-Http-Server ", log.LstdFlags)

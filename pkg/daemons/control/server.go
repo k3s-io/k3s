@@ -239,7 +239,7 @@ func prepare(ctx context.Context, config *config.Control, runtime *config.Contro
 	os.MkdirAll(filepath.Join(config.DataDir, "tls"), 0700)
 	os.MkdirAll(filepath.Join(config.DataDir, "cred"), 0700)
 
-	deps.CreateRuntimeCertFiles(config, runtime)
+	deps.FillRuntimeCerts(config, runtime)
 
 	cluster := cluster.New(config)
 
