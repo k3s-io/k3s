@@ -89,9 +89,9 @@ func KubeConfig(dest, url, caCert, clientCert, clientKey string) error {
 	return kubeconfigTemplate.Execute(output, &data)
 }
 
-// CreateRuntimeCertFiles is responsible for filling out all the
+// FillRuntimeCerts is responsible for filling out all the
 // .crt and .key filenames for a ControlRuntime.
-func CreateRuntimeCertFiles(config *config.Control, runtime *config.ControlRuntime) {
+func FillRuntimeCerts(config *config.Control, runtime *config.ControlRuntime) {
 	runtime.ClientCA = filepath.Join(config.DataDir, "tls", "client-ca.crt")
 	runtime.ClientCAKey = filepath.Join(config.DataDir, "tls", "client-ca.key")
 	runtime.ServerCA = filepath.Join(config.DataDir, "tls", "server-ca.crt")
