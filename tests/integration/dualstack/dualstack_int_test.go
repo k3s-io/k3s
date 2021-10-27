@@ -11,7 +11,6 @@ import (
 )
 
 var dualStackServer *testutil.K3sServer
-var dualStackDataDir = "/tmp/k3sds"
 var dualStackServerArgs = []string{
 	"--cluster-init",
 	"--cluster-cidr 10.42.0.0/16,2001:cafe:42:0::/56",
@@ -41,9 +40,9 @@ var _ = Describe("dual stack", func() {
 		It("creates pods with two IPs", func() {
 			podname, err := testutil.K3sCmd("kubectl", "get", "pods", "-n", "kube-system", "-o", "jsonpath={.items[?(@.metadata.labels.app\\.kubernetes\\.io/name==\"traefik\")].metadata.name}")
 			Expect(err).NotTo(HaveOccurred())
-			result, err := testutil.K3sCmd("kubectl", "exec", podname, "-n", "kube-system", "--", "ip", "a")
-			Expect(result).To(ContainSubstring("2001:cafe:42:"))
-			Expect(err).NotTo(HaveOccurred())
+			Eventually(func() (string, error) {
+				return testutil.K3sCmd("kubectl", "exec", podname, "-n", "kube-system", "--", "ip", "a")
+			}, "5s", "1s").Should(ContainSubstring("2001:cafe:42:"))
 		})
 	})
 })
