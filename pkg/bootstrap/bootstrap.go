@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/pkg/errors"
 	"github.com/rancher/k3s/pkg/daemons/config"
@@ -16,19 +15,17 @@ import (
 func Handler(bootstrap *config.ControlRuntimeBootstrap) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		rw.Header().Set("Content-Type", "application/json")
-		ReadFromDisk(rw, bootstrap)
+		Write(rw, bootstrap)
 	})
 }
 
-// ReadFromDisk reads the bootstrap data from the files on disk and
-// writes their content in JSON form to the given io.Writer.
-func ReadFromDisk(w io.Writer, bootstrap *config.ControlRuntimeBootstrap) error {
-	paths, err := ObjToMap(bootstrap)
+func Write(w io.Writer, bootstrap *config.ControlRuntimeBootstrap) error {
+	paths, err := objToMap(bootstrap)
 	if err != nil {
 		return nil
 	}
 
-	dataMap := make(map[string]File)
+	dataMap := map[string][]byte{}
 	for pathKey, path := range paths {
 		if path == "" {
 			continue
@@ -38,45 +35,24 @@ func ReadFromDisk(w io.Writer, bootstrap *config.ControlRuntimeBootstrap) error 
 			return errors.Wrapf(err, "failed to read %s", path)
 		}
 
-		info, err := os.Stat(path)
-		if err != nil {
-			return err
-		}
-
-		dataMap[pathKey] = File{
-			Timestamp: info.ModTime(),
-			Content:   data,
-		}
+		dataMap[pathKey] = data
 	}
 
 	return json.NewEncoder(w).Encode(dataMap)
 }
 
-// File is a representation of a certificate
-// or key file within the bootstrap context that contains
-// the contents of the file as well as a timestamp from
-// when the file was last modified.
-type File struct {
-	Timestamp time.Time
-	Content   []byte
-}
-
-type PathsDataformat map[string]File
-
-// WriteToDiskFromStorage writes the contents of the given reader to the paths
-// derived from within the ControlRuntimeBootstrap.
-func WriteToDiskFromStorage(r io.Reader, bootstrap *config.ControlRuntimeBootstrap) error {
-	paths, err := ObjToMap(bootstrap)
+func Read(r io.Reader, bootstrap *config.ControlRuntimeBootstrap) error {
+	paths, err := objToMap(bootstrap)
 	if err != nil {
 		return err
 	}
 
-	files := make(PathsDataformat)
+	files := map[string][]byte{}
 	if err := json.NewDecoder(r).Decode(&files); err != nil {
 		return err
 	}
 
-	for pathKey, bsf := range files {
+	for pathKey, data := range files {
 		path, ok := paths[pathKey]
 		if !ok {
 			continue
@@ -85,7 +61,8 @@ func WriteToDiskFromStorage(r io.Reader, bootstrap *config.ControlRuntimeBootstr
 		if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
 			return errors.Wrapf(err, "failed to mkdir %s", filepath.Dir(path))
 		}
-		if err := ioutil.WriteFile(path, bsf.Content, 0600); err != nil {
+
+		if err := ioutil.WriteFile(path, data, 0600); err != nil {
 			return errors.Wrapf(err, "failed to write to %s", path)
 		}
 	}
@@ -93,7 +70,7 @@ func WriteToDiskFromStorage(r io.Reader, bootstrap *config.ControlRuntimeBootstr
 	return nil
 }
 
-func ObjToMap(obj interface{}) (map[string]string, error) {
+func objToMap(obj interface{}) (map[string]string, error) {
 	bytes, err := json.Marshal(obj)
 	if err != nil {
 		return nil, err
