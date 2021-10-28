@@ -128,17 +128,17 @@ require (
 	google.golang.org/grpc v1.40.0
 	gopkg.in/yaml.v2 v2.4.0
 	inet.af/tcpproxy v0.0.0-20200125044825-b6bb9b5b8252
-	k8s.io/api v0.22.3
-	k8s.io/apimachinery v0.22.3
-	k8s.io/apiserver v0.22.3
+	k8s.io/api v0.22.2
+	k8s.io/apimachinery v0.22.2
+	k8s.io/apiserver v0.22.2
 	k8s.io/client-go v11.0.1-0.20190409021438-1a26190bd76a+incompatible
-	k8s.io/cloud-provider v0.22.3
-	k8s.io/component-base v0.22.3
-	k8s.io/controller-manager v0.22.3 // indirect
-	k8s.io/cri-api v0.22.3
+	k8s.io/cloud-provider v0.22.2
+	k8s.io/component-base v0.22.2
+	k8s.io/controller-manager v0.22.2 // indirect
+	k8s.io/cri-api v0.22.2
 	k8s.io/klog v1.0.0
 	k8s.io/klog/v2 v2.9.0
-	k8s.io/kubectl v0.22.3
+	k8s.io/kubectl v0.22.2
 	k8s.io/kubernetes v1.22.3
 	k8s.io/utils v0.0.0-20210819203725-bdf08cb9a70a
 	sigs.k8s.io/yaml v1.2.0
