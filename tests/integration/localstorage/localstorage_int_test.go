@@ -13,20 +13,21 @@ import (
 	testutil "github.com/rancher/k3s/tests/util"
 )
 
-var server *testutil.K3sServer
-var serverArgs = []string{"--cluster-init"}
+var localStorageServer *testutil.K3sServer
+var localStorageServerArgs = []string{"--cluster-init"}
+var testDataDir = "../../testdata/"
 var _ = BeforeSuite(func() {
 	if !testutil.IsExistingServer() {
 		var err error
-		server, err = testutil.K3sStartServer(serverArgs...)
+		localStorageServer, err = testutil.K3sStartServer(localStorageServerArgs...)
 		Expect(err).ToNot(HaveOccurred())
 	}
 })
 
 var _ = Describe("local storage", func() {
 	BeforeEach(func() {
-		if testutil.IsExistingServer() && !testutil.ServerArgsPresent(serverArgs) {
-			Skip("Test needs k3s server with: " + strings.Join(serverArgs, " "))
+		if testutil.IsExistingServer() && !testutil.ServerArgsPresent(localStorageServerArgs) {
+			Skip("Test needs k3s server with: " + strings.Join(localStorageServerArgs, " "))
 		}
 	})
 	When("a new local storage is created", func() {
@@ -36,12 +37,12 @@ var _ = Describe("local storage", func() {
 			}, "90s", "1s").Should(MatchRegexp("kube-system.+coredns.+1\\/1.+Running"))
 		})
 		It("creates a new pvc", func() {
-			result, err := testutil.K3sCmd("kubectl", "create", "-f", "../testdata/localstorage_pvc.yaml")
+			result, err := testutil.K3sCmd("kubectl", "create", "-f", testDataDir+"localstorage_pvc.yaml")
 			Expect(result).To(ContainSubstring("persistentvolumeclaim/local-path-pvc created"))
 			Expect(err).NotTo(HaveOccurred())
 		})
 		It("creates a new pod", func() {
-			Expect(testutil.K3sCmd("kubectl", "create", "-f", "../testdata/localstorage_pod.yaml")).
+			Expect(testutil.K3sCmd("kubectl", "create", "-f", testDataDir+"localstorage_pod.yaml")).
 				To(ContainSubstring("pod/volume-test created"))
 		})
 		It("shows storage up in kubectl", func() {
@@ -81,7 +82,7 @@ var _ = Describe("local storage", func() {
 
 var _ = AfterSuite(func() {
 	if !testutil.IsExistingServer() {
-		Expect(testutil.K3sKillServer(server)).To(Succeed())
+		Expect(testutil.K3sKillServer(localStorageServer)).To(Succeed())
 	}
 })
 
