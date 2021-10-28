@@ -33,13 +33,17 @@ func findK3sExecutable() string {
 		}
 	}
 	k3sBin := "dist/artifacts/k3s"
-	for {
+	i := 0
+	for ; i < 20; i++ {
 		_, err := os.Stat(k3sBin)
 		if err != nil {
 			k3sBin = "../" + k3sBin
 			continue
 		}
 		break
+	}
+	if i == 20 {
+		logrus.Fatal("Unable to find k3s executable")
 	}
 	return k3sBin
 }
