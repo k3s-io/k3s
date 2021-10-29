@@ -26,7 +26,7 @@ const (
 	EncryptionStart     string = "start"
 	EncryptionPrepare   string = "prepare"
 	EncryptionRotate    string = "rotate"
-	EncryptionReencrypt string = "rencrypt"
+	EncryptionReencrypt string = "reencrypt"
 )
 
 const aescbcKeySize = 32
@@ -80,7 +80,7 @@ func encryptionStatus(server *config.Control) (string, error) {
 	var tabBuffer bytes.Buffer
 	w := tabwriter.NewWriter(&tabBuffer, 0, 0, 2, ' ', 0)
 	fmt.Fprintf(w, "Key Type\tName\tSecret\n")
-
+	fmt.Fprintf(w, "--------\t----\t------\n")
 	for _, p := range providers {
 		if p.AESCBC != nil {
 			for _, aesKey := range p.AESCBC.Keys {

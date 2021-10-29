@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/erikdubbelboer/gspt"
 	"github.com/rancher/k3s/pkg/cli/cmds"
@@ -196,22 +195,4 @@ func Reencrypt(app *cli.Context) error {
 	}
 	fmt.Println("reencrypt completed successfully")
 	return nil
-}
-
-func askForConfirmation(question string) bool {
-	var s string
-
-	fmt.Printf("%s(y/N): ", question)
-	_, err := fmt.Scan(&s)
-	if err != nil {
-		panic(err)
-	}
-
-	s = strings.TrimSpace(s)
-	s = strings.ToLower(s)
-
-	if s == "y" || s == "yes" {
-		return true
-	}
-	return false
 }

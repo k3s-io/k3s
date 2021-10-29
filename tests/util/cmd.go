@@ -80,6 +80,18 @@ func K3sCmd(cmdName string, cmdArgs ...string) (string, error) {
 	return string(byteOut), err
 }
 
+// K3sRemoveDataDir removes the provided directory as root
+func K3sRemoveDataDir(dataDir string) error {
+	var cmd *exec.Cmd
+	if IsRoot() {
+		cmd = exec.Command("rm", "-rf", dataDir)
+	} else {
+		cmd = exec.Command("sudo", "rm", "-rf", dataDir)
+	}
+	_, err := cmd.CombinedOutput()
+	return err
+}
+
 func contains(source []string, target string) bool {
 	for _, s := range source {
 		if s == target {
