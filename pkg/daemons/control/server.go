@@ -347,7 +347,10 @@ func checkForCloudControllerPrivileges(ctx context.Context, runtime *config.Cont
 	if err != nil {
 		return err
 	}
-	authClient := authorizationv1client.NewForConfigOrDie(restConfig)
+	authClient, err := authorizationv1client.NewForConfig(restConfig)
+	if err != nil {
+		return err
+	}
 	sar := &authorizationv1.SubjectAccessReview{
 		Spec: authorizationv1.SubjectAccessReviewSpec{
 			User: version.Program + "-cloud-controller-manager",
