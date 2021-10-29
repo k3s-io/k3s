@@ -2,20 +2,21 @@ package flannel
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net"
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
+	"github.com/pkg/errors"
 	"github.com/rancher/k3s/pkg/agent/util"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/version"
 	"github.com/sirupsen/logrus"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/apimachinery/pkg/fields"
+	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	utilsnet "k8s.io/utils/net"
 )
 
@@ -87,27 +88,14 @@ func Prepare(ctx context.Context, nodeConfig *config.Node) error {
 	return createFlannelConf(nodeConfig)
 }
 
-func Run(ctx context.Context, nodeConfig *config.Node, nodes v1.NodeInterface) error {
-	nodeName := nodeConfig.AgentConfig.NodeName
-
-	for {
-		node, err := nodes.Get(ctx, nodeName, metav1.GetOptions{})
-		if err == nil && node.Spec.PodCIDR != "" {
-			break
-		}
-		if err == nil {
-			logrus.Info("Waiting for node " + nodeName + " CIDR not assigned yet")
-		} else {
-			logrus.Infof("Waiting for node %s: %v", nodeName, err)
-		}
-		time.Sleep(2 * time.Second)
+func Run(ctx context.Context, nodeConfig *config.Node, nodes typedcorev1.NodeInterface) error {
+	if err := waitForPodCIDR(ctx, nodeConfig.AgentConfig.NodeName, nodes); err != nil {
+		return errors.Wrap(err, "failed to wait for PodCIDR assignment")
 	}
-	logrus.Info("Node CIDR assigned for: " + nodeName)
 
 	netMode, err := findNetMode(nodeConfig.AgentConfig.ClusterCIDRs)
 	if err != nil {
-		logrus.Fatalf("Error checking netMode")
-		return err
+		return errors.Wrap(err, "failed to check netMode for flannel")
 	}
 	go func() {
 		err := flannel(ctx, nodeConfig.FlannelIface, nodeConfig.FlannelConf, nodeConfig.AgentConfig.KubeConfigKubelet, netMode)
@@ -116,6 +104,28 @@ func Run(ctx context.Context, nodeConfig *config.Node, nodes v1.NodeInterface) e
 		}
 	}()
 
+	return nil
+}
+
+// waitForPodCIDR watches nodes with this node's name, and returns when the PodCIDR has been set.
+func waitForPodCIDR(ctx context.Context, nodeName string, nodes typedcorev1.NodeInterface) error {
+	fieldSelector := fields.Set{metav1.ObjectNameField: nodeName}.String()
+	watch, err := nodes.Watch(ctx, metav1.ListOptions{FieldSelector: fieldSelector})
+	if err != nil {
+		return err
+	}
+	defer watch.Stop()
+
+	for ev := range watch.ResultChan() {
+		node, ok := ev.Object.(*corev1.Node)
+		if !ok {
+			return fmt.Errorf("could not convert event object to node: %v", ev)
+		}
+		if node.Spec.PodCIDR != "" {
+			break
+		}
+	}
+	logrus.Info("PodCIDR assigned for node " + nodeName)
 	return nil
 }
 
