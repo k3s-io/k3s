@@ -60,7 +60,10 @@ func NewContext(ctx context.Context, cfg string) (*Context, error) {
 		return nil, errors.Wrap(err, "failed to register CRDs")
 	}
 
-	k8s := kubernetes.NewForConfigOrDie(restConfig)
+	k8s, err := kubernetes.NewForConfig(restConfig)
+	if err != nil {
+		return nil, err
+	}
 	return &Context{
 		K3s:   k3s.NewFactoryFromConfigOrDie(restConfig),
 		Helm:  helm.NewFactoryFromConfigOrDie(restConfig),
