@@ -98,7 +98,6 @@ func Disable(app *cli.Context) error {
 		return err
 	}
 	fmt.Println("secrets-encryption disabled")
-	fmt.Println("run 'kubectl get secrets --all-namespaces -o json | kubectl replace -f -' to decrypt secrets")
 	return nil
 }
 

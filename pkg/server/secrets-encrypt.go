@@ -129,12 +129,18 @@ func encryptionToggle(server *config.Control, enable bool) error {
 	}
 	if providers[1].Identity != nil && providers[0].AESCBC != nil {
 		fmt.Println("Disabling secrets encryption")
-		return writeEncryptionConfig(server, curKeys, false)
+		if err := writeEncryptionConfig(server, curKeys, false); err != nil {
+			return err
+		}
 	} else if providers[0].Identity != nil && providers[1].AESCBC != nil {
 		fmt.Println("Enabling secrets encryption")
-		return writeEncryptionConfig(server, curKeys, true)
+		if err := writeEncryptionConfig(server, curKeys, true); err != nil {
+			return err
+		}
+	} else {
+		return fmt.Errorf("unable to enable/disable secrets encryption, unknown configuration")
 	}
-	return fmt.Errorf("unable to enable/disable secrets encryption, unknown configuration")
+	return updateSecrets(server.Runtime.Core.Core())
 }
 
 func encryptionPrepareHandler(server *config.Control, force bool) http.Handler {
