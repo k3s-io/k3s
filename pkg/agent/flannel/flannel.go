@@ -71,6 +71,12 @@ func flannel(ctx context.Context, flannelIface *net.Interface, flannelConf, kube
 	go network.SetupAndEnsureIPTables(network.MasqRules(config.Network, bn.Lease()), 60)
 	go network.SetupAndEnsureIPTables(network.ForwardRules(config.Network.String()), 50)
 
+	// When the IPv6 CIDR is in the private range masquarde it otherwise
+	// assuming global routing is setup directly
+	if bn.Lease().EnableIPv6 && bn.Lease().IPv6Subnet.IP.IsPrivate() {
+		go network.SetupAndEnsureIP6Tables(network.MasqIP6Rules(config.IPv6Network, bn.Lease()), 60)
+	}
+
 	if err := WriteSubnetFile(subnetFile, config.Network, config.IPv6Network, true, bn); err != nil {
 		// Continue, even though it failed.
 		log.Warningf("Failed to write subnet file: %s", err)
