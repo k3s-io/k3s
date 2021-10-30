@@ -1,0 +1,71 @@
+name: Snapshotter Testing
+on:
+  push:
+    paths-ignore:
+      - "install.sh"
+      - "tests/cgroup2/**"
+      - "tests/install/**"
+      - "tests/integration/**"
+      - "tests/unitcoverage/**"
+  pull_request:
+    paths-ignore:
+      - "install.sh"
+      - "tests/cgroup2/**"
+      - "tests/install/**"
+      - "tests/integration/**"
+      - "tests/unitcoverage/**"
+  workflow_dispatch: {}
+jobs:
+  build:
+    name: "Build"
+    runs-on: ubuntu-20.04
+    timeout-minutes: 40
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 1
+      - name: "Build"
+        run: DOCKER_BUILDKIT=1 SKIP_VALIDATE=1 make
+      - name: "Upload Binary"
+        uses: actions/upload-artifact@v2
+        with:
+          name: k3s
+          path: dist/artifacts/k3s
+      - name: "Upload Images"
+        uses: actions/upload-artifact@v2
+        with:
+          name: k3s-airgap-images-amd64.tar
+          path: dist/artifacts/k3s-airgap-images-amd64.tar
+  test:
+    name: "Test"
+    # nested virtualization is only available on macOS hosts
+    runs-on: macos-10.15
+    needs: build
+    timeout-minutes: 40
+    strategy:
+      matrix:
+        vm: [opensuse-leap]
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 1
+      - name: "Download Binary"
+        uses: actions/download-artifact@v2
+        with:
+          name: k3s
+          path: dist/artifacts/
+      - name: "Download Images"
+        uses: actions/download-artifact@v2
+        with:
+          name: k3s-airgap-images-amd64.tar
+          path: dist/artifacts/
+      - name: "Vagrant Plugin(s)"
+        working-directory: tests/snapshotter/btrfs/${{ matrix.vm }}
+        run: vagrant plugin install vagrant-k3s
+      - name: "Vagrant VM"
+        working-directory: tests/snapshotter/btrfs/${{ matrix.vm }}
+        env:
+          VAGRANT_EXPERIMENTAL: disks
+        run: vagrant up

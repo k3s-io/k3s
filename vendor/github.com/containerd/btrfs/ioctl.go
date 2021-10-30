@@ -1,5 +1,3 @@
-// +build ctrd
-
 /*
    Copyright The containerd Authors.
 
@@ -16,15 +14,14 @@
    limitations under the License.
 */
 
-package containerd
+package btrfs
 
-import (
-	_ "github.com/containerd/containerd/metrics/cgroups"
-	_ "github.com/containerd/containerd/runtime/v2"
-	_ "github.com/containerd/containerd/runtime/v2/runc/options"
-	_ "github.com/containerd/containerd/snapshots/native/plugin"
-	_ "github.com/containerd/containerd/snapshots/overlay/plugin"
-	_ "github.com/containerd/containerd/snapshots/btrfs/plugin"
-	_ "github.com/containerd/fuse-overlayfs-snapshotter/plugin"
-	_ "github.com/containerd/stargz-snapshotter/service/plugin"
-)
+import "syscall"
+
+func ioctl(fd, request, args uintptr) error {
+	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, fd, request, args)
+	if errno != 0 {
+		return errno
+	}
+	return nil
+}
