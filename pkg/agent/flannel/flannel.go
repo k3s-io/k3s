@@ -143,10 +143,14 @@ func WriteSubnetFile(path string, nw ip.IP4Net, nwv6 ip.IP6Net, ipMasq bool, bn 
 	fmt.Fprintf(f, "FLANNEL_SUBNET=%s\n", sn)
 
 	if nwv6.String() != emptyIPv6Network {
-		snv6 := bn.Lease().IPv6Subnet
-		snv6.IncrementIP()
-		fmt.Fprintf(f, "FLANNEL_IPV6_NETWORK=%s\n", nwv6)
-		fmt.Fprintf(f, "FLANNEL_IPV6_SUBNET=%s\n", snv6)
+		if bn.Lease().EnableIPv6 {
+			snv6 := bn.Lease().IPv6Subnet
+			snv6.IncrementIP()
+			fmt.Fprintf(f, "FLANNEL_IPV6_NETWORK=%s\n", nwv6)
+			fmt.Fprintf(f, "FLANNEL_IPV6_SUBNET=%s\n", snv6)
+		} else {
+			log.Warning("Flannel can't provide IPV6 addresses because this node has no ipv6 leases available")
+		}
 	}
 
 	fmt.Fprintf(f, "FLANNEL_MTU=%d\n", bn.MTU())
