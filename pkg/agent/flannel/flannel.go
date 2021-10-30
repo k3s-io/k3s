@@ -142,7 +142,7 @@ func WriteSubnetFile(path string, nw ip.IP4Net, nwv6 ip.IP6Net, ipMasq bool, bn 
 	fmt.Fprintf(f, "FLANNEL_NETWORK=%s\n", nw)
 	fmt.Fprintf(f, "FLANNEL_SUBNET=%s\n", sn)
 
-	if nwv6.String() != emptyIPv6Network {
+	if bn.Lease().EnableIPv6 {
 		snv6 := bn.Lease().IPv6Subnet
 		snv6.IncrementIP()
 		fmt.Fprintf(f, "FLANNEL_IPV6_NETWORK=%s\n", nwv6)
