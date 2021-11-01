@@ -31,7 +31,7 @@ var _ = Describe("dual stack", func() {
 		if testutil.IsExistingServer() && !testutil.ServerArgsPresent(dualStackServerArgs) {
 			Skip("Test needs k3s server with: " + strings.Join(dualStackServerArgs, " "))
 		} else if os.Getenv("CI") == "true" {
-			Skip("Github enviroment does not support IPv6")
+			Skip("Github environment does not support IPv6")
 		}
 	})
 	When("a ipv4 and ipv6 cidr is present", func() {
