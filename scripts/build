@@ -42,7 +42,7 @@ STATIC="
 STATIC_SQLITE="
     -extldflags '-static -lm -ldl -lz -lpthread'
 "
-TAGS="ctrd apparmor seccomp no_btrfs netcgo osusergo providerless"
+TAGS="ctrd apparmor seccomp netcgo osusergo providerless"
 RUNC_TAGS="apparmor seccomp"
 RUNC_STATIC="static"
 

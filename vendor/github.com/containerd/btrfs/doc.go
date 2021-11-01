@@ -1,5 +1,3 @@
-// +build ctrd
-
 /*
    Copyright The containerd Authors.
 
@@ -16,15 +14,5 @@
    limitations under the License.
 */
 
-package containerd
-
-import (
-	_ "github.com/containerd/containerd/metrics/cgroups"
-	_ "github.com/containerd/containerd/runtime/v2"
-	_ "github.com/containerd/containerd/runtime/v2/runc/options"
-	_ "github.com/containerd/containerd/snapshots/native/plugin"
-	_ "github.com/containerd/containerd/snapshots/overlay/plugin"
-	_ "github.com/containerd/containerd/snapshots/btrfs/plugin"
-	_ "github.com/containerd/fuse-overlayfs-snapshotter/plugin"
-	_ "github.com/containerd/stargz-snapshotter/service/plugin"
-)
+// Package btrfs provides bindings for working with btrfs partitions from Go.
+package btrfs
