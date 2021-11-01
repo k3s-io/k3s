@@ -103,7 +103,7 @@ func Setup(ctx context.Context, config *config.Node, proxy proxy.Proxy) error {
 					}
 					endpoint, ok := ev.Object.(*v1.Endpoints)
 					if !ok {
-						logrus.Errorf("Tunnel could not case event object to endpoint: %v", ev)
+						logrus.Errorf("Tunnel could not convert event object to endpoint: %v", ev)
 						continue watching
 					}
 

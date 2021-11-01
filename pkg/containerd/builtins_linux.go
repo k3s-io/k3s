@@ -24,6 +24,7 @@ import (
 	_ "github.com/containerd/containerd/runtime/v2/runc/options"
 	_ "github.com/containerd/containerd/snapshots/native/plugin"
 	_ "github.com/containerd/containerd/snapshots/overlay/plugin"
+	_ "github.com/containerd/containerd/snapshots/btrfs/plugin"
 	_ "github.com/containerd/fuse-overlayfs-snapshotter/plugin"
 	_ "github.com/containerd/stargz-snapshotter/service/plugin"
 )

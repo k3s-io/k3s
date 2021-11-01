@@ -116,7 +116,7 @@ verify_system() {
         HAS_OPENRC=true
         return
     fi
-    if [ -d /run/systemd ]; then
+    if [ -x /bin/systemctl ] || type systemctl > /dev/null 2>&1; then
         HAS_SYSTEMD=true
         return
     fi
@@ -460,30 +460,39 @@ setup_selinux() {
     fi
 
     [ -r /etc/os-release ] && . /etc/os-release
-    if [ "${ID_LIKE:-}" = suse ]; then
-        policy_hint="k3s with SELinux is currently not supported on SUSE/openSUSE systems.
-    Please disable SELinux before installing k3s.
-"
+    if [ "${ID_LIKE%%[ ]*}" = "suse" ]; then
+        rpm_target=sle
+        rpm_site_infix=microos
+        package_installer=zypper
+    elif [ "${VERSION_ID%%.*}" = "7" ]; then
+        rpm_target=el7
+        rpm_site_infix=centos/7
+        package_installer=yum
     else
-        maj_ver=$(echo "$VERSION_ID" | sed -E -e "s/^([0-9]+)\.?[0-9]*$/\1/")
-        if [ "${maj_ver:-7}" != 7 ]; then
-            maj_ver=8
-        fi
-        policy_hint="please install:
-    yum install -y container-selinux selinux-policy-base
-    yum install -y https://${rpm_site}/k3s/${rpm_channel}/common/centos/${maj_ver}/noarch/k3s-selinux-0.3-0.el${maj_ver}.noarch.rpm
+        rpm_target=el8
+        rpm_site_infix=centos/8
+        package_installer=yum
+    fi
+
+    if [ "${package_installer}" = "yum" ] && [ -x /usr/bin/dnf ]; then
+        package_installer=dnf
+    fi
+
+    policy_hint="please install:
+    ${package_installer} install -y container-selinux
+    ${package_installer} install -y https://${rpm_site}/k3s/${rpm_channel}/common/${rpm_site_infix}/noarch/k3s-selinux-0.4-1.${rpm_target}.noarch.rpm
 "
+
+    if [ "$INSTALL_K3S_SKIP_SELINUX_RPM" = true ] || can_skip_download || [ ! -d /usr/share/selinux ]; then
+        info "Skipping installation of SELinux RPM"
+    else
+        install_selinux_rpm ${rpm_site} ${rpm_channel} ${rpm_target} ${rpm_site_infix}
     fi
 
     policy_error=fatal
+    # install_selinux_rpm will set INSTALL_K3S_SELINUX_WARN=true on microos
     if [ "$INSTALL_K3S_SELINUX_WARN" = true ] || [ "${ID_LIKE:-}" = coreos ]; then
         policy_error=warn
-    fi
-
-    if [ "$INSTALL_K3S_SKIP_SELINUX_RPM" = true ] || can_skip_download; then
-        info "Skipping installation of SELinux RPM"
-    else
-        install_selinux_rpm ${rpm_site} ${rpm_channel}
     fi
 
     if ! $SUDO chcon -u system_u -r object_r -t container_runtime_exec_t ${BIN_DIR}/k3s >/dev/null 2>&1; then
@@ -497,36 +506,46 @@ setup_selinux() {
     fi
 }
 
-# --- if on an el7/el8 system, install k3s-selinux
 install_selinux_rpm() {
-    if [ -r /etc/redhat-release ] || [ -r /etc/centos-release ] || [ -r /etc/oracle-release ]; then
-        maj_ver=$(echo "$VERSION_ID" | sed -E -e "s/^([0-9]+)\.?[0-9]*$/\1/")
-        set +o noglob
-        $SUDO rm -f /etc/yum.repos.d/rancher-k3s-common*.repo
-        set -o noglob
-        if [ -r /etc/redhat-release ]; then
-            case ${maj_ver} in
-                7)
-                    $SUDO yum -y install yum-utils
-                    $SUDO yum-config-manager --enable rhel-7-server-extras-rpms
-                    ;;
-                8)
-                    :
-                    ;;
-                *)
-                    return
-                    ;;
-            esac
+    if [ -r /etc/redhat-release ] || [ -r /etc/centos-release ] || [ -r /etc/oracle-release ] || [ "${ID_LIKE%%[ ]*}" = "suse" ]; then
+        repodir=/etc/yum.repos.d
+        if [ -d /etc/zypp/repos.d ]; then
+            repodir=/etc/zypp/repos.d
         fi
-        $SUDO tee /etc/yum.repos.d/rancher-k3s-common.repo >/dev/null << EOF
+        set +o noglob
+        $SUDO rm -f ${repodir}/rancher-k3s-common*.repo
+        set -o noglob
+        if [ -r /etc/redhat-release ] && [ "${3}" = "el7" ]; then
+            $SUDO yum install -y yum-utils
+            $SUDO yum-config-manager --enable rhel-7-server-extras-rpms
+        fi
+        $SUDO tee ${repodir}/rancher-k3s-common.repo >/dev/null << EOF
 [rancher-k3s-common-${2}]
 name=Rancher K3s Common (${2})
-baseurl=https://${1}/k3s/${2}/common/centos/${maj_ver}/noarch
+baseurl=https://${1}/k3s/${2}/common/${4}/noarch
 enabled=1
 gpgcheck=1
+repo_gpgcheck=0
 gpgkey=https://${1}/public.key
 EOF
-        $SUDO yum -y install "k3s-selinux"
+        case ${3} in
+        el8)
+            rpm_installer="dnf"
+            ;;
+        sle)
+            rpm_installer="zypper --gpg-auto-import-keys"
+            if [ "${TRANSACTIONAL_UPDATE=false}" != "true" ] && [ -x /sbin/transactional-update ]; then
+                rpm_installer="transactional-update --no-selfupdate -d run ${rpm_installer}"
+                : "${INSTALL_K3S_SKIP_START:=true}"
+                : "${INSTALL_K3S_SELINUX_WARN:=true}"
+            fi
+            ;;
+        *)
+            rpm_installer="yum"
+            ;;
+        esac
+        # shellcheck disable=SC2086
+        $SUDO ${rpm_installer} install -y "k3s-selinux"
     fi
     return
 }

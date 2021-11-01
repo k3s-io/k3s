@@ -32,7 +32,7 @@ var _ = Describe("etcd snapshots", func() {
 		It("starts up with no problems", func() {
 			Eventually(func() (string, error) {
 				return testutil.K3sCmd("kubectl", "get", "pods", "-A")
-			}, "90s", "1s").Should(MatchRegexp("kube-system.+coredns.+1\\/1.+Running"))
+			}, "180s", "5s").Should(MatchRegexp("kube-system.+coredns.+1\\/1.+Running"))
 		})
 		It("saves an etcd snapshot", func() {
 			Expect(testutil.K3sCmd("etcd-snapshot", "save")).

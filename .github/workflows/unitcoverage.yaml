@@ -1,11 +1,15 @@
 name: Unit Test Coverage
-on: 
+on:
   push:
-    paths-ignore: 
+    paths-ignore:
       - "**.md"
+      - "install.sh"
+      - "tests/install"
   pull_request:
     paths-ignore:
       - "**.md"
+      - "install.sh"
+      - "tests/install"
   workflow_dispatch: {}
 jobs:
   test:
