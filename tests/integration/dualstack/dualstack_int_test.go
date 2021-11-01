@@ -1,6 +1,8 @@
 package integration
 
 import (
+	"fmt"
+	"os/exec"
 	"strings"
 	"testing"
 
@@ -25,10 +27,22 @@ var _ = BeforeSuite(func() {
 	}
 })
 
+func ipv6Support() bool {
+	cmd := exec.Command("ip", "-6", "addr")
+	byteOut, err := cmd.CombinedOutput()
+	if err != nil || string(byteOut) == "" {
+		return false
+	}
+	fmt.Fprint(GinkgoWriter, string(byteOut))
+	return true
+}
+
 var _ = Describe("dual stack", func() {
 	BeforeEach(func() {
 		if testutil.IsExistingServer() && !testutil.ServerArgsPresent(dualStackServerArgs) {
 			Skip("Test needs k3s server with: " + strings.Join(dualStackServerArgs, " "))
+		} else if !ipv6Support() {
+			Skip("Enviroment does not support IPv6")
 		}
 	})
 	When("a ipv4 and ipv6 cidr is present", func() {
