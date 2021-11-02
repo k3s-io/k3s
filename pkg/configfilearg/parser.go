@@ -101,12 +101,17 @@ func (p *Parser) findStart(args []string) ([]string, []string, bool) {
 		return []string{}, args, true
 	}
 
+	// The last After keyword found will be the split point
+	lastIndex := -1
 	for i, val := range args {
 		for _, test := range p.After {
 			if val == test {
-				return args[0 : i+1], args[i+1:], true
+				lastIndex = i
 			}
 		}
+	}
+	if lastIndex != -1 {
+		return args[0 : lastIndex+1], args[lastIndex+1:], true
 	}
 
 	return args, nil, false

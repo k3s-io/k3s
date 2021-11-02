@@ -7,7 +7,7 @@ import (
 
 func MustParse(args []string) []string {
 	parser := &Parser{
-		After:         []string{"server", "agent", "etcd-snapshot"},
+		After:         []string{"server", "agent", "etcd-snapshot", "save", "delete", "list", "prune"},
 		FlagNames:     []string{"--config", "-c"},
 		EnvName:       version.ProgramUpper + "_CONFIG_FILE",
 		DefaultConfig: "/etc/rancher/" + version.Program + "/config.yaml",

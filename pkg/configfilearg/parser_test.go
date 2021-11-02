@@ -48,11 +48,18 @@ func Test_UnitParser_findStart(t *testing.T) {
 			prefix: []string{"not-server", "foo", "bar"},
 			found:  false,
 		},
+		{
+			name:   "comamnds and subcommands that both match",
+			args:   []string{"etcd-snapshot", "list", "foo", "bar"},
+			prefix: []string{"etcd-snapshot", "list"},
+			suffix: []string{"foo", "bar"},
+			found:  true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := Parser{
-				After: []string{"server", "agent"},
+				After: []string{"server", "agent", "etcd-snapshot", "save", "delete", "list", "prune"},
 			}
 			prefix, suffix, found := p.findStart(tt.args)
 			if !reflect.DeepEqual(prefix, tt.prefix) {
