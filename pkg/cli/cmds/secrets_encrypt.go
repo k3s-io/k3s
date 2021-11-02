@@ -1,24 +1,14 @@
 package cmds
 
 import (
-	"github.com/rancher/k3s/pkg/version"
 	"github.com/urfave/cli"
 )
 
 const SecretsEncryptCommand = "secrets-encrypt"
 
 var EncryptFlags = []cli.Flag{
-	cli.StringFlag{
-		Name:        "data-dir,d",
-		Usage:       "(data) Folder to hold state default /var/lib/rancher/" + version.Program + " or ${HOME}/.rancher/" + version.Program + " if not root",
-		Destination: &ServerConfig.DataDir,
-	},
-	cli.StringFlag{
-		Name:        "token,t",
-		Usage:       "(cluster) Token to use for authentication",
-		EnvVar:      version.ProgramUpper + "_TOKEN",
-		Destination: &ServerConfig.Token,
-	},
+	DataDirFlag,
+	AgentTokenFlag,
 }
 
 func NewSecretsEncryptCommand(action func(*cli.Context) error, subcommands []cli.Command) cli.Command {

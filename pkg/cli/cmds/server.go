@@ -97,7 +97,12 @@ type Server struct {
 
 var (
 	ServerConfig Server
-	ClusterCIDR  = cli.StringSliceFlag{
+	DataDirFlag  = cli.StringFlag{
+		Name:        "data-dir,d",
+		Usage:       "(data) Folder to hold state default /var/lib/rancher/" + version.Program + " or ${HOME}/.rancher/" + version.Program + " if not root",
+		Destination: &ServerConfig.DataDir,
+	}
+	ClusterCIDR = cli.StringSliceFlag{
 		Name:  "cluster-cidr",
 		Usage: "(networking) IPv4/IPv6 network CIDRs to use for pod IPs (default: 10.42.0.0/16)",
 		Value: &ServerConfig.ClusterCIDR,
@@ -181,11 +186,7 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Usage: "(listener) Add additional hostnames or IPv4/IPv6 addresses as Subject Alternative Names on the server TLS cert",
 				Value: &ServerConfig.TLSSan,
 			},
-			cli.StringFlag{
-				Name:        "data-dir,d",
-				Usage:       "(data) Folder to hold state default /var/lib/rancher/" + version.Program + " or ${HOME}/.rancher/" + version.Program + " if not root",
-				Destination: &ServerConfig.DataDir,
-			},
+			DataDirFlag,
 			ClusterCIDR,
 			ServiceCIDR,
 			ServiceNodePortRange,
