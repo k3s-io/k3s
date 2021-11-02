@@ -46,7 +46,7 @@ const (
 	ETCDRoleLabelKey         = "node-role.kubernetes.io/etcd"
 )
 
-var EncryptionHashAnnotation = version.Program + ".io/encryption-config-hash"
+var encryptionHashAnnotation = version.Program + ".io/encryption-config-hash"
 
 func ResolveDataDir(dataDir string) (string, error) {
 	dataDir, err := datadir.Resolve(dataDir)
@@ -610,7 +610,7 @@ func setEncryptionHashAnnotation(ctx context.Context, nodes v1.NodeClient, contr
 		if node.Annotations == nil {
 			node.Annotations = make(map[string]string)
 		}
-		node.Annotations[EncryptionHashAnnotation] = hex.EncodeToString(encryptionConfigHash[:])
+		node.Annotations[encryptionHashAnnotation] = hex.EncodeToString(encryptionConfigHash[:])
 
 		_, err = nodes.Update(node)
 		if err == nil {

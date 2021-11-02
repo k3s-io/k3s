@@ -31,8 +31,7 @@ const (
 	ipsecTokenSize = 48
 	aescbcKeySize  = 32
 
-	RequestHeaderCN      = "system:auth-proxy"
-	EncryptionStartState = "start"
+	RequestHeaderCN = "system:auth-proxy"
 )
 
 var (
@@ -692,11 +691,11 @@ func genEncryptionConfigAndState(controlConfig *config.Control, runtime *config.
 			},
 		},
 	}
-	jsonfile, err := json.Marshal(encConfig)
+	b, err := json.Marshal(encConfig)
 	if err != nil {
 		return err
 	}
-	if err := ioutil.WriteFile(runtime.EncryptionConfig, jsonfile, 0600); err != nil {
+	if err := ioutil.WriteFile(runtime.EncryptionConfig, b, 0600); err != nil {
 		return err
 	}
 	encState := struct {
@@ -709,9 +708,9 @@ func genEncryptionConfigAndState(controlConfig *config.Control, runtime *config.
 			Secret: encodedKey,
 		},
 	}
-	jsonfile, err = json.Marshal(encState)
+	b, err = json.Marshal(encState)
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(controlConfig.Runtime.EncryptionState, jsonfile, 0600)
+	return ioutil.WriteFile(controlConfig.Runtime.EncryptionState, b, 0600)
 }

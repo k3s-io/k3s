@@ -36,6 +36,22 @@ type EncryptionState struct {
 	CurrentKey apiserverconfigv1.Key
 }
 
+type EncryptionRequest struct {
+	Stage  string `json:"stage,omitempty"`
+	Toggle bool   `json:"toggle,omitempty"`
+	Force  bool   `json:"force"`
+}
+
+func getEncryptionRequest(req *http.Request) (EncryptionRequest, error) {
+	b, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		return EncryptionRequest{}, err
+	}
+	result := EncryptionRequest{}
+	err = json.Unmarshal(b, &result)
+	return result, err
+}
+
 func encryptionStatusHandler(server *config.Control) http.Handler {
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 		if req.TLS == nil {
@@ -96,7 +112,7 @@ func encryptionStatus(server *config.Control) (string, error) {
 	return statusOutput + tabBuffer.String(), nil
 }
 
-func encryptionToggleHandler(server *config.Control, enable bool) http.Handler {
+func encryptionToggleHandler(server *config.Control) http.Handler {
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 		if req.TLS == nil {
 			resp.WriteHeader(http.StatusNotFound)
@@ -106,8 +122,15 @@ func encryptionToggleHandler(server *config.Control, enable bool) http.Handler {
 			resp.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		if err := encryptionToggle(server, enable); err != nil {
-			resp.WriteHeader(http.StatusInternalServerError)
+		encryptReq, err := getEncryptionRequest(req)
+		if err != nil {
+			resp.WriteHeader(http.StatusBadRequest)
+			resp.Write([]byte(err.Error()))
+			return
+		}
+
+		if err := encryptionToggle(server, encryptReq.Toggle); err != nil {
+			resp.WriteHeader(http.StatusBadRequest)
 			resp.Write([]byte(err.Error()))
 			return
 		}
@@ -127,23 +150,29 @@ func encryptionToggle(server *config.Control, enable bool) error {
 	if err != nil {
 		return err
 	}
-	if providers[1].Identity != nil && providers[0].AESCBC != nil {
-		fmt.Println("Disabling secrets encryption")
-		if err := writeEncryptionConfig(server, curKeys, false); err != nil {
+	if providers[1].Identity != nil && providers[0].AESCBC != nil && !enable {
+		logrus.Infoln("Disabling secrets encryption")
+		if err := writeEncryptionConfig(server, curKeys, enable); err != nil {
 			return err
 		}
-	} else if providers[0].Identity != nil && providers[1].AESCBC != nil {
-		fmt.Println("Enabling secrets encryption")
-		if err := writeEncryptionConfig(server, curKeys, true); err != nil {
+	} else if !enable {
+		logrus.Infoln("Secrets encryption already disabled")
+		return nil
+	} else if providers[0].Identity != nil && providers[1].AESCBC != nil && enable {
+		logrus.Infoln("Enabling secrets encryption")
+		if err := writeEncryptionConfig(server, curKeys, enable); err != nil {
 			return err
 		}
+	} else if enable {
+		logrus.Infoln("Secrets encryption already enabled")
+		return nil
 	} else {
 		return fmt.Errorf("unable to enable/disable secrets encryption, unknown configuration")
 	}
 	return updateSecrets(server.Runtime.Core.Core())
 }
 
-func encryptionPrepareHandler(server *config.Control, force bool) http.Handler {
+func encryptionStageHandler(server *config.Control) http.Handler {
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 		if req.TLS == nil {
 			resp.WriteHeader(http.StatusNotFound)
@@ -153,8 +182,24 @@ func encryptionPrepareHandler(server *config.Control, force bool) http.Handler {
 			resp.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		if err := encryptionPrepare(server, force); err != nil {
-			resp.WriteHeader(http.StatusInternalServerError)
+		encryptReq, err := getEncryptionRequest(req)
+		if err != nil {
+			resp.WriteHeader(http.StatusBadRequest)
+			resp.Write([]byte(err.Error()))
+			return
+		}
+		switch encryptReq.Stage {
+		case EncryptionPrepare:
+			err = encryptionPrepare(server, encryptReq.Force)
+		case EncryptionRotate:
+			err = encryptionRotate(server, encryptReq.Force)
+		case EncryptionReencrypt:
+			err = encryptionReencrypt(server, encryptReq.Force)
+		default:
+			err = fmt.Errorf("unknown stage requested")
+		}
+		if err != nil {
+			resp.WriteHeader(http.StatusBadRequest)
 			resp.Write([]byte(err.Error()))
 			return
 		}
@@ -193,25 +238,6 @@ func encryptionPrepare(server *config.Control, force bool) error {
 	return writeEncryptionHashAnnotation(server, server.Runtime.Core.Core())
 }
 
-func encryptionRotateHandler(server *config.Control, force bool) http.Handler {
-	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
-		if req.TLS == nil {
-			resp.WriteHeader(http.StatusNotFound)
-			return
-		}
-		if req.Method != http.MethodPut {
-			resp.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		if err := encryptionRotate(server, force); err != nil {
-			resp.WriteHeader(http.StatusBadRequest)
-			resp.Write([]byte(err.Error()))
-			return
-		}
-		resp.WriteHeader(http.StatusOK)
-	})
-}
-
 func encryptionRotate(server *config.Control, force bool) error {
 	stage, key, err := getEncryptionState(server)
 	if err != nil {
@@ -240,25 +266,6 @@ func encryptionRotate(server *config.Control, force bool) error {
 	}
 	logrus.Infoln("Encryption keys right rotated")
 	return writeEncryptionHashAnnotation(server, server.Runtime.Core.Core())
-}
-
-func encryptionReencryptHandler(server *config.Control, force bool) http.Handler {
-	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
-		if req.TLS == nil {
-			resp.WriteHeader(http.StatusNotFound)
-			return
-		}
-		if req.Method != http.MethodPut {
-			resp.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		if err := encryptionReencrypt(server, force); err != nil {
-			resp.WriteHeader(http.StatusBadRequest)
-			resp.Write([]byte(err.Error()))
-			return
-		}
-		resp.WriteHeader(http.StatusOK)
-	})
 }
 
 func encryptionReencrypt(server *config.Control, force bool) error {
@@ -447,7 +454,7 @@ func verifyEncryptionHashAnnotation(core core.Interface) error {
 	var firstNodeName string
 	first := true
 	for _, node := range serverNodes {
-		hash, ok := node.Annotations[EncryptionHashAnnotation]
+		hash, ok := node.Annotations[encryptionHashAnnotation]
 		if ok && first {
 			firstHash = hash
 			first = false
@@ -473,7 +480,7 @@ func writeEncryptionHashAnnotation(server *config.Control, core core.Interface) 
 	if node.Annotations == nil {
 		return fmt.Errorf("node annotations do not exist for %s", nodeName)
 	}
-	node.Annotations[EncryptionHashAnnotation] = hex.EncodeToString(encryptionConfigHash[:])
+	node.Annotations[encryptionHashAnnotation] = hex.EncodeToString(encryptionConfigHash[:])
 	if _, err = core.V1().Node().Update(node); err != nil {
 		return err
 	}

@@ -1,6 +1,7 @@
 package clientaccess
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
@@ -187,13 +188,13 @@ func (i *Info) Get(path string) ([]byte, error) {
 }
 
 // Put makes a request to a subpath of info's BaseURL
-func (i *Info) Put(path string) error {
+func (i *Info) Put(path string, body []byte) error {
 	u, err := url.Parse(i.BaseURL)
 	if err != nil {
 		return err
 	}
 	u.Path = path
-	return put(u.String(), GetHTTPClient(i.CACerts), i.Username, i.Password)
+	return put(u.String(), body, GetHTTPClient(i.CACerts), i.Username, i.Password)
 }
 
 // setServer sets the BaseURL and CACerts fields of the Info by connecting to the server
@@ -300,8 +301,8 @@ func get(u string, client *http.Client, username, password string) ([]byte, erro
 
 // put makes a request to a url using a provided client, username, and password
 // only an error is returned
-func put(u string, client *http.Client, username, password string) error {
-	req, err := http.NewRequest(http.MethodPut, u, nil)
+func put(u string, body []byte, client *http.Client, username, password string) error {
+	req, err := http.NewRequest(http.MethodPut, u, bytes.NewBuffer(body))
 	if err != nil {
 		return err
 	}
@@ -316,9 +317,9 @@ func put(u string, client *http.Client, username, password string) error {
 	}
 	defer resp.Body.Close()
 
-	body, _ := ioutil.ReadAll(resp.Body)
+	respBody, _ := ioutil.ReadAll(resp.Body)
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("%s: %s %s", u, resp.Status, string(body))
+		return fmt.Errorf("%s: %s %s", u, resp.Status, string(respBody))
 	}
 
 	return nil
