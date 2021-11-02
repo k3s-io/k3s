@@ -92,42 +92,40 @@ func Setup(ctx context.Context, config *config.Node, proxy proxy.Proxy) error {
 			}
 		watching:
 			for {
-				select {
-				case ev, ok := <-watch.ResultChan():
-					if !ok || ev.Type == watchtypes.Error {
-						if ok {
-							logrus.Errorf("Tunnel endpoint watch channel closed: %v", ev)
-						}
-						watch.Stop()
-						continue connect
+				ev, ok := <-watch.ResultChan()
+				if !ok || ev.Type == watchtypes.Error {
+					if ok {
+						logrus.Errorf("Tunnel endpoint watch channel closed: %v", ev)
 					}
-					endpoint, ok := ev.Object.(*v1.Endpoints)
-					if !ok {
-						logrus.Errorf("Tunnel could not case event object to endpoint: %v", ev)
-						continue watching
+					watch.Stop()
+					continue connect
+				}
+				endpoint, ok := ev.Object.(*v1.Endpoints)
+				if !ok {
+					logrus.Errorf("Tunnel could not convert event object to endpoint: %v", ev)
+					continue watching
+				}
+
+				newAddresses := util.GetAddresses(endpoint)
+				if reflect.DeepEqual(newAddresses, proxy.SupervisorAddresses()) {
+					continue watching
+				}
+				proxy.Update(newAddresses)
+
+				validEndpoint := map[string]bool{}
+
+				for _, address := range proxy.SupervisorAddresses() {
+					validEndpoint[address] = true
+					if _, ok := disconnect[address]; !ok {
+						disconnect[address] = connect(ctx, nil, address, tlsConfig)
 					}
+				}
 
-					newAddresses := util.GetAddresses(endpoint)
-					if reflect.DeepEqual(newAddresses, proxy.SupervisorAddresses()) {
-						continue watching
-					}
-					proxy.Update(newAddresses)
-
-					validEndpoint := map[string]bool{}
-
-					for _, address := range proxy.SupervisorAddresses() {
-						validEndpoint[address] = true
-						if _, ok := disconnect[address]; !ok {
-							disconnect[address] = connect(ctx, nil, address, tlsConfig)
-						}
-					}
-
-					for address, cancel := range disconnect {
-						if !validEndpoint[address] {
-							cancel()
-							delete(disconnect, address)
-							logrus.Infof("Stopped tunnel to %s", address)
-						}
+				for address, cancel := range disconnect {
+					if !validEndpoint[address] {
+						cancel()
+						delete(disconnect, address)
+						logrus.Infof("Stopped tunnel to %s", address)
 					}
 				}
 			}
