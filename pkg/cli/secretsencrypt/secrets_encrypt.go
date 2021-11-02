@@ -57,11 +57,6 @@ func commandPrep(app *cli.Context, cfg *cmds.Server) (config.Control, error) {
 	return controlConfig, nil
 }
 
-func Run(app *cli.Context) error {
-	fmt.Println("This command does nothing, use the subcommands")
-	return nil
-}
-
 func Enable(app *cli.Context) error {
 	var err error
 	if err = cmds.InitLogging(); err != nil {

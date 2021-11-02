@@ -15,7 +15,7 @@ import (
 func main() {
 	app := cmds.NewApp()
 	app.Commands = []cli.Command{
-		cmds.NewSecretsEncryptCommand(secretsencrypt.Run,
+		cmds.NewSecretsEncryptCommand(cli.ShowAppHelp,
 			cmds.NewSecretsEncryptSubcommands(
 				secretsencrypt.Status,
 				secretsencrypt.Enable,

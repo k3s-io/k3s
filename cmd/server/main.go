@@ -53,7 +53,7 @@ func main() {
 				etcdsnapshot.Prune,
 				etcdsnapshot.Run),
 		),
-		cmds.NewSecretsEncryptCommand(secretsencrypt.Run,
+		cmds.NewSecretsEncryptCommand(cli.ShowAppHelp,
 			cmds.NewSecretsEncryptSubcommands(
 				secretsencrypt.Status,
 				secretsencrypt.Enable,
