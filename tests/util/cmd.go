@@ -172,7 +172,7 @@ func K3sKillServer(server *K3sServer) error {
 		return err
 	}
 	if !flock.CheckLock(lockFile) {
-		return os.Remove(lockFile)
+		return os.RemoveAll(lockFile)
 	}
 	return nil
 }
