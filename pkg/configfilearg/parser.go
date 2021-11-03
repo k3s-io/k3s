@@ -104,17 +104,16 @@ func (p *Parser) findStart(args []string) ([]string, []string, bool) {
 	}
 
 	afterIndex := make(map[string]int)
-	re, err := regexp.Compile(`:\d`)
+	re, err := regexp.Compile(`(.+):(\d)+`)
 	if err != nil {
 		return args, nil, false
 	}
-	// After keywords ending with ":<NUM>" will set + NUM of arguments as the split point.
+	// After keywords ending with ":<NUM>" can set + NUM of arguments as the split point.
 	// used for matching on subcommmands
 	for i, arg := range p.After {
-		if re.MatchString(arg) {
-			split := strings.Split(arg, ":")
-			p.After[i] = split[0]
-			afterIndex[split[0]], err = strconv.Atoi(split[1])
+		if match := re.FindAllStringSubmatch(arg, -1); match != nil {
+			p.After[i] = match[0][1]
+			afterIndex[match[0][1]], err = strconv.Atoi(match[0][2])
 			if err != nil {
 				return args, nil, false
 			}
@@ -124,8 +123,13 @@ func (p *Parser) findStart(args []string) ([]string, []string, bool) {
 	for i, val := range args {
 		for _, test := range p.After {
 			if val == test {
-				skip := afterIndex[test] + 1
-				return args[0 : i+skip], args[i+skip:], true
+				if skip := afterIndex[test]; skip != 0 {
+					if len(args) <= i+skip || strings.HasPrefix(args[i+skip], "-") {
+						return args[0 : i+1], args[i+1:], true
+					}
+					return args[0 : i+skip+1], args[i+skip+1:], true
+				}
+				return args[0 : i+1], args[i+1:], true
 			}
 		}
 	}
