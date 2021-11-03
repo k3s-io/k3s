@@ -7,6 +7,8 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/rancher/k3s/pkg/agent/util"
@@ -101,19 +103,32 @@ func (p *Parser) findStart(args []string) ([]string, []string, bool) {
 		return []string{}, args, true
 	}
 
-	// The last After keyword found will be the split point
-	lastIndex := -1
-	for i, val := range args {
-		for _, test := range p.After {
-			if val == test {
-				lastIndex = i
+	afterIndex := make(map[string]int)
+	re, err := regexp.Compile(`:\d`)
+	if err != nil {
+		return args, nil, false
+	}
+	// After keywords ending with ":<NUM>" will set + NUM of arguments as the split point.
+	// used for matching on subcommmands
+	for i, arg := range p.After {
+		if re.MatchString(arg) {
+			split := strings.Split(arg, ":")
+			p.After[i] = split[0]
+			afterIndex[split[0]], err = strconv.Atoi(split[1])
+			if err != nil {
+				return args, nil, false
 			}
 		}
 	}
-	if lastIndex != -1 {
-		return args[0 : lastIndex+1], args[lastIndex+1:], true
-	}
 
+	for i, val := range args {
+		for _, test := range p.After {
+			if val == test {
+				skip := afterIndex[test] + 1
+				return args[0 : i+skip], args[i+skip:], true
+			}
+		}
+	}
 	return args, nil, false
 }
 
