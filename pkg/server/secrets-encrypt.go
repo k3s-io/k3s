@@ -38,7 +38,7 @@ type EncryptionState struct {
 
 type EncryptionRequest struct {
 	Stage  string `json:"stage,omitempty"`
-	Toggle bool   `json:"toggle,omitempty"`
+	Enable bool   `json:"toggle,omitempty"`
 	Force  bool   `json:"force"`
 }
 
@@ -112,7 +112,7 @@ func encryptionStatus(server *config.Control) (string, error) {
 	return statusOutput + tabBuffer.String(), nil
 }
 
-func encryptionToggleHandler(server *config.Control) http.Handler {
+func encryptionEnableHandler(server *config.Control) http.Handler {
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 		if req.TLS == nil {
 			resp.WriteHeader(http.StatusNotFound)
@@ -129,7 +129,7 @@ func encryptionToggleHandler(server *config.Control) http.Handler {
 			return
 		}
 
-		if err := encryptionToggle(server, encryptReq.Toggle); err != nil {
+		if err := encryptionEnable(server, encryptReq.Enable); err != nil {
 			resp.WriteHeader(http.StatusBadRequest)
 			resp.Write([]byte(err.Error()))
 			return
@@ -138,7 +138,7 @@ func encryptionToggleHandler(server *config.Control) http.Handler {
 	})
 }
 
-func encryptionToggle(server *config.Control, enable bool) error {
+func encryptionEnable(server *config.Control, enable bool) error {
 	providers, err := getEncryptionProviders(server)
 	if err != nil {
 		return err

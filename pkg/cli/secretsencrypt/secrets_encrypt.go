@@ -69,11 +69,11 @@ func Enable(app *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	b, err := json.Marshal(server.EncryptionRequest{Toggle: true})
+	b, err := json.Marshal(server.EncryptionRequest{Enable: true})
 	if err != nil {
 		return err
 	}
-	if err = info.Put("/v1-"+version.Program+"/encrypt/toggle", b); err != nil {
+	if err = info.Put("/v1-"+version.Program+"/encrypt/enable", b); err != nil {
 		return err
 	}
 	fmt.Println("secrets-encryption enabled")
@@ -89,7 +89,7 @@ func Disable(app *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	b, err := json.Marshal(server.EncryptionRequest{Toggle: false})
+	b, err := json.Marshal(server.EncryptionRequest{Enable: false})
 	if err != nil {
 		return err
 	}
