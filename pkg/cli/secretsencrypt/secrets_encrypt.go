@@ -17,7 +17,7 @@ import (
 	"github.com/urfave/cli"
 )
 
-func commandPrep(app *cli.Context, cfg *cmds.Server) (config.Control, error) {
+func commandPrep(app *cli.Context, cfg *cmds.Server) (config.Control, *clientaccess.Info, error) {
 	var controlConfig config.Control
 	var err error
 	// hide process arguments from ps output, since they may contain
@@ -28,7 +28,7 @@ func commandPrep(app *cli.Context, cfg *cmds.Server) (config.Control, error) {
 	if nodeName == "" {
 		nodeName, err = os.Hostname()
 		if err != nil {
-			return controlConfig, err
+			return controlConfig, nil, err
 		}
 	}
 
@@ -36,7 +36,7 @@ func commandPrep(app *cli.Context, cfg *cmds.Server) (config.Control, error) {
 
 	controlConfig.DataDir, err = server.ResolveDataDir(cfg.DataDir)
 	if err != nil {
-		return controlConfig, err
+		return controlConfig, nil, err
 	}
 	if cmds.ServerConfig.ServerURL == "" {
 		cmds.ServerConfig.ServerURL = "https://127.0.0.1:6443"
@@ -46,15 +46,18 @@ func commandPrep(app *cli.Context, cfg *cmds.Server) (config.Control, error) {
 		fp := filepath.Join(controlConfig.DataDir, "token")
 		tokenByte, err := ioutil.ReadFile(fp)
 		if err != nil {
-			return controlConfig, err
+			return controlConfig, nil, err
 		}
 		controlConfig.Token = string(bytes.TrimRight(tokenByte, "\n"))
 	} else {
 		controlConfig.Token = cmds.ServerConfig.Token
 	}
 	controlConfig.EncryptForce = cfg.EncryptForce
-
-	return controlConfig, nil
+	info, err := clientaccess.ParseAndValidateTokenForUser(cmds.ServerConfig.ServerURL, controlConfig.Token, "node")
+	if err != nil {
+		return controlConfig, nil, err
+	}
+	return controlConfig, info, nil
 }
 
 func Enable(app *cli.Context) error {
@@ -62,11 +65,7 @@ func Enable(app *cli.Context) error {
 	if err = cmds.InitLogging(); err != nil {
 		return err
 	}
-	controlConfig, err := commandPrep(app, &cmds.ServerConfig)
-	if err != nil {
-		return err
-	}
-	info, err := clientaccess.ParseAndValidateTokenForUser(cmds.ServerConfig.ServerURL, controlConfig.Token, "node")
+	_, info, err := commandPrep(app, &cmds.ServerConfig)
 	if err != nil {
 		return err
 	}
@@ -82,15 +81,11 @@ func Enable(app *cli.Context) error {
 }
 
 func Disable(app *cli.Context) error {
-	var err error
-	if err = cmds.InitLogging(); err != nil {
+
+	if err := cmds.InitLogging(); err != nil {
 		return err
 	}
-	controlConfig, err := commandPrep(app, &cmds.ServerConfig)
-	if err != nil {
-		return err
-	}
-	info, err := clientaccess.ParseAndValidateTokenForUser(cmds.ServerConfig.ServerURL, controlConfig.Token, "node")
+	_, info, err := commandPrep(app, &cmds.ServerConfig)
 	if err != nil {
 		return err
 	}
@@ -109,11 +104,7 @@ func Status(app *cli.Context) error {
 	if err := cmds.InitLogging(); err != nil {
 		return err
 	}
-	controlConfig, err := commandPrep(app, &cmds.ServerConfig)
-	if err != nil {
-		return err
-	}
-	info, err := clientaccess.ParseAndValidateTokenForUser(cmds.ServerConfig.ServerURL, controlConfig.Token, "node")
+	_, info, err := commandPrep(app, &cmds.ServerConfig)
 	if err != nil {
 		return err
 	}
@@ -130,11 +121,7 @@ func Prepare(app *cli.Context) error {
 	if err = cmds.InitLogging(); err != nil {
 		return err
 	}
-	controlConfig, err := commandPrep(app, &cmds.ServerConfig)
-	if err != nil {
-		return err
-	}
-	info, err := clientaccess.ParseAndValidateTokenForUser(cmds.ServerConfig.ServerURL, controlConfig.Token, "node")
+	controlConfig, info, err := commandPrep(app, &cmds.ServerConfig)
 	if err != nil {
 		return err
 	}
@@ -153,15 +140,10 @@ func Prepare(app *cli.Context) error {
 }
 
 func Rotate(app *cli.Context) error {
-	var err error
-	if err = cmds.InitLogging(); err != nil {
+	if err := cmds.InitLogging(); err != nil {
 		return err
 	}
-	controlConfig, err := commandPrep(app, &cmds.ServerConfig)
-	if err != nil {
-		return err
-	}
-	info, err := clientaccess.ParseAndValidateTokenForUser(cmds.ServerConfig.ServerURL, controlConfig.Token, "node")
+	controlConfig, info, err := commandPrep(app, &cmds.ServerConfig)
 	if err != nil {
 		return err
 	}
@@ -184,11 +166,7 @@ func Reencrypt(app *cli.Context) error {
 	if err = cmds.InitLogging(); err != nil {
 		return err
 	}
-	controlConfig, err := commandPrep(app, &cmds.ServerConfig)
-	if err != nil {
-		return err
-	}
-	info, err := clientaccess.ParseAndValidateTokenForUser(cmds.ServerConfig.ServerURL, controlConfig.Token, "node")
+	controlConfig, info, err := commandPrep(app, &cmds.ServerConfig)
 	if err != nil {
 		return err
 	}
