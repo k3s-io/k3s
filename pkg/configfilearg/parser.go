@@ -104,7 +104,7 @@ func (p *Parser) findStart(args []string) ([]string, []string, bool) {
 	}
 
 	afterIndex := make(map[string]int)
-	re, err := regexp.Compile(`(.+):(\d)+`)
+	re, err := regexp.Compile(`(.+):(\d+)`)
 	if err != nil {
 		return args, nil, false
 	}
