@@ -1,7 +1,6 @@
 package agent
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"runtime"
@@ -73,7 +72,7 @@ func Run(ctx *cli.Context) error {
 	cfg.Debug = ctx.GlobalBool("debug")
 	cfg.DataDir = dataDir
 
-	contextCtx := signals.SetupSignalHandler(context.Background())
+	contextCtx := signals.SetupSignalContext()
 
 	return agent.Run(contextCtx, cfg)
 }

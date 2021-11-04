@@ -408,7 +408,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 
 	notifySocket := os.Getenv("NOTIFY_SOCKET")
 
-	ctx := signals.SetupSignalHandler(context.Background())
+	ctx := signals.SetupSignalContext()
 
 	if err := server.StartServer(ctx, &serverConfig, cfg); err != nil {
 		return err
