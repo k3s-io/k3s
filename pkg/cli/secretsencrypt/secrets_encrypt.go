@@ -76,7 +76,8 @@ func Enable(app *cli.Context) error {
 	if err = info.Put("/v1-"+version.Program+"/encrypt/enable", b); err != nil {
 		return err
 	}
-	fmt.Println("secrets-encryption enabled")
+	fmt.Println("secrets-encryption enabled, after server restart run:")
+	fmt.Println("kubectl get secrets --all-namespaces -o json | kubectl replace -f -")
 	return nil
 }
 
@@ -93,10 +94,11 @@ func Disable(app *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	if err = info.Put("/v1-"+version.Program+"/encrypt/toggle", b); err != nil {
+	if err = info.Put("/v1-"+version.Program+"/encrypt/enable", b); err != nil {
 		return err
 	}
-	fmt.Println("secrets-encryption disabled")
+	fmt.Println("secrets-encryption disabled, after server restart run:")
+	fmt.Println("kubectl get secrets --all-namespaces -o json | kubectl replace -f -")
 	return nil
 }
 

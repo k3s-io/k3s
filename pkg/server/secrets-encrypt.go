@@ -79,7 +79,7 @@ func encryptionStatus(server *config.Control) (string, error) {
 	if providers[1].Identity != nil && providers[0].AESCBC != nil {
 		statusOutput += "Encryption Status: Enabled\n"
 	} else if providers[0].Identity != nil && providers[1].AESCBC != nil || !server.EncryptSecrets {
-		statusOutput += "Encryption Status: Disabled"
+		statusOutput += "Encryption Status: Disabled\n"
 	}
 
 	stage, _, err := getEncryptionState(server)
@@ -95,16 +95,23 @@ func encryptionStatus(server *config.Control) (string, error) {
 	}
 	var tabBuffer bytes.Buffer
 	w := tabwriter.NewWriter(&tabBuffer, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(w, "Key Type\tName\tSecret\n")
-	fmt.Fprintf(w, "--------\t----\t------\n")
+	fmt.Fprintf(w, "\n")
+	fmt.Fprintf(w, "Active\tKey Type\tName\n")
+	fmt.Fprintf(w, "------\t--------\t----\n")
+	active := true
 	for _, p := range providers {
 		if p.AESCBC != nil {
 			for _, aesKey := range p.AESCBC.Keys {
-				fmt.Fprintf(w, "%s\t%s\t%s\n", "AES-CBC", aesKey.Name, aesKey.Secret)
+				if active {
+					active = false
+					fmt.Fprintf(w, " *\t%s\t%s\n", "AES-CBC", aesKey.Name)
+				} else {
+					fmt.Fprintf(w, "\t%s\t%s\n", "AES-CBC", aesKey.Name)
+				}
 			}
 		}
 		if p.Identity != nil {
-			fmt.Fprintf(w, "Identity\tidentity\tN/A\n")
+			active = false
 		}
 	}
 	w.Flush()
@@ -169,7 +176,7 @@ func encryptionEnable(server *config.Control, enable bool) error {
 	} else {
 		return fmt.Errorf("unable to enable/disable secrets encryption, unknown configuration")
 	}
-	return updateSecrets(server.Runtime.Core.Core())
+	return nil
 }
 
 func encryptionStageHandler(server *config.Control) http.Handler {
@@ -341,6 +348,9 @@ func getEncryptionKeys(controlConfig *config.Control) ([]apiserverconfigv1.Key, 
 	for _, p := range providers {
 		if p.AESCBC != nil {
 			curKeys = append(curKeys, p.AESCBC.Keys...)
+		}
+		if p.AESGCM != nil || p.KMS != nil || p.Secretbox != nil {
+			return nil, fmt.Errorf("non-standard encryption keys found")
 		}
 	}
 	return curKeys, nil

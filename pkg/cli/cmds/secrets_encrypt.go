@@ -14,7 +14,7 @@ var EncryptFlags = []cli.Flag{
 func NewSecretsEncryptCommand(action func(*cli.Context) error, subcommands []cli.Command) cli.Command {
 	return cli.Command{
 		Name:            SecretsEncryptCommand,
-		Usage:           "(experimental) Control secrets encryption and keys rotation",
+		Usage:           "Control secrets encryption and keys rotation",
 		SkipFlagParsing: false,
 		SkipArgReorder:  true,
 		Action:          action,
@@ -26,7 +26,7 @@ func NewSecretsEncryptSubcommands(status, enable, disable, prepare, rotate, reen
 	return []cli.Command{
 		{
 			Name:            "status",
-			Usage:           "(experimental) Print current status of secrets encryption",
+			Usage:           "Print current status of secrets encryption",
 			SkipFlagParsing: false,
 			SkipArgReorder:  true,
 			Action:          status,
@@ -34,7 +34,7 @@ func NewSecretsEncryptSubcommands(status, enable, disable, prepare, rotate, reen
 		},
 		{
 			Name:            "enable",
-			Usage:           "(experimental) Enable secrets encryption",
+			Usage:           "Enable secrets encryption",
 			SkipFlagParsing: false,
 			SkipArgReorder:  true,
 			Action:          enable,
@@ -42,7 +42,7 @@ func NewSecretsEncryptSubcommands(status, enable, disable, prepare, rotate, reen
 		},
 		{
 			Name:            "disable",
-			Usage:           "(experimental) Disable secrets encryption",
+			Usage:           "Disable secrets encryption",
 			SkipFlagParsing: false,
 			SkipArgReorder:  true,
 			Action:          disable,
@@ -50,7 +50,7 @@ func NewSecretsEncryptSubcommands(status, enable, disable, prepare, rotate, reen
 		},
 		{
 			Name:            "prepare",
-			Usage:           "(experimental) Prepare for encryption keys rotation",
+			Usage:           "Prepare for encryption keys rotation",
 			SkipFlagParsing: false,
 			SkipArgReorder:  true,
 			Action:          prepare,
@@ -62,7 +62,7 @@ func NewSecretsEncryptSubcommands(status, enable, disable, prepare, rotate, reen
 		},
 		{
 			Name:            "rotate",
-			Usage:           "(experimental) Rotate secrets encryption keys",
+			Usage:           "Rotate secrets encryption keys",
 			SkipFlagParsing: false,
 			SkipArgReorder:  true,
 			Action:          rotate,
@@ -74,7 +74,7 @@ func NewSecretsEncryptSubcommands(status, enable, disable, prepare, rotate, reen
 		},
 		{
 			Name:            "reencrypt",
-			Usage:           "(experimental) Reencrypt all data with new encryption key",
+			Usage:           "Reencrypt all data with new encryption key",
 			SkipFlagParsing: false,
 			SkipArgReorder:  true,
 			Action:          reencrypt,
