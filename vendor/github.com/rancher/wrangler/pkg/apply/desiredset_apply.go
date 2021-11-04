@@ -30,6 +30,7 @@ const (
 	LabelNamespace = "objectset.rio.cattle.io/owner-namespace"
 	LabelHash      = "objectset.rio.cattle.io/hash"
 	LabelPrefix    = "objectset.rio.cattle.io/"
+	LabelPrune     = "objectset.rio.cattle.io/prune"
 )
 
 var (
