@@ -1,7 +1,6 @@
 package etcdsnapshot
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -82,7 +81,7 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 	serverConfig.ControlConfig.Runtime.ClientETCDKey = filepath.Join(dataDir, "tls", "etcd", "client.key")
 	serverConfig.ControlConfig.Runtime.KubeConfigAdmin = filepath.Join(dataDir, "cred", "admin.kubeconfig")
 
-	ctx := signals.SetupSignalHandler(context.Background())
+	ctx := signals.SetupSignalContext()
 	e := etcd.NewETCD()
 	e.SetControlConfig(&serverConfig.ControlConfig)
 
@@ -132,7 +131,7 @@ func delete(app *cli.Context, cfg *cmds.Server) error {
 	serverConfig.ControlConfig.DataDir = dataDir
 	serverConfig.ControlConfig.Runtime.KubeConfigAdmin = filepath.Join(dataDir, "cred", "admin.kubeconfig")
 
-	ctx := signals.SetupSignalHandler(context.Background())
+	ctx := signals.SetupSignalContext()
 	e := etcd.NewETCD()
 	e.SetControlConfig(&serverConfig.ControlConfig)
 
@@ -162,7 +161,7 @@ func list(app *cli.Context, cfg *cmds.Server) error {
 
 	serverConfig.ControlConfig.DataDir = dataDir
 
-	ctx := signals.SetupSignalHandler(context.Background())
+	ctx := signals.SetupSignalContext()
 	e := etcd.NewETCD()
 	e.SetControlConfig(&serverConfig.ControlConfig)
 
@@ -203,7 +202,7 @@ func prune(app *cli.Context, cfg *cmds.Server) error {
 	serverConfig.ControlConfig.DataDir = dataDir
 	serverConfig.ControlConfig.EtcdSnapshotRetention = cfg.EtcdSnapshotRetention
 
-	ctx := signals.SetupSignalHandler(context.Background())
+	ctx := signals.SetupSignalContext()
 	e := etcd.NewETCD()
 	e.SetControlConfig(&serverConfig.ControlConfig)
 
