@@ -534,7 +534,7 @@ EOF
             ;;
         sle)
             rpm_installer="zypper --gpg-auto-import-keys"
-            if [ "${TRANSACTIONAL_UPDATE=false}" != "true" ] && [ -x /sbin/transactional-update ]; then
+            if [ "${TRANSACTIONAL_UPDATE=false}" != "true" ] && [ -x /usr/sbin/transactional-update ]; then
                 rpm_installer="transactional-update --no-selfupdate -d run ${rpm_installer}"
                 : "${INSTALL_K3S_SKIP_START:=true}"
                 : "${INSTALL_K3S_SELINUX_WARN:=true}"
