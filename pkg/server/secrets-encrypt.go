@@ -1,7 +1,6 @@
 package server
 
 import (
-	"bytes"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
@@ -11,7 +10,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"text/tabwriter"
 	"time"
 
 	"github.com/rancher/k3s/pkg/daemons/config"
@@ -32,8 +30,12 @@ const (
 const aescbcKeySize = 32
 
 type EncryptionState struct {
-	Stage      string `json:"stage"`
-	CurrentKey apiserverconfigv1.Key
+	Stage        string   `json:"stage"`
+	ActiveKey    string   `json:"activekey"`
+	Enable       int      `json:"enable,omitempty"` // -1: no config file, 0: disabled, 1: enabled
+	HashMatch    bool     `json:"hashmatch,omitempty"`
+	HashError    string   `json:"hasherror,omitempty"`
+	InactiveKeys []string `json:"inactivekeys,omitempty"`
 }
 
 type EncryptionRequest struct {
@@ -64,49 +66,52 @@ func encryptionStatusHandler(server *config.Control) http.Handler {
 			resp.Write([]byte(err.Error()))
 			return
 		}
-		resp.Write([]byte(status))
+		b, err := json.Marshal(status)
+		if err != nil {
+			resp.WriteHeader(http.StatusBadRequest)
+			resp.Write([]byte(err.Error()))
+			return
+		}
+		resp.Write(b)
 	})
 }
 
-func encryptionStatus(server *config.Control) (string, error) {
+func encryptionStatus(server *config.Control) (EncryptionState, error) {
+	state := EncryptionState{}
 	providers, err := getEncryptionProviders(server)
 	if os.IsNotExist(err) {
-		return "Encryption Status: Disabled, no configuration file found", nil
+		state.Enable = -1
+		return state, nil
 	} else if err != nil {
-		return "", err
+		return state, err
 	}
-	var statusOutput string
 	if providers[1].Identity != nil && providers[0].AESCBC != nil {
-		statusOutput += "Encryption Status: Enabled\n"
+		state.Enable = 1
 	} else if providers[0].Identity != nil && providers[1].AESCBC != nil || !server.EncryptSecrets {
-		statusOutput += "Encryption Status: Disabled\n"
+		state.Enable = 0
 	}
 
-	stage, _, err := getEncryptionState(server)
+	s, err := getEncryptionState(server)
 	if err != nil {
-		return "", err
+		return s, err
 	}
-	statusOutput += fmt.Sprintln("Current Rotation Stage:", stage)
+	state.Stage = s.Stage
 
 	if err := verifyEncryptionHashAnnotation(server.Runtime.Core.Core()); err != nil {
-		statusOutput += fmt.Sprintf("Server Encryption Hashes: %s\n", err.Error())
+		state.HashMatch = false
+		state.HashError = err.Error()
 	} else {
-		statusOutput += fmt.Sprintln("Server Encryption Hashes: All hashes match")
+		state.HashMatch = true
 	}
-	var tabBuffer bytes.Buffer
-	w := tabwriter.NewWriter(&tabBuffer, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(w, "\n")
-	fmt.Fprintf(w, "Active\tKey Type\tName\n")
-	fmt.Fprintf(w, "------\t--------\t----\n")
 	active := true
 	for _, p := range providers {
 		if p.AESCBC != nil {
 			for _, aesKey := range p.AESCBC.Keys {
 				if active {
 					active = false
-					fmt.Fprintf(w, " *\t%s\t%s\n", "AES-CBC", aesKey.Name)
+					state.ActiveKey = aesKey.Name
 				} else {
-					fmt.Fprintf(w, "\t%s\t%s\n", "AES-CBC", aesKey.Name)
+					state.InactiveKeys = append(state.InactiveKeys, aesKey.Name)
 				}
 			}
 		}
@@ -114,9 +119,8 @@ func encryptionStatus(server *config.Control) (string, error) {
 			active = false
 		}
 	}
-	w.Flush()
 
-	return statusOutput + tabBuffer.String(), nil
+	return state, nil
 }
 
 func encryptionEnableHandler(server *config.Control) http.Handler {
@@ -215,11 +219,11 @@ func encryptionStageHandler(server *config.Control) http.Handler {
 }
 
 func encryptionPrepare(server *config.Control, force bool) error {
-	stage, key, err := getEncryptionState(server)
+	state, err := getEncryptionState(server)
 	if err != nil {
 		return err
-	} else if !force && (stage != EncryptionStart && stage != EncryptionReencrypt) {
-		return fmt.Errorf("error, incorrect stage %s found with key %s", stage, key.Name)
+	} else if !force && (state.Stage != EncryptionStart && state.Stage != EncryptionReencrypt) {
+		return fmt.Errorf("error, incorrect stage %s found with key %s", state.Stage, state.ActiveKey)
 	}
 
 	if err := verifyEncryptionHashAnnotation(server.Runtime.Core.Core()); err != nil {
@@ -246,11 +250,11 @@ func encryptionPrepare(server *config.Control, force bool) error {
 }
 
 func encryptionRotate(server *config.Control, force bool) error {
-	stage, key, err := getEncryptionState(server)
+	state, err := getEncryptionState(server)
 	if err != nil {
 		return err
-	} else if !force && stage != EncryptionPrepare {
-		return fmt.Errorf("error, incorrect stage %s found with key %s", stage, key.Name)
+	} else if !force && state.Stage != EncryptionPrepare {
+		return fmt.Errorf("error, incorrect stage %s found with key %s", state.Stage, state.ActiveKey)
 	}
 
 	if err := verifyEncryptionHashAnnotation(server.Runtime.Core.Core()); err != nil {
@@ -276,11 +280,11 @@ func encryptionRotate(server *config.Control, force bool) error {
 }
 
 func encryptionReencrypt(server *config.Control, force bool) error {
-	stage, key, err := getEncryptionState(server)
+	state, err := getEncryptionState(server)
 	if err != nil {
 		return err
-	} else if !force && stage != EncryptionRotate {
-		return fmt.Errorf("error, incorrect stage %s found with key %s", stage, key.Name)
+	} else if !force && state.Stage != EncryptionRotate {
+		return fmt.Errorf("error, incorrect stage %s found with key %s", state.Stage, state.ActiveKey)
 	}
 	if err := verifyEncryptionHashAnnotation(server.Runtime.Core.Core()); err != nil {
 		return err
@@ -425,8 +429,8 @@ func writeEncryptionConfig(controlConfig *config.Control, keys []apiserverconfig
 func writeEncryptionState(controlConfig *config.Control, stage string, key apiserverconfigv1.Key) error {
 
 	encStatus := EncryptionState{
-		Stage:      stage,
-		CurrentKey: key,
+		Stage:     stage,
+		ActiveKey: key.Name,
 	}
 	jsonfile, err := json.Marshal(encStatus)
 	if err != nil {
@@ -435,17 +439,17 @@ func writeEncryptionState(controlConfig *config.Control, stage string, key apise
 	return ioutil.WriteFile(controlConfig.Runtime.EncryptionState, jsonfile, 0600)
 }
 
-func getEncryptionState(controlConfig *config.Control) (string, apiserverconfigv1.Key, error) {
+func getEncryptionState(controlConfig *config.Control) (EncryptionState, error) {
+	curEncryption := EncryptionState{}
 	curEncryptionByte, err := ioutil.ReadFile(controlConfig.Runtime.EncryptionState)
 	if err != nil {
-		return "", apiserverconfigv1.Key{}, err
+		return curEncryption, err
 	}
 
-	curEncryption := EncryptionState{}
 	if err = json.Unmarshal(curEncryptionByte, &curEncryption); err != nil {
-		return "", apiserverconfigv1.Key{}, err
+		return curEncryption, err
 	}
-	return curEncryption.Stage, curEncryption.CurrentKey, nil
+	return curEncryption, nil
 }
 
 func verifyEncryptionHashAnnotation(core core.Interface) error {

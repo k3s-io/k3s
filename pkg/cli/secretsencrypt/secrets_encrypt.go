@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"text/tabwriter"
 
 	"github.com/erikdubbelboer/gspt"
 	"github.com/rancher/k3s/pkg/cli/cmds"
@@ -114,7 +115,43 @@ func Status(app *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	fmt.Print(string(data))
+	status := server.EncryptionState{}
+	if err := json.Unmarshal(data, &status); err != nil {
+		return err
+	}
+
+	if status.Enable == -1 {
+		fmt.Println("Encryption Status: Disabled, no configuration file found")
+		return nil
+	}
+
+	var statusOutput string
+	if status.Enable == 0 {
+		statusOutput += "Encryption Status: Disabled\n"
+	} else if status.Enable == 1 {
+		statusOutput += "Encryption Status: Enabled\n"
+	}
+	statusOutput += fmt.Sprintln("Current Rotation Stage:", status.Stage)
+
+	if status.HashMatch {
+		statusOutput += fmt.Sprintln("Server Encryption Hashes: All hashes match")
+	} else {
+		statusOutput += fmt.Sprintf("Server Encryption Hashes: %s\n", status.HashError)
+	}
+
+	var tabBuffer bytes.Buffer
+	w := tabwriter.NewWriter(&tabBuffer, 0, 0, 2, ' ', 0)
+	fmt.Fprintf(w, "\n")
+	fmt.Fprintf(w, "Active\tKey Type\tName\n")
+	fmt.Fprintf(w, "------\t--------\t----\n")
+	if status.ActiveKey != "" {
+		fmt.Fprintf(w, " *\t%s\t%s\n", "AES-CBC", status.ActiveKey)
+	}
+	for _, k := range status.InactiveKeys {
+		fmt.Fprintf(w, "\t%s\t%s\n", "AES-CBC", k)
+	}
+	w.Flush()
+	fmt.Println(statusOutput + tabBuffer.String())
 	return nil
 }
 
