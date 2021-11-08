@@ -1,40 +1,52 @@
-package generic
+package controller
 
 import (
 	"context"
+	"sync"
 )
 
 type hTransactionKey struct{}
 
 type HandlerTransaction struct {
 	context.Context
+
+	lock   sync.Mutex
 	parent context.Context
-	done   chan struct{}
-	result bool
+	todo   []func()
 }
 
-func (h *HandlerTransaction) shouldContinue() bool {
-	select {
-	case <-h.parent.Done():
-		return false
-	case <-h.done:
-		return h.result
+func (h *HandlerTransaction) do(f func()) {
+	if h == nil {
+		f()
+		return
 	}
+
+	h.lock.Lock()
+	defer h.lock.Unlock()
+
+	h.todo = append(h.todo, f)
 }
 
 func (h *HandlerTransaction) Commit() {
-	h.result = true
-	close(h.done)
+	h.lock.Lock()
+	fs := h.todo
+	h.todo = nil
+	h.lock.Unlock()
+
+	for _, f := range fs {
+		f()
+	}
 }
 
 func (h *HandlerTransaction) Rollback() {
-	close(h.done)
+	h.lock.Lock()
+	h.todo = nil
+	h.lock.Unlock()
 }
 
 func NewHandlerTransaction(ctx context.Context) *HandlerTransaction {
 	ht := &HandlerTransaction{
 		parent: ctx,
-		done:   make(chan struct{}),
 	}
 	ctx = context.WithValue(ctx, hTransactionKey{}, ht)
 	ht.Context = ctx

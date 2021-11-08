@@ -107,7 +107,7 @@ require (
 	github.com/rancher/dynamiclistener v0.2.3
 	github.com/rancher/remotedialer v0.2.0
 	github.com/rancher/wharfie v0.3.4
-	github.com/rancher/wrangler v0.6.2
+	github.com/rancher/wrangler v0.8.8
 	github.com/rancher/wrangler-api v0.6.0
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/rootless-containers/rootlesskit v0.14.0
