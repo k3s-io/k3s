@@ -382,6 +382,14 @@ func (o *desiredSet) list(namespaced bool, informer cache.SharedIndexInformer, c
 	return objs, merr.NewErrors(errs...)
 }
 
+func shouldPrune(obj runtime.Object) bool {
+	meta, err := meta.Accessor(obj)
+	if err != nil {
+		return true
+	}
+	return meta.GetLabels()[LabelPrune] != "false"
+}
+
 func compareSets(existingSet, newSet map[objectset.ObjectKey]runtime.Object) (toCreate, toDelete, toUpdate []objectset.ObjectKey) {
 	for k := range newSet {
 		if _, ok := existingSet[k]; ok {
@@ -391,9 +399,11 @@ func compareSets(existingSet, newSet map[objectset.ObjectKey]runtime.Object) (to
 		}
 	}
 
-	for k := range existingSet {
+	for k, obj := range existingSet {
 		if _, ok := newSet[k]; !ok {
-			toDelete = append(toDelete, k)
+			if shouldPrune(obj) {
+				toDelete = append(toDelete, k)
+			}
 		}
 	}
 

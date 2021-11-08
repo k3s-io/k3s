@@ -15,9 +15,6 @@ docker ps
 
 # ---
 
-. ./scripts/test-unit
-echo "Did test-unit $?"
-
 . ./scripts/test-run-basics
 echo "Did test-run-basics $?"
 

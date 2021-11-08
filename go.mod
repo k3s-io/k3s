@@ -9,7 +9,7 @@ replace (
 	github.com/containerd/btrfs => github.com/containerd/btrfs v1.0.0
 	github.com/containerd/cgroups => github.com/containerd/cgroups v1.0.1
 	github.com/containerd/console => github.com/containerd/console v1.0.2
-	github.com/containerd/containerd => github.com/k3s-io/containerd v1.5.7-k3s1 // k3s-release/1.5
+	github.com/containerd/containerd => github.com/k3s-io/containerd v1.5.7-k3s2 // k3s-release/1.5
 	github.com/containerd/continuity => github.com/k3s-io/continuity v0.0.0-20210309170710-f93269e0d5c1
 	github.com/containerd/fifo => github.com/containerd/fifo v1.0.0
 	github.com/containerd/go-runc => github.com/containerd/go-runc v1.0.0
@@ -28,7 +28,6 @@ replace (
 	github.com/opencontainers/runc => github.com/opencontainers/runc v1.0.2
 	github.com/opencontainers/runtime-spec => github.com/opencontainers/runtime-spec v1.0.3-0.20210316141917-a8c4a9ee0f6b
 	github.com/rancher/k3s/pkg/data => ./pkg/data
-	github.com/rancher/wrangler => github.com/rancher/wrangler v0.8.5
 	go.etcd.io/etcd/api/v3 => github.com/k3s-io/etcd/api/v3 v3.5.0-k3s2
 	go.etcd.io/etcd/client/v3 => github.com/k3s-io/etcd/client/v3 v3.5.0-k3s2
 	go.etcd.io/etcd/etcdutl/v3 => github.com/k3s-io/etcd/etcdutl/v3 v3.5.0-k3s2
@@ -110,7 +109,7 @@ require (
 	github.com/rancher/lasso v0.0.0-20210616224652-fc3ebd901c08
 	github.com/rancher/remotedialer v0.2.0
 	github.com/rancher/wharfie v0.3.4
-	github.com/rancher/wrangler v0.8.3
+	github.com/rancher/wrangler v0.8.8
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/rootless-containers/rootlesskit v0.14.5
 	github.com/sirupsen/logrus v1.8.1
