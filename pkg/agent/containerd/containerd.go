@@ -86,7 +86,7 @@ func Run(ctx context.Context, cfg *config.Node) error {
 		}
 
 		logrus.Infof("Running containerd %s", config.ArgString(args[1:]))
-		cmd := exec.Command(args[0], args[1:]...)
+		cmd := exec.CommandContext(ctx, args[0], args[1:]...)
 		cmd.Stdout = stdOut
 		cmd.Stderr = stdErr
 		cmd.Env = env
