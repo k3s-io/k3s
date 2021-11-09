@@ -485,13 +485,12 @@ setup_selinux() {
 
     if [ "$INSTALL_K3S_SKIP_SELINUX_RPM" = true ] || can_skip_download || [ ! -d /usr/share/selinux ]; then
         info "Skipping installation of SELinux RPM"
-    else
+    elif  [ "${ID_LIKE:-}" != coreos ] && [ "${VARIANT_ID:-}" != coreos ]; then
         install_selinux_rpm ${rpm_site} ${rpm_channel} ${rpm_target} ${rpm_site_infix}
     fi
 
     policy_error=fatal
-    # install_selinux_rpm will set INSTALL_K3S_SELINUX_WARN=true on microos
-    if [ "$INSTALL_K3S_SELINUX_WARN" = true ] || [ "${ID_LIKE:-}" = coreos ]; then
+    if [ "$INSTALL_K3S_SELINUX_WARN" = true ] || [ "${ID_LIKE:-}" = coreos ] || [ "${VARIANT_ID:-}" = coreos ]; then
         policy_error=warn
     fi
 
@@ -499,8 +498,10 @@ setup_selinux() {
         if $SUDO grep '^\s*SELINUX=enforcing' /etc/selinux/config >/dev/null 2>&1; then
             $policy_error "Failed to apply container_runtime_exec_t to ${BIN_DIR}/k3s, ${policy_hint}"
         fi
-    else
-        if [ ! -f /usr/share/selinux/packages/k3s.pp ]; then
+    elif [ ! -f /usr/share/selinux/packages/k3s.pp ]; then
+        if [ -x /usr/sbin/transactional-update ]; then
+            warn "Please reboot your machine to activate the changes and avoid data loss."
+        else
             $policy_error "Failed to find the k3s-selinux policy, ${policy_hint}"
         fi
     fi
@@ -529,21 +530,20 @@ repo_gpgcheck=0
 gpgkey=https://${1}/public.key
 EOF
         case ${3} in
-        el8)
-            rpm_installer="dnf"
-            ;;
         sle)
             rpm_installer="zypper --gpg-auto-import-keys"
             if [ "${TRANSACTIONAL_UPDATE=false}" != "true" ] && [ -x /usr/sbin/transactional-update ]; then
                 rpm_installer="transactional-update --no-selfupdate -d run ${rpm_installer}"
                 : "${INSTALL_K3S_SKIP_START:=true}"
-                : "${INSTALL_K3S_SELINUX_WARN:=true}"
             fi
             ;;
         *)
             rpm_installer="yum"
             ;;
         esac
+        if [ "${rpm_installer}" = "yum" ] && [ -x /usr/bin/dnf ]; then
+            rpm_installer=dnf
+        fi
         # shellcheck disable=SC2086
         $SUDO ${rpm_installer} install -y "k3s-selinux"
     fi
@@ -728,6 +728,13 @@ rm -f ${KILLALL_K3S_SH}
 if type yum >/dev/null 2>&1; then
     yum remove -y k3s-selinux
     rm -f /etc/yum.repos.d/rancher-k3s-common*.repo
+elif type zypper >/dev/null 2>&1; then
+    uninstall_cmd="zypper remove -y k3s-selinux"
+    if [ "\${TRANSACTIONAL_UPDATE=false}" != "true" ] && [ -x /usr/sbin/transactional-update ]; then
+        uninstall_cmd="transactional-update --no-selfupdate -d run \$uninstall_cmd"
+    fi
+    \$uninstall_cmd
+    rm -f /etc/zypp/repos.d/rancher-k3s-common*.repo
 fi
 EOF
     $SUDO chmod 755 ${UNINSTALL_K3S_SH}
