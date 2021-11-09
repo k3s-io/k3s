@@ -11,10 +11,10 @@ import (
 
 	helmv1 "github.com/k3s-io/helm-controller/pkg/apis/helm.cattle.io/v1"
 	helmcontroller "github.com/k3s-io/helm-controller/pkg/generated/controllers/helm.cattle.io/v1"
-	batchcontroller "github.com/rancher/wrangler-api/pkg/generated/controllers/batch/v1"
-	corecontroller "github.com/rancher/wrangler-api/pkg/generated/controllers/core/v1"
-	rbaccontroller "github.com/rancher/wrangler-api/pkg/generated/controllers/rbac/v1"
 	"github.com/rancher/wrangler/pkg/apply"
+	batchcontroller "github.com/rancher/wrangler/pkg/generated/controllers/batch/v1"
+	corecontroller "github.com/rancher/wrangler/pkg/generated/controllers/core/v1"
+	rbaccontroller "github.com/rancher/wrangler/pkg/generated/controllers/rbac/v1"
 	"github.com/rancher/wrangler/pkg/objectset"
 	"github.com/rancher/wrangler/pkg/relatedresource"
 	batch "k8s.io/api/batch/v1"
@@ -30,6 +30,7 @@ import (
 var (
 	trueVal         = true
 	commaRE         = regexp.MustCompile(`\\*,`)
+	deletePolicy    = meta.DeletePropagationForeground
 	DefaultJobImage = "rancher/klipper-helm:v0.6.6-build20211022"
 )
 
@@ -64,7 +65,7 @@ func Register(ctx context.Context, apply apply.Apply,
 	apply = apply.WithSetID(Name).
 		WithCacheTypes(helms, confs, jobs, crbs, sas, cm).
 		WithStrictCaching().WithPatcher(batch.SchemeGroupVersion.WithKind("Job"), func(namespace, name string, pt types.PatchType, data []byte) (runtime.Object, error) {
-		err := jobs.Delete(namespace, name, &meta.DeleteOptions{})
+		err := jobs.Delete(namespace, name, &meta.DeleteOptions{PropagationPolicy: &deletePolicy})
 		if err == nil {
 			return nil, fmt.Errorf("replace job")
 		}
