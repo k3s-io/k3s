@@ -99,6 +99,8 @@ type Agent struct {
 	DisableNPC              bool
 	Rootless                bool
 	ProtectKernelDefaults   bool
+	DisableServiceLB        bool
+	EnableIPv6              bool
 }
 
 // CriticalControlArgs contains parameters that all control plane nodes in HA must share
@@ -132,6 +134,7 @@ type Control struct {
 	AgentToken               string `json:"-"`
 	Token                    string `json:"-"`
 	ServiceNodePortRange     *utilnet.PortRange
+	DisableServiceLB         bool
 	KubeConfigOutput         string
 	KubeConfigMode           string
 	DataDir                  string
