@@ -58,6 +58,11 @@ func (c *Cluster) Bootstrap(ctx context.Context) error {
 			if err := createTmpDataDir(etcdDataDir, tmpDataDir); err != nil {
 				return err
 			}
+			defer func() {
+				if err := os.RemoveAll(tmpDataDir); err != nil {
+					logrus.Warn("failed to remove etcd temp dir", err)
+				}
+			}()
 
 			args := executor.ETCDConfig{
 				DataDir:           tmpDataDir,
@@ -81,12 +86,7 @@ func (c *Cluster) Bootstrap(ctx context.Context) error {
 			if err != nil {
 				return err
 			}
-			defer func() {
-				etcd.Close()
-				if err := os.RemoveAll(tmpDataDir); err != nil {
-					logrus.Warn("failed to remove etcd temp dir", err)
-				}
-			}()
+			defer etcd.Close()
 
 			data, err := c.retrieveInitializedDBdata(ctx)
 			if err != nil {
