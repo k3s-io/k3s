@@ -49,8 +49,7 @@ func router(ctx context.Context, config *Config, cfg *cmds.Server) http.Handler 
 	authed.Path(prefix + "/config").Handler(configHandler(serverConfig, cfg))
 	authed.Path(prefix + "/readyz").Handler(readyzHandler(serverConfig))
 	authed.Path(prefix + "/encrypt/status").Handler(encryptionStatusHandler(serverConfig))
-	authed.Path(prefix + "/encrypt/enable").Handler(encryptionEnableHandler(serverConfig))
-	authed.Path(prefix + "/encrypt/stage").Handler(encryptionStageHandler(serverConfig))
+	authed.Path(prefix + "/encrypt/config").Handler(encryptionConfigHandler(serverConfig))
 
 	nodeAuthed := mux.NewRouter()
 	nodeAuthed.Use(authMiddleware(serverConfig, "system:nodes"))

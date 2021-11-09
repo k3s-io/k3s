@@ -39,9 +39,9 @@ type EncryptionState struct {
 }
 
 type EncryptionRequest struct {
-	Stage  string `json:"stage,omitempty"`
-	Enable bool   `json:"toggle,omitempty"`
-	Force  bool   `json:"force"`
+	Stage  *string `json:"stage,omitempty"`
+	Enable *bool   `json:"enable,omitempty"`
+	Force  *bool   `json:"force,omitempty"`
 }
 
 func getEncryptionRequest(req *http.Request) (EncryptionRequest, error) {
@@ -123,32 +123,6 @@ func encryptionStatus(server *config.Control) (EncryptionState, error) {
 	return state, nil
 }
 
-func encryptionEnableHandler(server *config.Control) http.Handler {
-	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
-		if req.TLS == nil {
-			resp.WriteHeader(http.StatusNotFound)
-			return
-		}
-		if req.Method != http.MethodPut {
-			resp.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		encryptReq, err := getEncryptionRequest(req)
-		if err != nil {
-			resp.WriteHeader(http.StatusBadRequest)
-			resp.Write([]byte(err.Error()))
-			return
-		}
-
-		if err := encryptionEnable(server, encryptReq.Enable); err != nil {
-			resp.WriteHeader(http.StatusBadRequest)
-			resp.Write([]byte(err.Error()))
-			return
-		}
-		resp.WriteHeader(http.StatusOK)
-	})
-}
-
 func encryptionEnable(server *config.Control, enable bool) error {
 	providers, err := getEncryptionProviders(server)
 	if err != nil {
@@ -183,7 +157,7 @@ func encryptionEnable(server *config.Control, enable bool) error {
 	return nil
 }
 
-func encryptionStageHandler(server *config.Control) http.Handler {
+func encryptionConfigHandler(server *config.Control) http.Handler {
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 		if req.TLS == nil {
 			resp.WriteHeader(http.StatusNotFound)
@@ -199,16 +173,21 @@ func encryptionStageHandler(server *config.Control) http.Handler {
 			resp.Write([]byte(err.Error()))
 			return
 		}
-		switch encryptReq.Stage {
-		case EncryptionPrepare:
-			err = encryptionPrepare(server, encryptReq.Force)
-		case EncryptionRotate:
-			err = encryptionRotate(server, encryptReq.Force)
-		case EncryptionReencrypt:
-			err = encryptionReencrypt(server, encryptReq.Force)
-		default:
-			err = fmt.Errorf("unknown stage requested")
+		if encryptReq.Stage != nil && encryptReq.Force != nil {
+			switch *encryptReq.Stage {
+			case EncryptionPrepare:
+				err = encryptionPrepare(server, *encryptReq.Force)
+			case EncryptionRotate:
+				err = encryptionRotate(server, *encryptReq.Force)
+			case EncryptionReencrypt:
+				err = encryptionReencrypt(server, *encryptReq.Force)
+			default:
+				err = fmt.Errorf("unknown stage %s requested", *encryptReq.Stage)
+			}
+		} else if encryptReq.Enable != nil {
+			err = encryptionEnable(server, *encryptReq.Enable)
 		}
+
 		if err != nil {
 			resp.WriteHeader(http.StatusBadRequest)
 			resp.Write([]byte(err.Error()))

@@ -96,7 +96,7 @@ var _ = Describe("secrets encryption rotation", func() {
 		It("reencrypts the keys", func() {
 			Eventually(func() (string, error) {
 				return testutil.K3sCmd("secrets-encrypt", "reencrypt", "-d", secretsEncryptionDataDir)
-			}, "10s", "2s").Should(ContainSubstring("reencrypt completed successfully"))
+			}, "20s", "5s").Should(ContainSubstring("reencrypt completed successfully"))
 
 			result, err := testutil.K3sCmd("secrets-encrypt", "status", "-d", secretsEncryptionDataDir)
 			Expect(err).NotTo(HaveOccurred())

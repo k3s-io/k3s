@@ -70,11 +70,12 @@ func Enable(app *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	b, err := json.Marshal(server.EncryptionRequest{Enable: true})
+	enable := true
+	b, err := json.Marshal(server.EncryptionRequest{Enable: &enable})
 	if err != nil {
 		return err
 	}
-	if err = info.Put("/v1-"+version.Program+"/encrypt/enable", b); err != nil {
+	if err = info.Put("/v1-"+version.Program+"/encrypt/config", b); err != nil {
 		return err
 	}
 	fmt.Println("secrets-encryption enabled, after server restart run:")
@@ -91,11 +92,12 @@ func Disable(app *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	b, err := json.Marshal(server.EncryptionRequest{Enable: false})
+	enable := false
+	b, err := json.Marshal(server.EncryptionRequest{Enable: &enable})
 	if err != nil {
 		return err
 	}
-	if err = info.Put("/v1-"+version.Program+"/encrypt/enable", b); err != nil {
+	if err = info.Put("/v1-"+version.Program+"/encrypt/config", b); err != nil {
 		return err
 	}
 	fmt.Println("secrets-encryption disabled, after server restart run:")
@@ -164,14 +166,15 @@ func Prepare(app *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	stage := server.EncryptionPrepare
 	b, err := json.Marshal(server.EncryptionRequest{
-		Stage: server.EncryptionPrepare,
-		Force: controlConfig.EncryptForce,
+		Stage: &stage,
+		Force: &controlConfig.EncryptForce,
 	})
 	if err != nil {
 		return err
 	}
-	if err = info.Put("/v1-"+version.Program+"/encrypt/stage", b); err != nil {
+	if err = info.Put("/v1-"+version.Program+"/encrypt/config", b); err != nil {
 		return err
 	}
 	fmt.Println("prepare completed successfully")
@@ -186,14 +189,15 @@ func Rotate(app *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	stage := server.EncryptionRotate
 	b, err := json.Marshal(server.EncryptionRequest{
-		Stage: server.EncryptionRotate,
-		Force: controlConfig.EncryptForce,
+		Stage: &stage,
+		Force: &controlConfig.EncryptForce,
 	})
 	if err != nil {
 		return err
 	}
-	if err = info.Put("/v1-"+version.Program+"/encrypt/stage", b); err != nil {
+	if err = info.Put("/v1-"+version.Program+"/encrypt/config", b); err != nil {
 		return err
 	}
 	fmt.Println("rotate completed successfully")
@@ -209,14 +213,15 @@ func Reencrypt(app *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	stage := server.EncryptionReencrypt
 	b, err := json.Marshal(server.EncryptionRequest{
-		Stage: server.EncryptionReencrypt,
-		Force: controlConfig.EncryptForce,
+		Stage: &stage,
+		Force: &controlConfig.EncryptForce,
 	})
 	if err != nil {
 		return err
 	}
-	if err = info.Put("/v1-"+version.Program+"/encrypt/stage", b); err != nil {
+	if err = info.Put("/v1-"+version.Program+"/encrypt/config", b); err != nil {
 		return err
 	}
 	fmt.Println("reencrypt completed successfully")
