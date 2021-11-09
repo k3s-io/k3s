@@ -19,7 +19,7 @@ var dualStackServerArgs = []string{
 	"--disable-network-policy",
 }
 var _ = BeforeSuite(func() {
-	if !testutil.IsExistingServer() && os.Getenv("CI") != "" {
+	if !testutil.IsExistingServer() && os.Getenv("CI") != "true" {
 		var err error
 		dualStackServer, err = testutil.K3sStartServer(dualStackServerArgs...)
 		Expect(err).ToNot(HaveOccurred())
@@ -51,7 +51,7 @@ var _ = Describe("dual stack", func() {
 })
 
 var _ = AfterSuite(func() {
-	if !testutil.IsExistingServer() && os.Getenv("CI") != "" {
+	if !testutil.IsExistingServer() && os.Getenv("CI") != "true" {
 		Expect(testutil.K3sKillServer(dualStackServer)).To(Succeed())
 	}
 })
