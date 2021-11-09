@@ -1,39 +1,27 @@
-// Code generated for package static by go-bindata DO NOT EDIT. (@generated)
+// Code generated for package data by go-bindata DO NOT EDIT. (@generated)
 // sources:
-// +build !no_stage
-
-package static
+package data
 
 import (
-	"bytes"
-	"compress/gzip"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"time"
+	"unsafe"
 )
 
-func bindataRead(data []byte, name string) ([]byte, error) {
-	gz, err := gzip.NewReader(bytes.NewBuffer(data))
-	if err != nil {
-		return nil, fmt.Errorf("Read %q: %v", name, err)
-	}
-
-	var buf bytes.Buffer
-	_, err = io.Copy(&buf, gz)
-	clErr := gz.Close()
-
-	if err != nil {
-		return nil, fmt.Errorf("Read %q: %v", name, err)
-	}
-	if clErr != nil {
-		return nil, err
-	}
-
-	return buf.Bytes(), nil
+func bindataRead(data, name string) ([]byte, error) {
+	var empty [0]byte
+	sx := (*reflect.StringHeader)(unsafe.Pointer(&data))
+	b := empty[:]
+	bx := (*reflect.SliceHeader)(unsafe.Pointer(&b))
+	bx.Data = sx.Data
+	bx.Len = len(data)
+	bx.Cap = bx.Len
+	return b, nil
 }
 
 type asset struct {
@@ -129,7 +117,8 @@ func AssetNames() []string {
 }
 
 // _bindata is a table, holding each asset generator, mapped to its name.
-var _bindata = map[string]func() (*asset, error){}
+var _bindata = map[string]func() (*asset, error){
+}
 
 // AssetDir returns the file names below a certain
 // directory embedded in the file by go-bindata.
