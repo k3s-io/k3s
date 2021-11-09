@@ -38,7 +38,6 @@ func ReadFromDisk(w io.Writer, bootstrap *config.ControlRuntimeBootstrap) error 
 		if err != nil {
 			logrus.Warnf("failed to read %s", path)
 			continue
-			// return errors.Wrapf(err, "failed to read %s", path)
 		}
 
 		info, err := os.Stat(path)
