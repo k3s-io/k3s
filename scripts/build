@@ -97,13 +97,13 @@ if [ ! -x ${INSTALLBIN}/cni ]; then
     WORKDIR=$TMPDIR/src/github.com/containernetworking/plugins
     git clone -b $VERSION_CNIPLUGINS https://github.com/rancher/plugins.git $WORKDIR
     cd $WORKDIR
-    GOPATH=$TMPDIR CGO_ENABLED=0 "${GO}" build -tags "$TAGS" -ldflags "$LDFLAGS $STATIC" -o $INSTALLBIN/cni
+    GO111MODULE=off GOPATH=$TMPDIR CGO_ENABLED=0 "${GO}" build -tags "$TAGS" -ldflags "$LDFLAGS $STATIC" -o $INSTALLBIN/cni
 )
 fi
 # echo Building agent
 # CGO_ENABLED=1 "${GO}" build -tags "$TAGS" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC" -o bin/k3s-agent ./cmd/agent/main.go
 echo Building server
-CGO_ENABLED=1 "${GO}" build -tags "$TAGS" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC_SQLITE" -o bin/containerd ./cmd/server/main.go
+GO111MODULE=off CGO_ENABLED=1 "${GO}" build -tags "$TAGS" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC_SQLITE" -o bin/containerd ./cmd/server/main.go
 ln -s containerd ./bin/k3s-agent
 ln -s containerd ./bin/k3s-server
 ln -s containerd ./bin/k3s-etcd-snapshot
@@ -118,10 +118,10 @@ ln -s containerd ./bin/ctr
 # CGO_ENABLED=0 "${GO}" build -tags "$TAGS" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC" -o bin/containerd ./cmd/containerd/
 echo Building runc
 rm -f ./build/src/github.com/opencontainers/runc/runc
-make GOPATH=$(pwd)/build EXTRA_LDFLAGS="-w -s" BUILDTAGS="$RUNC_TAGS" -C ./build/src/github.com/opencontainers/runc $RUNC_STATIC
+GO111MODULE=off make GOPATH=$(pwd)/build EXTRA_LDFLAGS="-w -s" BUILDTAGS="$RUNC_TAGS" -C ./build/src/github.com/opencontainers/runc $RUNC_STATIC
 cp -f ./build/src/github.com/opencontainers/runc/runc ./bin/runc
 
 echo Building containerd-shim-runc-v2
 rm -f ./vendor/github.com/containerd/containerd/bin/containerd-shim-runc-v2
-make -C ./vendor/github.com/containerd/containerd bin/containerd-shim-runc-v2
+GO111MODULE=off make -C ./vendor/github.com/containerd/containerd bin/containerd-shim-runc-v2
 cp -f ./vendor/github.com/containerd/containerd/bin/containerd-shim-runc-v2 ./bin/containerd-shim-runc-v2
