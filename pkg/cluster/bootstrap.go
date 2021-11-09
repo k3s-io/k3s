@@ -174,8 +174,9 @@ func createTmpDataDir(src, dst string) error {
 	return nil
 }
 
-// shouldBootstrapLoad returns true if we need to load ControlRuntimeBootstrap data again.
-// This is controlled by a stamp file on disk that records successful bootstrap using a hash of the join token.
+// shouldBootstrapLoad returns true if we need to load ControlRuntimeBootstrap data again and a second boolean
+// indicating that the server has or has not been initialized, if etcd. This is controlled by a stamp file on
+// disk that records successful bootstrap using a hash of the join token.
 func (c *Cluster) shouldBootstrapLoad(ctx context.Context) (bool, bool, error) {
 	// Non-nil managedDB indicates that the database is either initialized, initializing, or joining
 	if c.managedDB != nil {
@@ -517,7 +518,7 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker,
 			updateDisk = true
 			logrus.Warn("datastore newer than " + path)
 		case res.db:
-			logrus.Fatal(path + " newer than datastore and could cause cluster outage. Remove the file from disk and restart to recreated from datastore.")
+			logrus.Fatal(path + " newer than datastore and could cause cluster outage. Remove the file from disk and restart to be recreated from datastore.")
 		case res.conflict:
 			logrus.Warnf("datastore / disk conflict: %s newer than in the datastore", path)
 		}
