@@ -954,7 +954,7 @@ github.com/rancher/remotedialer
 # github.com/rancher/wharfie v0.3.4
 ## explicit
 github.com/rancher/wharfie/pkg/registries
-# github.com/rancher/wrangler v0.8.5
+# github.com/rancher/wrangler v0.8.8
 ## explicit
 github.com/rancher/wrangler/pkg/apply
 github.com/rancher/wrangler/pkg/apply/injectors
