@@ -62,7 +62,7 @@ func (c *Cluster) Bootstrap(ctx context.Context) error {
 			args := executor.ETCDConfig{
 				DataDir:           tmpDataDir,
 				ForceNewCluster:   true,
-				ListenClientURLs:  "http://127.0.0.1:2379",
+				ListenClientURLs:  "http://127.0.0.1:2399",
 				Logger:            "zap",
 				HeartbeatInterval: 500,
 				ElectionTimeout:   5000,
