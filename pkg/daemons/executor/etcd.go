@@ -1,3 +1,4 @@
+//go:build !no_embedded_executor
 // +build !no_embedded_executor
 
 package executor
@@ -27,6 +28,7 @@ func (e Embedded) ETCD(ctx context.Context, args ETCDConfig) error {
 	if err != nil {
 		return err
 	}
+
 	etcd, err := embed.StartEtcd(cfg)
 	if err != nil {
 		return err
