@@ -207,8 +207,7 @@ func applyPatch(gvk schema.GroupVersionKind, reconciler Reconciler, patcher Patc
 		return false, nil
 	}
 
-	logrus.Debugf("DesiredSet - Patch %s %s/%s for %s -- [%s, %s, %s, %s]", gvk, oldMetadata.GetNamespace(), oldMetadata.GetName(), debugID, patch, original, modified, current)
-
+	logrus.Debugf("DesiredSet - Patch %s %s/%s for %s -- [PATCH:%s, ORIGINAL:%s, MODIFIED:%s, CURRENT:%s]", gvk, oldMetadata.GetNamespace(), oldMetadata.GetName(), debugID, patch, original, modified, current)
 	if reconciler != nil {
 		newObject, err := prepareObjectForCreate(gvk, newObject)
 		if err != nil {

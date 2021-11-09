@@ -822,8 +822,8 @@ github.com/rancher/wharfie v0.3.4 h1:wVqFW1cyRA20zY90Z56VrjG0lWg3oFmf/4ryr5Dkkis
 github.com/rancher/wharfie v0.3.4/go.mod h1:cb8mSczpmw7ItbPF3K1W7crWuJLVdyV49sZZuaY4BS8=
 github.com/rancher/wrangler v0.4.0/go.mod h1:1cR91WLhZgkZ+U4fV9nVuXqKurWbgXcIReU4wnQvTN8=
 github.com/rancher/wrangler v0.8.3/go.mod h1:dKEaHNB4izxmPUtpq1Hvr3z3Oh+9k5pCZyFO9sUhlaY=
-github.com/rancher/wrangler v0.8.5 h1:aHUVvJrOhD6CGrAELWKDpo1MBDC8vKtEQZvjMPnw2cs=
-github.com/rancher/wrangler v0.8.5/go.mod h1:dKEaHNB4izxmPUtpq1Hvr3z3Oh+9k5pCZyFO9sUhlaY=
+github.com/rancher/wrangler v0.8.8 h1:3EEQmfUqZ/UG4hERHhihB+Q2F1s/W4CmfsPmXv17wS8=
+github.com/rancher/wrangler v0.8.8/go.mod h1:dKEaHNB4izxmPUtpq1Hvr3z3Oh+9k5pCZyFO9sUhlaY=
 github.com/remyoudompheng/bigfft v0.0.0-20170806203942-52369c62f446/go.mod h1:uYEyJGbgTkfkS4+E/PavXkNJcbFIpEtjt2B0KDQ5+9M=
 github.com/robfig/cron v1.1.0 h1:jk4/Hud3TTdcrJgUOBgsqrZBarcxl6ADIjSC2iniwLY=
 github.com/robfig/cron v1.1.0/go.mod h1:JGuDeoQd7Z6yL4zQhZ3OPEVHB7fL6Ka6skscFHfmt2k=

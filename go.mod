@@ -108,7 +108,7 @@ require (
 	github.com/rancher/lasso v0.0.0-20210616224652-fc3ebd901c08
 	github.com/rancher/remotedialer v0.2.0
 	github.com/rancher/wharfie v0.3.4
-	github.com/rancher/wrangler v0.8.5
+	github.com/rancher/wrangler v0.8.8
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/rootless-containers/rootlesskit v0.14.0
 	github.com/sirupsen/logrus v1.8.1
