@@ -94,7 +94,7 @@ func (c *Cluster) Bootstrap(ctx context.Context) error {
 			}
 
 			ec := endpoint.ETCDConfig{
-				Endpoints:   []string{"http://127.0.0.1:2379"},
+				Endpoints:   []string{"http://127.0.0.1:2399"},
 				LeaderElect: false,
 			}
 
