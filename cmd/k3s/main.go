@@ -9,10 +9,11 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/rancher/k3s/pkg/static"
+
 	"github.com/pkg/errors"
 	"github.com/rancher/k3s/pkg/cli/cmds"
 	"github.com/rancher/k3s/pkg/configfilearg"
-	"github.com/rancher/k3s/pkg/data"
 	"github.com/rancher/k3s/pkg/datadir"
 	"github.com/rancher/k3s/pkg/dataverify"
 	"github.com/rancher/k3s/pkg/flock"
@@ -157,7 +158,7 @@ func stageAndRun(dataDir, cmd string, args []string) error {
 // getAssetAndDir returns the name of the bindata asset, along with a directory path
 // derived from the data-dir and bindata asset name.
 func getAssetAndDir(dataDir string) (string, string) {
-	asset := data.AssetNames()[0]
+	asset := static.AssetNames()[0]
 	dir := filepath.Join(dataDir, "data", strings.SplitN(filepath.Base(asset), ".", 2)[0])
 	return asset, dir
 }
@@ -194,7 +195,7 @@ func extract(dataDir string) (string, error) {
 
 	logrus.Infof("Preparing data dir %s", dir)
 
-	content, err := data.Asset(asset)
+	content, err := static.Asset(asset)
 	if err != nil {
 		return "", err
 	}

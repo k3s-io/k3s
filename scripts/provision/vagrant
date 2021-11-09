@@ -30,7 +30,6 @@ fi
 # --- Setup basic env
 cat <<EOF >/etc/profile.d/env.sh
 export ARCH=amd64
-export GO111MODULE=off
 export GOPATH=$GOPATH
 export PATH=/usr/local/bin:$PATH:/usr/local/go/bin:$GOPATH/bin
 export HOME=$HOME && cd
