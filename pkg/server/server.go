@@ -173,11 +173,9 @@ func runControllers(ctx context.Context, wg *sync.WaitGroup, config *Config) err
 		}
 	}
 
-	go setControlPlaneRoleLabel(ctx, sc.Core.Core().V1().Node(), config)
+	go setNodeLabelsAndAnnotations(ctx, sc.Core.Core().V1().Node(), config)
 
 	go setClusterDNSConfig(ctx, config, sc.Core.Core().V1().ConfigMap())
-
-	go setEncryptionHashAnnotation(ctx, sc.Core.Core().V1().Node(), controlConfig)
 
 	if controlConfig.NoLeaderElect {
 		go func() {
@@ -496,7 +494,7 @@ func isSymlink(config string) bool {
 	return false
 }
 
-func setControlPlaneRoleLabel(ctx context.Context, nodes v1.NodeClient, config *Config) error {
+func setNodeLabelsAndAnnotations(ctx context.Context, nodes v1.NodeClient, config *Config) error {
 	if config.DisableAgent || config.ControlConfig.DisableAPIServer {
 		return nil
 	}
@@ -521,18 +519,23 @@ func setControlPlaneRoleLabel(ctx context.Context, nodes v1.NodeClient, config *
 				etcdRoleLabelExists = true
 			}
 		}
-		if v, ok := node.Labels[ControlPlaneRoleLabelKey]; ok && v == "true" && !etcdRoleLabelExists {
-			break
-		}
 		if node.Labels == nil {
 			node.Labels = make(map[string]string)
 		}
-		node.Labels[ControlPlaneRoleLabelKey] = "true"
-		node.Labels[MasterRoleLabelKey] = "true"
+		v, ok := node.Labels[ControlPlaneRoleLabelKey]
+		if !ok || v != "true" || etcdRoleLabelExists {
+			node.Labels[ControlPlaneRoleLabelKey] = "true"
+			node.Labels[MasterRoleLabelKey] = "true"
+		}
+
+		if err = setEncryptionHashAnnotation(node, &config.ControlConfig); err != nil {
+			logrus.Infof("Unable to set encryption hash annotation %s", err.Error())
+			break
+		}
 
 		_, err = nodes.Update(node)
 		if err == nil {
-			logrus.Infof("Control-plane role label has been set successfully on node: %s", nodeName)
+			logrus.Infof("Labels and annotations have been set successfully on node: %s", nodeName)
 			break
 		}
 		select {
@@ -584,7 +587,7 @@ func setClusterDNSConfig(ctx context.Context, controlConfig *Config, configMap v
 	return nil
 }
 
-func setEncryptionHashAnnotation(ctx context.Context, nodes v1.NodeClient, controlConfig *config.Control) error {
+func setEncryptionHashAnnotation(node *corev1.Node, controlConfig *config.Control) error {
 	if !controlConfig.EncryptSecrets {
 		return nil
 	}
@@ -593,35 +596,6 @@ func setEncryptionHashAnnotation(ctx context.Context, nodes v1.NodeClient, contr
 		return err
 	}
 	encryptionConfigHash := sha256.Sum256(curEncryptionByte)
-	for {
-		nodeName := os.Getenv("NODE_NAME")
-		if nodeName == "" {
-			logrus.Info("Waiting for control-plane node agent startup")
-			time.Sleep(1 * time.Second)
-			continue
-		}
-		node, err := nodes.Get(nodeName, metav1.GetOptions{})
-		if err != nil {
-			logrus.Infof("Waiting for control-plane node %s startup: %v", nodeName, err)
-			time.Sleep(1 * time.Second)
-			continue
-		}
-
-		if node.Annotations == nil {
-			node.Annotations = make(map[string]string)
-		}
-		node.Annotations[encryptionHashAnnotation] = hex.EncodeToString(encryptionConfigHash[:])
-
-		_, err = nodes.Update(node)
-		if err == nil {
-			logrus.Infof("encryption hash annotation set successfully on node: %s\n", nodeName)
-			break
-		}
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-time.After(time.Second):
-		}
-	}
+	node.Annotations[encryptionHashAnnotation] = hex.EncodeToString(encryptionConfigHash[:])
 	return nil
 }
