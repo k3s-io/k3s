@@ -29,7 +29,7 @@ import (
 // Bootstrap attempts to load a managed database driver, if one has been initialized or should be created/joined.
 // It then checks to see if the cluster needs to load bootstrap data, and if so, loads data into the
 // ControlRuntimeBoostrap struct, either via HTTP or from the datastore.
-func (c *Cluster) Bootstrap(ctx context.Context) error {
+func (c *Cluster) Bootstrap(ctx context.Context, snapshot bool) error {
 	if err := c.assignManagedDriver(ctx); err != nil {
 		return err
 	}
@@ -41,65 +41,67 @@ func (c *Cluster) Bootstrap(ctx context.Context) error {
 	c.shouldBootstrap = shouldBootstrap
 
 	if c.managedDB != nil {
-		// In the case of etcd, if the database has been initialized, it doesn't
-		// need to be bootstrapped however we still need to check the database
-		// and reconcile the bootstrap data. Below we're starting a temporary
-		// instance of etcd in the event that etcd certificates are unavailable,
-		// reading the data, and comparing that to the data on disk, all the while
-		// starting normal etcd.
-		isHTTP := c.config.JoinURL != "" && c.config.Token != ""
-		if isInitialized && !isHTTP {
-			tmpDataDir := filepath.Join(c.config.DataDir, "db", "tmp-etcd")
-			os.RemoveAll(tmpDataDir)
-			if err := os.Mkdir(tmpDataDir, 0700); err != nil {
-				return err
-			}
-			etcdDataDir := etcd.DBDir(c.config)
-			if err := createTmpDataDir(etcdDataDir, tmpDataDir); err != nil {
-				return err
-			}
-			defer func() {
-				if err := os.RemoveAll(tmpDataDir); err != nil {
-					logrus.Warn("failed to remove etcd temp dir", err)
+		if !snapshot {
+			// In the case of etcd, if the database has been initialized, it doesn't
+			// need to be bootstrapped however we still need to check the database
+			// and reconcile the bootstrap data. Below we're starting a temporary
+			// instance of etcd in the event that etcd certificates are unavailable,
+			// reading the data, and comparing that to the data on disk, all the while
+			// starting normal etcd.
+			isHTTP := c.config.JoinURL != "" && c.config.Token != ""
+			if isInitialized && !isHTTP {
+				tmpDataDir := filepath.Join(c.config.DataDir, "db", "tmp-etcd")
+				os.RemoveAll(tmpDataDir)
+				if err := os.Mkdir(tmpDataDir, 0700); err != nil {
+					return err
 				}
-			}()
+				etcdDataDir := etcd.DBDir(c.config)
+				if err := createTmpDataDir(etcdDataDir, tmpDataDir); err != nil {
+					return err
+				}
+				defer func() {
+					if err := os.RemoveAll(tmpDataDir); err != nil {
+						logrus.Warn("failed to remove etcd temp dir", err)
+					}
+				}()
 
-			args := executor.ETCDConfig{
-				DataDir:           tmpDataDir,
-				ForceNewCluster:   true,
-				ListenClientURLs:  "http://127.0.0.1:2399",
-				Logger:            "zap",
-				HeartbeatInterval: 500,
-				ElectionTimeout:   5000,
-				LogOutputs:        []string{"stderr"},
-			}
-			configFile, err := args.ToConfigFile()
-			if err != nil {
-				return err
-			}
-			cfg, err := embed.ConfigFromFile(configFile)
-			if err != nil {
-				return err
-			}
+				args := executor.ETCDConfig{
+					DataDir:           tmpDataDir,
+					ForceNewCluster:   true,
+					ListenClientURLs:  "http://127.0.0.1:2399",
+					Logger:            "zap",
+					HeartbeatInterval: 500,
+					ElectionTimeout:   5000,
+					LogOutputs:        []string{"stderr"},
+				}
+				configFile, err := args.ToConfigFile()
+				if err != nil {
+					return err
+				}
+				cfg, err := embed.ConfigFromFile(configFile)
+				if err != nil {
+					return err
+				}
 
-			etcd, err := embed.StartEtcd(cfg)
-			if err != nil {
-				return err
-			}
-			defer etcd.Close()
+				etcd, err := embed.StartEtcd(cfg)
+				if err != nil {
+					return err
+				}
+				defer etcd.Close()
 
-			data, err := c.retrieveInitializedDBdata(ctx)
-			if err != nil {
-				return err
-			}
+				data, err := c.retrieveInitializedDBdata(ctx)
+				if err != nil {
+					return err
+				}
 
-			ec := endpoint.ETCDConfig{
-				Endpoints:   []string{"http://127.0.0.1:2399"},
-				LeaderElect: false,
-			}
+				ec := endpoint.ETCDConfig{
+					Endpoints:   []string{"http://127.0.0.1:2399"},
+					LeaderElect: false,
+				}
 
-			if err := c.ReconcileBootstrapData(ctx, bytes.NewReader(data.Bytes()), &c.config.Runtime.ControlRuntimeBootstrap, false, &ec); err != nil {
-				logrus.Fatal(err)
+				if err := c.ReconcileBootstrapData(ctx, bytes.NewReader(data.Bytes()), &c.config.Runtime.ControlRuntimeBootstrap, false, &ec); err != nil {
+					logrus.Fatal(err)
+				}
 			}
 		}
 	}
