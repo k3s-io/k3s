@@ -23,7 +23,7 @@ import (
 	"github.com/rancher/k3s/pkg/etcd"
 	"github.com/rancher/k3s/pkg/version"
 	"github.com/sirupsen/logrus"
-	"go.etcd.io/etcd/server/v3/embed"
+	"go.etcd.io/etcd/embed"
 )
 
 // Bootstrap attempts to load a managed database driver, if one has been initialized or should be created/joined.
