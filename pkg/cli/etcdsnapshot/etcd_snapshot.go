@@ -95,7 +95,7 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 
 	cluster := cluster.New(&serverConfig.ControlConfig)
 
-	if err := cluster.Bootstrap(ctx); err != nil {
+	if err := cluster.Bootstrap(ctx, true); err != nil {
 		return err
 	}
 
