@@ -79,15 +79,15 @@ func (c *Cluster) Start(ctx context.Context) (<-chan struct{}, error) {
 		return nil, err
 	}
 
+	if err := c.startStorage(ctx); err != nil {
+		return nil, err
+	}
+
 	// if necessary, store bootstrap data to datastore
 	if c.saveBootstrap {
 		if err := c.save(ctx, false); err != nil {
 			return nil, err
 		}
-	}
-
-	if err := c.startStorage(ctx); err != nil {
-		return nil, err
 	}
 
 	// at this point, if etcd is in use, it's bootstrapping is complete
