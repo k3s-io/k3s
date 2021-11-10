@@ -16,9 +16,15 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var (
-	defaultClientTimeout = 10 * time.Second
+const (
+	tokenPrefix  = "K10"
+	tokenFormat  = "%s%s::%s:%s"
+	caHashLength = sha256.Size * 2
 
+	defaultClientTimeout = 10 * time.Second
+)
+
+var (
 	defaultClient = &http.Client{
 		Timeout: defaultClientTimeout,
 	}
@@ -32,12 +38,6 @@ var (
 	}
 )
 
-const (
-	tokenPrefix  = "K10"
-	tokenFormat  = "%s%s::%s:%s"
-	caHashLength = sha256.Size * 2
-)
-
 type OverrideURLCallback func(config []byte) (*url.URL, error)
 
 type Info struct {
@@ -49,8 +49,8 @@ type Info struct {
 }
 
 // String returns the token data, templated according to the token format
-func (info *Info) String() string {
-	return fmt.Sprintf(tokenFormat, tokenPrefix, hashCA(info.CACerts), info.Username, info.Password)
+func (i *Info) String() string {
+	return fmt.Sprintf(tokenFormat, tokenPrefix, hashCA(i.CACerts), i.Username, i.Password)
 }
 
 // ParseAndValidateToken parses a token, downloads and validates the server's CA bundle,
@@ -70,7 +70,7 @@ func ParseAndValidateToken(server string, token string) (*Info, error) {
 
 // ParseAndValidateToken parses a token with user override, downloads and
 // validates the server's CA bundle, and validates it according to the caHash from the token if set.
-func ParseAndValidateTokenForUser(server string, token string, username string) (*Info, error) {
+func ParseAndValidateTokenForUser(server, token, username string) (*Info, error) {
 	info, err := parseToken(token)
 	if err != nil {
 		return nil, err
@@ -86,11 +86,11 @@ func ParseAndValidateTokenForUser(server string, token string, username string) 
 }
 
 // setAndValidateServer updates the remote server's cert info, and validates it against the provided hash
-func (info *Info) setAndValidateServer(server string) error {
-	if err := info.setServer(server); err != nil {
+func (i *Info) setAndValidateServer(server string) error {
+	if err := i.setServer(server); err != nil {
 		return err
 	}
-	return info.validateCAHash()
+	return i.validateCAHash()
 }
 
 // validateCACerts returns a boolean indicating whether or not a CA bundle matches the provided hash,
@@ -118,7 +118,7 @@ func ParseUsernamePassword(token string) (string, string, bool) {
 
 // parseToken parses a token into an Info struct
 func parseToken(token string) (*Info, error) {
-	var info = &Info{}
+	var info Info
 
 	if len(token) == 0 {
 		return nil, errors.New("token must not be empty")
@@ -150,7 +150,7 @@ func parseToken(token string) (*Info, error) {
 	info.Username = parts[0]
 	info.Password = parts[1]
 
-	return info, nil
+	return &info, nil
 }
 
 // GetHTTPClient returns a http client that validates TLS server certificates using the provided CA bundle.
@@ -177,25 +177,25 @@ func GetHTTPClient(cacerts []byte) *http.Client {
 }
 
 // Get makes a request to a subpath of info's BaseURL
-func (info *Info) Get(path string) ([]byte, error) {
-	u, err := url.Parse(info.BaseURL)
+func (i *Info) Get(path string) ([]byte, error) {
+	u, err := url.Parse(i.BaseURL)
 	if err != nil {
 		return nil, err
 	}
 	u.Path = path
-	return get(u.String(), GetHTTPClient(info.CACerts), info.Username, info.Password)
+	return get(u.String(), GetHTTPClient(i.CACerts), i.Username, i.Password)
 }
 
 // setServer sets the BaseURL and CACerts fields of the Info by connecting to the server
 // and storing the CA bundle.
-func (info *Info) setServer(server string) error {
+func (i *Info) setServer(server string) error {
 	url, err := url.Parse(server)
 	if err != nil {
 		return errors.Wrapf(err, "Invalid server url, failed to parse: %s", server)
 	}
 
 	if url.Scheme != "https" {
-		return fmt.Errorf("only https:// URLs are supported, invalid scheme: %s", server)
+		return errors.New("only https:// URLs are supported, invalid scheme: " + server)
 	}
 
 	for strings.HasSuffix(url.Path, "/") {
@@ -207,25 +207,25 @@ func (info *Info) setServer(server string) error {
 		return err
 	}
 
-	info.BaseURL = url.String()
-	info.CACerts = cacerts
+	i.BaseURL = url.String()
+	i.CACerts = cacerts
 	return nil
 }
 
 // ValidateCAHash validates that info's caHash matches the CACerts hash.
-func (info *Info) validateCAHash() error {
-	if len(info.caHash) > 0 && len(info.CACerts) == 0 {
+func (i *Info) validateCAHash() error {
+	if len(i.caHash) > 0 && len(i.CACerts) == 0 {
 		// Warn if the user provided a CA hash but we're not going to validate because it's already trusted
 		logrus.Warn("Cluster CA certificate is trusted by the host CA bundle. " +
 			"Token CA hash will not be validated.")
-	} else if len(info.caHash) == 0 && len(info.CACerts) > 0 {
+	} else if len(i.caHash) == 0 && len(i.CACerts) > 0 {
 		// Warn if the CA is self-signed but the user didn't provide a hash to validate it against
 		logrus.Warn("Cluster CA certificate is not trusted by the host CA bundle, but the token does not include a CA hash. " +
 			"Use the full token from the server's node-token file to enable Cluster CA validation.")
-	} else if len(info.CACerts) > 0 && len(info.caHash) > 0 {
+	} else if len(i.CACerts) > 0 && len(i.caHash) > 0 {
 		// only verify CA hash if the server cert is not trusted by the OS CA bundle
-		if ok, serverHash := validateCACerts(info.CACerts, info.caHash); !ok {
-			return fmt.Errorf("token CA hash does not match the Cluster CA certificate hash: %s != %s", info.caHash, serverHash)
+		if ok, serverHash := validateCACerts(i.CACerts, i.caHash); !ok {
+			return fmt.Errorf("token CA hash does not match the Cluster CA certificate hash: %s != %s", i.caHash, serverHash)
 		}
 	}
 	return nil
@@ -288,18 +288,18 @@ func get(u string, client *http.Client, username, password string) ([]byte, erro
 	return ioutil.ReadAll(resp.Body)
 }
 
-func FormatToken(token string, certFile string) (string, error) {
+func FormatToken(token, certFile string) (string, error) {
 	if len(token) == 0 {
 		return token, nil
 	}
 
 	certHash := ""
 	if len(certFile) > 0 {
-		bytes, err := ioutil.ReadFile(certFile)
+		b, err := ioutil.ReadFile(certFile)
 		if err != nil {
 			return "", nil
 		}
-		digest := sha256.Sum256(bytes)
+		digest := sha256.Sum256(b)
 		certHash = tokenPrefix + hex.EncodeToString(digest[:]) + "::"
 	}
 	return certHash + token, nil
