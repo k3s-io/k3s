@@ -65,6 +65,7 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 		return errors.Wrap(err, "failed to validate kube-proxy conntrack configuration")
 	}
 	syssetup.Configure(enableIPv6, conntrackConfig)
+	nodeConfig.AgentConfig.EnableIPv6 = enableIPv6
 
 	if err := setupCriCtlConfig(cfg, nodeConfig); err != nil {
 		return err
