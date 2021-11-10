@@ -11,6 +11,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/rancher/k3s/pkg/daemons/config"
+	"github.com/sirupsen/logrus"
 )
 
 func Handler(bootstrap *config.ControlRuntimeBootstrap) http.Handler {
@@ -35,7 +36,8 @@ func ReadFromDisk(w io.Writer, bootstrap *config.ControlRuntimeBootstrap) error 
 		}
 		data, err := ioutil.ReadFile(path)
 		if err != nil {
-			return errors.Wrapf(err, "failed to read %s", path)
+			logrus.Warnf("failed to read %s", path)
+			continue
 		}
 
 		info, err := os.Stat(path)
