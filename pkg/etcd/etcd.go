@@ -605,7 +605,7 @@ func (e *ETCD) cluster(ctx context.Context, forceNew bool, options executor.Init
 		HeartbeatInterval: 500,
 		Logger:            "zap",
 		LogOutputs:        []string{"stderr"},
-	})
+	}, e.config.ExtraEtcdArgs)
 }
 
 // RemovePeer removes a peer from the cluster. The peer name and IP address must both match.

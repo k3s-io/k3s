@@ -18,8 +18,8 @@ func (e Embedded) CurrentETCDOptions() (InitialOptions, error) {
 	return InitialOptions{}, nil
 }
 
-func (e Embedded) ETCD(args ETCDConfig) error {
-	configFile, err := args.ToConfigFile()
+func (e Embedded) ETCD(args ETCDConfig, extraArgs []string) error {
+	configFile, err := args.ToConfigFile(extraArgs)
 	if err != nil {
 		return err
 	}
