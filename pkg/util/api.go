@@ -16,6 +16,12 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 )
 
+// This sets a default duration to wait for the apiserver to become ready. This is primarily used to
+// block startup of agent supervisor controllers until the apiserver is ready to serve requests, in the
+// same way that the apiReady channel is used in the server packages, so it can be fairly long. It must
+// be at least long enough for downstream projects like RKE2 to start the apiserver in the background.
+const DefaultAPIServerReadyTimeout = 15 * time.Minute
+
 func GetAddresses(endpoint *v1.Endpoints) []string {
 	serverAddresses := []string{}
 	if endpoint == nil {
@@ -37,14 +43,15 @@ func GetAddresses(endpoint *v1.Endpoints) []string {
 }
 
 // WaitForAPIServerReady waits for the API Server's /readyz endpoint to report "ok" with timeout.
-// This is cribbed from the Kubernetes controller-manager app, but checks the readyz endpoint instead of the deprecated healthz endpoint.
-func WaitForAPIServerReady(client clientset.Interface, timeout time.Duration) error {
+// This is modified from WaitForAPIServer from the Kubernetes controller-manager app, but checks the
+// readyz endpoint instead of the deprecated healthz endpoint, and supports context.
+func WaitForAPIServerReady(ctx context.Context, client clientset.Interface, timeout time.Duration) error {
 	var lastErr error
 	restClient := client.Discovery().RESTClient()
 
-	err := wait.PollImmediate(time.Second, timeout, func() (bool, error) {
+	err := wait.PollImmediateWithContext(ctx, time.Second, timeout, func(ctx context.Context) (bool, error) {
 		healthStatus := 0
-		result := restClient.Get().AbsPath("/readyz").Do(context.TODO()).StatusCode(&healthStatus)
+		result := restClient.Get().AbsPath("/readyz").Do(ctx).StatusCode(&healthStatus)
 		if rerr := result.Error(); rerr != nil {
 			lastErr = errors.Wrap(rerr, "failed to get apiserver /readyz status")
 			return false, nil
