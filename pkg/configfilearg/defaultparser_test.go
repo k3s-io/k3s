@@ -49,6 +49,19 @@ func Test_UnitMustParse(t *testing.T) {
 			config: "./testdata/defaultdata.yaml",
 			want:   []string{"k3s", "etcd-snapshot", "save", "--etcd-s3=true", "--etcd-s3-bucket=my-backup"},
 		},
+		{
+			name: "Agent with known flags",
+			args: []string{"k3s", "agent", "--token=12345"},
+
+			want: []string{"k3s", "agent", "--token=12345"},
+		},
+		{
+			name:   "Agent with config with known and unknown flags, flags are not skipped",
+			args:   []string{"k3s", "agent"},
+			config: "./testdata/defaultdata.yaml",
+			want: []string{"k3s", "agent", "--token=12345", "--node-label=DEAFBEEF",
+				"--etcd-s3=true", "--etcd-s3-bucket=my-backup", "--notaflag=true"},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
