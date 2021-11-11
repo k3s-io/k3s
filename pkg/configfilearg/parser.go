@@ -48,7 +48,10 @@ func (p *Parser) Parse(args []string) ([]string, error) {
 			return nil, err
 		}
 		if len(args) > 1 {
-			values = p.stripInvalidFlags(args[1], values)
+			values, err = p.stripInvalidFlags(args[1], values)
+			if err != nil {
+				return nil, err
+			}
 		}
 		return append(prefix, append(values, suffix...)...), nil
 	}
@@ -56,7 +59,7 @@ func (p *Parser) Parse(args []string) ([]string, error) {
 	return args, nil
 }
 
-func (p *Parser) stripInvalidFlags(command string, args []string) []string {
+func (p *Parser) stripInvalidFlags(command string, args []string) ([]string, error) {
 	var result []string
 	var cmdFlags []cli.Flag
 	for k, v := range p.ValidFlags {
@@ -65,9 +68,9 @@ func (p *Parser) stripInvalidFlags(command string, args []string) []string {
 		}
 	}
 	if len(cmdFlags) == 0 {
-		return args
+		return args, nil
 	}
-	validFlags := make(map[string]bool)
+	validFlags := make(map[string]bool, len(cmdFlags))
 	for _, f := range cmdFlags {
 		//split flags with aliases into 2 entries
 		for _, s := range strings.Split(f.GetName(), ",") {
@@ -77,7 +80,7 @@ func (p *Parser) stripInvalidFlags(command string, args []string) []string {
 
 	re, err := regexp.Compile("^-+(.+)=")
 	if err != nil {
-		return args
+		return args, err
 	}
 	for _, arg := range args {
 		mArg := arg
@@ -90,7 +93,7 @@ func (p *Parser) stripInvalidFlags(command string, args []string) []string {
 			logrus.Warnf("Unknown flag %s found in config.yaml, skipping\n", arg)
 		}
 	}
-	return result
+	return result, nil
 }
 
 func (p *Parser) FindString(args []string, target string) (string, error) {
