@@ -403,7 +403,7 @@ func waitForAPIServerInBackground(ctx context.Context, runtime *config.ControlRu
 			select {
 			case <-ctx.Done():
 				return
-			case err := <-promise(func() error { return util.WaitForAPIServerReady(k8sClient, 30*time.Second) }):
+			case err := <-promise(func() error { return util.WaitForAPIServerReady(ctx, k8sClient, 30*time.Second) }):
 				if err != nil {
 					logrus.Infof("Waiting for API server to become available")
 					continue
