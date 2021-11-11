@@ -1,62 +1,63 @@
 package integration
 
 import (
-"os"
-"strings"
-"testing"
+	"os/exec"
+	"strings"
+	"testing"
 
-. "github.com/onsi/ginkgo"
-"github.com/onsi/ginkgo/reporters"
-. "github.com/onsi/gomega"
-testutil "github.com/rancher/k3s/tests/util"
+	. "github.com/onsi/ginkgo"
+	"github.com/onsi/ginkgo/reporters"
+	. "github.com/onsi/gomega"
+	testutil "github.com/rancher/k3s/tests/util"
 )
 
-var customEtcdServer *testutil.K3sServer
-var customEtcdServerArgs = []string{
+var customEtcdArgsServer *testutil.K3sServer
+var customEtcdArgsServerArgs = []string{
 	"--cluster-init",
 	"--etcd-arg quota-backend-bytes=858993459",
 }
 var _ = BeforeSuite(func() {
 	if !testutil.IsExistingServer() {
 		var err error
-		customEtcdServer, err = testutil.K3sStartServer(customEtcdServerArgs...)
+		customEtcdArgsServer, err = testutil.K3sStartServer(customEtcdArgsServerArgs...)
 		Expect(err).ToNot(HaveOccurred())
 	}
 })
 
-var _ = Describe("dual stack", func() {
+var _ = Describe("custom etcd args", func() {
 	BeforeEach(func() {
-		if testutil.IsExistingServer() && !testutil.ServerArgsPresent(dualStackServerArgs) {
-			Skip("Test needs k3s server with: " + strings.Join(dualStackServerArgs, " "))
-		} else if os.Getenv("CI") == "true" {
-			Skip("Github environment does not support IPv6")
+		if testutil.IsExistingServer() && !testutil.ServerArgsPresent(customEtcdArgsServerArgs) {
+			Skip("Test needs k3s server with: " + strings.Join(customEtcdArgsServerArgs, " "))
 		}
 	})
-	When("a ipv4 and ipv6 cidr is present", func() {
-		It("starts up with no problems", func() {
+	When("a custom quota backend bytes is specified", func() {
+		It("renders a config file with the correct entry", func() {
 			Eventually(func() (string, error) {
-				return testutil.K3sCmd("kubectl", "get", "pods", "-A")
-			}, "180s", "5s").Should(MatchRegexp("kube-system.+traefik.+1\\/1.+Running"))
-		})
-		It("creates pods with two IPs", func() {
-			podname, err := testutil.K3sCmd("kubectl", "get", "pods", "-n", "kube-system", "-o", "jsonpath={.items[?(@.metadata.labels.app\\.kubernetes\\.io/name==\"traefik\")].metadata.name}")
-			Expect(err).NotTo(HaveOccurred())
-			Eventually(func() (string, error) {
-				return testutil.K3sCmd("kubectl", "exec", podname, "-n", "kube-system", "--", "ip", "a")
-			}, "5s", "1s").Should(ContainSubstring("2001:cafe:42:"))
+				var cmd *exec.Cmd
+				grepCmd := "grep"
+				grepCmdArgs := []string{"quota-backend-bytes", "/var/lib/rancher/k3s/server/db/etcd/config"}
+				if testutil.IsRoot() {
+					cmd = exec.Command(grepCmd, grepCmdArgs...)
+				} else {
+					fullGrepCmd := append([]string{grepCmd}, grepCmdArgs...)
+					cmd = exec.Command("sudo", fullGrepCmd...)
+				}
+				byteOut, err := cmd.CombinedOutput()
+				return string(byteOut), err
+			}, "45s", "5s").Should(MatchRegexp(".*quota-backend-bytes: 858993459.*"))
 		})
 	})
 })
 
 var _ = AfterSuite(func() {
-	if !testutil.IsExistingServer() && os.Getenv("CI") != "true" {
-		Expect(testutil.K3sKillServer(dualStackServer)).To(Succeed())
+	if !testutil.IsExistingServer() {
+		Expect(testutil.K3sKillServer(customEtcdArgsServer)).To(Succeed())
 	}
 })
 
-func Test_IntegrationDualStack(t *testing.T) {
+func Test_IntegrationCustomEtcdArgs(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecsWithDefaultAndCustomReporters(t, "Dual-Stack Suite", []Reporter{
+	RunSpecsWithDefaultAndCustomReporters(t, "Custom etcd Arguments", []Reporter{
 		reporters.NewJUnitReporter("/tmp/results/junit-ls.xml"),
 	})
 }
