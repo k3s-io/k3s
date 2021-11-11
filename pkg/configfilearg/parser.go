@@ -57,7 +57,6 @@ func (p *Parser) Parse(args []string) ([]string, error) {
 }
 
 func (p *Parser) stripInvalidFlags(command string, args []string) []string {
-
 	var result []string
 	var cmdFlags []cli.Flag
 	for k, v := range p.ValidFlags {

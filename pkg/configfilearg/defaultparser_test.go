@@ -25,7 +25,7 @@ func Test_UnitMustParse(t *testing.T) {
 			want: []string{"k3s", "server", "-t 12345", "--write-kubeconfig-mode 644"},
 		},
 		{
-			name:   "Server with known flags and config with known and unkown flags",
+			name:   "Server with known flags and config with known and unknown flags",
 			args:   []string{"k3s", "server", "--write-kubeconfig-mode 644"},
 			config: "./testdata/defaultdata.yaml",
 			want: []string{"k3s", "server", "--token=12345", "--node-label=DEAFBEEF",
@@ -44,7 +44,7 @@ func Test_UnitMustParse(t *testing.T) {
 			want: []string{"k3s", "etcd-snapshot", "save", "--s3=true"},
 		},
 		{
-			name:   "Etcd-snapshot with config with known and unkown flags",
+			name:   "Etcd-snapshot with config with known and unknown flags",
 			args:   []string{"k3s", "etcd-snapshot", "save"},
 			config: "./testdata/defaultdata.yaml",
 			want:   []string{"k3s", "etcd-snapshot", "save", "--etcd-s3=true", "--etcd-s3-bucket=my-backup"},
