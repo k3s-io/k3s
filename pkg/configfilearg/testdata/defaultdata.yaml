@@ -1,0 +1,5 @@
+token: 12345
+node-label: DEAFBEEF
+etcd-s3: true
+etcd-s3-bucket: my-backup
+notaflag : true
