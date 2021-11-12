@@ -16,13 +16,7 @@ var defaultParser = &Parser{
 }
 
 func MustParse(args []string) []string {
-	parser := &Parser{
-		After:         []string{"server", "agent", "etcd-snapshot"},
-		FlagNames:     []string{"--config", "-c"},
-		EnvName:       version.ProgramUpper + "_CONFIG_FILE",
-		DefaultConfig: "/etc/rancher/" + version.Program + "/config.yaml",
-	}
-	result, err := parser.Parse(args)
+	result, err := defaultParser.Parse(args)
 	if err != nil {
 		logrus.Fatal(err)
 	}
