@@ -1,5 +1,0 @@
-k3s
-k3s.service
-k3s-rootless.service
-util/
-.vagrant/

@@ -4,7 +4,7 @@ Go testing in K3s comes in 3 forms: Unit, Integration, and End-to-End (E2E). Thi
 document will explain *when* each test should be written and *how* each test should be
 generated, formatted, and run.
 
-Note: all shell commands given are relateive to the root k3s repo directory.
+Note: all shell commands given are relative to the root k3s repo directory.
 ___
 
 ## Unit Tests
@@ -92,6 +92,80 @@ sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml sonobuoy status
 sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml sonobuoy retrieve
 sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml sonobuoy results <TAR_FILE_FROM_RETRIEVE>
 ```
+
+___
+
+## Smoke Tests
+
+Smoke tests are defined under the [tests/vagrant](../tests/vagrant) path at the root of this repository.
+The sub-directories therein contain fixtures for running simple clusters to assert correct behavior for "happy path"
+scenarios. These fixtures are mostly self-contained Vagrantfiles describing single-node installations that are
+easily spun up with Vagrant for the `libvirt` and `virtualbox` providers:
+
+- [Install Script](../tests/vagrant/install) :arrow_right: on proposed changes to [install.sh](../install.sh) 
+  - [CentOS 7](../tests/vagrant/install/centos-7) (stand-in for RHEL 7)
+  - [CentOS 8](../tests/vagrant/install/centos-8) (stand-in for RHEL 8)
+  - [Leap 15.3](../tests/vagrant/install/opensuse-microos) (stand-in for SLES)
+  - [MicroOS](../tests/vagrant/install/opensuse-microos) (stand-in for SLE-Micro)
+  - [Ubuntu 20.04](../tests/vagrant/install/ubuntu-focal) (Focal Fossa)
+- [Control Groups](../tests/vagrant/cgroup) :arrow_right: on any code change
+  - [mode=unified](../tests/vagrant/cgroup/unified) (cgroups v2)
+    - [Fedora 34](../tests/vagrant/cgroup/unified/fedora-34) (rootfull + rootless)
+- [Snapshotter](../tests/vagrant/snapshotter/btrfs/opensuse-leap) :arrow_right: on any code change
+  - [BTRFS](../tests/vagrant/snapshotter/btrfs) ([containerd built-in](https://github.com/containerd/containerd/tree/main/snapshots/btrfs))
+    - [Leap 15.3](../tests/vagrant/snapshotter/btrfs/opensuse-leap)
+
+When adding new installer test(s) please copy the prevalent style for the `Vagrantfile`.
+Ideally, the boxes used for additional assertions will support the default `virtualbox` provider which
+enables them to be used by our Github Actions Workflow(s). See:
+- [cgroup.yaml](../.github/workflows/cgroup.yaml).
+- [install.yaml](../.github/workflows/install.yaml).
+
+### Framework
+
+If you are new to Vagrant, Hashicorp has written some pretty decent introductory tutorials and docs, see:
+- https://learn.hashicorp.com/collections/vagrant/getting-started
+- https://www.vagrantup.com/docs/installation
+
+#### Plugins and Providers
+
+The `libvirt` and `vmware_desktop` providers cannot be used without first [installing the relevant plugins](https://www.vagrantup.com/docs/cli/plugin#plugin-install)
+which are [`vagrant-libvirt`](https://github.com/vagrant-libvirt/vagrant-libvirt) and
+[`vagrant-vmware-desktop`](https://www.vagrantup.com/docs/providers/vmware/installation), respectively.
+Much like the default [`virtualbox` provider](https://www.vagrantup.com/docs/providers/virtualbox) these will do
+nothing useful without also installing the relevant server runtimes and/or client programs.
+
+#### Environment Variables
+
+These can be set on the CLI or exported before invoking Vagrant:
+- `TEST_VM_CPUS` (default :arrow_right: 2)<br/>
+  The number of vCPU for the guest to use.
+- `TEST_VM_MEMORY` (default :arrow_right: 2048)<br/>
+  The number of megabytes of memory for the guest to use.
+- `TEST_VM_BOOT_TIMEOUT` (default :arrow_right: 600)<br/>
+  The time in seconds that Vagrant will wait for the machine to boot and be accessible.
+
+### Running
+
+The **Install Script** tests can be run by changing to the fixture directory and invoking `vagrant up`, e.g.:
+```shell
+cd tests/vagrant/install/centos-8
+vagrant up
+# the following provisioners are optional. the do not run by default but are invoked
+# explicitly by github actions workflow to avoid certain timeout issues on slow runners
+vagrant provision --provision-with=k3s-wait-for-node
+vagrant provision --provision-with=k3s-wait-for-coredns
+vagrant provision --provision-with=k3s-wait-for-local-storage
+vagrant provision --provision-with=k3s-wait-for-metrics-server
+vagrant provision --provision-with=k3s-wait-for-traefik
+vagrant provision --provision-with=k3s-status
+vagrant provision --provision-with=k3s-procps
+```
+
+The **Control Groups** and **Snapshotter** tests require that k3s binary is built at `dist/artifacts/k3s`.
+They are invoked similarly, i.e. `vagrant up`, but with different sets of named shell provisioners.
+Take a look at the individual Vagrantfiles and/or the Github Actions workflows that harness them to get
+an idea of how they can be invoked.
 
 ___
 
