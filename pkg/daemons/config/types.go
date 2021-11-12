@@ -131,6 +131,7 @@ type Control struct {
 	ExtraAPIArgs             []string
 	ExtraControllerArgs      []string
 	ExtraCloudControllerArgs []string
+	ExtraEtcdArgs            []string
 	ExtraSchedulerAPIArgs    []string
 	NoLeaderElect            bool
 	JoinURL                  string
