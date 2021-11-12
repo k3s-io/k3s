@@ -166,17 +166,17 @@ func Test_UnitETCD_Register(t *testing.T) {
 				if err := testutil.GenerateRuntime(cnf); err != nil {
 					return err
 				}
-				if err := os.MkdirAll(etcdDBDir(cnf), 0700); err != nil {
+				if err := os.MkdirAll(DBDir(cnf), 0700); err != nil {
 					return err
 				}
-				tombstoneFile := filepath.Join(etcdDBDir(cnf), "tombstone")
+				tombstoneFile := filepath.Join(DBDir(cnf), "tombstone")
 				if _, err := os.Create(tombstoneFile); err != nil {
 					return err
 				}
 				return nil
 			},
 			teardown: func(cnf *config.Control) error {
-				tombstoneFile := filepath.Join(etcdDBDir(cnf), "tombstone")
+				tombstoneFile := filepath.Join(DBDir(cnf), "tombstone")
 				os.Remove(tombstoneFile)
 				testutil.CleanupDataDir(cnf)
 				return nil
