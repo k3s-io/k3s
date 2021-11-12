@@ -58,7 +58,7 @@ func forkIfLoggingOrReaping() error {
 		args := append([]string{version.Program}, os.Args[1:]...)
 		env := append(os.Environ(), "_K3S_LOG_REEXEC_=true", "NOTIFY_SOCKET=")
 		cmd := &exec.Cmd{
-			Path:   os.Args[0],
+			Path:   "/proc/self/exe",
 			Dir:    pwd,
 			Args:   args,
 			Env:    env,
@@ -66,7 +66,7 @@ func forkIfLoggingOrReaping() error {
 			Stdout: stdout,
 			Stderr: stderr,
 			SysProcAttr: &syscall.SysProcAttr{
-				Setsid: true,
+				Pdeathsig: unix.SIGTERM,
 			},
 		}
 		if err := cmd.Start(); err != nil {

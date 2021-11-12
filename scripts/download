@@ -96,6 +96,12 @@ download_and_package_traefik () {
   echo -e 'global:\n  systemDefaultRegistry: ""' >> ${TRAEFIK_TMP_CHART}/values.yaml
   find ${TRAEFIK_TMP_CHART} -type f | xargs sed -i 's/{{ .Values.image.name }}/{{ template "system_default_registry" .}}&/g'
 
+  # Add dashboard annotations to main chart
+  cat <<EOF >>${TRAEFIK_TMP_CHART}/Chart.yaml
+annotations:
+  fleet.cattle.io/bundle-id: k3s
+EOF
+
   # Move CRDs from main chart to CRD chart
   mkdir -p ${TRAEFIK_TMP_CRD}/templates
   mv ${TRAEFIK_TMP_CHART}/crds/* ${TRAEFIK_TMP_CRD}/templates

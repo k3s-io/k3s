@@ -78,7 +78,9 @@ func Setup(ctx context.Context, config *config.Node, proxy proxy.Proxy) error {
 	// and go from the cluster. We go into a faster but noisier connect loop if the watch fails
 	// following a successful connection.
 	go func() {
-		util.WaitForAPIServerReady(client, 30*time.Second)
+		if err := util.WaitForAPIServerReady(ctx, client, util.DefaultAPIServerReadyTimeout); err != nil {
+			logrus.Warnf("Tunnel endpoint watch failed to wait for apiserver ready: %v", err)
+		}
 	connect:
 		for {
 			time.Sleep(5 * time.Second)
@@ -103,7 +105,7 @@ func Setup(ctx context.Context, config *config.Node, proxy proxy.Proxy) error {
 					}
 					endpoint, ok := ev.Object.(*v1.Endpoints)
 					if !ok {
-						logrus.Errorf("Tunnel could not case event object to endpoint: %v", ev)
+						logrus.Errorf("Tunnel could not convert event object to endpoint: %v", ev)
 						continue watching
 					}
 

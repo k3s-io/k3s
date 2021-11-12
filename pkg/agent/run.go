@@ -31,11 +31,13 @@ import (
 	"github.com/rancher/k3s/pkg/rootless"
 	"github.com/rancher/k3s/pkg/util"
 	"github.com/sirupsen/logrus"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
-	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/clientcmd"
 	app2 "k8s.io/kubernetes/cmd/kube-proxy/app"
 	kubeproxyconfig "k8s.io/kubernetes/pkg/proxy/apis/config"
@@ -135,16 +137,18 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 		return err
 	}
 
-	util.WaitForAPIServerReady(coreClient, 30*time.Second)
+	if err := util.WaitForAPIServerReady(ctx, coreClient, util.DefaultAPIServerReadyTimeout); err != nil {
+		return errors.Wrap(err, "failed to wait for apiserver ready")
+	}
+
+	if err := configureNode(ctx, &nodeConfig.AgentConfig, coreClient.CoreV1().Nodes()); err != nil {
+		return err
+	}
 
 	if !nodeConfig.NoFlannel {
 		if err := flannel.Run(ctx, nodeConfig, coreClient.CoreV1().Nodes()); err != nil {
 			return err
 		}
-	}
-
-	if err := configureNode(ctx, &nodeConfig.AgentConfig, coreClient.CoreV1().Nodes()); err != nil {
-		return err
 	}
 
 	if !nodeConfig.AgentConfig.DisableNPC {
@@ -298,17 +302,18 @@ func validateCgroupsV2() error {
 	return nil
 }
 
-func configureNode(ctx context.Context, agentConfig *daemonconfig.Agent, nodes v1.NodeInterface) error {
-	count := 0
-	for {
-		node, err := nodes.Get(ctx, agentConfig.NodeName, metav1.GetOptions{})
-		if err != nil {
-			if count%30 == 0 {
-				logrus.Infof("Waiting for kubelet to be ready on node %s: %v", agentConfig.NodeName, err)
-			}
-			count++
-			time.Sleep(1 * time.Second)
-			continue
+func configureNode(ctx context.Context, agentConfig *daemonconfig.Agent, nodes typedcorev1.NodeInterface) error {
+	fieldSelector := fields.Set{metav1.ObjectNameField: agentConfig.NodeName}.String()
+	watch, err := nodes.Watch(ctx, metav1.ListOptions{FieldSelector: fieldSelector})
+	if err != nil {
+		return err
+	}
+	defer watch.Stop()
+
+	for ev := range watch.ResultChan() {
+		node, ok := ev.Object.(*corev1.Node)
+		if !ok {
+			return fmt.Errorf("could not convert event object to node: %v", ev)
 		}
 
 		updateNode := false
@@ -338,12 +343,7 @@ func configureNode(ctx context.Context, agentConfig *daemonconfig.Agent, nodes v
 		if updateNode {
 			if _, err := nodes.Update(ctx, node, metav1.UpdateOptions{}); err != nil {
 				logrus.Infof("Failed to update node %s: %v", agentConfig.NodeName, err)
-				select {
-				case <-ctx.Done():
-					return ctx.Err()
-				case <-time.After(time.Second):
-					continue
-				}
+				continue
 			}
 			logrus.Infof("labels have been set successfully on node: %s", agentConfig.NodeName)
 		} else {
