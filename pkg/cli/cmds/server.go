@@ -48,6 +48,7 @@ type Server struct {
 	TLSSan                   cli.StringSlice
 	BindAddress              string
 	ExtraAPIArgs             cli.StringSlice
+	ExtraEtcdArgs            cli.StringSlice
 	ExtraSchedulerArgs       cli.StringSlice
 	ExtraControllerArgs      cli.StringSlice
 	ExtraCloudControllerArgs cli.StringSlice
@@ -134,6 +135,11 @@ var (
 		Usage: "(flags) Customized flag for kube-apiserver process",
 		Value: &ServerConfig.ExtraAPIArgs,
 	}
+	ExtraEtcdArgs = cli.StringSliceFlag{
+		Name:  "etcd-arg",
+		Usage: "(flags) Customized flag for etcd process",
+		Value: &ServerConfig.ExtraEtcdArgs,
+	}
 	ExtraSchedulerArgs = cli.StringSliceFlag{
 		Name:  "kube-scheduler-arg",
 		Usage: "(flags) Customized flag for kube-scheduler process",
@@ -216,6 +222,7 @@ var ServerFlags = []cli.Flag{
 		EnvVar:      version.ProgramUpper + "_KUBECONFIG_MODE",
 	},
 	ExtraAPIArgs,
+	ExtraEtcdArgs,
 	ExtraControllerArgs,
 	ExtraSchedulerArgs,
 	cli.StringSliceFlag{
