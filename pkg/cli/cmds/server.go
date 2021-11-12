@@ -38,6 +38,7 @@ type Server struct {
 	TLSSan                   cli.StringSlice
 	BindAddress              string
 	ExtraAPIArgs             cli.StringSlice
+	ExtraEtcdArgs            cli.StringSlice
 	ExtraSchedulerArgs       cli.StringSlice
 	ExtraControllerArgs      cli.StringSlice
 	ExtraCloudControllerArgs cli.StringSlice
@@ -83,7 +84,56 @@ type Server struct {
 	EtcdS3Insecure           bool
 }
 
-var ServerConfig Server
+var (
+	ServerConfig Server
+	ClusterCIDR  = cli.StringSliceFlag{
+		Name:  "cluster-cidr",
+		Usage: "(networking) IPv4/IPv6 network CIDRs to use for pod IPs (default: 10.42.0.0/16)",
+		Value: &ServerConfig.ClusterCIDR,
+	}
+	ServiceCIDR = cli.StringSliceFlag{
+		Name:  "service-cidr",
+		Usage: "(networking) IPv4/IPv6 network CIDRs to use for service IPs (default: 10.43.0.0/16)",
+		Value: &ServerConfig.ServiceCIDR,
+	}
+	ServiceNodePortRange = cli.StringFlag{
+		Name:        "service-node-port-range",
+		Usage:       "(networking) Port range to reserve for services with NodePort visibility",
+		Destination: &ServerConfig.ServiceNodePortRange,
+		Value:       "30000-32767",
+	}
+	ClusterDNS = cli.StringSliceFlag{
+		Name:  "cluster-dns",
+		Usage: "(networking) IPv4 Cluster IP for coredns service. Should be in your service-cidr range (default: 10.43.0.10)",
+		Value: &ServerConfig.ClusterDNS,
+	}
+	ClusterDomain = cli.StringFlag{
+		Name:        "cluster-domain",
+		Usage:       "(networking) Cluster Domain",
+		Destination: &ServerConfig.ClusterDomain,
+		Value:       "cluster.local",
+	}
+	ExtraAPIArgs = cli.StringSliceFlag{
+		Name:  "kube-apiserver-arg",
+		Usage: "(flags) Customized flag for kube-apiserver process",
+		Value: &ServerConfig.ExtraAPIArgs,
+	}
+	ExtraEtcdArgs = cli.StringSliceFlag{
+		Name:  "etcd-arg",
+		Usage: "(flags) Customized flag for etcd process",
+		Value: &ServerConfig.ExtraEtcdArgs,
+	}
+	ExtraSchedulerArgs = cli.StringSliceFlag{
+		Name:  "kube-scheduler-arg",
+		Usage: "(flags) Customized flag for kube-scheduler process",
+		Value: &ServerConfig.ExtraSchedulerArgs,
+	}
+	ExtraControllerArgs = cli.StringSliceFlag{
+		Name:  "kube-controller-manager-arg",
+		Usage: "(flags) Customized flag for kube-controller-manager process",
+		Value: &ServerConfig.ExtraControllerArgs,
+	}
+)
 
 func NewServerCommand(action func(*cli.Context) error) cli.Command {
 	return cli.Command{
@@ -130,33 +180,11 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Usage:       "(data) Folder to hold state default /var/lib/rancher/" + version.Program + " or ${HOME}/.rancher/" + version.Program + " if not root",
 				Destination: &ServerConfig.DataDir,
 			},
-			cli.StringSliceFlag{
-				Name:  "cluster-cidr",
-				Usage: "(networking) IPv4/IPv6 network CIDRs to use for pod IPs (default: 10.42.0.0/16)",
-				Value: &ServerConfig.ClusterCIDR,
-			},
-			cli.StringSliceFlag{
-				Name:  "service-cidr",
-				Usage: "(networking) IPv4/IPv6 network CIDRs to use for service IPs (default: 10.43.0.0/16)",
-				Value: &ServerConfig.ServiceCIDR,
-			},
-			cli.StringFlag{
-				Name:        "service-node-port-range",
-				Usage:       "(networking) Port range to reserve for services with NodePort visibility",
-				Destination: &ServerConfig.ServiceNodePortRange,
-				Value:       "30000-32767",
-			},
-			cli.StringSliceFlag{
-				Name:  "cluster-dns",
-				Usage: "(networking) IPv4 Cluster IP for coredns service. Should be in your service-cidr range (default: 10.43.0.10)",
-				Value: &ServerConfig.ClusterDNS,
-			},
-			cli.StringFlag{
-				Name:        "cluster-domain",
-				Usage:       "(networking) Cluster Domain",
-				Destination: &ServerConfig.ClusterDomain,
-				Value:       "cluster.local",
-			},
+			ClusterCIDR,
+			ServiceCIDR,
+			ServiceNodePortRange,
+			ClusterDNS,
+			ClusterDomain,
 			cli.StringFlag{
 				Name:        "flannel-backend",
 				Usage:       "(networking) One of 'none', 'vxlan', 'ipsec', 'host-gw', or 'wireguard'",
@@ -187,21 +215,10 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 				Destination: &ServerConfig.KubeConfigMode,
 				EnvVar:      version.ProgramUpper + "_KUBECONFIG_MODE",
 			},
-			cli.StringSliceFlag{
-				Name:  "kube-apiserver-arg",
-				Usage: "(flags) Customized flag for kube-apiserver process",
-				Value: &ServerConfig.ExtraAPIArgs,
-			},
-			cli.StringSliceFlag{
-				Name:  "kube-scheduler-arg",
-				Usage: "(flags) Customized flag for kube-scheduler process",
-				Value: &ServerConfig.ExtraSchedulerArgs,
-			},
-			cli.StringSliceFlag{
-				Name:  "kube-controller-manager-arg",
-				Usage: "(flags) Customized flag for kube-controller-manager process",
-				Value: &ServerConfig.ExtraControllerArgs,
-			},
+			ExtraAPIArgs,
+			ExtraEtcdArgs,
+			ExtraControllerArgs,
+			ExtraSchedulerArgs,
 			cli.StringSliceFlag{
 				Name:  "kube-cloud-controller-manager-arg",
 				Usage: "(flags) Customized flag for kube-cloud-controller-manager process",
