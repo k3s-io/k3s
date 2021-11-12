@@ -74,7 +74,7 @@ func (c *Cluster) Bootstrap(ctx context.Context, snapshot bool) error {
 					ElectionTimeout:   5000,
 					LogOutputs:        []string{"stderr"},
 				}
-				configFile, err := args.ToConfigFile()
+				configFile, err := args.ToConfigFile(c.config.ExtraEtcdArgs)
 				if err != nil {
 					return err
 				}
