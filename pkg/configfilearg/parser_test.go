@@ -48,11 +48,53 @@ func Test_UnitParser_findStart(t *testing.T) {
 			prefix: []string{"not-server", "foo", "bar"},
 			found:  false,
 		},
+		{
+			name:   "command (with optional subcommands) but no flags",
+			args:   []string{"etcd-snapshot"},
+			prefix: []string{"etcd-snapshot"},
+			suffix: []string{},
+			found:  true,
+		},
+		{
+			name:   "command (with optional subcommands) and flags",
+			args:   []string{"etcd-snapshot", "-f"},
+			prefix: []string{"etcd-snapshot"},
+			suffix: []string{"-f"},
+			found:  true,
+		},
+		{
+			name:   "command and subcommand with no flags",
+			args:   []string{"etcd-snapshot", "list"},
+			prefix: []string{"etcd-snapshot", "list"},
+			suffix: []string{},
+			found:  true,
+		},
+		{
+			name:   "command and subcommand with flags",
+			args:   []string{"etcd-snapshot", "list", "-f"},
+			prefix: []string{"etcd-snapshot", "list"},
+			suffix: []string{"-f"},
+			found:  true,
+		},
+		{
+			name:   "another command and subcommand with flags",
+			args:   []string{"etcd-snapshot", "save", "--s3"},
+			prefix: []string{"etcd-snapshot", "save"},
+			suffix: []string{"--s3"},
+			found:  true,
+		},
+		{
+			name:   "command and too many subcommands",
+			args:   []string{"etcd-snapshot", "list", "delete", "foo", "bar"},
+			prefix: []string{"etcd-snapshot", "list"},
+			suffix: []string{"delete", "foo", "bar"},
+			found:  true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := Parser{
-				After: []string{"server", "agent"},
+				After: []string{"server", "agent", "etcd-snapshot:1"},
 			}
 			prefix, suffix, found := p.findStart(tt.args)
 			if !reflect.DeepEqual(prefix, tt.prefix) {
