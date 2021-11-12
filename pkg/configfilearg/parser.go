@@ -7,10 +7,14 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/rancher/k3s/pkg/agent/util"
 	"github.com/rancher/wrangler/pkg/data/convert"
+	"github.com/sirupsen/logrus"
+	"github.com/urfave/cli"
 	"gopkg.in/yaml.v2"
 )
 
@@ -19,6 +23,7 @@ type Parser struct {
 	FlagNames     []string
 	EnvName       string
 	DefaultConfig string
+	ValidFlags    map[string][]cli.Flag
 }
 
 // Parse will parse an os.Args style slice looking for Parser.FlagNames after Parse.After.
@@ -42,10 +47,53 @@ func (p *Parser) Parse(args []string) ([]string, error) {
 		} else if err != nil {
 			return nil, err
 		}
+		if len(args) > 1 {
+			values, err = p.stripInvalidFlags(args[1], values)
+			if err != nil {
+				return nil, err
+			}
+		}
 		return append(prefix, append(values, suffix...)...), nil
 	}
 
 	return args, nil
+}
+
+func (p *Parser) stripInvalidFlags(command string, args []string) ([]string, error) {
+	var result []string
+	var cmdFlags []cli.Flag
+	for k, v := range p.ValidFlags {
+		if k == command {
+			cmdFlags = v
+		}
+	}
+	if len(cmdFlags) == 0 {
+		return args, nil
+	}
+	validFlags := make(map[string]bool, len(cmdFlags))
+	for _, f := range cmdFlags {
+		//split flags with aliases into 2 entries
+		for _, s := range strings.Split(f.GetName(), ",") {
+			validFlags[s] = true
+		}
+	}
+
+	re, err := regexp.Compile("^-+(.+)=")
+	if err != nil {
+		return args, err
+	}
+	for _, arg := range args {
+		mArg := arg
+		if match := re.FindAllStringSubmatch(arg, -1); match != nil {
+			mArg = match[0][1]
+		}
+		if validFlags[mArg] {
+			result = append(result, arg)
+		} else {
+			logrus.Warnf("Unknown flag %s found in config.yaml, skipping\n", arg)
+		}
+	}
+	return result, nil
 }
 
 func (p *Parser) FindString(args []string, target string) (string, error) {
@@ -100,15 +148,37 @@ func (p *Parser) findStart(args []string) ([]string, []string, bool) {
 	if len(p.After) == 0 {
 		return []string{}, args, true
 	}
-
-	for i, val := range args {
-		for _, test := range p.After {
-			if val == test {
-				return args[0 : i+1], args[i+1:], true
+	afterTemp := append([]string{}, p.After...)
+	afterIndex := make(map[string]int)
+	re, err := regexp.Compile(`(.+):(\d+)`)
+	if err != nil {
+		return args, nil, false
+	}
+	// After keywords ending with ":<NUM>" can set + NUM of arguments as the split point.
+	// used for matching on subcommmands
+	for i, arg := range afterTemp {
+		if match := re.FindAllStringSubmatch(arg, -1); match != nil {
+			afterTemp[i] = match[0][1]
+			afterIndex[match[0][1]], err = strconv.Atoi(match[0][2])
+			if err != nil {
+				return args, nil, false
 			}
 		}
 	}
 
+	for i, val := range args {
+		for _, test := range afterTemp {
+			if val == test {
+				if skip := afterIndex[test]; skip != 0 {
+					if len(args) <= i+skip || strings.HasPrefix(args[i+skip], "-") {
+						return args[0 : i+1], args[i+1:], true
+					}
+					return args[0 : i+skip+1], args[i+skip+1:], true
+				}
+				return args[0 : i+1], args[i+1:], true
+			}
+		}
+	}
 	return args, nil, false
 }
 
