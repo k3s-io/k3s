@@ -66,6 +66,26 @@ resource "aws_instance" "master" {
     source = "install_k3s_master.sh"
     destination = "/tmp/install_k3s_master.sh"
   }
+  provisioner "file" {
+    source = "cis_masterconfig.yaml"
+    destination = "/tmp/cis_masterconfig.yaml"
+  }
+
+  provisioner "file" {
+    source = "policy.yaml"
+    destination = "/tmp/policy.yaml"
+  }
+
+  provisioner "file" {
+    source = "v120ingresspolicy.yaml"
+    destination = "/tmp/v120ingresspolicy.yaml"
+  }
+
+  provisioner "file" {
+    source = "v121ingresspolicy.yaml"
+    destination = "/tmp/v121ingresspolicy.yaml"
+  }
+
   provisioner "remote-exec" {
     inline = [
       "chmod +x /tmp/install_k3s_master.sh",
@@ -135,10 +155,32 @@ resource "aws_instance" "master2-ha" {
   tags = {
     Name                 = "${var.resource_name}-servers"
   }
+
   provisioner "file" {
     source               = "join_k3s_master.sh"
     destination          = "/tmp/join_k3s_master.sh"
   }
+
+  provisioner "file" {
+    source = "cis_masterconfig.yaml"
+    destination = "/tmp/cis_masterconfig.yaml"
+  }
+
+  provisioner "file" {
+    source = "policy.yaml"
+    destination = "/tmp/policy.yaml"
+  }
+
+  provisioner "file" {
+    source = "v120ingresspolicy.yaml"
+    destination = "/tmp/v120ingresspolicy.yaml"
+  }
+
+  provisioner "file" {
+    source = "v121ingresspolicy.yaml"
+    destination = "/tmp/v121ingresspolicy.yaml"
+  }
+
   provisioner "remote-exec" {
     inline = [
       "chmod +x /tmp/join_k3s_master.sh",

@@ -22,8 +22,8 @@ metadata:
    k8s-app: nginx-app-ingress
 spec:
  ports:
- - port: 80
-   targetPort: 80
+ - port: 8080
+   targetPort: 8080
    protocol: TCP
    name: http
  selector:
@@ -46,5 +46,5 @@ spec:
     spec:
       containers:
         - name: testcontainer
-          image: ranchertest/mytestcontainer
+          image: ranchertest/mytestcontainer:unprivileged
           imagePullPolicy: Always

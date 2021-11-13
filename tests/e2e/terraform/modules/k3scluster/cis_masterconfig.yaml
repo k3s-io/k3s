@@ -1,0 +1,15 @@
+secrets-encryption: true
+kube-apiserver-arg:
+  - 'audit-log-path=/var/lib/rancher/k3s/server/logs/audit-log'
+  - 'audit-log-maxage=30'
+  - 'audit-log-maxbackup=10'
+  - 'audit-log-maxsize=100'
+  - 'request-timeout=300s'
+  - 'service-account-lookup=true'
+  - 'enable-admission-plugins=NodeRestriction,PodSecurityPolicy,NamespaceLifecycle,ServiceAccount'
+kube-controller-manager-arg:
+  - 'terminated-pod-gc-threshold=10'
+  - 'use-service-account-credentials=true'
+kubelet-arg:
+  - 'streaming-connection-idle-timeout=5m'
+  - 'make-iptables-util-chains=true'

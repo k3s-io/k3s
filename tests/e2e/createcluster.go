@@ -30,8 +30,10 @@ func DeployWorkloads(arch, Kubeconfig string) {
 	resource_dir := ""
 	if arch == "amd64" {
 		resource_dir = "./amd64_resource_files"
-	} else {
+	} else if arch == "arm64" {
 		resource_dir = "./arm_resource_files"
+	} else {
+		resource_dir = "./amd64cis_resource_files"
 	}
 
 	files, err := ioutil.ReadDir(resource_dir)

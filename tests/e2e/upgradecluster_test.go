@@ -1,4 +1,5 @@
 package e2e
+
 import (
 	"flag"
 	"fmt"
@@ -13,10 +14,9 @@ import (
 
 var upgradeVersion = flag.String("upgrade_version", "", "a string")
 
-
 func Test_E2EClusterUpgradeValidation(t *testing.T) {
 	reporters := []Reporter{
-		reporters.NewJUnitReporter("./" + *resourceName + "upgraderesults.xml"),
+		reporters.NewJUnitReporter("/config/" + *resourceName + "upgraderesults.xml"),
 	}
 	RegisterFailHandler(Fail)
 	RunSpecsWithCustomReporters(t, "Cluster Upgrade Validation", reporters)
@@ -32,11 +32,12 @@ var _ = Describe("Test: ", func() {
 				fmt.Printf("\nCluster is being Deleted\n")
 				return
 			}
-			fmt.Println("Cluster Version", *upgradeVersion)
+			fmt.Println("Cluster Upgrade Version", *upgradeVersion)
 			fmt.Println("\nCluster Config:\nOS", *nodeOs, "Backend", *clusterType, *externalDb)
 			fmt.Printf("\nIPs:\n")
 			fmt.Println("Master Node IPS:", masterIPs)
 			fmt.Println("Worker Node IPS:", workerIPs)
+
 
 			fmt.Printf("\nFetching node status\n")
 			nodes := ParseNode(kubeconfig, true)

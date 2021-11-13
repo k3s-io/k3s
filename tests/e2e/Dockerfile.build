@@ -22,5 +22,5 @@ WORKDIR $GOPATH/src/github.com/rancher/k3s-io/k3s/tests/e2e
 
 COPY . .
 
-RUN go get -u github.com/onsi/gomega
-RUN go get -u github.com/onsi/ginkgo
+#RUN go get github.com/onsi/gomega
+#RUN go get github.com/onsi/ginkgo

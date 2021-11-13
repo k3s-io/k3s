@@ -153,7 +153,7 @@ func ParseNode(kubeconfig string, printres bool) []Node {
 	var node Node
 	timeElapsed := 0
 	nodeList := ""
-	time.Sleep(60 * time.Second)
+	time.Sleep(30 * time.Second)
 	for timeElapsed < 420 {
 		notReady := false
 		cmd := "kubectl get nodes --no-headers -o wide -A --kubeconfig=" + kubeconfig
@@ -178,7 +178,7 @@ func ParseNode(kubeconfig string, printres bool) []Node {
 			break
 		}
 		time.Sleep(5 * time.Second)
-		timeElapsed = timeElapsed + 10
+		timeElapsed = timeElapsed + 5
 	}
 	if printres {
 		fmt.Println(nodeList)
@@ -190,7 +190,7 @@ func ParsePod(kubeconfig string, printres bool) []Pod {
 	pods := make([]Pod, 0, 10)
 	var pod Pod
 	timeElapsed := 0
-	time.Sleep(60 * time.Second)
+	time.Sleep(30 * time.Second)
 	podList := ""
 	for timeElapsed < 420 {
 		helmPodsNR := false
@@ -219,8 +219,8 @@ func ParsePod(kubeconfig string, printres bool) []Pod {
 				systemPodsNR = true
 				break
 			}
-			time.Sleep(10 * time.Second)
-			timeElapsed = timeElapsed + 10
+			time.Sleep(5 * time.Second)
+			timeElapsed = timeElapsed + 5
 		}
 		if systemPodsNR == false && helmPodsNR == false {
 			break

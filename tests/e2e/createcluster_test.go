@@ -222,6 +222,15 @@ var _ = Describe("Test:", func() {
 
 })
 
+var failed = false
+var _ = AfterEach(func() {
+	failed = failed || CurrentGinkgoTestDescription().Failed
+})
+
 var _ = AfterSuite(func() {
-	kubeconfig, masterIPs, workerIPs = BuildCluster(*nodeOs, *clusterType, *externalDb, *resourceName, &testing.T{}, true)
+	if failed {
+		fmt.Println("FAILED!")
+	} else {
+		kubeconfig, masterIPs, workerIPs = BuildCluster(*nodeOs, *clusterType, *externalDb, *resourceName, &testing.T{}, true)
+	}
 })
