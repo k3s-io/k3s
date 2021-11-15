@@ -65,6 +65,7 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 		return errors.Wrap(err, "failed to validate kube-proxy conntrack configuration")
 	}
 	syssetup.Configure(enableIPv6, conntrackConfig)
+	nodeConfig.AgentConfig.EnableIPv6 = enableIPv6
 
 	if err := setupCriCtlConfig(cfg, nodeConfig); err != nil {
 		return err
@@ -106,7 +107,9 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 		return err
 	}
 
-	util.WaitForAPIServerReady(coreClient, 30*time.Second)
+	if err := util.WaitForAPIServerReady(ctx, coreClient, util.DefaultAPIServerReadyTimeout); err != nil {
+		return errors.Wrap(err, "failed to wait for apiserver ready")
+	}
 
 	if err := configureNode(ctx, &nodeConfig.AgentConfig, coreClient.CoreV1().Nodes()); err != nil {
 		return err

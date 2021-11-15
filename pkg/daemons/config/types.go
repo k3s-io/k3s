@@ -100,6 +100,8 @@ type Agent struct {
 	DisableNPC              bool
 	Rootless                bool
 	ProtectKernelDefaults   bool
+	DisableServiceLB        bool
+	EnableIPv6              bool
 }
 
 type Control struct {
@@ -122,6 +124,7 @@ type Control struct {
 	ClusterDNS               net.IP
 	ClusterDNSs              []net.IP
 	ClusterDomain            string
+	DisableServiceLB         bool
 	NoCoreDNS                bool
 	KubeConfigOutput         string
 	KubeConfigMode           string
@@ -132,6 +135,7 @@ type Control struct {
 	ExtraAPIArgs             []string
 	ExtraControllerArgs      []string
 	ExtraCloudControllerArgs []string
+	ExtraEtcdArgs            []string
 	ExtraSchedulerAPIArgs    []string
 	NoLeaderElect            bool
 	JoinURL                  string

@@ -151,14 +151,14 @@ func (e *ETCD) Test(ctx context.Context) error {
 	return errors.Errorf("this server is a not a member of the etcd cluster. Found %v, expect: %s=%s", memberNameUrls, e.name, e.address)
 }
 
-// etcdDBDir returns the path to dataDir/db/etcd
-func etcdDBDir(config *config.Control) string {
+// DBDir returns the path to dataDir/db/etcd
+func DBDir(config *config.Control) string {
 	return filepath.Join(config.DataDir, "db", "etcd")
 }
 
 // walDir returns the path to etcdDBDir/member/wal
 func walDir(config *config.Control) string {
-	return filepath.Join(etcdDBDir(config), "member", "wal")
+	return filepath.Join(DBDir(config), "member", "wal")
 }
 
 func sqliteFile(config *config.Control) string {
@@ -167,7 +167,7 @@ func sqliteFile(config *config.Control) string {
 
 // nameFile returns the path to etcdDBDir/name.
 func nameFile(config *config.Control) string {
-	return filepath.Join(etcdDBDir(config), "name")
+	return filepath.Join(DBDir(config), "name")
 }
 
 // ResetFile returns the path to etcdDBDir/reset-flag.
@@ -188,7 +188,7 @@ func (e *ETCD) IsInitialized(ctx context.Context, config *config.Control) (bool,
 	}
 }
 
-// Reset resets an etcd node
+// Reset resets an etcd node to a single node cluster.
 func (e *ETCD) Reset(ctx context.Context, rebootstrap func() error) error {
 	// Wait for etcd to come up as a new single-node cluster, then exit
 	go func() {
@@ -287,7 +287,7 @@ func (e *ETCD) Start(ctx context.Context, clientAccessInfo *clientaccess.Info) e
 
 	if existingCluster {
 		//check etcd dir permission
-		etcdDir := etcdDBDir(e.config)
+		etcdDir := DBDir(e.config)
 		info, err := os.Stat(etcdDir)
 		if err != nil {
 			return err
@@ -416,10 +416,10 @@ func (e *ETCD) Register(ctx context.Context, config *config.Control, handler htt
 	e.config.Datastore.BackendTLSConfig.CertFile = e.runtime.ClientETCDCert
 	e.config.Datastore.BackendTLSConfig.KeyFile = e.runtime.ClientETCDKey
 
-	tombstoneFile := filepath.Join(etcdDBDir(e.config), "tombstone")
+	tombstoneFile := filepath.Join(DBDir(e.config), "tombstone")
 	if _, err := os.Stat(tombstoneFile); err == nil {
 		logrus.Infof("tombstone file has been detected, removing data dir to rejoin the cluster")
-		if _, err := backupDirWithRetention(etcdDBDir(e.config), maxBackupRetention); err != nil {
+		if _, err := backupDirWithRetention(DBDir(e.config), maxBackupRetention); err != nil {
 			return nil, err
 		}
 	}
@@ -500,6 +500,7 @@ func GetClient(ctx context.Context, runtime *config.ControlRuntime, endpoints ..
 	if err != nil {
 		return nil, err
 	}
+
 	return clientv3.New(*cfg)
 }
 
@@ -509,15 +510,14 @@ func getClientConfig(ctx context.Context, runtime *config.ControlRuntime, endpoi
 	if err != nil {
 		return nil, err
 	}
-	cfg := &clientv3.Config{
+	return &clientv3.Config{
 		Endpoints:            endpoints,
 		TLS:                  tlsConfig,
 		Context:              ctx,
 		DialTimeout:          defaultDialTimeout,
 		DialKeepAliveTime:    defaultKeepAliveTime,
 		DialKeepAliveTimeout: defaultKeepAliveTimeout,
-	}
-	return cfg, nil
+	}, nil
 }
 
 // toTLSConfig converts the ControlRuntime configuration to TLS configuration suitable
@@ -652,7 +652,7 @@ func (e *ETCD) cluster(ctx context.Context, forceNew bool, options executor.Init
 		ListenMetricsURLs:   e.metricsURL(e.config.EtcdExposeMetrics),
 		ListenPeerURLs:      e.peerURL(),
 		AdvertiseClientURLs: e.clientURL(),
-		DataDir:             etcdDBDir(e.config),
+		DataDir:             DBDir(e.config),
 		ServerTrust: executor.ServerTrust{
 			CertFile:       e.config.Runtime.ServerETCDCert,
 			KeyFile:        e.config.Runtime.ServerETCDKey,
@@ -669,7 +669,7 @@ func (e *ETCD) cluster(ctx context.Context, forceNew bool, options executor.Init
 		HeartbeatInterval: 500,
 		Logger:            "zap",
 		LogOutputs:        []string{"stderr"},
-	})
+	}, e.config.ExtraEtcdArgs)
 }
 
 // RemovePeer removes a peer from the cluster. The peer name and IP address must both match.
@@ -1313,7 +1313,7 @@ func (e *ETCD) setSnapshotFunction(ctx context.Context) {
 // completion.
 func (e *ETCD) Restore(ctx context.Context) error {
 	// check the old etcd data dir
-	oldDataDir := etcdDBDir(e.config) + "-old-" + strconv.Itoa(int(time.Now().Unix()))
+	oldDataDir := DBDir(e.config) + "-old-" + strconv.Itoa(int(time.Now().Unix()))
 	if e.config.ClusterResetRestorePath == "" {
 		return errors.New("no etcd restore path was specified")
 	}
@@ -1322,14 +1322,14 @@ func (e *ETCD) Restore(ctx context.Context) error {
 		return err
 	}
 	// move the data directory to a temp path
-	if err := os.Rename(etcdDBDir(e.config), oldDataDir); err != nil {
+	if err := os.Rename(DBDir(e.config), oldDataDir); err != nil {
 		return err
 	}
 	logrus.Infof("Pre-restore etcd database moved to %s", oldDataDir)
 	return snapshot.NewV3(nil).Restore(snapshot.RestoreConfig{
 		SnapshotPath:   e.config.ClusterResetRestorePath,
 		Name:           e.name,
-		OutputDataDir:  etcdDBDir(e.config),
+		OutputDataDir:  DBDir(e.config),
 		OutputWALDir:   walDir(e.config),
 		PeerURLs:       []string{e.peerURL()},
 		InitialCluster: e.name + "=" + e.peerURL(),
@@ -1470,8 +1470,8 @@ func (e *ETCD) RemoveSelf(ctx context.Context) error {
 	}
 
 	// backup the data dir to avoid issues when re-enabling etcd
-	oldDataDir := etcdDBDir(e.config) + "-old-" + strconv.Itoa(int(time.Now().Unix()))
+	oldDataDir := DBDir(e.config) + "-old-" + strconv.Itoa(int(time.Now().Unix()))
 
 	// move the data directory to a temp path
-	return os.Rename(etcdDBDir(e.config), oldDataDir)
+	return os.Rename(DBDir(e.config), oldDataDir)
 }

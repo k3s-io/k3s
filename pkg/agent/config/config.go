@@ -567,6 +567,7 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	nodeConfig.AgentConfig.Rootless = envInfo.Rootless
 	nodeConfig.AgentConfig.PodManifests = filepath.Join(envInfo.DataDir, "agent", DefaultPodManifestPath)
 	nodeConfig.AgentConfig.ProtectKernelDefaults = envInfo.ProtectKernelDefaults
+	nodeConfig.AgentConfig.DisableServiceLB = envInfo.DisableServiceLB
 
 	if err := validateNetworkConfig(nodeConfig); err != nil {
 		return nil, err

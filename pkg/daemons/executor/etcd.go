@@ -1,3 +1,4 @@
+//go:build !no_embedded_executor
 // +build !no_embedded_executor
 
 package executor
@@ -18,8 +19,8 @@ func (e Embedded) CurrentETCDOptions() (InitialOptions, error) {
 	return InitialOptions{}, nil
 }
 
-func (e Embedded) ETCD(ctx context.Context, args ETCDConfig) error {
-	configFile, err := args.ToConfigFile()
+func (e Embedded) ETCD(ctx context.Context, args ETCDConfig, extraArgs []string) error {
+	configFile, err := args.ToConfigFile(extraArgs)
 	if err != nil {
 		return err
 	}
@@ -27,6 +28,7 @@ func (e Embedded) ETCD(ctx context.Context, args ETCDConfig) error {
 	if err != nil {
 		return err
 	}
+
 	etcd, err := embed.StartEtcd(cfg)
 	if err != nil {
 		return err
