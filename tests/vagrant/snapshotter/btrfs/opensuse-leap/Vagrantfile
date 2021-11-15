@@ -1,17 +1,20 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 #
-
-ENV['TEST_VM_NAME'] ||= 'snapshotter-btrfs'
-ENV['TEST_VM_HOSTNAME'] ||= 'test'
+# Vagrant box for testing k3s with the btrfs snapshotter. Usage:
+# VAGRANT_EXPERIMENTAL=disks vagrant up
 
 Vagrant.configure("2") do |config|
   config.vagrant.plugins = {
     'vagrant-k3s' => {:version => '~> 0.1.3'},
   }
-  config.vm.define ENV['TEST_VM_NAME'], primary: true do |test|
-    test.vm.box = "opensuse/Leap-15.3.x86_64"
-    test.vm.hostname = ENV['TEST_VM_HOSTNAME']
+  config.vm.box = "opensuse/Leap-15.3.x86_64"
+  config.vm.boot_timeout = ENV['TEST_VM_BOOT_TIMEOUT'] || 600 # seconds
+  config.vm.synced_folder '../../../../../dist/artifacts', '/vagrant', type: 'rsync', disabled: false,
+    rsync__exclude: ENV['RSYNC_EXCLUDE'] || '*.tar.*'
+
+  config.vm.define 'snapshotter-btrfs', primary: true do |test|
+    test.vm.hostname = 'smoke'
     test.vm.provision 'k3s-prepare', type: 'shell', run: 'once', privileged: true do |sh|
       sh.inline = <<~EOF
         #!/usr/bin/env bash
@@ -30,10 +33,8 @@ Vagrant.configure("2") do |config|
             umount /mnt
             mount -t btrfs -o subvol=@k3s /dev/${BTRFS_DEV} /var/lib/rancher/k3s
         fi
-        if [ -e /vagrant/k3s ]; then
-            cp -vf /vagrant/k3s /usr/local/bin/
-            chmod -v +x /usr/local/bin/k3s
-        fi
+        # Install k3s binary
+        install -m 755 /vagrant/k3s /usr/local/bin
         if [ -e /vagrant/*.tar ]; then
             mkdir -vp /var/lib/rancher/k3s/agent/images
             for tar in /vagrant/*.tar; do
@@ -53,36 +54,47 @@ Vagrant.configure("2") do |config|
       }
       k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
     end
-    test.vm.provision "k3s-ready", type: "shell", run: "once" do |sh|
+    test.vm.provision "k3s-wait-for-node", type: "shell", run: ENV['CI'] == 'true' ? 'never' : 'once' do |sh|
       sh.env = { :PATH => "/usr/local/bin:/usr/local/sbin:/sbin:/bin:/usr/sbin:/usr/bin:/root/bin" }
       sh.inline = <<~SHELL
         #!/usr/bin/env bash
         set -eu -o pipefail
         echo 'Waiting for node to be ready ...'
-        time timeout 120 bash -c 'while ! (kubectl wait --for condition=ready node/$(hostname) 2>/dev/null); do sleep 5; done'
+        time timeout 300 bash -c 'while ! (kubectl wait --for condition=ready node/$(hostnamectl --static) 2>/dev/null); do sleep 5; done'
+        kubectl get node,all -A -o wide
+      SHELL
+    end
+    test.vm.provision "k3s-wait-for-coredns", type: "shell", run: ENV['CI'] == 'true' ? 'never' : 'once' do |sh|
+      sh.env = { :PATH => "/usr/local/bin:/usr/local/sbin:/sbin:/bin:/usr/sbin:/usr/bin:/root/bin" }
+      sh.inline = <<~SHELL
+        #!/usr/bin/env bash
+        set -eu -o pipefail
         time timeout 300 bash -c 'while ! (kubectl --namespace kube-system rollout status --timeout 10s deploy/coredns 2>/dev/null); do sleep 5; done'
       SHELL
     end
-    test.vm.provision "k3s-status", type: "shell", run: "once" do |sh|
+    test.vm.provision "k3s-status", type: "shell", run: ENV['CI'] == 'true' ? 'never' : 'once' do |sh|
       sh.env = { :PATH => "/usr/local/bin:/usr/local/sbin:/sbin:/bin:/usr/sbin:/usr/bin:/root/bin" }
       sh.inline = <<~SHELL
         #!/usr/bin/env bash
         set -eux -o pipefail
         kubectl get node,all -A -o wide
+      SHELL
+    end
+    test.vm.provision "k3s-snapshots", type: "shell", run: ENV['CI'] == 'true' ? 'never' : 'once' do |sh|
+      sh.env = { :PATH => "/usr/local/bin:/usr/local/sbin:/sbin:/bin:/usr/sbin:/usr/bin:/root/bin" }
+      sh.inline = <<~SHELL
+        #!/usr/bin/env bash
+        set -eux -o pipefail
         btrfs subvolume list /var/lib/rancher/k3s/agent/containerd/io.containerd.snapshotter.v1.btrfs
       SHELL
     end
   end
 
-  %w[hyperv libvirt virtualbox vmware_desktop].each do |p|
+  %w[libvirt virtualbox].each do |p|
     config.vm.provider p do |v|
-      v.cpus = ENV['CPUS'] || 2
-      v.memory = ENV['MEMORY'] || 2048
+      v.cpus = ENV['TEST_VM_CPUS'] || 2
+      v.memory = ENV['TEST_VM_MEMORY'] || 2048
     end
-  end
-
-  config.vm.provider :hyperv do |v,o|
-    o.vm.disk :disk, name: "btrfs", size: "8GB" # Requires VAGRANT_EXPERIMENTAL="disks"
   end
 
   config.vm.provider :libvirt do |v,o|
@@ -94,7 +106,4 @@ Vagrant.configure("2") do |config|
     v.check_guest_additions = false
     o.vm.disk :disk, name: "btrfs", size: "8GB" # Requires VAGRANT_EXPERIMENTAL="disks"
   end
-
-  config.vm.synced_folder '../../../../dist/artifacts', '/vagrant', type: 'rsync', disabled: ['1', 'true'].include?(ENV['RSYNC_DISABLE']),
-    rsync__exclude: ENV['RSYNC_EXCLUDE'] || '*.tar.*'
 end
