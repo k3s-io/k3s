@@ -977,7 +977,7 @@ github.com/prometheus/common/model
 github.com/prometheus/procfs
 github.com/prometheus/procfs/internal/fs
 github.com/prometheus/procfs/internal/util
-# github.com/rancher/dynamiclistener v0.2.6
+# github.com/rancher/dynamiclistener v0.2.7
 ## explicit
 github.com/rancher/dynamiclistener
 github.com/rancher/dynamiclistener/cert

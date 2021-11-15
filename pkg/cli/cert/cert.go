@@ -1,6 +1,8 @@
 package cert
 
 import (
+	"errors"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -74,20 +76,15 @@ func rotate(app *cli.Context, cfg *cmds.Server) error {
 	serverConfig.ControlConfig.Runtime = &config.ControlRuntime{}
 	deps.CreateRuntimeCertFiles(&serverConfig.ControlConfig, serverConfig.ControlConfig.Runtime)
 
-	tlsDir := filepath.Join(serverConfig.ControlConfig.DataDir, "tls")
-	tlsBackupDir := filepath.Join(serverConfig.ControlConfig.DataDir, "tls-"+strconv.Itoa(int(time.Now().Unix())))
+	tlsBackupDir, err := backupCertificates(serverDataDir, agentDataDir)
+	if err != nil {
+		return err
+	}
 
-	// backing up tls dir
-	if _, err := os.Stat(tlsDir); err != nil {
-		return err
-	}
-	if err := copy.Copy(tlsDir, tlsBackupDir); err != nil {
-		return err
-	}
 	if len(cmds.ComponentList) == 0 {
 		// rotate all certs
 		logrus.Infof("Rotating certificates for all services")
-		return rotateAllCerts(serverConfig.ControlConfig.Runtime, filepath.Join(serverDataDir, "tls"), agentDataDir)
+		return rotateAllCerts(tlsBackupDir, filepath.Join(serverDataDir, "tls"), agentDataDir)
 	}
 	certList := []string{}
 	for _, component := range cmds.ComponentList {
@@ -157,18 +154,18 @@ func rotate(app *cli.Context, cfg *cmds.Server) error {
 			logrus.Infof("Certificate %s is deleted", cert)
 		}
 	}
-	logrus.Infof("Successfully deleted certificates for all services, please restart %s server or agent to rotate certificates", version.Program)
+	logrus.Infof("Successfully backed certificates for all services to path %s, please restart %s server or agent to rotate certificates", tlsBackupDir, version.Program)
 	return nil
 }
 
-func rotateAllCerts(runtime *config.ControlRuntime, dirs ...string) error {
+func rotateAllCerts(backupDir string, dirs ...string) error {
 	for _, dir := range dirs {
 		err := filepath.Walk(dir,
 			func(path string, info os.FileInfo, err error) error {
 				if err != nil {
 					return err
 				}
-				if (strings.HasSuffix(path, ".crt") || strings.HasSuffix(path, "key")) &&
+				if (strings.HasSuffix(path, ".crt") || strings.HasSuffix(path, ".key")) &&
 					!strings.Contains(path, "-ca") &&
 					!strings.Contains(path, "service.key") &&
 					!strings.Contains(path, "temporary-certs") &&
@@ -184,6 +181,57 @@ func rotateAllCerts(runtime *config.ControlRuntime, dirs ...string) error {
 			return err
 		}
 	}
-	logrus.Infof("Successfully deleted certificates for all services, please restart %s server or agent to rotate certificates", version.Program)
+	// adding the regenerate cert file to rotate dynamic listener cert
+	dynamicListenerRegenFilePath := filepath.Join(dirs[0], "dynamic-cert-regenerate")
+	if err := ioutil.WriteFile(dynamicListenerRegenFilePath, []byte{}, 0600); err != nil {
+		return err
+	}
+	logrus.Infof("Successfully backed certificates for all services to path %s, please restart %s server or agent to rotate certificates", backupDir, version.Program)
 	return nil
+}
+
+func copyFile(src, destDir string) error {
+	_, err := os.Stat(src)
+	if err == nil {
+		input, err := ioutil.ReadFile(src)
+		if err != nil {
+			return err
+		}
+
+		if err := ioutil.WriteFile(filepath.Join(destDir, filepath.Base(src)), input, 0644); err != nil {
+			return err
+		}
+		return nil
+	} else if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	return err
+}
+
+func backupCertificates(serverDataDir, agentDataDir string) (string, error) {
+	serverTLSDir := filepath.Join(serverDataDir, "tls")
+	tlsBackupDir := filepath.Join(serverDataDir, "tls-"+strconv.Itoa(int(time.Now().Unix())))
+
+	if _, err := os.Stat(serverTLSDir); err != nil {
+		return "", err
+	}
+	if err := copy.Copy(serverTLSDir, tlsBackupDir); err != nil {
+		return "", err
+	}
+	agentCerts := []string{
+		filepath.Join(agentDataDir, "client-"+version.Program+"-controller.crt"),
+		filepath.Join(agentDataDir, "client-"+version.Program+"-controller.key"),
+		filepath.Join(agentDataDir, "client-kubelet.crt"),
+		filepath.Join(agentDataDir, "client-kubelet.key"),
+		filepath.Join(agentDataDir, "serving-kubelet.crt"),
+		filepath.Join(agentDataDir, "serving-kubelet.key"),
+		filepath.Join(agentDataDir, "client-kube-proxy.crt"),
+		filepath.Join(agentDataDir, "client-kube-proxy.key"),
+	}
+	for _, cert := range agentCerts {
+		if err := copyFile(cert, tlsBackupDir); err != nil {
+			return "", err
+		}
+	}
+	return tlsBackupDir, nil
 }
