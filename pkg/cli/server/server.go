@@ -117,6 +117,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	serverConfig.ControlConfig.APIServerBindAddress = cfg.APIServerBindAddress
 	serverConfig.ControlConfig.ExtraAPIArgs = cfg.ExtraAPIArgs
 	serverConfig.ControlConfig.ExtraControllerArgs = cfg.ExtraControllerArgs
+	serverConfig.ControlConfig.ExtraEtcdArgs = cfg.ExtraEtcdArgs
 	serverConfig.ControlConfig.ExtraSchedulerAPIArgs = cfg.ExtraSchedulerArgs
 	serverConfig.ControlConfig.ClusterDomain = cfg.ClusterDomain
 	serverConfig.ControlConfig.Datastore.Endpoint = cfg.DatastoreEndpoint
@@ -176,6 +177,17 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		// delete local loadbalancers state for apiserver and supervisor servers
 		loadbalancer.ResetLoadBalancer(filepath.Join(cfg.DataDir, "agent"), loadbalancer.SupervisorServiceName)
 		loadbalancer.ResetLoadBalancer(filepath.Join(cfg.DataDir, "agent"), loadbalancer.APIServerServiceName)
+
+		// at this point we're doing a restore. Check to see if we've
+		// passed in a token and if not, check if the token file exists.
+		// If it doesn't, return an error indicating the token is necessary.
+		if cfg.Token == "" {
+			if _, err := os.Stat(filepath.Join(cfg.DataDir, "server/token")); err != nil {
+				if os.IsNotExist(err) {
+					return errors.New("")
+				}
+			}
+		}
 	}
 
 	serverConfig.ControlConfig.ClusterReset = cfg.ClusterReset

@@ -13,7 +13,6 @@ import (
 
 	"github.com/rancher/k3s/pkg/agent/util"
 	"github.com/rancher/wrangler/pkg/data/convert"
-	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 	"gopkg.in/yaml.v2"
 )
