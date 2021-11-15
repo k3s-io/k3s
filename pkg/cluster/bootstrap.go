@@ -353,7 +353,7 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker,
 		if ec != nil {
 			etcdConfig = *ec
 		} else {
-			etcdConfig = c.etcdConfig
+			etcdConfig = c.EtcdConfig
 		}
 
 		storageClient, err := client.New(etcdConfig)
@@ -366,7 +366,7 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker,
 
 	RETRY:
 		for {
-			value, err = c.getBootstrapKeyFromStorage(ctx, storageClient, normalizedToken, token)
+			value, c.saveBootstrap, err = getBootstrapKeyFromStorage(ctx, storageClient, normalizedToken, token)
 			if err != nil {
 				if strings.Contains(err.Error(), "not supported for learner") {
 					for range ticker.C {

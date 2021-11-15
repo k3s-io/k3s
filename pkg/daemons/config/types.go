@@ -255,7 +255,8 @@ type ControlRuntime struct {
 	ClientETCDCert           string
 	ClientETCDKey            string
 
-	Core *core.Factory
+	Core       *core.Factory
+	EtcdConfig endpoint.ETCDConfig
 }
 
 type ArgString []string

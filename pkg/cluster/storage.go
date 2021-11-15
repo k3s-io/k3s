@@ -12,21 +12,22 @@ import (
 	"github.com/k3s-io/kine/pkg/client"
 	"github.com/rancher/k3s/pkg/bootstrap"
 	"github.com/rancher/k3s/pkg/clientaccess"
+	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/sirupsen/logrus"
 )
 
-// save writes the current ControlRuntimeBootstrap data to the datastore. This contains a complete
+// Save writes the current ControlRuntimeBootstrap data to the datastore. This contains a complete
 // snapshot of the cluster's CA certs and keys, encryption passphrases, etc - encrypted with the join token.
 // This is used when bootstrapping a cluster from a managed database or external etcd cluster.
 // This is NOT used with embedded etcd, which bootstraps over HTTP.
-func (c *Cluster) save(ctx context.Context, override bool) error {
+func Save(ctx context.Context, config *config.Control, override bool) error {
 	buf := &bytes.Buffer{}
-	if err := bootstrap.ReadFromDisk(buf, &c.runtime.ControlRuntimeBootstrap); err != nil {
+	if err := bootstrap.ReadFromDisk(buf, &config.Runtime.ControlRuntimeBootstrap); err != nil {
 		return err
 	}
-	token := c.config.Token
+	token := config.Token
 	if token == "" {
-		tokenFromFile, err := readTokenFromFile(c.runtime.ServerToken, c.runtime.ServerCA, c.config.DataDir)
+		tokenFromFile, err := readTokenFromFile(config.Runtime.ServerToken, config.Runtime.ServerCA, config.DataDir)
 		if err != nil {
 			return err
 		}
@@ -42,12 +43,12 @@ func (c *Cluster) save(ctx context.Context, override bool) error {
 		return err
 	}
 
-	storageClient, err := client.New(c.etcdConfig)
+	storageClient, err := client.New(config.Runtime.EtcdConfig)
 	if err != nil {
 		return err
 	}
 
-	if _, err := c.getBootstrapKeyFromStorage(ctx, storageClient, normalizedToken, token); err != nil {
+	if _, _, err = getBootstrapKeyFromStorage(ctx, storageClient, normalizedToken, token); err != nil {
 		return err
 	}
 
@@ -55,7 +56,7 @@ func (c *Cluster) save(ctx context.Context, override bool) error {
 		if err.Error() == "key exists" {
 			logrus.Warn("bootstrap key already exists")
 			if override {
-				bsd, err := c.bootstrapKeyData(ctx, storageClient)
+				bsd, err := bootstrapKeyData(ctx, storageClient)
 				if err != nil {
 					return err
 				}
@@ -74,7 +75,7 @@ func (c *Cluster) save(ctx context.Context, override bool) error {
 
 // bootstrapKeyData lists keys stored in the datastore with the prefix "/bootstrap", and
 // will return the first such key. It will return an error if not exactly one key is found.
-func (c *Cluster) bootstrapKeyData(ctx context.Context, storageClient client.Client) (*client.Value, error) {
+func bootstrapKeyData(ctx context.Context, storageClient client.Client) (*client.Value, error) {
 	bootstrapList, err := storageClient.List(ctx, "/bootstrap", 0)
 	if err != nil {
 		return nil, err
@@ -96,7 +97,7 @@ func (c *Cluster) storageBootstrap(ctx context.Context) error {
 		return err
 	}
 
-	storageClient, err := client.New(c.etcdConfig)
+	storageClient, err := client.New(c.EtcdConfig)
 	if err != nil {
 		return err
 	}
@@ -119,7 +120,8 @@ func (c *Cluster) storageBootstrap(ctx context.Context) error {
 		return err
 	}
 
-	value, err := c.getBootstrapKeyFromStorage(ctx, storageClient, normalizedToken, token)
+	value, saveBootstrap, err := getBootstrapKeyFromStorage(ctx, storageClient, normalizedToken, token)
+	c.saveBootstrap = saveBootstrap
 	if err != nil {
 		return err
 	}
@@ -139,38 +141,37 @@ func (c *Cluster) storageBootstrap(ctx context.Context) error {
 // hashed with empty string and will check for any key that is hashed by different token than the one
 // passed to it, it will return error if it finds a key that is hashed with different token and will return
 // value if it finds the key hashed by passed token or empty string
-func (c *Cluster) getBootstrapKeyFromStorage(ctx context.Context, storageClient client.Client, normalizedToken, oldToken string) (*client.Value, error) {
+func getBootstrapKeyFromStorage(ctx context.Context, storageClient client.Client, normalizedToken, oldToken string) (*client.Value, bool, error) {
 	emptyStringKey := storageKey("")
 	tokenKey := storageKey(normalizedToken)
 	bootstrapList, err := storageClient.List(ctx, "/bootstrap", 0)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	if len(bootstrapList) == 0 {
-		c.saveBootstrap = true
-		return nil, nil
+		return nil, true, nil
 	}
 	if len(bootstrapList) > 1 {
 		logrus.Warn("found multiple bootstrap keys in storage")
 	}
 	// check for empty string key and for old token format with k10 prefix
-	if err := c.migrateOldTokens(ctx, bootstrapList, storageClient, emptyStringKey, tokenKey, normalizedToken, oldToken); err != nil {
-		return nil, err
+	if err := migrateOldTokens(ctx, bootstrapList, storageClient, emptyStringKey, tokenKey, normalizedToken, oldToken); err != nil {
+		return nil, false, err
 	}
 
 	// getting the list of bootstrap again after migrating the empty key
 	bootstrapList, err = storageClient.List(ctx, "/bootstrap", 0)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	for _, bootstrapKV := range bootstrapList {
 		// ensure bootstrap is stored in the current token's key
 		if string(bootstrapKV.Key) == tokenKey {
-			return &bootstrapKV, nil
+			return &bootstrapKV, false, nil
 		}
 	}
 
-	return nil, errors.New("bootstrap data already found and encrypted with different token")
+	return nil, false, errors.New("bootstrap data already found and encrypted with different token")
 }
 
 // readTokenFromFile will attempt to get the token from <data-dir>/token if it the file not found
@@ -209,7 +210,7 @@ func normalizeToken(token string) (string, error) {
 // migrateOldTokens will list all keys that has prefix /bootstrap and will check for key that is
 // hashed with empty string and keys that is hashed with old token format before normalizing
 // then migrate those and resave only with the normalized token
-func (c *Cluster) migrateOldTokens(ctx context.Context, bootstrapList []client.Value, storageClient client.Client, emptyStringKey, tokenKey, token, oldToken string) error {
+func migrateOldTokens(ctx context.Context, bootstrapList []client.Value, storageClient client.Client, emptyStringKey, tokenKey, token, oldToken string) error {
 	oldTokenKey := storageKey(oldToken)
 
 	for _, bootstrapKV := range bootstrapList {

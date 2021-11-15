@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
@@ -12,6 +13,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/rancher/k3s/pkg/cluster"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/wrangler/pkg/generated/controllers/core"
 	"github.com/sirupsen/logrus"
@@ -157,7 +159,7 @@ func encryptionEnable(server *config.Control, enable bool) error {
 	return nil
 }
 
-func encryptionConfigHandler(server *config.Control) http.Handler {
+func encryptionConfigHandler(ctx context.Context, server *config.Control) http.Handler {
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 		if req.TLS == nil {
 			resp.WriteHeader(http.StatusNotFound)
@@ -176,11 +178,11 @@ func encryptionConfigHandler(server *config.Control) http.Handler {
 		if encryptReq.Stage != nil && encryptReq.Force != nil {
 			switch *encryptReq.Stage {
 			case EncryptionPrepare:
-				err = encryptionPrepare(server, *encryptReq.Force)
+				err = encryptionPrepare(ctx, server, *encryptReq.Force)
 			case EncryptionRotate:
-				err = encryptionRotate(server, *encryptReq.Force)
+				err = encryptionRotate(ctx, server, *encryptReq.Force)
 			case EncryptionReencrypt:
-				err = encryptionReencrypt(server, *encryptReq.Force)
+				err = encryptionReencrypt(ctx, server, *encryptReq.Force)
 			default:
 				err = fmt.Errorf("unknown stage %s requested", *encryptReq.Stage)
 			}
@@ -197,7 +199,7 @@ func encryptionConfigHandler(server *config.Control) http.Handler {
 	})
 }
 
-func encryptionPrepare(server *config.Control, force bool) error {
+func encryptionPrepare(ctx context.Context, server *config.Control, force bool) error {
 	state, err := getEncryptionState(server)
 	if err != nil {
 		return err
@@ -225,10 +227,13 @@ func encryptionPrepare(server *config.Control, force bool) error {
 	if err := writeEncryptionState(server, EncryptionPrepare, curKeys[0]); err != nil {
 		return err
 	}
-	return writeEncryptionHashAnnotation(server, server.Runtime.Core.Core())
+	if err := writeEncryptionHashAnnotation(server, server.Runtime.Core.Core()); err != nil {
+		return err
+	}
+	return cluster.Save(ctx, server, false)
 }
 
-func encryptionRotate(server *config.Control, force bool) error {
+func encryptionRotate(ctx context.Context, server *config.Control, force bool) error {
 	state, err := getEncryptionState(server)
 	if err != nil {
 		return err
@@ -255,10 +260,13 @@ func encryptionRotate(server *config.Control, force bool) error {
 		return err
 	}
 	logrus.Infoln("Encryption keys right rotated")
-	return writeEncryptionHashAnnotation(server, server.Runtime.Core.Core())
+	if err := writeEncryptionHashAnnotation(server, server.Runtime.Core.Core()); err != nil {
+		return err
+	}
+	return cluster.Save(ctx, server, false)
 }
 
-func encryptionReencrypt(server *config.Control, force bool) error {
+func encryptionReencrypt(ctx context.Context, server *config.Control, force bool) error {
 	state, err := getEncryptionState(server)
 	if err != nil {
 		return err
@@ -286,7 +294,10 @@ func encryptionReencrypt(server *config.Control, force bool) error {
 		return err
 	}
 	logrus.Infoln("Removed key: ", curKeys[len(curKeys)-1])
-	return writeEncryptionHashAnnotation(server, server.Runtime.Core.Core())
+	if err := writeEncryptionHashAnnotation(server, server.Runtime.Core.Core()); err != nil {
+		return err
+	}
+	return cluster.Save(ctx, server, false)
 }
 
 func updateSecrets(core core.Interface) error {
