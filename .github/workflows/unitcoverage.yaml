@@ -3,13 +3,19 @@ on:
   push:
     paths-ignore:
       - "**.md"
+      - "channel.yaml"
       - "install.sh"
-      - "tests/install"
+      - "tests/vagrant/**"
+      - ".github/**"
+      - "!.github/workflows/unitcoverage.yaml"
   pull_request:
     paths-ignore:
       - "**.md"
+      - "channel.yaml"
       - "install.sh"
-      - "tests/install"
+      - "tests/vagrant/**"
+      - ".github/**"
+      - "!.github/workflows/unitcoverage.yaml"
   workflow_dispatch: {}
 jobs:
   test:

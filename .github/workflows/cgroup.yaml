@@ -1,4 +1,4 @@
-name: Snapshotter
+name: Control Group
 on:
   push:
     paths-ignore:
@@ -6,18 +6,18 @@ on:
       - "channel.yaml"
       - "install.sh"
       - "tests/**"
-      - "!tests/vagrant/snapshotter/**"
+      - "!tests/vagrant/cgroup/**"
       - ".github/**"
-      - "!.github/workflows/snapshotter.yaml"
+      - "!.github/workflows/cgroup.yaml"
   pull_request:
     paths-ignore:
       - "**.md"
       - "channel.yaml"
       - "install.sh"
       - "tests/**"
-      - "!tests/vagrant/snapshotter/**"
+      - "!tests/vagrant/cgroup/**"
       - ".github/**"
-      - "!.github/workflows/snapshotter.yaml"
+      - "!.github/workflows/cgroup.yaml"
   workflow_dispatch: {}
 jobs:
   prep:
@@ -30,7 +30,7 @@ jobs:
         with: { fetch-depth: 1 }
       - name: "Build"
         run: DOCKER_BUILDKIT=1 SKIP_VALIDATE=1 make
-      - name: "Upload Binary"
+      - name: "Upload"
         uses: actions/upload-artifact@v2
         with: { name: k3s, path: dist/artifacts/k3s }
   test:
@@ -42,14 +42,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        vm: [opensuse-leap]
-        snapshotter: [btrfs]
+        vm: [fedora-34]
+        mode: [unified]
       max-parallel: 1
     defaults:
       run:
-        working-directory: tests/vagrant/snapshotter/${{ matrix.snapshotter }}/${{ matrix.vm }}
-    env:
-      VAGRANT_EXPERIMENTAL: disks
+        working-directory: tests/vagrant/cgroup/${{ matrix.mode }}/${{ matrix.vm }}
     steps:
       - name: "Checkout"
         uses: actions/checkout@v2
@@ -63,18 +61,31 @@ jobs:
           path: |
             ~/.vagrant.d/boxes
             ~/.vagrant.d/gems
-          key: snapshotter-${{ hashFiles(format('tests/vagrant/snapshotter/{0}/{1}/Vagrantfile', matrix.snapshotter, matrix.vm)) }}
+          key: cgroup-${{ hashFiles(format('tests/vagrant/cgroup/{0}/{1}/Vagrantfile', matrix.mode, matrix.vm)) }}
         id: vagrant-cache
         continue-on-error: true
       - name: "Vagrant Plugin(s)"
         run: vagrant plugin install vagrant-k3s
       - name: "Vagrant Up ⏩ Install K3s"
         run: vagrant up
-      - name: "⏳ Node"
-        run: vagrant provision --provision-with=k3s-wait-for-node
-      - name: "⏳ CoreDNS"
-        run: vagrant provision --provision-with=k3s-wait-for-coredns
-      - name: "k3s-status" # kubectl get node,all -A -o wide
+      - name: "K3s Start" # start k3s rootfull
+        run: vagrant ssh -- sudo systemctl start k3s-server
+      - name: "K3s Ready" # wait for k3s to be ready
+        run: vagrant provision --provision-with=k3s-ready
+      - name: "K3s Status" # kubectl get node,all -A -o wide
         run: vagrant provision --provision-with=k3s-status
-      - name: "k3s-snapshots" # if no snapshots then we fail
-        run: vagrant provision --provision-with=k3s-snapshots
+      - name: "Sonobuoy (--mode=quick)"
+        env: {TEST_RESULTS_PATH: rootfull}
+        run: vagrant provision --provision-with=k3s-sonobuoy
+      - name: "K3s Stop" # stop k3s rootfull
+        run: vagrant ssh -- sudo systemctl stop k3s-server
+      - name: "Vagrant Reload"
+        run: vagrant reload
+      - name: "[Rootless] Starting K3s"
+        run: vagrant ssh -- systemctl --user start k3s-rootless
+      - name: "[Rootless] K3s Ready"
+        env: {TEST_KUBECONFIG: /home/vagrant/.kube/k3s.yaml}
+        run: vagrant provision --provision-with=k3s-ready
+      - name: "[Rootless] Sonobuoy (--mode=quick)"
+        env: {TEST_KUBECONFIG: /home/vagrant/.kube/k3s.yaml, TEST_RESULTS_PATH: rootless}
+        run: vagrant provision --provision-with=k3s-sonobuoy
