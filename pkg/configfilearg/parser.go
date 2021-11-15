@@ -13,6 +13,7 @@ import (
 
 	"github.com/rancher/k3s/pkg/agent/util"
 	"github.com/rancher/wrangler/pkg/data/convert"
+	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 	"gopkg.in/yaml.v2"
 )
@@ -88,6 +89,8 @@ func (p *Parser) stripInvalidFlags(command string, args []string) ([]string, err
 		}
 		if validFlags[mArg] {
 			result = append(result, arg)
+		} else {
+			logrus.Warnf("Unknown flag %s found in config.yaml, skipping\n", strings.Split(arg, "=")[0])
 		}
 	}
 	return result, nil
