@@ -156,6 +156,7 @@ type Control struct {
 	ClusterResetRestorePath  string
 	EncryptSecrets           bool
 	EncryptForce             bool
+	EncryptSkip              bool
 	TLSMinVersion            uint16
 	TLSCipherSuites          []uint16
 	EtcdSnapshotName         string

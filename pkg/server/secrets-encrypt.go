@@ -43,7 +43,8 @@ type EncryptionState struct {
 type EncryptionRequest struct {
 	Stage  *string `json:"stage,omitempty"`
 	Enable *bool   `json:"enable,omitempty"`
-	Force  *bool   `json:"force,omitempty"`
+	Force  bool    `json:"force,omitempty"`
+	Skip   bool    `json:"force,omitempty"`
 }
 
 func getEncryptionRequest(req *http.Request) (EncryptionRequest, error) {
@@ -125,7 +126,7 @@ func encryptionStatus(server *config.Control) (EncryptionState, error) {
 	return state, nil
 }
 
-func encryptionEnable(server *config.Control, enable bool) error {
+func encryptionEnable(ctx context.Context, server *config.Control, enable bool) error {
 	providers, err := getEncryptionProviders(server)
 	if err != nil {
 		return err
@@ -156,7 +157,7 @@ func encryptionEnable(server *config.Control, enable bool) error {
 	} else {
 		return fmt.Errorf("unable to enable/disable secrets encryption, unknown configuration")
 	}
-	return nil
+	return cluster.Save(ctx, server, server.Runtime.EtcdConfig, true)
 }
 
 func encryptionConfigHandler(ctx context.Context, server *config.Control) http.Handler {
@@ -175,19 +176,19 @@ func encryptionConfigHandler(ctx context.Context, server *config.Control) http.H
 			resp.Write([]byte(err.Error()))
 			return
 		}
-		if encryptReq.Stage != nil && encryptReq.Force != nil {
+		if encryptReq.Stage != nil {
 			switch *encryptReq.Stage {
 			case EncryptionPrepare:
-				err = encryptionPrepare(ctx, server, *encryptReq.Force)
+				err = encryptionPrepare(ctx, server, encryptReq.Force)
 			case EncryptionRotate:
-				err = encryptionRotate(ctx, server, *encryptReq.Force)
+				err = encryptionRotate(ctx, server, encryptReq.Force)
 			case EncryptionReencrypt:
-				err = encryptionReencrypt(ctx, server, *encryptReq.Force)
+				err = encryptionReencrypt(ctx, server, encryptReq.Force, encryptReq.Skip)
 			default:
 				err = fmt.Errorf("unknown stage %s requested", *encryptReq.Stage)
 			}
 		} else if encryptReq.Enable != nil {
-			err = encryptionEnable(server, *encryptReq.Enable)
+			err = encryptionEnable(ctx, server, *encryptReq.Enable)
 		}
 
 		if err != nil {
@@ -266,7 +267,8 @@ func encryptionRotate(ctx context.Context, server *config.Control, force bool) e
 	return cluster.Save(ctx, server, server.Runtime.EtcdConfig, true)
 }
 
-func encryptionReencrypt(ctx context.Context, server *config.Control, force bool) error {
+func encryptionReencrypt(ctx context.Context, server *config.Control, force bool, skip bool) error {
+
 	state, err := getEncryptionState(server)
 	if err != nil {
 		return err
@@ -278,6 +280,9 @@ func encryptionReencrypt(ctx context.Context, server *config.Control, force bool
 	}
 
 	updateSecrets(server.Runtime.Core.Core())
+	if skip {
+		return nil
+	}
 
 	// Remove last key
 	curKeys, err := getEncryptionKeys(server)

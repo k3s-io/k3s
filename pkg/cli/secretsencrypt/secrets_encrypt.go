@@ -54,6 +54,7 @@ func commandPrep(app *cli.Context, cfg *cmds.Server) (config.Control, *clientacc
 		controlConfig.Token = cmds.ServerConfig.Token
 	}
 	controlConfig.EncryptForce = cfg.EncryptForce
+	controlConfig.EncryptSkip = cfg.EncryptSkip
 	info, err := clientaccess.ParseAndValidateTokenForUser(cmds.ServerConfig.ServerURL, controlConfig.Token, "node")
 	if err != nil {
 		return controlConfig, nil, err
@@ -78,8 +79,7 @@ func Enable(app *cli.Context) error {
 	if err = info.Put("/v1-"+version.Program+"/encrypt/config", b); err != nil {
 		return err
 	}
-	fmt.Println("secrets-encryption enabled, after server restart run:")
-	fmt.Println("kubectl get secrets --all-namespaces -o json | kubectl replace -f -")
+	fmt.Println("secrets-encryption enabled")
 	return nil
 }
 
@@ -100,8 +100,7 @@ func Disable(app *cli.Context) error {
 	if err = info.Put("/v1-"+version.Program+"/encrypt/config", b); err != nil {
 		return err
 	}
-	fmt.Println("secrets-encryption disabled, after server restart run:")
-	fmt.Println("kubectl get secrets --all-namespaces -o json | kubectl replace -f -")
+	fmt.Println("secrets-encryption disabled")
 	return nil
 }
 
@@ -169,7 +168,7 @@ func Prepare(app *cli.Context) error {
 	stage := server.EncryptionPrepare
 	b, err := json.Marshal(server.EncryptionRequest{
 		Stage: &stage,
-		Force: &controlConfig.EncryptForce,
+		Force: controlConfig.EncryptForce,
 	})
 	if err != nil {
 		return err
@@ -192,7 +191,7 @@ func Rotate(app *cli.Context) error {
 	stage := server.EncryptionRotate
 	b, err := json.Marshal(server.EncryptionRequest{
 		Stage: &stage,
-		Force: &controlConfig.EncryptForce,
+		Force: controlConfig.EncryptForce,
 	})
 	if err != nil {
 		return err
@@ -216,7 +215,8 @@ func Reencrypt(app *cli.Context) error {
 	stage := server.EncryptionReencrypt
 	b, err := json.Marshal(server.EncryptionRequest{
 		Stage: &stage,
-		Force: &controlConfig.EncryptForce,
+		Force: controlConfig.EncryptForce,
+		Skip:  controlConfig.EncryptSkip,
 	})
 	if err != nil {
 		return err

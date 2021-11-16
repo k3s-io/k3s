@@ -78,11 +78,17 @@ func NewSecretsEncryptSubcommands(status, enable, disable, prepare, rotate, reen
 			SkipFlagParsing: false,
 			SkipArgReorder:  true,
 			Action:          reencrypt,
-			Flags: append(EncryptFlags, &cli.BoolFlag{
-				Name:        "f,force",
-				Usage:       "Force secrets reencryption.",
-				Destination: &ServerConfig.EncryptForce,
-			}),
+			Flags: append(EncryptFlags,
+				&cli.BoolFlag{
+					Name:        "f,force",
+					Usage:       "Force secrets reencryption.",
+					Destination: &ServerConfig.EncryptForce,
+				},
+				&cli.BoolFlag{
+					Name:        "skip",
+					Usage:       "Skip removing old key",
+					Destination: &ServerConfig.EncryptSkip,
+				}),
 		},
 	}
 }
