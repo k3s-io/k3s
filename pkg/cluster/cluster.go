@@ -85,7 +85,7 @@ func (c *Cluster) Start(ctx context.Context) (<-chan struct{}, error) {
 
 	// if necessary, store bootstrap data to datastore
 	if c.saveBootstrap {
-		if err := Save(ctx, c.config, false); err != nil {
+		if err := Save(ctx, c.config, c.EtcdConfig, false); err != nil {
 			return nil, err
 		}
 	}
@@ -99,7 +99,7 @@ func (c *Cluster) Start(ctx context.Context) (<-chan struct{}, error) {
 			for {
 				select {
 				case <-ready:
-					if err := Save(ctx, c.config, false); err != nil {
+					if err := Save(ctx, c.config, c.EtcdConfig, false); err != nil {
 						panic(err)
 					}
 

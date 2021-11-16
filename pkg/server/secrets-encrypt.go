@@ -230,7 +230,7 @@ func encryptionPrepare(ctx context.Context, server *config.Control, force bool) 
 	if err := writeEncryptionHashAnnotation(server, server.Runtime.Core.Core()); err != nil {
 		return err
 	}
-	return cluster.Save(ctx, server, false)
+	return cluster.Save(ctx, server, server.Runtime.EtcdConfig, true)
 }
 
 func encryptionRotate(ctx context.Context, server *config.Control, force bool) error {
@@ -263,7 +263,7 @@ func encryptionRotate(ctx context.Context, server *config.Control, force bool) e
 	if err := writeEncryptionHashAnnotation(server, server.Runtime.Core.Core()); err != nil {
 		return err
 	}
-	return cluster.Save(ctx, server, false)
+	return cluster.Save(ctx, server, server.Runtime.EtcdConfig, true)
 }
 
 func encryptionReencrypt(ctx context.Context, server *config.Control, force bool) error {
@@ -297,7 +297,7 @@ func encryptionReencrypt(ctx context.Context, server *config.Control, force bool
 	if err := writeEncryptionHashAnnotation(server, server.Runtime.Core.Core()); err != nil {
 		return err
 	}
-	return cluster.Save(ctx, server, false)
+	return cluster.Save(ctx, server, server.Runtime.EtcdConfig, true)
 }
 
 func updateSecrets(core core.Interface) error {

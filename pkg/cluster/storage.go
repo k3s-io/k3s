@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/k3s-io/kine/pkg/client"
+	"github.com/k3s-io/kine/pkg/endpoint"
 	"github.com/rancher/k3s/pkg/bootstrap"
 	"github.com/rancher/k3s/pkg/clientaccess"
 	"github.com/rancher/k3s/pkg/daemons/config"
@@ -20,7 +21,7 @@ import (
 // snapshot of the cluster's CA certs and keys, encryption passphrases, etc - encrypted with the join token.
 // This is used when bootstrapping a cluster from a managed database or external etcd cluster.
 // This is NOT used with embedded etcd, which bootstraps over HTTP.
-func Save(ctx context.Context, config *config.Control, override bool) error {
+func Save(ctx context.Context, config *config.Control, etcdConfig endpoint.ETCDConfig, override bool) error {
 	buf := &bytes.Buffer{}
 	if err := bootstrap.ReadFromDisk(buf, &config.Runtime.ControlRuntimeBootstrap); err != nil {
 		return err
@@ -43,7 +44,7 @@ func Save(ctx context.Context, config *config.Control, override bool) error {
 		return err
 	}
 
-	storageClient, err := client.New(config.Runtime.EtcdConfig)
+	storageClient, err := client.New(etcdConfig)
 	if err != nil {
 		return err
 	}
