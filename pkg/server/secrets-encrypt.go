@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math/big"
 	"net/http"
 	"os"
 	"time"
@@ -43,8 +44,8 @@ type EncryptionState struct {
 type EncryptionRequest struct {
 	Stage  *string `json:"stage,omitempty"`
 	Enable *bool   `json:"enable,omitempty"`
-	Force  bool    `json:"force,omitempty"`
-	Skip   bool    `json:"force,omitempty"`
+	Force  bool    `json:"force"`
+	Skip   bool    `json:"skip"`
 }
 
 func getEncryptionRequest(req *http.Request) (EncryptionRequest, error) {
@@ -65,14 +66,12 @@ func encryptionStatusHandler(server *config.Control) http.Handler {
 		}
 		status, err := encryptionStatus(server)
 		if err != nil {
-			resp.WriteHeader(http.StatusBadRequest)
-			resp.Write([]byte(err.Error()))
+			genErrorMessage(resp, http.StatusInternalServerError, err)
 			return
 		}
 		b, err := json.Marshal(status)
 		if err != nil {
-			resp.WriteHeader(http.StatusBadRequest)
-			resp.Write([]byte(err.Error()))
+			genErrorMessage(resp, http.StatusInternalServerError, err)
 			return
 		}
 		resp.Write(b)
@@ -192,8 +191,7 @@ func encryptionConfigHandler(ctx context.Context, server *config.Control) http.H
 		}
 
 		if err != nil {
-			resp.WriteHeader(http.StatusBadRequest)
-			resp.Write([]byte(err.Error()))
+			genErrorMessage(resp, http.StatusBadRequest, err)
 			return
 		}
 		resp.WriteHeader(http.StatusOK)
@@ -205,7 +203,7 @@ func encryptionPrepare(ctx context.Context, server *config.Control, force bool) 
 	if err != nil {
 		return err
 	} else if !force && (state.Stage != EncryptionStart && state.Stage != EncryptionReencrypt) {
-		return fmt.Errorf("error, incorrect stage %s found with key %s", state.Stage, state.ActiveKey)
+		return fmt.Errorf("error, incorrect stage: %s found with key: %s", state.Stage, state.ActiveKey)
 	}
 
 	if err := verifyEncryptionHashAnnotation(server.Runtime.Core.Core()); err != nil {
@@ -239,7 +237,7 @@ func encryptionRotate(ctx context.Context, server *config.Control, force bool) e
 	if err != nil {
 		return err
 	} else if !force && state.Stage != EncryptionPrepare {
-		return fmt.Errorf("error, incorrect stage %s found with key %s", state.Stage, state.ActiveKey)
+		return fmt.Errorf("error, incorrect stage: %s found with key: %s", state.Stage, state.ActiveKey)
 	}
 
 	if err := verifyEncryptionHashAnnotation(server.Runtime.Core.Core()); err != nil {
@@ -273,7 +271,7 @@ func encryptionReencrypt(ctx context.Context, server *config.Control, force bool
 	if err != nil {
 		return err
 	} else if !force && state.Stage != EncryptionRotate {
-		return fmt.Errorf("error, incorrect stage %s found with key %s", state.Stage, state.ActiveKey)
+		return fmt.Errorf("error, incorrect stage: %s found with key: %s", state.Stage, state.ActiveKey)
 	}
 	if err := verifyEncryptionHashAnnotation(server.Runtime.Core.Core()); err != nil {
 		return err
@@ -495,4 +493,16 @@ func writeEncryptionHashAnnotation(server *config.Control, core core.Interface) 
 	}
 	logrus.Debugf("encryption hash annotation set successfully on node: %s\n", nodeName)
 	return nil
+}
+
+func genErrorMessage(resp http.ResponseWriter, statusCode int, err error) {
+	errId, iErr := rand.Int(rand.Reader, big.NewInt(99999))
+	if iErr != nil {
+		resp.WriteHeader(http.StatusInternalServerError)
+		resp.Write([]byte(err.Error()))
+		return
+	}
+	logrus.Warnf("secrets-encrypt-%s: %s", errId.String(), err.Error())
+	resp.WriteHeader(statusCode)
+	resp.Write([]byte(fmt.Sprintf("error secrets-encrypt-%s: see server logs for more info", errId.String())))
 }

@@ -8,7 +8,7 @@ const SecretsEncryptCommand = "secrets-encrypt"
 
 var EncryptFlags = []cli.Flag{
 	DataDirFlag,
-	AgentTokenFlag,
+	ServerToken,
 }
 
 func NewSecretsEncryptCommand(action func(*cli.Context) error, subcommands []cli.Command) cli.Command {

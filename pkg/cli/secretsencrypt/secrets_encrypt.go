@@ -16,6 +16,7 @@ import (
 	"github.com/rancher/k3s/pkg/server"
 	"github.com/rancher/k3s/pkg/version"
 	"github.com/urfave/cli"
+	"k8s.io/utils/pointer"
 )
 
 func commandPrep(app *cli.Context, cfg *cmds.Server) (config.Control, *clientaccess.Info, error) {
@@ -39,11 +40,11 @@ func commandPrep(app *cli.Context, cfg *cmds.Server) (config.Control, *clientacc
 	if err != nil {
 		return controlConfig, nil, err
 	}
-	if cmds.ServerConfig.ServerURL == "" {
-		cmds.ServerConfig.ServerURL = "https://127.0.0.1:6443"
+	if cfg.ServerURL == "" {
+		cfg.ServerURL = "https://127.0.0.1:6443"
 	}
 
-	if cmds.ServerConfig.Token == "" {
+	if cfg.Token == "" {
 		fp := filepath.Join(controlConfig.DataDir, "token")
 		tokenByte, err := ioutil.ReadFile(fp)
 		if err != nil {
@@ -51,7 +52,7 @@ func commandPrep(app *cli.Context, cfg *cmds.Server) (config.Control, *clientacc
 		}
 		controlConfig.Token = string(bytes.TrimRight(tokenByte, "\n"))
 	} else {
-		controlConfig.Token = cmds.ServerConfig.Token
+		controlConfig.Token = cfg.Token
 	}
 	controlConfig.EncryptForce = cfg.EncryptForce
 	controlConfig.EncryptSkip = cfg.EncryptSkip
@@ -71,8 +72,7 @@ func Enable(app *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	enable := true
-	b, err := json.Marshal(server.EncryptionRequest{Enable: &enable})
+	b, err := json.Marshal(server.EncryptionRequest{Enable: pointer.BoolPtr(true)})
 	if err != nil {
 		return err
 	}
@@ -92,8 +92,7 @@ func Disable(app *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	enable := false
-	b, err := json.Marshal(server.EncryptionRequest{Enable: &enable})
+	b, err := json.Marshal(server.EncryptionRequest{Enable: pointer.BoolPtr(false)})
 	if err != nil {
 		return err
 	}
@@ -165,9 +164,8 @@ func Prepare(app *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	stage := server.EncryptionPrepare
 	b, err := json.Marshal(server.EncryptionRequest{
-		Stage: &stage,
+		Stage: pointer.StringPtr(server.EncryptionPrepare),
 		Force: controlConfig.EncryptForce,
 	})
 	if err != nil {
@@ -188,9 +186,8 @@ func Rotate(app *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	stage := server.EncryptionRotate
 	b, err := json.Marshal(server.EncryptionRequest{
-		Stage: &stage,
+		Stage: pointer.StringPtr(server.EncryptionRotate),
 		Force: controlConfig.EncryptForce,
 	})
 	if err != nil {
@@ -212,9 +209,8 @@ func Reencrypt(app *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	stage := server.EncryptionReencrypt
 	b, err := json.Marshal(server.EncryptionRequest{
-		Stage: &stage,
+		Stage: pointer.StringPtr(server.EncryptionReencrypt),
 		Force: controlConfig.EncryptForce,
 		Skip:  controlConfig.EncryptSkip,
 	})
