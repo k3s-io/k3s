@@ -78,7 +78,7 @@ func (p *Parser) stripInvalidFlags(command string, args []string) ([]string, err
 		}
 	}
 
-	re, err := regexp.Compile("^-+(.+)=")
+	re, err := regexp.Compile("^-+([^=]*)=")
 	if err != nil {
 		return args, err
 	}
