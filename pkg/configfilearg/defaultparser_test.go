@@ -29,7 +29,7 @@ func Test_UnitMustParse(t *testing.T) {
 			args:   []string{"k3s", "server", "--write-kubeconfig-mode 644"},
 			config: "./testdata/defaultdata.yaml",
 			want: []string{"k3s", "server", "--token=12345", "--node-label=DEAFBEEF",
-				"--etcd-s3=true", "--etcd-s3-bucket=my-backup", "--write-kubeconfig-mode 644"},
+				"--etcd-s3=true", "--etcd-s3-bucket=my-backup", "--kubelet-arg=max-pods=999", "--write-kubeconfig-mode 644"},
 		},
 		{
 			name: "Basic etcd-snapshot",
@@ -60,7 +60,7 @@ func Test_UnitMustParse(t *testing.T) {
 			args:   []string{"k3s", "agent"},
 			config: "./testdata/defaultdata.yaml",
 			want: []string{"k3s", "agent", "--token=12345", "--node-label=DEAFBEEF",
-				"--etcd-s3=true", "--etcd-s3-bucket=my-backup", "--notaflag=true"},
+				"--etcd-s3=true", "--etcd-s3-bucket=my-backup", "--notaflag=true", "--kubelet-arg=max-pods=999"},
 		},
 	}
 	for _, tt := range tests {

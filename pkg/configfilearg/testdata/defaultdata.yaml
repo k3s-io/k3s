@@ -3,3 +3,4 @@ node-label: DEAFBEEF
 etcd-s3: true
 etcd-s3-bucket: my-backup
 notaflag : true
+kubelet-arg: "max-pods=999"
