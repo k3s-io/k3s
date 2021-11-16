@@ -117,6 +117,24 @@ var _ = Describe("secrets encryption rotation", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result).To(ContainSubstring("Encryption Status: Disabled"))
 		})
+		It("restarts the server", func() {
+			var err error
+			Expect(testutil.K3sKillServer(secretsEncryptionServer)).To(Succeed())
+			secretsEncryptionServer, err = testutil.K3sStartServer(secretsEncryptionServerArgs...)
+			Expect(err).ToNot(HaveOccurred())
+			Eventually(func() (string, error) {
+				return testutil.K3sCmd("kubectl", "get", "pods", "-A")
+			}, "180s", "1s").Should(MatchRegexp("kube-system.+coredns.+1\\/1.+Running"))
+		})
+		It("reencrypts the keys", func() {
+			Eventually(func() (string, error) {
+				return testutil.K3sCmd("secrets-encrypt", "reencrypt", "-f", "--skip", "-d", secretsEncryptionDataDir)
+			}, "20s", "5s").Should(ContainSubstring("reencrypt completed successfully"))
+
+			result, err := testutil.K3sCmd("secrets-encrypt", "status", "-d", secretsEncryptionDataDir)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result).To(ContainSubstring("Encryption Status: Disabled"))
+		})
 	})
 })
 
