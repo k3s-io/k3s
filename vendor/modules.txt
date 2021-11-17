@@ -174,6 +174,8 @@ github.com/cilium/ebpf/internal/unix
 github.com/cilium/ebpf/link
 # github.com/container-storage-interface/spec v1.5.0
 github.com/container-storage-interface/spec/lib/go/csi
+# github.com/containerd/btrfs v1.0.0 => github.com/containerd/btrfs v1.0.0
+github.com/containerd/btrfs
 # github.com/containerd/cgroups v1.0.1 => github.com/containerd/cgroups v1.0.1
 ## explicit
 github.com/containerd/cgroups
@@ -345,6 +347,8 @@ github.com/containerd/containerd/services/snapshots
 github.com/containerd/containerd/services/tasks
 github.com/containerd/containerd/services/version
 github.com/containerd/containerd/snapshots
+github.com/containerd/containerd/snapshots/btrfs
+github.com/containerd/containerd/snapshots/btrfs/plugin
 github.com/containerd/containerd/snapshots/native
 github.com/containerd/containerd/snapshots/native/plugin
 github.com/containerd/containerd/snapshots/overlay
