@@ -351,6 +351,14 @@ func (h *handler) newDaemonSet(svc *core.Service) (*apps.DaemonSet, error) {
 	name := fmt.Sprintf("svclb-%s", svc.Name)
 	oneInt := intstr.FromInt(1)
 
+	// If ipv6 is present, we must enable ipv6 forwarding in the manifest
+	var ipv6Switch bool
+	for _, ipFamily := range svc.Spec.IPFamilies {
+		if ipFamily == core.IPv6Protocol {
+			ipv6Switch = true
+		}
+	}
+
 	ds := &apps.DaemonSet{
 		ObjectMeta: meta.ObjectMeta{
 			Name:      name,
@@ -396,6 +404,19 @@ func (h *handler) newDaemonSet(svc *core.Service) (*apps.DaemonSet, error) {
 				},
 			},
 		},
+	}
+
+	if ipv6Switch {
+		// Add security context to enable ipv6 forwarding
+		securityContext := &core.PodSecurityContext{
+			Sysctls: []core.Sysctl{
+				{
+					Name:  "net.ipv6.conf.all.forwarding",
+					Value: "1",
+				},
+			},
+		}
+		ds.Spec.Template.Spec.SecurityContext = securityContext
 	}
 
 	for _, port := range svc.Spec.Ports {
