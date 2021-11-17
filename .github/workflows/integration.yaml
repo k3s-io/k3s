@@ -1,11 +1,21 @@
 name: Integration Test Coverage
 on: 
   push:
-    paths-ignore: 
+    paths-ignore:
       - "**.md"
+      - "channel.yaml"
+      - "install.sh"
+      - "tests/vagrant/**"
+      - ".github/**"
+      - "!.github/workflows/integration.yaml"
   pull_request:
     paths-ignore:
       - "**.md"
+      - "channel.yaml"
+      - "install.sh"
+      - "tests/vagrant/**"
+      - ".github/**"
+      - "!.github/workflows/integration.yaml"
   workflow_dispatch: {}
 jobs:
   build:
@@ -48,6 +58,8 @@ jobs:
         chmod +x ./dist/artifacts/k3s
         go test -coverpkg=./... -coverprofile=coverage.out ./pkg/... -run Integration
         go tool cover -func coverage.out
+        # these tests do not relate to coverage and must be run separately
+        go test ./tests/integration/... -run Integration 
     - name: On Failure, Launch Debug Session
       if: ${{ failure() }}
       uses: mxschmitt/action-tmate@v3
