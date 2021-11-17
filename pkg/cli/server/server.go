@@ -189,7 +189,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 			tokenFile := filepath.Join(dataDir, "server", "token")
 			if _, err := os.Stat(tokenFile); err != nil {
 				if os.IsNotExist(err) {
-					return errors.New(tokenFile + " doesnt exist, please pass --token to complete the restoration")
+					return errors.New(tokenFile + " does not exist, please pass --token to complete the restoration")
 				}
 			}
 		}
