@@ -5,7 +5,7 @@ import (
 	"github.com/urfave/cli"
 )
 
-const CertCommand = "cert"
+const CertCommand = "certificate"
 
 var (
 	ComponentList    cli.StringSlice
@@ -21,7 +21,7 @@ var (
 		},
 		cli.StringSliceFlag{
 			Name:  "service,s",
-			Usage: "List of services to rotate their certificates the options include (admin, api-server, controller-manager, scheduler, " + version.Program + "-controller, cloud-controller, etcd, auth-proxy, kubelet, kube-proxy)",
+			Usage: "List of services to rotate certificates for. Options include (admin, api-server, controller-manager, scheduler, " + version.Program + "-controller, cloud-controller, etcd, auth-proxy, kubelet, kube-proxy)",
 			Value: &ComponentList,
 		},
 	}

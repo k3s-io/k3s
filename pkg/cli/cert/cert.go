@@ -151,10 +151,10 @@ func rotate(app *cli.Context, cfg *cmds.Server) error {
 
 	for _, cert := range certList {
 		if err := os.Remove(cert); err == nil {
-			logrus.Infof("Certificate %s is deleted", cert)
+			logrus.Infof("Certificate %s is processed", cert)
 		}
 	}
-	logrus.Infof("Successfully backed certificates for all services to path %s, please restart %s server or agent to rotate certificates", tlsBackupDir, version.Program)
+	logrus.Infof("Successfully backed up certificates for all services to path %s, please restart %s server or agent to rotate certificates", tlsBackupDir, version.Program)
 	return nil
 }
 
@@ -171,7 +171,7 @@ func rotateAllCerts(backupDir string, dirs ...string) error {
 					!strings.Contains(path, "temporary-certs") &&
 					!strings.Contains(path, "containerd") {
 					if err := os.Remove(path); err == nil {
-						logrus.Infof("Certificate %s is deleted", path)
+						logrus.Infof("Certificate %s is processed", path)
 					}
 					return nil
 				}
@@ -186,7 +186,7 @@ func rotateAllCerts(backupDir string, dirs ...string) error {
 	if err := ioutil.WriteFile(dynamicListenerRegenFilePath, []byte{}, 0600); err != nil {
 		return err
 	}
-	logrus.Infof("Successfully backed certificates for all services to path %s, please restart %s server or agent to rotate certificates", backupDir, version.Program)
+	logrus.Infof("Successfully backed up certificates for all services to path %s, please restart %s server or agent to rotate certificates", backupDir, version.Program)
 	return nil
 }
 
