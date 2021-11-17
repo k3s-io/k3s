@@ -1,11 +1,21 @@
 name: Unit Test Coverage
-on: 
+on:
   push:
-    paths-ignore: 
+    paths-ignore:
       - "**.md"
+      - "channel.yaml"
+      - "install.sh"
+      - "tests/vagrant/**"
+      - ".github/**"
+      - "!.github/workflows/unitcoverage.yaml"
   pull_request:
     paths-ignore:
       - "**.md"
+      - "channel.yaml"
+      - "install.sh"
+      - "tests/vagrant/**"
+      - ".github/**"
+      - "!.github/workflows/unitcoverage.yaml"
   workflow_dispatch: {}
 jobs:
   test:
