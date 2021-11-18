@@ -495,14 +495,14 @@ func writeEncryptionHashAnnotation(server *config.Control, core core.Interface) 
 	return nil
 }
 
-func genErrorMessage(resp http.ResponseWriter, statusCode int, err error) {
-	errId, iErr := rand.Int(rand.Reader, big.NewInt(99999))
-	if iErr != nil {
+func genErrorMessage(resp http.ResponseWriter, statusCode int, passedErr error) {
+	errID, err := rand.Int(rand.Reader, big.NewInt(99999))
+	if err != nil {
 		resp.WriteHeader(http.StatusInternalServerError)
 		resp.Write([]byte(err.Error()))
 		return
 	}
-	logrus.Warnf("secrets-encrypt-%s: %s", errId.String(), err.Error())
+	logrus.Warnf("secrets-encrypt-%s: %s", errID.String(), passedErr.Error())
 	resp.WriteHeader(statusCode)
-	resp.Write([]byte(fmt.Sprintf("error secrets-encrypt-%s: see server logs for more info", errId.String())))
+	resp.Write([]byte(fmt.Sprintf("error secrets-encrypt-%s: see server logs for more info", errID.String())))
 }
