@@ -64,16 +64,17 @@ const (
 )
 
 type IPTables struct {
-	path           string
-	proto          Protocol
-	hasCheck       bool
-	hasWait        bool
-	hasRandomFully bool
-	v1             int
-	v2             int
-	v3             int
-	mode           string // the underlying iptables operating mode, e.g. nf_tables
-	timeout        int    // time to wait for the iptables lock, default waits forever
+	path              string
+	proto             Protocol
+	hasCheck          bool
+	hasWait           bool
+	waitSupportSecond bool
+	hasRandomFully    bool
+	v1                int
+	v2                int
+	v3                int
+	mode              string // the underlying iptables operating mode, e.g. nf_tables
+	timeout           int    // time to wait for the iptables lock, default waits forever
 }
 
 // Stat represents a structured statistic entry.
@@ -139,9 +140,10 @@ func New(opts ...option) (*IPTables, error) {
 	ipt.v3 = v3
 	ipt.mode = mode
 
-	checkPresent, waitPresent, randomFullyPresent := getIptablesCommandSupport(v1, v2, v3)
+	checkPresent, waitPresent, waitSupportSecond, randomFullyPresent := getIptablesCommandSupport(v1, v2, v3)
 	ipt.hasCheck = checkPresent
 	ipt.hasWait = waitPresent
+	ipt.waitSupportSecond = waitSupportSecond
 	ipt.hasRandomFully = randomFullyPresent
 
 	return ipt, nil
@@ -460,6 +462,14 @@ func (ipt *IPTables) ClearAndDeleteChain(table, chain string) error {
 	return err
 }
 
+func (ipt *IPTables) ClearAll() error {
+	return ipt.run("-F")
+}
+
+func (ipt *IPTables) DeleteAll() error {
+	return ipt.run("-X")
+}
+
 // ChangePolicy changes policy on chain to target
 func (ipt *IPTables) ChangePolicy(table, chain, target string) error {
 	return ipt.run("-t", table, "-P", chain, target)
@@ -487,7 +497,7 @@ func (ipt *IPTables) runWithOutput(args []string, stdout io.Writer) error {
 	args = append([]string{ipt.path}, args...)
 	if ipt.hasWait {
 		args = append(args, "--wait")
-		if ipt.timeout != 0 {
+		if ipt.timeout != 0 && ipt.waitSupportSecond {
 			args = append(args, strconv.Itoa(ipt.timeout))
 		}
 	} else {
@@ -533,8 +543,8 @@ func getIptablesCommand(proto Protocol) string {
 }
 
 // Checks if iptables has the "-C" and "--wait" flag
-func getIptablesCommandSupport(v1 int, v2 int, v3 int) (bool, bool, bool) {
-	return iptablesHasCheckCommand(v1, v2, v3), iptablesHasWaitCommand(v1, v2, v3), iptablesHasRandomFully(v1, v2, v3)
+func getIptablesCommandSupport(v1 int, v2 int, v3 int) (bool, bool, bool, bool) {
+	return iptablesHasCheckCommand(v1, v2, v3), iptablesHasWaitCommand(v1, v2, v3), iptablesWaitSupportSecond(v1, v2, v3), iptablesHasRandomFully(v1, v2, v3)
 }
 
 // getIptablesVersion returns the first three components of the iptables version
@@ -604,6 +614,17 @@ func iptablesHasWaitCommand(v1 int, v2 int, v3 int) bool {
 		return true
 	}
 	if v1 == 1 && v2 == 4 && v3 >= 20 {
+		return true
+	}
+	return false
+}
+
+//Checks if an iptablse version is after 1.6.0, when --wait support second
+func iptablesWaitSupportSecond(v1 int, v2 int, v3 int) bool {
+	if v1 > 1 {
+		return true
+	}
+	if v1 == 1 && v2 >= 6 {
 		return true
 	}
 	return false

@@ -92,7 +92,7 @@ github.com/Rican7/retry/strategy
 github.com/armon/circbuf
 # github.com/asaskevich/govalidator v0.0.0-20190424111038-f61b66f89f4a
 github.com/asaskevich/govalidator
-# github.com/aws/aws-sdk-go v1.38.49
+# github.com/aws/aws-sdk-go v1.38.70
 github.com/aws/aws-sdk-go/aws
 github.com/aws/aws-sdk-go/aws/awserr
 github.com/aws/aws-sdk-go/aws/awsutil
@@ -172,6 +172,14 @@ github.com/cilium/ebpf/internal
 github.com/cilium/ebpf/internal/btf
 github.com/cilium/ebpf/internal/unix
 github.com/cilium/ebpf/link
+# github.com/cloudnativelabs/kube-router v1.3.2
+## explicit
+github.com/cloudnativelabs/kube-router/pkg/controllers/netpol
+github.com/cloudnativelabs/kube-router/pkg/healthcheck
+github.com/cloudnativelabs/kube-router/pkg/metrics
+github.com/cloudnativelabs/kube-router/pkg/options
+github.com/cloudnativelabs/kube-router/pkg/utils
+github.com/cloudnativelabs/kube-router/pkg/version
 # github.com/container-storage-interface/spec v1.5.0
 github.com/container-storage-interface/spec/lib/go/csi
 # github.com/containerd/btrfs v1.0.0 => github.com/containerd/btrfs v1.0.0
@@ -422,8 +430,12 @@ github.com/containernetworking/cni/pkg/types/current
 github.com/containernetworking/cni/pkg/utils
 github.com/containernetworking/cni/pkg/version
 # github.com/containernetworking/plugins v0.9.1
+github.com/containernetworking/plugins/pkg/ip
 github.com/containernetworking/plugins/pkg/ns
+github.com/containernetworking/plugins/pkg/utils/hwaddr
 github.com/containernetworking/plugins/pkg/utils/sysctl
+github.com/containernetworking/plugins/plugins/ipam/host-local/backend
+github.com/containernetworking/plugins/plugins/ipam/host-local/backend/allocator
 # github.com/containers/ocicrypt v1.1.1
 github.com/containers/ocicrypt
 github.com/containers/ocicrypt/blockcipher
@@ -439,8 +451,7 @@ github.com/containers/ocicrypt/keywrap/pkcs7
 github.com/containers/ocicrypt/spec
 github.com/containers/ocicrypt/utils
 github.com/containers/ocicrypt/utils/keyprovider
-# github.com/coreos/go-iptables v0.5.0
-## explicit
+# github.com/coreos/go-iptables v0.6.0
 github.com/coreos/go-iptables/iptables
 # github.com/coreos/go-oidc v2.1.0+incompatible
 github.com/coreos/go-oidc
@@ -472,7 +483,7 @@ github.com/docker/cli/cli/config/types
 github.com/docker/distribution/digestset
 github.com/docker/distribution/reference
 github.com/docker/distribution/registry/api/errcode
-# github.com/docker/docker v20.10.7+incompatible => github.com/docker/docker v20.10.2+incompatible
+# github.com/docker/docker v20.10.8+incompatible => github.com/docker/docker v20.10.2+incompatible
 ## explicit
 github.com/docker/docker/api
 github.com/docker/docker/api/types
@@ -1076,6 +1087,8 @@ github.com/rubiojr/go-vhd/vhd
 github.com/russross/blackfriday
 # github.com/russross/blackfriday/v2 v2.1.0
 github.com/russross/blackfriday/v2
+# github.com/safchain/ethtool v0.0.0-20190326074333-42ed695e3de8
+github.com/safchain/ethtool
 # github.com/seccomp/libseccomp-golang v0.9.1
 github.com/seccomp/libseccomp-golang
 # github.com/sirupsen/logrus v1.8.1
@@ -1111,7 +1124,7 @@ github.com/urfave/cli/v2
 # github.com/vishvananda/netlink v1.1.1-0.20201029203352-d40f9887b852
 github.com/vishvananda/netlink
 github.com/vishvananda/netlink/nl
-# github.com/vishvananda/netns v0.0.0-20200728191858-db3c7e526aae
+# github.com/vishvananda/netns v0.0.0-20210104183010-2eb08e3e575f
 github.com/vishvananda/netns
 # github.com/vmware/govmomi v0.20.3
 github.com/vmware/govmomi/find
@@ -1367,7 +1380,7 @@ golang.org/x/crypto/scrypt
 # golang.org/x/mod v0.4.2
 golang.org/x/mod/module
 golang.org/x/mod/semver
-# golang.org/x/net v0.0.0-20210520170846-37e1c6afe023 => golang.org/x/net v0.0.0-20210405180319-a5a99cb37ef4
+# golang.org/x/net v0.0.0-20210805182204-aaa1db679c0d => golang.org/x/net v0.0.0-20210405180319-a5a99cb37ef4
 ## explicit
 golang.org/x/net/bpf
 golang.org/x/net/context
@@ -2330,8 +2343,7 @@ k8s.io/gengo/types
 # k8s.io/klog v1.0.0 => github.com/k3s-io/klog v1.0.0-k3s2
 ## explicit
 k8s.io/klog
-# k8s.io/klog/v2 v2.9.0 => github.com/k3s-io/klog/v2 v2.9.0-k3s2
-## explicit
+# k8s.io/klog/v2 v2.10.0 => github.com/k3s-io/klog/v2 v2.9.0-k3s2
 k8s.io/klog/v2
 # k8s.io/kube-aggregator v0.18.0 => github.com/k3s-io/kubernetes/staging/src/k8s.io/kube-aggregator v1.22.4-k3s1
 k8s.io/kube-aggregator/pkg/apis/apiregistration

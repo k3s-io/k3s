@@ -74,13 +74,13 @@ replace (
 
 require (
 	github.com/Microsoft/hcsshim v0.8.23
+	github.com/cloudnativelabs/kube-router v1.3.2
 	github.com/containerd/cgroups v1.0.1
 	github.com/containerd/containerd v1.5.8
 	github.com/containerd/fuse-overlayfs-snapshotter v1.0.3
 	github.com/containerd/stargz-snapshotter v0.8.0
-	github.com/coreos/go-iptables v0.5.0
 	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f
-	github.com/docker/docker v20.10.7+incompatible
+	github.com/docker/docker v20.10.8+incompatible
 	github.com/erikdubbelboer/gspt v0.0.0-20190125194910-e68493906b83
 	github.com/flannel-io/flannel v0.15.1
 	github.com/go-bindata/go-bindata v3.1.2+incompatible
@@ -122,7 +122,7 @@ require (
 	go.etcd.io/etcd/etcdutl/v3 v3.5.0
 	go.etcd.io/etcd/server/v3 v3.5.0
 	golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2
-	golang.org/x/net v0.0.0-20210520170846-37e1c6afe023
+	golang.org/x/net v0.0.0-20210805182204-aaa1db679c0d
 	golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c
 	google.golang.org/grpc v1.40.0
 	gopkg.in/yaml.v2 v2.4.0
@@ -136,7 +136,6 @@ require (
 	k8s.io/controller-manager v0.22.4 // indirect
 	k8s.io/cri-api v0.22.4
 	k8s.io/klog v1.0.0
-	k8s.io/klog/v2 v2.9.0
 	k8s.io/kubectl v0.22.4
 	k8s.io/kubernetes v1.22.4
 	k8s.io/utils v0.0.0-20210819203725-bdf08cb9a70a
