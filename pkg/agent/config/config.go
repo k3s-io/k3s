@@ -352,6 +352,11 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 		return nil, err
 	}
 
+	nodeExternalIPs, err := util.ParseStringSliceToIPs(envInfo.NodeExternalIP)
+	if err != nil {
+		return nil, fmt.Errorf("invalid node-external-ip: %w", err)
+	}
+
 	if envInfo.WithNodeID {
 		nodeID, err := ensureNodeID(filepath.Join(nodeConfigPath, "id"))
 		if err != nil {
@@ -362,7 +367,8 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 
 	os.Setenv("NODE_NAME", nodeName)
 
-	servingCert, err := getServingCert(nodeName, nodeIPs, servingKubeletCert, servingKubeletKey, newNodePasswordFile, info)
+	nodeExternalAndInternalIPs := append(nodeIPs, nodeExternalIPs...)
+	servingCert, err := getServingCert(nodeName, nodeExternalAndInternalIPs, servingKubeletCert, servingKubeletKey, newNodePasswordFile, info)
 	if err != nil {
 		return nil, err
 	}
@@ -464,16 +470,7 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 		return nil, errors.Wrap(err, "cannot configure IPv4 node-ip")
 	}
 	nodeConfig.AgentConfig.NodeIP = nodeIP.String()
-
-	for _, externalIP := range envInfo.NodeExternalIP {
-		for _, v := range strings.Split(externalIP, ",") {
-			ip := net.ParseIP(v)
-			if ip == nil {
-				return nil, fmt.Errorf("invalid node-external-ip %s", v)
-			}
-			nodeConfig.AgentConfig.NodeExternalIPs = append(nodeConfig.AgentConfig.NodeExternalIPs, ip)
-		}
-	}
+	nodeConfig.AgentConfig.NodeExternalIPs = nodeExternalIPs
 
 	// if configured, set NodeExternalIP to the first IPv4 address, for legacy clients
 	if len(nodeConfig.AgentConfig.NodeExternalIPs) > 0 {
