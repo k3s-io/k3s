@@ -69,13 +69,13 @@ replace (
 )
 
 require (
+	github.com/cloudnativelabs/kube-router v1.3.2
 	github.com/containerd/cgroups v1.0.1
 	github.com/containerd/containerd v1.5.7
 	github.com/containerd/cri v1.11.1-0.20200820101445-b0cc07999aa5
 	github.com/containerd/fuse-overlayfs-snapshotter v1.0.2
 	github.com/containerd/go-cni v1.0.2 // indirect
 	github.com/containerd/imgcrypt v1.1.1 // indirect
-	github.com/coreos/go-iptables v0.4.5
 	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f
 	github.com/docker/docker v20.10.10+incompatible
 	github.com/erikdubbelboer/gspt v0.0.0-20190125194910-e68493906b83
@@ -129,7 +129,6 @@ require (
 	k8s.io/controller-manager v0.21.9 // indirect
 	k8s.io/cri-api v0.21.9
 	k8s.io/klog v1.0.0
-	k8s.io/klog/v2 v2.9.0
 	k8s.io/kubectl v0.21.9
 	k8s.io/kubernetes v1.21.9
 	k8s.io/utils v0.0.0-20210521133846-da695404a2bc

@@ -34,7 +34,7 @@ K3s bundles the following technologies together into a single cohesive distribut
 * [Metrics Server](https://github.com/kubernetes-sigs/metrics-server)
 * [Traefik](https://containo.us/traefik/) for ingress
 * [Klipper-lb](https://github.com/k3s-io/klipper-lb) as an embedded service loadbalancer provider
-* [Kube-router](https://www.kube-router.io/) for network policy
+* [Kube-router](https://www.kube-router.io/) netpol controller for network policy
 * [Helm-controller](https://github.com/k3s-io/helm-controller) to allow for CRD-driven deployment of helm manifests
 * [Kine](https://github.com/k3s-io/kine) as a datastore shim that allows etcd to be replaced with other databases
 * [Local-path-provisioner](https://github.com/rancher/local-path-provisioner) for provisioning volumes using local storage
