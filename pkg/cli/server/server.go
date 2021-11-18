@@ -173,17 +173,22 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		serverConfig.ControlConfig.DisableScheduler = true
 		serverConfig.ControlConfig.DisableCCM = true
 
+		dataDir, err := datadir.LocalHome(cfg.DataDir, false)
+		if err != nil {
+			return err
+		}
 		// delete local loadbalancers state for apiserver and supervisor servers
-		loadbalancer.ResetLoadBalancer(filepath.Join(cfg.DataDir, "agent"), loadbalancer.SupervisorServiceName)
-		loadbalancer.ResetLoadBalancer(filepath.Join(cfg.DataDir, "agent"), loadbalancer.APIServerServiceName)
+		loadbalancer.ResetLoadBalancer(filepath.Join(dataDir, "agent"), loadbalancer.SupervisorServiceName)
+		loadbalancer.ResetLoadBalancer(filepath.Join(dataDir, "agent"), loadbalancer.APIServerServiceName)
 
 		// at this point we're doing a restore. Check to see if we've
 		// passed in a token and if not, check if the token file exists.
 		// If it doesn't, return an error indicating the token is necessary.
 		if cfg.Token == "" {
-			if _, err := os.Stat(filepath.Join(cfg.DataDir, "server/token")); err != nil {
+			tokenFile := filepath.Join(dataDir, "server", "token")
+			if _, err := os.Stat(tokenFile); err != nil {
 				if os.IsNotExist(err) {
-					return errors.New("")
+					return errors.New(tokenFile + " does not exist, please pass --token to complete the restoration")
 				}
 			}
 		}
