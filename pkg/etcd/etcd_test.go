@@ -13,6 +13,7 @@ import (
 	"github.com/rancher/k3s/pkg/daemons/config"
 	testutil "github.com/rancher/k3s/tests/util"
 	"github.com/robfig/cron/v3"
+	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 )
@@ -247,9 +248,14 @@ func Test_UnitETCD_Start(t *testing.T) {
 				return err
 			},
 			teardown: func(e *ETCD, ctxInfo *contextInfo) error {
-				e.RemoveSelf(ctxInfo.ctx)
+				// RemoveSelf will fail with a specific error, but it still does cleanup for testing purposes
+				if err := e.RemoveSelf(ctxInfo.ctx); err != nil {
+					if _, ok := err.(rpctypes.EtcdError); !ok {
+						return err
+					}
+				}
 				ctxInfo.cancel()
-				time.Sleep(5 * time.Second)
+				time.Sleep(10 * time.Second)
 				testutil.CleanupDataDir(e.config)
 				return nil
 			},
@@ -275,7 +281,12 @@ func Test_UnitETCD_Start(t *testing.T) {
 				return err
 			},
 			teardown: func(e *ETCD, ctxInfo *contextInfo) error {
-				e.RemoveSelf(ctxInfo.ctx)
+				// RemoveSelf will fail with a specific error, but it still does cleanup for testing purposes
+				if err := e.RemoveSelf(ctxInfo.ctx); err != nil {
+					if _, ok := err.(rpctypes.EtcdError); !ok {
+						return err
+					}
+				}
 				ctxInfo.cancel()
 				time.Sleep(5 * time.Second)
 				testutil.CleanupDataDir(e.config)
@@ -307,7 +318,12 @@ func Test_UnitETCD_Start(t *testing.T) {
 				return os.MkdirAll(walDir(e.config), 0700)
 			},
 			teardown: func(e *ETCD, ctxInfo *contextInfo) error {
-				e.RemoveSelf(ctxInfo.ctx)
+				// RemoveSelf will fail with a specific error, but it still does cleanup for testing purposes
+				if err := e.RemoveSelf(ctxInfo.ctx); err != nil {
+					if _, ok := err.(rpctypes.EtcdError); !ok {
+						return err
+					}
+				}
 				ctxInfo.cancel()
 				time.Sleep(5 * time.Second)
 				testutil.CleanupDataDir(e.config)
@@ -327,13 +343,17 @@ func Test_UnitETCD_Start(t *testing.T) {
 				cron:    tt.fields.cron,
 				s3:      tt.fields.s3,
 			}
-			defer tt.teardown(e, &tt.fields.context)
+
 			if err := tt.setup(e, &tt.fields.context); err != nil {
 				t.Errorf("Setup for ETCD.Start() failed = %v", err)
 				return
 			}
 			if err := e.Start(tt.fields.context.ctx, tt.args.clientAccessInfo); (err != nil) != tt.wantErr {
 				t.Errorf("ETCD.Start() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if err := tt.teardown(e, &tt.fields.context); err != nil {
+				t.Errorf("Teardown for ETCD.Start() failed = %v", err)
+				return
 			}
 		})
 	}
