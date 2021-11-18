@@ -73,12 +73,12 @@ replace (
 )
 
 require (
-	github.com/Microsoft/hcsshim v0.8.23
+	github.com/Microsoft/hcsshim v0.9.2
+	github.com/cloudnativelabs/kube-router v1.3.2
 	github.com/containerd/cgroups v1.0.1
 	github.com/containerd/containerd v1.6.0-beta.2.0.20211117185425-a776a27af54a
 	github.com/containerd/fuse-overlayfs-snapshotter v1.0.4
 	github.com/containerd/stargz-snapshotter v0.10.1
-	github.com/coreos/go-iptables v0.5.0
 	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f
 	github.com/docker/docker v20.10.10+incompatible
 	github.com/erikdubbelboer/gspt v0.0.0-20190125194910-e68493906b83
@@ -137,7 +137,6 @@ require (
 	k8s.io/controller-manager v0.22.6 // indirect
 	k8s.io/cri-api v0.23.0-alpha.4
 	k8s.io/klog v1.0.0
-	k8s.io/klog/v2 v2.9.0
 	k8s.io/kubectl v0.22.6
 	k8s.io/kubernetes v1.22.6
 	k8s.io/utils v0.0.0-20210819203725-bdf08cb9a70a
