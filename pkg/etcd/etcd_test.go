@@ -13,8 +13,8 @@ import (
 	"github.com/rancher/k3s/pkg/daemons/config"
 	testutil "github.com/rancher/k3s/tests/util"
 	"github.com/robfig/cron/v3"
-	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/server/v3/etcdserver"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 )
 
@@ -249,10 +249,8 @@ func Test_UnitETCD_Start(t *testing.T) {
 			},
 			teardown: func(e *ETCD, ctxInfo *contextInfo) error {
 				// RemoveSelf will fail with a specific error, but it still does cleanup for testing purposes
-				if err := e.RemoveSelf(ctxInfo.ctx); err != nil {
-					if _, ok := err.(rpctypes.EtcdError); !ok {
-						return err
-					}
+				if err := e.RemoveSelf(ctxInfo.ctx); err != nil && err.Error() != etcdserver.ErrNotEnoughStartedMembers.Error() {
+					return err
 				}
 				ctxInfo.cancel()
 				time.Sleep(10 * time.Second)
@@ -282,10 +280,8 @@ func Test_UnitETCD_Start(t *testing.T) {
 			},
 			teardown: func(e *ETCD, ctxInfo *contextInfo) error {
 				// RemoveSelf will fail with a specific error, but it still does cleanup for testing purposes
-				if err := e.RemoveSelf(ctxInfo.ctx); err != nil {
-					if _, ok := err.(rpctypes.EtcdError); !ok {
-						return err
-					}
+				if err := e.RemoveSelf(ctxInfo.ctx); err != nil && err.Error() != etcdserver.ErrNotEnoughStartedMembers.Error() {
+					return err
 				}
 				ctxInfo.cancel()
 				time.Sleep(5 * time.Second)
@@ -319,10 +315,8 @@ func Test_UnitETCD_Start(t *testing.T) {
 			},
 			teardown: func(e *ETCD, ctxInfo *contextInfo) error {
 				// RemoveSelf will fail with a specific error, but it still does cleanup for testing purposes
-				if err := e.RemoveSelf(ctxInfo.ctx); err != nil {
-					if _, ok := err.(rpctypes.EtcdError); !ok {
-						return err
-					}
+				if err := e.RemoveSelf(ctxInfo.ctx); err != nil && err.Error() != etcdserver.ErrNotEnoughStartedMembers.Error() {
+					return err
 				}
 				ctxInfo.cancel()
 				time.Sleep(5 * time.Second)
