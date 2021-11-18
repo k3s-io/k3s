@@ -222,8 +222,8 @@ func Test_UnitETCD_Start(t *testing.T) {
 		name     string
 		fields   fields
 		args     args
-		setup    func(cnf *config.Control, ctxInfo *contextInfo) error
-		teardown func(cnf *config.Control, ctxInfo *contextInfo) error
+		setup    func(e *ETCD, ctxInfo *contextInfo) error
+		teardown func(e *ETCD, ctxInfo *contextInfo) error
 		wantErr  bool
 	}{
 		{
@@ -236,15 +236,21 @@ func Test_UnitETCD_Start(t *testing.T) {
 			args: args{
 				clientAccessInfo: nil,
 			},
-			setup: func(cnf *config.Control, ctxInfo *contextInfo) error {
+			setup: func(e *ETCD, ctxInfo *contextInfo) error {
 				ctxInfo.ctx, ctxInfo.cancel = context.WithCancel(context.Background())
-				cnf.EtcdDisableSnapshots = true
-				return testutil.GenerateRuntime(cnf)
+				e.config.EtcdDisableSnapshots = true
+				testutil.GenerateRuntime(e.config)
+				e.runtime = e.config.Runtime
+				client, err := GetClient(ctxInfo.ctx, e.runtime, endpoint)
+				e.client = client
+
+				return err
 			},
-			teardown: func(cnf *config.Control, ctxInfo *contextInfo) error {
+			teardown: func(e *ETCD, ctxInfo *contextInfo) error {
+				e.RemoveSelf(ctxInfo.ctx)
 				ctxInfo.cancel()
 				time.Sleep(5 * time.Second)
-				testutil.CleanupDataDir(cnf)
+				testutil.CleanupDataDir(e.config)
 				return nil
 			},
 		},
@@ -259,14 +265,20 @@ func Test_UnitETCD_Start(t *testing.T) {
 			args: args{
 				clientAccessInfo: nil,
 			},
-			setup: func(cnf *config.Control, ctxInfo *contextInfo) error {
+			setup: func(e *ETCD, ctxInfo *contextInfo) error {
 				ctxInfo.ctx, ctxInfo.cancel = context.WithCancel(context.Background())
-				return testutil.GenerateRuntime(cnf)
+				testutil.GenerateRuntime(e.config)
+				e.runtime = e.config.Runtime
+				client, err := GetClient(ctxInfo.ctx, e.runtime, endpoint)
+				e.client = client
+
+				return err
 			},
-			teardown: func(cnf *config.Control, ctxInfo *contextInfo) error {
+			teardown: func(e *ETCD, ctxInfo *contextInfo) error {
+				e.RemoveSelf(ctxInfo.ctx)
 				ctxInfo.cancel()
 				time.Sleep(5 * time.Second)
-				testutil.CleanupDataDir(cnf)
+				testutil.CleanupDataDir(e.config)
 				return nil
 			},
 		},
@@ -281,18 +293,25 @@ func Test_UnitETCD_Start(t *testing.T) {
 			args: args{
 				clientAccessInfo: nil,
 			},
-			setup: func(cnf *config.Control, ctxInfo *contextInfo) error {
+			setup: func(e *ETCD, ctxInfo *contextInfo) error {
 				ctxInfo.ctx, ctxInfo.cancel = context.WithCancel(context.Background())
-				if err := testutil.GenerateRuntime(cnf); err != nil {
+				if err := testutil.GenerateRuntime(e.config); err != nil {
 					return err
 				}
-				return os.MkdirAll(walDir(cnf), 0700)
+				e.runtime = e.config.Runtime
+				client, err := GetClient(ctxInfo.ctx, e.runtime, endpoint)
+				if err != nil {
+					return err
+				}
+				e.client = client
+				return os.MkdirAll(walDir(e.config), 0700)
 			},
-			teardown: func(cnf *config.Control, ctxInfo *contextInfo) error {
+			teardown: func(e *ETCD, ctxInfo *contextInfo) error {
+				e.RemoveSelf(ctxInfo.ctx)
 				ctxInfo.cancel()
 				time.Sleep(5 * time.Second)
-				testutil.CleanupDataDir(cnf)
-				os.Remove(walDir(cnf))
+				testutil.CleanupDataDir(e.config)
+				os.Remove(walDir(e.config))
 				return nil
 			},
 		},
@@ -308,8 +327,8 @@ func Test_UnitETCD_Start(t *testing.T) {
 				cron:    tt.fields.cron,
 				s3:      tt.fields.s3,
 			}
-			defer tt.teardown(e.config, &tt.fields.context)
-			if err := tt.setup(e.config, &tt.fields.context); err != nil {
+			defer tt.teardown(e, &tt.fields.context)
+			if err := tt.setup(e, &tt.fields.context); err != nil {
 				t.Errorf("Setup for ETCD.Start() failed = %v", err)
 				return
 			}
