@@ -52,6 +52,10 @@ func openPipe(ctx context.Context, fn string, flag int, perm os.FileMode) (io.Re
 		}
 		p.con = c
 	}()
+	go func() {
+		<-ctx.Done()
+		p.Close()
+	}()
 	return p, nil
 }
 

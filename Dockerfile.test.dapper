@@ -1,9 +1,9 @@
-ARG GOLANG=golang:1.16.8-alpine3.13
+ARG GOLANG=golang:1.16.10-alpine3.13
 FROM ${GOLANG}
 
 RUN apk -U --no-cache add bash git gcc musl-dev docker curl jq coreutils python3 openssl py3-pip
 
-ENV SONOBUOY_VERSION 0.50.0
+ENV SONOBUOY_VERSION 0.55.0
 
 RUN OS=linux; \
     ARCH=$(go env GOARCH); \

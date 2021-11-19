@@ -26,6 +26,7 @@ import (
 	runhcsoptions "github.com/Microsoft/hcsshim/cmd/containerd-shim-runhcs-v1/options"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/containers"
+	clabels "github.com/containerd/containerd/labels"
 	"github.com/containerd/containerd/plugin"
 	"github.com/containerd/containerd/reference/docker"
 	"github.com/containerd/containerd/runtime/linux/runctypes"
@@ -34,6 +35,7 @@ import (
 	imagedigest "github.com/opencontainers/go-digest"
 	"github.com/pelletier/go-toml"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	runtime "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 
@@ -285,8 +287,15 @@ func filterLabel(k, v string) string {
 // buildLabel builds the labels from config to be passed to containerd
 func buildLabels(configLabels, imageConfigLabels map[string]string, containerType string) map[string]string {
 	labels := make(map[string]string)
+
 	for k, v := range imageConfigLabels {
-		labels[k] = v
+		if err := clabels.Validate(k, v); err == nil {
+			labels[k] = v
+		} else {
+			// In case the image label is invalid, we output a warning and skip adding it to the
+			// container.
+			logrus.WithError(err).Warnf("unable to add image label with key %s to the container", k)
+		}
 	}
 	// labels from the CRI request (config) will override labels in the image config
 	for k, v := range configLabels {
