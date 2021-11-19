@@ -240,7 +240,7 @@ sonobuoy-test() {
 
     local sonobuoyPID=$!
     local code=0
-    time timeout --foreground 30m bash -c test-wait $sonobuoyPID || code=$?
+    time timeout --foreground 60m bash -c test-wait $sonobuoyPID || code=$?
     echo "Sonobuoy finished with code $code"
     retrieve-sonobuoy-logs
     return $code
