@@ -1,0 +1,33 @@
+NODE_ROLES = (ENV['NODE_ROLES'] ||
+  ["server", "server", "server", "agent", "agent"])
+NODE_BOXES = (ENV['NODE_BOXES'] ||
+  ['generic/ubuntu2004', 'generic/ubuntu2004', 'generic/ubuntu2004', 'generic/ubuntu2004', 'generic/ubuntu2004'])
+NODE_CPUS = (ENV['NODE_CPUS'] || 2).to_i
+NODE_MEMORY = (ENV['NODE_MEMORY'] || 2048).to_i
+# By default virtualbox only supports one prefix for host-only networking
+NETWORK_PREFIX = "192.168.56"
+
+def provision(vm, role, node_num)
+  vm.box = NODE_BOXES[node_num]
+  vm.hostname = "#{role}-#{node_num}"
+  vm.network "private_network", ip: "#{NETWORK_PREFIX}.#{100+node_num}"
+end
+
+Vagrant.configure("2") do |config|
+
+  config.vm.provider "virtualbox" do |v|
+    v.cpus = NODE_CPUS
+    v.memory = NODE_MEMORY
+    v.customize ["modifyvm", :id, "--audio", "none"]
+  end
+
+  # Must iterate on the index, vagrant does not understand iterating 
+  # over the node roles themselves
+  (0..NODE_ROLES.length()-1).each { |i|
+    node_name = "#{NODE_ROLES[i]}-#{i}"
+    config.vm.define node_name do |node|
+      provision(node.vm, NODE_ROLES[i], i)
+    end
+  }
+
+end
