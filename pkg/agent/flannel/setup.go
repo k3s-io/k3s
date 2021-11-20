@@ -78,6 +78,7 @@ func Prepare(ctx context.Context, nodeConfig *config.Node) error {
 }
 
 func Run(ctx context.Context, nodeConfig *config.Node, nodes v1.NodeInterface) error {
+	logrus.Infof("Starting flannel with backend %s", nodeConfig.FlannelBackend)
 	nodeName := nodeConfig.AgentConfig.NodeName
 
 	for {
@@ -92,10 +93,10 @@ func Run(ctx context.Context, nodeConfig *config.Node, nodes v1.NodeInterface) e
 		}
 		time.Sleep(2 * time.Second)
 	}
-	logrus.Info("Node CIDR assigned for: " + nodeName)
+	logrus.Info("Flannel found PodCIDR assigned for: " + nodeName)
 
 	go func() {
-		err := flannel(ctx, nodeConfig.FlannelIface, nodeConfig.FlannelConf, nodeConfig.AgentConfig.KubeConfigKubelet)
+		err := flannel(ctx, nodeConfig.FlannelIface, nodeConfig.FlannelConfFile, nodeConfig.AgentConfig.KubeConfigKubelet)
 		logrus.Fatalf("flannel exited: %v", err)
 	}()
 
@@ -103,6 +104,7 @@ func Run(ctx context.Context, nodeConfig *config.Node, nodes v1.NodeInterface) e
 }
 
 func createCNIConf(dir string) error {
+	logrus.Debugf("Creating the CNI conf in directory %s", dir)
 	if dir == "" {
 		return nil
 	}
@@ -111,11 +113,12 @@ func createCNIConf(dir string) error {
 }
 
 func createFlannelConf(nodeConfig *config.Node) error {
-	if nodeConfig.FlannelConf == "" {
-		return nil
+	logrus.Debugf("Creating the flannel configuration for backend %s in file %s", nodeConfig.FlannelBackend, nodeConfig.FlannelConfFile)
+	if nodeConfig.FlannelConfFile == "" {
+		return fmt.Errorf("Flannel configuration not defined")
 	}
 	if nodeConfig.FlannelConfOverride {
-		logrus.Infof("Using custom flannel conf defined at %s", nodeConfig.FlannelConf)
+		logrus.Infof("Using custom flannel conf defined at %s", nodeConfig.FlannelConfFile)
 		return nil
 	}
 	confJSON := strings.Replace(flannelConf, "%CIDR%", nodeConfig.AgentConfig.ClusterCIDR.String(), -1)
@@ -139,7 +142,8 @@ func createFlannelConf(nodeConfig *config.Node) error {
 	}
 	confJSON = strings.Replace(confJSON, "%backend%", backendConf, -1)
 
-	return util.WriteFile(nodeConfig.FlannelConf, confJSON)
+	logrus.Debugf("The flannel configuration is %s", confJSON)
+	return util.WriteFile(nodeConfig.FlannelConfFile, confJSON)
 }
 
 func setupStrongSwan(nodeConfig *config.Node) error {
