@@ -1,5 +1,5 @@
 apiVersion: ${api_version}
-version: ${chart_version}
+version: ${chart_version}${package_version}
 description: Installs the CRDs for ${name}.
 name: ${name}-crd
 type: application
