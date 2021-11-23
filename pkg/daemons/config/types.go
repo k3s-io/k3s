@@ -93,7 +93,23 @@ type Agent struct {
 	ProtectKernelDefaults   bool
 }
 
+// CriticalControlArgs contains parameters that all control plane nodes in HA must share
+type CriticalControlArgs struct {
+	ClusterDNS       net.IP
+	ClusterDomain    string
+	ClusterIPRange   *net.IPNet
+	DisableCCM       bool
+	DisableKubeProxy bool
+	DisableNPC       bool
+	Disables         map[string]bool
+	FlannelBackend   string
+	NoCoreDNS        bool
+	ServiceIPRange   *net.IPNet
+	Skips            map[string]bool
+}
+
 type Control struct {
+	CriticalControlArgs
 	AdvertisePort int
 	AdvertiseIP   string
 	// The port which kubectl clients can access k8s
@@ -105,34 +121,23 @@ type Control struct {
 	APIServerBindAddress     string
 	AgentToken               string `json:"-"`
 	Token                    string `json:"-"`
-	ClusterIPRange           *net.IPNet
-	ServiceIPRange           *net.IPNet
 	ServiceNodePortRange     *utilnet.PortRange
-	ClusterDNS               net.IP
-	ClusterDomain            string
-	NoCoreDNS                bool
 	KubeConfigOutput         string
 	KubeConfigMode           string
 	DataDir                  string
-	Skips                    map[string]bool
-	Disables                 map[string]bool
 	Datastore                endpoint.Config
+	DisableAPIServer         bool
+	DisableControllerManager bool
+	DisableETCD              bool
+	DisableScheduler         bool
 	ExtraAPIArgs             []string
 	ExtraControllerArgs      []string
 	ExtraCloudControllerArgs []string
 	ExtraSchedulerAPIArgs    []string
 	NoLeaderElect            bool
 	JoinURL                  string
-	FlannelBackend           string
 	IPSECPSK                 string
 	DefaultLocalStoragePath  string
-	DisableCCM               bool
-	DisableNPC               bool
-	DisableKubeProxy         bool
-	DisableAPIServer         bool
-	DisableControllerManager bool
-	DisableScheduler         bool
-	DisableETCD              bool
 	ClusterInit              bool
 	ClusterReset             bool
 	ClusterResetRestorePath  string

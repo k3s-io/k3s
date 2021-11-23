@@ -3,9 +3,11 @@ package cluster
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
 
 	"github.com/rancher/k3s/pkg/bootstrap"
 	"github.com/rancher/k3s/pkg/clientaccess"
@@ -134,6 +136,10 @@ func (c *Cluster) bootstrap(ctx context.Context) error {
 
 	// bootstrap managed database via HTTPS
 	if c.runtime.HTTPBootstrap {
+		// Assuming we should just compare on managed databases
+		if err := c.compareConfig(); err != nil {
+			return err
+		}
 		return c.httpBootstrap()
 	}
 
@@ -155,4 +161,31 @@ func (c *Cluster) Snapshot(ctx context.Context, config *config.Control) error {
 		return errors.New("unable to perform etcd snapshot on non-etcd system")
 	}
 	return c.managedDB.Snapshot(ctx, config)
+}
+
+// compareConfig verifies that the config of the joining control plane node coincides with the cluster's config
+func (c *Cluster) compareConfig() error {
+	agentClientAccessInfo, err := clientaccess.ParseAndValidateTokenForUser(c.config.JoinURL, c.config.Token, "node")
+	if err != nil {
+		return err
+	}
+	serverConfig, err := clientaccess.Get("/v1-"+version.Program+"/config", agentClientAccessInfo)
+	if err != nil {
+		return err
+	}
+	clusterControl := &config.Control{}
+	if err := json.Unmarshal(serverConfig, clusterControl); err != nil {
+		return err
+	}
+
+	// We are saving IPs of ClusterIPRanges and ServiceIPRanges in 4-bytes representation but json decodes in 16-byte
+	c.config.CriticalControlArgs.ClusterIPRange.IP.To16()
+	c.config.CriticalControlArgs.ServiceIPRange.IP.To16()
+
+	if !reflect.DeepEqual(clusterControl.CriticalControlArgs, c.config.CriticalControlArgs) {
+		logrus.Debugf("This is the server CriticalControlArgs: %#v", clusterControl.CriticalControlArgs)
+		logrus.Debugf("This is the local CriticalControlArgs: %#v", c.config.CriticalControlArgs)
+		return errors.New("Unable to join cluster due to critical configuration value mismatch")
+	}
+	return nil
 }
