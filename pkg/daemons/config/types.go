@@ -101,7 +101,28 @@ type Agent struct {
 	ProtectKernelDefaults   bool
 }
 
+// CriticalControlArgs contains parameters that all control plane nodes in HA must share
+type CriticalControlArgs struct {
+	ClusterDNSs           []net.IP
+	ClusterIPRanges       []*net.IPNet
+	ClusterDNS            net.IP
+	ClusterDomain         string
+	ClusterIPRange        *net.IPNet
+	DisableCCM            bool
+	DisableHelmController bool
+	DisableKubeProxy      bool
+	DisableNPC            bool
+	Disables              map[string]bool
+	DisableServiceLB      bool
+	FlannelBackend        string
+	NoCoreDNS             bool
+	ServiceIPRange        *net.IPNet
+	ServiceIPRanges       []*net.IPNet
+	Skips                 map[string]bool
+}
+
 type Control struct {
+	CriticalControlArgs
 	AdvertisePort int
 	AdvertiseIP   string
 	// The port which kubectl clients can access k8s
@@ -113,21 +134,15 @@ type Control struct {
 	APIServerBindAddress     string
 	AgentToken               string `json:"-"`
 	Token                    string `json:"-"`
-	ClusterIPRange           *net.IPNet
-	ClusterIPRanges          []*net.IPNet
-	ServiceIPRange           *net.IPNet
-	ServiceIPRanges          []*net.IPNet
 	ServiceNodePortRange     *utilnet.PortRange
-	ClusterDNS               net.IP
-	ClusterDNSs              []net.IP
-	ClusterDomain            string
-	NoCoreDNS                bool
 	KubeConfigOutput         string
 	KubeConfigMode           string
 	DataDir                  string
-	Skips                    map[string]bool
-	Disables                 map[string]bool
 	Datastore                endpoint.Config
+	DisableAPIServer         bool
+	DisableControllerManager bool
+	DisableETCD              bool
+	DisableScheduler         bool
 	ExtraAPIArgs             []string
 	ExtraControllerArgs      []string
 	ExtraCloudControllerArgs []string
@@ -135,18 +150,9 @@ type Control struct {
 	ExtraSchedulerAPIArgs    []string
 	NoLeaderElect            bool
 	JoinURL                  string
-	FlannelBackend           string
 	IPSECPSK                 string
 	DefaultLocalStoragePath  string
 	SystemDefaultRegistry    string
-	DisableCCM               bool
-	DisableNPC               bool
-	DisableHelmController    bool
-	DisableKubeProxy         bool
-	DisableAPIServer         bool
-	DisableControllerManager bool
-	DisableScheduler         bool
-	DisableETCD              bool
 	ClusterInit              bool
 	ClusterReset             bool
 	ClusterResetRestorePath  string

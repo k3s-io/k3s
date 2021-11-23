@@ -29,23 +29,26 @@ func mustGetAddress() string {
 func generateTestConfig() *config.Control {
 	agentReady := make(chan struct{})
 	close(agentReady)
+	criticalControlArgs := config.CriticalControlArgs{
+		ClusterDomain:  "cluster.local",
+		ClusterDNS:     net.ParseIP("10.43.0.10"),
+		ClusterIPRange: testutil.ClusterIPNet(),
+		FlannelBackend: "vxlan",
+		ServiceIPRange: testutil.ServiceIPNet(),
+	}
 	return &config.Control{
 		Runtime:               &config.ControlRuntime{AgentReady: agentReady},
 		HTTPSPort:             6443,
 		SupervisorPort:        6443,
 		AdvertisePort:         6443,
-		ClusterDomain:         "cluster.local",
-		ClusterDNS:            net.ParseIP("10.43.0.10"),
-		ClusterIPRange:        testutil.ClusterIPNet(),
 		DataDir:               "/tmp/k3s/", // Different than the default value
-		FlannelBackend:        "vxlan",
 		EtcdSnapshotName:      "etcd-snapshot",
 		EtcdSnapshotCron:      "0 */12 * * *",
 		EtcdSnapshotRetention: 5,
 		EtcdS3Endpoint:        "s3.amazonaws.com",
 		EtcdS3Region:          "us-east-1",
 		SANs:                  []string{"127.0.0.1"},
-		ServiceIPRange:        testutil.ServiceIPNet(),
+		CriticalControlArgs:   criticalControlArgs,
 	}
 }
 
