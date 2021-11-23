@@ -197,11 +197,7 @@ func copyFile(src, destDir string) error {
 		if err != nil {
 			return err
 		}
-
-		if err := ioutil.WriteFile(filepath.Join(destDir, filepath.Base(src)), input, 0644); err != nil {
-			return err
-		}
-		return nil
+		return ioutil.WriteFile(filepath.Join(destDir, filepath.Base(src)), input, 0644)
 	} else if errors.Is(err, os.ErrNotExist) {
 		return nil
 	}
