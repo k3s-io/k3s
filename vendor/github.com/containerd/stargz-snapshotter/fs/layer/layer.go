@@ -37,11 +37,13 @@ import (
 	"github.com/containerd/containerd/reference"
 	"github.com/containerd/stargz-snapshotter/cache"
 	"github.com/containerd/stargz-snapshotter/estargz"
+	"github.com/containerd/stargz-snapshotter/estargz/zstdchunked"
 	"github.com/containerd/stargz-snapshotter/fs/config"
 	commonmetrics "github.com/containerd/stargz-snapshotter/fs/metrics/common"
 	"github.com/containerd/stargz-snapshotter/fs/reader"
 	"github.com/containerd/stargz-snapshotter/fs/remote"
 	"github.com/containerd/stargz-snapshotter/fs/source"
+	"github.com/containerd/stargz-snapshotter/metadata"
 	"github.com/containerd/stargz-snapshotter/task"
 	"github.com/containerd/stargz-snapshotter/util/lrucache"
 	"github.com/containerd/stargz-snapshotter/util/namedmutex"
@@ -66,7 +68,7 @@ type Layer interface {
 	Info() Info
 
 	// RootNode returns the root node of this layer.
-	RootNode() (fusefs.InodeEmbedder, error)
+	RootNode(baseInode uint32) (fusefs.InodeEmbedder, error)
 
 	// Check checks if the layer is still connectable.
 	Check() error
@@ -75,14 +77,15 @@ type Layer interface {
 	Refresh(ctx context.Context, hosts source.RegistryHosts, refspec reference.Spec, desc ocispec.Descriptor) error
 
 	// Verify verifies this layer using the passed TOC Digest.
+	// Nop if Verify() or SkipVerify() was already called.
 	Verify(tocDigest digest.Digest) (err error)
 
 	// SkipVerify skips verification for this layer.
+	// Nop if Verify() or SkipVerify() was already called.
 	SkipVerify()
 
 	// Prefetch prefetches the specified size. If the layer is eStargz and contains landmark files,
 	// the range indicated by these files is respected.
-	// Calling this function before calling Verify or SkipVerify will fail.
 	Prefetch(prefetchSize int64) error
 
 	// ReadAt reads this layer.
@@ -93,7 +96,6 @@ type Layer interface {
 
 	// BackgroundFetch fetches the entire layer contents to the cache.
 	// Fetching contents is done as a background task.
-	// Calling this function before calling Verify or SkipVerify will fail.
 	BackgroundFetch() error
 
 	// Done releases the reference to this layer. The resources related to this layer will be
@@ -122,10 +124,11 @@ type Resolver struct {
 	backgroundTaskManager *task.BackgroundTaskManager
 	resolveLock           *namedmutex.NamedMutex
 	config                config.Config
+	metadataStore         metadata.Store
 }
 
 // NewResolver returns a new layer resolver.
-func NewResolver(root string, backgroundTaskManager *task.BackgroundTaskManager, cfg config.Config) (*Resolver, error) {
+func NewResolver(root string, backgroundTaskManager *task.BackgroundTaskManager, cfg config.Config, resolveHandlers map[string]remote.Handler, metadataStore metadata.Store) (*Resolver, error) {
 	resolveResultEntry := cfg.ResolveResultEntry
 	if resolveResultEntry == 0 {
 		resolveResultEntry = defaultResolveResultEntry
@@ -158,15 +161,20 @@ func NewResolver(root string, backgroundTaskManager *task.BackgroundTaskManager,
 		logrus.WithField("key", key).Debugf("cleaned up blob")
 	}
 
+	if err := os.MkdirAll(root, 0700); err != nil {
+		return nil, err
+	}
+
 	return &Resolver{
 		rootDir:               root,
-		resolver:              remote.NewResolver(cfg.BlobConfig),
+		resolver:              remote.NewResolver(cfg.BlobConfig, resolveHandlers),
 		layerCache:            layerCache,
 		blobCache:             blobCache,
 		prefetchTimeout:       prefetchTimeout,
 		backgroundTaskManager: backgroundTaskManager,
 		config:                cfg,
 		resolveLock:           new(namedmutex.NamedMutex),
+		metadataStore:         metadataStore,
 	}, nil
 }
 
@@ -192,6 +200,7 @@ func newCache(root string, cacheType string, cfg config.Config) (cache.BlobCache
 	}
 	dCache, fCache := lrucache.New(maxDataEntry), lrucache.New(maxFdEntry)
 	dCache.OnEvicted = func(key string, value interface{}) {
+		value.(*bytes.Buffer).Reset()
 		bufPool.Put(value)
 	}
 	fCache.OnEvicted = func(key string, value interface{}) {
@@ -218,7 +227,7 @@ func newCache(root string, cacheType string, cfg config.Config) (cache.BlobCache
 }
 
 // Resolve resolves a layer based on the passed layer blob information.
-func (r *Resolver) Resolve(ctx context.Context, hosts source.RegistryHosts, refspec reference.Spec, desc ocispec.Descriptor, esgzOpts ...estargz.OpenOption) (_ Layer, retErr error) {
+func (r *Resolver) Resolve(ctx context.Context, hosts source.RegistryHosts, refspec reference.Spec, desc ocispec.Descriptor, esgzOpts ...metadata.Option) (_ Layer, retErr error) {
 	name := refspec.String() + "/" + desc.Digest.String()
 
 	// Wait if resolving this layer is already running. The result
@@ -277,18 +286,23 @@ func (r *Resolver) Resolve(ctx context.Context, hosts source.RegistryHosts, refs
 		return blobR.ReadAt(p, offset)
 	}), 0, blobR.Size())
 	// define telemetry hooks to measure latency metrics inside estargz package
-	telemetry := estargz.Telemetry{
+	telemetry := metadata.Telemetry{
 		GetFooterLatency: func(start time.Time) {
-			commonmetrics.MeasureLatency(commonmetrics.StargzFooterGet, desc.Digest, start)
+			commonmetrics.MeasureLatencyInMilliseconds(commonmetrics.StargzFooterGet, desc.Digest, start)
 		},
 		GetTocLatency: func(start time.Time) {
-			commonmetrics.MeasureLatency(commonmetrics.StargzTocGet, desc.Digest, start)
+			commonmetrics.MeasureLatencyInMilliseconds(commonmetrics.StargzTocGet, desc.Digest, start)
 		},
 		DeserializeTocLatency: func(start time.Time) {
-			commonmetrics.MeasureLatency(commonmetrics.DeserializeTocJSON, desc.Digest, start)
+			commonmetrics.MeasureLatencyInMilliseconds(commonmetrics.DeserializeTocJSON, desc.Digest, start)
 		},
 	}
-	vr, err := reader.NewReader(sr, fsCache, desc.Digest, &telemetry, esgzOpts...)
+	meta, err := r.metadataStore(sr,
+		append(esgzOpts, metadata.WithTelemetry(&telemetry), metadata.WithDecompressors(new(zstdchunked.Decompressor)))...)
+	if err != nil {
+		return nil, err
+	}
+	vr, err := reader.NewReader(meta, fsCache, desc.Digest)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to read layer")
 	}
@@ -349,18 +363,6 @@ func (r *Resolver) resolveBlob(ctx context.Context, hosts source.RegistryHosts, 
 	return &blobRef{cachedB.(remote.Blob), done}, nil
 }
 
-// Cache is similar to Resolve but the result isn't returned. Instead, it'll be stored in the cache.
-func (r *Resolver) Cache(ctx context.Context, hosts source.RegistryHosts, refspec reference.Spec, desc ocispec.Descriptor) error {
-	l, err := r.Resolve(ctx, hosts, refspec, desc)
-	if err != nil {
-		return err
-	}
-	// Release this layer. However, this will remain on the cache until eviction.
-	// Until then, the client can reuse this (already pre-resolved) layer.
-	l.Done()
-	return nil
-}
-
 func newLayer(
 	resolver *Resolver,
 	desc ocispec.Descriptor,
@@ -390,15 +392,22 @@ type layer struct {
 
 	closed   bool
 	closedMu sync.Mutex
+
+	prefetchOnce        sync.Once
+	backgroundFetchOnce sync.Once
 }
 
 func (l *layer) Info() Info {
+	var readTime time.Time
+	if l.r != nil {
+		readTime = l.r.LastOnDemandReadTime()
+	}
 	return Info{
 		Digest:       l.desc.Digest,
 		Size:         l.blob.Size(),
 		FetchedSize:  l.blob.FetchedSize(),
 		PrefetchSize: l.prefetchedSize(),
-		ReadTime:     l.r.LastOnDemandReadTime(),
+		ReadTime:     readTime,
 	}
 }
 
@@ -427,36 +436,57 @@ func (l *layer) Verify(tocDigest digest.Digest) (err error) {
 	if l.isClosed() {
 		return fmt.Errorf("layer is already closed")
 	}
+	if l.r != nil {
+		return nil
+	}
 	l.r, err = l.verifiableReader.VerifyTOC(tocDigest)
 	return
 }
 
 func (l *layer) SkipVerify() {
+	if l.r != nil {
+		return
+	}
 	l.r = l.verifiableReader.SkipVerify()
 }
 
-func (l *layer) Prefetch(prefetchSize int64) error {
+func (l *layer) Prefetch(prefetchSize int64) (err error) {
+	l.prefetchOnce.Do(func() {
+		ctx := context.Background()
+		l.resolver.backgroundTaskManager.DoPrioritizedTask()
+		defer l.resolver.backgroundTaskManager.DonePrioritizedTask()
+		err = l.prefetch(ctx, prefetchSize)
+		if err != nil {
+			log.G(ctx).WithError(err).Warnf("failed to prefetch layer=%v", l.desc.Digest)
+			return
+		}
+		log.G(ctx).Debug("completed to prefetch")
+	})
+	return
+}
+
+func (l *layer) prefetch(ctx context.Context, prefetchSize int64) error {
 	defer l.prefetchWaiter.done() // Notify the completion
-	ctx := context.Background()
 	// Measuring the total time to complete prefetch (use defer func() because l.Info().PrefetchSize is set later)
 	start := time.Now()
 	defer func() {
-		commonmetrics.WriteLatencyWithBytesLogValue(ctx, l.Info().Digest, commonmetrics.PrefetchTotal, start, commonmetrics.PrefetchSize, l.Info().PrefetchSize)
+		commonmetrics.WriteLatencyWithBytesLogValue(ctx, l.desc.Digest, commonmetrics.PrefetchTotal, start, commonmetrics.PrefetchSize, l.prefetchedSize())
 	}()
 
 	if l.isClosed() {
 		return fmt.Errorf("layer is already closed")
 	}
-	if l.r == nil {
-		return fmt.Errorf("layer hasn't been verified yet")
-	}
-	lr := l.r
-	if _, ok := lr.Lookup(estargz.NoPrefetchLandmark); ok {
+	rootID := l.verifiableReader.Metadata().RootID()
+	if _, _, err := l.verifiableReader.Metadata().GetChild(rootID, estargz.NoPrefetchLandmark); err == nil {
 		// do not prefetch this layer
 		return nil
-	} else if e, ok := lr.Lookup(estargz.PrefetchLandmark); ok {
+	} else if id, _, err := l.verifiableReader.Metadata().GetChild(rootID, estargz.PrefetchLandmark); err == nil {
+		offset, err := l.verifiableReader.Metadata().GetOffset(id)
+		if err != nil {
+			return errors.Wrapf(err, "failed to get offset of prefetch landmark")
+		}
 		// override the prefetch size with optimized value
-		prefetchSize = e.Offset
+		prefetchSize = offset
 	} else if prefetchSize > l.blob.Size() {
 		// adjust prefetch size not to exceed the whole layer size
 		prefetchSize = l.blob.Size()
@@ -465,7 +495,7 @@ func (l *layer) Prefetch(prefetchSize int64) error {
 	// Fetch the target range
 	downloadStart := time.Now()
 	err := l.blob.Cache(0, prefetchSize)
-	commonmetrics.WriteLatencyLogValue(ctx, l.Info().Digest, commonmetrics.PrefetchDownload, downloadStart) // time to download prefetch data
+	commonmetrics.WriteLatencyLogValue(ctx, l.desc.Digest, commonmetrics.PrefetchDownload, downloadStart) // time to download prefetch data
 
 	if err != nil {
 		return errors.Wrap(err, "failed to prefetch layer")
@@ -478,11 +508,10 @@ func (l *layer) Prefetch(prefetchSize int64) error {
 
 	// Cache uncompressed contents of the prefetched range
 	decompressStart := time.Now()
-	err = lr.Cache(reader.WithFilter(func(e *estargz.TOCEntry) bool {
-		return e.Offset < prefetchSize // Cache only prefetch target
+	err = l.verifiableReader.Cache(reader.WithFilter(func(offset int64) bool {
+		return offset < prefetchSize // Cache only prefetch target
 	}))
-	commonmetrics.WriteLatencyLogValue(ctx, l.Info().Digest, commonmetrics.PrefetchDecompress, decompressStart) // time to decompress prefetch data
-
+	commonmetrics.WriteLatencyLogValue(ctx, l.desc.Digest, commonmetrics.PrefetchDecompress, decompressStart) // time to decompress prefetch data
 	if err != nil {
 		return errors.Wrap(err, "failed to cache prefetched layer")
 	}
@@ -497,20 +526,28 @@ func (l *layer) WaitForPrefetchCompletion() error {
 	return l.prefetchWaiter.wait(l.resolver.prefetchTimeout)
 }
 
-func (l *layer) BackgroundFetch() error {
-	ctx := context.Background()
-	defer commonmetrics.WriteLatencyLogValue(ctx, l.Info().Digest, commonmetrics.BackgroundFetchTotal, time.Now())
+func (l *layer) BackgroundFetch() (err error) {
+	l.backgroundFetchOnce.Do(func() {
+		ctx := context.Background()
+		err = l.backgroundFetch(ctx)
+		if err != nil {
+			log.G(ctx).WithError(err).Warnf("failed to fetch whole layer=%v", l.desc.Digest)
+			return
+		}
+		log.G(ctx).Debug("completed to fetch all layer data in background")
+	})
+	return
+}
+
+func (l *layer) backgroundFetch(ctx context.Context) error {
+	defer commonmetrics.WriteLatencyLogValue(ctx, l.desc.Digest, commonmetrics.BackgroundFetchTotal, time.Now())
 	if l.isClosed() {
 		return fmt.Errorf("layer is already closed")
 	}
-	if l.r == nil {
-		return fmt.Errorf("layer hasn't been verified yet")
-	}
-	lr := l.r
 	br := io.NewSectionReader(readerAtFunc(func(p []byte, offset int64) (retN int, retErr error) {
 		l.resolver.backgroundTaskManager.InvokeBackgroundTask(func(ctx context.Context) {
 			// Measuring the time to download background fetch data (in milliseconds)
-			defer commonmetrics.MeasureLatency(commonmetrics.BackgroundFetchDownload, l.Info().Digest, time.Now()) // time to download background fetch data
+			defer commonmetrics.MeasureLatencyInMilliseconds(commonmetrics.BackgroundFetchDownload, l.Info().Digest, time.Now()) // time to download background fetch data
 			retN, retErr = l.blob.ReadAt(
 				p,
 				offset,
@@ -520,8 +557,8 @@ func (l *layer) BackgroundFetch() error {
 		}, 120*time.Second)
 		return
 	}), 0, l.blob.Size())
-	defer commonmetrics.WriteLatencyLogValue(ctx, l.Info().Digest, commonmetrics.BackgroundFetchDecompress, time.Now()) // time to decompress background fetch data (in milliseconds)
-	return lr.Cache(
+	defer commonmetrics.WriteLatencyLogValue(ctx, l.desc.Digest, commonmetrics.BackgroundFetchDecompress, time.Now()) // time to decompress background fetch data (in milliseconds)
+	return l.verifiableReader.Cache(
 		reader.WithReader(br),                // Read contents in background
 		reader.WithCacheOpts(cache.Direct()), // Do not pollute mem cache
 	)
@@ -531,14 +568,14 @@ func (l *layerRef) Done() {
 	l.done()
 }
 
-func (l *layer) RootNode() (fusefs.InodeEmbedder, error) {
+func (l *layer) RootNode(baseInode uint32) (fusefs.InodeEmbedder, error) {
 	if l.isClosed() {
 		return nil, fmt.Errorf("layer is already closed")
 	}
 	if l.r == nil {
 		return nil, fmt.Errorf("layer hasn't been verified yet")
 	}
-	return newNode(l.desc.Digest, l.r, l.blob)
+	return newNode(l.desc.Digest, l.r, l.blob, baseInode)
 }
 
 func (l *layer) ReadAt(p []byte, offset int64, opts ...remote.Option) (int, error) {

@@ -184,7 +184,7 @@ github.com/containerd/cgroups/v2
 github.com/containerd/cgroups/v2/stats
 # github.com/containerd/console v1.0.3 => github.com/containerd/console v1.0.2
 github.com/containerd/console
-# github.com/containerd/containerd v1.5.8 => github.com/k3s-io/containerd v1.5.8-k3s1
+# github.com/containerd/containerd v1.6.0-beta.2.0.20211117185425-a776a27af54a => github.com/k3s-io/containerd v1.5.8-k3s1
 ## explicit
 github.com/containerd/containerd
 github.com/containerd/containerd/api/events
@@ -359,7 +359,7 @@ github.com/containerd/containerd/snapshots/storage
 github.com/containerd/containerd/sys
 github.com/containerd/containerd/sys/reaper
 github.com/containerd/containerd/version
-# github.com/containerd/continuity v0.1.0 => github.com/k3s-io/continuity v0.0.0-20210309170710-f93269e0d5c1
+# github.com/containerd/continuity v0.2.1 => github.com/k3s-io/continuity v0.0.0-20210309170710-f93269e0d5c1
 github.com/containerd/continuity
 github.com/containerd/continuity/devices
 github.com/containerd/continuity/driver
@@ -383,7 +383,7 @@ github.com/containerd/imgcrypt/images/encryption
 # github.com/containerd/nri v0.1.0
 github.com/containerd/nri
 github.com/containerd/nri/types/v1
-# github.com/containerd/stargz-snapshotter v0.8.0
+# github.com/containerd/stargz-snapshotter v0.10.2-0.20211202025742-84f1bebf056d
 ## explicit
 github.com/containerd/stargz-snapshotter/cache
 github.com/containerd/stargz-snapshotter/fs
@@ -394,6 +394,8 @@ github.com/containerd/stargz-snapshotter/fs/metrics/layer
 github.com/containerd/stargz-snapshotter/fs/reader
 github.com/containerd/stargz-snapshotter/fs/remote
 github.com/containerd/stargz-snapshotter/fs/source
+github.com/containerd/stargz-snapshotter/metadata
+github.com/containerd/stargz-snapshotter/metadata/memory
 github.com/containerd/stargz-snapshotter/service
 github.com/containerd/stargz-snapshotter/service/keychain/cri
 github.com/containerd/stargz-snapshotter/service/keychain/dockerconfig
@@ -405,7 +407,8 @@ github.com/containerd/stargz-snapshotter/snapshot/overlayutils
 github.com/containerd/stargz-snapshotter/task
 github.com/containerd/stargz-snapshotter/util/lrucache
 github.com/containerd/stargz-snapshotter/util/namedmutex
-# github.com/containerd/stargz-snapshotter/estargz v0.8.0
+github.com/containerd/stargz-snapshotter/util/testutil
+# github.com/containerd/stargz-snapshotter/estargz v0.10.1
 github.com/containerd/stargz-snapshotter/estargz
 github.com/containerd/stargz-snapshotter/estargz/errorutil
 github.com/containerd/stargz-snapshotter/estargz/zstdchunked
@@ -463,7 +466,7 @@ github.com/cyphar/filepath-securejoin
 github.com/davecgh/go-spew/spew
 # github.com/daviddengcn/go-colortext v0.0.0-20160507010035-511bcaf42ccd
 github.com/daviddengcn/go-colortext
-# github.com/docker/cli v20.10.8+incompatible
+# github.com/docker/cli v20.10.11+incompatible
 github.com/docker/cli/cli/config
 github.com/docker/cli/cli/config/configfile
 github.com/docker/cli/cli/config/credentials
@@ -717,7 +720,7 @@ github.com/grpc-ecosystem/go-grpc-prometheus
 github.com/grpc-ecosystem/grpc-gateway/internal
 github.com/grpc-ecosystem/grpc-gateway/runtime
 github.com/grpc-ecosystem/grpc-gateway/utilities
-# github.com/hanwen/go-fuse/v2 v2.1.0
+# github.com/hanwen/go-fuse/v2 v2.1.1-0.20210825171523-3ab5d95a30ae
 github.com/hanwen/go-fuse/v2/fs
 github.com/hanwen/go-fuse/v2/fuse
 github.com/hanwen/go-fuse/v2/internal
@@ -725,8 +728,12 @@ github.com/hanwen/go-fuse/v2/internal/utimens
 github.com/hanwen/go-fuse/v2/splice
 # github.com/hashicorp/errwrap v1.0.0
 github.com/hashicorp/errwrap
+# github.com/hashicorp/go-cleanhttp v0.5.1
+github.com/hashicorp/go-cleanhttp
 # github.com/hashicorp/go-multierror v1.1.1
 github.com/hashicorp/go-multierror
+# github.com/hashicorp/go-retryablehttp v0.7.0
+github.com/hashicorp/go-retryablehttp
 # github.com/imdario/mergo v0.3.12
 github.com/imdario/mergo
 # github.com/inconshreveable/mousetrap v1.0.0
@@ -762,7 +769,7 @@ github.com/k3s-io/kine/pkg/server
 github.com/k3s-io/kine/pkg/tls
 # github.com/karrick/godirwalk v1.16.1
 github.com/karrick/godirwalk
-# github.com/klauspost/compress v1.13.5
+# github.com/klauspost/compress v1.13.6
 ## explicit
 github.com/klauspost/compress
 github.com/klauspost/compress/fse
@@ -831,7 +838,7 @@ github.com/moby/locker
 # github.com/moby/spdystream v0.2.0
 github.com/moby/spdystream
 github.com/moby/spdystream/spdy
-# github.com/moby/sys/mountinfo v0.4.1
+# github.com/moby/sys/mountinfo v0.5.0
 github.com/moby/sys/mountinfo
 # github.com/moby/sys/symlink v0.1.0
 github.com/moby/sys/symlink
@@ -945,7 +952,7 @@ github.com/opencontainers/selinux/pkg/pwalk
 # github.com/otiai10/copy v1.6.0
 ## explicit
 github.com/otiai10/copy
-# github.com/pelletier/go-toml v1.9.3
+# github.com/pelletier/go-toml v1.9.4
 github.com/pelletier/go-toml
 # github.com/peterbourgon/diskv v2.0.1+incompatible
 github.com/peterbourgon/diskv
@@ -1106,11 +1113,13 @@ github.com/syndtr/gocapability/capability
 github.com/tchap/go-patricia/patricia
 # github.com/tmc/grpc-websocket-proxy v0.0.0-20201229170055-e5319fda7802
 github.com/tmc/grpc-websocket-proxy/wsproxy
-# github.com/urfave/cli v1.22.2
+# github.com/urfave/cli v1.22.4
 ## explicit
 github.com/urfave/cli
 # github.com/urfave/cli/v2 v2.3.0
 github.com/urfave/cli/v2
+# github.com/vbatts/tar-split v0.11.2
+github.com/vbatts/tar-split/archive/tar
 # github.com/vishvananda/netlink v1.1.1-0.20201029203352-d40f9887b852
 github.com/vishvananda/netlink
 github.com/vishvananda/netlink/nl
@@ -1248,7 +1257,7 @@ go.etcd.io/etcd/server/v3/wal
 go.etcd.io/etcd/server/v3/wal/walpb
 # go.mozilla.org/pkcs7 v0.0.0-20200128120323-432b2356ecb1
 go.mozilla.org/pkcs7
-# go.opencensus.io v0.22.3
+# go.opencensus.io v0.23.0
 go.opencensus.io
 go.opencensus.io/internal
 go.opencensus.io/internal/tagencoding
@@ -1398,7 +1407,7 @@ golang.org/x/oauth2/jwt
 golang.org/x/sync/errgroup
 golang.org/x/sync/semaphore
 golang.org/x/sync/singleflight
-# golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c => golang.org/x/sys v0.0.0-20210616094352-59db8d763f22
+# golang.org/x/sys v0.0.0-20211025201205-69cdffdb9359 => golang.org/x/sys v0.0.0-20210616094352-59db8d763f22
 ## explicit
 golang.org/x/sys/cpu
 golang.org/x/sys/execabs
@@ -1520,7 +1529,7 @@ google.golang.org/genproto/googleapis/api/annotations
 google.golang.org/genproto/googleapis/api/httpbody
 google.golang.org/genproto/googleapis/rpc/status
 google.golang.org/genproto/protobuf/field_mask
-# google.golang.org/grpc v1.40.0 => google.golang.org/grpc v1.38.0
+# google.golang.org/grpc v1.42.0 => google.golang.org/grpc v1.38.0
 ## explicit
 google.golang.org/grpc
 google.golang.org/grpc/attributes
@@ -2315,7 +2324,7 @@ k8s.io/controller-manager/pkg/informerfactory
 k8s.io/controller-manager/pkg/leadermigration
 k8s.io/controller-manager/pkg/leadermigration/config
 k8s.io/controller-manager/pkg/leadermigration/options
-# k8s.io/cri-api v0.22.4 => github.com/k3s-io/kubernetes/staging/src/k8s.io/cri-api v1.22.4-k3s1
+# k8s.io/cri-api v0.24.0-alpha.0 => github.com/k3s-io/kubernetes/staging/src/k8s.io/cri-api v1.22.4-k3s1
 ## explicit
 k8s.io/cri-api/pkg/apis
 k8s.io/cri-api/pkg/apis/runtime/v1alpha2

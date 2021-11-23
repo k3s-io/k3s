@@ -40,6 +40,7 @@ import (
 	"github.com/containerd/containerd/remotes/docker"
 	dconfig "github.com/containerd/containerd/remotes/docker/config"
 	"github.com/containerd/stargz-snapshotter/fs/source"
+	rhttp "github.com/hashicorp/go-retryablehttp"
 	"github.com/pkg/errors"
 	runtime "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
@@ -136,18 +137,24 @@ func RegistryHostsFromCRIConfig(ctx context.Context, config Registry, credsFuncs
 			}
 
 			var (
-				transport = http.DefaultTransport.(*http.Transport).Clone()
-				client    = &http.Client{Transport: transport}
-				config    = config.Configs[u.Host]
+				rclient = rhttp.NewClient()
+				config  = config.Configs[u.Host]
 			)
 
+			rclient.Logger = nil // disable logging every request
+
 			if config.TLS != nil {
-				transport.TLSClientConfig, err = getTLSConfig(*config.TLS)
-				if err != nil {
-					return nil, errors.Wrapf(err, "get TLSConfig for registry %q", e)
+				if tr, ok := rclient.HTTPClient.Transport.(*http.Transport); ok {
+					tr.TLSClientConfig, err = getTLSConfig(*config.TLS)
+					if err != nil {
+						return nil, errors.Wrapf(err, "get TLSConfig for registry %q", e)
+					}
+				} else {
+					return nil, errors.New("TLS config cannot be applied; Client.Transport is not *http.Transport")
 				}
 			}
 
+			client := rclient.StandardClient()
 			authorizer := docker.NewDockerAuthorizer(
 				docker.WithAuthClient(client),
 				docker.WithAuthCreds(multiCredsFuncs(ref, credsFuncs...)))

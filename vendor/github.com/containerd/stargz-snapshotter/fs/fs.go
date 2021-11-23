@@ -53,7 +53,10 @@ import (
 	"github.com/containerd/stargz-snapshotter/fs/layer"
 	commonmetrics "github.com/containerd/stargz-snapshotter/fs/metrics/common"
 	layermetrics "github.com/containerd/stargz-snapshotter/fs/metrics/layer"
+	"github.com/containerd/stargz-snapshotter/fs/remote"
 	"github.com/containerd/stargz-snapshotter/fs/source"
+	"github.com/containerd/stargz-snapshotter/metadata"
+	memorymetadata "github.com/containerd/stargz-snapshotter/metadata/memory"
 	"github.com/containerd/stargz-snapshotter/snapshot"
 	"github.com/containerd/stargz-snapshotter/task"
 	metrics "github.com/docker/go-metrics"
@@ -73,12 +76,29 @@ const (
 type Option func(*options)
 
 type options struct {
-	getSources source.GetSources
+	getSources      source.GetSources
+	resolveHandlers map[string]remote.Handler
+	metadataStore   metadata.Store
 }
 
 func WithGetSources(s source.GetSources) Option {
 	return func(opts *options) {
 		opts.getSources = s
+	}
+}
+
+func WithResolveHandler(name string, handler remote.Handler) Option {
+	return func(opts *options) {
+		if opts.resolveHandlers == nil {
+			opts.resolveHandlers = make(map[string]remote.Handler)
+		}
+		opts.resolveHandlers[name] = handler
+	}
+}
+
+func WithMetadataStore(metadataStore metadata.Store) Option {
+	return func(opts *options) {
+		opts.metadataStore = metadataStore
 	}
 }
 
@@ -102,6 +122,11 @@ func NewFilesystem(root string, cfg config.Config, opts ...Option) (_ snapshot.F
 		entryTimeout = defaultFuseTimeout
 	}
 
+	metadataStore := fsOpts.metadataStore
+	if metadataStore == nil {
+		metadataStore = memorymetadata.NewReader
+	}
+
 	getSources := fsOpts.getSources
 	if getSources == nil {
 		getSources = source.FromDefaultLabels(func(refspec reference.Spec) (hosts []docker.RegistryHost, _ error) {
@@ -109,7 +134,7 @@ func NewFilesystem(root string, cfg config.Config, opts ...Option) (_ snapshot.F
 		})
 	}
 	tm := task.NewBackgroundTaskManager(maxConcurrency, 5*time.Second)
-	r, err := layer.NewResolver(root, tm, cfg)
+	r, err := layer.NewResolver(root, tm, cfg, fsOpts.resolveHandlers, metadataStore)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to setup resolver")
 	}
@@ -177,6 +202,13 @@ func (fs *filesystem) Mount(ctx context.Context, mountpoint string, labels map[s
 		return fmt.Errorf("source must be passed")
 	}
 
+	defaultPrefetchSize := fs.prefetchSize
+	if psStr, ok := labels[config.TargetPrefetchSizeLabel]; ok {
+		if ps, err := strconv.ParseInt(psStr, 10, 64); err == nil {
+			defaultPrefetchSize = ps
+		}
+	}
+
 	// Resolve the target layer
 	var (
 		resultChan = make(chan layer.Layer)
@@ -188,10 +220,10 @@ func (fs *filesystem) Mount(ctx context.Context, mountpoint string, labels map[s
 			l, err := fs.resolver.Resolve(ctx, s.Hosts, s.Name, s.Target)
 			if err == nil {
 				resultChan <- l
+				fs.prefetch(ctx, l, defaultPrefetchSize, start)
 				return
 			}
-			rErr = errors.Wrapf(rErr, "failed to resolve layer %q from %q: %v",
-				s.Target.Digest, s.Name, err)
+			rErr = errors.Wrapf(rErr, "failed to resolve layer %q from %q: %v", s.Target.Digest, s.Name, err)
 		}
 		errChan <- rErr
 	}()
@@ -202,12 +234,17 @@ func (fs *filesystem) Mount(ctx context.Context, mountpoint string, labels map[s
 		desc := desc
 		go func() {
 			// Avoids to get canceled by client.
-			ctx := log.WithLogger(context.Background(),
-				log.G(ctx).WithField("mountpoint", mountpoint))
-			err := fs.resolver.Cache(ctx, preResolve.Hosts, preResolve.Name, desc)
+			ctx := log.WithLogger(context.Background(), log.G(ctx).WithField("mountpoint", mountpoint))
+			l, err := fs.resolver.Resolve(ctx, preResolve.Hosts, preResolve.Name, desc)
 			if err != nil {
 				log.G(ctx).WithError(err).Debug("failed to pre-resolve")
+				return
 			}
+			fs.prefetch(ctx, l, defaultPrefetchSize, start)
+
+			// Release this layer because this isn't target and we don't use it anymore here.
+			// However, this will remain on the resolver cache until eviction.
+			l.Done()
 		}()
 	}
 
@@ -255,7 +292,7 @@ func (fs *filesystem) Mount(ctx context.Context, mountpoint string, labels map[s
 		// Verification must be done. Don't mount this layer.
 		return fmt.Errorf("digest of TOC JSON must be passed")
 	}
-	node, err := l.RootNode()
+	node, err := l.RootNode(0)
 	if err != nil {
 		log.G(ctx).WithError(err).Warnf("Failed to get root node")
 		return errors.Wrapf(err, "failed to get root node")
@@ -263,48 +300,13 @@ func (fs *filesystem) Mount(ctx context.Context, mountpoint string, labels map[s
 
 	// Measuring duration of Mount operation for resolved layer.
 	digest := l.Info().Digest // get layer sha
-	defer commonmetrics.MeasureLatency(commonmetrics.Mount, digest, start)
+	defer commonmetrics.MeasureLatencyInMilliseconds(commonmetrics.Mount, digest, start)
 
 	// Register the mountpoint layer
 	fs.layerMu.Lock()
 	fs.layer[mountpoint] = l
 	fs.layerMu.Unlock()
 	fs.metricsController.Add(mountpoint, l)
-
-	// Prefetch this layer. We prefetch several layers in parallel. The first
-	// Check() for this layer waits for the prefetch completion.
-	if !fs.noprefetch {
-		prefetchSize := fs.prefetchSize
-		if psStr, ok := labels[config.TargetPrefetchSizeLabel]; ok {
-			if ps, err := strconv.ParseInt(psStr, 10, 64); err == nil {
-				prefetchSize = ps
-			}
-		}
-		go func() {
-			fs.backgroundTaskManager.DoPrioritizedTask()
-			defer fs.backgroundTaskManager.DonePrioritizedTask()
-			if err := l.Prefetch(prefetchSize); err != nil {
-				log.G(ctx).WithError(err).Warnf("failed to prefetch layer=%v", digest)
-				return
-			}
-			log.G(ctx).Debug("completed to prefetch")
-		}()
-	}
-
-	// Fetch whole layer aggressively in background. We use background
-	// reader for this so prioritized tasks(Mount, Check, etc...) can
-	// interrupt the reading. This can avoid disturbing prioritized tasks
-	// about NW traffic.
-	if !fs.noBackgroundFetch {
-		go func() {
-			if err := l.BackgroundFetch(); err != nil {
-				log.G(ctx).WithError(err).Warnf("failed to fetch whole layer=%v", digest)
-				return
-			}
-			commonmetrics.LogLatencyForLastOnDemandFetch(ctx, digest, start, l.Info().ReadTime) // write log record for the latency between mount start and last on demand fetch
-			log.G(ctx).Debug("completed to fetch all layer data in background")
-		}()
-	}
 
 	// mount the node to the specified mountpoint
 	// TODO: bind mount the state directory as a read-only fs on snapshotter's side
@@ -341,7 +343,7 @@ func (fs *filesystem) Check(ctx context.Context, mountpoint string, labels map[s
 	fs.backgroundTaskManager.DoPrioritizedTask()
 	defer fs.backgroundTaskManager.DonePrioritizedTask()
 
-	defer commonmetrics.MeasureLatency(commonmetrics.PrefetchesCompleted, digest.FromString(""), time.Now()) // measuring the time the container launch is blocked on prefetch to complete
+	defer commonmetrics.MeasureLatencyInMilliseconds(commonmetrics.PrefetchesCompleted, digest.FromString(""), time.Now()) // measuring the time the container launch is blocked on prefetch to complete
 
 	ctx = log.WithLogger(ctx, log.G(ctx).WithField("mountpoint", mountpoint))
 
@@ -420,6 +422,23 @@ func (fs *filesystem) Unmount(ctx context.Context, mountpoint string) error {
 	// goroutine using channel, etc.
 	// See also: https://www.kernel.org/doc/html/latest/filesystems/fuse.html#aborting-a-filesystem-connection
 	return syscall.Unmount(mountpoint, syscall.MNT_FORCE)
+}
+
+func (fs *filesystem) prefetch(ctx context.Context, l layer.Layer, defaultPrefetchSize int64, start time.Time) {
+	// Prefetch a layer. The first Check() for this layer waits for the prefetch completion.
+	if !fs.noprefetch {
+		go l.Prefetch(defaultPrefetchSize)
+	}
+
+	// Fetch whole layer aggressively in background.
+	if !fs.noBackgroundFetch {
+		go func() {
+			if err := l.BackgroundFetch(); err == nil {
+				// write log record for the latency between mount start and last on demand fetch
+				commonmetrics.LogLatencyForLastOnDemandFetch(ctx, l.Info().Digest, start, l.Info().ReadTime)
+			}
+		}()
+	}
 }
 
 // neighboringLayers returns layer descriptors except the `target` layer in the specified manifest.

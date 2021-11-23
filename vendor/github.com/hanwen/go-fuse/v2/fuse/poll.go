@@ -32,6 +32,9 @@ func doPollHackLookup(ms *Server, req *request) {
 		out := (*AttrOut)(req.outData())
 		out.Attr = attr
 		req.status = OK
+	case _OP_GETXATTR:
+		// Kernel will try to read acl xattrs. Pretend we don't have any.
+		req.status = ENODATA
 	case _OP_POLL:
 		req.status = ENOSYS
 

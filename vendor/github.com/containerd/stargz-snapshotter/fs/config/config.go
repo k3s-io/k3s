@@ -69,13 +69,17 @@ type BlobConfig struct {
 	// If PrefetchChunkSize < ChunkSize prefetch bytes will be fetched as a single http GET,
 	// else total GET requests for prefetch = ceil(PrefetchSize / PrefetchChunkSize).
 	PrefetchChunkSize int64 `toml:"prefetch_chunk_size"`
+
+	MaxRetries  int `toml:"max_retries"`
+	MinWaitMSec int `toml:"min_wait_msec"`
+	MaxWaitMSec int `toml:"max_wait_msec"`
 }
 
 type DirectoryCacheConfig struct {
 	MaxLRUCacheEntry int  `toml:"max_lru_cache_entry"`
 	MaxCacheFds      int  `toml:"max_cache_fds"`
 	SyncAdd          bool `toml:"sync_add"`
-	Direct           bool `toml:"direct"`
+	Direct           bool `toml:"direct" default:"true"`
 }
 
 type FuseConfig struct {

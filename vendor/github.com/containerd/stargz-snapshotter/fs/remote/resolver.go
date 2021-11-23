@@ -28,6 +28,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math/rand"
 	"mime"
 	"mime/multipart"
 	"net/http"
@@ -46,18 +47,25 @@ import (
 	"github.com/containerd/stargz-snapshotter/fs/config"
 	commonmetrics "github.com/containerd/stargz-snapshotter/fs/metrics/common"
 	"github.com/containerd/stargz-snapshotter/fs/source"
+	"github.com/hashicorp/go-multierror"
+	rhttp "github.com/hashicorp/go-retryablehttp"
 	digest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 )
 
 const (
 	defaultChunkSize        = 50000
 	defaultValidIntervalSec = 60
 	defaultFetchTimeoutSec  = 300
+
+	defaultMaxRetries  = 5
+	defaultMinWaitMSec = 30
+	defaultMaxWaitMSec = 300000
 )
 
-func NewResolver(cfg config.BlobConfig) *Resolver {
+func NewResolver(cfg config.BlobConfig, handlers map[string]Handler) *Resolver {
 	if cfg.ChunkSize == 0 { // zero means "use default chunk size"
 		cfg.ChunkSize = defaultChunkSize
 	}
@@ -70,48 +78,131 @@ func NewResolver(cfg config.BlobConfig) *Resolver {
 	if cfg.FetchTimeoutSec == 0 {
 		cfg.FetchTimeoutSec = defaultFetchTimeoutSec
 	}
+	if cfg.MaxRetries == 0 {
+		cfg.MaxRetries = defaultMaxRetries
+	}
+	if cfg.MinWaitMSec == 0 {
+		cfg.MinWaitMSec = defaultMinWaitMSec
+	}
+	if cfg.MaxWaitMSec == 0 {
+		cfg.MaxWaitMSec = defaultMaxWaitMSec
+	}
 
 	return &Resolver{
 		blobConfig: cfg,
+		handlers:   handlers,
 	}
 }
 
 type Resolver struct {
 	blobConfig config.BlobConfig
+	handlers   map[string]Handler
+}
+
+type fetcher interface {
+	fetch(ctx context.Context, rs []region, retry bool) (multipartReadCloser, error)
+	check() error
+	genID(reg region) string
 }
 
 func (r *Resolver) Resolve(ctx context.Context, hosts source.RegistryHosts, refspec reference.Spec, desc ocispec.Descriptor, blobCache cache.BlobCache) (Blob, error) {
-	fetcher, size, err := newFetcher(ctx, hosts, refspec, desc)
+	f, size, err := r.resolveFetcher(ctx, hosts, refspec, desc)
 	if err != nil {
 		return nil, err
 	}
-
-	if r.blobConfig.ForceSingleRangeMode {
-		fetcher.singleRangeMode()
-	}
-	return &blob{
-		fetcher:           fetcher,
-		size:              size,
-		chunkSize:         r.blobConfig.ChunkSize,
-		prefetchChunkSize: r.blobConfig.PrefetchChunkSize,
-		cache:             blobCache,
-		lastCheck:         time.Now(),
-		checkInterval:     time.Duration(r.blobConfig.ValidInterval) * time.Second,
-		resolver:          r,
-		fetchTimeout:      time.Duration(r.blobConfig.FetchTimeoutSec) * time.Second,
-	}, nil
+	blobConfig := &r.blobConfig
+	return makeBlob(f,
+		size,
+		blobConfig.ChunkSize,
+		blobConfig.PrefetchChunkSize,
+		blobCache,
+		time.Now(),
+		time.Duration(blobConfig.ValidInterval)*time.Second,
+		r,
+		time.Duration(blobConfig.FetchTimeoutSec)*time.Second), nil
 }
 
-func newFetcher(ctx context.Context, hosts source.RegistryHosts, refspec reference.Spec, desc ocispec.Descriptor) (*fetcher, int64, error) {
-	reghosts, err := hosts(refspec)
+func (r *Resolver) resolveFetcher(ctx context.Context, hosts source.RegistryHosts, refspec reference.Spec, desc ocispec.Descriptor) (f fetcher, size int64, err error) {
+	blobConfig := &r.blobConfig
+	fc := &fetcherConfig{
+		hosts:       hosts,
+		refspec:     refspec,
+		desc:        desc,
+		maxRetries:  blobConfig.MaxRetries,
+		minWaitMSec: time.Duration(blobConfig.MinWaitMSec) * time.Millisecond,
+		maxWaitMSec: time.Duration(blobConfig.MaxWaitMSec) * time.Millisecond,
+	}
+	var handlersErr error
+	for name, p := range r.handlers {
+		// TODO: allow to configure the selection of readers based on the hostname in refspec
+		r, size, err := p.Handle(ctx, desc)
+		if err != nil {
+			handlersErr = multierror.Append(handlersErr, err)
+			continue
+		}
+		log.G(ctx).WithField("handler name", name).WithField("ref", refspec.String()).WithField("digest", desc.Digest).
+			Debugf("contents is provided by a handler")
+		return &remoteFetcher{r}, size, nil
+	}
+
+	log.G(ctx).WithError(handlersErr).WithField("ref", refspec.String()).WithField("digest", desc.Digest).Debugf("using default handler")
+	hf, size, err := newHTTPFetcher(ctx, fc)
 	if err != nil {
 		return nil, 0, err
 	}
+	if blobConfig.ForceSingleRangeMode {
+		hf.singleRangeMode()
+	}
+	return hf, size, err
+}
+
+type fetcherConfig struct {
+	hosts       source.RegistryHosts
+	refspec     reference.Spec
+	desc        ocispec.Descriptor
+	maxRetries  int
+	minWaitMSec time.Duration
+	maxWaitMSec time.Duration
+}
+
+func jitter(duration time.Duration) time.Duration {
+	return time.Duration(rand.Int63n(int64(duration)) + int64(duration))
+}
+
+// backoffStrategy extends retryablehttp's DefaultBackoff to add a random jitter to avoid overwhelming the repository
+// when it comes back online
+// DefaultBackoff either tries to parse the 'Retry-After' header of the response; or, it uses an exponential backoff
+// 2 ^ numAttempts, limited by max
+func backoffStrategy(min, max time.Duration, attemptNum int, resp *http.Response) time.Duration {
+	delayTime := rhttp.DefaultBackoff(min, max, attemptNum, resp)
+	return jitter(delayTime)
+}
+
+// retryStrategy extends retryablehttp's DefaultRetryPolicy to log the error and response when retrying
+// DefaultRetryPolicy retries whenever err is non-nil (except for some url errors) or if returned
+// status code is 429 or 5xx (except 501)
+func retryStrategy(ctx context.Context, resp *http.Response, err error) (bool, error) {
+	retry, err2 := rhttp.DefaultRetryPolicy(ctx, resp, err)
+	if retry {
+		log.G(ctx).WithFields(logrus.Fields{
+			"error":    err,
+			"response": resp,
+		}).Infof("Retrying request")
+	}
+	return retry, err2
+}
+
+func newHTTPFetcher(ctx context.Context, fc *fetcherConfig) (*httpFetcher, int64, error) {
+	reghosts, err := fc.hosts(fc.refspec)
+	if err != nil {
+		return nil, 0, err
+	}
+	desc := fc.desc
 	if desc.Digest.String() == "" {
 		return nil, 0, fmt.Errorf("Digest is mandatory in layer descriptor")
 	}
 	digest := desc.Digest
-	pullScope, err := repositoryScope(refspec, false)
+	pullScope, err := repositoryScope(fc.refspec, false)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -121,13 +212,22 @@ func newFetcher(ctx context.Context, hosts source.RegistryHosts, refspec referen
 	for _, host := range reghosts {
 		if host.Host == "" || strings.Contains(host.Host, "/") {
 			rErr = errors.Wrapf(rErr, "invalid destination (host %q, ref:%q, digest:%q)",
-				host.Host, refspec, digest)
+				host.Host, fc.refspec, digest)
 			continue // Try another
 
 		}
 
 		// Prepare transport with authorization functionality
 		tr := host.Client.Transport
+
+		if rt, ok := tr.(*rhttp.RoundTripper); ok {
+			rt.Client.RetryMax = fc.maxRetries
+			rt.Client.RetryWaitMin = fc.minWaitMSec
+			rt.Client.RetryWaitMax = fc.maxWaitMSec
+			rt.Client.Backoff = backoffStrategy
+			rt.Client.CheckRetry = retryStrategy
+		}
+
 		timeout := host.Client.Timeout
 		if host.Authorizer != nil {
 			tr = &transport{
@@ -141,12 +241,12 @@ func newFetcher(ctx context.Context, hosts source.RegistryHosts, refspec referen
 		blobURL := fmt.Sprintf("%s://%s/%s/blobs/%s",
 			host.Scheme,
 			path.Join(host.Host, host.Path),
-			strings.TrimPrefix(refspec.Locator, refspec.Hostname()+"/"),
+			strings.TrimPrefix(fc.refspec.Locator, fc.refspec.Hostname()+"/"),
 			digest)
 		url, err := redirect(ctx, blobURL, tr, timeout)
 		if err != nil {
 			rErr = errors.Wrapf(rErr, "failed to redirect (host %q, ref:%q, digest:%q): %v",
-				host.Host, refspec, digest, err)
+				host.Host, fc.refspec, digest, err)
 			continue // Try another
 		}
 
@@ -154,15 +254,15 @@ func newFetcher(ctx context.Context, hosts source.RegistryHosts, refspec referen
 		// TODO: we should try to use the Size field in the descriptor here.
 		start := time.Now() // start time before getting layer header
 		size, err := getSize(ctx, url, tr, timeout)
-		commonmetrics.MeasureLatency(commonmetrics.StargzHeaderGet, digest, start) // time to get layer header
+		commonmetrics.MeasureLatencyInMilliseconds(commonmetrics.StargzHeaderGet, digest, start) // time to get layer header
 		if err != nil {
 			rErr = errors.Wrapf(rErr, "failed to get size (host %q, ref:%q, digest:%q): %v",
-				host.Host, refspec, digest, err)
+				host.Host, fc.refspec, digest, err)
 			continue // Try another
 		}
 
 		// Hit one destination
-		return &fetcher{
+		return &httpFetcher{
 			url:     url,
 			tr:      tr,
 			blobURL: blobURL,
@@ -302,7 +402,7 @@ func getSize(ctx context.Context, url string, tr http.RoundTripper, timeout time
 		headStatusCode, res.StatusCode)
 }
 
-type fetcher struct {
+type httpFetcher struct {
 	url           string
 	urlMu         sync.Mutex
 	tr            http.RoundTripper
@@ -318,7 +418,7 @@ type multipartReadCloser interface {
 	Close() error
 }
 
-func (f *fetcher) fetch(ctx context.Context, rs []region, retry bool, opts *options) (multipartReadCloser, error) {
+func (f *httpFetcher) fetch(ctx context.Context, rs []region, retry bool) (multipartReadCloser, error) {
 	if len(rs) == 0 {
 		return nil, fmt.Errorf("no request queried")
 	}
@@ -327,13 +427,6 @@ func (f *fetcher) fetch(ctx context.Context, rs []region, retry bool, opts *opti
 		tr              = f.tr
 		singleRangeMode = f.isSingleRangeMode()
 	)
-
-	if opts.ctx != nil {
-		ctx = opts.ctx
-	}
-	if opts.tr != nil {
-		tr = opts.tr
-	}
 
 	// squash requesting chunks for reducing the total size of request header
 	// (servers generally have limits for the size of headers)
@@ -368,7 +461,7 @@ func (f *fetcher) fetch(ctx context.Context, rs []region, retry bool, opts *opti
 	// Recording the roundtrip latency for remote registry GET operation.
 	start := time.Now()
 	res, err := tr.RoundTrip(req) // NOT DefaultClient; don't want redirects
-	commonmetrics.MeasureLatency(commonmetrics.RemoteRegistryGet, f.digest, start)
+	commonmetrics.MeasureLatencyInMilliseconds(commonmetrics.RemoteRegistryGet, f.digest, start)
 	if err != nil {
 		return nil, err
 	}
@@ -378,7 +471,7 @@ func (f *fetcher) fetch(ctx context.Context, rs []region, retry bool, opts *opti
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to parse Content-Length")
 		}
-		return singlePartReader(region{0, size - 1}, res.Body), nil
+		return newSinglePartReader(region{0, size - 1}, res.Body), nil
 	} else if res.StatusCode == http.StatusPartialContent {
 		mediaType, params, err := mime.ParseMediaType(res.Header.Get("Content-Type"))
 		if err != nil {
@@ -386,7 +479,7 @@ func (f *fetcher) fetch(ctx context.Context, rs []region, retry bool, opts *opti
 		}
 		if strings.HasPrefix(mediaType, "multipart/") {
 			// We are getting a set of chunks as a multipart body.
-			return multiPartReader(res.Body, params["boundary"]), nil
+			return newMultiPartReader(res.Body, params["boundary"]), nil
 		}
 
 		// We are getting single range
@@ -394,7 +487,7 @@ func (f *fetcher) fetch(ctx context.Context, rs []region, retry bool, opts *opti
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to parse Content-Range")
 		}
-		return singlePartReader(reg, res.Body), nil
+		return newSinglePartReader(reg, res.Body), nil
 	} else if retry && res.StatusCode == http.StatusForbidden {
 		log.G(ctx).Infof("Received status code: %v. Refreshing URL and retrying...", res.Status)
 
@@ -402,19 +495,19 @@ func (f *fetcher) fetch(ctx context.Context, rs []region, retry bool, opts *opti
 		if err := f.refreshURL(ctx); err != nil {
 			return nil, errors.Wrapf(err, "failed to refresh URL on %v", res.Status)
 		}
-		return f.fetch(ctx, rs, false, opts)
+		return f.fetch(ctx, rs, false)
 	} else if retry && res.StatusCode == http.StatusBadRequest && !singleRangeMode {
 		log.G(ctx).Infof("Received status code: %v. Setting single range mode and retrying...", res.Status)
 
 		// gcr.io (https://storage.googleapis.com) returns 400 on multi-range request (2020 #81)
-		f.singleRangeMode()                  // fallbacks to singe range request mode
-		return f.fetch(ctx, rs, false, opts) // retries with the single range mode
+		f.singleRangeMode()            // fallbacks to singe range request mode
+		return f.fetch(ctx, rs, false) // retries with the single range mode
 	}
 
 	return nil, fmt.Errorf("unexpected status code: %v", res.Status)
 }
 
-func (f *fetcher) check() error {
+func (f *httpFetcher) check() error {
 	ctx := context.Background()
 	if f.timeout > 0 {
 		var cancel context.CancelFunc
@@ -457,7 +550,7 @@ func (f *fetcher) check() error {
 	return fmt.Errorf("unexpected status code %v", res.StatusCode)
 }
 
-func (f *fetcher) refreshURL(ctx context.Context) error {
+func (f *httpFetcher) refreshURL(ctx context.Context) error {
 	newURL, err := redirect(ctx, f.blobURL, f.tr, f.timeout)
 	if err != nil {
 		return err
@@ -468,25 +561,25 @@ func (f *fetcher) refreshURL(ctx context.Context) error {
 	return nil
 }
 
-func (f *fetcher) genID(reg region) string {
+func (f *httpFetcher) genID(reg region) string {
 	sum := sha256.Sum256([]byte(fmt.Sprintf("%s-%d-%d", f.blobURL, reg.b, reg.e)))
 	return fmt.Sprintf("%x", sum)
 }
 
-func (f *fetcher) singleRangeMode() {
+func (f *httpFetcher) singleRangeMode() {
 	f.singleRangeMu.Lock()
 	f.singleRange = true
 	f.singleRangeMu.Unlock()
 }
 
-func (f *fetcher) isSingleRangeMode() bool {
+func (f *httpFetcher) isSingleRangeMode() bool {
 	f.singleRangeMu.Lock()
 	r := f.singleRange
 	f.singleRangeMu.Unlock()
 	return r
 }
 
-func singlePartReader(reg region, rc io.ReadCloser) multipartReadCloser {
+func newSinglePartReader(reg region, rc io.ReadCloser) multipartReadCloser {
 	return &singlepartReader{
 		r:      rc,
 		Closer: rc,
@@ -509,7 +602,7 @@ func (sr *singlepartReader) Next() (region, io.Reader, error) {
 	return region{}, nil, io.EOF
 }
 
-func multiPartReader(rc io.ReadCloser, boundary string) multipartReadCloser {
+func newMultiPartReader(rc io.ReadCloser, boundary string) multipartReadCloser {
 	return &multipartReader{
 		m:      multipart.NewReader(rc, boundary),
 		Closer: rc,
@@ -558,19 +651,12 @@ type Option func(*options)
 
 type options struct {
 	ctx       context.Context
-	tr        http.RoundTripper
 	cacheOpts []cache.Option
 }
 
 func WithContext(ctx context.Context) Option {
 	return func(opts *options) {
 		opts.ctx = ctx
-	}
-}
-
-func WithRoundTripper(tr http.RoundTripper) Option {
-	return func(opts *options) {
-		opts.tr = tr
 	}
 }
 
@@ -596,4 +682,39 @@ func repositoryScope(refspec reference.Spec, push bool) (string, error) {
 		s += ",push"
 	}
 	return s, nil
+}
+
+type remoteFetcher struct {
+	r Fetcher
+}
+
+func (r *remoteFetcher) fetch(ctx context.Context, rs []region, retry bool) (multipartReadCloser, error) {
+	var s regionSet
+	for _, reg := range rs {
+		s.add(reg)
+	}
+	reg := superRegion(s.rs)
+	rc, err := r.r.Fetch(ctx, reg.b, reg.size())
+	if err != nil {
+		return nil, err
+	}
+	return newSinglePartReader(reg, rc), nil
+}
+
+func (r *remoteFetcher) check() error {
+	return r.r.Check()
+}
+
+func (r *remoteFetcher) genID(reg region) string {
+	return r.r.GenID(reg.b, reg.size())
+}
+
+type Handler interface {
+	Handle(ctx context.Context, desc ocispec.Descriptor) (fetcher Fetcher, size int64, err error)
+}
+
+type Fetcher interface {
+	Fetch(ctx context.Context, off int64, size int64) (io.ReadCloser, error)
+	Check() error
+	GenID(off int64, size int64) string
 }

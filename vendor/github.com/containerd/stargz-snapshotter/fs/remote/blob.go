@@ -28,6 +28,8 @@ import (
 	"io"
 	"io/ioutil"
 	"regexp"
+	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -37,6 +39,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
+	"golang.org/x/sync/singleflight"
 )
 
 var contentRangeRegexp = regexp.MustCompile(`bytes ([0-9]+)-([0-9]+)/([0-9]+|\\*)`)
@@ -52,7 +55,7 @@ type Blob interface {
 }
 
 type blob struct {
-	fetcher   *fetcher
+	fetcher   fetcher
 	fetcherMu sync.Mutex
 
 	size              int64
@@ -64,13 +67,31 @@ type blob struct {
 	checkInterval     time.Duration
 	fetchTimeout      time.Duration
 
-	fetchedRegionSet   regionSet
-	fetchedRegionSetMu sync.Mutex
+	fetchedRegionSet    regionSet
+	fetchedRegionSetMu  sync.Mutex
+	fetchedRegionGroup  singleflight.Group
+	fetchedRegionCopyMu sync.Mutex
 
 	resolver *Resolver
 
 	closed   bool
 	closedMu sync.Mutex
+}
+
+func makeBlob(fetcher fetcher, size int64, chunkSize int64, prefetchChunkSize int64,
+	blobCache cache.BlobCache, lastCheck time.Time, checkInterval time.Duration,
+	r *Resolver, fetchTimeout time.Duration) *blob {
+	return &blob{
+		fetcher:           fetcher,
+		size:              size,
+		chunkSize:         chunkSize,
+		prefetchChunkSize: prefetchChunkSize,
+		cache:             blobCache,
+		lastCheck:         lastCheck,
+		checkInterval:     checkInterval,
+		resolver:          r,
+		fetchTimeout:      fetchTimeout,
+	}
 }
 
 func (b *blob) Close() error {
@@ -96,16 +117,17 @@ func (b *blob) Refresh(ctx context.Context, hosts source.RegistryHosts, refspec 
 	}
 
 	// refresh the fetcher
-	new, newSize, err := newFetcher(ctx, hosts, refspec, desc)
+	f, newSize, err := b.resolver.resolveFetcher(ctx, hosts, refspec, desc)
 	if err != nil {
 		return err
-	} else if newSize != b.size {
+	}
+	if newSize != b.size {
 		return fmt.Errorf("Invalid size of new blob %d; want %d", newSize, b.size)
 	}
 
 	// update the blob's fetcher with new one
 	b.fetcherMu.Lock()
-	b.fetcher = new
+	b.fetcher = f
 	b.fetcherMu.Unlock()
 	b.lastCheckMu.Lock()
 	b.lastCheck = time.Now()
@@ -153,7 +175,18 @@ func (b *blob) FetchedSize() int64 {
 	return sz
 }
 
-func (b *blob) cacheAt(offset int64, size int64, fr *fetcher, cacheOpts *options) error {
+func makeSyncKey(allData map[region]io.Writer) string {
+	keys := make([]string, len(allData))
+	keysIndex := 0
+	for key := range allData {
+		keys[keysIndex] = fmt.Sprintf("[%d,%d]", key.b, key.e)
+		keysIndex++
+	}
+	sort.Strings(keys)
+	return strings.Join(keys, ",")
+}
+
+func (b *blob) cacheAt(offset int64, size int64, fr fetcher, cacheOpts *options) error {
 	fetchReg := region{floor(offset, b.chunkSize), ceil(offset+size-1, b.chunkSize) - 1}
 	discard := make(map[region]io.Writer)
 
@@ -275,8 +308,9 @@ func (b *blob) ReadAt(p []byte, offset int64, opts ...Option) (int, error) {
 	return len(p), nil
 }
 
-// fetchRange fetches all specified chunks from local cache and remote blob.
-func (b *blob) fetchRange(allData map[region]io.Writer, opts *options) error {
+// fetchRegions fetches all specified chunks from remote blob and puts it in the local cache.
+// It must be called from within fetchRange and need to ensure that it is inside the singleflight `Do` operation.
+func (b *blob) fetchRegions(allData map[region]io.Writer, fetched map[region]bool, opts *options) error {
 	if len(allData) == 0 {
 		return nil
 	}
@@ -289,14 +323,18 @@ func (b *blob) fetchRange(allData map[region]io.Writer, opts *options) error {
 
 	// request missed regions
 	var req []region
-	fetched := make(map[region]bool)
 	for reg := range allData {
 		req = append(req, reg)
 		fetched[reg] = false
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), b.fetchTimeout)
+
+	fetchCtx, cancel := context.WithTimeout(context.Background(), b.fetchTimeout)
 	defer cancel()
-	mr, err := fr.fetch(ctx, req, true, opts)
+	if opts.ctx != nil {
+		fetchCtx = opts.ctx
+	}
+	mr, err := fr.fetch(fetchCtx, req, true)
+
 	if err != nil {
 		return err
 	}
@@ -364,6 +402,64 @@ func (b *blob) fetchRange(allData map[region]io.Writer, opts *options) error {
 	}
 
 	return nil
+}
+
+// fetchRange fetches all specified chunks from local cache and remote blob.
+func (b *blob) fetchRange(allData map[region]io.Writer, opts *options) error {
+	if len(allData) == 0 {
+		return nil
+	}
+
+	// We build a key based on regions we need to fetch and pass it to singleflightGroup.Do(...)
+	// to block simultaneous same requests. Once the request is finished and the data is ready,
+	// all blocked callers will be unblocked and that same data will be returned by all blocked callers.
+	key := makeSyncKey(allData)
+	fetched := make(map[region]bool)
+	_, err, shared := b.fetchedRegionGroup.Do(key, func() (interface{}, error) {
+		return nil, b.fetchRegions(allData, fetched, opts)
+	})
+
+	// When unblocked try to read from cache in case if there were no errors
+	// If we fail reading from cache, fetch from remote registry again
+	if err == nil && shared {
+		for reg := range allData {
+			if _, ok := fetched[reg]; ok {
+				continue
+			}
+			err = b.walkChunks(reg, func(chunk region) error {
+				b.fetcherMu.Lock()
+				fr := b.fetcher
+				b.fetcherMu.Unlock()
+
+				// Check if the content exists in the cache
+				// And if exists, read from cache
+				r, err := b.cache.Get(fr.genID(chunk), opts.cacheOpts...)
+				if err != nil {
+					return err
+				}
+				defer r.Close()
+				rr := io.NewSectionReader(r, 0, chunk.size())
+
+				// Copy the target chunk
+				b.fetchedRegionCopyMu.Lock()
+				defer b.fetchedRegionCopyMu.Unlock()
+				if _, err := io.CopyN(allData[chunk], rr, chunk.size()); err != nil {
+					return err
+				}
+				return nil
+			})
+			if err != nil {
+				break
+			}
+		}
+
+		// if we cannot read the data from cache, do fetch again
+		if err != nil {
+			return b.fetchRange(allData, opts)
+		}
+	}
+
+	return err
 }
 
 type walkFunc func(reg region) error

@@ -17,6 +17,7 @@
 package zstdchunked
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/binary"
 	"encoding/json"
@@ -32,10 +33,16 @@ import (
 )
 
 const (
-	ZstdChunkedManifestChecksumAnnotation = "io.containers.zstd-chunked.manifest-checksum"
-	ZstdChunkedManifestPositionAnnotation = "io.containers.zstd-chunked.manifest-position"
-	FooterSize                            = 40
-	manifestTypeCRFS                      = 1
+	// ManifestChecksumAnnotation is an annotation that contains the compressed TOC Digset
+	ManifestChecksumAnnotation = "io.containers.zstd-chunked.manifest-checksum"
+
+	// ManifestPositionAnnotation is an annotation that contains the offset to the TOC.
+	ManifestPositionAnnotation = "io.containers.zstd-chunked.manifest-position"
+
+	// FooterSize is the size of the footer
+	FooterSize = 40
+
+	manifestTypeCRFS = 1
 )
 
 var (
@@ -68,18 +75,38 @@ func (zz *Decompressor) ParseTOC(r io.Reader) (toc *estargz.JTOC, tocDgst digest
 	return toc, dgstr.Digest(), nil
 }
 
-func (zz *Decompressor) ParseFooter(p []byte) (tocOffset, tocSize int64, err error) {
+func (zz *Decompressor) ParseFooter(p []byte) (blobPayloadSize, tocOffset, tocSize int64, err error) {
 	offset := binary.LittleEndian.Uint64(p[0:8])
 	compressedLength := binary.LittleEndian.Uint64(p[8:16])
 	if !bytes.Equal(zstdChunkedFrameMagic, p[32:40]) {
-		return 0, 0, fmt.Errorf("invalid magic number")
+		return 0, 0, 0, fmt.Errorf("invalid magic number")
 	}
-	return int64(offset), int64(compressedLength), nil
+	// 8 is the size of the zstd skippable frame header + the frame size (see WriteTOCAndFooter)
+	return int64(offset - 8), int64(offset), int64(compressedLength), nil
 }
 
 func (zz *Decompressor) FooterSize() int64 {
 	return FooterSize
 }
+
+func (zz *Decompressor) DecompressTOC(r io.Reader) (tocJSON io.ReadCloser, err error) {
+	decoder, err := zstd.NewReader(r)
+	if err != nil {
+		return nil, err
+	}
+	br := bufio.NewReader(decoder)
+	if _, err := br.Peek(1); err != nil {
+		return nil, err
+	}
+	return &reader{br, decoder.Close}, nil
+}
+
+type reader struct {
+	io.Reader
+	closeFunc func()
+}
+
+func (r *reader) Close() error { r.closeFunc(); return nil }
 
 type zstdReadCloser struct{ *zstd.Decoder }
 
@@ -149,8 +176,8 @@ func (zc *Compressor) WriteTOCAndFooter(w io.Writer, off int64, toc *estargz.JTO
 	}
 
 	if zc.Metadata != nil {
-		zc.Metadata[ZstdChunkedManifestChecksumAnnotation] = digest.FromBytes(compressedTOC).String()
-		zc.Metadata[ZstdChunkedManifestPositionAnnotation] = fmt.Sprintf("%d:%d:%d:%d",
+		zc.Metadata[ManifestChecksumAnnotation] = digest.FromBytes(compressedTOC).String()
+		zc.Metadata[ManifestPositionAnnotation] = fmt.Sprintf("%d:%d:%d:%d",
 			tocOff, len(compressedTOC), len(tocJSON), manifestTypeCRFS)
 	}
 
