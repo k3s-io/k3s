@@ -8,9 +8,11 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"os"
 	"path"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"time"
 
@@ -561,6 +563,10 @@ func (c *Cluster) bootstrap(ctx context.Context) error {
 
 	// bootstrap managed database via HTTPS
 	if c.runtime.HTTPBootstrap {
+		// Assuming we should just compare on managed databases
+		if err := c.compareConfig(); err != nil {
+			return err
+		}
 		return c.httpBootstrap(ctx)
 	}
 
@@ -575,4 +581,38 @@ func (c *Cluster) Snapshot(ctx context.Context, config *config.Control) error {
 		return errors.New("unable to perform etcd snapshot on non-etcd system")
 	}
 	return c.managedDB.Snapshot(ctx, config)
+}
+
+// compareConfig verifies that the config of the joining control plane node coincides with the cluster's config
+func (c *Cluster) compareConfig() error {
+	agentClientAccessInfo, err := clientaccess.ParseAndValidateTokenForUser(c.config.JoinURL, c.config.Token, "node")
+	if err != nil {
+		return err
+	}
+	serverConfig, err := agentClientAccessInfo.Get("/v1-" + version.Program + "/config")
+	if err != nil {
+		return err
+	}
+	clusterControl := &config.Control{}
+	if err := json.Unmarshal(serverConfig, clusterControl); err != nil {
+		return err
+	}
+
+	// We are saving IPs of ClusterIPRanges and ServiceIPRanges in 4-bytes representation but json decodes in 16-byte
+	ipsTo16Bytes(c.config.CriticalControlArgs.ClusterIPRanges)
+	ipsTo16Bytes(c.config.CriticalControlArgs.ServiceIPRanges)
+
+	if !reflect.DeepEqual(clusterControl.CriticalControlArgs, c.config.CriticalControlArgs) {
+		logrus.Debugf("This is the server CriticalControlArgs: %#v", clusterControl.CriticalControlArgs)
+		logrus.Debugf("This is the local CriticalControlArgs: %#v", c.config.CriticalControlArgs)
+		return errors.New("Unable to join cluster due to critical configuration value mismatch")
+	}
+	return nil
+}
+
+// ipsTo16Bytes makes sure the IPs in the []*net.IPNet slice are represented in 16-byte format
+func ipsTo16Bytes(mySlice []*net.IPNet) {
+	for _, ipNet := range mySlice {
+		ipNet.IP = ipNet.IP.To16()
+	}
 }
