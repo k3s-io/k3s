@@ -1,12 +1,17 @@
 #!/bin/bash
 
+set -e
+
 cd $(dirname $0)/..
 
 . ./scripts/version.sh
 
 RUNC_VERSION=v1.0.0-rc95
 ROOT_VERSION=v0.9.1
-TRAEFIK_VERSION=1.81.0
+TRAEFIK_CHART_VERSION=$(yq e '.spec.chart' manifests/traefik.yaml | awk 'match($0, /([0-9.]+)([0-9]{2})/, m) { print m[1]; }')
+TRAEFIK_PACKAGE_VERSION=$(yq e '.spec.chart' manifests/traefik.yaml | awk 'match($0, /([0-9.]+)([0-9]{2})/, m) { print m[2]; }')
+TRAEFIK_FILE=traefik-${TRAEFIK_CHART_VERSION}${TRAEFIK_PACKAGE_VERSION}.tgz
+TRAEFIK_URL=https://charts.helm.sh/stable/packages/traefik-${TRAEFIK_CHART_VERSION}.tgz
 CHARTS_DIR=build/static/charts
 RUNC_DIR=build/src/github.com/opencontainers/runc
 DATA_DIR=build/data
@@ -25,16 +30,62 @@ git fetch --all --tags
 git checkout ${RUNC_VERSION} -b k3s
 popd
 
-TRAEFIK_FILE=traefik-${TRAEFIK_VERSION}.tgz
-TRAEFIK_URL=https://charts.helm.sh/stable/packages/${TRAEFIK_FILE}
+setup_tmp() {
+    TMP_DIR=$(mktemp -d --tmpdir=${CHARTS_DIR})
+    cleanup() {
+        code=$?
+        set +e
+        trap - EXIT
+        rm -rf ${TMP_DIR}
+        exit $code
+    }
+    trap cleanup INT EXIT
+}
 
-echo "Downloading Traefik Helm chart from ${TRAEFIK_URL}"
-curl -sfL ${TRAEFIK_URL} -o ${CHARTS_DIR}/${TRAEFIK_FILE}
-code=$?
+download_and_package_traefik () {
+  echo "Downloading Traefik Helm chart from ${TRAEFIK_URL}"
+  curl -sfL ${TRAEFIK_URL} -o ${TMP_DIR}/${TRAEFIK_FILE}
+  code=$?
 
-if [ $code -ne 0 ]; then
-  echo "Error: Failed to download Traefik Helm chart!"
-  exit $code
-fi
+  if [ $code -ne 0 ]; then
+    echo "Error: Failed to download Traefik Helm chart!"
+    exit $code
+  fi
+
+  echo "Uncompress ${TMP_DIR}/${TRAEFIK_FILE}"
+  tar xf ${TMP_DIR}/${TRAEFIK_FILE} -C ${TMP_DIR}
+  TRAEFIK_TMP_CHART=${TMP_DIR}/traefik
+
+  # Move anything from ${f}/charts-crd/overlay-upstream to the main chart
+  cp -R ./scripts/chart-templates/crd-base/overlay-upstream/* ${TRAEFIK_TMP_CHART}
+
+  # Modify charts to support system-default-registry
+  echo -e 'global:\n  systemDefaultRegistry: ""' >> ${TRAEFIK_TMP_CHART}/values.yaml
+  find ${TRAEFIK_TMP_CHART} -type f | xargs sed -i 's/{{ .Values.image }}/{{ template "system_default_registry" .}}&/g'
+
+  # Modify chart version to append package version.
+  # If we alter our repackaging of the helm chart without also bumping the version of the
+  # chart, the package version portion (final two digits) of the version string in the
+  # traefik HelmChart manifest should be bumped accordingly.
+  sed -Ei "s/version: .*/&${TRAEFIK_PACKAGE_VERSION}/" ${TRAEFIK_TMP_CHART}/Chart.yaml
+
+  # Add dashboard annotations to main chart
+  cat <<EOF >>${TRAEFIK_TMP_CHART}/Chart.yaml
+annotations:
+  fleet.cattle.io/bundle-id: k3s
+EOF
+
+  # Package charts
+  OPTS="--format=gnu --sort=name --owner=0 --group=0 --mode=gou-s --numeric-owner --no-acls --no-selinux --no-xattrs"
+  tar ${OPTS} --mtime='2021-01-01 00:00:00Z' -cf - -C ${TMP_DIR} $(basename ${TRAEFIK_TMP_CHART}) | gzip -n > ${CHARTS_DIR}/${TRAEFIK_FILE}
+  for TAR in ${CHARTS_DIR}/*.tgz; do
+    sha256sum ${TAR}
+    stat ${TAR}
+    tar -vtf ${TAR}
+  done
+}
+
+setup_tmp
+download_and_package_traefik
 
 cp scripts/wg-add.sh bin/aux/
