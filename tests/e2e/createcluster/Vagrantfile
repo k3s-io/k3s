@@ -5,55 +5,59 @@ NODE_BOXES = (ENV['NODE_BOXES'] ||
 GITHUB_BRANCH = (ENV['GITHUB_BRANCH'] || "master")
 NODE_CPUS = (ENV['NODE_CPUS'] || 2).to_i
 NODE_MEMORY = (ENV['NODE_MEMORY'] || 2048).to_i
-LATEST_COMMIT = "d93c82f9585ed9e0ff7ebe95b1506f4587fffc1c"
-NETWORK_INTF = "wlp3s0"
-NETWORK_PREFIX = "192.168.56"
+LATEST_COMMIT = (ENV['LATEST_COMMIT'] || "d93c82f9585ed9e0ff7ebe95b1506f4587fffc1c")
+# Virtualbox >= 6.1.28 require `/etc/vbox/network.conf` for expanded private networks 
+NETWORK_PREFIX = "10.10.10"
 
 def provision(vm, roles, role_num, node_num)
   vm.box = NODE_BOXES[node_num]
   vm.hostname = "#{roles[0]}-#{role_num}"
-  # An expanded netmask is required to allow VM<-->VM communication
-  vm.network "private_network", ip: "#{NETWORK_PREFIX}.#{100+node_num}", netmask: "255.255.0.0"
-  vm.network "public_network", bridge: NETWORK_INTF, dev: NETWORK_INTF
+  # An expanded netmask is required to allow VM<-->VM communication, virtualbox defaults to /32
+  vm.network "private_network", ip: "#{NETWORK_PREFIX}.#{100+node_num}", netmask: "255.255.255.0"
+  vm.provision "hosts", sync_hosts: true
 
-  vm.provision "shell", inline: "sysctl -w net.ipv6.conf.all.disable_ipv6=1"
-  vm.provision "shell", inline: "ping -c 2 get.k3s.io"
-  
+  osConfigure(vm)
+  vm.provision "shell", inline: "ping -c 2 k3s.io"
   
   if roles.include?("server") && role_num == 0
     vm.provision 'k3s-install', type: 'k3s', run: 'once' do |k3s|
       k3s.installer_url = 'https://get.k3s.io'
       k3s.args = %W[server --cluster-init --node-external-ip=#{NETWORK_PREFIX}.100 --flannel-iface=eth1]
-      # k3s.env = %W[K3S_KUBECONFIG_MODE=0644 K3S_TOKEN=vagrant]
       k3s.env = %W[K3S_KUBECONFIG_MODE=0644 K3S_TOKEN=vagrant INSTALL_K3S_COMMIT=#{LATEST_COMMIT}]
       k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
     end
   elsif roles.include?("server") && role_num != 0
     vm.provision 'k3s-install', type: 'k3s', run: 'once' do |k3s|
       k3s.installer_url = 'https://get.k3s.io'
-      k3s.args = %W[server --server https://#{NETWORK_PREFIX}.100:6443 --flannel-iface=eth1]
+      k3s.args = %W[server --server https://server-0:6443 --flannel-iface=eth1]
       k3s.env = %W[K3S_KUBECONFIG_MODE=0644 K3S_TOKEN=vagrant INSTALL_K3S_COMMIT=#{LATEST_COMMIT}]
-      # k3s.env = %W[K3S_KUBECONFIG_MODE=0644 K3S_TOKEN=vagrant INSTALL_K3S_SKIP_ENABLE=true]
       k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
     end
   end
   if roles.include?("agent")
     vm.provision 'k3s-install', type: 'k3s', run: 'once' do |k3s|
       k3s.installer_url = 'https://get.k3s.io'
-      k3s.args = %W[agent --server https://server-0:6443]
+      k3s.args = %w[agent --server https://server-0:6443 --flannel-iface=eth1]
       k3s.env = %W[K3S_KUBECONFIG_MODE=0644 K3S_TOKEN=vagrant INSTALL_K3S_COMMIT=#{LATEST_COMMIT}]
+      k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
     end
   end
  
 end
 
-Vagrant.configure("2") do |config|
+def osConfigure(vm)
 
+  if vm.box.include?("ubuntu2004")
+    vm.provision "shell", inline: "systemd-resolve --set-dns=8.8.8.8 --interface=eth0"
+  end
+
+end
+
+Vagrant.configure("2") do |config|
+  config.vagrant.plugins = ["vagrant-hosts", "vagrant-k3s"]
   config.vm.provider "virtualbox" do |v|
     v.cpus = NODE_CPUS
     v.memory = NODE_MEMORY
-    # v.customize ["modifyvm", :id, "--audio", "none"]
-    # v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
   end
   
   # Must iterate on the index, vagrant does not understand iterating 
