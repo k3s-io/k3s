@@ -742,7 +742,7 @@ github.com/k3s-io/helm-controller/pkg/apis/helm.cattle.io/v1
 github.com/k3s-io/helm-controller/pkg/generated/controllers/helm.cattle.io
 github.com/k3s-io/helm-controller/pkg/generated/controllers/helm.cattle.io/v1
 github.com/k3s-io/helm-controller/pkg/helm
-# github.com/k3s-io/kine v0.8.0
+# github.com/k3s-io/kine v0.8.1
 ## explicit
 github.com/k3s-io/kine/pkg/broadcaster
 github.com/k3s-io/kine/pkg/client
