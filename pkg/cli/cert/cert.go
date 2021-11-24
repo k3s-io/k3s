@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/erikdubbelboer/gspt"
@@ -22,16 +21,17 @@ import (
 )
 
 const (
-	adminComponent             = "admin"
-	apiServerComponent         = "api-server"
-	controllerManagerComponent = "controller-manager"
-	schedulerComponent         = "scheduler"
-	etcdComponent              = "etcd"
-	programControllerComponent = "-controller"
-	authProxyComponent         = "auth-proxy"
-	cloudControllerComponent   = "cloud-controller"
-	kubeletComponent           = "kubelet"
-	kubeProxyComponent         = "kube-proxy"
+	adminService             = "admin"
+	apiServerService         = "api-server"
+	controllerManagerService = "controller-manager"
+	schedulerService         = "scheduler"
+	etcdService              = "etcd"
+	programControllerService = "-controller"
+	authProxyService         = "auth-proxy"
+	cloudControllerService   = "cloud-controller"
+	kubeletService           = "kubelet"
+	kubeProxyService         = "kube-proxy"
+	k3sServerService         = "-server"
 )
 
 func commandSetup(app *cli.Context, cfg *cmds.Server, sc *server.Config) (string, string, error) {
@@ -81,112 +81,111 @@ func rotate(app *cli.Context, cfg *cmds.Server) error {
 		return err
 	}
 
-	if len(cmds.ComponentList) == 0 {
-		// rotate all certs
-		logrus.Infof("Rotating certificates for all services")
-		return rotateAllCerts(tlsBackupDir, filepath.Join(serverDataDir, "tls"), agentDataDir)
+	if len(cmds.ServicesList) == 0 {
+		// detecting if the service is an agent or server
+		_, err := os.Stat(serverDataDir)
+		if err != nil {
+			if !os.IsNotExist(err) {
+				return err
+			}
+			logrus.Infof("Agent detected, rotatig agent certificates")
+			cmds.ServicesList = []string{
+				kubeletService,
+				kubeProxyService,
+				version.Program + programControllerService,
+			}
+		} else {
+			logrus.Infof("Server detected, rotatig server certificates")
+			cmds.ServicesList = []string{
+				adminService,
+				etcdService,
+				apiServerService,
+				controllerManagerService,
+				cloudControllerService,
+				schedulerService,
+				version.Program + k3sServerService,
+				version.Program + programControllerService,
+				authProxyService,
+				kubeletService,
+				kubeProxyService,
+			}
+		}
 	}
-	certList := []string{}
-	for _, component := range cmds.ComponentList {
-		logrus.Infof("Rotating certificates for %s service", component)
-		switch component {
-		case adminComponent:
-			certList = append(certList,
+	fileList := []string{}
+	for _, service := range cmds.ServicesList {
+		logrus.Infof("Rotating certificates for %s service", service)
+		switch service {
+		case adminService:
+			fileList = append(fileList,
 				serverConfig.ControlConfig.Runtime.ClientAdminCert,
 				serverConfig.ControlConfig.Runtime.ClientAdminKey)
-		case apiServerComponent:
-			certList = append(certList,
+		case apiServerService:
+			fileList = append(fileList,
 				serverConfig.ControlConfig.Runtime.ClientKubeAPICert,
 				serverConfig.ControlConfig.Runtime.ClientKubeAPIKey,
 				serverConfig.ControlConfig.Runtime.ServingKubeAPICert,
 				serverConfig.ControlConfig.Runtime.ServingKubeAPIKey)
-		case controllerManagerComponent:
-			certList = append(certList,
+		case controllerManagerService:
+			fileList = append(fileList,
 				serverConfig.ControlConfig.Runtime.ClientControllerCert,
 				serverConfig.ControlConfig.Runtime.ClientControllerKey)
-		case schedulerComponent:
-			certList = append(certList,
+		case schedulerService:
+			fileList = append(fileList,
 				serverConfig.ControlConfig.Runtime.ClientSchedulerCert,
 				serverConfig.ControlConfig.Runtime.ClientSchedulerKey)
-		case etcdComponent:
-			certList = append(certList,
+		case etcdService:
+			fileList = append(fileList,
 				serverConfig.ControlConfig.Runtime.ClientETCDCert,
 				serverConfig.ControlConfig.Runtime.ClientETCDKey,
 				serverConfig.ControlConfig.Runtime.ServerETCDCert,
 				serverConfig.ControlConfig.Runtime.ServerETCDKey,
 				serverConfig.ControlConfig.Runtime.PeerServerClientETCDCert,
 				serverConfig.ControlConfig.Runtime.PeerServerClientETCDKey)
-		case cloudControllerComponent:
-			certList = append(certList,
+		case cloudControllerService:
+			fileList = append(fileList,
 				serverConfig.ControlConfig.Runtime.ClientCloudControllerCert,
 				serverConfig.ControlConfig.Runtime.ClientCloudControllerKey)
-		case version.Program + programControllerComponent:
-			certList = append(certList,
+		case version.Program + k3sServerService:
+			dynamicListenerRegenFilePath := filepath.Join(serverDataDir, "tls", "dynamic-cert-regenerate")
+			if err := ioutil.WriteFile(dynamicListenerRegenFilePath, []byte{}, 0600); err != nil {
+				return err
+			}
+			logrus.Infof("Rotating dynamic listener certificate")
+		case version.Program + programControllerService:
+			fileList = append(fileList,
 				serverConfig.ControlConfig.Runtime.ClientK3sControllerCert,
 				serverConfig.ControlConfig.Runtime.ClientK3sControllerKey,
 				filepath.Join(agentDataDir, "client-"+version.Program+"-controller.crt"),
 				filepath.Join(agentDataDir, "client-"+version.Program+"-controller.key"))
-		case authProxyComponent:
-			certList = append(certList,
+		case authProxyService:
+			fileList = append(fileList,
 				serverConfig.ControlConfig.Runtime.ClientAuthProxyCert,
 				serverConfig.ControlConfig.Runtime.ClientAuthProxyKey)
-		case kubeletComponent:
-			certList = append(certList,
+		case kubeletService:
+			fileList = append(fileList,
 				serverConfig.ControlConfig.Runtime.ClientKubeletKey,
 				serverConfig.ControlConfig.Runtime.ServingKubeletKey,
 				filepath.Join(agentDataDir, "client-kubelet.crt"),
 				filepath.Join(agentDataDir, "client-kubelet.key"),
 				filepath.Join(agentDataDir, "serving-kubelet.crt"),
 				filepath.Join(agentDataDir, "serving-kubelet.key"))
-		case kubeProxyComponent:
-			certList = append(certList,
+		case kubeProxyService:
+			fileList = append(fileList,
 				serverConfig.ControlConfig.Runtime.ClientKubeProxyCert,
 				serverConfig.ControlConfig.Runtime.ClientKubeProxyKey,
 				filepath.Join(agentDataDir, "client-kube-proxy.crt"),
 				filepath.Join(agentDataDir, "client-kube-proxy.key"))
 		default:
-			logrus.Fatalf("%s is not a recognized service", component)
+			logrus.Fatalf("%s is not a recognized service", service)
 		}
 	}
 
-	for _, cert := range certList {
-		if err := os.Remove(cert); err == nil {
-			logrus.Infof("Certificate %s is processed", cert)
+	for _, file := range fileList {
+		if err := os.Remove(file); err == nil {
+			logrus.Debugf("file %s is deleted", file)
 		}
 	}
 	logrus.Infof("Successfully backed up certificates for all services to path %s, please restart %s server or agent to rotate certificates", tlsBackupDir, version.Program)
-	return nil
-}
-
-func rotateAllCerts(backupDir string, dirs ...string) error {
-	for _, dir := range dirs {
-		err := filepath.Walk(dir,
-			func(path string, info os.FileInfo, err error) error {
-				if err != nil {
-					return err
-				}
-				if (strings.HasSuffix(path, ".crt") || strings.HasSuffix(path, ".key")) &&
-					!strings.Contains(path, "-ca") &&
-					!strings.Contains(path, "service.key") &&
-					!strings.Contains(path, "temporary-certs") &&
-					!strings.Contains(path, "containerd") {
-					if err := os.Remove(path); err == nil {
-						logrus.Infof("Certificate %s is processed", path)
-					}
-					return nil
-				}
-				return nil
-			})
-		if err != nil {
-			return err
-		}
-	}
-	// adding the regenerate cert file to rotate dynamic listener cert
-	dynamicListenerRegenFilePath := filepath.Join(dirs[0], "dynamic-cert-regenerate")
-	if err := ioutil.WriteFile(dynamicListenerRegenFilePath, []byte{}, 0600); err != nil {
-		return err
-	}
-	logrus.Infof("Successfully backed up certificates for all services to path %s, please restart %s server or agent to rotate certificates", backupDir, version.Program)
 	return nil
 }
 

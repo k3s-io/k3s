@@ -53,7 +53,7 @@ func main() {
 				etcdsnapshotCommand,
 				etcdsnapshotCommand),
 		),
-		cmds.NewCertCommand(certCommand,
+		cmds.NewCertCommand(
 			cmds.NewCertSubcommands(
 				certCommand),
 		),

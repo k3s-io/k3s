@@ -8,7 +8,7 @@ import (
 const CertCommand = "certificate"
 
 var (
-	ComponentList    cli.StringSlice
+	ServicesList     cli.StringSlice
 	CertCommandFlags = []cli.Flag{
 		DebugFlag,
 		ConfigFlag,
@@ -21,19 +21,18 @@ var (
 		},
 		cli.StringSliceFlag{
 			Name:  "service,s",
-			Usage: "List of services to rotate certificates for. Options include (admin, api-server, controller-manager, scheduler, " + version.Program + "-controller, cloud-controller, etcd, auth-proxy, kubelet, kube-proxy)",
-			Value: &ComponentList,
+			Usage: "List of services to rotate certificates for. Options include (admin, api-server, controller-manager, scheduler, " + version.Program + "-controller, " + version.Program + "-server, cloud-controller, etcd, auth-proxy, kubelet, kube-proxy)",
+			Value: &ServicesList,
 		},
 	}
 )
 
-func NewCertCommand(action func(*cli.Context) error, subcommands []cli.Command) cli.Command {
+func NewCertCommand(subcommands []cli.Command) cli.Command {
 	return cli.Command{
 		Name:            CertCommand,
 		Usage:           "Certificates management",
 		SkipFlagParsing: false,
 		SkipArgReorder:  true,
-		Action:          action,
 		Subcommands:     subcommands,
 		Flags:           CertCommandFlags,
 	}

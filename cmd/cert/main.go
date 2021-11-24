@@ -15,7 +15,7 @@ import (
 func main() {
 	app := cmds.NewApp()
 	app.Commands = []cli.Command{
-		cmds.NewCertCommand(cert.Run,
+		cmds.NewCertCommand(
 			cmds.NewCertSubcommands(
 				cert.Run),
 		),
