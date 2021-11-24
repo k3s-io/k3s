@@ -72,7 +72,7 @@ func checkRepository(repository string) error {
 func NewRepository(name string, opts ...Option) (Repository, error) {
 	opt := makeOptions(opts...)
 	if len(name) == 0 {
-		return Repository{}, NewErrBadName("a repository name must be specified")
+		return Repository{}, newErrBadName("a repository name must be specified")
 	}
 
 	var registry string
@@ -95,7 +95,7 @@ func NewRepository(name string, opts ...Option) (Repository, error) {
 		return Repository{}, err
 	}
 	if hasImplicitNamespace(repo, reg) && opt.strict {
-		return Repository{}, NewErrBadName("strict validation requires the full repository path (missing 'library')")
+		return Repository{}, newErrBadName("strict validation requires the full repository path (missing 'library')")
 	}
 	return Repository{reg, repo}, nil
 }

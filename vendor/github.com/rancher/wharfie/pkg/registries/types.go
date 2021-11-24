@@ -36,7 +36,7 @@ type TLSConfig struct {
 	InsecureSkipVerify bool   `toml:"insecure_skip_verify" yaml:"insecure_skip_verify"`
 }
 
-// Registry is registry settings configured
+// Registry is registry settings including mirrors, TLS, and credentials
 type Registry struct {
 	// Mirrors are namespace to mirror mapping for all namespaces.
 	Mirrors map[string]Mirror `toml:"mirrors" yaml:"mirrors"`
