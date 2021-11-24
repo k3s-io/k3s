@@ -42,7 +42,7 @@ func New(ctx context.Context, core CoreGetter, namespace, name string, backing d
 			core := core()
 			if core != nil {
 				storage.init(core.Core().V1().Secret())
-				start.All(ctx, 5, core)
+				_ = start.All(ctx, 5, core)
 				return
 			}
 
@@ -89,18 +89,31 @@ func (s *storage) init(secrets v1controller.SecretController) {
 	})
 	s.secrets = secrets
 
-	if secret, err := s.storage.Get(); err == nil && secret != nil && len(secret.Data) > 0 {
-		// just ensure there is a secret in k3s
-		if _, err := s.secrets.Get(s.namespace, s.name, metav1.GetOptions{}); errors.IsNotFound(err) {
-			_, _ = s.secrets.Create(&v1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:        s.name,
-					Namespace:   s.namespace,
-					Annotations: secret.Annotations,
-				},
-				Type: v1.SecretTypeTLS,
-				Data: secret.Data,
-			})
+	secret, err := s.storage.Get()
+	if err == nil && secret != nil && len(secret.Data) > 0 {
+		// local storage had a cached secret, ensure that it exists in Kubernetes
+		_, err := s.secrets.Create(&v1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:        s.name,
+				Namespace:   s.namespace,
+				Annotations: secret.Annotations,
+			},
+			Type: v1.SecretTypeTLS,
+			Data: secret.Data,
+		})
+		if err != nil && !errors.IsAlreadyExists(err) {
+			logrus.Warnf("Failed to create Kubernetes secret: %v", err)
+		}
+	} else {
+		// local storage was empty, try to populate it
+		secret, err := s.secrets.Get(s.namespace, s.name, metav1.GetOptions{})
+		if err != nil {
+			logrus.Warnf("Failed to init Kubernetes secret: %v", err)
+			return
+		}
+
+		if err := s.storage.Update(secret); err != nil {
+			logrus.Warnf("Failed to init backing storage secret: %v", err)
 		}
 	}
 }
@@ -130,23 +143,31 @@ func (s *storage) saveInK8s(secret *v1.Secret) (*v1.Secret, error) {
 		return secret, nil
 	}
 
-	if existing, err := s.storage.Get(); err == nil && s.tls != nil {
-		if newSecret, updated, err := s.tls.Merge(existing, secret); err == nil && updated {
-			secret = newSecret
-		}
-	}
-
 	targetSecret, err := s.targetSecret()
 	if err != nil {
 		return nil, err
 	}
 
-	if newSecret, updated, err := s.tls.Merge(targetSecret, secret); err != nil {
-		return nil, err
-	} else if !updated {
-		return newSecret, nil
-	} else {
-		secret = newSecret
+	// if we don't have a TLS factory we can't create certs, so don't bother trying to merge anything,
+	// in favor of just blindly replacing the fields on the Kubernetes secret.
+	if s.tls != nil {
+		// merge new secret with secret from backing storage, if one exists
+		if existing, err := s.storage.Get(); err == nil && existing != nil && len(existing.Data) > 0 {
+			if newSecret, updated, err := s.tls.Merge(existing, secret); err == nil && updated {
+				secret = newSecret
+			}
+		}
+
+		// merge new secret with existing secret from Kubernetes, if one exists
+		if len(targetSecret.Data) > 0 {
+			if newSecret, updated, err := s.tls.Merge(targetSecret, secret); err != nil {
+				return nil, err
+			} else if !updated {
+				return newSecret, nil
+			} else {
+				secret = newSecret
+			}
+		}
 	}
 
 	targetSecret.Annotations = secret.Annotations

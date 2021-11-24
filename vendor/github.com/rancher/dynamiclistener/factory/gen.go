@@ -6,7 +6,9 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/sha1"
+	"crypto/sha256"
 	"crypto/x509"
+	"encoding/hex"
 	"encoding/pem"
 	"fmt"
 	"net"
@@ -68,20 +70,41 @@ func collectCNs(secret *v1.Secret) (domains []string, ips []net.IP, err error) {
 	return
 }
 
-// Merge combines the SAN lists from the target and additional Secrets, and returns a potentially modified Secret,
-// along with a bool indicating if the returned Secret has been updated or not. If the two SAN lists alread matched
-// and no merging was necessary, but the Secrets' certificate fingerprints differed, the second secret is returned
-// and the updated bool is set to true despite neither certificate having actually been modified. This is required
-// to support handling certificate renewal within the kubernetes storage provider.
+// Merge combines the SAN lists from the target and additional Secrets, and
+// returns a potentially modified Secret, along with a bool indicating if the
+// returned Secret is not the same as the target Secret.
+//
+// If the merge would not add any CNs to the additional Secret, the additional
+// Secret is returned, to allow for certificate rotation/regeneration.
+//
+// If the merge would not add any CNs to the target Secret, the target Secret is
+// returned; no merging is necessary.
+//
+// If neither certificate is acceptable as-is, a new certificate containing
+// the union of the two lists is generated, using the private key from the
+// first Secret. The returned Secret will contain the updated cert.
 func (t *TLS) Merge(target, additional *v1.Secret) (*v1.Secret, bool, error) {
-	secret, updated, err := t.AddCN(target, cns(additional)...)
-	if !updated {
-		if target.Annotations[fingerprint] != additional.Annotations[fingerprint] {
-			secret = additional
-			updated = true
-		}
+	// static secrets can't be altered, don't bother trying
+	if IsStatic(target) {
+		return target, false, nil
 	}
-	return secret, updated, err
+
+	mergedCNs := append(cns(target), cns(additional)...)
+
+	// if the additional secret already has all the CNs, use it in preference to the
+	// current one. This behavior is required to allow for renewal or regeneration.
+	if !NeedsUpdate(0, additional, mergedCNs...) {
+		return additional, true, nil
+	}
+
+	// if the target secret already has all the CNs, continue using it. The additional
+	// cert had only a subset of the current CNs, so nothing needs to be added.
+	if !NeedsUpdate(0, target, mergedCNs...) {
+		return target, false, nil
+	}
+
+	// neither cert currently has all the necessary CNs; generate a new one.
+	return t.generateCert(target, mergedCNs...)
 }
 
 // Renew returns a copy of the given certificate that has been re-signed
@@ -174,7 +197,7 @@ func populateCN(secret *v1.Secret, cn ...string) *v1.Secret {
 	}
 	for _, cn := range cn {
 		if cnRegexp.MatchString(cn) {
-			secret.Annotations[cnPrefix+cn] = cn
+			secret.Annotations[getAnnotationKey(cn)] = cn
 		} else {
 			logrus.Errorf("dropping invalid CN: %s", cn)
 		}
@@ -185,7 +208,10 @@ func populateCN(secret *v1.Secret, cn ...string) *v1.Secret {
 // IsStatic returns true if the Secret has an attribute indicating that it contains
 // a static (aka user-provided) certificate, which should not be modified.
 func IsStatic(secret *v1.Secret) bool {
-	return secret.Annotations[Static] == "true"
+	if secret != nil && secret.Annotations != nil {
+		return secret.Annotations[Static] == "true"
+	}
+	return false
 }
 
 // NeedsUpdate returns true if any of the CNs are not currently present on the
@@ -198,7 +224,7 @@ func NeedsUpdate(maxSANs int, secret *v1.Secret, cn ...string) bool {
 	}
 
 	for _, cn := range cn {
-		if secret.Annotations[cnPrefix+cn] == "" {
+		if secret.Annotations[getAnnotationKey(cn)] == "" {
 			if maxSANs > 0 && len(cns(secret)) >= maxSANs {
 				return false
 			}
@@ -241,4 +267,23 @@ func Marshal(x509Cert *x509.Certificate, privateKey crypto.Signer) ([]byte, []by
 // NewPrivateKey returnes a new ECDSA key
 func NewPrivateKey() (crypto.Signer, error) {
 	return ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+}
+
+// getAnnotationKey return the key to use for a given CN. IPv4 addresses and short hostnames
+// are safe to store as-is, but longer hostnames and IPv6 address must be truncated and/or undergo
+// character replacement in order to be used as an annotation key. If the CN requires modification,
+// a portion of the SHA256 sum of the original value is used as the suffix, to reduce the likelihood
+// of collisions in modified values.
+func getAnnotationKey(cn string) string {
+	cn = cnPrefix + cn
+	cnLen := len(cn)
+	if cnLen < 64 && !strings.ContainsRune(cn, ':') {
+		return cn
+	}
+	digest := sha256.Sum256([]byte(cn))
+	cn = strings.ReplaceAll(cn, ":", "_")
+	if cnLen > 56 {
+		cnLen = 56
+	}
+	return cn[0:cnLen] + "-" + hex.EncodeToString(digest[0:])[0:6]
 }
