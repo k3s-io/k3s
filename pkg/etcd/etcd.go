@@ -79,18 +79,18 @@ type NodeControllerGetter func() controllerv1.NodeController
 type ETCD struct {
 	client  *clientv3.Client
 	config  *config.Control
-	name    string
 	runtime *config.ControlRuntime
-	address string
 	cron    *cron.Cron
 	s3      *S3
+	name    string
+	address string
 }
 
 type learnerProgress struct {
-	ID               uint64      `json:"id,omitempty"`
-	Name             string      `json:"name,omitempty"`
-	RaftAppliedIndex uint64      `json:"raftAppliedIndex,omitempty"`
 	LastProgress     metav1.Time `json:"lastProgress,omitempty"`
+	Name             string      `json:"name,omitempty"`
+	ID               uint64      `json:"id,omitempty"`
+	RaftAppliedIndex uint64      `json:"raftAppliedIndex,omitempty"`
 }
 
 // Members contains a slice that holds all
@@ -989,24 +989,24 @@ func (e *ETCD) Snapshot(ctx context.Context, config *config.Control) error {
 type s3Config struct {
 	Endpoint      string `json:"endpoint,omitempty"`
 	EndpointCA    string `json:"endpointCA,omitempty"`
-	SkipSSLVerify bool   `json:"skipSSLVerify,omitempty"`
 	Bucket        string `json:"bucket,omitempty"`
 	Region        string `json:"region,omitempty"`
 	Folder        string `json:"folder,omitempty"`
+	SkipSSLVerify bool   `json:"skipSSLVerify,omitempty"`
 	Insecure      bool   `json:"insecure,omitempty"`
 }
 
 // SnapshotFile represents a single snapshot and it's
 // metadata.
 type SnapshotFile struct {
-	Name string `json:"name"`
+	CreatedAt *metav1.Time `json:"createdAt,omitempty"`
+	S3        *s3Config    `json:"s3Config,omitempty"`
+	Name      string       `json:"name"`
 	// Location contains the full path of the snapshot. For
 	// local paths, the location will be prefixed with "file://".
-	Location  string       `json:"location,omitempty"`
-	NodeName  string       `json:"nodeName,omitempty"`
-	CreatedAt *metav1.Time `json:"createdAt,omitempty"`
-	Size      int64        `json:"size,omitempty"`
-	S3        *s3Config    `json:"s3Config,omitempty"`
+	Location string `json:"location,omitempty"`
+	NodeName string `json:"nodeName,omitempty"`
+	Size     int64  `json:"size,omitempty"`
 }
 
 // listSnapshots provides a list of the currently stored

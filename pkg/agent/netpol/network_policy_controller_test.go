@@ -40,8 +40,8 @@ func newFakeInformersFromClient(kubeClient clientset.Interface) (informers.Share
 }
 
 type tNamespaceMeta struct {
-	name   string
 	labels labels.Set
+	name   string
 }
 
 // Add resources to Informer Store object to simulate updating the Informer
@@ -211,12 +211,12 @@ func newUneventfulNetworkPolicyController(podInformer cache.SharedIndexInformer,
 // 				  the expected selected targets (targetPods, inSourcePods for ingress targets, and outDestPods
 //				  for egress targets) as maps with key being the namespace and a csv of pod names
 type tNetpolTestCase struct {
-	name         string
-	netpol       tNetpol
 	targetPods   tPodNamespaceMap
 	inSourcePods tPodNamespaceMap
 	outDestPods  tPodNamespaceMap
+	name         string
 	expectedRule string
+	netpol       tNetpol
 }
 
 // tGetNotTargetedPods finds set of pods that should not be targeted by netpol selectors
@@ -291,10 +291,10 @@ func newMinimalNodeConfig(serviceIPCIDR string, nodePortRange string, hostNameOv
 }
 
 type tNetPolConfigTestCase struct {
-	name        string
 	config      *config.Node
-	expectError bool
+	name        string
 	errorText   string
+	expectError bool
 }
 
 func Test_UnitNewNetworkPolicySelectors(t *testing.T) {
@@ -600,46 +600,46 @@ func Test_UnitNetworkPolicyBuilder(t *testing.T) {
 func Test_UnitNetworkPolicyController(t *testing.T) {
 	testCases := []tNetPolConfigTestCase{
 		{
-			"Default options are successful",
-			newMinimalNodeConfig("", "", "node", nil),
-			false,
-			"",
+			errorText:   "Default options are successful",
+			config:      newMinimalNodeConfig("", "", "node", nil),
+			expectError: false,
+			name:        "",
 		},
 		{
-			"Missing nodename fails appropriately",
-			newMinimalNodeConfig("", "", "", nil),
-			true,
-			"failed to identify the node by NODE_NAME, hostname or --hostname-override",
+			errorText:   "Missing nodename fails appropriately",
+			config:      newMinimalNodeConfig("", "", "", nil),
+			expectError: true,
+			name:        "failed to identify the node by NODE_NAME, hostname or --hostname-override",
 		},
 		{
-			"Test good cluster CIDR (using single IP with a /32)",
-			newMinimalNodeConfig("10.10.10.10/32", "", "node", nil),
-			false,
-			"",
+			errorText:   "Test good cluster CIDR (using single IP with a /32)",
+			config:      newMinimalNodeConfig("10.10.10.10/32", "", "node", nil),
+			expectError: false,
+			name:        "",
 		},
 		{
-			"Test good cluster CIDR (using normal range with /24)",
-			newMinimalNodeConfig("10.10.10.0/24", "", "node", nil),
-			false,
-			"",
+			errorText:   "Test good cluster CIDR (using normal range with /24)",
+			config:      newMinimalNodeConfig("10.10.10.0/24", "", "node", nil),
+			expectError: false,
+			name:        "",
 		},
 		{
-			"Test good node port specification (using hyphen separator)",
-			newMinimalNodeConfig("", "8080-8090", "node", nil),
-			false,
-			"",
+			errorText:   "Test good node port specification (using hyphen separator)",
+			config:      newMinimalNodeConfig("", "8080-8090", "node", nil),
+			expectError: false,
+			name:        "",
 		},
 		{
-			"Test good external IP CIDR (using single IP with a /32)",
-			newMinimalNodeConfig("", "", "node", []string{"199.10.10.10/32"}),
-			false,
-			"",
+			errorText:   "Test good external IP CIDR (using single IP with a /32)",
+			config:      newMinimalNodeConfig("", "", "node", []string{"199.10.10.10/32"}),
+			expectError: false,
+			name:        "",
 		},
 		{
-			"Test good external IP CIDR (using normal range with /24)",
-			newMinimalNodeConfig("", "", "node", []string{"199.10.10.10/24"}),
-			false,
-			"",
+			errorText:   "Test good external IP CIDR (using normal range with /24)",
+			config:      newMinimalNodeConfig("", "", "node", []string{"199.10.10.10/24"}),
+			expectError: false,
+			name:        "",
 		},
 	}
 	client := fake.NewSimpleClientset(&v1.NodeList{Items: []v1.Node{*newFakeNode("node", "10.10.10.10")}})

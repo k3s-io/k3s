@@ -26,20 +26,20 @@ const (
 )
 
 type Node struct {
-	Docker                   bool
-	ContainerRuntimeEndpoint string
-	NoFlannel                bool
-	SELinux                  bool
+	FlannelIface             *net.Interface
+	Certificate              *tls.Certificate
+	Images                   string
+	Token                    string
 	FlannelBackend           string
 	FlannelConf              string
-	FlannelConfOverride      bool
-	FlannelIface             *net.Interface
+	ContainerRuntimeEndpoint string
 	Containerd               Containerd
-	Images                   string
 	AgentConfig              Agent
-	Token                    string
-	Certificate              *tls.Certificate
 	ServerHTTPSPort          int
+	FlannelConfOverride      bool
+	SELinux                  bool
+	NoFlannel                bool
+	Docker                   bool
 }
 
 type Containerd struct {
@@ -54,132 +54,131 @@ type Containerd struct {
 }
 
 type Agent struct {
-	PodManifests            string
-	NodeName                string
-	NodeConfigPath          string
+	ServiceCIDR             *net.IPNet
+	ClusterCIDR             *net.IPNet
+	PauseImage              string
 	ServingKubeletCert      string
 	ServingKubeletKey       string
-	ServiceCIDR             *net.IPNet
-	ServiceCIDRs            []*net.IPNet
-	ServiceNodePortRange    utilnet.PortRange
-	ClusterCIDR             *net.IPNet
-	ClusterCIDRs            []*net.IPNet
-	ClusterDNS              net.IP
-	ClusterDNSs             []net.IP
-	ClusterDomain           string
+	NodeConfigPath          string
+	PodManifests            string
+	ImageCredProvBinDir     string
+	NodeName                string
+	SystemDefaultRegistry   string
+	PrivateRegistry         string
+	StrongSwanDir           string
+	IPSECPSK                string
 	ResolvConf              string
 	RootDir                 string
 	KubeConfigKubelet       string
 	KubeConfigKubeProxy     string
 	KubeConfigK3sController string
 	NodeIP                  string
-	NodeIPs                 []net.IP
+	ImageCredProvConfig     string
 	NodeExternalIP          string
-	NodeExternalIPs         []net.IP
+	Snapshotter             string
 	RuntimeSocket           string
 	ImageServiceSocket      string
 	ListenAddress           string
 	ClientCA                string
 	CNIBinDir               string
 	CNIConfDir              string
+	ClusterDomain           string
+	ClusterDNSs             []net.IP
 	ExtraKubeletArgs        []string
-	ExtraKubeProxyArgs      []string
-	PauseImage              string
-	Snapshotter             string
-	CNIPlugin               bool
+	NodeExternalIPs         []net.IP
+	ClusterCIDRs            []*net.IPNet
 	NodeTaints              []string
 	NodeLabels              []string
-	ImageCredProvBinDir     string
-	ImageCredProvConfig     string
-	IPSECPSK                string
-	StrongSwanDir           string
-	PrivateRegistry         string
-	SystemDefaultRegistry   string
+	ClusterDNS              net.IP
+	NodeIPs                 []net.IP
+	ServiceCIDRs            []*net.IPNet
+	ExtraKubeProxyArgs      []string
 	AirgapExtraRegistry     []string
+	ServiceNodePortRange    utilnet.PortRange
+	EnableIPv6              bool
+	CNIPlugin               bool
 	DisableCCM              bool
 	DisableNPC              bool
 	Rootless                bool
 	ProtectKernelDefaults   bool
 	DisableServiceLB        bool
-	EnableIPv6              bool
 }
 
 type Control struct {
-	AdvertisePort int
-	AdvertiseIP   string
-	// The port which kubectl clients can access k8s
-	HTTPSPort int
-	// The port which custom k3s API runs on
-	SupervisorPort int
-	// The port which kube-apiserver runs on
-	APIServerPort            int
-	APIServerBindAddress     string
-	AgentToken               string `json:"-"`
-	Token                    string `json:"-"`
 	ClusterIPRange           *net.IPNet
-	ClusterIPRanges          []*net.IPNet
+	Disables                 map[string]bool
+	Skips                    map[string]bool
+	Runtime                  *ControlRuntime `json:"-"`
 	ServiceIPRange           *net.IPNet
-	ServiceIPRanges          []*net.IPNet
 	ServiceNodePortRange     *utilnet.PortRange
-	ClusterDNS               net.IP
-	ClusterDNSs              []net.IP
+	Datastore                endpoint.Config
+	IPSECPSK                 string
+	Token                    string `json:"-"`
+	EtcdS3EndpointCA         string
+	APIServerBindAddress     string
+	EtcdS3AccessKey          string
+	EtcdSnapshotDir          string
+	EtcdS3SecretKey          string
+	EtcdS3BucketName         string
 	ClusterDomain            string
-	DisableServiceLB         bool
-	NoCoreDNS                bool
+	PrivateIP                string
+	EtcdS3Endpoint           string
 	KubeConfigOutput         string
 	KubeConfigMode           string
 	DataDir                  string
-	Skips                    map[string]bool
-	Disables                 map[string]bool
-	Datastore                endpoint.Config
-	ExtraAPIArgs             []string
-	ExtraControllerArgs      []string
-	ExtraCloudControllerArgs []string
-	ExtraEtcdArgs            []string
-	ExtraSchedulerAPIArgs    []string
-	NoLeaderElect            bool
-	JoinURL                  string
-	FlannelBackend           string
-	IPSECPSK                 string
-	DefaultLocalStoragePath  string
-	SystemDefaultRegistry    string
-	DisableCCM               bool
-	DisableNPC               bool
-	DisableHelmController    bool
-	DisableKubeProxy         bool
-	DisableAPIServer         bool
-	DisableControllerManager bool
-	DisableScheduler         bool
-	DisableETCD              bool
-	ClusterInit              bool
-	ClusterReset             bool
 	ClusterResetRestorePath  string
-	EncryptSecrets           bool
-	TLSMinVersion            uint16
-	TLSCipherSuites          []uint16
-	EtcdSnapshotName         string
-	EtcdDisableSnapshots     bool
-	EtcdExposeMetrics        bool
-	EtcdSnapshotDir          string
 	EtcdSnapshotCron         string
-	EtcdSnapshotRetention    int
-	EtcdS3                   bool
-	EtcdS3Endpoint           string
-	EtcdS3EndpointCA         string
-	EtcdS3SkipSSLVerify      bool
-	EtcdS3AccessKey          string
-	EtcdS3SecretKey          string
-	EtcdS3BucketName         string
-	EtcdS3Region             string
+	AdvertiseIP              string
 	EtcdS3Folder             string
-	EtcdS3Timeout            time.Duration
-	EtcdS3Insecure           bool
+	FlannelBackend           string
 	ServerNodeName           string
-
-	BindAddress string
-	SANs        []string
-	PrivateIP   string
-	Runtime     *ControlRuntime `json:"-"`
+	EtcdS3Region             string
+	SystemDefaultRegistry    string
+	BindAddress              string
+	JoinURL                  string
+	DefaultLocalStoragePath  string
+	AgentToken               string `json:"-"`
+	EtcdSnapshotName         string
+	ClusterIPRanges          []*net.IPNet
+	ExtraSchedulerAPIArgs    []string
+	ExtraCloudControllerArgs []string
+	TLSCipherSuites          []uint16
+	ExtraAPIArgs             []string
+	SANs                     []string
+	ClusterDNSs              []net.IP
+	ExtraEtcdArgs            []string
+	ServiceIPRanges          []*net.IPNet
+	ClusterDNS               net.IP
+	ExtraControllerArgs      []string
+	// The port which kube-apiserver runs on
+	APIServerPort int
+	// The port which custom k3s API runs on
+	SupervisorPort        int
+	EtcdSnapshotRetention int
+	// The port which kubectl clients can access k8s
+	HTTPSPort                int
+	EtcdS3Timeout            time.Duration
+	AdvertisePort            int
+	TLSMinVersion            uint16
+	EtcdExposeMetrics        bool
+	EtcdDisableSnapshots     bool
+	EncryptSecrets           bool
+	EtcdS3                   bool
+	ClusterReset             bool
+	ClusterInit              bool
+	EtcdS3SkipSSLVerify      bool
+	DisableETCD              bool
+	DisableScheduler         bool
+	DisableControllerManager bool
+	DisableAPIServer         bool
+	DisableKubeProxy         bool
+	DisableHelmController    bool
+	EtcdS3Insecure           bool
+	DisableNPC               bool
+	NoLeaderElect            bool
+	NoCoreDNS                bool
+	DisableServiceLB         bool
+	DisableCCM               bool
 }
 
 type ControlRuntimeBootstrap struct {
@@ -200,38 +199,32 @@ type ControlRuntimeBootstrap struct {
 }
 
 type ControlRuntime struct {
-	ControlRuntimeBootstrap
-
-	HTTPBootstrap                       bool
+	Authenticator                       authenticator.Request
+	Tunnel                              http.Handler
+	Handler                             http.Handler
+	APIServer                           http.Handler
+	Core                                *core.Factory
+	ClusterControllerStart              func(ctx context.Context) error
+	LeaderElectedClusterControllerStart func(ctx context.Context) error
 	APIServerReady                      <-chan struct{}
 	AgentReady                          <-chan struct{}
 	ETCDReady                           <-chan struct{}
-	ClusterControllerStart              func(ctx context.Context) error
-	LeaderElectedClusterControllerStart func(ctx context.Context) error
-
-	ClientKubeAPICert string
-	ClientKubeAPIKey  string
-	NodePasswdFile    string
-
-	KubeConfigAdmin           string
-	KubeConfigController      string
+	ControlRuntimeBootstrap
+	ServerToken               string
 	KubeConfigScheduler       string
 	KubeConfigAPIServer       string
 	KubeConfigCloudController string
-
-	ServingKubeAPICert string
-	ServingKubeAPIKey  string
-	ServingKubeletKey  string
-	ServerToken        string
-	AgentToken         string
-	APIServer          http.Handler
-	Handler            http.Handler
-	Tunnel             http.Handler
-	Authenticator      authenticator.Request
-
-	ClientAuthProxyCert string
-	ClientAuthProxyKey  string
-
+	ServingKubeAPICert        string
+	ServingKubeAPIKey         string
+	ServingKubeletKey         string
+	KubeConfigController      string
+	AgentToken                string
+	KubeConfigAdmin           string
+	NodePasswdFile            string
+	ClientKubeAPIKey          string
+	ClientKubeAPICert         string
+	ClientAuthProxyCert       string
+	ClientAuthProxyKey        string
 	ClientAdminCert           string
 	ClientAdminKey            string
 	ClientControllerCert      string
@@ -245,15 +238,13 @@ type ControlRuntime struct {
 	ClientCloudControllerKey  string
 	ClientK3sControllerCert   string
 	ClientK3sControllerKey    string
-
-	ServerETCDCert           string
-	ServerETCDKey            string
-	PeerServerClientETCDCert string
-	PeerServerClientETCDKey  string
-	ClientETCDCert           string
-	ClientETCDKey            string
-
-	Core *core.Factory
+	ServerETCDCert            string
+	ClientETCDKey             string
+	PeerServerClientETCDCert  string
+	PeerServerClientETCDKey   string
+	ClientETCDCert            string
+	ServerETCDKey             string
+	HTTPBootstrap             bool
 }
 
 type ArgString []string

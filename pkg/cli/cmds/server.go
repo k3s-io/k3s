@@ -16,83 +16,80 @@ const (
 
 type StartupHookArgs struct {
 	APIServerReady  <-chan struct{}
-	KubeConfigAdmin string
 	Skips           map[string]bool
 	Disables        map[string]bool
+	KubeConfigAdmin string
 }
 
 type StartupHook func(context.Context, *sync.WaitGroup, StartupHookArgs) error
 
 type Server struct {
-	ClusterCIDR          cli.StringSlice
-	AgentToken           string
-	AgentTokenFile       string
-	Token                string
-	TokenFile            string
-	ClusterSecret        string
-	ServiceCIDR          cli.StringSlice
-	ServiceNodePortRange string
-	ClusterDNS           cli.StringSlice
-	ClusterDomain        string
-	// The port which kubectl clients can access k8s
-	HTTPSPort int
-	// The port which custom k3s API runs on
-	SupervisorPort int
-	// The port which kube-apiserver runs on
-	APIServerPort            int
+	AdvertiseIP              string
+	AgentToken               string
+	AgentTokenFile           string
+	Token                    string
+	TokenFile                string
+	ClusterSecret            string
+	EtcdSnapshotDir          string
+	ServiceNodePortRange     string
+	KubeConfigOutput         string
+	ClusterDomain            string
+	EtcdS3Folder             string
+	EtcdS3Region             string
+	EtcdS3BucketName         string
 	APIServerBindAddress     string
 	DataDir                  string
-	DisableAgent             bool
-	KubeConfigOutput         string
+	EtcdS3SecretKey          string
+	EtcdSnapshotCron         string
 	KubeConfigMode           string
-	TLSSan                   cli.StringSlice
+	EtcdS3Endpoint           string
 	BindAddress              string
-	ExtraAPIArgs             cli.StringSlice
-	ExtraEtcdArgs            cli.StringSlice
-	ExtraSchedulerArgs       cli.StringSlice
-	ExtraControllerArgs      cli.StringSlice
-	ExtraCloudControllerArgs cli.StringSlice
-	Rootless                 bool
+	ServerURL                string
+	DefaultLocalStoragePath  string
+	FlannelBackend           string
+	EtcdSnapshotName         string
+	EtcdS3EndpointCA         string
+	EtcdS3AccessKey          string
 	DatastoreEndpoint        string
 	DatastoreCAFile          string
 	DatastoreCertFile        string
 	DatastoreKeyFile         string
-	AdvertiseIP              string
-	AdvertisePort            int
-	DisableScheduler         bool
-	ServerURL                string
-	FlannelBackend           string
-	DefaultLocalStoragePath  string
-	DisableCCM               bool
-	DisableNPC               bool
-	DisableHelmController    bool
-	DisableKubeProxy         bool
-	DisableAPIServer         bool
-	DisableControllerManager bool
-	DisableETCD              bool
-	ClusterInit              bool
-	ClusterReset             bool
 	ClusterResetRestorePath  string
-	EncryptSecrets           bool
 	SystemDefaultRegistry    string
+	ExtraAPIArgs             cli.StringSlice
+	ExtraCloudControllerArgs cli.StringSlice
+	ExtraControllerArgs      cli.StringSlice
+	ExtraEtcdArgs            cli.StringSlice
+	TLSSan                   cli.StringSlice
+	ClusterCIDR              cli.StringSlice
+	ServiceCIDR              cli.StringSlice
 	StartupHooks             []StartupHook
-	EtcdSnapshotName         string
+	ExtraSchedulerArgs       cli.StringSlice
+	ClusterDNS               cli.StringSlice
+	EtcdSnapshotRetention    int
+	EtcdS3Timeout            time.Duration
+	HTTPSPort                int
+	SupervisorPort           int
+	APIServerPort            int
+	AdvertisePort            int
+	DisableETCD              bool
+	EtcdS3Insecure           bool
 	EtcdDisableSnapshots     bool
 	EtcdExposeMetrics        bool
-	EtcdSnapshotDir          string
-	EtcdSnapshotCron         string
-	EtcdSnapshotRetention    int
+	DisableHelmController    bool
+	DisableNPC               bool
+	DisableKubeProxy         bool
 	EtcdS3                   bool
-	EtcdS3Endpoint           string
-	EtcdS3EndpointCA         string
+	DisableCCM               bool
+	DisableScheduler         bool
 	EtcdS3SkipSSLVerify      bool
-	EtcdS3AccessKey          string
-	EtcdS3SecretKey          string
-	EtcdS3BucketName         string
-	EtcdS3Region             string
-	EtcdS3Folder             string
-	EtcdS3Timeout            time.Duration
-	EtcdS3Insecure           bool
+	DisableAPIServer         bool
+	DisableAgent             bool
+	EncryptSecrets           bool
+	DisableControllerManager bool
+	ClusterReset             bool
+	ClusterInit              bool
+	Rootless                 bool
 }
 
 var (

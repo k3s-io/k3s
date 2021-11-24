@@ -17,9 +17,9 @@ func Test_UnitFindNvidiaContainerRuntimes(t *testing.T) {
 		root fs.FS
 	}
 	tests := []struct {
-		name string
 		args args
 		want map[string]templates.ContainerdRuntimeConfig
+		name string
 	}{
 		{
 			name: "No runtimes",

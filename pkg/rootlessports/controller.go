@@ -57,12 +57,12 @@ func Register(ctx context.Context, serviceController coreClients.ServiceControll
 }
 
 type handler struct {
-	enabled        bool
 	rootlessClient client.Client
 	serviceClient  coreClients.ServiceController
 	serviceCache   coreClients.ServiceCache
-	httpsPort      int
 	ctx            context.Context
+	httpsPort      int
+	enabled        bool
 }
 
 func (h *handler) serviceChanged(key string, svc *v1.Service) (*v1.Service, error) {

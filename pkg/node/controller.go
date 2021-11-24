@@ -30,10 +30,10 @@ func Register(ctx context.Context,
 }
 
 type handler struct {
-	modCoreDNS   bool
 	secretClient coreclient.SecretClient
 	configCache  coreclient.ConfigMapCache
 	configClient coreclient.ConfigMapClient
+	modCoreDNS   bool
 }
 
 func (h *handler) onChange(key string, node *core.Node) (*core.Node, error) {

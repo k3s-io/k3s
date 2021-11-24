@@ -41,11 +41,11 @@ var (
 type OverrideURLCallback func(config []byte) (*url.URL, error)
 
 type Info struct {
-	CACerts  []byte `json:"cacerts,omitempty"`
 	BaseURL  string `json:"baseurl,omitempty"`
 	Username string `json:"username,omitempty"`
 	Password string `json:"password,omitempty"`
 	caHash   string
+	CACerts  []byte `json:"cacerts,omitempty"`
 }
 
 // String returns the token data, templated according to the token format

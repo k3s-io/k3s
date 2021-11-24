@@ -10,6 +10,13 @@
 			"gofmt"
 		]
 	},
+	"linters-settings": {
+		"govet": {
+			"enable": [
+				"fieldalignment"
+			]
+		}
+	},
 	"run": {
 		"skip-dirs": [
 			"build",

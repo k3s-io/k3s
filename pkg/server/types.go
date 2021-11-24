@@ -8,14 +8,14 @@ import (
 )
 
 type Config struct {
-	DisableAgent      bool
-	DisableServiceLB  bool
-	ControlConfig     config.Control
-	Rootless          bool
-	SupervisorPort    int
-	StartupHooks      []cmds.StartupHook
 	LeaderControllers CustomControllers
 	Controllers       CustomControllers
+	StartupHooks      []cmds.StartupHook
+	ControlConfig     config.Control
+	SupervisorPort    int
+	Rootless          bool
+	DisableAgent      bool
+	DisableServiceLB  bool
 }
 
 type CustomControllers []func(ctx context.Context, sc *Context) error

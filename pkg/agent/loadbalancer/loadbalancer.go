@@ -15,20 +15,19 @@ import (
 )
 
 type LoadBalancer struct {
-	mutex  sync.Mutex
-	dialer *net.Dialer
-	proxy  *tcpproxy.Proxy
-
+	mutex                 sync.Mutex
+	Listener              net.Listener
+	proxy                 *tcpproxy.Proxy
+	dialer                *net.Dialer
 	configFile            string
 	localAddress          string
 	localServerURL        string
-	originalServerAddress string
 	ServerURL             string
+	currentServerAddress  string
+	originalServerAddress string
 	ServerAddresses       []string
 	randomServers         []string
-	currentServerAddress  string
 	nextServerIndex       int
-	Listener              net.Listener
 }
 
 const RandomPort = 0

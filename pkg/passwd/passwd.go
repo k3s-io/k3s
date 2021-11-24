@@ -17,8 +17,8 @@ type entry struct {
 }
 
 type Passwd struct {
-	changed bool
 	names   map[string]entry
+	changed bool
 }
 
 func Read(file string) (*Passwd, error) {

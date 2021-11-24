@@ -41,9 +41,9 @@ password7,user7,uid7,"group1,group2",otherdata
 	}
 
 	testCases := []struct {
+		User     *user.DefaultInfo
 		Username string
 		Password string
-		User     *user.DefaultInfo
 		Ok       bool
 		Err      bool
 	}{

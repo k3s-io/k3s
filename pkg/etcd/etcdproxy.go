@@ -45,15 +45,14 @@ func NewETCDProxy(ctx context.Context, enabled bool, dataDir, etcdURL string) (P
 }
 
 type etcdproxy struct {
-	dataDir   string
-	etcdLBURL string
-
+	etcdLB              *loadbalancer.LoadBalancer
+	dataDir             string
 	initialETCDURL      string
 	etcdURL             string
 	etcdPort            string
 	fallbackETCDAddress string
+	etcdLBURL           string
 	etcdAddresses       []string
-	etcdLB              *loadbalancer.LoadBalancer
 }
 
 func (e *etcdproxy) Update(addresses []string) {

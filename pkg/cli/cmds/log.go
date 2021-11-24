@@ -11,9 +11,9 @@ import (
 )
 
 type Log struct {
-	VLevel          int
 	VModule         string
 	LogFile         string
+	VLevel          int
 	AlsoLogToStderr bool
 }
 

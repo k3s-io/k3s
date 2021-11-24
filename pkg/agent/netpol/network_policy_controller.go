@@ -51,74 +51,66 @@ const (
 
 // NetworkPolicyController struct to hold information required by NetworkPolicyController
 type NetworkPolicyController struct {
-	nodeIP                  net.IP
-	nodeHostName            string
-	serviceClusterIPRange   net.IPNet
-	serviceExternalIPRanges []net.IPNet
-	serviceNodePortRange    string
-	mu                      sync.Mutex
-	syncPeriod              time.Duration
-	fullSyncRequestChan     chan struct{}
-	ipsetMutex              *sync.Mutex
-
-	ipSetHandler *utils.IPSet
-
-	podLister cache.Indexer
-	npLister  cache.Indexer
-	nsLister  cache.Indexer
-
-	PodEventHandler           cache.ResourceEventHandler
-	NamespaceEventHandler     cache.ResourceEventHandler
+	mu                        sync.Mutex
+	filterTableRules          bytes.Buffer
+	npLister                  cache.Indexer
 	NetworkPolicyEventHandler cache.ResourceEventHandler
-
-	filterTableRules bytes.Buffer
+	PodEventHandler           cache.ResourceEventHandler
+	nsLister                  cache.Indexer
+	NamespaceEventHandler     cache.ResourceEventHandler
+	podLister                 cache.Indexer
+	ipsetMutex                *sync.Mutex
+	ipSetHandler              *utils.IPSet
+	fullSyncRequestChan       chan struct{}
+	serviceNodePortRange      string
+	nodeHostName              string
+	serviceClusterIPRange     net.IPNet
+	nodeIP                    net.IP
+	serviceExternalIPRanges   []net.IPNet
+	syncPeriod                time.Duration
 }
 
 // internal structure to represent a network policy
 type networkPolicyInfo struct {
-	name        string
-	namespace   string
 	podSelector labels.Selector
-
 	// set of pods matching network policy spec podselector label selector
 	targetPods map[string]podInfo
-
-	// whitelist ingress rules from the network policy spec
-	ingressRules []ingressRule
-
-	// whitelist egress rules from the network policy spec
-	egressRules []egressRule
-
+	name       string
+	namespace  string
 	// policy type "ingress" or "egress" or "both" as defined by PolicyType in the spec
 	policyType string
+	// whitelist ingress rules from the network policy spec
+	ingressRules []ingressRule
+	// whitelist egress rules from the network policy spec
+	egressRules []egressRule
 }
 
 // internal structure to represent Pod
 type podInfo struct {
+	labels    map[string]string
 	ip        string
 	name      string
 	namespace string
-	labels    map[string]string
 }
 
 // internal structure to represent NetworkPolicyIngressRule in the spec
 type ingressRule struct {
-	matchAllPorts  bool
 	ports          []protocolAndPort
 	namedPorts     []endPoints
-	matchAllSource bool
 	srcPods        []podInfo
 	srcIPBlocks    [][]string
+	matchAllPorts  bool
+	matchAllSource bool
 }
 
 // internal structure to represent NetworkPolicyEgressRule in the spec
 type egressRule struct {
-	matchAllPorts        bool
 	ports                []protocolAndPort
 	namedPorts           []endPoints
-	matchAllDestinations bool
 	dstPods              []podInfo
 	dstIPBlocks          [][]string
+	matchAllPorts        bool
+	matchAllDestinations bool
 }
 
 type protocolAndPort struct {
@@ -128,8 +120,8 @@ type protocolAndPort struct {
 }
 
 type endPoints struct {
-	ips []string
 	protocolAndPort
+	ips []string
 }
 
 type numericPort2eps map[string]*endPoints

@@ -66,10 +66,10 @@ type watcher struct {
 	apply      apply.Apply
 	addonCache controllersv1.AddonCache
 	addons     controllersv1.AddonClient
-	bases      []string
+	recorder   record.EventRecorder
 	disables   map[string]bool
 	modTime    map[string]time.Time
-	recorder   record.EventRecorder
+	bases      []string
 }
 
 // start calls listFiles at regular intervals to trigger application of manifests that have changed on disk.

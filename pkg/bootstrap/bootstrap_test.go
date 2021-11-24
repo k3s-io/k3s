@@ -11,9 +11,9 @@ func TestObjToMap(t *testing.T) {
 		obj interface{}
 	}
 	tests := []struct {
-		name    string
 		args    args
 		want    map[string]string
+		name    string
 		wantErr bool
 	}{
 		{

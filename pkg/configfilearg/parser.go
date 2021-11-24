@@ -19,11 +19,11 @@ import (
 )
 
 type Parser struct {
-	After         []string
-	FlagNames     []string
+	ValidFlags    map[string][]cli.Flag
 	EnvName       string
 	DefaultConfig string
-	ValidFlags    map[string][]cli.Flag
+	After         []string
+	FlagNames     []string
 }
 
 // Parse will parse an os.Args style slice looking for Parser.FlagNames after Parse.After.

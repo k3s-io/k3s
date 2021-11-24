@@ -22,10 +22,10 @@ func Test_isDirEmpty(t *testing.T) {
 		name string
 	}
 	tests := []struct {
-		name     string
-		args     args
 		setup    func() error
 		teardown func() error
+		name     string
+		args     args
 		want     bool
 		wantErr  bool
 	}{
@@ -96,10 +96,10 @@ func TestCluster_certDirsExist(t *testing.T) {
 		saveBootstrap    bool
 	}
 	tests := []struct {
-		name     string
-		fields   fields
 		setup    func() error
 		teardown func() error
+		name     string
+		fields   fields
 		wantErr  bool
 	}{
 		{
@@ -164,10 +164,10 @@ func TestCluster_migrateBootstrapData(t *testing.T) {
 		files bootstrap.PathsDataformat
 	}
 	tests := []struct {
-		name     string
 		args     args
-		setup    func() error // Optional, delete if unused
-		teardown func() error // Optional, delete if unused
+		setup    func() error
+		teardown func() error
+		name     string
 		wantErr  bool
 	}{
 		{
@@ -219,9 +219,9 @@ func TestCluster_Snapshot(t *testing.T) {
 		config *config.Control
 	}
 	tests := []struct {
+		args    args
 		name    string
 		fields  fields
-		args    args
 		wantErr bool
 	}{
 		{

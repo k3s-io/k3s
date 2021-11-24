@@ -36,34 +36,34 @@ type Executor interface {
 
 type ETCDConfig struct {
 	InitialOptions      `json:",inline"`
-	Name                string      `json:"name,omitempty"`
+	Logger              string      `json:"logger"`
 	ListenClientURLs    string      `json:"listen-client-urls,omitempty"`
 	ListenMetricsURLs   string      `json:"listen-metrics-urls,omitempty"`
 	ListenPeerURLs      string      `json:"listen-peer-urls,omitempty"`
 	AdvertiseClientURLs string      `json:"advertise-client-urls,omitempty"`
 	DataDir             string      `json:"data-dir,omitempty"`
-	SnapshotCount       int         `json:"snapshot-count,omitempty"`
+	Name                string      `json:"name,omitempty"`
 	ServerTrust         ServerTrust `json:"client-transport-security"`
 	PeerTrust           PeerTrust   `json:"peer-transport-security"`
-	ForceNewCluster     bool        `json:"force-new-cluster,omitempty"`
+	LogOutputs          []string    `json:"log-outputs"`
 	HeartbeatInterval   int         `json:"heartbeat-interval"`
 	ElectionTimeout     int         `json:"election-timeout"`
-	Logger              string      `json:"logger"`
-	LogOutputs          []string    `json:"log-outputs"`
+	SnapshotCount       int         `json:"snapshot-count,omitempty"`
+	ForceNewCluster     bool        `json:"force-new-cluster,omitempty"`
 }
 
 type ServerTrust struct {
 	CertFile       string `json:"cert-file"`
 	KeyFile        string `json:"key-file"`
-	ClientCertAuth bool   `json:"client-cert-auth"`
 	TrustedCAFile  string `json:"trusted-ca-file"`
+	ClientCertAuth bool   `json:"client-cert-auth"`
 }
 
 type PeerTrust struct {
 	CertFile       string `json:"cert-file"`
 	KeyFile        string `json:"key-file"`
-	ClientCertAuth bool   `json:"client-cert-auth"`
 	TrustedCAFile  string `json:"trusted-ca-file"`
+	ClientCertAuth bool   `json:"client-cert-auth"`
 }
 
 type InitialOptions struct {

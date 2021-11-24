@@ -27,13 +27,12 @@ import (
 )
 
 type testPassword struct {
+	User     user.Info
+	Err      error
 	Username string
 	Password string
 	Called   bool
-
-	User user.Info
-	OK   bool
-	Err  error
+	OK       bool
 }
 
 func (t *testPassword) AuthenticatePassword(ctx context.Context, user, password string) (*authenticator.Response, bool, error) {
@@ -45,16 +44,14 @@ func (t *testPassword) AuthenticatePassword(ctx context.Context, user, password 
 
 func Test_UnitBasicAuth(t *testing.T) {
 	testCases := map[string]struct {
-		Header   string
-		Password testPassword
-
-		ExpectedCalled   bool
+		Header           string
 		ExpectedUsername string
 		ExpectedPassword string
-
-		ExpectedUser string
-		ExpectedOK   bool
-		ExpectedErr  bool
+		ExpectedUser     string
+		Password         testPassword
+		ExpectedCalled   bool
+		ExpectedOK       bool
+		ExpectedErr      bool
 	}{
 		"no auth": {},
 		"empty password basic header": {

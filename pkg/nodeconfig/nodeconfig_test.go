@@ -62,12 +62,12 @@ func Test_UnitSetNodeConfigAnnotations(t *testing.T) {
 	}
 	tests := []struct {
 		name               string
-		args               args
-		want               bool
-		wantErr            bool
 		wantNodeArgs       string
 		wantNodeEnv        string
 		wantNodeConfigHash string
+		args               args
+		want               bool
+		wantErr            bool
 	}{
 		{
 			name: "Set empty NodeConfigAnnotations",

@@ -59,20 +59,18 @@ func NewSupervisorProxy(ctx context.Context, lbEnabled bool, dataDir, supervisor
 }
 
 type proxy struct {
-	dataDir          string
-	lbEnabled        bool
-	lbServerPort     int
-	apiServerEnabled bool
-
-	apiServerURL              string
-	supervisorURL             string
-	supervisorPort            string
+	apiServerLB               *loadbalancer.LoadBalancer
+	supervisorLB              *loadbalancer.LoadBalancer
+	dataDir                   string
 	initialSupervisorURL      string
 	fallbackSupervisorAddress string
+	supervisorPort            string
+	apiServerURL              string
+	supervisorURL             string
 	supervisorAddresses       []string
-
-	apiServerLB  *loadbalancer.LoadBalancer
-	supervisorLB *loadbalancer.LoadBalancer
+	lbServerPort              int
+	lbEnabled                 bool
+	apiServerEnabled          bool
 }
 
 func (p *proxy) Update(addresses []string) {

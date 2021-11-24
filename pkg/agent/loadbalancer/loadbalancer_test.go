@@ -18,8 +18,8 @@ import (
 
 type server struct {
 	listener net.Listener
-	conns    []net.Conn
 	prefix   string
+	conns    []net.Conn
 }
 
 func createServer(prefix string) (*server, error) {

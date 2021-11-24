@@ -10,45 +10,45 @@ import (
 )
 
 type Agent struct {
-	Token                    string
-	TokenFile                string
-	ClusterSecret            string
-	ServerURL                string
 	APIAddressCh             chan string
-	DisableLoadBalancer      bool
-	DisableServiceLB         bool
-	ETCDAgent                bool
-	LBServerPort             int
+	AgentReady               chan<- struct{}
+	ContainerRuntimeEndpoint string
+	ServerURL                string
+	ClusterSecret            string
+	TokenFile                string
+	ImageCredProvConfig      string
+	ImageCredProvBinDir      string
+	SystemDefaultRegistry    string
 	ResolvConf               string
 	DataDir                  string
-	NodeIP                   cli.StringSlice
-	NodeExternalIP           cli.StringSlice
+	PrivateRegistry          string
+	FlannelConf              string
 	NodeName                 string
 	PauseImage               string
 	Snapshotter              string
-	Docker                   bool
-	ContainerRuntimeEndpoint string
-	NoFlannel                bool
 	FlannelIface             string
-	FlannelConf              string
-	Debug                    bool
-	Rootless                 bool
-	RootlessAlreadyUnshared  bool
-	WithNodeID               bool
-	EnableSELinux            bool
-	ProtectKernelDefaults    bool
-	ClusterReset             bool
-	PrivateRegistry          string
-	SystemDefaultRegistry    string
-	AirgapExtraRegistry      cli.StringSlice
-	ExtraKubeletArgs         cli.StringSlice
-	ExtraKubeProxyArgs       cli.StringSlice
-	Labels                   cli.StringSlice
-	Taints                   cli.StringSlice
-	ImageCredProvBinDir      string
-	ImageCredProvConfig      string
-	AgentReady               chan<- struct{}
+	Token                    string
 	AgentShared
+	Taints                  cli.StringSlice
+	NodeExternalIP          cli.StringSlice
+	Labels                  cli.StringSlice
+	ExtraKubeProxyArgs      cli.StringSlice
+	ExtraKubeletArgs        cli.StringSlice
+	AirgapExtraRegistry     cli.StringSlice
+	NodeIP                  cli.StringSlice
+	LBServerPort            int
+	ProtectKernelDefaults   bool
+	EnableSELinux           bool
+	ClusterReset            bool
+	WithNodeID              bool
+	RootlessAlreadyUnshared bool
+	Rootless                bool
+	Debug                   bool
+	Docker                  bool
+	ETCDAgent               bool
+	DisableServiceLB        bool
+	DisableLoadBalancer     bool
+	NoFlannel               bool
 }
 
 type AgentShared struct {

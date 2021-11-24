@@ -58,10 +58,10 @@ func Test_UnitETCD_IsInitialized(t *testing.T) {
 		config *config.Control
 	}
 	tests := []struct {
-		name     string
 		args     args
 		setup    func(*config.Control) error
 		teardown func(*config.Control) error
+		name     string
 		want     bool
 		wantErr  bool
 	}{
@@ -134,10 +134,10 @@ func Test_UnitETCD_Register(t *testing.T) {
 		handler http.Handler
 	}
 	tests := []struct {
-		name     string
 		args     args
 		setup    func(cnf *config.Control) error
 		teardown func(cnf *config.Control) error
+		name     string
 		wantErr  bool
 	}{
 		{
@@ -210,20 +210,20 @@ func Test_UnitETCD_Start(t *testing.T) {
 		context contextInfo
 		client  *clientv3.Client
 		config  *config.Control
-		name    string
-		address string
 		cron    *cron.Cron
 		s3      *S3
+		name    string
+		address string
 	}
 	type args struct {
 		clientAccessInfo *clientaccess.Info
 	}
 	tests := []struct {
-		name     string
-		fields   fields
 		args     args
 		setup    func(cnf *config.Control, ctxInfo *contextInfo) error
 		teardown func(cnf *config.Control, ctxInfo *contextInfo) error
+		fields   fields
+		name     string
 		wantErr  bool
 	}{
 		{

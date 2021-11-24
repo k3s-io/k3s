@@ -82,16 +82,16 @@ func Register(ctx context.Context,
 }
 
 type handler struct {
-	rootless        bool
-	enabled         bool
+	serviceCache    coreclient.ServiceCache
+	services        coregetter.ServicesGetter
 	nodeCache       coreclient.NodeCache
 	podCache        coreclient.PodCache
 	deploymentCache appclient.DeploymentCache
 	processor       apply.Apply
-	serviceCache    coreclient.ServiceCache
-	services        coregetter.ServicesGetter
 	daemonsets      v1getter.DaemonSetsGetter
 	deployments     v1getter.DeploymentsGetter
+	rootless        bool
+	enabled         bool
 }
 
 func (h *handler) onResourceChange(name, namespace string, obj runtime.Object) ([]relatedresource.Key, error) {

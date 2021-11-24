@@ -116,10 +116,10 @@ func Test_UnitParser_findConfigFileFlag(t *testing.T) {
 		env           string
 	}
 	tests := []struct {
-		name   string
 		fields fields
-		arg    []string
+		name   string
 		want   string
+		arg    []string
 		found  bool
 	}{
 		{
@@ -241,10 +241,10 @@ func Test_UnitParser_Parse(t *testing.T) {
 		"--e-slice=two",
 	}
 	type fields struct {
-		After         []string
-		FlagNames     []string
 		EnvName       string
 		DefaultConfig string
+		After         []string
+		FlagNames     []string
 	}
 	tests := []struct {
 		name    string
@@ -345,20 +345,20 @@ func Test_UnitParser_Parse(t *testing.T) {
 
 func Test_UnitParser_FindString(t *testing.T) {
 	type fields struct {
-		After         []string
-		FlagNames     []string
 		EnvName       string
 		DefaultConfig string
+		After         []string
+		FlagNames     []string
 	}
 	type args struct {
-		osArgs []string
 		target string
+		osArgs []string
 	}
 	tests := []struct {
 		name    string
+		want    string
 		fields  fields
 		args    args
-		want    string
 		wantErr bool
 	}{
 		{
