@@ -16,6 +16,7 @@ package authn
 
 import (
 	"os"
+	"sync"
 
 	"github.com/docker/cli/cli/config"
 	"github.com/docker/cli/cli/config/types"
@@ -42,7 +43,9 @@ type Keychain interface {
 
 // defaultKeychain implements Keychain with the semantics of the standard Docker
 // credential keychain.
-type defaultKeychain struct{}
+type defaultKeychain struct {
+	mu sync.Mutex
+}
 
 var (
 	// DefaultKeychain implements Keychain by interpreting the docker config file.
@@ -57,6 +60,8 @@ const (
 
 // Resolve implements Keychain.
 func (dk *defaultKeychain) Resolve(target Resource) (Authenticator, error) {
+	dk.mu.Lock()
+	defer dk.mu.Unlock()
 	cf, err := config.Load(os.Getenv("DOCKER_CONFIG"))
 	if err != nil {
 		return nil, err
