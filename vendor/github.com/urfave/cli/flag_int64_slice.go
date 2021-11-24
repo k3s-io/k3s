@@ -22,7 +22,12 @@ func (f *Int64Slice) Set(value string) error {
 
 // String returns a readable representation of this value (for usage defaults)
 func (f *Int64Slice) String() string {
-	return fmt.Sprintf("%#v", *f)
+	slice := make([]string, len(*f))
+	for i, v := range *f {
+		slice[i] = strconv.FormatInt(v, 10)
+	}
+
+	return strings.Join(slice, ",")
 }
 
 // Value returns the slice of ints set by this flag
@@ -110,6 +115,7 @@ func (f Int64SliceFlag) ApplyWithError(set *flag.FlagSet) error {
 		}
 		set.Var(f.Value, name, f.Usage)
 	})
+
 	return nil
 }
 
@@ -131,11 +137,61 @@ func (c *Context) GlobalInt64Slice(name string) []int64 {
 func lookupInt64Slice(name string, set *flag.FlagSet) []int64 {
 	f := set.Lookup(name)
 	if f != nil {
-		parsed, err := (f.Value.(*Int64Slice)).Value(), error(nil)
-		if err != nil {
+		value, ok := f.Value.(*Int64Slice)
+		if !ok {
 			return nil
+		}
+
+		// extract the slice from asserted value
+		parsed := value.Value()
+
+		// extract default value from the flag
+		var defaultVal []int64
+		for _, v := range strings.Split(f.DefValue, ",") {
+			if v != "" {
+				int64Value, err := strconv.ParseInt(v, 10, 64)
+				if err != nil {
+					panic(err)
+				}
+				defaultVal = append(defaultVal, int64Value)
+			}
+		}
+		// if the current value is not equal to the default value
+		// remove the default values from the flag
+		if !isInt64SliceEqual(parsed, defaultVal) {
+			for _, v := range defaultVal {
+				parsed = removeFromInt64Slice(parsed, v)
+			}
 		}
 		return parsed
 	}
 	return nil
+}
+
+func removeFromInt64Slice(slice []int64, val int64) []int64 {
+	for i, v := range slice {
+		if v == val {
+			return append(slice[:i], slice[i+1:]...)
+		}
+	}
+	return slice
+}
+
+func isInt64SliceEqual(newValue, defaultValue []int64) bool {
+	// If one is nil, the other must also be nil.
+	if (newValue == nil) != (defaultValue == nil) {
+		return false
+	}
+
+	if len(newValue) != len(defaultValue) {
+		return false
+	}
+
+	for i, v := range newValue {
+		if v != defaultValue[i] {
+			return false
+		}
+	}
+
+	return true
 }

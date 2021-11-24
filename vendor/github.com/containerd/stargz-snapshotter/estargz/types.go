@@ -290,7 +290,7 @@ type Compressor interface {
 	WriteTOCAndFooter(w io.Writer, off int64, toc *JTOC, diffHash hash.Hash) (tocDgst digest.Digest, err error)
 }
 
-// Deompressor represents the helper mothods to be used for parsing eStargz.
+// Decompressor represents the helper mothods to be used for parsing eStargz.
 type Decompressor interface {
 	// Reader returns ReadCloser to be used for decompressing file payload.
 	Reader(r io.Reader) (io.ReadCloser, error)
@@ -299,10 +299,12 @@ type Decompressor interface {
 	FooterSize() int64
 
 	// ParseFooter parses the footer and returns the offset and (compressed) size of TOC.
+	// payloadBlobSize is the (compressed) size of the blob payload (i.e. the size between
+	// the top until the TOC JSON).
 	//
 	// Here, tocSize is optional. If tocSize <= 0, it's by default the size of the range
 	// from tocOffset until the beginning of the footer (blob size - tocOff - FooterSize).
-	ParseFooter(p []byte) (tocOffset, tocSize int64, err error)
+	ParseFooter(p []byte) (blobPayloadSize, tocOffset, tocSize int64, err error)
 
 	// ParseTOC parses TOC from the passed reader. The reader provides the partial contents
 	// of the underlying blob that has the range specified by ParseFooter method.
