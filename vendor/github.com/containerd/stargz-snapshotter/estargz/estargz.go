@@ -23,7 +23,6 @@
 package estargz
 
 import (
-	"archive/tar"
 	"bufio"
 	"bytes"
 	"compress/gzip"
@@ -42,6 +41,7 @@ import (
 	"github.com/containerd/stargz-snapshotter/estargz/errorutil"
 	digest "github.com/opencontainers/go-digest"
 	"github.com/pkg/errors"
+	"github.com/vbatts/tar-split/archive/tar"
 )
 
 // A Reader permits random access reads from a stargz file.
@@ -95,10 +95,10 @@ func WithTelemetry(telemetry *Telemetry) OpenOption {
 	}
 }
 
-// A func which takes start time and records the diff
+// MeasureLatencyHook is a func which takes start time and records the diff
 type MeasureLatencyHook func(time.Time)
 
-// A struct which defines telemetry hooks. By implementing these hooks you should be able to record
+// Telemetry is a struct which defines telemetry hooks. By implementing these hooks you should be able to record
 // the latency metrics of the respective steps of estargz open operation. To be used with estargz.OpenWithTelemetry(...)
 type Telemetry struct {
 	GetFooterLatency      MeasureLatencyHook // measure time to get stargz footer (in milliseconds)
@@ -146,7 +146,7 @@ func Open(sr *io.SectionReader, opt ...OpenOption) (*Reader, error) {
 		fSize := d.FooterSize()
 		fOffset := positive(int64(len(footer)) - fSize)
 		maybeTocBytes := footer[:fOffset]
-		tocOffset, tocSize, err := d.ParseFooter(footer[fOffset:])
+		_, tocOffset, tocSize, err := d.ParseFooter(footer[fOffset:])
 		if err != nil {
 			allErr = append(allErr, err)
 			continue
@@ -187,7 +187,7 @@ func OpenFooter(sr *io.SectionReader) (tocOffset int64, footerSize int64, rErr e
 	for _, d := range []Decompressor{new(GzipDecompressor), new(legacyGzipDecompressor)} {
 		fSize := d.FooterSize()
 		fOffset := positive(int64(len(footer)) - fSize)
-		tocOffset, _, err := d.ParseFooter(footer[fOffset:])
+		_, tocOffset, _, err := d.ParseFooter(footer[fOffset:])
 		if err == nil {
 			return tocOffset, fSize, err
 		}
@@ -326,6 +326,10 @@ func (r *Reader) getOrCreateDir(d string) *TOCEntry {
 	return e
 }
 
+func (r *Reader) TOCDigest() digest.Digest {
+	return r.tocDigest
+}
+
 // VerifyTOC checks that the TOC JSON in the passed blob matches the
 // passed digests and that the TOC JSON contains digests for all chunks
 // contained in the blob. If the verification succceeds, this function
@@ -335,7 +339,12 @@ func (r *Reader) VerifyTOC(tocDigest digest.Digest) (TOCEntryVerifier, error) {
 	if r.tocDigest != tocDigest {
 		return nil, fmt.Errorf("invalid TOC JSON %q; want %q", r.tocDigest, tocDigest)
 	}
+	return r.Verifiers()
+}
 
+// Verifiers returns TOCEntryVerifier of this chunk. Use VerifyTOC instead in most cases
+// because this doesn't verify TOC.
+func (r *Reader) Verifiers() (TOCEntryVerifier, error) {
 	chunkDigestMap := make(map[int64]digest.Digest) // map from chunk offset to the chunk digest
 	regDigestMap := make(map[int64]digest.Digest)   // map from chunk offset to the reg file digest
 	var chunkDigestMapIncomplete bool
@@ -591,6 +600,11 @@ type currentCompressionWriter struct{ w *Writer }
 
 func (ccw currentCompressionWriter) Write(p []byte) (int, error) {
 	ccw.w.diffHash.Write(p)
+	if ccw.w.gz == nil {
+		if err := ccw.w.condOpenGz(); err != nil {
+			return 0, err
+		}
+	}
 	return ccw.w.gz.Write(p)
 }
 
@@ -599,6 +613,25 @@ func (w *Writer) chunkSize() int {
 		return 4 << 20
 	}
 	return w.ChunkSize
+}
+
+// Unpack decompresses the given estargz blob and returns a ReadCloser of the tar blob.
+// TOC JSON and footer are removed.
+func Unpack(sr *io.SectionReader, c Decompressor) (io.ReadCloser, error) {
+	footerSize := c.FooterSize()
+	if sr.Size() < footerSize {
+		return nil, fmt.Errorf("blob is too small; %d < %d", sr.Size(), footerSize)
+	}
+	footerOffset := sr.Size() - footerSize
+	footer := make([]byte, footerSize)
+	if _, err := sr.ReadAt(footer, footerOffset); err != nil {
+		return nil, err
+	}
+	blobPayloadSize, _, _, err := c.ParseFooter(footer)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to parse footer")
+	}
+	return c.Reader(io.LimitReader(sr, blobPayloadSize))
 }
 
 // NewWriter returns a new stargz writer (gzip-based) writing to w.
@@ -616,7 +649,7 @@ func NewWriterLevel(w io.Writer, compressionLevel int) *Writer {
 	return NewWriterWithCompressor(w, NewGzipCompressorWithLevel(compressionLevel))
 }
 
-// NewWriterLevel returns a new stargz writer writing to w.
+// NewWriterWithCompressor returns a new stargz writer writing to w.
 // The compression method is configurable.
 //
 // The writer must be closed to write its trailing table of contents.
@@ -696,29 +729,71 @@ func (w *Writer) condOpenGz() (err error) {
 // each of its contents to w.
 //
 // The input r can optionally be gzip compressed but the output will
-// always be gzip compressed.
+// always be compressed by the specified compressor.
 func (w *Writer) AppendTar(r io.Reader) error {
+	return w.appendTar(r, false)
+}
+
+// AppendTarLossLess reads the tar or tar.gz file from r and appends
+// each of its contents to w.
+//
+// The input r can optionally be gzip compressed but the output will
+// always be compressed by the specified compressor.
+//
+// The difference of this func with AppendTar is that this writes
+// the input tar stream into w without any modification (e.g. to header bytes).
+//
+// Note that if the input tar stream already contains TOC JSON, this returns
+// error because w cannot overwrite the TOC JSON to the one generated by w without
+// lossy modification. To avoid this error, if the input stream is known to be stargz/estargz,
+// you shoud decompress it and remove TOC JSON in advance.
+func (w *Writer) AppendTarLossLess(r io.Reader) error {
+	return w.appendTar(r, true)
+}
+
+func (w *Writer) appendTar(r io.Reader, lossless bool) error {
+	var src io.Reader
 	br := bufio.NewReader(r)
-	var tr *tar.Reader
 	if isGzip(br) {
-		// NewReader can't fail if isGzip returned true.
 		zr, _ := gzip.NewReader(br)
-		tr = tar.NewReader(zr)
+		src = zr
 	} else {
-		tr = tar.NewReader(br)
+		src = io.Reader(br)
+	}
+	dst := currentCompressionWriter{w}
+	var tw *tar.Writer
+	if !lossless {
+		tw = tar.NewWriter(dst) // use tar writer only when this isn't lossless mode.
+	}
+	tr := tar.NewReader(src)
+	if lossless {
+		tr.RawAccounting = true
 	}
 	for {
 		h, err := tr.Next()
 		if err == io.EOF {
+			if lossless {
+				if remain := tr.RawBytes(); len(remain) > 0 {
+					// Collect the remaining null bytes.
+					// https://github.com/vbatts/tar-split/blob/80a436fd6164c557b131f7c59ed69bd81af69761/concept/main.go#L49-L53
+					if _, err := dst.Write(remain); err != nil {
+						return err
+					}
+				}
+			}
 			break
 		}
 		if err != nil {
 			return fmt.Errorf("error reading from source tar: tar.Reader.Next: %v", err)
 		}
-		if h.Name == TOCTarName {
+		if cleanEntryName(h.Name) == TOCTarName {
 			// It is possible for a layer to be "stargzified" twice during the
 			// distribution lifecycle. So we reserve "TOCTarName" here to avoid
 			// duplicated entries in the resulting layer.
+			if lossless {
+				// We cannot handle this in lossless way.
+				return fmt.Errorf("existing TOC JSON is not allowed; decompress layer before append")
+			}
 			continue
 		}
 
@@ -744,9 +819,14 @@ func (w *Writer) AppendTar(r io.Reader) error {
 		if err := w.condOpenGz(); err != nil {
 			return err
 		}
-		tw := tar.NewWriter(currentCompressionWriter{w})
-		if err := tw.WriteHeader(h); err != nil {
-			return err
+		if tw != nil {
+			if err := tw.WriteHeader(h); err != nil {
+				return err
+			}
+		} else {
+			if _, err := dst.Write(tr.RawBytes()); err != nil {
+				return err
+			}
 		}
 		switch h.Typeflag {
 		case tar.TypeLink:
@@ -808,7 +888,13 @@ func (w *Writer) AppendTar(r io.Reader) error {
 				}
 
 				teeChunk := io.TeeReader(tee, chunkDigest.Hash())
-				if _, err := io.CopyN(tw, teeChunk, chunkSize); err != nil {
+				var out io.Writer
+				if tw != nil {
+					out = tw
+				} else {
+					out = dst
+				}
+				if _, err := io.CopyN(out, teeChunk, chunkSize); err != nil {
 					return fmt.Errorf("error copying %q: %v", h.Name, err)
 				}
 				ent.ChunkDigest = chunkDigest.Digest().String()
@@ -825,11 +911,18 @@ func (w *Writer) AppendTar(r io.Reader) error {
 		if payloadDigest != nil {
 			regFileEntry.Digest = payloadDigest.Digest().String()
 		}
-		if err := tw.Flush(); err != nil {
-			return err
+		if tw != nil {
+			if err := tw.Flush(); err != nil {
+				return err
+			}
 		}
 	}
-	return nil
+	remainDest := ioutil.Discard
+	if lossless {
+		remainDest = dst // Preserve the remaining bytes in lossless mode
+	}
+	_, err := io.Copy(remainDest, src)
+	return err
 }
 
 // DiffID returns the SHA-256 of the uncompressed tar bytes.

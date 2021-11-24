@@ -69,7 +69,7 @@ func NewDigest(name string, opts ...Option) (Digest, error) {
 	// Split on "@"
 	parts := strings.Split(name, digestDelim)
 	if len(parts) != 2 {
-		return Digest{}, NewErrBadName("a digest must contain exactly one '@' separator (e.g. registry/repository@digest) saw: %s", name)
+		return Digest{}, newErrBadName("a digest must contain exactly one '@' separator (e.g. registry/repository@digest) saw: %s", name)
 	}
 	base := parts[0]
 	digest := parts[1]

@@ -17,12 +17,17 @@ This package provides various compression algorithms.
 
 # changelog
 
+* Aug 30, 2021 (v1.13.5)
+	* gz/zlib/flate: Alias stdlib errors [#425](https://github.com/klauspost/compress/pull/425)
+	* s2: Add block support to commandline tools [#413](https://github.com/klauspost/compress/pull/413)
+	* zstd: pooledZipWriter should return Writers to the same pool [#426](https://github.com/klauspost/compress/pull/426)
+	* Removed golang/snappy as external dependency for tests [#421](https://github.com/klauspost/compress/pull/421)
+
 * Aug 12, 2021 (v1.13.4)
 	* Add [snappy replacement package](https://github.com/klauspost/compress/tree/master/snappy).
 	* zstd: Fix incorrect encoding in "best" mode [#415](https://github.com/klauspost/compress/pull/415)
 
 * Aug 3, 2021 (v1.13.3) 
-
 	* zstd: Improve Best compression [#404](https://github.com/klauspost/compress/pull/404)
 	* zstd: Fix WriteTo error forwarding [#411](https://github.com/klauspost/compress/pull/411)
 	* gzhttp: Return http.HandlerFunc instead of http.Handler. Unlikely breaking change. [#406](https://github.com/klauspost/compress/pull/406)
@@ -31,7 +36,6 @@ This package provides various compression algorithms.
 	* zstd: use SpeedBestCompression for level >= 10 [#410](https://github.com/klauspost/compress/pull/410)
 
 * Jun 14, 2021 (v1.13.1)
-
 	* s2: Add full Snappy output support  [#396](https://github.com/klauspost/compress/pull/396)
 	* zstd: Add configurable [Decoder window](https://pkg.go.dev/github.com/klauspost/compress/zstd#WithDecoderMaxWindow) size [#394](https://github.com/klauspost/compress/pull/394)
 	* gzhttp: Add header to skip compression  [#389](https://github.com/klauspost/compress/pull/389)
@@ -64,6 +68,9 @@ This package provides various compression algorithms.
 	* zstd: Reduce memory usage further when using [WithLowerEncoderMem](https://pkg.go.dev/github.com/klauspost/compress/zstd#WithLowerEncoderMem) [#346](https://github.com/klauspost/compress/pull/346)
 	* s2: Fix potential problem with amd64 assembly and profilers [#349](https://github.com/klauspost/compress/pull/349)
 
+<details>
+	<summary>See changes prior to v1.12.1</summary>
+	
 * Mar 26, 2021 (v1.11.13)
 	* zstd: Big speedup on small dictionary encodes [#344](https://github.com/klauspost/compress/pull/344) [#345](https://github.com/klauspost/compress/pull/345)
 	* zstd: Add [WithLowerEncoderMem](https://pkg.go.dev/github.com/klauspost/compress/zstd#WithLowerEncoderMem) encoder option [#336](https://github.com/klauspost/compress/pull/336)
@@ -118,6 +125,7 @@ This package provides various compression algorithms.
 	* zstd: Add experimental compression [dictionaries](https://github.com/klauspost/compress/tree/master/zstd#dictionaries) [#281](https://github.com/klauspost/compress/pull/281)
 	* zstd: Fix mixed Write and ReadFrom calls [#282](https://github.com/klauspost/compress/pull/282)
 	* inflate/gz: Limit variable shifts, ~5% faster decompression [#274](https://github.com/klauspost/compress/pull/274)
+</details>
 
 <details>
 	<summary>See changes prior to v1.11.0</summary>

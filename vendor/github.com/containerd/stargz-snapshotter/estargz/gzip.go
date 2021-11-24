@@ -124,31 +124,31 @@ func (gz *GzipDecompressor) ParseTOC(r io.Reader) (toc *JTOC, tocDgst digest.Dig
 	return parseTOCEStargz(r)
 }
 
-func (gz *GzipDecompressor) ParseFooter(p []byte) (tocOffset, tocSize int64, err error) {
+func (gz *GzipDecompressor) ParseFooter(p []byte) (blobPayloadSize, tocOffset, tocSize int64, err error) {
 	if len(p) != FooterSize {
-		return 0, 0, fmt.Errorf("invalid length %d cannot be parsed", len(p))
+		return 0, 0, 0, fmt.Errorf("invalid length %d cannot be parsed", len(p))
 	}
 	zr, err := gzip.NewReader(bytes.NewReader(p))
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, 0, err
 	}
 	defer zr.Close()
 	extra := zr.Header.Extra
 	si1, si2, subfieldlen, subfield := extra[0], extra[1], extra[2:4], extra[4:]
 	if si1 != 'S' || si2 != 'G' {
-		return 0, 0, fmt.Errorf("invalid subfield IDs: %q, %q; want E, S", si1, si2)
+		return 0, 0, 0, fmt.Errorf("invalid subfield IDs: %q, %q; want E, S", si1, si2)
 	}
 	if slen := binary.LittleEndian.Uint16(subfieldlen); slen != uint16(16+len("STARGZ")) {
-		return 0, 0, fmt.Errorf("invalid length of subfield %d; want %d", slen, 16+len("STARGZ"))
+		return 0, 0, 0, fmt.Errorf("invalid length of subfield %d; want %d", slen, 16+len("STARGZ"))
 	}
 	if string(subfield[16:]) != "STARGZ" {
-		return 0, 0, fmt.Errorf("STARGZ magic string must be included in the footer subfield")
+		return 0, 0, 0, fmt.Errorf("STARGZ magic string must be included in the footer subfield")
 	}
 	tocOffset, err = strconv.ParseInt(string(subfield[:16]), 16, 64)
 	if err != nil {
-		return 0, 0, errors.Wrapf(err, "legacy: failed to parse toc offset")
+		return 0, 0, 0, errors.Wrapf(err, "legacy: failed to parse toc offset")
 	}
-	return tocOffset, 0, nil
+	return tocOffset, tocOffset, 0, nil
 }
 
 func (gz *GzipDecompressor) FooterSize() int64 {
@@ -165,27 +165,27 @@ func (gz *legacyGzipDecompressor) ParseTOC(r io.Reader) (toc *JTOC, tocDgst dige
 	return parseTOCEStargz(r)
 }
 
-func (gz *legacyGzipDecompressor) ParseFooter(p []byte) (tocOffset, tocSize int64, err error) {
+func (gz *legacyGzipDecompressor) ParseFooter(p []byte) (blobPayloadSize, tocOffset, tocSize int64, err error) {
 	if len(p) != legacyFooterSize {
-		return 0, 0, fmt.Errorf("legacy: invalid length %d cannot be parsed", len(p))
+		return 0, 0, 0, fmt.Errorf("legacy: invalid length %d cannot be parsed", len(p))
 	}
 	zr, err := gzip.NewReader(bytes.NewReader(p))
 	if err != nil {
-		return 0, 0, errors.Wrapf(err, "legacy: failed to get footer gzip reader")
+		return 0, 0, 0, errors.Wrapf(err, "legacy: failed to get footer gzip reader")
 	}
 	defer zr.Close()
 	extra := zr.Header.Extra
 	if len(extra) != 16+len("STARGZ") {
-		return 0, 0, fmt.Errorf("legacy: invalid stargz's extra field size")
+		return 0, 0, 0, fmt.Errorf("legacy: invalid stargz's extra field size")
 	}
 	if string(extra[16:]) != "STARGZ" {
-		return 0, 0, fmt.Errorf("legacy: magic string STARGZ not found")
+		return 0, 0, 0, fmt.Errorf("legacy: magic string STARGZ not found")
 	}
 	tocOffset, err = strconv.ParseInt(string(extra[:16]), 16, 64)
 	if err != nil {
-		return 0, 0, errors.Wrapf(err, "legacy: failed to parse toc offset")
+		return 0, 0, 0, errors.Wrapf(err, "legacy: failed to parse toc offset")
 	}
-	return tocOffset, 0, nil
+	return tocOffset, tocOffset, 0, nil
 }
 
 func (gz *legacyGzipDecompressor) FooterSize() int64 {
