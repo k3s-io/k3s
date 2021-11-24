@@ -90,6 +90,10 @@ func NewSelfSignedCACert(cfg Config, key crypto.Signer) (*x509.Certificate, erro
 	if err != nil {
 		return nil, err
 	}
+
+	logrus.Infof("generated self-signed CA certificate %s: notBefore=%s notAfter=%s",
+		tmpl.Subject, tmpl.NotBefore, tmpl.NotAfter)
+
 	return x509.ParseCertificate(certDERBytes)
 }
 
