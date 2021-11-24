@@ -22,6 +22,7 @@ replace (
 	github.com/docker/docker => github.com/docker/docker v20.10.2+incompatible
 	github.com/docker/libnetwork => github.com/docker/libnetwork v0.8.0-dev.2.0.20190624125649-f0e46a78ea34
 	github.com/golang/protobuf => github.com/k3s-io/protobuf v1.4.3-k3s1
+	github.com/googleapis/gax-go/v2 => github.com/googleapis/gax-go/v2 v2.0.5
 	github.com/juju/errors => github.com/k3s-io/nocode v0.0.0-20200630202308-cb097102c09f
 	github.com/kubernetes-sigs/cri-tools => github.com/k3s-io/cri-tools v1.21.0-k3s1
 	github.com/matryer/moq => github.com/rancher/moq v0.0.0-20190404221404-ee5226d43009
@@ -70,14 +71,14 @@ replace (
 
 require (
 	github.com/containerd/cgroups v1.0.1
-	github.com/containerd/containerd v1.5.1
+	github.com/containerd/containerd v1.5.7
 	github.com/containerd/cri v1.11.1-0.20200820101445-b0cc07999aa5
 	github.com/containerd/fuse-overlayfs-snapshotter v1.0.2
 	github.com/containerd/go-cni v1.0.2 // indirect
 	github.com/containerd/imgcrypt v1.1.1 // indirect
 	github.com/coreos/go-iptables v0.4.5
 	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f
-	github.com/docker/docker v20.10.5+incompatible
+	github.com/docker/docker v20.10.10+incompatible
 	github.com/erikdubbelboer/gspt v0.0.0-20190125194910-e68493906b83
 	github.com/flannel-io/flannel v0.15.1
 	github.com/go-bindata/go-bindata v3.1.2+incompatible
@@ -101,11 +102,10 @@ require (
 	github.com/opencontainers/runc v1.0.2
 	github.com/opencontainers/selinux v1.8.2
 	github.com/otiai10/copy v1.6.0
-	github.com/pierrec/lz4 v2.6.0+incompatible
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/dynamiclistener v0.2.3-k3s1
 	github.com/rancher/remotedialer v0.2.0
-	github.com/rancher/wharfie v0.3.4
+	github.com/rancher/wharfie v0.5.1
 	github.com/rancher/wrangler v0.8.3
 	github.com/rancher/wrangler-api v0.6.0
 	github.com/robfig/cron/v3 v3.0.1
@@ -114,12 +114,12 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.7.0
 	github.com/tchap/go-patricia v2.3.0+incompatible // indirect
-	github.com/urfave/cli v1.22.2
+	github.com/urfave/cli v1.22.4
 	go.etcd.io/etcd v0.5.0-alpha.5.0.20201208200253-50621aee4aea
 	golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2
-	golang.org/x/net v0.0.0-20210226172049-e18ecbb05110
-	golang.org/x/sys v0.0.0-20210426230700-d19ff857e887
-	google.golang.org/grpc v1.37.0
+	golang.org/x/net v0.0.0-20211005215030-d2e5035098b3
+	golang.org/x/sys v0.0.0-20211004093028-2c5d950f24ef
+	google.golang.org/grpc v1.41.0
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.21.7
 	k8s.io/apimachinery v0.21.7

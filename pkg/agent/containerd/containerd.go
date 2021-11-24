@@ -2,8 +2,6 @@ package containerd
 
 import (
 	"bufio"
-	"compress/bzip2"
-	"compress/gzip"
 	"context"
 	"fmt"
 	"io"
@@ -19,18 +17,16 @@ import (
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/namespaces"
 	"github.com/containerd/containerd/reference/docker"
-	"github.com/klauspost/compress/zstd"
 	"github.com/natefinch/lumberjack"
 	"github.com/opencontainers/runc/libcontainer/userns"
-	"github.com/pierrec/lz4"
 	"github.com/pkg/errors"
 	"github.com/rancher/k3s/pkg/agent/templates"
 	util2 "github.com/rancher/k3s/pkg/agent/util"
 	"github.com/rancher/k3s/pkg/daemons/agent"
 	"github.com/rancher/k3s/pkg/daemons/config"
-	"github.com/rancher/k3s/pkg/untar"
 	"github.com/rancher/k3s/pkg/version"
 	"github.com/rancher/wharfie/pkg/registries"
+	"github.com/rancher/wharfie/pkg/tarfile"
 	"github.com/rancher/wrangler/pkg/merr"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
@@ -199,7 +195,7 @@ func preloadImages(ctx context.Context, cfg *config.Node) error {
 			logrus.Errorf("Error encountered while importing %s: %v", filePath, err)
 			continue
 		}
-		logrus.Debugf("Imported images from %s in %s", filePath, time.Since(start))
+		logrus.Infof("Imported images from %s in %s", filePath, time.Since(start))
 	}
 	return nil
 }
@@ -208,39 +204,26 @@ func preloadImages(ctx context.Context, cfg *config.Node) error {
 // This is in its own function so that we can ensure that the various readers are properly closed, as some
 // decompressing readers need to be explicitly closed and others do not.
 func preloadFile(ctx context.Context, cfg *config.Node, client *containerd.Client, criConn *grpc.ClientConn, filePath string) error {
-	file, err := os.Open(filePath)
+	if util2.HasSuffixI(filePath, ".txt") {
+		file, err := os.Open(filePath)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+		logrus.Infof("Pulling images from %s", filePath)
+		return prePullImages(ctx, criConn, file)
+	}
+
+	opener, err := tarfile.GetOpener(filePath)
 	if err != nil {
 		return err
 	}
-	defer file.Close()
 
-	var imageReader io.Reader
-	switch {
-	case util2.HasSuffixI(filePath, ".txt"):
-		return prePullImages(ctx, criConn, file)
-	case util2.HasSuffixI(filePath, ".tar"):
-		imageReader = file
-	case util2.HasSuffixI(filePath, ".tar.lz4"):
-		imageReader = lz4.NewReader(file)
-	case util2.HasSuffixI(filePath, ".tar.bz2", ".tbz"):
-		imageReader = bzip2.NewReader(file)
-	case util2.HasSuffixI(filePath, ".tar.gz", ".tgz"):
-		zr, err := gzip.NewReader(file)
-		if err != nil {
-			return err
-		}
-		defer zr.Close()
-		imageReader = zr
-	case util2.HasSuffixI(filePath, "tar.zst", ".tzst"):
-		zr, err := zstd.NewReader(file, zstd.WithDecoderMaxMemory(untar.MaxDecoderMemory))
-		if err != nil {
-			return err
-		}
-		defer zr.Close()
-		imageReader = zr
-	default:
-		return errors.New("unhandled file type")
+	imageReader, err := opener()
+	if err != nil {
+		return err
 	}
+	defer imageReader.Close()
 
 	logrus.Infof("Importing images from %s", filePath)
 
@@ -353,7 +336,7 @@ func setupContainerdConfig(ctx context.Context, cfg *config.Node) error {
 		NodeConfig:            cfg,
 		DisableCgroup:         disableCgroup,
 		IsRunningInUserNS:     isRunningInUserNS,
-		PrivateRegistryConfig: privRegistries.Registry(),
+		PrivateRegistryConfig: privRegistries.Registry,
 	}
 
 	selEnabled, selConfigured, err := selinuxStatus()
