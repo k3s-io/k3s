@@ -639,18 +639,16 @@ func (e *ETCD) clientURL() string {
 func (e *ETCD) listenPeerURLs() string {
 	if net.ParseIP(e.address) == nil {
 		return "https://0.0.0.0:2380"
-	} else {
-		return e.peerURL()
 	}
+	return e.peerURL()
 }
 
 // listenClientURLs returns the list of urls to listen for client
 func (e *ETCD) listenClientUrls() string {
 	if net.ParseIP(e.address) == nil {
 		return "https://0.0.0.0:2379"
-	} else {
-		return fmt.Sprintf("https://%s:2379,https://127.0.0.1:2379", e.address)
 	}
+	return fmt.Sprintf("https://%s:2379,https://127.0.0.1:2379", e.address)
 }
 
 // metricsURL returns the metrics access address
