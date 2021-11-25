@@ -82,7 +82,7 @@ func setETCDLabelsAndAnnotations(ctx context.Context, config *Config) error {
 		etcdNodeName := string(data)
 		node.Annotations[etcd.NodeNameAnnotation] = etcdNodeName
 
-		address, err := etcd.GetAdvertiseAddress(controlConfig.PrivateIP)
+		address, err := etcd.GetAdvertiseAddress(controlConfig.EtcdAdvertiseAddress)
 		if err != nil {
 			logrus.Infof("Waiting for etcd node address to be available: %v", err)
 			continue

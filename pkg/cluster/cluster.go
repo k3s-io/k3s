@@ -42,7 +42,7 @@ func (c *Cluster) Start(ctx context.Context) (<-chan struct{}, error) {
 		defer close(ready)
 
 		// try to get /db/info urls first before attempting to use join url
-		clientURLs, _, err := etcd.ClientURLs(ctx, c.clientAccessInfo, c.config.PrivateIP)
+		clientURLs, _, err := etcd.ClientURLs(ctx, c.clientAccessInfo, c.config.EtcdAdvertiseAddress)
 		if err != nil {
 			return nil, err
 		}

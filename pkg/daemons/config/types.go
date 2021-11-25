@@ -157,6 +157,7 @@ type Control struct {
 	EncryptSecrets           bool
 	TLSMinVersion            uint16
 	TLSCipherSuites          []uint16
+	EtcdAdvertiseAddress     string
 	EtcdSnapshotName         string
 	EtcdDisableSnapshots     bool
 	EtcdExposeMetrics        bool

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -328,7 +329,7 @@ func (e *ETCD) join(ctx context.Context, clientAccessInfo *clientaccess.Info) er
 		add     = true
 	)
 
-	clientURLs, memberList, err := ClientURLs(clientCtx, clientAccessInfo, e.config.PrivateIP)
+	clientURLs, memberList, err := ClientURLs(clientCtx, clientAccessInfo, e.config.EtcdAdvertiseAddress)
 	if err != nil {
 		return err
 	}
@@ -406,7 +407,7 @@ func (e *ETCD) Register(ctx context.Context, config *config.Control, handler htt
 	}
 	e.client = client
 
-	address, err := GetAdvertiseAddress(config.PrivateIP)
+	address, err := GetAdvertiseAddress(config.EtcdAdvertiseAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -633,6 +634,25 @@ func (e *ETCD) clientURL() string {
 	return fmt.Sprintf("https://%s:2379", e.address)
 }
 
+// We need to bind to 0.0.0.0 in case we advertise domain name
+// listenPeerURLs returns the list of urls to listen for peer
+func (e *ETCD) listenPeerURLs() string {
+	if net.ParseIP(e.address) == nil {
+		return "https://0.0.0.0:2380"
+	} else {
+		return e.peerURL()
+	}
+}
+
+// listenClientURLs returns the list of urls to listen for client
+func (e *ETCD) listenClientUrls() string {
+	if net.ParseIP(e.address) == nil {
+		return "https://0.0.0.0:2379"
+	} else {
+		return fmt.Sprintf("https://%s:2379,https://127.0.0.1:2379", e.address)
+	}
+}
+
 // metricsURL returns the metrics access address
 func (e *ETCD) metricsURL(expose bool) string {
 	address := "http://127.0.0.1:2381"
@@ -648,9 +668,9 @@ func (e *ETCD) cluster(ctx context.Context, forceNew bool, options executor.Init
 		Name:                e.name,
 		InitialOptions:      options,
 		ForceNewCluster:     forceNew,
-		ListenClientURLs:    e.clientURL() + ",https://127.0.0.1:2379",
+		ListenClientURLs:    e.listenClientUrls(),
 		ListenMetricsURLs:   e.metricsURL(e.config.EtcdExposeMetrics),
-		ListenPeerURLs:      e.peerURL(),
+		ListenPeerURLs:      e.listenPeerURLs(),
 		AdvertiseClientURLs: e.clientURL(),
 		DataDir:             DBDir(e.config),
 		ServerTrust: executor.ServerTrust{

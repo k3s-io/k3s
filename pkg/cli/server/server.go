@@ -140,6 +140,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	serverConfig.ControlConfig.EncryptSecrets = cfg.EncryptSecrets
 	serverConfig.ControlConfig.EtcdExposeMetrics = cfg.EtcdExposeMetrics
 	serverConfig.ControlConfig.EtcdDisableSnapshots = cfg.EtcdDisableSnapshots
+	serverConfig.ControlConfig.EtcdAdvertiseAddress = cfg.EtcdAdvertiseAddress
 
 	if !cfg.EtcdDisableSnapshots {
 		serverConfig.ControlConfig.EtcdSnapshotName = cfg.EtcdSnapshotName
@@ -226,6 +227,11 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		serverConfig.ControlConfig.PrivateIP, _ = util.GetFirst4String(cmds.AgentConfig.NodeIP)
 	}
 
+	// PrivateIP was only used for setting etcd advertise address, but might be used somewhere else
+	if serverConfig.ControlConfig.EtcdAdvertiseAddress == "" && serverConfig.ControlConfig.PrivateIP != "" {
+		serverConfig.ControlConfig.EtcdAdvertiseAddress = serverConfig.ControlConfig.PrivateIP
+	}
+
 	// if not set, try setting advertise-ip from agent node-external-ip
 	if serverConfig.ControlConfig.AdvertiseIP == "" && len(cmds.AgentConfig.NodeExternalIP) != 0 {
 		serverConfig.ControlConfig.AdvertiseIP, _ = util.GetFirst4String(cmds.AgentConfig.NodeExternalIP)
@@ -241,6 +247,11 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	/// https://github.com/kubernetes/kubeadm/issues/1612#issuecomment-772583989
 	if serverConfig.ControlConfig.AdvertiseIP != "" {
 		serverConfig.ControlConfig.SANs = append(serverConfig.ControlConfig.SANs, serverConfig.ControlConfig.AdvertiseIP)
+	}
+
+	// Add etcd advertise addresses to SAN list
+	if serverConfig.ControlConfig.EtcdAdvertiseAddress != "" {
+		serverConfig.ControlConfig.SANs = append(serverConfig.ControlConfig.SANs, serverConfig.ControlConfig.EtcdAdvertiseAddress)
 	}
 
 	// Ensure that we add the localhost name/ip and node name/ip to the SAN list. This list is shared by the

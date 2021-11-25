@@ -76,6 +76,7 @@ type Server struct {
 	EncryptSecrets           bool
 	SystemDefaultRegistry    string
 	StartupHooks             []StartupHook
+	EtcdAdvertiseAddress     string
 	EtcdSnapshotName         string
 	EtcdDisableSnapshots     bool
 	EtcdExposeMetrics        bool
@@ -251,6 +252,11 @@ var ServerFlags = []cli.Flag{
 		Usage:       "(db) TLS key file used to secure datastore backend communication",
 		Destination: &ServerConfig.DatastoreKeyFile,
 		EnvVar:      version.ProgramUpper + "_DATASTORE_KEYFILE",
+	},
+	cli.StringFlag{
+		Name:        "etcd-advertise-address",
+		Usage:       "(db) Address that etcd uses to set peer and client advertise addresses",
+		Destination: &ServerConfig.EtcdAdvertiseAddress,
 	},
 	&cli.BoolFlag{
 		Name:        "etcd-expose-metrics",
