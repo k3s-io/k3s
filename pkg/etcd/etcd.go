@@ -1012,7 +1012,7 @@ type SnapshotFile struct {
 // listSnapshots provides a list of the currently stored
 // snapshots on disk or in S3 along with their relevant
 // metadata.
-func (e *ETCD) listSnapshots(ctx context.Context, snapshotDir string) ([]SnapshotFile, error) {
+func (e *ETCD) listSnapshotsFunc(ctx context.Context, snapshotDir string) ([]SnapshotFile, error) {
 	var snapshots []SnapshotFile
 
 	if e.config.EtcdS3 {
@@ -1131,7 +1131,7 @@ func (e *ETCD) ListSnapshots(ctx context.Context) ([]SnapshotFile, error) {
 		return nil, errors.Wrap(err, "failed to get the snapshot dir")
 	}
 
-	return e.listSnapshots(ctx, snapshotDir)
+	return e.listSnapshotsFunc(ctx, snapshotDir)
 }
 
 // deleteSnapshots removes the given snapshots from
@@ -1250,7 +1250,7 @@ func (e *ETCD) StoreSnapshotData(ctx context.Context) error {
 
 		snapshotConfigMap, getErr := e.config.Runtime.Core.Core().V1().ConfigMap().Get(metav1.NamespaceSystem, snapshotConfigMapName, metav1.GetOptions{})
 
-		snapshotFiles, err := e.listSnapshots(ctx, snapshotDir)
+		snapshotFiles, err := e.listSnapshotsFunc(ctx, snapshotDir)
 		if err != nil {
 			return err
 		}

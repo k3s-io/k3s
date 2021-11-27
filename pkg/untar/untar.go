@@ -36,10 +36,10 @@ const (
 
 // Untar reads the zstd-compressed tar file from r and writes it into dir.
 func Untar(r io.Reader, dir string) error {
-	return untar(r, dir)
+	return untarFunc(r, dir)
 }
 
-func untar(r io.Reader, dir string) (err error) {
+func untarFunc(r io.Reader, dir string) (err error) {
 	t0 := time.Now()
 	nFiles := 0
 	madeDir := map[string]bool{}

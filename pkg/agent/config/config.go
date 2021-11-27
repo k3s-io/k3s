@@ -46,7 +46,7 @@ func Get(ctx context.Context, agent cmds.Agent, proxy proxy.Proxy) *config.Node 
 	defer ticker.Stop()
 RETRY:
 	for {
-		agentConfig, err := get(ctx, &agent, proxy)
+		agentConfig, err := getFunc(ctx, &agent, proxy)
 		if err != nil {
 			logrus.Infof("Waiting to retrieve agent configuration; server is not ready: %v", err)
 			for range ticker.C {
@@ -291,7 +291,7 @@ func locateOrGenerateResolvConf(envInfo *cmds.Agent) string {
 	return tmpConf
 }
 
-func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.Node, error) {
+func getFunc(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.Node, error) {
 	if envInfo.Debug {
 		logrus.SetLevel(logrus.DebugLevel)
 	}

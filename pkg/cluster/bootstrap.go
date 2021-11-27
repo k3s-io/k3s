@@ -107,7 +107,7 @@ func (c *Cluster) Bootstrap(ctx context.Context, snapshot bool) error {
 	}
 
 	if c.shouldBootstrap {
-		return c.bootstrap(ctx)
+		return c.bootstrapFunc(ctx)
 	}
 
 	return nil
@@ -556,7 +556,7 @@ func (c *Cluster) retrieveInitializedDBdata(ctx context.Context) (*bytes.Buffer,
 }
 
 // bootstrap performs cluster bootstrapping, either via HTTP (for managed databases) or direct load from datastore.
-func (c *Cluster) bootstrap(ctx context.Context) error {
+func (c *Cluster) bootstrapFunc(ctx context.Context) error {
 	c.joining = true
 
 	// bootstrap managed database via HTTPS

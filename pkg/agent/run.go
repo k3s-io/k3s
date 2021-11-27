@@ -43,7 +43,7 @@ import (
 	utilpointer "k8s.io/utils/pointer"
 )
 
-func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
+func runFunc(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 	nodeConfig := config.Get(ctx, cfg, proxy)
 
 	dualCluster, err := utilsnet.IsDualStackCIDRs(nodeConfig.AgentConfig.ClusterCIDRs)
@@ -222,7 +222,7 @@ func Run(ctx context.Context, cfg cmds.Agent) error {
 		break
 	}
 
-	return run(ctx, cfg, proxy)
+	return runFunc(ctx, cfg, proxy)
 }
 
 func configureNode(ctx context.Context, agentConfig *daemonconfig.Agent, nodes typedcorev1.NodeInterface) error {

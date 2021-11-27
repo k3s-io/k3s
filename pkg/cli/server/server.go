@@ -39,14 +39,14 @@ import (
 )
 
 func Run(app *cli.Context) error {
-	return run(app, &cmds.ServerConfig, server.CustomControllers{}, server.CustomControllers{})
+	return runFunc(app, &cmds.ServerConfig, server.CustomControllers{}, server.CustomControllers{})
 }
 
 func RunWithControllers(app *cli.Context, leaderControllers server.CustomControllers, controllers server.CustomControllers) error {
-	return run(app, &cmds.ServerConfig, leaderControllers, controllers)
+	return runFunc(app, &cmds.ServerConfig, leaderControllers, controllers)
 }
 
-func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomControllers, controllers server.CustomControllers) error {
+func runFunc(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomControllers, controllers server.CustomControllers) error {
 	var (
 		err error
 	)

@@ -59,10 +59,10 @@ func Run(app *cli.Context) error {
 	if err := cmds.InitLogging(); err != nil {
 		return err
 	}
-	return run(app, &cmds.ServerConfig)
+	return runFunc(app, &cmds.ServerConfig)
 }
 
-func run(app *cli.Context, cfg *cmds.Server) error {
+func runFunc(app *cli.Context, cfg *cmds.Server) error {
 	var serverConfig server.Config
 
 	dataDir, err := commandSetup(app, cfg, &serverConfig)
@@ -112,10 +112,10 @@ func Delete(app *cli.Context) error {
 	if err := cmds.InitLogging(); err != nil {
 		return err
 	}
-	return delete(app, &cmds.ServerConfig)
+	return deleteFunc(app, &cmds.ServerConfig)
 }
 
-func delete(app *cli.Context, cfg *cmds.Server) error {
+func deleteFunc(app *cli.Context, cfg *cmds.Server) error {
 	var serverConfig server.Config
 
 	dataDir, err := commandSetup(app, cfg, &serverConfig)
@@ -148,10 +148,10 @@ func List(app *cli.Context) error {
 	if err := cmds.InitLogging(); err != nil {
 		return err
 	}
-	return list(app, &cmds.ServerConfig)
+	return listFunc(app, &cmds.ServerConfig)
 }
 
-func list(app *cli.Context, cfg *cmds.Server) error {
+func listFunc(app *cli.Context, cfg *cmds.Server) error {
 	var serverConfig server.Config
 
 	dataDir, err := commandSetup(app, cfg, &serverConfig)
@@ -188,10 +188,10 @@ func Prune(app *cli.Context) error {
 	if err := cmds.InitLogging(); err != nil {
 		return err
 	}
-	return prune(app, &cmds.ServerConfig)
+	return pruneFunc(app, &cmds.ServerConfig)
 }
 
-func prune(app *cli.Context, cfg *cmds.Server) error {
+func pruneFunc(app *cli.Context, cfg *cmds.Server) error {
 	var serverConfig server.Config
 
 	dataDir, err := commandSetup(app, cfg, &serverConfig)
