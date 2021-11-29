@@ -115,5 +115,5 @@ func copyExistingContents(source, destination string) error {
 	if len(dstList) != 0 {
 		return errors.Errorf("volume at %q is not initially empty", destination)
 	}
-	return fs.CopyDir(destination, source)
+	return fs.CopyDir(destination, source, fs.WithXAttrExclude("security.selinux"))
 }

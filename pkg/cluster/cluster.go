@@ -104,7 +104,7 @@ func (c *Cluster) Start(ctx context.Context) (<-chan struct{}, error) {
 					}
 
 					if !c.config.EtcdDisableSnapshots {
-						if err := c.managedDB.StoreSnapshotData(ctx); err != nil {
+						if err := c.managedDB.ReconcileSnapshotData(ctx); err != nil {
 							logrus.Errorf("Failed to record snapshots for cluster: %v", err)
 						}
 					}

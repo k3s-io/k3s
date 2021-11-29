@@ -22,6 +22,11 @@ var EtcdSnapshotFlags = []cli.Flag{
 	},
 	DataDirFlag,
 	&cli.StringFlag{
+		Name:        "dir,etcd-snapshot-dir",
+		Usage:       "(db) Directory to save etcd on-demand snapshot. (default: ${data-dir}/db/snapshots)",
+		Destination: &ServerConfig.EtcdSnapshotDir,
+	},
+	&cli.StringFlag{
 		Name:        "name",
 		Usage:       "(db) Set the base name of the etcd on-demand snapshot (appended with UNIX timestamp).",
 		Destination: &ServerConfig.EtcdSnapshotName,
@@ -97,11 +102,7 @@ func NewEtcdSnapshotCommand(action func(*cli.Context) error, subcommands []cli.C
 		SkipArgReorder:  true,
 		Action:          action,
 		Subcommands:     subcommands,
-		Flags: append(EtcdSnapshotFlags, &cli.StringFlag{
-			Name:        "dir,etcd-snapshot-dir",
-			Usage:       "(db) Directory to save etcd on-demand snapshot. (default: ${data-dir}/db/snapshots)",
-			Destination: &ServerConfig.EtcdSnapshotDir,
-		}),
+		Flags:           EtcdSnapshotFlags,
 	}
 }
 
@@ -126,7 +127,7 @@ func NewEtcdSnapshotSubcommands(delete, list, prune, save func(ctx *cli.Context)
 		},
 		{
 			Name:            "prune",
-			Usage:           "Remove snapshots that exceed the configured retention count",
+			Usage:           "Remove snapshots that match the name prefix that exceed the configured retention count",
 			SkipFlagParsing: false,
 			SkipArgReorder:  true,
 			Action:          prune,
@@ -143,11 +144,7 @@ func NewEtcdSnapshotSubcommands(delete, list, prune, save func(ctx *cli.Context)
 			SkipFlagParsing: false,
 			SkipArgReorder:  true,
 			Action:          save,
-			Flags: append(EtcdSnapshotFlags, &cli.StringFlag{
-				Name:        "dir",
-				Usage:       "(db) Directory to save etcd on-demand snapshot. (default: ${data-dir}/db/snapshots)",
-				Destination: &ServerConfig.EtcdSnapshotDir,
-			}),
+			Flags:           EtcdSnapshotFlags,
 		},
 	}
 }

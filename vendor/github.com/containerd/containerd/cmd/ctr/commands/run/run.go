@@ -29,6 +29,7 @@ import (
 	"github.com/containerd/containerd/cmd/ctr/commands"
 	"github.com/containerd/containerd/cmd/ctr/commands/tasks"
 	"github.com/containerd/containerd/containers"
+	clabels "github.com/containerd/containerd/labels"
 	"github.com/containerd/containerd/namespaces"
 	"github.com/containerd/containerd/oci"
 	gocni "github.com/containerd/go-cni"
@@ -252,7 +253,13 @@ func fullID(ctx context.Context, c containerd.Container) string {
 func buildLabels(cmdLabels, imageLabels map[string]string) map[string]string {
 	labels := make(map[string]string)
 	for k, v := range imageLabels {
-		labels[k] = v
+		if err := clabels.Validate(k, v); err == nil {
+			labels[k] = v
+		} else {
+			// In case the image label is invalid, we output a warning and skip adding it to the
+			// container.
+			logrus.WithError(err).Warnf("unable to add image label with key %s to the container", k)
+		}
 	}
 	// labels from the command line will override image and the initial image config labels
 	for k, v := range cmdLabels {
