@@ -173,11 +173,19 @@ func list(app *cli.Context, cfg *cmds.Server) error {
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
 	defer w.Flush()
 
-	for _, s := range sf {
-		if cfg.EtcdS3 {
-			fmt.Fprintf(w, "%s\t%d\t%s\n", s.Name, s.Size, s.CreatedAt.Format(time.RFC3339))
-		} else {
-			fmt.Fprintf(w, "%s\t%s\t%d\t%s\n", s.Name, s.Location, s.Size, s.CreatedAt.Format(time.RFC3339))
+	if cfg.EtcdS3 {
+		fmt.Fprint(w, "Name\tSize\tCreated\n")
+		for _, s := range sf {
+			if s.NodeName == "s3" {
+				fmt.Fprintf(w, "%s\t%d\t%s\n", s.Name, s.Size, s.CreatedAt.Format(time.RFC3339))
+			}
+		}
+	} else {
+		fmt.Fprint(w, "Name\tLocation\tSize\tCreated\n")
+		for _, s := range sf {
+			if s.NodeName != "s3" {
+				fmt.Fprintf(w, "%s\t%s\t%d\t%s\n", s.Name, s.Location, s.Size, s.CreatedAt.Format(time.RFC3339))
+			}
 		}
 	}
 
@@ -201,10 +209,17 @@ func prune(app *cli.Context, cfg *cmds.Server) error {
 
 	serverConfig.ControlConfig.DataDir = dataDir
 	serverConfig.ControlConfig.EtcdSnapshotRetention = cfg.EtcdSnapshotRetention
+	serverConfig.ControlConfig.Runtime.KubeConfigAdmin = filepath.Join(dataDir, "cred", "admin.kubeconfig")
 
 	ctx := signals.SetupSignalContext()
 	e := etcd.NewETCD()
 	e.SetControlConfig(&serverConfig.ControlConfig)
+
+	sc, err := server.NewContext(ctx, serverConfig.ControlConfig.Runtime.KubeConfigAdmin)
+	if err != nil {
+		return err
+	}
+	serverConfig.ControlConfig.Runtime.Core = sc.Core
 
 	return e.PruneSnapshots(ctx)
 }
