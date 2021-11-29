@@ -14,12 +14,14 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/pkg/errors"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/sirupsen/logrus"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // S3 maintains state for S3 functionality.
@@ -32,6 +34,9 @@ type S3 struct {
 // copy of the config.Control pointer and initializes
 // a new Minio client.
 func NewS3(ctx context.Context, config *config.Control) (*S3, error) {
+	if config.EtcdS3BucketName == "" {
+		return nil, errors.New("s3 bucket name was not set")
+	}
 	tr := http.DefaultTransport
 
 	switch {
@@ -56,7 +61,7 @@ func NewS3(ctx context.Context, config *config.Control) (*S3, error) {
 
 	opt := minio.Options{
 		Creds:        creds,
-		Secure:       true,
+		Secure:       !config.EtcdS3Insecure,
 		Region:       config.EtcdS3Region,
 		Transport:    tr,
 		BucketLookup: bucketLookupType(config.EtcdS3Endpoint),
@@ -88,9 +93,11 @@ func NewS3(ctx context.Context, config *config.Control) (*S3, error) {
 
 // upload uploads the given snapshot to the configured S3
 // compatible backend.
-func (s *S3) upload(ctx context.Context, snapshot string) error {
+func (s *S3) upload(ctx context.Context, snapshot, extraMetadata string, now time.Time) (*SnapshotFile, error) {
+	logrus.Infof("Uploading snapshot %s to S3", snapshot)
 	basename := filepath.Base(snapshot)
 	var snapshotFileName string
+	var snapshotFile SnapshotFile
 	if s.config.EtcdS3Folder != "" {
 		snapshotFileName = filepath.Join(s.config.EtcdS3Folder, basename)
 	} else {
@@ -103,11 +110,56 @@ func (s *S3) upload(ctx context.Context, snapshot string) error {
 		ContentType: "application/zip",
 		NumThreads:  2,
 	}
-	if _, err := s.client.FPutObject(toCtx, s.config.EtcdS3BucketName, snapshotFileName, snapshot, opts); err != nil {
-		logrus.Errorf("Error received in attempt to upload snapshot to S3: %s", err)
-	}
+	uploadInfo, err := s.client.FPutObject(toCtx, s.config.EtcdS3BucketName, snapshotFileName, snapshot, opts)
+	if err != nil {
+		snapshotFile = SnapshotFile{
+			Name:     filepath.Base(uploadInfo.Key),
+			Metadata: extraMetadata,
+			NodeName: "s3",
+			CreatedAt: &metav1.Time{
+				Time: now,
+			},
+			Message: base64.StdEncoding.EncodeToString([]byte(err.Error())),
+			Size:    0,
+			Status:  FailedSnapshotStatus,
+			S3: &s3Config{
+				Endpoint:      s.config.EtcdS3Endpoint,
+				EndpointCA:    s.config.EtcdS3EndpointCA,
+				SkipSSLVerify: s.config.EtcdS3SkipSSLVerify,
+				Bucket:        s.config.EtcdS3BucketName,
+				Region:        s.config.EtcdS3Region,
+				Folder:        s.config.EtcdS3Folder,
+				Insecure:      s.config.EtcdS3Insecure,
+			},
+		}
+		logrus.Errorf("Error received during snapshot upload to S3: %s", err)
+	} else {
+		ca, err := time.Parse(time.RFC3339, uploadInfo.LastModified.Format(time.RFC3339))
+		if err != nil {
+			return nil, err
+		}
 
-	return nil
+		snapshotFile = SnapshotFile{
+			Name:     filepath.Base(uploadInfo.Key),
+			Metadata: extraMetadata,
+			NodeName: "s3",
+			CreatedAt: &metav1.Time{
+				Time: ca,
+			},
+			Size:   uploadInfo.Size,
+			Status: SuccessfulSnapshotStatus,
+			S3: &s3Config{
+				Endpoint:      s.config.EtcdS3Endpoint,
+				EndpointCA:    s.config.EtcdS3EndpointCA,
+				SkipSSLVerify: s.config.EtcdS3SkipSSLVerify,
+				Bucket:        s.config.EtcdS3BucketName,
+				Region:        s.config.EtcdS3Region,
+				Folder:        s.config.EtcdS3Folder,
+				Insecure:      s.config.EtcdS3Insecure,
+			},
+		}
+	}
+	return &snapshotFile, nil
 }
 
 // download downloads the given snapshot from the configured S3
@@ -130,7 +182,7 @@ func (s *S3) Download(ctx context.Context) error {
 	}
 	defer r.Close()
 
-	snapshotDir, err := snapshotDir(s.config)
+	snapshotDir, err := snapshotDir(s.config, true)
 	if err != nil {
 		return errors.Wrap(err, "failed to get the snapshot dir")
 	}
@@ -170,9 +222,13 @@ func (s *S3) snapshotPrefix() string {
 	return prefix
 }
 
-// snapshotRetention deletes the given snapshot from the configured S3
-// compatible backend.
+// snapshotRetention prunes snapshots in the configured S3 compatible backend for this specific node.
 func (s *S3) snapshotRetention(ctx context.Context) error {
+	if s.config.EtcdSnapshotRetention < 1 {
+		return nil
+	}
+	logrus.Infof("Applying snapshot retention policy to snapshots stored in S3: retention: %d, snapshotPrefix: %s", s.config.EtcdSnapshotRetention, s.snapshotPrefix())
+
 	var snapshotFiles []minio.ObjectInfo
 
 	toCtx, cancel := context.WithTimeout(ctx, s.config.EtcdS3Timeout)
@@ -199,7 +255,7 @@ func (s *S3) snapshotRetention(ctx context.Context) error {
 
 	delCount := len(snapshotFiles) - s.config.EtcdSnapshotRetention
 	for _, df := range snapshotFiles[:delCount] {
-		logrus.Debugf("Removing snapshot: %s", df.Key)
+		logrus.Infof("Removing S3 snapshot: %s", df.Key)
 		if err := s.client.RemoveObject(ctx, s.config.EtcdS3BucketName, df.Key, minio.RemoveObjectOptions{}); err != nil {
 			return err
 		}
