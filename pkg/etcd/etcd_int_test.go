@@ -35,7 +35,7 @@ var _ = Describe("etcd snapshots", func() {
 		})
 		It("saves an etcd snapshot", func() {
 			Expect(testutil.K3sCmd("etcd-snapshot", "save")).
-				To(ContainSubstring("Saving current etcd snapshot set to k3s-etcd-snapshots"))
+				To(ContainSubstring("saved"))
 		})
 		It("list snapshots", func() {
 			Expect(testutil.K3sCmd("etcd-snapshot", "ls")).
@@ -69,13 +69,13 @@ var _ = Describe("etcd snapshots", func() {
 	When("using etcd snapshot prune", func() {
 		It("saves 3 different snapshots", func() {
 			Expect(testutil.K3sCmd("etcd-snapshot", "save", "-name", "PRUNE_TEST")).
-				To(ContainSubstring("Saving current etcd snapshot set to k3s-etcd-snapshots"))
+				To(ContainSubstring("saved"))
 			time.Sleep(1 * time.Second)
 			Expect(testutil.K3sCmd("etcd-snapshot", "save", "-name", "PRUNE_TEST")).
-				To(ContainSubstring("Saving current etcd snapshot set to k3s-etcd-snapshots"))
+				To(ContainSubstring("saved"))
 			time.Sleep(1 * time.Second)
 			Expect(testutil.K3sCmd("etcd-snapshot", "save", "-name", "PRUNE_TEST")).
-				To(ContainSubstring("Saving current etcd snapshot set to k3s-etcd-snapshots"))
+				To(ContainSubstring("saved"))
 			time.Sleep(1 * time.Second)
 		})
 		It("lists all 3 snapshots", func() {
@@ -88,7 +88,7 @@ var _ = Describe("etcd snapshots", func() {
 		})
 		It("prunes snapshots down to 2", func() {
 			Expect(testutil.K3sCmd("etcd-snapshot", "prune", "--snapshot-retention", "2", "--name", "PRUNE_TEST")).
-				To(BeEmpty())
+				To(ContainSubstring("Removing local snapshot"))
 			lsResult, err := testutil.K3sCmd("etcd-snapshot", "ls")
 			Expect(err).ToNot(HaveOccurred())
 			reg, err := regexp.Compile(`:///var/lib/rancher/k3s/server/db/snapshots/PRUNE_TEST`)
