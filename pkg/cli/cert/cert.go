@@ -37,17 +37,6 @@ const (
 func commandSetup(app *cli.Context, cfg *cmds.Server, sc *server.Config) (string, string, error) {
 	gspt.SetProcTitle(os.Args[0])
 
-	nodeName := app.String("node-name")
-	if nodeName == "" {
-		h, err := os.Hostname()
-		if err != nil {
-			return "", "", err
-		}
-		nodeName = h
-	}
-
-	os.Setenv("NODE_NAME", nodeName)
-
 	sc.ControlConfig.DataDir = cfg.DataDir
 	sc.ControlConfig.Runtime = &config.ControlRuntime{}
 	dataDir, err := datadir.Resolve(cfg.DataDir)
@@ -88,14 +77,14 @@ func rotate(app *cli.Context, cfg *cmds.Server) error {
 			if !os.IsNotExist(err) {
 				return err
 			}
-			logrus.Infof("Agent detected, rotatig agent certificates")
+			logrus.Infof("Agent detected, rotating agent certificates")
 			cmds.ServicesList = []string{
 				kubeletService,
 				kubeProxyService,
 				version.Program + programControllerService,
 			}
 		} else {
-			logrus.Infof("Server detected, rotatig server certificates")
+			logrus.Infof("Server detected, rotating server certificates")
 			cmds.ServicesList = []string{
 				adminService,
 				etcdService,
