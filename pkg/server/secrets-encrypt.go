@@ -277,7 +277,9 @@ func encryptionReencrypt(ctx context.Context, server *config.Control, force bool
 		return err
 	}
 
-	updateSecrets(server.Runtime.Core.Core())
+	if err := updateSecrets(server.Runtime.Core.Core()); err != nil {
+		return err
+	}
 	if skip {
 		return nil
 	}
@@ -308,10 +310,9 @@ func updateSecrets(core core.Interface) error {
 	if err != nil {
 		return err
 	}
-	for _, s := range secrets.Items {
-		_, err := core.V1().Secret().Update(&s)
-		if err != nil {
-			return err
+	for i, s := range secrets.Items {
+		if _, err := core.V1().Secret().Update(&s); err != nil {
+			return fmt.Errorf("only reencrypted %d of %d secrets: %v", i, len(secrets.Items), err)
 		}
 	}
 	logrus.Infof("Updated %d secrets with new key\n", len(secrets.Items))

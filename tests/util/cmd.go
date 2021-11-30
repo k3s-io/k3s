@@ -180,11 +180,5 @@ func K3sKillServer(server *K3sServer) error {
 			return err
 		}
 	}
-	if err := flock.Release(server.lock); err != nil {
-		return err
-	}
-	if !flock.CheckLock(lockFile) {
-		return os.RemoveAll(lockFile)
-	}
-	return nil
+	return flock.Release(server.lock)
 }
