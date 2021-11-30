@@ -26,16 +26,6 @@ func commandPrep(app *cli.Context, cfg *cmds.Server) (config.Control, *clientacc
 	// database credentials or other secrets.
 	gspt.SetProcTitle(os.Args[0] + " encrypt")
 
-	nodeName := app.String("node-name")
-	if nodeName == "" {
-		nodeName, err = os.Hostname()
-		if err != nil {
-			return controlConfig, nil, err
-		}
-	}
-
-	os.Setenv("NODE_NAME", nodeName)
-
 	controlConfig.DataDir, err = server.ResolveDataDir(cfg.DataDir)
 	if err != nil {
 		return controlConfig, nil, err
@@ -72,7 +62,7 @@ func Enable(app *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	b, err := json.Marshal(server.EncryptionRequest{Enable: pointer.BoolPtr(true)})
+	b, err := json.Marshal(server.EncryptionRequest{Enable: pointer.Bool(true)})
 	if err != nil {
 		return err
 	}
@@ -92,7 +82,7 @@ func Disable(app *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	b, err := json.Marshal(server.EncryptionRequest{Enable: pointer.BoolPtr(false)})
+	b, err := json.Marshal(server.EncryptionRequest{Enable: pointer.Bool(false)})
 	if err != nil {
 		return err
 	}
@@ -120,16 +110,16 @@ func Status(app *cli.Context) error {
 		return err
 	}
 
-	if status.Enable == -1 {
+	if status.Enable == nil {
 		fmt.Println("Encryption Status: Disabled, no configuration file found")
 		return nil
 	}
 
 	var statusOutput string
-	if status.Enable == 0 {
-		statusOutput += "Encryption Status: Disabled\n"
-	} else if status.Enable == 1 {
+	if *status.Enable {
 		statusOutput += "Encryption Status: Enabled\n"
+	} else {
+		statusOutput += "Encryption Status: Disabled\n"
 	}
 	statusOutput += fmt.Sprintln("Current Rotation Stage:", status.Stage)
 

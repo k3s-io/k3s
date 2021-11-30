@@ -21,6 +21,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apiserverconfigv1 "k8s.io/apiserver/pkg/apis/config/v1"
+	"k8s.io/utils/pointer"
 )
 
 const (
@@ -35,7 +36,7 @@ const aescbcKeySize = 32
 type EncryptionState struct {
 	Stage        string   `json:"stage"`
 	ActiveKey    string   `json:"activekey"`
-	Enable       int      `json:"enable,omitempty"` // -1: no config file, 0: disabled, 1: enabled
+	Enable       *bool    `json:"enable,omitempty"`
 	HashMatch    bool     `json:"hashmatch,omitempty"`
 	HashError    string   `json:"hasherror,omitempty"`
 	InactiveKeys []string `json:"inactivekeys,omitempty"`
@@ -82,15 +83,14 @@ func encryptionStatus(server *config.Control) (EncryptionState, error) {
 	state := EncryptionState{}
 	providers, err := getEncryptionProviders(server)
 	if os.IsNotExist(err) {
-		state.Enable = -1
 		return state, nil
 	} else if err != nil {
 		return state, err
 	}
 	if providers[1].Identity != nil && providers[0].AESCBC != nil {
-		state.Enable = 1
+		state.Enable = pointer.Bool(true)
 	} else if providers[0].Identity != nil && providers[1].AESCBC != nil || !server.EncryptSecrets {
-		state.Enable = 0
+		state.Enable = pointer.Bool(false)
 	}
 
 	s, err := getEncryptionState(server)
