@@ -7,7 +7,7 @@ import (
 	"github.com/urfave/cli"
 )
 
-var defaultParser = &Parser{
+var DefaultParser = &Parser{
 	After:         []string{"server", "agent", "etcd-snapshot:1"},
 	FlagNames:     []string{"--config", "-c"},
 	EnvName:       version.ProgramUpper + "_CONFIG_FILE",
@@ -16,7 +16,7 @@ var defaultParser = &Parser{
 }
 
 func MustParse(args []string) []string {
-	result, err := defaultParser.Parse(args)
+	result, err := DefaultParser.Parse(args)
 	if err != nil {
 		logrus.Fatal(err)
 	}
