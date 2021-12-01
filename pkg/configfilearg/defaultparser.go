@@ -23,6 +23,10 @@ func MustParse(args []string) []string {
 	return result
 }
 
+func AppendValidFlags(command string, flags []cli.Flag) {
+	defaultParser.ValidFlags[command] = append(defaultParser.ValidFlags[command], flags...)
+}
+
 func MustFindString(args []string, target string) string {
 	parser := &Parser{
 		After:         []string{},
