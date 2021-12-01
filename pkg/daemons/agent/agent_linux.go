@@ -78,7 +78,6 @@ func kubeletArgs(cfg *config.Agent) map[string]string {
 	if cfg.RootDir != "" {
 		argsMap["root-dir"] = cfg.RootDir
 		argsMap["cert-dir"] = filepath.Join(cfg.RootDir, "pki")
-		argsMap["seccomp-profile-root"] = filepath.Join(cfg.RootDir, "seccomp")
 	}
 	if cfg.CNIConfDir != "" {
 		argsMap["cni-conf-dir"] = cfg.CNIConfDir
