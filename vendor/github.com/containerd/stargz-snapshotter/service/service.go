@@ -35,6 +35,7 @@ type Option func(*options)
 type options struct {
 	credsFuncs    []resolver.Credential
 	registryHosts source.RegistryHosts
+	fsOpts        []stargzfs.Option
 }
 
 // WithCredsFuncs specifies credsFuncs to be used for connecting to the registries.
@@ -48,6 +49,13 @@ func WithCredsFuncs(creds ...resolver.Credential) Option {
 func WithCustomRegistryHosts(hosts source.RegistryHosts) Option {
 	return func(o *options) {
 		o.registryHosts = hosts
+	}
+}
+
+// WithFilesystemOptions allowes to pass filesystem-related configuration.
+func WithFilesystemOptions(opts ...stargzfs.Option) Option {
+	return func(o *options) {
+		o.fsOpts = opts
 	}
 }
 
@@ -65,13 +73,11 @@ func NewStargzSnapshotterService(ctx context.Context, root string, config *Confi
 	}
 
 	// Configure filesystem and snapshotter
-	fs, err := stargzfs.NewFilesystem(fsRoot(root),
-		config.Config,
-		stargzfs.WithGetSources(sources(
-			sourceFromCRILabels(hosts),      // provides source info based on CRI labels
-			source.FromDefaultLabels(hosts), // provides source info based on default labels
-		)),
-	)
+	fsOpts := append(sOpts.fsOpts, stargzfs.WithGetSources(sources(
+		sourceFromCRILabels(hosts),      // provides source info based on CRI labels
+		source.FromDefaultLabels(hosts), // provides source info based on default labels
+	)))
+	fs, err := stargzfs.NewFilesystem(fsRoot(root), config.Config, fsOpts...)
 	if err != nil {
 		log.G(ctx).WithError(err).Fatalf("failed to configure filesystem")
 	}

@@ -17,12 +17,12 @@
 package resolver
 
 import (
-	"net/http"
 	"time"
 
 	"github.com/containerd/containerd/reference"
 	"github.com/containerd/containerd/remotes/docker"
 	"github.com/containerd/stargz-snapshotter/fs/source"
+	rhttp "github.com/hashicorp/go-retryablehttp"
 )
 
 const defaultRequestTimeoutSec = 30
@@ -59,7 +59,9 @@ func RegistryHostsFromConfig(cfg Config, credsFuncs ...Credential) source.Regist
 		for _, h := range append(cfg.Host[host].Mirrors, MirrorConfig{
 			Host: host,
 		}) {
-			tr := &http.Client{Transport: http.DefaultTransport.(*http.Transport).Clone()}
+			client := rhttp.NewClient()
+			client.Logger = nil // disable logging every request
+			tr := client.StandardClient()
 			if h.RequestTimeoutSec >= 0 {
 				if h.RequestTimeoutSec == 0 {
 					tr.Timeout = defaultRequestTimeoutSec * time.Second

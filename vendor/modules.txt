@@ -174,17 +174,17 @@ github.com/cilium/ebpf/internal/unix
 github.com/cilium/ebpf/link
 # github.com/container-storage-interface/spec v1.5.0
 github.com/container-storage-interface/spec/lib/go/csi
-# github.com/containerd/btrfs v1.0.0 => github.com/containerd/btrfs v1.0.0
+# github.com/containerd/btrfs v1.0.0
 github.com/containerd/btrfs
-# github.com/containerd/cgroups v1.0.1 => github.com/containerd/cgroups v1.0.1
+# github.com/containerd/cgroups v1.0.1
 ## explicit
 github.com/containerd/cgroups
 github.com/containerd/cgroups/stats/v1
 github.com/containerd/cgroups/v2
 github.com/containerd/cgroups/v2/stats
-# github.com/containerd/console v1.0.3 => github.com/containerd/console v1.0.2
+# github.com/containerd/console v1.0.3
 github.com/containerd/console
-# github.com/containerd/containerd v1.5.8 => github.com/k3s-io/containerd v1.5.8-k3s1
+# github.com/containerd/containerd v1.6.0-beta.2.0.20211117185425-a776a27af54a => github.com/k3s-io/containerd v1.5.8-k3s2
 ## explicit
 github.com/containerd/containerd
 github.com/containerd/containerd/api/events
@@ -359,7 +359,7 @@ github.com/containerd/containerd/snapshots/storage
 github.com/containerd/containerd/sys
 github.com/containerd/containerd/sys/reaper
 github.com/containerd/containerd/version
-# github.com/containerd/continuity v0.1.0 => github.com/k3s-io/continuity v0.0.0-20210309170710-f93269e0d5c1
+# github.com/containerd/continuity v0.2.1
 github.com/containerd/continuity
 github.com/containerd/continuity/devices
 github.com/containerd/continuity/driver
@@ -367,15 +367,15 @@ github.com/containerd/continuity/fs
 github.com/containerd/continuity/pathdriver
 github.com/containerd/continuity/proto
 github.com/containerd/continuity/sysx
-# github.com/containerd/fifo v1.0.0 => github.com/containerd/fifo v1.0.0
+# github.com/containerd/fifo v1.0.0
 github.com/containerd/fifo
-# github.com/containerd/fuse-overlayfs-snapshotter v1.0.3
+# github.com/containerd/fuse-overlayfs-snapshotter v1.0.4
 ## explicit
 github.com/containerd/fuse-overlayfs-snapshotter
 github.com/containerd/fuse-overlayfs-snapshotter/plugin
 # github.com/containerd/go-cni v1.0.2
 github.com/containerd/go-cni
-# github.com/containerd/go-runc v1.0.0 => github.com/containerd/go-runc v1.0.0
+# github.com/containerd/go-runc v1.0.0
 github.com/containerd/go-runc
 # github.com/containerd/imgcrypt v1.1.1
 github.com/containerd/imgcrypt
@@ -383,7 +383,7 @@ github.com/containerd/imgcrypt/images/encryption
 # github.com/containerd/nri v0.1.0
 github.com/containerd/nri
 github.com/containerd/nri/types/v1
-# github.com/containerd/stargz-snapshotter v0.8.0
+# github.com/containerd/stargz-snapshotter v0.10.1
 ## explicit
 github.com/containerd/stargz-snapshotter/cache
 github.com/containerd/stargz-snapshotter/fs
@@ -394,6 +394,9 @@ github.com/containerd/stargz-snapshotter/fs/metrics/layer
 github.com/containerd/stargz-snapshotter/fs/reader
 github.com/containerd/stargz-snapshotter/fs/remote
 github.com/containerd/stargz-snapshotter/fs/source
+github.com/containerd/stargz-snapshotter/metadata
+github.com/containerd/stargz-snapshotter/metadata/db
+github.com/containerd/stargz-snapshotter/metadata/memory
 github.com/containerd/stargz-snapshotter/service
 github.com/containerd/stargz-snapshotter/service/keychain/cri
 github.com/containerd/stargz-snapshotter/service/keychain/dockerconfig
@@ -405,13 +408,14 @@ github.com/containerd/stargz-snapshotter/snapshot/overlayutils
 github.com/containerd/stargz-snapshotter/task
 github.com/containerd/stargz-snapshotter/util/lrucache
 github.com/containerd/stargz-snapshotter/util/namedmutex
-# github.com/containerd/stargz-snapshotter/estargz v0.9.0
+github.com/containerd/stargz-snapshotter/util/testutil
+# github.com/containerd/stargz-snapshotter/estargz v0.10.1
 github.com/containerd/stargz-snapshotter/estargz
 github.com/containerd/stargz-snapshotter/estargz/errorutil
 github.com/containerd/stargz-snapshotter/estargz/zstdchunked
-# github.com/containerd/ttrpc v1.1.0 => github.com/containerd/ttrpc v1.0.2
+# github.com/containerd/ttrpc v1.1.0
 github.com/containerd/ttrpc
-# github.com/containerd/typeurl v1.0.2 => github.com/containerd/typeurl v1.0.2
+# github.com/containerd/typeurl v1.0.2
 github.com/containerd/typeurl
 # github.com/containernetworking/cni v0.8.1
 github.com/containernetworking/cni/libcni
@@ -463,7 +467,7 @@ github.com/cyphar/filepath-securejoin
 github.com/davecgh/go-spew/spew
 # github.com/daviddengcn/go-colortext v0.0.0-20160507010035-511bcaf42ccd
 github.com/daviddengcn/go-colortext
-# github.com/docker/cli v20.10.9+incompatible
+# github.com/docker/cli v20.10.10+incompatible
 github.com/docker/cli/cli/config
 github.com/docker/cli/cli/config/configfile
 github.com/docker/cli/cli/config/credentials
@@ -568,6 +572,16 @@ github.com/go-openapi/swag
 # github.com/go-sql-driver/mysql v1.6.0
 ## explicit
 github.com/go-sql-driver/mysql
+# github.com/goccy/go-json v0.7.10
+github.com/goccy/go-json
+github.com/goccy/go-json/internal/decoder
+github.com/goccy/go-json/internal/encoder
+github.com/goccy/go-json/internal/encoder/vm
+github.com/goccy/go-json/internal/encoder/vm_color
+github.com/goccy/go-json/internal/encoder/vm_color_indent
+github.com/goccy/go-json/internal/encoder/vm_indent
+github.com/goccy/go-json/internal/errors
+github.com/goccy/go-json/internal/runtime
 # github.com/godbus/dbus/v5 v5.0.4
 github.com/godbus/dbus/v5
 # github.com/gofrs/flock v0.8.1
@@ -734,7 +748,7 @@ github.com/grpc-ecosystem/go-grpc-prometheus
 github.com/grpc-ecosystem/grpc-gateway/internal
 github.com/grpc-ecosystem/grpc-gateway/runtime
 github.com/grpc-ecosystem/grpc-gateway/utilities
-# github.com/hanwen/go-fuse/v2 v2.1.0
+# github.com/hanwen/go-fuse/v2 v2.1.1-0.20210825171523-3ab5d95a30ae
 github.com/hanwen/go-fuse/v2/fs
 github.com/hanwen/go-fuse/v2/fuse
 github.com/hanwen/go-fuse/v2/internal
@@ -742,8 +756,12 @@ github.com/hanwen/go-fuse/v2/internal/utimens
 github.com/hanwen/go-fuse/v2/splice
 # github.com/hashicorp/errwrap v1.0.0
 github.com/hashicorp/errwrap
+# github.com/hashicorp/go-cleanhttp v0.5.1
+github.com/hashicorp/go-cleanhttp
 # github.com/hashicorp/go-multierror v1.1.1
 github.com/hashicorp/go-multierror
+# github.com/hashicorp/go-retryablehttp v0.7.0
+github.com/hashicorp/go-retryablehttp
 # github.com/imdario/mergo v0.3.12
 github.com/imdario/mergo
 # github.com/inconshreveable/mousetrap v1.0.0
@@ -848,7 +866,7 @@ github.com/moby/locker
 # github.com/moby/spdystream v0.2.0
 github.com/moby/spdystream
 github.com/moby/spdystream/spdy
-# github.com/moby/sys/mountinfo v0.4.1
+# github.com/moby/sys/mountinfo v0.5.0
 github.com/moby/sys/mountinfo
 # github.com/moby/sys/symlink v0.1.0
 github.com/moby/sys/symlink
@@ -962,7 +980,7 @@ github.com/opencontainers/selinux/pkg/pwalk
 # github.com/otiai10/copy v1.6.0
 ## explicit
 github.com/otiai10/copy
-# github.com/pelletier/go-toml v1.9.3
+# github.com/pelletier/go-toml v1.9.4
 github.com/pelletier/go-toml
 # github.com/peterbourgon/diskv v2.0.1+incompatible
 github.com/peterbourgon/diskv
@@ -1420,7 +1438,7 @@ golang.org/x/oauth2/jwt
 golang.org/x/sync/errgroup
 golang.org/x/sync/semaphore
 golang.org/x/sync/singleflight
-# golang.org/x/sys v0.0.0-20211004093028-2c5d950f24ef => golang.org/x/sys v0.0.0-20210616094352-59db8d763f22
+# golang.org/x/sys v0.0.0-20211025201205-69cdffdb9359 => golang.org/x/sys v0.0.0-20210616094352-59db8d763f22
 ## explicit
 golang.org/x/sys/cpu
 golang.org/x/sys/execabs
@@ -1545,7 +1563,7 @@ google.golang.org/genproto/googleapis/api/annotations
 google.golang.org/genproto/googleapis/api/httpbody
 google.golang.org/genproto/googleapis/rpc/status
 google.golang.org/genproto/protobuf/field_mask
-# google.golang.org/grpc v1.41.0 => google.golang.org/grpc v1.38.0
+# google.golang.org/grpc v1.42.0 => google.golang.org/grpc v1.38.0
 ## explicit
 google.golang.org/grpc
 google.golang.org/grpc/attributes
@@ -2340,7 +2358,7 @@ k8s.io/controller-manager/pkg/informerfactory
 k8s.io/controller-manager/pkg/leadermigration
 k8s.io/controller-manager/pkg/leadermigration/config
 k8s.io/controller-manager/pkg/leadermigration/options
-# k8s.io/cri-api v0.22.4 => github.com/k3s-io/kubernetes/staging/src/k8s.io/cri-api v1.22.4-k3s1
+# k8s.io/cri-api v0.23.0-alpha.4 => github.com/k3s-io/kubernetes/staging/src/k8s.io/cri-api v1.22.4-k3s1
 ## explicit
 k8s.io/cri-api/pkg/apis
 k8s.io/cri-api/pkg/apis/runtime/v1alpha2
@@ -3417,17 +3435,7 @@ sigs.k8s.io/structured-merge-diff/v4/value
 sigs.k8s.io/yaml
 # github.com/Microsoft/hcsshim => github.com/Microsoft/hcsshim v0.8.20
 # github.com/benmoss/go-powershell => github.com/k3s-io/go-powershell v0.0.0-20201118222746-51f4c451fbd7
-# github.com/containerd/aufs => github.com/containerd/aufs v1.0.0
-# github.com/containerd/btrfs => github.com/containerd/btrfs v1.0.0
-# github.com/containerd/cgroups => github.com/containerd/cgroups v1.0.1
-# github.com/containerd/console => github.com/containerd/console v1.0.2
-# github.com/containerd/containerd => github.com/k3s-io/containerd v1.5.8-k3s1
-# github.com/containerd/continuity => github.com/k3s-io/continuity v0.0.0-20210309170710-f93269e0d5c1
-# github.com/containerd/fifo => github.com/containerd/fifo v1.0.0
-# github.com/containerd/go-runc => github.com/containerd/go-runc v1.0.0
-# github.com/containerd/ttrpc => github.com/containerd/ttrpc v1.0.2
-# github.com/containerd/typeurl => github.com/containerd/typeurl v1.0.2
-# github.com/containerd/zfs => github.com/containerd/zfs v1.0.0
+# github.com/containerd/containerd => github.com/k3s-io/containerd v1.5.8-k3s2
 # github.com/coreos/go-systemd => github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e
 # github.com/docker/distribution => github.com/docker/distribution v2.7.1+incompatible
 # github.com/docker/docker => github.com/docker/docker v20.10.2+incompatible

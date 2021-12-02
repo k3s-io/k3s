@@ -70,6 +70,14 @@ const (
 	// targetImageLayersLabel is a label which contains layer digests contained in
 	// the target image.
 	targetImageLayersLabel = "containerd.io/snapshot/remote/stargz.layers"
+
+	// targetImageURLsLabelPrefix is a label prefix which constructs a map from the layer index to
+	// urls of the layer descriptor.
+	targetImageURLsLabelPrefix = "containerd.io/snapshot/remote/urls."
+
+	// targetURsLLabel is a label which contains layer URL. This is only used to pass URL from containerd
+	// to snapshotter.
+	targetURLsLabel = "containerd.io/snapshot/remote/urls"
 )
 
 // FromDefaultLabels returns a function for converting snapshot labels to
@@ -94,31 +102,38 @@ func FromDefaultLabels(hosts RegistryHosts) GetSources {
 			return nil, err
 		}
 
-		var layersDgst []digest.Digest
+		var neighboringLayers []ocispec.Descriptor
 		if l, ok := labels[targetImageLayersLabel]; ok {
 			layersStr := strings.Split(l, ",")
-			for _, l := range layersStr {
+			for i, l := range layersStr {
 				d, err := digest.Parse(l)
 				if err != nil {
 					return nil, err
 				}
 				if d.String() != target.String() {
-					layersDgst = append(layersDgst, d)
+					desc := ocispec.Descriptor{Digest: d}
+					if urls, ok := labels[targetImageURLsLabelPrefix+fmt.Sprintf("%d", i)]; ok {
+						desc.URLs = strings.Split(urls, ",")
+					}
+					neighboringLayers = append(neighboringLayers, desc)
 				}
 			}
 		}
 
-		var layers []ocispec.Descriptor
-		for _, dgst := range append([]digest.Digest{target}, layersDgst...) {
-			layers = append(layers, ocispec.Descriptor{Digest: dgst})
+		targetDesc := ocispec.Descriptor{
+			Digest:      target,
+			Annotations: labels,
+		}
+		if targetURLs, ok := labels[targetURLsLabel]; ok {
+			targetDesc.URLs = append(targetDesc.URLs, strings.Split(targetURLs, ",")...)
 		}
 
 		return []Source{
 			{
 				Hosts:    hosts,
 				Name:     refspec,
-				Target:   ocispec.Descriptor{Digest: target},
-				Manifest: ocispec.Manifest{Layers: layers},
+				Target:   targetDesc,
+				Manifest: ocispec.Manifest{Layers: append([]ocispec.Descriptor{targetDesc}, neighboringLayers...)},
 			},
 		}, nil
 	}
@@ -146,7 +161,7 @@ func AppendDefaultLabelsHandlerWrapper(ref string, prefetchSize int64) func(f im
 						c.Annotations[targetRefLabel] = ref
 						c.Annotations[targetDigestLabel] = c.Digest.String()
 						var layers string
-						for _, l := range children[i:] {
+						for i, l := range children[i:] {
 							if images.IsLayerType(l.MediaType) {
 								ls := fmt.Sprintf("%s,", l.Digest.String())
 								// This avoids the label hits the size limitation.
@@ -155,14 +170,33 @@ func AppendDefaultLabelsHandlerWrapper(ref string, prefetchSize int64) func(f im
 									break
 								}
 								layers += ls
+
+								// Store URLs of the neighbouring layer as well.
+								urlsKey := targetImageURLsLabelPrefix + fmt.Sprintf("%d", i)
+								c.Annotations[urlsKey] = appendWithValidation(urlsKey, l.URLs)
 							}
 						}
 						c.Annotations[targetImageLayersLabel] = strings.TrimSuffix(layers, ",")
 						c.Annotations[config.TargetPrefetchSizeLabel] = fmt.Sprintf("%d", prefetchSize)
+
+						// store URL in annotation to let containerd to pass it to the snapshotter
+						c.Annotations[targetURLsLabel] = appendWithValidation(targetURLsLabel, c.URLs)
 					}
 				}
 			}
 			return children, nil
 		})
 	}
+}
+
+func appendWithValidation(key string, values []string) string {
+	var v string
+	for _, u := range values {
+		s := fmt.Sprintf("%s,", u)
+		if err := labels.Validate(key, v+s); err != nil {
+			break
+		}
+		v += s
+	}
+	return strings.TrimSuffix(v, ",")
 }

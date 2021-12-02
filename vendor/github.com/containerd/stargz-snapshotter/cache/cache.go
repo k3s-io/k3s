@@ -132,6 +132,7 @@ func NewDirectoryCache(directory string, config DirectoryCacheConfig) (BlobCache
 		}
 		dataCache = lrucache.New(maxEntry)
 		dataCache.OnEvicted = func(key string, value interface{}) {
+			value.(*bytes.Buffer).Reset()
 			bufPool.Put(value)
 		}
 	}
@@ -296,7 +297,6 @@ func (dc *directoryCache) Add(key string, opts ...Option) (Writer, error) {
 	}
 
 	b := dc.bufPool.Get().(*bytes.Buffer)
-	b.Reset()
 	memW := &writer{
 		WriteCloser: nopWriteCloser(io.Writer(b)),
 		commitFunc: func() error {
@@ -306,7 +306,7 @@ func (dc *directoryCache) Add(key string, opts ...Option) (Writer, error) {
 			}
 			cached, done, added := dc.cache.Add(key, b)
 			if !added {
-				dc.bufPool.Put(b) // already exists in the cache. abort it.
+				dc.putBuffer(b) // already exists in the cache. abort it.
 			}
 			commit := func() error {
 				defer done()
@@ -331,12 +331,17 @@ func (dc *directoryCache) Add(key string, opts ...Option) (Writer, error) {
 		abortFunc: func() error {
 			defer w.Close()
 			defer w.Abort()
-			dc.bufPool.Put(b) // abort it.
+			dc.putBuffer(b) // abort it.
 			return nil
 		},
 	}
 
 	return memW, nil
+}
+
+func (dc *directoryCache) putBuffer(b *bytes.Buffer) {
+	b.Reset()
+	dc.bufPool.Put(b)
 }
 
 func (dc *directoryCache) Close() error {
