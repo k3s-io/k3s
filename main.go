@@ -10,6 +10,7 @@ import (
 	"os"
 
 	"github.com/rancher/k3s/pkg/cli/agent"
+	"github.com/rancher/k3s/pkg/cli/cert"
 	"github.com/rancher/k3s/pkg/cli/cmds"
 	"github.com/rancher/k3s/pkg/cli/crictl"
 	"github.com/rancher/k3s/pkg/cli/etcdsnapshot"
@@ -33,6 +34,10 @@ func main() {
 				etcdsnapshot.List,
 				etcdsnapshot.Prune,
 				etcdsnapshot.Run),
+		),
+		cmds.NewCertCommand(
+			cmds.NewCertSubcommands(
+				cert.Run),
 		),
 	}
 
