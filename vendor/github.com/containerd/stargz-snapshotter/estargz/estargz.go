@@ -118,7 +118,7 @@ func Open(sr *io.SectionReader, opt ...OpenOption) (*Reader, error) {
 		}
 	}
 
-	gzipCompressors := []Decompressor{new(GzipDecompressor), new(legacyGzipDecompressor)}
+	gzipCompressors := []Decompressor{new(GzipDecompressor), new(LegacyGzipDecompressor)}
 	decompressors := append(gzipCompressors, opts.decompressors...)
 
 	// Determine the size to fetch. Try to fetch as many bytes as possible.
@@ -184,7 +184,7 @@ func OpenFooter(sr *io.SectionReader) (tocOffset int64, footerSize int64, rErr e
 		return 0, 0, fmt.Errorf("error reading footer: %v", err)
 	}
 	var allErr []error
-	for _, d := range []Decompressor{new(GzipDecompressor), new(legacyGzipDecompressor)} {
+	for _, d := range []Decompressor{new(GzipDecompressor), new(LegacyGzipDecompressor)} {
 		fSize := d.FooterSize()
 		fOffset := positive(int64(len(footer)) - fSize)
 		_, tocOffset, _, err := d.ParseFooter(footer[fOffset:])
@@ -279,12 +279,12 @@ func (r *Reader) initFields() error {
 		pdir := r.getOrCreateDir(pdirName)
 		ent.NumLink++ // at least one name(ent.Name) references this entry.
 		if ent.Type == "hardlink" {
-			if org, ok := r.m[cleanEntryName(ent.LinkName)]; ok {
-				org.NumLink++ // original entry is referenced by this ent.Name.
-				ent = org
-			} else {
-				return fmt.Errorf("%q is a hardlink but the linkname %q isn't found", ent.Name, ent.LinkName)
+			org, err := r.getSource(ent)
+			if err != nil {
+				return err
 			}
+			org.NumLink++ // original entry is referenced by this ent.Name.
+			ent = org
 		}
 		pdir.addChild(path.Base(name), ent)
 	}
@@ -301,6 +301,20 @@ func (r *Reader) initFields() error {
 	}
 
 	return nil
+}
+
+func (r *Reader) getSource(ent *TOCEntry) (_ *TOCEntry, err error) {
+	if ent.Type == "hardlink" {
+		org, ok := r.m[cleanEntryName(ent.LinkName)]
+		if !ok {
+			return nil, fmt.Errorf("%q is a hardlink but the linkname %q isn't found", ent.Name, ent.LinkName)
+		}
+		ent, err = r.getSource(org)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return ent, nil
 }
 
 func parentDir(p string) string {
@@ -464,7 +478,11 @@ func (r *Reader) Lookup(path string) (e *TOCEntry, ok bool) {
 	}
 	e, ok = r.m[path]
 	if ok && e.Type == "hardlink" {
-		e, ok = r.m[e.LinkName]
+		var err error
+		e, err = r.getSource(e)
+		if err != nil {
+			return nil, false
+		}
 	}
 	return
 }

@@ -8,13 +8,15 @@ require (
 	github.com/containerd/aufs v1.0.0
 	github.com/containerd/btrfs v1.0.0
 	github.com/containerd/cgroups v1.0.1
-	github.com/containerd/console v1.0.2
-	github.com/containerd/continuity v0.1.0
+	github.com/containerd/console v1.0.3
+	github.com/containerd/continuity v0.2.1
 	github.com/containerd/fifo v1.0.0
+	github.com/containerd/fuse-overlayfs-snapshotter v1.0.4
 	github.com/containerd/go-cni v1.0.2
 	github.com/containerd/go-runc v1.0.0
 	github.com/containerd/imgcrypt v1.1.1
 	github.com/containerd/nri v0.1.0
+	github.com/containerd/stargz-snapshotter v0.10.1
 	github.com/containerd/ttrpc v1.1.0
 	github.com/containerd/typeurl v1.0.2
 	github.com/containerd/zfs v1.0.0
@@ -31,41 +33,40 @@ require (
 	github.com/google/go-cmp v0.5.6
 	github.com/google/uuid v1.2.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
-	github.com/hashicorp/go-multierror v1.0.0
+	github.com/hashicorp/go-multierror v1.1.1
 	github.com/imdario/mergo v0.3.12
-	github.com/klauspost/compress v1.11.13
+	github.com/klauspost/compress v1.13.6
 	github.com/moby/locker v1.0.1
-	github.com/moby/sys/mountinfo v0.4.1
+	github.com/moby/sys/mountinfo v0.5.0
 	github.com/moby/sys/symlink v0.1.0
 	github.com/opencontainers/go-digest v1.0.0
-	github.com/opencontainers/image-spec v1.0.1
+	github.com/opencontainers/image-spec v1.0.2-0.20210819154149-5ad6f50d6283
 	github.com/opencontainers/runc v1.0.2
 	github.com/opencontainers/runtime-spec v1.0.3-0.20210326190908-1c3f411f0417
 	github.com/opencontainers/selinux v1.8.2
-	github.com/pelletier/go-toml v1.8.1
+	github.com/pelletier/go-toml v1.9.4
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.11.0
-	github.com/prometheus/procfs v0.6.0 // indirect; temporarily force v0.6.0, which was previously defined in imgcrypt as explicit version
 	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/sirupsen/logrus v1.8.1
 	github.com/stretchr/testify v1.7.0
 	github.com/tchap/go-patricia v2.2.6+incompatible
-	github.com/urfave/cli v1.22.2
+	github.com/urfave/cli v1.22.4
 	go.etcd.io/bbolt v1.3.6
-	golang.org/x/net v0.0.0-20210520170846-37e1c6afe023
+	golang.org/x/net v0.0.0-20210813160813-60bc85c4be6d
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
-	golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c
-	google.golang.org/grpc v1.38.0
-	google.golang.org/protobuf v1.26.0
+	golang.org/x/sys v0.0.0-20211025201205-69cdffdb9359
+	google.golang.org/grpc v1.42.0
+	google.golang.org/protobuf v1.27.1
 	gotest.tools/v3 v3.0.3
-	k8s.io/api v0.22.0
-	k8s.io/apimachinery v0.22.0
-	k8s.io/apiserver v0.22.0
-	k8s.io/client-go v0.22.0
-	k8s.io/component-base v0.22.0
-	k8s.io/cri-api v0.22.0
+	k8s.io/api v0.22.4
+	k8s.io/apimachinery v0.22.4
+	k8s.io/apiserver v0.22.4
+	k8s.io/client-go v0.22.4
+	k8s.io/component-base v0.22.4
+	k8s.io/cri-api v0.23.0-alpha.4
 	k8s.io/klog/v2 v2.9.0
-	k8s.io/utils v0.0.0-20210707171843-4b05e18ac7d9
+	k8s.io/utils v0.0.0-20210819203725-bdf08cb9a70a
 )
 
 // When updating replace rules, make sure to also update the rules in integration/client/go.mod
@@ -77,4 +78,5 @@ replace (
 	// urfave/cli must be <= v1.22.1 due to a regression: https://github.com/urfave/cli/issues/1092
 	github.com/urfave/cli => github.com/urfave/cli v1.22.1
 	google.golang.org/genproto => google.golang.org/genproto v0.0.0-20200224152610-e50cd9704f63
+	k8s.io/cri-api => k8s.io/cri-api v0.22.4
 )

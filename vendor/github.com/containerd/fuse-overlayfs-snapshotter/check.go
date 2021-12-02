@@ -1,3 +1,4 @@
+//go:build linux
 // +build linux
 
 /*
@@ -27,7 +28,6 @@ import (
 
 	"github.com/containerd/containerd/log"
 	"github.com/containerd/containerd/mount"
-	"github.com/pkg/errors"
 )
 
 // supportsReadonlyMultipleLowerDir checks if read-only multiple lowerdirs can be mounted with fuse-overlayfs.
@@ -57,7 +57,7 @@ func supportsReadonlyMultipleLowerDir(d string) error {
 	}
 	dest := filepath.Join(td, "merged")
 	if err := m.Mount(dest); err != nil {
-		return errors.Wrapf(err, "failed to mount fuse-overlayfs (%+v) on %s", m, dest)
+		return fmt.Errorf("failed to mount fuse-overlayfs (%+v) on %s: %w", m, dest, err)
 	}
 	if err := mount.UnmountAll(dest, 0); err != nil {
 		log.L.WithError(err).Warnf("Failed to unmount check directory %v", dest)
@@ -70,13 +70,13 @@ func supportsReadonlyMultipleLowerDir(d string) error {
 // this snapshotter as a library.
 func Supported(root string) error {
 	if _, err := exec.LookPath(fuseoverlayfsBinary); err != nil {
-		return errors.Wrapf(err, "%s not installed", fuseoverlayfsBinary)
+		return fmt.Errorf("%s not installed: %w", fuseoverlayfsBinary, err)
 	}
 	if err := os.MkdirAll(root, 0700); err != nil {
 		return err
 	}
 	if err := supportsReadonlyMultipleLowerDir(root); err != nil {
-		return errors.Wrap(err, "fuse-overlayfs not functional, make sure running with kernel >= 4.18")
+		return fmt.Errorf("fuse-overlayfs not functional, make sure running with kernel >= 4.18: %w", err)
 	}
 	return nil
 }

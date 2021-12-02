@@ -68,18 +68,12 @@ func mountDirect(mountPoint string, opts *MountOptions, ready chan<- error) (fd 
 	return
 }
 
-// Create a FUSE FS on the specified mount point.  The returned
-// mount point is always absolute.
-func mount(mountPoint string, opts *MountOptions, ready chan<- error) (fd int, err error) {
-	if opts.DirectMount {
-		fd, err := mountDirect(mountPoint, opts, ready)
-		if err == nil {
-			return fd, nil
-		} else if opts.Debug {
-			log.Printf("mount: failed to do direct mount: %s", err)
-		}
-	}
-
+// callFusermount calls the `fusermount` suid helper with the right options so
+// that it:
+// * opens `/dev/fuse`
+// * mount()s this file descriptor to `mountPoint`
+// * passes this file descriptor back to use via a unix domain socket
+func callFusermount(mountPoint string, opts *MountOptions) (fd int, err error) {
 	local, remote, err := unixgramSocketpair()
 	if err != nil {
 		return
@@ -121,11 +115,39 @@ func mount(mountPoint string, opts *MountOptions, ready chan<- error) (fd int, e
 		return -1, err
 	}
 
+	return
+}
+
+// Create a FUSE FS on the specified mount point.  The returned
+// mount point is always absolute.
+func mount(mountPoint string, opts *MountOptions, ready chan<- error) (fd int, err error) {
+	if opts.DirectMount {
+		fd, err := mountDirect(mountPoint, opts, ready)
+		if err == nil {
+			return fd, nil
+		} else if opts.Debug {
+			log.Printf("mount: failed to do direct mount: %s", err)
+		}
+	}
+
+	// Magic `/dev/fd/N` mountpoint. See the docs for NewServer() for how this
+	// works.
+	fd = parseFuseFd(mountPoint)
+	if fd >= 0 {
+		if opts.Debug {
+			log.Printf("mount: magic mountpoint %q, using fd %d", mountPoint, fd)
+		}
+	} else {
+		// Usual case: mount via the `fusermount` suid helper
+		fd, err = callFusermount(mountPoint, opts)
+		if err != nil {
+			return
+		}
+	}
 	// golang sets CLOEXEC on file descriptors when they are
 	// acquired through normal operations (e.g. open).
 	// Buf for fd, we have to set CLOEXEC manually
 	syscall.CloseOnExec(fd)
-
 	close(ready)
 	return fd, err
 }

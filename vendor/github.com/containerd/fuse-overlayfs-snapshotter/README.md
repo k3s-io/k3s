@@ -5,8 +5,6 @@ Unlike `overlayfs`, `fuse-overlayfs` can be used as a non-root user on almost al
 You do NOT need this `fuse-overlayfs` plugin on the following environments, because they support the real `overlayfs` for non-root users:
 - [kernel >= 5.11](https://github.com/torvalds/linux/commit/459c7c565ac36ba09ffbf24231147f408fde4203)
 - [Ubuntu kernel, since circa 2015](https://kernel.ubuntu.com/git/ubuntu/ubuntu-bionic.git/commit/fs/overlayfs?id=3b7da90f28fe1ed4b79ef2d994c81efbc58f1144)
-- [Debian 10 kernel](https://salsa.debian.org/kernel-team/linux/blob/283390e7feb21b47779b48e0c8eb0cc409d2c815/debian/patches/debian/overlayfs-permit-mounts-in-userns.patch)
-  - Debian 10 needs `sudo modprobe overlay permit_mounts_in_userns=1`. Future release of Debian with kernel >= 5.11 will not need this `modprobe` hack.
 
 fuse-overlayfs-snapshotter is a **non-core** sub-project of containerd.
 

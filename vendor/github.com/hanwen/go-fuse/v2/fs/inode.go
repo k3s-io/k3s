@@ -18,11 +18,6 @@ import (
 	"github.com/hanwen/go-fuse/v2/fuse"
 )
 
-type parentData struct {
-	name   string
-	parent *Inode
-}
-
 // StableAttr holds immutable attributes of a object in the filesystem.
 type StableAttr struct {
 	// Each Inode has a type, which does not change over the
@@ -32,8 +27,8 @@ type StableAttr struct {
 
 	// The inode number must be unique among the currently live
 	// objects in the file system. It is used to communicate to
-	// the kernel about this file object. The values uint64(-1),
-	// and 1 are reserved. When using Ino==0, a unique, sequential
+	// the kernel about this file object. The value uint64(-1)
+	// is reserved. When using Ino==0, a unique, sequential
 	// number is assigned (starting at 2^63 by default) on Inode creation.
 	Ino uint64
 
@@ -46,7 +41,7 @@ type StableAttr struct {
 
 // Reserved returns if the StableAttr is using reserved Inode numbers.
 func (i *StableAttr) Reserved() bool {
-	return i.Ino == 1 || i.Ino == ^uint64(0)
+	return i.Ino == ^uint64(0) // fuse.pollHackInode = ^uint64(0)
 }
 
 // Inode is a node in VFS tree.  Inodes are one-to-one mapped to
@@ -105,11 +100,11 @@ type Inode struct {
 
 	// Parents of this Inode. Can be more than one due to hard links.
 	// When you change this, you MUST increment changeCounter.
-	parents map[parentData]struct{}
+	parents inodeParents
 }
 
 func (n *Inode) IsDir() bool {
-	return n.stableAttr.Mode&syscall.S_IFDIR != 0
+	return n.stableAttr.Mode&syscall.S_IFMT == syscall.S_IFDIR
 }
 
 func (n *Inode) embed() *Inode {
@@ -126,7 +121,6 @@ func initInode(n *Inode, ops InodeEmbedder, attr StableAttr, bridge *rawBridge, 
 	n.bridge = bridge
 	n.persistent = persistent
 	n.nodeId = nodeId
-	n.parents = make(map[parentData]struct{})
 	if attr.Mode == fuse.S_IFDIR {
 		n.children = make(map[string]*Inode)
 	}
@@ -265,7 +259,7 @@ func unlockNodes(ns ...*Inode) {
 func (n *Inode) Forgotten() bool {
 	n.mu.Lock()
 	defer n.mu.Unlock()
-	return n.lookupCount == 0 && len(n.parents) == 0 && !n.persistent
+	return n.lookupCount == 0 && n.parents.count() == 0 && !n.persistent
 }
 
 // Operations returns the object implementing the file system
@@ -283,26 +277,16 @@ func (n *Inode) Path(root *Inode) string {
 	var segments []string
 	p := n
 	for p != nil && p != root {
-		var pd parentData
-
 		// We don't try to take all locks at the same time, because
 		// the caller won't use the "path" string under lock anyway.
-		found := false
 		p.mu.Lock()
-		// Select an arbitrary parent
-		for pd = range p.parents {
-			found = true
-			break
-		}
+		// Get last known parent
+		pd := p.parents.get()
 		p.mu.Unlock()
-		if found == false {
+		if pd == nil {
 			p = nil
 			break
 		}
-		if pd.parent == nil {
-			break
-		}
-
 		segments = append(segments, pd.name)
 		p = pd.parent
 	}
@@ -340,11 +324,9 @@ func (iparent *Inode) setEntry(name string, ichild *Inode) {
 		// Directories cannot have more than one parent. Clear the map.
 		// This special-case is neccessary because ichild may still have a
 		// parent that was forgotten (i.e. removed from bridge.inoMap).
-		for i := range ichild.parents {
-			delete(ichild.parents, i)
-		}
+		ichild.parents.clear()
 	}
-	ichild.parents[newParent] = struct{}{}
+	ichild.parents.add(newParent)
 	iparent.children[name] = ichild
 	ichild.changeCounter++
 	iparent.changeCounter++
@@ -408,8 +390,8 @@ func (n *Inode) removeRef(nlookup uint64, dropPersistence bool) (forgotten bool,
 	n.bridge.mu.Lock()
 	if n.lookupCount == 0 {
 		forgotten = true
-		// Dropping the node from inoMap guarantees that no new references to this node are
-		// handed out to the kernel, hence we can also safely delete it from nodeidMap.
+		// Dropping the node from stableAttrs guarantees that no new references to this node are
+		// handed out to the kernel, hence we can also safely delete it from kernelNodeIds.
 		delete(n.bridge.stableAttrs, n.stableAttr)
 		delete(n.bridge.kernelNodeIds, n.nodeId)
 	}
@@ -421,7 +403,7 @@ retry:
 		parents = parents[:0]
 		nChange := n.changeCounter
 		live = n.lookupCount > 0 || len(n.children) > 0 || n.persistent
-		for p := range n.parents {
+		for _, p := range n.parents.all() {
 			parents = append(parents, p)
 			lockme = append(lockme, p.parent)
 		}
@@ -447,7 +429,7 @@ retry:
 			delete(p.parent.children, p.name)
 			p.parent.changeCounter++
 		}
-		n.parents = map[parentData]struct{}{}
+		n.parents.clear()
 		n.changeCounter++
 
 		if n.lookupCount != 0 {
@@ -488,7 +470,7 @@ retry:
 		parentCounter := n.changeCounter
 		if !ok {
 			n.children[name] = ch
-			ch.parents[parentData{name, n}] = struct{}{}
+			ch.parents.add(parentData{name, n})
 			n.changeCounter++
 			ch.changeCounter++
 			unlockNode2(n, ch)
@@ -506,9 +488,9 @@ retry:
 			continue retry
 		}
 
-		delete(prev.parents, parentData{name, n})
+		prev.parents.delete(parentData{name, n})
 		n.children[name] = ch
-		ch.parents[parentData{name, n}] = struct{}{}
+		ch.parents.add(parentData{name, n})
 		n.changeCounter++
 		ch.changeCounter++
 		prev.changeCounter++
@@ -534,10 +516,11 @@ func (n *Inode) Children() map[string]*Inode {
 func (n *Inode) Parent() (string, *Inode) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
-	for k := range n.parents {
-		return k.name, k.parent
+	p := n.parents.get()
+	if p == nil {
+		return "", nil
 	}
-	return "", nil
+	return p.name, p.parent
 }
 
 // RmAllChildren recursively drops a tree, forgetting all persistent
@@ -589,7 +572,7 @@ retry:
 		for _, nm := range names {
 			ch := n.children[nm]
 			delete(n.children, nm)
-			delete(ch.parents, parentData{nm, n})
+			ch.parents.delete(parentData{nm, n})
 
 			ch.changeCounter++
 		}
@@ -640,7 +623,7 @@ retry:
 
 		if oldChild != nil {
 			delete(n.children, old)
-			delete(oldChild.parents, parentData{old, n})
+			oldChild.parents.delete(parentData{old, n})
 			n.changeCounter++
 			oldChild.changeCounter++
 		}
@@ -649,7 +632,7 @@ retry:
 			// This can cause the child to be slated for
 			// removal; see below
 			delete(newParent.children, newName)
-			delete(destChild.parents, parentData{newName, newParent})
+			destChild.parents.delete(parentData{newName, newParent})
 			destChild.changeCounter++
 			newParent.changeCounter++
 		}
@@ -658,7 +641,7 @@ retry:
 			newParent.children[newName] = oldChild
 			newParent.changeCounter++
 
-			oldChild.parents[parentData{newName, newParent}] = struct{}{}
+			oldChild.parents.add(parentData{newName, newParent})
 			oldChild.changeCounter++
 		}
 
@@ -698,14 +681,14 @@ retry:
 		// Detach
 		if oldChild != nil {
 			delete(oldParent.children, oldName)
-			delete(oldChild.parents, parentData{oldName, oldParent})
+			oldChild.parents.delete(parentData{oldName, oldParent})
 			oldParent.changeCounter++
 			oldChild.changeCounter++
 		}
 
 		if destChild != nil {
 			delete(newParent.children, newName)
-			delete(destChild.parents, parentData{newName, newParent})
+			destChild.parents.delete(parentData{newName, newParent})
 			destChild.changeCounter++
 			newParent.changeCounter++
 		}
@@ -715,7 +698,7 @@ retry:
 			newParent.children[newName] = oldChild
 			newParent.changeCounter++
 
-			oldChild.parents[parentData{newName, newParent}] = struct{}{}
+			oldChild.parents.add(parentData{newName, newParent})
 			oldChild.changeCounter++
 		}
 
@@ -723,7 +706,7 @@ retry:
 			oldParent.children[oldName] = oldChild
 			oldParent.changeCounter++
 
-			destChild.parents[parentData{oldName, oldParent}] = struct{}{}
+			destChild.parents.add(parentData{oldName, oldParent})
 			destChild.changeCounter++
 		}
 		unlockNodes(oldParent, newParent, oldChild, destChild)

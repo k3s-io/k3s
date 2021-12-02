@@ -17,6 +17,7 @@
 package zstdchunked
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/binary"
 	"encoding/json"
@@ -87,6 +88,25 @@ func (zz *Decompressor) ParseFooter(p []byte) (blobPayloadSize, tocOffset, tocSi
 func (zz *Decompressor) FooterSize() int64 {
 	return FooterSize
 }
+
+func (zz *Decompressor) DecompressTOC(r io.Reader) (tocJSON io.ReadCloser, err error) {
+	decoder, err := zstd.NewReader(r)
+	if err != nil {
+		return nil, err
+	}
+	br := bufio.NewReader(decoder)
+	if _, err := br.Peek(1); err != nil {
+		return nil, err
+	}
+	return &reader{br, decoder.Close}, nil
+}
+
+type reader struct {
+	io.Reader
+	closeFunc func()
+}
+
+func (r *reader) Close() error { r.closeFunc(); return nil }
 
 type zstdReadCloser struct{ *zstd.Decoder }
 

@@ -27,8 +27,11 @@ import (
 )
 
 const (
-	// OperationLatencyKey is the key for stargz operation latency metrics.
-	OperationLatencyKey = "operation_duration"
+	// OperationLatencyKeyMilliseconds is the key for stargz operation latency metrics in milliseconds.
+	OperationLatencyKeyMilliseconds = "operation_duration_milliseconds"
+
+	// OperationLatencyKeyMicroseconds is the key for stargz operation latency metrics in microseconds.
+	OperationLatencyKeyMicroseconds = "operation_duration_microseconds"
 
 	// OperationCountKey is the key for stargz operation count metrics.
 	OperationCountKey = "operation_count"
@@ -71,18 +74,32 @@ const (
 )
 
 var (
-	// Buckets for OperationLatency metric in milliseconds.
-	latencyBuckets = []float64{1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384} // in milliseconds
+	// Buckets for OperationLatency metrics.
+	latencyBucketsMilliseconds = []float64{1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384} // in milliseconds
+	latencyBucketsMicroseconds = []float64{1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024}                          // in microseconds
 
-	// operationLatency collects operation latency numbers by operation
-	// type and layer digest.
-	operationLatency = prometheus.NewHistogramVec(
+	// operationLatencyMilliseconds collects operation latency numbers in milliseconds grouped by
+	// operation, type and layer digest.
+	operationLatencyMilliseconds = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Namespace: namespace,
 			Subsystem: subsystem,
-			Name:      OperationLatencyKey,
+			Name:      OperationLatencyKeyMilliseconds,
 			Help:      "Latency in milliseconds of stargz snapshotter operations. Broken down by operation type and layer sha.",
-			Buckets:   latencyBuckets,
+			Buckets:   latencyBucketsMilliseconds,
+		},
+		[]string{"operation_type", "layer"},
+	)
+
+	// operationLatencyMicroseconds collects operation latency numbers in microseconds grouped by
+	// operation, type and layer digest.
+	operationLatencyMicroseconds = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: namespace,
+			Subsystem: subsystem,
+			Name:      OperationLatencyKeyMicroseconds,
+			Help:      "Latency in microseconds of stargz snapshotter operations. Broken down by operation type and layer sha.",
+			Buckets:   latencyBucketsMicroseconds,
 		},
 		[]string{"operation_type", "layer"},
 	)
@@ -120,22 +137,39 @@ func sinceInMilliseconds(start time.Time) float64 {
 	return float64(time.Since(start).Nanoseconds()) / 1e6
 }
 
+// sinceInMicroseconds gets the time since the specified start in microseconds.
+// The division by 1e3 is made to have the microseconds value as floating point number, since the native method
+// .Microseconds() returns an integer value and you can lost a precision for sub-microsecond values.
+func sinceInMicroseconds(start time.Time) float64 {
+	return float64(time.Since(start).Nanoseconds()) / 1e3
+}
+
 // Register registers metrics. This is always called only once.
 func Register() {
 	register.Do(func() {
-		prometheus.MustRegister(operationLatency)
+		prometheus.MustRegister(operationLatencyMilliseconds)
+		prometheus.MustRegister(operationLatencyMicroseconds)
 		prometheus.MustRegister(operationCount)
 		prometheus.MustRegister(bytesCount)
 	})
 }
 
-// MeasureLatency wraps the labels attachment as well as calling Observe into a single method.
+// MeasureLatencyInMilliseconds wraps the labels attachment as well as calling Observe into a single method.
 // Right now we attach the operation and layer digest, so it's possible to see the breakdown for latency
 // by operation and individual layers.
 // If you want this to be layer agnostic, just pass the digest from empty string, e.g.
 // layerDigest := digest.FromString("")
-func MeasureLatency(operation string, layer digest.Digest, start time.Time) {
-	operationLatency.WithLabelValues(operation, layer.String()).Observe(sinceInMilliseconds(start))
+func MeasureLatencyInMilliseconds(operation string, layer digest.Digest, start time.Time) {
+	operationLatencyMilliseconds.WithLabelValues(operation, layer.String()).Observe(sinceInMilliseconds(start))
+}
+
+// MeasureLatencyInMicroseconds wraps the labels attachment as well as calling Observe into a single method.
+// Right now we attach the operation and layer digest, so it's possible to see the breakdown for latency
+// by operation and individual layers.
+// If you want this to be layer agnostic, just pass the digest from empty string, e.g.
+// layerDigest := digest.FromString("")
+func MeasureLatencyInMicroseconds(operation string, layer digest.Digest, start time.Time) {
+	operationLatencyMicroseconds.WithLabelValues(operation, layer.String()).Observe(sinceInMicroseconds(start))
 }
 
 // IncOperationCount wraps the labels attachment as well as calling Inc into a single method.

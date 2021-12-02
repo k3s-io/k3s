@@ -38,30 +38,34 @@ import (
 )
 
 type gzipCompression struct {
-	*gzipCompressor
+	*GzipCompressor
 	*GzipDecompressor
 }
 
 func newGzipCompressionWithLevel(level int) Compression {
 	return &gzipCompression{
-		&gzipCompressor{level},
+		&GzipCompressor{level},
 		&GzipDecompressor{},
 	}
 }
 
-func NewGzipCompressorWithLevel(level int) Compressor {
-	return &gzipCompressor{level}
+func NewGzipCompressor() *GzipCompressor {
+	return &GzipCompressor{gzip.BestCompression}
 }
 
-type gzipCompressor struct {
+func NewGzipCompressorWithLevel(level int) *GzipCompressor {
+	return &GzipCompressor{level}
+}
+
+type GzipCompressor struct {
 	compressionLevel int
 }
 
-func (gc *gzipCompressor) Writer(w io.Writer) (io.WriteCloser, error) {
+func (gc *GzipCompressor) Writer(w io.Writer) (io.WriteCloser, error) {
 	return gzip.NewWriterLevel(w, gc.compressionLevel)
 }
 
-func (gc *gzipCompressor) WriteTOCAndFooter(w io.Writer, off int64, toc *JTOC, diffHash hash.Hash) (digest.Digest, error) {
+func (gc *GzipCompressor) WriteTOCAndFooter(w io.Writer, off int64, toc *JTOC, diffHash hash.Hash) (digest.Digest, error) {
 	tocJSON, err := json.MarshalIndent(toc, "", "\t")
 	if err != nil {
 		return "", err
@@ -155,17 +159,21 @@ func (gz *GzipDecompressor) FooterSize() int64 {
 	return FooterSize
 }
 
-type legacyGzipDecompressor struct{}
+func (gz *GzipDecompressor) DecompressTOC(r io.Reader) (tocJSON io.ReadCloser, err error) {
+	return decompressTOCEStargz(r)
+}
 
-func (gz *legacyGzipDecompressor) Reader(r io.Reader) (io.ReadCloser, error) {
+type LegacyGzipDecompressor struct{}
+
+func (gz *LegacyGzipDecompressor) Reader(r io.Reader) (io.ReadCloser, error) {
 	return gzip.NewReader(r)
 }
 
-func (gz *legacyGzipDecompressor) ParseTOC(r io.Reader) (toc *JTOC, tocDgst digest.Digest, err error) {
+func (gz *LegacyGzipDecompressor) ParseTOC(r io.Reader) (toc *JTOC, tocDgst digest.Digest, err error) {
 	return parseTOCEStargz(r)
 }
 
-func (gz *legacyGzipDecompressor) ParseFooter(p []byte) (blobPayloadSize, tocOffset, tocSize int64, err error) {
+func (gz *LegacyGzipDecompressor) ParseFooter(p []byte) (blobPayloadSize, tocOffset, tocSize int64, err error) {
 	if len(p) != legacyFooterSize {
 		return 0, 0, 0, fmt.Errorf("legacy: invalid length %d cannot be parsed", len(p))
 	}
@@ -188,29 +196,43 @@ func (gz *legacyGzipDecompressor) ParseFooter(p []byte) (blobPayloadSize, tocOff
 	return tocOffset, tocOffset, 0, nil
 }
 
-func (gz *legacyGzipDecompressor) FooterSize() int64 {
+func (gz *LegacyGzipDecompressor) FooterSize() int64 {
 	return legacyFooterSize
 }
 
+func (gz *LegacyGzipDecompressor) DecompressTOC(r io.Reader) (tocJSON io.ReadCloser, err error) {
+	return decompressTOCEStargz(r)
+}
+
 func parseTOCEStargz(r io.Reader) (toc *JTOC, tocDgst digest.Digest, err error) {
-	zr, err := gzip.NewReader(r)
+	tr, err := decompressTOCEStargz(r)
 	if err != nil {
-		return nil, "", fmt.Errorf("malformed TOC gzip header: %v", err)
-	}
-	defer zr.Close()
-	zr.Multistream(false)
-	tr := tar.NewReader(zr)
-	h, err := tr.Next()
-	if err != nil {
-		return nil, "", fmt.Errorf("failed to find tar header in TOC gzip stream: %v", err)
-	}
-	if h.Name != TOCTarName {
-		return nil, "", fmt.Errorf("TOC tar entry had name %q; expected %q", h.Name, TOCTarName)
+		return nil, "", err
 	}
 	dgstr := digest.Canonical.Digester()
 	toc = new(JTOC)
 	if err := json.NewDecoder(io.TeeReader(tr, dgstr.Hash())).Decode(&toc); err != nil {
 		return nil, "", fmt.Errorf("error decoding TOC JSON: %v", err)
 	}
+	if err := tr.Close(); err != nil {
+		return nil, "", err
+	}
 	return toc, dgstr.Digest(), nil
+}
+
+func decompressTOCEStargz(r io.Reader) (tocJSON io.ReadCloser, err error) {
+	zr, err := gzip.NewReader(r)
+	if err != nil {
+		return nil, fmt.Errorf("malformed TOC gzip header: %v", err)
+	}
+	zr.Multistream(false)
+	tr := tar.NewReader(zr)
+	h, err := tr.Next()
+	if err != nil {
+		return nil, fmt.Errorf("failed to find tar header in TOC gzip stream: %v", err)
+	}
+	if h.Name != TOCTarName {
+		return nil, fmt.Errorf("TOC tar entry had name %q; expected %q", h.Name, TOCTarName)
+	}
+	return readCloser{tr, zr.Close}, nil
 }

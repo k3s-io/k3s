@@ -251,7 +251,7 @@ func (o *snapshotter) Prepare(ctx context.Context, key, parent string, opts ...s
 				WithError(err).Warn("failed to prepare remote snapshot")
 		} else {
 			base.Labels[remoteLabel] = remoteLabelVal // Mark this snapshot as remote
-			err := o.Commit(ctx, target, key, append(opts, snapshots.WithLabels(base.Labels))...)
+			err := o.commit(ctx, true, target, key, append(opts, snapshots.WithLabels(base.Labels))...)
 			if err == nil || errdefs.IsAlreadyExists(err) {
 				// count also AlreadyExists as "success"
 				log.G(lCtx).WithField(remoteSnapshotLogKey, prepareSucceeded).Debug("prepared remote snapshot")
@@ -293,6 +293,10 @@ func (o *snapshotter) Mounts(ctx context.Context, key string) ([]mount.Mount, er
 }
 
 func (o *snapshotter) Commit(ctx context.Context, name, key string, opts ...snapshots.Opt) error {
+	return o.commit(ctx, false, name, key, opts...)
+}
+
+func (o *snapshotter) commit(ctx context.Context, isRemote bool, name, key string, opts ...snapshots.Opt) error {
 	ctx, t, err := o.ms.TransactionContext(ctx, true)
 	if err != nil {
 		return err
@@ -307,17 +311,20 @@ func (o *snapshotter) Commit(ctx context.Context, name, key string, opts ...snap
 	}()
 
 	// grab the existing id
-	id, _, _, err := storage.GetInfo(ctx, key)
+	id, _, usage, err := storage.GetInfo(ctx, key)
 	if err != nil {
 		return err
 	}
 
-	usage, err := fs.DiskUsage(ctx, o.upperPath(id))
-	if err != nil {
-		return err
+	if !isRemote { // skip diskusage for remote snapshots for allowing lazy preparation of nodes
+		du, err := fs.DiskUsage(ctx, o.upperPath(id))
+		if err != nil {
+			return err
+		}
+		usage = snapshots.Usage(du)
 	}
 
-	if _, err = storage.CommitActive(ctx, key, name, snapshots.Usage(usage), opts...); err != nil {
+	if _, err = storage.CommitActive(ctx, key, name, usage, opts...); err != nil {
 		return errors.Wrap(err, "failed to commit snapshot")
 	}
 

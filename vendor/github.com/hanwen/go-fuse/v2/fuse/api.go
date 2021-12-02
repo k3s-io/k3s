@@ -77,17 +77,49 @@
 // Higher level interfaces
 //
 // As said above this packages provides way to implement filesystems in terms of
-// raw FUSE protocol. Additionally packages nodefs and pathfs provide ways to
-// implement filesystem at higher levels:
+// raw FUSE protocol.
 //
-// Package github.com/hanwen/go-fuse/fuse/nodefs provides way to implement
-// filesystems in terms of inodes. This resembles kernel's idea of what a
-// filesystem looks like.
+// Package github.com/hanwen/go-fuse/v2/fs provides way to implement
+// filesystems in terms of paths and/or inodes.
 //
-// Package github.com/hanwen/go-fuse/fuse/pathfs provides way to implement
-// filesystems in terms of path names. Working with path names is somewhat
-// easier compared to inodes, however renames can be racy. Do not use pathfs if
-// you care about correctness.
+// Mount styles
+//
+// The NewServer() handles mounting the filesystem, which
+// involves opening `/dev/fuse` and calling the
+// `mount(2)` syscall. The latter needs root permissions.
+// This is handled in one of three ways:
+//
+// 1) go-fuse opens `/dev/fuse` and executes the `fusermount`
+// setuid-root helper to call `mount(2)` for us. This is the default.
+// Does not need root permissions but needs `fusermount` installed.
+//
+// 2) If `MountOptions.DirectMount` is set, go-fuse calls `mount(2)` itself.
+// Needs root permissions, but works without `fusermount`.
+//
+// 3) If `mountPoint` has the magic `/dev/fd/N` syntax, it means that that a
+// privileged parent process:
+//
+// * Opened /dev/fuse
+//
+// * Called mount(2) on a real mountpoint directory that we don't know about
+//
+// * Inherited the fd to /dev/fuse to us
+//
+// * Informs us about the fd number via /dev/fd/N
+//
+// This magic syntax originates from libfuse [1] and allows the FUSE server to
+// run without any privileges and without needing `fusermount`, as the parent
+// process performs all privileged operations.
+//
+// The "privileged parent" is usually a container manager like Singularity [2],
+// but for testing, it can also be  the `mount.fuse3` helper with the
+// `drop_privileges,setuid=$USER` flags. Example below for gocryptfs:
+//
+//	$ sudo mount.fuse3 "/usr/local/bin/gocryptfs#/tmp/cipher" /tmp/mnt -o drop_privileges,setuid=$USER
+//
+// [1] https://github.com/libfuse/libfuse/commit/64e11073b9347fcf9c6d1eea143763ba9e946f70
+//
+// [2] https://sylabs.io/guides/3.7/user-guide/bind_paths_and_mounts.html#fuse-mounts
 package fuse
 
 // Types for users to implement.
@@ -165,6 +197,23 @@ type MountOptions struct {
 	// The filesystem is fully responsible for invalidating data cache.
 	ExplicitDataCacheControl bool
 
+	// SyncRead is off by default, which means that go-fuse enable the
+	// FUSE_CAP_ASYNC_READ capability.
+	// The kernel then submits multiple concurrent reads to service
+	// userspace requests and kernel readahead.
+	//
+	// Setting SyncRead disables the FUSE_CAP_ASYNC_READ capability.
+	// The kernel then only sends one read request per file handle at a time,
+	// and orders the requests by offset.
+	//
+	// This is useful if reading out of order or concurrently is expensive for
+	// (example: Amazon Cloud Drive).
+	//
+	// See the comment to FUSE_CAP_ASYNC_READ in
+	// https://github.com/libfuse/libfuse/blob/master/include/fuse_common.h
+	// for more details.
+	SyncRead bool
+
 	// If set, fuse will first attempt to use syscall.Mount instead of
 	// fusermount to mount the filesystem. This will not update /etc/mtab
 	// but might be needed if fusermount is not available.
@@ -173,6 +222,13 @@ type MountOptions struct {
 	// Options passed to syscall.Mount, the default value used by fusermount
 	// is syscall.MS_NOSUID|syscall.MS_NODEV
 	DirectMountFlags uintptr
+
+	// EnableAcls enables kernel ACL support.
+	//
+	// See the comments to FUSE_CAP_POSIX_ACL
+	// in https://github.com/libfuse/libfuse/blob/master/include/fuse_common.h
+	// for details.
+	EnableAcl bool
 }
 
 // RawFileSystem is an interface close to the FUSE wire protocol.
