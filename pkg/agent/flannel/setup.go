@@ -89,8 +89,9 @@ func Prepare(ctx context.Context, nodeConfig *config.Node) error {
 }
 
 func Run(ctx context.Context, nodeConfig *config.Node, nodes typedcorev1.NodeInterface) error {
+	logrus.Infof("Starting flannel with backend %s", nodeConfig.FlannelBackend)
 	if err := waitForPodCIDR(ctx, nodeConfig.AgentConfig.NodeName, nodes); err != nil {
-		return errors.Wrap(err, "failed to wait for PodCIDR assignment")
+		return errors.Wrap(err, "flannel failed to wait for PodCIDR assignment")
 	}
 
 	netMode, err := findNetMode(nodeConfig.AgentConfig.ClusterCIDRs)
@@ -98,7 +99,7 @@ func Run(ctx context.Context, nodeConfig *config.Node, nodes typedcorev1.NodeInt
 		return errors.Wrap(err, "failed to check netMode for flannel")
 	}
 	go func() {
-		err := flannel(ctx, nodeConfig.FlannelIface, nodeConfig.FlannelConf, nodeConfig.AgentConfig.KubeConfigKubelet, netMode)
+		err := flannel(ctx, nodeConfig.FlannelIface, nodeConfig.FlannelConfFile, nodeConfig.AgentConfig.KubeConfigKubelet, netMode)
 		if err != nil && !errors.Is(err, context.Canceled) {
 			logrus.Fatalf("flannel exited: %v", err)
 		}
@@ -125,11 +126,12 @@ func waitForPodCIDR(ctx context.Context, nodeName string, nodes typedcorev1.Node
 			break
 		}
 	}
-	logrus.Info("PodCIDR assigned for node " + nodeName)
+	logrus.Info("Flannel found PodCIDR assigned for node " + nodeName)
 	return nil
 }
 
 func createCNIConf(dir string) error {
+	logrus.Debugf("Creating the CNI conf in directory %s", dir)
 	if dir == "" {
 		return nil
 	}
@@ -138,11 +140,12 @@ func createCNIConf(dir string) error {
 }
 
 func createFlannelConf(nodeConfig *config.Node) error {
-	if nodeConfig.FlannelConf == "" {
-		return nil
+	logrus.Debugf("Creating the flannel configuration for backend %s in file %s", nodeConfig.FlannelBackend, nodeConfig.FlannelConfFile)
+	if nodeConfig.FlannelConfFile == "" {
+		return errors.New("Flannel configuration not defined")
 	}
 	if nodeConfig.FlannelConfOverride {
-		logrus.Infof("Using custom flannel conf defined at %s", nodeConfig.FlannelConf)
+		logrus.Infof("Using custom flannel conf defined at %s", nodeConfig.FlannelConfFile)
 		return nil
 	}
 	confJSON := strings.Replace(flannelConf, "%CIDR%", nodeConfig.AgentConfig.ClusterCIDR.String(), -1)
@@ -160,7 +163,7 @@ func createFlannelConf(nodeConfig *config.Node) error {
 			return err
 		}
 	case config.FlannelBackendWireguard:
-		backendConf = strings.ReplaceAll(wireguardBackend, "%flannelConfDir%", filepath.Dir(nodeConfig.FlannelConf))
+		backendConf = strings.ReplaceAll(wireguardBackend, "%flannelConfDir%", filepath.Dir(nodeConfig.FlannelConfFile))
 	default:
 		return fmt.Errorf("Cannot configure unknown flannel backend '%s'", nodeConfig.FlannelBackend)
 	}
@@ -168,7 +171,7 @@ func createFlannelConf(nodeConfig *config.Node) error {
 
 	netMode, err := findNetMode(nodeConfig.AgentConfig.ClusterCIDRs)
 	if err != nil {
-		logrus.Fatalf("Error checking netMode")
+		logrus.Fatalf("Flannel error checking netMode: %v", err)
 		return err
 	}
 
@@ -184,7 +187,9 @@ func createFlannelConf(nodeConfig *config.Node) error {
 		confJSON = strings.ReplaceAll(confJSON, "%DUALSTACK%", "false")
 		confJSON = strings.ReplaceAll(confJSON, "%CIDR_IPV6%", emptyIPv6Network)
 	}
-	return util.WriteFile(nodeConfig.FlannelConf, confJSON)
+
+	logrus.Debugf("The flannel configuration is %s", confJSON)
+	return util.WriteFile(nodeConfig.FlannelConfFile, confJSON)
 }
 
 func setupStrongSwan(nodeConfig *config.Node) error {
