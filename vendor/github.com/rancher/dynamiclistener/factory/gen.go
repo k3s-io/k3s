@@ -119,6 +119,12 @@ func (t *TLS) AddCN(secret *v1.Secret, cn ...string) (*v1.Secret, bool, error) {
 	return t.generateCert(secret, cn...)
 }
 
+func (t *TLS) Regenerate(secret *v1.Secret) (*v1.Secret, error) {
+	cns := cns(secret)
+	secret, _, err := t.generateCert(nil, cns...)
+	return secret, err
+}
+
 func (t *TLS) generateCert(secret *v1.Secret, cn ...string) (*v1.Secret, bool, error) {
 	secret = secret.DeepCopy()
 	if secret == nil {
