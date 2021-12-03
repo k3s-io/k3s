@@ -2,8 +2,6 @@ package server
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
 	"io/ioutil"
 	net2 "net"
@@ -26,6 +24,7 @@ import (
 	"github.com/rancher/k3s/pkg/deploy"
 	"github.com/rancher/k3s/pkg/node"
 	"github.com/rancher/k3s/pkg/nodepassword"
+	"github.com/rancher/k3s/pkg/reencrypt"
 	"github.com/rancher/k3s/pkg/rootlessports"
 	"github.com/rancher/k3s/pkg/servicelb"
 	"github.com/rancher/k3s/pkg/static"
@@ -234,6 +233,16 @@ func coreControllers(ctx context.Context, sc *Context, config *Config) error {
 
 	if err := apiaddresses.Register(ctx, config.ControlConfig.Runtime, sc.Core.Core().V1().Endpoints()); err != nil {
 		return err
+	}
+
+	if config.ControlConfig.EncryptSecrets {
+		if err := reencrypt.Register(ctx,
+			sc.K8s,
+			sc.Apply,
+			sc.Core.Core().V1().Node(),
+			sc.K8s.CoreV1().Events("")); err != nil {
+			return err
+		}
 	}
 
 	if config.Rootless {
@@ -591,11 +600,10 @@ func setEncryptionHashAnnotation(node *corev1.Node, controlConfig *config.Contro
 	if !controlConfig.EncryptSecrets {
 		return nil
 	}
-	curEncryptionByte, err := ioutil.ReadFile(controlConfig.Runtime.EncryptionConfig)
+	existingAnn, err := getEncryptionHashFile(controlConfig)
 	if err != nil {
 		return err
 	}
-	encryptionConfigHash := sha256.Sum256(curEncryptionByte)
-	node.Annotations[encryptionHashAnnotation] = hex.EncodeToString(encryptionConfigHash[:])
+	node.Annotations[encryptionHashAnnotation] = existingAnn
 	return nil
 }

@@ -3,8 +3,10 @@ package deps
 import (
 	"crypto"
 	cryptorand "crypto/rand"
+	"crypto/sha256"
 	"crypto/x509"
 	b64 "encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -147,7 +149,7 @@ func CreateRuntimeCertFiles(config *config.Control, runtime *config.ControlRunti
 
 	if config.EncryptSecrets {
 		runtime.EncryptionConfig = filepath.Join(config.DataDir, "cred", "encryption-config.json")
-		runtime.EncryptionState = filepath.Join(config.DataDir, "cred", "encryption-state.json")
+		runtime.EncryptionHash = filepath.Join(config.DataDir, "cred", "encryption-state.json")
 	}
 }
 
@@ -698,19 +700,7 @@ func genEncryptionConfigAndState(controlConfig *config.Control, runtime *config.
 	if err := ioutil.WriteFile(runtime.EncryptionConfig, b, 0600); err != nil {
 		return err
 	}
-	encState := struct {
-		Stage      string `json:"stage"`
-		CurrentKey apiserverconfigv1.Key
-	}{
-		Stage: "start",
-		CurrentKey: apiserverconfigv1.Key{
-			Name:   "aescbckey",
-			Secret: encodedKey,
-		},
-	}
-	b, err = json.Marshal(encState)
-	if err != nil {
-		return err
-	}
-	return ioutil.WriteFile(controlConfig.Runtime.EncryptionState, b, 0600)
+	encryptionConfigHash := sha256.Sum256(b)
+	ann := "start-" + hex.EncodeToString(encryptionConfigHash[:])
+	return ioutil.WriteFile(controlConfig.Runtime.EncryptionHash, []byte(ann), 0600)
 }

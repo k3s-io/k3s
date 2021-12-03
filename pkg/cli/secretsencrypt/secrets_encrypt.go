@@ -200,7 +200,7 @@ func Reencrypt(app *cli.Context) error {
 		return err
 	}
 	b, err := json.Marshal(server.EncryptionRequest{
-		Stage: pointer.StringPtr(server.EncryptionReencrypt),
+		Stage: pointer.StringPtr(server.EncryptionReencryptActive),
 		Force: controlConfig.EncryptForce,
 		Skip:  controlConfig.EncryptSkip,
 	})
@@ -210,6 +210,6 @@ func Reencrypt(app *cli.Context) error {
 	if err = info.Put("/v1-"+version.Program+"/encrypt/config", b); err != nil {
 		return err
 	}
-	fmt.Println("reencrypt completed successfully")
+	fmt.Println("reencryption started")
 	return nil
 }

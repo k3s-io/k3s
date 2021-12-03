@@ -12,6 +12,7 @@ import (
 	"math/big"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/rancher/k3s/pkg/cluster"
@@ -25,10 +26,11 @@ import (
 )
 
 const (
-	EncryptionStart     string = "start"
-	EncryptionPrepare   string = "prepare"
-	EncryptionRotate    string = "rotate"
-	EncryptionReencrypt string = "reencrypt"
+	EncryptionStart             string = "start"
+	EncryptionPrepare           string = "prepare"
+	EncryptionRotate            string = "rotate"
+	EncryptionReencryptActive   string = "reencrypt_active"
+	EncryptionReencryptFinished string = "reencrypt_finished"
 )
 
 const aescbcKeySize = 32
@@ -93,18 +95,17 @@ func encryptionStatus(server *config.Control) (EncryptionState, error) {
 		state.Enable = pointer.Bool(false)
 	}
 
-	s, err := getEncryptionState(server)
-	if err != nil {
-		return s, err
-	}
-	state.Stage = s.Stage
-
-	if err := verifyEncryptionHashAnnotation(server.Runtime.Core.Core()); err != nil {
+	if err := verifyEncryptionHashAnnotation(server, server.Runtime.Core.Core(), ""); err != nil {
 		state.HashMatch = false
 		state.HashError = err.Error()
 	} else {
 		state.HashMatch = true
 	}
+	stage, _, err := getEncryptionHashAnnotation(server.Runtime.Core.Core())
+	if err != nil {
+		return state, err
+	}
+	state.Stage = stage
 	active := true
 	for _, p := range providers {
 		if p.AESCBC != nil {
@@ -181,7 +182,7 @@ func encryptionConfigHandler(ctx context.Context, server *config.Control) http.H
 				err = encryptionPrepare(ctx, server, encryptReq.Force)
 			case EncryptionRotate:
 				err = encryptionRotate(ctx, server, encryptReq.Force)
-			case EncryptionReencrypt:
+			case EncryptionReencryptActive:
 				err = encryptionReencrypt(ctx, server, encryptReq.Force, encryptReq.Skip)
 			default:
 				err = fmt.Errorf("unknown stage %s requested", *encryptReq.Stage)
@@ -199,14 +200,7 @@ func encryptionConfigHandler(ctx context.Context, server *config.Control) http.H
 }
 
 func encryptionPrepare(ctx context.Context, server *config.Control, force bool) error {
-	state, err := getEncryptionState(server)
-	if err != nil {
-		return err
-	} else if !force && (state.Stage != EncryptionStart && state.Stage != EncryptionReencrypt) {
-		return fmt.Errorf("error, incorrect stage: %s found with key: %s", state.Stage, state.ActiveKey)
-	}
-
-	if err := verifyEncryptionHashAnnotation(server.Runtime.Core.Core()); err != nil {
+	if err := verifyEncryptionHashAnnotation(server, server.Runtime.Core.Core(), EncryptionStart+"-"+EncryptionReencryptFinished); err != nil && !force {
 		return err
 	}
 
@@ -223,24 +217,15 @@ func encryptionPrepare(ctx context.Context, server *config.Control, force bool) 
 	if err := writeEncryptionConfig(server, curKeys, true); err != nil {
 		return err
 	}
-	if err := writeEncryptionState(server, EncryptionPrepare, curKeys[0]); err != nil {
-		return err
-	}
-	if err := writeEncryptionHashAnnotation(server, server.Runtime.Core.Core()); err != nil {
+	if err := writeEncryptionHashAnnotation(server, server.Runtime.Core.Core(), EncryptionPrepare); err != nil {
 		return err
 	}
 	return cluster.Save(ctx, server, server.Runtime.EtcdConfig, true)
 }
 
 func encryptionRotate(ctx context.Context, server *config.Control, force bool) error {
-	state, err := getEncryptionState(server)
-	if err != nil {
-		return err
-	} else if !force && state.Stage != EncryptionPrepare {
-		return fmt.Errorf("error, incorrect stage: %s found with key: %s", state.Stage, state.ActiveKey)
-	}
 
-	if err := verifyEncryptionHashAnnotation(server.Runtime.Core.Core()); err != nil {
+	if err := verifyEncryptionHashAnnotation(server, server.Runtime.Core.Core(), EncryptionPrepare); err != nil && !force {
 		return err
 	}
 
@@ -255,11 +240,8 @@ func encryptionRotate(ctx context.Context, server *config.Control, force bool) e
 	if err = writeEncryptionConfig(server, rotatedKeys, true); err != nil {
 		return err
 	}
-	if err := writeEncryptionState(server, EncryptionRotate, curKeys[0]); err != nil {
-		return err
-	}
 	logrus.Infoln("Encryption keys right rotated")
-	if err := writeEncryptionHashAnnotation(server, server.Runtime.Core.Core()); err != nil {
+	if err := writeEncryptionHashAnnotation(server, server.Runtime.Core.Core(), EncryptionRotate); err != nil {
 		return err
 	}
 	return cluster.Save(ctx, server, server.Runtime.EtcdConfig, true)
@@ -267,13 +249,7 @@ func encryptionRotate(ctx context.Context, server *config.Control, force bool) e
 
 func encryptionReencrypt(ctx context.Context, server *config.Control, force bool, skip bool) error {
 
-	state, err := getEncryptionState(server)
-	if err != nil {
-		return err
-	} else if !force && state.Stage != EncryptionRotate {
-		return fmt.Errorf("error, incorrect stage: %s found with key: %s", state.Stage, state.ActiveKey)
-	}
-	if err := verifyEncryptionHashAnnotation(server.Runtime.Core.Core()); err != nil {
+	if err := verifyEncryptionHashAnnotation(server, server.Runtime.Core.Core(), EncryptionRotate); err != nil && !force {
 		return err
 	}
 
@@ -294,12 +270,8 @@ func encryptionReencrypt(ctx context.Context, server *config.Control, force bool
 	if err = writeEncryptionConfig(server, curKeys, true); err != nil {
 		return err
 	}
-
-	if err := writeEncryptionState(server, EncryptionReencrypt, curKeys[0]); err != nil {
-		return err
-	}
 	logrus.Infoln("Removed key: ", curKeys[len(curKeys)-1])
-	if err := writeEncryptionHashAnnotation(server, server.Runtime.Core.Core()); err != nil {
+	if err := writeEncryptionHashAnnotation(server, server.Runtime.Core.Core(), EncryptionReencryptFinished); err != nil {
 		return err
 	}
 	return cluster.Save(ctx, server, server.Runtime.EtcdConfig, true)
@@ -310,6 +282,7 @@ func updateSecrets(core core.Interface) error {
 	if err != nil {
 		return err
 	}
+
 	for i, s := range secrets.Items {
 		if _, err := core.V1().Secret().Update(&s); err != nil {
 			return fmt.Errorf("only reencrypted %d of %d secrets: %v", i, len(secrets.Items), err)
@@ -420,36 +393,24 @@ func writeEncryptionConfig(controlConfig *config.Control, keys []apiserverconfig
 	return ioutil.WriteFile(controlConfig.Runtime.EncryptionConfig, jsonfile, 0600)
 }
 
-func writeEncryptionState(controlConfig *config.Control, stage string, key apiserverconfigv1.Key) error {
-
-	encStatus := EncryptionState{
-		Stage:     stage,
-		ActiveKey: key.Name,
-	}
-	jsonfile, err := json.Marshal(encStatus)
+func getEncryptionHashAnnotation(core core.Interface) (string, string, error) {
+	nodeName := os.Getenv("NODE_NAME")
+	node, err := core.V1().Node().Get(nodeName, metav1.GetOptions{})
 	if err != nil {
-		return err
+		return "", "", err
 	}
-	return ioutil.WriteFile(controlConfig.Runtime.EncryptionState, jsonfile, 0600)
+	ann := node.Annotations[encryptionHashAnnotation]
+	split := strings.Split(ann, "-")
+	if len(split) != 2 {
+		return "", "", fmt.Errorf("invalid annotation %s found on node %s", ann, node.ObjectMeta.Name)
+	}
+	return split[0], split[1], nil
 }
 
-func getEncryptionState(controlConfig *config.Control) (EncryptionState, error) {
-	curEncryption := EncryptionState{}
-	curEncryptionByte, err := ioutil.ReadFile(controlConfig.Runtime.EncryptionState)
-	if err != nil {
-		return curEncryption, err
-	}
-
-	if err = json.Unmarshal(curEncryptionByte, &curEncryption); err != nil {
-		return curEncryption, err
-	}
-	return curEncryption, nil
-}
-
-func verifyEncryptionHashAnnotation(core core.Interface) error {
+func getServerNodes(core core.Interface) ([]corev1.Node, error) {
 	nodes, err := core.V1().Node().List(metav1.ListOptions{})
 	if err != nil {
-		return err
+		return nil, err
 	}
 	var serverNodes []corev1.Node
 	for _, node := range nodes.Items {
@@ -457,10 +418,20 @@ func verifyEncryptionHashAnnotation(core core.Interface) error {
 			serverNodes = append(serverNodes, node)
 		}
 	}
+	return serverNodes, nil
+}
+
+// verifyEncryptionHashAnnotation checks that all nodes are on the same stage,
+// and that a request for new stage is valid
+func verifyEncryptionHashAnnotation(server *config.Control, core core.Interface, prevStage string) error {
 
 	var firstHash string
 	var firstNodeName string
 	first := true
+	serverNodes, err := getServerNodes(core)
+	if err != nil {
+		return err
+	}
 	for _, node := range serverNodes {
 		hash, ok := node.Annotations[encryptionHashAnnotation]
 		if ok && first {
@@ -471,15 +442,34 @@ func verifyEncryptionHashAnnotation(core core.Interface) error {
 			return fmt.Errorf("hash does not match between %s and %s", firstNodeName, node.ObjectMeta.Name)
 		}
 	}
-	return nil
-}
 
-func writeEncryptionHashAnnotation(server *config.Control, core core.Interface) error {
-	curEncryptionByte, err := ioutil.ReadFile(server.Runtime.EncryptionConfig)
+	if prevStage == "" {
+		return nil
+	}
+
+	oldStage, oldHash, err := getEncryptionHashAnnotation(core)
 	if err != nil {
 		return err
 	}
-	encryptionConfigHash := sha256.Sum256(curEncryptionByte)
+
+	encryptionConfigHash, err := genEncryptionConfigHash(server)
+	if err != nil {
+		return err
+	}
+	if !strings.Contains(prevStage, oldStage) {
+		return fmt.Errorf("incorrect stage: %s found on node %s", oldStage, serverNodes[0].ObjectMeta.Name)
+	} else if oldHash != encryptionConfigHash {
+		return fmt.Errorf("invalid hash: %s found on node %s", oldHash, serverNodes[0].ObjectMeta.Name)
+	}
+
+	return nil
+}
+
+func writeEncryptionHashAnnotation(server *config.Control, core core.Interface, stage string) error {
+	encryptionConfigHash, err := genEncryptionConfigHash(server)
+	if err != nil {
+		return err
+	}
 	nodeName := os.Getenv("NODE_NAME")
 	node, err := core.V1().Node().Get(nodeName, metav1.GetOptions{})
 	if err != nil {
@@ -488,12 +478,30 @@ func writeEncryptionHashAnnotation(server *config.Control, core core.Interface) 
 	if node.Annotations == nil {
 		return fmt.Errorf("node annotations do not exist for %s", nodeName)
 	}
-	node.Annotations[encryptionHashAnnotation] = hex.EncodeToString(encryptionConfigHash[:])
+	ann := stage + "-" + encryptionConfigHash
+	node.Annotations[encryptionHashAnnotation] = ann
 	if _, err = core.V1().Node().Update(node); err != nil {
 		return err
 	}
 	logrus.Debugf("encryption hash annotation set successfully on node: %s\n", nodeName)
-	return nil
+	return ioutil.WriteFile(server.Runtime.EncryptionHash, []byte(ann), 0600)
+}
+
+func genEncryptionConfigHash(server *config.Control) (string, error) {
+	curEncryptionByte, err := ioutil.ReadFile(server.Runtime.EncryptionConfig)
+	if err != nil {
+		return "", err
+	}
+	encryptionConfigHash := sha256.Sum256(curEncryptionByte)
+	return hex.EncodeToString(encryptionConfigHash[:]), nil
+}
+
+func getEncryptionHashFile(controlConfig *config.Control) (string, error) {
+	curEncryptionByte, err := ioutil.ReadFile(controlConfig.Runtime.EncryptionHash)
+	if err != nil {
+		return "", err
+	}
+	return string(curEncryptionByte), nil
 }
 
 func genErrorMessage(resp http.ResponseWriter, statusCode int, passedErr error) {
