@@ -75,7 +75,9 @@ func (h *handler) onChangeNode(key string, node *corev1.Node) (*corev1.Node, err
 	}
 	split := strings.Split(ann, "-")
 	if len(split) != 2 {
-		return node, fmt.Errorf("invalid annotation %s found on node %s", ann, node.ObjectMeta.Name)
+		err := fmt.Errorf("invalid annotation %s found on node %s", ann, node.ObjectMeta.Name)
+		h.recorder.Event(node, corev1.EventTypeWarning, secretsUpdateErrorEvent, err.Error())
+		return node, err
 	}
 	stage := split[0]
 	hash := split[1]
@@ -86,20 +88,26 @@ func (h *handler) onChangeNode(key string, node *corev1.Node) (*corev1.Node, err
 	}
 	curHash, err := GenEncryptionConfigHash(h.controlConfig.Runtime)
 	if err != nil {
+		h.recorder.Event(node, corev1.EventTypeWarning, secretsUpdateErrorEvent, err.Error())
 		return node, err
 	} else if curHash != hash {
-		return node, fmt.Errorf("invalid hash: %s found on node %s", hash, node.ObjectMeta.Name)
+		err = fmt.Errorf("invalid hash: %s found on node %s", hash, node.ObjectMeta.Name)
+		h.recorder.Event(node, corev1.EventTypeWarning, secretsUpdateErrorEvent, err.Error())
+		return node, err
 	}
 
 	if err := h.verifyReencryptStage(curHash); err != nil {
+		h.recorder.Event(node, corev1.EventTypeWarning, secretsUpdateErrorEvent, err.Error())
 		return node, err
 	}
 
 	if err := WriteEncryptionHashAnnotation(h.controlConfig.Runtime, node, EncryptionReencryptActive, true); err != nil {
+		h.recorder.Event(node, corev1.EventTypeWarning, secretsUpdateErrorEvent, err.Error())
 		return node, err
 	}
 
 	if err := h.updateSecrets(node); err != nil {
+		h.recorder.Event(node, corev1.EventTypeWarning, secretsUpdateErrorEvent, err.Error())
 		return node, err
 	}
 
@@ -110,19 +118,27 @@ func (h *handler) onChangeNode(key string, node *corev1.Node) (*corev1.Node, err
 	// Remove last key
 	curKeys, err := GetEncryptionKeys(h.controlConfig.Runtime)
 	if err != nil {
+		h.recorder.Event(node, corev1.EventTypeWarning, secretsUpdateErrorEvent, err.Error())
 		return node, err
 	}
 
 	curKeys = curKeys[:len(curKeys)-1]
 	if err = WriteEncryptionConfig(h.controlConfig.Runtime, curKeys, true); err != nil {
+		h.recorder.Event(node, corev1.EventTypeWarning, secretsUpdateErrorEvent, err.Error())
 		return node, err
 	}
 	logrus.Infoln("Removed key: ", curKeys[len(curKeys)-1])
-	if err := WriteEncryptionHashAnnotation(h.controlConfig.Runtime, node, EncryptionReencryptFinished, false); err != nil {
+	newNode, err := h.nodes.Get(node.ObjectMeta.Name, metav1.GetOptions{})
+	if err != nil {
+		h.recorder.Event(node, corev1.EventTypeWarning, secretsUpdateErrorEvent, err.Error())
+		return node, err
+	}
+	if err := WriteEncryptionHashAnnotation(h.controlConfig.Runtime, newNode, EncryptionReencryptFinished, false); err != nil {
 		h.recorder.Event(node, corev1.EventTypeWarning, secretsUpdateErrorEvent, err.Error())
 		return node, err
 	}
 	if err := cluster.Save(h.ctx, h.controlConfig, h.controlConfig.Runtime.EtcdConfig, true); err != nil {
+		h.recorder.Event(node, corev1.EventTypeWarning, secretsUpdateErrorEvent, err.Error())
 		return node, err
 	}
 	return node, nil
