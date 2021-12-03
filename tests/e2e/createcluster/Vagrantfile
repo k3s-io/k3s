@@ -5,7 +5,6 @@ NODE_BOXES = (ENV['NODE_BOXES'] ||
 GITHUB_BRANCH = (ENV['GITHUB_BRANCH'] || "master")
 NODE_CPUS = (ENV['NODE_CPUS'] || 2).to_i
 NODE_MEMORY = (ENV['NODE_MEMORY'] || 2048).to_i
-LATEST_COMMIT = (ENV['LATEST_COMMIT'] || "d93c82f9585ed9e0ff7ebe95b1506f4587fffc1c")
 # Virtualbox >= 6.1.28 require `/etc/vbox/network.conf` for expanded private networks 
 NETWORK_PREFIX = "10.10.10"
 
@@ -14,31 +13,33 @@ def provision(vm, roles, role_num, node_num)
   vm.hostname = "#{roles[0]}-#{role_num}"
   # An expanded netmask is required to allow VM<-->VM communication, virtualbox defaults to /32
   vm.network "private_network", ip: "#{NETWORK_PREFIX}.#{100+node_num}", netmask: "255.255.255.0"
-  vm.provision "hosts", sync_hosts: true
 
   osConfigure(vm)
+  vm.provision "shell",
+    inline: "curl -s -H 'Accept: application/vnd.github.v3.sha' 'https://api.github.com/repos/k3s-io/k3s/commits/#{GITHUB_BRANCH}' &> /tmp/k3s_commit"
+
   vm.provision "shell", inline: "ping -c 2 k3s.io"
   
   if roles.include?("server") && role_num == 0
     vm.provision 'k3s-install', type: 'k3s', run: 'once' do |k3s|
       k3s.installer_url = 'https://get.k3s.io'
       k3s.args = %W[server --cluster-init --node-external-ip=#{NETWORK_PREFIX}.100 --flannel-iface=eth1]
-      k3s.env = %W[K3S_KUBECONFIG_MODE=0644 K3S_TOKEN=vagrant INSTALL_K3S_COMMIT=#{LATEST_COMMIT}]
+      k3s.env = %W[K3S_KUBECONFIG_MODE=0644 K3S_TOKEN=vagrant INSTALL_K3S_COMMIT=$(cat\ /tmp/k3s_commit)]
       k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
     end
   elsif roles.include?("server") && role_num != 0
     vm.provision 'k3s-install', type: 'k3s', run: 'once' do |k3s|
       k3s.installer_url = 'https://get.k3s.io'
-      k3s.args = %W[server --server https://server-0:6443 --flannel-iface=eth1]
-      k3s.env = %W[K3S_KUBECONFIG_MODE=0644 K3S_TOKEN=vagrant INSTALL_K3S_COMMIT=#{LATEST_COMMIT}]
+      k3s.args = %W[server --server https://10.10.10.100:6443 --flannel-iface=eth1]
+      k3s.env = %W[K3S_KUBECONFIG_MODE=0644 K3S_TOKEN=vagrant INSTALL_K3S_COMMIT=$(cat\ /tmp/k3s_commit)]
       k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
     end
   end
   if roles.include?("agent")
     vm.provision 'k3s-install', type: 'k3s', run: 'once' do |k3s|
       k3s.installer_url = 'https://get.k3s.io'
-      k3s.args = %w[agent --server https://server-0:6443 --flannel-iface=eth1]
-      k3s.env = %W[K3S_KUBECONFIG_MODE=0644 K3S_TOKEN=vagrant INSTALL_K3S_COMMIT=#{LATEST_COMMIT}]
+      k3s.args = %w[agent --server https://10.10.10.100:6443 --flannel-iface=eth1]
+      k3s.env = %W[K3S_KUBECONFIG_MODE=0644 K3S_TOKEN=vagrant INSTALL_K3S_COMMIT=$(cat\ /tmp/k3s_commit)]
       k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
     end
   end
@@ -54,7 +55,7 @@ def osConfigure(vm)
 end
 
 Vagrant.configure("2") do |config|
-  config.vagrant.plugins = ["vagrant-hosts", "vagrant-k3s"]
+  config.vagrant.plugins = ["vagrant-k3s"]
   config.vm.provider "virtualbox" do |v|
     v.cpus = NODE_CPUS
     v.memory = NODE_MEMORY
@@ -62,14 +63,13 @@ Vagrant.configure("2") do |config|
   
   # Must iterate on the index, vagrant does not understand iterating 
   # over the node roles themselves
-  @i = 0
-  NODE_ROLES.each { |node_role|
-    config.vm.define node_role do |node|
-      roles = node_role.split("-", -1)
+  NODE_ROLES.length.times do |i|
+    name = NODE_ROLES[i]
+    config.vm.define name do |node|
+      roles = name.split("-", -1)
       role_num = roles.pop.to_i
-      provision(node.vm, roles, role_num, @i)
-      @i += 1
+      provision(node.vm, roles, role_num, i)
     end
-  }
+  end
 
 end
