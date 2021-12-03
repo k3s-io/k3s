@@ -12,7 +12,6 @@ import (
 	"github.com/otiai10/copy"
 	"github.com/rancher/k3s/pkg/cli/cmds"
 	"github.com/rancher/k3s/pkg/daemons/config"
-	"github.com/rancher/k3s/pkg/daemons/control/deps"
 	"github.com/rancher/k3s/pkg/datadir"
 	"github.com/rancher/k3s/pkg/server"
 	"github.com/rancher/k3s/pkg/version"
@@ -63,7 +62,58 @@ func rotate(app *cli.Context, cfg *cmds.Server) error {
 
 	serverConfig.ControlConfig.DataDir = serverDataDir
 	serverConfig.ControlConfig.Runtime = &config.ControlRuntime{}
-	deps.CreateRuntimeCertFiles(&serverConfig.ControlConfig, serverConfig.ControlConfig.Runtime)
+	serverConfig.ControlConfig.Runtime.ClientCA = filepath.Join(serverConfig.ControlConfig.DataDir, "tls", "client-ca.crt")
+	serverConfig.ControlConfig.Runtime.ClientCAKey = filepath.Join(serverConfig.ControlConfig.DataDir, "tls", "client-ca.key")
+	serverConfig.ControlConfig.Runtime.ServerCA = filepath.Join(serverConfig.ControlConfig.DataDir, "tls", "server-ca.crt")
+	serverConfig.ControlConfig.Runtime.ServerCAKey = filepath.Join(serverConfig.ControlConfig.DataDir, "tls", "server-ca.key")
+	serverConfig.ControlConfig.Runtime.RequestHeaderCA = filepath.Join(serverConfig.ControlConfig.DataDir, "tls", "request-header-ca.crt")
+	serverConfig.ControlConfig.Runtime.RequestHeaderCAKey = filepath.Join(serverConfig.ControlConfig.DataDir, "tls", "request-header-ca.key")
+	serverConfig.ControlConfig.Runtime.IPSECKey = filepath.Join(serverConfig.ControlConfig.DataDir, "cred", "ipsec.psk")
+
+	serverConfig.ControlConfig.Runtime.ServiceKey = filepath.Join(serverConfig.ControlConfig.DataDir, "tls", "service.key")
+	serverConfig.ControlConfig.Runtime.PasswdFile = filepath.Join(serverConfig.ControlConfig.DataDir, "cred", "passwd")
+	serverConfig.ControlConfig.Runtime.NodePasswdFile = filepath.Join(serverConfig.ControlConfig.DataDir, "cred", "node-passwd")
+
+	serverConfig.ControlConfig.Runtime.KubeConfigAdmin = filepath.Join(serverConfig.ControlConfig.DataDir, "cred", "admin.kubeconfig")
+	serverConfig.ControlConfig.Runtime.KubeConfigController = filepath.Join(serverConfig.ControlConfig.DataDir, "cred", "controller.kubeconfig")
+	serverConfig.ControlConfig.Runtime.KubeConfigScheduler = filepath.Join(serverConfig.ControlConfig.DataDir, "cred", "scheduler.kubeconfig")
+	serverConfig.ControlConfig.Runtime.KubeConfigAPIServer = filepath.Join(serverConfig.ControlConfig.DataDir, "cred", "api-server.kubeconfig")
+	serverConfig.ControlConfig.Runtime.KubeConfigCloudController = filepath.Join(serverConfig.ControlConfig.DataDir, "cred", "cloud-controller.kubeconfig")
+
+	serverConfig.ControlConfig.Runtime.ClientAdminCert = filepath.Join(serverConfig.ControlConfig.DataDir, "tls", "client-admin.crt")
+	serverConfig.ControlConfig.Runtime.ClientAdminKey = filepath.Join(serverConfig.ControlConfig.DataDir, "tls", "client-admin.key")
+	serverConfig.ControlConfig.Runtime.ClientControllerCert = filepath.Join(serverConfig.ControlConfig.DataDir, "tls", "client-controller.crt")
+	serverConfig.ControlConfig.Runtime.ClientControllerKey = filepath.Join(serverConfig.ControlConfig.DataDir, "tls", "client-controller.key")
+	serverConfig.ControlConfig.Runtime.ClientCloudControllerCert = filepath.Join(serverConfig.ControlConfig.DataDir, "tls", "client-cloud-controller.crt")
+	serverConfig.ControlConfig.Runtime.ClientCloudControllerKey = filepath.Join(serverConfig.ControlConfig.DataDir, "tls", "client-cloud-controller.key")
+	serverConfig.ControlConfig.Runtime.ClientSchedulerCert = filepath.Join(serverConfig.ControlConfig.DataDir, "tls", "client-scheduler.crt")
+	serverConfig.ControlConfig.Runtime.ClientSchedulerKey = filepath.Join(serverConfig.ControlConfig.DataDir, "tls", "client-scheduler.key")
+	serverConfig.ControlConfig.Runtime.ClientKubeAPICert = filepath.Join(serverConfig.ControlConfig.DataDir, "tls", "client-kube-apiserver.crt")
+	serverConfig.ControlConfig.Runtime.ClientKubeAPIKey = filepath.Join(serverConfig.ControlConfig.DataDir, "tls", "client-kube-apiserver.key")
+	serverConfig.ControlConfig.Runtime.ClientKubeProxyCert = filepath.Join(serverConfig.ControlConfig.DataDir, "tls", "client-kube-proxy.crt")
+	serverConfig.ControlConfig.Runtime.ClientKubeProxyKey = filepath.Join(serverConfig.ControlConfig.DataDir, "tls", "client-kube-proxy.key")
+	serverConfig.ControlConfig.Runtime.ClientK3sControllerCert = filepath.Join(serverConfig.ControlConfig.DataDir, "tls", "client-"+version.Program+"-controller.crt")
+	serverConfig.ControlConfig.Runtime.ClientK3sControllerKey = filepath.Join(serverConfig.ControlConfig.DataDir, "tls", "client-"+version.Program+"-controller.key")
+
+	serverConfig.ControlConfig.Runtime.ServingKubeAPICert = filepath.Join(serverConfig.ControlConfig.DataDir, "tls", "serving-kube-apiserver.crt")
+	serverConfig.ControlConfig.Runtime.ServingKubeAPIKey = filepath.Join(serverConfig.ControlConfig.DataDir, "tls", "serving-kube-apiserver.key")
+
+	serverConfig.ControlConfig.Runtime.ClientKubeletKey = filepath.Join(serverConfig.ControlConfig.DataDir, "tls", "client-kubelet.key")
+	serverConfig.ControlConfig.Runtime.ServingKubeletKey = filepath.Join(serverConfig.ControlConfig.DataDir, "tls", "serving-kubelet.key")
+
+	serverConfig.ControlConfig.Runtime.ClientAuthProxyCert = filepath.Join(serverConfig.ControlConfig.DataDir, "tls", "client-auth-proxy.crt")
+	serverConfig.ControlConfig.Runtime.ClientAuthProxyKey = filepath.Join(serverConfig.ControlConfig.DataDir, "tls", "client-auth-proxy.key")
+
+	serverConfig.ControlConfig.Runtime.ETCDServerCA = filepath.Join(serverConfig.ControlConfig.DataDir, "tls", "etcd", "server-ca.crt")
+	serverConfig.ControlConfig.Runtime.ETCDServerCAKey = filepath.Join(serverConfig.ControlConfig.DataDir, "tls", "etcd", "server-ca.key")
+	serverConfig.ControlConfig.Runtime.ETCDPeerCA = filepath.Join(serverConfig.ControlConfig.DataDir, "tls", "etcd", "peer-ca.crt")
+	serverConfig.ControlConfig.Runtime.ETCDPeerCAKey = filepath.Join(serverConfig.ControlConfig.DataDir, "tls", "etcd", "peer-ca.key")
+	serverConfig.ControlConfig.Runtime.ServerETCDCert = filepath.Join(serverConfig.ControlConfig.DataDir, "tls", "etcd", "server-client.crt")
+	serverConfig.ControlConfig.Runtime.ServerETCDKey = filepath.Join(serverConfig.ControlConfig.DataDir, "tls", "etcd", "server-client.key")
+	serverConfig.ControlConfig.Runtime.PeerServerClientETCDCert = filepath.Join(serverConfig.ControlConfig.DataDir, "tls", "etcd", "peer-server-client.crt")
+	serverConfig.ControlConfig.Runtime.PeerServerClientETCDKey = filepath.Join(serverConfig.ControlConfig.DataDir, "tls", "etcd", "peer-server-client.key")
+	serverConfig.ControlConfig.Runtime.ClientETCDCert = filepath.Join(serverConfig.ControlConfig.DataDir, "tls", "etcd", "client.crt")
+	serverConfig.ControlConfig.Runtime.ClientETCDKey = filepath.Join(serverConfig.ControlConfig.DataDir, "tls", "etcd", "client.key")
 
 	tlsBackupDir, err := backupCertificates(serverDataDir, agentDataDir)
 	if err != nil {
