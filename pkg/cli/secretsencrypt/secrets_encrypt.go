@@ -13,6 +13,7 @@ import (
 	"github.com/rancher/k3s/pkg/cli/cmds"
 	"github.com/rancher/k3s/pkg/clientaccess"
 	"github.com/rancher/k3s/pkg/daemons/config"
+	"github.com/rancher/k3s/pkg/secretsencrypt"
 	"github.com/rancher/k3s/pkg/server"
 	"github.com/rancher/k3s/pkg/version"
 	"github.com/urfave/cli"
@@ -155,7 +156,7 @@ func Prepare(app *cli.Context) error {
 		return err
 	}
 	b, err := json.Marshal(server.EncryptionRequest{
-		Stage: pointer.StringPtr(server.EncryptionPrepare),
+		Stage: pointer.StringPtr(secretsencrypt.EncryptionPrepare),
 		Force: controlConfig.EncryptForce,
 	})
 	if err != nil {
@@ -177,7 +178,7 @@ func Rotate(app *cli.Context) error {
 		return err
 	}
 	b, err := json.Marshal(server.EncryptionRequest{
-		Stage: pointer.StringPtr(server.EncryptionRotate),
+		Stage: pointer.StringPtr(secretsencrypt.EncryptionRotate),
 		Force: controlConfig.EncryptForce,
 	})
 	if err != nil {
@@ -200,7 +201,7 @@ func Reencrypt(app *cli.Context) error {
 		return err
 	}
 	b, err := json.Marshal(server.EncryptionRequest{
-		Stage: pointer.StringPtr(server.EncryptionReencryptActive),
+		Stage: pointer.StringPtr(secretsencrypt.EncryptionReencryptActive),
 		Force: controlConfig.EncryptForce,
 		Skip:  controlConfig.EncryptSkip,
 	})

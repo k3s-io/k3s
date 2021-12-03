@@ -24,8 +24,8 @@ import (
 	"github.com/rancher/k3s/pkg/deploy"
 	"github.com/rancher/k3s/pkg/node"
 	"github.com/rancher/k3s/pkg/nodepassword"
-	"github.com/rancher/k3s/pkg/reencrypt"
 	"github.com/rancher/k3s/pkg/rootlessports"
+	"github.com/rancher/k3s/pkg/secretsencrypt"
 	"github.com/rancher/k3s/pkg/servicelb"
 	"github.com/rancher/k3s/pkg/static"
 	"github.com/rancher/k3s/pkg/util"
@@ -44,8 +44,6 @@ const (
 	ControlPlaneRoleLabelKey = "node-role.kubernetes.io/control-plane"
 	ETCDRoleLabelKey         = "node-role.kubernetes.io/etcd"
 )
-
-var encryptionHashAnnotation = version.Program + ".io/encryption-config-hash"
 
 func ResolveDataDir(dataDir string) (string, error) {
 	dataDir, err := datadir.Resolve(dataDir)
@@ -236,10 +234,11 @@ func coreControllers(ctx context.Context, sc *Context, config *Config) error {
 	}
 
 	if config.ControlConfig.EncryptSecrets {
-		if err := reencrypt.Register(ctx,
+		if err := secretsencrypt.Register(ctx,
 			sc.K8s,
-			sc.Apply,
+			&config.ControlConfig,
 			sc.Core.Core().V1().Node(),
+			sc.Core.Core().V1().Secret(),
 			sc.K8s.CoreV1().Events("")); err != nil {
 			return err
 		}
@@ -604,6 +603,6 @@ func setEncryptionHashAnnotation(node *corev1.Node, controlConfig *config.Contro
 	if err != nil {
 		return err
 	}
-	node.Annotations[encryptionHashAnnotation] = existingAnn
+	node.Annotations[secretsencrypt.EncryptionHashAnnotation] = existingAnn
 	return nil
 }
