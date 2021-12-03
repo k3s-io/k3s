@@ -102,7 +102,7 @@ require (
 	github.com/otiai10/copy v1.6.0
 	github.com/pierrec/lz4 v2.6.0+incompatible
 	github.com/pkg/errors v0.9.1
-	github.com/rancher/dynamiclistener v0.2.3
+	github.com/rancher/dynamiclistener v0.2.3-k3s1
 	github.com/rancher/remotedialer v0.2.0
 	github.com/rancher/wharfie v0.3.4
 	github.com/rancher/wrangler v0.6.2
