@@ -5,8 +5,12 @@ cd $(dirname $0)/..
 . ./scripts/version.sh
 
 RUNC_VERSION=v1.0.3
-ROOT_VERSION=v0.9.1
-TRAEFIK_VERSION=9.18.2  # appVersion: 2.4.8
+ROOT_VERSION=v0.10.1
+TRAEFIK_CHART_VERSION=$(yq e '.spec.chart' manifests/traefik.yaml | awk 'match($0, /([0-9.]+)([0-9]{2})/, m) { print m[1]; exit; }')
+TRAEFIK_PACKAGE_VERSION=$(yq e '.spec.chart' manifests/traefik.yaml | awk 'match($0, /([0-9.]+)([0-9]{2})/, m) { print m[2]; exit; }')
+TRAEFIK_FILE=traefik-${TRAEFIK_CHART_VERSION}${TRAEFIK_PACKAGE_VERSION}.tgz
+TRAEFIK_CRD_FILE=traefik-crd-${TRAEFIK_CHART_VERSION}${TRAEFIK_PACKAGE_VERSION}.tgz
+TRAEFIK_URL=https://helm.traefik.io/traefik/traefik-${TRAEFIK_CHART_VERSION}.tgz
 CHARTS_DIR=build/static/charts
 RUNC_DIR=build/src/github.com/opencontainers/runc
 DATA_DIR=build/data
@@ -18,7 +22,7 @@ rm -rf ${RUNC_DIR}
 mkdir -p ${CHARTS_DIR}
 mkdir -p ${DATA_DIR}
 
-curl --compressed -sfL https://github.com/k3s-io/k3s-root/releases/download/${ROOT_VERSION}/k3s-root-${ARCH}.tar | tar xf -
+curl --compressed -sfL https://github.com/k3s-io/k3s-root/releases/download/${ROOT_VERSION}/k3s-root-${ARCH}.tar | tar xf - --exclude=bin/socat
 
 git clone --depth=1 https://github.com/opencontainers/runc ${RUNC_DIR} || true
 pushd ${RUNC_DIR}
