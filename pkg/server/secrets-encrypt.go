@@ -214,7 +214,7 @@ func encryptionPrepare(ctx context.Context, server *config.Control, force bool) 
 	if err != nil {
 		return err
 	}
-	if err = secretsencrypt.WriteEncryptionHashAnnotation(server.Runtime, node, secretsencrypt.EncryptionPrepare, false); err != nil {
+	if err = secretsencrypt.WriteEncryptionHashAnnotation(server.Runtime, node, secretsencrypt.EncryptionPrepare); err != nil {
 		return err
 	}
 	return cluster.Save(ctx, server, server.Runtime.EtcdConfig, true)
@@ -243,7 +243,7 @@ func encryptionRotate(ctx context.Context, server *config.Control, force bool) e
 	if err != nil {
 		return err
 	}
-	if err := secretsencrypt.WriteEncryptionHashAnnotation(server.Runtime, node, secretsencrypt.EncryptionRotate, false); err != nil {
+	if err := secretsencrypt.WriteEncryptionHashAnnotation(server.Runtime, node, secretsencrypt.EncryptionRotate); err != nil {
 		return err
 	}
 	return cluster.Save(ctx, server, server.Runtime.EtcdConfig, true)
@@ -261,10 +261,17 @@ func encryptionReencrypt(ctx context.Context, server *config.Control, force bool
 	if err != nil {
 		return err
 	}
-	if err := secretsencrypt.WriteEncryptionHashAnnotation(server.Runtime, node, secretsencrypt.EncryptionReencryptRequest, true); err != nil {
+
+	reencryptHash, err := secretsencrypt.GenReencryptHash(server.Runtime, secretsencrypt.EncryptionReencryptRequest)
+	if err != nil {
 		return err
 	}
-
+	ann := secretsencrypt.EncryptionReencryptRequest + "-" + reencryptHash
+	node.Annotations[secretsencrypt.EncryptionHashAnnotation] = ann
+	if _, err = server.Runtime.Core.Core().V1().Node().Update(node); err != nil {
+		return err
+	}
+	logrus.Debugf("encryption hash annotation set successfully on node: %s\n", node.ObjectMeta.Name)
 	return nil
 }
 
@@ -357,14 +364,6 @@ func verifyEncryptionHashAnnotation(runtime *config.ControlRuntime, core core.In
 	}
 
 	return nil
-}
-
-func getEncryptionHashFile(controlConfig *config.Control) (string, error) {
-	curEncryptionByte, err := ioutil.ReadFile(controlConfig.Runtime.EncryptionHash)
-	if err != nil {
-		return "", err
-	}
-	return string(curEncryptionByte), nil
 }
 
 func genErrorMessage(resp http.ResponseWriter, statusCode int, passedErr error) {

@@ -118,7 +118,45 @@ func GenEncryptionConfigHash(runtime *config.ControlRuntime) (string, error) {
 	return hex.EncodeToString(encryptionConfigHash[:]), nil
 }
 
-func WriteEncryptionHashAnnotation(runtime *config.ControlRuntime, node *corev1.Node, stage string, skipFile bool) error {
+// GenReencryptHash generates a sha256 hash fom the exisiting secrets keys and
+// a new key based on the input arguments.
+func GenReencryptHash(runtime *config.ControlRuntime, keyName string) (string, error) {
+
+	keys, err := GetEncryptionKeys(runtime)
+	if err != nil {
+		return "", err
+	}
+	newKey := apiserverconfigv1.Key{
+		Name:   keyName,
+		Secret: "12345",
+	}
+	keys = append(keys, newKey)
+	b, err := json.Marshal(keys)
+	if err != nil {
+		return "", err
+	}
+	hash := sha256.Sum256(b)
+	return hex.EncodeToString(hash[:]), nil
+}
+
+func getEncryptionHashFile(runtime *config.ControlRuntime) (string, error) {
+	curEncryptionByte, err := ioutil.ReadFile(runtime.EncryptionHash)
+	if err != nil {
+		return "", err
+	}
+	return string(curEncryptionByte), nil
+}
+
+func BootstrapEncryptionHashAnnotation(node *corev1.Node, runtime *config.ControlRuntime) error {
+	existingAnn, err := getEncryptionHashFile(runtime)
+	if err != nil {
+		return err
+	}
+	node.Annotations[EncryptionHashAnnotation] = existingAnn
+	return nil
+}
+
+func WriteEncryptionHashAnnotation(runtime *config.ControlRuntime, node *corev1.Node, stage string) error {
 	encryptionConfigHash, err := GenEncryptionConfigHash(runtime)
 	if err != nil {
 		return err
@@ -132,8 +170,5 @@ func WriteEncryptionHashAnnotation(runtime *config.ControlRuntime, node *corev1.
 		return err
 	}
 	logrus.Debugf("encryption hash annotation set successfully on node: %s\n", node.ObjectMeta.Name)
-	if skipFile {
-		return nil
-	}
 	return ioutil.WriteFile(runtime.EncryptionHash, []byte(ann), 0600)
 }

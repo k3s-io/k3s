@@ -536,9 +536,11 @@ func setNodeLabelsAndAnnotations(ctx context.Context, nodes v1.NodeClient, confi
 			node.Labels[MasterRoleLabelKey] = "true"
 		}
 
-		if err = setEncryptionHashAnnotation(node, &config.ControlConfig); err != nil {
-			logrus.Infof("Unable to set encryption hash annotation %s", err.Error())
-			break
+		if config.ControlConfig.EncryptSecrets {
+			if err = secretsencrypt.BootstrapEncryptionHashAnnotation(node, config.ControlConfig.Runtime); err != nil {
+				logrus.Infof("Unable to set encryption hash annotation %s", err.Error())
+				break
+			}
 		}
 
 		_, err = nodes.Update(node)
@@ -592,17 +594,5 @@ func setClusterDNSConfig(ctx context.Context, controlConfig *Config, configMap v
 		case <-time.After(time.Second):
 		}
 	}
-	return nil
-}
-
-func setEncryptionHashAnnotation(node *corev1.Node, controlConfig *config.Control) error {
-	if !controlConfig.EncryptSecrets {
-		return nil
-	}
-	existingAnn, err := getEncryptionHashFile(controlConfig)
-	if err != nil {
-		return err
-	}
-	node.Annotations[secretsencrypt.EncryptionHashAnnotation] = existingAnn
 	return nil
 }
