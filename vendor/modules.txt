@@ -870,6 +870,9 @@ github.com/opencontainers/runtime-spec/specs-go
 github.com/opencontainers/selinux/go-selinux
 github.com/opencontainers/selinux/go-selinux/label
 github.com/opencontainers/selinux/pkg/pwalk
+# github.com/otiai10/copy v1.6.0
+## explicit
+github.com/otiai10/copy
 # github.com/peterbourgon/diskv v2.0.1+incompatible
 github.com/peterbourgon/diskv
 # github.com/pierrec/lz4 v2.6.0+incompatible
@@ -900,7 +903,7 @@ github.com/prometheus/common/model
 github.com/prometheus/procfs
 github.com/prometheus/procfs/internal/fs
 github.com/prometheus/procfs/internal/util
-# github.com/rancher/dynamiclistener v0.2.3
+# github.com/rancher/dynamiclistener v0.2.3-k3s1
 ## explicit
 github.com/rancher/dynamiclistener
 github.com/rancher/dynamiclistener/cert
