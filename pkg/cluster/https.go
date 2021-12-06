@@ -52,6 +52,15 @@ func (c *Cluster) newListener(ctx context.Context) (net.Listener, http.Handler, 
 			MinVersion:   c.config.TLSMinVersion,
 			CipherSuites: c.config.TLSCipherSuites,
 		},
+		RegenerateCerts: func() bool {
+			const regenerateDynamicListenerFile = "dynamic-cert-regenerate"
+			dynamicListenerRegenFilePath := filepath.Join(c.config.DataDir, "tls", regenerateDynamicListenerFile)
+			if _, err := os.Stat(dynamicListenerRegenFilePath); err == nil {
+				os.Remove(dynamicListenerRegenFilePath)
+				return true
+			}
+			return false
+		},
 	})
 }
 
