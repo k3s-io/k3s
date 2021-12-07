@@ -3,7 +3,6 @@ package secretsencrypt
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/rancher/k3s/pkg/cluster"
@@ -43,13 +42,12 @@ func Register(
 	nodes coreclient.NodeController,
 	secrets coreclient.SecretController,
 ) error {
-	nodeName := os.Getenv("NODE_NAME")
 	h := &handler{
 		ctx:           ctx,
 		controlConfig: controlConfig,
 		nodes:         nodes,
 		secrets:       secrets,
-		recorder:      util.BuildControllerEventRecorder(k8s, controllerAgentName, nodeName),
+		recorder:      util.BuildControllerEventRecorder(k8s, controllerAgentName),
 	}
 
 	nodes.OnChange(ctx, "reencrypt-controller", h.onChangeNode)

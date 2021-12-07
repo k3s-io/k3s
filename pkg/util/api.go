@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -77,13 +78,11 @@ func WaitForAPIServerReady(ctx context.Context, client clientset.Interface, time
 	return nil
 }
 
-func BuildControllerEventRecorder(k8s clientset.Interface, controllerName string, nodeName string) record.EventRecorder {
+func BuildControllerEventRecorder(k8s clientset.Interface, controllerName string) record.EventRecorder {
 	logrus.Infof("Creating %s event broadcaster", controllerName)
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(logrus.Infof)
 	eventBroadcaster.StartRecordingToSink(&coregetter.EventSinkImpl{Interface: k8s.CoreV1().Events(metav1.NamespaceSystem)})
-	if nodeName != "" {
-		return eventBroadcaster.NewRecorder(schemes.All, v1.EventSource{Component: controllerName, Host: nodeName})
-	}
-	return eventBroadcaster.NewRecorder(schemes.All, v1.EventSource{Component: controllerName})
+	nodeName := os.Getenv("NODE_NAME")
+	return eventBroadcaster.NewRecorder(schemes.All, v1.EventSource{Component: controllerName, Host: nodeName})
 }
