@@ -3,8 +3,10 @@ package deps
 import (
 	"crypto"
 	cryptorand "crypto/rand"
+	"crypto/sha256"
 	"crypto/x509"
 	b64 "encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -147,6 +149,7 @@ func CreateRuntimeCertFiles(config *config.Control, runtime *config.ControlRunti
 
 	if config.EncryptSecrets {
 		runtime.EncryptionConfig = filepath.Join(config.DataDir, "cred", "encryption-config.json")
+		runtime.EncryptionHash = filepath.Join(config.DataDir, "cred", "encryption-state.json")
 	}
 }
 
@@ -169,7 +172,7 @@ func GenServerDeps(config *config.Control, runtime *config.ControlRuntime) error
 		return err
 	}
 
-	if err := genEncryptionConfig(config, runtime); err != nil {
+	if err := genEncryptionConfigAndState(config, runtime); err != nil {
 		return err
 	}
 
@@ -653,7 +656,7 @@ func expired(certFile string, pool *x509.CertPool) bool {
 	return certutil.IsCertExpired(certificates[0], config.CertificateRenewDays)
 }
 
-func genEncryptionConfig(controlConfig *config.Control, runtime *config.ControlRuntime) error {
+func genEncryptionConfigAndState(controlConfig *config.Control, runtime *config.ControlRuntime) error {
 	if !controlConfig.EncryptSecrets {
 		return nil
 	}
@@ -694,9 +697,14 @@ func genEncryptionConfig(controlConfig *config.Control, runtime *config.ControlR
 			},
 		},
 	}
-	jsonfile, err := json.Marshal(encConfig)
+	b, err := json.Marshal(encConfig)
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(runtime.EncryptionConfig, jsonfile, 0600)
+	if err := ioutil.WriteFile(runtime.EncryptionConfig, b, 0600); err != nil {
+		return err
+	}
+	encryptionConfigHash := sha256.Sum256(b)
+	ann := "start-" + hex.EncodeToString(encryptionConfigHash[:])
+	return ioutil.WriteFile(controlConfig.Runtime.EncryptionHash, []byte(ann), 0600)
 }

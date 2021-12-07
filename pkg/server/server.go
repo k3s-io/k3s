@@ -25,6 +25,7 @@ import (
 	"github.com/rancher/k3s/pkg/node"
 	"github.com/rancher/k3s/pkg/nodepassword"
 	"github.com/rancher/k3s/pkg/rootlessports"
+	"github.com/rancher/k3s/pkg/secretsencrypt"
 	"github.com/rancher/k3s/pkg/servicelb"
 	"github.com/rancher/k3s/pkg/static"
 	"github.com/rancher/k3s/pkg/util"
@@ -169,7 +170,7 @@ func runControllers(ctx context.Context, wg *sync.WaitGroup, config *Config) err
 		}
 	}
 
-	go setControlPlaneRoleLabel(ctx, sc.Core.Core().V1().Node(), config)
+	go setNodeLabelsAndAnnotations(ctx, sc.Core.Core().V1().Node(), config)
 
 	go setClusterDNSConfig(ctx, config, sc.Core.Core().V1().ConfigMap())
 
@@ -230,6 +231,16 @@ func coreControllers(ctx context.Context, sc *Context, config *Config) error {
 
 	if err := apiaddresses.Register(ctx, config.ControlConfig.Runtime, sc.Core.Core().V1().Endpoints()); err != nil {
 		return err
+	}
+
+	if config.ControlConfig.EncryptSecrets {
+		if err := secretsencrypt.Register(ctx,
+			sc.K8s,
+			&config.ControlConfig,
+			sc.Core.Core().V1().Node(),
+			sc.Core.Core().V1().Secret()); err != nil {
+			return err
+		}
 	}
 
 	if config.Rootless {
@@ -490,7 +501,7 @@ func isSymlink(config string) bool {
 	return false
 }
 
-func setControlPlaneRoleLabel(ctx context.Context, nodes v1.NodeClient, config *Config) error {
+func setNodeLabelsAndAnnotations(ctx context.Context, nodes v1.NodeClient, config *Config) error {
 	if config.DisableAgent || config.ControlConfig.DisableAPIServer {
 		return nil
 	}
@@ -515,18 +526,25 @@ func setControlPlaneRoleLabel(ctx context.Context, nodes v1.NodeClient, config *
 				etcdRoleLabelExists = true
 			}
 		}
-		if v, ok := node.Labels[ControlPlaneRoleLabelKey]; ok && v == "true" && !etcdRoleLabelExists {
-			break
-		}
 		if node.Labels == nil {
 			node.Labels = make(map[string]string)
 		}
-		node.Labels[ControlPlaneRoleLabelKey] = "true"
-		node.Labels[MasterRoleLabelKey] = "true"
+		v, ok := node.Labels[ControlPlaneRoleLabelKey]
+		if !ok || v != "true" || etcdRoleLabelExists {
+			node.Labels[ControlPlaneRoleLabelKey] = "true"
+			node.Labels[MasterRoleLabelKey] = "true"
+		}
+
+		if config.ControlConfig.EncryptSecrets {
+			if err = secretsencrypt.BootstrapEncryptionHashAnnotation(node, config.ControlConfig.Runtime); err != nil {
+				logrus.Infof("Unable to set encryption hash annotation %s", err.Error())
+				break
+			}
+		}
 
 		_, err = nodes.Update(node)
 		if err == nil {
-			logrus.Infof("Control-plane role label has been set successfully on node: %s", nodeName)
+			logrus.Infof("Labels and annotations have been set successfully on node: %s", nodeName)
 			break
 		}
 		select {

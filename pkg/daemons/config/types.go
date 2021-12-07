@@ -151,6 +151,8 @@ type Control struct {
 	ClusterReset             bool
 	ClusterResetRestorePath  string
 	EncryptSecrets           bool
+	EncryptForce             bool
+	EncryptSkip              bool
 	TLSMinVersion            uint16
 	TLSCipherSuites          []uint16
 	EtcdSnapshotName         string
@@ -193,6 +195,7 @@ type ControlRuntimeBootstrap struct {
 	RequestHeaderCAKey string
 	IPSECKey           string
 	EncryptionConfig   string
+	EncryptionHash     string
 }
 
 type ControlRuntime struct {
@@ -249,7 +252,8 @@ type ControlRuntime struct {
 	ClientETCDCert           string
 	ClientETCDKey            string
 
-	Core *core.Factory
+	Core       *core.Factory
+	EtcdConfig endpoint.ETCDConfig
 }
 
 type ArgString []string

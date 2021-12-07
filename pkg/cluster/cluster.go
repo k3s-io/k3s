@@ -20,7 +20,7 @@ type Cluster struct {
 	config           *config.Control
 	runtime          *config.ControlRuntime
 	managedDB        managed.Driver
-	etcdConfig       endpoint.ETCDConfig
+	EtcdConfig       endpoint.ETCDConfig
 	joining          bool
 	storageStarted   bool
 	saveBootstrap    bool
@@ -85,7 +85,7 @@ func (c *Cluster) Start(ctx context.Context) (<-chan struct{}, error) {
 
 	// if necessary, store bootstrap data to datastore
 	if c.saveBootstrap {
-		if err := c.save(ctx, false); err != nil {
+		if err := Save(ctx, c.config, c.EtcdConfig, false); err != nil {
 			return nil, err
 		}
 	}
@@ -99,7 +99,7 @@ func (c *Cluster) Start(ctx context.Context) (<-chan struct{}, error) {
 			for {
 				select {
 				case <-ready:
-					if err := c.save(ctx, false); err != nil {
+					if err := Save(ctx, c.config, c.EtcdConfig, false); err != nil {
 						panic(err)
 					}
 
@@ -139,7 +139,7 @@ func (c *Cluster) startStorage(ctx context.Context) error {
 	// Persist the returned etcd configuration. We decide if we're doing leader election for embedded controllers
 	// based on what the kine wrapper tells us about the datastore. Single-node datastores like sqlite don't require
 	// leader election, while basically all others (etcd, external database, etc) do since they allow multiple servers.
-	c.etcdConfig = etcdConfig
+	c.EtcdConfig = etcdConfig
 	c.config.Datastore.Config = etcdConfig.TLSConfig
 	c.config.Datastore.Endpoint = strings.Join(etcdConfig.Endpoints, ",")
 	c.config.NoLeaderElect = !etcdConfig.LeaderElect

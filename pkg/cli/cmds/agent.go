@@ -55,9 +55,15 @@ type AgentShared struct {
 }
 
 var (
-	appName     = filepath.Base(os.Args[0])
-	AgentConfig Agent
-	NodeIPFlag  = cli.StringSliceFlag{
+	appName        = filepath.Base(os.Args[0])
+	AgentConfig    Agent
+	AgentTokenFlag = cli.StringFlag{
+		Name:        "token,t",
+		Usage:       "(cluster) Token to use for authentication",
+		EnvVar:      version.ProgramUpper + "_TOKEN",
+		Destination: &AgentConfig.Token,
+	}
+	NodeIPFlag = cli.StringSliceFlag{
 		Name:  "node-ip,i",
 		Usage: "(agent/networking) IPv4/IPv6 addresses to advertise for node",
 		Value: &AgentConfig.NodeIP,
@@ -216,12 +222,7 @@ func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
 			VModule,
 			LogFile,
 			AlsoLogToStderr,
-			cli.StringFlag{
-				Name:        "token,t",
-				Usage:       "(cluster) Token to use for authentication",
-				EnvVar:      version.ProgramUpper + "_TOKEN",
-				Destination: &AgentConfig.Token,
-			},
+			AgentTokenFlag,
 			cli.StringFlag{
 				Name:        "token-file",
 				Usage:       "(cluster) Token file to use for authentication",
