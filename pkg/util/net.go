@@ -81,14 +81,10 @@ func GetHostnameAndIPs(name string, nodeIPs cli.StringSlice) (string, []net.IP, 
 		}
 		ips = append(ips, hostIP)
 	} else {
-		for _, hostIP := range nodeIPs {
-			for _, v := range strings.Split(hostIP, ",") {
-				ip := net.ParseIP(v)
-				if ip == nil {
-					return "", nil, fmt.Errorf("invalid node-ip %s", v)
-				}
-				ips = append(ips, ip)
-			}
+		var err error
+		ips, err = ParseStringSliceToIPs(nodeIPs)
+		if err != nil {
+			return "", nil, fmt.Errorf("invalid node-ip: %w", err)
 		}
 	}
 
@@ -105,4 +101,21 @@ func GetHostnameAndIPs(name string, nodeIPs cli.StringSlice) (string, []net.IP, 
 	name = strings.ToLower(name)
 
 	return name, ips, nil
+}
+
+// ParseStringSliceToIPs converts slice of strings that in turn can be lists of comma separated unparsed IP addresses
+// into a single slice of net.IP, it returns error if at any point parsing failed
+func ParseStringSliceToIPs(s cli.StringSlice) ([]net.IP, error) {
+	var ips []net.IP
+	for _, unparsedIP := range s {
+		for _, v := range strings.Split(unparsedIP, ",") {
+			ip := net.ParseIP(v)
+			if ip == nil {
+				return nil, fmt.Errorf("invalid ip format '%s'", v)
+			}
+			ips = append(ips, ip)
+		}
+	}
+
+	return ips, nil
 }
