@@ -7,6 +7,10 @@ if [ ! -e ../bin/containerd ]; then
     ./build
 fi
 
+echo "HELLO WORLD"
+echo "$SKIP_AIRGAP"
 ./package-cli
-./package-image
-./package-airgap
+if [ -z "$SKIP_AIRGAP" ]; then
+    ./package-image
+    ./package-airgap
+fi
