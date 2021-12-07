@@ -15,6 +15,7 @@ import (
 	"github.com/rancher/k3s/pkg/cli/crictl"
 	"github.com/rancher/k3s/pkg/cli/etcdsnapshot"
 	"github.com/rancher/k3s/pkg/cli/kubectl"
+	"github.com/rancher/k3s/pkg/cli/secretsencrypt"
 	"github.com/rancher/k3s/pkg/cli/server"
 	"github.com/rancher/k3s/pkg/configfilearg"
 	"github.com/sirupsen/logrus"
@@ -34,6 +35,15 @@ func main() {
 				etcdsnapshot.List,
 				etcdsnapshot.Prune,
 				etcdsnapshot.Run),
+		),
+		cmds.NewSecretsEncryptCommand(cli.ShowAppHelp,
+			cmds.NewSecretsEncryptSubcommands(
+				secretsencrypt.Status,
+				secretsencrypt.Enable,
+				secretsencrypt.Disable,
+				secretsencrypt.Prepare,
+				secretsencrypt.Rotate,
+				secretsencrypt.Reencrypt),
 		),
 		cmds.NewCertCommand(
 			cmds.NewCertSubcommands(
