@@ -198,7 +198,7 @@ func (h *handler) updateSecrets(node *corev1.Node) error {
 			if i != 0 && i%10 == 0 {
 				h.recorder.Eventf(node, corev1.EventTypeNormal, secretsProgressEvent, "reencrypted %d secrets", i)
 			}
-			i += 1
+			i++
 		}
 		return nil
 	})
