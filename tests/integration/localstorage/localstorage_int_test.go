@@ -15,7 +15,6 @@ import (
 
 var localStorageServer *testutil.K3sServer
 var localStorageServerArgs = []string{"--cluster-init"}
-var testDataDir = "../../testdata/"
 var _ = BeforeSuite(func() {
 	if !testutil.IsExistingServer() {
 		var err error
@@ -37,12 +36,12 @@ var _ = Describe("local storage", func() {
 			}, "90s", "1s").Should(MatchRegexp("kube-system.+coredns.+1\\/1.+Running"))
 		})
 		It("creates a new pvc", func() {
-			result, err := testutil.K3sCmd("kubectl", "create", "-f", testDataDir+"localstorage_pvc.yaml")
+			result, err := testutil.K3sCmd("kubectl", "create", "-f", "./testdata/localstorage_pvc.yaml")
 			Expect(result).To(ContainSubstring("persistentvolumeclaim/local-path-pvc created"))
 			Expect(err).NotTo(HaveOccurred())
 		})
 		It("creates a new pod", func() {
-			Expect(testutil.K3sCmd("kubectl", "create", "-f", testDataDir+"localstorage_pod.yaml")).
+			Expect(testutil.K3sCmd("kubectl", "create", "-f", "./testdata/localstorage_pod.yaml")).
 				To(ContainSubstring("pod/volume-test created"))
 		})
 		It("shows storage up in kubectl", func() {
@@ -51,7 +50,7 @@ var _ = Describe("local storage", func() {
 			}, "45s", "1s").Should(MatchRegexp(`local-path-pvc.+Bound`))
 			Eventually(func() (string, error) {
 				return testutil.K3sCmd("kubectl", "get", "--namespace=default", "pv")
-			}, "10s", "1s").Should(MatchRegexp(`pvc.+2Gi.+Bound`))
+			}, "10s", "1s").Should(MatchRegexp(`pvc.+1Gi.+Bound`))
 			Eventually(func() (string, error) {
 				return testutil.K3sCmd("kubectl", "get", "--namespace=default", "pod")
 			}, "10s", "1s").Should(MatchRegexp(`volume-test.+Running`))
