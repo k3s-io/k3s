@@ -10,10 +10,14 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/rancher/wrangler/pkg/merr"
+	"github.com/rancher/wrangler/pkg/schemes"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
+	coregetter "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/tools/record"
 )
 
 // This sets a default duration to wait for the apiserver to become ready. This is primarily used to
@@ -71,4 +75,15 @@ func WaitForAPIServerReady(ctx context.Context, client clientset.Interface, time
 	}
 
 	return nil
+}
+
+func BuildControllerEventRecorder(k8s clientset.Interface, controllerName string, nodeName string) record.EventRecorder {
+	logrus.Infof("Creating %s event broadcaster", controllerName)
+	eventBroadcaster := record.NewBroadcaster()
+	eventBroadcaster.StartLogging(logrus.Infof)
+	eventBroadcaster.StartRecordingToSink(&coregetter.EventSinkImpl{Interface: k8s.CoreV1().Events(metav1.NamespaceSystem)})
+	if nodeName != "" {
+		return eventBroadcaster.NewRecorder(schemes.All, v1.EventSource{Component: controllerName, Host: nodeName})
+	}
+	return eventBroadcaster.NewRecorder(schemes.All, v1.EventSource{Component: controllerName})
 }

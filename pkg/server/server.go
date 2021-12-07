@@ -238,8 +238,7 @@ func coreControllers(ctx context.Context, sc *Context, config *Config) error {
 			sc.K8s,
 			&config.ControlConfig,
 			sc.Core.Core().V1().Node(),
-			sc.Core.Core().V1().Secret(),
-			sc.K8s.CoreV1().Events("")); err != nil {
+			sc.Core.Core().V1().Secret()); err != nil {
 			return err
 		}
 	}

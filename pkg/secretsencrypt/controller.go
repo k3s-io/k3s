@@ -7,7 +7,7 @@ import (
 
 	"github.com/rancher/k3s/pkg/cluster"
 	"github.com/rancher/k3s/pkg/daemons/config"
-	"github.com/rancher/k3s/pkg/generated/clientset/versioned/scheme"
+	"github.com/rancher/k3s/pkg/util"
 	coreclient "github.com/rancher/wrangler/pkg/generated/controllers/core/v1"
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
@@ -15,7 +15,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"k8s.io/client-go/kubernetes"
-	coregetter "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/pager"
 	"k8s.io/client-go/tools/record"
 )
@@ -38,31 +37,21 @@ type handler struct {
 
 func Register(
 	ctx context.Context,
-	kubernetes kubernetes.Interface,
+	k8s kubernetes.Interface,
 	controlConfig *config.Control,
 	nodes coreclient.NodeController,
 	secrets coreclient.SecretController,
-	events coregetter.EventInterface,
 ) error {
 	h := &handler{
 		ctx:           ctx,
 		controlConfig: controlConfig,
 		nodes:         nodes,
 		secrets:       secrets,
-		recorder:      buildEventRecorder(events),
+		recorder:      util.BuildControllerEventRecorder(k8s, controllerAgentName, ""),
 	}
 
 	nodes.OnChange(ctx, "reencrypt-controller", h.onChangeNode)
 	return nil
-}
-
-func buildEventRecorder(events coregetter.EventInterface) record.EventRecorder {
-	// Create event broadcaster
-	logrus.Info("Creating reencrypt event broadcaster")
-	eventBroadcaster := record.NewBroadcaster()
-	eventBroadcaster.StartLogging(logrus.Infof)
-	eventBroadcaster.StartRecordingToSink(&coregetter.EventSinkImpl{Interface: events})
-	return eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: controllerAgentName})
 }
 
 // onChangeNode handles changes to Nodes. We are looking for a specific annotation change
