@@ -34,6 +34,20 @@ const (
 	k3sServerService         = "-server"
 )
 
+var services = []string{
+	adminService,
+	apiServerService,
+	controllerManagerService,
+	schedulerService,
+	etcdService,
+	version.Program + programControllerService,
+	authProxyService,
+	cloudControllerService,
+	kubeletService,
+	kubeProxyService,
+	version.Program + k3sServerService,
+}
+
 func commandSetup(app *cli.Context, cfg *cmds.Server, sc *server.Config) (string, string, error) {
 	gspt.SetProcTitle(os.Args[0])
 
@@ -224,22 +238,20 @@ func backupCertificates(serverDataDir, agentDataDir string) (string, error) {
 	return tlsBackupDir, nil
 }
 
-func validateCertConfig() error {
-	for _, service := range cmds.ServicesList {
-		if service != adminService &&
-			service != apiServerService &&
-			service != schedulerService &&
-			service != controllerManagerService &&
-			service != etcdService &&
-			service != kubeletService &&
-			service != kubeProxyService &&
-			service != version.Program+programControllerService &&
-			service != version.Program+k3sServerService &&
-			service != cloudControllerService &&
-			service != authProxyService {
-			return errors.New("Service " + service + " is not recognized")
+func validService(svc string) bool {
+	for _, service := range services {
+		if svc == service {
+			return true
 		}
+	}
+	return false
+}
 
+func validateCertConfig() error {
+	for _, s := range cmds.ServicesList {
+		if !validService(s) {
+			return errors.New("Service " + s + " is not recognized")
+		}
 	}
 	return nil
 }
