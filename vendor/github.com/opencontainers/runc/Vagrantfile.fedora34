@@ -21,7 +21,7 @@ Vagrant.configure("2") do |config|
 config exclude kernel,kernel-core
 config install_weak_deps false
 update
-install iptables gcc make golang-go glibc-static libseccomp-devel bats jq git-core criu
+install iptables gcc make golang-go glibc-static libseccomp-devel bats jq git-core criu fuse-sshfs
 ts run
 EOF
     done
@@ -30,9 +30,10 @@ EOF
     # Add a user for rootless tests
     useradd -u2000 -m -d/home/rootless -s/bin/bash rootless
 
-    # Allow root to execute `ssh rootless@localhost` in tests/rootless.sh
+    # Allow root and rootless itself to execute `ssh rootless@localhost` in tests/rootless.sh
     ssh-keygen -t ecdsa -N "" -f /root/rootless.key
     mkdir -m 0700 -p /home/rootless/.ssh
+    cp /root/rootless.key /home/rootless/.ssh/id_ecdsa
     cat /root/rootless.key.pub >> /home/rootless/.ssh/authorized_keys
     chown -R rootless.rootless /home/rootless
 
