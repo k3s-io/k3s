@@ -133,11 +133,16 @@ type K3sServer struct {
 // K3sStartServer acquires an exclusive lock on a temporary file, then launches a k3s cluster
 // with the provided arguments. Subsequent/parallel calls to this function will block until
 // the original lock is cleared using K3sKillServer
-func K3sStartServer(cmdArgs ...string) (*K3sServer, error) {
+func K3sStartServer(inputArgs ...string) (*K3sServer, error) {
 	logrus.Info("waiting to get server lock")
 	k3sLock, err := flock.Acquire("/var/lock/k3s-test.lock")
 	if err != nil {
 		return nil, err
+	}
+
+	var cmdArgs []string
+	for _, arg := range inputArgs {
+		cmdArgs = append(cmdArgs, strings.Fields(arg)...)
 	}
 
 	k3sBin := findK3sExecutable()
