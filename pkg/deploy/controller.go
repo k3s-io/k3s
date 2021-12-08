@@ -18,10 +18,10 @@ import (
 	"github.com/rancher/k3s/pkg/agent/util"
 	apisv1 "github.com/rancher/k3s/pkg/apis/k3s.cattle.io/v1"
 	controllersv1 "github.com/rancher/k3s/pkg/generated/controllers/k3s.cattle.io/v1"
+	pkgutil "github.com/rancher/k3s/pkg/util"
 	"github.com/rancher/wrangler/pkg/apply"
 	"github.com/rancher/wrangler/pkg/merr"
 	"github.com/rancher/wrangler/pkg/objectset"
-	"github.com/rancher/wrangler/pkg/schemes"
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -31,7 +31,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/kubernetes"
-	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/record"
 )
 
@@ -74,12 +73,7 @@ type watcher struct {
 
 // start calls listFiles at regular intervals to trigger application of manifests that have changed on disk.
 func (w *watcher) start(ctx context.Context, client kubernetes.Interface) {
-	nodeName := os.Getenv("NODE_NAME")
-	broadcaster := record.NewBroadcaster()
-	broadcaster.StartLogging(logrus.Infof)
-	broadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: client.CoreV1().Events(metav1.NamespaceSystem)})
-	w.recorder = broadcaster.NewRecorder(schemes.All, corev1.EventSource{Component: ControllerName, Host: nodeName})
-
+	w.recorder = pkgutil.BuildControllerEventRecorder(client, ControllerName)
 	force := true
 	for {
 		if err := w.listFiles(force); err == nil {

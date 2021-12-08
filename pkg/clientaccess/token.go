@@ -1,6 +1,7 @@
 package clientaccess
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
@@ -186,6 +187,16 @@ func (i *Info) Get(path string) ([]byte, error) {
 	return get(u.String(), GetHTTPClient(i.CACerts), i.Username, i.Password)
 }
 
+// Put makes a request to a subpath of info's BaseURL
+func (i *Info) Put(path string, body []byte) error {
+	u, err := url.Parse(i.BaseURL)
+	if err != nil {
+		return err
+	}
+	u.Path = path
+	return put(u.String(), body, GetHTTPClient(i.CACerts), i.Username, i.Password)
+}
+
 // setServer sets the BaseURL and CACerts fields of the Info by connecting to the server
 // and storing the CA bundle.
 func (i *Info) setServer(server string) error {
@@ -286,6 +297,32 @@ func get(u string, client *http.Client, username, password string) ([]byte, erro
 	}
 
 	return ioutil.ReadAll(resp.Body)
+}
+
+// put makes a request to a url using a provided client, username, and password
+// only an error is returned
+func put(u string, body []byte, client *http.Client, username, password string) error {
+	req, err := http.NewRequest(http.MethodPut, u, bytes.NewBuffer(body))
+	if err != nil {
+		return err
+	}
+
+	if username != "" {
+		req.SetBasicAuth(username, password)
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	respBody, _ := ioutil.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("%s: %s %s", u, resp.Status, string(respBody))
+	}
+
+	return nil
 }
 
 func FormatToken(token, certFile string) (string, error) {
