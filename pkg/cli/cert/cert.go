@@ -65,6 +65,10 @@ func rotate(app *cli.Context, cfg *cmds.Server) error {
 	serverConfig.ControlConfig.Runtime = &config.ControlRuntime{}
 	deps.CreateRuntimeCertFiles(&serverConfig.ControlConfig, serverConfig.ControlConfig.Runtime)
 
+	if err := validateCertConfig(); err != nil {
+		return err
+	}
+
 	tlsBackupDir, err := backupCertificates(serverDataDir, agentDataDir)
 	if err != nil {
 		return err
@@ -218,4 +222,24 @@ func backupCertificates(serverDataDir, agentDataDir string) (string, error) {
 		}
 	}
 	return tlsBackupDir, nil
+}
+
+func validateCertConfig() error {
+	for _, service := range cmds.ServicesList {
+		if service != adminService &&
+			service != apiServerService &&
+			service != schedulerService &&
+			service != controllerManagerService &&
+			service != etcdService &&
+			service != kubeletService &&
+			service != kubeProxyService &&
+			service != version.Program+programControllerService &&
+			service != version.Program+k3sServerService &&
+			service != cloudControllerService &&
+			service != authProxyService {
+			return errors.New("Service " + service + " is not recognized")
+		}
+
+	}
+	return nil
 }
