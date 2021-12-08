@@ -313,6 +313,7 @@ func prepare(ctx context.Context, config *config.Control, runtime *config.Contro
 	}
 
 	runtime.ETCDReady = ready
+	runtime.EtcdConfig = cluster.EtcdConfig
 	return nil
 }
 
