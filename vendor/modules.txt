@@ -534,7 +534,7 @@ github.com/go-openapi/jsonreference
 github.com/go-openapi/spec
 # github.com/go-openapi/swag v0.19.5
 github.com/go-openapi/swag
-# github.com/go-sql-driver/mysql v1.4.1
+# github.com/go-sql-driver/mysql v1.6.0
 ## explicit
 github.com/go-sql-driver/mysql
 # github.com/godbus/dbus/v5 v5.0.4
@@ -564,8 +564,6 @@ github.com/golang/protobuf/ptypes/any
 github.com/golang/protobuf/ptypes/duration
 github.com/golang/protobuf/ptypes/timestamp
 github.com/golang/protobuf/ptypes/wrappers
-# github.com/golang/snappy v0.0.3
-github.com/golang/snappy
 # github.com/golangplus/testing v1.0.0
 ## explicit
 # github.com/google/btree v1.0.1
@@ -715,7 +713,7 @@ github.com/k3s-io/helm-controller/pkg/apis/helm.cattle.io/v1
 github.com/k3s-io/helm-controller/pkg/generated/controllers/helm.cattle.io
 github.com/k3s-io/helm-controller/pkg/generated/controllers/helm.cattle.io/v1
 github.com/k3s-io/helm-controller/pkg/helm
-# github.com/k3s-io/kine v0.6.2
+# github.com/k3s-io/kine v0.6.5
 ## explicit
 github.com/k3s-io/kine/pkg/broadcaster
 github.com/k3s-io/kine/pkg/client
@@ -731,10 +729,12 @@ github.com/k3s-io/kine/pkg/server
 github.com/k3s-io/kine/pkg/tls
 # github.com/karrick/godirwalk v1.16.1
 github.com/karrick/godirwalk
-# github.com/klauspost/compress v1.12.2
+# github.com/klauspost/compress v1.13.6
 ## explicit
+github.com/klauspost/compress
 github.com/klauspost/compress/fse
 github.com/klauspost/compress/huff0
+github.com/klauspost/compress/internal/snapref
 github.com/klauspost/compress/zstd
 github.com/klauspost/compress/zstd/internal/xxhash
 # github.com/klauspost/cpuid v1.3.1
@@ -744,7 +744,7 @@ github.com/klauspost/cpuid
 github.com/kubernetes-sigs/cri-tools/cmd/crictl
 github.com/kubernetes-sigs/cri-tools/pkg/common
 github.com/kubernetes-sigs/cri-tools/pkg/version
-# github.com/lib/pq v1.8.0
+# github.com/lib/pq v1.10.2
 ## explicit
 github.com/lib/pq
 github.com/lib/pq/oid
@@ -757,7 +757,7 @@ github.com/lithammer/dedent
 github.com/mailru/easyjson/buffer
 github.com/mailru/easyjson/jlexer
 github.com/mailru/easyjson/jwriter
-# github.com/mattn/go-sqlite3 v1.14.4
+# github.com/mattn/go-sqlite3 v1.14.8
 ## explicit
 github.com/mattn/go-sqlite3
 # github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369
@@ -966,7 +966,7 @@ github.com/rancher/remotedialer
 # github.com/rancher/wharfie v0.3.4
 ## explicit
 github.com/rancher/wharfie/pkg/registries
-# github.com/rancher/wrangler v0.8.8
+# github.com/rancher/wrangler v0.8.10
 ## explicit
 github.com/rancher/wrangler/pkg/apply
 github.com/rancher/wrangler/pkg/apply/injectors
@@ -1417,7 +1417,6 @@ google.golang.org/api/transport/http
 google.golang.org/api/transport/http/internal/propagation
 # google.golang.org/appengine v1.6.6
 google.golang.org/appengine
-google.golang.org/appengine/cloudsql
 google.golang.org/appengine/internal
 google.golang.org/appengine/internal/app_identity
 google.golang.org/appengine/internal/base

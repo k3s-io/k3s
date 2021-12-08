@@ -1,17 +1,21 @@
 package apply
 
 import (
+	"context"
 	"fmt"
 	"sort"
+	"sync"
 
 	"github.com/pkg/errors"
 	gvk2 "github.com/rancher/wrangler/pkg/gvk"
 	"github.com/rancher/wrangler/pkg/merr"
 	"github.com/rancher/wrangler/pkg/objectset"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/sync/errgroup"
 	errors2 "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -247,7 +251,7 @@ func (o *desiredSet) process(debugID string, set labels.Selector, gvk schema.Gro
 
 	reconciler := o.reconcilers[gvk]
 
-	existing, err := o.list(nsed, controller, client, set)
+	existing, err := o.list(nsed, controller, client, set, objs)
 	if err != nil {
 		o.err(errors.Wrapf(err, "failed to list %s for %s", gvk, debugID))
 		return
@@ -334,32 +338,31 @@ func (o *desiredSet) process(debugID string, set labels.Selector, gvk schema.Gro
 	}
 }
 
-func (o *desiredSet) list(namespaced bool, informer cache.SharedIndexInformer, client dynamic.NamespaceableResourceInterface, selector labels.Selector) (map[objectset.ObjectKey]runtime.Object, error) {
+func (o *desiredSet) list(namespaced bool, informer cache.SharedIndexInformer, client dynamic.NamespaceableResourceInterface,
+	selector labels.Selector, desiredObjects map[objectset.ObjectKey]runtime.Object) (map[objectset.ObjectKey]runtime.Object, error) {
 	var (
 		errs []error
 		objs = map[objectset.ObjectKey]runtime.Object{}
 	)
 
 	if informer == nil {
-		var c dynamic.ResourceInterface
+		// if a lister namespace is set assume all objects belong to the listerNamespace
+		// otherwise use distinct namespaces from the desired objects
+		// (even if not namespaced as we'll get a single empty namespace in this case which is working OK)
+		var namespaces []string
 		if o.listerNamespace != "" {
-			c = client.Namespace(o.listerNamespace)
+			namespaces = append(namespaces, o.listerNamespace)
 		} else {
-			c = client
+			namespaces = getDistinctNamespaces(desiredObjects)
 		}
 
-		list, err := c.List(o.ctx, v1.ListOptions{
-			LabelSelector: selector.String(),
-		})
-		if err != nil {
-			return nil, err
-		}
-
-		for _, obj := range list.Items {
-			copy := obj
-			if err := addObjectToMap(objs, &copy); err != nil {
+		err := multiNamespaceList(o.ctx, namespaces, client, selector, func(obj unstructured.Unstructured) {
+			if err := addObjectToMap(objs, &obj); err != nil {
 				errs = append(errs, err)
 			}
+		})
+		if err != nil {
+			errs = append(errs, err)
 		}
 
 		return objs, merr.NewErrors(errs...)
@@ -432,4 +435,53 @@ func addObjectToMap(objs map[objectset.ObjectKey]runtime.Object, obj interface{}
 	}] = obj.(runtime.Object)
 
 	return nil
+}
+
+// multiNamespaceList lists objects across all given namespaces, because requests are concurrent it is possible for appendFn to be called before errors are reported.
+func multiNamespaceList(ctx context.Context, namespaces []string, baseClient dynamic.NamespaceableResourceInterface, selector labels.Selector, appendFn func(obj unstructured.Unstructured)) error {
+	var mu sync.Mutex
+	wg, _ctx := errgroup.WithContext(ctx)
+
+	// list all namespaces concurrently
+	for _, namespace := range namespaces {
+		namespace := namespace
+		wg.Go(func() error {
+			list, err := baseClient.Namespace(namespace).List(_ctx, v1.ListOptions{
+				LabelSelector: selector.String(),
+			})
+			if err != nil {
+				return err
+			}
+
+			mu.Lock()
+			for _, obj := range list.Items {
+				appendFn(obj)
+			}
+			mu.Unlock()
+
+			return nil
+		})
+	}
+
+	return wg.Wait()
+}
+
+func getDistinctNamespaces(objs map[objectset.ObjectKey]runtime.Object) (namespaces []string) {
+	for objKey, _ := range objs {
+		var duplicate bool
+		for i := range namespaces {
+			if namespaces[i] == objKey.Namespace {
+				duplicate = true
+				break
+			}
+		}
+
+		if duplicate {
+			continue
+		}
+
+		namespaces = append(namespaces, objKey.Namespace)
+	}
+
+	return
 }
