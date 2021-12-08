@@ -30,6 +30,7 @@ replace (
 	github.com/opencontainers/runc => github.com/opencontainers/runc v1.0.0-rc92
 	github.com/opencontainers/runtime-spec => github.com/opencontainers/runtime-spec v1.0.3-0.20200728170252-4d89ac9fbff6
 	github.com/rancher/k3s/pkg/data => ./pkg/data
+	github.com/rancher/wrangler => github.com/rancher/wrangler v0.6.2
 	go.etcd.io/etcd => github.com/k3s-io/etcd v0.5.0-alpha.5.0.20201208200253-50621aee4aea
 	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20210220033148-5ea612d1eb83
 	golang.org/x/net => golang.org/x/net v0.0.0-20210224082022-3d97a244fca7
@@ -84,18 +85,18 @@ require (
 	github.com/erikdubbelboer/gspt v0.0.0-20190125194910-e68493906b83
 	github.com/flannel-io/flannel v0.14.1
 	github.com/go-bindata/go-bindata v3.1.2+incompatible
-	github.com/go-sql-driver/mysql v1.4.1
+	github.com/go-sql-driver/mysql v1.6.0
 	github.com/google/cadvisor v0.38.8
 	github.com/google/tcpproxy v0.0.0-20180808230851-dfa16c61dad2
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.4.2
 	github.com/k3s-io/helm-controller v0.10.8
-	github.com/k3s-io/kine v0.6.2
+	github.com/k3s-io/kine v0.6.5
 	github.com/klauspost/compress v1.12.2
 	github.com/kubernetes-sigs/cri-tools v0.0.0-00010101000000-000000000000
-	github.com/lib/pq v1.8.0
-	github.com/mattn/go-sqlite3 v1.14.4
+	github.com/lib/pq v1.10.2
+	github.com/mattn/go-sqlite3 v1.14.8
 	github.com/minio/minio-go/v7 v7.0.7
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	// LOOK TO scripts/download FOR THE VERSION OF runc THAT WE ARE BUILDING/SHIPPING
@@ -106,7 +107,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/dynamiclistener v0.2.3-k3s1
 	github.com/rancher/remotedialer v0.2.0
-	github.com/rancher/wrangler v0.6.2
+	github.com/rancher/wrangler v0.8.3
 	github.com/rancher/wrangler-api v0.6.0
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/rootless-containers/rootlesskit v0.14.5

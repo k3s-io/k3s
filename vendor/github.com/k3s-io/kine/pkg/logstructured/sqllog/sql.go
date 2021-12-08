@@ -48,6 +48,7 @@ type Dialect interface {
 	GetCompactRevision(ctx context.Context) (int64, error)
 	SetCompactRevision(ctx context.Context, revision int64) error
 	Compact(ctx context.Context, revision int64) (int64, error)
+	PostCompact(ctx context.Context) error
 	Fill(ctx context.Context, revision int64) error
 	IsFill(key string) bool
 	BeginTx(ctx context.Context, opts *sql.TxOptions) (*generic.Tx, error)
@@ -173,6 +174,10 @@ outer:
 			}
 		}
 
+		if err := s.postCompact(); err != nil {
+			logrus.Errorf("Post-compact operations failed: %v", err)
+		}
+
 		// Record the final results for the outer loop
 		compactRev = compactedRev
 		targetCompactRev = currentRev
@@ -234,6 +239,11 @@ func (s *SQLLog) compact(compactRev int64, targetCompactRev int64) (int64, int64
 	logrus.Debugf("COMPACT deleted %d rows from %d revisions in %s - compacted to %d/%d", deletedRows, (targetCompactRev - compactRev), time.Since(start), targetCompactRev, currentRev)
 
 	return targetCompactRev, currentRev, nil
+}
+
+// postCompact executes any post-compact database cleanup - vacuuming, WAL truncate, etc.
+func (s *SQLLog) postCompact() error {
+	return s.d.PostCompact(s.ctx)
 }
 
 func (s *SQLLog) CurrentRevision(ctx context.Context) (int64, error) {
