@@ -130,7 +130,7 @@ func TestCluster_certDirsExist(t *testing.T) {
 				config:           tt.fields.config,
 				runtime:          tt.fields.runtime,
 				managedDB:        tt.fields.managedDB,
-				etcdConfig:       tt.fields.etcdConfig,
+				EtcdConfig:       tt.fields.etcdConfig,
 				storageStarted:   tt.fields.storageStarted,
 				saveBootstrap:    tt.fields.saveBootstrap,
 			}
@@ -240,7 +240,7 @@ func TestCluster_Snapshot(t *testing.T) {
 				config:           tt.fields.config,
 				runtime:          tt.fields.runtime,
 				managedDB:        tt.fields.managedDB,
-				etcdConfig:       tt.fields.etcdConfig,
+				EtcdConfig:       tt.fields.etcdConfig,
 				joining:          tt.fields.joining,
 				storageStarted:   tt.fields.storageStarted,
 				saveBootstrap:    tt.fields.saveBootstrap,

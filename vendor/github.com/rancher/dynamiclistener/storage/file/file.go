@@ -2,9 +2,10 @@ package file
 
 import (
 	"encoding/json"
-	"github.com/rancher/dynamiclistener"
-	"k8s.io/api/core/v1"
 	"os"
+
+	"github.com/rancher/dynamiclistener"
+	v1 "k8s.io/api/core/v1"
 )
 
 func New(file string) dynamiclistener.TLSStorage {

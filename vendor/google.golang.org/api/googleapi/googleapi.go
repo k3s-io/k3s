@@ -69,6 +69,8 @@ type Error struct {
 	// Message is the server response message and is only populated when
 	// explicitly referenced by the JSON server response.
 	Message string `json:"message"`
+	// Details provide more context to an error.
+	Details []interface{} `json:"details"`
 	// Body is the raw response returned by the server.
 	// It is often but not always JSON, depending on how the request fails.
 	Body string
@@ -94,6 +96,16 @@ func (e *Error) Error() string {
 	fmt.Fprintf(&buf, "googleapi: Error %d: ", e.Code)
 	if e.Message != "" {
 		fmt.Fprintf(&buf, "%s", e.Message)
+	}
+	if len(e.Details) > 0 {
+		var detailBuf bytes.Buffer
+		enc := json.NewEncoder(&detailBuf)
+		enc.SetIndent("", "  ")
+		if err := enc.Encode(e.Details); err == nil {
+			fmt.Fprint(&buf, "\nDetails:")
+			fmt.Fprintf(&buf, "\n%s", detailBuf.String())
+
+		}
 	}
 	if len(e.Errors) == 0 {
 		return strings.TrimSpace(buf.String())
@@ -379,6 +391,14 @@ type CallOption interface {
 	Get() (key, value string)
 }
 
+// A MultiCallOption is an option argument to an API call and can be passed
+// anywhere a CallOption is accepted. It additionally supports returning a slice
+// of values for a given key.
+type MultiCallOption interface {
+	CallOption
+	GetMulti() (key string, value []string)
+}
+
 // QuotaUser returns a CallOption that will set the quota user for a call.
 // The quota user can be used by server-side applications to control accounting.
 // It can be an arbitrary string up to 40 characters, and will override UserIP
@@ -404,5 +424,25 @@ func Trace(traceToken string) CallOption { return traceTok(traceToken) }
 type traceTok string
 
 func (t traceTok) Get() (string, string) { return "trace", "token:" + string(t) }
+
+type queryParameter struct {
+	key    string
+	values []string
+}
+
+// QueryParameter allows setting the value(s) of an arbitrary key.
+func QueryParameter(key string, values ...string) CallOption {
+	return queryParameter{key: key, values: append([]string{}, values...)}
+}
+
+// Get will never actually be called -- GetMulti will.
+func (q queryParameter) Get() (string, string) {
+	return "", ""
+}
+
+// GetMulti returns the key and values values associated to that key.
+func (q queryParameter) GetMulti() (string, []string) {
+	return q.key, q.values
+}
 
 // TODO: Fields too

@@ -20,11 +20,7 @@ var EtcdSnapshotFlags = []cli.Flag{
 		EnvVar:      version.ProgramUpper + "_NODE_NAME",
 		Destination: &AgentConfig.NodeName,
 	},
-	cli.StringFlag{
-		Name:        "data-dir,d",
-		Usage:       "(data) Folder to hold state default /var/lib/rancher/" + version.Program + " or ${HOME}/.rancher/" + version.Program + " if not root",
-		Destination: &ServerConfig.DataDir,
-	},
+	DataDirFlag,
 	&cli.StringFlag{
 		Name:        "dir,etcd-snapshot-dir",
 		Usage:       "(db) Directory to save etcd on-demand snapshot. (default: ${data-dir}/db/snapshots)",
