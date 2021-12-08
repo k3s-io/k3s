@@ -106,7 +106,7 @@ task:
       yum config-manager --set-enabled powertools
       ;;
     esac
-    yum install -y -q gcc git iptables jq glibc-static libseccomp-devel make criu
+    yum install -y -q gcc git iptables jq glibc-static libseccomp-devel make criu fuse-sshfs
     # install Go
     curl -fsSL "https://dl.google.com/go/go${GO_VERSION}.linux-amd64.tar.gz" | tar Cxz /usr/local
     # install bats
@@ -118,6 +118,12 @@ task:
     cd -
     # Add a user for rootless tests
     useradd -u2000 -m -d/home/rootless -s/bin/bash rootless
+    # Allow root and rootless itself to execute `ssh rootless@localhost` in tests/rootless.sh
+    ssh-keygen -t ecdsa -N "" -f /root/rootless.key
+    mkdir -m 0700 -p /home/rootless/.ssh
+    cp /root/rootless.key /home/rootless/.ssh/id_ecdsa
+    cat /root/rootless.key.pub >> /home/rootless/.ssh/authorized_keys
+    chown -R rootless.rootless /home/rootless
     # set PATH
     echo 'export PATH=/usr/local/go/bin:/usr/local/bin:$PATH' >> /root/.bashrc
     # Setup ssh localhost for terminal emulation (script -e did not work)
