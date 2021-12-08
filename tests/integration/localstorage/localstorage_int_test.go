@@ -35,11 +35,11 @@ var _ = Describe("local storage", func() {
 			}, "90s", "1s").Should(MatchRegexp("kube-system.+coredns.+1\\/1.+Running"))
 		})
 		It("creates a new pvc", func() {
-			Expect(testutil.K3sCmd("kubectl", "create", "-f", "../testdata/localstorage_pvc.yaml")).
+			Expect(testutil.K3sCmd("kubectl", "create", "-f", "./testdata/localstorage_pvc.yaml")).
 				To(ContainSubstring("persistentvolumeclaim/local-path-pvc created"))
 		})
 		It("creates a new pod", func() {
-			Expect(testutil.K3sCmd("kubectl", "create", "-f", "../testdata/localstorage_pod.yaml")).
+			Expect(testutil.K3sCmd("kubectl", "create", "-f", "./testdata/localstorage_pod.yaml")).
 				To(ContainSubstring("pod/volume-test created"))
 		})
 		It("shows storage up in kubectl", func() {
@@ -48,7 +48,7 @@ var _ = Describe("local storage", func() {
 			}, "45s", "1s").Should(MatchRegexp(`local-path-pvc.+Bound`))
 			Eventually(func() (string, error) {
 				return testutil.K3sCmd("kubectl", "get", "pv")
-			}, "10s", "1s").Should(MatchRegexp(`pvc.+2Gi.+Bound`))
+			}, "10s", "1s").Should(MatchRegexp(`pvc.+1Gi.+Bound`))
 		})
 		It("has proper folder permissions", func() {
 			var k3sStorage = "/var/lib/rancher/k3s/storage"
