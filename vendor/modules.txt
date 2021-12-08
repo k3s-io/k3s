@@ -891,7 +891,7 @@ github.com/opencontainers/go-digest/digestset
 github.com/opencontainers/image-spec/identity
 github.com/opencontainers/image-spec/specs-go
 github.com/opencontainers/image-spec/specs-go/v1
-# github.com/opencontainers/runc v1.0.2 => github.com/opencontainers/runc v1.0.2
+# github.com/opencontainers/runc v1.0.3 => github.com/opencontainers/runc v1.0.3
 ## explicit
 github.com/opencontainers/runc
 github.com/opencontainers/runc/contrib/cmd/recvtty
@@ -3315,7 +3315,7 @@ sigs.k8s.io/yaml
 # github.com/juju/errors => github.com/k3s-io/nocode v0.0.0-20200630202308-cb097102c09f
 # github.com/kubernetes-sigs/cri-tools => github.com/k3s-io/cri-tools v1.21.0-k3s1
 # github.com/matryer/moq => github.com/rancher/moq v0.0.0-20190404221404-ee5226d43009
-# github.com/opencontainers/runc => github.com/opencontainers/runc v1.0.2
+# github.com/opencontainers/runc => github.com/opencontainers/runc v1.0.3
 # github.com/opencontainers/runtime-spec => github.com/opencontainers/runtime-spec v1.0.3-0.20210316141917-a8c4a9ee0f6b
 # github.com/rancher/k3s/pkg/data => ./pkg/data
 # go.etcd.io/etcd => github.com/k3s-io/etcd v0.5.0-alpha.5.0.20201208200253-50621aee4aea
