@@ -39,6 +39,7 @@ var (
 		`CREATE INDEX IF NOT EXISTS kine_id_deleted_index ON kine (id,deleted)`,
 		`CREATE INDEX IF NOT EXISTS kine_prev_revision_index ON kine (prev_revision)`,
 		`CREATE UNIQUE INDEX IF NOT EXISTS kine_name_prev_revision_uindex ON kine (name, prev_revision)`,
+		`PRAGMA wal_checkpoint(TRUNCATE)`,
 	}
 )
 
@@ -78,6 +79,7 @@ func NewVariant(ctx context.Context, driverName, dataSourceName string, connPool
 					kd.deleted != 0 AND
 					kd.id <= ?
 			)`
+	dialect.PostCompactSQL = `PRAGMA wal_checkpoint(FULL)`
 	dialect.TranslateErr = func(err error) error {
 		if err, ok := err.(sqlite3.Error); ok && err.ExtendedCode == sqlite3.ErrConstraintUnique {
 			return server.ErrKeyExists
