@@ -167,6 +167,31 @@ func (o *ObjectSet) GVKOrder(known ...schema.GroupVersionKind) []schema.GroupVer
 	return append(o.gvkOrder, rest...)
 }
 
+// Namespaces all distinct namespaces found on the objects in this set.
+func (o *ObjectSet) Namespaces() (namespaces []string) {
+	for _, objsByKey := range o.ObjectsByGVK() {
+		for objKey, _ := range objsByKey {
+
+			// do not add duplicate namespace entries
+			var duplicate bool
+			for i := range namespaces {
+				if namespaces[i] == objKey.Namespace {
+					duplicate = true
+					break
+				}
+			}
+
+			if duplicate {
+				continue
+			}
+
+			namespaces = append(namespaces, objKey.Namespace)
+		}
+	}
+
+	return
+}
+
 type ObjectByGK map[schema.GroupKind]map[ObjectKey]runtime.Object
 
 func (o ObjectByGK) Add(obj runtime.Object) (schema.GroupKind, error) {

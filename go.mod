@@ -21,6 +21,7 @@ replace (
 	github.com/docker/docker => github.com/docker/docker v20.10.2+incompatible
 	github.com/docker/libnetwork => github.com/docker/libnetwork v0.8.0-dev.2.0.20190624125649-f0e46a78ea34
 	github.com/golang/protobuf => github.com/golang/protobuf v1.5.2
+	github.com/googleapis/gax-go/v2 => github.com/googleapis/gax-go/v2 v2.0.5
 	github.com/juju/errors => github.com/k3s-io/nocode v0.0.0-20200630202308-cb097102c09f
 	github.com/kubernetes-sigs/cri-tools => github.com/k3s-io/cri-tools v1.21.0-k3s1
 	github.com/matryer/moq => github.com/rancher/moq v0.0.0-20190404221404-ee5226d43009
@@ -28,6 +29,7 @@ replace (
 	github.com/opencontainers/runc => github.com/opencontainers/runc v1.0.2
 	github.com/opencontainers/runtime-spec => github.com/opencontainers/runtime-spec v1.0.3-0.20210316141917-a8c4a9ee0f6b
 	github.com/rancher/k3s/pkg/data => ./pkg/data
+	github.com/rancher/wrangler => github.com/rancher/wrangler v0.8.10
 	go.etcd.io/etcd/api/v3 => github.com/k3s-io/etcd/api/v3 v3.5.0-k3s2
 	go.etcd.io/etcd/client/v3 => github.com/k3s-io/etcd/client/v3 v3.5.0-k3s2
 	go.etcd.io/etcd/etcdutl/v3 => github.com/k3s-io/etcd/etcdutl/v3 v3.5.0-k3s2
@@ -80,7 +82,7 @@ require (
 	github.com/containerd/stargz-snapshotter v0.8.0
 	github.com/coreos/go-iptables v0.5.0
 	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f
-	github.com/docker/docker v20.10.7+incompatible
+	github.com/docker/docker v20.10.10+incompatible
 	github.com/erikdubbelboer/gspt v0.0.0-20190125194910-e68493906b83
 	github.com/flannel-io/flannel v0.15.1
 	github.com/go-bindata/go-bindata v3.1.2+incompatible
@@ -91,8 +93,8 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.4.2
 	github.com/k3s-io/helm-controller v0.11.7
-	github.com/k3s-io/kine v0.8.0
-	github.com/klauspost/compress v1.13.5
+	github.com/k3s-io/kine v0.8.1
+	github.com/klauspost/compress v1.13.6
 	github.com/kubernetes-sigs/cri-tools v0.0.0-00010101000000-000000000000
 	github.com/lib/pq v1.10.2
 	github.com/mattn/go-sqlite3 v1.14.8
@@ -104,28 +106,27 @@ require (
 	github.com/opencontainers/runc v1.0.2
 	github.com/opencontainers/selinux v1.8.2
 	github.com/otiai10/copy v1.6.0
-	github.com/pierrec/lz4 v2.6.0+incompatible
 	github.com/pkg/errors v0.9.1
-	github.com/rancher/dynamiclistener v0.2.7
+	github.com/rancher/dynamiclistener v0.3.1
 	github.com/rancher/lasso v0.0.0-20210616224652-fc3ebd901c08
 	github.com/rancher/remotedialer v0.2.0
-	github.com/rancher/wharfie v0.3.4
-	github.com/rancher/wrangler v0.8.8
+	github.com/rancher/wharfie v0.5.1
+	github.com/rancher/wrangler v0.8.9
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/rootless-containers/rootlesskit v0.14.5
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.7.0
 	github.com/tchap/go-patricia v2.3.0+incompatible // indirect
-	github.com/urfave/cli v1.22.2
+	github.com/urfave/cli v1.22.4
 	go.etcd.io/etcd/api/v3 v3.5.0
 	go.etcd.io/etcd/client/v3 v3.5.0
 	go.etcd.io/etcd/etcdutl/v3 v3.5.0
 	go.etcd.io/etcd/server/v3 v3.5.0
 	golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2
-	golang.org/x/net v0.0.0-20210520170846-37e1c6afe023
-	golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c
-	google.golang.org/grpc v1.40.0
+	golang.org/x/net v0.0.0-20211005215030-d2e5035098b3
+	golang.org/x/sys v0.0.0-20211004093028-2c5d950f24ef
+	google.golang.org/grpc v1.41.0
 	gopkg.in/yaml.v2 v2.4.0
 	inet.af/tcpproxy v0.0.0-20200125044825-b6bb9b5b8252
 	k8s.io/api v0.22.4

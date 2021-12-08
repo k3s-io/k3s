@@ -35,6 +35,7 @@ func main() {
 	}
 
 	etcdsnapshotCommand := internalCLIAction(version.Program+"-"+cmds.EtcdSnapshotCommand, dataDir, os.Args)
+	secretsencryptCommand := internalCLIAction(version.Program+"-"+cmds.SecretsEncryptCommand, dataDir, os.Args)
 	certCommand := internalCLIAction(version.Program+"-"+cmds.CertCommand, dataDir, os.Args)
 
 	// Handle subcommand invocation (k3s server, k3s crictl, etc)
@@ -52,6 +53,15 @@ func main() {
 				etcdsnapshotCommand,
 				etcdsnapshotCommand,
 				etcdsnapshotCommand),
+		),
+		cmds.NewSecretsEncryptCommand(secretsencryptCommand,
+			cmds.NewSecretsEncryptSubcommands(
+				secretsencryptCommand,
+				secretsencryptCommand,
+				secretsencryptCommand,
+				secretsencryptCommand,
+				secretsencryptCommand,
+				secretsencryptCommand),
 		),
 		cmds.NewCertCommand(
 			cmds.NewCertSubcommands(

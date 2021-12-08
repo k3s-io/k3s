@@ -8,9 +8,11 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"os"
 	"path"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"time"
 
@@ -188,17 +190,18 @@ func (c *Cluster) shouldBootstrapLoad(ctx context.Context) (bool, bool, error) {
 		if err != nil {
 			return false, false, err
 		}
-
 		if isInitialized {
-			// If the database is initialized we skip bootstrapping; if the user wants to rejoin a
-			// cluster they need to delete the database.
-			logrus.Infof("Managed %s cluster bootstrap already complete and initialized", c.managedDB.EndpointName())
 			// This is a workaround for an issue that can be caused by terminating the cluster bootstrap before
 			// etcd is promoted from learner. Odds are we won't need this info, and we don't want to fail startup
 			// due to failure to retrieve it as this will break cold cluster restart, so we ignore any errors.
 			if c.config.JoinURL != "" && c.config.Token != "" {
 				c.clientAccessInfo, _ = clientaccess.ParseAndValidateTokenForUser(c.config.JoinURL, c.config.Token, "server")
+				logrus.Infof("Joining %s cluster already initialized, forcing reconciliation", c.managedDB.EndpointName())
+				return true, true, nil
 			}
+			// If the database is initialized we skip bootstrapping; if the user wants to rejoin a
+			// cluster they need to delete the database.
+			logrus.Infof("Managed %s cluster bootstrap already complete and initialized", c.managedDB.EndpointName())
 			return false, true, nil
 		} else if c.config.JoinURL == "" {
 			// Not initialized, not joining - must be initializing (cluster-init)
@@ -353,7 +356,7 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker,
 		if ec != nil {
 			etcdConfig = *ec
 		} else {
-			etcdConfig = c.etcdConfig
+			etcdConfig = c.EtcdConfig
 		}
 
 		storageClient, err := client.New(etcdConfig)
@@ -366,7 +369,7 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker,
 
 	RETRY:
 		for {
-			value, err = c.getBootstrapKeyFromStorage(ctx, storageClient, normalizedToken, token)
+			value, c.saveBootstrap, err = getBootstrapKeyFromStorage(ctx, storageClient, normalizedToken, token)
 			if err != nil {
 				if strings.Contains(err.Error(), "not supported for learner") {
 					for range ticker.C {
@@ -561,6 +564,10 @@ func (c *Cluster) bootstrap(ctx context.Context) error {
 
 	// bootstrap managed database via HTTPS
 	if c.runtime.HTTPBootstrap {
+		// Assuming we should just compare on managed databases
+		if err := c.compareConfig(); err != nil {
+			return err
+		}
 		return c.httpBootstrap(ctx)
 	}
 
@@ -575,4 +582,38 @@ func (c *Cluster) Snapshot(ctx context.Context, config *config.Control) error {
 		return errors.New("unable to perform etcd snapshot on non-etcd system")
 	}
 	return c.managedDB.Snapshot(ctx, config)
+}
+
+// compareConfig verifies that the config of the joining control plane node coincides with the cluster's config
+func (c *Cluster) compareConfig() error {
+	agentClientAccessInfo, err := clientaccess.ParseAndValidateTokenForUser(c.config.JoinURL, c.config.Token, "node")
+	if err != nil {
+		return err
+	}
+	serverConfig, err := agentClientAccessInfo.Get("/v1-" + version.Program + "/config")
+	if err != nil {
+		return err
+	}
+	clusterControl := &config.Control{}
+	if err := json.Unmarshal(serverConfig, clusterControl); err != nil {
+		return err
+	}
+
+	// We are saving IPs of ClusterIPRanges and ServiceIPRanges in 4-bytes representation but json decodes in 16-byte
+	ipsTo16Bytes(c.config.CriticalControlArgs.ClusterIPRanges)
+	ipsTo16Bytes(c.config.CriticalControlArgs.ServiceIPRanges)
+
+	if !reflect.DeepEqual(clusterControl.CriticalControlArgs, c.config.CriticalControlArgs) {
+		logrus.Debugf("This is the server CriticalControlArgs: %#v", clusterControl.CriticalControlArgs)
+		logrus.Debugf("This is the local CriticalControlArgs: %#v", c.config.CriticalControlArgs)
+		return errors.New("Unable to join cluster due to critical configuration value mismatch")
+	}
+	return nil
+}
+
+// ipsTo16Bytes makes sure the IPs in the []*net.IPNet slice are represented in 16-byte format
+func ipsTo16Bytes(mySlice []*net.IPNet) {
+	for _, ipNet := range mySlice {
+		ipNet.IP = ipNet.IP.To16()
+	}
 }

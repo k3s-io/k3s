@@ -57,7 +57,7 @@ func setupContainerdConfig(ctx context.Context, cfg *config.Node) error {
 		NodeConfig:            cfg,
 		DisableCgroup:         disableCgroup,
 		IsRunningInUserNS:     isRunningInUserNS,
-		PrivateRegistryConfig: privRegistries.Registry(),
+		PrivateRegistryConfig: privRegistries.Registry,
 		ExtraRuntimes:         findNvidiaContainerRuntimes(os.DirFS(string(os.PathSeparator))),
 	}
 
