@@ -89,6 +89,7 @@ type Generic struct {
 	DeleteSQL             string
 	CompactSQL            string
 	UpdateCompactSQL      string
+	PostCompactSQL        string
 	InsertSQL             string
 	FillSQL               string
 	InsertLastInsertIDSQL string
@@ -289,6 +290,15 @@ func (d *Generic) Compact(ctx context.Context, revision int64) (int64, error) {
 		return 0, err
 	}
 	return res.RowsAffected()
+}
+
+func (d *Generic) PostCompact(ctx context.Context) error {
+	logrus.Trace("POSTCOMPACT")
+	if d.PostCompactSQL != "" {
+		_, err := d.execute(ctx, d.PostCompactSQL)
+		return err
+	}
+	return nil
 }
 
 func (d *Generic) GetRevision(ctx context.Context, revision int64) (*sql.Rows, error) {
