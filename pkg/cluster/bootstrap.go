@@ -13,11 +13,13 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/k3s-io/kine/pkg/client"
 	"github.com/k3s-io/kine/pkg/endpoint"
+	"github.com/otiai10/copy"
 	"github.com/rancher/k3s/pkg/bootstrap"
 	"github.com/rancher/k3s/pkg/clientaccess"
 	"github.com/rancher/k3s/pkg/daemons/config"
@@ -224,15 +226,6 @@ func (c *Cluster) shouldBootstrapLoad(ctx context.Context) (bool, bool, error) {
 			c.clientAccessInfo = info
 		}
 	}
-
-	// Check the stamp file to see if we have successfully bootstrapped using this token.
-	// NOTE: The fact that we use a hash of the token to generate the stamp
-	//       means that it is unsafe to use the same token for multiple clusters.
-	// stamp := c.bootstrapStamp()
-	// if _, err := os.Stat(stamp); err == nil {
-	// 	logrus.Info("Cluster bootstrap already complete")
-	// 	return false, nil
-	// }
 
 	// No errors and no bootstrap stamp, need to bootstrap.
 	return true, false, nil
@@ -517,12 +510,31 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker,
 		}
 	}
 
+	if c.config.ClusterReset {
+		serverTLSDir := filepath.Join(c.config.DataDir, "tls")
+		tlsBackupDir := filepath.Join(c.config.DataDir, "tls-"+strconv.Itoa(int(time.Now().Unix())))
+
+		logrus.Infof("Cluster reset: backing up certificates directory to " + tlsBackupDir)
+
+		if _, err := os.Stat(serverTLSDir); err != nil {
+			return err
+		}
+		if err := copy.Copy(serverTLSDir, tlsBackupDir); err != nil {
+			return err
+		}
+	}
+
 	for path, res := range results {
 		switch {
 		case res.disk:
 			updateDisk = true
 			logrus.Warn("datastore newer than " + path)
 		case res.db:
+			if c.config.ClusterReset {
+				logrus.Infof("Cluster reset: replacing file on disk: " + path)
+				updateDisk = true
+				continue
+			}
 			logrus.Fatal(path + " newer than datastore and could cause cluster outage. Remove the file from disk and restart to be recreated from datastore.")
 		case res.conflict:
 			logrus.Warnf("datastore / disk conflict: %s newer than in the datastore", path)
@@ -606,7 +618,7 @@ func (c *Cluster) compareConfig() error {
 	if !reflect.DeepEqual(clusterControl.CriticalControlArgs, c.config.CriticalControlArgs) {
 		logrus.Debugf("This is the server CriticalControlArgs: %#v", clusterControl.CriticalControlArgs)
 		logrus.Debugf("This is the local CriticalControlArgs: %#v", c.config.CriticalControlArgs)
-		return errors.New("Unable to join cluster due to critical configuration value mismatch")
+		return errors.New("unable to join cluster due to critical configuration value mismatch")
 	}
 	return nil
 }
