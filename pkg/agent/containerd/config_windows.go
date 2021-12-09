@@ -44,7 +44,7 @@ func setupContainerdConfig(ctx context.Context, cfg *config.Node) error {
 		NodeConfig:            cfg,
 		DisableCgroup:         true,
 		IsRunningInUserNS:     false,
-		PrivateRegistryConfig: privRegistries.Registry(),
+		PrivateRegistryConfig: privRegistries.Registry,
 	}
 
 	containerdTemplateBytes, err := ioutil.ReadFile(cfg.Containerd.Template)
