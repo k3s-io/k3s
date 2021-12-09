@@ -511,10 +511,10 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker,
 	}
 
 	if c.config.ClusterReset {
-		logrus.Infof("backing up certificates directory")
-
 		serverTLSDir := filepath.Join(c.config.DataDir, "tls")
 		tlsBackupDir := filepath.Join(c.config.DataDir, "tls-"+strconv.Itoa(int(time.Now().Unix())))
+
+		logrus.Infof("Cluster reset: backing up certificates directory to " + tlsBackupDir)
 
 		if _, err := os.Stat(serverTLSDir); err != nil {
 			return err
@@ -531,7 +531,7 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker,
 			logrus.Warn("datastore newer than " + path)
 		case res.db:
 			if c.config.ClusterReset {
-				logrus.Infof("cluster reset: overriding file on disk: " + path)
+				logrus.Infof("Cluster reset: replacing file on disk: " + path)
 				updateDisk = true
 				continue
 			}
