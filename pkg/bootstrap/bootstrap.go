@@ -90,6 +90,9 @@ func WriteToDiskFromStorage(r io.Reader, bootstrap *config.ControlRuntimeBootstr
 		if err := ioutil.WriteFile(path, bsf.Content, 0600); err != nil {
 			return errors.Wrapf(err, "failed to write to %s", path)
 		}
+		if err := os.Chtimes(path, time.Now(), bsf.Timestamp); err != nil {
+			return errors.Wrapf(err, "failed to update modified time on %s", path)
+		}
 	}
 
 	return nil

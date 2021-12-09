@@ -135,6 +135,7 @@ func (c *Cluster) storageBootstrap(ctx context.Context) error {
 		return err
 	}
 
+	logrus.Warnf("XXX - inside storageBootstrap()")
 	return c.ReconcileBootstrapData(ctx, bytes.NewReader(data), &c.config.Runtime.ControlRuntimeBootstrap, false, nil)
 }
 
