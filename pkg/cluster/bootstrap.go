@@ -13,11 +13,13 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/k3s-io/kine/pkg/client"
 	"github.com/k3s-io/kine/pkg/endpoint"
+	"github.com/otiai10/copy"
 	"github.com/rancher/k3s/pkg/bootstrap"
 	"github.com/rancher/k3s/pkg/clientaccess"
 	"github.com/rancher/k3s/pkg/daemons/config"
@@ -505,6 +507,20 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker,
 					results[path] = update{}
 				}
 			}
+		}
+	}
+
+	if c.config.ClusterReset {
+		logrus.Infof("backing up certificates directory")
+
+		serverTLSDir := filepath.Join(c.config.DataDir, "tls")
+		tlsBackupDir := filepath.Join(c.config.DataDir, "tls-"+strconv.Itoa(int(time.Now().Unix())))
+
+		if _, err := os.Stat(serverTLSDir); err != nil {
+			return err
+		}
+		if err := copy.Copy(serverTLSDir, tlsBackupDir); err != nil {
+			return err
 		}
 	}
 
