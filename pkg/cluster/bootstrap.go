@@ -225,15 +225,6 @@ func (c *Cluster) shouldBootstrapLoad(ctx context.Context) (bool, bool, error) {
 		}
 	}
 
-	// Check the stamp file to see if we have successfully bootstrapped using this token.
-	// NOTE: The fact that we use a hash of the token to generate the stamp
-	//       means that it is unsafe to use the same token for multiple clusters.
-	// stamp := c.bootstrapStamp()
-	// if _, err := os.Stat(stamp); err == nil {
-	// 	logrus.Info("Cluster bootstrap already complete")
-	// 	return false, nil
-	// }
-
 	// No errors and no bootstrap stamp, need to bootstrap.
 	return true, false, nil
 }
@@ -523,6 +514,11 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker,
 			updateDisk = true
 			logrus.Warn("datastore newer than " + path)
 		case res.db:
+			if c.config.ClusterReset {
+				logrus.Infof("cluster reset: overriding file on disk: " + path)
+				updateDisk = true
+				continue
+			}
 			logrus.Fatal(path + " newer than datastore and could cause cluster outage. Remove the file from disk and restart to be recreated from datastore.")
 		case res.conflict:
 			logrus.Warnf("datastore / disk conflict: %s newer than in the datastore", path)
