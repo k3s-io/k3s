@@ -618,7 +618,7 @@ func (c *Cluster) compareConfig() error {
 	if !reflect.DeepEqual(clusterControl.CriticalControlArgs, c.config.CriticalControlArgs) {
 		logrus.Debugf("This is the server CriticalControlArgs: %#v", clusterControl.CriticalControlArgs)
 		logrus.Debugf("This is the local CriticalControlArgs: %#v", c.config.CriticalControlArgs)
-		return errors.New("Unable to join cluster due to critical configuration value mismatch")
+		return errors.New("unable to join cluster due to critical configuration value mismatch")
 	}
 	return nil
 }
