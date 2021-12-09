@@ -33,6 +33,20 @@ const (
 	k3sServerService         = "-server"
 )
 
+var services = []string{
+	adminService,
+	apiServerService,
+	controllerManagerService,
+	schedulerService,
+	etcdService,
+	version.Program + programControllerService,
+	authProxyService,
+	cloudControllerService,
+	kubeletService,
+	kubeProxyService,
+	version.Program + k3sServerService,
+}
+
 func commandSetup(app *cli.Context, cfg *cmds.Server, sc *server.Config) (string, string, error) {
 	gspt.SetProcTitle(os.Args[0])
 
@@ -114,6 +128,10 @@ func rotate(app *cli.Context, cfg *cmds.Server) error {
 	serverConfig.ControlConfig.Runtime.PeerServerClientETCDKey = filepath.Join(serverConfig.ControlConfig.DataDir, "tls", "etcd", "peer-server-client.key")
 	serverConfig.ControlConfig.Runtime.ClientETCDCert = filepath.Join(serverConfig.ControlConfig.DataDir, "tls", "etcd", "client.crt")
 	serverConfig.ControlConfig.Runtime.ClientETCDKey = filepath.Join(serverConfig.ControlConfig.DataDir, "tls", "etcd", "client.key")
+
+	if err := validateCertConfig(); err != nil {
+		return err
+	}
 
 	tlsBackupDir, err := backupCertificates(serverDataDir, agentDataDir)
 	if err != nil {
@@ -268,4 +286,22 @@ func backupCertificates(serverDataDir, agentDataDir string) (string, error) {
 		}
 	}
 	return tlsBackupDir, nil
+}
+
+func validService(svc string) bool {
+	for _, service := range services {
+		if svc == service {
+			return true
+		}
+	}
+	return false
+}
+
+func validateCertConfig() error {
+	for _, s := range cmds.ServicesList {
+		if !validService(s) {
+			return errors.New("Service " + s + " is not recognized")
+		}
+	}
+	return nil
 }
