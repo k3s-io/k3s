@@ -61,9 +61,11 @@ func Read(r io.Reader, bootstrap *config.ControlRuntimeBootstrap) error {
 		if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
 			return errors.Wrapf(err, "failed to mkdir %s", filepath.Dir(path))
 		}
-
-		if err := ioutil.WriteFile(path, data, 0600); err != nil {
+		if err := os.WriteFile(path, bsf.Content, 0600); err != nil {
 			return errors.Wrapf(err, "failed to write to %s", path)
+		}
+		if err := os.Chtimes(path, bsf.Timestamp, bsf.Timestamp); err != nil {
+			return errors.Wrapf(err, "failed to update modified time on %s", path)
 		}
 	}
 

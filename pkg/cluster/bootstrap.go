@@ -8,7 +8,25 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+<<<<<<< HEAD
+||||||| parent of a6fe2c0bc5... Resolve restore bootstrap (#4704)
+	"strings"
+	"time"
+=======
+	"strconv"
+	"strings"
+	"time"
+>>>>>>> a6fe2c0bc5... Resolve restore bootstrap (#4704)
 
+<<<<<<< HEAD
+||||||| parent of a6fe2c0bc5... Resolve restore bootstrap (#4704)
+	"github.com/k3s-io/kine/pkg/client"
+	"github.com/k3s-io/kine/pkg/endpoint"
+=======
+	"github.com/k3s-io/kine/pkg/client"
+	"github.com/k3s-io/kine/pkg/endpoint"
+	"github.com/otiai10/copy"
+>>>>>>> a6fe2c0bc5... Resolve restore bootstrap (#4704)
 	"github.com/rancher/k3s/pkg/bootstrap"
 	"github.com/rancher/k3s/pkg/clientaccess"
 	"github.com/rancher/k3s/pkg/daemons/config"
@@ -84,13 +102,16 @@ func (c *Cluster) shouldBootstrapLoad(ctx context.Context) (bool, error) {
 		}
 	}
 
-	// Check the stamp file to see if we have successfully bootstrapped using this token.
-	// NOTE: The fact that we use a hash of the token to generate the stamp
-	//       means that it is unsafe to use the same token for multiple clusters.
-	stamp := c.bootstrapStamp()
-	if _, err := os.Stat(stamp); err == nil {
-		logrus.Info("Cluster bootstrap already complete")
-		return false, nil
+	// No errors and no bootstrap stamp, need to bootstrap.
+	return true, false, nil
+}
+
+// isDirEmpty checks to see if the given directory
+// is empty.
+func isDirEmpty(name string) (bool, error) {
+	f, err := os.Open(name)
+	if err != nil {
+		return false, err
 	}
 
 	// No errors and no bootstrap stamp, need to bootstrap.
@@ -115,7 +136,161 @@ func (c *Cluster) bootstrapped() error {
 		return err
 	}
 
-	return f.Close()
+	files := make(bootstrap.PathsDataformat)
+	if err := json.NewDecoder(buf).Decode(&files); err != nil {
+		// This will fail if data is being pulled from old an cluster since
+		// older clusters used a map[string][]byte for the data structure.
+		// Therefore, we need to perform a migration to the newer bootstrap
+		// format; bootstrap.BootstrapFile.
+		buf.Seek(0, 0)
+
+		if err := migrateBootstrapData(ctx, buf, files); err != nil {
+			return err
+		}
+	}
+	buf.Seek(0, 0)
+
+	type update struct {
+		db, disk, conflict bool
+	}
+
+	var updateDisk bool
+
+	results := make(map[string]update)
+	for pathKey, fileData := range files {
+		path, ok := paths[pathKey]
+		if !ok {
+			continue
+		}
+
+		f, err := os.Open(path)
+		if err != nil {
+			if os.IsNotExist(err) {
+				logrus.Warn(path + " doesn't exist. continuing...")
+				updateDisk = true
+				continue
+			}
+			return err
+		}
+		defer f.Close()
+
+		fData, err := ioutil.ReadAll(f)
+		if err != nil {
+			return err
+		}
+
+		if !bytes.Equal(fileData.Content, fData) {
+			info, err := os.Stat(path)
+			if err != nil {
+				return err
+			}
+
+			switch {
+			case info.ModTime().Unix()-files[pathKey].Timestamp.Unix() >= systemTimeSkew:
+				if _, ok := results[path]; !ok {
+					results[path] = update{
+						db: true,
+					}
+				}
+
+				for pk := range files {
+					p, ok := paths[pk]
+					if !ok {
+						continue
+					}
+
+					if filepath.Base(p) == info.Name() {
+						continue
+					}
+
+					i, err := os.Stat(p)
+					if err != nil {
+						return err
+					}
+
+					if i.ModTime().Unix()-files[pk].Timestamp.Unix() >= systemTimeSkew {
+						if _, ok := results[path]; !ok {
+							results[path] = update{
+								conflict: true,
+							}
+						}
+					}
+				}
+			case info.ModTime().Unix()-files[pathKey].Timestamp.Unix() <= systemTimeSkew:
+				if _, ok := results[info.Name()]; !ok {
+					results[path] = update{
+						disk: true,
+					}
+				}
+
+				for pk := range files {
+					p, ok := paths[pk]
+					if !ok {
+						continue
+					}
+
+					if filepath.Base(p) == info.Name() {
+						continue
+					}
+
+					i, err := os.Stat(p)
+					if err != nil {
+						return err
+					}
+
+					if i.ModTime().Unix()-files[pk].Timestamp.Unix() <= systemTimeSkew {
+						if _, ok := results[path]; !ok {
+							results[path] = update{
+								conflict: true,
+							}
+						}
+					}
+				}
+			default:
+				if _, ok := results[path]; ok {
+					results[path] = update{}
+				}
+			}
+		}
+	}
+
+	if c.config.ClusterReset {
+		serverTLSDir := filepath.Join(c.config.DataDir, "tls")
+		tlsBackupDir := filepath.Join(c.config.DataDir, "tls-"+strconv.Itoa(int(time.Now().Unix())))
+
+		logrus.Infof("Cluster reset: backing up certificates directory to " + tlsBackupDir)
+
+		if _, err := os.Stat(serverTLSDir); err != nil {
+			return err
+		}
+		if err := copy.Copy(serverTLSDir, tlsBackupDir); err != nil {
+			return err
+		}
+	}
+
+	for path, res := range results {
+		switch {
+		case res.disk:
+			updateDisk = true
+			logrus.Warn("datastore newer than " + path)
+		case res.db:
+			if c.config.ClusterReset {
+				logrus.Infof("Cluster reset: replacing file on disk: " + path)
+				updateDisk = true
+				continue
+			}
+			logrus.Fatal(path + " newer than datastore and could cause cluster outage. Remove the file from disk and restart to be recreated from datastore.")
+		case res.conflict:
+			logrus.Warnf("datastore / disk conflict: %s newer than in the datastore", path)
+		}
+	}
+
+	if updateDisk {
+		logrus.Warn("updating bootstrap data on disk from datastore")
+		return bootstrap.WriteToDiskFromStorage(buf, crb)
+	}
+
+	return nil
 }
 
 // httpBootstrap retrieves bootstrap data (certs and keys, etc) from the remote server via HTTP
@@ -185,7 +360,7 @@ func (c *Cluster) compareConfig() error {
 	if !reflect.DeepEqual(clusterControl.CriticalControlArgs, c.config.CriticalControlArgs) {
 		logrus.Debugf("This is the server CriticalControlArgs: %#v", clusterControl.CriticalControlArgs)
 		logrus.Debugf("This is the local CriticalControlArgs: %#v", c.config.CriticalControlArgs)
-		return errors.New("Unable to join cluster due to critical configuration value mismatch")
+		return errors.New("unable to join cluster due to critical configuration value mismatch")
 	}
 	return nil
 }
