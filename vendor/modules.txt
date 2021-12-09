@@ -529,13 +529,14 @@ github.com/exponent-io/jsonpath
 github.com/fatih/camelcase
 # github.com/felixge/httpsnoop v1.0.1
 github.com/felixge/httpsnoop
-# github.com/flannel-io/flannel v0.15.1
+# github.com/flannel-io/flannel v0.15.1 => github.com/sjoerdsimons/flannel v0.15.1-0.20211209211441-52e365f926da
 ## explicit
 github.com/flannel-io/flannel/backend
 github.com/flannel-io/flannel/backend/extension
 github.com/flannel-io/flannel/backend/hostgw
 github.com/flannel-io/flannel/backend/ipsec
 github.com/flannel-io/flannel/backend/vxlan
+github.com/flannel-io/flannel/backend/wireguard
 github.com/flannel-io/flannel/network
 github.com/flannel-io/flannel/pkg/ip
 github.com/flannel-io/flannel/pkg/mac
@@ -754,6 +755,8 @@ github.com/jmespath/go-jmespath
 github.com/jonboulle/clockwork
 # github.com/josharian/intern v1.0.0
 github.com/josharian/intern
+# github.com/josharian/native v0.0.0-20200817173448-b6b71def0850
+github.com/josharian/native
 # github.com/json-iterator/go v1.1.11
 github.com/json-iterator/go
 # github.com/k3s-io/helm-controller v0.11.7
@@ -812,6 +815,13 @@ github.com/mailru/easyjson/jwriter
 github.com/mattn/go-sqlite3
 # github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369
 github.com/matttproud/golang_protobuf_extensions/pbutil
+# github.com/mdlayher/genetlink v1.0.0
+github.com/mdlayher/genetlink
+# github.com/mdlayher/netlink v1.4.1
+github.com/mdlayher/netlink
+github.com/mdlayher/netlink/nlenc
+# github.com/mdlayher/socket v0.0.0-20210307095302-262dc9984e00
+github.com/mdlayher/socket
 # github.com/miekg/pkcs11 v1.0.3
 github.com/miekg/pkcs11
 # github.com/mindprince/gonvml v0.0.0-20190828220739-9ebdce4bb989
@@ -1362,7 +1372,7 @@ go.uber.org/zap/internal/color
 go.uber.org/zap/internal/exit
 go.uber.org/zap/zapcore
 go.uber.org/zap/zapgrpc
-# golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2 => golang.org/x/crypto v0.0.0-20210220033148-5ea612d1eb83
+# golang.org/x/crypto v0.0.0-20210921155107-089bfa567519 => golang.org/x/crypto v0.0.0-20210220033148-5ea612d1eb83
 ## explicit
 golang.org/x/crypto/argon2
 golang.org/x/crypto/bcrypt
@@ -1371,6 +1381,7 @@ golang.org/x/crypto/blowfish
 golang.org/x/crypto/cast5
 golang.org/x/crypto/cryptobyte
 golang.org/x/crypto/cryptobyte/asn1
+golang.org/x/crypto/curve25519
 golang.org/x/crypto/ed25519
 golang.org/x/crypto/ed25519/internal/edwards25519
 golang.org/x/crypto/internal/subtle
@@ -1390,7 +1401,7 @@ golang.org/x/crypto/scrypt
 # golang.org/x/mod v0.4.2
 golang.org/x/mod/module
 golang.org/x/mod/semver
-# golang.org/x/net v0.0.0-20211005215030-d2e5035098b3 => golang.org/x/net v0.0.0-20210405180319-a5a99cb37ef4
+# golang.org/x/net v0.0.0-20211020060615-d418f374d309 => golang.org/x/net v0.0.0-20210405180319-a5a99cb37ef4
 ## explicit
 golang.org/x/net/bpf
 golang.org/x/net/context
@@ -1420,7 +1431,7 @@ golang.org/x/oauth2/jwt
 golang.org/x/sync/errgroup
 golang.org/x/sync/semaphore
 golang.org/x/sync/singleflight
-# golang.org/x/sys v0.0.0-20211004093028-2c5d950f24ef => golang.org/x/sys v0.0.0-20210616094352-59db8d763f22
+# golang.org/x/sys v0.0.0-20211020174200-9d6173849985 => golang.org/x/sys v0.0.0-20210616094352-59db8d763f22
 ## explicit
 golang.org/x/sys/cpu
 golang.org/x/sys/execabs
@@ -1480,6 +1491,20 @@ golang.org/x/tools/internal/typesinternal
 # golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1
 golang.org/x/xerrors
 golang.org/x/xerrors/internal
+# golang.zx2c4.com/wireguard v0.0.0-20211022192229-f1f626090e3b
+golang.zx2c4.com/wireguard/ipc/winpipe
+# golang.zx2c4.com/wireguard/wgctrl v0.0.0-20211019185142-5be1d6054c42
+golang.zx2c4.com/wireguard/wgctrl
+golang.zx2c4.com/wireguard/wgctrl/internal/wginternal
+golang.zx2c4.com/wireguard/wgctrl/internal/wglinux
+golang.zx2c4.com/wireguard/wgctrl/internal/wglinux/internal/wgh
+golang.zx2c4.com/wireguard/wgctrl/internal/wgopenbsd
+golang.zx2c4.com/wireguard/wgctrl/internal/wgopenbsd/internal/wgh
+golang.zx2c4.com/wireguard/wgctrl/internal/wguser
+golang.zx2c4.com/wireguard/wgctrl/internal/wgwindows
+golang.zx2c4.com/wireguard/wgctrl/internal/wgwindows/internal/ioctl
+golang.zx2c4.com/wireguard/wgctrl/internal/wgwindows/internal/setupapi
+golang.zx2c4.com/wireguard/wgctrl/wgtypes
 # gonum.org/v1/gonum v0.6.2
 gonum.org/v1/gonum/blas
 gonum.org/v1/gonum/blas/blas64
@@ -3483,3 +3508,4 @@ sigs.k8s.io/yaml
 # k8s.io/sample-cli-plugin => github.com/k3s-io/kubernetes/staging/src/k8s.io/sample-cli-plugin v1.22.4-k3s1
 # k8s.io/sample-controller => github.com/k3s-io/kubernetes/staging/src/k8s.io/sample-controller v1.22.4-k3s1
 # mvdan.cc/unparam => mvdan.cc/unparam v0.0.0-20210104141923-aac4ce9116a7
+# github.com/flannel-io/flannel => github.com/sjoerdsimons/flannel v0.15.1-0.20211209211441-52e365f926da

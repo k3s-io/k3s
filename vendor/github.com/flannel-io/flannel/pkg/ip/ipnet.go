@@ -99,6 +99,14 @@ func (ip *IP4) UnmarshalJSON(j []byte) error {
 	}
 }
 
+// IsPrivate reports whether ip is a private address, according to
+// RFC 1918 (IPv4 addresses)
+func (ip IP4) IsPrivate() bool {
+	a, b, _, _ := ip.Octets()
+
+	return a == 10 || (a == 172 && b&0xf0 == 16) || (a == 192 && b == 168)
+}
+
 // similar to net.IPNet but has uint based representation
 type IP4Net struct {
 	IP        IP4

@@ -1,0 +1,22 @@
+---
+GENERATOR:
+  PackageName: wgh
+
+PARSER:
+  IncludePaths: [/usr/include]
+  SourcesPaths: [wireguard.h]
+
+TRANSLATOR:
+  ConstRules:
+    defines: expand
+    enum: expand
+  Rules:
+    const:
+      - {transform: lower}
+      - {action: accept, from: "(?i)wg_"}
+      - {action: replace, from: "(?i)wg_", to: _}
+      - {action: accept, from: "(?i)wg"}
+      - {action: replace, from: "(?i)wg", to: }
+      - {transform: export}
+    post-global:
+      - {load: snakecase}
