@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -34,7 +35,6 @@ type Pod struct {
 var config *ssh.ClientConfig
 var SSHKEY string
 var SSHUSER string
-var err error
 
 func checkError(e error) {
 	if e != nil {
@@ -68,31 +68,18 @@ func ConfigureSSH(host string, SSHUser string, SSHKey string) *ssh.Client {
 	return conn
 }
 
-func runsshCommand(cmd string, conn *ssh.Client) string {
-	session, err := conn.NewSession()
-	if err != nil {
-		panic(err)
-	}
-	defer session.Close()
-	var stdoutBuf bytes.Buffer
-	var stderrBuf bytes.Buffer
-	session.Stdout = &stdoutBuf
-	session.Stderr = &stderrBuf
-
-	if err := session.Run(cmd); err != nil {
-		log.Println(session.Stdout)
-		log.Fatal("Error on command execution", err.Error())
-	}
-	return fmt.Sprintf("%s", stdoutBuf.String())
-}
-
 //Runs command passed from within the node ServerIP
-func RunCmdOnNode(cmd string, ServerIP string, SSHUser string, SSHKey string) string {
-	Server := ServerIP + ":22"
-	conn := ConfigureSSH(Server, SSHUser, SSHKey)
-	res := runsshCommand(cmd, conn)
-	res = strings.TrimSpace(res)
-	return res
+func RunCmdOnNode(cmd string, nodename string) (string, error) {
+	runcmd := "vagrant ssh server-0 -c " + cmd
+	c := exec.Command("bash", "-c", runcmd)
+
+	var out bytes.Buffer
+	c.Stdout = &out
+	err := c.Run()
+	if err != nil {
+		return "", errors.New(fmt.Sprintf("%s", err))
+	}
+	return out.String(), nil
 }
 
 // RunCommand Runs command on the cluster accessing the cluster through kubeconfig file
@@ -130,13 +117,13 @@ func FetchClusterIP(kubeconfig string, servicename string) string {
 	return res
 }
 
-func FetchNodeExternalIP(kubeconfig string) []string {
-	cmd := "kubectl get node --output=jsonpath='{range .items[*]} { .status.addresses[?(@.type==\"ExternalIP\")].address}' --kubeconfig=" + kubeconfig
-	time.Sleep(10 * time.Second)
-	res, _ := RunCommand(cmd)
-	nodeExternalIP := strings.Trim(res, " ")
-	nodeExternalIPs := strings.Split(nodeExternalIP, " ")
-	return nodeExternalIPs
+func FetchNodeExternalIP(nodename string) string {
+	cmd := "vagrant ssh " + nodename + " -c  \"ip -f inet addr show eth1| awk '/inet / {print $2}'|cut -d/ -f1\""
+	ipaddr, _ := RunCommand(cmd)
+	ips := strings.Trim(ipaddr, "")
+	ip := strings.Split(ips, "inet")
+	nodeip := strings.TrimSpace(ip[1])
+	return nodeip
 }
 func FetchIngressIP(kubeconfig string) []string {
 	cmd := "kubectl get ing  ingress  -o jsonpath='{.status.loadBalancer.ingress[*].ip}' --kubeconfig=" + kubeconfig
@@ -153,32 +140,35 @@ func ParseNode(kubeconfig string, printres bool) []Node {
 	var node Node
 	timeElapsed := 0
 	nodeList := ""
-	time.Sleep(60 * time.Second)
+
 	for timeElapsed < 420 {
 		notReady := false
 		cmd := "kubectl get nodes --no-headers -o wide -A --kubeconfig=" + kubeconfig
 		res, _ := RunCommand(cmd)
 		res = strings.TrimSpace(res)
-		nodeList = res
+		res, _ = RunCommand(cmd)
+		nodeList = strings.TrimSpace(res)
 		split := strings.Split(res, "\n")
 		for _, rec := range split {
-			fields := strings.Fields(string(rec))
-			node.Name = fields[0]
-			node.Status = fields[1]
-			node.Roles = fields[2]
-			node.InternalIP = fields[5]
-			node.ExternalIP = fields[6]
-			nodes = append(nodes, node)
-			if node.Status != "Ready" {
-				notReady = true
-				break
+			if strings.TrimSpace(rec) != "" {
+				fields := strings.Fields(string(rec))
+				node.Name = fields[0]
+				node.Status = fields[1]
+				node.Roles = fields[2]
+				node.InternalIP = fields[5]
+				node.ExternalIP = fields[6]
+				nodes = append(nodes, node)
+				if node.Status != "Ready" {
+					notReady = true
+					break
+				}
 			}
 		}
 		if notReady == false {
 			break
 		}
 		time.Sleep(5 * time.Second)
-		timeElapsed = timeElapsed + 10
+		timeElapsed = timeElapsed + 5
 	}
 	if printres {
 		fmt.Println(nodeList)
@@ -190,8 +180,8 @@ func ParsePod(kubeconfig string, printres bool) []Pod {
 	pods := make([]Pod, 0, 10)
 	var pod Pod
 	timeElapsed := 0
-	time.Sleep(60 * time.Second)
 	podList := ""
+
 	for timeElapsed < 420 {
 		helmPodsNR := false
 		systemPodsNR := false
@@ -219,8 +209,8 @@ func ParsePod(kubeconfig string, printres bool) []Pod {
 				systemPodsNR = true
 				break
 			}
-			time.Sleep(10 * time.Second)
-			timeElapsed = timeElapsed + 10
+			time.Sleep(5 * time.Second)
+			timeElapsed = timeElapsed + 5
 		}
 		if systemPodsNR == false && helmPodsNR == false {
 			break
@@ -230,4 +220,9 @@ func ParsePod(kubeconfig string, printres bool) []Pod {
 		fmt.Println(podList)
 	}
 	return pods
+}
+func WriteToFile(kubeconfig string, filename string) {
+	bytestring := []byte(kubeconfig)
+	err := os.WriteFile(filename, bytestring, 0644)
+	checkError(err)
 }
