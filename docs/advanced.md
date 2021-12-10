@@ -1,10 +1,4 @@
----
-title: "Advanced Options and Configuration"
-weight: 45
-aliases:
-  - /k3s/latest/en/running/
-  - /k3s/latest/en/configuration/
----
+# Advanced Options and Configuration
 
 This section contains advanced information describing the different ways you can run and manage K3s:
 
@@ -25,19 +19,19 @@ This section contains advanced information describing the different ways you can
 - [Enabling Lazy Pulling of eStargz (Experimental)](#enabling-lazy-pulling-of-estargz-experimental)
 - [Additional Logging Sources](#additional-logging-sources)
 
-# Certificate Rotation
+## Certificate Rotation
 
 By default, certificates in K3s expire in 12 months.
 
 If the certificates are expired or have fewer than 90 days remaining before they expire, the certificates are rotated when K3s is restarted.
 
-# Auto-Deploying Manifests
+## Auto-Deploying Manifests
 
 Any file found in `/var/lib/rancher/k3s/server/manifests` will automatically be deployed to Kubernetes in a manner similar to `kubectl apply`, both on startup and when the file is changed on disk. Deleting files out of this directory will not delete the corresponding resources from the cluster.
 
 For information about deploying Helm charts, refer to the section about [Helm.](../helm)
 
-# Using Docker as the Container Runtime
+## Using Docker as the Container Runtime
 
 K3s includes and defaults to [containerd,](https://containerd.io/) an industry-standard container runtime.
 
@@ -118,7 +112,7 @@ rancher/metrics-server           v0.3.6              9dd718864ce61       39.9MB
 rancher/pause                    3.1                 da86e6ba6ca19       742kB
 ```
 
-# Using etcdctl
+## Using etcdctl
 
 etcdctl provides a CLI for etcd.
 
@@ -136,7 +130,7 @@ Then start using etcdctl commands with the appropriate K3s flags:
 $ sudo etcdctl --cacert=/var/lib/rancher/k3s/server/tls/etcd/server-ca.crt --cert=/var/lib/rancher/k3s/server/tls/etcd/client.crt --key=/var/lib/rancher/k3s/server/tls/etcd/client.key version
 ```
 
-# Configuring containerd
+## Configuring containerd
 
 K3s will generate config.toml for containerd in `/var/lib/rancher/k3s/agent/etc/containerd/config.toml`.
 
@@ -145,7 +139,7 @@ For advanced customization for this file you can create another file called `con
 The `config.toml.tmpl` will be treated as a Go template file, and the `config.Node` structure is being passed to the template. [This template](https://github.com/rancher/k3s/blob/master/pkg/agent/templates/templates.go#L16-L32) example on how to use the structure to customize the configuration file.
 
 
-# Running K3s with Rootless mode (Experimental)
+## Running K3s with Rootless mode (Experimental)
 
 > **Warning:** This feature is experimental.
 
@@ -199,13 +193,13 @@ See also https://rootlesscontaine.rs/ to learn about Rootless mode.
 * Run `journalctl --user -f -u k3s-rootless` to see the daemon log
 * See also https://rootlesscontaine.rs/
 
-# Node Labels and Taints
+## Node Labels and Taints
 
 K3s agents can be configured with the options `--node-label` and `--node-taint` which adds a label and taint to the kubelet. The two options only add labels and/or taints [at registration time,]({{<baseurl>}}/k3s/latest/en/installation/install-options/#node-labels-and-taints-for-agents) so they can only be added once and not changed after that again by running K3s commands.
 
 If you want to change node labels and taints after node registration you should use `kubectl`. Refer to the official Kubernetes documentation for details on how to add [taints](https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/) and [node labels.](https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes/#add-a-label-to-a-node)
 
-# Starting the Server with the Installation Script
+## Starting the Server with the Installation Script
 
 The installation script will auto-detect if your OS is using systemd or openrc and start the service.
 When running with openrc, logs will be created at `/var/log/k3s.log`. 
@@ -239,7 +233,7 @@ INFO[2019-01-22T15:16:20.541049100-07:00] Run: k3s kubectl
 The output will likely be much longer as the agent will create a lot of logs. By default the server
 will register itself as a node (run the agent).
 
-# Additional Preparation for Alpine Linux Setup
+## Additional Preparation for Alpine Linux Setup
 
 In order to set up Alpine Linux, you have to go through the following preparation:
 
@@ -256,7 +250,7 @@ update-extlinux
 reboot
 ```
 
-# Running K3d (K3s in Docker) and docker-compose
+## Running K3d (K3s in Docker) and docker-compose
 
 [k3d](https://github.com/rancher/k3d) is a utility designed to easily run K3s in Docker.
 
@@ -292,7 +286,7 @@ Alternatively the `docker run` command can also be used:
       --privileged rancher/k3s:vX.Y.Z
 
 
-# Enabling legacy iptables on Raspbian Buster
+## Enabling legacy iptables on Raspbian Buster
 
 Raspbian Buster defaults to using `nftables` instead of `iptables`.  **K3S** networking features require `iptables` and do not work with `nftables`.  Follow the steps below to switch configure **Buster** to use `legacy iptables`:
 ```
@@ -302,7 +296,7 @@ sudo update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy
 sudo reboot
 ```
 
-# Enabling cgroups for Raspbian Buster
+## Enabling cgroups for Raspbian Buster
 
 Standard Raspbian Buster installations do not start with `cgroups` enabled. **K3S** needs `cgroups` to start the systemd service. `cgroups`can be enabled by appending `cgroup_memory=1 cgroup_enable=memory` to `/boot/cmdline.txt`.
 
@@ -311,7 +305,7 @@ Standard Raspbian Buster installations do not start with `cgroups` enabled. **K3
 console=serial0,115200 console=tty1 root=PARTUUID=58b06195-02 rootfstype=ext4 elevator=deadline fsck.repair=yes rootwait cgroup_memory=1 cgroup_enable=memory
 ```
 
-# SELinux Support
+## SELinux Support
 
 _Supported as of v1.19.4+k3s1. Experimental as of v1.17.4+k3s1._
 
@@ -364,7 +358,7 @@ Using a custom `--data-dir` under SELinux is not supported. To customize it, you
 {{%/tab%}}
 {{% /tabs %}}
 
-# Additional preparation for (Red Hat/CentOS) Enterprise Linux
+## Additional preparation for (Red Hat/CentOS) Enterprise Linux
 
 It is recommended to turn off firewalld:
 ```
@@ -377,7 +371,7 @@ systemctl disable nm-cloud-setup.service nm-cloud-setup.timer
 reboot
 ```
 
-# Enabling Lazy Pulling of eStargz (Experimental)
+## Enabling Lazy Pulling of eStargz (Experimental)
 
 ### What's lazy pulling and eStargz?
 
@@ -431,7 +425,7 @@ spec:
     - containerPort: 80
 ```
 
-# Additional Logging Sources
+## Additional Logging Sources
 
 [Rancher logging]({{<baseurl>}}//rancher/v2.6/en/logging/helm-chart-options/) for K3s can be installed without using Rancher. The following instructions should be executed to do so:
 

@@ -1,7 +1,5 @@
----
-title: "High Availability with Embedded DB"
-weight: 40
----
+
+# High Availability with Embedded DB
 
 >**Notice:**
 K3s has added full support for embedded etcd as of release v1.19.5+k3s1. Versions v1.19.1 thru v1.19.4 provide only experimental support for embedded etcd.

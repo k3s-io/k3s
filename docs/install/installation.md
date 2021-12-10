@@ -1,3 +1,4 @@
+
 # Installation
 
 This section contains instructions for installing K3s in various environments. Please ensure you have met the [Installation Requirements]({{< baseurl >}}/k3s/latest/en/installation/installation-requirements/) before you begin installing K3s.

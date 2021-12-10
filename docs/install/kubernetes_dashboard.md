@@ -1,3 +1,4 @@
+
 # Kubernetes Dashboard
 
 This installation guide will help you to deploy and configure the [Kubernetes Dashboard](https://kubernetes.io/docs/tasks/access-application-cluster/web-ui-dashboard/) on K3s.

@@ -1,3 +1,4 @@
+
 # Installation Requirements
 
 K3s is very lightweight, but has some minimum requirements as outlined below.

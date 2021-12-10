@@ -1,7 +1,5 @@
----
-title: "Volumes and Storage"
-weight: 30
----
+
+# Volumes and Storage
 
 When deploying an application that needs to retain data, you’ll need to create persistent storage. Persistent storage allows you to store application data external from the pod running your application. This storage practice allows you to maintain application data, even if the application’s pod fails.
 
@@ -9,7 +7,7 @@ A persistent volume (PV) is a piece of storage in the Kubernetes cluster, while 
 
 This page describes how to set up persistent storage with a local storage provider, or with [Longhorn.](#setting-up-longhorn)
 
-# Setting up the Local Storage Provider
+## Setting up the Local Storage Provider
 K3s comes with Rancher's Local Path Provisioner and this enables the ability to create persistent volume claims out of the box using local storage on the respective node. Below we cover a simple example. For more information please reference the official documentation [here](https://github.com/rancher/local-path-provisioner/blob/master/README.md#usage).
 
 Create a hostPath backed persistent volume claim and a pod to utilize it:
@@ -71,7 +69,7 @@ kubectl get pvc
 
 The status should be Bound for each.
 
-# Setting up Longhorn
+## Setting up Longhorn
 
 [comment]: <> (pending change - longhorn may support arm64 and armhf in the future.)
 

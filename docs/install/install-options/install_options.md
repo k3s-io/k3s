@@ -1,3 +1,4 @@
+
 # Installation Options
 
 This page focuses on the options that can be used when you set up K3s for the first time:

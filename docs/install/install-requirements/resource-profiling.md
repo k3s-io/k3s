@@ -1,3 +1,4 @@
+
 # Resource Profiling
 
 This section captures the results of tests to determine minimum resource requirements for K3s.
@@ -25,14 +26,14 @@ The results are summarized as follows:
   - [Primary Resource Utilization Drivers](#primary-resource-utilization-drivers)
   - [Preventing Agents and Workloads from Interfering with the Cluster Datastore](#preventing-agents-and-workloads-from-interfering-with-the-cluster-datastore)
 
-# Scope of Resource Testing
+## Scope of Resource Testing
 
 The resource tests were intended to address the following problem statements:
 
 - On a single-node cluster, determine the legitimate minimum amount of CPU, memory, and IOPs that should be set aside to run the entire K3s stack server stack, assuming that a real workload will be deployed on the cluster.
 - On an agent (worker) node, determine the legitimate minimum amount of CPU, memory, and IOPs that should be set aside for the Kubernetes and K3s control plane components (the kubelet and k3s agent).
 
-# Components Included for Baseline Measurements
+## Components Included for Baseline Measurements
 
 The tested components are:
 
@@ -44,7 +45,7 @@ These are baseline figures for a stable system using only K3s packaged component
 
 Resource figures including IOPS are for the Kubernetes datastore and control plane only, and do not include overhead for system-level management agents or logging, container image management, or any workload-specific requirements. 
 
-# Methodology
+## Methodology
 
 A standalone instance of Prometheus v2.21.0 was used to collect host CPU, memory, and disk IO statistics using `prometheus-node-exporter` installed via apt.
 
@@ -54,7 +55,7 @@ Additional detailed K3s memory utilization data was collected from the `process_
 
 Utilization figures were based on 95th percentile readings from steady state operation on nodes running the described workloads.
 
-# Environment
+## Environment
 
 OS: Ubuntu 20.04 x86_64, aarch64
 
@@ -63,7 +64,7 @@ Hardware:
 - AWS c5d.xlarge - 4 core, 8 GB RAM, NVME SSD
 - Raspberry Pi 4 Model B - 4 core, 8 GB RAM, Class 10 SDHC
 
-# Baseline Resource Requirements
+## Baseline Resource Requirements
 
 This section captures the results of tests to determine minimum resource requirements for the K3s agent, the K3s server with a workload, and the K3s server with one agent.
 
@@ -114,7 +115,7 @@ The CPU requirements are:
 
 256 M of RAM is required.
 
-# Analysis
+## Analysis
 
 This section captures what has the biggest impact on K3s server and agent utilization, and how the cluster datastore can be protected from interference from agents and workloads.
 

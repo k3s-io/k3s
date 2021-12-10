@@ -1,7 +1,9 @@
+
 # Air-Gap Install
+
 You can install K3s in an air-gapped environment using two different methods. An air-gapped environment is any environment that is not directly connected to the Internet. You can either deploy a private registry and mirror docker.io, or you can manually deploy images such as for small clusters.
 
-# Private Registry Method
+## Private Registry Method
 
 This document assumes you have already created your nodes in your air-gap environment and have a Docker private registry on your bastion host.
 
@@ -14,7 +16,7 @@ Follow the [Private Registry Configuration]({{< baseurl >}}/k3s/latest/en/instal
 Once you have completed this, you may now go to the [Install K3s](#install-k3s) section below.
 
 
-# Manually Deploy Images Method
+## Manually Deploy Images Method
 
 We are assuming you have created your nodes in your air-gap environment.
 This method requires you to manually deploy the necessary images to each node and is appropriate for edge deployments where running a private registry is not practical.
@@ -33,7 +35,7 @@ Place the k3s binary at `/usr/local/bin/k3s` and ensure it is executable.
 
 Follow the steps in the next section to install K3s.
 
-# Install K3s
+## Install K3s
 
 ### Prerequisites
 
@@ -86,7 +88,7 @@ INSTALL_K3S_SKIP_DOWNLOAD=true INSTALL_K3S_EXEC='server' K3S_DATASTORE_ENDPOINT=
 
 >**Note:** K3s additionally provides a `--resolv-conf` flag for kubelets, which may help with configuring DNS in air-gap networks.
 
-# Upgrading
+## Upgrading
 
 ### Install Script Method
 

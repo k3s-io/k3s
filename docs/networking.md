@@ -1,7 +1,5 @@
----
-title: "Networking"
-weight: 35
----
+
+# Networking
 
 This page explains how CoreDNS, the Traefik Ingress controller, and Klipper service load balancer work within K3s.
 
@@ -18,13 +16,13 @@ For information on which ports need to be opened for K3s, refer to the [Installa
   - [Disabling the Service LB](#disabling-the-service-lb)
 - [Nodes Without a Hostname](#nodes-without-a-hostname)
 
-# CoreDNS
+## CoreDNS
 
 CoreDNS is deployed on start of the agent. To disable, run each server with the `--disable coredns` option.
 
 If you don't install CoreDNS, you will need to install a cluster DNS provider yourself.
 
-# Traefik Ingress Controller
+## Traefik Ingress Controller
 
 [Traefik](https://traefik.io/) is a modern HTTP reverse proxy and load balancer made to deploy microservices with ease. It simplifies networking complexity while designing, deploying, and running applications.
 
@@ -40,7 +38,7 @@ If Traefik is not disabled K3s versions 1.20 and earlier will install Traefik v1
 
 To migrate from an older Traefik v1 instance please refer to the [Traefik documentation](https://doc.traefik.io/traefik/migration/v1-to-v2/) and [migration tool](https://github.com/traefik/traefik-migration-tool).
 
-# Service Load Balancer
+## Service Load Balancer
 
 Any service load balancer (LB) can be leveraged in your Kubernetes cluster. K3s provides a load balancer known as [Klipper Load Balancer](https://github.com/k3s-io/klipper-lb) that uses available host ports.
 
@@ -82,6 +80,6 @@ To disable the embedded LB, run the server with the `--disable servicelb` option
 
 This is necessary if you wish to run a different LB, such as MetalLB.
 
-# Nodes Without a Hostname
+## Nodes Without a Hostname
 
 Some cloud providers, such as Linode, will create machines with "localhost" as the hostname and others may not have a hostname set at all. This can cause problems with domain name resolution. You can run K3s with the `--node-name` flag or `K3S_NODE_NAME` environment variable and this will pass the node name to resolve this issue.

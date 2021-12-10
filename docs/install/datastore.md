@@ -1,7 +1,5 @@
----
-title: "Cluster Datastore Options"
-weight: 50
----
+
+# Cluster Datastore Options
 
 The ability to run Kubernetes using a datastore other than etcd sets K3s apart from other Kubernetes distributions. This feature provides flexibility to Kubernetes operators. The available datastore options allow you to select a datastore that best fits your use case. For example:
 

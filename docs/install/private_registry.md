@@ -1,7 +1,6 @@
----
-title: "Private Registry Configuration"
-weight: 55
----
+
+# Private Registry Configuration
+
 _Available as of v1.0.0_
 
 Containerd can be configured to connect to private registries and use them to pull private images on the node.

@@ -1,7 +1,5 @@
----
-title: Uninstalling K3s
-weight: 61
----
+
+# Uninstalling K3s
 
 If you installed K3s using the installation script, a script to uninstall K3s was generated during installation.
 

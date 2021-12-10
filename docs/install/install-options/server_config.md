@@ -1,4 +1,6 @@
+
 # K3s Server Configuration Reference
+
 In this section, you'll learn how to configure the K3s server.
 
 > Throughout the K3s documentation, you will see some options that can be passed in as both command flags and environment variables. For help with passing in options, refer to [How to Use Flags and Environment Variables.]({{<baseurl>}}/k3s/latest/en/installation/install-options/how-to-flags)
@@ -25,7 +27,7 @@ In this section, you'll learn how to configure the K3s server.
 - [K3s Server Cli Help](#k3s-server-cli-help)
 
 
-# Commonly Used Options
+## Commonly Used Options
 
 ### Database
 
@@ -104,7 +106,7 @@ the agent options are there because the server has the agent process embedded wi
 |   `--flannel-iface` value    |  N/A         | Override default flannel interface   | 
 |   `--flannel-conf` value   |   N/A         | Override default flannel config file     |
 
-# Advanced Options
+## Advanced Options
 
 ### Logging
 
@@ -197,7 +199,7 @@ the agent options are there because the server has the agent process embedded wi
 |   `--cluster-secret` value   | `K3S_CLUSTER_SECRET`        | Use --token        |
 
 
-# K3s Server CLI Help
+## K3s Server CLI Help
 
 > If an option appears in brackets below, for example `[$K3S_TOKEN]`, it means that the option can be passed in as an environment variable of that name.
 

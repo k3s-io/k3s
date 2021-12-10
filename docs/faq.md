@@ -1,7 +1,5 @@
----
-title: FAQ
-weight: 60
----
+
+# FAQ
 
 The FAQ is updated periodically and designed to answer the questions our users most frequently ask about K3s.
 

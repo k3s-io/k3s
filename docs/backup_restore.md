@@ -1,14 +1,12 @@
----
-title: Backup and Restore
-weight: 26
----
+
+# Backup and Restore
 
 The way K3s is backed up and restored depends on which type of datastore is used.
 
 - [Backup and Restore with External Datastore](#backup-and-restore-with-external-datastore)
 - [Backup and Restore with Embedded etcd Datastore (Experimental)](#backup-and-restore-with-embedded-etcd-datastore-experimental)
 
-# Backup and Restore with External Datastore
+## Backup and Restore with External Datastore
 
 When an external datastore is used, backup and restore operations are handled outside of K3s. The database administrator will need to back up the external database, or restore it from a snapshot or dump.
 
@@ -20,7 +18,7 @@ For details on taking database snapshots and restoring your database from them, 
 - [Official PostgreSQL documentation](https://www.postgresql.org/docs/8.3/backup-dump.html)
 - [Official etcd documentation](https://github.com/etcd-io/etcd/blob/master/Documentation/op-guide/recovery.md)
 
-# Backup and Restore with Embedded etcd Datastore (Experimental)
+## Backup and Restore with Embedded etcd Datastore (Experimental)
 
 _Available as of v1.19.1+k3s1_
 

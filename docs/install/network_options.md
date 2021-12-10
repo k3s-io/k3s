@@ -1,7 +1,5 @@
----
-title: "Network Options"
-weight: 25
----
+
+# Network Options
 
 > **Note:** Please reference the [Networking]({{<baseurl>}}/k3s/latest/en/networking) page for information about CoreDNS, Traefik, and the Service LB.
 

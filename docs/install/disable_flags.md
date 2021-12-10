@@ -1,11 +1,9 @@
----
-title: "Disable Components Flags"
-weight: 60
----
+
+# Disable Components Flags
 
 When starting K3s server with --cluster-init it will run all control plane components that includes (api server, controller manager, scheduler, and etcd). However you can run server nodes with certain components and execlude others, the following sections will explain how to do that.
 
-# ETCD Only Nodes
+## ETCD Only Nodes
 
 This document assumes you run K3s server with embedded etcd by passing `--cluster-init` flag to the server process.
 
@@ -17,7 +15,7 @@ curl -fL https://get.k3s.io | sh -s - server --cluster-init --disable-apiserver 
 
 You can join other nodes to the cluster normally after that.
 
-# Disable ETCD
+## Disable ETCD
 
 You can also disable etcd from a server node and this will result in a k3s server running control components other than etcd, that can be accomplished by running k3s server with flag `--disable-etcd` for example to join another node with only control components to the etcd node created in the previous section:
 
@@ -55,7 +53,7 @@ ip-172-31-14-69   Ready    control-plane,master        5h45m   v1.20.4+k3s1
 
 Notice that role labels has been re-added to the node `ip-172-31-13-32` with the correct labels (control-plane,etcd,master).
 
-# Add disable flags using the config file
+## Add disable flags using the config file
 
 In any of the previous situations you can use the config file instead of running the curl commands with the associated flags, for example to run an etcd only node you can add the following options to the `/etc/rancher/k3s/config.yaml` file:
 
@@ -71,7 +69,7 @@ and then start K3s using the curl command without any arguents:
 ```
 curl -fL https://get.k3s.io | sh -
 ```
-# Disable components using .skip files
+## Disable components using .skip files
 
 For any yaml file under `/var/lib/rancher/k3s/server/manifests` (coredns, traefik, local-storeage, etc.) you can add a `.skip` file which will cause K3s to not apply the associated yaml file.
 For example, adding `traefik.yaml.skip` in the manifests directory will cause K3s to skip `traefik.yaml`.
