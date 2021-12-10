@@ -25,14 +25,14 @@ nav:
   - Installation:
     - Overview: install/installation.md
     - Install Requirements:
-      - Overview: install/install-requirements/install-requirements.md
-      - install/install-requirements/resource-profiling.md
+      - Overview: install/install-requirements/install_requirements.md
+      - install/install-requirements/resource_profiling.md
     - Install Options:
       - Overview: install/install-options/install_options.md
       - install/install-options/server_config.md
       - install/install-options/agent_config.md
     - install/network_options.md
-    - install/ha.md
+    - install/ha_external.md
     - install/ha_embedded.md
     - install/datastore.md
     - install/private_registry.md
