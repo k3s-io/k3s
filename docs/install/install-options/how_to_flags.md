@@ -1,8 +1,4 @@
----
-title: How to Use Flags and Environment Variables
-weight: 3
----
-
+# How to Use Flags and Environment Variables
 Throughout the K3s documentation, you will see some options that can be passed in as both command flags and environment variables. The below examples show how these options can be passed in both ways.
 
 ### Example A: K3S_KUBECONFIG_MODE

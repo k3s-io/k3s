@@ -1,9 +1,4 @@
----
-title: Installation Requirements
-weight: 1
-aliases:
-  - /k3s/latest/en/installation/node-requirements/
----
+# Installation Requirements
 
 K3s is very lightweight, but has some minimum requirements as outlined below.
 

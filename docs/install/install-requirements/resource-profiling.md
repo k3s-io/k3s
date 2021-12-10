@@ -1,8 +1,4 @@
----
-title: K3s Resource Profiling
-shortTitle: Resource Profiling
-weight: 1
----
+# Resource Profiling
 
 This section captures the results of tests to determine minimum resource requirements for K3s.
 

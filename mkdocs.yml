@@ -22,20 +22,24 @@ nav:
   - index.md
   - quick_start.md
   - architecture.md
-  - Installation: install/overview.md
-    - install/requirements.md
-    - install/profiling.md
-  #   - install/requirements.md
-  #   - install/ha.md
-  #   - Install Options:
-  #     - install/install_options/install_options.md
-  #     - install/install_options/server_config.md
-  #     - install/install_options/agent_config.md
-  #   - install/methods.md
-  #   - install/network_options.md
-  #   - install/containerd_registry_configuration.md
-  #   - install/airgap.md
-  #   - install/uninstall.md
+  - Installation:
+    - Overview: install/installation.md
+    - Install Requirements:
+      - Overview: install/install-requirements/install-requirements.md
+      - install/install-requirements/resource-profiling.md
+    - Install Options:
+      - Overview: install/install-options/install_options.md
+      - install/install-options/server_config.md
+      - install/install-options/agent_config.md
+    - install/network_options.md
+    - install/ha.md
+    - install/ha_embedded.md
+    - install/datastore.md
+    - install/private_registry.md
+    - install/airgap.md
+    - install/disable_flags.md
+    - install/kubernetes_dashboard.md
+    - install/uninstall.md
   - Upgrades:
     - Overview: upgrade/index.md
     - upgrade/basic.md

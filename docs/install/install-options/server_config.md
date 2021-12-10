@@ -1,8 +1,4 @@
----
-title: K3s Server Configuration Reference
-weight: 1
----
-
+# K3s Server Configuration Reference
 In this section, you'll learn how to configure the K3s server.
 
 > Throughout the K3s documentation, you will see some options that can be passed in as both command flags and environment variables. For help with passing in options, refer to [How to Use Flags and Environment Variables.]({{<baseurl>}}/k3s/latest/en/installation/install-options/how-to-flags)
