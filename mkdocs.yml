@@ -1,0 +1,55 @@
+site_name: K3S
+repo_url: https://github.com/k3s-io/k3s
+strict: false
+theme:
+  name: material
+  palette:
+    primary: green
+  font:
+    text: 'Poppins'
+  logo: 'assets/logo-k3s.svg'
+  favicon: 'assets/favicon-32x32.png'
+plugins:
+  - search
+markdown_extensions:
+- codehilite
+- admonition
+- pymdownx.tabbed
+- pymdownx.superfences
+- toc:
+    permalink: true
+nav:
+  - index.md
+  - quick_start.md
+  - architecture.md
+  - Installation: install/overview.md
+    - install/requirements.md
+    - install/profiling.md
+  #   - install/requirements.md
+  #   - install/ha.md
+  #   - Install Options:
+  #     - install/install_options/install_options.md
+  #     - install/install_options/server_config.md
+  #     - install/install_options/agent_config.md
+  #   - install/methods.md
+  #   - install/network_options.md
+  #   - install/containerd_registry_configuration.md
+  #   - install/airgap.md
+  #   - install/uninstall.md
+  - Upgrades:
+    - Overview: upgrade/index.md
+    - upgrade/basic.md
+    - upgrade/automated.md
+    - upgrade/killall.md
+  - cluster_access.md
+  - backup_restore.md
+  - volumes_storage.md
+  - networking.md
+  - helm.md
+  - advanced.md
+  - faq.md
+  - known_issues.md
+  - Security:
+    - Overview: security/index.md
+    - security/hardening_guide.md
+    - security/self_assessment.md
