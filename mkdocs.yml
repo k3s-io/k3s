@@ -14,7 +14,8 @@ plugins:
 markdown_extensions:
 - codehilite
 - admonition
-- pymdownx.tabbed
+- pymdownx.tabbed:
+   alternate_style: true 
 - pymdownx.superfences
 - toc:
     permalink: true
@@ -31,6 +32,7 @@ nav:
       - Overview: install/install-options/install_options.md
       - install/install-options/server_config.md
       - install/install-options/agent_config.md
+      - install/install-options/how_to_flags.md
     - install/network_options.md
     - install/ha_external.md
     - install/ha_embedded.md
