@@ -198,9 +198,11 @@ func (e *ETCD) Reset(ctx context.Context, rebootstrap func() error) error {
 					continue
 				}
 
-				// storageBootstrap() - runtime structure has been written with correct certificate data
-				if err := rebootstrap(); err != nil {
-					logrus.Fatal(err)
+				if rebootstrap != nil {
+					// storageBootstrap() - runtime structure has been written with correct certificate data
+					if err := rebootstrap(); err != nil {
+						logrus.Fatal(err)
+					}
 				}
 
 				// call functions to rewrite them from daemons/control/server.go (prepare())
