@@ -72,6 +72,7 @@ replace (
 	k8s.io/sample-cli-plugin => github.com/k3s-io/kubernetes/staging/src/k8s.io/sample-cli-plugin v1.22.4-k3s1
 	k8s.io/sample-controller => github.com/k3s-io/kubernetes/staging/src/k8s.io/sample-controller v1.22.4-k3s1
 	mvdan.cc/unparam => mvdan.cc/unparam v0.0.0-20210104141923-aac4ce9116a7
+	github.com/flannel-io/flannel =>  github.com/sjoerdsimons/flannel v0.15.1-0.20211209211441-52e365f926da
 )
 
 require (
