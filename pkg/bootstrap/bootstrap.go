@@ -67,14 +67,9 @@ type PathsDataformat map[string]File
 
 // WriteToDiskFromStorage writes the contents of the given reader to the paths
 // derived from within the ControlRuntimeBootstrap.
-func WriteToDiskFromStorage(r io.Reader, bootstrap *config.ControlRuntimeBootstrap) error {
+func WriteToDiskFromStorage(files PathsDataformat, bootstrap *config.ControlRuntimeBootstrap) error {
 	paths, err := ObjToMap(bootstrap)
 	if err != nil {
-		return err
-	}
-
-	files := make(PathsDataformat)
-	if err := json.NewDecoder(r).Decode(&files); err != nil {
 		return err
 	}
 
