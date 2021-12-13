@@ -2,16 +2,12 @@ package e2e
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
-	"io/ioutil"
-	"log"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
-
-	"golang.org/x/crypto/ssh"
 )
 
 type Node struct {
@@ -32,42 +28,6 @@ type Pod struct {
 	Node      string
 }
 
-var config *ssh.ClientConfig
-var SSHKEY string
-var SSHUSER string
-
-func checkError(e error) {
-	if e != nil {
-		log.Fatal(err)
-		panic(e)
-	}
-}
-
-func publicKey(path string) ssh.AuthMethod {
-	key, err := ioutil.ReadFile(path)
-	if err != nil {
-		panic(err)
-	}
-	signer, err := ssh.ParsePrivateKey(key)
-	if err != nil {
-		panic(err)
-	}
-	return ssh.PublicKeys(signer)
-}
-
-func ConfigureSSH(host string, SSHUser string, SSHKey string) *ssh.Client {
-	config = &ssh.ClientConfig{
-		User: SSHUser,
-		Auth: []ssh.AuthMethod{
-			publicKey(SSHKey),
-		},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-	}
-	conn, err := ssh.Dial("tcp", host, config)
-	checkError(err)
-	return conn
-}
-
 //Runs command passed from within the node ServerIP
 func RunCmdOnNode(cmd string, nodename string) (string, error) {
 	runcmd := "vagrant ssh server-0 -c " + cmd
@@ -75,9 +35,8 @@ func RunCmdOnNode(cmd string, nodename string) (string, error) {
 
 	var out bytes.Buffer
 	c.Stdout = &out
-	err := c.Run()
-	if err != nil {
-		return "", errors.New(fmt.Sprintf("%s", err))
+	if err := c.Run(); err != nil {
+		return "", err
 	}
 	return out.String(), nil
 }
@@ -88,9 +47,9 @@ func RunCommand(cmd string) (string, error) {
 	time.Sleep(10 * time.Second)
 	var out bytes.Buffer
 	c.Stdout = &out
-	err := c.Run()
-	if err != nil {
-		return "", errors.New(fmt.Sprintf("%s", err))
+
+	if err := c.Run(); err != nil {
+		return "", err
 	}
 	return out.String(), nil
 }
@@ -104,6 +63,49 @@ func CountOfStringInSlice(str string, pods []Pod) int {
 		}
 	}
 	return count
+}
+
+func CreateCluster(nodeos string, serverCount int, agentCount int) ([]string, []string, error) {
+	scount := make([]int, serverCount)
+	serverNodenames := make([]string, serverCount+1)
+	for i := range scount {
+		serverNodenames[i] = "server-" + strconv.Itoa(i)
+	}
+
+	acount := make([]int, agentCount)
+	agentNodenames := make([]string, agentCount+1)
+	for i := range acount {
+		agentNodenames[i] = "agent-" + strconv.Itoa(i)
+	}
+
+	cmd := "vagrant up"
+	if _, err := RunCommand(cmd); err != nil {
+		fmt.Printf("Error Creating Cluster")
+		return nil, nil, err
+	}
+
+	return serverNodenames, agentNodenames, nil
+}
+
+func DestroyCluster() error {
+	_, err := RunCommand("vagrant destroy -f")
+	return err
+}
+
+func GenKubeConfigFile(serverName string) (string, error) {
+	cmd := fmt.Sprintf("vagrant ssh %s -c \"cat /etc/rancher/k3s/k3s.yaml\"", serverName)
+	kubeConfig, err := RunCommand(cmd)
+	if err != nil {
+		return "", err
+	}
+	nodeIp := FetchNodeExternalIP(serverName)
+	kubeConfig = strings.Replace(kubeConfig, "127.0.0.1", nodeIp, 1)
+	fmt.Println("KubeConfig\n", kubeConfig)
+	kubeConfigFile := fmt.Sprintf("kubeconfig-%s", serverName)
+	if err := os.WriteFile(kubeConfigFile, []byte(kubeConfig), 0644); err != nil {
+		return "", err
+	}
+	return kubeConfigFile, nil
 }
 
 func DeployWorkload(workload string, kubeconfig string) (string, error) {
@@ -137,34 +139,33 @@ func FetchIngressIP(kubeconfig string) []string {
 
 func ParseNode(kubeconfig string, printres bool) []Node {
 	nodes := make([]Node, 0, 10)
-	var node Node
 	timeElapsed := 0
 	nodeList := ""
 
 	for timeElapsed < 420 {
-		notReady := false
+		ready := false
 		cmd := "kubectl get nodes --no-headers -o wide -A --kubeconfig=" + kubeconfig
 		res, _ := RunCommand(cmd)
-		res = strings.TrimSpace(res)
-		res, _ = RunCommand(cmd)
 		nodeList = strings.TrimSpace(res)
 		split := strings.Split(res, "\n")
 		for _, rec := range split {
 			if strings.TrimSpace(rec) != "" {
 				fields := strings.Fields(string(rec))
-				node.Name = fields[0]
-				node.Status = fields[1]
-				node.Roles = fields[2]
-				node.InternalIP = fields[5]
-				node.ExternalIP = fields[6]
+				node := Node{
+					Name:       fields[0],
+					Status:     fields[1],
+					Roles:      fields[2],
+					InternalIP: fields[5],
+					ExternalIP: fields[6],
+				}
 				nodes = append(nodes, node)
 				if node.Status != "Ready" {
-					notReady = true
+					ready = true
 					break
 				}
 			}
 		}
-		if notReady == false {
+		if ready {
 			break
 		}
 		time.Sleep(5 * time.Second)
@@ -178,7 +179,6 @@ func ParseNode(kubeconfig string, printres bool) []Node {
 
 func ParsePod(kubeconfig string, printres bool) []Pod {
 	pods := make([]Pod, 0, 10)
-	var pod Pod
 	timeElapsed := 0
 	podList := ""
 
@@ -193,26 +193,27 @@ func ParsePod(kubeconfig string, printres bool) []Pod {
 		split := strings.Split(res, "\n")
 		for _, rec := range split {
 			fields := strings.Fields(string(rec))
-			pod.NameSpace = fields[0]
-			pod.Name = fields[1]
-			pod.Ready = fields[2]
-			pod.Status = fields[3]
-			pod.Restarts = fields[4]
-			pod.NodeIP = fields[6]
-			pod.Node = fields[7]
+			pod := Pod{
+				NameSpace: fields[0],
+				Name:      fields[1],
+				Ready:     fields[2],
+				Status:    fields[3],
+				Restarts:  fields[4],
+				NodeIP:    fields[6],
+				Node:      fields[7],
+			}
 			pods = append(pods, pod)
 			if strings.HasPrefix(pod.Name, "helm-install") && pod.Status != "Completed" {
 				helmPodsNR = true
 				break
 			} else if !strings.HasPrefix(pod.Name, "helm-install") && pod.Status != "Running" {
-
 				systemPodsNR = true
 				break
 			}
 			time.Sleep(5 * time.Second)
 			timeElapsed = timeElapsed + 5
 		}
-		if systemPodsNR == false && helmPodsNR == false {
+		if !systemPodsNR && !helmPodsNR {
 			break
 		}
 	}
@@ -220,9 +221,4 @@ func ParsePod(kubeconfig string, printres bool) []Pod {
 		fmt.Println(podList)
 	}
 	return pods
-}
-func WriteToFile(kubeconfig string, filename string) {
-	bytestring := []byte(kubeconfig)
-	err := os.WriteFile(filename, bytestring, 0644)
-	checkError(err)
 }
