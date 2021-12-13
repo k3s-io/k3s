@@ -312,16 +312,17 @@ const systemTimeSkew = int64(3)
 // isMigrated checks to see if the given bootstrap data
 // is in the latest format.
 func isMigrated(buf io.ReadSeeker) bool {
+	buf.Seek(0, 0)
+	defer buf.Seek(0, 0)
+
 	files := make(bootstrap.PathsDataformat)
 	if err := json.NewDecoder(buf).Decode(&files); err != nil {
 		// This will fail if data is being pulled from old an cluster since
 		// older clusters used a map[string][]byte for the data structure.
 		// Therefore, we need to perform a migration to the newer bootstrap
 		// format; bootstrap.BootstrapFile.
-		buf.Seek(0, 0)
 		return false
 	}
-	buf.Seek(0, 0)
 
 	return true
 }
