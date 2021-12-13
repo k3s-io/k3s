@@ -309,17 +309,47 @@ func migrateBootstrapData(ctx context.Context, data io.Reader, files bootstrap.P
 
 const systemTimeSkew = int64(3)
 
+// isMigrated checks to see if the given bootstrap data
+// is in the latest format.
+func isMigrated(buf io.ReadSeeker) bool {
+	buf.Seek(0, 0)
+	defer buf.Seek(0, 0)
+
+	files := make(bootstrap.PathsDataformat)
+	if err := json.NewDecoder(buf).Decode(&files); err != nil {
+		// This will fail if data is being pulled from old an cluster since
+		// older clusters used a map[string][]byte for the data structure.
+		// Therefore, we need to perform a migration to the newer bootstrap
+		// format; bootstrap.BootstrapFile.
+		return false
+	}
+
+	return true
+}
+
 // ReconcileBootstrapData is called before any data is saved to the
 // datastore or locally. It checks to see if the contents of the
 // bootstrap data in the datastore is newer than on disk or different
-// and depending on where the difference is, the newer data is written
-// to disk or if the disk is newer, the process is stopped and a error
-// is issued.
+// and depending on where the difference is. If the datastore is newer,
+// then the data will be written to disk. If the data on disk is newer,
+// k3s will exit with an error.
 func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker, crb *config.ControlRuntimeBootstrap, isHTTP bool, ec *endpoint.ETCDConfig) error {
 	logrus.Info("Reconciling bootstrap data between datastore and disk")
 
 	if err := c.certDirsExist(); err != nil {
-		return bootstrap.WriteToDiskFromStorage(buf, crb)
+		// we need to see if the data has been migrated before writing to disk. This
+		// is because the data may have been given to us via the HTTP bootstrap process
+		// from an older version of k3s. That version might not have the new data format
+		// and we should write the correct format.
+		files := make(bootstrap.PathsDataformat)
+		if !isMigrated(buf) {
+			if err := migrateBootstrapData(ctx, buf, files); err != nil {
+				return err
+			}
+			buf.Seek(0, 0)
+		}
+
+		return bootstrap.WriteToDiskFromStorage(files, crb)
 	}
 
 	var dbRawData []byte
@@ -393,18 +423,12 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker,
 	}
 
 	files := make(bootstrap.PathsDataformat)
-	if err := json.NewDecoder(buf).Decode(&files); err != nil {
-		// This will fail if data is being pulled from old an cluster since
-		// older clusters used a map[string][]byte for the data structure.
-		// Therefore, we need to perform a migration to the newer bootstrap
-		// format; bootstrap.BootstrapFile.
-		buf.Seek(0, 0)
-
+	if !isMigrated(buf) {
 		if err := migrateBootstrapData(ctx, buf, files); err != nil {
 			return err
 		}
+		buf.Seek(0, 0)
 	}
-	buf.Seek(0, 0)
 
 	type update struct {
 		db, disk, conflict bool
@@ -543,7 +567,7 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker,
 
 	if updateDisk {
 		logrus.Warn("updating bootstrap data on disk from datastore")
-		return bootstrap.WriteToDiskFromStorage(buf, crb)
+		return bootstrap.WriteToDiskFromStorage(files, crb)
 	}
 
 	return nil
