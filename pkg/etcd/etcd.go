@@ -198,6 +198,11 @@ func (e *ETCD) Reset(ctx context.Context, rebootstrap func() error) error {
 		t := time.NewTicker(5 * time.Second)
 		defer t.Stop()
 		for range t.C {
+			// resetting the apiaddresses to nil since we are doing a restoration
+			if _, err := e.client.Put(ctx, AddressKey, ""); err != nil {
+				logrus.Warnf("failed to reset api addresses key in etcd: %v", err)
+				continue
+			}
 			if err := e.Test(ctx); err == nil {
 				members, err := e.client.MemberList(ctx)
 				if err != nil {
