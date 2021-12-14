@@ -48,6 +48,7 @@ func Save(ctx context.Context, config *config.Control, etcdConfig endpoint.ETCDC
 	if err != nil {
 		return err
 	}
+	defer storageClient.Close()
 
 	if _, _, err = getBootstrapKeyFromStorage(ctx, storageClient, normalizedToken, token); err != nil {
 		return err
@@ -102,6 +103,7 @@ func (c *Cluster) storageBootstrap(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	defer storageClient.Close()
 
 	token := c.config.Token
 	if token == "" {
