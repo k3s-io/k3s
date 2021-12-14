@@ -393,6 +393,7 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker,
 		if err != nil {
 			return err
 		}
+		defer storageClient.Close()
 
 		ticker := time.NewTicker(5 * time.Second)
 		defer ticker.Stop()
