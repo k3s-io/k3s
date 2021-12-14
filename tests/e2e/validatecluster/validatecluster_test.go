@@ -45,7 +45,8 @@ var _ = Describe("Test:", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			fmt.Printf("\nFetching node status\n")
-			nodes := e2e.ParseNode(kubeConfigFile, true)
+			nodes, err := e2e.ParseNode(kubeConfigFile, true)
+			Expect(err).NotTo(HaveOccurred())
 			for _, config := range nodes {
 				Expect(config.Status).Should(Equal("Ready"), func() string { return config.Name })
 			}
@@ -60,7 +61,6 @@ var _ = Describe("Test:", func() {
 				}
 			}
 		})
-
 	})
 })
 

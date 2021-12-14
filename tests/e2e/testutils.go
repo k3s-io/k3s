@@ -34,9 +34,11 @@ func RunCmdOnNode(cmd string, nodename string) (string, error) {
 	c := exec.Command("bash", "-c", runcmd)
 
 	var out bytes.Buffer
+	var errOut bytes.Buffer
 	c.Stdout = &out
+	c.Stderr = &errOut
 	if err := c.Run(); err != nil {
-		return "", err
+		return errOut.String(), err
 	}
 	return out.String(), nil
 }
@@ -47,7 +49,6 @@ func RunCommand(cmd string) (string, error) {
 	time.Sleep(10 * time.Second)
 	var out bytes.Buffer
 	c.Stdout = &out
-
 	if err := c.Run(); err != nil {
 		return "", err
 	}
@@ -77,10 +78,13 @@ func CreateCluster(nodeos string, serverCount int, agentCount int) ([]string, []
 	for i := range acount {
 		agentNodenames[i] = "agent-" + strconv.Itoa(i)
 	}
-
-	cmd := "vagrant up"
-	if _, err := RunCommand(cmd); err != nil {
-		fmt.Printf("Error Creating Cluster")
+	nodeRoles := strings.Join(serverNodenames, " ") + strings.Join(agentNodenames, " ")
+	nodeRoles = strings.TrimSpace(nodeRoles)
+	nodeBoxes := strings.Repeat(nodeos+" ", serverCount+agentCount)
+	nodeBoxes = strings.TrimSpace(nodeBoxes)
+	cmd := fmt.Sprintf("NODE_ROLES=\"%s\" NODE_BOXES=\"%s\" vagrant up &> vagrant.log", nodeRoles, nodeBoxes)
+	if out, err := RunCommand(cmd); err != nil {
+		fmt.Println("Error Creating Cluster", out)
 		return nil, nil, err
 	}
 
@@ -88,8 +92,10 @@ func CreateCluster(nodeos string, serverCount int, agentCount int) ([]string, []
 }
 
 func DestroyCluster() error {
-	_, err := RunCommand("vagrant destroy -f")
-	return err
+	if _, err := RunCommand("vagrant destroy -f"); err != nil {
+		return err
+	}
+	return os.Remove("vagrant.log")
 }
 
 func GenKubeConfigFile(serverName string) (string, error) {
@@ -100,7 +106,6 @@ func GenKubeConfigFile(serverName string) (string, error) {
 	}
 	nodeIp := FetchNodeExternalIP(serverName)
 	kubeConfig = strings.Replace(kubeConfig, "127.0.0.1", nodeIp, 1)
-	fmt.Println("KubeConfig\n", kubeConfig)
 	kubeConfigFile := fmt.Sprintf("kubeconfig-%s", serverName)
 	if err := os.WriteFile(kubeConfigFile, []byte(kubeConfig), 0644); err != nil {
 		return "", err
@@ -137,17 +142,24 @@ func FetchIngressIP(kubeconfig string) []string {
 	return ingressIps
 }
 
-func ParseNode(kubeconfig string, printres bool) []Node {
+func ParseNode(kubeConfig string, debug bool) ([]Node, error) {
 	nodes := make([]Node, 0, 10)
 	timeElapsed := 0
+	timeMax := 420
 	nodeList := ""
 
-	for timeElapsed < 420 {
-		ready := false
-		cmd := "kubectl get nodes --no-headers -o wide -A --kubeconfig=" + kubeconfig
-		res, _ := RunCommand(cmd)
+	for timeElapsed < timeMax {
+		ready := true
+		cmd := "kubectl get nodes --no-headers -o wide -A --kubeconfig=" + kubeConfig
+		res, err := RunCommand(cmd)
+		if err != nil {
+			return nil, err
+		}
+		fmt.Println(res)
 		nodeList = strings.TrimSpace(res)
-		split := strings.Split(res, "\n")
+		fmt.Println(nodeList)
+		split := strings.Split(nodeList, "\n")
+		fmt.Println(split)
 		for _, rec := range split {
 			if strings.TrimSpace(rec) != "" {
 				fields := strings.Fields(string(rec))
@@ -160,7 +172,7 @@ func ParseNode(kubeconfig string, printres bool) []Node {
 				}
 				nodes = append(nodes, node)
 				if node.Status != "Ready" {
-					ready = true
+					ready = false
 					break
 				}
 			}
@@ -171,10 +183,13 @@ func ParseNode(kubeconfig string, printres bool) []Node {
 		time.Sleep(5 * time.Second)
 		timeElapsed = timeElapsed + 5
 	}
-	if printres {
+	if timeElapsed >= timeMax {
+		return nil, fmt.Errorf("timeout exceeded on ParseNode")
+	}
+	if debug {
 		fmt.Println(nodeList)
 	}
-	return nodes
+	return nodes, nil
 }
 
 func ParsePod(kubeconfig string, printres bool) []Pod {

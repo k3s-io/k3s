@@ -1,7 +1,8 @@
-package e2e
+package upgradecluster
+
 import (
-	"flag"
 	"fmt"
+
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/reporters"
 	. "github.com/onsi/gomega"
@@ -11,20 +12,23 @@ import (
 	"time"
 )
 
-var upgradeVersion = flag.String("upgrade_version", "", "a string")
-
+const (
+	upgradeVersion = "v1.21.7"
+	nodeOs         = "generic/ubuntu2004"
+	serverCount    = 3
+	agentCount     = 2
+)
 
 func Test_E2EClusterUpgradeValidation(t *testing.T) {
-	reporters := []Reporter{
-		reporters.NewJUnitReporter("./" + *resourceName + "upgraderesults.xml"),
-	}
 	RegisterFailHandler(Fail)
-	RunSpecsWithCustomReporters(t, "Cluster Upgrade Validation", reporters)
+	RunSpecsWithDefaultAndCustomReporters(t, "Upgrade Cluster", []Reporter{
+		reporters.NewJUnitReporter("e2eUpgradeCluster.xml"),
+	})
 }
 
 var _ = Describe("Test: ", func() {
 
-	Context("Cluster Upgrade" + *nodeOs+ " " + *clusterType+ " " + *externalDb, func() {
+	Context("Cluster Upgrade"+*nodeOs+" "+*clusterType+" "+*externalDb, func() {
 
 		It("Verify Node and Pod Status", func() {
 			kubeconfig, masterIPs, workerIPs = BuildCluster(*nodeOs, *clusterType, *externalDb, *resourceName, &testing.T{}, *destroy)
@@ -81,11 +85,11 @@ var _ = Describe("Test: ", func() {
 			fmt.Println("Validating NodePort")
 			node_external_ip := FetchNodeExternalIP(kubeconfig)
 			cmd := "kubectl get service nginx-nodeport-svc --kubeconfig=" + kubeconfig + " --output jsonpath=\"{.spec.ports[0].nodePort}\""
-			nodeport,_ := RunCommand(cmd)
+			nodeport, _ := RunCommand(cmd)
 			for _, nodeExternalIp := range node_external_ip {
 				cmd := "curl -L --insecure http://" + nodeExternalIp + ":" + nodeport + "/name.html"
 				fmt.Println(cmd)
-				res,_ := RunCommand(cmd)
+				res, _ := RunCommand(cmd)
 				fmt.Println(res)
 				Expect(res).Should(ContainSubstring("test-nodeport"), func() string { return res }) //Need to check of returned value is unique to node
 			}
@@ -98,11 +102,11 @@ var _ = Describe("Test: ", func() {
 			fmt.Println("Validating Service LoaadBalancer")
 			node_external_ip := FetchNodeExternalIP(kubeconfig)
 			cmd := "kubectl get service nginx-loadbalancer-svc --kubeconfig=" + kubeconfig + " --output jsonpath=\"{.spec.ports[0].port}\""
-			port, _:= RunCommand(cmd)
+			port, _ := RunCommand(cmd)
 			for _, ip := range node_external_ip {
 				cmd = "curl -L --insecure http://" + ip + ":" + port + "/name.html"
 				fmt.Println(cmd)
-				res,_ := RunCommand(cmd)
+				res, _ := RunCommand(cmd)
 				fmt.Println(res)
 				Expect(res).Should(ContainSubstring("test-loadbalancer"), func() string { return res })
 			}
@@ -131,7 +135,7 @@ var _ = Describe("Test: ", func() {
 			fmt.Println("Validating Ingress")
 
 			ingressIps := FetchIngressIP(kubeconfig)
-			for _, ip := range ingressIps{
+			for _, ip := range ingressIps {
 				cmd := "curl  --header host:foo1.bar.com" + " http://" + ip + "/name.html"
 				fmt.Println(cmd)
 				//Access path from outside node
@@ -147,33 +151,33 @@ var _ = Describe("Test: ", func() {
 			}
 			fmt.Println("Validating Local Path Provisioner")
 			cmd := "kubectl get pvc local-path-pvc --kubeconfig=" + kubeconfig
-			res,_ := RunCommand(cmd)
+			res, _ := RunCommand(cmd)
 			fmt.Println(res)
 			Eventually(res).Should((ContainSubstring("local-path-pvc")), "120s", "60s")
 			Eventually(res).Should((ContainSubstring("Bound")), "120s", "60s")
 
 			cmd = "kubectl get pod volume-test --kubeconfig=" + kubeconfig
-			res,_ = RunCommand(cmd)
+			res, _ = RunCommand(cmd)
 			fmt.Println(res)
 
 			Eventually(res).Should((ContainSubstring("volume-test")), "120s", "60s", func() string { return res })
 
 			cmd = "kubectl --kubeconfig=" + kubeconfig + " exec volume-test -- sh -c 'echo local-path-test > /data/test'"
-			res, _= RunCommand(cmd)
+			res, _ = RunCommand(cmd)
 			fmt.Println(res)
 			fmt.Println("Data stored", res)
 
 			cmd = "kubectl delete pod volume-test --kubeconfig=" + kubeconfig
-			res,_ = RunCommand(cmd)
+			res, _ = RunCommand(cmd)
 			fmt.Println(res)
 			resource_dir := "./amd64_resource_files"
 			cmd = "kubectl apply -f " + resource_dir + "/local-path-provisioner.yaml --kubeconfig=" + kubeconfig
-			res, _= RunCommand(cmd)
+			res, _ = RunCommand(cmd)
 			fmt.Println(res)
 
 			time.Sleep(1 * time.Minute)
 			cmd = "kubectl exec volume-test cat /data/test --kubeconfig=" + kubeconfig
-			res,_ = RunCommand(cmd)
+			res, _ = RunCommand(cmd)
 			fmt.Println("Data after re-creation", res)
 
 			Eventually(res).Should((ContainSubstring("local-path-test")), "120s", "60s", func() string { return res })
@@ -184,24 +188,24 @@ var _ = Describe("Test: ", func() {
 				//fmt.Printf("\nCluster is Deleted\n")
 				return
 			}
-			MIPs := strings.Split(masterIPs,",")
+			MIPs := strings.Split(masterIPs, ",")
 
 			for _, ip := range MIPs {
-			    cmd := "sudo sed -i \"s/|/| INSTALL_K3S_VERSION=" + *upgradeVersion + "/g\" /tmp/master_cmd"
+				cmd := "sudo sed -i \"s/|/| INSTALL_K3S_VERSION=" + *upgradeVersion + "/g\" /tmp/master_cmd"
 				fmt.Println(cmd)
-				_ = RunCmdOnNode(cmd,ip, *sshuser, *sshkey)
-				cmd =  "sudo chmod u+x /tmp/master_cmd && sudo /tmp/master_cmd"
+				_ = RunCmdOnNode(cmd, ip, *sshuser, *sshkey)
+				cmd = "sudo chmod u+x /tmp/master_cmd && sudo /tmp/master_cmd"
 				_ = RunCmdOnNode(cmd, ip, *sshuser, *sshkey)
 			}
 
-			WIPs := strings.Split(workerIPs,",")
-			for i := 0; i < len(WIPs) && len(WIPs[0])>1; i++ {
+			WIPs := strings.Split(workerIPs, ",")
+			for i := 0; i < len(WIPs) && len(WIPs[0]) > 1; i++ {
 				ip := WIPs[i]
 				strings.TrimSpace(WIPs[i])
 				cmd := "sudo sed -i \"s/|/| INSTALL_K3S_VERSION=" + *upgradeVersion + "/g\" /tmp/agent_cmd"
-				_ = RunCmdOnNode(cmd,ip, *sshuser, *sshkey)
+				_ = RunCmdOnNode(cmd, ip, *sshuser, *sshkey)
 				By("Step4")
-				cmd =  "sudo chmod u+x /tmp/agent_cmd && sudo /tmp/agent_cmd"
+				cmd = "sudo chmod u+x /tmp/agent_cmd && sudo /tmp/agent_cmd"
 				_ = RunCmdOnNode(cmd, ip, *sshuser, *sshkey)
 			}
 
@@ -220,7 +224,6 @@ var _ = Describe("Test: ", func() {
 				}
 			}
 		})
-
 
 		It("Validate ClusterIP after upgrade", func() {
 			if *destroy {
@@ -247,11 +250,11 @@ var _ = Describe("Test: ", func() {
 			fmt.Println("Validating NodePort")
 			node_external_ip := FetchNodeExternalIP(kubeconfig)
 			cmd := "kubectl get service nginx-nodeport-svc --kubeconfig=" + kubeconfig + " --output jsonpath=\"{.spec.ports[0].nodePort}\""
-			nodeport,_ := RunCommand(cmd)
+			nodeport, _ := RunCommand(cmd)
 			for _, nodeExternalIp := range node_external_ip {
 				cmd := "curl -L --insecure http://" + nodeExternalIp + ":" + nodeport + "/name.html"
 				fmt.Println(cmd)
-				res,_ := RunCommand(cmd)
+				res, _ := RunCommand(cmd)
 				fmt.Println(res)
 				Expect(res).Should(ContainSubstring("test-nodeport"), func() string { return res }) //Need to check of returned value is unique to node
 			}
@@ -264,11 +267,11 @@ var _ = Describe("Test: ", func() {
 			fmt.Println("Validating Service LoaadBalancer")
 			node_external_ip := FetchNodeExternalIP(kubeconfig)
 			cmd := "kubectl get service nginx-loadbalancer-svc --kubeconfig=" + kubeconfig + " --output jsonpath=\"{.spec.ports[0].port}\""
-			port,_ := RunCommand(cmd)
+			port, _ := RunCommand(cmd)
 			for _, ip := range node_external_ip {
 				cmd = "curl -L --insecure http://" + ip + ":" + port + "/name.html"
 				fmt.Println(cmd)
-				res,_ := RunCommand(cmd)
+				res, _ := RunCommand(cmd)
 				fmt.Println(res)
 				Expect(res).Should(ContainSubstring("test-loadbalancer"), func() string { return res })
 			}
@@ -309,7 +312,7 @@ var _ = Describe("Test: ", func() {
 				cmd := "curl  --header host:foo1.bar.com" + " http://" + ip + "/name.html"
 				fmt.Println(cmd)
 				//Access path from outside node
-				res,_ := RunCommand(cmd)
+				res, _ := RunCommand(cmd)
 				fmt.Println(res)
 				Eventually(res).Should((ContainSubstring("test-ingress")), "120s", "60s", func() string { return res })
 			}
@@ -320,28 +323,28 @@ var _ = Describe("Test: ", func() {
 			}
 			fmt.Println("Validating Local Path Provisioner")
 			cmd := "kubectl get pvc local-path-pvc --kubeconfig=" + kubeconfig
-			res,_ := RunCommand(cmd)
+			res, _ := RunCommand(cmd)
 			fmt.Println(res)
 			Eventually(res).Should((ContainSubstring("local-path-pvc")), "120s", "60s")
 			Eventually(res).Should((ContainSubstring("Bound")), "120s", "60s")
 
 			cmd = "kubectl get pod volume-test --kubeconfig=" + kubeconfig
-			res,_ = RunCommand(cmd)
+			res, _ = RunCommand(cmd)
 			fmt.Println(res)
 
 			Eventually(res).Should((ContainSubstring("volume-test")), "120s", "60s", func() string { return res })
 
 			cmd = "kubectl --kubeconfig=" + kubeconfig + " exec volume-test -- sh -c 'echo local-path-test > /data/test'"
-			res,_ = RunCommand(cmd)
+			res, _ = RunCommand(cmd)
 			fmt.Println(res)
 			fmt.Println("Data stored", res)
 
 			cmd = "kubectl delete pod volume-test --kubeconfig=" + kubeconfig
-			res,_ = RunCommand(cmd)
+			res, _ = RunCommand(cmd)
 			fmt.Println(res)
 			resource_dir := "./amd64_resource_files"
 			cmd = "kubectl apply -f " + resource_dir + "/local-path-provisioner.yaml --kubeconfig=" + kubeconfig
-			res,_ = RunCommand(cmd)
+			res, _ = RunCommand(cmd)
 			fmt.Println(res)
 
 			time.Sleep(1 * time.Minute)
