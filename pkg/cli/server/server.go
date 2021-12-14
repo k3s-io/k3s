@@ -173,6 +173,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		serverConfig.ControlConfig.DisableScheduler = true
 		serverConfig.ControlConfig.DisableCCM = true
 
+		close(agentReady)
 		dataDir, err := datadir.LocalHome(cfg.DataDir, false)
 		if err != nil {
 			return err
