@@ -39,62 +39,63 @@ type Server struct {
 	// The port which custom k3s API runs on
 	SupervisorPort int
 	// The port which kube-apiserver runs on
-	APIServerPort            int
-	APIServerBindAddress     string
-	DataDir                  string
-	DisableAgent             bool
-	KubeConfigOutput         string
-	KubeConfigMode           string
-	TLSSan                   cli.StringSlice
-	BindAddress              string
-	ExtraAPIArgs             cli.StringSlice
-	ExtraEtcdArgs            cli.StringSlice
-	ExtraSchedulerArgs       cli.StringSlice
-	ExtraControllerArgs      cli.StringSlice
-	ExtraCloudControllerArgs cli.StringSlice
-	Rootless                 bool
-	DatastoreEndpoint        string
-	DatastoreCAFile          string
-	DatastoreCertFile        string
-	DatastoreKeyFile         string
-	AdvertiseIP              string
-	AdvertisePort            int
-	DisableScheduler         bool
-	ServerURL                string
-	FlannelBackend           string
-	DefaultLocalStoragePath  string
-	DisableCCM               bool
-	DisableNPC               bool
-	DisableHelmController    bool
-	DisableKubeProxy         bool
-	DisableAPIServer         bool
-	DisableControllerManager bool
-	DisableETCD              bool
-	ClusterInit              bool
-	ClusterReset             bool
-	ClusterResetRestorePath  string
-	EncryptSecrets           bool
-	EncryptForce             bool
-	EncryptSkip              bool
-	SystemDefaultRegistry    string
-	StartupHooks             []StartupHook
-	EtcdSnapshotName         string
-	EtcdDisableSnapshots     bool
-	EtcdExposeMetrics        bool
-	EtcdSnapshotDir          string
-	EtcdSnapshotCron         string
-	EtcdSnapshotRetention    int
-	EtcdS3                   bool
-	EtcdS3Endpoint           string
-	EtcdS3EndpointCA         string
-	EtcdS3SkipSSLVerify      bool
-	EtcdS3AccessKey          string
-	EtcdS3SecretKey          string
-	EtcdS3BucketName         string
-	EtcdS3Region             string
-	EtcdS3Folder             string
-	EtcdS3Timeout            time.Duration
-	EtcdS3Insecure           bool
+	APIServerPort                int
+	APIServerBindAddress         string
+	DataDir                      string
+	DisableAgent                 bool
+	KubeConfigOutput             string
+	KubeConfigMode               string
+	TLSSan                       cli.StringSlice
+	BindAddress                  string
+	ExtraAPIArgs                 cli.StringSlice
+	ExtraEtcdArgs                cli.StringSlice
+	ExtraSchedulerArgs           cli.StringSlice
+	ExtraControllerArgs          cli.StringSlice
+	ExtraCloudControllerArgs     cli.StringSlice
+	KubeletPreferredAddressTypes string
+	Rootless                     bool
+	DatastoreEndpoint            string
+	DatastoreCAFile              string
+	DatastoreCertFile            string
+	DatastoreKeyFile             string
+	AdvertiseIP                  string
+	AdvertisePort                int
+	DisableScheduler             bool
+	ServerURL                    string
+	FlannelBackend               string
+	DefaultLocalStoragePath      string
+	DisableCCM                   bool
+	DisableNPC                   bool
+	DisableHelmController        bool
+	DisableKubeProxy             bool
+	DisableAPIServer             bool
+	DisableControllerManager     bool
+	DisableETCD                  bool
+	ClusterInit                  bool
+	ClusterReset                 bool
+	ClusterResetRestorePath      string
+	EncryptSecrets               bool
+	EncryptForce                 bool
+	EncryptSkip                  bool
+	SystemDefaultRegistry        string
+	StartupHooks                 []StartupHook
+	EtcdSnapshotName             string
+	EtcdDisableSnapshots         bool
+	EtcdExposeMetrics            bool
+	EtcdSnapshotDir              string
+	EtcdSnapshotCron             string
+	EtcdSnapshotRetention        int
+	EtcdS3                       bool
+	EtcdS3Endpoint               string
+	EtcdS3EndpointCA             string
+	EtcdS3SkipSSLVerify          bool
+	EtcdS3AccessKey              string
+	EtcdS3SecretKey              string
+	EtcdS3BucketName             string
+	EtcdS3Region                 string
+	EtcdS3Folder                 string
+	EtcdS3Timeout                time.Duration
+	EtcdS3Insecure               bool
 }
 
 var (
@@ -231,6 +232,12 @@ var ServerFlags = []cli.Flag{
 		Name:  "kube-cloud-controller-manager-arg",
 		Usage: "(flags) Customized flag for kube-cloud-controller-manager process",
 		Value: &ServerConfig.ExtraCloudControllerArgs,
+	},
+	cli.StringFlag{
+		Name:        "kubelet-preferred-address-types",
+		Usage:       "(flags) Specify the preferred address to use to communicate with Kubelet API",
+		Destination: &ServerConfig.KubeletPreferredAddressTypes,
+		EnvVar:      version.ProgramUpper + "_KUBELET_PREFERRED_ADDRESS_TYPES",
 	},
 	cli.StringFlag{
 		Name:        "datastore-endpoint",

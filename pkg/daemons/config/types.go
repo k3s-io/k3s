@@ -133,55 +133,56 @@ type Control struct {
 	// The port which custom k3s API runs on
 	SupervisorPort int
 	// The port which kube-apiserver runs on
-	APIServerPort            int
-	APIServerBindAddress     string
-	AgentToken               string `json:"-"`
-	Token                    string `json:"-"`
-	ServiceNodePortRange     *utilnet.PortRange
-	KubeConfigOutput         string
-	KubeConfigMode           string
-	DataDir                  string
-	Datastore                endpoint.Config
-	DisableAPIServer         bool
-	DisableControllerManager bool
-	DisableETCD              bool
-	DisableScheduler         bool
-	ExtraAPIArgs             []string
-	ExtraControllerArgs      []string
-	ExtraCloudControllerArgs []string
-	ExtraEtcdArgs            []string
-	ExtraSchedulerAPIArgs    []string
-	NoLeaderElect            bool
-	JoinURL                  string
-	IPSECPSK                 string
-	DefaultLocalStoragePath  string
-	SystemDefaultRegistry    string
-	ClusterInit              bool
-	ClusterReset             bool
-	ClusterResetRestorePath  string
-	EncryptSecrets           bool
-	EncryptForce             bool
-	EncryptSkip              bool
-	TLSMinVersion            uint16
-	TLSCipherSuites          []uint16
-	EtcdSnapshotName         string
-	EtcdDisableSnapshots     bool
-	EtcdExposeMetrics        bool
-	EtcdSnapshotDir          string
-	EtcdSnapshotCron         string
-	EtcdSnapshotRetention    int
-	EtcdS3                   bool
-	EtcdS3Endpoint           string
-	EtcdS3EndpointCA         string
-	EtcdS3SkipSSLVerify      bool
-	EtcdS3AccessKey          string
-	EtcdS3SecretKey          string
-	EtcdS3BucketName         string
-	EtcdS3Region             string
-	EtcdS3Folder             string
-	EtcdS3Timeout            time.Duration
-	EtcdS3Insecure           bool
-	ServerNodeName           string
+	APIServerPort                int
+	APIServerBindAddress         string
+	AgentToken                   string `json:"-"`
+	Token                        string `json:"-"`
+	ServiceNodePortRange         *utilnet.PortRange
+	KubeConfigOutput             string
+	KubeConfigMode               string
+	DataDir                      string
+	Datastore                    endpoint.Config
+	DisableAPIServer             bool
+	DisableControllerManager     bool
+	DisableETCD                  bool
+	DisableScheduler             bool
+	ExtraAPIArgs                 []string
+	ExtraControllerArgs          []string
+	ExtraCloudControllerArgs     []string
+	ExtraEtcdArgs                []string
+	ExtraSchedulerAPIArgs        []string
+	KubeletPreferredAddressTypes string
+	NoLeaderElect                bool
+	JoinURL                      string
+	IPSECPSK                     string
+	DefaultLocalStoragePath      string
+	SystemDefaultRegistry        string
+	ClusterInit                  bool
+	ClusterReset                 bool
+	ClusterResetRestorePath      string
+	EncryptSecrets               bool
+	EncryptForce                 bool
+	EncryptSkip                  bool
+	TLSMinVersion                uint16
+	TLSCipherSuites              []uint16
+	EtcdSnapshotName             string
+	EtcdDisableSnapshots         bool
+	EtcdExposeMetrics            bool
+	EtcdSnapshotDir              string
+	EtcdSnapshotCron             string
+	EtcdSnapshotRetention        int
+	EtcdS3                       bool
+	EtcdS3Endpoint               string
+	EtcdS3EndpointCA             string
+	EtcdS3SkipSSLVerify          bool
+	EtcdS3AccessKey              string
+	EtcdS3SecretKey              string
+	EtcdS3BucketName             string
+	EtcdS3Region                 string
+	EtcdS3Folder                 string
+	EtcdS3Timeout                time.Duration
+	EtcdS3Insecure               bool
+	ServerNodeName               string
 
 	BindAddress string
 	SANs        []string
