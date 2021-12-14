@@ -52,7 +52,8 @@ var _ = Describe("Test:", func() {
 			}
 			fmt.Printf("\nFetching Pods status\n")
 
-			pods := e2e.ParsePod(kubeConfigFile, true)
+			pods, err := e2e.ParsePod(kubeConfigFile, true)
+			Expect(err).NotTo(HaveOccurred())
 			for _, pod := range pods {
 				if strings.Contains(pod.Name, "helm-install") {
 					Expect(pod.Status).Should(Equal("Completed"), func() string { return pod.Name })

@@ -46,24 +46,12 @@ func RunCmdOnNode(cmd string, nodename string) (string, error) {
 // RunCommand Runs command on the cluster accessing the cluster through kubeconfig file
 func RunCommand(cmd string) (string, error) {
 	c := exec.Command("bash", "-c", cmd)
-	time.Sleep(10 * time.Second)
 	var out bytes.Buffer
 	c.Stdout = &out
 	if err := c.Run(); err != nil {
 		return "", err
 	}
 	return out.String(), nil
-}
-
-//Used to count the pods using prefix passed in the list of pods
-func CountOfStringInSlice(str string, pods []Pod) int {
-	count := 0
-	for _, pod := range pods {
-		if strings.Contains(pod.Name, str) {
-			count++
-		}
-	}
-	return count
 }
 
 func CreateCluster(nodeos string, serverCount int, agentCount int) ([]string, []string, error) {
@@ -134,9 +122,7 @@ func FetchNodeExternalIP(nodename string) string {
 }
 func FetchIngressIP(kubeconfig string) []string {
 	cmd := "kubectl get ing  ingress  -o jsonpath='{.status.loadBalancer.ingress[*].ip}' --kubeconfig=" + kubeconfig
-	time.Sleep(10 * time.Second)
 	res, _ := RunCommand(cmd)
-
 	ingressIp := strings.Trim(res, " ")
 	ingressIps := strings.Split(ingressIp, " ")
 	return ingressIps
@@ -145,7 +131,7 @@ func FetchIngressIP(kubeconfig string) []string {
 func ParseNode(kubeConfig string, debug bool) ([]Node, error) {
 	nodes := make([]Node, 0, 10)
 	timeElapsed := 0
-	timeMax := 420
+	timeMax := 240
 	nodeList := ""
 
 	for timeElapsed < timeMax {
@@ -183,21 +169,22 @@ func ParseNode(kubeConfig string, debug bool) ([]Node, error) {
 		time.Sleep(5 * time.Second)
 		timeElapsed = timeElapsed + 5
 	}
-	if timeElapsed >= timeMax {
-		return nil, fmt.Errorf("timeout exceeded on ParseNode")
-	}
 	if debug {
 		fmt.Println(nodeList)
+	}
+	if timeElapsed >= timeMax {
+		return nil, fmt.Errorf("timeout exceeded on ParseNode")
 	}
 	return nodes, nil
 }
 
-func ParsePod(kubeconfig string, printres bool) []Pod {
+func ParsePod(kubeconfig string, debug bool) ([]Pod, error) {
 	pods := make([]Pod, 0, 10)
 	timeElapsed := 0
 	podList := ""
+	timeMax := 240
 
-	for timeElapsed < 420 {
+	for timeElapsed < timeMax {
 		helmPodsNR := false
 		systemPodsNR := false
 		cmd := "kubectl get pods -o wide --no-headers -A --kubeconfig=" + kubeconfig
@@ -232,8 +219,11 @@ func ParsePod(kubeconfig string, printres bool) []Pod {
 			break
 		}
 	}
-	if printres {
+	if debug {
 		fmt.Println(podList)
 	}
-	return pods
+	if timeElapsed >= timeMax {
+		return nil, fmt.Errorf("timeout exceeded on ParsePod")
+	}
+	return pods, nil
 }
