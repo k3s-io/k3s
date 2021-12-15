@@ -17,6 +17,7 @@ func Test_E2EClusterValidation(t *testing.T) {
 }
 
 const (
+	// Valid nodeOS: generic/ubuntu2004, opensuse/Leap-15.3.x86_6, dweomer/microos.amd64
 	nodeOs      = "generic/ubuntu2004"
 	serverCount = 3
 	agentCount  = 2
@@ -28,22 +29,21 @@ var (
 	agentNodeNames  []string
 )
 
-var _ = Describe("Test:", func() {
-	Context("Verify Cluster Creation", func() {
-		It("Creates the Cluster", func() {
+var _ = Describe("Verify Cluster Creation", func() {
+	Context("Create the Cluster", func() {
+		It("Starts up with no issues", func() {
 			var err error
 			serverNodeNames, agentNodeNames, err = e2e.CreateCluster(nodeOs, serverCount, agentCount)
 			Expect(err).NotTo(HaveOccurred())
-			fmt.Println("CLUSTER Config")
+			fmt.Println("CLUSTER CONFIG")
 			fmt.Println("OS:", nodeOs)
 			fmt.Println("Server Nodes:", serverNodeNames)
 			fmt.Println("Agent Nodes:", agentNodeNames)
+			kubeConfigFile, err = e2e.GenKubeConfigFile(serverNodeNames[0])
+			Expect(err).NotTo(HaveOccurred())
 		})
 		It("Verify Node and Pod Status", func() {
 			var err error
-			kubeConfigFile, err = e2e.GenKubeConfigFile(serverNodeNames[0])
-			Expect(err).NotTo(HaveOccurred())
-
 			fmt.Printf("\nFetching node status\n")
 			nodes, err := e2e.ParseNode(kubeConfigFile, true)
 			Expect(err).NotTo(HaveOccurred())

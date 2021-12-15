@@ -55,15 +55,13 @@ func RunCommand(cmd string) (string, error) {
 }
 
 func CreateCluster(nodeos string, serverCount int, agentCount int) ([]string, []string, error) {
-	scount := make([]int, serverCount)
 	serverNodenames := make([]string, serverCount+1)
-	for i := range scount {
+	for i := 0; i < serverCount; i++ {
 		serverNodenames[i] = "server-" + strconv.Itoa(i)
 	}
 
-	acount := make([]int, agentCount)
 	agentNodenames := make([]string, agentCount+1)
-	for i := range acount {
+	for i := 0; i < agentCount; i++ {
 		agentNodenames[i] = "agent-" + strconv.Itoa(i)
 	}
 	nodeRoles := strings.Join(serverNodenames, " ") + strings.Join(agentNodenames, " ")
@@ -92,8 +90,11 @@ func GenKubeConfigFile(serverName string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	nodeIp := FetchNodeExternalIP(serverName)
-	kubeConfig = strings.Replace(kubeConfig, "127.0.0.1", nodeIp, 1)
+	nodeIP, err := FetchNodeExternalIP(serverName)
+	if err != nil {
+		return "", err
+	}
+	kubeConfig = strings.Replace(kubeConfig, "127.0.0.1", nodeIP, 1)
 	kubeConfigFile := fmt.Sprintf("kubeconfig-%s", serverName)
 	if err := os.WriteFile(kubeConfigFile, []byte(kubeConfig), 0644); err != nil {
 		return "", err
@@ -106,26 +107,31 @@ func DeployWorkload(workload string, kubeconfig string) (string, error) {
 	return RunCommand(cmd)
 }
 
-func FetchClusterIP(kubeconfig string, servicename string) string {
+func FetchClusterIP(kubeconfig string, servicename string) (string, error) {
 	cmd := "kubectl get svc " + servicename + " -o jsonpath='{.spec.clusterIP}' --kubeconfig=" + kubeconfig
-	res, _ := RunCommand(cmd)
-	return res
+	return RunCommand(cmd)
 }
 
-func FetchNodeExternalIP(nodename string) string {
+func FetchNodeExternalIP(nodename string) (string, error) {
 	cmd := "vagrant ssh " + nodename + " -c  \"ip -f inet addr show eth1| awk '/inet / {print $2}'|cut -d/ -f1\""
-	ipaddr, _ := RunCommand(cmd)
+	ipaddr, err := RunCommand(cmd)
+	if err != nil {
+		return "", err
+	}
 	ips := strings.Trim(ipaddr, "")
 	ip := strings.Split(ips, "inet")
 	nodeip := strings.TrimSpace(ip[1])
-	return nodeip
+	return nodeip, nil
 }
-func FetchIngressIP(kubeconfig string) []string {
+func FetchIngressIP(kubeconfig string) ([]string, error) {
 	cmd := "kubectl get ing  ingress  -o jsonpath='{.status.loadBalancer.ingress[*].ip}' --kubeconfig=" + kubeconfig
-	res, _ := RunCommand(cmd)
-	ingressIp := strings.Trim(res, " ")
-	ingressIps := strings.Split(ingressIp, " ")
-	return ingressIps
+	res, err := RunCommand(cmd)
+	if err != nil {
+		return nil, err
+	}
+	ingressIP := strings.Trim(res, " ")
+	ingressIPs := strings.Split(ingressIP, " ")
+	return ingressIPs, nil
 }
 
 func ParseNode(kubeConfig string, debug bool) ([]Node, error) {
