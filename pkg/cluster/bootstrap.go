@@ -46,6 +46,15 @@ func (c *Cluster) Bootstrap(ctx context.Context, snapshot bool) error {
 
 	if c.managedDB != nil {
 		if !snapshot {
+			isHTTP := c.config.JoinURL != "" && c.config.Token != ""
+			// For secondary servers, we attempt to connect and reconcile with the datastore.
+			// If that fails we fallback to the local etcd cluster start
+			if isInitialized && isHTTP && c.clientAccessInfo != nil {
+				if err := c.httpBootstrap(ctx); err == nil {
+					logrus.Info("Successfully reconciled with datastore")
+					return nil
+				}
+			}
 			// In the case of etcd, if the database has been initialized, it doesn't
 			// need to be bootstrapped however we still need to check the database
 			// and reconcile the bootstrap data. Below we're starting a temporary
@@ -53,7 +62,7 @@ func (c *Cluster) Bootstrap(ctx context.Context, snapshot bool) error {
 			// reading the data, and comparing that to the data on disk, all the while
 			// starting normal etcd.
 			if isInitialized {
-				logrus.Info("Only reconciling with datastore")
+				logrus.Info("Starting local etcd to reconcile with datastore")
 				tmpDataDir := filepath.Join(c.config.DataDir, "db", "tmp-etcd")
 				os.RemoveAll(tmpDataDir)
 				if err := os.Mkdir(tmpDataDir, 0700); err != nil {
