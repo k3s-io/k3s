@@ -53,6 +53,8 @@ func (c *Cluster) Bootstrap(ctx context.Context, snapshot bool) error {
 				if err := c.httpBootstrap(ctx); err == nil {
 					logrus.Info("Successfully reconciled with datastore")
 					return nil
+				} else {
+					logrus.Warn("Attempt to httpBootstrap failed: ", err.Error())
 				}
 			}
 			// In the case of etcd, if the database has been initialized, it doesn't
