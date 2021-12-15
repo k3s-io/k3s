@@ -52,7 +52,6 @@ func (c *Cluster) Bootstrap(ctx context.Context, snapshot bool) error {
 			// instance of etcd in the event that etcd certificates are unavailable,
 			// reading the data, and comparing that to the data on disk, all the while
 			// starting normal etcd.
-			// isHTTP := c.config.JoinURL != "" && c.config.Token != ""
 			if isInitialized {
 				logrus.Info("Only reconciling with datastore")
 				tmpDataDir := filepath.Join(c.config.DataDir, "db", "tmp-etcd")
