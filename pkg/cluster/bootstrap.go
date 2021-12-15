@@ -52,8 +52,8 @@ func (c *Cluster) Bootstrap(ctx context.Context, snapshot bool) error {
 			// instance of etcd in the event that etcd certificates are unavailable,
 			// reading the data, and comparing that to the data on disk, all the while
 			// starting normal etcd.
-			isHTTP := c.config.JoinURL != "" && c.config.Token != ""
-			if isInitialized && !isHTTP {
+			if isInitialized {
+				logrus.Info("Only reconciling with datastore")
 				tmpDataDir := filepath.Join(c.config.DataDir, "db", "tmp-etcd")
 				os.RemoveAll(tmpDataDir)
 				if err := os.Mkdir(tmpDataDir, 0700); err != nil {
@@ -193,17 +193,15 @@ func (c *Cluster) shouldBootstrapLoad(ctx context.Context) (bool, bool, error) {
 			return false, false, err
 		}
 		if isInitialized {
+			// If the database is initialized we skip bootstrapping; if the user wants to rejoin a
+			// cluster they need to delete the database.
+			logrus.Infof("Managed %s cluster bootstrap already complete and initialized", c.managedDB.EndpointName())
 			// This is a workaround for an issue that can be caused by terminating the cluster bootstrap before
 			// etcd is promoted from learner. Odds are we won't need this info, and we don't want to fail startup
 			// due to failure to retrieve it as this will break cold cluster restart, so we ignore any errors.
 			if c.config.JoinURL != "" && c.config.Token != "" {
 				c.clientAccessInfo, _ = clientaccess.ParseAndValidateTokenForUser(c.config.JoinURL, c.config.Token, "server")
-				logrus.Infof("Joining %s cluster already initialized, forcing reconciliation", c.managedDB.EndpointName())
-				return true, true, nil
 			}
-			// If the database is initialized we skip bootstrapping; if the user wants to rejoin a
-			// cluster they need to delete the database.
-			logrus.Infof("Managed %s cluster bootstrap already complete and initialized", c.managedDB.EndpointName())
 			return false, true, nil
 		} else if c.config.JoinURL == "" {
 			// Not initialized, not joining - must be initializing (cluster-init)
