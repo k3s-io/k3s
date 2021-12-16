@@ -38,12 +38,11 @@ const (
 // Run configures and starts containerd as a child process. Once it is up, images are preloaded
 // or pulled from files found in the agent images directory.
 func Run(ctx context.Context, cfg *config.Node) error {
-	args := getContainerdArgs(cfg)
-
 	if err := setupContainerdConfig(ctx, cfg); err != nil {
 		return err
 	}
 
+	args := getContainerdArgs(cfg)
 	stdOut := io.Writer(os.Stdout)
 	stdErr := io.Writer(os.Stderr)
 

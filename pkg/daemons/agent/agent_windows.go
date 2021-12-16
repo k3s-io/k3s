@@ -17,15 +17,10 @@ import (
 	"k8s.io/kubernetes/pkg/kubeapiserver/authorizer/modes"
 )
 
-var NetworkName = "vxlan0"
-
-func checkRuntimeEndpoint(cfg *config.Agent, argsMap map[string]string) {
-	if strings.HasPrefix(cfg.RuntimeSocket, windowsPrefix) {
-		argsMap["container-runtime-endpoint"] = cfg.RuntimeSocket
-	} else {
-		argsMap["container-runtime-endpoint"] = windowsPrefix + cfg.RuntimeSocket
-	}
-}
+const (
+	socketPrefix = "npipe://"
+	networkName  = "vxlan0"
+)
 
 func kubeProxyArgs(cfg *config.Agent) map[string]string {
 	bindAddress := "127.0.0.1"
@@ -43,7 +38,7 @@ func kubeProxyArgs(cfg *config.Agent) map[string]string {
 		argsMap["hostname-override"] = cfg.NodeName
 	}
 
-	if sourceVip := waitForManagementIP(NetworkName); sourceVip != "" {
+	if sourceVip := waitForManagementIP(networkName); sourceVip != "" {
 		argsMap["source-vip"] = sourceVip
 	}
 
@@ -85,9 +80,16 @@ func kubeletArgs(cfg *config.Agent) map[string]string {
 		argsMap["resolv-conf"] = cfg.ResolvConf
 	}
 	if cfg.RuntimeSocket != "" {
-		argsMap["containerd"] = cfg.RuntimeSocket
 		argsMap["serialize-image-pulls"] = "false"
-		checkRuntimeEndpoint(cfg, argsMap)
+		if strings.Contains(cfg.RuntimeSocket, "containerd") {
+			argsMap["containerd"] = cfg.RuntimeSocket
+		}
+		// cadvisor wants the containerd CRI socket without the prefix, but kubelet wants it with the prefix
+		if strings.HasPrefix(cfg.RuntimeSocket, socketPrefix) {
+			argsMap["container-runtime-endpoint"] = cfg.RuntimeSocket
+		} else {
+			argsMap["container-runtime-endpoint"] = socketPrefix + cfg.RuntimeSocket
+		}
 	}
 	if cfg.PauseImage != "" {
 		argsMap["pod-infra-container-image"] = cfg.PauseImage

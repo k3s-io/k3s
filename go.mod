@@ -4,6 +4,7 @@ go 1.16
 
 replace (
 	github.com/Microsoft/hcsshim => github.com/Microsoft/hcsshim v0.8.22
+	github.com/Mirantis/cri-dockerd => github.com/k3s-io/cri-dockerd v0.2.4-0.20220729204449-bcbb75d5abff // k3s-master
 	github.com/cloudnativelabs/kube-router => github.com/k3s-io/kube-router v1.5.1-0.20220630214451-a43bcd8511d2
 	github.com/containerd/cgroups => github.com/containerd/cgroups v1.0.1
 	github.com/containerd/containerd => github.com/k3s-io/containerd v1.5.13-k3s1 // k3s-release/1.5
@@ -65,6 +66,7 @@ replace (
 
 require (
 	github.com/Microsoft/hcsshim v0.9.2
+	github.com/Mirantis/cri-dockerd v0.0.0-00010101000000-000000000000
 	github.com/cloudnativelabs/kube-router v1.3.2
 	github.com/containerd/cgroups v1.0.3
 	github.com/containerd/containerd v1.6.2
@@ -129,7 +131,7 @@ require (
 	k8s.io/client-go v11.0.1-0.20190409021438-1a26190bd76a+incompatible
 	k8s.io/cloud-provider v0.24.3
 	k8s.io/component-base v0.24.3
-	k8s.io/component-helpers v0.0.0
+	k8s.io/component-helpers v0.24.3
 	k8s.io/controller-manager v0.24.3 // indirect
 	k8s.io/cri-api v0.24.3
 	k8s.io/klog v1.0.0
