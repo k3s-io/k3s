@@ -43,24 +43,27 @@ var _ = Describe("Verify Cluster Creation", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 		It("Verify Node and Pod Status", func() {
-			var err error
 			fmt.Printf("\nFetching node status\n")
-			nodes, err := e2e.ParseNode(kubeConfigFile, true)
-			Expect(err).NotTo(HaveOccurred())
-			for _, config := range nodes {
-				Expect(config.Status).Should(Equal("Ready"), func() string { return config.Name })
-			}
-			fmt.Printf("\nFetching Pods status\n")
-
-			pods, err := e2e.ParsePod(kubeConfigFile, true)
-			Expect(err).NotTo(HaveOccurred())
-			for _, pod := range pods {
-				if strings.Contains(pod.Name, "helm-install") {
-					Expect(pod.Status).Should(Equal("Completed"), func() string { return pod.Name })
-				} else {
-					Expect(pod.Status).Should(Equal("Running"), func() string { return pod.Name })
+			Eventually(func(g Gomega) {
+				nodes, err := e2e.ParseNodes(kubeConfigFile, true)
+				g.Expect(err).NotTo(HaveOccurred())
+				for _, node := range nodes {
+					g.Expect(node.Status).Should(Equal("Ready"), func() string { return node.Name })
 				}
-			}
+			}, "420s", "5s").Should(Succeed())
+
+			fmt.Printf("\nFetching Pods status\n")
+			Eventually(func(g Gomega) {
+				pods, err := e2e.ParsePods(kubeConfigFile, true)
+				g.Expect(err).NotTo(HaveOccurred())
+				for _, pod := range pods {
+					if strings.Contains(pod.Name, "helm-install") {
+						g.Expect(pod.Status).Should(Equal("Completed"), func() string { return pod.Name })
+					} else {
+						g.Expect(pod.Status).Should(Equal("Running"), func() string { return pod.Name })
+					}
+				}
+			}, "420s", "5s").Should(Succeed())
 		})
 	})
 })

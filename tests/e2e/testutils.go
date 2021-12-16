@@ -7,7 +7,6 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
-	"time"
 )
 
 type Node struct {
@@ -134,102 +133,61 @@ func FetchIngressIP(kubeconfig string) ([]string, error) {
 	return ingressIPs, nil
 }
 
-func ParseNode(kubeConfig string, debug bool) ([]Node, error) {
+func ParseNodes(kubeConfig string, debug bool) ([]Node, error) {
 	nodes := make([]Node, 0, 10)
-	timeElapsed := 0
-	timeMax := 240
 	nodeList := ""
 
-	for timeElapsed < timeMax {
-		ready := true
-		cmd := "kubectl get nodes --no-headers -o wide -A --kubeconfig=" + kubeConfig
-		res, err := RunCommand(cmd)
-		if err != nil {
-			return nil, err
-		}
-		fmt.Println(res)
-		nodeList = strings.TrimSpace(res)
-		fmt.Println(nodeList)
-		split := strings.Split(nodeList, "\n")
-		fmt.Println(split)
-		for _, rec := range split {
-			if strings.TrimSpace(rec) != "" {
-				fields := strings.Fields(string(rec))
-				node := Node{
-					Name:       fields[0],
-					Status:     fields[1],
-					Roles:      fields[2],
-					InternalIP: fields[5],
-					ExternalIP: fields[6],
-				}
-				nodes = append(nodes, node)
-				if node.Status != "Ready" {
-					ready = false
-					break
-				}
+	cmd := "kubectl get nodes --no-headers -o wide -A --kubeconfig=" + kubeConfig
+	res, err := RunCommand(cmd)
+	if err != nil {
+		return nil, err
+	}
+	nodeList = strings.TrimSpace(res)
+	split := strings.Split(nodeList, "\n")
+	for _, rec := range split {
+		if strings.TrimSpace(rec) != "" {
+			fields := strings.Fields(rec)
+			node := Node{
+				Name:       fields[0],
+				Status:     fields[1],
+				Roles:      fields[2],
+				InternalIP: fields[5],
+				ExternalIP: fields[6],
 			}
+			nodes = append(nodes, node)
 		}
-		if ready {
-			break
-		}
-		time.Sleep(5 * time.Second)
-		timeElapsed = timeElapsed + 5
 	}
 	if debug {
 		fmt.Println(nodeList)
-	}
-	if timeElapsed >= timeMax {
-		return nil, fmt.Errorf("timeout exceeded on ParseNode")
 	}
 	return nodes, nil
 }
 
-func ParsePod(kubeconfig string, debug bool) ([]Pod, error) {
+func ParsePods(kubeconfig string, debug bool) ([]Pod, error) {
 	pods := make([]Pod, 0, 10)
-	timeElapsed := 0
 	podList := ""
-	timeMax := 240
 
-	for timeElapsed < timeMax {
-		helmPodsNR := false
-		systemPodsNR := false
-		cmd := "kubectl get pods -o wide --no-headers -A --kubeconfig=" + kubeconfig
-		res, _ := RunCommand(cmd)
-		res = strings.TrimSpace(res)
-		podList = res
+	cmd := "kubectl get pods -o wide --no-headers -A --kubeconfig=" + kubeconfig
+	res, _ := RunCommand(cmd)
+	res = strings.TrimSpace(res)
+	podList = res
 
-		split := strings.Split(res, "\n")
-		for _, rec := range split {
-			fields := strings.Fields(string(rec))
-			pod := Pod{
-				NameSpace: fields[0],
-				Name:      fields[1],
-				Ready:     fields[2],
-				Status:    fields[3],
-				Restarts:  fields[4],
-				NodeIP:    fields[6],
-				Node:      fields[7],
-			}
-			pods = append(pods, pod)
-			if strings.HasPrefix(pod.Name, "helm-install") && pod.Status != "Completed" {
-				helmPodsNR = true
-				break
-			} else if !strings.HasPrefix(pod.Name, "helm-install") && pod.Status != "Running" {
-				systemPodsNR = true
-				break
-			}
-			time.Sleep(5 * time.Second)
-			timeElapsed = timeElapsed + 5
+	split := strings.Split(res, "\n")
+	for _, rec := range split {
+		fields := strings.Fields(string(rec))
+		pod := Pod{
+			NameSpace: fields[0],
+			Name:      fields[1],
+			Ready:     fields[2],
+			Status:    fields[3],
+			Restarts:  fields[4],
+			NodeIP:    fields[6],
+			Node:      fields[7],
 		}
-		if !systemPodsNR && !helmPodsNR {
-			break
-		}
+		pods = append(pods, pod)
 	}
 	if debug {
 		fmt.Println(podList)
-	}
-	if timeElapsed >= timeMax {
-		return nil, fmt.Errorf("timeout exceeded on ParsePod")
 	}
 	return pods, nil
 }
