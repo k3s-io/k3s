@@ -16,11 +16,6 @@ import (
 	_ "k8s.io/component-base/metrics/prometheus/version"    // for version metric registration
 )
 
-const (
-	unixPrefix    = "unix://"
-	windowsPrefix = "npipe://"
-)
-
 func Agent(ctx context.Context, nodeConfig *daemonconfig.Node, proxy proxy.Proxy) error {
 	rand.Seed(time.Now().UTC().UnixNano())
 
