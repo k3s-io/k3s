@@ -87,15 +87,6 @@ func kubeletArgs(cfg *config.Agent) map[string]string {
 		argsMap["root-dir"] = cfg.RootDir
 		argsMap["cert-dir"] = filepath.Join(cfg.RootDir, "pki")
 	}
-	if cfg.CNIConfDir != "" {
-		argsMap["cni-conf-dir"] = cfg.CNIConfDir
-	}
-	if cfg.CNIBinDir != "" {
-		argsMap["cni-bin-dir"] = cfg.CNIBinDir
-	}
-	if cfg.CNIPlugin {
-		argsMap["network-plugin"] = "cni"
-	}
 	if len(cfg.ClusterDNS) > 0 {
 		argsMap["cluster-dns"] = util.JoinIPs(cfg.ClusterDNSs)
 	}
@@ -103,8 +94,6 @@ func kubeletArgs(cfg *config.Agent) map[string]string {
 		argsMap["resolv-conf"] = cfg.ResolvConf
 	}
 	if cfg.RuntimeSocket != "" {
-		argsMap["container-runtime"] = "remote"
-		argsMap["containerd"] = cfg.RuntimeSocket
 		argsMap["serialize-image-pulls"] = "false"
 		checkRuntimeEndpoint(cfg, argsMap)
 	} else if cfg.PauseImage != "" {
@@ -156,9 +145,6 @@ func kubeletArgs(cfg *config.Agent) map[string]string {
 	argsMap["node-labels"] = strings.Join(cfg.NodeLabels, ",")
 	if len(cfg.NodeTaints) > 0 {
 		argsMap["register-with-taints"] = strings.Join(cfg.NodeTaints, ",")
-	}
-	if !cfg.DisableCCM {
-		argsMap["cloud-provider"] = "external"
 	}
 
 	if ImageCredProvAvailable(cfg) {
