@@ -11,6 +11,8 @@ PKG="github.com/rancher/k3s"
 PKG_CONTAINERD="github.com/containerd/containerd"
 PKG_K3S_CONTAINERD="github.com/k3s-io/containerd"
 PKG_CRICTL="github.com/kubernetes-sigs/cri-tools"
+PKG_K8S_BASE="k8s.io/component-base"
+PKG_K8S_CLIENT="k8s.io/client-go/pkg"
 
 buildDate=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
 
@@ -19,15 +21,17 @@ VERSIONFLAGS="
     -X ${PKG}/pkg/version.Version=${VERSION}
     -X ${PKG}/pkg/version.GitCommit=${COMMIT:0:8}
 
-    -X ${VENDOR_PREFIX}k8s.io/client-go/pkg/version.gitVersion=${VERSION}
-    -X ${VENDOR_PREFIX}k8s.io/client-go/pkg/version.gitCommit=${COMMIT}
-    -X ${VENDOR_PREFIX}k8s.io/client-go/pkg/version.gitTreeState=${TREE_STATE}
-    -X ${VENDOR_PREFIX}k8s.io/client-go/pkg/version.buildDate=${buildDate}
+    -X ${VENDOR_PREFIX}${PKG_K8S_CLIENT}/version.gitVersion=${VERSION}
+    -X ${VENDOR_PREFIX}${PKG_K8S_CLIENT}/version.gitCommit=${COMMIT}
+    -X ${VENDOR_PREFIX}${PKG_K8S_CLIENT}/version.gitTreeState=${TREE_STATE}
+    -X ${VENDOR_PREFIX}${PKG_K8S_CLIENT}/version.buildDate=${buildDate}
 
-    -X ${VENDOR_PREFIX}k8s.io/component-base/version.gitVersion=${VERSION}
-    -X ${VENDOR_PREFIX}k8s.io/component-base/version.gitCommit=${COMMIT}
-    -X ${VENDOR_PREFIX}k8s.io/component-base/version.gitTreeState=${TREE_STATE}
-    -X ${VENDOR_PREFIX}k8s.io/component-base/version.buildDate=${buildDate}
+    -X ${VENDOR_PREFIX}${PKG_K8S_BASE}/version.gitVersion=${VERSION}
+    -X ${VENDOR_PREFIX}${PKG_K8S_BASE}/version.gitCommit=${COMMIT}
+    -X ${VENDOR_PREFIX}${PKG_K8S_BASE}/version.gitTreeState=${TREE_STATE}
+    -X ${VENDOR_PREFIX}${PKG_K8S_BASE}/version.buildDate=${buildDate}
+
+    -X ${VENDOR_PREFIX}${PKG_CRICTL}/version.Version=${VERSION_CRICTL}
 
     -X ${VENDOR_PREFIX}${PKG_CONTAINERD}/version.Version=${VERSION_CONTAINERD}
     -X ${VENDOR_PREFIX}${PKG_CONTAINERD}/version.Package=${PKG_K3S_CONTAINERD}
@@ -35,11 +39,8 @@ VERSIONFLAGS="
 "
 LDFLAGS="
     -w -s"
-STATIC="
-    -extldflags '-static'
-"
 
-STATIC_SQLITE="
+STATIC="
     -extldflags '-static -lm -ldl -lz -lpthread'
 "
 TAGS="ctrd apparmor seccomp netcgo osusergo providerless"
@@ -53,8 +54,6 @@ fi
 
 if [ "$STATIC_BUILD" != "true" ]; then
     STATIC="
-"
-    STATIC_SQLITE="
 "
     RUNC_STATIC=""
 else
@@ -70,19 +69,17 @@ fi
 
 rm -f \
     bin/k3s-agent \
-    bin/hyperkube \
-    bin/containerd \
-    bin/runc \
-    bin/containerd-shim \
-    bin/containerd-shim-runc-v1 \
-    bin/containerd-shim-runc-v2 \
     bin/k3s-server \
     bin/k3s-etcd-snapshot \
     bin/k3s-secrets-encrypt \
     bin/k3s-certificate \
     bin/kubectl \
     bin/crictl \
-    bin/ctr
+    bin/ctr \
+    bin/containerd \
+    bin/containerd-shim \
+    bin/containerd-shim-runc-v2 \
+    bin/runc
 
 cleanup() {
     exit_status=$?
@@ -102,10 +99,9 @@ if [ ! -x ${INSTALLBIN}/cni ]; then
     GOPATH=$TMPDIR CGO_ENABLED=0 "${GO}" build -tags "$TAGS" -ldflags "$LDFLAGS $STATIC" -o $INSTALLBIN/cni
 )
 fi
-# echo Building agent
-# CGO_ENABLED=1 "${GO}" build -tags "$TAGS" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC" -o bin/k3s-agent ./cmd/agent/main.go
-echo Building server
-CGO_ENABLED=1 "${GO}" build -tags "$TAGS" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC_SQLITE" -o bin/containerd ./cmd/server/main.go
+
+echo Building k3s
+CGO_ENABLED=1 "${GO}" build -tags "$TAGS" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC" -o bin/containerd ./cmd/server/main.go
 ln -s containerd ./bin/k3s-agent
 ln -s containerd ./bin/k3s-server
 ln -s containerd ./bin/k3s-etcd-snapshot
@@ -114,12 +110,7 @@ ln -s containerd ./bin/k3s-certificate
 ln -s containerd ./bin/kubectl
 ln -s containerd ./bin/crictl
 ln -s containerd ./bin/ctr
-#echo Building hyperkube
-#CGO_ENABLED=1 "${GO}" build -tags "$TAGS" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC_SQLITE" -o bin/hyperkube ./vendor/k8s.io/kubernetes/cmd/hyperkube/
-#echo Building ctr
-#CGO_ENABLED=1 "${GO}" build -tags "$TAGS" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC_SQLITE" -o bin/ctr ./cmd/ctr/main.go
-# echo Building containerd
-# CGO_ENABLED=0 "${GO}" build -tags "$TAGS" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC" -o bin/containerd ./cmd/containerd/
+
 echo Building runc
 rm -f ./build/src/github.com/opencontainers/runc/runc
 make GOPATH=$(pwd)/build EXTRA_LDFLAGS="-w -s" BUILDTAGS="$RUNC_TAGS" -C ./build/src/github.com/opencontainers/runc $RUNC_STATIC
