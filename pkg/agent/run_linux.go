@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	dockershimSock = "unix:///var/run/dockershim.sock"
+	criDockerdSock = "unix:///run/k3s/cri-dockerd/cri-dockerd.sock"
 	containerdSock = "unix:///run/k3s/containerd/containerd.sock"
 )
 
@@ -24,7 +24,7 @@ func setupCriCtlConfig(cfg cmds.Agent, nodeConfig *config.Node) error {
 	if cre == "" {
 		switch {
 		case cfg.Docker:
-			cre = dockershimSock
+			cre = criDockerdSock
 		default:
 			cre = containerdSock
 		}
