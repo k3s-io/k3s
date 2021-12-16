@@ -122,16 +122,16 @@ require (
 	golang.org/x/sys v0.0.0-20210426230700-d19ff857e887
 	google.golang.org/grpc v1.33.2
 	gopkg.in/yaml.v2 v2.4.0
-	k8s.io/api v1.20.11
-	k8s.io/apimachinery v1.20.11
-	k8s.io/apiserver v1.20.11
+	k8s.io/api v0.20.14
+	k8s.io/apimachinery v0.20.14
+	k8s.io/apiserver v0.20.14
 	k8s.io/client-go v11.0.1-0.20190409021438-1a26190bd76a+incompatible
-	k8s.io/cloud-provider v1.20.11
-	k8s.io/component-base v1.20.11
-	k8s.io/controller-manager v1.20.11
-	k8s.io/cri-api v1.20.11
+	k8s.io/cloud-provider v0.20.14
+	k8s.io/component-base v0.20.14
+	k8s.io/controller-manager v0.20.14
+	k8s.io/cri-api v0.20.14
 	k8s.io/klog v1.0.0
-	k8s.io/kubectl v1.20.11
+	k8s.io/kubectl v0.20.14
 	k8s.io/kubernetes v1.20.14
 	k8s.io/utils v0.0.0-20201110183641-67b214c5f920
 	sigs.k8s.io/yaml v1.2.0

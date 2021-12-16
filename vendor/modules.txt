@@ -1382,7 +1382,7 @@ gopkg.in/warnings.v0
 gopkg.in/yaml.v2
 # gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776
 gopkg.in/yaml.v3
-# k8s.io/api v1.20.11 => github.com/galal-hussein/kubernetes/staging/src/k8s.io/api v1.20.14-k3s1
+# k8s.io/api v0.20.14 => github.com/galal-hussein/kubernetes/staging/src/k8s.io/api v1.20.14-k3s1
 ## explicit
 k8s.io/api/admission/v1
 k8s.io/api/admission/v1beta1
@@ -1470,7 +1470,7 @@ k8s.io/apiextensions-apiserver/pkg/generated/openapi
 k8s.io/apiextensions-apiserver/pkg/registry/customresource
 k8s.io/apiextensions-apiserver/pkg/registry/customresource/tableconvertor
 k8s.io/apiextensions-apiserver/pkg/registry/customresourcedefinition
-# k8s.io/apimachinery v1.20.11 => github.com/galal-hussein/kubernetes/staging/src/k8s.io/apimachinery v1.20.14-k3s1
+# k8s.io/apimachinery v0.20.14 => github.com/galal-hussein/kubernetes/staging/src/k8s.io/apimachinery v1.20.14-k3s1
 ## explicit
 k8s.io/apimachinery/pkg/api/equality
 k8s.io/apimachinery/pkg/api/errors
@@ -1534,7 +1534,7 @@ k8s.io/apimachinery/pkg/watch
 k8s.io/apimachinery/third_party/forked/golang/json
 k8s.io/apimachinery/third_party/forked/golang/netutil
 k8s.io/apimachinery/third_party/forked/golang/reflect
-# k8s.io/apiserver v1.20.11 => github.com/galal-hussein/kubernetes/staging/src/k8s.io/apiserver v1.20.14-k3s1
+# k8s.io/apiserver v0.20.14 => github.com/galal-hussein/kubernetes/staging/src/k8s.io/apiserver v1.20.14-k3s1
 ## explicit
 k8s.io/apiserver/pkg/admission
 k8s.io/apiserver/pkg/admission/configuration
@@ -1933,7 +1933,7 @@ k8s.io/client-go/util/jsonpath
 k8s.io/client-go/util/keyutil
 k8s.io/client-go/util/retry
 k8s.io/client-go/util/workqueue
-# k8s.io/cloud-provider v1.20.11 => github.com/galal-hussein/kubernetes/staging/src/k8s.io/cloud-provider v1.20.14-k3s1
+# k8s.io/cloud-provider v0.20.14 => github.com/galal-hussein/kubernetes/staging/src/k8s.io/cloud-provider v1.20.14-k3s1
 ## explicit
 k8s.io/cloud-provider
 k8s.io/cloud-provider/api
@@ -1975,7 +1975,7 @@ k8s.io/code-generator/cmd/lister-gen/args
 k8s.io/code-generator/cmd/lister-gen/generators
 k8s.io/code-generator/pkg/namer
 k8s.io/code-generator/pkg/util
-# k8s.io/component-base v1.20.11 => github.com/galal-hussein/kubernetes/staging/src/k8s.io/component-base v1.20.14-k3s1
+# k8s.io/component-base v0.20.14 => github.com/galal-hussein/kubernetes/staging/src/k8s.io/component-base v1.20.14-k3s1
 ## explicit
 k8s.io/component-base/cli/flag
 k8s.io/component-base/cli/globalflag
@@ -2007,7 +2007,7 @@ k8s.io/component-helpers/auth/rbac/reconciliation
 k8s.io/component-helpers/auth/rbac/validation
 k8s.io/component-helpers/scheduling/corev1
 k8s.io/component-helpers/scheduling/corev1/nodeaffinity
-# k8s.io/controller-manager v1.20.11 => github.com/galal-hussein/kubernetes/staging/src/k8s.io/controller-manager v1.20.14-k3s1
+# k8s.io/controller-manager v0.20.14 => github.com/galal-hussein/kubernetes/staging/src/k8s.io/controller-manager v1.20.14-k3s1
 ## explicit
 k8s.io/controller-manager/app
 k8s.io/controller-manager/config
@@ -2017,7 +2017,7 @@ k8s.io/controller-manager/pkg/clientbuilder
 k8s.io/controller-manager/pkg/features
 k8s.io/controller-manager/pkg/features/register
 k8s.io/controller-manager/pkg/informerfactory
-# k8s.io/cri-api v1.20.11 => github.com/galal-hussein/kubernetes/staging/src/k8s.io/cri-api v1.20.14-k3s1
+# k8s.io/cri-api v0.20.14 => github.com/galal-hussein/kubernetes/staging/src/k8s.io/cri-api v1.20.14-k3s1
 ## explicit
 k8s.io/cri-api/pkg/apis
 k8s.io/cri-api/pkg/apis/runtime/v1alpha2
@@ -2089,7 +2089,7 @@ k8s.io/kube-proxy/config/v1alpha1
 k8s.io/kube-scheduler/config/v1
 k8s.io/kube-scheduler/config/v1beta1
 k8s.io/kube-scheduler/extender/v1
-# k8s.io/kubectl v1.20.11 => github.com/galal-hussein/kubernetes/staging/src/k8s.io/kubectl v1.20.14-k3s1
+# k8s.io/kubectl v0.20.14 => github.com/galal-hussein/kubernetes/staging/src/k8s.io/kubectl v1.20.14-k3s1
 ## explicit
 k8s.io/kubectl/pkg/apps
 k8s.io/kubectl/pkg/cmd
