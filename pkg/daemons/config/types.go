@@ -112,15 +112,12 @@ type CriticalControlArgs struct {
 	ClusterDomain    string
 	ClusterIPRange   *net.IPNet
 	DisableCCM       bool
-	DisableKubeProxy bool
 	DisableNPC       bool
-	Disables         map[string]bool
 	DisableServiceLB bool
 	FlannelBackend   string
 	NoCoreDNS        bool
 	ServiceIPRange   *net.IPNet
 	ServiceIPRanges  []*net.IPNet
-	Skips            map[string]bool
 }
 
 type Control struct {
@@ -144,7 +141,9 @@ type Control struct {
 	DisableAPIServer         bool
 	DisableControllerManager bool
 	DisableETCD              bool
+	DisableKubeProxy         bool
 	DisableScheduler         bool
+	Disables                 map[string]bool
 	ExtraAPIArgs             []string
 	ExtraControllerArgs      []string
 	ExtraCloudControllerArgs []string
@@ -154,6 +153,7 @@ type Control struct {
 	JoinURL                  string
 	IPSECPSK                 string
 	DefaultLocalStoragePath  string
+	Skips                    map[string]bool
 	SystemDefaultRegistry    string
 	ClusterInit              bool
 	ClusterReset             bool
