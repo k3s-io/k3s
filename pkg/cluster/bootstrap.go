@@ -179,8 +179,9 @@ func (c *Cluster) compareConfig() error {
 	}
 
 	// We are saving IPs of ClusterIPRanges and ServiceIPRanges in 4-bytes representation but json decodes in 16-byte
-	c.config.CriticalControlArgs.ClusterIPRange.IP.To16()
-	c.config.CriticalControlArgs.ServiceIPRange.IP.To16()
+	c.config.CriticalControlArgs.ClusterIPRange.IP = c.config.CriticalControlArgs.ClusterIPRange.IP.To16()
+	c.config.CriticalControlArgs.ServiceIPRange.IP = c.config.CriticalControlArgs.ServiceIPRange.IP.To16()
+	c.config.CriticalControlArgs.ClusterDNS = c.config.CriticalControlArgs.ClusterDNS.To16()
 
 	if !reflect.DeepEqual(clusterControl.CriticalControlArgs, c.config.CriticalControlArgs) {
 		logrus.Debugf("This is the server CriticalControlArgs: %#v", clusterControl.CriticalControlArgs)
