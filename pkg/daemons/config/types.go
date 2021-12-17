@@ -95,17 +95,14 @@ type Agent struct {
 
 // CriticalControlArgs contains parameters that all control plane nodes in HA must share
 type CriticalControlArgs struct {
-	ClusterDNS       net.IP
-	ClusterDomain    string
-	ClusterIPRange   *net.IPNet
-	DisableCCM       bool
-	DisableKubeProxy bool
-	DisableNPC       bool
-	Disables         map[string]bool
-	FlannelBackend   string
-	NoCoreDNS        bool
-	ServiceIPRange   *net.IPNet
-	Skips            map[string]bool
+	ClusterDNS     net.IP
+	ClusterDomain  string
+	ClusterIPRange *net.IPNet
+	DisableCCM     bool
+	DisableNPC     bool
+	FlannelBackend string
+	NoCoreDNS      bool
+	ServiceIPRange *net.IPNet
 }
 
 type Control struct {
@@ -129,7 +126,9 @@ type Control struct {
 	DisableAPIServer         bool
 	DisableControllerManager bool
 	DisableETCD              bool
+	DisableKubeProxy         bool
 	DisableScheduler         bool
+	Disables                 map[string]bool
 	ExtraAPIArgs             []string
 	ExtraControllerArgs      []string
 	ExtraCloudControllerArgs []string
@@ -138,6 +137,7 @@ type Control struct {
 	JoinURL                  string
 	IPSECPSK                 string
 	DefaultLocalStoragePath  string
+	Skips                    map[string]bool
 	ClusterInit              bool
 	ClusterReset             bool
 	ClusterResetRestorePath  string
