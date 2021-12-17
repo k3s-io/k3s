@@ -1,3 +1,4 @@
+
 # Advanced Options and Configuration
 
 This section contains advanced information describing the different ways you can run and manage K3s:
@@ -120,8 +121,8 @@ If you would like to use etcdctl after installing K3s with embedded etcd, instal
 
 ```
 $ VERSION="v3.5.0"
-$ curl -L https://github.com/etcd-io/etcd/releases/download/${VERSION}/etcd-${VERSION}-linux-amd64.tar.gz --output etcdctl-${VERSION}-linux-amd64.tar.gz
-$ sudo tar -zxvf etcdctl-${VERSION}-linux-amd64.tar.gz -C /usr/local/bin
+$ curl -L https://github.com/etcd-io/etcd/releases/download/${VERSION}/etcd-${VERSION}-linux-amd64.tar.gz --output etcdctl-linux-amd64.tar.gz
+$ sudo tar -zxvf etcdctl-linux-amd64.tar.gz --strip-components=1 -C /usr/local/bin etcd-${VERSION}-linux-amd64/etcdctl
 ```
 
 Then start using etcdctl commands with the appropriate K3s flags:
@@ -333,26 +334,25 @@ The way that SELinux enforcement is enabled or disabled depends on the K3s versi
 
 === "After v1.19.1+k3s1"
 
-    To leverage SELinux, specify the `--selinux` flag when starting K3s servers and agents.
+  To leverage SELinux, specify the `--selinux` flag when starting K3s servers and agents.
 
-    This option can also be specified in the K3s [configuration file:](install/install-options/install_options.md#configuration-file)
+  This option can also be specified in the K3s [configuration file:](install/install-options/install_options.md#configuration-file)
 
-    ```
-    selinux: true
-    ```
+  ```
+  selinux: true
+  ```
 
-    The `--disable-selinux` option should not be used. It is deprecated and will be either ignored or will be unrecognized, resulting in an error, in future minor releases.
+  The `--disable-selinux` option should not be used. It is deprecated and will be either ignored or will be unrecognized, resulting in an error, in future minor releases.
 
-    Using a custom `--data-dir` under SELinux is not supported. To customize it, you would most likely need to write your own custom policy. For guidance, you could refer to the [containers/container-selinux](https://github.com/containers/container-selinux) repository, which contains the SELinux policy files for Container Runtimes, and the [rancher/k3s-selinux](https://github.com/rancher/k3s-selinux) repository, which contains the SELinux policy for K3s .
+  Using a custom `--data-dir` under SELinux is not supported. To customize it, you would most likely need to write your own custom policy. For guidance, you could refer to the [containers/container-selinux](https://github.com/containers/container-selinux) repository, which contains the SELinux policy files for Container Runtimes, and the [rancher/k3s-selinux](https://github.com/rancher/k3s-selinux) repository, which contains the SELinux policy for K3s .
 
 === "Before v1.19.1+k3s1"
 
-    SELinux is automatically enabled for the built-in containerd.
+  SELinux is automatically enabled for the built-in containerd.
 
-    To turn off SELinux enforcement in the embedded containerd, launch K3s with the `--disable-selinux` flag.
+  To turn off SELinux enforcement in the embedded containerd, launch K3s with the `--disable-selinux` flag.
 
-    Using a custom `--data-dir` under SELinux is not supported. To customize it, you would most likely need to write your own custom policy. For guidance, you could refer to the [containers/container-selinux](https://github.com/containers/container-selinux) repository, which contains the SELinux policy files for Container Runtimes, and the [rancher/k3s-selinux](https://github.com/rancher/k3s-selinux) repository, which contains the SELinux policy for K3s .
-
+  Using a custom `--data-dir` under SELinux is not supported. To customize it, you would most likely need to write your own custom policy. For guidance, you could refer to the [containers/container-selinux](https://github.com/containers/container-selinux) repository, which contains the SELinux policy files for Container Runtimes, and the [rancher/k3s-selinux](https://github.com/rancher/k3s-selinux) repository, which contains the SELinux policy for K3s .
 
 
 ## Additional preparation for (Red Hat/CentOS) Enterprise Linux

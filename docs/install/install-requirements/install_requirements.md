@@ -47,6 +47,7 @@ If you wish to utilize the metrics server, you will need to open port 10250 on e
 If you plan on achieving high availability with embedded etcd, server nodes must be accessible to each other on ports 2379 and 2380.
 
 > **Important:** The VXLAN port on nodes should not be exposed to the world as it opens up your cluster network to be accessed by anyone. Run your nodes behind a firewall/security group that disables access to port 8472.
+> **Warning:** Flannel relies on the [Bridge CNI plugin](https://www.cni.dev/plugins/current/main/bridge/) to create a L2 network that switches traffic. Rogue pods with NET_RAW capabilities can abuse that L2 network to launch attacks such as [ARP spoofing](https://static.sched.com/hosted_files/kccncna19/72/ARP%20DNS%20spoof.pdf). Therefore, as documented in the [kubernetes docs](https://kubernetes.io/docs/concepts/security/pod-security-standards/), please set a restricted profile that disables NET_RAW on non-trustable pods.
 
 <figcaption>Inbound Rules for K3s Server Nodes</figcaption>
 

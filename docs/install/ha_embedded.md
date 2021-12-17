@@ -21,3 +21,10 @@ K3S_TOKEN=SECRET k3s server --server https://<ip or hostname of server1>:6443
 ```
 
 Now you have a highly available control plane. Joining additional worker nodes to the cluster follows the same procedure as a single server cluster.
+
+
+There are a few config flags that must be the same in all server nodes:         
+
+* Network related flags: `--cluster-dns`, `--cluster-domain`, `--cluster-cidr`, `--service-cidr`
+* Flags controlling the deployment of certain components: `--disable-helm-controller`, `--disable-kube-proxy`, `--disable-network-policy` and any component passed to `--disable`
+* Feature related flags: `--secrets-encryption`

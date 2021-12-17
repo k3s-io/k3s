@@ -7,5 +7,6 @@ This section describes the methodology and means of securing a K3s cluster. It's
 
 The documents below apply to both CIS 1.5 & 1.6.
 
-* [Hardening Guide](./hardening_guide/)
-* [CIS Benchmark Self-Assessment Guide](./self_assessment/)
+* [Hardening Guide](hardening_guide.md)
+* [CIS Benchmark Self-Assessment Guide](self_assessment.md)
+* [Secrets Encryption](secrets_encryption.md)
