@@ -8,7 +8,10 @@ fi
 
 . ./scripts/version.sh
 
-MAX_BINARY_SIZE=61000000
+# Try to keep the K3s binary under 64 megabytes.
+# "64M ought to be enough for anybody"
+MAX_BINARY_MB=64
+MAX_BINARY_SIZE=$((MAX_BINARY_MB * 1024 * 1024))
 BIN_SUFFIX="-${ARCH}"
 if [ ${ARCH} = amd64 ]; then
     BIN_SUFFIX=""
@@ -20,9 +23,9 @@ CMD_NAME="dist/artifacts/k3s${BIN_SUFFIX}"
 SIZE=$(stat -c '%s' ${CMD_NAME})
 
 if [ ${SIZE} -gt ${MAX_BINARY_SIZE} ]; then
-    echo "k3s binary ${CMD_NAME} size ${SIZE} exceeds max acceptable size of ${MAX_BINARY_SIZE} bytes"
-    exit 1
+  echo "k3s binary ${CMD_NAME} size ${SIZE} exceeds max acceptable size of ${MAX_BINARY_SIZE} bytes (${MAX_BINARY_MB} MiB)"
+  exit 1
 fi
 
-echo "k3s binary ${CMD_NAME} size ${SIZE} is less than max acceptable size of ${MAX_BINARY_SIZE} bytes"
+echo "k3s binary ${CMD_NAME} size ${SIZE} is less than max acceptable size of ${MAX_BINARY_SIZE} bytes (${MAX_BINARY_MB} MiB)"
 exit 0

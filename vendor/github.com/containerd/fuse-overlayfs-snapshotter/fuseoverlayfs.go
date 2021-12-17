@@ -1,3 +1,4 @@
+//go:build linux
 // +build linux
 
 /*
@@ -32,7 +33,6 @@ import (
 	"github.com/containerd/containerd/snapshots"
 	"github.com/containerd/containerd/snapshots/storage"
 	"github.com/containerd/continuity/fs"
-	"github.com/pkg/errors"
 )
 
 const (
@@ -186,7 +186,7 @@ func (o *snapshotter) Mounts(ctx context.Context, key string) ([]mount.Mount, er
 	_, info, _, err := storage.GetInfo(ctx, key)
 	t.Rollback()
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get active mount")
+		return nil, fmt.Errorf("failed to get active mount: %w", err)
 	}
 	return o.mounts(s, info), nil
 }
@@ -217,7 +217,7 @@ func (o *snapshotter) Commit(ctx context.Context, name, key string, opts ...snap
 	}
 
 	if _, err = storage.CommitActive(ctx, key, name, snapshots.Usage(usage), opts...); err != nil {
-		return errors.Wrap(err, "failed to commit snapshot")
+		return fmt.Errorf("failed to commit snapshot: %w", err)
 	}
 	return t.Commit()
 }
@@ -240,14 +240,14 @@ func (o *snapshotter) Remove(ctx context.Context, key string) (err error) {
 
 	_, _, err = storage.Remove(ctx, key)
 	if err != nil {
-		return errors.Wrap(err, "failed to remove")
+		return fmt.Errorf("failed to remove: %w", err)
 	}
 
 	if !o.asyncRemove {
 		var removals []string
 		removals, err = o.getCleanupDirectories(ctx, t)
 		if err != nil {
-			return errors.Wrap(err, "unable to get directories for removal")
+			return fmt.Errorf("unable to get directories for removal: %w", err)
 		}
 
 		// Remove directories after the transaction is closed, failures must not
@@ -353,7 +353,7 @@ func (o *snapshotter) createSnapshot(ctx context.Context, kind snapshots.Kind, k
 			if path != "" {
 				if err1 := os.RemoveAll(path); err1 != nil {
 					log.G(ctx).WithError(err1).WithField("path", path).Error("failed to reclaim snapshot directory, directory may need removal")
-					err = errors.Wrapf(err, "failed to remove path: %v", err1)
+					err = fmt.Errorf("failed to remove path: %v: %w", err1, err)
 				}
 			}
 		}
@@ -365,7 +365,7 @@ func (o *snapshotter) createSnapshot(ctx context.Context, kind snapshots.Kind, k
 		if rerr := t.Rollback(); rerr != nil {
 			log.G(ctx).WithError(rerr).Warn("failed to rollback transaction")
 		}
-		return nil, errors.Wrap(err, "failed to create prepare snapshot dir")
+		return nil, fmt.Errorf("failed to create prepare snapshot dir: %w", err)
 	}
 	rollback := true
 	defer func() {
@@ -378,13 +378,13 @@ func (o *snapshotter) createSnapshot(ctx context.Context, kind snapshots.Kind, k
 
 	s, err := storage.CreateSnapshot(ctx, kind, key, parent, opts...)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create snapshot")
+		return nil, fmt.Errorf("failed to create snapshot: %w", err)
 	}
 
 	if len(s.ParentIDs) > 0 {
 		st, err := os.Stat(o.upperPath(s.ParentIDs[0]))
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to stat parent")
+			return nil, fmt.Errorf("failed to stat parent: %w", err)
 		}
 
 		stat := st.Sys().(*syscall.Stat_t)
@@ -393,13 +393,13 @@ func (o *snapshotter) createSnapshot(ctx context.Context, kind snapshots.Kind, k
 			if rerr := t.Rollback(); rerr != nil {
 				log.G(ctx).WithError(rerr).Warn("failed to rollback transaction")
 			}
-			return nil, errors.Wrap(err, "failed to chown")
+			return nil, fmt.Errorf("failed to chown: %w", err)
 		}
 	}
 
 	path = filepath.Join(snapshotDir, s.ID)
 	if err = os.Rename(td, path); err != nil {
-		return nil, errors.Wrap(err, "failed to rename")
+		return nil, fmt.Errorf("failed to rename: %w", err)
 	}
 	td = ""
 
@@ -407,7 +407,7 @@ func (o *snapshotter) createSnapshot(ctx context.Context, kind snapshots.Kind, k
 
 	rollback = false
 	if err = t.Commit(); err != nil {
-		return nil, errors.Wrap(err, "commit failed")
+		return nil, fmt.Errorf("commit failed: %w", err)
 	}
 
 	return o.mounts(s, info), nil
@@ -416,7 +416,7 @@ func (o *snapshotter) createSnapshot(ctx context.Context, kind snapshots.Kind, k
 func (o *snapshotter) prepareDirectory(ctx context.Context, snapshotDir string, kind snapshots.Kind) (string, error) {
 	td, err := ioutil.TempDir(snapshotDir, "new-")
 	if err != nil {
-		return "", errors.Wrap(err, "failed to create temp dir")
+		return "", fmt.Errorf("failed to create temp dir: %w", err)
 	}
 
 	if err := os.Mkdir(filepath.Join(td, "fs"), 0755); err != nil {

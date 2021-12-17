@@ -7,9 +7,9 @@ cd $(dirname $0)/..
 
 GO=${GO-go}
 
-for i in crictl kubectl k3s-agent k3s-server k3s-etcd-snapshot k3s-secrets-encrypt k3s-certificate k3s ; do
+for i in crictl kubectl k3s-agent k3s-server k3s-etcd-snapshot k3s-secrets-encrypt k3s-certificate; do
     rm -f bin/$i
-    ln -s containerd bin/$i
+    ln -s k3s bin/$i
 done
 
 for i in bridge flannel host-local loopback portmap; do
@@ -35,7 +35,7 @@ mkdir -p dist/artifacts
     set -x
 )
 
-tar cvf ./build/out/data.tar --exclude ./bin/hyperkube ./bin ./etc 
+tar cvf ./build/out/data.tar ./bin ./etc
 zstd --no-progress -T0 -16 -f --long=25 --rm ./build/out/data.tar -o ./build/out/data.tar.zst
 HASH=$(sha256sum ./build/out/data.tar.zst | awk '{print $1}')
 

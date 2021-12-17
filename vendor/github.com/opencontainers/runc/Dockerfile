@@ -32,6 +32,7 @@ RUN echo 'deb https://download.opensuse.org/repositories/devel:/tools:/criu/Debi
         libseccomp2 \
         pkg-config \
         python-minimal \
+        sshfs \
         sudo \
         uidmap \
     && apt-get clean \
