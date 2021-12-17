@@ -3,7 +3,7 @@
 
 In this section, you'll learn how to configure the K3s agent.
 
-> Throughout the K3s documentation, you will see some options that can be passed in as both command flags and environment variables. For help with passing in options, refer to [How to Use Flags and Environment Variables.]({{<baseurl>}}/k3s/latest/en/installation/install-options/how-to-flags)
+> Throughout the K3s documentation, you will see some options that can be passed in as both command flags and environment variables. For help with passing in options, refer to [How to Use Flags and Environment Variables.](how_to_flags.md)
 
 - [Logging](#logging)
 - [Cluster Options](#cluster-options)

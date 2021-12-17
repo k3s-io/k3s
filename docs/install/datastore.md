@@ -90,4 +90,4 @@ k3s server
 
 ### Embedded etcd for HA
 
-Please see [High Availability with Embedded DB]({{<baseurl>}}/k3s/latest/en/installation/ha-embedded/) for instructions on how to run with this option.
+Please see [High Availability with Embedded DB](ha_embedded.md) for instructions on how to run with this option.

@@ -5,7 +5,7 @@ The FAQ is updated periodically and designed to answer the questions our users m
 
 **Is K3s a suitable replacement for k8s?**
 
-K3s is capable of nearly everything k8s can do. It is just a more lightweight version. See the [main]({{<baseurl>}}/k3s/latest/en/) docs page for more details.
+K3s is capable of nearly everything k8s can do. It is just a more lightweight version. See the [main](index.md) docs page for more details.
 
 **How can I use my own Ingress instead of Traefik?**
 

@@ -50,7 +50,7 @@ To restore the cluster from backup, run K3s with the `--cluster-reset` option, w
 
 ### Options
 
-These options can be passed in with the command line, or in the [configuration file,]({{<baseurl>}}/k3s/latest/en/installation/install-options/#configuration-file ) which may be easier to use.
+These options can be passed in with the command line, or in the [configuration file,](install/install-options/install_options.md#configuration-file ) which may be easier to use.
 
 | Options | Description |
 | ----------- | --------------- |

@@ -3,7 +3,7 @@
 
 This guide will help you quickly launch a cluster with default options. The [installation section](../installation) covers in greater detail how K3s can be set up.
 
-For information on how K3s components work together, refer to the [architecture section.]({{<baseurl>}}/k3s/latest/en/architecture/#high-availability-with-an-external-db)
+For information on how K3s components work together, refer to the [architecture section.](architecture.md#high-availability-k3s-server-with-an-external-db)
 
 > New to Kubernetes? The official Kubernetes docs already have some great tutorials outlining the basics [here](https://kubernetes.io/docs/tutorials/kubernetes-basics/).
 

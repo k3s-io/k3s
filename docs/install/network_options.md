@@ -1,7 +1,7 @@
 
 # Network Options
 
-> **Note:** Please reference the [Networking]({{<baseurl>}}/k3s/latest/en/networking) page for information about CoreDNS, Traefik, and the Service LB.
+> **Note:** Please reference the [Networking](../networking.md) page for information about CoreDNS, Traefik, and the Service LB.
 
 By default, K3s will run with flannel as the CNI, using VXLAN as the default backend. To change the CNI, refer to the section on configuring a [custom CNI](#custom-cni). To change the flannel backend, refer to the flannel options section.
 

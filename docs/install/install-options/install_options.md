@@ -11,13 +11,13 @@ This page focuses on the options that can be used when you set up K3s for the fi
 
 In addition to configuring K3s with environment variables and CLI arguments, K3s can also use a [config file.](#configuration-file)
 
-For more advanced options, refer to [this page.]({{<baseurl>}}/k3s/latest/en/advanced)
+For more advanced options, refer to [this page.](../../advanced.md)
 
-> Throughout the K3s documentation, you will see some options that can be passed in as both command flags and environment variables. For help with passing in options, refer to [How to Use Flags and Environment Variables.]({{<baseurl>}}/k3s/latest/en/installation/install-options/how-to-flags)
+> Throughout the K3s documentation, you will see some options that can be passed in as both command flags and environment variables. For help with passing in options, refer to [How to Use Flags and Environment Variables.](how_to_flags.md)
 
 ### Options for Installation with Script
 
-As mentioned in the [Quick-Start Guide]({{<baseurl>}}/k3s/latest/en/quick-start/), you can use the installation script available at https://get.k3s.io to install K3s as a service on systemd and openrc based systems.
+As mentioned in the [Quick-Start Guide](../../quick_start.md), you can use the installation script available at https://get.k3s.io to install K3s as a service on systemd and openrc based systems.
 
 The simplest form of this command is as follows:
 ```sh
@@ -36,7 +36,7 @@ When using this method to install K3s, the following environment variables can b
 | `INSTALL_K3S_BIN_DIR` | Directory to install K3s binary, links, and uninstall script to, or use `/usr/local/bin` as the default. |
 | `INSTALL_K3S_BIN_DIR_READ_ONLY` | If set to true will not write files to `INSTALL_K3S_BIN_DIR`, forces setting `INSTALL_K3S_SKIP_DOWNLOAD=true`. |
 | `INSTALL_K3S_SYSTEMD_DIR` | Directory to install systemd service and environment files to, or use `/etc/systemd/system` as the default. |
-| `INSTALL_K3S_EXEC` | Command with flags to use for launching K3s in the service. If the command is not specified, and the `K3S_URL` is set, it will default to "agent." If `K3S_URL` not set, it will default to "server." For help, refer to [this example.]({{<baseurl>}}/k3s/latest/en/installation/install-options/how-to-flags/#example-b-install-k3s-exec) |
+| `INSTALL_K3S_EXEC` | Command with flags to use for launching K3s in the service. If the command is not specified, and the `K3S_URL` is set, it will default to "agent." If `K3S_URL` not set, it will default to "server." For help, refer to [this example.](how_to_flags.md#example-b-install-k3s-exec) |
 | `INSTALL_K3S_NAME` | Name of systemd service to create, will default to 'k3s' if running k3s as a server and 'k3s-agent' if running k3s as an agent. If specified the name will be prefixed with 'k3s-'. |
 | `INSTALL_K3S_TYPE` | Type of systemd service to create, will default from the K3s exec command if not specified. |
 | `INSTALL_K3S_SELINUX_WARN` | If set to true will continue if k3s-selinux policy is not found. |
@@ -73,12 +73,12 @@ The `k3s server` and `k3s agent` commands have additional configuration options 
 
 ### Registration Options for the K3s Server
 
-For details on configuring the K3s server, refer to the [server configuration reference.]({{<baseurl>}}/k3s/latest/en/installation/install-options/server-config)
+For details on configuring the K3s server, refer to the [server configuration reference.](server_config.md)
 
 
 ### Registration Options for the K3s Agent
 
-For details on configuring the K3s agent, refer to the [agent configuration reference.]({{<baseurl>}}/k3s/latest/en/installation/install-options/agent-config)
+For details on configuring the K3s agent, refer to the [agent configuration reference.](agent_config.md)
 
 ### Configuration File
 

@@ -195,7 +195,7 @@ See also https://rootlesscontaine.rs/ to learn about Rootless mode.
 
 ## Node Labels and Taints
 
-K3s agents can be configured with the options `--node-label` and `--node-taint` which adds a label and taint to the kubelet. The two options only add labels and/or taints [at registration time,]({{<baseurl>}}/k3s/latest/en/installation/install-options/#node-labels-and-taints-for-agents) so they can only be added once and not changed after that again by running K3s commands.
+K3s agents can be configured with the options `--node-label` and `--node-taint` which adds a label and taint to the kubelet. The two options only add labels and/or taints [at registration time,](install/install-options/install_options.md#node-labels-and-taints-for-agents) so they can only be added once and not changed after that again by running K3s commands.
 
 If you want to change node labels and taints after node registration you should use `kubectl`. Refer to the official Kubernetes documentation for details on how to add [taints](https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/) and [node labels.](https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes/#add-a-label-to-a-node)
 
@@ -315,7 +315,7 @@ If you are installing K3s on a system where SELinux is enabled by default (such 
 
 _Available as of v1.19.3+k3s2_
 
-The [install script]({{<baseurl>}}/k3s/latest/en/installation/install-options/#installation-script-options) will automatically install the SELinux RPM from the Rancher RPM repository if on a compatible system if not performing an air-gapped install. Automatic installation can be skipped by setting `INSTALL_K3S_SKIP_SELINUX_RPM=true`.
+The [install script](install/install-options/install_options.md#options-for-installation-with-script) will automatically install the SELinux RPM from the Rancher RPM repository if on a compatible system if not performing an air-gapped install. Automatic installation can be skipped by setting `INSTALL_K3S_SKIP_SELINUX_RPM=true`.
 
 ### Manual Installation
 
@@ -336,7 +336,7 @@ The way that SELinux enforcement is enabled or disabled depends on the K3s versi
 
 To leverage SELinux, specify the `--selinux` flag when starting K3s servers and agents.
 
-This option can also be specified in the K3s [configuration file:]({{<baseurl>}}/k3s/latest/en/installation/install-options/#configuration-file)
+This option can also be specified in the K3s [configuration file:](install/install-options/install_options.md#configuration-file)
 
 ```
 selinux: true
@@ -427,7 +427,7 @@ spec:
 
 ## Additional Logging Sources
 
-[Rancher logging]({{<baseurl>}}//rancher/v2.6/en/logging/helm-chart-options/) for K3s can be installed without using Rancher. The following instructions should be executed to do so:
+[Rancher logging](https://rancher.com/docs//rancher/v2.6/en/logging/helm-chart-options/) for K3s can be installed without using Rancher. The following instructions should be executed to do so:
 
 ```
 helm repo add rancher-charts https://charts.rancher.io

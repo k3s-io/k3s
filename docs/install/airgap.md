@@ -11,7 +11,7 @@ If you have not yet set up a private Docker registry, refer to the official docu
 
 ### Create the Registry YAML
 
-Follow the [Private Registry Configuration]({{< baseurl >}}/k3s/latest/en/installation/private-registry) guide to create and configure the registry.yaml file.
+Follow the [Private Registry Configuration](private_registry.md) guide to create and configure the registry.yaml file.
 
 Once you have completed this, you may now go to the [Install K3s](#install-k3s) section below.
 
@@ -68,7 +68,7 @@ INSTALL_K3S_SKIP_DOWNLOAD=true K3S_URL=https://myserver:6443 K3S_TOKEN=mynodetok
 {{% /tab %}}
 {{% tab "High Availability Configuration" %}}
 
-Reference the [High Availability with an External DB]({{< baseurl >}}/k3s/latest/en/installation/ha) or [High Availability with Embedded DB]({{< baseurl >}}/k3s/latest/en/installation/ha-embedded) guides. You will be tweaking install commands so you specify `INSTALL_K3S_SKIP_DOWNLOAD=true` and run your install script locally instead of via curl. You will also utilize `INSTALL_K3S_EXEC='args'` to supply any arguments to k3s.
+Reference the [High Availability with an External DB](ha_external.md) or [High Availability with Embedded DB](ha_embedded.md) guides. You will be tweaking install commands so you specify `INSTALL_K3S_SKIP_DOWNLOAD=true` and run your install script locally instead of via curl. You will also utilize `INSTALL_K3S_EXEC='args'` to supply any arguments to k3s.
 
 For example, step two of the High Availability with an External DB guide mentions the following:
 
@@ -103,7 +103,7 @@ with the same environment variables.
 
 ### Automated Upgrades Method
 
-As of v1.17.4+k3s1 K3s supports [automated upgrades]({{< baseurl >}}/k3s/latest/en/upgrades/automated/). To enable this in air-gapped environments, you must ensure the required images are available in your private registry.
+As of v1.17.4+k3s1 K3s supports [automated upgrades](../upgrades/automated.md). To enable this in air-gapped environments, you must ensure the required images are available in your private registry.
 
 You will need the version of rancher/k3s-upgrade that corresponds to the version of K3s you intend to upgrade to. Note, the image tag replaces the `+` in the K3s release with a `-` because Docker images do not support `+`.
 
@@ -114,4 +114,4 @@ rancher/system-upgrade-controller:v0.4.0
 rancher/kubectl:v0.17.0
 ```
 
-Once you have added the necessary rancher/k3s-upgrade, rancher/system-upgrade-controller, and rancher/kubectl images to your private registry, follow the [automated upgrades]({{< baseurl >}}/k3s/latest/en/upgrades/automated/) guide.
+Once you have added the necessary rancher/k3s-upgrade, rancher/system-upgrade-controller, and rancher/kubectl images to your private registry, follow the [automated upgrades](../upgrades/automated.md) guide.
