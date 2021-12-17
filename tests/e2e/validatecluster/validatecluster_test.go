@@ -7,17 +7,20 @@ import (
 	"testing"
 
 	. "github.com/onsi/ginkgo"
+	"github.com/onsi/ginkgo/reporters"
 	. "github.com/onsi/gomega"
 	"github.com/rancher/k3s/tests/e2e"
 )
 
 func Test_E2EClusterValidation(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Create Cluster Test Suite")
+	RunSpecsWithDefaultAndCustomReporters(t, "Create Cluster Test Suite", []Reporter{
+		reporters.NewJUnitReporter("/tmp/results/junit-cc.xml"),
+	})
 }
 
 const (
-	// Valid nodeOS: generic/ubuntu2004, opensuse/Leap-15.3.x86_6, dweomer/microos.amd64
+	// Valid nodeOS: generic/ubuntu2004, opensuse/Leap-15.3.x86_64, dweomer/microos.amd64
 	nodeOs      = "generic/ubuntu2004"
 	serverCount = 3
 	agentCount  = 2

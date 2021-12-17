@@ -54,7 +54,9 @@ def provision(vm, roles, role_num, node_num)
       k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
     end
   end
- 
+  if vm.box.include?("microos")
+    vm.provision 'k3s-reload', type: 'reload', run: 'once'
+  end
 end
 
 def osConfigure(vm)
@@ -63,11 +65,17 @@ def osConfigure(vm)
     vm.provision "shell", inline: "systemd-resolve --set-dns=8.8.8.8 --interface=eth0"
     vm.provision "shell", inline: "apt install -y jq"
   end
+  if vm.box.include?("Leap")
+    vm.provision "shell", inline: "zypper install -y jq"
+  end
+  if vm.box.include?("microos")
+    vm.provision "shell", inline: "transactional-update pkg install -y jq", reboot: true
+  end
 
 end
 
 Vagrant.configure("2") do |config|
-  config.vagrant.plugins = ["vagrant-k3s"]
+  config.vagrant.plugins = ["vagrant-k3s", "vagrant-reload"]
   # Default provider is libvirt, virtualbox is only provided as a backup
   config.vm.provider "libvirt" do |v|
     v.cpus = NODE_CPUS
