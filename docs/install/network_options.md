@@ -22,51 +22,46 @@ If you wish to use WireGuard as your flannel backend it may require additional k
 
 Run K3s with `--flannel-backend=none` and install your CNI of choice. IP Forwarding should be enabled for Canal and Calico. Please reference the steps below.
 
-{{% tabs %}}
-{{% tab "Canal" %}}
+=== "Canal"
 
-Visit the [Project Calico Docs](https://docs.projectcalico.org/) website. Follow the steps to install Canal. Modify the Canal YAML so that IP forwarding is allowed in the container_settings section, for example:
+    Visit the [Project Calico Docs](https://docs.projectcalico.org/) website. Follow the steps to install Canal. Modify the Canal YAML so that IP forwarding is allowed in the container_settings section, for example:
 
-```
-"container_settings": {
-              "allow_ip_forwarding": true
-          }
-```
+    ```
+    "container_settings": {
+                  "allow_ip_forwarding": true
+              }
+    ```
 
-Apply the Canal YAML.
+    Apply the Canal YAML.
 
-Ensure the settings were applied by running the following command on the host:
+    Ensure the settings were applied by running the following command on the host:
 
-```
-cat /etc/cni/net.d/10-canal.conflist
-```
+    ```
+    cat /etc/cni/net.d/10-canal.conflist
+    ```
 
-You should see that IP forwarding is set to true.
+    You should see that IP forwarding is set to true.
 
-{{% /tab %}}
-{{% tab "Calico" %}}
+=== "Calico"
 
-Follow the [Calico CNI Plugins Guide](https://docs.projectcalico.org/master/reference/cni-plugin/configuration). Modify the Calico YAML so that IP forwarding is allowed in the container_settings section, for example:
+    Follow the [Calico CNI Plugins Guide](https://docs.projectcalico.org/master/reference/cni-plugin/configuration). Modify the Calico YAML so that IP forwarding is allowed in the container_settings section, for example:
 
-```
-"container_settings": {
-              "allow_ip_forwarding": true
-          }
-```
+    ```
+    "container_settings": {
+                "allow_ip_forwarding": true
+            }
+    ```
 
-Apply the Calico YAML.
+    Apply the Calico YAML.
 
-Ensure the settings were applied by running the following command on the host:
+    Ensure the settings were applied by running the following command on the host:
 
-```
-cat /etc/cni/net.d/10-calico.conflist
-```
+    ```
+    cat /etc/cni/net.d/10-calico.conflist
+    ```
 
-You should see that IP forwarding is set to true.
+    You should see that IP forwarding is set to true.
 
-
-{{% /tab %}}
-{{% /tabs %}}
 
 ### Dual-stack installation
 

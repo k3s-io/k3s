@@ -331,32 +331,29 @@ To force the install script to log a warning rather than fail, you can set the f
 
 The way that SELinux enforcement is enabled or disabled depends on the K3s version.
 
-{{% tabs %}}
-{{% tab "K3s v1.19.1+k3s1" %}}
+=== "After v1.19.1+k3s1"
 
-To leverage SELinux, specify the `--selinux` flag when starting K3s servers and agents.
+    To leverage SELinux, specify the `--selinux` flag when starting K3s servers and agents.
 
-This option can also be specified in the K3s [configuration file:](install/install-options/install_options.md#configuration-file)
+    This option can also be specified in the K3s [configuration file:](install/install-options/install_options.md#configuration-file)
 
-```
-selinux: true
-```
+    ```
+    selinux: true
+    ```
 
-The `--disable-selinux` option should not be used. It is deprecated and will be either ignored or will be unrecognized, resulting in an error, in future minor releases.
+    The `--disable-selinux` option should not be used. It is deprecated and will be either ignored or will be unrecognized, resulting in an error, in future minor releases.
 
-Using a custom `--data-dir` under SELinux is not supported. To customize it, you would most likely need to write your own custom policy. For guidance, you could refer to the [containers/container-selinux](https://github.com/containers/container-selinux) repository, which contains the SELinux policy files for Container Runtimes, and the [rancher/k3s-selinux](https://github.com/rancher/k3s-selinux) repository, which contains the SELinux policy for K3s .
+    Using a custom `--data-dir` under SELinux is not supported. To customize it, you would most likely need to write your own custom policy. For guidance, you could refer to the [containers/container-selinux](https://github.com/containers/container-selinux) repository, which contains the SELinux policy files for Container Runtimes, and the [rancher/k3s-selinux](https://github.com/rancher/k3s-selinux) repository, which contains the SELinux policy for K3s .
 
-{{%/tab%}}
-{{% tab "K3s before v1.19.1+k3s1" %}}
+=== "Before v1.19.1+k3s1"
 
-SELinux is automatically enabled for the built-in containerd.
+    SELinux is automatically enabled for the built-in containerd.
 
-To turn off SELinux enforcement in the embedded containerd, launch K3s with the `--disable-selinux` flag.
+    To turn off SELinux enforcement in the embedded containerd, launch K3s with the `--disable-selinux` flag.
 
-Using a custom `--data-dir` under SELinux is not supported. To customize it, you would most likely need to write your own custom policy. For guidance, you could refer to the [containers/container-selinux](https://github.com/containers/container-selinux) repository, which contains the SELinux policy files for Container Runtimes, and the [rancher/k3s-selinux](https://github.com/rancher/k3s-selinux) repository, which contains the SELinux policy for K3s .
+    Using a custom `--data-dir` under SELinux is not supported. To customize it, you would most likely need to write your own custom policy. For guidance, you could refer to the [containers/container-selinux](https://github.com/containers/container-selinux) repository, which contains the SELinux policy files for Container Runtimes, and the [rancher/k3s-selinux](https://github.com/rancher/k3s-selinux) repository, which contains the SELinux policy for K3s .
 
-{{%/tab%}}
-{{% /tabs %}}
+
 
 ## Additional preparation for (Red Hat/CentOS) Enterprise Linux
 

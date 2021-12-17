@@ -54,75 +54,66 @@ Below are basic examples of using private registries in different modes:
 
 Below are examples showing how you may configure `/etc/rancher/k3s/registries.yaml` on each node when using TLS.
 
-{{% tabs %}}
-{{% tab "With Authentication" %}}
+=== "With Authentication"
 
-```
-mirrors:
-  docker.io:
-    endpoint:
-      - "https://mycustomreg.com:5000"
-configs:
-  "mycustomreg:5000":
-    auth:
-      username: xxxxxx # this is the registry username
-      password: xxxxxx # this is the registry password
-    tls:
-      cert_file: # path to the cert file used in the registry
-      key_file:  # path to the key file used in the registry
-      ca_file:   # path to the ca file used in the registry
-```
+    ```
+    mirrors:
+      docker.io:
+        endpoint:
+          - "https://mycustomreg.com:5000"
+    configs:
+      "mycustomreg:5000":
+        auth:
+          username: xxxxxx # this is the registry username
+          password: xxxxxx # this is the registry password
+        tls:
+          cert_file: # path to the cert file used in the registry
+          key_file:  # path to the key file used in the registry
+          ca_file:   # path to the ca file used in the registry
+    ```
 
-{{% /tab %}}
-{{% tab "Without Authentication" %}}
+=== "Without Authentication"
 
-```
-mirrors:
-  docker.io:
-    endpoint:
-      - "https://mycustomreg.com:5000"
-configs:
-  "mycustomreg:5000":
-    tls:
-      cert_file: # path to the cert file used in the registry
-      key_file:  # path to the key file used in the registry
-      ca_file:   # path to the ca file used in the registry
-```
-
-{{% /tab %}}
-{{% /tabs %}}
+    ```
+    mirrors:
+    docker.io:
+        endpoint:
+        - "https://mycustomreg.com:5000"
+    configs:
+    "mycustomreg:5000":
+        tls:
+        cert_file: # path to the cert file used in the registry
+        key_file:  # path to the key file used in the registry
+        ca_file:   # path to the ca file used in the registry
+    ```
 
 ### Without TLS
 
 Below are examples showing how you may configure `/etc/rancher/k3s/registries.yaml` on each node when _not_ using TLS.
 
-{{% tabs %}}
-{{% tab "With Authentication" %}}
+=== "With Authentication"
 
-```
-mirrors:
-  docker.io:
-    endpoint:
-      - "http://mycustomreg.com:5000"
-configs:
-  "mycustomreg:5000":
-    auth:
-      username: xxxxxx # this is the registry username
-      password: xxxxxx # this is the registry password
-```
+    ```
+    mirrors:
+    docker.io:
+        endpoint:
+        - "http://mycustomreg.com:5000"
+    configs:
+    "mycustomreg:5000":
+        auth:
+        username: xxxxxx # this is the registry username
+        password: xxxxxx # this is the registry password
+    ```
 
-{{% /tab %}}
-{{% tab "Without Authentication" %}}
+=== "Without Authentication"
 
-```
-mirrors:
-  docker.io:
-    endpoint:
-      - "http://mycustomreg.com:5000"
-```
+    ```
+    mirrors:
+    docker.io:
+        endpoint:
+        - "http://mycustomreg.com:5000"
+    ```
 
-{{% /tab %}}
-{{% /tabs %}}
 
 > In case of no TLS communication, you need to specify `http://` for the endpoints, otherwise it will default to https.
  

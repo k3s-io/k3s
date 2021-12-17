@@ -50,41 +50,36 @@ When running the K3s script with the `INSTALL_K3S_SKIP_DOWNLOAD` environment var
 
 You can install K3s on one or more servers as described below.
 
-{{% tabs %}}
-{{% tab "Single Server Configuration" %}}
+=== "Single Server Configuration"
 
-To install K3s on a single server, simply do the following on the server node:
+    To install K3s on a single server, simply do the following on the server node:
 
-```
-INSTALL_K3S_SKIP_DOWNLOAD=true ./install.sh
-```
+    ```
+    INSTALL_K3S_SKIP_DOWNLOAD=true ./install.sh
+    ```
 
-Then, to optionally add additional agents do the following on each agent node. Take care to ensure you replace `myserver` with the IP or valid DNS of the server and replace `mynodetoken` with the node token from the server typically at `/var/lib/rancher/k3s/server/node-token`
+    Then, to optionally add additional agents do the following on each agent node. Take care to ensure you replace `myserver` with the IP or valid DNS of the server and replace `mynodetoken` with the node token from the server typically at `/var/lib/rancher/k3s/server/node-token`
 
-```
-INSTALL_K3S_SKIP_DOWNLOAD=true K3S_URL=https://myserver:6443 K3S_TOKEN=mynodetoken ./install.sh
-```
+    ```
+    INSTALL_K3S_SKIP_DOWNLOAD=true K3S_URL=https://myserver:6443 K3S_TOKEN=mynodetoken ./install.sh
+    ```
 
-{{% /tab %}}
-{{% tab "High Availability Configuration" %}}
+=== "High Availability Configuration"
 
-Reference the [High Availability with an External DB](ha_external.md) or [High Availability with Embedded DB](ha_embedded.md) guides. You will be tweaking install commands so you specify `INSTALL_K3S_SKIP_DOWNLOAD=true` and run your install script locally instead of via curl. You will also utilize `INSTALL_K3S_EXEC='args'` to supply any arguments to k3s.
+    Reference the [High Availability with an External DB](ha_external.md) or [High Availability with Embedded DB](ha_embedded.md) guides. You will be tweaking install commands so you specify `INSTALL_K3S_SKIP_DOWNLOAD=true` and run your install script locally instead of via curl. You will also utilize `INSTALL_K3S_EXEC='args'` to supply any arguments to k3s.
 
-For example, step two of the High Availability with an External DB guide mentions the following:
+    For example, step two of the High Availability with an External DB guide mentions the following:
 
-```
-curl -sfL https://get.k3s.io | sh -s - server \
-  --datastore-endpoint='mysql://username:password@tcp(hostname:3306)/database-name'
-```
+    ```
+    curl -sfL https://get.k3s.io | sh -s - server \
+    --datastore-endpoint='mysql://username:password@tcp(hostname:3306)/database-name'
+    ```
 
-Instead, you would modify such examples like below:
+    Instead, you would modify such examples like below:
 
-```
-INSTALL_K3S_SKIP_DOWNLOAD=true INSTALL_K3S_EXEC='server' K3S_DATASTORE_ENDPOINT='mysql://username:password@tcp(hostname:3306)/database-name' ./install.sh
-```
-
-{{% /tab %}}
-{{% /tabs %}}
+    ```
+    INSTALL_K3S_SKIP_DOWNLOAD=true INSTALL_K3S_EXEC='server' K3S_DATASTORE_ENDPOINT='mysql://username:password@tcp(hostname:3306)/database-name' ./install.sh
+    ```
 
 >**Note:** K3s additionally provides a `--resolv-conf` flag for kubelets, which may help with configuring DNS in air-gap networks.
 
