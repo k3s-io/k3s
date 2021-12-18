@@ -492,12 +492,12 @@ provision-cluster() {
         done
     fi
 
+    [ -f "$PROVISION_LOCK" ] && rm $PROVISION_LOCK
+
     timeout --foreground 2m bash -c "wait-for-nodes $(( NUM_SERVERS + NUM_AGENTS ))"
     timeout --foreground 4m bash -c "wait-for-services $WAIT_SERVICES"
 
     run-function cluster-post-hook
-
-    [ -f "$PROVISION_LOCK" ] && rm $PROVISION_LOCK
 }
 export -f provision-cluster
 
@@ -556,18 +556,42 @@ export -f early-exit
 # ---
 
 run-test() {
+    local delay=15
+    (
+      set +x
+      while [ $(count-running-tests) -ge ${MAX_CONCURRENT_TESTS:-4} ]; do
+          sleep $delay
+      done
+    )
+
     export PROVISION_LOCK=$(mktemp)
     ./scripts/test-runner $@ &
     pids+=($!)
+
     (
         set +x
+        # busy-wait on the provisioning lock before imposing a final inter-test delay
         while [ -f "$PROVISION_LOCK" ]; do
             sleep 1
         done
-        sleep 5
+        sleep $delay
     )
 }
 export -f run-test
+
+# ---
+
+count-running-tests(){
+      local count=0
+      for pid in ${pids[@]}; do
+          if [ $(pgrep -c -P $pid) -gt 0 ]; then
+            ((count++))
+          fi
+      done
+      echo "Currently running ${count} tests" 1>&2
+      echo ${count}
+}
+export -f count-running-tests
 
 # ---
 
