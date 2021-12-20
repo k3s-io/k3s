@@ -4,10 +4,7 @@
 
 export NUM_SERVERS=2
 export NUM_AGENTS=0
-
-export SERVER_1_ARGS=--cluster-init
-
-# ---
+export SERVER_1_ARGS="--cluster-init"
 
 server-post-hook() {
   if [ $1 -eq 1 ]; then
