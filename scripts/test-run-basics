@@ -46,3 +46,5 @@ export -f use-local-storage-volume
 
 # --- create a basic cluster and check for valid versions
 LABEL=BASICS run-test
+
+cleanup-test-env
