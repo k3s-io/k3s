@@ -132,3 +132,5 @@ export -f get-topmost-layer
 
 # --- create a basic cluster and check for lazy pulling
 LABEL=LAZYPULL run-test
+
+cleanup-test-env
