@@ -2,7 +2,7 @@
 # High Availability with Embedded DB
 
 >**Notice:**
-K3s has added full support for embedded etcd as of release v1.19.5+k3s1. Versions v1.19.1 thru v1.19.4 provide only experimental support for embedded etcd.
+K3s has added full support for embedded etcd as of release v1.19.5+k3s1. Versions v1.19.1 through v1.19.4 provide only experimental support for embedded etcd.
 Embedded etcd replaced experimental Dqlite in the K3s v1.19.1 release. This is a breaking change. Please note that upgrades from experimental Dqlite to embedded etcd are not supported. If you attempt an upgrade it will not succeed and data will be lost.
 
 >**Warning:**
