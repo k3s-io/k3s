@@ -44,3 +44,5 @@ K3S_IMAGE_AGENT=${REPO}/${IMAGE_NAME}:${STABLE_VERSION} LABEL=STABLE-AGENT run-t
 # --- create a basic cluster to test for compat with the latest version of the server and agent
 K3S_IMAGE_SERVER=${REPO}/${IMAGE_NAME}:${LATEST_VERSION} LABEL=LATEST-SERVER run-test
 K3S_IMAGE_AGENT=${REPO}/${IMAGE_NAME}:${LATEST_VERSION} LABEL=LATEST-AGENT run-test
+
+cleanup-test-env
