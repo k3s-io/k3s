@@ -174,7 +174,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		serverConfig.ControlConfig.DisableScheduler = true
 		serverConfig.ControlConfig.DisableCCM = true
 
-		// only close the agentReady channel in case of k3s restoration, because k3s doesnt start
+		// only close the agentReady channel in case of k3s restoration, because k3s does not start
 		// the agent until server returns successfully, unlike rke2's agent which starts in parallel
 		// with the server
 		if serverConfig.ControlConfig.SupervisorPort == serverConfig.ControlConfig.HTTPSPort {
