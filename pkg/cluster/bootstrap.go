@@ -575,10 +575,7 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker,
 	}
 
 	if len(newerOnDisk) > 0 {
-		if len(newerOnDisk) == 1 {
-			logrus.Fatal(newerOnDisk[0] + " newer than datastore and could cause a cluster outage. Remove the file from disk and restart to be recreated from datastore.")
-		}
-		logrus.Fatal(strings.Join(newerOnDisk, ", ") + " newer than datastore and could cause a cluster outage. Remove the files from disk and restart to be recreated from datastore.")
+		logrus.Fatal(strings.Join(newerOnDisk, ", ") + " newer than datastore and could cause a cluster outage. Remove the file(s) from disk and restart to be recreated from datastore.")
 	}
 
 	if updateDisk {
