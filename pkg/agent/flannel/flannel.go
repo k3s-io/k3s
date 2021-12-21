@@ -25,8 +25,8 @@ import (
 	"github.com/flannel-io/flannel/network"
 	"github.com/flannel-io/flannel/pkg/ip"
 	"github.com/flannel-io/flannel/subnet/kube"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
-	log "k8s.io/klog"
 
 	// Backends need to be imported for their init() to get executed and them to register
 	_ "github.com/flannel-io/flannel/backend/extension"
@@ -79,13 +79,13 @@ func flannel(ctx context.Context, flannelIface *net.Interface, flannelConf, kube
 
 	if err := WriteSubnetFile(subnetFile, config.Network, config.IPv6Network, true, bn); err != nil {
 		// Continue, even though it failed.
-		log.Warningf("Failed to write subnet file: %s", err)
+		logrus.Warningf("Failed to write flannel subnet file: %s", err)
 	} else {
-		log.Infof("Wrote subnet file to %s", subnetFile)
+		logrus.Infof("Wrote flannel subnet file to %s", subnetFile)
 	}
 
 	// Start "Running" the backend network. This will block until the context is done so run in another goroutine.
-	log.Info("Running backend.")
+	logrus.Info("Running flannel backend.")
 	bn.Run(ctx)
 	return nil
 }
@@ -96,18 +96,18 @@ func LookupExtInterface(iface *net.Interface, netMode int) (*backend.ExternalInt
 	var err error
 
 	if iface == nil {
-		log.Info("Determining IP address of default interface")
+		logrus.Debug("No interface defined for flannel in the config. Fetching the default gateway interface")
 		if iface, err = ip.GetDefaultGatewayInterface(); err != nil {
 			return nil, fmt.Errorf("failed to get default interface: %s", err)
 		}
-	} else {
-		log.Info("Determining IP address of specified interface: ", iface.Name)
 	}
+	logrus.Debugf("The interface %s will be used by flannel", iface.Name)
 
 	ifaceAddr, err = ip.GetInterfaceIP4Addr(iface)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find IPv4 address for interface %s", iface.Name)
 	}
+	logrus.Infof("The interface %s with ipv4 address %s will be used by flannel", iface.Name, ifaceAddr)
 
 	if netMode == (ipv4 + ipv6) {
 		ifacev6Addr, err = ip.GetInterfaceIP6Addr(iface)
@@ -115,7 +115,7 @@ func LookupExtInterface(iface *net.Interface, netMode int) (*backend.ExternalInt
 			return nil, fmt.Errorf("failed to find IPv6 address for interface %s", iface.Name)
 		}
 
-		log.Infof("Using ipv6 address %s", ifacev6Addr)
+		logrus.Infof("Using dual-stack mode. The ipv6 address %s will be used by flannel", ifacev6Addr)
 	}
 	if iface.MTU == 0 {
 		return nil, fmt.Errorf("failed to determine MTU for %s interface", ifaceAddr)
