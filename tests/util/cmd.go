@@ -3,6 +3,7 @@ package util
 import (
 	"bufio"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"os/user"
@@ -66,30 +67,15 @@ func IsExistingServer() bool {
 //   cmdEx1, err := K3sCmd("etcd-snapshot", "ls")
 //   cmdEx2, err := K3sCmd("kubectl", "get", "pods", "-A")
 func K3sCmd(cmdName string, cmdArgs ...string) (string, error) {
+	if !IsRoot() {
+		return "", fmt.Errorf("integration tests must be run as sudo/root")
+	}
 	k3sBin := findK3sExecutable()
 	// Only run sudo if not root
-	var cmd *exec.Cmd
-	if IsRoot() {
-		k3sCmd := append([]string{cmdName}, cmdArgs...)
-		cmd = exec.Command(k3sBin, k3sCmd...)
-	} else {
-		k3sCmd := append([]string{k3sBin, cmdName}, cmdArgs...)
-		cmd = exec.Command("sudo", k3sCmd...)
-	}
+	k3sCmd := append([]string{cmdName}, cmdArgs...)
+	cmd := exec.Command(k3sBin, k3sCmd...)
 	byteOut, err := cmd.CombinedOutput()
 	return string(byteOut), err
-}
-
-// K3sRemoveDataDir removes the provided directory as root
-func K3sRemoveDataDir(dataDir string) error {
-	var cmd *exec.Cmd
-	if IsRoot() {
-		cmd = exec.Command("rm", "-rf", dataDir)
-	} else {
-		cmd = exec.Command("sudo", "rm", "-rf", dataDir)
-	}
-	_, err := cmd.CombinedOutput()
-	return err
 }
 
 func contains(source []string, target string) bool {
@@ -140,6 +126,10 @@ func FindStringInCmdAsync(scanner *bufio.Scanner, target string) bool {
 // with the provided arguments. Subsequent/parallel calls to this function will block until
 // the original lock is cleared using K3sKillServer
 func K3sStartServer(inputArgs ...string) (*K3sServer, error) {
+	if !IsRoot() {
+		return nil, fmt.Errorf("integration tests must be run as sudo/root")
+	}
+
 	logrus.Info("waiting to get server lock")
 	k3sLock, err := flock.Acquire(lockFile)
 	if err != nil {
@@ -152,14 +142,9 @@ func K3sStartServer(inputArgs ...string) (*K3sServer, error) {
 	}
 
 	k3sBin := findK3sExecutable()
-	var cmd *exec.Cmd
-	if IsRoot() {
-		k3sCmd := append([]string{"server"}, cmdArgs...)
-		cmd = exec.Command(k3sBin, k3sCmd...)
-	} else {
-		k3sCmd := append([]string{k3sBin, "server"}, cmdArgs...)
-		cmd = exec.Command("sudo", k3sCmd...)
-	}
+
+	k3sCmd := append([]string{"server"}, cmdArgs...)
+	cmd := exec.Command(k3sBin, k3sCmd...)
 	cmdOut, _ := cmd.StderrPipe()
 	cmd.Stderr = os.Stderr
 	err = cmd.Start()
@@ -169,16 +154,15 @@ func K3sStartServer(inputArgs ...string) (*K3sServer, error) {
 // K3sKillServer terminates the running K3s server and unlocks the file for
 // other tests
 func K3sKillServer(server *K3sServer) error {
-	if IsRoot() {
-		if err := server.cmd.Process.Kill(); err != nil {
-			return err
-		}
-	} else {
-		// Since k3s was launched as sudo, we can't just kill the process
-		killCmd := exec.Command("sudo", "pkill", "k3s")
-		if err := killCmd.Run(); err != nil {
-			return err
-		}
+	if err := server.cmd.Process.Kill(); err != nil {
+		return err
 	}
 	return flock.Release(server.lock)
+}
+
+func K3sCleanup() error {
+	if err := os.RemoveAll("/var/lib/rancher/k3s"); err != nil {
+		return err
+	}
+	return os.RemoveAll("/run/k3s")
 }
