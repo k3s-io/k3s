@@ -5,17 +5,7 @@ go 1.16
 replace (
 	github.com/Microsoft/hcsshim => github.com/Microsoft/hcsshim v0.8.20
 	github.com/benmoss/go-powershell => github.com/k3s-io/go-powershell v0.0.0-20201118222746-51f4c451fbd7
-	github.com/containerd/aufs => github.com/containerd/aufs v1.0.0
-	github.com/containerd/btrfs => github.com/containerd/btrfs v1.0.0
-	github.com/containerd/cgroups => github.com/containerd/cgroups v1.0.1
-	github.com/containerd/console => github.com/containerd/console v1.0.2
-	github.com/containerd/containerd => github.com/k3s-io/containerd v1.5.8-k3s1 // k3s-release/1.5
-	github.com/containerd/continuity => github.com/k3s-io/continuity v0.0.0-20210309170710-f93269e0d5c1
-	github.com/containerd/fifo => github.com/containerd/fifo v1.0.0
-	github.com/containerd/go-runc => github.com/containerd/go-runc v1.0.0
-	github.com/containerd/ttrpc => github.com/containerd/ttrpc v1.0.2
-	github.com/containerd/typeurl => github.com/containerd/typeurl v1.0.2
-	github.com/containerd/zfs => github.com/containerd/zfs v1.0.0
+	github.com/containerd/containerd => github.com/k3s-io/containerd v1.5.8-k3s2 // k3s-release/1.5
 	github.com/coreos/go-systemd => github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e
 	github.com/docker/distribution => github.com/docker/distribution v2.7.1+incompatible
 	github.com/docker/docker => github.com/docker/docker v20.10.2+incompatible
@@ -25,11 +15,8 @@ replace (
 	github.com/juju/errors => github.com/k3s-io/nocode v0.0.0-20200630202308-cb097102c09f
 	github.com/kubernetes-sigs/cri-tools => github.com/k3s-io/cri-tools v1.21.0-k3s1
 	github.com/matryer/moq => github.com/rancher/moq v0.0.0-20190404221404-ee5226d43009
-	// LOOK TO scripts/download FOR THE VERSION OF runc THAT WE ARE BUILDING/SHIPPING
 	github.com/opencontainers/runc => github.com/opencontainers/runc v1.0.3
 	github.com/opencontainers/runtime-spec => github.com/opencontainers/runtime-spec v1.0.3-0.20210316141917-a8c4a9ee0f6b
-	github.com/rancher/k3s/pkg/data => ./pkg/data
-	github.com/rancher/wrangler => github.com/rancher/wrangler v0.8.10
 	go.etcd.io/etcd/api/v3 => github.com/k3s-io/etcd/api/v3 v3.5.0-k3s2
 	go.etcd.io/etcd/client/v3 => github.com/k3s-io/etcd/client/v3 v3.5.0-k3s2
 	go.etcd.io/etcd/etcdutl/v3 => github.com/k3s-io/etcd/etcdutl/v3 v3.5.0-k3s2
@@ -77,9 +64,9 @@ replace (
 require (
 	github.com/Microsoft/hcsshim v0.8.23
 	github.com/containerd/cgroups v1.0.1
-	github.com/containerd/containerd v1.5.8
-	github.com/containerd/fuse-overlayfs-snapshotter v1.0.3
-	github.com/containerd/stargz-snapshotter v0.8.0
+	github.com/containerd/containerd v1.6.0-beta.2.0.20211117185425-a776a27af54a
+	github.com/containerd/fuse-overlayfs-snapshotter v1.0.4
+	github.com/containerd/stargz-snapshotter v0.10.1
 	github.com/coreos/go-iptables v0.5.0
 	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f
 	github.com/docker/docker v20.10.10+incompatible
@@ -102,7 +89,6 @@ require (
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/onsi/ginkgo v1.16.4
 	github.com/onsi/gomega v1.11.0
-	// LOOK TO scripts/download FOR THE VERSION OF runc THAT WE ARE BUILDING/SHIPPING
 	github.com/opencontainers/runc v1.0.3
 	github.com/opencontainers/selinux v1.8.2
 	github.com/otiai10/copy v1.6.0
@@ -111,7 +97,7 @@ require (
 	github.com/rancher/lasso v0.0.0-20210616224652-fc3ebd901c08
 	github.com/rancher/remotedialer v0.2.0
 	github.com/rancher/wharfie v0.5.1
-	github.com/rancher/wrangler v0.8.9
+	github.com/rancher/wrangler v0.8.10
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/rootless-containers/rootlesskit v0.14.5
 	github.com/sirupsen/logrus v1.8.1
@@ -125,8 +111,8 @@ require (
 	go.etcd.io/etcd/server/v3 v3.5.0
 	golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2
 	golang.org/x/net v0.0.0-20211005215030-d2e5035098b3
-	golang.org/x/sys v0.0.0-20211004093028-2c5d950f24ef
-	google.golang.org/grpc v1.41.0
+	golang.org/x/sys v0.0.0-20211025201205-69cdffdb9359
+	google.golang.org/grpc v1.42.0
 	gopkg.in/yaml.v2 v2.4.0
 	inet.af/tcpproxy v0.0.0-20200125044825-b6bb9b5b8252
 	k8s.io/api v0.22.4
@@ -136,7 +122,7 @@ require (
 	k8s.io/cloud-provider v0.22.4
 	k8s.io/component-base v0.22.4
 	k8s.io/controller-manager v0.22.4 // indirect
-	k8s.io/cri-api v0.22.4
+	k8s.io/cri-api v0.23.0-alpha.4
 	k8s.io/klog v1.0.0
 	k8s.io/klog/v2 v2.9.0
 	k8s.io/kubectl v0.22.4

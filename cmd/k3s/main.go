@@ -182,13 +182,13 @@ func getAssetAndDir(dataDir string) (string, string) {
 func extract(dataDir string) (string, error) {
 	// first look for global asset folder so we don't create a HOME version if not needed
 	_, dir := getAssetAndDir(datadir.DefaultDataDir)
-	if _, err := os.Stat(filepath.Join(dir, "bin", "containerd")); err == nil {
+	if _, err := os.Stat(filepath.Join(dir, "bin", "k3s")); err == nil {
 		return dir, nil
 	}
 
 	asset, dir := getAssetAndDir(dataDir)
 	// check if target content already exists
-	if _, err := os.Stat(filepath.Join(dir, "bin", "containerd")); err == nil {
+	if _, err := os.Stat(filepath.Join(dir, "bin", "k3s")); err == nil {
 		return dir, nil
 	}
 

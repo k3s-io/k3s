@@ -46,14 +46,24 @@ func (c *Cluster) Bootstrap(ctx context.Context, snapshot bool) error {
 
 	if c.managedDB != nil {
 		if !snapshot {
+			isHTTP := c.config.JoinURL != "" && c.config.Token != ""
+			// For secondary servers, we attempt to connect and reconcile with the datastore.
+			// If that fails we fallback to the local etcd cluster start
+			if isInitialized && isHTTP && c.clientAccessInfo != nil {
+				if err := c.httpBootstrap(ctx); err == nil {
+					logrus.Info("Successfully reconciled with datastore")
+					return nil
+				}
+				logrus.Warnf("Unable to reconcile with datastore: %v", err)
+			}
 			// In the case of etcd, if the database has been initialized, it doesn't
 			// need to be bootstrapped however we still need to check the database
 			// and reconcile the bootstrap data. Below we're starting a temporary
 			// instance of etcd in the event that etcd certificates are unavailable,
 			// reading the data, and comparing that to the data on disk, all the while
 			// starting normal etcd.
-			isHTTP := c.config.JoinURL != "" && c.config.Token != ""
-			if isInitialized && !isHTTP {
+			if isInitialized {
+				logrus.Info("Starting local etcd to reconcile with datastore")
 				tmpDataDir := filepath.Join(c.config.DataDir, "db", "tmp-etcd")
 				os.RemoveAll(tmpDataDir)
 				if err := os.Mkdir(tmpDataDir, 0700); err != nil {
@@ -193,17 +203,15 @@ func (c *Cluster) shouldBootstrapLoad(ctx context.Context) (bool, bool, error) {
 			return false, false, err
 		}
 		if isInitialized {
+			// If the database is initialized we skip bootstrapping; if the user wants to rejoin a
+			// cluster they need to delete the database.
+			logrus.Infof("Managed %s cluster bootstrap already complete and initialized", c.managedDB.EndpointName())
 			// This is a workaround for an issue that can be caused by terminating the cluster bootstrap before
 			// etcd is promoted from learner. Odds are we won't need this info, and we don't want to fail startup
 			// due to failure to retrieve it as this will break cold cluster restart, so we ignore any errors.
 			if c.config.JoinURL != "" && c.config.Token != "" {
 				c.clientAccessInfo, _ = clientaccess.ParseAndValidateTokenForUser(c.config.JoinURL, c.config.Token, "server")
-				logrus.Infof("Joining %s cluster already initialized, forcing reconciliation", c.managedDB.EndpointName())
-				return true, true, nil
 			}
-			// If the database is initialized we skip bootstrapping; if the user wants to rejoin a
-			// cluster they need to delete the database.
-			logrus.Infof("Managed %s cluster bootstrap already complete and initialized", c.managedDB.EndpointName())
 			return false, true, nil
 		} else if c.config.JoinURL == "" {
 			// Not initialized, not joining - must be initializing (cluster-init)
@@ -309,17 +317,46 @@ func migrateBootstrapData(ctx context.Context, data io.Reader, files bootstrap.P
 
 const systemTimeSkew = int64(3)
 
+// isMigrated checks to see if the given bootstrap data
+// is in the latest format.
+func isMigrated(buf io.ReadSeeker, files *bootstrap.PathsDataformat) bool {
+	buf.Seek(0, 0)
+	defer buf.Seek(0, 0)
+
+	if err := json.NewDecoder(buf).Decode(files); err != nil {
+		// This will fail if data is being pulled from old an cluster since
+		// older clusters used a map[string][]byte for the data structure.
+		// Therefore, we need to perform a migration to the newer bootstrap
+		// format; bootstrap.BootstrapFile.
+		return false
+	}
+
+	return true
+}
+
 // ReconcileBootstrapData is called before any data is saved to the
 // datastore or locally. It checks to see if the contents of the
 // bootstrap data in the datastore is newer than on disk or different
-// and depending on where the difference is, the newer data is written
-// to disk or if the disk is newer, the process is stopped and a error
-// is issued.
+// and depending on where the difference is. If the datastore is newer,
+// then the data will be written to disk. If the data on disk is newer,
+// k3s will exit with an error.
 func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker, crb *config.ControlRuntimeBootstrap, isHTTP bool, ec *endpoint.ETCDConfig) error {
 	logrus.Info("Reconciling bootstrap data between datastore and disk")
 
 	if err := c.certDirsExist(); err != nil {
-		return bootstrap.WriteToDiskFromStorage(buf, crb)
+		// we need to see if the data has been migrated before writing to disk. This
+		// is because the data may have been given to us via the HTTP bootstrap process
+		// from an older version of k3s. That version might not have the new data format
+		// and we should write the correct format.
+		files := make(bootstrap.PathsDataformat)
+		if !isMigrated(buf, &files) {
+			if err := migrateBootstrapData(ctx, buf, files); err != nil {
+				return err
+			}
+			buf.Seek(0, 0)
+		}
+
+		return bootstrap.WriteToDiskFromStorage(files, crb)
 	}
 
 	var dbRawData []byte
@@ -356,6 +393,7 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker,
 		if err != nil {
 			return err
 		}
+		defer storageClient.Close()
 
 		ticker := time.NewTicker(5 * time.Second)
 		defer ticker.Stop()
@@ -393,18 +431,12 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker,
 	}
 
 	files := make(bootstrap.PathsDataformat)
-	if err := json.NewDecoder(buf).Decode(&files); err != nil {
-		// This will fail if data is being pulled from old an cluster since
-		// older clusters used a map[string][]byte for the data structure.
-		// Therefore, we need to perform a migration to the newer bootstrap
-		// format; bootstrap.BootstrapFile.
-		buf.Seek(0, 0)
-
+	if !isMigrated(buf, &files) {
 		if err := migrateBootstrapData(ctx, buf, files); err != nil {
 			return err
 		}
+		buf.Seek(0, 0)
 	}
-	buf.Seek(0, 0)
 
 	type update struct {
 		db, disk, conflict bool
@@ -524,6 +556,7 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker,
 		}
 	}
 
+	var newerOnDisk []string
 	for path, res := range results {
 		switch {
 		case res.disk:
@@ -535,15 +568,19 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker,
 				updateDisk = true
 				continue
 			}
-			logrus.Fatal(path + " newer than datastore and could cause cluster outage. Remove the file from disk and restart to be recreated from datastore.")
+			newerOnDisk = append(newerOnDisk, path)
 		case res.conflict:
 			logrus.Warnf("datastore / disk conflict: %s newer than in the datastore", path)
 		}
 	}
 
+	if len(newerOnDisk) > 0 {
+		logrus.Fatal(strings.Join(newerOnDisk, ", ") + " newer than datastore and could cause a cluster outage. Remove the file(s) from disk and restart to be recreated from datastore.")
+	}
+
 	if updateDisk {
 		logrus.Warn("updating bootstrap data on disk from datastore")
-		return bootstrap.WriteToDiskFromStorage(buf, crb)
+		return bootstrap.WriteToDiskFromStorage(files, crb)
 	}
 
 	return nil
