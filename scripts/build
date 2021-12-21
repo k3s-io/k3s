@@ -7,7 +7,7 @@ cd $(dirname $0)/..
 
 GO=${GO-go}
 
-PKG="github.com/rancher/k3s"
+PKG="github.com/k3s-io/k3s"
 PKG_CONTAINERD="github.com/containerd/containerd"
 PKG_K3S_CONTAINERD="github.com/k3s-io/containerd"
 PKG_CRICTL="github.com/kubernetes-sigs/cri-tools/pkg"
@@ -16,25 +16,24 @@ PKG_K8S_CLIENT="k8s.io/client-go/pkg"
 
 buildDate=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
 
-VENDOR_PREFIX="${PKG}/vendor/"
 VERSIONFLAGS="
     -X ${PKG}/pkg/version.Version=${VERSION}
     -X ${PKG}/pkg/version.GitCommit=${COMMIT:0:8}
 
-    -X ${VENDOR_PREFIX}${PKG_K8S_CLIENT}/version.gitVersion=${VERSION}
-    -X ${VENDOR_PREFIX}${PKG_K8S_CLIENT}/version.gitCommit=${COMMIT}
-    -X ${VENDOR_PREFIX}${PKG_K8S_CLIENT}/version.gitTreeState=${TREE_STATE}
-    -X ${VENDOR_PREFIX}${PKG_K8S_CLIENT}/version.buildDate=${buildDate}
+    -X ${PKG_K8S_CLIENT}/version.gitVersion=${VERSION}
+    -X ${PKG_K8S_CLIENT}/version.gitCommit=${COMMIT}
+    -X ${PKG_K8S_CLIENT}/version.gitTreeState=${TREE_STATE}
+    -X ${PKG_K8S_CLIENT}/version.buildDate=${buildDate}
 
-    -X ${VENDOR_PREFIX}${PKG_K8S_BASE}/version.gitVersion=${VERSION}
-    -X ${VENDOR_PREFIX}${PKG_K8S_BASE}/version.gitCommit=${COMMIT}
-    -X ${VENDOR_PREFIX}${PKG_K8S_BASE}/version.gitTreeState=${TREE_STATE}
-    -X ${VENDOR_PREFIX}${PKG_K8S_BASE}/version.buildDate=${buildDate}
+    -X ${PKG_K8S_BASE}/version.gitVersion=${VERSION}
+    -X ${PKG_K8S_BASE}/version.gitCommit=${COMMIT}
+    -X ${PKG_K8S_BASE}/version.gitTreeState=${TREE_STATE}
+    -X ${PKG_K8S_BASE}/version.buildDate=${buildDate}
 
-    -X ${VENDOR_PREFIX}${PKG_CRICTL}/version.Version=${VERSION_CRICTL}
+    -X ${PKG_CRICTL}/version.Version=${VERSION_CRICTL}
 
-    -X ${VENDOR_PREFIX}${PKG_CONTAINERD}/version.Version=${VERSION_CONTAINERD}
-    -X ${VENDOR_PREFIX}${PKG_CONTAINERD}/version.Package=${PKG_K3S_CONTAINERD}
+    -X ${PKG_CONTAINERD}/version.Version=${VERSION_CONTAINERD}
+    -X ${PKG_CONTAINERD}/version.Package=${PKG_K3S_CONTAINERD}
 
     -X ${PKG_CONTAINERD}/version.Version=${VERSION_CONTAINERD}
     -X ${PKG_CONTAINERD}/version.Package=${PKG_K3S_CONTAINERD}
@@ -98,7 +97,7 @@ if [ ! -x ${INSTALLBIN}/cni ]; then
     WORKDIR=$TMPDIR/src/github.com/containernetworking/plugins
     git clone -b $VERSION_CNIPLUGINS https://github.com/rancher/plugins.git $WORKDIR
     cd $WORKDIR
-    GOPATH=$TMPDIR CGO_ENABLED=0 "${GO}" build -tags "$TAGS" -ldflags "$LDFLAGS $STATIC" -o $INSTALLBIN/cni
+    GO111MODULE=off GOPATH=$TMPDIR CGO_ENABLED=0 "${GO}" build -tags "$TAGS" -ldflags "$LDFLAGS $STATIC" -o $INSTALLBIN/cni
 )
 fi
 

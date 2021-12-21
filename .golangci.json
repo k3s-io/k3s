@@ -16,7 +16,8 @@
 			"contrib",
 			"manifests",
 			"package",
-			"scripts"
+			"scripts",
+			"vendor"
 		],
 		"skip-files": [
 			"/zz_generated_"
