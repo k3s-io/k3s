@@ -556,6 +556,7 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker,
 		}
 	}
 
+	var newerOnDisk []string
 	for path, res := range results {
 		switch {
 		case res.disk:
@@ -567,10 +568,15 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker,
 				updateDisk = true
 				continue
 			}
-			logrus.Fatal(path + " newer than datastore and could cause cluster outage. Remove the file from disk and restart to be recreated from datastore.")
+			newerOnDisk = append(newerOnDisk, path)
 		case res.conflict:
 			logrus.Warnf("datastore / disk conflict: %s newer than in the datastore", path)
 		}
+	}
+
+	if len(newerOnDisk) > 0 {
+		files := strings.Join(newerOnDisk, ", ")
+		logrus.Fatal(files + " newer than datastore and could cause cluster outage. Remove the file from disk and restart to be recreated from datastore.")
 	}
 
 	if updateDisk {
