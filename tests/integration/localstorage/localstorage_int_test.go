@@ -82,6 +82,7 @@ var _ = Describe("local storage", func() {
 var _ = AfterSuite(func() {
 	if !testutil.IsExistingServer() {
 		Expect(testutil.K3sKillServer(localStorageServer)).To(Succeed())
+		Expect(testutil.K3sCleanup()).To(Succeed())
 	}
 })
 

@@ -11,6 +11,7 @@ import (
 
 	"github.com/rancher/k3s/pkg/flock"
 	"github.com/sirupsen/logrus"
+	"github.com/vishvananda/netlink"
 )
 
 // Compile-time variable
@@ -160,7 +161,24 @@ func K3sKillServer(server *K3sServer) error {
 	return flock.Release(server.lock)
 }
 
+// K3sCleanup attempts to cleanup networking and files leftover from an integration test
 func K3sCleanup() error {
+	if cni0Link, err := netlink.LinkByName("cni0"); err == nil {
+		links, _ := netlink.LinkList()
+		for _, link := range links {
+			if link.Attrs().MasterIndex == cni0Link.Attrs().Index {
+				netlink.LinkDel(link)
+			}
+		}
+		netlink.LinkDel(cni0Link)
+	}
+
+	if flannel1, err := netlink.LinkByName("flannel.1"); err == nil {
+		netlink.LinkDel(flannel1)
+	}
+	if flannelV6, err := netlink.LinkByName("flannel-v6.1"); err == nil {
+		netlink.LinkDel(flannelV6)
+	}
 	if err := os.RemoveAll("/var/lib/rancher/k3s"); err != nil {
 		return err
 	}
