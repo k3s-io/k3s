@@ -159,10 +159,3 @@ func K3sKillServer(server *K3sServer) error {
 	}
 	return flock.Release(server.lock)
 }
-
-func K3sCleanup() error {
-	if err := os.RemoveAll("/var/lib/rancher/k3s"); err != nil {
-		return err
-	}
-	return os.RemoveAll("/run/k3s")
-}
