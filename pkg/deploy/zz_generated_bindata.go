@@ -12,6 +12,7 @@
 // manifests/metrics-server/resource-reader.yaml
 // manifests/rolebindings.yaml
 // manifests/traefik.yaml
+//go:build !no_stage
 // +build !no_stage
 
 package deploy

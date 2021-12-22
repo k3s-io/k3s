@@ -117,7 +117,7 @@ func (c *FakeAddons) UpdateStatus(ctx context.Context, addon *k3scattleiov1.Addo
 // Delete takes name of the addon and deletes it. Returns an error if one occurs.
 func (c *FakeAddons) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(addonsResource, c.ns, name), &k3scattleiov1.Addon{})
+		Invokes(testing.NewDeleteActionWithOptions(addonsResource, c.ns, name, opts), &k3scattleiov1.Addon{})
 
 	return err
 }

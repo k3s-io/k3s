@@ -2,6 +2,7 @@
 // sources:
 // build/static/charts/traefik-10.3.001.tgz
 // build/static/charts/traefik-crd-10.3.001.tgz
+//go:build !no_stage
 // +build !no_stage
 
 package static
