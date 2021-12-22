@@ -70,10 +70,10 @@ jobs:
         run: vagrant up
       - name: "K3s Prepare"
         run: vagrant provision --provision-with=k3s-prepare
-      - name: ⏩ Install K3s"
+      - name: ⏬ "K3s Install"
         run: vagrant provision --provision-with=k3s-install
-      - name: "K3s Start" # start k3s rootfull
-        run: vagrant ssh -- sudo systemctl start k3s-server
+      - name: ⏩ "K3s Start"
+        run: vagrant provision --provision-with=k3s-start
       - name: "K3s Ready" # wait for k3s to be ready
         run: vagrant provision --provision-with=k3s-ready
       - name: "K3s Status" # kubectl get node,all -A -o wide
