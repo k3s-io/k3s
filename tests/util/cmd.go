@@ -3,7 +3,7 @@ package util
 import (
 	"bufio"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"os"
 	"os/exec"
 	"os/user"
@@ -68,7 +68,7 @@ func IsExistingServer() bool {
 //   cmdEx2, err := K3sCmd("kubectl", "get", "pods", "-A")
 func K3sCmd(cmdName string, cmdArgs ...string) (string, error) {
 	if !IsRoot() {
-		return "", fmt.Errorf("integration tests must be run as sudo/root")
+		return "", errors.New("integration tests must be run as sudo/root")
 	}
 	k3sBin := findK3sExecutable()
 	// Only run sudo if not root
@@ -127,7 +127,7 @@ func FindStringInCmdAsync(scanner *bufio.Scanner, target string) bool {
 // the original lock is cleared using K3sKillServer
 func K3sStartServer(inputArgs ...string) (*K3sServer, error) {
 	if !IsRoot() {
-		return nil, fmt.Errorf("integration tests must be run as sudo/root")
+		return nil, errors.New("integration tests must be run as sudo/root")
 	}
 
 	logrus.Info("waiting to get server lock")
