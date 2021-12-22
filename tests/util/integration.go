@@ -26,6 +26,24 @@ type K3sServer struct {
 	lock    int
 }
 
+type Node struct {
+	Name       string
+	Status     string
+	Roles      string
+	InternalIP string
+	ExternalIP string
+}
+
+type Pod struct {
+	NameSpace string
+	Name      string
+	Ready     string
+	Status    string
+	Restarts  string
+	NodeIP    string
+	Node      string
+}
+
 func findK3sExecutable() string {
 	// if running on an existing cluster, it maybe installed via k3s.service
 	// or run manually from dist/artifacts/k3s
@@ -64,11 +82,11 @@ func IsExistingServer() bool {
 	return existingServer == "True"
 }
 
-// K3sCmd launches the provided K3s command via exec. Command blocks until finished.
+// RunCommand launches the provided K3s command via exec. Command blocks until finished.
 // Command output from both Stderr and Stdout is provided via string.
-//   cmdEx1, err := K3sCmd("etcd-snapshot", "ls")
-//   cmdEx2, err := K3sCmd("kubectl", "get", "pods", "-A")
-func K3sCmd(cmdName string, cmdArgs ...string) (string, error) {
+//   cmdEx1, err := RunCommand("etcd-snapshot", "ls")
+//   cmdEx2, err := RunCommand("kubectl", "get", "pods", "-A")
+func RunCommand(cmdName string, cmdArgs ...string) (string, error) {
 	if !IsRoot() {
 		return "", fmt.Errorf("integration tests must be run as sudo/root")
 	}
@@ -78,6 +96,35 @@ func K3sCmd(cmdName string, cmdArgs ...string) (string, error) {
 	cmd := exec.Command(k3sBin, k3sCmd...)
 	byteOut, err := cmd.CombinedOutput()
 	return string(byteOut), err
+}
+
+func ParsePods(kubeconfig string, debug bool) ([]Pod, error) {
+	pods := make([]Pod, 0, 10)
+	podList := ""
+
+	cmd := "kubectl get pods -o wide --no-headers -A --kubeconfig=" + kubeconfig
+	res, _ := RunCommand(cmd)
+	res = strings.TrimSpace(res)
+	podList = res
+
+	split := strings.Split(res, "\n")
+	for _, rec := range split {
+		fields := strings.Fields(string(rec))
+		pod := Pod{
+			NameSpace: fields[0],
+			Name:      fields[1],
+			Ready:     fields[2],
+			Status:    fields[3],
+			Restarts:  fields[4],
+			NodeIP:    fields[6],
+			Node:      fields[7],
+		}
+		pods = append(pods, pod)
+	}
+	if debug {
+		fmt.Println(podList)
+	}
+	return pods, nil
 }
 
 func contains(source []string, target string) bool {
@@ -102,7 +149,7 @@ func ServerArgsPresent(neededArgs []string) bool {
 
 // K3sServerArgs returns the list of arguments that the k3s server launched with
 func K3sServerArgs() []string {
-	results, err := K3sCmd("kubectl", "get", "nodes", "-o", `jsonpath='{.items[0].metadata.annotations.k3s\.io/node-args}'`)
+	results, err := RunCommand("kubectl", "get", "nodes", "-o", `jsonpath='{.items[0].metadata.annotations.k3s\.io/node-args}'`)
 	if err != nil {
 		return nil
 	}
