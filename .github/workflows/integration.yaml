@@ -56,7 +56,7 @@ jobs:
     - name: Run Integration Tests
       run: | 
         chmod +x ./dist/artifacts/k3s
-        go test ./pkg/... ./tests/integration/... -run Integration
+        sudo -E env "PATH=$PATH" go test ./pkg/... ./tests/integration/... -run Integration
     - name: On Failure, Launch Debug Session
       if: ${{ failure() }}
       uses: mxschmitt/action-tmate@v3

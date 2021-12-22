@@ -143,7 +143,7 @@ var _ = Describe("secrets encryption rotation", func() {
 var _ = AfterSuite(func() {
 	if !testutil.IsExistingServer() {
 		Expect(testutil.K3sKillServer(secretsEncryptionServer)).To(Succeed())
-		Expect(testutil.K3sRemoveDataDir(secretsEncryptionDataDir)).To(Succeed())
+		Expect(os.RemoveAll(secretsEncryptionDataDir)).To(Succeed())
 	}
 })
 
