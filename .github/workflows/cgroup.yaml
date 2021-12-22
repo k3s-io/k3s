@@ -34,7 +34,7 @@ jobs:
         uses: actions/upload-artifact@v2
         with: { name: k3s, path: dist/artifacts/k3s }
   test:
-    name: "Smoke Test"
+    name: "Conformance Test"
     needs: prep
     # nested virtualization is only available on macOS hosts
     runs-on: macos-10.15
@@ -66,10 +66,14 @@ jobs:
         continue-on-error: true
       - name: "Vagrant Plugin(s)"
         run: vagrant plugin install vagrant-k3s
-      - name: "Vagrant Up ⏩ Install K3s"
+      - name: "Vagrant Up"
         run: vagrant up
-      - name: "K3s Start" # start k3s rootfull
-        run: vagrant ssh -- sudo systemctl start k3s-server
+      - name: "K3s Prepare"
+        run: vagrant provision --provision-with=k3s-prepare
+      - name: ⏬ "K3s Install"
+        run: vagrant provision --provision-with=k3s-install
+      - name: ⏩ "K3s Start"
+        run: vagrant provision --provision-with=k3s-start
       - name: "K3s Ready" # wait for k3s to be ready
         run: vagrant provision --provision-with=k3s-ready
       - name: "K3s Status" # kubectl get node,all -A -o wide
