@@ -31,7 +31,7 @@ var _ = Describe("etcd snapshots", func() {
 	When("a new etcd is created", func() {
 		It("starts up with no problems", func() {
 			Eventually(func() (string, error) {
-				return testutil.K3sCmd("kubectl", "get", "pods", "-A")
+				return testutil.K3sCmd("kubectl", "get pods -A")
 			}, "180s", "5s").Should(MatchRegexp("kube-system.+coredns.+1\\/1.+Running"))
 		})
 		It("saves an etcd snapshot", func() {
@@ -54,7 +54,7 @@ var _ = Describe("etcd snapshots", func() {
 	})
 	When("saving a custom name", func() {
 		It("saves an etcd snapshot with a custom name", func() {
-			Expect(testutil.K3sCmd("etcd-snapshot", "save", "--name", "ALIVEBEEF")).
+			Expect(testutil.K3sCmd("etcd-snapshot", "save --name ALIVEBEEF")).
 				To(ContainSubstring("Saving etcd snapshot to /var/lib/rancher/k3s/server/db/snapshots/ALIVEBEEF"))
 		})
 		It("deletes that snapshot", func() {
@@ -69,13 +69,13 @@ var _ = Describe("etcd snapshots", func() {
 	})
 	When("using etcd snapshot prune", func() {
 		It("saves 3 different snapshots", func() {
-			Expect(testutil.K3sCmd("etcd-snapshot", "save", "-name", "PRUNE_TEST")).
+			Expect(testutil.K3sCmd("etcd-snapshot", "save -name PRUNE_TEST")).
 				To(ContainSubstring("saved"))
 			time.Sleep(1 * time.Second)
-			Expect(testutil.K3sCmd("etcd-snapshot", "save", "-name", "PRUNE_TEST")).
+			Expect(testutil.K3sCmd("etcd-snapshot", "save -name PRUNE_TEST")).
 				To(ContainSubstring("saved"))
 			time.Sleep(1 * time.Second)
-			Expect(testutil.K3sCmd("etcd-snapshot", "save", "-name", "PRUNE_TEST")).
+			Expect(testutil.K3sCmd("etcd-snapshot", "save -name PRUNE_TEST")).
 				To(ContainSubstring("saved"))
 			time.Sleep(1 * time.Second)
 		})
@@ -88,7 +88,7 @@ var _ = Describe("etcd snapshots", func() {
 			Expect(sepLines).To(HaveLen(3))
 		})
 		It("prunes snapshots down to 2", func() {
-			Expect(testutil.K3sCmd("etcd-snapshot", "prune", "--snapshot-retention", "2", "--name", "PRUNE_TEST")).
+			Expect(testutil.K3sCmd("etcd-snapshot", "prune --snapshot-retention 2 --name PRUNE_TEST")).
 				To(ContainSubstring("Removing local snapshot"))
 			lsResult, err := testutil.K3sCmd("etcd-snapshot", "ls")
 			Expect(err).ToNot(HaveOccurred())

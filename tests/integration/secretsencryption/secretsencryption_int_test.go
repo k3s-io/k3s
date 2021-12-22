@@ -35,11 +35,11 @@ var _ = Describe("secrets encryption rotation", func() {
 	When("A server starts with secrets encryption", func() {
 		It("starts up with no problems", func() {
 			Eventually(func() (string, error) {
-				return testutil.K3sCmd("kubectl", "get", "pods", "-A")
+				return testutil.K3sCmd("kubectl get pods -A")
 			}, "180s", "1s").Should(MatchRegexp("kube-system.+coredns.+1\\/1.+Running"))
 		})
 		It("it creates a encryption key", func() {
-			result, err := testutil.K3sCmd("secrets-encrypt", "status", "-d", secretsEncryptionDataDir)
+			result, err := testutil.K3sCmd("secrets-encrypt status -d", secretsEncryptionDataDir)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result).To(ContainSubstring("Encryption Status: Enabled"))
 			Expect(result).To(ContainSubstring("Current Rotation Stage: start"))
@@ -47,10 +47,10 @@ var _ = Describe("secrets encryption rotation", func() {
 	})
 	When("A server rotates encryption keys", func() {
 		It("it prepares to rotate", func() {
-			Expect(testutil.K3sCmd("secrets-encrypt", "prepare", "-d", secretsEncryptionDataDir)).
+			Expect(testutil.K3sCmd("secrets-encrypt prepare -d", secretsEncryptionDataDir)).
 				To(ContainSubstring("prepare completed successfully"))
 
-			result, err := testutil.K3sCmd("secrets-encrypt", "status", "-d", secretsEncryptionDataDir)
+			result, err := testutil.K3sCmd("secrets-encrypt status -d", secretsEncryptionDataDir)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result).To(ContainSubstring("Current Rotation Stage: prepare"))
 			reg, err := regexp.Compile(`AES-CBC.+aescbckey.*`)
@@ -62,19 +62,19 @@ var _ = Describe("secrets encryption rotation", func() {
 		})
 		It("restarts the server", func() {
 			var err error
-			Expect(testutil.K3sKillServer(secretsEncryptionServer, false)).To(Succeed())
+			Expect(testutil.K3sKillServer(secretsEncryptionServer, true)).To(Succeed())
 			secretsEncryptionServer, err = testutil.K3sStartServer(secretsEncryptionServerArgs...)
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(func() (string, error) {
-				return testutil.K3sCmd("kubectl", "get", "pods", "-A")
+				return testutil.K3sCmd("kubectl get pods -A")
 			}, "180s", "1s").Should(MatchRegexp("kube-system.+coredns.+1\\/1.+Running"))
 		})
 		It("rotates the keys", func() {
 			Eventually(func() (string, error) {
-				return testutil.K3sCmd("secrets-encrypt", "rotate", "-d", secretsEncryptionDataDir)
+				return testutil.K3sCmd("secrets-encrypt rotate -d", secretsEncryptionDataDir)
 			}, "10s", "2s").Should(ContainSubstring("rotate completed successfully"))
 
-			result, err := testutil.K3sCmd("secrets-encrypt", "status", "-d", secretsEncryptionDataDir)
+			result, err := testutil.K3sCmd("secrets-encrypt status -d", secretsEncryptionDataDir)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result).To(ContainSubstring("Current Rotation Stage: rotate"))
 			reg, err := regexp.Compile(`AES-CBC.+aescbckey.*`)
@@ -86,21 +86,21 @@ var _ = Describe("secrets encryption rotation", func() {
 		})
 		It("restarts the server", func() {
 			var err error
-			Expect(testutil.K3sKillServer(secretsEncryptionServer, false)).To(Succeed())
+			Expect(testutil.K3sKillServer(secretsEncryptionServer, true)).To(Succeed())
 			secretsEncryptionServer, err = testutil.K3sStartServer(secretsEncryptionServerArgs...)
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(func() (string, error) {
-				return testutil.K3sCmd("kubectl", "get", "pods", "-A")
+				return testutil.K3sCmd("kubectl get pods -A")
 			}, "180s", "1s").Should(MatchRegexp("kube-system.+coredns.+1\\/1.+Running"))
 			time.Sleep(10 * time.Second)
 		})
 		It("reencrypts the keys", func() {
-			Expect(testutil.K3sCmd("secrets-encrypt", "reencrypt", "-d", secretsEncryptionDataDir)).
+			Expect(testutil.K3sCmd("secrets-encrypt reencrypt -d", secretsEncryptionDataDir)).
 				To(ContainSubstring("reencryption started"))
 			Eventually(func() (string, error) {
-				return testutil.K3sCmd("secrets-encrypt", "status", "-d", secretsEncryptionDataDir)
+				return testutil.K3sCmd("secrets-encrypt status -d", secretsEncryptionDataDir)
 			}, "30s", "2s").Should(ContainSubstring("Current Rotation Stage: reencrypt_finished"))
-			result, err := testutil.K3sCmd("secrets-encrypt", "status", "-d", secretsEncryptionDataDir)
+			result, err := testutil.K3sCmd("secrets-encrypt status -d", secretsEncryptionDataDir)
 			Expect(err).NotTo(HaveOccurred())
 			reg, err := regexp.Compile(`AES-CBC.+aescbckey.*`)
 			Expect(err).ToNot(HaveOccurred())
@@ -111,29 +111,29 @@ var _ = Describe("secrets encryption rotation", func() {
 	})
 	When("A server disables encryption", func() {
 		It("it triggers the disable", func() {
-			Expect(testutil.K3sCmd("secrets-encrypt", "disable", "-d", secretsEncryptionDataDir)).
+			Expect(testutil.K3sCmd("secrets-encrypt disable -d", secretsEncryptionDataDir)).
 				To(ContainSubstring("secrets-encryption disabled"))
 
-			result, err := testutil.K3sCmd("secrets-encrypt", "status", "-d", secretsEncryptionDataDir)
+			result, err := testutil.K3sCmd("secrets-encrypt status -d", secretsEncryptionDataDir)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result).To(ContainSubstring("Encryption Status: Disabled"))
 		})
 		It("restarts the server", func() {
 			var err error
-			Expect(testutil.K3sKillServer(secretsEncryptionServer, false)).To(Succeed())
+			Expect(testutil.K3sKillServer(secretsEncryptionServer, true)).To(Succeed())
 			secretsEncryptionServer, err = testutil.K3sStartServer(secretsEncryptionServerArgs...)
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(func() (string, error) {
-				return testutil.K3sCmd("kubectl", "get", "pods", "-A")
+				return testutil.K3sCmd("kubectl get pods -A")
 			}, "180s", "1s").Should(MatchRegexp("kube-system.+coredns.+1\\/1.+Running"))
 			time.Sleep(10 * time.Second)
 		})
 		It("reencrypts the keys", func() {
-			result, err := testutil.K3sCmd("secrets-encrypt", "reencrypt", "-f", "--skip", "-d", secretsEncryptionDataDir)
+			result, err := testutil.K3sCmd("secrets-encrypt reencrypt -f --skip -d", secretsEncryptionDataDir)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result).To(ContainSubstring("reencryption started"))
 
-			result, err = testutil.K3sCmd("secrets-encrypt", "status", "-d", secretsEncryptionDataDir)
+			result, err = testutil.K3sCmd("secrets-encrypt status -d", secretsEncryptionDataDir)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result).To(ContainSubstring("Encryption Status: Disabled"))
 		})

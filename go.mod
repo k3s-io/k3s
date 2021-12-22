@@ -89,7 +89,7 @@ require (
 	github.com/minio/minio-go/v7 v7.0.7
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/onsi/ginkgo v1.16.4
-	github.com/onsi/gomega v1.14.0
+	github.com/onsi/gomega v1.17.0
 	github.com/opencontainers/runc v1.0.3
 	github.com/opencontainers/selinux v1.8.3
 	github.com/otiai10/copy v1.6.0

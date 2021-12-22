@@ -82,32 +82,36 @@ func IsExistingServer() bool {
 	return existingServer == "True"
 }
 
-// RunCommand launches the provided K3s command via exec. Command blocks until finished.
+// K3sCmd launches the provided K3s command via exec. Command blocks until finished.
 // Command output from both Stderr and Stdout is provided via string.
-//   cmdEx1, err := RunCommand("etcd-snapshot", "ls")
-//   cmdEx2, err := RunCommand("kubectl", "get", "pods", "-A")
-func RunCommand(cmdName string, cmdArgs ...string) (string, error) {
+//   cmdEx1, err := K3sCmd("etcd-snapshot", "ls")
+//   cmdEx2, err := K3sCmd("kubectl get pods -A")
+//   cmdEx2, err := K3sCmd("kubectl", "get", "pods", "-A")
+func K3sCmd(inputArgs ...string) (string, error) {
 	if !IsRoot() {
 		return "", fmt.Errorf("integration tests must be run as sudo/root")
 	}
 	k3sBin := findK3sExecutable()
-	// Only run sudo if not root
-	k3sCmd := append([]string{cmdName}, cmdArgs...)
+	var k3sCmd []string
+	for _, arg := range inputArgs {
+		k3sCmd = append(k3sCmd, strings.Fields(arg)...)
+	}
 	cmd := exec.Command(k3sBin, k3sCmd...)
 	byteOut, err := cmd.CombinedOutput()
 	return string(byteOut), err
 }
 
-func ParsePods(kubeconfig string, debug bool) ([]Pod, error) {
+func ParsePods() ([]Pod, error) {
 	pods := make([]Pod, 0, 10)
-	podList := ""
 
-	cmd := "kubectl get pods -o wide --no-headers -A --kubeconfig=" + kubeconfig
-	res, _ := RunCommand(cmd)
-	res = strings.TrimSpace(res)
-	podList = res
-
-	split := strings.Split(res, "\n")
+	res, err := K3sCmd("kubectl", "get pods -o wide --no-headers -A")
+	if err != nil {
+		return nil, err
+	}
+	if strings.Contains(res, "No resources found") {
+		return nil, fmt.Errorf("no resources")
+	}
+	split := strings.Split(strings.TrimSpace(res), "\n")
 	for _, rec := range split {
 		fields := strings.Fields(string(rec))
 		pod := Pod{
@@ -120,9 +124,6 @@ func ParsePods(kubeconfig string, debug bool) ([]Pod, error) {
 			Node:      fields[7],
 		}
 		pods = append(pods, pod)
-	}
-	if debug {
-		fmt.Println(podList)
 	}
 	return pods, nil
 }
@@ -149,7 +150,7 @@ func ServerArgsPresent(neededArgs []string) bool {
 
 // K3sServerArgs returns the list of arguments that the k3s server launched with
 func K3sServerArgs() []string {
-	results, err := RunCommand("kubectl", "get", "nodes", "-o", `jsonpath='{.items[0].metadata.annotations.k3s\.io/node-args}'`)
+	results, err := K3sCmd("kubectl", "get", "nodes", "-o", `jsonpath='{.items[0].metadata.annotations.k3s\.io/node-args}'`)
 	if err != nil {
 		return nil
 	}
