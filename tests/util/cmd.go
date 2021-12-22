@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"os/user"
 	"strings"
+	"syscall"
 
 	"github.com/rancher/k3s/pkg/flock"
 	"github.com/sirupsen/logrus"
@@ -146,23 +147,32 @@ func K3sStartServer(inputArgs ...string) (*K3sServer, error) {
 
 	k3sCmd := append([]string{"server"}, cmdArgs...)
 	cmd := exec.Command(k3sBin, k3sCmd...)
+	// Give the server a new group id so we can kill it and its children later
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	cmdOut, _ := cmd.StderrPipe()
 	cmd.Stderr = os.Stderr
 	err = cmd.Start()
 	return &K3sServer{cmd, bufio.NewScanner(cmdOut), k3sLock}, err
 }
 
-// K3sKillServer terminates the running K3s server and unlocks the file for
-// other tests
-func K3sKillServer(server *K3sServer) error {
-	if err := server.cmd.Process.Kill(); err != nil {
+// K3sKillServer terminates the running K3s server and its children
+// and unlocks the file for other tests
+func K3sKillServer(server *K3sServer, releaseLock bool) error {
+	pgid, err := syscall.Getpgid(server.cmd.Process.Pid)
+	if err != nil {
 		return err
 	}
-	return flock.Release(server.lock)
+	if err := syscall.Kill(-pgid, syscall.SIGKILL); err != nil {
+		return err
+	}
+	if releaseLock {
+		return flock.Release(server.lock)
+	}
+	return nil
 }
 
 // K3sCleanup attempts to cleanup networking and files leftover from an integration test
-func K3sCleanup() error {
+func K3sCleanup(server *K3sServer, releaseLock bool) error {
 	if cni0Link, err := netlink.LinkByName("cni0"); err == nil {
 		links, _ := netlink.LinkList()
 		for _, link := range links {
@@ -182,5 +192,8 @@ func K3sCleanup() error {
 	if err := os.RemoveAll("/var/lib/rancher/k3s"); err != nil {
 		return err
 	}
-	return os.RemoveAll("/run/k3s")
+	if releaseLock {
+		return flock.Release(server.lock)
+	}
+	return nil
 }

@@ -52,7 +52,8 @@ var _ = Describe("dual stack", func() {
 
 var _ = AfterSuite(func() {
 	if !testutil.IsExistingServer() && os.Getenv("CI") != "true" {
-		Expect(testutil.K3sKillServer(dualStackServer)).To(Succeed())
+		Expect(testutil.K3sKillServer(dualStackServer, false)).To(Succeed())
+		Expect(testutil.K3sCleanup(dualStackServer, true)).To(Succeed())
 	}
 })
 
