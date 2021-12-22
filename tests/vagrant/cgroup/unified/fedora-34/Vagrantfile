@@ -58,7 +58,7 @@ EOF
         chown -R vagrant:vagrant /home/vagrant/.config
       SHELL
     end
-    test.vm.provision 'k3s-install', type: 'k3s', run: 'once' do |k3s|
+    test.vm.provision 'k3s-install', type: 'k3s', run: ENV['CI'] == 'true' ? 'never' : 'once' do |k3s|
       k3s.args = %w[server]
       k3s.env = %w[INSTALL_K3S_NAME=server INSTALL_K3S_SKIP_DOWNLOAD=true K3S_TOKEN=vagrant INSTALL_K3S_SKIP_ENABLE=true]
       k3s.config = {
