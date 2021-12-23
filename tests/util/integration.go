@@ -26,24 +26,6 @@ type K3sServer struct {
 	lock    int
 }
 
-type Node struct {
-	Name       string
-	Status     string
-	Roles      string
-	InternalIP string
-	ExternalIP string
-}
-
-type Pod struct {
-	NameSpace string
-	Name      string
-	Ready     string
-	Status    string
-	Restarts  string
-	NodeIP    string
-	Node      string
-}
-
 func findK3sExecutable() string {
 	// if running on an existing cluster, it maybe installed via k3s.service
 	// or run manually from dist/artifacts/k3s
@@ -83,7 +65,8 @@ func IsExistingServer() bool {
 }
 
 // K3sCmd launches the provided K3s command via exec. Command blocks until finished.
-// Command output from both Stderr and Stdout is provided via string.
+// Command output from both Stderr and Stdout is provided via string. Input can
+// be a single string with space seperated args, or multiple string args
 //   cmdEx1, err := K3sCmd("etcd-snapshot", "ls")
 //   cmdEx2, err := K3sCmd("kubectl get pods -A")
 //   cmdEx2, err := K3sCmd("kubectl", "get", "pods", "-A")
@@ -99,33 +82,6 @@ func K3sCmd(inputArgs ...string) (string, error) {
 	cmd := exec.Command(k3sBin, k3sCmd...)
 	byteOut, err := cmd.CombinedOutput()
 	return string(byteOut), err
-}
-
-func ParsePods() ([]Pod, error) {
-	pods := make([]Pod, 0, 10)
-
-	res, err := K3sCmd("kubectl", "get pods -o wide --no-headers -A")
-	if err != nil {
-		return nil, err
-	}
-	if strings.Contains(res, "No resources found") {
-		return nil, fmt.Errorf("no resources")
-	}
-	split := strings.Split(strings.TrimSpace(res), "\n")
-	for _, rec := range split {
-		fields := strings.Fields(string(rec))
-		pod := Pod{
-			NameSpace: fields[0],
-			Name:      fields[1],
-			Ready:     fields[2],
-			Status:    fields[3],
-			Restarts:  fields[4],
-			NodeIP:    fields[6],
-			Node:      fields[7],
-		}
-		pods = append(pods, pod)
-	}
-	return pods, nil
 }
 
 func contains(source []string, target string) bool {

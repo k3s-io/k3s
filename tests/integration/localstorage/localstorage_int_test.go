@@ -31,17 +31,9 @@ var _ = Describe("local storage", func() {
 	})
 	When("a new local storage is created", func() {
 		It("starts up with no problems", func() {
-			Eventually(func(g Gomega) {
-				pods, err := testutil.ParsePods()
-				g.Expect(err).NotTo(HaveOccurred())
-				for _, pod := range pods {
-					if strings.Contains(pod.Name, "helm-install") {
-						g.Expect(pod.Status).Should(Equal("Completed"), func() string { return pod.Name })
-					} else {
-						g.Expect(pod.Status).Should(Equal("Running"), func() string { return pod.Name })
-					}
-				}
-			}, "90s", "5s").Should(Succeed())
+			Eventually(func() (string, error) {
+				return testutil.K3sCmd("kubectl get pods -A")
+			}, "120", "1s").Should(MatchRegexp("kube-system.+coredns.+1\\/1.+Running"))
 		})
 		It("creates a new pvc", func() {
 			result, err := testutil.K3sCmd("kubectl create -f ./testdata/localstorage_pvc.yaml")
