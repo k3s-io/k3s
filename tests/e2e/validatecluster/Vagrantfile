@@ -3,7 +3,7 @@ NODE_ROLES = (ENV['NODE_ROLES'] ||
   ["server-0", "server-1", "server-2", "agent-0", "agent-1"])
 NODE_BOXES = (ENV['NODE_BOXES'] ||
   ['generic/ubuntu2004', 'generic/ubuntu2004', 'generic/ubuntu2004', 'generic/ubuntu2004', 'generic/ubuntu2004'])
-GITHUB_BRANCH = (ENV['GITHUB_BRANCH'] || "master")
+GITHUB_BRANCH = (ENV['GITHUB_BRANCH'] || "release-1.22")
 NODE_CPUS = (ENV['NODE_CPUS'] || 2).to_i
 NODE_MEMORY = (ENV['NODE_MEMORY'] || 1024).to_i
 # Virtualbox >= 6.1.28 require `/etc/vbox/network.conf` for expanded private networks 
