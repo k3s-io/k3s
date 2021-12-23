@@ -65,7 +65,7 @@ func Test_UnitMustParse(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			defaultParser.DefaultConfig = tt.config
+			DefaultParser.DefaultConfig = tt.config
 			if got := MustParse(tt.args); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("MustParse() = %+v\nWant = %+v", got, tt.want)
 			}
