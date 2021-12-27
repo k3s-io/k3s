@@ -16,26 +16,25 @@ PKG_K8S_CLIENT="k8s.io/client-go/pkg"
 
 buildDate=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
 
-VENDOR_PREFIX="${PKG}/vendor/"
 VERSIONFLAGS="
     -X ${PKG}/pkg/version.Version=${VERSION}
     -X ${PKG}/pkg/version.GitCommit=${COMMIT:0:8}
 
-    -X ${VENDOR_PREFIX}${PKG_K8S_CLIENT}/version.gitVersion=${VERSION}
-    -X ${VENDOR_PREFIX}${PKG_K8S_CLIENT}/version.gitCommit=${COMMIT}
-    -X ${VENDOR_PREFIX}${PKG_K8S_CLIENT}/version.gitTreeState=${TREE_STATE}
-    -X ${VENDOR_PREFIX}${PKG_K8S_CLIENT}/version.buildDate=${buildDate}
+    -X ${PKG_K8S_CLIENT}/version.gitVersion=${VERSION}
+    -X ${PKG_K8S_CLIENT}/version.gitCommit=${COMMIT}
+    -X ${PKG_K8S_CLIENT}/version.gitTreeState=${TREE_STATE}
+    -X ${PKG_K8S_CLIENT}/version.buildDate=${buildDate}
 
-    -X ${VENDOR_PREFIX}${PKG_K8S_BASE}/version.gitVersion=${VERSION}
-    -X ${VENDOR_PREFIX}${PKG_K8S_BASE}/version.gitCommit=${COMMIT}
-    -X ${VENDOR_PREFIX}${PKG_K8S_BASE}/version.gitTreeState=${TREE_STATE}
-    -X ${VENDOR_PREFIX}${PKG_K8S_BASE}/version.buildDate=${buildDate}
+    -X ${PKG_K8S_BASE}/version.gitVersion=${VERSION}
+    -X ${PKG_K8S_BASE}/version.gitCommit=${COMMIT}
+    -X ${PKG_K8S_BASE}/version.gitTreeState=${TREE_STATE}
+    -X ${PKG_K8S_BASE}/version.buildDate=${buildDate}
 
-    -X ${VENDOR_PREFIX}${PKG_CRICTL}/version.Version=${VERSION_CRICTL}
+    -X ${PKG_CRICTL}/version.Version=${VERSION_CRICTL}
 
-    -X ${VENDOR_PREFIX}${PKG_CONTAINERD}/version.Version=${VERSION_CONTAINERD}
-    -X ${VENDOR_PREFIX}${PKG_CONTAINERD}/version.Package=${PKG_K3S_CONTAINERD}
-    -X ${VENDOR_PREFIX}${PKG_CRICTL}/pkg/version.Version=${VERSION_CRICTL}
+    -X ${PKG_CONTAINERD}/version.Version=${VERSION_CONTAINERD}
+    -X ${PKG_CONTAINERD}/version.Package=${PKG_K3S_CONTAINERD}
+    -X ${PKG_CRICTL}/pkg/version.Version=${VERSION_CRICTL}
 "
 LDFLAGS="
     -w -s"
@@ -96,7 +95,7 @@ if [ ! -x ${INSTALLBIN}/cni ]; then
     WORKDIR=$TMPDIR/src/github.com/containernetworking/plugins
     git clone -b $VERSION_CNIPLUGINS https://github.com/rancher/plugins.git $WORKDIR
     cd $WORKDIR
-    GOPATH=$TMPDIR CGO_ENABLED=0 "${GO}" build -tags "$TAGS" -ldflags "$LDFLAGS $STATIC" -o $INSTALLBIN/cni
+    GO111MODULE=off GOPATH=$TMPDIR CGO_ENABLED=0 "${GO}" build -tags "$TAGS" -ldflags "$LDFLAGS $STATIC" -o $INSTALLBIN/cni
 )
 fi
 
@@ -113,10 +112,10 @@ ln -s containerd ./bin/ctr
 
 echo Building runc
 rm -f ./build/src/github.com/opencontainers/runc/runc
-make GOPATH=$(pwd)/build EXTRA_LDFLAGS="-w -s" BUILDTAGS="$RUNC_TAGS" -C ./build/src/github.com/opencontainers/runc $RUNC_STATIC
+GO111MODULE=off make GOPATH=$(pwd)/build EXTRA_LDFLAGS="-w -s" BUILDTAGS="$RUNC_TAGS" -C ./build/src/github.com/opencontainers/runc $RUNC_STATIC
 cp -f ./build/src/github.com/opencontainers/runc/runc ./bin/runc
 
 echo Building containerd-shim-runc-v2
 rm -f ./vendor/github.com/containerd/containerd/bin/containerd-shim-runc-v2
-make -C ./vendor/github.com/containerd/containerd bin/containerd-shim-runc-v2
+GO111MODULE=off make -C ./vendor/github.com/containerd/containerd bin/containerd-shim-runc-v2
 cp -f ./vendor/github.com/containerd/containerd/bin/containerd-shim-runc-v2 ./bin/containerd-shim-runc-v2
