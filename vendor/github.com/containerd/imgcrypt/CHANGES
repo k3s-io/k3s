@@ -1,9 +1,0 @@
-CHANGES
-
-v1.1.1:
-  - rebased on ocicrypt 1.1.1
-
-v1.1.0:
-  - rebased on ocicrypt 1.1.0
-  - added pkcs11 support; experimental
-  - added keyprovider support
