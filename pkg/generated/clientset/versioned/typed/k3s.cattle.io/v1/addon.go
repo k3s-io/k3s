@@ -22,8 +22,8 @@ import (
 	"context"
 	"time"
 
-	v1 "github.com/rancher/k3s/pkg/apis/k3s.cattle.io/v1"
-	scheme "github.com/rancher/k3s/pkg/generated/clientset/versioned/scheme"
+	v1 "github.com/k3s-io/k3s/pkg/apis/k3s.cattle.io/v1"
+	scheme "github.com/k3s-io/k3s/pkg/generated/clientset/versioned/scheme"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"

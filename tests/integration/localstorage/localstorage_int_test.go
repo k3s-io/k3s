@@ -7,10 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	. "github.com/onsi/ginkgo"
+	testutil "github.com/k3s-io/k3s/tests/util"
 	"github.com/onsi/ginkgo/reporters"
-	. "github.com/onsi/gomega"
-	testutil "github.com/rancher/k3s/tests/util"
 )
 
 var localStorageServer *testutil.K3sServer

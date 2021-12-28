@@ -3,10 +3,10 @@ package flock_test
 import (
 	"testing"
 
+	"github.com/k3s-io/k3s/pkg/flock"
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/reporters"
 	. "github.com/onsi/gomega"
-	"github.com/rancher/k3s/pkg/flock"
 )
 
 const lockfile = "/tmp/testlock.test"

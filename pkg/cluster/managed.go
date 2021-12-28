@@ -12,11 +12,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/k3s-io/k3s/pkg/cluster/managed"
+	"github.com/k3s-io/k3s/pkg/etcd"
+	"github.com/k3s-io/k3s/pkg/nodepassword"
+	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/k3s-io/kine/pkg/endpoint"
-	"github.com/rancher/k3s/pkg/cluster/managed"
-	"github.com/rancher/k3s/pkg/etcd"
-	"github.com/rancher/k3s/pkg/nodepassword"
-	"github.com/rancher/k3s/pkg/version"
 	"github.com/sirupsen/logrus"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 )

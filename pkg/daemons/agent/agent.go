@@ -6,10 +6,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/rancher/k3s/pkg/agent/config"
-	"github.com/rancher/k3s/pkg/agent/proxy"
-	daemonconfig "github.com/rancher/k3s/pkg/daemons/config"
-	"github.com/rancher/k3s/pkg/daemons/executor"
+	"github.com/k3s-io/k3s/pkg/agent/config"
+	"github.com/k3s-io/k3s/pkg/agent/proxy"
+	daemonconfig "github.com/k3s-io/k3s/pkg/daemons/config"
+	"github.com/k3s-io/k3s/pkg/daemons/executor"
 	"github.com/sirupsen/logrus"
 	"k8s.io/component-base/logs"
 	_ "k8s.io/component-base/metrics/prometheus/restclient" // for client metric registration

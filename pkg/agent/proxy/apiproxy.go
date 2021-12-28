@@ -8,8 +8,8 @@ import (
 
 	"github.com/sirupsen/logrus"
 
+	"github.com/k3s-io/k3s/pkg/agent/loadbalancer"
 	"github.com/pkg/errors"
-	"github.com/rancher/k3s/pkg/agent/loadbalancer"
 )
 
 type Proxy interface {

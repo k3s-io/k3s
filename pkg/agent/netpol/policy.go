@@ -1,6 +1,7 @@
 // Apache License v2.0 (copyright Cloud Native Labs & Rancher Labs)
 // - modified from https://github.com/cloudnativelabs/kube-router/blob/73b1b03b32c5755b240f6c077bb097abe3888314/pkg/controllers/netpol/policy.go
 
+//go:build !windows
 // +build !windows
 
 package netpol
@@ -14,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rancher/k3s/pkg/agent/netpol/utils"
+	"github.com/k3s-io/k3s/pkg/agent/netpol/utils"
 	api "k8s.io/api/core/v1"
 	networking "k8s.io/api/networking/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"

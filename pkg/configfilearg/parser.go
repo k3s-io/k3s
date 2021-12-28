@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/rancher/k3s/pkg/agent/util"
+	"github.com/k3s-io/k3s/pkg/agent/util"
 	"github.com/rancher/wrangler/pkg/data/convert"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"

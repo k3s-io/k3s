@@ -9,12 +9,12 @@ import (
 	"time"
 
 	"github.com/erikdubbelboer/gspt"
-	"github.com/rancher/k3s/pkg/cli/cmds"
-	"github.com/rancher/k3s/pkg/cluster"
-	"github.com/rancher/k3s/pkg/daemons/config"
-	"github.com/rancher/k3s/pkg/etcd"
-	"github.com/rancher/k3s/pkg/server"
-	util2 "github.com/rancher/k3s/pkg/util"
+	"github.com/k3s-io/k3s/pkg/cli/cmds"
+	"github.com/k3s-io/k3s/pkg/cluster"
+	"github.com/k3s-io/k3s/pkg/daemons/config"
+	"github.com/k3s-io/k3s/pkg/etcd"
+	"github.com/k3s-io/k3s/pkg/server"
+	util2 "github.com/k3s-io/k3s/pkg/util"
 	"github.com/rancher/wrangler/pkg/signals"
 	"github.com/urfave/cli"
 )

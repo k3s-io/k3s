@@ -1,4 +1,4 @@
-module github.com/rancher/k3s/tests/e2e
+module github.com/k3s-io/k3s/tests/e2e
 
 go 1.15
 

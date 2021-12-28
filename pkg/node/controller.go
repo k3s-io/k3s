@@ -4,8 +4,8 @@ import (
 	"context"
 	"strings"
 
+	"github.com/k3s-io/k3s/pkg/nodepassword"
 	"github.com/pkg/errors"
-	"github.com/rancher/k3s/pkg/nodepassword"
 	coreclient "github.com/rancher/wrangler/pkg/generated/controllers/core/v1"
 	"github.com/sirupsen/logrus"
 	core "k8s.io/api/core/v1"

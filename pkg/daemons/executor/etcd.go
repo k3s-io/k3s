@@ -9,7 +9,7 @@ import (
 	"io/ioutil"
 	"path/filepath"
 
-	"github.com/rancher/k3s/pkg/version"
+	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/sirupsen/logrus"
 	"go.etcd.io/etcd/server/v3/embed"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"

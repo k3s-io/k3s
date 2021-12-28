@@ -11,10 +11,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/k3s-io/k3s/pkg/bootstrap"
+	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/rancher/dynamiclistener/cert"
 	"github.com/rancher/dynamiclistener/factory"
-	"github.com/rancher/k3s/pkg/bootstrap"
-	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/stretchr/testify/assert"
 )
 

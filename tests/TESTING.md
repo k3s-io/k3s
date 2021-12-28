@@ -79,7 +79,7 @@ go test ./pkg/... ./tests/integration/... -run Integration
 
 Integration tests can be run on an existing single-node cluster via compile time flag, tests will skip if the server is not configured correctly.
 ```bash
-go test -ldflags "-X 'github.com/rancher/k3s/tests/util.existingServer=True'" ./pkg/... ./tests/integration/... -run Integration
+go test -ldflags "-X 'github.com/k3s-io/k3s/tests/util.existingServer=True'" ./pkg/... ./tests/integration/... -run Integration
 ```
 
 Integration tests can also be run via a [Sonobuoy](https://sonobuoy.io/docs/v0.53.2/) plugin on an existing single-node cluster.

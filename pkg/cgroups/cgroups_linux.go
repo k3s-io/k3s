@@ -1,3 +1,4 @@
+//go:build linux
 // +build linux
 
 package cgroups
@@ -13,7 +14,7 @@ import (
 
 	"github.com/containerd/cgroups"
 	cgroupsv2 "github.com/containerd/cgroups/v2"
-	"github.com/rancher/k3s/pkg/version"
+	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/sirupsen/logrus"
 )
 

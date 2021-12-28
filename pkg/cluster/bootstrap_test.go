@@ -8,11 +8,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/k3s-io/k3s/pkg/bootstrap"
+	"github.com/k3s-io/k3s/pkg/clientaccess"
+	"github.com/k3s-io/k3s/pkg/cluster/managed"
+	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/kine/pkg/endpoint"
-	"github.com/rancher/k3s/pkg/bootstrap"
-	"github.com/rancher/k3s/pkg/clientaccess"
-	"github.com/rancher/k3s/pkg/cluster/managed"
-	"github.com/rancher/k3s/pkg/daemons/config"
 )
 
 func Test_isDirEmpty(t *testing.T) {

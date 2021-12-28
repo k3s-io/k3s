@@ -93,7 +93,7 @@ if [ "$INSTALL_K3S_DEBUG" = "true" ]; then
     set -x
 fi
 
-GITHUB_URL=https://github.com/rancher/k3s/releases
+GITHUB_URL=https://github.com/k3s-io/k3s/releases
 STORAGE_URL=https://storage.googleapis.com/k3s-ci-builds
 DOWNLOADER=
 

@@ -19,9 +19,9 @@ limitations under the License.
 package fake
 
 import (
-	clientset "github.com/rancher/k3s/pkg/generated/clientset/versioned"
-	k3sv1 "github.com/rancher/k3s/pkg/generated/clientset/versioned/typed/k3s.cattle.io/v1"
-	fakek3sv1 "github.com/rancher/k3s/pkg/generated/clientset/versioned/typed/k3s.cattle.io/v1/fake"
+	clientset "github.com/k3s-io/k3s/pkg/generated/clientset/versioned"
+	k3sv1 "github.com/k3s-io/k3s/pkg/generated/clientset/versioned/typed/k3s.cattle.io/v1"
+	fakek3sv1 "github.com/k3s-io/k3s/pkg/generated/clientset/versioned/typed/k3s.cattle.io/v1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"

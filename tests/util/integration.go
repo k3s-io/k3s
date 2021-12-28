@@ -10,7 +10,7 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/rancher/k3s/pkg/flock"
+	"github.com/k3s-io/k3s/pkg/flock"
 	"github.com/sirupsen/logrus"
 	"github.com/vishvananda/netlink"
 )

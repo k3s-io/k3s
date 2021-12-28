@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/rancher/k3s/pkg/version"
+	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/sirupsen/logrus"
 	"inet.af/tcpproxy"
 )

@@ -3,7 +3,7 @@ package netpol
 import (
 	"context"
 
-	daemonconfig "github.com/rancher/k3s/pkg/daemons/config"
+	daemonconfig "github.com/k3s-io/k3s/pkg/daemons/config"
 )
 
 func Run(ctx context.Context, nodeConfig *daemonconfig.Node) error {

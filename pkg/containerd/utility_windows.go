@@ -1,10 +1,11 @@
+//go:build windows
 // +build windows
 
 package containerd
 
 import (
+	util2 "github.com/k3s-io/k3s/pkg/util"
 	"github.com/pkg/errors"
-	util2 "github.com/rancher/k3s/pkg/util"
 )
 
 func OverlaySupported(root string) error {

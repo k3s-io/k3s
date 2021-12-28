@@ -1,6 +1,7 @@
 // Apache License v2.0 (copyright Cloud Native Labs & Rancher Labs)
 // - modified from https://github.com/cloudnativelabs/kube-router/blob/73b1b03b32c5755b240f6c077bb097abe3888314/pkg/controllers/network_policy_controller_test.go
 
+//go:build !windows
 // +build !windows
 
 package netpol
@@ -15,7 +16,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rancher/k3s/pkg/daemons/config"
+	"github.com/k3s-io/k3s/pkg/daemons/config"
 	netv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/intstr"
