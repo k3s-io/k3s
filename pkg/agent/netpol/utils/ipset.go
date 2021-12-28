@@ -1,6 +1,7 @@
 // Apache License v2.0 (copyright Cloud Native Labs & Rancher Labs)
 // - modified from https://github.com/cloudnativelabs/kube-router/blob/73b1b03b32c5755b240f6c077bb097abe3888314/pkg/utils/ipset.go
 
+//go:build !windows
 // +build !windows
 
 package utils

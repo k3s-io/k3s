@@ -9,6 +9,7 @@ import (
 	"github.com/k3s-io/k3s/tests/e2e"
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/reporters"
+	. "github.com/onsi/gomega"
 )
 
 func Test_E2EClusterValidation(t *testing.T) {

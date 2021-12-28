@@ -6,7 +6,9 @@ import (
 	"testing"
 
 	testutil "github.com/k3s-io/k3s/tests/util"
+	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/reporters"
+	. "github.com/onsi/gomega"
 )
 
 var customEtcdArgsServer *testutil.K3sServer

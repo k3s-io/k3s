@@ -1,3 +1,4 @@
+//go:build !linux && !darwin && !freebsd && !openbsd && !netbsd && !dragonfly
 // +build !linux,!darwin,!freebsd,!openbsd,!netbsd,!dragonfly
 
 /*
@@ -23,7 +24,18 @@ func Acquire(path string) (int, error) {
 	return -1, nil
 }
 
+// AcquireShared creates a shared lock on a file for the duration of the process, or until Release(d).
+// This method is reentrant.
+func AcquireShared(path string) (int, error) {
+	return 0, nil
+}
+
 // Release is not implemented on non-unix systems.
 func Release(lock int) error {
 	return nil
+}
+
+// CheckLock checks whether any process is using the lock
+func CheckLock(path string) bool {
+	return false
 }
