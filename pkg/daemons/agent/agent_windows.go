@@ -16,9 +16,7 @@ import (
 	"k8s.io/kubernetes/pkg/kubeapiserver/authorizer/modes"
 )
 
-var (
-	NetworkName string = "vxlan0"
-)
+var NetworkName = "vxlan0"
 
 func checkRuntimeEndpoint(cfg *config.Agent, argsMap map[string]string) {
 	if strings.HasPrefix(cfg.RuntimeSocket, windowsPrefix) {
@@ -39,7 +37,7 @@ func kubeProxyArgs(cfg *config.Agent) map[string]string {
 		argsMap["hostname-override"] = cfg.NodeName
 	}
 
-	if sourceVip := waitForManagementIp(NetworkName); sourceVip != "" {
+	if sourceVip := waitForManagementIP(NetworkName); sourceVip != "" {
 		argsMap["source-vip"] = sourceVip
 	}
 
@@ -131,7 +129,7 @@ func kubeletArgs(cfg *config.Agent) map[string]string {
 	return argsMap
 }
 
-func waitForManagementIp(networkName string) string {
+func waitForManagementIP(networkName string) string {
 	for range time.Tick(time.Second * 5) {
 		network, err := hcsshim.GetHNSNetworkByName(networkName)
 		if err != nil {
