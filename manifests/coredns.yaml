@@ -57,6 +57,7 @@ data:
         errors
         health
         ready
+        import /etc/coredns/custom/*.override.start
         kubernetes %{CLUSTER_DOMAIN}% in-addr.arpa ip6.arpa {
           pods insecure
           fallthrough in-addr.arpa ip6.arpa
@@ -66,12 +67,14 @@ data:
           reload 15s
           fallthrough
         }
+        import /etc/coredns/custom/*.override.fallthrough
         prometheus :9153
         forward . /etc/resolv.conf
         cache 30
         loop
         reload
         loadbalance
+        import /etc/coredns/custom/*.override.end
     }
     import /etc/coredns/custom/*.server
 ---
