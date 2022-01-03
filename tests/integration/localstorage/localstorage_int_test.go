@@ -33,7 +33,7 @@ var _ = Describe("local storage", func() {
 		It("starts up with no problems", func() {
 			Eventually(func() (string, error) {
 				return testutil.K3sCmd("kubectl get pods -A")
-			}, "120", "1s").Should(MatchRegexp("kube-system.+coredns.+1\\/1.+Running"))
+			}, "90s", "1s").Should(MatchRegexp("kube-system.+coredns.+1\\/1.+Running"))
 		})
 		It("creates a new pvc", func() {
 			result, err := testutil.K3sCmd("kubectl create -f ./testdata/localstorage_pvc.yaml")
