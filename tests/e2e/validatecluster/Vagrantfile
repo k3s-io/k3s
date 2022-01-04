@@ -18,16 +18,7 @@ def provision(vm, roles, role_num, node_num)
   osConfigure(vm)
   
   # Grabs the last 5 commit SHA's from the given branch, then purges any commits that do not have a passing CI build
-  $check_commit = <<-'SCRIPT'
-  curl -s -H 'Accept: application/vnd.github.v3+json' 'https://api.github.com/repos/k3s-io/k3s/commits?per_page=5&sha=#{GITHUB_BRANCH}' | jq -r '.[] | .sha'  &> /tmp/k3s_commits
-  curl -s --fail https://storage.googleapis.com/k3s-ci-builds/k3s-$(head -n 1 /tmp/k3s_commits).sha256sum
-  while [ $? -ne 0 ]; do
-    sed -i 1d /tmp/k3s_commits
-    curl -s --fail https://storage.googleapis.com/k3s-ci-builds/k3s-$(head -n 1 /tmp/k3s_commits).sha256sum
-  done
-  SCRIPT
-  vm.provision "shell",
-    inline: $check_commit
+  vm.provision "shell", path: "../scripts/latest_commit.sh", args: ["#{GITHUB_BRANCH}", "/tmp/k3s_commits"]
     
   vm.provision "shell", inline: "ping -c 2 k3s.io"
   
@@ -69,7 +60,8 @@ def osConfigure(vm)
     vm.provision "shell", inline: "zypper install -y jq"
   end
   if vm.box.include?("microos")
-    vm.provision "shell", inline: "transactional-update pkg install -y jq", reboot: true
+    vm.provision "shell", inline: "transactional-update pkg install -y jq"
+    vm.provision 'reload', run: 'once'
   end
 
 end

@@ -3,11 +3,12 @@ NODE_ROLES = (ENV['NODE_ROLES'] ||
   ["server-0", "server-1", "server-2", "agent-0", "agent-1"])
 NODE_BOXES = (ENV['NODE_BOXES'] ||
   ['generic/ubuntu2004', 'generic/ubuntu2004', 'generic/ubuntu2004', 'generic/ubuntu2004', 'generic/ubuntu2004'])
-GITHUB_CHANNEL = (ENV['GITHUB_CHANNEL'] || "latest")
+RELEASE_CHANNEL = (ENV['RELEASE_CHANNEL'] || "latest")
 NODE_CPUS = (ENV['NODE_CPUS'] || 2).to_i
 NODE_MEMORY = (ENV['NODE_MEMORY'] || 1024).to_i
 # Virtualbox >= 6.1.28 require `/etc/vbox/network.conf` for expanded private networks 
 NETWORK_PREFIX = "10.10.10"
+install_type = ""
 
 def provision(vm, roles, role_num, node_num)
   vm.box = NODE_BOXES[node_num]
@@ -17,23 +18,35 @@ def provision(vm, roles, role_num, node_num)
 
   osConfigure(vm)
   
-  vm.provision "shell",
-    inline: "curl -w '%{url_effective}' -L -s -S https://update.k3s.io/v1-release/channels/#{GITHUB_CHANNEL} -o /dev/null | sed -e 's|.*/||'  &> /tmp/k3s_version"
-    
-  vm.provision "shell", inline: "ping -c 2 k3s.io"
+  vm.provision "latest version", type: "shell",
+    inline: "curl -w '%{url_effective}' -L -s -S https://update.k3s.io/v1-release/channels/#{RELEASE_CHANNEL} -o /dev/null | sed -e 's|.*/||'  &> /tmp/k3s_version"
   
+  # If the release channel is "commit" install k3s with the latest commit from master
+  if RELEASE_CHANNEL == "commit"
+    vm.provision "shell", path: "../scripts/latest_commit.sh", args: ["master", "/tmp/k3s_commits"]
+    install_type = "INSTALL_K3S_COMMIT=$(head\ -n\ 1\ /tmp/k3s_commits)"
+    vm.provision "shell", inline: "cat /tmp/k3s_commits"
+  else
+    install_type = "INSTALL_K3S_VERSION=$(cat\ /tmp/k3s_version)"
+    vm.provision "shell", inline: "cat /tmp/k3s_version"
+  end
+
+  
+
+  vm.provision "shell", inline: "ping -c 2 k3s.io"
+
   if roles.include?("server") && role_num == 0
     vm.provision 'k3s-install', type: 'k3s', run: 'once' do |k3s|
       k3s.installer_url = 'https://get.k3s.io'
       k3s.args = %W[server --cluster-init --node-external-ip=#{NETWORK_PREFIX}.100 --flannel-iface=eth1]
-      k3s.env = %W[K3S_KUBECONFIG_MODE=0644 K3S_TOKEN=vagrant INSTALL_K3S_VERSION=$(cat\ /tmp/k3s_version)]
+      k3s.env = %W[K3S_KUBECONFIG_MODE=0644 K3S_TOKEN=vagrant #{install_type}]
       k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
     end
   elsif roles.include?("server") && role_num != 0
     vm.provision 'k3s-install', type: 'k3s', run: 'once' do |k3s|
       k3s.installer_url = 'https://get.k3s.io'
       k3s.args = %W[server --server https://#{NETWORK_PREFIX}.100:6443 --flannel-iface=eth1]
-      k3s.env = %W[K3S_KUBECONFIG_MODE=0644 K3S_TOKEN=vagrant INSTALL_K3S_VERSION=$(cat\ /tmp/k3s_version)]
+      k3s.env = %W[K3S_KUBECONFIG_MODE=0644 K3S_TOKEN=vagrant #{install_type]
       k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
     end
   end
@@ -41,7 +54,7 @@ def provision(vm, roles, role_num, node_num)
     vm.provision 'k3s-install', type: 'k3s', run: 'once' do |k3s|
       k3s.installer_url = 'https://get.k3s.io'
       k3s.args = %W[agent --server https://#{NETWORK_PREFIX}.100:6443 --flannel-iface=eth1]
-      k3s.env = %W[K3S_KUBECONFIG_MODE=0644 K3S_TOKEN=vagrant INSTALL_K3S_VERSION=$(cat\ /tmp/k3s_version)]
+      k3s.env = %W[K3S_KUBECONFIG_MODE=0644 K3S_TOKEN=vagrant #{install_type]
       k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
     end
   end
@@ -53,7 +66,15 @@ end
 def osConfigure(vm)
 
   if vm.box.include?("ubuntu2004")
-    vm.provision "shell", inline: "systemd-resolve --set-dns=8.8.8.8 --interface=eth0"
+    vm.provision "shell", inline: "systemd-resolve --set-dns=8.8.8.8 --interface=eth0", run: 'once'
+    vm.provision "shell", inline: "apt install -y jq", run: 'once'
+  end
+  if vm.box.include?("Leap")
+    vm.provision "shell", inline: "zypper install -y jq", run: 'once'
+  end
+  if vm.box.include?("microos")
+    vm.provision "shell", inline: "transactional-update pkg install -y jq", run: 'once'
+    vm.provision 'reload', run: 'once'
   end
 
 end
