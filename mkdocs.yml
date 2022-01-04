@@ -43,10 +43,10 @@ nav:
     - install/kubernetes_dashboard.md
     - install/uninstall.md
   - Upgrades:
-    - Overview: upgrade/index.md
-    - upgrade/basic.md
-    - upgrade/automated.md
-    - upgrade/killall.md
+    - Overview: upgrades/upgrades.md
+    - upgrades/basic.md
+    - upgrades/automated.md
+    - upgrades/killall.md
   - cluster_access.md
   - backup_restore.md
   - volumes_storage.md
@@ -59,3 +59,4 @@ nav:
     - Overview: security/index.md
     - security/hardening_guide.md
     - security/self_assessment.md
+    - security/secrets_encryption.md

@@ -86,7 +86,11 @@ The steps are the same for both embedded DB and external DB clusters.
 
 To rotate secrets encryption keys on HA setups:
 
->**Note:** While not required, it is recommended that you pick one server node from which to run the `secrets-encrypt` commands.
+>**Notes:** 
+>
+> - Starting K3s without encryption and enabling it at a later time is currently *not* supported.
+>
+> - While not required, it is recommended that you pick one server node from which to run the `secrets-encrypt` commands.
 
 - Start up all three K3s servers with the `--secrets-encryption` flag. For brevity, the servers will be referred to as S1, S2, S3.
 

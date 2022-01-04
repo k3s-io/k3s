@@ -150,6 +150,7 @@ the agent options are there because the server has the agent process embedded wi
 
 | Flag |  Description |
 |------|--------------|
+| `--etcd-arg` value | Customized flag for etcd process |
 | `--kube-apiserver-arg` value | Customized flag for kube-apiserver process |
 | `--kube-scheduler-arg` value | Customized flag for kube-scheduler process |
 | `--kube-controller-manager-arg` value  | Customized flag for kube-controller-manager process    |
@@ -232,6 +233,7 @@ OPTIONS:
    --token-file value                         (cluster) File containing the cluster-secret/token [$K3S_TOKEN_FILE]
    --write-kubeconfig value, -o value         (client) Write kubeconfig for admin client to this file [$K3S_KUBECONFIG_OUTPUT]
    --write-kubeconfig-mode value              (client) Write kubeconfig with this mode [$K3S_KUBECONFIG_MODE]
+   --etcd-arg value                           (flags) Customized flag for etcd process
    --kube-apiserver-arg value                 (flags) Customized flag for kube-apiserver process
    --kube-scheduler-arg value                 (flags) Customized flag for kube-scheduler process
    --kube-controller-manager-arg value        (flags) Customized flag for kube-controller-manager process

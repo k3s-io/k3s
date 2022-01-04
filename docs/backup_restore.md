@@ -16,7 +16,7 @@ For details on taking database snapshots and restoring your database from them, 
 
 - [Official MySQL documentation](https://dev.mysql.com/doc/refman/8.0/en/replication-snapshot-method.html)
 - [Official PostgreSQL documentation](https://www.postgresql.org/docs/8.3/backup-dump.html)
-- [Official etcd documentation](https://github.com/etcd-io/etcd/blob/master/Documentation/op-guide/recovery.md)
+- [Official etcd documentation](https://etcd.io/docs/latest/op-guide/recovery/)
 
 ## Backup and Restore with Embedded etcd Datastore (Experimental)
 
