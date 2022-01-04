@@ -84,6 +84,7 @@ type Server struct {
 	EtcdSnapshotDir          string
 	EtcdSnapshotCron         string
 	EtcdSnapshotRetention    int
+	EtcdSnapshotCompress     bool
 	EtcdS3                   bool
 	EtcdS3Endpoint           string
 	EtcdS3EndpointCA         string
@@ -288,6 +289,11 @@ var ServerFlags = []cli.Flag{
 		Name:        "etcd-snapshot-dir",
 		Usage:       "(db) Directory to save db snapshots. (Default location: ${data-dir}/db/snapshots)",
 		Destination: &ServerConfig.EtcdSnapshotDir,
+	},
+	&cli.BoolFlag{
+		Name:        "etcd-snapshot-compress",
+		Usage:       "(db) Compress etcd snapshot",
+		Destination: &ServerConfig.EtcdSnapshotCompress,
 	},
 	&cli.BoolFlag{
 		Name:        "etcd-s3",

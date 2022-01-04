@@ -1,12 +1,14 @@
 package etcd
 
 import (
+	"archive/zip"
 	"bytes"
 	"context"
 	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -941,6 +943,93 @@ func (e *ETCD) preSnapshotSetup(ctx context.Context, config *config.Control) err
 	return nil
 }
 
+const compressedExtension = ".zip"
+
+// compressSnapshot compresses the given snapshot and provides the
+// caller with the path to the file.
+func (e *ETCD) compressSnapshot(snapshotDir, snapshotName, snapshotPath string) (string, error) {
+	logrus.Info("Compressing etcd snapshot file: " + snapshotName)
+
+	zippedSnapshotName := snapshotName + compressedExtension
+	zipPath := filepath.Join(snapshotDir, zippedSnapshotName)
+
+	zf, err := os.Create(zipPath)
+	if err != nil {
+		return "", err
+	}
+	defer zf.Close()
+
+	zipWriter := zip.NewWriter(zf)
+	defer zipWriter.Close()
+
+	uncompressedPath := filepath.Join(snapshotDir, snapshotName)
+	fileToZip, err := os.Open(uncompressedPath)
+	if err != nil {
+		os.Remove(zipPath)
+		return "", err
+	}
+	defer fileToZip.Close()
+
+	info, err := fileToZip.Stat()
+	if err != nil {
+		os.Remove(zipPath)
+		return "", err
+	}
+
+	header, err := zip.FileInfoHeader(info)
+	if err != nil {
+		os.Remove(zipPath)
+		return "", err
+	}
+
+	header.Name = zipPath
+	header.Method = zip.Deflate
+	header.Modified = time.Unix(0, 0)
+
+	writer, err := zipWriter.CreateHeader(header)
+	if err != nil {
+		os.Remove(zipPath)
+		return "", err
+	}
+	_, err = io.Copy(writer, fileToZip)
+
+	return zipPath, err
+}
+
+// decompressSnapshot decompresses the given snapshot and provides the caller
+// with the full path to the uncompressed snapshot.
+func (e *ETCD) decompressSnapshot(snapshotDir, snapshotFile string) (string, error) {
+	logrus.Info("Decompressing etcd snapshot file: " + snapshotFile)
+
+	r, err := zip.OpenReader(snapshotFile)
+	if err != nil {
+		return "", err
+	}
+	defer r.Close()
+
+	var decompressed *os.File
+	for _, sf := range r.File {
+		decompressed, err = os.OpenFile(strings.Replace(sf.Name, compressedExtension, "", -1), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, sf.Mode())
+		if err != nil {
+			return "", err
+		}
+		defer decompressed.Close()
+
+		ss, err := sf.Open()
+		if err != nil {
+			return "", err
+		}
+		defer ss.Close()
+
+		if _, err := io.Copy(decompressed, ss); err != nil {
+			os.Remove("")
+			return "", err
+		}
+	}
+
+	return decompressed.Name(), nil
+}
+
 // Snapshot attempts to save a new snapshot to the configured directory, and then clean up any old and failed
 // snapshots in excess of the retention limits. This method is used in the internal cron snapshot
 // system as well as used to do on-demand snapshots.
@@ -1003,14 +1092,27 @@ func (e *ETCD) Snapshot(ctx context.Context, config *config.Control) error {
 			CreatedAt: &metav1.Time{
 				Time: now,
 			},
-			Status:  failedSnapshotStatus,
-			Message: base64.StdEncoding.EncodeToString([]byte(err.Error())),
-			Size:    0,
+			Status:     failedSnapshotStatus,
+			Message:    base64.StdEncoding.EncodeToString([]byte(err.Error())),
+			Size:       0,
+			Compressed: e.config.EtcdSnapshotCompress,
 		}
 		logrus.Errorf("Failed to take etcd snapshot: %v", err)
 		if err := e.addSnapshotData(*sf); err != nil {
 			return errors.Wrap(err, "failed to save local snapshot failure data to configmap")
 		}
+	}
+
+	if e.config.EtcdSnapshotCompress {
+		zipPath, err := e.compressSnapshot(snapshotDir, snapshotName, snapshotPath)
+		if err != nil {
+			return err
+		}
+		if err := os.Remove(snapshotPath); err != nil {
+			return err
+		}
+		snapshotPath = zipPath
+		logrus.Info("Compressed snapshot: " + snapshotPath)
 	}
 
 	// If the snapshot attempt was successful, sf will be nil as we did not set it.
@@ -1027,8 +1129,9 @@ func (e *ETCD) Snapshot(ctx context.Context, config *config.Control) error {
 			CreatedAt: &metav1.Time{
 				Time: f.ModTime(),
 			},
-			Status: successfulSnapshotStatus,
-			Size:   f.Size(),
+			Status:     successfulSnapshotStatus,
+			Size:       f.Size(),
+			Compressed: e.config.EtcdSnapshotCompress,
 		}
 
 		if err := e.addSnapshotData(*sf); err != nil {
@@ -1109,14 +1212,15 @@ type snapshotFile struct {
 	Name string `json:"name"`
 	// Location contains the full path of the snapshot. For
 	// local paths, the location will be prefixed with "file://".
-	Location  string         `json:"location,omitempty"`
-	Metadata  string         `json:"metadata,omitempty"`
-	Message   string         `json:"message,omitempty"`
-	NodeName  string         `json:"nodeName,omitempty"`
-	CreatedAt *metav1.Time   `json:"createdAt,omitempty"`
-	Size      int64          `json:"size,omitempty"`
-	Status    snapshotStatus `json:"status,omitempty"`
-	S3        *s3Config      `json:"s3Config,omitempty"`
+	Location   string         `json:"location,omitempty"`
+	Metadata   string         `json:"metadata,omitempty"`
+	Message    string         `json:"message,omitempty"`
+	NodeName   string         `json:"nodeName,omitempty"`
+	CreatedAt  *metav1.Time   `json:"createdAt,omitempty"`
+	Size       int64          `json:"size,omitempty"`
+	Status     snapshotStatus `json:"status,omitempty"`
+	S3         *s3Config      `json:"s3Config,omitempty"`
+	Compressed bool           `json:"compressed"`
 }
 
 // listLocalSnapshots provides a list of the currently stored
@@ -1579,13 +1683,33 @@ func (e *ETCD) Restore(ctx context.Context) error {
 	if _, err := os.Stat(e.config.ClusterResetRestorePath); err != nil {
 		return err
 	}
+
+	var restorePath string
+	if strings.HasSuffix(e.config.ClusterResetRestorePath, compressedExtension) {
+		snapshotDir, err := snapshotDir(e.config, true)
+		if err != nil {
+			return errors.Wrap(err, "failed to get the snapshot dir")
+		}
+
+		decompressSnapshot, err := e.decompressSnapshot(snapshotDir, e.config.ClusterResetRestorePath)
+		if err != nil {
+			return err
+		}
+
+		restorePath = decompressSnapshot
+	} else {
+		restorePath = e.config.ClusterResetRestorePath
+	}
+
 	// move the data directory to a temp path
 	if err := os.Rename(DBDir(e.config), oldDataDir); err != nil {
 		return err
 	}
+
 	logrus.Infof("Pre-restore etcd database moved to %s", oldDataDir)
+
 	return snapshot.NewV3(nil).Restore(snapshot.RestoreConfig{
-		SnapshotPath:   e.config.ClusterResetRestorePath,
+		SnapshotPath:   restorePath,
 		Name:           e.name,
 		OutputDataDir:  DBDir(e.config),
 		OutputWALDir:   walDir(e.config),
