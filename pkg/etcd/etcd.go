@@ -982,9 +982,9 @@ func (e *ETCD) compressSnapshot(snapshotDir, snapshotName, snapshotPath string) 
 		return "", err
 	}
 
-	header.Name = zipPath
+	header.Name = snapshotName
 	header.Method = zip.Deflate
-	header.Modified = time.Unix(0, 0)
+	header.Modified = time.Now()
 
 	writer, err := zipWriter.CreateHeader(header)
 	if err != nil {
