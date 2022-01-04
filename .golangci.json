@@ -36,7 +36,7 @@
 			},
 			{
 				"linters": "revive",
-				"text": "exported",
+				"text": "exported"
 			}
 		]
 	}
