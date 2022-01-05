@@ -619,21 +619,6 @@ e2e-test() {
 
 # ---
 
-run-e2e-tests() {
-    label=PARALLEL \
-        logName=e2e-STATUS-${ARCH}-parallel.log \
-        e2e-test ${sonobuoyParallelArgs[@]}
-    echo "Exit code $? for parallel start"
-
-    label=SERIAL \
-        logName=e2e-STATUS-${ARCH}-serial.log \
-        e2e-test ${sonobuoySerialArgs[@]}
-    echo "Exit code $? for serial start"
-}
-export -f run-e2e-tests
-
-# ---
-
 test-run-sonobuoy() {
     local suffix
     if [ "$1" ]; then
@@ -643,7 +628,16 @@ test-run-sonobuoy() {
 
     cleanup-test-env
     . ./scripts/test-setup-sonobuoy$suffix
-    run-e2e-tests
+    
+    label=PARALLEL \
+        logName=e2e-STATUS-${ARCH}-parallel.log \
+        e2e-test ${sonobuoyParallelArgs[@]}
+    echo "Exit code $? for parallel start"
+
+    label=SERIAL \
+        logName=e2e-STATUS-${ARCH}-serial.log \
+        e2e-test ${sonobuoySerialArgs[@]}
+    echo "Exit code $? for serial start"
 }
 export -f test-run-sonobuoy
 
