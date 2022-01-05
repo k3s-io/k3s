@@ -4,5 +4,5 @@ docker.io/rancher/local-path-provisioner:v0.0.20
 docker.io/rancher/mirrored-coredns-coredns:1.8.4
 docker.io/rancher/mirrored-library-busybox:1.32.1
 docker.io/rancher/mirrored-library-traefik:2.5.0
-docker.io/rancher/mirrored-metrics-server:v0.5.0
+docker.io/rancher/mirrored-metrics-server:v0.5.2
 docker.io/rancher/mirrored-pause:3.1
