@@ -2,8 +2,8 @@
 
 . ./scripts/test-setup-sonobuoy
 
-export NUM_SERVERS=2
-export NUM_AGENTS=0
+export NUM_SERVERS=1
+export NUM_AGENTS=1
 export SERVER_1_ARGS="--cluster-init"
 
 server-post-hook() {

@@ -8,9 +8,11 @@ import (
 	"os/exec"
 	"os/user"
 	"strings"
+	"syscall"
 
 	"github.com/rancher/k3s/pkg/flock"
 	"github.com/sirupsen/logrus"
+	"github.com/vishvananda/netlink"
 )
 
 // Compile-time variable
@@ -63,16 +65,20 @@ func IsExistingServer() bool {
 }
 
 // K3sCmd launches the provided K3s command via exec. Command blocks until finished.
-// Command output from both Stderr and Stdout is provided via string.
+// Command output from both Stderr and Stdout is provided via string. Input can
+// be a single string with space separated args, or multiple string args
 //   cmdEx1, err := K3sCmd("etcd-snapshot", "ls")
+//   cmdEx2, err := K3sCmd("kubectl get pods -A")
 //   cmdEx2, err := K3sCmd("kubectl", "get", "pods", "-A")
-func K3sCmd(cmdName string, cmdArgs ...string) (string, error) {
+func K3sCmd(inputArgs ...string) (string, error) {
 	if !IsRoot() {
 		return "", errors.New("integration tests must be run as sudo/root")
 	}
 	k3sBin := findK3sExecutable()
-	// Only run sudo if not root
-	k3sCmd := append([]string{cmdName}, cmdArgs...)
+	var k3sCmd []string
+	for _, arg := range inputArgs {
+		k3sCmd = append(k3sCmd, strings.Fields(arg)...)
+	}
 	cmd := exec.Command(k3sBin, k3sCmd...)
 	byteOut, err := cmd.CombinedOutput()
 	return string(byteOut), err
@@ -145,17 +151,53 @@ func K3sStartServer(inputArgs ...string) (*K3sServer, error) {
 
 	k3sCmd := append([]string{"server"}, cmdArgs...)
 	cmd := exec.Command(k3sBin, k3sCmd...)
+	// Give the server a new group id so we can kill it and its children later
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	cmdOut, _ := cmd.StderrPipe()
 	cmd.Stderr = os.Stderr
 	err = cmd.Start()
 	return &K3sServer{cmd, bufio.NewScanner(cmdOut), k3sLock}, err
 }
 
-// K3sKillServer terminates the running K3s server and unlocks the file for
-// other tests
-func K3sKillServer(server *K3sServer) error {
-	if err := server.cmd.Process.Kill(); err != nil {
+// K3sKillServer terminates the running K3s server and its children
+// and unlocks the file for other tests
+func K3sKillServer(server *K3sServer, releaseLock bool) error {
+	pgid, err := syscall.Getpgid(server.cmd.Process.Pid)
+	if err != nil {
 		return err
 	}
-	return flock.Release(server.lock)
+	if err := syscall.Kill(-pgid, syscall.SIGKILL); err != nil {
+		return err
+	}
+	if releaseLock {
+		return flock.Release(server.lock)
+	}
+	return nil
+}
+
+// K3sCleanup attempts to cleanup networking and files leftover from an integration test
+func K3sCleanup(server *K3sServer, releaseLock bool) error {
+	if cni0Link, err := netlink.LinkByName("cni0"); err == nil {
+		links, _ := netlink.LinkList()
+		for _, link := range links {
+			if link.Attrs().MasterIndex == cni0Link.Attrs().Index {
+				netlink.LinkDel(link)
+			}
+		}
+		netlink.LinkDel(cni0Link)
+	}
+
+	if flannel1, err := netlink.LinkByName("flannel.1"); err == nil {
+		netlink.LinkDel(flannel1)
+	}
+	if flannelV6, err := netlink.LinkByName("flannel-v6.1"); err == nil {
+		netlink.LinkDel(flannelV6)
+	}
+	if err := os.RemoveAll("/var/lib/rancher/k3s"); err != nil {
+		return err
+	}
+	if releaseLock {
+		return flock.Release(server.lock)
+	}
+	return nil
 }

@@ -32,27 +32,27 @@ var _ = Describe("local storage", func() {
 	When("a new local storage is created", func() {
 		It("starts up with no problems", func() {
 			Eventually(func() (string, error) {
-				return testutil.K3sCmd("kubectl", "get", "pods", "-A")
+				return testutil.K3sCmd("kubectl get pods -A")
 			}, "90s", "1s").Should(MatchRegexp("kube-system.+coredns.+1\\/1.+Running"))
 		})
 		It("creates a new pvc", func() {
-			result, err := testutil.K3sCmd("kubectl", "create", "-f", "./testdata/localstorage_pvc.yaml")
+			result, err := testutil.K3sCmd("kubectl create -f ./testdata/localstorage_pvc.yaml")
 			Expect(result).To(ContainSubstring("persistentvolumeclaim/local-path-pvc created"))
 			Expect(err).NotTo(HaveOccurred())
 		})
 		It("creates a new pod", func() {
-			Expect(testutil.K3sCmd("kubectl", "create", "-f", "./testdata/localstorage_pod.yaml")).
+			Expect(testutil.K3sCmd("kubectl create -f ./testdata/localstorage_pod.yaml")).
 				To(ContainSubstring("pod/volume-test created"))
 		})
 		It("shows storage up in kubectl", func() {
 			Eventually(func() (string, error) {
-				return testutil.K3sCmd("kubectl", "get", "--namespace=default", "pvc")
+				return testutil.K3sCmd("kubectl get --namespace=default pvc")
 			}, "45s", "1s").Should(MatchRegexp(`local-path-pvc.+Bound`))
 			Eventually(func() (string, error) {
-				return testutil.K3sCmd("kubectl", "get", "--namespace=default", "pv")
+				return testutil.K3sCmd("kubectl get --namespace=default pv")
 			}, "10s", "1s").Should(MatchRegexp(`pvc.+1Gi.+Bound`))
 			Eventually(func() (string, error) {
-				return testutil.K3sCmd("kubectl", "get", "--namespace=default", "pod")
+				return testutil.K3sCmd("kubectl get --namespace=default pod")
 			}, "10s", "1s").Should(MatchRegexp(`volume-test.+Running`))
 		})
 		It("has proper folder permissions", func() {
@@ -61,7 +61,7 @@ var _ = Describe("local storage", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(fmt.Sprintf("%04o", fileStat.Mode().Perm())).To(Equal("0701"))
 
-			pvResult, err := testutil.K3sCmd("kubectl", "get", "--namespace=default", "pv")
+			pvResult, err := testutil.K3sCmd("kubectl get --namespace=default pv")
 			Expect(err).ToNot(HaveOccurred())
 			reg, err := regexp.Compile(`pvc[^\s]+`)
 			Expect(err).ToNot(HaveOccurred())
@@ -71,9 +71,9 @@ var _ = Describe("local storage", func() {
 			Expect(fmt.Sprintf("%04o", fileStat.Mode().Perm())).To(Equal("0777"))
 		})
 		It("deletes properly", func() {
-			Expect(testutil.K3sCmd("kubectl", "delete", "--namespace=default", "--force", "pod", "volume-test")).
+			Expect(testutil.K3sCmd("kubectl delete --namespace=default --force pod volume-test")).
 				To(ContainSubstring("pod \"volume-test\" force deleted"))
-			Expect(testutil.K3sCmd("kubectl", "delete", "--namespace=default", "pvc", "local-path-pvc")).
+			Expect(testutil.K3sCmd("kubectl delete --namespace=default pvc local-path-pvc")).
 				To(ContainSubstring("persistentvolumeclaim \"local-path-pvc\" deleted"))
 		})
 	})
@@ -81,7 +81,8 @@ var _ = Describe("local storage", func() {
 
 var _ = AfterSuite(func() {
 	if !testutil.IsExistingServer() {
-		Expect(testutil.K3sKillServer(localStorageServer)).To(Succeed())
+		Expect(testutil.K3sKillServer(localStorageServer, false)).To(Succeed())
+		Expect(testutil.K3sCleanup(localStorageServer, true)).To(Succeed())
 	}
 })
 
