@@ -41,8 +41,8 @@ echo "Did test-run-sonobuoy $?"
 
 # ---
 
-test-run-sonobuoy etcd
 test-run-sonobuoy mysql
 test-run-sonobuoy postgres
+test-run-sonobuoy etcd skip-parallel
 
 exit 0
