@@ -635,7 +635,7 @@ func (c *Cluster) Snapshot(ctx context.Context, config *config.Control) error {
 
 // compareConfig verifies that the config of the joining control plane node coincides with the cluster's config
 func (c *Cluster) compareConfig() error {
-	agentClientAccessInfo, err := clientaccess.ParseAndValidateTokenForUser(c.config.JoinURL, c.config.Token, "node")
+	agentClientAccessInfo, err := clientaccess.ParseAndValidateTokenForUser(c.config.JoinURL, c.config.AgentToken, "node")
 	if err != nil {
 		return err
 	}
