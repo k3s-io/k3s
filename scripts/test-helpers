@@ -321,9 +321,6 @@ test-setup() {
         exit 0
     fi
 
-    local setupFile=./scripts/test-setup-${TEST_TYPE}
-    [ -f $setupFile ] && source $setupFile
-
     echo ${RANDOM}${RANDOM}${RANDOM} >$TEST_DIR/metadata/secret
 }
 export -f test-setup
@@ -422,7 +419,6 @@ provision-server() {
     local count=$(inc-count servers)
     local testID=$(basename $TEST_DIR)
     local name=$(echo "k3s-server-$count-$testID" | tee $TEST_DIR/servers/$count/metadata/name)
-    #local args=$(cat $TEST_DIR/args $TEST_DIR/servers/args $TEST_DIR/servers/$count/args 2>/dev/null)
     local port=$(timeout --foreground 5s bash -c get-port | tee $TEST_DIR/servers/$count/metadata/port)
     local SERVER_INSTANCE_ARGS="SERVER_${count}_ARGS"
 
@@ -454,7 +450,6 @@ provision-agent() {
     local count=$(inc-count agents)
     local testID=$(basename $TEST_DIR)
     local name=$(echo "k3s-agent-$count-$testID" | tee $TEST_DIR/agents/$count/metadata/name)
-    #local args=$(cat $TEST_DIR/args $TEST_DIR/agents/args $TEST_DIR/agents/$count/args 2>/dev/null)
     local AGENT_INSTANCE_ARGS="AGENT_${count}_ARGS"
 
     run-function agent-pre-hook $count
@@ -492,12 +487,12 @@ provision-cluster() {
         done
     fi
 
+    [ -f "$PROVISION_LOCK" ] && rm $PROVISION_LOCK
+
     timeout --foreground 2m bash -c "wait-for-nodes $(( NUM_SERVERS + NUM_AGENTS ))"
     timeout --foreground 4m bash -c "wait-for-services $WAIT_SERVICES"
 
     run-function cluster-post-hook
-
-    [ -f "$PROVISION_LOCK" ] && rm $PROVISION_LOCK
 }
 export -f provision-cluster
 
@@ -556,18 +551,57 @@ export -f early-exit
 # ---
 
 run-test() {
+    local delay=15
+    (
+      set +x
+      while [ $(count-running-tests) -ge ${MAX_CONCURRENT_TESTS:-3} ]; do
+          sleep $delay
+      done
+    )
+
     export PROVISION_LOCK=$(mktemp)
     ./scripts/test-runner $@ &
     pids+=($!)
+
     (
         set +x
+        # busy-wait on the provisioning lock before imposing a final inter-test delay
         while [ -f "$PROVISION_LOCK" ]; do
             sleep 1
         done
-        sleep 5
+        sleep $delay
     )
 }
 export -f run-test
+
+# ---
+
+cleanup-test-env(){
+      export NUM_SERVERS=1
+      export NUM_AGENTS=1
+      export AGENT_ARGS=''
+      export SERVER_ARGS=''
+      export WAIT_SERVICES="${all_services[@]}"
+
+      unset AGENT_1_ARGS AGENT_2_ARGS AGENT_3_ARGS
+      unset SERVER_1_ARGS SERVER_2_ARGS SERVER_3_ARGS
+
+      unset -f server-pre-hook server-post-hook agent-pre-hook agent-post-hook cluster-pre-hook cluster-post-hook test-post-hook
+}
+
+# ---
+
+count-running-tests(){
+      local count=0
+      for pid in ${pids[@]}; do
+          if [ $(pgrep -c -P $pid) -gt 0 ]; then
+            ((count++))
+          fi
+      done
+      echo "Currently running ${count} tests" 1>&2
+      echo ${count}
+}
+export -f count-running-tests
 
 # ---
 
@@ -585,21 +619,6 @@ e2e-test() {
 
 # ---
 
-run-e2e-tests() {
-    label=PARALLEL \
-        logName=e2e-STATUS-${ARCH}-parallel.log \
-        e2e-test ${sonobuoyParallelArgs[@]}
-    echo "Exit code $? for parallel start"
-
-    label=SERIAL \
-        logName=e2e-STATUS-${ARCH}-serial.log \
-        e2e-test ${sonobuoySerialArgs[@]}
-    echo "Exit code $? for serial start"
-}
-export -f run-e2e-tests
-
-# ---
-
 test-run-sonobuoy() {
     local suffix
     if [ "$1" ]; then
@@ -607,8 +626,20 @@ test-run-sonobuoy() {
         export LABEL_SUFFIX=$1
     fi
 
+    cleanup-test-env
     . ./scripts/test-setup-sonobuoy$suffix
-    run-e2e-tests
+    
+    if [ "$2" != "skip-parallel" ]; then
+        label=PARALLEL \
+            logName=e2e-STATUS-${ARCH}-parallel.log \
+            e2e-test ${sonobuoyParallelArgs[@]}
+        echo "Exit code $? for parallel start"
+    fi
+
+    label=SERIAL \
+        logName=e2e-STATUS-${ARCH}-serial.log \
+        e2e-test ${sonobuoySerialArgs[@]}
+    echo "Exit code $? for serial start"
 }
 export -f test-run-sonobuoy
 

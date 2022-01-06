@@ -1,0 +1,15 @@
+#!/bin/bash
+
+. ./scripts/test-setup-sonobuoy
+
+export NUM_SERVERS=1
+export NUM_AGENTS=1
+export SERVER_1_ARGS="--cluster-init"
+
+server-post-hook() {
+  if [ $1 -eq 1 ]; then
+    local url=$(cat $TEST_DIR/servers/1/metadata/url)
+    export SERVER_ARGS="--server $url"
+  fi
+}
+export -f server-post-hook

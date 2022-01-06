@@ -19,7 +19,7 @@ Vagrant.configure("2") do |config|
     test.vm.hostname = 'smoke'
     test.vm.provision :file, run: 'always', source: ENV['TEST_UNITFILE_ROOTFULL'], destination: 'k3s-rootfull.service'
     test.vm.provision :file, run: 'always', source: ENV['TEST_UNITFILE_ROOTLESS'], destination: 'k3s-rootless.service'
-    test.vm.provision 'k3s-prepare', type: "shell", run: "once", privileged: true do |sh|
+    test.vm.provision 'k3s-prepare', type: "shell", run: ENV['CI'] == 'true' ? 'never' : 'once', privileged: true do |sh|
       sh.inline = <<~SHELL
         #!/usr/bin/env bash
         set -eux -o pipefail
@@ -58,7 +58,7 @@ EOF
         chown -R vagrant:vagrant /home/vagrant/.config
       SHELL
     end
-    test.vm.provision 'k3s-install', type: 'k3s', run: 'once' do |k3s|
+    test.vm.provision 'k3s-install', type: 'k3s', run: ENV['CI'] == 'true' ? 'never' : 'once' do |k3s|
       k3s.args = %w[server]
       k3s.env = %w[INSTALL_K3S_NAME=server INSTALL_K3S_SKIP_DOWNLOAD=true K3S_TOKEN=vagrant INSTALL_K3S_SKIP_ENABLE=true]
       k3s.config = {
@@ -68,6 +68,9 @@ EOF
         'write-kubeconfig-mode' => '0644',
       }
       k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
+    end
+    test.vm.provision "k3s-start", type: "shell", run: ENV['CI'] == 'true' ? 'never' : 'once' do |sh|
+      sh.inline = "systemctl start k3s-server"
     end
     test.vm.provision "k3s-ready", type: "shell", run: ENV['CI'] == 'true' ? 'never' : 'once' do |sh|
       sh.env = {

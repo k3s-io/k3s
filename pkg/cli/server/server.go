@@ -174,7 +174,13 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		serverConfig.ControlConfig.DisableScheduler = true
 		serverConfig.ControlConfig.DisableCCM = true
 
-		close(agentReady)
+		// only close the agentReady channel in case of k3s restoration, because k3s does not start
+		// the agent until server returns successfully, unlike rke2's agent which starts in parallel
+		// with the server
+		if serverConfig.ControlConfig.SupervisorPort == serverConfig.ControlConfig.HTTPSPort {
+			close(agentReady)
+		}
+
 		dataDir, err := datadir.LocalHome(cfg.DataDir, false)
 		if err != nil {
 			return err
@@ -232,7 +238,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		serverConfig.ControlConfig.AdvertiseIP, _ = util.GetFirst4String(cmds.AgentConfig.NodeExternalIP)
 	}
 
-	// if not set, try setting advertise-up from agent node-ip
+	// if not set, try setting advertise-ip from agent node-ip
 	if serverConfig.ControlConfig.AdvertiseIP == "" && len(cmds.AgentConfig.NodeIP) != 0 {
 		serverConfig.ControlConfig.AdvertiseIP, _ = util.GetFirst4String(cmds.AgentConfig.NodeIP)
 	}

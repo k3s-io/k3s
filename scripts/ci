@@ -5,10 +5,7 @@ SCRIPT_DIR=$(dirname $0)
 pushd $SCRIPT_DIR
 
 ./download
-if [ -z "$SKIP_VALIDATE" ]; then
-    ./validate
-fi
-
+./validate
 ./build
 ./package
 
