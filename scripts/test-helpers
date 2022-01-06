@@ -629,10 +629,12 @@ test-run-sonobuoy() {
     cleanup-test-env
     . ./scripts/test-setup-sonobuoy$suffix
     
-    label=PARALLEL \
-        logName=e2e-STATUS-${ARCH}-parallel.log \
-        e2e-test ${sonobuoyParallelArgs[@]}
-    echo "Exit code $? for parallel start"
+    if [ "$2" != "skip-parallel" ]; then
+        label=PARALLEL \
+            logName=e2e-STATUS-${ARCH}-parallel.log \
+            e2e-test ${sonobuoyParallelArgs[@]}
+        echo "Exit code $? for parallel start"
+    fi
 
     label=SERIAL \
         logName=e2e-STATUS-${ARCH}-serial.log \
