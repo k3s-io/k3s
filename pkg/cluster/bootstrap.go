@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -20,6 +19,7 @@ import (
 	"github.com/k3s-io/kine/pkg/client"
 	"github.com/k3s-io/kine/pkg/endpoint"
 	"github.com/otiai10/copy"
+	"github.com/pkg/errors"
 	"github.com/rancher/k3s/pkg/bootstrap"
 	"github.com/rancher/k3s/pkg/clientaccess"
 	"github.com/rancher/k3s/pkg/daemons/config"
@@ -615,7 +615,7 @@ func (c *Cluster) bootstrap(ctx context.Context) error {
 	if c.runtime.HTTPBootstrap {
 		// Assuming we should just compare on managed databases
 		if err := c.compareConfig(); err != nil {
-			return err
+			return errors.Wrap(err, "failed to validate server configuration")
 		}
 		return c.httpBootstrap(ctx)
 	}
@@ -635,7 +635,11 @@ func (c *Cluster) Snapshot(ctx context.Context, config *config.Control) error {
 
 // compareConfig verifies that the config of the joining control plane node coincides with the cluster's config
 func (c *Cluster) compareConfig() error {
-	agentClientAccessInfo, err := clientaccess.ParseAndValidateTokenForUser(c.config.JoinURL, c.config.AgentToken, "node")
+	token := c.config.AgentToken
+	if token == "" {
+		token = c.config.Token
+	}
+	agentClientAccessInfo, err := clientaccess.ParseAndValidateTokenForUser(c.config.JoinURL, token, "node")
 	if err != nil {
 		return err
 	}
@@ -655,7 +659,7 @@ func (c *Cluster) compareConfig() error {
 	if !reflect.DeepEqual(clusterControl.CriticalControlArgs, c.config.CriticalControlArgs) {
 		logrus.Debugf("This is the server CriticalControlArgs: %#v", clusterControl.CriticalControlArgs)
 		logrus.Debugf("This is the local CriticalControlArgs: %#v", c.config.CriticalControlArgs)
-		return errors.New("unable to join cluster due to critical configuration value mismatch")
+		return errors.New("critical configuration value mismatch")
 	}
 	return nil
 }
