@@ -8,7 +8,7 @@ if [ ! -e ../bin/containerd ]; then
 fi
 
 ./package-cli
+./package-image
 if [ -z "$SKIP_AIRGAP" ]; then
-    ./package-image
     ./package-airgap
 fi
