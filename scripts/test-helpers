@@ -554,7 +554,7 @@ run-test() {
     local delay=15
     (
       set +x
-      while [ $(count-running-tests) -ge ${MAX_CONCURRENT_TESTS:-2} ]; do
+      while [ $(count-running-tests) -ge ${MAX_CONCURRENT_TESTS:-3} ]; do
           sleep $delay
       done
     )
