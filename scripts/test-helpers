@@ -145,6 +145,9 @@ dump-logs() {
                 docker exec $name crictl logs $container >$node/logs/$cname-$container.log 2>&1
             done
         fi
+        if [ "$1" == "skip-output" ]; then
+            continue
+        fi 
         for log in $node/logs/*.log; do
             echo
             echo "#- Tail: $log"
@@ -153,6 +156,11 @@ dump-logs() {
             echo
         done
     done
+
+    if [ "$1" == "skip-output" ]; then
+        return
+    fi 
+
     for txt in $TEST_DIR/logs/*.txt $TEST_DIR/*/*/logs/*.txt; do
         echo
         echo "#- Cat: $txt"
@@ -254,6 +262,11 @@ test-cleanup() {
     set +e -x
     echo 'Cleaning up...'
     trap - EXIT INT TERM
+    if has-function test-post-hook; then
+        echo 'Running post-hook'
+        test-post-hook $code
+        code=$?
+    fi
     if [[ $code -ne 0 ]]; then
         dump-logs
     fi
@@ -264,10 +277,6 @@ test-cleanup() {
         docker rm -f -v $container
     done
     echo
-    if has-function test-post-hook; then
-      test-post-hook $code
-      code=$?
-    fi
     if [ "$TEST_CLEANUP" = true ]; then
         echo "Removing test directory $TEST_DIR"
         rm -rf $TEST_DIR
@@ -554,7 +563,7 @@ run-test() {
     local delay=15
     (
       set +x
-      while [ $(count-running-tests) -ge ${MAX_CONCURRENT_TESTS:-3} ]; do
+      while [ $(count-running-tests) -ge ${MAX_CONCURRENT_TESTS:-4} ]; do
           sleep $delay
       done
     )
@@ -614,7 +623,7 @@ e2e-test() {
     if [ -n "$E2E_OUTPUT" ]; then
         logOutput=$E2E_OUTPUT/$logName
     fi
-    LABEL=$label LOG_OUTPUT=$logOutput run-test $@
+    LABEL=$label LOG_OUTPUT=$logOutput ./scripts/test-runner $@
 }
 
 # ---
@@ -636,10 +645,10 @@ test-run-sonobuoy() {
         echo "Exit code $? for parallel start"
     fi
 
-    label=SERIAL \
-        logName=e2e-STATUS-${ARCH}-serial.log \
-        e2e-test ${sonobuoySerialArgs[@]}
-    echo "Exit code $? for serial start"
+    # label=SERIAL \
+    #     logName=e2e-STATUS-${ARCH}-serial.log \
+    #     e2e-test ${sonobuoySerialArgs[@]}
+    # echo "Exit code $? for serial start"
 }
 export -f test-run-sonobuoy
 

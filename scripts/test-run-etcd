@@ -37,6 +37,7 @@ test-post-hook() {
   if [[ $1 -eq 0 ]]; then
     return
   fi
+  dump-logs skip-output
   grep -sqF 'critical configuration value mismatch' $TEST_DIR/servers/2/logs/system.log
 }
 export -f test-post-hook
