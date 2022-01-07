@@ -4,6 +4,7 @@ NODE_ROLES = (ENV['NODE_ROLES'] ||
 NODE_BOXES = (ENV['NODE_BOXES'] ||
   ['generic/ubuntu2004', 'generic/ubuntu2004', 'generic/ubuntu2004', 'generic/ubuntu2004', 'generic/ubuntu2004'])
 RELEASE_CHANNEL = (ENV['RELEASE_CHANNEL'] || "latest")
+RELEASE_VERSION = (ENV['RELEASE_VERSION'] || "")
 NODE_CPUS = (ENV['NODE_CPUS'] || 2).to_i
 NODE_MEMORY = (ENV['NODE_MEMORY'] || 1024).to_i
 # Virtualbox >= 6.1.28 require `/etc/vbox/network.conf` for expanded private networks 
@@ -18,20 +19,17 @@ def provision(vm, roles, role_num, node_num)
 
   osConfigure(vm)
   
-  vm.provision "latest version", type: "shell",
-    inline: "curl -w '%{url_effective}' -L -s -S https://update.k3s.io/v1-release/channels/#{RELEASE_CHANNEL} -o /dev/null | sed -e 's|.*/||'  &> /tmp/k3s_version"
   
-  # If the release channel is "commit" install k3s with the latest commit from master
-  if RELEASE_CHANNEL == "commit"
+  if !RELEASE_VERSION.empty?
+    install_type = "INSTALL_K3S_VERSION=#{RELEASE_VERSION}"
+  elsif RELEASE_CHANNEL == "commit"
     vm.provision "shell", path: "../scripts/latest_commit.sh", args: ["master", "/tmp/k3s_commits"]
     install_type = "INSTALL_K3S_COMMIT=$(head\ -n\ 1\ /tmp/k3s_commits)"
-    vm.provision "shell", inline: "cat /tmp/k3s_commits"
   else
+    vm.provision "latest version", type: "shell",
+      inline: "curl -w '%{url_effective}' -L -s -S https://update.k3s.io/v1-release/channels/#{RELEASE_CHANNEL} -o /dev/null | sed -e 's|.*/||'  &> /tmp/k3s_version"
     install_type = "INSTALL_K3S_VERSION=$(cat\ /tmp/k3s_version)"
-    vm.provision "shell", inline: "cat /tmp/k3s_version"
   end
-
-  
 
   vm.provision "shell", inline: "ping -c 2 k3s.io"
 
