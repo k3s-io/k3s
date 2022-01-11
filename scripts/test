@@ -32,7 +32,7 @@ echo "Did test-run-lazypull $?"
 [ "$ARCH" != 'amd64' ] && \
   early-exit "Skipping remaining tests, images not available for $ARCH."
 
-E2E_OUTPUT=$artifacts test-run-sonobuoy
+E2E_OUTPUT=$artifacts test-run-sonobuoy skip-serial
 echo "Did test-run-sonobuoy $?"
 # ---
 
@@ -41,8 +41,8 @@ echo "Did test-run-sonobuoy $?"
 
 # ---
 
-test-run-sonobuoy mysql
-test-run-sonobuoy postgres
-test-run-sonobuoy etcd
+test-run-sonobuoy etcd skip-serial
+test-run-sonobuoy mysql skip-serial
+test-run-sonobuoy postgres skip-serial
 
 exit 0

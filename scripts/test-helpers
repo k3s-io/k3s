@@ -623,14 +623,19 @@ e2e-test() {
     if [ -n "$E2E_OUTPUT" ]; then
         logOutput=$E2E_OUTPUT/$logName
     fi
-    LABEL=$label LOG_OUTPUT=$logOutput ./scripts/test-runner $@
+    if [ "$label" = "PARALLEL" ]; then
+        LABEL=$label LOG_OUTPUT=$logOutput ./scripts/test-runner $@
+    else
+        LABEL=$label LOG_OUTPUT=$logOutput run-test $@
+    fi
+
 }
 
 # ---
 
 test-run-sonobuoy() {
     local suffix
-    if [ "$1" ]; then
+    if [ "$1" ] && [[ ! $1 =~ ^(skip-serial|skip-parallel)$ ]] ; then
         suffix="-$1"
         export LABEL_SUFFIX=$1
     fi
@@ -638,17 +643,19 @@ test-run-sonobuoy() {
     cleanup-test-env
     . ./scripts/test-setup-sonobuoy$suffix
     
-    if [ "$2" != "skip-parallel" ]; then
+    if [ "$1" != "skip-parallel" ] && [ "$2" != "skip-parallel" ]; then
         label=PARALLEL \
             logName=e2e-STATUS-${ARCH}-parallel.log \
             e2e-test ${sonobuoyParallelArgs[@]}
         echo "Exit code $? for parallel start"
     fi
 
-    # label=SERIAL \
-    #     logName=e2e-STATUS-${ARCH}-serial.log \
-    #     e2e-test ${sonobuoySerialArgs[@]}
-    # echo "Exit code $? for serial start"
+    if [ "$1" != "skip-serial" ] && [ "$2" != "skip-serial" ]; then
+        label=SERIAL \
+            logName=e2e-STATUS-${ARCH}-serial.log \
+            e2e-test ${sonobuoySerialArgs[@]}
+        echo "Exit code $? for serial start"
+    fi
 }
 export -f test-run-sonobuoy
 
