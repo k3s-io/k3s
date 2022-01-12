@@ -56,9 +56,13 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	// database credentials or other secrets.
 	gspt.SetProcTitle(os.Args[0] + " server")
 
-	// Evacuate cgroup v2 before doing anything else that may fork.
-	if err := cmds.EvacuateCgroup2(); err != nil {
-		return err
+	// If the agent is enabled, evacuate cgroup v2 before doing anything else that may fork.
+	// If the agent is disabled, we don't need to bother doing this as it is only the kubelet
+	// that cares about cgroups.
+	if !cfg.DisableAgent {
+		if err := cmds.EvacuateCgroup2(); err != nil {
+			return err
+		}
 	}
 
 	// Initialize logging, and subprocess reaping if necessary.
