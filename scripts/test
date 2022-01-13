@@ -32,17 +32,34 @@ echo "Did test-run-lazypull $?"
 [ "$ARCH" != 'amd64' ] && \
   early-exit "Skipping remaining tests, images not available for $ARCH."
 
-E2E_OUTPUT=$artifacts test-run-sonobuoy skip-serial
-echo "Did test-run-sonobuoy $?"
+E2E_OUTPUT=$artifacts test-run-sonobuoy skip-parallel
+echo "Did test-run-sonobuoy serial $?"
+
 # ---
 
-[ "$DRONE_BUILD_EVENT" = 'tag' ] && \
+if [ "$DRONE_BUILD_EVENT" = 'tag' ]; then
+  E2E_OUTPUT=$artifacts test-run-sonobuoy skip-serial
+  echo "Did test-run-sonobuoy parallel $?"
   early-exit 'Skipping remaining tests on tag.'
-
+fi
 # ---
 
-test-run-sonobuoy etcd skip-serial
-test-run-sonobuoy mysql skip-serial
-test-run-sonobuoy postgres skip-serial
+test-run-sonobuoy etcd skip-parallel
+echo "Did test-run-sonobuoy-etcd serial $?"
+
+test-run-sonobuoy mysql skip-parallel
+echo "Did test-run-sonobuoy-mysqk serial $?"
+
+test-run-sonobuoy postgres skip-parallel
+echo "Did test-run-sonobuoy-postgres serial $?"
+
+E2E_OUTPUT=$artifacts test-run-sonobuoy skip-serial
+echo "Did test-run-sonobuoy parallel $?"
+# test-run-sonobuoy etcd skip-serial
+# test-run-sonobuoy mysql skip-serial
+# test-run-sonobuoy postgres skip-serial
+
+
+
 
 exit 0
