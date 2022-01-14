@@ -498,7 +498,7 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 		Name:      "server",
 		Usage:     "Run management server",
 		UsageText: appName + " server [OPTIONS]",
-		Before:    SetupDebug(CheckSELinuxFlags),
+		Before:    CheckSELinuxFlags,
 		Action:    action,
 		Flags:     ServerFlags,
 	}
