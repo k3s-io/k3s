@@ -33,10 +33,6 @@ import (
 	"go.uber.org/zap"
 )
 
-const (
-	warnApplyDuration = 100 * time.Millisecond
-)
-
 type applyResult struct {
 	resp proto.Message
 	err  error
@@ -115,7 +111,7 @@ func (s *EtcdServer) newApplierV3() applierV3 {
 func (a *applierV3backend) Apply(r *pb.InternalRaftRequest) *applyResult {
 	ar := &applyResult{}
 	defer func(start time.Time) {
-		warnOfExpensiveRequest(a.s.getLogger(), start, &pb.InternalRaftStringer{Request: r}, ar.resp, ar.err)
+		warnOfExpensiveRequest(a.s.getLogger(), a.s.Cfg.WarningApplyDuration, start, &pb.InternalRaftStringer{Request: r}, ar.resp, ar.err)
 		if ar.err != nil {
 			warnOfFailedRequest(a.s.getLogger(), start, &pb.InternalRaftStringer{Request: r}, ar.resp, ar.err)
 		}
@@ -185,7 +181,7 @@ func (a *applierV3backend) Put(txn mvcc.TxnWrite, p *pb.PutRequest) (resp *pb.Pu
 	trace = traceutil.New("put",
 		a.s.getLogger(),
 		traceutil.Field{Key: "key", Value: string(p.Key)},
-		traceutil.Field{Key: "req_size", Value: proto.Size(p)},
+		traceutil.Field{Key: "req_size", Value: p.Size()},
 	)
 	val, leaseID := p.Value, lease.LeaseID(p.Lease)
 	if txn == nil {

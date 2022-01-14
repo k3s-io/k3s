@@ -675,7 +675,7 @@ func restartAsStandaloneNode(cfg ServerConfig, snapshot *raftpb.Snapshot) (types
 }
 
 // getIDs returns an ordered set of IDs included in the given snapshot and
-// the entries. The given snapshot/entries can contain two kinds of
+// the entries. The given snapshot/entries can contain three kinds of
 // ID-related entry:
 // - ConfChangeAddNode, in which case the contained ID will be added into the set.
 // - ConfChangeRemoveNode, in which case the contained ID will be removed from the set.

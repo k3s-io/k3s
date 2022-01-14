@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	defaultLog "log"
+	"math"
 	"net"
 	"net/http"
 	"strings"
@@ -229,6 +230,10 @@ func (sctx *serveCtx) registerGateway(opts []grpc.DialOption) (*gw.ServeMux, err
 		addr = fmt.Sprintf("%s://%s", network, addr)
 	}
 
+	opts = append(opts, grpc.WithDefaultCallOptions([]grpc.CallOption{
+		grpc.MaxCallRecvMsgSize(math.MaxInt32),
+	}...))
+
 	conn, err := grpc.DialContext(ctx, addr, opts...)
 	if err != nil {
 		return nil, err
@@ -286,6 +291,7 @@ func (sctx *serveCtx) createMux(gwmux *gw.ServeMux, handler http.Handler) *http.
 						return outgoing
 					},
 				),
+				wsproxy.WithMaxRespBodyBufferSize(0x7fffffff),
 			),
 		)
 	}
