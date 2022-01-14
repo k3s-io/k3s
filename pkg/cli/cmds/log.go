@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 )
 
@@ -76,4 +77,7 @@ func setupLogging() {
 	flag.Set("vmodule", LogConfig.VModule)
 	flag.Set("alsologtostderr", strconv.FormatBool(Debug))
 	flag.Set("logtostderr", strconv.FormatBool(!Debug))
+	if Debug {
+		logrus.SetLevel(logrus.DebugLevel)
+	}
 }
