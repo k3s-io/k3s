@@ -1,12 +1,14 @@
 package etcd
 
 import (
+	"archive/zip"
 	"bytes"
 	"context"
 	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -873,6 +875,93 @@ func (e *ETCD) preSnapshotSetup(ctx context.Context, config *config.Control) err
 	return nil
 }
 
+const compressedExtension = ".zip"
+
+// compressSnapshot compresses the given snapshot and provides the
+// caller with the path to the file.
+func (e *ETCD) compressSnapshot(snapshotDir, snapshotName, snapshotPath string) (string, error) {
+	logrus.Info("Compressing etcd snapshot file: " + snapshotName)
+
+	zippedSnapshotName := snapshotName + compressedExtension
+	zipPath := filepath.Join(snapshotDir, zippedSnapshotName)
+
+	zf, err := os.Create(zipPath)
+	if err != nil {
+		return "", err
+	}
+	defer zf.Close()
+
+	zipWriter := zip.NewWriter(zf)
+	defer zipWriter.Close()
+
+	uncompressedPath := filepath.Join(snapshotDir, snapshotName)
+	fileToZip, err := os.Open(uncompressedPath)
+	if err != nil {
+		os.Remove(zipPath)
+		return "", err
+	}
+	defer fileToZip.Close()
+
+	info, err := fileToZip.Stat()
+	if err != nil {
+		os.Remove(zipPath)
+		return "", err
+	}
+
+	header, err := zip.FileInfoHeader(info)
+	if err != nil {
+		os.Remove(zipPath)
+		return "", err
+	}
+
+	header.Name = snapshotName
+	header.Method = zip.Deflate
+	header.Modified = time.Now()
+
+	writer, err := zipWriter.CreateHeader(header)
+	if err != nil {
+		os.Remove(zipPath)
+		return "", err
+	}
+	_, err = io.Copy(writer, fileToZip)
+
+	return zipPath, err
+}
+
+// decompressSnapshot decompresses the given snapshot and provides the caller
+// with the full path to the uncompressed snapshot.
+func (e *ETCD) decompressSnapshot(snapshotDir, snapshotFile string) (string, error) {
+	logrus.Info("Decompressing etcd snapshot file: " + snapshotFile)
+
+	r, err := zip.OpenReader(snapshotFile)
+	if err != nil {
+		return "", err
+	}
+	defer r.Close()
+
+	var decompressed *os.File
+	for _, sf := range r.File {
+		decompressed, err = os.OpenFile(strings.Replace(sf.Name, compressedExtension, "", -1), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, sf.Mode())
+		if err != nil {
+			return "", err
+		}
+		defer decompressed.Close()
+
+		ss, err := sf.Open()
+		if err != nil {
+			return "", err
+		}
+		defer ss.Close()
+
+		if _, err := io.Copy(decompressed, ss); err != nil {
+			os.Remove("")
+			return "", err
+		}
+	}
+
+	return decompressed.Name(), nil
+}
+
 // Snapshot attempts to save a new snapshot to the configured directory, and then clean up any old and failed
 // snapshots in excess of the retention limits. This method is used in the internal cron snapshot
 // system as well as used to do on-demand snapshots.
@@ -924,10 +1013,10 @@ func (e *ETCD) Snapshot(ctx context.Context, config *config.Control) error {
 
 	logrus.Infof("Saving etcd snapshot to %s", snapshotPath)
 
-	var sf *SnapshotFile
+	var sf *snapshotFile
 
 	if err := snapshot.NewV3(nil).Save(ctx, *cfg, snapshotPath); err != nil {
-		sf = &SnapshotFile{
+		sf = &snapshotFile{
 			Name:     snapshotName,
 			Location: "",
 			Metadata: extraMetadata,
@@ -935,14 +1024,27 @@ func (e *ETCD) Snapshot(ctx context.Context, config *config.Control) error {
 			CreatedAt: &metav1.Time{
 				Time: now,
 			},
-			Status:  FailedSnapshotStatus,
-			Message: base64.StdEncoding.EncodeToString([]byte(err.Error())),
-			Size:    0,
+			Status:     failedSnapshotStatus,
+			Message:    base64.StdEncoding.EncodeToString([]byte(err.Error())),
+			Size:       0,
+			Compressed: e.config.EtcdSnapshotCompress,
 		}
 		logrus.Errorf("Failed to take etcd snapshot: %v", err)
 		if err := e.addSnapshotData(*sf); err != nil {
 			return errors.Wrap(err, "failed to save local snapshot failure data to configmap")
 		}
+	}
+
+	if e.config.EtcdSnapshotCompress {
+		zipPath, err := e.compressSnapshot(snapshotDir, snapshotName, snapshotPath)
+		if err != nil {
+			return err
+		}
+		if err := os.Remove(snapshotPath); err != nil {
+			return err
+		}
+		snapshotPath = zipPath
+		logrus.Info("Compressed snapshot: " + snapshotPath)
 	}
 
 	// If the snapshot attempt was successful, sf will be nil as we did not set it.
@@ -951,7 +1053,7 @@ func (e *ETCD) Snapshot(ctx context.Context, config *config.Control) error {
 		if err != nil {
 			return errors.Wrap(err, "unable to retrieve snapshot information from local snapshot")
 		}
-		sf = &SnapshotFile{
+		sf = &snapshotFile{
 			Name:     f.Name(),
 			Metadata: extraMetadata,
 			Location: "file://" + snapshotPath,
@@ -959,8 +1061,9 @@ func (e *ETCD) Snapshot(ctx context.Context, config *config.Control) error {
 			CreatedAt: &metav1.Time{
 				Time: f.ModTime(),
 			},
-			Status: SuccessfulSnapshotStatus,
-			Size:   f.Size(),
+			Status:     successfulSnapshotStatus,
+			Size:       f.Size(),
+			Compressed: e.config.EtcdSnapshotCompress,
 		}
 
 		if err := e.addSnapshotData(*sf); err != nil {
@@ -977,7 +1080,7 @@ func (e *ETCD) Snapshot(ctx context.Context, config *config.Control) error {
 			sf = nil
 			if err := e.initS3IfNil(ctx); err != nil {
 				logrus.Warnf("Unable to initialize S3 client: %v", err)
-				sf = &SnapshotFile{
+				sf = &snapshotFile{
 					Name:     filepath.Base(snapshotPath),
 					Metadata: extraMetadata,
 					NodeName: "s3",
@@ -986,7 +1089,7 @@ func (e *ETCD) Snapshot(ctx context.Context, config *config.Control) error {
 					},
 					Message: base64.StdEncoding.EncodeToString([]byte(err.Error())),
 					Size:    0,
-					Status:  FailedSnapshotStatus,
+					Status:  failedSnapshotStatus,
 					S3: &s3Config{
 						Endpoint:      e.config.EtcdS3Endpoint,
 						EndpointCA:    e.config.EtcdS3EndpointCA,
@@ -1028,32 +1131,35 @@ type s3Config struct {
 	Insecure      bool   `json:"insecure,omitempty"`
 }
 
-type SnapshotStatus string
+type snapshotStatus string
 
-const SuccessfulSnapshotStatus SnapshotStatus = "successful"
-const FailedSnapshotStatus SnapshotStatus = "failed"
+const (
+	successfulSnapshotStatus snapshotStatus = "successful"
+	failedSnapshotStatus     snapshotStatus = "failed"
+)
 
-// SnapshotFile represents a single snapshot and it's
+// snapshotFile represents a single snapshot and it's
 // metadata.
-type SnapshotFile struct {
+type snapshotFile struct {
 	Name string `json:"name"`
 	// Location contains the full path of the snapshot. For
 	// local paths, the location will be prefixed with "file://".
-	Location  string         `json:"location,omitempty"`
-	Metadata  string         `json:"metadata,omitempty"`
-	Message   string         `json:"message,omitempty"`
-	NodeName  string         `json:"nodeName,omitempty"`
-	CreatedAt *metav1.Time   `json:"createdAt,omitempty"`
-	Size      int64          `json:"size,omitempty"`
-	Status    SnapshotStatus `json:"status,omitempty"`
-	S3        *s3Config      `json:"s3Config,omitempty"`
+	Location   string         `json:"location,omitempty"`
+	Metadata   string         `json:"metadata,omitempty"`
+	Message    string         `json:"message,omitempty"`
+	NodeName   string         `json:"nodeName,omitempty"`
+	CreatedAt  *metav1.Time   `json:"createdAt,omitempty"`
+	Size       int64          `json:"size,omitempty"`
+	Status     snapshotStatus `json:"status,omitempty"`
+	S3         *s3Config      `json:"s3Config,omitempty"`
+	Compressed bool           `json:"compressed"`
 }
 
 // listLocalSnapshots provides a list of the currently stored
 // snapshots on disk along with their relevant
 // metadata.
-func (e *ETCD) listLocalSnapshots() (map[string]SnapshotFile, error) {
-	snapshots := make(map[string]SnapshotFile)
+func (e *ETCD) listLocalSnapshots() (map[string]snapshotFile, error) {
+	snapshots := make(map[string]snapshotFile)
 	snapshotDir, err := snapshotDir(e.config, true)
 	if err != nil {
 		return snapshots, errors.Wrap(err, "failed to get the snapshot dir")
@@ -1067,7 +1173,7 @@ func (e *ETCD) listLocalSnapshots() (map[string]SnapshotFile, error) {
 	nodeName := os.Getenv("NODE_NAME")
 
 	for _, f := range files {
-		sf := SnapshotFile{
+		sf := snapshotFile{
 			Name:     f.Name(),
 			Location: "file://" + filepath.Join(snapshotDir, f.Name()),
 			NodeName: nodeName,
@@ -1075,7 +1181,7 @@ func (e *ETCD) listLocalSnapshots() (map[string]SnapshotFile, error) {
 				Time: f.ModTime(),
 			},
 			Size:   f.Size(),
-			Status: SuccessfulSnapshotStatus,
+			Status: successfulSnapshotStatus,
 		}
 		sfKey := generateSnapshotConfigMapKey(sf)
 		snapshots[sfKey] = sf
@@ -1087,8 +1193,8 @@ func (e *ETCD) listLocalSnapshots() (map[string]SnapshotFile, error) {
 // listS3Snapshots provides a list of currently stored
 // snapshots in S3 along with their relevant
 // metadata.
-func (e *ETCD) listS3Snapshots(ctx context.Context) (map[string]SnapshotFile, error) {
-	snapshots := make(map[string]SnapshotFile)
+func (e *ETCD) listS3Snapshots(ctx context.Context) (map[string]snapshotFile, error) {
+	snapshots := make(map[string]snapshotFile)
 
 	if e.config.EtcdS3 {
 		ctx, cancel := context.WithCancel(ctx)
@@ -1121,7 +1227,7 @@ func (e *ETCD) listS3Snapshots(ctx context.Context) (map[string]SnapshotFile, er
 				return nil, err
 			}
 
-			sf := SnapshotFile{
+			sf := snapshotFile{
 				Name:     filepath.Base(obj.Key),
 				NodeName: "s3",
 				CreatedAt: &metav1.Time{
@@ -1137,7 +1243,7 @@ func (e *ETCD) listS3Snapshots(ctx context.Context) (map[string]SnapshotFile, er
 					Folder:        e.config.EtcdS3Folder,
 					Insecure:      e.config.EtcdS3Insecure,
 				},
-				Status: SuccessfulSnapshotStatus,
+				Status: successfulSnapshotStatus,
 			}
 			sfKey := generateSnapshotConfigMapKey(sf)
 			snapshots[sfKey] = sf
@@ -1186,7 +1292,7 @@ func (e *ETCD) PruneSnapshots(ctx context.Context) error {
 
 // ListSnapshots is an exported wrapper method that wraps an
 // unexported method of the same name.
-func (e *ETCD) ListSnapshots(ctx context.Context) (map[string]SnapshotFile, error) {
+func (e *ETCD) ListSnapshots(ctx context.Context) (map[string]snapshotFile, error) {
 	if e.config.EtcdS3 {
 		return e.listS3Snapshots(ctx)
 	}
@@ -1276,7 +1382,7 @@ func (e *ETCD) DeleteSnapshots(ctx context.Context, snapshots []string) error {
 
 // AddSnapshotData adds the given snapshot file information to the snapshot configmap, using the existing extra metadata
 // available at the time.
-func (e *ETCD) addSnapshotData(sf SnapshotFile) error {
+func (e *ETCD) addSnapshotData(sf snapshotFile) error {
 	return retry.OnError(retry.DefaultBackoff, func(err error) bool {
 		return apierrors.IsConflict(err) || apierrors.IsAlreadyExists(err)
 	}, func() error {
@@ -1315,7 +1421,7 @@ func (e *ETCD) addSnapshotData(sf SnapshotFile) error {
 	})
 }
 
-func generateSnapshotConfigMapKey(sf SnapshotFile) string {
+func generateSnapshotConfigMapKey(sf snapshotFile) string {
 	var sfKey string
 	if sf.NodeName == "s3" {
 		sfKey = "s3-" + sf.Name
@@ -1383,25 +1489,25 @@ func (e *ETCD) ReconcileSnapshotData(ctx context.Context) error {
 		deletedSnapshots := make(map[string]string)
 		// failedSnapshots is a slice of unmarshaled snapshot files sourced from the configmap
 		// These are stored unmarshaled so we can sort based on name.
-		var failedSnapshots []SnapshotFile
-		var failedS3Snapshots []SnapshotFile
+		var failedSnapshots []snapshotFile
+		var failedS3Snapshots []snapshotFile
 
 		// remove entries for this node and s3 (if S3 is enabled) only
 		for k, v := range snapshotConfigMap.Data {
-			var sf SnapshotFile
+			var sf snapshotFile
 			if err := json.Unmarshal([]byte(v), &sf); err != nil {
 				return err
 			}
-			if (sf.NodeName == nodeName || (sf.NodeName == "s3" && s3ListSuccessful)) && sf.Status != FailedSnapshotStatus {
+			if (sf.NodeName == nodeName || (sf.NodeName == "s3" && s3ListSuccessful)) && sf.Status != failedSnapshotStatus {
 				// Only delete the snapshot if the snapshot was not failed
 				// sf.Status != FailedSnapshotStatus is intentional, as it is possible we are reconciling snapshots stored from older versions that did not set status
 				deletedSnapshots[generateSnapshotConfigMapKey(sf)] = v // store a copy of the snapshot
 				delete(snapshotConfigMap.Data, k)
-			} else if sf.Status == FailedSnapshotStatus && sf.NodeName == nodeName && e.config.EtcdSnapshotRetention >= 1 {
+			} else if sf.Status == failedSnapshotStatus && sf.NodeName == nodeName && e.config.EtcdSnapshotRetention >= 1 {
 				// Handle locally failed snapshots.
 				failedSnapshots = append(failedSnapshots, sf)
 				delete(snapshotConfigMap.Data, k)
-			} else if sf.Status == FailedSnapshotStatus && e.config.EtcdS3 && sf.NodeName == "s3" && strings.HasPrefix(sf.Name, e.config.EtcdSnapshotName+"-"+nodeName) && e.config.EtcdSnapshotRetention >= 1 {
+			} else if sf.Status == failedSnapshotStatus && e.config.EtcdS3 && sf.NodeName == "s3" && strings.HasPrefix(sf.Name, e.config.EtcdSnapshotName+"-"+nodeName) && e.config.EtcdSnapshotRetention >= 1 {
 				// If we're operating against S3, we can clean up failed S3 snapshots that failed on this node.
 				failedS3Snapshots = append(failedS3Snapshots, sf)
 				delete(snapshotConfigMap.Data, k)
@@ -1456,7 +1562,7 @@ func (e *ETCD) ReconcileSnapshotData(ctx context.Context) error {
 
 		// save the local entries to the ConfigMap if they are still on disk or in S3.
 		for _, snapshot := range snapshotFiles {
-			var sf SnapshotFile
+			var sf snapshotFile
 			sfKey := generateSnapshotConfigMapKey(snapshot)
 			if v, ok := deletedSnapshots[sfKey]; ok {
 				// use the snapshot file we have from the existing configmap, and unmarshal it so we can manipulate it
@@ -1469,7 +1575,7 @@ func (e *ETCD) ReconcileSnapshotData(ctx context.Context) error {
 				sf = snapshot
 			}
 
-			sf.Status = SuccessfulSnapshotStatus // if the snapshot is on disk or in S3, it was successful.
+			sf.Status = successfulSnapshotStatus // if the snapshot is on disk or in S3, it was successful.
 
 			marshalledSnapshot, err := json.Marshal(sf)
 			if err != nil {
@@ -1507,10 +1613,29 @@ func (e *ETCD) Restore(ctx context.Context) error {
 	if _, err := os.Stat(e.config.ClusterResetRestorePath); err != nil {
 		return err
 	}
+
+	var restorePath string
+	if strings.HasSuffix(e.config.ClusterResetRestorePath, compressedExtension) {
+		snapshotDir, err := snapshotDir(e.config, true)
+		if err != nil {
+			return errors.Wrap(err, "failed to get the snapshot dir")
+		}
+
+		decompressSnapshot, err := e.decompressSnapshot(snapshotDir, e.config.ClusterResetRestorePath)
+		if err != nil {
+			return err
+		}
+
+		restorePath = decompressSnapshot
+	} else {
+		restorePath = e.config.ClusterResetRestorePath
+	}
+
 	// move the data directory to a temp path
 	if err := os.Rename(DBDir(e.config), oldDataDir); err != nil {
 		return err
 	}
+
 	logrus.Infof("Pre-restore etcd database moved to %s", oldDataDir)
 	sManager := snapshot.NewV3(nil)
 	if err := sManager.Restore(snapshot.RestoreConfig{

@@ -18,5 +18,21 @@
 			"/zz_generated_"
 		],
 		"deadline": "5m"
+	},
+	"issues": {
+		"exclude-rules": [
+			{
+				"linters": "typecheck",
+				"text": "imported but not used"
+			},
+			{
+				"linters": "revive",
+				"text": "should have comment"
+			},
+			{
+				"linters": "revive",
+				"text": "exported"
+			}
+		]
 	}
 }

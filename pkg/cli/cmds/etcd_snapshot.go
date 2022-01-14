@@ -33,6 +33,11 @@ var EtcdSnapshotFlags = []cli.Flag{
 		Value:       "on-demand",
 	},
 	&cli.BoolFlag{
+		Name:        "snapshot-compress,etcd-snapshot-compress",
+		Usage:       "(db) Compress etcd snapshot",
+		Destination: &ServerConfig.EtcdSnapshotCompress,
+	},
+	&cli.BoolFlag{
 		Name:        "s3,etcd-s3",
 		Usage:       "(db) Enable backup to S3",
 		Destination: &ServerConfig.EtcdS3,
