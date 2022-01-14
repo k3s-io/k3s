@@ -642,22 +642,24 @@ e2e-test() {
 
 test-run-sonobuoy() {
     local suffix
-    if [ "$1" ] && [[ ! $1 =~ ^(skip-serial|skip-parallel)$ ]] ; then
+    if [ "$1" ] && [[ ! $1 =~ ^(serial|parallel)$ ]] ; then
         suffix="-$1"
         export LABEL_SUFFIX=$1
+    else
+        unset LABEL_SUFFIX
     fi
 
     cleanup-test-env
     . ./scripts/test-setup-sonobuoy$suffix
     
-    if [ "$1" != "skip-parallel" ] && [ "$2" != "skip-parallel" ]; then
+    if [ "$1" = "parallel" ] || [ "$2" = "parallel" ]; then
         label=PARALLEL \
             logName=e2e-STATUS-${ARCH}-parallel.log \
             e2e-test ${sonobuoyParallelArgs[@]}
         echo "Exit code $? for parallel start"
     fi
 
-    if [ "$1" != "skip-serial" ] && [ "$2" != "skip-serial" ]; then
+    if [ "$1" = "serial" ] || [ "$2" = "serial" ]; then
         label=SERIAL \
             logName=e2e-STATUS-${ARCH}-serial.log \
             e2e-test ${sonobuoySerialArgs[@]}

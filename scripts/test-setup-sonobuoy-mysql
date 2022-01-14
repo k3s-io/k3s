@@ -54,3 +54,12 @@ cluster-pre-hook() {
     # --datastore-keyfile /db-ca/private/client.key
 }
 export -f cluster-pre-hook
+
+test-post-hook() {
+  if [[ $1 -eq 0 ]]; then
+    return
+  fi
+  local flakyTest='\[Fail\] \[sig-node\] Pods \[It\] should delete a collection of pods \[Conformance\]'
+  grep -sqF $flakyTest $TEST_DIR/sonobuoy/plugins/e2e/results/global/e2e.log
+}
+export -f test-post-hook
