@@ -1639,7 +1639,7 @@ func (e *ETCD) Restore(ctx context.Context) error {
 	logrus.Infof("Pre-restore etcd database moved to %s", oldDataDir)
 	sManager := snapshot.NewV3(nil)
 	if err := sManager.Restore(snapshot.RestoreConfig{
-		SnapshotPath:   e.config.ClusterResetRestorePath,
+		SnapshotPath:   restorePath,
 		Name:           e.name,
 		OutputDataDir:  DBDir(e.config),
 		OutputWALDir:   walDir(e.config),
