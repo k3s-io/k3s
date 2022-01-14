@@ -29,7 +29,7 @@ replace (
 	// LOOK TO scripts/download FOR THE VERSION OF runc THAT WE ARE BUILDING/SHIPPING
 	github.com/opencontainers/runc => github.com/opencontainers/runc v1.0.3
 	github.com/opencontainers/runtime-spec => github.com/opencontainers/runtime-spec v1.0.3-0.20210316141917-a8c4a9ee0f6b
-	go.etcd.io/etcd => github.com/k3s-io/etcd v0.5.0-alpha.5.0.20201208200253-50621aee4aea
+	go.etcd.io/etcd => github.com/k3s-io/etcd v0.5.0-alpha.5.0.20220113195313-6c2233a709e8 // k3s-release-3.4
 	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20210220033148-5ea612d1eb83
 	golang.org/x/net => golang.org/x/net v0.0.0-20210224082022-3d97a244fca7
 	golang.org/x/sys => golang.org/x/sys v0.0.0-20210225134936-a50acf3fe073
