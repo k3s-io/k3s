@@ -32,6 +32,10 @@
 			{
 				"linters": "revive",
 				"text": "should have comment"
+			},
+			{
+				"linters": "revive",
+				"text": "exported"
 			}
 		]
 	}
