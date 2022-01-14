@@ -170,6 +170,7 @@ type Control struct {
 	EtcdSnapshotDir          string
 	EtcdSnapshotCron         string
 	EtcdSnapshotRetention    int
+	EtcdSnapshotCompress     bool
 	EtcdS3                   bool
 	EtcdS3Endpoint           string
 	EtcdS3EndpointCA         string
