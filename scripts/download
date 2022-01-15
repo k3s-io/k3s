@@ -68,9 +68,10 @@ download_and_package_traefik () {
     crd_group=$(yq e '.spec.group' ${crd_yaml})
     crd_kind=$(yq e '.spec.names.kind' ${crd_yaml})
     crd_version=$(yq e '.spec.version' ${crd_yaml})
-    if [[ -z "$crd_version" ]]; then
+    if [[ -z "$crd_version" ]] || [[ "$crd_version" == "null" ]]; then
       crd_version=$(yq e '.spec.versions[0].name' ${crd_yaml})
     fi
+    echo "Found CRD with GVK ${crd_group}/${crd_version}/${crd_kind}"
     crd_apis+=("${crd_group}/${crd_version}/${crd_kind}")
   done
 
