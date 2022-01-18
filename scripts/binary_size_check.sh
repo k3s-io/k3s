@@ -22,7 +22,7 @@ fi
 CMD_NAME="dist/artifacts/k3s${BIN_SUFFIX}"
 SIZE=$(stat -c '%s' ${CMD_NAME})
 
-if [ "${SIZE}" -gt |${MAX_BINARY_SIZE}| ]; then
+if [ "${SIZE}" -gt "${MAX_BINARY_SIZE}" ]; then
   echo "k3s binary ${CMD_NAME} size ${SIZE} exceeds max acceptable size of ${MAX_BINARY_SIZE} bytes (${MAX_BINARY_MB} MiB)"
   exit 1
 fi
