@@ -93,11 +93,11 @@ func NewS3(ctx context.Context, config *config.Control) (*S3, error) {
 
 // upload uploads the given snapshot to the configured S3
 // compatible backend.
-func (s *S3) upload(ctx context.Context, snapshot, extraMetadata string, now time.Time) (*SnapshotFile, error) {
+func (s *S3) upload(ctx context.Context, snapshot, extraMetadata string, now time.Time) (*snapshotFile, error) {
 	logrus.Infof("Uploading snapshot %s to S3", snapshot)
 	basename := filepath.Base(snapshot)
 	var snapshotFileName string
-	var snapshotFile SnapshotFile
+	var sf snapshotFile
 	if s.config.EtcdS3Folder != "" {
 		snapshotFileName = filepath.Join(s.config.EtcdS3Folder, basename)
 	} else {
@@ -112,7 +112,7 @@ func (s *S3) upload(ctx context.Context, snapshot, extraMetadata string, now tim
 	}
 	uploadInfo, err := s.client.FPutObject(toCtx, s.config.EtcdS3BucketName, snapshotFileName, snapshot, opts)
 	if err != nil {
-		snapshotFile = SnapshotFile{
+		sf = snapshotFile{
 			Name:     filepath.Base(uploadInfo.Key),
 			Metadata: extraMetadata,
 			NodeName: "s3",
@@ -121,7 +121,7 @@ func (s *S3) upload(ctx context.Context, snapshot, extraMetadata string, now tim
 			},
 			Message: base64.StdEncoding.EncodeToString([]byte(err.Error())),
 			Size:    0,
-			Status:  FailedSnapshotStatus,
+			Status:  failedSnapshotStatus,
 			S3: &s3Config{
 				Endpoint:      s.config.EtcdS3Endpoint,
 				EndpointCA:    s.config.EtcdS3EndpointCA,
@@ -139,7 +139,7 @@ func (s *S3) upload(ctx context.Context, snapshot, extraMetadata string, now tim
 			return nil, err
 		}
 
-		snapshotFile = SnapshotFile{
+		sf = snapshotFile{
 			Name:     filepath.Base(uploadInfo.Key),
 			Metadata: extraMetadata,
 			NodeName: "s3",
@@ -147,7 +147,7 @@ func (s *S3) upload(ctx context.Context, snapshot, extraMetadata string, now tim
 				Time: ca,
 			},
 			Size:   uploadInfo.Size,
-			Status: SuccessfulSnapshotStatus,
+			Status: successfulSnapshotStatus,
 			S3: &s3Config{
 				Endpoint:      s.config.EtcdS3Endpoint,
 				EndpointCA:    s.config.EtcdS3EndpointCA,
@@ -159,7 +159,7 @@ func (s *S3) upload(ctx context.Context, snapshot, extraMetadata string, now tim
 			},
 		}
 	}
-	return &snapshotFile, nil
+	return &sf, nil
 }
 
 // download downloads the given snapshot from the configured S3
