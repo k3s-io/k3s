@@ -30,8 +30,8 @@ if [ ! -e build/data ];then
     mkdir -p build/data
 fi
 
-echo Running: golangci-lint
-golangci-lint run -v
+#echo Running: golangci-lint
+#golangci-lint run -v
 
 . ./scripts/version.sh
 
