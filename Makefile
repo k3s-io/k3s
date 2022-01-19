@@ -22,11 +22,6 @@ release:
 
 .PHONY: $(TARGETS)
 
-.PHONY: generate
-generate: build/data 
-	./scripts/download
-	go generate
-
 build/data:
 	mkdir -p $@
 
