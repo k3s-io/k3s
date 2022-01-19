@@ -34,6 +34,7 @@ type Node struct {
 	FlannelConfFile          string
 	FlannelConfOverride      bool
 	FlannelIface             *net.Interface
+	FlannelIPv6Masq          bool
 	Containerd               Containerd
 	Images                   string
 	AgentConfig              Agent
@@ -115,6 +116,7 @@ type CriticalControlArgs struct {
 	DisableNPC       bool
 	DisableServiceLB bool
 	FlannelBackend   string
+	FlannelIPv6Masq  bool
 	NoCoreDNS        bool
 	ServiceIPRange   *net.IPNet
 	ServiceIPRanges  []*net.IPNet

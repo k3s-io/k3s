@@ -52,6 +52,7 @@ type Server struct {
 	DisableScheduler         bool
 	ServerURL                string
 	FlannelBackend           string
+	FlannelIPv6Masq          bool
 	DefaultLocalStoragePath  string
 	DisableCCM               bool
 	DisableNPC               bool
@@ -193,6 +194,11 @@ var ServerFlags = []cli.Flag{
 		Usage:       "(networking) One of 'none', 'vxlan', 'ipsec', 'host-gw', or 'wireguard'",
 		Destination: &ServerConfig.FlannelBackend,
 		Value:       "vxlan",
+	},
+	cli.BoolFlag{
+		Name:        "flannel-ipv6-masq",
+		Usage:       "(networking) Enable IPv6 masquerading for pod",
+		Destination: &ServerConfig.FlannelIPv6Masq,
 	},
 	ServerToken,
 	cli.StringFlag{
