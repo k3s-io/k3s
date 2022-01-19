@@ -59,7 +59,8 @@ test-post-hook() {
   if [[ $1 -eq 0 ]]; then
     return
   fi
-  local flakyTest='\[Fail\] \[sig-node\] Pods \[It\] should delete a collection of pods \[Conformance\]'
-  grep -sqF $flakyTest $TEST_DIR/sonobuoy/plugins/e2e/results/global/e2e.log
+  local flakyTest1='\[Fail\] \[sig-node\] Probing container \[It\] should have monotonically increasing restart count \[NodeConformance\] \[Conformance\]'
+  local flakyTest2='\[Fail\] \[sig-node\] Pods \[It\] should delete a collection of pods \[Conformance\]'
+  grep -sqF -e $flakyTest1 -e $flakyTest2 $TEST_DIR/sonobuoy/plugins/e2e/results/global/e2e.log
 }
 export -f test-post-hook
