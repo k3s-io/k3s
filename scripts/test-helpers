@@ -624,13 +624,6 @@ e2e-test() {
         logOutput=$E2E_OUTPUT/$logName
     fi
     if [[ $label =~ ^PARALLEL.* ]]; then
-        local delay=15
-        (
-        set +x
-        while [ $(count-running-tests) -ge ${MAX_CONCURRENT_TESTS:-1} ]; do
-            sleep $delay
-        done
-        )
         LABEL=$label LOG_OUTPUT=$logOutput ./scripts/test-runner $@
     else
         LABEL=$label LOG_OUTPUT=$logOutput run-test $@
