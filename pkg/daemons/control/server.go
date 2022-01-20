@@ -176,7 +176,6 @@ func apiServer(ctx context.Context, cfg *config.Control) error {
 	if cfg.AdvertiseIP != "" {
 		argsMap["advertise-address"] = cfg.AdvertiseIP
 	}
-	argsMap["insecure-port"] = "0"
 	argsMap["secure-port"] = strconv.Itoa(cfg.APIServerPort)
 	if cfg.APIServerBindAddress == "" {
 		argsMap["bind-address"] = getLocalhostIP(cfg.ServiceIPRanges).String()
