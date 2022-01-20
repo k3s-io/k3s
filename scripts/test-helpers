@@ -624,7 +624,7 @@ e2e-test() {
         logOutput=$E2E_OUTPUT/$logName
     fi
     if [[ $label =~ ^PARALLEL.* ]]; then
-        LABEL=$label LOG_OUTPUT=$logOutput ./scripts/test-runner $@
+        LABEL=$label LOG_OUTPUT=$logOutput MAX_CONCURRENT_TESTS=3 run-test $@
     else
         LABEL=$label LOG_OUTPUT=$logOutput run-test $@
     fi

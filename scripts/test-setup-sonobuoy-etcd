@@ -18,9 +18,10 @@ test-post-hook() {
   if [[ $1 -eq 0 ]]; then
     return
   fi
-  local flakyTest1='\[Fail\] \[sig-node\] Probing container \[It\] should have monotonically increasing restart count \[NodeConformance\] \[Conformance\]'
-  local flakyTest2='\[Fail\] \[sig-network\] Proxy version v1 \[It\] A set of valid responses are returned for both pod and service ProxyWithPath \[Conformance\]'
-  grep -sqF -e $flakyTest1 -e $flakyTest2 $TEST_DIR/sonobuoy/plugins/e2e/results/global/e2e.log
+  local flakyTest1='[Fail] [sig-node] Probing container [It] should have monotonically increasing restart count [NodeConformance] [Conformance]'
+  local flakyTest2='[Fail] [sig-network] Proxy version v1 [It] A set of valid responses are returned for both pod and service ProxyWithPath [Conformance]'
+  local flakyTest3='[Fail] [sig-node] Pods [It] should run through the lifecycle of Pods and PodStatus [Conformance]' 
+  grep -sqF -e "$flakyTest1" -e "$flakyTest2" -e "$flakyTest3" "$TEST_DIR"/sonobuoy/plugins/e2e/results/global/e2e.log
 }
 export -f test-post-hook
 
