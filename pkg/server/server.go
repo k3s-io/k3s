@@ -417,7 +417,6 @@ func writeKubeConfig(certs string, config *Config) error {
 }
 
 func setupDataDirAndChdir(config *config.Control) error {
-
 	dataDir := config.DataDir
 
 	if err := os.MkdirAll(dataDir, 0700); err != nil {
