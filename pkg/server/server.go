@@ -417,15 +417,14 @@ func writeKubeConfig(certs string, config *Config) error {
 }
 
 func setupDataDirAndChdir(config *config.Control) error {
-	var err error
 
 	dataDir := config.DataDir
 
-	if err = os.MkdirAll(dataDir, 0700); err != nil {
+	if err := os.MkdirAll(dataDir, 0700); err != nil {
 		return errors.Wrapf(err, "can not mkdir %s", dataDir)
 	}
 
-	if err = os.Chdir(dataDir); err != nil {
+	if err := os.Chdir(dataDir); err != nil {
 		return errors.Wrapf(err, "can not chdir %s", dataDir)
 	}
 
