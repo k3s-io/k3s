@@ -8,7 +8,7 @@ ENV SONOBUOY_VERSION 0.55.0
 RUN OS=linux; \
     ARCH=$(go env GOARCH); \
     RELEASE=$(curl -fs https://storage.googleapis.com/kubernetes-release/release/stable.txt); \
-    if [ "${ARCH}" == "amd64" ] || [ "${ARCH}" == "arm64" ]; then \
+    if [ "${ARCH}" == "amd64" ] || [ "${ARCH}" == "arm64" ] || [ "${ARCH}" == "s390x" ]; then \
       curl -sL "https://github.com/vmware-tanzu/sonobuoy/releases/download/v${SONOBUOY_VERSION}/sonobuoy_${SONOBUOY_VERSION}_${OS}_${ARCH}.tar.gz" | \
       tar -xzf - -C /usr/local/bin; \
     fi; \
