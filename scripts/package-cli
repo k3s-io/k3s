@@ -46,6 +46,8 @@ if [ ${ARCH} = amd64 ]; then
     BIN_SUFFIX=""
 elif [ ${ARCH} = arm ]; then
     BIN_SUFFIX="-armhf"
+elif [ ${ARCH} = s390x ]; then
+    BIN_SUFFIX="-s390x"
 fi
 
 CMD_NAME=dist/artifacts/k3s${BIN_SUFFIX}
