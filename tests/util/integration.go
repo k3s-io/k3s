@@ -2,13 +2,16 @@ package util
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"os/user"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/rancher/k3s/pkg/flock"
 	"github.com/sirupsen/logrus"
@@ -18,7 +21,7 @@ import (
 // Compile-time variable
 var existingServer = "False"
 
-const lockFile = "/var/lock/k3s-test.lock"
+const lockFile = "/tmp/k3s-test.lock"
 
 type K3sServer struct {
 	cmd     *exec.Cmd
@@ -146,9 +149,9 @@ func K3sStartServer(inputArgs ...string) (*K3sServer, error) {
 	for _, arg := range inputArgs {
 		cmdArgs = append(cmdArgs, strings.Fields(arg)...)
 	}
-
+	fmt.Println("cmd args: %#v", cmdArgs)
 	k3sBin := findK3sExecutable()
-
+	fmt.Println("k3s bin: %#v", k3sBin)
 	k3sCmd := append([]string{"server"}, cmdArgs...)
 	cmd := exec.Command(k3sBin, k3sCmd...)
 	// Give the server a new group id so we can kill it and its children later
@@ -200,4 +203,17 @@ func K3sCleanup(server *K3sServer, releaseLock bool) error {
 		return flock.Release(server.lock)
 	}
 	return nil
+}
+
+// RunCommand Runs command on the cluster accessing the cluster through kubeconfig file
+func RunCommand(cmd string) (string, error) {
+	c := exec.Command("bash", "-c", cmd)
+	time.Sleep(10 * time.Second)
+	var out bytes.Buffer
+	c.Stdout = &out
+	err := c.Run()
+	if err != nil {
+		return "", errors.New(fmt.Sprintf("%s", err))
+	}
+	return out.String(), nil
 }

@@ -12,9 +12,7 @@ import (
 
 var server1, server2, server3 *testutil.K3sServer
 var clientCACertHash string
-var tmpK3SDir = "/tmp/k3srestore"
 var restoreServerArgs = []string{"--cluster-init", "-t", "test"}
-var freshNodeServerArgs = []string{"--cluster-init", "-t", "test", "-d", tmpK3SDir}
 var _ = BeforeSuite(func() {
 	if !testutil.IsExistingServer() {
 		var err error
@@ -61,7 +59,7 @@ var _ = Describe("etcd snapshot restore", func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 		It("stop k3s", func() {
-			Expect(testutil.K3sKillServer(server1)).To(Succeed())
+			Expect(testutil.K3sKillServer(server1, true)).To(Succeed())
 		})
 		It("restore the snapshot", func() {
 			// get snapshot file
@@ -100,15 +98,15 @@ var _ = Describe("etcd snapshot restore", func() {
 			Expect(clientCACertHash2).To(Equal(clientCACertHash))
 		})
 		It("stop k3s", func() {
-			Expect(testutil.K3sKillServer(server2)).To(Succeed())
+			Expect(testutil.K3sKillServer(server2, false)).To(Succeed())
 		})
 	})
 })
 
 var _ = AfterSuite(func() {
 	if !testutil.IsExistingServer() {
-		Expect(testutil.K3sKillServer(server1)).To(Succeed())
-		Expect(testutil.K3sKillServer(server2)).To(Succeed())
+		Expect(testutil.K3sKillServer(server1, false)).To(Succeed())
+		Expect(testutil.K3sKillServer(server2, false)).To(Succeed())
 	}
 })
 
