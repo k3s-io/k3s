@@ -4,6 +4,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/daemons/control/deps"
@@ -68,4 +69,21 @@ func ClusterIPNet() *net.IPNet {
 func ServiceIPNet() *net.IPNet {
 	_, serviceIPNet, _ := net.ParseCIDR("10.43.0.0/16")
 	return serviceIPNet
+}
+
+func FindFile(root, findStr string) (string, error) {
+	var filePath string
+	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() && strings.Contains(path, findStr) {
+			filePath = path
+		}
+		return nil
+	})
+	if err != nil {
+		return "", err
+	}
+	return filePath, nil
 }
