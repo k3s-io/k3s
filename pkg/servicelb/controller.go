@@ -37,7 +37,7 @@ var (
 	daemonsetNodeLabel     = "svccontroller." + version.Program + ".cattle.io/enablelb"
 	daemonsetNodePoolLabel = "svccontroller." + version.Program + ".cattle.io/lbpool"
 	nodeSelectorLabel      = "svccontroller." + version.Program + ".cattle.io/nodeselector"
-	DefaultLBImage         = "rancher/klipper-lb:v0.3.4"
+	DefaultLBImage         = "rancher/klipper-lb:v0.3.5"
 )
 
 const (
