@@ -51,6 +51,7 @@ echo "Did test-run-sonobuoy-mysqk serial $?"
 test-run-sonobuoy postgres serial
 echo "Did test-run-sonobuoy-postgres serial $?"
 
+# Wait until all serial tests have finished
 delay=15
 (
 set +x
