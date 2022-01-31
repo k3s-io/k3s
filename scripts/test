@@ -22,7 +22,7 @@ echo "Did test-run-basics $?"
 echo "Did test-run-compat $?"
 
 . ./scripts/test-run-etcd
- echo "Did test-run-etcd $?"
+echo "Did test-run-etcd $?"
 
 . ./scripts/test-run-lazypull
 echo "Did test-run-lazypull $?"
