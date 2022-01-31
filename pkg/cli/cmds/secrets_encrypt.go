@@ -1,6 +1,7 @@
 package cmds
 
 import (
+	"github.com/rancher/k3s/pkg/version"
 	"github.com/urfave/cli"
 )
 
@@ -9,6 +10,13 @@ const SecretsEncryptCommand = "secrets-encrypt"
 var EncryptFlags = []cli.Flag{
 	DataDirFlag,
 	ServerToken,
+	cli.StringFlag{
+		Name:        "server, s",
+		Usage:       "(cluster) Server to connect to",
+		EnvVar:      version.ProgramUpper + "_URL",
+		Value:       "https://127.0.0.1:6443",
+		Destination: &ServerConfig.ServerURL,
+	},
 }
 
 func NewSecretsEncryptCommand(action func(*cli.Context) error, subcommands []cli.Command) cli.Command {
