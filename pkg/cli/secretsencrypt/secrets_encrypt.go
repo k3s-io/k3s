@@ -31,9 +31,6 @@ func commandPrep(app *cli.Context, cfg *cmds.Server) (config.Control, *clientacc
 	if err != nil {
 		return controlConfig, nil, err
 	}
-	if cfg.ServerURL == "" {
-		cfg.ServerURL = "https://127.0.0.1:6443"
-	}
 
 	if cfg.Token == "" {
 		fp := filepath.Join(controlConfig.DataDir, "token")
