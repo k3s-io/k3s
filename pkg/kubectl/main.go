@@ -34,6 +34,7 @@ func Main() {
 			logrus.Warn(err)
 		}
 	}
+
 	main()
 }
 
