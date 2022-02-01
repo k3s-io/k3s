@@ -39,9 +39,46 @@ spec:
         emptyDir: {}
       containers:
       - name: metrics-server
-        image: %{SYSTEM_DEFAULT_REGISTRY}%rancher/mirrored-metrics-server:v0.5.0
-        args: ['--cert-dir', '/tmp']
+        image: %{SYSTEM_DEFAULT_REGISTRY}%rancher/mirrored-metrics-server:v0.5.2
+        args:
+        - --cert-dir=/tmp
+        - --secure-port=4443
+        - --kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname
+        - --kubelet-use-node-status-port
+        - --metric-resolution=15s
+        resources:
+          requests:
+            cpu: 100m
+            memory: 70Mi
+        ports:
+        - name: https
+          containerPort: 4443
+          protocol: TCP
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: https
+            scheme: HTTPS
+          initialDelaySeconds: 0
+          periodSeconds: 2
+          timeoutSeconds: 1
+          successThreshold: 1
+          failureThreshold: 3
+        livenessProbe:
+          httpGet:
+            path: /livez
+            port: https
+            scheme: HTTPS
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 1
+          successThreshold: 1
+          failureThreshold: 3
+        securityContext:
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1000
+          allowPrivilegeEscalation: false
         volumeMounts:
         - name: tmp-dir
           mountPath: /tmp
-

@@ -22,6 +22,7 @@ test-post-hook() {
   if [[ $1 -eq 0 ]]; then
     return
   fi
+  dump-logs skip-output
   grep -sqF 'incompatible down-level server detected' $TEST_DIR/agents/*/logs/system.log
 }
 export -f test-post-hook

@@ -19,7 +19,7 @@ metadata:
 spec:
   containers:
   - name: volume-test
-    image: rancher/mirrored-pause:3.1
+    image: rancher/mirrored-pause:3.6
     imagePullPolicy: IfNotPresent
     volumeMounts:
     - name: volv

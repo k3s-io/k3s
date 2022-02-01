@@ -3,7 +3,7 @@ NODE_ROLES = (ENV['NODE_ROLES'] ||
   ["server-0", "server-1", "server-2", "agent-0", "agent-1"])
 NODE_BOXES = (ENV['NODE_BOXES'] ||
   ['generic/ubuntu2004', 'generic/ubuntu2004', 'generic/ubuntu2004', 'generic/ubuntu2004', 'generic/ubuntu2004'])
-GITHUB_BRANCH = (ENV['GITHUB_BRANCH'] || "master")
+RELEASE_CHANNEL = (ENV['RELEASE_CHANNEL'] || "latest")
 RELEASE_VERSION = (ENV['RELEASE_VERSION'] || "")
 NODE_CPUS = (ENV['NODE_CPUS'] || 2).to_i
 NODE_MEMORY = (ENV['NODE_MEMORY'] || 1024).to_i
@@ -19,15 +19,20 @@ def provision(vm, roles, role_num, node_num)
 
   osConfigure(vm)
   
+  
   if !RELEASE_VERSION.empty?
     install_type = "INSTALL_K3S_VERSION=#{RELEASE_VERSION}"
-  else
-    # Grabs the last 5 commit SHA's from the given branch, then purges any commits that do not have a passing CI build
-    vm.provision "shell", path: "../scripts/latest_commit.sh", args: [GITHUB_BRANCH, "/tmp/k3s_commits"]
+  elsif RELEASE_CHANNEL == "commit"
+    vm.provision "shell", path: "../scripts/latest_commit.sh", args: ["master", "/tmp/k3s_commits"]
     install_type = "INSTALL_K3S_COMMIT=$(head\ -n\ 1\ /tmp/k3s_commits)"
+  else
+    vm.provision "latest version", type: "shell",
+      inline: "curl -w '%{url_effective}' -L -s -S https://update.k3s.io/v1-release/channels/#{RELEASE_CHANNEL} -o /dev/null | sed -e 's|.*/||'  &> /tmp/k3s_version"
+    install_type = "INSTALL_K3S_VERSION=$(cat\ /tmp/k3s_version)"
   end
+
   vm.provision "shell", inline: "ping -c 2 k3s.io"
-  
+
   if roles.include?("server") && role_num == 0
     vm.provision 'k3s-install', type: 'k3s', run: 'once' do |k3s|
       k3s.installer_url = 'https://get.k3s.io'
@@ -59,14 +64,14 @@ end
 def osConfigure(vm)
 
   if vm.box.include?("ubuntu2004")
-    vm.provision "shell", inline: "systemd-resolve --set-dns=8.8.8.8 --interface=eth0"
-    vm.provision "shell", inline: "apt install -y jq"
+    vm.provision "shell", inline: "systemd-resolve --set-dns=8.8.8.8 --interface=eth0", run: 'once'
+    vm.provision "shell", inline: "apt install -y jq", run: 'once'
   end
   if vm.box.include?("Leap")
-    vm.provision "shell", inline: "zypper install -y jq"
+    vm.provision "shell", inline: "zypper install -y jq", run: 'once'
   end
   if vm.box.include?("microos")
-    vm.provision "shell", inline: "transactional-update pkg install -y jq"
+    vm.provision "shell", inline: "transactional-update pkg install -y jq", run: 'once'
     vm.provision 'reload', run: 'once'
   end
 

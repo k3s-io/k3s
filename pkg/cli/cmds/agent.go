@@ -214,7 +214,7 @@ func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
 		Name:      "agent",
 		Usage:     "Run node agent",
 		UsageText: appName + " agent [OPTIONS]",
-		Before:    SetupDebug(CheckSELinuxFlags),
+		Before:    CheckSELinuxFlags,
 		Action:    action,
 		Flags: []cli.Flag{
 			ConfigFlag,

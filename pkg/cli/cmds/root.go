@@ -43,19 +43,6 @@ func NewApp() *cli.App {
 			Usage: "(data) Folder to hold state default /var/lib/rancher/" + version.Program + " or ${HOME}/.rancher/" + version.Program + " if not root",
 		},
 	}
-	app.Before = SetupDebug(nil)
 
 	return app
-}
-
-func SetupDebug(next func(ctx *cli.Context) error) func(ctx *cli.Context) error {
-	return func(ctx *cli.Context) error {
-		if Debug {
-			logrus.SetLevel(logrus.DebugLevel)
-		}
-		if next != nil {
-			return next(ctx)
-		}
-		return nil
-	}
 }

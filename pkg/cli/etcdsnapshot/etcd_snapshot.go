@@ -39,6 +39,7 @@ func commandSetup(app *cli.Context, cfg *cmds.Server, sc *server.Config) (string
 	sc.ControlConfig.DataDir = cfg.DataDir
 	sc.ControlConfig.EtcdSnapshotName = cfg.EtcdSnapshotName
 	sc.ControlConfig.EtcdSnapshotDir = cfg.EtcdSnapshotDir
+	sc.ControlConfig.EtcdSnapshotCompress = cfg.EtcdSnapshotCompress
 	sc.ControlConfig.EtcdS3 = cfg.EtcdS3
 	sc.ControlConfig.EtcdS3Endpoint = cfg.EtcdS3Endpoint
 	sc.ControlConfig.EtcdS3EndpointCA = cfg.EtcdS3EndpointCA

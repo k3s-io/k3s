@@ -55,9 +55,13 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	// database credentials or other secrets.
 	gspt.SetProcTitle(os.Args[0] + " server")
 
-	// Evacuate cgroup v2 before doing anything else that may fork.
-	if err := cmds.EvacuateCgroup2(); err != nil {
-		return err
+	// If the agent is enabled, evacuate cgroup v2 before doing anything else that may fork.
+	// If the agent is disabled, we don't need to bother doing this as it is only the kubelet
+	// that cares about cgroups.
+	if !cfg.DisableAgent {
+		if err := cmds.EvacuateCgroup2(); err != nil {
+			return err
+		}
 	}
 
 	// Initialize logging, and subprocess reaping if necessary.
@@ -127,6 +131,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	serverConfig.ControlConfig.AdvertiseIP = cfg.AdvertiseIP
 	serverConfig.ControlConfig.AdvertisePort = cfg.AdvertisePort
 	serverConfig.ControlConfig.FlannelBackend = cfg.FlannelBackend
+	serverConfig.ControlConfig.FlannelIPv6Masq = cfg.FlannelIPv6Masq
 	serverConfig.ControlConfig.ExtraCloudControllerArgs = cfg.ExtraCloudControllerArgs
 	serverConfig.ControlConfig.DisableCCM = cfg.DisableCCM
 	serverConfig.ControlConfig.DisableNPC = cfg.DisableNPC
@@ -163,43 +168,6 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 
 	if cfg.ClusterResetRestorePath != "" && !cfg.ClusterReset {
 		return errors.New("invalid flag use; --cluster-reset required with --cluster-reset-restore-path")
-	}
-
-	// make sure components are disabled so we only perform a restore
-	// and bail out
-	if cfg.ClusterResetRestorePath != "" && cfg.ClusterReset {
-		serverConfig.ControlConfig.ClusterInit = true
-		serverConfig.ControlConfig.DisableAPIServer = true
-		serverConfig.ControlConfig.DisableControllerManager = true
-		serverConfig.ControlConfig.DisableScheduler = true
-		serverConfig.ControlConfig.DisableCCM = true
-
-		// only close the agentReady channel in case of k3s restoration, because k3s does not start
-		// the agent until server returns successfully, unlike rke2's agent which starts in parallel
-		// with the server
-		if serverConfig.ControlConfig.SupervisorPort == serverConfig.ControlConfig.HTTPSPort {
-			close(agentReady)
-		}
-
-		dataDir, err := datadir.LocalHome(cfg.DataDir, false)
-		if err != nil {
-			return err
-		}
-		// delete local loadbalancers state for apiserver and supervisor servers
-		loadbalancer.ResetLoadBalancer(filepath.Join(dataDir, "agent"), loadbalancer.SupervisorServiceName)
-		loadbalancer.ResetLoadBalancer(filepath.Join(dataDir, "agent"), loadbalancer.APIServerServiceName)
-
-		// at this point we're doing a restore. Check to see if we've
-		// passed in a token and if not, check if the token file exists.
-		// If it doesn't, return an error indicating the token is necessary.
-		if cfg.Token == "" {
-			tokenFile := filepath.Join(dataDir, "server", "token")
-			if _, err := os.Stat(tokenFile); err != nil {
-				if os.IsNotExist(err) {
-					return errors.New(tokenFile + " does not exist, please pass --token to complete the restoration")
-				}
-			}
-		}
 	}
 
 	serverConfig.ControlConfig.ClusterReset = cfg.ClusterReset
@@ -415,6 +383,43 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	serverConfig.ControlConfig.TLSCipherSuites, err = kubeapiserverflag.TLSCipherSuites(tlsCipherSuites)
 	if err != nil {
 		return errors.Wrap(err, "invalid tls-cipher-suites")
+	}
+
+	// make sure components are disabled so we only perform a restore
+	// and bail out
+	if cfg.ClusterResetRestorePath != "" && cfg.ClusterReset {
+		serverConfig.ControlConfig.ClusterInit = true
+		serverConfig.ControlConfig.DisableAPIServer = true
+		serverConfig.ControlConfig.DisableControllerManager = true
+		serverConfig.ControlConfig.DisableScheduler = true
+		serverConfig.ControlConfig.DisableCCM = true
+
+		// only close the agentReady channel in case of k3s restoration, because k3s does not start
+		// the agent until server returns successfully, unlike rke2's agent which starts in parallel
+		// with the server
+		if serverConfig.ControlConfig.SupervisorPort == serverConfig.ControlConfig.HTTPSPort {
+			close(agentReady)
+		}
+
+		dataDir, err := datadir.LocalHome(cfg.DataDir, false)
+		if err != nil {
+			return err
+		}
+		// delete local loadbalancers state for apiserver and supervisor servers
+		loadbalancer.ResetLoadBalancer(filepath.Join(dataDir, "agent"), loadbalancer.SupervisorServiceName)
+		loadbalancer.ResetLoadBalancer(filepath.Join(dataDir, "agent"), loadbalancer.APIServerServiceName)
+
+		// at this point we're doing a restore. Check to see if we've
+		// passed in a token and if not, check if the token file exists.
+		// If it doesn't, return an error indicating the token is necessary.
+		if cfg.Token == "" {
+			tokenFile := filepath.Join(dataDir, "server", "token")
+			if _, err := os.Stat(tokenFile); err != nil {
+				if os.IsNotExist(err) {
+					return errors.New(tokenFile + " does not exist, please pass --token to complete the restoration")
+				}
+			}
+		}
 	}
 
 	logrus.Info("Starting " + version.Program + " " + app.App.Version)

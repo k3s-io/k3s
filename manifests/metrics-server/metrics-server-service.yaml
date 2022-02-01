@@ -12,5 +12,6 @@ spec:
     k8s-app: metrics-server
   ports:
   - port: 443
+    name: https
     protocol: TCP
-    targetPort: 443
+    targetPort: https

@@ -63,7 +63,7 @@ spec:
             effect: "NoSchedule"
       containers:
       - name: local-path-provisioner
-        image: %{SYSTEM_DEFAULT_REGISTRY}%rancher/local-path-provisioner:v0.0.20
+        image: %{SYSTEM_DEFAULT_REGISTRY}%rancher/local-path-provisioner:v0.0.21
         imagePullPolicy: IfNotPresent
         command:
         - local-path-provisioner
@@ -151,4 +151,4 @@ data:
     spec:
       containers:
       - name: helper-pod
-        image: %{SYSTEM_DEFAULT_REGISTRY}%rancher/mirrored-library-busybox:1.32.1
+        image: %{SYSTEM_DEFAULT_REGISTRY}%rancher/mirrored-library-busybox:1.34.1

@@ -25,14 +25,11 @@ func commandPrep(app *cli.Context, cfg *cmds.Server) (config.Control, *clientacc
 	var err error
 	// hide process arguments from ps output, since they may contain
 	// database credentials or other secrets.
-	gspt.SetProcTitle(os.Args[0] + " encrypt")
+	gspt.SetProcTitle(os.Args[0] + " secrets-encrypt")
 
 	controlConfig.DataDir, err = server.ResolveDataDir(cfg.DataDir)
 	if err != nil {
 		return controlConfig, nil, err
-	}
-	if cfg.ServerURL == "" {
-		cfg.ServerURL = "https://127.0.0.1:6443"
 	}
 
 	if cfg.Token == "" {
@@ -47,7 +44,7 @@ func commandPrep(app *cli.Context, cfg *cmds.Server) (config.Control, *clientacc
 	}
 	controlConfig.EncryptForce = cfg.EncryptForce
 	controlConfig.EncryptSkip = cfg.EncryptSkip
-	info, err := clientaccess.ParseAndValidateTokenForUser(cmds.ServerConfig.ServerURL, controlConfig.Token, "node")
+	info, err := clientaccess.ParseAndValidateTokenForUser(cmds.ServerConfig.ServerURL, controlConfig.Token, "server")
 	if err != nil {
 		return controlConfig, nil, err
 	}

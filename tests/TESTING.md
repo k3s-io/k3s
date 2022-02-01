@@ -1,7 +1,12 @@
 # Testing Standards in K3s
 
-Go testing in K3s comes in 3 forms: Unit, Integration, and End-to-End (E2E). This
-document will explain *when* each test should be written and *how* each test should be
+Testing in K3s comes in 4 forms: 
+- [Unit](#unit-tests)
+- [Integration](#integration-tests)
+- [Smoke](#smoke-tests)
+- [End-to-End (E2E)](#end-to-end-e2e-tests)
+
+This document will explain *when* each test should be written and *how* each test should be
 generated, formatted, and run.
 
 Note: all shell commands given are relative to the root k3s repo directory.
@@ -60,12 +65,12 @@ To facilitate K3s CLI testing, see `tests/util/cmd.go` helper functions.
 Integration tests can be placed in two areas:  
 
 1. Next to the go package they intend to test.
-2. In `tests/integration/<TESTNAME>` for package agnostic testing.  
+2. In `tests/integration/<TEST_NAME>` for package agnostic testing.  
 
 Package specific integration tests should use the `<PACKAGE_UNDER_TEST>_test` package.  
 Package agnostic integration tests should use the `integration` package.  
-All integration test files should be named: `<TEST_NAME>_int_test.go`  
-All integration test functions should be named: `Test_Integration<Test_Name>`.  
+All integration test files should be named: `<TEST_NAME>_int_test.go`.  
+All integration test functions should be named: `Test_Integration<TEST_NAME>`.  
 See the [etcd snapshot test](https://github.com/k3s-io/k3s/blob/master/pkg/etcd/etcd_int_test.go) as a package specific example.  
 See the [local storage test](https://github.com/k3s-io/k3s/blob/master/tests/integration/localstorage/localstorage_int_test.go) as a package agnostic example.
 
@@ -172,21 +177,33 @@ ___
 
 ## End-to-End (E2E) Tests
 
-End-to-end tests utilize [Ginkgo](https://onsi.github.io/ginkgo/) and [Gomega](https://onsi.github.io/gomega/) like the integration tests, but rely on separate testing utilities and are self-contained within the `test/e2e` directory. E2E tests cover complete K3s single and multi-cluster configuration and administration: bringup, update, teardown etc.  
-E2E tests are run nightly as part of K3s quality assurance (QA).
+E2E tests cover multi-node K3s configuration and administration: bringup, update, teardown etc. across a wide range of operating systems. E2E tests are run nightly as part of K3s quality assurance (QA).
+
+### Framework 
+End-to-end tests utilize [Ginkgo](https://onsi.github.io/ginkgo/) and [Gomega](https://onsi.github.io/gomega/) like the integration tests, but rely on [Vagrant](https://www.vagrantup.com/) to provide the underlying cluster configuration. 
+
+Currently tested operating systems are:
+- [Ubuntu 20.04](https://app.vagrantup.com/generic/boxes/ubuntu2004)
+- [Leap 15.3](https://app.vagrantup.com/opensuse/boxes/Leap-15.3.x86_64) (stand-in for SLE-Server)
+- [MicroOS](https://app.vagrantup.com/dweomer/boxes/microos.amd64) (stand-in for SLE-Micro)
 
 ### Format
 
-All E2E tests should be placed under the `e2e` package.  
+All E2E tests should be placed under `tests/e2e/<TEST_NAME>`.  
 All E2E test functions should be named: `Test_E2E<TEST_NAME>`.  
-See the [upgrade cluster test](https://github.com/k3s-io/k3s/blob/master/tests/e2e/upgradecluster_test.go) as an example.
+A E2E test consists of two parts:
+1. `Vagrantfile`: a vagrant file which describes and configures the VMs upon which the cluster and test will run
+2. `<TEST_NAME>.go`: A go test file which calls `vagrant up` and controls the actual testing of the cluster
+
+See the [validate cluster test](../tests/e2e/validatecluster/validatecluster_test.go) as an example.
 
 ### Running
 
-Generally, E2E tests are run as a nightly Jenkins job for QA. They can still be run locally but additional setup may be required.
+Generally, E2E tests are run as a nightly Jenkins job for QA. They can still be run locally but additional setup may be required. By default, all E2E tests are designed with `libvirt` as the underlying VM provider. Instructions for installing libvirt and its associated vagrant plugin, `vagrant-libvirt` can be found [here.](https://github.com/vagrant-libvirt/vagrant-libvirt#installation) `VirtualBox` is also supported as a backup VM provider.
 
+Once setup is complete, E2E tests can be run with:
 ```bash
-go test ./tests/e2e... -run E2E
+go test ./tests/e2e/... -run E2E
 ```
 
 ## Contributing New Or Updated Tests

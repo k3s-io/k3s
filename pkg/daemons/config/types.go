@@ -34,6 +34,7 @@ type Node struct {
 	FlannelConfFile          string
 	FlannelConfOverride      bool
 	FlannelIface             *net.Interface
+	FlannelIPv6Masq          bool
 	Containerd               Containerd
 	Images                   string
 	AgentConfig              Agent
@@ -116,6 +117,7 @@ type CriticalControlArgs struct {
 	DisableNPC            bool
 	DisableServiceLB      bool
 	FlannelBackend        string
+	FlannelIPv6Masq       bool
 	NoCoreDNS             bool
 	ServiceIPRange        *net.IPNet
 	ServiceIPRanges       []*net.IPNet
@@ -170,6 +172,7 @@ type Control struct {
 	EtcdSnapshotDir          string
 	EtcdSnapshotCron         string
 	EtcdSnapshotRetention    int
+	EtcdSnapshotCompress     bool
 	EtcdS3                   bool
 	EtcdS3Endpoint           string
 	EtcdS3EndpointCA         string
