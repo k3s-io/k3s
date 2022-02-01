@@ -102,8 +102,8 @@ func controllerManager(ctx context.Context, cfg *config.Control, runtime *config
 		"cluster-signing-kubelet-client-key-file":         runtime.ClientCAKey,
 		"cluster-signing-kubelet-serving-cert-file":       runtime.ServerCA,
 		"cluster-signing-kubelet-serving-key-file":        runtime.ServerCAKey,
-		"cluster-signing-legacy-unknown-cert-file":        runtime.ClientCA,
-		"cluster-signing-legacy-unknown-key-file":         runtime.ClientCAKey,
+		"cluster-signing-legacy-unknown-cert-file":        runtime.ServerCA,
+		"cluster-signing-legacy-unknown-key-file":         runtime.ServerCAKey,
 	}
 	if cfg.NoLeaderElect {
 		argsMap["leader-elect"] = "false"
