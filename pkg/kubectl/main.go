@@ -21,7 +21,7 @@ func Main() {
 	for i, arg := range os.Args {
 		if strings.Contains(arg, "--kubeconfig=") {
 			kubenv = strings.Split(arg, "=")[1]
-		} else if strings.Contains(arg, "--kubeconfig") {
+		} else if strings.Contains(arg, "--kubeconfig") && i+1 < len(os.Args) {
 			kubenv = os.Args[i+1]
 		}
 	}
