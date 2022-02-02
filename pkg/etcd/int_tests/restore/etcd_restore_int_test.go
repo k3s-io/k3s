@@ -1,4 +1,4 @@
-package etcd_test
+package restore_test
 
 import (
 	"strings"

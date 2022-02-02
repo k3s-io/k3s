@@ -1,4 +1,4 @@
-package etcd_test
+package snapshot_test
 
 import (
 	"regexp"
