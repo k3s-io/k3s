@@ -71,13 +71,13 @@ func ServiceIPNet() *net.IPNet {
 	return serviceIPNet
 }
 
-func FindFile(root, findStr string) (string, error) {
+func FindFile(root, filename string) (string, error) {
 	var filePath string
 	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
-		if !info.IsDir() && strings.Contains(path, findStr) {
+		if !info.IsDir() && strings.Contains(path, filename) {
 			filePath = path
 		}
 		return nil
