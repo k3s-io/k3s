@@ -5,7 +5,7 @@ metadata:
   name: traefik-crd
   namespace: kube-system
 spec:
-  chart: https://%{KUBERNETES_API}%/static/charts/traefik-crd-10.9.100.tgz
+  chart: https://%{KUBERNETES_API}%/static/charts/traefik-crd-10.14.000.tgz
 ---
 apiVersion: helm.cattle.io/v1
 kind: HelmChart
@@ -13,7 +13,7 @@ metadata:
   name: traefik
   namespace: kube-system
 spec:
-  chart: https://%{KUBERNETES_API}%/static/charts/traefik-10.9.100.tgz
+  chart: https://%{KUBERNETES_API}%/static/charts/traefik-10.14.000.tgz
   set:
     global.systemDefaultRegistry: "%{SYSTEM_DEFAULT_REGISTRY_RAW}%"
   valuesContent: |-
@@ -21,6 +21,7 @@ spec:
       enabled: true
     ports:
       websecure:
+        http3: true
         tls:
           enabled: true
     podAnnotations:
@@ -42,3 +43,6 @@ spec:
     - key: "node-role.kubernetes.io/master"
       operator: "Exists"
       effect: "NoSchedule"
+    experimental:
+      http3:
+        enabled: true
