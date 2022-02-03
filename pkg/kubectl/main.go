@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/rancher/k3s/pkg/server"
@@ -17,6 +18,13 @@ import (
 
 func Main() {
 	kubenv := os.Getenv("KUBECONFIG")
+	for i, arg := range os.Args {
+		if strings.HasPrefix(arg, "--kubeconfig=") {
+			kubenv = strings.Split(arg, "=")[1]
+		} else if strings.HasPrefix(arg, "--kubeconfig") && i+1 < len(os.Args) {
+			kubenv = os.Args[i+1]
+		}
+	}
 	if kubenv == "" {
 		config, err := server.HomeKubeConfig(false, false)
 		if _, serr := os.Stat(config); err == nil && serr == nil {
