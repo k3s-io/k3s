@@ -21,6 +21,7 @@ spec:
       enabled: true
     ports:
       websecure:
+        http3: true
         tls:
           enabled: true
     podAnnotations:
@@ -43,3 +44,6 @@ spec:
     - key: "node-role.kubernetes.io/master"
       operator: "Exists"
       effect: "NoSchedule"
+    experimental:
+      http3:
+        enabled: true
