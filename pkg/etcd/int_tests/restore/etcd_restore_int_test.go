@@ -10,9 +10,10 @@ import (
 	testutil "github.com/rancher/k3s/tests/util"
 )
 
-var server1, server2, server3 *testutil.K3sServer
+var server1, server2 *testutil.K3sServer
+var tmpdDataDir = "/tmp/restoredatadir"
 var clientCACertHash string
-var restoreServerArgs = []string{"--cluster-init", "-t", "test"}
+var restoreServerArgs = []string{"--cluster-init", "-t", "test", "-d", tmpdDataDir}
 var _ = BeforeSuite(func() {
 	if !testutil.IsExistingServer() {
 		var err error
@@ -39,12 +40,12 @@ var _ = Describe("etcd snapshot restore", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 		It("saves an etcd snapshot", func() {
-			Expect(testutil.K3sCmd("etcd-snapshot", "save", "--name", "snapshot-to-restore")).
+			Expect(testutil.K3sCmd("etcd-snapshot", "save", "-d", tmpdDataDir, "--name", "snapshot-to-restore")).
 				To(ContainSubstring("saved"))
 		})
 		It("list snapshots", func() {
-			Expect(testutil.K3sCmd("etcd-snapshot", "ls")).
-				To(MatchRegexp(`:///var/lib/rancher/k3s/server/db/snapshots/snapshot-to-restore`))
+			Expect(testutil.K3sCmd("etcd-snapshot", "ls", "-d", tmpdDataDir)).
+				To(MatchRegexp(`://` + tmpdDataDir + `/server/db/snapshots/snapshot-to-restore`))
 		})
 		// create another workload
 		It("create a workload 2", func() {
@@ -55,7 +56,7 @@ var _ = Describe("etcd snapshot restore", func() {
 		It("get Client CA cert hash", func() {
 			// get md5sum of the CA certs
 			var err error
-			clientCACertHash, err = testutil.RunCommand("md5sum /var/lib/rancher/k3s/server/tls/client-ca.crt | cut -f 1 -d' '")
+			clientCACertHash, err = testutil.RunCommand("md5sum " + tmpdDataDir + "/server/tls/client-ca.crt | cut -f 1 -d' '")
 			Expect(err).ToNot(HaveOccurred())
 		})
 		It("stop k3s", func() {
@@ -63,10 +64,10 @@ var _ = Describe("etcd snapshot restore", func() {
 		})
 		It("restore the snapshot", func() {
 			// get snapshot file
-			filePath, err := testutil.RunCommand(`sudo find /var/lib/rancher/k3s/server -name "*snapshot-to-restore*"`)
+			filePath, err := testutil.RunCommand(`sudo find ` + tmpdDataDir + `/server -name "*snapshot-to-restore*"`)
 			Expect(err).ToNot(HaveOccurred())
 			filePath = strings.TrimSuffix(filePath, "\n")
-			out, err := testutil.K3sCmd("server", "--cluster-reset", "--token", "test", "--cluster-reset-restore-path", filePath)
+			out, err := testutil.K3sCmd("server", "-d", tmpdDataDir, "--cluster-reset", "--token", "test", "--cluster-reset-restore-path", filePath)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(out).To(ContainSubstring(`Etcd is running, restart without --cluster-reset flag now`))
 		})
@@ -93,7 +94,7 @@ var _ = Describe("etcd snapshot restore", func() {
 		It("check if CA cert hash matches", func() {
 			// get md5sum of the CA certs
 			var err error
-			clientCACertHash2, err := testutil.RunCommand("md5sum /var/lib/rancher/k3s/server/tls/client-ca.crt | cut -f 1 -d' '")
+			clientCACertHash2, err := testutil.RunCommand("md5sum " + tmpdDataDir + "/server/tls/client-ca.crt | cut -f 1 -d' '")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(clientCACertHash2).To(Equal(clientCACertHash))
 		})
@@ -106,7 +107,9 @@ var _ = Describe("etcd snapshot restore", func() {
 var _ = AfterSuite(func() {
 	if !testutil.IsExistingServer() {
 		Expect(testutil.K3sKillServer(server1, false)).To(Succeed())
+		Expect(testutil.K3sCleanup(server1, true, tmpdDataDir)).To(Succeed())
 		Expect(testutil.K3sKillServer(server2, false)).To(Succeed())
+		Expect(testutil.K3sCleanup(server2, true, tmpdDataDir)).To(Succeed())
 	}
 })
 

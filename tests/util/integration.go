@@ -176,7 +176,7 @@ func K3sKillServer(server *K3sServer, releaseLock bool) error {
 }
 
 // K3sCleanup attempts to cleanup networking and files leftover from an integration test
-func K3sCleanup(server *K3sServer, releaseLock bool) error {
+func K3sCleanup(server *K3sServer, releaseLock bool, dataDir string) error {
 	if cni0Link, err := netlink.LinkByName("cni0"); err == nil {
 		links, _ := netlink.LinkList()
 		for _, link := range links {
@@ -193,7 +193,10 @@ func K3sCleanup(server *K3sServer, releaseLock bool) error {
 	if flannelV6, err := netlink.LinkByName("flannel-v6.1"); err == nil {
 		netlink.LinkDel(flannelV6)
 	}
-	if err := os.RemoveAll("/var/lib/rancher/k3s"); err != nil {
+	if dataDir == "" {
+		dataDir = "/var/lib/rancher/k3s"
+	}
+	if err := os.RemoveAll(dataDir); err != nil {
 		return err
 	}
 	if releaseLock {

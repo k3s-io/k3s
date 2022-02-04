@@ -113,7 +113,7 @@ var _ = Describe("etcd snapshots", func() {
 var _ = AfterSuite(func() {
 	if !testutil.IsExistingServer() {
 		Expect(testutil.K3sKillServer(server, false)).To(Succeed())
-		Expect(testutil.K3sCleanup(server, true)).To(Succeed())
+		Expect(testutil.K3sCleanup(server, true, "")).To(Succeed())
 	}
 })
 
