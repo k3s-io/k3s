@@ -67,9 +67,12 @@ var _ = Describe("etcd snapshot restore", func() {
 			filePath, err := testutil.RunCommand(`sudo find ` + tmpdDataDir + `/server -name "*snapshot-to-restore*"`)
 			Expect(err).ToNot(HaveOccurred())
 			filePath = strings.TrimSuffix(filePath, "\n")
-			out, _ := testutil.K3sCmd("server", "-d", tmpdDataDir, "--cluster-reset", "--token", "test", "--cluster-reset-restore-path", filePath)
-			// Expect(err).ToNot(HaveOccurred())
-			Expect(out).To(ContainSubstring(`Etcd is running, restart without --cluster-reset flag now`))
+			Eventually(func() (string, error) {
+				return testutil.K3sCmd("server", "-d", tmpdDataDir, "--cluster-reset", "--token", "test", "--cluster-reset-restore-path", filePath)
+			}, "360s", "5s").Should(ContainSubstring(`Etcd is running, restart without --cluster-reset flag now`))
+			// out, _ :=
+			// // Expect(err).ToNot(HaveOccurred())
+			// Expect(out).To()
 		})
 		It("start k3s server", func() {
 			var err error
