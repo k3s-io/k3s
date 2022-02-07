@@ -14,7 +14,7 @@ Vagrant.configure("2") do |config|
 
   config.vm.define 'install-centos-8', primary: true do |test|
     test.vm.hostname = 'smoke'
-    test.vm.provision 'centos8-repos-point2vault', type: 'shell' run: 'once' do |sh|
+    test.vm.provision 'centos8-repos-point2vault', type: 'shell', run: 'once' do |sh|
       sh.env = { :PATH => '/usr/local/bin:/usr/local/sbin:/sbin:/bin:/usr/sbin:/usr/bin:/root/bin' }
       sh.inline = <<~'SHELL'
         #!/bin/sh
