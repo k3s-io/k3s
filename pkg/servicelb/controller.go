@@ -163,30 +163,47 @@ func (h *handler) onChangeNode(key string, node *core.Node) (*core.Node, error) 
 	return node, nil
 }
 
-// updateService ensures that the Service ingress IP address list is in sync
-// with the Nodes actually running pods for this service.
+// updateService ensures that the Service ingress IP address list is in sync.
+// It works in two different modes:
+// - If the service uses `loadBalancerIP`, it will use this IP as a fixed one (user wants to override
+//   the IP) on the status update.
+// - If the service doesn't use `loadBalancerIP`, it will set the IPs of the Nodes actually running pods
+//   for this service on the status update.
 func (h *handler) updateService(svc *core.Service) (runtime.Object, error) {
 	if !h.enabled {
 		return svc, nil
 	}
 
-	pods, err := h.podCache.List(svc.Namespace, labels.SelectorFromSet(map[string]string{
-		svcNameLabel: svc.Name,
-	}))
+	var expectedIPs []string
 
-	if err != nil {
-		return svc, err
+	// If `loadBalancerIP` is set, means that we want this IP.
+	// If not set, follow the regular IP node discovery.
+	if svc.Spec.LoadBalancerIP != "" {
+		expectedIPs = []string{svc.Spec.LoadBalancerIP}
+	} else {
+		pods, err := h.podCache.List(svc.Namespace, labels.SelectorFromSet(map[string]string{
+			svcNameLabel: svc.Name,
+		}))
+		if err != nil {
+			return svc, err
+		}
+
+		expectedIPs, err = h.podIPs(pods, svc)
+		if err != nil {
+			return svc, err
+		}
 	}
 
+	return h.updateServiceIPsOnStatus(svc, expectedIPs)
+}
+
+func (h *handler) updateServiceIPsOnStatus(svc *core.Service, expectedIPs []string) (runtime.Object, error) {
 	existingIPs := serviceIPs(svc)
-	expectedIPs, err := h.podIPs(pods, svc)
-	if err != nil {
-		return svc, err
-	}
 
 	sort.Strings(expectedIPs)
 	sort.Strings(existingIPs)
 
+	// No need to update, we are already up to date.
 	if slice.StringsEqual(expectedIPs, existingIPs) {
 		return svc, nil
 	}
