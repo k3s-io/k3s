@@ -212,7 +212,7 @@ func RunCommand(cmd string) (string, error) {
 	c.Stdout = &out
 	err := c.Run()
 	if err != nil {
-		return "", errors.New(fmt.Sprintf("%s", err))
+		return "", fmt.Errorf("%s", err)
 	}
 	return out.String(), nil
 }
