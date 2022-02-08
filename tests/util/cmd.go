@@ -147,6 +147,8 @@ func K3sStartServer(inputArgs ...string) (*K3sServer, error) {
 	k3sBin := findK3sExecutable()
 	k3sCmd := append([]string{"server"}, cmdArgs...)
 	cmd := exec.Command(k3sBin, k3sCmd...)
+	// Give the server a new group id so we can kill it and its children later
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	cmdOut, _ := cmd.StderrPipe()
 	cmd.Stderr = os.Stderr
 	err = cmd.Start()
@@ -161,6 +163,9 @@ func K3sKillServer(server *K3sServer, releaseLock bool) error {
 		return err
 	}
 	if err := syscall.Kill(-pgid, syscall.SIGKILL); err != nil {
+		return err
+	}
+	if err := server.cmd.Process.Kill(); err != nil {
 		return err
 	}
 	if releaseLock {
