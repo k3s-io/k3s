@@ -117,7 +117,7 @@ var _ = AfterSuite(func() {
 	}
 })
 
-func Test_IntegrationEtcd(t *testing.T) {
+func Test_IntegrationEtcdSnapshot(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecsWithDefaultAndCustomReporters(t, "Etcd Suite", []Reporter{
 		reporters.NewJUnitReporter("/tmp/results/junit-etcd.xml"),
