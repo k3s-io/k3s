@@ -112,7 +112,7 @@ var _ = AfterSuite(func() {
 	}
 })
 
-func Test_RestoreSnapshotIntegrationEtcd(t *testing.T) {
+func Test_IntegrationEtcdRestoreSnapshot(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Etcd Restore Suite")
 }
