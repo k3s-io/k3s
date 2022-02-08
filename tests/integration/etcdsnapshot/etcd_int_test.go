@@ -118,5 +118,5 @@ var _ = AfterSuite(func() {
 
 func Test_IntegrationEtcd(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Etcd Suite")
+	RunSpecs(t, "Etcd Snapshot Suite")
 }
