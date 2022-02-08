@@ -2,8 +2,10 @@ package util
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"os/user"
@@ -18,7 +20,7 @@ import (
 // Compile-time variable
 var existingServer = "False"
 
-const lockFile = "/var/lock/k3s-test.lock"
+const lockFile = "/tmp/k3s-test.lock"
 
 type K3sServer struct {
 	cmd     *exec.Cmd
@@ -146,9 +148,7 @@ func K3sStartServer(inputArgs ...string) (*K3sServer, error) {
 	for _, arg := range inputArgs {
 		cmdArgs = append(cmdArgs, strings.Fields(arg)...)
 	}
-
 	k3sBin := findK3sExecutable()
-
 	k3sCmd := append([]string{"server"}, cmdArgs...)
 	cmd := exec.Command(k3sBin, k3sCmd...)
 	// Give the server a new group id so we can kill it and its children later
@@ -176,7 +176,7 @@ func K3sKillServer(server *K3sServer, releaseLock bool) error {
 }
 
 // K3sCleanup attempts to cleanup networking and files leftover from an integration test
-func K3sCleanup(server *K3sServer, releaseLock bool) error {
+func K3sCleanup(server *K3sServer, releaseLock bool, dataDir string) error {
 	if cni0Link, err := netlink.LinkByName("cni0"); err == nil {
 		links, _ := netlink.LinkList()
 		for _, link := range links {
@@ -193,11 +193,26 @@ func K3sCleanup(server *K3sServer, releaseLock bool) error {
 	if flannelV6, err := netlink.LinkByName("flannel-v6.1"); err == nil {
 		netlink.LinkDel(flannelV6)
 	}
-	if err := os.RemoveAll("/var/lib/rancher/k3s"); err != nil {
+	if dataDir == "" {
+		dataDir = "/var/lib/rancher/k3s"
+	}
+	if err := os.RemoveAll(dataDir); err != nil {
 		return err
 	}
 	if releaseLock {
 		return flock.Release(server.lock)
 	}
 	return nil
+}
+
+// RunCommand Runs command on the cluster accessing the cluster through kubeconfig file
+func RunCommand(cmd string) (string, error) {
+	c := exec.Command("bash", "-c", cmd)
+	var out bytes.Buffer
+	c.Stdout = &out
+	err := c.Run()
+	if err != nil {
+		return "", fmt.Errorf("%s", err)
+	}
+	return out.String(), nil
 }
