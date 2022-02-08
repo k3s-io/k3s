@@ -7,8 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	. "github.com/onsi/ginkgo"
-	"github.com/onsi/ginkgo/reporters"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/rancher/k3s/tests/e2e"
 )
@@ -24,9 +23,7 @@ var installType = flag.String("installType", "", "version or nil to use latest c
 func Test_E2EUpgradeValidation(t *testing.T) {
 	RegisterFailHandler(Fail)
 	flag.Parse()
-	RunSpecsWithDefaultAndCustomReporters(t, "Create Cluster Test Suite", []Reporter{
-		reporters.NewJUnitReporter("/tmp/results/junit-cc.xml"),
-	})
+	RunSpecs(t, "Create Cluster Test Suite")
 }
 
 var (
