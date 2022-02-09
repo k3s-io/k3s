@@ -1,13 +1,13 @@
 name: Install Script
 on:
   push:
-    branches: [main, master]
+    branches: [release-1.22]
     paths:
       - "channel.yaml"
       - "install.sh"
       - "tests/vagrant/install/**"
   pull_request:
-    branches: [main, master]
+    branches: [release-1.22]
     paths:
       - "install.sh"
       - "tests/vagrant/install/**"
@@ -20,8 +20,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        channel: [stable]
-        vm: [centos-7, centos-8, fedora-coreos, opensuse-leap, opensuse-microos, ubuntu-focal]
+        vm: [centos-7, centos-8, fedora-coreos, opensuse-leap, ubuntu-focal]
         include:
           - {channel: latest, vm: centos-8}
           - {channel: latest, vm: ubuntu-focal}
@@ -33,12 +32,14 @@ jobs:
     defaults:
       run:
         working-directory: tests/vagrant/install/${{ matrix.vm }}
-    env:
-      INSTALL_K3S_CHANNEL: ${{ matrix.channel }}
     steps:
       - name: "Checkout"
         uses: actions/checkout@v2
         with: {fetch-depth: 1}
+      - name: "Fetch k3s target version"
+        run: |
+          INSTALL_K3S_VERSION=$(git -c 'versionsort.suffix=-' ls-remote -q --tags --refs --sort 'version:refname' | grep -Eo 'v1.22.[^\W]*' | tail -1)
+          echo "INSTALL_K3S_VERSION=${INSTALL_K3S_VERSION}" >> $GITHUB_ENV
       - name: "Vagrant Cache"
         uses: actions/cache@v2
         with:
