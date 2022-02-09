@@ -37,14 +37,12 @@ def provision(vm, roles, role_num, node_num)
 
   if roles.include?("server") && role_num == 0
     vm.provision 'k3s-install', type: 'k3s', run: 'once' do |k3s|
-      k3s.installer_url = 'https://get.k3s.io'
       k3s.args = %W[server --cluster-init --node-external-ip=#{NETWORK_PREFIX}.100 --flannel-iface=eth1]
       k3s.env = %W[K3S_KUBECONFIG_MODE=0644 K3S_TOKEN=vagrant #{install_type}]
       k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
     end
   elsif roles.include?("server") && role_num != 0
     vm.provision 'k3s-install', type: 'k3s', run: 'once' do |k3s|
-      k3s.installer_url = 'https://get.k3s.io'
       k3s.args = %W[server --server https://#{NETWORK_PREFIX}.100:6443 --flannel-iface=eth1]
       k3s.env = %W[K3S_KUBECONFIG_MODE=0644 K3S_TOKEN=vagrant #{install_type}]
       k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
@@ -52,7 +50,6 @@ def provision(vm, roles, role_num, node_num)
   end
   if roles.include?("agent")
     vm.provision 'k3s-install', type: 'k3s', run: 'once' do |k3s|
-      k3s.installer_url = 'https://get.k3s.io'
       k3s.args = %W[agent --server https://#{NETWORK_PREFIX}.100:6443 --flannel-iface=eth1]
       k3s.env = %W[K3S_KUBECONFIG_MODE=0644 K3S_TOKEN=vagrant #{install_type}]
       k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
