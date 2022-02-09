@@ -169,6 +169,9 @@ func K3sKillServer(server *K3sServer, releaseLock bool) error {
 	if err := syscall.Kill(-pgid, syscall.SIGKILL); err != nil {
 		return err
 	}
+	if err := server.cmd.Process.Kill(); err != nil {
+		return err
+	}
 	if releaseLock {
 		return flock.Release(server.lock)
 	}

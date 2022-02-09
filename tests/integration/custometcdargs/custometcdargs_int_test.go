@@ -50,7 +50,8 @@ var _ = Describe("custom etcd args", func() {
 
 var _ = AfterSuite(func() {
 	if !testutil.IsExistingServer() {
-		Expect(testutil.K3sKillServer(customEtcdArgsServer, true)).To(Succeed())
+		Expect(testutil.K3sKillServer(customEtcdArgsServer, false)).To(Succeed())
+		Expect(testutil.K3sCleanup(customEtcdArgsServer, true, "")).To(Succeed())
 	}
 })
 
