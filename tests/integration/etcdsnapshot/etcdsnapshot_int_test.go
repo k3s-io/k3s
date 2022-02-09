@@ -1,4 +1,4 @@
-package etcd_test
+package snapshot_test
 
 import (
 	"regexp"
@@ -112,11 +112,12 @@ var _ = Describe("etcd snapshots", func() {
 
 var _ = AfterSuite(func() {
 	if !testutil.IsExistingServer() {
-		Expect(testutil.K3sKillServer(server)).To(Succeed())
+		Expect(testutil.K3sKillServer(server, false)).To(Succeed())
+		Expect(testutil.K3sCleanup(server, true, "")).To(Succeed())
 	}
 })
 
-func Test_IntegrationEtcd(t *testing.T) {
+func Test_IntegrationEtcdSnapshot(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecsWithDefaultAndCustomReporters(t, "Etcd Suite", []Reporter{
 		reporters.NewJUnitReporter("/tmp/results/junit-etcd.xml"),

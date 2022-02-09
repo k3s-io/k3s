@@ -2,21 +2,25 @@ package util
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"os/user"
 	"strings"
+	"syscall"
 
 	"github.com/rancher/k3s/pkg/flock"
 	"github.com/sirupsen/logrus"
+	"github.com/vishvananda/netlink"
 )
 
 // Compile-time variable
 var existingServer = "False"
 
-const lockFile = "/var/lock/k3s-test.lock"
+const lockFile = "/tmp/k3s-test.lock"
 
 type K3sServer struct {
 	cmd     *exec.Cmd
@@ -140,22 +144,71 @@ func K3sStartServer(inputArgs ...string) (*K3sServer, error) {
 	for _, arg := range inputArgs {
 		cmdArgs = append(cmdArgs, strings.Fields(arg)...)
 	}
-
 	k3sBin := findK3sExecutable()
-
 	k3sCmd := append([]string{"server"}, cmdArgs...)
 	cmd := exec.Command(k3sBin, k3sCmd...)
+	// Give the server a new group id so we can kill it and its children later
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	cmdOut, _ := cmd.StderrPipe()
 	cmd.Stderr = os.Stderr
 	err = cmd.Start()
 	return &K3sServer{cmd, bufio.NewScanner(cmdOut), k3sLock}, err
 }
 
-// K3sKillServer terminates the running K3s server and unlocks the file for
-// other tests
-func K3sKillServer(server *K3sServer) error {
+// K3sKillServer terminates the running K3s server and its children
+// and unlocks the file for other tests
+func K3sKillServer(server *K3sServer, releaseLock bool) error {
+	pgid, err := syscall.Getpgid(server.cmd.Process.Pid)
+	if err != nil {
+		return err
+	}
+	if err := syscall.Kill(-pgid, syscall.SIGKILL); err != nil {
+		return err
+	}
 	if err := server.cmd.Process.Kill(); err != nil {
 		return err
 	}
+	if releaseLock {
+		return flock.Release(server.lock)
+	}
+	return nil
+}
+
+// K3sCleanup attempts to cleanup networking and files leftover from an integration test
+func K3sCleanup(server *K3sServer, releaseLock bool, dataDir string) error {
+	if cni0Link, err := netlink.LinkByName("cni0"); err == nil {
+		links, _ := netlink.LinkList()
+		for _, link := range links {
+			if link.Attrs().MasterIndex == cni0Link.Attrs().Index {
+				netlink.LinkDel(link)
+			}
+		}
+		netlink.LinkDel(cni0Link)
+	}
+
+	if flannel1, err := netlink.LinkByName("flannel.1"); err == nil {
+		netlink.LinkDel(flannel1)
+	}
+	if flannelV6, err := netlink.LinkByName("flannel-v6.1"); err == nil {
+		netlink.LinkDel(flannelV6)
+	}
+	if dataDir == "" {
+		dataDir = "/var/lib/rancher/k3s"
+	}
+	if err := os.RemoveAll(dataDir); err != nil {
+		return err
+	}
 	return flock.Release(server.lock)
+}
+
+// RunCommand Runs command on the cluster accessing the cluster through kubeconfig file
+func RunCommand(cmd string) (string, error) {
+	c := exec.Command("bash", "-c", cmd)
+	var out bytes.Buffer
+	c.Stdout = &out
+	err := c.Run()
+	if err != nil {
+		return "", fmt.Errorf("%s", err)
+	}
+	return out.String(), nil
 }
