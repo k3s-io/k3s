@@ -88,7 +88,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.8
 	github.com/minio/minio-go/v7 v7.0.7
 	github.com/natefinch/lumberjack v2.0.0+incompatible
-	github.com/onsi/ginkgo v1.16.4
+	github.com/onsi/ginkgo/v2 v2.1.1
 	github.com/onsi/gomega v1.17.0
 	github.com/opencontainers/runc v1.0.3
 	github.com/opencontainers/selinux v1.8.3

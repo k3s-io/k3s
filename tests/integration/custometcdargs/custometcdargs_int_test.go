@@ -5,8 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	. "github.com/onsi/ginkgo"
-	"github.com/onsi/ginkgo/reporters"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	testutil "github.com/rancher/k3s/tests/util"
 )
@@ -51,13 +50,12 @@ var _ = Describe("custom etcd args", func() {
 
 var _ = AfterSuite(func() {
 	if !testutil.IsExistingServer() {
-		Expect(testutil.K3sKillServer(customEtcdArgsServer, true)).To(Succeed())
+		Expect(testutil.K3sKillServer(customEtcdArgsServer, false)).To(Succeed())
+		Expect(testutil.K3sCleanup(customEtcdArgsServer, true, "")).To(Succeed())
 	}
 })
 
 func Test_IntegrationCustomEtcdArgs(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecsWithDefaultAndCustomReporters(t, "Custom etcd Arguments", []Reporter{
-		reporters.NewJUnitReporter("/tmp/results/junit-ls.xml"),
-	})
+	RunSpecs(t, "Custom etcd Arguments")
 }

@@ -35,7 +35,7 @@ To facilitate unit test creation, see `tests/util/runtime.go` helper functions.
 All unit tests should be placed within the package of the file they test.  
 All unit test files should be named: `<FILE_UNDER_TEST>_test.go`.  
 All unit test functions should be named: `Test_Unit<FUNCTION_TO_TEST>` or `Test_Unit<RECEIVER>_<METHOD_TO_TEST>`.  
-See the [etcd unit test](https://github.com/k3s-io/k3s/blob/master/pkg/etcd/etcd_test.go) as an example.
+See the [etcd unit test](../pkg/etcd/etcd_test.go) as an example.
 
 ### Running
 
@@ -62,29 +62,27 @@ To facilitate K3s CLI testing, see `tests/util/cmd.go` helper functions.
 
 ### Format
 
-Integration tests can be placed in two areas:  
-
-1. Next to the go package they intend to test.
-2. In `tests/integration/<TEST_NAME>` for package agnostic testing.  
-
-Package specific integration tests should use the `<PACKAGE_UNDER_TEST>_test` package.  
-Package agnostic integration tests should use the `integration` package.  
+All integration tests should be placed under `tests/integration/<TEST_NAME>`.  
 All integration test files should be named: `<TEST_NAME>_int_test.go`.  
 All integration test functions should be named: `Test_Integration<TEST_NAME>`.  
-See the [etcd snapshot test](https://github.com/k3s-io/k3s/blob/master/pkg/etcd/etcd_int_test.go) as a package specific example.  
-See the [local storage test](https://github.com/k3s-io/k3s/blob/master/tests/integration/localstorage/localstorage_int_test.go) as a package agnostic example.
+See the [local storage test](../tests/integration/localstorage/localstorage_int_test.go) as an example.
 
 ### Running
 
 Integration tests can be run with no k3s cluster present, each test will spin up and kill the appropriate k3s server it needs.  
 Note: Integration tests must be run as root, prefix the commands below with `sudo -E env "PATH=$PATH"` if a sudo user.
 ```bash
-go test ./pkg/... ./tests/integration/... -run Integration
+go test ./tests/integration/... -run Integration
+```
+
+Additionally, to generate JUnit reporting for the tests, the Ginkgo CLI is used
+```
+ginkgo --junit-report=result.xml ./tests/integration/...
 ```
 
 Integration tests can be run on an existing single-node cluster via compile time flag, tests will skip if the server is not configured correctly.
 ```bash
-go test -ldflags "-X 'github.com/rancher/k3s/tests/util.existingServer=True'" ./pkg/... ./tests/integration/... -run Integration
+go test -ldflags "-X 'github.com/rancher/k3s/tests/util.existingServer=True'" ./tests/integration/... -run Integration
 ```
 
 Integration tests can also be run via a [Sonobuoy](https://sonobuoy.io/docs/v0.53.2/) plugin on an existing single-node cluster.
@@ -201,10 +199,25 @@ See the [validate cluster test](../tests/e2e/validatecluster/validatecluster_tes
 
 Generally, E2E tests are run as a nightly Jenkins job for QA. They can still be run locally but additional setup may be required. By default, all E2E tests are designed with `libvirt` as the underlying VM provider. Instructions for installing libvirt and its associated vagrant plugin, `vagrant-libvirt` can be found [here.](https://github.com/vagrant-libvirt/vagrant-libvirt#installation) `VirtualBox` is also supported as a backup VM provider.
 
-Once setup is complete, E2E tests can be run with:
+Once setup is complete, all E2E tests can be run with:
 ```bash
-go test ./tests/e2e/... -run E2E
+go test -timeout=15m ./tests/e2e/... -run E2E
 ```
+Tests can be run individually with:
+```bash
+go test -timeout=15m ./tests/e2e/validatecluster/... -run E2E
+#or
+go test -timeout=15m ./tests/e2e/... -run E2EClusterValidation
+```
+
+Additionally, to generate junit reporting for the tests, the Ginkgo CLI is used. Installation instructions can be found [here.](https://onsi.github.io/ginkgo/#getting-started)  
+
+To run the all E2E tests and generate JUnit testing reports:
+```
+ginkgo --junit-report=result.xml ./tests/e2e/...
+```
+
+Note: The `go test` default timeout is 10 minutes, thus the `-timeout` flag should be used. The `ginkgo` default timeout is 1 hour, no timeout flag is needed.
 
 ## Contributing New Or Updated Tests
 
