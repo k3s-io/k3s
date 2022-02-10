@@ -76,6 +76,10 @@ func Run(ctx context.Context, nodeConfig *config.Node) error {
 	if err != nil {
 		return err
 	}
+
+	// Initialize all healthcheck timers. Otherwise, the system reports incorrect heartbeat missing messages
+	hc.SetAlive()
+
 	wg.Add(1)
 	go hc.RunCheck(healthCh, stopCh, &wg)
 
