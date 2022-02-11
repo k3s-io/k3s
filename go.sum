@@ -898,9 +898,8 @@ github.com/rancher/remotedialer v0.2.0 h1:xD7t3K6JYwTdAsxmGtTHQMkEkFgKouQ1foLxVW
 github.com/rancher/remotedialer v0.2.0/go.mod h1:tkU8ZvrR5lRgaKWaX71nAy6daeqvPFx/lJEnbW7tXSI=
 github.com/rancher/wharfie v0.5.1 h1:TUqZyNj6BaGe2+tqhwAGwZouuwx02mvAMMjNuyejc5I=
 github.com/rancher/wharfie v0.5.1/go.mod h1:5AHZRFBAOWYPDNCwj/y5Dpj+MMwXLoitPwxjYAIbcxQ=
-github.com/rancher/wrangler v0.8.3/go.mod h1:dKEaHNB4izxmPUtpq1Hvr3z3Oh+9k5pCZyFO9sUhlaY=
-github.com/rancher/wrangler v0.8.10 h1:GfM3dZyw3TconwqknRm6YO/wiKEbUIGl0/HWVqBy658=
-github.com/rancher/wrangler v0.8.10/go.mod h1:Lte9WjPtGYxYacIWeiS9qawvu2R4NujFU9xuXWJvc/0=
+github.com/rancher/wrangler v0.8.11-0.20220211163748-d5a8ee98be5f h1:0Z+sioLE7Ai0PLiwG81Lmh2kMFnT78cKUApArXQECzY=
+github.com/rancher/wrangler v0.8.11-0.20220211163748-d5a8ee98be5f/go.mod h1:Lte9WjPtGYxYacIWeiS9qawvu2R4NujFU9xuXWJvc/0=
 github.com/remyoudompheng/bigfft v0.0.0-20170806203942-52369c62f446/go.mod h1:uYEyJGbgTkfkS4+E/PavXkNJcbFIpEtjt2B0KDQ5+9M=
 github.com/robfig/cron v1.1.0 h1:jk4/Hud3TTdcrJgUOBgsqrZBarcxl6ADIjSC2iniwLY=
 github.com/robfig/cron v1.1.0/go.mod h1:JGuDeoQd7Z6yL4zQhZ3OPEVHB7fL6Ka6skscFHfmt2k=
