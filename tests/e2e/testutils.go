@@ -136,6 +136,18 @@ func GenKubeConfigFile(serverName string) (string, error) {
 	return kubeConfigFile, nil
 }
 
+func GetVagrantLog() string {
+	log, err := os.Open("vagrant.log")
+	if err != nil {
+		return err.Error()
+	}
+	bytes, err := ioutil.ReadAll(log)
+	if err != nil {
+		return err.Error()
+	}
+	return string(bytes)
+}
+
 func ParseNodes(kubeConfig string, print bool) ([]Node, error) {
 	nodes := make([]Node, 0, 10)
 	nodeList := ""
