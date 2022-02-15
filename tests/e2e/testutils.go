@@ -40,15 +40,15 @@ func CountOfStringInSlice(str string, pods []Pod) int {
 }
 
 func CreateCluster(nodeOS string, serverCount int, agentCount int, installType string) ([]string, []string, error) {
-	serverNodeNames := make([]string, serverCount)
+	serverNodenames := make([]string, serverCount)
 	for i := 0; i < serverCount; i++ {
-		serverNodeNames[i] = "server-" + strconv.Itoa(i)
+		serverNodenames[i] = "server-" + strconv.Itoa(i)
 	}
-	agentNodeNames := make([]string, agentCount)
+	agentNodenames := make([]string, agentCount)
 	for i := 0; i < agentCount; i++ {
-		agentNodeNames[i] = "agent-" + strconv.Itoa(i)
+		agentNodenames[i] = "agent-" + strconv.Itoa(i)
 	}
-	nodeRoles := strings.Join(serverNodeNames, " ") + " " + strings.Join(agentNodeNames, " ")
+	nodeRoles := strings.Join(serverNodenames, " ") + " " + strings.Join(agentNodenames, " ")
 
 	nodeRoles = strings.TrimSpace(nodeRoles)
 	nodeBoxes := strings.Repeat(nodeOS+" ", serverCount+agentCount)
@@ -59,7 +59,7 @@ func CreateCluster(nodeOS string, serverCount int, agentCount int, installType s
 		fmt.Println("Error Creating Cluster", err)
 		return nil, nil, err
 	}
-	return serverNodeNames, agentNodeNames, nil
+	return serverNodenames, agentNodenames, nil
 }
 
 func DeployWorkload(workload, kubeconfig string, arch bool) (string, error) {
@@ -206,6 +206,17 @@ func ParsePods(kubeconfig string, print bool) ([]Pod, error) {
 		fmt.Println(podList)
 	}
 	return pods, nil
+}
+
+// RestartCluster restarts the k3s service on each node given
+func RestartCluster(nodeNames []string) error {
+	for _, nodeName := range nodeNames {
+		cmd := "sudo systemctl k3s restart"
+		if _, err := RunCmdOnNode(cmd, nodeName); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // RunCmdOnNode executes a command from within the given node
