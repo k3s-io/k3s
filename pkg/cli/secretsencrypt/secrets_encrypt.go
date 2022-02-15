@@ -20,7 +20,6 @@ import (
 )
 
 func commandPrep(app *cli.Context, cfg *cmds.Server) (*clientaccess.Info, error) {
-	var err error
 	// hide process arguments from ps output, since they may contain
 	// database credentials or other secrets.
 	gspt.SetProcTitle(os.Args[0] + " secrets-encrypt")
@@ -38,11 +37,7 @@ func commandPrep(app *cli.Context, cfg *cmds.Server) (*clientaccess.Info, error)
 		}
 		cfg.Token = string(bytes.TrimRight(tokenByte, "\n"))
 	}
-	info, err := clientaccess.ParseAndValidateTokenForUser(cmds.ServerConfig.ServerURL, cfg.Token, "server")
-	if err != nil {
-		return nil, err
-	}
-	return info, nil
+	return clientaccess.ParseAndValidateTokenForUser(cmds.ServerConfig.ServerURL, cfg.Token, "server")
 }
 
 func Enable(app *cli.Context) error {
