@@ -97,7 +97,7 @@ func Status(app *cli.Context) error {
 		return err
 	}
 
-	if cmds.ServerConfig.EncryptJson {
+	if cmds.ServerConfig.EncryptJSON {
 		json, err := json.MarshalIndent(status, "", "\t")
 		if err != nil {
 			return err
