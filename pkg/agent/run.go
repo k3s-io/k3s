@@ -187,6 +187,32 @@ func coreClient(cfg string) (kubernetes.Interface, error) {
 	return kubernetes.NewForConfig(restConfig)
 }
 
+// RunStandalone bootstraps the executor, but does not run the kubelet or containerd.
+// This allows other bits of code that expect the executor to be set up properly to function
+// even when the agent is disabled. It will only return in case of error or context
+// cancellation.
+func RunStandalone(ctx context.Context, cfg cmds.Agent) error {
+	proxy, err := createProxyAndValidateToken(ctx, &cfg)
+	if err != nil {
+		return err
+	}
+
+	nodeConfig := config.Get(ctx, cfg, proxy)
+	if err := executor.Bootstrap(ctx, nodeConfig, cfg); err != nil {
+		return err
+	}
+
+	if cfg.AgentReady != nil {
+		close(cfg.AgentReady)
+	}
+
+	<-ctx.Done()
+	return ctx.Err()
+}
+
+// Run sets up cgroups, configures the LB proxy, and triggers startup
+// of containerd and kubelet. It will only return in case of error or context
+// cancellation.
 func Run(ctx context.Context, cfg cmds.Agent) error {
 	if err := cgroups.Validate(); err != nil {
 		return err
@@ -198,14 +224,23 @@ func Run(ctx context.Context, cfg cmds.Agent) error {
 		}
 	}
 
+	proxy, err := createProxyAndValidateToken(ctx, &cfg)
+	if err != nil {
+		return err
+	}
+
+	return run(ctx, cfg, proxy)
+}
+
+func createProxyAndValidateToken(ctx context.Context, cfg *cmds.Agent) (proxy.Proxy, error) {
 	agentDir := filepath.Join(cfg.DataDir, "agent")
 	if err := os.MkdirAll(agentDir, 0700); err != nil {
-		return err
+		return nil, err
 	}
 
 	proxy, err := proxy.NewSupervisorProxy(ctx, !cfg.DisableLoadBalancer, agentDir, cfg.ServerURL, cfg.LBServerPort)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	for {
@@ -214,7 +249,7 @@ func Run(ctx context.Context, cfg cmds.Agent) error {
 			logrus.Error(err)
 			select {
 			case <-ctx.Done():
-				return ctx.Err()
+				return nil, ctx.Err()
 			case <-time.After(2 * time.Second):
 			}
 			continue
@@ -222,8 +257,7 @@ func Run(ctx context.Context, cfg cmds.Agent) error {
 		cfg.Token = newToken.String()
 		break
 	}
-
-	return run(ctx, cfg, proxy)
+	return proxy, nil
 }
 
 func configureNode(ctx context.Context, agentConfig *daemonconfig.Agent, nodes typedcorev1.NodeInterface) error {
