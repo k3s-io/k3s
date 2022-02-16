@@ -7,7 +7,7 @@ import (
 )
 
 func (lb *LoadBalancer) setServers(serverAddresses []string) bool {
-	serverAddresses, hasOriginalServer := sortServers(serverAddresses, lb.originalServerAddress)
+	serverAddresses, hasOriginalServer := sortServers(serverAddresses, lb.defaultServerAddress)
 	if len(serverAddresses) == 0 {
 		return false
 	}
@@ -25,7 +25,7 @@ func (lb *LoadBalancer) setServers(serverAddresses []string) bool {
 		lb.randomServers[i], lb.randomServers[j] = lb.randomServers[j], lb.randomServers[i]
 	})
 	if !hasOriginalServer {
-		lb.randomServers = append(lb.randomServers, lb.originalServerAddress)
+		lb.randomServers = append(lb.randomServers, lb.defaultServerAddress)
 	}
 	lb.currentServerAddress = lb.randomServers[0]
 	lb.nextServerIndex = 1

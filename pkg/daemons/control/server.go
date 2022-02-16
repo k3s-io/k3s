@@ -55,10 +55,12 @@ func Server(ctx context.Context, cfg *config.Control) error {
 		if err := apiServer(ctx, cfg); err != nil {
 			return err
 		}
+	}
 
-		if err := waitForAPIServerInBackground(ctx, cfg.Runtime); err != nil {
-			return err
-		}
+	// Wait for an apiserver to become available before starting additional controllers,
+	// even if we're not running an apiserver locally.
+	if err := waitForAPIServerInBackground(ctx, cfg.Runtime); err != nil {
+		return err
 	}
 
 	if !cfg.DisableScheduler {
