@@ -17,6 +17,7 @@ import (
 	"github.com/k3s-io/helm-controller/pkg/helm"
 	"github.com/pkg/errors"
 	"github.com/rancher/k3s/pkg/apiaddresses"
+	"github.com/rancher/k3s/pkg/cli/cmds"
 	"github.com/rancher/k3s/pkg/clientaccess"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/daemons/control"
@@ -49,7 +50,7 @@ func ResolveDataDir(dataDir string) (string, error) {
 	return filepath.Join(dataDir, "server"), err
 }
 
-func StartServer(ctx context.Context, config *Config) error {
+func StartServer(ctx context.Context, config *Config, cfg *cmds.Server) error {
 	if err := setupDataDirAndChdir(&config.ControlConfig); err != nil {
 		return err
 	}
@@ -62,7 +63,7 @@ func StartServer(ctx context.Context, config *Config) error {
 		return errors.Wrap(err, "starting kubernetes")
 	}
 
-	config.ControlConfig.Runtime.Handler = router(ctx, config)
+	config.ControlConfig.Runtime.Handler = router(ctx, config, cfg)
 
 	if config.ControlConfig.DisableAPIServer {
 		go setETCDLabelsAndAnnotations(ctx, config)
@@ -351,7 +352,13 @@ func writeKubeConfig(certs string, config *Config) error {
 	if ip == "" {
 		ip = "127.0.0.1"
 	}
-	url := fmt.Sprintf("https://%s:%d", ip, config.ControlConfig.HTTPSPort)
+	port := config.ControlConfig.HTTPSPort
+	// on servers without a local apiserver, tunnel access via the loadbalancer
+	if config.ControlConfig.DisableAPIServer {
+		ip = "127.0.0.1"
+		port = config.ControlConfig.APIServerPort
+	}
+	url := fmt.Sprintf("https://%s:%d", ip, port)
 	kubeConfig, err := HomeKubeConfig(true, config.Rootless)
 	def := true
 	if err != nil {
