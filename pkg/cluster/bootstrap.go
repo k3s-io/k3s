@@ -356,6 +356,7 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker,
 			buf.Seek(0, 0)
 		}
 
+		logrus.Debugf("One or more certificate directories do not exist; writing data to disk from datastore")
 		return bootstrap.WriteToDiskFromStorage(files, crb)
 	}
 
