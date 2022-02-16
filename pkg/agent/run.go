@@ -3,9 +3,10 @@ package agent
 import (
 	"context"
 	"fmt"
-	"net/url"
+	"net"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -352,17 +353,8 @@ func setupTunnelAndRunAgent(ctx context.Context, nodeConfig *daemonconfig.Node, 
 			}
 			agentRan = true
 		}
-
-		select {
-		case address := <-cfg.APIAddressCh:
-			cfg.ServerURL = address
-			u, err := url.Parse(cfg.ServerURL)
-			if err != nil {
-				logrus.Warn(err)
-			}
-			proxy.Update([]string{fmt.Sprintf("%s:%d", u.Hostname(), nodeConfig.ServerHTTPSPort)})
-		case <-ctx.Done():
-			return ctx.Err()
+		if err := waitForAPIServerAddresses(ctx, nodeConfig, cfg, proxy); err != nil {
+			return err
 		}
 	} else if cfg.ClusterReset && proxy.IsAPIServerLBEnabled() {
 		// If we're doing a cluster-reset on RKE2, the kubelet needs to be started early to clean
@@ -380,4 +372,27 @@ func setupTunnelAndRunAgent(ctx context.Context, nodeConfig *daemonconfig.Node, 
 		return agent.Agent(ctx, nodeConfig, proxy)
 	}
 	return nil
+}
+
+func waitForAPIServerAddresses(ctx context.Context, nodeConfig *daemonconfig.Node, cfg cmds.Agent, proxy proxy.Proxy) error {
+	for {
+		select {
+		case <-time.After(5 * time.Second):
+			logrus.Info("Waiting for apiserver addresses")
+		case addresses := <-cfg.APIAddressCh:
+			for i, a := range addresses {
+				host, _, err := net.SplitHostPort(a)
+				if err == nil {
+					addresses[i] = net.JoinHostPort(host, strconv.Itoa(nodeConfig.ServerHTTPSPort))
+					if i == 0 {
+						proxy.SetSupervisorDefault(addresses[i])
+					}
+				}
+			}
+			proxy.Update(addresses)
+			return nil
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
 }
