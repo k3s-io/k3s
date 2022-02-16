@@ -19,16 +19,17 @@ type LoadBalancer struct {
 	dialer *net.Dialer
 	proxy  *tcpproxy.Proxy
 
-	configFile            string
-	localAddress          string
-	localServerURL        string
-	originalServerAddress string
-	ServerURL             string
-	ServerAddresses       []string
-	randomServers         []string
-	currentServerAddress  string
-	nextServerIndex       int
-	Listener              net.Listener
+	serviceName          string
+	configFile           string
+	localAddress         string
+	localServerURL       string
+	defaultServerAddress string
+	ServerURL            string
+	ServerAddresses      []string
+	randomServers        []string
+	currentServerAddress string
+	nextServerIndex      int
+	Listener             net.Listener
 }
 
 const RandomPort = 0
@@ -55,26 +56,27 @@ func New(ctx context.Context, dataDir, serviceName, serverURL string, lbServerPo
 	}
 	localAddress := listener.Addr().String()
 
-	originalServerAddress, localServerURL, err := parseURL(serverURL, localAddress)
+	defaultServerAddress, localServerURL, err := parseURL(serverURL, localAddress)
 	if err != nil {
 		return nil, err
 	}
 
 	if serverURL == localServerURL {
-		logrus.Debugf("Initial server URL for load balancer points at local server URL - starting with empty original server address")
-		originalServerAddress = ""
+		logrus.Debugf("Initial server URL for load balancer %s points at local server URL - starting with empty default server address", serviceName)
+		defaultServerAddress = ""
 	}
 
 	lb := &LoadBalancer{
-		dialer:                &net.Dialer{},
-		configFile:            filepath.Join(dataDir, "etc", serviceName+".json"),
-		localAddress:          localAddress,
-		localServerURL:        localServerURL,
-		originalServerAddress: originalServerAddress,
-		ServerURL:             serverURL,
+		serviceName:          serviceName,
+		dialer:               &net.Dialer{},
+		configFile:           filepath.Join(dataDir, "etc", serviceName+".json"),
+		localAddress:         localAddress,
+		localServerURL:       localServerURL,
+		defaultServerAddress: defaultServerAddress,
+		ServerURL:            serverURL,
 	}
 
-	lb.setServers([]string{lb.originalServerAddress})
+	lb.setServers([]string{lb.defaultServerAddress})
 
 	lb.proxy = &tcpproxy.Proxy{
 		ListenFunc: func(string, string) (net.Listener, error) {
@@ -93,9 +95,14 @@ func New(ctx context.Context, dataDir, serviceName, serverURL string, lbServerPo
 	if err := lb.proxy.Start(); err != nil {
 		return nil, err
 	}
-	logrus.Infof("Running load balancer %s -> %v", lb.localAddress, lb.randomServers)
+	logrus.Infof("Running load balancer %s %s -> %v", serviceName, lb.localAddress, lb.randomServers)
 
 	return lb, nil
+}
+
+func (lb *LoadBalancer) SetDefault(serverAddress string) {
+	logrus.Infof("Updating load balancer %s default server address -> %s", lb.serviceName, serverAddress)
+	lb.defaultServerAddress = serverAddress
 }
 
 func (lb *LoadBalancer) Update(serverAddresses []string) {
@@ -105,10 +112,10 @@ func (lb *LoadBalancer) Update(serverAddresses []string) {
 	if !lb.setServers(serverAddresses) {
 		return
 	}
-	logrus.Infof("Updating load balancer server addresses -> %v", lb.randomServers)
+	logrus.Infof("Updating load balancer %s server addresses -> %v", lb.serviceName, lb.randomServers)
 
 	if err := lb.writeConfig(); err != nil {
-		logrus.Warnf("Error updating load balancer config: %s", err)
+		logrus.Warnf("Error updating load balancer %s config: %s", lb.serviceName, err)
 	}
 }
 
@@ -128,14 +135,14 @@ func (lb *LoadBalancer) dialContext(ctx context.Context, network, address string
 		if err == nil {
 			return conn, nil
 		}
-		logrus.Debugf("Dial error from load balancer: %s", err)
+		logrus.Debugf("Dial error from load balancer %s: %s", lb.serviceName, err)
 
 		newServer, err := lb.nextServer(targetServer)
 		if err != nil {
 			return nil, err
 		}
 		if targetServer != newServer {
-			logrus.Debugf("Dial server in load balancer failed over to %s", newServer)
+			logrus.Debugf("Dial server in load balancer %s failed over to %s", lb.serviceName, newServer)
 		}
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
@@ -156,7 +163,7 @@ func onDialError(src net.Conn, dstDialErr error) {
 	src.Close()
 }
 
-// ResetLoadBalancer will delete the local state file for the load balacner on disk
+// ResetLoadBalancer will delete the local state file for the load balancer on disk
 func ResetLoadBalancer(dataDir, serviceName string) error {
 	stateFile := filepath.Join(dataDir, "etc", serviceName+".json")
 	if err := os.Remove(stateFile); err != nil {
