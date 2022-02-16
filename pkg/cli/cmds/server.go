@@ -76,7 +76,7 @@ type Server struct {
 	ClusterResetRestorePath  string
 	EncryptSecrets           bool
 	EncryptForce             bool
-	EncryptJSON              bool
+	EncryptOutput            string
 	EncryptSkip              bool
 	SystemDefaultRegistry    string
 	StartupHooks             []StartupHook

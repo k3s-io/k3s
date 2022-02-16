@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"text/tabwriter"
 
 	"github.com/erikdubbelboer/gspt"
@@ -97,7 +98,7 @@ func Status(app *cli.Context) error {
 		return err
 	}
 
-	if cmds.ServerConfig.EncryptJSON {
+	if strings.ToLower(cmds.ServerConfig.EncryptOutput) == "json" {
 		json, err := json.MarshalIndent(status, "", "\t")
 		if err != nil {
 			return err
