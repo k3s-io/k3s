@@ -393,13 +393,6 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		serverConfig.ControlConfig.DisableScheduler = true
 		serverConfig.ControlConfig.DisableCCM = true
 
-		// only close the agentReady channel in case of k3s restoration, because k3s does not start
-		// the agent until server returns successfully, unlike rke2's agent which starts in parallel
-		// with the server
-		if serverConfig.ControlConfig.SupervisorPort == serverConfig.ControlConfig.HTTPSPort {
-			close(agentReady)
-		}
-
 		dataDir, err := datadir.LocalHome(cfg.DataDir, false)
 		if err != nil {
 			return err
@@ -483,10 +476,12 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	}
 
 	if serverConfig.ControlConfig.DisableAPIServer {
+		if cfg.ServerURL != "" {
+			agentConfig.ServerURL = cfg.ServerURL
+		}
 		// initialize the apiAddress Channel for receiving the api address from etcd
-		agentConfig.APIAddressCh = make(chan string, 1)
-		setAPIAddressChannel(ctx, &serverConfig, &agentConfig)
-		defer close(agentConfig.APIAddressCh)
+		agentConfig.APIAddressCh = make(chan []string)
+		go getAPIAddressFromEtcd(ctx, serverConfig, agentConfig)
 	}
 	return agent.Run(ctx, agentConfig)
 }
@@ -532,29 +527,19 @@ func getArgValueFromList(searchArg string, argList []string) string {
 	return value
 }
 
-// setAPIAddressChannel will try to get the api address key from etcd and when it succeed it will
-// set the APIAddressCh channel with its value, the function works for both k3s and rke2 in case
-// of k3s we block returning back to the agent.Run until we get the api address, however in rke2
-// the code will not block operation and will run the operation in a goroutine
-func setAPIAddressChannel(ctx context.Context, serverConfig *server.Config, agentConfig *cmds.Agent) {
-	// start a goroutine to check for the server ip if set from etcd in case of rke2
-	if serverConfig.ControlConfig.HTTPSPort != serverConfig.ControlConfig.SupervisorPort {
-		go getAPIAddressFromEtcd(ctx, serverConfig, agentConfig)
-		return
-	}
-	getAPIAddressFromEtcd(ctx, serverConfig, agentConfig)
-}
-
-func getAPIAddressFromEtcd(ctx context.Context, serverConfig *server.Config, agentConfig *cmds.Agent) {
-	t := time.NewTicker(5 * time.Second)
-	defer t.Stop()
-	for range t.C {
-		serverAddress, err := etcd.GetAPIServerURLFromETCD(ctx, &serverConfig.ControlConfig)
-		if err == nil {
-			agentConfig.ServerURL = "https://" + serverAddress
-			agentConfig.APIAddressCh <- agentConfig.ServerURL
+func getAPIAddressFromEtcd(ctx context.Context, serverConfig server.Config, agentConfig cmds.Agent) {
+	defer close(agentConfig.APIAddressCh)
+	for {
+		toCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		defer cancel()
+		serverAddresses, err := etcd.GetAPIServerURLsFromETCD(toCtx, &serverConfig.ControlConfig)
+		if err == nil && len(serverAddresses) > 0 {
+			agentConfig.APIAddressCh <- serverAddresses
 			break
 		}
-		logrus.Warn(err)
+		if !errors.Is(err, etcd.ErrAddressNotSet) {
+			logrus.Warnf("Failed to get apiserver address from etcd: %v", err)
+		}
+		<-toCtx.Done()
 	}
 }

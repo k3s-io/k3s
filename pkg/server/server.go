@@ -366,7 +366,13 @@ func writeKubeConfig(certs string, config *Config) error {
 	if ip == "" {
 		ip = "127.0.0.1"
 	}
-	url := fmt.Sprintf("https://%s:%d", ip, config.ControlConfig.HTTPSPort)
+	port := config.ControlConfig.HTTPSPort
+	// on servers without a local apiserver, tunnel access via the loadbalancer
+	if config.ControlConfig.DisableAPIServer {
+		ip = "127.0.0.1"
+		port = config.ControlConfig.APIServerPort
+	}
+	url := fmt.Sprintf("https://%s:%d", ip, port)
 	kubeConfig, err := HomeKubeConfig(true, config.Rootless)
 	def := true
 	if err != nil {

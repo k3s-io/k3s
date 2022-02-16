@@ -74,6 +74,8 @@ var (
 
 	NodeNameAnnotation    = "etcd." + version.Program + ".cattle.io/node-name"
 	NodeAddressAnnotation = "etcd." + version.Program + ".cattle.io/node-address"
+
+	ErrAddressNotSet = errors.New("apiserver addresses not yet set")
 )
 
 type NodeControllerGetter func() controllerv1.NodeController
@@ -277,7 +279,7 @@ func (e *ETCD) Reset(ctx context.Context, rebootstrap func() error) error {
 
 // Start starts the datastore
 func (e *ETCD) Start(ctx context.Context, clientAccessInfo *clientaccess.Info) error {
-	existingCluster, err := e.IsInitialized(ctx, e.config)
+	isInitialized, err := e.IsInitialized(ctx, e.config)
 	if err != nil {
 		return errors.Wrapf(err, "configuration validation failed")
 	}
@@ -289,7 +291,7 @@ func (e *ETCD) Start(ctx context.Context, clientAccessInfo *clientaccess.Info) e
 
 	go e.manageLearners(ctx)
 
-	if existingCluster {
+	if isInitialized {
 		//check etcd dir permission
 		etcdDir := DBDir(e.config)
 		info, err := os.Stat(etcdDir)
@@ -313,9 +315,18 @@ func (e *ETCD) Start(ctx context.Context, clientAccessInfo *clientaccess.Info) e
 	}
 
 	go func() {
-		<-e.config.Runtime.AgentReady
-		if err := e.join(ctx, clientAccessInfo); err != nil {
-			logrus.Fatalf("ETCD join failed: %v", err)
+		for {
+			select {
+			case <-time.After(30 * time.Second):
+				logrus.Infof("Waiting for agent to become ready before joining ETCD cluster")
+			case <-e.config.Runtime.AgentReady:
+				if err := e.join(ctx, clientAccessInfo); err != nil {
+					logrus.Fatalf("ETCD join failed: %v", err)
+				}
+				return
+			case <-ctx.Done():
+				return
+			}
 		}
 	}()
 
@@ -1725,27 +1736,27 @@ func backupDirWithRetention(dir string, maxBackupRetention int) (string, error) 
 	return backupDir, nil
 }
 
-// GetAPIServerURLFromETCD will try to fetch the version.Program/apiaddresses key from etcd
-// when it succeed it will parse the first address in the list and return back an address
-func GetAPIServerURLFromETCD(ctx context.Context, cfg *config.Control) (string, error) {
+// GetAPIServerURLsFromETCD will try to fetch the version.Program/apiaddresses key from etcd
+func GetAPIServerURLsFromETCD(ctx context.Context, cfg *config.Control) ([]string, error) {
 	cl, err := GetClient(ctx, cfg.Runtime, endpoint)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	etcdResp, err := cl.KV.Get(ctx, AddressKey)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	if etcdResp.Count < 1 {
-		return "", fmt.Errorf("servers addresses are not yet set")
+	if etcdResp.Count == 0 || len(etcdResp.Kvs[0].Value) == 0 {
+		return nil, ErrAddressNotSet
 	}
+
 	var addresses []string
 	if err := json.Unmarshal(etcdResp.Kvs[0].Value, &addresses); err != nil {
-		return "", fmt.Errorf("failed to unmarshal etcd key: %v", err)
+		return nil, fmt.Errorf("failed to unmarshal apiserver addresses from etcd: %v", err)
 	}
 
-	return addresses[0], nil
+	return addresses, nil
 }
 
 // GetMembersClientURLs will list through the member lists in etcd and return
