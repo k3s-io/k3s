@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: Service
+metadata:
+ name: nginx-ingress-svc
+ labels:
+   k8s-app: nginx-app-ingress
+spec:
+ ports:
+ - port: 8080
+   targetPort: 8080
+   protocol: TCP
+   name: http
+ selector:
+   k8s-app: nginx-app-ingress
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: test-ingress
+spec:
+  rules:
+  - host: foo1.bar.com
+    http:
+      paths:
+      - backend:
+          serviceName: nginx-ingress-svc
+          servicePort: 8080
+        pathType: ImplementationSpecific

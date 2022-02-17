@@ -1,0 +1,53 @@
+pipeline {
+    agent any
+    environment {
+        AWS_SSH_PEM_KEY = credentials('AWS_SSH_PEM_KEY')
+    }
+        
+    stages {
+        stage('Git Checkout') {
+            steps {
+                    git branch: 'master', url: 'https://github.com/k3s-io/k3s.git'
+                    script {
+                        dir("${WORKSPACE}/tests/e2e") {
+                        if (env.AWS_SSH_PEM_KEY && env.AWS_SSH_KEY_NAME) {
+                                    def decoded = new String(AWS_SSH_PEM_KEY.decodeBase64())
+                                    writeFile file: AWS_SSH_KEY_NAME, text: decoded
+                        }
+                    }
+                }
+            }
+        }
+        stage('Build Cluster'){
+            steps {
+                script {
+                    try {
+                        sh """
+                            cd ${WORKSPACE}/tests/e2e/
+                            /usr/bin/docker build -f ./scripts/Dockerfile --build-arg EXTERNAL_ENCODED_VPN="$EXTERNAL_ENCODED_VPN" \
+                            --build-arg VPN_ENCODED_LOGIN="$VPN_ENCODED_LOGIN" -t k3s_create_cluster .
+                            /usr/bin/docker run -d -it --cap-add=NET_ADMIN --device /dev/net/tun --sysctl net.ipv6.conf.all.disable_ipv6=0 \
+                            --name createcluster_${BUILD_NUMBER} --privileged k3s_create_cluster
+                            /usr/bin/docker cp ${AWS_SSH_KEY_NAME} createcluster_${BUILD_NUMBER}:/
+                            /usr/bin/docker exec createcluster_${BUILD_NUMBER} ./run_tests.sh ${AWS_SSH_KEY_NAME} ${USER} ${NODEIP} \
+                            ${NODEOS} ${SERVERCOUNT} ${AGENTCOUNT} ${DB} ${HARDENED}
+                        """
+                    } catch(error) {
+                            echo "First build failed, let's retry if accepted"
+                            retry(2) {
+                                build 'k3s_nightly_automation'
+                        }
+                    }
+                }
+            }
+        }
+	stage('Test Report') {
+            steps {
+                sh """
+                    /usr/bin/docker rm -f createcluster_${BUILD_NUMBER}
+                    /usr/bin/docker rmi -f k3s_create_cluster
+                """
+            }
+        }
+    }
+}
