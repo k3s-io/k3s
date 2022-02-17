@@ -40,7 +40,7 @@ func NewSecretsEncryptSubcommands(status, enable, disable, prepare, rotate, reen
 			Action:          status,
 			Flags: append(EncryptFlags, &cli.StringFlag{
 				Name:        "output,o",
-				Usage:       "Output status as (text|json).",
+				Usage:       "Status format. Default: text. Optional: json",
 				Destination: &ServerConfig.EncryptOutput,
 			}),
 		},
