@@ -6,7 +6,6 @@
 			"golint",
 			"goimports",
 			"misspell",
-			"ineffassign",
 			"gofmt"
 		]
 	},
