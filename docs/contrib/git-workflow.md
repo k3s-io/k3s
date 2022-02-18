@@ -17,7 +17,7 @@ K3s project uses the [GitHub flow](https://docs.github.com/en/get-started/quicks
 
 ### Branch naming conventions
 
-Every forked repository works independently, meaning that any contributor can create branches with the name they see fit. However, it is worth noting that K3s mirrors [Kubernetes version skew policy](https://kubernetes.io/releases/version-skew-policy/) by maintaining release branches for the most recent three minor releases. The only exception is that the main branch mirrors the latest Kubernetes release (1.23) instead of a `release-` prefixed one.
+Every forked repository works independently, meaning that any contributor can create branches with the name they see fit. However, it is worth noting that K3s mirrors [Kubernetes version skew policy](https://kubernetes.io/releases/version-skew-policy/) by maintaining release branches for the most recent three minor releases. The only exception is that the main branch mirrors the latest Kubernetes release (1.23) instead of using a `release-` prefixed one.
 
 ```text
 master       -------------------------------------------. (Kubernetes 1.23)
@@ -99,4 +99,4 @@ It is suggested to `fetch` then `rebase` instead of `pull` since the latter does
 
 For commit messages and signatures please refer to the [CONTRIBUTING.md](../../CONTRIBUTING.md) document.
 
-Nobody should push directly upstream, even if one has such contributor access; instead, prefer [Github's pull requests](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/about-pull-requests) mechanism to contribute back into K3s. For expectations and guidelines about pull requests, consult the [CONTRIBUTING.md](../../CONTRIBUTING.md) document.
+Nobody should push directly to upstream, even if one has such contributor access; instead, prefer [Github's pull request](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/about-pull-requests) mechanism to contribute back into K3s. For expectations and guidelines about pull requests, consult the [CONTRIBUTING.md](../../CONTRIBUTING.md) document.
