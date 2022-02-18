@@ -44,13 +44,6 @@ def provision(vm, roles, role_num, node_num)
       k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
     end
   end
-  if roles.include?("agent")
-    vm.provision 'k3s-install', type: 'k3s', run: 'once' do |k3s|
-      k3s.args = %W[agent --server https://#{NETWORK_PREFIX}.100:6443 --flannel-iface=eth1 --secrets-encryption]
-      k3s.env = %W[K3S_KUBECONFIG_MODE=0644 K3S_TOKEN=vagrant #{install_type}]
-      k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
-    end
-  end
   if vm.box.include?("microos")
     vm.provision 'k3s-reload', type: 'reload', run: 'once'
   end
