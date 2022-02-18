@@ -6,7 +6,6 @@
 			"revive",
 			"goimports",
 			"misspell",
-			"ineffassign",
 			"gofmt"
 		]
 	},
