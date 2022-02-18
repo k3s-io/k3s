@@ -1,7 +1,6 @@
 package e2e
 
 import (
-	"bytes"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -211,7 +210,7 @@ func ParsePods(kubeconfig string, print bool) ([]Pod, error) {
 // RestartCluster restarts the k3s service on each node given
 func RestartCluster(nodeNames []string) error {
 	for _, nodeName := range nodeNames {
-		cmd := "sudo systemctl k3s restart"
+		cmd := "sudo systemctl restart k3s"
 		if _, err := RunCmdOnNode(cmd, nodeName); err != nil {
 			return err
 		}
@@ -221,19 +220,15 @@ func RestartCluster(nodeNames []string) error {
 
 // RunCmdOnNode executes a command from within the given node
 func RunCmdOnNode(cmd string, nodename string) (string, error) {
-	runcmd := "vagrant ssh -c " + cmd + " " + nodename
+	runcmd := "vagrant ssh -c \"" + cmd + "\" " + nodename
 	return RunCommand(runcmd)
 }
 
 // RunCommand executes a command on the host
 func RunCommand(cmd string) (string, error) {
 	c := exec.Command("bash", "-c", cmd)
-	var out bytes.Buffer
-	c.Stdout = &out
-	if err := c.Run(); err != nil {
-		return "", err
-	}
-	return out.String(), nil
+	out, err := c.CombinedOutput()
+	return string(out), err
 }
 
 func UpgradeCluster(serverNodenames []string, agentNodenames []string) error {
