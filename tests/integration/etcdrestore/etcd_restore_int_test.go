@@ -12,10 +12,13 @@ import (
 var server1, server2 *testutil.K3sServer
 var tmpdDataDir = "/tmp/restoredatadir"
 var clientCACertHash string
+var testLock int
 var restoreServerArgs = []string{"--cluster-init", "-t", "test", "-d", tmpdDataDir}
 var _ = BeforeSuite(func() {
 	if !testutil.IsExistingServer() {
 		var err error
+		testLock, err = testutil.K3sTestLock()
+		Expect(err).ToNot(HaveOccurred())
 		server1, err = testutil.K3sStartServer(restoreServerArgs...)
 		Expect(err).ToNot(HaveOccurred())
 	}
@@ -59,7 +62,7 @@ var _ = Describe("etcd snapshot restore", func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 		It("stop k3s", func() {
-			Expect(testutil.K3sKillServer(server1, true)).To(Succeed())
+			Expect(testutil.K3sKillServer(server1)).To(Succeed())
 		})
 		It("restore the snapshot", func() {
 			// get snapshot file
@@ -98,17 +101,16 @@ var _ = Describe("etcd snapshot restore", func() {
 			Expect(clientCACertHash2).To(Equal(clientCACertHash))
 		})
 		It("stop k3s", func() {
-			Expect(testutil.K3sKillServer(server2, false)).To(Succeed())
+			Expect(testutil.K3sKillServer(server2)).To(Succeed())
 		})
 	})
 })
 
 var _ = AfterSuite(func() {
 	if !testutil.IsExistingServer() {
-		Expect(testutil.K3sKillServer(server1, false)).To(Succeed())
-		Expect(testutil.K3sCleanup(server1, true, tmpdDataDir)).To(Succeed())
-		Expect(testutil.K3sKillServer(server2, false)).To(Succeed())
-		Expect(testutil.K3sCleanup(server2, true, tmpdDataDir)).To(Succeed())
+		Expect(testutil.K3sKillServer(server1)).To(Succeed())
+		Expect(testutil.K3sKillServer(server2)).To(Succeed())
+		Expect(testutil.K3sCleanup(testLock, tmpdDataDir)).To(Succeed())
 	}
 })
 
