@@ -1,6 +1,6 @@
 # Development Guide
 
-Since K3s is written in Go, it is fair to say that the Go tools are all one needs to contribute to this project. Unfortunately, there is a point where this statement no longer holds true when it is required to test or build locally our changes. This document elaborates on the required tooling for K3s development.
+Since K3s is written in Go, it is fair to assume that the Go tools are all one needs to contribute to this project. Unfortunately, there is a point where this no longer holds true when required to test or build local changes. This document elaborates on the required tooling for K3s development.
 
 - [Non-Linux environment prerequisites](#non-linux-environment-prerequisites)
   - [Windows Setup](#windows-setup)
@@ -64,10 +64,10 @@ K3s build and test processes development require Docker to run certain steps. [F
 
 ### Vagrant
 
-As described in the [Testing documentation](../../tests/TESTING.md), all the smoke tests are run in virtual machines managed by Vagrant.  To install Vagrant in the development environment, [follow the instruction from the Hashicorp website](https://www.vagrantup.com/downloads), alongside any of the following hypervisors:
+As described in the [Testing documentation](../../tests/TESTING.md), all the smoke tests are run in virtual machines managed by Vagrant.  To install Vagrant in the development environment, [follow the instructions from the Hashicorp website](https://www.vagrantup.com/downloads), alongside any of the following hypervisors:
 
 - [VirtualBox](https://www.virtualbox.org/)
-- [libvrt](https://libvirt.org/)
+- [libvirt](https://libvirt.org/) and the [vagrant-libvirt plugin](https://github.com/vagrant-libvirt/vagrant-libvirt#installation)
 
 ## Cloning, Building and Testing K3s
 

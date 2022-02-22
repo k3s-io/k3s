@@ -8,7 +8,6 @@
 ## POSIX shell
 
 - [Style guide](https://google.github.io/styleguide/shell.xml)
-- Ensure that build, release, test, and cluster-management scripts run on macOS
 
 ## Go
 
@@ -30,9 +29,8 @@
 
 - Avoid general utility packages. Packages called "util" are suspect. Instead, derive a name that describes your desired function. For example, the utility functions dealing with waiting for operations are in the `wait` package and include functionality like `Poll`. The full name is `wait.Poll`.
 - All filenames should be lowercase.
-- Go source files and directories use underscores, not dashes.
+- All source files and directories should use underscores, not dashes.
   - Package directories should generally avoid using separators as much as possible. When package names are multiple words, they usually should be in nested subdirectories.
-- Document directories and filenames should use dashes rather than underscores.
 
 ## Testing conventions
 

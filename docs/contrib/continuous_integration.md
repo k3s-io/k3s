@@ -38,7 +38,7 @@ A contributor should verify their changes locally to speed up the pull request p
 
 - **Drone local execution**. The drone CLI allows the user to execute a specific pipeline locally through the `drone exec --pipeline <pipeline name>` command. This requires having Docker with volume mount support.
 - **Dapper**. The [dapper tool](https://github.com/rancher/dapper) is a "Docker wrapper" that enables the user to run a set of instructions within a Docker container without relying on volume mounts. This tool is always used when any K3s [Makefile](../../Makefile) goal is invoked, which use as an entrypoint for the CI scripts.
-- **Step direct invokation**. The CI steps invoked on the drone pipelines are defined in the scripts directory, which can be executed individually in the local environment. Worth noting, these scripts rely on GNU utils, which are not the same as the BSD ones installed on macOS environments, although they have the same name.
+- **Step direct invocation**. The CI steps invoked on the drone pipelines are defined in the scripts directory, which can be executed individually in the local environment. Worth noting, these scripts rely on GNU utils, which are not the same as the BSD ones installed on macOS environments, although they have the same name.
 
 As mentioned above, the scripts within the `scripts` directory are the core of the CI process, being the most relevant ones:
 
