@@ -5,11 +5,13 @@ NODE_BOXES = (ENV['NODE_BOXES'] ||
   ['generic/ubuntu2004', 'generic/ubuntu2004', 'generic/ubuntu2004', 'generic/ubuntu2004', 'generic/ubuntu2004'])
 GITHUB_BRANCH = (ENV['GITHUB_BRANCH'] || "master")
 RELEASE_VERSION = (ENV['RELEASE_VERSION'] || "")
+EXTERNAL_DB = (ENV['EXTERNAL_DB'] || "")
 NODE_CPUS = (ENV['NODE_CPUS'] || 2).to_i
 NODE_MEMORY = (ENV['NODE_MEMORY'] || 1024).to_i
 # Virtualbox >= 6.1.28 require `/etc/vbox/network.conf` for expanded private networks 
 NETWORK_PREFIX = "10.10.10"
 install_type = ""
+db_type = ""
 
 def provision(vm, roles, role_num, node_num)
   vm.box = NODE_BOXES[node_num]
@@ -32,27 +34,46 @@ def provision(vm, roles, role_num, node_num)
   vm.provision "shell", inline: "ping -c 2 k3s.io"
   
   if roles.include?("server") && role_num == 0
+    if EXTERNAL_DB == "mysql"
+      dockerInstall(vm)
+      vm.provision "shell", inline: "docker run -d -p 3306:3306 --name mysql -e MYSQL_ROOT_PASSWORD=e2e mysql:5.7"
+      db_type = "--datastore-endpoint='mysql://root:e2e@tcp(#{NETWORK_PREFIX}.100:3306)/k3s'"
+    else
+      db_type = "--cluster-init"
+    end
     vm.provision 'k3s-install', type: 'k3s', run: 'once' do |k3s|
-      k3s.args = %W[server --cluster-init --node-external-ip=#{NETWORK_PREFIX}.100 --flannel-iface=eth1]
+      k3s.args = "server #{db_type} --node-external-ip=#{NETWORK_PREFIX}.100 --flannel-iface=eth1"
       k3s.env = %W[K3S_KUBECONFIG_MODE=0644 K3S_TOKEN=vagrant #{install_type}]
       k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
     end
   elsif roles.include?("server") && role_num != 0
+    if EXTERNAL_DB == "mysql"
+      db_type = "--datastore-endpoint='mysql://root:e2e@tcp(#{NETWORK_PREFIX}.100:3306)/k3s'"
+    end
     vm.provision 'k3s-install', type: 'k3s', run: 'once' do |k3s|
-      k3s.args = %W[server --server https://#{NETWORK_PREFIX}.100:6443 --flannel-iface=eth1]
+      k3s.args = "server #{db_type} --server https://#{NETWORK_PREFIX}.100:6443 --flannel-iface=eth1"
       k3s.env = %W[K3S_KUBECONFIG_MODE=0644 K3S_TOKEN=vagrant #{install_type}]
       k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
     end
   end
   if roles.include?("agent")
     vm.provision 'k3s-install', type: 'k3s', run: 'once' do |k3s|
-      k3s.args = %W[agent --server https://#{NETWORK_PREFIX}.100:6443 --flannel-iface=eth1]
+      k3s.args = %W[agent #{db_type} --server https://#{NETWORK_PREFIX}.100:6443 --flannel-iface=eth1]
       k3s.env = %W[K3S_KUBECONFIG_MODE=0644 K3S_TOKEN=vagrant #{install_type}]
       k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
     end
   end
   if vm.box.include?("microos")
     vm.provision 'k3s-reload', type: 'reload', run: 'once'
+  end
+end
+
+def dockerInstall(vm)
+  if vm.box.include?("ubuntu2004")
+    vm.provision "shell", inline: "apt install -y docker.io"
+  end
+  if vm.box.include?("Leap")
+    vm.provision "shell", inline: "zypper install -y docker"
   end
 end
 
