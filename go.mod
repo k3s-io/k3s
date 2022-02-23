@@ -5,6 +5,7 @@ go 1.16
 replace (
 	github.com/Microsoft/hcsshim => github.com/Microsoft/hcsshim v0.8.20
 	github.com/benmoss/go-powershell => github.com/k3s-io/go-powershell v0.0.0-20201118222746-51f4c451fbd7
+	github.com/cloudnativelabs/kube-router => github.com/k3s-io/kube-router v1.3.3-0.20220405142336-8ea9a06dc0e3
 	github.com/containerd/aufs => github.com/containerd/aufs v1.0.0
 	github.com/containerd/btrfs => github.com/containerd/btrfs v1.0.0
 	github.com/containerd/cgroups => github.com/containerd/cgroups v1.0.1
@@ -81,6 +82,7 @@ require (
 	github.com/containerd/containerd v1.6.1
 	github.com/containerd/fuse-overlayfs-snapshotter v1.0.4
 	github.com/containerd/stargz-snapshotter v0.11.3
+	github.com/coreos/go-iptables v0.6.0
 	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f
 	github.com/docker/docker v20.10.10+incompatible
 	github.com/erikdubbelboer/gspt v0.0.0-20190125194910-e68493906b83
