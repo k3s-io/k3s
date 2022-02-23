@@ -17,8 +17,9 @@ var nodeOS = flag.String("nodeOS", "generic/ubuntu2004", "VM operating system")
 var serverCount = flag.Int("serverCount", 3, "number of server nodes")
 var agentCount = flag.Int("agentCount", 2, "number of agent nodes")
 
-//valid format: RELEASE_VERSION=v1.23.1+k3s2 or nil for latest commit from master
-var installType = flag.String("installType", "", "version or nil to use latest commit")
+// Enviroment Variables Info:
+// E2E_EXTERNAL_DB: mysql or postgres, nil for embedded etcd
+// E2E_RELEASE_VERSION=v1.23.1+k3s2 or nil for latest commit from master
 
 func Test_E2EClusterValidation(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -36,7 +37,7 @@ var _ = Describe("Verify Create", func() {
 	Context("Cluster :", func() {
 		It("Starts up with no issues", func() {
 			var err error
-			serverNodenames, agentNodenames, err = e2e.CreateCluster(*nodeOS, *serverCount, *agentCount, *installType)
+			serverNodenames, agentNodenames, err = e2e.CreateCluster(*nodeOS, *serverCount, *agentCount)
 			Expect(err).NotTo(HaveOccurred())
 			fmt.Println("CLUSTER CONFIG")
 			fmt.Println("OS:", *nodeOS)

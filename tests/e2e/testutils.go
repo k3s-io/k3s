@@ -39,7 +39,7 @@ func CountOfStringInSlice(str string, pods []Pod) int {
 	return count
 }
 
-func CreateCluster(nodeOS string, serverCount int, agentCount int, installType string) ([]string, []string, error) {
+func CreateCluster(nodeOS string, serverCount int, agentCount int) ([]string, []string, error) {
 	serverNodeNames := make([]string, serverCount)
 	for i := 0; i < serverCount; i++ {
 		serverNodeNames[i] = "server-" + strconv.Itoa(i)
@@ -53,7 +53,15 @@ func CreateCluster(nodeOS string, serverCount int, agentCount int, installType s
 	nodeRoles = strings.TrimSpace(nodeRoles)
 	nodeBoxes := strings.Repeat(nodeOS+" ", serverCount+agentCount)
 	nodeBoxes = strings.TrimSpace(nodeBoxes)
-	cmd := fmt.Sprintf("NODE_ROLES=\"%s\" NODE_BOXES=\"%s\" %s vagrant up &> vagrant.log", nodeRoles, nodeBoxes, installType)
+
+	var testOptions string
+	for _, env := range os.Environ() {
+		if strings.HasPrefix(env, "E2E_") {
+			testOptions += " " + env
+		}
+	}
+
+	cmd := fmt.Sprintf("E2E_NODE_ROLES=\"%s\" E2E_NODE_BOXES=\"%s\" %s vagrant up &> vagrant.log", nodeRoles, nodeBoxes, testOptions)
 	fmt.Println(cmd)
 	if _, err := RunCommand(cmd); err != nil {
 		fmt.Println("Error Creating Cluster", err)
