@@ -199,8 +199,6 @@ github.com/cilium/ebpf v0.5.0/go.mod h1:4tRaxcgiL706VnOzHOdBlY8IEAIdxINsQBcU4xJJ
 github.com/cilium/ebpf v0.6.2/go.mod h1:4tRaxcgiL706VnOzHOdBlY8IEAIdxINsQBcU4xJJXRs=
 github.com/cilium/ebpf v0.7.0 h1:1k/q3ATgxSXRdrmPfH8d7YK0GfqVsEKZAX9dQZvs56k=
 github.com/cilium/ebpf v0.7.0/go.mod h1:/oI2+1shJiTGAMgl6/RgJr36Eo1jzrRcAWbcXO2usCA=
-github.com/cloudnativelabs/kube-router v1.3.2 h1:OBnFEP8IIIiWDAWd25QXDtyXDQi6GxR0DHOP+EXcpNI=
-github.com/cloudnativelabs/kube-router v1.3.2/go.mod h1:bu7wbMiNX44Rx7mSCcvgNot2jVHuaBDu/z5ygcEtAJY=
 github.com/clusterhq/flocker-go v0.0.0-20160920122132-2b8b7259d313/go.mod h1:P1wt9Z3DP8O6W3rvwCt0REIlshg1InHImaLW0t3ObY0=
 github.com/cncf/udpa/go v0.0.0-20201120205902-5459f2c99403/go.mod h1:WmhPx2Nbnhtbo57+VJT5O0JRkEi1Wbu0z5j0R8u5Hbk=
 github.com/cncf/xds/go v0.0.0-20210312221358-fbca930ec8ed/go.mod h1:eXthEFrGJvWHgFFCl3hGmgk+/aYT6PnTQLykKQRLhEs=
@@ -725,6 +723,8 @@ github.com/k3s-io/klog v1.0.0-k3s2 h1:yyvD2bQbxG7m85/pvNctLX2bUDmva5kOBvuZ77tTGB
 github.com/k3s-io/klog v1.0.0-k3s2/go.mod h1:4Bi6QPql/J/LkTDqv7R/cd3hPo4k2DG6Ptcz060Ez5I=
 github.com/k3s-io/klog/v2 v2.30.0-k3s1 h1:ia3JK7rveULJj3VtxhYEW80g4h2YncRzsZeAWP8DbpA=
 github.com/k3s-io/klog/v2 v2.30.0-k3s1/go.mod h1:y1WjHnz7Dj687irZUWR/WLkLc5N1YHtjLdmgWjndZn0=
+github.com/k3s-io/kube-router v1.3.3-0.20220405142336-8ea9a06dc0e3 h1:Fm8ZV0dgaoCGshnwWhRgnyWVfFtdVYar+sYU5Ne67fk=
+github.com/k3s-io/kube-router v1.3.3-0.20220405142336-8ea9a06dc0e3/go.mod h1:sxZiFDEBgbjXM3SHhxJpV3701TuWIXN+JIQd5k9bDls=
 github.com/k3s-io/kubernetes v1.23.5-k3s1 h1:97ixDegoESbNaFo+fL33XU01OUo3PZF4zwYuY6gj8RQ=
 github.com/k3s-io/kubernetes v1.23.5-k3s1/go.mod h1:avI3LUTUYZugxwh52KMVM7v9ZjB5gYJ6D3FIoZ1SHUo=
 github.com/k3s-io/kubernetes/staging/src/k8s.io/api v1.23.5-k3s1 h1:fL3tdeKVqFfh6foAT/A7F4zjoI9rxFpw8ksRlHhGcGM=
