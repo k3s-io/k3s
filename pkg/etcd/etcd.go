@@ -124,6 +124,7 @@ func (e *ETCD) SetControlConfig(config *config.Control) {
 
 // Test ensures that the local node is a voting member of the target cluster.
 // If it is still a learner or not a part of the cluster, an error is raised.
+// If it has any alarms that cannot be disarmed, an error is raised.
 func (e *ETCD) Test(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, testTimeout)
 	defer cancel()
@@ -135,6 +136,10 @@ func (e *ETCD) Test(ctx context.Context) error {
 
 	if status.IsLearner {
 		return errors.New("this server has not yet been promoted from learner to voting member")
+	}
+
+	if err := e.clearAlarms(ctx); err != nil {
+		return errors.Wrap(err, "failed to report and disarm etcd alarms")
 	}
 
 	members, err := e.client.MemberList(ctx)
@@ -741,7 +746,7 @@ func (e *ETCD) RemovePeer(ctx context.Context, name, address string, allowSelfRe
 // manageLearners monitors the etcd cluster to ensure that learners are making progress towards
 // being promoted to full voting member. The checks only run on the cluster member that is
 // the etcd leader.
-func (e *ETCD) manageLearners(ctx context.Context) error {
+func (e *ETCD) manageLearners(ctx context.Context) {
 	<-e.config.Runtime.AgentReady
 	t := time.NewTicker(manageTickerTime)
 	defer t.Stop()
@@ -752,7 +757,7 @@ func (e *ETCD) manageLearners(ctx context.Context) error {
 
 		// Check to see if the local node is the leader. Only the leader should do learner management.
 		if e.client == nil {
-			logrus.Error("Etcd client was nil")
+			logrus.Debug("Etcd client was nil")
 			continue
 		}
 		if status, err := e.client.Status(ctx, endpoint); err != nil {
@@ -783,7 +788,7 @@ func (e *ETCD) manageLearners(ctx context.Context) error {
 			}
 		}
 	}
-	return nil
+	return
 }
 
 // trackLearnerProcess attempts to promote a learner. If it cannot be promoted, progress through the raft index is tracked.
@@ -871,6 +876,41 @@ func (e *ETCD) setLearnerProgress(ctx context.Context, status *learnerProgress) 
 
 	_, err := e.client.Put(ctx, learnerProgressKey, w.String())
 	return err
+}
+
+// clearAlarms checks for any alarms on the local etcd member. If found, they are
+// reported and the alarm state is cleared.
+func (e *ETCD) clearAlarms(ctx context.Context) error {
+	ctx, cancel := context.WithTimeout(ctx, testTimeout)
+	defer cancel()
+
+	if e.client == nil {
+		return errors.New("etcd client was nil")
+	}
+
+	alarmList, err := e.client.AlarmList(ctx)
+	if err != nil {
+		return fmt.Errorf("etcd alarm list failed: %v", err)
+	}
+	if len(alarmList.Alarms) == 0 {
+		return nil
+	}
+
+	var hasAlarm bool
+	for _, alarm := range alarmList.Alarms {
+		if alarmList.Header.MemberId != alarm.MemberID {
+			continue
+		}
+		logrus.Warnf("Alarm on etcd server: %s", alarm.Alarm)
+		hasAlarm = true
+	}
+	if hasAlarm {
+		if _, err := e.client.AlarmDisarm(ctx, &clientv3.AlarmMember{}); err != nil {
+			return fmt.Errorf("etcd alarm disarm failed: %v", err)
+		}
+		logrus.Infof("Alarms disarmed on etcd server")
+	}
+	return nil
 }
 
 // clientURLs returns a list of all non-learner etcd cluster member client access URLs
