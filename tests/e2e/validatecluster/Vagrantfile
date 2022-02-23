@@ -37,10 +37,17 @@ def provision(vm, roles, role_num, node_num)
     if EXTERNAL_DB == "mysql"
       dockerInstall(vm)
       vm.provision "shell", inline: "docker run -d -p 3306:3306 --name mysql -e MYSQL_ROOT_PASSWORD=e2e mysql:5.7"
+      vm.provision "shell", inline: "echo \"Wait for mysql to startup\"; sleep 10"
       db_type = "--datastore-endpoint='mysql://root:e2e@tcp(#{NETWORK_PREFIX}.100:3306)/k3s'"
+    elsif EXTERNAL_DB == "postgres"
+      dockerInstall(vm)
+      vm.provision "shell", inline: "docker run -d -p 5432:5432 --name postgres -e POSTGRES_PASSWORD=e2e  postgres:14-alpine"
+      vm.provision "shell", inline: "echo \"Wait for postgres to startup\"; sleep 10"
+      db_type = "--datastore-endpoint='postgres://postgres:e2e@#{NETWORK_PREFIX}.100:5432/k3s?sslmode=disable'"
     else
       db_type = "--cluster-init"
     end
+    
     vm.provision 'k3s-install', type: 'k3s', run: 'once' do |k3s|
       k3s.args = "server #{db_type} --node-external-ip=#{NETWORK_PREFIX}.100 --flannel-iface=eth1"
       k3s.env = %W[K3S_KUBECONFIG_MODE=0644 K3S_TOKEN=vagrant #{install_type}]
@@ -49,7 +56,10 @@ def provision(vm, roles, role_num, node_num)
   elsif roles.include?("server") && role_num != 0
     if EXTERNAL_DB == "mysql"
       db_type = "--datastore-endpoint='mysql://root:e2e@tcp(#{NETWORK_PREFIX}.100:3306)/k3s'"
+    elsif EXTERNAL_DB == "postgres"
+      db_type = "--datastore-endpoint='postgres://postgres:e2e@#{NETWORK_PREFIX}.100:5432/k3s?sslmode=disable'"
     end
+
     vm.provision 'k3s-install', type: 'k3s', run: 'once' do |k3s|
       k3s.args = "server #{db_type} --server https://#{NETWORK_PREFIX}.100:6443 --flannel-iface=eth1"
       k3s.env = %W[K3S_KUBECONFIG_MODE=0644 K3S_TOKEN=vagrant #{install_type}]
