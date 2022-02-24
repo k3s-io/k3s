@@ -107,7 +107,7 @@ func (c *Cluster) storageBootstrap(ctx context.Context) error {
 
 	token := c.config.Token
 	if token == "" {
-		tokenFromFile, err := readTokenFromFile(c.runtime.ServerToken, c.runtime.ServerCA, c.config.DataDir)
+		tokenFromFile, err := readTokenFromFile(c.config.Runtime.ServerToken, c.config.Runtime.ServerCA, c.config.DataDir)
 		if err != nil {
 			return err
 		}

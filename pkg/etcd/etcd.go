@@ -84,7 +84,6 @@ type ETCD struct {
 	client  *clientv3.Client
 	config  *config.Control
 	name    string
-	runtime *config.ControlRuntime
 	address string
 	cron    *cron.Cron
 	s3      *S3
@@ -196,7 +195,7 @@ func (e *ETCD) IsInitialized(ctx context.Context, config *config.Control) (bool,
 func (e *ETCD) Reset(ctx context.Context, rebootstrap func() error) error {
 	// Wait for etcd to come up as a new single-node cluster, then exit
 	go func() {
-		<-e.runtime.AgentReady
+		<-e.config.Runtime.AgentReady
 		t := time.NewTicker(5 * time.Second)
 		defer t.Stop()
 		for range t.C {
@@ -219,7 +218,7 @@ func (e *ETCD) Reset(ctx context.Context, rebootstrap func() error) error {
 				}
 
 				// call functions to rewrite them from daemons/control/server.go (prepare())
-				if err := deps.GenServerDeps(e.config, e.runtime); err != nil {
+				if err := deps.GenServerDeps(e.config); err != nil {
 					logrus.Fatal(err)
 				}
 
@@ -320,7 +319,7 @@ func (e *ETCD) Start(ctx context.Context, clientAccessInfo *clientaccess.Info) e
 	}
 
 	go func() {
-		<-e.runtime.AgentReady
+		<-e.config.Runtime.AgentReady
 		if err := e.join(ctx, clientAccessInfo); err != nil {
 			logrus.Fatalf("ETCD join failed: %v", err)
 		}
@@ -344,7 +343,7 @@ func (e *ETCD) join(ctx context.Context, clientAccessInfo *clientaccess.Info) er
 		return err
 	}
 
-	client, err := GetClient(clientCtx, e.runtime, clientURLs...)
+	client, err := GetClient(clientCtx, e.config.Runtime, clientURLs...)
 	if err != nil {
 		return err
 	}
@@ -420,9 +419,8 @@ func (e *ETCD) join(ctx context.Context, clientAccessInfo *clientaccess.Info) er
 // Register configures a new etcd client and adds db info routes for the http request handler.
 func (e *ETCD) Register(ctx context.Context, config *config.Control, handler http.Handler) (http.Handler, error) {
 	e.config = config
-	e.runtime = config.Runtime
 
-	client, err := GetClient(ctx, e.runtime, endpoint)
+	client, err := GetClient(ctx, e.config.Runtime, endpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -434,9 +432,9 @@ func (e *ETCD) Register(ctx context.Context, config *config.Control, handler htt
 	}
 	e.address = address
 	e.config.Datastore.Endpoint = endpoint
-	e.config.Datastore.BackendTLSConfig.CAFile = e.runtime.ETCDServerCA
-	e.config.Datastore.BackendTLSConfig.CertFile = e.runtime.ClientETCDCert
-	e.config.Datastore.BackendTLSConfig.KeyFile = e.runtime.ClientETCDKey
+	e.config.Datastore.BackendTLSConfig.CAFile = e.config.Runtime.ETCDServerCA
+	e.config.Datastore.BackendTLSConfig.CertFile = e.config.Runtime.ClientETCDCert
+	e.config.Datastore.BackendTLSConfig.KeyFile = e.config.Runtime.ClientETCDKey
 
 	tombstoneFile := filepath.Join(DBDir(e.config), "tombstone")
 	if _, err := os.Stat(tombstoneFile); err == nil {
@@ -623,7 +621,7 @@ func (e *ETCD) migrateFromSQLite(ctx context.Context) error {
 	}
 	defer sqliteClient.Close()
 
-	etcdClient, err := GetClient(ctx, e.runtime, "https://localhost:2379")
+	etcdClient, err := GetClient(ctx, e.config.Runtime, "https://localhost:2379")
 	if err != nil {
 		return err
 	}
@@ -733,7 +731,7 @@ func (e *ETCD) RemovePeer(ctx context.Context, name, address string, allowSelfRe
 // being promoted to full voting member. The checks only run on the cluster member that is
 // the etcd leader.
 func (e *ETCD) manageLearners(ctx context.Context) error {
-	<-e.runtime.AgentReady
+	<-e.config.Runtime.AgentReady
 	t := time.NewTicker(manageTickerTime)
 	defer t.Stop()
 
@@ -937,9 +935,6 @@ func (e *ETCD) preSnapshotSetup(ctx context.Context, config *config.Control) err
 		}
 		e.client = client
 	}
-	if e.runtime == nil {
-		e.runtime = config.Runtime
-	}
 	return nil
 }
 
@@ -1069,7 +1064,7 @@ func (e *ETCD) Snapshot(ctx context.Context, config *config.Control) error {
 		return errors.Wrap(err, "failed to get the snapshot dir")
 	}
 
-	cfg, err := getClientConfig(ctx, e.runtime, endpoint)
+	cfg, err := getClientConfig(ctx, e.config.Runtime, endpoint)
 	if err != nil {
 		return errors.Wrap(err, "failed to get config for etcd snapshot")
 	}
