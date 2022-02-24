@@ -19,11 +19,11 @@ func (c *Cluster) getHandler(handler http.Handler) (http.Handler, error) {
 // if no additional handlers are available.
 func (c *Cluster) router() http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		if c.runtime.Handler == nil {
+		if c.config.Runtime.Handler == nil {
 			http.Error(rw, "starting", http.StatusServiceUnavailable)
 			return
 		}
 
-		c.runtime.Handler.ServeHTTP(rw, req)
+		c.config.Runtime.Handler.ServeHTTP(rw, req)
 	})
 }

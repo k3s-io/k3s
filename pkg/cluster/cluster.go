@@ -18,7 +18,6 @@ import (
 type Cluster struct {
 	clientAccessInfo *clientaccess.Info
 	config           *config.Control
-	runtime          *config.ControlRuntime
 	managedDB        managed.Driver
 	EtcdConfig       endpoint.ETCDConfig
 	joining          bool
@@ -149,7 +148,6 @@ func (c *Cluster) startStorage(ctx context.Context) error {
 // New creates an initial cluster using the provided configuration.
 func New(config *config.Control) *Cluster {
 	return &Cluster{
-		config:  config,
-		runtime: config.Runtime,
+		config: config,
 	}
 }
