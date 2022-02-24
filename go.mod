@@ -112,7 +112,7 @@ require (
 	// LOOK TO scripts/download FOR THE VERSION OF runc THAT WE ARE BUILDING/SHIPPING
 	github.com/opencontainers/runc v1.0.3
 	github.com/opencontainers/selinux v1.8.2
-	github.com/otiai10/copy v1.6.0
+	github.com/otiai10/copy v1.7.0
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.11.0 // indirect
 	github.com/rancher/dynamiclistener v0.2.7
