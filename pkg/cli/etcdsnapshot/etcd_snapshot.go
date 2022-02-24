@@ -88,7 +88,9 @@ func run(app *cli.Context, cfg *cmds.Server) error {
 
 	ctx := signals.SetupSignalHandler(context.Background())
 	e := etcd.NewETCD()
-	e.SetControlConfig(&serverConfig.ControlConfig)
+	if err := e.SetControlConfig(ctx, &serverConfig.ControlConfig); err != nil {
+		return err
+	}
 
 	initialized, err := e.IsInitialized(ctx, &serverConfig.ControlConfig)
 	if err != nil {
@@ -138,7 +140,9 @@ func delete(app *cli.Context, cfg *cmds.Server) error {
 
 	ctx := signals.SetupSignalHandler(context.Background())
 	e := etcd.NewETCD()
-	e.SetControlConfig(&serverConfig.ControlConfig)
+	if err := e.SetControlConfig(ctx, &serverConfig.ControlConfig); err != nil {
+		return err
+	}
 
 	sc, err := server.NewContext(ctx, serverConfig.ControlConfig.Runtime.KubeConfigAdmin)
 	if err != nil {
@@ -179,7 +183,9 @@ func list(app *cli.Context, cfg *cmds.Server) error {
 
 	ctx := signals.SetupSignalHandler(context.Background())
 	e := etcd.NewETCD()
-	e.SetControlConfig(&serverConfig.ControlConfig)
+	if err := e.SetControlConfig(ctx, &serverConfig.ControlConfig); err != nil {
+		return err
+	}
 
 	sf, err := e.ListSnapshots(ctx)
 	if err != nil {
@@ -246,7 +252,9 @@ func prune(app *cli.Context, cfg *cmds.Server) error {
 
 	ctx := signals.SetupSignalHandler(context.Background())
 	e := etcd.NewETCD()
-	e.SetControlConfig(&serverConfig.ControlConfig)
+	if err := e.SetControlConfig(ctx, &serverConfig.ControlConfig); err != nil {
+		return err
+	}
 
 	sc, err := server.NewContext(ctx, serverConfig.ControlConfig.Runtime.KubeConfigAdmin)
 	if err != nil {
