@@ -93,7 +93,7 @@ require (
 	github.com/onsi/gomega v1.17.0
 	github.com/opencontainers/runc v1.0.3
 	github.com/opencontainers/selinux v1.8.3
-	github.com/otiai10/copy v1.6.0
+	github.com/otiai10/copy v1.7.0
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/dynamiclistener v0.3.1
 	github.com/rancher/lasso v0.0.0-20210616224652-fc3ebd901c08
