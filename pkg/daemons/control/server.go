@@ -35,46 +35,45 @@ var localhostIP = net.ParseIP("127.0.0.1")
 
 func Server(ctx context.Context, cfg *config.Control) error {
 	rand.Seed(time.Now().UTC().UnixNano())
-	runtime := cfg.Runtime
 
-	if err := prepare(ctx, cfg, runtime); err != nil {
+	if err := prepare(ctx, cfg); err != nil {
 		return errors.Wrap(err, "preparing server")
 	}
 
 	cfg.Runtime.Tunnel = setupTunnel()
 	proxyutil.DisableProxyHostnameCheck = true
 
-	basicAuth, err := basicAuthenticator(runtime.PasswdFile)
+	basicAuth, err := basicAuthenticator(cfg.Runtime.PasswdFile)
 	if err != nil {
 		return err
 	}
-	runtime.Authenticator = basicAuth
+	cfg.Runtime.Authenticator = basicAuth
 
 	if !cfg.DisableAPIServer {
-		go waitForAPIServerHandlers(ctx, runtime)
+		go waitForAPIServerHandlers(ctx, cfg.Runtime)
 
-		if err := apiServer(ctx, cfg, runtime); err != nil {
+		if err := apiServer(ctx, cfg); err != nil {
 			return err
 		}
 
-		if err := waitForAPIServerInBackground(ctx, runtime); err != nil {
+		if err := waitForAPIServerInBackground(ctx, cfg.Runtime); err != nil {
 			return err
 		}
 	}
 
 	if !cfg.DisableScheduler {
-		if err := scheduler(cfg, runtime); err != nil {
+		if err := scheduler(cfg); err != nil {
 			return err
 		}
 	}
 	if !cfg.DisableControllerManager {
-		if err := controllerManager(cfg, runtime); err != nil {
+		if err := controllerManager(cfg); err != nil {
 			return err
 		}
 	}
 
 	if !cfg.DisableCCM {
-		if err := cloudControllerManager(ctx, cfg, runtime); err != nil {
+		if err := cloudControllerManager(ctx, cfg); err != nil {
 			return err
 		}
 	}
@@ -82,7 +81,8 @@ func Server(ctx context.Context, cfg *config.Control) error {
 	return nil
 }
 
-func controllerManager(cfg *config.Control, runtime *config.ControlRuntime) error {
+func controllerManager(cfg *config.Control) error {
+	runtime := cfg.Runtime
 	argsMap := map[string]string{
 		"kubeconfig":                       runtime.KubeConfigController,
 		"service-account-private-key-file": runtime.ServiceKey,
@@ -115,10 +115,11 @@ func controllerManager(cfg *config.Control, runtime *config.ControlRuntime) erro
 	args := config.GetArgsList(argsMap, cfg.ExtraControllerArgs)
 	logrus.Infof("Running kube-controller-manager %s", config.ArgString(args))
 
-	return executor.ControllerManager(runtime.APIServerReady, args)
+	return executor.ControllerManager(cfg.Runtime.APIServerReady, args)
 }
 
-func scheduler(cfg *config.Control, runtime *config.ControlRuntime) error {
+func scheduler(cfg *config.Control) error {
+	runtime := cfg.Runtime
 	argsMap := map[string]string{
 		"kubeconfig":   runtime.KubeConfigScheduler,
 		"port":         "10251",
@@ -133,12 +134,13 @@ func scheduler(cfg *config.Control, runtime *config.ControlRuntime) error {
 	args := config.GetArgsList(argsMap, cfg.ExtraSchedulerAPIArgs)
 
 	logrus.Infof("Running kube-scheduler %s", config.ArgString(args))
-	return executor.Scheduler(runtime.APIServerReady, args)
+	return executor.Scheduler(cfg.Runtime.APIServerReady, args)
 }
 
-func apiServer(ctx context.Context, cfg *config.Control, runtime *config.ControlRuntime) error {
-	argsMap := make(map[string]string)
+func apiServer(ctx context.Context, cfg *config.Control) error {
+	runtime := cfg.Runtime
 
+	argsMap := make(map[string]string)
 	setupStorageBackend(argsMap, cfg)
 
 	certDir := filepath.Join(cfg.DataDir, "tls", "temporary-certs")
@@ -222,7 +224,7 @@ func defaults(config *config.Control) {
 	}
 }
 
-func prepare(ctx context.Context, config *config.Control, runtime *config.ControlRuntime) error {
+func prepare(ctx context.Context, config *config.Control) error {
 	var err error
 
 	defaults(config)
@@ -239,6 +241,7 @@ func prepare(ctx context.Context, config *config.Control, runtime *config.Contro
 	os.MkdirAll(filepath.Join(config.DataDir, "tls"), 0700)
 	os.MkdirAll(filepath.Join(config.DataDir, "cred"), 0700)
 
+	runtime := config.Runtime
 	runtime.ClientCA = filepath.Join(config.DataDir, "tls", "client-ca.crt")
 	runtime.ClientCAKey = filepath.Join(config.DataDir, "tls", "client-ca.key")
 	runtime.ServerCA = filepath.Join(config.DataDir, "tls", "server-ca.crt")
@@ -295,7 +298,7 @@ func prepare(ctx context.Context, config *config.Control, runtime *config.Contro
 	if config.EncryptSecrets {
 		runtime.EncryptionConfig = filepath.Join(config.DataDir, "cred", "encryption-config.json")
 	}
-	deps.CreateRuntimeCertFiles(config, runtime)
+	deps.CreateRuntimeCertFiles(config)
 
 	cluster := cluster.New(config)
 
@@ -303,7 +306,7 @@ func prepare(ctx context.Context, config *config.Control, runtime *config.Contro
 		return err
 	}
 
-	if err := deps.GenServerDeps(config, runtime); err != nil {
+	if err := deps.GenServerDeps(config); err != nil {
 		return err
 	}
 
@@ -312,8 +315,8 @@ func prepare(ctx context.Context, config *config.Control, runtime *config.Contro
 		return err
 	}
 
-	runtime.ETCDReady = ready
-	runtime.EtcdConfig = cluster.EtcdConfig
+	config.Runtime.ETCDReady = ready
+	config.Runtime.EtcdConfig = cluster.EtcdConfig
 	return nil
 }
 
@@ -335,7 +338,8 @@ func setupStorageBackend(argsMap map[string]string, cfg *config.Control) {
 	}
 }
 
-func cloudControllerManager(ctx context.Context, cfg *config.Control, runtime *config.ControlRuntime) error {
+func cloudControllerManager(ctx context.Context, cfg *config.Control) error {
+	runtime := cfg.Runtime
 	argsMap := map[string]string{
 		"profiling":                    "false",
 		"allocate-node-cidrs":          "true",
@@ -364,7 +368,7 @@ func cloudControllerManager(ctx context.Context, cfg *config.Control, runtime *c
 			select {
 			case <-ctx.Done():
 				return
-			case <-runtime.APIServerReady:
+			case <-cfg.Runtime.APIServerReady:
 				break apiReadyLoop
 			case <-time.After(30 * time.Second):
 				logrus.Infof("Waiting for API server to become available")
@@ -376,7 +380,7 @@ func cloudControllerManager(ctx context.Context, cfg *config.Control, runtime *c
 			select {
 			case <-ctx.Done():
 				return
-			case err := <-promise(func() error { return checkForCloudControllerPrivileges(runtime, 5*time.Second) }):
+			case err := <-promise(func() error { return checkForCloudControllerPrivileges(cfg.Runtime, 5*time.Second) }):
 				if err != nil {
 					logrus.Infof("Waiting for cloud-controller-manager privileges to become available")
 					continue
