@@ -196,7 +196,7 @@ func createTmpDataDir(src, dst string) error {
 func (c *Cluster) shouldBootstrapLoad(ctx context.Context) (bool, bool, error) {
 	// Non-nil managedDB indicates that the database is either initialized, initializing, or joining
 	if c.managedDB != nil {
-		c.runtime.HTTPBootstrap = true
+		c.config.Runtime.HTTPBootstrap = true
 
 		isInitialized, err := c.managedDB.IsInitialized(ctx, c.config)
 		if err != nil {
@@ -363,7 +363,7 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker,
 	if c.managedDB != nil && !isHTTP {
 		token := c.config.Token
 		if token == "" {
-			tokenFromFile, err := readTokenFromFile(c.runtime.ServerToken, c.runtime.ServerCA, c.config.DataDir)
+			tokenFromFile, err := readTokenFromFile(c.config.Runtime.ServerToken, c.config.Runtime.ServerCA, c.config.DataDir)
 			if err != nil {
 				return err
 			}
@@ -600,7 +600,7 @@ func (c *Cluster) httpBootstrap(ctx context.Context) error {
 
 func (c *Cluster) retrieveInitializedDBdata(ctx context.Context) (*bytes.Buffer, error) {
 	var buf bytes.Buffer
-	if err := bootstrap.ReadFromDisk(&buf, &c.runtime.ControlRuntimeBootstrap); err != nil {
+	if err := bootstrap.ReadFromDisk(&buf, &c.config.Runtime.ControlRuntimeBootstrap); err != nil {
 		return nil, err
 	}
 
@@ -612,7 +612,7 @@ func (c *Cluster) bootstrap(ctx context.Context) error {
 	c.joining = true
 
 	// bootstrap managed database via HTTPS
-	if c.runtime.HTTPBootstrap {
+	if c.config.Runtime.HTTPBootstrap {
 		// Assuming we should just compare on managed databases
 		if err := c.compareConfig(); err != nil {
 			return errors.Wrap(err, "failed to validate server configuration")
