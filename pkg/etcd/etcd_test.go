@@ -244,7 +244,7 @@ func Test_UnitETCD_Start(t *testing.T) {
 				ctxInfo.ctx, ctxInfo.cancel = context.WithCancel(context.Background())
 				e.config.EtcdDisableSnapshots = true
 				testutil.GenerateRuntime(e.config)
-				client, err := GetClient(ctxInfo.ctx, e.config.Runtime, endpoint)
+				client, err := GetClient(ctxInfo.ctx, e.config.Runtime)
 				e.client = client
 
 				return err
@@ -254,6 +254,7 @@ func Test_UnitETCD_Start(t *testing.T) {
 				if err := e.RemoveSelf(ctxInfo.ctx); err != nil && err.Error() != etcdserver.ErrNotEnoughStartedMembers.Error() {
 					return err
 				}
+				e.client.Close()
 				ctxInfo.cancel()
 				time.Sleep(10 * time.Second)
 				testutil.CleanupDataDir(e.config)
@@ -274,7 +275,7 @@ func Test_UnitETCD_Start(t *testing.T) {
 			setup: func(e *ETCD, ctxInfo *contextInfo) error {
 				ctxInfo.ctx, ctxInfo.cancel = context.WithCancel(context.Background())
 				testutil.GenerateRuntime(e.config)
-				client, err := GetClient(ctxInfo.ctx, e.config.Runtime, endpoint)
+				client, err := GetClient(ctxInfo.ctx, e.config.Runtime)
 				e.client = client
 
 				return err
@@ -284,6 +285,7 @@ func Test_UnitETCD_Start(t *testing.T) {
 				if err := e.RemoveSelf(ctxInfo.ctx); err != nil && err.Error() != etcdserver.ErrNotEnoughStartedMembers.Error() {
 					return err
 				}
+				e.client.Close()
 				ctxInfo.cancel()
 				time.Sleep(5 * time.Second)
 				testutil.CleanupDataDir(e.config)
@@ -306,7 +308,7 @@ func Test_UnitETCD_Start(t *testing.T) {
 				if err := testutil.GenerateRuntime(e.config); err != nil {
 					return err
 				}
-				client, err := GetClient(ctxInfo.ctx, e.config.Runtime, endpoint)
+				client, err := GetClient(ctxInfo.ctx, e.config.Runtime)
 				if err != nil {
 					return err
 				}
@@ -318,6 +320,7 @@ func Test_UnitETCD_Start(t *testing.T) {
 				if err := e.RemoveSelf(ctxInfo.ctx); err != nil && err.Error() != etcdserver.ErrNotEnoughStartedMembers.Error() {
 					return err
 				}
+				e.client.Close()
 				ctxInfo.cancel()
 				time.Sleep(5 * time.Second)
 				testutil.CleanupDataDir(e.config)
