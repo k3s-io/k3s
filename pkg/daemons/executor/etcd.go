@@ -1,6 +1,3 @@
-//go:build !no_embedded_executor
-// +build !no_embedded_executor
-
 package executor
 
 import (
@@ -9,17 +6,18 @@ import (
 	"path/filepath"
 	"strings"
 
+	daemonconfig "github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/version"
 	"github.com/sirupsen/logrus"
 	"go.etcd.io/etcd/embed"
 	"go.etcd.io/etcd/etcdserver"
 )
 
-func (e Embedded) CurrentETCDOptions() (InitialOptions, error) {
-	return InitialOptions{}, nil
+type Embedded struct {
+	nodeConfig *daemonconfig.Node
 }
 
-func (e Embedded) ETCD(ctx context.Context, args ETCDConfig, extraArgs []string) error {
+func (e *Embedded) ETCD(ctx context.Context, args ETCDConfig, extraArgs []string) error {
 	configFile, err := args.ToConfigFile(extraArgs)
 	if err != nil {
 		return err
