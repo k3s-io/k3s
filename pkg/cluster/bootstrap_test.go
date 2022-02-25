@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/k3s-io/kine/pkg/endpoint"
 	"github.com/rancher/k3s/pkg/bootstrap"
 	"github.com/rancher/k3s/pkg/clientaccess"
 	"github.com/rancher/k3s/pkg/cluster/managed"
@@ -90,7 +89,6 @@ func TestCluster_certDirsExist(t *testing.T) {
 		clientAccessInfo *clientaccess.Info
 		config           *config.Control
 		managedDB        managed.Driver
-		etcdConfig       endpoint.ETCDConfig
 		shouldBootstrap  bool
 		storageStarted   bool
 		saveBootstrap    bool
@@ -131,7 +129,6 @@ func TestCluster_certDirsExist(t *testing.T) {
 				clientAccessInfo: tt.fields.clientAccessInfo,
 				config:           tt.fields.config,
 				managedDB:        tt.fields.managedDB,
-				EtcdConfig:       tt.fields.etcdConfig,
 				storageStarted:   tt.fields.storageStarted,
 				saveBootstrap:    tt.fields.saveBootstrap,
 			}
@@ -152,7 +149,6 @@ func TestCluster_migrateBootstrapData(t *testing.T) {
 		clientAccessInfo *clientaccess.Info
 		config           *config.Control
 		managedDB        managed.Driver
-		etcdConfig       endpoint.ETCDConfig
 		joining          bool
 		storageStarted   bool
 		saveBootstrap    bool
@@ -207,7 +203,6 @@ func TestCluster_Snapshot(t *testing.T) {
 		clientAccessInfo *clientaccess.Info
 		config           *config.Control
 		managedDB        managed.Driver
-		etcdConfig       endpoint.ETCDConfig
 		joining          bool
 		storageStarted   bool
 		saveBootstrap    bool
@@ -238,7 +233,6 @@ func TestCluster_Snapshot(t *testing.T) {
 				clientAccessInfo: tt.fields.clientAccessInfo,
 				config:           tt.fields.config,
 				managedDB:        tt.fields.managedDB,
-				EtcdConfig:       tt.fields.etcdConfig,
 				joining:          tt.fields.joining,
 				storageStarted:   tt.fields.storageStarted,
 				saveBootstrap:    tt.fields.saveBootstrap,
