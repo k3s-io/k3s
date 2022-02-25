@@ -149,7 +149,7 @@ func encryptionEnable(ctx context.Context, server *config.Control, enable bool) 
 	} else {
 		return fmt.Errorf("unable to enable/disable secrets encryption, unknown configuration")
 	}
-	return cluster.Save(ctx, server, server.Runtime.EtcdConfig, true)
+	return cluster.Save(ctx, server, true)
 }
 
 func encryptionConfigHandler(ctx context.Context, server *config.Control) http.Handler {
@@ -218,7 +218,7 @@ func encryptionPrepare(ctx context.Context, server *config.Control, force bool) 
 	if err = secretsencrypt.WriteEncryptionHashAnnotation(server.Runtime, node, secretsencrypt.EncryptionPrepare); err != nil {
 		return err
 	}
-	return cluster.Save(ctx, server, server.Runtime.EtcdConfig, true)
+	return cluster.Save(ctx, server, true)
 }
 
 func encryptionRotate(ctx context.Context, server *config.Control, force bool) error {
@@ -247,7 +247,7 @@ func encryptionRotate(ctx context.Context, server *config.Control, force bool) e
 	if err := secretsencrypt.WriteEncryptionHashAnnotation(server.Runtime, node, secretsencrypt.EncryptionRotate); err != nil {
 		return err
 	}
-	return cluster.Save(ctx, server, server.Runtime.EtcdConfig, true)
+	return cluster.Save(ctx, server, true)
 }
 
 func encryptionReencrypt(ctx context.Context, server *config.Control, force bool, skip bool) error {
