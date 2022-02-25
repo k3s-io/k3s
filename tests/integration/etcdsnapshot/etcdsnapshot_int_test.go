@@ -14,9 +14,13 @@ import (
 
 var server *testutil.K3sServer
 var serverArgs = []string{"--cluster-init"}
+var testLock int
+
 var _ = BeforeSuite(func() {
 	if !testutil.IsExistingServer() {
 		var err error
+		testLock, err = testutil.K3sTestLock()
+		Expect(err).ToNot(HaveOccurred())
 		server, err = testutil.K3sStartServer(serverArgs...)
 		Expect(err).ToNot(HaveOccurred())
 	}
@@ -112,8 +116,8 @@ var _ = Describe("etcd snapshots", func() {
 
 var _ = AfterSuite(func() {
 	if !testutil.IsExistingServer() {
-		Expect(testutil.K3sKillServer(server, false)).To(Succeed())
-		Expect(testutil.K3sCleanup(server, true, "")).To(Succeed())
+		Expect(testutil.K3sKillServer(server)).To(Succeed())
+		Expect(testutil.K3sCleanup(testLock, "")).To(Succeed())
 	}
 })
 
