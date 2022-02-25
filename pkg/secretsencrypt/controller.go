@@ -120,7 +120,7 @@ func (h *handler) onChangeNode(key string, node *corev1.Node) (*corev1.Node, err
 		h.recorder.Event(node, corev1.EventTypeWarning, secretsUpdateErrorEvent, err.Error())
 		return node, err
 	}
-	if err := cluster.Save(h.ctx, h.controlConfig, h.controlConfig.Runtime.EtcdConfig, true); err != nil {
+	if err := cluster.Save(h.ctx, h.controlConfig, true); err != nil {
 		h.recorder.Event(node, corev1.EventTypeWarning, secretsUpdateErrorEvent, err.Error())
 		return node, err
 	}
