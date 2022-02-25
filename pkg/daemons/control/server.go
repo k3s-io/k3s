@@ -262,7 +262,6 @@ func prepare(ctx context.Context, config *config.Control) error {
 	}
 
 	config.Runtime.ETCDReady = ready
-	config.Runtime.EtcdConfig = cluster.EtcdConfig
 	return nil
 }
 
