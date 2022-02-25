@@ -386,7 +386,7 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker,
 		if ec != nil {
 			etcdConfig = *ec
 		} else {
-			etcdConfig = c.EtcdConfig
+			etcdConfig = c.config.Runtime.EtcdConfig
 		}
 
 		storageClient, err := client.New(etcdConfig)
