@@ -7,12 +7,12 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"text/tabwriter"
 
 	"github.com/erikdubbelboer/gspt"
 	"github.com/rancher/k3s/pkg/cli/cmds"
 	"github.com/rancher/k3s/pkg/clientaccess"
-	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/secretsencrypt"
 	"github.com/rancher/k3s/pkg/server"
 	"github.com/rancher/k3s/pkg/version"
@@ -20,35 +20,25 @@ import (
 	"k8s.io/utils/pointer"
 )
 
-func commandPrep(app *cli.Context, cfg *cmds.Server) (config.Control, *clientaccess.Info, error) {
-	var controlConfig config.Control
-	var err error
+func commandPrep(app *cli.Context, cfg *cmds.Server) (*clientaccess.Info, error) {
 	// hide process arguments from ps output, since they may contain
 	// database credentials or other secrets.
 	gspt.SetProcTitle(os.Args[0] + " secrets-encrypt")
 
-	controlConfig.DataDir, err = server.ResolveDataDir(cfg.DataDir)
+	dataDir, err := server.ResolveDataDir(cfg.DataDir)
 	if err != nil {
-		return controlConfig, nil, err
+		return nil, err
 	}
 
 	if cfg.Token == "" {
-		fp := filepath.Join(controlConfig.DataDir, "token")
+		fp := filepath.Join(dataDir, "token")
 		tokenByte, err := ioutil.ReadFile(fp)
 		if err != nil {
-			return controlConfig, nil, err
+			return nil, err
 		}
-		controlConfig.Token = string(bytes.TrimRight(tokenByte, "\n"))
-	} else {
-		controlConfig.Token = cfg.Token
+		cfg.Token = string(bytes.TrimRight(tokenByte, "\n"))
 	}
-	controlConfig.EncryptForce = cfg.EncryptForce
-	controlConfig.EncryptSkip = cfg.EncryptSkip
-	info, err := clientaccess.ParseAndValidateTokenForUser(cmds.ServerConfig.ServerURL, controlConfig.Token, "server")
-	if err != nil {
-		return controlConfig, nil, err
-	}
-	return controlConfig, info, nil
+	return clientaccess.ParseAndValidateTokenForUser(cmds.ServerConfig.ServerURL, cfg.Token, "server")
 }
 
 func Enable(app *cli.Context) error {
@@ -56,7 +46,7 @@ func Enable(app *cli.Context) error {
 	if err = cmds.InitLogging(); err != nil {
 		return err
 	}
-	_, info, err := commandPrep(app, &cmds.ServerConfig)
+	info, err := commandPrep(app, &cmds.ServerConfig)
 	if err != nil {
 		return err
 	}
@@ -76,7 +66,7 @@ func Disable(app *cli.Context) error {
 	if err := cmds.InitLogging(); err != nil {
 		return err
 	}
-	_, info, err := commandPrep(app, &cmds.ServerConfig)
+	info, err := commandPrep(app, &cmds.ServerConfig)
 	if err != nil {
 		return err
 	}
@@ -95,7 +85,7 @@ func Status(app *cli.Context) error {
 	if err := cmds.InitLogging(); err != nil {
 		return err
 	}
-	_, info, err := commandPrep(app, &cmds.ServerConfig)
+	info, err := commandPrep(app, &cmds.ServerConfig)
 	if err != nil {
 		return err
 	}
@@ -106,6 +96,15 @@ func Status(app *cli.Context) error {
 	status := server.EncryptionState{}
 	if err := json.Unmarshal(data, &status); err != nil {
 		return err
+	}
+
+	if strings.ToLower(cmds.ServerConfig.EncryptOutput) == "json" {
+		json, err := json.MarshalIndent(status, "", "\t")
+		if err != nil {
+			return err
+		}
+		fmt.Println(string(json))
+		return nil
 	}
 
 	if status.Enable == nil {
@@ -148,13 +147,13 @@ func Prepare(app *cli.Context) error {
 	if err = cmds.InitLogging(); err != nil {
 		return err
 	}
-	controlConfig, info, err := commandPrep(app, &cmds.ServerConfig)
+	info, err := commandPrep(app, &cmds.ServerConfig)
 	if err != nil {
 		return err
 	}
 	b, err := json.Marshal(server.EncryptionRequest{
 		Stage: pointer.StringPtr(secretsencrypt.EncryptionPrepare),
-		Force: controlConfig.EncryptForce,
+		Force: cmds.ServerConfig.EncryptForce,
 	})
 	if err != nil {
 		return err
@@ -170,13 +169,13 @@ func Rotate(app *cli.Context) error {
 	if err := cmds.InitLogging(); err != nil {
 		return err
 	}
-	controlConfig, info, err := commandPrep(app, &cmds.ServerConfig)
+	info, err := commandPrep(app, &cmds.ServerConfig)
 	if err != nil {
 		return err
 	}
 	b, err := json.Marshal(server.EncryptionRequest{
 		Stage: pointer.StringPtr(secretsencrypt.EncryptionRotate),
-		Force: controlConfig.EncryptForce,
+		Force: cmds.ServerConfig.EncryptForce,
 	})
 	if err != nil {
 		return err
@@ -193,14 +192,14 @@ func Reencrypt(app *cli.Context) error {
 	if err = cmds.InitLogging(); err != nil {
 		return err
 	}
-	controlConfig, info, err := commandPrep(app, &cmds.ServerConfig)
+	info, err := commandPrep(app, &cmds.ServerConfig)
 	if err != nil {
 		return err
 	}
 	b, err := json.Marshal(server.EncryptionRequest{
 		Stage: pointer.StringPtr(secretsencrypt.EncryptionReencryptActive),
-		Force: controlConfig.EncryptForce,
-		Skip:  controlConfig.EncryptSkip,
+		Force: cmds.ServerConfig.EncryptForce,
+		Skip:  cmds.ServerConfig.EncryptSkip,
 	})
 	if err != nil {
 		return err
