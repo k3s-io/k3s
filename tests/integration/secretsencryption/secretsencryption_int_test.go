@@ -6,8 +6,7 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/onsi/ginkgo"
-	"github.com/onsi/ginkgo/reporters"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	testutil "github.com/rancher/k3s/tests/util"
 )
@@ -150,7 +149,5 @@ var _ = AfterSuite(func() {
 
 func Test_IntegrationSecretsEncryption(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecsWithDefaultAndCustomReporters(t, "Secrets Encryption Suite", []Reporter{
-		reporters.NewJUnitReporter("/tmp/results/junit-se.xml"),
-	})
+	RunSpecs(t, "Secrets Encryption Suite")
 }

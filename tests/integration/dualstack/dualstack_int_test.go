@@ -5,8 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	. "github.com/onsi/ginkgo"
-	"github.com/onsi/ginkgo/reporters"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	testutil "github.com/rancher/k3s/tests/util"
 )
@@ -63,7 +62,5 @@ var _ = AfterSuite(func() {
 
 func Test_IntegrationDualStack(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecsWithDefaultAndCustomReporters(t, "Dual-Stack Suite", []Reporter{
-		reporters.NewJUnitReporter("/tmp/results/junit-ls.xml"),
-	})
+	RunSpecs(t, "Dual-Stack Suite")
 }
