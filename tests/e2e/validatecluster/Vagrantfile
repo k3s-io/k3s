@@ -5,7 +5,7 @@ NODE_BOXES = (ENV['E2E_NODE_BOXES'] ||
   ['generic/ubuntu2004', 'generic/ubuntu2004', 'generic/ubuntu2004', 'generic/ubuntu2004', 'generic/ubuntu2004'])
 GITHUB_BRANCH = (ENV['E2E_GITHUB_BRANCH'] || "master")
 RELEASE_VERSION = (ENV['E2E_RELEASE_VERSION'] || "")
-EXTERNAL_DB = (ENV['E2E_EXTERNAL_DB'] || "")
+EXTERNAL_DB = (ENV['E2E_EXTERNAL_DB'] || "mysql")
 NODE_CPUS = (ENV['E2E_NODE_CPUS'] || 2).to_i
 NODE_MEMORY = (ENV['E2E_NODE_MEMORY'] || 1024).to_i
 # Virtualbox >= 6.1.28 require `/etc/vbox/network.conf` for expanded private networks 
@@ -28,20 +28,21 @@ def provision(vm, roles, role_num, node_num)
     install_type = "INSTALL_K3S_VERSION=#{RELEASE_VERSION}"
   else
     # Grabs the last 5 commit SHA's from the given branch, then purges any commits that do not have a passing CI build
-    vm.provision "shell", path: "../scripts/latest_commit.sh", args: [GITHUB_BRANCH, "/tmp/k3s_commits"]
-    install_type = "INSTALL_K3S_COMMIT=$(head\ -n\ 1\ /tmp/k3s_commits)"
+    # MicroOS requires it not be in a /tmp/ or other root system folder
+    vm.provision "shell", path: "../scripts/latest_commit.sh", args: [GITHUB_BRANCH, "/home/vagrant/k3s_commits"]
+    install_type = "INSTALL_K3S_COMMIT=$(head\ -n\ 1\ /home/vagrant/k3s_commits)"
   end
   vm.provision "shell", inline: "ping -c 2 k3s.io"
   
   if roles.include?("server") && role_num == 0
     if EXTERNAL_DB == "mysql"
       dockerInstall(vm)
-      vm.provision "shell", inline: "docker run -d -p 3306:3306 --name mysql -e MYSQL_ROOT_PASSWORD=e2e mysql:5.7"
+      vm.provision "shell", inline: "docker run -d -p 3306:3306 --name #{EXTERNAL_DB} -e MYSQL_ROOT_PASSWORD=e2e mysql:5.7"
       vm.provision "shell", inline: "echo \"Wait for mysql to startup\"; sleep 10"
       db_type = "--datastore-endpoint='mysql://root:e2e@tcp(#{NETWORK_PREFIX}.100:3306)/k3s'"
     elsif EXTERNAL_DB == "postgres"
       dockerInstall(vm)
-      vm.provision "shell", inline: "docker run -d -p 5432:5432 --name postgres -e POSTGRES_PASSWORD=e2e  postgres:14-alpine"
+      vm.provision "shell", inline: "docker run -d -p 5432:5432 --name #{EXTERNAL_DB} -e POSTGRES_PASSWORD=e2e  postgres:14-alpine"
       vm.provision "shell", inline: "echo \"Wait for postgres to startup\"; sleep 10"
       db_type = "--datastore-endpoint='postgres://postgres:e2e@#{NETWORK_PREFIX}.100:5432/k3s?sslmode=disable'"
     else
@@ -75,6 +76,9 @@ def provision(vm, roles, role_num, node_num)
   end
   if vm.box.include?("microos")
     vm.provision 'k3s-reload', type: 'reload', run: 'once'
+    if !EXTERNAL_DB.empty?
+      vm.provision "shell", inline: "docker start #{EXTERNAL_DB}"
+    end
   end
 end
 
@@ -84,6 +88,11 @@ def dockerInstall(vm)
   end
   if vm.box.include?("Leap")
     vm.provision "shell", inline: "zypper install -y docker"
+  end
+  if vm.box.include?("microos")
+    vm.provision "shell", inline: "transactional-update pkg install -y docker"
+    vm.provision 'docker-reload', type: 'reload', run: 'once'
+    vm.provision "shell", inline: "systemctl enable --now docker"
   end
 end
 
