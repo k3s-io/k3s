@@ -8,6 +8,7 @@ import (
 	b64 "encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -657,6 +658,16 @@ func genEncryptionConfigAndState(controlConfig *config.Control, runtime *config.
 		return nil
 	}
 	if s, err := os.Stat(runtime.EncryptionConfig); err == nil && s.Size() > 0 {
+		// On upgrade from older versions, the encryption hash may not exist, create it
+		if _, err := os.Stat(runtime.EncryptionHash); errors.Is(err, os.ErrNotExist) {
+			curEncryptionByte, err := ioutil.ReadFile(runtime.EncryptionConfig)
+			if err != nil {
+				return err
+			}
+			encryptionConfigHash := sha256.Sum256(curEncryptionByte)
+			ann := "start-" + hex.EncodeToString(encryptionConfigHash[:])
+			return ioutil.WriteFile(controlConfig.Runtime.EncryptionHash, []byte(ann), 0600)
+		}
 		return nil
 	}
 
