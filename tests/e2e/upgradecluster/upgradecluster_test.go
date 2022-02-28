@@ -17,7 +17,7 @@ var nodeOS = flag.String("nodeOS", "generic/ubuntu2004", "VM operating system")
 var serverCount = flag.Int("serverCount", 3, "number of server nodes")
 var agentCount = flag.Int("agentCount", 2, "number of agent nodes")
 
-// Enviroment Variables Info:
+// Environment Variables Info:
 // E2E_RELEASE_VERSION=v1.23.1+k3s2 or nil for latest commit from master
 
 func Test_E2EUpgradeValidation(t *testing.T) {
