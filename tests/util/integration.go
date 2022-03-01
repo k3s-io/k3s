@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -12,6 +11,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/pkg/errors"
 	"github.com/rancher/k3s/pkg/flock"
 	"github.com/sirupsen/logrus"
 	"github.com/vishvananda/netlink"
@@ -162,12 +162,22 @@ func K3sStartServer(inputArgs ...string) (*K3sServer, error) {
 func K3sKillServer(server *K3sServer) error {
 	pgid, err := syscall.Getpgid(server.cmd.Process.Pid)
 	if err != nil {
-		return err
+		if errors.Is(err, syscall.ESRCH) {
+			logrus.Warnf("Unable to kill k3s server: %v", err)
+			return nil
+		}
+		return errors.Wrap(err, "failed to find k3s process group")
 	}
 	if err := syscall.Kill(-pgid, syscall.SIGKILL); err != nil {
-		return err
+		return errors.Wrap(err, "failed to kill k3s process group")
 	}
-	return server.cmd.Process.Kill()
+	if err := server.cmd.Process.Kill(); err != nil {
+		return errors.Wrap(err, "failed to kill k3s process")
+	}
+	if _, err = server.cmd.Process.Wait(); err != nil {
+		return errors.Wrap(err, "failed to wait for k3s process exit")
+	}
+	return nil
 }
 
 // K3sCleanup attempts to cleanup networking and files leftover from an integration test
