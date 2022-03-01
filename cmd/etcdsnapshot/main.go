@@ -13,12 +13,12 @@ import (
 func main() {
 	app := cmds.NewApp()
 	app.Commands = []cli.Command{
-		cmds.NewEtcdSnapshotCommand(etcdsnapshot.Run,
+		cmds.NewEtcdSnapshotCommand(etcdsnapshot.Save,
 			cmds.NewEtcdSnapshotSubcommands(
 				etcdsnapshot.Delete,
 				etcdsnapshot.List,
 				etcdsnapshot.Prune,
-				etcdsnapshot.Run),
+				etcdsnapshot.Save),
 		),
 	}
 
