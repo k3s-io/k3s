@@ -53,6 +53,7 @@ func (c *Cluster) newListener(ctx context.Context) (net.Listener, http.Handler, 
 			ClientAuth:   tls.RequestClientCert,
 			MinVersion:   c.config.TLSMinVersion,
 			CipherSuites: c.config.TLSCipherSuites,
+			NextProtos:   []string{"h2", "http/1.1"},
 		},
 		RegenerateCerts: func() bool {
 			const regenerateDynamicListenerFile = "dynamic-cert-regenerate"
