@@ -79,6 +79,7 @@ var (
 	NodeAddressAnnotation = "etcd." + version.Program + ".cattle.io/node-address"
 
 	ErrAddressNotSet = errors.New("apiserver addresses not yet set")
+	ErrNotMember     = errNotMember()
 )
 
 type NodeControllerGetter func() controllerv1.NodeController
@@ -104,6 +105,25 @@ type learnerProgress struct {
 type Members struct {
 	Members []*etcdserverpb.Member `json:"members"`
 }
+
+type MembershipError struct {
+	Self    string
+	Members []string
+}
+
+func (e *MembershipError) Error() string {
+	return fmt.Sprintf("this server is a not a member of the etcd cluster. Found %v, expect: %s", e.Members, e.Self)
+}
+
+func (e *MembershipError) Is(target error) bool {
+	switch target {
+	case ErrNotMember:
+		return true
+	}
+	return false
+}
+
+func errNotMember() error { return &MembershipError{} }
 
 // NewETCD creates a new value of type
 // ETCD with an initialized cron value.
@@ -174,7 +194,7 @@ func (e *ETCD) Test(ctx context.Context) error {
 			memberNameUrls = append(memberNameUrls, member.Name+"="+member.PeerURLs[0])
 		}
 	}
-	return errors.Errorf("this server is a not a member of the etcd cluster. Found %v, expect: %s=%s", memberNameUrls, e.name, e.address)
+	return &MembershipError{Members: memberNameUrls, Self: e.name + "=" + e.address}
 }
 
 // DBDir returns the path to dataDir/db/etcd
