@@ -31,12 +31,12 @@ func main() {
 		cmds.NewAgentCommand(agent.Run),
 		cmds.NewKubectlCommand(kubectl.Run),
 		cmds.NewCRICTL(crictl.Run),
-		cmds.NewEtcdSnapshotCommand(etcdsnapshot.Run,
+		cmds.NewEtcdSnapshotCommand(etcdsnapshot.Save,
 			cmds.NewEtcdSnapshotSubcommands(
 				etcdsnapshot.Delete,
 				etcdsnapshot.List,
 				etcdsnapshot.Prune,
-				etcdsnapshot.Run),
+				etcdsnapshot.Save),
 		),
 		cmds.NewSecretsEncryptCommand(cli.ShowAppHelp,
 			cmds.NewSecretsEncryptSubcommands(
