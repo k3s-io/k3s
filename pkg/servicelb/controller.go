@@ -32,10 +32,11 @@ import (
 )
 
 var (
-	svcNameLabel       = "svccontroller." + version.Program + ".cattle.io/svcname"
-	daemonsetNodeLabel = "svccontroller." + version.Program + ".cattle.io/enablelb"
-	nodeSelectorLabel  = "svccontroller." + version.Program + ".cattle.io/nodeselector"
-	DefaultLBImage     = "rancher/klipper-lb:v0.3.4"
+	svcNameLabel           = "svccontroller." + version.Program + ".cattle.io/svcname"
+	daemonsetNodeLabel     = "svccontroller." + version.Program + ".cattle.io/enablelb"
+	daemonsetNodePoolLabel = "svccontroller." + version.Program + ".cattle.io/lbpool"
+	nodeSelectorLabel      = "svccontroller." + version.Program + ".cattle.io/nodeselector"
+	DefaultLBImage         = "rancher/klipper-lb:v0.3.4"
 )
 
 const (
@@ -498,6 +499,10 @@ func (h *handler) newDaemonSet(svc *core.Service) (*apps.DaemonSet, error) {
 	if len(nodesWithLabel) > 0 {
 		ds.Spec.Template.Spec.NodeSelector = map[string]string{
 			daemonsetNodeLabel: "true",
+		}
+		// Add node selector for "svccontroller.k3s.cattle.io/lbpool=<pool>" if service has lbpool label
+		if svc.Labels[daemonsetNodePoolLabel] != "" {
+			ds.Spec.Template.Spec.NodeSelector[daemonsetNodePoolLabel] = svc.Labels[daemonsetNodePoolLabel]
 		}
 		ds.Labels[nodeSelectorLabel] = "true"
 	}
