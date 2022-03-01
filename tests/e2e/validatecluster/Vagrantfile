@@ -45,8 +45,11 @@ def provision(vm, roles, role_num, node_num)
       vm.provision "shell", inline: "docker run -d -p 5432:5432 --name #{EXTERNAL_DB} -e POSTGRES_PASSWORD=e2e  postgres:14-alpine"
       vm.provision "shell", inline: "echo \"Wait for postgres to startup\"; sleep 10"
       db_type = "--datastore-endpoint='postgres://postgres:e2e@#{NETWORK_PREFIX}.100:5432/k3s?sslmode=disable'"
-    else
+    elsif EXTERNAL_DB == "" || EXTERNAL_DB == "etcd"
       db_type = "--cluster-init"
+    else
+      puts "Unknown EXTERNAL_DB: " + EXTERNAL_DB
+      abort
     end
     
     vm.provision 'k3s-install', type: 'k3s', run: 'once' do |k3s|
@@ -83,6 +86,12 @@ def provision(vm, roles, role_num, node_num)
 end
 
 def dockerInstall(vm)
+  vm.provider "libvirt" do |v|
+    v.memory = NODE_MEMORY + 1024
+  end
+  vm.provider "virtualbox" do |v|
+    v.memory = NODE_MEMORY + 1024
+  end
   if vm.box.include?("ubuntu2004")
     vm.provision "shell", inline: "apt install -y docker.io"
   end
