@@ -91,8 +91,8 @@ func flannel(ctx context.Context, flannelIface *net.Interface, flannelConf, kube
 }
 
 func LookupExtInterface(iface *net.Interface, netMode int) (*backend.ExternalInterface, error) {
-	var ifaceAddr net.IP
-	var ifacev6Addr net.IP
+	var ifaceAddr []net.IP
+	var ifacev6Addr []net.IP
 	var err error
 
 	if iface == nil {
@@ -103,19 +103,19 @@ func LookupExtInterface(iface *net.Interface, netMode int) (*backend.ExternalInt
 	}
 	logrus.Debugf("The interface %s will be used by flannel", iface.Name)
 
-	ifaceAddr, err = ip.GetInterfaceIP4Addr(iface)
+	ifaceAddr, err = ip.GetInterfaceIP4Addrs(iface)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find IPv4 address for interface %s", iface.Name)
 	}
-	logrus.Infof("The interface %s with ipv4 address %s will be used by flannel", iface.Name, ifaceAddr)
+	logrus.Infof("The interface %s with ipv4 address %s will be used by flannel", iface.Name, ifaceAddr[0])
 
 	if netMode == (ipv4 + ipv6) {
-		ifacev6Addr, err = ip.GetInterfaceIP6Addr(iface)
+		ifacev6Addr, err = ip.GetInterfaceIP6Addrs(iface)
 		if err != nil {
 			return nil, fmt.Errorf("failed to find IPv6 address for interface %s", iface.Name)
 		}
 
-		logrus.Infof("Using dual-stack mode. The ipv6 address %s will be used by flannel", ifacev6Addr)
+		logrus.Infof("Using dual-stack mode. The ipv6 address %s will be used by flannel", ifacev6Addr[0])
 	}
 	if iface.MTU == 0 {
 		return nil, fmt.Errorf("failed to determine MTU for %s interface", ifaceAddr)
@@ -123,10 +123,10 @@ func LookupExtInterface(iface *net.Interface, netMode int) (*backend.ExternalInt
 
 	return &backend.ExternalInterface{
 		Iface:       iface,
-		IfaceAddr:   ifaceAddr,
-		IfaceV6Addr: ifacev6Addr,
-		ExtAddr:     ifaceAddr,
-		ExtV6Addr:   ifacev6Addr,
+		IfaceAddr:   ifaceAddr[0],
+		IfaceV6Addr: ifacev6Addr[0],
+		ExtAddr:     ifaceAddr[0],
+		ExtV6Addr:   ifacev6Addr[0],
 	}, nil
 }
 
