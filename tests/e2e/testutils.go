@@ -38,27 +38,35 @@ func CountOfStringInSlice(str string, pods []Pod) int {
 	return count
 }
 
-func CreateCluster(nodeOS string, serverCount int, agentCount int, installType string) ([]string, []string, error) {
-	serverNodenames := make([]string, serverCount)
+func CreateCluster(nodeOS string, serverCount, agentCount int) ([]string, []string, error) {
+	serverNodeNames := make([]string, serverCount)
 	for i := 0; i < serverCount; i++ {
-		serverNodenames[i] = "server-" + strconv.Itoa(i)
+		serverNodeNames[i] = "server-" + strconv.Itoa(i)
 	}
-	agentNodenames := make([]string, agentCount)
+	agentNodeNames := make([]string, agentCount)
 	for i := 0; i < agentCount; i++ {
-		agentNodenames[i] = "agent-" + strconv.Itoa(i)
+		agentNodeNames[i] = "agent-" + strconv.Itoa(i)
 	}
-	nodeRoles := strings.Join(serverNodenames, " ") + " " + strings.Join(agentNodenames, " ")
+	nodeRoles := strings.Join(serverNodeNames, " ") + " " + strings.Join(agentNodeNames, " ")
 
 	nodeRoles = strings.TrimSpace(nodeRoles)
 	nodeBoxes := strings.Repeat(nodeOS+" ", serverCount+agentCount)
 	nodeBoxes = strings.TrimSpace(nodeBoxes)
-	cmd := fmt.Sprintf("NODE_ROLES=\"%s\" NODE_BOXES=\"%s\" %s vagrant up &> vagrant.log", nodeRoles, nodeBoxes, installType)
+
+	var testOptions string
+	for _, env := range os.Environ() {
+		if strings.HasPrefix(env, "E2E_") {
+			testOptions += " " + env
+		}
+	}
+
+	cmd := fmt.Sprintf(`E2E_NODE_ROLES="%s" E2E_NODE_BOXES="%s" %s vagrant up &> vagrant.log`, nodeRoles, nodeBoxes, testOptions)
 	fmt.Println(cmd)
 	if _, err := RunCommand(cmd); err != nil {
 		fmt.Println("Error Creating Cluster", err)
 		return nil, nil, err
 	}
-	return serverNodenames, agentNodenames, nil
+	return serverNodeNames, agentNodeNames, nil
 }
 
 func DeployWorkload(workload, kubeconfig string, arch bool) (string, error) {
@@ -231,8 +239,8 @@ func RunCommand(cmd string) (string, error) {
 	return string(out), err
 }
 
-func UpgradeCluster(serverNodenames []string, agentNodenames []string) error {
-	for _, nodeName := range serverNodenames {
+func UpgradeCluster(serverNodeNames []string, agentNodeNames []string) error {
+	for _, nodeName := range serverNodeNames {
 		cmd := "RELEASE_CHANNEL=commit vagrant provision " + nodeName
 		fmt.Println(cmd)
 		if out, err := RunCommand(cmd); err != nil {
@@ -240,7 +248,7 @@ func UpgradeCluster(serverNodenames []string, agentNodenames []string) error {
 			return err
 		}
 	}
-	for _, nodeName := range agentNodenames {
+	for _, nodeName := range agentNodeNames {
 		cmd := "RELEASE_CHANNEL=commit vagrant provision " + nodeName
 		if _, err := RunCommand(cmd); err != nil {
 			fmt.Println("Error Upgrading Cluster", err)
