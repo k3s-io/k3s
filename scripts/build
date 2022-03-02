@@ -7,7 +7,7 @@ cd $(dirname $0)/..
 
 GO=${GO-go}
 
-PKG="github.com/rancher/k3s"
+PKG="github.com/k3s-io/k3s"
 PKG_CONTAINERD="github.com/containerd/containerd"
 PKG_K3S_CONTAINERD="github.com/k3s-io/containerd"
 PKG_CRICTL="github.com/kubernetes-sigs/cri-tools/pkg"

@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rancher/k3s/pkg/clientaccess"
-	"github.com/rancher/k3s/pkg/daemons/config"
-	testutil "github.com/rancher/k3s/tests/util"
+	"github.com/k3s-io/k3s/pkg/clientaccess"
+	"github.com/k3s-io/k3s/pkg/daemons/config"
+	testutil "github.com/k3s-io/k3s/tests/util"
 	"github.com/robfig/cron/v3"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/etcdserver"

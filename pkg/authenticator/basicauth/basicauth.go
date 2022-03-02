@@ -20,7 +20,7 @@ import (
 	"errors"
 	"net/http"
 
-	localAuthenticator "github.com/rancher/k3s/pkg/authenticator"
+	localAuthenticator "github.com/k3s-io/k3s/pkg/authenticator"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 )
 

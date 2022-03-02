@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rancher/k3s/pkg/cli/cmds"
+	"github.com/k3s-io/k3s/pkg/cli/cmds"
 )
 
 type server struct {

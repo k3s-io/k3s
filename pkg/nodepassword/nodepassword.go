@@ -6,10 +6,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/k3s-io/k3s/pkg/authenticator/hash"
+	"github.com/k3s-io/k3s/pkg/passwd"
+	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/pkg/errors"
-	"github.com/rancher/k3s/pkg/authenticator/hash"
-	"github.com/rancher/k3s/pkg/passwd"
-	"github.com/rancher/k3s/pkg/version"
 	coreclient "github.com/rancher/wrangler/pkg/generated/controllers/core/v1"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"

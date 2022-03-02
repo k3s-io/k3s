@@ -1,3 +1,4 @@
+//go:build !no_embedded_executor
 // +build !no_embedded_executor
 
 package executor
@@ -9,9 +10,9 @@ import (
 	"net/http"
 	"runtime"
 
-	"github.com/rancher/k3s/pkg/cli/cmds"
-	daemonconfig "github.com/rancher/k3s/pkg/daemons/config"
-	"github.com/rancher/k3s/pkg/version"
+	"github.com/k3s-io/k3s/pkg/cli/cmds"
+	daemonconfig "github.com/k3s-io/k3s/pkg/daemons/config"
+	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -34,7 +35,7 @@ import (
 	kubelet "k8s.io/kubernetes/cmd/kubelet/app"
 
 	// registering k3s cloud provider
-	_ "github.com/rancher/k3s/pkg/cloudprovider"
+	_ "github.com/k3s-io/k3s/pkg/cloudprovider"
 )
 
 func init() {

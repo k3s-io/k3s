@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rancher/k3s/pkg/server"
+	"github.com/k3s-io/k3s/pkg/server"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
 	utilflag "k8s.io/component-base/cli/flag"

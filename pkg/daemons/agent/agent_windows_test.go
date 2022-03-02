@@ -1,3 +1,4 @@
+//go:build windows
 // +build windows
 
 package agent
@@ -5,7 +6,7 @@ package agent
 import (
 	"testing"
 
-	"github.com/rancher/k3s/pkg/daemons/config"
+	"github.com/k3s-io/k3s/pkg/daemons/config"
 )
 
 func TestCheckRuntimeEndpoint(t *testing.T) {

@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/pkg/errors"
-	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/sirupsen/logrus"
 )
 

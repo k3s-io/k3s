@@ -3,7 +3,7 @@ package templates
 import (
 	"github.com/rancher/wharfie/pkg/registries"
 
-	"github.com/rancher/k3s/pkg/daemons/config"
+	"github.com/k3s-io/k3s/pkg/daemons/config"
 )
 
 type ContainerdRuntimeConfig struct {

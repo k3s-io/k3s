@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/rancher/k3s/pkg/daemons/config"
+	"github.com/k3s-io/k3s/pkg/daemons/config"
 )
 
 func stringToCIDR(s string) []*net.IPNet {

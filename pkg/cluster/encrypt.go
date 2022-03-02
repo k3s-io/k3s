@@ -12,7 +12,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/rancher/k3s/pkg/token"
+	"github.com/k3s-io/k3s/pkg/token"
 	"golang.org/x/crypto/pbkdf2"
 )
 

@@ -1,11 +1,14 @@
+//go:build linux || darwin || freebsd || openbsd || netbsd || dragonfly
+// +build linux darwin freebsd openbsd netbsd dragonfly
+
 package flock_test
 
 import (
 	"testing"
 
+	"github.com/k3s-io/k3s/pkg/flock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/rancher/k3s/pkg/flock"
 )
 
 const lockfile = "/tmp/testlock.test"

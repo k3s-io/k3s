@@ -5,9 +5,9 @@ import (
 	"errors"
 	"os"
 
-	"github.com/rancher/k3s/pkg/cli/agent"
-	"github.com/rancher/k3s/pkg/cli/cmds"
-	"github.com/rancher/k3s/pkg/configfilearg"
+	"github.com/k3s-io/k3s/pkg/cli/agent"
+	"github.com/k3s-io/k3s/pkg/cli/cmds"
+	"github.com/k3s-io/k3s/pkg/configfilearg"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 )

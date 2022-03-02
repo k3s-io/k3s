@@ -18,7 +18,7 @@ RUN mkdir tmp && \
     chmod +x /usr/local/bin/terraform && \
     rm -rf tmp
 
-WORKDIR $GOPATH/src/github.com/rancher/k3s-io/k3s/tests/e2e
+WORKDIR $GOPATH/src/github.com/k3s-io/k3s-io/k3s/tests/e2e
 
 COPY . .
 

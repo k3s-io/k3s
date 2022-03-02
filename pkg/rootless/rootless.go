@@ -1,3 +1,4 @@
+//go:build !windows
 // +build !windows
 
 package rootless
@@ -83,7 +84,7 @@ func validateSysctl() error {
 
 		// net.ipv4.ip_forward should not need to be 1 in the parent namespace.
 		// However, the current k3s implementation has a bug that requires net.ipv4.ip_forward=1
-		// https://github.com/rancher/k3s/issues/2420#issuecomment-715051120
+		// https://github.com/k3s-io/k3s/issues/2420#issuecomment-715051120
 		"net.ipv4.ip_forward": "1",
 	}
 	for key, expectedValue := range expected {
