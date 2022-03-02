@@ -8,9 +8,13 @@ package netpol
 
 import (
 	"context"
+	"strings"
 	"sync"
 
-	"github.com/k3s-io/k3s/pkg/agent/netpol/utils"
+	"github.com/cloudnativelabs/kube-router/pkg/controllers/netpol"
+	"github.com/cloudnativelabs/kube-router/pkg/healthcheck"
+	"github.com/cloudnativelabs/kube-router/pkg/options"
+	"github.com/cloudnativelabs/kube-router/pkg/utils"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/sirupsen/logrus"
 	"k8s.io/client-go/informers"
@@ -21,8 +25,8 @@ import (
 // Run creates and starts a new instance of the kube-router network policy controller
 // The code in this function is cribbed from the upstream controller at:
 // https://github.com/cloudnativelabs/kube-router/blob/ee9f6d890d10609284098229fa1e283ab5d83b93/pkg/cmd/kube-router.go#L78
-// The NewNetworkPolicyController function has also been modified to use the k3s config.Node struct instead of KubeRouter's
-// CLI configuration, eliminate use of a WaitGroup for shutdown sequencing, and drop Prometheus metrics support.
+// It converts the k3s config.Node into kube-router configuration (only the
+// subset of options needed for netpol controller).
 func Run(ctx context.Context, nodeConfig *config.Node) error {
 	set, err := utils.NewIPSet(false)
 	if err != nil {
@@ -45,7 +49,21 @@ func Run(ctx context.Context, nodeConfig *config.Node) error {
 		return err
 	}
 
+	krConfig := options.NewKubeRouterConfig()
+	krConfig.ClusterIPCIDR = nodeConfig.AgentConfig.ServiceCIDR.String()
+	krConfig.NodePortRange = strings.ReplaceAll(nodeConfig.AgentConfig.ServiceNodePortRange.String(), "-", ":")
+	krConfig.HostnameOverride = nodeConfig.AgentConfig.NodeName
+	krConfig.MetricsEnabled = false
+	krConfig.RunFirewall = true
+	krConfig.RunRouter = false
+	krConfig.RunServiceProxy = false
+
 	stopCh := ctx.Done()
+	healthCh := make(chan *healthcheck.ControllerHeartbeat)
+
+	// We don't use this WaitGroup, but kube-router components require it.
+	var wg sync.WaitGroup
+
 	informerFactory := informers.NewSharedInformerFactory(client, 0)
 	podInformer := informerFactory.Core().V1().Pods().Informer()
 	nsInformer := informerFactory.Core().V1().Namespaces().Informer()
@@ -53,7 +71,19 @@ func Run(ctx context.Context, nodeConfig *config.Node) error {
 	informerFactory.Start(stopCh)
 	informerFactory.WaitForCacheSync(stopCh)
 
-	npc, err := NewNetworkPolicyController(client, nodeConfig, podInformer, npInformer, nsInformer, &sync.Mutex{})
+	// Start kube-router healthcheck server. Netpol requires it
+	hc, err := healthcheck.NewHealthController(krConfig)
+	if err != nil {
+		return err
+	}
+
+	// Initialize all healthcheck timers. Otherwise, the system reports incorrect heartbeat missing messages
+	hc.SetAlive()
+
+	wg.Add(1)
+	go hc.RunCheck(healthCh, stopCh, &wg)
+
+	npc, err := netpol.NewNetworkPolicyController(client, krConfig, podInformer, npInformer, nsInformer, &sync.Mutex{})
 	if err != nil {
 		return err
 	}
@@ -62,7 +92,9 @@ func Run(ctx context.Context, nodeConfig *config.Node) error {
 	nsInformer.AddEventHandler(npc.NamespaceEventHandler)
 	npInformer.AddEventHandler(npc.NetworkPolicyEventHandler)
 
-	go npc.Run(stopCh)
+	wg.Add(1)
+	logrus.Info("Starting the netpol controller")
+	go npc.Run(healthCh, stopCh, &wg)
 
 	return nil
 }

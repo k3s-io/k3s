@@ -2,8 +2,9 @@ package util
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
-	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"os/user"
@@ -11,6 +12,7 @@ import (
 	"syscall"
 
 	"github.com/k3s-io/k3s/pkg/flock"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/vishvananda/netlink"
 )
@@ -18,12 +20,11 @@ import (
 // Compile-time variable
 var existingServer = "False"
 
-const lockFile = "/var/lock/k3s-test.lock"
+const lockFile = "/tmp/k3s-test.lock"
 
 type K3sServer struct {
 	cmd     *exec.Cmd
 	scanner *bufio.Scanner
-	lock    int
 }
 
 func findK3sExecutable() string {
@@ -128,6 +129,11 @@ func FindStringInCmdAsync(scanner *bufio.Scanner, target string) bool {
 	return false
 }
 
+func K3sTestLock() (int, error) {
+	logrus.Info("waiting to get test lock")
+	return flock.Acquire(lockFile)
+}
+
 // K3sStartServer acquires an exclusive lock on a temporary file, then launches a k3s cluster
 // with the provided arguments. Subsequent/parallel calls to this function will block until
 // the original lock is cleared using K3sKillServer
@@ -136,47 +142,46 @@ func K3sStartServer(inputArgs ...string) (*K3sServer, error) {
 		return nil, errors.New("integration tests must be run as sudo/root")
 	}
 
-	logrus.Info("waiting to get server lock")
-	k3sLock, err := flock.Acquire(lockFile)
-	if err != nil {
-		return nil, err
-	}
-
 	var cmdArgs []string
 	for _, arg := range inputArgs {
 		cmdArgs = append(cmdArgs, strings.Fields(arg)...)
 	}
-
 	k3sBin := findK3sExecutable()
-
 	k3sCmd := append([]string{"server"}, cmdArgs...)
 	cmd := exec.Command(k3sBin, k3sCmd...)
 	// Give the server a new group id so we can kill it and its children later
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	cmdOut, _ := cmd.StderrPipe()
 	cmd.Stderr = os.Stderr
-	err = cmd.Start()
-	return &K3sServer{cmd, bufio.NewScanner(cmdOut), k3sLock}, err
+	err := cmd.Start()
+	return &K3sServer{cmd, bufio.NewScanner(cmdOut)}, err
 }
 
 // K3sKillServer terminates the running K3s server and its children
 // and unlocks the file for other tests
-func K3sKillServer(server *K3sServer, releaseLock bool) error {
+func K3sKillServer(server *K3sServer) error {
 	pgid, err := syscall.Getpgid(server.cmd.Process.Pid)
 	if err != nil {
-		return err
+		if errors.Is(err, syscall.ESRCH) {
+			logrus.Warnf("Unable to kill k3s server: %v", err)
+			return nil
+		}
+		return errors.Wrap(err, "failed to find k3s process group")
 	}
 	if err := syscall.Kill(-pgid, syscall.SIGKILL); err != nil {
-		return err
+		return errors.Wrap(err, "failed to kill k3s process group")
 	}
-	if releaseLock {
-		return flock.Release(server.lock)
+	if err := server.cmd.Process.Kill(); err != nil {
+		return errors.Wrap(err, "failed to kill k3s process")
+	}
+	if _, err = server.cmd.Process.Wait(); err != nil {
+		return errors.Wrap(err, "failed to wait for k3s process exit")
 	}
 	return nil
 }
 
 // K3sCleanup attempts to cleanup networking and files leftover from an integration test
-func K3sCleanup(server *K3sServer, releaseLock bool) error {
+func K3sCleanup(k3sTestLock int, dataDir string) error {
 	if cni0Link, err := netlink.LinkByName("cni0"); err == nil {
 		links, _ := netlink.LinkList()
 		for _, link := range links {
@@ -193,11 +198,23 @@ func K3sCleanup(server *K3sServer, releaseLock bool) error {
 	if flannelV6, err := netlink.LinkByName("flannel-v6.1"); err == nil {
 		netlink.LinkDel(flannelV6)
 	}
-	if err := os.RemoveAll("/var/lib/rancher/k3s"); err != nil {
+	if dataDir == "" {
+		dataDir = "/var/lib/rancher/k3s"
+	}
+	if err := os.RemoveAll(dataDir); err != nil {
 		return err
 	}
-	if releaseLock {
-		return flock.Release(server.lock)
+	return flock.Release(k3sTestLock)
+}
+
+// RunCommand Runs command on the cluster accessing the cluster through kubeconfig file
+func RunCommand(cmd string) (string, error) {
+	c := exec.Command("bash", "-c", cmd)
+	var out bytes.Buffer
+	c.Stdout = &out
+	err := c.Run()
+	if err != nil {
+		return "", fmt.Errorf("%s", err)
 	}
-	return nil
+	return out.String(), nil
 }

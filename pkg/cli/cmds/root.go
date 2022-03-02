@@ -6,7 +6,6 @@ import (
 	"runtime"
 
 	"github.com/k3s-io/k3s/pkg/version"
-	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 )
 

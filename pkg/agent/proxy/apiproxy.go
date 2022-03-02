@@ -15,6 +15,7 @@ import (
 type Proxy interface {
 	Update(addresses []string)
 	SetAPIServerPort(ctx context.Context, port int) error
+	SetSupervisorDefault(address string)
 	SupervisorURL() string
 	SupervisorAddresses() []string
 	APIServerURL() string
@@ -133,6 +134,28 @@ func (p *proxy) SetAPIServerPort(ctx context.Context, port int) error {
 	}
 
 	return nil
+}
+
+// SetSupervisorDefault updates the default (fallback) address for the connection to the
+// supervisor. This is most useful on k3s nodes without apiservers, where the local
+// supervisor must be used to bootstrap the agent config, but then switched over to
+// another node running an apiserver once one is available.
+func (p *proxy) SetSupervisorDefault(address string) {
+	host, port, err := sysnet.SplitHostPort(address)
+	if err != nil {
+		logrus.Errorf("Failed to parse address %s, dropping: %v", address, err)
+		return
+	}
+	if p.apiServerEnabled {
+		port = p.supervisorPort
+		address = sysnet.JoinHostPort(host, port)
+	}
+	p.fallbackSupervisorAddress = address
+	if p.supervisorLB == nil {
+		p.supervisorURL = "https://" + address
+	} else {
+		p.supervisorLB.SetDefault(address)
+	}
 }
 
 func (p *proxy) SupervisorURL() string {

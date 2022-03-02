@@ -1,10 +1,11 @@
 package e2e
 
 import (
-	"bytes"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -27,53 +28,58 @@ type Pod struct {
 	Node      string
 }
 
-//Runs command passed from within the node ServerIP
-func RunCmdOnNode(cmd string, nodename string) (string, error) {
-	runcmd := "vagrant ssh server-0 -c " + cmd
-	c := exec.Command("bash", "-c", runcmd)
-
-	var out bytes.Buffer
-	var errOut bytes.Buffer
-	c.Stdout = &out
-	c.Stderr = &errOut
-	if err := c.Run(); err != nil {
-		return errOut.String(), err
+func CountOfStringInSlice(str string, pods []Pod) int {
+	count := 0
+	for _, pod := range pods {
+		if strings.Contains(pod.Name, str) {
+			count++
+		}
 	}
-	return out.String(), nil
+	return count
 }
 
-// RunCommand Runs command on the cluster accessing the cluster through kubeconfig file
-func RunCommand(cmd string) (string, error) {
-	c := exec.Command("bash", "-c", cmd)
-	var out bytes.Buffer
-	c.Stdout = &out
-	if err := c.Run(); err != nil {
-		return "", err
-	}
-	return out.String(), nil
-}
-
-func CreateCluster(nodeos string, serverCount int, agentCount int) ([]string, []string, error) {
-	serverNodenames := make([]string, serverCount+1)
+func CreateCluster(nodeOS string, serverCount int, agentCount int, installType string) ([]string, []string, error) {
+	serverNodenames := make([]string, serverCount)
 	for i := 0; i < serverCount; i++ {
 		serverNodenames[i] = "server-" + strconv.Itoa(i)
 	}
-
-	agentNodenames := make([]string, agentCount+1)
+	agentNodenames := make([]string, agentCount)
 	for i := 0; i < agentCount; i++ {
 		agentNodenames[i] = "agent-" + strconv.Itoa(i)
 	}
-	nodeRoles := strings.Join(serverNodenames, " ") + strings.Join(agentNodenames, " ")
+	nodeRoles := strings.Join(serverNodenames, " ") + " " + strings.Join(agentNodenames, " ")
+
 	nodeRoles = strings.TrimSpace(nodeRoles)
-	nodeBoxes := strings.Repeat(nodeos+" ", serverCount+agentCount)
+	nodeBoxes := strings.Repeat(nodeOS+" ", serverCount+agentCount)
 	nodeBoxes = strings.TrimSpace(nodeBoxes)
-	cmd := fmt.Sprintf("NODE_ROLES=\"%s\" NODE_BOXES=\"%s\" vagrant up &> vagrant.log", nodeRoles, nodeBoxes)
-	if out, err := RunCommand(cmd); err != nil {
-		fmt.Println("Error Creating Cluster", out)
+	cmd := fmt.Sprintf("NODE_ROLES=\"%s\" NODE_BOXES=\"%s\" %s vagrant up &> vagrant.log", nodeRoles, nodeBoxes, installType)
+	fmt.Println(cmd)
+	if _, err := RunCommand(cmd); err != nil {
+		fmt.Println("Error Creating Cluster", err)
 		return nil, nil, err
 	}
-
 	return serverNodenames, agentNodenames, nil
+}
+
+func DeployWorkload(workload, kubeconfig string, arch bool) (string, error) {
+	resource_dir := "../amd64_resource_files"
+	if arch {
+		resource_dir = "../arm64_resource_files"
+	}
+	files, err := ioutil.ReadDir(resource_dir)
+	if err != nil {
+		err = fmt.Errorf("%s : Unable to read resource manifest file for %s", err, workload)
+		return "", err
+	}
+	fmt.Println("\nDeploying", workload)
+	for _, f := range files {
+		filename := filepath.Join(resource_dir, f.Name())
+		if strings.TrimSpace(f.Name()) == workload {
+			cmd := "kubectl apply -f " + filename + " --kubeconfig=" + kubeconfig
+			return RunCommand(cmd)
+		}
+	}
+	return "", nil
 }
 
 func DestroyCluster() error {
@@ -83,8 +89,36 @@ func DestroyCluster() error {
 	return os.Remove("vagrant.log")
 }
 
+func FetchClusterIP(kubeconfig string, servicename string) (string, error) {
+	cmd := "kubectl get svc " + servicename + " -o jsonpath='{.spec.clusterIP}' --kubeconfig=" + kubeconfig
+	return RunCommand(cmd)
+}
+
+func FetchIngressIP(kubeconfig string) ([]string, error) {
+	cmd := "kubectl get ing  ingress  -o jsonpath='{.status.loadBalancer.ingress[*].ip}' --kubeconfig=" + kubeconfig
+	res, err := RunCommand(cmd)
+	if err != nil {
+		return nil, err
+	}
+	ingressIP := strings.Trim(res, " ")
+	ingressIPs := strings.Split(ingressIP, " ")
+	return ingressIPs, nil
+}
+
+func FetchNodeExternalIP(nodename string) (string, error) {
+	cmd := "vagrant ssh " + nodename + " -c  \"ip -f inet addr show eth1| awk '/inet / {print $2}'|cut -d/ -f1\""
+	ipaddr, err := RunCommand(cmd)
+	if err != nil {
+		return "", err
+	}
+	ips := strings.Trim(ipaddr, "")
+	ip := strings.Split(ips, "inet")
+	nodeip := strings.TrimSpace(ip[1])
+	return nodeip, nil
+}
+
 func GenKubeConfigFile(serverName string) (string, error) {
-	cmd := fmt.Sprintf("vagrant ssh %s -c \"cat /etc/rancher/k3s/k3s.yaml\"", serverName)
+	cmd := fmt.Sprintf("vagrant ssh %s -c \"sudo cat /etc/rancher/k3s/k3s.yaml\"", serverName)
 	kubeConfig, err := RunCommand(cmd)
 	if err != nil {
 		return "", err
@@ -101,44 +135,25 @@ func GenKubeConfigFile(serverName string) (string, error) {
 	return kubeConfigFile, nil
 }
 
-func DeployWorkload(workload string, kubeconfig string) (string, error) {
-	cmd := "kubectl apply -f " + workload + " --kubeconfig=" + kubeconfig
-	return RunCommand(cmd)
-}
-
-func FetchClusterIP(kubeconfig string, servicename string) (string, error) {
-	cmd := "kubectl get svc " + servicename + " -o jsonpath='{.spec.clusterIP}' --kubeconfig=" + kubeconfig
-	return RunCommand(cmd)
-}
-
-func FetchNodeExternalIP(nodename string) (string, error) {
-	cmd := "vagrant ssh " + nodename + " -c  \"ip -f inet addr show eth1| awk '/inet / {print $2}'|cut -d/ -f1\""
-	ipaddr, err := RunCommand(cmd)
+func GetVagrantLog() string {
+	log, err := os.Open("vagrant.log")
 	if err != nil {
-		return "", err
+		return err.Error()
 	}
-	ips := strings.Trim(ipaddr, "")
-	ip := strings.Split(ips, "inet")
-	nodeip := strings.TrimSpace(ip[1])
-	return nodeip, nil
-}
-func FetchIngressIP(kubeconfig string) ([]string, error) {
-	cmd := "kubectl get ing  ingress  -o jsonpath='{.status.loadBalancer.ingress[*].ip}' --kubeconfig=" + kubeconfig
-	res, err := RunCommand(cmd)
+	bytes, err := ioutil.ReadAll(log)
 	if err != nil {
-		return nil, err
+		return err.Error()
 	}
-	ingressIP := strings.Trim(res, " ")
-	ingressIPs := strings.Split(ingressIP, " ")
-	return ingressIPs, nil
+	return string(bytes)
 }
 
-func ParseNodes(kubeConfig string, debug bool) ([]Node, error) {
+func ParseNodes(kubeConfig string, print bool) ([]Node, error) {
 	nodes := make([]Node, 0, 10)
 	nodeList := ""
 
 	cmd := "kubectl get nodes --no-headers -o wide -A --kubeconfig=" + kubeConfig
 	res, err := RunCommand(cmd)
+
 	if err != nil {
 		return nil, err
 	}
@@ -157,13 +172,13 @@ func ParseNodes(kubeConfig string, debug bool) ([]Node, error) {
 			nodes = append(nodes, node)
 		}
 	}
-	if debug {
+	if print {
 		fmt.Println(nodeList)
 	}
 	return nodes, nil
 }
 
-func ParsePods(kubeconfig string, debug bool) ([]Pod, error) {
+func ParsePods(kubeconfig string, print bool) ([]Pod, error) {
 	pods := make([]Pod, 0, 10)
 	podList := ""
 
@@ -186,8 +201,51 @@ func ParsePods(kubeconfig string, debug bool) ([]Pod, error) {
 		}
 		pods = append(pods, pod)
 	}
-	if debug {
+	if print {
 		fmt.Println(podList)
 	}
 	return pods, nil
+}
+
+// RestartCluster restarts the k3s service on each node given
+func RestartCluster(nodeNames []string) error {
+	for _, nodeName := range nodeNames {
+		cmd := "sudo systemctl restart k3s"
+		if _, err := RunCmdOnNode(cmd, nodeName); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// RunCmdOnNode executes a command from within the given node
+func RunCmdOnNode(cmd string, nodename string) (string, error) {
+	runcmd := "vagrant ssh -c \"" + cmd + "\" " + nodename
+	return RunCommand(runcmd)
+}
+
+// RunCommand executes a command on the host
+func RunCommand(cmd string) (string, error) {
+	c := exec.Command("bash", "-c", cmd)
+	out, err := c.CombinedOutput()
+	return string(out), err
+}
+
+func UpgradeCluster(serverNodenames []string, agentNodenames []string) error {
+	for _, nodeName := range serverNodenames {
+		cmd := "RELEASE_CHANNEL=commit vagrant provision " + nodeName
+		fmt.Println(cmd)
+		if out, err := RunCommand(cmd); err != nil {
+			fmt.Println("Error Upgrading Cluster", out)
+			return err
+		}
+	}
+	for _, nodeName := range agentNodenames {
+		cmd := "RELEASE_CHANNEL=commit vagrant provision " + nodeName
+		if _, err := RunCommand(cmd); err != nil {
+			fmt.Println("Error Upgrading Cluster", err)
+			return err
+		}
+	}
+	return nil
 }

@@ -2,25 +2,25 @@ package integration
 
 import (
 	"fmt"
-	"os"
 	"regexp"
 	"testing"
 	"time"
 
 	testutil "github.com/k3s-io/k3s/tests/util"
-	. "github.com/onsi/ginkgo"
-	"github.com/onsi/ginkgo/reporters"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var secretsEncryptionServer *testutil.K3sServer
 var secretsEncryptionDataDir = "/tmp/k3sse"
-
 var secretsEncryptionServerArgs = []string{"--secrets-encryption", "-d", secretsEncryptionDataDir}
+var testLock int
+
 var _ = BeforeSuite(func() {
 	if !testutil.IsExistingServer() {
 		var err error
-		Expect(os.MkdirAll(secretsEncryptionDataDir, 0777)).To(Succeed())
+		testLock, err = testutil.K3sTestLock()
+		Expect(err).ToNot(HaveOccurred())
 		secretsEncryptionServer, err = testutil.K3sStartServer(secretsEncryptionServerArgs...)
 		Expect(err).ToNot(HaveOccurred())
 	}
@@ -62,7 +62,7 @@ var _ = Describe("secrets encryption rotation", func() {
 		})
 		It("restarts the server", func() {
 			var err error
-			Expect(testutil.K3sKillServer(secretsEncryptionServer, true)).To(Succeed())
+			Expect(testutil.K3sKillServer(secretsEncryptionServer)).To(Succeed())
 			secretsEncryptionServer, err = testutil.K3sStartServer(secretsEncryptionServerArgs...)
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(func() (string, error) {
@@ -86,7 +86,7 @@ var _ = Describe("secrets encryption rotation", func() {
 		})
 		It("restarts the server", func() {
 			var err error
-			Expect(testutil.K3sKillServer(secretsEncryptionServer, true)).To(Succeed())
+			Expect(testutil.K3sKillServer(secretsEncryptionServer)).To(Succeed())
 			secretsEncryptionServer, err = testutil.K3sStartServer(secretsEncryptionServerArgs...)
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(func() (string, error) {
@@ -120,7 +120,7 @@ var _ = Describe("secrets encryption rotation", func() {
 		})
 		It("restarts the server", func() {
 			var err error
-			Expect(testutil.K3sKillServer(secretsEncryptionServer, true)).To(Succeed())
+			Expect(testutil.K3sKillServer(secretsEncryptionServer)).To(Succeed())
 			secretsEncryptionServer, err = testutil.K3sStartServer(secretsEncryptionServerArgs...)
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(func() (string, error) {
@@ -142,14 +142,12 @@ var _ = Describe("secrets encryption rotation", func() {
 
 var _ = AfterSuite(func() {
 	if !testutil.IsExistingServer() {
-		Expect(testutil.K3sKillServer(secretsEncryptionServer, true)).To(Succeed())
-		Expect(os.RemoveAll(secretsEncryptionDataDir)).To(Succeed())
+		Expect(testutil.K3sKillServer(secretsEncryptionServer)).To(Succeed())
+		Expect(testutil.K3sCleanup(testLock, secretsEncryptionDataDir)).To(Succeed())
 	}
 })
 
 func Test_IntegrationSecretsEncryption(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecsWithDefaultAndCustomReporters(t, "Secrets Encryption Suite", []Reporter{
-		reporters.NewJUnitReporter("/tmp/results/junit-se.xml"),
-	})
+	RunSpecs(t, "Secrets Encryption Suite")
 }

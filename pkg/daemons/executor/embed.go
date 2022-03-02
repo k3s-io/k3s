@@ -42,10 +42,6 @@ func init() {
 	executor = &Embedded{}
 }
 
-type Embedded struct {
-	nodeConfig *daemonconfig.Node
-}
-
 func (e *Embedded) Bootstrap(ctx context.Context, nodeConfig *daemonconfig.Node, cfg cmds.Agent) error {
 	e.nodeConfig = nodeConfig
 	return nil
@@ -192,6 +188,10 @@ func (*Embedded) CloudControllerManager(ctx context.Context, ccmRBACReady <-chan
 	}()
 
 	return nil
+}
+
+func (e *Embedded) CurrentETCDOptions() (InitialOptions, error) {
+	return InitialOptions{}, nil
 }
 
 // waitForUntaintedNode watches nodes, waiting to find one not tainted as

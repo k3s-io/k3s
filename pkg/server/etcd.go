@@ -13,10 +13,11 @@ import (
 )
 
 // setETCDLabelsAndAnnotations will set the etcd role label if not exists also it
-// sets special annotaitons on the node object which are etcd node id and etcd node
+// sets special annotations on the node object which are etcd node id and etcd node
 // address, the function will also remove the controlplane and master role labels if
 // they exist on the node
 func setETCDLabelsAndAnnotations(ctx context.Context, config *Config) error {
+	<-config.ControlConfig.Runtime.APIServerReady
 	t := time.NewTicker(5 * time.Second)
 	defer t.Stop()
 	for range t.C {

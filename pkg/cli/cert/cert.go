@@ -77,7 +77,7 @@ func rotate(app *cli.Context, cfg *cmds.Server) error {
 
 	serverConfig.ControlConfig.DataDir = serverDataDir
 	serverConfig.ControlConfig.Runtime = &config.ControlRuntime{}
-	deps.CreateRuntimeCertFiles(&serverConfig.ControlConfig, serverConfig.ControlConfig.Runtime)
+	deps.CreateRuntimeCertFiles(&serverConfig.ControlConfig)
 
 	if err := validateCertConfig(); err != nil {
 		return err

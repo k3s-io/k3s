@@ -3,9 +3,10 @@ package agent
 import (
 	"context"
 	"fmt"
-	"net/url"
+	"net"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -186,6 +187,32 @@ func coreClient(cfg string) (kubernetes.Interface, error) {
 	return kubernetes.NewForConfig(restConfig)
 }
 
+// RunStandalone bootstraps the executor, but does not run the kubelet or containerd.
+// This allows other bits of code that expect the executor to be set up properly to function
+// even when the agent is disabled. It will only return in case of error or context
+// cancellation.
+func RunStandalone(ctx context.Context, cfg cmds.Agent) error {
+	proxy, err := createProxyAndValidateToken(ctx, &cfg)
+	if err != nil {
+		return err
+	}
+
+	nodeConfig := config.Get(ctx, cfg, proxy)
+	if err := executor.Bootstrap(ctx, nodeConfig, cfg); err != nil {
+		return err
+	}
+
+	if cfg.AgentReady != nil {
+		close(cfg.AgentReady)
+	}
+
+	<-ctx.Done()
+	return ctx.Err()
+}
+
+// Run sets up cgroups, configures the LB proxy, and triggers startup
+// of containerd and kubelet. It will only return in case of error or context
+// cancellation.
 func Run(ctx context.Context, cfg cmds.Agent) error {
 	if err := cgroups.Validate(); err != nil {
 		return err
@@ -197,14 +224,23 @@ func Run(ctx context.Context, cfg cmds.Agent) error {
 		}
 	}
 
+	proxy, err := createProxyAndValidateToken(ctx, &cfg)
+	if err != nil {
+		return err
+	}
+
+	return run(ctx, cfg, proxy)
+}
+
+func createProxyAndValidateToken(ctx context.Context, cfg *cmds.Agent) (proxy.Proxy, error) {
 	agentDir := filepath.Join(cfg.DataDir, "agent")
 	if err := os.MkdirAll(agentDir, 0700); err != nil {
-		return err
+		return nil, err
 	}
 
 	proxy, err := proxy.NewSupervisorProxy(ctx, !cfg.DisableLoadBalancer, agentDir, cfg.ServerURL, cfg.LBServerPort)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	for {
@@ -213,7 +249,7 @@ func Run(ctx context.Context, cfg cmds.Agent) error {
 			logrus.Error(err)
 			select {
 			case <-ctx.Done():
-				return ctx.Err()
+				return nil, ctx.Err()
 			case <-time.After(2 * time.Second):
 			}
 			continue
@@ -221,8 +257,7 @@ func Run(ctx context.Context, cfg cmds.Agent) error {
 		cfg.Token = newToken.String()
 		break
 	}
-
-	return run(ctx, cfg, proxy)
+	return proxy, nil
 }
 
 func configureNode(ctx context.Context, agentConfig *daemonconfig.Agent, nodes typedcorev1.NodeInterface) error {
@@ -350,17 +385,8 @@ func setupTunnelAndRunAgent(ctx context.Context, nodeConfig *daemonconfig.Node, 
 			}
 			agentRan = true
 		}
-
-		select {
-		case address := <-cfg.APIAddressCh:
-			cfg.ServerURL = address
-			u, err := url.Parse(cfg.ServerURL)
-			if err != nil {
-				logrus.Warn(err)
-			}
-			proxy.Update([]string{fmt.Sprintf("%s:%d", u.Hostname(), nodeConfig.ServerHTTPSPort)})
-		case <-ctx.Done():
-			return ctx.Err()
+		if err := waitForAPIServerAddresses(ctx, nodeConfig, cfg, proxy); err != nil {
+			return err
 		}
 	} else if cfg.ClusterReset && proxy.IsAPIServerLBEnabled() {
 		// If we're doing a cluster-reset on RKE2, the kubelet needs to be started early to clean
@@ -378,4 +404,27 @@ func setupTunnelAndRunAgent(ctx context.Context, nodeConfig *daemonconfig.Node, 
 		return agent.Agent(ctx, nodeConfig, proxy)
 	}
 	return nil
+}
+
+func waitForAPIServerAddresses(ctx context.Context, nodeConfig *daemonconfig.Node, cfg cmds.Agent, proxy proxy.Proxy) error {
+	for {
+		select {
+		case <-time.After(5 * time.Second):
+			logrus.Info("Waiting for apiserver addresses")
+		case addresses := <-cfg.APIAddressCh:
+			for i, a := range addresses {
+				host, _, err := net.SplitHostPort(a)
+				if err == nil {
+					addresses[i] = net.JoinHostPort(host, strconv.Itoa(nodeConfig.ServerHTTPSPort))
+					if i == 0 {
+						proxy.SetSupervisorDefault(addresses[i])
+					}
+				}
+			}
+			proxy.Update(addresses)
+			return nil
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
 }

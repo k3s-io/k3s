@@ -6,8 +6,7 @@ import (
 	"testing"
 
 	testutil "github.com/k3s-io/k3s/tests/util"
-	. "github.com/onsi/ginkgo"
-	"github.com/onsi/ginkgo/reporters"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
@@ -18,9 +17,13 @@ var dualStackServerArgs = []string{
 	"--service-cidr 10.43.0.0/16,2001:cafe:42:1::/112",
 	"--disable-network-policy",
 }
+var testLock int
+
 var _ = BeforeSuite(func() {
 	if !testutil.IsExistingServer() && os.Getenv("CI") != "true" {
 		var err error
+		testLock, err = testutil.K3sTestLock()
+		Expect(err).ToNot(HaveOccurred())
 		dualStackServer, err = testutil.K3sStartServer(dualStackServerArgs...)
 		Expect(err).ToNot(HaveOccurred())
 	}
@@ -52,14 +55,12 @@ var _ = Describe("dual stack", func() {
 
 var _ = AfterSuite(func() {
 	if !testutil.IsExistingServer() && os.Getenv("CI") != "true" {
-		Expect(testutil.K3sKillServer(dualStackServer, false)).To(Succeed())
-		Expect(testutil.K3sCleanup(dualStackServer, true)).To(Succeed())
+		Expect(testutil.K3sKillServer(dualStackServer)).To(Succeed())
+		Expect(testutil.K3sCleanup(testLock, "")).To(Succeed())
 	}
 })
 
 func Test_IntegrationDualStack(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecsWithDefaultAndCustomReporters(t, "Dual-Stack Suite", []Reporter{
-		reporters.NewJUnitReporter("/tmp/results/junit-ls.xml"),
-	})
+	RunSpecs(t, "Dual-Stack Suite")
 }

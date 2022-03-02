@@ -1,16 +1,19 @@
-apiVersion: extensions/v1beta1
+apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
- name: ingress
+  name: test-ingress
 spec:
- rules:
- - host: foo1.bar.com
-   http:
-     paths:
-     - path: /name.html
-       backend:
-         serviceName: nginx-ingress-svc
-         servicePort: 80
+  rules:
+  - host: foo1.bar.com
+    http:
+      paths:
+      - backend:
+          service:
+            name: nginx-ingress-svc
+            port:
+              number: 80
+        path: /
+        pathType: ImplementationSpecific
 ---
 apiVersion: v1
 kind: Service

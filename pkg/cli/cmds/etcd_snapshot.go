@@ -128,7 +128,11 @@ func NewEtcdSnapshotSubcommands(delete, list, prune, save func(ctx *cli.Context)
 			SkipFlagParsing: false,
 			SkipArgReorder:  true,
 			Action:          list,
-			Flags:           EtcdSnapshotFlags,
+			Flags: append(EtcdSnapshotFlags, &cli.StringFlag{
+				Name:        "o,output",
+				Usage:       "(db) List format. Default: standard. Optional: json",
+				Destination: &ServerConfig.EtcdListFormat,
+			}),
 		},
 		{
 			Name:            "prune",

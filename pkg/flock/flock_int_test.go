@@ -7,8 +7,7 @@ import (
 	"testing"
 
 	"github.com/k3s-io/k3s/pkg/flock"
-	. "github.com/onsi/ginkgo"
-	"github.com/onsi/ginkgo/reporters"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
@@ -34,7 +33,5 @@ var _ = Describe("file locks", func() {
 
 func TestFlock(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecsWithDefaultAndCustomReporters(t, "Flock Suite", []Reporter{
-		reporters.NewJUnitReporter("/tmp/results/junit-flock.xml"),
-	})
+	RunSpecs(t, "Flock Suite")
 }
