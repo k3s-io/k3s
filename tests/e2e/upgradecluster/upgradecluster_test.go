@@ -28,21 +28,21 @@ func Test_E2EUpgradeValidation(t *testing.T) {
 
 var (
 	kubeConfigFile  string
-	serverNodenames []string
-	agentNodenames  []string
+	serverNodeNames []string
+	agentNodeNames  []string
 )
 
 var _ = Describe("Verify Upgrade", func() {
 	Context("Cluster :", func() {
 		It("Starts up with no issues", func() {
 			var err error
-			serverNodenames, agentNodenames, err = e2e.CreateCluster(*nodeOS, *serverCount, *agentCount)
+			serverNodeNames, agentNodeNames, err = e2e.CreateCluster(*nodeOS, *serverCount, *agentCount)
 			Expect(err).NotTo(HaveOccurred())
 			fmt.Println("CLUSTER CONFIG")
 			fmt.Println("OS:", *nodeOS)
-			fmt.Println("Server Nodes:", serverNodenames)
-			fmt.Println("Agent Nodes:", agentNodenames)
-			kubeConfigFile, err = e2e.GenKubeConfigFile(serverNodenames[0])
+			fmt.Println("Server Nodes:", serverNodeNames)
+			fmt.Println("Agent Nodes:", agentNodeNames)
+			kubeConfigFile, err = e2e.GenKubeConfigFile(serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -84,7 +84,7 @@ var _ = Describe("Verify Upgrade", func() {
 
 			clusterip, _ := e2e.FetchClusterIP(kubeConfigFile, "nginx-clusterip-svc")
 			cmd = "curl -L --insecure http://" + clusterip + "/name.html"
-			for _, nodeName := range serverNodenames {
+			for _, nodeName := range serverNodeNames {
 				Eventually(func() (string, error) {
 					return e2e.RunCmdOnNode(cmd, nodeName)
 				}, "120s", "10s").Should(ContainSubstring("test-clusterip"), "failed cmd: "+cmd)
@@ -95,7 +95,7 @@ var _ = Describe("Verify Upgrade", func() {
 			_, err := e2e.DeployWorkload("nodeport.yaml", kubeConfigFile, false)
 			Expect(err).NotTo(HaveOccurred(), "NodePort manifest not deployed")
 
-			for _, nodeName := range serverNodenames {
+			for _, nodeName := range serverNodeNames {
 				node_external_ip, _ := e2e.FetchNodeExternalIP(nodeName)
 				cmd := "kubectl get service nginx-nodeport-svc --kubeconfig=" + kubeConfigFile + " --output jsonpath=\"{.spec.ports[0].nodePort}\""
 				nodeport, err := e2e.RunCommand(cmd)
@@ -117,7 +117,7 @@ var _ = Describe("Verify Upgrade", func() {
 		It("Verifies LoadBalancer Service", func() {
 			_, err := e2e.DeployWorkload("loadbalancer.yaml", kubeConfigFile, false)
 			Expect(err).NotTo(HaveOccurred(), "Loadbalancer manifest not deployed")
-			for _, nodeName := range serverNodenames {
+			for _, nodeName := range serverNodeNames {
 				ip, _ := e2e.FetchNodeExternalIP(nodeName)
 				cmd := "kubectl get service nginx-loadbalancer-svc --kubeconfig=" + kubeConfigFile + " --output jsonpath=\"{.spec.ports[0].port}\""
 				port, err := e2e.RunCommand(cmd)
@@ -139,7 +139,7 @@ var _ = Describe("Verify Upgrade", func() {
 			_, err := e2e.DeployWorkload("ingress.yaml", kubeConfigFile, false)
 			Expect(err).NotTo(HaveOccurred(), "Ingress manifest not deployed")
 
-			for _, nodeName := range serverNodenames {
+			for _, nodeName := range serverNodeNames {
 				ip, _ := e2e.FetchNodeExternalIP(nodeName)
 				cmd := "curl  --header host:foo1.bar.com" + " http://" + ip + "/name.html"
 				Eventually(func() (string, error) {
@@ -238,11 +238,11 @@ var _ = Describe("Verify Upgrade", func() {
 
 		It("Upgrades with no issues", func() {
 			var err error
-			err = e2e.UpgradeCluster(serverNodenames, agentNodenames)
+			err = e2e.UpgradeCluster(serverNodeNames, agentNodeNames)
 			fmt.Println(err)
 			Expect(err).NotTo(HaveOccurred())
 			fmt.Println("CLUSTER UPGRADED")
-			kubeConfigFile, err = e2e.GenKubeConfigFile(serverNodenames[0])
+			kubeConfigFile, err = e2e.GenKubeConfigFile(serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -281,7 +281,7 @@ var _ = Describe("Verify Upgrade", func() {
 			clusterip, _ := e2e.FetchClusterIP(kubeConfigFile, "nginx-clusterip-svc")
 			cmd := "curl -L --insecure http://" + clusterip + "/name.html"
 			fmt.Println(cmd)
-			for _, nodeName := range serverNodenames {
+			for _, nodeName := range serverNodeNames {
 				Eventually(func() (string, error) {
 					return e2e.RunCmdOnNode(cmd, nodeName)
 				}, "120s", "10s").Should(ContainSubstring("test-clusterip"), "failed cmd: "+cmd)
@@ -290,7 +290,7 @@ var _ = Describe("Verify Upgrade", func() {
 
 		It("After upgrade verifies NodePort Service", func() {
 
-			for _, nodeName := range serverNodenames {
+			for _, nodeName := range serverNodeNames {
 				node_external_ip, _ := e2e.FetchNodeExternalIP(nodeName)
 				cmd := "kubectl get service nginx-nodeport-svc --kubeconfig=" + kubeConfigFile + " --output jsonpath=\"{.spec.ports[0].nodePort}\""
 				nodeport, err := e2e.RunCommand(cmd)
@@ -310,7 +310,7 @@ var _ = Describe("Verify Upgrade", func() {
 		})
 
 		It("After upgrade verifies LoadBalancer Service", func() {
-			for _, nodeName := range serverNodenames {
+			for _, nodeName := range serverNodeNames {
 				ip, _ := e2e.FetchNodeExternalIP(nodeName)
 				cmd := "kubectl get service nginx-loadbalancer-svc --kubeconfig=" + kubeConfigFile + " --output jsonpath=\"{.spec.ports[0].port}\""
 				port, err := e2e.RunCommand(cmd)
@@ -328,7 +328,7 @@ var _ = Describe("Verify Upgrade", func() {
 		})
 
 		It("After upgrade verifies Ingress", func() {
-			for _, nodeName := range serverNodenames {
+			for _, nodeName := range serverNodeNames {
 				ip, _ := e2e.FetchNodeExternalIP(nodeName)
 				cmd := "curl  --header host:foo1.bar.com" + " http://" + ip + "/name.html"
 				fmt.Println(cmd)
