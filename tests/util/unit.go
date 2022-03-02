@@ -43,7 +43,7 @@ func CleanupDataDir(cnf *config.Control) {
 // GenerateRuntime creates a temporary data dir and configures
 // config.ControlRuntime with all the appropriate certificate keys.
 func GenerateRuntime(cnf *config.Control) error {
-	runtime := &config.ControlRuntime{}
+	cnf.Runtime = &config.ControlRuntime{}
 	if err := GenerateDataDir(cnf); err != nil {
 		return err
 	}
@@ -51,13 +51,9 @@ func GenerateRuntime(cnf *config.Control) error {
 	os.MkdirAll(filepath.Join(cnf.DataDir, "tls"), 0700)
 	os.MkdirAll(filepath.Join(cnf.DataDir, "cred"), 0700)
 
-	deps.CreateRuntimeCertFiles(cnf, runtime)
+	deps.CreateRuntimeCertFiles(cnf)
 
-	if err := deps.GenServerDeps(cnf, runtime); err != nil {
-		return err
-	}
-	cnf.Runtime = runtime
-	return nil
+	return deps.GenServerDeps(cnf)
 }
 
 func ClusterIPNet() *net.IPNet {

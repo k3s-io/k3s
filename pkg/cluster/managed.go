@@ -184,11 +184,11 @@ func (c *Cluster) deleteNodePasswdSecret(ctx context.Context) {
 		}
 		// the core factory may not yet be initialized so we
 		// want to wait until it is so not to evoke a panic.
-		if c.runtime.Core == nil {
+		if c.config.Runtime.Core == nil {
 			logrus.Infof("runtime is not yet initialized")
 			continue
 		}
-		secretsClient := c.runtime.Core.Core().V1().Secret()
+		secretsClient := c.config.Runtime.Core.Core().V1().Secret()
 		if err := nodepassword.Delete(secretsClient, nodeName); err != nil {
 			if apierrors.IsNotFound(err) {
 				logrus.Debugf("node password secret is not found for node %s", nodeName)

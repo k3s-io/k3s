@@ -39,11 +39,11 @@ func (c *Cluster) newListener(ctx context.Context) (net.Listener, http.Handler, 
 	if err != nil {
 		return nil, nil, err
 	}
-	cert, key, err := factory.LoadCerts(c.runtime.ServerCA, c.runtime.ServerCAKey)
+	cert, key, err := factory.LoadCerts(c.config.Runtime.ServerCA, c.config.Runtime.ServerCAKey)
 	if err != nil {
 		return nil, nil, err
 	}
-	storage := tlsStorage(ctx, c.config.DataDir, c.runtime)
+	storage := tlsStorage(ctx, c.config.DataDir, c.config.Runtime)
 	return dynamiclistener.NewListener(tcp, storage, cert, key, dynamiclistener.Config{
 		ExpirationDaysCheck: config.CertificateRenewDays,
 		Organization:        []string{version.Program},
@@ -53,6 +53,7 @@ func (c *Cluster) newListener(ctx context.Context) (net.Listener, http.Handler, 
 			ClientAuth:   tls.RequestClientCert,
 			MinVersion:   c.config.TLSMinVersion,
 			CipherSuites: c.config.TLSCipherSuites,
+			NextProtos:   []string{"h2", "http/1.1"},
 		},
 		RegenerateCerts: func() bool {
 			const regenerateDynamicListenerFile = "dynamic-cert-regenerate"

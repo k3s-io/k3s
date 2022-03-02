@@ -35,46 +35,47 @@ var localhostIP = net.ParseIP("127.0.0.1")
 
 func Server(ctx context.Context, cfg *config.Control) error {
 	rand.Seed(time.Now().UTC().UnixNano())
-	runtime := cfg.Runtime
 
-	if err := prepare(ctx, cfg, runtime); err != nil {
+	if err := prepare(ctx, cfg); err != nil {
 		return errors.Wrap(err, "preparing server")
 	}
 
 	cfg.Runtime.Tunnel = setupTunnel()
 	proxyutil.DisableProxyHostnameCheck = true
 
-	basicAuth, err := basicAuthenticator(runtime.PasswdFile)
+	basicAuth, err := basicAuthenticator(cfg.Runtime.PasswdFile)
 	if err != nil {
 		return err
 	}
-	runtime.Authenticator = basicAuth
+	cfg.Runtime.Authenticator = basicAuth
 
 	if !cfg.DisableAPIServer {
-		go waitForAPIServerHandlers(ctx, runtime)
+		go waitForAPIServerHandlers(ctx, cfg.Runtime)
 
-		if err := apiServer(ctx, cfg, runtime); err != nil {
-			return err
-		}
-
-		if err := waitForAPIServerInBackground(ctx, runtime); err != nil {
+		if err := apiServer(ctx, cfg); err != nil {
 			return err
 		}
 	}
 
+	// Wait for an apiserver to become available before starting additional controllers,
+	// even if we're not running an apiserver locally.
+	if err := waitForAPIServerInBackground(ctx, cfg.Runtime); err != nil {
+		return err
+	}
+
 	if !cfg.DisableScheduler {
-		if err := scheduler(ctx, cfg, runtime); err != nil {
+		if err := scheduler(ctx, cfg); err != nil {
 			return err
 		}
 	}
 	if !cfg.DisableControllerManager {
-		if err := controllerManager(ctx, cfg, runtime); err != nil {
+		if err := controllerManager(ctx, cfg); err != nil {
 			return err
 		}
 	}
 
 	if !cfg.DisableCCM {
-		if err := cloudControllerManager(ctx, cfg, runtime); err != nil {
+		if err := cloudControllerManager(ctx, cfg); err != nil {
 			return err
 		}
 	}
@@ -82,7 +83,8 @@ func Server(ctx context.Context, cfg *config.Control) error {
 	return nil
 }
 
-func controllerManager(ctx context.Context, cfg *config.Control, runtime *config.ControlRuntime) error {
+func controllerManager(ctx context.Context, cfg *config.Control) error {
+	runtime := cfg.Runtime
 	argsMap := map[string]string{
 		"feature-gates":                    "JobTrackingWithFinalizers=true",
 		"kubeconfig":                       runtime.KubeConfigController,
@@ -116,10 +118,11 @@ func controllerManager(ctx context.Context, cfg *config.Control, runtime *config
 	args := config.GetArgs(argsMap, cfg.ExtraControllerArgs)
 	logrus.Infof("Running kube-controller-manager %s", config.ArgString(args))
 
-	return executor.ControllerManager(ctx, runtime.APIServerReady, args)
+	return executor.ControllerManager(ctx, cfg.Runtime.APIServerReady, args)
 }
 
-func scheduler(ctx context.Context, cfg *config.Control, runtime *config.ControlRuntime) error {
+func scheduler(ctx context.Context, cfg *config.Control) error {
+	runtime := cfg.Runtime
 	argsMap := map[string]string{
 		"kubeconfig":                runtime.KubeConfigScheduler,
 		"authorization-kubeconfig":  runtime.KubeConfigScheduler,
@@ -134,10 +137,11 @@ func scheduler(ctx context.Context, cfg *config.Control, runtime *config.Control
 	args := config.GetArgs(argsMap, cfg.ExtraSchedulerAPIArgs)
 
 	logrus.Infof("Running kube-scheduler %s", config.ArgString(args))
-	return executor.Scheduler(ctx, runtime.APIServerReady, args)
+	return executor.Scheduler(ctx, cfg.Runtime.APIServerReady, args)
 }
 
-func apiServer(ctx context.Context, cfg *config.Control, runtime *config.ControlRuntime) error {
+func apiServer(ctx context.Context, cfg *config.Control) error {
+	runtime := cfg.Runtime
 	argsMap := map[string]string{
 		"feature-gates": "JobTrackingWithFinalizers=true",
 	}
@@ -225,7 +229,7 @@ func defaults(config *config.Control) {
 	}
 }
 
-func prepare(ctx context.Context, config *config.Control, runtime *config.ControlRuntime) error {
+func prepare(ctx context.Context, config *config.Control) error {
 	var err error
 
 	defaults(config)
@@ -242,7 +246,7 @@ func prepare(ctx context.Context, config *config.Control, runtime *config.Contro
 	os.MkdirAll(filepath.Join(config.DataDir, "tls"), 0700)
 	os.MkdirAll(filepath.Join(config.DataDir, "cred"), 0700)
 
-	deps.CreateRuntimeCertFiles(config, runtime)
+	deps.CreateRuntimeCertFiles(config)
 
 	cluster := cluster.New(config)
 
@@ -250,7 +254,7 @@ func prepare(ctx context.Context, config *config.Control, runtime *config.Contro
 		return err
 	}
 
-	if err := deps.GenServerDeps(config, runtime); err != nil {
+	if err := deps.GenServerDeps(config); err != nil {
 		return err
 	}
 
@@ -259,8 +263,7 @@ func prepare(ctx context.Context, config *config.Control, runtime *config.Contro
 		return err
 	}
 
-	runtime.ETCDReady = ready
-	runtime.EtcdConfig = cluster.EtcdConfig
+	config.Runtime.ETCDReady = ready
 	return nil
 }
 
@@ -282,7 +285,8 @@ func setupStorageBackend(argsMap map[string]string, cfg *config.Control) {
 	}
 }
 
-func cloudControllerManager(ctx context.Context, cfg *config.Control, runtime *config.ControlRuntime) error {
+func cloudControllerManager(ctx context.Context, cfg *config.Control) error {
+	runtime := cfg.Runtime
 	argsMap := map[string]string{
 		"profiling":                    "false",
 		"allocate-node-cidrs":          "true",
@@ -313,7 +317,7 @@ func cloudControllerManager(ctx context.Context, cfg *config.Control, runtime *c
 			select {
 			case <-ctx.Done():
 				return
-			case <-runtime.APIServerReady:
+			case <-cfg.Runtime.APIServerReady:
 				break apiReadyLoop
 			case <-time.After(30 * time.Second):
 				logrus.Infof("Waiting for API server to become available")
@@ -325,7 +329,7 @@ func cloudControllerManager(ctx context.Context, cfg *config.Control, runtime *c
 			select {
 			case <-ctx.Done():
 				return
-			case err := <-promise(func() error { return checkForCloudControllerPrivileges(ctx, runtime, 5*time.Second) }):
+			case err := <-promise(func() error { return checkForCloudControllerPrivileges(ctx, cfg.Runtime, 5*time.Second) }):
 				if err != nil {
 					logrus.Infof("Waiting for cloud-controller-manager privileges to become available: %v", err)
 					continue

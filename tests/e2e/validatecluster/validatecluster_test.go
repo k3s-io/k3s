@@ -85,7 +85,7 @@ var _ = Describe("Verify Create", func() {
 			}, "240s", "5s").Should(Succeed())
 
 			clusterip, _ := e2e.FetchClusterIP(kubeConfigFile, "nginx-clusterip-svc")
-			cmd := "\"curl -L --insecure http://" + clusterip + "/name.html\""
+			cmd := "curl -L --insecure http://" + clusterip + "/name.html"
 			fmt.Println(cmd)
 			for _, nodeName := range serverNodenames {
 				Eventually(func(g Gomega) {

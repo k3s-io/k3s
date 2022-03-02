@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/k3s-io/kine/pkg/endpoint"
 	"github.com/rancher/k3s/pkg/bootstrap"
 	"github.com/rancher/k3s/pkg/clientaccess"
 	"github.com/rancher/k3s/pkg/cluster/managed"
@@ -82,15 +81,14 @@ func Test_isDirEmpty(t *testing.T) {
 func TestCluster_certDirsExist(t *testing.T) {
 	const testDataDir = "/tmp/k3s/"
 
+	testCredDir := filepath.Join(testDataDir, "server", "cred")
 	testTLSDir := filepath.Join(testDataDir, "server", "tls")
 	testTLSEtcdDir := filepath.Join(testDataDir, "server", "tls", "etcd")
 
 	type fields struct {
 		clientAccessInfo *clientaccess.Info
 		config           *config.Control
-		runtime          *config.ControlRuntime
 		managedDB        managed.Driver
-		etcdConfig       endpoint.ETCDConfig
 		shouldBootstrap  bool
 		storageStarted   bool
 		saveBootstrap    bool
@@ -110,8 +108,10 @@ func TestCluster_certDirsExist(t *testing.T) {
 				},
 			},
 			setup: func() error {
+				os.MkdirAll(testCredDir, 0700)
 				os.MkdirAll(testTLSEtcdDir, 0700)
 
+				_, _ = os.Create(filepath.Join(testCredDir, "test_file"))
 				_, _ = os.Create(filepath.Join(testTLSDir, "test_file"))
 				_, _ = os.Create(filepath.Join(testTLSEtcdDir, "test_file"))
 
@@ -128,9 +128,7 @@ func TestCluster_certDirsExist(t *testing.T) {
 			c := &Cluster{
 				clientAccessInfo: tt.fields.clientAccessInfo,
 				config:           tt.fields.config,
-				runtime:          tt.fields.runtime,
 				managedDB:        tt.fields.managedDB,
-				EtcdConfig:       tt.fields.etcdConfig,
 				storageStarted:   tt.fields.storageStarted,
 				saveBootstrap:    tt.fields.saveBootstrap,
 			}
@@ -150,9 +148,7 @@ func TestCluster_migrateBootstrapData(t *testing.T) {
 	type fields struct {
 		clientAccessInfo *clientaccess.Info
 		config           *config.Control
-		runtime          *config.ControlRuntime
 		managedDB        managed.Driver
-		etcdConfig       endpoint.ETCDConfig
 		joining          bool
 		storageStarted   bool
 		saveBootstrap    bool
@@ -206,9 +202,7 @@ func TestCluster_Snapshot(t *testing.T) {
 	type fields struct {
 		clientAccessInfo *clientaccess.Info
 		config           *config.Control
-		runtime          *config.ControlRuntime
 		managedDB        managed.Driver
-		etcdConfig       endpoint.ETCDConfig
 		joining          bool
 		storageStarted   bool
 		saveBootstrap    bool
@@ -238,9 +232,7 @@ func TestCluster_Snapshot(t *testing.T) {
 			c := &Cluster{
 				clientAccessInfo: tt.fields.clientAccessInfo,
 				config:           tt.fields.config,
-				runtime:          tt.fields.runtime,
 				managedDB:        tt.fields.managedDB,
-				EtcdConfig:       tt.fields.etcdConfig,
 				joining:          tt.fields.joining,
 				storageStarted:   tt.fields.storageStarted,
 				saveBootstrap:    tt.fields.saveBootstrap,

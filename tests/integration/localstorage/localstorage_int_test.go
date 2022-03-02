@@ -14,9 +14,13 @@ import (
 
 var localStorageServer *testutil.K3sServer
 var localStorageServerArgs = []string{"--cluster-init"}
+var testLock int
+
 var _ = BeforeSuite(func() {
 	if !testutil.IsExistingServer() {
 		var err error
+		testLock, err = testutil.K3sTestLock()
+		Expect(err).ToNot(HaveOccurred())
 		localStorageServer, err = testutil.K3sStartServer(localStorageServerArgs...)
 		Expect(err).ToNot(HaveOccurred())
 	}
@@ -80,8 +84,8 @@ var _ = Describe("local storage", func() {
 
 var _ = AfterSuite(func() {
 	if !testutil.IsExistingServer() {
-		Expect(testutil.K3sKillServer(localStorageServer, false)).To(Succeed())
-		Expect(testutil.K3sCleanup(localStorageServer, true, "")).To(Succeed())
+		Expect(testutil.K3sKillServer(localStorageServer)).To(Succeed())
+		Expect(testutil.K3sCleanup(testLock, "")).To(Succeed())
 	}
 })
 

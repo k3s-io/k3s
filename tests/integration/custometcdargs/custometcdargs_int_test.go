@@ -15,9 +15,13 @@ var customEtcdArgsServerArgs = []string{
 	"--cluster-init",
 	"--etcd-arg quota-backend-bytes=858993459",
 }
+var testLock int
+
 var _ = BeforeSuite(func() {
 	if !testutil.IsExistingServer() {
 		var err error
+		testLock, err = testutil.K3sTestLock()
+		Expect(err).ToNot(HaveOccurred())
 		customEtcdArgsServer, err = testutil.K3sStartServer(customEtcdArgsServerArgs...)
 		Expect(err).ToNot(HaveOccurred())
 	}
@@ -50,8 +54,8 @@ var _ = Describe("custom etcd args", func() {
 
 var _ = AfterSuite(func() {
 	if !testutil.IsExistingServer() {
-		Expect(testutil.K3sKillServer(customEtcdArgsServer, false)).To(Succeed())
-		Expect(testutil.K3sCleanup(customEtcdArgsServer, true, "")).To(Succeed())
+		Expect(testutil.K3sKillServer(customEtcdArgsServer)).To(Succeed())
+		Expect(testutil.K3sCleanup(testLock, "")).To(Succeed())
 	}
 })
 

@@ -1,7 +1,6 @@
 package e2e
 
 import (
-	"bytes"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -42,13 +41,13 @@ func CountOfStringInSlice(str string, pods []Pod) int {
 func CreateCluster(nodeOS string, serverCount, agentCount int) ([]string, []string, error) {
 	serverNodeNames := make([]string, serverCount)
 	for i := 0; i < serverCount; i++ {
-		serverNodeNames[i] = "server-" + strconv.Itoa(i)
+		serverNodenames[i] = "server-" + strconv.Itoa(i)
 	}
-	agentNodeNames := make([]string, agentCount)
+	agentNodenames := make([]string, agentCount)
 	for i := 0; i < agentCount; i++ {
-		agentNodeNames[i] = "agent-" + strconv.Itoa(i)
+		agentNodenames[i] = "agent-" + strconv.Itoa(i)
 	}
-	nodeRoles := strings.Join(serverNodeNames, " ") + " " + strings.Join(agentNodeNames, " ")
+	nodeRoles := strings.Join(serverNodenames, " ") + " " + strings.Join(agentNodenames, " ")
 
 	nodeRoles = strings.TrimSpace(nodeRoles)
 	nodeBoxes := strings.Repeat(nodeOS+" ", serverCount+agentCount)
@@ -67,7 +66,7 @@ func CreateCluster(nodeOS string, serverCount, agentCount int) ([]string, []stri
 		fmt.Println("Error Creating Cluster", err)
 		return nil, nil, err
 	}
-	return serverNodeNames, agentNodeNames, nil
+	return serverNodenames, agentNodenames, nil
 }
 
 func DeployWorkload(workload, kubeconfig string, arch bool) (string, error) {
@@ -144,6 +143,18 @@ func GenKubeConfigFile(serverName string) (string, error) {
 	return kubeConfigFile, nil
 }
 
+func GetVagrantLog() string {
+	log, err := os.Open("vagrant.log")
+	if err != nil {
+		return err.Error()
+	}
+	bytes, err := ioutil.ReadAll(log)
+	if err != nil {
+		return err.Error()
+	}
+	return string(bytes)
+}
+
 func ParseNodes(kubeConfig string, print bool) ([]Node, error) {
 	nodes := make([]Node, 0, 10)
 	nodeList := ""
@@ -204,21 +215,28 @@ func ParsePods(kubeconfig string, print bool) ([]Pod, error) {
 	return pods, nil
 }
 
+// RestartCluster restarts the k3s service on each node given
+func RestartCluster(nodeNames []string) error {
+	for _, nodeName := range nodeNames {
+		cmd := "sudo systemctl restart k3s"
+		if _, err := RunCmdOnNode(cmd, nodeName); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // RunCmdOnNode executes a command from within the given node
 func RunCmdOnNode(cmd string, nodename string) (string, error) {
-	runcmd := "vagrant ssh -c " + cmd + " " + nodename
+	runcmd := "vagrant ssh -c \"" + cmd + "\" " + nodename
 	return RunCommand(runcmd)
 }
 
 // RunCommand executes a command on the host
 func RunCommand(cmd string) (string, error) {
 	c := exec.Command("bash", "-c", cmd)
-	var out bytes.Buffer
-	c.Stdout = &out
-	if err := c.Run(); err != nil {
-		return "", err
-	}
-	return out.String(), nil
+	out, err := c.CombinedOutput()
+	return string(out), err
 }
 
 func UpgradeCluster(serverNodenames []string, agentNodenames []string) error {

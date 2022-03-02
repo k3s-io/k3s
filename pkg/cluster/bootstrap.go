@@ -9,7 +9,6 @@ import (
 	"io/ioutil"
 	"net"
 	"os"
-	"path"
 	"path/filepath"
 	"reflect"
 	"strconv"
@@ -23,11 +22,9 @@ import (
 	"github.com/rancher/k3s/pkg/bootstrap"
 	"github.com/rancher/k3s/pkg/clientaccess"
 	"github.com/rancher/k3s/pkg/daemons/config"
-	"github.com/rancher/k3s/pkg/daemons/executor"
 	"github.com/rancher/k3s/pkg/etcd"
 	"github.com/rancher/k3s/pkg/version"
 	"github.com/sirupsen/logrus"
-	"go.etcd.io/etcd/server/v3/embed"
 )
 
 // Bootstrap attempts to load a managed database driver, if one has been initialized or should be created/joined.
@@ -63,58 +60,8 @@ func (c *Cluster) Bootstrap(ctx context.Context, snapshot bool) error {
 			// reading the data, and comparing that to the data on disk, all the while
 			// starting normal etcd.
 			if isInitialized {
-				logrus.Info("Starting local etcd to reconcile with datastore")
-				tmpDataDir := filepath.Join(c.config.DataDir, "db", "tmp-etcd")
-				os.RemoveAll(tmpDataDir)
-				if err := os.Mkdir(tmpDataDir, 0700); err != nil {
-					return err
-				}
-				etcdDataDir := etcd.DBDir(c.config)
-				if err := createTmpDataDir(etcdDataDir, tmpDataDir); err != nil {
-					return err
-				}
-				defer func() {
-					if err := os.RemoveAll(tmpDataDir); err != nil {
-						logrus.Warn("failed to remove etcd temp dir", err)
-					}
-				}()
-
-				args := executor.ETCDConfig{
-					DataDir:           tmpDataDir,
-					ForceNewCluster:   true,
-					ListenClientURLs:  "http://127.0.0.1:2399",
-					Logger:            "zap",
-					HeartbeatInterval: 500,
-					ElectionTimeout:   5000,
-					LogOutputs:        []string{"stderr"},
-				}
-				configFile, err := args.ToConfigFile(c.config.ExtraEtcdArgs)
-				if err != nil {
-					return err
-				}
-				cfg, err := embed.ConfigFromFile(configFile)
-				if err != nil {
-					return err
-				}
-
-				etcd, err := embed.StartEtcd(cfg)
-				if err != nil {
-					return err
-				}
-				defer etcd.Close()
-
-				data, err := c.retrieveInitializedDBdata(ctx)
-				if err != nil {
-					return err
-				}
-
-				ec := endpoint.ETCDConfig{
-					Endpoints:   []string{"http://127.0.0.1:2399"},
-					LeaderElect: false,
-				}
-
-				if err := c.ReconcileBootstrapData(ctx, bytes.NewReader(data.Bytes()), &c.config.Runtime.ControlRuntimeBootstrap, false, &ec); err != nil {
-					logrus.Fatal(err)
+				if err := c.reconcileEtcd(ctx); err != nil {
+					logrus.Fatalf("Failed to reconcile with temporary etcd: %v", err)
 				}
 			}
 		}
@@ -127,76 +74,13 @@ func (c *Cluster) Bootstrap(ctx context.Context, snapshot bool) error {
 	return nil
 }
 
-// copyFile copies the contents of the src file
-// to the given destination file.
-func copyFile(src, dst string) error {
-	srcfd, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer srcfd.Close()
-
-	dstfd, err := os.Create(dst)
-	if err != nil {
-		return err
-	}
-	defer dstfd.Close()
-
-	if _, err = io.Copy(dstfd, srcfd); err != nil {
-		return err
-	}
-
-	srcinfo, err := os.Stat(src)
-	if err != nil {
-		return err
-	}
-
-	return os.Chmod(dst, srcinfo.Mode())
-}
-
-// createTmpDataDir creates a temporary directory and copies the
-// contents of the original etcd data dir to be used
-// by etcd when reading data.
-func createTmpDataDir(src, dst string) error {
-	srcinfo, err := os.Stat(src)
-	if err != nil {
-		return err
-	}
-
-	if err := os.MkdirAll(dst, srcinfo.Mode()); err != nil {
-		return err
-	}
-
-	fds, err := ioutil.ReadDir(src)
-	if err != nil {
-		return err
-	}
-
-	for _, fd := range fds {
-		srcfp := path.Join(src, fd.Name())
-		dstfp := path.Join(dst, fd.Name())
-
-		if fd.IsDir() {
-			if err = createTmpDataDir(srcfp, dstfp); err != nil {
-				fmt.Println(err)
-			}
-		} else {
-			if err = copyFile(srcfp, dstfp); err != nil {
-				fmt.Println(err)
-			}
-		}
-	}
-
-	return nil
-}
-
 // shouldBootstrapLoad returns true if we need to load ControlRuntimeBootstrap data again and a second boolean
 // indicating that the server has or has not been initialized, if etcd. This is controlled by a stamp file on
 // disk that records successful bootstrap using a hash of the join token.
 func (c *Cluster) shouldBootstrapLoad(ctx context.Context) (bool, bool, error) {
 	// Non-nil managedDB indicates that the database is either initialized, initializing, or joining
 	if c.managedDB != nil {
-		c.runtime.HTTPBootstrap = true
+		c.config.Runtime.HTTPBootstrap = true
 
 		isInitialized, err := c.managedDB.IsInitialized(ctx, c.config)
 		if err != nil {
@@ -340,7 +224,7 @@ func isMigrated(buf io.ReadSeeker, files *bootstrap.PathsDataformat) bool {
 // and depending on where the difference is. If the datastore is newer,
 // then the data will be written to disk. If the data on disk is newer,
 // k3s will exit with an error.
-func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker, crb *config.ControlRuntimeBootstrap, isHTTP bool, ec *endpoint.ETCDConfig) error {
+func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker, crb *config.ControlRuntimeBootstrap, isHTTP bool) error {
 	logrus.Info("Reconciling bootstrap data between datastore and disk")
 
 	if err := c.certDirsExist(); err != nil {
@@ -356,6 +240,7 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker,
 			buf.Seek(0, 0)
 		}
 
+		logrus.Debugf("One or more certificate directories do not exist; writing data to disk from datastore")
 		return bootstrap.WriteToDiskFromStorage(files, crb)
 	}
 
@@ -363,7 +248,7 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker,
 	if c.managedDB != nil && !isHTTP {
 		token := c.config.Token
 		if token == "" {
-			tokenFromFile, err := readTokenFromFile(c.runtime.ServerToken, c.runtime.ServerCA, c.config.DataDir)
+			tokenFromFile, err := readTokenFromFile(c.config.Runtime.ServerToken, c.config.Runtime.ServerCA, c.config.DataDir)
 			if err != nil {
 				return err
 			}
@@ -382,14 +267,7 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker,
 
 		var value *client.Value
 
-		var etcdConfig endpoint.ETCDConfig
-		if ec != nil {
-			etcdConfig = *ec
-		} else {
-			etcdConfig = c.EtcdConfig
-		}
-
-		storageClient, err := client.New(etcdConfig)
+		storageClient, err := client.New(c.config.Runtime.EtcdConfig)
 		if err != nil {
 			return err
 		}
@@ -595,12 +473,12 @@ func (c *Cluster) httpBootstrap(ctx context.Context) error {
 		return err
 	}
 
-	return c.ReconcileBootstrapData(ctx, bytes.NewReader(content), &c.config.Runtime.ControlRuntimeBootstrap, true, nil)
+	return c.ReconcileBootstrapData(ctx, bytes.NewReader(content), &c.config.Runtime.ControlRuntimeBootstrap, true)
 }
 
 func (c *Cluster) retrieveInitializedDBdata(ctx context.Context) (*bytes.Buffer, error) {
 	var buf bytes.Buffer
-	if err := bootstrap.ReadFromDisk(&buf, &c.runtime.ControlRuntimeBootstrap); err != nil {
+	if err := bootstrap.ReadFromDisk(&buf, &c.config.Runtime.ControlRuntimeBootstrap); err != nil {
 		return nil, err
 	}
 
@@ -612,7 +490,7 @@ func (c *Cluster) bootstrap(ctx context.Context) error {
 	c.joining = true
 
 	// bootstrap managed database via HTTPS
-	if c.runtime.HTTPBootstrap {
+	if c.config.Runtime.HTTPBootstrap {
 		// Assuming we should just compare on managed databases
 		if err := c.compareConfig(); err != nil {
 			return errors.Wrap(err, "failed to validate server configuration")
@@ -669,4 +547,50 @@ func ipsTo16Bytes(mySlice []*net.IPNet) {
 	for _, ipNet := range mySlice {
 		ipNet.IP = ipNet.IP.To16()
 	}
+}
+
+// reconcileEtcd starts a temporary single-member etcd cluster using a copy of the
+// etcd database, and uses it to reconcile bootstrap data. This is necessary
+// because the full etcd cluster may not have quorum during startup, but we still
+// need to extract data from the datastore.
+func (c *Cluster) reconcileEtcd(ctx context.Context) error {
+	logrus.Info("Starting temporary etcd to reconcile with datastore")
+
+	tempConfig := endpoint.ETCDConfig{Endpoints: []string{"http://127.0.0.1:2399"}}
+	originalConfig := c.config.Runtime.EtcdConfig
+	c.config.Runtime.EtcdConfig = tempConfig
+	reconcileCtx, cancel := context.WithCancel(ctx)
+
+	defer func() {
+		cancel()
+		c.config.Runtime.EtcdConfig = originalConfig
+	}()
+
+	e := etcd.NewETCD()
+	if err := e.SetControlConfig(reconcileCtx, c.config); err != nil {
+		return err
+	}
+	e.StartEmbeddedTemporary(reconcileCtx)
+
+	for {
+		if err := e.Test(reconcileCtx); err != nil && !errors.Is(err, etcd.ErrNotMember) {
+			logrus.Infof("Failed to test temporary data store connection: %v", err)
+		} else {
+			logrus.Info(e.EndpointName() + " temporary data store connection OK")
+			break
+		}
+
+		select {
+		case <-time.After(5 * time.Second):
+		case <-reconcileCtx.Done():
+			break
+		}
+	}
+
+	data, err := c.retrieveInitializedDBdata(reconcileCtx)
+	if err != nil {
+		return err
+	}
+
+	return c.ReconcileBootstrapData(reconcileCtx, bytes.NewReader(data.Bytes()), &c.config.Runtime.ControlRuntimeBootstrap, false)
 }
