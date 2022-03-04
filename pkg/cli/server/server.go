@@ -538,9 +538,6 @@ func validateNetworkConfiguration(serverConfig server.Config) error {
 		if serverConfig.ControlConfig.DisableNPC == false {
 			return errors.New("network policy enforcement is not compatible with IPv6 only operation; server must be restarted with --disable-network-policy")
 		}
-		if serverConfig.ControlConfig.FlannelBackend != config.FlannelBackendNone {
-			return errors.New("Flannel is not compatible with IPv6 only operation; server must be restarted with --flannel-backend=none")
-		}
 	}
 
 	return nil
