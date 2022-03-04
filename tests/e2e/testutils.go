@@ -1,7 +1,6 @@
 package e2e
 
 import (
-	"bytes"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -39,7 +38,7 @@ func CountOfStringInSlice(str string, pods []Pod) int {
 	return count
 }
 
-func CreateCluster(nodeOS string, serverCount int, agentCount int, installType string) ([]string, []string, error) {
+func CreateCluster(nodeOS string, serverCount, agentCount int) ([]string, []string, error) {
 	serverNodeNames := make([]string, serverCount)
 	for i := 0; i < serverCount; i++ {
 		serverNodeNames[i] = "server-" + strconv.Itoa(i)
@@ -53,7 +52,15 @@ func CreateCluster(nodeOS string, serverCount int, agentCount int, installType s
 	nodeRoles = strings.TrimSpace(nodeRoles)
 	nodeBoxes := strings.Repeat(nodeOS+" ", serverCount+agentCount)
 	nodeBoxes = strings.TrimSpace(nodeBoxes)
-	cmd := fmt.Sprintf("NODE_ROLES=\"%s\" NODE_BOXES=\"%s\" %s vagrant up &> vagrant.log", nodeRoles, nodeBoxes, installType)
+
+	var testOptions string
+	for _, env := range os.Environ() {
+		if strings.HasPrefix(env, "E2E_") {
+			testOptions += " " + env
+		}
+	}
+
+	cmd := fmt.Sprintf(`E2E_NODE_ROLES="%s" E2E_NODE_BOXES="%s" %s vagrant up &> vagrant.log`, nodeRoles, nodeBoxes, testOptions)
 	fmt.Println(cmd)
 	if _, err := RunCommand(cmd); err != nil {
 		fmt.Println("Error Creating Cluster", err)
@@ -136,6 +143,18 @@ func GenKubeConfigFile(serverName string) (string, error) {
 	return kubeConfigFile, nil
 }
 
+func GetVagrantLog() string {
+	log, err := os.Open("vagrant.log")
+	if err != nil {
+		return err.Error()
+	}
+	bytes, err := ioutil.ReadAll(log)
+	if err != nil {
+		return err.Error()
+	}
+	return string(bytes)
+}
+
 func ParseNodes(kubeConfig string, print bool) ([]Node, error) {
 	nodes := make([]Node, 0, 10)
 	nodeList := ""
@@ -196,25 +215,32 @@ func ParsePods(kubeconfig string, print bool) ([]Pod, error) {
 	return pods, nil
 }
 
+// RestartCluster restarts the k3s service on each node given
+func RestartCluster(nodeNames []string) error {
+	for _, nodeName := range nodeNames {
+		cmd := "sudo systemctl restart k3s"
+		if _, err := RunCmdOnNode(cmd, nodeName); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // RunCmdOnNode executes a command from within the given node
 func RunCmdOnNode(cmd string, nodename string) (string, error) {
-	runcmd := "vagrant ssh -c " + cmd + " " + nodename
+	runcmd := "vagrant ssh -c \"" + cmd + "\" " + nodename
 	return RunCommand(runcmd)
 }
 
 // RunCommand executes a command on the host
 func RunCommand(cmd string) (string, error) {
 	c := exec.Command("bash", "-c", cmd)
-	var out bytes.Buffer
-	c.Stdout = &out
-	if err := c.Run(); err != nil {
-		return "", err
-	}
-	return out.String(), nil
+	out, err := c.CombinedOutput()
+	return string(out), err
 }
 
-func UpgradeCluster(serverNodenames []string, agentNodenames []string) error {
-	for _, nodeName := range serverNodenames {
+func UpgradeCluster(serverNodeNames []string, agentNodeNames []string) error {
+	for _, nodeName := range serverNodeNames {
 		cmd := "RELEASE_CHANNEL=commit vagrant provision " + nodeName
 		fmt.Println(cmd)
 		if out, err := RunCommand(cmd); err != nil {
@@ -222,7 +248,7 @@ func UpgradeCluster(serverNodenames []string, agentNodenames []string) error {
 			return err
 		}
 	}
-	for _, nodeName := range agentNodenames {
+	for _, nodeName := range agentNodeNames {
 		cmd := "RELEASE_CHANNEL=commit vagrant provision " + nodeName
 		if _, err := RunCommand(cmd); err != nil {
 			fmt.Println("Error Upgrading Cluster", err)
