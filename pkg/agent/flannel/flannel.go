@@ -103,11 +103,15 @@ func LookupExtInterface(iface *net.Interface, netMode int) (*backend.ExternalInt
 	}
 	logrus.Debugf("The interface %s will be used by flannel", iface.Name)
 
-	ifaceAddr, err = ip.GetInterfaceIP4Addrs(iface)
-	if err != nil {
-		return nil, fmt.Errorf("failed to find IPv4 address for interface %s", iface.Name)
+	if netMode == (ipv4+ipv6) || netMode == ipv4 {
+		ifaceAddr, err = ip.GetInterfaceIP4Addrs(iface)
+		if err != nil {
+			return nil, fmt.Errorf("failed to find IPv4 address for interface %s", iface.Name)
+		}
+		logrus.Infof("The interface %s with ipv4 address %s will be used by flannel", iface.Name, ifaceAddr[0])
+	} else {
+		ifaceAddr = append(ifaceAddr, nil)
 	}
-	logrus.Infof("The interface %s with ipv4 address %s will be used by flannel", iface.Name, ifaceAddr[0])
 
 	if netMode == (ipv4 + ipv6) {
 		ifacev6Addr, err = ip.GetInterfaceIP6Addrs(iface)
@@ -116,9 +120,11 @@ func LookupExtInterface(iface *net.Interface, netMode int) (*backend.ExternalInt
 		}
 
 		logrus.Infof("Using dual-stack mode. The ipv6 address %s will be used by flannel", ifacev6Addr[0])
+	} else {
+		ifacev6Addr = append(ifacev6Addr, nil)
 	}
 	if iface.MTU == 0 {
-		return nil, fmt.Errorf("failed to determine MTU for %s interface", ifaceAddr)
+		return nil, fmt.Errorf("failed to determine MTU for %s interface", iface.Name)
 	}
 
 	return &backend.ExternalInterface{
