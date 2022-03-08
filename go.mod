@@ -9,7 +9,7 @@ replace (
 	github.com/containerd/btrfs => github.com/containerd/btrfs v1.0.0
 	github.com/containerd/cgroups => github.com/containerd/cgroups v1.0.1
 	github.com/containerd/console => github.com/containerd/console v1.0.2
-	github.com/containerd/containerd => github.com/k3s-io/containerd v1.5.9-k3s1 // k3s-release/1.5
+	github.com/containerd/containerd => github.com/k3s-io/containerd v1.5.10-k3s1 // k3s-release/1.5
 	github.com/containerd/continuity => github.com/k3s-io/continuity v0.0.0-20210309170710-f93269e0d5c1
 	github.com/containerd/fifo => github.com/containerd/fifo v1.0.0
 	github.com/containerd/go-runc => github.com/containerd/go-runc v1.0.0
@@ -77,9 +77,9 @@ require (
 	github.com/Microsoft/hcsshim v0.9.2
 	github.com/cloudnativelabs/kube-router v1.3.2
 	github.com/containerd/cgroups v1.0.1
-	github.com/containerd/containerd v1.6.0-beta.2.0.20211117185425-a776a27af54a
+	github.com/containerd/containerd v1.6.0-rc.1
 	github.com/containerd/fuse-overlayfs-snapshotter v1.0.4
-	github.com/containerd/stargz-snapshotter v0.10.1
+	github.com/containerd/stargz-snapshotter v0.11.0
 	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f
 	github.com/docker/docker v20.10.10+incompatible
 	github.com/erikdubbelboer/gspt v0.0.0-20190125194910-e68493906b83
@@ -93,7 +93,7 @@ require (
 	github.com/gorilla/websocket v1.4.2
 	github.com/k3s-io/helm-controller v0.11.7
 	github.com/k3s-io/kine v0.8.1
-	github.com/klauspost/compress v1.13.6
+	github.com/klauspost/compress v1.14.2
 	github.com/kubernetes-sigs/cri-tools v0.0.0-00010101000000-000000000000
 	github.com/lib/pq v1.10.2
 	github.com/mattn/go-sqlite3 v1.14.8
@@ -124,19 +124,19 @@ require (
 	go.etcd.io/etcd/server/v3 v3.5.1
 	golang.org/x/crypto v0.0.0-20211202192323-5770296d904e
 	golang.org/x/net v0.0.0-20211209124913-491a49abca63
-	golang.org/x/sys v0.0.0-20211216021012-1d35b9e2eb4e
-	google.golang.org/grpc v1.42.0
+	golang.org/x/sys v0.0.0-20220114195835-da31bd327af9
+	google.golang.org/grpc v1.44.0
 	gopkg.in/yaml.v2 v2.4.0
 	inet.af/tcpproxy v0.0.0-20200125044825-b6bb9b5b8252
-	k8s.io/api v0.22.7
-	k8s.io/apimachinery v0.22.7
+	k8s.io/api v0.23.3
+	k8s.io/apimachinery v0.23.3
 	k8s.io/apiserver v0.22.7
 	k8s.io/client-go v11.0.1-0.20190409021438-1a26190bd76a+incompatible
 	k8s.io/cloud-provider v0.22.7
 	k8s.io/code-generator v0.22.7 // indirect
 	k8s.io/component-base v0.22.7
 	k8s.io/controller-manager v0.22.7 // indirect
-	k8s.io/cri-api v0.23.0-alpha.4
+	k8s.io/cri-api v0.24.0-alpha.1
 	k8s.io/klog v1.0.0
 	k8s.io/kubectl v0.22.7
 	k8s.io/kubernetes v1.22.7
