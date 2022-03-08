@@ -116,7 +116,7 @@ func LookupExtInterface(iface *net.Interface, netMode int) (*backend.ExternalInt
 		if err != nil {
 			return nil, fmt.Errorf("failed to find IPv6 address for interface %s", iface.Name)
 		}
-		logrus.Infof("Using dual-stack mode. The ipv6 address %s will be used by flannel", ifacev6Addr[0])
+		logrus.Infof("The interface %s with ipv6 address %s will be used by flannel", iface.Name, ifacev6Addr[0])
 		ifaceAddr = append(ifaceAddr, nil)
 	case (ipv4 + ipv6):
 		ifaceAddr, err = ip.GetInterfaceIP4Addrs(iface)
