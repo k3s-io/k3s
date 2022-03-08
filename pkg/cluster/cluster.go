@@ -65,6 +65,9 @@ func (c *Cluster) Start(ctx context.Context) (<-chan struct{}, error) {
 			logrus.Warnf("Failed to remove this node from etcd members")
 		}
 
+		c.config.Runtime.EtcdConfig.Endpoints = strings.Split(c.config.Datastore.Endpoint, ",")
+		c.config.Runtime.EtcdConfig.TLSConfig = c.config.Datastore.Config
+
 		return ready, nil
 	}
 
