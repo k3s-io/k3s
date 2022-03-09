@@ -45,7 +45,7 @@ const (
 
 	flannelConf = `{
 	"Network": "%CIDR%",
-	"EnableIPv6": %DUALSTACK%,
+	"EnableIPv6": %IPV6_ENABLED%,
 	"EnableIPv4": %IPV4_ENABLED%,
 	"IPv6Network": "%CIDR_IPV6%",
 	"Backend": %backend%
@@ -163,11 +163,11 @@ func createFlannelConf(nodeConfig *config.Node) error {
 	confJSON := strings.ReplaceAll(flannelConf, "%IPV4_ENABLED%", ipv4Enabled)
 	if netMode == ipv4 {
 		confJSON = strings.ReplaceAll(confJSON, "%CIDR%", nodeConfig.AgentConfig.ClusterCIDR.String())
-		confJSON = strings.ReplaceAll(confJSON, "%DUALSTACK%", "false")
+		confJSON = strings.ReplaceAll(confJSON, "%IPV6_ENABLED%", "false")
 		confJSON = strings.ReplaceAll(confJSON, "%CIDR_IPV6%", emptyIPv6Network)
 	} else if netMode == (ipv4 + ipv6) {
 		confJSON = strings.ReplaceAll(confJSON, "%CIDR%", nodeConfig.AgentConfig.ClusterCIDR.String())
-		confJSON = strings.ReplaceAll(confJSON, "%DUALSTACK%", "true")
+		confJSON = strings.ReplaceAll(confJSON, "%IPV6_ENABLED%", "true")
 		for _, cidr := range nodeConfig.AgentConfig.ClusterCIDRs {
 			if utilsnet.IsIPv6(cidr.IP) {
 				// Only one ipv6 range available. This might change in future: https://github.com/kubernetes/enhancements/issues/2593
@@ -176,7 +176,7 @@ func createFlannelConf(nodeConfig *config.Node) error {
 		}
 	} else {
 		confJSON = strings.ReplaceAll(confJSON, "%CIDR%", "0.0.0.0/0")
-		confJSON = strings.ReplaceAll(confJSON, "%DUALSTACK%", "true")
+		confJSON = strings.ReplaceAll(confJSON, "%IPV6_ENABLED%", "true")
 		for _, cidr := range nodeConfig.AgentConfig.ClusterCIDRs {
 			if utilsnet.IsIPv6(cidr.IP) {
 				// Only one ipv6 range available. This might change in future: https://github.com/kubernetes/enhancements/issues/2593
