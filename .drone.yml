@@ -25,8 +25,8 @@ steps:
 - name: fossa
   image: rancher/drone-fossa:latest
   failure: ignore
-  environment:
-    FOSSA_API_KEY:
+  settings:
+    api_key:
       from_secret: FOSSA_API_KEY
   when:
     instance:
