@@ -80,6 +80,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.4.2
+	github.com/gruntwork-io/terratest v0.40.6
 	github.com/k3s-io/helm-controller v0.12.0
 	github.com/k3s-io/kine v0.8.1
 	github.com/klauspost/compress v1.14.2
