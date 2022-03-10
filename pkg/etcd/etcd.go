@@ -148,6 +148,11 @@ func (e *ETCD) SetControlConfig(ctx context.Context, config *config.Control) err
 	}
 	e.client = client
 
+	go func() {
+		<-ctx.Done()
+		e.client.Close()
+	}()
+
 	address, err := GetAdvertiseAddress(config.PrivateIP)
 	if err != nil {
 		return err
@@ -478,6 +483,11 @@ func (e *ETCD) Register(ctx context.Context, config *config.Control, handler htt
 		return nil, err
 	}
 	e.client = client
+
+	go func() {
+		<-ctx.Done()
+		e.client.Close()
+	}()
 
 	address, err := GetAdvertiseAddress(config.PrivateIP)
 	if err != nil {
@@ -1098,6 +1108,11 @@ func (e *ETCD) preSnapshotSetup(ctx context.Context, config *config.Control) err
 			return err
 		}
 		e.client = client
+
+		go func() {
+			<-ctx.Done()
+			e.client.Close()
+		}()
 	}
 	return nil
 }
@@ -1958,6 +1973,8 @@ func GetAPIServerURLsFromETCD(ctx context.Context, cfg *config.Control) ([]strin
 	if err != nil {
 		return nil, err
 	}
+	defer cl.Close()
+
 	etcdResp, err := cl.KV.Get(ctx, AddressKey)
 	if err != nil {
 		return nil, err
