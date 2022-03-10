@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/k3s-io/k3s/test/e2e"
+	"github.com/k3s-io/k3s/tests/e2e"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
