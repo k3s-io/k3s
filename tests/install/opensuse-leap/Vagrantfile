@@ -2,7 +2,7 @@
 # vi: set ft=ruby :
 #
 
-ENV['TEST_INSTALL_SH'] ||= '../../../../install.sh'
+ENV['TEST_INSTALL_SH'] ||= '../../../install.sh'
 
 Vagrant.configure("2") do |config|
   config.vagrant.plugins = {
