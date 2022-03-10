@@ -28,8 +28,12 @@ func Register(ctx context.Context, runtime *config.ControlRuntime, endpoints con
 	if err != nil {
 		return err
 	}
-
 	h.etcdClient = cl
+
+	go func() {
+		<-ctx.Done()
+		h.etcdClient.Close()
+	}()
 
 	return nil
 }
