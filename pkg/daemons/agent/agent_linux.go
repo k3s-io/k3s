@@ -96,7 +96,8 @@ func kubeletArgs(cfg *config.Agent) map[string]string {
 	if cfg.RuntimeSocket != "" {
 		argsMap["serialize-image-pulls"] = "false"
 		checkRuntimeEndpoint(cfg, argsMap)
-	} else if cfg.PauseImage != "" {
+	}
+	if cfg.PauseImage != "" {
 		argsMap["pod-infra-container-image"] = cfg.PauseImage
 	}
 	if cfg.ImageServiceSocket != "" {
