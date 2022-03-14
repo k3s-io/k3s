@@ -29,7 +29,7 @@ func checkRuntimeEndpoint(cfg *config.Agent, argsMap map[string]string) {
 
 func kubeProxyArgs(cfg *config.Agent) map[string]string {
 	bindAddress := "127.0.0.1"
-	_, IPv6only, _ := util.GetFirstString(cfg.NodeIP)
+	_, IPv6only, _ := util.GetFirstString([]string{cfg.NodeIP})
 	if IPv6only {
 		bindAddress = "::1"
 	}
@@ -52,7 +52,7 @@ func kubeProxyArgs(cfg *config.Agent) map[string]string {
 
 func kubeletArgs(cfg *config.Agent) map[string]string {
 	bindAddress := "127.0.0.1"
-	_, IPv6only, _ := util.GetFirstString(cfg.NodeIP)
+	_, IPv6only, _ := util.GetFirstString([]string{cfg.NodeIP})
 	if IPv6only {
 		bindAddress = "::1"
 	}
