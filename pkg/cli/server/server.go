@@ -198,17 +198,17 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 
 	if serverConfig.ControlConfig.PrivateIP == "" && len(cmds.AgentConfig.NodeIP) != 0 {
 		// ignoring the error here is fine since etcd will fall back to the interface's IPv4 address
-		serverConfig.ControlConfig.PrivateIP, _ = util.GetFirst4String(cmds.AgentConfig.NodeIP)
+		serverConfig.ControlConfig.PrivateIP, _, _ = util.GetFirstString(cmds.AgentConfig.NodeIP)
 	}
 
 	// if not set, try setting advertise-ip from agent node-external-ip
 	if serverConfig.ControlConfig.AdvertiseIP == "" && len(cmds.AgentConfig.NodeExternalIP) != 0 {
-		serverConfig.ControlConfig.AdvertiseIP, _ = util.GetFirst4String(cmds.AgentConfig.NodeExternalIP)
+		serverConfig.ControlConfig.AdvertiseIP, _, _ = util.GetFirstString(cmds.AgentConfig.NodeExternalIP)
 	}
 
 	// if not set, try setting advertise-up from agent node-ip
 	if serverConfig.ControlConfig.AdvertiseIP == "" && len(cmds.AgentConfig.NodeIP) != 0 {
-		serverConfig.ControlConfig.AdvertiseIP, _ = util.GetFirst4String(cmds.AgentConfig.NodeIP)
+		serverConfig.ControlConfig.AdvertiseIP, _, _ = util.GetFirstString(cmds.AgentConfig.NodeIP)
 	}
 
 	// if we ended up with any advertise-ips, ensure they're added to the SAN list;
@@ -226,14 +226,19 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		return err
 	}
 	serverConfig.ControlConfig.ServerNodeName = nodeName
-	serverConfig.ControlConfig.SANs = append(serverConfig.ControlConfig.SANs, "127.0.0.1", "localhost", nodeName)
+	serverConfig.ControlConfig.SANs = append(serverConfig.ControlConfig.SANs, "127.0.0.1", "::1", "localhost", nodeName)
 	for _, ip := range nodeIPs {
 		serverConfig.ControlConfig.SANs = append(serverConfig.ControlConfig.SANs, ip.String())
 	}
 
 	// configure ClusterIPRanges
+	_, _, IPv6only, _ := util.GetFirstIP(nodeIPs)
 	if len(cmds.ServerConfig.ClusterCIDR) == 0 {
-		cmds.ServerConfig.ClusterCIDR.Set("10.42.0.0/16")
+		clusterCIDR := "10.42.0.0/16"
+		if IPv6only {
+			clusterCIDR = "fd:42::/56"
+		}
+		cmds.ServerConfig.ClusterCIDR.Set(clusterCIDR)
 	}
 	for _, cidr := range cmds.ServerConfig.ClusterCIDR {
 		for _, v := range strings.Split(cidr, ",") {
@@ -246,15 +251,20 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	}
 
 	// set ClusterIPRange to the first IPv4 block, for legacy clients
-	clusterIPRange, err := util.GetFirst4Net(serverConfig.ControlConfig.ClusterIPRanges)
+	// unless only IPv6 range given
+	clusterIPRange, err := util.GetFirstNet(serverConfig.ControlConfig.ClusterIPRanges)
 	if err != nil {
-		return errors.Wrap(err, "cannot configure IPv4 cluster-cidr")
+		return errors.Wrap(err, "cannot configure IPv4/IPv6 cluster-cidr")
 	}
 	serverConfig.ControlConfig.ClusterIPRange = clusterIPRange
 
 	// configure ServiceIPRanges
 	if len(cmds.ServerConfig.ServiceCIDR) == 0 {
-		cmds.ServerConfig.ServiceCIDR.Set("10.43.0.0/16")
+		serviceCIDR := "10.43.0.0/16"
+		if IPv6only {
+			serviceCIDR = "fd:43::/112"
+		}
+		cmds.ServerConfig.ServiceCIDR.Set(serviceCIDR)
 	}
 	for _, cidr := range cmds.ServerConfig.ServiceCIDR {
 		for _, v := range strings.Split(cidr, ",") {
@@ -267,9 +277,10 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	}
 
 	// set ServiceIPRange to the first IPv4 block, for legacy clients
-	serviceIPRange, err := util.GetFirst4Net(serverConfig.ControlConfig.ServiceIPRanges)
+	// unless only IPv6 range given
+	serviceIPRange, err := util.GetFirstNet(serverConfig.ControlConfig.ServiceIPRanges)
 	if err != nil {
-		return errors.Wrap(err, "cannot configure IPv4 service-cidr")
+		return errors.Wrap(err, "cannot configure IPv4/IPv6 service-cidr")
 	}
 	serverConfig.ControlConfig.ServiceIPRange = serviceIPRange
 
@@ -287,7 +298,8 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 
 	// If cluster-dns CLI arg is not set, we set ClusterDNS address to be the first IPv4 ServiceCIDR network + 10,
 	// i.e. when you set service-cidr to 192.168.0.0/16 and don't provide cluster-dns, it will be set to 192.168.0.10
-	// If there are no IPv4 ServiceCIDRs, an error will be raised.
+	// If there are no IPv4 ServiceCIDRs, an IPv6 ServiceCIDRs will be used.
+	// If neither of IPv4 or IPv6 are found an error is raised.
 	if len(cmds.ServerConfig.ClusterDNS) == 0 {
 		clusterDNS, err := utilsnet.GetIndexedIP(serverConfig.ControlConfig.ServiceIPRange, 10)
 		if err != nil {
@@ -306,9 +318,10 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 			}
 		}
 		// Set ClusterDNS to the first IPv4 address, for legacy clients
-		clusterDNS, err := util.GetFirst4(serverConfig.ControlConfig.ClusterDNSs)
+		// unless only IPv6 range given
+		clusterDNS, _, _, err := util.GetFirstIP(serverConfig.ControlConfig.ClusterDNSs)
 		if err != nil {
-			return errors.Wrap(err, "cannot configure IPv4 cluster-dns address")
+			return errors.Wrap(err, "cannot configure IPv4/IPv6 cluster-dns address")
 		}
 		serverConfig.ControlConfig.ClusterDNS = clusterDNS
 	}
@@ -457,6 +470,9 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	ip := serverConfig.ControlConfig.BindAddress
 	if ip == "" {
 		ip = "127.0.0.1"
+		if IPv6only {
+			ip = "[::1]"
+		}
 	}
 
 	url := fmt.Sprintf("https://%s:%d", ip, serverConfig.ControlConfig.SupervisorPort)
@@ -515,6 +531,13 @@ func validateNetworkConfiguration(serverConfig server.Config) error {
 	}
 	if dualDNS == true {
 		return errors.New("dual-stack cluster-dns is not supported")
+	}
+
+	IPv6OnlyService, _ := util.IsIPv6OnlyCIDRs(serverConfig.ControlConfig.ServiceIPRanges)
+	if IPv6OnlyService {
+		if serverConfig.ControlConfig.DisableNPC == false {
+			return errors.New("network policy enforcement is not compatible with IPv6 only operation; server must be restarted with --disable-network-policy")
+		}
 	}
 
 	return nil
