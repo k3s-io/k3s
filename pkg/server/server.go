@@ -206,6 +206,7 @@ func coreControllers(ctx context.Context, sc *Context, config *Config) error {
 
 	if !config.ControlConfig.DisableHelmController {
 		helm.Register(ctx,
+			sc.K8s,
 			sc.Apply,
 			sc.Helm.Helm().V1().HelmChart(),
 			sc.Helm.Helm().V1().HelmChartConfig(),

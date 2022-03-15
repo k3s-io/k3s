@@ -98,7 +98,7 @@ require (
 	github.com/gorilla/websocket v1.4.2
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0 // indirect
 	github.com/jonboulle/clockwork v0.2.2 // indirect
-	github.com/k3s-io/helm-controller v0.11.7
+	github.com/k3s-io/helm-controller v0.12.0
 	github.com/k3s-io/kine v0.6.5
 	github.com/klauspost/compress v1.13.6
 	github.com/kubernetes-sigs/cri-tools v0.0.0-00010101000000-000000000000
