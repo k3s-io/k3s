@@ -11,7 +11,7 @@ import (
 
 	"github.com/k3s-io/k3s/pkg/clientaccess"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
-	testutil "github.com/k3s-io/k3s/tests/util"
+	testutil "github.com/k3s-io/k3s/tests"
 	"github.com/robfig/cron/v3"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/etcdserver"
