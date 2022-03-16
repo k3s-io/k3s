@@ -17,8 +17,8 @@ import (
 var nodeOS = flag.String("nodeOS", "generic/ubuntu2004", "VM operating system")
 var serverCount = flag.Int("serverCount", 3, "number of server nodes")
 
-//valid format: RELEASE_VERSION=v1.23.1+k3s2 or nil for latest commit from master
-var installType = flag.String("installType", "", "version or nil to use latest commit")
+// Environment Variables Info:
+// E2E_RELEASE_VERSION=v1.23.1+k3s2 or nil for latest commit from master
 
 func Test_E2EClusterValidation(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -35,7 +35,7 @@ var _ = Describe("Verify Secrets Encryption Rotation", func() {
 	Context("Cluster :", func() {
 		It("Starts up with no issues", func() {
 			var err error
-			serverNodeNames, _, err = e2e.CreateCluster(*nodeOS, *serverCount, 0, *installType)
+			serverNodeNames, _, err = e2e.CreateCluster(*nodeOS, *serverCount, 0)
 			Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog)
 			fmt.Println("CLUSTER CONFIG")
 			fmt.Println("OS:", *nodeOS)

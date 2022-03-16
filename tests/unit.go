@@ -1,4 +1,4 @@
-package util
+package tests
 
 import (
 	"net"

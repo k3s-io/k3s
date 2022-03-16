@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	testutil "github.com/k3s-io/k3s/tests/util"
+	testutil "github.com/k3s-io/k3s/tests/integration"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
