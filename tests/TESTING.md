@@ -65,7 +65,7 @@ The sub-directories therein contain fixtures for running simple clusters to asse
 
 - [Install Script](../tests/install) :arrow_right: on proposed changes to [install.sh](../install.sh) 
   - [CentOS 7](../tests/install/centos-7) (stand-in for RHEL 7)
-  - [CentOS 8](../tests/install/centos-8) (stand-in for RHEL 8)
+  - [Rocky Linux 8](../tests/install/rocky-8) (stand-in for RHEL 8)
   - [Leap 15.3](../tests/install/opensuse-microos) (stand-in for SLES)
   - [MicroOS](../tests/install/opensuse-microos) (stand-in for SLE-Micro)
   - [Ubuntu 20.04](../tests/install/ubuntu-focal) (Focal Fossa)
@@ -110,7 +110,7 @@ These can be set on the CLI or exported before invoking Vagrant:
 
 The **Install Script** tests can be run by changing to the fixture directory and invoking `vagrant up`, e.g.:
 ```shell
-cd tests/install/centos-8
+cd tests/install/rocky-8
 vagrant up
 # the following provisioners are optional. the do not run by default but are invoked
 # explicitly by github actions workflow to avoid certain timeout issues on slow runners
