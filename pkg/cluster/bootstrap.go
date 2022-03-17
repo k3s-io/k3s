@@ -325,9 +325,11 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker,
 	results := make(map[string]update)
 	for pathKey, fileData := range files {
 		path, ok := paths[pathKey]
-		if !ok {
+		if !ok || path == "" {
+			logrus.Warnf("Unable to lookup path to reconcile %s", pathKey)
 			continue
 		}
+		logrus.Debugf("Reconciling %s at '%s'", pathKey, path)
 
 		f, err := os.Open(path)
 		if err != nil {
@@ -439,7 +441,7 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker,
 		switch {
 		case res.disk:
 			updateDisk = true
-			logrus.Warn("datastore newer than " + path)
+			logrus.Warn("Datastore newer than " + path)
 		case res.db:
 			if c.config.ClusterReset {
 				logrus.Infof("Cluster reset: replacing file on disk: " + path)
@@ -448,7 +450,7 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker,
 			}
 			newerOnDisk = append(newerOnDisk, path)
 		case res.conflict:
-			logrus.Warnf("datastore / disk conflict: %s newer than in the datastore", path)
+			logrus.Warnf("Datastore / disk conflict: %s newer than in the datastore", path)
 		}
 	}
 
@@ -457,7 +459,7 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker,
 	}
 
 	if updateDisk {
-		logrus.Warn("updating bootstrap data on disk from datastore")
+		logrus.Warn("Updating bootstrap data on disk from datastore")
 		return bootstrap.WriteToDiskFromStorage(files, crb)
 	}
 
