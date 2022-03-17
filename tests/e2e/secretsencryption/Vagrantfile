@@ -11,9 +11,9 @@ NODE_MEMORY = (ENV['NODE_MEMORY'] || 1024).to_i
 NETWORK_PREFIX = "10.10.10"
 install_type = ""
 
-def provision(vm, roles, role_num, node_num)
+def provision(vm, role, role_num, node_num)
   vm.box = NODE_BOXES[node_num]
-  vm.hostname = "#{roles[0]}-#{role_num}"
+  vm.hostname = role
   # An expanded netmask is required to allow VM<-->VM communication, virtualbox defaults to /32
   vm.network "private_network", ip: "#{NETWORK_PREFIX}.#{100+node_num}", netmask: "255.255.255.0"
 
@@ -31,13 +31,13 @@ def provision(vm, roles, role_num, node_num)
   end
   vm.provision "shell", inline: "ping -c 2 k3s.io"
   
-  if roles.include?("server") && role_num == 0
+  if role.include?("server") && role_num == 0
     vm.provision 'k3s-install', type: 'k3s', run: 'once' do |k3s|
       k3s.args = %W[server --cluster-init --node-external-ip=#{NETWORK_PREFIX}.100 --flannel-iface=eth1 --secrets-encryption]
       k3s.env = %W[K3S_KUBECONFIG_MODE=0644 K3S_TOKEN=vagrant #{install_type}]
       k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
     end
-  elsif roles.include?("server") && role_num != 0
+  elsif role.include?("server") && role_num != 0
     vm.provision 'k3s-install', type: 'k3s', run: 'once' do |k3s|
       k3s.args = %W[server --server https://#{NETWORK_PREFIX}.100:6443 --flannel-iface=eth1 --secrets-encryption]
       k3s.env = %W[K3S_KUBECONFIG_MODE=0644 K3S_TOKEN=vagrant #{install_type}]
@@ -72,10 +72,9 @@ Vagrant.configure("2") do |config|
   # over the node roles themselves
   NODE_ROLES.length.times do |i|
     name = NODE_ROLES[i]
+    role_num = name.split("-", -1).pop.to_i
     config.vm.define name do |node|
-      roles = name.split("-", -1)
-      role_num = roles.pop.to_i
-      provision(node.vm, roles, role_num, i)
+      provision(node.vm, name, role_num, i)
     end
   end
 end

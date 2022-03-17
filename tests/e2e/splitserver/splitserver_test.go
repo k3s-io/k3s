@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -14,36 +15,72 @@ import (
 
 // Valid nodeOS: generic/ubuntu2004, opensuse/Leap-15.3.x86_64, dweomer/microos.amd64
 var nodeOS = flag.String("nodeOS", "generic/ubuntu2004", "VM operating system")
-var serverCount = flag.Int("serverCount", 3, "number of server nodes")
-var agentCount = flag.Int("agentCount", 2, "number of agent nodes")
+var etcdCount = flag.Int("etcdCount", 1, "number of server nodes only deploying etcd")
+var controlPlaneCount = flag.Int("controlPlaneCount", 1, "number of server nodes acting as control plane")
+var agentCount = flag.Int("agentCount", 1, "number of agent nodes")
 
 // Environment Variables Info:
-// E2E_EXTERNAL_DB: mysql or postgres, nil for embedded etcd
 // E2E_RELEASE_VERSION=v1.23.1+k3s2 or nil for latest commit from master
 
-func Test_E2EClusterValidation(t *testing.T) {
+func createSplitCluster(nodeOS string, etcdCount, controlPlaneCount, agentCount int) ([]string, []string, []string, error) {
+	etcdNodeNames := make([]string, etcdCount)
+	for i := 0; i < etcdCount; i++ {
+		etcdNodeNames[i] = "server-etcd-" + strconv.Itoa(i)
+	}
+	cpNodeNames := make([]string, controlPlaneCount)
+	for i := 0; i < controlPlaneCount; i++ {
+		cpNodeNames[i] = "server-cp-" + strconv.Itoa(i)
+	}
+	agentNodeNames := make([]string, agentCount)
+	for i := 0; i < agentCount; i++ {
+		agentNodeNames[i] = "agent-" + strconv.Itoa(i)
+	}
+	nodeRoles := strings.Join(etcdNodeNames, " ") + " " + strings.Join(cpNodeNames, " ") + " " + strings.Join(agentNodeNames, " ")
+
+	nodeRoles = strings.TrimSpace(nodeRoles)
+	nodeBoxes := strings.Repeat(nodeOS+" ", etcdCount+controlPlaneCount+agentCount)
+	nodeBoxes = strings.TrimSpace(nodeBoxes)
+
+	var testOptions string
+	for _, env := range os.Environ() {
+		if strings.HasPrefix(env, "E2E_") {
+			testOptions += " " + env
+		}
+	}
+
+	cmd := fmt.Sprintf(`E2E_NODE_ROLES="%s" E2E_NODE_BOXES="%s" %s vagrant up &> vagrant.log`, nodeRoles, nodeBoxes, testOptions)
+	fmt.Println(cmd)
+	if _, err := e2e.RunCommand(cmd); err != nil {
+		fmt.Println("Error Creating Cluster", err)
+		return nil, nil, nil, err
+	}
+	return etcdNodeNames, cpNodeNames, agentNodeNames, nil
+}
+func Test_E2ESplitServer(t *testing.T) {
 	RegisterFailHandler(Fail)
 	flag.Parse()
-	RunSpecs(t, "Create Cluster Test Suite")
+	RunSpecs(t, "Split Server Test Suite")
 }
 
 var (
-	kubeConfigFile  string
-	serverNodeNames []string
-	agentNodeNames  []string
+	kubeConfigFile string
+	etcdNodeNames  []string
+	cpNodeNames    []string
+	agentNodeNames []string
 )
 
 var _ = Describe("Verify Create", func() {
 	Context("Cluster :", func() {
 		It("Starts up with no issues", func() {
 			var err error
-			serverNodeNames, agentNodeNames, err = e2e.CreateCluster(*nodeOS, *serverCount, *agentCount)
+			etcdNodeNames, cpNodeNames, agentNodeNames, err = createSplitCluster(*nodeOS, *etcdCount, *controlPlaneCount, *agentCount)
 			Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog())
 			fmt.Println("CLUSTER CONFIG")
 			fmt.Println("OS:", *nodeOS)
-			fmt.Println("Server Nodes:", serverNodeNames)
+			fmt.Println("Etcd Server Nodes:", etcdNodeNames)
+			fmt.Println("Control Plane Server Nodes:", cpNodeNames)
 			fmt.Println("Agent Nodes:", agentNodeNames)
-			kubeConfigFile, err = e2e.GenKubeConfigFile(serverNodeNames[0])
+			kubeConfigFile, err = e2e.GenKubeConfigFile(cpNodeNames[0])
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -87,7 +124,7 @@ var _ = Describe("Verify Create", func() {
 			clusterip, _ := e2e.FetchClusterIP(kubeConfigFile, "nginx-clusterip-svc")
 			cmd := "curl -L --insecure http://" + clusterip + "/name.html"
 			fmt.Println(cmd)
-			for _, nodeName := range serverNodeNames {
+			for _, nodeName := range cpNodeNames {
 				Eventually(func(g Gomega) {
 					res, err := e2e.RunCmdOnNode(cmd, nodeName)
 					g.Expect(err).NotTo(HaveOccurred())
@@ -101,7 +138,7 @@ var _ = Describe("Verify Create", func() {
 			_, err := e2e.DeployWorkload("nodeport.yaml", kubeConfigFile, false)
 			Expect(err).NotTo(HaveOccurred(), "NodePort manifest not deployed")
 
-			for _, nodeName := range serverNodeNames {
+			for _, nodeName := range cpNodeNames {
 				nodeExternalIP, _ := e2e.FetchNodeExternalIP(nodeName)
 				cmd := "kubectl get service nginx-nodeport-svc --kubeconfig=" + kubeConfigFile + " --output jsonpath=\"{.spec.ports[0].nodePort}\""
 				nodeport, err := e2e.RunCommand(cmd)
@@ -129,7 +166,7 @@ var _ = Describe("Verify Create", func() {
 			_, err := e2e.DeployWorkload("loadbalancer.yaml", kubeConfigFile, false)
 			Expect(err).NotTo(HaveOccurred(), "Loadbalancer manifest not deployed")
 
-			for _, nodeName := range serverNodeNames {
+			for _, nodeName := range cpNodeNames {
 				ip, _ := e2e.FetchNodeExternalIP(nodeName)
 
 				cmd := "kubectl get service nginx-loadbalancer-svc --kubeconfig=" + kubeConfigFile + " --output jsonpath=\"{.spec.ports[0].port}\""
@@ -158,7 +195,7 @@ var _ = Describe("Verify Create", func() {
 			_, err := e2e.DeployWorkload("ingress.yaml", kubeConfigFile, false)
 			Expect(err).NotTo(HaveOccurred(), "Ingress manifest not deployed")
 
-			for _, nodeName := range serverNodeNames {
+			for _, nodeName := range cpNodeNames {
 				ip, _ := e2e.FetchNodeExternalIP(nodeName)
 				cmd := "curl  --header host:foo1.bar.com" + " http://" + ip + "/name.html"
 				fmt.Println(cmd)
@@ -207,66 +244,6 @@ var _ = Describe("Verify Create", func() {
 				fmt.Println(res)
 				g.Expect(res).Should(ContainSubstring("kubernetes.default.svc.cluster.local"))
 			}, "420s", "2s").Should(Succeed())
-		})
-
-		It("Verifies Local Path Provisioner storage ", func() {
-			_, err := e2e.DeployWorkload("local-path-provisioner.yaml", kubeConfigFile, false)
-			Expect(err).NotTo(HaveOccurred(), "local-path-provisioner manifest not deployed")
-
-			Eventually(func(g Gomega) {
-				cmd := "kubectl get pvc local-path-pvc --kubeconfig=" + kubeConfigFile
-				res, err := e2e.RunCommand(cmd)
-				g.Expect(err).NotTo(HaveOccurred())
-				fmt.Println(res)
-				g.Expect(res).Should(ContainSubstring("local-path-pvc"))
-				g.Expect(res).Should(ContainSubstring("Bound"))
-			}, "420s", "2s").Should(Succeed())
-
-			Eventually(func(g Gomega) {
-				cmd := "kubectl get pod volume-test --kubeconfig=" + kubeConfigFile
-				res, err := e2e.RunCommand(cmd)
-				Expect(err).NotTo(HaveOccurred())
-				fmt.Println(res)
-				g.Expect(res).Should(ContainSubstring("volume-test"))
-				g.Expect(res).Should(ContainSubstring("Running"))
-			}, "420s", "2s").Should(Succeed())
-
-			cmd := "kubectl --kubeconfig=" + kubeConfigFile + " exec volume-test -- sh -c 'echo local-path-test > /data/test'"
-			_, err = e2e.RunCommand(cmd)
-			Expect(err).NotTo(HaveOccurred())
-			fmt.Println("Data stored in pvc: local-path-test")
-
-			cmd = "kubectl delete pod volume-test --kubeconfig=" + kubeConfigFile
-			res, err := e2e.RunCommand(cmd)
-			Expect(err).NotTo(HaveOccurred())
-			fmt.Println(res)
-
-			_, err = e2e.DeployWorkload("local-path-provisioner.yaml", kubeConfigFile, false)
-			Expect(err).NotTo(HaveOccurred(), "local-path-provisioner manifest not deployed")
-
-			Eventually(func(g Gomega) {
-				cmd := "kubectl get pods -o=name -l app=local-path-provisioner --field-selector=status.phase=Running -n kube-system --kubeconfig=" + kubeConfigFile
-				res, _ := e2e.RunCommand(cmd)
-				fmt.Println(res)
-				g.Expect(res).Should(ContainSubstring("local-path-provisioner"))
-			}, "420s", "2s").Should(Succeed())
-
-			Eventually(func(g Gomega) {
-				cmd := "kubectl get pod volume-test --kubeconfig=" + kubeConfigFile
-				res, err := e2e.RunCommand(cmd)
-				g.Expect(err).NotTo(HaveOccurred())
-				fmt.Println(res)
-				g.Expect(res).Should(ContainSubstring("volume-test"))
-				g.Expect(res).Should(ContainSubstring("Running"))
-			}, "420s", "2s").Should(Succeed())
-
-			Eventually(func(g Gomega) {
-				cmd = "kubectl exec volume-test cat /data/test --kubeconfig=" + kubeConfigFile
-				res, err = e2e.RunCommand(cmd)
-				g.Expect(err).NotTo(HaveOccurred())
-				fmt.Println("Data after re-creation", res)
-				g.Expect(res).Should(ContainSubstring("local-path-test"))
-			}, "180s", "2s").Should(Succeed())
 		})
 	})
 })
