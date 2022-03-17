@@ -175,7 +175,9 @@ func ParseNodes(kubeConfig string, print bool) ([]Node, error) {
 				Status:     fields[1],
 				Roles:      fields[2],
 				InternalIP: fields[5],
-				ExternalIP: fields[6],
+			}
+			if len(fields) > 6 {
+				node.ExternalIP = fields[6]
 			}
 			nodes = append(nodes, node)
 		}
