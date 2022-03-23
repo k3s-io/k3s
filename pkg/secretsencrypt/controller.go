@@ -50,7 +50,7 @@ func Register(
 		controlConfig: controlConfig,
 		nodes:         nodes,
 		secrets:       secrets,
-		recorder:      util.BuildControllerEventRecorder(k8s, controllerAgentName),
+		recorder:      util.BuildControllerEventRecorder(k8s, controllerAgentName, metav1.NamespaceDefault),
 	}
 
 	nodes.OnChange(ctx, "reencrypt-controller", h.onChangeNode)
