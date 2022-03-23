@@ -70,7 +70,7 @@ func Register(ctx context.Context,
 		services:        kubernetes.CoreV1(),
 		daemonsets:      kubernetes.AppsV1(),
 		deployments:     kubernetes.AppsV1(),
-		recorder:        util.BuildControllerEventRecorder(kubernetes, ControllerName),
+		recorder:        util.BuildControllerEventRecorder(kubernetes, ControllerName, meta.NamespaceAll),
 	}
 
 	services.OnChange(ctx, ControllerName, h.onChangeService)
