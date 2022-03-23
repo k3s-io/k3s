@@ -45,6 +45,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/client-go/util/retry"
+	utilsnet "k8s.io/utils/net"
 )
 
 const (
@@ -727,11 +728,17 @@ func (e *ETCD) migrateFromSQLite(ctx context.Context) error {
 
 // peerURL returns the peer access address for the local node
 func (e *ETCD) peerURL() string {
+	if utilsnet.IsIPv6String(e.address) {
+		return fmt.Sprintf("https://[%s]:2380", e.address)
+	}
 	return fmt.Sprintf("https://%s:2380", e.address)
 }
 
 // clientURL returns the client access address for the local node
 func (e *ETCD) clientURL() string {
+	if utilsnet.IsIPv6String(e.address) {
+		return fmt.Sprintf("https://[%s]:2379", e.address)
+	}
 	return fmt.Sprintf("https://%s:2379", e.address)
 }
 
@@ -739,7 +746,11 @@ func (e *ETCD) clientURL() string {
 func (e *ETCD) metricsURL(expose bool) string {
 	address := "http://127.0.0.1:2381"
 	if expose {
-		address = fmt.Sprintf("http://%s:2381,%s", e.address, address)
+		if utilsnet.IsIPv6String(e.address) {
+			address = fmt.Sprintf("https://[%s]:2381,%s", e.address, address)
+		} else {
+			address = fmt.Sprintf("https://%s:2381,%s", e.address, address)
+		}
 	}
 	return address
 }
