@@ -18,7 +18,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
 	coregetter "k8s.io/client-go/kubernetes/typed/core/v1"
-	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
 )
 
@@ -57,10 +56,6 @@ func WaitForAPIServerReady(ctx context.Context, client clientset.Interface, time
 
 	err := wait.PollImmediate(time.Second, timeout, func() (bool, error) {
 		healthStatus := 0
-		// Idle connections to the apiserver are returned to a global pool between requests. Explicitly
-		// close these idle connections so that we re-connect through the loadbalancer in case the endpoints
-		// have changed.
-		restClient.(*rest.RESTClient).Client.CloseIdleConnections()
 		result := restClient.Get().AbsPath("/readyz").Do(ctx).StatusCode(&healthStatus)
 		if rerr := result.Error(); rerr != nil {
 			if errors.Is(rerr, context.Canceled) {
