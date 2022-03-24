@@ -18,8 +18,8 @@ import (
 	"github.com/rancher/k3s/pkg/secretsencrypt"
 	"github.com/rancher/wrangler/pkg/generated/controllers/core"
 	"github.com/sirupsen/logrus"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	apiserverconfigv1 "k8s.io/apiserver/pkg/apis/config/v1"
 	"k8s.io/utils/pointer"
 )
@@ -300,40 +300,31 @@ func getEncryptionHashAnnotation(core core.Interface) (string, string, error) {
 	if err != nil {
 		return "", "", err
 	}
-	ann := node.Annotations[secretsencrypt.EncryptionHashAnnotation]
-	split := strings.Split(ann, "-")
-	if len(split) != 2 {
-		return "", "", fmt.Errorf("invalid annotation %s found on node %s", ann, node.ObjectMeta.Name)
+	if _, ok := node.Labels[ControlPlaneRoleLabelKey]; !ok {
+		return "", "", fmt.Errorf("cannot manage secrets encryption on non control-plane node %s", nodeName)
 	}
-	return split[0], split[1], nil
-}
-
-func getServerNodes(core core.Interface) ([]corev1.Node, error) {
-	nodes, err := core.V1().Node().List(metav1.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
-	var serverNodes []corev1.Node
-	for _, node := range nodes.Items {
-		if v, ok := node.Labels[ControlPlaneRoleLabelKey]; ok && v == "true" {
-			serverNodes = append(serverNodes, node)
+	if ann, ok := node.Annotations[secretsencrypt.EncryptionHashAnnotation]; ok {
+		split := strings.Split(ann, "-")
+		if len(split) != 2 {
+			return "", "", fmt.Errorf("invalid annotation %s found on node %s", ann, nodeName)
 		}
+		return split[0], split[1], nil
 	}
-	return serverNodes, nil
+	return "", "", fmt.Errorf("missing annotation on node %s", nodeName)
 }
 
 // verifyEncryptionHashAnnotation checks that all nodes are on the same stage,
 // and that a request for new stage is valid
 func verifyEncryptionHashAnnotation(runtime *config.ControlRuntime, core core.Interface, prevStage string) error {
-
 	var firstHash string
 	var firstNodeName string
 	first := true
-	serverNodes, err := getServerNodes(core)
+	labelSelector := labels.Set{ControlPlaneRoleLabelKey: "true"}.String()
+	nodes, err := core.V1().Node().List(metav1.ListOptions{LabelSelector: labelSelector})
 	if err != nil {
 		return err
 	}
-	for _, node := range serverNodes {
+	for _, node := range nodes.Items {
 		hash, ok := node.Annotations[secretsencrypt.EncryptionHashAnnotation]
 		if ok && first {
 			firstHash = hash
@@ -358,14 +349,17 @@ func verifyEncryptionHashAnnotation(runtime *config.ControlRuntime, core core.In
 		return err
 	}
 	if !strings.Contains(prevStage, oldStage) {
-		return fmt.Errorf("incorrect stage: %s found on node %s", oldStage, serverNodes[0].ObjectMeta.Name)
+		return fmt.Errorf("incorrect stage: %s found on node %s", oldStage, nodes.Items[0].ObjectMeta.Name)
 	} else if oldHash != encryptionConfigHash {
-		return fmt.Errorf("invalid hash: %s found on node %s", oldHash, serverNodes[0].ObjectMeta.Name)
+		return fmt.Errorf("invalid hash: %s found on node %s", oldHash, nodes.Items[0].ObjectMeta.Name)
 	}
 
 	return nil
 }
 
+// genErrorMessage sends and logs a random error ID so that logs can be correlated
+// between the REST API (which does not provide any detailed error output, to avoid
+// information disclosure) and the server logs.
 func genErrorMessage(resp http.ResponseWriter, statusCode int, passedErr error) {
 	errID, err := rand.Int(rand.Reader, big.NewInt(99999))
 	if err != nil {
@@ -373,7 +367,7 @@ func genErrorMessage(resp http.ResponseWriter, statusCode int, passedErr error) 
 		resp.Write([]byte(err.Error()))
 		return
 	}
-	logrus.Warnf("secrets-encrypt-%s: %s", errID.String(), passedErr.Error())
+	logrus.Warnf("secrets-encrypt error ID %05d: %s", errID, passedErr.Error())
 	resp.WriteHeader(statusCode)
-	resp.Write([]byte(fmt.Sprintf("error secrets-encrypt-%s: see server logs for more info", errID.String())))
+	resp.Write([]byte(fmt.Sprintf("secrets-encrypt error ID %05d", errID)))
 }
