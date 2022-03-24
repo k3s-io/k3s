@@ -16,6 +16,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/secretsencrypt"
 	"github.com/k3s-io/k3s/pkg/server"
 	"github.com/k3s-io/k3s/pkg/version"
+	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 	"k8s.io/utils/pointer"
 )
@@ -41,6 +42,10 @@ func commandPrep(app *cli.Context, cfg *cmds.Server) (*clientaccess.Info, error)
 	return clientaccess.ParseAndValidateTokenForUser(cmds.ServerConfig.ServerURL, cfg.Token, "server")
 }
 
+func wrapServerError(err error) error {
+	return errors.Wrap(err, "see server log for details")
+}
+
 func Enable(app *cli.Context) error {
 	var err error
 	if err = cmds.InitLogging(); err != nil {
@@ -55,7 +60,7 @@ func Enable(app *cli.Context) error {
 		return err
 	}
 	if err = info.Put("/v1-"+version.Program+"/encrypt/config", b); err != nil {
-		return err
+		return wrapServerError(err)
 	}
 	fmt.Println("secrets-encryption enabled")
 	return nil
@@ -75,7 +80,7 @@ func Disable(app *cli.Context) error {
 		return err
 	}
 	if err = info.Put("/v1-"+version.Program+"/encrypt/config", b); err != nil {
-		return err
+		return wrapServerError(err)
 	}
 	fmt.Println("secrets-encryption disabled")
 	return nil
@@ -91,7 +96,7 @@ func Status(app *cli.Context) error {
 	}
 	data, err := info.Get("/v1-" + version.Program + "/encrypt/status")
 	if err != nil {
-		return err
+		return wrapServerError(err)
 	}
 	status := server.EncryptionState{}
 	if err := json.Unmarshal(data, &status); err != nil {
@@ -159,7 +164,7 @@ func Prepare(app *cli.Context) error {
 		return err
 	}
 	if err = info.Put("/v1-"+version.Program+"/encrypt/config", b); err != nil {
-		return err
+		return wrapServerError(err)
 	}
 	fmt.Println("prepare completed successfully")
 	return nil
@@ -181,7 +186,7 @@ func Rotate(app *cli.Context) error {
 		return err
 	}
 	if err = info.Put("/v1-"+version.Program+"/encrypt/config", b); err != nil {
-		return err
+		return wrapServerError(err)
 	}
 	fmt.Println("rotate completed successfully")
 	return nil
@@ -205,7 +210,7 @@ func Reencrypt(app *cli.Context) error {
 		return err
 	}
 	if err = info.Put("/v1-"+version.Program+"/encrypt/config", b); err != nil {
-		return err
+		return wrapServerError(err)
 	}
 	fmt.Println("reencryption started")
 	return nil
