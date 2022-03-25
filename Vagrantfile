@@ -40,7 +40,11 @@ Vagrant.configure("2") do |config|
   if Vagrant.has_plugin?("vagrant-timezone")
     config.timezone.value = :host
   end
-  config.vm.synced_folder HOME, HOME, type: MOUNT_TYPE
+  if "#{MOUNT_TYPE}" == "nfs"
+    config.vm.synced_folder HOME, HOME, type: "nfs", mount_options: ["vers=3,tcp"]
+  else
+    config.vm.synced_folder HOME, HOME, type: MOUNT_TYPE
+  end
 
   if NUM_NODES==0
     provision(config.vm, 0)
