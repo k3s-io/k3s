@@ -162,9 +162,10 @@ func (e *ETCD) SetControlConfig(ctx context.Context, config *config.Control) err
 	return e.setName(false)
 }
 
-// Test ensures that the local node is a voting member of the target cluster.
+// Test ensures that the local node is a voting member of the target cluster,
+// and that the datastore is defragmented and not in maintenance mode due to alarms.
 // If it is still a learner or not a part of the cluster, an error is raised.
-// If it has any alarms that cannot be disarmed, an error is raised.
+// If it cannot be defragmented or has any alarms that cannot be disarmed, an error is raised.
 func (e *ETCD) Test(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, testTimeout)
 	defer cancel()
@@ -179,8 +180,22 @@ func (e *ETCD) Test(ctx context.Context) error {
 		return errors.New("this server has not yet been promoted from learner to voting member")
 	}
 
+	if err := e.defragment(ctx); err != nil {
+		return errors.Wrap(err, "failed to defragment etcd database")
+	}
+
 	if err := e.clearAlarms(ctx); err != nil {
 		return errors.Wrap(err, "failed to report and disarm etcd alarms")
+	}
+
+	// refresh status to see if any errors remain after clearing alarms
+	status, err = e.client.Status(ctx, endpoints[0])
+	if err != nil {
+		return err
+	}
+
+	if len(status.Errors) > 0 {
+		return fmt.Errorf("etcd cluster errors: %s", strings.Join(status.Errors, ", "))
 	}
 
 	members, err := e.client.MemberList(ctx)
@@ -777,13 +792,10 @@ func (e *ETCD) cluster(ctx context.Context, forceNew bool, options executor.Init
 func (e *ETCD) StartEmbeddedTemporary(ctx context.Context) error {
 	etcdDataDir := DBDir(e.config)
 	tmpDataDir := etcdDataDir + "-tmp"
-
 	os.RemoveAll(tmpDataDir)
-	if err := os.Mkdir(tmpDataDir, 0700); err != nil {
-		return err
-	}
 
-	defer func() {
+	go func() {
+		<-ctx.Done()
 		if err := os.RemoveAll(tmpDataDir); err != nil {
 			logrus.Warnf("Failed to remove etcd temp dir: %v", err)
 		}
@@ -813,7 +825,7 @@ func (e *ETCD) StartEmbeddedTemporary(ctx context.Context) error {
 		ElectionTimeout:     5000,
 		Name:                e.name,
 		LogOutputs:          []string{"stderr"},
-	}, nil)
+	}, append(e.config.ExtraAPIArgs, "--max-snapshots=0", "--max-wals=0"))
 }
 
 func addPort(address string, offset int) (string, error) {
@@ -1014,25 +1026,32 @@ func (e *ETCD) clearAlarms(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("etcd alarm list failed: %v", err)
 	}
-	if len(alarmList.Alarms) == 0 {
-		return nil
+
+	for _, alarm := range alarmList.Alarms {
+		logrus.Warnf("Alarm on etcd member %d: %s", alarm.MemberID, alarm.Alarm)
 	}
 
-	var hasAlarm bool
-	for _, alarm := range alarmList.Alarms {
-		if alarmList.Header.MemberId != alarm.MemberID {
-			continue
-		}
-		logrus.Warnf("Alarm on etcd server: %s", alarm.Alarm)
-		hasAlarm = true
-	}
-	if hasAlarm {
+	if len(alarmList.Alarms) > 0 {
 		if _, err := e.client.AlarmDisarm(ctx, &clientv3.AlarmMember{}); err != nil {
 			return fmt.Errorf("etcd alarm disarm failed: %v", err)
 		}
 		logrus.Infof("Alarms disarmed on etcd server")
 	}
 	return nil
+}
+
+func (e *ETCD) defragment(ctx context.Context) error {
+	ctx, cancel := context.WithTimeout(ctx, testTimeout)
+	defer cancel()
+
+	if e.client == nil {
+		return errors.New("etcd client was nil")
+	}
+
+	logrus.Infof("Defragmenting etcd database")
+	endpoints := getEndpoints(e.config.Runtime)
+	_, err := e.client.Defragment(ctx, endpoints[0])
+	return err
 }
 
 // clientURLs returns a list of all non-learner etcd cluster member client access URLs.
