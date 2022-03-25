@@ -572,7 +572,9 @@ func (c *Cluster) reconcileEtcd(ctx context.Context) error {
 	if err := e.SetControlConfig(reconcileCtx, c.config); err != nil {
 		return err
 	}
-	e.StartEmbeddedTemporary(reconcileCtx)
+	if err := e.StartEmbeddedTemporary(reconcileCtx); err != nil {
+		return err
+	}
 
 	for {
 		if err := e.Test(reconcileCtx); err != nil && !errors.Is(err, etcd.ErrNotMember) {
