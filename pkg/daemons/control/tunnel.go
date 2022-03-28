@@ -9,13 +9,20 @@ import (
 
 	"github.com/rancher/remotedialer"
 	"github.com/rancher/wrangler/pkg/kv"
+	"github.com/sirupsen/logrus"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/kubernetes/cmd/kube-apiserver/app"
 )
 
+func loggingErrorWriter(rw http.ResponseWriter, req *http.Request, code int, err error) {
+	logrus.Debugf("remoteDialer error: %d %v", code, err)
+	rw.WriteHeader(code)
+	rw.Write([]byte(err.Error()))
+}
+
 func setupTunnel() http.Handler {
-	tunnelServer := remotedialer.New(authorizer, remotedialer.DefaultErrorWriter)
+	tunnelServer := remotedialer.New(authorizer, loggingErrorWriter)
 	setupProxyDialer(tunnelServer)
 	return tunnelServer
 }
