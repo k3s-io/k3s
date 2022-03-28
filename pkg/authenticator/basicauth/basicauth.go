@@ -20,17 +20,16 @@ import (
 	"errors"
 	"net/http"
 
-	localAuthenticator "github.com/rancher/k3s/pkg/authenticator"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 )
 
 // Authenticator authenticates requests using basic auth
 type Authenticator struct {
-	auth localAuthenticator.Password
+	auth Password
 }
 
 // New returns a request authenticator that validates credentials using the provided password authenticator
-func New(auth localAuthenticator.Password) *Authenticator {
+func New(auth Password) *Authenticator {
 	return &Authenticator{auth}
 }
 
