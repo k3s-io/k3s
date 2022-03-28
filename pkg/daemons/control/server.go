@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/k3s-io/k3s/pkg/authenticator"
 	"github.com/k3s-io/k3s/pkg/cluster"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/daemons/control/deps"
@@ -56,11 +57,15 @@ func Server(ctx context.Context, cfg *config.Control) error {
 	cfg.Runtime.Tunnel = setupTunnel()
 	proxyutil.DisableProxyHostnameCheck = true
 
-	basicAuth, err := basicAuthenticator(cfg.Runtime.PasswdFile)
+	authArgs := []string{
+		"--basic-auth-file=" + cfg.Runtime.PasswdFile,
+		"--client-ca-file=" + cfg.Runtime.ClientCA,
+	}
+	auth, err := authenticator.FromArgs(authArgs)
 	if err != nil {
 		return err
 	}
-	cfg.Runtime.Authenticator = basicAuth
+	cfg.Runtime.Authenticator = auth
 
 	if !cfg.DisableAPIServer {
 		go waitForAPIServerHandlers(ctx, cfg.Runtime)
@@ -399,7 +404,7 @@ func waitForAPIServerHandlers(ctx context.Context, runtime *config.ControlRuntim
 	if err != nil {
 		logrus.Fatalf("Failed to get request handlers from apiserver: %v", err)
 	}
-	runtime.Authenticator = combineAuthenticators(runtime.Authenticator, auth)
+	runtime.Authenticator = authenticator.Combine(runtime.Authenticator, auth)
 	runtime.APIServer = handler
 }
 
