@@ -78,6 +78,29 @@ RETRY:
 	}
 }
 
+// APIServers returns a list of apiserver endpoints, suitable for seeding client loadbalancer configurations.
+// This function will block until it can return a populated list of apiservers, or if the remote server returns
+// an error (indicating that it does not support this functionality).
+func APIServers(ctx context.Context, node *config.Node, proxy proxy.Proxy) []string {
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+RETRY:
+	for {
+		addresses, err := getAPIServers(ctx, node, proxy)
+		if err != nil {
+			logrus.Infof("Failed to retrieve list of apiservers from server: %v", err)
+			return nil
+		}
+		if len(addresses) == 0 {
+			logrus.Infof("Waiting for apiserver addresses")
+			for range ticker.C {
+				continue RETRY
+			}
+		}
+		return addresses
+	}
+}
+
 type HTTPRequester func(u string, client *http.Client, username, password string) ([]byte, error)
 
 func Request(path string, info *clientaccess.Info, requester HTTPRequester) ([]byte, error) {
@@ -568,6 +591,22 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	}
 
 	return nodeConfig, nil
+}
+
+// getAPIServers attempts to return a list of apiservers from the server.
+func getAPIServers(ctx context.Context, node *config.Node, proxy proxy.Proxy) ([]string, error) {
+	info, err := clientaccess.ParseAndValidateToken(proxy.SupervisorURL(), node.Token)
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := info.Get("/v1-" + version.Program + "/apiservers")
+	if err != nil {
+		return nil, err
+	}
+
+	endpoints := []string{}
+	return endpoints, json.Unmarshal(data, &endpoints)
 }
 
 // getKubeProxyDisabled attempts to return the DisableKubeProxy setting from the server configuration data.
