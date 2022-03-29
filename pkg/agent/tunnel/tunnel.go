@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	agentconfig "github.com/k3s-io/k3s/pkg/agent/config"
 	"github.com/k3s-io/k3s/pkg/agent/proxy"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/util"
@@ -53,14 +54,18 @@ func Setup(ctx context.Context, config *config.Node, proxy proxy.Proxy) error {
 		return err
 	}
 
-	// Do an immediate fill of proxy addresses from the server endpoint list, before going into the
-	// watch loop. This will fail on the first server, as the apiserver won't be started yet - but
-	// that's fine because the local server is already seeded into the proxy address list.
-	endpoint, _ := client.CoreV1().Endpoints("default").Get(ctx, "kubernetes", metav1.GetOptions{})
-	if endpoint != nil {
-		addresses := util.GetAddresses(endpoint)
-		if len(addresses) > 0 {
-			proxy.Update(util.GetAddresses(endpoint))
+	// Try to get a list of apiservers from the server we're connecting to. If that fails, fall back to
+	// querying the endpoints list from Kubernetes. This fallback requires that the server we're joining be
+	// running an apiserver, but is the only safe thing to do if its supervisor is down-level and can't provide us
+	// with an endpoint list.
+	if addresses := agentconfig.APIServers(ctx, config, proxy); len(addresses) > 0 {
+		proxy.SetSupervisorDefault(addresses[0])
+		proxy.Update(addresses)
+	} else {
+		if endpoint, _ := client.CoreV1().Endpoints("default").Get(ctx, "kubernetes", metav1.GetOptions{}); endpoint != nil {
+			if addresses := util.GetAddresses(endpoint); len(addresses) > 0 {
+				proxy.Update(addresses)
+			}
 		}
 	}
 
