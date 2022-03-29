@@ -206,6 +206,10 @@ func RunStandalone(ctx context.Context, cfg cmds.Agent) error {
 		close(cfg.AgentReady)
 	}
 
+	if err := tunnel.Setup(ctx, nodeConfig, proxy); err != nil {
+		return err
+	}
+
 	<-ctx.Done()
 	return ctx.Err()
 }
