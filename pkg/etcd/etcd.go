@@ -614,18 +614,20 @@ func getClientConfig(ctx context.Context, runtime *config.ControlRuntime, endpoi
 	if len(endpoints) == 0 {
 		endpoints = getEndpoints(runtime)
 	}
-	tlsConfig, err := toTLSConfig(runtime)
-	if err != nil {
-		return nil, err
-	}
-	return &clientv3.Config{
+
+	config := &clientv3.Config{
 		Endpoints:            endpoints,
-		TLS:                  tlsConfig,
 		Context:              ctx,
 		DialTimeout:          defaultDialTimeout,
 		DialKeepAliveTime:    defaultKeepAliveTime,
 		DialKeepAliveTimeout: defaultKeepAliveTimeout,
-	}, nil
+	}
+
+	var err error
+	if strings.HasPrefix(endpoints[0], "https://") {
+		config.TLS, err = toTLSConfig(runtime)
+	}
+	return config, err
 }
 
 // getEndpoints returns the endpoints from the runtime config if set, otherwise the default endpoint.
