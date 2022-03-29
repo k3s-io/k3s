@@ -18,21 +18,14 @@ import (
 	"github.com/containerd/containerd/namespaces"
 	"github.com/containerd/containerd/reference/docker"
 	"github.com/natefinch/lumberjack"
-	"github.com/opencontainers/runc/libcontainer/userns"
 	"github.com/pkg/errors"
-	"github.com/rancher/k3s/pkg/agent/templates"
 	util2 "github.com/rancher/k3s/pkg/agent/util"
-	"github.com/rancher/k3s/pkg/daemons/agent"
 	"github.com/rancher/k3s/pkg/daemons/config"
-	"github.com/rancher/k3s/pkg/version"
-	"github.com/rancher/wharfie/pkg/registries"
 	"github.com/rancher/wharfie/pkg/tarfile"
 	"github.com/rancher/wrangler/pkg/merr"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/sys/unix"
 	"google.golang.org/grpc"
 	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
-	"k8s.io/kubernetes/pkg/kubelet/util"
 )
 
 const (
@@ -126,30 +119,6 @@ func WaitForContainerd(ctx context.Context, address string) error {
 	return nil
 }
 
-// criConnection connects to a CRI socket at the given path.
-func CriConnection(ctx context.Context, address string) (*grpc.ClientConn, error) {
-	addr, dialer, err := util.GetAddressAndDialer("unix://" + address)
-	if err != nil {
-		return nil, err
-	}
-
-	conn, err := grpc.Dial(addr, grpc.WithInsecure(), grpc.WithTimeout(3*time.Second), grpc.WithContextDialer(dialer), grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(maxMsgSize)))
-	if err != nil {
-		return nil, err
-	}
-
-	c := runtimeapi.NewRuntimeServiceClient(conn)
-	_, err = c.Version(ctx, &runtimeapi.VersionRequest{
-		Version: "0.1.0",
-	})
-	if err != nil {
-		conn.Close()
-		return nil, err
-	}
-
-	return conn, nil
-}
-
 // preloadImages reads the contents of the agent images directory, and attempts to
 // import into containerd any files found there. Supported compressed types are decompressed, and
 // any .txt files are processed as a list of images that should be pre-pulled from remote registries.
@@ -173,7 +142,7 @@ func preloadImages(ctx context.Context, cfg *config.Node) error {
 		return nil
 	}
 
-	client, err := containerd.New(cfg.Containerd.Address)
+	client, err := Client(cfg.Containerd.Address)
 	if err != nil {
 		return err
 	}
@@ -322,57 +291,4 @@ func prePullImages(ctx context.Context, conn *grpc.ClientConn, images io.Reader)
 		}
 	}
 	return nil
-}
-
-// setupContainerdConfig generates the containerd.toml, using a template combined with various
-// runtime configurations and registry mirror settings provided by the administrator.
-func setupContainerdConfig(ctx context.Context, cfg *config.Node) error {
-	privRegistries, err := registries.GetPrivateRegistries(cfg.AgentConfig.PrivateRegistry)
-	if err != nil {
-		return err
-	}
-
-	isRunningInUserNS := userns.RunningInUserNS()
-	_, _, hasCFS, hasPIDs := agent.CheckCgroups()
-	// "/sys/fs/cgroup" is namespaced
-	cgroupfsWritable := unix.Access("/sys/fs/cgroup", unix.W_OK) == nil
-	disableCgroup := isRunningInUserNS && (!hasCFS || !hasPIDs || !cgroupfsWritable)
-	if disableCgroup {
-		logrus.Warn("cgroup v2 controllers are not delegated for rootless. Disabling cgroup.")
-	}
-
-	var containerdTemplate string
-	containerdConfig := templates.ContainerdConfig{
-		NodeConfig:            cfg,
-		DisableCgroup:         disableCgroup,
-		IsRunningInUserNS:     isRunningInUserNS,
-		PrivateRegistryConfig: privRegistries.Registry,
-	}
-
-	selEnabled, selConfigured, err := selinuxStatus()
-	if err != nil {
-		return errors.Wrap(err, "failed to detect selinux")
-	}
-	switch {
-	case !cfg.SELinux && selEnabled:
-		logrus.Warn("SELinux is enabled on this host, but " + version.Program + " has not been started with --selinux - containerd SELinux support is disabled")
-	case cfg.SELinux && !selConfigured:
-		logrus.Warnf("SELinux is enabled for "+version.Program+" but process is not running in context '%s', "+version.Program+"-selinux policy may need to be applied", SELinuxContextType)
-	}
-
-	containerdTemplateBytes, err := ioutil.ReadFile(cfg.Containerd.Template)
-	if err == nil {
-		logrus.Infof("Using containerd template at %s", cfg.Containerd.Template)
-		containerdTemplate = string(containerdTemplateBytes)
-	} else if os.IsNotExist(err) {
-		containerdTemplate = templates.ContainerdConfigTemplate
-	} else {
-		return err
-	}
-	parsedTemplate, err := templates.ParseTemplateFromConfig(containerdTemplate, containerdConfig)
-	if err != nil {
-		return err
-	}
-
-	return util2.WriteFile(cfg.Containerd.Config, parsedTemplate)
 }
