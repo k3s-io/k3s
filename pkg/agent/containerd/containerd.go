@@ -150,7 +150,7 @@ func preloadImages(ctx context.Context, cfg *config.Node) error {
 		return nil
 	}
 
-	client, err := containerd.New(cfg.Containerd.Address)
+	client, err := Client(cfg.Containerd.Address)
 	if err != nil {
 		return err
 	}
