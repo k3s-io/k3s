@@ -134,6 +134,13 @@ func NewETCD() *ETCD {
 	}
 }
 
+func getLocalhostAddress(address string) string {
+	if utilsnet.IsIPv6String(address) {
+		return "[::1]"
+	}
+	return "127.0.0.1"
+}
+
 // EndpointName returns the name of the endpoint.
 func (e *ETCD) EndpointName() string {
 	return "etcd"
@@ -761,7 +768,7 @@ func (e *ETCD) clientURL() string {
 
 // metricsURL returns the metrics access address
 func (e *ETCD) metricsURL(expose bool) string {
-	address := "http://127.0.0.1:2381"
+	address := fmt.Sprintf("http://%s:2381", getLocalhostAddress(e.address))
 	if expose {
 		if utilsnet.IsIPv6String(e.address) {
 			address = fmt.Sprintf("https://[%s]:2381,%s", e.address, address)
@@ -778,7 +785,7 @@ func (e *ETCD) cluster(ctx context.Context, forceNew bool, options executor.Init
 		Name:                e.name,
 		InitialOptions:      options,
 		ForceNewCluster:     forceNew,
-		ListenClientURLs:    e.clientURL() + ",https://127.0.0.1:2379",
+		ListenClientURLs:    e.clientURL() + "," + fmt.Sprintf("http://%s:2379", getLocalhostAddress(e.address)),
 		ListenMetricsURLs:   e.metricsURL(e.config.EtcdExposeMetrics),
 		ListenPeerURLs:      e.peerURL(),
 		AdvertiseClientURLs: e.clientURL(),
