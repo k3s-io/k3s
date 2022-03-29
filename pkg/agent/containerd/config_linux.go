@@ -9,6 +9,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/containerd/containerd"
 	"github.com/opencontainers/runc/libcontainer/userns"
 	"github.com/pkg/errors"
 	"github.com/rancher/k3s/pkg/agent/templates"
@@ -111,4 +112,13 @@ func CriConnection(ctx context.Context, address string) (*grpc.ClientConn, error
 	}
 
 	return conn, nil
+}
+
+func Client(address string) (*containerd.Client, error) {
+	addr, _, err := util.GetAddressAndDialer("unix://" + address)
+	if err != nil {
+		return nil, err
+	}
+
+	return containerd.New(addr)
 }
