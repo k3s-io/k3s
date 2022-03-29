@@ -37,6 +37,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/net"
+	utilsnet "k8s.io/utils/net"
 )
 
 const (
@@ -91,7 +92,12 @@ func StartServer(ctx context.Context, config *Config, cfg *cmds.Server) error {
 		if err == nil {
 			ip = hostIP
 		} else {
-			ip = net2.ParseIP("127.0.0.1")
+			IPv6OnlyService, _ := util.IsIPv6OnlyCIDRs(config.ControlConfig.ServiceIPRanges)
+			if IPv6OnlyService {
+				ip = net2.ParseIP("::1")
+			} else {
+				ip = net2.ParseIP("127.0.0.1")
+			}
 		}
 	}
 
@@ -333,7 +339,12 @@ func printTokens(advertiseIP string, config *config.Control) error {
 	)
 
 	if advertiseIP == "" {
-		advertiseIP = "127.0.0.1"
+		IPv6OnlyService, _ := util.IsIPv6OnlyCIDRs(config.ServiceIPRanges)
+		if IPv6OnlyService {
+			advertiseIP = "::1"
+		} else {
+			advertiseIP = "127.0.0.1"
+		}
 	}
 
 	if len(config.Runtime.ServerToken) > 0 {
@@ -365,12 +376,24 @@ func printTokens(advertiseIP string, config *config.Control) error {
 func writeKubeConfig(certs string, config *Config) error {
 	ip := config.ControlConfig.BindAddress
 	if ip == "" {
-		ip = "127.0.0.1"
+		IPv6OnlyService, _ := util.IsIPv6OnlyCIDRs(config.ControlConfig.ServiceIPRanges)
+		if IPv6OnlyService {
+			ip = "[::1]"
+		} else {
+			ip = "127.0.0.1"
+		}
+	} else if utilsnet.IsIPv6String(ip) {
+		ip = fmt.Sprintf("[%s]", ip)
 	}
 	port := config.ControlConfig.HTTPSPort
 	// on servers without a local apiserver, tunnel access via the loadbalancer
 	if config.ControlConfig.DisableAPIServer {
-		ip = "127.0.0.1"
+		IPv6OnlyService, _ := util.IsIPv6OnlyCIDRs(config.ControlConfig.ServiceIPRanges)
+		if IPv6OnlyService {
+			ip = "[::1]"
+		} else {
+			ip = "127.0.0.1"
+		}
 		port = config.ControlConfig.APIServerPort
 	}
 	url := fmt.Sprintf("https://%s:%d", ip, port)
@@ -454,6 +477,8 @@ func printToken(httpsPort int, advertiseIP, prefix, cmd string) {
 			logrus.Errorf("Failed to choose interface: %v", err)
 		}
 		ip = hostIP.String()
+	} else if utilsnet.IsIPv6String(ip) {
+		ip = fmt.Sprintf("[%s]", ip)
 	}
 
 	logrus.Infof("%s %s %s -s https://%s:%d -t ${NODE_TOKEN}", prefix, version.Program, cmd, ip, httpsPort)

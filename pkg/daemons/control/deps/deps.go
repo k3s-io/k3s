@@ -22,6 +22,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/passwd"
 	"github.com/k3s-io/k3s/pkg/token"
+	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
 	certutil "github.com/rancher/dynamiclistener/cert"
 	"github.com/sirupsen/logrus"
@@ -305,7 +306,15 @@ func genClientCerts(config *config.Control) error {
 	factory := getSigningCertFactory(regen, nil, []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}, runtime.ClientCA, runtime.ClientCAKey)
 
 	var certGen bool
-	apiEndpoint := fmt.Sprintf("https://127.0.0.1:%d", config.APIServerPort)
+
+	IPv6OnlyService, _ := util.IsIPv6OnlyCIDRs(config.ServiceIPRanges)
+	ip := ""
+	if IPv6OnlyService {
+		ip = "[::1]"
+	} else {
+		ip = "127.0.0.1"
+	}
+	apiEndpoint := fmt.Sprintf("https://%s:%d", ip, config.APIServerPort)
 
 	certGen, err = factory("system:admin", []string{"system:masters"}, runtime.ClientAdminCert, runtime.ClientAdminKey)
 	if err != nil {

@@ -167,7 +167,7 @@ func connect(rootCtx context.Context, waitGroup *sync.WaitGroup, address string,
 		for {
 			remotedialer.ClientConnect(ctx, wsURL, nil, ws, func(proto, address string) bool {
 				host, port, err := net.SplitHostPort(address)
-				return err == nil && proto == "tcp" && ports[port] && host == "127.0.0.1"
+				return err == nil && proto == "tcp" && ports[port] && (host == "127.0.0.1" || host == "::1")
 			}, func(_ context.Context) error {
 				if waitGroup != nil {
 					once.Do(waitGroup.Done)
