@@ -140,7 +140,7 @@ type Control struct {
 	KubeConfigOutput         string
 	KubeConfigMode           string
 	DataDir                  string
-	Datastore                endpoint.Config
+	Datastore                endpoint.Config `json:"-"`
 	Disables                 map[string]bool
 	DisableAPIServer         bool
 	DisableControllerManager bool
@@ -166,25 +166,25 @@ type Control struct {
 	EncryptSkip              bool
 	TLSMinVersion            uint16
 	TLSCipherSuites          []uint16
-	EtcdSnapshotName         string
-	EtcdDisableSnapshots     bool
-	EtcdExposeMetrics        bool
-	EtcdSnapshotDir          string
-	EtcdSnapshotCron         string
-	EtcdSnapshotRetention    int
-	EtcdSnapshotCompress     bool
-	EtcdListFormat           string
-	EtcdS3                   bool
-	EtcdS3Endpoint           string
-	EtcdS3EndpointCA         string
-	EtcdS3SkipSSLVerify      bool
-	EtcdS3AccessKey          string
-	EtcdS3SecretKey          string
-	EtcdS3BucketName         string
-	EtcdS3Region             string
-	EtcdS3Folder             string
-	EtcdS3Timeout            time.Duration
-	EtcdS3Insecure           bool
+	EtcdSnapshotName         string        `json:"-"`
+	EtcdDisableSnapshots     bool          `json:"-"`
+	EtcdExposeMetrics        bool          `json:"-"`
+	EtcdSnapshotDir          string        `json:"-"`
+	EtcdSnapshotCron         string        `json:"-"`
+	EtcdSnapshotRetention    int           `json:"-"`
+	EtcdSnapshotCompress     bool          `json:"-"`
+	EtcdListFormat           string        `json:"-"`
+	EtcdS3                   bool          `json:"-"`
+	EtcdS3Endpoint           string        `json:"-"`
+	EtcdS3EndpointCA         string        `json:"-"`
+	EtcdS3SkipSSLVerify      bool          `json:"-"`
+	EtcdS3AccessKey          string        `json:"-"`
+	EtcdS3SecretKey          string        `json:"-"`
+	EtcdS3BucketName         string        `json:"-"`
+	EtcdS3Region             string        `json:"-"`
+	EtcdS3Folder             string        `json:"-"`
+	EtcdS3Timeout            time.Duration `json:"-"`
+	EtcdS3Insecure           bool          `json:"-"`
 	ServerNodeName           string
 
 	BindAddress string
