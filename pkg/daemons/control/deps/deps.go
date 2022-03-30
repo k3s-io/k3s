@@ -308,11 +308,9 @@ func genClientCerts(config *config.Control) error {
 	var certGen bool
 
 	IPv6OnlyService, _ := util.IsIPv6OnlyCIDRs(config.ServiceIPRanges)
-	ip := ""
+	ip := "127.0.0.1"
 	if IPv6OnlyService {
 		ip = "[::1]"
-	} else {
-		ip = "127.0.0.1"
 	}
 	apiEndpoint := fmt.Sprintf("https://%s:%d", ip, config.APIServerPort)
 
