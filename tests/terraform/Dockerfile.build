@@ -7,11 +7,10 @@ ENV TERRAFORM_VERSION=$TERRAFORM_VERSION
 RUN apk update && \
     apk upgrade --update-cache --available && \
     apk add curl git jq bash openssh unzip gcc g++ make ca-certificates && \
-
-RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl && \
+    curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" && \
     chmod +x ./kubectl && \
-    mv ./kubectl /usr/local/bin
-RUN mkdir tmp && \
+    mv ./kubectl /usr/local/bin && \
+    mkdir tmp && \
     curl "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip" -o tmp/terraform.zip && \
     unzip tmp/terraform.zip -d /usr/local/bin && \
     chmod +x /usr/local/bin/terraform && \

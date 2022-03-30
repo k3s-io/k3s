@@ -33,11 +33,11 @@ func BuildCluster(nodeOs, clusterType, externalDb, resourceName string, t *testi
 		vDir = "/config/" + nodeOs + externalDb + ".tfvars"
 	}
 
-	tfDir, _ := filepath.Abs(tDir)
+	tfDir, err := filepath.Abs(tDir)
 	if err != nil {
 		return "", "", "", err
 	}
-	varDir, _ := filepath.Abs(vDir)
+	varDir, err := filepath.Abs(vDir)
 	if err != nil {
 		return "", "", "", err
 	}
