@@ -24,12 +24,9 @@ func Register(ctx context.Context, runtime *config.ControlRuntime, endpoints con
 	}
 	endpoints.OnChange(ctx, version.Program+"-apiserver-lb-controller", h.sync)
 
-	cl, err := etcd.GetClient(h.ctx, h.runtime, "https://127.0.0.1:2379")
+	cl, err := etcd.GetClient(h.ctx, h.runtime)
 	if err != nil {
-		cl, err = etcd.GetClient(h.ctx, h.runtime, "https://[::1]:2379")
-		if err != nil {
-			return err
-		}
+		return err
 	}
 	h.etcdClient = cl
 
