@@ -754,9 +754,9 @@ func (e *ETCD) metricsURL(expose bool) string {
 	address := fmt.Sprintf("http://%s:2381", getLocalhostAddress(e.address))
 	if expose {
 		if utilsnet.IsIPv6String(e.address) {
-			address = fmt.Sprintf("https://[%s]:2381,%s", e.address, address)
+			address = fmt.Sprintf("http://[%s]:2381,%s", e.address, address)
 		} else {
-			address = fmt.Sprintf("https://%s:2381,%s", e.address, address)
+			address = fmt.Sprintf("http://%s:2381,%s", e.address, address)
 		}
 	}
 	return address
@@ -768,7 +768,7 @@ func (e *ETCD) cluster(ctx context.Context, forceNew bool, options executor.Init
 		Name:                e.name,
 		InitialOptions:      options,
 		ForceNewCluster:     forceNew,
-		ListenClientURLs:    e.clientURL() + "," + fmt.Sprintf("http://%s:2379", getLocalhostAddress(e.address)),
+		ListenClientURLs:    e.clientURL() + "," + fmt.Sprintf("https://%s:2379", getLocalhostAddress(e.address)),
 		ListenMetricsURLs:   e.metricsURL(e.config.EtcdExposeMetrics),
 		ListenPeerURLs:      e.peerURL(),
 		AdvertiseClientURLs: e.clientURL(),
