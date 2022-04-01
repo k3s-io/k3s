@@ -283,24 +283,78 @@ func (a ArgString) String() string {
 	return b.String()
 }
 
-// GetArgs appends extra arguments to existing arguments overriding any default options.
-func GetArgs(argsMap map[string]string, extraArgs []string) []string {
+// GetArgs appends extra arguments to existing arguments with logic to override any default
+// arguments whilst also allowing to prefix and suffix default string slice arguments.
+func GetArgs(initialArgs map[string]string, extraArgs []string) []string {
 	const hyphens = "--"
 
-	// add extra args to args map to override any default option
-	for _, arg := range extraArgs {
-		splitArg := strings.SplitN(strings.TrimPrefix(arg, hyphens), "=", 2)
-		if len(splitArg) < 2 {
-			argsMap[splitArg[0]] = "true"
-			continue
+	multiArgs := make(map[string][]string)
+
+	for _, unsplitArg := range extraArgs {
+		splitArg := strings.SplitN(strings.TrimPrefix(unsplitArg, hyphens), "=", 2)
+		arg := splitArg[0]
+		value := "true"
+		if len(splitArg) > 1 {
+			value = splitArg[1]
 		}
-		argsMap[splitArg[0]] = splitArg[1]
+
+		// After the first iteration, initial args will be empty when handling
+		// duplicate arguments as they will form part of existingValues
+		cleanedArg := strings.TrimRight(arg, "-+")
+		initialValue, initialValueExists := initialArgs[cleanedArg]
+		existingValues, existingValuesFound := multiArgs[cleanedArg]
+
+		newValues := make([]string, 0)
+		if strings.HasSuffix(arg, "+") { // Append value to initial args
+			if initialValueExists {
+				newValues = append(newValues, initialValue)
+			}
+			if existingValuesFound {
+				newValues = append(newValues, existingValues...)
+			}
+			newValues = append(newValues, value)
+
+		} else if strings.HasSuffix(arg, "-") { // Prepend value to initial args
+			newValues = append(newValues, value)
+			if initialValueExists {
+				newValues = append(newValues, initialValue)
+			}
+			if existingValuesFound {
+				newValues = append(newValues, existingValues...)
+			}
+		} else { // Append value ignoring initial args
+			if existingValuesFound {
+				newValues = append(newValues, existingValues...)
+			}
+			newValues = append(newValues, value)
+		}
+
+		delete(initialArgs, cleanedArg)
+		multiArgs[cleanedArg] = newValues
+
 	}
+
+	// Add any remaining initial args to the map
+	for arg, value := range initialArgs {
+		multiArgs[arg] = []string{value}
+	}
+
+	// Get args so we can output them sorted whilst preserving the order of
+	// repeated keys
+	var keys []string
+	for arg := range multiArgs {
+		keys = append(keys, arg)
+	}
+	sort.Strings(keys)
+
 	var args []string
-	for arg, value := range argsMap {
-		cmd := fmt.Sprintf("%s%s=%s", hyphens, strings.TrimPrefix(arg, hyphens), value)
-		args = append(args, cmd)
+	for _, arg := range keys {
+		values := multiArgs[arg]
+		for _, value := range values {
+			cmd := fmt.Sprintf("%s%s=%s", hyphens, strings.TrimPrefix(arg, hyphens), value)
+			args = append(args, cmd)
+		}
 	}
-	sort.Strings(args)
+
 	return args
 }
