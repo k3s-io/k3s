@@ -40,6 +40,7 @@ func main() {
 
 	// Handle subcommand invocation (k3s server, k3s crictl, etc)
 	app := cmds.NewApp()
+	app.EnableBashCompletion = true
 	app.Commands = []cli.Command{
 		cmds.NewServerCommand(internalCLIAction(version.Program+"-server", dataDir, os.Args)),
 		cmds.NewAgentCommand(internalCLIAction(version.Program+"-agent", dataDir, os.Args)),
@@ -67,6 +68,7 @@ func main() {
 			cmds.NewCertSubcommands(
 				certCommand),
 		),
+		cmds.NewCompletionCommand(),
 	}
 
 	if err := app.Run(os.Args); err != nil && !errors.Is(err, context.Canceled) {
