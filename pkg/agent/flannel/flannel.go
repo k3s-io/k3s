@@ -33,6 +33,7 @@ import (
 	_ "github.com/flannel-io/flannel/backend/hostgw"
 	_ "github.com/flannel-io/flannel/backend/ipsec"
 	_ "github.com/flannel-io/flannel/backend/vxlan"
+	_ "github.com/flannel-io/flannel/backend/wireguard"
 )
 
 const (
