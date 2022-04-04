@@ -74,6 +74,11 @@ const (
 	"SubnetRemoveCommand": "read PUBLICKEY; wg set flannel.1 peer $PUBLICKEY remove"
 }`
 
+	wireguardNativeBackend = `{
+	"Type": "wireguard",
+	"PersistentKeepaliveInterval": 25
+}`
+
 	emptyIPv6Network = "::/0"
 
 	ipv4 = iota
@@ -164,6 +169,8 @@ func createFlannelConf(nodeConfig *config.Node) error {
 		}
 	case config.FlannelBackendWireguard:
 		backendConf = strings.ReplaceAll(wireguardBackend, "%flannelConfDir%", filepath.Dir(nodeConfig.FlannelConfFile))
+	case config.FlannelBackendNativeWireguard:
+		backendConf = wireguardNativeBackend
 	default:
 		return fmt.Errorf("Cannot configure unknown flannel backend '%s'", nodeConfig.FlannelBackend)
 	}
