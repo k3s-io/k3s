@@ -46,7 +46,12 @@ func Server(ctx context.Context, cfg *config.Control) error {
 		return errors.Wrap(err, "preparing server")
 	}
 
-	cfg.Runtime.Tunnel = setupTunnel()
+	tunnel, err := setupTunnel(ctx, cfg)
+	if err != nil {
+		return errors.Wrap(err, "setup tunnel server")
+	}
+	cfg.Runtime.Tunnel = tunnel
+
 	proxyutil.DisableProxyHostnameCheck = true
 
 	authArgs := []string{
@@ -178,6 +183,8 @@ func apiServer(ctx context.Context, cfg *config.Control) error {
 	} else {
 		argsMap["bind-address"] = cfg.APIServerBindAddress
 	}
+	argsMap["enable-aggregator-routing"] = "true"
+	argsMap["egress-selector-config-file"] = runtime.EgressSelectorConfig
 	argsMap["tls-cert-file"] = runtime.ServingKubeAPICert
 	argsMap["tls-private-key-file"] = runtime.ServingKubeAPIKey
 	argsMap["service-account-key-file"] = runtime.ServiceKey
@@ -253,6 +260,7 @@ func prepare(ctx context.Context, config *config.Control) error {
 		return err
 	}
 
+	os.MkdirAll(filepath.Join(config.DataDir, "etc"), 0700)
 	os.MkdirAll(filepath.Join(config.DataDir, "tls"), 0700)
 	os.MkdirAll(filepath.Join(config.DataDir, "cred"), 0700)
 
