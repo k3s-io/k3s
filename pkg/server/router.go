@@ -28,6 +28,7 @@ import (
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/json"
+	"k8s.io/apiserver/pkg/authentication/user"
 )
 
 const (
@@ -58,7 +59,7 @@ func router(ctx context.Context, config *Config, cfg *cmds.Server) http.Handler 
 	}
 
 	nodeAuthed := mux.NewRouter()
-	nodeAuthed.Use(authMiddleware(serverConfig, "system:nodes"))
+	nodeAuthed.Use(authMiddleware(serverConfig, user.NodesGroup))
 	nodeAuthed.Path(prefix + "/connect").Handler(serverConfig.Runtime.Tunnel)
 	nodeAuthed.NotFoundHandler = authed
 
@@ -247,7 +248,7 @@ func clientKubeletCert(server *config.Control, keyFile string, auth nodePassBoot
 
 		cert, err := certutil.NewSignedCert(certutil.Config{
 			CommonName:   "system:node:" + nodeName,
-			Organization: []string{"system:nodes"},
+			Organization: []string{user.NodesGroup},
 			Usages:       []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
 		}, key, caCert[0], caKey)
 		if err != nil {
