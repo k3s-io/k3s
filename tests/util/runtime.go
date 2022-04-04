@@ -48,6 +48,7 @@ func GenerateRuntime(cnf *config.Control) error {
 		return err
 	}
 
+	os.MkdirAll(filepath.Join(cnf.DataDir, "etc"), 0700)
 	os.MkdirAll(filepath.Join(cnf.DataDir, "tls"), 0700)
 	os.MkdirAll(filepath.Join(cnf.DataDir, "cred"), 0700)
 

@@ -50,7 +50,7 @@ func (c *Cluster) newListener(ctx context.Context) (net.Listener, http.Handler, 
 		return nil, nil, err
 	}
 	storage := tlsStorage(ctx, c.config.DataDir, c.config.Runtime)
-	return dynamiclistener.NewListener(tcp, storage, cert, key, dynamiclistener.Config{
+	return wrapHandler(dynamiclistener.NewListener(tcp, storage, cert, key, dynamiclistener.Config{
 		ExpirationDaysCheck: config.CertificateRenewDays,
 		Organization:        []string{version.Program},
 		SANs:                append(c.config.SANs, "kubernetes", "kubernetes.default", "kubernetes.default.svc", "kubernetes.default.svc."+c.config.ClusterDomain),
@@ -69,7 +69,7 @@ func (c *Cluster) newListener(ctx context.Context) (net.Listener, http.Handler, 
 			}
 			return false
 		},
-	})
+	}))
 }
 
 // initClusterAndHTTPS sets up the dynamic tls listener, request router,
@@ -129,4 +129,19 @@ func tlsStorage(ctx context.Context, dataDir string, runtime *config.ControlRunt
 	return kubernetes.New(ctx, func() *core.Factory {
 		return runtime.Core
 	}, metav1.NamespaceSystem, version.Program+"-serving", cache)
+}
+
+// wrapHandler wraps the dynamiclistener request handler, adding a User-Agent value to
+// CONNECT requests that will prevent DynamicListener from adding the request's Host
+// header to the SAN list.  CONNECT requests set the Host header to the target of the
+// proxy connection, so it is not correct to add this value to the certificate.  It would
+// be nice if we could do this with with the FilterCN callback, but unfortunately that
+// callback does not offer access to the request that triggered the change.
+func wrapHandler(listener net.Listener, handler http.Handler, err error) (net.Listener, http.Handler, error) {
+	return listener, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodConnect {
+			r.Header.Add("User-Agent", "mozilla")
+		}
+		handler.ServeHTTP(w, r)
+	}), err
 }

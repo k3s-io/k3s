@@ -18,6 +18,7 @@ var (
 	NodeArgsAnnotation       = version.Program + ".io/node-args"
 	NodeEnvAnnotation        = version.Program + ".io/node-env"
 	NodeConfigHashAnnotation = version.Program + ".io/node-config-hash"
+	ClusterEgressLabel       = "egress." + version.Program + ".io/cluster"
 )
 
 const (
@@ -68,6 +69,10 @@ func getNodeEnv() (string, error) {
 	return string(k3sEnvJSON), nil
 }
 
+// SetNodeConfigAnnotations stores a redacted version of the k3s cli args and
+// environment variables as annotations on the node object. It also stores a
+// hash of the combined args + variables. These are used by other components
+// to determine if the node configuration has been changed.
 func SetNodeConfigAnnotations(node *corev1.Node) (bool, error) {
 	nodeArgs, err := getNodeArgs()
 	if err != nil {
@@ -95,6 +100,21 @@ func SetNodeConfigAnnotations(node *corev1.Node) (bool, error) {
 	node.Annotations[NodeArgsAnnotation] = nodeArgs
 	node.Annotations[NodeConfigHashAnnotation] = encoded
 	return true, nil
+}
+
+// SetNodeConfigLabels adds labels for functionality flags
+// that may not be present on down-level or up-level nodes.
+// These labels are used by other components to determine whether
+// or not a node supports particular functionality.
+func SetNodeConfigLabels(node *corev1.Node) (bool, error) {
+	if node.Labels == nil {
+		node.Labels = make(map[string]string)
+	}
+	if _, ok := node.Labels[ClusterEgressLabel]; !ok {
+		node.Labels[ClusterEgressLabel] = "true"
+		return true, nil
+	}
+	return false, nil
 }
 
 func isSecret(key string) bool {
