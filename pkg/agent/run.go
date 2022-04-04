@@ -315,15 +315,21 @@ func configureNode(ctx context.Context, agentConfig *daemonconfig.Agent, nodes t
 			updateNode = true
 		}
 
+		if changed, err := nodeconfig.SetNodeConfigLabels(node); err != nil {
+			return false, err
+		} else if changed {
+			updateNode = true
+		}
+
 		if updateNode {
 			if _, err := nodes.Update(ctx, node, metav1.UpdateOptions{}); err != nil {
-				logrus.Infof("Failed to update node %s: %v", agentConfig.NodeName, err)
+				logrus.Infof("Failed to set annotations and labels on node %s: %v", agentConfig.NodeName, err)
 				return false, nil
 			}
-			logrus.Infof("labels have been set successfully on node: %s", agentConfig.NodeName)
+			logrus.Infof("Annotations and labels have been set successfully on node: %s", agentConfig.NodeName)
 			return true, nil
 		}
-		logrus.Infof("labels have already set on node: %s", agentConfig.NodeName)
+		logrus.Infof("Annotations and labels have already set on node: %s", agentConfig.NodeName)
 		return true, nil
 	}
 

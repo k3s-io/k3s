@@ -44,7 +44,7 @@ func router(ctx context.Context, config *Config, cfg *cmds.Server) http.Handler 
 	nodeAuth := passwordBootstrap(ctx, config)
 
 	prefix := "/v1-" + version.Program
-	authed := mux.NewRouter()
+	authed := mux.NewRouter().SkipClean(true)
 	authed.Use(authMiddleware(serverConfig, version.Program+":agent"))
 	authed.Path(prefix + "/serving-kubelet.crt").Handler(servingKubeletCert(serverConfig, serverConfig.Runtime.ServingKubeletKey, nodeAuth))
 	authed.Path(prefix + "/client-kubelet.crt").Handler(clientKubeletCert(serverConfig, serverConfig.Runtime.ClientKubeletKey, nodeAuth))
@@ -62,22 +62,28 @@ func router(ctx context.Context, config *Config, cfg *cmds.Server) http.Handler 
 		authed.NotFoundHandler = apiserver(serverConfig.Runtime)
 	}
 
-	nodeAuthed := mux.NewRouter()
+	nodeAuthed := mux.NewRouter().SkipClean(true)
+	nodeAuthed.NotFoundHandler = authed
 	nodeAuthed.Use(authMiddleware(serverConfig, user.NodesGroup))
 	nodeAuthed.Path(prefix + "/connect").Handler(serverConfig.Runtime.Tunnel)
-	nodeAuthed.NotFoundHandler = authed
 
-	serverAuthed := mux.NewRouter()
-	serverAuthed.Use(authMiddleware(serverConfig, version.Program+":server"))
+	serverAuthed := mux.NewRouter().SkipClean(true)
 	serverAuthed.NotFoundHandler = nodeAuthed
+	serverAuthed.Use(authMiddleware(serverConfig, version.Program+":server"))
 	serverAuthed.Path(prefix + "/encrypt/status").Handler(encryptionStatusHandler(serverConfig))
 	serverAuthed.Path(prefix + "/encrypt/config").Handler(encryptionConfigHandler(ctx, serverConfig))
 	serverAuthed.Path("/db/info").Handler(nodeAuthed)
 	serverAuthed.Path(prefix + "/server-bootstrap").Handler(bootstrapHandler(serverConfig.Runtime))
 
+	systemAuthed := mux.NewRouter().SkipClean(true)
+	systemAuthed.NotFoundHandler = serverAuthed
+	systemAuthed.MethodNotAllowedHandler = serverAuthed
+	systemAuthed.Use(authMiddleware(serverConfig, user.SystemPrivilegedGroup))
+	systemAuthed.Methods(http.MethodConnect).Handler(serverConfig.Runtime.Tunnel)
+
 	staticDir := filepath.Join(serverConfig.DataDir, "static")
-	router := mux.NewRouter()
-	router.NotFoundHandler = serverAuthed
+	router := mux.NewRouter().SkipClean(true)
+	router.NotFoundHandler = systemAuthed
 	router.PathPrefix(staticURL).Handler(serveStatic(staticURL, staticDir))
 	router.Path("/cacerts").Handler(cacerts(serverConfig.Runtime.ServerCA))
 	router.Path("/ping").Handler(ping())
