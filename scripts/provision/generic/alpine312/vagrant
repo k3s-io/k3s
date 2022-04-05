@@ -15,7 +15,7 @@ EOF
 # ---
 . /tmp/docker-run
 # ---
-go get -u github.com/go-delve/delve/cmd/dlv
+go install -u github.com/go-delve/delve/cmd/dlv
 # ---
 cat <<EOF >/etc/profile.d/docker.sh
 export DOCKER_HOST=tcp://10.0.2.2:2375

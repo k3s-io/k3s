@@ -1,3 +1,4 @@
+//go:build ctrd
 // +build ctrd
 
 package containerd

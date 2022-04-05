@@ -19,7 +19,7 @@ RUN apk update && \
 WORKDIR $GOPATH/src/github.com/k3s-io/k3s
 
 COPY . .
-RUN go get github.com/gruntwork-io/terratest/modules/terraform
-RUN go get -u github.com/onsi/gomega
-RUN go get -u github.com/onsi/ginkgo/v2
-RUN go get -u golang.org/x/crypto/...
+RUN go install github.com/gruntwork-io/terratest/modules/terraform
+RUN go install -u github.com/onsi/gomega
+RUN go install -u github.com/onsi/ginkgo/v2
+RUN go install -u golang.org/x/crypto/...
