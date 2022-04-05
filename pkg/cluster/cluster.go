@@ -12,7 +12,7 @@ import (
 	"github.com/rancher/k3s/pkg/cluster/managed"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/etcd"
-	"github.com/k3s-io/k3s/pkg/util"
+	"github.com/rancher/k3s/pkg/util"
 	"github.com/sirupsen/logrus"
 )
 

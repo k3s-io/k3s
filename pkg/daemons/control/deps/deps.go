@@ -22,7 +22,7 @@ import (
 	"github.com/rancher/k3s/pkg/clientaccess"
 	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/rancher/k3s/pkg/passwd"
-	"github.com/k3s-io/k3s/pkg/util"
+	"github.com/rancher/k3s/pkg/util"
 	"github.com/rancher/k3s/pkg/token"
 	"github.com/rancher/k3s/pkg/version"
 	"github.com/sirupsen/logrus"
