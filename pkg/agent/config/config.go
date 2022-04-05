@@ -308,7 +308,8 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 
 	// If the supervisor and externally-facing apiserver are not on the same port, tell the proxy where to find the apiserver.
 	if controlConfig.SupervisorPort != controlConfig.HTTPSPort {
-		if err := proxy.SetAPIServerPort(ctx, controlConfig.HTTPSPort); err != nil {
+		_, isIPv6, _ := util.GetFirstString([]string{envInfo.NodeIP.String()})
+		if err := proxy.SetAPIServerPort(ctx, controlConfig.HTTPSPort, isIPv6); err != nil {
 			return nil, errors.Wrapf(err, "failed to setup access to API Server port %d on at %s", controlConfig.HTTPSPort, proxy.SupervisorURL())
 		}
 	}

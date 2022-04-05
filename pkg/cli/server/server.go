@@ -460,8 +460,11 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	if ip == "" {
 		ip = "127.0.0.1"
 		if IPv6only {
-			ip = "[::1]"
+			ip = "::1"
 		}
+	}
+	if utilsnet.IsIPv6String(ip) {
+		ip = fmt.Sprintf("[%s]", ip)
 	}
 
 	url := fmt.Sprintf("https://%s:%d", ip, serverConfig.ControlConfig.SupervisorPort)

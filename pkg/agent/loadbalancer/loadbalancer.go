@@ -40,9 +40,13 @@ var (
 	ETCDServerServiceName = version.Program + "-etcd-server-load-balancer"
 )
 
-func New(ctx context.Context, dataDir, serviceName, serverURL string, lbServerPort int) (_lb *LoadBalancer, _err error) {
+func New(ctx context.Context, dataDir, serviceName, serverURL string, lbServerPort int, isIPv6 bool) (_lb *LoadBalancer, _err error) {
 	config := net.ListenConfig{Control: reusePort}
-	listener, err := config.Listen(ctx, "tcp", "127.0.0.1:"+strconv.Itoa(lbServerPort))
+	localhostAddress := "127.0.0.1"
+	if isIPv6 {
+		localhostAddress = "[::1]"
+	}
+	listener, err := config.Listen(ctx, "tcp", localhostAddress+":"+strconv.Itoa(lbServerPort))
 	defer func() {
 		if _err != nil {
 			logrus.Warnf("Error starting load balancer: %s", _err)
