@@ -13,5 +13,5 @@ COPY ./tests/integration/test-runner.sh .
 COPY ./dist/artifacts/k3s /usr/local/bin
 COPY ./dist/artifacts/k3s-integration-* ./tests/
 
-RUN go get -u github.com/onsi/gomega
-RUN go get -u github.com/onsi/ginkgo
+RUN go install -u github.com/onsi/gomega
+RUN go install -u github.com/onsi/ginkgo

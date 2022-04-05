@@ -13,7 +13,7 @@ sed -E 's|apk( -U)?( --no-cache)?( --repository [^ ]*)? add|yum install -y|g' -i
 sed -E 's/-dev/-devel/g' -i /tmp/docker-run
 . /tmp/docker-run
 # ---
-go get -u github.com/go-delve/delve/cmd/dlv
+go install -u github.com/go-delve/delve/cmd/dlv
 # ---
 # docker install instructions slightly changed from https://kubernetes.io/docs/setup/production-environment/container-runtimes/
 # default "exec-opts": ["native.cgroupdriver=cgroupfs"], and set "selinux-enabled": true

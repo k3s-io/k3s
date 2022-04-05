@@ -19,5 +19,5 @@ zypper -q install -y \
 sed -E 's|apk( -U)?( --no-cache)?( --repository [^ ]*)? add .*||g' -i /tmp/docker-run
 . /tmp/docker-run
 # ---
-go get -u github.com/go-delve/delve/cmd/dlv
+go install -u github.com/go-delve/delve/cmd/dlv
 # ---
