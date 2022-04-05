@@ -315,7 +315,6 @@ func cloudControllerManager(ctx context.Context, cfg *config.Control) error {
 		"authentication-kubeconfig":    runtime.KubeConfigCloudController,
 		"node-status-update-frequency": "1m0s",
 		"bind-address":                 getLocalhostIP(cfg.ServiceIPRanges).String(),
-		"port":                         "0",
 	}
 	if cfg.NoLeaderElect {
 		argsMap["leader-elect"] = "false"
