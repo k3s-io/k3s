@@ -11,12 +11,19 @@ import (
 	v1 "k8s.io/api/core/v1"
 )
 
-func RegisterMemberHandlers(ctx context.Context, etcd *ETCD, nodes controllerv1.NodeController) {
+func registerMemberHandlers(ctx context.Context, etcd *ETCD) {
+	if etcd.config.DisableETCD {
+		return
+	}
+
+	nodes := etcd.config.Runtime.Core.Core().V1().Node()
 	e := &etcdMemberHandler{
 		etcd:           etcd,
 		nodeController: nodes,
 		ctx:            ctx,
 	}
+
+	logrus.Infof("Starting managed etcd member removal controller")
 	nodes.OnChange(ctx, "managed-etcd-controller", e.sync)
 	nodes.OnRemove(ctx, "managed-etcd-controller", e.onRemove)
 }
@@ -50,7 +57,7 @@ func (e *etcdMemberHandler) sync(key string, node *v1.Node) (*v1.Node, error) {
 			if currentNodeName, ok := node.Annotations[NodeNameAnnotation]; ok {
 				if currentNodeName != removed {
 					// If the current node name is not the same as the removed node name, reset the tainted annotation and removed node name
-					logrus.Infof("Resetting removed node flag as removed node name ( did not match current node name")
+					logrus.Infof("Resetting removed node flag as removed node name (did not match current node name")
 					delete(node.Annotations, removedNodeNameAnnotation)
 					node.Annotations[removalAnnotation] = "false"
 					return e.nodeController.Update(node)
