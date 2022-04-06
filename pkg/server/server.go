@@ -15,7 +15,6 @@ import (
 
 	"github.com/k3s-io/helm-controller/pkg/helm"
 	"github.com/pkg/errors"
-	"github.com/rancher/k3s/pkg/apiaddresses"
 	"github.com/rancher/k3s/pkg/cli/cmds"
 	"github.com/rancher/k3s/pkg/clientaccess"
 	"github.com/rancher/k3s/pkg/daemons/config"
@@ -233,10 +232,6 @@ func coreControllers(ctx context.Context, sc *Context, config *Config) error {
 		sc.Core.Core().V1().Endpoints(),
 		!config.DisableServiceLB,
 		config.Rootless); err != nil {
-		return err
-	}
-
-	if err := apiaddresses.Register(ctx, config.ControlConfig.Runtime, sc.Core.Core().V1().Endpoints()); err != nil {
 		return err
 	}
 
