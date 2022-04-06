@@ -110,7 +110,6 @@ func MigrateFile(secretClient coreclient.SecretClient, nodeClient coreclient.Nod
 			}
 		}
 	}
-	ms := time.Since(start).Milliseconds()
-	logrus.Infof("Migrated %d node password entries in %d milliseconds, average %d ms", ensured, ms, ms/ensured)
+	logrus.Infof("Migrated %d node password entries in %s", ensured, time.Since(start))
 	return os.Remove(passwordFile)
 }
