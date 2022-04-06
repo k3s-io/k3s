@@ -49,9 +49,9 @@ var _ = Describe("certificate rotation", func() {
 			Expect(testutil.K3sKillServer(server)).To(Succeed())
 		})
 		It("certificate rotate", func() {
-			Eventually(func() (string, error) {
-				return testutil.K3sCmd("certificate", "rotate")
-			}, "360s", "5s").Should(Succeed())
+			_, err := testutil.K3sCmd("certificate", "rotate", "-d", tmpdDataDir)
+			Expect(err).ToNot(HaveOccurred())
+
 		})
 		It("start k3s server", func() {
 			var err error
