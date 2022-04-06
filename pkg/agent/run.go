@@ -239,8 +239,9 @@ func createProxyAndValidateToken(ctx context.Context, cfg *cmds.Agent) (proxy.Pr
 	if err := os.MkdirAll(agentDir, 0700); err != nil {
 		return nil, err
 	}
+	_, isIPv6, _ := util.GetFirstString([]string{cfg.NodeIP.String()})
 
-	proxy, err := proxy.NewSupervisorProxy(ctx, !cfg.DisableLoadBalancer, agentDir, cfg.ServerURL, cfg.LBServerPort)
+	proxy, err := proxy.NewSupervisorProxy(ctx, !cfg.DisableLoadBalancer, agentDir, cfg.ServerURL, cfg.LBServerPort, isIPv6)
 	if err != nil {
 		return nil, err
 	}

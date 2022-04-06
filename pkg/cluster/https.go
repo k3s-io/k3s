@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net"
@@ -22,6 +23,7 @@ import (
 	"github.com/rancher/wrangler/pkg/generated/controllers/core"
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	utilsnet "k8s.io/utils/net"
 )
 
 // newListener returns a new TCP listener and HTTP request handler using dynamiclistener.
@@ -35,7 +37,11 @@ func (c *Cluster) newListener(ctx context.Context) (net.Listener, http.Handler, 
 			os.Remove(filepath.Join(c.config.DataDir, "tls/dynamic-cert.json"))
 		}
 	}
-	tcp, err := dynamiclistener.NewTCPListener(c.config.BindAddress, c.config.SupervisorPort)
+	ip := c.config.BindAddress
+	if utilsnet.IsIPv6String(ip) {
+		ip = fmt.Sprintf("[%s]", ip)
+	}
+	tcp, err := dynamiclistener.NewTCPListener(ip, c.config.SupervisorPort)
 	if err != nil {
 		return nil, nil, err
 	}
