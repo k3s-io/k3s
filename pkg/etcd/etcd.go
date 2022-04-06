@@ -522,13 +522,15 @@ func (e *ETCD) Register(ctx context.Context, config *config.Control, handler htt
 	if err := e.setName(false); err != nil {
 		return nil, err
 	}
+
 	e.config.Runtime.ClusterControllerStart = func(ctx context.Context) error {
-		RegisterMetadataHandlers(ctx, e, e.config.Runtime.Core.Core().V1().Node())
+		registerMetadataHandlers(ctx, e)
 		return nil
 	}
 
 	e.config.Runtime.LeaderElectedClusterControllerStart = func(ctx context.Context) error {
-		RegisterMemberHandlers(ctx, e, e.config.Runtime.Core.Core().V1().Node())
+		registerMemberHandlers(ctx, e)
+		registerEndpointsHandlers(ctx, e)
 		return nil
 	}
 
