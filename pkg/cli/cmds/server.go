@@ -204,7 +204,7 @@ var ServerFlags = []cli.Flag{
 	ClusterDomain,
 	cli.StringFlag{
 		Name:        "flannel-backend",
-		Usage:       "(networking) One of 'none', 'vxlan', 'ipsec', 'host-gw', or 'wireguard'",
+		Usage:       "(networking) One of 'none', 'vxlan', 'ipsec', 'host-gw', 'wireguard'(deprecated), or 'wireguard-native' (default: vxlan)",
 		Destination: &ServerConfig.FlannelBackend,
 		Value:       "vxlan",
 	},
