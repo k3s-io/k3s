@@ -9,8 +9,9 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+const tmpdDataDir = "/tmp/certrotationtest"
+
 var server, server2 *testutil.K3sServer
-var tmpdDataDir = "/tmp/certrotationtest"
 var serverArgs = []string{"--cluster-init", "-t", "test", "-d", tmpdDataDir}
 var certHash, caCertHash string
 var testLock int
