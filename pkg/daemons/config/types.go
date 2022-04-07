@@ -22,7 +22,7 @@ const (
 	FlannelBackendHostGW          = "host-gw"
 	FlannelBackendIPSEC           = "ipsec"
 	FlannelBackendWireguard       = "wireguard"
-	FlannelBackendNativeWireguard = "native-wireguard"
+	FlannelBackendWireguardNative = "wireguard-native"
 	CertificateRenewDays          = 90
 )
 
