@@ -1,4 +1,4 @@
-package snapshot_test
+package cert_rotation_test
 
 import (
 	"strings"
@@ -85,7 +85,7 @@ var _ = AfterSuite(func() {
 	}
 })
 
-func Test_IntegrationEtcdSnapshot(t *testing.T) {
+func Test_IntegrationCertRotation(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Etcd Snapshot Suite")
+	RunSpecs(t, "Cert rotation Suite")
 }
