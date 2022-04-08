@@ -1,4 +1,4 @@
-// +build linux,cgo
+//go:build linux && cgo
 
 package cmds
 

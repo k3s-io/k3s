@@ -1,4 +1,4 @@
-// +build linux darwin freebsd openbsd netbsd dragonfly
+//go:build linux || darwin || freebsd || openbsd || netbsd || dragonfly
 
 /*
 Copyright 2016 The Kubernetes Authors.
