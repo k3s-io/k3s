@@ -1,4 +1,4 @@
-// +build !no_stage
+//go:build !no_stage
 
 package cmds
 
