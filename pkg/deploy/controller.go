@@ -387,8 +387,5 @@ func shouldDisableFile(base, fileName string, disables map[string]bool) bool {
 	baseFile := filepath.Base(fileName)
 	suffix := filepath.Ext(baseFile)
 	baseName := strings.TrimSuffix(baseFile, suffix)
-	if disables[baseName] {
-		return true
-	}
-	return false
+	return disables[baseName]
 }
