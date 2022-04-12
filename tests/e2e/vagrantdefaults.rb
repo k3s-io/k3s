@@ -1,7 +1,7 @@
 def defaultOSConfigure(vm)
   box = vm.box.to_s
   if box.include?("generic/ubuntu")
-    vm.provision "Set DNS", type: "shell", inline: "systemd-resolve --set-dns=8.8.8.8 --interface=eth0"
+    vm.provision "Set DNS", type: "shell", inline: "netplan set ethernets.eth0.nameservers.addresses=[8.8.8.8,1.1.1.1]; netplan apply", run: 'once'
     vm.provision "Install jq", type: "shell", inline: "apt install -y jq"
   elsif box.include?("Leap") || box.include?("Tumbleweed")
     vm.provision "Install jq", type: "shell", inline: "zypper install -y jq"
