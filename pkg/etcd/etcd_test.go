@@ -244,7 +244,7 @@ func Test_UnitETCD_Start(t *testing.T) {
 				ctxInfo.ctx, ctxInfo.cancel = context.WithCancel(context.Background())
 				e.config.EtcdDisableSnapshots = true
 				testutil.GenerateRuntime(e.config)
-				client, err := GetClient(ctxInfo.ctx, e.config.Runtime)
+				client, err := GetClient(ctxInfo.ctx, e.config)
 				e.client = client
 
 				return err
@@ -275,7 +275,7 @@ func Test_UnitETCD_Start(t *testing.T) {
 			setup: func(e *ETCD, ctxInfo *contextInfo) error {
 				ctxInfo.ctx, ctxInfo.cancel = context.WithCancel(context.Background())
 				testutil.GenerateRuntime(e.config)
-				client, err := GetClient(ctxInfo.ctx, e.config.Runtime)
+				client, err := GetClient(ctxInfo.ctx, e.config)
 				e.client = client
 
 				return err
@@ -308,7 +308,7 @@ func Test_UnitETCD_Start(t *testing.T) {
 				if err := testutil.GenerateRuntime(e.config); err != nil {
 					return err
 				}
-				client, err := GetClient(ctxInfo.ctx, e.config.Runtime)
+				client, err := GetClient(ctxInfo.ctx, e.config)
 				if err != nil {
 					return err
 				}
