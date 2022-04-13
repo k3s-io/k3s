@@ -38,8 +38,10 @@ import (
 	"github.com/sirupsen/logrus"
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
+	"go.etcd.io/etcd/client/pkg/v3/logutil"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/etcdutl/v3/snapshot"
+	"go.uber.org/zap"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -1308,7 +1310,12 @@ func (e *ETCD) Snapshot(ctx context.Context, config *config.Control) error {
 
 	var sf *snapshotFile
 
-	if err := snapshot.NewV3(nil).Save(ctx, *cfg, snapshotPath); err != nil {
+	lg, err := logutil.CreateDefaultZapLogger(zap.InfoLevel)
+	if err != nil {
+		return err
+	}
+
+	if err := snapshot.NewV3(lg).Save(ctx, *cfg, snapshotPath); err != nil {
 		sf = &snapshotFile{
 			Name:     snapshotName,
 			Location: "",
@@ -1933,7 +1940,12 @@ func (e *ETCD) Restore(ctx context.Context) error {
 
 	logrus.Infof("Pre-restore etcd database moved to %s", oldDataDir)
 
-	return snapshot.NewV3(nil).Restore(snapshot.RestoreConfig{
+	lg, err := logutil.CreateDefaultZapLogger(zap.InfoLevel)
+	if err != nil {
+		return err
+	}
+
+	return snapshot.NewV3(lg).Restore(snapshot.RestoreConfig{
 		SnapshotPath:   restorePath,
 		Name:           e.name,
 		OutputDataDir:  DBDir(e.config),
