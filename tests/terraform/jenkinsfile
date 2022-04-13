@@ -12,7 +12,7 @@ pipeline {
         stages {
             stage('Git Checkout') {
                 steps {
-                    git branch: 'add_automation_using_tf', url: 'https://github.com/ShylajaDevadiga/k3s.git'
+                    git branch: 'master', url: 'https://github.com/k3s-io/k3s.git'
                     script {
                         dir("${WORKSPACE}/tests/terraform") {
                             if (env.AWS_SSH_PEM_KEY && env.AWS_SSH_KEY_NAME) {

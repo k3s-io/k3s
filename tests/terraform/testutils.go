@@ -78,6 +78,10 @@ func runsshCommand(cmd string, conn *ssh.Client) (string, error) {
 	var stderrBuf bytes.Buffer
 	session.Stdout = &stdoutBuf
 	session.Stderr = &stderrBuf
+	if err := session.Run(cmd); err != nil {
+		log.Println(session.Stdout)
+		log.Fatal("Error on command execution", err.Error())
+	}
 	return fmt.Sprintf("%s", stdoutBuf.String()), err
 }
 
