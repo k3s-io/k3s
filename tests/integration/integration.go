@@ -181,6 +181,8 @@ func K3sKillServer(server *K3sServer) error {
 }
 
 // K3sCleanup attempts to cleanup networking and files leftover from an integration test
+// this is similar to the k3s-killall.sh script, but we dynamically generate that on
+// install, so we don't have accces to it in testing.
 func K3sCleanup(k3sTestLock int, dataDir string) error {
 	if cni0Link, err := netlink.LinkByName("cni0"); err == nil {
 		links, _ := netlink.LinkList()
@@ -207,7 +209,7 @@ func K3sCleanup(k3sTestLock int, dataDir string) error {
 	return flock.Release(k3sTestLock)
 }
 
-// RunCommand Runs command on the cluster accessing the cluster through kubeconfig file
+// RunCommand Runs command on the host
 func RunCommand(cmd string) (string, error) {
 	c := exec.Command("bash", "-c", cmd)
 	var out bytes.Buffer
