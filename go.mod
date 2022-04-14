@@ -35,7 +35,7 @@ replace (
 	go.etcd.io/etcd/server/v3 => github.com/k3s-io/etcd/server/v3 v3.5.1-k3s1
 	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20210220033148-5ea612d1eb83
 	golang.org/x/net => golang.org/x/net v0.0.0-20210405180319-a5a99cb37ef4
-	golang.org/x/sys => golang.org/x/sys v0.0.0-20210831042530-f4d43177bf5e
+	golang.org/x/sys => golang.org/x/sys v0.0.0-20220114195835-da31bd327af9
 	google.golang.org/genproto => google.golang.org/genproto v0.0.0-20200224152610-e50cd9704f63
 	google.golang.org/grpc => google.golang.org/grpc v1.38.0
 	gopkg.in/square/go-jose.v2 => gopkg.in/square/go-jose.v2 v2.2.2

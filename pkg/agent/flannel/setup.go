@@ -75,6 +75,11 @@ const (
 	"SubnetRemoveCommand": "read PUBLICKEY; wg set flannel.1 peer $PUBLICKEY remove"
 }`
 
+	wireguardNativeBackend = `{
+	"Type": "wireguard",
+	"PersistentKeepaliveInterval": 25
+}`
+
 	emptyIPv6Network = "::/0"
 
 	ipv4 = iota
@@ -199,6 +204,9 @@ func createFlannelConf(nodeConfig *config.Node) error {
 		}
 	case config.FlannelBackendWireguard:
 		backendConf = strings.ReplaceAll(wireguardBackend, "%flannelConfDir%", filepath.Dir(nodeConfig.FlannelConfFile))
+		logrus.Warnf("The wireguard backend is deprecated and will be removed in k3s v1.26, please switch to wireguard-native. Check our docs for information about how to migrate")
+	case config.FlannelBackendWireguardNative:
+		backendConf = wireguardNativeBackend
 	default:
 		return fmt.Errorf("Cannot configure unknown flannel backend '%s'", nodeConfig.FlannelBackend)
 	}
