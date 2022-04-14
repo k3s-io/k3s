@@ -99,7 +99,7 @@ var _ = Describe("secrets encryption rotation", func() {
 				To(ContainSubstring("reencryption started"))
 			Eventually(func() (string, error) {
 				return testutil.K3sCmd("secrets-encrypt status -d", secretsEncryptionDataDir)
-			}, "30s", "2s").Should(ContainSubstring("Current Rotation Stage: reencrypt_finished"))
+			}, "45s", "2s").Should(ContainSubstring("Current Rotation Stage: reencrypt_finished"))
 			result, err := testutil.K3sCmd("secrets-encrypt status -d", secretsEncryptionDataDir)
 			Expect(err).NotTo(HaveOccurred())
 			reg, err := regexp.Compile(`AES-CBC.+aescbckey.*`)
