@@ -122,6 +122,8 @@ def getDBType(role, role_num, vm)
     if role.include?("server") && role_num == 0
       return "cluster-init: true"
     end
+  elsif ( EXTERNAL_DB == "none" )
+    next
   else
     puts "Unknown EXTERNAL_DB: " + EXTERNAL_DB
     abort
