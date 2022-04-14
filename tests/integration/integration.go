@@ -182,7 +182,7 @@ func K3sKillServer(server *K3sServer) error {
 
 // K3sCleanup attempts to cleanup networking and files leftover from an integration test
 // this is similar to the k3s-killall.sh script, but we dynamically generate that on
-// install, so we don't have accces to it in testing.
+// install, so we don't have access to it in testing.
 func K3sCleanup(k3sTestLock int, dataDir string) error {
 	if cni0Link, err := netlink.LinkByName("cni0"); err == nil {
 		links, _ := netlink.LinkList()
