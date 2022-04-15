@@ -2,7 +2,7 @@ ENV['VAGRANT_NO_PARALLEL'] = 'no'
 NODE_ROLES = (ENV['E2E_NODE_ROLES'] ||
   ["server-0", "server-1", "server-2", "agent-0", "agent-1"])
 NODE_BOXES = (ENV['E2E_NODE_BOXES'] ||
-  ['generic/ubuntu2004', 'generic/ubuntu2004', 'generic/ubuntu2004', 'generic/ubuntu2004', 'generic/ubuntu2004'])
+  ['opensuse/Leap-15.3.x86_64', 'opensuse/Leap-15.3.x86_64', 'opensuse/Leap-15.3.x86_64', 'opensuse/Leap-15.3.x86_64', 'opensuse/Leap-15.3.x86_64'])
 GITHUB_BRANCH = (ENV['E2E_GITHUB_BRANCH'] || "master")
 RELEASE_VERSION = (ENV['E2E_RELEASE_VERSION'] || "")
 EXTERNAL_DB = (ENV['E2E_EXTERNAL_DB'] || "etcd")
@@ -19,12 +19,12 @@ def provision(vm, role, role_num, node_num)
   vm.hostname = role
   # An expanded netmask is required to allow VM<-->VM communication, virtualbox defaults to /32
   node_ip = "#{NETWORK_PREFIX}.#{100+node_num}"
-  vm.network "private_network", ip: node_ip, netmask: "24"
+  vm.network "private_network", ip: node_ip, netmask: "255.255.255.0"
 
   scripts_location = Dir.exists?("./scripts") ? "./scripts" : "../scripts" 
   vagrant_defaults = File.exists?("./vagrantdefaults.rb") ? "./vagrantdefaults.rb" : "../vagrantdefaults.rb"
   load vagrant_defaults
-  
+
   defaultOSConfigure(vm)
   
   if !RELEASE_VERSION.empty?
