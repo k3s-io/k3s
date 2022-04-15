@@ -4,9 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	testutil "github.com/rancher/k3s/tests/integration"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	testutil "github.com/rancher/k3s/tests/util"
 )
 
 const tmpdDataDir = "/tmp/certrotationtest"
