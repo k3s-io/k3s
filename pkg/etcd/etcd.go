@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -47,12 +48,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/client-go/util/retry"
-	utilsnet "k8s.io/utils/net"
 )
 
 const (
-	defaultEndpoint      = "https://127.0.0.1:2379"
-	defaultEndpointv6    = "https://[::1]:2379"
 	testTimeout          = time.Second * 10
 	manageTickerTime     = time.Second * 15
 	learnerMaxStallTime  = time.Minute * 5
@@ -136,13 +134,6 @@ func NewETCD() *ETCD {
 	return &ETCD{
 		cron: cron.New(),
 	}
-}
-
-func getLocalhostAddress(address string) string {
-	if utilsnet.IsIPv6String(address) {
-		return "[::1]"
-	}
-	return "127.0.0.1"
 }
 
 // EndpointName returns the name of the endpoint.
@@ -655,10 +646,7 @@ func getEndpoints(control *config.Control) []string {
 	if len(runtime.EtcdConfig.Endpoints) > 0 {
 		return runtime.EtcdConfig.Endpoints
 	}
-	if utilsnet.IsIPv6String(control.PrivateIP) {
-		return []string{defaultEndpointv6}
-	}
-	return []string{defaultEndpoint}
+	return []string{fmt.Sprintf("https://%s:2379", control.Loopback())}
 }
 
 // toTLSConfig converts the ControlRuntime configuration to TLS configuration suitable
@@ -767,29 +755,19 @@ func (e *ETCD) migrateFromSQLite(ctx context.Context) error {
 
 // peerURL returns the peer access address for the local node
 func (e *ETCD) peerURL() string {
-	if utilsnet.IsIPv6String(e.address) {
-		return fmt.Sprintf("https://[%s]:2380", e.address)
-	}
-	return fmt.Sprintf("https://%s:2380", e.address)
+	return fmt.Sprintf("https://%s", net.JoinHostPort(e.address, "2380"))
 }
 
 // clientURL returns the client access address for the local node
 func (e *ETCD) clientURL() string {
-	if utilsnet.IsIPv6String(e.address) {
-		return fmt.Sprintf("https://[%s]:2379", e.address)
-	}
-	return fmt.Sprintf("https://%s:2379", e.address)
+	return fmt.Sprintf("https://%s", net.JoinHostPort(e.address, "2379"))
 }
 
 // metricsURL returns the metrics access address
 func (e *ETCD) metricsURL(expose bool) string {
-	address := fmt.Sprintf("http://%s:2381", getLocalhostAddress(e.address))
+	address := fmt.Sprintf("http://%s:2381", e.config.Loopback())
 	if expose {
-		if utilsnet.IsIPv6String(e.address) {
-			address = fmt.Sprintf("http://[%s]:2381,%s", e.address, address)
-		} else {
-			address = fmt.Sprintf("http://%s:2381,%s", e.address, address)
-		}
+		address = fmt.Sprintf("http://%s,%s", net.JoinHostPort(e.address, "2381"), address)
 	}
 	return address
 }
@@ -801,7 +779,7 @@ func (e *ETCD) cluster(ctx context.Context, forceNew bool, options executor.Init
 		Name:                e.name,
 		InitialOptions:      options,
 		ForceNewCluster:     forceNew,
-		ListenClientURLs:    e.clientURL() + "," + fmt.Sprintf("https://%s:2379", getLocalhostAddress(e.address)),
+		ListenClientURLs:    e.clientURL() + "," + fmt.Sprintf("https://%s:2379", e.config.Loopback()),
 		ListenMetricsURLs:   e.metricsURL(e.config.EtcdExposeMetrics),
 		ListenPeerURLs:      e.peerURL(),
 		AdvertiseClientURLs: e.clientURL(),
