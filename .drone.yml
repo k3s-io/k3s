@@ -256,6 +256,102 @@ volumes:
 
 ---
 kind: pipeline
+name: s390x
+
+platform:
+  os: linux
+  arch: amd64
+
+# Hack needed for s390x: https://gist.github.com/colstrom/c2f359f72658aaabb44150ac20b16d7c#gistcomment-3858388
+node:
+  arch: s390x
+
+clone:
+  disable: true
+
+steps:
+- name: clone
+  image: alpine/git:v2.30.2-s390x
+  commands:
+  - git clone $DRONE_GIT_HTTP_URL  .
+  - git fetch origin $DRONE_COMMIT_REF
+  - git checkout $DRONE_COMMIT -b origin/$DRONE_TARGET_BRANCH
+
+- name: build
+  image: rancher/dapper:v0.5.8
+  secrets: [ gcloud_auth ]
+  environment:
+    GCLOUD_AUTH:
+      from_secret: gcloud_auth
+  commands:
+  - dapper ci
+  - echo "${DRONE_TAG}-s390x" | sed -e 's/+/-/g' >.tags
+  volumes:
+  - name: docker
+    path: /var/run/docker.sock
+
+- name: github_binary_release
+  image: rancher/drone-images:github-release-s390x
+  settings:
+    api_key:
+      from_secret: github_token
+    prerelease: true
+    checksum:
+    - sha256
+    checksum_file: CHECKSUMsum-s390x.txt
+    checksum_flatten: true
+    files:
+    - "dist/artifacts/*"
+  when:
+    instance:
+    - drone-publish.k3s.io
+    ref:
+    - refs/head/master
+    - refs/tags/*
+    event:
+    - tag
+
+- name: docker-publish
+  image: rancher/drone-images:docker-s390x
+  volumes:
+  - name: docker
+    path: /var/run/docker.sock
+  settings:
+    dockerfile: package/Dockerfile
+    password:
+      from_secret: docker_password
+    repo: "rancher/k3s"
+    username:
+      from_secret: docker_username
+  when:
+    instance:
+    - drone-publish.k3s.io
+    ref:
+    - refs/head/master
+    - refs/tags/*
+    event:
+    - tag
+
+- name: test
+  image: rancher/dapper:v0.5.8
+  secrets: [ gcloud_auth ]
+  environment:
+    ENABLE_REGISTRY: 'true'
+    GCLOUD_AUTH:
+      from_secret: gcloud_auth
+  commands:
+  - dapper -f Dockerfile.test.dapper
+  volumes:
+  - name: docker
+    path: /var/run/docker.sock
+
+volumes:
+- name: docker
+  host:
+    path: /var/run/docker.sock
+
+---
+kind: pipeline
 name: validate_go_mods
 
 platform:
@@ -313,6 +409,7 @@ trigger:
 depends_on:
 - amd64
 - arm64
+- s390x
 - arm
 
 ---

@@ -27,6 +27,8 @@ if [ ${ARCH} = aarch64 ] || [ ${ARCH} = arm64 ]; then
     BIN_SUFFIX="-arm64"
 elif [ ${ARCH} = armv7l ] || [ ${ARCH} = arm ]; then
     BIN_SUFFIX="-armhf"
+elif [ ${ARCH} = s390x ]; then
+    BIN_SUFFIX="-s390x"
 fi
 
 # capture version of k3s

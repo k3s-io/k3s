@@ -20,7 +20,7 @@ RUN if [ "$(go env GOARCH)" = "arm64" ]; then                                   
     wget https://github.com/aquasecurity/trivy/releases/download/v0.25.3/trivy_0.25.3_Linux-ARM.tar.gz   && \
     tar -zxvf trivy_0.25.3_Linux-ARM.tar.gz                                                              && \
     mv trivy /usr/local/bin;                                                                                \
-    else                                                                                                    \
+    elif [ "$(go env GOARCH)" = "amd64" ]; then                                                             \
     wget https://github.com/aquasecurity/trivy/releases/download/v0.25.3/trivy_0.25.3_Linux-64bit.tar.gz && \
     tar -zxvf trivy_0.25.3_Linux-64bit.tar.gz                                                            && \
     mv trivy /usr/local/bin;                                                                                \

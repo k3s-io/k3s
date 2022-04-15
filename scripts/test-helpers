@@ -509,7 +509,7 @@ export -f provision-cluster
 
 provision-registry-proxy() {
     set -e -o pipefail
-    local image="docker.io/library/registry:2.7.1"
+    local image="docker.io/library/registry:2.8.1"
     local prefix="docker-registry-"
     local registries="docker.io:registry-1.docker.io k8s.gcr.io gcr.io quay.io ghcr.io"
     local registries_yaml="$TEST_DIR/registries.yaml"
