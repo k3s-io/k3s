@@ -47,7 +47,6 @@ def provision(vm, role, role_num, node_num)
         disable-controller-manager: true
         disable-scheduler: true
       YAML
-      k3s.args = "server --cluster-init --disable-apiserver --disable-controller-manager --disable-scheduler --node-external-ip=#{NETWORK_PREFIX}.100 --flannel-iface=eth1"
       k3s.env = %W[K3S_KUBECONFIG_MODE=0644 K3S_TOKEN=vagrant #{install_type}]
       k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
     end
