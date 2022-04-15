@@ -3,10 +3,10 @@ package loadbalancer
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"os"
 	"path/filepath"
-	"strconv"
 	"sync"
 
 	"github.com/k3s-io/k3s/pkg/version"
@@ -42,11 +42,13 @@ var (
 
 func New(ctx context.Context, dataDir, serviceName, serverURL string, lbServerPort int, isIPv6 bool) (_lb *LoadBalancer, _err error) {
 	config := net.ListenConfig{Control: reusePort}
-	localhostAddress := "127.0.0.1"
+	var localAddress string
 	if isIPv6 {
-		localhostAddress = "[::1]"
+		localAddress = fmt.Sprintf("[::1]:%d", lbServerPort)
+	} else {
+		localAddress = fmt.Sprintf("127.0.0.1:%d", lbServerPort)
 	}
-	listener, err := config.Listen(ctx, "tcp", localhostAddress+":"+strconv.Itoa(lbServerPort))
+	listener, err := config.Listen(ctx, "tcp", localAddress)
 	defer func() {
 		if _err != nil {
 			logrus.Warnf("Error starting load balancer: %s", _err)
@@ -58,7 +60,9 @@ func New(ctx context.Context, dataDir, serviceName, serverURL string, lbServerPo
 	if err != nil {
 		return nil, err
 	}
-	localAddress := listener.Addr().String()
+
+	// if lbServerPort was 0, the port was assigned by the OS when bound - see what we ended up with.
+	localAddress = listener.Addr().String()
 
 	defaultServerAddress, localServerURL, err := parseURL(serverURL, localAddress)
 	if err != nil {
