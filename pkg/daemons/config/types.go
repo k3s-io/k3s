@@ -11,9 +11,11 @@ import (
 	"time"
 
 	"github.com/k3s-io/kine/pkg/endpoint"
+	"github.com/rancher/k3s/pkg/util"
 	"github.com/rancher/wrangler/pkg/generated/controllers/core"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
+	utilsnet "k8s.io/utils/net"
 )
 
 const (
@@ -192,6 +194,36 @@ type Control struct {
 	SANs        []string
 	PrivateIP   string
 	Runtime     *ControlRuntime `json:"-"`
+}
+
+// BindAddressOrLoopback returns an IPv4 or IPv6 address suitable for embedding in server
+// URLs. If a bind address was configured, that is returned. If the chooseHostInterface
+// parameter is true, and a suitable default interface can be found, that interface's
+// address is returned.  If neither of the previous were used, the loopback address is
+// returned. IPv6 addresses are enclosed in square brackets, as per RFC2732.
+func (c *Control) BindAddressOrLoopback(chooseHostInterface bool) string {
+	ip := c.BindAddress
+	if ip == "" && chooseHostInterface {
+		if hostIP, _ := utilnet.ChooseHostInterface(); len(hostIP) > 0 {
+			ip = hostIP.String()
+		}
+	}
+	if utilsnet.IsIPv6String(ip) {
+		return fmt.Sprintf("[%s]", ip)
+	} else if ip != "" {
+		return ip
+	}
+	return c.Loopback()
+}
+
+// Loopback returns an IPv4 or IPv6 loopback address, depending on whether the cluster
+// service CIDRs indicate an IPv4/Dual-Stack or IPv6 only cluster.  IPv6 addresses are
+// enclosed in square brackets, as per RFC2732.
+func (c *Control) Loopback() string {
+	if IPv6OnlyService, _ := util.IsIPv6OnlyCIDRs(c.ServiceIPRanges); IPv6OnlyService {
+		return "[::1]"
+	}
+	return "127.0.0.1"
 }
 
 type ControlRuntimeBootstrap struct {
