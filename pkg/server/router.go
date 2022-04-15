@@ -69,9 +69,7 @@ func router(ctx context.Context, config *Config, cfg *cmds.Server) http.Handler 
 	serverAuthed.Path(prefix + "/encrypt/status").Handler(encryptionStatusHandler(serverConfig))
 	serverAuthed.Path(prefix + "/encrypt/config").Handler(encryptionConfigHandler(ctx, serverConfig))
 	serverAuthed.Path("/db/info").Handler(nodeAuthed)
-	if serverConfig.Runtime.HTTPBootstrap {
-		serverAuthed.Path(prefix + "/server-bootstrap").Handler(bootstrap.Handler(&serverConfig.Runtime.ControlRuntimeBootstrap))
-	}
+	serverAuthed.Path(prefix + "/server-bootstrap").Handler(bootstrapHandler(serverConfig.Runtime))
 
 	staticDir := filepath.Join(serverConfig.DataDir, "static")
 	router := mux.NewRouter()
@@ -101,6 +99,20 @@ func apiserverDisabled() http.Handler {
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 		data := []byte("apiserver disabled")
 		resp.WriteHeader(http.StatusServiceUnavailable)
+		resp.Header().Set("Content-Type", "text/plain")
+		resp.Header().Set("Content-length", strconv.Itoa(len(data)))
+		resp.Write(data)
+	})
+}
+
+func bootstrapHandler(runtime *config.ControlRuntime) http.Handler {
+	if runtime.HTTPBootstrap {
+		return bootstrap.Handler(&runtime.ControlRuntimeBootstrap)
+	}
+	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
+		logrus.Warnf("Received HTTP bootstrap request from %s, but embedded etcd is not enabled.", req.RemoteAddr)
+		data := []byte("etcd disabled")
+		resp.WriteHeader(http.StatusBadRequest)
 		resp.Header().Set("Content-Type", "text/plain")
 		resp.Header().Set("Content-length", strconv.Itoa(len(data)))
 		resp.Write(data)
