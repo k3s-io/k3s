@@ -15,5 +15,5 @@ PROXY_OPTS=
 [ -z "$https_proxy" ] || PROXY_OPTS="$PROXY_OPTS --build-arg https_proxy=$https_proxy"
 [ -z "$no_proxy" ] || PROXY_OPTS="$PROXY_OPTS --build-arg no_proxy=$no_proxy"
 docker build ${PROXY_OPTS} --build-arg VERSION=${VERSION} -t ${IMAGE} -f package/Dockerfile .
-./scripts/image_scan.sh ${IMAGE}
+./scripts/image_scan.sh ${IMAGE} ${ARCH}
 echo Built ${IMAGE}
