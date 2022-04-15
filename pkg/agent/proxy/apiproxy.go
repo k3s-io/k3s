@@ -16,6 +16,7 @@ type Proxy interface {
 	Update(addresses []string)
 	SetAPIServerPort(ctx context.Context, port int, isIPv6 bool) error
 	SetSupervisorDefault(address string)
+	IsSupervisorLBEnabled() bool
 	SupervisorURL() string
 	SupervisorAddresses() []string
 	APIServerURL() string
@@ -156,6 +157,10 @@ func (p *proxy) SetSupervisorDefault(address string) {
 	} else {
 		p.supervisorLB.SetDefault(address)
 	}
+}
+
+func (p *proxy) IsSupervisorLBEnabled() bool {
+	return p.supervisorLB != nil
 }
 
 func (p *proxy) SupervisorURL() string {
