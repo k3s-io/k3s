@@ -65,34 +65,30 @@ func validateCgroupsV2() error {
 	return nil
 }
 
-func CheckCgroups() (kubeletRoot, runtimeRoot string, hasCFS, hasPIDs bool) {
+func CheckCgroups() (kubeletRoot, runtimeRoot string, controllers map[string]bool) {
 	cgroupsModeV2 := cgroups.Mode() == cgroups.Unified
+	controllers = make(map[string]bool)
 
 	// For Unified (v2) cgroups we can directly check to see what controllers are mounted
 	// under the unified hierarchy.
 	if cgroupsModeV2 {
 		m, err := cgroupsv2.LoadManager("/sys/fs/cgroup", "/")
 		if err != nil {
-			return "", "", false, false
+			return
 		}
-		controllers, err := m.Controllers()
+		enabledControllers, err := m.Controllers()
 		if err != nil {
-			return "", "", false, false
+			return
 		}
 		// Intentionally using an expressionless switch to match the logic below
-		for _, controller := range controllers {
-			switch {
-			case controller == "cpu":
-				hasCFS = true
-			case controller == "pids":
-				hasPIDs = true
-			}
+		for _, controller := range enabledControllers {
+			controllers[controller] = true
 		}
 	}
 
 	f, err := os.Open("/proc/self/cgroup")
 	if err != nil {
-		return "", "", false, false
+		return
 	}
 	defer f.Close()
 
@@ -102,10 +98,10 @@ func CheckCgroups() (kubeletRoot, runtimeRoot string, hasCFS, hasPIDs bool) {
 		if len(parts) < 3 {
 			continue
 		}
-		controllers := strings.Split(parts[1], ",")
+		enabledControllers := strings.Split(parts[1], ",")
 		// For v1 or hybrid, controller can be a single value {"blkio"}, or a comounted set {"cpu","cpuacct"}
-		// For v2, controllers = {""} (only contains a single empty string)
-		for _, controller := range controllers {
+		// For v2, controllers = {""} (only contains a single empty string) so this section is not used.
+		for _, controller := range enabledControllers {
 			switch {
 			case controller == "name=systemd" || cgroupsModeV2:
 				// If we detect that we are running under a `.scope` unit with systemd
@@ -128,10 +124,10 @@ func CheckCgroups() (kubeletRoot, runtimeRoot string, hasCFS, hasPIDs bool) {
 				// can fail if we use the comma-separated name. Instead, we check for the controller using the symlink.
 				p := filepath.Join("/sys/fs/cgroup", controller, parts[2], "cpu.cfs_period_us")
 				if _, err := os.Stat(p); err == nil {
-					hasCFS = true
+					controllers[controller] = true
 				}
-			case controller == "pids":
-				hasPIDs = true
+			default:
+				controllers[controller] = true
 			}
 		}
 	}
@@ -146,7 +142,7 @@ func CheckCgroups() (kubeletRoot, runtimeRoot string, hasCFS, hasPIDs bool) {
 		// a host PID scenario but we don't support this.
 		g, err := os.Open("/proc/1/cgroup")
 		if err != nil {
-			return "", "", false, false
+			return
 		}
 		defer g.Close()
 		scan = bufio.NewScanner(g)
@@ -170,5 +166,5 @@ func CheckCgroups() (kubeletRoot, runtimeRoot string, hasCFS, hasPIDs bool) {
 			}
 		}
 	}
-	return kubeletRoot, runtimeRoot, hasCFS, hasPIDs
+	return
 }

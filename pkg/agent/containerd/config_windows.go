@@ -45,6 +45,7 @@ func setupContainerdConfig(ctx context.Context, cfg *config.Node) error {
 	containerdConfig := templates.ContainerdConfig{
 		NodeConfig:            cfg,
 		DisableCgroup:         true,
+		SystemdCgroup:         false,
 		IsRunningInUserNS:     false,
 		PrivateRegistryConfig: privRegistries.Registry,
 	}
