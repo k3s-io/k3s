@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
+	"github.com/k3s-io/k3s/pkg/cli/completion"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 )
@@ -13,7 +14,7 @@ import (
 func main() {
 	app := cmds.NewApp()
 	app.Commands = []cli.Command{
-		cmds.NewCompletionCommand(),
+		cmds.NewCompletionCommand(completion.Run),
 	}
 
 	if err := app.Run(os.Args); err != nil && !errors.Is(err, context.Canceled) {

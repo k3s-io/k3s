@@ -3,21 +3,29 @@ package completion
 import (
 	"fmt"
 	"os"
+
+	"github.com/k3s-io/k3s/pkg/version"
+
+	"github.com/urfave/cli"
 )
 
-func ShellCompletionInstall(appName, shell string) error {
-	completetionScript, err := genCompletionScript(appName, shell)
+func Run(ctx *cli.Context) error {
+	if ctx.NArg() < 1 {
+		return fmt.Errorf("must provide a valid SHELL argument")
+	}
+	shell := ctx.Args()[0]
+	completetionScript, err := genCompletionScript(shell)
 	if err != nil {
 		return err
 	}
-	autoFile := "/etc/rancher/" + appName + "/autocomplete"
+	autoFile := "/etc/rancher/" + version.Program + "/autocomplete"
 	if err := os.WriteFile(autoFile, []byte(completetionScript), 0644); err != nil {
 		return err
 	}
-	return writeToRC(appName, shell)
+	return writeToRC(shell)
 }
 
-func genCompletionScript(appName, shell string) (string, error) {
+func genCompletionScript(shell string) (string, error) {
 	var completionScript string
 	if shell == "bash" {
 		completionScript = fmt.Sprintf(`#! /bin/bash
@@ -37,7 +45,7 @@ fi
 }
 
 complete -o bashdefault -o default -o nospace -F _cli_bash_autocomplete %s
-`, appName)
+`, version.Program)
 	} else if shell == "zsh" {
 		completionScript = fmt.Sprintf(`#compdef %[1]s
 _cli_zsh_autocomplete() {
@@ -60,7 +68,7 @@ _cli_zsh_autocomplete() {
 	return
 }
 
-compdef _cli_zsh_autocomplete %[1]s`, appName)
+compdef _cli_zsh_autocomplete %[1]s`, version.Program)
 	} else {
 		return "", fmt.Errorf("unkown shell: %s", shell)
 	}
@@ -68,7 +76,7 @@ compdef _cli_zsh_autocomplete %[1]s`, appName)
 	return completionScript, nil
 }
 
-func writeToRC(appName, shell string) error {
+func writeToRC(shell string) error {
 	rcFileName := ""
 	if shell == "bash" {
 		rcFileName = "/.bashrc"
@@ -86,10 +94,10 @@ func writeToRC(appName, shell string) error {
 		return err
 	}
 	defer f.Close()
-	bashEntry := fmt.Sprintf("# >> %[1]s command completion (start)\n. /etc/rancher/%[1]s/autocomplete\n# >> %[1]s command completion (end)", appName)
+	bashEntry := fmt.Sprintf("# >> %[1]s command completion (start)\n. /etc/rancher/%[1]s/autocomplete\n# >> %[1]s command completion (end)", version.Program)
 	if _, err := f.WriteString(bashEntry); err != nil {
 		return err
 	}
-	fmt.Println("Autocomplete installed in: ", rcFileName)
+	fmt.Printf("Autocomplete for %s installed in: %s\n", shell, rcFileName)
 	return nil
 }
