@@ -90,6 +90,7 @@ type Agent struct {
 	ExtraKubeProxyArgs      []string
 	PauseImage              string
 	Snapshotter             string
+	Systemd                 bool
 	CNIPlugin               bool
 	NodeTaints              []string
 	NodeLabels              []string

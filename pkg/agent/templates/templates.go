@@ -14,6 +14,7 @@ type ContainerdRuntimeConfig struct {
 type ContainerdConfig struct {
 	NodeConfig            *config.Node
 	DisableCgroup         bool
+	SystemdCgroup         bool
 	IsRunningInUserNS     bool
 	PrivateRegistryConfig *registries.Registry
 	ExtraRuntimes         map[string]ContainerdRuntimeConfig
