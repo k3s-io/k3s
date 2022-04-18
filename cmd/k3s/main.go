@@ -68,7 +68,7 @@ func main() {
 			cmds.NewCertSubcommands(
 				certCommand),
 		),
-		cmds.NewCompletionCommand(internalCLIAction(version.Version+"-completion", dataDir, os.Args)),
+		cmds.NewCompletionCommand(internalCLIAction(version.Program+"-completion", dataDir, os.Args)),
 	}
 
 	if err := app.Run(os.Args); err != nil && !errors.Is(err, context.Canceled) {
