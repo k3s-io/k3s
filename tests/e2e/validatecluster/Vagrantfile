@@ -2,7 +2,7 @@ ENV['VAGRANT_NO_PARALLEL'] = 'no'
 NODE_ROLES = (ENV['E2E_NODE_ROLES'] ||
   ["server-0", "server-1", "server-2", "agent-0", "agent-1"])
 NODE_BOXES = (ENV['E2E_NODE_BOXES'] ||
-  ['generic/ubuntu2004', 'generic/ubuntu2004', 'generic/ubuntu2004', 'generic/ubuntu2004', 'generic/ubuntu2004'])
+  ['opensuse/Leap-15.3.x86_64', 'opensuse/Leap-15.3.x86_64', 'opensuse/Leap-15.3.x86_64', 'opensuse/Leap-15.3.x86_64', 'opensuse/Leap-15.3.x86_64'])
 GITHUB_BRANCH = (ENV['E2E_GITHUB_BRANCH'] || "master")
 RELEASE_VERSION = (ENV['E2E_RELEASE_VERSION'] || "")
 EXTERNAL_DB = (ENV['E2E_EXTERNAL_DB'] || "etcd")
@@ -19,11 +19,12 @@ def provision(vm, role, role_num, node_num)
   vm.hostname = role
   # An expanded netmask is required to allow VM<-->VM communication, virtualbox defaults to /32
   node_ip = "#{NETWORK_PREFIX}.#{100+node_num}"
-  vm.network "private_network", ip: node_ip, netmask: "24"
+  vm.network "private_network", ip: node_ip, netmask: "255.255.255.0"
 
-  vagrant_defaults = '../vagrantdefaults.rb'
-  load vagrant_defaults if File.exists?(vagrant_defaults)
-  
+  scripts_location = Dir.exists?("./scripts") ? "./scripts" : "../scripts" 
+  vagrant_defaults = File.exists?("./vagrantdefaults.rb") ? "./vagrantdefaults.rb" : "../vagrantdefaults.rb"
+  load vagrant_defaults
+
   defaultOSConfigure(vm)
   
   if !RELEASE_VERSION.empty?
@@ -31,7 +32,7 @@ def provision(vm, role, role_num, node_num)
   else
     # Grabs the last 5 commit SHA's from the given branch, then purges any commits that do not have a passing CI build
     # MicroOS requires it not be in a /tmp/ or other root system folder
-    vm.provision "Get latest commit", type: "shell", path: "../scripts/latest_commit.sh", args: [GITHUB_BRANCH, "/home/vagrant/k3s_commits"]
+    vm.provision "Get latest commit", type: "shell", path: scripts_location + "/latest_commit.sh", args: [GITHUB_BRANCH, "/home/vagrant/k3s_commits"]
     install_type = "INSTALL_K3S_COMMIT=$(head\ -n\ 1\ /home/vagrant/k3s_commits)"
   end
   vm.provision "shell", inline: "ping -c 2 k3s.io"
@@ -39,7 +40,7 @@ def provision(vm, role, role_num, node_num)
   db_type = getDBType(role, role_num, vm)
 
   if !HARDENED.empty?
-    vm.provision "Set kernel parameters", type: "shell", path: "../scripts/harden.sh"
+    vm.provision "Set kernel parameters", type: "shell", path: scripts_location + "/harden.sh"
     hardened_arg = "protect-kernel-defaults: true\nkube-apiserver-arg: \"enable-admission-plugins=NodeRestriction,PodSecurityPolicy,ServiceAccount\""
   end
 
@@ -122,6 +123,8 @@ def getDBType(role, role_num, vm)
     if role.include?("server") && role_num == 0
       return "cluster-init: true"
     end
+  elsif ( EXTERNAL_DB == "none" )
+    # Use internal sqlite
   else
     puts "Unknown EXTERNAL_DB: " + EXTERNAL_DB
     abort
