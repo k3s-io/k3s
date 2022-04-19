@@ -66,6 +66,10 @@ if [ ${ARCH} = armv7l ] || [ ${ARCH} = arm ]; then
     export GOARM="7"
 fi
 
+if [ ${ARCH} = s390x ]; then
+    export GOARCH="s390x"
+fi
+
 rm -f \
     bin/k3s-agent \
     bin/k3s-server \
