@@ -10,9 +10,10 @@ GO=${GO-go}
 PKG="github.com/k3s-io/k3s"
 PKG_CONTAINERD="github.com/containerd/containerd"
 PKG_K3S_CONTAINERD="github.com/k3s-io/containerd"
-PKG_CRICTL="github.com/kubernetes-sigs/cri-tools"
+PKG_CRICTL="github.com/kubernetes-sigs/cri-tools/pkg"
 PKG_K8S_BASE="k8s.io/component-base"
 PKG_K8S_CLIENT="k8s.io/client-go/pkg"
+PKG_CNI_PLUGINS="github.com/containernetworking/plugins"
 
 buildDate=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
 
@@ -34,7 +35,12 @@ VERSIONFLAGS="
 
     -X ${PKG_CONTAINERD}/version.Version=${VERSION_CONTAINERD}
     -X ${PKG_CONTAINERD}/version.Package=${PKG_K3S_CONTAINERD}
-    -X ${PKG_CRICTL}/pkg/version.Version=${VERSION_CRICTL}
+
+    -X ${PKG_CNI_PLUGINS}/pkg/utils/buildversion.BuildVersion=${VERSION_CNIPLUGINS}
+    -X ${PKG_CNI_PLUGINS}/plugins/meta/flannel.Program=flannel
+    -X ${PKG_CNI_PLUGINS}/plugins/meta/flannel.Version=${VERSION_FLANNEL}
+    -X ${PKG_CNI_PLUGINS}/plugins/meta/flannel.Commit=${COMMIT}
+    -X ${PKG_CNI_PLUGINS}/plugins/meta/flannel.buildDate=${buildDate}
 "
 LDFLAGS="
     -w -s"
@@ -99,7 +105,7 @@ if [ ! -x ${INSTALLBIN}/cni ]; then
     WORKDIR=$TMPDIR/src/github.com/containernetworking/plugins
     git clone -b $VERSION_CNIPLUGINS https://github.com/rancher/plugins.git $WORKDIR
     cd $WORKDIR
-    GO111MODULE=off GOPATH=$TMPDIR CGO_ENABLED=0 "${GO}" build -tags "$TAGS" -ldflags "$LDFLAGS $STATIC" -o $INSTALLBIN/cni
+    GO111MODULE=off GOPATH=$TMPDIR CGO_ENABLED=0 "${GO}" build -tags "$TAGS" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC" -o $INSTALLBIN/cni
 )
 fi
 
