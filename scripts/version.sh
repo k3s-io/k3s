@@ -44,7 +44,7 @@ fi
 
 VERSION_CNIPLUGINS="v0.9.1-k3s1"
 
-VERSION_ROOT="v0.9.1"
+VERSION_ROOT="v0.10.0"
 
 if [[ -n "$GIT_TAG" ]]; then
     if [[ ! "$GIT_TAG" =~ ^"$VERSION_K8S"[+-] ]]; then
