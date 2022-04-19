@@ -168,7 +168,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		logrus.Info("ETCD snapshots are disabled")
 	}
 
-	if cfg.ClusterResetRestorePath != "" && !cfg.ClusterReset {
+	if cfg.ClusterReset && cfg.ClusterResetRestorePath == "" {
 		return errors.New("invalid flag use; --cluster-reset required with --cluster-reset-restore-path")
 	}
 
