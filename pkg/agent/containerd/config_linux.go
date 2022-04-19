@@ -55,14 +55,11 @@ func setupContainerdConfig(ctx context.Context, cfg *config.Node) error {
 		cfg.AgentConfig.Systemd = controllers["cpuset"] && os.Getenv("NOTIFY_SOCKET") != ""
 	}
 
-	systemdCgroup := controllers["cpuset"] && os.Getenv("NOTIFY_SOCKET") != ""
-	cfg.AgentConfig.Systemd = systemdCgroup
-
 	var containerdTemplate string
 	containerdConfig := templates.ContainerdConfig{
 		NodeConfig:            cfg,
 		DisableCgroup:         disableCgroup,
-		SystemdCgroup:         systemdCgroup,
+		SystemdCgroup:         cfg.AgentConfig.Systemd,
 		IsRunningInUserNS:     isRunningInUserNS,
 		PrivateRegistryConfig: privRegistries.Registry,
 		ExtraRuntimes:         findNvidiaContainerRuntimes(os.DirFS(string(os.PathSeparator))),
