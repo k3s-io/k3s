@@ -70,7 +70,7 @@ _cli_zsh_autocomplete() {
 
 compdef _cli_zsh_autocomplete %[1]s`, version.Program)
 	} else {
-		return "", fmt.Errorf("unkown shell: %s", shell)
+		return "", fmt.Errorf("unknown shell: %s", shell)
 	}
 
 	return completionScript, nil
