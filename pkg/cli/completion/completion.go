@@ -18,11 +18,11 @@ func Run(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	autoFile := "/etc/rancher/" + version.Program + "/autocomplete"
-	if err := os.WriteFile(autoFile, []byte(completetionScript), 0644); err != nil {
-		return err
+	if ctx.Bool("i") {
+		return writeToRC(shell)
 	}
-	return writeToRC(shell)
+	fmt.Println(completetionScript)
+	return nil
 }
 
 func genCompletionScript(shell string) (string, error) {
@@ -94,10 +94,10 @@ func writeToRC(shell string) error {
 		return err
 	}
 	defer f.Close()
-	bashEntry := fmt.Sprintf("# >> %[1]s command completion (start)\n. /etc/rancher/%[1]s/autocomplete\n# >> %[1]s command completion (end)", version.Program)
+	bashEntry := fmt.Sprintf("# >> %[1]s command completion (start)\n. <(%[1]s completion %s)\n# >> %[1]s command completion (end)", version.Program, shell)
 	if _, err := f.WriteString(bashEntry); err != nil {
 		return err
 	}
-	fmt.Printf("Autocomplete for %s installed in: %s\n", shell, rcFileName)
+	fmt.Printf("Autocomplete for %s added to: %s\n", shell, rcFileName)
 	return nil
 }

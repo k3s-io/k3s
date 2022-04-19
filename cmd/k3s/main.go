@@ -197,7 +197,7 @@ func extract(dataDir string) (string, error) {
 	// acquire a data directory lock
 	os.MkdirAll(filepath.Join(dataDir, "data"), 0755)
 	lockFile := filepath.Join(dataDir, "data", ".lock")
-	logrus.Infof("Acquiring lock file %s", lockFile)
+	logrus.Debugf("Acquiring lock file %s", lockFile)
 	lock, err := flock.Acquire(lockFile)
 	if err != nil {
 		return "", err
@@ -209,7 +209,7 @@ func extract(dataDir string) (string, error) {
 		return dir, nil
 	}
 
-	logrus.Infof("Preparing data dir %s", dir)
+	logrus.Debugf("Preparing data dir %s", dir)
 
 	content, err := data.Asset(asset)
 	if err != nil {
