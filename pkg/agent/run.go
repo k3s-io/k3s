@@ -63,15 +63,19 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to validate node-ip")
 	}
+	serviceIPv4 := utilsnet.IsIPv4CIDR(nodeConfig.AgentConfig.ServiceCIDR)
+	clusterIPv4 := utilsnet.IsIPv4CIDR(nodeConfig.AgentConfig.ClusterCIDR)
 	serviceIPv6 := utilsnet.IsIPv6CIDR(nodeConfig.AgentConfig.ServiceCIDR)
 	clusterIPv6 := utilsnet.IsIPv6CIDR(nodeConfig.AgentConfig.ClusterCIDR)
 
+	enableIPv4 := dualCluster || dualService || dualNode || serviceIPv4 || clusterIPv4
 	enableIPv6 := dualCluster || dualService || dualNode || serviceIPv6 || clusterIPv6
 	conntrackConfig, err := getConntrackConfig(nodeConfig)
 	if err != nil {
 		return errors.Wrap(err, "failed to validate kube-proxy conntrack configuration")
 	}
 	syssetup.Configure(enableIPv6, conntrackConfig)
+	nodeConfig.AgentConfig.EnableIPv4 = enableIPv4
 	nodeConfig.AgentConfig.EnableIPv6 = enableIPv6
 
 	if err := setupCriCtlConfig(cfg, nodeConfig); err != nil {
