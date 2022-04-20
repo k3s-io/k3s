@@ -55,7 +55,7 @@ func Run(ctx context.Context, nodeConfig *config.Node) error {
 
 	krConfig := options.NewKubeRouterConfig()
 	krConfig.ClusterIPCIDR = util.JoinIPNets(nodeConfig.AgentConfig.ServiceCIDRs)
-	krConfig.EnableIPv4 = true
+	krConfig.EnableIPv4 = nodeConfig.AgentConfig.EnableIPv4
 	krConfig.EnableIPv6 = nodeConfig.AgentConfig.EnableIPv6
 	krConfig.NodePortRange = strings.ReplaceAll(nodeConfig.AgentConfig.ServiceNodePortRange.String(), "-", ":")
 	krConfig.HostnameOverride = nodeConfig.AgentConfig.NodeName
