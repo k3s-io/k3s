@@ -137,7 +137,7 @@ func externalCLI(cli, dataDir string, args []string) error {
 // internalCLIAction returns a function that will call a K3s internal command, be used as the Action of a cli.Command.
 func internalCLIAction(cmd, dataDir string, args []string) func(ctx *cli.Context) error {
 	return func(ctx *cli.Context) error {
-		// We don't wont the Info logs seen when printing the autocomplete script
+		// We don't want the Info logs seen when printing the autocomplete script
 		if cmd == "k3s-completion" {
 			logrus.SetLevel(logrus.ErrorLevel)
 		}
