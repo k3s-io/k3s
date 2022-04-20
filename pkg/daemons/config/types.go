@@ -106,6 +106,7 @@ type Agent struct {
 	Rootless                bool
 	ProtectKernelDefaults   bool
 	DisableServiceLB        bool
+	EnableIPv4              bool
 	EnableIPv6              bool
 }
 
