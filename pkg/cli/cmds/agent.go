@@ -86,8 +86,9 @@ var (
 		Destination: &AgentConfig.WithNodeID,
 	}
 	DockerFlag = cli.BoolFlag{
+		Hidden:      true,
 		Name:        "docker",
-		Usage:       "(agent/runtime) Use docker instead of containerd",
+		Usage:       "(deprecated) (agent/runtime) Use docker instead of containerd",
 		Destination: &AgentConfig.Docker,
 	}
 	CRIEndpointFlag = cli.StringFlag{
@@ -109,7 +110,7 @@ var (
 	}
 	PauseImageFlag = cli.StringFlag{
 		Name:        "pause-image",
-		Usage:       "(agent/runtime) Customized pause image for containerd or docker sandbox",
+		Usage:       "(agent/runtime) Customized pause image for containerd sandbox",
 		Destination: &AgentConfig.PauseImage,
 		Value:       DefaultPauseImage,
 	}
@@ -185,14 +186,12 @@ var (
 	SELinuxFlag = cli.BoolFlag{
 		Name:        "selinux",
 		Usage:       "(agent/node) Enable SELinux in containerd",
-		Hidden:      false,
 		Destination: &AgentConfig.EnableSELinux,
 		EnvVar:      version.ProgramUpper + "_SELINUX",
 	}
 	LBServerPortFlag = cli.IntFlag{
 		Name:        "lb-server-port",
 		Usage:       "(agent/node) Local port for supervisor client load-balancer. If the supervisor and apiserver are not colocated an additional port 1 less than this port will also be used for the apiserver client load-balancer.",
-		Hidden:      false,
 		Destination: &AgentConfig.LBServerPort,
 		EnvVar:      version.ProgramUpper + "_LB_SERVER_PORT",
 		Value:       6444,
