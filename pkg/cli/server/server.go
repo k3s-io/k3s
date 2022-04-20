@@ -238,7 +238,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	if len(cmds.ServerConfig.ClusterCIDR) == 0 {
 		clusterCIDR := "10.42.0.0/16"
 		if IPv6only {
-			clusterCIDR = "fd:42::/56"
+			clusterCIDR = "fd00:42::/56"
 		}
 		cmds.ServerConfig.ClusterCIDR.Set(clusterCIDR)
 	}
@@ -264,7 +264,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	if len(cmds.ServerConfig.ServiceCIDR) == 0 {
 		serviceCIDR := "10.43.0.0/16"
 		if IPv6only {
-			serviceCIDR = "fd:43::/112"
+			serviceCIDR = "fd00:43::/112"
 		}
 		cmds.ServerConfig.ServiceCIDR.Set(serviceCIDR)
 	}
