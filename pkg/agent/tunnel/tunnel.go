@@ -7,7 +7,6 @@ import (
 	"net"
 	"reflect"
 	"sync"
-	"time"
 
 	"github.com/gorilla/websocket"
 	agentconfig "github.com/k3s-io/k3s/pkg/agent/config"
@@ -20,10 +19,13 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
-	watchtypes "k8s.io/apimachinery/pkg/watch"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
+	toolswatch "k8s.io/client-go/tools/watch"
 )
 
 var (
@@ -86,42 +88,46 @@ func Setup(ctx context.Context, config *config.Node, proxy proxy.Proxy) error {
 	}
 
 	// Once the apiserver is up, go into a watch loop, adding and removing tunnels as endpoints come
-	// and go from the cluster. We go into a faster but noisier connect loop if the watch fails
-	// following a successful connection.
+	// and go from the cluster.
 	go func() {
 		if err := util.WaitForAPIServerReady(ctx, client, util.DefaultAPIServerReadyTimeout); err != nil {
 			logrus.Warnf("Tunnel endpoint watch failed to wait for apiserver ready: %v", err)
 		}
-	connect:
+
+		endpoints := client.CoreV1().Endpoints(metav1.NamespaceDefault)
+		fieldSelector := fields.Set{metav1.ObjectNameField: "kubernetes"}.String()
+		lw := &cache.ListWatch{
+			ListFunc: func(options metav1.ListOptions) (object runtime.Object, e error) {
+				options.FieldSelector = fieldSelector
+				return endpoints.List(ctx, options)
+			},
+			WatchFunc: func(options metav1.ListOptions) (i watch.Interface, e error) {
+				options.FieldSelector = fieldSelector
+				return endpoints.Watch(ctx, options)
+			},
+		}
+
+		_, _, watch, done := toolswatch.NewIndexerInformerWatcher(lw, &v1.Endpoints{})
+
+		defer func() {
+			watch.Stop()
+			<-done
+		}()
+
 		for {
-			time.Sleep(5 * time.Second)
-			watch, err := client.CoreV1().Endpoints("default").Watch(ctx, metav1.ListOptions{
-				FieldSelector:   fields.Set{"metadata.name": "kubernetes"}.String(),
-				ResourceVersion: "0",
-			})
-			if err != nil {
-				logrus.Warnf("Unable to watch for tunnel endpoints: %v", err)
-				continue connect
-			}
-		watching:
-			for {
-				ev, ok := <-watch.ResultChan()
-				if !ok || ev.Type == watchtypes.Error {
-					if ok {
-						logrus.Errorf("Tunnel endpoint watch channel closed: %v", ev)
-					}
-					watch.Stop()
-					continue connect
-				}
+			select {
+			case <-ctx.Done():
+				return
+			case ev, ok := <-watch.ResultChan():
 				endpoint, ok := ev.Object.(*v1.Endpoints)
 				if !ok {
-					logrus.Errorf("Tunnel could not convert event object to endpoint: %v", ev)
-					continue watching
+					logrus.Errorf("Tunnel watch failed: event object not of type v1.Endpoints")
+					continue
 				}
 
 				newAddresses := util.GetAddresses(endpoint)
 				if reflect.DeepEqual(newAddresses, proxy.SupervisorAddresses()) {
-					continue watching
+					continue
 				}
 				proxy.Update(newAddresses)
 

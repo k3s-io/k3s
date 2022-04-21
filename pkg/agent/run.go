@@ -2,7 +2,6 @@ package agent
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"os"
 	"path/filepath"
@@ -30,14 +29,18 @@ import (
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
+	toolswatch "k8s.io/client-go/tools/watch"
 	app2 "k8s.io/kubernetes/cmd/kube-proxy/app"
 	kubeproxyconfig "k8s.io/kubernetes/pkg/proxy/apis/config"
 	utilsnet "k8s.io/utils/net"
@@ -267,18 +270,25 @@ func createProxyAndValidateToken(ctx context.Context, cfg *cmds.Agent) (proxy.Pr
 	return proxy, nil
 }
 
+// configureNode waits for the node object to be created, and if/when it does,
+// ensures that the labels and annotations are up to date.
 func configureNode(ctx context.Context, agentConfig *daemonconfig.Agent, nodes typedcorev1.NodeInterface) error {
 	fieldSelector := fields.Set{metav1.ObjectNameField: agentConfig.NodeName}.String()
-	watch, err := nodes.Watch(ctx, metav1.ListOptions{FieldSelector: fieldSelector})
-	if err != nil {
-		return err
+	lw := &cache.ListWatch{
+		ListFunc: func(options metav1.ListOptions) (object runtime.Object, e error) {
+			options.FieldSelector = fieldSelector
+			return nodes.List(ctx, options)
+		},
+		WatchFunc: func(options metav1.ListOptions) (i watch.Interface, e error) {
+			options.FieldSelector = fieldSelector
+			return nodes.Watch(ctx, options)
+		},
 	}
-	defer watch.Stop()
 
-	for ev := range watch.ResultChan() {
-		node, ok := ev.Object.(*corev1.Node)
+	condition := func(ev watch.Event) (bool, error) {
+		node, ok := ev.Object.(*v1.Node)
 		if !ok {
-			return fmt.Errorf("could not convert event object to node: %v", ev)
+			return false, errors.New("event object not of type v1.Node")
 		}
 
 		updateNode := false
@@ -300,7 +310,7 @@ func configureNode(ctx context.Context, agentConfig *daemonconfig.Agent, nodes t
 
 		// inject node config
 		if changed, err := nodeconfig.SetNodeConfigAnnotations(node); err != nil {
-			return err
+			return false, err
 		} else if changed {
 			updateNode = true
 		}
@@ -308,16 +318,18 @@ func configureNode(ctx context.Context, agentConfig *daemonconfig.Agent, nodes t
 		if updateNode {
 			if _, err := nodes.Update(ctx, node, metav1.UpdateOptions{}); err != nil {
 				logrus.Infof("Failed to update node %s: %v", agentConfig.NodeName, err)
-				continue
+				return false, nil
 			}
 			logrus.Infof("labels have been set successfully on node: %s", agentConfig.NodeName)
-		} else {
-			logrus.Infof("labels have already set on node: %s", agentConfig.NodeName)
+			return true, nil
 		}
-
-		break
+		logrus.Infof("labels have already set on node: %s", agentConfig.NodeName)
+		return true, nil
 	}
 
+	if _, err := toolswatch.UntilWithSync(ctx, lw, &v1.Node{}, nil, condition); err != nil {
+		return errors.Wrap(err, "failed to configure node")
+	}
 	return nil
 }
 

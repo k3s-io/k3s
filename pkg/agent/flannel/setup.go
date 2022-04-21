@@ -13,10 +13,14 @@ import (
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/watch"
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/tools/cache"
+	toolswatch "k8s.io/client-go/tools/watch"
 	utilsnet "k8s.io/utils/net"
 )
 
@@ -117,21 +121,27 @@ func Run(ctx context.Context, nodeConfig *config.Node, nodes typedcorev1.NodeInt
 // waitForPodCIDR watches nodes with this node's name, and returns when the PodCIDR has been set.
 func waitForPodCIDR(ctx context.Context, nodeName string, nodes typedcorev1.NodeInterface) error {
 	fieldSelector := fields.Set{metav1.ObjectNameField: nodeName}.String()
-	watch, err := nodes.Watch(ctx, metav1.ListOptions{FieldSelector: fieldSelector})
-	if err != nil {
-		return err
+	lw := &cache.ListWatch{
+		ListFunc: func(options metav1.ListOptions) (object runtime.Object, e error) {
+			options.FieldSelector = fieldSelector
+			return nodes.List(ctx, options)
+		},
+		WatchFunc: func(options metav1.ListOptions) (i watch.Interface, e error) {
+			options.FieldSelector = fieldSelector
+			return nodes.Watch(ctx, options)
+		},
 	}
-	defer watch.Stop()
+	condition := func(ev watch.Event) (bool, error) {
+		if n, ok := ev.Object.(*v1.Node); ok {
+			return n.Spec.PodCIDR != "", nil
+		}
+		return false, errors.New("event object not of type v1.Node")
+	}
 
-	for ev := range watch.ResultChan() {
-		node, ok := ev.Object.(*corev1.Node)
-		if !ok {
-			return fmt.Errorf("could not convert event object to node: %v", ev)
-		}
-		if node.Spec.PodCIDR != "" {
-			break
-		}
+	if _, err := toolswatch.UntilWithSync(ctx, lw, &v1.Node{}, nil, condition); err != nil {
+		return errors.Wrap(err, "failed to wait for PodCIDR assignment")
 	}
+
 	logrus.Info("Flannel found PodCIDR assigned for node " + nodeName)
 	return nil
 }
