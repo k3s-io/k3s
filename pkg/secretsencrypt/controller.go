@@ -141,7 +141,14 @@ func (h *handler) onChangeNode(nodeName string, node *corev1.Node) (*corev1.Node
 		h.recorder.Event(nodeRef, corev1.EventTypeWarning, secretsUpdateErrorEvent, err.Error())
 		return node, err
 	}
-	if err := WriteEncryptionHashAnnotation(h.controlConfig.Runtime, node, EncryptionReencryptFinished); err != nil {
+	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		node, err = h.nodes.Get(nodeName, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		return WriteEncryptionHashAnnotation(h.controlConfig.Runtime, node, EncryptionReencryptFinished)
+	})
+	if err != nil {
 		h.recorder.Event(nodeRef, corev1.EventTypeWarning, secretsUpdateErrorEvent, err.Error())
 		return node, err
 	}
