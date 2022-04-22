@@ -58,7 +58,7 @@ func Register(
 }
 
 // onChangeNode handles changes to Nodes. We are looking for a specific annotation change
-func (h *handler) onChangeNode(key string, node *corev1.Node) (*corev1.Node, error) {
+func (h *handler) onChangeNode(nodeName string, node *corev1.Node) (*corev1.Node, error) {
 	if node == nil {
 		return nil, nil
 	}
@@ -91,9 +91,8 @@ func (h *handler) onChangeNode(key string, node *corev1.Node) (*corev1.Node, err
 	}
 	ann = EncryptionReencryptActive + "-" + reencryptHash
 
-	nodeName := node.Name
 	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		node, err := h.nodes.Get(nodeName, metav1.GetOptions{})
+		node, err = h.nodes.Get(nodeName, metav1.GetOptions{})
 		if err != nil {
 			return err
 		}
@@ -114,7 +113,7 @@ func (h *handler) onChangeNode(key string, node *corev1.Node) (*corev1.Node, err
 	// If skipping, revert back to the previous stage
 	if h.controlConfig.EncryptSkip {
 		err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
-			node, err := h.nodes.Get(nodeName, metav1.GetOptions{})
+			node, err = h.nodes.Get(nodeName, metav1.GetOptions{})
 			if err != nil {
 				return err
 			}
