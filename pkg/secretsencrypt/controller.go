@@ -18,6 +18,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/pager"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/util/retry"
 )
 
 const (
@@ -57,7 +58,7 @@ func Register(
 }
 
 // onChangeNode handles changes to Nodes. We are looking for a specific annotation change
-func (h *handler) onChangeNode(key string, node *corev1.Node) (*corev1.Node, error) {
+func (h *handler) onChangeNode(nodeName string, node *corev1.Node) (*corev1.Node, error) {
 	if node == nil {
 		return nil, nil
 	}
@@ -80,8 +81,16 @@ func (h *handler) onChangeNode(key string, node *corev1.Node) (*corev1.Node, err
 		return node, err
 	}
 	ann = EncryptionReencryptActive + "-" + reencryptHash
-	node.Annotations[EncryptionHashAnnotation] = ann
-	node, err = h.nodes.Update(node)
+
+	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		node, err = h.nodes.Get(nodeName, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		node.Annotations[EncryptionHashAnnotation] = ann
+		_, err = h.nodes.Update(node)
+		return err
+	})
 	if err != nil {
 		h.recorder.Event(node, corev1.EventTypeWarning, secretsUpdateErrorEvent, err.Error())
 		return node, err
@@ -94,11 +103,16 @@ func (h *handler) onChangeNode(key string, node *corev1.Node) (*corev1.Node, err
 
 	// If skipping, revert back to the previous stage
 	if h.controlConfig.EncryptSkip {
-		BootstrapEncryptionHashAnnotation(node, h.controlConfig.Runtime)
-		if node, err := h.nodes.Update(node); err != nil {
-			return node, err
-		}
-		return node, nil
+		err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+			node, err = h.nodes.Get(nodeName, metav1.GetOptions{})
+			if err != nil {
+				return err
+			}
+			BootstrapEncryptionHashAnnotation(node, h.controlConfig.Runtime)
+			_, err = h.nodes.Update(node)
+			return err
+		})
+		return node, err
 	}
 
 	// Remove last key
@@ -118,7 +132,14 @@ func (h *handler) onChangeNode(key string, node *corev1.Node) (*corev1.Node, err
 		h.recorder.Event(node, corev1.EventTypeWarning, secretsUpdateErrorEvent, err.Error())
 		return node, err
 	}
-	if err := WriteEncryptionHashAnnotation(h.controlConfig.Runtime, node, EncryptionReencryptFinished); err != nil {
+	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		node, err = h.nodes.Get(nodeName, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		return WriteEncryptionHashAnnotation(h.controlConfig.Runtime, node, EncryptionReencryptFinished)
+	})
+	if err != nil {
 		h.recorder.Event(node, corev1.EventTypeWarning, secretsUpdateErrorEvent, err.Error())
 		return node, err
 	}
