@@ -1,0 +1,91 @@
+ENV['VAGRANT_NO_PARALLEL'] = 'no'
+NODE_ROLES = (ENV['NODE_ROLES'] ||
+  ["server-0", "server-1", "server-2", "agent-0", "agent-1"])
+NODE_BOXES = (ENV['NODE_BOXES'] ||
+  ['generic/ubuntu2004', 'generic/ubuntu2004', 'generic/ubuntu2004', 'generic/ubuntu2004', 'generic/ubuntu2004'])
+RELEASE_CHANNEL = (ENV['RELEASE_CHANNEL'] || "latest")
+RELEASE_VERSION = (ENV['RELEASE_VERSION'] || "")
+NODE_CPUS = (ENV['NODE_CPUS'] || 2).to_i
+NODE_MEMORY = (ENV['NODE_MEMORY'] || 1024).to_i
+# Virtualbox >= 6.1.28 require `/etc/vbox/network.conf` for expanded private networks 
+NETWORK_PREFIX = "10.10.10"
+install_type = ""
+
+def provision(vm, role, role_num, node_num)
+  vm.box = NODE_BOXES[node_num]
+  vm.hostname = role
+  # An expanded netmask is required to allow VM<-->VM communication, virtualbox defaults to /32
+  vm.network "private_network", ip: "#{NETWORK_PREFIX}.#{100+node_num}", netmask: "255.255.255.0"
+
+  vagrant_defaults = '../vagrantdefaults.rb'
+  load vagrant_defaults if File.exists?(vagrant_defaults)
+  
+  defaultOSConfigure(vm)
+    
+  if !RELEASE_VERSION.empty?
+    install_type = "INSTALL_K3S_VERSION=#{RELEASE_VERSION}"
+  elsif RELEASE_CHANNEL == "commit"
+    vm.provision "shell", path: "../scripts/latest_commit.sh", args: ["master", "/tmp/k3s_commits"]
+    install_type = "INSTALL_K3S_COMMIT=$(head\ -n\ 1\ /tmp/k3s_commits)"
+  else
+    vm.provision "latest version", type: "shell",
+      inline: "curl -w '%{url_effective}' -L -s -S https://update.k3s.io/v1-release/channels/#{RELEASE_CHANNEL} -o /dev/null | sed -e 's|.*/||'  &> /tmp/k3s_version"
+    install_type = "INSTALL_K3S_VERSION=$(cat\ /tmp/k3s_version)"
+  end
+
+  vm.provision "shell", inline: "ping -c 2 k3s.io"
+
+  if role.include?("server") && role_num == 0
+    vm.provision 'k3s-install', type: 'k3s', run: 'once' do |k3s|
+      k3s.args = %W[server --cluster-init --node-external-ip=#{NETWORK_PREFIX}.100 --flannel-iface=eth1]
+      k3s.env = %W[K3S_KUBECONFIG_MODE=0644 K3S_TOKEN=vagrant #{install_type}]
+      k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
+    end
+  elsif role.include?("server") && role_num != 0
+    vm.provision 'k3s-install', type: 'k3s', run: 'once' do |k3s|
+      k3s.args = %W[server --server https://#{NETWORK_PREFIX}.100:6443 --flannel-iface=eth1]
+      k3s.env = %W[K3S_KUBECONFIG_MODE=0644 K3S_TOKEN=vagrant #{install_type}]
+      k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
+    end
+  end
+  if role.include?("agent")
+    vm.provision 'k3s-install', type: 'k3s', run: 'once' do |k3s|
+      k3s.args = %W[agent --server https://#{NETWORK_PREFIX}.100:6443 --flannel-iface=eth1]
+      k3s.env = %W[K3S_KUBECONFIG_MODE=0644 K3S_TOKEN=vagrant #{install_type}]
+      k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
+    end
+  end
+  if vm.box.include?("microos")
+    vm.provision 'k3s-reload', type: 'reload', run: 'once'
+  end
+end
+
+Vagrant.configure("2") do |config|
+  config.vagrant.plugins = ["vagrant-k3s", "vagrant-reload"]
+  # Default provider is libvirt, virtualbox is only provided as a backup
+  config.vm.provider "libvirt" do |v|
+    v.cpus = NODE_CPUS
+    v.memory = NODE_MEMORY
+  end
+  config.vm.provider "virtualbox" do |v|
+    v.cpus = NODE_CPUS
+    v.memory = NODE_MEMORY
+  end
+  
+  if NODE_ROLES.kind_of?(String)
+    NODE_ROLES = NODE_ROLES.split(" ", -1)
+  end
+  if NODE_BOXES.kind_of?(String)
+    NODE_BOXES = NODE_BOXES.split(" ", -1)
+  end
+
+  # Must iterate on the index, vagrant does not understand iterating 
+  # over the node roles themselves
+  NODE_ROLES.length.times do |i|
+    name = NODE_ROLES[i]
+    role_num = name.split("-", -1).pop.to_i
+    config.vm.define name do |node|
+      provision(node.vm, name, role_num, i)
+    end
+  end
+end

@@ -1,0 +1,154 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: local-path-provisioner-service-account
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: local-path-provisioner-role
+rules:
+- apiGroups: [""]
+  resources: ["nodes", "persistentvolumeclaims", "configmaps"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["endpoints", "persistentvolumes", "pods"]
+  verbs: ["*"]
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["create", "patch"]
+- apiGroups: ["storage.k8s.io"]
+  resources: ["storageclasses"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: local-path-provisioner-bind
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: local-path-provisioner-role
+subjects:
+- kind: ServiceAccount
+  name: local-path-provisioner-service-account
+  namespace: kube-system
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: local-path-provisioner
+  namespace: kube-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: local-path-provisioner
+  template:
+    metadata:
+      labels:
+        app: local-path-provisioner
+    spec:
+      priorityClassName: "system-node-critical"
+      serviceAccountName: local-path-provisioner-service-account
+      tolerations:
+          - key: "CriticalAddonsOnly"
+            operator: "Exists"
+          - key: "node-role.kubernetes.io/control-plane"
+            operator: "Exists"
+            effect: "NoSchedule"
+          - key: "node-role.kubernetes.io/master"
+            operator: "Exists"
+            effect: "NoSchedule"
+      containers:
+      - name: local-path-provisioner
+        image: %{SYSTEM_DEFAULT_REGISTRY}%rancher/local-path-provisioner:v0.0.21
+        imagePullPolicy: IfNotPresent
+        command:
+        - local-path-provisioner
+        - start
+        - --config
+        - /etc/config/config.json
+        volumeMounts:
+        - name: config-volume
+          mountPath: /etc/config/
+        env:
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+      volumes:
+        - name: config-volume
+          configMap:
+            name: local-path-config
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: local-path
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: rancher.io/local-path
+volumeBindingMode: WaitForFirstConsumer
+reclaimPolicy: Delete
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: local-path-config
+  namespace: kube-system
+data:
+  config.json: |-
+    {
+      "nodePathMap":[
+      {
+        "node":"DEFAULT_PATH_FOR_NON_LISTED_NODES",
+        "paths":["%{DEFAULT_LOCAL_STORAGE_PATH}%"]
+      }
+      ]
+    }
+  setup: |-
+    #!/bin/sh
+    while getopts "m:s:p:" opt
+    do
+        case $opt in
+            p)
+            absolutePath=$OPTARG
+            ;;
+            s)
+            sizeInBytes=$OPTARG
+            ;;
+            m)
+            volMode=$OPTARG
+            ;;
+        esac
+    done
+    mkdir -m 0777 -p ${absolutePath}
+    chmod 701 ${absolutePath}/..
+  teardown: |-
+    #!/bin/sh
+    while getopts "m:s:p:" opt
+    do
+        case $opt in
+            p)
+            absolutePath=$OPTARG
+            ;;
+            s)
+            sizeInBytes=$OPTARG
+            ;;
+            m)
+            volMode=$OPTARG
+            ;;
+        esac
+    done
+    rm -rf ${absolutePath}
+  helperPod.yaml: |-
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: helper-pod
+    spec:
+      containers:
+      - name: helper-pod
+        image: %{SYSTEM_DEFAULT_REGISTRY}%rancher/mirrored-library-busybox:1.34.1

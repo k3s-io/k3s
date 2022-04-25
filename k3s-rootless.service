@@ -1,0 +1,45 @@
+# systemd unit file for k3s (rootless)
+#
+# Usage:
+# - [Optional] Enable cgroup v2 delegation, see https://rootlesscontaine.rs/getting-started/common/cgroup2/ .
+#   This step is optional, but highly recommended for enabling CPU and memory resource limtitation.
+#
+# - Copy this file as `~/.config/systemd/user/k3s-rootless.service`.
+#   Installing this file as a system-wide service (`/etc/systemd/...`) is not supported.
+#   Depending on the path of `k3s` binary, you might need to modify the `ExecStart=/usr/local/bin/k3s ...` line of this file.
+#
+# - Run `systemctl --user daemon-reload`
+#
+# - Run `systemctl --user enable --now k3s-rootless`
+#
+# - Run `KUBECONFIG=~/.kube/k3s.yaml kubectl get pods -A`, and make sure the pods are running.
+#
+# Troubleshooting:
+# - See `systemctl --user status k3s-rootless` to check the daemon status
+# - See `journalctl --user -f -u k3s-rootless` to see the daemon log
+# - See also https://rootlesscontaine.rs/
+
+[Unit]
+Description=k3s (Rootless)
+
+[Service]
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+# NOTE: Don't try to run `k3s server --rootless` on a terminal, as it doesn't enable cgroup v2 delegation.
+# If you really need to try it on a terminal, prepend `systemd-run --user -p Delegate=yes --tty` to create a systemd scope.
+ExecStart=/usr/local/bin/k3s server --rootless --snapshotter=fuse-overlayfs
+ExecReload=/bin/kill -s HUP $MAINPID
+TimeoutSec=0
+RestartSec=2
+Restart=always
+StartLimitBurst=3
+StartLimitInterval=60s
+LimitNOFILE=infinity
+LimitNPROC=infinity
+LimitCORE=infinity
+TasksMax=infinity
+Delegate=yes
+Type=simple
+KillMode=mixed
+
+[Install]
+WantedBy=default.target

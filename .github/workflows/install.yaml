@@ -1,0 +1,71 @@
+name: Install Script
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - "channel.yaml"
+      - "install.sh"
+      - "tests/install/**"
+  pull_request:
+    branches: [main, master]
+    paths:
+      - "install.sh"
+      - "tests/install/**"
+  workflow_dispatch: {}
+jobs:
+  test:
+    name: "Smoke Test"
+    runs-on: macos-10.15
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        channel: [stable]
+        vm: [centos-7, rocky-8, fedora-coreos, opensuse-leap, opensuse-microos, ubuntu-focal]
+        include:
+          - {channel: latest, vm: rocky-8}
+          - {channel: latest, vm: ubuntu-focal}
+          - {channel: latest, vm: opensuse-leap}
+          - {channel: testing, vm: rocky-8}
+          - {channel: testing, vm: opensuse-leap}
+          - {channel: testing, vm: ubuntu-focal}
+      max-parallel: 2
+    defaults:
+      run:
+        working-directory: tests/install/${{ matrix.vm }}
+    env:
+      INSTALL_K3S_CHANNEL: ${{ matrix.channel }}
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v2
+        with: {fetch-depth: 1}
+      - name: "Vagrant Cache"
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.vagrant.d/boxes
+            ~/.vagrant.d/gems
+          key: install-${{ hashFiles(format('tests/install/{0}/Vagrantfile', matrix.vm)) }}
+        id: vagrant-cache
+        continue-on-error: true
+      - name: "Vagrant Plugin(s)"
+        run: vagrant plugin install vagrant-k3s vagrant-reload
+      - name: "Vagrant Up ⏩ Install K3s"
+        run: vagrant up
+      - name: "⏳ Node"
+        run: vagrant provision --provision-with=k3s-wait-for-node
+      - name: "⏳ CoreDNS"
+        run: vagrant provision --provision-with=k3s-wait-for-coredns
+      - name: "⏳ Local Storage"
+        run: vagrant provision --provision-with=k3s-wait-for-local-storage
+        continue-on-error: true
+      - name: "⏳ Metrics Server"
+        run: vagrant provision --provision-with=k3s-wait-for-metrics-server
+        continue-on-error: true
+      - name: "⏳ Traefik"
+        run: vagrant provision --provision-with=k3s-wait-for-traefik
+        continue-on-error: true
+      - name: "k3s-status"
+        run: vagrant provision --provision-with=k3s-status
+      - name: "k3s-procps"
+        run: vagrant provision --provision-with=k3s-procps

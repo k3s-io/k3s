@@ -1,0 +1,765 @@
+# ASSUMPTIONS:
+# - Underlying cluster should have 100+ nodes.
+# - Number of nodes should be divisible by NODES_PER_NAMESPACE (default 100).
+# - The number of created SVCs is half the number of created Deployments.
+# - Only half of Deployments will be assigned 1-1 to existing SVCs.
+
+#Constants
+{{$NODE_MODE := DefaultParam .NODE_MODE "allnodes"}}
+{{$NODES_PER_NAMESPACE := DefaultParam .NODES_PER_NAMESPACE 10}}
+{{$PODS_PER_NODE := DefaultParam .PODS_PER_NODE 30}}
+{{$LOAD_TEST_THROUGHPUT := DefaultParam .LOAD_TEST_THROUGHPUT 10}}
+{{$BIG_GROUP_SIZE := 300}}
+{{$MEDIUM_GROUP_SIZE := 150}}
+{{$SMALL_GROUP_SIZE := 50}}
+{{$SMALL_STATEFUL_SETS_PER_NAMESPACE := 1}}
+{{$MEDIUM_STATEFUL_SETS_PER_NAMESPACE := 1}}
+{{$ENABLE_CHAOSMONKEY := DefaultParam .ENABLE_CHAOSMONKEY false}}
+{{$PROMETHEUS_SCRAPE_KUBE_PROXY := DefaultParam .PROMETHEUS_SCRAPE_KUBE_PROXY true}}
+{{$ENABLE_PROMETHEUS_API_RESPONSIVENESS := DefaultParam .ENABLE_PROMETHEUS_API_RESPONSIVENESS false}}
+{{$ENABLE_CONFIGMAPS := DefaultParam .ENABLE_CONFIGMAPS false}}
+{{$ENABLE_DAEMONSETS := DefaultParam .ENABLE_DAEMONSETS false}}
+{{$ENABLE_JOBS := DefaultParam .ENABLE_JOBS false}}
+{{$ENABLE_PVS := DefaultParam .ENABLE_PVS false}}
+{{$ENABLE_SECRETS := DefaultParam .ENABLE_SECRETS false}}
+{{$ENABLE_STATEFULSETS := DefaultParam .ENABLE_STATEFULSETS false}}
+{{$ENABLE_NETWORKPOLICIES := DefaultParam .ENABLE_NETWORKPOLICIES false}}
+{{$ENABLE_SYSTEM_POD_METRICS:= DefaultParam .ENABLE_SYSTEM_POD_METRICS true}}
+{{$USE_SIMPLE_LATENCY_QUERY := DefaultParam .USE_SIMPLE_LATENCY_QUERY false}}
+#Variables
+{{$namespaces := DivideInt .Nodes $NODES_PER_NAMESPACE}}
+{{$totalPods := MultiplyInt $namespaces $NODES_PER_NAMESPACE $PODS_PER_NODE}}
+{{$podsPerNamespace := DivideInt $totalPods $namespaces}}
+{{$saturationTime := DivideInt $totalPods $LOAD_TEST_THROUGHPUT}}
+# bigDeployments - 1/4 of namespace pods should be in big Deployments.
+{{$bigDeploymentsPerNamespace := DivideInt $podsPerNamespace (MultiplyInt 4 $BIG_GROUP_SIZE)}}
+# mediumDeployments - 1/4 of namespace pods should be in medium Deployments.
+{{$mediumDeploymentsPerNamespace := DivideInt $podsPerNamespace (MultiplyInt 4 $MEDIUM_GROUP_SIZE)}}
+# smallDeployments - 1/2 of namespace pods should be in small Deployments.
+{{$smallDeploymentsPerNamespace := DivideInt $podsPerNamespace (MultiplyInt 2 $SMALL_GROUP_SIZE)}}
+# If StatefulSets are enabled reduce the number of small and medium deployments per namespace
+{{$smallDeploymentsPerNamespace := SubtractInt $smallDeploymentsPerNamespace (IfThenElse $ENABLE_STATEFULSETS $SMALL_STATEFUL_SETS_PER_NAMESPACE 0)}}
+{{$mediumDeploymentsPerNamespace := SubtractInt $mediumDeploymentsPerNamespace (IfThenElse $ENABLE_STATEFULSETS $MEDIUM_STATEFUL_SETS_PER_NAMESPACE 0)}}
+
+# If Jobs are enabled reduce the number of small, medium, big deployments per namespace.
+{{$smallDeploymentsPerNamespace := SubtractInt $smallDeploymentsPerNamespace (IfThenElse $ENABLE_JOBS 1 0)}}
+{{$mediumDeploymentsPerNamespace := SubtractInt $mediumDeploymentsPerNamespace (IfThenElse $ENABLE_JOBS 1 0)}}
+{{$bigDeploymentsPerNamespace := SubtractInt $bigDeploymentsPerNamespace (IfThenElse $ENABLE_JOBS 1 0)}}
+
+name: load
+automanagedNamespaces: {{$namespaces}}
+tuningSets:
+- name: Sequence
+  parallelismLimitedLoad:
+    parallelismLimit: 1
+- name: RandomizedSaturationTimeLimited
+  RandomizedTimeLimitedLoad:
+    timeLimit: {{$saturationTime}}s
+- name: RandomizedScalingTimeLimited
+  RandomizedTimeLimitedLoad:
+    # The expected number of created/deleted pods is totalPods/4 when scaling,
+    # as each RS changes its size from X to a uniform random value in [X/2, 3X/2].
+    # To match 10 [pods/s] requirement, we need to divide saturationTime by 4.
+    timeLimit: {{DivideInt $saturationTime 4}}s
+{{if $ENABLE_CHAOSMONKEY}}
+chaosMonkey:
+  nodeFailure:
+    failureRate: 0.01
+    interval: 1m
+    jitterFactor: 10.0
+    simulatedDowntime: 10m
+{{end}}
+steps:
+- name: Starting measurements
+  measurements:
+  - Identifier: APIResponsiveness
+    Method: APIResponsiveness
+    Params:
+      action: reset
+  - Identifier: APIResponsivenessPrometheus
+    Method: APIResponsivenessPrometheus
+    Params:
+      action: start
+  - Identifier: PodStartupLatency
+    Method: PodStartupLatency
+    Params:
+      action: start
+      labelSelector: group = load
+      threshold: 1h
+  - Identifier: InClusterNetworkLatency
+    Method: InClusterNetworkLatency
+    Params:
+      action: start
+      replicasPerProbe: {{AddInt 2 (DivideInt .Nodes 100)}}
+  - Identifier: DnsLookupLatency
+    Method: DnsLookupLatency
+    Params:
+      action: start
+      replicasPerProbe: {{AddInt 2 (DivideInt .Nodes 100)}}
+  {{if $PROMETHEUS_SCRAPE_KUBE_PROXY}}
+  - Identifier: NetworkProgrammingLatency
+    Method: NetworkProgrammingLatency
+    Params:
+      action: start
+  {{end}}
+  - Identifier: TestMetrics
+    Method: TestMetrics
+    Params:
+      action: start
+      nodeMode: {{$NODE_MODE}}
+      systemPodMetricsEnabled: {{$ENABLE_SYSTEM_POD_METRICS}}
+
+- name: Creating SVCs
+  phases:
+  - namespaceRange:
+      min: 1
+      max: {{$namespaces}}
+    replicasPerNamespace: {{DivideInt (AddInt $bigDeploymentsPerNamespace 1) 2}}
+    tuningSet: Sequence
+    objectBundle:
+    - basename: big-service
+      objectTemplatePath: service.yaml
+  - namespaceRange:
+      min: 1
+      max: {{$namespaces}}
+    replicasPerNamespace: {{DivideInt (AddInt $mediumDeploymentsPerNamespace 1) 2}}
+    tuningSet: Sequence
+    objectBundle:
+    - basename: medium-service
+      objectTemplatePath: service.yaml
+  - namespaceRange:
+      min: 1
+      max: {{$namespaces}}
+    replicasPerNamespace: {{DivideInt (AddInt $smallDeploymentsPerNamespace 1) 2}}
+    tuningSet: Sequence
+    objectBundle:
+    - basename: small-service
+      objectTemplatePath: service.yaml
+
+{{if $ENABLE_DAEMONSETS}}
+- name: Creating PriorityClass for DaemonSets
+  phases:
+  - replicasPerNamespace: 1
+    tuningSet: Sequence
+    objectBundle:
+      - basename: daemonset-priorityclass
+        objectTemplatePath: daemonset-priorityclass.yaml
+{{end}}
+
+- name: Starting measurement for waiting for pods
+  measurements:
+  - Identifier: WaitForRunningDeployments
+    Method: WaitForControlledPodsRunning
+    Params:
+      action: start
+      apiVersion: apps/v1
+      kind: Deployment
+      labelSelector: group = load
+      operationTimeout: 15m
+  {{if $ENABLE_STATEFULSETS}}
+  - Identifier: WaitForRunningStatefulSets
+    Method: WaitForControlledPodsRunning
+    Params:
+      action: start
+      apiVersion: apps/v1
+      kind: StatefulSet
+      labelSelector: group = load
+      operationTimeout: 15m
+  {{end}}
+  {{if $ENABLE_DAEMONSETS}}
+  - Identifier: WaitForRunningDaemonSets
+    Method: WaitForControlledPodsRunning
+    Params:
+      action: start
+      apiVersion: apps/v1
+      kind: DaemonSet
+      labelSelector: group = load
+      operationTimeout: 15m
+  {{end}}
+  {{if $ENABLE_JOBS}}
+  - Identifier: WaitForRunningJobs
+    Method: WaitForControlledPodsRunning
+    Params:
+      action: start
+      apiVersion: batch/v1
+      kind: Job
+      labelSelector: group = load
+      operationTimeout: 15m
+  {{end}}
+
+- name: Creating objects
+  phases:
+  {{if $ENABLE_DAEMONSETS}}
+  - namespaceRange:
+      min: 1
+      max: 1
+    replicasPerNamespace: 1
+    tuningSet: RandomizedSaturationTimeLimited
+    objectBundle:
+    - basename: daemonset
+      objectTemplatePath: daemonset.yaml
+      templateFillMap:
+        Image: k8s.gcr.io/pause:3.0
+  {{end}}
+  - namespaceRange:
+      min: 1
+      max: {{$namespaces}}
+    replicasPerNamespace: {{$bigDeploymentsPerNamespace}}
+    tuningSet: RandomizedSaturationTimeLimited
+    objectBundle:
+    {{if $ENABLE_CONFIGMAPS}}
+    - basename: big-deployment
+      objectTemplatePath: configmap.yaml
+    {{end}}
+    {{if $ENABLE_SECRETS}}
+    - basename: big-deployment
+      objectTemplatePath: secret.yaml
+    {{end}}
+    {{if $ENABLE_NETWORKPOLICIES}}
+    - basename: big-deployment
+      objectTemplatePath: networkpolicy.yaml
+    {{end}}
+    - basename: big-deployment
+      objectTemplatePath: deployment.yaml
+      templateFillMap:
+        ReplicasMin: {{$BIG_GROUP_SIZE}}
+        ReplicasMax: {{$BIG_GROUP_SIZE}}
+        SvcName: big-service
+  - namespaceRange:
+      min: 1
+      max: {{$namespaces}}
+    replicasPerNamespace: {{$mediumDeploymentsPerNamespace}}
+    tuningSet: RandomizedSaturationTimeLimited
+    objectBundle:
+    {{if $ENABLE_CONFIGMAPS}}
+    - basename: medium-deployment
+      objectTemplatePath: configmap.yaml
+    {{end}}
+    {{if $ENABLE_SECRETS}}
+    - basename: medium-deployment
+      objectTemplatePath: secret.yaml
+    {{end}}
+    {{if $ENABLE_NETWORKPOLICIES}}
+    - basename: medium-deployment
+      objectTemplatePath: networkpolicy.yaml
+    {{end}}
+    - basename: medium-deployment
+      objectTemplatePath: deployment.yaml
+      templateFillMap:
+        ReplicasMin: {{$MEDIUM_GROUP_SIZE}}
+        ReplicasMax: {{$MEDIUM_GROUP_SIZE}}
+        SvcName: medium-service
+  - namespaceRange:
+      min: 1
+      max: {{$namespaces}}
+    replicasPerNamespace: {{$smallDeploymentsPerNamespace}}
+    tuningSet: RandomizedSaturationTimeLimited
+    objectBundle:
+    {{if $ENABLE_CONFIGMAPS}}
+    - basename: small-deployment
+      objectTemplatePath: configmap.yaml
+    {{end}}
+    {{if $ENABLE_SECRETS}}
+    - basename: small-deployment
+      objectTemplatePath: secret.yaml
+    {{end}}
+    {{if $ENABLE_NETWORKPOLICIES}}
+    - basename: small-deployment
+      objectTemplatePath: networkpolicy.yaml
+    {{end}}
+    - basename: small-deployment
+      objectTemplatePath: deployment.yaml
+      templateFillMap:
+        ReplicasMin: {{$SMALL_GROUP_SIZE}}
+        ReplicasMax: {{$SMALL_GROUP_SIZE}}
+        SvcName: small-service
+  {{if $ENABLE_STATEFULSETS}}
+  - namespaceRange:
+      min: 1
+      max: {{$namespaces}}
+    replicasPerNamespace: {{$SMALL_STATEFUL_SETS_PER_NAMESPACE}}
+    tuningSet: RandomizedSaturationTimeLimited
+    objectBundle:
+      - basename: small-statefulset
+        objectTemplatePath: statefulset_service.yaml
+      - basename: small-statefulset
+        objectTemplatePath: statefulset.yaml
+        templateFillMap:
+          ReplicasMin: {{$SMALL_GROUP_SIZE}}
+          ReplicasMax: {{$SMALL_GROUP_SIZE}}
+  - namespaceRange:
+      min: 1
+      max: {{$namespaces}}
+    replicasPerNamespace: {{$MEDIUM_STATEFUL_SETS_PER_NAMESPACE}}
+    tuningSet: RandomizedSaturationTimeLimited
+    objectBundle:
+      - basename: medium-statefulset
+        objectTemplatePath: statefulset_service.yaml
+      - basename: medium-statefulset
+        objectTemplatePath: statefulset.yaml
+        templateFillMap:
+          ReplicasMin: {{$MEDIUM_GROUP_SIZE}}
+          ReplicasMax: {{$MEDIUM_GROUP_SIZE}}
+  {{end}}
+  {{if $ENABLE_JOBS}}
+  - namespaceRange:
+      min: 1
+      max: {{$namespaces}}
+    replicasPerNamespace: 1
+    tuningSet: RandomizedSaturationTimeLimited
+    objectBundle:
+      - basename: small-job
+        objectTemplatePath: job.yaml
+        templateFillMap:
+          ReplicasMin: {{$SMALL_GROUP_SIZE}}
+          ReplicasMax: {{$SMALL_GROUP_SIZE}}
+  - namespaceRange:
+      min: 1
+      max: {{$namespaces}}
+    replicasPerNamespace: 1
+    tuningSet: RandomizedSaturationTimeLimited
+    objectBundle:
+      - basename: medium-job
+        objectTemplatePath: job.yaml
+        templateFillMap:
+          ReplicasMin: {{$MEDIUM_GROUP_SIZE}}
+          ReplicasMax: {{$MEDIUM_GROUP_SIZE}}
+  - namespaceRange:
+      min: 1
+      max: {{$namespaces}}
+    replicasPerNamespace: 1
+    tuningSet: RandomizedSaturationTimeLimited
+    objectBundle:
+      - basename: big-job
+        objectTemplatePath: job.yaml
+        templateFillMap:
+          ReplicasMin: {{$BIG_GROUP_SIZE}}
+          ReplicasMax: {{$BIG_GROUP_SIZE}}
+  {{end}}
+
+- name: Waiting for pods to be running
+  measurements:
+  - Identifier: WaitForRunningDeployments
+    Method: WaitForControlledPodsRunning
+    Params:
+      action: gather
+  {{if $ENABLE_STATEFULSETS}}
+  - Identifier: WaitForRunningStatefulSets
+    Method: WaitForControlledPodsRunning
+    Params:
+      action: gather
+  {{end}}
+  {{if $ENABLE_DAEMONSETS}}
+  - Identifier: WaitForRunningDaemonSets
+    Method: WaitForControlledPodsRunning
+    Params:
+      action: gather
+  {{end}}
+  {{if $ENABLE_JOBS}}
+  - Identifier: WaitForRunningJobs
+    Method: WaitForControlledPodsRunning
+    Params:
+      action: gather
+  {{end}}
+
+- name: Scaling and updating objects
+  phases:
+  - namespaceRange:
+      min: 1
+      max: {{$namespaces}}
+    replicasPerNamespace: {{$bigDeploymentsPerNamespace}}
+    tuningSet: RandomizedScalingTimeLimited
+    objectBundle:
+    - basename: big-deployment
+      objectTemplatePath: deployment.yaml
+      templateFillMap:
+        ReplicasMin: {{MultiplyInt $BIG_GROUP_SIZE 0.5}}
+        ReplicasMax: {{MultiplyInt $BIG_GROUP_SIZE 1.5}}
+        SvcName: big-service
+  - namespaceRange:
+      min: 1
+      max: {{$namespaces}}
+    replicasPerNamespace: {{$mediumDeploymentsPerNamespace}}
+    tuningSet: RandomizedScalingTimeLimited
+    objectBundle:
+    - basename: medium-deployment
+      objectTemplatePath: deployment.yaml
+      templateFillMap:
+        ReplicasMin: {{MultiplyInt $MEDIUM_GROUP_SIZE 0.5}}
+        ReplicasMax: {{MultiplyInt $MEDIUM_GROUP_SIZE 1.5}}
+        SvcName: medium-service
+  - namespaceRange:
+      min: 1
+      max: {{$namespaces}}
+    replicasPerNamespace: {{$smallDeploymentsPerNamespace}}
+    tuningSet: RandomizedScalingTimeLimited
+    objectBundle:
+    - basename: small-deployment
+      objectTemplatePath: deployment.yaml
+      templateFillMap:
+        ReplicasMin: {{MultiplyInt $SMALL_GROUP_SIZE 0.5}}
+        ReplicasMax: {{MultiplyInt $SMALL_GROUP_SIZE 1.5}}
+        SvcName: small-service
+  {{if $ENABLE_STATEFULSETS}}
+  - namespaceRange:
+      min: 1
+      max: {{$namespaces}}
+    replicasPerNamespace: {{$SMALL_STATEFUL_SETS_PER_NAMESPACE}}
+    tuningSet: RandomizedScalingTimeLimited
+    objectBundle:
+      - basename: small-statefulset
+        objectTemplatePath: statefulset.yaml
+        templateFillMap:
+          ReplicasMin: {{MultiplyInt $SMALL_GROUP_SIZE 0.5}}
+          ReplicasMax: {{MultiplyInt $SMALL_GROUP_SIZE 1.5}}
+  - namespaceRange:
+      min: 1
+      max: {{$namespaces}}
+    replicasPerNamespace: {{$MEDIUM_STATEFUL_SETS_PER_NAMESPACE}}
+    tuningSet: RandomizedScalingTimeLimited
+    objectBundle:
+      - basename: medium-statefulset
+        objectTemplatePath: statefulset.yaml
+        templateFillMap:
+          ReplicasMin: {{MultiplyInt $MEDIUM_GROUP_SIZE 0.5}}
+          ReplicasMax: {{MultiplyInt $MEDIUM_GROUP_SIZE 1.5}}
+  {{end}}
+  {{if $ENABLE_DAEMONSETS}}
+  - namespaceRange:
+      min: 1
+      max: 1
+    replicasPerNamespace: 1
+    tuningSet: RandomizedScalingTimeLimited
+    objectBundle:
+      - basename: daemonset
+        objectTemplatePath: daemonset.yaml
+        templateFillMap:
+          Image: k8s.gcr.io/pause:3.1
+  {{end}}
+  {{if $ENABLE_JOBS}}
+  - namespaceRange:
+      min: 1
+      max: {{$namespaces}}
+    replicasPerNamespace: 1
+    tuningSet: RandomizedScalingTimeLimited
+    objectBundle:
+      - basename: small-job
+        objectTemplatePath: job.yaml
+        templateFillMap:
+          ReplicasMin: {{MultiplyInt $SMALL_GROUP_SIZE 0.5}}
+          ReplicasMax: {{MultiplyInt $SMALL_GROUP_SIZE 1.5}}
+  - namespaceRange:
+      min: 1
+      max: {{$namespaces}}
+    replicasPerNamespace: 1
+    tuningSet: RandomizedScalingTimeLimited
+    objectBundle:
+      - basename: medium-job
+        objectTemplatePath: job.yaml
+        templateFillMap:
+          ReplicasMin: {{MultiplyInt $MEDIUM_GROUP_SIZE 0.5}}
+          ReplicasMax: {{MultiplyInt $MEDIUM_GROUP_SIZE 1.5}}
+  - namespaceRange:
+      min: 1
+      max: {{$namespaces}}
+    replicasPerNamespace: 1
+    tuningSet: RandomizedScalingTimeLimited
+    objectBundle:
+      - basename: big-job
+        objectTemplatePath: job.yaml
+        templateFillMap:
+          ReplicasMin: {{MultiplyInt $BIG_GROUP_SIZE 0.5}}
+          ReplicasMax: {{MultiplyInt $BIG_GROUP_SIZE 1.5}}
+  {{end}}
+
+- name: Waiting for objects to become scaled
+  measurements:
+  - Identifier: WaitForRunningDeployments
+    Method: WaitForControlledPodsRunning
+    Params:
+      action: gather
+  {{if $ENABLE_STATEFULSETS}}
+  - Identifier: WaitForRunningStatefulSets
+    Method: WaitForControlledPodsRunning
+    Params:
+      action: gather
+  {{end}}
+  {{if $ENABLE_DAEMONSETS}}
+  - Identifier: WaitForRunningDaemonSets
+    Method: WaitForControlledPodsRunning
+    Params:
+      action: gather
+  {{end}}
+  {{if $ENABLE_JOBS}}
+  - Identifier: WaitForRunningJobs
+    Method: WaitForControlledPodsRunning
+    Params:
+      action: gather
+  {{end}}
+
+- name: Deleting objects
+  phases:
+  - namespaceRange:
+      min: 1
+      max: {{$namespaces}}
+    replicasPerNamespace: 0
+    tuningSet: RandomizedSaturationTimeLimited
+    objectBundle:
+    - basename: big-deployment
+      objectTemplatePath: deployment.yaml
+    {{if $ENABLE_CONFIGMAPS}}
+    - basename: big-deployment
+      objectTemplatePath: configmap.yaml
+    {{end}}
+    {{if $ENABLE_SECRETS}}
+    - basename: big-deployment
+      objectTemplatePath: secret.yaml
+    {{end}}
+    {{if $ENABLE_NETWORKPOLICIES}}
+    - basename: big-deployment
+      objectTemplatePath: networkpolicy.yaml
+    {{end}}
+  - namespaceRange:
+      min: 1
+      max: {{$namespaces}}
+    replicasPerNamespace: 0
+    tuningSet: RandomizedSaturationTimeLimited
+    objectBundle:
+    - basename: medium-deployment
+      objectTemplatePath: deployment.yaml
+    {{if $ENABLE_CONFIGMAPS}}
+    - basename: medium-deployment
+      objectTemplatePath: configmap.yaml
+    {{end}}
+    {{if $ENABLE_SECRETS}}
+    - basename: medium-deployment
+      objectTemplatePath: secret.yaml
+    {{end}}
+    {{if $ENABLE_NETWORKPOLICIES}}
+    - basename: medium-deployment
+      objectTemplatePath: networkpolicy.yaml
+    {{end}}
+  - namespaceRange:
+      min: 1
+      max: {{$namespaces}}
+    replicasPerNamespace: 0
+    tuningSet: RandomizedSaturationTimeLimited
+    objectBundle:
+    - basename: small-deployment
+      objectTemplatePath: deployment.yaml
+    {{if $ENABLE_CONFIGMAPS}}
+    - basename: small-deployment
+      objectTemplatePath: configmap.yaml
+    {{end}}
+    {{if $ENABLE_SECRETS}}
+    - basename: small-deployment
+      objectTemplatePath: secret.yaml
+    {{end}}
+    {{if $ENABLE_NETWORKPOLICIES}}
+    - basename: small-deployment
+      objectTemplatePath: networkpolicy.yaml
+    {{end}}
+  {{if $ENABLE_STATEFULSETS}}
+  - namespaceRange:
+      min: 1
+      max: {{$namespaces}}
+    replicasPerNamespace: 0
+    tuningSet: RandomizedSaturationTimeLimited
+    objectBundle:
+      - basename: small-statefulset
+        objectTemplatePath: statefulset.yaml
+      - basename: small-statefulset
+        objectTemplatePath: statefulset_service.yaml
+  - namespaceRange:
+      min: 1
+      max: {{$namespaces}}
+    replicasPerNamespace: 0
+    tuningSet: RandomizedSaturationTimeLimited
+    objectBundle:
+      - basename: medium-statefulset
+        objectTemplatePath: statefulset.yaml
+      - basename: medium-statefulset
+        objectTemplatePath: statefulset_service.yaml
+  {{end}}
+  {{if $ENABLE_DAEMONSETS}}
+  - namespaceRange:
+      min: 1
+      max: 1
+    replicasPerNamespace: 0
+    tuningSet: RandomizedSaturationTimeLimited
+    objectBundle:
+      - basename: daemonset
+        objectTemplatePath: daemonset.yaml
+  {{end}}
+  {{if $ENABLE_JOBS}}
+  - namespaceRange:
+      min: 1
+      max: {{$namespaces}}
+    replicasPerNamespace: 0
+    tuningSet: RandomizedSaturationTimeLimited
+    objectBundle:
+      - basename: small-job
+        objectTemplatePath: job.yaml
+  - namespaceRange:
+      min: 1
+      max: {{$namespaces}}
+    replicasPerNamespace: 0
+    tuningSet: RandomizedSaturationTimeLimited
+    objectBundle:
+      - basename: medium-job
+        objectTemplatePath: job.yaml
+  - namespaceRange:
+      min: 1
+      max: {{$namespaces}}
+    replicasPerNamespace: 0
+    tuningSet: RandomizedSaturationTimeLimited
+    objectBundle:
+      - basename: big-job
+        objectTemplatePath: job.yaml
+  {{end}}
+  # If both StatefulSets and PVs were enabled we need to delete PVs manually.
+  {{if and $ENABLE_STATEFULSETS $ENABLE_PVS}}
+  - namespaceRange:
+      min: 1
+      max: {{$namespaces}}
+    replicasPerNamespace: 0
+    tuningSet: RandomizedSaturationTimeLimited
+    objectBundle:
+      {{range $ssIndex := Seq $SMALL_STATEFUL_SETS_PER_NAMESPACE}}
+      - basename: pv-small-statefulset-{{$ssIndex}}
+        objectTemplatePath: pvc.yaml
+        listUnknownObjectOptions:
+          labelSelector:
+            matchLabels:
+              name: small-statefulset-{{$ssIndex}}
+      {{end}}
+  - namespaceRange:
+      min: 1
+      max: {{$namespaces}}
+    replicasPerNamespace: 0
+    tuningSet: RandomizedSaturationTimeLimited
+    objectBundle:
+      {{range $ssIndex := Seq $MEDIUM_STATEFUL_SETS_PER_NAMESPACE}}
+      - basename: pv-medium-statefulset-{{$ssIndex}}
+        objectTemplatePath: pvc.yaml
+        listUnknownObjectOptions:
+          labelSelector:
+            matchLabels:
+              name: medium-statefulset-{{$ssIndex}}
+      {{end}}
+  {{end}}
+
+- name: Waiting for pods to be deleted
+  measurements:
+  - Identifier: WaitForRunningDeployments
+    Method: WaitForControlledPodsRunning
+    Params:
+      action: gather
+  {{if $ENABLE_STATEFULSETS}}
+  - Identifier: WaitForRunningStatefulSets
+    Method: WaitForControlledPodsRunning
+    Params:
+      action: gather
+  {{end}}
+  {{if $ENABLE_DAEMONSETS}}
+  - Identifier: WaitForRunningDaemonSets
+    Method: WaitForControlledPodsRunning
+    Params:
+      action: gather
+  {{end}}
+  {{if $ENABLE_JOBS}}
+  - Identifier: WaitForRunningJobs
+    Method: WaitForControlledPodsRunning
+    Params:
+      action: gather
+  {{end}}
+  {{if and $ENABLE_STATEFULSETS $ENABLE_PVS}}
+  - Identifier: WaitForPVCsToBeDeleted
+    Method: WaitForBoundPVCs
+    Params:
+      desiredPVCCount: 0
+      labelSelector: group = load
+      timeout: 15m
+  {{end}}
+
+{{if $ENABLE_DAEMONSETS}}
+- name: Deleting PriorityClass for DaemonSets
+  phases:
+    - replicasPerNamespace: 0
+      tuningSet: Sequence
+      objectBundle:
+        - basename: daemonset-priorityclass
+          objectTemplatePath: daemonset-priorityclass.yaml
+{{end}}
+
+- name: Deleting SVCs
+  phases:
+  - namespaceRange:
+      min: 1
+      max: {{$namespaces}}
+    replicasPerNamespace: 0
+    tuningSet: Sequence
+    objectBundle:
+    - basename: big-service
+      objectTemplatePath: service.yaml
+  - namespaceRange:
+      min: 1
+      max: {{$namespaces}}
+    replicasPerNamespace: 0
+    tuningSet: Sequence
+    objectBundle:
+    - basename: medium-service
+      objectTemplatePath: service.yaml
+  - namespaceRange:
+      min: 1
+      max: {{$namespaces}}
+    replicasPerNamespace: 0
+    tuningSet: Sequence
+    objectBundle:
+    - basename: small-service
+      objectTemplatePath: service.yaml
+
+- name: Collecting measurements
+  measurements:
+  - Identifier: APIResponsiveness
+    Method: APIResponsiveness
+    Params:
+      action: gather
+  - Identifier: APIResponsivenessPrometheusSimple
+    Method: APIResponsivenessPrometheus
+    Params:
+      action: gather
+      {{if $ENABLE_PROMETHEUS_API_RESPONSIVENESS}}
+      enableViolations: true
+      {{end}}
+      useSimpleLatencyQuery: true
+      summaryName: APIResponsivenessPrometheus_simple
+  {{if not $USE_SIMPLE_LATENCY_QUERY}}
+  - Identifier: APIResponsivenessPrometheus
+    Method: APIResponsivenessPrometheus
+    Params:
+      action: gather
+  {{end}}
+  - Identifier: PodStartupLatency
+    Method: PodStartupLatency
+    Params:
+      action: gather
+  - Identifier: InClusterNetworkLatency
+    Method: InClusterNetworkLatency
+    Params:
+      action: gather
+  - Identifier: DnsLookupLatency
+    Method: DnsLookupLatency
+    Params:
+      action: gather
+  {{if $PROMETHEUS_SCRAPE_KUBE_PROXY}}
+  - Identifier: NetworkProgrammingLatency
+    Method: NetworkProgrammingLatency
+    Params:
+      action: gather
+  {{end}}
+  - Identifier: TestMetrics
+    Method: TestMetrics
+    Params:
+      action: gather
+      systemPodMetricsEnabled: {{$ENABLE_SYSTEM_POD_METRICS}}

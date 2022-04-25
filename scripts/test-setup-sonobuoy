@@ -1,0 +1,30 @@
+#!/bin/bash
+
+export NUM_SERVERS=1
+export NUM_AGENTS=1
+export SERVER_ARGS='--no-deploy=traefik'
+export WAIT_SERVICES='coredns local-path-provisioner metrics-server'
+
+export sonobuoyParallelArgs=(--e2e-focus='\[Conformance\]' --e2e-skip='\[Serial\]' --e2e-parallel=y)
+export sonobuoySerialArgs=(--e2e-focus='\[Serial\].*\[Conformance\]')
+
+start-test() {
+  sonobuoy-test $@
+}
+export -f start-test
+
+test-post-hook() {
+  if [[ $1 -eq 0 ]]; then
+    return
+  fi
+  local failures=$(awk '/^Summarizing .* Failures?:$/,0' "$TEST_DIR"/sonobuoy/plugins/e2e/results/global/e2e.log)
+  # Ignore sonobuoy failures if only these flaky tests have failed
+  local flakyTest1='[Fail] [sig-node] Probing container [It] should have monotonically increasing restart count [NodeConformance] [Conformance]'
+  local flakyTest2='[Fail] [sig-node] Pods [It] should delete a collection of pods [Conformance]'
+  local flakyTest3='[Fail] [sig-network] Proxy version v1 [It] A set of valid responses are returned for both pod and service ProxyWithPath [Conformance]'
+  local flakyTest4='[Fail] [sig-node] Pods [It] should run through the lifecycle of Pods and PodStatus [Conformance]' 
+  flakyFails=$( grep -scF -e "$flakyTest1" -e "$flakyTest2" -e "$flakyTest3"  -e "$flakyTest4" <<< "$failures" )
+  totalFails=$( grep -scF -e "[Fail]" <<< "$failures" )
+  [ "$totalFails" -le "$flakyFails" ]
+}
+export -f test-post-hook

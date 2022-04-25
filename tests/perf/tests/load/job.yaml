@@ -1,0 +1,39 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{.Name}}
+  labels:
+    group: load
+spec:
+  manualSelector: true
+  parallelism: {{RandIntRange .ReplicasMin .ReplicasMax}}
+  selector:
+    matchLabels:
+      name: {{.Name}}
+  template:
+    metadata:
+      labels:
+        group: load
+        name: {{.Name}}
+    spec:
+      containers:
+      - name: {{.Name}}
+        # TODO(#799): We should test the "run-to-completion" workflow and hence don't use pause pods.
+        image: k8s.gcr.io/pause:3.1
+        resources:
+          requests:
+            cpu: 10m
+            memory: "10M"
+      restartPolicy: Never
+      terminationGracePeriodSeconds: 1
+      # Add not-ready/unreachable tolerations for 15 minutes so that node
+      # failure doesn't trigger pod deletion.
+      tolerations:
+        - key: "node.kubernetes.io/not-ready"
+          operator: "Exists"
+          effect: "NoExecute"
+          tolerationSeconds: 900
+        - key: "node.kubernetes.io/unreachable"
+          operator: "Exists"
+          effect: "NoExecute"
+          tolerationSeconds: 900

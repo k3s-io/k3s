@@ -1,0 +1,44 @@
+# Example channels config
+channels:
+- name: stable
+  latest: v1.22.7+k3s1
+- name: latest
+  latestRegexp: .*
+  excludeRegexp: ^[^+]+-
+- name: testing
+  latestRegexp: -(alpha|beta|rc)
+- name: v1.16
+  latestRegexp: v1\.16\..*
+  excludeRegexp: ^[^+]+-
+- name: v1.16-testing
+  latestRegexp: v1\.16\.[0-9]*-(alpha|beta|rc)
+- name: v1.17
+  latestRegexp: v1\.17\..*
+  excludeRegexp: ^[^+]+-
+- name: v1.17-testing
+  latestRegexp: v1\.17\.[0-9]*-(alpha|beta|rc)
+- name: v1.18
+  latestRegexp: v1\.18\..*
+  excludeRegexp: ^[^+]+-
+- name: v1.18-testing
+  latestRegexp: v1\.18\.[0-9]*-(alpha|beta|rc)
+# Starting with 1.19, we aren't going to add a *-testing channel for minor releases
+- name: v1.19
+  latestRegexp: v1\.19\..*
+  excludeRegexp: ^[^+]+-
+- name: v1.20
+  latestRegexp: v1\.20\..*
+  excludeRegexp: ^[^+]+-
+- name: v1.21
+  latestRegexp: v1\.21\..*
+  excludeRegexp: ^[^+]+-
+- name: v1.22
+  latestRegexp: v1\.22\..*
+  excludeRegexp: ^[^+]+-
+- name: v1.23
+  latestRegexp: v1\.23\..*
+  excludeRegexp: ^[^+]+-
+github:
+  owner: k3s-io
+  repo: k3s
+redirectBase: https://github.com/k3s-io/k3s/releases/tag/

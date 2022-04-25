@@ -1,0 +1,32 @@
+#!/bin/bash
+
+. ./scripts/test-setup-sonobuoy
+
+export NUM_SERVERS=1
+export NUM_AGENTS=1
+export SERVER_1_ARGS="--cluster-init"
+
+server-post-hook() {
+  if [ $1 -eq 1 ]; then
+    local url=$(cat $TEST_DIR/servers/1/metadata/url)
+    export SERVER_ARGS="--server $url"
+  fi
+}
+export -f server-post-hook
+
+test-post-hook() {
+  if [[ $1 -eq 0 ]]; then
+    return
+  fi
+  local failures=$(awk '/^Summarizing .* Failures?:$/,0' "$TEST_DIR"/sonobuoy/plugins/e2e/results/global/e2e.log)
+  # Ignore sonobuoy failures if only these flaky tests have failed
+  local flakyTest1='[Fail] [sig-node] Probing container [It] should have monotonically increasing restart count [NodeConformance] [Conformance]'
+  local flakyTest2='[Fail] [sig-node] Pods [It] should delete a collection of pods [Conformance]'
+  local flakyTest3='[Fail] [sig-node] Pods [It] should run through the lifecycle of Pods and PodStatus [Conformance]' 
+  local flakyTest4='[Fail] [sig-network] Proxy version v1 [It] A set of valid responses are returned for both pod and service ProxyWithPath [Conformance]'
+  flakyFails=$( grep -scF -e "$flakyTest1" -e "$flakyTest2" -e "$flakyTest3" -e "$flakyTest4" <<< "$failures" )
+  totalFails=$( grep -scF -e "[Fail]" <<< "$failures" )
+  [ "$totalFails" -le "$flakyFails" ]
+}
+export -f test-post-hook
+

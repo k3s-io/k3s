@@ -1,0 +1,471 @@
+---
+kind: pipeline
+name: amd64
+
+platform:
+  os: linux
+  arch: amd64
+
+steps:
+- name: build
+  image: rancher/dapper:v0.5.0
+  secrets: [ gcloud_auth, unprivileged_github_token ]
+  environment:
+    GITHUB_TOKEN:
+      from_secret: unprivileged_github_token
+    GCLOUD_AUTH:
+      from_secret: gcloud_auth
+  commands:
+  - dapper ci
+  - echo "${DRONE_TAG}-amd64" | sed -e 's/+/-/g' >.tags
+  volumes:
+  - name: docker
+    path: /var/run/docker.sock
+
+- name: validate-cross-compilation
+  image: rancher/dapper:v0.5.0
+  commands:
+  - dapper validate-cross-compilation
+  volumes:
+  - name: docker
+    path: /var/run/docker.sock
+
+- name: fossa
+  image: rancher/drone-fossa:latest
+  failure: ignore
+  settings:
+    api_key:
+      from_secret: FOSSA_API_KEY
+  when:
+    instance:
+      - drone-publish.k3s.io
+    ref:
+      include:
+        - "refs/heads/master"
+        - "refs/heads/release-*"
+    event:
+      - push
+      - tag
+
+- name: github_binary_release
+  image: ibuildthecloud/github-release:v0.0.1
+  settings:
+    api_key:
+      from_secret: github_token
+    prerelease: true
+    checksum:
+    - sha256
+    checksum_file: CHECKSUMsum-amd64.txt
+    checksum_flatten: true
+    files:
+    - "dist/artifacts/*"
+  when:
+    instance:
+    - drone-publish.k3s.io
+    ref:
+    - refs/head/master
+    - refs/tags/*
+    event:
+    - tag
+
+- name: docker-publish
+  image: plugins/docker
+  settings:
+    dockerfile: package/Dockerfile
+    password:
+      from_secret: docker_password
+    repo: "rancher/k3s"
+    username:
+      from_secret: docker_username
+  when:
+    instance:
+    - drone-publish.k3s.io
+    ref:
+    - refs/head/master
+    - refs/tags/*
+    event:
+    - tag
+
+- name: test
+  image: rancher/dapper:v0.5.0
+  secrets: [ gcloud_auth ]
+  environment:
+    ENABLE_REGISTRY: 'true'
+    GCLOUD_AUTH:
+      from_secret: gcloud_auth
+  commands:
+  - dapper -f Dockerfile.test.dapper
+  volumes:
+  - name: docker
+    path: /var/run/docker.sock
+
+- name: github_e2e_logs_release
+  image: ibuildthecloud/github-release:v0.0.1
+  settings:
+    api_key:
+      from_secret: github_token
+    prerelease: true
+    files:
+    - "dist/artifacts/e2e-*.log"
+  when:
+    instance:
+    - drone-publish.k3s.io
+    ref:
+    - refs/head/master
+    - refs/tags/*
+    event:
+    - tag
+
+volumes:
+- name: docker
+  host:
+    path: /var/run/docker.sock
+
+---
+kind: pipeline
+name: arm64
+
+platform:
+  os: linux
+  arch: arm64
+
+steps:
+- name: build
+  image: rancher/dapper:v0.5.0
+  secrets: [ gcloud_auth ]
+  environment:
+    GCLOUD_AUTH:
+      from_secret: gcloud_auth
+  commands:
+  - dapper ci
+  - echo "${DRONE_TAG}-arm64" | sed -e 's/+/-/g' >.tags
+  volumes:
+  - name: docker
+    path: /var/run/docker.sock
+
+- name: github_binary_release
+  image: ibuildthecloud/github-release:v0.0.1
+  settings:
+    api_key:
+      from_secret: github_token
+    prerelease: true
+    checksum:
+    - sha256
+    checksum_file: CHECKSUMsum-arm64.txt
+    checksum_flatten: true
+    files:
+    - "dist/artifacts/*"
+  when:
+    instance:
+    - drone-publish.k3s.io
+    ref:
+    - refs/head/master
+    - refs/tags/*
+    event:
+    - tag
+
+- name: docker-publish
+  image: plugins/docker
+  settings:
+    dockerfile: package/Dockerfile
+    password:
+      from_secret: docker_password
+    repo: "rancher/k3s"
+    username:
+      from_secret: docker_username
+  when:
+    instance:
+    - drone-publish.k3s.io
+    ref:
+    - refs/head/master
+    - refs/tags/*
+    event:
+    - tag
+
+- name: test
+  image: rancher/dapper:v0.5.0
+  secrets: [ gcloud_auth ]
+  environment:
+    ENABLE_REGISTRY: 'true'
+    GCLOUD_AUTH:
+      from_secret: gcloud_auth
+  commands:
+  - dapper -f Dockerfile.test.dapper
+  volumes:
+  - name: docker
+    path: /var/run/docker.sock
+
+volumes:
+- name: docker
+  host:
+    path: /var/run/docker.sock
+
+---
+kind: pipeline
+name: arm
+
+platform:
+  os: linux
+  arch: arm
+
+steps:
+- name: build
+  image: rancher/dapper:v0.5.0
+  secrets: [ gcloud_auth ]
+  environment:
+    GCLOUD_AUTH:
+      from_secret: gcloud_auth
+  commands:
+  - dapper ci
+  - echo "${DRONE_TAG}-arm" | sed -e 's/+/-/g' >.tags
+  volumes:
+  - name: docker
+    path: /var/run/docker.sock
+
+- name: github_binary_release
+  image: ibuildthecloud/github-release:v0.0.1
+  settings:
+    api_key:
+      from_secret: github_token
+    prerelease: true
+    checksum:
+    - sha256
+    checksum_file: CHECKSUMsum-arm.txt
+    checksum_flatten: true
+    files:
+    - "dist/artifacts/*"
+  when:
+    instance:
+    - drone-publish.k3s.io
+    ref:
+    - refs/head/master
+    - refs/tags/*
+    event:
+    - tag
+
+- name: docker-publish
+  image: plugins/docker
+  settings:
+    dockerfile: package/Dockerfile
+    password:
+      from_secret: docker_password
+    repo: "rancher/k3s"
+    username:
+      from_secret: docker_username
+  when:
+    instance:
+    - drone-publish.k3s.io
+    ref:
+    - refs/head/master
+    - refs/tags/*
+    event:
+    - tag
+
+- name: test
+  image: rancher/dapper:v0.5.0
+  secrets: [ gcloud_auth ]
+  environment:
+    ENABLE_REGISTRY: 'true'
+    GCLOUD_AUTH:
+      from_secret: gcloud_auth
+  commands:
+  - dapper -f Dockerfile.test.dapper
+  volumes:
+  - name: docker
+    path: /var/run/docker.sock
+
+volumes:
+- name: docker
+  host:
+    path: /var/run/docker.sock
+
+---
+kind: pipeline
+name: s390x
+
+platform:
+  os: linux
+  arch: amd64
+
+# Hack needed for s390x: https://gist.github.com/colstrom/c2f359f72658aaabb44150ac20b16d7c#gistcomment-3858388
+node:
+  arch: s390x
+
+clone:
+  disable: true
+
+steps:
+- name: clone
+  image: alpine/git:v2.30.2-s390x
+  commands:
+  - git clone $DRONE_GIT_HTTP_URL  .
+  - git fetch origin $DRONE_COMMIT_REF
+  - git checkout $DRONE_COMMIT -b origin/$DRONE_TARGET_BRANCH
+
+- name: build
+  image: rancher/dapper:v0.5.8
+  secrets: [ gcloud_auth ]
+  environment:
+    GCLOUD_AUTH:
+      from_secret: gcloud_auth
+  commands:
+  - dapper ci
+  - echo "${DRONE_TAG}-s390x" | sed -e 's/+/-/g' >.tags
+  volumes:
+  - name: docker
+    path: /var/run/docker.sock
+
+- name: github_binary_release
+  image: rancher/drone-images:github-release-s390x
+  settings:
+    api_key:
+      from_secret: github_token
+    prerelease: true
+    checksum:
+    - sha256
+    checksum_file: CHECKSUMsum-s390x.txt
+    checksum_flatten: true
+    files:
+    - "dist/artifacts/*"
+  when:
+    instance:
+    - drone-publish.k3s.io
+    ref:
+    - refs/head/master
+    - refs/tags/*
+    event:
+    - tag
+
+- name: docker-publish
+  image: rancher/drone-images:docker-s390x
+  volumes:
+  - name: docker
+    path: /var/run/docker.sock
+  settings:
+    dockerfile: package/Dockerfile
+    password:
+      from_secret: docker_password
+    repo: "rancher/k3s"
+    username:
+      from_secret: docker_username
+  when:
+    instance:
+    - drone-publish.k3s.io
+    ref:
+    - refs/head/master
+    - refs/tags/*
+    event:
+    - tag
+
+- name: test
+  image: rancher/dapper:v0.5.8
+  secrets: [ gcloud_auth ]
+  environment:
+    ENABLE_REGISTRY: 'true'
+    GCLOUD_AUTH:
+      from_secret: gcloud_auth
+  commands:
+  - dapper -f Dockerfile.test.dapper
+  volumes:
+  - name: docker
+    path: /var/run/docker.sock
+
+volumes:
+- name: docker
+  host:
+    path: /var/run/docker.sock
+
+---
+kind: pipeline
+name: validate_go_mods
+
+platform:
+  os: linux
+  arch: amd64
+
+steps:
+  - name: validate_go_mods
+    image: rancher/dapper:v0.5.0
+    commands:
+      - dapper -f Dockerfile.test.mod.dapper
+
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+volumes:
+  - name: docker
+    host:
+      path: /var/run/docker.sock
+
+---
+kind: pipeline
+name: manifest
+
+platform:
+  os: linux
+  arch: amd64
+
+steps:
+- name: manifest
+  image: plugins/docker
+  environment:
+    DOCKER_USERNAME:
+      from_secret: docker_username
+    DOCKER_PASSWORD:
+      from_secret: docker_password
+  settings:
+    dry_run: true
+    dockerfile: Dockerfile.manifest
+    repo: "rancher/k3s-manifest"
+    build_args_from_env:
+    - DOCKER_USERNAME
+    - DOCKER_PASSWORD
+    - DRONE_TAG
+
+trigger:
+  instance:
+  - drone-publish.k3s.io
+  ref:
+  - refs/head/master
+  - refs/tags/*
+  event:
+  - tag
+
+depends_on:
+- amd64
+- arm64
+- s390x
+- arm
+
+---
+kind: pipeline
+name: dispatch
+
+platform:
+  os: linux
+  arch: amd64
+
+steps:
+- name: dispatch
+  image: curlimages/curl:7.74.0
+  user: root
+  environment:
+    PAT_USERNAME:
+      from_secret: pat_username
+    PAT_TOKEN:
+      from_secret: github_token
+  commands:
+    - apk -U --no-cache add bash
+    - scripts/dispatch
+
+trigger:
+  instance:
+    - drone-publish.k3s.io
+  ref:
+    - refs/head/master
+    - refs/tags/*
+  event:
+    - tag
+
+depends_on:
+- manifest

@@ -1,0 +1,26 @@
+#cloud-config
+%{ if length(extra_ssh_keys) > 0 }
+ssh_authorized_keys:
+%{ for ssh_key in extra_ssh_keys }
+- ${ssh_key}
+%{ endfor }
+%{ endif }
+runcmd:
+- echo "net.ipv4.neigh.default.gc_interval = 3600" >> /etc/sysctl.conf
+- echo "net.ipv4.neigh.default.gc_stale_time = 3600" >> /etc/sysctl.conf
+- echo "net.ipv4.neigh.default.gc_thresh3 = 16384" >> /etc/sysctl.conf
+- echo "net.ipv4.neigh.default.gc_thresh2 = 8192" >> /etc/sysctl.conf
+- echo "net.ipv4.neigh.default.gc_thresh1 = 4096" >> /etc/sysctl.conf
+- echo "fs.file-max = 12000500" >> /etc/sysctl.conf
+- echo "fs.nr_open = 20000500" >> /etc/sysctl.conf
+- echo "net.ipv4.tcp_mem = '10000000 10000000 10000000'" >> /etc/sysctl.conf
+- echo "net.ipv4.tcp_rmem = '1024 4096 16384'" >> /etc/sysctl.conf
+- echo "net.ipv4.tcp_wmem = '1024 4096 16384'" >> /etc/sysctl.conf
+- echo "net.core.rmem_max = 16384" >> /etc/sysctl.conf
+- echo "net.core.wmem_max = 16384" >> /etc/sysctl.conf
+- ulimit -n 20000
+- echo "# <domain> <type> <item>  <value>" >> /etc/security/limits.d/limits.conf
+- echo "    *       soft  nofile  20000" >> /etc/security/limits.d/limits.conf
+- echo "    *       hard  nofile  20000" >> /etc/security/limits.d/limits.conf
+- sysctl -p
+- until (curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=${install_k3s_version} INSTALL_K3S_EXEC="${k3s_exec}" K3S_URL=https://${k3s_url}:6443 K3S_CLUSTER_SECRET="${k3s_cluster_secret}" sh -); do echo 'k3s did not install correctly'; sleep 1; done

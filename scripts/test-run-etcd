@@ -1,0 +1,46 @@
+#!/bin/bash
+
+all_services=(
+    coredns
+    local-path-provisioner
+    metrics-server
+    traefik
+)
+
+export NUM_SERVERS=2
+export NUM_AGENTS=0
+export WAIT_SERVICES="${all_services[@]}"
+export SERVER_1_ARGS="--cluster-init"
+
+server-post-hook() {
+  if [ $1 -eq 1 ]; then
+    local url=$(cat $TEST_DIR/servers/1/metadata/url)
+    export SERVER_ARGS="${SERVER_ARGS} --server $url"
+  fi
+}
+export -f server-post-hook
+
+export -f server-post-hook
+start-test() {
+  echo "Cluster is up"
+}
+export -f start-test
+
+# --- create a basic cluster to test joining managed etcd
+LABEL="ETCD-JOIN-BASIC" SERVER_ARGS="" run-test
+
+# --- create a basic cluster to test joining a managed etcd cluster with --agent-token set
+LABEL="ETCD-JOIN-AGENTTOKEN" SERVER_ARGS="--agent-token ${RANDOM}${RANDOM}${RANDOM}" run-test
+
+# --- test joining a managed etcd cluster with incompatible configuration
+test-post-hook() {
+  if [[ $1 -eq 0 ]]; then
+    return
+  fi
+  dump-logs skip-output
+  grep -sqF 'critical configuration value mismatch' $TEST_DIR/servers/2/logs/system.log
+}
+export -f test-post-hook
+LABEL="ETCD-JOIN-MISMATCH" SERVER_2_ARGS="--cluster-cidr 10.0.0.0/16" run-test
+
+cleanup-test-env

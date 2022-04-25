@@ -1,0 +1,77 @@
+#!/bin/bash
+set -e -x
+cd $(dirname $0)/..
+
+. ./scripts/codespell.sh
+. ./scripts/version.sh
+. ./scripts/test-helpers
+
+artifacts=$(pwd)/dist/artifacts
+mkdir -p $artifacts
+
+# ---
+
+docker ps
+
+# ---
+
+. ./scripts/test-run-basics
+echo "Did test-run-basics $?"
+
+# Skipping compact tests for s390x since there is no previous s390x release
+if [ ${ARCH} != s390x ]; then
+  . ./scripts/test-run-compat
+  echo "Did test-run-compat $?"
+fi
+
+. ./scripts/test-run-etcd
+echo "Did test-run-etcd $?"
+
+. ./scripts/test-run-lazypull
+echo "Did test-run-lazypull $?"
+
+# ---
+
+[ "$ARCH" != 'amd64' ] && \
+  early-exit "Skipping remaining tests, images not available for $ARCH."
+
+E2E_OUTPUT=$artifacts test-run-sonobuoy serial
+echo "Did test-run-sonobuoy serial $?"
+
+# ---
+
+if [ "$DRONE_BUILD_EVENT" = 'tag' ]; then
+  E2E_OUTPUT=$artifacts test-run-sonobuoy parallel
+  echo "Did test-run-sonobuoy parallel $?"
+  early-exit 'Skipping remaining tests on tag.'
+fi
+# ---
+
+test-run-sonobuoy etcd serial
+echo "Did test-run-sonobuoy-etcd serial $?"
+test-run-sonobuoy mysql serial
+echo "Did test-run-sonobuoy-mysqk serial $?"
+test-run-sonobuoy postgres serial
+echo "Did test-run-sonobuoy-postgres serial $?"
+
+# Wait until all serial tests have finished
+delay=15
+(
+set +x
+while [ $(count-running-tests) -ge 1 ]; do
+    sleep $delay
+done
+)
+E2E_OUTPUT=$artifacts test-run-sonobuoy parallel
+echo "Did test-run-sonobuoy parallel $?"
+test-run-sonobuoy etcd parallel
+echo "Did test-run-sonobuoy-etcd parallel $?"
+test-run-sonobuoy mysql parallel
+echo "Did test-run-sonobuoy-mysql parallel $?"
+test-run-sonobuoy postgres parallel
+echo "Did test-run-sonobuoy-postgres parallel $?"
+
+
+
+
+exit 0

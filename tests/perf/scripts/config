@@ -1,0 +1,35 @@
+## MAIN VARIABLES ##
+####################
+CLUSTER_NAME="loadtest-k3s"
+CLUSTER_SECRET=""
+DOMAIN_NAME="loadtest.eng.rancher.space"
+ZONE_ID=""
+K3S_VERSION="v1.0.0"
+EXTRA_SSH_KEYS="" # comma separated public keys
+PRIVATE_KEY_PATH="~/.ssh/id_rsa"
+DEBUG=1
+
+## K3S DB VARIABLES ##
+##########################
+DB_ENGINE="embedded-etcd"
+DB_INSTANCE_TYPE="db.m4.4xlarge"
+DB_NAME="k3s"
+DB_USERNAME="k3suser"
+DB_PASSWORD=""
+DB_VERSION=5.7
+
+## K3S SERVER VARIABLES ##
+##########################
+SERVER_HA=1
+SERVER_COUNT=3
+SERVER_INSTANCE_TYPE="m5.2xlarge"
+
+## PROMETHEUS SERVER VARIABLES ##
+#################################
+PROM_WORKER_NODE_COUNT=1
+PROM_WORKER_INSTANCE_TYPE="m5.large"
+
+## K3S AGENTS VARIABLES ##
+##########################
+AGENT_NODE_COUNT=10
+AGENT_INSTANCE_TYPE="m5.large"

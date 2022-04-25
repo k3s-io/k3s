@@ -1,0 +1,95 @@
+name: Control Group
+on:
+  push:
+    paths-ignore:
+      - "**.md"
+      - "channel.yaml"
+      - "install.sh"
+      - "tests/**"
+      - "!tests/cgroup/**"
+      - ".github/**"
+      - "!.github/workflows/cgroup.yaml"
+  pull_request:
+    paths-ignore:
+      - "**.md"
+      - "channel.yaml"
+      - "install.sh"
+      - "tests/**"
+      - "!tests/cgroup/**"
+      - ".github/**"
+      - "!.github/workflows/cgroup.yaml"
+  workflow_dispatch: {}
+jobs:
+  prep:
+    name: "Prepare"
+    runs-on: ubuntu-20.04
+    timeout-minutes: 40
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v2
+        with: { fetch-depth: 1 }
+      - name: "Build"
+        run: DOCKER_BUILDKIT=1 SKIP_VALIDATE=1 make
+      - name: "Upload"
+        uses: actions/upload-artifact@v2
+        with: { name: k3s, path: dist/artifacts/k3s }
+  test:
+    name: "Conformance Test"
+    needs: prep
+    # nested virtualization is only available on macOS hosts
+    runs-on: macos-10.15
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        vm: [fedora-34]
+        mode: [unified]
+      max-parallel: 1
+    defaults:
+      run:
+        working-directory: tests/cgroup/${{ matrix.mode }}/${{ matrix.vm }}
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v2
+        with: { fetch-depth: 1 }
+      - name: "Download Binary"
+        uses: actions/download-artifact@v2
+        with: { name: k3s, path: dist/artifacts/ }
+      - name: "Vagrant Cache"
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.vagrant.d/boxes
+            ~/.vagrant.d/gems
+          key: cgroup-${{ hashFiles(format('tests/cgroup/{0}/{1}/Vagrantfile', matrix.mode, matrix.vm)) }}
+        id: vagrant-cache
+        continue-on-error: true
+      - name: "Vagrant Plugin(s)"
+        run: vagrant plugin install vagrant-k3s
+      - name: "Vagrant Up"
+        run: vagrant up
+      - name: "K3s Prepare"
+        run: vagrant provision --provision-with=k3s-prepare
+      - name: ⏬ "K3s Install"
+        run: vagrant provision --provision-with=k3s-install
+      - name: ⏩ "K3s Start"
+        run: vagrant provision --provision-with=k3s-start
+      - name: "K3s Ready" # wait for k3s to be ready
+        run: vagrant provision --provision-with=k3s-ready
+      - name: "K3s Status" # kubectl get node,all -A -o wide
+        run: vagrant provision --provision-with=k3s-status
+      - name: "Sonobuoy (--mode=quick)"
+        env: {TEST_RESULTS_PATH: rootfull}
+        run: vagrant provision --provision-with=k3s-sonobuoy
+      - name: "K3s Stop" # stop k3s rootfull
+        run: vagrant ssh -- sudo systemctl stop k3s-server
+      - name: "Vagrant Reload"
+        run: vagrant reload
+      - name: "[Rootless] Starting K3s"
+        run: vagrant ssh -- systemctl --user start k3s-rootless
+      - name: "[Rootless] K3s Ready"
+        env: {TEST_KUBECONFIG: /home/vagrant/.kube/k3s.yaml}
+        run: vagrant provision --provision-with=k3s-ready
+      - name: "[Rootless] Sonobuoy (--mode=quick)"
+        env: {TEST_KUBECONFIG: /home/vagrant/.kube/k3s.yaml, TEST_RESULTS_PATH: rootless}
+        run: vagrant provision --provision-with=k3s-sonobuoy
