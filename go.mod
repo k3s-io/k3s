@@ -40,8 +40,8 @@ replace (
 	go.etcd.io/etcd/pkg/v3 => github.com/k3s-io/etcd/pkg/v3 v3.5.4-k3s1
 	go.etcd.io/etcd/raft/v3 => github.com/k3s-io/etcd/raft/v3 v3.5.4-k3s1
 	go.etcd.io/etcd/server/v3 => github.com/k3s-io/etcd/server/v3 v3.5.4-k3s1
-	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20210817164053-32db794688a5
-	golang.org/x/net => golang.org/x/net v0.0.0-20210405180319-a5a99cb37ef4
+	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20220315160706-3147a52a75dd
+	golang.org/x/net => golang.org/x/net v0.0.0-20210825183410-e898025ed96a
 	golang.org/x/sys => golang.org/x/sys v0.0.0-20220114195835-da31bd327af9
 	google.golang.org/genproto => google.golang.org/genproto v0.0.0-20200224152610-e50cd9704f63
 	google.golang.org/grpc => google.golang.org/grpc v1.38.0
@@ -99,7 +99,7 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.4.2
 	github.com/k3s-io/helm-controller v0.12.1
-	github.com/k3s-io/kine v0.8.1
+	github.com/k3s-io/kine v0.9.1
 	github.com/klauspost/compress v1.15.1
 	github.com/kubernetes-sigs/cri-tools v0.0.0-00010101000000-000000000000
 	github.com/lib/pq v1.10.2
