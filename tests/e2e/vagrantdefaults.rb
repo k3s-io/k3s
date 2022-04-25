@@ -4,6 +4,8 @@ def defaultOSConfigure(vm)
       vm.provision "Install jq", type: "shell", inline: "apt install -y jq"
     elsif vm.box.include?("Leap") || vm.box.include?("Tumbleweed")
       vm.provision "Install jq", type: "shell", inline: "zypper install -y jq"
+    elsif vm.box.include?("alpine")
+      vm.provision "Install tools", type: "shell", inline: "apk add jq coreutils"
     elsif vm.box.include?("microos")
       vm.provision "Install jq", type: "shell", inline: "transactional-update pkg install -y jq"
       vm.provision 'reload', run: 'once'
