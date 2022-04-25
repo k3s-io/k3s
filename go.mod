@@ -7,7 +7,7 @@ replace (
 	github.com/benmoss/go-powershell => github.com/k3s-io/go-powershell v0.0.0-20201118222746-51f4c451fbd7
 	github.com/cloudnativelabs/kube-router => github.com/k3s-io/kube-router v1.3.3-0.20220405142336-8ea9a06dc0e3
 	github.com/containerd/cgroups => github.com/containerd/cgroups v1.0.1
-	github.com/containerd/containerd => github.com/k3s-io/containerd v1.5.11-k3s1 // k3s-release/1.5
+	github.com/containerd/containerd => github.com/k3s-io/containerd v1.5.11-k3s2 // k3s-release/1.5
 	github.com/coreos/go-systemd => github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e
 	github.com/docker/distribution => github.com/docker/distribution v2.7.1+incompatible
 	github.com/docker/docker => github.com/docker/docker v20.10.7+incompatible
@@ -19,6 +19,7 @@ replace (
 	github.com/kubernetes-sigs/cri-tools => github.com/k3s-io/cri-tools v1.22.0-k3s1
 	github.com/opencontainers/runc => github.com/opencontainers/runc v1.0.3
 	github.com/opencontainers/runtime-spec => github.com/opencontainers/runtime-spec v1.0.3-0.20210326190908-1c3f411f0417
+	github.com/opencontainers/selinux => github.com/opencontainers/selinux v1.10.1
 	github.com/rancher/wrangler => github.com/rancher/wrangler v0.8.11-0.20220211163748-d5a8ee98be5f
 	go.etcd.io/etcd/api/v3 => github.com/k3s-io/etcd/api/v3 v3.5.3-k3s1
 	go.etcd.io/etcd/client/pkg/v3 => github.com/k3s-io/etcd/client/pkg/v3 v3.5.3-k3s1
