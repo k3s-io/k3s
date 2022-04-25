@@ -528,13 +528,6 @@ func validateNetworkConfiguration(serverConfig server.Config) error {
 		return errors.New("dual-stack cluster-dns is not supported")
 	}
 
-	IPv6OnlyService, _ := util.IsIPv6OnlyCIDRs(serverConfig.ControlConfig.ServiceIPRanges)
-	if IPv6OnlyService {
-		if serverConfig.ControlConfig.DisableNPC == false {
-			return errors.New("network policy enforcement is not compatible with IPv6 only operation; server must be restarted with --disable-network-policy")
-		}
-	}
-
 	return nil
 }
 
