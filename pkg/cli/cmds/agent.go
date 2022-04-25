@@ -269,6 +269,11 @@ func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
 			},
 			&SELinuxFlag,
 			LBServerPortFlag,
+			cli.BoolFlag{
+				Name:        "disable-load-balancer",
+				Usage:       "(agent/node) Disable local load balancer to apiserver",
+				Destination: &AgentConfig.DisableLoadBalancer,
+			},
 
 			// Deprecated/hidden below
 
