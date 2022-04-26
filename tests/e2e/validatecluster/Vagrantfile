@@ -7,6 +7,7 @@ GITHUB_BRANCH = (ENV['E2E_GITHUB_BRANCH'] || "master")
 RELEASE_VERSION = (ENV['E2E_RELEASE_VERSION'] || "")
 EXTERNAL_DB = (ENV['E2E_EXTERNAL_DB'] || "etcd")
 HARDENED = (ENV['E2E_HARDENED'] || "")
+RANCHER = (ENV['E2E_RANCHER'] || "")
 NODE_CPUS = (ENV['E2E_NODE_CPUS'] || 2).to_i
 NODE_MEMORY = (ENV['E2E_NODE_MEMORY'] || 1024).to_i
 # Virtualbox >= 6.1.28 require `/etc/vbox/network.conf` for expanded private networks 
@@ -27,7 +28,9 @@ def provision(vm, role, role_num, node_num)
 
   defaultOSConfigure(vm)
   
-  if !RELEASE_VERSION.empty?
+  if RELEASE_VERSION == "skip"
+    install_type = "INSTALL_K3S_SKIP_DOWNLOAD=true"
+  elsif !RELEASE_VERSION.empty?
     install_type = "INSTALL_K3S_VERSION=#{RELEASE_VERSION}"
   else
     # Grabs the last 5 commit SHA's from the given branch, then purges any commits that do not have a passing CI build
@@ -51,6 +54,7 @@ def provision(vm, role, role_num, node_num)
         token: vagrant
         node-external-ip: #{NETWORK_PREFIX}.100
         flannel-iface: eth1
+        tls-san: #{NETWORK_PREFIX}.100.nip.io
         #{db_type}
         #{hardened_arg}
       YAML
@@ -89,11 +93,15 @@ def provision(vm, role, role_num, node_num)
       k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
     end
   end
-  if vm.box.include?("microos")
+  if vm.box.to_s.include?("microos")
     vm.provision 'k3s-reload', type: 'reload', run: 'once'
     if !EXTERNAL_DB.empty?
       vm.provision "shell", inline: "docker start #{EXTERNAL_DB}"
     end
+  end
+  # This step does not run by default and is designed to be called by higher level tools
+  if !RANCHER.empty?
+    vm.provision "Install Rancher", type: "shell", run: "never", path: scripts_location + "/rancher.sh", args: node_ip
   end
 end
 
@@ -139,13 +147,13 @@ def dockerInstall(vm)
   vm.provider "virtualbox" do |v|
     v.memory = NODE_MEMORY + 1024
   end
-  if vm.box.include?("ubuntu")
+  if vm.box.to_s.include?("ubuntu")
     vm.provision "shell", inline: "apt install -y docker.io"
   end
-  if vm.box.include?("Leap")
+  if vm.box.to_s.include?("Leap")
     vm.provision "shell", inline: "zypper install -y docker apparmor-parser"
   end
-  if vm.box.include?("microos")
+  if vm.box.to_s.include?("microos")
     vm.provision "shell", inline: "transactional-update pkg install -y docker apparmor-parser"
     vm.provision 'docker-reload', type: 'reload', run: 'once'
     vm.provision "shell", inline: "systemctl enable --now docker"
