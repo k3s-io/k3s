@@ -27,7 +27,7 @@ import (
 const (
 	cniConf = `{
   "name":"cbr0",
-  "cniVersion":"0.3.1",
+  "cniVersion":"1.0.0",
   "plugins":[
     {
       "type":"flannel",
