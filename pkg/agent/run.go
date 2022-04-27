@@ -208,7 +208,7 @@ func RunStandalone(ctx context.Context, cfg cmds.Agent) error {
 		close(cfg.AgentReady)
 	}
 
-	if err := tunnel.Setup(ctx, nodeConfig, proxy); err != nil {
+	if err := tunnelSetup(ctx, nodeConfig, cfg, proxy); err != nil {
 		return err
 	}
 
@@ -380,7 +380,7 @@ func setupTunnelAndRunAgent(ctx context.Context, nodeConfig *daemonconfig.Node, 
 	// IsAPIServerLBEnabled is used as a shortcut for detecting RKE2, where the kubelet needs to
 	// be run earlier in order to manage static pods. This should probably instead query a
 	// flag on the executor or something.
-	if cfg.ETCDAgent {
+	if !cfg.ClusterReset && cfg.ETCDAgent {
 		// ETCDAgent is only set to true on servers that are started with --disable-apiserver.
 		// In this case, we may be running without an apiserver available in the cluster, and need
 		// to wait for one to register and post it's address into APIAddressCh so that we can update
@@ -404,7 +404,7 @@ func setupTunnelAndRunAgent(ctx context.Context, nodeConfig *daemonconfig.Node, 
 		agentRan = true
 	}
 
-	if err := tunnel.Setup(ctx, nodeConfig, proxy); err != nil {
+	if err := tunnelSetup(ctx, nodeConfig, cfg, proxy); err != nil {
 		return err
 	}
 	if !agentRan {
@@ -434,4 +434,14 @@ func waitForAPIServerAddresses(ctx context.Context, nodeConfig *daemonconfig.Nod
 			return ctx.Err()
 		}
 	}
+}
+
+// tunnelSetup calls tunnel setup, unless the embedded etc cluster is being reset/restored, in which case
+// this is unnecessary as the kubelet is only needed to manage static pods and does not need to establish
+// tunneled connections to other cluster members.
+func tunnelSetup(ctx context.Context, nodeConfig *daemonconfig.Node, cfg cmds.Agent, proxy proxy.Proxy) error {
+	if cfg.ClusterReset {
+		return nil
+	}
+	return tunnel.Setup(ctx, nodeConfig, proxy)
 }

@@ -293,7 +293,7 @@ func (e *ETCD) Reset(ctx context.Context, rebootstrap func() error) error {
 					// Ideally we would use a waitgroup and properly sequence shutdown of the various components.
 					e.cancel()
 					time.Sleep(time.Second * 5)
-					logrus.Infof("Etcd cluster has been reset, restart without --cluster-reset flag now. Backup and delete ${datadir}/server/db on each peer etcd server and rejoin the nodes")
+					logrus.Infof("Managed etcd cluster membership has been reset, restart without --cluster-reset flag now. Backup and delete ${datadir}/server/db on each peer etcd server and rejoin the nodes")
 					os.Exit(0)
 				}
 			} else {
