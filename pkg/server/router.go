@@ -19,6 +19,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/bootstrap"
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
+	"github.com/k3s-io/k3s/pkg/generated/clientset/versioned/scheme"
 	"github.com/k3s-io/k3s/pkg/nodepassword"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
@@ -26,9 +27,12 @@ import (
 	certutil "github.com/rancher/dynamiclistener/cert"
 	coreclient "github.com/rancher/wrangler/pkg/generated/controllers/core/v1"
 	"github.com/sirupsen/logrus"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/apiserver/pkg/authentication/user"
+	"k8s.io/apiserver/pkg/endpoints/handlers/responsewriters"
 )
 
 const (
@@ -86,22 +90,20 @@ func apiserver(runtime *config.ControlRuntime) http.Handler {
 		if runtime != nil && runtime.APIServer != nil {
 			runtime.APIServer.ServeHTTP(resp, req)
 		} else {
-			data := []byte("apiserver not ready")
-			resp.WriteHeader(http.StatusInternalServerError)
-			resp.Header().Set("Content-Type", "text/plain")
-			resp.Header().Set("Content-length", strconv.Itoa(len(data)))
-			resp.Write(data)
+			responsewriters.ErrorNegotiated(
+				apierrors.NewServiceUnavailable("apiserver not ready"),
+				scheme.Codecs.WithoutConversion(), schema.GroupVersion{}, resp, req,
+			)
 		}
 	})
 }
 
 func apiserverDisabled() http.Handler {
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
-		data := []byte("apiserver disabled")
-		resp.WriteHeader(http.StatusServiceUnavailable)
-		resp.Header().Set("Content-Type", "text/plain")
-		resp.Header().Set("Content-length", strconv.Itoa(len(data)))
-		resp.Write(data)
+		responsewriters.ErrorNegotiated(
+			apierrors.NewServiceUnavailable("apiserver disabled"),
+			scheme.Codecs.WithoutConversion(), schema.GroupVersion{}, resp, req,
+		)
 	})
 }
 
@@ -111,11 +113,10 @@ func bootstrapHandler(runtime *config.ControlRuntime) http.Handler {
 	}
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 		logrus.Warnf("Received HTTP bootstrap request from %s, but embedded etcd is not enabled.", req.RemoteAddr)
-		data := []byte("etcd disabled")
-		resp.WriteHeader(http.StatusBadRequest)
-		resp.Header().Set("Content-Type", "text/plain")
-		resp.Header().Set("Content-length", strconv.Itoa(len(data)))
-		resp.Write(data)
+		responsewriters.ErrorNegotiated(
+			apierrors.NewBadRequest("etcd disabled"),
+			scheme.Codecs.WithoutConversion(), schema.GroupVersion{}, resp, req,
+		)
 	})
 }
 
