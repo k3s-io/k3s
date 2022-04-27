@@ -10,6 +10,7 @@ import (
 
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
 	daemonconfig "github.com/k3s-io/k3s/pkg/daemons/config"
+	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -19,6 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
+	"k8s.io/client-go/kubernetes"
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
@@ -49,7 +51,16 @@ func (e *Embedded) Bootstrap(ctx context.Context, nodeConfig *daemonconfig.Node,
 	return nil
 }
 
-func (*Embedded) Kubelet(ctx context.Context, args []string) error {
+func (e *Embedded) Kubelet(ctx context.Context, args []string) error {
+	restConfig, err := clientcmd.BuildConfigFromFlags("", e.nodeConfig.AgentConfig.KubeConfigKubelet)
+	if err != nil {
+		return err
+	}
+	client, err := kubernetes.NewForConfig(restConfig)
+	if err != nil {
+		return err
+	}
+
 	command := kubelet.NewKubeletCommand(context.Background())
 	command.SetArgs(args)
 
@@ -59,6 +70,12 @@ func (*Embedded) Kubelet(ctx context.Context, args []string) error {
 				logrus.Fatalf("kubelet panic: %v", err)
 			}
 		}()
+		// The embedded executor doesn't need the kubelet to come up to host any components, and
+		// having it come up on servers before the apiserver is available causes a lot of log spew.
+		// Agents don't have access to the server's apiReady channel, so just wait directly.
+		if err := util.WaitForAPIServerReady(ctx, client, util.DefaultAPIServerReadyTimeout); err != nil {
+			logrus.Fatalf("Kubelet failed to wait for apiserver ready: %v", err)
+		}
 		logrus.Fatalf("kubelet exited: %v", command.ExecuteContext(ctx))
 	}()
 
