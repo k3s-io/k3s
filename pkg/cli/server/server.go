@@ -400,14 +400,20 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		return errors.Wrap(err, "invalid tls-cipher-suites")
 	}
 
-	// make sure components are disabled so we only perform a restore
-	// and bail out
-	if cfg.ClusterResetRestorePath != "" && cfg.ClusterReset {
+	// If performing a cluster reset, make sure control-plane components are
+	// disabled so we only perform a reset or restore and bail out.
+	if cfg.ClusterReset {
 		serverConfig.ControlConfig.ClusterInit = true
 		serverConfig.ControlConfig.DisableAPIServer = true
 		serverConfig.ControlConfig.DisableControllerManager = true
 		serverConfig.ControlConfig.DisableScheduler = true
 		serverConfig.ControlConfig.DisableCCM = true
+
+		// If the supervisor and apiserver are on the same port, everything is running embedded
+		// and we don't need the kubelet or containerd up to perform a cluster reset.
+		if serverConfig.ControlConfig.SupervisorPort == serverConfig.ControlConfig.HTTPSPort {
+			cfg.DisableAgent = true
+		}
 
 		dataDir, err := datadir.LocalHome(cfg.DataDir, false)
 		if err != nil {
@@ -417,14 +423,16 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		loadbalancer.ResetLoadBalancer(filepath.Join(dataDir, "agent"), loadbalancer.SupervisorServiceName)
 		loadbalancer.ResetLoadBalancer(filepath.Join(dataDir, "agent"), loadbalancer.APIServerServiceName)
 
-		// at this point we're doing a restore. Check to see if we've
-		// passed in a token and if not, check if the token file exists.
-		// If it doesn't, return an error indicating the token is necessary.
-		if cfg.Token == "" {
-			tokenFile := filepath.Join(dataDir, "server", "token")
-			if _, err := os.Stat(tokenFile); err != nil {
-				if os.IsNotExist(err) {
-					return errors.New(tokenFile + " does not exist, please pass --token to complete the restoration")
+		if cfg.ClusterResetRestorePath != "" {
+			// at this point we're doing a restore. Check to see if we've
+			// passed in a token and if not, check if the token file exists.
+			// If it doesn't, return an error indicating the token is necessary.
+			if cfg.Token == "" {
+				tokenFile := filepath.Join(dataDir, "server", "token")
+				if _, err := os.Stat(tokenFile); err != nil {
+					if os.IsNotExist(err) {
+						return errors.New(tokenFile + " does not exist, please pass --token to complete the restoration")
+					}
 				}
 			}
 		}
