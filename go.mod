@@ -32,12 +32,15 @@ replace (
 	github.com/opencontainers/runtime-spec => github.com/opencontainers/runtime-spec v1.0.3-0.20210316141917-a8c4a9ee0f6b
 	github.com/opencontainers/selinux => github.com/opencontainers/selinux v1.10.1
 	github.com/rancher/wrangler => github.com/rancher/wrangler v0.8.11-0.20220211163748-d5a8ee98be5f
-	go.etcd.io/etcd/api/v3 => github.com/k3s-io/etcd/api/v3 v3.5.3-k3s1
-	go.etcd.io/etcd/client/pkg/v3 => github.com/k3s-io/etcd/client/pkg/v3 v3.5.3-k3s1
-	go.etcd.io/etcd/client/v3 => github.com/k3s-io/etcd/client/v3 v3.5.3-k3s1
-	go.etcd.io/etcd/etcdutl/v3 => github.com/k3s-io/etcd/etcdutl/v3 v3.5.3-k3s1
-	go.etcd.io/etcd/server/v3 => github.com/k3s-io/etcd/server/v3 v3.5.3-k3s1
-	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20210220033148-5ea612d1eb83
+	go.etcd.io/etcd => github.com/k3s-io/etcd v3.4.18-k3s1+incompatible
+	go.etcd.io/etcd/api/v3 => github.com/k3s-io/etcd/api/v3 v3.5.4-k3s1
+	go.etcd.io/etcd/client/pkg/v3 => github.com/k3s-io/etcd/client/pkg/v3 v3.5.4-k3s1
+	go.etcd.io/etcd/client/v3 => github.com/k3s-io/etcd/client/v3 v3.5.4-k3s1
+	go.etcd.io/etcd/etcdutl/v3 => github.com/k3s-io/etcd/etcdutl/v3 v3.5.4-k3s1
+	go.etcd.io/etcd/pkg/v3 => github.com/k3s-io/etcd/pkg/v3 v3.5.4-k3s1
+	go.etcd.io/etcd/raft/v3 => github.com/k3s-io/etcd/raft/v3 v3.5.4-k3s1
+	go.etcd.io/etcd/server/v3 => github.com/k3s-io/etcd/server/v3 v3.5.4-k3s1
+	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20210817164053-32db794688a5
 	golang.org/x/net => golang.org/x/net v0.0.0-20210405180319-a5a99cb37ef4
 	golang.org/x/sys => golang.org/x/sys v0.0.0-20220114195835-da31bd327af9
 	google.golang.org/genproto => google.golang.org/genproto v0.0.0-20200224152610-e50cd9704f63
@@ -123,12 +126,12 @@ require (
 	github.com/tchap/go-patricia v2.3.0+incompatible // indirect
 	github.com/urfave/cli v1.22.4
 	github.com/vishvananda/netlink v1.1.1-0.20210330154013-f5de75959ad5
-	go.etcd.io/etcd/api/v3 v3.5.3
-	go.etcd.io/etcd/client/pkg/v3 v3.5.3
-	go.etcd.io/etcd/client/v3 v3.5.3
-	go.etcd.io/etcd/etcdutl/v3 v3.5.3
-	go.etcd.io/etcd/server/v3 v3.5.3
-	go.uber.org/zap v1.17.0
+	go.etcd.io/etcd/api/v3 v3.5.4
+	go.etcd.io/etcd/client/pkg/v3 v3.5.4
+	go.etcd.io/etcd/client/v3 v3.5.4
+	go.etcd.io/etcd/etcdutl/v3 v3.5.4
+	go.etcd.io/etcd/server/v3 v3.5.4
+	go.uber.org/zap v1.19.0
 	golang.org/x/crypto v0.0.0-20220131195533-30dcbda58838
 	golang.org/x/net v0.0.0-20211216030914-fe4d6282115f
 	golang.org/x/sys v0.0.0-20220114195835-da31bd327af9
