@@ -4,7 +4,6 @@ import (
 	"context"
 	"math/rand"
 	"net"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -23,7 +22,6 @@ import (
 	authorizationv1 "k8s.io/api/authorization/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/kubernetes"
 	authorizationv1client "k8s.io/client-go/kubernetes/typed/authorization/v1"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/kubernetes/pkg/kubeapiserver/authorizer/modes"
@@ -39,12 +37,6 @@ func getLocalhostIP(serviceCIDR []*net.IPNet) net.IP {
 		return net.ParseIP("::1")
 	}
 	return net.ParseIP("127.0.0.1")
-}
-
-type roundTripFunc func(req *http.Request) (*http.Response, error)
-
-func (w roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
-	return w(req)
 }
 
 func Server(ctx context.Context, cfg *config.Control) error {
@@ -409,26 +401,6 @@ func waitForAPIServerHandlers(ctx context.Context, runtime *config.ControlRuntim
 }
 
 func waitForAPIServerInBackground(ctx context.Context, runtime *config.ControlRuntime) error {
-	restConfig, err := clientcmd.BuildConfigFromFlags("", runtime.KubeConfigAdmin)
-	if err != nil {
-		return err
-	}
-
-	// By default, idle connections to the apiserver are returned to a global pool
-	// between requests.  Explicitly flag this client's request for closure so that
-	// we re-dial through the loadbalancer in case the endpoints have changed.
-	restConfig.Wrap(func(rt http.RoundTripper) http.RoundTripper {
-		return roundTripFunc(func(req *http.Request) (*http.Response, error) {
-			req.Close = true
-			return rt.RoundTrip(req)
-		})
-	})
-
-	k8sClient, err := kubernetes.NewForConfig(restConfig)
-	if err != nil {
-		return err
-	}
-
 	done := make(chan struct{})
 	runtime.APIServerReady = done
 
@@ -452,7 +424,7 @@ func waitForAPIServerInBackground(ctx context.Context, runtime *config.ControlRu
 			select {
 			case <-ctx.Done():
 				return
-			case err := <-promise(func() error { return util.WaitForAPIServerReady(ctx, k8sClient, 30*time.Second) }):
+			case err := <-promise(func() error { return util.WaitForAPIServerReady(ctx, runtime.KubeConfigAdmin, 30*time.Second) }):
 				if err != nil {
 					logrus.Infof("Waiting for API server to become available")
 					continue
