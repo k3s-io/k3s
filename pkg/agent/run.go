@@ -108,13 +108,13 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 		return err
 	}
 
+	if err := util.WaitForAPIServerReady(ctx, nodeConfig.AgentConfig.KubeConfigKubelet, util.DefaultAPIServerReadyTimeout); err != nil {
+		return errors.Wrap(err, "failed to wait for apiserver ready")
+	}
+
 	coreClient, err := coreClient(nodeConfig.AgentConfig.KubeConfigKubelet)
 	if err != nil {
 		return err
-	}
-
-	if err := util.WaitForAPIServerReady(ctx, coreClient, util.DefaultAPIServerReadyTimeout); err != nil {
-		return errors.Wrap(err, "failed to wait for apiserver ready")
 	}
 
 	if err := configureNode(ctx, &nodeConfig.AgentConfig, coreClient.CoreV1().Nodes()); err != nil {

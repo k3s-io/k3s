@@ -90,7 +90,7 @@ func Setup(ctx context.Context, config *config.Node, proxy proxy.Proxy) error {
 	// Once the apiserver is up, go into a watch loop, adding and removing tunnels as endpoints come
 	// and go from the cluster.
 	go func() {
-		if err := util.WaitForAPIServerReady(ctx, client, util.DefaultAPIServerReadyTimeout); err != nil {
+		if err := util.WaitForAPIServerReady(ctx, config.AgentConfig.KubeConfigKubelet, util.DefaultAPIServerReadyTimeout); err != nil {
 			logrus.Warnf("Tunnel endpoint watch failed to wait for apiserver ready: %v", err)
 		}
 
