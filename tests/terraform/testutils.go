@@ -17,6 +17,7 @@ type Node struct {
 	Name       string
 	Status     string
 	Roles      string
+	Version    string
 	InternalIP string
 	ExternalIP string
 }
@@ -92,7 +93,6 @@ func runsshCommand(cmd string, conn *ssh.Client) (string, error) {
 // RunCmdOnNode executes a command from within the given node
 func RunCmdOnNode(cmd string, ServerIP string, SSHUser string, SSHKey string) (string, error) {
 	Server := ServerIP + ":22"
-	fmt.Println(Server, SSHUser, SSHKey)
 	conn := ConfigureSSH(Server, SSHUser, SSHKey)
 	res, err := runsshCommand(cmd, conn)
 	res = strings.TrimSpace(res)
@@ -117,10 +117,10 @@ func CountOfStringInSlice(str string, pods []Pod) int {
 	return count
 }
 
-func DeployWorkload(workload, kubeconfig string, arch bool) (string, error) {
+func DeployWorkload(workload, kubeconfig string, arch string) (string, error) {
 	resourceDir := "./amd64_resource_files"
-	if arch {
-		resourceDir = "./arm64_resource_files"
+	if arch == "arm64" {
+		resourceDir = "./arm_resource_files"
 	}
 	files, err := ioutil.ReadDir(resourceDir)
 	if err != nil {
@@ -186,6 +186,7 @@ func ParseNodes(kubeConfig string, print bool) ([]Node, error) {
 				Name:       fields[0],
 				Status:     fields[1],
 				Roles:      fields[2],
+				Version:    fields[4],
 				InternalIP: fields[5],
 				ExternalIP: fields[6],
 			}

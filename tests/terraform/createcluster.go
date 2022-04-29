@@ -3,6 +3,7 @@ package e2e
 import (
 	"flag"
 	"fmt"
+
 	"path/filepath"
 	"testing"
 
@@ -17,6 +18,7 @@ var clusterType = flag.String("cluster_type", "etcd", "a string")
 var resourceName = flag.String("resource_name", "etcd", "a string")
 var sshuser = flag.String("sshuser", "ubuntu", "a string")
 var sshkey = flag.String("sshkey", "", "a string")
+var failed = false
 
 var (
 	kubeConfigFile string
@@ -24,8 +26,7 @@ var (
 	workerIPs      string
 )
 
-func BuildCluster(nodeOs, clusterType, externalDb, resourceName string, t *testing.T, destroy bool) (string, string, string, error) {
-
+func BuildCluster(nodeOs, clusterType, externalDb, resourceName string, t *testing.T, destroy bool, arch string) (string, string, string, error) {
 	tDir := "./modules/k3scluster"
 	vDir := "/config/" + nodeOs + clusterType + ".tfvars"
 
