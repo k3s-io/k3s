@@ -15,6 +15,8 @@ const ContainerdConfigTemplate = `
   stream_server_address = "127.0.0.1"
   stream_server_port = "10010"
   enable_selinux = {{ .NodeConfig.SELinux }}
+  enable_unprivileged_ports = true
+  enable_unprivileged_icmp = true
 
 {{- if .DisableCgroup}}
   disable_cgroup = true
