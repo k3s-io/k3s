@@ -753,35 +753,57 @@ func (e *ETCD) migrateFromSQLite(ctx context.Context) error {
 	return os.Rename(sqliteFile(e.config), sqliteFile(e.config)+".migrated")
 }
 
-// peerURL returns the peer access address for the local node
+// peerURL returns the external peer access address for the local node.
 func (e *ETCD) peerURL() string {
 	return fmt.Sprintf("https://%s", net.JoinHostPort(e.address, "2380"))
 }
 
-// clientURL returns the client access address for the local node
+// listenClientURLs returns a list of URLs to bind to for peer connections.
+// During cluster reset/restore, we only listen on loopback to avoid having peers
+// connect mid-process.
+func (e *ETCD) listenPeerURLs(reset bool) string {
+	peerURLs := fmt.Sprintf("https://%s:2380", e.config.Loopback())
+	if !reset {
+		peerURLs += "," + e.peerURL()
+	}
+	return peerURLs
+}
+
+// clientURL returns the external client access address for the local node.
 func (e *ETCD) clientURL() string {
 	return fmt.Sprintf("https://%s", net.JoinHostPort(e.address, "2379"))
 }
 
-// metricsURL returns the metrics access address
-func (e *ETCD) metricsURL(expose bool) string {
-	address := fmt.Sprintf("http://%s:2381", e.config.Loopback())
-	if expose {
-		address = fmt.Sprintf("http://%s,%s", net.JoinHostPort(e.address, "2381"), address)
+// listenClientURLs returns a list of URLs to bind to for client connections.
+// During cluster reset/restore, we only listen on loopback to avoid having the apiserver
+// connect mid-process.
+func (e *ETCD) listenClientURLs(reset bool) string {
+	clientURLs := fmt.Sprintf("https://%s:2379", e.config.Loopback())
+	if !reset {
+		clientURLs += "," + e.clientURL()
 	}
-	return address
+	return clientURLs
 }
 
-// cluster returns ETCDConfig for a cluster
-func (e *ETCD) cluster(ctx context.Context, forceNew bool, options executor.InitialOptions) error {
+// listenMetricsURLs returns a list of URLs to bind to for metrics connections.
+func (e *ETCD) listenMetricsURLs(reset bool) string {
+	metricsURLs := fmt.Sprintf("http://%s:2381", e.config.Loopback())
+	if !reset && e.config.EtcdExposeMetrics {
+		metricsURLs += "," + fmt.Sprintf("http://%s", net.JoinHostPort(e.address, "2381"))
+	}
+	return metricsURLs
+}
+
+// cluster calls the executor to start etcd running with the provided configuration.
+func (e *ETCD) cluster(ctx context.Context, reset bool, options executor.InitialOptions) error {
 	ctx, e.cancel = context.WithCancel(ctx)
 	return executor.ETCD(ctx, executor.ETCDConfig{
 		Name:                e.name,
 		InitialOptions:      options,
-		ForceNewCluster:     forceNew,
-		ListenClientURLs:    e.clientURL() + "," + fmt.Sprintf("https://%s:2379", e.config.Loopback()),
-		ListenMetricsURLs:   e.metricsURL(e.config.EtcdExposeMetrics),
-		ListenPeerURLs:      e.peerURL(),
+		ForceNewCluster:     reset,
+		ListenClientURLs:    e.listenClientURLs(reset),
+		ListenMetricsURLs:   e.listenMetricsURLs(reset),
+		ListenPeerURLs:      e.listenPeerURLs(reset),
 		AdvertiseClientURLs: e.clientURL(),
 		DataDir:             DBDir(e.config),
 		ServerTrust: executor.ServerTrust{
