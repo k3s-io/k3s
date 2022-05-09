@@ -90,6 +90,7 @@ type Agent struct {
 	ExtraKubeProxyArgs      []string
 	PauseImage              string
 	Snapshotter             string
+	Systemd                 bool
 	CNIPlugin               bool
 	NodeTaints              []string
 	NodeLabels              []string
@@ -105,6 +106,7 @@ type Agent struct {
 	Rootless                bool
 	ProtectKernelDefaults   bool
 	DisableServiceLB        bool
+	EnableIPv4              bool
 	EnableIPv6              bool
 }
 
@@ -273,6 +275,8 @@ type ControlRuntime struct {
 	Handler            http.Handler
 	Tunnel             http.Handler
 	Authenticator      authenticator.Request
+
+	EgressSelectorConfig string
 
 	ClientAuthProxyCert string
 	ClientAuthProxyKey  string

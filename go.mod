@@ -7,7 +7,7 @@ replace (
 	github.com/benmoss/go-powershell => github.com/k3s-io/go-powershell v0.0.0-20201118222746-51f4c451fbd7
 	github.com/cloudnativelabs/kube-router => github.com/k3s-io/kube-router v1.3.3-0.20220405142336-8ea9a06dc0e3
 	github.com/containerd/cgroups => github.com/containerd/cgroups v1.0.1
-	github.com/containerd/containerd => github.com/k3s-io/containerd v1.5.11-k3s1 // k3s-release/1.5
+	github.com/containerd/containerd => github.com/k3s-io/containerd v1.5.11-k3s2 // k3s-release/1.5
 	github.com/coreos/go-systemd => github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e
 	github.com/docker/distribution => github.com/docker/distribution v2.7.1+incompatible
 	github.com/docker/docker => github.com/docker/docker v20.10.7+incompatible
@@ -19,13 +19,17 @@ replace (
 	github.com/kubernetes-sigs/cri-tools => github.com/k3s-io/cri-tools v1.22.0-k3s1
 	github.com/opencontainers/runc => github.com/opencontainers/runc v1.0.3
 	github.com/opencontainers/runtime-spec => github.com/opencontainers/runtime-spec v1.0.3-0.20210326190908-1c3f411f0417
+	github.com/opencontainers/selinux => github.com/opencontainers/selinux v1.10.1
 	github.com/rancher/wrangler => github.com/rancher/wrangler v0.8.11-0.20220211163748-d5a8ee98be5f
-	go.etcd.io/etcd/api/v3 => github.com/k3s-io/etcd/api/v3 v3.5.3-k3s1
-	go.etcd.io/etcd/client/pkg/v3 => github.com/k3s-io/etcd/client/pkg/v3 v3.5.3-k3s1
-	go.etcd.io/etcd/client/v3 => github.com/k3s-io/etcd/client/v3 v3.5.3-k3s1
-	go.etcd.io/etcd/etcdutl/v3 => github.com/k3s-io/etcd/etcdutl/v3 v3.5.3-k3s1
-	go.etcd.io/etcd/server/v3 => github.com/k3s-io/etcd/server/v3 v3.5.3-k3s1
-	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20210817164053-32db794688a5
+	go.etcd.io/etcd => github.com/k3s-io/etcd v3.4.18-k3s1+incompatible
+	go.etcd.io/etcd/api/v3 => github.com/k3s-io/etcd/api/v3 v3.5.4-k3s1
+	go.etcd.io/etcd/client/pkg/v3 => github.com/k3s-io/etcd/client/pkg/v3 v3.5.4-k3s1
+	go.etcd.io/etcd/client/v3 => github.com/k3s-io/etcd/client/v3 v3.5.4-k3s1
+	go.etcd.io/etcd/etcdutl/v3 => github.com/k3s-io/etcd/etcdutl/v3 v3.5.4-k3s1
+	go.etcd.io/etcd/pkg/v3 => github.com/k3s-io/etcd/pkg/v3 v3.5.4-k3s1
+	go.etcd.io/etcd/raft/v3 => github.com/k3s-io/etcd/raft/v3 v3.5.4-k3s1
+	go.etcd.io/etcd/server/v3 => github.com/k3s-io/etcd/server/v3 v3.5.4-k3s1
+	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20220315160706-3147a52a75dd
 	golang.org/x/net => golang.org/x/net v0.0.0-20210825183410-e898025ed96a
 	golang.org/x/sys => golang.org/x/sys v0.0.0-20220114195835-da31bd327af9
 	google.golang.org/genproto => google.golang.org/genproto v0.0.0-20210831024726-fe130286e0e2
@@ -86,7 +90,7 @@ require (
 	github.com/gorilla/websocket v1.4.2
 	github.com/gruntwork-io/terratest v0.40.6
 	github.com/k3s-io/helm-controller v0.12.1
-	github.com/k3s-io/kine v0.8.1
+	github.com/k3s-io/kine v0.9.1
 	github.com/klauspost/compress v1.15.1
 	github.com/kubernetes-sigs/cri-tools v0.0.0-00010101000000-000000000000
 	github.com/lib/pq v1.10.2
@@ -111,11 +115,12 @@ require (
 	github.com/tchap/go-patricia v2.3.0+incompatible // indirect
 	github.com/urfave/cli v1.22.4
 	github.com/vishvananda/netlink v1.1.1-0.20210330154013-f5de75959ad5
-	go.etcd.io/etcd/api/v3 v3.5.3
-	go.etcd.io/etcd/client/pkg/v3 v3.5.3
-	go.etcd.io/etcd/client/v3 v3.5.3
-	go.etcd.io/etcd/etcdutl/v3 v3.5.3
-	go.etcd.io/etcd/server/v3 v3.5.3
+	github.com/yl2chen/cidranger v1.0.2
+	go.etcd.io/etcd/api/v3 v3.5.4
+	go.etcd.io/etcd/client/pkg/v3 v3.5.4
+	go.etcd.io/etcd/client/v3 v3.5.4
+	go.etcd.io/etcd/etcdutl/v3 v3.5.4
+	go.etcd.io/etcd/server/v3 v3.5.4
 	go.uber.org/zap v1.19.0
 	golang.org/x/crypto v0.0.0-20220131195533-30dcbda58838
 	golang.org/x/net v0.0.0-20211216030914-fe4d6282115f

@@ -55,7 +55,7 @@ func Run(ctx context.Context, nodeConfig *config.Node) error {
 
 	krConfig := options.NewKubeRouterConfig()
 	krConfig.ClusterIPCIDR = util.JoinIPNets(nodeConfig.AgentConfig.ServiceCIDRs)
-	krConfig.EnableIPv4 = true
+	krConfig.EnableIPv4 = nodeConfig.AgentConfig.EnableIPv4
 	krConfig.EnableIPv6 = nodeConfig.AgentConfig.EnableIPv6
 	krConfig.NodePortRange = strings.ReplaceAll(nodeConfig.AgentConfig.ServiceNodePortRange.String(), "-", ":")
 	krConfig.HostnameOverride = nodeConfig.AgentConfig.NodeName
@@ -80,17 +80,19 @@ func Run(ctx context.Context, nodeConfig *config.Node) error {
 	iptablesCmdHandlers := make(map[v1core.IPFamily]utils.IPTablesHandler, 2)
 	ipSetHandlers := make(map[v1core.IPFamily]utils.IPSetHandler, 2)
 
-	iptHandler, err := iptables.NewWithProtocol(iptables.ProtocolIPv4)
-	if err != nil {
-		return errors.Wrap(err, "failed to create iptables handler")
-	}
-	iptablesCmdHandlers[v1core.IPv4Protocol] = iptHandler
+	if nodeConfig.AgentConfig.EnableIPv4 {
+		iptHandler, err := iptables.NewWithProtocol(iptables.ProtocolIPv4)
+		if err != nil {
+			return errors.Wrap(err, "failed to create iptables handler")
+		}
+		iptablesCmdHandlers[v1core.IPv4Protocol] = iptHandler
 
-	ipset, err := utils.NewIPSet(false)
-	if err != nil {
-		return errors.Wrap(err, "failed to create ipset handler")
+		ipset, err := utils.NewIPSet(false)
+		if err != nil {
+			return errors.Wrap(err, "failed to create ipset handler")
+		}
+		ipSetHandlers[v1core.IPv4Protocol] = ipset
 	}
-	ipSetHandlers[v1core.IPv4Protocol] = ipset
 
 	if nodeConfig.AgentConfig.EnableIPv6 {
 		ipt6Handler, err := iptables.NewWithProtocol(iptables.ProtocolIPv6)

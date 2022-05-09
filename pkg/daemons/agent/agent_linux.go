@@ -18,17 +18,15 @@ import (
 	"k8s.io/kubernetes/pkg/kubeapiserver/authorizer/modes"
 )
 
-func createRootlessConfig(argsMap map[string]string, hasCFS, hasPIDs bool) {
+func createRootlessConfig(argsMap map[string]string, controllers map[string]bool) {
 	argsMap["feature-gates=KubeletInUserNamespace"] = "true"
 	// "/sys/fs/cgroup" is namespaced
 	cgroupfsWritable := unix.Access("/sys/fs/cgroup", unix.W_OK) == nil
-	if hasCFS && hasPIDs && cgroupfsWritable {
+	if controllers["cpu"] && controllers["pids"] && cgroupfsWritable {
 		logrus.Info("cgroup v2 controllers are delegated for rootless.")
-		// cgroupfs v2, delegated for rootless by systemd
-		argsMap["cgroup-driver"] = "cgroupfs"
-	} else {
-		logrus.Fatal("delegated cgroup v2 controllers are required for rootless.")
+		return
 	}
+	logrus.Fatal("delegated cgroup v2 controllers are required for rootless.")
 }
 
 func checkRuntimeEndpoint(cfg *config.Agent, argsMap map[string]string) {
@@ -67,14 +65,13 @@ func kubeletArgs(cfg *config.Agent) map[string]string {
 		bindAddress = "::1"
 	}
 	argsMap := map[string]string{
-		"healthz-bind-address":     bindAddress,
-		"read-only-port":           "0",
-		"cluster-domain":           cfg.ClusterDomain,
-		"kubeconfig":               cfg.KubeConfigKubelet,
-		"eviction-hard":            "imagefs.available<5%,nodefs.available<5%",
-		"eviction-minimum-reclaim": "imagefs.available=10%,nodefs.available=10%",
-		"fail-swap-on":             "false",
-		//"cgroup-root": "/k3s",
+		"healthz-bind-address":         bindAddress,
+		"read-only-port":               "0",
+		"cluster-domain":               cfg.ClusterDomain,
+		"kubeconfig":                   cfg.KubeConfigKubelet,
+		"eviction-hard":                "imagefs.available<5%,nodefs.available<5%",
+		"eviction-minimum-reclaim":     "imagefs.available=10%,nodefs.available=10%",
+		"fail-swap-on":                 "false",
 		"cgroup-driver":                "cgroupfs",
 		"authentication-token-webhook": "true",
 		"anonymous-auth":               "false",
@@ -138,13 +135,13 @@ func kubeletArgs(cfg *config.Agent) map[string]string {
 	if err != nil || defaultIP.String() != cfg.NodeIP {
 		argsMap["node-ip"] = cfg.NodeIP
 	}
-	kubeletRoot, runtimeRoot, hasCFS, hasPIDs := cgroups.CheckCgroups()
-	if !hasCFS {
-		logrus.Warn("Disabling CPU quotas due to missing cpu.cfs_period_us")
+	kubeletRoot, runtimeRoot, controllers := cgroups.CheckCgroups()
+	if !controllers["cpu"] {
+		logrus.Warn("Disabling CPU quotas due to missing cpu controller or cpu.cfs_period_us")
 		argsMap["cpu-cfs-quota"] = "false"
 	}
-	if !hasPIDs {
-		logrus.Fatal("PIDS cgroup support not found")
+	if !controllers["pids"] {
+		logrus.Fatal("pids cgroup controller not found")
 	}
 	if kubeletRoot != "" {
 		argsMap["kubelet-cgroups"] = kubeletRoot
@@ -172,7 +169,11 @@ func kubeletArgs(cfg *config.Agent) map[string]string {
 	}
 
 	if cfg.Rootless {
-		createRootlessConfig(argsMap, hasCFS, hasCFS)
+		createRootlessConfig(argsMap, controllers)
+	}
+
+	if cfg.Systemd {
+		argsMap["cgroup-driver"] = "systemd"
 	}
 
 	if cfg.ProtectKernelDefaults {

@@ -5,22 +5,25 @@ package executor
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"net/http"
 	"runtime"
 
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
 	daemonconfig "github.com/k3s-io/k3s/pkg/daemons/config"
+	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
+	toolswatch "k8s.io/client-go/tools/watch"
 	ccm "k8s.io/cloud-provider"
 	cloudprovider "k8s.io/cloud-provider"
 	cloudproviderapi "k8s.io/cloud-provider/api"
@@ -47,7 +50,7 @@ func (e *Embedded) Bootstrap(ctx context.Context, nodeConfig *daemonconfig.Node,
 	return nil
 }
 
-func (*Embedded) Kubelet(ctx context.Context, args []string) error {
+func (e *Embedded) Kubelet(ctx context.Context, args []string) error {
 	command := kubelet.NewKubeletCommand(context.Background())
 	command.SetArgs(args)
 
@@ -57,6 +60,12 @@ func (*Embedded) Kubelet(ctx context.Context, args []string) error {
 				logrus.Fatalf("kubelet panic: %v", err)
 			}
 		}()
+		// The embedded executor doesn't need the kubelet to come up to host any components, and
+		// having it come up on servers before the apiserver is available causes a lot of log spew.
+		// Agents don't have access to the server's apiReady channel, so just wait directly.
+		if err := util.WaitForAPIServerReady(ctx, e.nodeConfig.AgentConfig.KubeConfigKubelet, util.DefaultAPIServerReadyTimeout); err != nil {
+			logrus.Fatalf("Kubelet failed to wait for apiserver ready: %v", err)
+		}
 		logrus.Fatalf("kubelet exited: %v", command.ExecuteContext(ctx))
 	}()
 
@@ -205,43 +214,33 @@ func waitForUntaintedNode(ctx context.Context, kubeConfig string) error {
 	if err != nil {
 		return err
 	}
+	nodes := coreClient.Nodes()
 
-	// List first, to see if there's an existing node that will do
-	nodes, err := coreClient.Nodes().List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return err
+	lw := &cache.ListWatch{
+		ListFunc: func(options metav1.ListOptions) (object k8sruntime.Object, e error) {
+			return nodes.List(ctx, options)
+		},
+		WatchFunc: func(options metav1.ListOptions) (i watch.Interface, e error) {
+			return nodes.Watch(ctx, options)
+		},
 	}
-	for _, node := range nodes.Items {
-		if taint := getCloudTaint(node.Spec.Taints); taint == nil {
-			return nil
+
+	condition := func(ev watch.Event) (bool, error) {
+		if node, ok := ev.Object.(*v1.Node); ok {
+			return getCloudTaint(node.Spec.Taints) == nil, nil
 		}
+		return false, errors.New("event object not of type v1.Node")
 	}
 
-	// List didn't give us an existing node, start watching at whatever ResourceVersion the list left off at.
-	watcher, err := coreClient.Nodes().Watch(ctx, metav1.ListOptions{ResourceVersion: nodes.ListMeta.ResourceVersion})
-	if err != nil {
-		return err
+	if _, err := toolswatch.UntilWithSync(ctx, lw, &v1.Node{}, nil, condition); err != nil {
+		return errors.Wrap(err, "failed to wait for untainted node")
 	}
-	defer watcher.Stop()
-
-	for ev := range watcher.ResultChan() {
-		if ev.Type == watch.Added || ev.Type == watch.Modified {
-			node, ok := ev.Object.(*corev1.Node)
-			if !ok {
-				return fmt.Errorf("could not convert event object to node: %v", ev)
-			}
-			if taint := getCloudTaint(node.Spec.Taints); taint == nil {
-				return nil
-			}
-		}
-	}
-
-	return errors.New("watch channel closed")
+	return nil
 }
 
 // getCloudTaint returns the external cloud provider taint, if present.
 // Cribbed from k8s.io/cloud-provider/controllers/node/node_controller.go
-func getCloudTaint(taints []corev1.Taint) *corev1.Taint {
+func getCloudTaint(taints []v1.Taint) *v1.Taint {
 	for _, taint := range taints {
 		if taint.Key == cloudproviderapi.TaintExternalCloudProvider {
 			return &taint

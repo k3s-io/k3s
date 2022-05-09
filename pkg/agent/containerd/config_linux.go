@@ -45,18 +45,21 @@ func setupContainerdConfig(ctx context.Context, cfg *config.Node) error {
 	}
 
 	isRunningInUserNS := userns.RunningInUserNS()
-	_, _, hasCFS, hasPIDs := cgroups.CheckCgroups()
+	_, _, controllers := cgroups.CheckCgroups()
 	// "/sys/fs/cgroup" is namespaced
 	cgroupfsWritable := unix.Access("/sys/fs/cgroup", unix.W_OK) == nil
-	disableCgroup := isRunningInUserNS && (!hasCFS || !hasPIDs || !cgroupfsWritable)
+	disableCgroup := isRunningInUserNS && (!controllers["cpu"] || !controllers["pids"] || !cgroupfsWritable)
 	if disableCgroup {
 		logrus.Warn("cgroup v2 controllers are not delegated for rootless. Disabling cgroup.")
+	} else {
+		cfg.AgentConfig.Systemd = controllers["cpuset"] && os.Getenv("NOTIFY_SOCKET") != ""
 	}
 
 	var containerdTemplate string
 	containerdConfig := templates.ContainerdConfig{
 		NodeConfig:            cfg,
 		DisableCgroup:         disableCgroup,
+		SystemdCgroup:         cfg.AgentConfig.Systemd,
 		IsRunningInUserNS:     isRunningInUserNS,
 		PrivateRegistryConfig: privRegistries.Registry,
 		ExtraRuntimes:         findNvidiaContainerRuntimes(os.DirFS(string(os.PathSeparator))),

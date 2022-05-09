@@ -5,9 +5,9 @@ import (
 	"crypto/tls"
 	"fmt"
 	"net"
+	"os"
 	"reflect"
 	"sync"
-	"time"
 
 	"github.com/gorilla/websocket"
 	agentconfig "github.com/k3s-io/k3s/pkg/agent/config"
@@ -17,13 +17,17 @@ import (
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/rancher/remotedialer"
 	"github.com/sirupsen/logrus"
+	"github.com/yl2chen/cidranger"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
-	watchtypes "k8s.io/apimachinery/pkg/watch"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
+	toolswatch "k8s.io/client-go/tools/watch"
 )
 
 var (
@@ -54,6 +58,11 @@ func Setup(ctx context.Context, config *config.Node, proxy proxy.Proxy) error {
 		return err
 	}
 
+	tunnel := &agentTunnel{
+		client: client,
+		cidrs:  cidranger.NewPCTrieRanger(),
+	}
+
 	// The loadbalancer is only disabled when there is a local apiserver.  Servers without a local
 	// apiserver load-balance to themselves initially, then switch over to an apiserver node as soon
 	// as we get some addresses from the code below.
@@ -81,47 +90,51 @@ func Setup(ctx context.Context, config *config.Node, proxy proxy.Proxy) error {
 	wg := &sync.WaitGroup{}
 	for _, address := range proxy.SupervisorAddresses() {
 		if _, ok := disconnect[address]; !ok {
-			disconnect[address] = connect(ctx, wg, address, tlsConfig)
+			disconnect[address] = tunnel.connect(ctx, wg, address, tlsConfig)
 		}
 	}
 
 	// Once the apiserver is up, go into a watch loop, adding and removing tunnels as endpoints come
-	// and go from the cluster. We go into a faster but noisier connect loop if the watch fails
-	// following a successful connection.
+	// and go from the cluster.
 	go func() {
-		if err := util.WaitForAPIServerReady(ctx, client, util.DefaultAPIServerReadyTimeout); err != nil {
+		if err := util.WaitForAPIServerReady(ctx, config.AgentConfig.KubeConfigKubelet, util.DefaultAPIServerReadyTimeout); err != nil {
 			logrus.Warnf("Tunnel endpoint watch failed to wait for apiserver ready: %v", err)
 		}
-	connect:
+
+		endpoints := client.CoreV1().Endpoints(metav1.NamespaceDefault)
+		fieldSelector := fields.Set{metav1.ObjectNameField: "kubernetes"}.String()
+		lw := &cache.ListWatch{
+			ListFunc: func(options metav1.ListOptions) (object runtime.Object, e error) {
+				options.FieldSelector = fieldSelector
+				return endpoints.List(ctx, options)
+			},
+			WatchFunc: func(options metav1.ListOptions) (i watch.Interface, e error) {
+				options.FieldSelector = fieldSelector
+				return endpoints.Watch(ctx, options)
+			},
+		}
+
+		_, _, watch, done := toolswatch.NewIndexerInformerWatcher(lw, &v1.Endpoints{})
+
+		defer func() {
+			watch.Stop()
+			<-done
+		}()
+
 		for {
-			time.Sleep(5 * time.Second)
-			watch, err := client.CoreV1().Endpoints("default").Watch(ctx, metav1.ListOptions{
-				FieldSelector:   fields.Set{"metadata.name": "kubernetes"}.String(),
-				ResourceVersion: "0",
-			})
-			if err != nil {
-				logrus.Warnf("Unable to watch for tunnel endpoints: %v", err)
-				continue connect
-			}
-		watching:
-			for {
-				ev, ok := <-watch.ResultChan()
-				if !ok || ev.Type == watchtypes.Error {
-					if ok {
-						logrus.Errorf("Tunnel endpoint watch channel closed: %v", ev)
-					}
-					watch.Stop()
-					continue connect
-				}
+			select {
+			case <-ctx.Done():
+				return
+			case ev, ok := <-watch.ResultChan():
 				endpoint, ok := ev.Object.(*v1.Endpoints)
 				if !ok {
-					logrus.Errorf("Tunnel could not convert event object to endpoint: %v", ev)
-					continue watching
+					logrus.Errorf("Tunnel watch failed: event object not of type v1.Endpoints")
+					continue
 				}
 
 				newAddresses := util.GetAddresses(endpoint)
 				if reflect.DeepEqual(newAddresses, proxy.SupervisorAddresses()) {
-					continue watching
+					continue
 				}
 				proxy.Update(newAddresses)
 
@@ -130,7 +143,7 @@ func Setup(ctx context.Context, config *config.Node, proxy proxy.Proxy) error {
 				for _, address := range proxy.SupervisorAddresses() {
 					validEndpoint[address] = true
 					if _, ok := disconnect[address]; !ok {
-						disconnect[address] = connect(ctx, nil, address, tlsConfig)
+						disconnect[address] = tunnel.connect(ctx, nil, address, tlsConfig)
 					}
 				}
 
@@ -161,7 +174,49 @@ func Setup(ctx context.Context, config *config.Node, proxy proxy.Proxy) error {
 	return nil
 }
 
-func connect(rootCtx context.Context, waitGroup *sync.WaitGroup, address string, tlsConfig *tls.Config) context.CancelFunc {
+type agentTunnel struct {
+	client kubernetes.Interface
+	cidrs  cidranger.Ranger
+}
+
+// authorized determines whether or not a dial request is authorized.
+// Connections to the local kubelet ports are allowed.
+// Connections to other IPs are allowed if they are contained in a CIDR managed by this node.
+// All other requests are rejected.
+func (a *agentTunnel) authorized(ctx context.Context, proto, address string) bool {
+	logrus.Debugf("Tunnel authorizer checking dial request for %s", address)
+	host, port, err := net.SplitHostPort(address)
+	if err == nil {
+		if proto == "tcp" && ports[port] && (host == "127.0.0.1" || host == "::1") {
+			return true
+		}
+		if ip := net.ParseIP(host); ip != nil {
+			// lazy populate the cidrs from the node object
+			if a.cidrs.Len() == 0 {
+				logrus.Debugf("Tunnel authorizer getting Pod CIDRs for %s", os.Getenv("NODE_NAME"))
+				node, err := a.client.CoreV1().Nodes().Get(ctx, os.Getenv("NODE_NAME"), metav1.GetOptions{})
+				if err != nil {
+					logrus.Warnf("Tunnel authorizer failed to get Pod CIDRs: %v", err)
+					return false
+				}
+				for _, cidr := range node.Spec.PodCIDRs {
+					if _, n, err := net.ParseCIDR(cidr); err == nil {
+						logrus.Infof("Tunnel authorizer added Pod CIDR %s", cidr)
+						a.cidrs.Insert(cidranger.NewBasicRangerEntry(*n))
+					}
+				}
+			}
+			if nets, err := a.cidrs.ContainingNetworks(ip); err == nil && len(nets) > 0 {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// connect initiates a connection to the remotedialer server. Incoming dial requests from
+// the server will be checked by the authorizer function prior to being fulfilled.
+func (a *agentTunnel) connect(rootCtx context.Context, waitGroup *sync.WaitGroup, address string, tlsConfig *tls.Config) context.CancelFunc {
 	wsURL := fmt.Sprintf("wss://%s/v1-"+version.Program+"/connect", address)
 	ws := &websocket.Dialer{
 		TLSClientConfig: tlsConfig,
@@ -177,8 +232,7 @@ func connect(rootCtx context.Context, waitGroup *sync.WaitGroup, address string,
 	go func() {
 		for {
 			remotedialer.ClientConnect(ctx, wsURL, nil, ws, func(proto, address string) bool {
-				host, port, err := net.SplitHostPort(address)
-				return err == nil && proto == "tcp" && ports[port] && (host == "127.0.0.1" || host == "::1")
+				return a.authorized(rootCtx, proto, address)
 			}, func(_ context.Context) error {
 				if waitGroup != nil {
 					once.Do(waitGroup.Done)

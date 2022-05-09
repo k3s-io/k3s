@@ -93,6 +93,7 @@ type ETCD struct {
 	address string
 	cron    *cron.Cron
 	s3      *S3
+	cancel  context.CancelFunc
 }
 
 type learnerProgress struct {
@@ -288,7 +289,11 @@ func (e *ETCD) Reset(ctx context.Context, rebootstrap func() error) error {
 				}
 
 				if len(members.Members) == 1 && members.Members[0].Name == e.name {
-					logrus.Infof("Etcd is running, restart without --cluster-reset flag now. Backup and delete ${datadir}/server/db on each peer etcd server and rejoin the nodes")
+					// Cancel the etcd server context and allow it time to shutdown cleanly.
+					// Ideally we would use a waitgroup and properly sequence shutdown of the various components.
+					e.cancel()
+					time.Sleep(time.Second * 5)
+					logrus.Infof("Managed etcd cluster membership has been reset, restart without --cluster-reset flag now. Backup and delete ${datadir}/server/db on each peer etcd server and rejoin the nodes")
 					os.Exit(0)
 				}
 			} else {
@@ -565,7 +570,7 @@ func (e *ETCD) setName(force bool) error {
 
 // handler wraps the handler with routes for database info
 func (e *ETCD) handler(next http.Handler) http.Handler {
-	mux := mux.NewRouter()
+	mux := mux.NewRouter().SkipClean(true)
 	mux.Handle("/db/info", e.infoHandler())
 	mux.NotFoundHandler = next
 	return mux
@@ -769,6 +774,7 @@ func (e *ETCD) metricsURL(expose bool) string {
 
 // cluster returns ETCDConfig for a cluster
 func (e *ETCD) cluster(ctx context.Context, forceNew bool, options executor.InitialOptions) error {
+	ctx, e.cancel = context.WithCancel(ctx)
 	return executor.ETCD(ctx, executor.ETCDConfig{
 		Name:                e.name,
 		InitialOptions:      options,
@@ -790,10 +796,11 @@ func (e *ETCD) cluster(ctx context.Context, forceNew bool, options executor.Init
 			ClientCertAuth: true,
 			TrustedCAFile:  e.config.Runtime.ETCDPeerCA,
 		},
-		ElectionTimeout:   5000,
-		HeartbeatInterval: 500,
-		Logger:            "zap",
-		LogOutputs:        []string{"stderr"},
+		ElectionTimeout:                 5000,
+		HeartbeatInterval:               500,
+		Logger:                          "zap",
+		LogOutputs:                      []string{"stderr"},
+		ExperimentalInitialCorruptCheck: true,
 	}, e.config.ExtraEtcdArgs)
 }
 
@@ -821,18 +828,20 @@ func (e *ETCD) StartEmbeddedTemporary(ctx context.Context) error {
 	}
 
 	embedded := executor.Embedded{}
+	ctx, e.cancel = context.WithCancel(ctx)
 	return embedded.ETCD(ctx, executor.ETCDConfig{
-		InitialOptions:      executor.InitialOptions{AdvertisePeerURL: peerURL},
-		DataDir:             tmpDataDir,
-		ForceNewCluster:     true,
-		AdvertiseClientURLs: clientURL,
-		ListenClientURLs:    clientURL,
-		ListenPeerURLs:      peerURL,
-		Logger:              "zap",
-		HeartbeatInterval:   500,
-		ElectionTimeout:     5000,
-		Name:                e.name,
-		LogOutputs:          []string{"stderr"},
+		InitialOptions:                  executor.InitialOptions{AdvertisePeerURL: peerURL},
+		DataDir:                         tmpDataDir,
+		ForceNewCluster:                 true,
+		AdvertiseClientURLs:             clientURL,
+		ListenClientURLs:                clientURL,
+		ListenPeerURLs:                  peerURL,
+		Logger:                          "zap",
+		HeartbeatInterval:               500,
+		ElectionTimeout:                 5000,
+		Name:                            e.name,
+		LogOutputs:                      []string{"stderr"},
+		ExperimentalInitialCorruptCheck: true,
 	}, append(e.config.ExtraAPIArgs, "--max-snapshots=0", "--max-wals=0"))
 }
 
