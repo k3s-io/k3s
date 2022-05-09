@@ -242,7 +242,7 @@ sonobuoy-test() {
     sonobuoy run \
         --config=scripts/sonobuoy-config.json \
         --plugin-env=e2e.E2E_USE_GO_RUNNER=true \
-        --kube-conformance-image-version=${VERSION_K8S} \
+        --kubernetes-version=${VERSION_K8S} \
         --wait=90 \
         $@ &
 
