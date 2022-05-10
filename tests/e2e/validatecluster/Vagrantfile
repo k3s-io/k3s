@@ -143,10 +143,10 @@ def dockerInstall(vm)
     vm.provision "shell", inline: "apt install -y docker.io"
   end
   if vm.box.include?("Leap")
-    vm.provision "shell", inline: "zypper install -y docker"
+    vm.provision "shell", inline: "zypper install -y docker apparmor-parser"
   end
   if vm.box.include?("microos")
-    vm.provision "shell", inline: "transactional-update pkg install -y docker"
+    vm.provision "shell", inline: "transactional-update pkg install -y docker apparmor-parser"
     vm.provision 'docker-reload', type: 'reload', run: 'once'
     vm.provision "shell", inline: "systemctl enable --now docker"
   end

@@ -19,7 +19,7 @@ Vagrant.configure("2") do |config|
       sh.inline = <<~EOF
         #!/usr/bin/env bash
         set -eu -o pipefail
-        zypper install -y btrfsprogs hostname
+        zypper install -y apparmor-parser btrfsprogs hostname
         mkdir -p /var/lib/rancher/k3s /etc/rancher/k3s /usr/local/bin
         if ! mountpoint -q /var/lib/rancher/k3s; then
             : ${BTRFS_DEV:=#{ENV['BTRFS_DEV']}}
