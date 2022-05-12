@@ -81,6 +81,9 @@ enable_keychain = true
 [plugins.cri.containerd.runtimes.runc]
   runtime_type = "io.containerd.runc.v2"
 
+[plugins.cri.containerd.runtimes.runc.options]
+	SystemdCgroup = {{ .SystemdCgroup }}
+
 {{ if .PrivateRegistryConfig }}
 {{ if .PrivateRegistryConfig.Mirrors }}
 [plugins.cri.registry.mirrors]{{end}}
