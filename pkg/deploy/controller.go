@@ -166,7 +166,6 @@ func (w *watcher) deploy(path string, compareChecksum bool) error {
 	}
 
 	addon.Spec.Source = path
-	addon.Status.GVKs = nil
 
 	// Create the new Addon now so that we can use it to report Events when parsing/applying the manifest
 	// Events need the UID and ObjectRevision set to function properly
@@ -198,10 +197,17 @@ func (w *watcher) deploy(path string, compareChecksum bool) error {
 		return err
 	}
 
+	objectsByGVK := objectSet.ObjectsByGVK()
+	gvks := make([]schema.GroupVersionKind, 0, len(objectsByGVK))
+	for k := range objectsByGVK {
+		gvks = append(gvks, k)
+	}
+
 	// Attempt to apply the changes. Failure at this point would be due to more complicated issues - invalid changes to
 	// existing objects, rejected by validating webhooks, etc.
+	// Add GVKs here so that objects that were removed from the manifest are removed from Kubernetes.
 	w.recorder.Eventf(&addon, corev1.EventTypeNormal, "ApplyingManifest", "Applying manifest at %q", path)
-	if err := w.apply.WithOwner(&addon).Apply(objectSet); err != nil {
+	if err := w.apply.WithOwner(&addon).WithGVK(addon.Status.GVKs...).Apply(objectSet); err != nil {
 		w.recorder.Eventf(&addon, corev1.EventTypeWarning, "ApplyManifestFailed", "Applying manifest at %q failed: %v", path, err)
 		return err
 	}
@@ -209,6 +215,7 @@ func (w *watcher) deploy(path string, compareChecksum bool) error {
 	// Emit event, Update Addon checksum only if apply was successful
 	w.recorder.Eventf(&addon, corev1.EventTypeNormal, "AppliedManifest", "Applied manifest at %q", path)
 	addon.Spec.Checksum = checksum
+	addon.Status.GVKs = gvks
 	_, err = w.addons.Update(&addon)
 	return err
 }
@@ -222,22 +229,6 @@ func (w *watcher) delete(path string) error {
 		return err
 	}
 
-	content, err := ioutil.ReadFile(path)
-	if err != nil {
-		w.recorder.Eventf(&addon, corev1.EventTypeWarning, "ReadManifestFailed", "Read manifest at %q failed: %v", path, err)
-		return err
-	}
-
-	objectSet, err := objectSet(content)
-	if err != nil {
-		w.recorder.Eventf(&addon, corev1.EventTypeWarning, "ParseManifestFailed", "Parse manifest at %q failed: %v", path, err)
-		return err
-	}
-	var gvk []schema.GroupVersionKind
-	for k := range objectSet.ObjectsByGVK() {
-		gvk = append(gvk, k)
-	}
-
 	// ensure that the addon is completely removed before deleting the objectSet,
 	// so return when err == nil, otherwise pods may get stuck terminating
 	w.recorder.Eventf(&addon, corev1.EventTypeNormal, "DeletingManifest", "Deleting manifest at %q", path)
@@ -246,7 +237,7 @@ func (w *watcher) delete(path string) error {
 	}
 
 	// apply an empty set with owner & gvk data to delete
-	if err := w.apply.WithOwner(&addon).WithGVK(gvk...).Apply(nil); err != nil {
+	if err := w.apply.WithOwner(&addon).WithGVK(addon.Status.GVKs...).ApplyObjects(); err != nil {
 		return err
 	}
 
@@ -272,9 +263,7 @@ func objectSet(content []byte) (*objectset.ObjectSet, error) {
 		return nil, err
 	}
 
-	os := objectset.NewObjectSet()
-	os.Add(objs...)
-	return os, nil
+	return objectset.NewObjectSet(objs...), nil
 }
 
 // basename returns a file's basename by returning everything before the first period
