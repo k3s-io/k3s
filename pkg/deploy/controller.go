@@ -224,7 +224,6 @@ func (w *watcher) delete(path string) error {
 		return err
 	}
 
-	objects := &objectset.ObjectSet{}
 	content, err := ioutil.ReadFile(path)
 	if err != nil {
 		w.recorder.Eventf(&addon, corev1.EventTypeWarning, "ReadManifestFailed", "Read manifest at %q failed: %v", path, err)
@@ -232,13 +231,11 @@ func (w *watcher) delete(path string) error {
 		if o, err := objectSet(content); err != nil {
 			w.recorder.Eventf(&addon, corev1.EventTypeWarning, "ParseManifestFailed", "Parse manifest at %q failed: %v", path, err)
 		} else {
-			objects = o
+			// Search for objects using both GVKs currently listed in the file, as well as GVKs previously applied.
+			// This ensures that any conflicts between competing deploy controllers are handled properly.
+			addon.Status.GVKs = append(addon.Status.GVKs, o.GVKs()...)
 		}
 	}
-
-	// Search for objects using both GVKs currently listed in the file, as well as GVKs previously applied.
-	// This ensures that any conflicts between competing deploy controllers are handled properly.
-	addon.Status.GVKs = append(addon.Status.GVKs, objects.GVKs()...)
 
 	// ensure that the addon is completely removed before deleting the objectSet,
 	// so return when err == nil, otherwise pods may get stuck terminating
