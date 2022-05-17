@@ -12,9 +12,10 @@ import (
 	"github.com/gorilla/websocket"
 	agentconfig "github.com/k3s-io/k3s/pkg/agent/config"
 	"github.com/k3s-io/k3s/pkg/agent/proxy"
-	"github.com/k3s-io/k3s/pkg/daemons/config"
+	daemonconfig "github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
+	"github.com/pkg/errors"
 	"github.com/rancher/remotedialer"
 	"github.com/sirupsen/logrus"
 	"github.com/yl2chen/cidranger"
@@ -37,7 +38,7 @@ var (
 	}
 )
 
-func Setup(ctx context.Context, config *config.Node, proxy proxy.Proxy) error {
+func Setup(ctx context.Context, config *daemonconfig.Node, proxy proxy.Proxy) error {
 	restConfig, err := clientcmd.BuildConfigFromFlags("", config.AgentConfig.KubeConfigK3sController)
 	if err != nil {
 		return err
@@ -61,6 +62,14 @@ func Setup(ctx context.Context, config *config.Node, proxy proxy.Proxy) error {
 	tunnel := &agentTunnel{
 		client: client,
 		cidrs:  cidranger.NewPCTrieRanger(),
+		mode:   config.EgressSelectorMode,
+	}
+
+	if tunnel.mode == daemonconfig.EgressSelectorModeCluster {
+		for _, cidr := range config.AgentConfig.ClusterCIDRs {
+			logrus.Infof("Tunnel authorizer added Cluster CIDR %s", cidr)
+			tunnel.cidrs.Insert(cidranger.NewBasicRangerEntry(*cidr))
+		}
 	}
 
 	// The loadbalancer is only disabled when there is a local apiserver.  Servers without a local
@@ -175,8 +184,10 @@ func Setup(ctx context.Context, config *config.Node, proxy proxy.Proxy) error {
 }
 
 type agentTunnel struct {
+	sync.Mutex
 	client kubernetes.Interface
 	cidrs  cidranger.Ranger
+	mode   string
 }
 
 // authorized determines whether or not a dial request is authorized.
@@ -191,19 +202,10 @@ func (a *agentTunnel) authorized(ctx context.Context, proto, address string) boo
 			return true
 		}
 		if ip := net.ParseIP(host); ip != nil {
-			// lazy populate the cidrs from the node object
-			if a.cidrs.Len() == 0 {
-				logrus.Debugf("Tunnel authorizer getting Pod CIDRs for %s", os.Getenv("NODE_NAME"))
-				node, err := a.client.CoreV1().Nodes().Get(ctx, os.Getenv("NODE_NAME"), metav1.GetOptions{})
-				if err != nil {
-					logrus.Warnf("Tunnel authorizer failed to get Pod CIDRs: %v", err)
-					return false
-				}
-				for _, cidr := range node.Spec.PodCIDRs {
-					if _, n, err := net.ParseCIDR(cidr); err == nil {
-						logrus.Infof("Tunnel authorizer added Pod CIDR %s", cidr)
-						a.cidrs.Insert(cidranger.NewBasicRangerEntry(*n))
-					}
+			// lazy populate pod cidrs from the node object
+			if a.mode == daemonconfig.EgressSelectorModePod && a.cidrs.Len() == 0 {
+				if err := a.updatePodCIDRs(ctx); err != nil {
+					logrus.Warnf("Tunnel authorizer failed to update CIDRs: %v", err)
 				}
 			}
 			if nets, err := a.cidrs.ContainingNetworks(ip); err == nil && len(nets) > 0 {
@@ -212,6 +214,28 @@ func (a *agentTunnel) authorized(ctx context.Context, proto, address string) boo
 		}
 	}
 	return false
+}
+
+func (a *agentTunnel) updatePodCIDRs(ctx context.Context) error {
+	a.Lock()
+	defer a.Unlock()
+	// Return early if another goroutine updated the CIDRs while we were waiting to lock
+	if a.cidrs.Len() != 0 {
+		return nil
+	}
+	nodeName := os.Getenv("NODE_NAME")
+	logrus.Debugf("Tunnel authorizer getting Pod CIDRs for %s", nodeName)
+	node, err := a.client.CoreV1().Nodes().Get(ctx, nodeName, metav1.GetOptions{})
+	if err != nil {
+		return errors.Wrap(err, "failed to get Pod CIDRs")
+	}
+	for _, cidr := range node.Spec.PodCIDRs {
+		if _, n, err := net.ParseCIDR(cidr); err == nil {
+			logrus.Infof("Tunnel authorizer added Pod CIDR %s", cidr)
+			a.cidrs.Insert(cidranger.NewBasicRangerEntry(*n))
+		}
+	}
+	return nil
 }
 
 // connect initiates a connection to the remotedialer server. Incoming dial requests from

@@ -723,7 +723,11 @@ func genEncryptionConfigAndState(controlConfig *config.Control) error {
 }
 
 func genEgressSelectorConfig(controlConfig *config.Control) error {
-	connection := apiserver.Connection{
+	direct := apiserver.Connection{
+		ProxyProtocol: apiserver.ProtocolDirect,
+	}
+
+	proxy := apiserver.Connection{
 		ProxyProtocol: apiserver.ProtocolHTTPConnect,
 		Transport: &apiserver.Transport{
 			TCP: &apiserver.TCPTransport{
@@ -737,6 +741,17 @@ func genEgressSelectorConfig(controlConfig *config.Control) error {
 		},
 	}
 
+	clusterConn := direct
+	controlConn := direct
+
+	switch controlConfig.EgressSelectorMode {
+	case config.EgressSelectorModeAgent:
+		controlConn = proxy
+	case config.EgressSelectorModeCluster, config.EgressSelectorModePod:
+		clusterConn = proxy
+		controlConn = proxy
+	}
+
 	egressConfig := apiserver.EgressSelectorConfiguration{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "EgressSelectorConfiguration",
@@ -745,11 +760,11 @@ func genEgressSelectorConfig(controlConfig *config.Control) error {
 		EgressSelections: []apiserver.EgressSelection{
 			{
 				Name:       "cluster",
-				Connection: connection,
+				Connection: clusterConn,
 			},
 			{
 				Name:       "controlplane",
-				Connection: connection,
+				Connection: controlConn,
 			},
 		},
 	}

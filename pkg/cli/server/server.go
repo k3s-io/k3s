@@ -134,6 +134,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	serverConfig.ControlConfig.AdvertisePort = cfg.AdvertisePort
 	serverConfig.ControlConfig.FlannelBackend = cfg.FlannelBackend
 	serverConfig.ControlConfig.FlannelIPv6Masq = cfg.FlannelIPv6Masq
+	serverConfig.ControlConfig.EgressSelectorMode = cfg.EgressSelectorMode
 	serverConfig.ControlConfig.ExtraCloudControllerArgs = cfg.ExtraCloudControllerArgs
 	serverConfig.ControlConfig.DisableCCM = cfg.DisableCCM
 	serverConfig.ControlConfig.DisableNPC = cfg.DisableNPC
@@ -526,6 +527,13 @@ func validateNetworkConfiguration(serverConfig server.Config) error {
 
 	if dualDNS == true {
 		return errors.New("dual-stack cluster-dns is not supported")
+	}
+
+	switch serverConfig.ControlConfig.EgressSelectorMode {
+	case config.EgressSelectorModeAgent, config.EgressSelectorModeCluster,
+		config.EgressSelectorModeDisabled, config.EgressSelectorModePod:
+	default:
+		return fmt.Errorf("invalid egress-selector-mode %s", serverConfig.ControlConfig.EgressSelectorMode)
 	}
 
 	return nil
