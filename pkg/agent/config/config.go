@@ -438,6 +438,7 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 		ContainerRuntimeEndpoint: envInfo.ContainerRuntimeEndpoint,
 		FlannelBackend:           controlConfig.FlannelBackend,
 		FlannelIPv6Masq:          controlConfig.FlannelIPv6Masq,
+		EgressSelectorMode:       controlConfig.EgressSelectorMode,
 		ServerHTTPSPort:          controlConfig.HTTPSPort,
 		Token:                    info.String(),
 	}
