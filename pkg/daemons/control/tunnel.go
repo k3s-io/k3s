@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/k3s-io/k3s/pkg/daemons/config"
@@ -31,8 +32,9 @@ func setupTunnel(ctx context.Context, cfg *config.Control) (http.Handler, error)
 		cidrs:  cidranger.NewPCTrieRanger(),
 		config: cfg,
 		server: remotedialer.New(authorizer, loggingErrorWriter),
+		egress: map[string]bool{},
 	}
-	go tunnel.watchNodes(ctx)
+	go tunnel.watch(ctx)
 	return tunnel, nil
 }
 
@@ -53,32 +55,24 @@ func authorizer(req *http.Request) (clientKey string, authed bool, err error) {
 var _ http.Handler = &TunnelServer{}
 
 type TunnelServer struct {
+	sync.Mutex
 	cidrs  cidranger.Ranger
 	client kubernetes.Interface
 	config *config.Control
 	server *remotedialer.Server
+	egress map[string]bool
 }
 
 // explicit interface check
-var _ cidranger.RangerEntry = &nodeAddress{}
-var _ cidranger.RangerEntry = &nodeCIDR{}
+var _ cidranger.RangerEntry = &tunnelEntry{}
 
-type nodeAddress struct {
-	cidr net.IPNet
-	node string
+type tunnelEntry struct {
+	cidr    net.IPNet
+	node    string
+	kubelet bool
 }
 
-func (n *nodeAddress) Network() net.IPNet {
-	return n.cidr
-}
-
-type nodeCIDR struct {
-	cidr          net.IPNet
-	clusterEgress bool
-	node          string
-}
-
-func (n *nodeCIDR) Network() net.IPNet {
+func (n *tunnelEntry) Network() net.IPNet {
 	return n.cidr
 }
 
@@ -92,24 +86,39 @@ func (t *TunnelServer) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	}
 }
 
-// watchNodes waits for the runtime core to become available,
-// and registers an OnChange handler to observe PodCIDR changes.
-func (t *TunnelServer) watchNodes(ctx context.Context) {
+// watch waits for the runtime core to become available,
+// and registers OnChange handlers to observe changes to Nodes (and Endpoints if necessary).
+func (t *TunnelServer) watch(ctx context.Context) {
+	logrus.Infof("Tunnel server egress proxy mode: %s", t.config.EgressSelectorMode)
+
+	if t.config.EgressSelectorMode == config.EgressSelectorModeDisabled {
+		return
+	}
+
 	for {
 		if t.config.Runtime.Core != nil {
 			t.config.Runtime.Core.Core().V1().Node().OnChange(ctx, version.Program+"-tunnel-server", t.onChangeNode)
+			if t.config.EgressSelectorMode == config.EgressSelectorModeCluster {
+				// Cluster mode watches Endpoints to find what Node is hosting an Endpoint address, as the CNI
+				// may be using its own IPAM that does not repsect the Node's PodCIDR.
+				t.config.Runtime.Core.Core().V1().Endpoints().OnChange(ctx, version.Program+"-tunnel-server", t.onChangeEndpoints)
+			}
 			return
 		}
-		logrus.Infof("Tunnel server waiting for runtime core to become available")
+		logrus.Infof("Tunnel server egress proxy waiting for runtime core to become available")
 		time.Sleep(5 * time.Second)
 	}
 }
 
 // onChangeNode updates the node address/CIDR mappings by observing changes to nodes.
+// Node addresses are updated in Agent, Cluster, and Pod mode.
+// Pod CIDRs are updated only in Pod mode
 func (t *TunnelServer) onChangeNode(nodeName string, node *v1.Node) (*v1.Node, error) {
 	if node != nil {
-		logrus.Debugf("Tunnel server updating node %s", nodeName)
-		_, clusterEgress := node.Labels[nodeconfig.ClusterEgressLabel]
+		t.Lock()
+		defer t.Unlock()
+		logrus.Debugf("Tunnel server egress proxy updating node %s", nodeName)
+		_, t.egress[nodeName] = node.Labels[nodeconfig.ClusterEgressLabel]
 		// Add all node IP addresses
 		for _, addr := range node.Status.Addresses {
 			if addr.Type == v1.NodeInternalIP || addr.Type == v1.NodeExternalIP {
@@ -123,23 +132,66 @@ func (t *TunnelServer) onChangeNode(nodeName string, node *v1.Node) (*v1.Node, e
 					if node.DeletionTimestamp != nil {
 						t.cidrs.Remove(*n)
 					} else {
-						t.cidrs.Insert(&nodeAddress{cidr: *n, node: nodeName})
+						t.cidrs.Insert(&tunnelEntry{cidr: *n, node: nodeName, kubelet: true})
 					}
 				}
 			}
 		}
-		// Add all node PodCIDRs
-		for _, cidr := range node.Spec.PodCIDRs {
-			if _, n, err := net.ParseCIDR(cidr); err == nil {
-				if node.DeletionTimestamp != nil {
-					t.cidrs.Remove(*n)
-				} else {
-					t.cidrs.Insert(&nodeCIDR{cidr: *n, clusterEgress: clusterEgress, node: nodeName})
+		// Add all Node PodCIDRs, if in pod mode
+		if t.config.EgressSelectorMode == config.EgressSelectorModePod {
+			for _, cidr := range node.Spec.PodCIDRs {
+				if _, n, err := net.ParseCIDR(cidr); err == nil {
+					if node.DeletionTimestamp != nil {
+						t.cidrs.Remove(*n)
+					} else {
+						t.cidrs.Insert(&tunnelEntry{cidr: *n, node: nodeName})
+					}
 				}
 			}
 		}
 	}
 	return node, nil
+}
+
+// onChangeEndpoits updates the pod address mappings by observing changes to endpoints.
+// Only Pod endpoints with a defined NodeName are used, and only in Cluster mode.
+func (t *TunnelServer) onChangeEndpoints(endpointsName string, endpoints *v1.Endpoints) (*v1.Endpoints, error) {
+	if endpoints != nil {
+		t.Lock()
+		defer t.Unlock()
+		logrus.Debugf("Tunnel server egress proxy updating endpoints %s", endpointsName)
+		// Add all Pod endpoints
+		for _, subset := range endpoints.Subsets {
+			for _, addr := range subset.Addresses {
+				if addr.NodeName != nil && addr.TargetRef != nil && addr.TargetRef.Kind == "Pod" {
+					nodeName := *addr.NodeName
+					address := addr.IP
+					if strings.Contains(address, ":") {
+						address += "/128"
+					} else {
+						address += "/32"
+					}
+					if _, n, err := net.ParseCIDR(address); err == nil {
+						t.cidrs.Insert(&tunnelEntry{cidr: *n, node: nodeName})
+					}
+				}
+			}
+			for _, addr := range subset.NotReadyAddresses {
+				if addr.TargetRef != nil && addr.TargetRef.Kind == "Pod" {
+					address := addr.IP
+					if strings.Contains(address, ":") {
+						address += "/128"
+					} else {
+						address += "/32"
+					}
+					if _, n, err := net.ParseCIDR(address); err == nil {
+						t.cidrs.Remove(*n)
+					}
+				}
+			}
+		}
+	}
+	return endpoints, nil
 }
 
 // serveConnect attempts to handle the HTTP CONNECT request by dialing
@@ -182,19 +234,19 @@ func (t *TunnelServer) dialBackend(addr string) (net.Conn, error) {
 	var node string
 	var toKubelet, useTunnel bool
 	if ip := net.ParseIP(host); ip != nil {
-		// Destination is an IP address, check to see if the target is a CIDR or node address.
+		// Destination is an IP address, check to see if the target is a kubelet or pod address.
 		// We can only use the tunnel for egress to pods if the agent supports it.
 		if nets, err := t.cidrs.ContainingNetworks(ip); err == nil && len(nets) > 0 {
-			switch n := nets[0].(type) {
-			case *nodeAddress:
+			if n, ok := nets[0].(*tunnelEntry); ok {
 				node = n.node
-				toKubelet = true
-				useTunnel = true
-			case *nodeCIDR:
-				node = n.node
-				useTunnel = n.clusterEgress
-			default:
-				logrus.Debugf("Tunnel server CIDR lookup returned unknown type %T for address %s", nets[0], ip)
+				if n.kubelet {
+					toKubelet = true
+					useTunnel = true
+				} else {
+					useTunnel = t.egress[node]
+				}
+			} else {
+				logrus.Debugf("Tunnel server egress proxy CIDR lookup returned unknown type for address %s", ip)
 			}
 		}
 	} else {
@@ -217,16 +269,16 @@ func (t *TunnelServer) dialBackend(addr string) (net.Conn, error) {
 	if t.server.HasSession(node) {
 		if useTunnel {
 			// Have a session and it is safe to use for this destination, do so.
-			logrus.Debugf("Tunnel server dialing %s via session to %s", addr, node)
+			logrus.Debugf("Tunnel server egress proxy dialing %s via session to %s", addr, node)
 			return t.server.Dial(node, 15*time.Second, "tcp", addr)
 		}
 		// Have a session but the agent doesn't support tunneling to this destination or
 		// the destination is local; fall back to direct connection.
-		logrus.Debugf("Tunnel server dialing %s directly", addr)
+		logrus.Debugf("Tunnel server egress proxy dialing %s directly", addr)
 		return net.Dial("tcp", addr)
 	}
 
 	// don't provide a proxy connection for anything else
-	logrus.Debugf("Tunnel server rejecting connection to %s", addr)
+	logrus.Debugf("Tunnel server egress proxy rejecting connection to %s", addr)
 	return nil, fmt.Errorf("no sessions available for host %s", host)
 }

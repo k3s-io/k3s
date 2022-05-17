@@ -63,6 +63,7 @@ type Server struct {
 	ServerURL                string
 	FlannelBackend           string
 	FlannelIPv6Masq          bool
+	EgressSelectorMode       string
 	DefaultLocalStoragePath  string
 	DisableCCM               bool
 	DisableNPC               bool
@@ -212,6 +213,12 @@ var ServerFlags = []cli.Flag{
 		Name:        "flannel-ipv6-masq",
 		Usage:       "(networking) Enable IPv6 masquerading for pod",
 		Destination: &ServerConfig.FlannelIPv6Masq,
+	},
+	cli.StringFlag{
+		Name:        "egress-selector-mode",
+		Usage:       "(networking) One of 'agent', cluster', 'pod', 'disabled'",
+		Destination: &ServerConfig.EgressSelectorMode,
+		Value:       "pod",
 	},
 	ServerToken,
 	cli.StringFlag{
