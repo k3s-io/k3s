@@ -25,6 +25,10 @@ const (
 	FlannelBackendIPSEC           = "ipsec"
 	FlannelBackendWireguard       = "wireguard"
 	FlannelBackendWireguardNative = "wireguard-native"
+	EgressSelectorModeAgent       = "agent"
+	EgressSelectorModeCluster     = "cluster"
+	EgressSelectorModeDisabled    = "disabled"
+	EgressSelectorModePod         = "pod"
 	CertificateRenewDays          = 90
 )
 
@@ -37,6 +41,7 @@ type Node struct {
 	FlannelConfOverride      bool
 	FlannelIface             *net.Interface
 	FlannelIPv6Masq          bool
+	EgressSelectorMode       string
 	Containerd               Containerd
 	Images                   string
 	AgentConfig              Agent
@@ -122,6 +127,7 @@ type CriticalControlArgs struct {
 	DisableServiceLB      bool
 	FlannelBackend        string
 	FlannelIPv6Masq       bool
+	EgressSelectorMode    string
 	NoCoreDNS             bool
 	ServiceIPRange        *net.IPNet
 	ServiceIPRanges       []*net.IPNet
