@@ -121,18 +121,11 @@ func kubeletArgs(cfg *config.Agent) map[string]string {
 	if cfg.NodeName != "" {
 		argsMap["hostname-override"] = cfg.NodeName
 	}
-	var nodeIPs string
-	switch len(cfg.NodeIPs) {
-	case 1:
-		nodeIPs = cfg.NodeIPs[0].String()
-	case 2:
-		nodeIPs = cfg.NodeIPs[0].String() + "," + cfg.NodeIPs[1].String()
-	default:
-		logrus.Errorf("node-ip value: %v is wrong. It must have one or two IPs", cfg.NodeIPs)
-	}
-	defaultIP, err := net.ChooseHostInterface()
-	if err != nil || defaultIP.String() != nodeIPs {
-		argsMap["node-ip"] = nodeIPs
+	if nodeIPs := util.JoinIPs(cfg.NodeIPs); nodeIPs != "" {
+		defaultIP, err := net.ChooseHostInterface()
+		if err != nil || defaultIP.String() != nodeIPs {
+			argsMap["node-ip"] = nodeIPs
+		}
 	}
 	kubeletRoot, runtimeRoot, controllers := cgroups.CheckCgroups()
 	if !controllers["cpu"] {
