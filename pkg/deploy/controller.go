@@ -28,7 +28,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/record"
@@ -166,7 +165,6 @@ func (w *watcher) deploy(path string, compareChecksum bool) error {
 	}
 
 	addon.Spec.Source = path
-	addon.Status.GVKs = nil
 
 	// Create the new Addon now so that we can use it to report Events when parsing/applying the manifest
 	// Events need the UID and ObjectRevision set to function properly
@@ -192,7 +190,7 @@ func (w *watcher) deploy(path string, compareChecksum bool) error {
 
 	// Attempt to parse the YAML/JSON into objects. Failure at this point would be due to bad file content - not YAML/JSON,
 	// YAML/JSON that can't be converted to Kubernetes objects, etc.
-	objectSet, err := objectSet(content)
+	objects, err := objectSet(content)
 	if err != nil {
 		w.recorder.Eventf(&addon, corev1.EventTypeWarning, "ParseManifestFailed", "Parse manifest at %q failed: %v", path, err)
 		return err
@@ -200,8 +198,11 @@ func (w *watcher) deploy(path string, compareChecksum bool) error {
 
 	// Attempt to apply the changes. Failure at this point would be due to more complicated issues - invalid changes to
 	// existing objects, rejected by validating webhooks, etc.
+	// WithGVK searches for objects using both GVKs currently listed in the manifest, as well as GVKs previously
+	// applied.  This ensures that objects don't get orphaned when they are removed from the file - if the apply
+	// doesn't know to search that GVK for owner references, it won't find and delete them.
 	w.recorder.Eventf(&addon, corev1.EventTypeNormal, "ApplyingManifest", "Applying manifest at %q", path)
-	if err := w.apply.WithOwner(&addon).Apply(objectSet); err != nil {
+	if err := w.apply.WithOwner(&addon).WithGVK(addon.Status.GVKs...).Apply(objects); err != nil {
 		w.recorder.Eventf(&addon, corev1.EventTypeWarning, "ApplyManifestFailed", "Applying manifest at %q failed: %v", path, err)
 		return err
 	}
@@ -209,6 +210,7 @@ func (w *watcher) deploy(path string, compareChecksum bool) error {
 	// Emit event, Update Addon checksum only if apply was successful
 	w.recorder.Eventf(&addon, corev1.EventTypeNormal, "AppliedManifest", "Applied manifest at %q", path)
 	addon.Spec.Checksum = checksum
+	addon.Status.GVKs = objects.GVKs()
 	_, err = w.addons.Update(&addon)
 	return err
 }
@@ -225,17 +227,14 @@ func (w *watcher) delete(path string) error {
 	content, err := ioutil.ReadFile(path)
 	if err != nil {
 		w.recorder.Eventf(&addon, corev1.EventTypeWarning, "ReadManifestFailed", "Read manifest at %q failed: %v", path, err)
-		return err
-	}
-
-	objectSet, err := objectSet(content)
-	if err != nil {
-		w.recorder.Eventf(&addon, corev1.EventTypeWarning, "ParseManifestFailed", "Parse manifest at %q failed: %v", path, err)
-		return err
-	}
-	var gvk []schema.GroupVersionKind
-	for k := range objectSet.ObjectsByGVK() {
-		gvk = append(gvk, k)
+	} else {
+		if o, err := objectSet(content); err != nil {
+			w.recorder.Eventf(&addon, corev1.EventTypeWarning, "ParseManifestFailed", "Parse manifest at %q failed: %v", path, err)
+		} else {
+			// Search for objects using both GVKs currently listed in the file, as well as GVKs previously applied.
+			// This ensures that any conflicts between competing deploy controllers are handled properly.
+			addon.Status.GVKs = append(addon.Status.GVKs, o.GVKs()...)
+		}
 	}
 
 	// ensure that the addon is completely removed before deleting the objectSet,
@@ -246,7 +245,7 @@ func (w *watcher) delete(path string) error {
 	}
 
 	// apply an empty set with owner & gvk data to delete
-	if err := w.apply.WithOwner(&addon).WithGVK(gvk...).Apply(nil); err != nil {
+	if err := w.apply.WithOwner(&addon).WithGVK(addon.Status.GVKs...).ApplyObjects(); err != nil {
 		return err
 	}
 
@@ -272,9 +271,7 @@ func objectSet(content []byte) (*objectset.ObjectSet, error) {
 		return nil, err
 	}
 
-	os := objectset.NewObjectSet()
-	os.Add(objs...)
-	return os, nil
+	return objectset.NewObjectSet(objs...), nil
 }
 
 // basename returns a file's basename by returning everything before the first period
