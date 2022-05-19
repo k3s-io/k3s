@@ -25,7 +25,7 @@ if echo "${DRONE_TAG}" | grep -q '-'; then
 fi
 
 # get latest released version from github
-GITHUB_URL=https://github.com/rancher/k3s/releases
+GITHUB_URL=https://github.com/k3s-io/k3s/releases
 VERSION_K3S=$(curl -w '%{url_effective}' -I -L -s -S ${GITHUB_URL}/latest -o /dev/null | sed -e 's|.*/||')
 
 # function for comparing versions

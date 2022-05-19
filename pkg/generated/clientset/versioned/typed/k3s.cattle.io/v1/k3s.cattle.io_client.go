@@ -19,8 +19,8 @@ limitations under the License.
 package v1
 
 import (
-	v1 "github.com/rancher/k3s/pkg/apis/k3s.cattle.io/v1"
-	"github.com/rancher/k3s/pkg/generated/clientset/versioned/scheme"
+	v1 "github.com/k3s-io/k3s/pkg/apis/k3s.cattle.io/v1"
+	"github.com/k3s-io/k3s/pkg/generated/clientset/versioned/scheme"
 	rest "k8s.io/client-go/rest"
 )
 

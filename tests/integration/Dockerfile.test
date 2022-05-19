@@ -6,7 +6,7 @@ RUN apt update && \
     apt install -y curl git lsof bash openssh-server gcc g++ make ca-certificates && \
     curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
 
-WORKDIR $GOPATH/src/github.com/rancher/k3s-io/k3s/
+WORKDIR $GOPATH/src/github.com/k3s-io/k3s-io/k3s/
 
 COPY ./tests/testdata ./testdata
 COPY ./tests/integration/test-runner.sh .

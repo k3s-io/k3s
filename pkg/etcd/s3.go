@@ -16,10 +16,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/pkg/errors"
-	"github.com/rancher/k3s/pkg/daemons/config"
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )

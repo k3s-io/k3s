@@ -19,7 +19,7 @@ limitations under the License.
 package fake
 
 import (
-	k3sv1 "github.com/rancher/k3s/pkg/apis/k3s.cattle.io/v1"
+	k3sv1 "github.com/k3s-io/k3s/pkg/apis/k3s.cattle.io/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"

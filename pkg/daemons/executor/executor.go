@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rancher/k3s/pkg/cli/cmds"
-	daemonconfig "github.com/rancher/k3s/pkg/daemons/config"
+	"github.com/k3s-io/k3s/pkg/cli/cmds"
+	daemonconfig "github.com/k3s-io/k3s/pkg/daemons/config"
 	yaml2 "gopkg.in/yaml.v2"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 	"sigs.k8s.io/yaml"

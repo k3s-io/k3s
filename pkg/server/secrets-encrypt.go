@@ -13,9 +13,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rancher/k3s/pkg/cluster"
-	"github.com/rancher/k3s/pkg/daemons/config"
-	"github.com/rancher/k3s/pkg/secretsencrypt"
+	"github.com/k3s-io/k3s/pkg/cluster"
+	"github.com/k3s-io/k3s/pkg/daemons/config"
+	"github.com/k3s-io/k3s/pkg/secretsencrypt"
 	"github.com/rancher/wrangler/pkg/generated/controllers/core"
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

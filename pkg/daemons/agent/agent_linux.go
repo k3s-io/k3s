@@ -8,10 +8,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/k3s-io/k3s/pkg/cgroups"
+	"github.com/k3s-io/k3s/pkg/daemons/config"
+	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/opencontainers/runc/libcontainer/userns"
-	"github.com/rancher/k3s/pkg/cgroups"
-	"github.com/rancher/k3s/pkg/daemons/config"
-	"github.com/rancher/k3s/pkg/util"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 	"k8s.io/apimachinery/pkg/util/net"

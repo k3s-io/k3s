@@ -4,14 +4,14 @@ import (
 	"os"
 
 	bindata "github.com/go-bindata/go-bindata"
-	v1 "github.com/rancher/k3s/pkg/apis/k3s.cattle.io/v1"
+	v1 "github.com/k3s-io/k3s/pkg/apis/k3s.cattle.io/v1"
 	controllergen "github.com/rancher/wrangler/pkg/controller-gen"
 	"github.com/rancher/wrangler/pkg/controller-gen/args"
 	"github.com/sirupsen/logrus"
 )
 
 var (
-	basePackage = "github.com/rancher/k3s/types"
+	basePackage = "github.com/k3s-io/k3s/types"
 )
 
 func main() {
@@ -68,7 +68,7 @@ func main() {
 	}
 
 	controllergen.Run(args.Options{
-		OutputPackage: "github.com/rancher/k3s/pkg/generated",
+		OutputPackage: "github.com/k3s-io/k3s/pkg/generated",
 		Boilerplate:   "scripts/boilerplate.go.txt",
 		Groups: map[string]args.Group{
 			"k3s.cattle.io": {

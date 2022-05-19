@@ -1,8 +1,8 @@
 package configfilearg
 
 import (
-	"github.com/rancher/k3s/pkg/cli/cmds"
-	"github.com/rancher/k3s/pkg/version"
+	"github.com/k3s-io/k3s/pkg/cli/cmds"
+	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 )

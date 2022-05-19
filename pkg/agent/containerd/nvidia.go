@@ -1,3 +1,4 @@
+//go:build linux
 // +build linux
 
 package containerd
@@ -7,7 +8,7 @@ import (
 	"io/fs"
 	"path/filepath"
 
-	"github.com/rancher/k3s/pkg/agent/templates"
+	"github.com/k3s-io/k3s/pkg/agent/templates"
 	"github.com/sirupsen/logrus"
 )
 

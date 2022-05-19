@@ -15,15 +15,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/k3s-io/k3s/pkg/bootstrap"
+	"github.com/k3s-io/k3s/pkg/clientaccess"
+	"github.com/k3s-io/k3s/pkg/daemons/config"
+	"github.com/k3s-io/k3s/pkg/etcd"
+	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/k3s-io/kine/pkg/client"
 	"github.com/k3s-io/kine/pkg/endpoint"
 	"github.com/otiai10/copy"
 	"github.com/pkg/errors"
-	"github.com/rancher/k3s/pkg/bootstrap"
-	"github.com/rancher/k3s/pkg/clientaccess"
-	"github.com/rancher/k3s/pkg/daemons/config"
-	"github.com/rancher/k3s/pkg/etcd"
-	"github.com/rancher/k3s/pkg/version"
 	"github.com/sirupsen/logrus"
 )
 

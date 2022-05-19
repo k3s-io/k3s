@@ -21,7 +21,7 @@ limitations under the License.
 package v1
 
 import (
-	k3s "github.com/rancher/k3s/pkg/apis/k3s.cattle.io"
+	k3s "github.com/k3s-io/k3s/pkg/apis/k3s.cattle.io"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"

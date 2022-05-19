@@ -2,7 +2,7 @@ See the [release](https://github.com/k3s-io/k3s/releases/latest) page for pre-bu
 
 The clone will be much faster on this repo if you do
 ```bash
-git clone --depth 1 https://github.com/rancher/k3s.git
+git clone --depth 1 https://github.com/k3s-io/k3s.git
 ```
 
 This repo includes all of Kubernetes history so `--depth 1` will avoid most of that.

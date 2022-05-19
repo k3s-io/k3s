@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/k3s-io/k3s/tests/e2e"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/rancher/k3s/tests/e2e"
 )
 
 // Valid nodeOS: generic/ubuntu2004, opensuse/Leap-15.3.x86_64, dweomer/microos.amd64

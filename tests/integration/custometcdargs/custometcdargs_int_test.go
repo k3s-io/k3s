@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
+	testutil "github.com/k3s-io/k3s/tests/util"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	testutil "github.com/rancher/k3s/tests/util"
 )
 
 var customEtcdArgsServer *testutil.K3sServer

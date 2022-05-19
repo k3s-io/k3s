@@ -1,3 +1,4 @@
+//go:build !windows
 // +build !windows
 
 package rootlessports
@@ -6,7 +7,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/rancher/k3s/pkg/rootless"
+	"github.com/k3s-io/k3s/pkg/rootless"
 	coreClients "github.com/rancher/wrangler/pkg/generated/controllers/core/v1"
 	"github.com/rootless-containers/rootlesskit/pkg/api/client"
 	"github.com/rootless-containers/rootlesskit/pkg/port"

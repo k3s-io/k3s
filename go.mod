@@ -1,4 +1,4 @@
-module github.com/rancher/k3s
+module github.com/k3s-io/k3s
 
 go 1.16
 
@@ -94,7 +94,6 @@ require (
 	github.com/flannel-io/flannel v0.17.0
 	github.com/go-bindata/go-bindata v3.1.2+incompatible
 	github.com/go-sql-driver/mysql v1.6.0
-	github.com/golangplus/testing v1.0.0 // indirect
 	github.com/google/cadvisor v0.39.3
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
@@ -120,10 +119,10 @@ require (
 	github.com/rancher/wrangler v0.8.10
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/rootless-containers/rootlesskit v0.14.5
+	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.7.0
-	github.com/tchap/go-patricia v2.3.0+incompatible // indirect
 	github.com/urfave/cli v1.22.4
 	github.com/vishvananda/netlink v1.1.1-0.20210330154013-f5de75959ad5
 	go.etcd.io/etcd/api/v3 v3.5.4

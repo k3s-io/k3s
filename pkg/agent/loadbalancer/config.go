@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 
-	"github.com/rancher/k3s/pkg/agent/util"
+	"github.com/k3s-io/k3s/pkg/agent/util"
 )
 
 func (lb *LoadBalancer) writeConfig() error {

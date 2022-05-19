@@ -1,3 +1,4 @@
+//go:build linux && cgo
 // +build linux,cgo
 
 package cmds
@@ -11,9 +12,9 @@ import (
 
 	systemd "github.com/coreos/go-systemd/daemon"
 	"github.com/erikdubbelboer/gspt"
+	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/natefinch/lumberjack"
 	"github.com/pkg/errors"
-	"github.com/rancher/k3s/pkg/version"
 	"golang.org/x/sys/unix"
 )
 

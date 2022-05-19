@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/rancher/k3s/pkg/version"
+	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/rancher/wrangler/pkg/apply"
 	"github.com/rancher/wrangler/pkg/condition"
 	appclient "github.com/rancher/wrangler/pkg/generated/controllers/apps/v1"
