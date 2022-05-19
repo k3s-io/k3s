@@ -19,7 +19,7 @@ limitations under the License.
 package k3s
 
 import (
-	v1 "github.com/rancher/k3s/pkg/generated/controllers/k3s.cattle.io/v1"
+	v1 "github.com/k3s-io/k3s/pkg/generated/controllers/k3s.cattle.io/v1"
 	"github.com/rancher/lasso/pkg/controller"
 )
 

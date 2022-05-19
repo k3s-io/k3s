@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"github.com/rancher/k3s/pkg/daemons/config"
+	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apiserver/pkg/endpoints/request"
 )

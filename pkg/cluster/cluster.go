@@ -6,13 +6,13 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/k3s-io/k3s/pkg/clientaccess"
+	"github.com/k3s-io/k3s/pkg/cluster/managed"
+	"github.com/k3s-io/k3s/pkg/daemons/config"
+	"github.com/k3s-io/k3s/pkg/etcd"
+	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/kine/pkg/endpoint"
 	"github.com/pkg/errors"
-	"github.com/rancher/k3s/pkg/clientaccess"
-	"github.com/rancher/k3s/pkg/cluster/managed"
-	"github.com/rancher/k3s/pkg/daemons/config"
-	"github.com/rancher/k3s/pkg/etcd"
-	"github.com/rancher/k3s/pkg/util"
 	"github.com/sirupsen/logrus"
 )
 

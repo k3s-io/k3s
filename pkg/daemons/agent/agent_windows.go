@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/Microsoft/hcsshim"
-	"github.com/rancher/k3s/pkg/daemons/config"
-	"github.com/rancher/k3s/pkg/util"
+	"github.com/k3s-io/k3s/pkg/daemons/config"
+	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/kubernetes/pkg/kubeapiserver/authorizer/modes"

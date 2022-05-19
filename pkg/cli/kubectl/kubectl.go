@@ -1,7 +1,7 @@
 package kubectl
 
 import (
-	"github.com/rancher/k3s/pkg/kubectl"
+	"github.com/k3s-io/k3s/pkg/kubectl"
 	"github.com/urfave/cli"
 )
 

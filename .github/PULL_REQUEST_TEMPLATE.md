@@ -1,5 +1,5 @@
 <!-- HTML Comments can be left in place or removed. -->
-<!-- Please see our contributing guide at https://github.com/rancher/k3s/blob/master/CONTRIBUTING.md for guidance on opening pull requests -->
+<!-- Please see our contributing guide at https://github.com/k3s-io/k3s/blob/master/CONTRIBUTING.md for guidance on opening pull requests -->
 
 #### Proposed Changes ####
 
@@ -15,7 +15,7 @@
 
 #### Linked Issues ####
 
-<!-- Link any related issues, pull-requests, or commit hashes that are relevant to this pull request. If you are opening a PR without a corresponding issue please consider creating one first, at https://github.com/rancher/k3s/issues . A functional example will greatly help QA with verifying/reproducing a bug or testing new features. -->
+<!-- Link any related issues, pull-requests, or commit hashes that are relevant to this pull request. If you are opening a PR without a corresponding issue please consider creating one first, at https://github.com/k3s-io/k3s/issues . A functional example will greatly help QA with verifying/reproducing a bug or testing new features. -->
 
 #### User-Facing Change ####
 <!--

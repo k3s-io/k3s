@@ -8,9 +8,9 @@ import (
 	"os"
 	"strings"
 
+	"github.com/k3s-io/k3s/pkg/configfilearg"
+	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/pkg/errors"
-	"github.com/rancher/k3s/pkg/configfilearg"
-	"github.com/rancher/k3s/pkg/version"
 	corev1 "k8s.io/api/core/v1"
 )
 

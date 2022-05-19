@@ -3,7 +3,7 @@ package cloudprovider
 import (
 	"io"
 
-	"github.com/rancher/k3s/pkg/version"
+	"github.com/k3s-io/k3s/pkg/version"
 	"k8s.io/client-go/informers"
 	informercorev1 "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/tools/cache"
