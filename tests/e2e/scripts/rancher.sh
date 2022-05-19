@@ -16,5 +16,14 @@ helm install cert-manager jetstack/cert-manager --namespace cert-manager --kubec
 kubectl get pods --namespace cert-manager
 helm install rancher rancher-latest/rancher --namespace cattle-system --set hostname="$node_ip".nip.io --kubeconfig /etc/rancher/k3s/k3s.yaml
 echo "Give Rancher time to startup"
-sleep 80
+sleep 10
+while ! kubectl get secret --namespace cattle-system bootstrap-secret -o go-template='{{.data.bootstrapPassword|base64decode}}' &> /dev/null; do
+    ((iterations++))
+    if [ "$iterations" -ge 8 ]; then
+        echo "Unable to find bootstrap-secret"
+        exit 1
+    fi
+    echo "waiting for bootstrap-secret..."
+    sleep 20
+done
 echo https://10.10.10.100.nip.io/dashboard/?setup=$(kubectl get secret --namespace cattle-system bootstrap-secret -o go-template='{{.data.bootstrapPassword|base64decode}}')

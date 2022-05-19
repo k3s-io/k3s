@@ -23,7 +23,9 @@ def provision(vm, role, role_num, node_num)
 
   defaultOSConfigure(vm)
   
-  if !RELEASE_VERSION.empty?
+  if RELEASE_VERSION == "skip"
+    install_type = "INSTALL_K3S_SKIP_DOWNLOAD=true"
+  elsif !RELEASE_VERSION.empty?
     install_type = "INSTALL_K3S_VERSION=#{RELEASE_VERSION}"
   else
     # Grabs the last 5 commit SHA's from the given branch, then purges any commits that do not have a passing CI build
