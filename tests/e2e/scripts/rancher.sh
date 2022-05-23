@@ -1,20 +1,52 @@
 #!/bin/bash
 node_ip=$1
 
-curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-helm repo add rancher-latest https://releases.rancher.com/server-charts/latest
-helm repo add jetstack https://charts.jetstack.io
-helm repo update
-
 echo  "Give K3s time to startup"
 sleep 15
-kubectl create namespace cattle-system
-kubectl create namespace cert-manager
-kubectl apply --validate=false -f https://github.com/cert-manager/cert-manager/releases/download/v1.8.0/cert-manager.crds.yaml
 
-helm install cert-manager jetstack/cert-manager --namespace cert-manager --kubeconfig /etc/rancher/k3s/k3s.yaml
-kubectl get pods --namespace cert-manager
-helm install rancher rancher-latest/rancher --namespace cattle-system --set hostname="$node_ip".nip.io --kubeconfig /etc/rancher/k3s/k3s.yaml
+cat << EOF > rancher.yaml
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cert-manager
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cattle-system
+---
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  namespace: kube-system
+  name: cert-manager
+spec:
+  targetNamespace: cert-manager
+  version: v1.6.1
+  chart: cert-manager
+  repo: https://charts.jetstack.io
+  set:
+    installCRDs: "true"
+---
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  namespace: kube-system
+  name: rancher
+spec:
+  targetNamespace: cattle-system
+  version: 2.6.5
+  chart: rancher
+  repo: https://releases.rancher.com/server-charts/latest
+  set:
+    ingress.tls.source: "rancher"
+    hostname: "$node_ip.nip.io"
+    antiAffinity: "required"
+    replicas: 1
+EOF
+kubectl apply -f rancher.yaml
+
 echo "Give Rancher time to startup"
 sleep 10
 while ! kubectl get secret --namespace cattle-system bootstrap-secret -o go-template='{{.data.bootstrapPassword|base64decode}}' &> /dev/null; do
@@ -26,4 +58,4 @@ while ! kubectl get secret --namespace cattle-system bootstrap-secret -o go-temp
     echo "waiting for bootstrap-secret..."
     sleep 20
 done
-echo https://10.10.10.100.nip.io/dashboard/?setup=$(kubectl get secret --namespace cattle-system bootstrap-secret -o go-template='{{.data.bootstrapPassword|base64decode}}')
+echo https://"$node_ip".nip.io/dashboard/?setup=$(kubectl get secret --namespace cattle-system bootstrap-secret -o go-template='{{.data.bootstrapPassword|base64decode}}')
