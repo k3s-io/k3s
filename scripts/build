@@ -82,6 +82,7 @@ rm -f \
     bin/k3s-etcd-snapshot \
     bin/k3s-secrets-encrypt \
     bin/k3s-certificate \
+    bin/k3s-completion \
     bin/kubectl \
     bin/crictl \
     bin/ctr \
@@ -116,6 +117,7 @@ ln -s containerd ./bin/k3s-server
 ln -s containerd ./bin/k3s-etcd-snapshot
 ln -s containerd ./bin/k3s-secrets-encrypt
 ln -s containerd ./bin/k3s-certificate
+ln -s containerd ./bin/k3s-completion
 ln -s containerd ./bin/kubectl
 ln -s containerd ./bin/crictl
 ln -s containerd ./bin/ctr
