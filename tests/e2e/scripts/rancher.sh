@@ -2,9 +2,11 @@
 node_ip=$1
 
 echo  "Give K3s time to startup"
-sleep 15
+sleep 10
+kubectl -n kube-system rollout status deploy/coredns
+kubectl -n kube-system rollout status deploy/local-path-provisioner
 
-cat << EOF > rancher.yaml
+cat << EOF > /var/lib/rancher/k3s/server/manifests/rancher.yaml
 ---
 apiVersion: v1
 kind: Namespace
@@ -42,13 +44,13 @@ spec:
   set:
     ingress.tls.source: "rancher"
     hostname: "$node_ip.nip.io"
-    antiAffinity: "required"
     replicas: 1
 EOF
-kubectl apply -f rancher.yaml
+
 
 echo "Give Rancher time to startup"
-sleep 10
+sleep 20
+kubectl -n cert-manager rollout status deploy/cert-manager
 while ! kubectl get secret --namespace cattle-system bootstrap-secret -o go-template='{{.data.bootstrapPassword|base64decode}}' &> /dev/null; do
     ((iterations++))
     if [ "$iterations" -ge 8 ]; then
