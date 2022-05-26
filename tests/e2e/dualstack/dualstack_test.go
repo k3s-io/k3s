@@ -31,7 +31,7 @@ func getPodIPs(kubeConfigFile string) ([]objIP, error) {
 	return getObjIPs(cmd)
 }
 func getNodeIPs(kubeConfigFile string) ([]objIP, error) {
-	cmd := `kubectl get nodes -o jsonpath='{range .items[*]}{.metadata.name}{" "}{.status.addresses[?(@.type == "ExternalIP")].address}{"\n"}{end}' --kubeconfig=` + kubeConfigFile
+	cmd := `kubectl get nodes -o jsonpath='{range .items[*]}{.metadata.name}{" "}{.status.addresses[?(@.type == "InternalIP")].address}{"\n"}{end}' --kubeconfig=` + kubeConfigFile
 	return getObjIPs(cmd)
 }
 
@@ -112,13 +112,11 @@ var _ = Describe("Verify DualStack Configuration", func() {
 	})
 
 	It("Verifies that each node has IPv4 and IPv6", func() {
-		for _, node := range serverNodeNames {
-			cmd := fmt.Sprintf("kubectl get node %s -o jsonpath='{.status.addresses}' --kubeconfig=%s | jq '.[] | select(.type == \"ExternalIP\") | .address'",
-				node, kubeConfigFile)
-			res, err := e2e.RunCommand(cmd)
-			Expect(err).NotTo(HaveOccurred(), res)
-			Expect(res).Should(ContainSubstring("10.10.10"))
-			Expect(res).Should(ContainSubstring("a11:decf:c0ff"))
+		nodeIPs, err := getNodeIPs(kubeConfigFile)
+		Expect(err).NotTo(HaveOccurred())
+		for _, node := range nodeIPs {
+			Expect(node.ipv4).Should(ContainSubstring("10.10.10"))
+			Expect(node.ipv6).Should(ContainSubstring("a11:decf:c0ff"))
 		}
 	})
 	It("Verifies that each pod has IPv4 and IPv6", func() {
