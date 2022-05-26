@@ -27,7 +27,7 @@ def provision(vm, role, role_num, node_num)
   load vagrant_defaults
 
   defaultOSConfigure(vm)
-  install_type = getInstallType(vm, RELEASE_VERSION)
+  install_type = getInstallType(vm, RELEASE_VERSION, GITHUB_BRANCH)
   
   if RELEASE_VERSION == "skip"
     install_type = "INSTALL_K3S_SKIP_DOWNLOAD=true"
