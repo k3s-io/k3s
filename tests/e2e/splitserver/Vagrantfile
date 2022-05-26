@@ -18,6 +18,7 @@ def installType(vm)
   end
   # Grabs the last 5 commit SHA's from the given branch, then purges any commits that do not have a passing CI build
   # MicroOS requires it not be in a /tmp/ or other root system folder
+  scripts_location = Dir.exists?("./scripts") ? "./scripts" : "../scripts" 
   vm.provision "Acquire latest commit", type: "shell", path: scripts_location + "/latest_commit.sh", args: [GITHUB_BRANCH, "/home/vagrant/k3s_commits"]
   return "INSTALL_K3S_COMMIT=$(head\ -n\ 1\ /home/vagrant/k3s_commits)"
 end
@@ -28,7 +29,6 @@ def provision(vm, role, role_num, node_num)
   # An expanded netmask is required to allow VM<-->VM communication, virtualbox defaults to /32
   vm.network "private_network", ip: "#{NETWORK_PREFIX}.#{100+node_num}", netmask: "255.255.255.0"
 
-  scripts_location = Dir.exists?("./scripts") ? "./scripts" : "../scripts" 
   vagrant_defaults = File.exists?("./vagrantdefaults.rb") ? "./vagrantdefaults.rb" : "../vagrantdefaults.rb"
   load vagrant_defaults
 
