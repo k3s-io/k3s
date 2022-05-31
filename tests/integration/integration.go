@@ -120,6 +120,39 @@ func K3sServerArgs() []string {
 	return args
 }
 
+// K3sDefaultDeployments checks if the default deployments for K3s are ready, otherwise returns an error
+func K3sDefaultDeployments() error {
+	return K3sCheckDeployments([]string{"coredns", "local-path-provisioner", "metrics-server", "traefik"})
+}
+
+// K3sCheckDeployments checks if the provided list of deployments are ready, otherwise returns an error
+func K3sCheckDeployments(deployments []string) error {
+
+	deploymentSet := make(map[string]bool)
+	for _, d := range deployments {
+		deploymentSet[d] = false
+	}
+	res, err := K3sCmd("kubectl get deployments --no-headers -A")
+	if err != nil {
+		return err
+	}
+	res = strings.TrimSpace(res)
+
+	split := strings.Split(res, "\n")
+	for _, rec := range split {
+		fields := strings.Fields(rec)
+		if _, ok := deploymentSet[fields[1]]; ok && fields[2] == "1/1" {
+			deploymentSet[fields[1]] = true
+		}
+	}
+	for d, found := range deploymentSet {
+		if !found {
+			return fmt.Errorf("failed to deploy %s", d)
+		}
+	}
+	return nil
+}
+
 func FindStringInCmdAsync(scanner *bufio.Scanner, target string) bool {
 	for scanner.Scan() {
 		if strings.Contains(scanner.Text(), target) {
@@ -158,7 +191,6 @@ func K3sStartServer(inputArgs ...string) (*K3sServer, error) {
 }
 
 // K3sKillServer terminates the running K3s server and its children
-// and unlocks the file for other tests
 func K3sKillServer(server *K3sServer) error {
 	pgid, err := syscall.Getpgid(server.cmd.Process.Pid)
 	if err != nil {
@@ -180,9 +212,10 @@ func K3sKillServer(server *K3sServer) error {
 	return nil
 }
 
-// K3sCleanup attempts to cleanup networking and files leftover from an integration test
-// this is similar to the k3s-killall.sh script, but we dynamically generate that on
-// install, so we don't have access to it in testing.
+// K3sCleanup unlocks the test-lock and
+// attempts to cleanup networking and files leftover from an integration test.
+// This is similar to the k3s-killall.sh script, but we dynamically generate that on
+// install, so we don't have access to it during testing.
 func K3sCleanup(k3sTestLock int, dataDir string) error {
 	if cni0Link, err := netlink.LinkByName("cni0"); err == nil {
 		links, _ := netlink.LinkList()
