@@ -27,6 +27,16 @@ type K3sServer struct {
 	scanner *bufio.Scanner
 }
 
+type Pod struct {
+	NameSpace string
+	Name      string
+	Ready     string
+	Status    string
+	Restarts  string
+	NodeIP    string
+	Node      string
+}
+
 func findK3sExecutable() string {
 	// if running on an existing cluster, it maybe installed via k3s.service
 	// or run manually from dist/artifacts/k3s
