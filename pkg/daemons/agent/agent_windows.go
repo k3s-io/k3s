@@ -116,6 +116,10 @@ func kubeletArgs(cfg *config.Agent) map[string]string {
 		argsMap["register-with-taints"] = strings.Join(cfg.NodeTaints, ",")
 	}
 
+	if !cfg.DisableCCM {
+		argsMap["cloud-provider"] = "external"
+	}
+
 	if ImageCredProvAvailable(cfg) {
 		logrus.Infof("Kubelet image credential provider bin dir and configuration file found.")
 		argsMap["feature-gates"] = util.AddFeatureGate(argsMap["feature-gates"], "KubeletCredentialProviders=true")
