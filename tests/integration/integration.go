@@ -37,6 +37,14 @@ type Pod struct {
 	Node      string
 }
 
+type Node struct {
+	Name       string
+	Status     string
+	Roles      string
+	InternalIP string
+	ExternalIP string
+}
+
 func findK3sExecutable() string {
 	// if running on an existing cluster, it maybe installed via k3s.service
 	// or run manually from dist/artifacts/k3s
@@ -132,11 +140,11 @@ func K3sServerArgs() []string {
 
 // K3sDefaultDeployments checks if the default deployments for K3s are ready, otherwise returns an error
 func K3sDefaultDeployments() error {
-	return K3sCheckDeployments([]string{"coredns", "local-path-provisioner", "metrics-server", "traefik"})
+	return CheckDeployments([]string{"coredns", "local-path-provisioner", "metrics-server", "traefik"})
 }
 
-// K3sCheckDeployments checks if the provided list of deployments are ready, otherwise returns an error
-func K3sCheckDeployments(deployments []string) error {
+// CheckDeployments checks if the provided list of deployments are ready, otherwise returns an error
+func CheckDeployments(deployments []string) error {
 
 	deploymentSet := make(map[string]bool)
 	for _, d := range deployments {
@@ -161,6 +169,59 @@ func K3sCheckDeployments(deployments []string) error {
 		}
 	}
 	return nil
+}
+
+func ParsePods() ([]Pod, error) {
+	pods := make([]Pod, 0, 10)
+
+	cmd := "kubectl get pods -o wide --no-headers -A"
+	res, _ := K3sCmd(cmd)
+	res = strings.TrimSpace(res)
+
+	split := strings.Split(res, "\n")
+	for _, rec := range split {
+		fields := strings.Fields(string(rec))
+		pod := Pod{
+			NameSpace: fields[0],
+			Name:      fields[1],
+			Ready:     fields[2],
+			Status:    fields[3],
+			Restarts:  fields[4],
+			NodeIP:    fields[6],
+			Node:      fields[7],
+		}
+		pods = append(pods, pod)
+	}
+	return pods, nil
+}
+
+func ParseNodes() ([]Node, error) {
+	nodes := make([]Node, 0, 10)
+
+	cmd := "kubectl get nodes --no-headers -o wide -A"
+	res, err := K3sCmd(cmd)
+	if err != nil {
+		return nil, err
+	}
+
+	res = strings.TrimSpace(res)
+	split := strings.Split(res, "\n")
+	for _, rec := range split {
+		if strings.TrimSpace(rec) != "" {
+			fields := strings.Fields(rec)
+			node := Node{
+				Name:       fields[0],
+				Status:     fields[1],
+				Roles:      fields[2],
+				InternalIP: fields[5],
+			}
+			if len(fields) > 6 {
+				node.ExternalIP = fields[6]
+			}
+			nodes = append(nodes, node)
+		}
+	}
+	return nodes, nil
 }
 
 func FindStringInCmdAsync(scanner *bufio.Scanner, target string) bool {
@@ -249,7 +310,10 @@ func K3sCleanup(k3sTestLock int, dataDir string) error {
 	if err := os.RemoveAll(dataDir); err != nil {
 		return err
 	}
-	return flock.Release(k3sTestLock)
+	if k3sTestLock != -1 {
+		return flock.Release(k3sTestLock)
+	}
+	return nil
 }
 
 // RunCommand Runs command on the host

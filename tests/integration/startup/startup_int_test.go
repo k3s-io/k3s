@@ -6,6 +6,7 @@ import (
 	testutil "github.com/k3s-io/k3s/tests/integration"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	. "github.com/onsi/gomega/gstruct"
 )
 
 var startupServer *testutil.K3sServer
@@ -13,20 +14,16 @@ var startupServerArgs = []string{}
 var testLock int
 
 var _ = BeforeSuite(func() {
-	if !testutil.IsExistingServer() {
-		var err error
-		testLock, err = testutil.K3sTestLock()
-		Expect(err).ToNot(HaveOccurred())
-
+	if testutil.IsExistingServer() {
+		Skip("Test does not support running on existing k3s servers")
 	}
+	var err error
+	testLock, err = testutil.K3sTestLock()
+	Expect(err).ToNot(HaveOccurred())
 })
 
 var _ = Describe("startup tests", func() {
-	BeforeEach(func() {
-		if testutil.IsExistingServer() {
-			Skip("Test does not support running on existing k3s servers")
-		}
-	})
+
 	When("a default server is created", func() {
 		It("is created with no arguments", func() {
 			var err error
@@ -67,13 +64,47 @@ var _ = Describe("startup tests", func() {
 		})
 		It("has the default pods without traefik deployed", func() {
 			Eventually(func() error {
-				return testutil.K3sCheckDeployments([]string{"coredns", "local-path-provisioner", "metrics-server"})
+				return testutil.CheckDeployments([]string{"coredns", "local-path-provisioner", "metrics-server"})
 			}, "60s", "5s").Should(Succeed())
 		})
 		It("dies cleanly", func() {
 			Expect(testutil.K3sKillServer(startupServer)).To(Succeed())
+			Expect(testutil.K3sCleanup(-1, "")).To(Succeed())
 		})
 	})
+	When("a server with different IPs is created", func() {
+		It("creates dummy interfaces", func() {
+			Expect(testutil.RunCommand("ip link add dummy2 type dummy")).To(Equal(""))
+			Expect(testutil.RunCommand("ip link add dummy3 type dummy")).To(Equal(""))
+			Expect(testutil.RunCommand("ip addr add 11.22.33.44/24 dev dummy2")).To(Equal(""))
+			Expect(testutil.RunCommand("ip addr add 55.66.77.88/24 dev dummy3")).To(Equal(""))
+		})
+		It("is created with node-ip arguments", func() {
+			var err error
+			startupServerArgs = []string{"--node-ip", "11.22.33.44", "--node-external-ip", "55.66.77.88"}
+			startupServer, err = testutil.K3sStartServer(startupServerArgs...)
+			Expect(err).ToNot(HaveOccurred())
+		})
+		It("has the node deployed with correct IPs", func() {
+			Eventually(func() error {
+				return testutil.K3sDefaultDeployments()
+			}, "60s", "5s").Should(Succeed())
+
+			nodes, err := testutil.ParseNodes()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(nodes).To(ContainElement(
+				MatchFields(IgnoreExtras, Fields{
+					"InternalIP": Equal("11.22.33.44"),
+					"ExternalIP": Equal("55.66.77.88"),
+				})))
+		})
+		It("dies cleanly", func() {
+			Expect(testutil.K3sKillServer(startupServer)).To(Succeed())
+			Expect(testutil.RunCommand("ip link del dummy2")).To(Equal(""))
+			Expect(testutil.RunCommand("ip link del dummy3")).To(Equal(""))
+		})
+	})
+})
 
 var _ = AfterSuite(func() {
 	if !testutil.IsExistingServer() {
