@@ -2,3 +2,4 @@
 [Fail] [sig-node] KubeletManagedEtcHosts [It] should test kubelet managed /etc/hosts file [LinuxOnly] [NodeConformance] [Conformance]
 [Fail] [sig-api-machinery] AdmissionWebhook [Privileged:ClusterAdmin] [It] should be able to deny pod and configmap creation [Conformance]
 [Fail] [sig-apps] Deployment [It] should run the lifecycle of a Deployment [Conformance]
+[Fail] [sig-api-machinery] AdmissionWebhook [Privileged:ClusterAdmin] [It] listing validating webhooks should work [Conformance]
