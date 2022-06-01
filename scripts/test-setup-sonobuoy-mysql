@@ -61,7 +61,7 @@ test-post-hook() {
   fi
   local failures=$(awk '/^Summarizing .* Failures?:$/,0' "$TEST_DIR"/sonobuoy/plugins/e2e/results/global/e2e.log)
   # Ignore sonobuoy failures if only these flaky tests have failed
-  flakyFails=$( grep -scF -f flaky-tests <<< "$failures" )
+  flakyFails=$( grep -scF -f ./scripts/flaky-tests <<< "$failures" )
   totalFails=$( grep -scF -e "[Fail]" <<< "$failures" )
   [ "$totalFails" -le "$flakyFails" ]
 }
