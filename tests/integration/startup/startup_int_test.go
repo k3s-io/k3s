@@ -33,7 +33,7 @@ var _ = Describe("startup tests", func() {
 		It("has the default pods deployed", func() {
 			Eventually(func() error {
 				return testutil.K3sDefaultDeployments()
-			}, "60s", "5s").Should(Succeed())
+			}, "90s", "5s").Should(Succeed())
 		})
 		It("dies cleanly", func() {
 			Expect(testutil.K3sKillServer(startupServer)).To(Succeed())
@@ -49,7 +49,7 @@ var _ = Describe("startup tests", func() {
 		It("has the default pods deployed", func() {
 			Eventually(func() error {
 				return testutil.K3sDefaultDeployments()
-			}, "60s", "5s").Should(Succeed())
+			}, "90s", "10s").Should(Succeed())
 		})
 		It("dies cleanly", func() {
 			Expect(testutil.K3sKillServer(startupServer)).To(Succeed())
@@ -65,7 +65,7 @@ var _ = Describe("startup tests", func() {
 		It("has the default pods without traefik deployed", func() {
 			Eventually(func() error {
 				return testutil.CheckDeployments([]string{"coredns", "local-path-provisioner", "metrics-server"})
-			}, "60s", "5s").Should(Succeed())
+			}, "90s", "10s").Should(Succeed())
 		})
 		It("dies cleanly", func() {
 			Expect(testutil.K3sKillServer(startupServer)).To(Succeed())
@@ -88,7 +88,7 @@ var _ = Describe("startup tests", func() {
 		It("has the node deployed with correct IPs", func() {
 			Eventually(func() error {
 				return testutil.K3sDefaultDeployments()
-			}, "60s", "5s").Should(Succeed())
+			}, "90s", "10s").Should(Succeed())
 
 			nodes, err := testutil.ParseNodes()
 			Expect(err).NotTo(HaveOccurred())

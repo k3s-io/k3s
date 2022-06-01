@@ -165,7 +165,7 @@ func CheckDeployments(deployments []string) error {
 	}
 	for d, found := range deploymentSet {
 		if !found {
-			return fmt.Errorf("failed to deploy %s", d)
+			return fmt.Errorf("failed to deploy %s\n%s", d, res)
 		}
 	}
 	return nil
