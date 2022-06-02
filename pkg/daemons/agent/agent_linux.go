@@ -121,11 +121,9 @@ func kubeletArgs(cfg *config.Agent) map[string]string {
 	if cfg.NodeName != "" {
 		argsMap["hostname-override"] = cfg.NodeName
 	}
-	if nodeIPs := util.JoinIPs(cfg.NodeIPs); nodeIPs != "" {
-		defaultIP, err := net.ChooseHostInterface()
-		if err != nil || defaultIP.String() != nodeIPs {
-			argsMap["node-ip"] = nodeIPs
-		}
+	defaultIP, err := net.ChooseHostInterface()
+	if err != nil || defaultIP.String() != cfg.NodeIP {
+		argsMap["node-ip"] = cfg.NodeIP
 	}
 	kubeletRoot, runtimeRoot, controllers := cgroups.CheckCgroups()
 	if !controllers["cpu"] {
