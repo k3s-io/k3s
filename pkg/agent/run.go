@@ -116,6 +116,7 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 	}
 
 	notifySocket := os.Getenv("NOTIFY_SOCKET")
+	os.Unsetenv("NOTIFY_SOCKET")
 
 	if err := setupTunnelAndRunAgent(ctx, nodeConfig, cfg, proxy); err != nil {
 		return err

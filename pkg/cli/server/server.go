@@ -454,12 +454,12 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		if !serverConfig.ControlConfig.DisableAPIServer {
 			<-serverConfig.ControlConfig.Runtime.APIServerReady
 			logrus.Info("Kube API server is now running")
-		} else {
+			serverConfig.ControlConfig.Runtime.StartupHooksWg.Wait()
+		}
+		if !serverConfig.ControlConfig.DisableETCD {
 			<-serverConfig.ControlConfig.Runtime.ETCDReady
 			logrus.Info("ETCD server is now running")
 		}
-
-		serverConfig.ControlConfig.Runtime.StartupHooksWg.Wait()
 
 		logrus.Info(version.Program + " is up and running")
 		os.Setenv("NOTIFY_SOCKET", notifySocket)
