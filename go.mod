@@ -7,7 +7,7 @@ replace (
 	github.com/benmoss/go-powershell => github.com/k3s-io/go-powershell v0.0.0-20201118222746-51f4c451fbd7
 	github.com/cloudnativelabs/kube-router => github.com/k3s-io/kube-router v1.3.3-0.20220405142336-8ea9a06dc0e3
 	github.com/containerd/cgroups => github.com/containerd/cgroups v1.0.1
-	github.com/containerd/containerd => github.com/k3s-io/containerd v1.5.11-k3s2 // k3s-release/1.5
+	github.com/containerd/containerd => github.com/k3s-io/containerd v1.5.13-k3s1 // k3s-release/1.5
 	github.com/coreos/go-systemd => github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e
 	github.com/docker/distribution => github.com/docker/distribution v2.7.1+incompatible
 	github.com/docker/docker => github.com/docker/docker v20.10.7+incompatible
@@ -17,6 +17,7 @@ replace (
 	github.com/googleapis/gax-go/v2 => github.com/googleapis/gax-go/v2 v2.0.5
 	github.com/juju/errors => github.com/k3s-io/nocode v0.0.0-20200630202308-cb097102c09f
 	github.com/kubernetes-sigs/cri-tools => github.com/k3s-io/cri-tools v1.22.0-k3s1
+	// LOOK TO scripts/version.sh FOR THE VERSION OF runc THAT WE ARE BUILDING/SHIPPING
 	github.com/opencontainers/runc => github.com/opencontainers/runc v1.0.3
 	github.com/opencontainers/runtime-spec => github.com/opencontainers/runtime-spec v1.0.3-0.20210326190908-1c3f411f0417
 	github.com/opencontainers/selinux => github.com/opencontainers/selinux v1.10.1
@@ -73,9 +74,9 @@ require (
 	github.com/Microsoft/hcsshim v0.9.2
 	github.com/cloudnativelabs/kube-router v1.3.2
 	github.com/containerd/cgroups v1.0.3
-	github.com/containerd/containerd v1.6.1
+	github.com/containerd/containerd v1.6.2
 	github.com/containerd/fuse-overlayfs-snapshotter v1.0.4
-	github.com/containerd/stargz-snapshotter v0.11.3
+	github.com/containerd/stargz-snapshotter v0.11.4
 	github.com/coreos/go-iptables v0.6.0
 	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f
 	github.com/docker/docker v20.10.10+incompatible
@@ -124,7 +125,7 @@ require (
 	go.uber.org/zap v1.19.0
 	golang.org/x/crypto v0.0.0-20220131195533-30dcbda58838
 	golang.org/x/net v0.0.0-20211216030914-fe4d6282115f
-	golang.org/x/sys v0.0.0-20220114195835-da31bd327af9
+	golang.org/x/sys v0.0.0-20220412211240-33da011f77ad
 	google.golang.org/grpc v1.45.0
 	gopkg.in/yaml.v2 v2.4.0
 	inet.af/tcpproxy v0.0.0-20200125044825-b6bb9b5b8252
@@ -136,7 +137,7 @@ require (
 	k8s.io/component-base v0.23.7
 	k8s.io/component-helpers v0.0.0
 	k8s.io/controller-manager v0.23.7 // indirect
-	k8s.io/cri-api v0.24.0-alpha.3
+	k8s.io/cri-api v0.24.0-beta.0
 	k8s.io/klog v1.0.0
 	k8s.io/kubectl v0.23.7
 	k8s.io/kubernetes v1.23.7
