@@ -460,7 +460,6 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		}
 
 		serverConfig.ControlConfig.Runtime.StartupHooksWg.Wait()
-		logrus.Info("startup hooks finished")
 
 		logrus.Info(version.Program + " is up and running")
 		os.Setenv("NOTIFY_SOCKET", notifySocket)
