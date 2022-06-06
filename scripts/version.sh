@@ -37,10 +37,7 @@ if [ -z "$VERSION_K8S" ]; then
     VERSION_K8S="v0.0.0"
 fi
 
-VERSION_RUNC=$(grep github.com/opencontainers/runc go.mod | head -n1 | awk '{print $4}')
-if [ -z "$VERSION_RUNC" ]; then
-    VERSION_RUNC="v0.0.0"
-fi
+VERSION_RUNC="v1.1.2"
 
 VERSION_FLANNEL=$(grep github.com/flannel-io/flannel go.mod | head -n1 | awk '{print $2}')
 if [ -z "$VERSION_FLANNEL" ]; then
