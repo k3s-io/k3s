@@ -442,6 +442,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	logrus.Info("Starting " + version.Program + " " + app.App.Version)
 
 	notifySocket := os.Getenv("NOTIFY_SOCKET")
+	os.Unsetenv("NOTIFY_SOCKET")
 
 	ctx := signals.SetupSignalContext()
 
@@ -462,10 +463,8 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		logrus.Info("startup hooks finished")
 
 		logrus.Info(version.Program + " is up and running")
-		if (cfg.DisableAgent || cfg.DisableAPIServer) && notifySocket != "" {
-			os.Setenv("NOTIFY_SOCKET", notifySocket)
-			systemd.SdNotify(true, "READY=1\n")
-		}
+		os.Setenv("NOTIFY_SOCKET", notifySocket)
+		systemd.SdNotify(true, "READY=1\n")
 	}()
 
 	url := fmt.Sprintf("https://%s:%d", serverConfig.ControlConfig.BindAddressOrLoopback(false), serverConfig.ControlConfig.SupervisorPort)
