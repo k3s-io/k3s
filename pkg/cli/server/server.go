@@ -458,6 +458,9 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 			logrus.Info("ETCD server is now running")
 		}
 
+		serverConfig.ControlConfig.Runtime.StartupHooksWg.Wait()
+		logrus.Info("startup hooks finished")
+
 		logrus.Info(version.Program + " is up and running")
 		if (cfg.DisableAgent || cfg.DisableAPIServer) && notifySocket != "" {
 			os.Setenv("NOTIFY_SOCKET", notifySocket)
