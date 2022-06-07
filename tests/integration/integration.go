@@ -3,6 +3,7 @@ package integration
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -15,6 +16,10 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/vishvananda/netlink"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 // Compile-time variable
@@ -25,24 +30,6 @@ const lockFile = "/tmp/k3s-test.lock"
 type K3sServer struct {
 	cmd     *exec.Cmd
 	scanner *bufio.Scanner
-}
-
-type Pod struct {
-	NameSpace string
-	Name      string
-	Ready     string
-	Status    string
-	Restarts  string
-	NodeIP    string
-	Node      string
-}
-
-type Node struct {
-	Name       string
-	Status     string
-	Roles      string
-	InternalIP string
-	ExternalIP string
 }
 
 func findK3sExecutable() string {
@@ -150,78 +137,53 @@ func CheckDeployments(deployments []string) error {
 	for _, d := range deployments {
 		deploymentSet[d] = false
 	}
-	res, err := K3sCmd("kubectl get deployments --no-headers -A")
+
+	client, err := k8sClient()
 	if err != nil {
 		return err
 	}
-	res = strings.TrimSpace(res)
-
-	split := strings.Split(res, "\n")
-	for _, rec := range split {
-		fields := strings.Fields(rec)
-		if _, ok := deploymentSet[fields[1]]; ok && fields[2] == "1/1" {
-			deploymentSet[fields[1]] = true
+	deploymentList, err := client.AppsV1().Deployments("").List(context.Background(), metav1.ListOptions{})
+	if err != nil {
+		return err
+	}
+	for _, deployment := range deploymentList.Items {
+		if _, ok := deploymentSet[deployment.Name]; ok && deployment.Status.ReadyReplicas == 1 {
+			deploymentSet[deployment.Name] = true
 		}
 	}
 	for d, found := range deploymentSet {
 		if !found {
-			return fmt.Errorf("failed to deploy %s\n%s", d, res)
+			return fmt.Errorf("failed to deploy %s", d)
 		}
 	}
+
 	return nil
 }
 
-func ParsePods() ([]Pod, error) {
-	pods := make([]Pod, 0, 10)
-
-	cmd := "kubectl get pods -o wide --no-headers -A"
-	res, _ := K3sCmd(cmd)
-	res = strings.TrimSpace(res)
-
-	split := strings.Split(res, "\n")
-	for _, rec := range split {
-		fields := strings.Fields(string(rec))
-		pod := Pod{
-			NameSpace: fields[0],
-			Name:      fields[1],
-			Ready:     fields[2],
-			Status:    fields[3],
-			Restarts:  fields[4],
-			NodeIP:    fields[6],
-			Node:      fields[7],
-		}
-		pods = append(pods, pod)
+func ParsePods() ([]corev1.Pod, error) {
+	clientSet, err := k8sClient()
+	if err != nil {
+		return nil, err
 	}
-	return pods, nil
-}
-
-func ParseNodes() ([]Node, error) {
-	nodes := make([]Node, 0, 10)
-
-	cmd := "kubectl get nodes --no-headers -o wide -A"
-	res, err := K3sCmd(cmd)
+	pods, err := clientSet.CoreV1().Pods("").List(context.Background(), metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
 
-	res = strings.TrimSpace(res)
-	split := strings.Split(res, "\n")
-	for _, rec := range split {
-		if strings.TrimSpace(rec) != "" {
-			fields := strings.Fields(rec)
-			node := Node{
-				Name:       fields[0],
-				Status:     fields[1],
-				Roles:      fields[2],
-				InternalIP: fields[5],
-			}
-			if len(fields) > 6 {
-				node.ExternalIP = fields[6]
-			}
-			nodes = append(nodes, node)
-		}
+	return pods.Items, nil
+}
+
+func ParseNodes() ([]corev1.Node, error) {
+	clientSet, err := k8sClient()
+	if err != nil {
+		return nil, err
 	}
-	return nodes, nil
+	nodes, err := clientSet.CoreV1().Nodes().List(context.Background(), metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	return nodes.Items, nil
 }
 
 func FindStringInCmdAsync(scanner *bufio.Scanner, target string) bool {
@@ -326,4 +288,16 @@ func RunCommand(cmd string) (string, error) {
 		return "", fmt.Errorf("%s", err)
 	}
 	return out.String(), nil
+}
+
+func k8sClient() (*kubernetes.Clientset, error) {
+	config, err := clientcmd.BuildConfigFromFlags("", "/etc/rancher/k3s/k3s.yaml")
+	if err != nil {
+		return nil, err
+	}
+	clientSet, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+	return clientSet, nil
 }

@@ -6,7 +6,7 @@ import (
 	testutil "github.com/k3s-io/k3s/tests/integration"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	. "github.com/onsi/gomega/gstruct"
+	v1 "k8s.io/api/core/v1"
 )
 
 var startupServer *testutil.K3sServer
@@ -49,7 +49,7 @@ var _ = Describe("startup tests", func() {
 		It("has the default pods deployed", func() {
 			Eventually(func() error {
 				return testutil.K3sDefaultDeployments()
-			}, "90s", "10s").Should(Succeed())
+			}, "90s", "5s").Should(Succeed())
 		})
 		It("dies cleanly", func() {
 			Expect(testutil.K3sKillServer(startupServer)).To(Succeed())
@@ -92,11 +92,16 @@ var _ = Describe("startup tests", func() {
 
 			nodes, err := testutil.ParseNodes()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(nodes).To(ContainElement(
-				MatchFields(IgnoreExtras, Fields{
-					"InternalIP": Equal("11.22.33.44"),
-					"ExternalIP": Equal("55.66.77.88"),
-				})))
+			Expect(nodes).To(HaveLen(1))
+			Expect(nodes[0].Status.Addresses).To(ContainElements([]v1.NodeAddress{
+				{
+					Type:    "InternalIP",
+					Address: "11.22.33.44",
+				},
+				{
+					Type:    "ExternalIP",
+					Address: "55.66.77.88",
+				}}))
 		})
 		It("dies cleanly", func() {
 			Expect(testutil.K3sKillServer(startupServer)).To(Succeed())

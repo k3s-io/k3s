@@ -39,9 +39,9 @@ var _ = Describe("dual stack", func() {
 	})
 	When("a ipv4 and ipv6 cidr is present", func() {
 		It("starts up with no problems", func() {
-			Eventually(func() (string, error) {
-				return testutil.K3sCmd("kubectl", "get", "pods", "-A")
-			}, "180s", "5s").Should(MatchRegexp("kube-system.+traefik.+1\\/1.+Running"))
+			Eventually(func() error {
+				return testutil.K3sDefaultDeployments()
+			}, "180s", "10s").Should(Succeed())
 		})
 		It("creates pods with two IPs", func() {
 			podname, err := testutil.K3sCmd("kubectl", "get", "pods", "-n", "kube-system", "-o", "jsonpath={.items[?(@.metadata.labels.app\\.kubernetes\\.io/name==\"traefik\")].metadata.name}")
