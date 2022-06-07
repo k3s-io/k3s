@@ -147,7 +147,7 @@ func CheckDeployments(deployments []string) error {
 		return err
 	}
 	for _, deployment := range deploymentList.Items {
-		if _, ok := deploymentSet[deployment.Name]; ok && deployment.Status.ReadyReplicas == 1 {
+		if _, ok := deploymentSet[deployment.Name]; ok && deployment.Status.ReadyReplicas == deployment.Status.Replicas {
 			deploymentSet[deployment.Name] = true
 		}
 	}
