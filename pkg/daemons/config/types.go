@@ -101,6 +101,7 @@ type Agent struct {
 	ImageCredProvBinDir     string
 	ImageCredProvConfig     string
 	IPSECPSK                string
+	FlannelCniConfFile      string
 	StrongSwanDir           string
 	PrivateRegistry         string
 	SystemDefaultRegistry   string

@@ -31,6 +31,7 @@ type Agent struct {
 	NoFlannel                bool
 	FlannelIface             string
 	FlannelConf              string
+	FlannelCniConfFile       string
 	Debug                    bool
 	Rootless                 bool
 	RootlessAlreadyUnshared  bool
@@ -134,6 +135,11 @@ var (
 		Name:        "flannel-conf",
 		Usage:       "(agent/networking) Override default flannel config file",
 		Destination: &AgentConfig.FlannelConf,
+	}
+	FlannelCniConfFileFlag = cli.StringFlag{
+		Name:        "flannel-cni-conf",
+		Usage:       "(agent/networking) Override default flannel cni config file",
+		Destination: &AgentConfig.FlannelCniConfFile,
 	}
 	ResolvConfFlag = cli.StringFlag{
 		Name:        "resolv-conf",
@@ -258,6 +264,7 @@ func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
 			ResolvConfFlag,
 			FlannelIfaceFlag,
 			FlannelConfFlag,
+			FlannelCniConfFileFlag,
 			ExtraKubeletArgs,
 			ExtraKubeProxyArgs,
 			ProtectKernelDefaultsFlag,
