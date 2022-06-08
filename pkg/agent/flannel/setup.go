@@ -91,7 +91,7 @@ const (
 )
 
 func Prepare(ctx context.Context, nodeConfig *config.Node) error {
-	if err := createCNIConf(nodeConfig.AgentConfig.CNIConfDir); err != nil {
+	if err := createCNIConf(nodeConfig.AgentConfig.CNIConfDir, nodeConfig); err != nil {
 		return err
 	}
 
@@ -146,12 +146,17 @@ func waitForPodCIDR(ctx context.Context, nodeName string, nodes typedcorev1.Node
 	return nil
 }
 
-func createCNIConf(dir string) error {
+func createCNIConf(dir string, nodeConfig *config.Node) error {
 	logrus.Debugf("Creating the CNI conf in directory %s", dir)
 	if dir == "" {
 		return nil
 	}
 	p := filepath.Join(dir, "10-flannel.conflist")
+
+	if nodeConfig.AgentConfig.FlannelCniConfFile != "" {
+		logrus.Debugf("Using %s as the flannel CNI conf", nodeConfig.AgentConfig.FlannelCniConfFile)
+		return util.CopyFile(nodeConfig.AgentConfig.FlannelCniConfFile, p)
+	}
 	return util.WriteFile(p, cniConf)
 }
 

@@ -530,6 +530,7 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 		}
 		nodeConfig.AgentConfig.CNIBinDir = filepath.Dir(hostLocal)
 		nodeConfig.AgentConfig.CNIConfDir = filepath.Join(envInfo.DataDir, "agent", "etc", "cni", "net.d")
+		nodeConfig.AgentConfig.FlannelCniConfFile = envInfo.FlannelCniConfFile
 	}
 
 	if !nodeConfig.Docker && nodeConfig.ContainerRuntimeEndpoint == "" {
