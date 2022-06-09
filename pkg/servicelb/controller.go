@@ -42,13 +42,8 @@ var (
 )
 
 const (
-	Ready            = condition.Cond("Ready")
-	ControllerName   = "svccontroller"
-	KlipperNamespace = "klipper-lb-system"
-)
-
-var (
-	trueVal = true
+	Ready          = condition.Cond("Ready")
+	ControllerName = "svccontroller"
 )
 
 func Register(ctx context.Context,
@@ -60,19 +55,21 @@ func Register(ctx context.Context,
 	pods coreclient.PodController,
 	services coreclient.ServiceController,
 	endpoints coreclient.EndpointsController,
+	klipperLBNamespace string,
 	enabled, rootless bool) error {
 	h := &handler{
-		rootless:        rootless,
-		enabled:         enabled,
-		nodeCache:       nodes.Cache(),
-		podCache:        pods.Cache(),
-		deploymentCache: deployments.Cache(),
-		processor:       apply.WithSetID(ControllerName).WithCacheTypes(daemonSetController),
-		serviceCache:    services.Cache(),
-		services:        kubernetes.CoreV1(),
-		daemonsets:      kubernetes.AppsV1(),
-		deployments:     kubernetes.AppsV1(),
-		recorder:        util.BuildControllerEventRecorder(kubernetes, ControllerName, meta.NamespaceAll),
+		rootless:           rootless,
+		enabled:            enabled,
+		klipperLBNamespace: klipperLBNamespace,
+		nodeCache:          nodes.Cache(),
+		podCache:           pods.Cache(),
+		deploymentCache:    deployments.Cache(),
+		processor:          apply.WithSetID(ControllerName).WithCacheTypes(daemonSetController),
+		serviceCache:       services.Cache(),
+		services:           kubernetes.CoreV1(),
+		daemonsets:         kubernetes.AppsV1(),
+		deployments:        kubernetes.AppsV1(),
+		recorder:           util.BuildControllerEventRecorder(kubernetes, ControllerName, meta.NamespaceAll),
 	}
 
 	services.OnChange(ctx, ControllerName, h.onChangeService)
@@ -83,39 +80,41 @@ func Register(ctx context.Context,
 		pods,
 		endpoints)
 
-	return createOrDeleteKlipperNamespace(ctx, enabled, kubernetes)
+	if enabled {
+		if err := createServiceLBNamespace(ctx, h.klipperLBNamespace, kubernetes); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 type handler struct {
-	rootless        bool
-	enabled         bool
-	nodeCache       coreclient.NodeCache
-	podCache        coreclient.PodCache
-	deploymentCache appclient.DeploymentCache
-	processor       apply.Apply
-	serviceCache    coreclient.ServiceCache
-	services        coregetter.ServicesGetter
-	daemonsets      v1getter.DaemonSetsGetter
-	deployments     v1getter.DeploymentsGetter
-	recorder        record.EventRecorder
+	rootless           bool
+	klipperLBNamespace string
+	enabled            bool
+	nodeCache          coreclient.NodeCache
+	podCache           coreclient.PodCache
+	deploymentCache    appclient.DeploymentCache
+	processor          apply.Apply
+	serviceCache       coreclient.ServiceCache
+	services           coregetter.ServicesGetter
+	daemonsets         v1getter.DaemonSetsGetter
+	deployments        v1getter.DeploymentsGetter
+	recorder           record.EventRecorder
 }
 
-func createOrDeleteKlipperNamespace(ctx context.Context, enabled bool, k8s kubernetes.Interface) error {
-	_, err := k8s.CoreV1().Namespaces().Get(ctx, KlipperNamespace, meta.GetOptions{})
-	if !apierrors.IsNotFound(err) {
-		return err
-	}
-
-	if enabled {
+func createServiceLBNamespace(ctx context.Context, ns string, k8s kubernetes.Interface) error {
+	_, err := k8s.CoreV1().Namespaces().Get(ctx, ns, meta.GetOptions{})
+	if apierrors.IsNotFound(err) {
 		_, err := k8s.CoreV1().Namespaces().Create(ctx, &core.Namespace{
 			ObjectMeta: meta.ObjectMeta{
-				Name: KlipperNamespace,
+				Name: ns,
 			},
 		}, meta.CreateOptions{})
 		return err
 	}
-
-	return k8s.CoreV1().Namespaces().Delete(ctx, KlipperNamespace, meta.DeleteOptions{})
+	return err
 }
 
 func (h *handler) onResourceChange(name, namespace string, obj runtime.Object) ([]relatedresource.Key, error) {
@@ -194,7 +193,7 @@ func (h *handler) updateService(svc *core.Service) (runtime.Object, error) {
 		return svc, nil
 	}
 
-	pods, err := h.podCache.List(KlipperNamespace, labels.SelectorFromSet(map[string]string{
+	pods, err := h.podCache.List(h.klipperLBNamespace, labels.SelectorFromSet(map[string]string{
 		svcNameLabel:      svc.Name,
 		svcNamespaceLabel: svc.Namespace,
 	}))
@@ -388,7 +387,7 @@ func (h *handler) newDaemonSet(svc *core.Service) (*apps.DaemonSet, error) {
 	ds := &apps.DaemonSet{
 		ObjectMeta: meta.ObjectMeta{
 			Name:      name,
-			Namespace: KlipperNamespace,
+			Namespace: h.klipperLBNamespace,
 			Labels: map[string]string{
 				nodeSelectorLabel: "false",
 			},
