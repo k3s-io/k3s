@@ -245,19 +245,14 @@ func (t *TunnelServer) dialBackend(addr string) (net.Conn, error) {
 		useTunnel = false
 	}
 
-	if t.server.HasSession(nodeName) {
-		if useTunnel {
-			// Have a session and it is safe to use for this destination, do so.
-			logrus.Debugf("Tunnel server egress proxy dialing %s via session to %s", addr, nodeName)
-			return t.server.Dial(nodeName, 15*time.Second, "tcp", addr)
-		}
-		// Have a session but the agent doesn't support tunneling to this destination or
-		// the destination is local; fall back to direct connection.
-		logrus.Debugf("Tunnel server egress proxy dialing %s directly", addr)
-		return net.Dial("tcp", addr)
+	if useTunnel && t.server.HasSession(nodeName) {
+		// Have a session and it is safe to use for this destination, do so.
+		logrus.Debugf("Tunnel server egress proxy dialing %s via session to %s", addr, nodeName)
+		return t.server.Dial(nodeName, 15*time.Second, "tcp", addr)
 	}
 
-	// don't provide a proxy connection for anything else
-	logrus.Debugf("Tunnel server egress proxy rejecting connection to %s", addr)
-	return nil, fmt.Errorf("no sessions available for host %s", host)
+	// Don't have a session, the agent doesn't support tunneling to this destination, or
+	// the destination is local; fall back to direct connection.
+	logrus.Debugf("Tunnel server egress proxy dialing %s directly", addr)
+	return net.Dial("tcp", addr)
 }
