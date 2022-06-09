@@ -34,6 +34,7 @@ import (
 
 var (
 	svcNameLabel           = "svccontroller." + version.Program + ".cattle.io/svcname"
+	svcNamespaceLabel      = "svccontroller." + version.Program + ".cattle.io/svcnamespace"
 	daemonsetNodeLabel     = "svccontroller." + version.Program + ".cattle.io/enablelb"
 	daemonsetNodePoolLabel = "svccontroller." + version.Program + ".cattle.io/lbpool"
 	nodeSelectorLabel      = "svccontroller." + version.Program + ".cattle.io/nodeselector"
@@ -41,8 +42,9 @@ var (
 )
 
 const (
-	Ready          = condition.Cond("Ready")
-	ControllerName = "svccontroller"
+	Ready            = condition.Cond("Ready")
+	ControllerName   = "svccontroller"
+	KlipperNamespace = "klipper-lb-system"
 )
 
 var (
@@ -81,7 +83,7 @@ func Register(ctx context.Context,
 		pods,
 		endpoints)
 
-	return nil
+	return createOrDeleteKlipperNamespace(ctx, enabled, kubernetes)
 }
 
 type handler struct {
@@ -96,6 +98,24 @@ type handler struct {
 	daemonsets      v1getter.DaemonSetsGetter
 	deployments     v1getter.DeploymentsGetter
 	recorder        record.EventRecorder
+}
+
+func createOrDeleteKlipperNamespace(ctx context.Context, enabled bool, k8s kubernetes.Interface) error {
+	_, err := k8s.CoreV1().Namespaces().Get(ctx, KlipperNamespace, meta.GetOptions{})
+	if !apierrors.IsNotFound(err) {
+		return err
+	}
+
+	if enabled {
+		_, err := k8s.CoreV1().Namespaces().Create(ctx, &core.Namespace{
+			ObjectMeta: meta.ObjectMeta{
+				Name: KlipperNamespace,
+			},
+		}, meta.CreateOptions{})
+		return err
+	}
+
+	return k8s.CoreV1().Namespaces().Delete(ctx, KlipperNamespace, meta.DeleteOptions{})
 }
 
 func (h *handler) onResourceChange(name, namespace string, obj runtime.Object) ([]relatedresource.Key, error) {
@@ -118,6 +138,11 @@ func (h *handler) onResourceChange(name, namespace string, obj runtime.Object) (
 		return nil, nil
 	}
 
+	serviceNamespace := pod.Labels[svcNamespaceLabel]
+	if serviceNamespace == "" {
+		return nil, nil
+	}
+
 	if pod.Status.PodIP == "" {
 		return nil, nil
 	}
@@ -125,7 +150,7 @@ func (h *handler) onResourceChange(name, namespace string, obj runtime.Object) (
 	return []relatedresource.Key{
 		{
 			Name:      serviceName,
-			Namespace: pod.Namespace,
+			Namespace: serviceNamespace,
 		},
 	}, nil
 }
@@ -134,12 +159,6 @@ func (h *handler) onResourceChange(name, namespace string, obj runtime.Object) (
 func (h *handler) onChangeService(key string, svc *core.Service) (*core.Service, error) {
 	if svc == nil {
 		return nil, nil
-	}
-
-	if svc.Spec.Type != core.ServiceTypeLoadBalancer || svc.Spec.ClusterIP == "" || svc.Spec.ClusterIP == "None" {
-		// If the Service type changes from LoadBalancer to something else, make sure we remove the DaemonSet
-		err := h.deletePod(svc)
-		return svc, err
 	}
 
 	if err := h.deployPod(svc); err != nil {
@@ -175,8 +194,9 @@ func (h *handler) updateService(svc *core.Service) (runtime.Object, error) {
 		return svc, nil
 	}
 
-	pods, err := h.podCache.List(svc.Namespace, labels.SelectorFromSet(map[string]string{
-		svcNameLabel: svc.Name,
+	pods, err := h.podCache.List(KlipperNamespace, labels.SelectorFromSet(map[string]string{
+		svcNameLabel:      svc.Name,
+		svcNamespaceLabel: svc.Namespace,
 	}))
 
 	if err != nil {
@@ -329,21 +349,6 @@ func filterByIPFamily(ips []string, svc *core.Service) ([]string, error) {
 	return nil, errors.New("unhandled ipFamilyPolicy")
 }
 
-// deletePod ensures that there is not a DaemonSet for the service.
-func (h *handler) deletePod(svc *core.Service) error {
-	name := fmt.Sprintf("svclb-%s", svc.Name)
-	ds, err := h.daemonsets.DaemonSets(svc.Namespace).Get(context.TODO(), name, meta.GetOptions{})
-	if err != nil {
-		if apierrors.IsNotFound(err) {
-			return nil
-		}
-		return err
-	}
-	h.recorder.Eventf(svc, core.EventTypeNormal, "DeletedDaemonSet", "Deleted LoadBalancer DaemonSet %s/%s", ds.Namespace, ds.Name)
-	objs := objectset.NewObjectSet()
-	return h.processor.WithOwner(svc).Apply(objs)
-}
-
 // deployPod ensures that there is a DaemonSet for the service.
 // It also ensures that any legacy Deployments from older versions of ServiceLB are deleted.
 func (h *handler) deployPod(svc *core.Service) error {
@@ -351,7 +356,7 @@ func (h *handler) deployPod(svc *core.Service) error {
 		return err
 	}
 	objs := objectset.NewObjectSet()
-	if !h.enabled {
+	if !h.enabled || svc.Spec.Type != core.ServiceTypeLoadBalancer || svc.Spec.ClusterIP == "" || svc.Spec.ClusterIP == "None" {
 		return h.processor.WithOwner(svc).Apply(objs)
 	}
 
@@ -369,7 +374,7 @@ func (h *handler) deployPod(svc *core.Service) error {
 // newDaemonSet creates a DaemonSet to ensure that ServiceLB pods are run on
 // each eligible node.
 func (h *handler) newDaemonSet(svc *core.Service) (*apps.DaemonSet, error) {
-	name := fmt.Sprintf("svclb-%s", svc.Name)
+	name := fmt.Sprintf("svclb-%s-%s", svc.Name, svc.UID[:8])
 	oneInt := intstr.FromInt(1)
 
 	// If ipv6 is present, we must enable ipv6 forwarding in the manifest
@@ -383,16 +388,7 @@ func (h *handler) newDaemonSet(svc *core.Service) (*apps.DaemonSet, error) {
 	ds := &apps.DaemonSet{
 		ObjectMeta: meta.ObjectMeta{
 			Name:      name,
-			Namespace: svc.Namespace,
-			OwnerReferences: []meta.OwnerReference{
-				{
-					Name:       svc.Name,
-					APIVersion: "v1",
-					Kind:       "Service",
-					UID:        svc.UID,
-					Controller: &trueVal,
-				},
-			},
+			Namespace: KlipperNamespace,
 			Labels: map[string]string{
 				nodeSelectorLabel: "false",
 			},
@@ -410,8 +406,9 @@ func (h *handler) newDaemonSet(svc *core.Service) (*apps.DaemonSet, error) {
 			Template: core.PodTemplateSpec{
 				ObjectMeta: meta.ObjectMeta{
 					Labels: map[string]string{
-						"app":        name,
-						svcNameLabel: svc.Name,
+						"app":             name,
+						svcNameLabel:      svc.Name,
+						svcNamespaceLabel: svc.Namespace,
 					},
 				},
 				Spec: core.PodSpec{
