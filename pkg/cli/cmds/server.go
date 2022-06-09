@@ -101,6 +101,7 @@ type Server struct {
 	EtcdS3Folder             string
 	EtcdS3Timeout            time.Duration
 	EtcdS3Insecure           bool
+	ServiceLBNamespace       string
 }
 
 var (
@@ -220,6 +221,12 @@ var ServerFlags = []cli.Flag{
 		Usage:       "(networking) One of 'agent', cluster', 'pod', 'disabled'",
 		Destination: &ServerConfig.EgressSelectorMode,
 		Value:       "agent",
+	},
+	cli.StringFlag{
+		Name:        "servicelb-namespace",
+		Usage:       "(networking) Namespace of the pods for the servicelb component",
+		Destination: &ServerConfig.ServiceLBNamespace,
+		Value:       "kube-system",
 	},
 	ServerToken,
 	cli.StringFlag{
