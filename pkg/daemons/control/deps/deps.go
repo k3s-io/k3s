@@ -723,33 +723,26 @@ func genEncryptionConfigAndState(controlConfig *config.Control) error {
 }
 
 func genEgressSelectorConfig(controlConfig *config.Control) error {
-	direct := apiserver.Connection{
-		ProxyProtocol: apiserver.ProtocolDirect,
-	}
+	var clusterConn apiserver.Connection
 
-	proxy := apiserver.Connection{
-		ProxyProtocol: apiserver.ProtocolHTTPConnect,
-		Transport: &apiserver.Transport{
-			TCP: &apiserver.TCPTransport{
-				URL: fmt.Sprintf("https://%s:%d", controlConfig.Loopback(), controlConfig.SupervisorPort),
-				TLSConfig: &apiserver.TLSConfig{
-					CABundle:   controlConfig.Runtime.ServerCA,
-					ClientKey:  controlConfig.Runtime.ClientKubeAPIKey,
-					ClientCert: controlConfig.Runtime.ClientKubeAPICert,
+	if controlConfig.EgressSelectorMode == config.EgressSelectorModeDisabled {
+		clusterConn = apiserver.Connection{
+			ProxyProtocol: apiserver.ProtocolDirect,
+		}
+	} else {
+		clusterConn = apiserver.Connection{
+			ProxyProtocol: apiserver.ProtocolHTTPConnect,
+			Transport: &apiserver.Transport{
+				TCP: &apiserver.TCPTransport{
+					URL: fmt.Sprintf("https://%s:%d", controlConfig.Loopback(), controlConfig.SupervisorPort),
+					TLSConfig: &apiserver.TLSConfig{
+						CABundle:   controlConfig.Runtime.ServerCA,
+						ClientKey:  controlConfig.Runtime.ClientKubeAPIKey,
+						ClientCert: controlConfig.Runtime.ClientKubeAPICert,
+					},
 				},
 			},
-		},
-	}
-
-	clusterConn := direct
-	controlConn := direct
-
-	switch controlConfig.EgressSelectorMode {
-	case config.EgressSelectorModeAgent:
-		controlConn = proxy
-	case config.EgressSelectorModeCluster, config.EgressSelectorModePod:
-		clusterConn = proxy
-		controlConn = proxy
+		}
 	}
 
 	egressConfig := apiserver.EgressSelectorConfiguration{
@@ -761,10 +754,6 @@ func genEgressSelectorConfig(controlConfig *config.Control) error {
 			{
 				Name:       "cluster",
 				Connection: clusterConn,
-			},
-			{
-				Name:       "controlplane",
-				Connection: controlConn,
 			},
 		},
 	}
