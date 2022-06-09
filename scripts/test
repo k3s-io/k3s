@@ -18,11 +18,8 @@ docker ps
 . ./scripts/test-run-basics
 echo "Did test-run-basics $?"
 
-# Skipping compact tests for s390x since there is no previous s390x release
-if [ ${ARCH} != s390x ]; then
-  . ./scripts/test-run-compat
-  echo "Did test-run-compat $?"
-fi
+. ./scripts/test-run-compat
+echo "Did test-run-compat $?"
 
 . ./scripts/test-run-etcd
 echo "Did test-run-etcd $?"
