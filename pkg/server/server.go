@@ -212,6 +212,7 @@ func coreControllers(ctx context.Context, sc *Context, config *Config) error {
 		sc.Core.Core().V1().Pod(),
 		sc.Core.Core().V1().Service(),
 		sc.Core.Core().V1().Endpoints(),
+		config.ServiceLBNamespace,
 		!config.DisableServiceLB,
 		config.Rootless); err != nil {
 		return err
