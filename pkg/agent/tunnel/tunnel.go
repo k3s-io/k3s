@@ -28,7 +28,6 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 	toolswatch "k8s.io/client-go/tools/watch"
-	"k8s.io/kubectl/pkg/util/podutils"
 )
 
 type agentTunnel struct {
@@ -194,18 +193,17 @@ func (a *agentTunnel) watchPods(ctx context.Context, apiServerReady <-chan struc
 				logrus.Errorf("Tunnel watch failed: event object not of type v1.Pod")
 				continue
 			}
-			ready := podutils.IsPodReady(pod)
 			if pod.Spec.HostNetwork {
 				for _, container := range pod.Spec.Containers {
 					for _, port := range container.Ports {
 						if port.Protocol == v1.ProtocolTCP {
 							containerPort := fmt.Sprint(port.ContainerPort)
-							if ready {
-								logrus.Debugf("Tunnel authorizer adding Node Port %s", containerPort)
-								a.ports[containerPort] = true
-							} else {
+							if pod.DeletionTimestamp != nil {
 								logrus.Debugf("Tunnel authorizer removing Node Port %s", containerPort)
 								delete(a.ports, containerPort)
+							} else {
+								logrus.Debugf("Tunnel authorizer adding Node Port %s", containerPort)
+								a.ports[containerPort] = true
 							}
 						}
 					}
@@ -213,12 +211,12 @@ func (a *agentTunnel) watchPods(ctx context.Context, apiServerReady <-chan struc
 			} else {
 				for _, ip := range pod.Status.PodIPs {
 					if cidr, err := util.IPStringToIPNet(ip.IP); err == nil {
-						if ready {
-							logrus.Debugf("Tunnel authorizer adding Pod IP %s", cidr)
-							a.cidrs.Insert(&podEntry{cidr: *cidr})
-						} else {
+						if pod.DeletionTimestamp != nil {
 							logrus.Debugf("Tunnel authorizer removing Pod IP %s", cidr)
 							a.cidrs.Remove(*cidr)
+						} else {
+							logrus.Debugf("Tunnel authorizer adding Pod IP %s", cidr)
+							a.cidrs.Insert(&podEntry{cidr: *cidr})
 						}
 					}
 				}
