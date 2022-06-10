@@ -218,7 +218,7 @@ var ServerFlags = []cli.Flag{
 		Name:        "egress-selector-mode",
 		Usage:       "(networking) One of 'agent', cluster', 'pod', 'disabled'",
 		Destination: &ServerConfig.EgressSelectorMode,
-		Value:       "pod",
+		Value:       "agent",
 	},
 	ServerToken,
 	cli.StringFlag{
