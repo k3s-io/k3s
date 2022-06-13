@@ -9,7 +9,19 @@ NODE_CPUS = (ENV['E2E_NODE_CPUS'] || 2).to_i
 NODE_MEMORY = (ENV['E2E_NODE_MEMORY'] || 1024).to_i
 # Virtualbox >= 6.1.28 require `/etc/vbox/network.conf` for expanded private networks 
 NETWORK_PREFIX = "10.10.10"
-install_type = ""
+
+def installType(vm)
+  if RELEASE_VERSION == "skip"
+    return "INSTALL_K3S_SKIP_DOWNLOAD=true"
+  elsif !RELEASE_VERSION.empty?
+    return "INSTALL_K3S_VERSION=#{RELEASE_VERSION}"
+  end
+  # Grabs the last 5 commit SHA's from the given branch, then purges any commits that do not have a passing CI build
+  # MicroOS requires it not be in a /tmp/ or other root system folder
+  scripts_location = Dir.exists?("./scripts") ? "./scripts" : "../scripts" 
+  vm.provision "Acquire latest commit", type: "shell", path: scripts_location + "/latest_commit.sh", args: [GITHUB_BRANCH, "/home/vagrant/k3s_commits"]
+  return "INSTALL_K3S_COMMIT=$(head\ -n\ 1\ /home/vagrant/k3s_commits)"
+end
 
 def provision(vm, role, role_num, node_num)
   vm.box = NODE_BOXES[node_num]
@@ -17,20 +29,12 @@ def provision(vm, role, role_num, node_num)
   # An expanded netmask is required to allow VM<-->VM communication, virtualbox defaults to /32
   vm.network "private_network", ip: "#{NETWORK_PREFIX}.#{100+node_num}", netmask: "255.255.255.0"
 
-  scripts_location = Dir.exists?("./scripts") ? "./scripts" : "../scripts" 
   vagrant_defaults = File.exists?("./vagrantdefaults.rb") ? "./vagrantdefaults.rb" : "../vagrantdefaults.rb"
   load vagrant_defaults
 
   defaultOSConfigure(vm)
   
-  if !RELEASE_VERSION.empty?
-    install_type = "INSTALL_K3S_VERSION=#{RELEASE_VERSION}"
-  else
-    # Grabs the last 5 commit SHA's from the given branch, then purges any commits that do not have a passing CI build
-    # MicroOS requires it not be in a /tmp/ or other root system folder
-    vm.provision "Acquire latest commit", type: "shell", path: scripts_location + "/latest_commit.sh", args: [GITHUB_BRANCH, "/home/vagrant/k3s_commits"]
-    install_type = "INSTALL_K3S_COMMIT=$(head\ -n\ 1\ /home/vagrant/k3s_commits)"
-  end
+  install_type = installType(vm)
   vm.provision "ping k3s.io", type: "shell", inline: "ping -c 2 k3s.io"
   
   if node_num == 0 && !role.include?("server") && !role.include?("etcd")
@@ -46,6 +50,8 @@ def provision(vm, role, role_num, node_num)
         disable-apiserver: true
         disable-controller-manager: true
         disable-scheduler: true
+        node-taint:
+          - node-role.kubernetes.io/etcd:NoExecute
       YAML
       k3s.env = %W[K3S_KUBECONFIG_MODE=0644 K3S_TOKEN=vagrant #{install_type}]
       k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
@@ -59,13 +65,33 @@ def provision(vm, role, role_num, node_num)
         disable-apiserver: true
         disable-controller-manager: true
         disable-scheduler: true
+        node-taint:
+          - node-role.kubernetes.io/etcd:NoExecute
+          
       YAML
       k3s.env = %W[K3S_KUBECONFIG_MODE=0644 K3S_TOKEN=vagrant #{install_type}]
       k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
     end
   elsif role.include?("server") && role.include?("cp")
     vm.provision 'k3s-install', type: 'k3s', run: 'once' do |k3s|
-      k3s.args = "server --disable-etcd --server https://#{NETWORK_PREFIX}.100:6443 --flannel-iface=eth1"
+      k3s.args = "server"
+      k3s.config = <<~YAML
+        server: https://#{NETWORK_PREFIX}.100:6443
+        flannel-iface: eth1
+        disable-etcd: true
+        node-taint:
+          - node-role.kubernetes.io/control-plane:NoSchedule
+      YAML
+      k3s.env = %W[K3S_KUBECONFIG_MODE=0644 K3S_TOKEN=vagrant #{install_type}]
+      k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
+    end
+  elsif role.include?("server") && role.include?("all")
+    vm.provision 'k3s-install', type: 'k3s', run: 'once' do |k3s|
+      k3s.args = "server"
+      k3s.config = <<~YAML
+        server: https://#{NETWORK_PREFIX}.100:6443
+        flannel-iface: eth1
+      YAML
       k3s.env = %W[K3S_KUBECONFIG_MODE=0644 K3S_TOKEN=vagrant #{install_type}]
       k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
     end
@@ -77,7 +103,7 @@ def provision(vm, role, role_num, node_num)
       k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
     end
   end
-  if vm.box.include?("microos")
+  if vm.box.to_s.include?("microos")
     vm.provision 'k3s-reload', type: 'reload', run: 'once'
   end
 end
