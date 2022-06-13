@@ -34,9 +34,9 @@ var _ = Describe("certificate rotation", func() {
 	})
 	When("a new server is created", func() {
 		It("starts up with no problems", func() {
-			Eventually(func() (string, error) {
-				return testutil.K3sCmd("kubectl", "get pods -A")
-			}, "180s", "5s").Should(MatchRegexp("kube-system.+coredns.+1\\/1.+Running"))
+			Eventually(func() error {
+				return testutil.K3sDefaultDeployments()
+			}, "180s", "5s").Should(Succeed())
 		})
 		It("get certificate hash", func() {
 			// get md5sum of the CA certs
@@ -60,9 +60,9 @@ var _ = Describe("certificate rotation", func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 		It("starts up with no problems", func() {
-			Eventually(func() (string, error) {
-				return testutil.K3sCmd("kubectl", "get", "pods", "-A")
-			}, "360s", "5s").Should(MatchRegexp("kube-system.+coredns.+1\\/1.+Running"))
+			Eventually(func() error {
+				return testutil.K3sDefaultDeployments()
+			}, "360s", "5s").Should(Succeed())
 		})
 		It("get certificate hash", func() {
 			// get md5sum of the CA certs
