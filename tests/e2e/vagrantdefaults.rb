@@ -14,7 +14,9 @@ def defaultOSConfigure(vm)
 end
 
 def getInstallType(vm, release_version, branch)
-  if !release_version.empty?
+  if release_version == "skip"
+    install_type = "INSTALL_K3S_SKIP_DOWNLOAD=true"
+  elsif !release_version.empty?
     return "INSTALL_K3S_VERSION=#{release_version}"
   else
     # Grabs the last 5 commit SHA's from the given branch, then purges any commits that do not have a passing CI build
