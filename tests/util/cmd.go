@@ -3,6 +3,7 @@ package util
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -15,6 +16,10 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/vishvananda/netlink"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 // Compile-time variable
@@ -116,6 +121,67 @@ func K3sServerArgs() []string {
 	return args
 }
 
+// K3sDefaultDeployments checks if the default deployments for K3s are ready, otherwise returns an error
+func K3sDefaultDeployments() error {
+	return CheckDeployments([]string{"coredns", "local-path-provisioner", "metrics-server", "traefik"})
+}
+
+// CheckDeployments checks if the provided list of deployments are ready, otherwise returns an error
+func CheckDeployments(deployments []string) error {
+
+	deploymentSet := make(map[string]bool)
+	for _, d := range deployments {
+		deploymentSet[d] = false
+	}
+
+	client, err := k8sClient()
+	if err != nil {
+		return err
+	}
+	deploymentList, err := client.AppsV1().Deployments("").List(context.Background(), metav1.ListOptions{})
+	if err != nil {
+		return err
+	}
+	for _, deployment := range deploymentList.Items {
+		if _, ok := deploymentSet[deployment.Name]; ok && deployment.Status.ReadyReplicas == deployment.Status.Replicas {
+			deploymentSet[deployment.Name] = true
+		}
+	}
+	for d, found := range deploymentSet {
+		if !found {
+			return fmt.Errorf("failed to deploy %s", d)
+		}
+	}
+
+	return nil
+}
+
+func ParsePods() ([]corev1.Pod, error) {
+	clientSet, err := k8sClient()
+	if err != nil {
+		return nil, err
+	}
+	pods, err := clientSet.CoreV1().Pods("").List(context.Background(), metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	return pods.Items, nil
+}
+
+func ParseNodes() ([]corev1.Node, error) {
+	clientSet, err := k8sClient()
+	if err != nil {
+		return nil, err
+	}
+	nodes, err := clientSet.CoreV1().Nodes().List(context.Background(), metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	return nodes.Items, nil
+}
+
 func FindStringInCmdAsync(scanner *bufio.Scanner, target string) bool {
 	for scanner.Scan() {
 		if strings.Contains(scanner.Text(), target) {
@@ -154,7 +220,6 @@ func K3sStartServer(inputArgs ...string) (*K3sServer, error) {
 }
 
 // K3sKillServer terminates the running K3s server and its children
-// and unlocks the file for other tests
 func K3sKillServer(server *K3sServer) error {
 	pgid, err := syscall.Getpgid(server.cmd.Process.Pid)
 	if err != nil {
@@ -176,7 +241,10 @@ func K3sKillServer(server *K3sServer) error {
 	return nil
 }
 
-// K3sCleanup attempts to cleanup networking and files leftover from an integration test
+// K3sCleanup unlocks the test-lock and
+// attempts to cleanup networking and files leftover from an integration test.
+// This is similar to the k3s-killall.sh script, but we dynamically generate that on
+// install, so we don't have access to it during testing.
 func K3sCleanup(k3sTestLock int, dataDir string) error {
 	if cni0Link, err := netlink.LinkByName("cni0"); err == nil {
 		links, _ := netlink.LinkList()
@@ -200,7 +268,10 @@ func K3sCleanup(k3sTestLock int, dataDir string) error {
 	if err := os.RemoveAll(dataDir); err != nil {
 		return err
 	}
-	return flock.Release(k3sTestLock)
+	if k3sTestLock != -1 {
+		return flock.Release(k3sTestLock)
+	}
+	return nil
 }
 
 // RunCommand Runs command on the cluster accessing the cluster through kubeconfig file
@@ -213,4 +284,16 @@ func RunCommand(cmd string) (string, error) {
 		return "", fmt.Errorf("%s", err)
 	}
 	return out.String(), nil
+}
+
+func k8sClient() (*kubernetes.Clientset, error) {
+	config, err := clientcmd.BuildConfigFromFlags("", "/etc/rancher/k3s/k3s.yaml")
+	if err != nil {
+		return nil, err
+	}
+	clientSet, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+	return clientSet, nil
 }

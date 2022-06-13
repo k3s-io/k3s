@@ -34,9 +34,9 @@ var _ = Describe("secrets encryption rotation", func() {
 	})
 	When("A server starts with secrets encryption", func() {
 		It("starts up with no problems", func() {
-			Eventually(func() (string, error) {
-				return testutil.K3sCmd("kubectl", "get", "pods", "-A")
-			}, "180s", "1s").Should(MatchRegexp("kube-system.+coredns.+1\\/1.+Running"))
+			Eventually(func() error {
+				return testutil.K3sDefaultDeployments()
+			}, "180s", "5s").Should(Succeed())
 		})
 		It("it creates a encryption key", func() {
 			result, err := testutil.K3sCmd("secrets-encrypt", "status", "-d", secretsEncryptionDataDir)
@@ -65,9 +65,9 @@ var _ = Describe("secrets encryption rotation", func() {
 			Expect(testutil.K3sKillServer(secretsEncryptionServer)).To(Succeed())
 			secretsEncryptionServer, err = testutil.K3sStartServer(secretsEncryptionServerArgs...)
 			Expect(err).ToNot(HaveOccurred())
-			Eventually(func() (string, error) {
-				return testutil.K3sCmd("kubectl", "get", "pods", "-A")
-			}, "180s", "1s").Should(MatchRegexp("kube-system.+coredns.+1\\/1.+Running"))
+			Eventually(func() error {
+				return testutil.K3sDefaultDeployments()
+			}, "180s", "5s").Should(Succeed())
 		})
 		It("rotates the keys", func() {
 			Eventually(func() (string, error) {
@@ -89,9 +89,9 @@ var _ = Describe("secrets encryption rotation", func() {
 			Expect(testutil.K3sKillServer(secretsEncryptionServer)).To(Succeed())
 			secretsEncryptionServer, err = testutil.K3sStartServer(secretsEncryptionServerArgs...)
 			Expect(err).ToNot(HaveOccurred())
-			Eventually(func() (string, error) {
-				return testutil.K3sCmd("kubectl", "get", "pods", "-A")
-			}, "180s", "1s").Should(MatchRegexp("kube-system.+coredns.+1\\/1.+Running"))
+			Eventually(func() error {
+				return testutil.K3sDefaultDeployments()
+			}, "180s", "5s").Should(Succeed())
 			time.Sleep(10 * time.Second)
 		})
 		It("reencrypts the keys", func() {
@@ -123,9 +123,9 @@ var _ = Describe("secrets encryption rotation", func() {
 			Expect(testutil.K3sKillServer(secretsEncryptionServer)).To(Succeed())
 			secretsEncryptionServer, err = testutil.K3sStartServer(secretsEncryptionServerArgs...)
 			Expect(err).ToNot(HaveOccurred())
-			Eventually(func() (string, error) {
-				return testutil.K3sCmd("kubectl", "get", "pods", "-A")
-			}, "180s", "1s").Should(MatchRegexp("kube-system.+coredns.+1\\/1.+Running"))
+			Eventually(func() error {
+				return testutil.K3sDefaultDeployments()
+			}, "180s", "5s").Should(Succeed())
 			time.Sleep(10 * time.Second)
 		})
 		It("reencrypts the keys", func() {

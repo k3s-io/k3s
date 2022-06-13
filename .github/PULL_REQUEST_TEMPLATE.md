@@ -13,6 +13,11 @@
 
 <!-- How can the changes be verified? Please provide whatever additional information necessary to help verify the proposed changes. -->
 
+#### Testing ####
+
+<!-- Is this change covered by testing? If not, consider adding a Unit or Integration test. -->
+<!-- See https://github.com/k3s-io/k3s/blob/master/tests/TESTING.md for more info -->
+
 #### Linked Issues ####
 
 <!-- Link any related issues, pull-requests, or commit hashes that are relevant to this pull request. If you are opening a PR without a corresponding issue please consider creating one first, at https://github.com/k3s-io/k3s/issues . A functional example will greatly help QA with verifying/reproducing a bug or testing new features. -->
