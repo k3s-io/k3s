@@ -16,6 +16,7 @@ start-test() {
     docker exec $(cat $TEST_DIR/servers/1/metadata/name) check-config || true
     verify-valid-versions $(cat $TEST_DIR/servers/1/metadata/name)
     verify-airgap-images $(cat $TEST_DIR/{servers,agents}/*/metadata/name)
+    return 255
 }
 export -f start-test
 

@@ -45,6 +45,6 @@ PATH=$PATH:${HOME}/gsutil
 LOG_TGZ=k3s-log-$(date +%s)-$("${GO}" env GOARCH)-$(git rev-parse --short HEAD)-$(basename $1).tgz
 
 tar -cz -f ${TMPDIR}/${LOG_TGZ} -C $(dirname $1) $(basename $1)
-gsutil cp ${TMPDIR}/${LOG_TGZ} gs://k3s-ci-logs || exit 1
+gsutil -DD cp ${TMPDIR}/${LOG_TGZ} gs://k3s-ci-logs || exit 1
 echo "Logs uploaded" >&2
 echo "https://storage.googleapis.com/k3s-ci-logs/${LOG_TGZ}"
