@@ -14,6 +14,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"sort"
 	"strconv"
@@ -79,6 +80,8 @@ var (
 
 	ErrAddressNotSet = errors.New("apiserver addresses not yet set")
 	ErrNotMember     = errNotMember()
+
+	invalidKeyChars = regexp.MustCompile(`[^-._a-zA-Z0-9]`)
 )
 
 type NodeControllerGetter func() controllerv1.NodeController
@@ -1599,6 +1602,7 @@ func (e *ETCD) addSnapshotData(sf snapshotFile) error {
 		}
 		snapshotConfigMap, getErr := e.config.Runtime.Core.Core().V1().ConfigMap().Get(metav1.NamespaceSystem, snapshotConfigMapName, metav1.GetOptions{})
 
+		sfKey := generateSnapshotConfigMapKey(sf)
 		marshalledSnapshotFile, err := json.Marshal(sf)
 		if err != nil {
 			return err
@@ -1609,7 +1613,7 @@ func (e *ETCD) addSnapshotData(sf snapshotFile) error {
 					Name:      snapshotConfigMapName,
 					Namespace: metav1.NamespaceSystem,
 				},
-				Data: map[string]string{sf.Name: string(marshalledSnapshotFile)},
+				Data: map[string]string{sfKey: string(marshalledSnapshotFile)},
 			}
 			_, err := e.config.Runtime.Core.Core().V1().ConfigMap().Create(&cm)
 			return err
@@ -1619,7 +1623,6 @@ func (e *ETCD) addSnapshotData(sf snapshotFile) error {
 			snapshotConfigMap.Data = make(map[string]string)
 		}
 
-		sfKey := generateSnapshotConfigMapKey(sf)
 		snapshotConfigMap.Data[sfKey] = string(marshalledSnapshotFile)
 
 		_, err = e.config.Runtime.Core.Core().V1().ConfigMap().Update(snapshotConfigMap)
@@ -1628,13 +1631,11 @@ func (e *ETCD) addSnapshotData(sf snapshotFile) error {
 }
 
 func generateSnapshotConfigMapKey(sf snapshotFile) string {
-	var sfKey string
+	name := invalidKeyChars.ReplaceAllString(sf.Name, "_")
 	if sf.NodeName == "s3" {
-		sfKey = "s3-" + sf.Name
-	} else {
-		sfKey = "local-" + sf.Name
+		return "s3-" + name
 	}
-	return sfKey
+	return "local-" + name
 }
 
 // ReconcileSnapshotData reconciles snapshot data in the snapshot ConfigMap.
