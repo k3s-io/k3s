@@ -84,7 +84,7 @@ var _ = Describe("Verify Upgrade", func() {
 				return e2e.RunCommand(cmd)
 			}, "240s", "5s").Should(ContainSubstring("test-clusterip"), "failed cmd: "+cmd)
 
-			clusterip, _ := e2e.FetchClusterIP(kubeConfigFile, "nginx-clusterip-svc")
+			clusterip, _ := e2e.FetchClusterIP(kubeConfigFile, "nginx-clusterip-svc", false)
 			cmd = "curl -L --insecure http://" + clusterip + "/name.html"
 			for _, nodeName := range serverNodeNames {
 				Eventually(func() (string, error) {
@@ -280,7 +280,7 @@ var _ = Describe("Verify Upgrade", func() {
 				return e2e.RunCommand(cmd)
 			}, "420s", "5s").Should(ContainSubstring("test-clusterip"))
 
-			clusterip, _ := e2e.FetchClusterIP(kubeConfigFile, "nginx-clusterip-svc")
+			clusterip, _ := e2e.FetchClusterIP(kubeConfigFile, "nginx-clusterip-svc", false)
 			cmd := "curl -L --insecure http://" + clusterip + "/name.html"
 			fmt.Println(cmd)
 			for _, nodeName := range serverNodeNames {
