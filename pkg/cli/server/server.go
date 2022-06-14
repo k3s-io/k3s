@@ -121,6 +121,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	serverConfig.ControlConfig.HTTPSPort = cfg.HTTPSPort
 	serverConfig.ControlConfig.APIServerPort = cfg.APIServerPort
 	serverConfig.ControlConfig.APIServerBindAddress = cfg.APIServerBindAddress
+	serverConfig.ControlConfig.EnablePProf = cfg.EnablePProf
 	serverConfig.ControlConfig.ExtraAPIArgs = cfg.ExtraAPIArgs
 	serverConfig.ControlConfig.ExtraControllerArgs = cfg.ExtraControllerArgs
 	serverConfig.ControlConfig.ExtraEtcdArgs = cfg.ExtraEtcdArgs

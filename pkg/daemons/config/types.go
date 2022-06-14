@@ -167,6 +167,7 @@ type Control struct {
 	DisableETCD              bool
 	DisableKubeProxy         bool
 	DisableScheduler         bool
+	EnablePProf              bool
 	ExtraAPIArgs             []string
 	ExtraControllerArgs      []string
 	ExtraCloudControllerArgs []string
