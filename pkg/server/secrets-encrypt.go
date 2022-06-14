@@ -186,9 +186,9 @@ func encryptionConfigHandler(ctx context.Context, server *config.Control) http.H
 			genErrorMessage(resp, http.StatusBadRequest, err)
 			return
 		}
-		// etcd will update very quickly, but there still some wait time before the files are written.
-		// If a user kills the k3s server immdiately after this call we run into issues were the files
-		// have not yet been written.
+		// If a user kills the k3s server immediately after this call, we run into issues where the files
+		// have not yet been written. This sleep ensures that things have time to sync to disk before
+		// the request completes.
 		time.Sleep(1 * time.Second)
 		resp.WriteHeader(http.StatusOK)
 	})
