@@ -43,3 +43,9 @@ ginkgo --junit-report=result.xml ./tests/e2e/...
 ```
 
 Note: The `go test` default timeout is 10 minutes, thus the `-timeout` flag should be used. The `ginkgo` default timeout is 1 hour, no timeout flag is needed.
+
+# Debugging
+In the event of a test failure, the cluster and VMs are retained in their broken state. Startup logs are retained in `vagrant.log`.  
+To see a list of nodes: `vagrant status`    
+To ssh into a node: `vagrant ssh <NODE>`  
+Once you are done/ready to restart the test, use `vagrant destroy -f` to remove the broken cluster.  
