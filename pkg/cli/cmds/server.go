@@ -445,6 +445,7 @@ var ServerFlags = []cli.Flag{
 	ResolvConfFlag,
 	FlannelIfaceFlag,
 	FlannelConfFlag,
+	FlannelCniConfFileFlag,
 	ExtraKubeletArgs,
 	ExtraKubeProxyArgs,
 	ProtectKernelDefaultsFlag,
