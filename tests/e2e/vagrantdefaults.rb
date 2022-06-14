@@ -19,9 +19,10 @@ def getInstallType(vm, release_version, branch)
   elsif !release_version.empty?
     return "INSTALL_K3S_VERSION=#{release_version}"
   else
+    scripts_location = Dir.exists?("./scripts") ? "./scripts" : "../scripts" 
     # Grabs the last 5 commit SHA's from the given branch, then purges any commits that do not have a passing CI build
     # MicroOS requires it not be in a /tmp/ or other root system folder
-    vm.provision "Get latest commit", type: "shell", path: "../scripts/latest_commit.sh", args: [branch, "/tmp/k3s_commits"]
+    vm.provision "Get latest commit", type: "shell", path: scripts_location +"/latest_commit.sh", args: [branch, "/tmp/k3s_commits"]
     return "INSTALL_K3S_COMMIT=$(head\ -n\ 1\ /tmp/k3s_commits)"
   end
 end
