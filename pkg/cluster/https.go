@@ -9,9 +9,11 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/http/pprof"
 	"os"
 	"path/filepath"
 
+	"github.com/gorilla/mux"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/etcd"
 	"github.com/k3s-io/k3s/pkg/version"
@@ -91,6 +93,17 @@ func (c *Cluster) initClusterAndHTTPS(ctx context.Context) error {
 	handler, err = c.initClusterDB(ctx, handler)
 	if err != nil {
 		return err
+	}
+
+	if c.config.EnablePProf {
+		mux := mux.NewRouter()
+		mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+		mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+		mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+		mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+		mux.PathPrefix("/debug/pprof/").HandlerFunc(pprof.Index)
+		mux.NotFoundHandler = handler
+		handler = mux
 	}
 
 	// Create a HTTP server with the registered request handlers, using logrus for logging

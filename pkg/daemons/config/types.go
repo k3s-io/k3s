@@ -166,6 +166,7 @@ type Control struct {
 	DisableKubeProxy         bool
 	DisableScheduler         bool
 	Disables                 map[string]bool
+	EnablePProf              bool
 	ExtraAPIArgs             []string
 	ExtraControllerArgs      []string
 	ExtraCloudControllerArgs []string
