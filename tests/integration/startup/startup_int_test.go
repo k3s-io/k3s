@@ -3,7 +3,7 @@ package integration
 import (
 	"testing"
 
-	testutil "github.com/k3s-io/k3s/tests/integration"
+	testutil "github.com/k3s-io/k3s/tests/util"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	v1 "k8s.io/api/core/v1"
