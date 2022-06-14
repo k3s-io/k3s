@@ -97,7 +97,16 @@ func DestroyCluster() error {
 	return os.Remove("vagrant.log")
 }
 
-func FetchClusterIP(kubeconfig string, servicename string) (string, error) {
+func FetchClusterIP(kubeconfig string, servicename string, dualStack bool) (string, error) {
+	if dualStack {
+		cmd := "kubectl get svc " + servicename + " -o jsonpath='{.spec.clusterIPs}' --kubeconfig=" + kubeconfig
+		res, err := RunCommand(cmd)
+		if err != nil {
+			return res, err
+		}
+		res = strings.ReplaceAll(res, "\"", "")
+		return strings.Trim(res, "[]"), nil
+	}
 	cmd := "kubectl get svc " + servicename + " -o jsonpath='{.spec.clusterIP}' --kubeconfig=" + kubeconfig
 	return RunCommand(cmd)
 }
