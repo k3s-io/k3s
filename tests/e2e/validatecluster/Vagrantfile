@@ -25,17 +25,8 @@ def provision(vm, roles, role_num, node_num)
   load vagrant_defaults if File.exists?(vagrant_defaults)
   
   defaultOSConfigure(vm)
+  install_type = getInstallType(vm, RELEASE_VERSION, GITHUB_BRANCH)
   
-  if RELEASE_VERSION == "skip"
-    install_type = "INSTALL_K3S_SKIP_DOWNLOAD=true"
-  elsif !RELEASE_VERSION.empty?
-    install_type = "INSTALL_K3S_VERSION=#{RELEASE_VERSION}"
-  else
-    # Grabs the last 5 commit SHA's from the given branch, then purges any commits that do not have a passing CI build
-    # MicroOS requires it not be in a /tmp/ or other root system folder
-    vm.provision "shell", path: "../scripts/latest_commit.sh", args: [GITHUB_BRANCH, "/home/vagrant/k3s_commits"]
-    install_type = "INSTALL_K3S_COMMIT=$(head\ -n\ 1\ /home/vagrant/k3s_commits)"
-  end
   vm.provision "shell", inline: "ping -c 2 k3s.io"
   
   db_type = getDBType(role, role_num, vm)

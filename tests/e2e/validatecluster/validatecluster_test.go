@@ -84,7 +84,7 @@ var _ = Describe("Verify Create", func() {
 				g.Expect(res).Should((ContainSubstring("test-clusterip")))
 			}, "240s", "5s").Should(Succeed())
 
-			clusterip, _ := e2e.FetchClusterIP(kubeConfigFile, "nginx-clusterip-svc")
+			clusterip, _ := e2e.FetchClusterIP(kubeConfigFile, "nginx-clusterip-svc", false)
 			cmd := "curl -L --insecure http://" + clusterip + "/name.html"
 			fmt.Println(cmd)
 			for _, nodeName := range serverNodeNames {

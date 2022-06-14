@@ -10,19 +10,6 @@ NODE_MEMORY = (ENV['E2E_NODE_MEMORY'] || 1024).to_i
 # Virtualbox >= 6.1.28 require `/etc/vbox/network.conf` for expanded private networks 
 NETWORK_PREFIX = "10.10.10"
 
-def installType(vm)
-  if RELEASE_VERSION == "skip"
-    return "INSTALL_K3S_SKIP_DOWNLOAD=true"
-  elsif !RELEASE_VERSION.empty?
-    return "INSTALL_K3S_VERSION=#{RELEASE_VERSION}"
-  end
-  # Grabs the last 5 commit SHA's from the given branch, then purges any commits that do not have a passing CI build
-  # MicroOS requires it not be in a /tmp/ or other root system folder
-  scripts_location = Dir.exists?("./scripts") ? "./scripts" : "../scripts" 
-  vm.provision "Acquire latest commit", type: "shell", path: scripts_location + "/latest_commit.sh", args: [GITHUB_BRANCH, "/home/vagrant/k3s_commits"]
-  return "INSTALL_K3S_COMMIT=$(head\ -n\ 1\ /home/vagrant/k3s_commits)"
-end
-
 def provision(vm, role, role_num, node_num)
   vm.box = NODE_BOXES[node_num]
   vm.hostname = role
@@ -34,7 +21,8 @@ def provision(vm, role, role_num, node_num)
 
   defaultOSConfigure(vm)
   
-  install_type = installType(vm)
+  install_type = getInstallType(vm, RELEASE_VERSION, GITHUB_BRANCH)
+
   vm.provision "ping k3s.io", type: "shell", inline: "ping -c 2 k3s.io"
   
   if node_num == 0 && !role.include?("server") && !role.include?("etcd")
