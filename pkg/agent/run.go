@@ -150,7 +150,7 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 	// By default, the server is responsible for notifying systemd
 	// On agent-only nodes, the agent will notify systemd
 	if notifySocket != "" {
-		logrus.Info(version.Program + "-agent is up and running")
+		logrus.Info(version.Program + " agent is up and running")
 		os.Setenv("NOTIFY_SOCKET", notifySocket)
 		systemd.SdNotify(true, "READY=1\n")
 	}
