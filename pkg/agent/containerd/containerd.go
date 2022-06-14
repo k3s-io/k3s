@@ -61,6 +61,7 @@ func Run(ctx context.Context, cfg *config.Node) error {
 
 	go func() {
 		env := []string{}
+		cenv := []string{}
 
 		for _, e := range os.Environ() {
 			pair := strings.SplitN(e, "=", 2)
@@ -75,7 +76,7 @@ func Run(ctx context.Context, cfg *config.Node) error {
 				// This allows doing things like setting a proxy for image pulls by setting
 				// CONTAINERD_https_proxy=http://proxy.example.com:8080
 				pair[0] = strings.TrimPrefix(pair[0], "CONTAINERD_")
-				fallthrough
+				cenv = append(cenv, strings.Join(pair, "="))
 			default:
 				env = append(env, strings.Join(pair, "="))
 			}
@@ -85,7 +86,7 @@ func Run(ctx context.Context, cfg *config.Node) error {
 		cmd := exec.CommandContext(ctx, args[0], args[1:]...)
 		cmd.Stdout = stdOut
 		cmd.Stderr = stdErr
-		cmd.Env = env
+		cmd.Env = append(env, cenv...)
 
 		addDeathSig(cmd)
 		if err := cmd.Run(); err != nil {
