@@ -166,7 +166,7 @@ func Prepare(app *cli.Context) error {
 	if err = info.Put("/v1-"+version.Program+"/encrypt/config", b); err != nil {
 		return wrapServerError(err)
 	}
-	fmt.Println("prepare request complete")
+	fmt.Println("prepare completed successfully")
 	return nil
 }
 
@@ -188,7 +188,7 @@ func Rotate(app *cli.Context) error {
 	if err = info.Put("/v1-"+version.Program+"/encrypt/config", b); err != nil {
 		return wrapServerError(err)
 	}
-	fmt.Println("rotate request complete")
+	fmt.Println("rotate completed successfully")
 	return nil
 }
 
