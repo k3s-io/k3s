@@ -566,6 +566,7 @@ done
 ip link delete cni0
 ip link delete flannel.1
 ip link delete flannel-v6.1
+ip link delete kube-ipvs0
 rm -rf /var/lib/cni/
 iptables-save | grep -v KUBE- | grep -v CNI- | grep -v flannel | iptables-restore
 ip6tables-save | grep -v KUBE- | grep -v CNI- | grep -v flannel | ip6tables-restore
