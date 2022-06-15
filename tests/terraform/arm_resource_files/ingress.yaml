@@ -1,48 +1,51 @@
-apiVersion: extensions/v1beta1
+apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
- name: ingress
+  name: test-ingress
 spec:
- rules:
- - host: foo1.bar.com
-   http:
-     paths:
-     - path: /name.html
-       backend:
-         serviceName: nginx-ingress-svc
-         servicePort: 80
+  rules:
+    - host: foo1.bar.com
+      http:
+        paths:
+          - backend:
+              service:
+                name: nginx-ingress-svc
+                port:
+                  number: 80
+            path: /
+            pathType: ImplementationSpecific
 ---
 apiVersion: v1
 kind: Service
 metadata:
- name: nginx-ingress-svc
- labels:
-   k8s-app: nginx-app-ingress
+  name: nginx-ingress-svc
+  labels:
+    k8s-app: nginx-app-ingress
 spec:
- ports:
- - port: 80
-   targetPort: 80
-   protocol: TCP
-   name: http
- selector:
-   k8s-app: nginx-app-ingress
+  ports:
+    - port: 80
+      targetPort: 80
+      protocol: TCP
+      name: http
+  selector:
+    k8s-app: nginx-app-ingress
 ---
 apiVersion: v1
 kind: ReplicationController
 metadata:
- name: test-ingress
+  name: test-ingress
 spec:
- replicas: 2
- selector:
-   k8s-app: nginx-app-ingress
- template:
-   metadata:
-     labels:
-       k8s-app: nginx-app-ingress
-   spec:
-     terminationGracePeriodSeconds: 60
-     containers:
-     - name: testcontainer
-       image: shylajarancher19/shylajaarm64:v1.0
-       ports:
-       - containerPort: 80
+  replicas: 2
+  selector:
+    k8s-app: nginx-app-ingress
+  template:
+    metadata:
+      labels:
+        k8s-app: nginx-app-ingress
+    spec:
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: testcontainer
+          image: shylajarancher19/shylajaarm64:v1.0
+          ports:
+            - containerPort: 80
