@@ -8,7 +8,7 @@
 # - k3s
 # - k3s.service
 Vagrant.configure("2") do |config|
-  config.vm.box = "fedora/33-cloud-base"
+  config.vm.box = "fedora/36-cloud-base"
   memory = 2048
   cpus = 2
   config.vm.provider :virtualbox do |v|
