@@ -64,6 +64,8 @@ func StartServer(ctx context.Context, config *Config, cfg *cmds.Server) error {
 	wg.Add(len(config.StartupHooks))
 
 	config.ControlConfig.Runtime.Handler = router(ctx, config, cfg)
+	config.ControlConfig.Runtime.StartupHooksWg = wg
+
 	shArgs := cmds.StartupHookArgs{
 		APIServerReady:  config.ControlConfig.Runtime.APIServerReady,
 		KubeConfigAdmin: config.ControlConfig.Runtime.KubeConfigAdmin,
@@ -79,7 +81,7 @@ func StartServer(ctx context.Context, config *Config, cfg *cmds.Server) error {
 	if config.ControlConfig.DisableAPIServer {
 		go setETCDLabelsAndAnnotations(ctx, config)
 	} else {
-		go startOnAPIServerReady(ctx, wg, config)
+		go startOnAPIServerReady(ctx, config)
 	}
 
 	if err := printTokens(&config.ControlConfig); err != nil {
@@ -89,18 +91,18 @@ func StartServer(ctx context.Context, config *Config, cfg *cmds.Server) error {
 	return writeKubeConfig(config.ControlConfig.Runtime.ServerCA, config)
 }
 
-func startOnAPIServerReady(ctx context.Context, wg *sync.WaitGroup, config *Config) {
+func startOnAPIServerReady(ctx context.Context, config *Config) {
 	select {
 	case <-ctx.Done():
 		return
 	case <-config.ControlConfig.Runtime.APIServerReady:
-		if err := runControllers(ctx, wg, config); err != nil {
+		if err := runControllers(ctx, config); err != nil {
 			logrus.Fatalf("failed to start controllers: %v", err)
 		}
 	}
 }
 
-func runControllers(ctx context.Context, wg *sync.WaitGroup, config *Config) error {
+func runControllers(ctx context.Context, config *Config) error {
 	controlConfig := &config.ControlConfig
 
 	sc, err := NewContext(ctx, controlConfig.Runtime.KubeConfigAdmin)
@@ -108,7 +110,7 @@ func runControllers(ctx context.Context, wg *sync.WaitGroup, config *Config) err
 		return errors.Wrap(err, "failed to create new server context")
 	}
 
-	wg.Wait()
+	controlConfig.Runtime.StartupHooksWg.Wait()
 	if err := stageFiles(ctx, sc, controlConfig); err != nil {
 		return errors.Wrap(err, "failed to stage files")
 	}
