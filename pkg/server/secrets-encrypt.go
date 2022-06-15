@@ -186,6 +186,10 @@ func encryptionConfigHandler(ctx context.Context, server *config.Control) http.H
 			genErrorMessage(resp, http.StatusBadRequest, err)
 			return
 		}
+		// If a user kills the k3s server immediately after this call, we run into issues where the files
+		// have not yet been written. This sleep ensures that things have time to sync to disk before
+		// the request completes.
+		time.Sleep(1 * time.Second)
 		resp.WriteHeader(http.StatusOK)
 	})
 }
