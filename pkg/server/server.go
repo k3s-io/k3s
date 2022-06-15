@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -70,6 +71,8 @@ func StartServer(ctx context.Context, config *Config, cfg *cmds.Server) error {
 		go startOnAPIServerReady(ctx, config)
 	}
 
+	config.ControlConfig.Runtime.StartupHooksWg = &sync.WaitGroup{}
+	config.ControlConfig.Runtime.StartupHooksWg.Add(len(config.StartupHooks))
 	for _, hook := range config.StartupHooks {
 		if err := hook(ctx, config.ControlConfig.Runtime.APIServerReady, config.ControlConfig.Runtime.KubeConfigAdmin); err != nil {
 			return errors.Wrap(err, "startup hook")
