@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/k3s-io/k3s/pkg/util"
@@ -270,6 +271,7 @@ type ControlRuntime struct {
 	APIServerReady                      <-chan struct{}
 	AgentReady                          <-chan struct{}
 	ETCDReady                           <-chan struct{}
+	StartupHooksWg                      *sync.WaitGroup
 	ClusterControllerStart              func(ctx context.Context) error
 	LeaderElectedClusterControllerStart func(ctx context.Context) error
 
