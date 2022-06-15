@@ -33,9 +33,9 @@ var _ = Describe("etcd snapshots", func() {
 	})
 	When("a new etcd is created", func() {
 		It("starts up with no problems", func() {
-			Eventually(func() (string, error) {
-				return testutil.K3sCmd("kubectl", "get", "pods", "-A")
-			}, "90s", "1s").Should(MatchRegexp("kube-system.+coredns.+1\\/1.+Running"))
+			Eventually(func() error {
+				return testutil.K3sDefaultDeployments()
+			}, "180s", "10s").Should(Succeed())
 		})
 		It("saves an etcd snapshot", func() {
 			Expect(testutil.K3sCmd("etcd-snapshot", "save")).
