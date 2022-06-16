@@ -419,6 +419,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	logrus.Info("Starting " + version.Program + " " + app.App.Version)
 
 	notifySocket := os.Getenv("NOTIFY_SOCKET")
+	os.Unsetenv("NOTIFY_SOCKET")
 
 	ctx := signals.SetupSignalContext()
 
@@ -430,16 +431,16 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		if !serverConfig.ControlConfig.DisableAPIServer {
 			<-serverConfig.ControlConfig.Runtime.APIServerReady
 			logrus.Info("Kube API server is now running")
-		} else {
+			serverConfig.ControlConfig.Runtime.StartupHooksWg.Wait()
+		}
+		if !serverConfig.ControlConfig.DisableETCD {
 			<-serverConfig.ControlConfig.Runtime.ETCDReady
 			logrus.Info("ETCD server is now running")
 		}
 
 		logrus.Info(version.Program + " is up and running")
-		if (cfg.DisableAgent || cfg.DisableAPIServer) && notifySocket != "" {
-			os.Setenv("NOTIFY_SOCKET", notifySocket)
-			systemd.SdNotify(true, "READY=1\n")
-		}
+		os.Setenv("NOTIFY_SOCKET", notifySocket)
+		systemd.SdNotify(true, "READY=1\n")
 	}()
 
 	ip := serverConfig.ControlConfig.BindAddress
