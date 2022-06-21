@@ -78,4 +78,15 @@ Note: The `go test` default timeout is 10 minutes, thus the `-timeout` flag shou
 In the event of a test failure, the cluster and VMs are retained in their broken state. Startup logs are retained in `vagrant.log`.  
 To see a list of nodes: `vagrant status`    
 To ssh into a node: `vagrant ssh <NODE>`  
-Once you are done/ready to restart the test, use `vagrant destroy -f` to remove the broken cluster.  
+Once you are done/ready to restart the test, use `vagrant destroy -f` to remove the broken cluster.   
+
+# openSUSE MicroOS and AppArmor Exception
+In order to test with MicroOS, an exception to AppArmor may be required. If you get an error similar to:
+```
+/tmp/combustion.sh”: Permission denied (Libvirt::Error)
+```
+Then you should edit `/etc/apparmor.d/abstractions/libvirt-qemu` and add the following exception to the end:
+```
+/tmp/combustion.sh r,
+```
+And then reload the apparmor profile (a restart of the host may be required).  

@@ -84,9 +84,9 @@ def provision(vm, role, role_num, node_num)
       k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
     end
   end
-  if vm.box.to_s.include?("microos")
+  if vm.box.to_s.include?("opensuse/MicroOS")
     vm.provision 'k3s-reload', type: 'reload', run: 'once'
-    if !EXTERNAL_DB.empty?
+    if !EXTERNAL_DB.empty? && EXTERNAL_DB != "etcd"
       vm.provision "shell", inline: "docker start #{EXTERNAL_DB}"
     end
   end
