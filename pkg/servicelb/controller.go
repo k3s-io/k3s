@@ -189,7 +189,7 @@ func (h *handler) onChangeNode(key string, node *core.Node) (*core.Node, error) 
 // updateService ensures that the Service ingress IP address list is in sync
 // with the Nodes actually running pods for this service.
 func (h *handler) updateService(svc *core.Service) (runtime.Object, error) {
-	if !h.enabled {
+	if !h.enabled || svc.Spec.Type != core.ServiceTypeLoadBalancer {
 		return svc, nil
 	}
 
@@ -301,7 +301,7 @@ func (h *handler) podIPs(pods []*core.Pod, svc *core.Service) ([]string, error) 
 
 // filterByIPFamily filters ips based on dual-stack parameters of the service
 func filterByIPFamily(ips []string, svc *core.Service) ([]string, error) {
-
+	var ipFamilyPolicy core.IPFamilyPolicyType
 	var ipv4Addresses []string
 	var ipv6Addresses []string
 
@@ -314,7 +314,11 @@ func filterByIPFamily(ips []string, svc *core.Service) ([]string, error) {
 		}
 	}
 
-	switch *svc.Spec.IPFamilyPolicy {
+	if svc.Spec.IPFamilyPolicy != nil {
+		ipFamilyPolicy = *svc.Spec.IPFamilyPolicy
+	}
+
+	switch ipFamilyPolicy {
 	case core.IPFamilyPolicySingleStack:
 		if svc.Spec.IPFamilies[0] == core.IPv4Protocol {
 			return ipv4Addresses, nil
