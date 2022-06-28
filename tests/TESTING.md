@@ -82,7 +82,7 @@ ginkgo --junit-report=result.xml ./tests/integration/...
 
 Integration tests can be run on an existing single-node cluster via compile time flag, tests will skip if the server is not configured correctly.
 ```bash
-go test -ldflags "-X 'github.com/k3s-io/k3s/tests/util.existingServer=True'" ./tests/integration/... -run Integration
+go test -ldflags "-X 'github.com/k3s-io/k3s/tests/integration.existingServer=True'" ./tests/integration/... -run Integration
 ```
 
 Integration tests can also be run via a [Sonobuoy](https://sonobuoy.io/docs/v0.53.2/) plugin on an existing single-node cluster.
@@ -106,9 +106,9 @@ The sub-directories therein contain fixtures for running simple clusters to asse
 scenarios. These fixtures are mostly self-contained Vagrantfiles describing single-node installations that are
 easily spun up with Vagrant for the `libvirt` and `virtualbox` providers:
 
-- [Control Groups](../tests/vagrant/cgroup) :arrow_right: on any code change
-  - [mode=unified](../tests/vagrant/cgroup/unified) (cgroups v2)
-    - [Fedora 34](../tests/vagrant/cgroup/unified/fedora-34) (rootfull + rootless)
+- [Control Groups](../tests/cgroup) :arrow_right: on any code change
+  - [mode=unified](../tests/cgroup/unified) (cgroups v2)
+    - [Fedora 34](../tests/cgroup/unified/fedora-34) (rootfull + rootless)
 
 When adding new smoke test(s) please copy the prevalent style for the `Vagrantfile`.
 Ideally, the boxes used for additional assertions will support the default `virtualbox` provider which
@@ -143,7 +143,7 @@ These can be set on the CLI or exported before invoking Vagrant:
 
 The **Install Script** tests can be run by changing to the fixture directory and invoking `vagrant up`, e.g.:
 ```shell
-cd tests/vagrant/install/centos-8
+cd tests/install/centos-8
 vagrant up
 # the following provisioners are optional. the do not run by default but are invoked
 # explicitly by github actions workflow to avoid certain timeout issues on slow runners

@@ -5,12 +5,12 @@ on:
     paths:
       - "channel.yaml"
       - "install.sh"
-      - "tests/vagrant/install/**"
+      - "tests/install/**"
   pull_request:
     branches: [release-1.22]
     paths:
       - "install.sh"
-      - "tests/vagrant/install/**"
+      - "tests/install/**"
   workflow_dispatch: {}
 jobs:
   test:
@@ -31,7 +31,7 @@ jobs:
       max-parallel: 2
     defaults:
       run:
-        working-directory: tests/vagrant/install/${{ matrix.vm }}
+        working-directory: tests/install/${{ matrix.vm }}
     steps:
       - name: "Checkout"
         uses: actions/checkout@v2
@@ -46,7 +46,7 @@ jobs:
           path: |
             ~/.vagrant.d/boxes
             ~/.vagrant.d/gems
-          key: install-${{ hashFiles(format('tests/vagrant/install/{0}/Vagrantfile', matrix.vm)) }}
+          key: install-${{ hashFiles(format('tests/install/{0}/Vagrantfile', matrix.vm)) }}
         id: vagrant-cache
         continue-on-error: true
       - name: "Vagrant Plugin(s)"
