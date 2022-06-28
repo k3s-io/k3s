@@ -189,6 +189,10 @@ github.com/containerd/cgroups v1.0.1 h1:iJnMvco9XGvKUvNQkv88bE4uJXxRQH18efbKo9w5
 github.com/containerd/cgroups v1.0.1/go.mod h1:0SJrPIenamHDcZhEcJMNBB85rHcUsw4f25ZfBiPYRkU=
 github.com/containerd/console v1.0.2 h1:Pi6D+aZXM+oUw1czuKgH5IJ+y0jhYcwBJfx5/Ghn9dE=
 github.com/containerd/console v1.0.2/go.mod h1:ytZPjGgY2oeTkAONYafi2kSj0aYggsf8acV1PGKCbzQ=
+github.com/containerd/continuity v0.0.0-20210208174643-50096c924a4e/go.mod h1:EXlVlkqNba9rJe3j7w3Xa924itAMLgZH4UD/Q4PExuQ=
+github.com/containerd/continuity v0.1.0/go.mod h1:ICJu0PwR54nI0yPEnJ6jcS+J7CZAUXrLh8lPo2knzsM=
+github.com/containerd/continuity v0.3.0 h1:nisirsYROK15TAMVukJOUyGJjz4BNQJBVsNvAXZJ/eg=
+github.com/containerd/continuity v0.3.0/go.mod h1:wJEAIwKOm/pBZuBd0JmeTvnLquTB1Ag8espWhkykbPM=
 github.com/containerd/fifo v1.0.0 h1:6PirWBr9/L7GDamKr+XM0IeUFXu5mf3M/BPpH9gaLBU=
 github.com/containerd/fifo v1.0.0/go.mod h1:ocF/ME1SX5b1AOlWi9r677YJmCPSwwWnQ9O123vzpE4=
 github.com/containerd/fuse-overlayfs-snapshotter v1.0.4 h1:UKlk0rhAq1NW5UEmu9/4f3m9v+O/0+F0as+QeK1UmCM=
@@ -622,8 +626,6 @@ github.com/jung-kurt/gofpdf v1.0.3-0.20190309125859-24315acbbda5/go.mod h1:7Id9E
 github.com/k-sone/critbitgo v1.3.1-0.20191024122315-48c9e1530131/go.mod h1:7E6pyoyADnFxlUBEKcnfS49b7SUAQGMK+OAp/UQvo0s=
 github.com/k3s-io/containerd v1.5.13-k3s1 h1:a5qvrZZ5u4dn65XVajzLGUeUGiBXSE5qos3xF4BdRc4=
 github.com/k3s-io/containerd v1.5.13-k3s1/go.mod h1:zUdlwwmj8Xwd65Wz+vPGjonBN3FFAkSGwRloPefnNN4=
-github.com/k3s-io/continuity v0.0.0-20210309170710-f93269e0d5c1 h1:KEz2rd9IDbrQT8w6RibEYlwfTXiu0P6hQDE+6O4IJdI=
-github.com/k3s-io/continuity v0.0.0-20210309170710-f93269e0d5c1/go.mod h1:EXlVlkqNba9rJe3j7w3Xa924itAMLgZH4UD/Q4PExuQ=
 github.com/k3s-io/cri-tools v1.21.0-k3s1 h1:MWQtAsx4HCNXenqU/B4V9eU6HMyafkd1PnW6d4HCfos=
 github.com/k3s-io/cri-tools v1.21.0-k3s1/go.mod h1:Qsz54zxINPR+WVWX9Kc3CTmuDFB1dNLCNV8jE8lUbtU=
 github.com/k3s-io/etcd/api/v3 v3.5.4-k3s1 h1:Ac7cbUC5A0E4mlvbNne82N1x5ROSwXIrzXhBGR0cg94=

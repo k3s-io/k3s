@@ -11,7 +11,6 @@ replace (
 	github.com/containerd/cgroups => github.com/containerd/cgroups v1.0.1
 	github.com/containerd/console => github.com/containerd/console v1.0.2
 	github.com/containerd/containerd => github.com/k3s-io/containerd v1.5.13-k3s1 // k3s-release/1.5
-	github.com/containerd/continuity => github.com/k3s-io/continuity v0.0.0-20210309170710-f93269e0d5c1
 	github.com/containerd/fifo => github.com/containerd/fifo v1.0.0
 	github.com/containerd/go-runc => github.com/containerd/go-runc v1.0.0
 	github.com/containerd/ttrpc => github.com/containerd/ttrpc v1.0.2
