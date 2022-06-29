@@ -27,6 +27,8 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+var defaultDialer = net.Dialer{}
+
 func loggingErrorWriter(rw http.ResponseWriter, req *http.Request, code int, err error) {
 	logrus.Debugf("Tunnel server error: %d %v", code, err)
 	rw.WriteHeader(code)
@@ -167,10 +169,10 @@ func (t *TunnelServer) onChangePod(podName string, pod *v1.Pod) (*v1.Pod, error)
 // serveConnect attempts to handle the HTTP CONNECT request by dialing
 // a connection, either locally or via the remotedialer tunnel.
 func (t *TunnelServer) serveConnect(resp http.ResponseWriter, req *http.Request) {
-	bconn, err := t.dialBackend(req.Host)
+	bconn, err := t.dialBackend(req.Context(), req.Host)
 	if err != nil {
 		responsewriters.ErrorNegotiated(
-			apierrors.NewInternalError(errors.Wrap(err, "no tunnels available")),
+			apierrors.NewServiceUnavailable(err.Error()),
 			scheme.Codecs.WithoutConversion(), schema.GroupVersion{}, resp, req,
 		)
 		return
@@ -203,7 +205,7 @@ func (t *TunnelServer) serveConnect(resp http.ResponseWriter, req *http.Request)
 // tunnel connection, the agent may return an error if the agent's authorizer
 // denies the connection, or if there is some other error in actually dialing
 // the requested endpoint.
-func (t *TunnelServer) dialBackend(addr string) (net.Conn, error) {
+func (t *TunnelServer) dialBackend(ctx context.Context, addr string) (net.Conn, error) {
 	host, port, err := net.SplitHostPort(addr)
 	if err != nil {
 		return nil, err
@@ -245,14 +247,26 @@ func (t *TunnelServer) dialBackend(addr string) (net.Conn, error) {
 		useTunnel = false
 	}
 
-	if useTunnel && t.server.HasSession(nodeName) {
-		// Have a session and it is safe to use for this destination, do so.
-		logrus.Debugf("Tunnel server egress proxy dialing %s via session to %s", addr, nodeName)
-		return t.server.Dial(nodeName, 15*time.Second, "tcp", addr)
+	if useTunnel {
+		// Dialer(nodeName) returns a dial function that calls getDialer internally, which does the same locked session search
+		// as HasSession(nodeName). Rather than checking twice, just attempt the dial and handle the error if no session is found.
+		dialContext := t.server.Dialer(nodeName)
+		if conn, err := dialContext(ctx, "tcp", addr); err != nil {
+			logrus.Debugf("Tunnel server egress proxy dial error: %v", err)
+			if toKubelet && strings.HasPrefix(err.Error(), "failed to find Session for client") {
+				// Don't have a session and we're trying to remote dial the kubelet via loopback, reject the connection.
+				return conn, err
+			}
+			// any other error is ignored; fall back to to dialing directly.
+		} else {
+			// Have a session and it is safe to use for this destination, do so.
+			logrus.Debugf("Tunnel server egress proxy dialing %s via Session to %s", addr, nodeName)
+			return conn, err
+		}
 	}
 
 	// Don't have a session, the agent doesn't support tunneling to this destination, or
 	// the destination is local; fall back to direct connection.
 	logrus.Debugf("Tunnel server egress proxy dialing %s directly", addr)
-	return net.Dial("tcp", addr)
+	return defaultDialer.DialContext(ctx, "tcp", addr)
 }
