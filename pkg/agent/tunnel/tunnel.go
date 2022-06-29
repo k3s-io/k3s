@@ -341,7 +341,7 @@ func (a *agentTunnel) connect(rootCtx context.Context, waitGroup *sync.WaitGroup
 		for {
 			remotedialer.ClientConnect(ctx, wsURL, nil, ws, func(proto, address string) bool {
 				return a.authorized(rootCtx, proto, address)
-			}, func(_ context.Context) error {
+			}, func(_ context.Context, _ *remotedialer.Session) error {
 				if waitGroup != nil {
 					once.Do(waitGroup.Done)
 				}
