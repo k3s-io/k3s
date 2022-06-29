@@ -734,7 +734,7 @@ func genEgressSelectorConfig(controlConfig *config.Control) error {
 			ProxyProtocol: apiserver.ProtocolHTTPConnect,
 			Transport: &apiserver.Transport{
 				TCP: &apiserver.TCPTransport{
-					URL: fmt.Sprintf("https://%s:%d", controlConfig.Loopback(), controlConfig.SupervisorPort),
+					URL: fmt.Sprintf("https://%s:%d", controlConfig.BindAddressOrLoopback(false), controlConfig.SupervisorPort),
 					TLSConfig: &apiserver.TLSConfig{
 						CABundle:   controlConfig.Runtime.ServerCA,
 						ClientKey:  controlConfig.Runtime.ClientKubeAPIKey,
