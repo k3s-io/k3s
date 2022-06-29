@@ -113,7 +113,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/dynamiclistener v0.3.3
 	github.com/rancher/lasso v0.0.0-20210616224652-fc3ebd901c08
-	github.com/rancher/remotedialer v0.2.0
+	github.com/rancher/remotedialer v0.2.6-0.20220624190122-ea57207bf2b8
 	github.com/rancher/wharfie v0.5.1
 	github.com/rancher/wrangler v0.8.10
 	github.com/robfig/cron/v3 v3.0.1
