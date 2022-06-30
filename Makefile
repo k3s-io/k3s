@@ -1,4 +1,6 @@
 TARGETS := $(shell ls scripts | grep -v \\.sh)
+mkfile_path := $(abspath $(lastword $(MAKEFILE_LIST)))
+BASE := $(notdir $(patsubst %/,%,$(dir $(mkfile_path))))
 
 .dapper:
 	@echo Downloading dapper
@@ -7,8 +9,10 @@ TARGETS := $(shell ls scripts | grep -v \\.sh)
 	@./.dapper.tmp -v
 	@mv .dapper.tmp .dapper
 
+ifndef SKIP_DAPPER
 $(TARGETS): .dapper
 	./.dapper $@
+endif
 
 .PHONY: deps
 deps:
@@ -32,3 +36,8 @@ binary-size-check:
 .PHONY: image-scan
 image-scan:
 	scripts/image_scan.sh $(IMAGE)
+
+.PHONY: source-tarball
+source-tarball: deps
+	./scripts/download
+	cd ..; tar -czf $(BASE).tar.gz $(BASE); mv $(BASE).tar.gz $(BASE); cd $(BASE)

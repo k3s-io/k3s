@@ -35,7 +35,11 @@ mkdir -p dist/artifacts
     set -x
 )
 
+if [ -z "$SKIP_BUILDROOT" ]; then
 tar cvf ./build/out/data.tar ./bin ./etc
+else
+tar cvf ./build/out/data.tar ./bin
+fi
 zstd --no-progress -T0 -16 -f --long=25 --rm ./build/out/data.tar -o ./build/out/data.tar.zst
 HASH=$(sha256sum ./build/out/data.tar.zst | awk '{print $1}')
 

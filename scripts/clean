@@ -1,5 +1,11 @@
 #!/bin/bash
 
+. ./scripts/env-common.sh
+
 cd $(dirname $0)/..
 
-rm -rf dist bin build k3s hyperkube kubectl
+rm -rf dist bin build k3s hyperkube kubectl etc vendor
+rm -f k3s.tar.gz
+rm -rf ${CHARTS_DIR}
+rm -rf ${RUNC_DIR}
+rm -rf ${CONTAINERD_DIR}
