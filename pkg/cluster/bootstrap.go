@@ -536,6 +536,12 @@ func (c *Cluster) compareConfig() error {
 	ipsTo16Bytes(c.config.CriticalControlArgs.ClusterIPRanges)
 	ipsTo16Bytes(c.config.CriticalControlArgs.ServiceIPRanges)
 
+	// If the remote server is down-level and did not fill the egress-selector
+	// mode, use the local value to allow for temporary mismatch during upgrades.
+	if clusterControl.CriticalControlArgs.EgressSelectorMode == "" {
+		clusterControl.CriticalControlArgs.EgressSelectorMode = c.config.CriticalControlArgs.EgressSelectorMode
+	}
+
 	if !reflect.DeepEqual(clusterControl.CriticalControlArgs, c.config.CriticalControlArgs) {
 		logrus.Debugf("This is the server CriticalControlArgs: %#v", clusterControl.CriticalControlArgs)
 		logrus.Debugf("This is the local CriticalControlArgs: %#v", c.config.CriticalControlArgs)
