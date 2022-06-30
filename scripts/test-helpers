@@ -325,7 +325,7 @@ test-setup() {
 
     SERVER_MINOR=$(awk -F. '{print $2}' <<<${K3S_IMAGE_SERVER:-$K3S_IMAGE})
     AGENT_MINOR=$(awk -F. '{print $2}' <<<${K3S_IMAGE_AGENT:-$K3S_IMAGE})
-    if [ $AGENT_MINOR -gt $SERVER_MINOR ]; then
+    if [ $NUM_AGENTS -gt 0 ] && [ $AGENT_MINOR -gt $SERVER_MINOR ]; then
         echo "Agent minor version cannot be newer than server - not supported by Kubernetes version skew policy"
         exit 0
     fi

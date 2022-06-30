@@ -12,6 +12,13 @@ export NUM_AGENTS=0
 export WAIT_SERVICES="${all_services[@]}"
 export SERVER_1_ARGS="--cluster-init"
 
+REPO=${REPO:-rancher}
+IMAGE_NAME=${IMAGE_NAME:-k3s}
+PREVIOUS_CHANNEL=$(grep 'k8s.io/kubernetes v' go.mod | head -n1 | awk '{print $2}' | awk -F. '{print "v1." ($2 - 1)}')
+PREVIOUS_VERSION=$(curl -s https://update.k3s.io/v1-release/channels/${PREVIOUS_CHANNEL} -o /dev/null -w '%{redirect_url}' | awk -F/ '{print gensub(/\+/, "-", "g", $NF)}')
+STABLE_VERSION=$(curl -s https://update.k3s.io/v1-release/channels/stable -o /dev/null -w '%{redirect_url}' | awk -F/ '{print gensub(/\+/, "-", "g", $NF)}')
+LATEST_VERSION=$(curl -s https://update.k3s.io/v1-release/channels/latest -o /dev/null -w '%{redirect_url}' | awk -F/ '{print gensub(/\+/, "-", "g", $NF)}')
+
 server-post-hook() {
   if [ $1 -eq 1 ]; then
     local url=$(cat $TEST_DIR/servers/1/metadata/url)
@@ -20,7 +27,6 @@ server-post-hook() {
 }
 export -f server-post-hook
 
-export -f server-post-hook
 start-test() {
   echo "Cluster is up"
 }
@@ -31,6 +37,28 @@ LABEL="ETCD-JOIN-BASIC" SERVER_ARGS="" run-test
 
 # --- create a basic cluster to test joining a managed etcd cluster with --agent-token set
 LABEL="ETCD-JOIN-AGENTTOKEN" SERVER_ARGS="--agent-token ${RANDOM}${RANDOM}${RANDOM}" run-test
+
+# --- test joining managed etcd cluster with stable-version first server and current-build second server
+server-post-hook() {
+  if [ $1 -eq 1 ]; then
+    local url=$(cat $TEST_DIR/servers/1/metadata/url)
+    export SERVER_ARGS="${SERVER_ARGS} --server $url"
+    export K3S_IMAGE_SERVER=${K3S_IMAGE}
+  fi
+}
+export -f server-post-hook
+LABEL="ETCD-JOIN-STABLE-FIRST" K3S_IMAGE_SERVER=${REPO}/${IMAGE_NAME}:${STABLE_VERSION} run-test
+
+# --- test joining managed etcd cluster with current-build first server and stable-version second server
+server-post-hook() {
+  if [ $1 -eq 1 ]; then
+    local url=$(cat $TEST_DIR/servers/1/metadata/url)
+    export SERVER_ARGS="${SERVER_ARGS} --server $url"
+    export K3S_IMAGE_SERVER=${K3S_IMAGE_SERVER_2}
+  fi
+}
+export -f server-post-hook
+LABEL="ETCD-JOIN-STABLE-SECOND" K3S_IMAGE_SERVER_2=${REPO}/${IMAGE_NAME}:${STABLE_VERSION} run-test
 
 # --- test joining a managed etcd cluster with incompatible configuration
 test-post-hook() {
