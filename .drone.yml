@@ -97,8 +97,8 @@ steps:
   - docker build --target test-k3s -t k3s:test -f Dockerfile.test .
   - >
     docker run -i -e REPO -e TAG -e DRONE_TAG -e DRONE_BUILD_EVENT -e IMAGE_NAME -e GCLOUD_AUTH -e SONOBUOY_VERSION -e ENABLE_REGISTRY
-    -v /var/run/docker.sock:/var/run/docker.sock --privileged --network host -v /tmp:/tmp k3s:test
-  - docker cp /go/src/github.com/k3s-io/k3s/dist .
+    --name k3s-test-amd64 -v /var/run/docker.sock:/var/run/docker.sock --privileged --network host -v /tmp:/tmp k3s:test
+  - docker cp k3s-test-amd64:/go/src/github.com/k3s-io/k3s/dist .
   volumes:
   - name: docker
     path: /var/run/docker.sock
@@ -194,7 +194,11 @@ steps:
     GCLOUD_AUTH:
       from_secret: gcloud_auth
   commands:
-  - dapper -f Dockerfile.test.dapper
+  - docker build --target test-k3s -t k3s:test -f Dockerfile.test .
+  - >
+    docker run -i -e REPO -e TAG -e DRONE_TAG -e DRONE_BUILD_EVENT -e IMAGE_NAME -e GCLOUD_AUTH -e SONOBUOY_VERSION -e ENABLE_REGISTRY
+    -v /var/run/docker.sock:/var/run/docker.sock --privileged --network host -v /tmp:/tmp k3s:test
+  - docker cp k3s:test:/go/src/github.com/k3s-io/k3s/dist .
   volumes:
   - name: docker
     path: /var/run/docker.sock
@@ -273,7 +277,11 @@ steps:
     GCLOUD_AUTH:
       from_secret: gcloud_auth
   commands:
-  - dapper -f Dockerfile.test.dapper
+  - docker build --target test-k3s -t k3s:test -f Dockerfile.test .
+  - >
+    docker run -i -e REPO -e TAG -e DRONE_TAG -e DRONE_BUILD_EVENT -e IMAGE_NAME -e GCLOUD_AUTH -e SONOBUOY_VERSION -e ENABLE_REGISTRY
+    --name k3s-test-arm -v /var/run/docker.sock:/var/run/docker.sock --privileged --network host -v /tmp:/tmp k3s:test
+  - docker cp k3s-test-arm:/go/src/github.com/k3s-io/k3s/dist .
   volumes:
   - name: docker
     path: /var/run/docker.sock
@@ -369,7 +377,11 @@ steps:
     GCLOUD_AUTH:
       from_secret: gcloud_auth
   commands:
-  - dapper -f Dockerfile.test.dapper
+  - docker build --target test-k3s -t k3s:test -f Dockerfile.test .
+  - >
+    docker run -i -e REPO -e TAG -e DRONE_TAG -e DRONE_BUILD_EVENT -e IMAGE_NAME -e GCLOUD_AUTH -e SONOBUOY_VERSION -e ENABLE_REGISTRY
+    --name k3s-test-s390x -v /var/run/docker.sock:/var/run/docker.sock --privileged --network host -v /tmp:/tmp k3s:test
+  - docker cp k3s-test-s390x:/go/src/github.com/k3s-io/k3s/dist .
   volumes:
   - name: docker
     path: /var/run/docker.sock
