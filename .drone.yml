@@ -387,7 +387,7 @@ steps:
   - name: validate_go_mods
     image: rancher/dapper:v0.5.0
     commands:
-      - docker build -t k3s:mod -f Dockerfile.test.mod .
+      - docker build --target test-mods -t k3s:mod -f Dockerfile.test .
       - docker run -it k3s:mod
 
     volumes:
