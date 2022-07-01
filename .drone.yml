@@ -94,7 +94,11 @@ steps:
     GCLOUD_AUTH:
       from_secret: gcloud_auth
   commands:
-  - dapper -f Dockerfile.test.dapper
+  - docker build --target test-k3s -t k3s:test -f Dockerfile.test .
+  - >
+    docker run -i -e REPO -e TAG -e DRONE_TAG -e DRONE_BUILD_EVENT -e IMAGE_NAME -e GCLOUD_AUTH -e SONOBUOY_VERSION -e ENABLE_REGISTRY
+    -v /var/run/docker.sock:/var/run/docker.sock --privileged --network host -v /tmp:/tmp k3s:test
+  - docker cp /go/src/github.com/k3s-io/k3s/dist .
   volumes:
   - name: docker
     path: /var/run/docker.sock
@@ -388,7 +392,7 @@ steps:
     image: rancher/dapper:v0.5.0
     commands:
       - docker build --target test-mods -t k3s:mod -f Dockerfile.test .
-      - docker run -it k3s:mod
+      - docker run -i k3s:mod
 
     volumes:
       - name: docker
