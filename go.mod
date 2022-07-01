@@ -90,7 +90,7 @@ require (
 	github.com/gorilla/websocket v1.4.2
 	github.com/gruntwork-io/terratest v0.40.6
 	github.com/k3s-io/helm-controller v0.12.3
-	github.com/k3s-io/kine v0.9.1
+	github.com/k3s-io/kine v0.9.3
 	github.com/klauspost/compress v1.15.1
 	github.com/kubernetes-sigs/cri-tools v0.0.0-00010101000000-000000000000
 	github.com/lib/pq v1.10.2
