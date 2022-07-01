@@ -97,8 +97,8 @@ steps:
   - docker build --target test-k3s -t k3s:test-${DRONE_STAGE_ARCH} -f Dockerfile.test .
   - >
     docker run -i -e REPO -e TAG -e DRONE_TAG -e DRONE_BUILD_EVENT -e IMAGE_NAME -e GCLOUD_AUTH -e SONOBUOY_VERSION -e ENABLE_REGISTRY
-    --name k3s-test-${TAG} -v /var/run/docker.sock:/var/run/docker.sock --privileged --network host -v /tmp:/tmp k3s:test-${DRONE_STAGE_ARCH}
-  - docker cp k3s-test-amd64:/go/src/github.com/k3s-io/k3s/dist .
+    --name k3s-test-${DRONE_COMMIT} -v /var/run/docker.sock:/var/run/docker.sock --privileged --network host -v /tmp:/tmp k3s:test-${DRONE_STAGE_ARCH}
+  - docker cp k3s-test-${DRONE_COMMIT}:/go/src/github.com/k3s-io/k3s/dist .
   volumes:
   - name: docker
     path: /var/run/docker.sock
@@ -197,8 +197,8 @@ steps:
   - docker build --target test-k3s -t k3s:test-${DRONE_STAGE_ARCH} -f Dockerfile.test .
   - >
     docker run -i -e REPO -e TAG -e DRONE_TAG -e DRONE_BUILD_EVENT -e IMAGE_NAME -e GCLOUD_AUTH -e SONOBUOY_VERSION -e ENABLE_REGISTRY
-    --name k3s-test-${TAG} -v /var/run/docker.sock:/var/run/docker.sock --privileged --network host -v /tmp:/tmp k3s:test-${DRONE_STAGE_ARCH}
-  - docker cp k3s-test-${TAG}:/go/src/github.com/k3s-io/k3s/dist .
+    --name k3s-test-${DRONE_COMMIT} -v /var/run/docker.sock:/var/run/docker.sock --privileged --network host -v /tmp:/tmp k3s:test-${DRONE_STAGE_ARCH}
+  - docker cp k3s-test-${DRONE_COMMIT}:/go/src/github.com/k3s-io/k3s/dist .
   volumes:
   - name: docker
     path: /var/run/docker.sock
@@ -280,8 +280,8 @@ steps:
   - docker build --target test-k3s -t k3s:test-${DRONE_STAGE_ARCH} -f Dockerfile.test .
   - >
     docker run -i -e REPO -e TAG -e DRONE_TAG -e DRONE_BUILD_EVENT -e IMAGE_NAME -e GCLOUD_AUTH -e SONOBUOY_VERSION -e ENABLE_REGISTRY
-    --name k3s-test-${TAG} -v /var/run/docker.sock:/var/run/docker.sock --privileged --network host -v /tmp:/tmp k3s:test-${DRONE_STAGE_ARCH}
-  - docker cp k3s-test-arm:/go/src/github.com/k3s-io/k3s/dist .
+    --name k3s-test-${DRONE_COMMIT} -v /var/run/docker.sock:/var/run/docker.sock --privileged --network host -v /tmp:/tmp k3s:test-${DRONE_STAGE_ARCH}
+  - docker cp k3s-test-${DRONE_COMMIT}:/go/src/github.com/k3s-io/k3s/dist .
   volumes:
   - name: docker
     path: /var/run/docker.sock
@@ -380,8 +380,8 @@ steps:
   - docker build --target test-k3s -t k3s:test-${DRONE_STAGE_ARCH} -f Dockerfile.test .
   - >
     docker run -i -e REPO -e TAG -e DRONE_TAG -e DRONE_BUILD_EVENT -e IMAGE_NAME -e GCLOUD_AUTH -e SONOBUOY_VERSION -e ENABLE_REGISTRY
-    --name k3s-test-${TAG} -v /var/run/docker.sock:/var/run/docker.sock --privileged --network host -v /tmp:/tmp k3s:test-${DRONE_STAGE_ARCH}
-  - docker cp k3s-test-s390x:/go/src/github.com/k3s-io/k3s/dist .
+    --name k3s-test-${DRONE_COMMIT} -v /var/run/docker.sock:/var/run/docker.sock --privileged --network host -v /tmp:/tmp k3s:test-${DRONE_STAGE_ARCH}
+  - docker cp k3s-test-${DRONE_COMMIT}:/go/src/github.com/k3s-io/k3s/dist .
   volumes:
   - name: docker
     path: /var/run/docker.sock
