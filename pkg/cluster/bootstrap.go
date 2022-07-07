@@ -363,7 +363,7 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker,
 
 				for pk := range files {
 					p, ok := paths[pk]
-					if !ok {
+					if !ok || p == "" {
 						continue
 					}
 
@@ -393,7 +393,7 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker,
 
 				for pk := range files {
 					p, ok := paths[pk]
-					if !ok {
+					if !ok || p == "" {
 						continue
 					}
 
