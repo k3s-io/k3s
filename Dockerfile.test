@@ -1,7 +1,21 @@
 ARG GOLANG=golang:1.18.1-alpine3.15
-FROM ${GOLANG}
+FROM ${GOLANG} as test-base
 
-RUN apk -U --no-cache add bash git gcc musl-dev docker curl jq coreutils python3 openssl py3-pip procps
+RUN apk -U --no-cache add bash jq
+ENV K3S_SOURCE /go/src/github.com/k3s-io/k3s/
+WORKDIR ${K3S_SOURCE}
+
+COPY . ${K3S_SOURCE}
+
+
+From test-base as test-mods
+
+COPY ./scripts/test-mods /bin/
+ENTRYPOINT ["/bin/test-mods"]
+
+From test-base as test-k3s
+
+RUN apk -U --no-cache add git gcc musl-dev docker curl coreutils python3 openssl py3-pip procps
 
 ENV SONOBUOY_VERSION 0.56.5
 
@@ -17,14 +31,6 @@ RUN OS=linux; \
     pip install codespell
 
 ENV TEST_CLEANUP true
-
-ENV DAPPER_RUN_ARGS --privileged --network host -v /tmp:/tmp
-ENV DAPPER_ENV REPO TAG DRONE_TAG DRONE_BUILD_EVENT IMAGE_NAME GCLOUD_AUTH SONOBUOY_VERSION ENABLE_REGISTRY
-ENV DAPPER_SOURCE /go/src/github.com/k3s-io/k3s/
-ENV DAPPER_OUTPUT ./dist
-ENV DAPPER_DOCKER_SOCKET true
-ENV HOME ${DAPPER_SOURCE}
-WORKDIR ${DAPPER_SOURCE}
 
 ENTRYPOINT ["./scripts/entry.sh"]
 CMD ["test"]
