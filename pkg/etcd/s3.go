@@ -106,9 +106,11 @@ func (s *S3) upload(ctx context.Context, snapshot, extraMetadata string, now tim
 
 	toCtx, cancel := context.WithTimeout(ctx, s.config.EtcdS3Timeout)
 	defer cancel()
-	opts := minio.PutObjectOptions{
-		ContentType: "application/zip",
-		NumThreads:  2,
+	opts := minio.PutObjectOptions{NumThreads: 2}
+	if strings.HasSuffix(snapshot, compressedExtension) {
+		opts.ContentType = "application/zip"
+	} else {
+		opts.ContentType = "application/octet-stream"
 	}
 	uploadInfo, err := s.client.FPutObject(toCtx, s.config.EtcdS3BucketName, snapshotFileName, snapshot, opts)
 	if err != nil {
