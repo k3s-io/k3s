@@ -44,6 +44,7 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/etcdutl/v3/snapshot"
 	"go.uber.org/zap"
+	"golang.org/x/sync/semaphore"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -63,7 +64,9 @@ const (
 	defaultKeepAliveTime    = 30 * time.Second
 	defaultKeepAliveTimeout = 10 * time.Second
 
-	maxBackupRetention = 5
+	maxBackupRetention     = 5
+	maxConcurrentSnapshots = 1
+	compressedExtension    = ".zip"
 
 	MasterLabel       = "node-role.kubernetes.io/master"
 	ControlPlaneLabel = "node-role.kubernetes.io/control-plane"
@@ -90,13 +93,14 @@ var (
 type NodeControllerGetter func() controllerv1.NodeController
 
 type ETCD struct {
-	client  *clientv3.Client
-	config  *config.Control
-	name    string
-	address string
-	cron    *cron.Cron
-	s3      *S3
-	cancel  context.CancelFunc
+	client      *clientv3.Client
+	config      *config.Control
+	name        string
+	address     string
+	cron        *cron.Cron
+	s3          *S3
+	cancel      context.CancelFunc
+	snapshotSem *semaphore.Weighted
 }
 
 type learnerProgress struct {
@@ -1162,6 +1166,9 @@ func snapshotDir(config *config.Control, create bool) (string, error) {
 // to perform an Etcd snapshot. This is necessary primarily for on-demand
 // snapshots since they're performed before normal Etcd setup is completed.
 func (e *ETCD) preSnapshotSetup(ctx context.Context, config *config.Control) error {
+	if e.snapshotSem == nil {
+		e.snapshotSem = semaphore.NewWeighted(maxConcurrentSnapshots)
+	}
 	if e.client == nil {
 		if e.config == nil {
 			e.config = config
@@ -1179,8 +1186,6 @@ func (e *ETCD) preSnapshotSetup(ctx context.Context, config *config.Control) err
 	}
 	return nil
 }
-
-const compressedExtension = ".zip"
 
 // compressSnapshot compresses the given snapshot and provides the
 // caller with the path to the file.
@@ -1274,6 +1279,10 @@ func (e *ETCD) Snapshot(ctx context.Context, config *config.Control) error {
 	if err := e.preSnapshotSetup(ctx, config); err != nil {
 		return err
 	}
+	if !e.snapshotSem.TryAcquire(maxConcurrentSnapshots) {
+		return fmt.Errorf("%d snapshots already in progress", maxConcurrentSnapshots)
+	}
+	defer e.snapshotSem.Release(maxConcurrentSnapshots)
 
 	// make sure the core.Factory is initialized before attempting to add snapshot metadata
 	var extraMetadata string
