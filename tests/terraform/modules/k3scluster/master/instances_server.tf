@@ -90,9 +90,6 @@ resource "aws_instance" "master" {
   provisioner "local-exec" {
     command = "sed s/127.0.0.1/\"${var.create_lb ? aws_route53_record.aws_route53[0].fqdn : aws_instance.master.public_ip}\"/g /tmp/${var.resource_name}_config >/tmp/${var.resource_name}_kubeconfig"
   }
-  provisioner "local-exec" {
-    command = "sed s/127.0.0.1/\"${var.create_lb ? aws_route53_record.aws_route53[0].fqdn : aws_instance.master.public_ip}\"/g /tmp/${var.resource_name}_config >/config/${var.resource_name}_kubeconfig"
-  }
 }
 
 data "template_file" "test" {
