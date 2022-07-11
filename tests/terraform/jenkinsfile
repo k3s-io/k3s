@@ -78,8 +78,8 @@ pipeline {
                         /usr/bin/docker cp "${WORKSPACE}/tests/terraform/$AWS_SSH_KEY_NAME" "${RESOURCE_NAME}_${BUILD_NUMBER}":/config
 
                         /usr/bin/docker exec ${RESOURCE_NAME}_${BUILD_NUMBER} /usr/local/go/bin/go test -v tests/terraform/createcluster.go \
-                        tests/terraform/createcluster_test.go tests/terraform/testutils.go -v \
-                        -timeout=2h -node_os=${NODE_OS} \
+                        tests/terraform/createcluster_test.go tests/terraform/testutils.go \
+                        -timeout=1h -node_os=${NODE_OS} \
                         -cluster_type=${CLUSTER_TYPE} -external_db=${EXTERNAL_DB} -resource_name=${RESOURCE_NAME} \
                         -sshuser=${AWS_USER} -sshkey="/config/${AWS_SSH_KEY_NAME}" -destroy=false -arch=${ARCH}
 
