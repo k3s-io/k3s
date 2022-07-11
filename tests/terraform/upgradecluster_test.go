@@ -1,4 +1,4 @@
-package e2e
+package terraform
 
 import (
 	"flag"
@@ -12,7 +12,7 @@ import (
 
 var upgradeVersion = flag.String("upgrade_version", "", "a string")
 
-func Test_E2EClusterUpgradeValidation(t *testing.T) {
+func Test_TFClusterUpgradeValidation(t *testing.T) {
 	RegisterFailHandler(Fail)
 	flag.Parse()
 	RunSpecs(t, "Upgrade Cluster Test Suite")
@@ -21,8 +21,9 @@ func Test_E2EClusterUpgradeValidation(t *testing.T) {
 var _ = Describe("Test:", func() {
 	Context("Build Cluster:", func() {
 		It("Starts up with no issues", func() {
-			kubeConfigFile, masterIPs, workerIPs, err = BuildCluster(*nodeOs, *clusterType, *externalDb, *resourceName, &testing.T{}, *destroy, *arch)
+			status, err := BuildCluster(*nodeOs, *awsAmi, *clusterType, *externalDb, *resourceName, &testing.T{}, *destroy, *arch)
 			Expect(err).NotTo(HaveOccurred())
+			Expect(status).To(Equal("cluster created"))
 			defer GinkgoRecover()
 			fmt.Println("\nCLUSTER CONFIG:\nOS", *nodeOs, "BACKEND", *clusterType, *externalDb)
 			fmt.Printf("\nIPs:\n")
@@ -503,13 +504,13 @@ var _ = BeforeEach(func() {
 	}
 
 })
-var _ = AfterSuite(func() {
-	if failed {
-		fmt.Println("FAILED!")
-	} else {
-		kubeConfigFile, masterIPs, workerIPs, err = BuildCluster(*nodeOs, *clusterType, *externalDb, *resourceName, &testing.T{}, *destroy, *arch)
-		if err != nil {
-			fmt.Println("Error Destroying Cluster", err)
-		}
-	}
-})
+// var _ = AfterSuite(func() {
+// 	if failed {
+// 		fmt.Println("FAILED!")
+// 	} else {
+// 		kubeConfigFile, masterIPs, workerIPs, err = BuildCluster(*nodeOs, *awsAmi, *clusterType, *externalDb, *resourceName, &testing.T{}, *destroy, *arch)
+// 		if err != nil {
+// 			fmt.Println("Error Destroying Cluster", err)
+// 		}
+// 	}
+// })
