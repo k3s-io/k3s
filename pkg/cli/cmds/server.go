@@ -218,7 +218,7 @@ var ServerFlags = []cli.Flag{
 	},
 	cli.StringFlag{
 		Name:        "egress-selector-mode",
-		Usage:       "(networking) One of 'agent', cluster', 'pod', 'disabled'",
+		Usage:       "(networking) One of 'agent', 'cluster', 'pod', 'disabled'",
 		Destination: &ServerConfig.EgressSelectorMode,
 		Value:       "agent",
 	},
@@ -227,13 +227,6 @@ var ServerFlags = []cli.Flag{
 		Usage:       "(networking) Namespace of the pods for the servicelb component",
 		Destination: &ServerConfig.ServiceLBNamespace,
 		Value:       "kube-system",
-	},
-	ServerToken,
-	cli.StringFlag{
-		Name:        "token-file",
-		Usage:       "(cluster) File containing the cluster-secret/token",
-		Destination: &ServerConfig.TokenFile,
-		EnvVar:      version.ProgramUpper + "_TOKEN_FILE",
 	},
 	cli.StringFlag{
 		Name:        "write-kubeconfig,o",
@@ -247,10 +240,47 @@ var ServerFlags = []cli.Flag{
 		Destination: &ServerConfig.KubeConfigMode,
 		EnvVar:      version.ProgramUpper + "_KUBECONFIG_MODE",
 	},
+	ServerToken,
+	cli.StringFlag{
+		Name:        "token-file",
+		Usage:       "(cluster) File containing the cluster-secret/token",
+		Destination: &ServerConfig.TokenFile,
+		EnvVar:      version.ProgramUpper + "_TOKEN_FILE",
+	},
+	cli.StringFlag{
+		Name:        "agent-token",
+		Usage:       "(cluster) Shared secret used to join agents to the cluster, but not servers",
+		Destination: &ServerConfig.AgentToken,
+		EnvVar:      version.ProgramUpper + "_AGENT_TOKEN",
+	},
+	cli.StringFlag{
+		Name:        "agent-token-file",
+		Usage:       "(cluster) File containing the agent secret",
+		Destination: &ServerConfig.AgentTokenFile,
+		EnvVar:      version.ProgramUpper + "_AGENT_TOKEN_FILE",
+	},
+	cli.StringFlag{
+		Name:        "server,s",
+		Usage:       "(cluster) Server to connect to, used to join a cluster",
+		EnvVar:      version.ProgramUpper + "_URL",
+		Destination: &ServerConfig.ServerURL,
+	},
 	cli.BoolFlag{
-		Name:        "enable-pprof",
-		Usage:       "(experimental) Enable pprof endpoint on supervisor port",
-		Destination: &ServerConfig.EnablePProf,
+		Name:        "cluster-init",
+		Usage:       "(cluster) Initialize a new cluster using embedded Etcd",
+		EnvVar:      version.ProgramUpper + "_CLUSTER_INIT",
+		Destination: &ServerConfig.ClusterInit,
+	},
+	cli.BoolFlag{
+		Name:        "cluster-reset",
+		Usage:       "(cluster) Forget all peers and become sole member of a new cluster",
+		EnvVar:      version.ProgramUpper + "_CLUSTER_RESET",
+		Destination: &ServerConfig.ClusterReset,
+	},
+	&cli.StringFlag{
+		Name:        "cluster-reset-restore-path",
+		Usage:       "(db) Path to snapshot file to be restored",
+		Destination: &ServerConfig.ClusterResetRestorePath,
 	},
 	ExtraAPIArgs,
 	ExtraEtcdArgs,
@@ -287,7 +317,7 @@ var ServerFlags = []cli.Flag{
 	},
 	&cli.BoolFlag{
 		Name:        "etcd-expose-metrics",
-		Usage:       "(db) Expose etcd metrics to client interface. (Default false)",
+		Usage:       "(db) Expose etcd metrics to client interface. (default: false)",
 		Destination: &ServerConfig.EtcdExposeMetrics,
 	},
 	&cli.BoolFlag{
@@ -297,7 +327,7 @@ var ServerFlags = []cli.Flag{
 	},
 	&cli.StringFlag{
 		Name:        "etcd-snapshot-name",
-		Usage:       "(db) Set the base name of etcd snapshots. Default: etcd-snapshot-<unix-timestamp>",
+		Usage:       "(db) Set the base name of etcd snapshots (default: etcd-snapshot-<unix-timestamp>)",
 		Destination: &ServerConfig.EtcdSnapshotName,
 		Value:       "etcd-snapshot",
 	},
@@ -315,7 +345,7 @@ var ServerFlags = []cli.Flag{
 	},
 	&cli.StringFlag{
 		Name:        "etcd-snapshot-dir",
-		Usage:       "(db) Directory to save db snapshots. (Default location: ${data-dir}/db/snapshots)",
+		Usage:       "(db) Directory to save db snapshots. (default: ${data-dir}/db/snapshots)",
 		Destination: &ServerConfig.EtcdSnapshotDir,
 	},
 	&cli.BoolFlag{
@@ -457,44 +487,14 @@ var ServerFlags = []cli.Flag{
 	ExtraKubeProxyArgs,
 	ProtectKernelDefaultsFlag,
 	cli.BoolFlag{
+		Name:        "enable-pprof",
+		Usage:       "(experimental) Enable pprof endpoint on supervisor port",
+		Destination: &ServerConfig.EnablePProf,
+	},
+	cli.BoolFlag{
 		Name:        "rootless",
 		Usage:       "(experimental) Run rootless",
 		Destination: &ServerConfig.Rootless,
-	},
-	cli.StringFlag{
-		Name:        "agent-token",
-		Usage:       "(cluster) Shared secret used to join agents to the cluster, but not servers",
-		Destination: &ServerConfig.AgentToken,
-		EnvVar:      version.ProgramUpper + "_AGENT_TOKEN",
-	},
-	cli.StringFlag{
-		Name:        "agent-token-file",
-		Usage:       "(cluster) File containing the agent secret",
-		Destination: &ServerConfig.AgentTokenFile,
-		EnvVar:      version.ProgramUpper + "_AGENT_TOKEN_FILE",
-	},
-	cli.StringFlag{
-		Name:        "server,s",
-		Usage:       "(cluster) Server to connect to, used to join a cluster",
-		EnvVar:      version.ProgramUpper + "_URL",
-		Destination: &ServerConfig.ServerURL,
-	},
-	cli.BoolFlag{
-		Name:        "cluster-init",
-		Usage:       "(cluster) Initialize a new cluster using embedded Etcd",
-		EnvVar:      version.ProgramUpper + "_CLUSTER_INIT",
-		Destination: &ServerConfig.ClusterInit,
-	},
-	cli.BoolFlag{
-		Name:        "cluster-reset",
-		Usage:       "(cluster) Forget all peers and become sole member of a new cluster",
-		EnvVar:      version.ProgramUpper + "_CLUSTER_RESET",
-		Destination: &ServerConfig.ClusterReset,
-	},
-	&cli.StringFlag{
-		Name:        "cluster-reset-restore-path",
-		Usage:       "(db) Path to snapshot file to be restored",
-		Destination: &ServerConfig.ClusterResetRestorePath,
 	},
 	cli.BoolFlag{
 		Name:        "secrets-encryption",
