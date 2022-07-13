@@ -22,9 +22,11 @@ go test -timeout=60m ./tests/terrfaorm/... -run TF
 ```
 Tests can be run individually with:
 ```bash
-go test -timeout=30m ./tests/terraform/createcluster.go ./tests/terraform/createcluster_test.go ./tests/terraform/testutils.go
+go test -timeout=30m ./tests/terraform/createcluster/createcluster.go ./tests/terraform/createcluster/createcluster_test.go
+# OR
+go test -v -timeout=30m ./tests/terraform/... -run TFClusterCreateValidation
 # example with vars:
-go test -timeout=30m -v ./tests/terraform/createcluster.go ./tests/terraform/createcluster_test.go ./tests/terraform/testutils.go -node_os=ubuntu -aws_ami=ami-02f3416038bdb17fb -cluster_type=etcd -resource_name=localrun1 -sshuser=ubuntu -sshkey="key-name" -destroy=false
+go test -timeout=30m -v ./tests/terraform/createcluster.go ./tests/terraform/createcluster_test.go -node_os=ubuntu -aws_ami=ami-02f3416038bdb17fb -cluster_type=etcd -resource_name=localrun1 -sshuser=ubuntu -sshkey="key-name" -destroy=false
 ```
 
 In between tests, if the cluster is not destroyed, then make sure to delete the ./tests/terraform/terraform.tfstate file if you want to create a new cluster.
@@ -40,4 +42,4 @@ Note: The `go test` default timeout is 10 minutes, thus the `-timeout` flag shou
 
 # Debugging
 The cluster and VMs can be retained after a test by passing `-destroy=false`. 
-To focus individual runs on specific test clauses, you can prefix with `F`. For example, in the [create cluster test](../tests/terraform/createcluster_test.go), you can upate the initial creation to be: `FIt("Starts up with no issues", func() {` in order to focus the run on only that clause.
+To focus individual runs on specific test clauses, you can prefix with `F`. For example, in the [create cluster test](../tests/terraform/createcluster_test.go), you can update the initial creation to be: `FIt("Starts up with no issues", func() {` in order to focus the run on only that clause.

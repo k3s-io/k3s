@@ -7,6 +7,7 @@ import (
 	"log"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -36,6 +37,11 @@ var config *ssh.ClientConfig
 var SSHKEY string
 var SSHUSER string
 var err error
+
+func GetBasepath() string {
+	_, b, _, _ := runtime.Caller(0)
+	return filepath.Join(filepath.Dir(b), "../..")
+}
 
 func checkError(e error) {
 	if e != nil {
@@ -118,9 +124,9 @@ func CountOfStringInSlice(str string, pods []Pod) int {
 }
 
 func DeployWorkload(workload, kubeconfig string, arch string) (string, error) {
-	resourceDir := "./amd64_resource_files"
+	resourceDir := GetBasepath() + "/tests/terraform/amd64_resource_files"
 	if arch == "arm64" {
-		resourceDir = "./arm_resource_files"
+		resourceDir = GetBasepath() + "/tests/terraform/arm_resource_files"
 	}
 	files, err := ioutil.ReadDir(resourceDir)
 	if err != nil {
