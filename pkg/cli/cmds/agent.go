@@ -86,11 +86,23 @@ var (
 		Usage:       "(agent/node) Append id to node name",
 		Destination: &AgentConfig.WithNodeID,
 	}
-	DockerFlag = cli.BoolFlag{
-		Hidden:      true,
-		Name:        "docker",
-		Usage:       "(deprecated) (agent/runtime) Use docker instead of containerd",
-		Destination: &AgentConfig.Docker,
+	ProtectKernelDefaultsFlag = cli.BoolFlag{
+		Name:        "protect-kernel-defaults",
+		Usage:       "(agent/node) Kernel tuning behavior. If set, error if kernel tunables are different than kubelet defaults.",
+		Destination: &AgentConfig.ProtectKernelDefaults,
+	}
+	SELinuxFlag = cli.BoolFlag{
+		Name:        "selinux",
+		Usage:       "(agent/node) Enable SELinux in containerd",
+		Destination: &AgentConfig.EnableSELinux,
+		EnvVar:      version.ProgramUpper + "_SELINUX",
+	}
+	LBServerPortFlag = cli.IntFlag{
+		Name:        "lb-server-port",
+		Usage:       "(agent/node) Local port for supervisor client load-balancer. If the supervisor and apiserver are not colocated an additional port 1 less than this port will also be used for the apiserver client load-balancer.",
+		Destination: &AgentConfig.LBServerPort,
+		EnvVar:      version.ProgramUpper + "_LB_SERVER_PORT",
+		Value:       6444,
 	}
 	CRIEndpointFlag = cli.StringFlag{
 		Name:        "container-runtime-endpoint",
@@ -120,11 +132,6 @@ var (
 		Usage:       "(agent/runtime) Override default containerd snapshotter",
 		Destination: &AgentConfig.Snapshotter,
 		Value:       DefaultSnapshotter,
-	}
-	FlannelFlag = cli.BoolFlag{
-		Name:        "no-flannel",
-		Usage:       "(deprecated) use --flannel-backend=none",
-		Destination: &AgentConfig.NoFlannel,
 	}
 	FlannelIfaceFlag = cli.StringFlag{
 		Name:        "flannel-iface",
@@ -184,23 +191,16 @@ var (
 		Usage:  "(deprecated) Use --selinux to explicitly enable SELinux",
 		Hidden: true,
 	}
-	ProtectKernelDefaultsFlag = cli.BoolFlag{
-		Name:        "protect-kernel-defaults",
-		Usage:       "(agent/node) Kernel tuning behavior. If set, error if kernel tunables are different than kubelet defaults.",
-		Destination: &AgentConfig.ProtectKernelDefaults,
+	DockerFlag = cli.BoolFlag{
+		Hidden:      true,
+		Name:        "docker",
+		Usage:       "(deprecated) (agent/runtime) Use docker instead of containerd",
+		Destination: &AgentConfig.Docker,
 	}
-	SELinuxFlag = cli.BoolFlag{
-		Name:        "selinux",
-		Usage:       "(agent/node) Enable SELinux in containerd",
-		Destination: &AgentConfig.EnableSELinux,
-		EnvVar:      version.ProgramUpper + "_SELINUX",
-	}
-	LBServerPortFlag = cli.IntFlag{
-		Name:        "lb-server-port",
-		Usage:       "(agent/node) Local port for supervisor client load-balancer. If the supervisor and apiserver are not colocated an additional port 1 less than this port will also be used for the apiserver client load-balancer.",
-		Destination: &AgentConfig.LBServerPort,
-		EnvVar:      version.ProgramUpper + "_LB_SERVER_PORT",
-		Value:       6444,
+	FlannelFlag = cli.BoolFlag{
+		Name:        "no-flannel",
+		Usage:       "(deprecated) use --flannel-backend=none",
+		Destination: &AgentConfig.NoFlannel,
 	}
 )
 
@@ -253,7 +253,9 @@ func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
 			NodeTaints,
 			ImageCredProvBinDirFlag,
 			ImageCredProvConfigFlag,
-			DockerFlag,
+			&SELinuxFlag,
+			LBServerPortFlag,
+			ProtectKernelDefaultsFlag,
 			CRIEndpointFlag,
 			PauseImageFlag,
 			SnapshotterFlag,
@@ -267,18 +269,16 @@ func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
 			FlannelCniConfFileFlag,
 			ExtraKubeletArgs,
 			ExtraKubeProxyArgs,
-			ProtectKernelDefaultsFlag,
 			cli.BoolFlag{
 				Name:        "rootless",
 				Usage:       "(experimental) Run rootless",
 				Destination: &AgentConfig.Rootless,
 			},
-			&SELinuxFlag,
-			LBServerPortFlag,
 
 			// Deprecated/hidden below
 
 			&DisableSELinuxFlag,
+			DockerFlag,
 			FlannelFlag,
 			cli.StringFlag{
 				Name:        "cluster-secret",
