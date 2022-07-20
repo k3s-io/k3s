@@ -1,6 +1,8 @@
 #!/bin/bash
 set -e
 
+. ./scripts/version.sh
+
 cd $(dirname $0)/..
 
 . ./scripts/setup-rancher-path.sh
@@ -14,9 +16,9 @@ if [ ! -e bin/containerd ]; then
     ./scripts/build
     ./scripts/package
 else
-    rm -f ./bin/k3s-agent
-    "${GO}" build -tags "apparmor seccomp" -o ./bin/k3s-agent ./cmd/agent/main.go
+    rm -f ./bin/${PROG}-agent
+    "${GO}" build -tags "apparmor seccomp" -o ./bin/${PROG}-agent ./cmd/agent/main.go
 fi
 
 echo Starting agent
-sudo env "PATH=$(pwd)/bin:$PATH" ./bin/k3s-agent --debug agent -s https://localhost:6443 -t $(<${RANCHER_PATH}/k3s/server/node-token) "$@"
+sudo env "PATH=$(pwd)/bin:$PATH" ./bin/${PROG}-agent --debug agent -s https://localhost:6443 -t $(<${RANCHER_PATH}/${PROG}/server/node-token) "$@"

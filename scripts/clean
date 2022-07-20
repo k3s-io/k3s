@@ -1,5 +1,7 @@
 #!/bin/bash
 
+. ./scripts/version.sh
+
 cd $(dirname $0)/..
 
-rm -rf dist bin build k3s hyperkube kubectl
+rm -rf dist bin build ${PROG} hyperkube kubectl

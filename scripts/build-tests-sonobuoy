@@ -1,6 +1,8 @@
 #!/bin/bash
 set -e
 
+. ./scripts/version.sh
+
 cd $(dirname $0)/..
 
 REPO="k3s-int-tests"
@@ -27,12 +29,12 @@ done
 docker build -f ./tests/integration/Dockerfile.test -t $REPO .
 docker save $REPO -o ./dist/artifacts/$REPO.tar
 
-sudo mkdir -p /var/lib/rancher/k3s/agent/images
-sudo mv ./dist/artifacts/$REPO.tar /var/lib/rancher/k3s/agent/images/
+sudo mkdir -p /var/lib/rancher/${PROG}/agent/images
+sudo mv ./dist/artifacts/$REPO.tar /var/lib/rancher/${PROG}/agent/images/
 
 # If k3s is already running, attempt to import the image
-if [[ "$(pgrep k3s | wc -l)" -gt 0 ]]; then
-    sudo ./dist/artifacts/k3s ctr images import /var/lib/rancher/k3s/agent/images/$REPO.tar
+if [[ "$(pgrep ${PROG} | wc -l)" -gt 0 ]]; then
+    sudo ./dist/artifacts/${PROG} ctr images import /var/lib/rancher/${PROG}/agent/images/$REPO.tar
 fi
 
 # Cleanup compiled tests
@@ -64,7 +66,7 @@ sonobuoy gen plugin \
     --name k3s-int \
     --type job \
     --cmd ./test-runner.sh \
-    --env KUBECONFIG=/etc/rancher/k3s/k3s.yaml \
+    --env KUBECONFIG=/etc/rancher/${PROG}/${PROG}.yaml \
     > $OUTFILE
 awk -v PS="$PODSPEC" '/podSpec:/{print;print PS;next}1' $OUTFILE > ./dist/artifacts/temp.yaml
 mv ./dist/artifacts/temp.yaml $OUTFILE

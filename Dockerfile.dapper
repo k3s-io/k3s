@@ -42,7 +42,7 @@ ARG SELINUX=true
 ENV SELINUX $SELINUX
 
 ENV DAPPER_RUN_ARGS --privileged -v k3s-cache:/go/src/github.com/k3s-io/k3s/.cache -v trivy-cache:/root/.cache/trivy
-ENV DAPPER_ENV REPO TAG DRONE_TAG IMAGE_NAME SKIP_VALIDATE SKIP_AIRGAP GCLOUD_AUTH GITHUB_TOKEN GOLANG
+ENV DAPPER_ENV REPO TAG DRONE_TAG IMAGE_NAME SKIP_VALIDATE SKIP_AIRGAP GCLOUD_AUTH GITHUB_TOKEN PROG
 ENV DAPPER_SOURCE /go/src/github.com/k3s-io/k3s/
 ENV DAPPER_OUTPUT ./bin ./dist ./build/out ./build/static ./pkg/static ./pkg/deploy
 
