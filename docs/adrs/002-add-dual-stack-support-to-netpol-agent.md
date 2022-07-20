@@ -1,4 +1,4 @@
-# 1. Add dual stack support to netpol agent
+# 2. Add dual stack support to netpol agent
 
 Date: 2021-12-13
 
