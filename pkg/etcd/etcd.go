@@ -53,7 +53,7 @@ import (
 )
 
 const (
-	testTimeout          = time.Second * 10
+	testTimeout          = time.Second * 30
 	manageTickerTime     = time.Second * 15
 	learnerMaxStallTime  = time.Minute * 5
 	memberRemovalTimeout = time.Minute * 1
@@ -933,7 +933,7 @@ func (e *ETCD) manageLearners(ctx context.Context) {
 	defer t.Stop()
 
 	for range t.C {
-		ctx, cancel := context.WithTimeout(ctx, testTimeout)
+		ctx, cancel := context.WithTimeout(ctx, manageTickerTime)
 		defer cancel()
 
 		// Check to see if the local node is the leader. Only the leader should do learner management.
