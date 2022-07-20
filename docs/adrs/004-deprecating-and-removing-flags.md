@@ -25,7 +25,7 @@ The following system will be implemented for deprecating and removing flags:
 
 1) Flags can be declared as "To Be Deprecated" at any time.
 2) Flags that are "To Be Deprecated" must be labeled as such on the next patch of all currently supported releases. Additionally, the flag will begin to warn users that it is going to be deprecated in the next "new" minor release. 
-3) Once a flag has been marked as deprecated in the documentation, it will be converted to a hidden flag on the next minor release.
+3) On the next minor release, a flag will be marked as deprecated in the documentation and converted to a hidden flag in code.
 4) In the following minor release branch, deprecated flags will become "nonoperational" in that they will cause a fatal error if used. This error must explain to the user any new flags or configuration that replace this flag.
 5) In the following minor release, the nonoperational flags will be removed from documentation and code.
 
