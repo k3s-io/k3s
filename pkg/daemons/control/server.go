@@ -107,6 +107,7 @@ func controllerManager(ctx context.Context, cfg *config.Control) error {
 		"authentication-kubeconfig":        runtime.KubeConfigController,
 		"service-account-private-key-file": runtime.ServiceKey,
 		"allocate-node-cidrs":              "true",
+		"service-cluster-ip-range":         util.JoinIPNets(cfg.ServiceIPRanges),
 		"cluster-cidr":                     util.JoinIPNets(cfg.ClusterIPRanges),
 		"root-ca-file":                     runtime.ServerCA,
 		"profiling":                        "false",
