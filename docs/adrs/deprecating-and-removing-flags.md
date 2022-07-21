@@ -1,4 +1,4 @@
-# 4. Deprecating and Removing Flags
+# Deprecating and Removing Flags
 
 Date: 2022-07-20
 

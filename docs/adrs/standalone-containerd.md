@@ -1,4 +1,4 @@
-# 3. Move containerd out of the k3s multicall bundle
+# Move containerd out of the k3s multicall bundle
 
 Date: 2021-12-15
 
