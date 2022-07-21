@@ -469,7 +469,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		systemd.SdNotify(true, "READY=1\n")
 	}()
 
-	url := fmt.Sprintf("https://%s:%d", serverConfig.ControlConfig.BindAddressOrLoopback(false), serverConfig.ControlConfig.SupervisorPort)
+	url := fmt.Sprintf("https://%s:%d", serverConfig.ControlConfig.BindAddressOrLoopback(false, true), serverConfig.ControlConfig.SupervisorPort)
 	token, err := clientaccess.FormatToken(serverConfig.ControlConfig.Runtime.AgentToken, serverConfig.ControlConfig.Runtime.ServerCA)
 	if err != nil {
 		return err
