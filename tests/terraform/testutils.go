@@ -39,8 +39,7 @@ var err error
 
 func checkError(e error) {
 	if e != nil {
-		log.Fatal(err)
-		panic(e)
+		log.Fatal(e)
 	}
 }
 
