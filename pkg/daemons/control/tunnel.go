@@ -210,7 +210,7 @@ func (t *TunnelServer) dialBackend(ctx context.Context, addr string) (net.Conn, 
 	if err != nil {
 		return nil, err
 	}
-	loopback := t.config.Loopback()
+	loopback := t.config.Loopback(true)
 
 	var nodeName string
 	var toKubelet, useTunnel bool

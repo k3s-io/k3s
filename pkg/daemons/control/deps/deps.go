@@ -314,7 +314,7 @@ func genClientCerts(config *config.Control) error {
 
 	var certGen bool
 
-	apiEndpoint := fmt.Sprintf("https://%s:%d", config.Loopback(), config.APIServerPort)
+	apiEndpoint := fmt.Sprintf("https://%s:%d", config.Loopback(true), config.APIServerPort)
 
 	certGen, err = factory("system:admin", []string{user.SystemPrivilegedGroup}, runtime.ClientAdminCert, runtime.ClientAdminKey)
 	if err != nil {
@@ -734,7 +734,7 @@ func genEgressSelectorConfig(controlConfig *config.Control) error {
 			ProxyProtocol: apiserver.ProtocolHTTPConnect,
 			Transport: &apiserver.Transport{
 				TCP: &apiserver.TCPTransport{
-					URL: fmt.Sprintf("https://%s:%d", controlConfig.BindAddressOrLoopback(false), controlConfig.SupervisorPort),
+					URL: fmt.Sprintf("https://%s:%d", controlConfig.BindAddressOrLoopback(false, true), controlConfig.SupervisorPort),
 					TLSConfig: &apiserver.TLSConfig{
 						CABundle:   controlConfig.Runtime.ServerCA,
 						ClientKey:  controlConfig.Runtime.ClientKubeAPIKey,

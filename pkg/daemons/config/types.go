@@ -215,32 +215,36 @@ type Control struct {
 	Runtime     *ControlRuntime `json:"-"`
 }
 
-// BindAddressOrLoopback returns an IPv4 or IPv6 address suitable for embedding in server
-// URLs. If a bind address was configured, that is returned. If the chooseHostInterface
-// parameter is true, and a suitable default interface can be found, that interface's
-// address is returned.  If neither of the previous were used, the loopback address is
-// returned. IPv6 addresses are enclosed in square brackets, as per RFC2732.
-func (c *Control) BindAddressOrLoopback(chooseHostInterface bool) string {
+// BindAddressOrLoopback returns an IPv4 or IPv6 address suitable for embedding in
+// server URLs. If a bind address was configured, that is returned. If the
+// chooseHostInterface parameter is true, and a suitable default interface can be
+// found, that interface's address is returned.  If neither of the previous were used,
+// the loopback address is returned. If the urlSafe parameter is true, IPv6 addresses
+// are enclosed in square brackets, as per RFC2732.
+func (c *Control) BindAddressOrLoopback(chooseHostInterface, urlSafe bool) string {
 	ip := c.BindAddress
 	if ip == "" && chooseHostInterface {
 		if hostIP, _ := utilnet.ChooseHostInterface(); len(hostIP) > 0 {
 			ip = hostIP.String()
 		}
 	}
-	if utilsnet.IsIPv6String(ip) {
+	if urlSafe && utilsnet.IsIPv6String(ip) {
 		return fmt.Sprintf("[%s]", ip)
 	} else if ip != "" {
 		return ip
 	}
-	return c.Loopback()
+	return c.Loopback(urlSafe)
 }
 
 // Loopback returns an IPv4 or IPv6 loopback address, depending on whether the cluster
-// service CIDRs indicate an IPv4/Dual-Stack or IPv6 only cluster.  IPv6 addresses are
-// enclosed in square brackets, as per RFC2732.
-func (c *Control) Loopback() string {
+// service CIDRs indicate an IPv4/Dual-Stack or IPv6 only cluster. If the urlSafe
+// parameter is true, IPv6 addresses are enclosed in square brackets, as per RFC2732.
+func (c *Control) Loopback(urlSafe bool) string {
 	if IPv6OnlyService, _ := util.IsIPv6OnlyCIDRs(c.ServiceIPRanges); IPv6OnlyService {
-		return "[::1]"
+		if urlSafe {
+			return "[::1]"
+		}
+		return "::1"
 	}
 	return "127.0.0.1"
 }
