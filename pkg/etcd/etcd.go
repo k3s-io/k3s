@@ -653,7 +653,7 @@ func getEndpoints(control *config.Control) []string {
 	if len(runtime.EtcdConfig.Endpoints) > 0 {
 		return runtime.EtcdConfig.Endpoints
 	}
-	return []string{fmt.Sprintf("https://%s:2379", control.Loopback())}
+	return []string{fmt.Sprintf("https://%s:2379", control.Loopback(true))}
 }
 
 // toTLSConfig converts the ControlRuntime configuration to TLS configuration suitable
@@ -769,7 +769,7 @@ func (e *ETCD) peerURL() string {
 // During cluster reset/restore, we only listen on loopback to avoid having peers
 // connect mid-process.
 func (e *ETCD) listenPeerURLs(reset bool) string {
-	peerURLs := fmt.Sprintf("https://%s:2380", e.config.Loopback())
+	peerURLs := fmt.Sprintf("https://%s:2380", e.config.Loopback(true))
 	if !reset {
 		peerURLs += "," + e.peerURL()
 	}
@@ -785,7 +785,7 @@ func (e *ETCD) clientURL() string {
 // During cluster reset/restore, we only listen on loopback to avoid having the apiserver
 // connect mid-process.
 func (e *ETCD) listenClientURLs(reset bool) string {
-	clientURLs := fmt.Sprintf("https://%s:2379", e.config.Loopback())
+	clientURLs := fmt.Sprintf("https://%s:2379", e.config.Loopback(true))
 	if !reset {
 		clientURLs += "," + e.clientURL()
 	}
@@ -794,7 +794,7 @@ func (e *ETCD) listenClientURLs(reset bool) string {
 
 // listenMetricsURLs returns a list of URLs to bind to for metrics connections.
 func (e *ETCD) listenMetricsURLs(reset bool) string {
-	metricsURLs := fmt.Sprintf("http://%s:2381", e.config.Loopback())
+	metricsURLs := fmt.Sprintf("http://%s:2381", e.config.Loopback(true))
 	if !reset && e.config.EtcdExposeMetrics {
 		metricsURLs += "," + fmt.Sprintf("http://%s", net.JoinHostPort(e.address, "2381"))
 	}

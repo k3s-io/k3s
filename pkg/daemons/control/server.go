@@ -31,14 +31,6 @@ import (
 	_ "k8s.io/component-base/metrics/prometheus/restclient"
 )
 
-func getLocalhostIP(serviceCIDR []*net.IPNet) net.IP {
-	IPv6OnlyService, _ := util.IsIPv6OnlyCIDRs(serviceCIDR)
-	if IPv6OnlyService {
-		return net.ParseIP("::1")
-	}
-	return net.ParseIP("127.0.0.1")
-}
-
 func Server(ctx context.Context, cfg *config.Control) error {
 	rand.Seed(time.Now().UTC().UnixNano())
 
@@ -111,7 +103,7 @@ func controllerManager(ctx context.Context, cfg *config.Control) error {
 		"cluster-cidr":                     util.JoinIPNets(cfg.ClusterIPRanges),
 		"root-ca-file":                     runtime.ServerCA,
 		"profiling":                        "false",
-		"bind-address":                     getLocalhostIP(cfg.ServiceIPRanges).String(),
+		"bind-address":                     cfg.Loopback(false),
 		"secure-port":                      "10257",
 		"use-service-account-credentials":  "true",
 		"cluster-signing-kube-apiserver-client-cert-file": runtime.ClientCA,
@@ -143,7 +135,7 @@ func scheduler(ctx context.Context, cfg *config.Control) error {
 		"kubeconfig":                runtime.KubeConfigScheduler,
 		"authorization-kubeconfig":  runtime.KubeConfigScheduler,
 		"authentication-kubeconfig": runtime.KubeConfigScheduler,
-		"bind-address":              getLocalhostIP(cfg.ServiceIPRanges).String(),
+		"bind-address":              cfg.Loopback(false),
 		"secure-port":               "10259",
 		"profiling":                 "false",
 	}
@@ -179,7 +171,7 @@ func apiServer(ctx context.Context, cfg *config.Control) error {
 	}
 	argsMap["secure-port"] = strconv.Itoa(cfg.APIServerPort)
 	if cfg.APIServerBindAddress == "" {
-		argsMap["bind-address"] = getLocalhostIP(cfg.ServiceIPRanges).String()
+		argsMap["bind-address"] = cfg.Loopback(false)
 	} else {
 		argsMap["bind-address"] = cfg.APIServerBindAddress
 	}
@@ -316,7 +308,7 @@ func cloudControllerManager(ctx context.Context, cfg *config.Control) error {
 		"authorization-kubeconfig":     runtime.KubeConfigCloudController,
 		"authentication-kubeconfig":    runtime.KubeConfigCloudController,
 		"node-status-update-frequency": "1m0s",
-		"bind-address":                 getLocalhostIP(cfg.ServiceIPRanges).String(),
+		"bind-address":                 cfg.Loopback(false),
 	}
 	if cfg.NoLeaderElect {
 		argsMap["leader-elect"] = "false"
