@@ -8,6 +8,8 @@ Accepted
 
 ## Context
 
+Upstream Kubernetes has a [flag deprecation policy](https://kubernetes.io/docs/reference/using-api/deprecation-policy/#deprecating-a-flag-or-cli). For admin-facing components, flags must function for at 1 minor release after their deprecation before they are removed. 
+
 Historically, the policy around removing flags was to maintain flag compatibility for two minor releases before making any breaking changes. 
 For example, flag would be:
 - Supported in v1.17
