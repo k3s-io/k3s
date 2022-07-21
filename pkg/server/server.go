@@ -337,18 +337,18 @@ func printTokens(config *config.Control) error {
 	}
 
 	if len(nodeFile) > 0 {
-		printToken(config.SupervisorPort, config.BindAddressOrLoopback(true), "To join node to cluster:", "agent")
+		printToken(config.SupervisorPort, config.BindAddressOrLoopback(true, true), "To join node to cluster:", "agent")
 	}
 
 	return nil
 }
 
 func writeKubeConfig(certs string, config *Config) error {
-	ip := config.ControlConfig.BindAddressOrLoopback(false)
+	ip := config.ControlConfig.BindAddressOrLoopback(false, true)
 	port := config.ControlConfig.HTTPSPort
 	// on servers without a local apiserver, tunnel access via the loadbalancer
 	if config.ControlConfig.DisableAPIServer {
-		ip = config.ControlConfig.Loopback()
+		ip = config.ControlConfig.Loopback(true)
 		port = config.ControlConfig.APIServerPort
 	}
 	url := fmt.Sprintf("https://%s:%d", ip, port)
