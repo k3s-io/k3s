@@ -103,7 +103,7 @@ require (
 	github.com/opencontainers/selinux v1.10.0
 	github.com/otiai10/copy v1.7.0
 	github.com/pkg/errors v0.9.1
-	github.com/rancher/dynamiclistener v0.3.3
+	github.com/rancher/dynamiclistener v0.3.4-0.20220721210816-8ebd77f8a45a
 	github.com/rancher/lasso v0.0.0-20210616224652-fc3ebd901c08
 	github.com/rancher/remotedialer v0.2.6-0.20220624190122-ea57207bf2b8
 	github.com/rancher/wharfie v0.5.1
