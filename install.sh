@@ -828,8 +828,8 @@ respawn_delay=5
 respawn_max=0
 
 set -o allexport
-if [ -f /etc/environment ]; then source /etc/environment; fi
-if [ -f ${FILE_K3S_ENV} ]; then source ${FILE_K3S_ENV}; fi
+if [ -f /etc/environment ]; then . /etc/environment; fi
+if [ -f ${FILE_K3S_ENV} ]; then . ${FILE_K3S_ENV}; fi
 set +o allexport
 EOF
     $SUDO chmod 0755 ${FILE_K3S_SERVICE}
