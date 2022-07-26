@@ -314,14 +314,11 @@ func HomeKubeConfig(write, rootless bool) (string, error) {
 }
 
 func printTokens(config *config.Control) error {
-	var (
-		nodeFile string
-	)
-	if len(config.Runtime.ServerToken) > 0 {
-		p := filepath.Join(config.DataDir, "token")
-		if err := writeToken(config.Runtime.ServerToken, p, config.Runtime.ServerCA); err == nil {
-			logrus.Infof("Node token is available at %s", p)
-			nodeFile = p
+	var serverTokenFile string
+	if config.Runtime.ServerToken != "" {
+		serverTokenFile = filepath.Join(config.DataDir, "token")
+		if err := writeToken(config.Runtime.ServerToken, serverTokenFile, config.Runtime.ServerCA); err != nil {
+			return err
 		}
 
 		// backwards compatibility
@@ -330,14 +327,43 @@ func printTokens(config *config.Control) error {
 			if err := os.RemoveAll(np); err != nil {
 				return err
 			}
-			if err := os.Symlink(p, np); err != nil {
+			if err := os.Symlink(serverTokenFile, np); err != nil {
 				return err
+			}
+		}
+
+		logrus.Infof("Server node token is available at %s", serverTokenFile)
+		printToken(config.SupervisorPort, config.BindAddressOrLoopback(true, true), "To join server node to cluster:", "server", "SERVER_NODE_TOKEN")
+	}
+
+	var agentTokenFile string
+	if config.Runtime.AgentToken != "" {
+		if config.AgentToken != "" {
+			agentTokenFile = filepath.Join(config.DataDir, "agent-token")
+			if isSymlink(agentTokenFile) {
+				if err := os.RemoveAll(agentTokenFile); err != nil {
+					return err
+				}
+			}
+			if err := writeToken(config.Runtime.AgentToken, agentTokenFile, config.Runtime.ServerCA); err != nil {
+				return err
+			}
+		} else if serverTokenFile != "" {
+			agentTokenFile = filepath.Join(config.DataDir, "agent-token")
+			if !isSymlink(agentTokenFile) {
+				if err := os.RemoveAll(agentTokenFile); err != nil {
+					return err
+				}
+				if err := os.Symlink(serverTokenFile, agentTokenFile); err != nil {
+					return err
+				}
 			}
 		}
 	}
 
-	if len(nodeFile) > 0 {
-		printToken(config.SupervisorPort, config.BindAddressOrLoopback(true, true), "To join node to cluster:", "agent")
+	if agentTokenFile != "" {
+		logrus.Infof("Agent node token is available at %s", agentTokenFile)
+		printToken(config.SupervisorPort, config.BindAddressOrLoopback(true, true), "To join agent node to cluster:", "agent", "AGENT_NODE_TOKEN")
 	}
 
 	return nil
@@ -424,8 +450,8 @@ func setupDataDirAndChdir(config *config.Control) error {
 	return nil
 }
 
-func printToken(httpsPort int, advertiseIP, prefix, cmd string) {
-	logrus.Infof("%s %s %s -s https://%s:%d -t ${NODE_TOKEN}", prefix, version.Program, cmd, advertiseIP, httpsPort)
+func printToken(httpsPort int, advertiseIP, prefix, cmd, varName string) {
+	logrus.Infof("%s %s %s -s https://%s:%d -t ${%s}", prefix, version.Program, cmd, advertiseIP, httpsPort, varName)
 }
 
 func writeToken(token, file, certs string) error {
