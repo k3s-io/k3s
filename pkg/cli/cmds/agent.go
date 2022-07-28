@@ -123,7 +123,7 @@ var (
 	}
 	PauseImageFlag = cli.StringFlag{
 		Name:        "pause-image",
-		Usage:       "(agent/runtime) Customized pause image for containerd sandbox",
+		Usage:       "(agent/runtime) Customized pause image for containerd or docker sandbox",
 		Destination: &AgentConfig.PauseImage,
 		Value:       DefaultPauseImage,
 	}

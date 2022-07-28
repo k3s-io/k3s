@@ -43,6 +43,7 @@ var KubeletReservedPorts = map[string]bool{
 }
 
 type Node struct {
+	Docker                   bool
 	ContainerRuntimeEndpoint string
 	NoFlannel                bool
 	SELinux                  bool
