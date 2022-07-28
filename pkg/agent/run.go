@@ -101,7 +101,7 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 		}
 	}
 
-	if nodeConfig.ContainerRuntimeEndpoint == "" {
+	if !nodeConfig.Docker && nodeConfig.ContainerRuntimeEndpoint == "" {
 		if err := containerd.Run(ctx, nodeConfig); err != nil {
 			return err
 		}

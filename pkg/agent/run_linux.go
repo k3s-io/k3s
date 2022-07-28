@@ -13,6 +13,7 @@ import (
 )
 
 const (
+	dockershimSock = "unix:///var/run/dockershim.sock"
 	containerdSock = "unix:///run/k3s/containerd/containerd.sock"
 )
 
@@ -21,7 +22,12 @@ const (
 func setupCriCtlConfig(cfg cmds.Agent, nodeConfig *config.Node) error {
 	cre := nodeConfig.ContainerRuntimeEndpoint
 	if cre == "" {
-		cre = containerdSock
+		switch {
+		case cfg.Docker:
+			cre = dockershimSock
+		default:
+			cre = containerdSock
+		}
 	}
 
 	agentConfDir := filepath.Join(cfg.DataDir, "agent", "etc")

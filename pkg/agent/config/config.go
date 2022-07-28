@@ -321,10 +321,6 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 		logrus.SetLevel(logrus.DebugLevel)
 	}
 
-	if envInfo.Docker {
-		return nil, errors.New("--docker is no longer supported; to continue using docker, install cri-dockerd and set --container-runtime-endpoint")
-	}
-
 	info, err := clientaccess.ParseAndValidateToken(proxy.SupervisorURL(), envInfo.Token)
 	if err != nil {
 		return nil, err
@@ -437,6 +433,7 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	}
 
 	nodeConfig := &config.Node{
+		Docker:                   envInfo.Docker,
 		SELinux:                  envInfo.EnableSELinux,
 		ContainerRuntimeEndpoint: envInfo.ContainerRuntimeEndpoint,
 		FlannelBackend:           controlConfig.FlannelBackend,
@@ -466,7 +463,7 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	nodeConfig.AgentConfig.StrongSwanDir = filepath.Join(envInfo.DataDir, "agent", "strongswan")
 	nodeConfig.Containerd.Config = filepath.Join(envInfo.DataDir, "agent", "etc", "containerd", "config.toml")
 	nodeConfig.Containerd.Root = filepath.Join(envInfo.DataDir, "agent", "containerd")
-	if nodeConfig.ContainerRuntimeEndpoint == "" {
+	if !nodeConfig.Docker && nodeConfig.ContainerRuntimeEndpoint == "" {
 		switch nodeConfig.AgentConfig.Snapshotter {
 		case "overlayfs":
 			if err := containerd.OverlaySupported(nodeConfig.Containerd.Root); err != nil {
@@ -539,7 +536,7 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 		nodeConfig.AgentConfig.FlannelCniConfFile = envInfo.FlannelCniConfFile
 	}
 
-	if nodeConfig.ContainerRuntimeEndpoint == "" {
+	if !nodeConfig.Docker && nodeConfig.ContainerRuntimeEndpoint == "" {
 		nodeConfig.AgentConfig.RuntimeSocket = nodeConfig.Containerd.Address
 	} else {
 		nodeConfig.AgentConfig.RuntimeSocket = nodeConfig.ContainerRuntimeEndpoint
