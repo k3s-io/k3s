@@ -17,7 +17,6 @@ PKG_CNI_PLUGINS="github.com/containernetworking/plugins"
 
 buildDate=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
 
-echo "BBB - ${PROG}"
 PROGRAMFLAGS=" -X ${PKG}/pkg/version.Program=${PROG} "
 VERSIONFLAGS="
     -X ${PKG}/pkg/version.Version=${VERSION}
