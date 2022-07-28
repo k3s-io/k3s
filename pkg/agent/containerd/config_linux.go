@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/containerd/containerd"
+	"github.com/docker/docker/pkg/parsers/kernel"
 	"github.com/k3s-io/k3s/pkg/agent/templates"
 	util2 "github.com/k3s-io/k3s/pkg/agent/util"
 	"github.com/k3s-io/k3s/pkg/cgroups"
@@ -64,6 +65,7 @@ func setupContainerdConfig(ctx context.Context, cfg *config.Node) error {
 		DisableCgroup:         disableCgroup,
 		SystemdCgroup:         cfg.AgentConfig.Systemd,
 		IsRunningInUserNS:     isRunningInUserNS,
+		EnableUnprivileged:    kernel.CheckKernelVersion(4, 11, 0),
 		PrivateRegistryConfig: privRegistries.Registry,
 		ExtraRuntimes:         findNvidiaContainerRuntimes(os.DirFS(string(os.PathSeparator))),
 	}
