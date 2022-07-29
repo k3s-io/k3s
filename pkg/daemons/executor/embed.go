@@ -7,6 +7,7 @@ import (
 	"context"
 	"net/http"
 	"runtime"
+	"runtime/debug"
 
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
 	daemonconfig "github.com/k3s-io/k3s/pkg/daemons/config"
@@ -57,7 +58,7 @@ func (e *Embedded) Kubelet(ctx context.Context, args []string) error {
 	go func() {
 		defer func() {
 			if err := recover(); err != nil {
-				logrus.Fatalf("kubelet panic: %v", err)
+				logrus.Fatalf("kubelet panic: %s", debug.Stack())
 			}
 		}()
 		// The embedded executor doesn't need the kubelet to come up to host any components, and
@@ -79,7 +80,7 @@ func (*Embedded) KubeProxy(ctx context.Context, args []string) error {
 	go func() {
 		defer func() {
 			if err := recover(); err != nil {
-				logrus.Fatalf("kube-proxy panic: %v", err)
+				logrus.Fatalf("kube-proxy panic: %s", debug.Stack())
 			}
 		}()
 		logrus.Fatalf("kube-proxy exited: %v", command.ExecuteContext(ctx))
@@ -101,7 +102,7 @@ func (*Embedded) APIServer(ctx context.Context, etcdReady <-chan struct{}, args 
 		<-etcdReady
 		defer func() {
 			if err := recover(); err != nil {
-				logrus.Fatalf("apiserver panic: %v", err)
+				logrus.Fatalf("apiserver panic: %s", debug.Stack())
 			}
 		}()
 		logrus.Fatalf("apiserver exited: %v", command.ExecuteContext(ctx))
@@ -130,7 +131,7 @@ func (e *Embedded) Scheduler(ctx context.Context, apiReady <-chan struct{}, args
 		}
 		defer func() {
 			if err := recover(); err != nil {
-				logrus.Fatalf("scheduler panic: %v", err)
+				logrus.Fatalf("scheduler panic: %s", debug.Stack())
 			}
 		}()
 		logrus.Fatalf("scheduler exited: %v", command.ExecuteContext(ctx))
@@ -147,7 +148,7 @@ func (*Embedded) ControllerManager(ctx context.Context, apiReady <-chan struct{}
 		<-apiReady
 		defer func() {
 			if err := recover(); err != nil {
-				logrus.Fatalf("controller-manager panic: %v", err)
+				logrus.Fatalf("controller-manager panic: %s", debug.Stack())
 			}
 		}()
 		logrus.Fatalf("controller-manager exited: %v", command.ExecuteContext(ctx))
@@ -190,7 +191,7 @@ func (*Embedded) CloudControllerManager(ctx context.Context, ccmRBACReady <-chan
 		<-ccmRBACReady
 		defer func() {
 			if err := recover(); err != nil {
-				logrus.Fatalf("cloud-controller-manager panic: %v", err)
+				logrus.Fatalf("cloud-controller-manager panic: %s", debug.Stack())
 			}
 		}()
 		logrus.Errorf("cloud-controller-manager exited: %v", command.ExecuteContext(ctx))
