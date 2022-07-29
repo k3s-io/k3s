@@ -131,27 +131,6 @@ def getDBType(role, role_num, vm)
   return ""
 end
 
-def dockerInstall(vm)
-  vm.provider "libvirt" do |v|
-    v.memory = NODE_MEMORY + 1024
-  end
-  vm.provider "virtualbox" do |v|
-    v.memory = NODE_MEMORY + 1024
-  end
-  if vm.box.to_s.include?("ubuntu")
-    vm.provision "shell", inline: "apt install -y docker.io"
-  end
-  if vm.box.to_s.include?("Leap")
-    vm.provision "shell", inline: "zypper install -y docker apparmor-parser"
-  end
-  if vm.box.to_s.include?("microos")
-    vm.provision "shell", inline: "transactional-update pkg install -y docker apparmor-parser"
-    vm.provision 'docker-reload', type: 'reload', run: 'once'
-    vm.provision "shell", inline: "systemctl enable --now docker"
-  end
-end
-
-
 Vagrant.configure("2") do |config|
   config.vagrant.plugins = ["vagrant-k3s", "vagrant-reload"]
   # Default provider is libvirt, virtualbox is only provided as a backup
