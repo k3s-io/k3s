@@ -515,14 +515,16 @@ var ServerFlags = []cli.Flag{
 	&DisableSELinuxFlag,
 	FlannelFlag,
 	cli.StringSliceFlag{
-		Name:  "no-deploy",
-		Usage: "(deprecated) Do not deploy packaged components (valid items: " + DisableItems + ")",
+		Name:   "no-deploy",
+		Usage:  "(deprecated) Do not deploy packaged components (valid items: " + DisableItems + ")",
+		Hidden: true,
 	},
 	cli.StringFlag{
 		Name:        "cluster-secret",
 		Usage:       "(deprecated) use --token",
 		Destination: &ServerConfig.ClusterSecret,
 		EnvVar:      version.ProgramUpper + "_CLUSTER_SECRET",
+		Hidden:      true,
 	},
 	cli.BoolFlag{
 		Name:        "disable-agent",

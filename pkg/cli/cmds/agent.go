@@ -198,6 +198,7 @@ var (
 		Destination: &AgentConfig.Docker,
 	}
 	FlannelFlag = cli.BoolFlag{
+		Hidden:      true,
 		Name:        "no-flannel",
 		Usage:       "(deprecated) use --flannel-backend=none",
 		Destination: &AgentConfig.NoFlannel,
@@ -285,6 +286,7 @@ func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
 				Usage:       "(deprecated) use --token",
 				Destination: &AgentConfig.ClusterSecret,
 				EnvVar:      version.ProgramUpper + "_CLUSTER_SECRET",
+				Hidden:      true,
 			},
 		},
 	}
