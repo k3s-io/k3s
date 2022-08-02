@@ -88,6 +88,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	}
 
 	if cfg.Token == "" && cfg.ClusterSecret != "" {
+		logrus.Warn("cluster-secret is deprecated, it will be removed in v1.25. Use --token instead.")
 		cfg.Token = cfg.ClusterSecret
 	}
 
@@ -348,6 +349,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 
 	serverConfig.ControlConfig.Skips = map[string]bool{}
 	for _, noDeploy := range app.StringSlice("no-deploy") {
+		logrus.Warn("no-deploy flag is deprecated, it will be removed in v1.25. Use --skip-deploy instead.")
 		for _, v := range strings.Split(noDeploy, ",") {
 			v = strings.TrimSpace(v)
 			serverConfig.ControlConfig.Skips[v] = true
