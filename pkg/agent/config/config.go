@@ -515,6 +515,9 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 
 	if nodeConfig.FlannelBackend == config.FlannelBackendNone {
 		nodeConfig.NoFlannel = true
+	} else if envInfo.NoFlannel {
+		logrus.Warn("no-flannel is deprecated, it will be removed in v1.25. Use --flannel-backend=none instead.")
+		nodeConfig.NoFlannel = envInfo.NoFlannel
 	} else {
 		nodeConfig.NoFlannel = envInfo.NoFlannel
 	}
