@@ -11,6 +11,7 @@ import (
 	coreclient "github.com/rancher/wrangler/pkg/generated/controllers/core/v1"
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -215,8 +216,12 @@ func (h *handler) updateSecrets(node *corev1.Node) error {
 	secretPager := pager.New(pager.SimplePageFunc(func(opts metav1.ListOptions) (runtime.Object, error) {
 		return h.secrets.List("", opts)
 	}))
+	secretsList, _, err := secretPager.List(h.ctx, metav1.ListOptions{})
+	if err != nil {
+		return err
+	}
 	i := 0
-	secretPager.EachListItem(h.ctx, metav1.ListOptions{}, func(obj runtime.Object) error {
+	err = meta.EachListItem(secretsList, func(obj runtime.Object) error {
 		if secret, ok := obj.(*corev1.Secret); ok {
 			if _, err := h.secrets.Update(secret); err != nil {
 				return fmt.Errorf("failed to reencrypted secret: %v", err)
@@ -228,6 +233,9 @@ func (h *handler) updateSecrets(node *corev1.Node) error {
 		}
 		return nil
 	})
+	if err != nil {
+		return err
+	}
 	h.recorder.Eventf(nodeRef, corev1.EventTypeNormal, secretsUpdateCompleteEvent, "completed reencrypt of %d secrets", i)
 	return nil
 }
