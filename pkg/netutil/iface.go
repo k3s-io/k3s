@@ -38,7 +38,7 @@ func getIPFromInterface(ifaceName string) (string, error) {
 		if err != nil {
 			return "", errors.Wrapf(err, "unable to parse CIDR for interface %s", iface.Name)
 		}
-		// skipping if not ipv4
+		// if not IPv4 adding it on IPv6 list
 		if ip.To4() == nil {
 			if ip.IsGlobalUnicast() {
 				globalUnicastsIPv6 = append(globalUnicastsIPv6, ip.String())
