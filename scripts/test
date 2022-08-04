@@ -68,7 +68,4 @@ echo "Did test-run-sonobuoy-mysql parallel $?"
 test-run-sonobuoy postgres parallel
 echo "Did test-run-sonobuoy-postgres parallel $?"
 
-
-
-
 exit 0

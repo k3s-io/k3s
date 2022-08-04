@@ -7,7 +7,7 @@ RUN mkdir -p /image/etc/ssl/certs /image/run /image/var/run /image/tmp /image/li
 
 FROM scratch
 ARG VERSION="dev"
-ARG PROG "k3s"
+ARG PROG="k3s"
 
 COPY --from=base /image /
 RUN mkdir -p /etc && \
