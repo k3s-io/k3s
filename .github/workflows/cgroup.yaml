@@ -42,7 +42,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        vm: [fedora-34]
+        vm: [fedora-35]
         mode: [unified]
       max-parallel: 1
     defaults:
