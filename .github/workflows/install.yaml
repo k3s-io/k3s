@@ -15,7 +15,7 @@ on:
 jobs:
   test:
     name: "Smoke Test"
-    runs-on: macos-10.15
+    runs-on: macos-12
     timeout-minutes: 40
     strategy:
       fail-fast: false
