@@ -1,2 +1,0 @@
-FROM k3s:enterprise-build
-COPY . /go/src/github.com/k3s-io/k3s/
