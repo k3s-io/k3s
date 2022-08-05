@@ -45,8 +45,7 @@ func GetBasepath() string {
 
 func checkError(e error) {
 	if e != nil {
-		log.Fatal(err)
-		panic(e)
+		log.Fatal(e)
 	}
 }
 
