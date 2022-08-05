@@ -16,6 +16,7 @@ import (
 var nodeOS = flag.String("nodeOS", "generic/ubuntu2004", "VM operating system")
 var serverCount = flag.Int("serverCount", 3, "number of server nodes")
 var agentCount = flag.Int("agentCount", 2, "number of agent nodes")
+var hardened = flag.Bool("hardened", false, "true or false")
 
 // Environment Variables Info:
 // E2E_EXTERNAL_DB: mysql or postgres, nil for embedded etcd
@@ -74,7 +75,7 @@ var _ = Describe("Verify Create", func() {
 		})
 
 		It("Verifies ClusterIP Service", func() {
-			_, err := e2e.DeployWorkload("clusterip.yaml", kubeConfigFile, false)
+			_, err := e2e.DeployWorkload("clusterip.yaml", kubeConfigFile, *hardened)
 			Expect(err).NotTo(HaveOccurred(), "Cluster IP manifest not deployed")
 
 			Eventually(func(g Gomega) {
@@ -98,7 +99,7 @@ var _ = Describe("Verify Create", func() {
 		})
 
 		It("Verifies NodePort Service", func() {
-			_, err := e2e.DeployWorkload("nodeport.yaml", kubeConfigFile, false)
+			_, err := e2e.DeployWorkload("nodeport.yaml", kubeConfigFile, *hardened)
 			Expect(err).NotTo(HaveOccurred(), "NodePort manifest not deployed")
 
 			for _, nodeName := range serverNodeNames {
@@ -126,7 +127,7 @@ var _ = Describe("Verify Create", func() {
 		})
 
 		It("Verifies LoadBalancer Service", func() {
-			_, err := e2e.DeployWorkload("loadbalancer.yaml", kubeConfigFile, false)
+			_, err := e2e.DeployWorkload("loadbalancer.yaml", kubeConfigFile, *hardened)
 			Expect(err).NotTo(HaveOccurred(), "Loadbalancer manifest not deployed")
 
 			for _, nodeName := range serverNodeNames {
@@ -155,7 +156,7 @@ var _ = Describe("Verify Create", func() {
 		})
 
 		It("Verifies Ingress", func() {
-			_, err := e2e.DeployWorkload("ingress.yaml", kubeConfigFile, false)
+			_, err := e2e.DeployWorkload("ingress.yaml", kubeConfigFile, *hardened)
 			Expect(err).NotTo(HaveOccurred(), "Ingress manifest not deployed")
 
 			for _, nodeName := range serverNodeNames {
@@ -173,7 +174,7 @@ var _ = Describe("Verify Create", func() {
 		})
 
 		It("Verifies Daemonset", func() {
-			_, err := e2e.DeployWorkload("daemonset.yaml", kubeConfigFile, false)
+			_, err := e2e.DeployWorkload("daemonset.yaml", kubeConfigFile, *hardened)
 			Expect(err).NotTo(HaveOccurred(), "Daemonset manifest not deployed")
 
 			nodes, _ := e2e.ParseNodes(kubeConfigFile, false)
@@ -190,7 +191,7 @@ var _ = Describe("Verify Create", func() {
 		})
 
 		It("Verifies dns access", func() {
-			_, err := e2e.DeployWorkload("dnsutils.yaml", kubeConfigFile, false)
+			_, err := e2e.DeployWorkload("dnsutils.yaml", kubeConfigFile, *hardened)
 			Expect(err).NotTo(HaveOccurred(), "dnsutils manifest not deployed")
 
 			Eventually(func(g Gomega) {
@@ -210,7 +211,7 @@ var _ = Describe("Verify Create", func() {
 		})
 
 		It("Verifies Local Path Provisioner storage ", func() {
-			_, err := e2e.DeployWorkload("local-path-provisioner.yaml", kubeConfigFile, false)
+			_, err := e2e.DeployWorkload("local-path-provisioner.yaml", kubeConfigFile, *hardened)
 			Expect(err).NotTo(HaveOccurred(), "local-path-provisioner manifest not deployed")
 
 			Eventually(func(g Gomega) {
@@ -241,7 +242,7 @@ var _ = Describe("Verify Create", func() {
 			Expect(err).NotTo(HaveOccurred())
 			fmt.Println(res)
 
-			_, err = e2e.DeployWorkload("local-path-provisioner.yaml", kubeConfigFile, false)
+			_, err = e2e.DeployWorkload("local-path-provisioner.yaml", kubeConfigFile, *hardened)
 			Expect(err).NotTo(HaveOccurred(), "local-path-provisioner manifest not deployed")
 
 			Eventually(func(g Gomega) {

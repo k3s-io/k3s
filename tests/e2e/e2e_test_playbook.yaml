@@ -1,0 +1,34 @@
+---
+- name: Run Cluster validation tests
+  gather_facts: false
+  hosts: node
+  vars:
+    user: "{{ user }}"
+    key: "{{ key }}"
+    ip: "{{ ip }}"
+    dir: scripts
+  tasks:
+    - name : Print var
+      debug:
+        msg: |
+          user: {{ user }}
+          key: {{ key }}
+          ip: {{ ip }}
+          db: {{ db }}
+          nodeOS: {{ nodeOS }}
+          serverCount: {{ serverCount }}
+          agentCount: {{ agentCount }}
+
+    - name: build container image
+      command: chdir=k3s/tests/e2e /usr/local/bin/docker build -t k3s_nightly_build -f {{ dir }}/Dockerfile .
+
+    - name: Delete docker container
+      command: "/usr/local/bin/docker rm createcluster -f"
+      ignore_errors: True
+
+    - name: create docker container
+      command: "/usr/local/bin/docker run -d -it -v ~/config:/config --cap-add=NET_ADMIN --device /dev/net/tun --sysctl net.ipv6.conf.all.disable_ipv6=0  --name createcluster --privileged k3s_nightly_build"
+
+    - name: execute command in docker
+      shell: |
+        /usr/local/bin/docker exec -it createcluster /bin/bash ./run_tests.sh {{ key }} {{ user }} {{ ip }} {{ db }} {{ nodeOS }} {{ serverCount }} {{ agentCount }}
