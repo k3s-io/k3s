@@ -1,0 +1,2 @@
+[node]
+localhost ansible_python_interpreter=/usr/local/opt/python@3.9/bin/python3.9
