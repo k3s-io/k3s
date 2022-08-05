@@ -18,6 +18,7 @@ var nodeOS = flag.String("nodeOS", "generic/ubuntu2004", "VM operating system")
 var etcdCount = flag.Int("etcdCount", 1, "number of server nodes only deploying etcd")
 var controlPlaneCount = flag.Int("controlPlaneCount", 1, "number of server nodes acting as control plane")
 var agentCount = flag.Int("agentCount", 1, "number of agent nodes")
+var hardened = flag.Bool("hardened", false, "true or false")
 
 // Environment Variables Info:
 // E2E_RELEASE_VERSION=v1.23.1+k3s2 or nil for latest commit from master
@@ -111,7 +112,7 @@ var _ = Describe("Verify Create", func() {
 		})
 
 		It("Verifies ClusterIP Service", func() {
-			_, err := e2e.DeployWorkload("clusterip.yaml", kubeConfigFile, false)
+			_, err := e2e.DeployWorkload("clusterip.yaml", kubeConfigFile, *hardened)
 			Expect(err).NotTo(HaveOccurred(), "Cluster IP manifest not deployed")
 
 			cmd := "kubectl get pods -o=name -l k8s-app=nginx-app-clusterip --field-selector=status.phase=Running --kubeconfig=" + kubeConfigFile
@@ -129,7 +130,7 @@ var _ = Describe("Verify Create", func() {
 		})
 
 		It("Verifies NodePort Service", func() {
-			_, err := e2e.DeployWorkload("nodeport.yaml", kubeConfigFile, false)
+			_, err := e2e.DeployWorkload("nodeport.yaml", kubeConfigFile, *hardened)
 			Expect(err).NotTo(HaveOccurred(), "NodePort manifest not deployed")
 
 			for _, nodeName := range cpNodeNames {
@@ -151,7 +152,7 @@ var _ = Describe("Verify Create", func() {
 		})
 
 		It("Verifies LoadBalancer Service", func() {
-			_, err := e2e.DeployWorkload("loadbalancer.yaml", kubeConfigFile, false)
+			_, err := e2e.DeployWorkload("loadbalancer.yaml", kubeConfigFile, *hardened)
 			Expect(err).NotTo(HaveOccurred(), "Loadbalancer manifest not deployed")
 
 			for _, nodeName := range cpNodeNames {
@@ -174,7 +175,7 @@ var _ = Describe("Verify Create", func() {
 		})
 
 		It("Verifies Ingress", func() {
-			_, err := e2e.DeployWorkload("ingress.yaml", kubeConfigFile, false)
+			_, err := e2e.DeployWorkload("ingress.yaml", kubeConfigFile, *hardened)
 			Expect(err).NotTo(HaveOccurred(), "Ingress manifest not deployed")
 
 			for _, nodeName := range cpNodeNames {
@@ -187,7 +188,7 @@ var _ = Describe("Verify Create", func() {
 		})
 
 		It("Verifies Daemonset", func() {
-			_, err := e2e.DeployWorkload("daemonset.yaml", kubeConfigFile, false)
+			_, err := e2e.DeployWorkload("daemonset.yaml", kubeConfigFile, *hardened)
 			Expect(err).NotTo(HaveOccurred(), "Daemonset manifest not deployed")
 
 			Eventually(func(g Gomega) {
@@ -202,7 +203,7 @@ var _ = Describe("Verify Create", func() {
 		})
 
 		It("Verifies dns access", func() {
-			_, err := e2e.DeployWorkload("dnsutils.yaml", kubeConfigFile, false)
+			_, err := e2e.DeployWorkload("dnsutils.yaml", kubeConfigFile, *hardened)
 			Expect(err).NotTo(HaveOccurred(), "dnsutils manifest not deployed")
 
 			cmd := "kubectl get pods dnsutils --kubeconfig=" + kubeConfigFile

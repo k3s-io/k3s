@@ -69,10 +69,10 @@ func CreateCluster(nodeOS string, serverCount, agentCount int) ([]string, []stri
 	return serverNodeNames, agentNodeNames, nil
 }
 
-func DeployWorkload(workload, kubeconfig string, arch bool) (string, error) {
+func DeployWorkload(workload, kubeconfig string, hardened bool) (string, error) {
 	resourceDir := "../amd64_resource_files"
-	if arch {
-		resourceDir = "../arm64_resource_files"
+	if hardened {
+		resourceDir = "../cis_amd64_resource_files"
 	}
 	files, err := ioutil.ReadDir(resourceDir)
 	if err != nil {
