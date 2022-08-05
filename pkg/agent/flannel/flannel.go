@@ -70,8 +70,8 @@ func flannel(ctx context.Context, flannelIface *net.Interface, flannelConf, kube
 	}
 
 	if netMode == (ipv4+ipv6) || netMode == ipv4 {
-		go network.SetupAndEnsureIPTables(network.MasqRules(config.Network, bn.Lease()), 60)
-		go network.SetupAndEnsureIPTables(network.ForwardRules(config.Network.String()), 50)
+		go network.SetupAndEnsureIP4Tables(network.MasqRules(config.Network, bn.Lease()), 60)
+		go network.SetupAndEnsureIP4Tables(network.ForwardRules(config.Network.String()), 50)
 	}
 
 	if flannelIPv6Masq && config.IPv6Network.String() != emptyIPv6Network {
