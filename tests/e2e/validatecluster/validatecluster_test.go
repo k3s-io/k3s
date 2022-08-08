@@ -224,13 +224,11 @@ var _ = Describe("Verify Create", func() {
 				g.Expect(res).Should(ContainSubstring("Running"))
 			}, "420s", "2s").Should(Succeed())
 
-			When("Data is stored in pvc: local-path-test", func() {
-				cmd := "kubectl --kubeconfig=" + kubeConfigFile + " exec volume-test -- sh -c 'echo local-path-test > /data/test'"
-				_, err = e2e.RunCommand(cmd)
-				Expect(err).NotTo(HaveOccurred())
-			})
+			cmd := "kubectl --kubeconfig=" + kubeConfigFile + " exec volume-test -- sh -c 'echo local-path-test > /data/test'"
+			_, err = e2e.RunCommand(cmd)
+			Expect(err).NotTo(HaveOccurred())
 
-			cmd := "kubectl delete pod volume-test --kubeconfig=" + kubeConfigFile
+			cmd = "kubectl delete pod volume-test --kubeconfig=" + kubeConfigFile
 			res, err := e2e.RunCommand(cmd)
 			Expect(err).NotTo(HaveOccurred(), "failed cmd: "+cmd+" result: "+res)
 
@@ -253,7 +251,7 @@ var _ = Describe("Verify Create", func() {
 			}, "420s", "2s").Should(Succeed())
 
 			Eventually(func(g Gomega) {
-				cmd = "kubectl exec volume-test cat /data/test --kubeconfig=" + kubeConfigFile
+				cmd := "kubectl exec volume-test --kubeconfig=" + kubeConfigFile + " -- cat /data/test"
 				res, err = e2e.RunCommand(cmd)
 				g.Expect(err).NotTo(HaveOccurred(), "failed cmd: "+cmd+" result: "+res)
 				fmt.Println("Data after re-creation", res)
