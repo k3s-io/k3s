@@ -20,7 +20,7 @@ on:
       - "!.github/workflows/cgroup.yaml"
   workflow_dispatch: {}
 jobs:
-  prep:
+  prep-cgroup:
     name: "Prepare"
     runs-on: ubuntu-20.04
     timeout-minutes: 40
@@ -33,7 +33,7 @@ jobs:
       - name: "Upload"
         uses: actions/upload-artifact@v2
         with: { name: k3s, path: dist/artifacts/k3s }
-  test:
+  test-cgroup:
     name: "Conformance Test"
     needs: prep
     # nested virtualization is only available on macOS hosts
