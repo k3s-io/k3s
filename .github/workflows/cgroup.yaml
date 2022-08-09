@@ -35,7 +35,7 @@ jobs:
         with: { name: k3s, path: dist/artifacts/k3s }
   test-cgroup:
     name: "Conformance Test"
-    needs: prep
+    needs: prep-cgroup
     # nested virtualization is only available on macOS hosts
     runs-on: macos-12
     timeout-minutes: 40
