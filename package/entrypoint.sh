@@ -3,7 +3,7 @@
 set -x
 
 if [ "$1" = "" ]; then
-    bin/${PROG} agent
+    bin/${PROG} agent $@
 else
     bin/${PROG} $@
 fi
