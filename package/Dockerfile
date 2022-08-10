@@ -22,5 +22,5 @@ ENV PATH="$PATH:/bin/aux"
 ENV CRI_CONFIG_FILE="/var/lib/rancher/${PROG}/agent/etc/crictl.yaml"
 ENV PROG ${PROG}
 
-ENTRYPOINT ["/bin/${PROG}"]
+ENTRYPOINT ["/bin/sh", "-c", "${PROG}"]
 CMD ["agent"]
