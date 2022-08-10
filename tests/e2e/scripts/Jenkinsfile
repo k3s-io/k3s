@@ -1,7 +1,9 @@
 pipeline {
     agent any
     environment {
-        AWS_SSH_PEM_KEY = credentials('AWS_SSH_PEM_KEY')
+	AWS_SSH_PEM_KEY = credentials('AWS_SSH_PEM_KEY')
+	VPN_ENCODED_LOGIN = credentials('VPN_ENCODED_LOGIN')
+	EXTERNAL_ENCODED_VPN = credentials('EXTERNAL_ENCODED_VPN')
     }
         
     stages {
@@ -21,7 +23,6 @@ pipeline {
         stage('Build Cluster'){
             steps {
                 script {
-                    try {
                         sh """
                             cd ${WORKSPACE}/tests/e2e/
                             /usr/bin/docker build -f ./scripts/Dockerfile --build-arg EXTERNAL_ENCODED_VPN="$EXTERNAL_ENCODED_VPN" \
@@ -32,12 +33,6 @@ pipeline {
                             /usr/bin/docker exec createcluster_${BUILD_NUMBER} ./run_tests.sh ${AWS_SSH_KEY_NAME} ${USER} ${NODEIP} \
                             ${NODEOS} ${SERVERCOUNT} ${AGENTCOUNT} ${DB} ${HARDENED}
                         """
-                    } catch(error) {
-                            echo "First build failed, let's retry if accepted"
-                            retry(2) {
-                                build 'k3s_nightly_automation'
-                        }
-                    }
                 }
             }
         }
