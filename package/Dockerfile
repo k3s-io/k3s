@@ -20,7 +20,8 @@ VOLUME /var/lib/cni
 VOLUME /var/log
 ENV PATH="$PATH:/bin/aux"
 ENV CRI_CONFIG_FILE="/var/lib/rancher/${PROG}/agent/etc/crictl.yaml"
-ENV PROG ${PROG}
+ENV PROG=${PROG}
+ADD ./package/entrypoint.sh /bin
 
-ENTRYPOINT ["/bin/sh", "-c", "exec ${PROG}"]
+ENTRYPOINT "entrypoint.sh"
 CMD ["agent"]
