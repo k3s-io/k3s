@@ -23,5 +23,5 @@ ENV CRI_CONFIG_FILE="/var/lib/rancher/${PROG}/agent/etc/crictl.yaml"
 ENV PROG=${PROG}
 ADD ./package/entrypoint.sh /bin
 
-ENTRYPOINT "entrypoint.sh"
+ENTRYPOINT ["entrypoint.sh"]
 CMD ["agent"]
