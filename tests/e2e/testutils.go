@@ -38,7 +38,8 @@ func CountOfStringInSlice(str string, pods []Pod) int {
 	return count
 }
 
-func CreateCluster(nodeOS string, serverCount, agentCount int) ([]string, []string, error) {
+// genNodeEnvs generates the node and testing environment variables for vagrant up
+func genNodeEnvs(nodeOS string, serverCount, agentCount int) ([]string, []string, string) {
 	serverNodeNames := make([]string, serverCount)
 	for i := 0; i < serverCount; i++ {
 		serverNodeNames[i] = "server-" + strconv.Itoa(i)
@@ -47,11 +48,21 @@ func CreateCluster(nodeOS string, serverCount, agentCount int) ([]string, []stri
 	for i := 0; i < agentCount; i++ {
 		agentNodeNames[i] = "agent-" + strconv.Itoa(i)
 	}
-	nodeRoles := strings.Join(serverNodeNames, " ") + " " + strings.Join(agentNodeNames, " ")
 
+	nodeRoles := strings.Join(serverNodeNames, " ") + " " + strings.Join(agentNodeNames, " ")
 	nodeRoles = strings.TrimSpace(nodeRoles)
+
 	nodeBoxes := strings.Repeat(nodeOS+" ", serverCount+agentCount)
 	nodeBoxes = strings.TrimSpace(nodeBoxes)
+
+	nodeEnvs := fmt.Sprintf(`E2E_NODE_ROLES="%s" E2E_NODE_BOXES="%s"`, nodeRoles, nodeBoxes)
+
+	return serverNodeNames, agentNodeNames, nodeEnvs
+}
+
+func CreateCluster(nodeOS string, serverCount, agentCount int) ([]string, []string, error) {
+
+	serverNodeNames, agentNodeNames, nodeEnvs := genNodeEnvs(nodeOS, serverCount, agentCount)
 
 	var testOptions string
 	for _, env := range os.Environ() {
@@ -60,12 +71,51 @@ func CreateCluster(nodeOS string, serverCount, agentCount int) ([]string, []stri
 		}
 	}
 
-	cmd := fmt.Sprintf(`E2E_NODE_ROLES="%s" E2E_NODE_BOXES="%s" %s vagrant up &> vagrant.log`, nodeRoles, nodeBoxes, testOptions)
+	cmd := fmt.Sprintf(`%s %s vagrant up &> vagrant.log`, nodeEnvs, testOptions)
 	fmt.Println(cmd)
 	if _, err := RunCommand(cmd); err != nil {
-		fmt.Println("Error Creating Cluster", err)
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("failed creating cluster: %s: %v", cmd, err)
 	}
+	return serverNodeNames, agentNodeNames, nil
+}
+
+// CreateLocalCluster creates a cluster using the locally built k3s binary. The vagrant-scp plugin must be installed for
+// this function to work. The binary is deployed as an airgapped install of k3s on the VMs.
+// This is intended only for local testing puposes when writing a new E2E test.
+func CreateLocalCluster(nodeOS string, serverCount, agentCount int) ([]string, []string, error) {
+
+	serverNodeNames, agentNodeNames, nodeEnvs := genNodeEnvs(nodeOS, serverCount, agentCount)
+
+	var testOptions string
+	for _, env := range os.Environ() {
+		if strings.HasPrefix(env, "E2E_") {
+			testOptions += " " + env
+		}
+	}
+	testOptions += " E2E_RELEASE_VERSION=skip"
+
+	cmd := fmt.Sprintf(`%s vagrant up --no-provision &> vagrant.log`, nodeEnvs)
+	if _, err := RunCommand(cmd); err != nil {
+		return nil, nil, fmt.Errorf("failed creating nodes: %s: %v", cmd, err)
+	}
+
+	nodeRoles := append(serverNodeNames, agentNodeNames...)
+
+	for _, node := range nodeRoles {
+		cmd = fmt.Sprintf(`vagrant scp ../../../dist/artifacts/k3s  %s:/tmp/`, node)
+		if _, err := RunCommand(cmd); err != nil {
+			return nil, nil, fmt.Errorf("failed to scp k3s binary to %s: %v", node, err)
+		}
+		if _, err := RunCmdOnNode("sudo mv /tmp/k3s /usr/local/bin/", node); err != nil {
+			return nil, nil, err
+		}
+	}
+
+	cmd = fmt.Sprintf(`%s %s vagrant provision &>> vagrant.log`, nodeEnvs, testOptions)
+	if _, err := RunCommand(cmd); err != nil {
+		return nil, nil, fmt.Errorf("failed creating cluster: %s: %v", cmd, err)
+	}
+
 	return serverNodeNames, agentNodeNames, nil
 }
 
@@ -240,7 +290,11 @@ func RestartCluster(nodeNames []string) error {
 // RunCmdOnNode executes a command from within the given node
 func RunCmdOnNode(cmd string, nodename string) (string, error) {
 	runcmd := "vagrant ssh -c \"" + cmd + "\" " + nodename
-	return RunCommand(runcmd)
+	out, err := RunCommand(runcmd)
+	if err != nil {
+		return out, fmt.Errorf("failed to run command %s on node %s: %v", cmd, nodename, err)
+	}
+	return out, nil
 }
 
 // RunCommand executes a command on the host

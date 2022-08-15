@@ -234,7 +234,7 @@ var _ = Describe("Verify Upgrade", func() {
 
 			// Check data after re-creation
 			Eventually(func() (string, error) {
-				cmd = "kubectl exec volume-test cat /data/test --kubeconfig=" + kubeConfigFile
+				cmd := "kubectl exec volume-test --kubeconfig=" + kubeConfigFile + " -- cat /data/test"
 				return e2e.RunCommand(cmd)
 			}, "180s", "2s").Should(ContainSubstring("local-path-test"))
 		})
@@ -364,7 +364,7 @@ var _ = Describe("Verify Upgrade", func() {
 
 		It("After upgrade verify Local Path Provisioner storage ", func() {
 			Eventually(func() (string, error) {
-				cmd := "kubectl exec volume-test cat /data/test --kubeconfig=" + kubeConfigFile
+				cmd := "kubectl exec volume-test --kubeconfig=" + kubeConfigFile + " -- cat /data/test"
 				return e2e.RunCommand(cmd)
 			}, "180s", "2s").Should(ContainSubstring("local-path-test"))
 		})
