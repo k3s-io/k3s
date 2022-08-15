@@ -61,12 +61,16 @@ EOF
     test.vm.provision 'k3s-install', type: 'k3s', run: ENV['CI'] == 'true' ? 'never' : 'once' do |k3s|
       k3s.args = %w[server]
       k3s.env = %w[INSTALL_K3S_NAME=server INSTALL_K3S_SKIP_DOWNLOAD=true K3S_TOKEN=vagrant INSTALL_K3S_SKIP_ENABLE=true]
-      k3s.config = {
-        'disable' => %w[local-storage metrics-server servicelb traefik],
-        'disable-helm-controller' => true,
-        'disable-network-policy' => true,
-        'write-kubeconfig-mode' => '0644',
-      }
+      k3s.config = <<~YAML
+        disable:
+        - local-storage 
+        - metrics-server
+        - servicelb
+        - traefik
+        disable-helm-controller: true
+        disable-network-policy: true
+        write-kubeconfig-mode: '0644'
+      YAML
       k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
     end
     test.vm.provision "k3s-start", type: "shell", run: ENV['CI'] == 'true' ? 'never' : 'once' do |sh|

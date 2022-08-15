@@ -22,9 +22,9 @@ Vagrant.configure("2") do |config|
         :INSTALL_K3S_NAME => 'server',
         :INSTALL_K3S_SKIP_SELINUX_RPM => 'true',
       })
-      k3s.config = {
-        :token => 'vagrant',
-      }
+      k3s.config = <<~YAML
+        token: 'vagrant'
+      YAML
       k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
     end
     test.vm.provision "k3s-wait-for-node", type: "shell", run: ENV['CI'] == 'true' ? 'never' : 'once' do |sh|

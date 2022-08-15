@@ -22,10 +22,10 @@ Vagrant.configure("2") do |config|
       k3s.env = ENV.select{|k,v| k.start_with?('K3S_') || k.start_with?('INSTALL_K3S_')}.merge({
         :INSTALL_K3S_NAME => 'server',
       })
-      k3s.config = {
-        :selinux => true,
-        :token => 'vagrant',
-      }
+      k3s.config = <<~YAML
+        selinux: true
+        token: 'vagrant'
+      YAML
       k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
     end
     # install.sh will move the snapshot forward when installing k3s-selinux policy, so, we reboot to pick that up
