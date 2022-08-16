@@ -1,16 +1,7 @@
 name: Install Script
 on:
-  push:
-    branches: [main, master]
-    paths:
-      - "channel.yaml"
-      - "install.sh"
-      - "tests/install/**"
-  pull_request:
-    branches: [main, master]
-    paths:
-      - "install.sh"
-      - "tests/install/**"
+  schedule:
+  - cron: "0 0 * * *"
   workflow_dispatch: {}
 jobs:
   test:
