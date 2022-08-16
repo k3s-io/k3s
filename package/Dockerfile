@@ -12,7 +12,7 @@ ARG VERSION="dev"
 ARG PROG="k3s"
 
 COPY --from=base /image /
-COPY --from=base /bin/entrypoint /bin/entrypoint
+COPY --from=base /bin/entrypoint.sh /bin/entrypoint.sh
 RUN mkdir -p /etc && \
     echo 'hosts: files dns' > /etc/nsswitch.conf && \
     echo "PRETTY_NAME=\"${PROG} ${VERSION}\"" > /etc/os-release && \
