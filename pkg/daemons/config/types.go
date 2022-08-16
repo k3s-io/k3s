@@ -43,6 +43,7 @@ var KubeletReservedPorts = map[string]bool{
 }
 
 type Node struct {
+	Docker                   bool
 	ContainerRuntimeEndpoint string
 	NoFlannel                bool
 	SELinux                  bool
@@ -53,6 +54,7 @@ type Node struct {
 	FlannelIPv6Masq          bool
 	EgressSelectorMode       string
 	Containerd               Containerd
+	CRIDockerd               CRIDockerd
 	Images                   string
 	AgentConfig              Agent
 	Token                    string
@@ -69,6 +71,11 @@ type Containerd struct {
 	Opt      string
 	Template string
 	SELinux  bool
+}
+
+type CRIDockerd struct {
+	Address string
+	Root    string
 }
 
 type Agent struct {

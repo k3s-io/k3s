@@ -7,12 +7,14 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 )
 
 const (
+	dockershimSock = "npipe:////./pipe/docker_engine"
 	containerdSock = "npipe:////./pipe/containerd-containerd"
 )
 
@@ -20,10 +22,16 @@ const (
 // with the given data from config.
 func setupCriCtlConfig(cfg cmds.Agent, nodeConfig *config.Node) error {
 	cre := nodeConfig.ContainerRuntimeEndpoint
-	if cre == "" {
+	if cre == "" || strings.HasPrefix(cre, "npipe:") {
+		switch {
+		case cfg.Docker:
+			cre = dockershimSock
+		default:
+			cre = containerdSock
+		}
+	} else {
 		cre = containerdSock
 	}
-
 	agentConfDir := filepath.Join(cfg.DataDir, "agent", "etc")
 	if _, err := os.Stat(agentConfDir); os.IsNotExist(err) {
 		if err := os.MkdirAll(agentConfDir, 0700); err != nil {

@@ -13,6 +13,7 @@ import (
 	systemd "github.com/coreos/go-systemd/daemon"
 	"github.com/k3s-io/k3s/pkg/agent/config"
 	"github.com/k3s-io/k3s/pkg/agent/containerd"
+	"github.com/k3s-io/k3s/pkg/agent/cridockerd"
 	"github.com/k3s-io/k3s/pkg/agent/flannel"
 	"github.com/k3s-io/k3s/pkg/agent/netpol"
 	"github.com/k3s-io/k3s/pkg/agent/proxy"
@@ -73,7 +74,7 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 	if (serviceIPv6 != clusterIPv6) || (dualCluster != dualService) || (serviceIPv4 != clusterIPv4) {
 		return fmt.Errorf("cluster-cidr: %v and service-cidr: %v, must share the same IP version (IPv4, IPv6 or dual-stack)", nodeConfig.AgentConfig.ClusterCIDRs, nodeConfig.AgentConfig.ServiceCIDRs)
 	}
-	if (clusterIPv6 != nodeIPv6) || (dualCluster != dualNode) || (clusterIPv4 != nodeIPv4) {
+	if (clusterIPv6 && !nodeIPv6) || (dualCluster && !dualNode) || (clusterIPv4 && !nodeIPv4) {
 		return fmt.Errorf("cluster-cidr: %v and node-ip: %v, must share the same IP version (IPv4, IPv6 or dual-stack)", nodeConfig.AgentConfig.ClusterCIDRs, nodeConfig.AgentConfig.NodeIPs)
 	}
 	enableIPv6 := dualCluster || clusterIPv6
@@ -101,7 +102,11 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 		}
 	}
 
-	if nodeConfig.ContainerRuntimeEndpoint == "" {
+	if nodeConfig.Docker {
+		if err := cridockerd.Run(ctx, nodeConfig); err != nil {
+			return err
+		}
+	} else if nodeConfig.ContainerRuntimeEndpoint == "" {
 		if err := containerd.Run(ctx, nodeConfig); err != nil {
 			return err
 		}

@@ -104,9 +104,14 @@ var (
 		EnvVar:      version.ProgramUpper + "_LB_SERVER_PORT",
 		Value:       6444,
 	}
+	DockerFlag = cli.BoolFlag{
+		Name:        "docker",
+		Usage:       "(agent/runtime) (experimental) Use cri-dockerd instead of containerd",
+		Destination: &AgentConfig.Docker,
+	}
 	CRIEndpointFlag = cli.StringFlag{
 		Name:        "container-runtime-endpoint",
-		Usage:       "(agent/runtime) Disable embedded containerd and use alternative CRI implementation",
+		Usage:       "(agent/runtime) Disable embedded containerd and use the CRI socket at the given path; when used with --docker this sets the docker socket path",
 		Destination: &AgentConfig.ContainerRuntimeEndpoint,
 	}
 	PrivateRegistryFlag = cli.StringFlag{
@@ -123,7 +128,7 @@ var (
 	}
 	PauseImageFlag = cli.StringFlag{
 		Name:        "pause-image",
-		Usage:       "(agent/runtime) Customized pause image for containerd sandbox",
+		Usage:       "(agent/runtime) Customized pause image for containerd or docker sandbox",
 		Destination: &AgentConfig.PauseImage,
 		Value:       DefaultPauseImage,
 	}
@@ -190,12 +195,6 @@ var (
 		Name:   "disable-selinux",
 		Usage:  "(deprecated) Use --selinux to explicitly enable SELinux",
 		Hidden: true,
-	}
-	DockerFlag = cli.BoolFlag{
-		Hidden:      true,
-		Name:        "docker",
-		Usage:       "(deprecated) (agent/runtime) Use docker instead of containerd",
-		Destination: &AgentConfig.Docker,
 	}
 	FlannelFlag = cli.BoolFlag{
 		Hidden:      true,

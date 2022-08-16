@@ -142,6 +142,13 @@ func GetHostnameAndIPs(name string, nodeIPs cli.StringSlice) (string, []net.IP, 
 			return "", nil, err
 		}
 		ips = append(ips, hostIP)
+		// If IPv6 it's an IPv6 only node
+		if hostIP.To4() != nil {
+			hostIPv6, err := apinet.ResolveBindAddress(net.IPv6loopback)
+			if err == nil && !hostIPv6.Equal(hostIP) {
+				ips = append(ips, hostIPv6)
+			}
+		}
 	} else {
 		var err error
 		ips, err = ParseStringSliceToIPs(nodeIPs)

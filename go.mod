@@ -4,6 +4,7 @@ go 1.16
 
 replace (
 	github.com/Microsoft/hcsshim => github.com/Microsoft/hcsshim v0.8.22
+	github.com/Mirantis/cri-dockerd => github.com/k3s-io/cri-dockerd v0.2.4-0.20220729204449-bcbb75d5abff // k3s-master
 	github.com/cloudnativelabs/kube-router => github.com/k3s-io/kube-router v1.5.1-0.20220630214451-a43bcd8511d2
 	github.com/containerd/cgroups => github.com/containerd/cgroups v1.0.1
 	github.com/containerd/containerd => github.com/k3s-io/containerd v1.5.13-k3s1 // k3s-release/1.5
@@ -65,6 +66,7 @@ replace (
 
 require (
 	github.com/Microsoft/hcsshim v0.9.2
+	github.com/Mirantis/cri-dockerd v0.0.0-00010101000000-000000000000
 	github.com/cloudnativelabs/kube-router v1.3.2
 	github.com/containerd/cgroups v1.0.3
 	github.com/containerd/containerd v1.6.2
@@ -74,7 +76,7 @@ require (
 	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf
 	github.com/docker/docker v20.10.16+incompatible
 	github.com/erikdubbelboer/gspt v0.0.0-20190125194910-e68493906b83
-	github.com/flannel-io/flannel v0.18.1
+	github.com/flannel-io/flannel v0.19.1
 	github.com/go-bindata/go-bindata v3.1.2+incompatible
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/golangplus/testing v1.0.0 // indirect
@@ -85,11 +87,11 @@ require (
 	github.com/gruntwork-io/terratest v0.40.6
 	github.com/k3s-io/helm-controller v0.12.3
 	github.com/k3s-io/kine v0.9.3
-	github.com/klauspost/compress v1.15.1
+	github.com/klauspost/compress v1.15.9
 	github.com/kubernetes-sigs/cri-tools v0.0.0-00010101000000-000000000000
 	github.com/lib/pq v1.10.2
 	github.com/mattn/go-sqlite3 v1.14.8
-	github.com/minio/minio-go/v7 v7.0.7
+	github.com/minio/minio-go/v7 v7.0.33
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/onsi/ginkgo/v2 v2.1.3
 	github.com/onsi/gomega v1.19.0
@@ -104,7 +106,7 @@ require (
 	github.com/rancher/wrangler v1.0.0
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/rootless-containers/rootlesskit v1.0.1
-	github.com/sirupsen/logrus v1.8.1
+	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.7.1
 	github.com/tchap/go-patricia v2.3.0+incompatible // indirect
 	github.com/urfave/cli v1.22.9
@@ -116,10 +118,10 @@ require (
 	go.etcd.io/etcd/etcdutl/v3 v3.5.4
 	go.etcd.io/etcd/server/v3 v3.5.4
 	go.uber.org/zap v1.19.0
-	golang.org/x/crypto v0.0.0-20220214200702-86341886e292
-	golang.org/x/net v0.0.0-20220526153639-5463443f8c37
+	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa
+	golang.org/x/net v0.0.0-20220722155237-a158d28d115b
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
-	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a
+	golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f
 	google.golang.org/grpc v1.46.2
 	gopkg.in/yaml.v2 v2.4.0
 	inet.af/tcpproxy v0.0.0-20200125044825-b6bb9b5b8252
@@ -129,7 +131,7 @@ require (
 	k8s.io/client-go v11.0.1-0.20190409021438-1a26190bd76a+incompatible
 	k8s.io/cloud-provider v0.24.3
 	k8s.io/component-base v0.24.3
-	k8s.io/component-helpers v0.0.0
+	k8s.io/component-helpers v0.24.3
 	k8s.io/controller-manager v0.24.3 // indirect
 	k8s.io/cri-api v0.24.3
 	k8s.io/klog v1.0.0
