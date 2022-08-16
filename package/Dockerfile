@@ -12,7 +12,7 @@ ARG VERSION="dev"
 ARG PROG="k3s"
 
 COPY --from=base /image /
-COPY --from=base /bin/entrypoint.sh /bin/entrypoint.sh
+COPY --from=base /bin/entrypoint.sh /entrypoint.sh
 RUN mkdir -p /etc && \
     echo 'hosts: files dns' > /etc/nsswitch.conf && \
     echo "PRETTY_NAME=\"${PROG} ${VERSION}\"" > /etc/os-release && \
@@ -25,5 +25,5 @@ ENV PATH="$PATH:/bin/aux"
 ENV CRI_CONFIG_FILE="/var/lib/rancher/${PROG}/agent/etc/crictl.yaml"
 ENV PROG=${PROG}
 
-ENTRYPOINT ["entrypoint.sh"]
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["agent"]
