@@ -5,6 +5,8 @@ RUN mkdir -p /image/etc/ssl/certs /image/run /image/var/run /image/tmp /image/li
     tar -xa -C /image -f /data.tar.zst && \
     cp /etc/ssl/certs/ca-certificates.crt /image/etc/ssl/certs/ca-certificates.crt
 
+ADD ./package/entrypoint.sh /bin
+
 FROM scratch
 ARG VERSION="dev"
 ARG PROG="k3s"
@@ -21,7 +23,7 @@ VOLUME /var/log
 ENV PATH="$PATH:/bin/aux"
 ENV CRI_CONFIG_FILE="/var/lib/rancher/${PROG}/agent/etc/crictl.yaml"
 ENV PROG=${PROG}
-ADD ./package/entrypoint.sh /bin
+
 
 ENTRYPOINT ["entrypoint.sh"]
 CMD ["agent"]
