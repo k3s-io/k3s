@@ -54,6 +54,7 @@ type Server struct {
 	ExtraControllerArgs      cli.StringSlice
 	ExtraCloudControllerArgs cli.StringSlice
 	Rootless                 bool
+	AuxTools                 bool
 	DatastoreEndpoint        string
 	DatastoreCAFile          string
 	DatastoreCertFile        string
@@ -507,6 +508,11 @@ var ServerFlags = []cli.Flag{
 		Name:        "rootless",
 		Usage:       "(experimental) Run rootless",
 		Destination: &ServerConfig.Rootless,
+	},
+	cli.BoolFlag{
+		Name:        "aux-tools",
+		Usage:       "(experimental) Force K3s to use embedded aux tools, not the host tools",
+		Destination: &ServerConfig.AuxTools,
 	},
 	cli.BoolFlag{
 		Name:        "secrets-encryption",

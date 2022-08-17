@@ -158,7 +158,20 @@ func stageAndRun(dataDir, cmd string, args []string) error {
 	}
 	logrus.Debugf("Asset dir %s", dir)
 
-	if err := os.Setenv("PATH", filepath.Join(dir, "bin")+":"+os.Getenv("PATH")+":"+filepath.Join(dir, "bin/aux")); err != nil {
+	auxTools := false
+	pathEnv := ""
+	for _, arg := range args {
+		if arg == "--aux-tools=true" || arg == "--aux-tools" {
+			auxTools = true
+		}
+	}
+	if auxTools {
+		pathEnv = filepath.Join(dir, "bin") + ":" + filepath.Join(dir, "bin/aux") + ":" + os.Getenv("PATH")
+	} else {
+		pathEnv = filepath.Join(dir, "bin") + ":" + os.Getenv("PATH") + ":" + filepath.Join(dir, "bin/aux")
+	}
+	logrus.Infof("PATH %s env %s", cmd, pathEnv)
+	if err := os.Setenv("PATH", pathEnv); err != nil {
 		return err
 	}
 	if err := os.Setenv(version.ProgramUpper+"_DATA_DIR", dir); err != nil {
