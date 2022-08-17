@@ -28,6 +28,7 @@ jobs:
       uses: actions/upload-artifact@v2
       with:
         name: k3s
+        path: ./dist/artifacts/k3s
   test:
     name: "Smoke Test"
     needs: build
@@ -36,7 +37,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        vm: [centos-7, rocky-8, fedora-coreos, opensuse-leap, opensuse-microos, ubuntu-focal]
+        # vm: [centos-7, rocky-8, fedora-coreos, opensuse-leap, opensuse-microos, ubuntu-focal]
+        vm: [rocky-8]
       max-parallel: 2
     defaults:
       run:
@@ -62,11 +64,13 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: k3s
+          path: tests/install/${{ matrix.vm }}
       - name: "Vagrant Up"
         run: vagrant up --no-provision
       - name: "Upload k3s binary"
         run: |
-          vagrant scp k3s /tmp/
+          chmod +x k3s
+          vagrant scp k3s /tmp/k3s
           vagrant ssh -c "sudo mv /tmp/k3s /usr/local/bin/k3s"
           vagrant provision --provision-with=k3s-upload
       - name: "⏩ Install K3s"
