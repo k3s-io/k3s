@@ -51,7 +51,7 @@ ___
 
 ## Integration Tests
 
-Integration tests should be used to test a specific functionality of k3s that exists across multiple Go packages, either via exported function calls, or more often, CLI comands.
+Integration tests should be used to test a specific functionality of k3s that exists across multiple Go packages, either via exported function calls, or more often, CLI commands.
 Integration tests should be used for "black box" testing. 
 
 See [integration/README.md](./integration/README.md) for more info.
