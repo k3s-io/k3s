@@ -118,7 +118,7 @@ func GenEncryptionConfigHash(runtime *config.ControlRuntime) (string, error) {
 	return hex.EncodeToString(encryptionConfigHash[:]), nil
 }
 
-// GenReencryptHash generates a sha256 hash fom the existing secrets keys and
+// GenReencryptHash generates a sha256 hash from the existing secrets keys and
 // a new key based on the input arguments.
 func GenReencryptHash(runtime *config.ControlRuntime, keyName string) (string, error) {
 
