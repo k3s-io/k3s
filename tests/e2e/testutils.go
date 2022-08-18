@@ -81,7 +81,7 @@ func CreateCluster(nodeOS string, serverCount, agentCount int) ([]string, []stri
 
 // CreateLocalCluster creates a cluster using the locally built k3s binary. The vagrant-scp plugin must be installed for
 // this function to work. The binary is deployed as an airgapped install of k3s on the VMs.
-// This is intended only for local testing puposes when writing a new E2E test.
+// This is intended only for local testing purposes when writing a new E2E test.
 func CreateLocalCluster(nodeOS string, serverCount, agentCount int) ([]string, []string, error) {
 
 	serverNodeNames, agentNodeNames, nodeEnvs := genNodeEnvs(nodeOS, serverCount, agentCount)
