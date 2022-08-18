@@ -5,6 +5,12 @@ def defaultOSConfigure(vm)
     vm.provision "Install jq", type: "shell", inline: "apt install -y jq"
   elsif box.include?("Leap") || box.include?("Tumbleweed")
     vm.provision "Install jq", type: "shell", inline: "zypper install -y jq"
+  elsif box.include?("rocky8") || box.include?("rocky9")
+    vm.provision "Install jq", type: "shell", inline: "dnf install -y jq"
+    vm.provision "Disable firewall", type: "shell", inline: "systemctl stop firewalld"
+  elsif box.include?("centos7")
+    vm.provision "Install jq", type: "shell", inline: "yum install -y jq"
+    vm.provision "Disable firewall", type: "shell", inline: "systemctl stop firewalld"
   elsif box.include?("alpine")
     vm.provision "Install tools", type: "shell", inline: "apk add jq coreutils"
   elsif box.include?("microos")
