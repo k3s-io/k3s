@@ -158,9 +158,9 @@ var _ = Describe("Verify Upgrade", func() {
 			Expect(err).NotTo(HaveOccurred(), "Daemonset manifest not deployed")
 
 			nodes, _ := e2e.ParseNodes(kubeConfigFile, false) //nodes :=
-			pods, _ := e2e.ParsePods(kubeConfigFile, false)
 
 			Eventually(func(g Gomega) {
+				pods, _ := e2e.ParsePods(kubeConfigFile, false)
 				count := e2e.CountOfStringInSlice("test-daemonset", pods)
 				fmt.Println("POD COUNT")
 				fmt.Println(count)
@@ -346,9 +346,9 @@ var _ = Describe("Verify Upgrade", func() {
 
 		It("After upgrade verifies Daemonset", func() {
 			nodes, _ := e2e.ParseNodes(kubeConfigFile, false) //nodes :=
-			pods, _ := e2e.ParsePods(kubeConfigFile, false)
 
 			Eventually(func(g Gomega) {
+				pods, _ := e2e.ParsePods(kubeConfigFile, false)
 				count := e2e.CountOfStringInSlice("test-daemonset", pods)
 				fmt.Println("POD COUNT")
 				fmt.Println(count)
