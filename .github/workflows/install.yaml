@@ -75,9 +75,7 @@ jobs:
       - name: "⏩ Install K3s"
         run: |
           vagrant provision --provision-with=k3s-install
-          if [ ${ matrix.vm } = 'opensuse-microos' ]; then
-            vagrant reload --no-provision
-          fi
+          if [ ${ matrix.vm } = 'opensuse-microos' ]; then vagrant reload --no-provision; fi
       - name: "⏳ Node"
         run: vagrant provision --provision-with=k3s-wait-for-node
       - name: "⏳ CoreDNS"
