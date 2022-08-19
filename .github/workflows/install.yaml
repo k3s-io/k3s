@@ -73,7 +73,11 @@ jobs:
           vagrant ssh -c "sudo mv /tmp/k3s /usr/local/bin/k3s"
           vagrant provision --provision-with=k3s-upload
       - name: "⏩ Install K3s"
-        run: vagrant provision --provision-with=k3s-install
+        run: |
+          vagrant provision --provision-with=k3s-install
+          if [ ${ matrix.vm } = 'opensuse-microos' ]; then
+            vagrant reload --no-provision
+          fi
       - name: "⏳ Node"
         run: vagrant provision --provision-with=k3s-wait-for-node
       - name: "⏳ CoreDNS"
