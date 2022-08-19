@@ -7,9 +7,9 @@ cd $(dirname $0)/..
 
 GO=${GO-go}
 
-for i in crictl kubectl k3s-agent k3s-server k3s-etcd-snapshot k3s-secrets-encrypt k3s-certificate k3s-completion; do
+for i in crictl kubectl ${PROG}-agent ${PROG}-server ${PROG}-etcd-snapshot ${PROG}-secrets-encrypt ${PROG}-certificate ${PROG}-completion; do
     rm -f bin/$i
-    ln -s k3s bin/$i
+    ln -s ${PROG} bin/$i
 done
 
 for i in bridge flannel host-local loopback portmap; do
@@ -50,10 +50,11 @@ elif [ ${ARCH} = s390x ]; then
     BIN_SUFFIX="-s390x"
 fi
 
-CMD_NAME=dist/artifacts/k3s${BIN_SUFFIX}
+CMD_NAME=dist/artifacts/${PROG}${BIN_SUFFIX}
 
 "${GO}" generate
 LDFLAGS="
+    -X github.com/k3s-io/k3s/pkg/version.Program=${PROG}
     -X github.com/k3s-io/k3s/pkg/version.Version=$VERSION
     -X github.com/k3s-io/k3s/pkg/version.GitCommit=${COMMIT:0:8}
     -w -s
