@@ -1,6 +1,8 @@
 package integration
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	testutil "github.com/k3s-io/k3s/tests/integration"
@@ -33,7 +35,7 @@ var _ = Describe("startup tests", func() {
 		It("has the default pods deployed", func() {
 			Eventually(func() error {
 				return testutil.K3sDefaultDeployments()
-			}, "90s", "5s").Should(Succeed())
+			}, "120s", "5s").Should(Succeed())
 		})
 		It("dies cleanly", func() {
 			Expect(testutil.K3sKillServer(startupServer)).To(Succeed())
@@ -88,7 +90,7 @@ var _ = Describe("startup tests", func() {
 		It("has the node deployed with correct IPs", func() {
 			Eventually(func() error {
 				return testutil.K3sDefaultDeployments()
-			}, "90s", "10s").Should(Succeed())
+			}, "120s", "10s").Should(Succeed())
 
 			nodes, err := testutil.ParseNodes()
 			Expect(err).NotTo(HaveOccurred())
@@ -107,6 +109,37 @@ var _ = Describe("startup tests", func() {
 			Expect(testutil.K3sKillServer(startupServer)).To(Succeed())
 			Expect(testutil.RunCommand("ip link del dummy2")).To(Equal(""))
 			Expect(testutil.RunCommand("ip link del dummy3")).To(Equal(""))
+		})
+	})
+	When("a server with different data-dir is created", func() {
+		var tempDir string
+		It("creates a temp directory", func() {
+			var err error
+			tempDir, err = os.MkdirTemp("", "k3s-data-dir")
+			Expect(err).ToNot(HaveOccurred())
+		})
+		It("is created with data-dir flag", func() {
+			var err error
+			startupServerArgs = []string{"--data-dir", tempDir}
+			startupServer, err = testutil.K3sStartServer(startupServerArgs...)
+			Expect(err).ToNot(HaveOccurred())
+		})
+		It("has the default pods deployed", func() {
+			Eventually(func() error {
+				return testutil.K3sDefaultDeployments()
+			}, "120s", "5s").Should(Succeed())
+		})
+		It("has the correct files in the temp data-dir", func() {
+			_, err := os.Stat(filepath.Join(tempDir, "server", "tls", "server-ca.key"))
+			Expect(err).ToNot(HaveOccurred())
+			_, err = os.Stat(filepath.Join(tempDir, "server", "token"))
+			Expect(err).ToNot(HaveOccurred())
+			_, err = os.Stat(filepath.Join(tempDir, "agent", "client-kubelet.crt"))
+			Expect(err).ToNot(HaveOccurred())
+		})
+		It("dies cleanly", func() {
+			Expect(testutil.K3sKillServer(startupServer)).To(Succeed())
+			Expect(os.RemoveAll(tempDir)).To(Succeed())
 		})
 	})
 })
