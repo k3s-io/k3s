@@ -17,9 +17,11 @@ import (
 	"k8s.io/kubernetes/pkg/kubeapiserver/authorizer/modes"
 )
 
+// NetworkName may be overridden at runtime in downstream projects
+var NetworkName = "vxlan0"
+
 const (
 	socketPrefix = "npipe://"
-	networkName  = "vxlan0"
 )
 
 func kubeProxyArgs(cfg *config.Agent) map[string]string {
@@ -38,7 +40,7 @@ func kubeProxyArgs(cfg *config.Agent) map[string]string {
 		argsMap["hostname-override"] = cfg.NodeName
 	}
 
-	if sourceVip := waitForManagementIP(networkName); sourceVip != "" {
+	if sourceVip := waitForManagementIP(NetworkName); sourceVip != "" {
 		argsMap["source-vip"] = sourceVip
 	}
 
