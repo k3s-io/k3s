@@ -81,9 +81,6 @@ func kubeletArgs(cfg *config.Agent) map[string]string {
 	}
 	if cfg.RuntimeSocket != "" {
 		argsMap["serialize-image-pulls"] = "false"
-		if strings.Contains(cfg.RuntimeSocket, "containerd") {
-			argsMap["containerd"] = cfg.RuntimeSocket
-		}
 		// cadvisor wants the containerd CRI socket without the prefix, but kubelet wants it with the prefix
 		if strings.HasPrefix(cfg.RuntimeSocket, socketPrefix) {
 			argsMap["container-runtime-endpoint"] = cfg.RuntimeSocket
