@@ -8,6 +8,7 @@ import (
 	testutil "github.com/k3s-io/k3s/tests/integration"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	. "github.com/onsi/gomega/gstruct"
 	v1 "k8s.io/api/core/v1"
 )
 
@@ -140,6 +141,37 @@ var _ = Describe("startup tests", func() {
 		It("dies cleanly", func() {
 			Expect(testutil.K3sKillServer(startupServer)).To(Succeed())
 			Expect(os.RemoveAll(tempDir)).To(Succeed())
+		})
+	})
+	When("a server with different node options is created", func() {
+		It("is created with node-name with-node-id, node-label and node-taint flags", func() {
+			var err error
+			startupServerArgs = []string{"--node-name", "customnoder", "--with-node-id", "--node-label", "foo=bar", "--node-taint", "alice=bob:NoSchedule"}
+			startupServer, err = testutil.K3sStartServer(startupServerArgs...)
+			Expect(err).ToNot(HaveOccurred())
+		})
+		It("has the default pods deployed", func() {
+			Eventually(func() error {
+				return testutil.K3sDefaultDeployments()
+			}, "120s", "5s").Should(Succeed())
+		})
+		var nodes []v1.Node
+		It("has a custom node name with id appended", func() {
+			var err error
+			nodes, err = testutil.ParseNodes()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(nodes).To(HaveLen(1))
+			Expect(nodes[0].Name).To(MatchRegexp(`-[0-9a-f]*`))
+			Expect(nodes[0].Name).To(ContainSubstring("customnoder"))
+		})
+		It("has proper node labels and taints", func() {
+			Expect(nodes[0].ObjectMeta.Labels).To(MatchKeys(IgnoreExtras, Keys{
+				"foo": Equal("bar"),
+			}))
+			Expect(nodes[0].Spec.Taints).To(ContainElement(v1.Taint{Key: "alice", Value: "bob", Effect: v1.TaintEffectNoSchedule}))
+		})
+		It("dies cleanly", func() {
+			Expect(testutil.K3sKillServer(startupServer)).To(Succeed())
 		})
 	})
 })
