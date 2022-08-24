@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: s3dummy
+spec:
+  containers:
+  - name: s3dummy
+    image: scireum/s3-ninja
+    ports:
+    - containerPort: 9000
+      hostPort: 9444
