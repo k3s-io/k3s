@@ -144,7 +144,7 @@ var _ = Describe("startup tests", func() {
 			Expect(os.RemoveAll(tempDir)).To(Succeed())
 		})
 	})
-	FWhen("a server with different node options is created", func() {
+	When("a server with different node options is created", func() {
 		It("is created with node-name with-node-id, node-label and node-taint flags", func() {
 			var err error
 			startupServerArgs = []string{"--node-name", "customnoder", "--with-node-id", "--node-label", "foo=bar", "--node-taint", "alice=bob:PreferNoSchedule"}
