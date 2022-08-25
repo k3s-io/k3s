@@ -141,7 +141,7 @@ var _ = Describe("startup tests", func() {
 		})
 		It("dies cleanly", func() {
 			Expect(testutil.K3sKillServer(startupServer)).To(Succeed())
-			Expect(os.RemoveAll(tempDir)).To(Succeed())
+			Expect(testutil.K3sCleanup(-1, tempDir)).To(Succeed())
 		})
 	})
 	When("a server with different node options is created", func() {
