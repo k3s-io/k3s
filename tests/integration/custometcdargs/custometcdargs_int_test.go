@@ -27,7 +27,7 @@ var _ = BeforeSuite(func() {
 	}
 })
 
-var _ = Describe("custom etcd args", func() {
+var _ = Describe("custom etcd args", Ordered, func() {
 	BeforeEach(func() {
 		if testutil.IsExistingServer() && !testutil.ServerArgsPresent(customEtcdArgsServerArgs) {
 			Skip("Test needs k3s server with: " + strings.Join(customEtcdArgsServerArgs, " "))
@@ -54,6 +54,9 @@ var _ = Describe("custom etcd args", func() {
 
 var _ = AfterSuite(func() {
 	if !testutil.IsExistingServer() {
+		if CurrentSpecReport().Failed() {
+			testutil.K3sDumpLog(customEtcdArgsServer)
+		}
 		Expect(testutil.K3sKillServer(customEtcdArgsServer)).To(Succeed())
 		Expect(testutil.K3sCleanup(testLock, "")).To(Succeed())
 	}

@@ -26,7 +26,7 @@ var _ = BeforeSuite(func() {
 	Expect(err).ToNot(HaveOccurred())
 })
 
-var _ = Describe("startup tests", func() {
+var _ = Describe("startup tests", Ordered, func() {
 
 	When("a default server is created", func() {
 		It("is created with no arguments", func() {
@@ -41,6 +41,7 @@ var _ = Describe("startup tests", func() {
 		})
 		It("dies cleanly", func() {
 			Expect(testutil.K3sKillServer(startupServer)).To(Succeed())
+			Expect(testutil.K3sCleanup(-1, "")).To(Succeed())
 		})
 	})
 	When("a etcd backed server is created", func() {
@@ -53,10 +54,11 @@ var _ = Describe("startup tests", func() {
 		It("has the default pods deployed", func() {
 			Eventually(func() error {
 				return testutil.K3sDefaultDeployments()
-			}, "90s", "5s").Should(Succeed())
+			}, "120s", "5s").Should(Succeed())
 		})
 		It("dies cleanly", func() {
 			Expect(testutil.K3sKillServer(startupServer)).To(Succeed())
+			Expect(testutil.K3sCleanup(-1, "")).To(Succeed())
 		})
 	})
 	When("a server without traefik is created", func() {
@@ -70,6 +72,9 @@ var _ = Describe("startup tests", func() {
 			Eventually(func() error {
 				return testutil.CheckDeployments([]string{"coredns", "local-path-provisioner", "metrics-server"})
 			}, "90s", "10s").Should(Succeed())
+			nodes, err := testutil.ParseNodes()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(nodes).To(HaveLen(1))
 		})
 		It("dies cleanly", func() {
 			Expect(testutil.K3sKillServer(startupServer)).To(Succeed())
@@ -109,6 +114,7 @@ var _ = Describe("startup tests", func() {
 		})
 		It("dies cleanly", func() {
 			Expect(testutil.K3sKillServer(startupServer)).To(Succeed())
+			Expect(testutil.K3sCleanup(-1, "")).To(Succeed())
 			Expect(testutil.RunCommand("ip link del dummy2")).To(Equal(""))
 			Expect(testutil.RunCommand("ip link del dummy3")).To(Equal(""))
 		})
@@ -130,6 +136,9 @@ var _ = Describe("startup tests", func() {
 			Eventually(func() error {
 				return testutil.K3sDefaultDeployments()
 			}, "120s", "5s").Should(Succeed())
+			nodes, err := testutil.ParseNodes()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(nodes).To(HaveLen(1))
 		})
 		It("has the correct files in the temp data-dir", func() {
 			_, err := os.Stat(filepath.Join(tempDir, "server", "tls", "server-ca.key"))
@@ -155,6 +164,9 @@ var _ = Describe("startup tests", func() {
 			Eventually(func() error {
 				return testutil.K3sDefaultDeployments()
 			}, "120s", "5s").Should(Succeed())
+			nodes, err := testutil.ParseNodes()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(nodes).To(HaveLen(1))
 		})
 		var nodes []v1.Node
 		It("has a custom node name with id appended", func() {
@@ -179,6 +191,9 @@ var _ = Describe("startup tests", func() {
 
 var _ = AfterSuite(func() {
 	if !testutil.IsExistingServer() {
+		if CurrentSpecReport().Failed() {
+			testutil.K3sDumpLog(startupServer)
+		}
 		Expect(testutil.K3sCleanup(testLock, "")).To(Succeed())
 	}
 })
