@@ -483,7 +483,7 @@ setup_selinux() {
     ${package_installer} install -y https://${rpm_site}/k3s/${rpm_channel}/common/${rpm_site_infix}/noarch/k3s-selinux-0.4-1.${rpm_target}.noarch.rpm
 "
 
-    if [ "$INSTALL_K3S_SKIP_SELINUX_RPM" = true ] || can_skip_download || [ ! -d /usr/share/selinux ]; then
+    if [ "$INSTALL_K3S_SKIP_SELINUX_RPM" = true ] || [ ! -d /usr/share/selinux ]; then
         info "Skipping installation of SELinux RPM"
     elif  [ "${ID_LIKE:-}" != coreos ] && [ "${VARIANT_ID:-}" != coreos ]; then
         install_selinux_rpm ${rpm_site} ${rpm_channel} ${rpm_target} ${rpm_site_infix}

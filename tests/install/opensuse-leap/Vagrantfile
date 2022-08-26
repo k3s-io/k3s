@@ -44,7 +44,7 @@ Vagrant.configure("2") do |config|
       sh.inline = <<~SHELL
         #!/usr/bin/env bash
         set -eu -o pipefail
-        time timeout 300 bash -c 'while ! (kubectl --namespace kube-system rollout status --timeout 10s deploy/coredns 2>/dev/null); do sleep 5; done'
+        timeout 300 bash -c 'while ! (kubectl --namespace kube-system rollout status --timeout 10s deploy/coredns); do sleep 5; done'
       SHELL
     end
     test.vm.provision "k3s-wait-for-local-storage", type: "shell", run: ENV['CI'] == 'true' ? 'never' : 'once' do |sh|
