@@ -12,15 +12,17 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-// Valid nodeOS: generic/ubuntu2004, opensuse/Leap-15.3.x86_64, dweomer/microos.amd64
+// Valid nodeOS:
+// generic/ubuntu2004, generic/centos7, generic/rocky8,
+// opensuse/Leap-15.3.x86_64, dweomer/microos.amd64
 var nodeOS = flag.String("nodeOS", "generic/ubuntu2004", "VM operating system")
 var serverCount = flag.Int("serverCount", 3, "number of server nodes")
 var agentCount = flag.Int("agentCount", 2, "number of agent nodes")
 var hardened = flag.Bool("hardened", false, "true or false")
 
 // Environment Variables Info:
-// E2E_EXTERNAL_DB: mysql or postgres, nil for embedded etcd
-// E2E_RELEASE_VERSION=v1.23.1+k3s2 or nil for latest commit from master
+// E2E_EXTERNAL_DB: mysql, postgres, etcd (default: etcd)
+// E2E_RELEASE_VERSION=v1.23.1+k3s2 (default: latest commit from master)
 
 func Test_E2EClusterValidation(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -173,9 +175,9 @@ var _ = Describe("Verify Create", func() {
 			Expect(err).NotTo(HaveOccurred(), "Daemonset manifest not deployed")
 
 			nodes, _ := e2e.ParseNodes(kubeConfigFile, false)
-			pods, _ := e2e.ParsePods(kubeConfigFile, false)
 
 			Eventually(func(g Gomega) {
+				pods, _ := e2e.ParsePods(kubeConfigFile, false)
 				count := e2e.CountOfStringInSlice("test-daemonset", pods)
 				fmt.Println("POD COUNT")
 				fmt.Println(count)
