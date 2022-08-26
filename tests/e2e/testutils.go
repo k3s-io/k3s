@@ -306,7 +306,7 @@ func RunCommand(cmd string) (string, error) {
 
 func UpgradeCluster(serverNodeNames []string, agentNodeNames []string) error {
 	for _, nodeName := range serverNodeNames {
-		cmd := "RELEASE_CHANNEL=commit vagrant provision " + nodeName
+		cmd := "E2E_RELEASE_CHANNEL=commit vagrant provision " + nodeName
 		fmt.Println(cmd)
 		if out, err := RunCommand(cmd); err != nil {
 			fmt.Println("Error Upgrading Cluster", out)
@@ -314,7 +314,7 @@ func UpgradeCluster(serverNodeNames []string, agentNodeNames []string) error {
 		}
 	}
 	for _, nodeName := range agentNodeNames {
-		cmd := "RELEASE_CHANNEL=commit vagrant provision " + nodeName
+		cmd := "E2E_RELEASE_CHANNEL=commit vagrant provision " + nodeName
 		if _, err := RunCommand(cmd); err != nil {
 			fmt.Println("Error Upgrading Cluster", err)
 			return err
