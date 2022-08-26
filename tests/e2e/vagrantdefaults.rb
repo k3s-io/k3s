@@ -41,7 +41,7 @@ def dockerInstall(vm)
     v.memory = NODE_MEMORY + 1024
   end
   if vm.box.to_s.include?("ubuntu")
-    vm.provision "shell", inline: "apt install -y docker.io"
+    vm.provision "shell", inline: "apt update; apt install -y docker.io"
   end
   if vm.box.to_s.include?("Leap")
     vm.provision "shell", inline: "zypper install -y docker apparmor-parser"
