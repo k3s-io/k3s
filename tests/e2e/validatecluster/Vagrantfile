@@ -123,7 +123,7 @@ def getDBType(role, role_num, vm)
       return "cluster-init: true"
     end
   elsif ( EXTERNAL_DB == "none" )
-    # Use internal sqlite
+    # Use internal sqlite, only valid for single node clusters
   else
     puts "Unknown EXTERNAL_DB: " + EXTERNAL_DB
     abort
