@@ -93,7 +93,7 @@ Check out our [roadmap](ROADMAP.md) to see what we have planned moving forward.
 Release cadence
 ---
 
-K3s maintains pace with upstream Kubernetes releases. Our goal is to release patch releases on the same day as upstream and minor releases within a few days.
+K3s maintains pace with upstream Kubernetes releases. Our goal is to release patch releases within one week, and new minors within 30 days.
 
 Our release versioning reflects the version of upstream Kubernetes that is being released. For example, the K3s release [v1.18.6+k3s1](https://github.com/k3s-io/k3s/releases/tag/v1.18.6%2Bk3s1) maps to the `v1.18.6` Kubernetes release. We add a postfix in the form of `+k3s<number>` to allow us to make additional releases using the same version of upstream Kubernetes while remaining [semver](https://semver.org/) compliant. For example, if we discovered a high severity bug in `v1.18.6+k3s1` and needed to release an immediate fix for it, we would release `v1.18.6+k3s2`.
 
