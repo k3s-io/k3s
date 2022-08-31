@@ -178,16 +178,17 @@ Once QA signs off on RC:
 2. Ensure as pre-release is still checked.
 3. Publish.
 
-Once CI has completed and artifacts are created:
+24 hours after CI has completed and artifacts are created:
 1. Edit release to remove pre-release, and save.
+2. Update channel server
 
 The resulting run can be viewed here: 
 [k3s-io/k3s Drone Dashboard](https://drone-publish.k3s.io/k3s-io/k3s)
 
 # Create Release Images
-The k3s-upgrade repository bundles a k3s binary and script that allows a user to upgrade to a new k3s release.
+The k3s-upgrade repository bundles a k3s binary and script that allows a user to upgrade to a new k3s release. This process is normally automated, however this can fail. If the automation does fail, do the following:
 
-Go to the [k3s-upgrade repository](https://github.com/k3s-io/k3s-upgrade) and manually create a new tag for the release. This will kick off a build of the image. This process is normally automated, however this can fail. If the automation does fail, do the following:
+Go to the [k3s-upgrade repository](https://github.com/k3s-io/k3s-upgrade) and manually create a new tag for the release. This will kick off a build of the image. 
 
 1. Draft a new release
 2. Enter the tag (e.g. v1.22.5-rc1+k3s1).
