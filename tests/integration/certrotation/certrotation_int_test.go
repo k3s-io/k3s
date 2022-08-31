@@ -26,7 +26,7 @@ var _ = BeforeSuite(func() {
 	}
 })
 
-var _ = Describe("certificate rotation", func() {
+var _ = Describe("certificate rotation", Ordered, func() {
 	BeforeEach(func() {
 		if testutil.IsExistingServer() && !testutil.ServerArgsPresent(serverArgs) {
 			Skip("Test needs k3s server with: " + strings.Join(serverArgs, " "))
@@ -79,8 +79,11 @@ var _ = Describe("certificate rotation", func() {
 
 var _ = AfterSuite(func() {
 	if !testutil.IsExistingServer() {
+		if CurrentSpecReport().Failed() {
+			testutil.K3sDumpLog(server)
+		}
 		Expect(testutil.K3sKillServer(server)).To(Succeed())
-		Expect(testutil.K3sCleanup(testLock, "")).To(Succeed())
+		Expect(testutil.K3sCleanup(-1, "")).To(Succeed())
 		Expect(testutil.K3sKillServer(server2)).To(Succeed())
 		Expect(testutil.K3sCleanup(testLock, tmpdDataDir)).To(Succeed())
 	}

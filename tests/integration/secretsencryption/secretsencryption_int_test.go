@@ -26,7 +26,7 @@ var _ = BeforeSuite(func() {
 	}
 })
 
-var _ = Describe("secrets encryption rotation", func() {
+var _ = Describe("secrets encryption rotation", Ordered, func() {
 	BeforeEach(func() {
 		if testutil.IsExistingServer() {
 			Skip("Test does not support running on existing k3s servers")
@@ -142,6 +142,9 @@ var _ = Describe("secrets encryption rotation", func() {
 
 var _ = AfterSuite(func() {
 	if !testutil.IsExistingServer() {
+		if CurrentSpecReport().Failed() {
+			testutil.K3sDumpLog(secretsEncryptionServer)
+		}
 		Expect(testutil.K3sKillServer(secretsEncryptionServer)).To(Succeed())
 		Expect(testutil.K3sCleanup(testLock, secretsEncryptionDataDir)).To(Succeed())
 	}
