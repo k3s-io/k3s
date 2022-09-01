@@ -11,12 +11,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        channel: [stable]
+        channel: [v1.23]
         vm: [centos-7, rocky-8, fedora-coreos, opensuse-leap, opensuse-microos, ubuntu-focal]
-        include:
-          - {channel: latest, vm: rocky-8}
-          - {channel: latest, vm: ubuntu-focal}
-          - {channel: latest, vm: opensuse-leap}
       max-parallel: 2
     defaults:
       run:
