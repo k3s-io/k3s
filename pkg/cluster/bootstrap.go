@@ -487,7 +487,7 @@ func (c *Cluster) compareConfig() error {
 				logrus.Warnf("critical configuration %s is mismatched", rcStruct.Field(i).Name)
 			}
 		}
-		return errors.New("critical configuration value mismatch")
+		return errors.New("critical configuration value mismatch between servers")
 	}
 	return nil
 }

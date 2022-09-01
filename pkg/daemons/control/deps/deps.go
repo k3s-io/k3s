@@ -154,7 +154,7 @@ func CreateRuntimeCertFiles(config *config.Control) {
 	runtime.ClientETCDCert = filepath.Join(config.DataDir, "tls", "etcd", "client.crt")
 	runtime.ClientETCDKey = filepath.Join(config.DataDir, "tls", "etcd", "client.key")
 
-	if config.EncryptSecrets {
+	if config.SecretsEncrypt {
 		runtime.EncryptionConfig = filepath.Join(config.DataDir, "cred", "encryption-config.json")
 		runtime.EncryptionHash = filepath.Join(config.DataDir, "cred", "encryption-state.json")
 	}
@@ -665,7 +665,7 @@ func expired(certFile string) bool {
 
 func genEncryptionConfigAndState(controlConfig *config.Control) error {
 	runtime := controlConfig.Runtime
-	if !controlConfig.EncryptSecrets {
+	if !controlConfig.SecretsEncrypt {
 		return nil
 	}
 	if s, err := os.Stat(runtime.EncryptionConfig); err == nil && s.Size() > 0 {

@@ -136,7 +136,7 @@ type CriticalControlArgs struct {
 	DisableHelmController bool
 	DisableNPC            bool
 	DisableServiceLB      bool
-	EncryptSecrets        bool
+	SecretsEncrypt        bool
 	FlannelBackend        string
 	FlannelIPv6Masq       bool
 	FlannelExternalIP     bool

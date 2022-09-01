@@ -209,7 +209,7 @@ func coreControllers(ctx context.Context, sc *Context, config *Config) error {
 			sc.Core.Core().V1().ConfigMap())
 	}
 
-	if config.ControlConfig.EncryptSecrets {
+	if config.ControlConfig.SecretsEncrypt {
 		if err := secretsencrypt.Register(ctx,
 			sc.K8s,
 			&config.ControlConfig,
@@ -526,7 +526,7 @@ func setNodeLabelsAndAnnotations(ctx context.Context, nodes v1.NodeClient, confi
 			node.Labels[MasterRoleLabelKey] = "true"
 		}
 
-		if config.ControlConfig.EncryptSecrets {
+		if config.ControlConfig.SecretsEncrypt {
 			if err = secretsencrypt.BootstrapEncryptionHashAnnotation(node, config.ControlConfig.Runtime); err != nil {
 				logrus.Infof("Unable to set encryption hash annotation %s", err.Error())
 				break

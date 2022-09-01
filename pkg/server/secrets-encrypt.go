@@ -82,7 +82,7 @@ func encryptionStatus(server *config.Control) (EncryptionState, error) {
 	}
 	if providers[1].Identity != nil && providers[0].AESCBC != nil {
 		state.Enable = pointer.Bool(true)
-	} else if providers[0].Identity != nil && providers[1].AESCBC != nil || !server.EncryptSecrets {
+	} else if providers[0].Identity != nil && providers[1].AESCBC != nil || !server.SecretsEncrypt {
 		state.Enable = pointer.Bool(false)
 	}
 
