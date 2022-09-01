@@ -136,6 +136,7 @@ type CriticalControlArgs struct {
 	DisableHelmController bool
 	DisableNPC            bool
 	DisableServiceLB      bool
+	EncryptSecrets        bool
 	FlannelBackend        string
 	FlannelIPv6Masq       bool
 	FlannelExternalIP     bool
@@ -187,7 +188,6 @@ type Control struct {
 	ClusterInit              bool
 	ClusterReset             bool
 	ClusterResetRestorePath  string
-	EncryptSecrets           bool
 	EncryptForce             bool
 	EncryptSkip              bool
 	TLSMinVersion            uint16

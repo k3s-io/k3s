@@ -478,6 +478,15 @@ func (c *Cluster) compareConfig() error {
 	if !reflect.DeepEqual(clusterControl.CriticalControlArgs, c.config.CriticalControlArgs) {
 		logrus.Debugf("This is the server CriticalControlArgs: %#v", clusterControl.CriticalControlArgs)
 		logrus.Debugf("This is the local CriticalControlArgs: %#v", c.config.CriticalControlArgs)
+
+		rc := reflect.ValueOf(clusterControl.CriticalControlArgs)
+		lc := reflect.ValueOf(c.config.CriticalControlArgs)
+		rcStruct := rc.Type()
+		for i := 0; i < rc.NumField(); i++ {
+			if !reflect.DeepEqual(rc.Field(i).Interface(), lc.Field(i).Interface()) {
+				logrus.Warnf("critical configuration %s is mismatched", rcStruct.Field(i).Name)
+			}
+		}
 		return errors.New("critical configuration value mismatch")
 	}
 	return nil
