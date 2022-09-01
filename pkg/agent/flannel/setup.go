@@ -81,7 +81,12 @@ const (
 	"PostStartupCommand": "export SUBNET_IP=$(echo $SUBNET | cut -d'/' -f 1); ip link del flannel.1 2>/dev/null; echo $PATH >&2; wg-add.sh flannel.1 && wg set flannel.1 listen-port 51820 private-key %flannelConfDir%/privatekey && ip addr add $SUBNET_IP/32 dev flannel.1 && ip link set flannel.1 up && ip route add $NETWORK dev flannel.1",
 	"ShutdownCommand": "ip link del flannel.1",
 	"SubnetAddCommand": "read PUBLICKEY; wg set flannel.1 peer $PUBLICKEY endpoint $PUBLIC_IP:51820 allowed-ips $SUBNET persistent-keepalive 25",
-	"SubnetRemoveCommand": "read PUBLICKEY; wg set flannel.1 peer $PUBLICKEY remove"
+	"SubnetRemoveCommand": "read PUBLICKEY; wg set flannel.1 peer $PUBLICKEY remove" }`
+
+	tailscaledBackend = `{
+	"Type": "extension",
+	"PostStartupCommand": "tailscale up --accept-routes --advertise-routes=%Routes%",
+	"ShutdownCommand": "tailscale down"
 }`
 
 	wireguardNativeBackend = `{
@@ -242,6 +247,19 @@ func createFlannelConf(nodeConfig *config.Node) error {
 	case config.FlannelBackendWireguard:
 		backendConf = strings.ReplaceAll(wireguardBackend, "%flannelConfDir%", filepath.Dir(nodeConfig.FlannelConfFile))
 		logrus.Warnf("The wireguard backend is deprecated and will be removed in k3s v1.26, please switch to wireguard-native. Check our docs for information about how to migrate.")
+	case config.FlannelBackendTailscale:
+		var routes string
+		switch netMode {
+		case ipv4:
+			routes = "$SUBNET"
+		case (ipv4 + ipv6):
+			routes = "$SUBNET,$IPV6SUBNET"
+		case ipv6:
+			routes = "$IPV6SUBNET"
+		default:
+			return fmt.Errorf("incorrect netMode for flannel tailscale backend")
+		}
+		backendConf = strings.ReplaceAll(tailscaledBackend, "%Routes%", routes)
 	case config.FlannelBackendWireguardNative:
 		mode, ok := backendOptions["Mode"]
 		if !ok {

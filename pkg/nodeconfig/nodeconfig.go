@@ -133,6 +133,7 @@ func isSecret(key string) bool {
 		version.ProgramUpper + "_DATASTORE_ENDPOINT",
 		version.ProgramUpper + "_AGENT_TOKEN",
 		version.ProgramUpper + "_CLUSTER_SECRET",
+		version.ProgramUpper + "_VPN_AUTH",
 		"AWS_ACCESS_KEY_ID",
 		"AWS_SECRET_ACCESS_KEY",
 		"--token",
@@ -142,6 +143,7 @@ func isSecret(key string) bool {
 		"--cluster-secret",
 		"--etcd-s3-access-key",
 		"--etcd-s3-secret-key",
+		"--vpn-auth",
 	}
 	for _, secret := range secretData {
 		if key == secret {
