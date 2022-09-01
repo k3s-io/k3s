@@ -26,6 +26,7 @@ const (
 	FlannelBackendHostGW          = "host-gw"
 	FlannelBackendIPSEC           = "ipsec"
 	FlannelBackendWireguardNative = "wireguard-native"
+	FlannelBackendTailscale       = "tailscale"
 	EgressSelectorModeAgent       = "agent"
 	EgressSelectorModeCluster     = "cluster"
 	EgressSelectorModeDisabled    = "disabled"
