@@ -1,3 +1,17 @@
+---
+kind: pipeline
+type: exec
+name: e2e-test
+
+platform:
+  os: linux
+  arch: amd64
+
+steps:
+- name: Install Vagrant
+  commands:
+  - echo hello world
+  - uname -a
 # ---
 # kind: pipeline
 # name: amd64
@@ -483,17 +497,3 @@
 
 # depends_on:
 # - manifest
----
-kind: pipeline
-type: exec
-name: e2e-test
-
-platform:
-  os: linux
-  arch: amd64
-
-steps:
-- name: Install Vagrant
-  commands:
-  - echo hello world
-  - uname -a
