@@ -25,7 +25,7 @@ var _ = BeforeSuite(func() {
 	}
 })
 
-var _ = Describe("etcd snapshots", func() {
+var _ = Describe("etcd snapshots", Ordered, func() {
 	BeforeEach(func() {
 		if testutil.IsExistingServer() && !testutil.ServerArgsPresent(serverArgs) {
 			Skip("Test needs k3s server with: " + strings.Join(serverArgs, " "))
@@ -115,6 +115,9 @@ var _ = Describe("etcd snapshots", func() {
 
 var _ = AfterSuite(func() {
 	if !testutil.IsExistingServer() {
+		if CurrentSpecReport().Failed() {
+			testutil.K3sDumpLog(server)
+		}
 		Expect(testutil.K3sKillServer(server)).To(Succeed())
 		Expect(testutil.K3sCleanup(testLock, "")).To(Succeed())
 	}

@@ -12,10 +12,13 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-// Valid nodeOS: generic/ubuntu2004, opensuse/Leap-15.3.x86_64, dweomer/microos.amd64
+// Valid nodeOS:
+// generic/ubuntu2004, generic/centos7, generic/rocky8
+// opensuse/Leap-15.3.x86_64, dweomer/microos.amd64
 var nodeOS = flag.String("nodeOS", "generic/ubuntu2004", "VM operating system")
 var serverCount = flag.Int("serverCount", 3, "number of server nodes")
 var agentCount = flag.Int("agentCount", 2, "number of agent nodes")
+var hardened = flag.Bool("hardened", false, "true or false")
 
 // Environment Variables Info:
 // E2E_RELEASE_VERSION=v1.23.3+k3s1
@@ -75,7 +78,7 @@ var _ = Describe("Verify Upgrade", func() {
 		})
 
 		It("Verifies ClusterIP Service", func() {
-			_, err := e2e.DeployWorkload("clusterip.yaml", kubeConfigFile, false)
+			_, err := e2e.DeployWorkload("clusterip.yaml", kubeConfigFile, *hardened)
 
 			Expect(err).NotTo(HaveOccurred(), "Cluster IP manifest not deployed")
 
@@ -94,7 +97,7 @@ var _ = Describe("Verify Upgrade", func() {
 		})
 
 		It("Verifies NodePort Service", func() {
-			_, err := e2e.DeployWorkload("nodeport.yaml", kubeConfigFile, false)
+			_, err := e2e.DeployWorkload("nodeport.yaml", kubeConfigFile, *hardened)
 			Expect(err).NotTo(HaveOccurred(), "NodePort manifest not deployed")
 
 			for _, nodeName := range serverNodeNames {
@@ -117,7 +120,7 @@ var _ = Describe("Verify Upgrade", func() {
 		})
 
 		It("Verifies LoadBalancer Service", func() {
-			_, err := e2e.DeployWorkload("loadbalancer.yaml", kubeConfigFile, false)
+			_, err := e2e.DeployWorkload("loadbalancer.yaml", kubeConfigFile, *hardened)
 			Expect(err).NotTo(HaveOccurred(), "Loadbalancer manifest not deployed")
 			for _, nodeName := range serverNodeNames {
 				ip, _ := e2e.FetchNodeExternalIP(nodeName)
@@ -138,7 +141,7 @@ var _ = Describe("Verify Upgrade", func() {
 		})
 
 		It("Verifies Ingress", func() {
-			_, err := e2e.DeployWorkload("ingress.yaml", kubeConfigFile, false)
+			_, err := e2e.DeployWorkload("ingress.yaml", kubeConfigFile, *hardened)
 			Expect(err).NotTo(HaveOccurred(), "Ingress manifest not deployed")
 
 			for _, nodeName := range serverNodeNames {
@@ -151,13 +154,13 @@ var _ = Describe("Verify Upgrade", func() {
 		})
 
 		It("Verifies Daemonset", func() {
-			_, err := e2e.DeployWorkload("daemonset.yaml", kubeConfigFile, false)
+			_, err := e2e.DeployWorkload("daemonset.yaml", kubeConfigFile, *hardened)
 			Expect(err).NotTo(HaveOccurred(), "Daemonset manifest not deployed")
 
 			nodes, _ := e2e.ParseNodes(kubeConfigFile, false) //nodes :=
-			pods, _ := e2e.ParsePods(kubeConfigFile, false)
 
 			Eventually(func(g Gomega) {
+				pods, _ := e2e.ParsePods(kubeConfigFile, false)
 				count := e2e.CountOfStringInSlice("test-daemonset", pods)
 				fmt.Println("POD COUNT")
 				fmt.Println(count)
@@ -168,7 +171,7 @@ var _ = Describe("Verify Upgrade", func() {
 		})
 
 		It("Verifies dns access", func() {
-			_, err := e2e.DeployWorkload("dnsutils.yaml", kubeConfigFile, false)
+			_, err := e2e.DeployWorkload("dnsutils.yaml", kubeConfigFile, *hardened)
 			Expect(err).NotTo(HaveOccurred(), "dnsutils manifest not deployed")
 
 			Eventually(func() (string, error) {
@@ -183,7 +186,7 @@ var _ = Describe("Verify Upgrade", func() {
 		})
 
 		It("Verifies Local Path Provisioner storage ", func() {
-			_, err := e2e.DeployWorkload("local-path-provisioner.yaml", kubeConfigFile, false)
+			_, err := e2e.DeployWorkload("local-path-provisioner.yaml", kubeConfigFile, *hardened)
 			Expect(err).NotTo(HaveOccurred(), "local-path-provisioner manifest not deployed")
 			Eventually(func(g Gomega) {
 				cmd := "kubectl get pvc local-path-pvc --kubeconfig=" + kubeConfigFile
@@ -214,7 +217,7 @@ var _ = Describe("Verify Upgrade", func() {
 			Expect(err).NotTo(HaveOccurred())
 			fmt.Println(res)
 
-			_, err = e2e.DeployWorkload("local-path-provisioner.yaml", kubeConfigFile, false)
+			_, err = e2e.DeployWorkload("local-path-provisioner.yaml", kubeConfigFile, *hardened)
 			Expect(err).NotTo(HaveOccurred(), "local-path-provisioner manifest not deployed")
 
 			Eventually(func() (string, error) {
@@ -233,7 +236,7 @@ var _ = Describe("Verify Upgrade", func() {
 
 			// Check data after re-creation
 			Eventually(func() (string, error) {
-				cmd = "kubectl exec volume-test cat /data/test --kubeconfig=" + kubeConfigFile
+				cmd := "kubectl exec volume-test --kubeconfig=" + kubeConfigFile + " -- cat /data/test"
 				return e2e.RunCommand(cmd)
 			}, "180s", "2s").Should(ContainSubstring("local-path-test"))
 		})
@@ -343,9 +346,9 @@ var _ = Describe("Verify Upgrade", func() {
 
 		It("After upgrade verifies Daemonset", func() {
 			nodes, _ := e2e.ParseNodes(kubeConfigFile, false) //nodes :=
-			pods, _ := e2e.ParsePods(kubeConfigFile, false)
 
 			Eventually(func(g Gomega) {
+				pods, _ := e2e.ParsePods(kubeConfigFile, false)
 				count := e2e.CountOfStringInSlice("test-daemonset", pods)
 				fmt.Println("POD COUNT")
 				fmt.Println(count)
@@ -363,7 +366,7 @@ var _ = Describe("Verify Upgrade", func() {
 
 		It("After upgrade verify Local Path Provisioner storage ", func() {
 			Eventually(func() (string, error) {
-				cmd := "kubectl exec volume-test cat /data/test --kubeconfig=" + kubeConfigFile
+				cmd := "kubectl exec volume-test --kubeconfig=" + kubeConfigFile + " -- cat /data/test"
 				return e2e.RunCommand(cmd)
 			}, "180s", "2s").Should(ContainSubstring("local-path-test"))
 		})

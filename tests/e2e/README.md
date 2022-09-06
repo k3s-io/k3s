@@ -20,6 +20,32 @@ A E2E test consists of two parts:
 
 See the [validate cluster test](../tests/e2e/validatecluster/validatecluster_test.go) as an example.
 
+
+## Setup
+
+To run the E2E tests, you must first install the following:
+- Vagrant
+- Libvirt
+- Vagrant plugins
+
+### Vagrant 
+
+Download the latest version (currently 2.2.19) of Vagrant [*from the website*](https://www.vagrantup.com/downloads). Do not use built-in packages, they often old or do not include the required ruby library extensions necessary to get certain plugins working.
+
+### Libvirt
+Follow the OS specific guides to install libvirt/qemu on your host:  
+    - [openSUSE](https://documentation.suse.com/sles/15-SP1/html/SLES-all/cha-vt-installation.html)
+    - [ubuntu](https://ubuntu.com/server/docs/virtualization-libvirt)
+    - [debian](https://wiki.debian.org/KVM#Installation)
+    - [fedora](https://developer.fedoraproject.org/tools/virtualization/installing-libvirt-and-virt-install-on-fedora-linux.html)
+
+### Vagrant plugins
+Install the necessary vagrant plugins with the following command:
+
+```bash
+vagrant plugin install vagrant-libvirt vagrant-scp vagrant-k3s vagrant-reload
+```
+
 ## Running
 
 Generally, E2E tests are run as a nightly Jenkins job for QA. They can still be run locally but additional setup may be required. By default, all E2E tests are designed with `libvirt` as the underlying VM provider. Instructions for installing libvirt and its associated vagrant plugin, `vagrant-libvirt` can be found [here.](https://github.com/vagrant-libvirt/vagrant-libvirt#installation) `VirtualBox` is also supported as a backup VM provider.

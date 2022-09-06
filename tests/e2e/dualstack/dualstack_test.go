@@ -16,6 +16,7 @@ import (
 var nodeOS = flag.String("nodeOS", "generic/ubuntu2004", "VM operating system")
 var serverCount = flag.Int("serverCount", 3, "number of server nodes")
 var agentCount = flag.Int("agentCount", 0, "number of agent nodes")
+var hardened = flag.Bool("hardened", false, "true or false")
 
 // Environment Variables Info:
 // E2E_RELEASE_VERSION=v1.23.1+k3s1 or nil for latest commit from master
@@ -129,7 +130,7 @@ var _ = Describe("Verify DualStack Configuration", func() {
 	})
 
 	It("Verifies ClusterIP Service", func() {
-		_, err := e2e.DeployWorkload("dualstack_clusterip.yaml", kubeConfigFile, false)
+		_, err := e2e.DeployWorkload("dualstack_clusterip.yaml", kubeConfigFile, *hardened)
 		Expect(err).NotTo(HaveOccurred())
 		Eventually(func() (string, error) {
 			cmd := "kubectl get pods -o=name -l k8s-app=nginx-app-clusterip --field-selector=status.phase=Running --kubeconfig=" + kubeConfigFile
@@ -157,7 +158,7 @@ var _ = Describe("Verify DualStack Configuration", func() {
 		}
 	})
 	It("Verifies Ingress", func() {
-		_, err := e2e.DeployWorkload("dualstack_ingress.yaml", kubeConfigFile, false)
+		_, err := e2e.DeployWorkload("dualstack_ingress.yaml", kubeConfigFile, *hardened)
 		Expect(err).NotTo(HaveOccurred(), "Ingress manifest not deployed")
 		cmd := "kubectl get ingress ds-ingress --kubeconfig=" + kubeConfigFile + " -o jsonpath=\"{.spec.rules[*].host}\""
 		hostName, err := e2e.RunCommand(cmd)
@@ -177,7 +178,7 @@ var _ = Describe("Verify DualStack Configuration", func() {
 	})
 
 	It("Verifies NodePort Service", func() {
-		_, err := e2e.DeployWorkload("dualstack_nodeport.yaml", kubeConfigFile, false)
+		_, err := e2e.DeployWorkload("dualstack_nodeport.yaml", kubeConfigFile, *hardened)
 		Expect(err).NotTo(HaveOccurred())
 		cmd := "kubectl get service ds-nodeport-svc --kubeconfig=" + kubeConfigFile + " --output jsonpath=\"{.spec.ports[0].nodePort}\""
 		nodeport, err := e2e.RunCommand(cmd)

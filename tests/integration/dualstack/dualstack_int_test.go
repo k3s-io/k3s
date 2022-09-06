@@ -29,7 +29,7 @@ var _ = BeforeSuite(func() {
 	}
 })
 
-var _ = Describe("dual stack", func() {
+var _ = Describe("dual stack", Ordered, func() {
 	BeforeEach(func() {
 		if testutil.IsExistingServer() && !testutil.ServerArgsPresent(dualStackServerArgs) {
 			Skip("Test needs k3s server with: " + strings.Join(dualStackServerArgs, " "))
@@ -55,6 +55,9 @@ var _ = Describe("dual stack", func() {
 
 var _ = AfterSuite(func() {
 	if !testutil.IsExistingServer() && os.Getenv("CI") != "true" {
+		if CurrentSpecReport().Failed() {
+			testutil.K3sDumpLog(dualStackServer)
+		}
 		Expect(testutil.K3sKillServer(dualStackServer)).To(Succeed())
 		Expect(testutil.K3sCleanup(testLock, "")).To(Succeed())
 	}

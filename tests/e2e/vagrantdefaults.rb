@@ -5,6 +5,13 @@ def defaultOSConfigure(vm)
     vm.provision "Install jq", type: "shell", inline: "apt install -y jq"
   elsif box.include?("Leap") || box.include?("Tumbleweed")
     vm.provision "Install jq", type: "shell", inline: "zypper install -y jq"
+    vm.provision "Install apparmor-parser", type: "shell", inline: "zypper install -y apparmor-parser"
+  elsif box.include?("rocky8") || box.include?("rocky9")
+    vm.provision "Install jq", type: "shell", inline: "dnf install -y jq"
+    vm.provision "Disable firewall", type: "shell", inline: "systemctl stop firewalld"
+  elsif box.include?("centos7")
+    vm.provision "Install jq", type: "shell", inline: "yum install -y jq"
+    vm.provision "Disable firewall", type: "shell", inline: "systemctl stop firewalld"
   elsif box.include?("alpine")
     vm.provision "Install tools", type: "shell", inline: "apk add jq coreutils"
   elsif box.include?("microos")
@@ -23,5 +30,25 @@ def getInstallType(vm, release_version, branch)
     # MicroOS requires it not be in a /tmp/ or other root system folder
     vm.provision "Get latest commit", type: "shell", path: "../scripts/latest_commit.sh", args: [branch, "/tmp/k3s_commits"]
     return "INSTALL_K3S_COMMIT=$(head\ -n\ 1\ /tmp/k3s_commits)"
+  end
+end
+
+def dockerInstall(vm)
+  vm.provider "libvirt" do |v|
+    v.memory = NODE_MEMORY + 1024
+  end
+  vm.provider "virtualbox" do |v|
+    v.memory = NODE_MEMORY + 1024
+  end
+  if vm.box.to_s.include?("ubuntu")
+    vm.provision "shell", inline: "apt update; apt install -y docker.io"
+  end
+  if vm.box.to_s.include?("Leap")
+    vm.provision "shell", inline: "zypper install -y docker apparmor-parser"
+  end
+  if vm.box.to_s.include?("microos")
+    vm.provision "shell", inline: "transactional-update pkg install -y docker apparmor-parser"
+    vm.provision 'docker-reload', type: 'reload', run: 'once'
+    vm.provision "shell", inline: "systemctl enable --now docker"
   end
 end

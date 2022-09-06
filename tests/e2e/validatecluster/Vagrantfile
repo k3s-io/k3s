@@ -111,7 +111,7 @@ def getDBType(role, role_num, vm)
   elsif EXTERNAL_DB == "postgres"
     if role.include?("server") && role_num == 0
       dockerInstall(vm)
-      vm.provision "Start postgres", inline: "docker run -d -p 5432:5432 --name #{EXTERNAL_DB} -e POSTGRES_PASSWORD=e2e  postgres:14-alpine"
+      vm.provision "Start postgres", type: "shell", inline: "docker run -d -p 5432:5432 --name postgres -e POSTGRES_PASSWORD=e2e  postgres:14-alpine"
       vm.provision "shell", inline: "echo \"Wait for postgres to startup\"; sleep 10"
       return "datastore-endpoint: 'postgres://postgres:e2e@#{NETWORK_PREFIX}.100:5432/k3s?sslmode=disable'"
     elsif role.include?("server") && role_num != 0
@@ -123,7 +123,7 @@ def getDBType(role, role_num, vm)
       return "cluster-init: true"
     end
   elsif ( EXTERNAL_DB == "none" )
-    # Use internal sqlite
+    # Use internal sqlite, only valid for single node clusters
   else
     puts "Unknown EXTERNAL_DB: " + EXTERNAL_DB
     abort
