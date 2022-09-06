@@ -483,7 +483,6 @@
 
 # depends_on:
 # - manifest
-
 ---
 kind: pipeline
 type: exec
