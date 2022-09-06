@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"os/user"
@@ -16,6 +17,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/vishvananda/netlink"
+	"golang.org/x/sys/unix"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -28,8 +30,8 @@ var existingServer = "False"
 const lockFile = "/tmp/k3s-test.lock"
 
 type K3sServer struct {
-	cmd     *exec.Cmd
-	scanner *bufio.Scanner
+	cmd *exec.Cmd
+	log *os.File
 }
 
 func findK3sExecutable() string {
@@ -160,12 +162,12 @@ func CheckDeployments(deployments []string) error {
 	return nil
 }
 
-func ParsePods() ([]corev1.Pod, error) {
+func ParsePods(opts metav1.ListOptions) ([]corev1.Pod, error) {
 	clientSet, err := k8sClient()
 	if err != nil {
 		return nil, err
 	}
-	pods, err := clientSet.CoreV1().Pods("").List(context.Background(), metav1.ListOptions{})
+	pods, err := clientSet.CoreV1().Pods("").List(context.Background(), opts)
 	if err != nil {
 		return nil, err
 	}
@@ -217,14 +219,20 @@ func K3sStartServer(inputArgs ...string) (*K3sServer, error) {
 	cmd := exec.Command(k3sBin, k3sCmd...)
 	// Give the server a new group id so we can kill it and its children later
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	cmdOut, _ := cmd.StderrPipe()
-	cmd.Stderr = os.Stderr
-	err := cmd.Start()
-	return &K3sServer{cmd, bufio.NewScanner(cmdOut)}, err
+	// Pipe output to a file for debugging later
+	f, err := os.Create("./k3log.txt")
+	if err != nil {
+		return nil, err
+	}
+	cmd.Stderr = f
+	err = cmd.Start()
+	return &K3sServer{cmd, f}, err
 }
 
 // K3sKillServer terminates the running K3s server and its children
 func K3sKillServer(server *K3sServer) error {
+	server.log.Close()
+	os.Remove(server.log.Name())
 	pgid, err := syscall.Getpgid(server.cmd.Process.Pid)
 	if err != nil {
 		if errors.Is(err, syscall.ESRCH) {
@@ -242,6 +250,10 @@ func K3sKillServer(server *K3sServer) error {
 	if _, err = server.cmd.Process.Wait(); err != nil {
 		return errors.Wrap(err, "failed to wait for k3s process exit")
 	}
+	//Unmount all the associated filesystems
+	unmountFolder("/run/k3s")
+	unmountFolder("/run/netns/cni-")
+
 	return nil
 }
 
@@ -278,6 +290,21 @@ func K3sCleanup(k3sTestLock int, dataDir string) error {
 	return nil
 }
 
+func K3sDumpLog(server *K3sServer) error {
+	server.log.Close()
+	log, err := os.Open(server.log.Name())
+	if err != nil {
+		return err
+	}
+	defer log.Close()
+	b, err := ioutil.ReadAll(log)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("Server Log Dump:\n\n%s\n\n", b)
+	return nil
+}
+
 // RunCommand Runs command on the host
 func RunCommand(cmd string) (string, error) {
 	c := exec.Command("bash", "-c", cmd)
@@ -288,6 +315,32 @@ func RunCommand(cmd string) (string, error) {
 		return "", fmt.Errorf("%s", err)
 	}
 	return out.String(), nil
+}
+
+func unmountFolder(folder string) error {
+	mounts := []string{}
+	f, err := os.ReadFile("/proc/self/mounts")
+	if err != nil {
+		return err
+	}
+	for _, line := range strings.Split(string(f), "\n") {
+		columns := strings.Split(line, " ")
+		if len(columns) > 1 {
+			mounts = append(mounts, columns[1])
+		}
+	}
+
+	for _, mount := range mounts {
+		if strings.Contains(mount, folder) {
+			if err := unix.Unmount(mount, 0); err != nil {
+				return err
+			}
+			if err = os.Remove(mount); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func k8sClient() (*kubernetes.Clientset, error) {
