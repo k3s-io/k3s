@@ -70,7 +70,7 @@ var (
 	agentNodeNames []string
 )
 
-var _ = Describe("Verify Create", func() {
+var _ = Describe("Verify Create", Ordered, func() {
 	Context("Cluster :", func() {
 		It("Starts up with no issues", func() {
 			var err error

@@ -19,6 +19,7 @@ var nodeOS = flag.String("nodeOS", "generic/ubuntu2004", "VM operating system")
 var serverCount = flag.Int("serverCount", 3, "number of server nodes")
 var agentCount = flag.Int("agentCount", 2, "number of agent nodes")
 var hardened = flag.Bool("hardened", false, "true or false")
+var alwaysKill = flag.Bool("alwaysKill", false, "alaways destroy VMs even on test failure")
 
 // Environment Variables Info:
 // E2E_EXTERNAL_DB: mysql, postgres, etcd (default: etcd)
@@ -36,7 +37,7 @@ var (
 	agentNodeNames  []string
 )
 
-var _ = Describe("Verify Create", func() {
+var _ = Describe("Verify Create", Ordered, func() {
 	Context("Cluster :", func() {
 		It("Starts up with no issues", func() {
 			var err error
@@ -269,7 +270,7 @@ var _ = AfterEach(func() {
 })
 
 var _ = AfterSuite(func() {
-	if failed {
+	if failed && !*alwaysKill {
 		fmt.Println("FAILED!")
 	} else {
 		Expect(e2e.DestroyCluster()).To(Succeed())
