@@ -34,7 +34,4 @@ echo "Did test-run-lazypull $?"
 E2E_OUTPUT=$artifacts test-run-sonobuoy serial
 echo "Did test-run-sonobuoy serial $?"
 
-test-run-sonobuoy etcd serial
-echo "Did test-run-sonobuoy-etcd serial $?"
-
 exit 0
