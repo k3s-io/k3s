@@ -128,6 +128,8 @@ func CreateLocalCluster(nodeOS string, serverCount, agentCount int) ([]string, [
 	serverNodeNames, agentNodeNames, nodeEnvs := genNodeEnvs(nodeOS, serverCount, agentCount)
 
 	var testOptions string
+	var cmd string
+
 	for _, env := range os.Environ() {
 		if strings.HasPrefix(env, "E2E_") {
 			testOptions += " " + env
@@ -135,14 +137,27 @@ func CreateLocalCluster(nodeOS string, serverCount, agentCount int) ([]string, [
 	}
 	testOptions += " E2E_RELEASE_VERSION=skip"
 
-	cmd := fmt.Sprintf(`%s vagrant up --no-provision &> vagrant.log`, nodeEnvs)
-	if _, err := RunCommand(cmd); err != nil {
-		return nil, nil, fmt.Errorf("failed creating nodes: %s: %v", cmd, err)
+	// Bring up the all of the nodes in parallel
+	errg, _ := errgroup.WithContext(context.Background())
+	for i, node := range append(serverNodeNames, agentNodeNames...) {
+		if i == 0 {
+			cmd = fmt.Sprintf(`%s %s vagrant up --no-provision %s &> vagrant.log`, nodeEnvs, testOptions, node)
+		} else {
+			cmd = fmt.Sprintf(`%s %s vagrant up --no-provision %s &>> vagrant.log`, nodeEnvs, testOptions, node)
+		}
+		errg.Go(func() error {
+			if _, err := RunCommand(cmd); err != nil {
+				return fmt.Errorf("failed creating cluster: %s: %v", cmd, err)
+			}
+			return nil
+		})
+		// libVirt/Virtualbox needs some time between provisioning nodes
+		time.Sleep(10 * time.Second)
 	}
-
-	nodeRoles := append(serverNodeNames, agentNodeNames...)
-
-	for _, node := range nodeRoles {
+	if err := errg.Wait(); err != nil {
+		return nil, nil, err
+	}
+	for _, node := range append(serverNodeNames, agentNodeNames...) {
 		cmd = fmt.Sprintf(`vagrant scp ../../../dist/artifacts/k3s  %s:/tmp/`, node)
 		if _, err := RunCommand(cmd); err != nil {
 			return nil, nil, fmt.Errorf("failed to scp k3s binary to %s: %v", node, err)
@@ -152,9 +167,21 @@ func CreateLocalCluster(nodeOS string, serverCount, agentCount int) ([]string, [
 		}
 	}
 
-	cmd = fmt.Sprintf(`%s %s vagrant provision &>> vagrant.log`, nodeEnvs, testOptions)
-	if _, err := RunCommand(cmd); err != nil {
-		return nil, nil, fmt.Errorf("failed creating cluster: %s: %v", cmd, err)
+	// Install K3s on all nodes in parallel
+	errg, _ = errgroup.WithContext(context.Background())
+	for _, node := range append(serverNodeNames, agentNodeNames...) {
+		cmd = fmt.Sprintf(`%s %s vagrant provision %s &>> vagrant.log`, nodeEnvs, testOptions, node)
+		errg.Go(func() error {
+			if _, err := RunCommand(cmd); err != nil {
+				return fmt.Errorf("failed creating cluster: %s: %v", cmd, err)
+			}
+			return nil
+		})
+		// K3s needs some time between joining nodes to avoid learner issues
+		time.Sleep(20 * time.Second)
+	}
+	if err := errg.Wait(); err != nil {
+		return nil, nil, err
 	}
 
 	return serverNodeNames, agentNodeNames, nil
@@ -334,7 +361,7 @@ func DockerLogin(kubeConfig string, ci bool) error {
 		return nil
 	}
 	// Authenticate to docker hub to increade pull limit
-	cmd := fmt.Sprintf("kubectl create secret docker-registry regcred --from-file=%s --type=kubernetes.io/dockerconfigjson --kubeconfig=%s",
+	cmd := fmt.Sprintf("kubectl create secret docker-registry regcred --from-file=.dockerconfigjson=%s --kubeconfig=%s",
 		"../amd64_resource_files/docker_cred.json", kubeConfig)
 	res, err := RunCommand(cmd)
 	if err != nil {

@@ -26,6 +26,10 @@ spec:
       mountPath: /data
     ports:
     - containerPort: 80
+  # This is only used if the regcred secret is created
+  # which increases the dockerhub pull rate limit
+  imagePullSecrets:
+  - name: regcred
   volumes:
   - name: volv
     persistentVolumeClaim:

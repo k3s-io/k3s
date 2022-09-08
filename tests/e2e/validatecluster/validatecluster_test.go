@@ -20,6 +20,7 @@ var serverCount = flag.Int("serverCount", 3, "number of server nodes")
 var agentCount = flag.Int("agentCount", 2, "number of agent nodes")
 var hardened = flag.Bool("hardened", false, "true or false")
 var ci = flag.Bool("ci", false, "running on CI")
+var local = flag.Bool("local", false, "deploy a locally built K3s binary")
 
 // Environment Variables Info:
 // E2E_EXTERNAL_DB: mysql, postgres, etcd (default: etcd)
@@ -41,7 +42,11 @@ var _ = Describe("Verify Create", Ordered, func() {
 	Context("Cluster :", func() {
 		It("Starts up with no issues", func() {
 			var err error
-			serverNodeNames, agentNodeNames, err = e2e.CreateCluster(*nodeOS, *serverCount, *agentCount)
+			if *local {
+				serverNodeNames, agentNodeNames, err = e2e.CreateLocalCluster(*nodeOS, *serverCount, *agentCount)
+			} else {
+				serverNodeNames, agentNodeNames, err = e2e.CreateCluster(*nodeOS, *serverCount, *agentCount)
+			}
 			Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog())
 			fmt.Println("CLUSTER CONFIG")
 			fmt.Println("OS:", *nodeOS)
@@ -79,8 +84,8 @@ var _ = Describe("Verify Create", Ordered, func() {
 		})
 
 		It("Verifies ClusterIP Service", func() {
-			_, err := e2e.DeployWorkload("clusterip.yaml", kubeConfigFile, *hardened)
-			Expect(err).NotTo(HaveOccurred(), "Cluster IP manifest not deployed")
+			res, err := e2e.DeployWorkload("clusterip.yaml", kubeConfigFile, *hardened)
+			Expect(err).NotTo(HaveOccurred(), "Cluster IP manifest not deployed: "+res)
 
 			Eventually(func(g Gomega) {
 				cmd := "kubectl get pods -o=name -l k8s-app=nginx-app-clusterip --field-selector=status.phase=Running --kubeconfig=" + kubeConfigFile
@@ -209,8 +214,8 @@ var _ = Describe("Verify Create", Ordered, func() {
 		})
 
 		It("Verifies Local Path Provisioner storage ", func() {
-			_, err := e2e.DeployWorkload("local-path-provisioner.yaml", kubeConfigFile, *hardened)
-			Expect(err).NotTo(HaveOccurred(), "local-path-provisioner manifest not deployed")
+			res, err := e2e.DeployWorkload("local-path-provisioner.yaml", kubeConfigFile, *hardened)
+			Expect(err).NotTo(HaveOccurred(), "local-path-provisioner manifest not deployed: "+res)
 
 			Eventually(func(g Gomega) {
 				cmd := "kubectl get pvc local-path-pvc --kubeconfig=" + kubeConfigFile
@@ -233,7 +238,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			cmd = "kubectl delete pod volume-test --kubeconfig=" + kubeConfigFile
-			res, err := e2e.RunCommand(cmd)
+			res, err = e2e.RunCommand(cmd)
 			Expect(err).NotTo(HaveOccurred(), "failed cmd: "+cmd+" result: "+res)
 
 			_, err = e2e.DeployWorkload("local-path-provisioner.yaml", kubeConfigFile, *hardened)
@@ -267,7 +272,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 
 var failed = false
 var _ = AfterEach(func() {
-	failed = failed || CurrentGinkgoTestDescription().Failed
+	failed = failed || CurrentSpecReport().Failed()
 })
 
 var _ = AfterSuite(func() {
