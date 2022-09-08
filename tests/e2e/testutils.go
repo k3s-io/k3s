@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -8,6 +9,9 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
+
+	"golang.org/x/sync/errgroup"
 )
 
 type Node struct {
@@ -60,7 +64,7 @@ func genNodeEnvs(nodeOS string, serverCount, agentCount int) ([]string, []string
 	return serverNodeNames, agentNodeNames, nodeEnvs
 }
 
-func CreateCluster(nodeOS string, serverCount, agentCount int) ([]string, []string, error) {
+func OldCreateCluster(nodeOS string, serverCount, agentCount int) ([]string, []string, error) {
 
 	serverNodeNames, agentNodeNames, nodeEnvs := genNodeEnvs(nodeOS, serverCount, agentCount)
 
@@ -76,6 +80,43 @@ func CreateCluster(nodeOS string, serverCount, agentCount int) ([]string, []stri
 	if _, err := RunCommand(cmd); err != nil {
 		return nil, nil, fmt.Errorf("failed creating cluster: %s: %v", cmd, err)
 	}
+	return serverNodeNames, agentNodeNames, nil
+}
+
+func CreateCluster(nodeOS string, serverCount, agentCount int) ([]string, []string, error) {
+
+	serverNodeNames, agentNodeNames, nodeEnvs := genNodeEnvs(nodeOS, serverCount, agentCount)
+
+	var testOptions string
+	for _, env := range os.Environ() {
+		if strings.HasPrefix(env, "E2E_") {
+			testOptions += " " + env
+		}
+	}
+	// Bring up the first server node
+	cmd := fmt.Sprintf(`%s %s vagrant up %s &> vagrant.log`, nodeEnvs, testOptions, serverNodeNames[0])
+
+	fmt.Println(cmd)
+	if _, err := RunCommand(cmd); err != nil {
+		return nil, nil, fmt.Errorf("failed creating cluster: %s: %v", cmd, err)
+	}
+	// Bring up the rest of the nodes in parallel
+	errg, _ := errgroup.WithContext(context.Background())
+	for _, node := range append(serverNodeNames[1:], agentNodeNames...) {
+		cmd := fmt.Sprintf(`%s %s vagrant up %s &>> vagrant.log`, nodeEnvs, testOptions, node)
+		errg.Go(func() error {
+			if _, err := RunCommand(cmd); err != nil {
+				return fmt.Errorf("failed creating cluster: %s: %v", cmd, err)
+			}
+			return nil
+		})
+		// We must wait a bit between provisioning nodes to avoid too many learners attempting to join the cluster
+		time.Sleep(30 * time.Second)
+	}
+	if err := errg.Wait(); err != nil {
+		return nil, nil, err
+	}
+
 	return serverNodeNames, agentNodeNames, nil
 }
 
