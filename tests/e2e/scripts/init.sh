@@ -11,9 +11,11 @@ echo 'Installing jq'
 sudo apt-get -y install jq
 
 echo 'Installing Go'
-curl -L https://dl.google.com/go/go1.16.10.linux-amd64.tar.gz | tar xz
-sudo mv go /usr/local
-/usr/local/go/bin/go version
+GO_VERSION=1.19.1
+wget  --quiet https://dl.google.com/go/go$GO_VERSION.linux-amd64.tar.gz
+sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf go$GO_VERSION.linux-amd64.tar.gz
+rm go$GO_VERSION.linux-amd64.tar.gz
+echo 
 go version
 
 echo 'Installing Virtualbox'
@@ -29,7 +31,8 @@ echo 'Installing vagrant'
 sudo apt-get -y install -f unzip
 curl -O https://releases.hashicorp.com/vagrant/2.2.19/vagrant_2.2.19_linux_amd64.zip
 unzip vagrant_2.2.19_linux_amd64.zip
-sudo cp vagrant /usr/local/bin/
+sudo mv vagrant /usr/local/bin/
+rm vagrant_2.2.19_linux_amd64.zip
 vagrant --version
 sudo apt-get -y install libarchive-tools
 vagrant plugin install vagrant-k3s
