@@ -111,7 +111,7 @@ func CreateCluster(nodeOS string, serverCount, agentCount int) ([]string, []stri
 			return nil
 		})
 		// We must wait a bit between provisioning nodes to avoid too many learners attempting to join the cluster
-		time.Sleep(30 * time.Second)
+		time.Sleep(20 * time.Second)
 	}
 	if err := errg.Wait(); err != nil {
 		return nil, nil, err
@@ -288,11 +288,11 @@ func ParseNodes(kubeConfig string, print bool) ([]Node, error) {
 	return nodes, nil
 }
 
-func ParsePods(kubeconfig string, print bool) ([]Pod, error) {
+func ParsePods(kubeConfig string, print bool) ([]Pod, error) {
 	pods := make([]Pod, 0, 10)
 	podList := ""
 
-	cmd := "kubectl get pods -o wide --no-headers -A --kubeconfig=" + kubeconfig
+	cmd := "kubectl get pods -o wide --no-headers -A --kubeconfig=" + kubeConfig
 	res, _ := RunCommand(cmd)
 	res = strings.TrimSpace(res)
 	podList = res
@@ -324,6 +324,21 @@ func RestartCluster(nodeNames []string) error {
 		if _, err := RunCmdOnNode(cmd, nodeName); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+// DockerLogin authenticates to the docker registry for increased pull limits
+func DockerLogin(kubeConfig string, ci bool) error {
+	if !ci {
+		return nil
+	}
+	// Authenticate to docker hub to increade pull limit
+	cmd := fmt.Sprintf("kubectl create secret docker-registry regcred --from-file=%s --type=kubernetes.io/dockerconfigjson --kubeconfig=%s",
+		"../amd64_resource_files/docker_cred.json", kubeConfig)
+	res, err := RunCommand(cmd)
+	if err != nil {
+		return fmt.Errorf("failed to create docker registry secret: %s : %v", res, err)
 	}
 	return nil
 }

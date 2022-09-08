@@ -19,7 +19,7 @@ var nodeOS = flag.String("nodeOS", "generic/ubuntu2004", "VM operating system")
 var serverCount = flag.Int("serverCount", 3, "number of server nodes")
 var agentCount = flag.Int("agentCount", 2, "number of agent nodes")
 var hardened = flag.Bool("hardened", false, "true or false")
-var alwaysKill = flag.Bool("alwaysKill", false, "alaways destroy VMs even on test failure")
+var ci = flag.Bool("ci", false, "running on CI")
 
 // Environment Variables Info:
 // E2E_EXTERNAL_DB: mysql, postgres, etcd (default: etcd)
@@ -49,6 +49,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 			fmt.Println("Agent Nodes:", agentNodeNames)
 			kubeConfigFile, err = e2e.GenKubeConfigFile(serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred())
+			Expect(e2e.DockerLogin(kubeConfigFile, *ci)).To(Succeed())
 		})
 
 		It("Checks Node and Pod Status", func() {
@@ -270,7 +271,7 @@ var _ = AfterEach(func() {
 })
 
 var _ = AfterSuite(func() {
-	if failed && !*alwaysKill {
+	if failed && !*ci {
 		fmt.Println("FAILED!")
 	} else {
 		Expect(e2e.DestroyCluster()).To(Succeed())
