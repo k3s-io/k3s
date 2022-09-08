@@ -334,7 +334,7 @@ func DockerLogin(kubeConfig string, ci bool) error {
 		return nil
 	}
 	// Authenticate to docker hub to increade pull limit
-	cmd := fmt.Sprintf("kubectl create secret docker-registry regcred --from-file=%s --type=kubernetes.io/dockerconfigjson --kubeconfig=%s",
+	cmd := fmt.Sprintf("kubectl create secret docker-registry regcred --from-file=.dockerconfigjson=%s --kubeconfig=%s",
 		"../amd64_resource_files/docker_cred.json", kubeConfig)
 	res, err := RunCommand(cmd)
 	if err != nil {
