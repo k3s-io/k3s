@@ -111,7 +111,7 @@ func RunCommand(cmd string) (string, error) {
 	return string(out), err
 }
 
-//Used to count the pods using prefix passed in the list of pods
+// Used to count the pods using prefix passed in the list of pods
 func CountOfStringInSlice(str string, pods []Pod) int {
 	count := 0
 	for _, pod := range pods {
