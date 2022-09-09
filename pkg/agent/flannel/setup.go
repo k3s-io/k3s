@@ -211,6 +211,7 @@ func createFlannelConf(nodeConfig *config.Node) error {
 	backend := parts[0]
 	backendOptions := make(map[string]string)
 	if len(parts) > 1 {
+		logrus.Warnf("The additional options through flannel-backend are deprecated and will be removed in k3s v1.27, use flannel-conf instead")
 		options := strings.Split(parts[1], ",")
 		for _, o := range options {
 			p := strings.SplitN(o, "=", 2)
