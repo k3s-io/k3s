@@ -75,9 +75,10 @@ func IsExistingServer() bool {
 // K3sCmd launches the provided K3s command via exec. Command blocks until finished.
 // Command output from both Stderr and Stdout is provided via string. Input can
 // be a single string with space separated args, or multiple string args
-//   cmdEx1, err := K3sCmd("etcd-snapshot", "ls")
-//   cmdEx2, err := K3sCmd("kubectl get pods -A")
-//   cmdEx2, err := K3sCmd("kubectl", "get", "pods", "-A")
+//
+//	cmdEx1, err := K3sCmd("etcd-snapshot", "ls")
+//	cmdEx2, err := K3sCmd("kubectl get pods -A")
+//	cmdEx2, err := K3sCmd("kubectl", "get", "pods", "-A")
 func K3sCmd(inputArgs ...string) (string, error) {
 	if !IsRoot() {
 		return "", errors.New("integration tests must be run as sudo/root")
