@@ -35,8 +35,7 @@ sudo mv vagrant /usr/local/bin/
 rm vagrant_2.2.19_linux_amd64.zip
 vagrant --version
 sudo apt-get -y install libarchive-tools
-vagrant plugin install vagrant-k3s
-vagrant plugin install vagrant-reload
+vagrant plugin install vagrant-k3s vagrant-reload vagrant-scp
 
 echo 'Cloning repo'
 ls k3s 2>/dev/null || git clone https://github.com/k3s-io/k3s.git
