@@ -36,7 +36,6 @@ git fetch --all --tags
 Establish a local branch for rebasing:
 
 ```sh
-export GHUSER=<your-github-username>
 export GLOBAL_GIT_CONFIG_PATH=$(git config --list --show-origin --show-scope --global | awk 'NR==1{ split($2,path,":"); print path[2] }')
 export SSH_MOUNT_PATH=$(echo $SSH_AUTH_SOCK || echo "$HOME/.ssh/id_rsa")
 
