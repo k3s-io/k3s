@@ -270,13 +270,13 @@ setup_env() {
 
 # --- check if skip download environment variable set ---
 can_skip_download_binary() {
-    if [ "${INSTALL_K3S_SKIP_DOWNLOAD}" != true ] && [ "${INSTALL_K3S_SKIP_DOWNLOAD}" != "binary" ]; then
+    if [ "${INSTALL_K3S_SKIP_DOWNLOAD}" != true ] && [ "${INSTALL_K3S_SKIP_DOWNLOAD}" != binary ]; then
         return 1
     fi
 }
 
 can_skip_download_selinux() {                                                        
-    if [ "${INSTALL_K3S_SKIP_DOWNLOAD}" != true ] && [ "${INSTALL_K3S_SKIP_DOWNLOAD}" != "selinux" ]; then 
+    if [ "${INSTALL_K3S_SKIP_DOWNLOAD}" != true ] && [ "${INSTALL_K3S_SKIP_DOWNLOAD}" != selinux ]; then 
         return 1                                                                     
     fi                                                                               
 }  
