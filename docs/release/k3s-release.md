@@ -22,7 +22,6 @@ git clone --origin upstream \
   https://github.com/kubernetes/kubernetes.git \
   ${GOPATH}/src/github.com/kubernetes/kubernetes
  
-# cd into the repo
 cd ${GOPATH}/src/github.com/kubernetes/kubernetes
  
 # export your github name if different from user
