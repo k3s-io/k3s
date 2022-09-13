@@ -221,7 +221,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 
 var failed = false
 var _ = AfterEach(func() {
-	failed = failed || CurrentGinkgoTestDescription().Failed
+	failed = failed || CurrentSpecReport().Failed()
 })
 
 var _ = AfterSuite(func() {

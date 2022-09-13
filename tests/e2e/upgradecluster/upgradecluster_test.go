@@ -375,7 +375,7 @@ var _ = Describe("Verify Upgrade", Ordered, func() {
 
 var failed = false
 var _ = AfterEach(func() {
-	failed = failed || CurrentGinkgoTestDescription().Failed
+	failed = failed || CurrentSpecReport().Failed()
 })
 
 var _ = AfterSuite(func() {

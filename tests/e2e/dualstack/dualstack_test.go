@@ -201,7 +201,7 @@ var _ = Describe("Verify DualStack Configuration", Ordered, func() {
 
 var failed bool
 var _ = AfterEach(func() {
-	failed = failed || CurrentGinkgoTestDescription().Failed
+	failed = failed || CurrentSpecReport().Failed()
 })
 
 var _ = AfterSuite(func() {
