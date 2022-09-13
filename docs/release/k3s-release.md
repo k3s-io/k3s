@@ -152,7 +152,7 @@ git push --set-upstream origin $NEW_K3S_VER
 Create a commit with all the changes, and push this upstream.
 Create a PR to merge your branch into the corresponding release branch, and wait for CI to run tests on the PR. Make sure to create the PR against the associated release branch for this update.
 
-Once CI passes and you receive two approvals, you may now squash-merge the PR and then tag an RC.
+Once CI passes and you receive two approvals, you may now squash-merge the PR and then tag an RC after the merge to master CI run completes.
 
 # Create a Release Candidate 
 Releases are kicked off and created by tagging a new tag.
