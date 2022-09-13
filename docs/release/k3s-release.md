@@ -167,7 +167,7 @@ The resulting run can be viewed here:
 [k3s-io/k3s Drone Dashboard](https://drone-publish.k3s.io/k3s-io/k3s)
 
 # Create GA Release Candidate
-Once QA has verified after 24-72 hours that the RC is good (or that any fixes have been added in follow up RC candidates), it is time for the general release.
+Once QA has verified that the RC is good (or that any fixes have been added in follow up RC candidates), it is time for the general release.
 
 1. Create new release in GH UI
 2. Set title: v1.22.5+k3s1, add description with release notes. Leave the tag section blank.
