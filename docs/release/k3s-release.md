@@ -200,7 +200,7 @@ The k3s images will be published here.
 The upgrade images will be published here.
 
 Verifying Component Release Versions
-With each release, k3s publishes release notes that include a table of the components k3s uses and their versions.
+With each release, k3s publishes release notes that include a table of the components and their versions.
 
 # Update Rancher KDM
 This step is specific to Rancher and serves to update Rancher's [Kontainer Driver Metadata](https://github.com/rancher/kontainer-driver-metadata/).
