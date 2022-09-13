@@ -85,7 +85,7 @@ docker run --rm -u $(id -u) \
 --mount type=tmpfs,destination=${GOPATH}/pkg \
 -v ${GOPATH}/src:/go/src \
 -v ${GOPATH}/.cache:/go/.cache \
--v ${GLOBAL_GITCONFIG_PATH}:/go/.gitconfig \
+-v ${GLOBAL_GIT_CONFIG_PATH}:/go/.gitconfig \
 -e HOME=/go \
 -e GOCACHE=/go/.cache \
 -w /go/src/github.com/kubernetes/kubernetes ${GOIMAGE}-dev ./tag.sh ${NEW_K3S_VER} 2>&1 | tee ~/tags-${NEW_K3S_VER}.log
