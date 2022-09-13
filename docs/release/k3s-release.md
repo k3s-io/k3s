@@ -37,7 +37,7 @@ git fetch --all --tags
 Establish a local branch for rebasing:
 
 ```sh
-export GHUSER=nikolaishields
+export GHUSER=<your-github-username>
 export GLOBAL_GITCONFIG_PATH=$(git config --list --show-origin --show-scope --global | awk 'NR==1{ split($2,path,":"); print path[2] }')
 export SSH_MOUNT_PATH=$(echo $SSH_AUTH_SOCK || echo "$HOME/.ssh/id_rsa")
 
@@ -58,10 +58,9 @@ rm -rf _output
 # onto the new upstream tag. This will leave you on a detached head that will be
 # tagged in the following step.
 git rebase --onto $NEW_K8S $OLD_K8S $OLD_K3S_VER~1
-  
  
-# Kubernetes is very picky about go versions. We use alpine and docker to build with that go version
-# This command is not backwards compatible and requires versions of yq greater than 4.0
+# Kubernetes is very picky about go versions. We use alpine and docker to specify the goversion with which we build the project.
+# This command is not backwards compatible and requires versions of yq greater than 4.0, as the query syntax has changed throughout the history of the project.
 export GOVERSION=$(yq -e '.dependencies[] | select(.name == "golang: upstream version").version' build/dependencies.yaml)
 
 export GOIMAGE="golang:${GOVERSION}-alpine3.15"
@@ -90,7 +89,7 @@ docker run --rm -u $(id -u) \
 -v ${GLOBAL_GITCONFIG_PATH}:/go/.gitconfig \
 -e HOME=/go \
 -e GOCACHE=/go/.cache \
--w /go/src/github.com/kubernetes ${GOIMAGE}-dev ./tag.sh ${NEW_K3S_VER} 2>&1 | tee ~/tags-${NEW_K3S_VER}.log
+-w /go/src/github.com/kubernetes/kubernetes ${GOIMAGE}-dev ./tag.sh ${NEW_K3S_VER} 2>&1 | tee ~/tags-${NEW_K3S_VER}.log
 ```
 After tag.sh runs, you should see list of git push commands at the end of the output.
 Save this output to a file called ```push.sh``` and mark it as executable by running the following command:
@@ -129,9 +128,6 @@ git push $REMOTE v1.22.12-k3s1
 export REMOTE=k3s-io
 ./push.sh
 ```
-## Rollback version of tags in k3s-io
-- TODO in the event failure delete tags upstream
-
 ## Updating k3s with the new tags
 You now have a collection of tagged kubernetes modules in your worktree. By updating go.mod in k3s to point at these modules we will then be prepared to open a PR for review.
 ```sh
@@ -246,3 +242,12 @@ The system-agent-installer-k3s repository is used with Rancher v2prov system. An
 Build progress can be tracked here.
 # Update Channel Server
 Once the release is verified, the channel server config needs to be updated to reflect the new version for “stable”. [channel.yaml can be found at the root of the K3s repo.](https://github.com/k3s-io/k3s/blob/master/channel.yaml)
+
+When updateing the channel server a single-line change will need to be performed.
+Release Captains responsible for this change will need to update the following stanza to reflect the new stable version of kubernetes relative to the release in progress.
+```
+# Example channels config
+channels:
+- name: stable
+  latest: v1.22.12+k3s1
+```
