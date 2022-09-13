@@ -153,7 +153,7 @@ git push --set-upstream origin $NEW_K3S_VER
 Create a commit with all the changes, and push this upstream.
 Create a PR to merge your branch into the corresponding release branch, and wait for CI to run tests on the PR. Make sure to create the PR against the associated release branch for this update.
 
-Once CI passes and you recieve two approvals, you may now squash-merge the PR and then tag an RC.
+Once CI passes and you receive two approvals, you may now squash-merge the PR and then tag an RC.
 
 # Create a Release Candidate 
 Releases are kicked off and created by tagging a new tag.
@@ -243,7 +243,7 @@ Build progress can be tracked here.
 # Update Channel Server
 Once the release is verified, the channel server config needs to be updated to reflect the new version for “stable”. [channel.yaml can be found at the root of the K3s repo.](https://github.com/k3s-io/k3s/blob/master/channel.yaml)
 
-When updateing the channel server a single-line change will need to be performed.
+When updating the channel server a single-line change will need to be performed.
 Release Captains responsible for this change will need to update the following stanza to reflect the new stable version of kubernetes relative to the release in progress.
 ```
 # Example channels config
