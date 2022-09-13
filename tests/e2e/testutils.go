@@ -64,25 +64,6 @@ func genNodeEnvs(nodeOS string, serverCount, agentCount int) ([]string, []string
 	return serverNodeNames, agentNodeNames, nodeEnvs
 }
 
-func OldCreateCluster(nodeOS string, serverCount, agentCount int) ([]string, []string, error) {
-
-	serverNodeNames, agentNodeNames, nodeEnvs := genNodeEnvs(nodeOS, serverCount, agentCount)
-
-	var testOptions string
-	for _, env := range os.Environ() {
-		if strings.HasPrefix(env, "E2E_") {
-			testOptions += " " + env
-		}
-	}
-
-	cmd := fmt.Sprintf(`%s %s vagrant up &> vagrant.log`, nodeEnvs, testOptions)
-	fmt.Println(cmd)
-	if _, err := RunCommand(cmd); err != nil {
-		return nil, nil, fmt.Errorf("failed creating cluster: %s: %v", cmd, err)
-	}
-	return serverNodeNames, agentNodeNames, nil
-}
-
 func CreateCluster(nodeOS string, serverCount, agentCount int) ([]string, []string, error) {
 
 	serverNodeNames, agentNodeNames, nodeEnvs := genNodeEnvs(nodeOS, serverCount, agentCount)
