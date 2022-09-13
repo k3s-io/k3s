@@ -43,7 +43,7 @@ jobs:
       run:
         working-directory: tests/install/${{ matrix.vm }}
     env:
-      INSTALL_K3S_SKIP_DOWNLOAD: true
+      INSTALL_K3S_SKIP_DOWNLOAD: binary
     steps:
       - name: "Checkout"
         uses: actions/checkout@v2
