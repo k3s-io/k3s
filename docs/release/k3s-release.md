@@ -158,7 +158,7 @@ Once CI passes and you receive two approvals, you may now squash-merge the PR an
 Releases are kicked off and created by tagging a new tag.
 To create a new release in Github UI perform the following:
 
-1. Set title and tag as v1.22.5-rc1+k3s1, target as release-1.22
+1. Set title and tag according to the release version you're working on. E.g. v1.22.5-rc1+k3s1.
 2. Leave description blank.
 3. Check the pre-release field.
 4. Publish
