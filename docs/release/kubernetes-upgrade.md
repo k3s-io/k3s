@@ -26,15 +26,15 @@ Establish a local branch for rebasing:
 
 ```sh
 export GLOBAL_GIT_CONFIG_PATH=$(git config --list --show-origin --show-scope --global | awk 'NR==1{ split($2,path,":"); print path[2] }')
-export SSH_MOUNT_PATH=$(echo $SSH_AUTH_SOCK || echo "$HOME/.ssh/id_rsa")
+export SSH_MOUNT_PATH=$(echo ${SSH_AUTH_SOCK} || echo "${HOME}/.ssh/id_rsa")
 
 # Set up your new/old versions of Kubernetes
 export OLD_K8S=<old-k8s-version>
 export NEW_K8S=<new-k8s-version>
 export OLD_K8S_CLIENT=<old-k8s-client-version>
 export NEW_K8S_CLIENT=<new-k8s-client-version>
-export OLD_K3S_VER="$OLD_K8S-k3s1" 
-export NEW_K3S_VER="$NEW_K8S-k3s1"
+export OLD_K3S_VER="{$OLD_K8S}-k3s1" 
+export NEW_K3S_VER="${NEW_K8S}-k3s1"
 export RELEASE_BRANCH=<k8s-release-branch>
 export GOPATH=$(go env GOPATH)
  
@@ -44,7 +44,7 @@ rm -rf _output
 # Rebase k3s customizations from the previous release, minus the merge commit (~1),
 # onto the new upstream tag. This will leave you on a detached head that will be
 # tagged in the following step.
-git rebase --onto $NEW_K8S $OLD_K8S $OLD_K3S_VER~1
+git rebase --onto ${NEW_K8S} ${OLD_K8S} ${OLD_K3S_VER}~1
  
 # Kubernetes is very picky about go versions. We use alpine and docker to specify the goversion with which we build the project.
 # This command is not backwards compatible and requires versions of yq greater than 4.0, as the query syntax has changed throughout the history of the project.
@@ -85,30 +85,30 @@ chmod +x push.sh
 ```
 ### tag.sh example output (The kubernetes versions will correspond to those of the patch release, 1.22 is shown below):
 ```sh
-git push $REMOTE staging/src/k8s.io/api/v1.22.12-k3s1
-git push $REMOTE staging/src/k8s.io/apiextensions-apiserver/v1.22.12-k3s1
-git push $REMOTE staging/src/k8s.io/apimachinery/v1.22.12-k3s1
-git push $REMOTE staging/src/k8s.io/apiserver/v1.22.12-k3s1
-git push $REMOTE staging/src/k8s.io/client-go/v1.22.12-k3s1
-git push $REMOTE staging/src/k8s.io/cli-runtime/v1.22.12-k3s1
-git push $REMOTE staging/src/k8s.io/cloud-provider/v1.22.12-k3s1
-git push $REMOTE staging/src/k8s.io/cluster-bootstrap/v1.22.12-k3s1
-git push $REMOTE staging/src/k8s.io/code-generator/v1.22.12-k3s1
-git push $REMOTE staging/src/k8s.io/component-base/v1.22.12-k3s1
-git push $REMOTE staging/src/k8s.io/cri-api/v1.22.12-k3s1
-git push $REMOTE staging/src/k8s.io/csi-translation-lib/v1.22.12-k3s1
-git push $REMOTE staging/src/k8s.io/kube-aggregator/v1.22.12-k3s1
-git push $REMOTE staging/src/k8s.io/kube-controller-manager/v1.22.12-k3s1
-git push $REMOTE staging/src/k8s.io/kubectl/v1.22.12-k3s1
-git push $REMOTE staging/src/k8s.io/kubelet/v1.22.12-k3s1
-git push $REMOTE staging/src/k8s.io/kube-proxy/v1.22.12-k3s1
-git push $REMOTE staging/src/k8s.io/kube-scheduler/v1.22.12-k3s1
-git push $REMOTE staging/src/k8s.io/legacy-cloud-providers/v1.22.12-k3s1
-git push $REMOTE staging/src/k8s.io/metrics/v1.22.12-k3s1
-git push $REMOTE staging/src/k8s.io/sample-apiserver/v1.22.12-k3s1
-git push $REMOTE staging/src/k8s.io/sample-cli-plugin/v1.22.12-k3s1
-git push $REMOTE staging/src/k8s.io/sample-controller/v1.22.12-k3s1
-git push $REMOTE v1.22.12-k3s1
+git push ${REMOTE} staging/src/k8s.io/api/v1.22.12-k3s1
+git push ${REMOTE} staging/src/k8s.io/apiextensions-apiserver/v1.22.12-k3s1
+git push ${REMOTE} staging/src/k8s.io/apimachinery/v1.22.12-k3s1
+git push ${REMOTE} staging/src/k8s.io/apiserver/v1.22.12-k3s1
+git push ${REMOTE} staging/src/k8s.io/client-go/v1.22.12-k3s1
+git push ${REMOTE} staging/src/k8s.io/cli-runtime/v1.22.12-k3s1
+git push ${REMOTE} staging/src/k8s.io/cloud-provider/v1.22.12-k3s1
+git push ${REMOTE} staging/src/k8s.io/cluster-bootstrap/v1.22.12-k3s1
+git push ${REMOTE} staging/src/k8s.io/code-generator/v1.22.12-k3s1
+git push ${REMOTE} staging/src/k8s.io/component-base/v1.22.12-k3s1
+git push ${REMOTE} staging/src/k8s.io/cri-api/v1.22.12-k3s1
+git push ${REMOTE} staging/src/k8s.io/csi-translation-lib/v1.22.12-k3s1
+git push ${REMOTE} staging/src/k8s.io/kube-aggregator/v1.22.12-k3s1
+git push ${REMOTE} staging/src/k8s.io/kube-controller-manager/v1.22.12-k3s1
+git push ${REMOTE} staging/src/k8s.io/kubectl/v1.22.12-k3s1
+git push ${REMOTE} staging/src/k8s.io/kubelet/v1.22.12-k3s1
+git push ${REMOTE} staging/src/k8s.io/kube-proxy/v1.22.12-k3s1
+git push ${REMOTE} staging/src/k8s.io/kube-scheduler/v1.22.12-k3s1
+git push ${REMOTE} staging/src/k8s.io/legacy-cloud-providers/v1.22.12-k3s1
+git push ${REMOTE} staging/src/k8s.io/metrics/v1.22.12-k3s1
+git push ${REMOTE} staging/src/k8s.io/sample-apiserver/v1.22.12-k3s1
+git push ${REMOTE} staging/src/k8s.io/sample-cli-plugin/v1.22.12-k3s1
+git push ${REMOTE} staging/src/k8s.io/sample-controller/v1.22.12-k3s1
+git push ${REMOTE} v1.22.12-k3s1
 ```
 ## Push tags to k3s-io remote
 ```
@@ -134,7 +134,7 @@ go mod tidy
 git add go.mod go.sum
 
 git commit --all --signoff -m "Update to $NEW_K8S"
-git push --set-upstream origin $NEW_K3S_VER 
+git push --set-upstream origin ${NEW_K3S_VER}
 ```
 
 Create a commit with all the changes, and push this upstream.
