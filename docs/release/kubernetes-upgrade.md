@@ -205,7 +205,7 @@ NOTE: If this is a ew minor release of kubernetes, then a new entry will need to
 
 NOTE: As of v1.21.4 and above, every new release minor or patch requires a new entry be created in `channels.yaml`. It is possible to build off the server, agent, and chart arguments defined in other entries.
 
-For example, v1.21.4 has server args defined below. The versions pertaining to the release in progress will match the corresponding patch versions established at the begining of this document:
+For example, v1.21.4 has server args defined below. The versions pertaining to the release in progress will match the corresponding patch versions established at the beginning of this document:
 ```yaml
 - version: v1.21.4+k3s2
      minChannelServerVersion: v2.6.0-alpha1
