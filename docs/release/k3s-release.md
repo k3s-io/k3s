@@ -83,7 +83,7 @@ Save this output to a file called ```push.sh``` and mark it as executable by run
 ```sh
 chmod +x push.sh
 ```
-### tag.sh example output:
+### tag.sh example output (The kubernetes versions will correspond to those of the patch release, 1.22 is shown below):
 ```sh
 git push $REMOTE staging/src/k8s.io/api/v1.22.12-k3s1
 git push $REMOTE staging/src/k8s.io/apiextensions-apiserver/v1.22.12-k3s1
@@ -157,13 +157,13 @@ The resulting run can be viewed here:
 # Create GA Release Candidate
 Once QA has verified that the RC is good (or that any fixes have been added in follow up release candidates), it is time for the general release.
 
-1. Create new release in GH UI
-2. Set title: v1.22.5+k3s1, add description with release notes. Leave the tag section blank.
+1. Create new release in the Github web interface
+2. Set title: $NEW_K8S, add description with release notes. Leave the tag section blank.
 3. Check the pre-release field.
 4. Save as draft until RC testing is complete.
 
-Once QA signs off on RC:
-1. Set tag to be created - this tag should match the tag in the title.
+Once QA signs off on a RC:
+1. Set tag to be created - this tag should match the tag in the drafted title.
 2. Ensure prerelease is checked.
 3. Publish.
 
@@ -171,7 +171,7 @@ Once QA signs off on RC:
 1. Uncheck prerelease, and save.
 2. Update channel server
 
-The resulting run can be viewed here: 
+The resulting CICD run can be viewed here: 
 [k3s-io/k3s Drone Dashboard](https://drone-publish.k3s.io/k3s-io/k3s)
 
 # Create Release Images
@@ -205,7 +205,7 @@ NOTE: If this is a ew minor release of kubernetes, then a new entry will need to
 
 NOTE: As of v1.21.4 and above, every new release minor or patch requires a new entry be created in `channels.yaml`. It is possible to build off the server, agent, and chart arguments defined in other entries.
 
-For example, v1.21.4 has server args defined as follows:
+For example, v1.21.4 has server args defined below. The versions pertaining to the release in progress will match the corresponding patch versions established at the begining of this document:
 ```yaml
 - version: v1.21.4+k3s2
      minChannelServerVersion: v2.6.0-alpha1
@@ -236,5 +236,5 @@ Release Captains responsible for this change will need to update the following s
 # Example channels config
 channels:
 - name: stable
-  latest: v1.22.12+k3s1 # Replace this semver with the version corresponding to the release
+  latest: <new-k8s-version>+k3s1 # Replace this semver with the version corresponding to the release
 ```
