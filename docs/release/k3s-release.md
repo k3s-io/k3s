@@ -1,15 +1,5 @@
 # K3S Kubernetes Patch Release Process
 This document details the K3S kubernetes patch release process.
-For reference, this document makes the following assumptions:
-
-```
-Current K3S Version: v1.22.11
-New K3S Version [New k8s patch]: v1.22.12
-
-Affected repos are:
-k3s-io/kubernetes
-k3s-io/k3s
-```
 
 # Before You Begin
 You’ll be primarily using git and go. Git can be installed via the local package manager. Make sure Go is installed and configured correctly, utilizing a “gopath”. This can be set via an environment variable called GOPATH. eg. export GOPATH=”${HOME}/go”, typically.
@@ -24,7 +14,6 @@ git clone --origin upstream \
  
 cd ${GOPATH}/src/github.com/kubernetes/kubernetes
  
-# export your github name if different from user
 # add the k3s-io remote
 git remote add k3s-io https://github.com/k3s-io/kubernetes.git
  
@@ -40,13 +29,13 @@ export GLOBAL_GIT_CONFIG_PATH=$(git config --list --show-origin --show-scope --g
 export SSH_MOUNT_PATH=$(echo $SSH_AUTH_SOCK || echo "$HOME/.ssh/id_rsa")
 
 # Set up your new/old versions of Kubernetes
-export OLD_K8S=v1.22.11
-export NEW_K8S=v1.22.12
-export OLD_K8S_CLIENT=v0.22.11
-export NEW_K8S_CLIENT=v0.22.12
+export OLD_K8S=<old-k8s-version>
+export NEW_K8S=<new-k8s-version>
+export OLD_K8S_CLIENT=<old-k8s-client-version>
+export NEW_K8S_CLIENT=<new-k8s-client-version>
 export OLD_K3S_VER="$OLD_K8S-k3s1" 
 export NEW_K3S_VER="$NEW_K8S-k3s1"
-export RELEASE_BRANCH=release-1.22
+export RELEASE_BRANCH=<k8s-release-branch>
 export GOPATH=$(go env GOPATH)
  
 # clean old builds
@@ -166,7 +155,7 @@ The resulting run can be viewed here:
 [k3s-io/k3s Drone Dashboard](https://drone-publish.k3s.io/k3s-io/k3s)
 
 # Create GA Release Candidate
-Once QA has verified that the RC is good (or that any fixes have been added in follow up RC candidates), it is time for the general release.
+Once QA has verified that the RC is good (or that any fixes have been added in follow up release candidates), it is time for the general release.
 
 1. Create new release in GH UI
 2. Set title: v1.22.5+k3s1, add description with release notes. Leave the tag section blank.
@@ -174,12 +163,12 @@ Once QA has verified that the RC is good (or that any fixes have been added in f
 4. Save as draft until RC testing is complete.
 
 Once QA signs off on RC:
-1. Set tag to be created - should match title.
-2. Ensure as pre-release is still checked.
+1. Set tag to be created - this tag should match the tag in the title.
+2. Ensure prerelease is checked.
 3. Publish.
 
 24 hours after CI has completed and artifacts are created:
-1. Edit release to remove pre-release, and save.
+1. Uncheck prerelease, and save.
 2. Update channel server
 
 The resulting run can be viewed here: 
@@ -248,5 +237,5 @@ Release Captains responsible for this change will need to update the following s
 # Example channels config
 channels:
 - name: stable
-  latest: v1.22.12+k3s1
+  latest: v1.22.12+k3s1 # Replace this semver with the version corresponding to the release
 ```
