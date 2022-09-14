@@ -185,9 +185,8 @@ Go to the [k3s-upgrade repository](https://github.com/k3s-io/k3s-upgrade) and ma
 
 This process will take some time but upon completion, the images will be listed here.
 
-The k3s images will be published here.
-
-The upgrade images will be published here.
+The k3s images will be published[here](https://hub.docker.com/r/rancher/k3s).
+The upgrade images will be published [here](https://hub.docker.com/r/rancher/k3s-upgrade).
 
 Verifying Component Release Versions
 With each release, k3s publishes release notes that include a table of the components and their versions.
