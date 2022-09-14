@@ -46,7 +46,7 @@ rm -rf _output
 # tagged in the following step.
 git rebase --onto $NEW_K8S $OLD_K8S $OLD_K3S_VER~1
  
-# Kubernetes is very picky about go versions. We use alpine and docker to specify the goversion with which we build the project.
+# Kubernetes is specific with the Go version used per release. We use alpine and docker to specify the Go version with which we build the project.
 # This command is not backwards compatible and requires versions of yq greater than 4.0, as the query syntax has changed throughout the history of the project.
 export GOVERSION=$(yq -e '.dependencies[] | select(.name == "golang: upstream version").version' build/dependencies.yaml)
 
