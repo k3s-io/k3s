@@ -121,12 +121,12 @@ You now have a collection of tagged kubernetes modules in your worktree. By upda
 cd $GOPATH/src/github.com/rancher/k3s
 git remote add upstream https://github.com/k3s-io/k3s.git
 git fetch upstream
-git checkout -B $NEW_K3S_VER upstream/$RELEASE_BRANCH
+git checkout -B ${NEW_K3S_VER} upstream/$RELEASE_BRANCH
 git clean -xfd
  
 sed -Ei "\|github.com/k3s-io/kubernetes| s|${OLD_K3S_VER}|${NEW_K3S_VER}|" go.mod
-sed -Ei "s/k8s.io\/kubernetes v\S+/k8s.io\/kubernetes $NEW_K8S/" go.mod
-sed -Ei "s/$OLD_K8S_CLIENT/$NEW_K8S_CLIENT/g" go.mod 
+sed -Ei "s/k8s.io\/kubernetes v\S+/k8s.io\/kubernetes ${NEW_K8S}/" go.mod
+sed -Ei "s/${OLD_K8S_CLIENT}/${NEW_K8S_CLIENT}/g" go.mod 
  
 # since drone perform the builds and tests for the updated tags we no longer need to run make locally.
 # We now update the go.sum by running go mod tidy:
@@ -185,7 +185,7 @@ Go to the [k3s-upgrade repository](https://github.com/k3s-io/k3s-upgrade) and ma
 
 This process will take some time but upon completion, the images will be listed here.
 
-The k3s images will be published[here](https://hub.docker.com/r/rancher/k3s).
+The k3s images will be published [here](https://hub.docker.com/r/rancher/k3s).
 The upgrade images will be published [here](https://hub.docker.com/r/rancher/k3s-upgrade).
 
 Verifying Component Release Versions
