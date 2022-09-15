@@ -65,7 +65,7 @@ coreutils \
 rsync \
 alpine-sdk" 
 
-echo -e $BUILD_CONTAINER | docker build -t ${GOIMAGE}-dev -
+echo -e ${BUILD_CONTAINER} | docker build -t ${GOIMAGE}-dev -
 
 # Rebasing pulls in the tags.sh script.
 # Now create the tags by executing tag.sh with the given version variables.
@@ -121,7 +121,7 @@ You now have a collection of tagged kubernetes modules in your worktree. By upda
 cd $GOPATH/src/github.com/rancher/k3s
 git remote add upstream https://github.com/k3s-io/k3s.git
 git fetch upstream
-git checkout -B ${NEW_K3S_VER} upstream/$RELEASE_BRANCH
+git checkout -B ${NEW_K3S_VER} upstream/${RELEASE_BRANCH}
 git clean -xfd
  
 sed -Ei "\|github.com/k3s-io/kubernetes| s|${OLD_K3S_VER}|${NEW_K3S_VER}|" go.mod
