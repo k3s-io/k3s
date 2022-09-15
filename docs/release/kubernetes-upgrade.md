@@ -118,7 +118,7 @@ export REMOTE=k3s-io
 ## Updating k3s with the new tags
 You now have a collection of tagged kubernetes modules in your worktree. By updating go.mod in k3s to point at these modules we will then be prepared to open a PR for review.
 ```sh
-cd $GOPATH/src/github.com/rancher/k3s
+cd ${GOPATH}/src/github.com/rancher/k3s
 git remote add upstream https://github.com/k3s-io/k3s.git
 git fetch upstream
 git checkout -B ${NEW_K3S_VER} upstream/${RELEASE_BRANCH}
@@ -133,7 +133,7 @@ sed -Ei "s/${OLD_K8S_CLIENT}/${NEW_K8S_CLIENT}/g" go.mod
 go mod tidy
 git add go.mod go.sum
 
-git commit --all --signoff -m "Update to $NEW_K8S"
+git commit --all --signoff -m "Update to ${NEW_K8S}"
 git push --set-upstream origin ${NEW_K3S_VER}
 ```
 
@@ -158,7 +158,7 @@ The resulting run can be viewed here:
 Once QA has verified that the RC is good (or that any fixes have been added in follow up release candidates), it is time for the general release.
 
 1. Create new release in the Github web interface
-2. Set title: $NEW_K8S, add description with release notes. Leave the tag section blank.
+2. Set title: ${NEW_K8S}, add description with release notes. Leave the tag section blank.
 3. Check the pre-release field.
 4. Save as draft until RC testing is complete.
 
