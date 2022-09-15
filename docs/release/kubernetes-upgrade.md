@@ -171,7 +171,7 @@ Once QA signs off on a RC:
 1. Uncheck prerelease, and save.
 2. Update channel server
 
-The resulting CICD run can be viewed here: 
+The resulting CI/CD run can be viewed here: 
 [k3s-io/k3s Drone Dashboard](https://drone-publish.k3s.io/k3s-io/k3s)
 
 # Create Release Images
