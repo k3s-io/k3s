@@ -47,7 +47,7 @@ jobs:
     - name: Install Go
       uses: actions/setup-go@v2 
       with: 
-        go-version: '1.18.5'
+        go-version: '1.18.6'
     - name: Checkout
       uses: actions/checkout@v2
       with:
