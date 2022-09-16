@@ -39,10 +39,10 @@ spec:
         emptyDir: {}
       containers:
       - name: metrics-server
-        image: %{SYSTEM_DEFAULT_REGISTRY}%rancher/mirrored-metrics-server:v0.5.2
+        image: %{SYSTEM_DEFAULT_REGISTRY}%rancher/mirrored-metrics-server:v0.6.1
         args:
         - --cert-dir=/tmp
-        - --secure-port=4443
+        - --secure-port=10250
         - --kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname
         - --kubelet-use-node-status-port
         - --metric-resolution=15s
@@ -52,7 +52,7 @@ spec:
             memory: 70Mi
         ports:
         - name: https
-          containerPort: 4443
+          containerPort: 10250
           protocol: TCP
         readinessProbe:
           httpGet:
