@@ -7,8 +7,8 @@ curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stabl
 sudo mv kubectl /usr/local/bin/ && \
 chmod a+x /usr/local/bin/kubectl
 
-echo 'Installing jq'
-sudo apt-get -y install jq
+echo 'Installing jq and docker'
+sudo apt-get -y install jq docker.io
 
 echo 'Installing Go'
 GO_VERSION=1.19.1
@@ -39,3 +39,10 @@ vagrant plugin install vagrant-k3s vagrant-reload vagrant-scp
 
 echo 'Cloning repo'
 ls k3s 2>/dev/null || git clone https://github.com/k3s-io/k3s.git
+
+# Use curl -X GET <IP_ADDR>:5000/v2/_catalog to see cached images
+echo 'Setting up docker registry as a cache'
+docker run -d -p 5000:5000 \
+    -e REGISTRY_PROXY_REMOTEURL=https://registry-1.docker.io \
+    --restart always \
+    --name registry registry:2

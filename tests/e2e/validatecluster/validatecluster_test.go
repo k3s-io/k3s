@@ -54,7 +54,6 @@ var _ = Describe("Verify Create", Ordered, func() {
 			fmt.Println("Agent Nodes:", agentNodeNames)
 			kubeConfigFile, err = e2e.GenKubeConfigFile(serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred())
-			Expect(e2e.DockerLogin(kubeConfigFile, *ci)).To(Succeed())
 		})
 
 		It("Checks Node and Pod Status", func() {

@@ -336,21 +336,6 @@ func RestartCluster(nodeNames []string) error {
 	return nil
 }
 
-// DockerLogin authenticates to the docker registry for increased pull limits
-func DockerLogin(kubeConfig string, ci bool) error {
-	if !ci {
-		return nil
-	}
-	// Authenticate to docker hub to increade pull limit
-	cmd := fmt.Sprintf("kubectl create secret docker-registry regcred --from-file=.dockerconfigjson=%s --kubeconfig=%s",
-		"../amd64_resource_files/docker_cred.json", kubeConfig)
-	res, err := RunCommand(cmd)
-	if err != nil {
-		return fmt.Errorf("failed to create docker registry secret: %s : %v", res, err)
-	}
-	return nil
-}
-
 // RunCmdOnNode executes a command from within the given node
 func RunCmdOnNode(cmd string, nodename string) (string, error) {
 	runcmd := "vagrant ssh -c \"" + cmd + "\" " + nodename

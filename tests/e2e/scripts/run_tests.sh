@@ -7,6 +7,7 @@ k3s_channel=${k3s_channel:-"commit"}
 hardened=${8:-""}
 
 E2E_EXTERNAL_DB=$db && export E2E_EXTERNAL_DB
+E2E_REGISTRY=true && export E2E_REGISTRY
 
 eval openvpn --daemon --config external.ovpn &>/dev/null &
 sleep 10
