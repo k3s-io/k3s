@@ -29,7 +29,7 @@ var local = flag.Bool("local", false, "deploy a locally built K3s binary")
 func Test_E2EClusterReset(t *testing.T) {
 	RegisterFailHandler(Fail)
 	flag.Parse()
-	RunSpecs(t, "Create Cluster Test Suite")
+	RunSpecs(t, "Create ClusterReset Test Suite")
 }
 
 var (
@@ -54,7 +54,6 @@ var _ = Describe("Verify Create", Ordered, func() {
 			fmt.Println("Agent Nodes:", agentNodeNames)
 			kubeConfigFile, err = e2e.GenKubeConfigFile(serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred())
-			Expect(e2e.DockerLogin(kubeConfigFile, *ci)).To(Succeed())
 		})
 
 		It("Checks Node and Pod Status", func() {
@@ -100,7 +99,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 				cmd = "sudo k3s server --cluster-reset"
 				res, err := e2e.RunCmdOnNode(cmd, "server-0")
 				Expect(err).NotTo(HaveOccurred())
-				Expect(res).Should(ContainSubstring("cluster-reset"))
+				Expect(res).Should(ContainSubstring("Managed etcd cluster membership has been reset, restart without --cluster-reset flag now"))
 
 				cmd = "sudo systemctl start k3s"
 				_, err = e2e.RunCmdOnNode(cmd, "server-0")
@@ -111,9 +110,13 @@ var _ = Describe("Verify Create", Ordered, func() {
 					nodes, err := e2e.ParseNodes(kubeConfigFile, false)
 					g.Expect(err).NotTo(HaveOccurred())
 					for _, node := range nodes {
-						g.Expect(node.Status).Should(Equal("Ready"))
+						if strings.Contains(node.Name, "server-0") || strings.Contains(node.Name, "agent-") {
+							g.Expect(node.Status).Should(Equal("Ready"))
+						} else {
+							g.Expect(node.Status).Should(Equal("NotReady"))
+						}
 					}
-				}, "420s", "5s").Should(Succeed())
+				}, "480s", "5s").Should(Succeed())
 				_, _ = e2e.ParseNodes(kubeConfigFile, true)
 
 				fmt.Printf("\nFetching Pods status\n")
