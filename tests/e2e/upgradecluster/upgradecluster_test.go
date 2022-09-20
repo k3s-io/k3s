@@ -19,8 +19,11 @@ var nodeOS = flag.String("nodeOS", "generic/ubuntu2004", "VM operating system")
 var serverCount = flag.Int("serverCount", 3, "number of server nodes")
 var agentCount = flag.Int("agentCount", 2, "number of agent nodes")
 var hardened = flag.Bool("hardened", false, "true or false")
+var ci = flag.Bool("ci", false, "running on CI")
 
 // Environment Variables Info:
+// E2E_REGISTRY: true/false (default: false)
+// Controls which K3s version is installed first, upgrade is always to latest commit
 // E2E_RELEASE_VERSION=v1.23.3+k3s1
 // OR
 // E2E_RELEASE_CHANNEL=(commit|latest|stable), commit pulls latest commit from master
@@ -379,7 +382,7 @@ var _ = AfterEach(func() {
 })
 
 var _ = AfterSuite(func() {
-	if failed {
+	if failed && !*ci {
 		fmt.Println("FAILED!")
 	} else {
 		Expect(e2e.DestroyCluster()).To(Succeed())
