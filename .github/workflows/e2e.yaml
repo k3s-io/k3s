@@ -1,0 +1,80 @@
+name: E2E Test Coverage
+on: 
+  push:
+    paths-ignore:
+      - "**.md"
+      - "channel.yaml"
+      - "install.sh"
+      - "tests/**"
+      - "!tests/e2e**"
+      - ".github/**"
+      - "!.github/workflows/e2e.yaml"
+  # pull_request:
+  #   paths-ignore:
+  #     - "**.md"
+  #     - "channel.yaml"
+  #     - "install.sh"
+  #     - "tests/**"
+  #     - "!tests/e2e**"
+  #     - ".github/**"
+  #     - "!.github/workflows/e2e.yaml"
+  workflow_dispatch: {}
+jobs:
+  test:
+    name: E2E Tests
+    runs-on: ubuntu-20.04
+    timeout-minutes: 60
+    steps:
+    - name: "Checkout K3s"
+      uses: actions/checkout@v3
+
+    - name: Build K3s binary
+      run: DOCKER_BUILDKIT=1 SKIP_AIRGAP=1 SKIP_VALIDATE=1 make
+
+    - name: Connect to Fremont VPN
+      uses: aduriseti/ovpn3-connect-action@v1
+      with:
+        ovpn-config:  ${{ secrets.OVPN_CONFIG }}
+        vpn-user:     ${{ secrets.OVPN_USER }}
+        vpn-pass:     ${{ secrets.OVPN_PASS }}
+
+    - name: Transfer K3s to E2E runner
+      uses: appleboy/scp-action@master
+      with:
+        host: ${{ secrets.PR_RUNNER_IP }}
+        username: ${{ secrets.PR_RUNNER_USER }}
+        key: ${{ secrets.PR_RUNNER_PERM }}
+        source: "./*"
+        target: "k3s-${{ github.sha }}"
+
+    - name: Run E2E tests
+      uses: appleboy/ssh-action@v0.1.5
+      with:
+        host: ${{ secrets.PR_RUNNER_IP }}
+        username: ${{ secrets.PR_RUNNER_USER }}
+        key: ${{ secrets.PR_RUNNER_PERM }}
+        script_stop: true
+        #./scripts/run-tests.sh
+        script: |
+          cd k3s-${{ github.sha }}/tests/e2e
+          ls -la
+          ls -la ../../../dist/artifacts
+          
+
+    - name: Save logs on failure
+      if: failure()
+      uses: appleboy/ssh-action@v0.1.5
+      with:
+        host: ${{ secrets.PR_RUNNER_IP }}
+        username: ${{ secrets.PR_RUNNER_USER }}
+        key: ${{ secrets.PR_RUNNER_PERM }}
+        script: |
+          mkdir -p failed_logs/${{ github.sha }}
+          find ./k3s-${{ github.sha }}/tests/e2e -name \*.log -exec cp {} failed_logs/${{ github.sha }} \;
+          rm -rf ./k3s-${{ github.sha }}
+
+    - name: Kill VPN Connection
+      if: always()
+      run: |
+        sudo pkill openvpn  
+ 
