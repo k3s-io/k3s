@@ -21,7 +21,7 @@ LimitCORE=infinity
 TasksMax=infinity
 TimeoutStartSec=0
 Restart=always
-RestartSec=5s
+RestartSec=10s
 
 [Install]
 WantedBy=multi-user.target
