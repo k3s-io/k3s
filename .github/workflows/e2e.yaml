@@ -23,7 +23,7 @@ jobs:
   test:
     name: E2E Tests
     runs-on: ubuntu-20.04
-    timeout-minutes: 60
+    timeout-minutes: 120
     steps:
     - name: "Checkout K3s"
       uses: actions/checkout@v3
@@ -46,24 +46,28 @@ jobs:
         key: ${{ secrets.PR_RUNNER_PERM }}
         source: "./*"
         target: "k3s-${{ github.sha }}"
-
+    
     - name: Run E2E tests
-      uses: appleboy/ssh-action@v0.1.5
+      uses: appleboy/ssh-action@v0.1.4
       with:
         host: ${{ secrets.PR_RUNNER_IP }}
         username: ${{ secrets.PR_RUNNER_USER }}
         key: ${{ secrets.PR_RUNNER_PERM }}
         script_stop: true
-        #./scripts/run-tests.sh
         script: |
-          cd k3s-${{ github.sha }}/tests/e2e
-          ls -la
-          ls -la ../../../dist/artifacts
-          
-
+          export PATH=$PATH:/usr/local/go/bin
+          echo $PATH
+          cd k3s-${{ github.sha }}
+          go mod tidy && go mod download
+          cd tests/e2e
+          echo 'RUNNING CLUSTER VALIDATION TEST'
+          go test -v -timeout=30m validatecluster/validatecluster_test.go -local
+          cd ~
+          rm -rf k3s-${{ github.sha }}
+    
     - name: Save logs on failure
       if: failure()
-      uses: appleboy/ssh-action@v0.1.5
+      uses: appleboy/ssh-action@v0.1.4
       with:
         host: ${{ secrets.PR_RUNNER_IP }}
         username: ${{ secrets.PR_RUNNER_USER }}
