@@ -9,27 +9,38 @@ on:
       - "!tests/e2e**"
       - ".github/**"
       - "!.github/workflows/e2e.yaml"
-  # pull_request:
-  #   paths-ignore:
-  #     - "**.md"
-  #     - "channel.yaml"
-  #     - "install.sh"
-  #     - "tests/**"
-  #     - "!tests/e2e**"
-  #     - ".github/**"
-  #     - "!.github/workflows/e2e.yaml"
+  pull_request:
+    paths-ignore:
+      - "**.md"
+      - "channel.yaml"
+      - "install.sh"
+      - "tests/**"
+      - "!tests/e2e**"
+      - ".github/**"
+      - "!.github/workflows/e2e.yaml"
   workflow_dispatch: {}
 jobs:
+  # we split the build into a separate job to make testing reruns faster
+  # if build passes, later runs will skip this job and reuse the artifacts
+  build:
+    uses: ./.github/workflows/build-k3s.yaml
+    with:
+      upload-repo: true
   test:
     name: E2E Tests
+    needs: build
     runs-on: ubuntu-20.04
-    timeout-minutes: 120
+    timeout-minutes: 60
+    concurrency: e2e_runner_limit
     steps:
-    - name: "Checkout K3s"
-      uses: actions/checkout@v3
-
-    - name: Build K3s binary
-      run: DOCKER_BUILDKIT=1 SKIP_AIRGAP=1 SKIP_VALIDATE=1 make
+    - name: Download K3s repo
+      uses: actions/download-artifact@v3
+      with:
+        name: k3s-repo.tar.gz
+        path: ./
+    - run: |
+        tar -xzvf k3s-repo.tar.gz .
+        rm k3s-repo.tar.gz
 
     - name: Connect to Fremont VPN
       uses: aduriseti/ovpn3-connect-action@v1
@@ -71,7 +82,7 @@ jobs:
           export PATH=$PATH:/usr/local/go/bin
           cd k3s-${{ github.sha }}/tests/e2e
           echo 'RUNNING CLUSTER VALIDATION TEST'
-          go test -v -timeout=45m validatecluster/validatecluster_test.go -local -ci
+          E2E_REGISTRY=true go test -v -timeout=45m validatecluster/validatecluster_test.go -local -ci
           cd ~
           rm -rf k3s-${{ github.sha }}
     

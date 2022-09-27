@@ -5,7 +5,6 @@ NODE_BOXES = (ENV['E2E_NODE_BOXES'] ||
   ['generic/ubuntu2004', 'generic/ubuntu2004', 'generic/ubuntu2004', 'generic/ubuntu2004', 'generic/ubuntu2004'])
 GITHUB_BRANCH = (ENV['E2E_GITHUB_BRANCH'] || "master")
 RELEASE_VERSION = (ENV['E2E_RELEASE_VERSION'] || "")
-EXTERNAL_DB = (ENV['E2E_EXTERNAL_DB'] || "etcd")
 HARDENED = (ENV['E2E_HARDENED'] || "")
 NODE_CPUS = (ENV['E2E_NODE_CPUS'] || 2).to_i
 NODE_MEMORY = (ENV['E2E_NODE_MEMORY'] || 1024).to_i
@@ -91,16 +90,10 @@ def provision(vm, role, role_num, node_num)
   end
 end
 
+# Cluster reset only works on embedded etcd
 def getDBType(role, role_num, vm)
-  if ( EXTERNAL_DB == "" || EXTERNAL_DB == "etcd" )
-    if role.include?("server") && role_num == 0
-      return "cluster-init: true"
-    end
-  elsif ( EXTERNAL_DB == "none" )
-    # Use internal sqlite, only valid for single node clusters
-  else
-    puts "Unknown EXTERNAL_DB: " + EXTERNAL_DB
-    abort
+  if role.include?("server") && role_num == 0
+    return "cluster-init: true"
   end
   return ""
 end
