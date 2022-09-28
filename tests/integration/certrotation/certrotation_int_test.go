@@ -71,7 +71,7 @@ var _ = Describe("certificate rotation", Ordered, func() {
 			Expect(err).ToNot(HaveOccurred())
 			certHashAfter, err := testutil.RunCommand("md5sum " + tmpdDataDir + "/server/tls/serving-kube-apiserver.crt | cut -f 1 -d' '")
 			Expect(err).ToNot(HaveOccurred())
-			Expect(caCertHash).To(Not(Equal(certHashAfter)))
+			Expect(certHash).To(Not(Equal(certHashAfter)))
 			Expect(caCertHash).To(Equal(caCertHashAfter))
 		})
 	})
