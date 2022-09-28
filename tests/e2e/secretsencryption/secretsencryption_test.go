@@ -31,7 +31,7 @@ var (
 	serverNodeNames []string
 )
 
-var _ = Describe("Verify Secrets Encryption Rotation", func() {
+var _ = Describe("Verify Secrets Encryption Rotation", Ordered, func() {
 	Context("Cluster :", func() {
 		It("Starts up with no issues", func() {
 			var err error

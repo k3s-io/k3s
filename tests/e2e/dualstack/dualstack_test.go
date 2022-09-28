@@ -70,7 +70,7 @@ var (
 	agentNodeNames  []string
 )
 
-var _ = Describe("Verify DualStack Configuration", func() {
+var _ = Describe("Verify DualStack Configuration", Ordered, func() {
 
 	It("Starts up with no issues", func() {
 		var err error
@@ -201,7 +201,7 @@ var _ = Describe("Verify DualStack Configuration", func() {
 
 var failed bool
 var _ = AfterEach(func() {
-	failed = failed || CurrentGinkgoTestDescription().Failed
+	failed = failed || CurrentSpecReport().Failed()
 })
 
 var _ = AfterSuite(func() {

@@ -6,6 +6,7 @@ NODE_BOXES = (ENV['E2E_NODE_BOXES'] ||
 RELEASE_CHANNEL = (ENV['E2E_RELEASE_CHANNEL'] || "latest")
 RELEASE_VERSION = (ENV['E2E_RELEASE_VERSION'] || "")
 EXTERNAL_DB = (ENV['E2E_EXTERNAL_DB'] || "etcd")
+REGISTRY = (ENV['E2E_REGISTRY'] || "")
 NODE_CPUS = (ENV['E2E_NODE_CPUS'] || 2).to_i
 NODE_MEMORY = (ENV['E2E_NODE_MEMORY'] || 1024).to_i
 # Virtualbox >= 6.1.28 require `/etc/vbox/network.conf` for expanded private networks 
@@ -41,7 +42,9 @@ def provision(vm, role, role_num, node_num)
   vm.provision "shell", inline: "ping -c 2 k3s.io"
   db_type = getDBType(role, role_num, vm)
 
-
+  if !REGISTRY.empty?
+    vm.provision "Set private registry", type: "shell", path: scripts_location + "/registry.sh", args: [ "#{NETWORK_PREFIX}.1" ]
+  end
 
   if role.include?("server") && role_num == 0
     vm.provision 'k3s-primary-server', type: 'k3s', run: 'once' do |k3s|

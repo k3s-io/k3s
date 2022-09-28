@@ -32,7 +32,7 @@ var (
 	agentNodeNames  []string
 )
 
-var _ = Describe("Verify CRI-Dockerd", func() {
+var _ = Describe("Verify CRI-Dockerd", Ordered, func() {
 	Context("Cluster :", func() {
 		It("Starts up with no issues", func() {
 			var err error
