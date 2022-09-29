@@ -2,6 +2,7 @@ package cloudprovider
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 
@@ -28,6 +29,7 @@ type Config struct {
 	LBEnabled   bool   `json:"lbEnabled"`
 	LBImage     string `json:"lbImage"`
 	LBNamespace string `json:"lbNamespace"`
+	NodeEnabled bool   `json:"nodeEnabled"`
 	Rootless    bool   `json:"rootless"`
 }
 
@@ -54,6 +56,7 @@ func init() {
 				LBEnabled:   true,
 				LBImage:     DefaultLBImage,
 				LBNamespace: DefaultLBNS,
+				NodeEnabled: true,
 			},
 		}
 
@@ -63,6 +66,10 @@ func init() {
 			if err == nil {
 				err = json.Unmarshal(bytes, &k.Config)
 			}
+		}
+
+		if !k.LBEnabled && !k.NodeEnabled {
+			return nil, fmt.Errorf("all cloud-provider functionality disabled by config")
 		}
 
 		return &k, err
@@ -113,7 +120,7 @@ func (k *k3s) Instances() (cloudprovider.Instances, bool) {
 }
 
 func (k *k3s) InstancesV2() (cloudprovider.InstancesV2, bool) {
-	return k, true
+	return k, k.NodeEnabled
 }
 
 func (k *k3s) LoadBalancer() (cloudprovider.LoadBalancer, bool) {
