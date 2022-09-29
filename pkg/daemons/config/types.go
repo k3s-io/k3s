@@ -302,7 +302,8 @@ type ControlRuntime struct {
 	Tunnel             http.Handler
 	Authenticator      authenticator.Request
 
-	EgressSelectorConfig string
+	EgressSelectorConfig  string
+	CloudControllerConfig string
 
 	ClientAuthProxyCert string
 	ClientAuthProxyKey  string

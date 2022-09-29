@@ -17,7 +17,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -163,27 +162,17 @@ func (*Embedded) CloudControllerManager(ctx context.Context, ccmRBACReady <-chan
 	}
 
 	cloudInitializer := func(config *cloudcontrollerconfig.CompletedConfig) cloudprovider.Interface {
-		cloud, err := ccm.InitCloudProvider(version.Program, "")
+		cloud, err := ccm.InitCloudProvider(version.Program, config.ComponentConfig.KubeCloudShared.CloudProvider.CloudConfigFile)
 		if err != nil {
 			logrus.Fatalf("Cloud provider could not be initialized: %v", err)
 		}
 		if cloud == nil {
 			logrus.Fatalf("Cloud provider is nil")
 		}
-
-		cloud.Initialize(config.ClientBuilder, make(chan struct{}))
-		if informerUserCloud, ok := cloud.(ccm.InformerUser); ok {
-			informerUserCloud.SetInformers(config.SharedInformers)
-		}
-
 		return cloud
 	}
 
-	controllerInitializers := ccmapp.DefaultInitFuncConstructors
-	delete(controllerInitializers, "service")
-	delete(controllerInitializers, "route")
-
-	command := ccmapp.NewCloudControllerManagerCommand(ccmOptions, cloudInitializer, controllerInitializers, cliflag.NamedFlagSets{}, wait.NeverStop)
+	command := ccmapp.NewCloudControllerManagerCommand(ccmOptions, cloudInitializer, ccmapp.DefaultInitFuncConstructors, cliflag.NamedFlagSets{}, ctx.Done())
 	command.SetArgs(args)
 
 	go func() {
