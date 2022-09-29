@@ -399,6 +399,7 @@ func updateLegacyAddressLabels(agentConfig *daemonconfig.Agent, nodeLabels map[s
 	return nil, false
 }
 
+// updateAddressAnnotations updates the node annotations with important information about IP addresses of the node
 func updateAddressAnnotations(agentConfig *daemonconfig.Agent, nodeAnnotations map[string]string) (map[string]string, bool) {
 	result := map[string]string{
 		cp.InternalIPKey: util.JoinIPs(agentConfig.NodeIPs),
@@ -407,6 +408,14 @@ func updateAddressAnnotations(agentConfig *daemonconfig.Agent, nodeAnnotations m
 
 	if agentConfig.NodeExternalIP != "" {
 		result[cp.ExternalIPKey] = util.JoinIPs(agentConfig.NodeExternalIPs)
+		for _, ipAddress := range agentConfig.NodeExternalIPs {
+			if utilsnet.IsIPv4(ipAddress) {
+				result[flannel.FlannelExternalIPv4Annotation] = ipAddress.String()
+			}
+			if utilsnet.IsIPv6(ipAddress) {
+				result[flannel.FlannelExternalIPv6Annotation] = ipAddress.String()
+			}
+		}
 	}
 
 	result = labels.Merge(nodeAnnotations, result)
