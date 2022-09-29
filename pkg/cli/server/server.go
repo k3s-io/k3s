@@ -114,8 +114,8 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	serverConfig.ControlConfig.DataDir = cfg.DataDir
 	serverConfig.ControlConfig.KubeConfigOutput = cfg.KubeConfigOutput
 	serverConfig.ControlConfig.KubeConfigMode = cfg.KubeConfigMode
-	serverConfig.Rootless = cfg.Rootless
-	serverConfig.ServiceLBNamespace = cfg.ServiceLBNamespace
+	serverConfig.ControlConfig.Rootless = cfg.Rootless
+	serverConfig.ControlConfig.ServiceLBNamespace = cfg.ServiceLBNamespace
 	serverConfig.ControlConfig.SANs = cfg.TLSSan
 	serverConfig.ControlConfig.BindAddress = cfg.BindAddress
 	serverConfig.ControlConfig.SupervisorPort = cfg.SupervisorPort
@@ -362,7 +362,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		}
 	}
 	if serverConfig.ControlConfig.Skips["servicelb"] {
-		serverConfig.DisableServiceLB = true
+		serverConfig.ControlConfig.DisableServiceLB = true
 	}
 
 	if serverConfig.ControlConfig.DisableCCM {
@@ -482,7 +482,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	agentConfig.ServerURL = url
 	agentConfig.Token = token
 	agentConfig.DisableLoadBalancer = !serverConfig.ControlConfig.DisableAPIServer
-	agentConfig.DisableServiceLB = serverConfig.DisableServiceLB
+	agentConfig.DisableServiceLB = serverConfig.ControlConfig.DisableServiceLB
 	agentConfig.ETCDAgent = serverConfig.ControlConfig.DisableAPIServer
 	agentConfig.ClusterReset = serverConfig.ControlConfig.ClusterReset
 	agentConfig.Rootless = cfg.Rootless
