@@ -214,9 +214,9 @@ func coreControllers(ctx context.Context, sc *Context, config *Config) error {
 		sc.Core.Core().V1().Pod(),
 		sc.Core.Core().V1().Service(),
 		sc.Core.Core().V1().Endpoints(),
-		config.ServiceLBNamespace,
-		!config.DisableServiceLB,
-		config.Rootless); err != nil {
+		config.ControlConfig.ServiceLBNamespace,
+		!config.ControlConfig.DisableServiceLB,
+		config.ControlConfig.Rootless); err != nil {
 		return err
 	}
 
@@ -230,10 +230,10 @@ func coreControllers(ctx context.Context, sc *Context, config *Config) error {
 		}
 	}
 
-	if config.Rootless {
+	if config.ControlConfig.Rootless {
 		return rootlessports.Register(ctx,
 			sc.Core.Core().V1().Service(),
-			!config.DisableServiceLB,
+			!config.ControlConfig.DisableServiceLB,
 			config.ControlConfig.HTTPSPort)
 	}
 
@@ -378,7 +378,7 @@ func writeKubeConfig(certs string, config *Config) error {
 		port = config.ControlConfig.APIServerPort
 	}
 	url := fmt.Sprintf("https://%s:%d", ip, port)
-	kubeConfig, err := HomeKubeConfig(true, config.Rootless)
+	kubeConfig, err := HomeKubeConfig(true, config.ControlConfig.Rootless)
 	def := true
 	if err != nil {
 		kubeConfig = filepath.Join(config.ControlConfig.DataDir, "kubeconfig-"+version.Program+".yaml")
