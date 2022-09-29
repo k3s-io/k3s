@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/k3s-io/k3s/pkg/clientaccess"
+	"github.com/k3s-io/k3s/pkg/cloudprovider"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/passwd"
 	"github.com/k3s-io/k3s/pkg/token"
@@ -138,6 +139,7 @@ func CreateRuntimeCertFiles(config *config.Control) {
 	runtime.ServingKubeletKey = filepath.Join(config.DataDir, "tls", "serving-kubelet.key")
 
 	runtime.EgressSelectorConfig = filepath.Join(config.DataDir, "etc", "egress-selector-config.yaml")
+	runtime.CloudControllerConfig = filepath.Join(config.DataDir, "etc", "cloud-config.yaml")
 
 	runtime.ClientAuthProxyCert = filepath.Join(config.DataDir, "tls", "client-auth-proxy.crt")
 	runtime.ClientAuthProxyKey = filepath.Join(config.DataDir, "tls", "client-auth-proxy.key")
@@ -184,6 +186,10 @@ func GenServerDeps(config *config.Control) error {
 	}
 
 	if err := genEgressSelectorConfig(config); err != nil {
+		return err
+	}
+
+	if err := genCloudConfig(config); err != nil {
 		return err
 	}
 
@@ -763,4 +769,22 @@ func genEgressSelectorConfig(controlConfig *config.Control) error {
 		return err
 	}
 	return ioutil.WriteFile(controlConfig.Runtime.EgressSelectorConfig, b, 0600)
+}
+
+func genCloudConfig(controlConfig *config.Control) error {
+	cloudConfig := cloudprovider.Config{
+		LBEnabled:   !controlConfig.DisableServiceLB,
+		LBNamespace: controlConfig.ServiceLBNamespace,
+		LBImage:     cloudprovider.DefaultLBImage,
+		Rootless:    controlConfig.Rootless,
+	}
+	if controlConfig.SystemDefaultRegistry != "" {
+		cloudConfig.LBImage = controlConfig.SystemDefaultRegistry + "/" + cloudConfig.LBImage
+	}
+	b, err := json.Marshal(cloudConfig)
+	if err != nil {
+		return err
+	}
+	return ioutil.WriteFile(controlConfig.Runtime.CloudControllerConfig, b, 0600)
+
 }

@@ -23,7 +23,6 @@ import (
 	"github.com/k3s-io/k3s/pkg/nodepassword"
 	"github.com/k3s-io/k3s/pkg/rootlessports"
 	"github.com/k3s-io/k3s/pkg/secretsencrypt"
-	"github.com/k3s-io/k3s/pkg/servicelb"
 	"github.com/k3s-io/k3s/pkg/static"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
@@ -187,10 +186,9 @@ func coreControllers(ctx context.Context, sc *Context, config *Config) error {
 		return err
 	}
 
-	// apply SystemDefaultRegistry setting to Helm and ServiceLB before starting controllers
+	// apply SystemDefaultRegistry setting to Helm before starting controllers
 	if config.ControlConfig.SystemDefaultRegistry != "" {
 		helm.DefaultJobImage = config.ControlConfig.SystemDefaultRegistry + "/" + helm.DefaultJobImage
-		servicelb.DefaultLBImage = config.ControlConfig.SystemDefaultRegistry + "/" + servicelb.DefaultLBImage
 	}
 
 	if !config.ControlConfig.DisableHelmController {
@@ -203,21 +201,6 @@ func coreControllers(ctx context.Context, sc *Context, config *Config) error {
 			sc.Auth.Rbac().V1().ClusterRoleBinding(),
 			sc.Core.Core().V1().ServiceAccount(),
 			sc.Core.Core().V1().ConfigMap())
-	}
-
-	if err := servicelb.Register(ctx,
-		sc.K8s,
-		sc.Apply,
-		sc.Apps.Apps().V1().DaemonSet(),
-		sc.Apps.Apps().V1().Deployment(),
-		sc.Core.Core().V1().Node(),
-		sc.Core.Core().V1().Pod(),
-		sc.Core.Core().V1().Service(),
-		sc.Core.Core().V1().Endpoints(),
-		config.ControlConfig.ServiceLBNamespace,
-		!config.ControlConfig.DisableServiceLB,
-		config.ControlConfig.Rootless); err != nil {
-		return err
 	}
 
 	if config.ControlConfig.EncryptSecrets {
