@@ -81,7 +81,7 @@ func Server(ctx context.Context, cfg *config.Control) error {
 		}
 	}
 
-	if !cfg.DisableCCM {
+	if !cfg.DisableCCM || !cfg.DisableServiceLB {
 		if err := cloudControllerManager(ctx, cfg); err != nil {
 			return err
 		}
@@ -301,10 +301,12 @@ func cloudControllerManager(ctx context.Context, cfg *config.Control) error {
 	argsMap := map[string]string{
 		"profiling":                    "false",
 		"allocate-node-cidrs":          "true",
+		"leader-elect-resource-name":   version.Program + "-cloud-controller-manager",
 		"cloud-provider":               version.Program,
 		"cloud-config":                 runtime.CloudControllerConfig,
 		"cluster-cidr":                 util.JoinIPNets(cfg.ClusterIPRanges),
 		"configure-cloud-routes":       "false",
+		"controllers":                  "*,-route",
 		"kubeconfig":                   runtime.KubeConfigCloudController,
 		"authorization-kubeconfig":     runtime.KubeConfigCloudController,
 		"authentication-kubeconfig":    runtime.KubeConfigCloudController,
@@ -313,6 +315,12 @@ func cloudControllerManager(ctx context.Context, cfg *config.Control) error {
 	}
 	if cfg.NoLeaderElect {
 		argsMap["leader-elect"] = "false"
+	}
+	if cfg.DisableCCM {
+		argsMap["controllers"] = argsMap["controllers"] + ",-cloud-node,-cloud-node-lifecycle"
+	}
+	if cfg.DisableServiceLB {
+		argsMap["controllers"] = argsMap["controllers"] + ",-service"
 	}
 	args := config.GetArgs(argsMap, cfg.ExtraCloudControllerArgs)
 
