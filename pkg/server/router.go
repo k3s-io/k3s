@@ -436,7 +436,7 @@ func passwordBootstrap(ctx context.Context, config *Config) nodePassBootstrapper
 func verifyLocalPassword(ctx context.Context, config *Config, mu *sync.Mutex, deferredNodes map[string]bool, nodeName, nodePassword string) (string, int, error) {
 	// use same password file location that the agent creates
 	nodePasswordRoot := "/"
-	if config.Rootless {
+	if config.ControlConfig.Rootless {
 		nodePasswordRoot = filepath.Join(config.ControlConfig.DataDir, "agent")
 	}
 	nodeConfigPath := filepath.Join(nodePasswordRoot, "etc", "rancher", "node")
