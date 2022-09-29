@@ -180,8 +180,8 @@ func kubeletArgs(cfg *config.Agent) map[string]string {
 		argsMap["protect-kernel-defaults"] = "true"
 	}
 
-	if !cfg.DisableServiceLB && cfg.EnableIPv6 {
-		argsMap["allowed-unsafe-sysctls"] = "net.ipv6.conf.all.forwarding"
+	if !cfg.DisableServiceLB {
+		argsMap["allowed-unsafe-sysctls"] = "net.ipv4.ip_forward,net.ipv6.conf.all.forwarding"
 	}
 
 	return argsMap
