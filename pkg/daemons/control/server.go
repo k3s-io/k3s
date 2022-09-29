@@ -302,6 +302,7 @@ func cloudControllerManager(ctx context.Context, cfg *config.Control) error {
 		"profiling":                    "false",
 		"allocate-node-cidrs":          "true",
 		"cloud-provider":               version.Program,
+		"cloud-config":                 runtime.CloudControllerConfig,
 		"cluster-cidr":                 util.JoinIPNets(cfg.ClusterIPRanges),
 		"configure-cloud-routes":       "false",
 		"kubeconfig":                   runtime.KubeConfigCloudController,
@@ -371,9 +372,9 @@ func checkForCloudControllerPrivileges(ctx context.Context, runtime *config.Cont
 			User: version.Program + "-cloud-controller-manager",
 			ResourceAttributes: &authorizationv1.ResourceAttributes{
 				Namespace: metav1.NamespaceSystem,
-				Verb:      "get",
-				Resource:  "configmaps",
-				Name:      "extension-apiserver-authentication",
+				Verb:      "*",
+				Resource:  "daemonsets",
+				Group:     "apps",
 			},
 		},
 	}
