@@ -104,7 +104,7 @@ func WaitForAPIServerReady(ctx context.Context, kubeconfigPath string, timeout t
 func BuildControllerEventRecorder(k8s clientset.Interface, controllerName, namespace string) record.EventRecorder {
 	logrus.Infof("Creating %s event broadcaster", controllerName)
 	eventBroadcaster := record.NewBroadcaster()
-	eventBroadcaster.StartLogging(logrus.Infof)
+	eventBroadcaster.StartStructuredLogging(0)
 	eventBroadcaster.StartRecordingToSink(&coregetter.EventSinkImpl{Interface: k8s.CoreV1().Events(namespace)})
 	nodeName := os.Getenv("NODE_NAME")
 	return eventBroadcaster.NewRecorder(schemes.All, v1.EventSource{Component: controllerName, Host: nodeName})
