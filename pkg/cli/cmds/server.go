@@ -507,6 +507,7 @@ var ServerFlags = []cli.Flag{
 		Usage:       "(experimental) Enable Secret encryption at rest",
 		Destination: &ServerConfig.EncryptSecrets,
 	},
+	NoPivotRootFlag,
 	&SELinuxFlag,
 	LBServerPortFlag,
 
