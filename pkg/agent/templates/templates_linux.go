@@ -85,6 +85,7 @@ enable_keychain = true
 
 [plugins.cri.containerd.runtimes.runc.options]
 	SystemdCgroup = {{ .SystemdCgroup }}
+	NoPivotRoot = {{ .NoPivotRoot }}
 
 {{ if .PrivateRegistryConfig }}
 {{ if .PrivateRegistryConfig.Mirrors }}

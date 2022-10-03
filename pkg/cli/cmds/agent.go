@@ -37,6 +37,7 @@ type Agent struct {
 	RootlessAlreadyUnshared  bool
 	WithNodeID               bool
 	EnableSELinux            bool
+	NoPivotRoot              bool
 	ProtectKernelDefaults    bool
 	ClusterReset             bool
 	PrivateRegistry          string
@@ -96,6 +97,12 @@ var (
 		Usage:       "(agent/node) Enable SELinux in containerd",
 		Destination: &AgentConfig.EnableSELinux,
 		EnvVar:      version.ProgramUpper + "_SELINUX",
+	}
+	NoPivotRootFlag = cli.BoolFlag{
+		Name:        "no-pivot-root",
+		Usage:       "(agent/node) NoPivotRoot disables pivot root when creating a container",
+		Destination: &AgentConfig.NoPivotRoot,
+		EnvVar:      version.ProgramUpper + "_NO_PIVOT_ROOT",
 	}
 	LBServerPortFlag = cli.IntFlag{
 		Name:        "lb-server-port",
@@ -253,6 +260,7 @@ func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
 			NodeTaints,
 			ImageCredProvBinDirFlag,
 			ImageCredProvConfigFlag,
+			NoPivotRootFlag,
 			&SELinuxFlag,
 			LBServerPortFlag,
 			ProtectKernelDefaultsFlag,

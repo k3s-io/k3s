@@ -130,6 +130,7 @@ type Agent struct {
 	DisableServiceLB        bool
 	EnableIPv4              bool
 	EnableIPv6              bool
+	NoPivotRoot             bool
 }
 
 // CriticalControlArgs contains parameters that all control plane nodes in HA must share

@@ -15,6 +15,7 @@ type ContainerdConfig struct {
 	NodeConfig            *config.Node
 	DisableCgroup         bool
 	SystemdCgroup         bool
+	NoPivotRoot           bool
 	IsRunningInUserNS     bool
 	EnableUnprivileged    bool
 	PrivateRegistryConfig *registries.Registry
