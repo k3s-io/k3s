@@ -1,8 +1,10 @@
 package control
 
 import (
+	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"strings"
@@ -188,7 +190,7 @@ func (t *TunnelServer) serveConnect(resp http.ResponseWriter, req *http.Request)
 	}
 	resp.WriteHeader(http.StatusOK)
 
-	rconn, _, err := hijacker.Hijack()
+	rconn, bufrw, err := hijacker.Hijack()
 	if err != nil {
 		responsewriters.ErrorNegotiated(
 			apierrors.NewInternalError(err),
@@ -197,7 +199,7 @@ func (t *TunnelServer) serveConnect(resp http.ResponseWriter, req *http.Request)
 		return
 	}
 
-	proxy.Proxy(rconn, bconn)
+	proxy.Proxy(newConnReadWriteCloser(rconn, bufrw), bconn)
 }
 
 // dialBackend determines where to route the connection request to, and returns
@@ -269,4 +271,33 @@ func (t *TunnelServer) dialBackend(ctx context.Context, addr string) (net.Conn, 
 	// the destination is local; fall back to direct connection.
 	logrus.Debugf("Tunnel server egress proxy dialing %s directly", addr)
 	return defaultDialer.DialContext(ctx, "tcp", addr)
+}
+
+// connReadWriteCloser bundles a net.Conn and a wrapping bufio.ReadWriter together into a type that
+// meets the ReadWriteCloser interface. The http.Hijacker interface returns such a pair, and reads
+// need to go through the buffered reader (because the http handler may have already read from the
+// underlying connection), but writes and closes need to hit the connection directly.
+type connReadWriteCloser struct {
+	conn net.Conn
+	once sync.Once
+	rw   *bufio.ReadWriter
+}
+
+var _ io.ReadWriteCloser = &connReadWriteCloser{}
+
+func newConnReadWriteCloser(conn net.Conn, rw *bufio.ReadWriter) *connReadWriteCloser {
+	return &connReadWriteCloser{conn: conn, rw: rw}
+}
+
+func (crw *connReadWriteCloser) Read(p []byte) (n int, err error) {
+	return crw.rw.Read(p)
+}
+
+func (crw *connReadWriteCloser) Write(b []byte) (n int, err error) {
+	return crw.conn.Write(b)
+}
+
+func (crw *connReadWriteCloser) Close() (err error) {
+	crw.once.Do(func() { err = crw.conn.Close() })
+	return
 }
