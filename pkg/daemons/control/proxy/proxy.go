@@ -2,7 +2,6 @@ package proxy
 
 import (
 	"io"
-	"net"
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -14,7 +13,7 @@ type proxy struct {
 	errc         chan error
 }
 
-func Proxy(lconn, rconn net.Conn) error {
+func Proxy(lconn, rconn io.ReadWriteCloser) error {
 	p := &proxy{
 		lconn: lconn,
 		rconn: rconn,
