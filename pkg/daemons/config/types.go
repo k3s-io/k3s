@@ -32,15 +32,7 @@ const (
 	EgressSelectorModePod         = "pod"
 	CertificateRenewDays          = 90
 	StreamServerPort              = "10010"
-	KubeletPort                   = "10250"
 )
-
-// These ports can always be accessed via the tunnel server, at the loopback address.
-// Other addresses and ports are only accessible via the tunnel on newer agents, when used by a pod.
-var KubeletReservedPorts = map[string]bool{
-	StreamServerPort: true,
-	KubeletPort:      true,
-}
 
 type Node struct {
 	Docker                   bool
