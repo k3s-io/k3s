@@ -7,7 +7,9 @@ import (
 	"net"
 	"os"
 	"reflect"
+	"strconv"
 	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
 	agentconfig "github.com/k3s-io/k3s/pkg/agent/config"
@@ -22,6 +24,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -31,10 +34,11 @@ import (
 )
 
 type agentTunnel struct {
-	client kubernetes.Interface
-	cidrs  cidranger.Ranger
-	ports  map[string]bool
-	mode   string
+	client      kubernetes.Interface
+	cidrs       cidranger.Ranger
+	ports       map[string]bool
+	mode        string
+	kubeletPort string
 }
 
 // explicit interface check
@@ -85,6 +89,9 @@ func Setup(ctx context.Context, config *daemonconfig.Node, proxy proxy.Proxy) er
 		close(apiServerReady)
 	}()
 
+	// Allow the kubelet port, as published via our node object
+	go tunnel.setKubeletPort(ctx, apiServerReady)
+
 	switch tunnel.mode {
 	case daemonconfig.EgressSelectorModeCluster:
 		// In Cluster mode, we allow the cluster CIDRs, and any connections to the node's IPs for pods using host network.
@@ -133,6 +140,23 @@ func Setup(ctx context.Context, config *daemonconfig.Node, proxy proxy.Proxy) er
 	}
 
 	return nil
+}
+
+// setKubeletPort retrieves the configured kubelet port from our node object
+func (a *agentTunnel) setKubeletPort(ctx context.Context, apiServerReady <-chan struct{}) {
+	<-apiServerReady
+
+	wait.PollImmediateWithContext(ctx, time.Second, util.DefaultAPIServerReadyTimeout, func(ctx context.Context) (bool, error) {
+		nodeName := os.Getenv("NODE_NAME")
+		node, err := a.client.CoreV1().Nodes().Get(ctx, nodeName, metav1.GetOptions{})
+		if err != nil {
+			logrus.Debugf("Tunnel authorizer failed to get Kubelet Port: %v", err)
+			return false, nil
+		}
+		a.kubeletPort = strconv.FormatInt(int64(node.Status.DaemonEndpoints.KubeletEndpoint.Port), 10)
+		logrus.Infof("Tunnel authorizer set Kubelet Port %s", a.kubeletPort)
+		return true, nil
+	})
 }
 
 func (a *agentTunnel) clusterAuth(config *daemonconfig.Node) {
@@ -304,7 +328,7 @@ func (a *agentTunnel) authorized(ctx context.Context, proto, address string) boo
 	logrus.Debugf("Tunnel authorizer checking dial request for %s", address)
 	host, port, err := net.SplitHostPort(address)
 	if err == nil {
-		if proto == "tcp" && daemonconfig.KubeletReservedPorts[port] && (host == "127.0.0.1" || host == "::1") {
+		if a.isKubeletPort(proto, host, port) {
 			return true
 		}
 		if ip := net.ParseIP(host); ip != nil {
@@ -358,4 +382,9 @@ func (a *agentTunnel) connect(rootCtx context.Context, waitGroup *sync.WaitGroup
 	}()
 
 	return cancel
+}
+
+// isKubeletPort returns true if the connection is to a reserved TCP port on a loopback address.
+func (a *agentTunnel) isKubeletPort(proto, host, port string) bool {
+	return proto == "tcp" && (host == "127.0.0.1" || host == "::1") && (port == a.kubeletPort || port == daemonconfig.StreamServerPort)
 }
