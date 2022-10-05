@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -77,13 +78,19 @@ type TunnelServer struct {
 var _ cidranger.RangerEntry = &tunnelEntry{}
 
 type tunnelEntry struct {
-	cidr     net.IPNet
-	nodeName string
-	node     bool
+	kubeletPort string
+	nodeName    string
+	cidr        net.IPNet
 }
 
 func (n *tunnelEntry) Network() net.IPNet {
 	return n.cidr
+}
+
+// Some ports can always be accessed via the tunnel server, at the loopback address.
+// Other addresses and ports are only accessible via the tunnel on newer agents, when used by a pod.
+func (n *tunnelEntry) IsReservedPort(port string) bool {
+	return n.kubeletPort != "" && (port == n.kubeletPort || port == config.StreamServerPort)
 }
 
 // ServeHTTP handles either CONNECT requests, or websocket requests to the remotedialer server
@@ -134,7 +141,8 @@ func (t *TunnelServer) onChangeNode(nodeName string, node *v1.Node) (*v1.Node, e
 						t.cidrs.Remove(*n)
 					} else {
 						logrus.Debugf("Tunnel server egress proxy updating Node %s IP %v", nodeName, n)
-						t.cidrs.Insert(&tunnelEntry{cidr: *n, nodeName: nodeName, node: true})
+						kubeletPort := strconv.FormatInt(int64(node.Status.DaemonEndpoints.KubeletEndpoint.Port), 10)
+						t.cidrs.Insert(&tunnelEntry{cidr: *n, nodeName: nodeName, kubeletPort: kubeletPort})
 					}
 				}
 			}
@@ -222,7 +230,7 @@ func (t *TunnelServer) dialBackend(ctx context.Context, addr string) (net.Conn, 
 		if nets, err := t.cidrs.ContainingNetworks(ip); err == nil && len(nets) > 0 {
 			if n, ok := nets[0].(*tunnelEntry); ok {
 				nodeName = n.nodeName
-				if n.node && config.KubeletReservedPorts[port] {
+				if n.IsReservedPort(port) {
 					toKubelet = true
 					useTunnel = true
 				} else {
