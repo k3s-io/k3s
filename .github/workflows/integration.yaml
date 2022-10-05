@@ -5,9 +5,8 @@ on:
       - "**.md"
       - "channel.yaml"
       - "install.sh"
-      - "tests/snapshotter/**"
-      - "tests/install/**"
-      - "tests/cgroup/**"
+      - "tests/**"
+      - "!tests/integration**"
       - ".github/**"
       - "!.github/workflows/integration.yaml"
   pull_request:
@@ -15,9 +14,8 @@ on:
       - "**.md"
       - "channel.yaml"
       - "install.sh"
-      - "tests/snapshotter/**"
-      - "tests/install/**"
-      - "tests/cgroup/**"
+      - "tests/**"
+      - "!tests/integration**"
       - ".github/**"
       - "!.github/workflows/integration.yaml"
   workflow_dispatch: {}
