@@ -39,8 +39,16 @@ LABEL="ETCD-JOIN-BASIC" SERVER_ARGS="" run-test
 LABEL="ETCD-JOIN-AGENTTOKEN" SERVER_ARGS="--agent-token ${RANDOM}${RANDOM}${RANDOM}" run-test
 
 # --- test joining managed etcd cluster with stable-version first server and current-build second server
+# --- this test is skipped if the second node is down-level, as we don't support adding a down-level server to an existing cluster
 server-post-hook() {
   if [ $1 -eq 1 ]; then
+    SERVER_1_MINOR=$(awk -F. '{print $2}' <<<${K3S_IMAGE_SERVER})
+    SERVER_2_MINOR=$(awk -F. '{print $2}' <<<${K3S_IMAGE})
+    if [ $SERVER_1_MINOR -gt $SERVER_2_MINOR ]; then
+        echo "First server minor version cannot be higher than second server"
+        exit 0
+    fi
+
     local url=$(cat $TEST_DIR/servers/1/metadata/url)
     export SERVER_ARGS="${SERVER_ARGS} --server $url"
     export K3S_IMAGE_SERVER=${K3S_IMAGE}
@@ -49,16 +57,24 @@ server-post-hook() {
 export -f server-post-hook
 LABEL="ETCD-JOIN-STABLE-FIRST" K3S_IMAGE_SERVER=${REPO}/${IMAGE_NAME}:${STABLE_VERSION} run-test
 
-# --- test joining managed etcd cluster with current-build first server and stable-version second server
+# --- test joining managed etcd cluster with latest-version first server and current-build second server
+# --- this test is skipped if the second node is down-level, as we don't support adding a down-level server to an existing cluster
 server-post-hook() {
   if [ $1 -eq 1 ]; then
+    SERVER_1_MINOR=$(awk -F. '{print $2}' <<<${K3S_IMAGE_SERVER})
+    SERVER_2_MINOR=$(awk -F. '{print $2}' <<<${K3S_IMAGE})
+    if [ $SERVER_1_MINOR -gt $SERVER_2_MINOR ]; then
+        echo "First server minor version cannot be higher than second server"
+        exit 0
+    fi
+
     local url=$(cat $TEST_DIR/servers/1/metadata/url)
     export SERVER_ARGS="${SERVER_ARGS} --server $url"
-    export K3S_IMAGE_SERVER=${K3S_IMAGE_SERVER_2}
+    export K3S_IMAGE_SERVER=${K3S_IMAGE}
   fi
 }
 export -f server-post-hook
-LABEL="ETCD-JOIN-STABLE-SECOND" K3S_IMAGE_SERVER_2=${REPO}/${IMAGE_NAME}:${STABLE_VERSION} run-test
+LABEL="ETCD-JOIN-LATEST-FIRST" K3S_IMAGE_SERVER=${REPO}/${IMAGE_NAME}:${LATEST_VERSION} run-test
 
 # --- test joining a managed etcd cluster with incompatible configuration
 test-post-hook() {
