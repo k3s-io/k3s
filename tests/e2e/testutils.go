@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -36,6 +37,28 @@ type ObjIP struct {
 	Name string
 	IPv4 string
 	IPv6 string
+}
+
+type NodeError struct {
+	Node string
+	Cmd  string
+	Err  error
+}
+
+func (ne *NodeError) Error() string {
+	return fmt.Sprintf("failed creating cluster: %s: %v", ne.Cmd, ne.Err)
+}
+
+func (ne *NodeError) Unwrap() error {
+	return ne.Err
+}
+
+func newNodeError(cmd, node string, err error) *NodeError {
+	return &NodeError{
+		Cmd:  cmd,
+		Node: node,
+		Err:  err,
+	}
 }
 
 func CountOfStringInSlice(str string, pods []Pod) int {
@@ -85,7 +108,7 @@ func CreateCluster(nodeOS string, serverCount, agentCount int) ([]string, []stri
 
 	fmt.Println(cmd)
 	if _, err := RunCommand(cmd); err != nil {
-		return nil, nil, fmt.Errorf("failed creating cluster: %s: %v", cmd, err)
+		return nil, nil, newNodeError(cmd, serverNodeNames[0], err)
 	}
 	// Bring up the rest of the nodes in parallel
 	errg, _ := errgroup.WithContext(context.Background())
@@ -93,7 +116,7 @@ func CreateCluster(nodeOS string, serverCount, agentCount int) ([]string, []stri
 		cmd := fmt.Sprintf(`%s %s vagrant up %s &>> vagrant.log`, nodeEnvs, testOptions, node)
 		errg.Go(func() error {
 			if _, err := RunCommand(cmd); err != nil {
-				return fmt.Errorf("failed creating cluster: %s: %v", cmd, err)
+				return newNodeError(cmd, node, err)
 			}
 			return nil
 		})
@@ -134,7 +157,7 @@ func CreateLocalCluster(nodeOS string, serverCount, agentCount int) ([]string, [
 		}
 		errg.Go(func() error {
 			if _, err := RunCommand(cmd); err != nil {
-				return fmt.Errorf("failed creating cluster: %s: %v", cmd, err)
+				return fmt.Errorf("failed initializing nodes: %s: %v", cmd, err)
 			}
 			return nil
 		})
@@ -160,7 +183,7 @@ func CreateLocalCluster(nodeOS string, serverCount, agentCount int) ([]string, [
 		cmd = fmt.Sprintf(`%s %s vagrant provision %s &>> vagrant.log`, nodeEnvs, testOptions, node)
 		errg.Go(func() error {
 			if _, err := RunCommand(cmd); err != nil {
-				return fmt.Errorf("failed creating cluster: %s: %v", cmd, err)
+				return newNodeError(cmd, node, err)
 			}
 			return nil
 		})
@@ -257,7 +280,16 @@ func GenKubeConfigFile(serverName string) (string, error) {
 	return kubeConfigFile, nil
 }
 
-func GetVagrantLog() string {
+// GetVagrantLog returns the logs of on vagrant commands that initialize the nodes and provision K3s on each node.
+// It also attempts to fetch the systemctl logs of K3s on nodes where the k3s.service failed.
+func GetVagrantLog(cErr error) string {
+	var nodeErr *NodeError
+	nodeJournal := ""
+	if errors.As(cErr, &nodeErr) {
+		nodeJournal, _ = RunCommand("vagrant ssh " + nodeErr.Node + " -c \"sudo journalctl -u k3s* --no-pager\"")
+		nodeJournal = "\nNode Journal Logs:\n" + nodeJournal
+	}
+
 	log, err := os.Open("vagrant.log")
 	if err != nil {
 		return err.Error()
@@ -266,7 +298,7 @@ func GetVagrantLog() string {
 	if err != nil {
 		return err.Error()
 	}
-	return string(bytes)
+	return string(bytes) + nodeJournal
 }
 
 func ParseNodes(kubeConfig string, print bool) ([]Node, error) {
