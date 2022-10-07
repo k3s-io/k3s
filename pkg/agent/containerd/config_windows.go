@@ -5,7 +5,6 @@ package containerd
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"time"
 
@@ -50,7 +49,7 @@ func setupContainerdConfig(ctx context.Context, cfg *config.Node) error {
 		PrivateRegistryConfig: privRegistries.Registry,
 	}
 
-	containerdTemplateBytes, err := ioutil.ReadFile(cfg.Containerd.Template)
+	containerdTemplateBytes, err := os.ReadFile(cfg.Containerd.Template)
 	if err == nil {
 		logrus.Infof("Using containerd template at %s", cfg.Containerd.Template)
 		containerdTemplate = string(containerdTemplateBytes)

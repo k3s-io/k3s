@@ -2,7 +2,7 @@ package configfilearg
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -183,7 +183,7 @@ func (p *Parser) findStart(args []string) ([]string, []string, bool) {
 }
 
 func dotDFiles(basefile string) (result []string, _ error) {
-	files, err := ioutil.ReadDir(basefile + ".d")
+	files, err := os.ReadDir(basefile + ".d")
 	if os.IsNotExist(err) {
 		return nil, nil
 	} else if err != nil {
@@ -295,8 +295,8 @@ func readConfigFileData(file string) ([]byte, error) {
 			return nil, fmt.Errorf("failed to read http config %s: %w", file, err)
 		}
 		defer resp.Body.Close()
-		return ioutil.ReadAll(resp.Body)
+		return io.ReadAll(resp.Body)
 	default:
-		return ioutil.ReadFile(file)
+		return os.ReadFile(file)
 	}
 }

@@ -9,7 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"io/fs"
 	"net"
 	"net/http"
 	"net/url"
@@ -352,7 +352,7 @@ func (e *ETCD) Reset(ctx context.Context, rebootstrap func() error) error {
 		return err
 	}
 	// touch a file to avoid multiple resets
-	if err := ioutil.WriteFile(ResetFile(e.config), []byte{}, 0600); err != nil {
+	if err := os.WriteFile(ResetFile(e.config), []byte{}, 0600); err != nil {
 		return err
 	}
 	return e.newCluster(ctx, true)
@@ -561,13 +561,13 @@ func (e *ETCD) Register(ctx context.Context, config *config.Control, handler htt
 // name is used on subsequent calls.
 func (e *ETCD) setName(force bool) error {
 	fileName := nameFile(e.config)
-	data, err := ioutil.ReadFile(fileName)
+	data, err := os.ReadFile(fileName)
 	if os.IsNotExist(err) || force {
 		e.name = e.config.ServerNodeName + "-" + uuid.New().String()[:8]
 		if err := os.MkdirAll(filepath.Dir(fileName), 0700); err != nil {
 			return err
 		}
-		return ioutil.WriteFile(fileName, []byte(e.name), 0600)
+		return os.WriteFile(fileName, []byte(e.name), 0600)
 	} else if err != nil {
 		return err
 	}
@@ -1488,22 +1488,26 @@ func (e *ETCD) listLocalSnapshots() (map[string]snapshotFile, error) {
 		return snapshots, errors.Wrap(err, "failed to get the snapshot dir")
 	}
 
-	files, err := ioutil.ReadDir(snapshotDir)
+	dirEntries, err := os.ReadDir(snapshotDir)
 	if err != nil {
 		return nil, err
 	}
 
 	nodeName := os.Getenv("NODE_NAME")
 
-	for _, f := range files {
+	for _, de := range dirEntries {
+		file, err := de.Info()
+		if err != nil {
+			return nil, err
+		}
 		sf := snapshotFile{
-			Name:     f.Name(),
-			Location: "file://" + filepath.Join(snapshotDir, f.Name()),
+			Name:     file.Name(),
+			Location: "file://" + filepath.Join(snapshotDir, file.Name()),
 			NodeName: nodeName,
 			CreatedAt: &metav1.Time{
-				Time: f.ModTime(),
+				Time: file.ModTime(),
 			},
-			Size:   f.Size(),
+			Size:   file.Size(),
 			Status: successfulSnapshotStatus,
 		}
 		sfKey := generateSnapshotConfigMapKey(sf)
@@ -2024,7 +2028,18 @@ func backupDirWithRetention(dir string, maxBackupRetention int) (string, error) 
 	if _, err := os.Stat(dir); err != nil {
 		return "", nil
 	}
-	files, err := ioutil.ReadDir(filepath.Dir(dir))
+	entries, err := os.ReadDir(filepath.Dir(dir))
+	if err != nil {
+		return "", err
+	}
+	files := make([]fs.FileInfo, 0, len(entries))
+	for _, entry := range entries {
+		info, err := entry.Info()
+		if err != nil {
+			return "", err
+		}
+		files = append(files, info)
+	}
 	if err != nil {
 		return "", err
 	}

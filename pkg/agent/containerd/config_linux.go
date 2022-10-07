@@ -5,7 +5,6 @@ package containerd
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"time"
 
@@ -83,7 +82,7 @@ func setupContainerdConfig(ctx context.Context, cfg *config.Node) error {
 		logrus.Warnf("SELinux is enabled for "+version.Program+" but process is not running in context '%s', "+version.Program+"-selinux policy may need to be applied", SELinuxContextType)
 	}
 
-	containerdTemplateBytes, err := ioutil.ReadFile(cfg.Containerd.Template)
+	containerdTemplateBytes, err := os.ReadFile(cfg.Containerd.Template)
 	if err == nil {
 		logrus.Infof("Using containerd template at %s", cfg.Containerd.Template)
 		containerdTemplate = string(containerdTemplateBytes)

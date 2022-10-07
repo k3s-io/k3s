@@ -2,7 +2,6 @@ package executor
 
 import (
 	"context"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -123,7 +122,7 @@ func (e ETCDConfig) ToConfigFile(extraArgs []string) (string, error) {
 	if err := os.MkdirAll(e.DataDir, 0700); err != nil {
 		return "", err
 	}
-	return confFile, ioutil.WriteFile(confFile, bytes, 0600)
+	return confFile, os.WriteFile(confFile, bytes, 0600)
 }
 
 func Set(driver Executor) {

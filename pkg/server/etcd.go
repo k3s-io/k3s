@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
@@ -75,7 +74,7 @@ func setETCDLabelsAndAnnotations(ctx context.Context, config *Config) error {
 		}
 		fileName := filepath.Join(controlConfig.DataDir, "db", "etcd", "name")
 
-		data, err := ioutil.ReadFile(fileName)
+		data, err := os.ReadFile(fileName)
 		if err != nil {
 			logrus.Infof("Waiting for etcd node name file to be available: %v", err)
 			continue
