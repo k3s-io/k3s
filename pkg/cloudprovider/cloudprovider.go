@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
@@ -63,7 +62,7 @@ func init() {
 
 		if config != nil {
 			var bytes []byte
-			bytes, err = ioutil.ReadAll(config)
+			bytes, err = io.ReadAll(config)
 			if err == nil {
 				err = json.Unmarshal(bytes, &k.Config)
 			}

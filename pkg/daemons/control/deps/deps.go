@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"os"
 	"path/filepath"
@@ -254,7 +253,7 @@ func genUsers(config *config.Control) error {
 func genEncryptedNetworkInfo(controlConfig *config.Control) error {
 	runtime := controlConfig.Runtime
 	if s, err := os.Stat(runtime.IPSECKey); err == nil && s.Size() > 0 {
-		psk, err := ioutil.ReadFile(runtime.IPSECKey)
+		psk, err := os.ReadFile(runtime.IPSECKey)
 		if err != nil {
 			return err
 		}
@@ -268,7 +267,7 @@ func genEncryptedNetworkInfo(controlConfig *config.Control) error {
 	}
 
 	controlConfig.IPSECPSK = psk
-	return ioutil.WriteFile(runtime.IPSECKey, []byte(psk+"\n"), 0600)
+	return os.WriteFile(runtime.IPSECKey, []byte(psk+"\n"), 0600)
 }
 
 func getServerPass(passwd *passwd.Passwd, config *config.Control) (string, error) {
@@ -672,13 +671,13 @@ func genEncryptionConfigAndState(controlConfig *config.Control) error {
 	if s, err := os.Stat(runtime.EncryptionConfig); err == nil && s.Size() > 0 {
 		// On upgrade from older versions, the encryption hash may not exist, create it
 		if _, err := os.Stat(runtime.EncryptionHash); errors.Is(err, os.ErrNotExist) {
-			curEncryptionByte, err := ioutil.ReadFile(runtime.EncryptionConfig)
+			curEncryptionByte, err := os.ReadFile(runtime.EncryptionConfig)
 			if err != nil {
 				return err
 			}
 			encryptionConfigHash := sha256.Sum256(curEncryptionByte)
 			ann := "start-" + hex.EncodeToString(encryptionConfigHash[:])
-			return ioutil.WriteFile(controlConfig.Runtime.EncryptionHash, []byte(ann), 0600)
+			return os.WriteFile(controlConfig.Runtime.EncryptionHash, []byte(ann), 0600)
 		}
 		return nil
 	}
@@ -720,12 +719,12 @@ func genEncryptionConfigAndState(controlConfig *config.Control) error {
 	if err != nil {
 		return err
 	}
-	if err := ioutil.WriteFile(runtime.EncryptionConfig, b, 0600); err != nil {
+	if err := os.WriteFile(runtime.EncryptionConfig, b, 0600); err != nil {
 		return err
 	}
 	encryptionConfigHash := sha256.Sum256(b)
 	ann := "start-" + hex.EncodeToString(encryptionConfigHash[:])
-	return ioutil.WriteFile(controlConfig.Runtime.EncryptionHash, []byte(ann), 0600)
+	return os.WriteFile(controlConfig.Runtime.EncryptionHash, []byte(ann), 0600)
 }
 
 func genEgressSelectorConfig(controlConfig *config.Control) error {
@@ -768,7 +767,7 @@ func genEgressSelectorConfig(controlConfig *config.Control) error {
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(controlConfig.Runtime.EgressSelectorConfig, b, 0600)
+	return os.WriteFile(controlConfig.Runtime.EgressSelectorConfig, b, 0600)
 }
 
 func genCloudConfig(controlConfig *config.Control) error {
@@ -786,6 +785,6 @@ func genCloudConfig(controlConfig *config.Control) error {
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(controlConfig.Runtime.CloudControllerConfig, b, 0600)
+	return os.WriteFile(controlConfig.Runtime.CloudControllerConfig, b, 0600)
 
 }

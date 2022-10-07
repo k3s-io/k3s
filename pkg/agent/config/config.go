@@ -8,7 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
@@ -145,13 +145,13 @@ func getNodeNamedCrt(nodeName string, nodeIPs []net.IP, nodePasswordFile string)
 			return nil, fmt.Errorf("%s: %s", u, resp.Status)
 		}
 
-		return ioutil.ReadAll(resp.Body)
+		return io.ReadAll(resp.Body)
 	}
 }
 
 func ensureNodeID(nodeIDFile string) (string, error) {
 	if _, err := os.Stat(nodeIDFile); err == nil {
-		id, err := ioutil.ReadFile(nodeIDFile)
+		id, err := os.ReadFile(nodeIDFile)
 		return strings.TrimSpace(string(id)), err
 	}
 	id := make([]byte, 4, 4)
@@ -160,12 +160,12 @@ func ensureNodeID(nodeIDFile string) (string, error) {
 		return "", err
 	}
 	nodeID := hex.EncodeToString(id)
-	return nodeID, ioutil.WriteFile(nodeIDFile, []byte(nodeID+"\n"), 0644)
+	return nodeID, os.WriteFile(nodeIDFile, []byte(nodeID+"\n"), 0644)
 }
 
 func ensureNodePassword(nodePasswordFile string) (string, error) {
 	if _, err := os.Stat(nodePasswordFile); err == nil {
-		password, err := ioutil.ReadFile(nodePasswordFile)
+		password, err := os.ReadFile(nodePasswordFile)
 		return strings.TrimSpace(string(password)), err
 	}
 	password := make([]byte, 16, 16)
@@ -174,15 +174,15 @@ func ensureNodePassword(nodePasswordFile string) (string, error) {
 		return "", err
 	}
 	nodePassword := hex.EncodeToString(password)
-	return nodePassword, ioutil.WriteFile(nodePasswordFile, []byte(nodePassword+"\n"), 0600)
+	return nodePassword, os.WriteFile(nodePasswordFile, []byte(nodePassword+"\n"), 0600)
 }
 
 func upgradeOldNodePasswordPath(oldNodePasswordFile, newNodePasswordFile string) {
-	password, err := ioutil.ReadFile(oldNodePasswordFile)
+	password, err := os.ReadFile(oldNodePasswordFile)
 	if err != nil {
 		return
 	}
-	if err := ioutil.WriteFile(newNodePasswordFile, password, 0600); err != nil {
+	if err := os.WriteFile(newNodePasswordFile, password, 0600); err != nil {
 		logrus.Warnf("Unable to write password file: %v", err)
 		return
 	}
@@ -200,11 +200,11 @@ func getServingCert(nodeName string, nodeIPs []net.IP, servingCertFile, servingK
 
 	servingCert, servingKey := splitCertKeyPEM(servingCert)
 
-	if err := ioutil.WriteFile(servingCertFile, servingCert, 0600); err != nil {
+	if err := os.WriteFile(servingCertFile, servingCert, 0600); err != nil {
 		return nil, errors.Wrapf(err, "failed to write node cert")
 	}
 
-	if err := ioutil.WriteFile(servingKeyFile, servingKey, 0600); err != nil {
+	if err := os.WriteFile(servingKeyFile, servingKey, 0600); err != nil {
 		return nil, errors.Wrapf(err, "failed to write node key")
 	}
 
@@ -222,15 +222,15 @@ func getHostFile(filename, keyFile string, info *clientaccess.Info) error {
 		return err
 	}
 	if keyFile == "" {
-		if err := ioutil.WriteFile(filename, fileBytes, 0600); err != nil {
+		if err := os.WriteFile(filename, fileBytes, 0600); err != nil {
 			return errors.Wrapf(err, "failed to write cert %s", filename)
 		}
 	} else {
 		fileBytes, keyBytes := splitCertKeyPEM(fileBytes)
-		if err := ioutil.WriteFile(filename, fileBytes, 0600); err != nil {
+		if err := os.WriteFile(filename, fileBytes, 0600); err != nil {
 			return errors.Wrapf(err, "failed to write cert %s", filename)
 		}
-		if err := ioutil.WriteFile(keyFile, keyBytes, 0600); err != nil {
+		if err := os.WriteFile(keyFile, keyBytes, 0600); err != nil {
 			return errors.Wrapf(err, "failed to write key %s", filename)
 		}
 	}
@@ -263,10 +263,10 @@ func getNodeNamedHostFile(filename, keyFile, nodeName string, nodeIPs []net.IP, 
 	}
 	fileBytes, keyBytes := splitCertKeyPEM(fileBytes)
 
-	if err := ioutil.WriteFile(filename, fileBytes, 0600); err != nil {
+	if err := os.WriteFile(filename, fileBytes, 0600); err != nil {
 		return errors.Wrapf(err, "failed to write cert %s", filename)
 	}
-	if err := ioutil.WriteFile(keyFile, keyBytes, 0600); err != nil {
+	if err := os.WriteFile(keyFile, keyBytes, 0600); err != nil {
 		return errors.Wrapf(err, "failed to write key %s", filename)
 	}
 	return nil
