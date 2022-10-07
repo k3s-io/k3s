@@ -232,8 +232,10 @@ func K3sStartServer(inputArgs ...string) (*K3sServer, error) {
 
 // K3sKillServer terminates the running K3s server and its children
 func K3sKillServer(server *K3sServer) error {
-	server.log.Close()
-	os.Remove(server.log.Name())
+	if server.log != nil {
+		server.log.Close()
+		os.Remove(server.log.Name())
+	}
 	pgid, err := syscall.Getpgid(server.cmd.Process.Pid)
 	if err != nil {
 		if errors.Is(err, syscall.ESRCH) {
