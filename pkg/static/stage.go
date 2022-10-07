@@ -3,7 +3,6 @@
 package static
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -20,7 +19,7 @@ func Stage(dataDir string) error {
 		p := filepath.Join(dataDir, name)
 		logrus.Info("Writing static file: ", p)
 		os.MkdirAll(filepath.Dir(p), 0700)
-		if err := ioutil.WriteFile(p, content, 0600); err != nil {
+		if err := os.WriteFile(p, content, 0600); err != nil {
 			return errors.Wrapf(err, "failed to write to %s", name)
 		}
 	}

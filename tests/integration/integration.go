@@ -6,7 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"os/exec"
 	"os/user"
@@ -299,7 +299,7 @@ func K3sDumpLog(server *K3sServer) error {
 		return err
 	}
 	defer log.Close()
-	b, err := ioutil.ReadAll(log)
+	b, err := io.ReadAll(log)
 	if err != nil {
 		return err
 	}

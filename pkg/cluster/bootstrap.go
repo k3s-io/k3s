@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"os"
 	"path/filepath"
@@ -340,7 +339,7 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker,
 		}
 		defer f.Close()
 
-		fData, err := ioutil.ReadAll(f)
+		fData, err := io.ReadAll(f)
 		if err != nil {
 			return errors.Wrapf(err, "reconcile failed to read %s", pathKey)
 		}

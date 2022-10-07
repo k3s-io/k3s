@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -183,7 +182,7 @@ func getBootstrapKeyFromStorage(ctx context.Context, storageClient client.Client
 func readTokenFromFile(serverToken, certs, dataDir string) (string, error) {
 	tokenFile := filepath.Join(dataDir, "token")
 
-	b, err := ioutil.ReadFile(tokenFile)
+	b, err := os.ReadFile(tokenFile)
 	if err != nil {
 		if os.IsNotExist(err) {
 			token, err := clientaccess.FormatToken(serverToken, certs)

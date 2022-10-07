@@ -8,7 +8,6 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -269,7 +268,7 @@ func (s *S3) snapshotRetention(ctx context.Context) error {
 func readS3EndpointCA(endpointCA string) ([]byte, error) {
 	ca, err := base64.StdEncoding.DecodeString(endpointCA)
 	if err != nil {
-		return ioutil.ReadFile(endpointCA)
+		return os.ReadFile(endpointCA)
 	}
 	return ca, nil
 }

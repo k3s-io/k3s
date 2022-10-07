@@ -18,7 +18,6 @@ package passwordfile
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"reflect"
 	"testing"
@@ -146,14 +145,14 @@ func Test_UnitInsufficientColumnsPasswordFile(t *testing.T) {
 }
 
 func newWithContents(t *testing.T, contents string) (auth *PasswordAuthenticator, err error) {
-	f, err := ioutil.TempFile("", "passwordfile_test")
+	f, err := os.CreateTemp("", "passwordfile_test")
 	if err != nil {
 		t.Fatalf("unexpected error creating passwordfile: %v", err)
 	}
 	f.Close()
 	defer os.Remove(f.Name())
 
-	if err := ioutil.WriteFile(f.Name(), []byte(contents), 0700); err != nil {
+	if err := os.WriteFile(f.Name(), []byte(contents), 0700); err != nil {
 		t.Fatalf("unexpected error writing passwordfile: %v", err)
 	}
 
