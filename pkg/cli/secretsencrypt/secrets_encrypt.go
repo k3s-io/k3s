@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -33,7 +32,7 @@ func commandPrep(app *cli.Context, cfg *cmds.Server) (*clientaccess.Info, error)
 
 	if cfg.Token == "" {
 		fp := filepath.Join(dataDir, "token")
-		tokenByte, err := ioutil.ReadFile(fp)
+		tokenByte, err := os.ReadFile(fp)
 		if err != nil {
 			return nil, err
 		}

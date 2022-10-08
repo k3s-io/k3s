@@ -4,7 +4,6 @@ package deploy
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -38,7 +37,7 @@ staging:
 		p := filepath.Join(dataDir, name)
 		os.MkdirAll(filepath.Dir(p), 0700)
 		logrus.Info("Writing manifest: ", p)
-		if err := ioutil.WriteFile(p, content, 0600); err != nil {
+		if err := os.WriteFile(p, content, 0600); err != nil {
 			return errors.Wrapf(err, "failed to write to %s", name)
 		}
 	}

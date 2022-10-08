@@ -3,8 +3,8 @@ package e2e
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"log"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -43,7 +43,7 @@ func checkError(e error) {
 }
 
 func publicKey(path string) ssh.AuthMethod {
-	key, err := ioutil.ReadFile(path)
+	key, err := os.ReadFile(path)
 	if err != nil {
 		panic(err)
 	}
@@ -121,7 +121,7 @@ func DeployWorkload(workload, kubeconfig string, arch bool) (string, error) {
 	if arch {
 		resourceDir = "./arm64_resource_files"
 	}
-	files, err := ioutil.ReadDir(resourceDir)
+	files, err := os.ReadDir(resourceDir)
 	if err != nil {
 		err = fmt.Errorf("%s : Unable to read resource manifest file for %s", err, workload)
 		return "", err

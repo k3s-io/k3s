@@ -3,7 +3,6 @@ package token
 import (
 	cryptorand "crypto/rand"
 	"encoding/hex"
-	"io/ioutil"
 	"os"
 	"strings"
 	"time"
@@ -26,7 +25,7 @@ func ReadFile(path string) (string, error) {
 	}
 
 	for {
-		tokenBytes, err := ioutil.ReadFile(path)
+		tokenBytes, err := os.ReadFile(path)
 		if err == nil {
 			return strings.TrimSpace(string(tokenBytes)), nil
 		} else if os.IsNotExist(err) {
