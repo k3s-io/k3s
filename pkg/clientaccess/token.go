@@ -7,9 +7,10 @@ import (
 	"crypto/x509"
 	"encoding/hex"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -296,7 +297,7 @@ func get(u string, client *http.Client, username, password string) ([]byte, erro
 		return nil, fmt.Errorf("%s: %s", u, resp.Status)
 	}
 
-	return ioutil.ReadAll(resp.Body)
+	return io.ReadAll(resp.Body)
 }
 
 // put makes a request to a url using a provided client, username, and password
@@ -317,7 +318,7 @@ func put(u string, body []byte, client *http.Client, username, password string) 
 	}
 	defer resp.Body.Close()
 
-	respBody, _ := ioutil.ReadAll(resp.Body)
+	respBody, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("%s: %s %s", u, resp.Status, string(respBody))
 	}
@@ -332,7 +333,7 @@ func FormatToken(token, certFile string) (string, error) {
 
 	certHash := ""
 	if len(certFile) > 0 {
-		b, err := ioutil.ReadFile(certFile)
+		b, err := os.ReadFile(certFile)
 		if err != nil {
 			return "", nil
 		}

@@ -5,7 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/version"
@@ -28,7 +28,7 @@ const (
 var EncryptionHashAnnotation = version.Program + ".io/encryption-config-hash"
 
 func GetEncryptionProviders(runtime *config.ControlRuntime) ([]apiserverconfigv1.ProviderConfiguration, error) {
-	curEncryptionByte, err := ioutil.ReadFile(runtime.EncryptionConfig)
+	curEncryptionByte, err := os.ReadFile(runtime.EncryptionConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -106,11 +106,11 @@ func WriteEncryptionConfig(runtime *config.ControlRuntime, keys []apiserverconfi
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(runtime.EncryptionConfig, jsonfile, 0600)
+	return os.WriteFile(runtime.EncryptionConfig, jsonfile, 0600)
 }
 
 func GenEncryptionConfigHash(runtime *config.ControlRuntime) (string, error) {
-	curEncryptionByte, err := ioutil.ReadFile(runtime.EncryptionConfig)
+	curEncryptionByte, err := os.ReadFile(runtime.EncryptionConfig)
 	if err != nil {
 		return "", err
 	}
@@ -140,7 +140,7 @@ func GenReencryptHash(runtime *config.ControlRuntime, keyName string) (string, e
 }
 
 func getEncryptionHashFile(runtime *config.ControlRuntime) (string, error) {
-	curEncryptionByte, err := ioutil.ReadFile(runtime.EncryptionHash)
+	curEncryptionByte, err := os.ReadFile(runtime.EncryptionHash)
 	if err != nil {
 		return "", err
 	}
@@ -170,5 +170,5 @@ func WriteEncryptionHashAnnotation(runtime *config.ControlRuntime, node *corev1.
 		return err
 	}
 	logrus.Debugf("encryption hash annotation set successfully on node: %s\n", node.ObjectMeta.Name)
-	return ioutil.WriteFile(runtime.EncryptionHash, []byte(ann), 0600)
+	return os.WriteFile(runtime.EncryptionHash, []byte(ann), 0600)
 }

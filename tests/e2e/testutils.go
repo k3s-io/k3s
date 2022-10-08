@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -196,7 +196,7 @@ func DeployWorkload(workload, kubeconfig string, hardened bool) (string, error) 
 	if hardened {
 		resourceDir = "../cis_amd64_resource_files"
 	}
-	files, err := ioutil.ReadDir(resourceDir)
+	files, err := os.ReadDir(resourceDir)
 	if err != nil {
 		err = fmt.Errorf("%s : Unable to read resource manifest file for %s", err, workload)
 		return "", err
@@ -288,7 +288,7 @@ func GetVagrantLog(cErr error) string {
 	if err != nil {
 		return err.Error()
 	}
-	bytes, err := ioutil.ReadAll(log)
+	bytes, err := io.ReadAll(log)
 	if err != nil {
 		return err.Error()
 	}
