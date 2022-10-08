@@ -5,7 +5,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -115,7 +115,7 @@ func (c *Cluster) initClusterAndHTTPS(ctx context.Context) error {
 	if logrus.IsLevelEnabled(logrus.DebugLevel) {
 		server.ErrorLog = log.New(logrus.StandardLogger().Writer(), "Cluster-Http-Server ", log.LstdFlags)
 	} else {
-		server.ErrorLog = log.New(ioutil.Discard, "Cluster-Http-Server", 0)
+		server.ErrorLog = log.New(io.Discard, "Cluster-Http-Server", 0)
 	}
 
 	// Start the supervisor http server on the tls listener

@@ -3,8 +3,8 @@ package terraform
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"log"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
@@ -50,7 +50,7 @@ func checkError(e error) {
 }
 
 func publicKey(path string) ssh.AuthMethod {
-	key, err := ioutil.ReadFile(path)
+	key, err := os.ReadFile(path)
 	if err != nil {
 		panic(err)
 	}
@@ -127,7 +127,7 @@ func DeployWorkload(workload, kubeconfig string, arch string) (string, error) {
 	if arch == "arm64" {
 		resourceDir = GetBasepath() + "/tests/terraform/arm_resource_files"
 	}
-	files, err := ioutil.ReadDir(resourceDir)
+	files, err := os.ReadDir(resourceDir)
 	if err != nil {
 		err = fmt.Errorf("%s : Unable to read resource manifest file for %s", err, workload)
 		return "", err

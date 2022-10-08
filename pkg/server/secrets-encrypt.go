@@ -6,7 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math/big"
 	"net/http"
 	"os"
@@ -43,7 +43,7 @@ type EncryptionRequest struct {
 }
 
 func getEncryptionRequest(req *http.Request) (EncryptionRequest, error) {
-	b, err := ioutil.ReadAll(req.Body)
+	b, err := io.ReadAll(req.Body)
 	if err != nil {
 		return EncryptionRequest{}, err
 	}

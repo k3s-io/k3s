@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -144,7 +143,7 @@ func preloadImages(ctx context.Context, cfg *config.Node) error {
 		return nil
 	}
 
-	fileInfos, err := ioutil.ReadDir(cfg.Images)
+	fileInfos, err := os.ReadDir(cfg.Images)
 	if err != nil {
 		logrus.Errorf("Unable to read images in %s: %v", cfg.Images, err)
 		return nil

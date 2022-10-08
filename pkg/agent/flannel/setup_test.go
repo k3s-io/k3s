@@ -1,8 +1,8 @@
 package flannel
 
 import (
-	"io/ioutil"
 	"net"
+	"os"
 	"regexp"
 	"strings"
 	"testing"
@@ -68,7 +68,7 @@ func Test_createFlannelConf(t *testing.T) {
 			if err := createFlannelConf(nodeConfig); (err != nil) != tt.wantErr {
 				t.Errorf("createFlannelConf() error = %v, wantErr %v", err, tt.wantErr)
 			}
-			data, err := ioutil.ReadFile("test_file")
+			data, err := os.ReadFile("test_file")
 			if err != nil {
 				t.Errorf("Something went wrong when reading the flannel config file")
 			}

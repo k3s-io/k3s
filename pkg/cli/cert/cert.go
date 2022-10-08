@@ -2,7 +2,6 @@ package cert
 
 import (
 	"errors"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -154,7 +153,7 @@ func rotate(app *cli.Context, cfg *cmds.Server) error {
 				serverConfig.ControlConfig.Runtime.ClientCloudControllerKey)
 		case version.Program + k3sServerService:
 			dynamicListenerRegenFilePath := filepath.Join(serverDataDir, "tls", "dynamic-cert-regenerate")
-			if err := ioutil.WriteFile(dynamicListenerRegenFilePath, []byte{}, 0600); err != nil {
+			if err := os.WriteFile(dynamicListenerRegenFilePath, []byte{}, 0600); err != nil {
 				return err
 			}
 			logrus.Infof("Rotating dynamic listener certificate")
@@ -199,11 +198,11 @@ func rotate(app *cli.Context, cfg *cmds.Server) error {
 func copyFile(src, destDir string) error {
 	_, err := os.Stat(src)
 	if err == nil {
-		input, err := ioutil.ReadFile(src)
+		input, err := os.ReadFile(src)
 		if err != nil {
 			return err
 		}
-		return ioutil.WriteFile(filepath.Join(destDir, filepath.Base(src)), input, 0644)
+		return os.WriteFile(filepath.Join(destDir, filepath.Base(src)), input, 0644)
 	} else if errors.Is(err, os.ErrNotExist) {
 		return nil
 	}
