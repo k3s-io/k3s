@@ -785,6 +785,6 @@ func genCloudConfig(controlConfig *config.Control) error {
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(controlConfig.Runtime.CloudControllerConfig, b, 0600)
+	return os.WriteFile(controlConfig.Runtime.CloudControllerConfig, b, 0600)
 
 }
