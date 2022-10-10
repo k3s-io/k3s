@@ -56,6 +56,10 @@ func (k *k3s) Register(ctx context.Context,
 		return err
 	}
 
+	if err := k.createServiceLBServiceAccount(ctx); err != nil {
+		return err
+	}
+
 	go wait.Until(k.runWorker, time.Second, ctx.Done())
 
 	return k.removeServiceFinalizers(ctx)
@@ -66,6 +70,20 @@ func (k *k3s) createServiceLBNamespace(ctx context.Context) error {
 	_, err := k.client.CoreV1().Namespaces().Create(ctx, &core.Namespace{
 		ObjectMeta: meta.ObjectMeta{
 			Name: k.LBNamespace,
+		},
+	}, meta.CreateOptions{})
+	if apierrors.IsAlreadyExists(err) {
+		return nil
+	}
+	return err
+}
+
+// createServiceLBServiceAccount ensures that the ServiceAccount used by pods exists
+func (k *k3s) createServiceLBServiceAccount(ctx context.Context) error {
+	_, err := k.client.CoreV1().ServiceAccounts(k.LBNamespace).Create(ctx, &core.ServiceAccount{
+		ObjectMeta: meta.ObjectMeta{
+			Name:      "svclb",
+			Namespace: k.LBNamespace,
 		},
 	}, meta.CreateOptions{})
 	if apierrors.IsAlreadyExists(err) {
@@ -422,6 +440,7 @@ func (k *k3s) newDaemonSet(svc *core.Service) (*apps.DaemonSet, error) {
 					},
 				},
 				Spec: core.PodSpec{
+					ServiceAccountName:           "svclb",
 					AutomountServiceAccountToken: utilpointer.Bool(false),
 				},
 			},
