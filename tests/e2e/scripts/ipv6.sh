@@ -1,7 +1,8 @@
 #!/bin/bash
 ip4_addr=$1
 ip6_addr=$2
-os=$3
+ip6_addr_gw=$3
+os=$4
 
 sysctl -w net.ipv6.conf.all.disable_ipv6=0
 sysctl -w net.ipv6.conf.eth1.accept_dad=0
@@ -20,3 +21,4 @@ else
   ip -6 addr add "$ip6_addr"/64 dev eth1
 fi
 ip addr show dev eth1
+ip -6 r add default via "$ip6_addr_gw"
