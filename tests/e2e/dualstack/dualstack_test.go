@@ -117,7 +117,7 @@ var _ = Describe("Verify DualStack Configuration", func() {
 		Expect(err).NotTo(HaveOccurred())
 		for _, node := range nodeIPs {
 			Expect(node.ipv4).Should(ContainSubstring("10.10.10"))
-			Expect(node.ipv6).Should(ContainSubstring("a11:decf:c0ff"))
+			Expect(node.ipv6).Should(ContainSubstring("fd11:decf:c0ff"))
 		}
 	})
 	It("Verifies that each pod has IPv4 and IPv6", func() {
@@ -125,7 +125,7 @@ var _ = Describe("Verify DualStack Configuration", func() {
 		Expect(err).NotTo(HaveOccurred())
 		for _, pod := range podIPs {
 			Expect(pod.ipv4).Should(Or(ContainSubstring("10.10.10"), ContainSubstring("10.42.")), pod.name)
-			Expect(pod.ipv6).Should(Or(ContainSubstring("a11:decf:c0ff"), ContainSubstring("2001:cafe:42")), pod.name)
+			Expect(pod.ipv6).Should(Or(ContainSubstring("fd11:decf:c0ff"), ContainSubstring("2001:cafe:42")), pod.name)
 		}
 	})
 
