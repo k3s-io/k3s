@@ -16,6 +16,7 @@ def provision(vm, roles, role_num, node_num)
   vm.hostname = "#{roles[0]}-#{role_num}"
   node_ip4 = "#{NETWORK4_PREFIX}.#{100+node_num}"
   node_ip6 = "#{NETWORK6_PREFIX}::#{10+node_num}"
+  node_ip6_gw = "#{NETWORK6_PREFIX}::1"
   # Only works with libvirt, which allows IPv4 + IPv6 on a single network/interface
   vm.network "private_network", 
     :ip => node_ip4,
@@ -32,7 +33,7 @@ def provision(vm, roles, role_num, node_num)
   
   defaultOSConfigure(vm)
 
-  vm.provision "IPv6 Setup", type: "shell", path: scripts_location +"/ipv6.sh", args: [node_ip4, node_ip6, vm.box.to_s]
+  vm.provision "IPv6 Setup", type: "shell", path: scripts_location +"/ipv6.sh", args: [node_ip4, node_ip6, node_ip6_gw, vm.box.to_s]
   install_type = getInstallType(vm, RELEASE_VERSION, GITHUB_BRANCH)
 
   vm.provision "Ping Check", type: "shell", inline: "ping -c 2 k3s.io"
