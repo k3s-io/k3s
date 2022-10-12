@@ -51,7 +51,7 @@ func flannel(ctx context.Context, flannelIface *net.Interface, flannelConf, kube
 	if err != nil {
 		return err
 	}
-
+        logrus.Debugf("TEST")
 	sm, err := kube.NewSubnetManager(ctx, "", kubeConfigFile, FlannelBaseAnnotation, flannelConf, false)
 	if err != nil {
 		return err
