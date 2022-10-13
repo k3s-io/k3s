@@ -8,10 +8,11 @@ import (
 )
 
 const ContainerdConfigTemplate = `
-[plugins.opt]
-  path = "{{ .NodeConfig.Containerd.Opt }}"
+version = 2
 
-[plugins.cri]
+[plugins."io.containerd.internal.v1.opt"]
+  path = "{{ .NodeConfig.Containerd.Opt }}"
+[plugins."io.containerd.grpc.v1.cri"]
   stream_server_address = "127.0.0.1"
   stream_server_port = "10010"
   enable_selinux = {{ .NodeConfig.SELinux }}
@@ -31,24 +32,24 @@ const ContainerdConfigTemplate = `
 {{end}}
 
 {{- if .NodeConfig.AgentConfig.Snapshotter }}
-[plugins.cri.containerd]
+[plugins."io.containerd.grpc.v1.cri".containerd]
   snapshotter = "{{ .NodeConfig.AgentConfig.Snapshotter }}"
   disable_snapshot_annotations = {{ if eq .NodeConfig.AgentConfig.Snapshotter "stargz" }}false{{else}}true{{end}}
 {{ if eq .NodeConfig.AgentConfig.Snapshotter "stargz" }}
 {{ if .NodeConfig.AgentConfig.ImageServiceSocket }}
-[plugins.stargz]
+[plugins."io.containerd.snapshotter.v1.stargz"]
 cri_keychain_image_service_path = "{{ .NodeConfig.AgentConfig.ImageServiceSocket }}"
-[plugins.stargz.cri_keychain]
+[plugins."io.containerd.snapshotter.v1.stargz".cri_keychain]
 enable_keychain = true
 {{end}}
 {{ if .PrivateRegistryConfig }}
 {{ if .PrivateRegistryConfig.Mirrors }}
-[plugins.stargz.registry.mirrors]{{end}}
+[plugins."io.containerd.snapshotter.v1.stargz".registry.mirrors]{{end}}
 {{range $k, $v := .PrivateRegistryConfig.Mirrors }}
-[plugins.stargz.registry.mirrors."{{$k}}"]
+[plugins."io.containerd.snapshotter.v1.stargz".registry.mirrors."{{$k}}"]
   endpoint = [{{range $i, $j := $v.Endpoints}}{{if $i}}, {{end}}{{printf "%q" .}}{{end}}]
 {{if $v.Rewrites}}
-  [plugins.stargz.registry.mirrors."{{$k}}".rewrite]
+  [plugins."io.containerd.snapshotter.v1.stargz".registry.mirrors."{{$k}}".rewrite]
 {{range $pattern, $replace := $v.Rewrites}}
     "{{$pattern}}" = "{{$replace}}"
 {{end}}
@@ -56,14 +57,14 @@ enable_keychain = true
 {{end}}
 {{range $k, $v := .PrivateRegistryConfig.Configs }}
 {{ if $v.Auth }}
-[plugins.stargz.registry.configs."{{$k}}".auth]
+[plugins."io.containerd.snapshotter.v1.stargz".registry.configs."{{$k}}".auth]
   {{ if $v.Auth.Username }}username = {{ printf "%q" $v.Auth.Username }}{{end}}
   {{ if $v.Auth.Password }}password = {{ printf "%q" $v.Auth.Password }}{{end}}
   {{ if $v.Auth.Auth }}auth = {{ printf "%q" $v.Auth.Auth }}{{end}}
   {{ if $v.Auth.IdentityToken }}identitytoken = {{ printf "%q" $v.Auth.IdentityToken }}{{end}}
 {{end}}
 {{ if $v.TLS }}
-[plugins.stargz.registry.configs."{{$k}}".tls]
+[plugins."io.containerd.snapshotter.v1.stargz".registry.configs."{{$k}}".tls]
   {{ if $v.TLS.CAFile }}ca_file = "{{ $v.TLS.CAFile }}"{{end}}
   {{ if $v.TLS.CertFile }}cert_file = "{{ $v.TLS.CertFile }}"{{end}}
   {{ if $v.TLS.KeyFile }}key_file = "{{ $v.TLS.KeyFile }}"{{end}}
@@ -75,25 +76,25 @@ enable_keychain = true
 {{end}}
 
 {{- if not .NodeConfig.NoFlannel }}
-[plugins.cri.cni]
+[plugins."io.containerd.grpc.v1.cri".cni]
   bin_dir = "{{ .NodeConfig.AgentConfig.CNIBinDir }}"
   conf_dir = "{{ .NodeConfig.AgentConfig.CNIConfDir }}"
 {{end}}
 
-[plugins.cri.containerd.runtimes.runc]
+[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc]
   runtime_type = "io.containerd.runc.v2"
 
-[plugins.cri.containerd.runtimes.runc.options]
-	SystemdCgroup = {{ .SystemdCgroup }}
+[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
+  SystemdCgroup = {{ .SystemdCgroup }}
 
 {{ if .PrivateRegistryConfig }}
 {{ if .PrivateRegistryConfig.Mirrors }}
-[plugins.cri.registry.mirrors]{{end}}
+[plugins."io.containerd.grpc.v1.cri".registry.mirrors]{{end}}
 {{range $k, $v := .PrivateRegistryConfig.Mirrors }}
-[plugins.cri.registry.mirrors."{{$k}}"]
+[plugins."io.containerd.grpc.v1.cri".registry.mirrors."{{$k}}"]
   endpoint = [{{range $i, $j := $v.Endpoints}}{{if $i}}, {{end}}{{printf "%q" .}}{{end}}]
 {{if $v.Rewrites}}
-  [plugins.cri.registry.mirrors."{{$k}}".rewrite]
+  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."{{$k}}".rewrite]
 {{range $pattern, $replace := $v.Rewrites}}
     "{{$pattern}}" = "{{$replace}}"
 {{end}}
@@ -102,14 +103,14 @@ enable_keychain = true
 
 {{range $k, $v := .PrivateRegistryConfig.Configs }}
 {{ if $v.Auth }}
-[plugins.cri.registry.configs."{{$k}}".auth]
+[plugins."io.containerd.grpc.v1.cri".registry.configs."{{$k}}".auth]
   {{ if $v.Auth.Username }}username = {{ printf "%q" $v.Auth.Username }}{{end}}
   {{ if $v.Auth.Password }}password = {{ printf "%q" $v.Auth.Password }}{{end}}
   {{ if $v.Auth.Auth }}auth = {{ printf "%q" $v.Auth.Auth }}{{end}}
   {{ if $v.Auth.IdentityToken }}identitytoken = {{ printf "%q" $v.Auth.IdentityToken }}{{end}}
 {{end}}
 {{ if $v.TLS }}
-[plugins.cri.registry.configs."{{$k}}".tls]
+[plugins."io.containerd.grpc.v1.cri".registry.configs."{{$k}}".tls]
   {{ if $v.TLS.CAFile }}ca_file = "{{ $v.TLS.CAFile }}"{{end}}
   {{ if $v.TLS.CertFile }}cert_file = "{{ $v.TLS.CertFile }}"{{end}}
   {{ if $v.TLS.KeyFile }}key_file = "{{ $v.TLS.KeyFile }}"{{end}}
@@ -119,9 +120,9 @@ enable_keychain = true
 {{end}}
 
 {{range $k, $v := .ExtraRuntimes}}
-[plugins.cri.containerd.runtimes."{{$k}}"]
+[plugins."io.containerd.grpc.v1.cri".containerd.runtimes."{{$k}}"]
   runtime_type = "{{$v.RuntimeType}}"
-[plugins.cri.containerd.runtimes."{{$k}}".options]
+[plugins."io.containerd.grpc.v1.cri".containerd.runtimes."{{$k}}".options]
   BinaryName = "{{$v.BinaryName}}"
 {{end}}
 `
