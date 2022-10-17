@@ -2,6 +2,7 @@ package cloudprovider
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/k3s-io/k3s/pkg/version"
@@ -70,7 +71,7 @@ func (k *k3s) InstanceMetadata(ctx context.Context, node *v1.Node) (*cloudprovid
 	}
 
 	return &cloudprovider.InstanceMetadata{
-		ProviderID:    version.Program,
+		ProviderID:    fmt.Sprintf("%s://%s", version.Program, node.Name),
 		InstanceType:  version.Program,
 		NodeAddresses: addresses,
 		Zone:          "",
