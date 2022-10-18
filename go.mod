@@ -90,7 +90,7 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.4.2
 	github.com/gruntwork-io/terratest v0.40.6
-	github.com/k3s-io/helm-controller v0.12.3
+	github.com/k3s-io/helm-controller v0.13.0
 	github.com/k3s-io/kine v0.9.6
 	github.com/klauspost/compress v1.15.9
 	github.com/kubernetes-sigs/cri-tools v0.0.0-00010101000000-000000000000
@@ -108,7 +108,7 @@ require (
 	github.com/rancher/lasso v0.0.0-20210616224652-fc3ebd901c08
 	github.com/rancher/remotedialer v0.2.6-0.20220624190122-ea57207bf2b8
 	github.com/rancher/wharfie v0.5.1
-	github.com/rancher/wrangler v0.8.10
+	github.com/rancher/wrangler v0.8.11-0.20220217210408-3ecd23dfea3b
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/rootless-containers/rootlesskit v1.0.1
 	github.com/sirupsen/logrus v1.9.0
