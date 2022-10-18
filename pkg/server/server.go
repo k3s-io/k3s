@@ -11,7 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/k3s-io/helm-controller/pkg/helm"
+	helm "github.com/k3s-io/helm-controller/pkg/controllers/chart"
+	helmcommon "github.com/k3s-io/helm-controller/pkg/controllers/common"
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
 	"github.com/k3s-io/k3s/pkg/clientaccess"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
@@ -192,11 +193,17 @@ func coreControllers(ctx context.Context, sc *Context, config *Config) error {
 
 	if !config.ControlConfig.DisableHelmController {
 		helm.Register(ctx,
+			metav1.NamespaceAll,
+			helmcommon.Name,
 			sc.K8s,
 			sc.Apply,
+			util.BuildControllerEventRecorder(sc.K8s, helmcommon.Name, metav1.NamespaceAll),
 			sc.Helm.Helm().V1().HelmChart(),
+			sc.Helm.Helm().V1().HelmChart().Cache(),
 			sc.Helm.Helm().V1().HelmChartConfig(),
+			sc.Helm.Helm().V1().HelmChartConfig().Cache(),
 			sc.Batch.Batch().V1().Job(),
+			sc.Batch.Batch().V1().Job().Cache(),
 			sc.Auth.Rbac().V1().ClusterRoleBinding(),
 			sc.Core.Core().V1().ServiceAccount(),
 			sc.Core.Core().V1().ConfigMap())
