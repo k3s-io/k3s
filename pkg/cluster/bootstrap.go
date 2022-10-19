@@ -328,35 +328,15 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker,
 		}
 		logrus.Debugf("Reconciling %s at '%s'", pathKey, path)
 
-		f, err := os.Open(path)
+		updated, newer, err := isNewerFile(path, fileData)
 		if err != nil {
-			if os.IsNotExist(err) {
-				logrus.Warn(path + " doesn't exist. continuing...")
-				updateDisk = true
-				continue
-			}
-			return errors.Wrapf(err, "reconcile failed to open %s", pathKey)
+			return errors.Wrapf(err, "failed to get update status of %s", pathKey)
 		}
-		defer f.Close()
-
-		fData, err := io.ReadAll(f)
-		if err != nil {
-			return errors.Wrapf(err, "reconcile failed to read %s", pathKey)
+		if newer {
+			newerOnDisk = append(newerOnDisk, path)
 		}
 
-		if !bytes.Equal(fileData.Content, fData) {
-			updateDisk = true
-			info, err := f.Stat()
-			if err != nil {
-				return errors.Wrapf(err, "reconcile failed to stat %s", pathKey)
-			}
-
-			if info.ModTime().Unix()-fileData.Timestamp.Unix() >= systemTimeSkew {
-				newerOnDisk = append(newerOnDisk, path)
-			} else {
-				logrus.Warn(path + " will be updated from the datastore.")
-			}
-		}
+		updateDisk = updateDisk || updated
 	}
 
 	if c.config.ClusterReset {
@@ -382,6 +362,41 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker,
 	}
 
 	return nil
+}
+
+// isNewerFile compares the file from disk and datastore, and returns
+// update status.
+func isNewerFile(path string, file bootstrap.File) (updated bool, newerOnDisk bool, _ error) {
+	f, err := os.Open(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			logrus.Warn(path + " doesn't exist. continuing...")
+			return true, false, nil
+		}
+		return false, false, errors.Wrapf(err, "reconcile failed to open")
+	}
+	defer f.Close()
+
+	data, err := io.ReadAll(f)
+	if err != nil {
+		return false, false, errors.Wrapf(err, "reconcile failed to read")
+	}
+
+	if bytes.Equal(file.Content, data) {
+		return false, false, nil
+	}
+
+	info, err := f.Stat()
+	if err != nil {
+		return false, false, errors.Wrapf(err, "reconcile failed to stat")
+	}
+
+	if info.ModTime().Unix()-file.Timestamp.Unix() >= systemTimeSkew {
+		return true, true, nil
+	}
+
+	logrus.Warn(path + " will be updated from the datastore.")
+	return true, false, nil
 }
 
 // httpBootstrap retrieves bootstrap data (certs and keys, etc) from the remote server via HTTP
