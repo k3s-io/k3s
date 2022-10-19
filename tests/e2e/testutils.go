@@ -39,6 +39,12 @@ type NodeError struct {
 	Err  error
 }
 
+type ObjIP struct {
+	Name string
+	IPv4 string
+	IPv6 string
+}
+
 func (ne *NodeError) Error() string {
 	return fmt.Sprintf("failed creating cluster: %s: %v", ne.Cmd, ne.Err)
 }
@@ -402,4 +408,40 @@ func UpgradeCluster(serverNodeNames []string, agentNodeNames []string) error {
 		}
 	}
 	return nil
+}
+
+// getPodIPs returns the IPs of all pods
+func GetPodIPs(kubeConfigFile string) ([]ObjIP, error) {
+	cmd := `kubectl get pods -A -o=jsonpath='{range .items[*]}{.metadata.name}{" "}{.status.podIPs[*].ip}{"\n"}{end}' --kubeconfig=` + kubeConfigFile
+	return GetObjIPs(cmd)
+}
+
+// getNodeIPs returns the IPs of all nodes
+func GetNodeIPs(kubeConfigFile string) ([]ObjIP, error) {
+	cmd := `kubectl get nodes -o jsonpath='{range .items[*]}{.metadata.name}{" "}{.status.addresses[?(@.type == "InternalIP")].address}{"\n"}{end}' --kubeconfig=` + kubeConfigFile
+	return GetObjIPs(cmd)
+}
+
+// getObjIPs executes a command to collect IPs
+func GetObjIPs(cmd string) ([]ObjIP, error) {
+	var objIPs []ObjIP
+	res, err := RunCommand(cmd)
+	if err != nil {
+		return nil, err
+	}
+	objs := strings.Split(res, "\n")
+	objs = objs[:len(objs)-1]
+
+	for _, obj := range objs {
+		fields := strings.Fields(obj)
+		if len(fields) > 2 {
+			objIPs = append(objIPs, ObjIP{Name: fields[0], IPv4: fields[1], IPv6: fields[2]})
+		} else if len(fields) > 1 {
+			objIPs = append(objIPs, ObjIP{Name: fields[0], IPv4: fields[1]})
+		} else {
+			objIPs = append(objIPs, ObjIP{Name: fields[0]})
+		}
+	}
+
+	return objIPs, nil
 }
