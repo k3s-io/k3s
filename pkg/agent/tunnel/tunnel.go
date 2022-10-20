@@ -32,6 +32,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 	toolswatch "k8s.io/client-go/tools/watch"
+	"k8s.io/kubernetes/pkg/cluster/ports"
 )
 
 type agentTunnel struct {
@@ -80,6 +81,8 @@ func Setup(ctx context.Context, config *daemonconfig.Node, proxy proxy.Proxy) er
 		cidrs:  cidranger.NewPCTrieRanger(),
 		ports:  map[string]bool{},
 		mode:   config.EgressSelectorMode,
+
+		kubeletPort: fmt.Sprint(ports.KubeletPort),
 	}
 
 	apiServerReady := make(chan struct{})
