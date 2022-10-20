@@ -20,6 +20,7 @@ import (
 	"github.com/rancher/remotedialer"
 	"github.com/sirupsen/logrus"
 	"github.com/yl2chen/cidranger"
+	authorizationv1 "k8s.io/api/authorization/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
@@ -86,6 +87,14 @@ func Setup(ctx context.Context, config *daemonconfig.Node, proxy proxy.Proxy) er
 		if err := util.WaitForAPIServerReady(ctx, config.AgentConfig.KubeConfigKubelet, util.DefaultAPIServerReadyTimeout); err != nil {
 			logrus.Fatalf("Tunnel watches failed to wait for apiserver ready: %v", err)
 		}
+		if err := util.WaitForRBACReady(ctx, config.AgentConfig.KubeConfigK3sController, util.DefaultAPIServerReadyTimeout, authorizationv1.ResourceAttributes{
+			Namespace: metav1.NamespaceDefault,
+			Verb:      "list",
+			Resource:  "endpoints",
+		}, ""); err != nil {
+			logrus.Fatalf("Tunnel watches failed to wait for RBAC: %v", err)
+		}
+
 		close(apiServerReady)
 	}()
 
@@ -114,7 +123,7 @@ func Setup(ctx context.Context, config *daemonconfig.Node, proxy proxy.Proxy) er
 			proxy.SetSupervisorDefault(addresses[0])
 			proxy.Update(addresses)
 		} else {
-			if endpoint, _ := client.CoreV1().Endpoints("default").Get(ctx, "kubernetes", metav1.GetOptions{}); endpoint != nil {
+			if endpoint, _ := client.CoreV1().Endpoints(metav1.NamespaceDefault).Get(ctx, "kubernetes", metav1.GetOptions{}); endpoint != nil {
 				if addresses := util.GetAddresses(endpoint); len(addresses) > 0 {
 					proxy.Update(addresses)
 				}
