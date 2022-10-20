@@ -21,9 +21,6 @@ import (
 	"github.com/sirupsen/logrus"
 	authorizationv1 "k8s.io/api/authorization/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/wait"
-	authorizationv1client "k8s.io/client-go/kubernetes/typed/authorization/v1"
-	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/kubernetes/pkg/kubeapiserver/authorizer/modes"
 	proxyutil "k8s.io/kubernetes/pkg/proxy/util"
 
@@ -367,37 +364,12 @@ func cloudControllerManager(ctx context.Context, cfg *config.Control) error {
 // If the CCM RBAC changes, the ResourceAttributes checked for by this function should
 // be modified to check for the most recently added privilege.
 func checkForCloudControllerPrivileges(ctx context.Context, runtime *config.ControlRuntime, timeout time.Duration) error {
-	restConfig, err := clientcmd.BuildConfigFromFlags("", runtime.KubeConfigAdmin)
-	if err != nil {
-		return err
-	}
-	authClient, err := authorizationv1client.NewForConfig(restConfig)
-	if err != nil {
-		return err
-	}
-	sar := &authorizationv1.SubjectAccessReview{
-		Spec: authorizationv1.SubjectAccessReviewSpec{
-			User: version.Program + "-cloud-controller-manager",
-			ResourceAttributes: &authorizationv1.ResourceAttributes{
-				Namespace: metav1.NamespaceSystem,
-				Verb:      "*",
-				Resource:  "daemonsets",
-				Group:     "apps",
-			},
-		},
-	}
-
-	err = wait.PollImmediate(time.Second, timeout, func() (bool, error) {
-		r, err := authClient.SubjectAccessReviews().Create(ctx, sar, metav1.CreateOptions{})
-		if err != nil {
-			return false, err
-		}
-		if r.Status.Allowed {
-			return true, nil
-		}
-		return false, nil
-	})
-	return err
+	return util.WaitForRBACReady(ctx, runtime.KubeConfigAdmin, timeout, authorizationv1.ResourceAttributes{
+		Namespace: metav1.NamespaceSystem,
+		Verb:      "*",
+		Resource:  "daemonsets",
+		Group:     "apps",
+	}, version.Program+"-cloud-controller-manager")
 }
 
 func waitForAPIServerHandlers(ctx context.Context, runtime *config.ControlRuntime) {
