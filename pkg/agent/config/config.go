@@ -281,6 +281,7 @@ func isValidResolvConf(resolvConfFile string) bool {
 
 	nameserver := regexp.MustCompile(`^nameserver\s+([^\s]*)`)
 	scanner := bufio.NewScanner(file)
+	isFindIp := false
 	for scanner.Scan() {
 		ipMatch := nameserver.FindStringSubmatch(scanner.Text())
 		if len(ipMatch) == 2 {
@@ -288,12 +289,13 @@ func isValidResolvConf(resolvConfFile string) bool {
 			if ip == nil || !ip.IsGlobalUnicast() {
 				return false
 			}
+			isFindIp = true
 		}
 	}
 	if err := scanner.Err(); err != nil {
 		return false
 	}
-	return true
+	return isFindIp
 }
 
 func locateOrGenerateResolvConf(envInfo *cmds.Agent) string {
