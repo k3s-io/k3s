@@ -37,7 +37,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        vm: [centos-7, rocky-8, fedora-coreos, opensuse-leap, opensuse-microos, ubuntu-focal]
+        vm: [centos-7, rocky-8, fedora, opensuse-leap, opensuse-microos, ubuntu-focal]
       max-parallel: 2
     defaults:
       run:
