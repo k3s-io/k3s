@@ -131,7 +131,7 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 		return err
 	}
 
-	if err := configureNode(ctx, &nodeConfig.AgentConfig, coreClient.CoreV1().Nodes()); err != nil {
+	if err := configureNode(ctx, nodeConfig, coreClient.CoreV1().Nodes()); err != nil {
 		return err
 	}
 
@@ -291,7 +291,8 @@ func createProxyAndValidateToken(ctx context.Context, cfg *cmds.Agent) (proxy.Pr
 
 // configureNode waits for the node object to be created, and if/when it does,
 // ensures that the labels and annotations are up to date.
-func configureNode(ctx context.Context, agentConfig *daemonconfig.Agent, nodes typedcorev1.NodeInterface) error {
+func configureNode(ctx context.Context, nodeConfig *daemonconfig.Node, nodes typedcorev1.NodeInterface) error {
+	agentConfig := &nodeConfig.AgentConfig
 	fieldSelector := fields.Set{metav1.ObjectNameField: agentConfig.NodeName}.String()
 	lw := &cache.ListWatch{
 		ListFunc: func(options metav1.ListOptions) (object runtime.Object, e error) {
@@ -317,7 +318,7 @@ func configureNode(ctx context.Context, agentConfig *daemonconfig.Agent, nodes t
 		}
 
 		if !agentConfig.DisableCCM {
-			if annotations, changed := updateAddressAnnotations(agentConfig, node.Annotations); changed {
+			if annotations, changed := updateAddressAnnotations(nodeConfig, node.Annotations); changed {
 				node.Annotations = annotations
 				updateNode = true
 			}
@@ -395,7 +396,8 @@ func updateLegacyAddressLabels(agentConfig *daemonconfig.Agent, nodeLabels map[s
 }
 
 // updateAddressAnnotations updates the node annotations with important information about IP addresses of the node
-func updateAddressAnnotations(agentConfig *daemonconfig.Agent, nodeAnnotations map[string]string) (map[string]string, bool) {
+func updateAddressAnnotations(nodeConfig *daemonconfig.Node, nodeAnnotations map[string]string) (map[string]string, bool) {
+	agentConfig := &nodeConfig.AgentConfig
 	result := map[string]string{
 		cp.InternalIPKey: util.JoinIPs(agentConfig.NodeIPs),
 		cp.HostnameKey:   agentConfig.NodeName,
@@ -403,12 +405,14 @@ func updateAddressAnnotations(agentConfig *daemonconfig.Agent, nodeAnnotations m
 
 	if agentConfig.NodeExternalIP != "" {
 		result[cp.ExternalIPKey] = util.JoinIPs(agentConfig.NodeExternalIPs)
-		for _, ipAddress := range agentConfig.NodeExternalIPs {
-			if utilsnet.IsIPv4(ipAddress) {
-				result[flannel.FlannelExternalIPv4Annotation] = ipAddress.String()
-			}
-			if utilsnet.IsIPv6(ipAddress) {
-				result[flannel.FlannelExternalIPv6Annotation] = ipAddress.String()
+		if nodeConfig.FlannelExternalIP {
+			for _, ipAddress := range agentConfig.NodeExternalIPs {
+				if utilsnet.IsIPv4(ipAddress) {
+					result[flannel.FlannelExternalIPv4Annotation] = ipAddress.String()
+				}
+				if utilsnet.IsIPv6(ipAddress) {
+					result[flannel.FlannelExternalIPv6Annotation] = ipAddress.String()
+				}
 			}
 		}
 	}
