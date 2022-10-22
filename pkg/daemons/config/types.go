@@ -44,6 +44,7 @@ type Node struct {
 	FlannelConfOverride      bool
 	FlannelIface             *net.Interface
 	FlannelIPv6Masq          bool
+	FlannelExternalIP        bool
 	EgressSelectorMode       string
 	Containerd               Containerd
 	CRIDockerd               CRIDockerd
@@ -137,6 +138,7 @@ type CriticalControlArgs struct {
 	DisableServiceLB      bool
 	FlannelBackend        string
 	FlannelIPv6Masq       bool
+	FlannelExternalIP     bool
 	EgressSelectorMode    string
 	NoCoreDNS             bool
 	ServiceIPRange        *net.IPNet
