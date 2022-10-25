@@ -66,7 +66,7 @@ The sub-directories therein contain fixtures for running simple clusters to asse
 - [Install Script](../tests/install) :arrow_right: on proposed changes to [install.sh](../install.sh) 
   - [CentOS 7](../tests/install/centos-7) (stand-in for RHEL 7)
   - [Rocky Linux 8](../tests/install/rocky-8) (stand-in for RHEL 8)
-  - [Leap 15.3](../tests/install/opensuse-microos) (stand-in for SLES)
+  - [Leap 15.4](../tests/install/opensuse-leap) (stand-in for SLES)
   - [MicroOS](../tests/install/opensuse-microos) (stand-in for SLE-Micro)
   - [Ubuntu 20.04](../tests/install/ubuntu-focal) (Focal Fossa)
 - [Control Groups](../tests/cgroup) :arrow_right: on any code change
