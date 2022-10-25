@@ -74,7 +74,7 @@ The sub-directories therein contain fixtures for running simple clusters to asse
     - [Fedora 35](../tests/cgroup/unified/fedora-35) (rootfull + rootless)
 - [Snapshotter](../tests/snapshotter/btrfs/opensuse-leap) :arrow_right: on any code change
   - [BTRFS](../tests/snapshotter/btrfs) ([containerd built-in](https://github.com/containerd/containerd/tree/main/snapshots/btrfs))
-    - [Leap 15.3](../tests/snapshotter/btrfs/opensuse-leap)
+    - [Leap 15.4](../tests/snapshotter/btrfs/opensuse-leap)
 
 When adding new installer test(s) please copy the prevalent style for the `Vagrantfile`.
 Ideally, the boxes used for additional assertions will support the default `virtualbox` provider which
