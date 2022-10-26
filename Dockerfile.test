@@ -15,9 +15,9 @@ ENTRYPOINT ["/bin/test-mods"]
 
 From test-base as test-k3s
 
-RUN apk -U --no-cache add git gcc musl-dev docker curl coreutils python3 openssl py3-pip procps
+RUN apk -U --no-cache add git gcc musl-dev docker curl coreutils python3 openssl py3-pip procps findutils
 
-ENV SONOBUOY_VERSION 0.56.5
+ENV SONOBUOY_VERSION 0.56.10
 
 RUN OS=linux; \
     ARCH=$(go env GOARCH); \
