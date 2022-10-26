@@ -23,6 +23,12 @@ if [ ${ARCH} != s390x ]; then
   echo "Did test-run-compat $?"
 fi
 
+. ./scripts/test-run-hardened
+echo "Did test-run-hardened $?"
+
+. ./scripts/test-run-upgrade
+echo "Did test-run-upgrade $?"
+
 . ./scripts/test-run-etcd
 echo "Did test-run-etcd $?"
 
