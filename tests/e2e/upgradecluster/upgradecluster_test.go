@@ -31,7 +31,7 @@ var ci = flag.Bool("ci", false, "running on CI")
 func Test_E2EUpgradeValidation(t *testing.T) {
 	RegisterFailHandler(Fail)
 	flag.Parse()
-	RunSpecs(t, "Create Cluster Test Suite")
+	RunSpecs(t, "Upgrade Cluster Test Suite")
 }
 
 var (

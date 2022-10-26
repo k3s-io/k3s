@@ -29,7 +29,7 @@ var local = flag.Bool("local", false, "deploy a locally built K3s binary")
 func Test_E2EClusterReset(t *testing.T) {
 	RegisterFailHandler(Fail)
 	flag.Parse()
-	RunSpecs(t, "Create ClusterReset Test Suite")
+	RunSpecs(t, "ClusterReset Test Suite")
 }
 
 var (
