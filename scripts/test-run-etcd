@@ -10,7 +10,7 @@ all_services=(
 export NUM_SERVERS=2
 export NUM_AGENTS=0
 export WAIT_SERVICES="${all_services[@]}"
-export SERVER_1_ARGS="--cluster-init --node-taint=node-role.kubernetes.io/control-plane=effect:NoSchedule"
+export SERVER_1_ARGS="--cluster-init"
 
 REPO=${REPO:-rancher}
 IMAGE_NAME=${IMAGE_NAME:-k3s}
@@ -37,6 +37,15 @@ LABEL="ETCD-JOIN-BASIC" SERVER_ARGS="" run-test
 
 # --- create a basic cluster to test joining a managed etcd cluster with --agent-token set
 LABEL="ETCD-JOIN-AGENTTOKEN" SERVER_ARGS="--agent-token ${RANDOM}${RANDOM}${RANDOM}" run-test
+
+# The following tests deploy clusters of mixed versions. The traefik helm chart may not deploy
+# correctly until all servers have been upgraded to the same release, so don't wait for it.
+all_services=(
+    coredns
+    local-path-provisioner
+    metrics-server
+)
+export WAIT_SERVICES="${all_services[@]}"
 
 # --- test joining managed etcd cluster with stable-version first server and current-build second server
 # --- this test is skipped if the second node is down-level, as we don't support adding a down-level server to an existing cluster
