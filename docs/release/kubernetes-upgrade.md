@@ -50,7 +50,7 @@ git rebase --onto ${NEW_K8S} ${OLD_K8S} ${OLD_K3S_VER}~1
 # This command is not backwards compatible and requires versions of yq greater than 4.0, as the query syntax has changed throughout the history of the project.
 export GOVERSION=$(yq -e '.dependencies[] | select(.name == "golang: upstream version").version' build/dependencies.yaml)
 
-export GOIMAGE="golang:${GOVERSION}-alpine3.15"
+export GOIMAGE="golang:${GOVERSION}-alpine3.16"
 
 export BUILD_CONTAINER="FROM ${GOIMAGE}\n \
 RUN apk add --no-cache \
