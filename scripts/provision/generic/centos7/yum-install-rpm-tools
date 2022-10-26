@@ -1,7 +1,0 @@
-#!/bin/bash
-
-set -e -x
-
-yum install -y git expect yum-utils rpm-build rpm-sign python-deltarpm epel-release
-yum install -y python2-pip
-pip install git+git://github.com/Voronenko/rpm-s3.git@5695c6ad9a08548141d3713328e1bd3f533d137e
