@@ -19,7 +19,7 @@ spec:
       containers:
       - name: {{.Name}}
         # TODO(#799): We should test the "run-to-completion" workflow and hence don't use pause pods.
-        image: k8s.gcr.io/pause:3.1
+        image: registry.k8s.io/pause:3.1
         resources:
           requests:
             cpu: 10m
