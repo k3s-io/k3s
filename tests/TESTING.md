@@ -63,9 +63,10 @@ ___
 Smoke tests are a collection of tests defined under the [tests](../tests) path at the root of this repository.
 The sub-directories therein contain fixtures for running simple clusters to assert correct behavior for "happy path" scenarios. These fixtures are mostly self-contained Vagrantfiles describing single-node installations that are easily spun up with Vagrant for the `libvirt` and `virtualbox` providers:
 
-- [Install Script](../tests/install) :arrow_right: on proposed changes to [install.sh](../install.sh) 
+- [Install Script](../tests/install) :arrow_right: scheduled nightly
   - [CentOS 7](../tests/install/centos-7) (stand-in for RHEL 7)
   - [Rocky Linux 8](../tests/install/rocky-8) (stand-in for RHEL 8)
+  - [Fedora](../tests/install/fedora)
   - [Leap 15.4](../tests/install/opensuse-leap) (stand-in for SLES)
   - [MicroOS](../tests/install/opensuse-microos) (stand-in for SLE-Micro)
   - [Ubuntu 20.04](../tests/install/ubuntu-focal) (Focal Fossa)
