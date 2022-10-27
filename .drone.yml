@@ -502,7 +502,7 @@ depends_on:
 
 ---
 kind: pipeline
-name: vagrant
+name: e2e
 type: docker
 
 platform:
@@ -510,30 +510,33 @@ platform:
   arch: amd64
 
 steps:
-- name: install-vagrant
-  image: vagrantlibvirt/vagrant-libvirt:0.10.6
-  privileged: true
+- name: build-e2e-image
+  image: rancher/dapper:v0.5.0
   commands:
-  - whoami
-  - ls -la /root/.vagrant.d/boxes
-  - vagrant plugin install vagrant-k3s vagrant-reload
+    - DOCKER_BUILDKIT=1 docker build --target test-e2e -t test-e2e -f Dockerfile.test .
+  volumes:
+    - name: docker
+      path: /var/run/docker.sock
+
+- name: test-e2e
+  image: test-e2e
+  pull: never
+  resources:
+    cpu: 6000
+    memory: 10Gi
+  commands:
   - cd tests/e2e/validatecluster
   - vagrant destroy -f
-  - vagrant up serve
-  - sleep 30
-  - vagrant ssh server-0 -c "sudo k3s kubectl get nodes"
-  - vagrant destroy -f
+  - go test -v -timeout=30m ./validatecluster_test.go -ci
 
   volumes:
   - name: libvirt
     path: /var/run/libvirt/
-  - name: vagrant-boxes
-    path: /root/.vagrant.d/boxes
 
 volumes:
+- name: docker
+  host:
+    path: /var/run/docker.sock
 - name: libvirt
   host:
     path: /var/run/libvirt/
-- name: vagrant-boxes
-  host:
-    path: /root/.vagrant.d/boxes/

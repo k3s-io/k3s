@@ -331,7 +331,7 @@ func ParseNodes(kubeConfig string, print bool) ([]Node, error) {
 	res, err := RunCommand(cmd)
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to get nodes: %s: %v", res, err)
 	}
 	nodeList = strings.TrimSpace(res)
 	split := strings.Split(nodeList, "\n")
