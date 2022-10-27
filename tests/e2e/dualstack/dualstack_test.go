@@ -1,4 +1,4 @@
-package validatecluster
+package validatedualstack
 
 import (
 	"flag"
@@ -14,8 +14,8 @@ import (
 
 // Valid nodeOS: generic/ubuntu2004, opensuse/Leap-15.3.x86_64
 var nodeOS = flag.String("nodeOS", "generic/ubuntu2004", "VM operating system")
-var serverCount = flag.Int("serverCount", 3, "number of server nodes")
-var agentCount = flag.Int("agentCount", 0, "number of agent nodes")
+var serverCount = flag.Int("serverCount", 1, "number of server nodes")
+var agentCount = flag.Int("agentCount", 1, "number of agent nodes")
 var hardened = flag.Bool("hardened", false, "true or false")
 
 // Environment Variables Info:
@@ -196,7 +196,28 @@ var _ = Describe("Verify DualStack Configuration", Ordered, func() {
 			}, "10s", "1s").Should(ContainSubstring("ds-nodeport-pod"), "failed cmd: "+cmd)
 		}
 	})
-
+	It("Verifies podSelector Network Policy", func() {
+		_, err := e2e.DeployWorkload("pod_client.yaml", kubeConfigFile, *hardened)
+		Expect(err).NotTo(HaveOccurred())
+		cmd := "kubectl exec svc/client-curl --kubeconfig=" + kubeConfigFile + " -- curl -m7 ds-clusterip-svc/name.html"
+		Eventually(func() (string, error) {
+			return e2e.RunCommand(cmd)
+		}, "20s", "3s").Should(ContainSubstring("ds-clusterip-pod"), "failed cmd: "+cmd)
+		_, err = e2e.DeployWorkload("netpol-fail.yaml", kubeConfigFile, *hardened)
+		Expect(err).NotTo(HaveOccurred())
+		cmd = "kubectl exec svc/client-curl --kubeconfig=" + kubeConfigFile + " -- curl -m7 ds-clusterip-svc/name.html"
+		Eventually(func() error {
+			_, err = e2e.RunCommand(cmd)
+			Expect(err).To(HaveOccurred())
+			return err
+		}, "20s", "3s")
+		_, err = e2e.DeployWorkload("netpol-work.yaml", kubeConfigFile, *hardened)
+		Expect(err).NotTo(HaveOccurred())
+		cmd = "kubectl exec svc/client-curl --kubeconfig=" + kubeConfigFile + " -- curl -m7 ds-clusterip-svc/name.html"
+		Eventually(func() (string, error) {
+			return e2e.RunCommand(cmd)
+		}, "20s", "3s").Should(ContainSubstring("ds-clusterip-pod"), "failed cmd: "+cmd)
+	})
 })
 
 var failed bool
