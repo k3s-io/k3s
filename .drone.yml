@@ -499,3 +499,41 @@ trigger:
 
 depends_on:
 - manifest
+
+---
+kind: pipeline
+name: vagrant
+type: docker
+
+platform:
+  os: linux
+  arch: amd64
+
+steps:
+- name: install-vagrant
+  image: vagrantlibvirt/vagrant-libvirt:0.10.6
+  privileged: true
+  commands:
+  - whoami
+  - ls -la /root/.vagrant.d/boxes
+  - vagrant plugin install vagrant-k3s vagrant-reload
+  - cd tests/e2e/validatecluster
+  - vagrant destroy -f
+  - vagrant up serve
+  - sleep 30
+  - vagrant ssh server-0 -c "sudo k3s kubectl get nodes"
+  - vagrant destroy -f
+
+  volumes:
+  - name: libvirt
+    path: /var/run/libvirt/
+  - name: vagrant-boxes
+    path: /root/.vagrant.d/boxes
+
+volumes:
+- name: libvirt
+  host:
+    path: /var/run/libvirt/
+- name: vagrant-boxes
+  host:
+    path: /root/.vagrant.d/boxes/
