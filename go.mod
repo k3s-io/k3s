@@ -4,7 +4,7 @@ go 1.16
 
 replace (
 	github.com/Microsoft/hcsshim => github.com/Microsoft/hcsshim v0.8.22
-	github.com/cloudnativelabs/kube-router => github.com/k3s-io/kube-router v1.3.3-0.20220405142336-8ea9a06dc0e3
+	github.com/cloudnativelabs/kube-router => github.com/k3s-io/kube-router v1.5.2-0.20221026101626-e01045262706
 	github.com/containerd/cgroups => github.com/containerd/cgroups v1.0.1
 	github.com/containerd/containerd => github.com/k3s-io/containerd v1.5.13-k3s1 // k3s-release/1.5
 	github.com/coreos/go-systemd => github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e
@@ -77,8 +77,8 @@ require (
 	github.com/containerd/fuse-overlayfs-snapshotter v1.0.4
 	github.com/containerd/stargz-snapshotter v0.11.4
 	github.com/coreos/go-iptables v0.6.0
-	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f
-	github.com/docker/docker v20.10.10+incompatible
+	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf
+	github.com/docker/docker v20.10.16+incompatible
 	github.com/erikdubbelboer/gspt v0.0.0-20190125194910-e68493906b83
 	github.com/flannel-io/flannel v0.19.2
 	github.com/go-bindata/go-bindata v3.1.2+incompatible
@@ -97,8 +97,8 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.8
 	github.com/minio/minio-go/v7 v7.0.33
 	github.com/natefinch/lumberjack v2.0.0+incompatible
-	github.com/onsi/ginkgo/v2 v2.1.1
-	github.com/onsi/gomega v1.17.0
+	github.com/onsi/ginkgo/v2 v2.1.3
+	github.com/onsi/gomega v1.19.0
 	github.com/opencontainers/runc v1.1.0
 	github.com/opencontainers/selinux v1.10.0
 	github.com/otiai10/copy v1.7.0
@@ -126,7 +126,7 @@ require (
 	golang.org/x/net v0.0.0-20220722155237-a158d28d115b
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f
-	google.golang.org/grpc v1.45.0
+	google.golang.org/grpc v1.46.2
 	gopkg.in/yaml.v2 v2.4.0
 	inet.af/tcpproxy v0.0.0-20200125044825-b6bb9b5b8252
 	k8s.io/api v0.23.13
@@ -142,5 +142,5 @@ require (
 	k8s.io/kubectl v0.23.13
 	k8s.io/kubernetes v1.23.13
 	k8s.io/utils v0.0.0-20211116205334-6203023598ed
-	sigs.k8s.io/yaml v1.2.0
+	sigs.k8s.io/yaml v1.3.0
 )
