@@ -8,7 +8,6 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -106,9 +105,11 @@ func (s *S3) upload(ctx context.Context, snapshot, extraMetadata string, now tim
 
 	toCtx, cancel := context.WithTimeout(ctx, s.config.EtcdS3Timeout)
 	defer cancel()
-	opts := minio.PutObjectOptions{
-		ContentType: "application/zip",
-		NumThreads:  2,
+	opts := minio.PutObjectOptions{NumThreads: 2}
+	if strings.HasSuffix(snapshot, compressedExtension) {
+		opts.ContentType = "application/zip"
+	} else {
+		opts.ContentType = "application/octet-stream"
 	}
 	uploadInfo, err := s.client.FPutObject(toCtx, s.config.EtcdS3BucketName, snapshotFileName, snapshot, opts)
 	if err != nil {
@@ -267,7 +268,7 @@ func (s *S3) snapshotRetention(ctx context.Context) error {
 func readS3EndpointCA(endpointCA string) ([]byte, error) {
 	ca, err := base64.StdEncoding.DecodeString(endpointCA)
 	if err != nil {
-		return ioutil.ReadFile(endpointCA)
+		return os.ReadFile(endpointCA)
 	}
 	return ca, nil
 }

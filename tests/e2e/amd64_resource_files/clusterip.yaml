@@ -24,7 +24,7 @@ metadata:
   labels:
     k8s-app: nginx-app-clusterip
   name: nginx-clusterip-svc
-  namespace: default 
+  namespace: default
 spec:
   type: ClusterIP
   ports:

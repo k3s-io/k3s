@@ -3,7 +3,6 @@ package bootstrap
 import (
 	"encoding/json"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -34,7 +33,7 @@ func ReadFromDisk(w io.Writer, bootstrap *config.ControlRuntimeBootstrap) error 
 		if path == "" {
 			continue
 		}
-		data, err := ioutil.ReadFile(path)
+		data, err := os.ReadFile(path)
 		if err != nil {
 			logrus.Warnf("failed to read %s", path)
 			continue
@@ -75,7 +74,7 @@ func WriteToDiskFromStorage(files PathsDataformat, bootstrap *config.ControlRunt
 
 	for pathKey, bsf := range files {
 		path, ok := paths[pathKey]
-		if !ok {
+		if !ok || path == "" {
 			continue
 		}
 

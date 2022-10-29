@@ -7,7 +7,6 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -26,7 +25,7 @@ func Validate() error {
 }
 
 func validateCgroupsV1() error {
-	cgroups, err := ioutil.ReadFile("/proc/self/cgroup")
+	cgroups, err := os.ReadFile("/proc/self/cgroup")
 	if err != nil {
 		return err
 	}

@@ -13,6 +13,7 @@ import (
 	systemd "github.com/coreos/go-systemd/daemon"
 	"github.com/k3s-io/k3s/pkg/agent/config"
 	"github.com/k3s-io/k3s/pkg/agent/containerd"
+	"github.com/k3s-io/k3s/pkg/agent/cridockerd"
 	"github.com/k3s-io/k3s/pkg/agent/flannel"
 	"github.com/k3s-io/k3s/pkg/agent/netpol"
 	"github.com/k3s-io/k3s/pkg/agent/proxy"
@@ -28,6 +29,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/nodeconfig"
 	"github.com/k3s-io/k3s/pkg/rootless"
 	"github.com/k3s-io/k3s/pkg/util"
+	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
@@ -72,7 +74,7 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 	if (serviceIPv6 != clusterIPv6) || (dualCluster != dualService) || (serviceIPv4 != clusterIPv4) {
 		return fmt.Errorf("cluster-cidr: %v and service-cidr: %v, must share the same IP version (IPv4, IPv6 or dual-stack)", nodeConfig.AgentConfig.ClusterCIDRs, nodeConfig.AgentConfig.ServiceCIDRs)
 	}
-	if (clusterIPv6 != nodeIPv6) || (dualCluster != dualNode) || (clusterIPv4 != nodeIPv4) {
+	if (clusterIPv6 && !nodeIPv6) || (dualCluster && !dualNode) || (clusterIPv4 && !nodeIPv4) {
 		return fmt.Errorf("cluster-cidr: %v and node-ip: %v, must share the same IP version (IPv4, IPv6 or dual-stack)", nodeConfig.AgentConfig.ClusterCIDRs, nodeConfig.AgentConfig.NodeIPs)
 	}
 	enableIPv6 := dualCluster || clusterIPv6
@@ -100,7 +102,11 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 		}
 	}
 
-	if !nodeConfig.Docker && nodeConfig.ContainerRuntimeEndpoint == "" {
+	if nodeConfig.Docker {
+		if err := cridockerd.Run(ctx, nodeConfig); err != nil {
+			return err
+		}
+	} else if nodeConfig.ContainerRuntimeEndpoint == "" {
 		if err := containerd.Run(ctx, nodeConfig); err != nil {
 			return err
 		}
@@ -130,7 +136,7 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 		return err
 	}
 
-	if err := configureNode(ctx, &nodeConfig.AgentConfig, coreClient.CoreV1().Nodes()); err != nil {
+	if err := configureNode(ctx, nodeConfig, coreClient.CoreV1().Nodes()); err != nil {
 		return err
 	}
 
@@ -146,8 +152,13 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 		}
 	}
 
-	os.Setenv("NOTIFY_SOCKET", notifySocket)
-	systemd.SdNotify(true, "READY=1\n")
+	// By default, the server is responsible for notifying systemd
+	// On agent-only nodes, the agent will notify systemd
+	if notifySocket != "" {
+		logrus.Info(version.Program + " agent is up and running")
+		os.Setenv("NOTIFY_SOCKET", notifySocket)
+		systemd.SdNotify(true, "READY=1\n")
+	}
 
 	<-ctx.Done()
 	return ctx.Err()
@@ -285,7 +296,8 @@ func createProxyAndValidateToken(ctx context.Context, cfg *cmds.Agent) (proxy.Pr
 
 // configureNode waits for the node object to be created, and if/when it does,
 // ensures that the labels and annotations are up to date.
-func configureNode(ctx context.Context, agentConfig *daemonconfig.Agent, nodes typedcorev1.NodeInterface) error {
+func configureNode(ctx context.Context, nodeConfig *daemonconfig.Node, nodes typedcorev1.NodeInterface) error {
+	agentConfig := &nodeConfig.AgentConfig
 	fieldSelector := fields.Set{metav1.ObjectNameField: agentConfig.NodeName}.String()
 	lw := &cache.ListWatch{
 		ListFunc: func(options metav1.ListOptions) (object runtime.Object, e error) {
@@ -311,7 +323,7 @@ func configureNode(ctx context.Context, agentConfig *daemonconfig.Agent, nodes t
 		}
 
 		if !agentConfig.DisableCCM {
-			if annotations, changed := updateAddressAnnotations(agentConfig, node.Annotations); changed {
+			if annotations, changed := updateAddressAnnotations(nodeConfig, node.Annotations); changed {
 				node.Annotations = annotations
 				updateNode = true
 			}
@@ -388,7 +400,9 @@ func updateLegacyAddressLabels(agentConfig *daemonconfig.Agent, nodeLabels map[s
 	return nil, false
 }
 
-func updateAddressAnnotations(agentConfig *daemonconfig.Agent, nodeAnnotations map[string]string) (map[string]string, bool) {
+// updateAddressAnnotations updates the node annotations with important information about IP addresses of the node
+func updateAddressAnnotations(nodeConfig *daemonconfig.Node, nodeAnnotations map[string]string) (map[string]string, bool) {
+	agentConfig := &nodeConfig.AgentConfig
 	result := map[string]string{
 		cp.InternalIPKey: util.JoinIPs(agentConfig.NodeIPs),
 		cp.HostnameKey:   agentConfig.NodeName,
@@ -396,6 +410,16 @@ func updateAddressAnnotations(agentConfig *daemonconfig.Agent, nodeAnnotations m
 
 	if agentConfig.NodeExternalIP != "" {
 		result[cp.ExternalIPKey] = util.JoinIPs(agentConfig.NodeExternalIPs)
+		if nodeConfig.FlannelExternalIP {
+			for _, ipAddress := range agentConfig.NodeExternalIPs {
+				if utilsnet.IsIPv4(ipAddress) {
+					result[flannel.FlannelExternalIPv4Annotation] = ipAddress.String()
+				}
+				if utilsnet.IsIPv6(ipAddress) {
+					result[flannel.FlannelExternalIPv6Annotation] = ipAddress.String()
+				}
+			}
+		}
 	}
 
 	result = labels.Merge(nodeAnnotations, result)

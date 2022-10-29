@@ -4,7 +4,6 @@
 package rootless
 
 import (
-	"io/ioutil"
 	"net"
 	"os"
 	"os/exec"
@@ -100,7 +99,7 @@ func validateSysctl() error {
 
 func readSysctl(key string) (string, error) {
 	p := "/proc/sys/" + strings.ReplaceAll(key, ".", "/")
-	b, err := ioutil.ReadFile(p)
+	b, err := os.ReadFile(p)
 	if err != nil {
 		return "", err
 	}
@@ -126,7 +125,7 @@ func createParentOpt(stateDir string) (*parent.Opt, error) {
 		return nil, errors.Wrapf(err, "failed to mkdir %s", stateDir)
 	}
 
-	stateDir, err := ioutil.TempDir("", "rootless")
+	stateDir, err := os.MkdirTemp("", "rootless")
 	if err != nil {
 		return nil, err
 	}

@@ -37,12 +37,12 @@ jobs:
     name: "Conformance Test"
     needs: prep
     # nested virtualization is only available on macOS hosts
-    runs-on: macos-10.15
+    runs-on: macos-12
     timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
-        vm: [fedora-34]
+        vm: [fedora-35]
         mode: [unified]
       max-parallel: 1
     defaults:

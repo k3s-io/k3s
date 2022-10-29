@@ -27,7 +27,7 @@ import (
 const (
 	cniConf = `{
   "name":"cbr0",
-  "cniVersion":"0.3.1",
+  "cniVersion":"1.0.0",
   "plugins":[
     {
       "type":"flannel",
@@ -81,7 +81,8 @@ const (
 
 	wireguardNativeBackend = `{
 	"Type": "wireguard",
-	"PersistentKeepaliveInterval": 25
+	"PersistentKeepaliveInterval": %PersistentKeepaliveInterval%,
+	"Mode": "%Mode%"
 }`
 
 	emptyIPv6Network = "::/0"
@@ -91,7 +92,7 @@ const (
 )
 
 func Prepare(ctx context.Context, nodeConfig *config.Node) error {
-	if err := createCNIConf(nodeConfig.AgentConfig.CNIConfDir); err != nil {
+	if err := createCNIConf(nodeConfig.AgentConfig.CNIConfDir, nodeConfig); err != nil {
 		return err
 	}
 
@@ -146,12 +147,17 @@ func waitForPodCIDR(ctx context.Context, nodeName string, nodes typedcorev1.Node
 	return nil
 }
 
-func createCNIConf(dir string) error {
+func createCNIConf(dir string, nodeConfig *config.Node) error {
 	logrus.Debugf("Creating the CNI conf in directory %s", dir)
 	if dir == "" {
 		return nil
 	}
 	p := filepath.Join(dir, "10-flannel.conflist")
+
+	if nodeConfig.AgentConfig.FlannelCniConfFile != "" {
+		logrus.Debugf("Using %s as the flannel CNI conf", nodeConfig.AgentConfig.FlannelCniConfFile)
+		return util.CopyFile(nodeConfig.AgentConfig.FlannelCniConfFile, p)
+	}
 	return util.WriteFile(p, cniConf)
 }
 
@@ -201,8 +207,23 @@ func createFlannelConf(nodeConfig *config.Node) error {
 	}
 
 	var backendConf string
+	parts := strings.SplitN(nodeConfig.FlannelBackend, "=", 2)
+	backend := parts[0]
+	backendOptions := make(map[string]string)
+	if len(parts) > 1 {
+		logrus.Warnf("The additional options through flannel-backend are deprecated and will be removed in k3s v1.27, use flannel-conf instead")
+		options := strings.Split(parts[1], ",")
+		for _, o := range options {
+			p := strings.SplitN(o, "=", 2)
+			if len(p) == 1 {
+				backendOptions[p[0]] = ""
+			} else {
+				backendOptions[p[0]] = p[1]
+			}
+		}
+	}
 
-	switch nodeConfig.FlannelBackend {
+	switch backend {
 	case config.FlannelBackendVXLAN:
 		backendConf = vxlanBackend
 	case config.FlannelBackendHostGW:
@@ -216,7 +237,16 @@ func createFlannelConf(nodeConfig *config.Node) error {
 		backendConf = strings.ReplaceAll(wireguardBackend, "%flannelConfDir%", filepath.Dir(nodeConfig.FlannelConfFile))
 		logrus.Warnf("The wireguard backend is deprecated and will be removed in k3s v1.26, please switch to wireguard-native. Check our docs for information about how to migrate")
 	case config.FlannelBackendWireguardNative:
-		backendConf = wireguardNativeBackend
+		mode, ok := backendOptions["Mode"]
+		if !ok {
+			mode = "separate"
+		}
+		keepalive, ok := backendOptions["PersistentKeepaliveInterval"]
+		if !ok {
+			keepalive = "25"
+		}
+		backendConf = strings.ReplaceAll(wireguardNativeBackend, "%Mode%", mode)
+		backendConf = strings.ReplaceAll(backendConf, "%PersistentKeepaliveInterval%", keepalive)
 	default:
 		return fmt.Errorf("Cannot configure unknown flannel backend '%s'", nodeConfig.FlannelBackend)
 	}

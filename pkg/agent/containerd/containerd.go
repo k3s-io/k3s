@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -38,12 +37,11 @@ const (
 // Run configures and starts containerd as a child process. Once it is up, images are preloaded
 // or pulled from files found in the agent images directory.
 func Run(ctx context.Context, cfg *config.Node) error {
-	args := getContainerdArgs(cfg)
-
 	if err := setupContainerdConfig(ctx, cfg); err != nil {
 		return err
 	}
 
+	args := getContainerdArgs(cfg)
 	stdOut := io.Writer(os.Stdout)
 	stdErr := io.Writer(os.Stderr)
 
@@ -61,6 +59,7 @@ func Run(ctx context.Context, cfg *config.Node) error {
 
 	go func() {
 		env := []string{}
+		cenv := []string{}
 
 		for _, e := range os.Environ() {
 			pair := strings.SplitN(e, "=", 2)
@@ -75,7 +74,7 @@ func Run(ctx context.Context, cfg *config.Node) error {
 				// This allows doing things like setting a proxy for image pulls by setting
 				// CONTAINERD_https_proxy=http://proxy.example.com:8080
 				pair[0] = strings.TrimPrefix(pair[0], "CONTAINERD_")
-				fallthrough
+				cenv = append(cenv, strings.Join(pair, "="))
 			default:
 				env = append(env, strings.Join(pair, "="))
 			}
@@ -85,7 +84,7 @@ func Run(ctx context.Context, cfg *config.Node) error {
 		cmd := exec.CommandContext(ctx, args[0], args[1:]...)
 		cmd.Stdout = stdOut
 		cmd.Stderr = stdErr
-		cmd.Env = env
+		cmd.Env = append(env, cenv...)
 
 		addDeathSig(cmd)
 		if err := cmd.Run(); err != nil {
@@ -144,7 +143,7 @@ func preloadImages(ctx context.Context, cfg *config.Node) error {
 		return nil
 	}
 
-	fileInfos, err := ioutil.ReadDir(cfg.Images)
+	fileInfos, err := os.ReadDir(cfg.Images)
 	if err != nil {
 		logrus.Errorf("Unable to read images in %s: %v", cfg.Images, err)
 		return nil

@@ -5,9 +5,8 @@ on:
       - "**.md"
       - "channel.yaml"
       - "install.sh"
-      - "tests/snapshotter/**"
-      - "tests/install/**"
-      - "tests/cgroup/**"
+      - "tests/**"
+      - "!tests/integration**"
       - ".github/**"
       - "!.github/workflows/integration.yaml"
   pull_request:
@@ -15,43 +14,33 @@ on:
       - "**.md"
       - "channel.yaml"
       - "install.sh"
-      - "tests/snapshotter/**"
-      - "tests/install/**"
-      - "tests/cgroup/**"
+      - "tests/**"
+      - "!tests/integration**"
       - ".github/**"
       - "!.github/workflows/integration.yaml"
   workflow_dispatch: {}
 jobs:
   build:
-    name: Build
-    runs-on: ubuntu-20.04
-    timeout-minutes: 20
-    steps:
-    - name: "Checkout"
-      uses: actions/checkout@v2
-      with:
-        fetch-depth: 1
-    - name: "Make"
-      run: DOCKER_BUILDKIT=1 SKIP_VALIDATE=1 make
-    - name: "Upload k3s binary"
-      uses: actions/upload-artifact@v2
-      with:
-        name: k3s
-        path: dist/artifacts/k3s
+    uses: ./.github/workflows/build-k3s.yaml
   test:
     needs: build
     name: Integration Tests
     runs-on: ubuntu-20.04
     timeout-minutes: 30
     steps:
-    - name: Install Go
-      uses: actions/setup-go@v2 
-      with: 
-        go-version: '1.17.5'
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         fetch-depth: 1
+    - name: Install Go
+      uses: actions/setup-go@v3
+      with: 
+        go-version: '1.19.2'
+        check-latest: true
+        cache: true
+        cache-dependency-path: |
+          **/go.sum
+          **/go.mod
     - name: "Download k3s binary"
       uses: actions/download-artifact@v2
       with:
@@ -60,7 +49,7 @@ jobs:
     - name: Run Integration Tests
       run: | 
         chmod +x ./dist/artifacts/k3s
-        sudo -E env "PATH=$PATH" go test ./tests/integration/... -run Integration
+        sudo -E env "PATH=$PATH" go test -v ./tests/integration/... -run Integration
     - name: On Failure, Launch Debug Session
       if: ${{ failure() }}
       uses: mxschmitt/action-tmate@v3

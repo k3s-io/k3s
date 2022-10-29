@@ -9,12 +9,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"io/fs"
 	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"sort"
 	"strconv"
@@ -43,6 +44,7 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/etcdutl/v3/snapshot"
 	"go.uber.org/zap"
+	"golang.org/x/sync/semaphore"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -51,7 +53,7 @@ import (
 )
 
 const (
-	testTimeout          = time.Second * 10
+	testTimeout          = time.Second * 30
 	manageTickerTime     = time.Second * 15
 	learnerMaxStallTime  = time.Minute * 5
 	memberRemovalTimeout = time.Minute * 1
@@ -62,7 +64,9 @@ const (
 	defaultKeepAliveTime    = 30 * time.Second
 	defaultKeepAliveTimeout = 10 * time.Second
 
-	maxBackupRetention = 5
+	maxBackupRetention     = 5
+	maxConcurrentSnapshots = 1
+	compressedExtension    = ".zip"
 
 	MasterLabel       = "node-role.kubernetes.io/master"
 	ControlPlaneLabel = "node-role.kubernetes.io/control-plane"
@@ -82,18 +86,21 @@ var (
 
 	ErrAddressNotSet = errors.New("apiserver addresses not yet set")
 	ErrNotMember     = errNotMember()
+
+	invalidKeyChars = regexp.MustCompile(`[^-._a-zA-Z0-9]`)
 )
 
 type NodeControllerGetter func() controllerv1.NodeController
 
 type ETCD struct {
-	client  *clientv3.Client
-	config  *config.Control
-	name    string
-	address string
-	cron    *cron.Cron
-	s3      *S3
-	cancel  context.CancelFunc
+	client      *clientv3.Client
+	config      *config.Control
+	name        string
+	address     string
+	cron        *cron.Cron
+	s3          *S3
+	cancel      context.CancelFunc
+	snapshotSem *semaphore.Weighted
 }
 
 type learnerProgress struct {
@@ -217,7 +224,7 @@ func (e *ETCD) Test(ctx context.Context) error {
 			memberNameUrls = append(memberNameUrls, member.Name+"="+member.PeerURLs[0])
 		}
 	}
-	return &MembershipError{Members: memberNameUrls, Self: e.name + "=" + e.address}
+	return &MembershipError{Members: memberNameUrls, Self: e.name + "=" + e.peerURL()}
 }
 
 // DBDir returns the path to dataDir/db/etcd
@@ -345,7 +352,7 @@ func (e *ETCD) Reset(ctx context.Context, rebootstrap func() error) error {
 		return err
 	}
 	// touch a file to avoid multiple resets
-	if err := ioutil.WriteFile(ResetFile(e.config), []byte{}, 0600); err != nil {
+	if err := os.WriteFile(ResetFile(e.config), []byte{}, 0600); err != nil {
 		return err
 	}
 	return e.newCluster(ctx, true)
@@ -554,13 +561,13 @@ func (e *ETCD) Register(ctx context.Context, config *config.Control, handler htt
 // name is used on subsequent calls.
 func (e *ETCD) setName(force bool) error {
 	fileName := nameFile(e.config)
-	data, err := ioutil.ReadFile(fileName)
+	data, err := os.ReadFile(fileName)
 	if os.IsNotExist(err) || force {
 		e.name = e.config.ServerNodeName + "-" + uuid.New().String()[:8]
 		if err := os.MkdirAll(filepath.Dir(fileName), 0700); err != nil {
 			return err
 		}
-		return ioutil.WriteFile(fileName, []byte(e.name), 0600)
+		return os.WriteFile(fileName, []byte(e.name), 0600)
 	} else if err != nil {
 		return err
 	}
@@ -646,7 +653,7 @@ func getEndpoints(control *config.Control) []string {
 	if len(runtime.EtcdConfig.Endpoints) > 0 {
 		return runtime.EtcdConfig.Endpoints
 	}
-	return []string{fmt.Sprintf("https://%s:2379", control.Loopback())}
+	return []string{fmt.Sprintf("https://%s:2379", control.Loopback(true))}
 }
 
 // toTLSConfig converts the ControlRuntime configuration to TLS configuration suitable
@@ -753,35 +760,57 @@ func (e *ETCD) migrateFromSQLite(ctx context.Context) error {
 	return os.Rename(sqliteFile(e.config), sqliteFile(e.config)+".migrated")
 }
 
-// peerURL returns the peer access address for the local node
+// peerURL returns the external peer access address for the local node.
 func (e *ETCD) peerURL() string {
 	return fmt.Sprintf("https://%s", net.JoinHostPort(e.address, "2380"))
 }
 
-// clientURL returns the client access address for the local node
+// listenClientURLs returns a list of URLs to bind to for peer connections.
+// During cluster reset/restore, we only listen on loopback to avoid having peers
+// connect mid-process.
+func (e *ETCD) listenPeerURLs(reset bool) string {
+	peerURLs := fmt.Sprintf("https://%s:2380", e.config.Loopback(true))
+	if !reset {
+		peerURLs += "," + e.peerURL()
+	}
+	return peerURLs
+}
+
+// clientURL returns the external client access address for the local node.
 func (e *ETCD) clientURL() string {
 	return fmt.Sprintf("https://%s", net.JoinHostPort(e.address, "2379"))
 }
 
-// metricsURL returns the metrics access address
-func (e *ETCD) metricsURL(expose bool) string {
-	address := fmt.Sprintf("http://%s:2381", e.config.Loopback())
-	if expose {
-		address = fmt.Sprintf("http://%s,%s", net.JoinHostPort(e.address, "2381"), address)
+// listenClientURLs returns a list of URLs to bind to for client connections.
+// During cluster reset/restore, we only listen on loopback to avoid having the apiserver
+// connect mid-process.
+func (e *ETCD) listenClientURLs(reset bool) string {
+	clientURLs := fmt.Sprintf("https://%s:2379", e.config.Loopback(true))
+	if !reset {
+		clientURLs += "," + e.clientURL()
 	}
-	return address
+	return clientURLs
 }
 
-// cluster returns ETCDConfig for a cluster
-func (e *ETCD) cluster(ctx context.Context, forceNew bool, options executor.InitialOptions) error {
+// listenMetricsURLs returns a list of URLs to bind to for metrics connections.
+func (e *ETCD) listenMetricsURLs(reset bool) string {
+	metricsURLs := fmt.Sprintf("http://%s:2381", e.config.Loopback(true))
+	if !reset && e.config.EtcdExposeMetrics {
+		metricsURLs += "," + fmt.Sprintf("http://%s", net.JoinHostPort(e.address, "2381"))
+	}
+	return metricsURLs
+}
+
+// cluster calls the executor to start etcd running with the provided configuration.
+func (e *ETCD) cluster(ctx context.Context, reset bool, options executor.InitialOptions) error {
 	ctx, e.cancel = context.WithCancel(ctx)
 	return executor.ETCD(ctx, executor.ETCDConfig{
 		Name:                e.name,
 		InitialOptions:      options,
-		ForceNewCluster:     forceNew,
-		ListenClientURLs:    e.clientURL() + "," + fmt.Sprintf("https://%s:2379", e.config.Loopback()),
-		ListenMetricsURLs:   e.metricsURL(e.config.EtcdExposeMetrics),
-		ListenPeerURLs:      e.peerURL(),
+		ForceNewCluster:     reset,
+		ListenClientURLs:    e.listenClientURLs(reset),
+		ListenMetricsURLs:   e.listenMetricsURLs(reset),
+		ListenPeerURLs:      e.listenPeerURLs(reset),
 		AdvertiseClientURLs: e.clientURL(),
 		DataDir:             DBDir(e.config),
 		ServerTrust: executor.ServerTrust{
@@ -796,6 +825,7 @@ func (e *ETCD) cluster(ctx context.Context, forceNew bool, options executor.Init
 			ClientCertAuth: true,
 			TrustedCAFile:  e.config.Runtime.ETCDPeerCA,
 		},
+		SnapshotCount:                   10000,
 		ElectionTimeout:                 5000,
 		HeartbeatInterval:               500,
 		Logger:                          "zap",
@@ -839,6 +869,7 @@ func (e *ETCD) StartEmbeddedTemporary(ctx context.Context) error {
 		Logger:                          "zap",
 		HeartbeatInterval:               500,
 		ElectionTimeout:                 5000,
+		SnapshotCount:                   10000,
 		Name:                            e.name,
 		LogOutputs:                      []string{"stderr"},
 		ExperimentalInitialCorruptCheck: true,
@@ -902,7 +933,7 @@ func (e *ETCD) manageLearners(ctx context.Context) {
 	defer t.Stop()
 
 	for range t.C {
-		ctx, cancel := context.WithTimeout(ctx, testTimeout)
+		ctx, cancel := context.WithTimeout(ctx, manageTickerTime)
 		defer cancel()
 
 		// Check to see if the local node is the leader. Only the leader should do learner management.
@@ -1135,6 +1166,9 @@ func snapshotDir(config *config.Control, create bool) (string, error) {
 // to perform an Etcd snapshot. This is necessary primarily for on-demand
 // snapshots since they're performed before normal Etcd setup is completed.
 func (e *ETCD) preSnapshotSetup(ctx context.Context, config *config.Control) error {
+	if e.snapshotSem == nil {
+		e.snapshotSem = semaphore.NewWeighted(maxConcurrentSnapshots)
+	}
 	if e.client == nil {
 		if e.config == nil {
 			e.config = config
@@ -1152,8 +1186,6 @@ func (e *ETCD) preSnapshotSetup(ctx context.Context, config *config.Control) err
 	}
 	return nil
 }
-
-const compressedExtension = ".zip"
 
 // compressSnapshot compresses the given snapshot and provides the
 // caller with the path to the file.
@@ -1247,6 +1279,10 @@ func (e *ETCD) Snapshot(ctx context.Context, config *config.Control) error {
 	if err := e.preSnapshotSetup(ctx, config); err != nil {
 		return err
 	}
+	if !e.snapshotSem.TryAcquire(maxConcurrentSnapshots) {
+		return fmt.Errorf("%d snapshots already in progress", maxConcurrentSnapshots)
+	}
+	defer e.snapshotSem.Release(maxConcurrentSnapshots)
 
 	// make sure the core.Factory is initialized before attempting to add snapshot metadata
 	var extraMetadata string
@@ -1452,22 +1488,26 @@ func (e *ETCD) listLocalSnapshots() (map[string]snapshotFile, error) {
 		return snapshots, errors.Wrap(err, "failed to get the snapshot dir")
 	}
 
-	files, err := ioutil.ReadDir(snapshotDir)
+	dirEntries, err := os.ReadDir(snapshotDir)
 	if err != nil {
 		return nil, err
 	}
 
 	nodeName := os.Getenv("NODE_NAME")
 
-	for _, f := range files {
+	for _, de := range dirEntries {
+		file, err := de.Info()
+		if err != nil {
+			return nil, err
+		}
 		sf := snapshotFile{
-			Name:     f.Name(),
-			Location: "file://" + filepath.Join(snapshotDir, f.Name()),
+			Name:     file.Name(),
+			Location: "file://" + filepath.Join(snapshotDir, file.Name()),
 			NodeName: nodeName,
 			CreatedAt: &metav1.Time{
-				Time: f.ModTime(),
+				Time: file.ModTime(),
 			},
-			Size:   f.Size(),
+			Size:   file.Size(),
 			Status: successfulSnapshotStatus,
 		}
 		sfKey := generateSnapshotConfigMapKey(sf)
@@ -1682,6 +1722,7 @@ func (e *ETCD) addSnapshotData(sf snapshotFile) error {
 		}
 		snapshotConfigMap, getErr := e.config.Runtime.Core.Core().V1().ConfigMap().Get(metav1.NamespaceSystem, snapshotConfigMapName, metav1.GetOptions{})
 
+		sfKey := generateSnapshotConfigMapKey(sf)
 		marshalledSnapshotFile, err := json.Marshal(sf)
 		if err != nil {
 			return err
@@ -1692,7 +1733,7 @@ func (e *ETCD) addSnapshotData(sf snapshotFile) error {
 					Name:      snapshotConfigMapName,
 					Namespace: metav1.NamespaceSystem,
 				},
-				Data: map[string]string{sf.Name: string(marshalledSnapshotFile)},
+				Data: map[string]string{sfKey: string(marshalledSnapshotFile)},
 			}
 			_, err := e.config.Runtime.Core.Core().V1().ConfigMap().Create(&cm)
 			return err
@@ -1702,7 +1743,6 @@ func (e *ETCD) addSnapshotData(sf snapshotFile) error {
 			snapshotConfigMap.Data = make(map[string]string)
 		}
 
-		sfKey := generateSnapshotConfigMapKey(sf)
 		snapshotConfigMap.Data[sfKey] = string(marshalledSnapshotFile)
 
 		_, err = e.config.Runtime.Core.Core().V1().ConfigMap().Update(snapshotConfigMap)
@@ -1711,13 +1751,11 @@ func (e *ETCD) addSnapshotData(sf snapshotFile) error {
 }
 
 func generateSnapshotConfigMapKey(sf snapshotFile) string {
-	var sfKey string
+	name := invalidKeyChars.ReplaceAllString(sf.Name, "_")
 	if sf.NodeName == "s3" {
-		sfKey = "s3-" + sf.Name
-	} else {
-		sfKey = "local-" + sf.Name
+		return "s3-" + name
 	}
-	return sfKey
+	return "local-" + name
 }
 
 // ReconcileSnapshotData reconciles snapshot data in the snapshot ConfigMap.
@@ -1990,7 +2028,18 @@ func backupDirWithRetention(dir string, maxBackupRetention int) (string, error) 
 	if _, err := os.Stat(dir); err != nil {
 		return "", nil
 	}
-	files, err := ioutil.ReadDir(filepath.Dir(dir))
+	entries, err := os.ReadDir(filepath.Dir(dir))
+	if err != nil {
+		return "", err
+	}
+	files := make([]fs.FileInfo, 0, len(entries))
+	for _, entry := range entries {
+		info, err := entry.Info()
+		if err != nil {
+			return "", err
+		}
+		files = append(files, info)
+	}
 	if err != nil {
 		return "", err
 	}

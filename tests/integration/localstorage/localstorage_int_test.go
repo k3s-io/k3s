@@ -34,9 +34,9 @@ var _ = Describe("local storage", func() {
 	})
 	When("a new local storage is created", func() {
 		It("starts up with no problems", func() {
-			Eventually(func() (string, error) {
-				return testutil.K3sCmd("kubectl get pods -A")
-			}, "90s", "1s").Should(MatchRegexp("kube-system.+coredns.+1\\/1.+Running"))
+			Eventually(func() error {
+				return testutil.K3sDefaultDeployments()
+			}, "120s", "5s").Should(Succeed())
 		})
 		It("creates a new pvc", func() {
 			result, err := testutil.K3sCmd("kubectl create -f ./testdata/localstorage_pvc.yaml")
@@ -84,6 +84,9 @@ var _ = Describe("local storage", func() {
 
 var _ = AfterSuite(func() {
 	if !testutil.IsExistingServer() {
+		if CurrentSpecReport().Failed() {
+			testutil.K3sDumpLog(localStorageServer)
+		}
 		Expect(testutil.K3sKillServer(localStorageServer)).To(Succeed())
 		Expect(testutil.K3sCleanup(testLock, "")).To(Succeed())
 	}

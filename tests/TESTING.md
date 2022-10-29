@@ -51,7 +51,7 @@ ___
 
 ## Integration Tests
 
-Integration tests should be used to test a specific functionality of k3s that exists across multiple Go packages, either via exported function calls, or more often, CLI comands.
+Integration tests should be used to test a specific functionality of k3s that exists across multiple Go packages, either via exported function calls, or more often, CLI commands.
 Integration tests should be used for "black box" testing. 
 
 See [integration/README.md](./integration/README.md) for more info.
@@ -63,18 +63,19 @@ ___
 Smoke tests are a collection of tests defined under the [tests](../tests) path at the root of this repository.
 The sub-directories therein contain fixtures for running simple clusters to assert correct behavior for "happy path" scenarios. These fixtures are mostly self-contained Vagrantfiles describing single-node installations that are easily spun up with Vagrant for the `libvirt` and `virtualbox` providers:
 
-- [Install Script](../tests/install) :arrow_right: on proposed changes to [install.sh](../install.sh) 
+- [Install Script](../tests/install) :arrow_right: scheduled nightly
   - [CentOS 7](../tests/install/centos-7) (stand-in for RHEL 7)
   - [Rocky Linux 8](../tests/install/rocky-8) (stand-in for RHEL 8)
-  - [Leap 15.3](../tests/install/opensuse-microos) (stand-in for SLES)
+  - [Fedora](../tests/install/fedora)
+  - [Leap 15.4](../tests/install/opensuse-leap) (stand-in for SLES)
   - [MicroOS](../tests/install/opensuse-microos) (stand-in for SLE-Micro)
   - [Ubuntu 20.04](../tests/install/ubuntu-focal) (Focal Fossa)
 - [Control Groups](../tests/cgroup) :arrow_right: on any code change
   - [mode=unified](../tests/cgroup/unified) (cgroups v2)
-    - [Fedora 34](../tests/cgroup/unified/fedora-34) (rootfull + rootless)
+    - [Fedora 35](../tests/cgroup/unified/fedora-35) (rootfull + rootless)
 - [Snapshotter](../tests/snapshotter/btrfs/opensuse-leap) :arrow_right: on any code change
   - [BTRFS](../tests/snapshotter/btrfs) ([containerd built-in](https://github.com/containerd/containerd/tree/main/snapshots/btrfs))
-    - [Leap 15.3](../tests/snapshotter/btrfs/opensuse-leap)
+    - [Leap 15.4](../tests/snapshotter/btrfs/opensuse-leap)
 
 When adding new installer test(s) please copy the prevalent style for the `Vagrantfile`.
 Ideally, the boxes used for additional assertions will support the default `virtualbox` provider which

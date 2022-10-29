@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/k3s-io/k3s/pkg/util"
@@ -25,7 +26,12 @@ const (
 	FlannelBackendIPSEC           = "ipsec"
 	FlannelBackendWireguard       = "wireguard"
 	FlannelBackendWireguardNative = "wireguard-native"
+	EgressSelectorModeAgent       = "agent"
+	EgressSelectorModeCluster     = "cluster"
+	EgressSelectorModeDisabled    = "disabled"
+	EgressSelectorModePod         = "pod"
 	CertificateRenewDays          = 90
+	StreamServerPort              = "10010"
 )
 
 type Node struct {
@@ -38,7 +44,10 @@ type Node struct {
 	FlannelConfOverride      bool
 	FlannelIface             *net.Interface
 	FlannelIPv6Masq          bool
+	FlannelExternalIP        bool
+	EgressSelectorMode       string
 	Containerd               Containerd
+	CRIDockerd               CRIDockerd
 	Images                   string
 	AgentConfig              Agent
 	Token                    string
@@ -55,6 +64,11 @@ type Containerd struct {
 	Opt      string
 	Template string
 	SELinux  bool
+}
+
+type CRIDockerd struct {
+	Address string
+	Root    string
 }
 
 type Agent struct {
@@ -97,6 +111,7 @@ type Agent struct {
 	ImageCredProvBinDir     string
 	ImageCredProvConfig     string
 	IPSECPSK                string
+	FlannelCniConfFile      string
 	StrongSwanDir           string
 	PrivateRegistry         string
 	SystemDefaultRegistry   string
@@ -123,6 +138,8 @@ type CriticalControlArgs struct {
 	DisableServiceLB      bool
 	FlannelBackend        string
 	FlannelIPv6Masq       bool
+	FlannelExternalIP     bool
+	EgressSelectorMode    string
 	NoCoreDNS             bool
 	ServiceIPRange        *net.IPNet
 	ServiceIPRanges       []*net.IPNet
@@ -152,6 +169,10 @@ type Control struct {
 	DisableETCD              bool
 	DisableKubeProxy         bool
 	DisableScheduler         bool
+	DisableServiceLB         bool
+	Rootless                 bool
+	ServiceLBNamespace       string
+	EnablePProf              bool
 	ExtraAPIArgs             []string
 	ExtraControllerArgs      []string
 	ExtraCloudControllerArgs []string
@@ -198,32 +219,36 @@ type Control struct {
 	Runtime     *ControlRuntime `json:"-"`
 }
 
-// BindAddressOrLoopback returns an IPv4 or IPv6 address suitable for embedding in server
-// URLs. If a bind address was configured, that is returned. If the chooseHostInterface
-// parameter is true, and a suitable default interface can be found, that interface's
-// address is returned.  If neither of the previous were used, the loopback address is
-// returned. IPv6 addresses are enclosed in square brackets, as per RFC2732.
-func (c *Control) BindAddressOrLoopback(chooseHostInterface bool) string {
+// BindAddressOrLoopback returns an IPv4 or IPv6 address suitable for embedding in
+// server URLs. If a bind address was configured, that is returned. If the
+// chooseHostInterface parameter is true, and a suitable default interface can be
+// found, that interface's address is returned.  If neither of the previous were used,
+// the loopback address is returned. If the urlSafe parameter is true, IPv6 addresses
+// are enclosed in square brackets, as per RFC2732.
+func (c *Control) BindAddressOrLoopback(chooseHostInterface, urlSafe bool) string {
 	ip := c.BindAddress
 	if ip == "" && chooseHostInterface {
 		if hostIP, _ := utilnet.ChooseHostInterface(); len(hostIP) > 0 {
 			ip = hostIP.String()
 		}
 	}
-	if utilsnet.IsIPv6String(ip) {
+	if urlSafe && utilsnet.IsIPv6String(ip) {
 		return fmt.Sprintf("[%s]", ip)
 	} else if ip != "" {
 		return ip
 	}
-	return c.Loopback()
+	return c.Loopback(urlSafe)
 }
 
 // Loopback returns an IPv4 or IPv6 loopback address, depending on whether the cluster
-// service CIDRs indicate an IPv4/Dual-Stack or IPv6 only cluster.  IPv6 addresses are
-// enclosed in square brackets, as per RFC2732.
-func (c *Control) Loopback() string {
+// service CIDRs indicate an IPv4/Dual-Stack or IPv6 only cluster. If the urlSafe
+// parameter is true, IPv6 addresses are enclosed in square brackets, as per RFC2732.
+func (c *Control) Loopback(urlSafe bool) string {
 	if IPv6OnlyService, _ := util.IsIPv6OnlyCIDRs(c.ServiceIPRanges); IPv6OnlyService {
-		return "[::1]"
+		if urlSafe {
+			return "[::1]"
+		}
+		return "::1"
 	}
 	return "127.0.0.1"
 }
@@ -253,6 +278,7 @@ type ControlRuntime struct {
 	APIServerReady                      <-chan struct{}
 	AgentReady                          <-chan struct{}
 	ETCDReady                           <-chan struct{}
+	StartupHooksWg                      *sync.WaitGroup
 	ClusterControllerStart              func(ctx context.Context) error
 	LeaderElectedClusterControllerStart func(ctx context.Context) error
 
@@ -276,7 +302,8 @@ type ControlRuntime struct {
 	Tunnel             http.Handler
 	Authenticator      authenticator.Request
 
-	EgressSelectorConfig string
+	EgressSelectorConfig  string
+	CloudControllerConfig string
 
 	ClientAuthProxyCert string
 	ClientAuthProxyKey  string

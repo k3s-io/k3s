@@ -24,7 +24,7 @@ var _ = BeforeSuite(func() {
 	}
 })
 
-var _ = Describe("etcd snapshot restore", func() {
+var _ = Describe("etcd snapshot restore", Ordered, func() {
 	BeforeEach(func() {
 		if testutil.IsExistingServer() && !testutil.ServerArgsPresent(restoreServerArgs) {
 			Skip("Test needs k3s server with: " + strings.Join(restoreServerArgs, " "))
@@ -32,9 +32,9 @@ var _ = Describe("etcd snapshot restore", func() {
 	})
 	When("a snapshot is restored on existing node", func() {
 		It("etcd starts up with no problems", func() {
-			Eventually(func() (string, error) {
-				return testutil.K3sCmd("kubectl", "get", "pods", "-A")
-			}, "360s", "5s").Should(MatchRegexp("kube-system.+coredns.+1\\/1.+Running"))
+			Eventually(func() error {
+				return testutil.K3sDefaultDeployments()
+			}, "180s", "5s").Should(Succeed())
 		})
 		It("create a workload", func() {
 			result, err := testutil.K3sCmd("kubectl", "create", "-f", "./testdata/temp_depl.yaml")
@@ -79,9 +79,9 @@ var _ = Describe("etcd snapshot restore", func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 		It("starts up with no problems", func() {
-			Eventually(func() (string, error) {
-				return testutil.K3sCmd("kubectl", "get", "pods", "-A")
-			}, "360s", "5s").Should(MatchRegexp("kube-system.+coredns.+1\\/1.+Running"))
+			Eventually(func() error {
+				return testutil.K3sDefaultDeployments()
+			}, "360s", "5s").Should(Succeed())
 		})
 		It("Make sure Workload 1 exists", func() {
 			Eventually(func() (string, error) {
@@ -108,6 +108,9 @@ var _ = Describe("etcd snapshot restore", func() {
 
 var _ = AfterSuite(func() {
 	if !testutil.IsExistingServer() {
+		if CurrentSpecReport().Failed() {
+			testutil.K3sDumpLog(server1)
+		}
 		Expect(testutil.K3sKillServer(server1)).To(Succeed())
 		Expect(testutil.K3sKillServer(server2)).To(Succeed())
 		Expect(testutil.K3sCleanup(testLock, tmpdDataDir)).To(Succeed())

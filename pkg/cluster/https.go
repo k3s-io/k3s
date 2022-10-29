@@ -5,13 +5,15 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net"
 	"net/http"
+	"net/http/pprof"
 	"os"
 	"path/filepath"
 
+	"github.com/gorilla/mux"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/etcd"
 	"github.com/k3s-io/k3s/pkg/version"
@@ -94,6 +96,17 @@ func (c *Cluster) initClusterAndHTTPS(ctx context.Context) error {
 		return err
 	}
 
+	if c.config.EnablePProf {
+		mux := mux.NewRouter()
+		mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+		mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+		mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+		mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+		mux.PathPrefix("/debug/pprof/").HandlerFunc(pprof.Index)
+		mux.NotFoundHandler = handler
+		handler = mux
+	}
+
 	// Create a HTTP server with the registered request handlers, using logrus for logging
 	server := http.Server{
 		Handler: handler,
@@ -102,7 +115,7 @@ func (c *Cluster) initClusterAndHTTPS(ctx context.Context) error {
 	if logrus.IsLevelEnabled(logrus.DebugLevel) {
 		server.ErrorLog = log.New(logrus.StandardLogger().Writer(), "Cluster-Http-Server ", log.LstdFlags)
 	} else {
-		server.ErrorLog = log.New(ioutil.Discard, "Cluster-Http-Server", 0)
+		server.ErrorLog = log.New(io.Discard, "Cluster-Http-Server", 0)
 	}
 
 	// Start the supervisor http server on the tls listener

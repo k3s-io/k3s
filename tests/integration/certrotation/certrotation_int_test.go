@@ -26,7 +26,7 @@ var _ = BeforeSuite(func() {
 	}
 })
 
-var _ = Describe("certificate rotation", func() {
+var _ = Describe("certificate rotation", Ordered, func() {
 	BeforeEach(func() {
 		if testutil.IsExistingServer() && !testutil.ServerArgsPresent(serverArgs) {
 			Skip("Test needs k3s server with: " + strings.Join(serverArgs, " "))
@@ -34,9 +34,9 @@ var _ = Describe("certificate rotation", func() {
 	})
 	When("a new server is created", func() {
 		It("starts up with no problems", func() {
-			Eventually(func() (string, error) {
-				return testutil.K3sCmd("kubectl", "get pods -A")
-			}, "180s", "5s").Should(MatchRegexp("kube-system.+coredns.+1\\/1.+Running"))
+			Eventually(func() error {
+				return testutil.K3sDefaultDeployments()
+			}, "180s", "5s").Should(Succeed())
 		})
 		It("get certificate hash", func() {
 			// get md5sum of the CA certs
@@ -60,9 +60,9 @@ var _ = Describe("certificate rotation", func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 		It("starts up with no problems", func() {
-			Eventually(func() (string, error) {
-				return testutil.K3sCmd("kubectl", "get", "pods", "-A")
-			}, "360s", "5s").Should(MatchRegexp("kube-system.+coredns.+1\\/1.+Running"))
+			Eventually(func() error {
+				return testutil.K3sDefaultDeployments()
+			}, "360s", "5s").Should(Succeed())
 		})
 		It("get certificate hash", func() {
 			// get md5sum of the CA certs
@@ -71,7 +71,7 @@ var _ = Describe("certificate rotation", func() {
 			Expect(err).ToNot(HaveOccurred())
 			certHashAfter, err := testutil.RunCommand("md5sum " + tmpdDataDir + "/server/tls/serving-kube-apiserver.crt | cut -f 1 -d' '")
 			Expect(err).ToNot(HaveOccurred())
-			Expect(caCertHash).To(Not(Equal(certHashAfter)))
+			Expect(certHash).To(Not(Equal(certHashAfter)))
 			Expect(caCertHash).To(Equal(caCertHashAfter))
 		})
 	})
@@ -79,8 +79,11 @@ var _ = Describe("certificate rotation", func() {
 
 var _ = AfterSuite(func() {
 	if !testutil.IsExistingServer() {
+		if CurrentSpecReport().Failed() {
+			testutil.K3sDumpLog(server)
+		}
 		Expect(testutil.K3sKillServer(server)).To(Succeed())
-		Expect(testutil.K3sCleanup(testLock, "")).To(Succeed())
+		Expect(testutil.K3sCleanup(-1, "")).To(Succeed())
 		Expect(testutil.K3sKillServer(server2)).To(Succeed())
 		Expect(testutil.K3sCleanup(testLock, tmpdDataDir)).To(Succeed())
 	}

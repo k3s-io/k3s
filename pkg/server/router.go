@@ -5,7 +5,6 @@ import (
 	"crypto"
 	"crypto/x509"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -131,7 +130,7 @@ func cacerts(serverCA string) http.Handler {
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 		if ca == nil {
 			var err error
-			ca, err = ioutil.ReadFile(serverCA)
+			ca, err = os.ReadFile(serverCA)
 			if err != nil {
 				sendError(err, resp)
 				return
@@ -157,7 +156,7 @@ func getNodeInfo(req *http.Request) (string, string, error) {
 }
 
 func getCACertAndKeys(caCertFile, caKeyFile, signingKeyFile string) ([]*x509.Certificate, crypto.Signer, crypto.Signer, error) {
-	keyBytes, err := ioutil.ReadFile(signingKeyFile)
+	keyBytes, err := os.ReadFile(signingKeyFile)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -167,7 +166,7 @@ func getCACertAndKeys(caCertFile, caKeyFile, signingKeyFile string) ([]*x509.Cer
 		return nil, nil, nil, err
 	}
 
-	caKeyBytes, err := ioutil.ReadFile(caKeyFile)
+	caKeyBytes, err := os.ReadFile(caKeyFile)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -177,7 +176,7 @@ func getCACertAndKeys(caCertFile, caKeyFile, signingKeyFile string) ([]*x509.Cer
 		return nil, nil, nil, err
 	}
 
-	caBytes, err := ioutil.ReadFile(caCertFile)
+	caBytes, err := os.ReadFile(caCertFile)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -235,7 +234,7 @@ func servingKubeletCert(server *config.Control, keyFile string, auth nodePassBoo
 			return
 		}
 
-		keyBytes, err := ioutil.ReadFile(keyFile)
+		keyBytes, err := os.ReadFile(keyFile)
 		if err != nil {
 			http.Error(resp, err.Error(), http.StatusInternalServerError)
 			return
@@ -275,7 +274,7 @@ func clientKubeletCert(server *config.Control, keyFile string, auth nodePassBoot
 			return
 		}
 
-		keyBytes, err := ioutil.ReadFile(keyFile)
+		keyBytes, err := os.ReadFile(keyFile)
 		if err != nil {
 			http.Error(resp, err.Error(), http.StatusInternalServerError)
 			return
@@ -300,7 +299,7 @@ func fileHandler(fileName ...string) http.Handler {
 		}
 
 		for _, f := range fileName {
-			bytes, err := ioutil.ReadFile(f)
+			bytes, err := os.ReadFile(f)
 			if err != nil {
 				logrus.Errorf("Failed to read %s: %v", f, err)
 				resp.WriteHeader(http.StatusInternalServerError)
@@ -436,13 +435,13 @@ func passwordBootstrap(ctx context.Context, config *Config) nodePassBootstrapper
 func verifyLocalPassword(ctx context.Context, config *Config, mu *sync.Mutex, deferredNodes map[string]bool, nodeName, nodePassword string) (string, int, error) {
 	// use same password file location that the agent creates
 	nodePasswordRoot := "/"
-	if config.Rootless {
+	if config.ControlConfig.Rootless {
 		nodePasswordRoot = filepath.Join(config.ControlConfig.DataDir, "agent")
 	}
 	nodeConfigPath := filepath.Join(nodePasswordRoot, "etc", "rancher", "node")
 	nodePasswordFile := filepath.Join(nodeConfigPath, "password")
 
-	passBytes, err := ioutil.ReadFile(nodePasswordFile)
+	passBytes, err := os.ReadFile(nodePasswordFile)
 	if err != nil {
 		return "", http.StatusInternalServerError, errors.Wrap(err, "unable to read node password file")
 	}

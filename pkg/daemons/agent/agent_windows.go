@@ -17,15 +17,12 @@ import (
 	"k8s.io/kubernetes/pkg/kubeapiserver/authorizer/modes"
 )
 
+// NetworkName may be overridden at runtime in downstream projects
 var NetworkName = "vxlan0"
 
-func checkRuntimeEndpoint(cfg *config.Agent, argsMap map[string]string) {
-	if strings.HasPrefix(cfg.RuntimeSocket, windowsPrefix) {
-		argsMap["container-runtime-endpoint"] = cfg.RuntimeSocket
-	} else {
-		argsMap["container-runtime-endpoint"] = windowsPrefix + cfg.RuntimeSocket
-	}
-}
+const (
+	socketPrefix = "npipe://"
+)
 
 func kubeProxyArgs(cfg *config.Agent) map[string]string {
 	bindAddress := "127.0.0.1"
@@ -78,15 +75,6 @@ func kubeletArgs(cfg *config.Agent) map[string]string {
 		argsMap["root-dir"] = cfg.RootDir
 		argsMap["cert-dir"] = filepath.Join(cfg.RootDir, "pki")
 	}
-	if cfg.CNIConfDir != "" {
-		argsMap["cni-conf-dir"] = cfg.CNIConfDir
-	}
-	if cfg.CNIBinDir != "" {
-		argsMap["cni-bin-dir"] = cfg.CNIBinDir
-	}
-	if cfg.CNIPlugin {
-		argsMap["network-plugin"] = "cni"
-	}
 	if len(cfg.ClusterDNS) > 0 {
 		argsMap["cluster-dns"] = util.JoinIPs(cfg.ClusterDNSs)
 	}
@@ -94,10 +82,15 @@ func kubeletArgs(cfg *config.Agent) map[string]string {
 		argsMap["resolv-conf"] = cfg.ResolvConf
 	}
 	if cfg.RuntimeSocket != "" {
-		argsMap["container-runtime"] = "remote"
 		argsMap["serialize-image-pulls"] = "false"
-		checkRuntimeEndpoint(cfg, argsMap)
-	} else if cfg.PauseImage != "" {
+		// cadvisor wants the containerd CRI socket without the prefix, but kubelet wants it with the prefix
+		if strings.HasPrefix(cfg.RuntimeSocket, socketPrefix) {
+			argsMap["container-runtime-endpoint"] = cfg.RuntimeSocket
+		} else {
+			argsMap["container-runtime-endpoint"] = socketPrefix + cfg.RuntimeSocket
+		}
+	}
+	if cfg.PauseImage != "" {
 		argsMap["pod-infra-container-image"] = cfg.PauseImage
 	}
 	if cfg.ListenAddress != "" {
@@ -123,6 +116,7 @@ func kubeletArgs(cfg *config.Agent) map[string]string {
 	if len(cfg.NodeTaints) > 0 {
 		argsMap["register-with-taints"] = strings.Join(cfg.NodeTaints, ",")
 	}
+
 	if !cfg.DisableCCM {
 		argsMap["cloud-provider"] = "external"
 	}

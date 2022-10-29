@@ -1,12 +1,12 @@
 ENV['VAGRANT_NO_PARALLEL'] = 'no'
-NODE_ROLES = (ENV['NODE_ROLES'] ||
+NODE_ROLES = (ENV['E2E_NODE_ROLES'] ||
   ["server-0", "server-1", "server-2"])
-NODE_BOXES = (ENV['NODE_BOXES'] ||
+NODE_BOXES = (ENV['E2E_NODE_BOXES'] ||
   ['generic/ubuntu2004', 'generic/ubuntu2004', 'generic/ubuntu2004'])
-GITHUB_BRANCH = (ENV['GITHUB_BRANCH'] || "master")
-RELEASE_VERSION = (ENV['RELEASE_VERSION'] || "")
-NODE_CPUS = (ENV['NODE_CPUS'] || 2).to_i
-NODE_MEMORY = (ENV['NODE_MEMORY'] || 1024).to_i
+GITHUB_BRANCH = (ENV['E2E_GITHUB_BRANCH'] || "master")
+RELEASE_VERSION = (ENV['E2E_RELEASE_VERSION'] || "")
+NODE_CPUS = (ENV['E2E_NODE_CPUS'] || 2).to_i
+NODE_MEMORY = (ENV['E2E_NODE_MEMORY'] || 1024).to_i
 # Virtualbox >= 6.1.28 require `/etc/vbox/network.conf` for expanded private networks 
 NETWORK_PREFIX = "10.10.10"
 install_type = ""
@@ -21,14 +21,8 @@ def provision(vm, role, role_num, node_num)
   load vagrant_defaults if File.exists?(vagrant_defaults)
   
   defaultOSConfigure(vm)
+  install_type = getInstallType(vm, RELEASE_VERSION, GITHUB_BRANCH)
   
-  if !RELEASE_VERSION.empty?
-    install_type = "INSTALL_K3S_VERSION=#{RELEASE_VERSION}"
-  else
-    # Grabs the last 5 commit SHA's from the given branch, then purges any commits that do not have a passing CI build
-    vm.provision "shell", path: "../scripts/latest_commit.sh", args: [GITHUB_BRANCH, "/tmp/k3s_commits"]
-    install_type = "INSTALL_K3S_COMMIT=$(head\ -n\ 1\ /tmp/k3s_commits)"
-  end
   vm.provision "shell", inline: "ping -c 2 k3s.io"
   
   if role.include?("server") && role_num == 0
@@ -44,7 +38,7 @@ def provision(vm, role, role_num, node_num)
       k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
     end
   end
-  if vm.box.include?("microos")
+  if vm.box.to_s.include?("microos")
     vm.provision 'k3s-reload', type: 'reload', run: 'once'
   end
 end

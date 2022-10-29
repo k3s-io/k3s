@@ -36,5 +36,5 @@ apt-get install -y \
   zstd
 
 # ---
-go get -u github.com/go-delve/delve/cmd/dlv
+go install -u github.com/go-delve/delve/cmd/dlv
 # ---

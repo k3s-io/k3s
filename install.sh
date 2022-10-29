@@ -217,11 +217,7 @@ setup_env() {
     if [ -n "${INSTALL_K3S_TYPE}" ]; then
         SYSTEMD_TYPE=${INSTALL_K3S_TYPE}
     else
-        if [ "${CMD_K3S}" = server ]; then
-            SYSTEMD_TYPE=notify
-        else
-            SYSTEMD_TYPE=exec
-        fi
+        SYSTEMD_TYPE=notify
     fi
 
     # --- use binary install directory if defined or create default ---
@@ -273,11 +269,17 @@ setup_env() {
 }
 
 # --- check if skip download environment variable set ---
-can_skip_download() {
-    if [ "${INSTALL_K3S_SKIP_DOWNLOAD}" != true ]; then
+can_skip_download_binary() {
+    if [ "${INSTALL_K3S_SKIP_DOWNLOAD}" != true ] && [ "${INSTALL_K3S_SKIP_DOWNLOAD}" != binary ]; then
         return 1
     fi
 }
+
+can_skip_download_selinux() {                                                        
+    if [ "${INSTALL_K3S_SKIP_DOWNLOAD}" != true ] && [ "${INSTALL_K3S_SKIP_DOWNLOAD}" != selinux ]; then 
+        return 1                                                                     
+    fi                                                                               
+}  
 
 # --- verify an executable k3s binary is installed ---
 verify_k3s_is_executable() {
@@ -487,7 +489,7 @@ setup_selinux() {
     ${package_installer} install -y https://${rpm_site}/k3s/${rpm_channel}/common/${rpm_site_infix}/noarch/k3s-selinux-0.4-1.${rpm_target}.noarch.rpm
 "
 
-    if [ "$INSTALL_K3S_SKIP_SELINUX_RPM" = true ] || can_skip_download || [ ! -d /usr/share/selinux ]; then
+    if [ "$INSTALL_K3S_SKIP_SELINUX_RPM" = true ] || can_skip_download_selinux || [ ! -d /usr/share/selinux ]; then
         info "Skipping installation of SELinux RPM"
     elif  [ "${ID_LIKE:-}" != coreos ] && [ "${VARIANT_ID:-}" != coreos ]; then
         install_selinux_rpm ${rpm_site} ${rpm_channel} ${rpm_target} ${rpm_site_infix}
@@ -556,7 +558,7 @@ EOF
 
 # --- download and verify k3s ---
 download_and_verify() {
-    if can_skip_download; then
+    if can_skip_download_binary; then
        info 'Skipping k3s download and verify'
        verify_k3s_is_executable
        return
@@ -675,6 +677,9 @@ done
 ip link delete cni0
 ip link delete flannel.1
 ip link delete flannel-v6.1
+ip link delete kube-ipvs0
+ip link delete flannel-wg
+ip link delete flannel-wg-v6
 rm -rf /var/lib/cni/
 iptables-save | grep -v KUBE- | grep -v CNI- | grep -v flannel | iptables-restore
 ip6tables-save | grep -v KUBE- | grep -v CNI- | grep -v flannel | ip6tables-restore

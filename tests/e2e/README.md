@@ -20,6 +20,36 @@ A E2E test consists of two parts:
 
 See the [validate cluster test](../tests/e2e/validatecluster/validatecluster_test.go) as an example.
 
+
+## Setup
+
+To run the E2E tests, you must first install the following:
+- Vagrant
+- Libvirt
+- Vagrant plugins
+
+### Vagrant 
+
+Download the latest version (currently 2.2.19) of Vagrant [*from the website*](https://www.vagrantup.com/downloads). Do not use built-in packages, they often old or do not include the required ruby library extensions necessary to get certain plugins working.
+
+### Libvirt
+Follow the OS specific guides to install libvirt/qemu on your host:  
+- [openSUSE](https://documentation.suse.com/sles/15-SP1/html/SLES-all/cha-vt-installation.html)  
+- [ubuntu 20.04](https://ubuntu.com/server/docs/virtualization-libvirt)  
+- ubuntu 22.04: 
+  ```bash
+  sudo apt install ruby-libvirt qemu libvirt-daemon-system libvirt-clients ebtables dnsmasq-base libxslt-dev libxml2-dev libvirt-dev zlib1g-dev ruby-dev libguestfs-tools
+  ```  
+- [debian](https://wiki.debian.org/KVM#Installation)  
+- [fedora](https://developer.fedoraproject.org/tools/virtualization/installing-libvirt-and-virt-install-on-fedora-linux.html)
+
+### Vagrant plugins
+Install the necessary vagrant plugins with the following command:
+
+```bash
+vagrant plugin install vagrant-libvirt vagrant-scp vagrant-k3s vagrant-reload
+```
+
 ## Running
 
 Generally, E2E tests are run as a nightly Jenkins job for QA. They can still be run locally but additional setup may be required. By default, all E2E tests are designed with `libvirt` as the underlying VM provider. Instructions for installing libvirt and its associated vagrant plugin, `vagrant-libvirt` can be found [here.](https://github.com/vagrant-libvirt/vagrant-libvirt#installation) `VirtualBox` is also supported as a backup VM provider.
@@ -43,3 +73,9 @@ ginkgo --junit-report=result.xml ./tests/e2e/...
 ```
 
 Note: The `go test` default timeout is 10 minutes, thus the `-timeout` flag should be used. The `ginkgo` default timeout is 1 hour, no timeout flag is needed.
+
+# Debugging
+In the event of a test failure, the cluster and VMs are retained in their broken state. Startup logs are retained in `vagrant.log`.  
+To see a list of nodes: `vagrant status`    
+To ssh into a node: `vagrant ssh <NODE>`  
+Once you are done/ready to restart the test, use `vagrant destroy -f` to remove the broken cluster.  

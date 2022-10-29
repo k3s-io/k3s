@@ -46,7 +46,7 @@ func Run(ctx *cli.Context) error {
 	}
 
 	if cmds.AgentConfig.Token == "" && cmds.AgentConfig.ClusterSecret != "" {
-		cmds.AgentConfig.Token = cmds.AgentConfig.ClusterSecret
+		logrus.Fatal("cluster-secret is deprecated. Use --token instead.")
 	}
 
 	if cmds.AgentConfig.Token == "" {

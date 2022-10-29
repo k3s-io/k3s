@@ -242,7 +242,7 @@ sonobuoy-test() {
     sonobuoy run \
         --config=scripts/sonobuoy-config.json \
         --plugin-env=e2e.E2E_USE_GO_RUNNER=true \
-        --kube-conformance-image-version=${VERSION_K8S} \
+        --kubernetes-version=${VERSION_K8S} \
         --wait=90 \
         $@ &
 
@@ -263,7 +263,6 @@ test-cleanup() {
     echo 'Cleaning up...'
     trap - EXIT INT TERM
     if has-function test-post-hook; then
-        echo 'Running post-hook'
         test-post-hook $code
         code=$?
     fi
@@ -276,6 +275,9 @@ test-cleanup() {
         echo "Removing container $container"
         docker rm -f -v $container
     done
+    if has-function test-cleanup-hook; then
+        test-cleanup-hook
+    fi
     echo
     if [ "$TEST_CLEANUP" = true ]; then
         echo "Removing test directory $TEST_DIR"
@@ -325,76 +327,14 @@ test-setup() {
 
     SERVER_MINOR=$(awk -F. '{print $2}' <<<${K3S_IMAGE_SERVER:-$K3S_IMAGE})
     AGENT_MINOR=$(awk -F. '{print $2}' <<<${K3S_IMAGE_AGENT:-$K3S_IMAGE})
-    if [ $AGENT_MINOR -gt $SERVER_MINOR ]; then
-        echo "Agent minor version cannot be newer than server - not supported by Kubernetes version skew policy"
+    if [ $NUM_AGENTS -gt 0 ] && [ $AGENT_MINOR -gt $SERVER_MINOR ]; then
+        echo "Agent minor version cannot be higher than server - not supported by Kubernetes version skew policy"
         exit 0
     fi
 
     echo ${RANDOM}${RANDOM}${RANDOM} >$TEST_DIR/metadata/secret
 }
 export -f test-setup
-
-# ---
-
-gen-certs() {(
-    set -e -x
-    #umask 077
-
-    local opensslConfig=$(pwd)/scripts/test-certs-openssl.cnf
-    local subject="/C=US/ST=AZ/L=Tempe/O=Rancher/OU=DevOps/DC=com/DC=rancher"
-    local caDir=$TEST_DIR/db-ca
-    [ -d $caDir ] && rm -rf $caDir
-    mkdir -p $caDir
-
-    cd $caDir
-    mkdir -p private certs newcerts crl
-    touch index.txt
-    echo '01' > serial
-
-    openssl req \
-        -config $opensslConfig \
-        -new -x509 \
-        -nodes \
-        -subj $subject \
-        -extensions v3_ca \
-        -keyout private/ca.key \
-        -out certs/ca.crt
-
-    openssl req \
-        -config $opensslConfig \
-        -new \
-        -nodes \
-        -subj $subject"/CN=server" \
-        -keyout private/db.key \
-        -out db.csr
-
-    openssl ca \
-        -config $opensslConfig \
-        -batch \
-        -extensions db_server \
-        -keyfile private/ca.key \
-        -cert certs/ca.crt \
-        -out certs/db.crt \
-        -infiles db.csr
-
-    openssl req \
-        -config $opensslConfig \
-        -new \
-        -nodes \
-        -subj $subject"/CN=client" \
-        -keyout private/client.key \
-        -out client.csr
-
-    openssl ca \
-        -config $opensslConfig \
-        -batch \
-        -extensions db_client \
-        -keyfile private/ca.key \
-        -cert certs/ca.crt \
-        -out certs/client.crt \
-        -infiles client.csr
-)}
-export -f gen-certs
 
 # ---
 
@@ -427,7 +367,7 @@ export -f run-function
 provision-server() {
     local count=$(inc-count servers)
     local testID=$(basename $TEST_DIR)
-    local name=$(echo "k3s-server-$count-$testID" | tee $TEST_DIR/servers/$count/metadata/name)
+    local name=$(echo "k3s-server-${count}-${testID,,}" | tee $TEST_DIR/servers/$count/metadata/name)
     local port=$(timeout --foreground 5s bash -c get-port | tee $TEST_DIR/servers/$count/metadata/port)
     local SERVER_INSTANCE_ARGS="SERVER_${count}_ARGS"
 
@@ -435,14 +375,15 @@ provision-server() {
 
     docker run \
         -d --name $name \
+        --hostname $name \
         --privileged \
-        -v $TEST_DIR/db-ca/:/db-ca \
         -p 127.0.0.1:$port:6443 \
         -p 6443 \
         -e K3S_TOKEN=$(cat $TEST_DIR/metadata/secret) \
         -e K3S_DEBUG=true \
+        ${SERVER_DOCKER_ARGS:-} \
         ${REGISTRY_CLUSTER_ARGS:-} \
-        ${K3S_IMAGE_SERVER:-$K3S_IMAGE} server $ARGS $SERVER_ARGS ${!SERVER_INSTANCE_ARGS}
+        ${K3S_IMAGE_SERVER:-$K3S_IMAGE} server ${ARGS} ${SERVER_ARGS} ${!SERVER_INSTANCE_ARGS}
 
     local ip=$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' $name | tee $TEST_DIR/servers/$count/metadata/ip)
     local url=$(echo "https://$ip:6443" | tee $TEST_DIR/servers/$count/metadata/url)
@@ -458,17 +399,21 @@ provision-agent() {
     local K3S_URL=${K3S_URL:-"$(cat $TEST_DIR/servers/1/metadata/url)"}
     local count=$(inc-count agents)
     local testID=$(basename $TEST_DIR)
-    local name=$(echo "k3s-agent-$count-$testID" | tee $TEST_DIR/agents/$count/metadata/name)
+    local name=$(echo "k3s-agent-${count}-${testID,,}" | tee $TEST_DIR/agents/$count/metadata/name)
     local AGENT_INSTANCE_ARGS="AGENT_${count}_ARGS"
 
     run-function agent-pre-hook $count
     docker run \
         -d --name $name \
+        --hostname $name \
         --privileged \
         -e K3S_TOKEN=$(cat $TEST_DIR/metadata/secret) \
         -e K3S_URL=$K3S_URL \
+        ${AGENT_DOCKER_ARGS:-} \
         ${REGISTRY_CLUSTER_ARGS:-} \
-        ${K3S_IMAGE_AGENT:-$K3S_IMAGE} agent $ARGS $AGENT_ARGS ${!AGENT_INSTANCE_ARGS}
+        ${K3S_IMAGE_AGENT:-$K3S_IMAGE} agent ${ARGS} ${AGENT_ARGS} ${!AGENT_INSTANCE_ARGS}
+
+    local ip=$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' $name | tee $TEST_DIR/agents/$count/metadata/ip)
 
     echo "Started $name"
     run-function agent-post-hook $count
@@ -592,10 +537,10 @@ cleanup-test-env(){
       export SERVER_ARGS=''
       export WAIT_SERVICES="${all_services[@]}"
 
-      unset AGENT_1_ARGS AGENT_2_ARGS AGENT_3_ARGS
-      unset SERVER_1_ARGS SERVER_2_ARGS SERVER_3_ARGS
+      unset AGENT_1_ARGS AGENT_2_ARGS AGENT_3_ARGS AGENT_DOCKER_ARGS
+      unset SERVER_1_ARGS SERVER_2_ARGS SERVER_3_ARGS SERVER_DOCKER_ARGS
 
-      unset -f server-pre-hook server-post-hook agent-pre-hook agent-post-hook cluster-pre-hook cluster-post-hook test-post-hook
+      unset -f server-pre-hook server-post-hook agent-pre-hook agent-post-hook cluster-pre-hook cluster-post-hook test-post-hook test-cleanup-hook
 }
 
 # ---

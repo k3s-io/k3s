@@ -21,23 +21,12 @@ import (
 	"github.com/sirupsen/logrus"
 	authorizationv1 "k8s.io/api/authorization/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/wait"
-	authorizationv1client "k8s.io/client-go/kubernetes/typed/authorization/v1"
-	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/kubernetes/pkg/kubeapiserver/authorizer/modes"
 	proxyutil "k8s.io/kubernetes/pkg/proxy/util"
 
 	// for client metric registration
 	_ "k8s.io/component-base/metrics/prometheus/restclient"
 )
-
-func getLocalhostIP(serviceCIDR []*net.IPNet) net.IP {
-	IPv6OnlyService, _ := util.IsIPv6OnlyCIDRs(serviceCIDR)
-	if IPv6OnlyService {
-		return net.ParseIP("::1")
-	}
-	return net.ParseIP("127.0.0.1")
-}
 
 func Server(ctx context.Context, cfg *config.Control) error {
 	rand.Seed(time.Now().UTC().UnixNano())
@@ -89,7 +78,7 @@ func Server(ctx context.Context, cfg *config.Control) error {
 		}
 	}
 
-	if !cfg.DisableCCM {
+	if !cfg.DisableCCM || !cfg.DisableServiceLB {
 		if err := cloudControllerManager(ctx, cfg); err != nil {
 			return err
 		}
@@ -107,10 +96,11 @@ func controllerManager(ctx context.Context, cfg *config.Control) error {
 		"authentication-kubeconfig":        runtime.KubeConfigController,
 		"service-account-private-key-file": runtime.ServiceKey,
 		"allocate-node-cidrs":              "true",
+		"service-cluster-ip-range":         util.JoinIPNets(cfg.ServiceIPRanges),
 		"cluster-cidr":                     util.JoinIPNets(cfg.ClusterIPRanges),
 		"root-ca-file":                     runtime.ServerCA,
 		"profiling":                        "false",
-		"bind-address":                     getLocalhostIP(cfg.ServiceIPRanges).String(),
+		"bind-address":                     cfg.Loopback(false),
 		"secure-port":                      "10257",
 		"use-service-account-credentials":  "true",
 		"cluster-signing-kube-apiserver-client-cert-file": runtime.ClientCA,
@@ -142,7 +132,7 @@ func scheduler(ctx context.Context, cfg *config.Control) error {
 		"kubeconfig":                runtime.KubeConfigScheduler,
 		"authorization-kubeconfig":  runtime.KubeConfigScheduler,
 		"authentication-kubeconfig": runtime.KubeConfigScheduler,
-		"bind-address":              getLocalhostIP(cfg.ServiceIPRanges).String(),
+		"bind-address":              cfg.Loopback(false),
 		"secure-port":               "10259",
 		"profiling":                 "false",
 	}
@@ -176,10 +166,9 @@ func apiServer(ctx context.Context, cfg *config.Control) error {
 	if cfg.AdvertiseIP != "" {
 		argsMap["advertise-address"] = cfg.AdvertiseIP
 	}
-	argsMap["insecure-port"] = "0"
 	argsMap["secure-port"] = strconv.Itoa(cfg.APIServerPort)
 	if cfg.APIServerBindAddress == "" {
-		argsMap["bind-address"] = getLocalhostIP(cfg.ServiceIPRanges).String()
+		argsMap["bind-address"] = cfg.Loopback(false)
 	} else {
 		argsMap["bind-address"] = cfg.APIServerBindAddress
 	}
@@ -193,6 +182,7 @@ func apiServer(ctx context.Context, cfg *config.Control) error {
 	argsMap["kubelet-certificate-authority"] = runtime.ServerCA
 	argsMap["kubelet-client-certificate"] = runtime.ClientKubeAPICert
 	argsMap["kubelet-client-key"] = runtime.ClientKubeAPIKey
+	argsMap["kubelet-preferred-address-types"] = "InternalIP,ExternalIP,Hostname"
 	argsMap["requestheader-client-ca-file"] = runtime.RequestHeaderCA
 	argsMap["requestheader-allowed-names"] = deps.RequestHeaderCN
 	argsMap["proxy-client-cert-file"] = runtime.ClientAuthProxyCert
@@ -308,18 +298,26 @@ func cloudControllerManager(ctx context.Context, cfg *config.Control) error {
 	argsMap := map[string]string{
 		"profiling":                    "false",
 		"allocate-node-cidrs":          "true",
+		"leader-elect-resource-name":   version.Program + "-cloud-controller-manager",
 		"cloud-provider":               version.Program,
+		"cloud-config":                 runtime.CloudControllerConfig,
 		"cluster-cidr":                 util.JoinIPNets(cfg.ClusterIPRanges),
 		"configure-cloud-routes":       "false",
+		"controllers":                  "*,-route",
 		"kubeconfig":                   runtime.KubeConfigCloudController,
 		"authorization-kubeconfig":     runtime.KubeConfigCloudController,
 		"authentication-kubeconfig":    runtime.KubeConfigCloudController,
 		"node-status-update-frequency": "1m0s",
-		"bind-address":                 getLocalhostIP(cfg.ServiceIPRanges).String(),
-		"port":                         "0",
+		"bind-address":                 cfg.Loopback(false),
 	}
 	if cfg.NoLeaderElect {
 		argsMap["leader-elect"] = "false"
+	}
+	if cfg.DisableCCM {
+		argsMap["controllers"] = argsMap["controllers"] + ",-cloud-node,-cloud-node-lifecycle"
+	}
+	if cfg.DisableServiceLB {
+		argsMap["controllers"] = argsMap["controllers"] + ",-service"
 	}
 	args := config.GetArgs(argsMap, cfg.ExtraCloudControllerArgs)
 
@@ -366,37 +364,12 @@ func cloudControllerManager(ctx context.Context, cfg *config.Control) error {
 // If the CCM RBAC changes, the ResourceAttributes checked for by this function should
 // be modified to check for the most recently added privilege.
 func checkForCloudControllerPrivileges(ctx context.Context, runtime *config.ControlRuntime, timeout time.Duration) error {
-	restConfig, err := clientcmd.BuildConfigFromFlags("", runtime.KubeConfigAdmin)
-	if err != nil {
-		return err
-	}
-	authClient, err := authorizationv1client.NewForConfig(restConfig)
-	if err != nil {
-		return err
-	}
-	sar := &authorizationv1.SubjectAccessReview{
-		Spec: authorizationv1.SubjectAccessReviewSpec{
-			User: version.Program + "-cloud-controller-manager",
-			ResourceAttributes: &authorizationv1.ResourceAttributes{
-				Namespace: metav1.NamespaceSystem,
-				Verb:      "get",
-				Resource:  "configmaps",
-				Name:      "extension-apiserver-authentication",
-			},
-		},
-	}
-
-	err = wait.PollImmediate(time.Second, timeout, func() (bool, error) {
-		r, err := authClient.SubjectAccessReviews().Create(ctx, sar, metav1.CreateOptions{})
-		if err != nil {
-			return false, err
-		}
-		if r.Status.Allowed {
-			return true, nil
-		}
-		return false, nil
-	})
-	return err
+	return util.WaitForRBACReady(ctx, runtime.KubeConfigAdmin, timeout, authorizationv1.ResourceAttributes{
+		Namespace: metav1.NamespaceSystem,
+		Verb:      "*",
+		Resource:  "daemonsets",
+		Group:     "apps",
+	}, version.Program+"-cloud-controller-manager")
 }
 
 func waitForAPIServerHandlers(ctx context.Context, runtime *config.ControlRuntime) {

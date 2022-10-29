@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"os"
 	"path/filepath"
@@ -19,6 +18,7 @@ import (
 	"time"
 
 	"github.com/k3s-io/k3s/pkg/clientaccess"
+	"github.com/k3s-io/k3s/pkg/cloudprovider"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/passwd"
 	"github.com/k3s-io/k3s/pkg/token"
@@ -138,6 +138,7 @@ func CreateRuntimeCertFiles(config *config.Control) {
 	runtime.ServingKubeletKey = filepath.Join(config.DataDir, "tls", "serving-kubelet.key")
 
 	runtime.EgressSelectorConfig = filepath.Join(config.DataDir, "etc", "egress-selector-config.yaml")
+	runtime.CloudControllerConfig = filepath.Join(config.DataDir, "etc", "cloud-config.yaml")
 
 	runtime.ClientAuthProxyCert = filepath.Join(config.DataDir, "tls", "client-auth-proxy.crt")
 	runtime.ClientAuthProxyKey = filepath.Join(config.DataDir, "tls", "client-auth-proxy.key")
@@ -184,6 +185,10 @@ func GenServerDeps(config *config.Control) error {
 	}
 
 	if err := genEgressSelectorConfig(config); err != nil {
+		return err
+	}
+
+	if err := genCloudConfig(config); err != nil {
 		return err
 	}
 
@@ -248,7 +253,7 @@ func genUsers(config *config.Control) error {
 func genEncryptedNetworkInfo(controlConfig *config.Control) error {
 	runtime := controlConfig.Runtime
 	if s, err := os.Stat(runtime.IPSECKey); err == nil && s.Size() > 0 {
-		psk, err := ioutil.ReadFile(runtime.IPSECKey)
+		psk, err := os.ReadFile(runtime.IPSECKey)
 		if err != nil {
 			return err
 		}
@@ -262,7 +267,7 @@ func genEncryptedNetworkInfo(controlConfig *config.Control) error {
 	}
 
 	controlConfig.IPSECPSK = psk
-	return ioutil.WriteFile(runtime.IPSECKey, []byte(psk+"\n"), 0600)
+	return os.WriteFile(runtime.IPSECKey, []byte(psk+"\n"), 0600)
 }
 
 func getServerPass(passwd *passwd.Passwd, config *config.Control) (string, error) {
@@ -314,7 +319,7 @@ func genClientCerts(config *config.Control) error {
 
 	var certGen bool
 
-	apiEndpoint := fmt.Sprintf("https://%s:%d", config.Loopback(), config.APIServerPort)
+	apiEndpoint := fmt.Sprintf("https://%s:%d", config.Loopback(true), config.APIServerPort)
 
 	certGen, err = factory("system:admin", []string{user.SystemPrivilegedGroup}, runtime.ClientAdminCert, runtime.ClientAdminKey)
 	if err != nil {
@@ -666,13 +671,13 @@ func genEncryptionConfigAndState(controlConfig *config.Control) error {
 	if s, err := os.Stat(runtime.EncryptionConfig); err == nil && s.Size() > 0 {
 		// On upgrade from older versions, the encryption hash may not exist, create it
 		if _, err := os.Stat(runtime.EncryptionHash); errors.Is(err, os.ErrNotExist) {
-			curEncryptionByte, err := ioutil.ReadFile(runtime.EncryptionConfig)
+			curEncryptionByte, err := os.ReadFile(runtime.EncryptionConfig)
 			if err != nil {
 				return err
 			}
 			encryptionConfigHash := sha256.Sum256(curEncryptionByte)
 			ann := "start-" + hex.EncodeToString(encryptionConfigHash[:])
-			return ioutil.WriteFile(controlConfig.Runtime.EncryptionHash, []byte(ann), 0600)
+			return os.WriteFile(controlConfig.Runtime.EncryptionHash, []byte(ann), 0600)
 		}
 		return nil
 	}
@@ -714,27 +719,35 @@ func genEncryptionConfigAndState(controlConfig *config.Control) error {
 	if err != nil {
 		return err
 	}
-	if err := ioutil.WriteFile(runtime.EncryptionConfig, b, 0600); err != nil {
+	if err := os.WriteFile(runtime.EncryptionConfig, b, 0600); err != nil {
 		return err
 	}
 	encryptionConfigHash := sha256.Sum256(b)
 	ann := "start-" + hex.EncodeToString(encryptionConfigHash[:])
-	return ioutil.WriteFile(controlConfig.Runtime.EncryptionHash, []byte(ann), 0600)
+	return os.WriteFile(controlConfig.Runtime.EncryptionHash, []byte(ann), 0600)
 }
 
 func genEgressSelectorConfig(controlConfig *config.Control) error {
-	connection := apiserver.Connection{
-		ProxyProtocol: apiserver.ProtocolHTTPConnect,
-		Transport: &apiserver.Transport{
-			TCP: &apiserver.TCPTransport{
-				URL: fmt.Sprintf("https://%s:%d", controlConfig.Loopback(), controlConfig.SupervisorPort),
-				TLSConfig: &apiserver.TLSConfig{
-					CABundle:   controlConfig.Runtime.ServerCA,
-					ClientKey:  controlConfig.Runtime.ClientKubeAPIKey,
-					ClientCert: controlConfig.Runtime.ClientKubeAPICert,
+	var clusterConn apiserver.Connection
+
+	if controlConfig.EgressSelectorMode == config.EgressSelectorModeDisabled {
+		clusterConn = apiserver.Connection{
+			ProxyProtocol: apiserver.ProtocolDirect,
+		}
+	} else {
+		clusterConn = apiserver.Connection{
+			ProxyProtocol: apiserver.ProtocolHTTPConnect,
+			Transport: &apiserver.Transport{
+				TCP: &apiserver.TCPTransport{
+					URL: fmt.Sprintf("https://%s:%d", controlConfig.BindAddressOrLoopback(false, true), controlConfig.SupervisorPort),
+					TLSConfig: &apiserver.TLSConfig{
+						CABundle:   controlConfig.Runtime.ServerCA,
+						ClientKey:  controlConfig.Runtime.ClientKubeAPIKey,
+						ClientCert: controlConfig.Runtime.ClientKubeAPICert,
+					},
 				},
 			},
-		},
+		}
 	}
 
 	egressConfig := apiserver.EgressSelectorConfiguration{
@@ -745,11 +758,7 @@ func genEgressSelectorConfig(controlConfig *config.Control) error {
 		EgressSelections: []apiserver.EgressSelection{
 			{
 				Name:       "cluster",
-				Connection: connection,
-			},
-			{
-				Name:       "controlplane",
-				Connection: connection,
+				Connection: clusterConn,
 			},
 		},
 	}
@@ -758,5 +767,24 @@ func genEgressSelectorConfig(controlConfig *config.Control) error {
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(controlConfig.Runtime.EgressSelectorConfig, b, 0600)
+	return os.WriteFile(controlConfig.Runtime.EgressSelectorConfig, b, 0600)
+}
+
+func genCloudConfig(controlConfig *config.Control) error {
+	cloudConfig := cloudprovider.Config{
+		LBEnabled:   !controlConfig.DisableServiceLB,
+		LBNamespace: controlConfig.ServiceLBNamespace,
+		LBImage:     cloudprovider.DefaultLBImage,
+		Rootless:    controlConfig.Rootless,
+		NodeEnabled: !controlConfig.DisableCCM,
+	}
+	if controlConfig.SystemDefaultRegistry != "" {
+		cloudConfig.LBImage = controlConfig.SystemDefaultRegistry + "/" + cloudConfig.LBImage
+	}
+	b, err := json.Marshal(cloudConfig)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(controlConfig.Runtime.CloudControllerConfig, b, 0600)
+
 }

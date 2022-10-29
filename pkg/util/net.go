@@ -142,6 +142,13 @@ func GetHostnameAndIPs(name string, nodeIPs cli.StringSlice) (string, []net.IP, 
 			return "", nil, err
 		}
 		ips = append(ips, hostIP)
+		// If IPv6 it's an IPv6 only node
+		if hostIP.To4() != nil {
+			hostIPv6, err := apinet.ResolveBindAddress(net.IPv6loopback)
+			if err == nil && !hostIPv6.Equal(hostIP) {
+				ips = append(ips, hostIPv6)
+			}
+		}
 	} else {
 		var err error
 		ips, err = ParseStringSliceToIPs(nodeIPs)
@@ -255,4 +262,27 @@ func IsIPv6OnlyCIDRs(cidrs []*net.IPNet) (bool, error) {
 	}
 
 	return !v4Found && v6Found, nil
+}
+
+// IPToIPNet converts an IP to an IPNet, using a fully filled mask appropriate for the address family.
+func IPToIPNet(ip net.IP) (*net.IPNet, error) {
+	address := ip.String()
+	if strings.Contains(address, ":") {
+		address += "/128"
+	} else {
+		address += "/32"
+	}
+	_, cidr, err := net.ParseCIDR(address)
+	return cidr, err
+}
+
+// IPStringToIPNet converts an IP string to an IPNet, using a fully filled mask appropriate for the address family.
+func IPStringToIPNet(address string) (*net.IPNet, error) {
+	if strings.Contains(address, ":") {
+		address += "/128"
+	} else {
+		address += "/32"
+	}
+	_, cidr, err := net.ParseCIDR(address)
+	return cidr, err
 }

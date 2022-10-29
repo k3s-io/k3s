@@ -2,7 +2,7 @@
 
 set -e 
 
-if [ -z $1 && -z $2 ]; then
+if [ -z $1 ] && [ -z $2 ]; then
     echo "error: image name and arch name are required as arguments. exiting..."
     exit 1
 fi

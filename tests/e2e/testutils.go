@@ -1,13 +1,18 @@
 package e2e
 
 import (
+	"context"
+	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
+
+	"golang.org/x/sync/errgroup"
 )
 
 type Node struct {
@@ -28,6 +33,28 @@ type Pod struct {
 	Node      string
 }
 
+type NodeError struct {
+	Node string
+	Cmd  string
+	Err  error
+}
+
+func (ne *NodeError) Error() string {
+	return fmt.Sprintf("failed creating cluster: %s: %v", ne.Cmd, ne.Err)
+}
+
+func (ne *NodeError) Unwrap() error {
+	return ne.Err
+}
+
+func newNodeError(cmd, node string, err error) *NodeError {
+	return &NodeError{
+		Cmd:  cmd,
+		Node: node,
+		Err:  err,
+	}
+}
+
 func CountOfStringInSlice(str string, pods []Pod) int {
 	count := 0
 	for _, pod := range pods {
@@ -38,7 +65,8 @@ func CountOfStringInSlice(str string, pods []Pod) int {
 	return count
 }
 
-func CreateCluster(nodeOS string, serverCount, agentCount int) ([]string, []string, error) {
+// genNodeEnvs generates the node and testing environment variables for vagrant up
+func genNodeEnvs(nodeOS string, serverCount, agentCount int) ([]string, []string, string) {
 	serverNodeNames := make([]string, serverCount)
 	for i := 0; i < serverCount; i++ {
 		serverNodeNames[i] = "server-" + strconv.Itoa(i)
@@ -47,11 +75,21 @@ func CreateCluster(nodeOS string, serverCount, agentCount int) ([]string, []stri
 	for i := 0; i < agentCount; i++ {
 		agentNodeNames[i] = "agent-" + strconv.Itoa(i)
 	}
-	nodeRoles := strings.Join(serverNodeNames, " ") + " " + strings.Join(agentNodeNames, " ")
 
+	nodeRoles := strings.Join(serverNodeNames, " ") + " " + strings.Join(agentNodeNames, " ")
 	nodeRoles = strings.TrimSpace(nodeRoles)
+
 	nodeBoxes := strings.Repeat(nodeOS+" ", serverCount+agentCount)
 	nodeBoxes = strings.TrimSpace(nodeBoxes)
+
+	nodeEnvs := fmt.Sprintf(`E2E_NODE_ROLES="%s" E2E_NODE_BOXES="%s"`, nodeRoles, nodeBoxes)
+
+	return serverNodeNames, agentNodeNames, nodeEnvs
+}
+
+func CreateCluster(nodeOS string, serverCount, agentCount int) ([]string, []string, error) {
+
+	serverNodeNames, agentNodeNames, nodeEnvs := genNodeEnvs(nodeOS, serverCount, agentCount)
 
 	var testOptions string
 	for _, env := range os.Environ() {
@@ -59,22 +97,106 @@ func CreateCluster(nodeOS string, serverCount, agentCount int) ([]string, []stri
 			testOptions += " " + env
 		}
 	}
+	// Bring up the first server node
+	cmd := fmt.Sprintf(`%s %s vagrant up %s &> vagrant.log`, nodeEnvs, testOptions, serverNodeNames[0])
 
-	cmd := fmt.Sprintf(`E2E_NODE_ROLES="%s" E2E_NODE_BOXES="%s" %s vagrant up &> vagrant.log`, nodeRoles, nodeBoxes, testOptions)
 	fmt.Println(cmd)
 	if _, err := RunCommand(cmd); err != nil {
-		fmt.Println("Error Creating Cluster", err)
+		return nil, nil, newNodeError(cmd, serverNodeNames[0], err)
+	}
+	// Bring up the rest of the nodes in parallel
+	errg, _ := errgroup.WithContext(context.Background())
+	for _, node := range append(serverNodeNames[1:], agentNodeNames...) {
+		cmd := fmt.Sprintf(`%s %s vagrant up %s &>> vagrant.log`, nodeEnvs, testOptions, node)
+		errg.Go(func() error {
+			if _, err := RunCommand(cmd); err != nil {
+				return newNodeError(cmd, node, err)
+			}
+			return nil
+		})
+		// We must wait a bit between provisioning nodes to avoid too many learners attempting to join the cluster
+		time.Sleep(20 * time.Second)
+	}
+	if err := errg.Wait(); err != nil {
 		return nil, nil, err
 	}
+
 	return serverNodeNames, agentNodeNames, nil
 }
 
-func DeployWorkload(workload, kubeconfig string, arch bool) (string, error) {
-	resourceDir := "../amd64_resource_files"
-	if arch {
-		resourceDir = "../arm64_resource_files"
+// CreateLocalCluster creates a cluster using the locally built k3s binary. The vagrant-scp plugin must be installed for
+// this function to work. The binary is deployed as an airgapped install of k3s on the VMs.
+// This is intended only for local testing purposes when writing a new E2E test.
+func CreateLocalCluster(nodeOS string, serverCount, agentCount int) ([]string, []string, error) {
+
+	serverNodeNames, agentNodeNames, nodeEnvs := genNodeEnvs(nodeOS, serverCount, agentCount)
+
+	var testOptions string
+	var cmd string
+
+	for _, env := range os.Environ() {
+		if strings.HasPrefix(env, "E2E_") {
+			testOptions += " " + env
+		}
 	}
-	files, err := ioutil.ReadDir(resourceDir)
+	testOptions += " E2E_RELEASE_VERSION=skip"
+
+	// Bring up the all of the nodes in parallel
+	errg, _ := errgroup.WithContext(context.Background())
+	for i, node := range append(serverNodeNames, agentNodeNames...) {
+		if i == 0 {
+			cmd = fmt.Sprintf(`%s %s vagrant up --no-provision %s &> vagrant.log`, nodeEnvs, testOptions, node)
+		} else {
+			cmd = fmt.Sprintf(`%s %s vagrant up --no-provision %s &>> vagrant.log`, nodeEnvs, testOptions, node)
+		}
+		errg.Go(func() error {
+			if _, err := RunCommand(cmd); err != nil {
+				return fmt.Errorf("failed initializing nodes: %s: %v", cmd, err)
+			}
+			return nil
+		})
+		// libVirt/Virtualbox needs some time between provisioning nodes
+		time.Sleep(10 * time.Second)
+	}
+	if err := errg.Wait(); err != nil {
+		return nil, nil, err
+	}
+	for _, node := range append(serverNodeNames, agentNodeNames...) {
+		cmd = fmt.Sprintf(`vagrant scp ../../../dist/artifacts/k3s  %s:/tmp/`, node)
+		if _, err := RunCommand(cmd); err != nil {
+			return nil, nil, fmt.Errorf("failed to scp k3s binary to %s: %v", node, err)
+		}
+		if _, err := RunCmdOnNode("sudo mv /tmp/k3s /usr/local/bin/", node); err != nil {
+			return nil, nil, err
+		}
+	}
+
+	// Install K3s on all nodes in parallel
+	errg, _ = errgroup.WithContext(context.Background())
+	for _, node := range append(serverNodeNames, agentNodeNames...) {
+		cmd = fmt.Sprintf(`%s %s vagrant provision %s &>> vagrant.log`, nodeEnvs, testOptions, node)
+		errg.Go(func() error {
+			if _, err := RunCommand(cmd); err != nil {
+				return newNodeError(cmd, node, err)
+			}
+			return nil
+		})
+		// K3s needs some time between joining nodes to avoid learner issues
+		time.Sleep(20 * time.Second)
+	}
+	if err := errg.Wait(); err != nil {
+		return nil, nil, err
+	}
+
+	return serverNodeNames, agentNodeNames, nil
+}
+
+func DeployWorkload(workload, kubeconfig string, hardened bool) (string, error) {
+	resourceDir := "../amd64_resource_files"
+	if hardened {
+		resourceDir = "../cis_amd64_resource_files"
+	}
+	files, err := os.ReadDir(resourceDir)
 	if err != nil {
 		err = fmt.Errorf("%s : Unable to read resource manifest file for %s", err, workload)
 		return "", err
@@ -97,7 +219,16 @@ func DestroyCluster() error {
 	return os.Remove("vagrant.log")
 }
 
-func FetchClusterIP(kubeconfig string, servicename string) (string, error) {
+func FetchClusterIP(kubeconfig string, servicename string, dualStack bool) (string, error) {
+	if dualStack {
+		cmd := "kubectl get svc " + servicename + " -o jsonpath='{.spec.clusterIPs}' --kubeconfig=" + kubeconfig
+		res, err := RunCommand(cmd)
+		if err != nil {
+			return res, err
+		}
+		res = strings.ReplaceAll(res, "\"", "")
+		return strings.Trim(res, "[]"), nil
+	}
 	cmd := "kubectl get svc " + servicename + " -o jsonpath='{.spec.clusterIP}' --kubeconfig=" + kubeconfig
 	return RunCommand(cmd)
 }
@@ -143,16 +274,25 @@ func GenKubeConfigFile(serverName string) (string, error) {
 	return kubeConfigFile, nil
 }
 
-func GetVagrantLog() string {
+// GetVagrantLog returns the logs of on vagrant commands that initialize the nodes and provision K3s on each node.
+// It also attempts to fetch the systemctl logs of K3s on nodes where the k3s.service failed.
+func GetVagrantLog(cErr error) string {
+	var nodeErr *NodeError
+	nodeJournal := ""
+	if errors.As(cErr, &nodeErr) {
+		nodeJournal, _ = RunCommand("vagrant ssh " + nodeErr.Node + " -c \"sudo journalctl -u k3s* --no-pager\"")
+		nodeJournal = "\nNode Journal Logs:\n" + nodeJournal
+	}
+
 	log, err := os.Open("vagrant.log")
 	if err != nil {
 		return err.Error()
 	}
-	bytes, err := ioutil.ReadAll(log)
+	bytes, err := io.ReadAll(log)
 	if err != nil {
 		return err.Error()
 	}
-	return string(bytes)
+	return string(bytes) + nodeJournal
 }
 
 func ParseNodes(kubeConfig string, print bool) ([]Node, error) {
@@ -188,11 +328,11 @@ func ParseNodes(kubeConfig string, print bool) ([]Node, error) {
 	return nodes, nil
 }
 
-func ParsePods(kubeconfig string, print bool) ([]Pod, error) {
+func ParsePods(kubeConfig string, print bool) ([]Pod, error) {
 	pods := make([]Pod, 0, 10)
 	podList := ""
 
-	cmd := "kubectl get pods -o wide --no-headers -A --kubeconfig=" + kubeconfig
+	cmd := "kubectl get pods -o wide --no-headers -A --kubeconfig=" + kubeConfig
 	res, _ := RunCommand(cmd)
 	res = strings.TrimSpace(res)
 	podList = res
@@ -231,7 +371,11 @@ func RestartCluster(nodeNames []string) error {
 // RunCmdOnNode executes a command from within the given node
 func RunCmdOnNode(cmd string, nodename string) (string, error) {
 	runcmd := "vagrant ssh -c \"" + cmd + "\" " + nodename
-	return RunCommand(runcmd)
+	out, err := RunCommand(runcmd)
+	if err != nil {
+		return out, fmt.Errorf("failed to run command %s on node %s: %v", cmd, nodename, err)
+	}
+	return out, nil
 }
 
 // RunCommand executes a command on the host
@@ -243,7 +387,7 @@ func RunCommand(cmd string) (string, error) {
 
 func UpgradeCluster(serverNodeNames []string, agentNodeNames []string) error {
 	for _, nodeName := range serverNodeNames {
-		cmd := "RELEASE_CHANNEL=commit vagrant provision " + nodeName
+		cmd := "E2E_RELEASE_CHANNEL=commit vagrant provision " + nodeName
 		fmt.Println(cmd)
 		if out, err := RunCommand(cmd); err != nil {
 			fmt.Println("Error Upgrading Cluster", out)
@@ -251,7 +395,7 @@ func UpgradeCluster(serverNodeNames []string, agentNodeNames []string) error {
 		}
 	}
 	for _, nodeName := range agentNodeNames {
-		cmd := "RELEASE_CHANNEL=commit vagrant provision " + nodeName
+		cmd := "E2E_RELEASE_CHANNEL=commit vagrant provision " + nodeName
 		if _, err := RunCommand(cmd); err != nil {
 			fmt.Println("Error Upgrading Cluster", err)
 			return err

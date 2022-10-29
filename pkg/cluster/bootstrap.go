@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"os"
 	"path/filepath"
@@ -316,13 +315,11 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker,
 		buf.Seek(0, 0)
 	}
 
-	type update struct {
-		db, disk, conflict bool
-	}
-
+	// Compare on-disk content to the datastore.
+	// If the files differ and the timestamp in the datastore is newer, data on disk will be updated.
+	// If the files differ and the timestamp on disk is newer, an error will be raised listing the conflicting files.
 	var updateDisk bool
-
-	results := make(map[string]update)
+	var newerOnDisk []string
 	for pathKey, fileData := range files {
 		path, ok := paths[pathKey]
 		if !ok || path == "" {
@@ -338,123 +335,44 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker,
 				updateDisk = true
 				continue
 			}
-			return err
+			return errors.Wrapf(err, "reconcile failed to open %s", pathKey)
 		}
 		defer f.Close()
 
-		fData, err := ioutil.ReadAll(f)
+		fData, err := io.ReadAll(f)
 		if err != nil {
-			return err
+			return errors.Wrapf(err, "reconcile failed to read %s", pathKey)
 		}
 
 		if !bytes.Equal(fileData.Content, fData) {
-			info, err := os.Stat(path)
+			updateDisk = true
+			info, err := f.Stat()
 			if err != nil {
-				return err
+				return errors.Wrapf(err, "reconcile failed to stat %s", pathKey)
 			}
 
-			switch {
-			case info.ModTime().Unix()-files[pathKey].Timestamp.Unix() >= systemTimeSkew:
-				if _, ok := results[path]; !ok {
-					results[path] = update{
-						db: true,
-					}
-				}
-
-				for pk := range files {
-					p, ok := paths[pk]
-					if !ok {
-						continue
-					}
-
-					if filepath.Base(p) == info.Name() {
-						continue
-					}
-
-					i, err := os.Stat(p)
-					if err != nil {
-						return err
-					}
-
-					if i.ModTime().Unix()-files[pk].Timestamp.Unix() >= systemTimeSkew {
-						if _, ok := results[path]; !ok {
-							results[path] = update{
-								conflict: true,
-							}
-						}
-					}
-				}
-			case info.ModTime().Unix()-files[pathKey].Timestamp.Unix() <= systemTimeSkew:
-				if _, ok := results[info.Name()]; !ok {
-					results[path] = update{
-						disk: true,
-					}
-				}
-
-				for pk := range files {
-					p, ok := paths[pk]
-					if !ok {
-						continue
-					}
-
-					if filepath.Base(p) == info.Name() {
-						continue
-					}
-
-					i, err := os.Stat(p)
-					if err != nil {
-						return err
-					}
-
-					if i.ModTime().Unix()-files[pk].Timestamp.Unix() <= systemTimeSkew {
-						if _, ok := results[path]; !ok {
-							results[path] = update{
-								conflict: true,
-							}
-						}
-					}
-				}
-			default:
-				if _, ok := results[path]; ok {
-					results[path] = update{}
-				}
+			if info.ModTime().Unix()-fileData.Timestamp.Unix() >= systemTimeSkew {
+				newerOnDisk = append(newerOnDisk, path)
+			} else {
+				logrus.Warn(path + " will be updated from the datastore.")
 			}
 		}
 	}
 
 	if c.config.ClusterReset {
+		updateDisk = true
 		serverTLSDir := filepath.Join(c.config.DataDir, "tls")
 		tlsBackupDir := filepath.Join(c.config.DataDir, "tls-"+strconv.Itoa(int(time.Now().Unix())))
 
 		logrus.Infof("Cluster reset: backing up certificates directory to " + tlsBackupDir)
 
 		if _, err := os.Stat(serverTLSDir); err != nil {
-			return err
+			return errors.Wrap(err, "cluster reset failed to stat server TLS dir")
 		}
 		if err := copy.Copy(serverTLSDir, tlsBackupDir); err != nil {
-			return err
+			return errors.Wrap(err, "cluster reset failed to back up server TLS dir")
 		}
-	}
-
-	var newerOnDisk []string
-	for path, res := range results {
-		switch {
-		case res.disk:
-			updateDisk = true
-			logrus.Warn("Datastore newer than " + path)
-		case res.db:
-			if c.config.ClusterReset {
-				logrus.Infof("Cluster reset: replacing file on disk: " + path)
-				updateDisk = true
-				continue
-			}
-			newerOnDisk = append(newerOnDisk, path)
-		case res.conflict:
-			logrus.Warnf("Datastore / disk conflict: %s newer than in the datastore", path)
-		}
-	}
-
-	if len(newerOnDisk) > 0 {
+	} else if len(newerOnDisk) > 0 {
 		logrus.Fatal(strings.Join(newerOnDisk, ", ") + " newer than datastore and could cause a cluster outage. Remove the file(s) from disk and restart to be recreated from datastore.")
 	}
 
@@ -535,6 +453,12 @@ func (c *Cluster) compareConfig() error {
 	// We are saving IPs of ClusterIPRanges and ServiceIPRanges in 4-bytes representation but json decodes in 16-byte
 	ipsTo16Bytes(c.config.CriticalControlArgs.ClusterIPRanges)
 	ipsTo16Bytes(c.config.CriticalControlArgs.ServiceIPRanges)
+
+	// If the remote server is down-level and did not fill the egress-selector
+	// mode, use the local value to allow for temporary mismatch during upgrades.
+	if clusterControl.CriticalControlArgs.EgressSelectorMode == "" {
+		clusterControl.CriticalControlArgs.EgressSelectorMode = c.config.CriticalControlArgs.EgressSelectorMode
+	}
 
 	if !reflect.DeepEqual(clusterControl.CriticalControlArgs, c.config.CriticalControlArgs) {
 		logrus.Debugf("This is the server CriticalControlArgs: %#v", clusterControl.CriticalControlArgs)

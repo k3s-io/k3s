@@ -1,4 +1,4 @@
-ARG GOLANG=golang:1.17.5-alpine3.15
+ARG GOLANG=golang:1.19.2-alpine3.16
 FROM ${GOLANG}
 
 ARG http_proxy=$http_proxy
@@ -11,7 +11,7 @@ ENV no_proxy=$no_proxy
 RUN apk -U --no-cache add bash git gcc musl-dev docker vim less file curl wget ca-certificates jq linux-headers \
     zlib-dev tar zip squashfs-tools npm coreutils python3 openssl-dev libffi-dev libseccomp libseccomp-dev \
     libseccomp-static make libuv-static sqlite-dev sqlite-static libselinux libselinux-dev zlib-dev zlib-static \
-    zstd pigz alpine-sdk binutils-gold btrfs-progs-dev btrfs-progs-static gawk \
+    zstd pigz alpine-sdk binutils-gold btrfs-progs-dev btrfs-progs-static gawk yq \
     && \
     if [ "$(go env GOARCH)" = "amd64" ]; then \
     apk -U --no-cache add mingw-w64-gcc; \
@@ -30,22 +30,19 @@ RUN if [ "$(go env GOARCH)" = "arm64" ]; then                                   
     tar -zxvf trivy_0.25.3_Linux-64bit.tar.gz                                                            && \
     mv trivy /usr/local/bin;                                                                                \
     fi
-# this works for both go 1.15 and 1.16
-RUN GOPROXY=direct go get golang.org/x/tools/cmd/goimports@gopls/v0.7.0
+# this works for both go 1.17 and 1.18
+RUN GOPROXY=direct go install golang.org/x/tools/cmd/goimports@gopls/v0.8.2
 RUN rm -rf /go/src /go/pkg
 
 RUN if [ "$(go env GOARCH)" = "amd64" ]; then \
-    curl -sL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s v1.45.2; \
+    curl -sL https://raw.githubusercontent.com/golangci/golangci-lint/v1.45.2/install.sh | sh -s;  \
     fi
-
-ENV YQ_URL=https://github.com/mikefarah/yq/releases/download/v4.6.2/yq_linux
-RUN wget -O - ${YQ_URL}_$(go env GOARCH) > /usr/bin/yq && chmod +x /usr/bin/yq
 
 ARG SELINUX=true
 ENV SELINUX $SELINUX
 
 ENV DAPPER_RUN_ARGS --privileged -v k3s-cache:/go/src/github.com/k3s-io/k3s/.cache -v trivy-cache:/root/.cache/trivy
-ENV DAPPER_ENV REPO TAG DRONE_TAG IMAGE_NAME SKIP_VALIDATE SKIP_AIRGAP GCLOUD_AUTH GITHUB_TOKEN GOLANG
+ENV DAPPER_ENV REPO TAG DRONE_TAG IMAGE_NAME SKIP_VALIDATE SKIP_AIRGAP GCLOUD_AUTH GITHUB_TOKEN GOLANG DEBUG
 ENV DAPPER_SOURCE /go/src/github.com/k3s-io/k3s/
 ENV DAPPER_OUTPUT ./bin ./dist ./build/out ./build/static ./pkg/static ./pkg/deploy
 

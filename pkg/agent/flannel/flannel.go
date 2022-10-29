@@ -40,13 +40,19 @@ const (
 	subnetFile = "/run/flannel/subnet.env"
 )
 
+var (
+	FlannelBaseAnnotation         = "flannel.alpha.coreos.com"
+	FlannelExternalIPv4Annotation = FlannelBaseAnnotation + "/public-ip-overwrite"
+	FlannelExternalIPv6Annotation = FlannelBaseAnnotation + "/public-ipv6-overwrite"
+)
+
 func flannel(ctx context.Context, flannelIface *net.Interface, flannelConf, kubeConfigFile string, flannelIPv6Masq bool, netMode int) error {
 	extIface, err := LookupExtInterface(flannelIface, netMode)
 	if err != nil {
 		return err
 	}
 
-	sm, err := kube.NewSubnetManager(ctx, "", kubeConfigFile, "flannel.alpha.coreos.com", flannelConf, false)
+	sm, err := kube.NewSubnetManager(ctx, "", kubeConfigFile, FlannelBaseAnnotation, flannelConf, false)
 	if err != nil {
 		return err
 	}
@@ -70,8 +76,8 @@ func flannel(ctx context.Context, flannelIface *net.Interface, flannelConf, kube
 	}
 
 	if netMode == (ipv4+ipv6) || netMode == ipv4 {
-		go network.SetupAndEnsureIPTables(network.MasqRules(config.Network, bn.Lease()), 60)
-		go network.SetupAndEnsureIPTables(network.ForwardRules(config.Network.String()), 50)
+		go network.SetupAndEnsureIP4Tables(network.MasqRules(config.Network, bn.Lease()), 60)
+		go network.SetupAndEnsureIP4Tables(network.ForwardRules(config.Network.String()), 50)
 	}
 
 	if flannelIPv6Masq && config.IPv6Network.String() != emptyIPv6Network {
