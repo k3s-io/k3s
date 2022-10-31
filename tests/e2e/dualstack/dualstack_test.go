@@ -21,7 +21,7 @@ var hardened = flag.Bool("hardened", false, "true or false")
 func Test_E2EDualStack(t *testing.T) {
 	flag.Parse()
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Validate DualStack Suite")
+	RunSpecs(t, "DualStack Suite")
 }
 
 var (
