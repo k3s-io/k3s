@@ -183,7 +183,11 @@ func apiServer(ctx context.Context, cfg *config.Control) error {
 	argsMap["kubelet-certificate-authority"] = runtime.ServerCA
 	argsMap["kubelet-client-certificate"] = runtime.ClientKubeAPICert
 	argsMap["kubelet-client-key"] = runtime.ClientKubeAPIKey
-	argsMap["kubelet-preferred-address-types"] = "InternalIP,ExternalIP,Hostname"
+	if cfg.FlannelExternalIP {
+		argsMap["kubelet-preferred-address-types"] = "ExternalIP,InternalIP,Hostname"
+	} else {
+		argsMap["kubelet-preferred-address-types"] = "InternalIP,ExternalIP,Hostname"
+	}
 	argsMap["requestheader-client-ca-file"] = runtime.RequestHeaderCA
 	argsMap["requestheader-allowed-names"] = deps.RequestHeaderCN
 	argsMap["proxy-client-cert-file"] = runtime.ClientAuthProxyCert
