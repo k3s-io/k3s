@@ -43,7 +43,7 @@ spec:
         args:
         - --cert-dir=/tmp
         - --secure-port=10250
-        - --kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname
+        - --kubelet-preferred-address-types=%{PREFERRED_ADDRESS_TYPES}%
         - --kubelet-use-node-status-port
         - --metric-resolution=15s
         resources:
