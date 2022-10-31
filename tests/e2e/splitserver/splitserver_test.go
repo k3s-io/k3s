@@ -1,4 +1,4 @@
-package validatecluster
+package splitserver
 
 import (
 	"flag"

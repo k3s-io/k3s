@@ -23,7 +23,7 @@ var agentCount = flag.Int("agentCount", 1, "number of agent nodes")
 func Test_E2EClusterValidation(t *testing.T) {
 	RegisterFailHandler(Fail)
 	flag.Parse()
-	RunSpecs(t, "Create Cluster Test Suite")
+	RunSpecs(t, "Docker CRI Test Suite")
 }
 
 var (
