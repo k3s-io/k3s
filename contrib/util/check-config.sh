@@ -364,6 +364,8 @@ if [ "$(cat /sys/module/apparmor/parameters/enabled 2>/dev/null)" = 'Y' ]; then
       wrap_color '(use "apt-get install apparmor" to fix this)'
     elif command -v yum &> /dev/null; then
       wrap_color '(your best bet is "yum install apparmor-parser")'
+    elif command -v zypper &> /dev/null; then
+      wrap_color '(your best bet is "zypper install apparmor-parser")'
     else
       wrap_color '(look for an "apparmor" package for your distribution)'
     fi
