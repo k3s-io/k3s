@@ -515,8 +515,8 @@ steps:
   commands:
     - DOCKER_BUILDKIT=1 docker build --target test-e2e -t test-e2e -f Dockerfile.test .
   volumes:
-    - name: docker
-      path: /var/run/docker.sock
+  - name: docker
+    path: /var/run/docker.sock
 
 - name: test-e2e
   image: test-e2e
@@ -525,13 +525,18 @@ steps:
     cpu: 6000
     memory: 10Gi
   commands:
+  - docker stop registry && docker rm registry
+  - docker run -d -p 5000:5000 -e REGISTRY_PROXY_REMOTEURL=https://registry-1.docker.io --name registry registry:2
   - cd tests/e2e/validatecluster
   - vagrant destroy -f
-  - go test -v -timeout=30m ./validatecluster_test.go -ci
-
+  - E2E_REGISTRY=true go test -v -timeout=30m ./validatecluster_test.go -ci
+  - docker stop registry && docker rm registry
   volumes:
   - name: libvirt
     path: /var/run/libvirt/
+  - name: docker
+    path: /var/run/docker.sock
+
 
 volumes:
 - name: docker
