@@ -51,7 +51,7 @@ if [ -z "$VERSION_KUBE_ROUTER" ]; then
     VERSION_KUBE_ROUTER="v0.0.0"
 fi
 
-VERSION_ROOT="v0.11.0"
+VERSION_ROOT="v0.12.0"
 
 if [[ -n "$GIT_TAG" ]]; then
     if [[ ! "$GIT_TAG" =~ ^"$VERSION_K8S"[+-] ]]; then
