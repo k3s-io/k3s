@@ -15,10 +15,10 @@ server-post-hook() {
 export -f server-post-hook
 
 test-post-hook() {
-  if [[ $1 -eq 0 ]]; then
-    return
+  if [[ $1 -eq 0 ]] || [[ ! -f "$TEST_DIR/sonobuoy/plugins/e2e/results/global/e2e.log" ]]; then
+    return $1
   fi
-  local failures=$(awk '/^Summarizing .* Failures?:$/,0' "$TEST_DIR"/sonobuoy/plugins/e2e/results/global/e2e.log)
+  local failures=$(awk '/^Summarizing .* Failures?:$/,0' "$TEST_DIR/sonobuoy/plugins/e2e/results/global/e2e.log")
   # Ignore sonobuoy failures if only these flaky tests have failed
   local flakyTest1='[Fail] [sig-node] Probing container [It] should have monotonically increasing restart count [NodeConformance] [Conformance]'
   local flakyTest2='[Fail] [sig-node] Pods [It] should delete a collection of pods [Conformance]'
