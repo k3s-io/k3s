@@ -112,7 +112,6 @@ type Agent struct {
 	ImageCredProvConfig     string
 	IPSECPSK                string
 	FlannelCniConfFile      string
-	StrongSwanDir           string
 	PrivateRegistry         string
 	SystemDefaultRegistry   string
 	AirgapExtraRegistry     []string
