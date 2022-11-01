@@ -91,7 +91,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 			Eventually(func(g Gomega) {
 				cmd := "kubectl get pods -o=name -l k8s-app=nginx-app-clusterip --field-selector=status.phase=Running --kubeconfig=" + kubeConfigFile
 				res, err := e2e.RunCommand(cmd)
-				Expect(err).NotTo(HaveOccurred())
+				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(res).Should((ContainSubstring("test-clusterip")), "failed cmd: "+cmd+" result: "+res)
 			}, "240s", "5s").Should(Succeed())
 		})
@@ -114,7 +114,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 			Eventually(func(g Gomega) {
 				cmd := "kubectl get pods -o=name -l k8s-app=nginx-app-nodeport --field-selector=status.phase=Running --kubeconfig=" + kubeConfigFile
 				res, err := e2e.RunCommand(cmd)
-				Expect(err).NotTo(HaveOccurred())
+				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(res).Should(ContainSubstring("test-nodeport"), "nodeport pod was not created")
 			}, "240s", "5s").Should(Succeed())
 		})
@@ -174,7 +174,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 	})
 })
 
-var failed = false
+var failed bool
 var _ = AfterEach(func() {
 	failed = failed || CurrentSpecReport().Failed()
 })

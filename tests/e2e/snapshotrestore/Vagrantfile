@@ -6,13 +6,11 @@ NODE_BOXES = (ENV['E2E_NODE_BOXES'] ||
 GITHUB_BRANCH = (ENV['E2E_GITHUB_BRANCH'] || "master")
 RELEASE_VERSION = (ENV['E2E_RELEASE_VERSION'] || "")
 EXTERNAL_DB = (ENV['E2E_EXTERNAL_DB'] || "etcd")
-HARDENED = (ENV['E2E_HARDENED'] || "")
 NODE_CPUS = (ENV['E2E_NODE_CPUS'] || 2).to_i
 NODE_MEMORY = (ENV['E2E_NODE_MEMORY'] || 1024).to_i
 # Virtualbox >= 6.1.28 require `/etc/vbox/network.conf` for expanded private networks 
 NETWORK_PREFIX = "10.10.10"
 install_type = ""
-hardened_arg = ""
 
 def provision(vm, role, role_num, node_num)
   vm.box = NODE_BOXES[node_num]
@@ -21,7 +19,7 @@ def provision(vm, role, role_num, node_num)
   node_ip = "#{NETWORK_PREFIX}.#{100+node_num}"
   vm.network "private_network", ip: node_ip, netmask: "255.255.255.0"
 
-  scripts_location = Dir.exists?("./scripts") ? "./scripts" : "../scripts" 
+  scripts_location = Dir.exists?("./scripts") ? "./scripts" : "../scripts"
   vagrant_defaults = File.exists?("./vagrantdefaults.rb") ? "./vagrantdefaults.rb" : "../vagrantdefaults.rb"
   load vagrant_defaults
 
@@ -32,11 +30,6 @@ def provision(vm, role, role_num, node_num)
   
   db_type = getDBType(role, role_num, vm)
 
-  if !HARDENED.empty?
-    vm.provision "Set kernel parameters", type: "shell", path: scripts_location + "/harden.sh"
-    hardened_arg = "protect-kernel-defaults: true\nkube-apiserver-arg: \"enable-admission-plugins=NodeRestriction,PodSecurityPolicy,ServiceAccount\""
-  end
-
   if role.include?("server") && role_num == 0
     vm.provision 'k3s-primary-server', type: 'k3s', run: 'once' do |k3s|
       k3s.args = "server "
@@ -46,7 +39,6 @@ def provision(vm, role, role_num, node_num)
         flannel-iface: eth1
         tls-san: #{NETWORK_PREFIX}.100.nip.io
         #{db_type}
-        #{hardened_arg}
       YAML
       k3s.env = %W[K3S_KUBECONFIG_MODE=0644 #{install_type}]
       k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
@@ -61,7 +53,6 @@ def provision(vm, role, role_num, node_num)
         node-external-ip: #{node_ip}
         flannel-iface: eth1
         #{db_type}
-        #{hardened_arg}
       YAML
       k3s.env = %W[K3S_KUBECONFIG_MODE=0644 K3S_TOKEN=vagrant #{install_type}]
       k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
@@ -77,7 +68,6 @@ def provision(vm, role, role_num, node_num)
         node-external-ip: #{node_ip}
         flannel-iface: eth1
         #{db_type}
-        #{hardened_arg}
       YAML
       k3s.env = %W[K3S_KUBECONFIG_MODE=0644 #{install_type}]
       k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
@@ -89,6 +79,7 @@ def provision(vm, role, role_num, node_num)
       vm.provision "shell", inline: "docker start #{EXTERNAL_DB}"
     end
   end
+  # This step does not run by default and is designed to be called by higher level tools
 end
 
 def getDBType(role, role_num, vm)
@@ -96,8 +87,6 @@ def getDBType(role, role_num, vm)
     if role.include?("server") && role_num == 0
       return "cluster-init: true"
     end
-  elsif ( EXTERNAL_DB == "none" )
-    # Use internal sqlite, only valid for single node clusters
   else
     puts "Unknown EXTERNAL_DB: " + EXTERNAL_DB
     abort
