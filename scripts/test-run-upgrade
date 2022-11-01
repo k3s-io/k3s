@@ -15,8 +15,11 @@ REPO=${REPO:-rancher}
 IMAGE_NAME=${IMAGE_NAME:-k3s}
 CURRENT_CHANNEL=$(grep 'k8s.io/kubernetes v' go.mod | head -n1 | awk '{print $2}' | awk -F. '{print "v1." $2}')
 CURRENT_VERSION=$(curl -s https://update.k3s.io/v1-release/channels/${CURRENT_CHANNEL} -o /dev/null -w '%{redirect_url}' | awk -F/ '{print gensub(/\+/, "-", "g", $NF)}')
-export K3S_IMAGE_SERVER=${REPO}/${IMAGE_NAME}:${CURRENT_VERSION}
-export K3S_IMAGE_AGENT=${REPO}/${IMAGE_NAME}:${CURRENT_VERSION}
+if [ -z "${CURRENT_VERSION}" ]; then
+    CURRENT_VERSION=${VERSION_TAG}
+fi
+export K3S_IMAGE_SERVER=${REPO}/${IMAGE_NAME}:${CURRENT_VERSION}${SUFFIX}
+export K3S_IMAGE_AGENT=${REPO}/${IMAGE_NAME}:${CURRENT_VERSION}${SUFFIX}
 
 server-pre-hook(){
     local testID=$(basename $TEST_DIR)
