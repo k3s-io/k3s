@@ -77,7 +77,7 @@ type Server struct {
 	ClusterInit              bool
 	ClusterReset             bool
 	ClusterResetRestorePath  string
-	SecretsEncrypt           bool
+	EncryptSecrets           bool
 	EncryptForce             bool
 	EncryptOutput            string
 	EncryptSkip              bool
@@ -511,7 +511,7 @@ var ServerFlags = []cli.Flag{
 	cli.BoolFlag{
 		Name:        "secrets-encryption",
 		Usage:       "(experimental) Enable Secret encryption at rest",
-		Destination: &ServerConfig.SecretsEncrypt,
+		Destination: &ServerConfig.EncryptSecrets,
 	},
 	&SELinuxFlag,
 	LBServerPortFlag,
