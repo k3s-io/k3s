@@ -17,7 +17,7 @@ import (
 // opensuse/Leap-15.3.x86_64, dweomer/microos.amd64
 var nodeOS = flag.String("nodeOS", "generic/ubuntu2004", "VM operating system")
 var serverCount = flag.Int("serverCount", 3, "number of server nodes")
-var agentCount = flag.Int("agentCount", 2, "number of agent nodes")
+var agentCount = flag.Int("agentCount", 1, "number of agent nodes")
 var hardened = flag.Bool("hardened", false, "true or false")
 var ci = flag.Bool("ci", false, "running on CI")
 var local = flag.Bool("local", false, "deploy a locally built K3s binary")
@@ -29,7 +29,8 @@ var local = flag.Bool("local", false, "deploy a locally built K3s binary")
 func Test_E2EClusterReset(t *testing.T) {
 	RegisterFailHandler(Fail)
 	flag.Parse()
-	RunSpecs(t, "ClusterReset Test Suite")
+	suiteConfig, reporterConfig := GinkgoConfiguration()
+	RunSpecs(t, "ClusterReset Test Suite", suiteConfig, reporterConfig)
 }
 
 var (
@@ -37,6 +38,8 @@ var (
 	serverNodeNames []string
 	agentNodeNames  []string
 )
+
+var _ = ReportAfterEach(e2e.GenReport)
 
 var _ = Describe("Verify Create", Ordered, func() {
 	Context("Cluster :", func() {
@@ -169,7 +172,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 	})
 })
 
-var failed = false
+var failed bool
 var _ = AfterEach(func() {
 	failed = failed || CurrentSpecReport().Failed()
 })

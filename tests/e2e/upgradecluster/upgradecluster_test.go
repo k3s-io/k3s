@@ -31,7 +31,8 @@ var ci = flag.Bool("ci", false, "running on CI")
 func Test_E2EUpgradeValidation(t *testing.T) {
 	RegisterFailHandler(Fail)
 	flag.Parse()
-	RunSpecs(t, "Upgrade Cluster Test Suite")
+	suiteConfig, reporterConfig := GinkgoConfiguration()
+	RunSpecs(t, "Upgrade Cluster Test Suite", suiteConfig, reporterConfig)
 }
 
 var (
@@ -39,6 +40,8 @@ var (
 	serverNodeNames []string
 	agentNodeNames  []string
 )
+
+var _ = ReportAfterEach(e2e.GenReport)
 
 var _ = Describe("Verify Upgrade", Ordered, func() {
 	Context("Cluster :", func() {
@@ -376,7 +379,7 @@ var _ = Describe("Verify Upgrade", Ordered, func() {
 	})
 })
 
-var failed = false
+var failed bool
 var _ = AfterEach(func() {
 	failed = failed || CurrentSpecReport().Failed()
 })

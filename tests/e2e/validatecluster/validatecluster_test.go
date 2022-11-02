@@ -30,7 +30,8 @@ var local = flag.Bool("local", false, "deploy a locally built K3s binary")
 func Test_E2EClusterValidation(t *testing.T) {
 	RegisterFailHandler(Fail)
 	flag.Parse()
-	RunSpecs(t, "Create Cluster Test Suite")
+	suiteConfig, reporterConfig := GinkgoConfiguration()
+	RunSpecs(t, "Create Cluster Test Suite", suiteConfig, reporterConfig)
 }
 
 var (
@@ -38,6 +39,8 @@ var (
 	serverNodeNames []string
 	agentNodeNames  []string
 )
+
+var _ = ReportAfterEach(e2e.GenReport)
 
 var _ = Describe("Verify Create", Ordered, func() {
 	Context("Cluster :", func() {
@@ -270,7 +273,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 	})
 })
 
-var failed = false
+var failed bool
 var _ = AfterEach(func() {
 	failed = failed || CurrentSpecReport().Failed()
 })

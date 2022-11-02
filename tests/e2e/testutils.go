@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	json "github.com/json-iterator/go"
+	ginkgo "github.com/onsi/ginkgo/v2"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -278,6 +280,22 @@ func GenKubeConfigFile(serverName string) (string, error) {
 		return "", err
 	}
 	return kubeConfigFile, nil
+}
+
+func GenReport(specReport ginkgo.SpecReport) {
+	state := struct {
+		State string        `json:"state"`
+		Name  string        `json:"name"`
+		Type  string        `json:"type"`
+		Time  time.Duration `json:"time"`
+	}{
+		State: specReport.State.String(),
+		Name:  specReport.LeafNodeText,
+		Type:  "k3s test",
+		Time:  specReport.RunTime,
+	}
+	status, _ := json.Marshal(state)
+	fmt.Printf("%s", status)
 }
 
 // GetVagrantLog returns the logs of on vagrant commands that initialize the nodes and provision K3s on each node.

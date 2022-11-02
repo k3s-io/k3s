@@ -23,13 +23,16 @@ var hardened = flag.Bool("hardened", false, "true or false")
 func Test_E2ESecretsEncryption(t *testing.T) {
 	RegisterFailHandler(Fail)
 	flag.Parse()
-	RunSpecs(t, "Secrets Encryption Test Suite")
+	suiteConfig, reporterConfig := GinkgoConfiguration()
+	RunSpecs(t, "Secrets Encryption Test Suite", suiteConfig, reporterConfig)
 }
 
 var (
 	kubeConfigFile  string
 	serverNodeNames []string
 )
+
+var _ = ReportAfterEach(e2e.GenReport)
 
 var _ = Describe("Verify Secrets Encryption Rotation", Ordered, func() {
 	Context("Cluster :", func() {
@@ -286,7 +289,7 @@ var _ = Describe("Verify Secrets Encryption Rotation", Ordered, func() {
 
 })
 
-var failed = false
+var failed bool
 var _ = AfterEach(func() {
 	failed = failed || CurrentSpecReport().Failed()
 })
