@@ -21,4 +21,4 @@ jobs:
         python -m pip install --upgrade pip
         pip install codespell
     - name: Check spelling
-      run: codespell --skip=.git,./scripts,MAINTAINERS,LICENSE,go.mod,go.sum --check-filenames --ignore-words-list=ba
+      run: codespell --skip=.git,./scripts,MAINTAINERS,LICENSE,go.mod,go.sum --check-filenames --ignore-regex=.te# --ignore-words=.codespellignore
