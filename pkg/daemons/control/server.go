@@ -194,7 +194,7 @@ func apiServer(ctx context.Context, cfg *config.Control) error {
 	argsMap["enable-admission-plugins"] = "NodeRestriction"
 	argsMap["anonymous-auth"] = "false"
 	argsMap["profiling"] = "false"
-	if cfg.SecretsEncrypt {
+	if cfg.EncryptSecrets {
 		argsMap["encryption-provider-config"] = runtime.EncryptionConfig
 	}
 	args := config.GetArgs(argsMap, cfg.ExtraAPIArgs)

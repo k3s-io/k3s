@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-test/deep"
 	"github.com/k3s-io/k3s/pkg/bootstrap"
 	"github.com/k3s-io/k3s/pkg/clientaccess"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
@@ -475,16 +476,15 @@ func (c *Cluster) compareConfig() error {
 		clusterControl.CriticalControlArgs.EgressSelectorMode = c.config.CriticalControlArgs.EgressSelectorMode
 	}
 
-	if !reflect.DeepEqual(clusterControl.CriticalControlArgs, c.config.CriticalControlArgs) {
-		logrus.Debugf("This is the server CriticalControlArgs: %#v", clusterControl.CriticalControlArgs)
-		logrus.Debugf("This is the local CriticalControlArgs: %#v", c.config.CriticalControlArgs)
-
-		rc := reflect.ValueOf(clusterControl.CriticalControlArgs)
-		lc := reflect.ValueOf(c.config.CriticalControlArgs)
-		rcStruct := rc.Type()
-		for i := 0; i < rc.NumField(); i++ {
-			if !reflect.DeepEqual(rc.Field(i).Interface(), lc.Field(i).Interface()) {
-				logrus.Warnf("critical configuration %s is mismatched", rcStruct.Field(i).Name)
+	if diff := deep.Equal(c.config.CriticalControlArgs, clusterControl.CriticalControlArgs); diff != nil {
+		rc := reflect.ValueOf(clusterControl.CriticalControlArgs).Type()
+		for _, d := range diff {
+			field := strings.Split(d, ":")[0]
+			v, _ := rc.FieldByName(field)
+			if cliTag, found := v.Tag.Lookup("cli"); found {
+				logrus.Warnf("critical configuration mismatched: %s", cliTag)
+			} else {
+				logrus.Warnf("critical configuration mismatched: %s", d)
 			}
 		}
 		return errors.New("critical configuration value mismatch between servers")

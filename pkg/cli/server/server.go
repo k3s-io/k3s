@@ -148,7 +148,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	serverConfig.ControlConfig.DisableScheduler = cfg.DisableScheduler
 	serverConfig.ControlConfig.DisableControllerManager = cfg.DisableControllerManager
 	serverConfig.ControlConfig.ClusterInit = cfg.ClusterInit
-	serverConfig.ControlConfig.SecretsEncrypt = cfg.SecretsEncrypt
+	serverConfig.ControlConfig.EncryptSecrets = cfg.SecretsEncrypt
 	serverConfig.ControlConfig.EtcdExposeMetrics = cfg.EtcdExposeMetrics
 	serverConfig.ControlConfig.EtcdDisableSnapshots = cfg.EtcdDisableSnapshots
 

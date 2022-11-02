@@ -126,17 +126,18 @@ type Agent struct {
 }
 
 // CriticalControlArgs contains parameters that all control plane nodes in HA must share
+// The cli tag is used to provide better error information to the user on mismatch
 type CriticalControlArgs struct {
 	ClusterDNSs           []net.IP
 	ClusterIPRanges       []*net.IPNet
 	ClusterDNS            net.IP
 	ClusterDomain         string
 	ClusterIPRange        *net.IPNet
-	DisableCCM            bool
-	DisableHelmController bool
-	DisableNPC            bool
-	DisableServiceLB      bool
-	SecretsEncrypt        bool `json:"EncryptSecrets"`
+	DisableCCM            bool `cli:"disable-cloud-controller"`
+	DisableHelmController bool `cli:"disable-helm-controller"`
+	DisableNPC            bool `cli:"disable-network-policy"`
+	DisableServiceLB      bool `cli:"disable-service-lb"`
+	EncryptSecrets        bool `cli:"secrets-encryption"`
 	FlannelBackend        string
 	FlannelIPv6Masq       bool
 	FlannelExternalIP     bool
