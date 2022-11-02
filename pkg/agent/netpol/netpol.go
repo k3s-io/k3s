@@ -8,8 +8,11 @@ package netpol
 
 import (
 	"context"
+	"runtime"
 	"strings"
 	"sync"
+
+	"github.com/cloudnativelabs/kube-router/pkg/version"
 
 	"github.com/cloudnativelabs/kube-router/pkg/controllers/netpol"
 	"github.com/cloudnativelabs/kube-router/pkg/healthcheck"
@@ -131,7 +134,7 @@ func Run(ctx context.Context, nodeConfig *config.Node) error {
 	npInformer.AddEventHandler(npc.NetworkPolicyEventHandler)
 
 	wg.Add(1)
-	logrus.Info("Starting the netpol controller")
+	logrus.Infof("Starting the netpol controller version %s, built on %s, %s", version.Version, version.BuildDate, runtime.Version())
 	go npc.Run(healthCh, stopCh, &wg)
 
 	return nil
