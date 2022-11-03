@@ -187,6 +187,25 @@ var _ = Describe("startup tests", Ordered, func() {
 			Expect(testutil.K3sKillServer(startupServer)).To(Succeed())
 		})
 	})
+	When("a server with aux-tools option", func() {
+		It("is created with aux-tools flag", func() {
+			var err error
+			startupServerArgs = []string{"--aux-tools"}
+			startupServer, err = testutil.K3sStartServer(startupServerArgs...)
+			Expect(err).ToNot(HaveOccurred())
+		})
+		It("has the default pods deployed", func() {
+			Eventually(func() error {
+				return testutil.K3sDefaultDeployments()
+			}, "120s", "5s").Should(Succeed())
+			nodes, err := testutil.ParseNodes()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(nodes).To(HaveLen(1))
+		})
+		It("dies cleanly", func() {
+			Expect(testutil.K3sKillServer(startupServer)).To(Succeed())
+		})
+	})
 })
 
 var _ = AfterSuite(func() {
