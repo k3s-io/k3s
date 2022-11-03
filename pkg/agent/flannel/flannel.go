@@ -76,12 +76,16 @@ func flannel(ctx context.Context, flannelIface *net.Interface, flannelConf, kube
 	}
 
 	if netMode == (ipv4+ipv6) || netMode == ipv4 {
+		network.CreateIP4Chain("nat", "FLANNEL-POSTRTG")
+		network.CreateIP4Chain("filter", "FLANNEL-FWD")
 		go network.SetupAndEnsureIP4Tables(network.MasqRules(config.Network, bn.Lease()), 60)
 		go network.SetupAndEnsureIP4Tables(network.ForwardRules(config.Network.String()), 50)
 	}
 
 	if flannelIPv6Masq && config.IPv6Network.String() != emptyIPv6Network {
 		logrus.Debugf("Creating IPv6 masquerading iptables rules for %s network", config.IPv6Network.String())
+		network.CreateIP6Chain("nat", "FLANNEL-POSTRTG")
+		network.CreateIP6Chain("filter", "FLANNEL-FWD")
 		go network.SetupAndEnsureIP6Tables(network.MasqIP6Rules(config.IPv6Network, bn.Lease()), 60)
 		go network.SetupAndEnsureIP6Tables(network.ForwardRules(config.IPv6Network.String()), 50)
 	}
