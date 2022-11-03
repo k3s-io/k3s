@@ -158,14 +158,14 @@ func stageAndRun(dataDir, cmd string, args []string) error {
 	}
 	logrus.Debugf("Asset dir %s", dir)
 
-	auxTools := false
+	perferBundled := false
 	pathEnv := ""
 	for _, arg := range args {
 		if arg == "--prefer-bundled-bin=true" || arg == "--prefer-bundled-bin" {
-			auxTools = true
+			perferBundled = true
 		}
 	}
-	if auxTools {
+	if perferBundled {
 		pathEnv = filepath.Join(dir, "bin") + ":" + filepath.Join(dir, "bin/aux") + ":" + os.Getenv("PATH")
 	} else {
 		pathEnv = filepath.Join(dir, "bin") + ":" + os.Getenv("PATH") + ":" + filepath.Join(dir, "bin/aux")

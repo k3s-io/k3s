@@ -54,7 +54,6 @@ type Server struct {
 	ExtraControllerArgs      cli.StringSlice
 	ExtraCloudControllerArgs cli.StringSlice
 	Rootless                 bool
-	AuxTools                 bool
 	DatastoreEndpoint        string
 	DatastoreCAFile          string
 	DatastoreCertFile        string
@@ -510,9 +509,8 @@ var ServerFlags = []cli.Flag{
 		Destination: &ServerConfig.Rootless,
 	},
 	cli.BoolFlag{
-		Name:        "prefer-bundled-bin",
-		Usage:       "(experimental) Prefer bundled userspace binaries over host binaries",
-		Destination: &ServerConfig.AuxTools,
+		Name:  "prefer-bundled-bin",
+		Usage: "(experimental) Prefer bundled userspace binaries over host binaries",
 	},
 	cli.BoolFlag{
 		Name:        "secrets-encryption",
