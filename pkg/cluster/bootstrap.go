@@ -484,7 +484,7 @@ func (c *Cluster) compareConfig() error {
 			if cliTag, found := v.Tag.Lookup("cli"); found {
 				logrus.Warnf("critical configuration mismatched: %s", cliTag)
 			} else {
-				logrus.Warnf("critical configuration mismatched: %s", d)
+				logrus.Warnf("critical configuration mismatched: %s", field)
 			}
 		}
 		return errors.New("critical configuration value mismatch between servers")
