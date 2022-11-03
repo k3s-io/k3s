@@ -510,8 +510,8 @@ var ServerFlags = []cli.Flag{
 		Destination: &ServerConfig.Rootless,
 	},
 	cli.BoolFlag{
-		Name:        "aux-tools",
-		Usage:       "(experimental) Force K3s to use embedded aux tools, not the host tools",
+		Name:        "prefer-bundled-bin",
+		Usage:       "(experimental) Prefer bundled userspace binaries over host binaries",
 		Destination: &ServerConfig.AuxTools,
 	},
 	cli.BoolFlag{

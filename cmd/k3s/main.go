@@ -161,7 +161,7 @@ func stageAndRun(dataDir, cmd string, args []string) error {
 	auxTools := false
 	pathEnv := ""
 	for _, arg := range args {
-		if arg == "--aux-tools=true" || arg == "--aux-tools" {
+		if arg == "--prefer-bundled-bin=true" || arg == "--prefer-bundled-bin" {
 			auxTools = true
 		}
 	}

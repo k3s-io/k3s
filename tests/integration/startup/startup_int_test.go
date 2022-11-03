@@ -187,10 +187,10 @@ var _ = Describe("startup tests", Ordered, func() {
 			Expect(testutil.K3sKillServer(startupServer)).To(Succeed())
 		})
 	})
-	When("a server with aux-tools option", func() {
-		It("is created with aux-tools flag", func() {
+	When("a server with prefer-bundled-bin option", func() {
+		It("is created with prefer-bundled-bin flag", func() {
 			var err error
-			startupServerArgs = []string{"--aux-tools"}
+			startupServerArgs = []string{"--prefer-bundled-bin"}
 			startupServer, err = testutil.K3sStartServer(startupServerArgs...)
 			Expect(err).ToNot(HaveOccurred())
 		})
