@@ -9,3 +9,4 @@ A non-exhaustive list of k3s adopters is provided below.  To add your company to
  - SUSE's RKE2 (or RKE Government) [RKE2](github.com/rancher/rke2/)
  - [k3ai](https://k3ai.github.io/)
  - SUSE's [Rancher Desktop](https://rancherdesktop.io/)
+ - [Kairos](https://kairos.io)
