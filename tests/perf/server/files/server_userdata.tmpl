@@ -28,11 +28,11 @@ write_files:
     if [ ${db_engine} == "embedded-etcd" ]; then
     curl -sfL https://get.k3s.io | K3S_CLUSTER_SECRET="${k3s_cluster_secret}" \
        INSTALL_K3S_VERSION="${install_k3s_version}" \
-       INSTALL_K3S_EXEC="${k3s_server_args} --cluster-cidr=10.0.0.0/8 --no-deploy traefik --no-deploy servicelb --tls-san ${lb_address} %{ if master_index != 0 } --server https://${lb_address}:6443 %{ else } --cluster-init %{ endif }" sh -
+       INSTALL_K3S_EXEC="${k3s_server_args} --cluster-cidr=10.0.0.0/8 --disable traefik --disable servicelb --tls-san ${lb_address} %{ if master_index != 0 } --server https://${lb_address}:6443 %{ else } --cluster-init %{ endif }" sh -
     else
       curl -sfL https://get.k3s.io | K3S_CLUSTER_SECRET="${k3s_cluster_secret}" \
          INSTALL_K3S_VERSION="${install_k3s_version}" \
-         INSTALL_K3S_EXEC="${k3s_server_args} --cluster-cidr=10.0.0.0/8 --no-deploy traefik --no-deploy servicelb --tls-san ${lb_address} %{ if use_ha == "true" } --datastore-endpoint=$STORAGE_ENDPOINT %{ endif }" sh -
+         INSTALL_K3S_EXEC="${k3s_server_args} --cluster-cidr=10.0.0.0/8 --disable traefik --disable servicelb --tls-san ${lb_address} %{ if use_ha == "true" } --datastore-endpoint=$STORAGE_ENDPOINT %{ endif }" sh -
       fi
       if [ $? -eq 0 ]; then
         break

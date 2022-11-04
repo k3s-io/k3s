@@ -120,23 +120,24 @@ type Agent struct {
 }
 
 // CriticalControlArgs contains parameters that all control plane nodes in HA must share
+// The cli tag is used to provide better error information to the user on mismatch
 type CriticalControlArgs struct {
-	ClusterDNSs           []net.IP
-	ClusterIPRanges       []*net.IPNet
-	ClusterDNS            net.IP
-	ClusterDomain         string
-	ClusterIPRange        *net.IPNet
-	DisableCCM            bool
-	DisableHelmController bool
-	DisableNPC            bool
-	DisableServiceLB      bool
-	FlannelBackend        string
-	FlannelIPv6Masq       bool
-	FlannelExternalIP     bool
-	EgressSelectorMode    string
-	NoCoreDNS             bool
-	ServiceIPRange        *net.IPNet
-	ServiceIPRanges       []*net.IPNet
+	ClusterDNSs           []net.IP     `cli:"cluster-dns"`
+	ClusterIPRanges       []*net.IPNet `cli:"cluster-cidr"`
+	ClusterDNS            net.IP       `cli:"cluster-dns"`
+	ClusterDomain         string       `cli:"cluster-domain"`
+	ClusterIPRange        *net.IPNet   `cli:"cluster-cidr"`
+	DisableCCM            bool         `cli:"disable-cloud-controller"`
+	DisableHelmController bool         `cli:"disable-helm-controller"`
+	DisableNPC            bool         `cli:"disable-network-policy"`
+	DisableServiceLB      bool         `cli:"disable-service-lb"`
+	EncryptSecrets        bool         `cli:"secrets-encryption"`
+	FlannelBackend        string       `cli:"flannel-backend"`
+	FlannelIPv6Masq       bool         `cli:"flannel-ipv6-masq"`
+	FlannelExternalIP     bool         `cli:"flannel-external-ip"`
+	EgressSelectorMode    string       `cli:"egress-selector-mode"`
+	ServiceIPRange        *net.IPNet   `cli:"service-cidr"`
+	ServiceIPRanges       []*net.IPNet `cli:"service-cidr"`
 }
 
 type Control struct {
@@ -181,7 +182,6 @@ type Control struct {
 	ClusterInit              bool
 	ClusterReset             bool
 	ClusterResetRestorePath  string
-	EncryptSecrets           bool
 	EncryptForce             bool
 	EncryptSkip              bool
 	TLSMinVersion            uint16
