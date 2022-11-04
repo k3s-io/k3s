@@ -1,4 +1,4 @@
-package validatedualstack
+package dualstack
 
 import (
 	"flag"
@@ -14,14 +14,15 @@ import (
 
 // Valid nodeOS: generic/ubuntu2004, opensuse/Leap-15.3.x86_64
 var nodeOS = flag.String("nodeOS", "generic/ubuntu2004", "VM operating system")
-var serverCount = flag.Int("serverCount", 1, "number of server nodes")
+var serverCount = flag.Int("serverCount", 3, "number of server nodes")
 var agentCount = flag.Int("agentCount", 1, "number of agent nodes")
 var hardened = flag.Bool("hardened", false, "true or false")
 
 func Test_E2EDualStack(t *testing.T) {
 	flag.Parse()
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "DualStack Suite")
+	suiteConfig, reporterConfig := GinkgoConfiguration()
+	RunSpecs(t, "DualStack Test Suite", suiteConfig, reporterConfig)
 }
 
 var (
@@ -29,6 +30,8 @@ var (
 	serverNodeNames []string
 	agentNodeNames  []string
 )
+
+var _ = ReportAfterEach(e2e.GenReport)
 
 var _ = Describe("Verify DualStack Configuration", Ordered, func() {
 
