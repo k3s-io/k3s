@@ -241,6 +241,7 @@ func stageFiles(ctx context.Context, sc *Context, controlConfig *config.Control)
 		"%{DEFAULT_LOCAL_STORAGE_PATH}%":  controlConfig.DefaultLocalStoragePath,
 		"%{SYSTEM_DEFAULT_REGISTRY}%":     registryTemplate(controlConfig.SystemDefaultRegistry),
 		"%{SYSTEM_DEFAULT_REGISTRY_RAW}%": controlConfig.SystemDefaultRegistry,
+		"%{PREFERRED_ADDRESS_TYPES}%":     addrTypesPrioTemplate(controlConfig.FlannelExternalIP),
 	}
 
 	skip := controlConfig.Skips
@@ -268,6 +269,16 @@ func registryTemplate(registry string) string {
 		return registry
 	}
 	return registry + "/"
+}
+
+// addressTypesTemplate prioritizes ExternalIP addresses if we are in the multi-cloud env where
+// cluster traffic flows over the external IPs only
+func addrTypesPrioTemplate(flannelExternal bool) string {
+	if flannelExternal {
+		return "ExternalIP,InternalIP,Hostname"
+	}
+
+	return "InternalIP,ExternalIP,Hostname"
 }
 
 // isHelmChartTraefikV1 checks for an existing HelmChart resource with spec.chart containing traefik-1,
