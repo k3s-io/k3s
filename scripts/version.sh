@@ -46,6 +46,11 @@ fi
 
 VERSION_CNIPLUGINS="v1.1.1-k3s1"
 
+VERSION_KUBE_ROUTER=$(grep github.com/k3s-io/kube-router go.mod | head -n1 | awk '{print $4}')
+if [ -z "$VERSION_KUBE_ROUTER" ]; then
+    VERSION_KUBE_ROUTER="v0.0.0"
+fi
+
 VERSION_ROOT="v0.11.0"
 
 if [[ -n "$GIT_TAG" ]]; then
