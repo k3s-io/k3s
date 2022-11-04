@@ -185,6 +185,7 @@ var _ = Describe("startup tests", Ordered, func() {
 		})
 		It("dies cleanly", func() {
 			Expect(testutil.K3sKillServer(startupServer)).To(Succeed())
+			Expect(testutil.K3sCleanup(-1, "")).To(Succeed())
 		})
 	})
 	When("a server with prefer-bundled-bin option", func() {
@@ -204,6 +205,7 @@ var _ = Describe("startup tests", Ordered, func() {
 		})
 		It("dies cleanly", func() {
 			Expect(testutil.K3sKillServer(startupServer)).To(Succeed())
+			Expect(testutil.K3sCleanup(-1, "")).To(Succeed())
 		})
 	})
 })
