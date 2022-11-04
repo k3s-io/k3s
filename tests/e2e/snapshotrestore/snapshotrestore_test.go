@@ -30,7 +30,8 @@ var local = flag.Bool("local", false, "deploy a locally built K3s binary")
 func Test_E2ESnapshotRestore(t *testing.T) {
 	RegisterFailHandler(Fail)
 	flag.Parse()
-	RunSpecs(t, "SnapshotRestore Test Suite")
+	suiteConfig, reporterConfig := GinkgoConfiguration()
+	RunSpecs(t, "SnapshotRestore Test Suite", suiteConfig, reporterConfig)
 }
 
 var (
@@ -39,6 +40,8 @@ var (
 	agentNodeNames  []string
 	snapshotname    string
 )
+
+var _ = ReportAfterEach(e2e.GenReport)
 
 var _ = Describe("Verify Create", Ordered, func() {
 	Context("Cluster :", func() {

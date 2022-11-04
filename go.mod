@@ -86,6 +86,7 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.4.2
 	github.com/gruntwork-io/terratest v0.40.6
+	github.com/json-iterator/go v1.1.12
 	github.com/k3s-io/helm-controller v0.13.0
 	github.com/k3s-io/kine v0.9.6
 	github.com/klauspost/compress v1.15.9
@@ -264,7 +265,6 @@ require (
 	github.com/jonboulle/clockwork v0.2.2 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/josharian/native v0.0.0-20200817173448-b6b71def0850 // indirect
-	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/karrick/godirwalk v1.16.1 // indirect
 	github.com/klauspost/cpuid/v2 v2.1.0 // indirect
 	github.com/libopenstorage/openstorage v1.0.0 // indirect

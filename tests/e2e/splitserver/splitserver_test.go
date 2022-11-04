@@ -60,7 +60,8 @@ func createSplitCluster(nodeOS string, etcdCount, controlPlaneCount, agentCount 
 func Test_E2ESplitServer(t *testing.T) {
 	RegisterFailHandler(Fail)
 	flag.Parse()
-	RunSpecs(t, "Split Server Test Suite")
+	suiteConfig, reporterConfig := GinkgoConfiguration()
+	RunSpecs(t, "Split Server Test Suite", suiteConfig, reporterConfig)
 }
 
 var (
@@ -69,6 +70,8 @@ var (
 	cpNodeNames    []string
 	agentNodeNames []string
 )
+
+var _ = ReportAfterEach(e2e.GenReport)
 
 var _ = Describe("Verify Create", Ordered, func() {
 	Context("Cluster :", func() {
@@ -219,7 +222,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 	})
 })
 
-var failed = false
+var failed bool
 var _ = AfterEach(func() {
 	failed = failed || CurrentSpecReport().Failed()
 })

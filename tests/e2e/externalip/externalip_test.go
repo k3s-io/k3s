@@ -48,7 +48,9 @@ func getClientIPs(kubeConfigFile string) ([]e2e.ObjIP, error) {
 func Test_E2EExternalIP(t *testing.T) {
 	flag.Parse()
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Validate External-IP config Suite")
+	suiteConfig, reporterConfig := GinkgoConfiguration()
+	RunSpecs(t, "External-IP config Suite", suiteConfig, reporterConfig)
+
 }
 
 var (
@@ -56,6 +58,8 @@ var (
 	serverNodeNames []string
 	agentNodeNames  []string
 )
+
+var _ = ReportAfterEach(e2e.GenReport)
 
 var _ = Describe("Verify External-IP config", Ordered, func() {
 
