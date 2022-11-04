@@ -80,6 +80,7 @@ require (
 	github.com/flannel-io/flannel v0.20.1-k3s1.23
 	github.com/go-bindata/go-bindata v3.1.2+incompatible
 	github.com/go-sql-driver/mysql v1.6.0
+	github.com/go-test/deep v1.0.7
 	github.com/golangplus/testing v1.0.0 // indirect
 	github.com/google/cadvisor v0.44.1
 	github.com/google/uuid v1.3.0
