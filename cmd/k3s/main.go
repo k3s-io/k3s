@@ -100,6 +100,30 @@ func findDataDir() string {
 	return dataDir
 }
 
+// findPreferBundledBin searches for prefer-bundled-bin from the CLI args and config file.
+func findPreferBundledBin(args []string) bool {
+	preferRes := configfilearg.MustFindString(args, "prefer-bundled-bin")
+	for i, arg := range args {
+		flagName := "--prefer-bundled-bin"
+		if flagName == arg {
+			if len(args) > i+1 {
+				// naked flag, so assume true
+				if args[i+1] != "true" && args[i+1] != "false" {
+					preferRes = "true"
+				} else {
+					preferRes = args[i+1]
+				}
+			} else {
+				preferRes = "true"
+			}
+		} else if strings.HasPrefix(arg, flagName+"=") {
+			preferRes = arg[len(flagName)+1:]
+		}
+	}
+
+	return preferRes == "true"
+}
+
 // runCLIs handles the case where the binary is being executed as a symlink alias,
 // /usr/local/bin/crictl for example. If the executable name is one of the external
 // binaries, it calls it directly and returns true. If it's not an external binary,
@@ -158,14 +182,8 @@ func stageAndRun(dataDir, cmd string, args []string) error {
 	}
 	logrus.Debugf("Asset dir %s", dir)
 
-	perferBundled := false
-	pathEnv := ""
-	for _, arg := range args {
-		if arg == "--prefer-bundled-bin=true" || arg == "--prefer-bundled-bin" {
-			perferBundled = true
-		}
-	}
-	if perferBundled {
+	var pathEnv string
+	if findPreferBundledBin(args) {
 		pathEnv = filepath.Join(dir, "bin") + ":" + filepath.Join(dir, "bin/aux") + ":" + os.Getenv("PATH")
 	} else {
 		pathEnv = filepath.Join(dir, "bin") + ":" + os.Getenv("PATH") + ":" + filepath.Join(dir, "bin/aux")
