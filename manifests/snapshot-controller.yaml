@@ -1,0 +1,62 @@
+---
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: snapshot-controller-crd
+  namespace: kube-system
+spec:
+  chart: https://%{KUBERNETES_API}%/static/charts/snapshot-controller-crd-1.6.1+up1.6.0.tgz
+---
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: snapshot-controller
+  namespace: kube-system
+spec:
+  chart: https://%{KUBERNETES_API}%/static/charts/snapshot-controller-1.6.1+up1.6.0.tgz
+  set:
+    global.systemDefaultRegistry: "%{SYSTEM_DEFAULT_REGISTRY_RAW}%"
+  valuesContent: |-
+    replicaCount: 1
+    podAnnotations:
+      prometheus.io/port: "8080"
+      prometheus.io/scrape: "true"
+    image:
+      repository: "rancher/mirrored-sig-storage-snapshot-controller"
+      tag: "v6.1.0"
+    tolerations:
+    - key: "CriticalAddonsOnly"
+      operator: "Exists"
+    - key: "node-role.kubernetes.io/control-plane"
+      operator: "Exists"
+      effect: "NoSchedule"
+    - key: "node-role.kubernetes.io/master"
+      operator: "Exists"
+      effect: "NoSchedule"
+---
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: snapshot-validation-webhook
+  namespace: kube-system
+spec:
+  chart: https://%{KUBERNETES_API}%/static/charts/snapshot-validation-webhook-1.6.1+up1.6.0.tgz
+  set:
+    global.systemDefaultRegistry: "%{SYSTEM_DEFAULT_REGISTRY_RAW}%"
+  valuesContent: |-
+    replicaCount: 1
+    podAnnotations:
+      prometheus.io/port: "8443"
+      prometheus.io/scrape: "true"
+    image:
+      repository: "rancher/mirrored-sig-storage-snapshot-validation-webhook"
+      tag: "v6.1.0"
+    tolerations:
+    - key: "CriticalAddonsOnly"
+      operator: "Exists"
+    - key: "node-role.kubernetes.io/control-plane"
+      operator: "Exists"
+      effect: "NoSchedule"
+    - key: "node-role.kubernetes.io/master"
+      operator: "Exists"
+      effect: "NoSchedule"
