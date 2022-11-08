@@ -29,14 +29,24 @@ func Test_UnitFindPreferBundledBin(t *testing.T) {
 			want: false,
 		},
 		{
-			name: "Multiple arguments with space true",
-			args: []string{"--abcd", "--prefer-bundled-bin", "true", "--efgh"},
+			name: "Argument with equal 1",
+			args: []string{"--prefer-bundled-bin=1"},
 			want: true,
 		},
 		{
-			name: "Multiple arguments with space false",
-			args: []string{"--abcd", "--prefer-bundled-bin", "false", "--efgh"},
+			name: "Argument with equal 0",
+			args: []string{"--prefer-bundled-bin=0"},
 			want: false,
+		},
+		{
+			name: "Multiple arguments",
+			args: []string{"--abcd", "--prefer-bundled-bin", "--efgh"},
+			want: true,
+		},
+		{
+			name: "Repeated arguments",
+			args: []string{"--abcd", "--prefer-bundled-bin=false", "--prefer-bundled-bin"},
+			want: true,
 		},
 	}
 	for _, tt := range tests {

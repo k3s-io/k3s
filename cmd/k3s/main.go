@@ -3,9 +3,11 @@ package main
 import (
 	"bytes"
 	"context"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 
@@ -20,6 +22,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rancher/wrangler/pkg/resolvehome"
 	"github.com/sirupsen/logrus"
+	"github.com/spf13/pflag"
 	"github.com/urfave/cli"
 )
 
@@ -100,28 +103,22 @@ func findDataDir() string {
 	return dataDir
 }
 
-// findPreferBundledBin searches for prefer-bundled-bin from the CLI args and config file.
+// findPreferBundledBin searches for prefer-bundled-bin from the config file, then CLI args.
+// we use pflag to process the args because we not yet parsed flags bound to the cli.Context
 func findPreferBundledBin(args []string) bool {
+	var preferBundledBin bool
+	fs := pflag.NewFlagSet("prefer-set", pflag.ContinueOnError)
+	fs.ParseErrorsWhitelist.UnknownFlags = true
+	fs.SetOutput(io.Discard)
+	fs.BoolVar(&preferBundledBin, "prefer-bundled-bin", false, "Prefer bundled binaries")
+
 	preferRes := configfilearg.MustFindString(args, "prefer-bundled-bin")
-	for i, arg := range args {
-		flagName := "--prefer-bundled-bin"
-		if flagName == arg {
-			if len(args) > i+1 {
-				// naked flag, so assume true
-				if args[i+1] != "true" && args[i+1] != "false" {
-					preferRes = "true"
-				} else {
-					preferRes = args[i+1]
-				}
-			} else {
-				preferRes = "true"
-			}
-		} else if strings.HasPrefix(arg, flagName+"=") {
-			preferRes = arg[len(flagName)+1:]
-		}
+	if preferRes != "" {
+		preferBundledBin, _ = strconv.ParseBool(preferRes)
 	}
 
-	return preferRes == "true"
+	fs.Parse(args)
+	return preferBundledBin
 }
 
 // runCLIs handles the case where the binary is being executed as a symlink alias,
