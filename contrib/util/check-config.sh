@@ -177,8 +177,17 @@ echo
   if [ -s .links ]; then
     while read file link; do
       if [ "$(readlink $file)" != "$link" ]; then
-        wrap_bad '- links' "$file should link to $link"
-        linkFail=1
+        FLINK="$(readlink $file)"
+        echo "LINK $FLINK $link"
+        # If no iptables is installed on the host system, the symlink will be different
+        if [ "$(readlink $file)" = "xtables-legacy-multi" ]; then
+          wrap_warn "- $file" "symlink to xtables-legacy-multi"
+        elif [ "$(readlink $file)" = "xtables-nft-multi" ]; then
+          wrap_warn "- $file" "symlink to xtables-nft-multi"
+        else
+          wrap_bad "- $file" "symlink to $link"
+          linkFail=1
+        fi
       fi
     done <.links
     if [ $linkFail -eq 0 ]; then
@@ -222,6 +231,8 @@ echo
     iptablesVersion=$(echo $iptablesInfo | awk '{ print $2 }')
     label="$(dirname $iptablesCmd) $iptablesInfo"
   fi
+  iptablesMode=$(echo $iptablesInfo | awk '{ print $3 }')
+  echo "HELP $iptablesCmd $iptablesVersion $iptablesMode"
   if echo "$iptablesVersion" | grep -v -q -E '^v[0-9]'; then
     [ "$iptablesCmd" ] || iptablesCmd="unknown iptables"
     wrap_warn "- $iptablesCmd" "unknown version: $iptablesInfo"
