@@ -1,4 +1,5 @@
 K3s - Lightweight Kubernetes
+![Nightly CI](https://github.com/k3s-io/k3s/actions/workflows/nightly-install.yaml/badge.svg)
 ===============================================
 
 Lightweight Kubernetes.  Production ready, easy to install, half the memory, all in a binary less than 100 MB.
