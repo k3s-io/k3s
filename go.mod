@@ -66,7 +66,6 @@ replace (
 )
 
 require (
-	github.com/Microsoft/hcsshim v0.9.2
 	github.com/Mirantis/cri-dockerd v0.0.0-00010101000000-000000000000
 	github.com/cloudnativelabs/kube-router v1.3.2
 	github.com/containerd/cgroups v1.0.3
@@ -160,6 +159,7 @@ require (
 	github.com/JeffAshton/win_pdh v0.0.0-20161109143554-76bb4ee9f0ab // indirect
 	github.com/MakeNowJust/heredoc v1.0.0 // indirect
 	github.com/Microsoft/go-winio v0.5.2 // indirect
+	github.com/Microsoft/hcsshim v0.9.2 // indirect
 	github.com/NYTimes/gziphandler v1.1.1 // indirect
 	github.com/PuerkitoBio/purell v1.1.1 // indirect
 	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 // indirect
