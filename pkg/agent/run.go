@@ -258,7 +258,11 @@ func Run(ctx context.Context, cfg cmds.Agent) error {
 	}
 
 	if cfg.Rootless && !cfg.RootlessAlreadyUnshared {
-		if err := rootless.Rootless(cfg.DataDir); err != nil {
+		dualNode, err := utilsnet.IsDualStackIPStrings(cfg.NodeIP)
+		if err != nil {
+			return err
+		}
+		if err := rootless.Rootless(cfg.DataDir, dualNode); err != nil {
 			return err
 		}
 	}
