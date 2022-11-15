@@ -7,13 +7,18 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
+	"github.com/Microsoft/hcsshim"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/kubernetes/pkg/kubeapiserver/authorizer/modes"
 )
+
+// NetworkName may be overridden at runtime in downstream projects
+var NetworkName = "vxlan0"
 
 const (
 	socketPrefix = "npipe://"
@@ -33,6 +38,10 @@ func kubeProxyArgs(cfg *config.Agent) map[string]string {
 	}
 	if cfg.NodeName != "" {
 		argsMap["hostname-override"] = cfg.NodeName
+	}
+
+	if sourceVip := waitForManagementIP(NetworkName); sourceVip != "" {
+		argsMap["source-vip"] = sourceVip
 	}
 
 	return argsMap
@@ -123,4 +132,19 @@ func kubeletArgs(cfg *config.Agent) map[string]string {
 		argsMap["protect-kernel-defaults"] = "true"
 	}
 	return argsMap
+}
+
+func waitForManagementIP(networkName string) string {
+	for range time.Tick(time.Second * 5) {
+		network, err := hcsshim.GetHNSNetworkByName(networkName)
+		if err != nil {
+			logrus.WithError(err).Warning("can't find HNS network, retrying", networkName)
+			continue
+		}
+		if network.ManagementIP == "" {
+			continue
+		}
+		return network.ManagementIP
+	}
+	return ""
 }
