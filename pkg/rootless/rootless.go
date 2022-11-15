@@ -29,11 +29,12 @@ var (
 
 	mtuEnv             = "K3S_ROOTLESS_MTU"
 	cidrEnv            = "K3S_ROOTLESS_CIDR"
+	enableIPv6Env      = "K3S_ROOTLESS_ENABLE_IPV6"
 	portDriverEnv      = "K3S_ROOTLESS_PORT_DRIVER"
 	disableLoopbackEnv = "K3S_ROOTLESS_DISABLE_HOST_LOOPBACK"
 )
 
-func Rootless(stateDir string) error {
+func Rootless(stateDir string, enableIPv6 bool) error {
 	defer func() {
 		os.Unsetenv(pipeFD)
 		os.Unsetenv(childEnv)
@@ -66,7 +67,7 @@ func Rootless(stateDir string) error {
 	if err := validateSysctl(); err != nil {
 		logrus.Fatal(err)
 	}
-	parentOpt, err := createParentOpt(driver, rootlessDir)
+	parentOpt, err := createParentOpt(driver, rootlessDir, enableIPv6)
 	if err != nil {
 		logrus.Fatal(err)
 	}
@@ -127,7 +128,7 @@ func parseCIDR(s string) (*net.IPNet, error) {
 	return ipnet, nil
 }
 
-func createParentOpt(driver portDriver, stateDir string) (*parent.Opt, error) {
+func createParentOpt(driver portDriver, stateDir string, enableIPv6 bool) (*parent.Opt, error) {
 	if err := os.MkdirAll(stateDir, 0755); err != nil {
 		return nil, errors.Wrapf(err, "failed to mkdir %s", stateDir)
 	}
@@ -180,6 +181,14 @@ func createParentOpt(driver portDriver, stateDir string) (*parent.Opt, error) {
 		}
 	}
 
+	if val := os.Getenv(enableIPv6Env); val != "" {
+		if v, err := strconv.ParseBool(val); err != nil {
+			logrus.Warn("Failed to parse rootless enable-ipv6 value; using default")
+		} else {
+			enableIPv6 = v
+		}
+	}
+
 	cidr := "10.41.0.0/16"
 	if val := os.Getenv(cidrEnv); val != "" {
 		cidr = val
@@ -193,7 +202,7 @@ func createParentOpt(driver portDriver, stateDir string) (*parent.Opt, error) {
 	if _, err := exec.LookPath(binary); err != nil {
 		return nil, err
 	}
-	opt.NetworkDriver, err = slirp4netns.NewParentDriver(driver.LogWriter(), binary, mtu, ipnet, "tap0", disableHostLoopback, driver.APISocketPath(), false, false, false)
+	opt.NetworkDriver, err = slirp4netns.NewParentDriver(driver.LogWriter(), binary, mtu, ipnet, "tap0", disableHostLoopback, driver.APISocketPath(), false, false, enableIPv6)
 	if err != nil {
 		return nil, err
 	}

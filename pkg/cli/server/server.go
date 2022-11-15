@@ -81,7 +81,11 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		}
 		cfg.DataDir = dataDir
 		if !cfg.DisableAgent {
-			if err := rootless.Rootless(dataDir); err != nil {
+			dualNode, err := utilsnet.IsDualStackIPStrings(cmds.AgentConfig.NodeIP)
+			if err != nil {
+				return err
+			}
+			if err := rootless.Rootless(dataDir, dualNode); err != nil {
 				return err
 			}
 		}
