@@ -92,7 +92,7 @@ set -o noglob
 #     Defaults to 'stable'.
 
 GITHUB_URL=https://github.com/k3s-io/k3s/releases
-STORAGE_URL=https://storage.googleapis.com/k3s-ci-builds
+STORAGE_URL=https://k3s-ci-builds.s3.amazonaws.com
 DOWNLOADER=
 
 # --- helper functions for logs ---
