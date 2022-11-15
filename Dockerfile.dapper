@@ -9,13 +9,15 @@ ENV https_proxy=$https_proxy
 ENV no_proxy=$no_proxy
 
 RUN apk -U --no-cache add bash git gcc musl-dev docker vim less file curl wget ca-certificates jq linux-headers \
-    zlib-dev tar zip squashfs-tools npm coreutils python3 openssl-dev libffi-dev libseccomp libseccomp-dev \
+    zlib-dev tar zip squashfs-tools npm coreutils python3 py3-pip openssl-dev libffi-dev libseccomp libseccomp-dev \
     libseccomp-static make libuv-static sqlite-dev sqlite-static libselinux libselinux-dev zlib-dev zlib-static \
     zstd pigz alpine-sdk binutils-gold btrfs-progs-dev btrfs-progs-static gawk yq \
     && \
     if [ "$(go env GOARCH)" = "amd64" ]; then \
     apk -U --no-cache add mingw-w64-gcc; \
     fi
+
+RUN python3 -m pip install awscli
 
 RUN if [ "$(go env GOARCH)" = "arm64" ]; then                                                               \
     wget https://github.com/aquasecurity/trivy/releases/download/v0.25.3/trivy_0.25.3_Linux-ARM64.tar.gz && \
