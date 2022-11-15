@@ -33,8 +33,8 @@ func Run(ctx *cli.Context) error {
 		return err
 	}
 
-	if os.Getuid() != 0 && runtime.GOOS != "windows" {
-		return fmt.Errorf("agent must be ran as root")
+	if runtime.GOOS != "windows" && os.Getuid() != 0 && !cmds.AgentConfig.Rootless {
+		return fmt.Errorf("agent must be run as root, or with --rootless")
 	}
 
 	if cmds.AgentConfig.TokenFile != "" {
