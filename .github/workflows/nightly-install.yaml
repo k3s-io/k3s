@@ -33,7 +33,7 @@ jobs:
           path: |
             ~/.vagrant.d/boxes
             ~/.vagrant.d/gems
-          key: install-${{ hashFiles(format('tests/install/{0}/Vagrantfile', matrix.vm)) }}
+          key: install-${{ matrix.vm }}-${{ hashFiles('tests/install/${{ matrix.vm }}/Vagrantfile') }}
         id: vagrant-cache
         continue-on-error: true
       - name: "Vagrant Plugin(s)"
