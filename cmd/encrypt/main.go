@@ -15,14 +15,13 @@ import (
 func main() {
 	app := cmds.NewApp()
 	app.Commands = []cli.Command{
-		cmds.NewSecretsEncryptCommand(cli.ShowAppHelp,
-			cmds.NewSecretsEncryptSubcommands(
-				secretsencrypt.Status,
-				secretsencrypt.Enable,
-				secretsencrypt.Disable,
-				secretsencrypt.Prepare,
-				secretsencrypt.Rotate,
-				secretsencrypt.Reencrypt),
+		cmds.NewSecretsEncryptCommands(
+			secretsencrypt.Status,
+			secretsencrypt.Enable,
+			secretsencrypt.Disable,
+			secretsencrypt.Prepare,
+			secretsencrypt.Rotate,
+			secretsencrypt.Reencrypt,
 		),
 	}
 

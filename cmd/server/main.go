@@ -54,14 +54,13 @@ func main() {
 			etcdsnapshot.Prune,
 			etcdsnapshot.Save,
 		),
-		cmds.NewSecretsEncryptCommand(cli.ShowAppHelp,
-			cmds.NewSecretsEncryptSubcommands(
-				secretsencrypt.Status,
-				secretsencrypt.Enable,
-				secretsencrypt.Disable,
-				secretsencrypt.Prepare,
-				secretsencrypt.Rotate,
-				secretsencrypt.Reencrypt),
+		cmds.NewSecretsEncryptCommands(
+			secretsencrypt.Status,
+			secretsencrypt.Enable,
+			secretsencrypt.Disable,
+			secretsencrypt.Prepare,
+			secretsencrypt.Rotate,
+			secretsencrypt.Reencrypt,
 		),
 		cmds.NewCertCommand(
 			cmds.NewCertSubcommands(
