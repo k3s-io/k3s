@@ -42,9 +42,8 @@ func Rootless(stateDir string, enableIPv6 bool) error {
 
 	hasFD := os.Getenv(pipeFD) != ""
 	hasChildEnv := os.Getenv(childEnv) != ""
-	driverName := strings.ToLower(os.Getenv(portDriverEnv))
 	rootlessDir := filepath.Join(stateDir, "rootless")
-	driver := getDriver(driverName, &logrusDebugWriter{})
+	driver := getDriver(strings.ToLower(os.Getenv(portDriverEnv)))
 
 	if hasFD {
 		logrus.Debug("Running rootless child")
@@ -166,7 +165,7 @@ func createParentOpt(driver portDriver, stateDir string, enableIPv6 bool) (*pare
 	mtu := 0
 	if val := os.Getenv(mtuEnv); val != "" {
 		if v, err := strconv.ParseInt(val, 10, 0); err != nil {
-			logrus.Warn("Failed to parse rootless mtu; using default")
+			logrus.Warn("Failed to parse rootless mtu value; using default")
 		} else {
 			mtu = int(v)
 		}
@@ -215,15 +214,6 @@ func createParentOpt(driver portDriver, stateDir string, enableIPv6 bool) (*pare
 	opt.PipeFDEnvKey = pipeFD
 
 	return opt, nil
-}
-
-type logrusDebugWriter struct {
-}
-
-func (w *logrusDebugWriter) Write(p []byte) (int, error) {
-	s := strings.TrimSuffix(string(p), "\n")
-	logrus.Debug(s)
-	return len(p), nil
 }
 
 func createChildOpt(driver portDriver) (*child.Opt, error) {
