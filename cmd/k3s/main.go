@@ -51,12 +51,11 @@ func main() {
 		cmds.NewCRICTL(externalCLIAction("crictl", dataDir)),
 		cmds.NewCtrCommand(externalCLIAction("ctr", dataDir)),
 		cmds.NewCheckConfigCommand(externalCLIAction("check-config", dataDir)),
-		cmds.NewEtcdSnapshotCommand(etcdsnapshotCommand,
-			cmds.NewEtcdSnapshotSubcommands(
-				etcdsnapshotCommand,
-				etcdsnapshotCommand,
-				etcdsnapshotCommand,
-				etcdsnapshotCommand),
+		cmds.NewEtcdSnapshotCommands(
+			etcdsnapshotCommand,
+			etcdsnapshotCommand,
+			etcdsnapshotCommand,
+			etcdsnapshotCommand,
 		),
 		cmds.NewSecretsEncryptCommand(secretsencryptCommand,
 			cmds.NewSecretsEncryptSubcommands(

@@ -15,12 +15,11 @@ import (
 func main() {
 	app := cmds.NewApp()
 	app.Commands = []cli.Command{
-		cmds.NewEtcdSnapshotCommand(etcdsnapshot.Save,
-			cmds.NewEtcdSnapshotSubcommands(
-				etcdsnapshot.Delete,
-				etcdsnapshot.List,
-				etcdsnapshot.Prune,
-				etcdsnapshot.Save),
+		cmds.NewEtcdSnapshotCommands(
+			etcdsnapshot.Delete,
+			etcdsnapshot.List,
+			etcdsnapshot.Prune,
+			etcdsnapshot.Save,
 		),
 	}
 
