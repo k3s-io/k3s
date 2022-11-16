@@ -6,12 +6,22 @@ package rootless
 import (
 	"io"
 	"path"
+	"strings"
 
 	"github.com/rootless-containers/rootlesskit/pkg/port"
 	portbuiltin "github.com/rootless-containers/rootlesskit/pkg/port/builtin"
 	portslirp4netns "github.com/rootless-containers/rootlesskit/pkg/port/slirp4netns"
 	"github.com/sirupsen/logrus"
 )
+
+type logrusDebugWriter struct {
+}
+
+func (w *logrusDebugWriter) Write(p []byte) (int, error) {
+	s := strings.TrimSuffix(string(p), "\n")
+	logrus.Debug(s)
+	return len(p), nil
+}
 
 type portDriver interface {
 	NewParentDriver() (port.ParentDriver, error)
@@ -74,7 +84,9 @@ func (s *slirp4netnsDriver) APISocketPath() string {
 	return ""
 }
 
-func getDriver(driverName string, logWriter io.Writer) portDriver {
+func getDriver(driverName string) portDriver {
+	logWriter := &logrusDebugWriter{}
+
 	if driverName == "slirp4netns" {
 		return &slirp4netnsDriver{logWriter: logWriter}
 	}
