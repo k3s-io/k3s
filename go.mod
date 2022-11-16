@@ -7,7 +7,7 @@ replace (
 	github.com/Mirantis/cri-dockerd => github.com/k3s-io/cri-dockerd v0.2.4-0.20220729204449-bcbb75d5abff // k3s-master
 	github.com/cloudnativelabs/kube-router => github.com/k3s-io/kube-router v1.5.2-0.20221026101626-e01045262706
 	github.com/containerd/cgroups => github.com/containerd/cgroups v1.0.1
-	github.com/containerd/containerd => github.com/k3s-io/containerd v1.5.13-k3s1 // k3s-release/1.5
+	github.com/containerd/containerd => github.com/k3s-io/containerd v1.5.14-k3s1 // k3s-release/1.5
 	github.com/coreos/go-systemd => github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e
 	github.com/docker/distribution => github.com/docker/distribution v2.8.1+incompatible
 	github.com/docker/docker => github.com/docker/docker v20.10.12+incompatible
@@ -69,9 +69,9 @@ require (
 	github.com/Mirantis/cri-dockerd v0.0.0-00010101000000-000000000000
 	github.com/cloudnativelabs/kube-router v1.3.2
 	github.com/containerd/cgroups v1.0.3
-	github.com/containerd/containerd v1.6.2
-	github.com/containerd/fuse-overlayfs-snapshotter v1.0.4
-	github.com/containerd/stargz-snapshotter v0.11.4
+	github.com/containerd/containerd v1.6.9
+	github.com/containerd/fuse-overlayfs-snapshotter v1.0.5
+	github.com/containerd/stargz-snapshotter v0.13.0
 	github.com/coreos/go-iptables v0.6.0
 	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf
 	github.com/docker/docker v20.10.16+incompatible
@@ -88,16 +88,16 @@ require (
 	github.com/gruntwork-io/terratest v0.40.6
 	github.com/k3s-io/helm-controller v0.13.0
 	github.com/k3s-io/kine v0.9.6
-	github.com/klauspost/compress v1.15.9
+	github.com/klauspost/compress v1.15.12
 	github.com/kubernetes-sigs/cri-tools v0.0.0-00010101000000-000000000000
 	github.com/lib/pq v1.10.2
 	github.com/mattn/go-sqlite3 v1.14.15
 	github.com/minio/minio-go/v7 v7.0.33
 	github.com/natefinch/lumberjack v2.0.0+incompatible
-	github.com/onsi/ginkgo/v2 v2.1.4
-	github.com/onsi/gomega v1.19.0
-	github.com/opencontainers/runc v1.1.1
-	github.com/opencontainers/selinux v1.10.1
+	github.com/onsi/ginkgo/v2 v2.1.6
+	github.com/onsi/gomega v1.20.1
+	github.com/opencontainers/runc v1.1.4
+	github.com/opencontainers/selinux v1.10.2
 	github.com/otiai10/copy v1.7.0
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/dynamiclistener v0.3.5
@@ -123,19 +123,19 @@ require (
 	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa
 	golang.org/x/net v0.0.0-20221004154528-8021a29435af
 	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4
-	golang.org/x/sys v0.0.0-20221010170243-090e33056c14
-	google.golang.org/grpc v1.46.2
+	golang.org/x/sys v0.2.0
+	google.golang.org/grpc v1.50.1
 	gopkg.in/yaml.v2 v2.4.0
 	inet.af/tcpproxy v0.0.0-20200125044825-b6bb9b5b8252
-	k8s.io/api v0.24.8
-	k8s.io/apimachinery v0.24.8
+	k8s.io/api v0.25.4
+	k8s.io/apimachinery v0.25.4
 	k8s.io/apiserver v0.24.8
 	k8s.io/client-go v11.0.1-0.20190409021438-1a26190bd76a+incompatible
 	k8s.io/cloud-provider v0.24.8
 	k8s.io/component-base v0.24.8
 	k8s.io/component-helpers v0.24.8
 	k8s.io/controller-manager v0.24.8 // indirect
-	k8s.io/cri-api v0.24.8
+	k8s.io/cri-api v0.26.0-alpha.3
 	k8s.io/klog v1.0.0
 	k8s.io/kubectl v0.24.8
 	k8s.io/kubernetes v1.24.8
