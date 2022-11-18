@@ -185,7 +185,6 @@ func stageAndRun(dataDir, cmd string, args []string) error {
 	} else {
 		pathEnv = filepath.Join(dir, "bin") + ":" + os.Getenv("PATH") + ":" + filepath.Join(dir, "bin/aux")
 	}
-	logrus.Infof("PATH %s env %s", cmd, pathEnv)
 	if err := os.Setenv("PATH", pathEnv); err != nil {
 		return err
 	}
