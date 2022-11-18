@@ -30,7 +30,7 @@ var criDefaultConfigPath = "/etc/crictl.yaml"
 
 // main entrypoint for the k3s multicall binary
 func main() {
-	dataDir := findDataDir()
+	dataDir := findDataDir(os.Args)
 
 	// Handle direct invocation via symlink alias (multicall binary behavior)
 	if runCLIs(dataDir) {
@@ -82,19 +82,17 @@ func main() {
 // findDataDir reads data-dir settings from the CLI args and config file.
 // If not found, the default will be used, which varies depending on whether
 // k3s is being run as root or not.
-func findDataDir() string {
-	for i, arg := range os.Args {
-		for _, flagName := range []string{"--data-dir", "-d"} {
-			if flagName == arg {
-				if len(os.Args) > i+1 {
-					return os.Args[i+1]
-				}
-			} else if strings.HasPrefix(arg, flagName+"=") {
-				return arg[len(flagName)+1:]
-			}
-		}
+func findDataDir(args []string) string {
+	var dataDir string
+	fs := pflag.NewFlagSet("data-dir-set", pflag.ContinueOnError)
+	fs.ParseErrorsWhitelist.UnknownFlags = true
+	fs.SetOutput(io.Discard)
+	fs.StringVarP(&dataDir, "data-dir", "d", "", "Data directory")
+	fs.Parse(args)
+	if dataDir != "" {
+		return dataDir
 	}
-	dataDir := configfilearg.MustFindString(os.Args, "data-dir")
+	dataDir = configfilearg.MustFindString(args, "data-dir")
 	if d, err := datadir.Resolve(dataDir); err == nil {
 		dataDir = d
 	} else {
