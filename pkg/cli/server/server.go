@@ -91,10 +91,6 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		}
 	}
 
-	if cfg.Token == "" && cfg.ClusterSecret != "" {
-		logrus.Fatal("cluster-secret is deprecated. Use --token instead.")
-	}
-
 	agentReady := make(chan struct{})
 
 	serverConfig := server.Config{}

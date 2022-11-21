@@ -272,13 +272,6 @@ func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
 			// Deprecated/hidden below
 			&DisableSELinuxFlag,
 			DockerFlag,
-			cli.StringFlag{
-				Name:        "cluster-secret",
-				Usage:       "(deprecated) use --token",
-				Destination: &AgentConfig.ClusterSecret,
-				EnvVar:      version.ProgramUpper + "_CLUSTER_SECRET",
-				Hidden:      true,
-			},
 		},
 	}
 }
