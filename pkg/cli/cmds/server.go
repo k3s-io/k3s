@@ -521,11 +521,6 @@ var ServerFlags = []cli.Flag{
 	// Hidden/Deprecated flags below
 
 	&DisableSELinuxFlag,
-	cli.StringSliceFlag{
-		Name:   "no-deploy",
-		Usage:  "(deprecated) Do not deploy packaged components (valid items: " + DisableItems + ")",
-		Hidden: true,
-	},
 	cli.BoolFlag{
 		Name:        "disable-agent",
 		Usage:       "Do not run a local agent and register a local kubelet",
