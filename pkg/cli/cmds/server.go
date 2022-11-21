@@ -509,6 +509,10 @@ var ServerFlags = []cli.Flag{
 		Destination: &ServerConfig.Rootless,
 	},
 	cli.BoolFlag{
+		Name:  "prefer-bundled-bin",
+		Usage: "(experimental) Prefer bundled userspace binaries over host binaries",
+	},
+	cli.BoolFlag{
 		Name:        "secrets-encryption",
 		Usage:       "(experimental) Enable Secret encryption at rest",
 		Destination: &ServerConfig.EncryptSecrets,

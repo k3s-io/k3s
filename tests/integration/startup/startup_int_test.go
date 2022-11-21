@@ -185,6 +185,27 @@ var _ = Describe("startup tests", Ordered, func() {
 		})
 		It("dies cleanly", func() {
 			Expect(testutil.K3sKillServer(startupServer)).To(Succeed())
+			Expect(testutil.K3sCleanup(-1, "")).To(Succeed())
+		})
+	})
+	When("a server with prefer-bundled-bin option", func() {
+		It("is created with prefer-bundled-bin flag", func() {
+			var err error
+			startupServerArgs = []string{"--prefer-bundled-bin"}
+			startupServer, err = testutil.K3sStartServer(startupServerArgs...)
+			Expect(err).ToNot(HaveOccurred())
+		})
+		It("has the default pods deployed", func() {
+			Eventually(func() error {
+				return testutil.K3sDefaultDeployments()
+			}, "120s", "5s").Should(Succeed())
+			nodes, err := testutil.ParseNodes()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(nodes).To(HaveLen(1))
+		})
+		It("dies cleanly", func() {
+			Expect(testutil.K3sKillServer(startupServer)).To(Succeed())
+			Expect(testutil.K3sCleanup(-1, "")).To(Succeed())
 		})
 	})
 })
