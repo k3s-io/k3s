@@ -28,7 +28,6 @@ type Agent struct {
 	Snapshotter              string
 	Docker                   bool
 	ContainerRuntimeEndpoint string
-	NoFlannel                bool
 	FlannelIface             string
 	FlannelConf              string
 	FlannelCniConfFile       string
@@ -196,12 +195,6 @@ var (
 		Usage:  "(deprecated) Use --selinux to explicitly enable SELinux",
 		Hidden: true,
 	}
-	FlannelFlag = cli.BoolFlag{
-		Hidden:      true,
-		Name:        "no-flannel",
-		Usage:       "(deprecated) use --flannel-backend=none",
-		Destination: &AgentConfig.NoFlannel,
-	}
 )
 
 func CheckSELinuxFlags(ctx *cli.Context) error {
@@ -279,7 +272,6 @@ func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
 			// Deprecated/hidden below
 			&DisableSELinuxFlag,
 			DockerFlag,
-			FlannelFlag,
 			cli.StringFlag{
 				Name:        "cluster-secret",
 				Usage:       "(deprecated) use --token",

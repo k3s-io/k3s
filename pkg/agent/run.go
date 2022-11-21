@@ -97,7 +97,7 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 		return err
 	}
 
-	if !nodeConfig.NoFlannel {
+	if nodeConfig.FlannelBackend != daemonconfig.FlannelBackendNone {
 		if (nodeConfig.FlannelExternalIP) && (len(nodeConfig.AgentConfig.NodeExternalIPs) == 0) {
 			logrus.Warnf("Server has flannel-external-ip flag set but this node does not set node-external-ip. Flannel will use internal address when connecting to this node.")
 		} else if (nodeConfig.FlannelExternalIP) && (nodeConfig.FlannelBackend != types.FlannelBackendWireguardNative) && (nodeConfig.FlannelBackend != types.FlannelBackendIPSEC) {
@@ -146,7 +146,7 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 		return err
 	}
 
-	if !nodeConfig.NoFlannel {
+	if nodeConfig.FlannelBackend != daemonconfig.FlannelBackendNone {
 		if err := flannel.Run(ctx, nodeConfig, coreClient.CoreV1().Nodes()); err != nil {
 			return err
 		}

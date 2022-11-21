@@ -340,7 +340,7 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	}
 
 	var flannelIface *net.Interface
-	if !envInfo.NoFlannel && len(envInfo.FlannelIface) > 0 {
+	if controlConfig.FlannelBackend != config.FlannelBackendNone && len(envInfo.FlannelIface) > 0 {
 		flannelIface, err = net.InterfaceByName(envInfo.FlannelIface)
 		if err != nil {
 			return nil, errors.Wrapf(err, "unable to find interface")
@@ -512,15 +512,7 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 		nodeConfig.AgentConfig.NodeExternalIP = nodeExternalIP.String()
 	}
 
-	if nodeConfig.FlannelBackend == config.FlannelBackendNone {
-		nodeConfig.NoFlannel = true
-	} else if envInfo.NoFlannel {
-		logrus.Fatal("no-flannel is deprecated. Use --flannel-backend=none instead.")
-	} else {
-		nodeConfig.NoFlannel = envInfo.NoFlannel
-	}
-
-	if !nodeConfig.NoFlannel {
+	if nodeConfig.FlannelBackend != config.FlannelBackendNone {
 		hostLocal, err := exec.LookPath("host-local")
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to find host-local")

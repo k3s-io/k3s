@@ -521,7 +521,6 @@ var ServerFlags = []cli.Flag{
 	// Hidden/Deprecated flags below
 
 	&DisableSELinuxFlag,
-	FlannelFlag,
 	cli.StringSliceFlag{
 		Name:   "no-deploy",
 		Usage:  "(deprecated) Do not deploy packaged components (valid items: " + DisableItems + ")",
