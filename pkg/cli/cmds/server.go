@@ -498,6 +498,10 @@ var ServerFlags = []cli.Flag{
 		EnvVar:      version.ProgramUpper + "_SYSTEM_DEFAULT_REGISTRY",
 		Destination: &ServerConfig.SystemDefaultRegistry,
 	},
+	cli.BoolFlag{
+		Name:  "prefer-bundled-bin",
+		Usage: "(experimental) Prefer bundled userspace binaries over host binaries",
+	},
 	&SELinuxFlag,
 	LBServerPortFlag,
 	cli.BoolFlag{
