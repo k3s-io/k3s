@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 
 	"github.com/k3s-io/k3s/pkg/version"
-	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
 
@@ -190,29 +189,13 @@ var (
 		Destination: &AgentConfig.ImageCredProvConfig,
 		Value:       "/var/lib/rancher/credentialprovider/config.yaml",
 	}
-	DisableSELinuxFlag = cli.BoolTFlag{
-		Name:   "disable-selinux",
-		Usage:  "(deprecated) Use --selinux to explicitly enable SELinux",
-		Hidden: true,
-	}
 )
 
-func CheckSELinuxFlags(ctx *cli.Context) error {
-	disable, enable := DisableSELinuxFlag.Name, SELinuxFlag.Name
-	switch {
-	case ctx.IsSet(disable) && ctx.IsSet(enable):
-		return errors.Errorf("--%s is deprecated in favor of --%s to affirmatively enable it in containerd", disable, enable)
-	case ctx.IsSet(disable):
-		AgentConfig.EnableSELinux = !ctx.Bool(disable)
-	}
-	return nil
-}
 func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
 	return cli.Command{
 		Name:      "agent",
 		Usage:     "Run node agent",
 		UsageText: appName + " agent [OPTIONS]",
-		Before:    CheckSELinuxFlags,
 		Action:    action,
 		Flags: []cli.Flag{
 			ConfigFlag,
@@ -270,7 +253,6 @@ func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
 			},
 			PreferBundledBin,
 			// Deprecated/hidden below
-			&DisableSELinuxFlag,
 			DockerFlag,
 		},
 	}

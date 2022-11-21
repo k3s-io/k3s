@@ -520,7 +520,6 @@ var ServerFlags = []cli.Flag{
 
 	// Hidden/Deprecated flags below
 
-	&DisableSELinuxFlag,
 	cli.BoolFlag{
 		Name:        "disable-agent",
 		Usage:       "Do not run a local agent and register a local kubelet",
@@ -546,7 +545,6 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 		Name:      "server",
 		Usage:     "Run management server",
 		UsageText: appName + " server [OPTIONS]",
-		Before:    CheckSELinuxFlags,
 		Action:    action,
 		Flags:     ServerFlags,
 	}
