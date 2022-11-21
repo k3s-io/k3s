@@ -139,8 +139,16 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	serverConfig.ControlConfig.AdvertiseIP = cfg.AdvertiseIP
 	serverConfig.ControlConfig.AdvertisePort = cfg.AdvertisePort
 	serverConfig.ControlConfig.FlannelBackend = cfg.FlannelBackend
+
+	if cfg.FlannelIPv6Masq {
+		logrus.Warn("flannelIPv6Masq flag is deprecated and will be removed in v1.28")
+	}
+	if cfg.FlannelExternalIP {
+		logrus.Warn("flannelExternalIP flag is deprecated and will be removed in v1.28")
+	}
 	serverConfig.ControlConfig.FlannelIPv6Masq = cfg.FlannelIPv6Masq
 	serverConfig.ControlConfig.FlannelExternalIP = cfg.FlannelExternalIP
+	serverConfig.ControlConfig.FlannelOpts = cfg.FlannelOpts
 	serverConfig.ControlConfig.EgressSelectorMode = cfg.EgressSelectorMode
 	serverConfig.ControlConfig.ExtraCloudControllerArgs = cfg.ExtraCloudControllerArgs
 	serverConfig.ControlConfig.DisableCCM = cfg.DisableCCM

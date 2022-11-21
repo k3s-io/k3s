@@ -432,6 +432,13 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 		return nil, err
 	}
 
+	if len(controlConfig.FlannelOpts) > 0 {
+		controlConfig.FlannelIPv6Masq, controlConfig.FlannelExternalIP, err = processFlannelOpts(controlConfig.FlannelOpts)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	nodeConfig := &config.Node{
 		Docker:                   envInfo.Docker,
 		SELinux:                  envInfo.EnableSELinux,
@@ -677,4 +684,21 @@ func validateNetworkConfig(nodeConfig *config.Node) error {
 	}
 
 	return nil
+}
+
+// processFlannelOpts separates the three expected flannel options in three different variables
+func processFlannelOpts(opts []string) (bool, bool, error) {
+	var ipv6Masq, externalIP bool
+	for _, opt := range opts {
+		switch {
+		case strings.Contains(opt, "ipv6-masq"):
+			ipv6Masq = true
+		case strings.Contains(opt, "external-ip"):
+			externalIP = true
+		default:
+			return false, false, fmt.Errorf("wrong arg: %s passed in --flannel-opts. Correct args are backend, ipv6-masq, and external-ip", opt)
+		}
+	}
+
+	return ipv6Masq, externalIP, nil
 }
