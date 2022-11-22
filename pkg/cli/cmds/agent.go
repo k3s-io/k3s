@@ -276,6 +276,7 @@ func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
 			},
 			&SELinuxFlag,
 			LBServerPortFlag,
+			PreferBundledBin,
 
 			// Deprecated/hidden below
 
