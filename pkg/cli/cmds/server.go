@@ -492,15 +492,12 @@ var ServerFlags = []cli.Flag{
 		Usage:       "(db) Path to snapshot file to be restored",
 		Destination: &ServerConfig.ClusterResetRestorePath,
 	},
+	PreferBundledBin,
 	cli.StringFlag{
 		Name:        "system-default-registry",
 		Usage:       "(image) Private registry to be used for all system images",
 		EnvVar:      version.ProgramUpper + "_SYSTEM_DEFAULT_REGISTRY",
 		Destination: &ServerConfig.SystemDefaultRegistry,
-	},
-	cli.BoolFlag{
-		Name:  "prefer-bundled-bin",
-		Usage: "(experimental) Prefer bundled userspace binaries over host binaries",
 	},
 	&SELinuxFlag,
 	LBServerPortFlag,
