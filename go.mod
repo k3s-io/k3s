@@ -66,7 +66,6 @@ replace (
 )
 
 require (
-	github.com/Microsoft/hcsshim v0.9.2
 	github.com/Mirantis/cri-dockerd v0.0.0-00010101000000-000000000000
 	github.com/cloudnativelabs/kube-router v1.3.2
 	github.com/containerd/cgroups v1.0.3
