@@ -17,6 +17,10 @@ var (
 		Destination: &Debug,
 		EnvVar:      version.ProgramUpper + "_DEBUG",
 	}
+	PreferBundledBin = cli.BoolFlag{
+		Name:  "prefer-bundled-bin",
+		Usage: "(experimental) Prefer bundled userspace binaries over host binaries",
+	}
 )
 
 func init() {
