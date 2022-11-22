@@ -269,17 +269,14 @@ func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
 			FlannelCniConfFileFlag,
 			ExtraKubeletArgs,
 			ExtraKubeProxyArgs,
+			// Experimental flags
 			cli.BoolFlag{
 				Name:        "rootless",
 				Usage:       "(experimental) Run rootless",
 				Destination: &AgentConfig.Rootless,
 			},
-			cli.BoolFlag{
-				Name:  "prefer-bundled-bin",
-				Usage: "(experimental) Prefer bundled userspace binaries over host binaries",
-			},
+			PreferBundledBin,
 			// Deprecated/hidden below
-
 			&DisableSELinuxFlag,
 			DockerFlag,
 			FlannelFlag,

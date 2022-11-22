@@ -498,6 +498,7 @@ var ServerFlags = []cli.Flag{
 	ExtraKubeletArgs,
 	ExtraKubeProxyArgs,
 	ProtectKernelDefaultsFlag,
+	// Experimental flags
 	cli.BoolFlag{
 		Name:        "enable-pprof",
 		Usage:       "(experimental) Enable pprof endpoint on supervisor port",
@@ -508,10 +509,7 @@ var ServerFlags = []cli.Flag{
 		Usage:       "(experimental) Run rootless",
 		Destination: &ServerConfig.Rootless,
 	},
-	cli.BoolFlag{
-		Name:  "prefer-bundled-bin",
-		Usage: "(experimental) Prefer bundled userspace binaries over host binaries",
-	},
+	PreferBundledBin,
 	cli.BoolFlag{
 		Name:        "secrets-encryption",
 		Usage:       "(experimental) Enable Secret encryption at rest",
