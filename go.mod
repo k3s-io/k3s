@@ -71,7 +71,6 @@ replace (
 )
 
 require (
-	github.com/Microsoft/hcsshim v0.9.2
 	github.com/cloudnativelabs/kube-router v1.3.2
 	github.com/containerd/cgroups v1.0.3
 	github.com/containerd/containerd v1.6.2
