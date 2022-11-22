@@ -274,7 +274,10 @@ func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
 				Usage:       "(experimental) Run rootless",
 				Destination: &AgentConfig.Rootless,
 			},
-
+			cli.BoolFlag{
+				Name:  "prefer-bundled-bin",
+				Usage: "(experimental) Prefer bundled userspace binaries over host binaries",
+			},
 			// Deprecated/hidden below
 
 			&DisableSELinuxFlag,
