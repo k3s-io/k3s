@@ -13,6 +13,11 @@ metadata:
   labels:
     k8s-app: metrics-server
 spec:
+  revisionHistoryLimit: 0
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
   selector:
     matchLabels:
       k8s-app: metrics-server

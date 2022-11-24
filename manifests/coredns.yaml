@@ -84,7 +84,7 @@ metadata:
     k8s-app: kube-dns
     kubernetes.io/name: "CoreDNS"
 spec:
-  #replicas: 1
+  revisionHistoryLimit: 0
   strategy:
     type: RollingUpdate
     rollingUpdate:
