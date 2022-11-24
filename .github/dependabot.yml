@@ -1,0 +1,32 @@
+version: 2
+updates:
+
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "daily"
+
+  - package-ecosystem: "docker"
+    directory: "/conformance"
+    schedule:
+      interval: "daily"
+
+  - package-ecosystem: "docker"
+    directory: "/tests/e2e/scripts"
+    schedule:
+      interval: "daily"
+
+  - package-ecosystem: "docker"
+    directory: "/package"
+    schedule:
+      interval: "daily"
+
+  - package-ecosystem: "docker"
+    directory: "/tests/integration"
+    schedule:
+      interval: "daily"
+
+  - package-ecosystem: "docker"
+    directory: "/tests/terraform"
+    schedule:
+      interval: "daily"
