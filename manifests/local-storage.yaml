@@ -41,7 +41,11 @@ metadata:
   name: local-path-provisioner
   namespace: kube-system
 spec:
-  replicas: 1
+  revisionHistoryLimit: 0
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
   selector:
     matchLabels:
       app: local-path-provisioner
