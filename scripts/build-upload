@@ -2,9 +2,11 @@
 
 # Check for AWS Credentials
 [ -n "$AWS_SECRET_ACCESS_KEY" ] || {
+  echo "AWS_SECRET_ACCESS_KEY is not set"
   exit 0
 }
 [ -n "$AWS_ACCESS_KEY_ID" ] || {
+  echo "AWS_ACCESS_KEY_ID is not set"
   exit 0
 }
 
