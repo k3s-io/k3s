@@ -9,14 +9,14 @@ platform:
 steps:
 - name: build
   image: rancher/dapper:v0.5.0
-  secrets: [ AWS_SECRET_ACCESS_KEY-artifact-uploader, AWS_ACCESS_KEY_ID-artifact-uploader, unprivileged_github_token ]
+  secrets: [ AWS_SECRET_ACCESS_KEY-k3s-ci-uploader, AWS_ACCESS_KEY_ID-k3s-ci-uploader, unprivileged_github_token ]
   environment:
     GITHUB_TOKEN:
       from_secret: unprivileged_github_token
     AWS_SECRET_ACCESS_KEY:
-      from_secret: AWS_SECRET_ACCESS_KEY-artifact-uploader
+      from_secret: AWS_SECRET_ACCESS_KEY-k3s-ci-uploader
     AWS_ACCESS_KEY_ID:
-      from_secret: AWS_ACCESS_KEY_ID-artifact-uploader
+      from_secret: AWS_ACCESS_KEY_ID-k3s-ci-uploader
   commands:
   - dapper ci
   - echo "${DRONE_TAG}-amd64" | sed -e 's/+/-/g' >.tags
@@ -90,13 +90,13 @@ steps:
 
 - name: test
   image: rancher/dapper:v0.5.0
-  secrets: [ AWS_SECRET_ACCESS_KEY-artifact-uploader, AWS_ACCESS_KEY_ID-artifact-uploader ]
+  secrets: [ AWS_SECRET_ACCESS_KEY-k3s-ci-uploader, AWS_ACCESS_KEY_ID-k3s-ci-uploader ]
   environment:
     ENABLE_REGISTRY: 'true'
     AWS_SECRET_ACCESS_KEY:
-      from_secret: AWS_SECRET_ACCESS_KEY-artifact-uploader
+      from_secret: AWS_SECRET_ACCESS_KEY-k3s-ci-uploader
     AWS_ACCESS_KEY_ID:
-      from_secret: AWS_ACCESS_KEY_ID-artifact-uploader
+      from_secret: AWS_ACCESS_KEY_ID-k3s-ci-uploader
   commands:
   - docker build --target test-k3s -t k3s:test-${DRONE_STAGE_ARCH}-${DRONE_COMMIT} -f Dockerfile.test .
   - >
@@ -139,12 +139,12 @@ platform:
 steps:
 - name: build
   image: rancher/dapper:v0.5.0
-  secrets: [ AWS_SECRET_ACCESS_KEY-artifact-uploader, AWS_ACCESS_KEY_ID-artifact-uploader ]
+  secrets: [ AWS_SECRET_ACCESS_KEY-k3s-ci-uploader, AWS_ACCESS_KEY_ID-k3s-ci-uploader ]
   environment:
     AWS_SECRET_ACCESS_KEY:
-      from_secret: AWS_SECRET_ACCESS_KEY-artifact-uploader
+      from_secret: AWS_SECRET_ACCESS_KEY-k3s-ci-uploader
     AWS_ACCESS_KEY_ID:
-      from_secret: AWS_ACCESS_KEY_ID-artifact-uploader
+      from_secret: AWS_ACCESS_KEY_ID-k3s-ci-uploader
   commands:
   - dapper ci
   - echo "${DRONE_TAG}-arm64" | sed -e 's/+/-/g' >.tags
@@ -193,13 +193,13 @@ steps:
 
 - name: test
   image: rancher/dapper:v0.5.0
-  secrets: [ AWS_SECRET_ACCESS_KEY-artifact-uploader, AWS_ACCESS_KEY_ID-artifact-uploader ]
+  secrets: [ AWS_SECRET_ACCESS_KEY-k3s-ci-uploader, AWS_ACCESS_KEY_ID-k3s-ci-uploader ]
   environment:
     ENABLE_REGISTRY: 'true'
     AWS_SECRET_ACCESS_KEY:
-      from_secret: AWS_SECRET_ACCESS_KEY-artifact-uploader
+      from_secret: AWS_SECRET_ACCESS_KEY-k3s-ci-uploader
     AWS_ACCESS_KEY_ID:
-      from_secret: AWS_ACCESS_KEY_ID-artifact-uploader
+      from_secret: AWS_ACCESS_KEY_ID-k3s-ci-uploader
   commands:
   - docker build --target test-k3s -t k3s:test-${DRONE_STAGE_ARCH}-${DRONE_COMMIT} -f Dockerfile.test .
   - >
@@ -225,12 +225,12 @@ platform:
 steps:
 - name: build
   image: rancher/dapper:v0.5.0
-  secrets: [ AWS_SECRET_ACCESS_KEY-artifact-uploader, AWS_ACCESS_KEY_ID-artifact-uploader ]
+  secrets: [ AWS_SECRET_ACCESS_KEY-k3s-ci-uploader, AWS_ACCESS_KEY_ID-k3s-ci-uploader ]
   environment:
     AWS_SECRET_ACCESS_KEY:
-      from_secret: AWS_SECRET_ACCESS_KEY-artifact-uploader
+      from_secret: AWS_SECRET_ACCESS_KEY-k3s-ci-uploader
     AWS_ACCESS_KEY_ID:
-      from_secret: AWS_ACCESS_KEY_ID-artifact-uploader
+      from_secret: AWS_ACCESS_KEY_ID-k3s-ci-uploader
   commands:
   - dapper ci
   - echo "${DRONE_TAG}-arm" | sed -e 's/+/-/g' >.tags
@@ -279,13 +279,13 @@ steps:
 
 - name: test
   image: rancher/dapper:v0.5.0
-  secrets: [ AWS_SECRET_ACCESS_KEY-artifact-uploader, AWS_ACCESS_KEY_ID-artifact-uploader ]
+  secrets: [ AWS_SECRET_ACCESS_KEY-k3s-ci-uploader, AWS_ACCESS_KEY_ID-k3s-ci-uploader ]
   environment:
     ENABLE_REGISTRY: 'true'
     AWS_SECRET_ACCESS_KEY:
-      from_secret: AWS_SECRET_ACCESS_KEY-artifact-uploader
+      from_secret: AWS_SECRET_ACCESS_KEY-k3s-ci-uploader
     AWS_ACCESS_KEY_ID:
-      from_secret: AWS_ACCESS_KEY_ID-artifact-uploader
+      from_secret: AWS_ACCESS_KEY_ID-k3s-ci-uploader
   commands:
   - docker build --target test-k3s -t k3s:test-${DRONE_STAGE_ARCH}-${DRONE_COMMIT} -f Dockerfile.test .
   - >
@@ -325,12 +325,12 @@ steps:
 
 - name: build
   image: rancher/dapper:v0.5.8
-  secrets: [ AWS_SECRET_ACCESS_KEY-artifact-uploader, AWS_ACCESS_KEY_ID-artifact-uploader ]
+  secrets: [ AWS_SECRET_ACCESS_KEY-k3s-ci-uploader, AWS_ACCESS_KEY_ID-k3s-ci-uploader ]
   environment:
     AWS_SECRET_ACCESS_KEY:
-      from_secret: AWS_SECRET_ACCESS_KEY-artifact-uploader
+      from_secret: AWS_SECRET_ACCESS_KEY-k3s-ci-uploader
     AWS_ACCESS_KEY_ID:
-      from_secret: AWS_ACCESS_KEY_ID-artifact-uploader
+      from_secret: AWS_ACCESS_KEY_ID-k3s-ci-uploader
   commands:
   - dapper ci
   - echo "${DRONE_TAG}-s390x" | sed -e 's/+/-/g' >.tags
@@ -382,13 +382,13 @@ steps:
 
 - name: test
   image: rancher/dapper:v0.5.8
-  secrets: [ AWS_SECRET_ACCESS_KEY-artifact-uploader, AWS_ACCESS_KEY_ID-artifact-uploader ]
+  secrets: [ AWS_SECRET_ACCESS_KEY-k3s-ci-uploader, AWS_ACCESS_KEY_ID-k3s-ci-uploader ]
   environment:
     ENABLE_REGISTRY: 'true'
     AWS_SECRET_ACCESS_KEY:
-      from_secret: AWS_SECRET_ACCESS_KEY-artifact-uploader
+      from_secret: AWS_SECRET_ACCESS_KEY-k3s-ci-uploader
     AWS_ACCESS_KEY_ID:
-      from_secret: AWS_ACCESS_KEY_ID-artifact-uploader
+      from_secret: AWS_ACCESS_KEY_ID-k3s-ci-uploader
   commands:
   # we hardcode s390x as the arch because DRONE_STAGE_ARCH is set to amd64
   - docker build --target test-k3s -t k3s:test-s390x-${DRONE_COMMIT} -f Dockerfile.test .

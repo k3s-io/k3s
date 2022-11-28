@@ -34,6 +34,9 @@ BUILD_NAME=$(basename $1)-$2
 (cd $(dirname $1) && sha256sum $(basename $1)) >${TMPDIR}/${BUILD_NAME}.sha256sum
 cp $1 ${TMPDIR}/${BUILD_NAME}
 
-aws s3 cp ${TMPDIR}/${BUILD_NAME}* s3://k3s-ci-builds || exit 1
+for FILE in ${TMPDIR}/${BUILD_NAME}*; do
+  aws s3 cp ${FILE} s3://k3s-ci-builds || exit 1
+done
+
 echo "Build uploaded" >&2
 echo "https://k3s-ci-builds.s3.amazonaws.com/${BUILD_NAME}"
