@@ -3,17 +3,17 @@
 iterations=0
 curl -s -H 'Accept: application/vnd.github.v3+json' "https://api.github.com/repos/k3s-io/k3s/commits?per_page=5&sha=$1" | jq -r '.[] | .sha'  &> $2
 # The VMs take time on startup to hit googleapis.com, wait loop until we can
-while ! curl -s --fail https://storage.googleapis.com/k3s-ci-builds > /dev/null; do
+while ! curl -s --fail https://k3s-ci-builds.s3.amazonaws.com > /dev/null; do
     ((iterations++))
     if [ "$iterations" -ge 30 ]; then
-        echo "Unable to hit googleapis.com/k3s-ci-builds"
+        echo "Unable to hit https://k3s-ci-builds.s3.amazonaws.com"
         exit 1
     fi
     sleep 1
 done
 
 iterations=0
-curl -s --fail https://storage.googleapis.com/k3s-ci-builds/k3s-$(head -n 1 $2).sha256sum
+curl -s --fail https://k3s-ci-builds.s3.amazonaws.com/k3s-$(head -n 1 $2).sha256sum
 while [ $? -ne 0 ]; do
     ((iterations++))
     if [ "$iterations" -ge 6 ]; then
@@ -22,5 +22,5 @@ while [ $? -ne 0 ]; do
     fi
     sed -i 1d "$2"
     sleep 1
-    curl -s --fail https://storage.googleapis.com/k3s-ci-builds/k3s-$(head -n 1 $2).sha256sum
+    curl -s --fail https://k3s-ci-builds.s3.amazonaws.com/k3s-ci-builds/k3s-$(head -n 1 $2).sha256sum
 done

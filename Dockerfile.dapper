@@ -9,13 +9,15 @@ ENV https_proxy=$https_proxy
 ENV no_proxy=$no_proxy
 
 RUN apk -U --no-cache add bash git gcc musl-dev docker vim less file curl wget ca-certificates jq linux-headers \
-    zlib-dev tar zip squashfs-tools npm coreutils python3 openssl-dev libffi-dev libseccomp libseccomp-dev \
+    zlib-dev tar zip squashfs-tools npm coreutils python3 py3-pip openssl-dev libffi-dev libseccomp libseccomp-dev \
     libseccomp-static make libuv-static sqlite-dev sqlite-static libselinux libselinux-dev zlib-dev zlib-static \
     zstd pigz alpine-sdk binutils-gold btrfs-progs-dev btrfs-progs-static gawk \
     && \
     if [ "$(go env GOARCH)" = "amd64" ]; then \
     apk -U --no-cache add mingw-w64-gcc; \
     fi
+
+RUN python3 -m pip install awscli
 
 RUN if [ "$(go env GOARCH)" = "arm64" ]; then                                                               \
     wget https://github.com/aquasecurity/trivy/releases/download/v0.25.3/trivy_0.25.3_Linux-ARM64.tar.gz && \
@@ -45,7 +47,7 @@ ARG SELINUX=true
 ENV SELINUX $SELINUX
 
 ENV DAPPER_RUN_ARGS --privileged -v k3s-cache:/go/src/github.com/k3s-io/k3s/.cache -v trivy-cache:/root/.cache/trivy
-ENV DAPPER_ENV REPO TAG DRONE_TAG IMAGE_NAME SKIP_VALIDATE SKIP_AIRGAP GCLOUD_AUTH GITHUB_TOKEN GOLANG DEBUG
+ENV DAPPER_ENV REPO TAG DRONE_TAG IMAGE_NAME SKIP_VALIDATE SKIP_AIRGAP AWS_SECRET_ACCESS_KEY AWS_ACCESS_KEY_ID GITHUB_TOKEN GOLANG DEBUG
 ENV DAPPER_SOURCE /go/src/github.com/k3s-io/k3s/
 ENV DAPPER_OUTPUT ./bin ./dist ./build/out ./build/static ./pkg/static ./pkg/deploy
 
