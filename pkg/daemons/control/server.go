@@ -321,6 +321,7 @@ func cloudControllerManager(ctx context.Context, cfg *config.Control) error {
 	}
 	if cfg.DisableCCM {
 		argsMap["controllers"] = argsMap["controllers"] + ",-cloud-node,-cloud-node-lifecycle"
+		argsMap["secure-port"] = "0"
 	}
 	if cfg.DisableServiceLB {
 		argsMap["controllers"] = argsMap["controllers"] + ",-service"
