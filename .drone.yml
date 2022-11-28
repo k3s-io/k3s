@@ -9,12 +9,14 @@ platform:
 steps:
 - name: build
   image: rancher/dapper:v0.5.0
-  secrets: [ gcloud_auth, unprivileged_github_token ]
+  secrets: [ AWS_SECRET_ACCESS_KEY-artifact-uploader, AWS_ACCESS_KEY_ID-artifact-uploader, unprivileged_github_token ]
   environment:
     GITHUB_TOKEN:
       from_secret: unprivileged_github_token
-    GCLOUD_AUTH:
-      from_secret: gcloud_auth
+    AWS_SECRET_ACCESS_KEY:
+      from_secret: AWS_SECRET_ACCESS_KEY-artifact-uploader
+    AWS_ACCESS_KEY_ID:
+      from_secret: AWS_ACCESS_KEY_ID-artifact-uploader
   commands:
   - dapper ci
   - echo "${DRONE_TAG}-amd64" | sed -e 's/+/-/g' >.tags
@@ -88,11 +90,13 @@ steps:
 
 - name: test
   image: rancher/dapper:v0.5.0
-  secrets: [ gcloud_auth ]
+  secrets: [ AWS_SECRET_ACCESS_KEY-artifact-uploader, AWS_ACCESS_KEY_ID-artifact-uploader ]
   environment:
     ENABLE_REGISTRY: 'true'
-    GCLOUD_AUTH:
-      from_secret: gcloud_auth
+    AWS_SECRET_ACCESS_KEY:
+      from_secret: AWS_SECRET_ACCESS_KEY-artifact-uploader
+    AWS_ACCESS_KEY_ID:
+      from_secret: AWS_ACCESS_KEY_ID-artifact-uploader
   commands:
   - dapper -f Dockerfile.test.dapper
   volumes:
@@ -132,10 +136,12 @@ platform:
 steps:
 - name: build
   image: rancher/dapper:v0.5.0
-  secrets: [ gcloud_auth ]
+  secrets: [ AWS_SECRET_ACCESS_KEY-artifact-uploader, AWS_ACCESS_KEY_ID-artifact-uploader ]
   environment:
-    GCLOUD_AUTH:
-      from_secret: gcloud_auth
+    AWS_SECRET_ACCESS_KEY:
+      from_secret: AWS_SECRET_ACCESS_KEY-artifact-uploader
+    AWS_ACCESS_KEY_ID:
+      from_secret: AWS_ACCESS_KEY_ID-artifact-uploader
   commands:
   - dapper ci
   - echo "${DRONE_TAG}-arm64" | sed -e 's/+/-/g' >.tags
@@ -184,11 +190,13 @@ steps:
 
 - name: test
   image: rancher/dapper:v0.5.0
-  secrets: [ gcloud_auth ]
+  secrets: [ AWS_SECRET_ACCESS_KEY-artifact-uploader, AWS_ACCESS_KEY_ID-artifact-uploader ]
   environment:
     ENABLE_REGISTRY: 'true'
-    GCLOUD_AUTH:
-      from_secret: gcloud_auth
+    AWS_SECRET_ACCESS_KEY:
+      from_secret: AWS_SECRET_ACCESS_KEY-artifact-uploader
+    AWS_ACCESS_KEY_ID:
+      from_secret: AWS_ACCESS_KEY_ID-artifact-uploader
   commands:
   - dapper -f Dockerfile.test.dapper
   volumes:
@@ -211,10 +219,12 @@ platform:
 steps:
 - name: build
   image: rancher/dapper:v0.5.0
-  secrets: [ gcloud_auth ]
+  secrets: [ AWS_SECRET_ACCESS_KEY-artifact-uploader, AWS_ACCESS_KEY_ID-artifact-uploader ]
   environment:
-    GCLOUD_AUTH:
-      from_secret: gcloud_auth
+    AWS_SECRET_ACCESS_KEY:
+      from_secret: AWS_SECRET_ACCESS_KEY-artifact-uploader
+    AWS_ACCESS_KEY_ID:
+      from_secret: AWS_ACCESS_KEY_ID-artifact-uploader
   commands:
   - dapper ci
   - echo "${DRONE_TAG}-arm" | sed -e 's/+/-/g' >.tags
@@ -263,11 +273,13 @@ steps:
 
 - name: test
   image: rancher/dapper:v0.5.0
-  secrets: [ gcloud_auth ]
+  secrets: [ AWS_SECRET_ACCESS_KEY-artifact-uploader, AWS_ACCESS_KEY_ID-artifact-uploader ]
   environment:
     ENABLE_REGISTRY: 'true'
-    GCLOUD_AUTH:
-      from_secret: gcloud_auth
+    AWS_SECRET_ACCESS_KEY:
+      from_secret: AWS_SECRET_ACCESS_KEY-artifact-uploader
+    AWS_ACCESS_KEY_ID:
+      from_secret: AWS_ACCESS_KEY_ID-artifact-uploader
   commands:
   - dapper -f Dockerfile.test.dapper
   volumes:
@@ -304,10 +316,12 @@ steps:
 
 - name: build
   image: rancher/dapper:v0.5.8
-  secrets: [ gcloud_auth ]
+  secrets: [ AWS_SECRET_ACCESS_KEY-artifact-uploader, AWS_ACCESS_KEY_ID-artifact-uploader ]
   environment:
-    GCLOUD_AUTH:
-      from_secret: gcloud_auth
+    AWS_SECRET_ACCESS_KEY:
+      from_secret: AWS_SECRET_ACCESS_KEY-artifact-uploader
+    AWS_ACCESS_KEY_ID:
+      from_secret: AWS_ACCESS_KEY_ID-artifact-uploader
   commands:
   - dapper ci
   - echo "${DRONE_TAG}-s390x" | sed -e 's/+/-/g' >.tags
@@ -359,11 +373,13 @@ steps:
 
 - name: test
   image: rancher/dapper:v0.5.8
-  secrets: [ gcloud_auth ]
+  secrets: [ AWS_SECRET_ACCESS_KEY-artifact-uploader, AWS_ACCESS_KEY_ID-artifact-uploader ]
   environment:
     ENABLE_REGISTRY: 'true'
-    GCLOUD_AUTH:
-      from_secret: gcloud_auth
+    AWS_SECRET_ACCESS_KEY:
+      from_secret: AWS_SECRET_ACCESS_KEY-artifact-uploader
+    AWS_ACCESS_KEY_ID:
+      from_secret: AWS_ACCESS_KEY_ID-artifact-uploader
   commands:
   - dapper -f Dockerfile.test.dapper
   volumes:
