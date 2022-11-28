@@ -1,5 +1,13 @@
 #!/bin/bash
 
+# Check for AWS Credentials
+[ -n "$AWS_SECRET_ACCESS_KEY" ] || {
+  exit 0
+}
+[ -n "$AWS_ACCESS_KEY_ID" ] || {
+  exit 0
+}
+
 [ -d "$1" ] || {
   echo "First argument should be a directory" >&2
   exit 1
@@ -18,33 +26,10 @@ cleanup() {
 }
 trap cleanup EXIT INT
 
-GCLOUD_JSON=${TMPDIR}/.gcloud.json
-[ -z "${GCLOUD_AUTH}" ] || echo "${GCLOUD_AUTH}" >${GCLOUD_JSON}
-[ -s "${GCLOUD_JSON}" ] || {
-  echo "gcloud auth not defined" >&2
-  exit 1
-}
-
-BOTO_CONF=${TMPDIR}/.boto
-[ -s "${BOTO_CONF}" ] || cat >${BOTO_CONF} <<END
-[Credentials]
-gs_service_key_file = ${GCLOUD_JSON}
-[Boto]
-https_validate_certificates = True
-[GSUtil]
-content_language = en
-default_api_version = 2
-default_project_id = rancher-dev
-END
-
-[ -d "${TMPDIR}/gsutil" ] || curl -sfL https://storage.googleapis.com/pub/gsutil.tar.gz | tar xz -C ${TMPDIR}
-
-HOME=${TMPDIR}
-PATH=$PATH:${HOME}/gsutil
-
 LOG_TGZ=k3s-log-$(date +%s)-$("${GO}" env GOARCH)-$(git rev-parse --short HEAD)-$(basename $1).tgz
 
 tar -cz -f ${TMPDIR}/${LOG_TGZ} -C $(dirname $1) $(basename $1)
-gsutil cp ${TMPDIR}/${LOG_TGZ} gs://k3s-ci-logs || exit 1
+aws s3 cp ${TMPDIR}/${LOG_TGZ} s3://k3s-ci-logs || exit 1
 echo "Logs uploaded" >&2
-echo "https://storage.googleapis.com/k3s-ci-logs/${LOG_TGZ}"
+echo "https://k3s-ci-logs.s3.amazonaws.com/${LOG_TGZ}"
+
