@@ -32,7 +32,7 @@ if [ -z "$VERSION_CRICTL" ]; then
 fi
 
 VERSION_K8S_K3S=$(grep 'k8s.io/kubernetes =>' go.mod | head -n1 | awk '{print $4}')
-VERSION_K8S=${$VERSION_K8S_K3S%"-k3s1"}
+VERSION_K8S=${VERSION_K8S_K3S%"-k3s1"}
 if [ -z "$VERSION_K8S" ]; then
     VERSION_K8S="v0.0.0"
 fi
