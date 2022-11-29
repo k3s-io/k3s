@@ -37,6 +37,7 @@ const (
 type Node struct {
 	Docker                   bool
 	ContainerRuntimeEndpoint string
+	NoFlannel                bool
 	SELinux                  bool
 	FlannelBackend           string
 	FlannelConfFile          string

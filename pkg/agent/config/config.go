@@ -512,7 +512,8 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 		nodeConfig.AgentConfig.NodeExternalIP = nodeExternalIP.String()
 	}
 
-	if nodeConfig.FlannelBackend != config.FlannelBackendNone {
+	nodeConfig.NoFlannel = nodeConfig.FlannelBackend == config.FlannelBackendNone
+	if !nodeConfig.NoFlannel {
 		hostLocal, err := exec.LookPath("host-local")
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to find host-local")

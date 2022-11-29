@@ -225,7 +225,7 @@ func createFlannelConf(nodeConfig *config.Node) error {
 		}
 		logrus.Warnf("The ipsec backend is deprecated and will be removed in k3s v1.27; please switch to wireguard-native. Check our docs for information on how to migrate.")
 	case config.FlannelBackendWireguard:
-		logrus.Fatalf("The wireguard backend was deprecated in K3s v1.26, please switch to wireguard-native. Check our docs for information about how to migrate")
+		logrus.Fatalf("The wireguard backend was deprecated in K3s v1.26, please switch to wireguard-native. Check our docs at docs.k3s.io/installation/network-options for information about how to migrate")
 	case config.FlannelBackendWireguardNative:
 		mode, ok := backendOptions["Mode"]
 		if !ok {
