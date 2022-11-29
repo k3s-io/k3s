@@ -23,7 +23,6 @@ import (
 	agentutil "github.com/k3s-io/k3s/pkg/agent/util"
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
 	"github.com/k3s-io/k3s/pkg/clientaccess"
-	"github.com/k3s-io/k3s/pkg/containerd"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/daemons/control/deps"
 	"github.com/k3s-io/k3s/pkg/util"
@@ -467,20 +466,20 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	if !nodeConfig.Docker && nodeConfig.ContainerRuntimeEndpoint == "" {
 		switch nodeConfig.AgentConfig.Snapshotter {
 		case "overlayfs":
-			if err := containerd.OverlaySupported(nodeConfig.Containerd.Root); err != nil {
-				return nil, errors.Wrapf(err, "\"overlayfs\" snapshotter cannot be enabled for %q, try using \"fuse-overlayfs\" or \"native\"",
-					nodeConfig.Containerd.Root)
-			}
+			// if err := containerd.OverlaySupported(nodeConfig.Containerd.Root); err != nil {
+			// 	return nil, errors.Wrapf(err, "\"overlayfs\" snapshotter cannot be enabled for %q, try using \"fuse-overlayfs\" or \"native\"",
+			// 		nodeConfig.Containerd.Root)
+			// }
 		case "fuse-overlayfs":
-			if err := containerd.FuseoverlayfsSupported(nodeConfig.Containerd.Root); err != nil {
-				return nil, errors.Wrapf(err, "\"fuse-overlayfs\" snapshotter cannot be enabled for %q, try using \"native\"",
-					nodeConfig.Containerd.Root)
-			}
+			// if err := containerd.FuseoverlayfsSupported(nodeConfig.Containerd.Root); err != nil {
+			// 	return nil, errors.Wrapf(err, "\"fuse-overlayfs\" snapshotter cannot be enabled for %q, try using \"native\"",
+			// 		nodeConfig.Containerd.Root)
+			// }
 		case "stargz":
-			if err := containerd.StargzSupported(nodeConfig.Containerd.Root); err != nil {
-				return nil, errors.Wrapf(err, "\"stargz\" snapshotter cannot be enabled for %q, try using \"overlayfs\" or \"native\"",
-					nodeConfig.Containerd.Root)
-			}
+			// if err := containerd.StargzSupported(nodeConfig.Containerd.Root); err != nil {
+			// 	return nil, errors.Wrapf(err, "\"stargz\" snapshotter cannot be enabled for %q, try using \"overlayfs\" or \"native\"",
+			// 		nodeConfig.Containerd.Root)
+			// }
 			nodeConfig.AgentConfig.ImageServiceSocket = "/run/containerd-stargz-grpc/containerd-stargz-grpc.sock"
 		}
 	}
