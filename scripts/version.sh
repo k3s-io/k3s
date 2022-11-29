@@ -31,7 +31,7 @@ if [ -z "$VERSION_CRICTL" ]; then
     VERSION_CRICTL="v0.0.0"
 fi
 
-VERSION_K8S=$(grep 'k8s.io/kubernetes v' go.mod | head -n1 | awk '{print $2}')
+VERSION_K8S=${$(grep 'k8s.io/kubernetes =>' go.mod | head -n1 | awk '{print $4}')%"-k3s1"}
 if [ -z "$VERSION_K8S" ]; then
     VERSION_K8S="v0.0.0"
 fi
