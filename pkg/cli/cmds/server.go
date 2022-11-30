@@ -498,6 +498,11 @@ var ServerFlags = []cli.Flag{
 	ExtraKubeletArgs,
 	ExtraKubeProxyArgs,
 	ProtectKernelDefaultsFlag,
+	cli.BoolFlag{
+		Name:        "secrets-encryption",
+		Usage:       "Enable Secret encryption at rest",
+		Destination: &ServerConfig.EncryptSecrets,
+	},
 	// Experimental flags
 	cli.BoolFlag{
 		Name:        "enable-pprof",
@@ -510,11 +515,6 @@ var ServerFlags = []cli.Flag{
 		Destination: &ServerConfig.Rootless,
 	},
 	PreferBundledBin,
-	cli.BoolFlag{
-		Name:        "secrets-encryption",
-		Usage:       "(experimental) Enable Secret encryption at rest",
-		Destination: &ServerConfig.EncryptSecrets,
-	},
 	&SELinuxFlag,
 	LBServerPortFlag,
 
