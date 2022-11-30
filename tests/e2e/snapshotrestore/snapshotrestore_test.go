@@ -101,11 +101,12 @@ var _ = Describe("Verify Create", Ordered, func() {
 
 		It("Verifies Snapshot is created", func() {
 			Eventually(func(g Gomega) {
-				cmd := "sudo k3s etcd-snapshot"
+				cmd := "sudo k3s etcd-snapshot save"
 				_, err := e2e.RunCmdOnNode(cmd, "server-0")
 				g.Expect(err).NotTo(HaveOccurred())
 				cmd = "sudo ls /var/lib/rancher/k3s/server/db/snapshots/"
 				snapshotname, err = e2e.RunCmdOnNode(cmd, "server-0")
+				g.Expect(err).NotTo(HaveOccurred())
 				fmt.Println("Snapshot Name", snapshotname)
 				g.Expect(snapshotname).Should(ContainSubstring("on-demand-server-0"))
 			}, "420s", "10s").Should(Succeed())

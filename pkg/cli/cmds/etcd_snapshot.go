@@ -99,12 +99,13 @@ var EtcdSnapshotFlags = []cli.Flag{
 	},
 }
 
-func NewEtcdSnapshotCommands(delete, list, prune, save func(ctx *cli.Context) error) cli.Command {
+func NewEtcdSnapshotCommands(run, delete, list, prune, save func(ctx *cli.Context) error) cli.Command {
 	return cli.Command{
 		Name:            EtcdSnapshotCommand,
 		Usage:           "Trigger an immediate etcd snapshot",
 		SkipFlagParsing: false,
 		SkipArgReorder:  true,
+		Action:          run,
 		Subcommands: []cli.Command{
 			{
 				Name:            "delete",

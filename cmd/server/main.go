@@ -49,6 +49,7 @@ func main() {
 		cmds.NewCRICTL(crictl.Run),
 		cmds.NewCtrCommand(ctr.Run),
 		cmds.NewEtcdSnapshotCommands(
+			etcdsnapshot.Run,
 			etcdsnapshot.Delete,
 			etcdsnapshot.List,
 			etcdsnapshot.Prune,

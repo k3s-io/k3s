@@ -16,6 +16,7 @@ func main() {
 	app := cmds.NewApp()
 	app.Commands = []cli.Command{
 		cmds.NewEtcdSnapshotCommands(
+			etcdsnapshot.Run,
 			etcdsnapshot.Delete,
 			etcdsnapshot.List,
 			etcdsnapshot.Prune,
