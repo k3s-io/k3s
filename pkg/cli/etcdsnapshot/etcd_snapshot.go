@@ -73,7 +73,7 @@ func commandSetup(app *cli.Context, cfg *cmds.Server, sc *server.Config) error {
 // TODO: remove in v1.27
 func Run(app *cli.Context) error {
 	cli.ShowAppHelp(app)
-	return fmt.Errorf("saving with etcd-snapshot is deprecated, use \"etcd-snapshot save\" instead")
+	return fmt.Errorf("saving with etcd-snapshot was deprecated in v1.26, use \"etcd-snapshot save\" instead")
 }
 
 // Save triggers an on-demand etcd snapshot operation
