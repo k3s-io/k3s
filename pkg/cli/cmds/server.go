@@ -500,7 +500,7 @@ var ServerFlags = []cli.Flag{
 	ProtectKernelDefaultsFlag,
 	cli.BoolFlag{
 		Name:        "secrets-encryption",
-		Usage:       "Enable Secret encryption at rest",
+		Usage:       "Enable secret encryption at rest",
 		Destination: &ServerConfig.EncryptSecrets,
 	},
 	// Experimental flags
