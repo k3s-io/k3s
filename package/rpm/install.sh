@@ -17,7 +17,7 @@ set -e
 #     Environment variables which begin with K3S_ will be preserved for the
 #     systemd service to use. Setting K3S_URL without explicitly setting
 #     a systemd exec command will default the command to "agent", and we
-#     enforce that K3S_TOKEN or K3S_CLUSTER_SECRET is also set.
+#     enforce that K3S_TOKEN is also set.
 #
 #   - INSTALL_K3S_SKIP_DOWNLOAD
 #     If set to true will not download k3s hash or binary.
@@ -166,8 +166,8 @@ setup_env() {
             if [ -z "${K3S_URL}" ]; then
                 CMD_K3S=server
             else
-                if [ -z "${K3S_TOKEN}" ] && [ -z "${K3S_CLUSTER_SECRET}" ]; then
-                    fatal "Defaulted k3s exec command to 'agent' because K3S_URL is defined, but K3S_TOKEN or K3S_CLUSTER_SECRET is not defined."
+                if [ -z "${K3S_TOKEN}" ]; then
+                    fatal "Defaulted k3s exec command to 'agent' because K3S_URL is defined, but K3S_TOKEN is not defined."
                 fi
                 CMD_K3S=agent
             fi
