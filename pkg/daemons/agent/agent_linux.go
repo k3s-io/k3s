@@ -11,7 +11,6 @@ import (
 	"github.com/k3s-io/k3s/pkg/cgroups"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/util"
-	"github.com/opencontainers/runc/libcontainer/userns"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 	"k8s.io/apimachinery/pkg/util/net"
@@ -140,9 +139,6 @@ func kubeletArgs(cfg *config.Agent) map[string]string {
 	}
 	if runtimeRoot != "" {
 		argsMap["runtime-cgroups"] = runtimeRoot
-	}
-	if userns.RunningInUserNS() {
-		argsMap["feature-gates"] = util.AddFeatureGate(argsMap["feature-gates"], "DevicePlugins=false")
 	}
 
 	argsMap["node-labels"] = strings.Join(cfg.NodeLabels, ",")
