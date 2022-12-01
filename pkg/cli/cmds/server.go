@@ -493,6 +493,12 @@ var ServerFlags = []cli.Flag{
 	ExtraKubeProxyArgs,
 	ProtectKernelDefaultsFlag,
 	cli.BoolFlag{
+		Name:        "secrets-encryption",
+		Usage:       "Enable secret encryption at rest",
+		Destination: &ServerConfig.EncryptSecrets,
+	},
+	// Experimental flags
+	cli.BoolFlag{
 		Name:        "enable-pprof",
 		Usage:       "(experimental) Enable pprof endpoint on supervisor port",
 		Destination: &ServerConfig.EnablePProf,
@@ -501,11 +507,6 @@ var ServerFlags = []cli.Flag{
 		Name:        "rootless",
 		Usage:       "(experimental) Run rootless",
 		Destination: &ServerConfig.Rootless,
-	},
-	cli.BoolFlag{
-		Name:        "secrets-encryption",
-		Usage:       "(experimental) Enable Secret encryption at rest",
-		Destination: &ServerConfig.EncryptSecrets,
 	},
 	cli.StringFlag{
 		Name:        "system-default-registry",
