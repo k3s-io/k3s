@@ -26,12 +26,12 @@ jobs:
     timeout-minutes: 40
     steps:
       - name: "Checkout"
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with: { fetch-depth: 1 }
       - name: "Build"
         run: DOCKER_BUILDKIT=1 SKIP_VALIDATE=1 make
       - name: "Upload Binary"
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with: { name: k3s, path: dist/artifacts/k3s }
   test:
     name: "Smoke Test"
@@ -52,7 +52,7 @@ jobs:
       VAGRANT_EXPERIMENTAL: disks
     steps:
       - name: "Checkout"
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with: { fetch-depth: 1 }
       - name: "Download Binary"
         uses: actions/download-artifact@v2
