@@ -253,11 +253,6 @@ var ServerFlags = []cli.Flag{
 		Destination: &ServerConfig.KubeConfigMode,
 		EnvVar:      version.ProgramUpper + "_KUBECONFIG_MODE",
 	},
-	cli.BoolFlag{
-		Name:        "enable-pprof",
-		Usage:       "(experimental) Enable pprof endpoint on supervisor port",
-		Destination: &ServerConfig.EnablePProf,
-	},
 	ExtraAPIArgs,
 	ExtraEtcdArgs,
 	ExtraControllerArgs,
@@ -462,11 +457,6 @@ var ServerFlags = []cli.Flag{
 	ExtraKubeletArgs,
 	ExtraKubeProxyArgs,
 	ProtectKernelDefaultsFlag,
-	cli.BoolFlag{
-		Name:        "rootless",
-		Usage:       "(experimental) Run rootless",
-		Destination: &ServerConfig.Rootless,
-	},
 	cli.StringFlag{
 		Name:        "agent-token",
 		Usage:       "(cluster) Shared secret used to join agents to the cluster, but not servers",
@@ -502,11 +492,6 @@ var ServerFlags = []cli.Flag{
 		Usage:       "(db) Path to snapshot file to be restored",
 		Destination: &ServerConfig.ClusterResetRestorePath,
 	},
-	cli.BoolFlag{
-		Name:        "secrets-encryption",
-		Usage:       "(experimental) Enable Secret encryption at rest",
-		Destination: &ServerConfig.EncryptSecrets,
-	},
 	cli.StringFlag{
 		Name:        "system-default-registry",
 		Usage:       "(image) Private registry to be used for all system images",
@@ -515,6 +500,22 @@ var ServerFlags = []cli.Flag{
 	},
 	&SELinuxFlag,
 	LBServerPortFlag,
+	cli.BoolFlag{
+		Name:        "secrets-encryption",
+		Usage:       "Enable secret encryption at rest",
+		Destination: &ServerConfig.EncryptSecrets,
+	},
+	// Experimental flags
+	cli.BoolFlag{
+		Name:        "rootless",
+		Usage:       "(experimental) Run rootless",
+		Destination: &ServerConfig.Rootless,
+	},
+	cli.BoolFlag{
+		Name:        "enable-pprof",
+		Usage:       "(experimental) Enable pprof endpoint on supervisor port",
+		Destination: &ServerConfig.EnablePProf,
+	},
 
 	// Hidden/Deprecated flags below
 
