@@ -45,10 +45,6 @@ func Run(ctx *cli.Context) error {
 		cmds.AgentConfig.Token = token
 	}
 
-	if cmds.AgentConfig.Token == "" && cmds.AgentConfig.ClusterSecret != "" {
-		logrus.Fatal("cluster-secret is deprecated. Use --token instead.")
-	}
-
 	if cmds.AgentConfig.Token == "" {
 		return fmt.Errorf("--token is required")
 	}

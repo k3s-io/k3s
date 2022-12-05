@@ -123,7 +123,7 @@ sudo kubectl get nodes
 
 `K3S_TOKEN` is created at `/var/lib/rancher/k3s/server/node-token` on your server.
 To install on worker nodes, pass `K3S_URL` along with
-`K3S_TOKEN` or `K3S_CLUSTER_SECRET` environment variables, for example:
+`K3S_TOKEN` environment variables, for example:
 
 ```bash
 curl -sfL https://get.k3s.io | K3S_URL=https://myserver:6443 K3S_TOKEN=XXX sh -

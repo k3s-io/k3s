@@ -249,7 +249,7 @@ var ServerFlags = []cli.Flag{
 	ServerToken,
 	cli.StringFlag{
 		Name:        "token-file",
-		Usage:       "(cluster) File containing the cluster-secret/token",
+		Usage:       "(cluster) File containing the token",
 		Destination: &ServerConfig.TokenFile,
 		EnvVar:      version.ProgramUpper + "_TOKEN_FILE",
 	},
@@ -520,20 +520,6 @@ var ServerFlags = []cli.Flag{
 
 	// Hidden/Deprecated flags below
 
-	&DisableSELinuxFlag,
-	FlannelFlag,
-	cli.StringSliceFlag{
-		Name:   "no-deploy",
-		Usage:  "(deprecated) Do not deploy packaged components (valid items: " + DisableItems + ")",
-		Hidden: true,
-	},
-	cli.StringFlag{
-		Name:        "cluster-secret",
-		Usage:       "(deprecated) use --token",
-		Destination: &ServerConfig.ClusterSecret,
-		EnvVar:      version.ProgramUpper + "_CLUSTER_SECRET",
-		Hidden:      true,
-	},
 	cli.BoolFlag{
 		Name:        "disable-agent",
 		Usage:       "Do not run a local agent and register a local kubelet",
@@ -559,7 +545,6 @@ func NewServerCommand(action func(*cli.Context) error) cli.Command {
 		Name:      "server",
 		Usage:     "Run management server",
 		UsageText: appName + " server [OPTIONS]",
-		Before:    CheckSELinuxFlags,
 		Action:    action,
 		Flags:     ServerFlags,
 	}

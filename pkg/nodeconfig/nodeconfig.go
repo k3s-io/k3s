@@ -129,7 +129,6 @@ func isSecret(key string) bool {
 		"-t",
 		"--agent-token",
 		"--datastore-endpoint",
-		"--cluster-secret",
 		"--etcd-s3-access-key",
 		"--etcd-s3-secret-key",
 	}

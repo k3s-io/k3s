@@ -91,10 +91,6 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		}
 	}
 
-	if cfg.Token == "" && cfg.ClusterSecret != "" {
-		logrus.Fatal("cluster-secret is deprecated. Use --token instead.")
-	}
-
 	agentReady := make(chan struct{})
 
 	serverConfig := server.Config{}
@@ -352,9 +348,6 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	}
 
 	serverConfig.ControlConfig.Skips = map[string]bool{}
-	if noDeploy := app.StringSlice("no-deploy"); len(noDeploy) > 0 {
-		logrus.Fatal("no-deploy flag is deprecated. Use --disable instead.")
-	}
 	serverConfig.ControlConfig.Disables = map[string]bool{}
 	for _, disable := range app.StringSlice("disable") {
 		for _, v := range strings.Split(disable, ",") {
