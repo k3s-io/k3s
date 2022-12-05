@@ -69,9 +69,10 @@ func commandSetup(app *cli.Context, cfg *cmds.Server, sc *server.Config) error {
 	return nil
 }
 
-// Run is an alias for Save, retained for compatibility reasons.
+// Run was an alias for Save
 func Run(app *cli.Context) error {
-	return Save(app)
+	cli.ShowAppHelp(app)
+	return fmt.Errorf("saving with etcd-snapshot was deprecated in v1.26, use \"etcd-snapshot save\" instead")
 }
 
 // Save triggers an on-demand etcd snapshot operation

@@ -99,61 +99,57 @@ var EtcdSnapshotFlags = []cli.Flag{
 	},
 }
 
-func NewEtcdSnapshotCommand(action func(*cli.Context) error, subcommands []cli.Command) cli.Command {
+func NewEtcdSnapshotCommands(run, delete, list, prune, save func(ctx *cli.Context) error) cli.Command {
 	return cli.Command{
 		Name:            EtcdSnapshotCommand,
 		Usage:           "Trigger an immediate etcd snapshot",
 		SkipFlagParsing: false,
 		SkipArgReorder:  true,
-		Action:          action,
-		Subcommands:     subcommands,
-		Flags:           EtcdSnapshotFlags,
-	}
-}
-
-func NewEtcdSnapshotSubcommands(delete, list, prune, save func(ctx *cli.Context) error) []cli.Command {
-	return []cli.Command{
-		{
-			Name:            "delete",
-			Usage:           "Delete given snapshot(s)",
-			SkipFlagParsing: false,
-			SkipArgReorder:  true,
-			Action:          delete,
-			Flags:           EtcdSnapshotFlags,
+		Action:          run,
+		Subcommands: []cli.Command{
+			{
+				Name:            "delete",
+				Usage:           "Delete given snapshot(s)",
+				SkipFlagParsing: false,
+				SkipArgReorder:  true,
+				Action:          delete,
+				Flags:           EtcdSnapshotFlags,
+			},
+			{
+				Name:            "ls",
+				Aliases:         []string{"list", "l"},
+				Usage:           "List snapshots",
+				SkipFlagParsing: false,
+				SkipArgReorder:  true,
+				Action:          list,
+				Flags: append(EtcdSnapshotFlags, &cli.StringFlag{
+					Name:        "o,output",
+					Usage:       "(db) List format. Default: standard. Optional: json",
+					Destination: &ServerConfig.EtcdListFormat,
+				}),
+			},
+			{
+				Name:            "prune",
+				Usage:           "Remove snapshots that match the name prefix that exceed the configured retention count",
+				SkipFlagParsing: false,
+				SkipArgReorder:  true,
+				Action:          prune,
+				Flags: append(EtcdSnapshotFlags, &cli.IntFlag{
+					Name:        "snapshot-retention",
+					Usage:       "(db) Number of snapshots to retain.",
+					Destination: &ServerConfig.EtcdSnapshotRetention,
+					Value:       defaultSnapshotRentention,
+				}),
+			},
+			{
+				Name:            "save",
+				Usage:           "Trigger an immediate etcd snapshot",
+				SkipFlagParsing: false,
+				SkipArgReorder:  true,
+				Action:          save,
+				Flags:           EtcdSnapshotFlags,
+			},
 		},
-		{
-			Name:            "ls",
-			Aliases:         []string{"list", "l"},
-			Usage:           "List snapshots",
-			SkipFlagParsing: false,
-			SkipArgReorder:  true,
-			Action:          list,
-			Flags: append(EtcdSnapshotFlags, &cli.StringFlag{
-				Name:        "o,output",
-				Usage:       "(db) List format. Default: standard. Optional: json",
-				Destination: &ServerConfig.EtcdListFormat,
-			}),
-		},
-		{
-			Name:            "prune",
-			Usage:           "Remove snapshots that match the name prefix that exceed the configured retention count",
-			SkipFlagParsing: false,
-			SkipArgReorder:  true,
-			Action:          prune,
-			Flags: append(EtcdSnapshotFlags, &cli.IntFlag{
-				Name:        "snapshot-retention",
-				Usage:       "(db) Number of snapshots to retain.",
-				Destination: &ServerConfig.EtcdSnapshotRetention,
-				Value:       defaultSnapshotRentention,
-			}),
-		},
-		{
-			Name:            "save",
-			Usage:           "Trigger an immediate etcd snapshot",
-			SkipFlagParsing: false,
-			SkipArgReorder:  true,
-			Action:          save,
-			Flags:           EtcdSnapshotFlags,
-		},
+		Flags: EtcdSnapshotFlags,
 	}
 }

@@ -48,21 +48,20 @@ func main() {
 		cmds.NewKubectlCommand(kubectl.Run),
 		cmds.NewCRICTL(crictl.Run),
 		cmds.NewCtrCommand(ctr.Run),
-		cmds.NewEtcdSnapshotCommand(etcdsnapshot.Save,
-			cmds.NewEtcdSnapshotSubcommands(
-				etcdsnapshot.Delete,
-				etcdsnapshot.List,
-				etcdsnapshot.Prune,
-				etcdsnapshot.Save),
+		cmds.NewEtcdSnapshotCommands(
+			etcdsnapshot.Run,
+			etcdsnapshot.Delete,
+			etcdsnapshot.List,
+			etcdsnapshot.Prune,
+			etcdsnapshot.Save,
 		),
-		cmds.NewSecretsEncryptCommand(cli.ShowAppHelp,
-			cmds.NewSecretsEncryptSubcommands(
-				secretsencrypt.Status,
-				secretsencrypt.Enable,
-				secretsencrypt.Disable,
-				secretsencrypt.Prepare,
-				secretsencrypt.Rotate,
-				secretsencrypt.Reencrypt),
+		cmds.NewSecretsEncryptCommands(
+			secretsencrypt.Status,
+			secretsencrypt.Enable,
+			secretsencrypt.Disable,
+			secretsencrypt.Prepare,
+			secretsencrypt.Rotate,
+			secretsencrypt.Reencrypt,
 		),
 		cmds.NewCertCommand(
 			cmds.NewCertSubcommands(
