@@ -280,6 +280,10 @@ type ControlRuntime struct {
 	ClientKubeAPIKey  string
 	NodePasswdFile    string
 
+	SigningClientCA   string
+	SigningServerCA   string
+	ServiceCurrentKey string
+
 	KubeConfigAdmin           string
 	KubeConfigController      string
 	KubeConfigScheduler       string
