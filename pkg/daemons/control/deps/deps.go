@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"net"
 	"os"
 	"path/filepath"
@@ -30,6 +31,7 @@ import (
 	"k8s.io/apiserver/pkg/apis/apiserver"
 	apiserverconfigv1 "k8s.io/apiserver/pkg/apis/config/v1"
 	"k8s.io/apiserver/pkg/authentication/user"
+	"k8s.io/client-go/util/keyutil"
 )
 
 const (
@@ -109,6 +111,10 @@ func CreateRuntimeCertFiles(config *config.Control) {
 	runtime.ServiceKey = filepath.Join(config.DataDir, "tls", "service.key")
 	runtime.PasswdFile = filepath.Join(config.DataDir, "cred", "passwd")
 	runtime.NodePasswdFile = filepath.Join(config.DataDir, "cred", "node-passwd")
+
+	runtime.SigningClientCA = filepath.Join(config.DataDir, "tls", "client-ca.nochain.crt")
+	runtime.SigningServerCA = filepath.Join(config.DataDir, "tls", "server-ca.nochain.crt")
+	runtime.ServiceCurrentKey = filepath.Join(config.DataDir, "tls", "service.current.key")
 
 	runtime.KubeConfigAdmin = filepath.Join(config.DataDir, "cred", "admin.kubeconfig")
 	runtime.KubeConfigController = filepath.Join(config.DataDir, "cred", "controller.kubeconfig")
@@ -315,6 +321,18 @@ func genClientCerts(config *config.Control) error {
 		return err
 	}
 
+	certs, err := certutil.CertsFromFile(runtime.ClientCA)
+	if err != nil {
+		return err
+	}
+
+	// If our CA certs are signed by a root or intermediate CA, ClientCA will contain a chain.
+	// The controller-manager's signer wants just a single cert, not a full chain; so create a file
+	// that is guaranteed to contain only a single certificate.
+	if err := certutil.WriteCert(runtime.SigningClientCA, certutil.EncodeCertPEM(certs[0])); err != nil {
+		return err
+	}
+
 	factory := getSigningCertFactory(regen, nil, []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}, runtime.ClientCA, runtime.ClientCAKey)
 
 	var certGen bool
@@ -486,7 +504,24 @@ func createServerSigningCertKey(config *config.Control) (bool, error) {
 		}
 		return true, nil
 	}
-	return createSigningCertKey(version.Program+"-server", runtime.ServerCA, runtime.ServerCAKey)
+	regen, err := createSigningCertKey(version.Program+"-server", runtime.ServerCA, runtime.ServerCAKey)
+	if err != nil {
+		return regen, err
+	}
+
+	// If our CA certs are signed by a root or intermediate CA, ServerCA will contain a chain.
+	// The controller-manager's signer wants just a single cert, not a full chain; so create a file
+	// that is guaranteed to contain only a single certificate.
+	certs, err := certutil.CertsFromFile(runtime.ServerCA)
+	if err != nil {
+		return regen, err
+	}
+
+	if err := certutil.WriteCert(runtime.SigningServerCA, certutil.EncodeCertPEM(certs[0])); err != nil {
+		return regen, err
+	}
+
+	return regen, nil
 }
 
 func addSANs(altNames *certutil.AltNames, sans []string) {
@@ -612,17 +647,35 @@ func exists(files ...string) bool {
 }
 
 func genServiceAccount(runtime *config.ControlRuntime) error {
-	_, keyErr := os.Stat(runtime.ServiceKey)
-	if keyErr == nil {
-		return nil
+	if _, err := os.Stat(runtime.ServiceKey); err != nil {
+		if !errors.Is(err, fs.ErrNotExist) {
+			return err
+		}
+		key, err := certutil.NewPrivateKey()
+		if err != nil {
+			return err
+		}
+		if err := certutil.WriteKey(runtime.ServiceKey, certutil.EncodePrivateKeyPEM(key)); err != nil {
+			return err
+		}
 	}
 
-	key, err := certutil.NewPrivateKey()
+	// When rotating the ServiceAccount signing key, it is necessary to keep the old keys in ServiceKey so that
+	// old ServiceAccount tokens can be validated during the switchover process. The first key in the file
+	// should be the current key used to sign ServiceAccount tokens; others are old keys used for verification
+	// only. Create a file containing just the first key in the list, which will be used to configure the
+	// signing controller.
+	key, err := keyutil.PrivateKeyFromFile(runtime.ServiceKey)
 	if err != nil {
 		return err
 	}
 
-	return certutil.WriteKey(runtime.ServiceKey, certutil.EncodePrivateKeyPEM(key))
+	keyData, err := keyutil.MarshalPrivateKeyToPEM(key)
+	if err != nil {
+		return err
+	}
+
+	return certutil.WriteKey(runtime.ServiceCurrentKey, keyData)
 }
 
 func createSigningCertKey(prefix, certFile, keyFile string) (bool, error) {
