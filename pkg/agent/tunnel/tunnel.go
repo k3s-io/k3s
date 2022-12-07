@@ -56,12 +56,7 @@ func (p *podEntry) Network() net.IPNet {
 }
 
 func Setup(ctx context.Context, config *daemonconfig.Node, proxy proxy.Proxy) error {
-	restConfig, err := clientcmd.BuildConfigFromFlags("", config.AgentConfig.KubeConfigK3sController)
-	if err != nil {
-		return err
-	}
-
-	client, err := kubernetes.NewForConfig(restConfig)
+	client, err := util.GetClientSet(config.AgentConfig.KubeConfigK3sController)
 	if err != nil {
 		return err
 	}
