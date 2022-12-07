@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -8,6 +9,9 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
+
+	"golang.org/x/sync/errgroup"
 )
 
 type Node struct {
@@ -76,12 +80,30 @@ func CreateCluster(nodeOS string, serverCount, agentCount int) ([]string, []stri
 			testOptions += " " + env
 		}
 	}
+	// Bring up the first server node
+	cmd := fmt.Sprintf(`%s %s vagrant up %s &> vagrant.log`, nodeEnvs, testOptions, serverNodeNames[0])
 
-	cmd := fmt.Sprintf(`%s %s vagrant up &> vagrant.log`, nodeEnvs, testOptions)
 	fmt.Println(cmd)
 	if _, err := RunCommand(cmd); err != nil {
 		return nil, nil, fmt.Errorf("failed creating cluster: %s: %v", cmd, err)
 	}
+	// Bring up the rest of the nodes in parallel
+	errg, _ := errgroup.WithContext(context.Background())
+	for _, node := range append(serverNodeNames[1:], agentNodeNames...) {
+		cmd := fmt.Sprintf(`%s %s vagrant up %s &>> vagrant.log`, nodeEnvs, testOptions, node)
+		errg.Go(func() error {
+			if _, err := RunCommand(cmd); err != nil {
+				return fmt.Errorf("failed creating cluster: %s: %v", cmd, err)
+			}
+			return nil
+		})
+		// We must wait a bit between provisioning nodes to avoid too many learners attempting to join the cluster
+		time.Sleep(20 * time.Second)
+	}
+	if err := errg.Wait(); err != nil {
+		return nil, nil, err
+	}
+
 	return serverNodeNames, agentNodeNames, nil
 }
 
@@ -93,6 +115,8 @@ func CreateLocalCluster(nodeOS string, serverCount, agentCount int) ([]string, [
 	serverNodeNames, agentNodeNames, nodeEnvs := genNodeEnvs(nodeOS, serverCount, agentCount)
 
 	var testOptions string
+	var cmd string
+
 	for _, env := range os.Environ() {
 		if strings.HasPrefix(env, "E2E_") {
 			testOptions += " " + env
@@ -100,14 +124,27 @@ func CreateLocalCluster(nodeOS string, serverCount, agentCount int) ([]string, [
 	}
 	testOptions += " E2E_RELEASE_VERSION=skip"
 
-	cmd := fmt.Sprintf(`%s vagrant up --no-provision &> vagrant.log`, nodeEnvs)
-	if _, err := RunCommand(cmd); err != nil {
-		return nil, nil, fmt.Errorf("failed creating nodes: %s: %v", cmd, err)
+	// Bring up the all of the nodes in parallel
+	errg, _ := errgroup.WithContext(context.Background())
+	for i, node := range append(serverNodeNames, agentNodeNames...) {
+		if i == 0 {
+			cmd = fmt.Sprintf(`%s %s vagrant up --no-provision %s &> vagrant.log`, nodeEnvs, testOptions, node)
+		} else {
+			cmd = fmt.Sprintf(`%s %s vagrant up --no-provision %s &>> vagrant.log`, nodeEnvs, testOptions, node)
+		}
+		errg.Go(func() error {
+			if _, err := RunCommand(cmd); err != nil {
+				return fmt.Errorf("failed creating cluster: %s: %v", cmd, err)
+			}
+			return nil
+		})
+		// libVirt/Virtualbox needs some time between provisioning nodes
+		time.Sleep(10 * time.Second)
 	}
-
-	nodeRoles := append(serverNodeNames, agentNodeNames...)
-
-	for _, node := range nodeRoles {
+	if err := errg.Wait(); err != nil {
+		return nil, nil, err
+	}
+	for _, node := range append(serverNodeNames, agentNodeNames...) {
 		cmd = fmt.Sprintf(`vagrant scp ../../../dist/artifacts/k3s  %s:/tmp/`, node)
 		if _, err := RunCommand(cmd); err != nil {
 			return nil, nil, fmt.Errorf("failed to scp k3s binary to %s: %v", node, err)
@@ -117,9 +154,21 @@ func CreateLocalCluster(nodeOS string, serverCount, agentCount int) ([]string, [
 		}
 	}
 
-	cmd = fmt.Sprintf(`%s %s vagrant provision &>> vagrant.log`, nodeEnvs, testOptions)
-	if _, err := RunCommand(cmd); err != nil {
-		return nil, nil, fmt.Errorf("failed creating cluster: %s: %v", cmd, err)
+	// Install K3s on all nodes in parallel
+	errg, _ = errgroup.WithContext(context.Background())
+	for _, node := range append(serverNodeNames, agentNodeNames...) {
+		cmd = fmt.Sprintf(`%s %s vagrant provision %s &>> vagrant.log`, nodeEnvs, testOptions, node)
+		errg.Go(func() error {
+			if _, err := RunCommand(cmd); err != nil {
+				return fmt.Errorf("failed creating cluster: %s: %v", cmd, err)
+			}
+			return nil
+		})
+		// K3s needs some time between joining nodes to avoid learner issues
+		time.Sleep(20 * time.Second)
+	}
+	if err := errg.Wait(); err != nil {
+		return nil, nil, err
 	}
 
 	return serverNodeNames, agentNodeNames, nil
@@ -253,11 +302,11 @@ func ParseNodes(kubeConfig string, print bool) ([]Node, error) {
 	return nodes, nil
 }
 
-func ParsePods(kubeconfig string, print bool) ([]Pod, error) {
+func ParsePods(kubeConfig string, print bool) ([]Pod, error) {
 	pods := make([]Pod, 0, 10)
 	podList := ""
 
-	cmd := "kubectl get pods -o wide --no-headers -A --kubeconfig=" + kubeconfig
+	cmd := "kubectl get pods -o wide --no-headers -A --kubeconfig=" + kubeConfig
 	res, _ := RunCommand(cmd)
 	res = strings.TrimSpace(res)
 	podList = res

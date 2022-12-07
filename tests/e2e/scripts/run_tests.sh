@@ -7,14 +7,13 @@ k3s_channel=${k3s_channel:-"commit"}
 hardened=${8:-""}
 
 E2E_EXTERNAL_DB=$db && export E2E_EXTERNAL_DB
+E2E_REGISTRY=true && export E2E_REGISTRY
 
 eval openvpn --daemon --config external.ovpn &>/dev/null &
 sleep 10
 
 ssh -i "$1"  -o "StrictHostKeyChecking no" $2@$3 'cd k3s && git pull --rebase origin master'
-ssh -i "$1"  -o "StrictHostKeyChecking no" $2@$3 '/usr/local/go/bin/go get github.com/onsi/ginkgo/v2'
-ssh -i "$1"  -o "StrictHostKeyChecking no" $2@$3 '/usr/local/go/bin/go get github.com/onsi/gomega'
-ssh -i "$1"  -o "StrictHostKeyChecking no" $2@$3 '/usr/local/go/bin/go get github.com/k3s-io/k3s/tests/e2e'
+ssh -i "$1"  -o "StrictHostKeyChecking no" $2@$3 'cd k3s && go mod tidy'
 
 echo 'RUNNING CLUSTER VALIDATION TEST'
 ssh -i "$1"  -o "StrictHostKeyChecking no" $2@$3 'cd k3s/tests/e2e/validatecluster && vagrant destroy -f'

@@ -7,6 +7,7 @@ GITHUB_BRANCH = (ENV['E2E_GITHUB_BRANCH'] || "master")
 RELEASE_VERSION = (ENV['E2E_RELEASE_VERSION'] || "")
 EXTERNAL_DB = (ENV['E2E_EXTERNAL_DB'] || "etcd")
 HARDENED = (ENV['E2E_HARDENED'] || "")
+REGISTRY = (ENV['E2E_REGISTRY'] || "")
 RANCHER = (ENV['E2E_RANCHER'] || "")
 NODE_CPUS = (ENV['E2E_NODE_CPUS'] || 2).to_i
 NODE_MEMORY = (ENV['E2E_NODE_MEMORY'] || 1024).to_i
@@ -37,6 +38,10 @@ def provision(vm, role, role_num, node_num)
     vm.provision "Set kernel parameters", type: "shell", path: scripts_location + "/harden.sh"
     hardened_arg = "protect-kernel-defaults: true\nkube-apiserver-arg: \"enable-admission-plugins=NodeRestriction,PodSecurityPolicy,ServiceAccount\""
   end
+  if !REGISTRY.empty?
+    vm.provision "Set private registry", type: "shell", path: scripts_location + "/registry.sh", args: [ "#{NETWORK_PREFIX}.1" ]
+  end
+  
 
   if role.include?("server") && role_num == 0
     vm.provision 'k3s-primary-server', type: 'k3s', run: 'once' do |k3s|
