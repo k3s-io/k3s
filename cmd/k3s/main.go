@@ -37,6 +37,7 @@ func main() {
 		return
 	}
 
+	tokenCommand := internalCLIAction(version.Program+"-"+cmds.TokenCommand, dataDir, os.Args)
 	etcdsnapshotCommand := internalCLIAction(version.Program+"-"+cmds.EtcdSnapshotCommand, dataDir, os.Args)
 	secretsencryptCommand := internalCLIAction(version.Program+"-"+cmds.SecretsEncryptCommand, dataDir, os.Args)
 	certCommand := internalCLIAction(version.Program+"-"+cmds.CertCommand, dataDir, os.Args)
@@ -51,6 +52,12 @@ func main() {
 		cmds.NewCRICTL(externalCLIAction("crictl", dataDir)),
 		cmds.NewCtrCommand(externalCLIAction("ctr", dataDir)),
 		cmds.NewCheckConfigCommand(externalCLIAction("check-config", dataDir)),
+		cmds.NewTokenCommands(
+			tokenCommand,
+			tokenCommand,
+			tokenCommand,
+			tokenCommand,
+		),
 		cmds.NewEtcdSnapshotCommand(etcdsnapshotCommand,
 			cmds.NewEtcdSnapshotSubcommands(
 				etcdsnapshotCommand,
