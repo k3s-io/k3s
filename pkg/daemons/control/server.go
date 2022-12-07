@@ -90,6 +90,7 @@ func Server(ctx context.Context, cfg *config.Control) error {
 func controllerManager(ctx context.Context, cfg *config.Control) error {
 	runtime := cfg.Runtime
 	argsMap := map[string]string{
+		"controllers":                      "*,tokencleaner",
 		"feature-gates":                    "JobTrackingWithFinalizers=true",
 		"kubeconfig":                       runtime.KubeConfigController,
 		"authorization-kubeconfig":         runtime.KubeConfigController,
@@ -117,7 +118,7 @@ func controllerManager(ctx context.Context, cfg *config.Control) error {
 	}
 	if !cfg.DisableCCM {
 		argsMap["configure-cloud-routes"] = "false"
-		argsMap["controllers"] = "*,-service,-route,-cloud-node-lifecycle"
+		argsMap["controllers"] = argsMap["controllers"] + ",-service,-route,-cloud-node-lifecycle"
 	}
 
 	args := config.GetArgs(argsMap, cfg.ExtraControllerArgs)
@@ -158,6 +159,7 @@ func apiServer(ctx context.Context, cfg *config.Control) error {
 
 	argsMap["cert-dir"] = certDir
 	argsMap["allow-privileged"] = "true"
+	argsMap["enable-bootstrap-token-auth"] = "true"
 	argsMap["authorization-mode"] = strings.Join([]string{modes.ModeNode, modes.ModeRBAC}, ",")
 	argsMap["service-account-signing-key-file"] = runtime.ServiceCurrentKey
 	argsMap["service-cluster-ip-range"] = util.JoinIPNets(cfg.ServiceIPRanges)
