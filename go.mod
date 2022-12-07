@@ -131,6 +131,7 @@ require (
 	k8s.io/apiserver v0.25.6
 	k8s.io/client-go v11.0.1-0.20190409021438-1a26190bd76a+incompatible
 	k8s.io/cloud-provider v0.25.6
+	k8s.io/cluster-bootstrap v0.0.0
 	k8s.io/component-base v0.25.6
 	k8s.io/component-helpers v0.25.6
 	k8s.io/cri-api v0.26.0-alpha.3
@@ -385,7 +386,6 @@ require (
 	honnef.co/go/tools v0.2.2 // indirect
 	k8s.io/apiextensions-apiserver v0.25.4 // indirect
 	k8s.io/cli-runtime v0.22.2 // indirect
-	k8s.io/cluster-bootstrap v0.0.0 // indirect
 	k8s.io/code-generator v0.25.4 // indirect
 	k8s.io/controller-manager v0.25.6 // indirect
 	k8s.io/csi-translation-lib v0.0.0 // indirect
