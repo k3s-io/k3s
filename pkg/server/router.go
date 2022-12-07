@@ -32,6 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/apiserver/pkg/authentication/user"
 	"k8s.io/apiserver/pkg/endpoints/handlers/responsewriters"
+	bootstrapapi "k8s.io/cluster-bootstrap/token/api"
 )
 
 const (
@@ -44,7 +45,7 @@ func router(ctx context.Context, config *Config, cfg *cmds.Server) http.Handler 
 
 	prefix := "/v1-" + version.Program
 	authed := mux.NewRouter().SkipClean(true)
-	authed.Use(authMiddleware(serverConfig, version.Program+":agent"))
+	authed.Use(authMiddleware(serverConfig, version.Program+":agent", user.NodesGroup, bootstrapapi.BootstrapDefaultGroup))
 	authed.Path(prefix + "/serving-kubelet.crt").Handler(servingKubeletCert(serverConfig, serverConfig.Runtime.ServingKubeletKey, nodeAuth))
 	authed.Path(prefix + "/client-kubelet.crt").Handler(clientKubeletCert(serverConfig, serverConfig.Runtime.ClientKubeletKey, nodeAuth))
 	authed.Path(prefix + "/client-kube-proxy.crt").Handler(fileHandler(serverConfig.Runtime.ClientKubeProxyCert, serverConfig.Runtime.ClientKubeProxyKey))
