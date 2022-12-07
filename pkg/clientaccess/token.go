@@ -369,7 +369,7 @@ func put(u string, body []byte, client *http.Client, username, password string) 
 	return nil
 }
 
-// FormatToken takes a username:password string, and a path to a certificate bundle, and
+// FormatToken takes a username:password string or join token, and a path to a certificate bundle, and
 // returns a string containing the full K10 format token string. If the credentials are
 // empty, an empty token is returned. If the certificate bundle does not exist or does not
 // contain a valid bundle, an error is returned.
@@ -381,6 +381,15 @@ func FormatToken(creds, certFile string) (string, error) {
 	b, err := os.ReadFile(certFile)
 	if err != nil {
 		return "", err
+	}
+	return FormatTokenBytes(creds, b)
+}
+
+// FormatTokenBytes has the same interface as FormatToken, but accepts a byte slice instead
+// of file path.
+func FormatTokenBytes(creds string, b []byte) (string, error) {
+	if len(creds) == 0 {
+		return "", nil
 	}
 
 	digest, err := hashCA(b)
