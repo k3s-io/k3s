@@ -266,6 +266,9 @@ func Run(ctx context.Context, cfg cmds.Agent) error {
 
 func createProxyAndValidateToken(ctx context.Context, cfg *cmds.Agent) (proxy.Proxy, error) {
 	agentDir := filepath.Join(cfg.DataDir, "agent")
+	clientKubeletCert := filepath.Join(agentDir, "client-kubelet.crt")
+	clientKubeletKey := filepath.Join(agentDir, "client-kubelet.key")
+
 	if err := os.MkdirAll(agentDir, 0700); err != nil {
 		return nil, err
 	}
@@ -276,8 +279,13 @@ func createProxyAndValidateToken(ctx context.Context, cfg *cmds.Agent) (proxy.Pr
 		return nil, err
 	}
 
+	options := []clientaccess.ValidationOption{
+		clientaccess.WithUser("node"),
+		clientaccess.WithClientCertificate(clientKubeletCert, clientKubeletKey),
+	}
+
 	for {
-		newToken, err := clientaccess.ParseAndValidateTokenForUser(proxy.SupervisorURL(), cfg.Token, "node")
+		newToken, err := clientaccess.ParseAndValidateToken(proxy.SupervisorURL(), cfg.Token, options...)
 		if err != nil {
 			logrus.Error(err)
 			select {
