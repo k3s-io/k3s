@@ -38,7 +38,7 @@ func commandPrep(app *cli.Context, cfg *cmds.Server) (*clientaccess.Info, error)
 		}
 		cfg.Token = string(bytes.TrimRight(tokenByte, "\n"))
 	}
-	return clientaccess.ParseAndValidateTokenForUser(cmds.ServerConfig.ServerURL, cfg.Token, "server")
+	return clientaccess.ParseAndValidateToken(cmds.ServerConfig.ServerURL, cfg.Token, clientaccess.WithUser("server"))
 }
 
 func wrapServerError(err error) error {

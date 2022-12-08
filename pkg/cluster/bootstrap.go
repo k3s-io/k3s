@@ -94,7 +94,7 @@ func (c *Cluster) shouldBootstrapLoad(ctx context.Context) (bool, bool, error) {
 			// etcd is promoted from learner. Odds are we won't need this info, and we don't want to fail startup
 			// due to failure to retrieve it as this will break cold cluster restart, so we ignore any errors.
 			if c.config.JoinURL != "" && c.config.Token != "" {
-				c.clientAccessInfo, _ = clientaccess.ParseAndValidateTokenForUser(c.config.JoinURL, c.config.Token, "server")
+				c.clientAccessInfo, _ = clientaccess.ParseAndValidateToken(c.config.JoinURL, c.config.Token, clientaccess.WithUser("server"))
 			}
 			return false, true, nil
 		} else if c.config.JoinURL == "" {
@@ -109,7 +109,7 @@ func (c *Cluster) shouldBootstrapLoad(ctx context.Context) (bool, bool, error) {
 
 			// Fail if the token isn't syntactically valid, or if the CA hash on the remote server doesn't match
 			// the hash in the token. The password isn't actually checked until later when actually bootstrapping.
-			info, err := clientaccess.ParseAndValidateTokenForUser(c.config.JoinURL, c.config.Token, "server")
+			info, err := clientaccess.ParseAndValidateToken(c.config.JoinURL, c.config.Token, clientaccess.WithUser("server"))
 			if err != nil {
 				return false, false, err
 			}
@@ -453,7 +453,7 @@ func (c *Cluster) compareConfig() error {
 	if token == "" {
 		token = c.config.Token
 	}
-	agentClientAccessInfo, err := clientaccess.ParseAndValidateTokenForUser(c.config.JoinURL, token, "node")
+	agentClientAccessInfo, err := clientaccess.ParseAndValidateToken(c.config.JoinURL, token, clientaccess.WithUser("node"))
 	if err != nil {
 		return err
 	}

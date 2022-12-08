@@ -1,8 +1,10 @@
 package agent
 
 import (
+	"crypto/tls"
 	"fmt"
 	"os"
+	"path/filepath"
 	"runtime"
 
 	"github.com/erikdubbelboer/gspt"
@@ -49,7 +51,11 @@ func Run(ctx *cli.Context) error {
 		logrus.Fatal("cluster-secret is deprecated. Use --token instead.")
 	}
 
-	if cmds.AgentConfig.Token == "" {
+	clientKubeletCert := filepath.Join(cmds.AgentConfig.DataDir, "agent", "client-kubelet.crt")
+	clientKubeletKey := filepath.Join(cmds.AgentConfig.DataDir, "agent", "client-kubelet.key")
+	_, err := tls.LoadX509KeyPair(clientKubeletCert, clientKubeletKey)
+
+	if err != nil && cmds.AgentConfig.Token == "" {
 		return fmt.Errorf("--token is required")
 	}
 
