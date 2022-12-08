@@ -1,6 +1,7 @@
 package deps
 
 import (
+	"bytes"
 	"crypto"
 	cryptorand "crypto/rand"
 	"crypto/sha256"
@@ -573,22 +574,7 @@ func fieldsChanged(certFile string, commonName string, organization []string, sa
 		return false
 	}
 
-	verifyOpts := x509.VerifyOptions{
-		Roots: x509.NewCertPool(),
-		KeyUsages: []x509.ExtKeyUsage{
-			x509.ExtKeyUsageAny,
-		},
-	}
-
-	for _, cert := range caCertificates {
-		verifyOpts.Roots.AddCert(cert)
-	}
-
-	if _, err := certificates[0].Verify(verifyOpts); err != nil {
-		return true
-	}
-
-	return false
+	return !bytes.Equal(certificates[0].AuthorityKeyId, caCertificates[0].SubjectKeyId)
 }
 
 func createClientCertKey(regen bool, commonName string, organization []string, altNames *certutil.AltNames, extKeyUsage []x509.ExtKeyUsage, caCertFile, caKeyFile, certFile, keyFile string) (bool, error) {
