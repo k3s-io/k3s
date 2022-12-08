@@ -29,13 +29,14 @@ func Test_UnitTrustedCA(t *testing.T) {
 	assert := assert.New(t)
 	server := newTLSServer(t, defaultUsername, defaultPassword, false)
 	defer server.Close()
+	digest, _ := hashCA(getServerCA(server))
 
 	testInfo := &Info{
 		CACerts:  getServerCA(server),
 		BaseURL:  server.URL,
 		Username: defaultUsername,
 		Password: defaultPassword,
-		caHash:   hashCA(getServerCA(server)),
+		caHash:   digest,
 	}
 
 	testCases := []struct {
@@ -82,13 +83,14 @@ func Test_UnitUntrustedCA(t *testing.T) {
 	assert := assert.New(t)
 	server := newTLSServer(t, defaultUsername, defaultPassword, false)
 	defer server.Close()
+	digest, _ := hashCA(getServerCA(server))
 
 	testInfo := &Info{
 		CACerts:  getServerCA(server),
 		BaseURL:  server.URL,
 		Username: defaultUsername,
 		Password: defaultPassword,
-		caHash:   hashCA(getServerCA(server)),
+		caHash:   digest,
 	}
 
 	testCases := []struct {
@@ -140,6 +142,7 @@ func Test_UnitInvalidTokens(t *testing.T) {
 	assert := assert.New(t)
 	server := newTLSServer(t, defaultUsername, defaultPassword, false)
 	defer server.Close()
+	digest, _ := hashCA(getServerCA(server))
 
 	testCases := []struct {
 		server   string
@@ -153,7 +156,7 @@ func Test_UnitInvalidTokens(t *testing.T) {
 		{server.URL, "K10XX::x:y", "invalid token CA hash length"},
 		{server.URL,
 			"K10XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX::x:y",
-			"token CA hash does not match the Cluster CA certificate hash: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX != " + hashCA(getServerCA(server))},
+			"token CA hash does not match the Cluster CA certificate hash: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX != " + digest},
 	}
 
 	for _, testCase := range testCases {
@@ -172,13 +175,14 @@ func Test_UnitInvalidCredentials(t *testing.T) {
 	assert := assert.New(t)
 	server := newTLSServer(t, defaultUsername, defaultPassword, false)
 	defer server.Close()
+	digest, _ := hashCA(getServerCA(server))
 
 	testInfo := &Info{
 		CACerts:  getServerCA(server),
 		BaseURL:  server.URL,
 		Username: "nobody",
 		Password: "invalid",
-		caHash:   hashCA(getServerCA(server)),
+		caHash:   digest,
 	}
 
 	testCases := []string{
@@ -381,8 +385,14 @@ func newTLSServer(t *testing.T, username, password string, sendWrongCA bool) *ht
 
 // getServerCA returns a byte slice containing the PEM encoding of the server's CA certificate
 func getServerCA(server *httptest.Server) []byte {
-	certLen := len(server.TLS.Certificates)
-	return pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: server.TLS.Certificates[certLen-1].Certificate[0]})
+	bytes := []byte{}
+	for i, cert := range server.TLS.Certificates {
+		if i == 0 {
+			continue // Just return the chain, not the leaf server cert
+		}
+		bytes = append(bytes, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert.Certificate[0]})...)
+	}
+	return bytes
 }
 
 // writeServerCA writes the PEM-encoded server certificate to a given path

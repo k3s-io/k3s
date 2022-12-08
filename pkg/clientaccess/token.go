@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	certutil "github.com/rancher/dynamiclistener/cert"
 	"github.com/sirupsen/logrus"
 )
 
@@ -40,8 +41,7 @@ var (
 	}
 )
 
-type OverrideURLCallback func(config []byte) (*url.URL, error)
-
+// Info contains fields that track parsed parts of a cluster join token
 type Info struct {
 	CACerts  []byte `json:"cacerts,omitempty"`
 	BaseURL  string `json:"baseurl,omitempty"`
@@ -52,7 +52,8 @@ type Info struct {
 
 // String returns the token data, templated according to the token format
 func (i *Info) String() string {
-	return fmt.Sprintf(tokenFormat, tokenPrefix, hashCA(i.CACerts), i.Username, i.Password)
+	digest, _ := hashCA(i.CACerts)
+	return fmt.Sprintf(tokenFormat, tokenPrefix, digest, i.Username, i.Password)
 }
 
 // ParseAndValidateToken parses a token, downloads and validates the server's CA bundle,
@@ -70,7 +71,7 @@ func ParseAndValidateToken(server string, token string) (*Info, error) {
 	return info, nil
 }
 
-// ParseAndValidateToken parses a token with user override, downloads and
+// ParseAndValidateTokenForUser parses a token with user override, downloads and
 // validates the server's CA bundle, and validates it according to the caHash from the token if set.
 func ParseAndValidateTokenForUser(server, token, username string) (*Info, error) {
 	info, err := parseToken(token)
@@ -95,17 +96,49 @@ func (i *Info) setAndValidateServer(server string) error {
 	return i.validateCAHash()
 }
 
-// validateCACerts returns a boolean indicating whether or not a CA bundle matches the provided hash,
-// and a string containing the hash of the CA bundle.
+// validateCACerts returns a boolean indicating whether or not a CA bundle matches the
+// provided hash, and a string containing the hash of the CA bundle.
 func validateCACerts(cacerts []byte, hash string) (bool, string) {
-	newHash := hashCA(cacerts)
+	newHash, _ := hashCA(cacerts)
 	return hash == newHash, newHash
 }
 
-// hashCA returns the hex-encoded SHA256 digest of a byte array.
-func hashCA(cacerts []byte) string {
-	digest := sha256.Sum256(cacerts)
-	return hex.EncodeToString(digest[:])
+// hashCA returns the hex-encoded SHA256 digest of a CA bundle.
+// If the certificate bundle contains only a single certificate, a legacy hash is generated from
+// the literal bytes of the file; usually a PEM-encoded self-signed cluster CA certificate.
+// If the certificate bundle contains more than one certificate, the hash is instead generated
+// from the DER-encoded root certificate in the bundle. This allows for rotating or renewing the
+// cluster CA, as long as the root CA remains the same.
+func hashCA(b []byte) (string, error) {
+	certs, err := certutil.ParseCertsPEM(b)
+	if err != nil {
+		return "", err
+	}
+
+	if len(certs) > 1 {
+		// Bundle contains more than one cert; find the root for the first cert in the bundle and
+		// hash the DER of this, instead of just hashing the raw bytes of the whole file.
+		roots := x509.NewCertPool()
+		intermediates := x509.NewCertPool()
+		for i, cert := range certs {
+			if i > 0 {
+				if len(cert.AuthorityKeyId) == 0 || bytes.Equal(cert.AuthorityKeyId, cert.SubjectKeyId) {
+					roots.AddCert(cert)
+				} else {
+					intermediates.AddCert(cert)
+				}
+			}
+		}
+		if chains, err := certs[0].Verify(x509.VerifyOptions{Roots: roots, Intermediates: intermediates}); err == nil {
+			// It's possible but unlikely that there could be multiple valid chains back to a root
+			// certificate. Just use the first.
+			chain := chains[0]
+			b = chain[len(chain)-1].Raw
+		}
+	}
+
+	digest := sha256.Sum256(b)
+	return hex.EncodeToString(digest[:]), nil
 }
 
 // ParseUsernamePassword returns the username and password portion of a token string,
@@ -326,19 +359,24 @@ func put(u string, body []byte, client *http.Client, username, password string) 
 	return nil
 }
 
-func FormatToken(token, certFile string) (string, error) {
-	if len(token) == 0 {
-		return token, nil
+// FormatToken takes a username:password string, and a path to a certificate bundle, and
+// returns a string containing the full K10 format token string. If the credentials are
+// empty, an empty token is returned. If the certificate bundle does not exist or does not
+// contain a valid bundle, an error is returned.
+func FormatToken(creds, certFile string) (string, error) {
+	if len(creds) == 0 {
+		return "", nil
 	}
 
-	certHash := ""
-	if len(certFile) > 0 {
-		b, err := os.ReadFile(certFile)
-		if err != nil {
-			return "", nil
-		}
-		digest := sha256.Sum256(b)
-		certHash = tokenPrefix + hex.EncodeToString(digest[:]) + "::"
+	b, err := os.ReadFile(certFile)
+	if err != nil {
+		return "", err
 	}
-	return certHash + token, nil
+
+	digest, err := hashCA(b)
+	if err != nil {
+		return "", err
+	}
+
+	return tokenPrefix + digest + "::" + creds, nil
 }
