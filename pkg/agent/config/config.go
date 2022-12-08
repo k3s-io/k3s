@@ -101,7 +101,7 @@ RETRY:
 	}
 }
 
-type HTTPRequester func(u string, client *http.Client, username, password string) ([]byte, error)
+type HTTPRequester func(u string, client *http.Client, username, password, token string) ([]byte, error)
 
 func Request(path string, info *clientaccess.Info, requester HTTPRequester) ([]byte, error) {
 	u, err := url.Parse(info.BaseURL)
@@ -109,17 +109,19 @@ func Request(path string, info *clientaccess.Info, requester HTTPRequester) ([]b
 		return nil, err
 	}
 	u.Path = path
-	return requester(u.String(), clientaccess.GetHTTPClient(info.CACerts), info.Username, info.Password)
+	return requester(u.String(), clientaccess.GetHTTPClient(info.CACerts, info.CertFile, info.KeyFile), info.Username, info.Password, info.Token())
 }
 
 func getNodeNamedCrt(nodeName string, nodeIPs []net.IP, nodePasswordFile string) HTTPRequester {
-	return func(u string, client *http.Client, username, password string) ([]byte, error) {
+	return func(u string, client *http.Client, username, password, token string) ([]byte, error) {
 		req, err := http.NewRequest(http.MethodGet, u, nil)
 		if err != nil {
 			return nil, err
 		}
 
-		if username != "" {
+		if token != "" {
+			req.Header.Add("Authorization", "Bearer "+token)
+		} else if username != "" {
 			req.SetBasicAuth(username, password)
 		}
 
@@ -320,8 +322,10 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	if envInfo.Debug {
 		logrus.SetLevel(logrus.DebugLevel)
 	}
-
-	info, err := clientaccess.ParseAndValidateToken(proxy.SupervisorURL(), envInfo.Token)
+	clientKubeletCert := filepath.Join(envInfo.DataDir, "agent", "client-kubelet.crt")
+	clientKubeletKey := filepath.Join(envInfo.DataDir, "agent", "client-kubelet.key")
+	withCert := clientaccess.WithClientCertificate(clientKubeletCert, clientKubeletKey)
+	info, err := clientaccess.ParseAndValidateToken(proxy.SupervisorURL(), envInfo.Token, withCert)
 	if err != nil {
 		return nil, err
 	}
@@ -399,8 +403,6 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 		return nil, err
 	}
 
-	clientKubeletCert := filepath.Join(envInfo.DataDir, "agent", "client-kubelet.crt")
-	clientKubeletKey := filepath.Join(envInfo.DataDir, "agent", "client-kubelet.key")
 	if err := getNodeNamedHostFile(clientKubeletCert, clientKubeletKey, nodeName, nodeIPs, newNodePasswordFile, info); err != nil {
 		return nil, err
 	}
@@ -447,6 +449,8 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	nodeConfig.Images = filepath.Join(envInfo.DataDir, "agent", "images")
 	nodeConfig.AgentConfig.NodeName = nodeName
 	nodeConfig.AgentConfig.NodeConfigPath = nodeConfigPath
+	nodeConfig.AgentConfig.ClientKubeletCert = clientKubeletCert
+	nodeConfig.AgentConfig.ClientKubeletKey = clientKubeletKey
 	nodeConfig.AgentConfig.ServingKubeletCert = servingKubeletCert
 	nodeConfig.AgentConfig.ServingKubeletKey = servingKubeletKey
 	nodeConfig.AgentConfig.ClusterDNS = controlConfig.ClusterDNS
@@ -604,7 +608,8 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 
 // getAPIServers attempts to return a list of apiservers from the server.
 func getAPIServers(ctx context.Context, node *config.Node, proxy proxy.Proxy) ([]string, error) {
-	info, err := clientaccess.ParseAndValidateToken(proxy.SupervisorURL(), node.Token)
+	withCert := clientaccess.WithClientCertificate(node.AgentConfig.ClientKubeletCert, node.AgentConfig.ClientKubeletKey)
+	info, err := clientaccess.ParseAndValidateToken(proxy.SupervisorURL(), node.Token, withCert)
 	if err != nil {
 		return nil, err
 	}
@@ -621,7 +626,8 @@ func getAPIServers(ctx context.Context, node *config.Node, proxy proxy.Proxy) ([
 // getKubeProxyDisabled attempts to return the DisableKubeProxy setting from the server configuration data.
 // It first checks the server readyz endpoint, to ensure that the configuration has stabilized before use.
 func getKubeProxyDisabled(ctx context.Context, node *config.Node, proxy proxy.Proxy) (bool, error) {
-	info, err := clientaccess.ParseAndValidateToken(proxy.SupervisorURL(), node.Token)
+	withCert := clientaccess.WithClientCertificate(node.AgentConfig.ClientKubeletCert, node.AgentConfig.ClientKubeletKey)
+	info, err := clientaccess.ParseAndValidateToken(proxy.SupervisorURL(), node.Token, withCert)
 	if err != nil {
 		return false, err
 	}
