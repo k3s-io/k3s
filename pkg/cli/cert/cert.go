@@ -285,7 +285,7 @@ func rotateCA(app *cli.Context, cfg *cmds.Server, sync *cmds.CertRotateCA) error
 		return err
 	}
 
-	info, err := clientaccess.ParseAndValidateTokenForUser(cmds.ServerConfig.ServerURL, serverConfig.ControlConfig.Token, "server")
+	info, err := clientaccess.ParseAndValidateToken(cmds.ServerConfig.ServerURL, serverConfig.ControlConfig.Token, clientaccess.WithUser("server"))
 	if err != nil {
 		return err
 	}
