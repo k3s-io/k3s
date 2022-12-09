@@ -24,14 +24,15 @@ fi
 
 # We're building k3s against containerd 1.5 in go.mod because 1.6 has dependency
 # conflicts with Kubernetes, but we still need to bundle containerd 1.6.
-VERSION_CONTAINERD="v1.6.10-k3s1"
+VERSION_CONTAINERD="v1.6.12-k3s1"
 
 VERSION_CRICTL=$(grep github.com/kubernetes-sigs/cri-tools go.mod | head -n1 | awk '{print $4}')
 if [ -z "$VERSION_CRICTL" ]; then
     VERSION_CRICTL="v0.0.0"
 fi
 
-VERSION_K8S=$(grep 'k8s.io/kubernetes v' go.mod | head -n1 | awk '{print $2}')
+VERSION_K8S_K3S=$(grep 'k8s.io/kubernetes =>' go.mod | head -n1 | awk '{print $4}')
+VERSION_K8S=${VERSION_K8S_K3S%"-k3s1"}
 if [ -z "$VERSION_K8S" ]; then
     VERSION_K8S="v0.0.0"
 fi

@@ -19,11 +19,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/k3s-io/k3s/pkg/agent/containerd"
 	"github.com/k3s-io/k3s/pkg/agent/proxy"
 	agentutil "github.com/k3s-io/k3s/pkg/agent/util"
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
 	"github.com/k3s-io/k3s/pkg/clientaccess"
-	"github.com/k3s-io/k3s/pkg/containerd"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/daemons/control/deps"
 	"github.com/k3s-io/k3s/pkg/util"

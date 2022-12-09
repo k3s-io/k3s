@@ -9,6 +9,9 @@ import (
 	"time"
 
 	"github.com/containerd/containerd"
+	overlayutils "github.com/containerd/containerd/snapshots/overlay/overlayutils"
+	fuseoverlayfs "github.com/containerd/fuse-overlayfs-snapshotter"
+	stargz "github.com/containerd/stargz-snapshotter/service"
 	"github.com/docker/docker/pkg/parsers/kernel"
 	"github.com/k3s-io/k3s/pkg/agent/templates"
 	util2 "github.com/k3s-io/k3s/pkg/agent/util"
@@ -21,7 +24,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 	"google.golang.org/grpc"
-	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
+	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1"
 	"k8s.io/kubernetes/pkg/kubelet/util"
 )
 
@@ -130,4 +133,16 @@ func Client(address string) (*containerd.Client, error) {
 	}
 
 	return containerd.New(addr)
+}
+
+func OverlaySupported(root string) error {
+	return overlayutils.Supported(root)
+}
+
+func FuseoverlayfsSupported(root string) error {
+	return fuseoverlayfs.Supported(root)
+}
+
+func StargzSupported(root string) error {
+	return stargz.Supported(root)
 }
