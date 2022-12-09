@@ -584,8 +584,8 @@ github.com/julienschmidt/httprouter v1.2.0/go.mod h1:SYymIcj16QtmaHHD7aYtjjsJG7V
 github.com/julienschmidt/httprouter v1.3.0/go.mod h1:JR6WtHb+2LUe8TCKY3cZOxFyyO8IZAc4RVcycCCAKdM=
 github.com/k3s-io/cadvisor v0.46.0-k3s1 h1:gaxTdqiMHl3nbvlF4Jq2D3J+vTiLwhI8rYBAqdspkFA=
 github.com/k3s-io/cadvisor v0.46.0-k3s1/go.mod h1:n0SMyEENgkEGCmhaMRife+OArnPEHEK2z8NQf5n+Szw=
-github.com/k3s-io/containerd v1.5.14-k3s1 h1:j4Z2GXNdOaLySmV5gaoLjvSTiFG52ajcq5wK7dWzzCE=
-github.com/k3s-io/containerd v1.5.14-k3s1/go.mod h1:z80+PXdmZrqwd/D3kpoEpjOU42soeJ/9J1qDPufB3T0=
+github.com/k3s-io/containerd v1.5.16-k3s1 h1:r8WBp1DJS5OfGWV4XMohQ3SkQnreZRK1E4lT02xUXiA=
+github.com/k3s-io/containerd v1.5.16-k3s1/go.mod h1:vCILl/gWFsZXZVuIrDefia9pbKe7cpWbpavHNET9axM=
 github.com/k3s-io/cri-dockerd v0.0.0-20221129193338-7031ab1dbde9 h1:R4wCTvwWwdeOf0XQgjcGioBDNy6RHcY20Pmivi4V/YI=
 github.com/k3s-io/cri-dockerd v0.0.0-20221129193338-7031ab1dbde9/go.mod h1:WjvGhwlXw/s8Z9JL9QKTqT8e6yK9jZezm0vluPHJDYg=
 github.com/k3s-io/cri-tools v1.26.0-rc.0-k3s1 h1:yWVy9pS0T1BWBMZBPRy2Q29gaLmaGknQHSnx+HStrVM=
@@ -731,8 +731,9 @@ github.com/mattn/go-zglob v0.0.2-0.20190814121620-e3c945676326 h1:ofNAzWCcyTALn2
 github.com/mattn/go-zglob v0.0.2-0.20190814121620-e3c945676326/go.mod h1:9fxibJccNxU2cnpIKLRRFA7zX7qhkJIQWBb449FYHOo=
 github.com/matttproud/golang_protobuf_extensions v1.0.1/go.mod h1:D8He9yQNgCq6Z5Ld7szi9bcBfOoFv/3dc6xSMkL2PC0=
 github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369/go.mod h1:BSXmuO+STAnVfrANrmjBb36TMTDstsz7MSK+HVaYKv4=
-github.com/matttproud/golang_protobuf_extensions v1.0.2 h1:hAHbPm5IJGijwng3PWk09JkG9WeqChjprR5s9bBZ+OM=
 github.com/matttproud/golang_protobuf_extensions v1.0.2/go.mod h1:BSXmuO+STAnVfrANrmjBb36TMTDstsz7MSK+HVaYKv4=
+github.com/matttproud/golang_protobuf_extensions v1.0.4 h1:mmDVorXM7PCGKw94cs5zkfA9PSy5pEvNWRP0ET0TIVo=
+github.com/matttproud/golang_protobuf_extensions v1.0.4/go.mod h1:BSXmuO+STAnVfrANrmjBb36TMTDstsz7MSK+HVaYKv4=
 github.com/mdlayher/ethtool v0.0.0-20210210192532-2b88debcdd43/go.mod h1:+t7E0lkKfbBsebllff1xdTmyJt8lH37niI6kwFk9OTo=
 github.com/mdlayher/ethtool v0.0.0-20211028163843-288d040e9d60 h1:tHdB+hQRHU10CfcK0furo6rSNgZ38JT8uPh70c/pFD8=
 github.com/mdlayher/ethtool v0.0.0-20211028163843-288d040e9d60/go.mod h1:aYbhishWc4Ai3I2U4Gaa2n3kHWSwzme6EsG/46HRQbE=
