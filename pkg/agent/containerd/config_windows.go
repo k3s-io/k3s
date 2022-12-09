@@ -98,3 +98,15 @@ func Client(address string) (*containerd.Client, error) {
 
 	return containerd.New(addr)
 }
+
+func OverlaySupported(root string) error {
+	return errors.Wrapf(util2.ErrUnsupportedPlatform, "overlayfs is not supported")
+}
+
+func FuseoverlayfsSupported(root string) error {
+	return errors.Wrapf(util2.ErrUnsupportedPlatform, "fuse-overlayfs is not supported")
+}
+
+func StargzSupported(root string) error {
+	return errors.Wrapf(util2.ErrUnsupportedPlatform, "stargz is not supported")
+}
