@@ -12,6 +12,8 @@ import (
 	"github.com/k3s-io/k3s/pkg/agent/templates"
 	util2 "github.com/k3s-io/k3s/pkg/agent/util"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
+	util3 "github.com/k3s-io/k3s/pkg/util"
+	"github.com/pkg/errors"
 	"github.com/rancher/wharfie/pkg/registries"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
@@ -100,13 +102,13 @@ func Client(address string) (*containerd.Client, error) {
 }
 
 func OverlaySupported(root string) error {
-	return errors.Wrapf(util2.ErrUnsupportedPlatform, "overlayfs is not supported")
+	return errors.Wrapf(util3.ErrUnsupportedPlatform, "overlayfs is not supported")
 }
 
 func FuseoverlayfsSupported(root string) error {
-	return errors.Wrapf(util2.ErrUnsupportedPlatform, "fuse-overlayfs is not supported")
+	return errors.Wrapf(util3.ErrUnsupportedPlatform, "fuse-overlayfs is not supported")
 }
 
 func StargzSupported(root string) error {
-	return errors.Wrapf(util2.ErrUnsupportedPlatform, "stargz is not supported")
+	return errors.Wrapf(util3.ErrUnsupportedPlatform, "stargz is not supported")
 }
