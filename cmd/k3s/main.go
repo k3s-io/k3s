@@ -68,7 +68,9 @@ func main() {
 		),
 		cmds.NewCertCommand(
 			cmds.NewCertSubcommands(
-				certCommand),
+				certCommand,
+				certCommand,
+			),
 		),
 		cmds.NewCompletionCommand(internalCLIAction(version.Program+"-completion", dataDir, os.Args)),
 	}

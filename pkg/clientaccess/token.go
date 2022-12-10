@@ -217,8 +217,13 @@ func (i *Info) Get(path string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	u.Path = path
-	return get(u.String(), GetHTTPClient(i.CACerts), i.Username, i.Password)
+	p, err := url.Parse(path)
+	if err != nil {
+		return nil, err
+	}
+	p.Scheme = u.Scheme
+	p.Host = u.Host
+	return get(p.String(), GetHTTPClient(i.CACerts), i.Username, i.Password)
 }
 
 // Put makes a request to a subpath of info's BaseURL
@@ -227,8 +232,13 @@ func (i *Info) Put(path string, body []byte) error {
 	if err != nil {
 		return err
 	}
-	u.Path = path
-	return put(u.String(), body, GetHTTPClient(i.CACerts), i.Username, i.Password)
+	p, err := url.Parse(path)
+	if err != nil {
+		return err
+	}
+	p.Scheme = u.Scheme
+	p.Host = u.Host
+	return put(p.String(), body, GetHTTPClient(i.CACerts), i.Username, i.Password)
 }
 
 // setServer sets the BaseURL and CACerts fields of the Info by connecting to the server
@@ -326,7 +336,7 @@ func get(u string, client *http.Client, username, password string) ([]byte, erro
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
 		return nil, fmt.Errorf("%s: %s", u, resp.Status)
 	}
 
@@ -352,7 +362,7 @@ func put(u string, body []byte, client *http.Client, username, password string) 
 	defer resp.Body.Close()
 
 	respBody, _ := io.ReadAll(resp.Body)
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
 		return fmt.Errorf("%s: %s %s", u, resp.Status, string(respBody))
 	}
 
