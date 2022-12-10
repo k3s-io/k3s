@@ -71,6 +71,7 @@ func router(ctx context.Context, config *Config, cfg *cmds.Server) http.Handler 
 	serverAuthed.Use(authMiddleware(serverConfig, version.Program+":server"))
 	serverAuthed.Path(prefix + "/encrypt/status").Handler(encryptionStatusHandler(serverConfig))
 	serverAuthed.Path(prefix + "/encrypt/config").Handler(encryptionConfigHandler(ctx, serverConfig))
+	serverAuthed.Path(prefix + "/cert/cacerts").Handler(caCertReplaceHandler(serverConfig))
 	serverAuthed.Path("/db/info").Handler(nodeAuthed)
 	serverAuthed.Path(prefix + "/server-bootstrap").Handler(bootstrapHandler(serverConfig.Runtime))
 
