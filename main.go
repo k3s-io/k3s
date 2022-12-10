@@ -49,7 +49,9 @@ func main() {
 		),
 		cmds.NewCertCommand(
 			cmds.NewCertSubcommands(
-				cert.Run),
+				cert.Rotate,
+				cert.RotateCA,
+			),
 		),
 		cmds.NewCompletionCommand(completion.Run),
 	}
