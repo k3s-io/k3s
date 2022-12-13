@@ -50,7 +50,6 @@ def provision(vm, role, role_num, node_num)
         token: vagrant
         node-external-ip: #{NETWORK_PREFIX}.100
         flannel-iface: eth1
-        tls-san: #{NETWORK_PREFIX}.100.nip.io
         #{db_type}
         #{hardened_arg}
       YAML
@@ -97,7 +96,8 @@ def provision(vm, role, role_num, node_num)
   end
   # This step does not run by default and is designed to be called by higher level tools
   if !RANCHER.empty?
-    vm.provision "Install Rancher", type: "shell", run: "never", path: scripts_location + "/rancher.sh", args: node_ip
+    blank_node = role.include?("agent") 
+    vm.provision "Install Rancher", type: "shell", run: "never", path: scripts_location + "/rancher.sh", args: [ "#{NETWORK_PREFIX}.100", blank_node ]
   end
 end
 
