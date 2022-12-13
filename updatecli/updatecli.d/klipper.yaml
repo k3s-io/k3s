@@ -34,10 +34,10 @@ scms:
       repository: "{{ .klipper_lb.repo }}"
       branch: "{{ .klipper_lb.branch }}"
 
-pullrequests:
+actions:
   github:
     title: "Bump Klipper Helm and LB versions"
-    kind: "github"
+    kind: "github/pullrequest"
     scmid: "k3s"
     spec:
       automerge: false

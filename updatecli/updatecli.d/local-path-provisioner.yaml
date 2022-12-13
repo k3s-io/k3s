@@ -24,10 +24,10 @@ scms:
       repository: "{{ .local_path_provisioner.repo }}"
       branch: "{{ .local_path_provisioner.branch }}"
 
-pullrequests:
+actions:
   github:
     title: "Bump Local Path Provisioner version"
-    kind: "github"
+    kind: "github/pullrequest"
     scmid: "k3s"
     spec:
       automerge: false

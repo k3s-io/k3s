@@ -14,10 +14,10 @@ scms:
       commitmessage:
         title: "Bump Helm Controller version"
 
-pullrequests:
+actions:
   github:
     title: "Bump Helm Controller version"
-    kind: "github"
+    kind: "github/pullrequest"
     scmid: "k3s"
     spec:
       automerge: false

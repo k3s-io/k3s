@@ -12,10 +12,10 @@ scms:
       repository: "{{ .k3s.repo }}"
       branch: "{{ .k3s.branch }}"
 
-pullrequests:
+actions:
   github:
     title: "Bump Sonobuoy version"
-    kind: "github"
+    kind: "github/pullrequest"
     scmid: "k3s"
     spec:
       automerge: false
@@ -43,26 +43,16 @@ conditions:
       image: "sonobuoy/sonobuoy"
     transformers:
       - addprefix: "v"
-  env-dockerfile-test:
-    name: "Check if 'ENV SONOBUOY_VERSION' is set"
-    kind: "dockerfile"
+  dockerfiles:
+    name: "Check if 'ENV SONOBUOY_VERSION' is set in Dockerfiles"
+    kind: "file"
     scmid: "k3s"
-    sourceid: "sonobuoy"
+    disablesourceinput: true
     spec:
-      file: "Dockerfile.test"
-      instruction:
-        keyword: "ENV"
-        matcher: "SONOBUOY_VERSION"
-  env-conformance-dockerfile:
-    name: "Check if 'ENV SONOBUOY_VERSION' is set"
-    kind: "dockerfile"
-    scmid: "k3s"
-    sourceid: "sonobuoy"
-    spec:
-      file: "conformance/Dockerfile"
-      instruction:
-        keyword: "ENV"
-        matcher: "SONOBUOY_VERSION"
+      files:
+        - "Dockerfile.test"
+        - "conformance/Dockerfile"
+      matchpattern: 'ENV SONOBUOY_VERSION \d+\.\d+\.\d+(-\w+)?'
 
 targets:
   sonobuoy:

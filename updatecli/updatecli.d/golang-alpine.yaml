@@ -14,10 +14,10 @@ scms:
       commitmessage:
         title: "Bump golang:alpine version"
 
-pullrequests:
+actions:
   github:
     title: "Bump golang:alpine image version"
-    kind: "github"
+    kind: "github/pullrequest"
     scmid: "k3s"
     spec:
       automerge: false
@@ -38,69 +38,29 @@ sources:
     # 3.17 to then check for golang:X.Y-alpine3.17 .
     transformers:
       - find: '\d+\.\d+'
-  # For each Dockerfile that we want to update, we retrieve the Golang version
-  # used. This is necessary, because in the conditions we need to check if for
-  # each Golang version the corresponding Alpine version is available.
+  # Dockerfile.dapper is considered the base for the Golang version that we
+  # must use.
   dockerfile-dapper:
-    name: "Retrieve golang:alpine image version used in Dockerfile.dapper"
+    name: "Retrieve golang image version used in Dockerfile.dapper"
     kind: "file"
     scmid: "k3s"
     disablesourceinput: true
     spec:
       file: "Dockerfile.dapper"
-      matchpattern: 'ARG GOLANG[= ]golang:v?\d+\.\d+\.\d+-alpine'
+      matchpattern: 'golang:\S+-alpine(\S+)?'
     # Example: if the version found is golang:1.19.3-alpine3.16, then
     # we extract only 1.19.3-alpine .
     transformers:
       - find: 'v?\d+\.\d+\.\d+-alpine'
-  dockerfile-test:
-    name: "Retrieve golang:alpine image version used in Dockerfile.test"
-    kind: "file"
-    scmid: "k3s"
-    disablesourceinput: true
-    spec:
-      file: "Dockerfile.test"
-      matchpattern: 'ARG GOLANG[= ]golang:v?\d+\.\d+\.\d+-alpine'
-    transformers:
-      - find: 'v?\d+\.\d+\.\d+-alpine'
-  dockerfile-manifest:
-    name: "Retrieve golang:alpine image version used in Dockerfile.manifest"
-    kind: "file"
-    scmid: "k3s"
-    disablesourceinput: true
-    spec:
-      file: "Dockerfile.manifest"
-      matchpattern: 'ARG GOLANG[= ]golang:v?\d+\.\d+\.\d+-alpine'
-    transformers:
-      - find: 'v?\d+\.\d+\.\d+-alpine'
 
 conditions:
-  # For each Dockerfile and Golang version verified in the sources, we check
-  # if it has the Alpine version that we retrieved before.
-  # Example: Before we retrieved golang:1.19.3-alpine, so we check if the
-  # image golang:1.19.3-alpine3.17 is available in DockerHub, otherwise if the
-  # image is not available, we must not update it, like in golang:1.19.2-alpine3.17.
-  dockerfile-dapper:
-    name: "Check golang:alpine latest image version in DockerHub for Dockerfile.dapper"
+  docker-image:
+    name: "Check golang:alpine latest image version in DockerHub"
     kind: "dockerimage"
     disablesourceinput: true
     spec:
       image: "golang"
       tag: '{{ source "dockerfile-dapper" }}{{ source "alpine-docker-image" }}'
-  dockerfile-test:
-    name: "Check golang:alpine latest image version in DockerHub for Dockerfile.test"
-    kind: "dockerimage"
-    disablesourceinput: true
-    spec:
-      image: "golang"
-      tag: '{{ source "dockerfile-test" }}{{ source "alpine-docker-image" }}'
-  dockerfile-manifest:
-    name: "Check golang:alpine latest image version in DockerHub for Dockerfile.manifest"
-    kind: "dockerimage"
-    disablesourceinput: true
-    spec:
-      image: "golang"
-      tag: '{{ source "dockerfile-manifest" }}{{ source "alpine-docker-image" }}'
 
 targets:
   dockerfiles:
@@ -113,5 +73,5 @@ targets:
         - "Dockerfile.dapper"
         - "Dockerfile.test"
         - "Dockerfile.manifest"
-      matchpattern: '-alpine\d+\.\d+'
-      replacepattern: '-alpine{{ source "alpine-docker-image" }}'
+      matchpattern: 'golang:\S+-alpine(\S+)?'
+      replacepattern: 'golang:{{ source "dockerfile-dapper" }}{{ source "alpine-docker-image" }}'
