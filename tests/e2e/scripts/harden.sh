@@ -8,8 +8,14 @@ kernel.keys.root_maxbytes=25000000
 " >> /etc/sysctl.d/90-kubelet.conf
 sysctl -p /etc/sysctl.d/90-kubelet.conf
 
+mkdir -p /var/lib/rancher/k3s/server
+mkdir -m 700 /var/lib/rancher/k3s/server/logs
+echo "apiVersion: audit.k8s.io/v1
+kind: Policy
+rules:
+- level: Metadata" >> /var/lib/rancher/k3s/server/audit.yaml
+
 if [ "$1" = "psa" ]; then
-    mkdir -p /var/lib/rancher/k3s/server
     echo "apiVersion: apiserver.config.k8s.io/v1
 kind: AdmissionConfiguration
 plugins:
@@ -28,9 +34,4 @@ plugins:
       usernames: []
       runtimeClasses: []
       namespaces: [kube-system, cis-operator-system]" >> /var/lib/rancher/k3s/server/psa.yaml
-    
-    echo "apiVersion: audit.k8s.io/v1
-kind: Policy
-rules:
-- level: Metadata" >> /var/lib/rancher/k3s/server/audit.yaml
 fi

@@ -33,38 +33,8 @@ def provision(vm, role, role_num, node_num)
   vm.provision "shell", inline: "ping -c 2 k3s.io"
   
   db_type = getDBType(role, role_num, vm)
-
-  if HARDENED == "psp"
-    vm.provision "Set kernel parameters", type: "shell", path: scripts_location + "/harden.sh"
-    vm.provision "Install kube-bench", type: "shell", path: scripts_location + "/kube-bench.sh"
-    hardened_arg = "protect-kernel-defaults: true\nkube-apiserver-arg: \"enable-admission-plugins=NodeRestriction,NamespaceLifecycle,PodSecurityPolicy,ServiceAccount\""
-  elsif HARDENED == "psa"
-    vm.provision "Set kernel parameters", type: "shell", path: scripts_location + "/harden.sh", args: [ "psa" ]
-    vm.provision "Install kube-bench", type: "shell", path: scripts_location + "/kube-bench.sh"
-    hardened_arg = <<~HARD
-      protect-kernel-defaults: true
-      secrets-encryption: true
-      kube-apiserver-arg:
-        - 'enable-admission-plugins=NodeRestriction,NamespaceLifecycle,ServiceAccount'
-        - 'admission-control-config-file=/var/lib/rancher/k3s/server/psa.yaml'
-        - 'audit-log-path=/var/lib/rancher/k3s/server/logs/audit.log'
-        - 'audit-policy-file=/var/lib/rancher/k3s/server/audit.yaml'
-        - 'audit-log-maxage=30'
-        - 'audit-log-maxbackup=10'
-        - 'audit-log-maxsize=100'
-        - 'service-account-lookup=true'
-      kube-controller-manager-arg:
-        - 'terminated-pod-gc-threshold=10'
-        - 'use-service-account-credentials=true'
-      kubelet-arg:
-        - 'streaming-connection-idle-timeout=5m'
-        - 'make-iptables-util-chains=true'
-        - 'event-qps=0'
-    HARD
-  elsif !HARDENED.empty?
-    puts "Invalid E2E_HARDENED option"
-    exit 1
-  end
+  hardened_arg = getHardenedArg(vm, HARDENED, scripts_location)
+ 
   if !REGISTRY.empty?
     vm.provision "Set private registry", type: "shell", path: scripts_location + "/registry.sh", args: [ "#{NETWORK_PREFIX}.1" ]
   end
@@ -124,7 +94,7 @@ def provision(vm, role, role_num, node_num)
   # This step does not run by default and is designed to be called by higher level tools
   if !RANCHER.empty?
     blank_node = role.include?("agent") 
-    vm.provision "Install Rancher", type: "shell", run: "never", path: scripts_location + "/rancher.sh", args: [ "#{NETWORK_PREFIX}.100", blank_node ]
+    vm.provision "Install Rancher", type: "shell", run: "never", path: scripts_location + "/rancher.sh", args: [ "#{NETWORK_PREFIX}.100", blank_node.to_s ]
   end
 end
 
