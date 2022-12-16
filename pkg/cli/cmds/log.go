@@ -80,4 +80,5 @@ func setupLogging() {
 	if Debug {
 		logrus.SetLevel(logrus.DebugLevel)
 	}
+	logrus.SetLevel(logrus.Level(LogConfig.VLevel))
 }
