@@ -32,11 +32,17 @@ import (
 	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/apiserver/pkg/authentication/user"
 	"k8s.io/apiserver/pkg/endpoints/handlers/responsewriters"
+	"k8s.io/apiserver/pkg/endpoints/request"
 	bootstrapapi "k8s.io/cluster-bootstrap/token/api"
+	"k8s.io/kubernetes/pkg/auth/nodeidentifier"
 )
 
 const (
 	staticURL = "/static/"
+)
+
+var (
+	identifier = nodeidentifier.NewDefaultNodeIdentifier()
 )
 
 func router(ctx context.Context, config *Config, cfg *cmds.Server) http.Handler {
@@ -143,18 +149,27 @@ func cacerts(serverCA string) http.Handler {
 	})
 }
 
-func getNodeInfo(req *http.Request) (string, string, error) {
+func getNodeInfo(req *http.Request) (*nodeInfo, error) {
+	user, ok := request.UserFrom(req.Context())
+	if !ok {
+		return nil, errors.New("auth user not set")
+	}
+
 	nodeName := req.Header.Get(version.Program + "-Node-Name")
 	if nodeName == "" {
-		return "", "", errors.New("node name not set")
+		return nil, errors.New("node name not set")
 	}
 
 	nodePassword := req.Header.Get(version.Program + "-Node-Password")
 	if nodePassword == "" {
-		return "", "", errors.New("node password not set")
+		return nil, errors.New("node password not set")
 	}
 
-	return strings.ToLower(nodeName), nodePassword, nil
+	return &nodeInfo{
+		Name:     strings.ToLower(nodeName),
+		Password: nodePassword,
+		User:     user,
+	}, nil
 }
 
 func getCACertAndKeys(caCertFile, caKeyFile, signingKeyFile string) ([]*x509.Certificate, crypto.Signer, crypto.Signer, error) {
@@ -398,43 +413,63 @@ func sendError(err error, resp http.ResponseWriter, status ...int) {
 // nodePassBootstrapper returns a node name, or http error code and error
 type nodePassBootstrapper func(req *http.Request) (string, int, error)
 
+// nodeInfo contains information on the requesting node, derived from auth creds
+// and request headers.
+type nodeInfo struct {
+	Name     string
+	Password string
+	User     user.Info
+}
+
 func passwordBootstrap(ctx context.Context, config *Config) nodePassBootstrapper {
 	runtime := config.ControlConfig.Runtime
 	deferredNodes := map[string]bool{}
 	var secretClient coreclient.SecretClient
+	var nodeClient coreclient.NodeClient
 	var mu sync.Mutex
 
 	return nodePassBootstrapper(func(req *http.Request) (string, int, error) {
-		nodeName, nodePassword, err := getNodeInfo(req)
+		node, err := getNodeInfo(req)
 		if err != nil {
 			return "", http.StatusBadRequest, err
 		}
 
-		if secretClient == nil {
+		nodeName, isNodeAuth := identifier.NodeIdentity(node.User)
+		if isNodeAuth && nodeName != node.Name {
+			return "", http.StatusBadRequest, errors.New("header node name does not match auth node name")
+		}
+
+		if secretClient == nil || nodeClient == nil {
 			if runtime.Core != nil {
 				// initialize the client if we can
 				secretClient = runtime.Core.Core().V1().Secret()
-			} else if nodeName == os.Getenv("NODE_NAME") {
-				// or verify the password locally and ensure a secret later
-				return verifyLocalPassword(ctx, config, &mu, deferredNodes, nodeName, nodePassword)
-			} else if config.ControlConfig.DisableAPIServer {
-				// or defer node password verification until an apiserver joins the cluster
-				return verifyRemotePassword(ctx, config, &mu, deferredNodes, nodeName, nodePassword)
+				nodeClient = runtime.Core.Core().V1().Node()
+			} else if node.Name == os.Getenv("NODE_NAME") {
+				// If we're verifying our own password, verify it locally and ensure a secret later.
+				return verifyLocalPassword(ctx, config, &mu, deferredNodes, node)
+			} else if config.ControlConfig.DisableAPIServer && !isNodeAuth {
+				// If we're running on an etcd-only node, and the request didn't use Node Identity auth,
+				// defer node password verification until an apiserver joins the cluster.
+				return verifyRemotePassword(ctx, config, &mu, deferredNodes, node)
 			} else {
-				// or reject the request until the core is ready
+				// Otherwise, reject the request until the core is ready.
 				return "", http.StatusServiceUnavailable, errors.New("runtime core not ready")
 			}
 		}
 
-		if err := nodepassword.Ensure(secretClient, nodeName, nodePassword); err != nil {
+		if err := verifyNode(ctx, nodeClient, node); err != nil {
+			return "", http.StatusUnauthorized, err
+		}
+
+		if err := nodepassword.Ensure(secretClient, node.Name, node.Password); err != nil {
 			return "", http.StatusForbidden, err
 		}
 
-		return nodeName, http.StatusOK, nil
+		return node.Name, http.StatusOK, nil
 	})
 }
 
-func verifyLocalPassword(ctx context.Context, config *Config, mu *sync.Mutex, deferredNodes map[string]bool, nodeName, nodePassword string) (string, int, error) {
+func verifyLocalPassword(ctx context.Context, config *Config, mu *sync.Mutex, deferredNodes map[string]bool, node *nodeInfo) (string, int, error) {
 	// use same password file location that the agent creates
 	nodePasswordRoot := "/"
 	if config.ControlConfig.Rootless {
@@ -449,36 +484,45 @@ func verifyLocalPassword(ctx context.Context, config *Config, mu *sync.Mutex, de
 	}
 
 	password := strings.TrimSpace(string(passBytes))
-	if password != nodePassword {
-		return "", http.StatusForbidden, errors.Wrapf(err, "unable to verify local password for node '%s'", nodeName)
+	if password != node.Password {
+		return "", http.StatusForbidden, errors.Wrapf(err, "unable to verify local password for node '%s'", node.Name)
 	}
 
 	mu.Lock()
 	defer mu.Unlock()
 
-	if _, ok := deferredNodes[nodeName]; !ok {
-		deferredNodes[nodeName] = true
-		go ensureSecret(ctx, config, nodeName, nodePassword)
-		logrus.Debugf("Password verified locally for node '%s'", nodeName)
+	if _, ok := deferredNodes[node.Name]; !ok {
+		deferredNodes[node.Name] = true
+		go ensureSecret(ctx, config, node)
+		logrus.Debugf("Password verified locally for node '%s'", node.Name)
 	}
 
-	return nodeName, http.StatusOK, nil
+	return node.Name, http.StatusOK, nil
 }
 
-func verifyRemotePassword(ctx context.Context, config *Config, mu *sync.Mutex, deferredNodes map[string]bool, nodeName, nodePassword string) (string, int, error) {
+func verifyRemotePassword(ctx context.Context, config *Config, mu *sync.Mutex, deferredNodes map[string]bool, node *nodeInfo) (string, int, error) {
 	mu.Lock()
 	defer mu.Unlock()
 
-	if _, ok := deferredNodes[nodeName]; !ok {
-		deferredNodes[nodeName] = true
-		go ensureSecret(ctx, config, nodeName, nodePassword)
-		logrus.Debugf("Password verification deferred for node '%s'", nodeName)
+	if _, ok := deferredNodes[node.Name]; !ok {
+		deferredNodes[node.Name] = true
+		go ensureSecret(ctx, config, node)
+		logrus.Debugf("Password verification deferred for node '%s'", node.Name)
 	}
 
-	return nodeName, http.StatusOK, nil
+	return node.Name, http.StatusOK, nil
 }
 
-func ensureSecret(ctx context.Context, config *Config, nodeName, nodePassword string) {
+func verifyNode(ctx context.Context, nodeClient coreclient.NodeClient, node *nodeInfo) error {
+	if nodeName, isNodeAuth := identifier.NodeIdentity(node.User); isNodeAuth {
+		if _, err := nodeClient.Get(nodeName, metav1.GetOptions{}); err != nil {
+			return errors.Wrap(err, "unable to verify node identity")
+		}
+	}
+	return nil
+}
+
+func ensureSecret(ctx context.Context, config *Config, node *nodeInfo) {
 	runtime := config.ControlConfig.Runtime
 	for {
 		select {
@@ -486,10 +530,10 @@ func ensureSecret(ctx context.Context, config *Config, nodeName, nodePassword st
 			return
 		case <-time.After(1 * time.Second):
 			if runtime.Core != nil {
-				logrus.Debugf("Runtime core has become available, ensuring password secret for node '%s'", nodeName)
+				logrus.Debugf("Runtime core has become available, ensuring password secret for node '%s'", node.Name)
 				secretClient := runtime.Core.Core().V1().Secret()
-				if err := nodepassword.Ensure(secretClient, nodeName, nodePassword); err != nil {
-					logrus.Warnf("Error ensuring node password secret for pre-validated node '%s': %v", nodeName, err)
+				if err := nodepassword.Ensure(secretClient, node.Name, node.Password); err != nil {
+					logrus.Warnf("Error ensuring node password secret for pre-validated node '%s': %v", node.Name, err)
 				}
 				return
 			}
