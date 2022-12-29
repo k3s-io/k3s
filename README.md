@@ -1,5 +1,4 @@
 K3s - Lightweight Kubernetes
-![Nightly CI](https://github.com/k3s-io/k3s/actions/workflows/nightly-install.yaml/badge.svg)
 ===============================================
 
 Lightweight Kubernetes.  Production ready, easy to install, half the memory, all in a binary less than 100 MB.
@@ -49,6 +48,14 @@ Additionally, K3s simplifies Kubernetes operations by maintaining functionality 
 * Auto-deploying Kubernetes resources from local manifests in realtime as they are changed.
 * Managing an embedded etcd cluster (work in progress)
 
+Current Status
+--------------
+[![FOSSA Status](https://app.fossa.com/api/projects/custom%2B25850%2Fgithub.com%2Fk3s-io%2Fk3s.svg?type=shield)](https://app.fossa.com/projects/custom%2B25850%2Fgithub.com%2Fk3s-io%2Fk3s?ref=badge_shield)
+![Nightly CI](https://github.com/k3s-io/k3s/actions/workflows/nightly-install.yaml/badge.svg)
+[![Build Status](https://drone-publish.k3s.io/api/badges/k3s-io/k3s/status.svg)](https://drone-publish.k3s.io/k3s-io/k3s)
+[![Integration Test Coverage](https://github.com/k3s-io/k3s/actions/workflows/integration.yaml/badge.svg)](https://github.com/k3s-io/k3s/actions/workflows/integration.yaml)
+[![Unit Test Coverage](https://github.com/k3s-io/k3s/actions/workflows/unitcoverage.yaml/badge.svg)](https://github.com/k3s-io/k3s/actions/workflows/unitcoverage.yaml)
+
 What's with the name?
 --------------------
 
@@ -68,7 +75,7 @@ How is this lightweight or smaller than upstream Kubernetes?
 
 There are two major ways that K3s is lighter weight than upstream Kubernetes:
 1. The memory footprint to run it is smaller
-1. The binary, which contains all the non-containerized components needed to run a cluster, is smaller
+2. The binary, which contains all the non-containerized components needed to run a cluster, is smaller
 
 The memory footprint is reduced primarily by running many components inside of a single process. This eliminates significant overhead that would otherwise be duplicated for each component.
 
