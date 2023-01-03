@@ -1,4 +1,4 @@
-package validatedualstack
+package dualstack
 
 import (
 	"flag"
@@ -14,14 +14,15 @@ import (
 
 // Valid nodeOS: generic/ubuntu2004, opensuse/Leap-15.3.x86_64
 var nodeOS = flag.String("nodeOS", "generic/ubuntu2004", "VM operating system")
-var serverCount = flag.Int("serverCount", 1, "number of server nodes")
+var serverCount = flag.Int("serverCount", 3, "number of server nodes")
 var agentCount = flag.Int("agentCount", 1, "number of agent nodes")
 var hardened = flag.Bool("hardened", false, "true or false")
 
 func Test_E2EDualStack(t *testing.T) {
 	flag.Parse()
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Validate DualStack Suite")
+	suiteConfig, reporterConfig := GinkgoConfiguration()
+	RunSpecs(t, "DualStack Test Suite", suiteConfig, reporterConfig)
 }
 
 var (
@@ -30,12 +31,14 @@ var (
 	agentNodeNames  []string
 )
 
-var _ = Describe("Verify DualStack Configuration", func() {
+var _ = ReportAfterEach(e2e.GenReport)
+
+var _ = Describe("Verify DualStack Configuration", Ordered, func() {
 
 	It("Starts up with no issues", func() {
 		var err error
 		serverNodeNames, agentNodeNames, err = e2e.CreateCluster(*nodeOS, *serverCount, *agentCount)
-		Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog())
+		Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog(err))
 		fmt.Println("CLUSTER CONFIG")
 		fmt.Println("OS:", *nodeOS)
 		fmt.Println("Server Nodes:", serverNodeNames)
@@ -182,7 +185,7 @@ var _ = Describe("Verify DualStack Configuration", func() {
 
 var failed bool
 var _ = AfterEach(func() {
-	failed = failed || CurrentGinkgoTestDescription().Failed
+	failed = failed || CurrentSpecReport().Failed()
 })
 
 var _ = AfterSuite(func() {

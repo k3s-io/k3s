@@ -20,10 +20,11 @@ var agentCount = flag.Int("agentCount", 1, "number of agent nodes")
 // Environment Variables Info:
 // E2E_RELEASE_VERSION=v1.23.1+k3s2 or nil for latest commit from master
 
-func Test_E2EClusterValidation(t *testing.T) {
+func Test_E2EDockerCRIValidation(t *testing.T) {
 	RegisterFailHandler(Fail)
 	flag.Parse()
-	RunSpecs(t, "Create Cluster Test Suite")
+	suiteConfig, reporterConfig := GinkgoConfiguration()
+	RunSpecs(t, "Docker CRI Test Suite", suiteConfig, reporterConfig)
 }
 
 var (
@@ -32,12 +33,14 @@ var (
 	agentNodeNames  []string
 )
 
-var _ = Describe("Verify CRI-Dockerd", func() {
+var _ = ReportAfterEach(e2e.GenReport)
+
+var _ = Describe("Verify CRI-Dockerd", Ordered, func() {
 	Context("Cluster :", func() {
 		It("Starts up with no issues", func() {
 			var err error
 			serverNodeNames, agentNodeNames, err = e2e.CreateCluster(*nodeOS, *serverCount, *agentCount)
-			Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog())
+			Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog(err))
 			fmt.Println("CLUSTER CONFIG")
 			fmt.Println("OS:", *nodeOS)
 			fmt.Println("Server Nodes:", serverNodeNames)
@@ -74,7 +77,7 @@ var _ = Describe("Verify CRI-Dockerd", func() {
 	})
 })
 
-var failed = false
+var failed bool
 var _ = AfterEach(func() {
 	failed = failed || CurrentSpecReport().Failed()
 })

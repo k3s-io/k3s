@@ -7,8 +7,6 @@ GITHUB_BRANCH = (ENV['E2E_GITHUB_BRANCH'] || "master")
 RELEASE_VERSION = (ENV['E2E_RELEASE_VERSION'] || "")
 EXTERNAL_DB = (ENV['E2E_EXTERNAL_DB'] || "etcd")
 HARDENED = (ENV['E2E_HARDENED'] || "")
-REGISTRY = (ENV['E2E_REGISTRY'] || "")
-RANCHER = (ENV['E2E_RANCHER'] || "")
 NODE_CPUS = (ENV['E2E_NODE_CPUS'] || 2).to_i
 NODE_MEMORY = (ENV['E2E_NODE_MEMORY'] || 1024).to_i
 # Virtualbox >= 6.1.28 require `/etc/vbox/network.conf` for expanded private networks 
@@ -38,10 +36,6 @@ def provision(vm, role, role_num, node_num)
     vm.provision "Set kernel parameters", type: "shell", path: scripts_location + "/harden.sh"
     hardened_arg = "protect-kernel-defaults: true\nkube-apiserver-arg: \"enable-admission-plugins=NodeRestriction,PodSecurityPolicy,ServiceAccount\""
   end
-  if !REGISTRY.empty?
-    vm.provision "Set private registry", type: "shell", path: scripts_location + "/registry.sh", args: [ "#{NETWORK_PREFIX}.1" ]
-  end
-  
 
   if role.include?("server") && role_num == 0
     vm.provision 'k3s-primary-server', type: 'k3s', run: 'once' do |k3s|
@@ -95,35 +89,10 @@ def provision(vm, role, role_num, node_num)
       vm.provision "shell", inline: "docker start #{EXTERNAL_DB}"
     end
   end
-  # This step does not run by default and is designed to be called by higher level tools
-  if !RANCHER.empty?
-    vm.provision "Install Rancher", type: "shell", run: "never", path: scripts_location + "/rancher.sh", args: node_ip
-  end
 end
 
 def getDBType(role, role_num, vm)
-  
-  if EXTERNAL_DB == "mysql"
-    if role.include?("server") && role_num == 0
-      dockerInstall(vm)
-      vm.provision "Start mysql", inline: "docker run -d -p 3306:3306 --name #{EXTERNAL_DB} -e MYSQL_ROOT_PASSWORD=e2e mysql:5.7"
-      vm.provision "shell", inline: "echo \"Wait for mysql to startup\"; sleep 10"
-      return "datastore-endpoint: 'mysql://root:e2e@tcp(#{NETWORK_PREFIX}.100:3306)/k3s'"
-    elsif role.include?("server") && role_num != 0
-      return "datastore-endpoint: 'mysql://root:e2e@tcp(#{NETWORK_PREFIX}.100:3306)/k3s'"
-    end
-
-  elsif EXTERNAL_DB == "postgres"
-    if role.include?("server") && role_num == 0
-      dockerInstall(vm)
-      vm.provision "Start postgres", type: "shell", inline: "docker run -d -p 5432:5432 --name postgres -e POSTGRES_PASSWORD=e2e  postgres:14-alpine"
-      vm.provision "shell", inline: "echo \"Wait for postgres to startup\"; sleep 10"
-      return "datastore-endpoint: 'postgres://postgres:e2e@#{NETWORK_PREFIX}.100:5432/k3s?sslmode=disable'"
-    elsif role.include?("server") && role_num != 0
-      return "datastore-endpoint: 'postgres://postgres:e2e@#{NETWORK_PREFIX}.100:5432/k3s?sslmode=disable'"
-    end
-
-  elsif ( EXTERNAL_DB == "" || EXTERNAL_DB == "etcd" )
+  if ( EXTERNAL_DB == "" || EXTERNAL_DB == "etcd" )
     if role.include?("server") && role_num == 0
       return "cluster-init: true"
     end

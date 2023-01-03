@@ -33,12 +33,14 @@ var (
 	agentNodeNames  []string
 )
 
+var _ = ReportAfterEach(e2e.GenReport)
+
 var _ = Describe("Verify prefer-bundled-bin flag", Ordered, func() {
 	Context("Cluster :", func() {
 		It("Starts up with no issues", func() {
 			var err error
 			serverNodeNames, agentNodeNames, err = e2e.CreateCluster(*nodeOS, *serverCount, *agentCount)
-			Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog())
+			Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog(err))
 			fmt.Println("CLUSTER CONFIG")
 			fmt.Println("OS:", *nodeOS)
 			fmt.Println("Server Nodes:", serverNodeNames)
