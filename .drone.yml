@@ -524,12 +524,20 @@ steps:
   resources:
     cpu: 6000
     memory: 10Gi
+  environment:
+    E2E_REGISTRY: 'true'
   commands:
   - docker stop registry && docker rm registry
   - docker run -d -p 5000:5000 -e REGISTRY_PROXY_REMOTEURL=https://registry-1.docker.io --name registry registry:2
   - cd tests/e2e/validatecluster
   - vagrant destroy -f
-  - E2E_REGISTRY=true go test -v -timeout=30m ./validatecluster_test.go -ci
+  - go test -v -timeout=30m ./validatecluster_test.go -ci
+  - cd ../secretsencryption
+  - vagrant destroy -f
+  - go test -v -timeout=30m ./secretsencryption_test.go -ci
+  - cd ../snapshotrestore
+  - vagrant destroy -f
+  - go test -v -timeout=30m ./snapshotrestore_test.go -ci
   - docker stop registry && docker rm registry
   volumes:
   - name: libvirt
