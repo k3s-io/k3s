@@ -19,6 +19,10 @@ on:
       - ".github/**"
       - "!.github/workflows/integration.yaml"
   workflow_dispatch: {}
+
+permissions:
+  contents: read
+  
 jobs:
   build:
     uses: ./.github/workflows/build-k3s.yaml

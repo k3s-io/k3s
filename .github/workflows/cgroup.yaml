@@ -19,6 +19,10 @@ on:
       - ".github/**"
       - "!.github/workflows/cgroup.yaml"
   workflow_dispatch: {}
+
+permissions:
+  contents: read
+  
 jobs:
   prep:
     name: "Prepare"

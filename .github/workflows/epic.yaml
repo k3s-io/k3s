@@ -2,10 +2,16 @@ name: Update epics
 on:
   issues:
     types: [opened, closed, reopened]
+
+permissions:
+  contents: read
+  
 jobs:
   epics:
     runs-on: ubuntu-latest
     name: Update epic issues
+    permissions:
+      issues: read | write
     steps:
       - name: Run epics action
         uses: cloudaper/epics-action@v1
