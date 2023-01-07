@@ -339,7 +339,7 @@ var ServerFlags = []cli.Flag{
 	},
 	&cli.StringFlag{
 		Name:        "etcd-snapshot-schedule-cron",
-		Usage:       "(db) Snapshot interval time in cron spec. eg. every 5 hours '* */5 * * *'",
+		Usage:       "(db) Snapshot interval time in cron spec. eg. every 5 hours '0 */5 * * *'",
 		Destination: &ServerConfig.EtcdSnapshotCron,
 		Value:       "0 */12 * * *",
 	},
