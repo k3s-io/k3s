@@ -230,7 +230,7 @@ func K3sStartServer(inputArgs ...string) (*K3sServer, error) {
 }
 
 // K3sStopServer gracefully stops the running K3s server and does not kill its children.
-// Equivalent to stoping the K3s service
+// Equivalent to stopping the K3s service
 func K3sStopServer(server *K3sServer) error {
 	if server.log != nil {
 		server.log.Close()
