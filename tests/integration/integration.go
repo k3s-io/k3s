@@ -292,8 +292,11 @@ func K3sCleanup(k3sTestLock int, dataDir string) error {
 	return nil
 }
 
-func K3sDumpLog(server *K3sServer) error {
+func K3sSaveLog(server *K3sServer, dump bool) error {
 	server.log.Close()
+	if !dump {
+		return nil
+	}
 	log, err := os.Open(server.log.Name())
 	if err != nil {
 		return err

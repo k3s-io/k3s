@@ -52,10 +52,15 @@ var _ = Describe("custom etcd args", Ordered, func() {
 	})
 })
 
+var failed bool
+var _ = AfterEach(func() {
+	failed = failed || CurrentSpecReport().Failed()
+})
+
 var _ = AfterSuite(func() {
 	if !testutil.IsExistingServer() {
-		if CurrentSpecReport().Failed() {
-			testutil.K3sDumpLog(customEtcdArgsServer)
+		if failed {
+			testutil.K3sSaveLog(customEtcdArgsServer, false)
 		}
 		Expect(testutil.K3sKillServer(customEtcdArgsServer)).To(Succeed())
 		Expect(testutil.K3sCleanup(testLock, "")).To(Succeed())
