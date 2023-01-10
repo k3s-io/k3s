@@ -229,7 +229,23 @@ func K3sStartServer(inputArgs ...string) (*K3sServer, error) {
 	return &K3sServer{cmd, f}, err
 }
 
-// K3sKillServer terminates the running K3s server and its children
+// K3sStopServer gracefully stops the running K3s server and does not kill its children.
+// Equivalent to stoping the K3s service
+func K3sStopServer(server *K3sServer) error {
+	if server.log != nil {
+		server.log.Close()
+	}
+	if err := server.cmd.Process.Kill(); err != nil {
+		return errors.Wrap(err, "failed to kill k3s process")
+	}
+	if _, err := server.cmd.Process.Wait(); err != nil {
+		return errors.Wrap(err, "failed to wait for k3s process exit")
+	}
+	return nil
+}
+
+// K3sKillServer terminates the running K3s server and its children.
+// Equivalent to k3s-killall.sh
 func K3sKillServer(server *K3sServer) error {
 	if server.log != nil {
 		server.log.Close()

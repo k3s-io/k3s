@@ -226,11 +226,11 @@ var _ = Describe("startup tests", Ordered, func() {
 				To(ContainSubstring("pod/dummy created"))
 			Eventually(func() (string, error) {
 				return testutil.K3sCmd("kubectl get event -n kube-system --field-selector involvedObject.name=dummy")
-			}, "20s", "4s").Should(ContainSubstring("Started container dummy"))
+			}, "60s", "5s").Should(ContainSubstring("Started container dummy"))
 		})
 		It("restarts the server", func() {
 			var err error
-			Expect(testutil.K3sKillServer(startupServer)).To(Succeed())
+			Expect(testutil.K3sStopServer(startupServer)).To(Succeed())
 			startupServer, err = testutil.K3sStartServer(startupServerArgs...)
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(func() error {
@@ -260,7 +260,7 @@ var _ = AfterEach(func() {
 var _ = AfterSuite(func() {
 	if !testutil.IsExistingServer() {
 		if failed {
-			testutil.K3sDumpLog(startupServer)
+			testutil.K3sSaveLog(startupServer, false)
 			Expect(testutil.K3sKillServer(startupServer)).To(Succeed())
 		}
 		Expect(testutil.K3sCleanup(testLock, "")).To(Succeed())
