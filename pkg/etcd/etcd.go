@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"math/rand"
 	"net"
 	"net/http"
 	"net/url"
@@ -49,6 +50,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/retry"
 )
 
@@ -57,6 +59,10 @@ const (
 	manageTickerTime     = time.Second * 15
 	learnerMaxStallTime  = time.Minute * 5
 	memberRemovalTimeout = time.Minute * 1
+
+	// snapshotJitterMax defines the maximum time skew on cron-triggered snapshots. The actual jitter
+	// will be a random Duration somewhere between 0 and snapshotJitterMax.
+	snapshotJitterMax = time.Second * 5
 
 	// defaultDialTimeout is intentionally short so that connections timeout within the testTimeout defined above
 	defaultDialTimeout = 2 * time.Second
@@ -80,6 +86,19 @@ var (
 
 	snapshotExtraMetadataConfigMapName = version.Program + "-etcd-snapshot-extra-metadata"
 	snapshotConfigMapName              = version.Program + "-etcd-snapshots"
+
+	// snapshotDataBackoff will retry at increasing steps for up to ~30 seconds.
+	// If the ConfigMap update fails, the list won't be reconciled again until next time
+	// the server starts, so we should be fairly persistent in retrying.
+	snapshotDataBackoff = wait.Backoff{
+		Steps:    9,
+		Duration: 10 * time.Millisecond,
+		Factor:   3.0,
+		Jitter:   0.1,
+	}
+
+	// cronLogger wraps logrus's Printf output as cron-compatible logger
+	cronLogger = cron.VerbosePrintfLogger(logrus.StandardLogger())
 
 	NodeNameAnnotation    = "etcd." + version.Program + ".cattle.io/node-name"
 	NodeAddressAnnotation = "etcd." + version.Program + ".cattle.io/node-address"
@@ -139,7 +158,7 @@ func errNotMember() error { return &MembershipError{} }
 // ETCD with an initialized cron value.
 func NewETCD() *ETCD {
 	return &ETCD{
-		cron: cron.New(),
+		cron: cron.New(cron.WithLogger(cronLogger)),
 	}
 }
 
@@ -1712,7 +1731,7 @@ func (e *ETCD) DeleteSnapshots(ctx context.Context, snapshots []string) error {
 // AddSnapshotData adds the given snapshot file information to the snapshot configmap, using the existing extra metadata
 // available at the time.
 func (e *ETCD) addSnapshotData(sf snapshotFile) error {
-	return retry.OnError(retry.DefaultBackoff, func(err error) bool {
+	return retry.OnError(snapshotDataBackoff, func(err error) bool {
 		return apierrors.IsConflict(err) || apierrors.IsAlreadyExists(err)
 	}, func() error {
 		// make sure the core.Factory is initialized. There can
@@ -1920,11 +1939,16 @@ func (e *ETCD) ReconcileSnapshotData(ctx context.Context) error {
 
 // setSnapshotFunction schedules snapshots at the configured interval.
 func (e *ETCD) setSnapshotFunction(ctx context.Context) {
-	e.cron.AddFunc(e.config.EtcdSnapshotCron, func() {
+	skipJob := cron.SkipIfStillRunning(cronLogger)
+	e.cron.AddJob(e.config.EtcdSnapshotCron, skipJob(cron.FuncJob(func() {
+		// Add a small amount of jitter to the actual snapshot execution. On clusters with multiple servers,
+		// having all the nodes take a snapshot at the exact same time can lead to excessive retry thrashing
+		// when updating the snapshot list configmap.
+		time.Sleep(time.Duration(rand.Float64() * float64(snapshotJitterMax)))
 		if err := e.Snapshot(ctx, e.config); err != nil {
 			logrus.Error(err)
 		}
-	})
+	})))
 }
 
 // Restore performs a restore of the ETCD datastore from
