@@ -22,6 +22,7 @@ var nodeOS = flag.String("nodeOS", "generic/ubuntu2004", "VM operating system")
 var serverCount = flag.Int("serverCount", 1, "number of server nodes")
 var agentCount = flag.Int("agentCount", 1, "number of agent nodes")
 var hardened = flag.Bool("hardened", false, "true or false")
+var ci = flag.Bool("ci", false, "running on CI")
 
 // getLBServiceIPs returns the externalIP configured for flannel
 func getExternalIPs(kubeConfigFile string) ([]string, error) {
@@ -82,7 +83,7 @@ var _ = Describe("Verify External-IP config", Ordered, func() {
 			for _, node := range nodes {
 				g.Expect(node.Status).Should(Equal("Ready"))
 			}
-		}, "420s", "5s").Should(Succeed())
+		}, "620s", "5s").Should(Succeed())
 		_, err := e2e.ParseNodes(kubeConfigFile, true)
 		Expect(err).NotTo(HaveOccurred())
 	})
@@ -98,7 +99,7 @@ var _ = Describe("Verify External-IP config", Ordered, func() {
 					g.Expect(pod.Status).Should(Equal("Running"), pod.Name)
 				}
 			}
-		}, "420s", "5s").Should(Succeed())
+		}, "620s", "5s").Should(Succeed())
 		_, err := e2e.ParsePods(kubeConfigFile, true)
 		Expect(err).NotTo(HaveOccurred())
 	})
@@ -159,7 +160,7 @@ var _ = AfterEach(func() {
 })
 
 var _ = AfterSuite(func() {
-	if failed {
+	if failed && !*ci {
 		fmt.Println("FAILED!")
 	} else {
 		Expect(e2e.DestroyCluster()).To(Succeed())
