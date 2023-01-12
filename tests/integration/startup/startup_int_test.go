@@ -208,12 +208,60 @@ var _ = Describe("startup tests", Ordered, func() {
 			Expect(testutil.K3sCleanup(-1, "")).To(Succeed())
 		})
 	})
+	// Check for regression of containerd restarting pods
+	// https://github.com/containerd/containerd/issues/7843
+	When("a server with a dummy pod", func() {
+		It("is created with no arguments", func() {
+			var err error
+			startupServer, err = testutil.K3sStartServer(startupServerArgs...)
+			Expect(err).ToNot(HaveOccurred())
+		})
+		It("has the default pods deployed", func() {
+			Eventually(func() error {
+				return testutil.K3sDefaultDeployments()
+			}, "120s", "5s").Should(Succeed())
+		})
+		It("creates a new pod", func() {
+			Expect(testutil.K3sCmd("kubectl apply -f ./testdata/dummy.yaml")).
+				To(ContainSubstring("pod/dummy created"))
+			Eventually(func() (string, error) {
+				return testutil.K3sCmd("kubectl get event -n kube-system --field-selector involvedObject.name=dummy")
+			}, "60s", "5s").Should(ContainSubstring("Started container dummy"))
+		})
+		It("restarts the server", func() {
+			var err error
+			Expect(testutil.K3sStopServer(startupServer)).To(Succeed())
+			startupServer, err = testutil.K3sStartServer(startupServerArgs...)
+			Expect(err).ToNot(HaveOccurred())
+			Eventually(func() error {
+				return testutil.K3sDefaultDeployments()
+			}, "180s", "5s").Should(Succeed())
+		})
+		It("has the dummy pod not restarted", func() {
+			Consistently(func(g Gomega) {
+				res, err := testutil.K3sCmd("kubectl get event -n kube-system --field-selector involvedObject.name=dummy")
+				g.Expect(err).ToNot(HaveOccurred())
+				g.Expect(res).NotTo(ContainSubstring("Pod sandbox changed, it will be killed and re-created"))
+				g.Expect(res).NotTo(ContainSubstring("Stopping container dummy"))
+			}, "30s", "5s").Should(Succeed())
+		})
+		It("dies cleanly", func() {
+			Expect(testutil.K3sKillServer(startupServer)).To(Succeed())
+			Expect(testutil.K3sCleanup(-1, "")).To(Succeed())
+		})
+	})
+})
+
+var failed bool
+var _ = AfterEach(func() {
+	failed = failed || CurrentSpecReport().Failed()
 })
 
 var _ = AfterSuite(func() {
 	if !testutil.IsExistingServer() {
-		if CurrentSpecReport().Failed() {
-			testutil.K3sDumpLog(startupServer)
+		if failed {
+			testutil.K3sSaveLog(startupServer, false)
+			Expect(testutil.K3sKillServer(startupServer)).To(Succeed())
 		}
 		Expect(testutil.K3sCleanup(testLock, "")).To(Succeed())
 	}
