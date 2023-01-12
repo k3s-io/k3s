@@ -106,10 +106,15 @@ var _ = Describe("etcd snapshot restore", Ordered, func() {
 	})
 })
 
+var failed bool
+var _ = AfterEach(func() {
+	failed = failed || CurrentSpecReport().Failed()
+})
+
 var _ = AfterSuite(func() {
 	if !testutil.IsExistingServer() {
-		if CurrentSpecReport().Failed() {
-			testutil.K3sDumpLog(server1)
+		if failed {
+			testutil.K3sSaveLog(server1, false)
 		}
 		Expect(testutil.K3sKillServer(server1)).To(Succeed())
 		Expect(testutil.K3sKillServer(server2)).To(Succeed())
