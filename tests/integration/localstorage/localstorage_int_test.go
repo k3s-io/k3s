@@ -82,10 +82,15 @@ var _ = Describe("local storage", func() {
 	})
 })
 
+var failed bool
+var _ = AfterEach(func() {
+	failed = failed || CurrentSpecReport().Failed()
+})
+
 var _ = AfterSuite(func() {
 	if !testutil.IsExistingServer() {
-		if CurrentSpecReport().Failed() {
-			testutil.K3sDumpLog(localStorageServer)
+		if failed {
+			testutil.K3sSaveLog(localStorageServer, false)
 		}
 		Expect(testutil.K3sKillServer(localStorageServer)).To(Succeed())
 		Expect(testutil.K3sCleanup(testLock, "")).To(Succeed())

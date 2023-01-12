@@ -77,10 +77,15 @@ var _ = Describe("certificate rotation", Ordered, func() {
 	})
 })
 
+var failed bool
+var _ = AfterEach(func() {
+	failed = failed || CurrentSpecReport().Failed()
+})
+
 var _ = AfterSuite(func() {
 	if !testutil.IsExistingServer() {
-		if CurrentSpecReport().Failed() {
-			testutil.K3sDumpLog(server)
+		if failed {
+			testutil.K3sSaveLog(server, false)
 		}
 		Expect(testutil.K3sKillServer(server)).To(Succeed())
 		Expect(testutil.K3sCleanup(-1, "")).To(Succeed())

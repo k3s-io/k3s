@@ -1,0 +1,11 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: dummy
+  namespace: kube-system
+spec:
+  containers:
+  - name: dummy
+    image: ranchertest/mytestcontainer
+    imagePullPolicy: IfNotPresent
