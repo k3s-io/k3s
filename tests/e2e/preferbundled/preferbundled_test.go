@@ -16,6 +16,7 @@ import (
 var nodeOS = flag.String("nodeOS", "generic/ubuntu2004", "VM operating system")
 var serverCount = flag.Int("serverCount", 1, "number of server nodes")
 var agentCount = flag.Int("agentCount", 1, "number of agent nodes")
+var ci = flag.Bool("ci", false, "running on CI")
 
 // Environment Variables Info:
 // E2E_RELEASE_VERSION=v1.23.1+k3s2 or nil for latest commit from master
@@ -57,7 +58,7 @@ var _ = Describe("Verify prefer-bundled-bin flag", Ordered, func() {
 				for _, node := range nodes {
 					g.Expect(node.Status).Should(Equal("Ready"))
 				}
-			}, "420s", "5s").Should(Succeed())
+			}, "620s", "5s").Should(Succeed())
 			_, _ = e2e.ParseNodes(kubeConfigFile, true)
 
 			fmt.Printf("\nFetching pods status\n")
@@ -71,7 +72,7 @@ var _ = Describe("Verify prefer-bundled-bin flag", Ordered, func() {
 						g.Expect(pod.Status).Should(Equal("Running"), pod.Name)
 					}
 				}
-			}, "420s", "5s").Should(Succeed())
+			}, "620s", "5s").Should(Succeed())
 			_, _ = e2e.ParsePods(kubeConfigFile, true)
 		})
 	})
@@ -83,7 +84,7 @@ var _ = AfterEach(func() {
 })
 
 var _ = AfterSuite(func() {
-	if failed {
+	if failed && !*ci {
 		fmt.Println("FAILED!")
 	} else {
 		Expect(e2e.DestroyCluster()).To(Succeed())

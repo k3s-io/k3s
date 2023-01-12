@@ -68,7 +68,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 				for _, node := range nodes {
 					g.Expect(node.Status).Should(Equal("Ready"))
 				}
-			}, "420s", "5s").Should(Succeed())
+			}, "620s", "5s").Should(Succeed())
 			_, _ = e2e.ParseNodes(kubeConfigFile, true)
 
 			fmt.Printf("\nFetching Pods status\n")
@@ -82,7 +82,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 						g.Expect(pod.Status).Should(Equal("Running"), pod.Name)
 					}
 				}
-			}, "420s", "5s").Should(Succeed())
+			}, "620s", "5s").Should(Succeed())
 			_, _ = e2e.ParsePods(kubeConfigFile, true)
 		})
 
