@@ -372,7 +372,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		serverConfig.ControlConfig.Disables["ccm"] = true
 	}
 
-	tlsMinVersionArg := getArgValueFromList("tls-min-version", cfg.ExtraAPIArgs)
+	tlsMinVersionArg := getArgValueFromList("tls-min-version", serverConfig.ControlConfig.ExtraAPIArgs)
 	serverConfig.ControlConfig.TLSMinVersion, err = kubeapiserverflag.TLSVersion(tlsMinVersionArg)
 	if err != nil {
 		return errors.Wrap(err, "invalid tls-min-version")
@@ -386,7 +386,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	// TLS config based on mozilla ssl-config generator
 	// https://ssl-config.mozilla.org/#server=golang&version=1.13.6&config=intermediate&guideline=5.4
 	// Need to disable the TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256 Cipher for TLS1.2
-	tlsCipherSuitesArg := getArgValueFromList("tls-cipher-suites", cfg.ExtraAPIArgs)
+	tlsCipherSuitesArg := getArgValueFromList("tls-cipher-suites", serverConfig.ControlConfig.ExtraAPIArgs)
 	tlsCipherSuites := strings.Split(tlsCipherSuitesArg, ",")
 	for i := range tlsCipherSuites {
 		tlsCipherSuites[i] = strings.TrimSpace(tlsCipherSuites[i])
@@ -400,6 +400,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 			"TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305",
 			"TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305",
 		}
+		serverConfig.ControlConfig.ExtraAPIArgs = append(serverConfig.ControlConfig.ExtraAPIArgs, "tls-cipher-suites="+strings.Join(tlsCipherSuites, ","))
 	}
 	serverConfig.ControlConfig.TLSCipherSuites, err = kubeapiserverflag.TLSCipherSuites(tlsCipherSuites)
 	if err != nil {
