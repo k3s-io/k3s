@@ -21,6 +21,10 @@ on:
       - ".github/**"
       - "!.github/workflows/unitcoverage.yaml"
   workflow_dispatch: {}
+
+permissions:
+  contents: read
+
 jobs:
   test:
     name: Unit Tests
