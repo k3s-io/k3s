@@ -1,0 +1,39 @@
+name: Build K3s
+
+on: 
+  workflow_call:
+   inputs:
+    upload-repo:
+      type: boolean
+      required: false
+      default: false
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-20.04
+    timeout-minutes: 20
+    steps:
+    - name: Checkout K3s
+      uses: actions/checkout@v3
+    - name: Build K3s binary
+      run: |
+        DOCKER_BUILDKIT=1 SKIP_AIRGAP=1 SKIP_VALIDATE=1 make
+      
+    - name: bundle repo
+      if: inputs.upload-repo == true
+      run: |
+        tar -czvf ../k3s-repo.tar.gz .
+        mv ../k3s-repo.tar.gz .
+    - name: "Upload K3s directory"
+      if: inputs.upload-repo == true
+      uses: actions/upload-artifact@v3
+      with:
+        name: k3s-repo.tar.gz
+        path: k3s-repo.tar.gz
+    - name: "Upload K3s binary"
+      if: inputs.upload-repo == false
+      uses: actions/upload-artifact@v3
+      with:
+        name: k3s
+        path: dist/artifacts/k3s

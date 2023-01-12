@@ -19,8 +19,11 @@ var nodeOS = flag.String("nodeOS", "generic/ubuntu2004", "VM operating system")
 var serverCount = flag.Int("serverCount", 3, "number of server nodes")
 var agentCount = flag.Int("agentCount", 2, "number of agent nodes")
 var hardened = flag.Bool("hardened", false, "true or false")
+var ci = flag.Bool("ci", false, "running on CI")
 
 // Environment Variables Info:
+// E2E_REGISTRY: true/false (default: false)
+// Controls which K3s version is installed first, upgrade is always to latest commit
 // E2E_RELEASE_VERSION=v1.23.3+k3s1
 // OR
 // E2E_RELEASE_CHANNEL=(commit|latest|stable), commit pulls latest commit from master
@@ -28,7 +31,8 @@ var hardened = flag.Bool("hardened", false, "true or false")
 func Test_E2EUpgradeValidation(t *testing.T) {
 	RegisterFailHandler(Fail)
 	flag.Parse()
-	RunSpecs(t, "Create Cluster Test Suite")
+	suiteConfig, reporterConfig := GinkgoConfiguration()
+	RunSpecs(t, "Upgrade Cluster Test Suite", suiteConfig, reporterConfig)
 }
 
 var (
@@ -37,12 +41,14 @@ var (
 	agentNodeNames  []string
 )
 
-var _ = Describe("Verify Upgrade", func() {
+var _ = ReportAfterEach(e2e.GenReport)
+
+var _ = Describe("Verify Upgrade", Ordered, func() {
 	Context("Cluster :", func() {
 		It("Starts up with no issues", func() {
 			var err error
 			serverNodeNames, agentNodeNames, err = e2e.CreateCluster(*nodeOS, *serverCount, *agentCount)
-			Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog())
+			Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog(err))
 			fmt.Println("CLUSTER CONFIG")
 			fmt.Println("OS:", *nodeOS)
 			fmt.Println("Server Nodes:", serverNodeNames)
@@ -373,13 +379,13 @@ var _ = Describe("Verify Upgrade", func() {
 	})
 })
 
-var failed = false
+var failed bool
 var _ = AfterEach(func() {
-	failed = failed || CurrentGinkgoTestDescription().Failed
+	failed = failed || CurrentSpecReport().Failed()
 })
 
 var _ = AfterSuite(func() {
-	if failed {
+	if failed && !*ci {
 		fmt.Println("FAILED!")
 	} else {
 		Expect(e2e.DestroyCluster()).To(Succeed())
