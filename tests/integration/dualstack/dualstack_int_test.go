@@ -53,10 +53,15 @@ var _ = Describe("dual stack", Ordered, func() {
 	})
 })
 
+var failed bool
+var _ = AfterEach(func() {
+	failed = failed || CurrentSpecReport().Failed()
+})
+
 var _ = AfterSuite(func() {
 	if !testutil.IsExistingServer() && os.Getenv("CI") != "true" {
-		if CurrentSpecReport().Failed() {
-			testutil.K3sDumpLog(dualStackServer)
+		if failed {
+			testutil.K3sSaveLog(dualStackServer, false)
 		}
 		Expect(testutil.K3sKillServer(dualStackServer)).To(Succeed())
 		Expect(testutil.K3sCleanup(testLock, "")).To(Succeed())
