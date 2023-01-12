@@ -141,10 +141,15 @@ var _ = Describe("secrets encryption rotation", Ordered, func() {
 	})
 })
 
+var failed bool
+var _ = AfterEach(func() {
+	failed = failed || CurrentSpecReport().Failed()
+})
+
 var _ = AfterSuite(func() {
 	if !testutil.IsExistingServer() {
-		if CurrentSpecReport().Failed() {
-			testutil.K3sDumpLog(secretsEncryptionServer)
+		if failed {
+			testutil.K3sSaveLog(secretsEncryptionServer, false)
 		}
 		Expect(testutil.K3sKillServer(secretsEncryptionServer)).To(Succeed())
 		Expect(testutil.K3sCleanup(testLock, secretsEncryptionDataDir)).To(Succeed())
