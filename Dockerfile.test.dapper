@@ -14,7 +14,7 @@ RUN OS=linux; \
     fi; \
     curl -fsL https://storage.googleapis.com/kubernetes-release/release/${RELEASE}/bin/linux/${ARCH}/kubectl -o /usr/local/bin/kubectl; \
     chmod a+x /usr/local/bin/kubectl; \
-    pip install codespell
+    pip install codespell awscli
 
 ENV TEST_CLEANUP true
 

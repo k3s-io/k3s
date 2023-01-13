@@ -71,7 +71,7 @@ export -f pod-ready
 # ---
 
 wait-for-services() {
-    for service in $@; do
+    for service in "$@"; do
         while [[ "$(pod-ready $service | sort -u)" != 'true' ]]; do
             echo "Waiting for service $service to be ready..." >&2
             sleep 5
@@ -98,7 +98,7 @@ export -f wait-for-db-connection
 # ---
 
 verify-valid-version() {
-    docker exec $@ 2>&1 | tee .version.tmp
+    docker exec "$@" 2>&1 | tee .version.tmp
     # check for bad strings in the version output, including '.' in the build metadata
     if grep -oiE '.*(dev|head|unknown|fail|refuse|\+[^"]*\.).*' .version.tmp; then
         return 1
@@ -190,12 +190,10 @@ retrieve-sonobuoy-logs() {
     fi
 
     mkdir -p $TEST_DIR/sonobuoy
-    sonobuoy retrieve $TEST_DIR/sonobuoy 2>/dev/null || true
-    local logTarball=$TEST_DIR/sonobuoy/*_sonobuoy_*.tar.gz
-
-    if [ -f $logTarball ]; then
-        tar -xz -f $logTarball -C $TEST_DIR/sonobuoy
-        rm $logTarball
+    local logTarball="$(sonobuoy retrieve $TEST_DIR/sonobuoy)"
+    if [ -f "$logTarball" ]; then
+        tar -xz -f "$logTarball" -C $TEST_DIR/sonobuoy
+        rm "$logTarball"
     else
         rm -rf $TEST_DIR/sonobuoy
     fi
@@ -244,7 +242,7 @@ sonobuoy-test() {
         --plugin-env=e2e.E2E_USE_GO_RUNNER=true \
         --kube-conformance-image-version=${VERSION_K8S} \
         --wait=90 \
-        $@ &
+        "$@" &
 
     local sonobuoyPID=$!
     local code=0
@@ -338,19 +336,18 @@ export -f test-setup
 
 # ---
 
-inc-count() {(
-    shopt -s extglob
-    local count=$(exec 2>/dev/null; ls -1d $TEST_DIR/$1/+([0-9]) | xargs -n1 basename | sort -n -r | head -1)
+inc-count() {
+    local count=$(find $TEST_DIR -type d -mindepth 2 -maxdepth 2 -regex ".*/$1/[0-9]+" -printf '%f\n' | sort -nr | head -1)
     count=$((count+1))
     mkdir -p $TEST_DIR/$1/$count/metadata
     echo $count
-)}
+}
 export -f inc-count
 
 # ---
 
 has-function() {
-  [[ ! -z "$1" && $(type -t $1) == "function" ]]
+  [[ -n "$1" && $(type -t $1) == "function" ]]
 } 2> /dev/null
 export -f has-function
 
@@ -358,7 +355,7 @@ export -f has-function
 
 run-function() {
     has-function $1 || return 0
-    $@
+    "$@"
 }
 export -f run-function
 
@@ -379,7 +376,7 @@ provision-server() {
         --privileged \
         -p 127.0.0.1:$port:6443 \
         -p 6443 \
-        -e K3S_TOKEN=$(cat $TEST_DIR/metadata/secret) \
+        -e K3S_TOKEN="$(cat $TEST_DIR/metadata/secret)" \
         -e K3S_DEBUG=true \
         ${SERVER_DOCKER_ARGS:-} \
         ${REGISTRY_CLUSTER_ARGS:-} \
@@ -497,7 +494,7 @@ export -f provision-registry-proxy
 # ---
 
 early-exit() {
-    printf "\033[33m$1\033[m\n"
+    printf "\033[33m%s\033[m\n" "$1"
     exit $2
 }
 export -f early-exit
@@ -514,7 +511,7 @@ run-test() {
     )
 
     export PROVISION_LOCK=$(mktemp)
-    ./scripts/test-runner $@ &
+    ./scripts/test-runner "$@" &
     pids+=($!)
 
     (
@@ -535,7 +532,7 @@ cleanup-test-env(){
       export NUM_AGENTS=1
       export AGENT_ARGS=''
       export SERVER_ARGS=''
-      export WAIT_SERVICES="${all_services[@]}"
+      export WAIT_SERVICES="${all_services[*]}"
 
       unset AGENT_1_ARGS AGENT_2_ARGS AGENT_3_ARGS AGENT_DOCKER_ARGS
       unset SERVER_1_ARGS SERVER_2_ARGS SERVER_3_ARGS SERVER_DOCKER_ARGS
@@ -547,7 +544,7 @@ cleanup-test-env(){
 
 count-running-tests(){
       local count=0
-      for pid in ${pids[@]}; do
+      for pid in "${pids[@]}"; do
           if [ $(pgrep -c -P $pid) -gt 0 ]; then
             ((count++))
           fi
@@ -569,9 +566,9 @@ e2e-test() {
         logOutput=$E2E_OUTPUT/$logName
     fi
     if [[ $label =~ ^PARALLEL.* ]]; then
-        LABEL=$label LOG_OUTPUT=$logOutput MAX_CONCURRENT_TESTS=3 run-test $@
+        LABEL=$label LOG_OUTPUT=$logOutput MAX_CONCURRENT_TESTS=3 run-test "$@"
     else
-        LABEL=$label LOG_OUTPUT=$logOutput run-test $@
+        LABEL=$label LOG_OUTPUT=$logOutput run-test "$@"
     fi
 
 }
@@ -593,14 +590,14 @@ test-run-sonobuoy() {
     if [ "$1" = "parallel" ] || [ "$2" = "parallel" ]; then
         label=PARALLEL \
             logName=e2e-STATUS-${ARCH}-parallel.log \
-            e2e-test ${sonobuoyParallelArgs[@]}
+            e2e-test "${sonobuoyParallelArgs[@]}"
         echo "Exit code $? for parallel start"
     fi
 
     if [ "$1" = "serial" ] || [ "$2" = "serial" ]; then
         label=SERIAL \
             logName=e2e-STATUS-${ARCH}-serial.log \
-            e2e-test ${sonobuoySerialArgs[@]}
+            e2e-test "${sonobuoySerialArgs[@]}"
         echo "Exit code $? for serial start"
     fi
 }
@@ -613,12 +610,12 @@ pid-cleanup() {
     local failCount=0
     set +e
     if [ $code -eq 0 ]; then
-        for pid in ${pids[@]}; do
+        for pid in "${pids[@]}"; do
             wait $pid || code=$?
         done
     fi
     if [ $code -ne 0 ]; then
-        for pid in ${pids[@]}; do
+        for pid in "${pids[@]}"; do
             pkill -P $pid
             wait $pid || failCount=$((failCount+1))
         done
@@ -629,7 +626,7 @@ pid-cleanup() {
     if [ $failCount -eq 0 ]; then
         printf '\033[32mAll tests passed.\033[m\n'
     else
-        printf "\033[31m$failCount tests failed.\033[m\n"
+        printf "\033[31m%s tests failed.\033[m\n" "$failCount"
         if [ "$DRONE_BUILD_EVENT" = 'tag' ]; then
             printf "\033[31mIgnoring test failures on tag.\033[m\n"
             code=0
