@@ -23,6 +23,9 @@ echo "Did test-run-compat $?"
 . ./scripts/test-run-hardened
 echo "Did test-run-hardened $?"
 
+. ./scripts/test-run-cacerts
+echo "Did test-run-cacerts $?"
+
 . ./scripts/test-run-upgrade
 echo "Did test-run-upgrade $?"
 
