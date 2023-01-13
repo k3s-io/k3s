@@ -48,14 +48,22 @@ func Run(ctx context.Context, cfg *config.Node) error {
 
 	if cfg.Containerd.Log != "" {
 		logrus.Infof("Logging containerd to %s", cfg.Containerd.Log)
-		stdOut = &lumberjack.Logger{
+		fileOut := &lumberjack.Logger{
 			Filename:   cfg.Containerd.Log,
 			MaxSize:    50,
 			MaxBackups: 3,
 			MaxAge:     28,
 			Compress:   true,
 		}
-		stdErr = stdOut
+		// If k3s is started with --debug, write logs to both the log file and stdout/stderr,
+		// even if a log path is set.
+		if cfg.Containerd.Debug {
+			stdOut = io.MultiWriter(stdOut, fileOut)
+			stdErr = io.MultiWriter(stdErr, fileOut)
+		} else {
+			stdOut = fileOut
+			stdErr = fileOut
+		}
 	}
 
 	go func() {
