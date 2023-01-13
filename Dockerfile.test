@@ -7,15 +7,16 @@ WORKDIR ${K3S_SOURCE}
 
 COPY . ${K3S_SOURCE}
 
-
-From test-base as test-mods
+FROM test-base as test-mods
 
 COPY ./scripts/test-mods /bin/
 ENTRYPOINT ["/bin/test-mods"]
 
-From test-base as test-k3s
+FROM test-base as test-k3s
 
 RUN apk -U --no-cache add git gcc musl-dev docker curl coreutils python3 openssl py3-pip procps findutils
+
+RUN python3 -m pip install awscli
 
 ENV SONOBUOY_VERSION 0.56.10
 
