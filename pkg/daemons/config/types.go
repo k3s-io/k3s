@@ -64,6 +64,7 @@ type Containerd struct {
 	Opt      string
 	Template string
 	SELinux  bool
+	Debug    bool
 }
 
 type CRIDockerd struct {
