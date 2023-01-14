@@ -97,7 +97,7 @@ func (c *Cluster) initClusterAndHTTPS(ctx context.Context) error {
 	}
 
 	if c.config.EnablePProf {
-		mux := mux.NewRouter()
+		mux := mux.NewRouter().SkipClean(true)
 		mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
 		mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
 		mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
