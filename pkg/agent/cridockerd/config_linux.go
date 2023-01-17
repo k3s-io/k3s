@@ -1,5 +1,5 @@
-//go:build linux
-// +build linux
+//go:build linux && !no_cri_dockerd
+// +build linux,!no_cri_dockerd
 
 package cridockerd
 

@@ -1,3 +1,6 @@
+//go:build !no_cri_dockerd
+// +build !no_cri_dockerd
+
 package cridockerd
 
 import (
