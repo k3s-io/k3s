@@ -19,6 +19,8 @@ actions:
     scmid: "k3s"
     spec:
       automerge: false
+      labels: "dependencies"
+
 
 sources:
   sonobuoy:

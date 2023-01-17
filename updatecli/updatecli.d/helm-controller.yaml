@@ -23,6 +23,7 @@ actions:
       automerge: false
       mergemethod: "squash"
       usetitleforautomerge: true
+      labels: "dependencies"
 
 sources:
   helm-controller:

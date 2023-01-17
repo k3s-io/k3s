@@ -21,6 +21,8 @@ actions:
     scmid: "k3s"
     spec:
       automerge: false
+      mergemethod: "squash"
+      labels: "dependencies"
 
 sources:
   # Find Alpine latest semver version in DockerHub
