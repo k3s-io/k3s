@@ -1,32 +1,37 @@
 version: 2
 updates:
 
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+  
   - package-ecosystem: "docker"
     directory: "/"
     schedule:
-      interval: "daily"
+      interval: "weekly"
 
   - package-ecosystem: "docker"
     directory: "/conformance"
     schedule:
-      interval: "daily"
+      interval: "weekly"
 
   - package-ecosystem: "docker"
     directory: "/tests/e2e/scripts"
     schedule:
-      interval: "daily"
+      interval: "weekly"
 
   - package-ecosystem: "docker"
     directory: "/package"
     schedule:
-      interval: "daily"
+      interval: "weekly"
 
   - package-ecosystem: "docker"
     directory: "/tests/integration"
     schedule:
-      interval: "daily"
+      interval: "weekly"
 
   - package-ecosystem: "docker"
     directory: "/tests/terraform"
     schedule:
-      interval: "daily"
+      interval: "weekly"
