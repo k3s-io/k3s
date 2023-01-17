@@ -33,7 +33,8 @@ actions:
       automerge: false
       mergemethod: "squash"
       usetitleforautomerge: true
-      labels: "dependencies"
+      labels: 
+        - "dependencies"
 
 sources:
   local-path-provisioner:

@@ -22,7 +22,8 @@ actions:
     spec:
       automerge: false
       mergemethod: "squash"
-      labels: "dependencies"
+      labels: 
+        - "dependencies"
 
 sources:
   # Find Alpine latest semver version in DockerHub

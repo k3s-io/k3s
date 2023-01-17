@@ -19,7 +19,8 @@ actions:
     scmid: "k3s"
     spec:
       automerge: false
-      labels: "dependencies"
+      labels: 
+        - "dependencies"
 
 
 sources:
