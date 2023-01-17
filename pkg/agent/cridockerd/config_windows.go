@@ -1,5 +1,5 @@
-//go:build windows
-// +build windows
+//go:build windows && !no_cri_dockerd
+// +build windows,!no_cri_dockerd
 
 package cridockerd
 
