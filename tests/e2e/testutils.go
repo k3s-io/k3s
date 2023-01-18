@@ -123,7 +123,11 @@ func CreateCluster(nodeOS string, serverCount, agentCount int) ([]string, []stri
 			return nil
 		})
 		// We must wait a bit between provisioning nodes to avoid too many learners attempting to join the cluster
-		time.Sleep(20 * time.Second)
+		if strings.Contains(node, "agent") {
+			time.Sleep(5 * time.Second)
+		} else {
+			time.Sleep(30 * time.Second)
+		}
 	}
 	if err := errg.Wait(); err != nil {
 		return nil, nil, err
