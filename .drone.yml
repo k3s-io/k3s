@@ -254,7 +254,7 @@ steps:
     - tag
 
 - name: docker-publish
-  image: plugins/docker
+  image: plugins/docker:linux-arm
   settings:
     dockerfile: package/Dockerfile
     password:
