@@ -32,8 +32,8 @@ RUN if [ "$(go env GOARCH)" = "arm64" ]; then                                   
     tar -zxvf trivy_0.25.3_Linux-64bit.tar.gz                                                            && \
     mv trivy /usr/local/bin;                                                                                \
     fi
-# this works for both go 1.15 and 1.16
-RUN GOPROXY=direct go get golang.org/x/tools/cmd/goimports@gopls/v0.7.0
+
+RUN GOPROXY=direct go install golang.org/x/tools/cmd/goimports@gopls/v0.7.0
 RUN rm -rf /go/src /go/pkg
 
 RUN if [ "$(go env GOARCH)" = "amd64" ]; then \
