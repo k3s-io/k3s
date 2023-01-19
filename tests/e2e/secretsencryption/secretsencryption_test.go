@@ -36,7 +36,7 @@ var (
 var _ = ReportAfterEach(e2e.GenReport)
 
 var _ = Describe("Verify Secrets Encryption Rotation", Ordered, func() {
-	Context("Cluster :", func() {
+	Context("Secrets Keys are rotated:", func() {
 		It("Starts up with no issues", func() {
 			var err error
 			serverNodeNames, _, err = e2e.CreateCluster(*nodeOS, *serverCount, 0)
@@ -219,73 +219,78 @@ var _ = Describe("Verify Secrets Encryption Rotation", Ordered, func() {
 		})
 	})
 
-	It("Disables encryption", func() {
-		cmd := "sudo k3s secrets-encrypt disable"
-		res, err := e2e.RunCmdOnNode(cmd, serverNodeNames[0])
-		Expect(err).NotTo(HaveOccurred(), res)
+	Context("Disabling Secrets-Encryption", func() {
+		It("Disables encryption", func() {
+			cmd := "sudo k3s secrets-encrypt disable"
+			res, err := e2e.RunCmdOnNode(cmd, serverNodeNames[0])
+			Expect(err).NotTo(HaveOccurred(), res)
 
-		cmd = "sudo k3s secrets-encrypt reencrypt -f --skip"
-		res, err = e2e.RunCmdOnNode(cmd, serverNodeNames[0])
-		Expect(err).NotTo(HaveOccurred(), res)
+			cmd = "sudo k3s secrets-encrypt reencrypt -f --skip"
+			res, err = e2e.RunCmdOnNode(cmd, serverNodeNames[0])
+			Expect(err).NotTo(HaveOccurred(), res)
 
-		cmd = "sudo k3s secrets-encrypt status"
-		Eventually(func() (string, error) {
-			return e2e.RunCmdOnNode(cmd, serverNodeNames[0])
-		}, "180s", "5s").Should(ContainSubstring("Current Rotation Stage: reencrypt_finished"))
+			cmd = "sudo k3s secrets-encrypt status"
+			Eventually(func() (string, error) {
+				return e2e.RunCmdOnNode(cmd, serverNodeNames[0])
+			}, "180s", "5s").Should(ContainSubstring("Current Rotation Stage: reencrypt_finished"))
 
-		for i, nodeName := range serverNodeNames {
-			Eventually(func(g Gomega) {
-				res, err := e2e.RunCmdOnNode(cmd, nodeName)
-				g.Expect(err).NotTo(HaveOccurred(), res)
-				if i == 0 {
-					g.Expect(res).Should(ContainSubstring("Encryption Status: Disabled"))
-				} else {
-					g.Expect(res).Should(ContainSubstring("Encryption Status: Enabled"))
-				}
-			}, "420s", "2s").Should(Succeed())
-		}
+			for i, nodeName := range serverNodeNames {
+				Eventually(func(g Gomega) {
+					res, err := e2e.RunCmdOnNode(cmd, nodeName)
+					g.Expect(err).NotTo(HaveOccurred(), res)
+					if i == 0 {
+						g.Expect(res).Should(ContainSubstring("Encryption Status: Disabled"))
+					} else {
+						g.Expect(res).Should(ContainSubstring("Encryption Status: Enabled"))
+					}
+				}, "420s", "2s").Should(Succeed())
+			}
+		})
+
+		It("Restarts K3s servers", func() {
+			Expect(e2e.RestartCluster(serverNodeNames)).To(Succeed())
+		})
+
+		It("Verifies encryption disabled on all nodes", func() {
+			cmd := "sudo k3s secrets-encrypt status"
+			for _, nodeName := range serverNodeNames {
+				Eventually(func(g Gomega) {
+					g.Expect(e2e.RunCmdOnNode(cmd, nodeName)).Should(ContainSubstring("Encryption Status: Disabled"))
+				}, "420s", "2s").Should(Succeed())
+			}
+		})
+
 	})
 
-	It("Restarts K3s servers", func() {
-		Expect(e2e.RestartCluster(serverNodeNames)).To(Succeed())
-	})
+	Context("Enabling Secrets-Encryption", func() {
+		It("Enables encryption", func() {
+			cmd := "sudo k3s secrets-encrypt enable"
+			res, err := e2e.RunCmdOnNode(cmd, serverNodeNames[0])
+			Expect(err).NotTo(HaveOccurred(), res)
 
-	It("Verifies encryption disabled on all nodes", func() {
-		cmd := "sudo k3s secrets-encrypt status"
-		for _, nodeName := range serverNodeNames {
-			Eventually(func(g Gomega) {
-				g.Expect(e2e.RunCmdOnNode(cmd, nodeName)).Should(ContainSubstring("Encryption Status: Disabled"))
-			}, "420s", "2s").Should(Succeed())
-		}
-	})
+			cmd = "sudo k3s secrets-encrypt reencrypt -f --skip"
+			res, err = e2e.RunCmdOnNode(cmd, serverNodeNames[0])
+			Expect(err).NotTo(HaveOccurred(), res)
 
-	It("Enables encryption", func() {
-		cmd := "sudo k3s secrets-encrypt enable"
-		res, err := e2e.RunCmdOnNode(cmd, serverNodeNames[0])
-		Expect(err).NotTo(HaveOccurred(), res)
+			cmd = "sudo k3s secrets-encrypt status"
+			Eventually(func() (string, error) {
+				return e2e.RunCmdOnNode(cmd, serverNodeNames[0])
+			}, "180s", "5s").Should(ContainSubstring("Current Rotation Stage: reencrypt_finished"))
+		})
 
-		cmd = "sudo k3s secrets-encrypt reencrypt -f --skip"
-		res, err = e2e.RunCmdOnNode(cmd, serverNodeNames[0])
-		Expect(err).NotTo(HaveOccurred(), res)
+		It("Restarts K3s servers", func() {
+			Expect(e2e.RestartCluster(serverNodeNames)).To(Succeed())
+		})
 
-		cmd = "sudo k3s secrets-encrypt status"
-		Eventually(func() (string, error) {
-			return e2e.RunCmdOnNode(cmd, serverNodeNames[0])
-		}, "180s", "5s").Should(ContainSubstring("Current Rotation Stage: reencrypt_finished"))
-	})
+		It("Verifies encryption enabled on all nodes", func() {
+			cmd := "sudo k3s secrets-encrypt status"
+			for _, nodeName := range serverNodeNames {
+				Eventually(func(g Gomega) {
+					g.Expect(e2e.RunCmdOnNode(cmd, nodeName)).Should(ContainSubstring("Encryption Status: Enabled"))
+				}, "420s", "2s").Should(Succeed())
+			}
 
-	It("Restarts K3s servers", func() {
-		Expect(e2e.RestartCluster(serverNodeNames)).To(Succeed())
-	})
-
-	It("Verifies encryption enabled on all nodes", func() {
-		cmd := "sudo k3s secrets-encrypt status"
-		for _, nodeName := range serverNodeNames {
-			Eventually(func(g Gomega) {
-				g.Expect(e2e.RunCmdOnNode(cmd, nodeName)).Should(ContainSubstring("Encryption Status: Enabled"))
-			}, "420s", "2s").Should(Succeed())
-		}
-
+		})
 	})
 
 })
