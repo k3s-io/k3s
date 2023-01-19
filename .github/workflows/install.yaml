@@ -6,11 +6,14 @@ on:
       - "channel.yaml"
       - "install.sh"
       - "tests/install/**"
+      - ".github/workflows/install.yaml"
+
   pull_request:
     branches: [main, master]
     paths:
       - "install.sh"
       - "tests/install/**"
+      - ".github/workflows/install.yaml"
   workflow_dispatch: {}
 
 permissions:
