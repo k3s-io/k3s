@@ -466,7 +466,7 @@ setup_selinux() {
     fi
 
     [ -r /etc/os-release ] && . /etc/os-release
-    if [ "${ID_LIKE%%[ ]*}" = "suse" ]; then
+    if [ `expr "${ID_LIKE}" : ".*suse.*"` != 0 ]; then
         rpm_target=sle
         rpm_site_infix=microos
         package_installer=zypper
