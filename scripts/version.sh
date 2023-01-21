@@ -47,6 +47,11 @@ if [ -z "$VERSION_FLANNEL" ]; then
   VERSION_FLANNEL="v0.0.0"
 fi
 
+VERSION_CRI_DOCKERD=$(grep github.com/Mirantis/cri-dockerd go.mod | head -n1 | awk '{print $4}')
+if [ -z "$VERSION_CRI_DOCKERD" ]; then
+  VERSION_CRI_DOCKERD="v0.0.0"
+fi
+
 VERSION_CNIPLUGINS="v1.1.1-k3s1"
 
 VERSION_KUBE_ROUTER=$(grep github.com/k3s-io/kube-router go.mod | head -n1 | awk '{print $4}')
