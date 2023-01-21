@@ -617,8 +617,8 @@ github.com/julienschmidt/httprouter v1.3.0/go.mod h1:JR6WtHb+2LUe8TCKY3cZOxFyyO8
 github.com/jung-kurt/gofpdf v1.0.3-0.20190309125859-24315acbbda5/go.mod h1:7Id9E/uU8ce6rXgefFLlgrJj/GYY22cpxn+r32jIOes=
 github.com/k3s-io/containerd v1.5.16-k3s1 h1:r8WBp1DJS5OfGWV4XMohQ3SkQnreZRK1E4lT02xUXiA=
 github.com/k3s-io/containerd v1.5.16-k3s1/go.mod h1:vCILl/gWFsZXZVuIrDefia9pbKe7cpWbpavHNET9axM=
-github.com/k3s-io/cri-dockerd v0.3.1-0.20230121003339-6a10f78a13eb h1:5l5tdPPyOVp4pa+3ddv/SmDCSxg+DNFjzv64ZFhsOJo=
-github.com/k3s-io/cri-dockerd v0.3.1-0.20230121003339-6a10f78a13eb/go.mod h1:ueOhVo7Wl03vKTKYFWNVUvVJ2LNDkmWfSs4z2Th8Um4=
+github.com/k3s-io/cri-dockerd v0.3.2-0.20230123224751-84abd1adca2f h1:IE2u6OszvDDSiKEK5cqFYN6Dv6JwJa2CBHOsfyhwWck=
+github.com/k3s-io/cri-dockerd v0.3.2-0.20230123224751-84abd1adca2f/go.mod h1:ueOhVo7Wl03vKTKYFWNVUvVJ2LNDkmWfSs4z2Th8Um4=
 github.com/k3s-io/cri-tools v1.24.0-k3s1 h1:Em7IZ/ElBFbHlPLjV0w2ttORxFl5upBxnbP/9IlT/3c=
 github.com/k3s-io/cri-tools v1.24.0-k3s1/go.mod h1:w4C33mk2AZdmAVybCyVbHYJUKdbr1sRelBTG7lduYh0=
 github.com/k3s-io/etcd/api/v3 v3.5.3-k3s1 h1:XY2oUIIy2+DR7zXk/BVqQ4f2qFHbd2VTAGrnrT4IxhA=
