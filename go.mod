@@ -4,7 +4,7 @@ go 1.19
 
 replace (
 	github.com/Microsoft/hcsshim => github.com/Microsoft/hcsshim v0.8.22
-	github.com/Mirantis/cri-dockerd => github.com/k3s-io/cri-dockerd v0.3.1-0.20230121003254-7c72ab55b87e // k3s/release-1.25
+	github.com/Mirantis/cri-dockerd => github.com/k3s-io/cri-dockerd v0.3.2-0.20230123224908-ae42b30520de // k3s/release-1.25
 	github.com/cloudnativelabs/kube-router => github.com/k3s-io/kube-router v1.5.2-0.20221026101626-e01045262706
 	github.com/containerd/cgroups => github.com/containerd/cgroups v1.0.1
 	github.com/containerd/containerd => github.com/k3s-io/containerd v1.5.16-k3s1
