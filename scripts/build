@@ -15,6 +15,7 @@ PKG_K8S_BASE="k8s.io/component-base"
 PKG_K8S_CLIENT="k8s.io/client-go/pkg"
 PKG_CNI_PLUGINS="github.com/containernetworking/plugins"
 PKG_KUBE_ROUTER="github.com/cloudnativelabs/kube-router"
+PKG_CRI_DOCKERD="github.com/Mirantis/cri-dockerd"
 
 buildDate=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
 
@@ -40,11 +41,15 @@ VERSIONFLAGS="
     -X ${PKG_CNI_PLUGINS}/pkg/utils/buildversion.BuildVersion=${VERSION_CNIPLUGINS}
     -X ${PKG_CNI_PLUGINS}/plugins/meta/flannel.Program=flannel
     -X ${PKG_CNI_PLUGINS}/plugins/meta/flannel.Version=${VERSION_FLANNEL}
-    -X ${PKG_CNI_PLUGINS}/plugins/meta/flannel.Commit=${COMMIT}
+    -X ${PKG_CNI_PLUGINS}/plugins/meta/flannel.Commit=HEAD
     -X ${PKG_CNI_PLUGINS}/plugins/meta/flannel.buildDate=${buildDate}
 
     -X ${PKG_KUBE_ROUTER}/pkg/version.Version=${VERSION_KUBE_ROUTER}
     -X ${PKG_KUBE_ROUTER}/pkg/version.BuildDate=${buildDate}
+
+    -X ${PKG_CRI_DOCKERD}/cmd/version.Version=${VERSION_CRI_DOCKERD}
+    -X ${PKG_CRI_DOCKERD}/cmd/version.GitCommit=HEAD
+    -X ${PKG_CRI_DOCKERD}/cmd/version.BuildTime=${buildDate}
 "
 
 if [ -n "${DEBUG}" ]; then
