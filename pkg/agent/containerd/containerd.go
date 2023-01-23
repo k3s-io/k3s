@@ -19,6 +19,7 @@ import (
 	"github.com/containerd/containerd/pkg/cri/constants"
 	"github.com/containerd/containerd/reference/docker"
 	util2 "github.com/k3s-io/k3s/pkg/agent/util"
+	"github.com/k3s-io/k3s/pkg/cri"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/natefinch/lumberjack"
@@ -101,37 +102,11 @@ func Run(ctx context.Context, cfg *config.Node) error {
 		os.Exit(1)
 	}()
 
-	if err := WaitForCRIService(ctx, cfg.Containerd.Address, "containerd"); err != nil {
+	if err := cri.WaitForCRIService(ctx, cfg.Containerd.Address, "containerd"); err != nil {
 		return err
 	}
 
 	return preloadImages(ctx, cfg)
-}
-
-// WaitForCRIService blocks in a retry loop until the CRI service
-// is functional at the provided socket address. It will return only on success,
-// or when the context is cancelled.
-func WaitForCRIService(ctx context.Context, address string, service string) error {
-	first := true
-	for {
-		conn, err := CriConnection(ctx, address)
-		if err == nil {
-			conn.Close()
-			break
-		}
-		if first {
-			first = false
-		} else {
-			logrus.Infof("Waiting for %s startup: %v", service, err)
-		}
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-time.After(time.Second):
-		}
-	}
-	logrus.Infof("%s is now running", service)
-	return nil
 }
 
 // preloadImages reads the contents of the agent images directory, and attempts to
@@ -163,7 +138,7 @@ func preloadImages(ctx context.Context, cfg *config.Node) error {
 	}
 	defer client.Close()
 
-	criConn, err := CriConnection(ctx, cfg.Containerd.Address)
+	criConn, err := cri.CriConnection(ctx, cfg.Containerd.Address)
 	if err != nil {
 		return err
 	}

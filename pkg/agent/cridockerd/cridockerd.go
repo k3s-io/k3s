@@ -11,10 +11,12 @@ import (
 
 	"github.com/Mirantis/cri-dockerd/cmd"
 	"github.com/Mirantis/cri-dockerd/cmd/version"
-	"github.com/k3s-io/k3s/pkg/agent/containerd"
+
 	"github.com/k3s-io/k3s/pkg/cgroups"
+	"github.com/k3s-io/k3s/pkg/cri"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/sirupsen/logrus"
+
 	utilsnet "k8s.io/utils/net"
 )
 
@@ -38,7 +40,7 @@ func Run(ctx context.Context, cfg *config.Node) error {
 		logrus.Fatalf("cri-dockerd exited: %v", command.ExecuteContext(ctx))
 	}()
 
-	if err := containerd.WaitForCRIService(ctx, cfg.CRIDockerd.Address, "cri-dockerd"); err != nil {
+	if err := cri.WaitForCRIService(ctx, cfg.CRIDockerd.Address, "cri-dockerd"); err != nil {
 		return err
 	}
 
