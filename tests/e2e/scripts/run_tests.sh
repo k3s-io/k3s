@@ -35,14 +35,11 @@ echo 'RUN CLUSTER RESET TEST'
 echo 'RUNNING SPLIT SERVER VALIDATION TEST'
 E2E_HARDENED="$hardened" /usr/local/go/bin/go test -v splitserver/splitserver_test.go -nodeOS="$nodeOS" -timeout=30m -json -ci | tee -a k3s_"$OS".log
 
-echo 'RUNNING DOCKER CRI VALIDATION TEST'
-/usr/local/go/bin/go test -v docker/docker_test.go -nodeOS="$nodeOS" -serverCount=1 -agentCount=1 -timeout=30m -json -ci | tee -a k3s_"$OS".log
+echo 'RUNNING STARTUP VALIDATION TEST'
+/usr/local/go/bin/go test -v startup/startup_test.go -nodeOS="$nodeOS" -timeout=30m -json -ci | tee -a k3s_"$OS".log
 
 echo 'RUNNING EXTERNAL IP TEST'
 /usr/local/go/bin/go test -v externalip/externalip_test.go -nodeOS="$nodeOS" -serverCount=1 -agentCount=1 -timeout=30m -json -ci | tee -a k3s_"$OS".log
-
-echo 'RUNNING PRE-BUNDLED-BIN IP TEST'
-/usr/local/go/bin/go test -v preferbundled/preferbundled_test.go -nodeOS="$nodeOS" -serverCount=1 -agentCount=1 -timeout=30m -json -ci | tee -a k3s_"$OS".log
 
 echo 'RUNNING SNAPSHOT AND RESTORE TEST'
 /usr/local/go/bin/go test -v snapshotrestore/snapshotrestore_test.go -nodeOS="$nodeOS" -serverCount=1 -agentCount=1 -timeout=30m -json -ci | tee -a k3s_"$OS".log

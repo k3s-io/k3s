@@ -368,6 +368,9 @@ func ParsePods(kubeConfig string, print bool) ([]Pod, error) {
 	split := strings.Split(res, "\n")
 	for _, rec := range split {
 		fields := strings.Fields(string(rec))
+		if len(fields) < 8 {
+			return nil, fmt.Errorf("invalid pod record: %s", rec)
+		}
 		pod := Pod{
 			NameSpace: fields[0],
 			Name:      fields[1],
