@@ -14,7 +14,7 @@ var EtcdSnapshotFlags = []cli.Flag{
 	ConfigFlag,
 	LogFile,
 	AlsoLogToStderr,
-	cli.StringFlag{
+	&cli.StringFlag{
 		Name:        "node-name",
 		Usage:       "(agent/node) Node name",
 		EnvVar:      version.ProgramUpper + "_NODE_NAME",
