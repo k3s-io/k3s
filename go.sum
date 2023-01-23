@@ -657,8 +657,8 @@ github.com/julienschmidt/httprouter v1.3.0/go.mod h1:JR6WtHb+2LUe8TCKY3cZOxFyyO8
 github.com/jung-kurt/gofpdf v1.0.3-0.20190309125859-24315acbbda5/go.mod h1:7Id9E/uU8ce6rXgefFLlgrJj/GYY22cpxn+r32jIOes=
 github.com/k3s-io/cadvisor v0.43.0-k3s1 h1:bc51UHUKERI+X4DjgHmKq9Ong0KT3TnFVmvUIkFTCoU=
 github.com/k3s-io/cadvisor v0.43.0-k3s1/go.mod h1:+RdMSbc3FVr5NYCD2dOEJy/LI0jYJ/0xJXkzWXEyiFQ=
-github.com/k3s-io/containerd v1.5.16-k3s1-1-22 h1:0S9r3ciFft3wSrdbFHvi6ukscnAjDj6uApZ/vapSigk=
-github.com/k3s-io/containerd v1.5.16-k3s1-1-22/go.mod h1:vhtc7YWaaOgx4lfsEc+uVIoijIRIGTcwZJiIPbBjDuY=
+github.com/k3s-io/containerd v1.5.16-k3s2-1-22 h1:D1qqI5hCbNToUcswDxsp8XwLwNv5TdH3H+WpENw1srg=
+github.com/k3s-io/containerd v1.5.16-k3s2-1-22/go.mod h1:vhtc7YWaaOgx4lfsEc+uVIoijIRIGTcwZJiIPbBjDuY=
 github.com/k3s-io/cri-tools v1.22.0-k3s1 h1:a+7srHjpHVtCgYT4dtZQUTThLfo8xWR2SR53+JtKa0I=
 github.com/k3s-io/cri-tools v1.22.0-k3s1/go.mod h1:06cMrzcMIFKwDJziI2YyLdA0NVzN054GMRRWsL+NRPk=
 github.com/k3s-io/etcd/api/v3 v3.5.4-k3s1 h1:Ac7cbUC5A0E4mlvbNne82N1x5ROSwXIrzXhBGR0cg94=
