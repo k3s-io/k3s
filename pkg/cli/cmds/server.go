@@ -179,7 +179,7 @@ var ServerFlags = []cli.Flag{
 		Usage:       "(listener) " + version.Program + " bind address (default: 0.0.0.0)",
 		Destination: &ServerConfig.BindAddress,
 	},
-	cli.IntFlag{
+	&cli.IntFlag{
 		Name:        "https-listen-port",
 		Usage:       "(listener) HTTPS listen port",
 		Value:       6443,
@@ -190,7 +190,7 @@ var ServerFlags = []cli.Flag{
 		Usage:       "(listener) IPv4 address that apiserver uses to advertise to members of the cluster (default: node-external-ip/node-ip)",
 		Destination: &ServerConfig.AdvertiseIP,
 	},
-	cli.IntFlag{
+	&cli.IntFlag{
 		Name:        "advertise-port",
 		Usage:       "(listener) Port that apiserver uses to advertise to members of the cluster (default: listen-port)",
 		Destination: &ServerConfig.AdvertisePort,
