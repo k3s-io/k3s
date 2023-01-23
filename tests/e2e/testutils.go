@@ -308,7 +308,7 @@ func GetVagrantLog(cErr error) string {
 	var nodeErr *NodeError
 	nodeJournal := ""
 	if errors.As(cErr, &nodeErr) {
-		nodeJournal, _ = RunCommand("vagrant ssh " + nodeErr.Node + " -c \"sudo journalctl -u k3s* --no-pager\"")
+		nodeJournal, _ = RunCmdOnNode("sudo journalctl -u k3s* --no-pager", nodeErr.Node)
 		nodeJournal = "\nNode Journal Logs:\n" + nodeJournal
 	}
 
