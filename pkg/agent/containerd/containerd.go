@@ -101,17 +101,17 @@ func Run(ctx context.Context, cfg *config.Node) error {
 		os.Exit(1)
 	}()
 
-	if err := WaitForContainerd(ctx, cfg.Containerd.Address); err != nil {
+	if err := WaitForCRIService(ctx, cfg.Containerd.Address, "containerd"); err != nil {
 		return err
 	}
 
 	return preloadImages(ctx, cfg)
 }
 
-// WaitForContainerd blocks in a retry loop until the Containerd CRI service
+// WaitForCRIService blocks in a retry loop until the CRI service
 // is functional at the provided socket address. It will return only on success,
 // or when the context is cancelled.
-func WaitForContainerd(ctx context.Context, address string) error {
+func WaitForCRIService(ctx context.Context, address string, service string) error {
 	first := true
 	for {
 		conn, err := CriConnection(ctx, address)
@@ -122,7 +122,7 @@ func WaitForContainerd(ctx context.Context, address string) error {
 		if first {
 			first = false
 		} else {
-			logrus.Infof("Waiting for containerd startup: %v", err)
+			logrus.Infof("Waiting for %s startup: %v", service, err)
 		}
 		select {
 		case <-ctx.Done():
@@ -130,7 +130,7 @@ func WaitForContainerd(ctx context.Context, address string) error {
 		case <-time.After(time.Second):
 		}
 	}
-	logrus.Info("Containerd is now running")
+	logrus.Infof("%s is now running", service)
 	return nil
 }
 
