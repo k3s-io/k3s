@@ -10,3 +10,4 @@ A non-exhaustive list of k3s adopters is provided below.  To add your company to
  - [k3ai](https://k3ai.github.io/)
  - SUSE's [Rancher Desktop](https://rancherdesktop.io/)
  - [Kairos](https://kairos.io)
+ - [TrueNAS](https://www.truenas.com/)
