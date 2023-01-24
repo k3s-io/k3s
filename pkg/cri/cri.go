@@ -15,13 +15,13 @@ const (
 	socketPrefix = "unix://"
 )
 
-// WaitForCRIService blocks in a retry loop until the CRI service
+// WaitForService blocks in a retry loop until the CRI service
 // is functional at the provided socket address. It will return only on success,
 // or when the context is cancelled.
-func WaitForCRIService(ctx context.Context, address string, service string) error {
+func WaitForService(ctx context.Context, address string, service string) error {
 	first := true
 	for {
-		conn, err := CriConnection(ctx, address)
+		conn, err := Connection(ctx, address)
 		if err == nil {
 			conn.Close()
 			break
@@ -42,7 +42,7 @@ func WaitForCRIService(ctx context.Context, address string, service string) erro
 }
 
 // criConnection connects to a CRI socket at the given path.
-func CriConnection(ctx context.Context, address string) (*grpc.ClientConn, error) {
+func Connection(ctx context.Context, address string) (*grpc.ClientConn, error) {
 	addr, dialer, err := k8sutil.GetAddressAndDialer(socketPrefix + address)
 	if err != nil {
 		return nil, err

@@ -102,7 +102,7 @@ func Run(ctx context.Context, cfg *config.Node) error {
 		os.Exit(1)
 	}()
 
-	if err := cri.WaitForCRIService(ctx, cfg.Containerd.Address, "containerd"); err != nil {
+	if err := cri.WaitForService(ctx, cfg.Containerd.Address, "containerd"); err != nil {
 		return err
 	}
 
@@ -138,7 +138,7 @@ func preloadImages(ctx context.Context, cfg *config.Node) error {
 	}
 	defer client.Close()
 
-	criConn, err := cri.CriConnection(ctx, cfg.Containerd.Address)
+	criConn, err := cri.Connection(ctx, cfg.Containerd.Address)
 	if err != nil {
 		return err
 	}

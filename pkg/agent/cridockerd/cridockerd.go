@@ -40,7 +40,7 @@ func Run(ctx context.Context, cfg *config.Node) error {
 		logrus.Fatalf("cri-dockerd exited: %v", command.ExecuteContext(ctx))
 	}()
 
-	if err := cri.WaitForCRIService(ctx, cfg.CRIDockerd.Address, "cri-dockerd"); err != nil {
+	if err := cri.WaitForService(ctx, cfg.CRIDockerd.Address, "cri-dockerd"); err != nil {
 		return err
 	}
 
