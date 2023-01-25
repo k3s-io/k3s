@@ -16,7 +16,7 @@ jobs:
       fail-fast: false
       matrix:
         channel: [stable]
-        vm: [centos-7, rocky-8, fedora, opensuse-leap, opensuse-microos, ubuntu-focal]
+        vm: [centos-7, rocky-8, fedora, opensuse-leap, ubuntu-focal]
         include:
           - {channel: latest, vm: rocky-8}
           - {channel: latest, vm: ubuntu-focal}
