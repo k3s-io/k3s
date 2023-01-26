@@ -8,7 +8,7 @@ Vagrant.configure("2") do |config|
   config.vagrant.plugins = {
     'vagrant-k3s' => {:version => '~> 0.1.3'},
   }
-  config.vm.box = 'generic/fedora36'
+  config.vm.box = 'generic/fedora37'
   config.vm.boot_timeout = ENV['TEST_VM_BOOT_TIMEOUT'] || 600 # seconds
   config.vm.synced_folder '.', '/vagrant', disabled: true
 
