@@ -12,6 +12,8 @@ import (
 	appsclient "github.com/rancher/wrangler/pkg/generated/controllers/apps/v1"
 	"github.com/rancher/wrangler/pkg/generated/controllers/core"
 	coreclient "github.com/rancher/wrangler/pkg/generated/controllers/core/v1"
+	"github.com/rancher/wrangler/pkg/generated/controllers/discovery"
+	discoveryclient "github.com/rancher/wrangler/pkg/generated/controllers/discovery/v1"
 	"github.com/rancher/wrangler/pkg/generic"
 	"github.com/rancher/wrangler/pkg/start"
 	"github.com/sirupsen/logrus"
@@ -41,6 +43,7 @@ type k3s struct {
 
 	processor      apply.Apply
 	daemonsetCache appsclient.DaemonSetCache
+	endpointsCache discoveryclient.EndpointSliceCache
 	nodeCache      coreclient.NodeCache
 	podCache       coreclient.PodCache
 	workqueue      workqueue.RateLimitingInterface
@@ -89,6 +92,7 @@ func (k *k3s) Initialize(clientBuilder cloudprovider.ControllerClientBuilder, st
 
 		lbCoreFactory := core.NewFactoryFromConfigWithOptionsOrDie(config, &generic.FactoryOptions{Namespace: k.LBNamespace})
 		lbAppsFactory := apps.NewFactoryFromConfigWithOptionsOrDie(config, &generic.FactoryOptions{Namespace: k.LBNamespace})
+		lbDiscFactory := discovery.NewFactoryFromConfigOrDie(config)
 
 		processor, err := apply.NewForConfig(config)
 		if err != nil {
@@ -96,14 +100,15 @@ func (k *k3s) Initialize(clientBuilder cloudprovider.ControllerClientBuilder, st
 		}
 		k.processor = processor.WithDynamicLookup().WithCacheTypes(lbAppsFactory.Apps().V1().DaemonSet())
 		k.daemonsetCache = lbAppsFactory.Apps().V1().DaemonSet().Cache()
+		k.endpointsCache = lbDiscFactory.Discovery().V1().EndpointSlice().Cache()
 		k.podCache = lbCoreFactory.Core().V1().Pod().Cache()
 		k.workqueue = workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
 
-		if err := k.Register(ctx, coreFactory.Core().V1().Node(), lbCoreFactory.Core().V1().Pod()); err != nil {
+		if err := k.Register(ctx, coreFactory.Core().V1().Node(), lbCoreFactory.Core().V1().Pod(), lbDiscFactory.Discovery().V1().EndpointSlice()); err != nil {
 			logrus.Fatalf("Failed to register %s handlers: %v", controllerName, err)
 		}
 
-		if err := start.All(ctx, 1, coreFactory, lbCoreFactory, lbAppsFactory); err != nil {
+		if err := start.All(ctx, 1, coreFactory, lbCoreFactory, lbAppsFactory, lbDiscFactory); err != nil {
 			logrus.Fatalf("Failed to start %s controllers: %v", controllerName, err)
 		}
 	} else {
