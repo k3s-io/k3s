@@ -19,6 +19,7 @@ limitations under the License.
 package k3s
 
 import (
+	"github.com/rancher/lasso/pkg/controller"
 	"github.com/rancher/wrangler/pkg/generic"
 	"k8s.io/client-go/rest"
 )
@@ -64,4 +65,8 @@ func NewFactoryFromConfigWithOptionsOrDie(config *rest.Config, opts *FactoryOpti
 
 func (c *Factory) K3s() Interface {
 	return New(c.ControllerFactory())
+}
+
+func (c *Factory) WithAgent(userAgent string) Interface {
+	return New(controller.NewSharedControllerFactoryWithAgent(userAgent, c.ControllerFactory()))
 }
