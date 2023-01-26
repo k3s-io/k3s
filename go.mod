@@ -21,7 +21,7 @@ replace (
 	github.com/opencontainers/runc => github.com/opencontainers/runc v1.0.3
 	github.com/opencontainers/runtime-spec => github.com/opencontainers/runtime-spec v1.0.3-0.20210326190908-1c3f411f0417
 	github.com/opencontainers/selinux => github.com/opencontainers/selinux v1.10.1
-	github.com/rancher/wrangler => github.com/rancher/wrangler v0.8.11-0.20220211163748-d5a8ee98be5f
+	github.com/rancher/wrangler => github.com/rancher/wrangler v0.8.11-0.20230207214913-209077f2d98f
 	go.etcd.io/etcd => github.com/k3s-io/etcd v3.4.18-k3s1+incompatible
 	go.etcd.io/etcd/api/v3 => github.com/k3s-io/etcd/api/v3 v3.5.4-k3s1
 	go.etcd.io/etcd/client/pkg/v3 => github.com/k3s-io/etcd/client/pkg/v3 v3.5.4-k3s1
@@ -106,15 +106,15 @@ require (
 	github.com/otiai10/copy v1.7.0
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/dynamiclistener v0.3.5
-	github.com/rancher/lasso v0.0.0-20210616224652-fc3ebd901c08
+	github.com/rancher/lasso v0.0.0-20221227210133-6ea88ca2fbcc
 	github.com/rancher/remotedialer v0.2.6-0.20220624190122-ea57207bf2b8
 	github.com/rancher/wharfie v0.5.1
-	github.com/rancher/wrangler v0.8.11-0.20220217210408-3ecd23dfea3b
+	github.com/rancher/wrangler v0.8.11-0.20230207214913-209077f2d98f
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/rootless-containers/rootlesskit v1.0.1
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/pflag v1.0.5
-	github.com/stretchr/testify v1.8.0
+	github.com/stretchr/testify v1.8.1
 	github.com/urfave/cli v1.22.9
 	github.com/vishvananda/netlink v1.2.1-beta.2
 	github.com/yl2chen/cidranger v1.0.2
@@ -385,15 +385,15 @@ require (
 	gopkg.in/warnings.v0 v0.1.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	honnef.co/go/tools v0.2.2 // indirect
-	k8s.io/apiextensions-apiserver v0.18.0 // indirect
-	k8s.io/cli-runtime v0.17.2 // indirect
+	k8s.io/apiextensions-apiserver v0.21.14 // indirect
+	k8s.io/cli-runtime v0.18.10 // indirect
 	k8s.io/cluster-bootstrap v0.0.0 // indirect
-	k8s.io/code-generator v0.18.0 // indirect
+	k8s.io/code-generator v0.21.14 // indirect
 	k8s.io/controller-manager v0.23.16 // indirect
 	k8s.io/csi-translation-lib v0.0.0 // indirect
 	k8s.io/gengo v0.0.0-20210813121822-485abfe95c7c // indirect
 	k8s.io/klog/v2 v2.80.1 // indirect
-	k8s.io/kube-aggregator v0.18.0 // indirect
+	k8s.io/kube-aggregator v0.21.14 // indirect
 	k8s.io/kube-controller-manager v0.0.0 // indirect
 	k8s.io/kube-openapi v0.0.0-20220803162953-67bda5d908f1 // indirect
 	k8s.io/kube-proxy v0.0.0 // indirect
@@ -404,7 +404,7 @@ require (
 	k8s.io/mount-utils v0.0.0 // indirect
 	k8s.io/pod-security-admission v0.0.0 // indirect
 	sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.0.35 // indirect
-	sigs.k8s.io/json v0.0.0-20211020170558-c049b76a60c6 // indirect
+	sigs.k8s.io/json v0.0.0-20220713155537-f223a00ba0e2 // indirect
 	sigs.k8s.io/kustomize/api v0.10.1 // indirect
 	sigs.k8s.io/kustomize/kustomize/v4 v4.4.1 // indirect
 	sigs.k8s.io/kustomize/kyaml v0.13.0 // indirect
