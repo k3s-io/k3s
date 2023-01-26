@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/k3s-io/k3s/pkg/configfilearg"
+	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -73,7 +74,7 @@ func getNodeEnv() (string, error) {
 // environment variables as annotations on the node object. It also stores a
 // hash of the combined args + variables. These are used by other components
 // to determine if the node configuration has been changed.
-func SetNodeConfigAnnotations(node *corev1.Node) (bool, error) {
+func SetNodeConfigAnnotations(nodeConfig *config.Node, node *corev1.Node) (bool, error) {
 	nodeArgs, err := getNodeArgs()
 	if err != nil {
 		return false, err
@@ -106,13 +107,22 @@ func SetNodeConfigAnnotations(node *corev1.Node) (bool, error) {
 // that may not be present on down-level or up-level nodes.
 // These labels are used by other components to determine whether
 // or not a node supports particular functionality.
-func SetNodeConfigLabels(node *corev1.Node) (bool, error) {
+func SetNodeConfigLabels(nodeConfig *config.Node, node *corev1.Node) (bool, error) {
 	if node.Labels == nil {
 		node.Labels = make(map[string]string)
 	}
-	if _, ok := node.Labels[ClusterEgressLabel]; !ok {
-		node.Labels[ClusterEgressLabel] = "true"
-		return true, nil
+	_, hasLabel := node.Labels[ClusterEgressLabel]
+	switch nodeConfig.EgressSelectorMode {
+	case config.EgressSelectorModeCluster, config.EgressSelectorModePod:
+		if !hasLabel {
+			node.Labels[ClusterEgressLabel] = "true"
+			return true, nil
+		}
+	default:
+		if hasLabel {
+			delete(node.Labels, ClusterEgressLabel)
+			return true, nil
+		}
 	}
 	return false, nil
 }
