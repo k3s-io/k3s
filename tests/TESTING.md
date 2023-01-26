@@ -72,7 +72,7 @@ The sub-directories therein contain fixtures for running simple clusters to asse
   - [Ubuntu 20.04](../tests/install/ubuntu-focal) (Focal Fossa)
 - [Control Groups](../tests/cgroup) :arrow_right: on any code change
   - [mode=unified](../tests/cgroup/unified) (cgroups v2)
-    - [Fedora 37](../tests/cgroup/unified/ fedora) (rootfull + rootless)
+    - [Fedora 37](../tests/cgroup/unified/fedora) (rootfull + rootless)
 - [Snapshotter](../tests/snapshotter/btrfs/opensuse-leap) :arrow_right: on any code change
   - [BTRFS](../tests/snapshotter/btrfs) ([containerd built-in](https://github.com/containerd/containerd/tree/main/snapshots/btrfs))
     - [Leap 15.4](../tests/snapshotter/btrfs/opensuse-leap)

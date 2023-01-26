@@ -46,7 +46,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        vm: [ fedora ]
+        vm: [fedora]
         mode: [unified]
       max-parallel: 1
     defaults:
@@ -69,7 +69,7 @@ jobs:
         id: vagrant-cache
         continue-on-error: true
       - name: "Vagrant Plugin(s)"
-        run: vagrant plugin install vagrant-k3s
+        run: vagrant plugin install vagrant-k3s vagrant-reload
       - name: "Vagrant Up"
         run: vagrant up
       - name: "K3s Prepare"
