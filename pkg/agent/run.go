@@ -344,13 +344,13 @@ func configureNode(ctx context.Context, nodeConfig *daemonconfig.Node, nodes typ
 		}
 
 		// inject node config
-		if changed, err := nodeconfig.SetNodeConfigAnnotations(node); err != nil {
+		if changed, err := nodeconfig.SetNodeConfigAnnotations(nodeConfig, node); err != nil {
 			return false, err
 		} else if changed {
 			updateNode = true
 		}
 
-		if changed, err := nodeconfig.SetNodeConfigLabels(node); err != nil {
+		if changed, err := nodeconfig.SetNodeConfigLabels(nodeConfig, node); err != nil {
 			return false, err
 		} else if changed {
 			updateNode = true

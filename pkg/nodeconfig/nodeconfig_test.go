@@ -4,6 +4,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/version"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -20,6 +21,7 @@ var FakeNodeWithNoAnnotation = &corev1.Node{
 }
 
 var TestEnvName = version.ProgramUpper + "_NODE_NAME"
+var FakeNodeConfig = &config.Node{}
 var FakeNodeWithAnnotation = &corev1.Node{
 	TypeMeta: metav1.TypeMeta{
 		Kind:       "Node",
@@ -39,7 +41,7 @@ func Test_UnitSetExistingNodeConfigAnnotations(t *testing.T) {
 	// adding same config
 	os.Args = []string{version.Program, "server", "--flannel-backend=none"}
 	os.Setenv(version.ProgramUpper+"_NODE_NAME", "fakeNode-with-annotation")
-	nodeUpdated, err := SetNodeConfigAnnotations(FakeNodeWithAnnotation)
+	nodeUpdated, err := SetNodeConfigAnnotations(FakeNodeConfig, FakeNodeWithAnnotation)
 	if err != nil {
 		t.Fatalf("Failed to set node config annotation: %v", err)
 	}
@@ -50,6 +52,7 @@ func Test_UnitSetExistingNodeConfigAnnotations(t *testing.T) {
 
 func Test_UnitSetNodeConfigAnnotations(t *testing.T) {
 	type args struct {
+		config *config.Node
 		node   *corev1.Node
 		osArgs []string
 	}
@@ -72,6 +75,7 @@ func Test_UnitSetNodeConfigAnnotations(t *testing.T) {
 		{
 			name: "Set empty NodeConfigAnnotations",
 			args: args{
+				config: FakeNodeConfig,
 				node:   FakeNodeWithAnnotation,
 				osArgs: []string{version.Program, "server", "--flannel-backend=none"},
 			},
@@ -83,6 +87,7 @@ func Test_UnitSetNodeConfigAnnotations(t *testing.T) {
 		{
 			name: "Set args with equal",
 			args: args{
+				config: FakeNodeConfig,
 				node:   FakeNodeWithNoAnnotation,
 				osArgs: []string{version.Program, "server", "--flannel-backend=none", "--write-kubeconfig-mode=777"},
 			},
@@ -98,7 +103,7 @@ func Test_UnitSetNodeConfigAnnotations(t *testing.T) {
 				t.Errorf("Setup for SetNodeConfigAnnotations() failed = %v", err)
 				return
 			}
-			got, err := SetNodeConfigAnnotations(tt.args.node)
+			got, err := SetNodeConfigAnnotations(tt.args.config, tt.args.node)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("SetNodeConfigAnnotations() error = %v, wantErr %v", err, tt.wantErr)
 				return
