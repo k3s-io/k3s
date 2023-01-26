@@ -12,8 +12,8 @@ import (
 	"github.com/Mirantis/cri-dockerd/cmd"
 	"github.com/Mirantis/cri-dockerd/cmd/version"
 
+	"github.com/k3s-io/k3s/pkg/agent/cri"
 	"github.com/k3s-io/k3s/pkg/cgroups"
-	"github.com/k3s-io/k3s/pkg/cri"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/sirupsen/logrus"
 

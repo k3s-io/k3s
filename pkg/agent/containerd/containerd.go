@@ -18,8 +18,8 @@ import (
 	"github.com/containerd/containerd/namespaces"
 	"github.com/containerd/containerd/pkg/cri/constants"
 	"github.com/containerd/containerd/reference/docker"
+	"github.com/k3s-io/k3s/pkg/agent/cri"
 	util2 "github.com/k3s-io/k3s/pkg/agent/util"
-	"github.com/k3s-io/k3s/pkg/cri"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/natefinch/lumberjack"
@@ -29,10 +29,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1"
-)
-
-const (
-	maxMsgSize = 1024 * 1024 * 16
 )
 
 // Run configures and starts containerd as a child process. Once it is up, images are preloaded
