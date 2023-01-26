@@ -371,9 +371,9 @@ func cloudControllerManager(ctx context.Context, cfg *config.Control) error {
 func checkForCloudControllerPrivileges(ctx context.Context, runtime *config.ControlRuntime, timeout time.Duration) error {
 	return util.WaitForRBACReady(ctx, runtime.KubeConfigAdmin, timeout, authorizationv1.ResourceAttributes{
 		Namespace: metav1.NamespaceSystem,
-		Verb:      "*",
-		Resource:  "daemonsets",
-		Group:     "apps",
+		Verb:      "watch",
+		Resource:  "endpointslices",
+		Group:     "discovery.k8s.io",
 	}, version.Program+"-cloud-controller-manager")
 }
 
