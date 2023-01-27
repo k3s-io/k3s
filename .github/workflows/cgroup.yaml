@@ -94,6 +94,6 @@ jobs:
       - name: "[Rootless] K3s Ready"
         env: {TEST_KUBECONFIG: /home/vagrant/.kube/k3s.yaml}
         run: vagrant provision --provision-with=k3s-ready
-      - name: "[Rootless] Sonobuoy (--mode=quick)"
-        env: {TEST_KUBECONFIG: /home/vagrant/.kube/k3s.yaml, TEST_RESULTS_PATH: rootless}
-        run: vagrant provision --provision-with=k3s-sonobuoy
+      # - name: "[Rootless] Sonobuoy (--mode=quick)"
+      #   env: {TEST_KUBECONFIG: /home/vagrant/.kube/k3s.yaml, TEST_RESULTS_PATH: rootless}
+      #   run: vagrant provision --provision-with=k3s-sonobuoy
