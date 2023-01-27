@@ -14,7 +14,7 @@ import (
 
 // Valid nodeOS:
 // generic/ubuntu2004, generic/centos7, generic/rocky8
-// opensuse/Leap-15.3.x86_64, dweomer/microos.amd64
+// opensuse/Leap-15.3.x86_64
 var nodeOS = flag.String("nodeOS", "generic/ubuntu2004", "VM operating system")
 var serverCount = flag.Int("serverCount", 3, "number of server nodes")
 var agentCount = flag.Int("agentCount", 2, "number of agent nodes")

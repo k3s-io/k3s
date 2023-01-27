@@ -6,29 +6,18 @@ on:
       - "channel.yaml"
       - "install.sh"
       - "tests/install/**"
+      - ".github/workflows/install.yaml"
+
   pull_request:
     branches: [main, master]
     paths:
       - "install.sh"
       - "tests/install/**"
+      - ".github/workflows/install.yaml"
   workflow_dispatch: {}
 jobs:
   build:
-    name: Build
-    runs-on: ubuntu-20.04
-    timeout-minutes: 20
-    steps:
-    - name: "Checkout"
-      uses: actions/checkout@v3
-      with:
-        fetch-depth: 1
-    - name: "Make"
-      run: DOCKER_BUILDKIT=1 SKIP_VALIDATE=1 make
-    - name: "Upload k3s binary"
-      uses: actions/upload-artifact@v3
-      with:
-        name: k3s
-        path: ./dist/artifacts/k3s
+    uses: ./.github/workflows/build-k3s.yaml
   test:
     name: "Smoke Test"
     needs: build
@@ -37,7 +26,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        vm: [centos-7, rocky-8, fedora, opensuse-leap, opensuse-microos, ubuntu-focal]
+        vm: [centos-7, rocky-8, fedora, opensuse-leap, ubuntu-focal]
       max-parallel: 2
     defaults:
       run:
