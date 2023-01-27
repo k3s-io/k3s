@@ -14,7 +14,7 @@ import (
 
 // Valid nodeOS:
 // generic/ubuntu2004, generic/centos7, generic/rocky8,
-// opensuse/Leap-15.3.x86_64, dweomer/microos.amd64
+// opensuse/Leap-15.3.x86_64
 
 var nodeOS = flag.String("nodeOS", "generic/ubuntu2004", "VM operating system")
 var serverCount = flag.Int("serverCount", 3, "number of server nodes")
@@ -43,7 +43,7 @@ var (
 
 var _ = ReportAfterEach(e2e.GenReport)
 
-var _ = Describe("Verify Create", Ordered, func() {
+var _ = Describe("Verify snapshots and cluster restores work", Ordered, func() {
 	Context("Cluster :", func() {
 		It("Starts up with no issues", func() {
 			var err error
@@ -122,26 +122,139 @@ var _ = Describe("Verify Create", Ordered, func() {
 			}, "240s", "5s").Should(Succeed())
 		})
 
-		It("Verifies snapshot is restored successfully and validates only test workload1 is present", func() {
+		It("Resets the cluster", func() {
+			for _, nodeName := range serverNodeNames {
+				cmd := "sudo systemctl stop k3s"
+				Expect(e2e.RunCmdOnNode(cmd, nodeName)).Error().NotTo(HaveOccurred())
+				if nodeName != serverNodeNames[0] {
+					cmd = "k3s-killall.sh"
+					Expect(e2e.RunCmdOnNode(cmd, nodeName)).Error().NotTo(HaveOccurred())
+				}
+			}
+
+			cmd := "sudo k3s server --cluster-reset"
+			res, err := e2e.RunCmdOnNode(cmd, serverNodeNames[0])
+			Expect(err).NotTo(HaveOccurred())
+			Expect(res).Should(ContainSubstring("Managed etcd cluster membership has been reset, restart without --cluster-reset flag now"))
+
+			cmd = "sudo systemctl start k3s"
+			Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Error().NotTo(HaveOccurred())
+		})
+
+		It("Checks that other servers are not ready", func() {
+			fmt.Printf("\nFetching node status\n")
+			Eventually(func(g Gomega) {
+				nodes, err := e2e.ParseNodes(kubeConfigFile, false)
+				g.Expect(err).NotTo(HaveOccurred())
+				for _, node := range nodes {
+					if strings.Contains(node.Name, serverNodeNames[0]) || strings.Contains(node.Name, "agent-") {
+						g.Expect(node.Status).Should(Equal("Ready"))
+					} else {
+						g.Expect(node.Status).Should(Equal("NotReady"))
+					}
+				}
+			}, "240s", "5s").Should(Succeed())
+			_, _ = e2e.ParseNodes(kubeConfigFile, true)
+		})
+
+		It("Rejoins other servers to cluster", func() {
+			// We must remove the db directory on the other servers before restarting k3s
+			// otherwise the nodes may join the old cluster
+			for _, nodeName := range serverNodeNames[1:] {
+				cmd := "sudo rm -rf /var/lib/rancher/k3s/server/db"
+				Expect(e2e.RunCmdOnNode(cmd, nodeName)).Error().NotTo(HaveOccurred())
+			}
+
+			for _, nodeName := range serverNodeNames[1:] {
+				cmd := "sudo systemctl start k3s"
+				Expect(e2e.RunCmdOnNode(cmd, nodeName)).Error().NotTo(HaveOccurred())
+			}
+		})
+
+		It("Checks that all nodes and pods are ready", func() {
+			Eventually(func(g Gomega) {
+				nodes, err := e2e.ParseNodes(kubeConfigFile, false)
+				g.Expect(err).NotTo(HaveOccurred())
+				for _, node := range nodes {
+					g.Expect(node.Status).Should(Equal("Ready"))
+				}
+			}, "420s", "5s").Should(Succeed())
+
+			_, _ = e2e.ParseNodes(kubeConfigFile, true)
+
+			fmt.Printf("\nFetching Pods status\n")
+			Eventually(func(g Gomega) {
+				pods, err := e2e.ParsePods(kubeConfigFile, false)
+				g.Expect(err).NotTo(HaveOccurred())
+				for _, pod := range pods {
+					if strings.Contains(pod.Name, "helm-install") {
+						g.Expect(pod.Status).Should(Equal("Completed"), pod.Name)
+					} else {
+						g.Expect(pod.Status).Should(Equal("Running"), pod.Name)
+					}
+				}
+			}, "420s", "5s").Should(Succeed())
+		})
+		It("Verifies that workload1 and workload1 exist", func() {
+			cmd := "kubectl get pods --kubeconfig=" + kubeConfigFile
+			res, err := e2e.RunCommand(cmd)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(res).Should(ContainSubstring("test-clusterip"))
+			Expect(res).Should(ContainSubstring("test-nodeport"))
+		})
+
+		It("Restores the snapshot", func() {
 			//Stop k3s on all nodes
 			for _, nodeName := range serverNodeNames {
 				cmd := "sudo systemctl stop k3s"
-				_, err := e2e.RunCmdOnNode(cmd, nodeName)
-				Expect(err).NotTo(HaveOccurred())
-			}
-			//Restores from snapshot on server-0
-			for _, nodeName := range serverNodeNames {
-				if nodeName == "server-0" {
-					cmd := "sudo k3s server --cluster-init --cluster-reset --cluster-reset-restore-path=/var/lib/rancher/k3s/server/db/snapshots/" + snapshotname
-					res, err := e2e.RunCmdOnNode(cmd, nodeName)
-					Expect(err).NotTo(HaveOccurred())
-					Expect(res).Should(ContainSubstring("Managed etcd cluster membership has been reset, restart without --cluster-reset flag now"))
-
-					cmd = "sudo systemctl start k3s"
-					_, err = e2e.RunCmdOnNode(cmd, nodeName)
-					Expect(err).NotTo(HaveOccurred())
+				Expect(e2e.RunCmdOnNode(cmd, nodeName)).Error().NotTo(HaveOccurred())
+				if nodeName != serverNodeNames[0] {
+					cmd = "k3s-killall.sh"
+					Expect(e2e.RunCmdOnNode(cmd, nodeName)).Error().NotTo(HaveOccurred())
 				}
 			}
+			//Restores from snapshot on server-0
+			cmd := "sudo k3s server --cluster-init --cluster-reset --cluster-reset-restore-path=/var/lib/rancher/k3s/server/db/snapshots/" + snapshotname
+			res, err := e2e.RunCmdOnNode(cmd, serverNodeNames[0])
+			Expect(err).NotTo(HaveOccurred())
+			Expect(res).Should(ContainSubstring("Managed etcd cluster membership has been reset, restart without --cluster-reset flag now"))
+
+			cmd = "sudo systemctl start k3s"
+			Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Error().NotTo(HaveOccurred())
+
+		})
+
+		It("Checks that other servers are not ready", func() {
+			fmt.Printf("\nFetching node status\n")
+			Eventually(func(g Gomega) {
+				nodes, err := e2e.ParseNodes(kubeConfigFile, false)
+				g.Expect(err).NotTo(HaveOccurred())
+				for _, node := range nodes {
+					if strings.Contains(node.Name, serverNodeNames[0]) || strings.Contains(node.Name, "agent-") {
+						g.Expect(node.Status).Should(Equal("Ready"))
+					} else {
+						g.Expect(node.Status).Should(Equal("NotReady"))
+					}
+				}
+			}, "240s", "5s").Should(Succeed())
+			_, _ = e2e.ParseNodes(kubeConfigFile, true)
+		})
+
+		It("Rejoins other servers to cluster", func() {
+			// We must remove the db directory on the other servers before restarting k3s
+			// otherwise the nodes may join the old cluster
+			for _, nodeName := range serverNodeNames[1:] {
+				cmd := "sudo rm -rf /var/lib/rancher/k3s/server/db"
+				Expect(e2e.RunCmdOnNode(cmd, nodeName)).Error().NotTo(HaveOccurred())
+			}
+
+			for _, nodeName := range serverNodeNames[1:] {
+				cmd := "sudo systemctl start k3s"
+				Expect(e2e.RunCmdOnNode(cmd, nodeName)).Error().NotTo(HaveOccurred())
+			}
+		})
+
+		It("Checks that all nodes and pods are ready", func() {
 			//Verifies node is up and pods running
 			fmt.Printf("\nFetching node status\n")
 			Eventually(func(g Gomega) {
@@ -166,8 +279,9 @@ var _ = Describe("Verify Create", Ordered, func() {
 				}
 			}, "620s", "5s").Should(Succeed())
 			_, _ = e2e.ParsePods(kubeConfigFile, true)
-			//Verifies test workload1 is present
-			//Verifies test workload2 is not present
+		})
+
+		It("Verifies that workload1 exists and workload2 does not", func() {
 			cmd := "kubectl get pods --kubeconfig=" + kubeConfigFile
 			res, err := e2e.RunCommand(cmd)
 			Expect(err).NotTo(HaveOccurred())
