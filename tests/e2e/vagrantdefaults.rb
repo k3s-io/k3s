@@ -34,6 +34,41 @@ def getInstallType(vm, release_version, branch)
   end
 end
 
+def getHardenedArg(vm, hardened, scripts_location)
+  if hardened.empty? 
+    return ""
+  end
+  hardened_arg = <<~HARD
+    protect-kernel-defaults: true
+    secrets-encryption: true
+    kube-controller-manager-arg:
+      - 'terminated-pod-gc-threshold=10'
+      - 'use-service-account-credentials=true'
+    kubelet-arg:
+      - 'streaming-connection-idle-timeout=5m'
+      - 'make-iptables-util-chains=true'
+      - 'event-qps=0'
+    kube-apiserver-arg:
+      - 'audit-log-path=/var/lib/rancher/k3s/server/logs/audit.log'
+      - 'audit-policy-file=/var/lib/rancher/k3s/server/audit.yaml'
+      - 'audit-log-maxage=30'
+      - 'audit-log-maxbackup=10'
+      - 'audit-log-maxsize=100'
+      - 'service-account-lookup=true'
+  HARD
+  if hardened == "psp"
+    vm.provision "Set kernel parameters", type: "shell", path: scripts_location + "/harden.sh"
+    hardened_arg += "  - 'enable-admission-plugins=NodeRestriction,NamespaceLifecycle,ServiceAccount,PodSecurityPolicy'"
+  elsif hardened == "psa"
+    vm.provision "Set kernel parameters", type: "shell", path: scripts_location + "/harden.sh", args: [ "psa" ]
+    hardened_arg += "  - 'admission-control-config-file=/var/lib/rancher/k3s/server/psa.yaml'"
+  else 
+    puts "Invalid E2E_HARDENED option"
+    exit 1
+  end
+  return hardened_arg
+end
+
 def dockerInstall(vm)
   vm.provider "libvirt" do |v|
     v.memory = NODE_MEMORY + 1024

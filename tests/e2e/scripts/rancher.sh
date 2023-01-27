@@ -1,5 +1,12 @@
 #!/bin/bash
 node_ip=$1
+blank_node=$2
+
+if "$blank_node"; then
+    echo "Adding rancher ip to /etc/hosts"
+    echo "$node_ip test-pad.rancher" >> /etc/hosts
+    exit 0
+fi
 
 echo  "Give K3s time to startup"
 sleep 10
@@ -38,12 +45,11 @@ metadata:
   name: rancher
 spec:
   targetNamespace: cattle-system
-  version: 2.6.5
   chart: rancher
   repo: https://releases.rancher.com/server-charts/latest
   set:
     ingress.tls.source: "rancher"
-    hostname: "$node_ip.nip.io"
+    hostname: "test-pad.rancher"
     replicas: 1
 EOF
 
@@ -60,4 +66,4 @@ while ! kubectl get secret --namespace cattle-system bootstrap-secret -o go-temp
     echo "waiting for bootstrap-secret..."
     sleep 20
 done
-echo https://"$node_ip".nip.io/dashboard/?setup=$(kubectl get secret --namespace cattle-system bootstrap-secret -o go-template='{{.data.bootstrapPassword|base64decode}}')
+echo https://test-pad.rancher/dashboard/?setup=$(kubectl get secret --namespace cattle-system bootstrap-secret -o go-template='{{.data.bootstrapPassword|base64decode}}')
