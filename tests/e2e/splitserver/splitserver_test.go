@@ -13,7 +13,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-// Valid nodeOS: generic/ubuntu2004, opensuse/Leap-15.3.x86_64, dweomer/microos.amd64
+// Valid nodeOS: generic/ubuntu2004, opensuse/Leap-15.3.x86_64
 var nodeOS = flag.String("nodeOS", "generic/ubuntu2004", "VM operating system")
 var etcdCount = flag.Int("etcdCount", 1, "number of server nodes only deploying etcd")
 var controlPlaneCount = flag.Int("controlPlaneCount", 1, "number of server nodes acting as control plane")
