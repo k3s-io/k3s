@@ -66,13 +66,13 @@ The sub-directories therein contain fixtures for running simple clusters to asse
 - [Install Script](../tests/install) :arrow_right: scheduled nightly
   - [CentOS 7](../tests/install/centos-7) (stand-in for RHEL 7)
   - [Rocky Linux 8](../tests/install/rocky-8) (stand-in for RHEL 8)
-  - [Fedora](../tests/install/fedora)
+  - [Fedora 37](../tests/install/fedora)
   - [Leap 15.4](../tests/install/opensuse-leap) (stand-in for SLES)
   - [MicroOS](../tests/install/opensuse-microos) (stand-in for SLE-Micro)
   - [Ubuntu 20.04](../tests/install/ubuntu-focal) (Focal Fossa)
 - [Control Groups](../tests/cgroup) :arrow_right: on any code change
   - [mode=unified](../tests/cgroup/unified) (cgroups v2)
-    - [Fedora 35](../tests/cgroup/unified/fedora-35) (rootfull + rootless)
+    - [Fedora 37](../tests/cgroup/unified/fedora) (rootfull + rootless)
 - [Snapshotter](../tests/snapshotter/btrfs/opensuse-leap) :arrow_right: on any code change
   - [BTRFS](../tests/snapshotter/btrfs) ([containerd built-in](https://github.com/containerd/containerd/tree/main/snapshots/btrfs))
     - [Leap 15.4](../tests/snapshotter/btrfs/opensuse-leap)
