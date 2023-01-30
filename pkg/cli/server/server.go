@@ -204,18 +204,17 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	}
 
 	if serverConfig.ControlConfig.PrivateIP == "" && len(cmds.AgentConfig.NodeIP) != 0 {
-		// ignoring the error here is fine since etcd will fall back to the interface's IPv4 address
-		serverConfig.ControlConfig.PrivateIP, _, _ = util.GetFirstString(cmds.AgentConfig.NodeIP)
+		serverConfig.ControlConfig.PrivateIP = util.GetFirstValidIPString(cmds.AgentConfig.NodeIP)
 	}
 
 	// if not set, try setting advertise-ip from agent node-external-ip
 	if serverConfig.ControlConfig.AdvertiseIP == "" && len(cmds.AgentConfig.NodeExternalIP) != 0 {
-		serverConfig.ControlConfig.AdvertiseIP, _, _ = util.GetFirstString(cmds.AgentConfig.NodeExternalIP)
+		serverConfig.ControlConfig.AdvertiseIP = util.GetFirstValidIPString(cmds.AgentConfig.NodeExternalIP)
 	}
 
 	// if not set, try setting advertise-ip from agent node-ip
 	if serverConfig.ControlConfig.AdvertiseIP == "" && len(cmds.AgentConfig.NodeIP) != 0 {
-		serverConfig.ControlConfig.AdvertiseIP, _, _ = util.GetFirstString(cmds.AgentConfig.NodeIP)
+		serverConfig.ControlConfig.AdvertiseIP = util.GetFirstValidIPString(cmds.AgentConfig.NodeIP)
 	}
 
 	// if we ended up with any advertise-ips, ensure they're added to the SAN list;
@@ -297,7 +296,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	}
 
 	// the apiserver service does not yet support dual-stack operation
-	_, apiServerServiceIP, err := controlplane.ServiceIPRange(*serverConfig.ControlConfig.ServiceIPRange)
+	_, apiServerServiceIP, err := controlplane.ServiceIPRange(*serverConfig.ControlConfig.ServiceIPRanges[0])
 	if err != nil {
 		return err
 	}
