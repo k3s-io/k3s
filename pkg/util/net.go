@@ -189,6 +189,19 @@ func ParseStringSliceToIPs(s cli.StringSlice) ([]net.IP, error) {
 	return ips, nil
 }
 
+// GetFirstValidIPString returns the first valid address from a list of IP address strings,
+// without preference for IP family. If no address are found, an empty string is returned.
+func GetFirstValidIPString(s cli.StringSlice) string {
+	for _, unparsedIP := range s {
+		for _, v := range strings.Split(unparsedIP, ",") {
+			if ip := net.ParseIP(v); ip != nil {
+				return v
+			}
+		}
+	}
+	return ""
+}
+
 // GetFirstIP returns the first IPv4 address from the list of IP addresses.
 // If no IPv4 addresses are found, returns the first IPv6 address
 // if neither of IPv4 or IPv6 are found an error is raised.
