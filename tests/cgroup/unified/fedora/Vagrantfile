@@ -37,10 +37,8 @@ Vagrant.configure("2") do |config|
         systemctl daemon-reload
 
         # Install sonobuoy binary
-        dnf install -y jq
-        SONOBUOY_URL=$(curl -s https://api.github.com/repos/vmware-tanzu/sonobuoy/releases/latest | \
-          jq -r '.assets[] | select(.name|match("linux_amd64.tar.gz$")) | .browser_download_url')
-        curl -fsSL $SONOBUOY_URL | tar xzvC /usr/local/bin sonobuoy
+        SONOBUOY_VER=0.56.15
+        curl -fsSL https://github.com/vmware-tanzu/sonobuoy/releases/download/v"$SONOBUOY_VER"/sonobuoy_"$SONOBUOY_VER"_linux_amd64.tar.gz | tar xzvC /usr/local/bin sonobuoy
 
         # [Rootless] Configure sysctl
         dnf install -y fuse-overlayfs fuse
