@@ -10,7 +10,7 @@ Of course, contributing code is more than welcome! To keep things simple, if you
 
 If you're interested in contributing documentation, please note the following:
 - Doc issues are raised in this repository, and they are tracked under the `kind/documentation` label.
-- Pull requests are submitted to the K3s documentation source in the [Rancher docs repository.](https://github.com/rancher/docs/) The K3s docs content is in the `content/k3s/` directory.
+- Pull requests are submitted to the K3s documentation source in the [k3s-io docs repository.](https://github.com/k3s-io/docs).
 
 If you're interested in contributing new tests, please see the `TESTING.md` in the tests directory.
 
