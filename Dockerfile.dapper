@@ -8,10 +8,10 @@ ENV http_proxy=$http_proxy
 ENV https_proxy=$https_proxy
 ENV no_proxy=$no_proxy
 
-RUN apk -U --no-cache add bash git gcc musl-dev docker vim less file curl wget ca-certificates jq linux-headers \
+RUN apk -U --no-cache add bash git gcc musl-dev docker vim less file curl ca-certificates jq linux-headers \
     zlib-dev tar zip squashfs-tools npm coreutils python3 py3-pip openssl-dev libffi-dev libseccomp libseccomp-dev \
     libseccomp-static make libuv-static sqlite-dev sqlite-static libselinux libselinux-dev zlib-dev zlib-static \
-    zstd pigz alpine-sdk binutils-gold btrfs-progs-dev btrfs-progs-static gawk yq \
+    zstd pigz alpine-sdk binutils-gold btrfs-progs-dev btrfs-progs-static gawk yq libc6-compat \
     && \
     if [ "$(go env GOARCH)" = "amd64" ]; then \
     apk -U --no-cache add mingw-w64-gcc; \
@@ -19,19 +19,37 @@ RUN apk -U --no-cache add bash git gcc musl-dev docker vim less file curl wget c
 
 RUN python3 -m pip install awscli
 
-RUN if [ "$(go env GOARCH)" = "arm64" ]; then                                                               \
-    wget https://github.com/aquasecurity/trivy/releases/download/v0.25.3/trivy_0.25.3_Linux-ARM64.tar.gz && \
-    tar -zxvf trivy_0.25.3_Linux-ARM64.tar.gz                                                            && \
-    mv trivy /usr/local/bin;                                                                                \
-    elif [ "$(go env GOARCH)" = "arm" ]; then                                                               \
-    wget https://github.com/aquasecurity/trivy/releases/download/v0.25.3/trivy_0.25.3_Linux-ARM.tar.gz   && \
-    tar -zxvf trivy_0.25.3_Linux-ARM.tar.gz                                                              && \
-    mv trivy /usr/local/bin;                                                                                \
-    elif [ "$(go env GOARCH)" = "amd64" ]; then                                                             \
-    wget https://github.com/aquasecurity/trivy/releases/download/v0.25.3/trivy_0.25.3_Linux-64bit.tar.gz && \
-    tar -zxvf trivy_0.25.3_Linux-64bit.tar.gz                                                            && \
-    mv trivy /usr/local/bin;                                                                                \
+ENV RUSTUP_HOME=/usr/local/rustup \
+    CARGO_HOME=/usr/local/cargo \
+    PATH=/usr/local/cargo/bin:$PATH
+
+RUN set -ex; \
+    GOARCH=$(go env GOARCH); \
+    if [ "${GOARCH}" = "arm" ]; then \
+        RUST_ARCH=arm-unknown-linux-gnueabi; \
+        TRIVY_ARCH=ARM; \
+    elif [ "${GOARCH}" = "arm64" ]; then \
+        RUST_ARCH=aarch64-unknown-linux-musl; \
+        TRIVY_ARCH=ARM64; \
+    elif [ "${GOARCH}" = "amd64" ]; then \
+        RUST_ARCH=x86_64-unknown-linux-musl; \
+        TRIVY_ARCH=64Bit; \
+    elif [ "${GOARCH}" = "s390x" ]; then \
+        RUST_ARCH=s390x-unknown-linux-gnu; \
+    fi; \
+    if [ -n "${RUST_ARCH}" ]; then \
+        curl -sfLO https://static.rust-lang.org/rustup/archive/1.25.1/${RUST_ARCH}/rustup-init; \
+        chmod +x ./rustup-init; \
+        ./rustup-init -y --no-modify-path --profile minimal --default-toolchain 1.67.0 --default-host ${RUST_ARCH}; \
+        rustup --version; \
+        cargo --version; \
+        rustc --version; \
+    fi; \
+    if [ -n "${TRIVY_ARCH}" ]; then \
+       curl -sfL https://github.com/aquasecurity/trivy/releases/download/v0.25.3/trivy_0.25.3_Linux-${TRIVY_ARCH}.tar.gz | tar -zxvC /usr/local/bin trivy; \
+       trivy --version; \
     fi
+
 # this works for both go 1.17 and 1.18
 RUN GOPROXY=direct go install golang.org/x/tools/cmd/goimports@gopls/v0.8.2
 RUN rm -rf /go/src /go/pkg

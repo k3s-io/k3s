@@ -87,6 +87,12 @@ enable_keychain = true
 [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
   SystemdCgroup = {{ .SystemdCgroup }}
 
+[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.wasmtime]
+  runtime_type = "io.containerd.wasmtime.v1"
+
+[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.wasmtimed]
+  runtime_type = "io.containerd.wasmtimed.v1"
+
 {{ if .PrivateRegistryConfig }}
 {{ if .PrivateRegistryConfig.Mirrors }}
 [plugins."io.containerd.grpc.v1.cri".registry.mirrors]{{end}}

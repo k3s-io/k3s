@@ -102,26 +102,44 @@ rm -f \
     bin/containerd \
     bin/containerd-shim \
     bin/containerd-shim-runc-v2 \
+    bin/containerd-shim-wasmtime-v1 \
+    bin/containerd-shim-wasmtimed-v1 \
+    bin/containerd-wasmtimed \
     bin/runc
 
-cleanup() {
-    exit_status=$?
-    rm -rf $TMPDIR
-    exit ${exit_status}
-}
+export INSTALLBIN=$(pwd)/bin
+export GOPATH=$(pwd)/build
 
-INSTALLBIN=$(pwd)/bin
-if [ ! -x ${INSTALLBIN}/cni ]; then
+(
+    echo building runwasi
+    cd ./build/src/github.com/containerd/runwasi
+    export RUSTFLAGS='-C target-feature=+crt-static'
+    export RUST_ARCH=$(rustc -vV | grep host: | awk '{print $2'})
+    cargo build --release --bin='containerd*wasmtime*' --target=$RUST_ARCH
+    cp -vf target/$RUST_ARCH/release/containerd-{shim-wasmtime-v1,shim-wasmtimed-v1,wasmtimed} $INSTALLBIN/
+)
+
+(
+    echo Building runc
+    cd ./build/src/github.com/opencontainers/runc
+    rm -f runc
+    make EXTRA_FLAGS="-gcflags=\"all=${GCFLAGS}\"" EXTRA_LDFLAGS="$LDFLAGS" BUILDTAGS="$RUNC_TAGS" $RUNC_STATIC
+    cp -vf runc $INSTALLBIN/
+)
+
 (
     echo Building cni
-    TMPDIR=$(mktemp -d)
-    trap cleanup EXIT
-    WORKDIR=$TMPDIR/src/github.com/containernetworking/plugins
-    git clone -b $VERSION_CNIPLUGINS https://github.com/rancher/plugins.git $WORKDIR
-    cd $WORKDIR
-    GO111MODULE=off GOPATH=$TMPDIR CGO_ENABLED=0 "${GO}" build -tags "$TAGS" -gcflags="all=${GCFLAGS}" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC" -o $INSTALLBIN/cni
+    cd ./build/src/github.com/containernetworking/plugins
+    CGO_ENABLED=0 "${GO}" build -tags "$TAGS" -gcflags="all=${GCFLAGS}" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC" -o $INSTALLBIN/cni
 )
-fi
+
+(
+    echo Building containerd
+    cd ./build/src/github.com/containerd/containerd
+    TAGS="${TAGS/netcgo/netgo}"
+    CGO_ENABLED=1 "${GO}" build -tags "$TAGS" -gcflags="all=${GCFLAGS}" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC" -o $INSTALLBIN/containerd              ./cmd/containerd
+    CGO_ENABLED=1 "${GO}" build -tags "$TAGS" -gcflags="all=${GCFLAGS}" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC" -o $INSTALLBIN/containerd-shim-runc-v2 ./cmd/containerd-shim-runc-v2
+)
 
 echo Building k3s
 CGO_ENABLED=1 "${GO}" build -tags "$TAGS" -gcflags="all=${GCFLAGS}" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC" -o bin/k3s ./cmd/server/main.go
@@ -135,19 +153,4 @@ ln -s k3s ./bin/kubectl
 ln -s k3s ./bin/crictl
 ln -s k3s ./bin/ctr
 
-export GOPATH=$(pwd)/build
 
-echo Building containerd
-pushd ./build/src/github.com/containerd/containerd
-TAGS="${TAGS/netcgo/netgo}"
-CGO_ENABLED=1 "${GO}" build -tags "$TAGS" -gcflags="all=${GCFLAGS}" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC" -o bin/containerd              ./cmd/containerd
-CGO_ENABLED=1 "${GO}" build -tags "$TAGS" -gcflags="all=${GCFLAGS}" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC" -o bin/containerd-shim-runc-v2 ./cmd/containerd-shim-runc-v2
-popd
-cp -vf ./build/src/github.com/containerd/containerd/bin/* ./bin/
-
-echo Building runc
-pushd ./build/src/github.com/opencontainers/runc
-rm -f runc
-make EXTRA_FLAGS="-gcflags=\"all=${GCFLAGS}\"" EXTRA_LDFLAGS="$LDFLAGS" BUILDTAGS="$RUNC_TAGS" $RUNC_STATIC
-popd
-cp -vf ./build/src/github.com/opencontainers/runc/runc ./bin/
