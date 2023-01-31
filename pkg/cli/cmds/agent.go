@@ -97,7 +97,7 @@ var (
 		Destination: &AgentConfig.EnableSELinux,
 		EnvVar:      version.ProgramUpper + "_SELINUX",
 	}
-	LBServerPortFlag = cli.IntFlag{
+	LBServerPortFlag = &cli.IntFlag{
 		Name:        "lb-server-port",
 		Usage:       "(agent/node) Local port for supervisor client load-balancer. If the supervisor and apiserver are not colocated an additional port 1 less than this port will also be used for the apiserver client load-balancer.",
 		Destination: &AgentConfig.LBServerPort,

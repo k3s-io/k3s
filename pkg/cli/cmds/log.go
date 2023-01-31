@@ -21,7 +21,7 @@ type Log struct {
 var (
 	LogConfig Log
 
-	VLevel = cli.IntFlag{
+	VLevel = &cli.IntFlag{
 		Name:        "v",
 		Usage:       "(logging) Number for the log level verbosity",
 		Destination: &LogConfig.VLevel,
