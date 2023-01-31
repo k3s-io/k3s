@@ -8,7 +8,7 @@ import (
 const SecretsEncryptCommand = "secrets-encrypt"
 
 var (
-	forceFlag = cli.BoolFlag{
+	forceFlag = &cli.BoolFlag{
 		Name:        "f,force",
 		Usage:       "Force this stage.",
 		Destination: &ServerConfig.EncryptForce,
@@ -16,7 +16,7 @@ var (
 	EncryptFlags = []cli.Flag{
 		DataDirFlag,
 		ServerToken,
-		cli.StringFlag{
+		&cli.StringFlag{
 			Name:        "server, s",
 			Usage:       "(cluster) Server to connect to",
 			EnvVar:      version.ProgramUpper + "_URL",
@@ -62,14 +62,14 @@ func NewSecretsEncryptCommands(status, enable, disable, prepare, rotate, reencry
 				Usage:          "Prepare for encryption keys rotation",
 				SkipArgReorder: true,
 				Action:         prepare,
-				Flags:          append(EncryptFlags, &forceFlag),
+				Flags:          append(EncryptFlags, forceFlag),
 			},
 			{
 				Name:           "rotate",
 				Usage:          "Rotate secrets encryption keys",
 				SkipArgReorder: true,
 				Action:         rotate,
-				Flags:          append(EncryptFlags, &forceFlag),
+				Flags:          append(EncryptFlags, forceFlag),
 			},
 			{
 				Name:           "reencrypt",
@@ -77,7 +77,7 @@ func NewSecretsEncryptCommands(status, enable, disable, prepare, rotate, reencry
 				SkipArgReorder: true,
 				Action:         reencrypt,
 				Flags: append(EncryptFlags,
-					&forceFlag,
+					forceFlag,
 					&cli.BoolFlag{
 						Name:        "skip",
 						Usage:       "Skip removing old key",

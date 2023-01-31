@@ -11,13 +11,13 @@ import (
 
 var (
 	Debug     bool
-	DebugFlag = cli.BoolFlag{
+	DebugFlag = &cli.BoolFlag{
 		Name:        "debug",
 		Usage:       "(logging) Turn on debug logs",
 		Destination: &Debug,
 		EnvVar:      version.ProgramUpper + "_DEBUG",
 	}
-	PreferBundledBin = cli.BoolFlag{
+	PreferBundledBin = &cli.BoolFlag{
 		Name:  "prefer-bundled-bin",
 		Usage: "(experimental) Prefer bundled userspace binaries over host binaries",
 	}
@@ -41,7 +41,7 @@ func NewApp() *cli.App {
 	}
 	app.Flags = []cli.Flag{
 		DebugFlag,
-		cli.StringFlag{
+		&cli.StringFlag{
 			Name:  "data-dir,d",
 			Usage: "(data) Folder to hold state (default: /var/lib/rancher/" + version.Program + " or ${HOME}/.rancher/" + version.Program + " if not root)",
 		},

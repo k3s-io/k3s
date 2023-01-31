@@ -15,7 +15,7 @@ var (
 		LogFile,
 		AlsoLogToStderr,
 		DataDirFlag,
-		cli.StringSliceFlag{
+		&cli.StringSliceFlag{
 			Name:  "service,s",
 			Usage: "List of services to rotate certificates for. Options include (admin, api-server, controller-manager, scheduler, " + version.Program + "-controller, " + version.Program + "-server, cloud-controller, etcd, auth-proxy, kubelet, kube-proxy)",
 			Value: &ServicesList,
