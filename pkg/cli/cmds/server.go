@@ -107,60 +107,60 @@ type Server struct {
 
 var (
 	ServerConfig Server
-	DataDirFlag  = cli.StringFlag{
+	DataDirFlag  = &cli.StringFlag{
 		Name:        "data-dir,d",
 		Usage:       "(data) Folder to hold state default /var/lib/rancher/" + version.Program + " or ${HOME}/.rancher/" + version.Program + " if not root",
 		Destination: &ServerConfig.DataDir,
 	}
-	ServerToken = cli.StringFlag{
+	ServerToken = &cli.StringFlag{
 		Name:        "token,t",
 		Usage:       "(cluster) Shared secret used to join a server or agent to a cluster",
 		Destination: &ServerConfig.Token,
 		EnvVar:      version.ProgramUpper + "_TOKEN",
 	}
-	ClusterCIDR = cli.StringSliceFlag{
+	ClusterCIDR = &cli.StringSliceFlag{
 		Name:  "cluster-cidr",
 		Usage: "(networking) IPv4/IPv6 network CIDRs to use for pod IPs (default: 10.42.0.0/16)",
 		Value: &ServerConfig.ClusterCIDR,
 	}
-	ServiceCIDR = cli.StringSliceFlag{
+	ServiceCIDR = &cli.StringSliceFlag{
 		Name:  "service-cidr",
 		Usage: "(networking) IPv4/IPv6 network CIDRs to use for service IPs (default: 10.43.0.0/16)",
 		Value: &ServerConfig.ServiceCIDR,
 	}
-	ServiceNodePortRange = cli.StringFlag{
+	ServiceNodePortRange = &cli.StringFlag{
 		Name:        "service-node-port-range",
 		Usage:       "(networking) Port range to reserve for services with NodePort visibility",
 		Destination: &ServerConfig.ServiceNodePortRange,
 		Value:       "30000-32767",
 	}
-	ClusterDNS = cli.StringSliceFlag{
+	ClusterDNS = &cli.StringSliceFlag{
 		Name:  "cluster-dns",
 		Usage: "(networking) IPv4 Cluster IP for coredns service. Should be in your service-cidr range (default: 10.43.0.10)",
 		Value: &ServerConfig.ClusterDNS,
 	}
-	ClusterDomain = cli.StringFlag{
+	ClusterDomain = &cli.StringFlag{
 		Name:        "cluster-domain",
 		Usage:       "(networking) Cluster Domain",
 		Destination: &ServerConfig.ClusterDomain,
 		Value:       "cluster.local",
 	}
-	ExtraAPIArgs = cli.StringSliceFlag{
+	ExtraAPIArgs = &cli.StringSliceFlag{
 		Name:  "kube-apiserver-arg",
 		Usage: "(flags) Customized flag for kube-apiserver process",
 		Value: &ServerConfig.ExtraAPIArgs,
 	}
-	ExtraEtcdArgs = cli.StringSliceFlag{
+	ExtraEtcdArgs = &cli.StringSliceFlag{
 		Name:  "etcd-arg",
 		Usage: "(flags) Customized flag for etcd process",
 		Value: &ServerConfig.ExtraEtcdArgs,
 	}
-	ExtraSchedulerArgs = cli.StringSliceFlag{
+	ExtraSchedulerArgs = &cli.StringSliceFlag{
 		Name:  "kube-scheduler-arg",
 		Usage: "(flags) Customized flag for kube-scheduler process",
 		Value: &ServerConfig.ExtraSchedulerArgs,
 	}
-	ExtraControllerArgs = cli.StringSliceFlag{
+	ExtraControllerArgs = &cli.StringSliceFlag{
 		Name:  "kube-controller-manager-arg",
 		Usage: "(flags) Customized flag for kube-controller-manager process",
 		Value: &ServerConfig.ExtraControllerArgs,
@@ -174,28 +174,28 @@ var ServerFlags = []cli.Flag{
 	VModule,
 	LogFile,
 	AlsoLogToStderr,
-	cli.StringFlag{
+	&cli.StringFlag{
 		Name:        "bind-address",
 		Usage:       "(listener) " + version.Program + " bind address (default: 0.0.0.0)",
 		Destination: &ServerConfig.BindAddress,
 	},
-	cli.IntFlag{
+	&cli.IntFlag{
 		Name:        "https-listen-port",
 		Usage:       "(listener) HTTPS listen port",
 		Value:       6443,
 		Destination: &ServerConfig.HTTPSPort,
 	},
-	cli.StringFlag{
+	&cli.StringFlag{
 		Name:        "advertise-address",
 		Usage:       "(listener) IPv4 address that apiserver uses to advertise to members of the cluster (default: node-external-ip/node-ip)",
 		Destination: &ServerConfig.AdvertiseIP,
 	},
-	cli.IntFlag{
+	&cli.IntFlag{
 		Name:        "advertise-port",
 		Usage:       "(listener) Port that apiserver uses to advertise to members of the cluster (default: listen-port)",
 		Destination: &ServerConfig.AdvertisePort,
 	},
-	cli.StringSliceFlag{
+	&cli.StringSliceFlag{
 		Name:  "tls-san",
 		Usage: "(listener) Add additional hostnames or IPv4/IPv6 addresses as Subject Alternative Names on the server TLS cert",
 		Value: &ServerConfig.TLSSan,
@@ -206,78 +206,78 @@ var ServerFlags = []cli.Flag{
 	ServiceNodePortRange,
 	ClusterDNS,
 	ClusterDomain,
-	cli.StringFlag{
+	&cli.StringFlag{
 		Name:        "flannel-backend",
 		Usage:       "(networking) backend<=option1=val1,option2=val2> where backend is one of 'none', 'vxlan', 'ipsec' (deprecated), 'host-gw', 'wireguard-native', 'wireguard' (deprecated)",
 		Destination: &ServerConfig.FlannelBackend,
 		Value:       "vxlan",
 	},
-	cli.BoolFlag{
+	&cli.BoolFlag{
 		Name:        "flannel-ipv6-masq",
 		Usage:       "(networking) Enable IPv6 masquerading for pod",
 		Destination: &ServerConfig.FlannelIPv6Masq,
 	},
-	cli.BoolFlag{
+	&cli.BoolFlag{
 		Name:        "flannel-external-ip",
 		Usage:       "(networking) Use node external IP addresses for Flannel traffic",
 		Destination: &ServerConfig.FlannelExternalIP,
 	},
-	cli.StringFlag{
+	&cli.StringFlag{
 		Name:        "egress-selector-mode",
 		Usage:       "(networking) One of 'agent', 'cluster', 'pod', 'disabled'",
 		Destination: &ServerConfig.EgressSelectorMode,
 		Value:       "agent",
 	},
-	cli.StringFlag{
+	&cli.StringFlag{
 		Name:        "servicelb-namespace",
 		Usage:       "(networking) Namespace of the pods for the servicelb component",
 		Destination: &ServerConfig.ServiceLBNamespace,
 		Value:       "kube-system",
 	},
-	cli.StringFlag{
+	&cli.StringFlag{
 		Name:        "write-kubeconfig,o",
 		Usage:       "(client) Write kubeconfig for admin client to this file",
 		Destination: &ServerConfig.KubeConfigOutput,
 		EnvVar:      version.ProgramUpper + "_KUBECONFIG_OUTPUT",
 	},
-	cli.StringFlag{
+	&cli.StringFlag{
 		Name:        "write-kubeconfig-mode",
 		Usage:       "(client) Write kubeconfig with this mode",
 		Destination: &ServerConfig.KubeConfigMode,
 		EnvVar:      version.ProgramUpper + "_KUBECONFIG_MODE",
 	},
 	ServerToken,
-	cli.StringFlag{
+	&cli.StringFlag{
 		Name:        "token-file",
 		Usage:       "(cluster) File containing the cluster-secret/token",
 		Destination: &ServerConfig.TokenFile,
 		EnvVar:      version.ProgramUpper + "_TOKEN_FILE",
 	},
-	cli.StringFlag{
+	&cli.StringFlag{
 		Name:        "agent-token",
 		Usage:       "(cluster) Shared secret used to join agents to the cluster, but not servers",
 		Destination: &ServerConfig.AgentToken,
 		EnvVar:      version.ProgramUpper + "_AGENT_TOKEN",
 	},
-	cli.StringFlag{
+	&cli.StringFlag{
 		Name:        "agent-token-file",
 		Usage:       "(cluster) File containing the agent secret",
 		Destination: &ServerConfig.AgentTokenFile,
 		EnvVar:      version.ProgramUpper + "_AGENT_TOKEN_FILE",
 	},
-	cli.StringFlag{
+	&cli.StringFlag{
 		Name:        "server,s",
 		Usage:       "(cluster) Server to connect to, used to join a cluster",
 		EnvVar:      version.ProgramUpper + "_URL",
 		Destination: &ServerConfig.ServerURL,
 	},
-	cli.BoolFlag{
+	&cli.BoolFlag{
 		Name:        "cluster-init",
 		Usage:       "(cluster) Initialize a new cluster using embedded Etcd",
 		EnvVar:      version.ProgramUpper + "_CLUSTER_INIT",
 		Destination: &ServerConfig.ClusterInit,
 	},
-	cli.BoolFlag{
+	&cli.BoolFlag{
 		Name:        "cluster-reset",
 		Usage:       "(cluster) Forget all peers and become sole member of a new cluster",
 		EnvVar:      version.ProgramUpper + "_CLUSTER_RESET",
@@ -292,30 +292,30 @@ var ServerFlags = []cli.Flag{
 	ExtraEtcdArgs,
 	ExtraControllerArgs,
 	ExtraSchedulerArgs,
-	cli.StringSliceFlag{
+	&cli.StringSliceFlag{
 		Name:  "kube-cloud-controller-manager-arg",
 		Usage: "(flags) Customized flag for kube-cloud-controller-manager process",
 		Value: &ServerConfig.ExtraCloudControllerArgs,
 	},
-	cli.StringFlag{
+	&cli.StringFlag{
 		Name:        "datastore-endpoint",
 		Usage:       "(db) Specify etcd, Mysql, Postgres, or Sqlite (default) data source name",
 		Destination: &ServerConfig.DatastoreEndpoint,
 		EnvVar:      version.ProgramUpper + "_DATASTORE_ENDPOINT",
 	},
-	cli.StringFlag{
+	&cli.StringFlag{
 		Name:        "datastore-cafile",
 		Usage:       "(db) TLS Certificate Authority file used to secure datastore backend communication",
 		Destination: &ServerConfig.DatastoreCAFile,
 		EnvVar:      version.ProgramUpper + "_DATASTORE_CAFILE",
 	},
-	cli.StringFlag{
+	&cli.StringFlag{
 		Name:        "datastore-certfile",
 		Usage:       "(db) TLS certification file used to secure datastore backend communication",
 		Destination: &ServerConfig.DatastoreCertFile,
 		EnvVar:      version.ProgramUpper + "_DATASTORE_CERTFILE",
 	},
-	cli.StringFlag{
+	&cli.StringFlag{
 		Name:        "datastore-keyfile",
 		Usage:       "(db) TLS key file used to secure datastore backend communication",
 		Destination: &ServerConfig.DatastoreKeyFile,
@@ -419,53 +419,53 @@ var ServerFlags = []cli.Flag{
 		Destination: &ServerConfig.EtcdS3Timeout,
 		Value:       5 * time.Minute,
 	},
-	cli.StringFlag{
+	&cli.StringFlag{
 		Name:        "default-local-storage-path",
 		Usage:       "(storage) Default local storage path for local provisioner storage class",
 		Destination: &ServerConfig.DefaultLocalStoragePath,
 	},
-	cli.StringSliceFlag{
+	&cli.StringSliceFlag{
 		Name:  "disable",
 		Usage: "(components) Do not deploy packaged components and delete any deployed components (valid items: " + DisableItems + ")",
 	},
-	cli.BoolFlag{
+	&cli.BoolFlag{
 		Name:        "disable-scheduler",
 		Usage:       "(components) Disable Kubernetes default scheduler",
 		Destination: &ServerConfig.DisableScheduler,
 	},
-	cli.BoolFlag{
+	&cli.BoolFlag{
 		Name:        "disable-cloud-controller",
 		Usage:       "(components) Disable " + version.Program + " default cloud controller manager",
 		Destination: &ServerConfig.DisableCCM,
 	},
-	cli.BoolFlag{
+	&cli.BoolFlag{
 		Name:        "disable-kube-proxy",
 		Usage:       "(components) Disable running kube-proxy",
 		Destination: &ServerConfig.DisableKubeProxy,
 	},
-	cli.BoolFlag{
+	&cli.BoolFlag{
 		Name:        "disable-network-policy",
 		Usage:       "(components) Disable " + version.Program + " default network policy controller",
 		Destination: &ServerConfig.DisableNPC,
 	},
-	cli.BoolFlag{
+	&cli.BoolFlag{
 		Name:        "disable-helm-controller",
 		Usage:       "(components) Disable Helm controller",
 		Destination: &ServerConfig.DisableHelmController,
 	},
-	cli.BoolFlag{
+	&cli.BoolFlag{
 		Name:        "disable-apiserver",
 		Hidden:      true,
 		Usage:       "(experimental/components) Disable running api server",
 		Destination: &ServerConfig.DisableAPIServer,
 	},
-	cli.BoolFlag{
+	&cli.BoolFlag{
 		Name:        "disable-controller-manager",
 		Hidden:      true,
 		Usage:       "(experimental/components) Disable running kube-controller-manager",
 		Destination: &ServerConfig.DisableControllerManager,
 	},
-	cli.BoolFlag{
+	&cli.BoolFlag{
 		Name:        "disable-etcd",
 		Hidden:      true,
 		Usage:       "(experimental/components) Disable running etcd",
@@ -492,61 +492,61 @@ var ServerFlags = []cli.Flag{
 	ExtraKubeletArgs,
 	ExtraKubeProxyArgs,
 	ProtectKernelDefaultsFlag,
-	cli.BoolFlag{
+	&cli.BoolFlag{
 		Name:        "secrets-encryption",
 		Usage:       "Enable secret encryption at rest",
 		Destination: &ServerConfig.EncryptSecrets,
 	},
 	// Experimental flags
-	cli.BoolFlag{
+	&cli.BoolFlag{
 		Name:        "enable-pprof",
 		Usage:       "(experimental) Enable pprof endpoint on supervisor port",
 		Destination: &ServerConfig.EnablePProf,
 	},
-	cli.BoolFlag{
+	&cli.BoolFlag{
 		Name:        "rootless",
 		Usage:       "(experimental) Run rootless",
 		Destination: &ServerConfig.Rootless,
 	},
 	PreferBundledBin,
-	cli.StringFlag{
+	&cli.StringFlag{
 		Name:        "system-default-registry",
 		Usage:       "(image) Private registry to be used for all system images",
 		EnvVar:      version.ProgramUpper + "_SYSTEM_DEFAULT_REGISTRY",
 		Destination: &ServerConfig.SystemDefaultRegistry,
 	},
-	&SELinuxFlag,
+	SELinuxFlag,
 	LBServerPortFlag,
 
 	// Hidden/Deprecated flags below
 
 	&DisableSELinuxFlag,
 	FlannelFlag,
-	cli.StringSliceFlag{
+	&cli.StringSliceFlag{
 		Name:   "no-deploy",
 		Usage:  "(deprecated) Do not deploy packaged components (valid items: " + DisableItems + ")",
 		Hidden: true,
 	},
-	cli.StringFlag{
+	&cli.StringFlag{
 		Name:        "cluster-secret",
 		Usage:       "(deprecated) use --token",
 		Destination: &ServerConfig.ClusterSecret,
 		EnvVar:      version.ProgramUpper + "_CLUSTER_SECRET",
 		Hidden:      true,
 	},
-	cli.BoolFlag{
+	&cli.BoolFlag{
 		Name:        "disable-agent",
 		Usage:       "Do not run a local agent and register a local kubelet",
 		Hidden:      true,
 		Destination: &ServerConfig.DisableAgent,
 	},
-	cli.StringSliceFlag{
+	&cli.StringSliceFlag{
 		Hidden: true,
 		Name:   "kube-controller-arg",
 		Usage:  "(flags) Customized flag for kube-controller-manager process",
 		Value:  &ServerConfig.ExtraControllerArgs,
 	},
-	cli.StringSliceFlag{
+	&cli.StringSliceFlag{
 		Hidden: true,
 		Name:   "kube-cloud-controller-arg",
 		Usage:  "(flags) Customized flag for kube-cloud-controller-manager process",

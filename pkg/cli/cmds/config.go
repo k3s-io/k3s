@@ -8,7 +8,7 @@ import (
 var (
 	// ConfigFlag is here to show to the user, but the actually processing is done by configfileargs before
 	// call urfave
-	ConfigFlag = cli.StringFlag{
+	ConfigFlag = &cli.StringFlag{
 		Name:   "config,c",
 		Usage:  "(config) Load configuration from `FILE`",
 		EnvVar: version.ProgramUpper + "_CONFIG_FILE",
