@@ -11,6 +11,7 @@ import (
 	coreclient "github.com/rancher/wrangler/pkg/generated/controllers/core/v1"
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -223,14 +224,9 @@ func (h *handler) updateSecrets(node *corev1.Node) error {
 	i := 0
 	err = meta.EachListItem(secretsList, func(obj runtime.Object) error {
 		if secret, ok := obj.(*corev1.Secret); ok {
-			err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
-				secret, err = h.secrets.Get(secret.Namespace, secret.Name, metav1.GetOptions{})
-				if err != nil {
-					return err
-				}
-				_, err := h.secrets.Update(secret)
-				return err
-			})
+			if _, err := h.secrets.Update(secret); err != nil && !apierrors.IsConflict(err) {
+				return fmt.Errorf("failed to reencrypted secret: %v", err)
+			}
 			if i != 0 && i%10 == 0 {
 				h.recorder.Eventf(nodeRef, corev1.EventTypeNormal, secretsProgressEvent, "reencrypted %d secrets", i)
 			}
