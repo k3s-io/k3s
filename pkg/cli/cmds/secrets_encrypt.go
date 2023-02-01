@@ -10,7 +10,7 @@ const SecretsEncryptCommand = "secrets-encrypt"
 var EncryptFlags = []cli.Flag{
 	DataDirFlag,
 	ServerToken,
-	cli.StringFlag{
+	&cli.StringFlag{
 		Name:        "server, s",
 		Usage:       "(cluster) Server to connect to",
 		EnvVar:      version.ProgramUpper + "_URL",
