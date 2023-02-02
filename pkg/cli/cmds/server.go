@@ -299,7 +299,7 @@ var ServerFlags = []cli.Flag{
 	},
 	&cli.StringFlag{
 		Name:        "datastore-endpoint",
-		Usage:       "(db) Specify etcd, Mysql, Postgres, or Sqlite (default) data source name",
+		Usage:       "(db) Specify etcd, NATS, MySQL, Postgres, or SQLite (default) data source name",
 		Destination: &ServerConfig.DatastoreEndpoint,
 		EnvVar:      version.ProgramUpper + "_DATASTORE_ENDPOINT",
 	},
