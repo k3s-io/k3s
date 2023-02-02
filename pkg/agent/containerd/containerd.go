@@ -98,6 +98,25 @@ func Run(ctx context.Context, cfg *config.Node) error {
 		os.Exit(1)
 	}()
 
+	go func() {
+		if err := os.MkdirAll("/run/io.containerd.wasmwasi.v1/", 0700); err != nil {
+			logrus.Errorf("Failed to create wasmwasi directory: %v", err)
+			return
+		}
+		if err := os.Remove("/run/io.containerd.wasmwasi.v1/manager.sock"); err != nil && !errors.Is(err, os.ErrNotExist) {
+			logrus.Errorf("Failed to remove wasmwasi socket: %v", err)
+			return
+		}
+
+		logrus.Info("Running containerd-wasmtimed")
+		cmd := exec.CommandContext(ctx, "containerd-wasmtimed")
+
+		addDeathSig(cmd)
+		if err := cmd.Run(); err != nil {
+			fmt.Fprintf(os.Stderr, "containerd-wasmtimed: %s\n", err)
+		}
+	}()
+
 	if err := cri.WaitForService(ctx, cfg.Containerd.Address, "containerd"); err != nil {
 		return err
 	}
