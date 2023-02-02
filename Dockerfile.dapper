@@ -11,7 +11,7 @@ ENV no_proxy=$no_proxy
 RUN apk -U --no-cache add bash git gcc musl-dev docker vim less file curl ca-certificates jq linux-headers \
     zlib-dev tar zip squashfs-tools npm coreutils python3 py3-pip openssl-dev libffi-dev libseccomp libseccomp-dev \
     libseccomp-static make libuv-static sqlite-dev sqlite-static libselinux libselinux-dev zlib-dev zlib-static \
-    zstd pigz alpine-sdk binutils-gold btrfs-progs-dev btrfs-progs-static gawk yq libc6-compat \
+    zstd pigz alpine-sdk binutils-gold btrfs-progs-dev btrfs-progs-static gawk yq gcompat \
     && \
     if [ "$(go env GOARCH)" = "amd64" ]; then \
     apk -U --no-cache add mingw-w64-gcc; \
@@ -26,7 +26,7 @@ ENV RUSTUP_HOME=/usr/local/rustup \
 RUN set -ex; \
     GOARCH=$(go env GOARCH); \
     if [ "${GOARCH}" = "arm" ]; then \
-        RUST_ARCH=arm-unknown-linux-gnueabi; \
+        RUST_ARCH=armv7-unknown-linux-gnueabihf; \
         TRIVY_ARCH=ARM; \
     elif [ "${GOARCH}" = "arm64" ]; then \
         RUST_ARCH=aarch64-unknown-linux-musl; \
@@ -40,6 +40,7 @@ RUN set -ex; \
     if [ -n "${RUST_ARCH}" ]; then \
         curl -sfLO https://static.rust-lang.org/rustup/archive/1.25.1/${RUST_ARCH}/rustup-init; \
         chmod +x ./rustup-init; \
+        ldd ./rustup-init || true; \
         ./rustup-init -y --no-modify-path --profile minimal --default-toolchain 1.67.0 --default-host ${RUST_ARCH}; \
         rustup --version; \
         cargo --version; \
