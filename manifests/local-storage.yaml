@@ -82,6 +82,13 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        securityContext:
+          allowPrivilegeEscalation: false
+          privileged: false
+          capabilities:
+            drop:
+            - all
+          readOnlyRootFilesystem: true
       volumes:
         - name: config-volume
           configMap:
