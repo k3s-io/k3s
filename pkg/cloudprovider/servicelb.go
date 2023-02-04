@@ -540,9 +540,16 @@ func (k *k3s) newDaemonSet(svc *core.Service) (*apps.DaemonSet, error) {
 				},
 			},
 			SecurityContext: &core.SecurityContext{
+				Privileged:               Bool(false)
+				AllowPrivilegeEscalation: Bool(false)
+				ReadOnlyRootFilesystem:   Bool(false)
 				Capabilities: &core.Capabilities{
 					Add: []core.Capability{
 						"NET_ADMIN",
+						"NET_RAW",
+					},
+					Drop: []core.Capability{
+						"ALL",
 					},
 				},
 			},
