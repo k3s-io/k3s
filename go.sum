@@ -318,8 +318,8 @@ github.com/fatih/camelcase v1.0.0/go.mod h1:yN2Sb0lFhZJUdVvtELVWefmrXpuZESvPmqwo
 github.com/fatih/color v1.7.0/go.mod h1:Zm6kSWBoL9eyXnKyktHP6abPY2pDugNf5KwzbycvMj4=
 github.com/felixge/httpsnoop v1.0.1 h1:lvB5Jl89CsZtGIWuTcDM1E/vkVs49/Ml7JJe07l8SPQ=
 github.com/felixge/httpsnoop v1.0.1/go.mod h1:m8KPJKqk1gH5J9DgRY2ASl2lWCfGKXixSwevea8zH2U=
-github.com/flannel-io/flannel v0.20.2 h1:/hLQsvyQHQQV0mS9xxWVMf1oHPFBSReM1j5D9Cdm5dc=
-github.com/flannel-io/flannel v0.20.2/go.mod h1:A23fmdRQyN4i6Gs5UzvVTlj8kcswPYIqisLhgUkhnxk=
+github.com/flannel-io/flannel v0.21.0 h1:yWEk7JN2p6b5bwKZsdQ3NZblkNWF6DOhGjooat4XXl4=
+github.com/flannel-io/flannel v0.21.0/go.mod h1:YIajK+YeyFL3LMC8VTL7+02plJXl8GVKqCsVJ+KhpT4=
 github.com/flynn/go-shlex v0.0.0-20150515145356-3f9db97f8568/go.mod h1:xEzjJPgXI435gkrCt3MPfRiAkVrwSbHsst4LCFVfpJc=
 github.com/fogleman/gg v1.2.1-0.20190220221249-0403632d5b90/go.mod h1:R/bRT+9gY/C5z7JzPU0zXsXHKM4/ayA+zqcVNZzPa1k=
 github.com/form3tech-oss/jwt-go v3.2.2+incompatible/go.mod h1:pbq4aXjuKjdthFRnoDwaVPLA+WlJuPGy+QneDUgJi2k=
