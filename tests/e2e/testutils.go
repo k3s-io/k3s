@@ -123,7 +123,11 @@ func CreateCluster(nodeOS string, serverCount, agentCount int) ([]string, []stri
 			return nil
 		})
 		// We must wait a bit between provisioning nodes to avoid too many learners attempting to join the cluster
-		time.Sleep(20 * time.Second)
+		if strings.Contains(node, "agent") {
+			time.Sleep(5 * time.Second)
+		} else {
+			time.Sleep(30 * time.Second)
+		}
 	}
 	if err := errg.Wait(); err != nil {
 		return nil, nil, err
@@ -304,7 +308,7 @@ func GetVagrantLog(cErr error) string {
 	var nodeErr *NodeError
 	nodeJournal := ""
 	if errors.As(cErr, &nodeErr) {
-		nodeJournal, _ = RunCommand("vagrant ssh " + nodeErr.Node + " -c \"sudo journalctl -u k3s* --no-pager\"")
+		nodeJournal, _ = RunCmdOnNode("sudo journalctl -u k3s* --no-pager", nodeErr.Node)
 		nodeJournal = "\nNode Journal Logs:\n" + nodeJournal
 	}
 
@@ -364,6 +368,9 @@ func ParsePods(kubeConfig string, print bool) ([]Pod, error) {
 	split := strings.Split(res, "\n")
 	for _, rec := range split {
 		fields := strings.Fields(string(rec))
+		if len(fields) < 8 {
+			return nil, fmt.Errorf("invalid pod record: %s", rec)
+		}
 		pod := Pod{
 			NameSpace: fields[0],
 			Name:      fields[1],
