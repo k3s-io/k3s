@@ -399,6 +399,17 @@ func RestartCluster(nodeNames []string) error {
 	return nil
 }
 
+// RestartCluster restarts the k3s service on each node given
+func RestartClusterAgent(nodeNames []string) error {
+	for _, nodeName := range nodeNames {
+		cmd := "sudo systemctl restart k3s-agent"
+		if _, err := RunCmdOnNode(cmd, nodeName); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // RunCmdOnNode executes a command from within the given node
 func RunCmdOnNode(cmd string, nodename string) (string, error) {
 	runcmd := "vagrant ssh -c \"" + cmd + "\" " + nodename
@@ -462,7 +473,11 @@ func GetObjIPs(cmd string) ([]ObjIP, error) {
 		if len(fields) > 2 {
 			objIPs = append(objIPs, ObjIP{Name: fields[0], IPv4: fields[1], IPv6: fields[2]})
 		} else if len(fields) > 1 {
-			objIPs = append(objIPs, ObjIP{Name: fields[0], IPv4: fields[1]})
+			if strings.Contains(fields[1], ".") {
+				objIPs = append(objIPs, ObjIP{Name: fields[0], IPv4: fields[1]})
+			} else {
+				objIPs = append(objIPs, ObjIP{Name: fields[0], IPv6: fields[1]})
+			}
 		} else {
 			objIPs = append(objIPs, ObjIP{Name: fields[0]})
 		}
