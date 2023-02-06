@@ -216,6 +216,49 @@ var _ = Describe("Verify Create", Ordered, func() {
 			}, "420s", "2s").Should(Succeed())
 		})
 
+		It("Verifies Restart", func() {
+			_, err := e2e.DeployWorkload("daemonset.yaml", kubeConfigFile, *hardened)
+			Expect(err).NotTo(HaveOccurred(), "Daemonset manifest not deployed")
+			defer e2e.DeleteWorkload("daemonset.yaml", kubeConfigFile)
+			nodes, _ := e2e.ParseNodes(kubeConfigFile, false)
+
+			Eventually(func(g Gomega) {
+				pods, _ := e2e.ParsePods(kubeConfigFile, false)
+				count := e2e.CountOfStringInSlice("test-daemonset", pods)
+				g.Expect(len(nodes)).Should((Equal(count)), "Daemonset pod count does not match node count")
+				podsRunning := 0
+				for _, pod := range pods {
+					if strings.Contains(pod.Name, "test-daemonset") && pod.Status == "Running" && pod.Ready == "1/1" {
+						podsRunning++
+					}
+				}
+				g.Expect(len(nodes)).Should((Equal(podsRunning)), "Daemonset running pods count does not match node count")
+			}, "620s", "5s").Should(Succeed())
+			errRestart := e2e.RestartCluster(serverNodeNames)
+			Expect(errRestart).NotTo(HaveOccurred(), "Restart Nodes not happened correctly")
+			if len(agentNodeNames) > 0 {
+				errRestartAgent := e2e.RestartCluster(agentNodeNames)
+				Expect(errRestartAgent).NotTo(HaveOccurred(), "Restart Agent not happened correctly")
+			}
+			Eventually(func(g Gomega) {
+				nodes, err := e2e.ParseNodes(kubeConfigFile, false)
+				g.Expect(err).NotTo(HaveOccurred())
+				for _, node := range nodes {
+					g.Expect(node.Status).Should(Equal("Ready"))
+				}
+				pods, _ := e2e.ParsePods(kubeConfigFile, false)
+				count := e2e.CountOfStringInSlice("test-daemonset", pods)
+				g.Expect(len(nodes)).Should((Equal(count)), "Daemonset pod count does not match node count")
+				podsRunningAr := 0
+				for _, pod := range pods {
+					if strings.Contains(pod.Name, "test-daemonset") && pod.Status == "Running" && pod.Ready == "1/1" {
+						podsRunningAr++
+					}
+				}
+				g.Expect(len(nodes)).Should((Equal(podsRunningAr)), "Daemonset pods are not running after the restart")
+			}, "620s", "5s").Should(Succeed())
+		})
+
 		It("Verifies Local Path Provisioner storage ", func() {
 			res, err := e2e.DeployWorkload("local-path-provisioner.yaml", kubeConfigFile, *hardened)
 			Expect(err).NotTo(HaveOccurred(), "local-path-provisioner manifest not deployed: "+res)

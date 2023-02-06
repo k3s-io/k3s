@@ -306,7 +306,7 @@ var _ = AfterEach(func() {
 })
 
 var _ = AfterSuite(func() {
-	if failed {
+	if failed && !*ci {
 		fmt.Println("FAILED!")
 	} else {
 		Expect(e2e.DestroyCluster()).To(Succeed())
