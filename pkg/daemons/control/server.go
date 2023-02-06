@@ -113,6 +113,10 @@ func controllerManager(ctx context.Context, cfg *config.Control) error {
 		"cluster-signing-legacy-unknown-cert-file":        runtime.SigningServerCA,
 		"cluster-signing-legacy-unknown-key-file":         runtime.ServerCAKey,
 	}
+	if cfg.MultiClusterCIDR {
+		argsMap["cidr-allocator-type"] = "MultiCIDRRangeAllocator"
+		argsMap["feature-gates"] = util.AddFeatureGate(argsMap["feature-gates"], "MultiCIDRRangeAllocator=true")
+	}
 	if cfg.NoLeaderElect {
 		argsMap["leader-elect"] = "false"
 	}
@@ -200,6 +204,10 @@ func apiServer(ctx context.Context, cfg *config.Control) error {
 	argsMap["enable-admission-plugins"] = "NodeRestriction"
 	argsMap["anonymous-auth"] = "false"
 	argsMap["profiling"] = "false"
+	if cfg.MultiClusterCIDR {
+		argsMap["feature-gates"] = util.AddFeatureGate(argsMap["feature-gates"], "MultiCIDRRangeAllocator=true")
+		argsMap["runtime-config"] = "networking.k8s.io/v1alpha1"
+	}
 	if cfg.EncryptSecrets {
 		argsMap["encryption-provider-config"] = runtime.EncryptionConfig
 	}
@@ -322,6 +330,10 @@ func cloudControllerManager(ctx context.Context, cfg *config.Control) error {
 	if cfg.DisableCCM {
 		argsMap["controllers"] = argsMap["controllers"] + ",-cloud-node,-cloud-node-lifecycle"
 		argsMap["secure-port"] = "0"
+	}
+	if cfg.MultiClusterCIDR {
+		argsMap["cidr-allocator-type"] = "MultiCIDRRangeAllocator"
+		argsMap["feature-gates"] = util.AddFeatureGate(argsMap["feature-gates"], "MultiCIDRRangeAllocator=true")
 	}
 	if cfg.DisableServiceLB {
 		argsMap["controllers"] = argsMap["controllers"] + ",-service"
