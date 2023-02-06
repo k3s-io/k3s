@@ -225,7 +225,7 @@ func (h *handler) updateSecrets(node *corev1.Node) error {
 	err = meta.EachListItem(secretsList, func(obj runtime.Object) error {
 		if secret, ok := obj.(*corev1.Secret); ok {
 			if _, err := h.secrets.Update(secret); err != nil && !apierrors.IsConflict(err) {
-				return fmt.Errorf("failed to reencrypted secret: %v", err)
+				return fmt.Errorf("failed to update secret: %v", err)
 			}
 			if i != 0 && i%10 == 0 {
 				h.recorder.Eventf(nodeRef, corev1.EventTypeNormal, secretsProgressEvent, "reencrypted %d secrets", i)
