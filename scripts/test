@@ -29,6 +29,9 @@ echo "Did test-run-hardened $?"
 . ./scripts/test-run-cacerts
 echo "Did test-run-cacerts $?"
 
+. ./scripts/test-run-bootstraptoken
+echo "Did test-run-bootstraptoken $?"
+
 . ./scripts/test-run-upgrade
 echo "Did test-run-upgrade $?"
 
