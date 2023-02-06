@@ -351,10 +351,10 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	}
 	// Check for deprecated flannel flags
 	if cmds.ServerConfig.FlannelIPv6Masq {
-		logrus.Warn("flannel-ipv6-masq is deprecated, use flannel-options=ipv6-masq=true instead")
+		logrus.Warn("flannel-ipv6-masq is deprecated and will be removed in v1.28, use flannel-options=ipv6-masq=true instead")
 	}
 	if cmds.ServerConfig.FlannelExternalIP {
-		logrus.Warn("flannel-external-ip is deprecated, use flannel-options=external-ip=true instead")
+		logrus.Warn("flannel-external-ip is deprecated and will be removed in v1.28, use flannel-options=external-ip=true instead")
 	}
 
 	if err := validateNetworkConfiguration(serverConfig); err != nil {
