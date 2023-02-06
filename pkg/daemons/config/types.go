@@ -141,6 +141,7 @@ type CriticalControlArgs struct {
 	FlannelBackend        string       `cli:"flannel-backend"`
 	FlannelIPv6Masq       bool         `cli:"flannel-ipv6-masq"`
 	FlannelExternalIP     bool         `cli:"flannel-external-ip"`
+	FlannelOptions        []string     `cli:"flannel-options"`
 	EgressSelectorMode    string       `cli:"egress-selector-mode"`
 	ServiceIPRange        *net.IPNet   `cli:"service-cidr"`
 	ServiceIPRanges       []*net.IPNet `cli:"service-cidr"`

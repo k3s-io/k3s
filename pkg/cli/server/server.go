@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -331,6 +332,29 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 			return errors.Wrap(err, "cannot configure IPv4/IPv6 cluster-dns address")
 		}
 		serverConfig.ControlConfig.ClusterDNS = clusterDNS
+	}
+
+	// Set additional flannel options
+	if len(cmds.ServerConfig.FlannelOptions) != 0 {
+		v := getArgValueFromList("ipv6-masq", cmds.ServerConfig.FlannelOptions.Value())
+		if b, err := strconv.ParseBool(v); err != nil {
+			serverConfig.ControlConfig.FlannelIPv6Masq = b
+		} else {
+			return errors.Wrapf(err, "invalid ipv6-masq value %s", v)
+		}
+		v = getArgValueFromList("ipv6-masq", cmds.ServerConfig.FlannelOptions.Value())
+		if b, err := strconv.ParseBool(v); err == nil {
+			serverConfig.ControlConfig.FlannelExternalIP = b
+		} else {
+			return errors.Wrapf(err, "invalid external-ip value %s", v)
+		}
+	}
+	// Check for deprecated flannel flags
+	if cmds.ServerConfig.FlannelIPv6Masq {
+		logrus.Warn("flannel-ipv6-masq is deprecated, use flannel-options=ipv6-masq=true instead")
+	}
+	if cmds.ServerConfig.FlannelExternalIP {
+		logrus.Warn("flannel-external-ip is deprecated, use flannel-options=external-ip=true instead")
 	}
 
 	if err := validateNetworkConfiguration(serverConfig); err != nil {
