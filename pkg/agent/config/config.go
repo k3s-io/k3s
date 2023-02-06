@@ -438,6 +438,7 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 		Docker:                   envInfo.Docker,
 		SELinux:                  envInfo.EnableSELinux,
 		ContainerRuntimeEndpoint: envInfo.ContainerRuntimeEndpoint,
+		MultiClusterCIDR:         controlConfig.MultiClusterCIDR,
 		FlannelBackend:           controlConfig.FlannelBackend,
 		FlannelIPv6Masq:          controlConfig.FlannelIPv6Masq,
 		FlannelExternalIP:        controlConfig.FlannelExternalIP,

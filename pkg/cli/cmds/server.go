@@ -62,6 +62,7 @@ type Server struct {
 	AdvertisePort            int
 	DisableScheduler         bool
 	ServerURL                string
+	MultiClusterCIDR         bool
 	FlannelBackend           string
 	FlannelIPv6Masq          bool
 	FlannelExternalIP        bool
@@ -211,6 +212,11 @@ var ServerFlags = []cli.Flag{
 		Usage:       "(networking) backend<=option1=val1,option2=val2> where backend is one of 'none', 'vxlan', 'ipsec' (deprecated), 'host-gw', 'wireguard-native', 'wireguard' (deprecated)",
 		Destination: &ServerConfig.FlannelBackend,
 		Value:       "vxlan",
+	},
+	&cli.BoolFlag{
+		Name:        "multi-cluster-cidr",
+		Usage:       "(experimental/networking) Enable multiClusterCIDR",
+		Destination: &ServerConfig.MultiClusterCIDR,
 	},
 	&cli.BoolFlag{
 		Name:        "flannel-ipv6-masq",

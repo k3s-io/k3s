@@ -34,6 +34,7 @@ rules:
   - "networking.k8s.io"
   resources:
   - networkpolicies
+  - clustercidrs
   verbs:
   - list
   - watch
@@ -60,3 +61,31 @@ subjects:
   - apiGroup: rbac.authorization.k8s.io
     kind: User
     name: system:k3s-controller
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: clustercidrs-node
+rules:
+- apiGroups:
+  - networking.k8s.io
+  resources:
+  - clustercidrs
+  verbs:
+  - list
+  - watch
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: clustercidrs-node
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: clustercidrs-node
+subjects:
+  - kind: Group
+    name: system:nodes
+    apiGroup: rbac.authorization.k8s.io
