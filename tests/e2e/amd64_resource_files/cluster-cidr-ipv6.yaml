@@ -1,0 +1,14 @@
+apiVersion: networking.k8s.io/v1alpha1
+kind: ClusterCIDR
+metadata:
+  name: new-cidr
+spec:
+  nodeSelector:
+    nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          -  "agent-0"
+  perNodeHostBits: 64
+  ipv6: 2001:cafe:248::/56
