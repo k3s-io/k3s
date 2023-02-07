@@ -56,11 +56,11 @@ func (k *k3s) Register(ctx context.Context,
 	pods.OnChange(ctx, controllerName, k.onChangePod)
 	endpointslices.OnChange(ctx, controllerName, k.onChangeEndpointSlice)
 
-	if err := k.createServiceLBNamespace(ctx); err != nil {
+	if err := k.ensureServiceLBNamespace(ctx); err != nil {
 		return err
 	}
 
-	if err := k.createServiceLBServiceAccount(ctx); err != nil {
+	if err := k.ensureServiceLBServiceAccount(ctx); err != nil {
 		return err
 	}
 
@@ -69,9 +69,13 @@ func (k *k3s) Register(ctx context.Context,
 	return k.removeServiceFinalizers(ctx)
 }
 
-// createServiceLBNamespace ensures that the configured namespace exists.
-func (k *k3s) createServiceLBNamespace(ctx context.Context) error {
-	_, err := k.client.CoreV1().Namespaces().Create(ctx, &core.Namespace{
+// ensureServiceLBNamespace ensures that the configured namespace exists.
+func (k *k3s) ensureServiceLBNamespace(ctx context.Context) error {
+	ns := k.client.CoreV1().Namespaces()
+	if _, err := ns.Get(ctx, k.LBNamespace, meta.GetOptions{}); err == nil || !apierrors.IsNotFound(err) {
+		return err
+	}
+	_, err := ns.Create(ctx, &core.Namespace{
 		ObjectMeta: meta.ObjectMeta{
 			Name: k.LBNamespace,
 		},
@@ -82,9 +86,13 @@ func (k *k3s) createServiceLBNamespace(ctx context.Context) error {
 	return err
 }
 
-// createServiceLBServiceAccount ensures that the ServiceAccount used by pods exists
-func (k *k3s) createServiceLBServiceAccount(ctx context.Context) error {
-	_, err := k.client.CoreV1().ServiceAccounts(k.LBNamespace).Create(ctx, &core.ServiceAccount{
+// ensureServiceLBServiceAccount ensures that the ServiceAccount used by pods exists.
+func (k *k3s) ensureServiceLBServiceAccount(ctx context.Context) error {
+	sa := k.client.CoreV1().ServiceAccounts(k.LBNamespace)
+	if _, err := sa.Get(ctx, "svclb", meta.GetOptions{}); err == nil || !apierrors.IsNotFound(err) {
+		return err
+	}
+	_, err := sa.Create(ctx, &core.ServiceAccount{
 		ObjectMeta: meta.ObjectMeta{
 			Name:      "svclb",
 			Namespace: k.LBNamespace,
