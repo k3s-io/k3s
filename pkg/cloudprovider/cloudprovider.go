@@ -96,7 +96,7 @@ func (k *k3s) Initialize(clientBuilder cloudprovider.ControllerClientBuilder, st
 
 		processor, err := apply.NewForConfig(config)
 		if err != nil {
-			logrus.Fatalf("Failed to create apply processor for %s: %v", controllerName, err)
+			logrus.Panicf("failed to create apply processor for %s: %v", controllerName, err)
 		}
 		k.processor = processor.WithDynamicLookup().WithCacheTypes(lbAppsFactory.Apps().V1().DaemonSet())
 		k.daemonsetCache = lbAppsFactory.Apps().V1().DaemonSet().Cache()
@@ -105,17 +105,17 @@ func (k *k3s) Initialize(clientBuilder cloudprovider.ControllerClientBuilder, st
 		k.workqueue = workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
 
 		if err := k.Register(ctx, coreFactory.Core().V1().Node(), lbCoreFactory.Core().V1().Pod(), lbDiscFactory.Discovery().V1().EndpointSlice()); err != nil {
-			logrus.Fatalf("Failed to register %s handlers: %v", controllerName, err)
+			logrus.Panicf("failed to register %s handlers: %v", controllerName, err)
 		}
 
 		if err := start.All(ctx, 1, coreFactory, lbCoreFactory, lbAppsFactory, lbDiscFactory); err != nil {
-			logrus.Fatalf("Failed to start %s controllers: %v", controllerName, err)
+			logrus.Panicf("failed to start %s controllers: %v", controllerName, err)
 		}
 	} else {
 		// If load-balancer functionality has not been enabled, delete managed daemonsets.
 		// This uses the raw kubernetes client, as the controllers are not started when the load balancer controller is disabled.
 		if err := k.deleteAllDaemonsets(ctx); err != nil {
-			logrus.Fatalf("Failed to clean up %s daemonsets: %v", controllerName, err)
+			logrus.Panicf("failed to clean up %s daemonsets: %v", controllerName, err)
 		}
 	}
 }
