@@ -34,29 +34,29 @@ func Test_UnitFilesForServices(t *testing.T) {
 				return nil
 			},
 			want: map[string][]string{
-				"admin": []string{
+				"admin": {
 					"/var/lib/rancher/k3s/server/tls/client-admin.crt",
 					"/var/lib/rancher/k3s/server/tls/client-admin.key",
 				},
-				"api-server": []string{
+				"api-server": {
 					"/var/lib/rancher/k3s/server/tls/client-kube-apiserver.crt",
 					"/var/lib/rancher/k3s/server/tls/client-kube-apiserver.key",
 					"/var/lib/rancher/k3s/server/tls/serving-kube-apiserver.crt",
 					"/var/lib/rancher/k3s/server/tls/serving-kube-apiserver.key",
 				},
-				"auth-proxy": []string{
+				"auth-proxy": {
 					"/var/lib/rancher/k3s/server/tls/client-auth-proxy.crt",
 					"/var/lib/rancher/k3s/server/tls/client-auth-proxy.key",
 				},
-				"cloud-controller": []string{
+				"cloud-controller": {
 					"/var/lib/rancher/k3s/server/tls/client-k3s-cloud-controller.crt",
 					"/var/lib/rancher/k3s/server/tls/client-k3s-cloud-controller.key",
 				},
-				"controller-manager": []string{
+				"controller-manager": {
 					"/var/lib/rancher/k3s/server/tls/client-controller.crt",
 					"/var/lib/rancher/k3s/server/tls/client-controller.key",
 				},
-				"etcd": []string{
+				"etcd": {
 					"/var/lib/rancher/k3s/server/tls/etcd/client.crt",
 					"/var/lib/rancher/k3s/server/tls/etcd/client.key",
 					"/var/lib/rancher/k3s/server/tls/etcd/server-client.crt",
@@ -64,19 +64,19 @@ func Test_UnitFilesForServices(t *testing.T) {
 					"/var/lib/rancher/k3s/server/tls/etcd/peer-server-client.crt",
 					"/var/lib/rancher/k3s/server/tls/etcd/peer-server-client.key",
 				},
-				"k3s-controller": []string{
+				"k3s-controller": {
 					"/var/lib/rancher/k3s/server/tls/client-k3s-controller.crt",
 					"/var/lib/rancher/k3s/server/tls/client-k3s-controller.key",
 					"/var/lib/rancher/k3s/agent/client-k3s-controller.crt",
 					"/var/lib/rancher/k3s/agent/client-k3s-controller.key",
 				},
-				"kube-proxy": []string{
+				"kube-proxy": {
 					"/var/lib/rancher/k3s/server/tls/client-kube-proxy.crt",
 					"/var/lib/rancher/k3s/server/tls/client-kube-proxy.key",
 					"/var/lib/rancher/k3s/agent/client-kube-proxy.crt",
 					"/var/lib/rancher/k3s/agent/client-kube-proxy.key",
 				},
-				"kubelet": []string{
+				"kubelet": {
 					"/var/lib/rancher/k3s/server/tls/client-kubelet.key",
 					"/var/lib/rancher/k3s/server/tls/serving-kubelet.key",
 					"/var/lib/rancher/k3s/agent/client-kubelet.crt",
@@ -84,11 +84,11 @@ func Test_UnitFilesForServices(t *testing.T) {
 					"/var/lib/rancher/k3s/agent/serving-kubelet.crt",
 					"/var/lib/rancher/k3s/agent/serving-kubelet.key",
 				},
-				"scheduler": []string{
+				"scheduler": {
 					"/var/lib/rancher/k3s/server/tls/client-scheduler.crt",
 					"/var/lib/rancher/k3s/server/tls/client-scheduler.key",
 				},
-				"supervisor": []string{
+				"supervisor": {
 					"/var/lib/rancher/k3s/server/tls/client-supervisor.crt",
 					"/var/lib/rancher/k3s/server/tls/client-supervisor.key",
 				},
@@ -108,29 +108,29 @@ func Test_UnitFilesForServices(t *testing.T) {
 				return nil
 			},
 			want: map[string][]string{
-				"admin": []string{
+				"admin": {
 					"/var/lib/rancher/k3s/server/tls/client-admin.crt",
 					"/var/lib/rancher/k3s/server/tls/client-admin.key",
 				},
-				"api-server": []string{
+				"api-server": {
 					"/var/lib/rancher/k3s/server/tls/client-kube-apiserver.crt",
 					"/var/lib/rancher/k3s/server/tls/client-kube-apiserver.key",
 					"/var/lib/rancher/k3s/server/tls/serving-kube-apiserver.crt",
 					"/var/lib/rancher/k3s/server/tls/serving-kube-apiserver.key",
 				},
-				"auth-proxy": []string{
+				"auth-proxy": {
 					"/var/lib/rancher/k3s/server/tls/client-auth-proxy.crt",
 					"/var/lib/rancher/k3s/server/tls/client-auth-proxy.key",
 				},
-				"cloud-controller": []string{
+				"cloud-controller": {
 					"/var/lib/rancher/k3s/server/tls/client-k3s-cloud-controller.crt",
 					"/var/lib/rancher/k3s/server/tls/client-k3s-cloud-controller.key",
 				},
-				"controller-manager": []string{
+				"controller-manager": {
 					"/var/lib/rancher/k3s/server/tls/client-controller.crt",
 					"/var/lib/rancher/k3s/server/tls/client-controller.key",
 				},
-				"etcd": []string{
+				"etcd": {
 					"/var/lib/rancher/k3s/server/tls/etcd/client.crt",
 					"/var/lib/rancher/k3s/server/tls/etcd/client.key",
 					"/var/lib/rancher/k3s/server/tls/etcd/server-client.crt",
@@ -138,11 +138,11 @@ func Test_UnitFilesForServices(t *testing.T) {
 					"/var/lib/rancher/k3s/server/tls/etcd/peer-server-client.crt",
 					"/var/lib/rancher/k3s/server/tls/etcd/peer-server-client.key",
 				},
-				"scheduler": []string{
+				"scheduler": {
 					"/var/lib/rancher/k3s/server/tls/client-scheduler.crt",
 					"/var/lib/rancher/k3s/server/tls/client-scheduler.key",
 				},
-				"supervisor": []string{
+				"supervisor": {
 					"/var/lib/rancher/k3s/server/tls/client-supervisor.crt",
 					"/var/lib/rancher/k3s/server/tls/client-supervisor.key",
 				},
@@ -162,19 +162,19 @@ func Test_UnitFilesForServices(t *testing.T) {
 				return nil
 			},
 			want: map[string][]string{
-				"k3s-controller": []string{
+				"k3s-controller": {
 					"/var/lib/rancher/k3s/server/tls/client-k3s-controller.crt",
 					"/var/lib/rancher/k3s/server/tls/client-k3s-controller.key",
 					"/var/lib/rancher/k3s/agent/client-k3s-controller.crt",
 					"/var/lib/rancher/k3s/agent/client-k3s-controller.key",
 				},
-				"kube-proxy": []string{
+				"kube-proxy": {
 					"/var/lib/rancher/k3s/server/tls/client-kube-proxy.crt",
 					"/var/lib/rancher/k3s/server/tls/client-kube-proxy.key",
 					"/var/lib/rancher/k3s/agent/client-kube-proxy.crt",
 					"/var/lib/rancher/k3s/agent/client-kube-proxy.key",
 				},
-				"kubelet": []string{
+				"kubelet": {
 					"/var/lib/rancher/k3s/server/tls/client-kubelet.key",
 					"/var/lib/rancher/k3s/server/tls/serving-kubelet.key",
 					"/var/lib/rancher/k3s/agent/client-kubelet.crt",
@@ -198,7 +198,7 @@ func Test_UnitFilesForServices(t *testing.T) {
 				return nil
 			},
 			want: map[string][]string{
-				"certificate-authority": []string{
+				"certificate-authority": {
 					"/var/lib/rancher/k3s/server/tls/server-ca.crt",
 					"/var/lib/rancher/k3s/server/tls/server-ca.key",
 					"/var/lib/rancher/k3s/server/tls/client-ca.crt",

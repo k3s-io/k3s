@@ -1,5 +1,5 @@
 /*
-This test verifies that even if we use flannel-backend=none, kube-api starts correctly so that it can 
+This test verifies that even if we use flannel-backend=none, kube-api starts correctly so that it can
 accept the custom CNI plugin manifest. We want to catch regressions in which kube-api is unresponsive.
 To do so we check for 25s that we can consistently query kube-api. We check that pods are in pending
 state, which is what should happen if there is no cni plugin
@@ -48,21 +48,20 @@ var _ = Describe("flannel-backend=none", Ordered, func() {
 				return len(pods)
 			}, "180s", "5s").Should(BeNumerically(">", 0))
 
-
 			pods, err := testutil.ParsePods("kube-system", metav1.ListOptions{})
 			Expect(err).NotTo(HaveOccurred())
 
 			// Pods should remain in Pending state because there is no network plugin
-			Consistently(func () bool {
+			Consistently(func() bool {
 				for _, pod := range pods {
 					if !strings.Contains(string(pod.Status.Phase), "Pending") {
 						return false
 					}
 				}
 				return true
-				}, "25s").Should(BeTrue())
-			})
+			}, "25s").Should(BeTrue())
 		})
+	})
 })
 
 var failed bool
