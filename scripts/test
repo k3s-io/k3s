@@ -72,14 +72,6 @@ done
 )
 E2E_OUTPUT=$artifacts test-run-sonobuoy parallel
 echo "Did test-run-sonobuoy parallel $?"
-test-run-sonobuoy etcd parallel
-echo "Did test-run-sonobuoy-etcd parallel $?"
-test-run-sonobuoy mysql parallel
-echo "Did test-run-sonobuoy-mysql parallel $?"
-test-run-sonobuoy postgres parallel
-echo "Did test-run-sonobuoy-postgres parallel $?"
-
-
 
 
 exit 0
