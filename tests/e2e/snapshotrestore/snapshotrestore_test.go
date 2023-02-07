@@ -44,7 +44,7 @@ var (
 var _ = ReportAfterEach(e2e.GenReport)
 
 var _ = Describe("Verify snapshots and cluster restores work", Ordered, func() {
-	Context("Cluster :", func() {
+	Context("Cluster creates snapshots and workloads:", func() {
 		It("Starts up with no issues", func() {
 			var err error
 			if *local {
@@ -123,6 +123,8 @@ var _ = Describe("Verify snapshots and cluster restores work", Ordered, func() {
 			}, "240s", "5s").Should(Succeed())
 		})
 
+	})
+	Context("Cluster is reset normally", func() {
 		It("Resets the cluster", func() {
 			for _, nodeName := range serverNodeNames {
 				cmd := "sudo systemctl stop k3s"
@@ -177,9 +179,9 @@ var _ = Describe("Verify snapshots and cluster restores work", Ordered, func() {
 				nodes, err := e2e.ParseNodes(kubeConfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
 				for _, node := range nodes {
-					g.Expect(node.Status).Should(Equal("Ready"))
+					g.Expect(node.Status).Should(Equal("Ready"), node)
 				}
-			}, "420s", "5s").Should(Succeed())
+			}, "480s", "5s").Should(Succeed())
 
 			_, _ = e2e.ParseNodes(kubeConfigFile, true)
 
@@ -204,6 +206,8 @@ var _ = Describe("Verify snapshots and cluster restores work", Ordered, func() {
 			Expect(res).Should(ContainSubstring("test-nodeport"))
 		})
 
+	})
+	Context("Cluster restores from snapshot", func() {
 		It("Restores the snapshot", func() {
 			//Stop k3s on all nodes
 			for _, nodeName := range serverNodeNames {

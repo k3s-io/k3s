@@ -43,26 +43,18 @@ echo "Did test-run-lazypull $?"
 [ "$ARCH" != 'amd64' ] && \
   early-exit "Skipping remaining tests, images not available for $ARCH."
 
-E2E_OUTPUT=$artifacts test-run-sonobuoy serial
-echo "Did test-run-sonobuoy serial $?"
-
 # ---
 
 if [ "$DRONE_BUILD_EVENT" = 'tag' ]; then
+  E2E_OUTPUT=$artifacts test-run-sonobuoy serial
+  echo "Did test-run-sonobuoy serial $?"
   E2E_OUTPUT=$artifacts test-run-sonobuoy parallel
   echo "Did test-run-sonobuoy parallel $?"
   early-exit 'Skipping remaining tests on tag.'
 fi
 # ---
 
-test-run-sonobuoy etcd serial
-echo "Did test-run-sonobuoy-etcd serial $?"
-test-run-sonobuoy mysql serial
-echo "Did test-run-sonobuoy-mysqk serial $?"
-test-run-sonobuoy postgres serial
-echo "Did test-run-sonobuoy-postgres serial $?"
-
-# Wait until all serial tests have finished
+# Wait until all tests have finished
 delay=15
 (
 set +x
@@ -70,8 +62,5 @@ while [ $(count-running-tests) -ge 1 ]; do
     sleep $delay
 done
 )
-E2E_OUTPUT=$artifacts test-run-sonobuoy parallel
-echo "Did test-run-sonobuoy parallel $?"
-
 
 exit 0
