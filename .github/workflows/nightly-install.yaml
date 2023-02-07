@@ -12,7 +12,7 @@ jobs:
       fail-fast: false
       matrix:
         channel: [v1.24]
-        vm: [centos-7, rocky-8, fedora-coreos, opensuse-leap, opensuse-microos, ubuntu-focal]
+        vm: [centos-7, rocky-8, fedora, opensuse-leap, ubuntu-focal]
       max-parallel: 2
     defaults:
       run:

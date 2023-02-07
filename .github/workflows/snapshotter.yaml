@@ -20,22 +20,11 @@ on:
       - "!.github/workflows/snapshotter.yaml"
   workflow_dispatch: {}
 jobs:
-  prep:
-    name: "Prepare"
-    runs-on: ubuntu-20.04
-    timeout-minutes: 40
-    steps:
-      - name: "Checkout"
-        uses: actions/checkout@v3
-        with: { fetch-depth: 1 }
-      - name: "Build"
-        run: DOCKER_BUILDKIT=1 SKIP_VALIDATE=1 make
-      - name: "Upload Binary"
-        uses: actions/upload-artifact@v3
-        with: { name: k3s, path: dist/artifacts/k3s }
+  build:
+    uses: ./.github/workflows/build-k3s.yaml
   test:
     name: "Smoke Test"
-    needs: prep
+    needs: build
     # nested virtualization is only available on macOS hosts
     runs-on: macos-12
     timeout-minutes: 40
