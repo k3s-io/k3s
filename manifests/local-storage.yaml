@@ -82,23 +82,8 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-        livenessProbe:
-          exec:
-            command:
-              - /bin/sh
-              - -ec
-              - |
-                pgrep local-path-provisioner
-        readinessProbe:
-          exec:
-            command:
-              - /bin/sh
-              - -ec
-              - |
-                pgrep local-path-provisioner
         resources:
           requests:
-            cpu: 2m
             memory: 30Mi
           limits:
             memory: 100Mi

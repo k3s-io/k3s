@@ -568,12 +568,6 @@ func (k *k3s) newDaemonSet(svc *core.Service) (*apps.DaemonSet, error) {
 					},
 				},
 			},
-			Resources: &core.ResourceRequirements{
-				Requests: &core.ResourceList{
-					"cpu": "1m",
-					"memory": "2Mi",
-				},
-			},
 		}
 
 		if localTraffic {
