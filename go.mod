@@ -76,7 +76,7 @@ require (
 	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf
 	github.com/docker/docker v20.10.17+incompatible
 	github.com/erikdubbelboer/gspt v0.0.0-20190125194910-e68493906b83
-	github.com/flannel-io/flannel v0.20.2-k3s1.23
+	github.com/flannel-io/flannel v0.21.1-k3s1.23
 	github.com/go-bindata/go-bindata v3.1.2+incompatible
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/go-test/deep v1.0.7
@@ -169,6 +169,7 @@ require (
 	github.com/apparentlymart/go-textseg/v13 v13.0.0 // indirect
 	github.com/armon/circbuf v0.0.0-20150827004946-bbbad097214e // indirect
 	github.com/asaskevich/govalidator v0.0.0-20190424111038-f61b66f89f4a // indirect
+	github.com/avast/retry-go/v4 v4.3.2 // indirect
 	github.com/aws/aws-sdk-go v1.44.24 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bgentry/go-netrc v0.0.0-20140422174119-9fd32a8b3d3d // indirect
@@ -366,7 +367,7 @@ require (
 	golang.org/x/time v0.3.0 // indirect
 	golang.org/x/tools v0.1.12 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
-	golang.zx2c4.com/wireguard v0.0.0-20211129173154-2dd424e2d808 // indirect
+	golang.zx2c4.com/wireguard v0.0.0-20220117163742-e0b8f11489c5 // indirect
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20211230205640-daad0b7ba671 // indirect
 	gonum.org/v1/gonum v0.6.2 // indirect
 	google.golang.org/api v0.57.0 // indirect
