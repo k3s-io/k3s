@@ -43,7 +43,7 @@ func CleanupDataDir(cnf *config.Control) {
 // GenerateRuntime creates a temporary data dir and configures
 // config.ControlRuntime with all the appropriate certificate keys.
 func GenerateRuntime(cnf *config.Control) error {
-	cnf.Runtime = &config.ControlRuntime{}
+	cnf.Runtime = config.NewRuntime(nil)
 	if err := GenerateDataDir(cnf); err != nil {
 		return err
 	}
