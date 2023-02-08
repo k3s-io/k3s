@@ -549,30 +549,39 @@ func (e *ETCD) Register(ctx context.Context, config *config.Control, handler htt
 	e.config.Datastore.BackendTLSConfig.CertFile = e.config.Runtime.ClientETCDCert
 	e.config.Datastore.BackendTLSConfig.KeyFile = e.config.Runtime.ClientETCDKey
 
-	tombstoneFile := filepath.Join(DBDir(e.config), "tombstone")
-	if _, err := os.Stat(tombstoneFile); err == nil {
-		logrus.Infof("tombstone file has been detected, removing data dir to rejoin the cluster")
-		if _, err := backupDirWithRetention(DBDir(e.config), maxBackupRetention); err != nil {
-			return nil, err
+	e.config.Runtime.ClusterControllerStarts["etcd-node-metadata"] = func(ctx context.Context) {
+		registerMetadataHandlers(ctx, e)
+	}
+
+	// The apiserver endpoint controller needs to run on a node with a local apiserver,
+	// in order to successfully seed etcd with the endpoint list.
+	if !e.config.DisableAPIServer {
+		e.config.Runtime.LeaderElectedClusterControllerStarts["etcd-apiserver-endpoints"] = func(ctx context.Context) {
+			registerEndpointsHandlers(ctx, e)
 		}
 	}
 
-	if err := e.setName(false); err != nil {
-		return nil, err
+	// The etcd member-removal controllers should only run on an etcd node. Tombstone file checking
+	// is also unnecessary if we're not running etcd.
+	if !e.config.DisableETCD {
+		tombstoneFile := filepath.Join(DBDir(e.config), "tombstone")
+		if _, err := os.Stat(tombstoneFile); err == nil {
+			logrus.Infof("tombstone file has been detected, removing data dir to rejoin the cluster")
+			if _, err := backupDirWithRetention(DBDir(e.config), maxBackupRetention); err != nil {
+				return nil, err
+			}
+		}
+
+		if err := e.setName(false); err != nil {
+			return nil, err
+		}
+
+		e.config.Runtime.LeaderElectedClusterControllerStarts["etcd-member-removal"] = func(ctx context.Context) {
+			registerMemberHandlers(ctx, e)
+		}
 	}
 
-	e.config.Runtime.ClusterControllerStart = func(ctx context.Context) error {
-		registerMetadataHandlers(ctx, e)
-		return nil
-	}
-
-	e.config.Runtime.LeaderElectedClusterControllerStart = func(ctx context.Context) error {
-		registerMemberHandlers(ctx, e)
-		registerEndpointsHandlers(ctx, e)
-		return nil
-	}
-
-	return e.handler(handler), err
+	return e.handler(handler), nil
 }
 
 // setName sets a unique name for this cluster member. The first time this is called,
