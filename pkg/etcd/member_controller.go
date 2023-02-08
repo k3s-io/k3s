@@ -12,10 +12,6 @@ import (
 )
 
 func registerMemberHandlers(ctx context.Context, etcd *ETCD) {
-	if etcd.config.DisableETCD {
-		return
-	}
-
 	nodes := etcd.config.Runtime.Core.Core().V1().Node()
 	e := &etcdMemberHandler{
 		etcd:           etcd,

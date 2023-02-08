@@ -6,6 +6,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"sync"
@@ -123,15 +124,13 @@ func runControllers(ctx context.Context, config *Config) error {
 	}
 	controlConfig.Runtime.Core = sc.Core
 
-	if controlConfig.Runtime.ClusterControllerStart != nil {
-		if err := controlConfig.Runtime.ClusterControllerStart(ctx); err != nil {
-			return errors.Wrap(err, "failed to start cluster controllers")
-		}
+	for name, cb := range controlConfig.Runtime.ClusterControllerStarts {
+		go runOrDie(ctx, name, cb)
 	}
 
 	for _, controller := range config.Controllers {
 		if err := controller(ctx, sc); err != nil {
-			return errors.Wrapf(err, "failed to start custom controller %s", util.GetFunctionName(controller))
+			return errors.Wrapf(err, "failed to start %s controller", util.GetFunctionName(controller))
 		}
 	}
 
@@ -139,18 +138,16 @@ func runControllers(ctx context.Context, config *Config) error {
 		return errors.Wrap(err, "failed to start wranger controllers")
 	}
 
-	start := func(ctx context.Context) {
+	controlConfig.Runtime.LeaderElectedClusterControllerStarts[version.Program] = func(ctx context.Context) {
+		if controlConfig.DisableAPIServer {
+			return
+		}
 		if err := coreControllers(ctx, sc, config); err != nil {
 			panic(err)
 		}
-		if controlConfig.Runtime.LeaderElectedClusterControllerStart != nil {
-			if err := controlConfig.Runtime.LeaderElectedClusterControllerStart(ctx); err != nil {
-				panic(errors.Wrap(err, "failed to start leader elected cluster controllers"))
-			}
-		}
 		for _, controller := range config.LeaderControllers {
 			if err := controller(ctx, sc); err != nil {
-				panic(errors.Wrap(err, "leader controller"))
+				panic(errors.Wrapf(err, "failed to start %s leader controller", util.GetFunctionName(controller)))
 			}
 		}
 		if err := sc.Start(ctx); err != nil {
@@ -163,18 +160,28 @@ func runControllers(ctx context.Context, config *Config) error {
 	go setClusterDNSConfig(ctx, config, sc.Core.Core().V1().ConfigMap())
 
 	if controlConfig.NoLeaderElect {
-		go func() {
-			start(ctx)
-			<-ctx.Done()
-			if err := ctx.Err(); err != nil && !errors.Is(err, context.Canceled) {
-				logrus.Fatalf("controllers exited: %v", err)
-			}
-		}()
+		for name, cb := range controlConfig.Runtime.LeaderElectedClusterControllerStarts {
+			go runOrDie(ctx, name, cb)
+		}
 	} else {
-		go leader.RunOrDie(ctx, "", version.Program, sc.K8s, start)
+		for name, cb := range controlConfig.Runtime.LeaderElectedClusterControllerStarts {
+			go leader.RunOrDie(ctx, "", name, sc.K8s, cb)
+		}
 	}
 
 	return nil
+}
+
+// runOrDie is similar to leader.RunOrDie, except that it runs the callback
+// immediately, without performing leader election.
+func runOrDie(ctx context.Context, name string, cb leader.Callback) {
+	defer func() {
+		if err := recover(); err != nil {
+			logrus.WithField("stack", debug.Stack()).Fatalf("%s controller panic: %v", name, err)
+		}
+	}()
+	cb(ctx)
+	<-ctx.Done()
 }
 
 func coreControllers(ctx context.Context, sc *Context, config *Config) error {
