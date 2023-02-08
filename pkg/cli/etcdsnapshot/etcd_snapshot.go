@@ -60,7 +60,7 @@ func commandSetup(app *cli.Context, cfg *cmds.Server, sc *server.Config) error {
 	sc.ControlConfig.EtcdS3Folder = cfg.EtcdS3Folder
 	sc.ControlConfig.EtcdS3Insecure = cfg.EtcdS3Insecure
 	sc.ControlConfig.EtcdS3Timeout = cfg.EtcdS3Timeout
-	sc.ControlConfig.Runtime = &config.ControlRuntime{}
+	sc.ControlConfig.Runtime = config.NewRuntime(nil)
 	sc.ControlConfig.Runtime.ETCDServerCA = filepath.Join(dataDir, "tls", "etcd", "server-ca.crt")
 	sc.ControlConfig.Runtime.ClientETCDCert = filepath.Join(dataDir, "tls", "etcd", "client.crt")
 	sc.ControlConfig.Runtime.ClientETCDKey = filepath.Join(dataDir, "tls", "etcd", "client.key")
