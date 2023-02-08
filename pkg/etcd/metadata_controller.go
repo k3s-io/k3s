@@ -11,10 +11,6 @@ import (
 )
 
 func registerMetadataHandlers(ctx context.Context, etcd *ETCD) {
-	if etcd.config.DisableETCD {
-		return
-	}
-
 	nodes := etcd.config.Runtime.Core.Core().V1().Node()
 	h := &metadataHandler{
 		etcd:           etcd,
@@ -22,7 +18,7 @@ func registerMetadataHandlers(ctx context.Context, etcd *ETCD) {
 		ctx:            ctx,
 	}
 
-	logrus.Infof("Starting managed etcd node label controller")
+	logrus.Infof("Starting managed etcd node metadata controller")
 	nodes.OnChange(ctx, "managed-etcd-metadata-controller", h.sync)
 }
 
@@ -39,7 +35,7 @@ func (m *metadataHandler) sync(key string, node *v1.Node) (*v1.Node, error) {
 
 	nodeName := os.Getenv("NODE_NAME")
 	if nodeName == "" {
-		logrus.Debug("waiting for node name to be assigned for managed etcd node label controller")
+		logrus.Debug("waiting for node name to be assigned for managed etcd node metadata controller")
 		m.nodeController.EnqueueAfter(key, 5*time.Second)
 		return node, nil
 	}
@@ -52,10 +48,31 @@ func (m *metadataHandler) sync(key string, node *v1.Node) (*v1.Node, error) {
 }
 
 func (m *metadataHandler) handleSelf(node *v1.Node) (*v1.Node, error) {
+	if m.etcd.config.DisableETCD {
+		if node.Annotations[NodeNameAnnotation] == "" &&
+			node.Annotations[NodeAddressAnnotation] == "" &&
+			node.Labels[EtcdRoleLabel] == "" {
+			return node, nil
+		}
+
+		node = node.DeepCopy()
+		if node.Annotations == nil {
+			node.Annotations = map[string]string{}
+		}
+		if node.Labels == nil {
+			node.Labels = map[string]string{}
+		}
+
+		delete(node.Annotations, NodeNameAnnotation)
+		delete(node.Annotations, NodeAddressAnnotation)
+		delete(node.Labels, EtcdRoleLabel)
+
+		return m.nodeController.Update(node)
+	}
+
 	if node.Annotations[NodeNameAnnotation] == m.etcd.name &&
 		node.Annotations[NodeAddressAnnotation] == m.etcd.address &&
-		node.Labels[EtcdRoleLabel] == "true" &&
-		node.Labels[ControlPlaneLabel] == "true" {
+		node.Labels[EtcdRoleLabel] == "true" {
 		return node, nil
 	}
 
@@ -63,12 +80,13 @@ func (m *metadataHandler) handleSelf(node *v1.Node) (*v1.Node, error) {
 	if node.Annotations == nil {
 		node.Annotations = map[string]string{}
 	}
+	if node.Labels == nil {
+		node.Labels = map[string]string{}
+	}
 
 	node.Annotations[NodeNameAnnotation] = m.etcd.name
 	node.Annotations[NodeAddressAnnotation] = m.etcd.address
 	node.Labels[EtcdRoleLabel] = "true"
-	node.Labels[MasterLabel] = "true"
-	node.Labels[ControlPlaneLabel] = "true"
 
 	return m.nodeController.Update(node)
 }

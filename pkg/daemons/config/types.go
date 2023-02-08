@@ -1,7 +1,6 @@
 package config
 
 import (
-	"context"
 	"crypto/tls"
 	"fmt"
 	"net"
@@ -14,6 +13,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/kine/pkg/endpoint"
 	"github.com/rancher/wrangler/pkg/generated/controllers/core"
+	"github.com/rancher/wrangler/pkg/leader"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 	utilsnet "k8s.io/utils/net"
@@ -276,13 +276,13 @@ type ControlRuntimeBootstrap struct {
 type ControlRuntime struct {
 	ControlRuntimeBootstrap
 
-	HTTPBootstrap                       bool
-	APIServerReady                      <-chan struct{}
-	AgentReady                          <-chan struct{}
-	ETCDReady                           <-chan struct{}
-	StartupHooksWg                      *sync.WaitGroup
-	ClusterControllerStart              func(ctx context.Context) error
-	LeaderElectedClusterControllerStart func(ctx context.Context) error
+	HTTPBootstrap                        bool
+	APIServerReady                       <-chan struct{}
+	AgentReady                           <-chan struct{}
+	ETCDReady                            <-chan struct{}
+	StartupHooksWg                       *sync.WaitGroup
+	ClusterControllerStarts              map[string]leader.Callback
+	LeaderElectedClusterControllerStarts map[string]leader.Callback
 
 	ClientKubeAPICert string
 	ClientKubeAPIKey  string
@@ -337,6 +337,14 @@ type ControlRuntime struct {
 
 	Core       *core.Factory
 	EtcdConfig endpoint.ETCDConfig
+}
+
+func NewRuntime(agentReady <-chan struct{}) *ControlRuntime {
+	return &ControlRuntime{
+		AgentReady:                           agentReady,
+		ClusterControllerStarts:              map[string]leader.Callback{},
+		LeaderElectedClusterControllerStarts: map[string]leader.Callback{},
+	}
 }
 
 type ArgString []string

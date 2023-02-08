@@ -37,7 +37,7 @@ func generateTestConfig() *config.Control {
 		ServiceIPRange: testutil.ServiceIPNet(),
 	}
 	return &config.Control{
-		Runtime:               &config.ControlRuntime{AgentReady: agentReady},
+		Runtime:               config.NewRuntime(agentReady),
 		HTTPSPort:             6443,
 		SupervisorPort:        6443,
 		AdvertisePort:         6443,
