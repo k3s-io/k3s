@@ -17,6 +17,7 @@ var nodeOS = flag.String("nodeOS", "generic/ubuntu2004", "VM operating system")
 var serverCount = flag.Int("serverCount", 3, "number of server nodes")
 var hardened = flag.Bool("hardened", false, "true or false")
 var ci = flag.Bool("ci", false, "running on CI")
+var local = flag.Bool("local", false, "deploy a locally built K3s binary")
 
 // Environment Variables Info:
 // E2E_RELEASE_VERSION=v1.23.1+k3s2 or nil for latest commit from master
@@ -39,7 +40,11 @@ var _ = Describe("Verify Secrets Encryption Rotation", Ordered, func() {
 	Context("Secrets Keys are rotated:", func() {
 		It("Starts up with no issues", func() {
 			var err error
-			serverNodeNames, _, err = e2e.CreateCluster(*nodeOS, *serverCount, 0)
+			if *local {
+				serverNodeNames, _, err = e2e.CreateLocalCluster(*nodeOS, *serverCount, 0)
+			} else {
+				serverNodeNames, _, err = e2e.CreateCluster(*nodeOS, *serverCount, 0)
+			}
 			Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog(err))
 			fmt.Println("CLUSTER CONFIG")
 			fmt.Println("OS:", *nodeOS)

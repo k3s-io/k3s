@@ -514,7 +514,11 @@ steps:
   image: rancher/dapper:v0.5.0
   commands:
     - DOCKER_BUILDKIT=1 docker build --target test-e2e -t test-e2e -f Dockerfile.test .
+    - SKIP_VALIDATE=true SKIP_AIRGAP=true dapper ci
+    - cp dist/artifacts/* /tmp/artifacts/*
   volumes:
+  - name: cache
+    path: /tmp/artifacts
   - name: docker
     path: /var/run/docker.sock
 
@@ -527,24 +531,27 @@ steps:
   environment:
     E2E_REGISTRY: 'true'
   commands:
+  - mkdir -p dist/artifacts
+  - cp /tmp/artifacts/* dist/artifacts/*
   - docker stop registry && docker rm registry
   - docker run -d -p 5000:5000 -e REGISTRY_PROXY_REMOTEURL=https://registry-1.docker.io --name registry registry:2
   - cd tests/e2e/validatecluster
   - vagrant destroy -f
-  - go test -v -timeout=30m ./validatecluster_test.go -ci
+  - go test -v -timeout=30m ./validatecluster_test.go -ci -local
   - cd ../secretsencryption
   - vagrant destroy -f
-  - go test -v -timeout=30m ./secretsencryption_test.go -ci
+  - go test -v -timeout=30m ./secretsencryption_test.go -ci -local
   - cd ../snapshotrestore
   - vagrant destroy -f
-  - go test -v -timeout=30m ./snapshotrestore_test.go -ci
+  - go test -v -timeout=30m ./snapshotrestore_test.go -ci -local
   - docker stop registry && docker rm registry
   volumes:
   - name: libvirt
     path: /var/run/libvirt/
   - name: docker
     path: /var/run/docker.sock
-
+  - name: cache
+    path: /tmp/artifacts
 
 volumes:
 - name: docker
@@ -553,3 +560,5 @@ volumes:
 - name: libvirt
   host:
     path: /var/run/libvirt/
+- name: cache
+  temp: {}
