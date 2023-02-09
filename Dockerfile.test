@@ -39,7 +39,8 @@ CMD ["test"]
 FROM vagrantlibvirt/vagrant-libvirt:0.10.7 AS test-e2e
 
 RUN apt-get update && apt-get install -y docker.io
-RUN vagrant plugin install vagrant-k3s vagrant-reload
+RUN vagrant plugin install vagrant-k3s vagrant-reload vagrant-scp
+RUN vagrant box add generic/ubuntu2004 --provider libvirt --force
 RUN curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"; \
     chmod +x ./kubectl; \
     mv ./kubectl /usr/local/bin/kubectl
