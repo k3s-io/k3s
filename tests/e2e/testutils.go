@@ -25,6 +25,10 @@ type Node struct {
 	ExternalIP string
 }
 
+func (n Node) String() string {
+	return fmt.Sprintf("Node (name: %s, status: %s, roles: %s)", n.Name, n.Status, n.Roles)
+}
+
 type Pod struct {
 	NameSpace string
 	Name      string
@@ -302,13 +306,18 @@ func GenReport(specReport ginkgo.SpecReport) {
 	fmt.Printf("%s", status)
 }
 
+func GetJournalLogs(node string) (string, error) {
+	cmd := "journalctl -u k3s* --no-pager"
+	return RunCmdOnNode(cmd, node)
+}
+
 // GetVagrantLog returns the logs of on vagrant commands that initialize the nodes and provision K3s on each node.
 // It also attempts to fetch the systemctl logs of K3s on nodes where the k3s.service failed.
 func GetVagrantLog(cErr error) string {
 	var nodeErr *NodeError
 	nodeJournal := ""
 	if errors.As(cErr, &nodeErr) {
-		nodeJournal, _ = RunCmdOnNode("sudo journalctl -u k3s* --no-pager", nodeErr.Node)
+		nodeJournal, _ = GetJournalLogs(nodeErr.Node)
 		nodeJournal = "\nNode Journal Logs:\n" + nodeJournal
 	}
 

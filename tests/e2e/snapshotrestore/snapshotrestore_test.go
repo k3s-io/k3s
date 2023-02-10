@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/k3s-io/k3s/tests/e2e"
 	. "github.com/onsi/ginkgo/v2"
@@ -171,6 +172,7 @@ var _ = Describe("Verify snapshots and cluster restores work", Ordered, func() {
 			for _, nodeName := range serverNodeNames[1:] {
 				cmd := "sudo systemctl start k3s"
 				Expect(e2e.RunCmdOnNode(cmd, nodeName)).Error().NotTo(HaveOccurred())
+				time.Sleep(20 * time.Second) //Stagger the restarts for etcd leaners
 			}
 		})
 
@@ -179,9 +181,10 @@ var _ = Describe("Verify snapshots and cluster restores work", Ordered, func() {
 				nodes, err := e2e.ParseNodes(kubeConfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
 				for _, node := range nodes {
-					g.Expect(node.Status).Should(Equal("Ready"), node)
+					nodeJournal, _ := e2e.GetJournalLogs(node.Name)
+					g.Expect(node.Status).Should(Equal("Ready"), nodeJournal)
 				}
-			}, "480s", "5s").Should(Succeed())
+			}, "420s", "5s").Should(Succeed())
 
 			_, _ = e2e.ParseNodes(kubeConfigFile, true)
 
