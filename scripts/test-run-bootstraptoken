@@ -12,6 +12,7 @@ export NUM_AGENTS=1
 export WAIT_SERVICES="${all_services[@]}"
 
 agent-pre-hook() {
+    timeout --foreground 2m bash -c "wait-for-nodes $(( NUM_SERVERS ))"
     local server=$(cat $TEST_DIR/servers/1/metadata/name)
     docker exec $server k3s token create --ttl=5m --description=Test > $TEST_DIR/metadata/secret
 }
