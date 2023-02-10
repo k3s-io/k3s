@@ -470,13 +470,26 @@ setup_selinux() {
         rpm_target=sle
         rpm_site_infix=microos
         package_installer=zypper
+        if [ "${ID_LIKE:-}" == suse ] && [ "${VARIANT_ID:-}" == sle-micro ]; then
+            rpm_target=sle
+            rpm_site_infix=slemicro
+            package_installer=zypper
+        fi
     elif [ "${VERSION_ID%%.*}" = "7" ]; then
         rpm_target=el7
         rpm_site_infix=centos/7
         package_installer=yum
+    elif [ "${ID_LIKE:-}" == coreos ] || [ "${VARIANT_ID:-}" == coreos ]; then
+        rpm_target=coreos
+        rpm_site_infix=coreos
+        package_installer=rpm-os-tree
     else
         rpm_target=el8
         rpm_site_infix=centos/8
+        package_installer=yum
+    fi
+
+    if [ "${package_installer}" = "rpm-os-tree" ] && [ -x /bin/yum ]; then
         package_installer=yum
     fi
 
@@ -491,7 +504,7 @@ setup_selinux() {
 
     if [ "$INSTALL_K3S_SKIP_SELINUX_RPM" = true ] || can_skip_download_selinux || [ ! -d /usr/share/selinux ]; then
         info "Skipping installation of SELinux RPM"
-    elif  [ "${ID_LIKE:-}" != coreos ] && [ "${VARIANT_ID:-}" != coreos ]; then
+    else
         install_selinux_rpm ${rpm_site} ${rpm_channel} ${rpm_target} ${rpm_site_infix}
     fi
 
@@ -514,7 +527,7 @@ setup_selinux() {
 }
 
 install_selinux_rpm() {
-    if [ -r /etc/redhat-release ] || [ -r /etc/centos-release ] || [ -r /etc/oracle-release ] || [ "${ID_LIKE%%[ ]*}" = "suse" ]; then
+    if [ -r /etc/redhat-release ] || [ -r /etc/centos-release ] || [ -r /etc/oracle-release ] || [ -r /etc/fedora-release ] || [ "${ID_LIKE%%[ ]*}" = "suse" ]; then
         repodir=/etc/yum.repos.d
         if [ -d /etc/zypp/repos.d ]; then
             repodir=/etc/zypp/repos.d
