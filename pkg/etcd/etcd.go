@@ -554,15 +554,17 @@ func (e *ETCD) Register(ctx context.Context, config *config.Control, handler htt
 	}
 
 	// The apiserver endpoint controller needs to run on a node with a local apiserver,
-	// in order to successfully seed etcd with the endpoint list.
+	// in order to successfully seed etcd with the endpoint list. The member removal controller
+	// also needs to run on a non-etcd node as to avoid disruption if running on the node that
+	// is being removed from the cluster.
 	if !e.config.DisableAPIServer {
-		e.config.Runtime.LeaderElectedClusterControllerStarts["etcd-apiserver-endpoints"] = func(ctx context.Context) {
+		e.config.Runtime.LeaderElectedClusterControllerStarts[version.Program+"-etcd"] = func(ctx context.Context) {
 			registerEndpointsHandlers(ctx, e)
+			registerMemberHandlers(ctx, e)
 		}
 	}
 
-	// The etcd member-removal controllers should only run on an etcd node. Tombstone file checking
-	// is also unnecessary if we're not running etcd.
+	// Tombstone file checking is unnecessary if we're not running etcd.
 	if !e.config.DisableETCD {
 		tombstoneFile := filepath.Join(DBDir(e.config), "tombstone")
 		if _, err := os.Stat(tombstoneFile); err == nil {
@@ -574,10 +576,6 @@ func (e *ETCD) Register(ctx context.Context, config *config.Control, handler htt
 
 		if err := e.setName(false); err != nil {
 			return nil, err
-		}
-
-		e.config.Runtime.LeaderElectedClusterControllerStarts["etcd-member-removal"] = func(ctx context.Context) {
-			registerMemberHandlers(ctx, e)
 		}
 	}
 
@@ -666,6 +664,8 @@ func getClientConfig(ctx context.Context, control *config.Control, endpoints ...
 		DialTimeout:          defaultDialTimeout,
 		DialKeepAliveTime:    defaultKeepAliveTime,
 		DialKeepAliveTimeout: defaultKeepAliveTimeout,
+		AutoSyncInterval:     defaultKeepAliveTimeout,
+		PermitWithoutStream:  true,
 	}
 
 	var err error
@@ -2126,21 +2126,7 @@ func GetAPIServerURLsFromETCD(ctx context.Context, cfg *config.Control) ([]strin
 // GetMembersClientURLs will list through the member lists in etcd and return
 // back a combined list of client urls for each member in the cluster
 func (e *ETCD) GetMembersClientURLs(ctx context.Context) ([]string, error) {
-	ctx, cancel := context.WithTimeout(ctx, testTimeout)
-	defer cancel()
-
-	members, err := e.client.MemberList(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	var memberUrls []string
-	for _, member := range members.Members {
-		for _, clientURL := range member.ClientURLs {
-			memberUrls = append(memberUrls, string(clientURL))
-		}
-	}
-	return memberUrls, nil
+	return e.client.Endpoints(), nil
 }
 
 // GetMembersNames will list through the member lists in etcd and return
