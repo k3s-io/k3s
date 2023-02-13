@@ -144,7 +144,8 @@ func (c *Cluster) assignManagedDriver(ctx context.Context) error {
 	return nil
 }
 
-// setupEtcdProxy
+// setupEtcdProxy periodically updates the etcd proxy with the current list of
+// cluster client URLs, as retrieved from etcd.
 func (c *Cluster) setupEtcdProxy(ctx context.Context, etcdProxy etcd.Proxy) {
 	if c.managedDB == nil {
 		return

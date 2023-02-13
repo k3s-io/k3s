@@ -78,11 +78,7 @@ func StartServer(ctx context.Context, config *Config, cfg *cmds.Server) error {
 		}
 	}
 
-	if config.ControlConfig.DisableAPIServer {
-		go setETCDLabelsAndAnnotations(ctx, config)
-	} else {
-		go startOnAPIServerReady(ctx, config)
-	}
+	go startOnAPIServerReady(ctx, config)
 
 	if err := printTokens(&config.ControlConfig); err != nil {
 		return err
@@ -138,20 +134,9 @@ func runControllers(ctx context.Context, config *Config) error {
 		return errors.Wrap(err, "failed to start wranger controllers")
 	}
 
-	controlConfig.Runtime.LeaderElectedClusterControllerStarts[version.Program] = func(ctx context.Context) {
-		if controlConfig.DisableAPIServer {
-			return
-		}
-		if err := coreControllers(ctx, sc, config); err != nil {
-			panic(err)
-		}
-		for _, controller := range config.LeaderControllers {
-			if err := controller(ctx, sc); err != nil {
-				panic(errors.Wrapf(err, "failed to start %s leader controller", util.GetFunctionName(controller)))
-			}
-		}
-		if err := sc.Start(ctx); err != nil {
-			panic(err)
+	if !controlConfig.DisableAPIServer {
+		controlConfig.Runtime.LeaderElectedClusterControllerStarts[version.Program] = func(ctx context.Context) {
+			apiserverControllers(ctx, sc, config)
 		}
 	}
 
@@ -172,6 +157,22 @@ func runControllers(ctx context.Context, config *Config) error {
 	return nil
 }
 
+// apiServerControllers starts the core controllers, as well as the leader-elected controllers
+// that should only run on a control-plane node.
+func apiserverControllers(ctx context.Context, sc *Context, config *Config) {
+	if err := coreControllers(ctx, sc, config); err != nil {
+		panic(err)
+	}
+	for _, controller := range config.LeaderControllers {
+		if err := controller(ctx, sc); err != nil {
+			panic(errors.Wrapf(err, "failed to start %s leader controller", util.GetFunctionName(controller)))
+		}
+	}
+	if err := sc.Start(ctx); err != nil {
+		panic(err)
+	}
+}
+
 // runOrDie is similar to leader.RunOrDie, except that it runs the callback
 // immediately, without performing leader election.
 func runOrDie(ctx context.Context, name string, cb leader.Callback) {
@@ -184,6 +185,12 @@ func runOrDie(ctx context.Context, name string, cb leader.Callback) {
 	<-ctx.Done()
 }
 
+// coreControllers starts the following controllers, if they are enabled:
+// * Node controller (manages nodes passwords and coredns hosts file)
+// * Helm controller
+// * Secrets encryption
+// * Rootless ports
+// These controllers should only be run on nodes with a local apiserver
 func coreControllers(ctx context.Context, sc *Context, config *Config) error {
 	if err := node.Register(ctx,
 		!config.ControlConfig.Skips["coredns"],
@@ -237,6 +244,9 @@ func coreControllers(ctx context.Context, sc *Context, config *Config) error {
 }
 
 func stageFiles(ctx context.Context, sc *Context, controlConfig *config.Control) error {
+	if controlConfig.DisableAPIServer {
+		return nil
+	}
 	dataDir := filepath.Join(controlConfig.DataDir, "static")
 	if err := static.Stage(dataDir); err != nil {
 		return err
@@ -527,19 +537,11 @@ func setNodeLabelsAndAnnotations(ctx context.Context, nodes v1.NodeClient, confi
 			time.Sleep(1 * time.Second)
 			continue
 		}
-		// remove etcd label if etcd is disabled
-		var etcdRoleLabelExists bool
-		if config.ControlConfig.DisableETCD {
-			if _, ok := node.Labels[ETCDRoleLabelKey]; ok {
-				delete(node.Labels, ETCDRoleLabelKey)
-				etcdRoleLabelExists = true
-			}
-		}
 		if node.Labels == nil {
 			node.Labels = make(map[string]string)
 		}
 		v, ok := node.Labels[ControlPlaneRoleLabelKey]
-		if !ok || v != "true" || etcdRoleLabelExists {
+		if !ok || v != "true" {
 			node.Labels[ControlPlaneRoleLabelKey] = "true"
 			node.Labels[MasterRoleLabelKey] = "true"
 		}
@@ -565,15 +567,18 @@ func setNodeLabelsAndAnnotations(ctx context.Context, nodes v1.NodeClient, confi
 	return nil
 }
 
-func setClusterDNSConfig(ctx context.Context, controlConfig *Config, configMap v1.ConfigMapClient) error {
+func setClusterDNSConfig(ctx context.Context, config *Config, configMap v1.ConfigMapClient) error {
+	if config.ControlConfig.DisableAPIServer {
+		return nil
+	}
 	// check if configmap already exists
 	_, err := configMap.Get("kube-system", "cluster-dns", metav1.GetOptions{})
 	if err == nil {
 		logrus.Infof("Cluster dns configmap already exists")
 		return nil
 	}
-	clusterDNS := controlConfig.ControlConfig.ClusterDNS
-	clusterDomain := controlConfig.ControlConfig.ClusterDomain
+	clusterDNS := config.ControlConfig.ClusterDNS
+	clusterDomain := config.ControlConfig.ClusterDomain
 	c := &corev1.ConfigMap{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "ConfigMap",
