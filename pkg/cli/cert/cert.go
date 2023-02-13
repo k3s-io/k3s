@@ -293,7 +293,7 @@ func rotateCA(app *cli.Context, cfg *cmds.Server, sync *cmds.CertRotateCA) error
 	// Set up dummy server config for reading new bootstrap data from disk.
 	tmpServer := &config.Control{
 		Runtime: config.NewRuntime(nil),
-		DataDir: filepath.Dir(sync.CACertPath),
+		DataDir: sync.CACertPath,
 	}
 	deps.CreateRuntimeCertFiles(tmpServer)
 
