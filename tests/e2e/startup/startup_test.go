@@ -15,6 +15,7 @@ import (
 // Valid nodeOS: generic/ubuntu2004, opensuse/Leap-15.3.x86_64
 var nodeOS = flag.String("nodeOS", "generic/ubuntu2004", "VM operating system")
 var ci = flag.Bool("ci", false, "running on CI")
+var local = flag.Bool("local", false, "deploy a locally built K3s binary")
 
 // Environment Variables Info:
 // E2E_RELEASE_VERSION=v1.23.1+k3s2 or nil for latest commit from master
@@ -80,7 +81,11 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 	Context("Verify CRI-Dockerd :", func() {
 		It("Stands up the nodes", func() {
 			var err error
-			serverNodeNames, agentNodeNames, err = e2e.CreateLocalCluster(*nodeOS, 1, 1)
+			if *local {
+				serverNodeNames, agentNodeNames, err = e2e.CreateLocalCluster(*nodeOS, 1, 1)
+			} else {
+				serverNodeNames, agentNodeNames, err = e2e.CreateCluster(*nodeOS, 1, 1)
+			}
 			Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog(err))
 		})
 		It("Starts K3s with no issues", func() {
