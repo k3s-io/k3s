@@ -38,11 +38,13 @@ func (e *Embedded) ETCD(ctx context.Context, args ETCDConfig, extraArgs []string
 			if errors.Is(err, rafthttp.ErrMemberRemoved) {
 				tombstoneFile := filepath.Join(args.DataDir, "tombstone")
 				if err := os.WriteFile(tombstoneFile, []byte{}, 0600); err != nil {
-					logrus.Fatalf("failed to write tombstone file to %s", tombstoneFile)
+					logrus.Fatalf("Failed to write tombstone file to %s: %v", tombstoneFile, err)
 				}
-				logrus.Infof("this node has been removed from the cluster please restart %s to rejoin the cluster", version.Program)
+				etcd.Close()
+				logrus.Infof("This node has been removed from the cluster - please restart %s to rejoin the cluster", version.Program)
 				return
 			}
+			logrus.Errorf("etcd error: %v", err)
 		case <-ctx.Done():
 			logrus.Infof("stopping etcd")
 			etcd.Close()
