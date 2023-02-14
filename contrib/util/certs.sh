@@ -21,6 +21,7 @@
 #   intermediate-ca.key.
 
 set -e
+umask 027
 
 CONFIG="
 [v3_ca]
