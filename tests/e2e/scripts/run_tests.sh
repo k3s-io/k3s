@@ -29,9 +29,6 @@ E2E_REGISTRY=true E2E_HARDENED="$hardened" /usr/local/go/bin/go test -v validate
 echo 'RUNNING SECRETS ENCRYPTION TEST'
 /usr/local/go/bin/go test -v secretsencryption/secretsencryption_test.go -nodeOS="$nodeOS" -serverCount=$((servercount)) -timeout=1h -json -ci | tee -a k3s_"$OS".log
 
-echo 'RUN CLUSTER RESET TEST'
-/usr/local/go/bin/go test -v clusterreset/clusterreset_test.go -nodeOS="$nodeOS" -serverCount=3 -agentCount=1 -timeout=30m -json -ci | tee -a createreport/k3s_"$OS".log
-
 echo 'RUNNING SPLIT SERVER VALIDATION TEST'
 E2E_HARDENED="$hardened" /usr/local/go/bin/go test -v splitserver/splitserver_test.go -nodeOS="$nodeOS" -timeout=30m -json -ci | tee -a k3s_"$OS".log
 

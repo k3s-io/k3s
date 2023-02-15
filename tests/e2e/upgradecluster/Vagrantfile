@@ -25,8 +25,10 @@ def provision(vm, role, role_num, node_num)
   load vagrant_defaults
 
   defaultOSConfigure(vm)
-    
-  if !RELEASE_VERSION.empty?
+  
+  if RELEASE_VERSION == "skip"
+    install_type = "INSTALL_K3S_SKIP_DOWNLOAD=true"
+  elsif !RELEASE_VERSION.empty?
     install_type = "INSTALL_K3S_VERSION=#{RELEASE_VERSION}"
   elsif RELEASE_CHANNEL == "commit"
     vm.provision "shell", path: "../scripts/latest_commit.sh", args: ["master", "/tmp/k3s_commits"]

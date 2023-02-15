@@ -579,14 +579,12 @@ steps:
   - docker run -d -p 5000:5000 -e REGISTRY_PROXY_REMOTEURL=https://registry-1.docker.io --name registry registry:2
   - cd tests/e2e/validatecluster
   - vagrant destroy -f
-  # We only have to add the box once, prevents errors when bringing up nodes in parallel
   - go test -v -timeout=30m ./validatecluster_test.go -ci -local
   - cd ../secretsencryption
   - vagrant destroy -f
   - go test -v -timeout=30m ./secretsencryption_test.go -ci -local
-  - cd ../snapshotrestore
-  - vagrant destroy -f
-  - go test -v -timeout=30m ./snapshotrestore_test.go -ci -local
+  - cd ../upgradecluster
+  - E2E_RELEASE_CHANNEL="latest" go test -v -timeout=45m ./upgradecluster_test.go  -ci -local
   - docker stop registry && docker rm registry
   volumes:
   - name: libvirt
