@@ -557,7 +557,7 @@ steps:
   commands:
     - DOCKER_BUILDKIT=1 docker build --target test-e2e -t test-e2e -f Dockerfile.test .
     - SKIP_VALIDATE=true SKIP_AIRGAP=true dapper ci
-    - cp dist/artifacts/* /tmp/artifacts/*
+    - cp dist/artifacts/* /tmp/artifacts/
   volumes:
   - name: cache
     path: /tmp/artifacts
@@ -574,7 +574,7 @@ steps:
     E2E_REGISTRY: 'true'
   commands:
   - mkdir -p dist/artifacts
-  - cp /tmp/artifacts/* dist/artifacts/*
+  - cp /tmp/artifacts/* dist/artifacts/
   - docker stop registry && docker rm registry
   - docker run -d -p 5000:5000 -e REGISTRY_PROXY_REMOTEURL=https://registry-1.docker.io --name registry registry:2
   - cd tests/e2e/validatecluster
