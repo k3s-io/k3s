@@ -2,7 +2,6 @@ package cloudprovider
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sort"
 	"strconv"
@@ -375,11 +374,11 @@ func (k *k3s) podIPs(pods []*core.Pod, svc *core.Service, readyNodes map[string]
 	return ips, nil
 }
 
-// filterByIPFamily filters ips based on dual-stack parameters of the service
+// filterByIPFamily filters node IPs based on dual-stack parameters of the service
 func filterByIPFamily(ips []string, svc *core.Service) ([]string, error) {
-	var ipFamilyPolicy core.IPFamilyPolicyType
 	var ipv4Addresses []string
 	var ipv6Addresses []string
+	var allAddresses []string
 
 	for _, ip := range ips {
 		if utilsnet.IsIPv4String(ip) {
@@ -390,42 +389,15 @@ func filterByIPFamily(ips []string, svc *core.Service) ([]string, error) {
 		}
 	}
 
-	if svc.Spec.IPFamilyPolicy != nil {
-		ipFamilyPolicy = *svc.Spec.IPFamilyPolicy
-	}
-
-	switch ipFamilyPolicy {
-	case core.IPFamilyPolicySingleStack:
-		if svc.Spec.IPFamilies[0] == core.IPv4Protocol {
-			return ipv4Addresses, nil
-		}
-		if svc.Spec.IPFamilies[0] == core.IPv6Protocol {
-			return ipv6Addresses, nil
-		}
-	case core.IPFamilyPolicyPreferDualStack:
-		if svc.Spec.IPFamilies[0] == core.IPv4Protocol {
-			ipAddresses := append(ipv4Addresses, ipv6Addresses...)
-			return ipAddresses, nil
-		}
-		if svc.Spec.IPFamilies[0] == core.IPv6Protocol {
-			ipAddresses := append(ipv6Addresses, ipv4Addresses...)
-			return ipAddresses, nil
-		}
-	case core.IPFamilyPolicyRequireDualStack:
-		if (len(ipv4Addresses) == 0) || (len(ipv6Addresses) == 0) {
-			return nil, errors.New("one or more IP families did not have addresses available for service with ipFamilyPolicy=RequireDualStack")
-		}
-		if svc.Spec.IPFamilies[0] == core.IPv4Protocol {
-			ipAddresses := append(ipv4Addresses, ipv6Addresses...)
-			return ipAddresses, nil
-		}
-		if svc.Spec.IPFamilies[0] == core.IPv6Protocol {
-			ipAddresses := append(ipv6Addresses, ipv4Addresses...)
-			return ipAddresses, nil
+	for _, ipFamily := range svc.Spec.IPFamilies {
+		switch ipFamily {
+		case core.IPv4Protocol:
+			allAddresses = append(allAddresses, ipv4Addresses...)
+		case core.IPv6Protocol:
+			allAddresses = append(allAddresses, ipv6Addresses...)
 		}
 	}
-
-	return nil, errors.New("unhandled ipFamilyPolicy")
+	return allAddresses, nil
 }
 
 // deployDaemonSet ensures that there is a DaemonSet for the service.
