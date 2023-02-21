@@ -482,14 +482,14 @@ setup_selinux() {
     elif [ "${ID_LIKE:-}" == coreos ] || [ "${VARIANT_ID:-}" == coreos ]; then
         rpm_target=coreos
         rpm_site_infix=coreos
-        package_installer=rpm-os-tree
+        package_installer=rpm-ostree
     else
         rpm_target=el8
         rpm_site_infix=centos/8
         package_installer=yum
     fi
 
-    if [ "${package_installer}" = "rpm-os-tree" ] && [ -x /bin/yum ]; then
+    if [ "${package_installer}" = "rpm-ostree" ] && [ -x /bin/yum ]; then
         package_installer=yum
     fi
 
@@ -555,6 +555,9 @@ EOF
                 rpm_installer="transactional-update --no-selfupdate -d run ${rpm_installer}"
                 : "${INSTALL_K3S_SKIP_START:=true}"
             fi
+            ;;
+        coreos)
+            rpm_installer="rpm-ostree"
             ;;
         *)
             rpm_installer="yum"
