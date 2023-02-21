@@ -39,4 +39,4 @@ for FILE in ${TMPDIR}/${BUILD_NAME}*; do
 done
 
 echo "Build uploaded" >&2
-echo "https://k3s-ci-builds.s3.amazonaws.com/${BUILD_NAME}"
+echo "https://k3s-ci-builds.s3.dualstack.us-east-1.amazonaws.com/${BUILD_NAME}"
