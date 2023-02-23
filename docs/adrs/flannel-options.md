@@ -84,25 +84,32 @@ The suggestion is to include a string slice flag that would consolidate all flan
 
 ## Proposal
 
-Starting in v1.26, introduce a new `flannel-opts` flag that includes flannel server options. The redundant flags are deprecated and removed in a few releases.
+Starting in v1.26, introduce a new `flannel-opt` flag that includes flannel server options. The redundant flags are deprecated and removed in a few releases.
 
 We could reduce it to 2:
 
 * flannel-backend (string)
-* flannel-opts ([]string)
+* flannel-opt ([]string)
 
-Flannel-opts would have the following values:
+Flannel-opt would have the following values:
 
 | Value | Old Flag |
 | --- | --- |
 | `ipv6-masq` | `--flannel-ipv6-masq` |
 | `external-ip` | `--flannel-external-ip` |
 
+Similar to how we handle `--kubelet-arg`, both comma separated lists and repeated args would be accepted.
+
 Examples of usage:  
 `--flannel-opts=ipv6-masq,external-ip` (assumes true)  
 `--flannel-opts=ipv6-masq=true`  
 `--flannel-opts=ipv6-masq=true,external-ip=false`  
+`--flannel-opts=ipv6-masq --flannel-opts=external-ip`
+`--flannel-opts=ipv6-masq --flannel-opts=external-ip=false`
   
+## Alternatives
+The naming of the flag could be `flannel-arg`, but I don't want users to assume that we pass flags to flannel directly.
+
 ## Decision
 
 
