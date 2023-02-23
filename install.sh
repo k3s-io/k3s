@@ -470,7 +470,7 @@ setup_selinux() {
         rpm_target=sle
         rpm_site_infix=microos
         package_installer=zypper
-        if [ "${ID_LIKE:-}" == suse ] && [ "${VARIANT_ID:-}" == sle-micro ]; then
+        if [ "${ID_LIKE:-}" = suse ] && [ "${VARIANT_ID:-}" = sle-micro ]; then
             rpm_target=sle
             rpm_site_infix=slemicro
             package_installer=zypper
@@ -479,7 +479,7 @@ setup_selinux() {
         rpm_target=el7
         rpm_site_infix=centos/7
         package_installer=yum
-    elif [ "${ID_LIKE:-}" == coreos ] || [ "${VARIANT_ID:-}" == coreos ]; then
+    elif [ "${ID_LIKE:-}" = coreos ] || [ "${VARIANT_ID:-}" = coreos ]; then
         rpm_target=coreos
         rpm_site_infix=coreos
         package_installer=rpm-ostree
@@ -497,9 +497,15 @@ setup_selinux() {
         package_installer=dnf
     fi
 
+    if [ "${rpm_channel}" = "testing" ]; then
+        avaliable_version=$(curl -s https://api.github.com/repos/k3s-io/k3s-selinux/releases |  grep -oP '(?<="browser_download_url": ")[^"]*' | grep -oE "[^\/]+${rpm_target}\.noarch\.rpm" | head -n 1)
+    else
+        avaliable_version=$(curl -s https://api.github.com/repos/k3s-io/k3s-selinux/releases/latest |  grep -oP '(?<="browser_download_url": ")[^"]*' | grep -oE "[^\/]+${rpm_target}\.noarch\.rpm" )
+    fi
+
     policy_hint="please install:
     ${package_installer} install -y container-selinux
-    ${package_installer} install -y https://${rpm_site}/k3s/${rpm_channel}/common/${rpm_site_infix}/noarch/k3s-selinux-1.2-2.${rpm_target}.noarch.rpm
+    ${package_installer} install -y https://${rpm_site}/k3s/${rpm_channel}/common/${rpm_site_infix}/noarch/${avaliable_version}
 "
 
     if [ "$INSTALL_K3S_SKIP_SELINUX_RPM" = true ] || can_skip_download_selinux || [ ! -d /usr/share/selinux ]; then
@@ -753,6 +759,9 @@ rm -f ${KILLALL_K3S_SH}
 
 if type yum >/dev/null 2>&1; then
     yum remove -y k3s-selinux
+    rm -f /etc/yum.repos.d/rancher-k3s-common*.repo
+elif type rpm-ostree >/dev/null 2>&1; then
+    rpm-ostree uninstall k3s-selinux
     rm -f /etc/yum.repos.d/rancher-k3s-common*.repo
 elif type zypper >/dev/null 2>&1; then
     uninstall_cmd="zypper remove -y k3s-selinux"
