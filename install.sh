@@ -564,7 +564,7 @@ EOF
             ;;
         coreos)
             rpm_installer="rpm-ostree"
-            rpm_install_extra_args="--apply-live"
+            # rpm_install_extra_args="--apply-live"
             : "${INSTALL_K3S_SKIP_START:=true}"
             ;;
         *)
@@ -575,7 +575,7 @@ EOF
             rpm_installer=dnf
         fi
         # shellcheck disable=SC2086
-        $SUDO ${rpm_installer} install ${rpm_install_extra_args} -y "k3s-selinux"
+        $SUDO ${rpm_installer} install -y "k3s-selinux"
     fi
     return
 }
@@ -763,7 +763,7 @@ if type yum >/dev/null 2>&1; then
     yum remove -y k3s-selinux
     rm -f /etc/yum.repos.d/rancher-k3s-common*.repo
 elif type rpm-ostree >/dev/null 2>&1; then
-    rpm-ostree uninstall --apply-live k3s-selinux
+    rpm-ostree uninstall k3s-selinux
     rm -f /etc/yum.repos.d/rancher-k3s-common*.repo
 elif type zypper >/dev/null 2>&1; then
     uninstall_cmd="zypper remove -y k3s-selinux"
