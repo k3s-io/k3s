@@ -101,11 +101,11 @@ Flannel-opt would have the following values:
 Similar to how we handle `--kubelet-arg`, both comma separated lists and repeated args would be accepted.
 
 Examples of usage:  
-`--flannel-opts=ipv6-masq,external-ip` (assumes true)  
-`--flannel-opts=ipv6-masq=true`  
-`--flannel-opts=ipv6-masq=true,external-ip=false`  
-`--flannel-opts=ipv6-masq --flannel-opts=external-ip`
-`--flannel-opts=ipv6-masq --flannel-opts=external-ip=false`
+`--flannel-opt=ipv6-masq,external-ip` (assumes true)  
+`--flannel-opt=ipv6-masq=true`  
+`--flannel-opt=ipv6-masq=true,external-ip=false`  
+`--flannel-opt=ipv6-masq --flannel-opt=external-ip`
+`--flannel-opt=ipv6-masq --flannel-opt=external-ip=false`
   
 ## Alternatives
 The naming of the flag could be `flannel-arg`, but I don't want users to assume that we pass flags to flannel directly.
