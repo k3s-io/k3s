@@ -57,7 +57,7 @@ var _ = Describe("longhorn", Ordered, func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 		It("starts all pods with no problems", func() {
-			Eventually(func(ctx SpecContext) error {
+			Eventually(func() error {
 				pods, err := testutil.ParsePods("longhorn-system", metav1.ListOptions{})
 				if err != nil {
 					return err
