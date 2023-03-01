@@ -162,12 +162,12 @@ func CheckDeployments(deployments []string) error {
 	return nil
 }
 
-func ParsePods(opts metav1.ListOptions) ([]corev1.Pod, error) {
+func ParsePods(namespace string, opts metav1.ListOptions) ([]corev1.Pod, error) {
 	clientSet, err := k8sClient()
 	if err != nil {
 		return nil, err
 	}
-	pods, err := clientSet.CoreV1().Pods("").List(context.Background(), opts)
+	pods, err := clientSet.CoreV1().Pods(namespace).List(context.Background(), opts)
 	if err != nil {
 		return nil, err
 	}
@@ -186,6 +186,42 @@ func ParseNodes() ([]corev1.Node, error) {
 	}
 
 	return nodes.Items, nil
+}
+
+func GetPod(namespace, name string) (*corev1.Pod, error) {
+	client, err := k8sClient()
+	if err != nil {
+		return nil, err
+	}
+	pod, err := client.CoreV1().Pods(namespace).Get(context.Background(), name, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return pod, nil
+}
+
+func GetPersistentVolumeClaim(namespace, name string) (*corev1.PersistentVolumeClaim, error) {
+	client, err := k8sClient()
+	if err != nil {
+		return nil, err
+	}
+	pvc, err := client.CoreV1().PersistentVolumeClaims(namespace).Get(context.Background(), name, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return pvc, nil
+}
+
+func GetPersistentVolume(name string) (*corev1.PersistentVolume, error) {
+	client, err := k8sClient()
+	if err != nil {
+		return nil, err
+	}
+	pv, err := client.CoreV1().PersistentVolumes().Get(context.Background(), name, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return pv, nil
 }
 
 func FindStringInCmdAsync(scanner *bufio.Scanner, target string) bool {
