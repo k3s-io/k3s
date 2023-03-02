@@ -60,15 +60,15 @@ Regarding subnet and backend configuration:
 `EnableIPv6` is set based on what the user passed as k3s server `--cluster-cidr`.
 `Backend` uses vxlan as default, although this can be changed using k3s server flag `--flannel-backend`
 
-Something important to note is that k3s allows the user to override the whole subnet and backend configuration, by using the k3s agent flag `--flannel-conf` and even the flannel CNI configuration file, by using the k3s agent flag `--flanel-cni-conf`. Overriding the whole subnet and backend configuration is useful if user wants to add specific backend configurations, e.g. VNI for vxlan. Users can currently do this by using `<=option1=val1,option2=val2>` when selecting the backend but it seldom used and complicates things, thus it was deprecated in favor of `--flannel-cni-conf`.
+Something important to note is that k3s allows the user to override the whole subnet and backend configuration, by using the k3s agent flag `--flannel-conf` and `--flanel-cni-conf`. Overriding the whole subnet and backend configuration is useful if user wants to add specific backend configurations, e.g. VNI for vxlan. Users can currently do this by using `<=option1=val1,option2=val2>` when selecting the backend, but it seldom used and complicates things, thus it was deprecated in favor of `--flannel-cni-conf`.
 
 To wrap up the context, k3s includes the following flannel options:
 
 | Agent Flag | Type | Description |
 | --- | --- | --- |
 | `--flannel-iface` | string | Overrides the default flannel interface. This interface is used to forward encapsulated traffic in inter-node communication. It matches the flannel flag `--iface` |
-| `--flannel-conf` | string | Path that points to a file containing the flannel subnet&backend config |
-| `--flannel-cni-conf` | string | Path that point to a flannel CNI config file. This config sets CNI specific configuration for that node |
+| `--flannel-conf` | string | Path that points to a file containing the flannel subnet&backend config. Used directly by flannel and contains clusterCIDR, backend type, and other flannel config. |
+| `--flannel-cni-conf` | string | Path that point to a flannel CNI config file. This is used by kubelet to configure the network when a new pod is created. The naming is opaque as the flag in flannel is called `cni-conf`, but every flannel flag in k3s has the `flannel` prefix, thus `flannel-cni-conf`. |
 
 | Server Flag | Type | Description |
 | --- | --- | --- |
