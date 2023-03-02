@@ -63,7 +63,6 @@ var _ = Describe("longhorn", Ordered, func() {
 					return err
 				}
 				for _, pod := range pods {
-					fmt.Println(pod)
 					if pod.Status.Phase != "Running" && pod.Status.Phase != "Succeeded" {
 						return fmt.Errorf("pod %s failing", pod.Name)
 					}
