@@ -19,4 +19,5 @@ type ContainerdConfig struct {
 	EnableUnprivileged    bool
 	PrivateRegistryConfig *registries.Registry
 	ExtraRuntimes         map[string]ContainerdRuntimeConfig
+	Program               string
 }
