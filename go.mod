@@ -90,7 +90,7 @@ require (
 	github.com/Mirantis/cri-dockerd v0.0.0-00010101000000-000000000000
 	github.com/cloudnativelabs/kube-router v0.0.0-00010101000000-000000000000
 	github.com/containerd/cgroups v1.0.3
-	github.com/containerd/containerd v1.6.10
+	github.com/containerd/containerd v1.6.18
 	github.com/containerd/fuse-overlayfs-snapshotter v1.0.5
 	github.com/containerd/stargz-snapshotter v0.13.0
 	github.com/coreos/go-iptables v0.6.0
