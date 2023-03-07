@@ -143,10 +143,6 @@ func validateCA(oldCAPath, newCAPath string) error {
 		return err
 	}
 
-	if len(oldCerts) == 1 {
-		return errors.New("old CA is self-signed")
-	}
-
 	newCerts, err := certutil.CertsFromFile(newCAPath)
 	if err != nil {
 		return err
@@ -158,16 +154,26 @@ func validateCA(oldCAPath, newCAPath string) error {
 
 	roots := x509.NewCertPool()
 	intermediates := x509.NewCertPool()
-	for i, cert := range oldCerts {
+
+	// Load all certs from the old bundle
+	for _, cert := range oldCerts {
+		if len(cert.AuthorityKeyId) == 0 || bytes.Equal(cert.AuthorityKeyId, cert.SubjectKeyId) {
+			roots.AddCert(cert)
+		} else {
+			intermediates.AddCert(cert)
+		}
+	}
+
+	// Include any intermediates from the new bundle, in case they're cross-signed by a cert in the old bundle
+	for i, cert := range newCerts {
 		if i > 0 {
-			if len(cert.AuthorityKeyId) == 0 || bytes.Equal(cert.AuthorityKeyId, cert.SubjectKeyId) {
-				roots.AddCert(cert)
-			} else {
+			if len(cert.AuthorityKeyId) > 0 {
 				intermediates.AddCert(cert)
 			}
 		}
 	}
 
+	// Verify the first cert in the bundle, using the combined roots and intermediates
 	_, err = newCerts[0].Verify(x509.VerifyOptions{Roots: roots, Intermediates: intermediates})
 	if err != nil {
 		err = errors.Wrap(err, "new CA cert cannot be verified using old CA chain")
