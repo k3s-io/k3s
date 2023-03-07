@@ -20,7 +20,6 @@ import (
 	"github.com/cloudnativelabs/kube-router/pkg/utils"
 	"github.com/coreos/go-iptables/iptables"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
-	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	v1core "k8s.io/api/core/v1"
@@ -57,7 +56,11 @@ func Run(ctx context.Context, nodeConfig *config.Node) error {
 	}
 
 	krConfig := options.NewKubeRouterConfig()
-	krConfig.ClusterIPCIDR = util.JoinIPNets(nodeConfig.AgentConfig.ServiceCIDRs)
+	var serviceIPs []string
+	for _, elem := range nodeConfig.AgentConfig.ServiceCIDRs {
+		serviceIPs = append(serviceIPs, elem.String())
+	}
+	krConfig.ClusterIPCIDRs = serviceIPs
 	krConfig.EnableIPv4 = nodeConfig.AgentConfig.EnableIPv4
 	krConfig.EnableIPv6 = nodeConfig.AgentConfig.EnableIPv6
 	krConfig.NodePortRange = strings.ReplaceAll(nodeConfig.AgentConfig.ServiceNodePortRange.String(), "-", ":")
