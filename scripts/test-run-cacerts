@@ -28,7 +28,7 @@ cluster-pre-hook() {
         rancher/mirrored-pause:3.6 \
         >/dev/null
 
-    DATA_DIR="$TEST_DIR/pause/0/k3s" ./contrib/util/certs.sh
+    DATA_DIR="$TEST_DIR/pause/0/k3s" ./contrib/util/generate-custom-ca-certs.sh
     docker cp "$TEST_DIR/pause/0/k3s" $name:/var/lib/rancher
 }
 export -f cluster-pre-hook
