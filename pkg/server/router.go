@@ -219,7 +219,7 @@ func servingKubeletCert(server *config.Control, keyFile string, auth nodePassBoo
 			return
 		}
 
-		caCert, caKey, key, err := getCACertAndKeys(server.Runtime.ServerCA, server.Runtime.ServerCAKey, server.Runtime.ServingKubeletKey)
+		caCerts, caKey, key, err := getCACertAndKeys(server.Runtime.ServerCA, server.Runtime.ServerCAKey, server.Runtime.ServingKubeletKey)
 		if err != nil {
 			sendError(err, resp)
 			return
@@ -245,7 +245,7 @@ func servingKubeletCert(server *config.Control, keyFile string, auth nodePassBoo
 				DNSNames: []string{nodeName, "localhost"},
 				IPs:      ips,
 			},
-		}, key, caCert[0], caKey)
+		}, key, caCerts[0], caKey)
 		if err != nil {
 			sendError(err, resp)
 			return
@@ -257,7 +257,7 @@ func servingKubeletCert(server *config.Control, keyFile string, auth nodePassBoo
 			return
 		}
 
-		resp.Write(append(certutil.EncodeCertPEM(cert), certutil.EncodeCertPEM(caCert[0])...))
+		resp.Write(util.EncodeCertsPEM(cert, caCerts))
 		resp.Write(keyBytes)
 	})
 }
@@ -275,7 +275,7 @@ func clientKubeletCert(server *config.Control, keyFile string, auth nodePassBoot
 			return
 		}
 
-		caCert, caKey, key, err := getCACertAndKeys(server.Runtime.ClientCA, server.Runtime.ClientCAKey, server.Runtime.ClientKubeletKey)
+		caCerts, caKey, key, err := getCACertAndKeys(server.Runtime.ClientCA, server.Runtime.ClientCAKey, server.Runtime.ClientKubeletKey)
 		if err != nil {
 			sendError(err, resp)
 			return
@@ -285,7 +285,7 @@ func clientKubeletCert(server *config.Control, keyFile string, auth nodePassBoot
 			CommonName:   "system:node:" + nodeName,
 			Organization: []string{user.NodesGroup},
 			Usages:       []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
-		}, key, caCert[0], caKey)
+		}, key, caCerts[0], caKey)
 		if err != nil {
 			sendError(err, resp)
 			return
@@ -297,7 +297,7 @@ func clientKubeletCert(server *config.Control, keyFile string, auth nodePassBoot
 			return
 		}
 
-		resp.Write(append(certutil.EncodeCertPEM(cert), certutil.EncodeCertPEM(caCert[0])...))
+		resp.Write(util.EncodeCertsPEM(cert, caCerts))
 		resp.Write(keyBytes)
 	})
 }
