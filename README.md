@@ -160,4 +160,5 @@ Please check out our [contributing guide](CONTRIBUTING.md) if you're interested 
 Security
 --------
 
-Security issues in K3s can be reported by sending an email to [security@k3s.io](mailto:security@k3s.io). Please do not file issues about security issues.
+Security issues in K3s can be reported by sending an email to [security@k3s.io](mailto:security@k3s.io).
+Please do not file issues about security issues.
