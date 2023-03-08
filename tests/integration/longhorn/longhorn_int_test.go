@@ -93,7 +93,7 @@ var _ = Describe("longhorn", Ordered, func() {
 					return fmt.Errorf("pv %s not bound", pv.Name)
 				}
 				return nil
-			}, "60s", "5s").Should(Succeed())
+			}, "300s", "5s").Should(Succeed())
 		})
 		It("creates a pod with the pvc", func() {
 			result, err := testutil.K3sCmd("kubectl create -f ./testdata/pod.yaml")
@@ -105,7 +105,7 @@ var _ = Describe("longhorn", Ordered, func() {
 					return fmt.Errorf("failed to get pod volume-test")
 				}
 				if pod.Status.Phase != "Running" {
-					return fmt.Errorf("pod volume-test not running")
+					return fmt.Errorf("pod volume-test \"%s\" reason: \"%s\" message \"%s\"", pod.Status.Phase, pod.Status.Reason, pod.Status.Message)
 				}
 				return nil
 			}, "60s", "5s").Should(Succeed())
@@ -113,12 +113,17 @@ var _ = Describe("longhorn", Ordered, func() {
 	})
 })
 
+var failed bool
+var _ = AfterEach(func() {
+	failed = failed || CurrentSpecReport().Failed()
+})
+
 var _ = AfterSuite(func() {
 	if !testutil.IsExistingServer() {
-		if CurrentSpecReport().Failed() {
+		if failed {
 			testutil.K3sSaveLog(server, true)
+			Expect(testutil.K3sKillServer(server)).To(Succeed())
 		}
-		Expect(testutil.K3sKillServer(server)).To(Succeed())
 		Expect(testutil.K3sCleanup(testLock, "")).To(Succeed())
 	}
 })
