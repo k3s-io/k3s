@@ -18,6 +18,10 @@ steps:
     else
         echo "Some files in PR are not ignored, $DIFF";
     fi;
+  when:
+    event:
+    - push
+    - pull_request
 
 - name: build
   image: rancher/dapper:v0.5.0
@@ -160,6 +164,10 @@ steps:
     else
         echo "Some files in PR are not ignored, $DIFF";
     fi;
+  when:
+    event:
+    - push
+    - pull_request
 
 - name: build
   image: rancher/dapper:v0.5.0
@@ -258,6 +266,10 @@ steps:
     else
         echo "Some files in PR are not ignored, $DIFF";
     fi;
+  when:
+    event:
+    - push
+    - pull_request
 
 - name: build
   image: rancher/dapper:v0.5.0
@@ -370,6 +382,10 @@ steps:
     else
         echo "Some files in PR are not ignored, $DIFF";
     fi;
+  when:
+    event:
+    - push
+    - pull_request
 
 - name: build
   image: rancher/dapper:v0.5.8
@@ -472,6 +488,10 @@ steps:
     else
         echo "Some files in PR are not ignored, $DIFF";
     fi;
+  when:
+    event:
+    - push
+    - pull_request
 
 - name: validate_go_mods
   image: rancher/dapper:v0.5.0
@@ -508,6 +528,10 @@ steps:
     else
         echo "Some files in PR are not ignored, $DIFF";
     fi;
+  when:
+    event:
+    - push
+    - pull_request
 
 - name: manifest
   image: plugins/docker
@@ -560,6 +584,10 @@ steps:
     else
         echo "Some files in PR are not ignored, $DIFF";
     fi;
+  when:
+    event:
+    - push
+    - pull_request
 
 - name: dispatch
   image: curlimages/curl:7.74.0
