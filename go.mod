@@ -44,7 +44,7 @@ replace (
 	go.opentelemetry.io/otel/trace => go.opentelemetry.io/otel/trace v1.10.0
 	go.opentelemetry.io/proto/otlp => go.opentelemetry.io/proto/otlp v0.19.0
 	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20220315160706-3147a52a75dd
-	golang.org/x/net => golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd
+	golang.org/x/net => golang.org/x/net v0.4.0
 	golang.org/x/sys => golang.org/x/sys v0.0.0-20220209214540-3681064d5158
 	google.golang.org/genproto => google.golang.org/genproto v0.0.0-20220107163113-42d7afdf6368
 	google.golang.org/grpc => google.golang.org/grpc v1.40.0
