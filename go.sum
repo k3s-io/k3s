@@ -311,8 +311,8 @@ github.com/fatih/camelcase v1.0.0/go.mod h1:yN2Sb0lFhZJUdVvtELVWefmrXpuZESvPmqwo
 github.com/fatih/color v1.7.0/go.mod h1:Zm6kSWBoL9eyXnKyktHP6abPY2pDugNf5KwzbycvMj4=
 github.com/felixge/httpsnoop v1.0.3 h1:s/nj+GCswXYzN5v2DpNMuMQYe+0DDwt5WVCU6CWBdXk=
 github.com/felixge/httpsnoop v1.0.3/go.mod h1:m8KPJKqk1gH5J9DgRY2ASl2lWCfGKXixSwevea8zH2U=
-github.com/flannel-io/flannel v0.21.1 h1:D7zBx5cTp4gSPyVa07apTyXiPEQx6+Py8HDzR32JKoc=
-github.com/flannel-io/flannel v0.21.1/go.mod h1:G+803LyYHH04iO2zW5fl0vwcjLSaLf3d5YRY85Vx0E4=
+github.com/flannel-io/flannel v0.21.3 h1:MlFNP7Jav/dsTPYLEaorZrZpBiW/SRMFk2lHip/LJeU=
+github.com/flannel-io/flannel v0.21.3/go.mod h1:G2mprs/a241vGL0Ha9DDY/Fthx2xDt0WQkJEyspBfMk=
 github.com/flynn/go-shlex v0.0.0-20150515145356-3f9db97f8568/go.mod h1:xEzjJPgXI435gkrCt3MPfRiAkVrwSbHsst4LCFVfpJc=
 github.com/form3tech-oss/jwt-go v3.2.3+incompatible h1:7ZaBxOI7TMoYBfyA3cQHErNNyAWIKUMIwqxEtgHOs5c=
 github.com/form3tech-oss/jwt-go v3.2.3+incompatible/go.mod h1:pbq4aXjuKjdthFRnoDwaVPLA+WlJuPGy+QneDUgJi2k=
