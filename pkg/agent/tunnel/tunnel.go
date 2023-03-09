@@ -160,7 +160,12 @@ func (a *agentTunnel) setKubeletPort(ctx context.Context, apiServerReady <-chan 
 			logrus.Debugf("Tunnel authorizer failed to get Kubelet Port: %v", err)
 			return false, nil
 		}
-		a.kubeletPort = strconv.FormatInt(int64(node.Status.DaemonEndpoints.KubeletEndpoint.Port), 10)
+		kubeletPort := strconv.FormatInt(int64(node.Status.DaemonEndpoints.KubeletEndpoint.Port), 10)
+		if kubeletPort == "0" {
+			logrus.Debugf("Waiting for the kubelet port to be populated")
+			return false, nil
+		}
+		a.kubeletPort = kubeletPort
 		logrus.Infof("Tunnel authorizer set Kubelet Port %s", a.kubeletPort)
 		return true, nil
 	})
