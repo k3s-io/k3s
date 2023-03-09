@@ -15,7 +15,6 @@ replace (
 	github.com/docker/libnetwork => github.com/docker/libnetwork v0.8.0-dev.2.0.20190624125649-f0e46a78ea34
 	github.com/golang/protobuf => github.com/golang/protobuf v1.5.2
 	github.com/google/cadvisor => github.com/k3s-io/cadvisor v0.46.0-k3s1
-	github.com/googleapis/gax-go/v2 => github.com/googleapis/gax-go/v2 v2.0.5
 	github.com/juju/errors => github.com/k3s-io/nocode v0.0.0-20200630202308-cb097102c09f
 	github.com/kubernetes-sigs/cri-tools => github.com/k3s-io/cri-tools v1.26.0-rc.0-k3s1
 	github.com/opencontainers/runc => github.com/opencontainers/runc v1.1.4
@@ -105,7 +104,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.5.0
-	github.com/gruntwork-io/terratest v0.40.6
+	github.com/gruntwork-io/terratest v0.41.15
 	github.com/json-iterator/go v1.1.12
 	github.com/k3s-io/helm-controller v0.13.1
 	github.com/k3s-io/kine v0.9.9
@@ -164,8 +163,11 @@ require (
 )
 
 require (
-	cloud.google.com/go v0.97.0 // indirect
-	cloud.google.com/go/storage v1.10.0 // indirect
+	cloud.google.com/go v0.105.0 // indirect
+	cloud.google.com/go/compute v1.12.1 // indirect
+	cloud.google.com/go/compute/metadata v0.2.1 // indirect
+	cloud.google.com/go/iam v0.7.0 // indirect
+	cloud.google.com/go/storage v1.27.0 // indirect
 	github.com/Azure/azure-sdk-for-go v55.0.0+incompatible // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/Azure/go-autorest v14.2.0+incompatible // indirect
@@ -262,7 +264,8 @@ require (
 	github.com/google/go-containerregistry v0.7.0 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
-	github.com/googleapis/gax-go/v2 v2.1.1 // indirect
+	github.com/googleapis/enterprise-certificate-proxy v0.2.0 // indirect
+	github.com/googleapis/gax-go/v2 v2.7.0 // indirect
 	github.com/gregjones/httpcache v0.0.0-20180305231024-9cad4c3443a7 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0 // indirect
@@ -271,11 +274,11 @@ require (
 	github.com/hanwen/go-fuse/v2 v2.1.1-0.20220112183258-f57e95bda82d // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
-	github.com/hashicorp/go-getter v1.5.9 // indirect
+	github.com/hashicorp/go-getter v1.7.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/go-retryablehttp v0.7.1 // indirect
 	github.com/hashicorp/go-safetemp v1.0.0 // indirect
-	github.com/hashicorp/go-version v1.3.0 // indirect
+	github.com/hashicorp/go-version v1.6.0 // indirect
 	github.com/hashicorp/hcl/v2 v2.9.1 // indirect
 	github.com/hashicorp/terraform-json v0.13.0 // indirect
 	github.com/imdario/mergo v0.3.12 // indirect
@@ -301,7 +304,7 @@ require (
 	github.com/minio/sha256-simd v1.0.0 // indirect
 	github.com/mistifyio/go-zfs v2.1.2-0.20190413222219-f784269be439+incompatible // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
-	github.com/mitchellh/go-testing-interface v1.0.0 // indirect
+	github.com/mitchellh/go-testing-interface v1.14.1 // indirect
 	github.com/mitchellh/go-wordwrap v1.0.1 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/moby/ipvs v1.1.0 // indirect
@@ -346,7 +349,7 @@ require (
 	github.com/syndtr/gocapability v0.0.0-20200815063812-42c35b437635 // indirect
 	github.com/tmc/grpc-websocket-proxy v0.0.0-20220101234140-673ab2c3ae75 // indirect
 	github.com/tmccombs/hcl2json v0.3.3 // indirect
-	github.com/ulikunitz/xz v0.5.8 // indirect
+	github.com/ulikunitz/xz v0.5.10 // indirect
 	github.com/urfave/cli/v2 v2.23.5 // indirect
 	github.com/vbatts/tar-split v0.11.2 // indirect
 	github.com/vishvananda/netns v0.0.2 // indirect
@@ -359,7 +362,7 @@ require (
 	go.etcd.io/etcd/client/v2 v2.305.5 // indirect
 	go.etcd.io/etcd/pkg/v3 v3.5.5 // indirect
 	go.etcd.io/etcd/raft/v3 v3.5.5 // indirect
-	go.opencensus.io v0.23.0 // indirect
+	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/github.com/emicklei/go-restful/otelrestful v0.35.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.35.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.35.0 // indirect
@@ -380,10 +383,10 @@ require (
 	golang.org/x/text v0.7.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	golang.org/x/tools v0.6.0 // indirect
-	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
+	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	golang.zx2c4.com/wireguard v0.0.0-20220117163742-e0b8f11489c5 // indirect
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20211230205640-daad0b7ba671 // indirect
-	google.golang.org/api v0.60.0 // indirect
+	google.golang.org/api v0.103.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20230106154932-a12b697841d9 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
