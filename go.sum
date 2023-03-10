@@ -574,8 +574,8 @@ github.com/jtolds/gls v4.20.0+incompatible/go.mod h1:QJZ7F/aHp+rZTRtaJ1ow/lLfFfV
 github.com/julienschmidt/httprouter v1.2.0/go.mod h1:SYymIcj16QtmaHHD7aYtjjsJG7VTCxuUUipMqKk8s4w=
 github.com/julienschmidt/httprouter v1.3.0/go.mod h1:JR6WtHb+2LUe8TCKY3cZOxFyyO8IZAc4RVcycCCAKdM=
 github.com/jung-kurt/gofpdf v1.0.3-0.20190309125859-24315acbbda5/go.mod h1:7Id9E/uU8ce6rXgefFLlgrJj/GYY22cpxn+r32jIOes=
-github.com/k3s-io/containerd v1.5.16-k3s1 h1:r8WBp1DJS5OfGWV4XMohQ3SkQnreZRK1E4lT02xUXiA=
-github.com/k3s-io/containerd v1.5.16-k3s1/go.mod h1:vCILl/gWFsZXZVuIrDefia9pbKe7cpWbpavHNET9axM=
+github.com/k3s-io/containerd v1.5.18-k3s1 h1:D0vel+NKZ4/FnYDwFqMQ06OA3jca87rUMeWN782ABU8=
+github.com/k3s-io/containerd v1.5.18-k3s1/go.mod h1:vCILl/gWFsZXZVuIrDefia9pbKe7cpWbpavHNET9axM=
 github.com/k3s-io/cri-dockerd v0.3.2-0.20230123224751-84abd1adca2f h1:IE2u6OszvDDSiKEK5cqFYN6Dv6JwJa2CBHOsfyhwWck=
 github.com/k3s-io/cri-dockerd v0.3.2-0.20230123224751-84abd1adca2f/go.mod h1:ueOhVo7Wl03vKTKYFWNVUvVJ2LNDkmWfSs4z2Th8Um4=
 github.com/k3s-io/cri-tools v1.24.0-k3s1 h1:Em7IZ/ElBFbHlPLjV0w2ttORxFl5upBxnbP/9IlT/3c=
