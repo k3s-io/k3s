@@ -39,6 +39,7 @@ metadata:
     app.kubernetes.io/version: v1.4.0
 data:
   default-setting.yaml: |-
+    storage-minimal-available-percentage: "10"
 ---
 # Source: longhorn/templates/storageclass.yaml
 apiVersion: v1
