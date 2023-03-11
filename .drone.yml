@@ -130,6 +130,48 @@ volumes:
 
 ---
 kind: pipeline
+name: conformance
+
+platform:
+  os: linux
+  arch: amd64
+
+trigger:
+  event:
+  - cron
+  cron:
+  - nightly
+
+steps:
+- name: build
+  image: rancher/dapper:v0.5.0
+  commands:
+  - dapper ci
+  - echo "${DRONE_TAG}-amd64" | sed -e 's/+/-/g' >.tags
+  volumes:
+  - name: docker
+    path: /var/run/docker.sock
+
+- name: test
+  image: rancher/dapper:v0.5.0
+  environment:
+    ENABLE_REGISTRY: 'true'
+  commands:
+  - docker build --target test-k3s -t k3s:test-${DRONE_STAGE_ARCH}-${DRONE_COMMIT} -f Dockerfile.test .
+  - >
+    docker run -i -e REPO -e TAG -e DRONE_TAG -e DRONE_BUILD_EVENT -e IMAGE_NAME -e SONOBUOY_VERSION -e ENABLE_REGISTRY
+    -v /var/run/docker.sock:/var/run/docker.sock --privileged --network host -v /tmp:/tmp k3s:test-${DRONE_STAGE_ARCH}-${DRONE_COMMIT}
+  volumes:
+  - name: docker
+    path: /var/run/docker.sock
+
+volumes:
+- name: docker
+  host:
+    path: /var/run/docker.sock
+
+---
+kind: pipeline
 name: arm64
 
 platform:
@@ -499,3 +541,65 @@ trigger:
 
 depends_on:
 - manifest
+
+---
+kind: pipeline
+name: e2e
+type: docker
+
+platform:
+  os: linux
+  arch: amd64
+
+steps:
+- name: build-e2e-image
+  image: rancher/dapper:v0.5.0
+  commands:
+    - DOCKER_BUILDKIT=1 docker build --target test-e2e -t test-e2e -f Dockerfile.test .
+    - SKIP_VALIDATE=true SKIP_AIRGAP=true dapper ci
+    - cp dist/artifacts/* /tmp/artifacts/
+  volumes:
+  - name: cache
+    path: /tmp/artifacts
+  - name: docker
+    path: /var/run/docker.sock
+
+- name: test-e2e
+  image: test-e2e
+  pull: never
+  resources:
+    cpu: 6000
+    memory: 10Gi
+  environment:
+    E2E_REGISTRY: 'true'
+  commands:
+  - mkdir -p dist/artifacts
+  - cp /tmp/artifacts/* dist/artifacts/
+  - docker stop registry && docker rm registry
+  - docker run -d -p 5000:5000 -e REGISTRY_PROXY_REMOTEURL=https://registry-1.docker.io --name registry registry:2
+  - cd tests/e2e/validatecluster
+  - vagrant destroy -f
+  - go test -v -timeout=30m ./validatecluster_test.go -ci -local
+  - cd ../secretsencryption
+  - vagrant destroy -f
+  - go test -v -timeout=30m ./secretsencryption_test.go -ci -local
+  - cd ../upgradecluster
+  - E2E_RELEASE_CHANNEL="latest" go test -v -timeout=45m ./upgradecluster_test.go  -ci -local
+  - docker stop registry && docker rm registry
+  volumes:
+  - name: libvirt
+    path: /var/run/libvirt/
+  - name: docker
+    path: /var/run/docker.sock
+  - name: cache
+    path: /tmp/artifacts
+
+volumes:
+- name: docker
+  host:
+    path: /var/run/docker.sock
+- name: libvirt
+  host:
+    path: /var/run/libvirt/
+- name: cache
+  temp: {}

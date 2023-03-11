@@ -35,3 +35,21 @@ ENV TEST_CLEANUP true
 
 ENTRYPOINT ["./scripts/entry.sh"]
 CMD ["test"]
+
+
+FROM vagrantlibvirt/vagrant-libvirt:0.10.7 AS test-e2e
+
+RUN apt-get update && apt-get install -y docker.io
+RUN vagrant plugin install vagrant-k3s vagrant-reload vagrant-scp
+RUN vagrant box add generic/ubuntu2004 --provider libvirt --force
+RUN curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"; \
+    chmod +x ./kubectl; \
+    mv ./kubectl /usr/local/bin/kubectl
+ENV GO_VERSION 1.19.2
+RUN curl -O -L "https://golang.org/dl/go${GO_VERSION}.linux-amd64.tar.gz"; \
+    rm -rf /usr/local/go; \
+    tar -C /usr/local -xzf go${GO_VERSION}.linux-amd64.tar.gz;
+
+ENV PATH="${PATH}:/usr/local/go/bin"
+
+
