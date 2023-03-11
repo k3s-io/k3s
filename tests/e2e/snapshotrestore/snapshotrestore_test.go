@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/k3s-io/k3s/tests/e2e"
 	. "github.com/onsi/ginkgo/v2"
@@ -44,7 +45,7 @@ var (
 var _ = ReportAfterEach(e2e.GenReport)
 
 var _ = Describe("Verify snapshots and cluster restores work", Ordered, func() {
-	Context("Cluster :", func() {
+	Context("Cluster creates snapshots and workloads:", func() {
 		It("Starts up with no issues", func() {
 			var err error
 			if *local {
@@ -123,6 +124,8 @@ var _ = Describe("Verify snapshots and cluster restores work", Ordered, func() {
 			}, "240s", "5s").Should(Succeed())
 		})
 
+	})
+	Context("Cluster is reset normally", func() {
 		It("Resets the cluster", func() {
 			for _, nodeName := range serverNodeNames {
 				cmd := "sudo systemctl stop k3s"
@@ -169,6 +172,7 @@ var _ = Describe("Verify snapshots and cluster restores work", Ordered, func() {
 			for _, nodeName := range serverNodeNames[1:] {
 				cmd := "sudo systemctl start k3s"
 				Expect(e2e.RunCmdOnNode(cmd, nodeName)).Error().NotTo(HaveOccurred())
+				time.Sleep(20 * time.Second) //Stagger the restarts for etcd leaners
 			}
 		})
 
@@ -177,7 +181,8 @@ var _ = Describe("Verify snapshots and cluster restores work", Ordered, func() {
 				nodes, err := e2e.ParseNodes(kubeConfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
 				for _, node := range nodes {
-					g.Expect(node.Status).Should(Equal("Ready"))
+					nodeJournal, _ := e2e.GetJournalLogs(node.Name)
+					g.Expect(node.Status).Should(Equal("Ready"), nodeJournal)
 				}
 			}, "420s", "5s").Should(Succeed())
 
@@ -204,6 +209,8 @@ var _ = Describe("Verify snapshots and cluster restores work", Ordered, func() {
 			Expect(res).Should(ContainSubstring("test-nodeport"))
 		})
 
+	})
+	Context("Cluster restores from snapshot", func() {
 		It("Restores the snapshot", func() {
 			//Stop k3s on all nodes
 			for _, nodeName := range serverNodeNames {
