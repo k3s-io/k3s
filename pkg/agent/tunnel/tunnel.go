@@ -41,6 +41,7 @@ type agentTunnel struct {
 	ports       map[string]bool
 	mode        string
 	kubeletPort string
+	startTime   time.Time
 }
 
 // explicit interface check
@@ -72,12 +73,12 @@ func Setup(ctx context.Context, config *daemonconfig.Node, proxy proxy.Proxy) er
 	}
 
 	tunnel := &agentTunnel{
-		client: client,
-		cidrs:  cidranger.NewPCTrieRanger(),
-		ports:  map[string]bool{},
-		mode:   config.EgressSelectorMode,
-
+		client:      client,
+		cidrs:       cidranger.NewPCTrieRanger(),
+		ports:       map[string]bool{},
+		mode:        config.EgressSelectorMode,
 		kubeletPort: fmt.Sprint(ports.KubeletPort),
+		startTime:   time.Now().Truncate(time.Second),
 	}
 
 	apiServerReady := make(chan struct{})
@@ -154,13 +155,28 @@ func (a *agentTunnel) setKubeletPort(ctx context.Context, apiServerReady <-chan 
 	<-apiServerReady
 
 	wait.PollImmediateWithContext(ctx, time.Second, util.DefaultAPIServerReadyTimeout, func(ctx context.Context) (bool, error) {
+		var readyTime metav1.Time
 		nodeName := os.Getenv("NODE_NAME")
 		node, err := a.client.CoreV1().Nodes().Get(ctx, nodeName, metav1.GetOptions{})
 		if err != nil {
 			logrus.Debugf("Tunnel authorizer failed to get Kubelet Port: %v", err)
 			return false, nil
 		}
-		a.kubeletPort = strconv.FormatInt(int64(node.Status.DaemonEndpoints.KubeletEndpoint.Port), 10)
+		for _, cond := range node.Status.Conditions {
+			if cond.Type == v1.NodeReady && cond.Status == v1.ConditionTrue {
+				readyTime = cond.LastHeartbeatTime
+			}
+		}
+		if readyTime.Time.Before(a.startTime) {
+			logrus.Debugf("Waiting for Ready condition to be updated for Kubelet Port assignment")
+			return false, nil
+		}
+		kubeletPort := strconv.FormatInt(int64(node.Status.DaemonEndpoints.KubeletEndpoint.Port), 10)
+		if kubeletPort == "0" {
+			logrus.Debugf("Waiting for Kubelet Port to be set")
+			return false, nil
+		}
+		a.kubeletPort = kubeletPort
 		logrus.Infof("Tunnel authorizer set Kubelet Port %s", a.kubeletPort)
 		return true, nil
 	})
