@@ -1,0 +1,51 @@
+version: 2
+updates:
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: &interval "weekly"
+    commit-message:
+      prefix: &branch "[Release-1.25]"
+  
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: *interval
+    commit-message:
+      prefix: *branch
+
+  - package-ecosystem: "docker"
+    directory: "/conformance"
+    schedule:
+      interval: *interval
+    commit-message:
+      prefix: *branch
+
+  - package-ecosystem: "docker"
+    directory: "/tests/e2e/scripts"
+    schedule:
+      interval: *interval
+    commit-message:
+      prefix: *branch
+
+  - package-ecosystem: "docker"
+    directory: "/package"
+    schedule:
+      interval: *interval
+    commit-message:
+      prefix: *branch
+
+  - package-ecosystem: "docker"
+    directory: "/tests/integration"
+    schedule:
+      interval: *interval
+    commit-message:
+      prefix: *branch
+
+  - package-ecosystem: "docker"
+    directory: "/tests/terraform"
+    schedule:
+      interval: *interval
+    commit-message:
+      prefix: *branch
