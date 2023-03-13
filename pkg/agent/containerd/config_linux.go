@@ -69,6 +69,7 @@ func setupContainerdConfig(ctx context.Context, cfg *config.Node) error {
 		EnableUnprivileged:    kernel.CheckKernelVersion(4, 11, 0),
 		PrivateRegistryConfig: privRegistries.Registry,
 		ExtraRuntimes:         findNvidiaContainerRuntimes(os.DirFS(string(os.PathSeparator))),
+		Program:               version.Program,
 	}
 
 	selEnabled, selConfigured, err := selinuxStatus()
