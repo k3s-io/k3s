@@ -113,7 +113,7 @@ var _ = Describe("Verify Secrets Encryption Rotation", Ordered, func() {
 		})
 
 		It("Restarts K3s servers", func() {
-			Expect(e2e.RestartCluster(serverNodeNames)).To(Succeed(), e2e.GetVagrantLog(nil))
+			Expect(e2e.RestartServer(serverNodeNames)).To(Succeed(), e2e.GetVagrantLog(nil))
 		})
 
 		It("Checks node and pod status", func() {
@@ -172,7 +172,7 @@ var _ = Describe("Verify Secrets Encryption Rotation", Ordered, func() {
 		})
 
 		It("Restarts K3s servers", func() {
-			Expect(e2e.RestartCluster(serverNodeNames)).To(Succeed(), e2e.GetVagrantLog(nil))
+			Expect(e2e.RestartServer(serverNodeNames)).To(Succeed(), e2e.GetVagrantLog(nil))
 		})
 
 		It("Verifies encryption rotate stage", func() {
@@ -207,7 +207,7 @@ var _ = Describe("Verify Secrets Encryption Rotation", Ordered, func() {
 		})
 
 		It("Restarts K3s Servers", func() {
-			Expect(e2e.RestartCluster(serverNodeNames)).To(Succeed(), e2e.GetVagrantLog(nil))
+			Expect(e2e.RestartServer(serverNodeNames)).To(Succeed(), e2e.GetVagrantLog(nil))
 		})
 
 		It("Verifies Encryption Reencrypt Stage", func() {
@@ -253,7 +253,7 @@ var _ = Describe("Verify Secrets Encryption Rotation", Ordered, func() {
 		})
 
 		It("Restarts K3s servers", func() {
-			Expect(e2e.RestartCluster(serverNodeNames)).To(Succeed())
+			Expect(e2e.RestartServer(serverNodeNames)).To(Succeed())
 		})
 
 		It("Verifies encryption disabled on all nodes", func() {
@@ -284,7 +284,7 @@ var _ = Describe("Verify Secrets Encryption Rotation", Ordered, func() {
 		})
 
 		It("Restarts K3s servers", func() {
-			Expect(e2e.RestartCluster(serverNodeNames)).To(Succeed())
+			Expect(e2e.RestartServer(serverNodeNames)).To(Succeed())
 		})
 
 		It("Verifies encryption enabled on all nodes", func() {
