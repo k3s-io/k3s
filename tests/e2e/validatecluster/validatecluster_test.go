@@ -221,12 +221,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 			Expect(err).NotTo(HaveOccurred(), "Daemonset manifest not deployed")
 			defer e2e.DeleteWorkload("daemonset.yaml", kubeConfigFile)
 			nodes, _ := e2e.ParseNodes(kubeConfigFile, false)
-			errRestart := e2e.RestartCluster(serverNodeNames)
-			Expect(errRestart).NotTo(HaveOccurred(), "Restart Nodes not happened correctly")
-			if len(agentNodeNames) > 0 {
-				errRestartAgent := e2e.RestartCluster(agentNodeNames)
-				Expect(errRestartAgent).NotTo(HaveOccurred(), "Restart Agent not happened correctly")
-			}
+
 			Eventually(func(g Gomega) {
 				pods, _ := e2e.ParsePods(kubeConfigFile, false)
 				count := e2e.CountOfStringInSlice("test-daemonset", pods)
@@ -239,7 +234,12 @@ var _ = Describe("Verify Create", Ordered, func() {
 				}
 				g.Expect(len(nodes)).Should((Equal(podsRunning)), "Daemonset running pods count does not match node count")
 			}, "620s", "5s").Should(Succeed())
-
+			errRestart := e2e.RestartCluster(serverNodeNames)
+			Expect(errRestart).NotTo(HaveOccurred(), "Restart Nodes not happened correctly")
+			if len(agentNodeNames) > 0 {
+				errRestartAgent := e2e.RestartCluster(agentNodeNames)
+				Expect(errRestartAgent).NotTo(HaveOccurred(), "Restart Agent not happened correctly")
+			}
 			Eventually(func(g Gomega) {
 				nodes, err := e2e.ParseNodes(kubeConfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
