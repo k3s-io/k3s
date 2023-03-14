@@ -109,7 +109,7 @@ spec:
           operator: "Exists"
           effect: "NoSchedule"
       nodeSelector:
-        beta.kubernetes.io/os: linux
+        kubernetes.io/os: linux
       topologySpreadConstraints:
         - maxSkew: 1
           topologyKey: kubernetes.io/hostname
