@@ -251,7 +251,7 @@ var _ = Describe("Verify Upgrade", Ordered, func() {
 		It("Upgrades with no issues", func() {
 			var err error
 			Expect(e2e.UpgradeCluster(append(serverNodeNames, agentNodeNames...), *local)).To(Succeed())
-			Expect(e2e.RestartCluster(append(serverNodeNames, agentNodeNames...))).To(Succeed())
+			Expect(e2e.RestartServer(append(serverNodeNames, agentNodeNames...))).To(Succeed())
 			fmt.Println("CLUSTER UPGRADED")
 			kubeConfigFile, err = e2e.GenKubeConfigFile(serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred())
