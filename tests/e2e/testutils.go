@@ -214,6 +214,15 @@ func CreateLocalCluster(nodeOS string, serverCount, agentCount int) ([]string, [
 	return serverNodeNames, agentNodeNames, nil
 }
 
+// Deletes the content of a manifest file previously applied
+func DeleteWorkload(workload, kubeconfig string) error {
+	cmd := "kubectl delete -f " + workload + " --kubeconfig=" + kubeconfig
+	if _, err := RunCommand(cmd); err != nil {
+		return err
+	}
+	return nil
+}
+
 func DeployWorkload(workload, kubeconfig string, hardened bool) (string, error) {
 	resourceDir := "../amd64_resource_files"
 	if hardened {
