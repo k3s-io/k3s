@@ -221,10 +221,10 @@ var _ = Describe("Verify Create", Ordered, func() {
 			Expect(err).NotTo(HaveOccurred(), "Daemonset manifest not deployed")
 			defer e2e.DeleteWorkload("daemonset.yaml", kubeConfigFile)
 			nodes, _ := e2e.ParseNodes(kubeConfigFile, false)
-			errRestart := e2e.RestartServer(serverNodeNames)
+			errRestart := e2e.RestartCluster(serverNodeNames)
 			Expect(errRestart).NotTo(HaveOccurred(), "Restart Nodes not happened correctly")
 			if len(agentNodeNames) > 0 {
-				errRestartAgent := e2e.RestartServer(agentNodeNames)
+				errRestartAgent := e2e.RestartCluster(agentNodeNames)
 				Expect(errRestartAgent).NotTo(HaveOccurred(), "Restart Agent not happened correctly")
 			}
 			Eventually(func(g Gomega) {

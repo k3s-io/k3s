@@ -95,11 +95,11 @@ var _ = Describe("Verify Custom CA Rotation", Ordered, func() {
 		})
 
 		It("Restarts K3s servers", func() {
-			Expect(e2e.RestartServer(serverNodeNames)).To(Succeed())
+			Expect(e2e.RestartCluster(serverNodeNames)).To(Succeed())
 		})
 
 		It("Restarts K3s agents", func() {
-			Expect(e2e.RestartServer(agentNodeNames)).To(Succeed())
+			Expect(e2e.RestartCluster(agentNodeNames)).To(Succeed())
 		})
 
 		It("Checks node and pod status", func() {

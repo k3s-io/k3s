@@ -413,8 +413,8 @@ func ParsePods(kubeConfig string, print bool) ([]Pod, error) {
 	return pods, nil
 }
 
-// RestartServer restarts the k3s service on each node given
-func RestartServer(nodeNames []string) error {
+// RestartCluster restarts the k3s service on each node given
+func RestartCluster(nodeNames []string) error {
 	for _, nodeName := range nodeNames {
 		cmd := "sudo systemctl restart k3s*"
 		if _, err := RunCmdOnNode(cmd, nodeName); err != nil {
