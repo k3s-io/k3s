@@ -18,7 +18,7 @@ var testLock int
 
 var _ = BeforeSuite(func() {
 	if _, err := exec.LookPath("iscsiadm"); err != nil {
-		Skip("Test needs open-iscsi to ben installed")
+		Skip("Test needs open-iscsi to be installed")
 	} else if !testutil.IsExistingServer() {
 		var err error
 		testLock, err = testutil.K3sTestLock()
