@@ -46,6 +46,7 @@ var _ = Describe("longhorn", Ordered, func() {
 	When("longhorn is installed", func() {
 		It("installs components into the longhorn-system namespace", func() {
 			result, err := testutil.K3sCmd("kubectl apply -f ./testdata/longhorn.yaml")
+			Expect(err).NotTo(HaveOccurred())
 			Expect(result).To(ContainSubstring("namespace/longhorn-system created"))
 			Expect(result).To(ContainSubstring("daemonset.apps/longhorn-manager created"))
 			Expect(result).To(ContainSubstring("deployment.apps/longhorn-driver-deployer created"))
@@ -53,7 +54,6 @@ var _ = Describe("longhorn", Ordered, func() {
 			Expect(result).To(ContainSubstring("deployment.apps/longhorn-ui created"))
 			Expect(result).To(ContainSubstring("deployment.apps/longhorn-conversion-webhook created"))
 			Expect(result).To(ContainSubstring("deployment.apps/longhorn-admission-webhook created"))
-			Expect(err).NotTo(HaveOccurred())
 		})
 		It("starts all pods with no problems", func() {
 			Eventually(func() error {
