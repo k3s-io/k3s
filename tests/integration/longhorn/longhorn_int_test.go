@@ -25,7 +25,6 @@ var _ = BeforeSuite(func() {
 		Expect(err).ToNot(HaveOccurred())
 		server, err = testutil.K3sStartServer(serverArgs...)
 		Expect(err).ToNot(HaveOccurred())
-		Expect(err).ToNot(HaveOccurred())
 	}
 })
 
