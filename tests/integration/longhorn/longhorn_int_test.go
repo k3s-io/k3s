@@ -55,7 +55,7 @@ var _ = Describe("longhorn", Ordered, func() {
 			Expect(result).To(ContainSubstring("deployment.apps/longhorn-conversion-webhook created"))
 			Expect(result).To(ContainSubstring("deployment.apps/longhorn-admission-webhook created"))
 		})
-		It("starts all pods with no problems", func() {
+		It("starts the longhorn pods with no problems", func() {
 			Eventually(func() error {
 				pods, err := testutil.ParsePods("longhorn-system", metav1.ListOptions{})
 				if err != nil {
