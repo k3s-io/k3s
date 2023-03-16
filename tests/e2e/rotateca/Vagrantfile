@@ -1,6 +1,6 @@
 ENV['VAGRANT_NO_PARALLEL'] = 'no'
 NODE_ROLES = (ENV['E2E_NODE_ROLES'] ||
-  ["server-0", "server-1", "server-2", "agent-1"])
+  ["server-0", "server-1", "server-2", "agent-0"])
 NODE_BOXES = (ENV['E2E_NODE_BOXES'] ||
   ['generic/ubuntu2204', 'generic/ubuntu2204', 'generic/ubuntu2204', 'generic/ubuntu2204'])
 GITHUB_BRANCH = (ENV['E2E_GITHUB_BRANCH'] || "master")
@@ -26,8 +26,12 @@ def provision(vm, role, role_num, node_num)
   vm.provision "shell", inline: "ping -c 2 k3s.io"
   
   if role.include?("server") && role_num == 0
+    vm.provision 'file' do |scp| 
+      scp.source = '../../../contrib/util/generate-custom-ca-certs.sh'
+      scp.destination = '/tmp/generate-custom-ca-certs.sh'
+    end
     vm.provision 'custom-ca', type: 'shell', run: 'once' do |script|
-      script.path = '../../../contrib/util/certs.sh'
+      script.inline = 'bash /tmp/generate-custom-ca-certs.sh'
       script.env = {'PRODUCT' => 'vagrant-e2e-test', 'DATA_DIR' => '/var/lib/rancher/k3s'}
     end
     vm.provision 'k3s-install', type: 'k3s', run: 'once' do |k3s|
