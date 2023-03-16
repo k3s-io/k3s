@@ -15,11 +15,11 @@
 # If you have existing certs, you must place then in `DATA_DIR/server/tls`.
 # If you have only an existing root CA, provide:
 #   root-ca.pem
-#   root-ca.key.
+#   root-ca.key
 # If you have an existing root and intermediate CA, provide:
 #   root-ca.pem
 #   intermediate-ca.pem
-#   intermediate-ca.key .
+#   intermediate-ca.key
 
 set -e
 umask 027
