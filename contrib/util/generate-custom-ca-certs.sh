@@ -18,7 +18,9 @@
 # If you have an existing root and intermediate CA, provide:
 #   root-ca.pem
 #   intermediate-ca.pem
-#   intermediate-ca.key.
+#   intermediate-ca.key .
+# In addition, if you have an existing service account issuer key, provide:
+#   service.key .
 
 set -e
 umask 027
@@ -43,6 +45,7 @@ fi
 ${OPENSSL} version | grep -qF 'OpenSSL 3' && OPENSSL_GENRSA_FLAGS=-traditional
 
 mkdir -p "${DATA_DIR}/server/tls/etcd"
+cp "${DATA_DIR}/"*.pem "${DATA_DIR}/"*.key  "${DATA_DIR}/server/tls/"
 cd "${DATA_DIR}/server/tls"
 
 # Set up temporary openssl configuration
