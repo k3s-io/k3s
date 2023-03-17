@@ -84,6 +84,7 @@ type Server struct {
 	EncryptForce             bool
 	EncryptOutput            string
 	EncryptSkip              bool
+	EncryptProvider          string
 	SystemDefaultRegistry    string
 	StartupHooks             []StartupHook
 	SupervisorMetrics        bool
@@ -597,6 +598,12 @@ var ServerFlags = []cli.Flag{
 		Name:        "rootless",
 		Usage:       "(experimental) Run rootless",
 		Destination: &ServerConfig.Rootless,
+	},
+	&cli.StringFlag{
+		Name:        "secrets-encryption-provider",
+		Usage:       "(experimental) Secret encryption provider (valid values: 'aescbc', 'secretbox')",
+		Destination: &ServerConfig.EncryptProvider,
+		Value:       "aescbc",
 	},
 	PreferBundledBin,
 	SELinuxFlag,
