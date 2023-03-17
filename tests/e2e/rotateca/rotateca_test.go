@@ -25,7 +25,7 @@ func Test_E2ECustomCARotation(t *testing.T) {
 	RegisterFailHandler(Fail)
 	flag.Parse()
 	suiteConfig, reporterConfig := GinkgoConfiguration()
-	RunSpecs(t, "Secrets Encryption Test Suite", suiteConfig, reporterConfig)
+	RunSpecs(t, "Custom Certificate Rotation Test Suite", suiteConfig, reporterConfig)
 }
 
 var (
@@ -80,7 +80,7 @@ var _ = Describe("Verify Custom CA Rotation", Ordered, func() {
 			cmds := []string{
 				"sudo mkdir -p /opt/rancher/k3s/server",
 				"sudo cp -r /var/lib/rancher/k3s/server/tls /opt/rancher/k3s/server",
-				"curl -ksL https://raw.githubusercontent.com/brandond/k3s/custom-cert-gen/contrib/util/certs.sh | sudo DATA_DIR=/opt/rancher/k3s bash -s -",
+				"sudo DATA_DIR=/opt/rancher/k3s /tmp/generate-custom-ca-certs.sh",
 			}
 			for _, cmd := range cmds {
 				_, err := e2e.RunCmdOnNode(cmd, serverNodeNames[0])
@@ -89,7 +89,7 @@ var _ = Describe("Verify Custom CA Rotation", Ordered, func() {
 		})
 
 		It("Rotates CA Certificates", func() {
-			cmd := "sudo k3s certificate rotate-ca --path=/opt/rancher/k3s"
+			cmd := "sudo k3s certificate rotate-ca --path=/opt/rancher/k3s/server"
 			_, err := e2e.RunCmdOnNode(cmd, serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred())
 		})

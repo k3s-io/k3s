@@ -41,6 +41,9 @@ echo 'RUNNING EXTERNAL IP TEST'
 echo 'RUNNING SNAPSHOT AND RESTORE TEST'
 /usr/local/go/bin/go test -v snapshotrestore/snapshotrestore_test.go -nodeOS="$nodeOS" -serverCount=1 -agentCount=1 -timeout=30m -json -ci | tee -a k3s_"$OS".log
 
+echo 'RUNNING ROTATE CUSTOM CA TEST'
+/usr/local/go/bin/go test -v rotateca/rotateca_test.go -nodeOS="$nodeOS" -serverCount=1 -agentCount=1 -timeout=30m -json -ci | tee -a k3s_"$OS".log
+
 E2E_RELEASE_CHANNEL="latest" && export E2E_RELEASE_CHANNEL
 echo 'RUNNING CLUSTER UPGRADE TEST'
 E2E_REGISTRY=true /usr/local/go/bin/go test -v upgradecluster/upgradecluster_test.go -nodeOS="$nodeOS" -serverCount=$((servercount)) -agentCount=$((agentcount)) -timeout=1h -json -ci | tee -a k3s_"$OS".log
