@@ -665,6 +665,22 @@ platform:
   arch: amd64
 
 steps:
+- name: skipfiles
+  image: plugins/git
+  commands:
+  - export NAME=$(test $DRONE_BUILD_EVENT = pull_request && echo remotes/origin/${DRONE_COMMIT_BRANCH:-master} || echo ${DRONE_COMMIT_SHA}~)
+  - export DIFF=$(git --no-pager diff --name-only $NAME | grep -v -f .droneignore);
+  - if [ -z "$DIFF" ]; then
+        echo "All files in PR are on ignore list";
+        exit 78;
+    else
+        echo "Some files in PR are not ignored, $DIFF";
+    fi;
+  when:
+    event:
+    - push
+    - pull_request
+
 - name: build-e2e-image
   image: rancher/dapper:v0.5.0
   commands:
@@ -686,19 +702,19 @@ steps:
   environment:
     E2E_REGISTRY: 'true'
   commands:
-  # - mkdir -p dist/artifacts
-  # - cp /tmp/artifacts/* dist/artifacts/
-  # - docker stop registry && docker rm registry
-  # - docker run -d -p 5000:5000 -e REGISTRY_PROXY_REMOTEURL=https://registry-1.docker.io --name registry registry:2
-  # - cd tests/e2e/validatecluster
-  # - vagrant destroy -f
-  # - go test -v -timeout=45m ./validatecluster_test.go -ci -local
-  # - cd ../secretsencryption
-  # - vagrant destroy -f
-  # - go test -v -timeout=30m ./secretsencryption_test.go -ci -local
-  # - cd ../upgradecluster
-  # - E2E_RELEASE_CHANNEL="latest" go test -v -timeout=45m ./upgradecluster_test.go  -ci -local
-  # - docker stop registry && docker rm registry
+  - mkdir -p dist/artifacts
+  - cp /tmp/artifacts/* dist/artifacts/
+  - docker stop registry && docker rm registry
+  - docker run -d -p 5000:5000 -e REGISTRY_PROXY_REMOTEURL=https://registry-1.docker.io --name registry registry:2
+  - cd tests/e2e/validatecluster
+  - vagrant destroy -f
+  - go test -v -timeout=45m ./validatecluster_test.go -ci -local
+  - cd ../secretsencryption
+  - vagrant destroy -f
+  - go test -v -timeout=30m ./secretsencryption_test.go -ci -local
+  - cd ../upgradecluster
+  - E2E_RELEASE_CHANNEL="latest" go test -v -timeout=45m ./upgradecluster_test.go  -ci -local
+  - docker stop registry && docker rm registry
   # Cleanup any VMs still running, happens if a test panics
   - VMS=$(virsh list --name | grep '_server-\|_agent-')
   - |
