@@ -120,9 +120,9 @@ var _ = AfterEach(func() {
 var _ = AfterSuite(func() {
 	if !testutil.IsExistingServer() {
 		if failed {
-			testutil.K3sSaveLog(server, true)
-			Expect(testutil.K3sKillServer(server)).To(Succeed())
+			testutil.K3sSaveLog(server, false)
 		}
+		Expect(testutil.K3sKillServer(server)).To(Succeed())
 		Expect(testutil.K3sCleanup(testLock, "")).To(Succeed())
 	}
 })
