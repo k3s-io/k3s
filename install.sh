@@ -116,6 +116,10 @@ verify_system() {
         HAS_OPENRC=true
         return
     fi
+    if [ -x /usr/bin/runit ]; then
+        HAS_RUNIT=true
+        return
+    fi
     if [ -x /bin/systemctl ] || type systemctl > /dev/null 2>&1; then
         HAS_SYSTEMD=true
         return
@@ -252,6 +256,10 @@ setup_env() {
     elif [ "${HAS_OPENRC}" = true ]; then
         $SUDO mkdir -p /etc/rancher/k3s
         FILE_K3S_SERVICE=/etc/init.d/${SYSTEM_NAME}
+        FILE_K3S_ENV=/etc/rancher/k3s/${SYSTEM_NAME}.env
+    elif [ "${HAS_RUNIT}" = true ]; then
+        $SUDO mkdir -p /etc/rancher/k3s
+        FILE_K3S_SERVICE=/etc/runit/sv/${SYSTEM_NAME}
         FILE_K3S_ENV=/etc/rancher/k3s/${SYSTEM_NAME}.env
     fi
 
@@ -851,10 +859,47 @@ ${LOG_FILE} {
 EOF
 }
 
+create_runit_service_file() {
+    $SUDO mkdir -p ${FILE_K3S_SERVICE}/log
+    LOG_FILE=/var/log/${SYSTEM_NAME}.log
+    info "runit: Creating service file ${FILE_K3S_SERVICE}"
+    $SUDO tee ${FILE_K3S_SERVICE}/run >/dev/null << EOF
+#!/bin/sh 
+
+exec 2>&1; set -e
+
+rm -f /tmp/k3s.*
+
+set -o allexport
+if [ -f /etc/environment ]; then source /etc/environment; fi
+if [ -f ${FILE_K3S_ENV} ]; then source ${FILE_K3S_ENV}; fi
+set +o allexport
+
+modprobe -q loop || exit 1
+mountpoint -q /sys/fs/cgroup/systemd || {
+    mkdir -p /sys/fs/cgroup/systemd;
+    mount -t cgroup -o none,name=systemd cgroup /sys/fs/cgroup/systemd;
+}
+
+exec chpst -o 1048576 -p 1048576 ${BIN_DIR}/k3s ${CMD_K3S_EXEC}
+
+EOF
+    $SUDO tee ${FILE_K3S_SERVICE}/log/run >/dev/null << EOF
+#!/bin/sh
+exec 2>&1; set -e
+
+[ -d /var/log/k3s ] || install -dm 755 /var/log/k3s
+
+exec svlogd -tt /var/log/k3s
+
+EOF
+}
+
 # --- write systemd or openrc service file ---
 create_service_file() {
     [ "${HAS_SYSTEMD}" = true ] && create_systemd_service_file
     [ "${HAS_OPENRC}" = true ] && create_openrc_service_file
+    [ "${HAS_RUNIT}" = true ] && create_runit_service_file
     return 0
 }
 
@@ -884,6 +929,17 @@ openrc_enable() {
 openrc_start() {
     info "openrc: Starting ${SYSTEM_NAME}"
     $SUDO ${FILE_K3S_SERVICE} restart
+}
+
+# --- enable and start runit service ---
+runit_enable() {
+    info "runit: Enabling ${SYSTEM_NAME} service for default runlevel"
+    $SUDO ln -s /etc/runit/sv/k3s /run/runit/service
+}
+
+runit_start() {
+    info "runit: Starting ${SYSTEM_NAME}"
+    $SUDO sv up ${FILE_K3S_SERVICE}
 }
 
 # --- startup systemd or openrc service ---
