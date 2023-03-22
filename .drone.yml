@@ -705,6 +705,16 @@ steps:
   - mkdir -p dist/artifacts
   - cp /tmp/artifacts/* dist/artifacts/
   - docker stop registry && docker rm registry
+  # Cleanup any VMs running, happens if a previous test panics
+  - |
+    VMS=$(virsh list --name | grep '_server-\|_agent-' || true)
+    if [ -n "$VMS" ]; then
+      for vm in $VMS
+      do
+        virsh destroy $vm
+        virsh undefine $vm --remove-all-storage
+      done
+    fi 
   - docker run -d -p 5000:5000 -e REGISTRY_PROXY_REMOTEURL=https://registry-1.docker.io --name registry registry:2
   - cd tests/e2e/validatecluster
   - vagrant destroy -f
@@ -715,14 +725,6 @@ steps:
   - cd ../upgradecluster
   - E2E_RELEASE_CHANNEL="latest" go test -v -timeout=45m ./upgradecluster_test.go  -ci -local
   - docker stop registry && docker rm registry
-  # Cleanup any VMs still running, happens if a test panics
-  - VMS=$(virsh list --name | grep '_server-\|_agent-' || true)
-  - |
-    for vm in $VMS
-    do
-      virsh destroy $vm
-      virsh undefine $vm --remove-all-storage
-    done
 
   volumes:
   - name: libvirt
