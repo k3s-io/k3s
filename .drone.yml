@@ -575,7 +575,7 @@ steps:
   commands:
   - mkdir -p dist/artifacts
   - cp /tmp/artifacts/* dist/artifacts/
-  - docker stop registry && docker rm registry|
+  - docker stop registry && docker rm registry
   # Cleanup any VMs running, happens if a previous test panics
   - |
     VMS=$(virsh list --name | grep '_server-\|_agent-' || true)
