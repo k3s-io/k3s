@@ -1,0 +1,114 @@
+---
+name: "Bump Klipper Helm and Helm Controller version"
+scms:
+  k3s:
+    kind: "github"
+    spec:
+      user: "{{ .github.user }}"
+      email: "{{ .github.email }}"
+      username: "{{ .github.username }}"
+      token: "{{ requiredEnv .github.token }}"
+      owner: "{{ .k3s.org }}"
+      repository: "{{ .k3s.repo }}"
+      branch: "{{ .k3s.branch }}"
+      commitmessage:
+        title: "Bump Klipper Helm and Helm Controller version"
+  helm-controller:
+    kind: "github"
+    spec:
+      user: "{{ .github.user }}"
+      email: "{{ .github.email }}"
+      username: "{{ .github.username }}"
+      token: "{{ requiredEnv .github.token }}"
+      owner: "{{ .helm_controller.org }}"
+      repository: "{{ .helm_controller.repo }}"
+      branch: "{{ .helm_controller.branch }}"
+
+actions:
+  github:
+    title: "Bump Klipper Helm and Helm Controller version"
+    kind: "github/pullrequest"
+    scmid: "k3s"
+    spec:
+      automerge: false
+      mergemethod: "squash"
+      usetitleforautomerge: true
+      parent: false
+      labels: 
+        - "dependencies"
+
+sources:
+  helm-controller:
+    name: "Get Helm Controller latest release version"
+    kind: "githubrelease"
+    spec:
+      owner: "{{ .helm_controller.org }}"
+      repository: "{{ .helm_controller.repo }}"
+      branch: "{{ .helm_controller.branch }}"
+      token: "{{ requiredEnv .github.token }}"
+      versionfilter:
+        kind: "latest"
+  klipper-helm:
+    name: "Get Klipper Helm latest release version"
+    kind: "githubrelease"
+    spec:
+      owner: "{{ .klipper_helm.org }}"
+      repository: "{{ .klipper_helm.repo }}"
+      branch: "{{ .klipper_helm.branch }}"
+      token: "{{ requiredEnv .github.token }}"
+      versionfilter:
+        kind: "latest"
+  get-pwd:
+    name: "Run Updatecli execution directory"
+    kind: "shell"
+    disablesourceinput: true
+    spec:
+      command: 'pwd'
+      environments:
+        - name: PATH
+
+conditions:
+  klipper-helm:
+    name: "Check rancher/klipper-helm image version in DockerHub"
+    kind: "dockerimage"
+    sourceid: "klipper-helm"
+    spec:
+      image: "rancher/klipper-helm"
+  helm-controller:
+    name: "Check Helm Controller usage in go.mod"
+    kind: "file"
+    scmid: "k3s"
+    disablesourceinput: true
+    spec:
+      file: "go.mod"
+      matchpattern: 'github.com/k3s-io/helm-controller'
+  klipper-helm-in-helm-controller:
+    name: "Check rancher/klipper-helm image version in Helm Controller"
+    kind: "file"
+    scmid: "helm-controller"
+    disablesourceinput: true
+    spec:
+      file: "pkg/controllers/chart/chart.go"
+      matchpattern: 'rancher/klipper-helm:{{ source "klipper-helm" }}'
+
+targets:
+  go-mod:
+    name: "Run go mod update"
+    kind: "shell"
+    scmid: "k3s"
+    disablesourceinput: true
+    spec:
+      command: '{{ source "get-pwd" }}/updatecli/scripts/run-go-mod-update.sh github.com/k3s-io/helm-controller@{{ source "helm-controller" }}'
+      environments:
+        - name: PATH
+        - name: HOME
+  klipper-helm:
+    name: "Update rancher/klipper-helm image version"
+    kind: "file"
+    scmid: "k3s"
+    sourceid: "klipper-helm"
+    spec:
+      file: "scripts/airgap/image-list.txt"
+      matchpattern: 'rancher/klipper-helm:v\d+\.\d+\.\d+(-\w+)?'
+      replacepattern: 'rancher/klipper-helm:{{ source "klipper-helm" }}'
+
