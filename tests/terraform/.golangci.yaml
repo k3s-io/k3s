@@ -6,7 +6,6 @@ linters:
     - gosec
     - megacheck
     - misspell
-    - whitespace
     - unparam
     - exportloopref
     - nlreturn

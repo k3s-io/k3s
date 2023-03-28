@@ -12,3 +12,7 @@ output "kubeconfig" {
   value = module.master.kubeconfig
   description = "kubeconfig of the cluster created"
 }
+
+output "rendered_template" {
+  value = module.master.rendered_template
+}

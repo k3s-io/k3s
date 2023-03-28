@@ -12,3 +12,7 @@ output "kubeconfig" {
   value = var.resource_name
   description = "kubeconfig of the cluster created"
 }
+
+output "rendered_template" {
+  value = data.template_file.test.rendered
+}

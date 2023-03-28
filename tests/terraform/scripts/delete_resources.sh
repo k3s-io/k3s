@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #Get resource name from tfvarslocal && change name to make more sense in this context
-RESOURCE_NAME=$(grep resource_name <terraform/modules/k3scluster/config/local.tfvars | cut -d= -f2 | tr -d ' "')
+RESOURCE_NAME=$(grep resource_name <modules/k3scluster/config/local.tfvars | cut -d= -f2 | tr -d ' "')
 NAME_PREFIX="$RESOURCE_NAME"
 
 #Terminate the instances
@@ -41,6 +41,19 @@ for LB_ARN in $LB_ARN_LIST; do
   echo "Deleting load balancer $LB_ARN"
   aws elbv2 delete-load-balancer --load-balancer-arn "$LB_ARN"
 done
+
+#Get the list of target group ARNs
+TG_ARN_LIST=$(aws elbv2 describe-target-groups \
+  --query "TargetGroups[?starts_with(TargetGroupName, '${NAME_PREFIX}') && Protocol=='TCP'].TargetGroupArn" \
+  --output text)
+
+
+#Loop through the target group ARNs and delete the target groups
+for TG_ARN in $TG_ARN_LIST; do
+  echo "Deleting target group $TG_ARN"
+  aws elbv2 delete-target-group --target-group-arn "$TG_ARN"
+done
+
 
 #Get the ID and recordName with lower case of the hosted zone that contains the Route 53 record sets
 NAME_PREFIX_LOWER=$(echo "$NAME_PREFIX" | tr '[:upper:]' '[:lower:]')
