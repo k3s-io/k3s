@@ -27,9 +27,60 @@ go test -timeout=30m ./tests/terraform/createcluster/createcluster.go ./tests/te
 go test -v -timeout=30m ./tests/terraform/... -run TFClusterCreateValidation
 # example with vars:
 go test -timeout=30m -v ./tests/terraform/createcluster.go ./tests/terraform/createcluster_test.go -node_os=ubuntu -aws_ami=ami-02f3416038bdb17fb -cluster_type=etcd -resource_name=localrun1 -sshuser=ubuntu -sshkey="key-name" -destroy=false
+
+```
+Test Flags:
+```
+- ${upgradeVersion} version to upgrade to
+```
+We can also run tests through the Makefile through tests' directory:
+
+
+```bash
+Args:
+*All args are optional and can be used with:
+
+`$make tf-tests-run`   `$make tf-tests-logs`,
+`$make vet-lint`       `$make tf-tests-complete`, 
+`$make tf-upgrade`     `$make tf-test-suite-same-cluster`,
+`$make tf-test-suite`
+
+
+- ${IMGNAME}     append any string to the end of image name
+- ${ARGNAME}     name of the arg to pass to the test
+- ${ARGVALUE}    value of the arg to pass to the test
+- ${TESTDIR}     path to the test directory 
+
+Commands:
+$ make tdf-tests-up                  # create the image from Dockerfile.build
+$ make tf-tests-run                  # runs all tests if no flags or args provided
+$ make tf-tests-down                 # removes the image
+$ make tf-tests-clean                # removes instances and resources created by tests
+$ make tf-tests-logs                 # prints logs from container the tests
+$ make tf-tests-complete             # clean resources + remove images + run tests
+$ make vet-lint                      # runs go vet and go lint
+$ make tf-create                     # runs create cluster test locally
+$ make tf-upgrade                    # runs upgrade cluster test locally
+$ make tf-test-suite-same-cluster    # runs all tests locally in sequence using the same state    
+$ make tf-remove-state               # removes terraform state dir and files
+$ make tf-test-suite                 # runs all tests locally in sequence not using the same state
+      
+Examples:
+$ make tf-tests-run IMGNAME=2 TESTDIR=terraform/upgradecluster ARGNAME=upgradeVersion ARGVALUE=v1.26.2+rke2r1
+$ make tf-tests-run TESTDIR=terraform/upgradecluster
+$ make tf-tests-logs IMGNAME=1
+$ make vet-lint TESTDIR=terraform/upgradecluster
 ```
 
-In between tests, if the cluster is not destroyed, then make sure to delete the ./tests/terraform/terraform.tfstate file if you want to create a new cluster.
+
+In between tests, if the cluster is not destroyed, then make sure to delete the ./tests/terraform/modules/terraform.tfstate + .terraform.lock.hcl file if you want to create a new cluster.
+
+
+# Common Issues:
+````
+- Issues related to terraform plugin please also delete the /.terraform folder and or go to folder that have main.tf and just run `terraform init` to download the plugin again
+````
+
 
 Additionally, to generate junit reporting for the tests, the Ginkgo CLI is used. Installation instructions can be found [here.](https://onsi.github.io/ginkgo/#getting-started)  
 
