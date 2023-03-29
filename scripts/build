@@ -16,6 +16,7 @@ PKG_K8S_CLIENT="k8s.io/client-go/pkg"
 PKG_CNI_PLUGINS="github.com/containernetworking/plugins"
 PKG_KUBE_ROUTER="github.com/cloudnativelabs/kube-router"
 PKG_CRI_DOCKERD="github.com/Mirantis/cri-dockerd"
+PKG_ETCD="go.etcd.io/etcd"
 
 buildDate=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
 
@@ -50,6 +51,8 @@ VERSIONFLAGS="
     -X ${PKG_CRI_DOCKERD}/cmd/version.Version=${VERSION_CRI_DOCKERD}
     -X ${PKG_CRI_DOCKERD}/cmd/version.GitCommit=HEAD
     -X ${PKG_CRI_DOCKERD}/cmd/version.BuildTime=${buildDate}
+
+    -X ${PKG_ETCD}/api/version.GitSHA=HEAD
 "
 
 if [ -n "${DEBUG}" ]; then
