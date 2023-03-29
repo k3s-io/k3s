@@ -21,14 +21,14 @@ replace (
 	github.com/opencontainers/runc => github.com/opencontainers/runc v1.1.4
 	github.com/opencontainers/runtime-spec => github.com/opencontainers/runtime-spec v1.0.3-0.20210326190908-1c3f411f0417
 	github.com/opencontainers/selinux => github.com/opencontainers/selinux v1.10.1
-	go.etcd.io/etcd/api/v3 => github.com/k3s-io/etcd/api/v3 v3.5.5-k3s1
-	go.etcd.io/etcd/client/pkg/v3 => github.com/k3s-io/etcd/client/pkg/v3 v3.5.5-k3s1
-	go.etcd.io/etcd/client/v2 => github.com/k3s-io/etcd/client/v2 v2.305.5-k3s1
-	go.etcd.io/etcd/client/v3 => github.com/k3s-io/etcd/client/v3 v3.5.5-k3s1
-	go.etcd.io/etcd/etcdutl/v3 => github.com/k3s-io/etcd/etcdutl/v3 v3.5.5-k3s1
-	go.etcd.io/etcd/pkg/v3 => github.com/k3s-io/etcd/pkg/v3 v3.5.5-k3s1
-	go.etcd.io/etcd/raft/v3 => github.com/k3s-io/etcd/raft/v3 v3.5.5-k3s1
-	go.etcd.io/etcd/server/v3 => github.com/k3s-io/etcd/server/v3 v3.5.5-k3s1
+	go.etcd.io/etcd/api/v3 => github.com/k3s-io/etcd/api/v3 v3.5.7-k3s1
+	go.etcd.io/etcd/client/pkg/v3 => github.com/k3s-io/etcd/client/pkg/v3 v3.5.7-k3s1
+	go.etcd.io/etcd/client/v2 => github.com/k3s-io/etcd/client/v2 v2.305.7-k3s1
+	go.etcd.io/etcd/client/v3 => github.com/k3s-io/etcd/client/v3 v3.5.7-k3s1
+	go.etcd.io/etcd/etcdutl/v3 => github.com/k3s-io/etcd/etcdutl/v3 v3.5.7-k3s1
+	go.etcd.io/etcd/pkg/v3 => github.com/k3s-io/etcd/pkg/v3 v3.5.7-k3s1
+	go.etcd.io/etcd/raft/v3 => github.com/k3s-io/etcd/raft/v3 v3.5.7-k3s1
+	go.etcd.io/etcd/server/v3 => github.com/k3s-io/etcd/server/v3 v3.5.7-k3s1
 
 	go.opentelemetry.io/contrib/instrumentation/github.com/emicklei/go-restful/otelrestful => go.opentelemetry.io/contrib/instrumentation/github.com/emicklei/go-restful/otelrestful v0.35.0
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc => go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.35.0
@@ -133,11 +133,11 @@ require (
 	github.com/urfave/cli v1.22.9
 	github.com/vishvananda/netlink v1.2.1-beta.2
 	github.com/yl2chen/cidranger v1.0.2
-	go.etcd.io/etcd/api/v3 v3.5.5
-	go.etcd.io/etcd/client/pkg/v3 v3.5.5
-	go.etcd.io/etcd/client/v3 v3.5.5
-	go.etcd.io/etcd/etcdutl/v3 v3.5.4
-	go.etcd.io/etcd/server/v3 v3.5.5
+	go.etcd.io/etcd/api/v3 v3.5.7
+	go.etcd.io/etcd/client/pkg/v3 v3.5.7
+	go.etcd.io/etcd/client/v3 v3.5.7
+	go.etcd.io/etcd/etcdutl/v3 v3.5.7
+	go.etcd.io/etcd/server/v3 v3.5.7
 	go.uber.org/zap v1.24.0
 	golang.org/x/crypto v0.5.0
 	golang.org/x/net v0.7.0
@@ -232,7 +232,6 @@ require (
 	github.com/exponent-io/jsonpath v0.0.0-20151013193312-d6023ce2651d // indirect
 	github.com/fatih/camelcase v1.0.0 // indirect
 	github.com/felixge/httpsnoop v1.0.3 // indirect
-	github.com/form3tech-oss/jwt-go v3.2.3+incompatible // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/fvbommel/sortorder v1.0.1 // indirect
 	github.com/ghodss/yaml v1.0.0 // indirect
@@ -247,7 +246,7 @@ require (
 	github.com/gofrs/uuid v4.0.0+incompatible // indirect
 	github.com/gogo/googleapis v1.4.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/golang-jwt/jwt/v4 v4.2.0 // indirect
+	github.com/golang-jwt/jwt/v4 v4.4.2 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/mock v1.6.0 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
@@ -341,9 +340,9 @@ require (
 	github.com/xlab/treeprint v1.1.0 // indirect
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	go.etcd.io/bbolt v1.3.6 // indirect
-	go.etcd.io/etcd/client/v2 v2.305.5 // indirect
-	go.etcd.io/etcd/pkg/v3 v3.5.5 // indirect
-	go.etcd.io/etcd/raft/v3 v3.5.5 // indirect
+	go.etcd.io/etcd/client/v2 v2.305.7 // indirect
+	go.etcd.io/etcd/pkg/v3 v3.5.7 // indirect
+	go.etcd.io/etcd/raft/v3 v3.5.7 // indirect
 	go.opencensus.io v0.23.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/github.com/emicklei/go-restful/otelrestful v0.35.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.35.0 // indirect
