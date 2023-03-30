@@ -25,7 +25,6 @@ steps:
     fi;
   when:
     event:
-    - push
     - pull_request
 
 - name: build
@@ -218,7 +217,6 @@ steps:
     fi;
   when:
     event:
-    - push
     - pull_request
 
 - name: build
@@ -325,7 +323,6 @@ steps:
     fi;
   when:
     event:
-    - push
     - pull_request
 
 - name: build
@@ -446,7 +443,6 @@ steps:
     fi;
   when:
     event:
-    - push
     - pull_request
 
 - name: build
