@@ -6,6 +6,11 @@ platform:
   os: linux
   arch: amd64
 
+trigger:
+  event:
+    exclude:
+    - cron
+
 steps:
 - name: build
   image: rancher/dapper:v0.5.0
@@ -178,6 +183,11 @@ platform:
   os: linux
   arch: arm64
 
+trigger:
+  event:
+    exclude:
+    - cron
+
 steps:
 - name: build
   image: rancher/dapper:v0.5.0
@@ -263,6 +273,11 @@ name: arm
 platform:
   os: linux
   arch: arm
+
+trigger:
+  event:
+    exclude:
+    - cron
 
 steps:
 - name: build
@@ -353,6 +368,11 @@ platform:
 # Hack needed for s390x: https://gist.github.com/colstrom/c2f359f72658aaabb44150ac20b16d7c#gistcomment-3858388
 node:
   arch: s390x
+
+trigger:
+  event:
+    exclude:
+    - cron
 
 clone:
   disable: true
@@ -454,6 +474,11 @@ platform:
   os: linux
   arch: amd64
 
+trigger:
+  event:
+    exclude:
+    - cron
+
 steps:
   - name: validate_go_mods
     image: rancher/dapper:v0.5.0
@@ -501,7 +526,10 @@ trigger:
   - refs/head/master
   - refs/tags/*
   event:
-  - tag
+    include:
+    - tag
+    exclude:
+      - cron
 
 depends_on:
 - amd64
