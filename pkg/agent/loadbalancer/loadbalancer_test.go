@@ -15,18 +15,18 @@ import (
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
 )
 
-type server struct {
+type testServer struct {
 	listener net.Listener
 	conns    []net.Conn
 	prefix   string
 }
 
-func createServer(prefix string) (*server, error) {
+func createServer(prefix string) (*testServer, error) {
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		return nil, err
 	}
-	s := &server{
+	s := &testServer{
 		prefix:   prefix,
 		listener: listener,
 	}
@@ -34,7 +34,7 @@ func createServer(prefix string) (*server, error) {
 	return s, nil
 }
 
-func (s *server) serve() {
+func (s *testServer) serve() {
 	for {
 		conn, err := s.listener.Accept()
 		if err != nil {
@@ -45,14 +45,14 @@ func (s *server) serve() {
 	}
 }
 
-func (s *server) close() {
+func (s *testServer) close() {
 	s.listener.Close()
 	for _, conn := range s.conns {
 		conn.Close()
 	}
 }
 
-func (s *server) echo(conn net.Conn) {
+func (s *testServer) echo(conn net.Conn) {
 	for {
 		result, err := bufio.NewReader(conn).ReadString('\n')
 		if err != nil {
