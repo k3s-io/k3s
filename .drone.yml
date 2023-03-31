@@ -6,6 +6,11 @@ platform:
   os: linux
   arch: amd64
 
+trigger:
+  event:
+    exclude:
+    - cron
+
 steps:
 - name: skipfiles
   image: plugins/git
@@ -20,7 +25,6 @@ steps:
     fi;
   when:
     event:
-    - push
     - pull_request
 
 - name: build
@@ -194,6 +198,11 @@ platform:
   os: linux
   arch: arm64
 
+trigger:
+  event:
+    exclude:
+    - cron
+
 steps:
 - name: skipfiles
   image: plugins/git
@@ -208,7 +217,6 @@ steps:
     fi;
   when:
     event:
-    - push
     - pull_request
 
 - name: build
@@ -296,6 +304,11 @@ platform:
   os: linux
   arch: arm
 
+trigger:
+  event:
+    exclude:
+    - cron
+
 steps:
 - name: skipfiles
   image: plugins/git
@@ -310,7 +323,6 @@ steps:
     fi;
   when:
     event:
-    - push
     - pull_request
 
 - name: build
@@ -402,6 +414,11 @@ platform:
 node:
   arch: s390x
 
+trigger:
+  event:
+    exclude:
+    - cron
+
 clone:
   disable: true
 
@@ -426,7 +443,6 @@ steps:
     fi;
   when:
     event:
-    - push
     - pull_request
 
 - name: build
@@ -518,6 +534,11 @@ platform:
   os: linux
   arch: amd64
 
+trigger:
+  event:
+    exclude:
+    - cron
+
 steps:
 - name: skipfiles
   image: plugins/git
@@ -598,7 +619,10 @@ trigger:
   - refs/head/master
   - refs/tags/*
   event:
-  - tag
+    include:
+    - tag
+    exclude:
+      - cron
 
 depends_on:
 - amd64
