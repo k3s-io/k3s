@@ -62,7 +62,7 @@ var _ = Describe("local storage", func() {
 			var k3sStorage = "/var/lib/rancher/k3s/storage"
 			fileStat, err := os.Stat(k3sStorage)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(fmt.Sprintf("%04o", fileStat.Mode().Perm())).To(Equal("0701"))
+			Expect(fmt.Sprintf("%04o", fileStat.Mode().Perm())).To(Equal("0700"))
 
 			pvResult, err := testutil.K3sCmd("kubectl get --namespace=default pv")
 			Expect(err).ToNot(HaveOccurred())
@@ -72,6 +72,15 @@ var _ = Describe("local storage", func() {
 			fileStat, err = os.Stat(k3sStorage + "/" + volumeName)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(fmt.Sprintf("%04o", fileStat.Mode().Perm())).To(Equal("0777"))
+
+			Eventually(func() (string, error) {
+				fileStat, err = os.Stat(k3sStorage + "/" + volumeName + "/file1")
+				return "", err
+			}, "10s", "1s").Should(Succeed())
+
+			touchResult, err := testutil.K3sCmd("kubectl --namespace=default exec -it volume-test -- touch /data/file2")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(touchResult).To(Equal(""))
 		})
 		It("deletes properly", func() {
 			Expect(testutil.K3sCmd("kubectl delete --namespace=default --force pod volume-test")).
