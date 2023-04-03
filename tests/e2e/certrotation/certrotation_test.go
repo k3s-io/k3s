@@ -53,8 +53,6 @@ var _ = Describe("Verify Custom CA Rotation", Ordered, func() {
 
 		It("Verifies Certificate Rotation", func() {
 			const grepCert = "sudo ls -lt /var/lib/rancher/k3s/server/ | grep tls"
-			//const expectResult = "client-ca.crt,client-ca.key,client-ca.nochain.crt,dynamic-cert.json,peer-ca.crt,peer-ca.key,server-ca.crt,server-ca.key,request-header-ca.crt,request-header-ca.key,server-ca.crt,server-ca.key,server-ca.nochain.crt,service.current.key,service.key,apiserver-loopback-client__.crt,apiserver-loopback-client__.key,"
-
 			var expectResult = []string{"client-ca.crt", "client-ca.key", "client-ca.nochain.crt", "client-ca.pem",
 				"dynamic-cert.json", "peer-ca.crt", "peer-ca.key", "peer-ca.pem", "server-ca.crt", "server-ca.key", "server-ca.pem",
 				"intermediate-ca.crt", "intermediate-ca.key",
@@ -96,54 +94,6 @@ var _ = Describe("Verify Custom CA Rotation", Ordered, func() {
 
 		})
 
-		/*It("Generates New CA Certificates", func() {
-			cmds := []string{
-				"sudo mkdir -p /opt/rancher/k3s/server",
-				"sudo cp -r /var/lib/rancher/k3s/server/tls /opt/rancher/k3s/server",
-				"sudo DATA_DIR=/opt/rancher/k3s /tmp/generate-custom-ca-certs.sh",
-			}
-			for _, cmd := range cmds {
-				_, err := e2e.RunCmdOnNode(cmd, serverNodeNames[0])
-				Expect(err).NotTo(HaveOccurred())
-			}
-		})
-
-		It("Rotates CA Certificates", func() {
-			cmd := "sudo k3s certificate rotate-ca --path=/opt/rancher/k3s/server"
-			_, err := e2e.RunCmdOnNode(cmd, serverNodeNames[0])
-			Expect(err).NotTo(HaveOccurred())
-		})
-
-		It("Restarts K3s servers", func() {
-			Expect(e2e.RestartCluster(serverNodeNames)).To(Succeed())
-		})
-
-		It("Restarts K3s agents", func() {
-			Expect(e2e.RestartCluster(agentNodeNames)).To(Succeed())
-		})
-
-		It("Checks node and pod status", func() {
-			Eventually(func(g Gomega) {
-				nodes, err := e2e.ParseNodes(kubeConfigFile, false)
-				g.Expect(err).NotTo(HaveOccurred())
-				for _, node := range nodes {
-					g.Expect(node.Status).Should(Equal("Ready"))
-				}
-			}, "420s", "5s").Should(Succeed())
-
-			Eventually(func(g Gomega) {
-				pods, err := e2e.ParsePods(kubeConfigFile, false)
-				g.Expect(err).NotTo(HaveOccurred())
-				for _, pod := range pods {
-					if strings.Contains(pod.Name, "helm-install") {
-						g.Expect(pod.Status).Should(Equal("Completed"), pod.Name)
-					} else {
-						g.Expect(pod.Status).Should(Equal("Running"), pod.Name)
-					}
-				}
-			}, "420s", "5s").Should(Succeed())
-			_, _ = e2e.ParseNodes(kubeConfigFile, true)
-		})*/
 	})
 })
 
