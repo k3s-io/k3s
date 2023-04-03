@@ -61,7 +61,7 @@ What's with the name?
 
 We wanted an installation of Kubernetes that was half the size in terms of memory footprint. Kubernetes is a
 10 letter word stylized as k8s. So something half as big as Kubernetes would be a 5 letter word stylized as
-K3s. There is neither a long-form of K3s nor official pronunciation.
+K3s. While there is no official pronounciation most commonly it is referred as "Hard Boiled Egg".
 
 Is this a fork?
 ---------------
