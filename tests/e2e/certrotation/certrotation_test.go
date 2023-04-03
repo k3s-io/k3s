@@ -37,6 +37,17 @@ var (
 
 var _ = ReportAfterEach(e2e.GenReport)
 
+// RotateCertificate rotate the Certificate on each node given
+func RotateCertificate(nodeNames []string) error {
+	for _, nodeName := range nodeNames {
+		cmd := "sudo k3s --debug certificate rotate"
+		if _, err := e2e.RunCmdOnNode(cmd, nodeName); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 var _ = Describe("Verify Custom CA Rotation", Ordered, func() {
 	Context("Custom CA is rotated:", func() {
 		It("Starts up with no issues", func() {
@@ -53,20 +64,29 @@ var _ = Describe("Verify Custom CA Rotation", Ordered, func() {
 
 		It("Verifies Certificate Rotation", func() {
 			const grepCert = "sudo ls -lt /var/lib/rancher/k3s/server/ | grep tls"
-			var expectResult = []string{"client-ca.crt", "client-ca.key", "client-ca.nochain.crt", "client-ca.pem",
-				"dynamic-cert.json", "peer-ca.crt", "peer-ca.key", "peer-ca.pem", "server-ca.crt", "server-ca.key", "server-ca.pem",
-				"intermediate-ca.crt", "intermediate-ca.key",
-				"intermediate-ca.pem", "request-header-ca.crt", "request-header-ca.key",
-				"request-header-ca.pem", "root-ca.crt", "root-ca.key", "root-ca.pem", "server-ca.crt", "server-ca.key",
-				"server-ca.nochain.crt", "server-ca.pem", "service.current.key", "service.key", "apiserver-loopback-client__.crt",
-				"apiserver-loopback-client__.key", "",
+			expectedResult := []string{
+				"client-ca.crt", "client-ca.key",
+				"client-ca.nochain.crt", "client-ca.pem",
+				"dynamic-cert.json", "peer-ca.crt",
+				"peer-ca.key", "peer-ca.pem",
+				"server-ca.crt", "server-ca.key",
+				"server-ca.pem", "intermediate-ca.crt",
+				"intermediate-ca.key", "intermediate-ca.pem",
+				"request-header-ca.crt", "request-header-ca.key",
+				"request-header-ca.pem", "root-ca.crt",
+				"root-ca.key", "root-ca.pem",
+				"server-ca.crt", "server-ca.key",
+				"server-ca.nochain.crt", "server-ca.pem",
+				"service.current.key", "service.key",
+				"apiserver-loopback-client__.crt", "apiserver-loopback-client__.key",
+				"",
 			}
 
 			var finalResult string
 			var finalErr error
 			errStop := e2e.StopCluster(serverNodeNames)
 			Expect(errStop).NotTo(HaveOccurred(), "Server not stop correctly")
-			errRotate := e2e.RotateCertificate(serverNodeNames)
+			errRotate := RotateCertificate(serverNodeNames)
 			Expect(errRotate).NotTo(HaveOccurred(), "Certificate not rotate correctly")
 			errStart := e2e.StartCluster(serverNodeNames)
 			Expect(errStart).NotTo(HaveOccurred(), "Server not start correctly")
@@ -87,9 +107,7 @@ var _ = Describe("Verify Custom CA Rotation", Ordered, func() {
 			Eventually(func(g Gomega) {
 				finalCert := strings.Replace(finalResult, "\n", ",", -1)
 				finalCertArray := strings.Split(finalCert, ",")
-				fmt.Println("FINAL ESTEBAN ARRAY", finalCertArray)
-				fmt.Println("FINAL ESTEBAN expectResult", expectResult)
-				Expect((finalCertArray)).Should((Equal(expectResult)), "Final certification does not match the expected results")
+				Expect((finalCertArray)).Should((Equal(expectedResult)), "Final certification does not match the expected results")
 			}, "620s", "5s").Should(Succeed())
 
 		})
