@@ -55,24 +55,22 @@ const (
 }
 `
 
-	vxlanBackend = `{
+	vxlanBackend = `{ %backendConfig%
 	"Type": "vxlan"
 }`
 
-	hostGWBackend = `{
+	hostGWBackend = `{ %backendConfig%
 	"Type": "host-gw"
 }`
 
-	ipsecBackend = `{
+	ipsecBackend = `{ %backendConfig%
 	"Type": "ipsec",
 	"UDPEncap": true,
 	"PSK": "%psk%"
 }`
 
-	wireguardNativeBackend = `{
-	"Type": "wireguard",
-	"PersistentKeepaliveInterval": %PersistentKeepaliveInterval%,
-	"Mode": "%Mode%"
+	wireguardNativeBackend = `{ %backendConfig%
+	"Type": "wireguard"
 }`
 
 	emptyIPv6Network = "::/0"
@@ -199,20 +197,24 @@ func createFlannelConf(nodeConfig *config.Node) error {
 	var backendConf string
 	parts := strings.SplitN(nodeConfig.FlannelBackend, "=", 2)
 	backend := parts[0]
-	backendOptions := make(map[string]string)
+	var backendOptions strings.Builder
 	if len(parts) > 1 {
-		logrus.Warnf("The additional options through flannel-backend are deprecated and will be removed in k3s v1.27, use flannel-conf instead")
+		logrus.Warnf("The additional options through flannel-backend are deprecated and will be removed in k3s v1.27, use flannel-backend-conf instead")
 		options := strings.Split(parts[1], ",")
 		for _, o := range options {
 			p := strings.SplitN(o, "=", 2)
-			if len(p) == 1 {
-				backendOptions[p[0]] = ""
-			} else {
-				backendOptions[p[0]] = p[1]
+			if len(p) > 1 {
+				backendOptions.WriteString("\n\"" + p[0] + "\": " + p[1] + ", ")
 			}
 		}
 	}
 
+	for _, backendConfig := range nodeConfig.FlannelBackendConfig {
+		splitOption := strings.SplitN(strings.TrimPrefix(backendConfig, "--"), "=", 2)
+		if len(splitOption) > 1 {
+			backendOptions.WriteString("\n\"" + splitOption[0] + "\": " + splitOption[1] + ", ")
+		}
+	}
 	switch backend {
 	case config.FlannelBackendVXLAN:
 		backendConf = vxlanBackend
@@ -227,20 +229,12 @@ func createFlannelConf(nodeConfig *config.Node) error {
 	case config.FlannelBackendWireguard:
 		logrus.Fatalf("The wireguard backend was deprecated in K3s v1.26, please switch to wireguard-native. Check our docs at docs.k3s.io/installation/network-options for information about how to migrate.")
 	case config.FlannelBackendWireguardNative:
-		mode, ok := backendOptions["Mode"]
-		if !ok {
-			mode = "separate"
-		}
-		keepalive, ok := backendOptions["PersistentKeepaliveInterval"]
-		if !ok {
-			keepalive = "25"
-		}
-		backendConf = strings.ReplaceAll(wireguardNativeBackend, "%Mode%", mode)
-		backendConf = strings.ReplaceAll(backendConf, "%PersistentKeepaliveInterval%", keepalive)
+		backendConf = wireguardNativeBackend
 	default:
 		return fmt.Errorf("Cannot configure unknown flannel backend '%s'", nodeConfig.FlannelBackend)
 	}
-	confJSON = strings.ReplaceAll(confJSON, "%backend%", backendConf)
+	backendFinalConf := strings.ReplaceAll(backendConf, "%backendConfig%", backendOptions.String())
+	confJSON = strings.ReplaceAll(confJSON, "%backend%", backendFinalConf)
 
 	logrus.Debugf("The flannel configuration is %s", confJSON)
 	return util.WriteFile(nodeConfig.FlannelConfFile, confJSON)

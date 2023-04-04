@@ -46,6 +46,7 @@ type Node struct {
 	FlannelIface             *net.Interface
 	FlannelIPv6Masq          bool
 	FlannelExternalIP        bool
+	FlannelBackendConfig     []string
 	EgressSelectorMode       string
 	Containerd               Containerd
 	CRIDockerd               CRIDockerd
@@ -145,6 +146,7 @@ type CriticalControlArgs struct {
 	FlannelBackend        string       `cli:"flannel-backend"`
 	FlannelIPv6Masq       bool         `cli:"flannel-ipv6-masq"`
 	FlannelExternalIP     bool         `cli:"flannel-external-ip"`
+	FlannelBackendConfig  []string     `cli:"flannel-backend-config"`
 	EgressSelectorMode    string       `cli:"egress-selector-mode"`
 	ServiceIPRange        *net.IPNet   `cli:"service-cidr"`
 	ServiceIPRanges       []*net.IPNet `cli:"service-cidr"`

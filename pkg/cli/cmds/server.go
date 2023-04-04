@@ -66,6 +66,7 @@ type Server struct {
 	FlannelBackend           string
 	FlannelIPv6Masq          bool
 	FlannelExternalIP        bool
+	FlannelBackendConfig     cli.StringSlice
 	EgressSelectorMode       string
 	DefaultLocalStoragePath  string
 	DisableCCM               bool
@@ -227,6 +228,11 @@ var ServerFlags = []cli.Flag{
 		Name:        "flannel-external-ip",
 		Usage:       "(networking) Use node external IP addresses for Flannel traffic",
 		Destination: &ServerConfig.FlannelExternalIP,
+	},
+	&cli.StringSliceFlag{
+		Name:  "flannel-backend-config",
+		Usage: "(networking) Customized flag for flannel backend config",
+		Value: &ServerConfig.FlannelBackendConfig,
 	},
 	&cli.StringFlag{
 		Name:        "egress-selector-mode",
