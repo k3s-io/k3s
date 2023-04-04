@@ -79,7 +79,6 @@ def provision(vm, role, role_num, node_num)
         node-external-ip: #{node_ip}
         flannel-iface: eth1
         #{db_type}
-        #{hardened_arg}
       YAML
       k3s.env = %W[K3S_KUBECONFIG_MODE=0644 #{install_type}]
       k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
