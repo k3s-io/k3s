@@ -110,6 +110,27 @@ var _ = Describe("longhorn", Ordered, func() {
 			}, "60s", "5s").Should(Succeed())
 		})
 	})
+
+	When("the pvc is deleted", func() {
+		It("the pv is deleted according to the default reclaim policy", func() {
+			result, err := testutil.K3sCmd("kubectl delete pod volume-test")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result).To(ContainSubstring("pod \"volume-test\" deleted"))
+			result, err = testutil.K3sCmd("kubectl delete pvc longhorn-volv-pvc")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result).To(ContainSubstring("persistentvolumeclaim \"longhorn-volv-pvc\" deleted"))
+			Eventually(func() error {
+				result, err = testutil.K3sCmd("kubectl get pv")
+				if err != nil {
+					return fmt.Errorf("failed get persistent volumes")
+				}
+				if !strings.Contains(result, "No resources found") {
+					return fmt.Errorf("persistent volumes still exist")
+				}
+				return nil
+			}, "60s", "5s").Should(Succeed())
+		})
+	})
 })
 
 var failed bool
