@@ -120,8 +120,8 @@ github.com/avast/retry-go/v4 v4.3.2 h1:x4sTEu3jSwr7zNjya8NTdIN+U88u/jtO/q3OupBoD
 github.com/avast/retry-go/v4 v4.3.2/go.mod h1:rg6XFaiuFYII0Xu3RDbZQkxCofFwruZKW8oEF1jpWiU=
 github.com/aws/aws-sdk-go v1.35.24/go.mod h1:tlPOdRjfxPBpNIwqDj61rmsnA85v9jc0Ps9+muhnW+k=
 github.com/aws/aws-sdk-go v1.44.116/go.mod h1:y4AeaBuwd2Lk+GepC1E9v0qOiTws0MIWAX4oIKwKHZo=
-github.com/aws/aws-sdk-go v1.44.171 h1:maREiPAmibvuONMOEZIkCH2OTosLRnDelceTtH3SYfo=
-github.com/aws/aws-sdk-go v1.44.171/go.mod h1:aVsgQcEevwlmQ7qHE9I3h+dtQgpqhFB+i8Phjh7fkwI=
+github.com/aws/aws-sdk-go v1.44.197 h1:pkg/NZsov9v/CawQWy+qWVzJMIZRQypCtYjUBXFomF8=
+github.com/aws/aws-sdk-go v1.44.197/go.mod h1:aVsgQcEevwlmQ7qHE9I3h+dtQgpqhFB+i8Phjh7fkwI=
 github.com/benbjohnson/clock v1.1.0 h1:Q92kusRqC1XV2MjkWETPvjJVqKetz1OzxZB7mHJLju8=
 github.com/benbjohnson/clock v1.1.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=
 github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973/go.mod h1:Dwedo/Wpr24TaqPxmxbtue+5NUziq4I4S80YR8gNf3Q=
@@ -596,8 +596,8 @@ github.com/k3s-io/klog v1.0.0-k3s2 h1:yyvD2bQbxG7m85/pvNctLX2bUDmva5kOBvuZ77tTGB
 github.com/k3s-io/klog v1.0.0-k3s2/go.mod h1:4Bi6QPql/J/LkTDqv7R/cd3hPo4k2DG6Ptcz060Ez5I=
 github.com/k3s-io/klog/v2 v2.80.1-k3s1 h1:mGMXURxxmabQurmtRhXuQTJ9jC0pvIhESSxRSymepS8=
 github.com/k3s-io/klog/v2 v2.80.1-k3s1/go.mod h1:y1WjHnz7Dj687irZUWR/WLkLc5N1YHtjLdmgWjndZn0=
-github.com/k3s-io/kube-router v1.5.1-0.20230223115732-df90811446a1 h1:/9BggaH5y1uvvxtfTGgsygXyZNORX52cAATUV7sz28Q=
-github.com/k3s-io/kube-router v1.5.1-0.20230223115732-df90811446a1/go.mod h1:gNN4WhHhz/+zoqQlhFRAChYrGadM5tIih76sPZfN5h4=
+github.com/k3s-io/kube-router/v2 v2.0.1-0.20230405162624-e18008d495ef h1:2bTqV/V8rvkijGZ3CBQ05GLFl2XTqbKdMnaxqonvrus=
+github.com/k3s-io/kube-router/v2 v2.0.1-0.20230405162624-e18008d495ef/go.mod h1:zhLSRTL1M+0BqeDTRzT42ZtlFJH/d9xaGvXGQR4c2Gc=
 github.com/k3s-io/kubernetes v1.26.3-k3s1 h1:TGJRkXakMp9i6Xx9c2i0ZTth5W9QVebyONJq0Ifgj00=
 github.com/k3s-io/kubernetes v1.26.3-k3s1/go.mod h1:NxzR7U7mS+OGa3J/qweI86Pek//mlfHqDgt6NNGdz8g=
 github.com/k3s-io/kubernetes/staging/src/k8s.io/api v1.26.3-k3s1 h1:Ss3lqvwEnFnlCfFOtV7jg71dC1TAGXldOzgY5W5cnTk=
@@ -1044,8 +1044,8 @@ github.com/vishvananda/netlink v1.2.1-beta.2/go.mod h1:twkDnbuQxJYemMlGd4JFIcuhg
 github.com/vishvananda/netns v0.0.0-20191106174202-0a2b9b5464df/go.mod h1:JP3t17pCcGlemwknint6hfoeCVQrEMVwxRLRjXpq+BU=
 github.com/vishvananda/netns v0.0.0-20200728191858-db3c7e526aae/go.mod h1:DD4vA1DwXk04H54A1oHXtwZmA0grkVMdPxx/VGLCah0=
 github.com/vishvananda/netns v0.0.0-20210104183010-2eb08e3e575f/go.mod h1:DD4vA1DwXk04H54A1oHXtwZmA0grkVMdPxx/VGLCah0=
-github.com/vishvananda/netns v0.0.2 h1:Cn05BRLm+iRP/DZxyVSsfVyrzgjDbwHwkVt38qvXnNI=
-github.com/vishvananda/netns v0.0.2/go.mod h1:yitZXdAVI+yPFSb4QUe+VW3vOVl4PZPNcBgbPxAtJxw=
+github.com/vishvananda/netns v0.0.4 h1:Oeaw1EM2JMxD51g9uhtC0D7erkIjgmj8+JZc26m1YX8=
+github.com/vishvananda/netns v0.0.4/go.mod h1:SpkAiCQRtJ6TvvxPnOSyH3BMl6unz3xZlaprSwhNNJM=
 github.com/vmware/govmomi v0.20.3 h1:gpw/0Ku+6RgF3jsi7fnCLmlcikBHfKBCUcu1qgc16OU=
 github.com/vmware/govmomi v0.20.3/go.mod h1:URlwyTFZX72RmxtxuaFL2Uj3fD1JTvZdx59bHWk6aFU=
 github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2/go.mod h1:UETIi67q53MR2AWcXfiuqkDkRtnGDLqkBTpCHuJHxtU=
