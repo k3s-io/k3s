@@ -951,7 +951,7 @@ func (e *ETCD) RemovePeer(ctx context.Context, name, address string, allowSelfRe
 				}
 				logrus.Infof("Removing name=%s id=%d address=%s from etcd", member.Name, member.ID, address)
 				_, err := e.client.MemberRemove(ctx, member.ID)
-				if err == rpctypes.ErrGRPCMemberNotFound {
+				if errors.Is(err, rpctypes.ErrGRPCMemberNotFound) {
 					return nil
 				}
 				return err
