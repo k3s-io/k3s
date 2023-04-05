@@ -12,12 +12,12 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/cloudnativelabs/kube-router/pkg/version"
+	"github.com/cloudnativelabs/kube-router/v2/pkg/version"
 
-	"github.com/cloudnativelabs/kube-router/pkg/controllers/netpol"
-	"github.com/cloudnativelabs/kube-router/pkg/healthcheck"
-	"github.com/cloudnativelabs/kube-router/pkg/options"
-	"github.com/cloudnativelabs/kube-router/pkg/utils"
+	"github.com/cloudnativelabs/kube-router/v2/pkg/controllers/netpol"
+	"github.com/cloudnativelabs/kube-router/v2/pkg/healthcheck"
+	"github.com/cloudnativelabs/kube-router/v2/pkg/options"
+	"github.com/cloudnativelabs/kube-router/v2/pkg/utils"
 	"github.com/coreos/go-iptables/iptables"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/pkg/errors"
