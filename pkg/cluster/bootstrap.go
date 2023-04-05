@@ -273,31 +273,17 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker,
 		}
 		defer storageClient.Close()
 
-		ticker := time.NewTicker(5 * time.Second)
-		defer ticker.Stop()
+		value, c.saveBootstrap, err = getBootstrapKeyFromStorage(ctx, storageClient, normalizedToken, token)
+		if err != nil {
+			return err
+		}
+		if value == nil {
+			return nil
+		}
 
-	RETRY:
-		for {
-			value, c.saveBootstrap, err = getBootstrapKeyFromStorage(ctx, storageClient, normalizedToken, token)
-			if err != nil {
-				if strings.Contains(err.Error(), "not supported for learner") {
-					for range ticker.C {
-						continue RETRY
-					}
-
-				}
-				return err
-			}
-			if value == nil {
-				return nil
-			}
-
-			dbRawData, err = decrypt(normalizedToken, value.Data)
-			if err != nil {
-				return err
-			}
-
-			break
+		dbRawData, err = decrypt(normalizedToken, value.Data)
+		if err != nil {
+			return err
 		}
 
 		buf = bytes.NewReader(dbRawData)
