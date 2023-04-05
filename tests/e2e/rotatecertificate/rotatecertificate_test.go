@@ -75,7 +75,7 @@ var _ = Describe("Verify Custom CA Rotation", Ordered, func() {
 			var finalErr error
 			errStop := e2e.StopCluster(serverNodeNames)
 			Expect(errStop).NotTo(HaveOccurred(), "Server not stop correctly")
-			errRotate := rotateCertificate(serverNodeNames)
+			errRotate := e2e.RotateCertificate(serverNodeNames)
 			Expect(errRotate).NotTo(HaveOccurred(), "Certificate not rotate correctly")
 			errStart := e2e.StartCluster(serverNodeNames)
 			Expect(errStart).NotTo(HaveOccurred(), "Server not start correctly")
