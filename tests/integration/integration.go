@@ -193,11 +193,7 @@ func GetPod(namespace, name string) (*corev1.Pod, error) {
 	if err != nil {
 		return nil, err
 	}
-	pod, err := client.CoreV1().Pods(namespace).Get(context.Background(), name, metav1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-	return pod, nil
+	return client.CoreV1().Pods(namespace).Get(context.Background(), name, metav1.GetOptions{})
 }
 
 func GetPersistentVolumeClaim(namespace, name string) (*corev1.PersistentVolumeClaim, error) {
@@ -205,11 +201,7 @@ func GetPersistentVolumeClaim(namespace, name string) (*corev1.PersistentVolumeC
 	if err != nil {
 		return nil, err
 	}
-	pvc, err := client.CoreV1().PersistentVolumeClaims(namespace).Get(context.Background(), name, metav1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-	return pvc, nil
+	return client.CoreV1().PersistentVolumeClaims(namespace).Get(context.Background(), name, metav1.GetOptions{})
 }
 
 func GetPersistentVolume(name string) (*corev1.PersistentVolume, error) {
@@ -217,11 +209,7 @@ func GetPersistentVolume(name string) (*corev1.PersistentVolume, error) {
 	if err != nil {
 		return nil, err
 	}
-	pv, err := client.CoreV1().PersistentVolumes().Get(context.Background(), name, metav1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-	return pv, nil
+	return client.CoreV1().PersistentVolumes().Get(context.Background(), name, metav1.GetOptions{})
 }
 
 func FindStringInCmdAsync(scanner *bufio.Scanner, target string) bool {
