@@ -74,8 +74,8 @@ var _ = Describe("longhorn", Ordered, func() {
 	When("persistent volume claim is created", func() {
 		It("creates the pv and pvc", func() {
 			result, err := testutil.K3sCmd("kubectl create -f ./testdata/pvc.yaml")
-			Expect(result).To(ContainSubstring("persistentvolumeclaim/longhorn-volv-pvc created"))
 			Expect(err).NotTo(HaveOccurred())
+			Expect(result).To(ContainSubstring("persistentvolumeclaim/longhorn-volv-pvc created"))
 			Eventually(func() error {
 				pvc, err := testutil.GetPersistentVolumeClaim("default", "longhorn-volv-pvc")
 				if err != nil {
@@ -96,8 +96,8 @@ var _ = Describe("longhorn", Ordered, func() {
 		})
 		It("creates a pod with the pvc", func() {
 			result, err := testutil.K3sCmd("kubectl create -f ./testdata/pod.yaml")
-			Expect(result).To(ContainSubstring("pod/volume-test created"))
 			Expect(err).NotTo(HaveOccurred())
+			Expect(result).To(ContainSubstring("pod/volume-test created"))
 			Eventually(func() error {
 				pod, err := testutil.GetPod("default", "volume-test")
 				if err != nil {
