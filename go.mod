@@ -85,7 +85,7 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.5.0
 	github.com/json-iterator/go v1.1.12
-	github.com/k3s-io/helm-controller v0.13.1
+	github.com/k3s-io/helm-controller v0.13.3
 	github.com/k3s-io/kine v0.9.9
 	github.com/klauspost/compress v1.15.12
 	github.com/kubernetes-sigs/cri-tools v0.0.0-00010101000000-000000000000
@@ -281,7 +281,7 @@ require (
 	github.com/moby/term v0.0.0-20210619224110-3f7ff695adc6 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
-	github.com/mohae/deepcopy v0.0.0-20170603005431-491d3605edfb // indirect
+	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826 // indirect
 	github.com/monochromegane/go-gitignore v0.0.0-20200626010858-205db1a8cc00 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/mrunalp/fileutils v0.5.0 // indirect
