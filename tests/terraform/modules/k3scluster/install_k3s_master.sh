@@ -25,7 +25,7 @@ export "${3}"="${4}"
 if [ "${5}" = "etcd" ]
 then
    echo "CLUSTER TYPE  is etcd"
-   if [[ "$4" == *"v1.18"* ]] || [["$4" == *"v1.17"* ]] && [[ -n "$8" ]]
+   if [[ "$4" == *"v1.18"* ]] || [[ "$4" == *"v1.17"* ]] && [[ -n "$8" ]]
    then
        echo "curl -sfL https://get.k3s.io | INSTALL_K3S_TYPE='server' sh -s - --cluster-init --node-external-ip=${6} $8" >/tmp/master_cmd
        curl -sfL https://get.k3s.io | INSTALL_K3S_TYPE='server' sh -s - --cluster-init --node-external-ip="${6}" "$8"
@@ -35,7 +35,6 @@ then
    fi
 else
    echo "CLUSTER TYPE is external db"
-   echo "$8"
    if [[ "$4" == *"v1.18"* ]] || [[ "$4" == *"v1.17"* ]] && [[ -n "$8" ]]
    then
        echo "curl -sfL https://get.k3s.io | sh -s - server --node-external-ip=${6} --datastore-endpoint=\"${7}\" $8"  >/tmp/master_cmd

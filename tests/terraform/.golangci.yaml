@@ -1,0 +1,80 @@
+linters:
+  enable:
+    - gofmt
+    - govet
+    - revive
+    - gosec
+    - megacheck
+    - misspell
+    - unparam
+    - exportloopref
+    - nlreturn
+    - nestif
+    - dupl
+    - gci
+    - ginkgolinter
+
+linters-settings:
+  govet:
+    check-shadowing: true
+    check-tests: true
+
+  nestif:
+    min-complexity: 4
+
+  revive:
+    confidence: 0.8
+    severity: warning
+    ignore-generated-header: true
+    rules:
+      - name: line-length-limit
+        arguments: [100]
+      - name: cognitive-complexity
+        arguments: [10]
+      - name: empty-lines
+      - name: empty-block
+      - name: bare-return
+      - name: blank-imports
+      - name: confusing-naming
+      - name: confusing-results
+      - name: context-as-argument
+      - name: duplicated-imports
+      - name: early-return
+      - name: empty-block
+      - name: empty-lines
+      - name: error-naming
+      - name: error-return
+      - name: error-strings
+      - name: errorf
+      - name: exported
+      - name: flag-parameter
+      - name: get-return
+      - name: if-return
+      - name: increment-decrement
+      - name: indent-error-flow
+      - name: import-shadowing
+      - name: modifies-parameter
+      - name: modifies-value-receiver
+      - name: range
+      - name: range-val-in-closure
+      - name: range-val-address
+      - name: receiver-naming
+      - name: string-of-int
+      - name: struct-tag
+      - name: superfluous-else
+      - name: time-naming
+      - name: var-declaration
+      - name: unconditional-recursion
+      - name: unexported-naming
+      - name: unexported-return
+      - name: unhandled-error
+        arguments: ["fmt.Printf", "builder.WriteString"]
+      - name: unnecessary-stmt
+      - name: unreachable-code
+      - name: unused-parameter
+      - name: unused-receiver
+
+issues:
+  exclude-rules:
+    - linters: [typecheck]
+      text: "command-line-arguments"
