@@ -470,13 +470,26 @@ setup_selinux() {
         rpm_target=sle
         rpm_site_infix=microos
         package_installer=zypper
+        if [ "${ID_LIKE:-}" = suse ] && [ "${VARIANT_ID:-}" = sle-micro ]; then
+            rpm_target=sle
+            rpm_site_infix=slemicro
+            package_installer=zypper
+        fi
     elif [ "${VERSION_ID%%.*}" = "7" ]; then
         rpm_target=el7
         rpm_site_infix=centos/7
         package_installer=yum
+    elif [ "${ID_LIKE:-}" = coreos ] || [ "${VARIANT_ID:-}" = coreos ]; then
+        rpm_target=coreos
+        rpm_site_infix=coreos
+        package_installer=rpm-ostree
     else
         rpm_target=el8
         rpm_site_infix=centos/8
+        package_installer=yum
+    fi
+
+    if [ "${package_installer}" = "rpm-ostree" ] && [ -x /bin/yum ]; then
         package_installer=yum
     fi
 
@@ -484,14 +497,20 @@ setup_selinux() {
         package_installer=dnf
     fi
 
+    if [ "${rpm_channel}" = "testing" ]; then
+        available_version=$(curl -s https://api.github.com/repos/k3s-io/k3s-selinux/releases |  grep -oP '(?<="browser_download_url": ")[^"]*' | grep -oE "[^\/]+${rpm_target}\.noarch\.rpm" | head -n 1)
+    else
+        available_version=$(curl -s https://api.github.com/repos/k3s-io/k3s-selinux/releases/latest |  grep -oP '(?<="browser_download_url": ")[^"]*' | grep -oE "[^\/]+${rpm_target}\.noarch\.rpm" )
+    fi
+
     policy_hint="please install:
     ${package_installer} install -y container-selinux
-    ${package_installer} install -y https://${rpm_site}/k3s/${rpm_channel}/common/${rpm_site_infix}/noarch/k3s-selinux-1.2-2.${rpm_target}.noarch.rpm
+    ${package_installer} install -y https://${rpm_site}/k3s/${rpm_channel}/common/${rpm_site_infix}/noarch/${available_version}
 "
 
     if [ "$INSTALL_K3S_SKIP_SELINUX_RPM" = true ] || can_skip_download_selinux || [ ! -d /usr/share/selinux ]; then
         info "Skipping installation of SELinux RPM"
-    elif  [ "${ID_LIKE:-}" != coreos ] && [ "${VARIANT_ID:-}" != coreos ]; then
+    else
         install_selinux_rpm ${rpm_site} ${rpm_channel} ${rpm_target} ${rpm_site_infix}
     fi
 
@@ -514,7 +533,7 @@ setup_selinux() {
 }
 
 install_selinux_rpm() {
-    if [ -r /etc/redhat-release ] || [ -r /etc/centos-release ] || [ -r /etc/oracle-release ] || [ "${ID_LIKE%%[ ]*}" = "suse" ]; then
+    if [ -r /etc/redhat-release ] || [ -r /etc/centos-release ] || [ -r /etc/oracle-release ] || [ -r /etc/fedora-release ] || [ "${ID_LIKE%%[ ]*}" = "suse" ]; then
         repodir=/etc/yum.repos.d
         if [ -d /etc/zypp/repos.d ]; then
             repodir=/etc/zypp/repos.d
@@ -542,6 +561,11 @@ EOF
                 rpm_installer="transactional-update --no-selfupdate -d run ${rpm_installer}"
                 : "${INSTALL_K3S_SKIP_START:=true}"
             fi
+            ;;
+        coreos)
+            rpm_installer="rpm-ostree"
+            # rpm_install_extra_args="--apply-live"
+            : "${INSTALL_K3S_SKIP_START:=true}"
             ;;
         *)
             rpm_installer="yum"
@@ -737,6 +761,9 @@ rm -f ${KILLALL_K3S_SH}
 
 if type yum >/dev/null 2>&1; then
     yum remove -y k3s-selinux
+    rm -f /etc/yum.repos.d/rancher-k3s-common*.repo
+elif type rpm-ostree >/dev/null 2>&1; then
+    rpm-ostree uninstall k3s-selinux
     rm -f /etc/yum.repos.d/rancher-k3s-common*.repo
 elif type zypper >/dev/null 2>&1; then
     uninstall_cmd="zypper remove -y k3s-selinux"
