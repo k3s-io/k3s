@@ -85,7 +85,7 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.5.0
 	github.com/json-iterator/go v1.1.12
-	github.com/k3s-io/helm-controller v0.13.1
+	github.com/k3s-io/helm-controller v0.13.3
 	github.com/k3s-io/kine v0.9.9
 	github.com/klauspost/compress v1.15.12
 	github.com/kubernetes-sigs/cri-tools v0.0.0-00010101000000-000000000000
