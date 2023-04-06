@@ -589,8 +589,8 @@ github.com/k3s-io/etcd/etcdutl/v3 v3.5.3-k3s1 h1:uPCEhACmVoFJnI9Izb2Y+UKRS5JM/F/
 github.com/k3s-io/etcd/etcdutl/v3 v3.5.3-k3s1/go.mod h1:F9bW3+f+cKZIcjWHkdfJ3lnCajF4FnPh7DjcgiBRb7g=
 github.com/k3s-io/etcd/server/v3 v3.5.3-k3s1 h1:MVTrb5cp75kSMA9K240VMa5I+GKuYYP9xN/Nj+US27w=
 github.com/k3s-io/etcd/server/v3 v3.5.3-k3s1/go.mod h1:xwZlQLuAWsWw5rpb/Gwzi3nFie9STKcrKQbM6evLi5g=
-github.com/k3s-io/helm-controller v0.13.1 h1:eG2yZ0QzbtcfMe8GpTVtRtP6HgMDO/Pr9Q1EGbMKKCA=
-github.com/k3s-io/helm-controller v0.13.1/go.mod h1:f8aOuHQDpkshmUK/GiE+jJCJkUL8vp+EzCjV0uCFcsY=
+github.com/k3s-io/helm-controller v0.13.3 h1:zlJkqZtKJNt1e738G77t5MN0X2RCIYr9PPU5KAuJHzs=
+github.com/k3s-io/helm-controller v0.13.3/go.mod h1:I6EYR7hCs4rcNv/KRWYU5CUgpCP+jn4PZ88j+eXYsMU=
 github.com/k3s-io/kine v0.9.9 h1:DuKVDn4lFw9BDcni8bu+B+cBaWKcWm8ajXnpbGPSfeI=
 github.com/k3s-io/kine v0.9.9/go.mod h1:iQvdpQ7EAyI+24mEITK5nlOBglOOLUa7+4YIaTB8vX8=
 github.com/k3s-io/klog v1.0.0-k3s2 h1:yyvD2bQbxG7m85/pvNctLX2bUDmva5kOBvuZ77tTGBA=
@@ -783,8 +783,9 @@ github.com/modern-go/reflect2 v0.0.0-20180701023420-4b7aa43c6742/go.mod h1:bx2lN
 github.com/modern-go/reflect2 v1.0.1/go.mod h1:bx2lNnkwVCuqBIxFjflWJWanXIb3RllmbCylyMrvgv0=
 github.com/modern-go/reflect2 v1.0.2 h1:xBagoLtFs94CBntxluKeaWgTMpvLxC4ur3nMaC9Gz0M=
 github.com/modern-go/reflect2 v1.0.2/go.mod h1:yWuevngMOJpCy52FWWMvUC8ws7m/LJsjYzDa0/r8luk=
-github.com/mohae/deepcopy v0.0.0-20170603005431-491d3605edfb h1:e+l77LJOEqXTIQihQJVkA6ZxPOUmfPM5e4H7rcpgtSk=
 github.com/mohae/deepcopy v0.0.0-20170603005431-491d3605edfb/go.mod h1:TaXosZuwdSHYgviHp1DAtfrULt5eUgsSMsZf+YrPgl8=
+github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826 h1:RWengNIwukTxcDr9M+97sNutRR1RKhG96O6jWumTTnw=
+github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826/go.mod h1:TaXosZuwdSHYgviHp1DAtfrULt5eUgsSMsZf+YrPgl8=
 github.com/monochromegane/go-gitignore v0.0.0-20200626010858-205db1a8cc00 h1:n6/2gBQ3RWajuToeY6ZtZTIKv2v7ThUy5KKusIT0yc0=
 github.com/monochromegane/go-gitignore v0.0.0-20200626010858-205db1a8cc00/go.mod h1:Pm3mSP3c5uWn86xMLZ5Sa7JB9GsEZySvHYXCTK4E9q4=
 github.com/morikuni/aec v1.0.0 h1:nP9CBfwrvYnBRgY6qfDQkygYDmYwOilePFkwzv4dU8A=
