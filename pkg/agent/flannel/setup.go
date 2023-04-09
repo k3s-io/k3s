@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"path/filepath"
+	goruntime "runtime"
 	"strings"
 
 	"github.com/k3s-io/k3s/pkg/agent/util"
@@ -23,34 +24,6 @@ import (
 )
 
 const (
-	cniConf = `{
-  "name":"cbr0",
-  "cniVersion":"1.0.0",
-  "plugins":[
-    {
-      "type":"flannel",
-      "delegate":{
-        "hairpinMode":true,
-        "forceAddress":true,
-        "isDefaultGateway":true
-      }
-    },
-    {
-      "type":"portmap",
-      "capabilities":{
-        "portMappings":true
-      }
-    },
-    {
-      "type":"bandwidth",
-      "capabilities":{
-        "bandwidth":true
-      }
-    }
-  ]
-}
-`
-
 	flannelConf = `{
 	"Network": "%CIDR%",
 	"EnableIPv6": %IPV6_ENABLED%,
@@ -59,10 +32,6 @@ const (
 	"Backend": %backend%
 }
 `
-
-	vxlanBackend = `{
-	"Type": "vxlan"
-}`
 
 	hostGWBackend = `{
 	"Type": "host-gw"
@@ -159,7 +128,20 @@ func createCNIConf(dir string, nodeConfig *config.Node) error {
 		logrus.Debugf("Using %s as the flannel CNI conf", nodeConfig.AgentConfig.FlannelCniConfFile)
 		return util.CopyFile(nodeConfig.AgentConfig.FlannelCniConfFile, p, false)
 	}
-	return util.WriteFile(p, cniConf)
+
+	cniConfJSON := cniConf
+	if goruntime.GOOS == "windows" {
+		extIface, err := LookupExtInterface(nodeConfig.FlannelIface, ipv4)
+		if err != nil {
+			return err
+		}
+
+		cniConfJSON = strings.ReplaceAll(cniConfJSON, "%IPV4_ADDRESS%", extIface.IfaceAddr.String())
+		cniConfJSON = strings.ReplaceAll(cniConfJSON, "%CLUSTER_CIDR%", nodeConfig.AgentConfig.ClusterCIDR.String())
+		cniConfJSON = strings.ReplaceAll(cniConfJSON, "%SERVICE_CIDR%", nodeConfig.AgentConfig.ServiceCIDR.String())
+	}
+
+	return util.WriteFile(p, cniConfJSON)
 }
 
 func createFlannelConf(nodeConfig *config.Node) error {
@@ -214,6 +196,16 @@ func createFlannelConf(nodeConfig *config.Node) error {
 	backendOptions := make(map[string]string)
 	if len(parts) > 1 {
 		logrus.Fatalf("The additional options through flannel-backend are deprecated and were removed in k3s v1.27, use flannel-conf instead")
+	}
+
+	// precheck and error out unsupported flannel backends.
+	switch backend {
+	case config.FlannelBackendHostGW:
+	case config.FlannelBackendTailscale:
+	case config.FlannelBackendWireguardNative:
+		if goruntime.GOOS == "windows" {
+			return fmt.Errorf("unsupported flannel backend '%s' for Windows", nodeConfig.FlannelBackend)
+		}
 	}
 
 	switch backend {

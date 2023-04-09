@@ -95,9 +95,9 @@ func (e *Embedded) Kubelet(ctx context.Context, args []string) error {
 	return nil
 }
 
-func (*Embedded) KubeProxy(ctx context.Context, args []string) error {
+func (e *Embedded) KubeProxy(ctx context.Context, args []string) error {
 	command := proxy.NewProxyCommand()
-	command.SetArgs(args)
+	command.SetArgs(daemonconfig.GetArgs(platformKubeProxyArgs(e.nodeConfig), args))
 
 	go func() {
 		defer func() {

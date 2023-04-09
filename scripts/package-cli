@@ -8,13 +8,31 @@ cd $(dirname $0)/..
 GO=${GO-go}
 
 for i in containerd crictl kubectl k3s-agent k3s-server k3s-token k3s-etcd-snapshot k3s-secrets-encrypt k3s-certificate k3s-completion; do
-    rm -f bin/$i
-    ln -s k3s bin/$i
+    rm -f bin/$i${BINARY_POSTFIX}
+    ln -s k3s${BINARY_POSTFIX} bin/$i${BINARY_POSTFIX}
 done
 
-for i in bandwidth bridge firewall flannel host-local loopback portmap; do
-    rm -f bin/$i
-    ln -s cni bin/$i
+cni_binaries=(
+    "bandwidth"
+    "bridge"
+    "firewall"
+    "flannel"
+    "host-local"
+    "loopback"
+    "portmap"
+)
+
+if [ ${OS} = windows ]; then
+    cni_binaries=(
+        "win-overlay"
+        "flannel"
+        "host-local"
+    )
+fi
+
+for i in "${cni_binaries[@]}"; do
+    rm -f bin/$i${BINARY_POSTFIX}
+    ln -s cni${BINARY_POSTFIX} bin/$i${BINARY_POSTFIX}
 done
 
 cp contrib/util/check-config.sh bin/check-config
@@ -22,6 +40,7 @@ cp contrib/util/check-config.sh bin/check-config
 rm -rf build/data
 mkdir -p build/data build/out
 mkdir -p dist/artifacts
+mkdir -p ./etc
 
 (
     set +x
@@ -50,9 +69,9 @@ elif [ ${ARCH} = s390x ]; then
     BIN_SUFFIX="-s390x"
 fi
 
-CMD_NAME=dist/artifacts/k3s${BIN_SUFFIX}
+CMD_NAME=dist/artifacts/k3s${BIN_SUFFIX}${BINARY_POSTFIX}
 
-"${GO}" generate
+GOOS=linux CC=gcc CXX=g++ "${GO}" generate
 LDFLAGS="
     -X github.com/k3s-io/k3s/pkg/version.Version=$VERSION
     -X github.com/k3s-io/k3s/pkg/version.GitCommit=${COMMIT:0:8}
@@ -60,7 +79,7 @@ LDFLAGS="
 "
 TAGS="urfave_cli_no_docs"
 STATIC="-extldflags '-static'"
-CGO_ENABLED=0 "${GO}" build -tags "$TAGS" -ldflags "$LDFLAGS $STATIC" -o ${CMD_NAME} ./cmd/k3s/main.go
+CGO_ENABLED=0 "${GO}" build -tags "$TAGS" -buildvcs=false -ldflags "$LDFLAGS $STATIC" -o ${CMD_NAME} ./cmd/k3s
 
 stat ${CMD_NAME}
 

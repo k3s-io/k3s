@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"syscall"
 
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
 	"github.com/k3s-io/k3s/pkg/configfilearg"
@@ -46,8 +45,8 @@ func main() {
 	app := cmds.NewApp()
 	app.EnableBashCompletion = true
 	app.Commands = []cli.Command{
-		cmds.NewServerCommand(internalCLIAction(version.Program+"-server", dataDir, os.Args)),
-		cmds.NewAgentCommand(internalCLIAction(version.Program+"-agent", dataDir, os.Args)),
+		cmds.NewServerCommand(internalCLIAction(version.Program+"-server"+programPostfix, dataDir, os.Args)),
+		cmds.NewAgentCommand(internalCLIAction(version.Program+"-agent"+programPostfix, dataDir, os.Args)),
 		cmds.NewKubectlCommand(externalCLIAction("kubectl", dataDir)),
 		cmds.NewCRICTL(externalCLIAction("crictl", dataDir)),
 		cmds.NewCtrCommand(externalCLIAction("ctr", dataDir)),
@@ -156,7 +155,7 @@ func externalCLI(cli, dataDir string, args []string) error {
 			os.Setenv("CRI_CONFIG_FILE", findCriConfig(dataDir))
 		}
 	}
-	return stageAndRun(dataDir, cli, append([]string{cli}, args...))
+	return stageAndRun(dataDir, cli, append([]string{cli}, args...), false)
 }
 
 // internalCLIAction returns a function that will call a K3s internal command, be used as the Action of a cli.Command.
@@ -172,11 +171,11 @@ func internalCLIAction(cmd, dataDir string, args []string) func(ctx *cli.Context
 
 // stageAndRunCLI calls an external binary.
 func stageAndRunCLI(cli *cli.Context, cmd string, dataDir string, args []string) error {
-	return stageAndRun(dataDir, cmd, args)
+	return stageAndRun(dataDir, cmd, args, true)
 }
 
 // stageAndRun does the actual work of setting up and calling an external binary.
-func stageAndRun(dataDir, cmd string, args []string) error {
+func stageAndRun(dataDir, cmd string, args []string, calledAsInternal bool) error {
 	dir, err := extract(dataDir)
 	if err != nil {
 		return errors.Wrap(err, "extracting data")
@@ -185,9 +184,9 @@ func stageAndRun(dataDir, cmd string, args []string) error {
 
 	var pathEnv string
 	if findPreferBundledBin(args) {
-		pathEnv = filepath.Join(dir, "bin") + ":" + filepath.Join(dir, "bin/aux") + ":" + os.Getenv("PATH")
+		pathEnv = filepath.Join(dir, "bin") + string(os.PathListSeparator) + filepath.Join(dir, "bin/aux") + string(os.PathListSeparator) + os.Getenv("PATH")
 	} else {
-		pathEnv = filepath.Join(dir, "bin") + ":" + os.Getenv("PATH") + ":" + filepath.Join(dir, "bin/aux")
+		pathEnv = filepath.Join(dir, "bin") + string(os.PathListSeparator) + os.Getenv("PATH") + string(os.PathListSeparator) + filepath.Join(dir, "bin/aux")
 	}
 	if err := os.Setenv("PATH", pathEnv); err != nil {
 		return err
@@ -203,10 +202,7 @@ func stageAndRun(dataDir, cmd string, args []string) error {
 
 	logrus.Debugf("Running %s %v", cmd, args)
 
-	if err := syscall.Exec(cmd, args, os.Environ()); err != nil {
-		return errors.Wrapf(err, "exec %s failed", cmd)
-	}
-	return nil
+	return runExec(cmd, args, calledAsInternal)
 }
 
 // getAssetAndDir returns the name of the bindata asset, along with a directory path
@@ -222,7 +218,7 @@ func getAssetAndDir(dataDir string) (string, string) {
 func extract(dataDir string) (string, error) {
 	// check if content already exists in requested data-dir
 	asset, dir := getAssetAndDir(dataDir)
-	if _, err := os.Stat(filepath.Join(dir, "bin", "k3s")); err == nil {
+	if _, err := os.Stat(filepath.Join(dir, "bin", "k3s"+programPostfix)); err == nil {
 		return dir, nil
 	}
 
@@ -231,7 +227,7 @@ func extract(dataDir string) (string, error) {
 	// dir if the assets already exist in the default path.
 	if dataDir != datadir.DefaultDataDir {
 		_, defaultDir := getAssetAndDir(datadir.DefaultDataDir)
-		if _, err := os.Stat(filepath.Join(defaultDir, "bin", "k3s")); err == nil {
+		if _, err := os.Stat(filepath.Join(defaultDir, "bin", "k3s"+programPostfix)); err == nil {
 			return defaultDir, nil
 		}
 	}
