@@ -66,6 +66,10 @@ TAGS="ctrd apparmor seccomp netcgo osusergo providerless urfave_cli_no_docs"
 RUNC_TAGS="apparmor seccomp"
 RUNC_STATIC="static"
 
+if [ ${OS} = windows ]; then
+    TAGS="netcgo osusergo providerless"
+fi
+
 if [ "$SELINUX" = "true" ]; then
     TAGS="$TAGS selinux"
     RUNC_TAGS="$RUNC_TAGS selinux"
@@ -97,21 +101,41 @@ if [ ${ARCH} = s390x ]; then
     export GOARCH="s390x"
 fi
 
-rm -f \
-    bin/k3s-agent \
-    bin/k3s-server \
-    bin/k3s-token \
-    bin/k3s-etcd-snapshot \
-    bin/k3s-secrets-encrypt \
-    bin/k3s-certificate \
-    bin/k3s-completion \
-    bin/kubectl \
-    bin/crictl \
-    bin/ctr \
-    bin/containerd \
-    bin/containerd-shim \
-    bin/containerd-shim-runc-v2 \
-    bin/runc
+k3s_binaries=(
+    "bin/k3s-agent"
+    "bin/k3s-server"
+    "bin/k3s-token"
+    "bin/k3s-etcd-snapshot"
+    "bin/k3s-secrets-encrypt"
+    "bin/k3s-certificate"
+    "bin/k3s-completion"
+    "bin/kubectl"
+    "bin/crictl"
+    "bin/ctr"
+)
+
+containerd_binaries=(
+    "bin/containerd"
+    "bin/containerd-shim"
+    "bin/containerd-shim-runc-v2"
+    "bin/runc"
+    "bin/containerd-shim-runhcs-v1"
+    "bin/runhcs"
+)
+
+for i in "${k3s_binaries[@]}"; do
+    if [ -f "$i${BINARY_POSTFIX}" ]; then
+        echo "Removing $i${BINARY_POSTFIX}"
+        rm -f "$i${BINARY_POSTFIX}"
+    fi
+done
+
+for i in "${containerd_binaries[@]}"; do
+    if [ -f "$i${BINARY_POSTFIX}" ]; then
+        echo "Removing $i${BINARY_POSTFIX}"
+        rm -f "$i${BINARY_POSTFIX}"
+    fi
+done
 
 cleanup() {
     exit_status=$?
@@ -120,7 +144,7 @@ cleanup() {
 }
 
 INSTALLBIN=$(pwd)/bin
-if [ ! -x ${INSTALLBIN}/cni ]; then
+if [ ! -x ${INSTALLBIN}/cni${BINARY_POSTFIX} ]; then
 (
     echo Building cni
     TMPDIR=$(mktemp -d)
@@ -128,36 +152,46 @@ if [ ! -x ${INSTALLBIN}/cni ]; then
     WORKDIR=$TMPDIR/src/github.com/containernetworking/plugins
     git clone -b $VERSION_CNIPLUGINS https://github.com/rancher/plugins.git $WORKDIR
     cd $WORKDIR
-    GO111MODULE=off GOPATH=$TMPDIR CGO_ENABLED=0 "${GO}" build -tags "$TAGS" -gcflags="all=${GCFLAGS}" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC" -o $INSTALLBIN/cni
+    GO111MODULE=off GOPATH=$TMPDIR CGO_ENABLED=0 "${GO}" build -tags "$TAGS" -gcflags="all=${GCFLAGS}" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC" -o $INSTALLBIN/cni${BINARY_POSTFIX}
 )
 fi
 
 echo Building k3s
-CGO_ENABLED=1 "${GO}" build $BLDFLAGS -tags "$TAGS" -buildvcs=false -gcflags="all=${GCFLAGS}" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC" -o bin/k3s ./cmd/server
-ln -s k3s ./bin/containerd
-ln -s k3s ./bin/crictl
-ln -s k3s ./bin/ctr
-ln -s k3s ./bin/k3s-agent
-ln -s k3s ./bin/k3s-certificate
-ln -s k3s ./bin/k3s-completion
-ln -s k3s ./bin/k3s-etcd-snapshot
-ln -s k3s ./bin/k3s-secrets-encrypt
-ln -s k3s ./bin/k3s-server
-ln -s k3s ./bin/k3s-token
-ln -s k3s ./bin/kubectl
+CGO_ENABLED=1 "${GO}" build $BLDFLAGS -tags "$TAGS" -buildvcs=false -gcflags="all=${GCFLAGS}" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC" -o bin/k3s${BINARY_POSTFIX} ./cmd/server
+
+for i in "${k3s_binaries[@]}"; do
+    ln -s "k3s${BINARY_POSTFIX}" "$i${BINARY_POSTFIX}"
+done
 
 export GOPATH=$(pwd)/build
 
-echo Building containerd
-pushd ./build/src/github.com/containerd/containerd
-TAGS="${TAGS/netcgo/netgo}"
-CGO_ENABLED=1 "${GO}" build -tags "$TAGS" -gcflags="all=${GCFLAGS}" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC" -o bin/containerd-shim-runc-v2 ./cmd/containerd-shim-runc-v2
-popd
-cp -vf ./build/src/github.com/containerd/containerd/bin/* ./bin/
+case ${OS} in
+  linux)
+    echo Building containerd-shim
+    pushd ./build/src/github.com/containerd/containerd
+    TAGS="${TAGS/netcgo/netgo}"
+    CGO_ENABLED=1 "${GO}" build -tags "$TAGS" -gcflags="all=${GCFLAGS}" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC" -o bin/containerd-shim-runc-v2 ./cmd/containerd-shim-runc-v2
+    popd
+    cp -vf ./build/src/github.com/containerd/containerd/bin/* ./bin/
 
-echo Building runc
-pushd ./build/src/github.com/opencontainers/runc
-rm -f runc
-make EXTRA_FLAGS="-gcflags=\"all=${GCFLAGS}\"" EXTRA_LDFLAGS="$LDFLAGS" BUILDTAGS="$RUNC_TAGS" $RUNC_STATIC
-popd
-cp -vf ./build/src/github.com/opencontainers/runc/runc ./bin/
+    echo Building runc
+    pushd ./build/src/github.com/opencontainers/runc
+    rm -f runc
+    make EXTRA_FLAGS="-gcflags=\"all=${GCFLAGS}\"" EXTRA_LDFLAGS="$LDFLAGS" BUILDTAGS="$RUNC_TAGS" $RUNC_STATIC
+    popd
+    cp -vf ./build/src/github.com/opencontainers/runc/runc ./bin/
+    ;;
+  windows)
+    echo Building containerd-shim-runhcs-v1
+    pushd ./build/src/github.com/microsoft/hcsshim
+    TAGS="${TAGS/netcgo/netgo}"
+    CGO_ENABLED=0 "${GO}" build -tags "$TAGS" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC" -o bin/containerd-shim-runhcs-v1${BINARY_POSTFIX} ./cmd/containerd-shim-runhcs-v1
+    CGO_ENABLED=0 "${GO}" build -tags "$TAGS" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC" -o bin/runhcs${BINARY_POSTFIX} ./cmd/runhcs
+    popd
+    cp -vf ./build/src/github.com/microsoft/hcsshim/bin/*${BINARY_POSTFIX} ./bin/
+    ;;
+  *)
+    echo "[ERROR] unrecognized opertaing system: ${OS}"
+    exit 1
+    ;;
+esac

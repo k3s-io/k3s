@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"runtime"
 	"strings"
 	"time"
 
@@ -15,6 +16,9 @@ import (
 )
 
 func Main() {
+	if runtime.GOOS == "windows" {
+		os.Args = os.Args[1:]
+	}
 	kubenv := os.Getenv("KUBECONFIG")
 	for i, arg := range os.Args {
 		if strings.HasPrefix(arg, "--kubeconfig=") {
