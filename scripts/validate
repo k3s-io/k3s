@@ -7,7 +7,7 @@ echo Running: go mod tidy
 go mod tidy
 
 echo Running: go generate
-go generate
+GOOS=linux CC=gcc CXX=g++ go generate
 
 if [ -n "$SKIP_VALIDATE" ]; then
     echo Skipping validation
