@@ -122,5 +122,6 @@ func kubeletArgs(cfg *config.Agent) map[string]string {
 	if cfg.ProtectKernelDefaults {
 		argsMap["protect-kernel-defaults"] = "true"
 	}
+
 	return argsMap
 }
