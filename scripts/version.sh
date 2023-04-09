@@ -2,6 +2,7 @@
 
 GO=${GO-go}
 ARCH=${ARCH:-$("${GO}" env GOARCH)}
+OS=${OS:-$("${GO}" env GOOS)}
 SUFFIX="-${ARCH}"
 GIT_TAG=$DRONE_TAG
 TREE_STATE=clean
@@ -51,6 +52,11 @@ if [ -z "$VERSION_RUNC" ]; then
     VERSION_RUNC="v0.0.0"
 fi
 
+VERSION_HCSSHIM=$(get-module-version github.com/Microsoft/hcsshim)
+if [ -z "$VERSION_HCSSHIM" ]; then
+    VERSION_HCSSHIM="v0.0.0"
+fi
+
 VERSION_FLANNEL=$(get-module-version github.com/flannel-io/flannel)
 if [ -z "$VERSION_FLANNEL" ]; then
   VERSION_FLANNEL="v0.0.0"
@@ -80,3 +86,8 @@ else
     VERSION="$VERSION_K8S+k3s-${COMMIT:0:8}$DIRTY"
 fi
 VERSION_TAG="$(sed -e 's/+/-/g' <<< "$VERSION")"
+
+BINARY_POSTFIX=
+if [ ${OS} = windows ]; then
+    BINARY_POSTFIX=.exe
+fi

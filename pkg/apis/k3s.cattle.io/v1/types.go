@@ -42,7 +42,7 @@ type ETCDSnapshotFile struct {
 	Status ETCDSnapshotStatus `json:"status,omitempty"`
 }
 
-// ETCDSnapshotSpec desribes an etcd snapshot file
+// ETCDSnapshotSpec describes an etcd snapshot file
 type ETCDSnapshotSpec struct {
 	// SnapshotName contains the base name of the snapshot file. CLI actions that act
 	// on snapshots stored locally or within a pre-configured S3 bucket and
