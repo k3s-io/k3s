@@ -497,12 +497,24 @@ setup_selinux() {
         package_installer=dnf
     fi
 
-    if [ "${rpm_channel}" = "testing" ]; then
-        available_version=$(curl -s https://api.github.com/repos/k3s-io/k3s-selinux/releases |  grep -oP '(?<="browser_download_url": ")[^"]*' | grep -oE "[^\/]+${rpm_target}\.noarch\.rpm" | head -n 1)
-    else
-        available_version=$(curl -s https://api.github.com/repos/k3s-io/k3s-selinux/releases/latest |  grep -oP '(?<="browser_download_url": ")[^"]*' | grep -oE "[^\/]+${rpm_target}\.noarch\.rpm" )
+    for i in 1 2 3; do
+        set +e
+        if [ "${rpm_channel}" = "testing" ]; then
+            available_version=$(curl -s https://api.github.com/repos/k3s-io/k3s-selinux/releases |  grep browser_download_url | awk '{ print $2 }' | grep -oE "[^\/]+${rpm_target}\.noarch\.rpm" | head -n 1)
+        else
+            available_version=$(curl -s https://api.github.com/repos/k3s-io/k3s-selinux/releases/latest |  grep browser_download_url | awk '{ print $2 }' | grep -oE "[^\/]+${rpm_target}\.noarch\.rpm")
+        fi
+        if [ "${available_version}" == "" ]; then
+            sleep 5
+        else
+            break
+        fi
+        set -e
+    done
+    if [ "${available_version}" == "" ]; then
+        warn "failed to get k3s-selinux avaialable versions, defaulting to k3s-selinux-1.2-2.${rpm_target}.noarch.rpm"
+        available_version="k3s-selinux-1.2-2.${rpm_target}.noarch.rpm"
     fi
-
     policy_hint="please install:
     ${package_installer} install -y container-selinux
     ${package_installer} install -y https://${rpm_site}/k3s/${rpm_channel}/common/${rpm_site_infix}/noarch/${available_version}
