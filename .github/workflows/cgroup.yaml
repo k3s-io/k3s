@@ -5,8 +5,8 @@ on:
       - "**.md"
       - "channel.yaml"
       - "install.sh"
-      - "tests/**"
-      - "!tests/cgroup/**"
+      - "testfunctions/**"
+      - "!testfunctions/cgroup/**"
       - ".github/**"
       - "!.github/workflows/cgroup.yaml"
   pull_request:
@@ -14,8 +14,8 @@ on:
       - "**.md"
       - "channel.yaml"
       - "install.sh"
-      - "tests/**"
-      - "!tests/cgroup/**"
+      - "testfunctions/**"
+      - "!testfunctions/cgroup/**"
       - ".github/**"
       - "!.github/workflows/cgroup.yaml"
   workflow_dispatch: {}
@@ -51,7 +51,7 @@ jobs:
       max-parallel: 1
     defaults:
       run:
-        working-directory: tests/cgroup/${{ matrix.mode }}/${{ matrix.vm }}
+        working-directory: testfunctions/cgroup/${{ matrix.mode }}/${{ matrix.vm }}
     steps:
       - name: "Checkout"
         uses: actions/checkout@v3
@@ -65,7 +65,7 @@ jobs:
           path: |
             ~/.vagrant.d/boxes
             ~/.vagrant.d/gems
-          key: cgroup-${{ hashFiles(format('tests/cgroup/{0}/{1}/Vagrantfile', matrix.mode, matrix.vm)) }}
+          key: cgroup-${{ hashFiles(format('testfunctions/cgroup/{0}/{1}/Vagrantfile', matrix.mode, matrix.vm)) }}
         id: vagrant-cache
         continue-on-error: true
       - name: "Vagrant Plugin(s)"

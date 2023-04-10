@@ -128,7 +128,7 @@ sed -Ei "\|github.com/k3s-io/kubernetes| s|${OLD_K3S_VER}|${NEW_K3S_VER}|" go.mo
 sed -Ei "s/k8s.io\/kubernetes v\S+/k8s.io\/kubernetes ${NEW_K8S}/" go.mod
 sed -Ei "s/${OLD_K8S_CLIENT}/${NEW_K8S_CLIENT}/g" go.mod 
  
-# since drone perform the builds and tests for the updated tags we no longer need to run make locally.
+# since drone perform the builds and testfunctions for the updated tags we no longer need to run make locally.
 # We now update the go.sum by running go mod tidy:
 go mod tidy
 git add go.mod go.sum

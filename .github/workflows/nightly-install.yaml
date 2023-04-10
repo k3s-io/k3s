@@ -24,7 +24,7 @@ jobs:
       max-parallel: 2
     defaults:
       run:
-        working-directory: tests/install/${{ matrix.vm }}
+        working-directory: testfunctions/install/${{ matrix.vm }}
     env:
       INSTALL_K3S_CHANNEL: ${{ matrix.channel }}
     steps:
@@ -37,7 +37,7 @@ jobs:
           path: |
             ~/.vagrant.d/boxes
             ~/.vagrant.d/gems
-          key: install-${{ matrix.vm }}-${{ hashFiles('tests/install/${{ matrix.vm }}/Vagrantfile') }}
+          key: install-${{ matrix.vm }}-${{ hashFiles('testfunctions/install/${{ matrix.vm }}/Vagrantfile') }}
         id: vagrant-cache
         continue-on-error: true
       - name: "Vagrant Plugin(s)"

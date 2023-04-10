@@ -5,8 +5,8 @@ on:
       - "**.md"
       - "channel.yaml"
       - "install.sh"
-      - "tests/**"
-      - "!tests/snapshotter/**"
+      - "testfunctions/**"
+      - "!testfunctions/snapshotter/**"
       - ".github/**"
       - "!.github/workflows/snapshotter.yaml"
   pull_request:
@@ -14,8 +14,8 @@ on:
       - "**.md"
       - "channel.yaml"
       - "install.sh"
-      - "tests/**"
-      - "!tests/snapshotter/**"
+      - "testfunctions/**"
+      - "!testfunctions/snapshotter/**"
       - ".github/**"
       - "!.github/workflows/snapshotter.yaml"
   workflow_dispatch: {}
@@ -40,7 +40,7 @@ jobs:
       max-parallel: 1
     defaults:
       run:
-        working-directory: tests/snapshotter/${{ matrix.snapshotter }}/${{ matrix.vm }}
+        working-directory: testfunctions/snapshotter/${{ matrix.snapshotter }}/${{ matrix.vm }}
     env:
       VAGRANT_EXPERIMENTAL: disks
     steps:
@@ -56,7 +56,7 @@ jobs:
           path: |
             ~/.vagrant.d/boxes
             ~/.vagrant.d/gems
-          key: snapshotter-${{ hashFiles(format('tests/snapshotter/{0}/{1}/Vagrantfile', matrix.snapshotter, matrix.vm)) }}
+          key: snapshotter-${{ hashFiles(format('testfunctions/snapshotter/{0}/{1}/Vagrantfile', matrix.snapshotter, matrix.vm)) }}
         id: vagrant-cache
         continue-on-error: true
       - name: "Vagrant Plugin(s)"

@@ -56,13 +56,13 @@ Generally, E2E tests are run as a nightly Jenkins job for QA. They can still be 
 
 Once setup is complete, all E2E tests can be run with:
 ```bash
-go test -timeout=15m ./tests/e2e/... -run E2E
+go test -timeout=15m ./testfunctions/e2e/... -run E2E
 ```
 Tests can be run individually with:
 ```bash
-go test -timeout=15m ./tests/e2e/validatecluster/... -run E2E
+go test -timeout=15m ./testfunctions/e2e/validatecluster/... -run E2E
 #or
-go test -timeout=15m ./tests/e2e/... -run E2EClusterValidation
+go test -timeout=15m ./testfunctions/e2e/... -run E2EClusterValidation
 ```
 
 Additionally, to generate junit reporting for the tests, the Ginkgo CLI is used. Installation instructions can be found [here.](https://onsi.github.io/ginkgo/#getting-started)  

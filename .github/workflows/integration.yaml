@@ -5,8 +5,8 @@ on:
       - "**.md"
       - "channel.yaml"
       - "install.sh"
-      - "tests/**"
-      - "!tests/integration**"
+      - "testfunctions/**"
+      - "!testfunctions/integration**"
       - ".github/**"
       - "!.github/workflows/integration.yaml"
   pull_request:
@@ -14,8 +14,8 @@ on:
       - "**.md"
       - "channel.yaml"
       - "install.sh"
-      - "tests/**"
-      - "!tests/integration**"
+      - "testfunctions/**"
+      - "!testfunctions/integration**"
       - ".github/**"
       - "!.github/workflows/integration.yaml"
   workflow_dispatch: {}

@@ -17,7 +17,7 @@ updates:
       interval: "weekly"
 
   - package-ecosystem: "docker"
-    directory: "/tests/e2e/scripts"
+    directory: "/testfunctions/e2e/scripts"
     schedule:
       interval: "weekly"
 
@@ -27,11 +27,11 @@ updates:
       interval: "weekly"
 
   - package-ecosystem: "docker"
-    directory: "/tests/integration"
+    directory: "/testfunctions/integration"
     schedule:
       interval: "weekly"
 
   - package-ecosystem: "docker"
-    directory: "/tests/terraform"
+    directory: "/testfunctions/terraform"
     schedule:
       interval: "weekly"

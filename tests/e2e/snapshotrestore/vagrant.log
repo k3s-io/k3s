@@ -1,0 +1,10 @@
+Vagrant has detected project local plugins configured for this
+project which are not installed.
+
+  vagrant-k3s, vagrant-reload
+Vagrant failed to initialize at a very early stage:
+
+Vagrant is attempting to interface with the UI in a way that requires
+a TTY. Most actions in Vagrant that require a TTY have configuration
+switches to disable this requirement. Please do that or run Vagrant
+with TTY.

@@ -1,0 +1,40 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: local-path-pvc
+  namespace: default
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 500Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: volume-test
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: volume-test
+  template:
+    metadata:
+      labels:
+        app: volume-test
+    spec:
+      containers:
+        - name: volume-test
+          image: nginx:stable-alpine
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - name: volv
+              mountPath: /data
+          ports:
+            - containerPort: 80
+      volumes:
+        - name: volv
+          persistentVolumeClaim:
+            claimName: local-path-pvc
