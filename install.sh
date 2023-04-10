@@ -372,6 +372,38 @@ get_release_version() {
     info "Using ${VERSION_K3S} as release"
 }
 
+# --- get k3s-selinux version ---
+get_k3s_selinux_version() {
+    available_version="k3s-selinux-1.2-2.${rpm_target}.noarch.rpm"
+    if [ "${INSTALL_K3S_SKIP_DOWNLOAD}" == true ]; then
+        return
+    fi
+    info "Finding available k3s-selinux versions"
+    case $DOWNLOADER in
+        curl)
+            DOWNLOADER_OPTS="-s --connect-timeout 3 --retry 3"
+            ;;
+        wget)
+            DOWNLOADER_OPTS="-q -O - --connect-timeout=3 --tries=3"
+            ;;
+        *)
+            fatal "Incorrect downloader executable '$DOWNLOADER'"
+            ;;
+    esac
+    set +e
+    if [ "${rpm_channel}" = "testing" ]; then
+        version=$(${DOWNLOADER} ${DOWNLOADER_OPTS} https://api.github.com/repos/k3s-io/k3s-selinux/releases |  grep browser_download_url | awk '{ print $2 }' | grep -oE "[^\/]+${rpm_target}\.noarch\.rpm" | head -n 1)
+    else
+        version=$(${DOWNLOADER} ${DOWNLOADER_OPTS} https://api.github.com/repos/k3s-io/k3s-selinux/releases/latest |  grep browser_download_url | awk '{ print $2 }' | grep -oE "[^\/]+${rpm_target}\.noarch\.rpm")
+    fi
+    set -e
+    if [ "${version}" == "" ]; then
+        warn "failed to get available versions of k3s-selinux..defaulting to k3s-selinux-1.2-2.${rpm_target}.noarch.rpm"
+        return
+    fi
+    available_version=${version}
+}
+
 # --- download from github url ---
 download() {
     [ $# -eq 2 ] || fatal 'download needs exactly 2 arguments'
@@ -497,24 +529,8 @@ setup_selinux() {
         package_installer=dnf
     fi
 
-    for i in 1 2 3; do
-        set +e
-        if [ "${rpm_channel}" = "testing" ]; then
-            available_version=$(curl -s https://api.github.com/repos/k3s-io/k3s-selinux/releases |  grep browser_download_url | awk '{ print $2 }' | grep -oE "[^\/]+${rpm_target}\.noarch\.rpm" | head -n 1)
-        else
-            available_version=$(curl -s https://api.github.com/repos/k3s-io/k3s-selinux/releases/latest |  grep browser_download_url | awk '{ print $2 }' | grep -oE "[^\/]+${rpm_target}\.noarch\.rpm")
-        fi
-        if [ "${available_version}" == "" ]; then
-            sleep 5
-        else
-            break
-        fi
-        set -e
-    done
-    if [ "${available_version}" == "" ]; then
-        warn "failed to get k3s-selinux avaialable versions, defaulting to k3s-selinux-1.2-2.${rpm_target}.noarch.rpm"
-        available_version="k3s-selinux-1.2-2.${rpm_target}.noarch.rpm"
-    fi
+    get_k3s_selinux_version
+
     policy_hint="please install:
     ${package_installer} install -y container-selinux
     ${package_installer} install -y https://${rpm_site}/k3s/${rpm_channel}/common/${rpm_site_infix}/noarch/${available_version}
