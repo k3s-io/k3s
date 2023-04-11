@@ -63,7 +63,6 @@ func main() {
 			etcdsnapshotCommand,
 			etcdsnapshotCommand,
 			etcdsnapshotCommand,
-			etcdsnapshotCommand,
 		),
 		cmds.NewSecretsEncryptCommands(
 			secretsencryptCommand,
