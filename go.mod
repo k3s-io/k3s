@@ -1,10 +1,10 @@
 module github.com/k3s-io/k3s
 
-go 1.19
+go 1.20
 
 replace (
 	github.com/Microsoft/hcsshim => github.com/Microsoft/hcsshim v0.8.22
-	github.com/Mirantis/cri-dockerd => github.com/k3s-io/cri-dockerd v0.3.2-0.20230123224936-bcd78c2d21d8 // k3s/release-1.26
+	github.com/Mirantis/cri-dockerd => github.com/k3s-io/cri-dockerd v0.3.2 // k3s/release-1.27
 	github.com/cloudnativelabs/kube-router/v2 => github.com/k3s-io/kube-router/v2 v2.0.1-0.20230411195838-cced939a8ba1
 	github.com/containerd/cgroups => github.com/containerd/cgroups v1.0.1
 	github.com/containerd/containerd => github.com/k3s-io/containerd v1.5.18-k3s1
@@ -95,7 +95,7 @@ require (
 	github.com/containerd/stargz-snapshotter v0.13.0
 	github.com/coreos/go-iptables v0.6.0
 	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf
-	github.com/docker/docker v20.10.23+incompatible
+	github.com/docker/docker v20.10.24+incompatible
 	github.com/erikdubbelboer/gspt v0.0.0-20190125194910-e68493906b83
 	github.com/flannel-io/flannel v0.21.4
 	github.com/go-bindata/go-bindata v3.1.2+incompatible
