@@ -376,6 +376,10 @@ get_release_version() {
 get_k3s_selinux_version() {
     available_version="k3s-selinux-1.2-2.${rpm_target}.noarch.rpm"
     info "Finding available k3s-selinux versions"
+    
+    # run verify_downloader in case it binary installation was skipped
+    verify_downloader curl || verify_downloader wget || fatal 'Can not find curl or wget for downloading files'
+
     case $DOWNLOADER in
         curl)
             DOWNLOADER_OPTS="-s"
