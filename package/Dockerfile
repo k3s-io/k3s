@@ -1,11 +1,11 @@
-FROM alpine:3.17 as base
+FROM riscv64/alpine:edge as base
 RUN apk add -U ca-certificates tar zstd
 COPY build/out/data.tar.zst /
 RUN mkdir -p /image/etc/ssl/certs /image/run /image/var/run /image/tmp /image/lib/modules /image/lib/firmware && \
     tar -xa -C /image -f /data.tar.zst && \
     cp /etc/ssl/certs/ca-certificates.crt /image/etc/ssl/certs/ca-certificates.crt
 
-FROM scratch
+FROM riscv64/alpine:edge
 ARG VERSION="dev"
 COPY --from=base /image /
 RUN mkdir -p /etc && \

@@ -1,11 +1,15 @@
 TARGETS := $(shell ls scripts | grep -v \\.sh)
 
 .dapper:
-	@echo Downloading dapper
-	@curl -sL https://releases.rancher.com/dapper/v0.6.0/dapper-$$(uname -s)-$$(uname -m) > .dapper.tmp
-	@@chmod +x .dapper.tmp
-	@./.dapper.tmp -v
-	@mv .dapper.tmp .dapper
+	@if command -v dapper; then \
+			ln -s $$(command -v dapper) .dapper; \
+		else \
+			echo Downloading dapper; \
+			curl -sLfo .dapper.tmp https://releases.rancher.com/dapper/v0.6.0/dapper-$$(uname -s)-$$(uname -m) \
+			chmod +x .dapper.tmp; \
+			./.dapper.tmp -v; \
+			mv .dapper.tmp .dapper; \
+		fi
 
 $(TARGETS): .dapper
 	./.dapper $@
