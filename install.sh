@@ -967,6 +967,15 @@ service_enable_and_start() {
         return
     fi
 
+    if command -v iptables-save &> /dev/null && command -v iptables-restore &> /dev/null
+    then
+	    $SUDO iptables-save | grep -v KUBE- | grep -v CNI- | grep -iv flannel | $SUDO iptables-restore
+    fi
+    if command -v ip6tables-save &> /dev/null && command -v ip6tables-restore &> /dev/null
+    then
+	    $SUDO ip6tables-save | grep -v KUBE- | grep -v CNI- | grep -iv flannel | $SUDO ip6tables-restore
+    fi
+
     [ "${HAS_SYSTEMD}" = true ] && systemd_start
     [ "${HAS_OPENRC}" = true ] && openrc_start
     return 0
