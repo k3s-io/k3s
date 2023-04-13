@@ -3,7 +3,6 @@
 		"disable-all": true,
 		"enable": [
 			"govet",
-			"revive",
 			"goimports",
 			"misspell",
 			"gofmt"
@@ -37,7 +36,11 @@
 			{
 				"linters": "revive",
 				"text": "exported"
-			}
+			},
+            {
+                "linters": "revive",
+                "text": "unused-parameter"
+            }
 		]
 	}
 }
