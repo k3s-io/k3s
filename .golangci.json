@@ -37,7 +37,11 @@
 			{
 				"linters": "revive",
 				"text": "exported"
-			}
+			},
+            {
+                "linters": "revive",
+                "text": "unused-parameter"
+            }
 		]
 	}
 }
