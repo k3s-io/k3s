@@ -50,7 +50,7 @@ git rebase --onto ${NEW_K8S} ${OLD_K8S} ${OLD_K3S_VER}~1
 # This command is not backwards compatible and requires versions of yq greater than 4.0, as the query syntax has changed throughout the history of the project.
 export GOVERSION=$(yq -e '.dependencies[] | select(.name == "golang: upstream version").version' build/dependencies.yaml)
 
-export GOIMAGE="golang:${GOVERSION}-alpine3.16"
+export GOIMAGE="golang:${GOVERSION}-alpine"
 
 export BUILD_CONTAINER="FROM ${GOIMAGE}\n \
 RUN apk add --no-cache \
@@ -74,6 +74,7 @@ docker run --rm -u $(id -u) \
 -v ${GOPATH}/src:/go/src \
 -v ${GOPATH}/.cache:/go/.cache \
 -v ${GLOBAL_GIT_CONFIG_PATH}:/go/.gitconfig \
+-e GIT_TRACE=1 \
 -e HOME=/go \
 -e GOCACHE=/go/.cache \
 -w /go/src/github.com/kubernetes/kubernetes ${GOIMAGE}-dev ./tag.sh ${NEW_K3S_VER} 2>&1 | tee ~/tags-${NEW_K3S_VER}.log
@@ -131,8 +132,25 @@ sed -Ei "s/${OLD_K8S_CLIENT}/${NEW_K8S_CLIENT}/g" go.mod
 # since drone perform the builds and tests for the updated tags we no longer need to run make locally.
 # We now update the go.sum by running go mod tidy:
 go mod tidy
-git add go.mod go.sum
 
+# Update the depdencies that we override to match upstream using the ecm-distro-tools script
+curl -s https://raw.githubusercontent.com/rancher/ecm-distro-tools/master/bin/k3s_modsync.sh | sh -
+```
+
+## Validate that K3s builds
+```sh
+SKIP_VALIDATE=1 make
+```
+
+If you run into build issues, you may need to update other repos with forks of upstream components such as:
+- https://github.com/k3s-io/klog
+- https://github.com/k3s-io/cri-dockerd
+- https://github.com/k3s-io/containerd
+
+For these repos, you will need to build and push new tags and then update the go.mod with the new tags.
+
+## Create a PR
+```sh
 git commit --all --signoff -m "Update to ${NEW_K8S}"
 git push --set-upstream origin ${NEW_K3S_VER}
 ```
