@@ -3,7 +3,7 @@ module github.com/k3s-io/k3s
 go 1.20
 
 replace (
-	github.com/Microsoft/hcsshim => github.com/Microsoft/hcsshim v0.8.22
+	github.com/Microsoft/hcsshim => github.com/Microsoft/hcsshim v0.8.25
 	github.com/Mirantis/cri-dockerd => github.com/k3s-io/cri-dockerd v0.3.2 // k3s/release-1.27
 	github.com/cloudnativelabs/kube-router/v2 => github.com/k3s-io/kube-router/v2 v2.0.1-0.20230411195838-cced939a8ba1
 	github.com/containerd/cgroups => github.com/containerd/cgroups v1.0.1
@@ -13,13 +13,13 @@ replace (
 	github.com/docker/distribution => github.com/docker/distribution v2.8.1+incompatible
 	github.com/docker/docker => github.com/docker/docker v20.10.12+incompatible
 	github.com/docker/libnetwork => github.com/docker/libnetwork v0.8.0-dev.2.0.20190624125649-f0e46a78ea34
-	github.com/golang/protobuf => github.com/golang/protobuf v1.5.2
+	github.com/golang/protobuf => github.com/golang/protobuf v1.5.3
 	github.com/google/cadvisor => github.com/k3s-io/cadvisor v0.46.0-k3s1
 	github.com/googleapis/gax-go/v2 => github.com/googleapis/gax-go/v2 v2.1.1
 	github.com/juju/errors => github.com/k3s-io/nocode v0.0.0-20200630202308-cb097102c09f
 	github.com/kubernetes-sigs/cri-tools => github.com/k3s-io/cri-tools v1.26.0-rc.0-k3s1
 	github.com/opencontainers/runc => github.com/opencontainers/runc v1.1.5
-	github.com/opencontainers/runtime-spec => github.com/opencontainers/runtime-spec v1.0.3-0.20210326190908-1c3f411f0417
+	github.com/opencontainers/runtime-spec => github.com/opencontainers/runtime-spec v1.0.3-0.20220909204839-494a5a6aca78
 	github.com/opencontainers/selinux => github.com/opencontainers/selinux v1.10.1
 	go.etcd.io/etcd/api/v3 => github.com/k3s-io/etcd/api/v3 v3.5.7-k3s1
 	go.etcd.io/etcd/client/pkg/v3 => github.com/k3s-io/etcd/client/pkg/v3 v3.5.7-k3s1
@@ -32,7 +32,7 @@ replace (
 
 	go.opentelemetry.io/contrib/instrumentation/github.com/emicklei/go-restful/otelrestful => go.opentelemetry.io/contrib/instrumentation/github.com/emicklei/go-restful/otelrestful v0.35.0
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc => go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.35.0
-	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp => go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.35.0
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp => go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.35.1
 	go.opentelemetry.io/contrib/propagators/b3 => go.opentelemetry.io/contrib/propagators/b3 v1.10.0
 	go.opentelemetry.io/otel => go.opentelemetry.io/otel v1.10.0
 	go.opentelemetry.io/otel/exporters/otlp/internal/retry => go.opentelemetry.io/otel/exporters/otlp/internal/retry v1.10.0
@@ -44,11 +44,11 @@ replace (
 	go.opentelemetry.io/otel/sdk => go.opentelemetry.io/otel/sdk v1.10.0
 	go.opentelemetry.io/otel/trace => go.opentelemetry.io/otel/trace v1.10.0
 	go.opentelemetry.io/proto/otlp => go.opentelemetry.io/proto/otlp v0.19.0
-	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20220315160706-3147a52a75dd
-	golang.org/x/net => golang.org/x/net v0.7.0
-	golang.org/x/sys => golang.org/x/sys v0.2.0
-	google.golang.org/genproto => google.golang.org/genproto v0.0.0-20220107163113-42d7afdf6368
-	google.golang.org/grpc => google.golang.org/grpc v1.40.0
+	golang.org/x/crypto => golang.org/x/crypto v0.1.0
+	golang.org/x/net => golang.org/x/net v0.8.0
+	golang.org/x/sys => golang.org/x/sys v0.6.0
+	google.golang.org/genproto => google.golang.org/genproto v0.0.0-20220502173005-c8bf987b8c21
+	google.golang.org/grpc => google.golang.org/grpc v1.51.0
 	gopkg.in/square/go-jose.v2 => gopkg.in/square/go-jose.v2 v2.6.0
 	k8s.io/api => github.com/k3s-io/kubernetes/staging/src/k8s.io/api v1.27.0-k3s1
 	k8s.io/apiextensions-apiserver => github.com/k3s-io/kubernetes/staging/src/k8s.io/apiextensions-apiserver v1.27.0-k3s1
