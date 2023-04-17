@@ -222,6 +222,17 @@ echo
 
   echo "System:"
 
+  cpuArch=$(uname -m)
+  if [ "$cpuArch" = "aarch64" ]; then
+    # checks whether the system is running with 4k pages
+    pageSize=$(getconf PAGE_SIZE)
+    if [ "$pageSize" = "4096" ]; then
+      wrap_good "- $cpuArch page size" $((pageSize/1024))"K"
+    else
+      wrap_bad "- $cpuArch page size" $((pageSize/1024))"K"
+    fi
+  fi
+
   iptablesCmd=$(which_iptables)
   iptablesVersion=
   if [ "$iptablesCmd" ]; then
