@@ -746,8 +746,11 @@ steps:
   - cd ../secretsencryption
   - vagrant destroy -f
   - go test -v -timeout=30m ./secretsencryption_test.go -ci -local
-  - cd ../upgradecluster
-  - E2E_RELEASE_CHANNEL="latest" go test -v -timeout=45m ./upgradecluster_test.go  -ci -local
+  - |
+    if [ "$DRONE_BUILD_EVENT" = "pull_request" ]; then
+      cd ../upgradecluster
+      E2E_RELEASE_CHANNEL="latest" go test -v -timeout=45m ./upgradecluster_test.go  -ci -local
+    fi
   - docker stop registry && docker rm registry
 
   volumes:
