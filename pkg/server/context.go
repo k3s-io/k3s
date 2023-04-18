@@ -6,7 +6,9 @@ import (
 	"os"
 	"runtime"
 
+	helmcrd "github.com/k3s-io/helm-controller/pkg/crd"
 	"github.com/k3s-io/helm-controller/pkg/generated/controllers/helm.cattle.io"
+	addoncrd "github.com/k3s-io/k3s/pkg/crd"
 	"github.com/k3s-io/k3s/pkg/deploy"
 	"github.com/k3s-io/k3s/pkg/generated/controllers/k3s.cattle.io"
 	"github.com/k3s-io/k3s/pkg/version"
@@ -82,10 +84,8 @@ func crds(ctx context.Context, config *rest.Config) error {
 		return err
 	}
 
-	factory.BatchCreateCRDs(ctx, crd.NamespacedTypes(
-		"Addon.k3s.cattle.io/v1",
-		"HelmChart.helm.cattle.io/v1",
-		"HelmChartConfig.helm.cattle.io/v1")...)
+	types := append(helmcrd.List(), addoncrd.List()...)
+	factory.BatchCreateCRDs(ctx, types...)
 
 	return factory.BatchWait()
 }
