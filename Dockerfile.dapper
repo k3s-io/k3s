@@ -19,7 +19,7 @@ RUN apk -U --no-cache add bash git gcc musl-dev docker vim less file curl wget c
 
 RUN python3 -m pip install awscli
 
-RUN TRIVY_VERSION="0.38.3"                                                                                                                          && \
+RUN TRIVY_VERSION="0.40.0"                                                                                                                          && \
     if [ "$(go env GOARCH)" = "arm64" ] || [ "$(go env GOARCH)" = "arm" ]; then                                                                        \
     # Turn arm64 and arm into uppercase ARM64 and ARM, respectively, for Trivy's download
     TRIVY_ARCH=$(go env GOARCH | tr "[:lower:]" "[:upper:]")                                                                                        && \
