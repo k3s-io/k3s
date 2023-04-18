@@ -8,7 +8,7 @@ spec:
   - name: volume-test
     image: busybox:stable
     imagePullPolicy: IfNotPresent
-    commands:
+    command:
     - sh
     - "-c"
     - "touch /data/file1 && sleep infinity"
