@@ -40,7 +40,6 @@ type AddonsGetter interface {
 type AddonInterface interface {
 	Create(ctx context.Context, addon *v1.Addon, opts metav1.CreateOptions) (*v1.Addon, error)
 	Update(ctx context.Context, addon *v1.Addon, opts metav1.UpdateOptions) (*v1.Addon, error)
-	UpdateStatus(ctx context.Context, addon *v1.Addon, opts metav1.UpdateOptions) (*v1.Addon, error)
 	Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error
 	Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1.Addon, error)
@@ -129,22 +128,6 @@ func (c *addons) Update(ctx context.Context, addon *v1.Addon, opts metav1.Update
 		Namespace(c.ns).
 		Resource("addons").
 		Name(addon.Name).
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(addon).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// UpdateStatus was generated because the type contains a Status member.
-// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *addons) UpdateStatus(ctx context.Context, addon *v1.Addon, opts metav1.UpdateOptions) (result *v1.Addon, err error) {
-	result = &v1.Addon{}
-	err = c.client.Put().
-		Namespace(c.ns).
-		Resource("addons").
-		Name(addon.Name).
-		SubResource("status").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(addon).
 		Do(ctx).
