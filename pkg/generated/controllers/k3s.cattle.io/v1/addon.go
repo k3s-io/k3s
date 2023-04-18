@@ -23,354 +23,110 @@ import (
 	"time"
 
 	v1 "github.com/k3s-io/k3s/pkg/apis/k3s.cattle.io/v1"
-	"github.com/rancher/lasso/pkg/client"
-	"github.com/rancher/lasso/pkg/controller"
-	"github.com/rancher/wrangler/pkg/apply"
-	"github.com/rancher/wrangler/pkg/condition"
 	"github.com/rancher/wrangler/pkg/generic"
-	"github.com/rancher/wrangler/pkg/kv"
-	"k8s.io/apimachinery/pkg/api/equality"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/watch"
-	"k8s.io/client-go/tools/cache"
 )
 
-type AddonHandler func(string, *v1.Addon) (*v1.Addon, error)
-
+// AddonController interface for managing Addon resources.
 type AddonController interface {
 	generic.ControllerMeta
 	AddonClient
 
+	// OnChange runs the given handler when the controller detects a resource was changed.
 	OnChange(ctx context.Context, name string, sync AddonHandler)
+
+	// OnRemove runs the given handler when the controller detects a resource was changed.
 	OnRemove(ctx context.Context, name string, sync AddonHandler)
+
+	// Enqueue adds the resource with the given name to the worker queue of the controller.
 	Enqueue(namespace, name string)
+
+	// EnqueueAfter runs Enqueue after the provided duration.
 	EnqueueAfter(namespace, name string, duration time.Duration)
 
+	// Cache returns a cache for the resource type T.
 	Cache() AddonCache
 }
 
+// AddonClient interface for managing Addon resources in Kubernetes.
 type AddonClient interface {
+	// Create creates a new object and return the newly created Object or an error.
 	Create(*v1.Addon) (*v1.Addon, error)
+
+	// Update updates the object and return the newly updated Object or an error.
 	Update(*v1.Addon) (*v1.Addon, error)
-	UpdateStatus(*v1.Addon) (*v1.Addon, error)
+
+	// Delete deletes the Object in the given name.
 	Delete(namespace, name string, options *metav1.DeleteOptions) error
+
+	// Get will attempt to retrieve the resource with the specified name.
 	Get(namespace, name string, options metav1.GetOptions) (*v1.Addon, error)
+
+	// List will attempt to find multiple resources.
 	List(namespace string, opts metav1.ListOptions) (*v1.AddonList, error)
+
+	// Watch will start watching resources.
 	Watch(namespace string, opts metav1.ListOptions) (watch.Interface, error)
+
+	// Patch will patch the resource with the matching name.
 	Patch(namespace, name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.Addon, err error)
 }
 
+// AddonCache interface for retrieving Addon resources in memory.
 type AddonCache interface {
+	// Get returns the resources with the specified name from the cache.
 	Get(namespace, name string) (*v1.Addon, error)
+
+	// List will attempt to find resources from the Cache.
 	List(namespace string, selector labels.Selector) ([]*v1.Addon, error)
 
+	// AddIndexer adds  a new Indexer to the cache with the provided name.
+	// If you call this after you already have data in the store, the results are undefined.
 	AddIndexer(indexName string, indexer AddonIndexer)
+
+	// GetByIndex returns the stored objects whose set of indexed values
+	// for the named index includes the given indexed value.
 	GetByIndex(indexName, key string) ([]*v1.Addon, error)
 }
 
+// AddonHandler is function for performing any potential modifications to a Addon resource.
+type AddonHandler func(string, *v1.Addon) (*v1.Addon, error)
+
+// AddonIndexer computes a set of indexed values for the provided object.
 type AddonIndexer func(obj *v1.Addon) ([]string, error)
 
-type addonController struct {
-	controller    controller.SharedController
-	client        *client.Client
-	gvk           schema.GroupVersionKind
-	groupResource schema.GroupResource
+// AddonGenericController wraps wrangler/pkg/generic.Controller so that the function definitions adhere to AddonController interface.
+type AddonGenericController struct {
+	generic.ControllerInterface[*v1.Addon, *v1.AddonList]
 }
 
-func NewAddonController(gvk schema.GroupVersionKind, resource string, namespaced bool, controller controller.SharedControllerFactory) AddonController {
-	c := controller.ForResourceKind(gvk.GroupVersion().WithResource(resource), gvk.Kind, namespaced)
-	return &addonController{
-		controller: c,
-		client:     c.Client(),
-		gvk:        gvk,
-		groupResource: schema.GroupResource{
-			Group:    gvk.Group,
-			Resource: resource,
-		},
+// OnChange runs the given resource handler when the controller detects a resource was changed.
+func (c *AddonGenericController) OnChange(ctx context.Context, name string, sync AddonHandler) {
+	c.ControllerInterface.OnChange(ctx, name, generic.ObjectHandler[*v1.Addon](sync))
+}
+
+// OnRemove runs the given object handler when the controller detects a resource was changed.
+func (c *AddonGenericController) OnRemove(ctx context.Context, name string, sync AddonHandler) {
+	c.ControllerInterface.OnRemove(ctx, name, generic.ObjectHandler[*v1.Addon](sync))
+}
+
+// Cache returns a cache of resources in memory.
+func (c *AddonGenericController) Cache() AddonCache {
+	return &AddonGenericCache{
+		c.ControllerInterface.Cache(),
 	}
 }
 
-func FromAddonHandlerToHandler(sync AddonHandler) generic.Handler {
-	return func(key string, obj runtime.Object) (ret runtime.Object, err error) {
-		var v *v1.Addon
-		if obj == nil {
-			v, err = sync(key, nil)
-		} else {
-			v, err = sync(key, obj.(*v1.Addon))
-		}
-		if v == nil {
-			return nil, err
-		}
-		return v, err
-	}
+// AddonGenericCache wraps wrangler/pkg/generic.Cache so the function definitions adhere to AddonCache interface.
+type AddonGenericCache struct {
+	generic.CacheInterface[*v1.Addon]
 }
 
-func (c *addonController) Updater() generic.Updater {
-	return func(obj runtime.Object) (runtime.Object, error) {
-		newObj, err := c.Update(obj.(*v1.Addon))
-		if newObj == nil {
-			return nil, err
-		}
-		return newObj, err
-	}
-}
-
-func UpdateAddonDeepCopyOnChange(client AddonClient, obj *v1.Addon, handler func(obj *v1.Addon) (*v1.Addon, error)) (*v1.Addon, error) {
-	if obj == nil {
-		return obj, nil
-	}
-
-	copyObj := obj.DeepCopy()
-	newObj, err := handler(copyObj)
-	if newObj != nil {
-		copyObj = newObj
-	}
-	if obj.ResourceVersion == copyObj.ResourceVersion && !equality.Semantic.DeepEqual(obj, copyObj) {
-		return client.Update(copyObj)
-	}
-
-	return copyObj, err
-}
-
-func (c *addonController) AddGenericHandler(ctx context.Context, name string, handler generic.Handler) {
-	c.controller.RegisterHandler(ctx, name, controller.SharedControllerHandlerFunc(handler))
-}
-
-func (c *addonController) AddGenericRemoveHandler(ctx context.Context, name string, handler generic.Handler) {
-	c.AddGenericHandler(ctx, name, generic.NewRemoveHandler(name, c.Updater(), handler))
-}
-
-func (c *addonController) OnChange(ctx context.Context, name string, sync AddonHandler) {
-	c.AddGenericHandler(ctx, name, FromAddonHandlerToHandler(sync))
-}
-
-func (c *addonController) OnRemove(ctx context.Context, name string, sync AddonHandler) {
-	c.AddGenericHandler(ctx, name, generic.NewRemoveHandler(name, c.Updater(), FromAddonHandlerToHandler(sync)))
-}
-
-func (c *addonController) Enqueue(namespace, name string) {
-	c.controller.Enqueue(namespace, name)
-}
-
-func (c *addonController) EnqueueAfter(namespace, name string, duration time.Duration) {
-	c.controller.EnqueueAfter(namespace, name, duration)
-}
-
-func (c *addonController) Informer() cache.SharedIndexInformer {
-	return c.controller.Informer()
-}
-
-func (c *addonController) GroupVersionKind() schema.GroupVersionKind {
-	return c.gvk
-}
-
-func (c *addonController) Cache() AddonCache {
-	return &addonCache{
-		indexer:  c.Informer().GetIndexer(),
-		resource: c.groupResource,
-	}
-}
-
-func (c *addonController) Create(obj *v1.Addon) (*v1.Addon, error) {
-	result := &v1.Addon{}
-	return result, c.client.Create(context.TODO(), obj.Namespace, obj, result, metav1.CreateOptions{})
-}
-
-func (c *addonController) Update(obj *v1.Addon) (*v1.Addon, error) {
-	result := &v1.Addon{}
-	return result, c.client.Update(context.TODO(), obj.Namespace, obj, result, metav1.UpdateOptions{})
-}
-
-func (c *addonController) UpdateStatus(obj *v1.Addon) (*v1.Addon, error) {
-	result := &v1.Addon{}
-	return result, c.client.UpdateStatus(context.TODO(), obj.Namespace, obj, result, metav1.UpdateOptions{})
-}
-
-func (c *addonController) Delete(namespace, name string, options *metav1.DeleteOptions) error {
-	if options == nil {
-		options = &metav1.DeleteOptions{}
-	}
-	return c.client.Delete(context.TODO(), namespace, name, *options)
-}
-
-func (c *addonController) Get(namespace, name string, options metav1.GetOptions) (*v1.Addon, error) {
-	result := &v1.Addon{}
-	return result, c.client.Get(context.TODO(), namespace, name, result, options)
-}
-
-func (c *addonController) List(namespace string, opts metav1.ListOptions) (*v1.AddonList, error) {
-	result := &v1.AddonList{}
-	return result, c.client.List(context.TODO(), namespace, result, opts)
-}
-
-func (c *addonController) Watch(namespace string, opts metav1.ListOptions) (watch.Interface, error) {
-	return c.client.Watch(context.TODO(), namespace, opts)
-}
-
-func (c *addonController) Patch(namespace, name string, pt types.PatchType, data []byte, subresources ...string) (*v1.Addon, error) {
-	result := &v1.Addon{}
-	return result, c.client.Patch(context.TODO(), namespace, name, pt, data, result, metav1.PatchOptions{}, subresources...)
-}
-
-type addonCache struct {
-	indexer  cache.Indexer
-	resource schema.GroupResource
-}
-
-func (c *addonCache) Get(namespace, name string) (*v1.Addon, error) {
-	obj, exists, err := c.indexer.GetByKey(namespace + "/" + name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(c.resource, name)
-	}
-	return obj.(*v1.Addon), nil
-}
-
-func (c *addonCache) List(namespace string, selector labels.Selector) (ret []*v1.Addon, err error) {
-
-	err = cache.ListAllByNamespace(c.indexer, namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1.Addon))
-	})
-
-	return ret, err
-}
-
-func (c *addonCache) AddIndexer(indexName string, indexer AddonIndexer) {
-	utilruntime.Must(c.indexer.AddIndexers(map[string]cache.IndexFunc{
-		indexName: func(obj interface{}) (strings []string, e error) {
-			return indexer(obj.(*v1.Addon))
-		},
-	}))
-}
-
-func (c *addonCache) GetByIndex(indexName, key string) (result []*v1.Addon, err error) {
-	objs, err := c.indexer.ByIndex(indexName, key)
-	if err != nil {
-		return nil, err
-	}
-	result = make([]*v1.Addon, 0, len(objs))
-	for _, obj := range objs {
-		result = append(result, obj.(*v1.Addon))
-	}
-	return result, nil
-}
-
-type AddonStatusHandler func(obj *v1.Addon, status v1.AddonStatus) (v1.AddonStatus, error)
-
-type AddonGeneratingHandler func(obj *v1.Addon, status v1.AddonStatus) ([]runtime.Object, v1.AddonStatus, error)
-
-func RegisterAddonStatusHandler(ctx context.Context, controller AddonController, condition condition.Cond, name string, handler AddonStatusHandler) {
-	statusHandler := &addonStatusHandler{
-		client:    controller,
-		condition: condition,
-		handler:   handler,
-	}
-	controller.AddGenericHandler(ctx, name, FromAddonHandlerToHandler(statusHandler.sync))
-}
-
-func RegisterAddonGeneratingHandler(ctx context.Context, controller AddonController, apply apply.Apply,
-	condition condition.Cond, name string, handler AddonGeneratingHandler, opts *generic.GeneratingHandlerOptions) {
-	statusHandler := &addonGeneratingHandler{
-		AddonGeneratingHandler: handler,
-		apply:                  apply,
-		name:                   name,
-		gvk:                    controller.GroupVersionKind(),
-	}
-	if opts != nil {
-		statusHandler.opts = *opts
-	}
-	controller.OnChange(ctx, name, statusHandler.Remove)
-	RegisterAddonStatusHandler(ctx, controller, condition, name, statusHandler.Handle)
-}
-
-type addonStatusHandler struct {
-	client    AddonClient
-	condition condition.Cond
-	handler   AddonStatusHandler
-}
-
-func (a *addonStatusHandler) sync(key string, obj *v1.Addon) (*v1.Addon, error) {
-	if obj == nil {
-		return obj, nil
-	}
-
-	origStatus := obj.Status.DeepCopy()
-	obj = obj.DeepCopy()
-	newStatus, err := a.handler(obj, obj.Status)
-	if err != nil {
-		// Revert to old status on error
-		newStatus = *origStatus.DeepCopy()
-	}
-
-	if a.condition != "" {
-		if errors.IsConflict(err) {
-			a.condition.SetError(&newStatus, "", nil)
-		} else {
-			a.condition.SetError(&newStatus, "", err)
-		}
-	}
-	if !equality.Semantic.DeepEqual(origStatus, &newStatus) {
-		if a.condition != "" {
-			// Since status has changed, update the lastUpdatedTime
-			a.condition.LastUpdated(&newStatus, time.Now().UTC().Format(time.RFC3339))
-		}
-
-		var newErr error
-		obj.Status = newStatus
-		newObj, newErr := a.client.UpdateStatus(obj)
-		if err == nil {
-			err = newErr
-		}
-		if newErr == nil {
-			obj = newObj
-		}
-	}
-	return obj, err
-}
-
-type addonGeneratingHandler struct {
-	AddonGeneratingHandler
-	apply apply.Apply
-	opts  generic.GeneratingHandlerOptions
-	gvk   schema.GroupVersionKind
-	name  string
-}
-
-func (a *addonGeneratingHandler) Remove(key string, obj *v1.Addon) (*v1.Addon, error) {
-	if obj != nil {
-		return obj, nil
-	}
-
-	obj = &v1.Addon{}
-	obj.Namespace, obj.Name = kv.RSplit(key, "/")
-	obj.SetGroupVersionKind(a.gvk)
-
-	return nil, generic.ConfigureApplyForObject(a.apply, obj, &a.opts).
-		WithOwner(obj).
-		WithSetID(a.name).
-		ApplyObjects()
-}
-
-func (a *addonGeneratingHandler) Handle(obj *v1.Addon, status v1.AddonStatus) (v1.AddonStatus, error) {
-	if !obj.DeletionTimestamp.IsZero() {
-		return status, nil
-	}
-
-	objs, newStatus, err := a.AddonGeneratingHandler(obj, status)
-	if err != nil {
-		return newStatus, err
-	}
-
-	return newStatus, generic.ConfigureApplyForObject(a.apply, obj, &a.opts).
-		WithOwner(obj).
-		WithSetID(a.name).
-		ApplyObjects(objs...)
+// AddIndexer adds  a new Indexer to the cache with the provided name.
+// If you call this after you already have data in the store, the results are undefined.
+func (c AddonGenericCache) AddIndexer(indexName string, indexer AddonIndexer) {
+	c.CacheInterface.AddIndexer(indexName, generic.Indexer[*v1.Addon](indexer))
 }

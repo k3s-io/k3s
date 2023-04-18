@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -20,6 +21,7 @@ import (
 	pkgutil "github.com/k3s-io/k3s/pkg/util"
 	errors2 "github.com/pkg/errors"
 	"github.com/rancher/wrangler/pkg/apply"
+	"github.com/rancher/wrangler/pkg/kv"
 	"github.com/rancher/wrangler/pkg/merr"
 	"github.com/rancher/wrangler/pkg/objectset"
 	"github.com/sirupsen/logrus"
@@ -38,7 +40,9 @@ import (
 
 const (
 	ControllerName = "deploy"
+	GVKAnnotation  = "addon.k3s.cattle.io/gvks"
 	startKey       = "_start_"
+	gvkSep         = ";"
 )
 
 // WatchFiles sets up an OnChange callback to start a periodic goroutine to watch files for changes once the controller has started up.
@@ -206,11 +210,17 @@ func (w *watcher) deploy(path string, compareChecksum bool) error {
 	}
 
 	// Merge GVK list early for validation
-	addon.Status.GVKs = append(addon.Status.GVKs, objects.GVKs()...)
+	addonGVKs := objects.GVKs()
+	for _, gvkString := range strings.Split(addon.Annotations[GVKAnnotation], gvkSep) {
+		if gvk, err := getGVK(gvkString); err == nil {
+			addonGVKs = append(addonGVKs, *gvk)
+		}
+	}
 
 	// Ensure that we don't try to prune using GVKs that the server doesn't have.
 	// This can happen when CRDs are removed or when core types are removed - PodSecurityPolicy, for example.
-	if err := w.validateGVKs(&addon); err != nil {
+	addonGVKs, err = w.validateGVKs(addonGVKs)
+	if err != nil {
 		w.recorder.Eventf(&addon, corev1.EventTypeWarning, "ValidateManifestFailed", "Validate GVKs for manifest at %q failed: %v", path, err)
 		return err
 	}
@@ -222,15 +232,18 @@ func (w *watcher) deploy(path string, compareChecksum bool) error {
 	// doesn't know to search that GVK for owner references, it won't find and delete them.
 	w.recorder.Eventf(&addon, corev1.EventTypeNormal, "ApplyingManifest", "Applying manifest at %q", path)
 
-	if err := w.apply.WithOwner(&addon).WithGVK(addon.Status.GVKs...).Apply(objects); err != nil {
+	if err := w.apply.WithOwner(&addon).WithGVK(addonGVKs...).Apply(objects); err != nil {
 		w.recorder.Eventf(&addon, corev1.EventTypeWarning, "ApplyManifestFailed", "Applying manifest at %q failed: %v", path, err)
 		return err
 	}
 
 	// Emit event, Update Addon checksum and GVKs only if apply was successful
 	w.recorder.Eventf(&addon, corev1.EventTypeNormal, "AppliedManifest", "Applied manifest at %q", path)
+	if addon.Annotations == nil {
+		addon.Annotations = map[string]string{}
+	}
 	addon.Spec.Checksum = checksum
-	addon.Status.GVKs = objects.GVKs()
+	addon.Annotations[GVKAnnotation] = getGVKString(objects.GVKs())
 	_, err = w.addons.Update(&addon)
 	return err
 }
@@ -244,6 +257,13 @@ func (w *watcher) delete(path string) error {
 		return err
 	}
 
+	addonGVKs := []schema.GroupVersionKind{}
+	for _, gvkString := range strings.Split(addon.Annotations[GVKAnnotation], gvkSep) {
+		if gvk, err := getGVK(gvkString); err == nil {
+			addonGVKs = append(addonGVKs, *gvk)
+		}
+	}
+
 	content, err := os.ReadFile(path)
 	if err != nil {
 		w.recorder.Eventf(&addon, corev1.EventTypeWarning, "ReadManifestFailed", "Read manifest at %q failed: %v", path, err)
@@ -253,13 +273,14 @@ func (w *watcher) delete(path string) error {
 		} else {
 			// Search for objects using both GVKs currently listed in the file, as well as GVKs previously applied.
 			// This ensures that any conflicts between competing deploy controllers are handled properly.
-			addon.Status.GVKs = append(addon.Status.GVKs, o.GVKs()...)
+			addonGVKs = append(addonGVKs, o.GVKs()...)
 		}
 	}
 
 	// Ensure that we don't try to delete using GVKs that the server doesn't have.
 	// This can happen when CRDs are removed or when core types are removed - PodSecurityPolicy, for example.
-	if err := w.validateGVKs(&addon); err != nil {
+	addonGVKs, err = w.validateGVKs(addonGVKs)
+	if err != nil {
 		return err
 	}
 
@@ -271,7 +292,7 @@ func (w *watcher) delete(path string) error {
 	}
 
 	// apply an empty set with owner & gvk data to delete
-	if err := w.apply.WithOwner(&addon).WithGVK(addon.Status.GVKs...).ApplyObjects(); err != nil {
+	if err := w.apply.WithOwner(&addon).WithGVK(addonGVKs...).ApplyObjects(); err != nil {
 		return err
 	}
 
@@ -290,22 +311,19 @@ func (w *watcher) getOrCreateAddon(name string) (apisv1.Addon, error) {
 	return *addon, nil
 }
 
-// validateGVKs removes from the Addon status any GVKs that the server does not support
-func (w *watcher) validateGVKs(addon *apisv1.Addon) error {
+// validateGVKs removes from the list any GVKs that the server does not support
+func (w *watcher) validateGVKs(addonGVKs []schema.GroupVersionKind) ([]schema.GroupVersionKind, error) {
 	gvks := []schema.GroupVersionKind{}
-	for _, gvk := range addon.Status.GVKs {
+	for _, gvk := range addonGVKs {
 		found, err := w.serverHasGVK(gvk)
 		if err != nil {
-			return err
+			return gvks, err
 		}
 		if found {
 			gvks = append(gvks, gvk)
-		} else {
-			logrus.Warnf("Pruned unknown GVK from %s %s/%s: %s", addon.TypeMeta.GroupVersionKind(), addon.Namespace, addon.Name, gvk)
 		}
 	}
-	addon.Status.GVKs = gvks
-	return nil
+	return gvks, nil
 }
 
 // serverHasGVK uses a positive cache of GVKs that the cluster is known to have supported at some
@@ -461,4 +479,23 @@ func shouldDisableFile(base, fileName string, disables map[string]bool) bool {
 	suffix := filepath.Ext(baseFile)
 	baseName := strings.TrimSuffix(baseFile, suffix)
 	return disables[baseName]
+}
+
+func getGVK(s string) (*schema.GroupVersionKind, error) {
+	parts := strings.Split(s, ", Kind=")
+	if len(parts) != 2 {
+		return nil, fmt.Errorf("invalid GVK format: %s", s)
+	}
+	gvk := &schema.GroupVersionKind{}
+	gvk.Group, gvk.Version = kv.Split(parts[0], "/")
+	gvk.Kind = parts[1]
+	return gvk, nil
+}
+
+func getGVKString(gvks []schema.GroupVersionKind) string {
+	strs := make([]string, len(gvks))
+	for i, gvk := range gvks {
+		strs[i] = gvk.String()
+	}
+	return strings.Join(strs, gvkSep)
 }
