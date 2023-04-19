@@ -12,7 +12,6 @@
 Example Full Command List (this is not a script!):
 ```
 export SSH_MOUNT_PATH="/var/folders/...krzO/agent.452"
-export GLOBAL_GITCONFIG_PATH="/Users/mtrachier/.gitconfig"
 export GLOBAL_GIT_CONFIG_PATH="/Users/mtrachier/.gitconfig"
 export OLD_K8S="v1.22.14"
 export NEW_K8S="v1.22.15"

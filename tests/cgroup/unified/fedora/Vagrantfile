@@ -29,7 +29,7 @@ Vagrant.configure("2") do |config|
         install -vm 755 /vagrant/k3s /usr/local/bin
 
         # Install k3s SELinux policy
-        dnf install -y https://github.com/k3s-io/k3s-selinux/releases/download/v0.5.testing.2/k3s-selinux-0.5-2.el8.noarch.rpm
+        dnf install -y https://github.com/k3s-io/k3s-selinux/releases/download/v1.2.stable.2/k3s-selinux-1.2-2.el8.noarch.rpm
 
         # Install k3s systemd service (not launched here)
         install -vm 644 -T /home/vagrant/k3s-rootfull.service /etc/systemd/system/k3s-server.service
@@ -37,7 +37,7 @@ Vagrant.configure("2") do |config|
         systemctl daemon-reload
 
         # Install sonobuoy binary
-        SONOBUOY_VER=0.56.15
+        SONOBUOY_VER=0.56.16
         curl -fsSL https://github.com/vmware-tanzu/sonobuoy/releases/download/v"$SONOBUOY_VER"/sonobuoy_"$SONOBUOY_VER"_linux_amd64.tar.gz | tar xzvC /usr/local/bin sonobuoy
 
         # [Rootless] Configure sysctl
