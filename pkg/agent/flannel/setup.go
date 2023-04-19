@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -201,16 +200,7 @@ func createFlannelConf(nodeConfig *config.Node) error {
 	backend := parts[0]
 	backendOptions := make(map[string]string)
 	if len(parts) > 1 {
-		logrus.Warnf("The additional options through flannel-backend are deprecated and will be removed in k3s v1.27, use flannel-conf instead")
-		options := strings.Split(parts[1], ",")
-		for _, o := range options {
-			p := strings.SplitN(o, "=", 2)
-			if len(p) == 1 {
-				backendOptions[p[0]] = ""
-			} else {
-				backendOptions[p[0]] = p[1]
-			}
-		}
+		logrus.Fatalf("The additional options through flannel-backend are deprecated and were removed in k3s v1.27, use flannel-conf instead")
 	}
 
 	switch backend {
@@ -219,13 +209,7 @@ func createFlannelConf(nodeConfig *config.Node) error {
 	case config.FlannelBackendHostGW:
 		backendConf = hostGWBackend
 	case config.FlannelBackendIPSEC:
-		backendConf = strings.ReplaceAll(ipsecBackend, "%psk%", nodeConfig.AgentConfig.IPSECPSK)
-		if _, err := exec.LookPath("swanctl"); err != nil {
-			return errors.Wrap(err, "k3s no longer includes strongswan - please install strongswan's swanctl and charon packages on your host")
-		}
-		logrus.Warnf("The ipsec backend is deprecated and will be removed in k3s v1.27; please switch to wireguard-native. Check our docs for information on how to migrate.")
-	case config.FlannelBackendWireguard:
-		logrus.Fatalf("The wireguard backend was deprecated in K3s v1.26, please switch to wireguard-native. Check our docs at docs.k3s.io/installation/network-options for information about how to migrate.")
+		logrus.Fatal("The ipsec backend is deprecated and was removed in k3s v1.27; please switch to wireguard-native. Check our docs for information on how to migrate.")
 	case config.FlannelBackendWireguardNative:
 		mode, ok := backendOptions["Mode"]
 		if !ok {
