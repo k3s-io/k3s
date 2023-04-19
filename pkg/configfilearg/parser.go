@@ -99,22 +99,35 @@ func (p *Parser) stripInvalidFlags(command string, args []string) ([]string, err
 func (p *Parser) FindString(args []string, target string) (string, error) {
 	configFile, isSet := p.findConfigFileFlag(args)
 	if configFile != "" {
-		bytes, err := readConfigFileData(configFile)
+
+		_, err := os.Stat(configFile)
 		if !isSet && os.IsNotExist(err) {
 			return "", nil
 		} else if err != nil {
 			return "", err
 		}
 
-		data := yaml.MapSlice{}
-		if err := yaml.Unmarshal(bytes, &data); err != nil {
+		files, err := dotDFiles(configFile)
+		if err != nil {
 			return "", err
 		}
+		files = append([]string{configFile}, files...)
+		for _, file := range files {
+			bytes, err := readConfigFileData(file)
+			if err != nil {
+				return "", err
+			}
 
-		for _, i := range data {
-			k, v := convert.ToString(i.Key), convert.ToString(i.Value)
-			if k == target {
-				return v, nil
+			data := yaml.MapSlice{}
+			if err := yaml.Unmarshal(bytes, &data); err != nil {
+				return "", err
+			}
+
+			for _, i := range data {
+				k, v := convert.ToString(i.Key), convert.ToString(i.Value)
+				if k == target {
+					return v, nil
+				}
 			}
 		}
 	}

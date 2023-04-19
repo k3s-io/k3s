@@ -376,7 +376,7 @@ func Test_UnitParser_FindString(t *testing.T) {
 			want: "",
 		},
 		{
-			name: "A custom config yaml exists, target exists",
+			name: "A custom config exists, target exists",
 			fields: fields{
 				FlagNames:     []string{"-c", "--config"},
 				EnvName:       "_TEST_ENV",
@@ -389,7 +389,7 @@ func Test_UnitParser_FindString(t *testing.T) {
 			want: "baz",
 		},
 		{
-			name: "A custom config yaml exists, target does not exist",
+			name: "A custom config exists, target does not exist",
 			fields: fields{
 				FlagNames:     []string{"-c", "--config"},
 				EnvName:       "_TEST_ENV",
@@ -400,6 +400,19 @@ func Test_UnitParser_FindString(t *testing.T) {
 				target: "tls",
 			},
 			want: "",
+		},
+		{
+			name: "Multiple custom configs exist, target exists in a secondary config",
+			fields: fields{
+				FlagNames:     []string{"-c", "--config"},
+				EnvName:       "_TEST_ENV",
+				DefaultConfig: "./testdata/data.yaml",
+			},
+			args: args{
+				osArgs: []string{"-c", "./testdata/data.yaml"},
+				target: "b-string",
+			},
+			want: "one",
 		},
 	}
 	for _, tt := range tests {
