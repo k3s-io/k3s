@@ -98,7 +98,7 @@ func (p *Parser) stripInvalidFlags(command string, args []string) ([]string, err
 
 func (p *Parser) FindString(args []string, target string) (string, error) {
 	configFile, isSet := p.findConfigFileFlag(args)
-	var last_val string
+	var lastVal string
 	if configFile != "" {
 
 		_, err := os.Stat(configFile)
@@ -129,15 +129,15 @@ func (p *Parser) FindString(args []string, target string) (string, error) {
 				k = strings.TrimSuffix(k, "+")
 				if k == target {
 					if isAppend {
-						last_val = last_val + "," + v
+						lastVal = lastVal + "," + v
 					} else {
-						last_val = v
+						lastVal = v
 					}
 				}
 			}
 		}
 	}
-	return last_val, nil
+	return lastVal, nil
 }
 
 func (p *Parser) findConfigFileFlag(args []string) (string, bool) {
