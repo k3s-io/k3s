@@ -527,8 +527,11 @@ func validateNetworkConfiguration(serverConfig server.Config) error {
 	}
 
 	switch serverConfig.ControlConfig.EgressSelectorMode {
-	case config.EgressSelectorModeAgent, config.EgressSelectorModeCluster,
-		config.EgressSelectorModeDisabled, config.EgressSelectorModePod:
+	case config.EgressSelectorModeCluster, config.EgressSelectorModePod:
+	case config.EgressSelectorModeAgent, config.EgressSelectorModeDisabled:
+		if serverConfig.DisableAgent {
+			logrus.Warn("Webhooks and apiserver aggregation may not function properly without an agent; please set egress-selector-mode to 'cluster' or 'pod'")
+		}
 	default:
 		return fmt.Errorf("invalid egress-selector-mode %s", serverConfig.ControlConfig.EgressSelectorMode)
 	}
