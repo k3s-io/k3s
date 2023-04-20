@@ -168,8 +168,11 @@ func apiserverControllers(ctx context.Context, sc *Context, config *Config) {
 			panic(errors.Wrapf(err, "failed to start %s leader controller", util.GetFunctionName(controller)))
 		}
 	}
+
+	// Re-run context startup after core and leader-elected controllers have started. Additional
+	// informer caches may need to start for the newly added OnChange callbacks.
 	if err := sc.Start(ctx); err != nil {
-		panic(err)
+		panic(errors.Wrap(err, "failed to start wranger controllers"))
 	}
 }
 
