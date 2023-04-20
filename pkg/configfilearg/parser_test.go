@@ -221,6 +221,7 @@ func Test_UnitParser_findConfigFileFlag(t *testing.T) {
 func Test_UnitParser_Parse(t *testing.T) {
 	testDataOutput := []string{
 		"--foo-bar=bar-foo",
+		"--alice=bob",
 		"--a-slice=1",
 		"--a-slice=1.5",
 		"--a-slice=2",
@@ -237,6 +238,7 @@ func Test_UnitParser_Parse(t *testing.T) {
 		"--c-slice=three",
 		"--d-slice=three",
 		"--d-slice=four",
+		"--f-string=beta",
 		"--e-slice=one",
 		"--e-slice=two",
 	}
