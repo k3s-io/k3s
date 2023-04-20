@@ -129,7 +129,7 @@ func (p *Parser) FindString(args []string, target string) (string, error) {
 				k = strings.TrimSuffix(k, "+")
 				if k == target {
 					if isAppend {
-						last_val = last_val + v
+						last_val = last_val + "," + v
 					} else {
 						last_val = v
 					}

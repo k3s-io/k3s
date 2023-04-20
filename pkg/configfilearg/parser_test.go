@@ -438,7 +438,7 @@ func Test_UnitParser_FindString(t *testing.T) {
 				osArgs: []string{"-c", "./testdata/data.yaml"},
 				target: "b-string",
 			},
-			want: "onetwo",
+			want: "one,two",
 		},
 	}
 	for _, tt := range tests {
