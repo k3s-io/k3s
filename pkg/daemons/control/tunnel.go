@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/daemons/control/proxy"
@@ -45,7 +44,7 @@ func setupTunnel(ctx context.Context, cfg *config.Control) (http.Handler, error)
 		server: remotedialer.New(authorizer, loggingErrorWriter),
 		egress: map[string]bool{},
 	}
-	go tunnel.watch(ctx)
+	cfg.Runtime.ClusterControllerStarts["tunnel-server"] = tunnel.watch
 	return tunnel, nil
 }
 
@@ -112,17 +111,10 @@ func (t *TunnelServer) watch(ctx context.Context) {
 		return
 	}
 
-	for {
-		if t.config.Runtime.Core != nil {
-			t.config.Runtime.Core.Core().V1().Node().OnChange(ctx, version.Program+"-tunnel-server", t.onChangeNode)
-			switch t.config.EgressSelectorMode {
-			case config.EgressSelectorModeCluster, config.EgressSelectorModePod:
-				t.config.Runtime.Core.Core().V1().Pod().OnChange(ctx, version.Program+"-tunnel-server", t.onChangePod)
-			}
-			return
-		}
-		logrus.Infof("Tunnel server egress proxy waiting for runtime core to become available")
-		time.Sleep(5 * time.Second)
+	t.config.Runtime.Core.Core().V1().Node().OnChange(ctx, version.Program+"-tunnel-server", t.onChangeNode)
+	switch t.config.EgressSelectorMode {
+	case config.EgressSelectorModeCluster, config.EgressSelectorModePod:
+		t.config.Runtime.Core.Core().V1().Pod().OnChange(ctx, version.Program+"-tunnel-server", t.onChangePod)
 	}
 }
 
@@ -173,7 +165,6 @@ func (t *TunnelServer) onChangePod(podName string, pod *v1.Pod) (*v1.Pod, error)
 		}
 	}
 	return pod, nil
-
 }
 
 // serveConnect attempts to handle the HTTP CONNECT request by dialing
