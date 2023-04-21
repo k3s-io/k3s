@@ -1,4 +1,4 @@
-package secretsencryption
+package rotateca
 
 import (
 	"flag"
