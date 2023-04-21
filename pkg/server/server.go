@@ -181,7 +181,7 @@ func apiserverControllers(ctx context.Context, sc *Context, config *Config) {
 func runOrDie(ctx context.Context, name string, cb leader.Callback) {
 	defer func() {
 		if err := recover(); err != nil {
-			logrus.WithField("stack", debug.Stack()).Fatalf("%s controller panic: %v", name, err)
+			logrus.WithField("stack", string(debug.Stack())).Fatalf("%s controller panic: %v", name, err)
 		}
 	}()
 	cb(ctx)
