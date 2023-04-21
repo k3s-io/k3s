@@ -34,7 +34,7 @@ func Run(ctx context.Context, cfg *config.Node) error {
 	go func() {
 		defer func() {
 			if err := recover(); err != nil {
-				logrus.Fatalf("cri-dockerd panic: %s", debug.Stack())
+				logrus.WithField("stack", string(debug.Stack())).Fatalf("cri-dockerd panic: %v", err)
 			}
 		}()
 		logrus.Fatalf("cri-dockerd exited: %v", command.ExecuteContext(ctx))
