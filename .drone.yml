@@ -746,6 +746,9 @@ steps:
   - cd ../secretsencryption
   - vagrant destroy -f
   - go test -v -timeout=30m ./secretsencryption_test.go -ci -local
+  - cd ../startup
+  - vagrant destroy -f
+  - go test -v -timeout=30m ./startup_test.go -ci -local
   - |
     if [ "$DRONE_BUILD_EVENT" = "pull_request" ]; then
       cd ../upgradecluster
