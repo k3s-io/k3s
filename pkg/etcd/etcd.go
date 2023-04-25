@@ -419,10 +419,20 @@ func (e *ETCD) Start(ctx context.Context, clientAccessInfo *clientaccess.Info) e
 		for {
 			select {
 			case <-time.After(30 * time.Second):
-				logrus.Infof("Waiting for agent to become ready before joining ETCD cluster")
+				logrus.Infof("Waiting for agent to become ready before joining etcd cluster")
 			case <-e.config.Runtime.AgentReady:
-				if err := e.join(ctx, clientAccessInfo); err != nil {
-					logrus.Fatalf("ETCD join failed: %v", err)
+				if err := wait.PollImmediateUntilWithContext(ctx, time.Second, func(ctx context.Context) (bool, error) {
+					if err := e.join(ctx, clientAccessInfo); err != nil {
+						// Retry the join if waiting for another member to be promoted, or waiting for peers to connect after promotion
+						if errors.Is(err, rpctypes.ErrTooManyLearners) || errors.Is(err, rpctypes.ErrGRPCUnhealthy) {
+							logrus.Infof("Waiting for other members to finish joining etcd cluster")
+							return false, nil
+						}
+						return false, err
+					}
+					return true, nil
+				}); err != nil {
+					logrus.Fatalf("etcd cluster join failed: %v", err)
 				}
 				return
 			case <-ctx.Done():
