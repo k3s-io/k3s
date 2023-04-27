@@ -39,8 +39,6 @@ func SplitSliceString(flag cli.StringSlice) []string {
 	for _, s := range flag.Value() {
 		if strings.Contains(s, ",") {
 			result = append(result, strings.Split(s, ",")...)
-		} else if strings.Contains(s, " ") {
-			result = append(result, strings.Split(s, " ")...)
 		} else {
 			result = append(result, s)
 		}

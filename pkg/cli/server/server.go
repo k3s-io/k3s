@@ -247,14 +247,12 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		}
 		cmds.ServerConfig.ClusterCIDR.Set(clusterCIDR)
 	}
-	for _, cidr := range cmds.ServerConfig.ClusterCIDR {
-		for _, v := range strings.Split(cidr, ",") {
-			_, parsed, err := net.ParseCIDR(v)
-			if err != nil {
-				return errors.Wrapf(err, "invalid cluster-cidr %s", v)
-			}
-			serverConfig.ControlConfig.ClusterIPRanges = append(serverConfig.ControlConfig.ClusterIPRanges, parsed)
+	for _, cidr := range util.SplitSliceString(cmds.ServerConfig.ClusterCIDR) {
+		_, parsed, err := net.ParseCIDR(cidr)
+		if err != nil {
+			return errors.Wrapf(err, "invalid cluster-cidr %s", cidr)
 		}
+		serverConfig.ControlConfig.ClusterIPRanges = append(serverConfig.ControlConfig.ClusterIPRanges, parsed)
 	}
 
 	// set ClusterIPRange to the first IPv4 block, for legacy clients
@@ -273,14 +271,12 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		}
 		cmds.ServerConfig.ServiceCIDR.Set(serviceCIDR)
 	}
-	for _, cidr := range cmds.ServerConfig.ServiceCIDR {
-		for _, v := range strings.Split(cidr, ",") {
-			_, parsed, err := net.ParseCIDR(v)
-			if err != nil {
-				return errors.Wrapf(err, "invalid service-cidr %s", v)
-			}
-			serverConfig.ControlConfig.ServiceIPRanges = append(serverConfig.ControlConfig.ServiceIPRanges, parsed)
+	for _, cidr := range util.SplitSliceString(cmds.ServerConfig.ServiceCIDR) {
+		_, parsed, err := net.ParseCIDR(cidr)
+		if err != nil {
+			return errors.Wrapf(err, "invalid service-cidr %s", cidr)
 		}
+		serverConfig.ControlConfig.ServiceIPRanges = append(serverConfig.ControlConfig.ServiceIPRanges, parsed)
 	}
 
 	// set ServiceIPRange to the first IPv4 block, for legacy clients
@@ -315,14 +311,12 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		serverConfig.ControlConfig.ClusterDNS = clusterDNS
 		serverConfig.ControlConfig.ClusterDNSs = []net.IP{serverConfig.ControlConfig.ClusterDNS}
 	} else {
-		for _, ip := range cmds.ServerConfig.ClusterDNS {
-			for _, v := range strings.Split(ip, ",") {
-				parsed := net.ParseIP(v)
-				if parsed == nil {
-					return fmt.Errorf("invalid cluster-dns address %s", v)
-				}
-				serverConfig.ControlConfig.ClusterDNSs = append(serverConfig.ControlConfig.ClusterDNSs, parsed)
+		for _, ip := range util.SplitSliceString(cmds.ServerConfig.ClusterDNS) {
+			parsed := net.ParseIP(ip)
+			if parsed == nil {
+				return fmt.Errorf("invalid cluster-dns address %s", ip)
 			}
+			serverConfig.ControlConfig.ClusterDNSs = append(serverConfig.ControlConfig.ClusterDNSs, parsed)
 		}
 		// Set ClusterDNS to the first IPv4 address, for legacy clients
 		// unless only IPv6 range given
@@ -349,12 +343,10 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 
 	serverConfig.ControlConfig.Skips = map[string]bool{}
 	serverConfig.ControlConfig.Disables = map[string]bool{}
-	for _, disable := range app.StringSlice("disable") {
-		for _, v := range strings.Split(disable, ",") {
-			v = strings.TrimSpace(v)
-			serverConfig.ControlConfig.Skips[v] = true
-			serverConfig.ControlConfig.Disables[v] = true
-		}
+	for _, disable := range util.SplitSliceString(app.StringSlice("disable")) {
+		disable = strings.TrimSpace(disable)
+		serverConfig.ControlConfig.Skips[disable] = true
+		serverConfig.ControlConfig.Disables[disable] = true
 	}
 	if serverConfig.ControlConfig.Skips["servicelb"] {
 		serverConfig.ControlConfig.DisableServiceLB = true

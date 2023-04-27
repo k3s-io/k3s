@@ -14,13 +14,18 @@ func Test_UnitSplitSliceString(t *testing.T) {
 		want []string
 	}{
 		{
+			name: "Single Argument",
+			arg:  cli.StringSlice{"foo"},
+			want: []string{"foo"},
+		},
+		{
 			name: "Repeated Arguments",
 			arg:  cli.StringSlice{"foo", "bar", "baz"},
 			want: []string{"foo", "bar", "baz"},
 		},
 		{
 			name: "Multiple Arguments and Repeated Arguments",
-			arg:  cli.StringSlice{"foo,bar", "zoo clar", "baz"},
+			arg:  cli.StringSlice{"foo,bar", "zoo,clar", "baz"},
 			want: []string{"foo", "bar", "zoo", "clar", "baz"},
 		},
 	}
