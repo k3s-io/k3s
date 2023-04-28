@@ -210,12 +210,8 @@ func K3sStartServer(inputArgs ...string) (*K3sServer, error) {
 		return nil, errors.New("integration tests must be run as sudo/root")
 	}
 
-	var cmdArgs []string
-	for _, arg := range inputArgs {
-		cmdArgs = append(cmdArgs, strings.Fields(arg)...)
-	}
 	k3sBin := findK3sExecutable()
-	k3sCmd := append([]string{"server"}, cmdArgs...)
+	k3sCmd := append([]string{"server"}, inputArgs...)
 	cmd := exec.Command(k3sBin, k3sCmd...)
 	// Give the server a new group id so we can kill it and its children later
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
