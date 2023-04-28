@@ -206,7 +206,10 @@ func stageAndRun(dataDir, cmd string, args []string) error {
 
 	logrus.Debugf("Running %s %v", cmd, args)
 
-	return syscall.Exec(cmd, args, os.Environ())
+	if err := syscall.Exec(cmd, args, os.Environ()); err != nil {
+		return errors.Wrapf(err, "exec %s failed", cmd)
+	}
+	return nil
 }
 
 // getAssetAndDir returns the name of the bindata asset, along with a directory path
