@@ -13,8 +13,9 @@ import (
 var customEtcdArgsServer *testutil.K3sServer
 var customEtcdArgsServerArgs = []string{
 	"--cluster-init",
-	"--etcd-arg quota-backend-bytes=858993459",
+	"--etcd-arg=quota-backend-bytes=858993459",
 }
+
 var testLock int
 
 var _ = BeforeSuite(func() {
