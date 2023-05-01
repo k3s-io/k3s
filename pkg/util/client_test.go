@@ -31,7 +31,7 @@ func Test_UnitSplitSliceString(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := SplitSliceString(tt.arg); !reflect.DeepEqual(got, tt.want) {
+			if got := SplitStringSlice(tt.arg); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("SplitSliceString() = %+v\nWant = %+v", got, tt.want)
 			}
 		})

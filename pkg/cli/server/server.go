@@ -116,7 +116,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	serverConfig.ControlConfig.KubeConfigMode = cfg.KubeConfigMode
 	serverConfig.ControlConfig.Rootless = cfg.Rootless
 	serverConfig.ControlConfig.ServiceLBNamespace = cfg.ServiceLBNamespace
-	serverConfig.ControlConfig.SANs = util.SplitSliceString(cfg.TLSSan)
+	serverConfig.ControlConfig.SANs = util.SplitStringSlice(cfg.TLSSan)
 	serverConfig.ControlConfig.BindAddress = cfg.BindAddress
 	serverConfig.ControlConfig.SupervisorPort = cfg.SupervisorPort
 	serverConfig.ControlConfig.HTTPSPort = cfg.HTTPSPort
@@ -247,7 +247,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		}
 		cmds.ServerConfig.ClusterCIDR.Set(clusterCIDR)
 	}
-	for _, cidr := range util.SplitSliceString(cmds.ServerConfig.ClusterCIDR) {
+	for _, cidr := range util.SplitStringSlice(cmds.ServerConfig.ClusterCIDR) {
 		_, parsed, err := net.ParseCIDR(cidr)
 		if err != nil {
 			return errors.Wrapf(err, "invalid cluster-cidr %s", cidr)
@@ -271,7 +271,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		}
 		cmds.ServerConfig.ServiceCIDR.Set(serviceCIDR)
 	}
-	for _, cidr := range util.SplitSliceString(cmds.ServerConfig.ServiceCIDR) {
+	for _, cidr := range util.SplitStringSlice(cmds.ServerConfig.ServiceCIDR) {
 		_, parsed, err := net.ParseCIDR(cidr)
 		if err != nil {
 			return errors.Wrapf(err, "invalid service-cidr %s", cidr)
@@ -311,7 +311,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		serverConfig.ControlConfig.ClusterDNS = clusterDNS
 		serverConfig.ControlConfig.ClusterDNSs = []net.IP{serverConfig.ControlConfig.ClusterDNS}
 	} else {
-		for _, ip := range util.SplitSliceString(cmds.ServerConfig.ClusterDNS) {
+		for _, ip := range util.SplitStringSlice(cmds.ServerConfig.ClusterDNS) {
 			parsed := net.ParseIP(ip)
 			if parsed == nil {
 				return fmt.Errorf("invalid cluster-dns address %s", ip)
@@ -343,7 +343,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 
 	serverConfig.ControlConfig.Skips = map[string]bool{}
 	serverConfig.ControlConfig.Disables = map[string]bool{}
-	for _, disable := range util.SplitSliceString(app.StringSlice("disable")) {
+	for _, disable := range util.SplitStringSlice(app.StringSlice("disable")) {
 		disable = strings.TrimSpace(disable)
 		serverConfig.ControlConfig.Skips[disable] = true
 		serverConfig.ControlConfig.Disables[disable] = true

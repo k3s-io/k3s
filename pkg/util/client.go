@@ -30,10 +30,10 @@ func GetClientSet(file string) (clientset.Interface, error) {
 	return clientset.NewForConfig(restConfig)
 }
 
-// SplitSliceString is a helper function to handle StringSliceFlag containing mutliple values
+// SplitStringSlice is a helper function to handle StringSliceFlag containing multiple values
 // By default, StringSliceFlag only supports repeated values, not multiple values
 // e.g. --foo="bar,car" --foo=baz will result in []string{"bar", "car". "baz"}
-func SplitSliceString(ss []string) []string {
+func SplitStringSlice(ss []string) []string {
 	result := []string{}
 	for _, s := range ss {
 		result = append(result, strings.Split(s, ",")...)
