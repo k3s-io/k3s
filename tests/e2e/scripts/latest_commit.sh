@@ -22,5 +22,5 @@ while [ $? -ne 0 ]; do
     fi
     sed -i 1d "$2"
     sleep 1
-    curl -s --fail https://k3s-ci-builds.s3.amazonaws.com/k3s-ci-builds/k3s-$(head -n 1 $2).sha256sum
+    curl -s --fail https://k3s-ci-builds.s3.amazonaws.com/k3s-$(head -n 1 $2).sha256sum
 done
