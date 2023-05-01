@@ -440,7 +440,7 @@ func RunCmdOnNode(cmd string, nodename string) (string, error) {
 	runcmd := "vagrant ssh -c \"" + cmd + "\" " + nodename
 	out, err := RunCommand(runcmd)
 	if err != nil {
-		return out, fmt.Errorf("failed to run command %s on node %s: %v", cmd, nodename, err)
+		return out, fmt.Errorf("failed to run command: %s on node %s: %s, %v", cmd, nodename, out, err)
 	}
 	return out, nil
 }
