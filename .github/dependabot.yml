@@ -4,34 +4,48 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: &interval "weekly"
+    commit-message:
+      prefix: &branch "[Release-1.26]"
   
   - package-ecosystem: "docker"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: *interval
+    commit-message:
+      prefix: *branch
 
   - package-ecosystem: "docker"
     directory: "/conformance"
     schedule:
-      interval: "weekly"
+      interval: *interval
+    commit-message:
+      prefix: *branch
 
   - package-ecosystem: "docker"
     directory: "/tests/e2e/scripts"
     schedule:
-      interval: "weekly"
+      interval: *interval
+    commit-message:
+      prefix: *branch
 
   - package-ecosystem: "docker"
     directory: "/package"
     schedule:
-      interval: "weekly"
+      interval: *interval
+    commit-message:
+      prefix: *branch
 
   - package-ecosystem: "docker"
     directory: "/tests/integration"
     schedule:
-      interval: "weekly"
+      interval: *interval
+    commit-message:
+      prefix: *branch
 
   - package-ecosystem: "docker"
     directory: "/tests/terraform"
     schedule:
-      interval: "weekly"
+      interval: *interval
+    commit-message:
+      prefix: *branch
