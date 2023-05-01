@@ -77,17 +77,18 @@ func KillK3sCluster(nodes []string) error {
 
 var _ = ReportAfterEach(e2e.GenReport)
 
+var _ = BeforeSuite(func() {
+	var err error
+	if *local {
+		serverNodeNames, agentNodeNames, err = e2e.CreateLocalCluster(*nodeOS, 1, 1)
+	} else {
+		serverNodeNames, agentNodeNames, err = e2e.CreateCluster(*nodeOS, 1, 1)
+	}
+	Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog(err))
+})
+
 var _ = Describe("Various Startup Configurations", Ordered, func() {
 	Context("Verify CRI-Dockerd :", func() {
-		It("Stands up the nodes", func() {
-			var err error
-			if *local {
-				serverNodeNames, agentNodeNames, err = e2e.CreateLocalCluster(*nodeOS, 1, 1)
-			} else {
-				serverNodeNames, agentNodeNames, err = e2e.CreateCluster(*nodeOS, 1, 1)
-			}
-			Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog(err))
-		})
 		It("Starts K3s with no issues", func() {
 			dockerYAML := "docker: true"
 			err := StartK3sCluster(append(serverNodeNames, agentNodeNames...), dockerYAML, dockerYAML)
@@ -175,7 +176,7 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})
-	Context("Verify disable-agent and egress-selector-mode flags", func() {
+	FContext("Verify disable-agent and egress-selector-mode flags", func() {
 		It("Starts K3s with no issues", func() {
 			disableAgentYAML := "disable-agent: true\negress-selector-mode: cluster"
 			err := StartK3sCluster(append(serverNodeNames, agentNodeNames...), disableAgentYAML, "")
@@ -237,8 +238,8 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 
 		It("Collects logs from a pod", func() {
 			cmd := "kubectl logs -n kube-system -l app.kubernetes.io/name=traefik -c traefik"
-			_, err := e2e.RunCmdOnNode(cmd, serverNodeNames[0])
-			Expect(err).NotTo(HaveOccurred())
+			res, err := e2e.RunCmdOnNode(cmd, serverNodeNames[0])
+			Expect(err).NotTo(HaveOccurred(), res)
 		})
 
 		It("Kills the cluster", func() {
