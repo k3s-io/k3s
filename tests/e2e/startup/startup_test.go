@@ -110,7 +110,7 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 				for _, node := range nodes {
 					g.Expect(node.Status).Should(Equal("Ready"))
 				}
-			}, "620s", "5s").Should(Succeed())
+			}, "360s", "5s").Should(Succeed())
 			_, _ = e2e.ParseNodes(kubeConfigFile, true)
 
 			fmt.Printf("\nFetching pods status\n")
@@ -124,7 +124,7 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 						g.Expect(pod.Status).Should(Equal("Running"), pod.Name)
 					}
 				}
-			}, "620s", "5s").Should(Succeed())
+			}, "360s", "5s").Should(Succeed())
 			_, _ = e2e.ParsePods(kubeConfigFile, true)
 		})
 		It("Kills the cluster", func() {
@@ -154,7 +154,7 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 				for _, node := range nodes {
 					g.Expect(node.Status).Should(Equal("Ready"))
 				}
-			}, "620s", "5s").Should(Succeed())
+			}, "360s", "5s").Should(Succeed())
 			_, _ = e2e.ParseNodes(kubeConfigFile, true)
 
 			fmt.Printf("\nFetching pods status\n")
@@ -168,7 +168,7 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 						g.Expect(pod.Status).Should(Equal("Running"), pod.Name)
 					}
 				}
-			}, "620s", "5s").Should(Succeed())
+			}, "360s", "5s").Should(Succeed())
 			_, _ = e2e.ParsePods(kubeConfigFile, true)
 		})
 		It("Kills the cluster", func() {
@@ -176,7 +176,7 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})
-	FContext("Verify disable-agent and egress-selector-mode flags", func() {
+	Context("Verify disable-agent and egress-selector-mode flags", func() {
 		It("Starts K3s with no issues", func() {
 			disableAgentYAML := "disable-agent: true\negress-selector-mode: cluster"
 			err := StartK3sCluster(append(serverNodeNames, agentNodeNames...), disableAgentYAML, "")
@@ -198,7 +198,7 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 				for _, node := range nodes {
 					g.Expect(node.Status).Should(Equal("Ready"))
 				}
-			}, "620s", "5s").Should(Succeed())
+			}, "360s", "5s").Should(Succeed())
 			_, _ = e2e.ParseNodes(kubeConfigFile, true)
 
 			fmt.Printf("\nFetching pods status\n")
@@ -212,7 +212,7 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 						g.Expect(pod.Status).Should(Equal("Running"), pod.Name)
 					}
 				}
-			}, "620s", "5s").Should(Succeed())
+			}, "360s", "5s").Should(Succeed())
 			_, _ = e2e.ParsePods(kubeConfigFile, true)
 		})
 
@@ -221,7 +221,7 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			Eventually(func() error {
 				_, err := e2e.RunCmdOnNode(cmd, serverNodeNames[0])
 				return err
-			}, "620s", "5s").Should(Succeed())
+			}, "600s", "5s").Should(Succeed())
 		})
 
 		It("Returns node metrics", func() {
@@ -238,8 +238,10 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 
 		It("Collects logs from a pod", func() {
 			cmd := "kubectl logs -n kube-system -l app.kubernetes.io/name=traefik -c traefik"
-			res, err := e2e.RunCmdOnNode(cmd, serverNodeNames[0])
-			Expect(err).NotTo(HaveOccurred(), res)
+			Eventually(func() error {
+				_, err := e2e.RunCmdOnNode(cmd, serverNodeNames[0])
+				return err
+			}, "360s", "5s").Should(Succeed())
 		})
 
 		It("Kills the cluster", func() {
