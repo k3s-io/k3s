@@ -294,6 +294,7 @@ func Test_UnitUserPass(t *testing.T) {
 		{"K10XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX::username:password", "username", "password", true},
 		{"password", "", "password", true},
 		{"K10X::x", "", "", false},
+		{"aaaaaa.bbbbbbbbbbbbbbbb", "", "", false},
 	}
 
 	for _, testCase := range testCases {
