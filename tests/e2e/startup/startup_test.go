@@ -241,6 +241,18 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})
+	Context("Verify server fails to start with bootstrap token", func() {
+		It("Fails to start with a meaningful error", func() {
+			tokenYAML := "token: aaaaaa.bbbbbbbbbbbbbbbb"
+			err := StartK3sCluster(append(serverNodeNames, agentNodeNames...), tokenYAML, tokenYAML)
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(ContainSubstring("failed to normalize server token"))
+		})
+		It("Kills the cluster", func() {
+			err := KillK3sCluster(append(serverNodeNames, agentNodeNames...))
+			Expect(err).NotTo(HaveOccurred())
+		})
+	})
 })
 
 var failed bool

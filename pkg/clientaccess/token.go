@@ -165,9 +165,13 @@ func hashCA(b []byte) (string, error) {
 
 // ParseUsernamePassword returns the username and password portion of a token string,
 // along with a bool indicating if the token was successfully parsed.
+// Kubeadm-style tokens have ID/Secret not Username/Password and therefore will return false (invalid).
 func ParseUsernamePassword(token string) (string, string, bool) {
 	info, err := parseToken(token)
 	if err != nil {
+		return "", "", false
+	}
+	if info.BootstrapTokenString != nil {
 		return "", "", false
 	}
 	return info.Username, info.Password, true
