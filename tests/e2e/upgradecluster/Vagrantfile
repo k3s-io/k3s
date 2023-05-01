@@ -34,9 +34,7 @@ def provision(vm, role, role_num, node_num)
     vm.provision "shell", path: "../scripts/latest_commit.sh", args: ["master", "/tmp/k3s_commits"]
     install_type = "INSTALL_K3S_COMMIT=$(head\ -n\ 1\ /tmp/k3s_commits)"
   else
-    vm.provision "latest version", type: "shell",
-      inline: "curl -w '%{url_effective}' -L -s -S https://update.k3s.io/v1-release/channels/#{RELEASE_CHANNEL} -o /dev/null | sed -e 's|.*/||'  &> /tmp/k3s_version"
-    install_type = "INSTALL_K3S_VERSION=$(cat\ /tmp/k3s_version)"
+    install_type = "INSTALL_K3S_CHANNEL=#{RELEASE_CHANNEL}"
   end
 
 
