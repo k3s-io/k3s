@@ -7,7 +7,7 @@ cd $(dirname $0)/..
 
 GO=${GO-go}
 
-for i in crictl kubectl k3s-agent k3s-server k3s-token k3s-etcd-snapshot k3s-secrets-encrypt k3s-certificate k3s-completion; do
+for i in containerd crictl kubectl k3s-agent k3s-server k3s-token k3s-etcd-snapshot k3s-secrets-encrypt k3s-certificate k3s-completion; do
     rm -f bin/$i
     ln -s k3s bin/$i
 done

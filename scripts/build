@@ -63,7 +63,7 @@ fi
 STATIC="
     -extldflags '-static -lm -ldl -lz -lpthread'
 "
-TAGS="apparmor seccomp netcgo osusergo providerless urfave_cli_no_docs"
+TAGS="ctrd apparmor seccomp netcgo osusergo providerless urfave_cli_no_docs"
 RUNC_TAGS="apparmor seccomp"
 RUNC_STATIC="static"
 
@@ -133,23 +133,23 @@ fi
 
 echo Building k3s
 CGO_ENABLED=1 "${GO}" build $BLDFLAGS -tags "$TAGS" -gcflags="all=${GCFLAGS}" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC" -o bin/k3s ./cmd/server/main.go
-ln -s k3s ./bin/k3s-agent
-ln -s k3s ./bin/k3s-server
-ln -s k3s ./bin/k3s-token
-ln -s k3s ./bin/k3s-etcd-snapshot
-ln -s k3s ./bin/k3s-secrets-encrypt
-ln -s k3s ./bin/k3s-certificate
-ln -s k3s ./bin/k3s-completion
-ln -s k3s ./bin/kubectl
+ln -s k3s ./bin/containerd
 ln -s k3s ./bin/crictl
 ln -s k3s ./bin/ctr
+ln -s k3s ./bin/k3s-agent
+ln -s k3s ./bin/k3s-certificate
+ln -s k3s ./bin/k3s-completion
+ln -s k3s ./bin/k3s-etcd-snapshot
+ln -s k3s ./bin/k3s-secrets-encrypt
+ln -s k3s ./bin/k3s-server
+ln -s k3s ./bin/k3s-token
+ln -s k3s ./bin/kubectl
 
 export GOPATH=$(pwd)/build
 
 echo Building containerd
 pushd ./build/src/github.com/containerd/containerd
 TAGS="${TAGS/netcgo/netgo}"
-CGO_ENABLED=1 "${GO}" build -tags "$TAGS" -gcflags="all=${GCFLAGS}" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC" -o bin/containerd              ./cmd/containerd
 CGO_ENABLED=1 "${GO}" build -tags "$TAGS" -gcflags="all=${GCFLAGS}" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC" -o bin/containerd-shim-runc-v2 ./cmd/containerd-shim-runc-v2
 popd
 cp -vf ./build/src/github.com/containerd/containerd/bin/* ./bin/
