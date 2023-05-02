@@ -1,6 +1,8 @@
 package util
 
 import (
+	"strings"
+
 	"github.com/k3s-io/k3s/pkg/datadir"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
@@ -26,4 +28,15 @@ func GetClientSet(file string) (clientset.Interface, error) {
 	}
 
 	return clientset.NewForConfig(restConfig)
+}
+
+// SplitStringSlice is a helper function to handle StringSliceFlag containing multiple values
+// By default, StringSliceFlag only supports repeated values, not multiple values
+// e.g. --foo="bar,car" --foo=baz will result in []string{"bar", "car". "baz"}
+func SplitStringSlice(ss []string) []string {
+	result := []string{}
+	for _, s := range ss {
+		result = append(result, strings.Split(s, ",")...)
+	}
+	return result
 }
