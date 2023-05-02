@@ -25,7 +25,7 @@ permissions:
 
 env:
   GOCOVERDIR: /tmp/k3scov
-
+  
 jobs:
   build:
     uses: ./.github/workflows/build-k3s.yaml
@@ -56,7 +56,8 @@ jobs:
     - name: Run Integration Tests
       run: | 
         chmod +x ./dist/artifacts/k3s
-        sudo -E env "PATH=$PATH" go test -v ./tests/integration/... -run Integration
+        mkdir -p $GOCOVERDIR
+        sudo -E env "PATH=$PATH" go test -v -timeout=30m ./tests/integration/... -run Integration
     - name: On Failure, Launch Debug Session
       if: ${{ failure() }}
       uses: mxschmitt/action-tmate@v3
