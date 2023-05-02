@@ -6,6 +6,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"runtime/coverage"
 	"runtime/debug"
 	"strconv"
 	"strings"
@@ -77,7 +78,7 @@ func StartServer(ctx context.Context, config *Config, cfg *cmds.Server) error {
 			return errors.Wrap(err, "startup hook")
 		}
 	}
-
+	go writeCoverage(ctx)
 	go startOnAPIServerReady(ctx, config)
 
 	if err := printTokens(&config.ControlConfig); err != nil {
@@ -94,6 +95,27 @@ func startOnAPIServerReady(ctx context.Context, config *Config) {
 	case <-config.ControlConfig.Runtime.APIServerReady:
 		if err := runControllers(ctx, config); err != nil {
 			logrus.Fatalf("failed to start controllers: %v", err)
+		}
+	}
+}
+
+// writeCoverage checks if GOCOVERDIR is set on startup and writes coverage files to that directory
+// every 20 seconds. This is done to ensure that the coverage files are written even if the process is killed.
+func writeCoverage(ctx context.Context) {
+	k, s := os.LookupEnv("GOCOVERDIR")
+	if s {
+		for {
+			select {
+			case <-ctx.Done():
+				if err := coverage.WriteCountersDir(k); err != nil {
+					logrus.Warn(err)
+				}
+				return
+			case <-time.After(20 * time.Second):
+				if err := coverage.WriteCountersDir(k); err != nil {
+					logrus.Warn(err)
+				}
+			}
 		}
 	}
 }
