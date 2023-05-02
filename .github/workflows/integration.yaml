@@ -22,7 +22,10 @@ on:
 
 permissions:
   contents: read
-  
+
+env:
+  GOCOVERDIR: /tmp/k3scov
+
 jobs:
   build:
     uses: ./.github/workflows/build-k3s.yaml
@@ -58,3 +61,11 @@ jobs:
       if: ${{ failure() }}
       uses: mxschmitt/action-tmate@v3
       timeout-minutes: 5
+    - name: Generate coverage report
+      run: go tool covdata textfmt -i $GOCOVERDIR -o coverage.out
+    - name: Upload Results To Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        files: ./coverage.out
+        flags: inttests # optional
+        verbose: true # optional (default = false)

@@ -56,7 +56,7 @@ jobs:
       uses: mxschmitt/action-tmate@v3
       timeout-minutes: 5
     - name: Upload Results To Codecov
-      uses: codecov/codecov-action@v1
+      uses: codecov/codecov-action@v3
       with:
         files: ./coverage.out
         flags: unittests # optional
