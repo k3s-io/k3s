@@ -71,6 +71,11 @@ func KillK3sCluster(nodes []string) error {
 		if _, err := e2e.RunCmdOnNode("sudo k3s-killall.sh", node); err != nil {
 			return err
 		}
+		if strings.Contains(node, "server") {
+			if _, err := e2e.RunCmdOnNode("sudo rm -rf /var/lib/rancher/k3s/server/db", node); err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }
@@ -100,6 +105,7 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			fmt.Println("Agent Nodes:", agentNodeNames)
 			kubeConfigFile, err = e2e.GenKubeConfigFile(serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred())
+			Expect(e2e.SetKubeConfig(kubeConfigFile)).To(Succeed())
 		})
 
 		It("Checks node and pod status", func() {
@@ -144,6 +150,7 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			fmt.Println("Agent Nodes:", agentNodeNames)
 			kubeConfigFile, err = e2e.GenKubeConfigFile(serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred())
+			Expect(e2e.SetKubeConfig(kubeConfigFile)).To(Succeed())
 		})
 
 		It("Checks node and pod status", func() {
@@ -188,6 +195,7 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			fmt.Println("Agent Nodes:", agentNodeNames)
 			kubeConfigFile, err = e2e.GenKubeConfigFile(serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred())
+			Expect(e2e.SetKubeConfig(kubeConfigFile)).To(Succeed())
 		})
 
 		It("Checks node and pod status", func() {
@@ -219,14 +227,14 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 		It("Returns pod metrics", func() {
 			cmd := "kubectl top pod -A"
 			Eventually(func() error {
-				_, err := e2e.RunCmdOnNode(cmd, serverNodeNames[0])
+				_, err := e2e.RunCommand(cmd)
 				return err
 			}, "600s", "5s").Should(Succeed())
 		})
 
 		It("Returns node metrics", func() {
 			cmd := "kubectl top node"
-			_, err := e2e.RunCmdOnNode(cmd, serverNodeNames[0])
+			_, err := e2e.RunCommand(cmd)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -239,7 +247,7 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 		It("Collects logs from a pod", func() {
 			cmd := "kubectl logs -n kube-system -l app.kubernetes.io/name=traefik -c traefik"
 			Eventually(func() error {
-				_, err := e2e.RunCmdOnNode(cmd, serverNodeNames[0])
+				_, err := e2e.RunCommand(cmd)
 				return err
 			}, "360s", "5s").Should(Succeed())
 		})

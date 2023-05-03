@@ -306,6 +306,12 @@ func GenKubeConfigFile(serverName string) (string, error) {
 	return kubeConfigFile, nil
 }
 
+// SetKubeConfig sets the E2E_KUBECONFIG environment variable
+// for use with RunCommand function
+func SetKubeConfig(kubeconfig string) error {
+	return os.Setenv("E2E_KUBECONFIG", kubeconfig)
+}
+
 func GenReport(specReport ginkgo.SpecReport) {
 	state := struct {
 		State string        `json:"state"`
@@ -437,7 +443,7 @@ func RestartClusterAgent(nodeNames []string) error {
 
 // RunCmdOnNode executes a command from within the given node
 func RunCmdOnNode(cmd string, nodename string) (string, error) {
-	runcmd := "vagrant ssh -c \"" + cmd + "\" " + nodename
+	runcmd := "vagrant ssh " + nodename + " -c \"" + cmd + "\""
 	out, err := RunCommand(runcmd)
 	if err != nil {
 		return out, fmt.Errorf("failed to run command: %s on node %s: %s, %v", cmd, nodename, out, err)
@@ -445,8 +451,11 @@ func RunCmdOnNode(cmd string, nodename string) (string, error) {
 	return out, nil
 }
 
-// RunCommand executes a command on the host
 func RunCommand(cmd string) (string, error) {
+	// we don't use c.env because we embed the command inside a bash shell
+	if k, b := os.LookupEnv("E2E_KUBECONFIG"); b {
+		cmd = "KUBECONFIG=" + k + " " + cmd
+	}
 	c := exec.Command("bash", "-c", cmd)
 	out, err := c.CombinedOutput()
 	return string(out), err
