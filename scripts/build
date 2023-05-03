@@ -56,8 +56,6 @@ VERSIONFLAGS="
 "
 if [ -n "${GOCOVER}" ]; then
     BLDFLAGS="-cover"
-else 
-    BLDFLAGS=""
 fi
 if [ -n "${DEBUG}" ]; then
   GCFLAGS="-N -l"
