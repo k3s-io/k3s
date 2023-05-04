@@ -303,13 +303,10 @@ func GenKubeConfigFile(serverName string) (string, error) {
 	if err := os.WriteFile(kubeConfigFile, []byte(kubeConfig), 0644); err != nil {
 		return "", err
 	}
+	if err := os.Setenv("E2E_KUBECONFIG", kubeConfigFile); err != nil {
+		return "", err
+	}
 	return kubeConfigFile, nil
-}
-
-// SetKubeConfig sets the E2E_KUBECONFIG environment variable
-// for use with RunCommand function
-func SetKubeConfig(kubeconfig string) error {
-	return os.Setenv("E2E_KUBECONFIG", kubeconfig)
 }
 
 func GenReport(specReport ginkgo.SpecReport) {
@@ -452,11 +449,10 @@ func RunCmdOnNode(cmd string, nodename string) (string, error) {
 }
 
 func RunCommand(cmd string) (string, error) {
-	// we don't use c.env because we embed the command inside a bash shell
-	if k, b := os.LookupEnv("E2E_KUBECONFIG"); b {
-		cmd = "KUBECONFIG=" + k + " " + cmd
-	}
 	c := exec.Command("bash", "-c", cmd)
+	if kc, ok := os.LookupEnv("E2E_KUBECONFIG"); ok {
+		c.Env = append(os.Environ(), "KUBECONFIG="+kc)
+	}
 	out, err := c.CombinedOutput()
 	return string(out), err
 }

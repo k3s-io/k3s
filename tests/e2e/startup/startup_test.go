@@ -105,7 +105,6 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			fmt.Println("Agent Nodes:", agentNodeNames)
 			kubeConfigFile, err = e2e.GenKubeConfigFile(serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred())
-			Expect(e2e.SetKubeConfig(kubeConfigFile)).To(Succeed())
 		})
 
 		It("Checks node and pod status", func() {
@@ -150,7 +149,6 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			fmt.Println("Agent Nodes:", agentNodeNames)
 			kubeConfigFile, err = e2e.GenKubeConfigFile(serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred())
-			Expect(e2e.SetKubeConfig(kubeConfigFile)).To(Succeed())
 		})
 
 		It("Checks node and pod status", func() {
@@ -195,7 +193,6 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			fmt.Println("Agent Nodes:", agentNodeNames)
 			kubeConfigFile, err = e2e.GenKubeConfigFile(serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred())
-			Expect(e2e.SetKubeConfig(kubeConfigFile)).To(Succeed())
 		})
 
 		It("Checks node and pod status", func() {
