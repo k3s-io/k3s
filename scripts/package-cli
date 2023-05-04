@@ -12,7 +12,7 @@ for i in containerd crictl kubectl k3s-agent k3s-server k3s-token k3s-etcd-snaps
     ln -s k3s bin/$i
 done
 
-for i in bridge flannel host-local loopback portmap; do
+for i in bandwidth bridge firewall flannel host-local loopback portmap; do
     rm -f bin/$i
     ln -s cni bin/$i
 done
