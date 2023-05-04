@@ -41,6 +41,12 @@ const (
       "capabilities":{
         "portMappings":true
       }
+    },
+    {
+      "type":"bandwidth",
+      "capabilities":{
+        "bandwidth":true
+      }
     }
   ]
 }
