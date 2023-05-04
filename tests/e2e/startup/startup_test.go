@@ -246,10 +246,8 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 
 		It("Collects logs from a pod", func() {
 			cmd := "kubectl logs -n kube-system -l app.kubernetes.io/name=traefik -c traefik"
-			Eventually(func() error {
-				_, err := e2e.RunCommand(cmd)
-				return err
-			}, "360s", "5s").Should(Succeed())
+			_, err := e2e.RunCommand(cmd)
+			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("Kills the cluster", func() {
