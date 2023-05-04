@@ -6,13 +6,18 @@ metadata:
 spec:
   containers:
   - name: volume-test
-    image: nginx:stable-alpine
+    image: busybox:stable
     imagePullPolicy: IfNotPresent
+    command:
+    - sh
+    - "-c"
+    - "touch /data/file1 && sleep infinity"
     volumeMounts:
     - name: volv
       mountPath: /data
-    ports:
-    - containerPort: 80
+    securityContext:
+      runAsUser: 1000
+      runAsGroup: 1000
   volumes:
   - name: volv
     persistentVolumeClaim:
