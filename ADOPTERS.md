@@ -2,6 +2,7 @@
 
 A non-exhaustive list of k3s adopters is provided below.  To add your company to this list, please open a [PR](https://github.com/k3s-io/k3s/pulls).
 
+- [PITS Global Data Recovery Services](https://www.pitsdatarecovery.net/)
 - [Rocket.Chat](https://rocket.chat)
 - [Ayedo.de](https://ayedo.de/)
 
