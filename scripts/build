@@ -62,7 +62,7 @@ fi
 STATIC="
     -extldflags '-static -lm -ldl -lz -lpthread'
 "
-TAGS="ctrd apparmor seccomp netcgo osusergo providerless urfave_cli_no_docs"
+TAGS="ctrd apparmor seccomp netcgo osusergo providerless urfave_cli_no_docs nats"
 RUNC_TAGS="apparmor seccomp"
 RUNC_STATIC="static"
 
