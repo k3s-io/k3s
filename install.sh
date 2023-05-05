@@ -518,13 +518,17 @@ setup_selinux() {
         rpm_target=el7
         rpm_site_infix=centos/7
         package_installer=yum
+    elif [ "${VERSION_ID%%.*}" = "8" ]; then
+        rpm_target=el8
+        rpm_site_infix=centos/8
+        package_installer=yum
     elif [ "${ID_LIKE:-}" = coreos ] || [ "${VARIANT_ID:-}" = coreos ]; then
         rpm_target=coreos
         rpm_site_infix=coreos
         package_installer=rpm-ostree
     else
-        rpm_target=el8
-        rpm_site_infix=centos/8
+        rpm_target=el9
+        rpm_site_infix=centos/9
         package_installer=yum
     fi
 
