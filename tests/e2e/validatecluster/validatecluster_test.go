@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -99,7 +100,6 @@ var _ = Describe("Verify Create", Ordered, func() {
 
 			clusterip, _ := e2e.FetchClusterIP(kubeConfigFile, "nginx-clusterip-svc", false)
 			cmd := "curl -L --insecure http://" + clusterip + "/name.html"
-			fmt.Println(cmd)
 			for _, nodeName := range serverNodeNames {
 				Eventually(func(g Gomega) {
 					res, err := e2e.RunCmdOnNode(cmd, nodeName)
@@ -127,7 +127,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 				}, "240s", "5s").Should(Succeed())
 
 				cmd = "curl -L --insecure http://" + nodeExternalIP + ":" + nodeport + "/name.html"
-				fmt.Println(cmd)
+
 				Eventually(func(g Gomega) {
 					res, err := e2e.RunCommand(cmd)
 					g.Expect(err).NotTo(HaveOccurred(), "failed cmd: "+cmd+" result: "+res)
@@ -210,6 +210,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 
 			Eventually(func(g Gomega) {
 				cmd := "kubectl --kubeconfig=" + kubeConfigFile + " exec -i -t dnsutils -- nslookup kubernetes.default"
+
 				res, err := e2e.RunCommand(cmd)
 				g.Expect(err).NotTo(HaveOccurred(), "failed cmd: "+cmd+" result: "+res)
 				g.Expect(res).Should(ContainSubstring("kubernetes.default.svc.cluster.local"))
@@ -313,6 +314,57 @@ var _ = Describe("Verify Create", Ordered, func() {
 				g.Expect(res).Should(ContainSubstring("local-path-test"))
 			}, "180s", "2s").Should(Succeed())
 		})
+
+		It("Verifies Certificate Rotation", func() {
+			const grepCert = "sudo ls -lt /var/lib/rancher/k3s/server/ | grep tls"
+			var expectResult = []string{"client-ca.crt",
+				"client-ca.key",
+				"client-ca.nochain.crt",
+				"dynamic-cert.json", "peer-ca.crt",
+				"peer-ca.key", "server-ca.crt",
+				"server-ca.key", "request-header-ca.crt",
+				"request-header-ca.key", "server-ca.crt",
+				"server-ca.key", "server-ca.nochain.crt",
+				"service.current.key", "service.key",
+				"apiserver-loopback-client__.crt",
+				"apiserver-loopback-client__.key", "",
+			}
+
+			var finalResult string
+			var finalErr error
+			errStop := e2e.StopCluster(serverNodeNames)
+			Expect(errStop).NotTo(HaveOccurred(), "Cluster could not be stoped successfully")
+
+			for _, nodeName := range serverNodeNames {
+				cmd := "sudo k3s --debug certificate rotate"
+				if _, err := e2e.RunCmdOnNode(cmd, nodeName); err != nil {
+					Expect(err).NotTo(HaveOccurred(), "Certificate could not be rotated successfully")
+				}
+			}
+
+			errStart := e2e.StartCluster(serverNodeNames)
+			Expect(errStart).NotTo(HaveOccurred(), "Cluster could not be started successfully")
+
+			for _, nodeName := range serverNodeNames {
+				grCert, errGrep := e2e.RunCmdOnNode(grepCert, nodeName)
+				Expect(errGrep).NotTo(HaveOccurred(), "Certificate could not be created successfully")
+				re := regexp.MustCompile("tls-[0-9]+")
+				tls := re.FindAllString(grCert, -1)[0]
+				final := fmt.Sprintf("sudo diff -sr /var/lib/rancher/k3s/server/tls/ /var/lib/rancher/k3s/server/%s/"+
+					"| grep -i identical | cut -f4 -d ' ' | xargs basename -a \n", tls)
+				finalResult, finalErr = e2e.RunCmdOnNode(final, nodeName)
+				Expect(finalErr).NotTo(HaveOccurred(), "Final Certification does not created successfully")
+			}
+			if len(agentNodeNames) > 0 {
+				errRestartAgent := e2e.RestartCluster(agentNodeNames)
+				Expect(errRestartAgent).NotTo(HaveOccurred(), "Agent could not be restart successfully")
+			}
+			finalCert := strings.Replace(finalResult, "\n", ",", -1)
+			finalCertArray := strings.Split(finalCert, ",")
+			Expect((finalCertArray)).Should((Equal(expectResult)), "Final certification does not match the expected results")
+
+		})
+
 	})
 })
 

@@ -446,17 +446,6 @@ func StopCluster(nodeNames []string) error {
 	return nil
 }
 
-// rotateCertificate rotate the Certificate on each node given
-func RotateCertificate(nodeNames []string) error {
-	for _, nodeName := range nodeNames {
-		cmd := "sudo k3s --debug certificate rotate"
-		if _, err := RunCmdOnNode(cmd, nodeName); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // RunCmdOnNode executes a command from within the given node
 func RunCmdOnNode(cmd string, nodename string) (string, error) {
 	runcmd := "vagrant ssh -c \"" + cmd + "\" " + nodename
