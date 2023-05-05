@@ -88,3 +88,18 @@ Signed-off-by: Jane Smith <jane.smith@example.com>
 
 In most cases, you can add this signoff to your commit automatically with the
 `-s` flag to `git commit`. Please use your real name and a reachable email address.
+
+
+## Golangci-lint ##
+
+There is a CI check for formatting on our code, you'll need to install `goimports` to be able to attend this check, you can do it by running the command:
+
+```
+go install golang.org/x/tools/cmd/goimports@latest
+```
+
+then run:
+
+```
+make format
+```
