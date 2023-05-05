@@ -303,6 +303,9 @@ func GenKubeConfigFile(serverName string) (string, error) {
 	if err := os.WriteFile(kubeConfigFile, []byte(kubeConfig), 0644); err != nil {
 		return "", err
 	}
+	if err := os.Setenv("E2E_KUBECONFIG", kubeConfigFile); err != nil {
+		return "", err
+	}
 	return kubeConfigFile, nil
 }
 
@@ -437,17 +440,19 @@ func RestartClusterAgent(nodeNames []string) error {
 
 // RunCmdOnNode executes a command from within the given node
 func RunCmdOnNode(cmd string, nodename string) (string, error) {
-	runcmd := "vagrant ssh -c \"" + cmd + "\" " + nodename
+	runcmd := "vagrant ssh " + nodename + " -c \"" + cmd + "\""
 	out, err := RunCommand(runcmd)
 	if err != nil {
-		return out, fmt.Errorf("failed to run command %s on node %s: %v", cmd, nodename, err)
+		return out, fmt.Errorf("failed to run command: %s on node %s: %s, %v", cmd, nodename, out, err)
 	}
 	return out, nil
 }
 
-// RunCommand executes a command on the host
 func RunCommand(cmd string) (string, error) {
 	c := exec.Command("bash", "-c", cmd)
+	if kc, ok := os.LookupEnv("E2E_KUBECONFIG"); ok {
+		c.Env = append(os.Environ(), "KUBECONFIG="+kc)
+	}
 	out, err := c.CombinedOutput()
 	return string(out), err
 }
