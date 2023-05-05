@@ -54,9 +54,6 @@ VERSIONFLAGS="
 
     -X ${PKG_ETCD}/api/version.GitSHA=HEAD
 "
-if [ -n "${GOCOVER}" ]; then
-    BLDFLAGS="-cover"
-fi
 if [ -n "${DEBUG}" ]; then
   GCFLAGS="-N -l"
 else
@@ -81,6 +78,11 @@ if [ "$STATIC_BUILD" != "true" ]; then
     RUNC_STATIC=""
 else
     TAGS="static_build libsqlite3 $TAGS"
+fi
+
+if [ -n "${GOCOVER}" ]; then
+    BLDFLAGS="-cover"
+    TAGS="cover $TAGS"
 fi
 
 mkdir -p bin
