@@ -245,7 +245,6 @@ func K3sStartServer(inputArgs ...string) (*K3sServer, error) {
 	k3sBin := findK3sExecutable()
 	k3sCmd := append([]string{"server"}, inputArgs...)
 	cmd := exec.Command(k3sBin, k3sCmd...)
-	cmd.Env = os.Environ()
 	// Give the server a new group id so we can kill it and its children later
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	// Pipe output to a file for debugging later
