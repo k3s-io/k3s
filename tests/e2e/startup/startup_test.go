@@ -82,17 +82,18 @@ func KillK3sCluster(nodes []string) error {
 
 var _ = ReportAfterEach(e2e.GenReport)
 
+var _ = BeforeSuite(func() {
+	var err error
+	if *local {
+		serverNodeNames, agentNodeNames, err = e2e.CreateLocalCluster(*nodeOS, 1, 1)
+	} else {
+		serverNodeNames, agentNodeNames, err = e2e.CreateCluster(*nodeOS, 1, 1)
+	}
+	Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog(err))
+})
+
 var _ = Describe("Various Startup Configurations", Ordered, func() {
 	Context("Verify CRI-Dockerd :", func() {
-		It("Stands up the nodes", func() {
-			var err error
-			if *local {
-				serverNodeNames, agentNodeNames, err = e2e.CreateLocalCluster(*nodeOS, 1, 1)
-			} else {
-				serverNodeNames, agentNodeNames, err = e2e.CreateCluster(*nodeOS, 1, 1)
-			}
-			Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog(err))
-		})
 		It("Starts K3s with no issues", func() {
 			dockerYAML := "docker: true"
 			err := StartK3sCluster(append(serverNodeNames, agentNodeNames...), dockerYAML, dockerYAML)
@@ -114,7 +115,7 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 				for _, node := range nodes {
 					g.Expect(node.Status).Should(Equal("Ready"))
 				}
-			}, "620s", "5s").Should(Succeed())
+			}, "360s", "5s").Should(Succeed())
 			_, _ = e2e.ParseNodes(kubeConfigFile, true)
 
 			fmt.Printf("\nFetching pods status\n")
@@ -128,7 +129,7 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 						g.Expect(pod.Status).Should(Equal("Running"), pod.Name)
 					}
 				}
-			}, "620s", "5s").Should(Succeed())
+			}, "360s", "5s").Should(Succeed())
 			_, _ = e2e.ParsePods(kubeConfigFile, true)
 		})
 		It("Kills the cluster", func() {
@@ -158,7 +159,7 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 				for _, node := range nodes {
 					g.Expect(node.Status).Should(Equal("Ready"))
 				}
-			}, "620s", "5s").Should(Succeed())
+			}, "360s", "5s").Should(Succeed())
 			_, _ = e2e.ParseNodes(kubeConfigFile, true)
 
 			fmt.Printf("\nFetching pods status\n")
@@ -172,7 +173,7 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 						g.Expect(pod.Status).Should(Equal("Running"), pod.Name)
 					}
 				}
-			}, "620s", "5s").Should(Succeed())
+			}, "360s", "5s").Should(Succeed())
 			_, _ = e2e.ParsePods(kubeConfigFile, true)
 		})
 		It("Kills the cluster", func() {
@@ -202,7 +203,7 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 				for _, node := range nodes {
 					g.Expect(node.Status).Should(Equal("Ready"))
 				}
-			}, "620s", "5s").Should(Succeed())
+			}, "360s", "5s").Should(Succeed())
 			_, _ = e2e.ParseNodes(kubeConfigFile, true)
 
 			fmt.Printf("\nFetching pods status\n")
@@ -216,21 +217,21 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 						g.Expect(pod.Status).Should(Equal("Running"), pod.Name)
 					}
 				}
-			}, "620s", "5s").Should(Succeed())
+			}, "360s", "5s").Should(Succeed())
 			_, _ = e2e.ParsePods(kubeConfigFile, true)
 		})
 
 		It("Returns pod metrics", func() {
 			cmd := "kubectl top pod -A"
 			Eventually(func() error {
-				_, err := e2e.RunCmdOnNode(cmd, serverNodeNames[0])
+				_, err := e2e.RunCommand(cmd)
 				return err
-			}, "620s", "5s").Should(Succeed())
+			}, "600s", "5s").Should(Succeed())
 		})
 
 		It("Returns node metrics", func() {
 			cmd := "kubectl top node"
-			_, err := e2e.RunCmdOnNode(cmd, serverNodeNames[0])
+			_, err := e2e.RunCommand(cmd)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -242,7 +243,7 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 
 		It("Collects logs from a pod", func() {
 			cmd := "kubectl logs -n kube-system -l app.kubernetes.io/name=traefik -c traefik"
-			_, err := e2e.RunCmdOnNode(cmd, serverNodeNames[0])
+			_, err := e2e.RunCommand(cmd)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
