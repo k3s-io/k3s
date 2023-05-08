@@ -212,13 +212,21 @@ func GetPersistentVolume(name string) (*corev1.PersistentVolume, error) {
 	return client.CoreV1().PersistentVolumes().Get(context.Background(), name, metav1.GetOptions{})
 }
 
-func FindStringInCmdAsync(scanner *bufio.Scanner, target string) bool {
+func SearchK3sLog(k3s *K3sServer, target string) (bool, error) {
+	file, err := os.Open(k3s.log.Name())
+	if err != nil {
+		return false, err
+	}
+	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		if strings.Contains(scanner.Text(), target) {
-			return true
+			return true, nil
 		}
 	}
-	return false
+	if scanner.Err() != nil {
+		return false, scanner.Err()
+	}
+	return false, nil
 }
 
 func K3sTestLock() (int, error) {
