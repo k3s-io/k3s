@@ -12,6 +12,7 @@ import (
 	"os/user"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/k3s-io/k3s/pkg/flock"
 	"github.com/pkg/errors"
@@ -263,11 +264,15 @@ func K3sStopServer(server *K3sServer) error {
 	if server.log != nil {
 		server.log.Close()
 	}
+	if err := server.cmd.Process.Signal(syscall.SIGTERM); err != nil {
+		return err
+	}
+	time.Sleep(10 * time.Second)
 	if err := server.cmd.Process.Kill(); err != nil {
-		return errors.Wrap(err, "failed to kill k3s process")
+		return err
 	}
 	if _, err := server.cmd.Process.Wait(); err != nil {
-		return errors.Wrap(err, "failed to wait for k3s process exit")
+		return err
 	}
 	return nil
 }

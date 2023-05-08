@@ -54,7 +54,6 @@ VERSIONFLAGS="
 
     -X ${PKG_ETCD}/api/version.GitSHA=HEAD
 "
-
 if [ -n "${DEBUG}" ]; then
   GCFLAGS="-N -l"
 else
@@ -79,6 +78,11 @@ if [ "$STATIC_BUILD" != "true" ]; then
     RUNC_STATIC=""
 else
     TAGS="static_build libsqlite3 $TAGS"
+fi
+
+if [ -n "${GOCOVER}" ]; then
+    BLDFLAGS="-cover"
+    TAGS="cover $TAGS"
 fi
 
 mkdir -p bin
@@ -128,7 +132,7 @@ if [ ! -x ${INSTALLBIN}/cni ]; then
 fi
 
 echo Building k3s
-CGO_ENABLED=1 "${GO}" build -tags "$TAGS" -gcflags="all=${GCFLAGS}" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC" -o bin/k3s ./cmd/server/main.go
+CGO_ENABLED=1 "${GO}" build $BLDFLAGS -tags "$TAGS" -gcflags="all=${GCFLAGS}" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC" -o bin/k3s ./cmd/server/main.go
 ln -s k3s ./bin/k3s-agent
 ln -s k3s ./bin/k3s-server
 ln -s k3s ./bin/k3s-token

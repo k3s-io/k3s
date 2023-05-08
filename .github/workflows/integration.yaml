@@ -22,6 +22,9 @@ on:
 
 permissions:
   contents: read
+
+env:
+  GOCOVERDIR: /tmp/k3scov
   
 jobs:
   build:
@@ -53,8 +56,17 @@ jobs:
     - name: Run Integration Tests
       run: | 
         chmod +x ./dist/artifacts/k3s
-        sudo -E env "PATH=$PATH" go test -v ./tests/integration/... -run Integration
+        mkdir -p $GOCOVERDIR
+        sudo -E env "PATH=$PATH" go test -v -timeout=30m ./tests/integration/... -run Integration
     - name: On Failure, Launch Debug Session
       if: ${{ failure() }}
       uses: mxschmitt/action-tmate@v3
       timeout-minutes: 5
+    - name: Generate coverage report
+      run: go tool covdata textfmt -i $GOCOVERDIR -o coverage.out
+    - name: Upload Results To Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        files: ./coverage.out
+        flags: inttests # optional
+        verbose: true # optional (default = false)
