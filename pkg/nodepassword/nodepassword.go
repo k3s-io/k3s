@@ -18,8 +18,8 @@ import (
 )
 
 var (
-	// hasher provides the algorithm for generating and verifying hashes
-	hasher = hash.NewSCrypt()
+	// Hasher provides the algorithm for generating and verifying hashes
+	Hasher = hash.NewSCrypt()
 )
 
 func getSecretName(nodeName string) string {
@@ -33,7 +33,7 @@ func verifyHash(secretClient coreclient.SecretClient, nodeName, pass string) err
 		return err
 	}
 	if hash, ok := secret.Data["hash"]; ok {
-		if err := hasher.VerifyHash(string(hash), pass); err != nil {
+		if err := Hasher.VerifyHash(string(hash), pass); err != nil {
 			return errors.Wrapf(err, "unable to verify hash for node '%s'", nodeName)
 		}
 		return nil
@@ -47,7 +47,7 @@ func Ensure(secretClient coreclient.SecretClient, nodeName, pass string) error {
 		return err
 	}
 
-	hash, err := hasher.CreateHash(pass)
+	hash, err := Hasher.CreateHash(pass)
 	if err != nil {
 		return errors.Wrapf(err, "unable to create hash for node '%s'", nodeName)
 	}

@@ -60,14 +60,6 @@ func Read(file string) (*Passwd, error) {
 	return result, nil
 }
 
-func (p *Passwd) Check(name, pass string) (matches bool, exists bool) {
-	e, ok := p.names[name]
-	if !ok {
-		return false, false
-	}
-	return e.pass == pass, true
-}
-
 func (p *Passwd) EnsureUser(name, role, passwd string) error {
 	tokenPrefix := "::" + name + ":"
 	idx := strings.Index(passwd, tokenPrefix)
