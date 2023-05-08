@@ -49,6 +49,14 @@ Install the necessary vagrant plugins with the following command:
 ```bash
 vagrant plugin install vagrant-libvirt vagrant-scp vagrant-k3s vagrant-reload
 ```
+### Kubectl
+
+For linux
+```bash
+   curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+   sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+```
+If it does not work, or you are on a different system, check the [official tutorial](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/)
 
 ## Running
 
