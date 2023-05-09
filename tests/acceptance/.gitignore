@@ -1,7 +1,6 @@
 modules/k3scluster/.terraform/
-modules/k3scluster/.terraform.lock.hcl
-modules/k3scluster/terraform.tfstate
-modules/k3scluster/terraform.tfstate.backup
+*.terraform.lock.hcl
+*.tfstate*
 modules/k3scluster/config/local.tfvars
 /tests/.vscode
 /.idea/

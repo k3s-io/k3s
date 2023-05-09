@@ -14,7 +14,7 @@ pipeline {
                 steps {
                     git branch: 'master', url: 'https://github.com/k3s-io/k3s.git'
                     script {
-                        dir("${WORKSPACE}/tests/k3stf") {
+                        dir("${WORKSPACE}/tests/acceptance") {
                             if (env.AWS_SSH_PEM_KEY && env.AWS_SSH_KEY_NAME) {
                                     def decoded = new String(AWS_SSH_PEM_KEY.decodeBase64())
                                     writeFile file: AWS_SSH_KEY_NAME, text: decoded
@@ -37,7 +37,7 @@ pipeline {
                         ec2_instance_class="${env.AWS_INSTANCE_TYPE}"
                         access_key="/config/$AWS_SSH_KEY_NAME"
                         no_of_worker_nodes="${env.NO_OF_WORKER_NODES}"
-                        key_name="jenkins-rke-validation"
+                        key_name="jenkins-elliptic-validation"
                         server_flags="${env.K3S_SERVER_FLAGS}"
                         worker_flags="${env.K3S_WORKER_FLAGS}"
                         k3s_version="${env.K3S_VERSION}"
@@ -78,14 +78,10 @@ pipeline {
                         /usr/bin/docker cp "${WORKSPACE}/tests/acceptance/$AWS_SSH_KEY_NAME" "${RESOURCE_NAME}_${BUILD_NUMBER}":/config
 
                         /usr/bin/docker exec ${RESOURCE_NAME}_${BUILD_NUMBER} /usr/local/go/bin/go test -v tests/acceptance/entrypoint/createcluster/... \
-                        -timeout=1h -node_os=${NODE_OS} \
-                        -cluster_type=${CLUSTER_TYPE} -external_db=${EXTERNAL_DB} -resource_name=${RESOURCE_NAME} \
-                        -sshuser=${AWS_USER} -sshkey="/config/${AWS_SSH_KEY_NAME}" -destroy=false -arch=${ARCH}
-
+                        -timeout=1h -arch=${ARCH}
                     """
                 }
             }
-
             stage('Test Report') {
                 steps {
                     sh """

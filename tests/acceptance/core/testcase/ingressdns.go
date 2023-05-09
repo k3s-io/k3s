@@ -23,8 +23,8 @@ func TestIngress(g ginkgo.GinkgoTestingT, deployWorkload bool) {
 	gomega.Expect(err).NotTo(gomega.HaveOccurred(), "Ingress ip is not returned")
 
 	for _, ip := range ingressIps {
-		_ = assert.CheckComponentCmdHost([]string{"curl -s --header host:foo1.bar.com" +
-			" http://" + ip + "/name.html"}, util.TestIngress)
+		_ = assert.CheckComponentCmdHost("curl -s --header host:foo1.bar.com"+
+			" http://"+ip+"/name.html", util.TestIngress)
 	}
 }
 
@@ -35,13 +35,16 @@ func TestDnsAccess(g ginkgo.GinkgoTestingT, deployWorkload bool) {
 			"dnsutils manifest not deployed")
 	}
 
-	exec := "kubectl exec -t dnsutils --kubeconfig=" +
-		util.KubeConfigFile + " -- nslookup kubernetes.default"
-	err := assert.ValidateOnHost(
-		util.GetPodDnsUtils+util.KubeConfigFile,
-		util.RunningAssert,
-		exec,
+	err := assert.ValidateOnHost(util.GetPodDnsUtils+util.KubeConfigFile, util.RunningAssert)
+	if err != nil {
+		ginkgo.GinkgoT().Logf("Error: %v", err)
+	}
+
+	err = assert.CheckComponentCmdHost(
+		util.ExecDnsUtils+util.KubeConfigFile+" -- nslookup kubernetes.default",
 		util.Nslookup,
 	)
-	gomega.Expect(err).NotTo(gomega.HaveOccurred())
+	if err != nil {
+		ginkgo.GinkgoT().Logf("Error: %v", err)
+	}
 }

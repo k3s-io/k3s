@@ -33,7 +33,6 @@ test-run:
     fi;'
 
 
-
 .PHONY: test-logs
 test-logs:
 	@docker logs -f k3s-automated-test${IMGNAME}
@@ -75,11 +74,11 @@ test-version-local-path:
  		-installUpgradeFlag ${INSTALLTYPE}
 
 .PHONY: test-version-bump
-test-version-local-bump:
-	@go test -timeout=45m -v ./entrypoint/versionbump/... \
-		-cmdNode ${CMDNODE} -expectedValueNode ${VALUENODE} \
+test-version-bump:
+	go test -timeout=45m -v -tags=versionbump ./entrypoint/versionbump/... \
+		-cmdNode "${CMDNODE}" -expectedValueNode ${VALUENODE} \
 		-expectedValueUpgradedNode ${VALUENODEUPGRADED} \
-		-cmdHost ${CMDHOST}  -expectedValueHost ${VALUEHOST} \
+		-cmdHost "${CMDHOST}"  -expectedValueHost ${VALUEHOST} \
 		-expectedValueUpgradedHost ${VALUEHOSTUPGRADED} \
 		-installUpgradeFlag ${INSTALLTYPE} \
 		-testCase ${TESTCASE} \

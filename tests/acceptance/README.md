@@ -63,6 +63,153 @@ Responsibility:       Should not need knowledge of or "external" dependencies at
 
 -------------------
 
+
+### `Template Version Bump Test`
+
+- We have a template model interface for testing bump versions, the idea is to provide a simple and direct way to test bump of version using go test tool.
+
+
+```You can test that like:```
+
+- Adding one version or commit and ran some commands on it and check it against respective expected values then upgrade and repeat the same commands and check the respective new (or not) expected values.
+
+
+
+```How can I do that?```
+
+- Step 1: Add your desired first version or commit that you want to use on `local.tfvars` file on the vars `rke2_version` and `install_mode`
+- Step 2: Have the commands you need to run and the expected output from them
+- Step 3: Have a version or commit that you want to upgrade to.
+- Step 4: Create your go test file in `acceptance/entrypoint/versionbump/versionbump{mytestname}.go`.
+- Step 5: Get the template from `acceptance/entrypoint/versionbump/versionbump.go` and copy it to your test file.
+- Step 6: Fill the template with your data ( RunCmdNode and RunCmdHost) with your respective commands.
+- Step 7: On the TestConfig field you can add another test case that we already have or a newly created one.
+- Step 8: Create the go test command and the make command to run it.
+- Step 9: Run the command and wait for results.
+- Step 10: (WIP) Export your customizable report.
+
+-------------------
+- RunCmdNode:
+   Commands like:
+    - $ `curl ...`
+    - $ `sudo chmod ...`
+    - $ `sudo systemctl ...`
+    - $ `grep ...`
+    - $ `k3s --version`
+
+- RunCmdHost:
+  Basically commands like:
+    - $ `kubectl ...`   
+    - $ `helm ...`
+
+
+Available arguments to create your command with examples:
+````
+- $ -cmdHost="kubectl describe pod -n kube-system local-path-provisioner-,  | grep -i Image"
+- $ -expectedValueHost="v0.0.21"
+- $ -expectedValueUpgradedHost="v0.0.24"
+- $ -cmdNode="k3s --version"
+- $ -expectedValueNode="v1.25.2+k3s1"
+- $ -expectedValuesUpgradedNode="v1.26.4-rc1+k3s1"
+- $ -installUpgradeFlag=INSTALL_K3S_COMMIT=257fa2c54cda332e42b8aae248c152f4d1898218
+- $ -deployWorkload=true
+- $ -testCase=TestLocalPathProvisionerStorage
+````
+
+Example of a whole command considering that the commands are already placed or inside your test function or the *template itself (example bellow the command):
+```bash
+ go test -v -timeout=45m -tags=localpath ./entrypoint/versionbump/... \                     
+  -expectedValueHost "v0.0.21"  \       
+  -expectedValueUpgradedHost "v0.0.24" \
+  -expectedValueNode "v1.25.2+k3s1" \            
+  -expectedValueUpgradedNode "v1.26.4-rc1+k3s1" \                                  
+  -installUpgradeFlag INSTALL_K3S_COMMIT=257fa2c54cda332e42b8aae248c152f4d1898218                      
+
+````
+PS: If you need to send more than one command at once split them with  " , "
+
+#### `*template with commands and testcase added:`
+```go
+-------------------------------------------------------
+- util.K3sVersion
+- util.GetImageLocalPath + "," + util.GrepImage
+- testcase.TestLocalPathProvisionerStorage
+-------------------------------------------------------
+template.VersionTemplate(GinkgoT(), template.VersionTestTemplate{
+	Description: util.Description,
+	TestCombination: &template.RunCmd{
+		    RunOnNode: []template.TestMap{
+			{
+				Cmd:                  util.K3sVersion,
+				ExpectedValue:        util.ExpectedValueNode,
+				ExpectedValueUpgrade: util.ExpectedValueUpgradedNode
+			},
+			}, 
+			RunOnHost: []template.TestMap{
+				{
+					Cmd:                  util.GetImageLocalPath + "," + util.GrepImage,
+					ExpectedValue:        util.ExpectedValueHost,
+					ExpectedValueUpgrade: util.ExpectedValueUpgradedHost,
+				},
+			},
+			},
+			InstallUpgrade: util.InstallUpgradeFlag,
+			TestConfig: &template.TestConfig{
+				TestFunc:       testcase.TestLocalPathProvisionerStorage,
+				DeployWorkload: true,
+			},
+		})
+	})
+````
+#### You can also run a totally parametrized test with the template, just copy and paste the template and call everything as flags like that:
+- Template
+````
+	template.VersionTemplate(GinkgoT(), template.VersionTestTemplate{
+			Description: util.Description,
+			TestCombination: &template.RunCmd{
+				RunOnNode: []template.TestMap{
+					{
+						Cmd:                  util.CmdNode,
+						ExpectedValue:        util.ExpectedValueNode,
+						ExpectedValueUpgrade: util.ExpectedValueUpgradedNode,
+					},
+				},
+				RunOnHost: []template.TestMap{
+					{
+						Cmd:                  util.CmdHost,
+						ExpectedValue:        util.ExpectedValueHost,
+						ExpectedValueUpgrade: util.ExpectedValueUpgradedHost,
+					},
+				},
+			},
+			InstallUpgrade: util.InstallUpgradeFlag,
+			TestConfig: &template.TestConfig{
+				TestFunc:       template.TestCase(util.TestCase.TestFunc),
+				DeployWorkload: util.TestCase.DeployWorkload,
+			},
+		})
+	})
+````
+
+- Command
+````
+ go test -v -timeout=45m -tags=localpath ./entrypoint/versionbump/... \                     
+  -cmdHost "kubectl describe pod -n kube-system local-path-provisioner-,  | grep -i Image" \
+  -expectedValueHost "v0.0.21"  \       
+  -expectedValueUpgradedHost "v0.0.24" \
+  -cmdNode "k3s --version"  \
+  -expectedValueNode "v1.25.2+k3s1" \            
+  -expectedValueUpgradedNode "v1.26.4-rc1+k3s1" \                                  
+  -installUpgradeFlag INSTALL_K3S_COMMIT=257fa2c54cda332e42b8aae248c152f4d1898218 \
+  -testCase TestLocalPathProvisionerStorage \                             
+````
+
+
+#### We also have this on the `makefile` to make things easier to run just adding the values, please see bellow on the makefile section
+
+
+
+-----
 #### Testcase naming convention:
 - All tests should be placed under `tests/acceptance/testcase/<TESTNAME>`.
 - All test functions should be named: `Test<TESTNAME>`.
@@ -139,21 +286,25 @@ $ make test-suite                      # runs all testcase locally in sequence n
 $ make vet-lint                        # runs go vet and go lint
 
       
-Examples: 
+Examples with docker:
 
 - Create an image tagged
+
 $ make test-env-up TAGNAME=ubuntu
 
 
 - Run upgrade cluster test with ${IMGNAME} and ${TAGNAME}
+
 $ make test-run IMGNAME=2 TAGNAME=ubuntu TESTDIR=upgradecluster ARGNAME=upgradeVersion ARGVALUE=v1.26.2+k3s1
 
 
-- Run create and upgrade cluster just adding ARGNAME and ARGVALUE flag to upgrade
-$ make tf-run ARGNAME=upgradeVersion ARGVALUE=v1.26.2+k3s1
+- Run create and upgrade cluster just adding ARGVALUE flag to upgrade
+
+$ make test-run ARGVALUE=v1.26.2+k3s1
 
 
 - Run version bump test upgrading with commit id
+
 $ make test-run IMGNAME=x \
 TAGNAME=y \
 TESTDIR=versionbump \
@@ -167,6 +318,7 @@ DEPLOYWORKLOAD=true
 
 
 - Run bump version local path provisioner upgrading with version
+
 $ make test-run IMGNAME=23 \
 TAGNAME=1 \
 TESTDIR=versionbump \
@@ -176,6 +328,39 @@ VALUENODEUPGRADED=v1.27.1-rc1+k3s1 \
 VALUEHOST=v0.0.21 \
 VALUEHOSTUPGRADED=v0.0.22 \
 INSTALLTYPE=INSTALL_K3S_VERSION=v1.27.1-rc1+k3s1 \
+
+
+Examples to run locally:
+
+- Run create cluster test
+
+$ make test-create
+
+- Run upgrade cluster test
+
+$ make test-upgrade ARGVALUE=v1.26.2+k3s1
+
+- Run version bump test
+
+$ make test-version-bump \
+CMDNODE="k3s --version" \
+VALUENODE="v1.25.2+k3s1" \
+VALUENODEUPGRADED="v1.26.4-rc1+k3s1" \
+CMDHOST="kubectl describe pod -n kube-system local-path-provisioner-, | grep -i Image" \
+VALUEHOST="v0.0.21" \
+VALUEHOSTUPGRADED="v0.0.24" \
+INSTALLTYPE=INSTALL_K3S_COMMIT=257fa2c54cda332e42b8aae248c152f4d1898218 \
+TESTCASE="TestLocalPathProvisionerStorage" \
+DEPLOYWORKLOAD=true
+
+- Run version bump test with local path provisioner
+
+$ make test-version-local-path \
+VALUENODE="v1.25.2+k3s1" \
+VALUENODEUPGRADED="v1.26.4-rc1+k3s1" \
+VALUEHOST="v0.0.21" \
+VALUEHOSTUPGRADED="v0.0.24" \
+INSTALLTYPE=INSTALL_K3S_COMMIT=257fa2c54cda332e42b8aae248c152f4d1898218 \
 
 
 - Logs from test
@@ -208,18 +393,9 @@ $ make vet-lint TESTDIR=upgradecluster
 
 
 
-### Reporting:
-```
-Additionally, to generate junit reporting for the tests, the Ginkgo CLI is used. Installation instructions can be found [here.](https://onsi.github.io/ginkgo/#getting-started)  
+### Custom Reporting: WIP
 
-To run the all TF tests and generate JUnit testing reports:
-
-ginkgo --junit-report=result.xml ./tests/terraform/cases/...
-
-
-Note: The `go test` default timeout is 10 minutes, thus the `-timeout` flag should be used. The `ginkgo` default timeout is 1 hour, no timeout flag is needed
-````
-### Debugging
+### Debugging:
 ````
 The cluster and VMs can be retained after a test by passing `-destroy=false`. 
 To focus individual runs on specific test clauses, you can prefix with `F`. For example, in the [create cluster test](../tests/terraform/cases/createcluster_test.go), you can update the initial creation to be: `FIt("Starts up with no issues", func() {` in order to focus the run on only that clause.

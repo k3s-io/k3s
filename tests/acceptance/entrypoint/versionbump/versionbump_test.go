@@ -1,3 +1,5 @@
+//go:build versionbump
+
 package versionbump
 
 import (
@@ -24,8 +26,7 @@ var _ = Describe("VersionTemplate Upgrade:", func() {
 	})
 
 	It("Checks Pod Status", func() {
-		testcase.TestPodStatus(
-			GinkgoT(),
+		testcase.TestPodStatus(GinkgoT(),
 			assert.PodAssertRestarts(),
 			assert.PodAssertReady(),
 			assert.PodAssertStatus())

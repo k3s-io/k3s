@@ -41,11 +41,12 @@ func processOnNode(resultChan chan error, ip, cmd, expectedValue string) {
 		err := fmt.Errorf("expected value should be sent")
 		fmt.Println("Error:", err)
 		resultChan <- err
+		close(resultChan)
 		return
 	}
 
 	version := util.GetK3sVersion()
-	fmt.Printf("\n Checking version: %s on ip: %s \n "+
+	fmt.Printf("\n Checking version running on node: %s on ip: %s \n "+
 		"Command: %s \n Expected Value: %s", version, ip, cmd, expectedValue)
 
 	err := assert.ValidateOnNode(
@@ -65,6 +66,7 @@ func processOnHost(resultChan chan error, ip, cmd, expectedValue string) {
 		err := fmt.Errorf("expected value should be sent")
 		fmt.Println("Error:", err)
 		resultChan <- err
+		close(resultChan)
 		return
 	}
 
@@ -72,7 +74,7 @@ func processOnHost(resultChan chan error, ip, cmd, expectedValue string) {
 	cmdResult := joinCommands(cmd, kubeconfigFlag)
 
 	version := util.GetK3sVersion()
-	fmt.Printf("\n Checking version: %s on ip: %s \n "+
+	fmt.Printf("\n Checking version running on host: %s on ip: %s \n "+
 		"Command: %s \n Expected Value: %s", version, ip, cmdResult, expectedValue)
 
 	err := assert.ValidateOnHost(

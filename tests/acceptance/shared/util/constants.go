@@ -44,6 +44,7 @@ var (
 	GetExternalNodeIp       = "kubectl get node --output=jsonpath='{range .items[*]} {.status.addresses[?(@.type==\"ExternalIP\")].address}' --kubeconfig="
 	GetLoadbalancerSVC      = "kubectl get service nginx-loadbalancer-svc --output jsonpath={.spec.ports[0].port} --kubeconfig="
 	GetPodDnsUtils          = "kubectl get pods dnsutils --kubeconfig="
+	ExecDnsUtils            = "kubectl exec -t dnsutils --kubeconfig="
 	GetPodVolumeTestRunning = "kubectl get pods -l app=volume-test --field-selector=status.phase=Running --kubeconfig="
 	GetNodeport             = "kubectl get pods -l k8s-app=nginx-app-nodeport --field-selector=status.phase=Running --kubeconfig="
 	GetClusterIp            = "kubectl get pods -l k8s-app=nginx-app-clusterip --field-selector=status.phase=Running --kubeconfig="

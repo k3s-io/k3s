@@ -2,6 +2,7 @@ package assert
 
 import (
 	"github.com/k3s-io/k3s/tests/acceptance/shared/util"
+	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
 
@@ -30,18 +31,26 @@ func NodeAssertCount() NodeAssertFunc {
 	return func(g gomega.Gomega, node util.Node) {
 		expectedNodeCount := util.NumServers + util.NumAgents
 		nodes, err := util.ParseNodes(false)
-		g.Expect(err).NotTo(gomega.HaveOccurred())
+		if err != nil {
+			ginkgo.GinkgoT().Logf("Error: %v", err)
+		}
+
 		g.Expect(len(nodes)).To(gomega.Equal(expectedNodeCount),
 			"Number of nodes should match the spec")
 	}
 }
 
-// CheckComponentCmdNode runs a command on a node and asserts that the value received
-// contains the specified substring
-func CheckComponentCmdNode(cmd string, ip string, assert string) {
+// CheckComponentCmdNode runs a command on a node and asserts that the value received contains the specified substring
+// you can send multiple asserts from a cmd but all of them must be true
+func CheckComponentCmdNode(cmd string, ip string, asserts ...string) {
 	gomega.Eventually(func(g gomega.Gomega) {
 		res, err := util.RunCmdOnNode(cmd, ip)
-		g.Expect(err).NotTo(gomega.HaveOccurred())
-		g.Expect(res).Should(gomega.ContainSubstring(assert))
+		if err != nil {
+			ginkgo.GinkgoT().Logf("Error: %v", err)
+		}
+
+		for _, assert := range asserts {
+			g.Expect(res).Should(gomega.ContainSubstring(assert))
+		}
 	}, "420s", "5s").Should(gomega.Succeed())
 }

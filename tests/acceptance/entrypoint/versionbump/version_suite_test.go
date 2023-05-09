@@ -14,7 +14,6 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	// var err error
 	flag.StringVar(&util.CmdHost, "cmdHost", "", "Comma separated list of commands to execute on host")
 	flag.StringVar(&util.ExpectedValueHost, "expectedValueHost", "", "Comma separated list of expected values for host commands")
 	flag.StringVar(&util.CmdNode, "cmdNode", "", "Comma separated list of commands to execute on node")

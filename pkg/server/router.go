@@ -483,8 +483,12 @@ func verifyLocalPassword(ctx context.Context, config *Config, mu *sync.Mutex, de
 		return "", http.StatusInternalServerError, errors.Wrap(err, "unable to read node password file")
 	}
 
-	password := strings.TrimSpace(string(passBytes))
-	if password != node.Password {
+	passHash, err := nodepassword.Hasher.CreateHash(strings.TrimSpace(string(passBytes)))
+	if err != nil {
+		return "", http.StatusInternalServerError, errors.Wrap(err, "unable to hash node password file")
+	}
+
+	if err := nodepassword.Hasher.VerifyHash(passHash, node.Password); err != nil {
 		return "", http.StatusForbidden, errors.Wrapf(err, "unable to verify local password for node '%s'", node.Name)
 	}
 

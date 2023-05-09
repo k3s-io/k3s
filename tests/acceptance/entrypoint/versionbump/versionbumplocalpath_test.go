@@ -9,6 +9,7 @@ import (
 	"github.com/k3s-io/k3s/tests/acceptance/core/service/template"
 	"github.com/k3s-io/k3s/tests/acceptance/core/testcase"
 	"github.com/k3s-io/k3s/tests/acceptance/shared/util"
+
 	. "github.com/onsi/ginkgo/v2"
 )
 
@@ -19,21 +20,19 @@ var _ = Describe("VersionTemplate Upgrade:", func() {
 	})
 
 	It("Checks Node Status", func() {
-		testcase.TestNodeStatus(
-			GinkgoT(),
+		testcase.TestNodeStatus(GinkgoT(),
 			assert.NodeAssertReadyStatus(),
 			nil)
 	})
 
 	It("Checks Pod Status", func() {
-		testcase.TestPodStatus(
-			GinkgoT(),
+		testcase.TestPodStatus(GinkgoT(),
 			assert.PodAssertRestarts(),
 			assert.PodAssertReady(),
 			assert.PodAssertStatus())
 	})
 
-	It("Verifies bump version", func() {
+	It("Verifies bump local path storage version", func() {
 		template.VersionTemplate(GinkgoT(), template.VersionTestTemplate{
 			Description: util.Description,
 			TestCombination: &template.RunCmd{
@@ -53,7 +52,10 @@ var _ = Describe("VersionTemplate Upgrade:", func() {
 				},
 			},
 			InstallUpgrade: util.InstallUpgradeFlag,
-			TestConfig:     nil,
+			TestConfig: &template.TestConfig{
+				TestFunc:       testcase.TestLocalPathProvisionerStorage,
+				DeployWorkload: true,
+			},
 		})
 	})
 })
