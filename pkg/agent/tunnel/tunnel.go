@@ -101,16 +101,20 @@ func Setup(ctx context.Context, config *daemonconfig.Node, proxy proxy.Proxy) er
 		close(apiServerReady)
 	}()
 
-	// Allow the kubelet port, as published via our node object
-	go tunnel.setKubeletPort(ctx, apiServerReady)
+	// We don't need to run the tunnel authorizer if the container runtime endpoint is /dev/null,
+	// signifying that this is an agentless server that will not register a node.
+	if config.ContainerRuntimeEndpoint != "/dev/null" {
+		// Allow the kubelet port, as published via our node object.
+		go tunnel.setKubeletPort(ctx, apiServerReady)
 
-	switch tunnel.mode {
-	case daemonconfig.EgressSelectorModeCluster:
-		// In Cluster mode, we allow the cluster CIDRs, and any connections to the node's IPs for pods using host network.
-		tunnel.clusterAuth(config)
-	case daemonconfig.EgressSelectorModePod:
-		// In Pod mode, we watch pods assigned to this node, and allow their addresses, as well as ports used by containers with host network.
-		go tunnel.watchPods(ctx, apiServerReady, config)
+		switch tunnel.mode {
+		case daemonconfig.EgressSelectorModeCluster:
+			// In Cluster mode, we allow the cluster CIDRs, and any connections to the node's IPs for pods using host network.
+			tunnel.clusterAuth(config)
+		case daemonconfig.EgressSelectorModePod:
+			// In Pod mode, we watch pods assigned to this node, and allow their addresses, as well as ports used by containers with host network.
+			go tunnel.watchPods(ctx, apiServerReady, config)
+		}
 	}
 
 	// The loadbalancer is only disabled when there is a local apiserver.  Servers without a local

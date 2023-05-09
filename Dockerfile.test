@@ -1,4 +1,4 @@
-ARG GOLANG=golang:1.19.7-alpine3.17
+ARG GOLANG=golang:1.20.3-alpine3.17
 FROM ${GOLANG} as test-base
 
 RUN apk -U --no-cache add bash jq
@@ -18,7 +18,7 @@ RUN apk -U --no-cache add git gcc musl-dev docker curl coreutils python3 openssl
 
 RUN python3 -m pip install awscli
 
-ENV SONOBUOY_VERSION 0.56.14
+ENV SONOBUOY_VERSION 0.56.16
 
 RUN OS=linux; \
     ARCH=$(go env GOARCH); \

@@ -18,7 +18,6 @@ import (
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/datadir"
 	"github.com/k3s-io/k3s/pkg/etcd"
-	"github.com/k3s-io/k3s/pkg/netutil"
 	"github.com/k3s-io/k3s/pkg/rootless"
 	"github.com/k3s-io/k3s/pkg/server"
 	"github.com/k3s-io/k3s/pkg/token"
@@ -116,7 +115,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	serverConfig.ControlConfig.KubeConfigMode = cfg.KubeConfigMode
 	serverConfig.ControlConfig.Rootless = cfg.Rootless
 	serverConfig.ControlConfig.ServiceLBNamespace = cfg.ServiceLBNamespace
-	serverConfig.ControlConfig.SANs = cfg.TLSSan
+	serverConfig.ControlConfig.SANs = util.SplitStringSlice(cfg.TLSSan)
 	serverConfig.ControlConfig.BindAddress = cfg.BindAddress
 	serverConfig.ControlConfig.SupervisorPort = cfg.SupervisorPort
 	serverConfig.ControlConfig.HTTPSPort = cfg.HTTPSPort
@@ -201,7 +200,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	}
 
 	if cmds.AgentConfig.FlannelIface != "" && len(cmds.AgentConfig.NodeIP) == 0 {
-		cmds.AgentConfig.NodeIP.Set(netutil.GetIPFromInterface(cmds.AgentConfig.FlannelIface))
+		cmds.AgentConfig.NodeIP.Set(util.GetIPFromInterface(cmds.AgentConfig.FlannelIface))
 	}
 
 	if serverConfig.ControlConfig.PrivateIP == "" && len(cmds.AgentConfig.NodeIP) != 0 {
@@ -247,14 +246,12 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		}
 		cmds.ServerConfig.ClusterCIDR.Set(clusterCIDR)
 	}
-	for _, cidr := range cmds.ServerConfig.ClusterCIDR {
-		for _, v := range strings.Split(cidr, ",") {
-			_, parsed, err := net.ParseCIDR(v)
-			if err != nil {
-				return errors.Wrapf(err, "invalid cluster-cidr %s", v)
-			}
-			serverConfig.ControlConfig.ClusterIPRanges = append(serverConfig.ControlConfig.ClusterIPRanges, parsed)
+	for _, cidr := range util.SplitStringSlice(cmds.ServerConfig.ClusterCIDR) {
+		_, parsed, err := net.ParseCIDR(cidr)
+		if err != nil {
+			return errors.Wrapf(err, "invalid cluster-cidr %s", cidr)
 		}
+		serverConfig.ControlConfig.ClusterIPRanges = append(serverConfig.ControlConfig.ClusterIPRanges, parsed)
 	}
 
 	// set ClusterIPRange to the first IPv4 block, for legacy clients
@@ -273,14 +270,12 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		}
 		cmds.ServerConfig.ServiceCIDR.Set(serviceCIDR)
 	}
-	for _, cidr := range cmds.ServerConfig.ServiceCIDR {
-		for _, v := range strings.Split(cidr, ",") {
-			_, parsed, err := net.ParseCIDR(v)
-			if err != nil {
-				return errors.Wrapf(err, "invalid service-cidr %s", v)
-			}
-			serverConfig.ControlConfig.ServiceIPRanges = append(serverConfig.ControlConfig.ServiceIPRanges, parsed)
+	for _, cidr := range util.SplitStringSlice(cmds.ServerConfig.ServiceCIDR) {
+		_, parsed, err := net.ParseCIDR(cidr)
+		if err != nil {
+			return errors.Wrapf(err, "invalid service-cidr %s", cidr)
 		}
+		serverConfig.ControlConfig.ServiceIPRanges = append(serverConfig.ControlConfig.ServiceIPRanges, parsed)
 	}
 
 	// set ServiceIPRange to the first IPv4 block, for legacy clients
@@ -315,14 +310,12 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		serverConfig.ControlConfig.ClusterDNS = clusterDNS
 		serverConfig.ControlConfig.ClusterDNSs = []net.IP{serverConfig.ControlConfig.ClusterDNS}
 	} else {
-		for _, ip := range cmds.ServerConfig.ClusterDNS {
-			for _, v := range strings.Split(ip, ",") {
-				parsed := net.ParseIP(v)
-				if parsed == nil {
-					return fmt.Errorf("invalid cluster-dns address %s", v)
-				}
-				serverConfig.ControlConfig.ClusterDNSs = append(serverConfig.ControlConfig.ClusterDNSs, parsed)
+		for _, ip := range util.SplitStringSlice(cmds.ServerConfig.ClusterDNS) {
+			parsed := net.ParseIP(ip)
+			if parsed == nil {
+				return fmt.Errorf("invalid cluster-dns address %s", ip)
 			}
+			serverConfig.ControlConfig.ClusterDNSs = append(serverConfig.ControlConfig.ClusterDNSs, parsed)
 		}
 		// Set ClusterDNS to the first IPv4 address, for legacy clients
 		// unless only IPv6 range given
@@ -349,12 +342,10 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 
 	serverConfig.ControlConfig.Skips = map[string]bool{}
 	serverConfig.ControlConfig.Disables = map[string]bool{}
-	for _, disable := range app.StringSlice("disable") {
-		for _, v := range strings.Split(disable, ",") {
-			v = strings.TrimSpace(v)
-			serverConfig.ControlConfig.Skips[v] = true
-			serverConfig.ControlConfig.Disables[v] = true
-		}
+	for _, disable := range util.SplitStringSlice(app.StringSlice("disable")) {
+		disable = strings.TrimSpace(disable)
+		serverConfig.ControlConfig.Skips[disable] = true
+		serverConfig.ControlConfig.Disables[disable] = true
 	}
 	if serverConfig.ControlConfig.Skips["servicelb"] {
 		serverConfig.ControlConfig.DisableServiceLB = true
@@ -530,8 +521,11 @@ func validateNetworkConfiguration(serverConfig server.Config) error {
 	}
 
 	switch serverConfig.ControlConfig.EgressSelectorMode {
-	case config.EgressSelectorModeAgent, config.EgressSelectorModeCluster,
-		config.EgressSelectorModeDisabled, config.EgressSelectorModePod:
+	case config.EgressSelectorModeCluster, config.EgressSelectorModePod:
+	case config.EgressSelectorModeAgent, config.EgressSelectorModeDisabled:
+		if serverConfig.DisableAgent {
+			logrus.Warn("Webhooks and apiserver aggregation may not function properly without an agent; please set egress-selector-mode to 'cluster' or 'pod'")
+		}
 	default:
 		return fmt.Errorf("invalid egress-selector-mode %s", serverConfig.ControlConfig.EgressSelectorMode)
 	}

@@ -12,6 +12,7 @@ import (
 	"os/user"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/k3s-io/k3s/pkg/flock"
 	"github.com/pkg/errors"
@@ -162,12 +163,12 @@ func CheckDeployments(deployments []string) error {
 	return nil
 }
 
-func ParsePods(opts metav1.ListOptions) ([]corev1.Pod, error) {
+func ParsePods(namespace string, opts metav1.ListOptions) ([]corev1.Pod, error) {
 	clientSet, err := k8sClient()
 	if err != nil {
 		return nil, err
 	}
-	pods, err := clientSet.CoreV1().Pods("").List(context.Background(), opts)
+	pods, err := clientSet.CoreV1().Pods(namespace).List(context.Background(), opts)
 	if err != nil {
 		return nil, err
 	}
@@ -188,13 +189,45 @@ func ParseNodes() ([]corev1.Node, error) {
 	return nodes.Items, nil
 }
 
-func FindStringInCmdAsync(scanner *bufio.Scanner, target string) bool {
+func GetPod(namespace, name string) (*corev1.Pod, error) {
+	client, err := k8sClient()
+	if err != nil {
+		return nil, err
+	}
+	return client.CoreV1().Pods(namespace).Get(context.Background(), name, metav1.GetOptions{})
+}
+
+func GetPersistentVolumeClaim(namespace, name string) (*corev1.PersistentVolumeClaim, error) {
+	client, err := k8sClient()
+	if err != nil {
+		return nil, err
+	}
+	return client.CoreV1().PersistentVolumeClaims(namespace).Get(context.Background(), name, metav1.GetOptions{})
+}
+
+func GetPersistentVolume(name string) (*corev1.PersistentVolume, error) {
+	client, err := k8sClient()
+	if err != nil {
+		return nil, err
+	}
+	return client.CoreV1().PersistentVolumes().Get(context.Background(), name, metav1.GetOptions{})
+}
+
+func SearchK3sLog(k3s *K3sServer, target string) (bool, error) {
+	file, err := os.Open(k3s.log.Name())
+	if err != nil {
+		return false, err
+	}
+	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		if strings.Contains(scanner.Text(), target) {
-			return true
+			return true, nil
 		}
 	}
-	return false
+	if scanner.Err() != nil {
+		return false, scanner.Err()
+	}
+	return false, nil
 }
 
 func K3sTestLock() (int, error) {
@@ -210,12 +243,8 @@ func K3sStartServer(inputArgs ...string) (*K3sServer, error) {
 		return nil, errors.New("integration testfunctions must be run as sudo/root")
 	}
 
-	var cmdArgs []string
-	for _, arg := range inputArgs {
-		cmdArgs = append(cmdArgs, strings.Fields(arg)...)
-	}
 	k3sBin := findK3sExecutable()
-	k3sCmd := append([]string{"server"}, cmdArgs...)
+	k3sCmd := append([]string{"server"}, inputArgs...)
 	cmd := exec.Command(k3sBin, k3sCmd...)
 	// Give the server a new group id so we can kill it and its children later
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
@@ -235,11 +264,15 @@ func K3sStopServer(server *K3sServer) error {
 	if server.log != nil {
 		server.log.Close()
 	}
+	if err := server.cmd.Process.Signal(syscall.SIGTERM); err != nil {
+		return err
+	}
+	time.Sleep(10 * time.Second)
 	if err := server.cmd.Process.Kill(); err != nil {
-		return errors.Wrap(err, "failed to kill k3s process")
+		return err
 	}
 	if _, err := server.cmd.Process.Wait(); err != nil {
-		return errors.Wrap(err, "failed to wait for k3s process exit")
+		return err
 	}
 	return nil
 }

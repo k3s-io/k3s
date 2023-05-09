@@ -22,9 +22,10 @@ if [ -d .git ]; then
     fi
 fi
 
-# We're building k3s against containerd 1.5 in go.mod because 1.6 has dependency
-# conflicts with Kubernetes, but we still need to bundle containerd 1.6.
-VERSION_CONTAINERD="v1.6.19-k3s1"
+VERSION_CONTAINERD=$(grep github.com/containerd/containerd go.mod | head -n1 | awk '{print $4}')
+if [ -z "$VERSION_CONTAINERD" ]; then
+    VERSION_CONTAINERD="v0.0.0"
+fi
 
 VERSION_CRICTL=$(grep github.com/kubernetes-sigs/cri-tools go.mod | head -n1 | awk '{print $4}')
 if [ -z "$VERSION_CRICTL" ]; then
@@ -52,14 +53,14 @@ if [ -z "$VERSION_CRI_DOCKERD" ]; then
   VERSION_CRI_DOCKERD="v0.0.0"
 fi
 
-VERSION_CNIPLUGINS="v1.1.1-k3s1"
+VERSION_CNIPLUGINS="v1.2.0-k3s1"
 
 VERSION_KUBE_ROUTER=$(grep github.com/k3s-io/kube-router go.mod | head -n1 | awk '{print $4}')
 if [ -z "$VERSION_KUBE_ROUTER" ]; then
     VERSION_KUBE_ROUTER="v0.0.0"
 fi
 
-VERSION_ROOT="v0.12.1"
+VERSION_ROOT="v0.12.2"
 
 if [[ -n "$GIT_TAG" ]]; then
     if [[ ! "$GIT_TAG" =~ ^"$VERSION_K8S"[+-] ]]; then

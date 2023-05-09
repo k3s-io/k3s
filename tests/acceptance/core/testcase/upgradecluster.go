@@ -71,6 +71,7 @@ func TestUpgradeClusterManually(installType string) error {
 func upgradeServers(installType string, serverIPs []string) error {
 	var wg sync.WaitGroup
 	var mu sync.Mutex
+	errCh := make(chan error)
 
 	for _, ip := range serverIPs {
 		wg.Add(1)
@@ -81,17 +82,21 @@ func upgradeServers(installType string, serverIPs []string) error {
 			cmd := fmt.Sprintf(util2.InstallK3sServer, installType)
 			fmt.Printf("\nUpgrading server:  " + cmd)
 			if _, err := util2.RunCmdOnNode(cmd, ip); err != nil {
+				errCh <- err
 				mu.Lock()
 				fmt.Println("Error while upgrading server", err)
 				mu.Unlock()
+				close(errCh)
 				return
 			}
 
 			err := util2.RestartCluster(ip)
 			if err != nil {
+				errCh <- err
 				mu.Lock()
 				fmt.Println("Error while Restarting server", err)
 				mu.Unlock()
+				close(errCh)
 				return
 			}
 		}(ip)
@@ -105,6 +110,7 @@ func upgradeServers(installType string, serverIPs []string) error {
 func upgradeAgents(installType string, agentIPs []string) error {
 	var wg sync.WaitGroup
 	var mu sync.Mutex
+	errCh := make(chan error)
 
 	for _, ip := range agentIPs {
 		cmd := fmt.Sprintf(util2.InstallK3sAgent, installType)
@@ -115,17 +121,21 @@ func upgradeAgents(installType string, agentIPs []string) error {
 
 			fmt.Printf("\nUpgrading agent:  " + cmd)
 			if _, err := util2.RunCmdOnNode(cmd, ip); err != nil {
+				errCh <- err
 				mu.Lock()
 				fmt.Println("Error while upgrading agent", err)
 				mu.Unlock()
+				close(errCh)
 				return
 			}
 
 			err := util2.RestartCluster(ip)
 			if err != nil {
+				errCh <- err
 				mu.Lock()
 				fmt.Println("Error while Restarting agent", err)
 				mu.Unlock()
+				close(errCh)
 				return
 			}
 		}(ip)

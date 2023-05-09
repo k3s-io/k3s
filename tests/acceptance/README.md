@@ -70,7 +70,7 @@ Responsibility:       should not need the knowledge or "external" dependency at 
 
 ## Running
 
-- Before running the tests, you should creat local.tfvars file in `./tests/terraform/modules/k3scluster/config/local.tfvars`. There is some information there to get you started, but the empty variables should be filled in appropriately per your AWS environment.
+- Before running the tests, you should creat local.tfvars file in `./tests/acceptance/modules/k3scluster/config/local.tfvars`. There is some information there to get you started, but the empty variables should be filled in appropriately per your AWS environment.
 
 
 - For running tests with "etcd" cluster type, you should add the value "etcd" to the variable "cluster_type" , also you need have those variables at least empty:
@@ -97,50 +97,93 @@ Test flags:
     -installType=version or commit
 ```
 
-###  Run with `Makefile` through k3sTF package:
+###  Run with `Makefile` through acceptance package:
 ```bash
 - On the first run with make and docker please delete your .terraform folder, terraform.tfstate and terraform.hcl.lock file
 
 Args:
-*All args are optional and can be used with:
+*Most of args are optional so you can fit to your use case.
 
-`$make tf-run`         `$make tf-logs`,
-`$make vet-lint`       `$make tf-complete`, 
-`$make tf-upgrade`     `$make tf-test-suite-same-cluster`,
-`$make tf-test-suite`
+- ${IMGNAME}               append any string to the end of image name
+- ${TAGNAME}               append any string to the end of tag name
+- ${ARGNAME}               name of the arg to pass to the test
+- ${ARGVALUE}              value of the arg to pass to the test
+- ${TESTDIR}               path to the test directory 
+- ${TESTFILE}              path to the test file
+- ${TAGTEST}               name of the tag function from suite ( -tags=upgradesuc or -tags=upgrademanual )
+- ${TESTCASE}              name of the testcase to run
+- ${DEPLOYWORKLOAD}        true or false to deploy workload
+- ${CMDHOST}               command to run on host
+- ${VALUEHOST}             value to check on host
+- ${VALUEHOSTUPGRADED}     value to check on host after upgrade
+- ${CMDNODE}               command to run on node
+- ${VALUENODE}             value to check on node
+- ${VALUENODEUPGRADED}     value to check on node after upgrade
+- ${INSTALLTYPE}           type of installation (version or commit) + desired value
 
 
-- ${IMGNAME}     append any string to the end of image name
-- ${TAGNAME}     append any string to the end of tag name
-- ${ARGNAME}     name of the arg to pass to the test
-- ${ARGVALUE}    value of the arg to pass to the test
-- ${TESTDIR}     path to the test directory 
-- ${TESTFILE}    path to the test file
-- ${TAGTEST}     name of the tag function from suite ( -tags=upgradesuc or -tags=upgrademanual )
-
-Commands:
-$ make tf-up                         # create the image from Dockerfile.build
-$ make tf-run                        # runs all testcase if no flags or args provided
-$ make tf-down                       # removes the image
-$ make tf-clean                      # removes instances and resources created by testcase
-$ make tf-logs                       # prints logs from container the testcase
-$ make tf-complete                   # clean resources + remove images + run testcase
-$ make tf-create                     # runs create cluster test locally
-$ make tf-upgrade                    # runs upgrade cluster test locally
-$ make tf-test-suite-same-cluster    # runs all testcase locally in sequence using the same state    
-$ make tf-remove-state               # removes acceptance state dir and files
-$ make tf-test-suite                 # runs all testcase locally in sequence not using the same state
-$ make vet-lint                      # runs go vet and go lint
+Commands: 
+$ make test-env-up                     # create the image from Dockerfile.build
+$ make test-run                        # runs create and upgrade cluster by passing the argname and argvalue
+$ make test-env-down                   # removes the image and container by prefix
+$ make test-env-clean                  # removes instances and resources created by testcase
+$ make test-logs                       # prints logs from container the testcase
+$ make test-complete                   # clean resources + remove images + run testcase
+$ make test-create                     # runs create cluster test locally
+$ make test-upgrade                    # runs upgrade cluster test locally
+$ make test-version-local-path         # runs version bump for local path storage test locally
+$ make test-version-bump               # runs version bump test locally
+$ make test-run                        # runs create and upgrade cluster by passing the argname and argvalue
+$ make remove-tf-state                 # removes acceptance state dir and files
+$ make test-suite                      # runs all testcase locally in sequence not using the same state
+$ make vet-lint                        # runs go vet and go lint
 
       
-Examples:
-$ make tf-up TAGNAME=ubuntu
-$ make tf-run IMGNAME=2 TAGNAME=ubuntu TESTDIR=upgradecluster ARGNAME=upgradeVersion ARGVALUE=v1.26.2+k3s1
-$ make tf-run TESTDIR=upgradecluster
+Examples: 
+
+- Create an image tagged
+$ make test-env-up TAGNAME=ubuntu
+
+
+- Run upgrade cluster test with ${IMGNAME} and ${TAGNAME}
+$ make test-run IMGNAME=2 TAGNAME=ubuntu TESTDIR=upgradecluster ARGNAME=upgradeVersion ARGVALUE=v1.26.2+k3s1
+
+
+- Run create and upgrade cluster just adding ARGNAME and ARGVALUE flag to upgrade
+$ make tf-run ARGNAME=upgradeVersion ARGVALUE=v1.26.2+k3s1
+
+
+- Run version bump test upgrading with commit id
+$ make test-run IMGNAME=x \
+TAGNAME=y \
+TESTDIR=versionbump \
+CMDNODE="k3s --version" \
+VALUENODE="v1.26.2+k3s1" \
+CMDHOST="kubectl get image..."  \
+VALUEHOST="v0.0.21" \
+INSTALLTYPE=INSTALL_K3S_COMMIT=257fa2c54cda332e42b8aae248c152f4d1898218 \ 
+TESTCASE=TestLocalPathProvisionerStorage \
+DEPLOYWORKLOAD=true
+
+
+- Run bump version local path provisioner upgrading with version
+$ make test-run IMGNAME=23 \
+TAGNAME=1 \
+TESTDIR=versionbump \
+TESTTAG=localpath \
+VALUENODE=v1.26.2+k3s1 \
+VALUENODEUPGRADED=v1.27.1-rc1+k3s1 \
+VALUEHOST=v0.0.21 \
+VALUEHOSTUPGRADED=v0.0.22 \
+INSTALLTYPE=INSTALL_K3S_VERSION=v1.27.1-rc1+k3s1 \
+
+
+- Logs from test
 $ make tf-logs IMGNAME=1
+
+- Run lint for a specific directory
 $ make vet-lint TESTDIR=upgradecluster
 ```
-
 
 ### Running tests in parallel:
 - You can play around and have a lot of different test combinations like:

@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/k3s-io/k3s/pkg/containerd"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 func main() {

@@ -372,6 +372,45 @@ get_release_version() {
     info "Using ${VERSION_K3S} as release"
 }
 
+# --- get k3s-selinux version ---
+get_k3s_selinux_version() {
+    available_version="k3s-selinux-1.2-2.${rpm_target}.noarch.rpm"
+    info "Finding available k3s-selinux versions"
+    
+    # run verify_downloader in case it binary installation was skipped
+    verify_downloader curl || verify_downloader wget || fatal 'Can not find curl or wget for downloading files'
+
+    case $DOWNLOADER in
+        curl)
+            DOWNLOADER_OPTS="-s"
+            ;;
+        wget)
+            DOWNLOADER_OPTS="-q -O -"
+            ;;
+        *)
+            fatal "Incorrect downloader executable '$DOWNLOADER'"
+            ;;
+    esac
+    for i in {1..3}; do
+        set +e
+        if [ "${rpm_channel}" = "testing" ]; then
+            version=$(timeout 5 ${DOWNLOADER} ${DOWNLOADER_OPTS} https://api.github.com/repos/k3s-io/k3s-selinux/releases |  grep browser_download_url | awk '{ print $2 }' | grep -oE "[^\/]+${rpm_target}\.noarch\.rpm" | head -n 1)
+        else
+            version=$(timeout 5 ${DOWNLOADER} ${DOWNLOADER_OPTS} https://api.github.com/repos/k3s-io/k3s-selinux/releases/latest |  grep browser_download_url | awk '{ print $2 }' | grep -oE "[^\/]+${rpm_target}\.noarch\.rpm")
+        fi
+        set -e
+        if [ "${version}" != "" ]; then
+            break
+        fi
+        sleep 1
+    done
+    if [ "${version}" == "" ]; then
+        warn "Failed to get available versions of k3s-selinux..defaulting to ${available_version}"
+        return
+    fi
+    available_version=${version}
+}
+
 # --- download from github url ---
 download() {
     [ $# -eq 2 ] || fatal 'download needs exactly 2 arguments'
@@ -497,12 +536,6 @@ setup_selinux() {
         package_installer=dnf
     fi
 
-    if [ "${rpm_channel}" = "testing" ]; then
-        available_version=$(curl -s https://api.github.com/repos/k3s-io/k3s-selinux/releases |  grep -oP '(?<="browser_download_url": ")[^"]*' | grep -oE "[^\/]+${rpm_target}\.noarch\.rpm" | head -n 1)
-    else
-        available_version=$(curl -s https://api.github.com/repos/k3s-io/k3s-selinux/releases/latest |  grep -oP '(?<="browser_download_url": ")[^"]*' | grep -oE "[^\/]+${rpm_target}\.noarch\.rpm" )
-    fi
-
     policy_hint="please install:
     ${package_installer} install -y container-selinux
     ${package_installer} install -y https://${rpm_site}/k3s/${rpm_channel}/common/${rpm_site_infix}/noarch/${available_version}
@@ -511,6 +544,7 @@ setup_selinux() {
     if [ "$INSTALL_K3S_SKIP_SELINUX_RPM" = true ] || can_skip_download_selinux || [ ! -d /usr/share/selinux ]; then
         info "Skipping installation of SELinux RPM"
     else
+        get_k3s_selinux_version
         install_selinux_rpm ${rpm_site} ${rpm_channel} ${rpm_target} ${rpm_site_infix}
     fi
 
@@ -863,8 +897,8 @@ respawn_delay=5
 respawn_max=0
 
 set -o allexport
-if [ -f /etc/environment ]; then sourcex /etc/environment; fi
-if [ -f ${FILE_K3S_ENV} ]; then sourcex ${FILE_K3S_ENV}; fi
+if [ -f /etc/environment ]; then . /etc/environment; fi
+if [ -f ${FILE_K3S_ENV} ]; then . ${FILE_K3S_ENV}; fi
 set +o allexport
 EOF
     $SUDO chmod 0755 ${FILE_K3S_SERVICE}
@@ -931,6 +965,15 @@ service_enable_and_start() {
     if [ "${PRE_INSTALL_HASHES}" = "${POST_INSTALL_HASHES}" ] && [ "${INSTALL_K3S_FORCE_RESTART}" != true ]; then
         info 'No change detected so skipping service start'
         return
+    fi
+
+    if command -v iptables-save 1> /dev/null && command -v iptables-restore 1> /dev/null
+    then
+	    $SUDO iptables-save | grep -v KUBE- | grep -v CNI- | grep -iv flannel | $SUDO iptables-restore
+    fi
+    if command -v ip6tables-save 1> /dev/null && command -v ip6tables-restore 1> /dev/null
+    then
+	    $SUDO ip6tables-save | grep -v KUBE- | grep -v CNI- | grep -iv flannel | $SUDO ip6tables-restore
     fi
 
     [ "${HAS_SYSTEMD}" = true ] && systemd_start

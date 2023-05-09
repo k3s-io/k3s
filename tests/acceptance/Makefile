@@ -4,27 +4,35 @@ include ./config.mk
 
 TAGNAME ?= default
 test-env-up:
-	@cd ../.. && docker build . -q -f ./tests/acceptance/Dockerfile.build -t k3s-automated-${TAGNAME}
+	@cd ../.. && docker build . -f ./tests/acceptance/Dockerfile.build -t k3s-automated-${TAGNAME}
 
 .PHONY: test-run
 test-run:
-	@docker run -d --name k3s-automated-test${IMGNAME} -t \
+	@docker run --name k3s-automated-test${IMGNAME} -t \
       -e AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}" \
       -e AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}" \
       -v ${ACCESS_KEY_LOCAL}:/go/src/github.com/k3s-io/k3s/tests/acceptance/modules/k3scluster/config/.ssh/aws_key.pem \
-      k3s-automated-${TAGNAME} sh -c 'cd ./tests/acceptance/entrypoint ; \
-      				  if [ -n "${ARGVALUE}" ]; then \
-                         go test -v -timeout=45m \
-                           ./${TESTDIR}/... \
-                           - "${ARGVALUE}"; \
-                      elif [ -z "${TESTDIR}" ]; then \
-                         go test -v -timeout=45m \
-                           ./createcluster/... ./version/... ./upgradecluster/... \
-                            - "${ARGVALUE}"  ; \
-                      else \
-                         go test -v -timeout=45m \
-                           ./${TESTDIR}/...; \
-                      fi'
+      k3s-automated-${TAGNAME} sh -c 'cd ./tests/acceptance/entrypoint; \
+    if [ -n "${TESTDIR}" ]; then \
+        if [ "${TESTDIR}" = "upgradecluster" ]; then \
+            go test -timeout=45m -v ./upgradecluster/... -upgradeVersion "${ARGVALUE}"; \
+        elif [ "${TESTDIR}" = "versionbump" ]; then \
+            if [ "${TESTTAG}" = "localpath" ]; then \
+                go test -timeout=45m -v -tags=localpath ./versionbump/... -expectedValueNode "${VALUENODE}" \
+                -expectedValueUpgradedNode "${VALUENODEUPGRADED}" -expectedValueHost "${VALUEHOST}" \
+                -expectedValueUpgradedHost "${VALUEHOSTUPGRADED}" -installUpgradeFlag "${INSTALLTYPE}"; \
+            elif [ "${TESTTAG}" = "versionbump" ]; then \
+                go test -timeout=45m -v -tags=versionbump ./versionbump/... -cmdNode "${CMDNODE}" -expectedValueNode "${VALUENODE}" \
+                -expectedValueUpgradedNode "${VALUENODEUPGRADED}" -cmdHost "${CMDHOST}" -expectedValueHost "${VALUEHOST}" \
+                -expectedValueUpgradedHost "${VALUEHOSTUPGRADED}" -installUpgradeFlag "${INSTALLTYPE}" -testCase "${TESTCASE}" \
+                -deployWorkload "${DEPLOYWORKLOAD}"; \
+            fi; \
+        fi; \
+    elif [ -z "${TESTDIR}" ]; then \
+        go test -timeout=45m -v ./createcluster/... ./upgradecluster/... -upgradeVersion "${ARGVALUE}"; \
+    fi;'
+
+
 
 .PHONY: test-logs
 test-logs:
@@ -66,7 +74,7 @@ test-version-local-path:
 
 .PHONY: test-version-bump
 test-version-local-bump:
-	@go test -timeout=45m -v -tags=versionbump ./entrypoint/versionbump/... -cmdNode ${CMDNODE} -expectedValueNode ${VALUENODE} \
+	@go test -timeout=45m -v ./entrypoint/versionbump/... -cmdNode ${CMDNODE} -expectedValueNode ${VALUENODE} \
 		-expectedValueUpgradedNode ${VALUENODEUPGRADED} -cmdHost ${CMDHOST} -expectedValueHost ${VALUEHOST} -expectedValueUpgradedHost ${VALUEHOSTUPGRADED} \
 		-installUpgradeFlag ${INSTALLTYPE} -testCase ${TESTCASE}  -deployWorkload ${DEPLOYWORKLOAD}
 

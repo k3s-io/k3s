@@ -76,10 +76,10 @@ environment           = "local"
 key_name              = "jenkins-elliptic-validation"
 
 #Run locally use this access_key bellow
-access_key            = "/Users/moral/jenkins-keys/jenkins-elliptic-validation.pem"
+#access_key            = "/Users/moral/jenkins-keys/jenkins-elliptic-validation.pem"
 
 #Run with docker use this access_key bellow
-#access_key            = "/go/src/github.com/k3s-io/k3s/tests/acceptance/modules/k3scluster/config/.ssh/aws_key.pem"
+access_key            = "/go/src/github.com/k3s-io/k3s/tests/acceptance/modules/k3scluster/config/.ssh/aws_key.pem"
 
 #Variable to load path on docker
 #access_key_local      = "jenkinskeypath"

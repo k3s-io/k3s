@@ -1,5 +1,3 @@
-//go:build bumpversion
-
 package versionbump
 
 import (

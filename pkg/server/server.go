@@ -77,7 +77,7 @@ func StartServer(ctx context.Context, config *Config, cfg *cmds.Server) error {
 			return errors.Wrap(err, "startup hook")
 		}
 	}
-
+	go writeCoverage(ctx)
 	go startOnAPIServerReady(ctx, config)
 
 	if err := printTokens(&config.ControlConfig); err != nil {
@@ -168,8 +168,11 @@ func apiserverControllers(ctx context.Context, sc *Context, config *Config) {
 			panic(errors.Wrapf(err, "failed to start %s leader controller", util.GetFunctionName(controller)))
 		}
 	}
+
+	// Re-run context startup after core and leader-elected controllers have started. Additional
+	// informer caches may need to start for the newly added OnChange callbacks.
 	if err := sc.Start(ctx); err != nil {
-		panic(err)
+		panic(errors.Wrap(err, "failed to start wranger controllers"))
 	}
 }
 
@@ -178,7 +181,7 @@ func apiserverControllers(ctx context.Context, sc *Context, config *Config) {
 func runOrDie(ctx context.Context, name string, cb leader.Callback) {
 	defer func() {
 		if err := recover(); err != nil {
-			logrus.WithField("stack", debug.Stack()).Fatalf("%s controller panic: %v", name, err)
+			logrus.WithField("stack", string(debug.Stack())).Fatalf("%s controller panic: %v", name, err)
 		}
 	}()
 	cb(ctx)
