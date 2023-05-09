@@ -5,14 +5,14 @@ on:
     paths:
       - "channel.yaml"
       - "install.sh"
-      - "tests/install/**"
+      - "testfunctions/install/**"
       - ".github/workflows/install.yaml"
 
   pull_request:
     branches: [main, master]
     paths:
       - "install.sh"
-      - "tests/install/**"
+      - "testfunctions/install/**"
       - ".github/workflows/install.yaml"
   workflow_dispatch: {}
 
@@ -34,7 +34,7 @@ jobs:
       max-parallel: 2
     defaults:
       run:
-        working-directory: tests/install/${{ matrix.vm }}
+        working-directory: testfunctions/install/${{ matrix.vm }}
     env:
       INSTALL_K3S_SKIP_DOWNLOAD: binary
     steps:
@@ -47,7 +47,7 @@ jobs:
           path: |
             ~/.vagrant.d/boxes
             ~/.vagrant.d/gems
-          key: install-${{ hashFiles(format('tests/install/{0}/Vagrantfile', matrix.vm)) }}
+          key: install-${{ hashFiles(format('testfunctions/install/{0}/Vagrantfile', matrix.vm)) }}
         id: vagrant-cache
         continue-on-error: true
       - name: "Vagrant Plugin(s)"
@@ -56,7 +56,7 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: k3s
-          path: tests/install/${{ matrix.vm }}
+          path: testfunctions/install/${{ matrix.vm }}
       - name: "Vagrant Up"
         run: vagrant up --no-provision
       - name: "Upload k3s binary"

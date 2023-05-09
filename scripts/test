@@ -50,7 +50,7 @@ if [ "$DRONE_BUILD_EVENT" = 'tag' ]; then
   echo "Did test-run-sonobuoy serial $?"
   E2E_OUTPUT=$artifacts test-run-sonobuoy parallel
   echo "Did test-run-sonobuoy parallel $?"
-  early-exit 'Skipping remaining tests on tag.'
+  early-exit 'Skipping remaining testfunctions on tag.'
 fi
 # ---
 
@@ -64,11 +64,11 @@ if [ "$DRONE_BUILD_EVENT" = 'cron' ]; then
   test-run-sonobuoy postgres serial
   echo "Did test-run-sonobuoy-postgres serial $?"
 
-  # Wait until all serial tests have finished
+  # Wait until all serial testfunctions have finished
   delay=15
   (
   set +x
-  while [ $(count-running-tests) -ge 1 ]; do
+  while [ $(count-running-testfunctions) -ge 1 ]; do
       sleep $delay
   done
   )
@@ -83,11 +83,11 @@ if [ "$DRONE_BUILD_EVENT" = 'cron' ]; then
   echo "Did test-run-sonobuoy-postgres parallel $?"
 fi
 
-# Wait until all tests have finished
+# Wait until all testfunctions have finished
 delay=15
 (
 set +x
-while [ $(count-running-tests) -ge 1 ]; do
+while [ $(count-running-testfunctions) -ge 1 ]; do
     sleep $delay
 done
 )

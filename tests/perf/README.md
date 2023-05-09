@@ -92,7 +92,7 @@ The scripts can be modified by customizing the variables in `scripts/config`, th
 The script includes a Makefile that run different sections, to build the master and workers, adjust the config file in `tests/perf/scripts/config` and then use the following:
 
 ```bash
-cd tests/perf
+cd testfunctions/perf
 make apply
 ```
 
@@ -103,7 +103,7 @@ This will basically build the db, server, and agent layers, it will also deploy 
 To start the clusterloader2 load test you can modify the tests/perf/tests/load/config.yaml and then run the following:
 
 ```bash
-cd tests/perf
+cd testfunctions/perf
 make test
 ```
 

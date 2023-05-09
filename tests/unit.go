@@ -11,7 +11,7 @@ import (
 
 // GenerateDataDir creates a temporary directory at "/tmp/k3s/<RANDOM_STRING>/".
 // The latest directory created with this function is soft linked to "/tmp/k3s/latest/".
-// This allows tests to replicate the "/var/lib/rancher/k3s" directory structure.
+// This allows testfunctions to replicate the "/var/lib/rancher/k3s" directory structure.
 func GenerateDataDir(cnf *config.Control) error {
 	if err := os.MkdirAll(cnf.DataDir, 0700); err != nil {
 		return err

@@ -235,7 +235,7 @@ sonobuoy-test() {
         echo "Aborting sonobuoy tests, images not available for $ARCH"
         return 0
     fi
-    echo 'Starting sonobuoy tests'
+    echo 'Starting sonobuoy testfunctions'
 
     sonobuoy run \
         --config=scripts/sonobuoy-config.json \
@@ -505,7 +505,7 @@ run-test() {
     local delay=15
     (
       set +x
-      while [ $(count-running-tests) -ge ${MAX_CONCURRENT_TESTS:-4} ]; do
+      while [ $(count-running-testfunctions) -ge ${MAX_CONCURRENT_TESTS:-4} ]; do
           sleep $delay
       done
     )
@@ -624,7 +624,7 @@ pid-cleanup() {
     set +x
     echo
     if [ $failCount -eq 0 ]; then
-        printf '\033[32mAll tests passed.\033[m\n'
+        printf '\033[32mAll testfunctions passed.\033[m\n'
     else
         printf "\033[31m%s tests failed.\033[m\n" "$failCount"
         if [ "$DRONE_BUILD_EVENT" = 'tag' ]; then

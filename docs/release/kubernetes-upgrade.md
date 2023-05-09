@@ -129,7 +129,7 @@ sed -Ei "\|github.com/k3s-io/kubernetes| s|${OLD_K3S_VER}|${NEW_K3S_VER}|" go.mo
 sed -Ei "s/k8s.io\/kubernetes v\S+/k8s.io\/kubernetes ${NEW_K8S}/" go.mod
 sed -Ei "s/${OLD_K8S_CLIENT}/${NEW_K8S_CLIENT}/g" go.mod 
  
-# since drone perform the builds and tests for the updated tags we no longer need to run make locally.
+# since drone perform the builds and testfunctions for the updated tags we no longer need to run make locally.
 # We now update the go.sum by running go mod tidy:
 go mod tidy
 
@@ -160,7 +160,7 @@ Create a PR to merge your branch into the corresponding release branch, and wait
 
 Once CI passes and you receive two approvals, you may now squash-merge the PR and then tag an RC after the merge to master CI run completes.
 
-# Create a Release Candidate 
+# Create a Release Candidate
 Releases are kicked off and created by tagging a new tag.
 To create a new release in Github UI perform the following:
 
@@ -169,7 +169,7 @@ To create a new release in Github UI perform the following:
 3. Check the pre-release field.
 4. Publish
 
-The resulting run can be viewed here: 
+The resulting run can be viewed here:
 [k3s-io/k3s Drone Dashboard](https://drone-publish.k3s.io/k3s-io/k3s)
 
 # Create GA Release Candidate
@@ -189,13 +189,13 @@ Once QA signs off on a RC:
 1. Uncheck prerelease, and save.
 2. Update channel server
 
-The resulting CI/CD run can be viewed here: 
+The resulting CI/CD run can be viewed here:
 [k3s-io/k3s Drone Dashboard](https://drone-publish.k3s.io/k3s-io/k3s)
 
 # Create Release Images
 The k3s-upgrade repository bundles a k3s binary and script that allows a user to upgrade to a new k3s release. This process is normally automated, however this can fail. If the automation does fail, do the following:
 
-Go to the [k3s-upgrade repository](https://github.com/k3s-io/k3s-upgrade) and manually create a new tag for the release. This will kick off a build of the image. 
+Go to the [k3s-upgrade repository](https://github.com/k3s-io/k3s-upgrade) and manually create a new tag for the release. This will kick off a build of the image.
 
 1. Draft a new release
 2. Enter the tag (e.g. v1.22.5-rc1+k3s1).

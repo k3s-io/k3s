@@ -22,7 +22,7 @@ var local = flag.Bool("local", false, "deploy a locally built K3s binary")
 
 // This test suite is used to verify that K3s can start up with dynamic configurations that require
 // both server and agent nodes. It is unique in passing dynamic arguments to vagrant, unlike the
-// rest of the E2E tests, which use static Vagrantfiles and cluster configurations.
+// rest of the E2E testfunctions, which use static Vagrantfiles and cluster configurations.
 // If you have a server only flag, the startup integration test is a better place to test it.
 
 func Test_E2EStartupValidation(t *testing.T) {

@@ -38,7 +38,7 @@ LABEL="ETCD-JOIN-BASIC" SERVER_ARGS="" run-test
 # --- create a basic cluster to test joining a managed etcd cluster with --agent-token set
 LABEL="ETCD-JOIN-AGENTTOKEN" SERVER_ARGS="--agent-token ${RANDOM}${RANDOM}${RANDOM}" run-test
 
-# The following tests deploy clusters of mixed versions. The traefik helm chart may not deploy
+# The following testfunctions deploy clusters of mixed versions. The traefik helm chart may not deploy
 # correctly until all servers have been upgraded to the same release, so don't wait for it.
 all_services=(
     coredns

@@ -26,7 +26,7 @@ var _ = BeforeSuite(func() {
 	Expect(err).ToNot(HaveOccurred())
 })
 
-var _ = Describe("startup tests", Ordered, func() {
+var _ = Describe("startup testfunctions", Ordered, func() {
 
 	When("a default server is created", func() {
 		It("is created with no arguments", func() {

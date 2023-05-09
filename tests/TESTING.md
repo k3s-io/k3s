@@ -111,7 +111,7 @@ These can be set on the CLI or exported before invoking Vagrant:
 
 The **Install Script** tests can be run by changing to the fixture directory and invoking `vagrant up`, e.g.:
 ```shell
-cd tests/install/rocky-8
+cd testfunctions/install/rocky-8
 vagrant up
 # the following provisioners are optional. the do not run by default but are invoked
 # explicitly by github actions workflow to avoid certain timeout issues on slow runners

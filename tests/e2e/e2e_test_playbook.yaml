@@ -1,5 +1,5 @@
 ---
-- name: Run Cluster validation tests
+- name: Run Cluster validation testfunctions
   gather_facts: false
   hosts: node
   vars:
@@ -20,7 +20,7 @@
           agentCount: {{ agentCount }}
 
     - name: build container image
-      command: chdir=k3s/tests/e2e /usr/local/bin/docker build -t k3s_nightly_build -f {{ dir }}/Dockerfile .
+      command: chdir=k3s/testfunctions/e2e /usr/local/bin/docker build -t k3s_nightly_build -f {{ dir }}/Dockerfile .
 
     - name: Delete docker container
       command: "/usr/local/bin/docker rm createcluster -f"

@@ -117,7 +117,7 @@ func Test_UnitUntrustedCA(t *testing.T) {
 	}
 }
 
-// Test_UnitInvalidServers tests that invalid server URLs are properly rejected
+// Test_UnitInvalidServers testfunctions that invalid server URLs are properly rejected
 func Test_UnitInvalidServers(t *testing.T) {
 	assert := assert.New(t)
 	testCases := []struct {
@@ -138,7 +138,7 @@ func Test_UnitInvalidServers(t *testing.T) {
 	}
 }
 
-// Test_UnitValidTokens tests that valid tokens can be parsed, and give the expected result
+// Test_UnitValidTokens testfunctions that valid tokens can be parsed, and give the expected result
 func Test_UnitValidTokens(t *testing.T) {
 	assert := assert.New(t)
 	server := newTLSServer(t, defaultUsername, defaultPassword, false)
@@ -168,7 +168,7 @@ func Test_UnitValidTokens(t *testing.T) {
 	}
 }
 
-// Test_UnitInvalidTokens tests that tokens which are empty, invalid, or incorrect are properly rejected
+// Test_UnitInvalidTokens testfunctions that tokens which are empty, invalid, or incorrect are properly rejected
 func Test_UnitInvalidTokens(t *testing.T) {
 	assert := assert.New(t)
 	server := newTLSServer(t, defaultUsername, defaultPassword, false)
@@ -201,7 +201,7 @@ func Test_UnitInvalidTokens(t *testing.T) {
 	}
 }
 
-// Test_UnitInvalidCredentials tests that tokens which don't have valid credentials are rejected
+// Test_UnitInvalidCredentials testfunctions that tokens which don't have valid credentials are rejected
 func Test_UnitInvalidCredentials(t *testing.T) {
 	assert := assert.New(t)
 	server := newTLSServer(t, defaultUsername, defaultPassword, false)
@@ -240,7 +240,7 @@ func Test_UnitInvalidCredentials(t *testing.T) {
 	}
 }
 
-// Test_UnitWrongCert tests that errors are returned when the server's cert isn't issued by its CA
+// Test_UnitWrongCert testfunctions that errors are returned when the server's cert isn't issued by its CA
 func Test_UnitWrongCert(t *testing.T) {
 	assert := assert.New(t)
 	server := newTLSServer(t, defaultUsername, defaultPassword, true)
@@ -255,7 +255,7 @@ func Test_UnitWrongCert(t *testing.T) {
 	assert.Nil(info)
 }
 
-// Test_UnitConnectionFailures tests that connections are timed out properly
+// Test_UnitConnectionFailures testfunctions that connections are timed out properly
 func Test_UnitConnectionFailures(t *testing.T) {
 	testDuration := (defaultClientTimeout * 2) + time.Second
 	assert := assert.New(t)
@@ -282,7 +282,7 @@ func Test_UnitConnectionFailures(t *testing.T) {
 	}
 }
 
-// Test_UnitUserPass tests that usernames and passwords are parsed or not parsed from token strings
+// Test_UnitUserPass testfunctions that usernames and passwords are parsed or not parsed from token strings
 func Test_UnitUserPass(t *testing.T) {
 	assert := assert.New(t)
 	testCases := []struct {
@@ -307,7 +307,7 @@ func Test_UnitUserPass(t *testing.T) {
 	}
 }
 
-// Test_UnitParseAndGet tests URL handling along some hard-to-reach code paths
+// Test_UnitParseAndGet testfunctions URL handling along some hard-to-reach code paths
 func Test_UnitParseAndGet(t *testing.T) {
 	assert := assert.New(t)
 	server := newTLSServer(t, defaultUsername, defaultPassword, false)

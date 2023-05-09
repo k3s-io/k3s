@@ -740,7 +740,7 @@ steps:
       done
     fi 
   - docker run -d -p 5000:5000 -e REGISTRY_PROXY_REMOTEURL=https://registry-1.docker.io --name registry registry:2
-  - cd tests/e2e/validatecluster
+  - cd testfunctions/e2e/validatecluster
   - vagrant destroy -f
   - go test -v -timeout=45m ./validatecluster_test.go -ci -local
   - cd ../secretsencryption

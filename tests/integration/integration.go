@@ -81,7 +81,7 @@ func IsExistingServer() bool {
 // cmdEx2, err := K3sCmd("kubectl", "get", "pods", "-A")
 func K3sCmd(inputArgs ...string) (string, error) {
 	if !IsRoot() {
-		return "", errors.New("integration tests must be run as sudo/root")
+		return "", errors.New("integration testfunctions must be run as sudo/root")
 	}
 	k3sBin := findK3sExecutable()
 	var k3sCmd []string
@@ -240,7 +240,7 @@ func K3sTestLock() (int, error) {
 // the original lock is cleared using K3sKillServer
 func K3sStartServer(inputArgs ...string) (*K3sServer, error) {
 	if !IsRoot() {
-		return nil, errors.New("integration tests must be run as sudo/root")
+		return nil, errors.New("integration testfunctions must be run as sudo/root")
 	}
 
 	k3sBin := findK3sExecutable()
