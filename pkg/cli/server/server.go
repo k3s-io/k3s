@@ -440,6 +440,8 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		return err
 	}
 
+	go cmds.WriteCoverage(ctx)
+
 	go func() {
 		if !serverConfig.ControlConfig.DisableAPIServer {
 			<-serverConfig.ControlConfig.Runtime.APIServerReady

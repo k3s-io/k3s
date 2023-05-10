@@ -77,7 +77,6 @@ func StartServer(ctx context.Context, config *Config, cfg *cmds.Server) error {
 			return errors.Wrap(err, "startup hook")
 		}
 	}
-	go writeCoverage(ctx)
 	go startOnAPIServerReady(ctx, config)
 
 	if err := printTokens(&config.ControlConfig); err != nil {
