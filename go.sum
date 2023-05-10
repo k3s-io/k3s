@@ -624,8 +624,8 @@ github.com/k3s-io/etcd/raft/v3 v3.5.7-k3s1 h1:C2FlzI9JcwUhxoT7KSvxcK3aLyzy9bMM5z
 github.com/k3s-io/etcd/raft/v3 v3.5.7-k3s1/go.mod h1:TflkAb/8Uy6JFBxcRaH2Fr6Slm9mCPVdI2efzxY96yU=
 github.com/k3s-io/etcd/server/v3 v3.5.7-k3s1 h1:T4VGL9jq4WvxAd7Jiilt7f3ZBPkqPTqa0GZD9t5j50A=
 github.com/k3s-io/etcd/server/v3 v3.5.7-k3s1/go.mod h1:gxBgT84issUVBRpZ3XkW1T55NjOb4vZZRI4wVvNhf4A=
-github.com/k3s-io/helm-controller v0.13.3 h1:zlJkqZtKJNt1e738G77t5MN0X2RCIYr9PPU5KAuJHzs=
-github.com/k3s-io/helm-controller v0.13.3/go.mod h1:I6EYR7hCs4rcNv/KRWYU5CUgpCP+jn4PZ88j+eXYsMU=
+github.com/k3s-io/helm-controller v0.14.0 h1:jVJtfNIBFvK98oHBjySIxPSP/Hr/iN6LXG0mZVkaTQI=
+github.com/k3s-io/helm-controller v0.14.0/go.mod h1:Y8hkgBc37wKWOQBIpFNEJ9/UVGrnEKFaPHpaPwV6cBA=
 github.com/k3s-io/kine v0.10.1 h1:HdpG84WaZvIYYzFB+kT8grNhtlsGzLLYN/MohV+r7+U=
 github.com/k3s-io/kine v0.10.1/go.mod h1:TU8mr4oByeEPKChQBUpSdGc1mZk+Txr2yZhRY+Jch1Q=
 github.com/k3s-io/klog v1.0.0-k3s2 h1:yyvD2bQbxG7m85/pvNctLX2bUDmva5kOBvuZ77tTGBA=
@@ -989,8 +989,8 @@ github.com/rancher/remotedialer v0.3.0 h1:y1EO8JCsgZo0RcqTUp6U8FXcBAv27R+TLnWRcp
 github.com/rancher/remotedialer v0.3.0/go.mod h1:BwwztuvViX2JrLLUwDlsYt5DiyUwHLlzynRwkZLAY0Q=
 github.com/rancher/wharfie v0.5.3 h1:6hiO26H7YTgChbLAE6JppxFRjaH3tbKfMItv/LqV0Q0=
 github.com/rancher/wharfie v0.5.3/go.mod h1:Ebpai7digxegLroBseeC54XRBt5we3DgFS6kAE2ho+o=
-github.com/rancher/wrangler v1.1.1-0.20230419173538-80fdf092be3b h1:rs3WYld8iaRcSzCmM/CrCIVz9uVgfd96o7FsufIdoVI=
-github.com/rancher/wrangler v1.1.1-0.20230419173538-80fdf092be3b/go.mod h1:D6Tu6oVX8aGtCHsMCtYaysgVK3ad920MTSeAu7rzb5U=
+github.com/rancher/wrangler v1.1.1-0.20230425173236-39a4707f0689 h1:otb4OjgXH2b8a4C9g76jCDuTF3opjaYffZ55SiVe7KU=
+github.com/rancher/wrangler v1.1.1-0.20230425173236-39a4707f0689/go.mod h1:D6Tu6oVX8aGtCHsMCtYaysgVK3ad920MTSeAu7rzb5U=
 github.com/rasky/go-xdr v0.0.0-20170217172119-4930550ba2e2/go.mod h1:Nfe4efndBz4TibWycNE+lqyJZiMX4ycx+QKV8Ta0f/o=
 github.com/robfig/cron/v3 v3.0.1 h1:WdRxkvbJztn8LMz/QEvLN5sBU+xKpSqwwUO1Pjr4qDs=
 github.com/robfig/cron/v3 v3.0.1/go.mod h1:eQICP3HwyT7UooqI/z+Ov+PtYAWygg1TEWWzGIFLtro=
