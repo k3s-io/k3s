@@ -5,9 +5,12 @@ package executor
 
 import (
 	"context"
+	"flag"
 	"net/http"
 	"runtime"
 	"runtime/debug"
+	"strconv"
+	"time"
 
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
 	daemonconfig "github.com/k3s-io/k3s/pkg/daemons/config"
@@ -31,6 +34,7 @@ import (
 	cloudcontrollerconfig "k8s.io/cloud-provider/app/config"
 	ccmopt "k8s.io/cloud-provider/options"
 	cliflag "k8s.io/component-base/cli/flag"
+	"k8s.io/klog/v2"
 	"k8s.io/kubernetes/cmd/kube-apiserver/app"
 	cmapp "k8s.io/kubernetes/cmd/kube-controller-manager/app"
 	proxy "k8s.io/kubernetes/cmd/kube-proxy/app"
@@ -47,6 +51,26 @@ func init() {
 
 func (e *Embedded) Bootstrap(ctx context.Context, nodeConfig *daemonconfig.Node, cfg cmds.Agent) error {
 	e.nodeConfig = nodeConfig
+
+	go func() {
+		// Ensure that the log verbosity remains set to the configured level by resetting it at 1-second intervals
+		// for the first 2 minutes that K3s is starting up. This is necessary because each of the Kubernetes
+		// components will initialize klog and reset the verbosity flag when they are starting.
+		logCtx, cancel := context.WithTimeout(ctx, time.Second*120)
+		defer cancel()
+
+		klog.InitFlags(nil)
+		for {
+			flag.Set("v", strconv.Itoa(cmds.LogConfig.VLevel))
+
+			select {
+			case <-time.After(time.Second):
+			case <-logCtx.Done():
+				return
+			}
+		}
+	}()
+
 	return nil
 }
 
