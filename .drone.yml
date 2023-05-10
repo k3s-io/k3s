@@ -757,6 +757,14 @@ steps:
       E2E_RELEASE_CHANNEL="latest" go test -v -timeout=45m ./upgradecluster_test.go  -ci -local
     fi
   - docker stop registry && docker rm registry
+  
+  volumes:
+  - name: libvirt
+    path: /var/run/libvirt/
+  - name: docker
+    path: /var/run/docker.sock
+  - name: cache
+    path: /tmp/artifacts
 
 - name: upload to codecov
   image: robertstettner/drone-codecov
@@ -772,10 +780,6 @@ steps:
     - pull_request
 
   volumes:
-  - name: libvirt
-    path: /var/run/libvirt/
-  - name: docker
-    path: /var/run/docker.sock
   - name: cache
     path: /tmp/artifacts
 
