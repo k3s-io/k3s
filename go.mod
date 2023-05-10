@@ -19,6 +19,7 @@ replace (
 	github.com/opencontainers/runc => github.com/opencontainers/runc v1.1.6
 	github.com/opencontainers/runtime-spec => github.com/opencontainers/runtime-spec v1.0.3-0.20210326190908-1c3f411f0417
 	github.com/opencontainers/selinux => github.com/opencontainers/selinux v1.10.1
+	github.com/rancher/wrangler => github.com/rancher/wrangler v1.1.1-0.20230425173236-39a4707f0689
 	go.etcd.io/etcd/api/v3 => github.com/k3s-io/etcd/api/v3 v3.5.3-k3s1
 	go.etcd.io/etcd/client/pkg/v3 => github.com/k3s-io/etcd/client/pkg/v3 v3.5.3-k3s1
 	go.etcd.io/etcd/client/v3 => github.com/k3s-io/etcd/client/v3 v3.5.3-k3s1
@@ -85,7 +86,7 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.5.0
 	github.com/json-iterator/go v1.1.12
-	github.com/k3s-io/helm-controller v0.13.3
+	github.com/k3s-io/helm-controller v0.14.0
 	github.com/k3s-io/kine v0.10.1
 	github.com/klauspost/compress v1.16.5
 	github.com/kubernetes-sigs/cri-tools v0.0.0-00010101000000-000000000000
@@ -103,7 +104,7 @@ require (
 	github.com/rancher/lasso v0.0.0-20221227210133-6ea88ca2fbcc
 	github.com/rancher/remotedialer v0.3.0
 	github.com/rancher/wharfie v0.5.3
-	github.com/rancher/wrangler v1.1.1-0.20230419173538-80fdf092be3b
+	github.com/rancher/wrangler v1.1.1
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/rootless-containers/rootlesskit v1.0.1
 	github.com/sirupsen/logrus v1.9.0
