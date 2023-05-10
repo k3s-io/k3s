@@ -709,7 +709,7 @@ steps:
   image: rancher/dapper:v0.5.0
   commands:
     - DOCKER_BUILDKIT=1 docker build --target test-e2e -t test-e2e -f Dockerfile.test .
-    - SKIP_VALIDATE=true SKIP_AIRGAP=true dapper ci
+    - SKIP_VALIDATE=true SKIP_AIRGAP=true GOCOVER=1 dapper ci
     - cp dist/artifacts/* /tmp/artifacts/
   volumes:
   - name: cache
@@ -748,7 +748,8 @@ steps:
   - go test -v -timeout=30m ./secretsencryption_test.go -ci -local
   - cd ../startup
   - vagrant destroy -f
-  - go test -v -timeout=30m ./startup_test.go -ci -local
+  - E2E_GOCOVER=1 go test -v -timeout=30m ./startup_test.go -ci -local
+  - cp ./coverage.out /tmp/artifacts/coverage.out
   - |
     if [ "$DRONE_BUILD_EVENT" = "pull_request" ]; then
       cd ../upgradecluster
@@ -756,6 +757,19 @@ steps:
       E2E_RELEASE_CHANNEL="latest" go test -v -timeout=45m ./upgradecluster_test.go  -ci -local
     fi
   - docker stop registry && docker rm registry
+
+- name: upload to codecov
+  image: robertstettner/drone-codecov
+  settings:
+    token: 
+      from_secret: codecov_token
+    files:
+      - /tmp/artifacts/coverage.out
+    flags: 
+      - e2etests
+  when:
+    event:
+    - pull_request
 
   volumes:
   - name: libvirt
