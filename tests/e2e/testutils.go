@@ -475,6 +475,35 @@ func UpgradeCluster(nodeNames []string, local bool) error {
 	return nil
 }
 
+func GetCoverageReport(nodeNames []string) error {
+	covDirs := []string{}
+	for _, nodeName := range nodeNames {
+		covDir := nodeName + "-cov"
+		covDirs = append(covDirs, covDir)
+		os.MkdirAll(covDir, 0755)
+		cmd := "vagrant scp " + nodeName + ":/tmp/k3scov/* " + covDir
+		if _, err := RunCommand(cmd); err != nil {
+			return err
+		}
+	}
+	cmd := "go tool covdata textfmt -i " + strings.Join(covDirs, ",") + " -o coverage.out"
+	if out, err := RunCommand(cmd); err != nil {
+		return fmt.Errorf("failed to generate coverage report: %s, %v", out, err)
+	}
+	cmd = "go tool covdata func -i " + strings.Join(covDirs, ",") + " | tail -n 1"
+	out, err := RunCommand(cmd)
+	if err != nil {
+		return fmt.Errorf("failed to generate coverage report: %s, %v", out, err)
+	}
+	fmt.Println(strings.Fields(out))
+	for _, covDir := range covDirs {
+		if err := os.RemoveAll(covDir); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // getPodIPs returns the IPs of all pods
 func GetPodIPs(kubeConfigFile string) ([]ObjIP, error) {
 	cmd := `kubectl get pods -A -o=jsonpath='{range .items[*]}{.metadata.name}{" "}{.status.podIPs[*].ip}{"\n"}{end}' --kubeconfig=` + kubeConfigFile

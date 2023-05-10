@@ -5,6 +5,7 @@ NODE_BOXES = (ENV['E2E_NODE_BOXES'] ||
   ['generic/ubuntu2004', 'generic/ubuntu2004'])
 GITHUB_BRANCH = (ENV['E2E_GITHUB_BRANCH'] || "master")
 RELEASE_VERSION = (ENV['E2E_RELEASE_VERSION'] || "")
+GOCOVER = (ENV['E2E_GOCOVER'] || "")
 NODE_CPUS = (ENV['E2E_NODE_CPUS'] || 2).to_i
 NODE_MEMORY = (ENV['E2E_NODE_MEMORY'] || 2048).to_i
 # Virtualbox >= 6.1.28 require `/etc/vbox/network.conf` for expanded private networks 
@@ -26,7 +27,7 @@ def provision(vm, role, role_num, node_num)
   node_ip = "#{NETWORK_PREFIX}.#{100+node_num}"
   
   vm.provision "shell", inline: "ping -c 2 k3s.io"
-  
+
   if role.include?("server")
     vm.provision 'k3s-install', type: 'k3s', run: 'once' do |k3s|
       k3s.args = "server "
@@ -50,6 +51,16 @@ def provision(vm, role, role_num, node_num)
         flannel-iface: eth1
       YAML
     end
+  end
+
+  if !GOCOVER.empty?
+    script = <<~SHELL
+      mkdir -p /tmp/k3scov
+      echo 'GOCOVERDIR=/tmp/k3scov' >> /etc/systemd/system/k3s.service.env
+      echo 'GOCOVERDIR=/tmp/k3scov' >> /etc/systemd/system/k3s-agent.service.env
+      systemctl daemon-reload
+    SHELL
+    vm.provision "go coverage", type: "shell", inline: script 
   end
 
   if vm.box.to_s.include?("microos")
