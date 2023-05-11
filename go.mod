@@ -6,7 +6,7 @@ replace (
 	github.com/Microsoft/hcsshim => github.com/Microsoft/hcsshim v0.8.22
 	github.com/Mirantis/cri-dockerd => github.com/k3s-io/cri-dockerd v0.3.2-0.20230123224936-bcd78c2d21d8 // k3s/release-1.26
 	github.com/cloudnativelabs/kube-router/v2 => github.com/k3s-io/kube-router/v2 v2.0.1-0.20230508174102-b42e5faded1c
-	github.com/containerd/containerd => github.com/k3s-io/containerd v1.7.0-k3s1
+	github.com/containerd/containerd => github.com/k3s-io/containerd v1.7.1-k3s1
 	github.com/containerd/stargz-snapshotter => github.com/k3s-io/stargz-snapshotter v0.13.0-k3s1
 	github.com/coreos/go-systemd => github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e
 	github.com/docker/distribution => github.com/docker/distribution v2.8.1+incompatible
@@ -16,7 +16,7 @@ replace (
 	github.com/googleapis/gax-go/v2 => github.com/googleapis/gax-go/v2 v2.1.1
 	github.com/juju/errors => github.com/k3s-io/nocode v0.0.0-20200630202308-cb097102c09f
 	github.com/kubernetes-sigs/cri-tools => github.com/k3s-io/cri-tools v1.26.0-rc.0-k3s1
-	github.com/opencontainers/runc => github.com/opencontainers/runc v1.1.6
+	github.com/opencontainers/runc => github.com/opencontainers/runc v1.1.7
 	github.com/opencontainers/runtime-spec => github.com/opencontainers/runtime-spec v1.0.3-0.20220909204839-494a5a6aca78
 	github.com/opencontainers/selinux => github.com/opencontainers/selinux v1.10.1
 	github.com/rancher/wrangler => github.com/rancher/wrangler v1.1.1-0.20230425173236-39a4707f0689
@@ -94,7 +94,7 @@ require (
 	github.com/containerd/stargz-snapshotter v0.14.3
 	github.com/coreos/go-iptables v0.6.0
 	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf
-	github.com/docker/docker v20.10.23+incompatible
+	github.com/docker/docker v23.0.3+incompatible
 	github.com/erikdubbelboer/gspt v0.0.0-20190125194910-e68493906b83
 	github.com/flannel-io/flannel v0.21.4
 	github.com/go-bindata/go-bindata v3.1.2+incompatible
@@ -181,8 +181,8 @@ require (
 	github.com/GoogleCloudPlatform/k8s-cloud-provider v1.18.1-0.20220218231025-f11817397a1b // indirect
 	github.com/JeffAshton/win_pdh v0.0.0-20161109143554-76bb4ee9f0ab // indirect
 	github.com/MakeNowJust/heredoc v1.0.0 // indirect
-	github.com/Microsoft/go-winio v0.6.0 // indirect
-	github.com/Microsoft/hcsshim v0.10.0-rc.7 // indirect
+	github.com/Microsoft/go-winio v0.6.1 // indirect
+	github.com/Microsoft/hcsshim v0.10.0-rc.8 // indirect
 	github.com/NYTimes/gziphandler v1.1.1 // indirect
 	github.com/Rican7/retry v0.1.0 // indirect
 	github.com/antlr/antlr4/runtime/Go/antlr v1.4.10 // indirect
@@ -212,9 +212,9 @@ require (
 	github.com/containerd/imgcrypt v1.1.7 // indirect
 	github.com/containerd/nri v0.3.0 // indirect
 	github.com/containerd/stargz-snapshotter/estargz v0.14.3 // indirect
-	github.com/containerd/ttrpc v1.2.1 // indirect
+	github.com/containerd/ttrpc v1.2.2 // indirect
 	github.com/containerd/typeurl v1.0.2 // indirect
-	github.com/containerd/typeurl/v2 v2.1.0 // indirect
+	github.com/containerd/typeurl/v2 v2.1.1 // indirect
 	github.com/containernetworking/cni v1.1.2 // indirect
 	github.com/containernetworking/plugins v1.2.0 // indirect
 	github.com/containers/ocicrypt v1.1.6 // indirect
@@ -225,7 +225,7 @@ require (
 	github.com/cyphar/filepath-securejoin v0.2.3 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/daviddengcn/go-colortext v1.0.0 // indirect
-	github.com/docker/cli v23.0.1+incompatible // indirect
+	github.com/docker/cli v23.0.3+incompatible // indirect
 	github.com/docker/distribution v2.8.1+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.7.0 // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
@@ -394,7 +394,7 @@ require (
 	google.golang.org/api v0.60.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20230306155012-7f2fa6fef1f4 // indirect
-	google.golang.org/protobuf v1.28.1 // indirect
+	google.golang.org/protobuf v1.29.1 // indirect
 	gopkg.in/gcfg.v1 v1.2.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
