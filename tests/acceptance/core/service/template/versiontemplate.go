@@ -3,13 +3,13 @@ package template
 import (
 	"fmt"
 
-	g2 "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/ginkgo/v2"
 )
 
-func VersionTemplate(g g2.GinkgoTInterface, test VersionTestTemplate) {
+func VersionTemplate(g GinkgoTInterface, test VersionTestTemplate) {
 	err := checkVersion(g, test)
 	if err != nil {
-		g2.Fail(err.Error())
+		GinkgoT().Fatalf(err.Error())
 		return
 	}
 
@@ -19,20 +19,20 @@ func VersionTemplate(g g2.GinkgoTInterface, test VersionTestTemplate) {
 			return
 		}
 
-		err = upgradeVersion(g, test, version)
+		err = upgradeVersion(test, version)
 		if err != nil {
-			g2.Fail(fmt.Sprintf("Error upgrading: %v\n", err))
+			GinkgoT().Fatalf("Error upgrading: %v\n", err)
 			return
 		}
 
 		err = checkVersion(g, test)
 		if err != nil {
-			g2.Fail(err.Error())
+			GinkgoT().Fatalf(err.Error())
 			return
 		}
 
 		if test.TestConfig != nil {
-			TestCaseWrapper(g, test)
+			TestCaseWrapper(test)
 		}
 	}
 }

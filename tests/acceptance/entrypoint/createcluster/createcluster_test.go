@@ -6,6 +6,7 @@ import (
 	"github.com/k3s-io/k3s/tests/acceptance/core/service/assert"
 	"github.com/k3s-io/k3s/tests/acceptance/core/testcase"
 	"github.com/k3s-io/k3s/tests/acceptance/shared/util"
+
 	. "github.com/onsi/ginkgo/v2"
 )
 
@@ -19,14 +20,12 @@ var _ = Describe("Test:", func() {
 
 		It("Checks Node Status", func() {
 			testcase.TestNodeStatus(
-				GinkgoT(),
 				assert.NodeAssertReadyStatus(),
 				nil)
 		})
 
 		It("Checks Pod Status", func() {
 			testcase.TestPodStatus(
-				GinkgoT(),
 				assert.PodAssertRestarts(),
 				assert.PodAssertReady(),
 				assert.PodAssertStatus(),
@@ -34,31 +33,31 @@ var _ = Describe("Test:", func() {
 		})
 
 		It("Verifies ClusterIP Service", func() {
-			testcase.TestServiceClusterIp(GinkgoT(), true)
+			testcase.TestServiceClusterIp(true)
 		})
 
 		It("Verifies NodePort Service", func() {
-			testcase.TestServiceNodePort(GinkgoT(), true)
+			testcase.TestServiceNodePort(true)
 		})
 
 		It("Verifies LoadBalancer Service", func() {
-			testcase.TestServiceLoadBalancer(GinkgoT(), true)
+			testcase.TestServiceLoadBalancer(true)
 		})
 
 		It("Verifies Ingress", func() {
-			testcase.TestIngress(GinkgoT(), true)
+			testcase.TestIngress(true)
 		})
 
 		It("Verifies Daemonset", func() {
-			testcase.TestDaemonset(GinkgoT(), true)
+			testcase.TestDaemonset(true)
 		})
 
 		It("Verifies Local Path Provisioner storage", func() {
-			testcase.TestLocalPathProvisionerStorage(GinkgoT(), true)
+			testcase.TestLocalPathProvisionerStorage(true)
 		})
 
 		It("Verifies dns access", func() {
-			testcase.TestDnsAccess(GinkgoT(), true)
+			testcase.TestDnsAccess(true)
 		})
 	})
 })

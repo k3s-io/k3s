@@ -6,6 +6,7 @@ Testing in K3s comes in 5 forms:
 - [Smoke](#smoke-tests)
 - [Performance](#performance)
 - [End-to-End (E2E)](#end-to-end-e2e-tests)
+- [Acceptance-test-framework](#acceptance-test-framework)
 
 This document will explain *when* each test should be written and *how* each test should be
 generated, formatted, and run.
@@ -143,6 +144,14 @@ ___
 E2E tests cover multi-node K3s configuration and administration: bringup, update, teardown etc. across a wide range of operating systems. E2E tests are run nightly as part of K3s quality assurance (QA).
 
 See [e2e/README.md](./e2e/README.md) for more info.
+
+___
+
+## Acceptance Test Framework
+
+The acceptance tests are a customizable way to create clusters and perform validations on them such that the requirements of specific features and functions can be validated.
+
+See [acceptance/README.md](./acceptance/README.md) for more info.
 
 ___
 

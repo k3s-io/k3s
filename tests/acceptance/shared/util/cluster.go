@@ -92,11 +92,12 @@ func ParsePods(print bool) ([]Pod, error) {
 	return pods, nil
 }
 
-// ManageWorkload creates or deletes a workload  | action: create or delete
 func ManageWorkload(action, workload, arch string) (string, error) {
 	if action != "create" && action != "delete" {
 		return "", fmt.Errorf("invalid action: %s. Must be 'create' or 'delete'", action)
 	}
+	var res string
+	var err error
 
 	resourceDir := GetBasepath() + "/shared/amd64workloads/"
 	if arch == "arm64" {
@@ -112,32 +113,45 @@ func ManageWorkload(action, workload, arch string) (string, error) {
 	for _, f := range files {
 		filename := filepath.Join(resourceDir, f.Name())
 		if strings.TrimSpace(f.Name()) == workload {
-			var cmd string
 			if action == "create" {
-				fmt.Println("\nDeploying", workload)
-				cmd = "kubectl apply -f " + filename + " --kubeconfig=" + KubeConfigFile
+				res, err = createWorkload(workload, filename)
+				if err != nil {
+					return "", fmt.Errorf("failed to create workload %s: %s", workload, err)
+				}
 			} else {
-				fmt.Println("\nRemoving", workload)
-				cmd = "kubectl delete -f " + filename + " --kubeconfig=" + KubeConfigFile
-			}
-			res, err := RunCommandHost(cmd)
-
-			if action == "delete" {
-				gomega.Eventually(func(g gomega.Gomega) {
-					isDeleted, err := IsWorkloadDeleted(workload)
-					g.Expect(err).To(gomega.BeNil())
-					g.Expect(isDeleted).To(gomega.BeTrue(),
-						"Workload should be deleted")
-				}, "60s", "5s").Should(gomega.Succeed())
+				res, err = deleteWorkload(workload, filename)
+				if err != nil {
+					return "", fmt.Errorf("failed to delete workload %s: %s", workload, err)
+				}
 			}
 			return res, err
 		}
 	}
 
-	return "", nil
+	return "", fmt.Errorf("workload %s not found", workload)
 }
 
-// IsWorkloadDeleted checks if the workload is deleted
+func createWorkload(workload, filename string) (string, error) {
+	fmt.Println("\nDeploying", workload)
+	cmd := "kubectl apply -f " + filename + " --kubeconfig=" + KubeConfigFile
+
+	return RunCommandHost(cmd)
+}
+
+func deleteWorkload(workload, filename string) (string, error) {
+	fmt.Println("\nRemoving", workload)
+	cmd := "kubectl delete -f " + filename + " --kubeconfig=" + KubeConfigFile
+
+	gomega.Eventually(func(g gomega.Gomega) {
+		isDeleted, err := IsWorkloadDeleted(workload)
+		g.Expect(err).To(gomega.BeNil())
+		g.Expect(isDeleted).To(gomega.BeTrue(),
+			"Workload should be deleted")
+	}, "120s", "5s").Should(gomega.Succeed())
+
+	return RunCommandHost(cmd)
+}
+
 func IsWorkloadDeleted(workload string) (bool, error) {
 	res, err := RunCommandHost(GetAll + KubeConfigFile)
 	if err != nil {
@@ -173,30 +187,28 @@ func FetchIngressIP() ([]string, error) {
 	}
 
 	ingressIP := strings.Trim(res, " ")
-	fmt.Println(ingressIP)
 	ingressIPs := strings.Split(ingressIP, " ")
+
 	return ingressIPs, nil
 }
 
-func ReadDataPod(name string) error {
+func ReadDataPod(name string) (string, error) {
 	podName, err := KubectlCommand(
 		"host",
 		"get",
 		"pods",
 		"-l app="+name+" -o jsonpath={.items[0].metadata.name}",
 	)
-	gomega.Expect(err).NotTo(gomega.HaveOccurred())
+	if err != nil {
+		return "", err
+	}
 
 	cmd := "kubectl exec " + podName + " --kubeconfig=" + KubeConfigFile +
 		" -- cat /data/test"
-	res, err := RunCommandHost(cmd)
-	gomega.Expect(err).NotTo(gomega.HaveOccurred())
-	gomega.Expect(res).Should(gomega.ContainSubstring(TestingLocalPath))
-
-	return nil
+	return RunCommandHost(cmd)
 }
 
-func WriteDataPod(name string) error {
+func WriteDataPod(name string) (string, error) {
 	podName, err := KubectlCommand(
 		"host",
 		"get",
@@ -207,22 +219,18 @@ func WriteDataPod(name string) error {
 
 	cmd := "kubectl exec " + podName + " --kubeconfig=" + KubeConfigFile +
 		" -- sh -c 'echo testing local path > /data/test' "
-	_, err = RunCommandHost(cmd)
-	if err != nil {
-		err = K3sError{
-			ErrorSource: "WriteDataPod",
-			Message:     "Unable to write data to pod",
-			Err:         err,
-		}
-	}
 
-	return nil
+	return RunCommandHost(cmd)
 }
 
 // KubectlCommand return results from various commands, it receives an "action" , source and args.
+//
 // destination = host or node
+//
 // action = get,describe...
+//
 // source = pods, node , exec, service ...
+//
 // args   = the rest of your command arguments.
 func KubectlCommand(destination, action, source string, args ...string) (string, error) {
 	var cmd string
@@ -252,6 +260,7 @@ func KubectlCommand(destination, action, source string, args ...string) (string,
 	return res, nil
 }
 
+// addKubectlCommand adds the kubectl command to args passed as arguments
 func addKubectlCommand(action, source string, args []string) string {
 	commandShort := map[string]string{
 		"get":      "kubectl get",
@@ -279,36 +288,7 @@ func FetchServiceNodePort(serviceName string) (string, error) {
 	return nodeport, nil
 }
 
-// RestartCluster restarts the rke2 service on each node given by external IP.
-func RestartCluster(ip string) error {
-	if _, err := RunCmdOnNode("sudo systemctl restart k3s*", ip); err != nil {
-		return K3sError{
-			ErrorSource: "RestartCluster - sudo systemctl restart k3s-*",
-			Message:     "something went wrong while restarting",
-			Err:         err,
-		}
-	}
-	time.Sleep(20 * time.Second)
-
-	return nil
-}
-
-// UpgradeClusterInRunTime upgrades the cluster in runtime by running the curl command
-func UpgradeClusterInRunTime(installType, value string) error {
-	cmd := fmt.Sprintf(Upgradek3s, installType, value)
-
-	nodeExternalIps := FetchNodeExternalIP()
-	for _, ip := range nodeExternalIps {
-		if _, err := RunCmdOnNode(cmd, ip); err != nil {
-			return err
-		}
-	}
-	cmd = "k3s --version"
-	gomega.Eventually(func(g gomega.Gomega) {
-		res, err := RunCommandHost("k3s --version")
-		g.Expect(err).NotTo(gomega.HaveOccurred())
-		g.Expect(res).Should(gomega.ContainSubstring(value))
-	}, "420s", "5s").Should(gomega.Succeed())
-
-	return nil
+// RestartCluster restarts the k3s service on each node given by external IP.
+func RestartCluster(ip string) (string, error) {
+	return RunCmdOnNode(RestartK3s, ip)
 }

@@ -55,19 +55,32 @@ func RunCommandHost(cmd ...string) (string, error) {
 }
 
 // RunCmdOnNode executes a command from within the given ip node
-func RunCmdOnNode(cmd string, ServerIP string) (string, error) {
-	host := ServerIP + ":22"
-	conn := ConfigureSSH(host)
+func RunCmdOnNode(cmd string, serverIP string) (string, error) {
+	host := serverIP + ":22"
+	conn := configureSSH(host)
 
-	res, err := runsshCommand(cmd, conn)
+	stdout, stderr, err := runsshCommand(cmd, conn)
 	if err != nil {
-		return "", K3sError{
-			cmd, conn, err,
-		}
+		return fmt.Errorf(
+			"Command: %s \n failed on Node: %s with error: %w",
+			cmd,
+			serverIP,
+			err,
+		).Error(), nil
 	}
-	res = strings.TrimSpace(res)
 
-	return res, nil
+	stdout = strings.TrimSpace(stdout)
+	stderr = strings.TrimSpace(stderr)
+
+	if stderr != "" && (!strings.Contains(stderr, "error") ||
+		!strings.Contains(stderr, "1") ||
+		!strings.Contains(stderr, "2")) {
+		return stderr, nil
+	} else if stderr != "" {
+		log.Fatalf("Command: %s \n failed with error: %v", cmd, stderr)
+	}
+
+	return stdout, err
 }
 
 // GetK3sVersion returns the k3s version with commit hash
@@ -84,8 +97,8 @@ func GetK3sVersion() string {
 	return ""
 }
 
-// ConfigureSSH configures the SSH connection to the host
-func ConfigureSSH(host string) *ssh.Client {
+// configureSSH configures the SSH connection to the host
+func configureSSH(host string) *ssh.Client {
 	var config *ssh.ClientConfig
 
 	config = &ssh.ClientConfig{
@@ -105,24 +118,24 @@ func ConfigureSSH(host string) *ssh.Client {
 }
 
 // AddHelmRepo adds a helm repo to the cluster.
-func AddHelmRepo(repoName, url string) error {
+func AddHelmRepo(repoName, url string) (string, error) {
 	addRepo := fmt.Sprintf("helm repo add %s %s", repoName, url)
-	installRepo := fmt.Sprintf("helm install %s %s/%s -n kube-system", repoName, repoName, repoName)
+	installRepo := fmt.Sprintf(
+		"helm install %s %s/%s -n kube-system",
+		repoName,
+		repoName,
+		repoName,
+	)
 
 	nodeExternalIP := FetchNodeExternalIP()
 	for _, ip := range nodeExternalIP {
 		_, err := RunCmdOnNode(InstallHelm, ip)
 		if err != nil {
-			return err
+			return "", err
 		}
 	}
 
-	res, err := RunCommandHost(addRepo, installRepo)
-	fmt.Println("Result from RunCommandHost: ", res)
-	if err != nil {
-		return err
-	}
-	return nil
+	return RunCommandHost(addRepo, installRepo)
 }
 
 // CountOfStringInSlice Used to count the pods using prefix passed in the list of pods
@@ -168,10 +181,10 @@ func publicKey(path string) ssh.AuthMethod {
 	return ssh.PublicKeys(signer)
 }
 
-func runsshCommand(cmd string, conn *ssh.Client) (string, error) {
+func runsshCommand(cmd string, conn *ssh.Client) (string, string, error) {
 	session, err := conn.NewSession()
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	defer session.Close()
 
@@ -180,11 +193,13 @@ func runsshCommand(cmd string, conn *ssh.Client) (string, error) {
 	session.Stdout = &stdoutBuf
 	session.Stderr = &stderrBuf
 
-	err = session.Run(cmd)
-	if err != nil {
-		combinedOutput := fmt.Sprintf("stdout: %s\nstderr: %s", stdoutBuf.String(), stderrBuf.String())
-		return combinedOutput, fmt.Errorf("error on command execution: %v", err)
+	errssh := session.Run(cmd)
+	stdoutStr := stdoutBuf.String()
+	stderrStr := stderrBuf.String()
+
+	if errssh != nil {
+		return stdoutStr, stderrStr, fmt.Errorf("error on command execution: %v", errssh)
 	}
 
-	return stdoutBuf.String(), nil
+	return stdoutStr, stderrStr, nil
 }

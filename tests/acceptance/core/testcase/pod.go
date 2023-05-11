@@ -6,13 +6,11 @@ import (
 
 	"github.com/k3s-io/k3s/tests/acceptance/core/service/assert"
 	"github.com/k3s-io/k3s/tests/acceptance/shared/util"
-	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
 
 // TestPodStatus test the status of the pods in the cluster using 2 custom assert functions
 func TestPodStatus(
-	g ginkgo.GinkgoTInterface,
 	podAssertRestarts assert.PodAssertFunc,
 	podAssertReady assert.PodAssertFunc,
 	podAssertStatus assert.PodAssertFunc,

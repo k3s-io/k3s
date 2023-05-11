@@ -29,14 +29,6 @@ module "master" {
    engine_mode=var.engine_mode
    environment=var.environment
    create_lb=var.create_lb
-   all_role_nodes=var.no_of_server_nodes
-   etcd_only_nodes=var.etcd_only_nodes
-   etcd_cp_nodes=var.etcd_cp_nodes
-   etcd_worker_nodes=var.etcd_worker_nodes
-   cp_only_nodes=var.cp_only_nodes
-   cp_worker_nodes=var.cp_worker_nodes
-   split_roles=var.split_roles
-   role_order=var.role_order
 }
 module "worker" {
    source="./worker"

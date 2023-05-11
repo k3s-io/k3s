@@ -10,6 +10,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+// TestSuite acts as the main entrypoint for the acceptance test framework
 func TestSuite(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Acceptance Test Suite")

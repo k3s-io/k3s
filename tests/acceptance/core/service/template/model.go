@@ -1,9 +1,5 @@
 package template
 
-import (
-	g2 "github.com/onsi/ginkgo/v2"
-)
-
 // VersionTestTemplate represents a version test scenario with test configurations and commands.
 type VersionTestTemplate struct {
 	Description     string
@@ -33,9 +29,9 @@ type TestConfig struct {
 }
 
 // TestCase is a custom type representing the test function.
-type TestCase func(g g2.GinkgoTestingT, deployWorkload bool)
+type TestCase func(deployWorkload bool)
 
 // TestCaseWrapper wraps a test function and calls it with the given GinkgoTInterface and VersionTestTemplate.
-func TestCaseWrapper(g g2.GinkgoTInterface, v VersionTestTemplate) {
-	v.TestConfig.TestFunc(g, v.TestConfig.DeployWorkload)
+func TestCaseWrapper(v VersionTestTemplate) {
+	v.TestConfig.TestFunc(v.TestConfig.DeployWorkload)
 }

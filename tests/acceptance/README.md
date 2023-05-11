@@ -1,4 +1,6 @@
-## Acceptance Framework
+## Acceptance Test Framework
+
+The acceptance tests are a customizable way to create clusters and perform validations on them such that the requirements of specific features and functions can be validated.
 
 - It relies on [Terraform](https://www.terraform.io/) to provide the underlying cluster configuration.
 - It uses [Ginkgo](https://onsi.github.io/ginkgo/) and [Gomega](https://onsi.github.io/gomega/) as assertion framework.
@@ -20,7 +22,7 @@
 │   └───── Terraform modules and configurations
 │
 ├── shared
-    └───── shared and reusable functions, workloads, constants, and scripts
+    └───── shared and reusable functions, workloads, constants and scripts
 
 ```
 
@@ -29,14 +31,14 @@
 - `Entrypoint`
 ````
 Act:                  Acts as the one of the outter layer to receive the input to start test execution
-Responsibility:       Should not implement any logic and only focus on orchestrating that
+Responsibility:       Should not implement any logic and only focus on orchestrating
 ````
 
 - `Core`
 ```
     Service:
   
-Act:                  Acts as a provider for customizations through ser across framework
+Act:                  Acts as a provider for customizations across framework
 Responsibility:       Should not depend on any outer layer only in the core itself, provide services rather than rely on.
  
   
@@ -77,7 +79,7 @@ Responsibility:       Should not need knowledge of or "external" dependencies at
 
 ```How can I do that?```
 
-- Step 1: Add your desired first version or commit that you want to use on `local.tfvars` file on the vars `rke2_version` and `install_mode`
+- Step 1: Add your desired first version or commit that you want to use on `local.tfvars` file on the vars `k3s_version` and `install_mode`
 - Step 2: Have the commands you need to run and the expected output from them
 - Step 3: Have a version or commit that you want to upgrade to.
 - Step 4: Create your go test file in `acceptance/entrypoint/versionbump/versionbump{mytestname}.go`.
@@ -163,7 +165,7 @@ template.VersionTemplate(GinkgoT(), template.VersionTestTemplate{
 ````
 #### You can also run a totally parametrized test with the template, just copy and paste the template and call everything as flags like that:
 - Template
-````
+```` go
 	template.VersionTemplate(GinkgoT(), template.VersionTestTemplate{
 			Description: util.Description,
 			TestCombination: &template.RunCmd{
@@ -192,7 +194,7 @@ template.VersionTemplate(GinkgoT(), template.VersionTestTemplate{
 ````
 
 - Command
-````
+````bash
  go test -v -timeout=45m -tags=localpath ./entrypoint/versionbump/... \                     
   -cmdHost "kubectl describe pod -n kube-system local-path-provisioner-,  | grep -i Image" \
   -expectedValueHost "v0.0.21"  \       
@@ -238,10 +240,10 @@ go test -timeout=45m -v ./tests/acceptance/entrypoint/$PACKAGE_NAME/...
 Test flags:
 ```
  ${upgradeVersion} version to upgrade to
-    -upgradeVersion=v1.26.2+k3s1
+    -upgradeVersion INSTALL_K3S_VERSION=v1.26.2+k3s1 or INSTALL_K3S_COMMIT=257fa2c54cda332e42b8aae248c152f4d1898218
     
  ${installType} type of installation (version or commit) + desired value    
-    -installType=version or commit
+    -installType version or commit
 ```
 
 ###  Run with `Makefile` through acceptance package:
@@ -284,23 +286,22 @@ $ make test-run                        # runs create and upgrade cluster by pass
 $ make remove-tf-state                 # removes acceptance state dir and files
 $ make test-suite                      # runs all testcase locally in sequence not using the same state
 $ make vet-lint                        # runs go vet and go lint
-
-      
-Examples with docker:
-
+```
+### Examples with docker:
+```
 - Create an image tagged
 
 $ make test-env-up TAGNAME=ubuntu
 
 
-- Run upgrade cluster test with ${IMGNAME} and ${TAGNAME}
+- Run upgrade cluster test with `${IMGNAME}` and  `${TAGNAME}`
 
-$ make test-run IMGNAME=2 TAGNAME=ubuntu TESTDIR=upgradecluster ARGNAME=upgradeVersion ARGVALUE=v1.26.2+k3s1
+$ make test-run IMGNAME=2 TAGNAME=ubuntu TESTDIR=upgradecluster INSTALLTYPE=INSTALL_K3S_VERSION=v1.26.2+k3s1
 
 
-- Run create and upgrade cluster just adding ARGVALUE flag to upgrade
+- Run create and upgrade cluster just adding `INSTALLTYPE` flag to upgrade
 
-$ make test-run ARGVALUE=v1.26.2+k3s1
+$ make test-run INSTALLTYPE=INSTALL_K3S_COMMIT=257fa2c54cda332e42b8aae248c152f4d1898218
 
 
 - Run version bump test upgrading with commit id
@@ -328,19 +329,18 @@ VALUENODEUPGRADED=v1.27.1-rc1+k3s1 \
 VALUEHOST=v0.0.21 \
 VALUEHOSTUPGRADED=v0.0.22 \
 INSTALLTYPE=INSTALL_K3S_VERSION=v1.27.1-rc1+k3s1 \
-
-
-Examples to run locally:
-
-- Run create cluster test
+````
+### Examples to run locally:
+````
+- Run create cluster test:
 
 $ make test-create
 
-- Run upgrade cluster test
+- Run upgrade cluster test:
 
-$ make test-upgrade ARGVALUE=v1.26.2+k3s1
+$ make test-upgrade-manual INSTALLTYPE=v1.26.2+k3s1
 
-- Run version bump test
+- Run version bump test:
 
 $ make test-version-bump \
 CMDNODE="k3s --version" \
@@ -353,7 +353,7 @@ INSTALLTYPE=INSTALL_K3S_COMMIT=257fa2c54cda332e42b8aae248c152f4d1898218 \
 TESTCASE="TestLocalPathProvisionerStorage" \
 DEPLOYWORKLOAD=true
 
-- Run version bump test with local path provisioner
+- Run version bump test with local path provisioner:
 
 $ make test-version-local-path \
 VALUENODE="v1.25.2+k3s1" \
@@ -364,13 +364,17 @@ INSTALLTYPE=INSTALL_K3S_COMMIT=257fa2c54cda332e42b8aae248c152f4d1898218 \
 
 
 - Logs from test
+
 $ make tf-logs IMGNAME=1
 
 - Run lint for a specific directory
+
 $ make vet-lint TESTDIR=upgradecluster
-```
+
+````
 
 ### Running tests in parallel:
+
 - You can play around and have a lot of different test combinations like:
 ```
 - Build docker image with different TAGNAME="OS`s" + with different configurations( resource_name, node_os, versions, install type, nodes and etc) and have unique "IMGNAMES"

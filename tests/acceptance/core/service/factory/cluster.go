@@ -7,10 +7,10 @@ import (
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/k3s-io/k3s/tests/acceptance/shared/util"
-	"github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/ginkgo/v2"
 )
 
-func BuildCluster(g ginkgo.GinkgoTInterface, destroy bool) (string, error) {
+func BuildCluster(g GinkgoTInterface, destroy bool) (string, error) {
 	basepath := util.GetBasepath()
 	tfDir, err := filepath.Abs(basepath + util.ModulesPath)
 	if err != nil {
@@ -73,7 +73,6 @@ func BuildCluster(g ginkgo.GinkgoTInterface, destroy bool) (string, error) {
 	util.ExternalDb = terraform.GetVariableAsStringFromVarFile(g, varDir, "external_db")
 	util.AwsUser = terraform.GetVariableAsStringFromVarFile(g, varDir, "aws_user")
 	util.AccessKey = terraform.GetVariableAsStringFromVarFile(g, varDir, "access_key")
-	util.Version = terraform.GetVariableAsStringFromVarFile(g, varDir, "k3s_version")
 
 	if destroy {
 		fmt.Printf("Cluster is being deleted")

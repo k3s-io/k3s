@@ -5,10 +5,13 @@ package versionbump
 import (
 	"fmt"
 
+	"github.com/k3s-io/k3s/tests/acceptance/core/service"
 	"github.com/k3s-io/k3s/tests/acceptance/core/service/assert"
+	"github.com/k3s-io/k3s/tests/acceptance/core/service/customflag"
 	"github.com/k3s-io/k3s/tests/acceptance/core/service/template"
 	"github.com/k3s-io/k3s/tests/acceptance/core/testcase"
 	"github.com/k3s-io/k3s/tests/acceptance/shared/util"
+
 	. "github.com/onsi/ginkgo/v2"
 )
 
@@ -20,13 +23,12 @@ var _ = Describe("VersionTemplate Upgrade:", func() {
 
 	It("Checks Node Status", func() {
 		testcase.TestNodeStatus(
-			GinkgoT(),
 			assert.NodeAssertReadyStatus(),
 			nil)
 	})
 
 	It("Checks Pod Status", func() {
-		testcase.TestPodStatus(GinkgoT(),
+		testcase.TestPodStatus(
 			assert.PodAssertRestarts(),
 			assert.PodAssertReady(),
 			assert.PodAssertStatus())
@@ -34,27 +36,27 @@ var _ = Describe("VersionTemplate Upgrade:", func() {
 
 	It("Verifies bump version", func() {
 		template.VersionTemplate(GinkgoT(), template.VersionTestTemplate{
-			Description: util.Description,
+			Description: service.Description,
 			TestCombination: &template.RunCmd{
 				RunOnNode: []template.TestMap{
 					{
-						Cmd:                  util.CmdNode,
-						ExpectedValue:        util.ExpectedValueNode,
-						ExpectedValueUpgrade: util.ExpectedValueUpgradedNode,
+						Cmd:                  service.CmdNode,
+						ExpectedValue:        service.ExpectedValueNode,
+						ExpectedValueUpgrade: service.ExpectedValueUpgradedNode,
 					},
 				},
 				RunOnHost: []template.TestMap{
 					{
-						Cmd:                  util.CmdHost,
-						ExpectedValue:        util.ExpectedValueHost,
-						ExpectedValueUpgrade: util.ExpectedValueUpgradedHost,
+						Cmd:                  service.CmdHost,
+						ExpectedValue:        service.ExpectedValueHost,
+						ExpectedValueUpgrade: service.ExpectedValueUpgradedHost,
 					},
 				},
 			},
-			InstallUpgrade: util.InstallUpgradeFlag,
+			InstallUpgrade: customflag.InstallUpgradeFlag,
 			TestConfig: &template.TestConfig{
-				TestFunc:       template.TestCase(util.TestCase.TestFunc),
-				DeployWorkload: util.TestCase.DeployWorkload,
+				TestFunc:       template.TestCase(customflag.TestCase.TestFunc),
+				DeployWorkload: customflag.TestCase.DeployWorkload,
 			},
 		})
 	})

@@ -2,11 +2,11 @@ package testcase
 
 import (
 	"github.com/k3s-io/k3s/tests/acceptance/shared/util"
-	"github.com/onsi/ginkgo/v2"
+
 	"github.com/onsi/gomega"
 )
 
-func TestDaemonset(g ginkgo.GinkgoTestingT, deployWorkload bool) {
+func TestDaemonset(deployWorkload bool) {
 	if deployWorkload {
 		_, err := util.ManageWorkload("create", "daemonset.yaml", *util.Arch)
 		gomega.Expect(err).NotTo(gomega.HaveOccurred(),

@@ -32,17 +32,3 @@ variable "create_lb" {
   description = "Create Network Load Balancer if set to true"
   type = bool
 }
-variable "split_roles" {
-  description = "When true, server nodes may be a mix of etcd, cp, and worker"
-  type = bool
-}
-variable "role_order" {
-  description = "Comma separated order of how to bring the nodes up when split roles"
-  type = string
-}
-variable "all_role_nodes" {}
-variable "etcd_only_nodes" {}
-variable "etcd_cp_nodes" {}
-variable "etcd_worker_nodes" {}
-variable "cp_only_nodes" {}
-variable "cp_worker_nodes" {}

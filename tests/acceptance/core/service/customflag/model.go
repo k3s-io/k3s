@@ -1,32 +1,34 @@
-package util
+package customflag
 
 import (
 	"fmt"
 	"strconv"
 	"strings"
-
-	// "github.com/k3s-io/k3s/tests/acceptance/service/template"
-	// "github.com/k3s-io/k3s/tests/acceptance/testcase"
-	g2 "github.com/onsi/ginkgo/v2"
 )
 
-// InstallTypeValue is a custom flag type that can be used to parse the installation type
+var (
+	InstallType        InstallTypeValue
+	InstallUpgradeFlag MultiValueFlag
+	TestCase           TestConfigFlag
+)
+
+// InstallTypeValue is a customFlag type that can be used to parse the installation type
 type InstallTypeValue struct {
 	Version string
 	Commit  string
 }
 
-// TestConfigFlag TesConfigFlag is a custom flag type that can be used to parse the test case flag
+// TestConfigFlag TesConfigFlag is a customFlag type that can be used to parse the test case
 type TestConfigFlag struct {
 	TestFuncName   string
 	TestFunc       TestCaseFlagType
 	DeployWorkload bool
 }
 
-// TestCaseFlagType is a custom flag type that can be used to parse the test case flag
-type TestCaseFlagType func(g g2.GinkgoTestingT, deployWorkload bool)
+// TestCaseFlagType is a custom customFlag type that can be used to parse the test case
+type TestCaseFlagType func(deployWorkload bool)
 
-// MultiValueFlag is a custom flag type that can be used to parse multiple values
+// MultiValueFlag is a customFlag type that can be used to parse multiple values
 type MultiValueFlag []string
 
 // String returns the string representation of the TestConfigFlag
@@ -34,19 +36,19 @@ func (t *TestConfigFlag) String() string {
 	return fmt.Sprintf("TestFuncName: %s, DeployWorkload: %t", t.TestFuncName, t.DeployWorkload)
 }
 
-// Set parses the flag value for TestConfigFlag
+// Set parses the customFlag value for TestConfigFlag
 func (t *TestConfigFlag) Set(value string) error {
 	parts := strings.Split(value, ",")
 
 	if len(parts) < 1 {
-		return fmt.Errorf("invalid test case flag format")
+		return fmt.Errorf("invalid test case customflag format")
 	}
 
 	t.TestFuncName = parts[0]
 	if len(parts) > 1 {
 		deployWorkload, err := strconv.ParseBool(parts[1])
 		if err != nil {
-			return fmt.Errorf("invalid deploy workload flag: %v", err)
+			return fmt.Errorf("invalid deploy workload customflag: %v", err)
 		}
 		t.DeployWorkload = deployWorkload
 	}
@@ -59,7 +61,7 @@ func (m *MultiValueFlag) String() string {
 	return strings.Join(*m, ",")
 }
 
-// Set parses the flag value for MultiValueFlag
+// Set parses the customFlag value for MultiValueFlag
 func (m *MultiValueFlag) Set(value string) error {
 	*m = append(*m, value)
 	return nil
@@ -70,7 +72,7 @@ func (it *InstallTypeValue) String() string {
 	return fmt.Sprintf("Version: %s, Commit: %s", it.Version, it.Commit)
 }
 
-// Set parses the flag value for InstallTypeValue
+// Set parses the customFlag value for InstallTypeValue
 func (it *InstallTypeValue) Set(value string) error {
 	parts := strings.Split(value, "=")
 

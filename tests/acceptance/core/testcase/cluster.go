@@ -6,17 +6,16 @@ import (
 
 	"github.com/k3s-io/k3s/tests/acceptance/core/service/factory"
 	"github.com/k3s-io/k3s/tests/acceptance/shared/util"
-	"github.com/onsi/ginkgo/v2"
 
+	. "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
 
-func TestBuildCluster(g ginkgo.GinkgoTInterface, destroy bool) {
-	status, err := factory.BuildCluster(g, false)
+func TestBuildCluster(g GinkgoTInterface, destroy bool) {
+	status, err := factory.BuildCluster(g, destroy)
 	if err != nil {
 		return
 	}
-
 	gomega.Expect(status).To(gomega.Equal("cluster created"))
 
 	if strings.Contains(util.ClusterType, "etcd") {

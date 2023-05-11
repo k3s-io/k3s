@@ -1,4 +1,4 @@
-//go:build localpath
+//go:build cniplugin
 
 package versionbump
 
@@ -16,7 +16,6 @@ import (
 )
 
 var _ = Describe("VersionTemplate Upgrade:", func() {
-
 	It("Start Up with no issues", func() {
 		testcase.TestBuildCluster(GinkgoT(), false)
 	})
@@ -34,30 +33,43 @@ var _ = Describe("VersionTemplate Upgrade:", func() {
 			assert.PodAssertStatus())
 	})
 
-	It("Verifies bump local path storage version", func() {
+	It("Create bandwidth test pod", func() {
+		_, err := util.ManageWorkload(
+			"create",
+			"bandwidth-annotations.yaml",
+			*util.Arch,
+		)
+		if err != nil {
+			fmt.Println("Error creating workload")
+		}
+	})
+
+	It("Verifies bump version", func() {
 		template.VersionTemplate(GinkgoT(), template.VersionTestTemplate{
-			Description: service.Description,
+			Description: "CNI Plugin Version Bump",
 			TestCombination: &template.RunCmd{
 				RunOnNode: []template.TestMap{
 					{
-						Cmd:                  util.K3sVersion,
+						Cmd:                  util.CNIbin,
 						ExpectedValue:        service.ExpectedValueNode,
 						ExpectedValueUpgrade: service.ExpectedValueUpgradedNode,
+					},
+					{
+						Cmd:                  util.FlannelBinVersion,
+						ExpectedValue:        service.ExpectedValueNode,
+						ExpectedValueUpgrade: service.ExpectedValueUpgradedHost,
 					},
 				},
 				RunOnHost: []template.TestMap{
 					{
-						Cmd:                  util.GetImageLocalPath + "," + util.GrepImage,
+						Cmd:                  util.GetPodTestWithAnnotations + "," + util.GrepAnnotations,
 						ExpectedValue:        service.ExpectedValueHost,
 						ExpectedValueUpgrade: service.ExpectedValueUpgradedHost,
 					},
 				},
 			},
 			InstallUpgrade: customflag.InstallUpgradeFlag,
-			TestConfig: &template.TestConfig{
-				TestFunc:       testcase.TestLocalPathProvisionerStorage,
-				DeployWorkload: true,
-			},
+			TestConfig:     nil,
 		})
 	})
 })

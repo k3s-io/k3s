@@ -4,7 +4,7 @@ Date: 2021-12-15
 
 ## Status
 
-Accepted
+Rescinded 2023-05-03 (containerd moved back into multicall bundle)
 
 ## Context
 

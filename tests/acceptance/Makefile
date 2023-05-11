@@ -4,18 +4,18 @@ include ./config.mk
 
 TAGNAME ?= default
 test-env-up:
-	@cd ../.. && docker build . -f ./tests/acceptance/Dockerfile.build -t k3s-automated-${TAGNAME}
+	@cd ../.. && docker build . -q -f ./tests/acceptance/Dockerfile.build -t k3s-automated-${TAGNAME}
 
 .PHONY: test-run
 test-run:
-	@docker -d run --name k3s-automated-test${IMGNAME} -t \
+	@docker run -d --name k3s-automated-test${IMGNAME} -t \
       -e AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}" \
       -e AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}" \
       -v ${ACCESS_KEY_LOCAL}:/go/src/github.com/k3s-io/k3s/tests/acceptance/modules/k3scluster/config/.ssh/aws_key.pem \
       k3s-automated-${TAGNAME} sh -c 'cd ./tests/acceptance/entrypoint; \
     if [ -n "${TESTDIR}" ]; then \
         if [ "${TESTDIR}" = "upgradecluster" ]; then \
-            go test -timeout=45m -v ./upgradecluster/... -upgradeVersion "${ARGVALUE}"; \
+            go test -timeout=45m -v ./upgradecluster/... -installtype "${INSTALLTYPE}"; \
         elif [ "${TESTDIR}" = "versionbump" ]; then \
             if [ "${TESTTAG}" = "localpath" ]; then \
                 go test -timeout=45m -v -tags=localpath ./versionbump/... -expectedValueNode "${VALUENODE}" \
@@ -26,10 +26,14 @@ test-run:
                 -expectedValueUpgradedNode "${VALUENODEUPGRADED}" -cmdHost "${CMDHOST}" -expectedValueHost "${VALUEHOST}" \
                 -expectedValueUpgradedHost "${VALUEHOSTUPGRADED}" -installUpgradeFlag "${INSTALLTYPE}" -testCase "${TESTCASE}" \
                 -deployWorkload "${DEPLOYWORKLOAD}"; \
+            elif [ "${TESTTAG}" = "cniplugin" ]; then \
+				go test -timeout=45m -v -tags=cniplugin ./entrypoint/versionbump/... \
+				 -expectedValueNode "${VALUENODE}" -expectedValueUpgradedNode "${VALUENODEUPGRADED}" \
+				 -expectedValueHost "${VALUEHOST}" -expectedValueUpgradedHost "${VALUEHOSTUPGRADED}" -installUpgradeFlag "${INSTALLTYPE}"; \
             fi; \
         fi; \
     elif [ -z "${TESTDIR}" ]; then \
-        go test -timeout=45m -v ./createcluster/... ./upgradecluster/... -upgradeVersion "${ARGVALUE}"; \
+        go test -timeout=45m -v ./createcluster/...; \
     fi;'
 
 
@@ -62,9 +66,11 @@ remove-tf-state:
 test-create:
 	@go test -timeout=45m -v ./entrypoint/createcluster/...
 
-.PHONY: test-upgrade
-test-upgrade:
-	@go test -timeout=45m -v ./entrypoint/upgradecluster/... -upgradeVersion ${ARGVALUE}
+
+.PHONY: test-upgrade-manual
+test-upgrade-manual:
+	@go test -timeout=45m -v ./entrypoint/upgradecluster/... -installtype ${INSTALLTYPE}
+
 
 .PHONY: test-version-local-path
 test-version-local-path:
@@ -73,9 +79,10 @@ test-version-local-path:
  		-expectedValueHost ${VALUEHOST} -expectedValueUpgradedHost ${VALUEHOSTUPGRADED} \
  		-installUpgradeFlag ${INSTALLTYPE}
 
+
 .PHONY: test-version-bump
 test-version-bump:
-	go test -timeout=45m -v -tags=versionbump ./entrypoint/versionbump/... \
+	@go test -timeout=45m -v -tags=versionbump ./entrypoint/versionbump/... \
 		-cmdNode "${CMDNODE}" -expectedValueNode ${VALUENODE} \
 		-expectedValueUpgradedNode ${VALUENODEUPGRADED} \
 		-cmdHost "${CMDHOST}"  -expectedValueHost ${VALUEHOST} \
@@ -83,13 +90,6 @@ test-version-bump:
 		-installUpgradeFlag ${INSTALLTYPE} \
 		-testCase ${TESTCASE} \
 		-deployWorkload ${DEPLOYWORKLOAD}
-
-
-.PHONY: test-suite
-test-suite:
-	@make remove-tf-state && make test-create ; sleep 5 && \
-	  make remove-tf-state && make test-upgrade ${ARGVALUE} ; sleep 5 && \
-	  make remove-tf-state && make test-version
 
 
 #========================= TestCode Static Quality Check =========================#

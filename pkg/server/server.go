@@ -223,7 +223,8 @@ func coreControllers(ctx context.Context, sc *Context, config *Config) error {
 			sc.Batch.Batch().V1().Job().Cache(),
 			sc.Auth.Rbac().V1().ClusterRoleBinding(),
 			sc.Core.Core().V1().ServiceAccount(),
-			sc.Core.Core().V1().ConfigMap())
+			sc.Core.Core().V1().ConfigMap(),
+			sc.Core.Core().V1().Secret())
 	}
 
 	if config.ControlConfig.EncryptSecrets {

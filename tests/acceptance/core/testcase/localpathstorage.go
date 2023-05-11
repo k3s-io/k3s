@@ -6,11 +6,12 @@ import (
 
 	"github.com/k3s-io/k3s/tests/acceptance/core/service/assert"
 	"github.com/k3s-io/k3s/tests/acceptance/shared/util"
-	"github.com/onsi/ginkgo/v2"
+
+	. "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
 
-func TestLocalPathProvisionerStorage(g ginkgo.GinkgoTestingT, deployWorkload bool) {
+func TestLocalPathProvisionerStorage(deployWorkload bool) {
 	if deployWorkload {
 		_, err := util.ManageWorkload(
 			"create",
@@ -26,27 +27,33 @@ func TestLocalPathProvisionerStorage(g ginkgo.GinkgoTestingT, deployWorkload boo
 		util.RunningAssert,
 	)
 	if err != nil {
-		ginkgo.GinkgoT().Logf("Error: %v", err)
+		GinkgoT().Errorf("Error: %v", err)
 	}
 
-	err = util.WriteDataPod(util.VolumeTest)
-	gomega.Expect(err).NotTo(gomega.HaveOccurred())
+	_, err = util.WriteDataPod(util.VolumeTest)
+	if err != nil {
+		GinkgoT().Errorf("error writing data to pod: %v", err)
+		return
+	}
 
 	gomega.Eventually(func(g gomega.Gomega) {
-		fmt.Println("Write and reading data from pod")
-		err = util.ReadDataPod(util.VolumeTest)
+		fmt.Println("Writing and reading data from pod")
+		res, err := util.ReadDataPod(util.VolumeTest)
+		g.Expect(err).NotTo(gomega.HaveOccurred())
+		g.Expect(res).Should(gomega.ContainSubstring(util.TestingLocalPath))
 		g.Expect(err).NotTo(gomega.HaveOccurred())
 	}, "420s", "2s").Should(gomega.Succeed())
 
 	ips := util.FetchNodeExternalIP()
 	for _, ip := range ips {
-		err = util.RestartCluster(ip)
+		_, err = util.RestartCluster(ip)
 		if err != nil {
 			return
 		}
 	}
+	time.Sleep(30 * time.Second)
 
-	err = util.ReadDataPod(util.VolumeTest)
+	_, err = util.ReadDataPod(util.VolumeTest)
 	if err != nil {
 		return
 	}
@@ -65,7 +72,7 @@ func readDataAfterDeletePod() error {
 	time.Sleep(160 * time.Second)
 
 	fmt.Println("Read data from newly create pod")
-	err = util.ReadDataPod(util.VolumeTest)
+	_, err = util.ReadDataPod(util.VolumeTest)
 	if err != nil {
 		return err
 	}

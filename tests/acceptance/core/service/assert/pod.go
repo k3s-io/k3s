@@ -26,7 +26,7 @@ func PodAssertRestarts() PodAssertFunc {
 }
 
 // PodAssertStatus custom assertion that asserts that pods status is completed or in some cases
-// apply pods can have an error status
+// apply pods can have error status
 func PodAssertStatus() PodAssertFunc {
 	return func(g gomega.Gomega, pod util.Pod) {
 		if strings.Contains(pod.Name, "helm-install") {
@@ -67,21 +67,15 @@ func checkReadyFields() gomega.OmegaMatcher {
 
 // CheckPodStatusRunning asserts that the pod is running with the specified label = app name.
 // don't need to send sKubeconfigFile
-func CheckPodStatusRunning(name, assert string) error {
+func CheckPodStatusRunning(name, assert string) {
 	cmd := "kubectl get pods -l k8s-app=" + name +
 		" --field-selector=status.phase=Running --kubeconfig=" + util.KubeConfigFile
 	gomega.Eventually(func(g gomega.Gomega) {
 		res, err := util.RunCommandHost(cmd)
 		if err != nil {
-			err = util.K3sError{
-				ErrorSource: cmd,
-				Message:     res,
-				Err:         err,
-			}
+			_ = fmt.Errorf("failed to run command %v:\n result: %v \n error: %v", cmd, res, err)
 			return
 		}
 		g.Expect(res).Should(gomega.ContainSubstring(assert))
 	}, "420s", "5s").Should(gomega.Succeed())
-
-	return nil
 }

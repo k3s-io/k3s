@@ -7,11 +7,11 @@ import (
 
 	"github.com/k3s-io/k3s/tests/acceptance/core/testcase"
 	"github.com/k3s-io/k3s/tests/acceptance/shared/util"
-	g2 "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/ginkgo/v2"
 )
 
-// upgradeVersion upgrades the version of RKE2 and updates the expected values
-func upgradeVersion(g g2.GinkgoTInterface, template VersionTestTemplate, version string) error {
+// upgradeVersion upgrades the version of k3s and update the expected value
+func upgradeVersion(template VersionTestTemplate, version string) error {
 	err := testcase.TestUpgradeClusterManually(version)
 	if err != nil {
 		return err
@@ -30,11 +30,11 @@ func upgradeVersion(g g2.GinkgoTInterface, template VersionTestTemplate, version
 	return nil
 }
 
-// checkVersion checks the version of k3s and processes the tests
-func checkVersion(g g2.GinkgoTInterface, v VersionTestTemplate) error {
+// checkVersion checks the version of k3s and processes tests
+func checkVersion(g GinkgoTInterface, v VersionTestTemplate) error {
 	ips, err := getIPs()
 	if err != nil {
-		g2.Fail(fmt.Sprintf("Failed to get IPs: %s", err))
+		GinkgoT().Errorf("Failed to get IPs: %s", err)
 	}
 
 	var wg sync.WaitGroup
@@ -43,7 +43,7 @@ func checkVersion(g g2.GinkgoTInterface, v VersionTestTemplate) error {
 		len(ips)*(len(v.TestCombination.RunOnHost)+len(v.TestCombination.RunOnNode)),
 	)
 
-	processTests(&wg, errorChanList, ips, *v.TestCombination)
+	processTestCombination(&wg, errorChanList, ips, *v.TestCombination)
 
 	wg.Wait()
 	close(errorChanList)
@@ -54,13 +54,17 @@ func checkVersion(g g2.GinkgoTInterface, v VersionTestTemplate) error {
 		}
 	}
 
+	if v.TestConfig != nil {
+		TestCaseWrapper(v)
+	}
+
 	return nil
 }
 
-// joinCommands joins split commands by comma and then joins the first command with the flag
-func joinCommands(cmd, Flag string) string {
+// joinCommands joins the first command with some arg
+func joinCommands(cmd, arg string) string {
 	cmds := strings.Split(cmd, ",")
-	firstCmd := cmds[0] + Flag
+	firstCmd := cmds[0] + arg
 
 	if len(cmds) > 1 {
 		secondCmd := strings.Join(cmds[1:], ",")
@@ -76,10 +80,10 @@ func getIPs() (ips []string, err error) {
 	return ips, nil
 }
 
-// GetTestCase returns the test case based on the name to be used as flag.
+// GetTestCase returns the test case based on the name to be used as customflag.
 func GetTestCase(name string) (TestCase, error) {
 	if name == "" {
-		return func(g g2.GinkgoTestingT, deployWorkload bool) {}, nil
+		return func(deployWorkload bool) {}, nil
 	}
 
 	testCase := map[string]TestCase{

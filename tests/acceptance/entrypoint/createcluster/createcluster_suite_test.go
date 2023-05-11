@@ -6,6 +6,7 @@ import (
 
 	"github.com/k3s-io/k3s/tests/acceptance/core/service/factory"
 	"github.com/k3s-io/k3s/tests/acceptance/shared/util"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -13,6 +14,7 @@ import (
 func TestClusterCreateSuite(t *testing.T) {
 	flag.Parse()
 	RegisterFailHandler(Fail)
+
 	RunSpecs(t, "Create Cluster Test Suite")
 }
 
