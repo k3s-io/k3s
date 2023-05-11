@@ -427,7 +427,10 @@ func RestartCluster(nodeNames []string) error {
 // StartCluster starts the k3s service on each node given
 func StartCluster(nodeNames []string) error {
 	for _, nodeName := range nodeNames {
-		cmd := "sudo systemctl start k3s*"
+		cmd := "sudo systemctl start k3s"
+		if strings.Contains(nodeName, "agent") {
+			cmd += "-agent"
+		}
 		if _, err := RunCmdOnNode(cmd, nodeName); err != nil {
 			return err
 		}

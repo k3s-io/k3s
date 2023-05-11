@@ -44,7 +44,7 @@ var (
 var _ = ReportAfterEach(e2e.GenReport)
 
 var _ = Describe("Verify Create", Ordered, func() {
-	Context("Cluster :", func() {
+	Context("Cluster Starts up and deploys basic components", func() {
 		It("Starts up with no issues", func() {
 			var err error
 			if *local {
@@ -217,49 +217,6 @@ var _ = Describe("Verify Create", Ordered, func() {
 			}, "420s", "2s").Should(Succeed())
 		})
 
-		It("Verifies Restart", func() {
-			_, err := e2e.DeployWorkload("daemonset.yaml", kubeConfigFile, *hardened)
-			Expect(err).NotTo(HaveOccurred(), "Daemonset manifest not deployed")
-			defer e2e.DeleteWorkload("daemonset.yaml", kubeConfigFile)
-			nodes, _ := e2e.ParseNodes(kubeConfigFile, false)
-
-			Eventually(func(g Gomega) {
-				pods, _ := e2e.ParsePods(kubeConfigFile, false)
-				count := e2e.CountOfStringInSlice("test-daemonset", pods)
-				g.Expect(len(nodes)).Should((Equal(count)), "Daemonset pod count does not match node count")
-				podsRunning := 0
-				for _, pod := range pods {
-					if strings.Contains(pod.Name, "test-daemonset") && pod.Status == "Running" && pod.Ready == "1/1" {
-						podsRunning++
-					}
-				}
-				g.Expect(len(nodes)).Should((Equal(podsRunning)), "Daemonset running pods count does not match node count")
-			}, "620s", "5s").Should(Succeed())
-			errRestart := e2e.RestartCluster(serverNodeNames)
-			Expect(errRestart).NotTo(HaveOccurred(), "Restart Nodes not happened correctly")
-			if len(agentNodeNames) > 0 {
-				errRestartAgent := e2e.RestartCluster(agentNodeNames)
-				Expect(errRestartAgent).NotTo(HaveOccurred(), "Restart Agent not happened correctly")
-			}
-			Eventually(func(g Gomega) {
-				nodes, err := e2e.ParseNodes(kubeConfigFile, false)
-				g.Expect(err).NotTo(HaveOccurred())
-				for _, node := range nodes {
-					g.Expect(node.Status).Should(Equal("Ready"))
-				}
-				pods, _ := e2e.ParsePods(kubeConfigFile, false)
-				count := e2e.CountOfStringInSlice("test-daemonset", pods)
-				g.Expect(len(nodes)).Should((Equal(count)), "Daemonset pod count does not match node count")
-				podsRunningAr := 0
-				for _, pod := range pods {
-					if strings.Contains(pod.Name, "test-daemonset") && pod.Status == "Running" && pod.Ready == "1/1" {
-						podsRunningAr++
-					}
-				}
-				g.Expect(len(nodes)).Should((Equal(podsRunningAr)), "Daemonset pods are not running after the restart")
-			}, "620s", "5s").Should(Succeed())
-		})
-
 		It("Verifies Local Path Provisioner storage ", func() {
 			res, err := e2e.DeployWorkload("local-path-provisioner.yaml", kubeConfigFile, *hardened)
 			Expect(err).NotTo(HaveOccurred(), "local-path-provisioner manifest not deployed: "+res)
@@ -314,8 +271,95 @@ var _ = Describe("Verify Create", Ordered, func() {
 				g.Expect(res).Should(ContainSubstring("local-path-test"))
 			}, "180s", "2s").Should(Succeed())
 		})
+	})
 
-		It("Verifies Certificate Rotation", func() {
+	Context("Validate restart", func() {
+		It("Deletes daemonset", func() {
+			_, err := e2e.DeployWorkload("daemonset.yaml", kubeConfigFile, *hardened)
+			Expect(err).NotTo(HaveOccurred(), "Daemonset manifest not deployed")
+			defer e2e.DeleteWorkload("daemonset.yaml", kubeConfigFile)
+			nodes, _ := e2e.ParseNodes(kubeConfigFile, false)
+
+			Eventually(func(g Gomega) {
+				pods, _ := e2e.ParsePods(kubeConfigFile, false)
+				count := e2e.CountOfStringInSlice("test-daemonset", pods)
+				g.Expect(len(nodes)).Should((Equal(count)), "Daemonset pod count does not match node count")
+				podsRunning := 0
+				for _, pod := range pods {
+					if strings.Contains(pod.Name, "test-daemonset") && pod.Status == "Running" && pod.Ready == "1/1" {
+						podsRunning++
+					}
+				}
+				g.Expect(len(nodes)).Should((Equal(podsRunning)), "Daemonset running pods count does not match node count")
+			}, "620s", "5s").Should(Succeed())
+		})
+		It("Restarts normally", func() {
+			errRestart := e2e.RestartCluster(append(serverNodeNames, agentNodeNames...))
+			Expect(errRestart).NotTo(HaveOccurred(), "Restart Nodes not happened correctly")
+
+			Eventually(func(g Gomega) {
+				nodes, err := e2e.ParseNodes(kubeConfigFile, false)
+				g.Expect(err).NotTo(HaveOccurred())
+				for _, node := range nodes {
+					g.Expect(node.Status).Should(Equal("Ready"))
+				}
+				pods, _ := e2e.ParsePods(kubeConfigFile, false)
+				count := e2e.CountOfStringInSlice("test-daemonset", pods)
+				g.Expect(len(nodes)).Should((Equal(count)), "Daemonset pod count does not match node count")
+				podsRunningAr := 0
+				for _, pod := range pods {
+					if strings.Contains(pod.Name, "test-daemonset") && pod.Status == "Running" && pod.Ready == "1/1" {
+						podsRunningAr++
+					}
+				}
+				g.Expect(len(nodes)).Should((Equal(podsRunningAr)), "Daemonset pods are not running after the restart")
+			}, "620s", "5s").Should(Succeed())
+		})
+	})
+
+	Context("Valdiate Certificate Rotation", func() {
+		It("Stops K3s and rotates certificates", func() {
+			errStop := e2e.StopCluster(serverNodeNames)
+			Expect(errStop).NotTo(HaveOccurred(), "Cluster could not be stoped successfully")
+
+			for _, nodeName := range serverNodeNames {
+				cmd := "sudo k3s certificate rotate"
+				if _, err := e2e.RunCmdOnNode(cmd, nodeName); err != nil {
+					Expect(err).NotTo(HaveOccurred(), "Certificate could not be rotated successfully")
+				}
+			}
+		})
+
+		It("Start normally", func() {
+			// Since we stopped all the server, we have to start 2 at once to get it back up
+			// If we only start one at a time, the first will hang waiting for the second to be up
+			_, err := e2e.RunCmdOnNode("sudo systemctl --no-block start k3s", serverNodeNames[0])
+			Expect(err).NotTo(HaveOccurred())
+			err = e2e.StartCluster(serverNodeNames[1:])
+			Expect(err).NotTo(HaveOccurred(), "Cluster could not be started successfully")
+
+			Eventually(func(g Gomega) {
+				nodes, err := e2e.ParseNodes(kubeConfigFile, false)
+				g.Expect(err).NotTo(HaveOccurred())
+				for _, node := range nodes {
+					g.Expect(node.Status).Should(Equal("Ready"))
+				}
+				fmt.Println("help")
+			}, "620s", "5s").Should(Succeed())
+
+			Eventually(func(g Gomega) {
+				pods, err := e2e.ParsePods(kubeConfigFile, false)
+				g.Expect(err).NotTo(HaveOccurred())
+				for _, pod := range pods {
+					if strings.Contains(pod.Name, "helm-install") {
+						g.Expect(pod.Status).Should(Equal("Completed"), pod.Name)
+					} else {
+						g.Expect(pod.Status).Should(Equal("Running"), pod.Name)
+					}
+				}
+			}, "620s", "5s").Should(Succeed())
+		})
+		It("Validates certificates", func() {
 			const grepCert = "sudo ls -lt /var/lib/rancher/k3s/server/ | grep tls"
 			var expectResult = []string{"client-ca.crt",
 				"client-ca.key",
@@ -332,19 +376,6 @@ var _ = Describe("Verify Create", Ordered, func() {
 
 			var finalResult string
 			var finalErr error
-			errStop := e2e.StopCluster(serverNodeNames)
-			Expect(errStop).NotTo(HaveOccurred(), "Cluster could not be stoped successfully")
-
-			for _, nodeName := range serverNodeNames {
-				cmd := "sudo k3s --debug certificate rotate"
-				if _, err := e2e.RunCmdOnNode(cmd, nodeName); err != nil {
-					Expect(err).NotTo(HaveOccurred(), "Certificate could not be rotated successfully")
-				}
-			}
-
-			errStart := e2e.StartCluster(serverNodeNames)
-			Expect(errStart).NotTo(HaveOccurred(), "Cluster could not be started successfully")
-
 			for _, nodeName := range serverNodeNames {
 				grCert, errGrep := e2e.RunCmdOnNode(grepCert, nodeName)
 				Expect(errGrep).NotTo(HaveOccurred(), "Certificate could not be created successfully")
@@ -355,10 +386,9 @@ var _ = Describe("Verify Create", Ordered, func() {
 				finalResult, finalErr = e2e.RunCmdOnNode(final, nodeName)
 				Expect(finalErr).NotTo(HaveOccurred(), "Final Certification does not created successfully")
 			}
-			if len(agentNodeNames) > 0 {
-				errRestartAgent := e2e.RestartCluster(agentNodeNames)
-				Expect(errRestartAgent).NotTo(HaveOccurred(), "Agent could not be restart successfully")
-			}
+			errRestartAgent := e2e.RestartCluster(agentNodeNames)
+			Expect(errRestartAgent).NotTo(HaveOccurred(), "Agent could not be restart successfully")
+
 			finalCert := strings.Replace(finalResult, "\n", ",", -1)
 			finalCertArray := strings.Split(finalCert, ",")
 			Expect((finalCertArray)).Should((Equal(expectResult)), "Final certification does not match the expected results")
