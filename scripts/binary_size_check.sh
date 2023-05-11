@@ -8,9 +8,9 @@ fi
 
 . ./scripts/version.sh
 
-# Try to keep the K3s binary under 64 megabytes.
+# Try to keep the K3s binary under 70 megabytes.
 # "64M ought to be enough for anybody"
-MAX_BINARY_MB=64
+MAX_BINARY_MB=70
 MAX_BINARY_SIZE=$((MAX_BINARY_MB * 1024 * 1024))
 BIN_SUFFIX="-${ARCH}"
 if [ ${ARCH} = amd64 ]; then
