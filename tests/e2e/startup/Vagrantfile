@@ -54,13 +54,7 @@ def provision(vm, role, role_num, node_num)
   end
 
   if !GOCOVER.empty?
-    script = <<~SHELL
-      mkdir -p /tmp/k3scov
-      echo 'GOCOVERDIR=/tmp/k3scov' >> /etc/systemd/system/k3s.service.env
-      echo 'GOCOVERDIR=/tmp/k3scov' >> /etc/systemd/system/k3s-agent.service.env
-      systemctl daemon-reload
-    SHELL
-    vm.provision "go coverage", type: "shell", inline: script 
+    addCoverageDir(vm, role)
   end
 
   if vm.box.to_s.include?("microos")
