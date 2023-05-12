@@ -44,10 +44,10 @@ RUN vagrant box add generic/ubuntu2004 --provider libvirt --force
 RUN curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"; \
     chmod +x ./kubectl; \
     mv ./kubectl /usr/local/bin/kubectl
-ENV GO_VERSION 1.19.2
-RUN curl -O -L "https://golang.org/dl/go${GO_VERSION}.linux-amd64.tar.gz"; \
+RUN GO_VERSION=$(curl https://go.dev/VERSION?m=text); \
+    curl -O -L "https://golang.org/dl/${GO_VERSION}.linux-amd64.tar.gz"; \
     rm -rf /usr/local/go; \
-    tar -C /usr/local -xzf go${GO_VERSION}.linux-amd64.tar.gz;
+    tar -C /usr/local -xzf ${GO_VERSION}.linux-amd64.tar.gz;
 
 ENV PATH="${PATH}:/usr/local/go/bin"
 
