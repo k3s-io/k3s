@@ -742,14 +742,15 @@ steps:
   - docker run -d -p 5000:5000 -e REGISTRY_PROXY_REMOTEURL=https://registry-1.docker.io --name registry registry:2
   - cd tests/e2e/validatecluster
   - vagrant destroy -f
-  - go test -v -timeout=45m ./validatecluster_test.go -ci -local
+  - E2E_GOCOVER=1 go test -v -timeout=45m ./validatecluster_test.go -ci -local
+  - cp ./coverage.out /tmp/artifacts/validate-coverage.out
   - cd ../secretsencryption
   - vagrant destroy -f
   - go test -v -timeout=30m ./secretsencryption_test.go -ci -local
   - cd ../startup
   - vagrant destroy -f
   - E2E_GOCOVER=1 go test -v -timeout=30m ./startup_test.go -ci -local
-  - cp ./coverage.out /tmp/artifacts/coverage.out
+  - cp ./coverage.out /tmp/artifacts/startup-coverage.out
   - |
     if [ "$DRONE_BUILD_EVENT" = "pull_request" ]; then
       cd ../upgradecluster
@@ -772,7 +773,8 @@ steps:
     token: 
       from_secret: codecov_token
     files:
-      - /tmp/artifacts/coverage.out
+      - /tmp/artifacts/validate-coverage.out
+      - /tmp/artifacts/startup-coverage.out
     flags: 
       - e2etests
   when:
