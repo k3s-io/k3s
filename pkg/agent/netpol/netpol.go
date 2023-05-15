@@ -129,7 +129,7 @@ func Run(ctx context.Context, nodeConfig *config.Node) error {
 	npc, err := netpol.NewNetworkPolicyController(client, krConfig, podInformer, npInformer, nsInformer, &sync.Mutex{},
 		iptablesCmdHandlers, ipSetHandlers)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "unable to initialize Network Policy Controller")
 	}
 
 	podInformer.AddEventHandler(npc.PodEventHandler)
