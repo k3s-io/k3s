@@ -44,13 +44,14 @@ spec:
         emptyDir: {}
       containers:
       - name: metrics-server
-        image: %{SYSTEM_DEFAULT_REGISTRY}%rancher/mirrored-metrics-server:v0.6.2
+        image: %{SYSTEM_DEFAULT_REGISTRY}%rancher/mirrored-metrics-server:v0.6.3
         args:
         - --cert-dir=/tmp
         - --secure-port=10250
         - --kubelet-preferred-address-types=%{PREFERRED_ADDRESS_TYPES}%
         - --kubelet-use-node-status-port
         - --metric-resolution=15s
+        - --tls-cipher-suites=TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305
         resources:
           requests:
             cpu: 100m
