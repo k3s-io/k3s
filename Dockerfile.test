@@ -36,7 +36,7 @@ ENTRYPOINT ["./scripts/entry.sh"]
 CMD ["test"]
 
 
-FROM vagrantlibvirt/vagrant-libvirt:0.10.7 AS test-e2e
+FROM vagrantlibvirt/vagrant-libvirt:0.12.1 AS test-e2e
 
 RUN apt-get update && apt-get install -y docker.io
 RUN vagrant plugin install vagrant-k3s vagrant-reload vagrant-scp
