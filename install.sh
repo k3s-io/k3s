@@ -612,12 +612,26 @@ EOF
         if [ "${rpm_installer}" = "yum" ] && [ -x /usr/bin/dnf ]; then
             rpm_installer=dnf
         fi
+	    if rpm -q --quiet k3s-selinux && [ "${3}" == "el9" ]; then 
+            # remove k3s-selinux module in el9 before upgrade to allow container-selinux to upgrade safely
+            if compare_available_selinux; then
+                MODULE_PRIORITY=$(semodule --list=full | grep k3s | cut -f1 -d" ")
+                $SUDO semodule -X $MODULE_PRIORITY -r k3s || true
+            fi
+        fi
         # shellcheck disable=SC2086
         $SUDO ${rpm_installer} install -y "k3s-selinux"
     fi
     return
 }
 
+compare_available_selinux() {
+    latest_installed=$(rpm -qa | grep k3s-selinux)
+    if [ -n "${latest_installed}" ] && [ "${available_version}" != "${latest_installed}.rpm" ]; then
+        return 0
+    fi
+    return 1
+}
 # --- download and verify k3s ---
 download_and_verify() {
     if can_skip_download_binary; then
