@@ -969,11 +969,11 @@ service_enable_and_start() {
 
     if command -v iptables-save 1> /dev/null && command -v iptables-restore 1> /dev/null
     then
-	    $SUDO iptables-save | grep -v KUBE- | grep -v CNI- | grep -iv flannel | $SUDO iptables-restore
+	    $SUDO iptables-save | grep -v KUBE- | grep -iv flannel | $SUDO iptables-restore
     fi
     if command -v ip6tables-save 1> /dev/null && command -v ip6tables-restore 1> /dev/null
     then
-	    $SUDO ip6tables-save | grep -v KUBE- | grep -v CNI- | grep -iv flannel | $SUDO ip6tables-restore
+	    $SUDO ip6tables-save | grep -v KUBE- | grep -iv flannel | $SUDO ip6tables-restore
     fi
 
     [ "${HAS_SYSTEMD}" = true ] && systemd_start
