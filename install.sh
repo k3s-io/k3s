@@ -614,9 +614,11 @@ EOF
         fi
 	    if rpm -q --quiet k3s-selinux && [ "${3}" == "el9" ]; then 
             # remove k3s-selinux module in el9 before upgrade to allow container-selinux to upgrade safely
-            if compare_available_selinux; then
-                MODULE_PRIORITY=$(semodule --list=full | grep k3s | cut -f1 -d" ")
-                $SUDO semodule -X $MODULE_PRIORITY -r k3s || true
+            if check_available_upgrades container-selinux && check_available_upgrades k3s-selinux; then
+                MODULE_PRIORITY=$($SUDO semodule --list=full | grep k3s | cut -f1 -d" ")
+                if [ -n "${MODULE_PRIORITY}" ]; then
+                    $SUDO semodule -X $MODULE_PRIORITY -r k3s || true
+                fi
             fi
         fi
         # shellcheck disable=SC2086
@@ -625,9 +627,11 @@ EOF
     return
 }
 
-compare_available_selinux() {
-    latest_installed=$(rpm -qa | grep k3s-selinux)
-    if [ -n "${latest_installed}" ] && [ "${available_version}" != "${latest_installed}.rpm" ]; then
+check_available_upgrades() {
+    set +e
+    available_upgrades=$($SUDO yum -q --refresh list $1 --upgrades | tail -n 1 | awk '{print $2}')
+    set -e
+    if [ -n "${available_upgrades}" ]; then
         return 0
     fi
     return 1
