@@ -596,9 +596,12 @@ EOF
         sle)
             rpm_installer="zypper --gpg-auto-import-keys"
             if [ "${TRANSACTIONAL_UPDATE=false}" != "true" ] && [ -x /usr/sbin/transactional-update ]; then
+                transactional_update_run="transactional-update --no-selfupdate -d run"
                 rpm_installer="transactional-update --no-selfupdate -d run ${rpm_installer}"
                 : "${INSTALL_K3S_SKIP_START:=true}"
             fi
+            # create the /var/lib/rpm-state in SLE systems to fix the prein selinux macro
+                ${transactional_update_run} mkdir -p /var/lib/rpm-state
             ;;
         coreos)
             rpm_installer="rpm-ostree"
