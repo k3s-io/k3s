@@ -38,8 +38,7 @@ def addCoverageDir(vm, role)
   service = role.include?("agent") ? "k3s-agent" : "k3s" 
     script = <<~SHELL
       mkdir -p /tmp/k3scov
-      mkdir -p /etc/systemd/system/#{service}.service.d
-      echo -e '[Service]\nEnvironment="GOCOVERDIR=/tmp/k3scov"' >> /etc/systemd/system/#{service}.service.d/go-coverage.conf
+      echo -e 'GOCOVERDIR=/tmp/k3scov' >> /etc/default/#{service}
       systemctl daemon-reload
     SHELL
     vm.provision "go coverage", type: "shell", inline: script 
