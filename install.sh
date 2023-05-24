@@ -601,7 +601,7 @@ EOF
                 : "${INSTALL_K3S_SKIP_START:=true}"
             fi
             # create the /var/lib/rpm-state in SLE systems to fix the prein selinux macro
-                ${transactional_update_run} mkdir -p /var/lib/rpm-state
+            ${transactional_update_run} mkdir -p /var/lib/rpm-state
             ;;
         coreos)
             rpm_installer="rpm-ostree"
