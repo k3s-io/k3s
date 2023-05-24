@@ -518,13 +518,17 @@ setup_selinux() {
         rpm_target=el7
         rpm_site_infix=centos/7
         package_installer=yum
+    elif [ "${VERSION_ID%%.*}" = "8" ] || [ "${VERSION_ID%%.*}" = "37" ]; then
+        rpm_target=el8
+        rpm_site_infix=centos/8
+        package_installer=yum
     elif [ "${ID_LIKE:-}" = coreos ] || [ "${VARIANT_ID:-}" = coreos ]; then
         rpm_target=coreos
         rpm_site_infix=coreos
         package_installer=rpm-ostree
     else
-        rpm_target=el8
-        rpm_site_infix=centos/8
+        rpm_target=el9
+        rpm_site_infix=centos/9
         package_installer=yum
     fi
 
@@ -558,7 +562,7 @@ setup_selinux() {
             $policy_error "Failed to apply container_runtime_exec_t to ${BIN_DIR}/k3s, ${policy_hint}"
         fi
     elif [ ! -f /usr/share/selinux/packages/k3s.pp ]; then
-        if [ -x /usr/sbin/transactional-update ]; then
+        if [ -x /usr/sbin/transactional-update ] || [ "${ID_LIKE:-}" = coreos ] || [ "${VARIANT_ID:-}" = coreos ]; then
             warn "Please reboot your machine to activate the changes and avoid data loss."
         else
             $policy_error "Failed to find the k3s-selinux policy, ${policy_hint}"
@@ -592,9 +596,12 @@ EOF
         sle)
             rpm_installer="zypper --gpg-auto-import-keys"
             if [ "${TRANSACTIONAL_UPDATE=false}" != "true" ] && [ -x /usr/sbin/transactional-update ]; then
+                transactional_update_run="transactional-update --no-selfupdate -d run"
                 rpm_installer="transactional-update --no-selfupdate -d run ${rpm_installer}"
                 : "${INSTALL_K3S_SKIP_START:=true}"
             fi
+            # create the /var/lib/rpm-state in SLE systems to fix the prein selinux macro
+            ${transactional_update_run} mkdir -p /var/lib/rpm-state
             ;;
         coreos)
             rpm_installer="rpm-ostree"
@@ -608,12 +615,40 @@ EOF
         if [ "${rpm_installer}" = "yum" ] && [ -x /usr/bin/dnf ]; then
             rpm_installer=dnf
         fi
+	    if rpm -q --quiet k3s-selinux && [ "${3}" == "el9" ]; then 
+            # remove k3s-selinux module in el9 before upgrade to allow container-selinux to upgrade safely
+            if check_available_upgrades container-selinux ${3} && check_available_upgrades k3s-selinux ${3}; then
+                MODULE_PRIORITY=$($SUDO semodule --list=full | grep k3s | cut -f1 -d" ")
+                if [ -n "${MODULE_PRIORITY}" ]; then
+                    $SUDO semodule -X $MODULE_PRIORITY -r k3s || true
+                fi
+            fi
+        fi
         # shellcheck disable=SC2086
         $SUDO ${rpm_installer} install -y "k3s-selinux"
     fi
     return
 }
 
+check_available_upgrades() {
+    set +e
+    case ${2} in
+        sle)
+            available_upgrades=$($SUDO zypper -q -t -s 11 se -s -u --type package $1 | tail -n 1 | grep -v "No matching" | awk '{print $3}')
+            ;;
+        coreos)
+            # currently rpm-ostree does not support search functionality https://github.com/coreos/rpm-ostree/issues/1877
+            ;;
+        *)
+            available_upgrades=$($SUDO yum -q --refresh list $1 --upgrades | tail -n 1 | awk '{print $2}')
+            ;;
+    esac
+    set -e
+    if [ -n "${available_upgrades}" ]; then
+        return 0
+    fi
+    return 1
+}
 # --- download and verify k3s ---
 download_and_verify() {
     if can_skip_download_binary; then
