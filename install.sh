@@ -614,7 +614,7 @@ EOF
         fi
 	    if rpm -q --quiet k3s-selinux && [ "${3}" == "el9" ]; then 
             # remove k3s-selinux module in el9 before upgrade to allow container-selinux to upgrade safely
-            if check_available_upgrades container-selinux && check_available_upgrades k3s-selinux; then
+            if check_available_upgrades container-selinux ${3} && check_available_upgrades k3s-selinux ${3}; then
                 MODULE_PRIORITY=$($SUDO semodule --list=full | grep k3s | cut -f1 -d" ")
                 if [ -n "${MODULE_PRIORITY}" ]; then
                     $SUDO semodule -X $MODULE_PRIORITY -r k3s || true
@@ -629,7 +629,17 @@ EOF
 
 check_available_upgrades() {
     set +e
-    available_upgrades=$($SUDO yum -q --refresh list $1 --upgrades | tail -n 1 | awk '{print $2}')
+    case ${2} in
+        sle)
+            available_upgrades=$($SUDO zypper -q -t -s 11 se -s -u --type package $1 | tail -n 1 | grep -v "No matching" | awk '{print $3}')
+            ;;
+        coreos)
+            # currently rpm-ostree does not support search functionality https://github.com/coreos/rpm-ostree/issues/1877
+            ;;
+        *)
+            available_upgrades=$($SUDO yum -q --refresh list $1 --upgrades | tail -n 1 | awk '{print $2}')
+            ;;
+    esac
     set -e
     if [ -n "${available_upgrades}" ]; then
         return 0
