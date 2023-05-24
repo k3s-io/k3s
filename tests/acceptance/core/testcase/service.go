@@ -15,18 +15,18 @@ func TestServiceClusterIp(deployWorkload bool) {
 			"Cluster IP manifest not deployed")
 	}
 
-	err := assert.ValidateOnHost(util.GetClusterIp+util.KubeConfigFile, util.RunningAssert)
+	err := assert.ValidateOnHost(util.GetClusterIp+util.KubeConfigFile, "qweqwe1")
 	if err != nil {
-		GinkgoT().Errorf("Error: %v", err)
+		GinkgoT().Errorf("%v", err)
 	}
 
 	clusterip, _ := util.FetchClusterIP(util.NginxClusterIpSVC)
 	nodeExternalIP := util.FetchNodeExternalIP()
 	for _, ip := range nodeExternalIP {
 		err = assert.ValidateOnNode(ip, "curl -sL --insecure http://"+clusterip+"/name.html",
-			util.TestClusterip)
+			" dasda")
 		if err != nil {
-			GinkgoT().Errorf("Error: %v", err)
+			GinkgoT().Errorf("%v", err)
 		}
 	}
 }
@@ -41,7 +41,7 @@ func TestServiceNodePort(deployWorkload bool) {
 	nodeExternalIP := util.FetchNodeExternalIP()
 	nodeport, err := util.FetchServiceNodePort(util.NginxNodePortSVC)
 	if err != nil {
-		GinkgoT().Errorf("Error: %v", err)
+		GinkgoT().Errorf("%v", err)
 	}
 
 	for _, ip := range nodeExternalIP {
@@ -50,7 +50,7 @@ func TestServiceNodePort(deployWorkload bool) {
 			util.RunningAssert,
 		)
 		if err != nil {
-			GinkgoT().Errorf("Error: %v", err)
+			GinkgoT().Errorf("%v", err)
 		}
 
 		assert.CheckComponentCmdNode(
@@ -68,7 +68,7 @@ func TestServiceLoadBalancer(deployWorkload bool) {
 
 	port, err := util.RunCommandHost(util.GetLoadbalancerSVC + util.KubeConfigFile)
 	if err != nil {
-		GinkgoT().Errorf("Error: %v", err)
+		GinkgoT().Errorf("%v", err)
 	}
 
 	nodeExternalIP := util.FetchNodeExternalIP()
@@ -80,7 +80,7 @@ func TestServiceLoadBalancer(deployWorkload bool) {
 			util.TestLoadBalancer,
 		)
 		if err != nil {
-			GinkgoT().Errorf("Error: %v", err)
+			GinkgoT().Errorf("%v", err)
 		}
 	}
 }

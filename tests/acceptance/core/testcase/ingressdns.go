@@ -17,7 +17,7 @@ func TestIngress(deployWorkload bool) {
 
 	err := assert.ValidateOnHost(util.GetIngressRunning+util.KubeConfigFile, util.RunningAssert)
 	if err != nil {
-		GinkgoT().Errorf("Error: %v", err)
+		GinkgoT().Errorf("%v", err)
 	}
 
 	ingressIps, err := util.FetchIngressIP()
@@ -38,7 +38,7 @@ func TestDnsAccess(deployWorkload bool) {
 
 	err := assert.ValidateOnHost(util.GetPodDnsUtils+util.KubeConfigFile, util.RunningAssert)
 	if err != nil {
-		GinkgoT().Errorf("Error: %v", err)
+		GinkgoT().Errorf("%v", err)
 	}
 
 	assert.CheckComponentCmdHost(

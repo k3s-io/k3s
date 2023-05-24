@@ -26,7 +26,7 @@ var _ = Describe("Test:", func() {
 
 		It("Checks Pod Status", func() {
 			testcase.TestPodStatus(
-				assert.PodAssertRestarts(),
+				assert.PodAssertRestart(),
 				assert.PodAssertReady(),
 				assert.PodAssertStatus(),
 			)

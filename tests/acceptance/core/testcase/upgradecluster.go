@@ -42,7 +42,7 @@ func TestUpgradeClusterManually(version string) error {
 // upgradeServer upgrades servers in the cluster.
 func upgradeServer(installType string, serverIPs []string) error {
 	var wg sync.WaitGroup
-	errCh := make(chan error)
+	errCh := make(chan error, len(serverIPs))
 
 	for _, ip := range serverIPs {
 		switch {
@@ -51,26 +51,33 @@ func upgradeServer(installType string, serverIPs []string) error {
 		case customflag.InstallType.Commit != "":
 			installType = fmt.Sprintf("INSTALL_K3S_COMMIT=%s", customflag.InstallType.Commit)
 		}
+
 		upgradeCommand := fmt.Sprintf(util.InstallK3sServer, installType)
 		wg.Add(1)
 		go func(ip, installFlagServer string) {
 			defer wg.Done()
 			defer GinkgoRecover()
 
-			fmt.Printf("\nUpgrading server to:  " + upgradeCommand)
+			fmt.Println("Upgrading server to:  " + upgradeCommand)
 			if _, err := util.RunCmdOnNode(upgradeCommand, ip); err != nil {
 				fmt.Printf("Error upgrading server %s: %v\n\n", ip, err)
 				errCh <- err
 				close(errCh)
 				return
 			}
+
+			fmt.Println("Restarting server: " + ip)
 			if _, err := util.RestartCluster(ip); err != nil {
 				fmt.Printf("Error restarting server %s: %v\n\n", ip, err)
+				errCh <- err
+				close(errCh)
+				return
 			}
 			time.Sleep(30 * time.Second)
 		}(ip, installType)
 	}
 	wg.Wait()
+	close(errCh)
 
 	return nil
 }
@@ -78,7 +85,7 @@ func upgradeServer(installType string, serverIPs []string) error {
 // upgradeAgent upgrades agents in the cluster.
 func upgradeAgent(installType string, agentIPs []string) error {
 	var wg sync.WaitGroup
-	errCh := make(chan error)
+	errCh := make(chan error, len(agentIPs))
 
 	for _, ip := range agentIPs {
 		switch {
@@ -87,6 +94,7 @@ func upgradeAgent(installType string, agentIPs []string) error {
 		case customflag.InstallType.Commit != "":
 			installType = fmt.Sprintf("INSTALL_K3S_COMMIT=%s", customflag.InstallType.Commit)
 		}
+
 		upgradeCommand := fmt.Sprintf(util.InstallK3sAgent, installType)
 		fmt.Println("\nUpgrading agent to: " + upgradeCommand)
 		wg.Add(1)
@@ -103,6 +111,7 @@ func upgradeAgent(installType string, agentIPs []string) error {
 		}(ip, installType)
 	}
 	wg.Wait()
+	close(errCh)
 
 	return nil
 }

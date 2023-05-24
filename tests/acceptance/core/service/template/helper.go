@@ -7,6 +7,7 @@ import (
 
 	"github.com/k3s-io/k3s/tests/acceptance/core/testcase"
 	"github.com/k3s-io/k3s/tests/acceptance/shared/util"
+
 	. "github.com/onsi/ginkgo/v2"
 )
 

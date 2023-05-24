@@ -18,21 +18,18 @@ The acceptance tests are a customizable way to create clusters and perform valid
 ├── entrypoint
 │   └───── Entry for tests execution, separated by test runs and test suites
 │
+│── fixtures
+│   └───── Place where resides fixtures for tests
+│
 ├── modules
 │   └───── Terraform modules and configurations
 │
 ├── shared
-    └───── shared and reusable functions, workloads, constants and scripts
+    └───── auxiliar and reusable functions, constants and scripts
 
 ```
 
 ### Explanation:
-
-- `Entrypoint`
-````
-Act:                  Acts as the one of the outter layer to receive the input to start test execution
-Responsibility:       Should not implement any logic and only focus on orchestrating
-````
 
 - `Core`
 ```
@@ -48,6 +45,18 @@ Act:                  Acts as an innermost layer where the main logic (test impl
 Responsibility:       Encapsulates test logic and should not depend on any outer layer
 ```
 
+- `Entrypoint`
+````
+Act:                  Acts as the one of the outter layer to receive the input to start test execution
+Responsibility:       Should not implement any logic and only focus on orchestrating
+````
+
+- `Fixtures`
+````
+Act:                  Acts as a provider for test fixtures
+Responsibility:       Totally independent from any other layer and should only provide
+````
+
 - `Modules`
 ```
 Act:                  Acts as the infra to provide the terraform modules and configurations
@@ -56,7 +65,7 @@ Responsibility:       Only provides indirectly for all, should not need the know
 
 - `Shared`
 ```
-Act:                  Acts as an intermediate module providing shared and reusable functions, workloads, constants, and scripts               
+Act:                  Acts as an intermediate module providing shared and reusable functions, constants, and scripts               
 Responsibility:       Should not need knowledge of or "external" dependencies at all and provides for all layers.
 ```
 
@@ -66,7 +75,7 @@ Responsibility:       Should not need knowledge of or "external" dependencies at
 -------------------
 
 
-### `Template Version Bump Test`
+### `Template Bump Version Model`
 
 - We have a template model interface for testing bump versions, the idea is to provide a simple and direct way to test bump of version using go test tool.
 
@@ -107,15 +116,16 @@ Responsibility:       Should not need knowledge of or "external" dependencies at
 
 Available arguments to create your command with examples:
 ````
-- $ -cmdHost="kubectl describe pod -n kube-system local-path-provisioner-,  | grep -i Image"
-- $ -expectedValueHost="v0.0.21"
-- $ -expectedValueUpgradedHost="v0.0.24"
-- $ -cmdNode="k3s --version"
-- $ -expectedValueNode="v1.25.2+k3s1"
-- $ -expectedValuesUpgradedNode="v1.26.4-rc1+k3s1"
-- $ -installUpgradeFlag=INSTALL_K3S_COMMIT=257fa2c54cda332e42b8aae248c152f4d1898218
-- $ -deployWorkload=true
-- $ -testCase=TestLocalPathProvisionerStorage
+- $ -cmdHost "kubectl describe pod -n kube-system local-path-provisioner-,  | grep -i Image"
+- $ -expectedValueHost "v0.0.21"
+- $ -expectedValueUpgradedHost "v0.0.24"
+- $ -cmdNode "k3s --version"
+- $ -expectedValueNode "v1.25.2+k3s1"
+- $ -expectedValuesUpgradedNode "v1.26.4-rc1+k3s1"
+- $ -installUpgradeFlag INSTALL_K3S_COMMIT=257fa2c54cda332e42b8aae248c152f4d1898218
+- $ -deployWorkload true
+- $ -testCase TestLocalPathProvisionerStorage
+- $ -description "Description of your test"
 ````
 
 Example of a whole command considering that the commands are already placed or inside your test function or the *template itself (example bellow the command):
@@ -245,6 +255,16 @@ Test flags:
  ${installType} type of installation (version or commit) + desired value    
     -installType version or commit
 ```
+
+Test tags:
+```
+ -tags=cniplugin
+ -tags=versionbump
+ -tags=localpath
+ -tags=upgrademanual
+ 
+```
+
 
 ###  Run with `Makefile` through acceptance package:
 ```bash
@@ -393,6 +413,12 @@ $ make vet-lint TESTDIR=upgradecluster
 ````
 - Issues related to terraform plugin please also delete the modules/.terraform folder
 - In mac m1 maybe you need also to go to rke2/tests/terraform/modules and run `terraform init` to download the plugins
+````
+
+### Debugging
+````
+To focus individual runs on specific test clauses, you can prefix with `F`. For example, in the [create cluster test](../tests/acceptance/entrypoint/createcluster_test.go), you can update the initial creation to be: `FIt("Starts up with no issues", func() {` in order to focus the run on only that clause.
+Or use break points in your IDE.
 ````
 
 

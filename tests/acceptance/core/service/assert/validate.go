@@ -19,7 +19,7 @@ func validate(exec func(string) (string, error), args ...string) error {
 	}
 
 	errorsChan := make(chan error, len(args)/2)
-	timeout := time.After(180 * time.Second)
+	timeout := time.After(220 * time.Second)
 	ticker := time.NewTicker(3 * time.Second)
 
 	for i := 0; i < len(args); i++ {
@@ -31,22 +31,22 @@ func validate(exec func(string) (string, error), args ...string) error {
 			for {
 				select {
 				case <-timeout:
-					timeoutErr := fmt.Errorf("timeout reached for command:%s\n "+
+					timeoutErr := fmt.Errorf("timeout reached for command:\n%s\n "+
 						"Trying to assert with:\n %s",
 						cmd, assert)
 					errorsChan <- timeoutErr
 					close(errorsChan)
 					return timeoutErr
+
 				case <-ticker.C:
 					res, err := exec(cmd)
 					if err != nil {
-						errorsChan <- err
+						errorsChan <- fmt.Errorf("from runCmd\n %s\n %s", res, err)
 						close(errorsChan)
-						err = fmt.Errorf("error from RunCmd:\n %s\n %s", res, err)
 						return err
 					}
-					fmt.Printf("\nCMD: %s\nRESULT: %s\nAssertion: %s\n",
-						cmd, res, assert)
+
+					fmt.Printf("\nCMD: %s\nRESULT: %s\nAssertion: %s\n", cmd, res, assert)
 					if strings.Contains(res, assert) {
 						fmt.Printf("Matched with: \n%s\n", res)
 						errorsChan <- nil
@@ -62,8 +62,6 @@ func validate(exec func(string) (string, error), args ...string) error {
 }
 
 // ValidateOnHost runs an exec function on RunCommandHost and asserts that the value received
-//
-// calling RunCommandHost
 func ValidateOnHost(args ...string) error {
 	exec := func(cmd string) (string, error) {
 		return util.RunCommandHost(cmd)
@@ -72,8 +70,6 @@ func ValidateOnHost(args ...string) error {
 }
 
 // ValidateOnNode runs an exec function on RunCommandOnNode and asserts that the value received
-//
-// calling RunCommandOnNode
 func ValidateOnNode(ip string, args ...string) error {
 	exec := func(cmd string) (string, error) {
 		return util.RunCmdOnNode(cmd, ip)

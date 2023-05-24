@@ -38,37 +38,6 @@ func BuildCluster(g GinkgoTInterface, destroy bool) (string, error) {
 		return "", err
 	}
 
-	splitRoles := terraform.GetVariableAsStringFromVarFile(g, varDir, "split_roles")
-	if splitRoles == "true" {
-		etcdNodes, err := strconv.Atoi(terraform.GetVariableAsStringFromVarFile(g, varDir,
-			"etcd_only_nodes"))
-		if err != nil {
-			return "", err
-		}
-		etcdCpNodes, err := strconv.Atoi(terraform.GetVariableAsStringFromVarFile(g, varDir,
-			"etcd_cp_nodes"))
-		if err != nil {
-			return "", err
-		}
-		etcdWorkerNodes, err := strconv.Atoi(terraform.GetVariableAsStringFromVarFile(g, varDir,
-			"etcd_worker_nodes"))
-		if err != nil {
-			return "", err
-		}
-		cpNodes, err := strconv.Atoi(terraform.GetVariableAsStringFromVarFile(g, varDir,
-			"cp_only_nodes"))
-		if err != nil {
-			return "", err
-		}
-		cpWorkerNodes, err := strconv.Atoi(terraform.GetVariableAsStringFromVarFile(g, varDir,
-			"cp_worker_nodes"))
-		if err != nil {
-			return "", err
-		}
-		util.NumServers = util.NumServers + etcdNodes + etcdCpNodes + etcdWorkerNodes +
-			+cpNodes + cpWorkerNodes
-	}
-
 	util.ClusterType = terraform.GetVariableAsStringFromVarFile(g, varDir, "cluster_type")
 	util.ExternalDb = terraform.GetVariableAsStringFromVarFile(g, varDir, "external_db")
 	util.AwsUser = terraform.GetVariableAsStringFromVarFile(g, varDir, "aws_user")

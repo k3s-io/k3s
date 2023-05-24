@@ -92,6 +92,7 @@ func ParsePods(print bool) ([]Pod, error) {
 	return pods, nil
 }
 
+// ManageWorkload creates or deletes a workload based on the action: create or delete.
 func ManageWorkload(action, workload, arch string) (string, error) {
 	if action != "create" && action != "delete" {
 		return "", fmt.Errorf("invalid action: %s. Must be 'create' or 'delete'", action)
@@ -99,9 +100,9 @@ func ManageWorkload(action, workload, arch string) (string, error) {
 	var res string
 	var err error
 
-	resourceDir := GetBasepath() + "/shared/amd64workloads/"
+	resourceDir := GetBasepath() + "/fixtures/amd64workloads/"
 	if arch == "arm64" {
-		resourceDir = GetBasepath() + "/shared/armworkloads/"
+		resourceDir = GetBasepath() + "/fixtures/armworkloads/"
 	}
 
 	files, err := os.ReadDir(resourceDir)
@@ -192,6 +193,7 @@ func FetchIngressIP() ([]string, error) {
 	return ingressIPs, nil
 }
 
+// ReadDataPod reads the data from the pod
 func ReadDataPod(name string) (string, error) {
 	podName, err := KubectlCommand(
 		"host",
@@ -208,6 +210,7 @@ func ReadDataPod(name string) (string, error) {
 	return RunCommandHost(cmd)
 }
 
+// WriteDataPod writes data to the pod
 func WriteDataPod(name string) (string, error) {
 	podName, err := KubectlCommand(
 		"host",
@@ -262,7 +265,7 @@ func KubectlCommand(destination, action, source string, args ...string) (string,
 
 // addKubectlCommand adds the kubectl command to args passed as arguments
 func addKubectlCommand(action, source string, args []string) string {
-	commandShort := map[string]string{
+	shortCmd := map[string]string{
 		"get":      "kubectl get",
 		"describe": "kubectl describe",
 		"exec":     "kubectl exec",
@@ -270,7 +273,7 @@ func addKubectlCommand(action, source string, args []string) string {
 		"apply":    "kubectl apply",
 	}
 
-	cmdPrefix, ok := commandShort[action]
+	cmdPrefix, ok := shortCmd[action]
 	if !ok {
 		cmdPrefix = action
 	}

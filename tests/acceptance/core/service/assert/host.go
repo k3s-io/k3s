@@ -22,11 +22,10 @@ func CheckComponentCmdHost(cmd string, asserts ...string) {
 		}
 
 		for _, assert := range asserts {
-			fmt.Printf("Checking assert: %s\n", assert)
 			if !strings.Contains(res, assert) {
 				return fmt.Errorf("expected substring %q not found in result %q", assert, res)
 			}
-			fmt.Printf("Matches with assert: %s", assert)
+			fmt.Printf("Matches with assert: %s \n", assert)
 		}
 		return nil
 	}, "180s", "5s").Should(gomega.Succeed())

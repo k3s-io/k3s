@@ -31,5 +31,5 @@ func TestNodeStatus(
 				nodeAssertVersion(g, node)
 			}
 		}
-	}, "600s", "5s").Should(gomega.Succeed())
+	}, "600s", "3s").Should(gomega.Succeed())
 }

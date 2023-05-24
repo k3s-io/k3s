@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -47,7 +46,7 @@ func RunCommandHost(cmd ...string) (string, error) {
 
 		err = c.Wait()
 		if err != nil {
-			return output.String(), fmt.Errorf("error executing command: %s: %w", cmd, err)
+			return output.String(), fmt.Errorf("executing command: %s: %w", cmd, err)
 		}
 	}
 
@@ -57,16 +56,19 @@ func RunCommandHost(cmd ...string) (string, error) {
 // RunCmdOnNode executes a command from within the given ip node
 func RunCmdOnNode(cmd string, serverIP string) (string, error) {
 	host := serverIP + ":22"
-	conn := configureSSH(host)
+	conn, err := configureSSH(host)
+	if err != nil {
+		return fmt.Errorf("failed to configure SSH: %v", err).Error(), err
+	}
 
 	stdout, stderr, err := runsshCommand(cmd, conn)
 	if err != nil {
-		return fmt.Errorf(
-			"Command: %s \n failed on Node: %s with error: %w",
+		return "", fmt.Errorf(
+			"command: %s \n failed on run ssh : %s with error %w",
 			cmd,
 			serverIP,
 			err,
-		).Error(), nil
+		)
 	}
 
 	stdout = strings.TrimSpace(stdout)
@@ -77,28 +79,13 @@ func RunCmdOnNode(cmd string, serverIP string) (string, error) {
 		!strings.Contains(stderr, "2")) {
 		return stderr, nil
 	} else if stderr != "" {
-		log.Fatalf("Command: %s \n failed with error: %v", cmd, stderr)
+		return fmt.Errorf("\ncommand: %s \n failed with error: %v", cmd, err).Error(), err
 	}
 
 	return stdout, err
 }
 
-// GetK3sVersion returns the k3s version with commit hash
-func GetK3sVersion() string {
-	ips := FetchNodeExternalIP()
-	for _, ip := range ips {
-		res, err := RunCmdOnNode("k3s --version", ip)
-		if err != nil {
-			return err.Error()
-		}
-		return res
-	}
-
-	return ""
-}
-
-// configureSSH configures the SSH connection to the host
-func configureSSH(host string) *ssh.Client {
+func configureSSH(host string) (*ssh.Client, error) {
 	var config *ssh.ClientConfig
 
 	config = &ssh.ClientConfig{
@@ -111,21 +98,53 @@ func configureSSH(host string) *ssh.Client {
 
 	conn, err := ssh.Dial("tcp", host, config)
 	if err != nil {
-		log.Fatalf("Failed to establish SSH connection to host %s: %v", host, err)
+		return nil, fmt.Errorf("failed to establish SSH connection to host %s: %v", host, err)
 	}
 
-	return conn
+	return conn, nil
+}
+
+func runsshCommand(cmd string, conn *ssh.Client) (string, string, error) {
+	session, err := conn.NewSession()
+	if err != nil {
+		return "", "", err
+	}
+	defer session.Close()
+
+	var stdoutBuf bytes.Buffer
+	var stderrBuf bytes.Buffer
+	session.Stdout = &stdoutBuf
+	session.Stderr = &stderrBuf
+
+	errssh := session.Run(cmd)
+	stdoutStr := stdoutBuf.String()
+	stderrStr := stderrBuf.String()
+
+	if errssh != nil {
+		return stdoutStr, stderrStr, fmt.Errorf("on command execution: %v", errssh)
+	}
+
+	return stdoutStr, stderrStr, nil
+}
+
+// GetK3sVersion returns the k3s version with commit hash
+func GetK3sVersion() string {
+	ips := FetchNodeExternalIP()
+	for _, ip := range ips {
+		res, err := RunCmdOnNode("k3s --version", ip)
+		if err != nil {
+			return err.Error()
+		}
+		return res
+	}
+	return ""
 }
 
 // AddHelmRepo adds a helm repo to the cluster.
-func AddHelmRepo(repoName, url string) (string, error) {
-	addRepo := fmt.Sprintf("helm repo add %s %s", repoName, url)
+func AddHelmRepo(name, url string) (string, error) {
+	addRepo := fmt.Sprintf("helm repo add %s %s", name, url)
 	installRepo := fmt.Sprintf(
-		"helm install %s %s/%s -n kube-system",
-		repoName,
-		repoName,
-		repoName,
-	)
+		"helm install %s %s/%s -n kube-system", name, name, name)
 
 	nodeExternalIP := FetchNodeExternalIP()
 	for _, ip := range nodeExternalIP {
@@ -134,7 +153,6 @@ func AddHelmRepo(repoName, url string) (string, error) {
 			return "", err
 		}
 	}
-
 	return RunCommandHost(addRepo, installRepo)
 }
 
@@ -179,27 +197,4 @@ func publicKey(path string) ssh.AuthMethod {
 		panic(err)
 	}
 	return ssh.PublicKeys(signer)
-}
-
-func runsshCommand(cmd string, conn *ssh.Client) (string, string, error) {
-	session, err := conn.NewSession()
-	if err != nil {
-		return "", "", err
-	}
-	defer session.Close()
-
-	var stdoutBuf bytes.Buffer
-	var stderrBuf bytes.Buffer
-	session.Stdout = &stdoutBuf
-	session.Stderr = &stderrBuf
-
-	errssh := session.Run(cmd)
-	stdoutStr := stdoutBuf.String()
-	stderrStr := stderrBuf.String()
-
-	if errssh != nil {
-		return stdoutStr, stderrStr, fmt.Errorf("error on command execution: %v", errssh)
-	}
-
-	return stdoutStr, stderrStr, nil
 }

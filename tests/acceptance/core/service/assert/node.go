@@ -33,7 +33,7 @@ func NodeAssertVersionTypeUpgrade(installType *customflag.InstallTypeValue) Node
 	}
 
 	return func(g gomega.Gomega, node util.Node) {
-		_ = fmt.Errorf("no version or commit specified for upgrade assertion")
+		GinkgoT().Errorf("no version or commit specified for upgrade assertion")
 	}
 }
 

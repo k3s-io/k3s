@@ -27,7 +27,7 @@ func TestLocalPathProvisionerStorage(deployWorkload bool) {
 		util.RunningAssert,
 	)
 	if err != nil {
-		GinkgoT().Errorf("Error: %v", err)
+		GinkgoT().Errorf("%v", err)
 	}
 
 	_, err = util.WriteDataPod(util.VolumeTest)

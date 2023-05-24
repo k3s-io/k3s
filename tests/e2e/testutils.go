@@ -419,7 +419,7 @@ func ParsePods(kubeConfig string, print bool) ([]Pod, error) {
 // RestartCluster restarts the k3s service on each node given
 func RestartCluster(nodeNames []string) error {
 	for _, nodeName := range nodeNames {
-		cmd := "sudo systemctl restart k3s*"
+		cmd := "sudo systemctl restart k3s* --all"
 		if _, err := RunCmdOnNode(cmd, nodeName); err != nil {
 			return err
 		}
@@ -427,10 +427,24 @@ func RestartCluster(nodeNames []string) error {
 	return nil
 }
 
-// RestartCluster restarts the k3s service on each node given
-func RestartClusterAgent(nodeNames []string) error {
+// StartCluster starts the k3s service on each node given
+func StartCluster(nodeNames []string) error {
 	for _, nodeName := range nodeNames {
-		cmd := "sudo systemctl restart k3s-agent"
+		cmd := "sudo systemctl start k3s"
+		if strings.Contains(nodeName, "agent") {
+			cmd += "-agent"
+		}
+		if _, err := RunCmdOnNode(cmd, nodeName); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// StopCluster starts the k3s service on each node given
+func StopCluster(nodeNames []string) error {
+	for _, nodeName := range nodeNames {
+		cmd := "sudo systemctl stop k3s*"
 		if _, err := RunCmdOnNode(cmd, nodeName); err != nil {
 			return err
 		}

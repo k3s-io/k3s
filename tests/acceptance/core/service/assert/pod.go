@@ -11,9 +11,9 @@ import (
 // PodAssertFunc is a function type used to create pod assertions
 type PodAssertFunc func(g gomega.Gomega, pod util.Pod)
 
-// PodAssertRestarts custom assertion func that asserts that pods are not restarting with no reason
+// PodAssertRestart custom assertion func that asserts that pods are not restarting with no reason
 // controller, scheduler, helm-install pods can be restarted occasionally when cluster started if only once
-func PodAssertRestarts() PodAssertFunc {
+func PodAssertRestart() PodAssertFunc {
 	return func(g gomega.Gomega, pod util.Pod) {
 		if strings.Contains(pod.NameSpace, "kube-system") &&
 			strings.Contains(pod.Name, "controller") &&
@@ -70,12 +70,7 @@ func checkReadyFields() gomega.OmegaMatcher {
 func CheckPodStatusRunning(name, assert string) {
 	cmd := "kubectl get pods -l k8s-app=" + name +
 		" --field-selector=status.phase=Running --kubeconfig=" + util.KubeConfigFile
-	gomega.Eventually(func(g gomega.Gomega) {
-		res, err := util.RunCommandHost(cmd)
-		if err != nil {
-			_ = fmt.Errorf("failed to run command %v:\n result: %v \n error: %v", cmd, res, err)
-			return
-		}
-		g.Expect(res).Should(gomega.ContainSubstring(assert))
-	}, "420s", "5s").Should(gomega.Succeed())
+	gomega.Eventually(func(g gomega.Gomega) (string, error) {
+		return util.RunCommandHost(cmd)
+	}, "180s", "5s").Should(gomega.ContainSubstring(assert))
 }

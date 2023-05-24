@@ -27,6 +27,7 @@ func TestMain(m *testing.M) {
 	flag.StringVar(&service.Description, "description", "", "Description of the test")
 	flag.Var(&customflag.TestCase, "testCase", "Test case to run")
 	flag.BoolVar(&customflag.TestCase.DeployWorkload, "deployWorkload", false, "Deploy workload customflag")
+
 	flag.Parse()
 
 	testFunc, err := template.GetTestCase(customflag.TestCase.TestFuncName)

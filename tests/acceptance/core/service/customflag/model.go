@@ -25,7 +25,7 @@ type TestConfigFlag struct {
 	DeployWorkload bool
 }
 
-// TestCaseFlagType is a custom customFlag type that can be used to parse the test case
+// TestCaseFlagType is a customFlag type that can be used to parse the test case
 type TestCaseFlagType func(deployWorkload bool)
 
 // MultiValueFlag is a customFlag type that can be used to parse multiple values

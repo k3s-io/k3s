@@ -14,7 +14,6 @@ import (
 )
 
 func TestMain(m *testing.M) {
-
 	flag.Var(&customflag.InstallType, "installtype", "Upgrade to run with type=value,"+
 		"INSTALL_K3S_VERSION=v1.26.2+k3s1 or INSTALL_K3S_COMMIT=1823dsad7129873192873129asd")
 
