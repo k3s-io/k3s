@@ -615,8 +615,8 @@ EOF
         if [ "${rpm_installer}" = "yum" ] && [ -x /usr/bin/dnf ]; then
             rpm_installer=dnf
         fi
-	    if rpm -q --quiet k3s-selinux && [ "${3}" == "el9" ]; then 
-            # remove k3s-selinux module in el9 before upgrade to allow container-selinux to upgrade safely
+	    if rpm -q --quiet k3s-selinux; then 
+            # remove k3s-selinux module before upgrade to allow container-selinux to upgrade safely
             if check_available_upgrades container-selinux ${3} && check_available_upgrades k3s-selinux ${3}; then
                 MODULE_PRIORITY=$($SUDO semodule --list=full | grep k3s | cut -f1 -d" ")
                 if [ -n "${MODULE_PRIORITY}" ]; then
