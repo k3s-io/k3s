@@ -70,10 +70,10 @@ func StartServer(ctx context.Context, config *Config, cfg *cmds.Server) error {
 	config.ControlConfig.Runtime.StartupHooksWg = wg
 
 	shArgs := cmds.StartupHookArgs{
-		APIServerReady:  config.ControlConfig.Runtime.APIServerReady,
-		KubeConfigAdmin: config.ControlConfig.Runtime.KubeConfigAdmin,
-		Skips:           config.ControlConfig.Skips,
-		Disables:        config.ControlConfig.Disables,
+		APIServerReady:       config.ControlConfig.Runtime.APIServerReady,
+		KubeConfigSupervisor: config.ControlConfig.Runtime.KubeConfigSupervisor,
+		Skips:                config.ControlConfig.Skips,
+		Disables:             config.ControlConfig.Disables,
 	}
 	for _, hook := range config.StartupHooks {
 		if err := hook(ctx, wg, shArgs); err != nil {
@@ -104,7 +104,7 @@ func startOnAPIServerReady(ctx context.Context, config *Config) {
 func runControllers(ctx context.Context, config *Config) error {
 	controlConfig := &config.ControlConfig
 
-	sc, err := NewContext(ctx, controlConfig.Runtime.KubeConfigAdmin)
+	sc, err := NewContext(ctx, controlConfig.Runtime.KubeConfigSupervisor)
 	if err != nil {
 		return errors.Wrap(err, "failed to create new server context")
 	}
@@ -212,7 +212,7 @@ func coreControllers(ctx context.Context, sc *Context, config *Config) error {
 	}
 
 	if !config.ControlConfig.DisableHelmController {
-		restConfig, err := clientcmd.BuildConfigFromFlags("", config.ControlConfig.Runtime.KubeConfigAdmin)
+		restConfig, err := clientcmd.BuildConfigFromFlags("", config.ControlConfig.Runtime.KubeConfigSupervisor)
 		if err != nil {
 			return err
 		}
@@ -293,7 +293,7 @@ func stageFiles(ctx context.Context, sc *Context, controlConfig *config.Control)
 		return err
 	}
 
-	restConfig, err := clientcmd.BuildConfigFromFlags("", controlConfig.Runtime.KubeConfigAdmin)
+	restConfig, err := clientcmd.BuildConfigFromFlags("", controlConfig.Runtime.KubeConfigSupervisor)
 	if err != nil {
 		return err
 	}
