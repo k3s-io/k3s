@@ -119,6 +119,7 @@ func CreateRuntimeCertFiles(config *config.Control) {
 	runtime.ServiceCurrentKey = filepath.Join(config.DataDir, "tls", "service.current.key")
 
 	runtime.KubeConfigAdmin = filepath.Join(config.DataDir, "cred", "admin.kubeconfig")
+	runtime.KubeConfigSupervisor = filepath.Join(config.DataDir, "cred", "supervisor.kubeconfig")
 	runtime.KubeConfigController = filepath.Join(config.DataDir, "cred", "controller.kubeconfig")
 	runtime.KubeConfigScheduler = filepath.Join(config.DataDir, "cred", "scheduler.kubeconfig")
 	runtime.KubeConfigAPIServer = filepath.Join(config.DataDir, "cred", "api-server.kubeconfig")
@@ -126,6 +127,8 @@ func CreateRuntimeCertFiles(config *config.Control) {
 
 	runtime.ClientAdminCert = filepath.Join(config.DataDir, "tls", "client-admin.crt")
 	runtime.ClientAdminKey = filepath.Join(config.DataDir, "tls", "client-admin.key")
+	runtime.ClientSupervisorCert = filepath.Join(config.DataDir, "tls", "client-supervisor.crt")
+	runtime.ClientSupervisorKey = filepath.Join(config.DataDir, "tls", "client-supervisor.key")
 	runtime.ClientControllerCert = filepath.Join(config.DataDir, "tls", "client-controller.crt")
 	runtime.ClientControllerKey = filepath.Join(config.DataDir, "tls", "client-controller.key")
 	runtime.ClientCloudControllerCert = filepath.Join(config.DataDir, "tls", "client-"+version.Program+"-cloud-controller.crt")
@@ -347,6 +350,16 @@ func genClientCerts(config *config.Control) error {
 	}
 	if certGen {
 		if err := KubeConfig(runtime.KubeConfigAdmin, apiEndpoint, runtime.ServerCA, runtime.ClientAdminCert, runtime.ClientAdminKey); err != nil {
+			return err
+		}
+	}
+
+	certGen, err = factory("system:"+version.Program+"-supervisor", []string{user.SystemPrivilegedGroup}, runtime.ClientSupervisorCert, runtime.ClientSupervisorKey)
+	if err != nil {
+		return err
+	}
+	if certGen {
+		if err := KubeConfig(runtime.KubeConfigSupervisor, apiEndpoint, runtime.ServerCA, runtime.ClientSupervisorCert, runtime.ClientSupervisorKey); err != nil {
 			return err
 		}
 	}
