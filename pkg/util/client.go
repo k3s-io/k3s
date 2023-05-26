@@ -1,9 +1,15 @@
 package util
 
 import (
+	"fmt"
+	"os"
+	"runtime"
 	"strings"
 
 	"github.com/k3s-io/k3s/pkg/datadir"
+	"github.com/k3s-io/k3s/pkg/version"
+	"github.com/sirupsen/logrus"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/validation"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -28,6 +34,17 @@ func GetClientSet(file string) (clientset.Interface, error) {
 	}
 
 	return clientset.NewForConfig(restConfig)
+}
+
+// GetUserAgent builds a complete UserAgent string for a given controller, including the node name if possible.
+func GetUserAgent(controllerName string) string {
+	nodeName := os.Getenv("NODE_NAME")
+	managerName := controllerName + "@" + nodeName
+	if nodeName == "" || len(managerName) > validation.FieldManagerMaxLength {
+		logrus.Warnf("%s controller node name is empty or too long, and will not be tracked via server side apply field management", controllerName)
+		managerName = controllerName
+	}
+	return fmt.Sprintf("%s/%s (%s/%s) %s/%s", managerName, version.Version, runtime.GOOS, runtime.GOARCH, version.Program, version.GitCommit)
 }
 
 // SplitStringSlice is a helper function to handle StringSliceFlag containing multiple values
