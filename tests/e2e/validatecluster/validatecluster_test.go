@@ -342,17 +342,17 @@ var _ = Describe("Verify Create", Ordered, func() {
 		})
 		It("Validates certificates", func() {
 			const grepCert = "sudo ls -lt /var/lib/rancher/k3s/server/ | grep tls"
-			var expectResult = []string{"client-ca.crt",
-				"client-ca.key",
-				"client-ca.nochain.crt",
+			var expectResult = []string{
+				"client-ca.crt", "client-ca.key", "client-ca.nochain.crt",
+				"client-supervisor.crt", "client-supervisor.key",
 				"dynamic-cert.json", "peer-ca.crt",
 				"peer-ca.key", "server-ca.crt",
 				"server-ca.key", "request-header-ca.crt",
 				"request-header-ca.key", "server-ca.crt",
 				"server-ca.key", "server-ca.nochain.crt",
 				"service.current.key", "service.key",
-				"apiserver-loopback-client__.crt",
-				"apiserver-loopback-client__.key", "",
+				"apiserver-loopback-client__.crt", "apiserver-loopback-client__.key",
+				"",
 			}
 
 			var finalResult string
