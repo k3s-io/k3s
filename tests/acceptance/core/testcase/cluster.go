@@ -8,7 +8,7 @@ import (
 	"github.com/k3s-io/k3s/tests/acceptance/shared/util"
 
 	. "github.com/onsi/ginkgo/v2"
-	"github.com/onsi/gomega"
+	. "github.com/onsi/gomega"
 )
 
 func TestBuildCluster(g GinkgoTInterface, destroy bool) {
@@ -16,7 +16,7 @@ func TestBuildCluster(g GinkgoTInterface, destroy bool) {
 	if err != nil {
 		return
 	}
-	gomega.Expect(status).To(gomega.Equal("cluster created"))
+	Expect(status).To(Equal("cluster created"))
 
 	if strings.Contains(util.ClusterType, "etcd") {
 		fmt.Println("Backend:", util.ClusterType)
@@ -28,21 +28,21 @@ func TestBuildCluster(g GinkgoTInterface, destroy bool) {
 		for i := 0; i > len(util.ServerIPs); i++ {
 			cmd := "grep \"datastore-endpoint\" /etc/systemd/system/k3s.service"
 			res, err := util.RunCmdOnNode(cmd, string(util.ServerIPs[0]))
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-			gomega.Expect(res).Should(gomega.ContainSubstring(util.RenderedTemplate))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(res).Should(ContainSubstring(util.RenderedTemplate))
 		}
 	}
 
 	util.PrintFileContents(util.KubeConfigFile)
-	gomega.Expect(util.KubeConfigFile).ShouldNot(gomega.BeEmpty())
-	gomega.Expect(util.ServerIPs).ShouldNot(gomega.BeEmpty())
+	Expect(util.KubeConfigFile).ShouldNot(BeEmpty())
+	Expect(util.ServerIPs).ShouldNot(BeEmpty())
 
 	fmt.Println("Server Node IPS:", util.ServerIPs)
 	fmt.Println("Agent Node IPS:", util.AgentIPs)
 
 	if util.NumAgents > 0 {
-		gomega.Expect(util.AgentIPs).ShouldNot(gomega.BeEmpty())
+		Expect(util.AgentIPs).ShouldNot(BeEmpty())
 	} else {
-		gomega.Expect(util.AgentIPs).Should(gomega.BeEmpty())
+		Expect(util.AgentIPs).Should(BeEmpty())
 	}
 }

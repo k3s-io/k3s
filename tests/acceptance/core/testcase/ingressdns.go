@@ -5,44 +5,48 @@ import (
 	"github.com/k3s-io/k3s/tests/acceptance/shared/util"
 
 	. "github.com/onsi/ginkgo/v2"
-	"github.com/onsi/gomega"
+	. "github.com/onsi/gomega"
 )
 
 func TestIngress(deployWorkload bool) {
 	if deployWorkload {
 		_, err := util.ManageWorkload("create", "ingress.yaml", *util.Arch)
-		gomega.Expect(err).NotTo(gomega.HaveOccurred(),
+		Expect(err).NotTo(HaveOccurred(),
 			"Ingress manifest not deployed")
 	}
 
-	err := assert.ValidateOnHost(util.GetIngressRunning+util.KubeConfigFile, util.RunningAssert)
+	getIngressRunning := "kubectl get pods  -l k8s-app=nginx-app-ingress" +
+		" --field-selector=status.phase=Running  --kubeconfig="
+	err := assert.ValidateOnHost(getIngressRunning+util.KubeConfigFile, util.Running)
 	if err != nil {
 		GinkgoT().Errorf("%v", err)
 	}
 
 	ingressIps, err := util.FetchIngressIP()
-	gomega.Expect(err).NotTo(gomega.HaveOccurred(), "Ingress ip is not returned")
+	Expect(err).NotTo(HaveOccurred(), "Ingress ip is not returned")
 
 	for _, ip := range ingressIps {
 		assert.CheckComponentCmdNode("curl -s --header host:foo1.bar.com"+
-			" http://"+ip+"/name.html", util.TestIngress, ip)
+			" http://"+ip+"/name.html", "test-ingress", ip)
 	}
 }
 
 func TestDnsAccess(deployWorkload bool) {
 	if deployWorkload {
 		_, err := util.ManageWorkload("create", "dnsutils.yaml", *util.Arch)
-		gomega.Expect(err).NotTo(gomega.HaveOccurred(),
+		Expect(err).NotTo(HaveOccurred(),
 			"dnsutils manifest not deployed")
 	}
 
-	err := assert.ValidateOnHost(util.GetPodDnsUtils+util.KubeConfigFile, util.RunningAssert)
+	getPodDnsUtils := "kubectl get pods dnsutils --kubeconfig="
+	err := assert.ValidateOnHost(getPodDnsUtils+util.KubeConfigFile, util.Running)
 	if err != nil {
 		GinkgoT().Errorf("%v", err)
 	}
 
+	execDnsUtils := "kubectl exec -t dnsutils --kubeconfig="
 	assert.CheckComponentCmdHost(
-		util.ExecDnsUtils+util.KubeConfigFile+" -- nslookup kubernetes.default",
-		util.Nslookup,
+		execDnsUtils+util.KubeConfigFile+" -- nslookup kubernetes.default",
+		"kubernetes.default.svc.cluster.local",
 	)
 }

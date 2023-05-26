@@ -6,28 +6,28 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 )
 
-func VersionTemplate(g GinkgoTInterface, test VersionTestTemplate) {
-	err := checkVersion(g, test)
+func VersionTemplate(test VersionTestTemplate) {
+	err := checkVersion(test)
 	if err != nil {
-		GinkgoT().Fatalf(err.Error())
+		GinkgoT().Errorf(err.Error())
 		return
 	}
 
 	for _, version := range test.InstallUpgrade {
-		if g.Failed() {
-			fmt.Println("CheckVersion failed, not proceeding to upgrade")
+		if GinkgoT().Failed() {
+			fmt.Println("checkVersion failed, not proceeding to upgrade")
 			return
 		}
 
 		err = upgradeVersion(test, version)
 		if err != nil {
-			GinkgoT().Fatalf("Error upgrading: %v\n", err)
+			GinkgoT().Errorf("error upgrading: %v\n", err)
 			return
 		}
 
-		err = checkVersion(g, test)
+		err = checkVersion(test)
 		if err != nil {
-			GinkgoT().Fatalf(err.Error())
+			GinkgoT().Errorf(err.Error())
 			return
 		}
 

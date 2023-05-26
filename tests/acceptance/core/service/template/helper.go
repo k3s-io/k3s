@@ -32,7 +32,7 @@ func upgradeVersion(template VersionTestTemplate, version string) error {
 }
 
 // checkVersion checks the version of k3s and processes tests
-func checkVersion(g GinkgoTInterface, v VersionTestTemplate) error {
+func checkVersion(v VersionTestTemplate) error {
 	ips, err := getIPs()
 	if err != nil {
 		GinkgoT().Errorf("Failed to get IPs: %s", err)
@@ -44,7 +44,7 @@ func checkVersion(g GinkgoTInterface, v VersionTestTemplate) error {
 		len(ips)*(len(v.TestCombination.RunOnHost)+len(v.TestCombination.RunOnNode)),
 	)
 
-	processTestCombination(&wg, errorChanList, ips, *v.TestCombination)
+	processTestCombination(errorChanList, ips, *v.TestCombination)
 
 	wg.Wait()
 	close(errorChanList)
@@ -62,7 +62,7 @@ func checkVersion(g GinkgoTInterface, v VersionTestTemplate) error {
 	return nil
 }
 
-// joinCommands joins the first command with some arg
+// joinCommands joins the first command with some argument
 func joinCommands(cmd, arg string) string {
 	cmds := strings.Split(cmd, ",")
 	firstCmd := cmds[0] + arg

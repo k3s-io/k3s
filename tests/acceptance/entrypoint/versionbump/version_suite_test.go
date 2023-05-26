@@ -6,7 +6,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/k3s-io/k3s/tests/acceptance/core/service"
 	"github.com/k3s-io/k3s/tests/acceptance/core/service/customflag"
 	"github.com/k3s-io/k3s/tests/acceptance/core/service/factory"
 	"github.com/k3s-io/k3s/tests/acceptance/core/service/template"
@@ -17,14 +16,14 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	flag.StringVar(&service.CmdHost, "cmdHost", "", "Comma separated list of commands to execute on host")
-	flag.StringVar(&service.ExpectedValueHost, "expectedValueHost", "", "Comma separated list of expected values for host commands")
-	flag.StringVar(&service.CmdNode, "cmdNode", "", "Comma separated list of commands to execute on node")
-	flag.StringVar(&service.ExpectedValueNode, "expectedValueNode", "", "Comma separated list of expected values for node commands")
-	flag.StringVar(&service.ExpectedValueUpgradedHost, "expectedValueUpgradedHost", "", "Expected value of the command ran on Host after upgrading")
-	flag.StringVar(&service.ExpectedValueUpgradedNode, "expectedValueUpgradedNode", "", "Expected value of the command ran on Node after upgrading")
+	flag.StringVar(&CmdHost, "cmdHost", "", "Comma separated list of commands to execute on host")
+	flag.StringVar(&ExpectedValueHost, "expectedValueHost", "", "Comma separated list of expected values for host commands")
+	flag.StringVar(&CmdNode, "cmdNode", "", "Comma separated list of commands to execute on node")
+	flag.StringVar(&ExpectedValueNode, "expectedValueNode", "", "Comma separated list of expected values for node commands")
+	flag.StringVar(&ExpectedValueUpgradedHost, "expectedValueUpgradedHost", "", "Expected value of the command ran on Host after upgrading")
+	flag.StringVar(&ExpectedValueUpgradedNode, "expectedValueUpgradedNode", "", "Expected value of the command ran on Node after upgrading")
 	flag.Var(&customflag.InstallUpgradeFlag, "installUpgradeFlag", "Install upgrade customflag")
-	flag.StringVar(&service.Description, "description", "", "Description of the test")
+	flag.StringVar(&Description, "description", "", "Description of the test")
 	flag.Var(&customflag.TestCase, "testCase", "Test case to run")
 	flag.BoolVar(&customflag.TestCase.DeployWorkload, "deployWorkload", false, "Deploy workload customflag")
 
@@ -33,7 +32,7 @@ func TestMain(m *testing.M) {
 	testFunc, err := template.GetTestCase(customflag.TestCase.TestFuncName)
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
-		os.Exit(1)
+		return
 	}
 
 	if testFunc != nil {

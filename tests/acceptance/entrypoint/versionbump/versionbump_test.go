@@ -5,7 +5,6 @@ package versionbump
 import (
 	"fmt"
 
-	"github.com/k3s-io/k3s/tests/acceptance/core/service"
 	"github.com/k3s-io/k3s/tests/acceptance/core/service/assert"
 	"github.com/k3s-io/k3s/tests/acceptance/core/service/customflag"
 	"github.com/k3s-io/k3s/tests/acceptance/core/service/template"
@@ -35,21 +34,21 @@ var _ = Describe("VersionTemplate Upgrade:", func() {
 	})
 
 	It("Verifies bump version", func() {
-		template.VersionTemplate(GinkgoT(), template.VersionTestTemplate{
-			Description: service.Description,
+		template.VersionTemplate(template.VersionTestTemplate{
+			Description: Description,
 			TestCombination: &template.RunCmd{
 				RunOnNode: []template.TestMap{
 					{
-						Cmd:                  service.CmdNode,
-						ExpectedValue:        service.ExpectedValueNode,
-						ExpectedValueUpgrade: service.ExpectedValueUpgradedNode,
+						Cmd:                  CmdNode,
+						ExpectedValue:        ExpectedValueNode,
+						ExpectedValueUpgrade: ExpectedValueUpgradedNode,
 					},
 				},
 				RunOnHost: []template.TestMap{
 					{
-						Cmd:                  service.CmdHost,
-						ExpectedValue:        service.ExpectedValueHost,
-						ExpectedValueUpgrade: service.ExpectedValueUpgradedHost,
+						Cmd:                  CmdHost,
+						ExpectedValue:        ExpectedValueHost,
+						ExpectedValueUpgrade: ExpectedValueUpgradedHost,
 					},
 				},
 			},

@@ -128,7 +128,7 @@ Available arguments to create your command with examples:
 - $ -description "Description of your test"
 ````
 
-Example of a whole command considering that the commands are already placed or inside your test function or the *template itself (example bellow the command):
+Example of an execution considering that the `commands` are already placed or inside your test function or the *template itself (example bellow the command):
 ```bash
  go test -v -timeout=45m -tags=localpath ./entrypoint/versionbump/... \                     
   -expectedValueHost "v0.0.21"  \       
@@ -231,6 +231,13 @@ template.VersionTemplate(GinkgoT(), template.VersionTestTemplate{
 
 - Before running the tests, you should creat local.tfvars file in `./tests/acceptance/modules/k3scluster/config/local.tfvars`. There is some information there to get you started, but the empty variables should be filled in appropriately per your AWS environment.
 
+- Please make sure to export your correct AWS credentials before running the tests. e.g:
+```bash
+export AWS_ACCESS_KEY_ID=<YOUR_AWS_ACCESS_KEY_ID>
+export AWS_SECRET_ACCESS_KEY=<YOUR_AWS_SECRET_ACCESS_KEY>
+```
+
+- The local.tfvars split roles section should be strictly followed to not cause any false positives or negatives on tests
 
 - For running tests with "etcd" cluster type, you should add the value "etcd" to the variable "cluster_type" , also you need have those variables at least empty:
 ```

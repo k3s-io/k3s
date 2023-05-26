@@ -8,11 +8,9 @@ import (
 	"github.com/k3s-io/k3s/tests/acceptance/shared/util"
 )
 
-// validate runs a command on host or node and asserts that the value received against his respective command
+// validate calls runAssertion for each cmd/assert pair
 //
-// the first caller - process tests will spawn a go routine per ip the cluster
-//
-// need to send KubeconfigFile
+// the first caller - process tests will spawn a go routine per ip in the cluster
 func validate(exec func(string) (string, error), args ...string) error {
 	if len(args) < 2 || len(args)%2 != 0 {
 		return fmt.Errorf("must receive an even number of arguments as cmd/assert pairs")
@@ -28,31 +26,10 @@ func validate(exec func(string) (string, error), args ...string) error {
 			assert := args[i+1]
 			i++
 
-			for {
-				select {
-				case <-timeout:
-					timeoutErr := fmt.Errorf("timeout reached for command:\n%s\n "+
-						"Trying to assert with:\n %s",
-						cmd, assert)
-					errorsChan <- timeoutErr
-					close(errorsChan)
-					return timeoutErr
-
-				case <-ticker.C:
-					res, err := exec(cmd)
-					if err != nil {
-						errorsChan <- fmt.Errorf("from runCmd\n %s\n %s", res, err)
-						close(errorsChan)
-						return err
-					}
-
-					fmt.Printf("\nCMD: %s\nRESULT: %s\nAssertion: %s\n", cmd, res, assert)
-					if strings.Contains(res, assert) {
-						fmt.Printf("Matched with: \n%s\n", res)
-						errorsChan <- nil
-						return nil
-					}
-				}
+			err := runAssertion(cmd, assert, exec, ticker.C, timeout, errorsChan)
+			if err != nil {
+				close(errorsChan)
+				return err
 			}
 		}
 	}
@@ -61,7 +38,43 @@ func validate(exec func(string) (string, error), args ...string) error {
 	return nil
 }
 
-// ValidateOnHost runs an exec function on RunCommandHost and asserts that the value received
+// runAssertion runs a command and asserts that the value received against his respective command
+func runAssertion(
+	cmd, assert string,
+	exec func(string) (string, error),
+	ticker <-chan time.Time,
+	timeout <-chan time.Time,
+	errorsChan chan<- error,
+) error {
+	for {
+		select {
+		case <-timeout:
+			timeoutErr := fmt.Errorf("timeout reached for command:\n%s\n "+
+				"Trying to assert with:\n %s",
+				cmd, assert)
+			errorsChan <- timeoutErr
+			return timeoutErr
+
+		case <-ticker:
+			res, err := exec(cmd)
+			if err != nil {
+				errorsChan <- err
+				return fmt.Errorf("from runCmd:\n %s\n %s", res, err)
+			}
+
+			fmt.Printf("\nCMD: %s\n\nRESULT: \n%s\nAssertion: \n%s\n\n", cmd, res, assert)
+			if strings.Contains(res, assert) {
+				fmt.Printf("Matched with: \n%s\n", res)
+				errorsChan <- nil
+				return nil
+			}
+		}
+	}
+}
+
+// ValidateOnHost runs an exec function on RunCommandHost and assert given is fulfilled.
+// The last argument should be the assertion.
+// Need to send kubeconfig file.
 func ValidateOnHost(args ...string) error {
 	exec := func(cmd string) (string, error) {
 		return util.RunCommandHost(cmd)
@@ -69,7 +82,8 @@ func ValidateOnHost(args ...string) error {
 	return validate(exec, args...)
 }
 
-// ValidateOnNode runs an exec function on RunCommandOnNode and asserts that the value received
+// ValidateOnNode runs an exec function on RunCommandHost and assert given is fulfilled.
+// The last argument should be the assertion.
 func ValidateOnNode(ip string, args ...string) error {
 	exec := func(cmd string) (string, error) {
 		return util.RunCmdOnNode(cmd, ip)

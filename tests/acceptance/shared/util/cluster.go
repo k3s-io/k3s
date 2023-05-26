@@ -5,9 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
-	"github.com/onsi/gomega"
+	. "github.com/onsi/gomega"
 )
 
 type Node struct {
@@ -143,17 +142,17 @@ func deleteWorkload(workload, filename string) (string, error) {
 	fmt.Println("\nRemoving", workload)
 	cmd := "kubectl delete -f " + filename + " --kubeconfig=" + KubeConfigFile
 
-	gomega.Eventually(func(g gomega.Gomega) {
-		isDeleted, err := IsWorkloadDeleted(workload)
-		g.Expect(err).To(gomega.BeNil())
-		g.Expect(isDeleted).To(gomega.BeTrue(),
+	Eventually(func(g Gomega) {
+		isDeleted, err := isWorkloadDeleted(workload)
+		g.Expect(err).To(BeNil())
+		g.Expect(isDeleted).To(BeTrue(),
 			"Workload should be deleted")
-	}, "120s", "5s").Should(gomega.Succeed())
+	}, "120s", "5s").Should(Succeed())
 
 	return RunCommandHost(cmd)
 }
 
-func IsWorkloadDeleted(workload string) (bool, error) {
+func isWorkloadDeleted(workload string) (bool, error) {
 	res, err := RunCommandHost(GetAll + KubeConfigFile)
 	if err != nil {
 		return false, err
@@ -171,8 +170,6 @@ func FetchClusterIP(serviceName string) (string, error) {
 
 // FetchNodeExternalIP returns the external IP of the node
 func FetchNodeExternalIP() []string {
-	time.Sleep(10 * time.Second)
-
 	res, _ := RunCommandHost(GetExternalNodeIp + KubeConfigFile)
 	nodeExternalIP := strings.Trim(res, " ")
 	nodeExternalIPs := strings.Split(nodeExternalIP, " ")
@@ -182,7 +179,9 @@ func FetchNodeExternalIP() []string {
 
 // FetchIngressIP returns the ingress IP
 func FetchIngressIP() ([]string, error) {
-	res, err := RunCommandHost(GetIngress + KubeConfigFile)
+	getIngress := "kubectl get ingress -o jsonpath='{.items[0].status.loadBalancer.ingress[*].ip}' " +
+		"--kubeconfig="
+	res, err := RunCommandHost(getIngress + KubeConfigFile)
 	if err != nil {
 		return nil, err
 	}
@@ -218,7 +217,7 @@ func WriteDataPod(name string) (string, error) {
 		"pods",
 		"-l app="+name+" -o jsonpath={.items[0].metadata.name}",
 	)
-	gomega.Expect(err).NotTo(gomega.HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	cmd := "kubectl exec " + podName + " --kubeconfig=" + KubeConfigFile +
 		" -- sh -c 'echo testing local path > /data/test' "
@@ -286,12 +285,12 @@ func FetchServiceNodePort(serviceName string) (string, error) {
 	cmd := "kubectl get service " + serviceName + " --kubeconfig=" + KubeConfigFile +
 		" --output jsonpath=\"{.spec.ports[0].nodePort}\""
 	nodeport, err := RunCommandHost(cmd)
-	gomega.Expect(err).NotTo(gomega.HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	return nodeport, nil
 }
 
 // RestartCluster restarts the k3s service on each node given by external IP.
 func RestartCluster(ip string) (string, error) {
-	return RunCmdOnNode(RestartK3s, ip)
+	return RunCmdOnNode("sudo systemctl restart k3s*", ip)
 }

@@ -7,16 +7,17 @@ import (
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/k3s-io/k3s/tests/acceptance/shared/util"
+
 	. "github.com/onsi/ginkgo/v2"
 )
 
 func BuildCluster(g GinkgoTInterface, destroy bool) (string, error) {
 	basepath := util.GetBasepath()
-	tfDir, err := filepath.Abs(basepath + util.ModulesPath)
+	tfDir, err := filepath.Abs(basepath + "/modules/k3scluster")
 	if err != nil {
 		return "", err
 	}
-	varDir, err := filepath.Abs(basepath + util.TfVarsPath)
+	varDir, err := filepath.Abs(basepath + "/modules/k3scluster/config/local.tfvars")
 	if err != nil {
 		return "", err
 	}

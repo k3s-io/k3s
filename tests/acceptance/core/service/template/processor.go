@@ -6,11 +6,14 @@ import (
 
 	"github.com/k3s-io/k3s/tests/acceptance/core/service/assert"
 	"github.com/k3s-io/k3s/tests/acceptance/shared/util"
+
 	. "github.com/onsi/ginkgo/v2"
 )
 
-// processTestCombination runs the tests per ips using CmdOnNode and CmdOnHost validation
-func processTestCombination(wg *sync.WaitGroup, resultChan chan error, ips []string, testCombination RunCmd) {
+// processTestCombination run tests using CmdOnNode and CmdOnHost validation and spawn a go routine per ip.
+func processTestCombination(resultChan chan error, ips []string, testCombination RunCmd) {
+	var wg sync.WaitGroup
+
 	for _, ip := range ips {
 		if testCombination.RunOnHost != nil {
 			for _, test := range testCombination.RunOnHost {
@@ -40,7 +43,7 @@ func processTestCombination(wg *sync.WaitGroup, resultChan chan error, ips []str
 func processOnNode(resultChan chan error, ip, cmd, expectedValue string) {
 	if expectedValue == "" {
 		err := fmt.Errorf("\nexpected value should be sent")
-		fmt.Println("Error:", err)
+		fmt.Println("error:", err)
 		resultChan <- err
 		close(resultChan)
 		return
@@ -56,7 +59,7 @@ func processOnNode(resultChan chan error, ip, cmd, expectedValue string) {
 		expectedValue,
 	)
 	if err != nil {
-		fmt.Println("Error:", err)
+		fmt.Println("error:", err)
 		resultChan <- err
 		close(resultChan)
 		return
@@ -67,7 +70,7 @@ func processOnNode(resultChan chan error, ip, cmd, expectedValue string) {
 func processOnHost(resultChan chan error, ip, cmd, expectedValue string) {
 	if expectedValue == "" {
 		err := fmt.Errorf("\nexpected value should be sent")
-		fmt.Println("Error:", err)
+		fmt.Println("error:", err)
 		resultChan <- err
 		close(resultChan)
 		return
@@ -85,7 +88,7 @@ func processOnHost(resultChan chan error, ip, cmd, expectedValue string) {
 		expectedValue,
 	)
 	if err != nil {
-		fmt.Println("Error:", err)
+		fmt.Println("error:", err)
 		resultChan <- err
 		close(resultChan)
 		return

@@ -6,7 +6,7 @@ import (
 	"github.com/k3s-io/k3s/tests/acceptance/core/service/assert"
 	"github.com/k3s-io/k3s/tests/acceptance/shared/util"
 
-	"github.com/onsi/gomega"
+	. "github.com/onsi/gomega"
 )
 
 // TestNodeStatus test the status of the nodes in the cluster using 2 custom assert functions
@@ -14,13 +14,13 @@ func TestNodeStatus(
 	nodeAssertReadyStatus assert.NodeAssertFunc,
 	nodeAssertVersion assert.NodeAssertFunc,
 ) {
-	fmt.Printf("\nFetching node status\n")
+	fmt.Println("\nFetching pod status")
 
 	expectedNodeCount := util.NumServers + util.NumAgents
-	gomega.Eventually(func(g gomega.Gomega) {
+	Eventually(func(g Gomega) {
 		nodes, err := util.ParseNodes(false)
-		g.Expect(err).NotTo(gomega.HaveOccurred())
-		g.Expect(len(nodes)).To(gomega.Equal(expectedNodeCount),
+		g.Expect(err).NotTo(HaveOccurred())
+		g.Expect(len(nodes)).To(Equal(expectedNodeCount),
 			"Number of nodes should match the spec")
 
 		for _, node := range nodes {
@@ -31,5 +31,5 @@ func TestNodeStatus(
 				nodeAssertVersion(g, node)
 			}
 		}
-	}, "600s", "3s").Should(gomega.Succeed())
+	}, "600s", "3s").Should(Succeed())
 }

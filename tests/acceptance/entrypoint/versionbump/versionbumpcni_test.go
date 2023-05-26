@@ -5,7 +5,6 @@ package versionbump
 import (
 	"fmt"
 
-	"github.com/k3s-io/k3s/tests/acceptance/core/service"
 	"github.com/k3s-io/k3s/tests/acceptance/core/service/assert"
 	"github.com/k3s-io/k3s/tests/acceptance/core/service/customflag"
 	"github.com/k3s-io/k3s/tests/acceptance/core/service/template"
@@ -45,26 +44,26 @@ var _ = Describe("VersionTemplate Upgrade:", func() {
 	})
 
 	It("Verifies bump version", func() {
-		template.VersionTemplate(GinkgoT(), template.VersionTestTemplate{
+		template.VersionTemplate(template.VersionTestTemplate{
 			Description: "CNI Plugin Version Bump",
 			TestCombination: &template.RunCmd{
 				RunOnNode: []template.TestMap{
 					{
-						Cmd:                  util.CNIbin,
-						ExpectedValue:        service.ExpectedValueNode,
-						ExpectedValueUpgrade: service.ExpectedValueUpgradedNode,
+						Cmd:                  CNIbin,
+						ExpectedValue:        ExpectedValueNode,
+						ExpectedValueUpgrade: ExpectedValueUpgradedNode,
 					},
 					{
-						Cmd:                  util.FlannelBinVersion,
-						ExpectedValue:        service.ExpectedValueNode,
-						ExpectedValueUpgrade: service.ExpectedValueUpgradedHost,
+						Cmd:                  FlannelBinVersion,
+						ExpectedValue:        ExpectedValueNode,
+						ExpectedValueUpgrade: ExpectedValueUpgradedHost,
 					},
 				},
 				RunOnHost: []template.TestMap{
 					{
-						Cmd:                  util.GetPodTestWithAnnotations + "," + util.GrepAnnotations,
-						ExpectedValue:        service.ExpectedValueHost,
-						ExpectedValueUpgrade: service.ExpectedValueUpgradedHost,
+						Cmd:                  GetPodTestWithAnnotations + "," + GrepAnnotations,
+						ExpectedValue:        ExpectedValueHost,
+						ExpectedValueUpgrade: ExpectedValueUpgradedHost,
 					},
 				},
 			},

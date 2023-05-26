@@ -7,8 +7,8 @@ import (
 	"github.com/k3s-io/k3s/tests/acceptance/core/service/customflag"
 	"github.com/k3s-io/k3s/tests/acceptance/core/testcase"
 	"github.com/k3s-io/k3s/tests/acceptance/shared/util"
-
 	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Test:", func() {
@@ -64,7 +64,8 @@ var _ = Describe("Test:", func() {
 	})
 
 	It("Upgrade Manual", func() {
-		_ = testcase.TestUpgradeClusterManually(customflag.InstallType.String())
+		err := testcase.TestUpgradeClusterManually(customflag.InstallType.String())
+		Expect(err).NotTo(HaveOccurred())
 	})
 
 	It("Checks Node Status pos upgrade and validate version", func() {

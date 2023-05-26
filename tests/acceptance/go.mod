@@ -3,7 +3,6 @@ module github.com/k3s-io/k3s/tests/acceptance
 go 1.19
 
 require (
-	github.com/google/martian v2.1.0+incompatible
 	github.com/gruntwork-io/terratest v0.41.15
 	github.com/onsi/ginkgo/v2 v2.9.4
 	github.com/onsi/gomega v1.27.6

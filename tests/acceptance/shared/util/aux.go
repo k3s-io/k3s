@@ -50,6 +50,17 @@ func RunCommandHost(cmd ...string) (string, error) {
 		}
 	}
 
+	// var output, errOut bytes.Buffer
+	// c.Stdout = &output
+	// c.Stderr = &errOut
+	// err := c.Run()
+	// if err != nil {
+	// 	return "", err
+	// }
+	// if eerOut.Len() > 0 {
+	// 	return output.String(), fmt.Errorf("error executing command: %s: %s", cmd, errOut.String())
+	// }
+
 	return output.String(), nil
 }
 
@@ -127,7 +138,7 @@ func runsshCommand(cmd string, conn *ssh.Client) (string, string, error) {
 	return stdoutStr, stderrStr, nil
 }
 
-// GetK3sVersion returns the k3s version with commit hash
+// GetK3sVersion returns the k3s version
 func GetK3sVersion() string {
 	ips := FetchNodeExternalIP()
 	for _, ip := range ips {
@@ -142,6 +153,7 @@ func GetK3sVersion() string {
 
 // AddHelmRepo adds a helm repo to the cluster.
 func AddHelmRepo(name, url string) (string, error) {
+	InstallHelm := "curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash"
 	addRepo := fmt.Sprintf("helm repo add %s %s", name, url)
 	installRepo := fmt.Sprintf(
 		"helm install %s %s/%s -n kube-system", name, name, name)
@@ -164,7 +176,6 @@ func CountOfStringInSlice(str string, pods []Pod) int {
 			count++
 		}
 	}
-
 	return count
 }
 
@@ -177,7 +188,6 @@ func PrintFileContents(f ...string) error {
 		}
 		fmt.Println(string(content) + "\n")
 	}
-
 	return nil
 }
 

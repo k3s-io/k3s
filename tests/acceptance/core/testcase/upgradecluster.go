@@ -8,6 +8,7 @@ import (
 
 	"github.com/k3s-io/k3s/tests/acceptance/core/service/customflag"
 	"github.com/k3s-io/k3s/tests/acceptance/shared/util"
+
 	. "github.com/onsi/ginkgo/v2"
 )
 
@@ -52,7 +53,8 @@ func upgradeServer(installType string, serverIPs []string) error {
 			installType = fmt.Sprintf("INSTALL_K3S_COMMIT=%s", customflag.InstallType.Commit)
 		}
 
-		upgradeCommand := fmt.Sprintf(util.InstallK3sServer, installType)
+		installK3sServer := "curl -sfL https://get.k3s.io | sudo %s  sh -s - server"
+		upgradeCommand := fmt.Sprintf(installK3sServer, installType)
 		wg.Add(1)
 		go func(ip, installFlagServer string) {
 			defer wg.Done()
@@ -95,7 +97,8 @@ func upgradeAgent(installType string, agentIPs []string) error {
 			installType = fmt.Sprintf("INSTALL_K3S_COMMIT=%s", customflag.InstallType.Commit)
 		}
 
-		upgradeCommand := fmt.Sprintf(util.InstallK3sAgent, installType)
+		installK3sAgent := "curl -sfL https://get.k3s.io | sudo %s sh -s - agent"
+		upgradeCommand := fmt.Sprintf(installK3sAgent, installType)
 		fmt.Println("\nUpgrading agent to: " + upgradeCommand)
 		wg.Add(1)
 		go func(ip, installFlagAgent string) {

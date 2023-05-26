@@ -5,26 +5,27 @@ import (
 	"github.com/k3s-io/k3s/tests/acceptance/shared/util"
 
 	. "github.com/onsi/ginkgo/v2"
-	"github.com/onsi/gomega"
+	. "github.com/onsi/gomega"
 )
 
 func TestServiceClusterIp(deployWorkload bool) {
 	if deployWorkload {
 		_, err := util.ManageWorkload("create", "clusterip.yaml", *util.Arch)
-		gomega.Expect(err).NotTo(gomega.HaveOccurred(),
+		Expect(err).NotTo(HaveOccurred(),
 			"Cluster IP manifest not deployed")
 	}
 
-	err := assert.ValidateOnHost(util.GetClusterIp+util.KubeConfigFile, "qweqwe1")
+	getClusterIp := "kubectl get pods -l k8s-app=nginx-app-clusterip --field-selector=status.phase=Running --kubeconfig="
+	err := assert.ValidateOnHost(getClusterIp+util.KubeConfigFile, util.Running)
 	if err != nil {
 		GinkgoT().Errorf("%v", err)
 	}
 
-	clusterip, _ := util.FetchClusterIP(util.NginxClusterIpSVC)
+	clusterip, _ := util.FetchClusterIP("nginx-clusterip-svc")
 	nodeExternalIP := util.FetchNodeExternalIP()
 	for _, ip := range nodeExternalIP {
 		err = assert.ValidateOnNode(ip, "curl -sL --insecure http://"+clusterip+"/name.html",
-			" dasda")
+			"test-clusterip")
 		if err != nil {
 			GinkgoT().Errorf("%v", err)
 		}
@@ -34,20 +35,21 @@ func TestServiceClusterIp(deployWorkload bool) {
 func TestServiceNodePort(deployWorkload bool) {
 	if deployWorkload {
 		_, err := util.ManageWorkload("create", "nodeport.yaml", *util.Arch)
-		gomega.Expect(err).NotTo(gomega.HaveOccurred(),
+		Expect(err).NotTo(HaveOccurred(),
 			"NodePort manifest not deployed")
 	}
 
 	nodeExternalIP := util.FetchNodeExternalIP()
-	nodeport, err := util.FetchServiceNodePort(util.NginxNodePortSVC)
+	nodeport, err := util.FetchServiceNodePort("nginx-nodeport-svc")
 	if err != nil {
 		GinkgoT().Errorf("%v", err)
 	}
 
+	getNodeport := "kubectl get pods -l k8s-app=nginx-app-nodeport --field-selector=status.phase=Running --kubeconfig="
 	for _, ip := range nodeExternalIP {
 		err = assert.ValidateOnHost(
-			util.GetNodeport+util.KubeConfigFile,
-			util.RunningAssert,
+			getNodeport+util.KubeConfigFile,
+			util.Running,
 		)
 		if err != nil {
 			GinkgoT().Errorf("%v", err)
@@ -55,29 +57,33 @@ func TestServiceNodePort(deployWorkload bool) {
 
 		assert.CheckComponentCmdNode(
 			"curl -sL --insecure http://"+""+ip+":"+nodeport+"/name.html",
-			util.TestNodePort, ip)
+			"test-nodeport", ip)
 	}
 }
 
 func TestServiceLoadBalancer(deployWorkload bool) {
 	if deployWorkload {
 		_, err := util.ManageWorkload("create", "loadbalancer.yaml", *util.Arch)
-		gomega.Expect(err).NotTo(gomega.HaveOccurred(),
+		Expect(err).NotTo(HaveOccurred(),
 			"Loadbalancer manifest not deployed")
 	}
 
-	port, err := util.RunCommandHost(util.GetLoadbalancerSVC + util.KubeConfigFile)
+	getLoadbalancerSVC := "kubectl get service nginx-loadbalancer-svc --output jsonpath={.spec.ports[0].port} --kubeconfig="
+	port, err := util.RunCommandHost(getLoadbalancerSVC + util.KubeConfigFile)
 	if err != nil {
 		GinkgoT().Errorf("%v", err)
 	}
 
+	getAppLoadBalancer := "kubectl get pods -o=name -l k8s-app=nginx-app-loadbalancer " +
+		"--field-selector=status.phase=Running --kubeconfig="
+	loadBalancer := "test-loadbalancer"
 	nodeExternalIP := util.FetchNodeExternalIP()
 	for _, ip := range nodeExternalIP {
 		err = assert.ValidateOnHost(
-			util.GetAppLoadBalancer+util.KubeConfigFile,
-			util.TestLoadBalancer,
+			getAppLoadBalancer+util.KubeConfigFile,
+			loadBalancer,
 			"curl -sL --insecure http://"+ip+":"+port+"/name.html",
-			util.TestLoadBalancer,
+			loadBalancer,
 		)
 		if err != nil {
 			GinkgoT().Errorf("%v", err)
