@@ -15,10 +15,10 @@ const (
 )
 
 type StartupHookArgs struct {
-	APIServerReady  <-chan struct{}
-	KubeConfigAdmin string
-	Skips           map[string]bool
-	Disables        map[string]bool
+	APIServerReady       <-chan struct{}
+	KubeConfigSupervisor string
+	Skips                map[string]bool
+	Disables             map[string]bool
 }
 
 type StartupHook func(context.Context, *sync.WaitGroup, StartupHookArgs) error
