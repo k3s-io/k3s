@@ -324,8 +324,8 @@ github.com/fatih/camelcase v1.0.0/go.mod h1:yN2Sb0lFhZJUdVvtELVWefmrXpuZESvPmqwo
 github.com/fatih/color v1.7.0/go.mod h1:Zm6kSWBoL9eyXnKyktHP6abPY2pDugNf5KwzbycvMj4=
 github.com/felixge/httpsnoop v1.0.3 h1:s/nj+GCswXYzN5v2DpNMuMQYe+0DDwt5WVCU6CWBdXk=
 github.com/felixge/httpsnoop v1.0.3/go.mod h1:m8KPJKqk1gH5J9DgRY2ASl2lWCfGKXixSwevea8zH2U=
-github.com/flannel-io/flannel v0.21.4 h1:Dsm7eNcTPYg9XS/zsXogLfMfyeJba0X5O2EIcNnaYII=
-github.com/flannel-io/flannel v0.21.4/go.mod h1:G2mprs/a241vGL0Ha9DDY/Fthx2xDt0WQkJEyspBfMk=
+github.com/flannel-io/flannel v0.22.0 h1:Ib0+Spsz5c0hBiYc7mnn3vD0ATL/EtQ781hJ7+RbWSY=
+github.com/flannel-io/flannel v0.22.0/go.mod h1:hIJovSDgmgiIJeSdtl0f5JO1ZxvJ75fKRAFdoIjSOZE=
 github.com/flynn/go-shlex v0.0.0-20150515145356-3f9db97f8568/go.mod h1:xEzjJPgXI435gkrCt3MPfRiAkVrwSbHsst4LCFVfpJc=
 github.com/frankban/quicktest v1.11.3/go.mod h1:wRf/ReqHper53s+kmmSZizM8NamnL3IM0I9ntUbOk+k=
 github.com/frankban/quicktest v1.12.1/go.mod h1:qLE0fzW0VuyUAJgPU19zByoIr0HtCHN/r/VLSOOIySU=
@@ -626,8 +626,6 @@ github.com/k3s-io/helm-controller v0.14.0 h1:jVJtfNIBFvK98oHBjySIxPSP/Hr/iN6LXG0
 github.com/k3s-io/helm-controller v0.14.0/go.mod h1:Y8hkgBc37wKWOQBIpFNEJ9/UVGrnEKFaPHpaPwV6cBA=
 github.com/k3s-io/kine v0.10.1 h1:HdpG84WaZvIYYzFB+kT8grNhtlsGzLLYN/MohV+r7+U=
 github.com/k3s-io/kine v0.10.1/go.mod h1:TU8mr4oByeEPKChQBUpSdGc1mZk+Txr2yZhRY+Jch1Q=
-github.com/k3s-io/klog v1.0.0-k3s2 h1:yyvD2bQbxG7m85/pvNctLX2bUDmva5kOBvuZ77tTGBA=
-github.com/k3s-io/klog v1.0.0-k3s2/go.mod h1:4Bi6QPql/J/LkTDqv7R/cd3hPo4k2DG6Ptcz060Ez5I=
 github.com/k3s-io/klog/v2 v2.90.1-k3s1 h1:QOJ/1xi4ERgpPGmSI3n1f989XjII+OvPdgdiMOKqV9s=
 github.com/k3s-io/klog/v2 v2.90.1-k3s1/go.mod h1:y1WjHnz7Dj687irZUWR/WLkLc5N1YHtjLdmgWjndZn0=
 github.com/k3s-io/kube-router/v2 v2.0.1-0.20230508174102-b42e5faded1c h1:7IaKAByGXNvZAmhYlaHH2LiqOGWtPNVg8vKV1Xvlrek=
