@@ -725,6 +725,7 @@ steps:
     memory: 10Gi
   environment:
     E2E_REGISTRY: 'true'
+    E2E_GOCOVER: 'true'
   commands:
   - mkdir -p dist/artifacts
   - cp /tmp/artifacts/* dist/artifacts/
@@ -742,21 +743,22 @@ steps:
   - docker run -d -p 5000:5000 -e REGISTRY_PROXY_REMOTEURL=https://registry-1.docker.io --name registry registry:2
   - cd tests/e2e/validatecluster
   - vagrant destroy -f
-  - E2E_GOCOVER=1 go test -v -timeout=45m ./validatecluster_test.go -ci -local
+  - go test -v -timeout=45m ./validatecluster_test.go -ci -local
   - cp ./coverage.out /tmp/artifacts/validate-coverage.out
   - cd ../secretsencryption
   - vagrant destroy -f
-  - E2E_GOCOVER=1 go test -v -timeout=30m ./secretsencryption_test.go -ci -local
+  - go test -v -timeout=30m ./secretsencryption_test.go -ci -local
   - cp ./coverage.out /tmp/artifacts/se-coverage.out
   - cd ../startup
   - vagrant destroy -f
-  - E2E_GOCOVER=1 go test -v -timeout=30m ./startup_test.go -ci -local
+  - go test -v -timeout=30m ./startup_test.go -ci -local
   - cp ./coverage.out /tmp/artifacts/startup-coverage.out
   - |
     if [ "$DRONE_BUILD_EVENT" = "pull_request" ]; then
       cd ../upgradecluster
       vagrant destroy -f
       E2E_RELEASE_CHANNEL="latest" go test -v -timeout=45m ./upgradecluster_test.go  -ci -local
+      cp ./coverage.out /tmp/artifacts/upgrade-coverage.out
     fi
   - docker stop registry && docker rm registry
   
@@ -777,6 +779,7 @@ steps:
       - /tmp/artifacts/validate-coverage.out
       - /tmp/artifacts/se-coverage.out
       - /tmp/artifacts/startup-coverage.out
+      - /tmp/artifacts/upgrade-coverage.out
     flags: 
       - e2etests
   when:

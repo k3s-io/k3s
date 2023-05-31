@@ -490,12 +490,6 @@ func GetCoverageReport(nodeNames []string) error {
 	if out, err := RunCommand(cmd); err != nil {
 		return fmt.Errorf("failed to generate coverage report: %s, %v", out, err)
 	}
-	cmd = "go tool covdata func -i " + strings.Join(covDirs, ",") + " | tail -n 1"
-	out, err := RunCommand(cmd)
-	if err != nil {
-		return fmt.Errorf("failed to generate coverage report: %s, %v", out, err)
-	}
-	fmt.Println(strings.Fields(out))
 	for _, covDir := range covDirs {
 		if err := os.RemoveAll(covDir); err != nil {
 			return err
