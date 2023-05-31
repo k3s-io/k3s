@@ -101,20 +101,23 @@ var _ = Describe("Verify Create", Ordered, func() {
 			_, err := e2e.RunCmdOnNode(cmd, serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred(), "failed: "+cmd)
 
-			cmd = "sudo docker tag nginx server-0.local:5000/my-webpage"
+			nodeIP, err := e2e.FetchNodeExternalIP(serverNodeNames[0])
+			Expect(err).NotTo(HaveOccurred())
+
+			cmd = "sudo docker tag nginx " + nodeIP + ":5000/my-webpage"
 			_, err = e2e.RunCmdOnNode(cmd, serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred(), "failed: "+cmd)
 
-			cmd = "sudo docker push server-0.local:5000/my-webpage"
+			cmd = "sudo docker push " + nodeIP + ":5000/my-webpage"
 			_, err = e2e.RunCmdOnNode(cmd, serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred(), "failed: "+cmd)
 
-			cmd = "sudo docker image remove nginx server-0.local:5000/my-webpage"
+			cmd = "sudo docker image remove nginx " + nodeIP + ":5000/my-webpage"
 			_, err = e2e.RunCmdOnNode(cmd, serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred(), "failed: "+cmd)
 		})
 		It("Should create and validate deployment with private registry on", func() {
-			res, err := e2e.RunCmdOnNode("sudo kubectl create deployment my-webpage --image=server-0.local/my-webpage", serverNodeNames[0])
+			res, err := e2e.RunCmdOnNode("sudo kubectl create deployment my-webpage --image=my-registry.local/my-webpage", serverNodeNames[0])
 			fmt.Println(res)
 			Expect(err).NotTo(HaveOccurred())
 

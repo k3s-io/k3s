@@ -27,27 +27,25 @@ def provision(vm, role, role_num, node_num)
   install_type = getInstallType(vm, RELEASE_VERSION, GITHUB_BRANCH)
   
   vm.provision "shell", inline: "ping -c 2 k3s.io"
-
-  writePrivateRegistry = <<-'SCRIPT'
+ 
+  # The formatting on this is a little weird, but it allows inserting variables
+  # and still using the heredoc formatting with escapped quotes
+  writePrivateRegistry = <<~'SCRIPT'.chomp % {net: NETWORK_PREFIX}
   mkdir -p /etc/rancher/k3s/
   echo "mirrors:
-  server-0.local:
-    endpoint:
-      - \"http://server-0.local:5000\"" >> /etc/rancher/k3s/registries.yaml
+    my-registry.local:
+      endpoint:
+        - \"http://%{net}.100:5000\"" > /etc/rancher/k3s/registries.yaml
   SCRIPT
 
-  setInsecureRegistryPolicy = <<-'SCRIPT'
+  setInsecureRegistryPolicy = <<~'SCRIPT'.chomp % {net: NETWORK_PREFIX}
   mkdir -p /etc/docker/
-  echo "{ \"insecure-registries\" : [\"server-0.local:5000\"] }" >> /etc/docker/daemon.json
-  SCRIPT
-
-  setEtcHost = <<-'SCRIPT'
-    echo "10.10.10.100 server-0.local" >> /etc/hosts
+  echo "{ \"insecure-registries\" : [\"%{net}.100:5000\"] }" > /etc/docker/daemon.json
   SCRIPT
 
   if role.include?("server") && role_num == 0
-    vm.provision "shell", inline: setInsecureRegistryPolicy
-    vm.provision "shell", inline: writePrivateRegistry
+    vm.provision "insecure-registry", type: "shell", inline: setInsecureRegistryPolicy
+    vm.provision "private-registry", type: "shell", inline: writePrivateRegistry
     dockerInstall(vm)
 
     vm.provision 'k3s-primary-server', type: 'k3s', run: 'once' do |k3s|
@@ -63,8 +61,8 @@ def provision(vm, role, role_num, node_num)
     end
   
   elsif role.include?("server") && role_num != 0
-    vm.provision "shell", inline: setInsecureRegistryPolicy
-    vm.provision "shell", inline: setEtcHost
+    vm.provision "shell", inline: writePrivateRegistry
+
     vm.provision 'k3s-secondary-server', type: 'k3s', run: 'once' do |k3s|
       k3s.args = "server"
       k3s.config = <<~YAML
@@ -80,7 +78,6 @@ def provision(vm, role, role_num, node_num)
   
   if role.include?("agent")
     vm.provision "shell", inline: writePrivateRegistry
-    vm.provision "shell", inline: setEtcHost
 
     vm.provision 'k3s-agent', type: 'k3s', run: 'once' do |k3s|
       k3s.args = "agent"
