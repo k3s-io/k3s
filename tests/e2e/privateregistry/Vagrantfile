@@ -6,15 +6,11 @@ NODE_BOXES = (ENV['E2E_NODE_BOXES'] ||
 GITHUB_BRANCH = (ENV['E2E_GITHUB_BRANCH'] || "master")
 RELEASE_VERSION = (ENV['E2E_RELEASE_VERSION'] || "")
 EXTERNAL_DB = (ENV['E2E_EXTERNAL_DB'] || "etcd")
-HARDENED = (ENV['E2E_HARDENED'] || "")
-REGISTRY = (ENV['E2E_REGISTRY'] || "")
-RANCHER = (ENV['E2E_RANCHER'] || "")
 NODE_CPUS = (ENV['E2E_NODE_CPUS'] || 2).to_i
 NODE_MEMORY = (ENV['E2E_NODE_MEMORY'] || 2048).to_i
 # Virtualbox >= 6.1.28 require `/etc/vbox/network.conf` for expanded private networks 
 NETWORK_PREFIX = "10.10.10"
 install_type = ""
-hardened_arg = ""
 
 def provision(vm, role, role_num, node_num)
   vm.box = NODE_BOXES[node_num]
@@ -32,34 +28,28 @@ def provision(vm, role, role_num, node_num)
   
   vm.provision "shell", inline: "ping -c 2 k3s.io"
 
-  hardened_arg = getHardenedArg(vm, HARDENED, scripts_location)
-
   writePrivateRegistry = <<-'SCRIPT'
-    mkdir -p /etc/rancher/k3s/
-    echo "mirrors:
-      server-0.local:
-        endpoint:
-          - \"http://server-0.local:5000\"" >> /etc/rancher/k3s/registries.yaml
+  mkdir -p /etc/rancher/k3s/
+  echo "mirrors:
+  server-0.local:
+    endpoint:
+      - \"http://server-0.local:5000\"" >> /etc/rancher/k3s/registries.yaml
   SCRIPT
-
-
 
   setInsecureRegistryPolicy = <<-'SCRIPT'
-    mkdir -p /etc/docker/
-    echo "{
-            \"insecure-registries\" : [\"server-0.local:5000\"]
-          }" >> /etc/docker/daemon.json
+  mkdir -p /etc/docker/
+  echo "{ \"insecure-registries\" : [\"server-0.local:5000\"] }" >> /etc/docker/daemon.json
   SCRIPT
+
   setEtcHost = <<-'SCRIPT'
-    echo "10.10.10.100 server-0" >> /etc/hosts
-    sudo systemctl daemon-reload
-    sudo systemctl restart docker
+    echo "10.10.10.100 server-0.local" >> /etc/hosts
   SCRIPT
 
   if role.include?("server") && role_num == 0
-    dockerInstall(vm)
-    vm.provision "shell", inline: writePrivateRegistry
     vm.provision "shell", inline: setInsecureRegistryPolicy
+    vm.provision "shell", inline: writePrivateRegistry
+    dockerInstall(vm)
+
     vm.provision 'k3s-primary-server', type: 'k3s', run: 'once' do |k3s|
       k3s.args = "server "
       k3s.config = <<~YAML
@@ -67,7 +57,6 @@ def provision(vm, role, role_num, node_num)
         node-external-ip: #{NETWORK_PREFIX}.100
         flannel-iface: eth1
         cluster-init: true
-        #{hardened_arg}
       YAML
       k3s.env = %W[K3S_KUBECONFIG_MODE=0644 #{install_type}]
       k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
@@ -83,7 +72,6 @@ def provision(vm, role, role_num, node_num)
         token: vagrant
         node-external-ip: #{node_ip}
         flannel-iface: eth1
-        #{hardened_arg}
       YAML
       k3s.env = %W[K3S_KUBECONFIG_MODE=0644 K3S_TOKEN=vagrant #{install_type}]
       k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
@@ -91,8 +79,7 @@ def provision(vm, role, role_num, node_num)
   end
   
   if role.include?("agent")
-    dockerInstall(vm)
-    vm.provision "shell", inline: setInsecureRegistryPolicy
+    vm.provision "shell", inline: writePrivateRegistry
     vm.provision "shell", inline: setEtcHost
 
     vm.provision 'k3s-agent', type: 'k3s', run: 'once' do |k3s|
@@ -112,11 +99,6 @@ def provision(vm, role, role_num, node_num)
     if !EXTERNAL_DB.empty?
       vm.provision "shell", inline: "docker start #{EXTERNAL_DB}"
     end
-  end
-  # This step does not run by default and is designed to be called by higher level tools
-  if !RANCHER.empty?
-    blank_node = role.include?("agent") 
-    vm.provision "Install Rancher", type: "shell", run: "never", path: scripts_location + "/rancher.sh", args: [ "#{NETWORK_PREFIX}.100", blank_node.to_s ]
   end
 end
 

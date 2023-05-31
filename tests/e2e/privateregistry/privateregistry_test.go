@@ -97,43 +97,42 @@ var _ = Describe("Verify Create", Ordered, func() {
 
 		})
 		It("Should pull and image from dockerhub and send it to private registry", func() {
-			pull, err := e2e.RunCmdOnNode("sudo docker pull hello-world", serverNodeNames[0])
-			fmt.Println(pull)
-			Expect(err).NotTo(HaveOccurred())
-			tag, err := e2e.RunCmdOnNode("sudo docker tag hello-world server-0.local:5000/my-hello-world", serverNodeNames[0])
-			fmt.Println(tag)
-			Expect(err).NotTo(HaveOccurred())
-			push, err := e2e.RunCmdOnNode("sudo docker push server-0.local:5000/my-hello-world", serverNodeNames[0])
-			fmt.Println(push)
-			Expect(err).NotTo(HaveOccurred())
-			rm, err := e2e.RunCmdOnNode("sudo docker image remove hello-world server-0.local:5000/my-hello-world", serverNodeNames[0])
-			fmt.Println(rm)
+			cmd := "sudo docker pull nginx"
+			_, err := e2e.RunCmdOnNode(cmd, serverNodeNames[0])
+			Expect(err).NotTo(HaveOccurred(), "failed: "+cmd)
 
-			Expect(err).NotTo(HaveOccurred())
+			cmd = "sudo docker tag nginx server-0.local:5000/my-webpage"
+			_, err = e2e.RunCmdOnNode(cmd, serverNodeNames[0])
+			Expect(err).NotTo(HaveOccurred(), "failed: "+cmd)
+
+			cmd = "sudo docker push server-0.local:5000/my-webpage"
+			_, err = e2e.RunCmdOnNode(cmd, serverNodeNames[0])
+			Expect(err).NotTo(HaveOccurred(), "failed: "+cmd)
+
+			cmd = "sudo docker image remove nginx server-0.local:5000/my-webpage"
+			_, err = e2e.RunCmdOnNode(cmd, serverNodeNames[0])
+			Expect(err).NotTo(HaveOccurred(), "failed: "+cmd)
 		})
 		It("Should create and validate deployment with private registry on", func() {
-
-			cmd, err := e2e.RunCmdOnNode("sudo kubectl create deployment my-hello-world --image=server-0.local:5000/my-hello-world", serverNodeNames[0])
-			fmt.Println(cmd)
+			res, err := e2e.RunCmdOnNode("sudo kubectl create deployment my-webpage --image=server-0.local/my-webpage", serverNodeNames[0])
+			fmt.Println(res)
 			Expect(err).NotTo(HaveOccurred())
 
+			var pod e2e.Pod
 			Eventually(func(g Gomega) {
 				pods, err := e2e.ParsePods(kubeConfigFile, false)
-				g.Expect(err).NotTo(HaveOccurred())
-				foundHelloWorld := false
-				for _, pod := range pods {
-					if strings.Contains(pod.Name, "helm-install") {
-						g.Expect(pod.Status).Should(Equal("Completed"), pod.Name)
-					} else {
-						if strings.Contains(pod.Name, "hello-world") {
-							foundHelloWorld = true
-						}
-						g.Expect(pod.Status).Should(Equal("Completed"), pod.Name)
+				for _, p := range pods {
+					if strings.Contains(p.Name, "my-webpage") {
+						pod = p
 					}
 				}
-				g.Expect(foundHelloWorld).Should(Equal(true))
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(pod.Status).Should(Equal("Running"))
+				g.Expect(pod.Node).Should(Equal(agentNodeNames[0]))
 			}, "60s", "5s").Should(Succeed())
-			_, _ = e2e.ParsePods(kubeConfigFile, true)
+
+			cmd := "curl " + pod.IP
+			Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).To(ContainSubstring("Welcome to nginx!"))
 		})
 
 	})
