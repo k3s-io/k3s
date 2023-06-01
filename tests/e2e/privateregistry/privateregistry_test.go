@@ -147,15 +147,15 @@ var _ = AfterEach(func() {
 })
 
 var _ = AfterSuite(func() {
-	r1, err := e2e.RunCmdOnNode("sudo docker rm -f registry", serverNodeNames[0])
-	fmt.Println(r1)
-	Expect(err).NotTo(HaveOccurred())
-	r2, err := e2e.RunCmdOnNode("sudo kubectl delete deployment my-webpage", serverNodeNames[0])
-	fmt.Println(r2)
-	Expect(err).NotTo(HaveOccurred())
+
 	if failed && !*ci {
 		fmt.Println("FAILED!")
 	} else {
+		r1, err := e2e.RunCmdOnNode("sudo docker rm -f registry", serverNodeNames[0])
+		Expect(err).NotTo(HaveOccurred(), r1)
+		r2, err := e2e.RunCmdOnNode("sudo kubectl delete deployment my-webpage", serverNodeNames[0])
+		Expect(err).NotTo(HaveOccurred(), r2)
+		Expect(err).NotTo(HaveOccurred())
 		Expect(e2e.DestroyCluster()).To(Succeed())
 		Expect(os.Remove(kubeConfigFile)).To(Succeed())
 	}
