@@ -5,7 +5,7 @@ import (
 
 	"github.com/k3s-io/k3s/tests/acceptance/core/service/assert"
 	"github.com/k3s-io/k3s/tests/acceptance/core/testcase"
-	"github.com/k3s-io/k3s/tests/acceptance/shared/util"
+
 	. "github.com/onsi/ginkgo/v2"
 )
 
@@ -14,7 +14,7 @@ var _ = Describe("Test:", func() {
 	Context("Build Cluster:", func() {
 
 		It("Start Up with no issues", func() {
-			testcase.TestBuildCluster(GinkgoT(), false)
+			testcase.TestBuildCluster(GinkgoT())
 		})
 
 		It("Checks Node Status", func() {
@@ -59,12 +59,6 @@ var _ = Describe("Test:", func() {
 			testcase.TestDnsAccess(true)
 		})
 	})
-})
-
-var _ = BeforeEach(func() {
-	if *util.Destroy {
-		Skip("Cluster is being Deleted")
-	}
 })
 
 var _ = AfterEach(func() {

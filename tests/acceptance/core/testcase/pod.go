@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/k3s-io/k3s/tests/acceptance/core/service/assert"
-	"github.com/k3s-io/k3s/tests/acceptance/shared/util"
+	"github.com/k3s-io/k3s/tests/acceptance/shared"
 
 	. "github.com/onsi/gomega"
 )
@@ -20,7 +20,7 @@ func TestPodStatus(
 	fmt.Println("\nFetching pod status")
 
 	Eventually(func(g Gomega) {
-		pods, err := util.ParsePods(false)
+		pods, err := shared.ParsePods(false)
 		g.Expect(err).NotTo(HaveOccurred())
 
 		for _, pod := range pods {

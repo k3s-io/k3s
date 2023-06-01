@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/k3s-io/k3s/tests/acceptance/shared/util"
+	"github.com/k3s-io/k3s/tests/acceptance/shared"
 	. "github.com/onsi/gomega"
 )
 
 // PodAssertFunc is a function type used to create pod assertions
-type PodAssertFunc func(g Gomega, pod util.Pod)
+type PodAssertFunc func(g Gomega, pod shared.Pod)
 
 var (
 	completed = "Completed"
@@ -19,7 +19,7 @@ var (
 // PodAssertRestart custom assertion func that asserts that pods are not restarting with no reason
 // controller, scheduler, helm-install pods can be restarted occasionally when cluster started if only once
 func PodAssertRestart() PodAssertFunc {
-	return func(g Gomega, pod util.Pod) {
+	return func(g Gomega, pod shared.Pod) {
 		if strings.Contains(pod.NameSpace, "kube-system") &&
 			strings.Contains(pod.Name, "controller") &&
 			strings.Contains(pod.Name, "scheduler") {
@@ -33,7 +33,7 @@ func PodAssertRestart() PodAssertFunc {
 // PodAssertStatus custom assertion that asserts that pods status is completed or in some cases
 // apply pods can have error status
 func PodAssertStatus() PodAssertFunc {
-	return func(g Gomega, pod util.Pod) {
+	return func(g Gomega, pod shared.Pod) {
 		if strings.Contains(pod.Name, "helm-install") {
 			g.Expect(pod.Status).Should(Equal(completed), pod.Name)
 		} else if strings.Contains(pod.NameSpace, "system-upgrade") {
@@ -50,7 +50,7 @@ func PodAssertStatus() PodAssertFunc {
 // PodAssertReady custom assertion func that asserts that the pod is
 // with correct numbers of ready containers
 func PodAssertReady() PodAssertFunc {
-	return func(g Gomega, pod util.Pod) {
+	return func(g Gomega, pod shared.Pod) {
 		g.ExpectWithOffset(1, pod.Ready).To(checkReadyFields(),
 			"should have equal values in n/n format")
 	}
@@ -73,8 +73,8 @@ func checkReadyFields() OmegaMatcher {
 // don't need to send KubeconfigFile
 func CheckPodStatusRunning(name, assert string) {
 	cmd := "kubectl get pods -l k8s-app=" + name +
-		" --field-selector=status.phase=Running --kubeconfig=" + util.KubeConfigFile
+		" --field-selector=status.phase=Running --kubeconfig=" + shared.KubeConfigFile
 	Eventually(func(g Gomega) (string, error) {
-		return util.RunCommandHost(cmd)
+		return shared.RunCommandHost(cmd)
 	}, "180s", "5s").Should(ContainSubstring(assert))
 }

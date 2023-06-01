@@ -1,5 +1,7 @@
 package template
 
+var TestMapFlag TestMap
+
 // VersionTestTemplate represents a version test scenario with test configurations and commands.
 type VersionTestTemplate struct {
 	Description     string
@@ -16,9 +18,16 @@ type RunCmd struct {
 
 // TestMap represents a single test command with key:value pairs.
 type TestMap struct {
-	Cmd                  string
-	ExpectedValue        string
-	ExpectedValueUpgrade string
+	Cmd                       string
+	ExpectedValue             string
+	ExpectedValueUpgrade      string
+	ExpectedValueUpgradedHost string
+	ExpectedValueUpgradedNode string
+	CmdHost                   string
+	ExpectedValueHost         string
+	CmdNode                   string
+	ExpectedValueNode         string
+	Description               string
 }
 
 // TestConfig represents the testcase function configuration

@@ -4,8 +4,10 @@ import (
 	"fmt"
 
 	"github.com/k3s-io/k3s/tests/acceptance/core/service/assert"
-	"github.com/k3s-io/k3s/tests/acceptance/shared/util"
+	"github.com/k3s-io/k3s/tests/acceptance/core/service/factory"
+	"github.com/k3s-io/k3s/tests/acceptance/shared"
 
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
@@ -14,11 +16,12 @@ func TestNodeStatus(
 	nodeAssertReadyStatus assert.NodeAssertFunc,
 	nodeAssertVersion assert.NodeAssertFunc,
 ) {
-	fmt.Println("\nFetching pod status")
+	cluster := factory.GetCluster(GinkgoT())
+	fmt.Println("\nFetching node status")
 
-	expectedNodeCount := util.NumServers + util.NumAgents
+	expectedNodeCount := cluster.NumServers + cluster.NumAgents
 	Eventually(func(g Gomega) {
-		nodes, err := util.ParseNodes(false)
+		nodes, err := shared.ParseNodes(false)
 		g.Expect(err).NotTo(HaveOccurred())
 		g.Expect(len(nodes)).To(Equal(expectedNodeCount),
 			"Number of nodes should match the spec")

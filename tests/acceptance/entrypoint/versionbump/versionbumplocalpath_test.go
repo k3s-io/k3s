@@ -9,7 +9,6 @@ import (
 	"github.com/k3s-io/k3s/tests/acceptance/core/service/customflag"
 	"github.com/k3s-io/k3s/tests/acceptance/core/service/template"
 	"github.com/k3s-io/k3s/tests/acceptance/core/testcase"
-	"github.com/k3s-io/k3s/tests/acceptance/shared/util"
 
 	. "github.com/onsi/ginkgo/v2"
 )
@@ -17,7 +16,7 @@ import (
 var _ = Describe("VersionTemplate Upgrade:", func() {
 
 	It("Start Up with no issues", func() {
-		testcase.TestBuildCluster(GinkgoT(), false)
+		testcase.TestBuildCluster(GinkgoT())
 	})
 
 	It("Checks Node Status", func() {
@@ -35,36 +34,31 @@ var _ = Describe("VersionTemplate Upgrade:", func() {
 
 	It("Verifies bump local path storage version", func() {
 		template.VersionTemplate(template.VersionTestTemplate{
-			Description: Description,
+			Description: "Verifies bump local path storage version",
 			TestCombination: &template.RunCmd{
 				RunOnNode: []template.TestMap{
 					{
-						Cmd:                  K3sVersion,
-						ExpectedValue:        ExpectedValueNode,
-						ExpectedValueUpgrade: ExpectedValueUpgradedNode,
+						Cmd:                  "k3s --version",
+						ExpectedValue:        template.TestMapFlag.ExpectedValueNode,
+						ExpectedValueUpgrade: template.TestMapFlag.ExpectedValueUpgradedNode,
 					},
 				},
 				RunOnHost: []template.TestMap{
 					{
-						Cmd:                  GetImageLocalPath + "," + GrepImage,
-						ExpectedValue:        ExpectedValueHost,
-						ExpectedValueUpgrade: ExpectedValueUpgradedHost,
+						Cmd: "kubectl describe pod -n kube-system local-path-provisioner- " +
+							"," + " | grep -i Image",
+						ExpectedValue:        template.TestMapFlag.ExpectedValueHost,
+						ExpectedValueUpgrade: template.TestMapFlag.ExpectedValueUpgradedHost,
 					},
 				},
 			},
-			InstallUpgrade: customflag.InstallUpgradeFlag,
+			InstallUpgrade: customflag.ServiceFlag.InstallUpgrade,
 			TestConfig: &template.TestConfig{
 				TestFunc:       testcase.TestLocalPathProvisionerStorage,
 				DeployWorkload: true,
 			},
 		})
 	})
-})
-
-var _ = BeforeEach(func() {
-	if *util.Destroy {
-		Skip("Cluster is being Deleted")
-	}
 })
 
 var _ = AfterEach(func() {

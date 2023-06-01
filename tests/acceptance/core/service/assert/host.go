@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/k3s-io/k3s/tests/acceptance/shared/util"
+	"github.com/k3s-io/k3s/tests/acceptance/shared"
 
 	. "github.com/onsi/gomega"
 )
@@ -17,7 +17,7 @@ import (
 func CheckComponentCmdHost(cmd string, asserts ...string) {
 	Eventually(func() error {
 		fmt.Println("Executing cmd: ", cmd)
-		res, err := util.RunCommandHost(cmd)
+		res, err := shared.RunCommandHost(cmd)
 		if err != nil {
 			return fmt.Errorf("error on RunCommandHost: %v", err)
 		}

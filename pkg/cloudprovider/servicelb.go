@@ -41,9 +41,12 @@ var (
 )
 
 const (
-	Ready          = condition.Cond("Ready")
-	DefaultLBNS    = meta.NamespaceSystem
-	DefaultLBImage = "rancher/klipper-lb:v0.4.3"
+	Ready       = condition.Cond("Ready")
+	DefaultLBNS = meta.NamespaceSystem
+)
+
+var (
+	DefaultLBImage = "rancher/klipper-lb:v0.4.4"
 )
 
 func (k *k3s) Register(ctx context.Context,

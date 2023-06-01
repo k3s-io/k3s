@@ -6,23 +6,35 @@ import (
 	"strings"
 )
 
-var (
-	InstallType        InstallTypeValue
-	InstallUpgradeFlag MultiValueFlag
-	TestCase           TestConfigFlag
-)
+var ServiceFlag FlagConfig
 
-// InstallTypeValue is a customFlag type that can be used to parse the installation type
-type InstallTypeValue struct {
+type FlagConfig struct {
+	InstallType    InstallTypeValueFlag
+	InstallUpgrade MultiValueFlag
+	TestCase       TestConfigFlag
+	ClusterConfig  ClusterConfigFlag
+}
+
+// InstallTypeValueFlag is a customFlag type that can be used to parse the installation type
+type InstallTypeValueFlag struct {
 	Version string
 	Commit  string
 }
 
-// TestConfigFlag TesConfigFlag is a customFlag type that can be used to parse the test case
+// TestConfigFlag is a customFlag type that can be used to parse the test case
 type TestConfigFlag struct {
 	TestFuncName   string
 	TestFunc       TestCaseFlagType
 	DeployWorkload bool
+}
+
+type DestroyFlag bool
+type ArchFlag string
+
+// ClusterConfigFlag is a customFlag type that can be used to change some cluster config
+type ClusterConfigFlag struct {
+	Destroy DestroyFlag
+	Arch    ArchFlag
 }
 
 // TestCaseFlagType is a customFlag type that can be used to parse the test case
@@ -67,13 +79,13 @@ func (m *MultiValueFlag) Set(value string) error {
 	return nil
 }
 
-// String returns the string representation of the InstallTypeValue
-func (it *InstallTypeValue) String() string {
+// String returns the string representation of the InstallTypeValueFlag
+func (it *InstallTypeValueFlag) String() string {
 	return fmt.Sprintf("Version: %s, Commit: %s", it.Version, it.Commit)
 }
 
-// Set parses the customFlag value for InstallTypeValue
-func (it *InstallTypeValue) Set(value string) error {
+// Set parses the customFlag value for InstallTypeValueFlag
+func (it *InstallTypeValueFlag) Set(value string) error {
 	parts := strings.Split(value, "=")
 
 	if len(parts) == 2 {
@@ -87,6 +99,38 @@ func (it *InstallTypeValue) Set(value string) error {
 		}
 	} else {
 		return fmt.Errorf("invalid input format")
+	}
+
+	return nil
+}
+
+// String returns the string representation of the DestroyFlag
+func (d *DestroyFlag) String() string {
+	return fmt.Sprintf("%v", *d)
+}
+
+// Set parses the customFlag value for DestroyFlag
+func (d *DestroyFlag) Set(value string) error {
+	v, err := strconv.ParseBool(value)
+	if err != nil {
+		return err
+	}
+	*d = DestroyFlag(v)
+
+	return nil
+}
+
+// String returns the string representation of the ArchFlag
+func (a *ArchFlag) String() string {
+	return string(*a)
+}
+
+// Set parses the customFlag value for ArchFlag
+func (a *ArchFlag) Set(value string) error {
+	if value == "arm64" || value == "amd64" {
+		*a = ArchFlag(value)
+	} else {
+		*a = "amd64"
 	}
 
 	return nil

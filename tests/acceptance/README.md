@@ -18,15 +18,17 @@ The acceptance tests are a customizable way to create clusters and perform valid
 ├── entrypoint
 │   └───── Entry for tests execution, separated by test runs and test suites
 │
-│── fixtures
-│   └───── Place where resides fixtures for tests
-│
 ├── modules
 │   └───── Terraform modules and configurations
 │
+│── scripts
+│    └───── Scripts needed for overall execution
+│
 ├── shared
-    └───── auxiliar and reusable functions, constants and scripts
-
+│    └───── auxiliary and reusable functions
+│
+│── workloads
+│   └───── Place where resides workloads to use inside tests
 ```
 
 ### Explanation:
@@ -47,28 +49,33 @@ Responsibility:       Encapsulates test logic and should not depend on any outer
 
 - `Entrypoint`
 ````
-Act:                  Acts as the one of the outter layer to receive the input to start test execution
+Act:                  Acts as the one of the outer layer to receive the input to start test execution
 Responsibility:       Should not implement any logic and only focus on orchestrating
-````
-
-- `Fixtures`
-````
-Act:                  Acts as a provider for test fixtures
-Responsibility:       Totally independent from any other layer and should only provide
 ````
 
 - `Modules`
 ```
 Act:                  Acts as the infra to provide the terraform modules and configurations
 Responsibility:       Only provides indirectly for all, should not need the knowledge of any test logic or have dependencies from internal layers.
-``` 
-
-- `Shared`
 ```
-Act:                  Acts as an intermediate module providing shared and reusable functions, constants, and scripts               
+
+- `Scripts`
+```
+Act:                  Acts as a provider for scripts needed for overall execution
 Responsibility:       Should not need knowledge of or "external" dependencies at all and provides for all layers.
 ```
 
+- `Shared`
+```
+Act:                  Acts as an intermediate module providing shared, reusable and auxiliary functions
+Responsibility:       Should not need knowledge of or "external" dependencies at all and provides for all layers.
+```
+
+- `Workloads`
+````
+Act:                  Acts as a provider for test workloads
+Responsibility:       Totally independent of any other layer and should only provide
+````
 
 #### PS: "External" and "Outer" layer or dependency here in this context is considered any other package within the framework.
 
@@ -138,7 +145,7 @@ Example of an execution considering that the `commands` are already placed or in
   -installUpgradeFlag INSTALL_K3S_COMMIT=257fa2c54cda332e42b8aae248c152f4d1898218                      
 
 ````
-PS: If you need to send more than one command at once split them with  " , "
+- If you need to send more than one command at once split them with  " , "
 
 #### `*template with commands and testcase added:`
 ```go
@@ -147,61 +154,63 @@ PS: If you need to send more than one command at once split them with  " , "
 - util.GetImageLocalPath + "," + util.GrepImage
 - testcase.TestLocalPathProvisionerStorage
 -------------------------------------------------------
-template.VersionTemplate(GinkgoT(), template.VersionTestTemplate{
+template.VersionTemplate(template.VersionTestTemplate{
 	Description: util.Description,
 	TestCombination: &template.RunCmd{
 		    RunOnNode: []template.TestMap{
 			{
-				Cmd:                  util.K3sVersion,
-				ExpectedValue:        util.ExpectedValueNode,
-				ExpectedValueUpgrade: util.ExpectedValueUpgradedNode
+				Cmd:                  "k3s --version",
+				ExpectedValue:        template.TestMapFlag.ExpectedValueNode,
+				ExpectedValueUpgrade: template.TestMapFlag.ExpectedValueUpgradedNode,
+			    },
 			},
-			}, 
 			RunOnHost: []template.TestMap{
 				{
-					Cmd:                  util.GetImageLocalPath + "," + util.GrepImage,
-					ExpectedValue:        util.ExpectedValueHost,
-					ExpectedValueUpgrade: util.ExpectedValueUpgradedHost,
-				},
-			},
-			},
-			InstallUpgrade: util.InstallUpgradeFlag,
+					Cmd:                  GetImageLocalPath + "," + util.GrepImage,
+					ExpectedValue:        template.TestMapFlag.ExpectedValueHost,,
+					ExpectedValueUpgrade: template.TestMapFlag.ExpectedValueUpgradedHost,,
+			    	},
+			    },
+                         },
+			InstallUpgrade: customflag.ServiceFlag.InstallUpgrade,
 			TestConfig: &template.TestConfig{
 				TestFunc:       testcase.TestLocalPathProvisionerStorage,
 				DeployWorkload: true,
 			},
 		})
 	})
-````
-#### You can also run a totally parametrized test with the template, just copy and paste the template and call everything as flags like that:
-- Template
-```` go
-	template.VersionTemplate(GinkgoT(), template.VersionTestTemplate{
-			Description: util.Description,
-			TestCombination: &template.RunCmd{
-				RunOnNode: []template.TestMap{
-					{
-						Cmd:                  util.CmdNode,
-						ExpectedValue:        util.ExpectedValueNode,
-						ExpectedValueUpgrade: util.ExpectedValueUpgradedNode,
-					},
-				},
-				RunOnHost: []template.TestMap{
-					{
-						Cmd:                  util.CmdHost,
-						ExpectedValue:        util.ExpectedValueHost,
-						ExpectedValueUpgrade: util.ExpectedValueUpgradedHost,
-					},
-				},
-			},
-			InstallUpgrade: util.InstallUpgradeFlag,
-			TestConfig: &template.TestConfig{
-				TestFunc:       template.TestCase(util.TestCase.TestFunc),
-				DeployWorkload: util.TestCase.DeployWorkload,
-			},
-		})
-	})
-````
+
+`*template with commands and testcase added:`
+-------------------------------------------------------
+
+template.VersionTemplate(template.VersionTestTemplate{
+        Description: util.Description,
+        TestCombination: &template.RunCmd{
+                RunOnNode: []template.TestMap{
+                {
+                    Cmd:                  template.TestMapFlag.CmdNode,
+                    ExpectedValue:        template.TestMapFlag.ExpectedValueNode,
+                    ExpectedValueUpgrade: template.TestMapFlag.ExpectedValueUpgradedNode,
+                    },
+                },
+                RunOnHost: []template.TestMap{
+                {
+                    Cmd:                  template.TestMapFlag.CmdHost,
+                    ExpectedValue:        template.TestMapFlag.ExpectedValueHost,
+                    ExpectedValueUpgrade: template.TestMapFlag.ExpectedValueUpgradedHost,
+                    },
+                },
+            },
+        InstallUpgrade: customflag.ServiceFlag.InstallUpgrade,
+        TestConfig: &template.TestConfig{
+            TestFunc:        template.TestCase(customflag.ServiceFlag.TestCase.TestFunc,
+            DeployWorkload:  customflag.ServiceFlag.TestCase.DeployWorkload,
+        },
+    })
+})
+```
+
+
 
 - Command
 ````bash

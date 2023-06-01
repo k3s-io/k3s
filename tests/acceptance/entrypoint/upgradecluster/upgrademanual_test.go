@@ -6,7 +6,7 @@ import (
 	"github.com/k3s-io/k3s/tests/acceptance/core/service/assert"
 	"github.com/k3s-io/k3s/tests/acceptance/core/service/customflag"
 	"github.com/k3s-io/k3s/tests/acceptance/core/testcase"
-	"github.com/k3s-io/k3s/tests/acceptance/shared/util"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -16,7 +16,7 @@ var _ = Describe("Test:", func() {
 	Context("Build Cluster and validate", func() {
 
 		It("Start Up with no issues", func() {
-			testcase.TestBuildCluster(GinkgoT(), false)
+			testcase.TestBuildCluster(GinkgoT())
 		})
 
 		It("Checks Node Status", func() {
@@ -64,14 +64,14 @@ var _ = Describe("Test:", func() {
 	})
 
 	It("Upgrade Manual", func() {
-		err := testcase.TestUpgradeClusterManually(customflag.InstallType.String())
+		err := testcase.TestUpgradeClusterManually(customflag.ServiceFlag.InstallType.String())
 		Expect(err).NotTo(HaveOccurred())
 	})
 
 	It("Checks Node Status pos upgrade and validate version", func() {
 		testcase.TestNodeStatus(
 			assert.NodeAssertReadyStatus(),
-			assert.NodeAssertVersionTypeUpgrade(&customflag.InstallType),
+			assert.NodeAssertVersionTypeUpgrade(&customflag.ServiceFlag.InstallType),
 		)
 	})
 
@@ -110,12 +110,6 @@ var _ = Describe("Test:", func() {
 	It("Verifies dns access after upgrade", func() {
 		testcase.TestDnsAccess(false)
 	})
-})
-
-var _ = BeforeEach(func() {
-	if *util.Destroy {
-		Skip("Cluster is being Deleted")
-	}
 })
 
 var _ = AfterEach(func() {

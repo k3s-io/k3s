@@ -9,7 +9,6 @@ import (
 	"github.com/k3s-io/k3s/tests/acceptance/core/service/customflag"
 	"github.com/k3s-io/k3s/tests/acceptance/core/service/template"
 	"github.com/k3s-io/k3s/tests/acceptance/core/testcase"
-	"github.com/k3s-io/k3s/tests/acceptance/shared/util"
 
 	. "github.com/onsi/ginkgo/v2"
 )
@@ -17,7 +16,7 @@ import (
 var _ = Describe("VersionTemplate Upgrade:", func() {
 
 	It("Start Up with no issues", func() {
-		testcase.TestBuildCluster(GinkgoT(), false)
+		testcase.TestBuildCluster(GinkgoT())
 	})
 
 	It("Checks Node Status", func() {
@@ -35,36 +34,30 @@ var _ = Describe("VersionTemplate Upgrade:", func() {
 
 	It("Verifies bump version", func() {
 		template.VersionTemplate(template.VersionTestTemplate{
-			Description: Description,
+			Description: template.TestMapFlag.Description,
 			TestCombination: &template.RunCmd{
 				RunOnNode: []template.TestMap{
 					{
-						Cmd:                  CmdNode,
-						ExpectedValue:        ExpectedValueNode,
-						ExpectedValueUpgrade: ExpectedValueUpgradedNode,
+						Cmd:                  template.TestMapFlag.CmdNode,
+						ExpectedValue:        template.TestMapFlag.ExpectedValueNode,
+						ExpectedValueUpgrade: template.TestMapFlag.ExpectedValueUpgradedNode,
 					},
 				},
 				RunOnHost: []template.TestMap{
 					{
-						Cmd:                  CmdHost,
-						ExpectedValue:        ExpectedValueHost,
-						ExpectedValueUpgrade: ExpectedValueUpgradedHost,
+						Cmd:                  template.TestMapFlag.CmdHost,
+						ExpectedValue:        template.TestMapFlag.ExpectedValueHost,
+						ExpectedValueUpgrade: template.TestMapFlag.ExpectedValueUpgradedHost,
 					},
 				},
 			},
-			InstallUpgrade: customflag.InstallUpgradeFlag,
+			InstallUpgrade: customflag.ServiceFlag.InstallUpgrade,
 			TestConfig: &template.TestConfig{
-				TestFunc:       template.TestCase(customflag.TestCase.TestFunc),
-				DeployWorkload: customflag.TestCase.DeployWorkload,
+				TestFunc:       template.TestCase(customflag.ServiceFlag.TestCase.TestFunc),
+				DeployWorkload: customflag.ServiceFlag.TestCase.DeployWorkload,
 			},
 		})
 	})
-})
-
-var _ = BeforeEach(func() {
-	if *util.Destroy {
-		Skip("Cluster is being Deleted")
-	}
 })
 
 var _ = AfterEach(func() {

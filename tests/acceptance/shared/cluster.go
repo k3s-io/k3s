@@ -1,4 +1,4 @@
-package util
+package shared
 
 import (
 	"fmt"
@@ -7,6 +7,12 @@ import (
 	"strings"
 
 	. "github.com/onsi/gomega"
+)
+
+var (
+	KubeConfigFile string
+	AwsUser        string
+	AccessKey      string
 )
 
 type Node struct {
@@ -32,7 +38,7 @@ type Pod struct {
 // and returns a list of nodes
 func ParseNodes(print bool) ([]Node, error) {
 	nodes := make([]Node, 0, 10)
-	res, err := RunCommandHost(GetNodesWide + KubeConfigFile)
+	res, err := RunCommandHost("kubectl get nodes --no-headers -o wide -A --kubeconfig=" + KubeConfigFile)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +72,7 @@ func ParsePods(print bool) ([]Pod, error) {
 	pods := make([]Pod, 0, 10)
 	podList := ""
 
-	res, _ := RunCommandHost(GetPodsWide + KubeConfigFile)
+	res, _ := RunCommandHost("kubectl get pods -o wide --no-headers -A --kubeconfig=" + KubeConfigFile)
 	res = strings.TrimSpace(res)
 	podList = res
 
@@ -99,9 +105,9 @@ func ManageWorkload(action, workload, arch string) (string, error) {
 	var res string
 	var err error
 
-	resourceDir := GetBasepath() + "/fixtures/amd64workloads/"
+	resourceDir := GetBasepath() + "/acceptance/workloads/amd64workloads/"
 	if arch == "arm64" {
-		resourceDir = GetBasepath() + "/fixtures/armworkloads/"
+		resourceDir = GetBasepath() + "/acceptance/workloads/armworkloads/"
 	}
 
 	files, err := os.ReadDir(resourceDir)
@@ -153,7 +159,7 @@ func deleteWorkload(workload, filename string) (string, error) {
 }
 
 func isWorkloadDeleted(workload string) (bool, error) {
-	res, err := RunCommandHost(GetAll + KubeConfigFile)
+	res, err := RunCommandHost("kubectl get all -A --kubeconfig=" + KubeConfigFile)
 	if err != nil {
 		return false, err
 	}
@@ -170,7 +176,8 @@ func FetchClusterIP(serviceName string) (string, error) {
 
 // FetchNodeExternalIP returns the external IP of the node
 func FetchNodeExternalIP() []string {
-	res, _ := RunCommandHost(GetExternalNodeIp + KubeConfigFile)
+	res, _ := RunCommandHost("kubectl get node --output=jsonpath='{range .items[*]}" +
+		" {.status.addresses[?(@.type==\"ExternalIP\")].address}' --kubeconfig=" + KubeConfigFile)
 	nodeExternalIP := strings.Trim(res, " ")
 	nodeExternalIPs := strings.Split(nodeExternalIP, " ")
 

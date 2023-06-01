@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: nginx
-        image: shylajarancher19/shylajaarm64:v1.0
+        image: shylajarancher19/mytestcontainer:unprivileged
         ports:
         - containerPort: 80
 ---

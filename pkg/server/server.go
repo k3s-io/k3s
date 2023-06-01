@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	helm "github.com/k3s-io/helm-controller/pkg/controllers/chart"
+	helmchart "github.com/k3s-io/helm-controller/pkg/controllers/chart"
 	helmcommon "github.com/k3s-io/helm-controller/pkg/controllers/common"
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
 	"github.com/k3s-io/k3s/pkg/clientaccess"
@@ -28,12 +28,15 @@ import (
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/pkg/errors"
+	"github.com/rancher/wrangler/pkg/apply"
 	v1 "github.com/rancher/wrangler/pkg/generated/controllers/core/v1"
 	"github.com/rancher/wrangler/pkg/leader"
 	"github.com/rancher/wrangler/pkg/resolvehome"
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	clientset "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 const (
@@ -67,10 +70,10 @@ func StartServer(ctx context.Context, config *Config, cfg *cmds.Server) error {
 	config.ControlConfig.Runtime.StartupHooksWg = wg
 
 	shArgs := cmds.StartupHookArgs{
-		APIServerReady:  config.ControlConfig.Runtime.APIServerReady,
-		KubeConfigAdmin: config.ControlConfig.Runtime.KubeConfigAdmin,
-		Skips:           config.ControlConfig.Skips,
-		Disables:        config.ControlConfig.Disables,
+		APIServerReady:       config.ControlConfig.Runtime.APIServerReady,
+		KubeConfigSupervisor: config.ControlConfig.Runtime.KubeConfigSupervisor,
+		Skips:                config.ControlConfig.Skips,
+		Disables:             config.ControlConfig.Disables,
 	}
 	for _, hook := range config.StartupHooks {
 		if err := hook(ctx, wg, shArgs); err != nil {
@@ -101,7 +104,7 @@ func startOnAPIServerReady(ctx context.Context, config *Config) {
 func runControllers(ctx context.Context, config *Config) error {
 	controlConfig := &config.ControlConfig
 
-	sc, err := NewContext(ctx, controlConfig.Runtime.KubeConfigAdmin)
+	sc, err := NewContext(ctx, controlConfig.Runtime.KubeConfigSupervisor)
 	if err != nil {
 		return errors.Wrap(err, "failed to create new server context")
 	}
@@ -205,26 +208,42 @@ func coreControllers(ctx context.Context, sc *Context, config *Config) error {
 
 	// apply SystemDefaultRegistry setting to Helm before starting controllers
 	if config.ControlConfig.SystemDefaultRegistry != "" {
-		helm.DefaultJobImage = config.ControlConfig.SystemDefaultRegistry + "/" + helm.DefaultJobImage
+		helmchart.DefaultJobImage = config.ControlConfig.SystemDefaultRegistry + "/" + helmchart.DefaultJobImage
 	}
 
 	if !config.ControlConfig.DisableHelmController {
-		helm.Register(ctx,
+		restConfig, err := clientcmd.BuildConfigFromFlags("", config.ControlConfig.Runtime.KubeConfigSupervisor)
+		if err != nil {
+			return err
+		}
+		restConfig.UserAgent = util.GetUserAgent(helmcommon.Name)
+
+		k8s, err := clientset.NewForConfig(restConfig)
+		if err != nil {
+			return err
+		}
+
+		apply := apply.New(k8s, apply.NewClientFactory(restConfig)).WithDynamicLookup()
+		helm := sc.Helm.WithAgent(restConfig.UserAgent)
+		batch := sc.Batch.WithAgent(restConfig.UserAgent)
+		auth := sc.Auth.WithAgent(restConfig.UserAgent)
+		core := sc.Core.WithAgent(restConfig.UserAgent)
+		helmchart.Register(ctx,
 			metav1.NamespaceAll,
 			helmcommon.Name,
-			sc.K8s,
-			sc.Apply,
-			util.BuildControllerEventRecorder(sc.K8s, helmcommon.Name, metav1.NamespaceAll),
-			sc.Helm.Helm().V1().HelmChart(),
-			sc.Helm.Helm().V1().HelmChart().Cache(),
-			sc.Helm.Helm().V1().HelmChartConfig(),
-			sc.Helm.Helm().V1().HelmChartConfig().Cache(),
-			sc.Batch.Batch().V1().Job(),
-			sc.Batch.Batch().V1().Job().Cache(),
-			sc.Auth.Rbac().V1().ClusterRoleBinding(),
-			sc.Core.Core().V1().ServiceAccount(),
-			sc.Core.Core().V1().ConfigMap(),
-			sc.Core.Core().V1().Secret())
+			k8s,
+			apply,
+			util.BuildControllerEventRecorder(k8s, helmcommon.Name, metav1.NamespaceAll),
+			helm.V1().HelmChart(),
+			helm.V1().HelmChart().Cache(),
+			helm.V1().HelmChartConfig(),
+			helm.V1().HelmChartConfig().Cache(),
+			batch.V1().Job(),
+			batch.V1().Job().Cache(),
+			auth.V1().ClusterRoleBinding(),
+			core.V1().ServiceAccount(),
+			core.V1().ConfigMap(),
+			core.V1().Secret())
 	}
 
 	if config.ControlConfig.EncryptSecrets {
@@ -274,10 +293,24 @@ func stageFiles(ctx context.Context, sc *Context, controlConfig *config.Control)
 		return err
 	}
 
+	restConfig, err := clientcmd.BuildConfigFromFlags("", controlConfig.Runtime.KubeConfigSupervisor)
+	if err != nil {
+		return err
+	}
+	restConfig.UserAgent = util.GetUserAgent("deploy")
+
+	k8s, err := clientset.NewForConfig(restConfig)
+	if err != nil {
+		return err
+	}
+
+	apply := apply.New(k8s, apply.NewClientFactory(restConfig)).WithDynamicLookup()
+	k3s := sc.K3s.WithAgent(restConfig.UserAgent)
+
 	return deploy.WatchFiles(ctx,
-		sc.K8s,
-		sc.Apply,
-		sc.K3s.K3s().V1().Addon(),
+		k8s,
+		apply,
+		k3s.V1().Addon(),
 		controlConfig.Disables,
 		dataDir)
 }

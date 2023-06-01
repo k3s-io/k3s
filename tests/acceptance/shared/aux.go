@@ -1,4 +1,4 @@
-package util
+package shared
 
 import (
 	"bytes"
@@ -49,17 +49,6 @@ func RunCommandHost(cmd ...string) (string, error) {
 			return output.String(), fmt.Errorf("executing command: %s: %w", cmd, err)
 		}
 	}
-
-	// var output, errOut bytes.Buffer
-	// c.Stdout = &output
-	// c.Stderr = &errOut
-	// err := c.Run()
-	// if err != nil {
-	// 	return "", err
-	// }
-	// if eerOut.Len() > 0 {
-	// 	return output.String(), fmt.Errorf("error executing command: %s: %s", cmd, errOut.String())
-	// }
 
 	return output.String(), nil
 }

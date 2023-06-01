@@ -14,7 +14,7 @@ pipeline {
                 steps {
                     git branch: 'master', url: 'https://github.com/k3s-io/k3s.git'
                     script {
-                        dir("${WORKSPACE}/tests/acceptance") {
+                        dir("${WORKSPACE}/tests/acceptance/scripts") {
                             if (env.AWS_SSH_PEM_KEY && env.AWS_SSH_KEY_NAME) {
                                     def decoded = new String(AWS_SSH_PEM_KEY.decodeBase64())
                                     writeFile file: AWS_SSH_KEY_NAME, text: decoded
@@ -67,7 +67,7 @@ pipeline {
                 steps {
                     sh """
 
-                        /usr/bin/docker build -f tests/acceptance/Dockerfile.build -t k3s_create_cluster .
+                        /usr/bin/docker build -f tests/acceptance/scripts/Dockerfile.build -t k3s_create_cluster .
 
                         /usr/bin/docker run -d --name ${RESOURCE_NAME}_${BUILD_NUMBER} -v ${WORKSPACE}/tests/k3stf:/config \
                         -t -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \

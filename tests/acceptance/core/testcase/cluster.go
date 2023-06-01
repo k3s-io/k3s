@@ -5,44 +5,45 @@ import (
 	"strings"
 
 	"github.com/k3s-io/k3s/tests/acceptance/core/service/factory"
-	"github.com/k3s-io/k3s/tests/acceptance/shared/util"
+	"github.com/k3s-io/k3s/tests/acceptance/shared"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
-func TestBuildCluster(g GinkgoTInterface, destroy bool) {
-	status, err := factory.BuildCluster(g, destroy)
-	if err != nil {
-		return
-	}
-	Expect(status).To(Equal("cluster created"))
+func TestBuildCluster(g GinkgoTInterface) {
+	cluster := factory.GetCluster(g)
+	Expect(cluster.Status).To(Equal("cluster created"))
 
-	if strings.Contains(util.ClusterType, "etcd") {
-		fmt.Println("Backend:", util.ClusterType)
+	if strings.Contains(cluster.ClusterType, "etcd") {
+		fmt.Println("Backend:", cluster.ClusterType)
 	} else {
-		fmt.Println("Backend:", util.ExternalDb)
+		fmt.Println("Backend:", cluster.ExternalDb)
 	}
 
-	if util.ExternalDb != "" && util.ClusterType == "" {
-		for i := 0; i > len(util.ServerIPs); i++ {
+	if cluster.ExternalDb != "" && cluster.ClusterType == "" {
+		for i := 0; i > len(cluster.ServerIPs); i++ {
 			cmd := "grep \"datastore-endpoint\" /etc/systemd/system/k3s.service"
-			res, err := util.RunCmdOnNode(cmd, string(util.ServerIPs[0]))
+			res, err := shared.RunCmdOnNode(cmd, string(cluster.ServerIPs[0]))
 			Expect(err).NotTo(HaveOccurred())
-			Expect(res).Should(ContainSubstring(util.RenderedTemplate))
+			Expect(res).Should(ContainSubstring(cluster.RenderedTemplate))
 		}
 	}
 
-	util.PrintFileContents(util.KubeConfigFile)
-	Expect(util.KubeConfigFile).ShouldNot(BeEmpty())
-	Expect(util.ServerIPs).ShouldNot(BeEmpty())
+	err := shared.PrintFileContents(shared.KubeConfigFile)
+	if err != nil {
+		return
+	}
 
-	fmt.Println("Server Node IPS:", util.ServerIPs)
-	fmt.Println("Agent Node IPS:", util.AgentIPs)
+	Expect(shared.KubeConfigFile).ShouldNot(BeEmpty())
+	Expect(cluster.ServerIPs).ShouldNot(BeEmpty())
 
-	if util.NumAgents > 0 {
-		Expect(util.AgentIPs).ShouldNot(BeEmpty())
+	fmt.Println("Server Node IPS:", cluster.ServerIPs)
+	fmt.Println("Agent Node IPS:", cluster.AgentIPs)
+
+	if cluster.NumAgents > 0 {
+		Expect(cluster.AgentIPs).ShouldNot(BeEmpty())
 	} else {
-		Expect(util.AgentIPs).Should(BeEmpty())
+		Expect(cluster.AgentIPs).Should(BeEmpty())
 	}
 }

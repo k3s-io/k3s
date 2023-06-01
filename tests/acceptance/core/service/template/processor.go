@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/k3s-io/k3s/tests/acceptance/core/service/assert"
-	"github.com/k3s-io/k3s/tests/acceptance/shared/util"
+	"github.com/k3s-io/k3s/tests/acceptance/shared"
 
 	. "github.com/onsi/ginkgo/v2"
 )
@@ -49,7 +49,7 @@ func processOnNode(resultChan chan error, ip, cmd, expectedValue string) {
 		return
 	}
 
-	version := util.GetK3sVersion()
+	version := shared.GetK3sVersion()
 	fmt.Printf("\nChecking version running on node: %s on ip: %s \n "+
 		"Command: %s \nExpected Value: %s\n", version, ip, cmd, expectedValue)
 
@@ -76,10 +76,10 @@ func processOnHost(resultChan chan error, ip, cmd, expectedValue string) {
 		return
 	}
 
-	kubeconfigFlag := " --kubeconfig=" + util.KubeConfigFile
+	kubeconfigFlag := " --kubeconfig=" + shared.KubeConfigFile
 	fullCmd := joinCommands(cmd, kubeconfigFlag)
 
-	version := util.GetK3sVersion()
+	version := shared.GetK3sVersion()
 	fmt.Printf("\nChecking version running on host: %s on ip: %s \n "+
 		"Command: %s \nExpected Value: %s\n", version, ip, fullCmd, expectedValue)
 

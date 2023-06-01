@@ -5,7 +5,8 @@ import (
 	"time"
 
 	"github.com/k3s-io/k3s/tests/acceptance/core/service/assert"
-	"github.com/k3s-io/k3s/tests/acceptance/shared/util"
+	"github.com/k3s-io/k3s/tests/acceptance/core/service/customflag"
+	"github.com/k3s-io/k3s/tests/acceptance/shared"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -15,26 +16,26 @@ var volumeTest = "volume-test"
 
 func TestLocalPathProvisionerStorage(deployWorkload bool) {
 	if deployWorkload {
-		_, err := util.ManageWorkload(
+		_, err := shared.ManageWorkload(
 			"create",
 			"local-path-provisioner.yaml",
-			*util.Arch,
+			customflag.ServiceFlag.ClusterConfig.Arch.String(),
 		)
 		Expect(err).NotTo(HaveOccurred(),
 			"local-path-provisioner manifest not deployed")
 	}
 
 	getPodVolumeTestRunning := "kubectl get pods -l app=volume-test" +
-		" --field-selector=status.phase=Running --kubeconfig="
+		" --field-selector=status.phase=Running --kubeconfig=" + shared.KubeConfigFile
 	err := assert.ValidateOnHost(
-		getPodVolumeTestRunning+util.KubeConfigFile,
-		util.Running,
+		getPodVolumeTestRunning,
+		Running,
 	)
 	if err != nil {
 		GinkgoT().Errorf("%v", err)
 	}
 
-	_, err = util.WriteDataPod(volumeTest)
+	_, err = shared.WriteDataPod(volumeTest)
 	if err != nil {
 		GinkgoT().Errorf("error writing data to pod: %v", err)
 		return
@@ -42,43 +43,42 @@ func TestLocalPathProvisionerStorage(deployWorkload bool) {
 
 	Eventually(func(g Gomega) {
 		fmt.Println("Writing and reading data from pod")
-		res, err := util.ReadDataPod(volumeTest)
+		res, err := shared.ReadDataPod(volumeTest)
 		g.Expect(err).NotTo(HaveOccurred())
 		g.Expect(res).Should(ContainSubstring("testing local path"))
 		g.Expect(err).NotTo(HaveOccurred())
 	}, "420s", "2s").Should(Succeed())
 
-	ips := util.FetchNodeExternalIP()
+	ips := shared.FetchNodeExternalIP()
 	for _, ip := range ips {
-		_, err = util.RestartCluster(ip)
+		_, err = shared.RestartCluster(ip)
 		if err != nil {
 			return
 		}
 	}
 	time.Sleep(30 * time.Second)
 
-	_, err = util.ReadDataPod(volumeTest)
+	_, err = shared.ReadDataPod(volumeTest)
 	if err != nil {
 		return
 	}
 
-	err = readDataAfterDeletePod()
+	err = readData()
 	if err != nil {
 		return
 	}
 }
 
-func readDataAfterDeletePod() error {
+func readData() error {
 	deletePod := "kubectl delete pod -l app=volume-test --kubeconfig="
-
-	err := assert.ValidateOnHost(deletePod+util.KubeConfigFile, "deleted")
+	err := assert.ValidateOnHost(deletePod+shared.KubeConfigFile, "deleted")
 	if err != nil {
 		return err
 	}
 	time.Sleep(160 * time.Second)
 
 	fmt.Println("Read data from newly create pod")
-	_, err = util.ReadDataPod(volumeTest)
+	_, err = shared.ReadDataPod(volumeTest)
 	if err != nil {
 		return err
 	}

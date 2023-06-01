@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	"github.com/k3s-io/k3s/tests/acceptance/core/testcase"
-	"github.com/k3s-io/k3s/tests/acceptance/shared/util"
+	"github.com/k3s-io/k3s/tests/acceptance/shared"
 
 	. "github.com/onsi/ginkgo/v2"
 )
@@ -77,12 +77,12 @@ func joinCommands(cmd, arg string) string {
 
 // getIPs gets the IPs of the nodes
 func getIPs() (ips []string, err error) {
-	ips = util.FetchNodeExternalIP()
+	ips = shared.FetchNodeExternalIP()
 	return ips, nil
 }
 
-// GetTestCase returns the test case based on the name to be used as customflag.
-func GetTestCase(name string) (TestCase, error) {
+// AddTestCase returns the test case based on the name to be used as customflag.
+func AddTestCase(name string) (TestCase, error) {
 	if name == "" {
 		return func(deployWorkload bool) {}, nil
 	}

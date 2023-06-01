@@ -46,6 +46,6 @@ spec:
       terminationGracePeriodSeconds: 60
       containers:
         - name: testcontainer
-          image: shylajarancher19/shylajaarm64:v1.0
+          image: shylajarancher19/mytestcontainer:unprivileged
           ports:
             - containerPort: 80

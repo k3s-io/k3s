@@ -9,14 +9,14 @@ import (
 	"github.com/k3s-io/k3s/tests/acceptance/core/service/customflag"
 	"github.com/k3s-io/k3s/tests/acceptance/core/service/template"
 	"github.com/k3s-io/k3s/tests/acceptance/core/testcase"
-	"github.com/k3s-io/k3s/tests/acceptance/shared/util"
+	"github.com/k3s-io/k3s/tests/acceptance/shared"
 
 	. "github.com/onsi/ginkgo/v2"
 )
 
 var _ = Describe("VersionTemplate Upgrade:", func() {
 	It("Start Up with no issues", func() {
-		testcase.TestBuildCluster(GinkgoT(), false)
+		testcase.TestBuildCluster(GinkgoT())
 	})
 
 	It("Checks Node Status", func() {
@@ -33,10 +33,10 @@ var _ = Describe("VersionTemplate Upgrade:", func() {
 	})
 
 	It("Create bandwidth test pod", func() {
-		_, err := util.ManageWorkload(
+		_, err := shared.ManageWorkload(
 			"create",
 			"bandwidth-annotations.yaml",
-			*util.Arch,
+			customflag.ServiceFlag.ClusterConfig.Arch.String(),
 		)
 		if err != nil {
 			fmt.Println("Error creating workload")
@@ -49,34 +49,24 @@ var _ = Describe("VersionTemplate Upgrade:", func() {
 			TestCombination: &template.RunCmd{
 				RunOnNode: []template.TestMap{
 					{
-						Cmd:                  CNIbin,
-						ExpectedValue:        ExpectedValueNode,
-						ExpectedValueUpgrade: ExpectedValueUpgradedNode,
-					},
-					{
-						Cmd:                  FlannelBinVersion,
-						ExpectedValue:        ExpectedValueNode,
-						ExpectedValueUpgrade: ExpectedValueUpgradedHost,
+						Cmd:                  "/var/lib/rancher/k3s/data/current/bin/cni",
+						ExpectedValue:        template.TestMapFlag.ExpectedValueNode,
+						ExpectedValueUpgrade: template.TestMapFlag.ExpectedValueUpgradedNode,
 					},
 				},
 				RunOnHost: []template.TestMap{
 					{
-						Cmd:                  GetPodTestWithAnnotations + "," + GrepAnnotations,
-						ExpectedValue:        ExpectedValueHost,
-						ExpectedValueUpgrade: ExpectedValueUpgradedHost,
+						Cmd: "kubectl get pod test-pod -o yaml --kubeconfig=" + "," +
+							" | grep -A2 annotations ",
+						ExpectedValue:        template.TestMapFlag.ExpectedValueHost,
+						ExpectedValueUpgrade: template.TestMapFlag.ExpectedValueUpgradedHost,
 					},
 				},
 			},
-			InstallUpgrade: customflag.InstallUpgradeFlag,
+			InstallUpgrade: customflag.ServiceFlag.InstallUpgrade,
 			TestConfig:     nil,
 		})
 	})
-})
-
-var _ = BeforeEach(func() {
-	if *util.Destroy {
-		Skip("Cluster is being Deleted")
-	}
 })
 
 var _ = AfterEach(func() {

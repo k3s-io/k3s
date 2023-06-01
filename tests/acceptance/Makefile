@@ -4,7 +4,7 @@ include ./config.mk
 
 TAGNAME ?= default
 test-env-up:
-	@cd ../.. && docker build . -q -f ./tests/acceptance/Dockerfile.build -t k3s-automated-${TAGNAME}
+	@cd ../.. && docker build . -q -f ./tests/acceptance/scripts/Dockerfile.build -t k3s-automated-${TAGNAME}
 
 .PHONY: test-run
 test-run:
@@ -93,7 +93,7 @@ test-version-bump:
 
 
 #========================= TestCode Static Quality Check =========================#
-.PHONY: vet-lint                   ## Run locally only inside Tests package
+.PHONY: vet-lint                   ## Run locally only inside acceptance framework
 vet-lint:
 	@echo "Running go vet and lint"
 	@go vet ./${TESTDIR} && golangci-lint run --tests
