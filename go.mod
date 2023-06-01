@@ -89,10 +89,12 @@ replace (
 require (
 	github.com/Mirantis/cri-dockerd v0.0.0-00010101000000-000000000000
 	github.com/cloudnativelabs/kube-router/v2 v2.0.0-00010101000000-000000000000
+	github.com/containerd/aufs v1.0.0
 	github.com/containerd/cgroups v1.1.0
 	github.com/containerd/containerd v1.6.10
 	github.com/containerd/fuse-overlayfs-snapshotter v1.0.5
 	github.com/containerd/stargz-snapshotter v0.14.3
+	github.com/containerd/zfs v1.0.0
 	github.com/coreos/go-iptables v0.6.0
 	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf
 	github.com/docker/docker v23.0.3+incompatible
