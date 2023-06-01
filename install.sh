@@ -518,7 +518,7 @@ setup_selinux() {
         rpm_target=el7
         rpm_site_infix=centos/7
         package_installer=yum
-    elif [ "${VERSION_ID%%.*}" = "8" ] || [ "${VERSION_ID%%.*}" = "37" ] || [ "${VERSION_ID%%.*}" = "38" ] || [ "${VERSION_ID%%.*}" = "39" ]; then
+    elif [ "${VERSION_ID%%.*}" = "8" ] || [ "${VERSION_ID%%.*}" -gt "36" ]; then
         rpm_target=el8
         rpm_site_infix=centos/8
         package_installer=yum
