@@ -514,6 +514,10 @@ setup_selinux() {
             rpm_site_infix=slemicro
             package_installer=zypper
         fi
+    elif [ "${ID_LIKE:-}" = coreos ] || [ "${VARIANT_ID:-}" = coreos ]; then
+        rpm_target=coreos
+        rpm_site_infix=coreos
+        package_installer=rpm-ostree
     elif [ "${VERSION_ID%%.*}" = "7" ]; then
         rpm_target=el7
         rpm_site_infix=centos/7
@@ -522,10 +526,6 @@ setup_selinux() {
         rpm_target=el8
         rpm_site_infix=centos/8
         package_installer=yum
-    elif [ "${ID_LIKE:-}" = coreos ] || [ "${VARIANT_ID:-}" = coreos ]; then
-        rpm_target=coreos
-        rpm_site_infix=coreos
-        package_installer=rpm-ostree
     else
         rpm_target=el9
         rpm_site_infix=centos/9
