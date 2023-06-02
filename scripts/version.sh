@@ -23,7 +23,7 @@ if [ -d .git ]; then
 fi
 
 # We're building k3s against containerd 1.5 in go.mod because 1.6 has dependency
-# conflicts with Kubernetes, but we still need to bundle containerd 1.6.
+# conflicts with Kubernetes, but we still need to bundle containerd 1.7
 VERSION_CONTAINERD="v1.7.1-k3s1"
 
 VERSION_CRICTL=$(grep github.com/kubernetes-sigs/cri-tools go.mod | head -n1 | awk '{print $4}')
