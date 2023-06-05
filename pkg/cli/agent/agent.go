@@ -76,5 +76,7 @@ func Run(ctx *cli.Context) error {
 
 	contextCtx := signals.SetupSignalContext()
 
+	go cmds.WriteCoverage(contextCtx)
+
 	return agent.Run(contextCtx, cfg)
 }

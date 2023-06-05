@@ -1,6 +1,6 @@
-//go:build cover
+//go:build linux && cover
 
-package server
+package cmds
 
 import (
 	"context"
@@ -13,7 +13,7 @@ import (
 
 // writeCoverage checks if GOCOVERDIR is set on startup and writes coverage files to that directory
 // every 20 seconds. This is done to ensure that the coverage files are written even if the process is killed.
-func writeCoverage(ctx context.Context) {
+func WriteCoverage(ctx context.Context) {
 	if k, ok := os.LookupEnv("GOCOVERDIR"); ok {
 		for {
 			select {
