@@ -13,26 +13,23 @@ import (
 
 var _ = Describe("Test:", func() {
 
-	Context("Build Cluster and validate", func() {
+	It("Start Up with no issues", func() {
+		testcase.TestBuildCluster(GinkgoT())
+	})
 
-		It("Start Up with no issues", func() {
-			testcase.TestBuildCluster(GinkgoT())
-		})
+	It("Validate Node", func() {
+		testcase.TestNodeStatus(
+			assert.NodeAssertReadyStatus(),
+			nil,
+		)
+	})
 
-		It("Checks Node Status", func() {
-			testcase.TestNodeStatus(
-				assert.NodeAssertReadyStatus(),
-				nil,
-			)
-		})
-
-		It("Checks Pod Status", func() {
-			testcase.TestPodStatus(
-				assert.PodAssertRestart(),
-				assert.PodAssertReady(),
-				assert.PodAssertStatus(),
-			)
-		})
+	It("Validate Pod", func() {
+		testcase.TestPodStatus(
+			assert.PodAssertRestart(),
+			assert.PodAssertReady(),
+			assert.PodAssertStatus(),
+		)
 	})
 
 	It("Verifies ClusterIP Service", func() {

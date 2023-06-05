@@ -105,9 +105,9 @@ func ManageWorkload(action, workload, arch string) (string, error) {
 	var res string
 	var err error
 
-	resourceDir := GetBasepath() + "/acceptance/workloads/amd64workloads/"
+	resourceDir := GetBasepath() + "/acceptance/workloads/amd64/"
 	if arch == "arm64" {
-		resourceDir = GetBasepath() + "/acceptance/workloads/armworkloads/"
+		resourceDir = GetBasepath() + "/acceptance/workloads/arm/"
 	}
 
 	files, err := os.ReadDir(resourceDir)

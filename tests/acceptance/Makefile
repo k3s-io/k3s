@@ -1,5 +1,3 @@
-
-##========================= Terraform Tests =========================#
 include ./config.mk
 
 TAGNAME ?= default
@@ -49,7 +47,7 @@ test-env-down:
 	 docker rmi --force $$(docker images -q --filter="reference=k3s-automated*")
 
 test-env-clean:
-	@./shared/scripts/delete_resources.sh
+	@./scripts/delete_resources.sh
 
 .PHONY: test-complete
 test-complete: test-env-clean test-env-down remove-tf-state test-env-up test-run
