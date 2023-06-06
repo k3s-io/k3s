@@ -17,7 +17,6 @@ func TestUpgradeClusterManually(version string) error {
 	if version == "" {
 		return fmt.Errorf("please provide a non-empty k3s version or commit to upgrade to")
 	}
-
 	cluster := factory.GetCluster(GinkgoT())
 
 	if cluster.NumServers == 0 && cluster.NumAgents == 0 {
@@ -67,7 +66,7 @@ func upgradeServer(installType string, serverIPs []string) error {
 				close(errCh)
 				return
 			}
-
+			time.Sleep(10 * time.Second)
 			fmt.Println("Restarting server: " + ip)
 			if _, err := shared.RestartCluster(ip); err != nil {
 				fmt.Printf("Error restarting server %s: %v\n\n", ip, err)
@@ -75,7 +74,7 @@ func upgradeServer(installType string, serverIPs []string) error {
 				close(errCh)
 				return
 			}
-			time.Sleep(30 * time.Second)
+			time.Sleep(10 * time.Second)
 		}(ip, installType)
 	}
 	wg.Wait()

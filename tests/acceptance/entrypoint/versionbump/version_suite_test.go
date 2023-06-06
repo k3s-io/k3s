@@ -30,7 +30,7 @@ func TestMain(m *testing.M) {
 
 	flag.Parse()
 
-	testFunc, err := template.AddTestCase(customflag.ServiceFlag.TestCase.TestFuncName)
+	testFunc, err := template.AddTestCase(*customflag.ServiceFlag.TestCase.TestFuncName)
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
 		return

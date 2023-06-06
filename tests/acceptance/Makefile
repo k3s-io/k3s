@@ -86,7 +86,7 @@ test-version-bump:
 		-cmdHost "${CMDHOST}"  -expectedValueHost ${VALUEHOST} \
 		-expectedValueUpgradedHost ${VALUEHOSTUPGRADED} \
 		-installUpgradeFlag ${INSTALLTYPE} \
-		-testCase ${TESTCASE} \
+		-testCase "${TESTCASE}" \
 		-deployWorkload ${DEPLOYWORKLOAD}
 
 

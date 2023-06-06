@@ -44,7 +44,7 @@ func checkVersion(v VersionTestTemplate) error {
 		len(ips)*(len(v.TestCombination.RunOnHost)+len(v.TestCombination.RunOnNode)),
 	)
 
-	processTestCombination(errorChanList, ips, *v.TestCombination)
+	processTestCombination(errorChanList, &wg, ips, *v.TestCombination)
 
 	wg.Wait()
 	close(errorChanList)
@@ -99,7 +99,7 @@ func AddTestCase(name string) (TestCase, error) {
 
 	if test, ok := testCase[name]; ok {
 		return test, nil
+	} else {
+		return nil, fmt.Errorf("invalid test case name")
 	}
-
-	return nil, fmt.Errorf("invalid test case name")
 }

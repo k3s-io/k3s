@@ -19,8 +19,8 @@ func VersionTemplate(test VersionTestTemplate) {
 			return
 		}
 
-		err = upgradeVersion(test, version)
-		if err != nil {
+		upgErr := upgradeVersion(test, version)
+		if upgErr != nil {
 			GinkgoT().Errorf("error upgrading: %v\n", err)
 			return
 		}

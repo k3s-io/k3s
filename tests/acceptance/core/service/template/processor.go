@@ -11,9 +11,7 @@ import (
 )
 
 // processTestCombination run tests using CmdOnNode and CmdOnHost validation and spawn a go routine per ip.
-func processTestCombination(resultChan chan error, ips []string, testCombination RunCmd) {
-	var wg sync.WaitGroup
-
+func processTestCombination(resultChan chan error, wg *sync.WaitGroup, ips []string, testCombination RunCmd) {
 	for _, ip := range ips {
 		if testCombination.RunOnHost != nil {
 			for _, test := range testCombination.RunOnHost {
