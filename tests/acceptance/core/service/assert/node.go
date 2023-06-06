@@ -56,6 +56,6 @@ func CheckComponentCmdNode(cmd, assert, ip string) {
 		}
 
 		g.Expect(res).Should(ContainSubstring(assert))
-		fmt.Println("Result:", res+"Matched with assert:", assert)
+		fmt.Println("Result:", res+"\nMatched with assert:", assert)
 	}, "420s", "5s").Should(Succeed())
 }

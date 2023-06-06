@@ -26,7 +26,7 @@ func CheckComponentCmdHost(cmd string, asserts ...string) {
 			if !strings.Contains(res, assert) {
 				return fmt.Errorf("expected substring %q not found in result %q", assert, res)
 			}
-			fmt.Println("Result:", res+"Matched with assert:", assert)
+			fmt.Println("Result:", res+"\nMatched with assert:", assert)
 		}
 		return nil
 	}, "280s", "5s").Should(Succeed())

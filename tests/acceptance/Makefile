@@ -18,16 +18,16 @@ test-run:
             if [ "${TESTTAG}" = "localpath" ]; then \
                 go test -timeout=45m -v -tags=localpath ./versionbump/... -expectedValueNode "${VALUENODE}" \
                 -expectedValueUpgradedNode "${VALUENODEUPGRADED}" -expectedValueHost "${VALUEHOST}" \
-                -expectedValueUpgradedHost "${VALUEHOSTUPGRADED}" -installUpgradeFlag "${INSTALLTYPE}"; \
+                -expectedValueUpgradedHost "${VALUEHOSTUPGRADED}" -installType "${INSTALLTYPE}"; \
             elif [ "${TESTTAG}" = "versionbump" ]; then \
                 go test -timeout=45m -v -tags=versionbump ./versionbump/... -cmdNode "${CMDNODE}" -expectedValueNode "${VALUENODE}" \
                 -expectedValueUpgradedNode "${VALUENODEUPGRADED}" -cmdHost "${CMDHOST}" -expectedValueHost "${VALUEHOST}" \
-                -expectedValueUpgradedHost "${VALUEHOSTUPGRADED}" -installUpgradeFlag "${INSTALLTYPE}" -testCase "${TESTCASE}" \
+                -expectedValueUpgradedHost "${VALUEHOSTUPGRADED}" -installType "${INSTALLTYPE}" -testCase "${TESTCASE}" \
                 -deployWorkload "${DEPLOYWORKLOAD}"; \
             elif [ "${TESTTAG}" = "cniplugin" ]; then \
 				go test -timeout=45m -v -tags=cniplugin ./entrypoint/versionbump/... \
 				 -expectedValueNode "${VALUENODE}" -expectedValueUpgradedNode "${VALUENODEUPGRADED}" \
-				 -expectedValueHost "${VALUEHOST}" -expectedValueUpgradedHost "${VALUEHOSTUPGRADED}" -installUpgradeFlag "${INSTALLTYPE}"; \
+				 -expectedValueHost "${VALUEHOST}" -expectedValueUpgradedHost "${VALUEHOSTUPGRADED}" -installType "${INSTALLTYPE}"; \
             fi; \
         fi; \
     elif [ -z "${TESTDIR}" ]; then \
@@ -69,13 +69,12 @@ test-create:
 test-upgrade-manual:
 	@go test -timeout=45m -v ./entrypoint/upgradecluster/... -installtype ${INSTALLTYPE}
 
-
 .PHONY: test-version-local-path
 test-version-local-path:
 	@go test -timeout=45m -v -tags=localpath ./entrypoint/versionbump/... \
  		-expectedValueNode ${VALUENODE} -expectedValueUpgradedNode ${VALUENODEUPGRADED} \
  		-expectedValueHost ${VALUEHOST} -expectedValueUpgradedHost ${VALUEHOSTUPGRADED} \
- 		-installUpgradeFlag ${INSTALLTYPE}
+ 		-installType ${INSTALLTYPE}
 
 
 .PHONY: test-version-bump
@@ -85,7 +84,7 @@ test-version-bump:
 		-expectedValueUpgradedNode ${VALUENODEUPGRADED} \
 		-cmdHost "${CMDHOST}"  -expectedValueHost ${VALUEHOST} \
 		-expectedValueUpgradedHost ${VALUEHOSTUPGRADED} \
-		-installUpgradeFlag ${INSTALLTYPE} \
+		-installType ${INSTALLTYPE} \
 		-testCase "${TESTCASE}" \
 		-deployWorkload ${DEPLOYWORKLOAD}
 

@@ -3,7 +3,6 @@ package shared
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -15,36 +14,18 @@ import (
 
 // RunCommandHost executes commands on the host
 // return the output of it and an error if any
-func RunCommandHost(cmd ...string) (string, error) {
-	var output bytes.Buffer
-	for _, cmd := range cmd {
+func RunCommandHost(cmds ...string) (string, error) {
+	if cmds == nil {
+		return "", fmt.Errorf("cmd should not be empty")
+	}
+
+	var output, errOut bytes.Buffer
+	for _, cmd := range cmds {
 		c := exec.Command("bash", "-c", cmd)
 
-		stdoutPipe, err := c.StdoutPipe()
-		if err != nil {
-			return "", err
-		}
-		stderrPipe, err := c.StderrPipe()
-		if err != nil {
-			return "", err
-		}
-
-		err = c.Start()
-		if err != nil {
-			return "", err
-		}
-
-		_, err = io.Copy(&output, stdoutPipe)
-		if err != nil {
-			return "", err
-		}
-
-		_, err = io.Copy(&output, stderrPipe)
-		if err != nil {
-			return "", err
-		}
-
-		err = c.Wait()
+		c.Stdout = &output
+		c.Stderr = &errOut
+		err := c.Run()
 		if err != nil {
 			return output.String(), fmt.Errorf("executing command: %s: %w", cmd, err)
 		}

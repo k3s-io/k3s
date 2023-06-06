@@ -23,7 +23,8 @@ func TestServiceClusterIp(deployWorkload bool) {
 			"Cluster IP manifest not deployed")
 	}
 
-	getClusterIp := "kubectl get pods -l k8s-app=nginx-app-clusterip --field-selector=status.phase=Running --kubeconfig="
+	getClusterIp := "kubectl get pods -l k8s-app=nginx-app-clusterip " +
+		"--field-selector=status.phase=Running --kubeconfig="
 	err := assert.ValidateOnHost(getClusterIp+shared.KubeConfigFile, Running)
 	if err != nil {
 		GinkgoT().Errorf("%v", err)

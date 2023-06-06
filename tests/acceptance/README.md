@@ -129,7 +129,7 @@ Available arguments to create your command with examples:
 - $ -cmdNode "k3s --version"
 - $ -expectedValueNode "v1.25.2+k3s1"
 - $ -expectedValuesUpgradedNode "v1.26.4-rc1+k3s1"
-- $ -installUpgradeFlag INSTALL_K3S_COMMIT=257fa2c54cda332e42b8aae248c152f4d1898218
+- $ -installType INSTALL_K3S_COMMIT=257fa2c54cda332e42b8aae248c152f4d1898218
 - $ -deployWorkload true
 - $ -testCase TestLocalPathProvisionerStorage
 - $ -description "Description of your test"
@@ -142,7 +142,7 @@ Example of an execution considering that the `commands` are already placed or in
   -expectedValueUpgradedHost "v0.0.24" \
   -expectedValueNode "v1.25.2+k3s1" \            
   -expectedValueUpgradedNode "v1.26.4-rc1+k3s1" \                                  
-  -installUpgradeFlag INSTALL_K3S_COMMIT=257fa2c54cda332e42b8aae248c152f4d1898218                      
+  -installType INSTALL_K3S_COMMIT=257fa2c54cda332e42b8aae248c152f4d1898218                      
 
 ````
 - If you need to send more than one command at once split them with  " , "
@@ -221,7 +221,7 @@ template.VersionTemplate(template.VersionTestTemplate{
   -cmdNode "k3s --version"  \
   -expectedValueNode "v1.25.2+k3s1" \            
   -expectedValueUpgradedNode "v1.26.4-rc1+k3s1" \                                  
-  -installUpgradeFlag INSTALL_K3S_COMMIT=257fa2c54cda332e42b8aae248c152f4d1898218 \
+  -installType INSTALL_K3S_COMMIT=257fa2c54cda332e42b8aae248c152f4d1898218 \
   -testCase TestLocalPathProvisionerStorage \                             
 ````
 
@@ -263,13 +263,12 @@ Tests can be run individually per package:
 ```bash
 go test -timeout=45m -v ./tests/acceptance/entrypoint/$PACKAGE_NAME/...
 ```
+
 Test flags:
 ```
- ${upgradeVersion} version to upgrade to
-    -upgradeVersion INSTALL_K3S_VERSION=v1.26.2+k3s1 or INSTALL_K3S_COMMIT=257fa2c54cda332e42b8aae248c152f4d1898218
-    
  ${installType} type of installation (version or commit) + desired value    
     -installType version or commit
+
 ```
 
 Test tags:
