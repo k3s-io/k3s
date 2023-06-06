@@ -108,6 +108,7 @@ var _ = AfterSuite(func() {
 	if failed && !*ci {
 		fmt.Println("FAILED!")
 	} else {
+		Expect(e2e.GetCoverageReport(append(serverNodeNames, agentNodeNames...))).To(Succeed())
 		Expect(e2e.DestroyCluster()).To(Succeed())
 		Expect(os.Remove(kubeConfigFile)).To(Succeed())
 	}

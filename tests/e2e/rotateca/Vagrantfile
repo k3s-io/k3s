@@ -5,6 +5,7 @@ NODE_BOXES = (ENV['E2E_NODE_BOXES'] ||
   ['generic/ubuntu2204', 'generic/ubuntu2204', 'generic/ubuntu2204', 'generic/ubuntu2204'])
 GITHUB_BRANCH = (ENV['E2E_GITHUB_BRANCH'] || "master")
 RELEASE_VERSION = (ENV['E2E_RELEASE_VERSION'] || "")
+GOCOVER = (ENV['E2E_GOCOVER'] || "")
 NODE_CPUS = (ENV['E2E_NODE_CPUS'] || 2).to_i
 NODE_MEMORY = (ENV['E2E_NODE_MEMORY'] || 2048).to_i
 # Virtualbox >= 6.1.28 require `/etc/vbox/network.conf` for expanded private networks 
@@ -21,6 +22,7 @@ def provision(vm, role, role_num, node_num)
   load vagrant_defaults if File.exists?(vagrant_defaults)
   
   defaultOSConfigure(vm)
+  addCoverageDir(vm, role, GOCOVER)
   install_type = getInstallType(vm, RELEASE_VERSION, GITHUB_BRANCH)
   
   vm.provision "shell", inline: "ping -c 2 k3s.io"

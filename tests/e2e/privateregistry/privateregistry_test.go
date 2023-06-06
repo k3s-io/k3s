@@ -156,6 +156,7 @@ var _ = AfterSuite(func() {
 		r2, err := e2e.RunCmdOnNode("sudo kubectl delete deployment my-webpage", serverNodeNames[0])
 		Expect(err).NotTo(HaveOccurred(), r2)
 		Expect(err).NotTo(HaveOccurred())
+		Expect(e2e.GetCoverageReport(append(serverNodeNames, agentNodeNames...))).To(Succeed())
 		Expect(e2e.DestroyCluster()).To(Succeed())
 		Expect(os.Remove(kubeConfigFile)).To(Succeed())
 	}

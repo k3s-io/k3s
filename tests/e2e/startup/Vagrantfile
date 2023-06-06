@@ -23,9 +23,12 @@ def provision(vm, role, role_num, node_num)
   
   defaultOSConfigure(vm)
   dockerInstall(vm)
+  addCoverageDir(vm, role, GOCOVER)
   install_type = getInstallType(vm, RELEASE_VERSION, GITHUB_BRANCH)
+
   node_ip = "#{NETWORK_PREFIX}.#{100+node_num}"
   
+
   vm.provision "shell", inline: "ping -c 2 k3s.io"
 
   if role.include?("server")
@@ -53,9 +56,6 @@ def provision(vm, role, role_num, node_num)
     end
   end
 
-  if !GOCOVER.empty?
-    addCoverageDir(vm, role)
-  end
 
   if vm.box.to_s.include?("microos")
     vm.provision 'k3s-reload', type: 'reload', run: 'once'
