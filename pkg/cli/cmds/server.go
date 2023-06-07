@@ -45,6 +45,7 @@ type Server struct {
 	DisableAgent             bool
 	KubeConfigOutput         string
 	KubeConfigMode           string
+	KlipperHelmImage         string
 	TLSSan                   cli.StringSlice
 	BindAddress              string
 	EnablePProf              bool
@@ -251,6 +252,11 @@ var ServerFlags = []cli.Flag{
 		Usage:       "(client) Write kubeconfig with this mode",
 		Destination: &ServerConfig.KubeConfigMode,
 		EnvVar:      version.ProgramUpper + "_KUBECONFIG_MODE",
+	},
+	&cli.StringFlag{
+		Name:        "kippler-helm-image",
+		Usage:       "(helm) Image for our helm controller",
+		Destination: &ServerConfig.KlipperHelmImage,
 	},
 	ServerToken,
 	&cli.StringFlag{

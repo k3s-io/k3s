@@ -113,6 +113,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	serverConfig.ControlConfig.DataDir = cfg.DataDir
 	serverConfig.ControlConfig.KubeConfigOutput = cfg.KubeConfigOutput
 	serverConfig.ControlConfig.KubeConfigMode = cfg.KubeConfigMode
+	serverConfig.ControlConfig.KlipperHelmImage = cfg.KlipperHelmImage
 	serverConfig.ControlConfig.Rootless = cfg.Rootless
 	serverConfig.ControlConfig.ServiceLBNamespace = cfg.ServiceLBNamespace
 	serverConfig.ControlConfig.SANs = util.SplitStringSlice(cfg.TLSSan)

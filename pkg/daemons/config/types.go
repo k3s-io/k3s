@@ -166,6 +166,7 @@ type Control struct {
 	ServiceNodePortRange     *utilnet.PortRange
 	KubeConfigOutput         string
 	KubeConfigMode           string
+	KlipperHelmImage         string
 	DataDir                  string
 	Datastore                endpoint.Config `json:"-"`
 	Disables                 map[string]bool
