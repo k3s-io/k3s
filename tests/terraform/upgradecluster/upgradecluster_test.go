@@ -322,7 +322,7 @@ var _ = Describe("Test:", func() {
 			MIPs := strings.Split(createcluster.MasterIPs, ",")
 
 			for _, ip := range MIPs {
-				cmd := "sudo sed -i \"s/|/| INSTALL_K3S_VERSION=" + *upgradeVersion + "/g\" /tmp/master_cmd"
+				cmd := "sed -i \"s/|/| INSTALL_K3S_VERSION=" + *upgradeVersion + "/g\" /tmp/master_cmd"
 				Eventually(func(g Gomega) {
 					_, err := tf.RunCmdOnNode(cmd, ip, createcluster.AwsUser, createcluster.AccessKey)
 					g.Expect(err).NotTo(HaveOccurred())
@@ -338,7 +338,7 @@ var _ = Describe("Test:", func() {
 
 			WIPs := strings.Split(createcluster.WorkerIPs, ",")
 			for _, ip := range WIPs {
-				cmd := "sudo sed -i \"s/|/| INSTALL_K3S_VERSION=" + *upgradeVersion + "/g\" /tmp/agent_cmd"
+				cmd := "sed -i \"s/|/| INSTALL_K3S_VERSION=" + *upgradeVersion + "/g\" /tmp/agent_cmd"
 				Eventually(func(g Gomega) {
 					_, err := tf.RunCmdOnNode(cmd, ip, createcluster.AwsUser, createcluster.AccessKey)
 					g.Expect(err).NotTo(HaveOccurred())
