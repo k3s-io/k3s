@@ -452,9 +452,13 @@ func StopCluster(nodeNames []string) error {
 	return nil
 }
 
-// RunCmdOnNode executes a command from within the given node
+// RunCmdOnNode executes a command from within the given node as sudo
 func RunCmdOnNode(cmd string, nodename string) (string, error) {
-	runcmd := "vagrant ssh " + nodename + " -c \"sudo " + cmd + "\""
+	injectEnv := ""
+	if _, ok := os.LookupEnv("E2E_GOCOVER"); ok && strings.HasPrefix(cmd, "k3s") {
+		injectEnv = "GOCOVERDIR=/tmp/k3scov "
+	}
+	runcmd := "vagrant ssh " + nodename + " -c \"sudo " + injectEnv + cmd + "\""
 	out, err := RunCommand(runcmd)
 	if err != nil {
 		return out, fmt.Errorf("failed to run command: %s on node %s: %s, %v", cmd, nodename, out, err)
@@ -500,10 +504,24 @@ func GetCoverageReport(nodeNames []string) error {
 			return err
 		}
 	}
-	cmd := "go tool covdata textfmt -i " + strings.Join(covDirs, ",") + " -o coverage.out"
+	coverageFile := "coverage.out"
+	cmd := "go tool covdata textfmt -i " + strings.Join(covDirs, ",") + " -o " + coverageFile
 	if out, err := RunCommand(cmd); err != nil {
 		return fmt.Errorf("failed to generate coverage report: %s, %v", out, err)
 	}
+
+	f, err := os.ReadFile(coverageFile)
+	if err != nil {
+		return err
+	}
+	nf := strings.Replace(string(f),
+		"/go/src/github.com/k3s-io/k3s/cmd/server/main.go",
+		"github.com/k3s-io/k3s/cmd/server/main.go", -1)
+
+	if err = os.WriteFile(coverageFile, []byte(nf), os.ModePerm); err != nil {
+		return err
+	}
+
 	for _, covDir := range covDirs {
 		if err := os.RemoveAll(covDir); err != nil {
 			return err
