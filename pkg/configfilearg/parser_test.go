@@ -199,7 +199,7 @@ func Test_UnitParser_findConfigFileFlag(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := Parser{
-				FlagNames:     []string{"--config", "-c"},
+				ConfigFlags:   []string{"--config", "-c"},
 				EnvName:       "_TEST_FLAG_ENV",
 				DefaultConfig: tt.fields.DefaultConfig,
 			}
@@ -328,7 +328,7 @@ func Test_UnitParser_Parse(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &Parser{
 				After:         tt.fields.After,
-				FlagNames:     tt.fields.FlagNames,
+				ConfigFlags:   tt.fields.FlagNames,
 				EnvName:       tt.fields.EnvName,
 				DefaultConfig: tt.fields.DefaultConfig,
 			}
@@ -447,7 +447,7 @@ func Test_UnitParser_FindString(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &Parser{
 				After:         tt.fields.After,
-				FlagNames:     tt.fields.FlagNames,
+				ConfigFlags:   tt.fields.FlagNames,
 				EnvName:       tt.fields.EnvName,
 				DefaultConfig: tt.fields.DefaultConfig,
 			}
