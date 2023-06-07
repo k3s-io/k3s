@@ -146,7 +146,7 @@ func scpK3sBinary(nodeNames []string) error {
 		if _, err := RunCommand(cmd); err != nil {
 			return fmt.Errorf("failed to scp k3s binary to %s: %v", node, err)
 		}
-		if _, err := RunCmdOnNode("sudo mv /tmp/k3s /usr/local/bin/", node); err != nil {
+		if _, err := RunCmdOnNode("mv /tmp/k3s /usr/local/bin/", node); err != nil {
 			return err
 		}
 	}
@@ -416,7 +416,7 @@ func ParsePods(kubeConfig string, print bool) ([]Pod, error) {
 // RestartCluster restarts the k3s service on each node given
 func RestartCluster(nodeNames []string) error {
 	for _, nodeName := range nodeNames {
-		cmd := "sudo systemctl restart k3s* --all"
+		cmd := "systemctl restart k3s* --all"
 		if _, err := RunCmdOnNode(cmd, nodeName); err != nil {
 			return err
 		}
@@ -427,7 +427,7 @@ func RestartCluster(nodeNames []string) error {
 // StartCluster starts the k3s service on each node given
 func StartCluster(nodeNames []string) error {
 	for _, nodeName := range nodeNames {
-		cmd := "sudo systemctl start k3s"
+		cmd := "systemctl start k3s"
 		if strings.Contains(nodeName, "agent") {
 			cmd += "-agent"
 		}
@@ -441,7 +441,7 @@ func StartCluster(nodeNames []string) error {
 // StopCluster starts the k3s service on each node given
 func StopCluster(nodeNames []string) error {
 	for _, nodeName := range nodeNames {
-		cmd := "sudo systemctl stop k3s*"
+		cmd := "systemctl stop k3s*"
 		if _, err := RunCmdOnNode(cmd, nodeName); err != nil {
 			return err
 		}
@@ -451,7 +451,7 @@ func StopCluster(nodeNames []string) error {
 
 // RunCmdOnNode executes a command from within the given node
 func RunCmdOnNode(cmd string, nodename string) (string, error) {
-	runcmd := "vagrant ssh -c \"" + cmd + "\" " + nodename
+	runcmd := "vagrant ssh " + nodename + " -c \"sudo " + cmd + "\""
 	out, err := RunCommand(runcmd)
 	if err != nil {
 		return out, fmt.Errorf("failed to run command: %s on node %s: %s, %v", cmd, nodename, out, err)

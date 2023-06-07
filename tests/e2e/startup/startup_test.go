@@ -45,13 +45,13 @@ func StartK3sCluster(nodes []string, serverYAML string, agentYAML string) error 
 		var resetCmd string
 		var startCmd string
 		if strings.Contains(node, "server") {
-			resetCmd = "sudo head -n 3 /etc/rancher/k3s/config.yaml > /tmp/config.yaml && sudo mv /tmp/config.yaml /etc/rancher/k3s/config.yaml"
-			yamlCmd = fmt.Sprintf("sudo echo '%s' >> /etc/rancher/k3s/config.yaml", serverYAML)
-			startCmd = "sudo systemctl start k3s"
+			resetCmd = "head -n 3 /etc/rancher/k3s/config.yaml > /tmp/config.yaml && sudo mv /tmp/config.yaml /etc/rancher/k3s/config.yaml"
+			yamlCmd = fmt.Sprintf("echo '%s' >> /etc/rancher/k3s/config.yaml", serverYAML)
+			startCmd = "systemctl start k3s"
 		} else {
-			resetCmd = "sudo head -n 4 /etc/rancher/k3s/config.yaml > /tmp/config.yaml && sudo mv /tmp/config.yaml /etc/rancher/k3s/config.yaml"
-			yamlCmd = fmt.Sprintf("sudo echo '%s' >> /etc/rancher/k3s/config.yaml", agentYAML)
-			startCmd = "sudo systemctl start k3s-agent"
+			resetCmd = "head -n 4 /etc/rancher/k3s/config.yaml > /tmp/config.yaml && sudo mv /tmp/config.yaml /etc/rancher/k3s/config.yaml"
+			yamlCmd = fmt.Sprintf("echo '%s' >> /etc/rancher/k3s/config.yaml", agentYAML)
+			startCmd = "systemctl start k3s-agent"
 		}
 		if _, err := e2e.RunCmdOnNode(resetCmd, node); err != nil {
 			return err
@@ -68,8 +68,13 @@ func StartK3sCluster(nodes []string, serverYAML string, agentYAML string) error 
 
 func KillK3sCluster(nodes []string) error {
 	for _, node := range nodes {
-		if _, err := e2e.RunCmdOnNode("sudo k3s-killall.sh", node); err != nil {
+		if _, err := e2e.RunCmdOnNode("k3s-killall.sh", node); err != nil {
 			return err
+		}
+		if strings.Contains(node, "server") {
+			if _, err := e2e.RunCmdOnNode("rm -rf /var/lib/rancher/k3s/server/db", node); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
