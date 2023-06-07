@@ -323,7 +323,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 			Expect(errStop).NotTo(HaveOccurred(), "Cluster could not be stoped successfully")
 
 			for _, nodeName := range serverNodeNames {
-				cmd := "sudo k3s certificate rotate"
+				cmd := "k3s certificate rotate"
 				if _, err := e2e.RunCmdOnNode(cmd, nodeName); err != nil {
 					Expect(err).NotTo(HaveOccurred(), "Certificate could not be rotated successfully")
 				}
@@ -333,7 +333,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 		It("Start normally", func() {
 			// Since we stopped all the server, we have to start 2 at once to get it back up
 			// If we only start one at a time, the first will hang waiting for the second to be up
-			_, err := e2e.RunCmdOnNode("sudo systemctl --no-block start k3s", serverNodeNames[0])
+			_, err := e2e.RunCmdOnNode("systemctl --no-block start k3s", serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred())
 			err = e2e.StartCluster(serverNodeNames[1:])
 			Expect(err).NotTo(HaveOccurred(), "Cluster could not be started successfully")
@@ -360,7 +360,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 			}, "620s", "5s").Should(Succeed())
 		})
 		It("Validates certificates", func() {
-			const grepCert = "sudo ls -lt /var/lib/rancher/k3s/server/ | grep tls"
+			const grepCert = "ls -lt /var/lib/rancher/k3s/server/ | grep tls"
 			var expectResult = []string{
 				"client-ca.crt", "client-ca.key", "client-ca.nochain.crt",
 				"client-supervisor.crt", "client-supervisor.key",
@@ -381,7 +381,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 				Expect(errGrep).NotTo(HaveOccurred(), "Certificate could not be created successfully")
 				re := regexp.MustCompile("tls-[0-9]+")
 				tls := re.FindAllString(grCert, -1)[0]
-				final := fmt.Sprintf("sudo diff -sr /var/lib/rancher/k3s/server/tls/ /var/lib/rancher/k3s/server/%s/"+
+				final := fmt.Sprintf("diff -sr /var/lib/rancher/k3s/server/tls/ /var/lib/rancher/k3s/server/%s/"+
 					"| grep -i identical | cut -f4 -d ' ' | xargs basename -a \n", tls)
 				finalResult, finalErr = e2e.RunCmdOnNode(final, nodeName)
 				Expect(finalErr).NotTo(HaveOccurred(), "Final Certification does not created successfully")
