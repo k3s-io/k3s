@@ -20,10 +20,13 @@ import (
 
 type Parser struct {
 	After         []string
-	FlagNames     []string
+	ConfigFlags   []string
+	OverrideFlags []string
 	EnvName       string
 	DefaultConfig string
-	ValidFlags    map[string][]cli.Flag
+	// ValidFlags are maps of flags that are valid for that particular conmmand. This enables us to ignore flags in
+	// the config file that do no apply to the current command.
+	ValidFlags map[string][]cli.Flag
 }
 
 // Parse will parse an os.Args style slice looking for Parser.FlagNames after Parse.After.
@@ -97,6 +100,12 @@ func (p *Parser) stripInvalidFlags(command string, args []string) ([]string, err
 }
 
 func (p *Parser) FindString(args []string, target string) (string, error) {
+
+	// Check for --help or --version flags, which override any other flags
+	if val, found := p.findFlag(args, p.OverrideFlags, false); found {
+		return val, nil
+	}
+
 	configFile, isSet := p.findConfigFileFlag(args)
 	var lastVal string
 	if configFile != "" {
@@ -140,25 +149,31 @@ func (p *Parser) FindString(args []string, target string) (string, error) {
 	return lastVal, nil
 }
 
-func (p *Parser) findConfigFileFlag(args []string) (string, bool) {
-	if envVal := os.Getenv(p.EnvName); p.EnvName != "" && envVal != "" {
-		return envVal, true
-	}
-
+func (p *Parser) findFlag(args []string, flags []string, next bool) (string, bool) {
 	for i, arg := range args {
-		for _, flagName := range p.FlagNames {
+		for _, flagName := range flags {
 			if flagName == arg {
-				if len(args) > i+1 {
+				if len(args) > i+1 && next {
 					return args[i+1], true
 				}
-				// This is actually invalid, so we rely on the CLI parser after the fact flagging it as bad
-				return "", false
+				return arg, true
 			} else if strings.HasPrefix(arg, flagName+"=") {
 				return arg[len(flagName)+1:], true
 			}
 		}
 	}
 
+	return "", false
+}
+
+func (p *Parser) findConfigFileFlag(args []string) (string, bool) {
+	if envVal := os.Getenv(p.EnvName); p.EnvName != "" && envVal != "" {
+		return envVal, true
+	}
+
+	if val, found := p.findFlag(args, p.ConfigFlags, false); found {
+		return val, found
+	}
 	return p.DefaultConfig, false
 }
 
