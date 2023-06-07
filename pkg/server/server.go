@@ -207,16 +207,10 @@ func coreControllers(ctx context.Context, sc *Context, config *Config) error {
 	}
 
 	// apply SystemDefaultRegistry setting to Helm before starting controllers
-	if config.ControlConfig.SystemDefaultRegistry != "" {
+	if config.ControlConfig.HelmJobImage != "" {
+		helmchart.DefaultJobImage = config.ControlConfig.HelmJobImage
+	} else if config.ControlConfig.SystemDefaultRegistry != "" {
 		helmchart.DefaultJobImage = config.ControlConfig.SystemDefaultRegistry + "/" + helmchart.DefaultJobImage
-	}
-
-	if config.ControlConfig.KlipperHelmImage != "" {
-		helmchart.DefaultJobImage = config.ControlConfig.KlipperHelmImage
-	}
-
-	if config.ControlConfig.SystemDefaultRegistry != "" && config.ControlConfig.KlipperHelmImage != "" {
-		helmchart.DefaultJobImage = config.ControlConfig.SystemDefaultRegistry + "/" + config.ControlConfig.KlipperHelmImage
 	}
 
 	if !config.ControlConfig.DisableHelmController {
