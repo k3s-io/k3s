@@ -20,10 +20,13 @@ import (
 
 type Parser struct {
 	After         []string
-	FlagNames     []string
+	ConfigFlags   []string
+	OverrideFlags []string
 	EnvName       string
 	DefaultConfig string
-	ValidFlags    map[string][]cli.Flag
+	// ValidFlags are maps of flags that are valid for that particular conmmand. This enables us to ignore flags in
+	// the config file that do no apply to the current command.
+	ValidFlags map[string][]cli.Flag
 }
 
 // Parse will parse an os.Args style slice looking for Parser.FlagNames after Parse.After.
@@ -97,6 +100,12 @@ func (p *Parser) stripInvalidFlags(command string, args []string) ([]string, err
 }
 
 func (p *Parser) FindString(args []string, target string) (string, error) {
+
+	// Check for --help or --version flags, which override any other flags
+	if val, found := p.findOverrideFlag(args); found {
+		return val, nil
+	}
+
 	configFile, isSet := p.findConfigFileFlag(args)
 	var lastVal string
 	if configFile != "" {
@@ -140,13 +149,25 @@ func (p *Parser) FindString(args []string, target string) (string, error) {
 	return lastVal, nil
 }
 
+func (p *Parser) findOverrideFlag(args []string) (string, bool) {
+	for _, arg := range args {
+		for _, flagName := range p.OverrideFlags {
+			if flagName == arg {
+				return arg, true
+			}
+		}
+	}
+
+	return "", false
+}
+
 func (p *Parser) findConfigFileFlag(args []string) (string, bool) {
 	if envVal := os.Getenv(p.EnvName); p.EnvName != "" && envVal != "" {
 		return envVal, true
 	}
 
 	for i, arg := range args {
-		for _, flagName := range p.FlagNames {
+		for _, flagName := range p.ConfigFlags {
 			if flagName == arg {
 				if len(args) > i+1 {
 					return args[i+1], true
