@@ -102,7 +102,7 @@ func (p *Parser) stripInvalidFlags(command string, args []string) ([]string, err
 func (p *Parser) FindString(args []string, target string) (string, error) {
 
 	// Check for --help or --version flags, which override any other flags
-	if val, found := p.findFlag(args, p.OverrideFlags, false); found {
+	if val, found := p.findOverrideFlag(args); found {
 		return val, nil
 	}
 
@@ -149,16 +149,11 @@ func (p *Parser) FindString(args []string, target string) (string, error) {
 	return lastVal, nil
 }
 
-func (p *Parser) findFlag(args []string, flags []string, next bool) (string, bool) {
-	for i, arg := range args {
-		for _, flagName := range flags {
+func (p *Parser) findOverrideFlag(args []string) (string, bool) {
+	for _, arg := range args {
+		for _, flagName := range p.OverrideFlags {
 			if flagName == arg {
-				if len(args) > i+1 && next {
-					return args[i+1], true
-				}
 				return arg, true
-			} else if strings.HasPrefix(arg, flagName+"=") {
-				return arg[len(flagName)+1:], true
 			}
 		}
 	}
@@ -171,9 +166,20 @@ func (p *Parser) findConfigFileFlag(args []string) (string, bool) {
 		return envVal, true
 	}
 
-	if val, found := p.findFlag(args, p.ConfigFlags, false); found {
-		return val, found
+	for i, arg := range args {
+		for _, flagName := range p.ConfigFlags {
+			if flagName == arg {
+				if len(args) > i+1 {
+					return args[i+1], true
+				}
+				// This is actually invalid, so we rely on the CLI parser after the fact flagging it as bad
+				return "", false
+			} else if strings.HasPrefix(arg, flagName+"=") {
+				return arg[len(flagName)+1:], true
+			}
+		}
 	}
+
 	return p.DefaultConfig, false
 }
 
