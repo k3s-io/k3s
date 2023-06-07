@@ -283,7 +283,7 @@ var _ = Describe("Test:", func() {
 		It("Verify Cluster is upgraded", func() {
 			MIPs := strings.Split(cc.MasterIPs, ",")
 			for _, ip := range MIPs {
-				cmd := "sudo sed -i \"s/|/| INSTALL_K3S_VERSION=" + *upgradeVersion + "/g\" /tmp/master_cmd"
+				cmd := "sed -i \"s/|/| INSTALL_K3S_VERSION=" + *upgradeVersion + "/g\" /tmp/master_cmd"
 				Eventually(func(g Gomega) {
 					_, err := tf.RunCmdOnNode(cmd, ip, *sshuser, *accessKey)
 					g.Expect(err).NotTo(HaveOccurred())
@@ -299,10 +299,7 @@ var _ = Describe("Test:", func() {
 
 			WIPs := strings.Split(cc.WorkerIPs, ",")
 			for _, ip := range WIPs {
-				// for i := 0; i < len(WIPs) && len(WIPs[0]) > 1; i++ {
-				// ip := WIPs[i]
-				// strings.TrimSpace(WIPs[i])
-				cmd := "sudo sed -i \"s/|/| INSTALL_K3S_VERSION=" + *upgradeVersion + "/g\" /tmp/agent_cmd"
+				cmd := "sed -i \"s/|/| INSTALL_K3S_VERSION=" + *upgradeVersion + "/g\" /tmp/agent_cmd"
 				Eventually(func(g Gomega) {
 					_, err := tf.RunCmdOnNode(cmd, ip, *sshuser, *accessKey)
 					g.Expect(err).NotTo(HaveOccurred())
