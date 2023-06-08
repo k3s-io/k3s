@@ -572,6 +572,10 @@ ip link delete kube-ipvs0
 rm -rf /var/lib/cni/
 iptables-save | grep -v KUBE- | grep -v CNI- | grep -iv flannel | iptables-restore
 ip6tables-save | grep -v KUBE- | grep -v CNI- | grep -iv flannel | ip6tables-restore
+
+# Delete sysctl.d file
+rm /etc/sysctl.d/50-k3s.conf
+
 EOF
     $SUDO chmod 755 ${KILLALL_K3S_SH}
     $SUDO chown root:root ${KILLALL_K3S_SH}

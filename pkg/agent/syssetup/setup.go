@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"strconv"
 	"time"
 
 	"github.com/google/cadvisor/machine"
@@ -66,6 +67,11 @@ func Configure(enableIPv6 bool, config *kubeproxyconfig.KubeProxyConntrackConfig
 	}
 
 	sys := sysctl.New()
+	f, err := os.Create("/etc/sysctl.d/50-k3s.conf")
+	defer f.Close()
+	if err != nil {
+		logrus.Errorf("Failed to create /etc/sysctl.d/50-k3s.conf")
+	}
 	for entry, value := range sysctls {
 		if val, _ := sys.GetSysctl(entry); val != value {
 			logrus.Infof("Set sysctl '%v' to %v", entry, value)
@@ -73,6 +79,8 @@ func Configure(enableIPv6 bool, config *kubeproxyconfig.KubeProxyConntrackConfig
 				logrus.Errorf("Failed to set sysctl: %v", err)
 			}
 		}
+		sysctlString := entry + " = " + strconv.Itoa(value) + "\n"
+		f.WriteString(sysctlString)
 	}
 }
 
