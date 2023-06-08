@@ -106,7 +106,7 @@ var _ = Describe("Verify MultiClusterCIDR Configuration", Ordered, func() {
 
 	It("Restart agent-0", func() {
 		agents := []string{"agent-0"}
-		err := e2e.RestartClusterAgent(agents)
+		err := e2e.RestartCluster(agents)
 		Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog(err))
 	})
 
@@ -223,7 +223,7 @@ var _ = Describe("Verify MultiClusterCIDR Configuration", Ordered, func() {
 
 	It("Delete and restart agent-0", func() {
 		agents := []string{"agent-0"}
-		err := e2e.RestartClusterAgent(agents)
+		err := e2e.RestartCluster(agents)
 		Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog(err))
 	})
 

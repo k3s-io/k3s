@@ -9,7 +9,7 @@ import (
 
 var DefaultParser = &Parser{
 	After:         []string{"server", "agent", "etcd-snapshot:1"},
-	FlagNames:     []string{"--config", "-c"},
+	ConfigFlags:   []string{"--config", "-c"},
 	EnvName:       version.ProgramUpper + "_CONFIG_FILE",
 	DefaultConfig: "/etc/rancher/" + version.Program + "/config.yaml",
 	ValidFlags:    map[string][]cli.Flag{"server": cmds.ServerFlags, "etcd-snapshot": cmds.EtcdSnapshotFlags},
@@ -25,8 +25,7 @@ func MustParse(args []string) []string {
 
 func MustFindString(args []string, target string) string {
 	parser := &Parser{
-		After:         []string{},
-		FlagNames:     []string{},
+		OverrideFlags: []string{"--help", "-h", "--version", "-v"},
 		EnvName:       version.ProgramUpper + "_CONFIG_FILE",
 		DefaultConfig: "/etc/rancher/" + version.Program + "/config.yaml",
 	}

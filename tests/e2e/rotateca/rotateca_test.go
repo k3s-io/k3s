@@ -78,9 +78,9 @@ var _ = Describe("Verify Custom CA Rotation", Ordered, func() {
 
 		It("Generates New CA Certificates", func() {
 			cmds := []string{
-				"sudo mkdir -p /opt/rancher/k3s/server",
-				"sudo cp -r /var/lib/rancher/k3s/server/tls /opt/rancher/k3s/server",
-				"sudo DATA_DIR=/opt/rancher/k3s /tmp/generate-custom-ca-certs.sh",
+				"mkdir -p /opt/rancher/k3s/server",
+				"cp -r /var/lib/rancher/k3s/server/tls /opt/rancher/k3s/server",
+				"DATA_DIR=/opt/rancher/k3s /tmp/generate-custom-ca-certs.sh",
 			}
 			for _, cmd := range cmds {
 				_, err := e2e.RunCmdOnNode(cmd, serverNodeNames[0])
@@ -89,7 +89,7 @@ var _ = Describe("Verify Custom CA Rotation", Ordered, func() {
 		})
 
 		It("Rotates CA Certificates", func() {
-			cmd := "sudo k3s certificate rotate-ca --path=/opt/rancher/k3s/server"
+			cmd := "k3s certificate rotate-ca --path=/opt/rancher/k3s/server"
 			_, err := e2e.RunCmdOnNode(cmd, serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred())
 		})
