@@ -16,6 +16,7 @@ on:
       - "install.sh"
       - "tests/**"
       - "!tests/integration**"
+      - "!tests/e2e**"
       - ".github/**"
       - "!.github/workflows/integration.yaml"
   workflow_dispatch: {}
