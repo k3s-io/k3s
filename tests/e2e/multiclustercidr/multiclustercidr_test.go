@@ -143,7 +143,7 @@ var _ = Describe("Verify MultiClusterCIDR Configuration", Ordered, func() {
 		Expect(err).NotTo(HaveOccurred())
 		for _, pod := range pods {
 			if pod.Node == "agent-0" {
-				Expect(pod.NodeIP).Should(Or(ContainSubstring("10.10.10"), ContainSubstring("10.248.")), pod.Name)
+				Expect(pod.IP).Should(Or(ContainSubstring("10.10.10"), ContainSubstring("10.248.")), pod.Name)
 			}
 		}
 	})
@@ -260,7 +260,7 @@ var _ = Describe("Verify MultiClusterCIDR Configuration", Ordered, func() {
 		Expect(err).NotTo(HaveOccurred())
 		for _, pod := range pods {
 			if pod.Node == "agent-0" {
-				Expect(pod.NodeIP).Should(Or(ContainSubstring("fd11:decf:c0ff"), ContainSubstring("2001:cafe:248")), pod.Name)
+				Expect(pod.IP).Should(Or(ContainSubstring("fd11:decf:c0ff"), ContainSubstring("2001:cafe:248")), pod.Name)
 			}
 		}
 	})
