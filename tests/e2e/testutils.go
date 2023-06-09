@@ -35,7 +35,7 @@ type Pod struct {
 	Ready     string
 	Status    string
 	Restarts  string
-	NodeIP    string
+	IP        string
 	Node      string
 }
 
@@ -384,16 +384,10 @@ func ParseNodes(kubeConfig string, print bool) ([]Node, error) {
 	return nodes, nil
 }
 
-func ParsePods(kubeConfig string, print bool) ([]Pod, error) {
+func formatPods(input string) ([]Pod, error) {
 	pods := make([]Pod, 0, 10)
-	podList := ""
-
-	cmd := "kubectl get pods -o wide --no-headers -A --kubeconfig=" + kubeConfig
-	res, _ := RunCommand(cmd)
-	res = strings.TrimSpace(res)
-	podList = res
-
-	split := strings.Split(res, "\n")
+	input = strings.TrimSpace(input)
+	split := strings.Split(input, "\n")
 	for _, rec := range split {
 		fields := strings.Fields(string(rec))
 		if len(fields) < 8 {
@@ -405,10 +399,24 @@ func ParsePods(kubeConfig string, print bool) ([]Pod, error) {
 			Ready:     fields[2],
 			Status:    fields[3],
 			Restarts:  fields[4],
-			NodeIP:    fields[6],
+			IP:        fields[6],
 			Node:      fields[7],
 		}
 		pods = append(pods, pod)
+	}
+	return pods, nil
+}
+
+func ParsePods(kubeConfig string, print bool) ([]Pod, error) {
+	podList := ""
+
+	cmd := "kubectl get pods -o wide --no-headers -A"
+	res, _ := RunCommand(cmd)
+	podList = strings.TrimSpace(res)
+
+	pods, err := formatPods(res)
+	if err != nil {
+		return nil, err
 	}
 	if print {
 		fmt.Println(podList)
