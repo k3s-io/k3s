@@ -35,7 +35,7 @@ type Pod struct {
 	Ready     string
 	Status    string
 	Restarts  string
-	NodeIP    string
+	IP        string
 	Node      string
 }
 
@@ -294,6 +294,9 @@ func GenKubeConfigFile(serverName string) (string, error) {
 	if err := os.WriteFile(kubeConfigFile, []byte(kubeConfig), 0644); err != nil {
 		return "", err
 	}
+	if err := os.Setenv("E2E_KUBECONFIG", kubeConfigFile); err != nil {
+		return "", err
+	}
 	return kubeConfigFile, nil
 }
 
@@ -372,16 +375,10 @@ func ParseNodes(kubeConfig string, print bool) ([]Node, error) {
 	return nodes, nil
 }
 
-func ParsePods(kubeConfig string, print bool) ([]Pod, error) {
+func formatPods(input string) ([]Pod, error) {
 	pods := make([]Pod, 0, 10)
-	podList := ""
-
-	cmd := "kubectl get pods -o wide --no-headers -A --kubeconfig=" + kubeConfig
-	res, _ := RunCommand(cmd)
-	res = strings.TrimSpace(res)
-	podList = res
-
-	split := strings.Split(res, "\n")
+	input = strings.TrimSpace(input)
+	split := strings.Split(input, "\n")
 	for _, rec := range split {
 		fields := strings.Fields(string(rec))
 		if len(fields) < 8 {
@@ -393,10 +390,24 @@ func ParsePods(kubeConfig string, print bool) ([]Pod, error) {
 			Ready:     fields[2],
 			Status:    fields[3],
 			Restarts:  fields[4],
-			NodeIP:    fields[6],
+			IP:        fields[6],
 			Node:      fields[7],
 		}
 		pods = append(pods, pod)
+	}
+	return pods, nil
+}
+
+func ParsePods(kubeConfig string, print bool) ([]Pod, error) {
+	podList := ""
+
+	cmd := "kubectl get pods -o wide --no-headers -A"
+	res, _ := RunCommand(cmd)
+	podList = strings.TrimSpace(res)
+
+	pods, err := formatPods(res)
+	if err != nil {
+		return nil, err
 	}
 	if print {
 		fmt.Println(podList)
@@ -445,14 +456,16 @@ func RunCmdOnNode(cmd string, nodename string) (string, error) {
 	runcmd := "vagrant ssh " + nodename + " -c \"sudo " + cmd + "\""
 	out, err := RunCommand(runcmd)
 	if err != nil {
-		return out, fmt.Errorf("failed to run command %s on node %s: %v", cmd, nodename, err)
+		return out, fmt.Errorf("failed to run command: %s on node %s: %s, %v", cmd, nodename, out, err)
 	}
 	return out, nil
 }
 
-// RunCommand executes a command on the host
 func RunCommand(cmd string) (string, error) {
 	c := exec.Command("bash", "-c", cmd)
+	if kc, ok := os.LookupEnv("E2E_KUBECONFIG"); ok {
+		c.Env = append(os.Environ(), "KUBECONFIG="+kc)
+	}
 	out, err := c.CombinedOutput()
 	return string(out), err
 }

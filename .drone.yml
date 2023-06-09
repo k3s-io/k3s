@@ -747,6 +747,7 @@ steps:
   - vagrant destroy -f
   - go test -v -timeout=30m ./secretsencryption_test.go -ci -local
   - cd ../upgradecluster
+  - vagrant destroy -f
   - E2E_RELEASE_CHANNEL="latest" go test -v -timeout=45m ./upgradecluster_test.go  -ci -local
   - docker stop registry && docker rm registry
 
