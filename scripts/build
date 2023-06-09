@@ -90,6 +90,8 @@ mkdir -p bin
 if [ ${ARCH} = armv7l ] || [ ${ARCH} = arm ]; then
     export GOARCH="arm"
     export GOARM="7"
+    # Context: https://github.com/golang/go/issues/58425#issuecomment-1426415912
+    export GOEXPERIMENT=nounified
 fi
 
 if [ ${ARCH} = s390x ]; then
