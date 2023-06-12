@@ -21,7 +21,7 @@ func TestMain(m *testing.M) {
 	flag.StringVar(&template.TestMapFlag.ExpectedValueNode, "expectedValueNode", "", "Comma separated list of expected values for node commands")
 	flag.StringVar(&template.TestMapFlag.ExpectedValueUpgradedHost, "expectedValueUpgradedHost", "", "Expected value of the command ran on Host after upgrading")
 	flag.StringVar(&template.TestMapFlag.ExpectedValueUpgradedNode, "expectedValueUpgradedNode", "", "Expected value of the command ran on Node after upgrading")
-	flag.Var(&customflag.ServiceFlag.InstallUpgrade, "installType", "Install upgrade customflag for version bump")
+	flag.Var(&customflag.ServiceFlag.InstallUpgrade, "installVersionOrCommit", "Install upgrade customflag for version bump")
 	flag.StringVar(&template.TestMapFlag.Description, "description", "", "Description of the test")
 	flag.Var(&customflag.ServiceFlag.TestCase, "testCase", "Test case to run")
 	flag.BoolVar(&customflag.ServiceFlag.TestCase.DeployWorkload, "deployWorkload", false, "Deploy workload customflag")
@@ -30,7 +30,7 @@ func TestMain(m *testing.M) {
 
 	flag.Parse()
 
-	testFunc, err := template.AddTestCase(customflag.ServiceFlag.TestCase.TestFuncName)
+	testFunc, err := template.AddTestCase(*customflag.ServiceFlag.TestCase.TestFuncName)
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
 		return

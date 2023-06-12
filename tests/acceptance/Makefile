@@ -13,21 +13,21 @@ test-run:
       k3s-automated-${TAGNAME} sh -c 'cd ./tests/acceptance/entrypoint; \
     if [ -n "${TESTDIR}" ]; then \
         if [ "${TESTDIR}" = "upgradecluster" ]; then \
-            go test -timeout=45m -v ./upgradecluster/... -installtype "${INSTALLTYPE}"; \
+            go test -timeout=45m -v ./upgradecluster/... -installVersionOrCommit "${INSTALLTYPE}"; \
         elif [ "${TESTDIR}" = "versionbump" ]; then \
             if [ "${TESTTAG}" = "localpath" ]; then \
                 go test -timeout=45m -v -tags=localpath ./versionbump/... -expectedValueNode "${VALUENODE}" \
                 -expectedValueUpgradedNode "${VALUENODEUPGRADED}" -expectedValueHost "${VALUEHOST}" \
-                -expectedValueUpgradedHost "${VALUEHOSTUPGRADED}" -installType "${INSTALLTYPE}"; \
+                -expectedValueUpgradedHost "${VALUEHOSTUPGRADED}" -installVersionOrCommit "${INSTALLTYPE}"; \
             elif [ "${TESTTAG}" = "versionbump" ]; then \
                 go test -timeout=45m -v -tags=versionbump ./versionbump/... -cmdNode "${CMDNODE}" -expectedValueNode "${VALUENODE}" \
                 -expectedValueUpgradedNode "${VALUENODEUPGRADED}" -cmdHost "${CMDHOST}" -expectedValueHost "${VALUEHOST}" \
-                -expectedValueUpgradedHost "${VALUEHOSTUPGRADED}" -installType "${INSTALLTYPE}" -testCase "${TESTCASE}" \
+                -expectedValueUpgradedHost "${VALUEHOSTUPGRADED}" -installVersionOrCommit "${INSTALLTYPE}" -testCase "${TESTCASE}" \
                 -deployWorkload "${DEPLOYWORKLOAD}"; \
             elif [ "${TESTTAG}" = "cniplugin" ]; then \
 				go test -timeout=45m -v -tags=cniplugin ./entrypoint/versionbump/... \
 				 -expectedValueNode "${VALUENODE}" -expectedValueUpgradedNode "${VALUENODEUPGRADED}" \
-				 -expectedValueHost "${VALUEHOST}" -expectedValueUpgradedHost "${VALUEHOSTUPGRADED}" -installType "${INSTALLTYPE}"; \
+				 -expectedValueHost "${VALUEHOST}" -expectedValueUpgradedHost "${VALUEHOSTUPGRADED}" -installVersionOrCommit "${INSTALLTYPE}"; \
             fi; \
         fi; \
     elif [ -z "${TESTDIR}" ]; then \
@@ -67,14 +67,14 @@ test-create:
 
 .PHONY: test-upgrade-manual
 test-upgrade-manual:
-	@go test -timeout=45m -v ./entrypoint/upgradecluster/... -installtype ${INSTALLTYPE}
+	@go test -timeout=45m -v ./entrypoint/upgradecluster/... -installVersionOrCommit ${INSTALLTYPE}
 
 .PHONY: test-version-local-path
 test-version-local-path:
 	@go test -timeout=45m -v -tags=localpath ./entrypoint/versionbump/... \
  		-expectedValueNode ${VALUENODE} -expectedValueUpgradedNode ${VALUENODEUPGRADED} \
  		-expectedValueHost ${VALUEHOST} -expectedValueUpgradedHost ${VALUEHOSTUPGRADED} \
- 		-installType ${INSTALLTYPE}
+ 		-installVersionOrCommit ${INSTALLTYPE}
 
 
 .PHONY: test-version-bump
@@ -84,7 +84,7 @@ test-version-bump:
 		-expectedValueUpgradedNode ${VALUENODEUPGRADED} \
 		-cmdHost "${CMDHOST}"  -expectedValueHost ${VALUEHOST} \
 		-expectedValueUpgradedHost ${VALUEHOSTUPGRADED} \
-		-installType ${INSTALLTYPE} \
+		-installVersionOrCommit ${INSTALLTYPE} \
 		-testCase "${TESTCASE}" \
 		-deployWorkload ${DEPLOYWORKLOAD}
 
