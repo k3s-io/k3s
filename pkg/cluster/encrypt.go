@@ -12,7 +12,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/k3s-io/k3s/pkg/util"
+	"github.com/k3s-io/k3s/pkg/token"
 	"golang.org/x/crypto/pbkdf2"
 )
 
@@ -32,7 +32,7 @@ func keyHash(passphrase string) string {
 // encrypt encrypts a byte slice using aes+gcm with a pbkdf2 key derived from the passphrase and a random salt.
 // It returns a byte slice containing the salt and base64-encoded ciphertext.
 func encrypt(passphrase string, plaintext []byte) ([]byte, error) {
-	salt, err := util.Random(8)
+	salt, err := token.Random(8)
 	if err != nil {
 		return nil, err
 	}
