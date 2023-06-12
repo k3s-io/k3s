@@ -11,9 +11,9 @@ import (
 	"github.com/k3s-io/k3s/pkg/agent"
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
 	"github.com/k3s-io/k3s/pkg/datadir"
-	"github.com/k3s-io/k3s/pkg/token"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
+	"github.com/k3s-io/k3s/pkg/vpn"
 	"github.com/rancher/wrangler/pkg/signals"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
@@ -40,7 +40,7 @@ func Run(ctx *cli.Context) error {
 	}
 
 	if cmds.AgentConfig.TokenFile != "" {
-		token, err := token.ReadFile(cmds.AgentConfig.TokenFile)
+		token, err := util.ReadFile(cmds.AgentConfig.TokenFile)
 		if err != nil {
 			return err
 		}
@@ -75,6 +75,21 @@ func Run(ctx *cli.Context) error {
 	cfg.DataDir = dataDir
 
 	contextCtx := signals.SetupSignalContext()
+
+	if cmds.AgentConfig.VPNAuthFile != "" {
+		cmds.AgentConfig.VPNAuth, err = util.ReadFile(cmds.AgentConfig.VPNAuthFile)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Starts the VPN in the agent if config was set up
+	if cmds.AgentConfig.VPNAuth != "" {
+		err := vpn.StartVPN(cmds.AgentConfig.VPNAuth)
+		if err != nil {
+			return err
+		}
+	}
 
 	return agent.Run(contextCtx, cfg)
 }
