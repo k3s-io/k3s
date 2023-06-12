@@ -301,7 +301,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 	Context("Valdiate Certificate Rotation", func() {
 		It("Stops K3s and rotates certificates", func() {
 			errStop := e2e.StopCluster(serverNodeNames)
-			Expect(errStop).NotTo(HaveOccurred(), "Cluster could not be stoped successfully")
+			Expect(errStop).NotTo(HaveOccurred(), "Cluster could not be stopped successfully")
 
 			for _, nodeName := range serverNodeNames {
 				cmd := "k3s certificate rotate"
