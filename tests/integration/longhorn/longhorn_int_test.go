@@ -139,7 +139,7 @@ var _ = AfterEach(func() {
 })
 
 var _ = AfterSuite(func() {
-	if !testutil.IsExistingServer() {
+	if !testutil.IsExistingServer() && server != nil {
 		if failed {
 			testutil.K3sSaveLog(server, false)
 		}

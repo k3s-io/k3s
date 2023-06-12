@@ -385,6 +385,9 @@ var _ = AfterEach(func() {
 })
 
 var _ = AfterSuite(func() {
+	if os.Getenv("E2E_GOCOVER") != "" {
+		Expect(e2e.GetCoverageReport(append(serverNodeNames, agentNodeNames...))).To(Succeed())
+	}
 	if failed && !*ci {
 		fmt.Println("FAILED!")
 	} else {

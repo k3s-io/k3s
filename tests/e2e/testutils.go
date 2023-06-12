@@ -35,7 +35,7 @@ type Pod struct {
 	Ready     string
 	Status    string
 	Restarts  string
-	NodeIP    string
+	IP        string
 	Node      string
 }
 
@@ -146,7 +146,7 @@ func scpK3sBinary(nodeNames []string) error {
 		if _, err := RunCommand(cmd); err != nil {
 			return fmt.Errorf("failed to scp k3s binary to %s: %v", node, err)
 		}
-		if _, err := RunCmdOnNode("sudo mv /tmp/k3s /usr/local/bin/", node); err != nil {
+		if _, err := RunCmdOnNode("mv /tmp/k3s /usr/local/bin/", node); err != nil {
 			return err
 		}
 	}
@@ -212,15 +212,6 @@ func CreateLocalCluster(nodeOS string, serverCount, agentCount int) ([]string, [
 	}
 
 	return serverNodeNames, agentNodeNames, nil
-}
-
-// Deletes the content of a manifest file previously applied
-func DeleteWorkload(workload, kubeconfig string) error {
-	cmd := "kubectl delete -f " + workload + " --kubeconfig=" + kubeconfig
-	if _, err := RunCommand(cmd); err != nil {
-		return err
-	}
-	return nil
 }
 
 func DeployWorkload(workload, kubeconfig string, hardened bool) (string, error) {
@@ -384,16 +375,10 @@ func ParseNodes(kubeConfig string, print bool) ([]Node, error) {
 	return nodes, nil
 }
 
-func ParsePods(kubeConfig string, print bool) ([]Pod, error) {
+func formatPods(input string) ([]Pod, error) {
 	pods := make([]Pod, 0, 10)
-	podList := ""
-
-	cmd := "kubectl get pods -o wide --no-headers -A --kubeconfig=" + kubeConfig
-	res, _ := RunCommand(cmd)
-	res = strings.TrimSpace(res)
-	podList = res
-
-	split := strings.Split(res, "\n")
+	input = strings.TrimSpace(input)
+	split := strings.Split(input, "\n")
 	for _, rec := range split {
 		fields := strings.Fields(string(rec))
 		if len(fields) < 8 {
@@ -405,10 +390,24 @@ func ParsePods(kubeConfig string, print bool) ([]Pod, error) {
 			Ready:     fields[2],
 			Status:    fields[3],
 			Restarts:  fields[4],
-			NodeIP:    fields[6],
+			IP:        fields[6],
 			Node:      fields[7],
 		}
 		pods = append(pods, pod)
+	}
+	return pods, nil
+}
+
+func ParsePods(kubeConfig string, print bool) ([]Pod, error) {
+	podList := ""
+
+	cmd := "kubectl get pods -o wide --no-headers -A"
+	res, _ := RunCommand(cmd)
+	podList = strings.TrimSpace(res)
+
+	pods, err := formatPods(res)
+	if err != nil {
+		return nil, err
 	}
 	if print {
 		fmt.Println(podList)
@@ -419,7 +418,7 @@ func ParsePods(kubeConfig string, print bool) ([]Pod, error) {
 // RestartCluster restarts the k3s service on each node given
 func RestartCluster(nodeNames []string) error {
 	for _, nodeName := range nodeNames {
-		cmd := "sudo systemctl restart k3s* --all"
+		cmd := "systemctl restart k3s* --all"
 		if _, err := RunCmdOnNode(cmd, nodeName); err != nil {
 			return err
 		}
@@ -430,7 +429,7 @@ func RestartCluster(nodeNames []string) error {
 // StartCluster starts the k3s service on each node given
 func StartCluster(nodeNames []string) error {
 	for _, nodeName := range nodeNames {
-		cmd := "sudo systemctl start k3s"
+		cmd := "systemctl start k3s"
 		if strings.Contains(nodeName, "agent") {
 			cmd += "-agent"
 		}
@@ -444,7 +443,7 @@ func StartCluster(nodeNames []string) error {
 // StopCluster starts the k3s service on each node given
 func StopCluster(nodeNames []string) error {
 	for _, nodeName := range nodeNames {
-		cmd := "sudo systemctl stop k3s*"
+		cmd := "systemctl stop k3s*"
 		if _, err := RunCmdOnNode(cmd, nodeName); err != nil {
 			return err
 		}
@@ -452,9 +451,13 @@ func StopCluster(nodeNames []string) error {
 	return nil
 }
 
-// RunCmdOnNode executes a command from within the given node
+// RunCmdOnNode executes a command from within the given node as sudo
 func RunCmdOnNode(cmd string, nodename string) (string, error) {
-	runcmd := "vagrant ssh " + nodename + " -c \"" + cmd + "\""
+	injectEnv := ""
+	if _, ok := os.LookupEnv("E2E_GOCOVER"); ok && strings.HasPrefix(cmd, "k3s") {
+		injectEnv = "GOCOVERDIR=/tmp/k3scov "
+	}
+	runcmd := "vagrant ssh " + nodename + " -c \"sudo " + injectEnv + cmd + "\""
 	out, err := RunCommand(runcmd)
 	if err != nil {
 		return out, fmt.Errorf("failed to run command: %s on node %s: %s, %v", cmd, nodename, out, err)
@@ -483,6 +486,43 @@ func UpgradeCluster(nodeNames []string, local bool) error {
 		cmd := upgradeVersion + " vagrant provision " + nodeName
 		if out, err := RunCommand(cmd); err != nil {
 			fmt.Println("Error Upgrading Cluster", out)
+			return err
+		}
+	}
+	return nil
+}
+
+func GetCoverageReport(nodeNames []string) error {
+	covDirs := []string{}
+	for _, nodeName := range nodeNames {
+		covDir := nodeName + "-cov"
+		covDirs = append(covDirs, covDir)
+		os.MkdirAll(covDir, 0755)
+		cmd := "vagrant scp " + nodeName + ":/tmp/k3scov/* " + covDir
+		if _, err := RunCommand(cmd); err != nil {
+			return err
+		}
+	}
+	coverageFile := "coverage.out"
+	cmd := "go tool covdata textfmt -i " + strings.Join(covDirs, ",") + " -o " + coverageFile
+	if out, err := RunCommand(cmd); err != nil {
+		return fmt.Errorf("failed to generate coverage report: %s, %v", out, err)
+	}
+
+	f, err := os.ReadFile(coverageFile)
+	if err != nil {
+		return err
+	}
+	nf := strings.Replace(string(f),
+		"/go/src/github.com/k3s-io/k3s/cmd/server/main.go",
+		"github.com/k3s-io/k3s/cmd/server/main.go", -1)
+
+	if err = os.WriteFile(coverageFile, []byte(nf), os.ModePerm); err != nil {
+		return err
+	}
+
+	for _, covDir := range covDirs {
+		if err := os.RemoveAll(covDir); err != nil {
 			return err
 		}
 	}

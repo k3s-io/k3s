@@ -34,6 +34,16 @@ def getInstallType(vm, release_version, branch)
   end
 end
 
+def addCoverageDir(vm, role)
+  service = role.include?("agent") ? "k3s-agent" : "k3s" 
+    script = <<~SHELL
+      mkdir -p /tmp/k3scov
+      echo -e 'GOCOVERDIR=/tmp/k3scov' >> /etc/default/#{service}
+      systemctl daemon-reload
+    SHELL
+    vm.provision "go coverage", type: "shell", inline: script 
+end
+
 def getHardenedArg(vm, hardened, scripts_location)
   if hardened.empty? 
     return ""

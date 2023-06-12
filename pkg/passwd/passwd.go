@@ -7,7 +7,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/k3s-io/k3s/pkg/token"
 	"github.com/k3s-io/k3s/pkg/util"
 )
 
@@ -83,7 +82,7 @@ func (p *Passwd) EnsureUser(name, role, passwd string) error {
 	}
 
 	if passwd == "" {
-		token, err := token.Random(16)
+		token, err := util.Random(16)
 		if err != nil {
 			return err
 		}

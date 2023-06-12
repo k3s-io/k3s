@@ -80,7 +80,6 @@ func StartServer(ctx context.Context, config *Config, cfg *cmds.Server) error {
 			return errors.Wrap(err, "startup hook")
 		}
 	}
-	go writeCoverage(ctx)
 	go startOnAPIServerReady(ctx, config)
 
 	if err := printTokens(&config.ControlConfig); err != nil {
@@ -121,6 +120,7 @@ func runControllers(ctx context.Context, config *Config) error {
 		controlConfig.Runtime.NodePasswdFile); err != nil {
 		logrus.Warn(errors.Wrap(err, "error migrating node-password file"))
 	}
+	controlConfig.Runtime.Event = sc.Event
 	controlConfig.Runtime.Core = sc.Core
 
 	for name, cb := range controlConfig.Runtime.ClusterControllerStarts {

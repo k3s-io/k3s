@@ -16,6 +16,7 @@ import (
 	"github.com/rancher/wrangler/pkg/leader"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
+	"k8s.io/client-go/tools/record"
 	utilsnet "k8s.io/utils/net"
 )
 
@@ -25,6 +26,7 @@ const (
 	FlannelBackendHostGW          = "host-gw"
 	FlannelBackendIPSEC           = "ipsec"
 	FlannelBackendWireguardNative = "wireguard-native"
+	FlannelBackendTailscale       = "tailscale"
 	EgressSelectorModeAgent       = "agent"
 	EgressSelectorModeCluster     = "cluster"
 	EgressSelectorModeDisabled    = "disabled"
@@ -340,6 +342,7 @@ type ControlRuntime struct {
 	ClientETCDKey            string
 
 	Core       *core.Factory
+	Event      record.EventRecorder
 	EtcdConfig endpoint.ETCDConfig
 }
 

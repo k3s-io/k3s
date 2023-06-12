@@ -1,6 +1,7 @@
 package nodepassword
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -87,6 +88,13 @@ func Test_UnitMigrateFileNodes(t *testing.T) {
 	newNode := fmt.Sprintf("node%d", createNumNodes+1)
 	assertEqual(t, Ensure(secretClient, newNode, "new-password"), nil)
 	assertNotEqual(t, Ensure(secretClient, newNode, "wrong-password"), nil)
+}
+
+func Test_PasswordError(t *testing.T) {
+	err := &passwordError{node: "test", err: fmt.Errorf("inner error")}
+	assertEqual(t, errors.Is(err, ErrVerifyFailed), true)
+	assertEqual(t, errors.Is(err, fmt.Errorf("different error")), false)
+	assertNotEqual(t, errors.Unwrap(err), nil)
 }
 
 // --------------------------
