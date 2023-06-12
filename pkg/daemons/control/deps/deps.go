@@ -23,7 +23,6 @@ import (
 	"github.com/k3s-io/k3s/pkg/cloudprovider"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/passwd"
-	"github.com/k3s-io/k3s/pkg/token"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
 	certutil "github.com/rancher/dynamiclistener/cert"
@@ -269,7 +268,7 @@ func genEncryptedNetworkInfo(controlConfig *config.Control) error {
 		return nil
 	}
 
-	psk, err := token.Random(ipsecTokenSize)
+	psk, err := util.Random(ipsecTokenSize)
 	if err != nil {
 		return err
 	}
@@ -288,7 +287,7 @@ func getServerPass(passwd *passwd.Passwd, config *config.Control) (string, error
 		serverPass, _ = passwd.Pass("server")
 	}
 	if serverPass == "" {
-		serverPass, err = token.Random(16)
+		serverPass, err = util.Random(16)
 		if err != nil {
 			return "", err
 		}

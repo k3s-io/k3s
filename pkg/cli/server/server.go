@@ -20,9 +20,9 @@ import (
 	"github.com/k3s-io/k3s/pkg/etcd"
 	"github.com/k3s-io/k3s/pkg/rootless"
 	"github.com/k3s-io/k3s/pkg/server"
-	"github.com/k3s-io/k3s/pkg/token"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
+	"github.com/k3s-io/k3s/pkg/vpn"
 	"github.com/pkg/errors"
 	"github.com/rancher/wrangler/pkg/signals"
 	"github.com/sirupsen/logrus"
@@ -95,6 +95,21 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		cfg.Token = cfg.ClusterSecret
 	}
 
+	if cmds.AgentConfig.VPNAuthFile != "" {
+		cmds.AgentConfig.VPNAuth, err = util.ReadFile(cmds.AgentConfig.VPNAuthFile)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Starts the VPN in the server if config was set up
+	if cmds.AgentConfig.VPNAuth != "" {
+		err := vpn.StartVPN(cmds.AgentConfig.VPNAuth)
+		if err != nil {
+			return err
+		}
+	}
+
 	agentReady := make(chan struct{})
 
 	serverConfig := server.Config{}
@@ -104,13 +119,13 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	serverConfig.ControlConfig.AgentToken = cfg.AgentToken
 	serverConfig.ControlConfig.JoinURL = cfg.ServerURL
 	if cfg.AgentTokenFile != "" {
-		serverConfig.ControlConfig.AgentToken, err = token.ReadFile(cfg.AgentTokenFile)
+		serverConfig.ControlConfig.AgentToken, err = util.ReadFile(cfg.AgentTokenFile)
 		if err != nil {
 			return err
 		}
 	}
 	if cfg.TokenFile != "" {
-		serverConfig.ControlConfig.Token, err = token.ReadFile(cfg.TokenFile)
+		serverConfig.ControlConfig.Token, err = util.ReadFile(cfg.TokenFile)
 		if err != nil {
 			return err
 		}
@@ -211,14 +226,31 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		serverConfig.ControlConfig.PrivateIP = util.GetFirstValidIPString(cmds.AgentConfig.NodeIP)
 	}
 
-	// if not set, try setting advertise-ip from agent node-external-ip
-	if serverConfig.ControlConfig.AdvertiseIP == "" && len(cmds.AgentConfig.NodeExternalIP) != 0 {
-		serverConfig.ControlConfig.AdvertiseIP = util.GetFirstValidIPString(cmds.AgentConfig.NodeExternalIP)
-	}
+	// if not set, try setting advertise-ip from agent VPN
+	if cmds.AgentConfig.VPNAuth != "" {
+		vpnInfo, err := vpn.GetVPNInfo(cmds.AgentConfig.VPNAuth)
+		if err != nil {
+			return err
+		}
+		if len(vpnInfo.IPs) != 0 {
+			logrus.Infof("Advertise-address changed to %v due to VPN", vpnInfo.IPs)
+			if serverConfig.ControlConfig.AdvertiseIP != "" {
+				logrus.Warn("Conflict in the config detected. VPN integration overwrites advertise-address but the config is setting the advertise-address parameter")
+			}
+			serverConfig.ControlConfig.AdvertiseIP = vpnInfo.IPs[0].String()
+		}
+		logrus.Warn("Etcd IP (PrivateIP) remains the local IP. Running etcd traffic over VPN is not recommended due to performance issues")
+	} else {
 
-	// if not set, try setting advertise-ip from agent node-ip
-	if serverConfig.ControlConfig.AdvertiseIP == "" && len(cmds.AgentConfig.NodeIP) != 0 {
-		serverConfig.ControlConfig.AdvertiseIP = util.GetFirstValidIPString(cmds.AgentConfig.NodeIP)
+		// if not set, try setting advertise-ip from agent node-external-ip
+		if serverConfig.ControlConfig.AdvertiseIP == "" && len(cmds.AgentConfig.NodeExternalIP) != 0 {
+			serverConfig.ControlConfig.AdvertiseIP = util.GetFirstValidIPString(cmds.AgentConfig.NodeExternalIP)
+		}
+
+		// if not set, try setting advertise-ip from agent node-ip
+		if serverConfig.ControlConfig.AdvertiseIP == "" && len(cmds.AgentConfig.NodeIP) != 0 {
+			serverConfig.ControlConfig.AdvertiseIP = util.GetFirstValidIPString(cmds.AgentConfig.NodeIP)
+		}
 	}
 
 	// if we ended up with any advertise-ips, ensure they're added to the SAN list;
