@@ -16,16 +16,8 @@ def provision(vm, roles, role_num, node_num)
   vm.hostname = "#{roles[0]}-#{role_num}"
   node_ip4 = "#{NETWORK4_PREFIX}.#{100+node_num}"
   node_ip4_public = "#{PUBLIC_NETWORK4_PREFIX}.#{100+node_num}"
-  vm.network "private_network", 
-    :ip => node_ip4,
-    :netmask => "255.255.255.0",
-    :libvirt__dhcp_enabled => false,
-    :libvirt__forward_mode => "none"
-  vm.network "private_network", 
-    :ip => node_ip4_public,
-    :netmask => "255.255.255.0",
-    :libvirt__dhcp_enabled => false,
-    :libvirt__forward_mode => "none"
+  vm.network "private_network", :ip => node_ip4, :netmask => "255.255.255.0"
+  vm.network "private_network", :ip => node_ip4_public, :netmask => "255.255.255.0"
     
   scripts_location = Dir.exists?("./scripts") ? "./scripts" : "../scripts" 
   vagrant_defaults = File.exists?("./vagrantdefaults.rb") ? "./vagrantdefaults.rb" : "../vagrantdefaults.rb"
