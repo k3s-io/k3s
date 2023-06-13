@@ -21,8 +21,6 @@ def provision(vm, roles, role_num, node_num)
   vm.network "private_network", 
     :ip => node_ip4,
     :netmask => "255.255.255.0",
-    :libvirt__dhcp_enabled => false,
-    :libvirt__forward_mode => "none",
     :libvirt__guest_ipv6 => "yes",
     :libvirt__ipv6_address => "#{NETWORK6_PREFIX}::1",
     :libvirt__ipv6_prefix => "64"
