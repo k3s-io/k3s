@@ -54,8 +54,8 @@ var _ = Describe("VersionTemplate Upgrade:", func() {
 			},
 			InstallUpgrade: customflag.ServiceFlag.InstallUpgrade,
 			TestConfig: &template.TestConfig{
-				TestFunc:       testcase.TestLocalPathProvisionerStorage,
-				DeployWorkload: true,
+				TestFunc:       template.TestCase(customflag.ServiceFlag.TestCase.TestFunc),
+				DeployWorkload: customflag.ServiceFlag.TestCase.DeployWorkload,
 			},
 		})
 	})

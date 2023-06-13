@@ -30,6 +30,14 @@ for cluster in $CLUSTERS; do
 done
 
 
+#Search for DB snapshots and delete them
+SNAPSHOTS=$(aws rds describe-db-snapshots --query "DBSnapshots[?starts_with(DBSnapshotIdentifier,
+ '${NAME_PREFIX}')].DBSnapshotIdentifier" --output text 2> /dev/null)
+for snapshot in $SNAPSHOTS; do
+  aws rds delete-db-snapshot --db-snapshot-identifier "$snapshot" > /dev/null 2>&1
+done
+
+
 #Get the list of load balancer ARNs
 LB_ARN_LIST=$(aws elbv2 describe-load-balancers \
   --query "LoadBalancers[?starts_with(LoadBalancerName, '${NAME_PREFIX}') && Type=='network'].LoadBalancerArn" \

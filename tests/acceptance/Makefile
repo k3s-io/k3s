@@ -74,7 +74,9 @@ test-version-local-path:
 	@go test -timeout=45m -v -tags=localpath ./entrypoint/versionbump/... \
  		-expectedValueNode ${VALUENODE} -expectedValueUpgradedNode ${VALUENODEUPGRADED} \
  		-expectedValueHost ${VALUEHOST} -expectedValueUpgradedHost ${VALUEHOSTUPGRADED} \
- 		-installVersionOrCommit ${INSTALLTYPE}
+ 		-installVersionOrCommit ${INSTALLTYPE} \
+ 		-testCase "${TESTCASE}" \
+ 		-deployWorkload ${DEPLOYWORKLOAD}
 
 
 .PHONY: test-version-bump
