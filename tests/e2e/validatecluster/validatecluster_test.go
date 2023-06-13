@@ -345,6 +345,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 			var expectResult = []string{"client-ca.crt",
 				"client-ca.key",
 				"client-ca.nochain.crt",
+				"client-supervisor.crt", "client-supervisor.key",
 				"dynamic-cert.json", "peer-ca.crt",
 				"peer-ca.key", "server-ca.crt",
 				"server-ca.key", "request-header-ca.crt",
