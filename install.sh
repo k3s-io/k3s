@@ -739,6 +739,27 @@ killtree() {
     ) 2>/dev/null
 }
 
+remove_interfaces() {
+    # Delete network interface(s) that match 'master cni0'
+    ip link show 2>/dev/null | grep 'master cni0' | while read ignore iface ignore; do
+        iface=${iface%%@*}
+        [ -z "$iface" ] || ip link delete $iface
+    done
+
+    # Delete cni related interfaces
+    ip link delete cni0
+    ip link delete flannel.1
+    ip link delete flannel-v6.1
+    ip link delete kube-ipvs0
+    ip link delete flannel-wg
+    ip link delete flannel-wg-v6
+
+    # Restart tailscale
+    if [ -n "$(command -v tailscale)" ]; then
+        tailscale set --advertise-routes=
+    fi
+}
+
 getshims() {
     ps -e -o pid= -o args= | sed -e 's/^ *//; s/\s\s*/\t/;' | grep -w 'k3s/data/[^/]*/bin/containerd-shim' | cut -f1
 }
@@ -762,17 +783,8 @@ do_unmount_and_remove '/run/netns/cni-'
 # Remove CNI namespaces
 ip netns show 2>/dev/null | grep cni- | xargs -r -t -n 1 ip netns delete
 
-# Delete network interface(s) that match 'master cni0'
-ip link show 2>/dev/null | grep 'master cni0' | while read ignore iface ignore; do
-    iface=${iface%%@*}
-    [ -z "$iface" ] || ip link delete $iface
-done
-ip link delete cni0
-ip link delete flannel.1
-ip link delete flannel-v6.1
-ip link delete kube-ipvs0
-ip link delete flannel-wg
-ip link delete flannel-wg-v6
+remove_interfaces
+
 rm -rf /var/lib/cni/
 iptables-save | grep -v KUBE- | grep -v CNI- | grep -iv flannel | iptables-restore
 ip6tables-save | grep -v KUBE- | grep -v CNI- | grep -iv flannel | ip6tables-restore
