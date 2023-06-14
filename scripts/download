@@ -20,7 +20,11 @@ rm -rf ${CONTAINERD_DIR}
 mkdir -p ${CHARTS_DIR}
 mkdir -p ${DATA_DIR}
 
-curl --compressed -sfL https://github.com/k3s-io/k3s-root/releases/download/${VERSION_ROOT}/k3s-root-${ARCH}.tar | tar xf -
+if [ ${ARCH} = riscv64 ]; then
+  curl --compressed -sfL https://github.com/CARV-ICS-FORTH/k3s-root/releases/download/20230614/k3s-root-riscv64.tar | tar xf -
+else
+  curl --compressed -sfL https://github.com/k3s-io/k3s-root/releases/download/${VERSION_ROOT}/k3s-root-${ARCH}.tar | tar xf -
+fi
 
 git clone --single-branch --branch=${VERSION_RUNC} --depth=1 https://github.com/opencontainers/runc ${RUNC_DIR}
 

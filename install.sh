@@ -318,6 +318,10 @@ setup_verify_arch() {
             ARCH=arm
             SUFFIX=-${ARCH}hf
             ;;
+        riscv64)
+            ARCH=riscv64
+            SUFFIX=-${ARCH}
+            ;;
         *)
             fatal "Unsupported architecture $ARCH"
     esac

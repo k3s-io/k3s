@@ -231,7 +231,7 @@ export -f test-wait
 # ---
 
 sonobuoy-test() {
-    if [ "$ARCH" = 'arm' ]; then
+    if [ "$ARCH" = 'arm' ] || [ "$ARCH" = 'riscv64' ]; then
         echo "Aborting sonobuoy tests, images not available for $ARCH"
         return 0
     fi
