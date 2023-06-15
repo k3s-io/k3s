@@ -1,11 +1,6 @@
 ARG GOLANG=golang:1.20.4-alpine3.18
 FROM ${GOLANG} as infra
 
-ARG SKIP_VALIDATE
-ARG SKIP_AIRGAP
-ENV SKIP_VALIDATE=${SKIP_VALIDATE}
-ENV SKIP_AIRGAP=${SKIP_AIRGAP}
-
 ARG http_proxy=$http_proxy
 ARG https_proxy=$https_proxy
 ARG no_proxy=$no_proxy
@@ -47,15 +42,15 @@ RUN if [ "$(go env GOARCH)" = "amd64" ]; then \
 
 ARG SELINUX=true
 ENV SELINUX $SELINUX
-
-ENV SRC_DIR=/go/src/github.com/k3s-io/k3s/
-WORKDIR ${SRC_DIR}
+ENV STATIC_BUILD true
+ENV SRC_DIR=/go/src/github.com/k3s-io/k3s
+WORKDIR ${SRC_DIR}/
 
 
 FROM infra as build
 
 COPY ./scripts/ ./scripts
-COPY ./go.mod ./go.sum ./
+COPY ./go.mod ./go.sum ./main.go ./
 COPY ./manifests ./manifests
 RUN mkdir -p bin dist
 RUN ./scripts/download
@@ -63,7 +58,19 @@ RUN ./scripts/download
 COPY ./cmd ./cmd
 COPY ./pkg ./pkg
 COPY ./tests ./tests
-RUN ./scripts/validate
+RUN ./scripts/tidy
 
-# ENTRYPOINT ["./scripts/entry.sh"]
-CMD ["./scripts/build"]
+COPY ./.git ./.git
+RUN ./scripts/build
+
+COPY ./contrib ./contrib
+RUN ./scripts/package-cli
+
+FROM scratch
+ENV SRC_DIR=/go/src/github.com/k3s-io/k3s
+COPY --from=build ${SRC_DIR}/dist /dist
+COPY --from=build ${SRC_DIR}/bin /bin
+COPY --from=build ${SRC_DIR}/build/out /build/out
+COPY --from=build ${SRC_DIR}/build/static /build/static
+COPY --from=build ${SRC_DIR}/pkg/static /pkg/static
+COPY --from=build ${SRC_DIR}/pkg/deploy /pkg/deploy
