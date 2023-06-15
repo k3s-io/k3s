@@ -1,0 +1,69 @@
+ARG GOLANG=golang:1.20.4-alpine3.18
+FROM ${GOLANG} as infra
+
+ARG SKIP_VALIDATE
+ARG SKIP_AIRGAP
+ENV SKIP_VALIDATE=${SKIP_VALIDATE}
+ENV SKIP_AIRGAP=${SKIP_AIRGAP}
+
+ARG http_proxy=$http_proxy
+ARG https_proxy=$https_proxy
+ARG no_proxy=$no_proxy
+ENV http_proxy=$http_proxy
+ENV https_proxy=$https_proxy
+ENV no_proxy=$no_proxy
+
+RUN apk -U --no-cache add bash git gcc musl-dev docker vim less file curl wget ca-certificates jq linux-headers \
+    zlib-dev tar zip squashfs-tools npm coreutils python3 py3-pip openssl-dev libffi-dev libseccomp libseccomp-dev \
+    libseccomp-static make libuv-static sqlite-dev sqlite-static libselinux libselinux-dev zlib-dev zlib-static \
+    zstd pigz alpine-sdk binutils-gold btrfs-progs-dev btrfs-progs-static gawk yq \
+    && \
+    if [ "$(go env GOARCH)" = "amd64" ]; then \
+    apk -U --no-cache add mingw-w64-gcc; \
+    fi
+
+RUN python3 -m pip install awscli
+
+RUN TRIVY_VERSION="0.42.0"                                                                                                                          && \
+    if [ "$(go env GOARCH)" = "arm64" ] || [ "$(go env GOARCH)" = "arm" ]; then                                                                        \
+    # Turn arm64 and arm into uppercase ARM64 and ARM, respectively, for Trivy's download
+    TRIVY_ARCH=$(go env GOARCH | tr "[:lower:]" "[:upper:]")                                                                                        && \
+    wget --no-verbose "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-${TRIVY_ARCH}.tar.gz" && \
+    tar -zxvf "trivy_${TRIVY_VERSION}_Linux-${TRIVY_ARCH}.tar.gz"                                                                                   && \
+    mv trivy /usr/local/bin;                                                                                                                           \
+    elif [ "$(go env GOARCH)" = "amd64" ]; then                                                                                                        \
+    wget --no-verbose "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"         && \
+    tar -zxvf "trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"                                                                                           && \
+    mv trivy /usr/local/bin;                                                                                                                           \
+    fi
+
+# this works for both go 1.17 and 1.18
+RUN GOPROXY=direct go install golang.org/x/tools/cmd/goimports@gopls/v0.11.0
+RUN rm -rf /go/src /go/pkg
+
+RUN if [ "$(go env GOARCH)" = "amd64" ]; then \
+    curl -sL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.51.2;  \
+    fi
+
+ARG SELINUX=true
+ENV SELINUX $SELINUX
+
+ENV SRC_DIR=/go/src/github.com/k3s-io/k3s/
+WORKDIR ${SRC_DIR}
+
+
+FROM infra as build
+
+COPY ./scripts/ ./scripts
+COPY ./go.mod ./go.sum ./
+COPY ./manifests ./manifests
+RUN mkdir -p bin dist
+RUN ./scripts/download
+
+COPY ./cmd ./cmd
+COPY ./pkg ./pkg
+COPY ./tests ./tests
+RUN ./scripts/validate
+
+# ENTRYPOINT ["./scripts/entry.sh"]
+CMD ["./scripts/build"]

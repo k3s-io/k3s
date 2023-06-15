@@ -1,0 +1,10 @@
+#!/bin/bash
+set -e
+
+cd $(dirname $0)/..
+
+echo Running: go mod tidy
+go mod tidy
+
+echo Running: go generate
+go generate

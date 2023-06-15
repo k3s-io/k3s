@@ -5,6 +5,7 @@ SCRIPT_DIR=$(dirname $0)
 pushd $SCRIPT_DIR
 
 ./download
+./tidy
 ./validate
 ./build
 ./package
