@@ -38,15 +38,8 @@ format:
 	gofmt -s -l -w $(GO_FILES)
 	goimports -w $(GO_FILES)
 
-
-EMPTY_VARS := REPO TAG DRONE_TAG IMAGE_NAME SKIP_VALIDATE SKIP_AIRGAP AWS_SECRET_ACCESS_KEY AWS_ACCESS_KEY_ID GITHUB_TOKEN GOLANG GOCOVER DEBUG
-fill-empty-vars:
-	$(foreach var,$(EMPTY_VARS),$(if $($(var)),,$(eval export $(var)='')))
-
 .PHONY: local
-local: fill-empty-vars
+local:
 	DOCKER_BUILDKIT=1 docker build \
-		--progress=plain \
-		--build-arg="REPO TAG DRONE_TAG IMAGE_NAME SKIP_VALIDATE SKIP_AIRGAP" \
-		--build-arg="AWS_SECRET_ACCESS_KEY AWS_ACCESS_KEY_ID GITHUB_TOKEN GOLANG GOCOVER DEBUG" \
+		--build-arg="REPO TAG GITHUB_TOKEN GOLANG GOCOVER DEBUG" \
 		-t k3s-local -f Dockerfile.local --output=. .
