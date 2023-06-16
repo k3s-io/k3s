@@ -103,7 +103,6 @@ if [ ${ARCH} = riscv64 ]; then
     # These are needed as we are cross-compiling
     export CC=riscv64-linux-gnu-gcc
     export PKG_CONFIG_PATH=/usr/lib/riscv64-linux-gnu/pkgconfig/
-    export CGO_ENABLED=1
 fi
 
 rm -f \

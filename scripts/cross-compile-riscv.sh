@@ -4,7 +4,7 @@
 
 # To run mount a clean checkout of the code inside the container and run the script:
 #
-#   docker run --rm --mount type=bind,source=${PWD},target=/k3s ubuntu:22.04 /bin/bash -c /k3s/cross-compile-riscv.sh
+#   docker run --rm --mount type=bind,source=${PWD},target=/k3s ubuntu:22.04 /bin/bash -c /k3s/scripts/cross-compile-riscv.sh
 
 dpkg --add-architecture riscv64
 apt-get update
@@ -15,9 +15,10 @@ if [ ${HOST_ARCH} = aarch64 ]; then
     HOST_ARCH=arm64
 fi
 
-wget -P /tmp "https://dl.google.com/go/go1.20.5.linux-${HOST_ARCH}.tar.gz"
-(cd /; tar -C /usr/local -xzf "/tmp/go1.20.5.linux-${HOST_ARCH}.tar.gz")
-rm -rf /tmp/go1.20.5.linux-${HOST_ARCH}.tar.gz
+GOLANG_VERSION=1.20.4
+wget -P /tmp "https://dl.google.com/go/go${GOLANG_VERSION}.linux-${HOST_ARCH}.tar.gz"
+(cd /; tar -C /usr/local -xzf "/tmp/go${GOLANG_VERSION}.linux-${HOST_ARCH}.tar.gz")
+rm -rf /tmp/go${GOLANG_VERSION}.linux-${HOST_ARCH}.tar.gz
 mkdir -p /go/src /go/bin
 
 export GOPATH=/go
