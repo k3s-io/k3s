@@ -19,19 +19,6 @@ RUN apk -U --no-cache add bash git gcc musl-dev docker vim less file curl wget c
 
 RUN python3 -m pip install awscli
 
-RUN TRIVY_VERSION="0.42.0"                                                                                                                          && \
-    if [ "$(go env GOARCH)" = "arm64" ] || [ "$(go env GOARCH)" = "arm" ]; then                                                                        \
-    # Turn arm64 and arm into uppercase ARM64 and ARM, respectively, for Trivy's download
-    TRIVY_ARCH=$(go env GOARCH | tr "[:lower:]" "[:upper:]")                                                                                        && \
-    wget --no-verbose "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-${TRIVY_ARCH}.tar.gz" && \
-    tar -zxvf "trivy_${TRIVY_VERSION}_Linux-${TRIVY_ARCH}.tar.gz"                                                                                   && \
-    mv trivy /usr/local/bin;                                                                                                                           \
-    elif [ "$(go env GOARCH)" = "amd64" ]; then                                                                                                        \
-    wget --no-verbose "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"         && \
-    tar -zxvf "trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"                                                                                           && \
-    mv trivy /usr/local/bin;                                                                                                                           \
-    fi
-
 # this works for both go 1.17 and 1.18
 RUN GOPROXY=direct go install golang.org/x/tools/cmd/goimports@gopls/v0.11.0
 RUN rm -rf /go/src /go/pkg
