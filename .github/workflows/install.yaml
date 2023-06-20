@@ -56,7 +56,7 @@ jobs:
       - name: "Vagrant Plugin(s)"
         run: vagrant plugin install vagrant-k3s --plugin-version 0.1.8.rc1
       - name: "Vagrant Plugin 2"
-        run: vagrant plugin install vagrant-k3s vagrant-reload vagrant-scp
+        run: vagrant plugin install vagrant-reload vagrant-scp
       - name: "Download k3s binary"
         uses: actions/download-artifact@v3
         with:
