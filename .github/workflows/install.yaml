@@ -37,6 +37,7 @@ jobs:
         working-directory: tests/install/${{ matrix.vm }}
     env:
       INSTALL_K3S_SKIP_DOWNLOAD: binary
+      VAGRANT_DISABLE_STRICT_DEPENDENCY_ENFORCEMENT: 1
     steps:
       - name: "Checkout"
         uses: actions/checkout@v3
@@ -50,6 +51,8 @@ jobs:
           key: install-${{ hashFiles(format('tests/install/{0}/Vagrantfile', matrix.vm)) }}
         id: vagrant-cache
         continue-on-error: true
+      - name: Show Vagrant version
+        run: vagrant --version
       - name: "Vagrant Plugin(s)"
         run: vagrant plugin install vagrant-k3s vagrant-reload vagrant-scp
       - name: "Download k3s binary"
