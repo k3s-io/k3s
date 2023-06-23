@@ -101,8 +101,8 @@ fi
 if [ ${ARCH} = riscv64 ]; then
     export GOARCH="riscv64"
     # These are needed as we are cross-compiling
-    export CC=riscv64-linux-gnu-gcc
-    export PKG_CONFIG_PATH=/usr/lib/riscv64-linux-gnu/pkgconfig/
+    export CC="riscv64-alpine-linux-musl-gcc"
+    export PKG_CONFIG_PATH=/home/builder/sysroot-riscv64/usr/lib/pkgconfig/
 fi
 
 rm -f \
