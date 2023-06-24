@@ -49,13 +49,15 @@ elif [ ${ARCH} = arm ]; then
 elif [ ${ARCH} = s390x ]; then
     BIN_SUFFIX="-s390x"
 elif [ ${ARCH} = riscv64 ]; then
-    export GOARCH="riscv64"
     BIN_SUFFIX="-riscv64"
 fi
 
 CMD_NAME=dist/artifacts/k3s${BIN_SUFFIX}
 
 "${GO}" generate
+if [ ${ARCH} = riscv64 ]; then
+    export GOARCH="riscv64"
+fi
 LDFLAGS="
     -X github.com/k3s-io/k3s/pkg/version.Version=$VERSION
     -X github.com/k3s-io/k3s/pkg/version.GitCommit=${COMMIT:0:8}
