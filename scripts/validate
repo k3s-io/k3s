@@ -1,6 +1,11 @@
 #!/bin/bash
 set -e
 
+if [ -n "$SKIP_VALIDATE" ]; then
+    echo Skipping validation
+    exit
+fi
+
 cd $(dirname $0)/..
 
 echo Running: go mod tidy
@@ -9,10 +14,6 @@ go mod tidy
 echo Running: go generate
 go generate
 
-if [ -n "$SKIP_VALIDATE" ]; then
-    echo Skipping validation
-    exit
-fi
 echo Running validation
 
 . ./scripts/version.sh
