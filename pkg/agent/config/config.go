@@ -139,6 +139,20 @@ func getNodeNamedCrt(nodeName string, nodeIPs []net.IP, nodePasswordFile string)
 		}
 		defer resp.Body.Close()
 
+		// If we got a 401 Unauthorized response when using client certs, try again without client cert auth.
+		// This allows us to fall back from node identity to token when the node resource is deleted.
+		if resp.StatusCode == http.StatusUnauthorized {
+			if transport, ok := client.Transport.(*http.Transport); ok && transport.TLSClientConfig != nil && len(transport.TLSClientConfig.Certificates) != 0 {
+				logrus.Infof("Node authorization rejected, retrying without client certificate authentication")
+				transport.TLSClientConfig.Certificates = []tls.Certificate{}
+				resp, err = client.Do(req)
+				if err != nil {
+					return nil, err
+				}
+				defer resp.Body.Close()
+			}
+		}
+
 		if resp.StatusCode == http.StatusForbidden {
 			return nil, fmt.Errorf("Node password rejected, duplicate hostname or contents of '%s' may not match server node-passwd entry, try enabling a unique node name with the --with-node-id flag", nodePasswordFile)
 		}
