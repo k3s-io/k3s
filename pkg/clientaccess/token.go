@@ -367,7 +367,7 @@ func getCACerts(u url.URL) ([]byte, error) {
 	return cacerts, nil
 }
 
-// get makes a request to a url using a provided client, username, and password,
+// get makes a request to a url using a provided client and credentials,
 // returning the response body.
 func get(u string, client *http.Client, username, password, token string) ([]byte, error) {
 	req, err := http.NewRequest(http.MethodGet, u, nil)
@@ -394,7 +394,7 @@ func get(u string, client *http.Client, username, password, token string) ([]byt
 	return io.ReadAll(resp.Body)
 }
 
-// put makes a request to a url using a provided client, username, and password
+// put makes a request to a url using a provided client and credentials,
 // only an error is returned
 func put(u string, body []byte, client *http.Client, username, password, token string) error {
 	req, err := http.NewRequest(http.MethodPut, u, bytes.NewBuffer(body))
