@@ -28,6 +28,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/daemons/control/deps"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
+	"github.com/k3s-io/k3s/pkg/vpn"
 	"github.com/pkg/errors"
 	"github.com/rancher/wrangler/pkg/slice"
 	"github.com/sirupsen/logrus"
@@ -382,6 +383,29 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 		return nil, err
 	}
 
+	// If there is a VPN, we must overwrite NodeIP and flannel interface
+	var vpnInfo vpn.VPNInfo
+	if envInfo.VPNAuth != "" {
+		vpnInfo, err = vpn.GetVPNInfo(envInfo.VPNAuth)
+		if err != nil {
+			return nil, err
+		}
+		if len(vpnInfo.IPs) != 0 {
+			logrus.Infof("Node-ip changed to %v due to VPN", vpnInfo.IPs)
+			if len(envInfo.NodeIP) != 0 {
+				logrus.Warn("VPN provider overrides configured node-ip parameter")
+			}
+			if len(envInfo.NodeExternalIP) != 0 {
+				logrus.Warn("VPN provider overrides node-external-ip parameter")
+			}
+			nodeIPs = vpnInfo.IPs
+			flannelIface, err = net.InterfaceByName(vpnInfo.VPNInterface)
+			if err != nil {
+				return nil, errors.Wrapf(err, "unable to find vpn interface: %s", vpnInfo.VPNInterface)
+			}
+		}
+	}
+
 	nodeExternalIPs, err := util.ParseStringSliceToIPs(envInfo.NodeExternalIP)
 	if err != nil {
 		return nil, fmt.Errorf("invalid node-external-ip: %w", err)
@@ -532,6 +556,11 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 		nodeConfig.AgentConfig.CNIBinDir = filepath.Dir(hostLocal)
 		nodeConfig.AgentConfig.CNIConfDir = filepath.Join(envInfo.DataDir, "agent", "etc", "cni", "net.d")
 		nodeConfig.AgentConfig.FlannelCniConfFile = envInfo.FlannelCniConfFile
+
+		// It does not make sense to use VPN without its flannel backend
+		if envInfo.VPNAuth != "" {
+			nodeConfig.FlannelBackend = vpnInfo.ProviderName
+		}
 	}
 
 	if nodeConfig.Docker {

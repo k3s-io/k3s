@@ -85,7 +85,7 @@ var _ = Describe("Verify Secrets Encryption Rotation", Ordered, func() {
 		})
 
 		It("Verifies encryption start stage", func() {
-			cmd := "sudo k3s secrets-encrypt status"
+			cmd := "k3s secrets-encrypt status"
 			for _, nodeName := range serverNodeNames {
 				res, err := e2e.RunCmdOnNode(cmd, nodeName)
 				Expect(err).NotTo(HaveOccurred())
@@ -96,11 +96,11 @@ var _ = Describe("Verify Secrets Encryption Rotation", Ordered, func() {
 		})
 
 		It("Prepares for Secrets-Encryption Rotation", func() {
-			cmd := "sudo k3s secrets-encrypt prepare"
+			cmd := "k3s secrets-encrypt prepare"
 			res, err := e2e.RunCmdOnNode(cmd, serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred(), res)
 			for i, nodeName := range serverNodeNames {
-				cmd := "sudo k3s secrets-encrypt status"
+				cmd := "k3s secrets-encrypt status"
 				res, err := e2e.RunCmdOnNode(cmd, nodeName)
 				Expect(err).NotTo(HaveOccurred(), res)
 				Expect(res).Should(ContainSubstring("Server Encryption Hashes: hash does not match"))
@@ -140,7 +140,7 @@ var _ = Describe("Verify Secrets Encryption Rotation", Ordered, func() {
 		})
 
 		It("Verifies encryption prepare stage", func() {
-			cmd := "sudo k3s secrets-encrypt status"
+			cmd := "k3s secrets-encrypt status"
 			for _, nodeName := range serverNodeNames {
 				Eventually(func(g Gomega) {
 					res, err := e2e.RunCmdOnNode(cmd, nodeName)
@@ -153,12 +153,12 @@ var _ = Describe("Verify Secrets Encryption Rotation", Ordered, func() {
 		})
 
 		It("Rotates the Secrets-Encryption Keys", func() {
-			cmd := "sudo k3s secrets-encrypt rotate"
+			cmd := "k3s secrets-encrypt rotate"
 			res, err := e2e.RunCmdOnNode(cmd, serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred(), res)
 			for i, nodeName := range serverNodeNames {
 				Eventually(func(g Gomega) {
-					cmd := "sudo k3s secrets-encrypt status"
+					cmd := "k3s secrets-encrypt status"
 					res, err := e2e.RunCmdOnNode(cmd, nodeName)
 					g.Expect(err).NotTo(HaveOccurred(), res)
 					g.Expect(res).Should(ContainSubstring("Server Encryption Hashes: hash does not match"))
@@ -176,7 +176,7 @@ var _ = Describe("Verify Secrets Encryption Rotation", Ordered, func() {
 		})
 
 		It("Verifies encryption rotate stage", func() {
-			cmd := "sudo k3s secrets-encrypt status"
+			cmd := "k3s secrets-encrypt status"
 			for _, nodeName := range serverNodeNames {
 				Eventually(func(g Gomega) {
 					res, err := e2e.RunCmdOnNode(cmd, nodeName)
@@ -189,11 +189,11 @@ var _ = Describe("Verify Secrets Encryption Rotation", Ordered, func() {
 		})
 
 		It("Reencrypts the Secrets-Encryption Keys", func() {
-			cmd := "sudo k3s secrets-encrypt reencrypt"
+			cmd := "k3s secrets-encrypt reencrypt"
 			res, err := e2e.RunCmdOnNode(cmd, serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred(), res)
 
-			cmd = "sudo k3s secrets-encrypt status"
+			cmd = "k3s secrets-encrypt status"
 			Eventually(func() (string, error) {
 				return e2e.RunCmdOnNode(cmd, serverNodeNames[0])
 			}, "180s", "5s").Should(ContainSubstring("Current Rotation Stage: reencrypt_finished"))
@@ -211,7 +211,7 @@ var _ = Describe("Verify Secrets Encryption Rotation", Ordered, func() {
 		})
 
 		It("Verifies Encryption Reencrypt Stage", func() {
-			cmd := "sudo k3s secrets-encrypt status"
+			cmd := "k3s secrets-encrypt status"
 			for _, nodeName := range serverNodeNames {
 				Eventually(func(g Gomega) {
 					res, err := e2e.RunCmdOnNode(cmd, nodeName)
@@ -226,15 +226,15 @@ var _ = Describe("Verify Secrets Encryption Rotation", Ordered, func() {
 
 	Context("Disabling Secrets-Encryption", func() {
 		It("Disables encryption", func() {
-			cmd := "sudo k3s secrets-encrypt disable"
+			cmd := "k3s secrets-encrypt disable"
 			res, err := e2e.RunCmdOnNode(cmd, serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred(), res)
 
-			cmd = "sudo k3s secrets-encrypt reencrypt -f --skip"
+			cmd = "k3s secrets-encrypt reencrypt -f --skip"
 			res, err = e2e.RunCmdOnNode(cmd, serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred(), res)
 
-			cmd = "sudo k3s secrets-encrypt status"
+			cmd = "k3s secrets-encrypt status"
 			Eventually(func() (string, error) {
 				return e2e.RunCmdOnNode(cmd, serverNodeNames[0])
 			}, "180s", "5s").Should(ContainSubstring("Current Rotation Stage: reencrypt_finished"))
@@ -257,7 +257,7 @@ var _ = Describe("Verify Secrets Encryption Rotation", Ordered, func() {
 		})
 
 		It("Verifies encryption disabled on all nodes", func() {
-			cmd := "sudo k3s secrets-encrypt status"
+			cmd := "k3s secrets-encrypt status"
 			for _, nodeName := range serverNodeNames {
 				Eventually(func(g Gomega) {
 					g.Expect(e2e.RunCmdOnNode(cmd, nodeName)).Should(ContainSubstring("Encryption Status: Disabled"))
@@ -269,15 +269,15 @@ var _ = Describe("Verify Secrets Encryption Rotation", Ordered, func() {
 
 	Context("Enabling Secrets-Encryption", func() {
 		It("Enables encryption", func() {
-			cmd := "sudo k3s secrets-encrypt enable"
+			cmd := "k3s secrets-encrypt enable"
 			res, err := e2e.RunCmdOnNode(cmd, serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred(), res)
 
-			cmd = "sudo k3s secrets-encrypt reencrypt -f --skip"
+			cmd = "k3s secrets-encrypt reencrypt -f --skip"
 			res, err = e2e.RunCmdOnNode(cmd, serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred(), res)
 
-			cmd = "sudo k3s secrets-encrypt status"
+			cmd = "k3s secrets-encrypt status"
 			Eventually(func() (string, error) {
 				return e2e.RunCmdOnNode(cmd, serverNodeNames[0])
 			}, "180s", "5s").Should(ContainSubstring("Current Rotation Stage: reencrypt_finished"))
@@ -288,7 +288,7 @@ var _ = Describe("Verify Secrets Encryption Rotation", Ordered, func() {
 		})
 
 		It("Verifies encryption enabled on all nodes", func() {
-			cmd := "sudo k3s secrets-encrypt status"
+			cmd := "k3s secrets-encrypt status"
 			for _, nodeName := range serverNodeNames {
 				Eventually(func(g Gomega) {
 					g.Expect(e2e.RunCmdOnNode(cmd, nodeName)).Should(ContainSubstring("Encryption Status: Enabled"))
@@ -306,6 +306,9 @@ var _ = AfterEach(func() {
 })
 
 var _ = AfterSuite(func() {
+	if os.Getenv("E2E_GOCOVER") != "" {
+		Expect(e2e.GetCoverageReport(serverNodeNames)).To(Succeed())
+	}
 	if failed && !*ci {
 		fmt.Println("FAILED!")
 	} else {

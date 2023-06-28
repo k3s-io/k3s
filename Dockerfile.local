@@ -1,0 +1,70 @@
+ARG GOLANG=golang:1.20.4-alpine3.18
+FROM ${GOLANG} as infra
+
+ARG http_proxy=$http_proxy
+ARG https_proxy=$https_proxy
+ARG no_proxy=$no_proxy
+ENV http_proxy=$http_proxy
+ENV https_proxy=$https_proxy
+ENV no_proxy=$no_proxy
+
+RUN apk -U --no-cache add bash git gcc musl-dev docker vim less file curl wget ca-certificates jq linux-headers \
+    zlib-dev tar zip squashfs-tools npm coreutils python3 py3-pip openssl-dev libffi-dev libseccomp libseccomp-dev \
+    libseccomp-static make libuv-static sqlite-dev sqlite-static libselinux libselinux-dev zlib-dev zlib-static \
+    zstd pigz alpine-sdk binutils-gold btrfs-progs-dev btrfs-progs-static gawk yq \
+    && \
+    if [ "$(go env GOARCH)" = "amd64" ]; then \
+    apk -U --no-cache add mingw-w64-gcc; \
+    fi
+
+RUN python3 -m pip install awscli
+
+# this works for both go 1.17 and 1.18
+RUN GOPROXY=direct go install golang.org/x/tools/cmd/goimports@gopls/v0.11.0
+RUN rm -rf /go/src /go/pkg
+
+RUN if [ "$(go env GOARCH)" = "amd64" ]; then \
+    curl -sL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.51.2;  \
+    fi
+
+ARG SELINUX=true
+ENV SELINUX $SELINUX
+ENV STATIC_BUILD true
+ENV SRC_DIR=/go/src/github.com/k3s-io/k3s
+WORKDIR ${SRC_DIR}/
+
+
+FROM infra as build
+
+ARG SKIP_VALIDATE
+
+COPY ./scripts/ ./scripts
+COPY ./go.mod ./go.sum ./main.go ./
+COPY ./manifests ./manifests
+RUN mkdir -p bin dist
+RUN --mount=type=cache,id=gomod,target=/go/pkg/mod \
+    ./scripts/download
+
+COPY ./cmd ./cmd
+COPY ./pkg ./pkg
+COPY ./tests ./tests
+COPY ./.git ./.git
+RUN --mount=type=cache,id=gomod,target=/go/pkg/mod \
+    --mount=type=cache,id=gobuild,target=/root/.cache/go-build \
+    ./scripts/build
+
+COPY ./contrib ./contrib
+RUN --mount=type=cache,id=gomod,target=/go/pkg/mod \
+    --mount=type=cache,id=gobuild,target=/root/.cache/go-build \
+    ./scripts/package-cli
+
+RUN ./scripts/binary_size_check.sh
+
+FROM scratch as result
+ENV SRC_DIR=/go/src/github.com/k3s-io/k3s
+COPY --from=build ${SRC_DIR}/dist /dist
+COPY --from=build ${SRC_DIR}/bin /bin
+COPY --from=build ${SRC_DIR}/build/out /build/out
+COPY --from=build ${SRC_DIR}/build/static /build/static
+COPY --from=build ${SRC_DIR}/pkg/static /pkg/static
+COPY --from=build ${SRC_DIR}/pkg/deploy /pkg/deploy

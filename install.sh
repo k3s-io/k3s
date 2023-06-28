@@ -514,6 +514,10 @@ setup_selinux() {
             rpm_site_infix=slemicro
             package_installer=zypper
         fi
+    elif [ "${ID_LIKE:-}" = coreos ] || [ "${VARIANT_ID:-}" = coreos ]; then
+        rpm_target=coreos
+        rpm_site_infix=coreos
+        package_installer=rpm-ostree
     elif [ "${VERSION_ID%%.*}" = "7" ]; then
         rpm_target=el7
         rpm_site_infix=centos/7
@@ -522,10 +526,6 @@ setup_selinux() {
         rpm_target=el8
         rpm_site_infix=centos/8
         package_installer=yum
-    elif [ "${ID_LIKE:-}" = coreos ] || [ "${VARIANT_ID:-}" = coreos ]; then
-        rpm_target=coreos
-        rpm_site_infix=coreos
-        package_installer=rpm-ostree
     else
         rpm_target=el9
         rpm_site_infix=centos/9
@@ -739,6 +739,27 @@ killtree() {
     ) 2>/dev/null
 }
 
+remove_interfaces() {
+    # Delete network interface(s) that match 'master cni0'
+    ip link show 2>/dev/null | grep 'master cni0' | while read ignore iface ignore; do
+        iface=${iface%%@*}
+        [ -z "$iface" ] || ip link delete $iface
+    done
+
+    # Delete cni related interfaces
+    ip link delete cni0
+    ip link delete flannel.1
+    ip link delete flannel-v6.1
+    ip link delete kube-ipvs0
+    ip link delete flannel-wg
+    ip link delete flannel-wg-v6
+
+    # Restart tailscale
+    if [ -n "$(command -v tailscale)" ]; then
+        tailscale set --advertise-routes=
+    fi
+}
+
 getshims() {
     ps -e -o pid= -o args= | sed -e 's/^ *//; s/\s\s*/\t/;' | grep -w 'k3s/data/[^/]*/bin/containerd-shim' | cut -f1
 }
@@ -762,17 +783,8 @@ do_unmount_and_remove '/run/netns/cni-'
 # Remove CNI namespaces
 ip netns show 2>/dev/null | grep cni- | xargs -r -t -n 1 ip netns delete
 
-# Delete network interface(s) that match 'master cni0'
-ip link show 2>/dev/null | grep 'master cni0' | while read ignore iface ignore; do
-    iface=${iface%%@*}
-    [ -z "$iface" ] || ip link delete $iface
-done
-ip link delete cni0
-ip link delete flannel.1
-ip link delete flannel-v6.1
-ip link delete kube-ipvs0
-ip link delete flannel-wg
-ip link delete flannel-wg-v6
+remove_interfaces
+
 rm -rf /var/lib/cni/
 iptables-save | grep -v KUBE- | grep -v CNI- | grep -iv flannel | iptables-restore
 ip6tables-save | grep -v KUBE- | grep -v CNI- | grep -iv flannel | ip6tables-restore

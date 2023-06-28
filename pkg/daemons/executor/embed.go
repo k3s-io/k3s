@@ -27,7 +27,6 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 	toolswatch "k8s.io/client-go/tools/watch"
-	ccm "k8s.io/cloud-provider"
 	cloudprovider "k8s.io/cloud-provider"
 	cloudproviderapi "k8s.io/cloud-provider/api"
 	ccmapp "k8s.io/cloud-provider/app"
@@ -187,7 +186,7 @@ func (*Embedded) CloudControllerManager(ctx context.Context, ccmRBACReady <-chan
 	}
 
 	cloudInitializer := func(config *cloudcontrollerconfig.CompletedConfig) cloudprovider.Interface {
-		cloud, err := ccm.InitCloudProvider(version.Program, config.ComponentConfig.KubeCloudShared.CloudProvider.CloudConfigFile)
+		cloud, err := cloudprovider.InitCloudProvider(version.Program, config.ComponentConfig.KubeCloudShared.CloudProvider.CloudConfigFile)
 		if err != nil {
 			logrus.Fatalf("Cloud provider could not be initialized: %v", err)
 		}

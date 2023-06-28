@@ -45,6 +45,7 @@ type Server struct {
 	DisableAgent             bool
 	KubeConfigOutput         string
 	KubeConfigMode           string
+	HelmJobImage             string
 	TLSSan                   cli.StringSlice
 	BindAddress              string
 	EnablePProf              bool
@@ -251,6 +252,11 @@ var ServerFlags = []cli.Flag{
 		Usage:       "(client) Write kubeconfig with this mode",
 		Destination: &ServerConfig.KubeConfigMode,
 		EnvVar:      version.ProgramUpper + "_KUBECONFIG_MODE",
+	},
+	&cli.StringFlag{
+		Name:        "helm-job-image",
+		Usage:       "(helm) Default image to use for helm jobs",
+		Destination: &ServerConfig.HelmJobImage,
 	},
 	ServerToken,
 	&cli.StringFlag{
@@ -501,6 +507,8 @@ var ServerFlags = []cli.Flag{
 	FlannelIfaceFlag,
 	FlannelConfFlag,
 	FlannelCniConfFileFlag,
+	VPNAuth,
+	VPNAuthFile,
 	ExtraKubeletArgs,
 	ExtraKubeProxyArgs,
 	ProtectKernelDefaultsFlag,
