@@ -1,6 +1,6 @@
 #/bin/bash
 
-# This script prepare a cross-compilation environment for $ARCH
+# This script prepares a cross-compilation environment for $ARCH
 
 if [ -z "$ARCH" ]; then
     echo "Error: ARCH not defined"
