@@ -10,6 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 	apinet "k8s.io/apimachinery/pkg/util/net"
+	netutils "k8s.io/utils/net"
 )
 
 // JoinIPs stringifies and joins a list of IP addresses with commas.
@@ -85,10 +86,9 @@ func JoinIP4Nets(elems []*net.IPNet) string {
 // If no IPv6 addresses are found, an error is raised.
 func GetFirst6(elems []net.IP) (net.IP, error) {
 	for _, elem := range elems {
-		if elem == nil || elem.To16() == nil {
-			continue
+		if elem != nil && netutils.IsIPv6(elem) {
+			return elem, nil
 		}
-		return elem, nil
 	}
 	return nil, errors.New("no IPv6 address found")
 }
@@ -97,10 +97,9 @@ func GetFirst6(elems []net.IP) (net.IP, error) {
 // If no IPv6 addresses are found, an error is raised.
 func GetFirst6Net(elems []*net.IPNet) (*net.IPNet, error) {
 	for _, elem := range elems {
-		if elem == nil || elem.IP.To16() == nil {
-			continue
+		if elem != nil && netutils.IsIPv6(elem.IP) {
+			return elem, nil
 		}
-		return elem, nil
 	}
 	return nil, errors.New("no IPv6 CIDRs found")
 }
@@ -125,7 +124,7 @@ func GetFirst6String(elems []string) (string, error) {
 func JoinIP6Nets(elems []*net.IPNet) string {
 	var strs []string
 	for _, elem := range elems {
-		if elem != nil && elem.IP.To4() == nil {
+		if elem != nil && netutils.IsIPv6(elem.IP) {
 			strs = append(strs, elem.String())
 		}
 	}
