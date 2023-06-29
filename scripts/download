@@ -23,7 +23,7 @@ mkdir -p ${DATA_DIR}
 curl --compressed -sfL https://github.com/k3s-io/k3s-root/releases/download/${VERSION_ROOT}/k3s-root-${ARCH}.tar | tar xf -
 
 if [ ${ARCH} = riscv64 ]; then
-  git clone --single-branch --branch=release-1.1-riscv64 --depth=1 https://github.com/CARV-ICS-FORTH/runc ${RUNC_DIR}
+  git clone --single-branch --branch=release-1.1 --depth=1 https://github.com/opencontainers/runc ${RUNC_DIR}
 else
   git clone --single-branch --branch=${VERSION_RUNC} --depth=1 https://github.com/opencontainers/runc ${RUNC_DIR}
 fi
