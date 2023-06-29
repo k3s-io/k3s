@@ -232,12 +232,27 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		if err != nil {
 			return err
 		}
-		if len(vpnInfo.IPs) != 0 {
-			logrus.Infof("Advertise-address changed to %v due to VPN", vpnInfo.IPs)
-			if serverConfig.ControlConfig.AdvertiseIP != "" {
-				logrus.Warn("Conflict in the config detected. VPN integration overwrites advertise-address but the config is setting the advertise-address parameter")
+		// If we are in ipv6-only mode, we should pass the ipv6 address. Otherwise, ipv4
+		if utilsnet.IsIPv6CIDRString(util.JoinIPNets(serverConfig.ControlConfig.ClusterIPRanges)) {
+			if vpnInfo.IPv6Address != nil {
+				logrus.Infof("Advertise-address changed to %v due to VPN", vpnInfo.IPv6Address)
+				if serverConfig.ControlConfig.AdvertiseIP != "" {
+					logrus.Warn("Conflict in the config detected. VPN integration overwrites advertise-address but the config is setting the advertise-address parameter")
+				}
+				serverConfig.ControlConfig.AdvertiseIP = vpnInfo.IPv6Address.String()
+			} else {
+				return errors.New("tailscale does not provide an ipv6 address")
 			}
-			serverConfig.ControlConfig.AdvertiseIP = vpnInfo.IPs[0].String()
+		} else {
+			if vpnInfo.IPv4Address != nil {
+				logrus.Infof("Advertise-address changed to %v due to VPN", vpnInfo.IPv4Address)
+				if serverConfig.ControlConfig.AdvertiseIP != "" {
+					logrus.Warn("Conflict in the config detected. VPN integration overwrites advertise-address but the config is setting the advertise-address parameter")
+				}
+				serverConfig.ControlConfig.AdvertiseIP = vpnInfo.IPv4Address.String()
+			} else {
+				return errors.New("tailscale does not provide an ipv4 address")
+			}
 		}
 		logrus.Warn("Etcd IP (PrivateIP) remains the local IP. Running etcd traffic over VPN is not recommended due to performance issues")
 	} else {

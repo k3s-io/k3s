@@ -390,15 +390,24 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 		if err != nil {
 			return nil, err
 		}
-		if len(vpnInfo.IPs) != 0 {
-			logrus.Infof("Node-ip changed to %v due to VPN", vpnInfo.IPs)
+
+		var vpnIPs []net.IP
+		if vpnInfo.IPv4Address != nil {
+			vpnIPs = append(vpnIPs, vpnInfo.IPv4Address)
+		}
+		if vpnInfo.IPv6Address != nil {
+			vpnIPs = append(vpnIPs, vpnInfo.IPv6Address)
+		}
+
+		if len(vpnIPs) != 0 {
+			logrus.Infof("Node-ip changed to %v due to VPN", vpnIPs)
 			if len(envInfo.NodeIP) != 0 {
 				logrus.Warn("VPN provider overrides configured node-ip parameter")
 			}
 			if len(envInfo.NodeExternalIP) != 0 {
 				logrus.Warn("VPN provider overrides node-external-ip parameter")
 			}
-			nodeIPs = vpnInfo.IPs
+			nodeIPs = vpnIPs
 			flannelIface, err = net.InterfaceByName(vpnInfo.VPNInterface)
 			if err != nil {
 				return nil, errors.Wrapf(err, "unable to find vpn interface: %s", vpnInfo.VPNInterface)
