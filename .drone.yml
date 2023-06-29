@@ -425,6 +425,9 @@ clone:
 steps:
 - name: clone
   image: alpine/git:v2.30.2-s390x
+  settings:
+    retry:
+      max: 4
   commands:
   - git clone $DRONE_GIT_HTTP_URL  .
   - git fetch origin $DRONE_COMMIT_REF
