@@ -36,18 +36,11 @@ var _ = Describe("VersionTemplate Upgrade:", func() {
 		template.VersionTemplate(template.VersionTestTemplate{
 			Description: template.TestMapFlag.Description,
 			TestCombination: &template.RunCmd{
-				RunOnNode: []template.TestMap{
+				Run: []template.TestMap{
 					{
-						Cmd:                  template.TestMapFlag.CmdNode,
-						ExpectedValue:        template.TestMapFlag.ExpectedValueNode,
-						ExpectedValueUpgrade: template.TestMapFlag.ExpectedValueUpgradedNode,
-					},
-				},
-				RunOnHost: []template.TestMap{
-					{
-						Cmd:                  template.TestMapFlag.CmdHost,
-						ExpectedValue:        template.TestMapFlag.ExpectedValueHost,
-						ExpectedValueUpgrade: template.TestMapFlag.ExpectedValueUpgradedHost,
+						Cmd:                  template.TestMapFlag.Cmd,
+						ExpectedValue:        template.TestMapFlag.ExpectedValue,
+						ExpectedValueUpgrade: template.TestMapFlag.ExpectedValueUpgrade,
 					},
 				},
 			},

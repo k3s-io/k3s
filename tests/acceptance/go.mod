@@ -1,6 +1,6 @@
 module github.com/k3s-io/k3s/tests/acceptance
 
-go 1.19
+go 1.20
 
 require (
 	github.com/gruntwork-io/terratest v0.41.15

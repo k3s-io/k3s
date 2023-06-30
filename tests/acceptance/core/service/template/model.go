@@ -12,22 +12,15 @@ type VersionTestTemplate struct {
 
 // RunCmd represents the command sets to run on host and node.
 type RunCmd struct {
-	RunOnHost []TestMap
-	RunOnNode []TestMap
+	Run []TestMap
 }
 
 // TestMap represents a single test command with key:value pairs.
 type TestMap struct {
-	Cmd                       string
-	ExpectedValue             string
-	ExpectedValueUpgrade      string
-	ExpectedValueUpgradedHost string
-	ExpectedValueUpgradedNode string
-	CmdHost                   string
-	ExpectedValueHost         string
-	CmdNode                   string
-	ExpectedValueNode         string
-	Description               string
+	Cmd                  string
+	ExpectedValue        string
+	ExpectedValueUpgrade string
+	Description          string
 }
 
 // TestConfig represents the testcase function configuration

@@ -18,14 +18,9 @@ func upgradeVersion(template VersionTestTemplate, version string) error {
 		return err
 	}
 
-	for i := range template.TestCombination.RunOnNode {
-		template.TestCombination.RunOnNode[i].ExpectedValue =
-			template.TestCombination.RunOnNode[i].ExpectedValueUpgrade
-	}
-
-	for i := range template.TestCombination.RunOnHost {
-		template.TestCombination.RunOnHost[i].ExpectedValue =
-			template.TestCombination.RunOnHost[i].ExpectedValueUpgrade
+	for i := range template.TestCombination.Run {
+		template.TestCombination.Run[i].ExpectedValue =
+			template.TestCombination.Run[i].ExpectedValueUpgrade
 	}
 
 	return nil
@@ -41,7 +36,7 @@ func checkVersion(v VersionTestTemplate) error {
 	var wg sync.WaitGroup
 	errorChanList := make(
 		chan error,
-		len(ips)*(len(v.TestCombination.RunOnHost)+len(v.TestCombination.RunOnNode)),
+		len(ips)*(len(v.TestCombination.Run)),
 	)
 
 	processTestCombination(errorChanList, &wg, ips, *v.TestCombination)

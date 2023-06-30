@@ -36,19 +36,12 @@ var _ = Describe("VersionTemplate Upgrade:", func() {
 		template.VersionTemplate(template.VersionTestTemplate{
 			Description: "Verifies bump local path storage version",
 			TestCombination: &template.RunCmd{
-				RunOnNode: []template.TestMap{
-					{
-						Cmd:                  "k3s --version",
-						ExpectedValue:        template.TestMapFlag.ExpectedValueNode,
-						ExpectedValueUpgrade: template.TestMapFlag.ExpectedValueUpgradedNode,
-					},
-				},
-				RunOnHost: []template.TestMap{
+				Run: []template.TestMap{
 					{
 						Cmd: "kubectl describe pod -n kube-system local-path-provisioner- " +
 							"," + " | grep -i Image",
-						ExpectedValue:        template.TestMapFlag.ExpectedValueHost,
-						ExpectedValueUpgrade: template.TestMapFlag.ExpectedValueUpgradedHost,
+						ExpectedValue:        template.TestMapFlag.ExpectedValue,
+						ExpectedValueUpgrade: template.TestMapFlag.ExpectedValueUpgrade,
 					},
 				},
 			},

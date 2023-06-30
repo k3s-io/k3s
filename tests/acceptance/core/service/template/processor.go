@@ -2,6 +2,7 @@ package template
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/k3s-io/k3s/tests/acceptance/core/service/assert"
@@ -13,25 +14,23 @@ import (
 // processTestCombination run tests using CmdOnNode and CmdOnHost validation and spawn a go routine per ip.
 func processTestCombination(resultChan chan error, wg *sync.WaitGroup, ips []string, testCombination RunCmd) {
 	for _, ip := range ips {
-		if testCombination.RunOnHost != nil {
-			for _, test := range testCombination.RunOnHost {
-				wg.Add(1)
-				go func(ip string, cmd, expectedValue string) {
-					defer wg.Done()
-					defer GinkgoRecover()
-					processOnHost(resultChan, ip, cmd, expectedValue)
-				}(ip, test.Cmd, test.ExpectedValue)
-			}
-		}
-
-		if testCombination.RunOnNode != nil {
-			for _, test := range testCombination.RunOnNode {
-				wg.Add(1)
-				go func(ip string, cmd, expectedValue string) {
-					defer wg.Done()
-					defer GinkgoRecover()
-					processOnNode(resultChan, ip, cmd, expectedValue)
-				}(ip, test.Cmd, test.ExpectedValue)
+		if testCombination.Run != nil {
+			for _, testMap := range testCombination.Run {
+				if strings.Contains(testMap.Cmd, "kubectl") {
+					wg.Add(1)
+					go func(ip string, cmd, expectedValue, expectedValueUpgraded string) {
+						defer wg.Done()
+						defer GinkgoRecover()
+						processOnHost(resultChan, ip, cmd, expectedValue)
+					}(ip, testMap.Cmd, testMap.ExpectedValue, testMap.ExpectedValueUpgrade)
+				} else {
+					wg.Add(1)
+					go func(ip string, cmd, expectedValue string) {
+						defer wg.Done()
+						defer GinkgoRecover()
+						processOnNode(resultChan, ip, cmd, expectedValue)
+					}(ip, testMap.Cmd, testMap.ExpectedValue)
+				}
 			}
 		}
 	}

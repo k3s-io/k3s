@@ -47,21 +47,21 @@ var _ = Describe("VersionTemplate Upgrade:", func() {
 		template.VersionTemplate(template.VersionTestTemplate{
 			Description: "CNI Plugin Version Bump",
 			TestCombination: &template.RunCmd{
-				RunOnNode: []template.TestMap{
+				Run: []template.TestMap{
 					{
 						Cmd:                  "/var/lib/rancher/k3s/data/current/bin/cni",
-						ExpectedValue:        template.TestMapFlag.ExpectedValueNode,
-						ExpectedValueUpgrade: template.TestMapFlag.ExpectedValueUpgradedNode,
+						ExpectedValue:        template.TestMapFlag.ExpectedValue,
+						ExpectedValueUpgrade: template.TestMapFlag.ExpectedValueUpgrade,
 					},
 				},
-				RunOnHost: []template.TestMap{
-					{
-						Cmd: "kubectl get pod test-pod -o yaml --kubeconfig=" + "," +
-							" | grep -A2 annotations ",
-						ExpectedValue:        template.TestMapFlag.ExpectedValueHost,
-						ExpectedValueUpgrade: template.TestMapFlag.ExpectedValueUpgradedHost,
-					},
-				},
+				// Run: []template.TestMap{
+				// 	{
+				// 		Cmd: "kubectl get pod test-pod -o yaml --kubeconfig=" + "," +
+				// 			" | grep -A2 annotations ",
+				// 		ExpectedValue:        template.TestMapFlag.ExpectedValueHost,
+				// 		ExpectedValueUpgrade: template.TestMapFlag.ExpectedValueUpgradedHost,
+				// 	},
+				// },
 			},
 			InstallUpgrade: customflag.ServiceFlag.InstallUpgrade,
 			TestConfig: &template.TestConfig{

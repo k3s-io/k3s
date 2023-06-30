@@ -15,12 +15,9 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	flag.StringVar(&template.TestMapFlag.CmdHost, "cmdHost", "", "Comma separated list of commands to execute on host")
-	flag.StringVar(&template.TestMapFlag.ExpectedValueHost, "expectedValueHost", "", "Comma separated list of expected values for host commands")
-	flag.StringVar(&template.TestMapFlag.CmdNode, "cmdNode", "", "Comma separated list of commands to execute on node")
-	flag.StringVar(&template.TestMapFlag.ExpectedValueNode, "expectedValueNode", "", "Comma separated list of expected values for node commands")
-	flag.StringVar(&template.TestMapFlag.ExpectedValueUpgradedHost, "expectedValueUpgradedHost", "", "Expected value of the command ran on Host after upgrading")
-	flag.StringVar(&template.TestMapFlag.ExpectedValueUpgradedNode, "expectedValueUpgradedNode", "", "Expected value of the command ran on Node after upgrading")
+	flag.StringVar(&template.TestMapFlag.Cmd, "cmd", "", "Comma separated list of commands to execute")
+	flag.StringVar(&template.TestMapFlag.ExpectedValue, "expectedValue", "", "Comma separated list of expected values for commands")
+	flag.StringVar(&template.TestMapFlag.ExpectedValueUpgrade, "expectedValueUpgrade", "", "Expected value of the command ran after upgrading")
 	flag.Var(&customflag.ServiceFlag.InstallUpgrade, "installVersionOrCommit", "Install upgrade customflag for version bump")
 	flag.StringVar(&template.TestMapFlag.Description, "description", "", "Description of the test")
 	flag.Var(&customflag.ServiceFlag.TestCase, "testCase", "Test case to run")
