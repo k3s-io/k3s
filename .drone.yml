@@ -429,6 +429,9 @@ steps:
   - git clone $DRONE_GIT_HTTP_URL  .
   - git fetch origin $DRONE_COMMIT_REF
   - git checkout $DRONE_COMMIT -b origin/$DRONE_TARGET_BRANCH
+  retry:
+    max: 3
+    delay: 5s
 
 - name: skipfiles
   image: alpine/git:v2.30.2-s390x
