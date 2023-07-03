@@ -257,9 +257,12 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			tokenYAML := "token: aaaaaa.bbbbbbbbbbbbbbbb"
 			err := StartK3sCluster(append(serverNodeNames, agentNodeNames...), tokenYAML, tokenYAML)
 			Expect(err).To(HaveOccurred())
-			logs, err := e2e.GetJournalLogs(serverNodeNames[0])
-			Expect(err).NotTo(HaveOccurred())
-			Expect(logs).To(ContainSubstring("failed to normalize server token"))
+			Eventually(func(g Gomega) {
+				logs, err := e2e.GetJournalLogs(serverNodeNames[0])
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(logs).To(ContainSubstring("failed to normalize server token"))
+			}, "120s", "5s").Should(Succeed())
+
 		})
 		It("Kills the cluster", func() {
 			err := KillK3sCluster(append(serverNodeNames, agentNodeNames...))
