@@ -152,7 +152,7 @@ func Prepare(app *cli.Context) error {
 	if err = cmds.InitLogging(); err != nil {
 		return err
 	}
-	logrus.Warnln("This command will be deprecated in v1.28, rotate will subsume it")
+	logrus.Warnln("This command will be deprecated in v1.28, will be combined with rotate")
 	info, err := commandPrep(app, &cmds.ServerConfig)
 	if err != nil {
 		return err
@@ -198,7 +198,7 @@ func Reencrypt(app *cli.Context) error {
 	if err = cmds.InitLogging(); err != nil {
 		return err
 	}
-	logrus.Warnln("This command will be deprecated in v1.28, rotate will subsume it")
+	logrus.Warnln("This command will be deprecated in v1.28, will be combined with rotate")
 	info, err := commandPrep(app, &cmds.ServerConfig)
 	if err != nil {
 		return err
