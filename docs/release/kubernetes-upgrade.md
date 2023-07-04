@@ -119,9 +119,10 @@ export REMOTE=k3s-io
 ## Updating k3s with the new tags
 You now have a collection of tagged kubernetes modules in your worktree. By updating go.mod in k3s to point at these modules we will then be prepared to open a PR for review.
 ```sh
-cd ${GOPATH}/src/github.com/rancher/k3s
+cd ${GOPATH}/src/github.com/k3s-io/k3s 
 git remote add upstream https://github.com/k3s-io/k3s.git
 git fetch upstream
+git branch delete ${NEW_K3S_VER}
 git checkout -B ${NEW_K3S_VER} upstream/${RELEASE_BRANCH}
 git clean -xfd
  
@@ -132,8 +133,19 @@ sed -Ei "s/${OLD_K8S_CLIENT}/${NEW_K8S_CLIENT}/g" go.mod
 # since drone perform the builds and tests for the updated tags we no longer need to run make locally.
 # We now update the go.sum by running go mod tidy:
 go mod tidy
+```
 
-# Update the depdencies that we override to match upstream using the ecm-distro-tools script
+Ensure to update the Go version in both the Dockerfile and GitHub workflows, if required.
+
+```sh
+sed -i'' “s/<OLD_GO_VERSION>/<NEW_GO_VERSION>/g” Dockerfile.* .github/workflows/integration.yaml .github/workflows/unitcoverage.yaml
+```
+
+Please note that the modsync script, k3s_modsync.sh, is only necessary when making modifications to target a specific upstream Kubernetes commit instead of a tag in cases where k3s is being updated. In a regular patch release process, the modsync script is not used.
+
+To update the dependencies that are overridden and align them with the upstream version, you can use the following command:
+
+```sh 
 curl -s https://raw.githubusercontent.com/rancher/ecm-distro-tools/master/bin/k3s_modsync.sh | sh -
 ```
 
