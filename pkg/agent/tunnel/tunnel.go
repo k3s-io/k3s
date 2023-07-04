@@ -337,7 +337,7 @@ func (a *agentTunnel) watchEndpoints(ctx context.Context, apiServerReady <-chan 
 			var debounceCtx context.Context
 			debounceCtx, cancelUpdate = context.WithCancel(ctx)
 
-			// When joining the cluster, the apiserver adds, removes, and then readds itself to
+			// When joining the cluster, the apiserver adds, removes, and then re-adds itself to
 			// the endpoint list several times.  This causes a bit of thrashing if we react to
 			// endpoint changes immediately.  Instead, perform the endpoint update in a
 			// goroutine that sleeps for a short period before checking for changes and updating
