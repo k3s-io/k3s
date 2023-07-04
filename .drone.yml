@@ -11,6 +11,9 @@ trigger:
     exclude:
     - cron
 
+clone:
+  retries: 3
+
 steps:
 - name: skipfiles
   image: plugins/git
@@ -203,6 +206,9 @@ trigger:
     exclude:
     - cron
 
+clone:
+  retries: 3
+
 steps:
 - name: skipfiles
   image: plugins/git
@@ -308,6 +314,9 @@ trigger:
   event:
     exclude:
     - cron
+
+clone:
+  retries: 3
 
 steps:
 - name: skipfiles
@@ -642,6 +651,9 @@ platform:
   os: linux
   arch: amd64
 
+clone:
+  retries: 3
+
 steps:
 - name: skipfiles
   image: plugins/git
@@ -691,6 +703,9 @@ type: docker
 platform:
   os: linux
   arch: amd64
+
+clone:
+  retries: 3
 
 steps:
 - name: skipfiles
