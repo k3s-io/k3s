@@ -17,7 +17,7 @@ Users may have policies in place that prohibit use of the `system:admin` account
 
 * We will add a new kubeconfig for the K3s supervisor controllers: core functionality, deploy (AddOns; aka the manifests directory), and helm (HelmChart/HelmChartConfig).
 * Each of the three controllers will use a dedicated user-agent to further assist in discriminating between events, via both audit logs and resource ManageFields tracking.
-* The new user account will use exisiting core Kubernetes group RBAC.
+* The new user account will use existing core Kubernetes group RBAC.
 
 ## Consequences
 
