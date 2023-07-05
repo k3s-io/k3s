@@ -14,10 +14,7 @@ $(TARGETS): .dapper
 
 .PHONY: deps
 deps:
-	go mod tidy
-
-release:
-	./scripts/release.sh
+	@go mod tidy
 
 .DEFAULT_GOAL := ci
 
