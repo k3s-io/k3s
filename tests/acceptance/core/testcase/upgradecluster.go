@@ -41,19 +41,23 @@ func TestUpgradeClusterManually(version string) error {
 // upgradeServer upgrades servers in the cluster.
 func upgradeServer(installType string, serverIPs []string) error {
 	var wg sync.WaitGroup
+	var channel string
 	errCh := make(chan error, len(serverIPs))
 
+	switch {
+	case customflag.ServiceFlag.InstallType.Version != nil:
+		installType = fmt.Sprintf("INSTALL_K3S_VERSION=%s", customflag.ServiceFlag.InstallType.Version)
+	case customflag.ServiceFlag.InstallType.Commit != nil:
+		installType = fmt.Sprintf("INSTALL_K3S_COMMIT=%s", customflag.ServiceFlag.InstallType.Commit)
+	case customflag.ServiceFlag.InstallType.Channel != "":
+		channel = fmt.Sprintf("INSTALL_K3S_CHANNEL=%s", customflag.ServiceFlag.InstallType.Channel)
+	case customflag.ServiceFlag.InstallType.Channel == "":
+		channel = fmt.Sprintf("INSTALL_K3S_CHANNEL=%s", "stable")
+	}
+
+	installK3sServer := "curl -sfL https://get.k3s.io | sudo %s %s sh -s - server"
 	for _, ip := range serverIPs {
-		switch {
-		case customflag.ServiceFlag.InstallType.Version != "":
-			installType = fmt.Sprintf("INSTALL_K3S_VERSION=%s", customflag.ServiceFlag.InstallType.Version)
-		case customflag.ServiceFlag.InstallType.Commit != "":
-			installType = fmt.Sprintf("INSTALL_K3S_COMMIT=%s", customflag.ServiceFlag.InstallType.Commit)
-		}
-
-		installK3sServer := "curl -sfL https://get.k3s.io | sudo %s  sh -s - server"
-		upgradeCommand := fmt.Sprintf(installK3sServer, installType)
-
+		upgradeCommand := fmt.Sprintf(installK3sServer, installType, channel)
 		wg.Add(1)
 		go func(ip, installFlagServer string) {
 			defer wg.Done()
@@ -86,19 +90,23 @@ func upgradeServer(installType string, serverIPs []string) error {
 // upgradeAgent upgrades agents in the cluster.
 func upgradeAgent(installType string, agentIPs []string) error {
 	var wg sync.WaitGroup
+	var channel string
 	errCh := make(chan error, len(agentIPs))
 
+	switch {
+	case customflag.ServiceFlag.InstallType.Version != nil:
+		installType = fmt.Sprintf("INSTALL_K3S_VERSION=%s", customflag.ServiceFlag.InstallType.Version)
+	case customflag.ServiceFlag.InstallType.Commit != nil:
+		installType = fmt.Sprintf("INSTALL_K3S_COMMIT=%s", customflag.ServiceFlag.InstallType.Commit)
+	case customflag.ServiceFlag.InstallType.Channel != "":
+		channel = fmt.Sprintf("INSTALL_K3S_CHANNEL=%s", customflag.ServiceFlag.InstallType.Channel)
+	case customflag.ServiceFlag.InstallType.Channel == "":
+		channel = fmt.Sprintf("INSTALL_K3S_CHANNEL=%s", "stable")
+	}
+
+	installK3sAgent := "curl -sfL https://get.k3s.io | sudo %s %s sh -s - agent"
 	for _, ip := range agentIPs {
-		switch {
-		case customflag.ServiceFlag.InstallType.Version != "":
-			installType = fmt.Sprintf("INSTALL_K3S_VERSION=%s", customflag.ServiceFlag.InstallType.Version)
-		case customflag.ServiceFlag.InstallType.Commit != "":
-			installType = fmt.Sprintf("INSTALL_K3S_COMMIT=%s", customflag.ServiceFlag.InstallType.Commit)
-		}
-
-		installK3sAgent := "curl -sfL https://get.k3s.io | sudo %s sh -s - agent"
-		upgradeCommand := fmt.Sprintf(installK3sAgent, installType)
-
+		upgradeCommand := fmt.Sprintf(installK3sAgent, installType, channel)
 		fmt.Println("\nUpgrading agent to: " + upgradeCommand)
 		wg.Add(1)
 		go func(ip, installFlagAgent string) {

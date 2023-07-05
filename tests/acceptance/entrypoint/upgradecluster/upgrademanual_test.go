@@ -61,14 +61,14 @@ var _ = Describe("Test:", func() {
 	})
 
 	It("Upgrade Manual", func() {
-		err := testcase.TestUpgradeClusterManually(customflag.ServiceFlag.InstallType.String())
+		err := testcase.TestUpgradeClusterManually(customflag.ServiceFlag.InstallUpgrade.String())
 		Expect(err).NotTo(HaveOccurred())
 	})
 
 	It("Checks Node Status pos upgrade and validate version", func() {
 		testcase.TestNodeStatus(
 			assert.NodeAssertReadyStatus(),
-			assert.NodeAssertVersionTypeUpgrade(&customflag.ServiceFlag.InstallType),
+			assert.NodeAssertVersionTypeUpgrade(customflag.ServiceFlag),
 		)
 	})
 

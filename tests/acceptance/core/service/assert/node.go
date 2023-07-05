@@ -2,6 +2,7 @@ package assert
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/k3s-io/k3s/tests/acceptance/core/service/customflag"
 	"github.com/k3s-io/k3s/tests/acceptance/shared"
@@ -14,21 +15,24 @@ import (
 type NodeAssertFunc func(g Gomega, node shared.Node)
 
 // NodeAssertVersionTypeUpgrade custom assertion func that asserts that node version is as expected
-func NodeAssertVersionTypeUpgrade(installType *customflag.InstallTypeValueFlag) NodeAssertFunc {
-	if installType.Version != "" {
-		fmt.Printf("Asserting Version: %s\n", installType.Version)
-		return func(g Gomega, node shared.Node) {
-			g.Expect(node.Version).Should(Equal(installType.Version),
-				"Nodes should all be upgraded to the specified version", node.Name)
-		}
-	}
+func NodeAssertVersionTypeUpgrade(installType customflag.FlagConfig) NodeAssertFunc {
+	fullCmd := customflag.ServiceFlag.InstallUpgrade.String()
+	version := strings.Split(fullCmd, "=")
 
-	if installType.Commit != "" {
-		version := shared.GetK3sVersion()
-		fmt.Printf("Asserting Commit: %s\n Version: %s", installType.Commit, version)
-		return func(g Gomega, node shared.Node) {
-			g.Expect(version).Should(ContainSubstring(node.Version),
-				"Nodes should all be upgraded to the specified commit", node.Name)
+	if installType.InstallUpgrade != nil {
+		if strings.HasPrefix(fullCmd, "v") {
+			fmt.Printf("Asserting Version: %s\n", version[1])
+			return func(g Gomega, node shared.Node) {
+				g.Expect(node.Version).Should(Equal(version[1]),
+					"Nodes should all be upgraded to the specified version", node.Name)
+			}
+		} else {
+			upgradedVersion := shared.GetK3sVersion()
+			fmt.Printf("Asserting Commit: %s\n Version: %s", version[1], upgradedVersion)
+			return func(g Gomega, node shared.Node) {
+				g.Expect(upgradedVersion).Should(ContainSubstring(node.Version),
+					"Nodes should all be upgraded to the specified commit", node.Name)
+			}
 		}
 	}
 

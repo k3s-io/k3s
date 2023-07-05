@@ -2,11 +2,27 @@ package template
 
 import (
 	"fmt"
+	"strings"
 
+	"github.com/k3s-io/k3s/tests/acceptance/core/service/customflag"
+	"github.com/k3s-io/k3s/tests/acceptance/shared"
 	. "github.com/onsi/ginkgo/v2"
 )
 
 func VersionTemplate(test VersionTestTemplate) {
+	if customflag.ServiceFlag.TestConfig.WorkloadName != "" &&
+		strings.HasSuffix(customflag.ServiceFlag.TestConfig.WorkloadName, ".yaml") {
+		_, err := shared.ManageWorkload(
+			"create",
+			customflag.ServiceFlag.TestConfig.WorkloadName,
+			customflag.ServiceFlag.ClusterConfig.Arch.String(),
+		)
+		if err != nil {
+			GinkgoT().Errorf(err.Error())
+			return
+		}
+	}
+
 	err := checkVersion(test)
 	if err != nil {
 		GinkgoT().Errorf(err.Error())

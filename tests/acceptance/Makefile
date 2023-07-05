@@ -15,25 +15,13 @@ test-run:
         if [ "${TESTDIR}" = "upgradecluster" ]; then \
             go test -timeout=45m -v ./upgradecluster/... -installVersionOrCommit "${INSTALLTYPE}"; \
         elif [ "${TESTDIR}" = "versionbump" ]; then \
-            if [ "${TESTTAG}" = "localpath" ]; then \
-                go test -timeout=45m -v -tags=localpath ./versionbump/... -expectedValueNode "${VALUENODE}" \
-                -expectedValueUpgradedNode "${VALUENODEUPGRADED}" -expectedValueHost "${VALUEHOST}" \
-                -expectedValueUpgradedHost "${VALUEHOSTUPGRADED}" -installVersionOrCommit "${INSTALLTYPE}"; \
-            elif [ "${TESTTAG}" = "versionbump" ]; then \
-                go test -timeout=45m -v -tags=versionbump ./versionbump/... -cmdNode "${CMDNODE}" -expectedValueNode "${VALUENODE}" \
-                -expectedValueUpgradedNode "${VALUENODEUPGRADED}" -cmdHost "${CMDHOST}" -expectedValueHost "${VALUEHOST}" \
-                -expectedValueUpgradedHost "${VALUEHOSTUPGRADED}" -installVersionOrCommit "${INSTALLTYPE}" -testCase "${TESTCASE}" \
-                -deployWorkload "${DEPLOYWORKLOAD}"; \
-            elif [ "${TESTTAG}" = "cniplugin" ]; then \
-				go test -timeout=45m -v -tags=cniplugin ./entrypoint/versionbump/... \
-				 -expectedValueNode "${VALUENODE}" -expectedValueUpgradedNode "${VALUENODEUPGRADED}" \
-				 -expectedValueHost "${VALUEHOST}" -expectedValueUpgradedHost "${VALUEHOSTUPGRADED}" -installVersionOrCommit "${INSTALLTYPE}"; \
-            fi; \
+            go test -timeout=45m -v -tags=versionbump ./versionbump/... -cmd "${CMD}" -expectedValue "${VALUE}" \
+            -expectedValueUpgrade "${VALUEUPGRADED}" -installVersionOrCommit "${INSTALLTYPE}" -channel "${CHANNEL}" -testCase "${TESTCASE}" \
+            -deployWorkload "${DEPLOYWORKLOAD}" -workloadName "${WORKLOADNAME}" -description "${DESCRIPTION}"; \
         fi; \
     elif [ -z "${TESTDIR}" ]; then \
         go test -timeout=45m -v ./createcluster/...; \
     fi;'
-
 
 .PHONY: test-logs
 test-logs:
@@ -69,26 +57,14 @@ test-create:
 test-upgrade-manual:
 	@go test -timeout=45m -v ./entrypoint/upgradecluster/... -installVersionOrCommit ${INSTALLTYPE}
 
-.PHONY: test-version-local-path
-test-version-local-path:
-	@go test -timeout=45m -v -tags=localpath ./entrypoint/versionbump/... \
- 		-expectedValueNode ${VALUENODE} -expectedValueUpgradedNode ${VALUENODEUPGRADED} \
- 		-expectedValueHost ${VALUEHOST} -expectedValueUpgradedHost ${VALUEHOSTUPGRADED} \
- 		-installVersionOrCommit ${INSTALLTYPE} \
- 		-testCase "${TESTCASE}" \
- 		-deployWorkload ${DEPLOYWORKLOAD}
-
-
 .PHONY: test-version-bump
 test-version-bump:
-	@go test -timeout=45m -v -tags=versionbump ./entrypoint/versionbump/... \
-		-cmdNode "${CMDNODE}" -expectedValueNode ${VALUENODE} \
-		-expectedValueUpgradedNode ${VALUENODEUPGRADED} \
-		-cmdHost "${CMDHOST}"  -expectedValueHost ${VALUEHOST} \
-		-expectedValueUpgradedHost ${VALUEHOSTUPGRADED} \
-		-installVersionOrCommit ${INSTALLTYPE} \
-		-testCase "${TESTCASE}" \
-		-deployWorkload ${DEPLOYWORKLOAD}
+	  -cmd "${CMD}" \
+	  -expectedValue ${VALUE} \
+	  -expectedValueUpgrade ${VALUEUPGRADED} \
+	  -installVersionOrCommit ${INSTALLTYPE} -channel ${CHANNEL} \
+	  -testCase "${TESTCASE}" -deployWorkload ${DEPLOYWORKLOAD} -workloadName ${WORKLOADNAME} -description "${DESCRIPTION}"
+
 
 
 #========================= TestCode Static Quality Check =========================#
