@@ -2,13 +2,13 @@ package vpn
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net"
 	"strings"
 
 	"github.com/k3s-io/k3s/pkg/util"
 
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
@@ -44,11 +44,11 @@ func StartVPN(vpnAuthConfigFile string) error {
 	logrus.Infof("Starting VPN: %s", authInfo.Name)
 	switch authInfo.Name {
 	case "tailscale":
-		outpt, err := util.ExecCommand("tailscale", []string{"up", "--authkey", authInfo.JoinKey, "--reset"})
+		output, err := util.ExecCommand("tailscale", []string{"up", "--authkey", authInfo.JoinKey, "--reset"})
 		if err != nil {
-			return err
+			return errors.Wrap(err, "tailscale up failed: "+output)
 		}
-		logrus.Debugf("Output from tailscale up: %v", outpt)
+		logrus.Debugf("Output from tailscale up: %v", output)
 		return nil
 	default:
 		return fmt.Errorf("Requested VPN: %s is not supported. We currently only support tailscale", authInfo.Name)
