@@ -232,6 +232,7 @@ func coreControllers(ctx context.Context, sc *Context, config *Config) error {
 		helmchart.Register(ctx,
 			metav1.NamespaceAll,
 			helmcommon.Name,
+			strconv.Itoa(config.ControlConfig.APIServerPort),
 			k8s,
 			apply,
 			util.BuildControllerEventRecorder(k8s, helmcommon.Name, metav1.NamespaceAll),
