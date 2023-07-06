@@ -32,30 +32,24 @@ var _ = Describe("VersionTemplate Upgrade:", func() {
 			assert.PodAssertStatus())
 	})
 
-	It("Verifies bump version", func() {
+	It("Test Bump version", func() {
 		template.VersionTemplate(template.VersionTestTemplate{
-			Description: template.TestMapFlag.Description,
 			TestCombination: &template.RunCmd{
-				RunOnNode: []template.TestMap{
+				Run: []template.TestMap{
 					{
-						Cmd:                  template.TestMapFlag.CmdNode,
-						ExpectedValue:        template.TestMapFlag.ExpectedValueNode,
-						ExpectedValueUpgrade: template.TestMapFlag.ExpectedValueUpgradedNode,
-					},
-				},
-				RunOnHost: []template.TestMap{
-					{
-						Cmd:                  template.TestMapFlag.CmdHost,
-						ExpectedValue:        template.TestMapFlag.ExpectedValueHost,
-						ExpectedValueUpgrade: template.TestMapFlag.ExpectedValueUpgradedHost,
+						Cmd:                  template.TestMapTemplate.Cmd,
+						ExpectedValue:        template.TestMapTemplate.ExpectedValue,
+						ExpectedValueUpgrade: template.TestMapTemplate.ExpectedValueUpgrade,
 					},
 				},
 			},
 			InstallUpgrade: customflag.ServiceFlag.InstallUpgrade,
 			TestConfig: &template.TestConfig{
-				TestFunc:       template.TestCase(customflag.ServiceFlag.TestCase.TestFunc),
-				DeployWorkload: customflag.ServiceFlag.TestCase.DeployWorkload,
+				TestFunc:       template.ConvertToTestCase(customflag.ServiceFlag.TestConfig.TestFuncs),
+				DeployWorkload: customflag.ServiceFlag.TestConfig.DeployWorkload,
+				WorkloadName:   customflag.ServiceFlag.TestConfig.WorkloadName,
 			},
+			Description: customflag.ServiceFlag.TestConfig.Description,
 		})
 	})
 })

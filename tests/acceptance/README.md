@@ -98,136 +98,55 @@ Responsibility:       Totally independent of any other layer and should only pro
 - Step 1: Add your desired first version or commit that you want to use on `local.tfvars` file on the vars `k3s_version` and `install_mode`
 - Step 2: Have the commands you need to run and the expected output from them
 - Step 3: Have a version or commit that you want to upgrade to.
-- Step 4: Create your go test file in `acceptance/entrypoint/versionbump/versionbump{mytestname}.go`.
-- Step 5: Get the template from `acceptance/entrypoint/versionbump/versionbump.go` and copy it to your test file.
-- Step 6: Fill the template with your data ( RunCmdNode and RunCmdHost) with your respective commands.
-- Step 7: On the TestConfig field you can add another test case that we already have or a newly created one.
-- Step 8: Create the go test command and the make command to run it.
-- Step 9: Run the command and wait for results.
-- Step 10: (WIP) Export your customizable report.
+- Step 4: On the TestConfig field you can add another test case that we already have or a newly created one.
+- Step 5: You can add a standalone workload deploy if you need
+- Step 6: Just fill the go test or make command with your required values
+- Step 7: Run the command and wait for results.
+- Step 8: (WIP) Export your customizable report.
 
 -------------------
-- RunCmdNode:
-   Commands like:
-    - $ `curl ...`
-    - $ `sudo chmod ...`
-    - $ `sudo systemctl ...`
-    - $ `grep ...`
-    - $ `k3s --version`
-
-- RunCmdHost:
-  Basically commands like:
-    - $ `kubectl ...`   
-    - $ `helm ...`
-
 
 Available arguments to create your command with examples:
 ````
-- $ -cmdHost "kubectl describe pod -n kube-system local-path-provisioner-,  | grep -i Image"
-- $ -expectedValueHost "v0.0.21"
-- $ -expectedValueUpgradedHost "v0.0.24"
-- $ -cmdNode "k3s --version"
-- $ -expectedValueNode "v1.25.2+k3s1"
-- $ -expectedValuesUpgradedNode "v1.26.4-rc1+k3s1"
+- $ -cmd "kubectl describe pod -n kube-system local-path-provisioner- ;  | grep -i Image"
+- $ -expectedValue "v0.0.21"
+- $ -expectedValueUpgrade "v0.0.24"
 - $ -installVersionOrCommit INSTALL_K3S_COMMIT=257fa2c54cda332e42b8aae248c152f4d1898218
 - $ -deployWorkload true
-- $ -testCase TestLocalPathProvisionerStorage
+- $ -testCase "TestLocalPathProvisionerStorage"
+- $ -workloadName "bandwidth-annotations.yaml"
 - $ -description "Description of your test"
+
+* All non-boolean arguments is comma separated in case you need to send more than 1.
+
+* If you need to separate another command to run as a single here , separate those with " ; " as this example:
+`-cmd "kubectl describe pod -n kube-system local-path-provisioner- ;  | grep -i Image"`
 ````
 
-Example of an execution considering that the `commands` are already placed or inside your test function or the *template itself (example bellow the command):
+Example of an execution with multiple values:
 ```bash
- go test -v -timeout=45m -tags=localpath ./entrypoint/versionbump/... \                     
-  -expectedValueHost "v0.0.21"  \       
-  -expectedValueUpgradedHost "v0.0.24" \
-  -expectedValueNode "v1.25.2+k3s1" \            
-  -expectedValueUpgradedNode "v1.26.4-rc1+k3s1" \                                  
-  -installVersionOrCommit INSTALL_K3S_COMMIT=257fa2c54cda332e42b8aae248c152f4d1898218
-
+go test -timeout=45m -v -tags=versionbump  ./entrypoint/versionbump/... \
+-cmd "/var/lib/rancher/k3s/data/current/bin/cni, kubectl get pod test-pod -o yaml ; | grep -A2 annotations, k3s -v" \
+-expectedValue "CNI plugins plugin v1.2.0-k3s1,1M, v1.26" \
+-expectedValueUpgrade "CNI plugins plugin v1.2.0-k3s1,1M, v1.27" \
+-installVersionOrCommit INSTALL_K3S_VERSION=v1.27.2+k3s1 \
+-testCase "TestServiceClusterIp, TestLocalPathProvisionerStorage" \
+-deployWorkload=true \
+-workloadName "bandwidth-annotations.yaml"
 ````
-- If you need to send more than one command at once split them with  " , "
-
-#### `*template with commands and testcase added:`
-```go
--------------------------------------------------------
-- util.K3sVersion
-- util.GetImageLocalPath + "," + util.GrepImage
-- testcase.TestLocalPathProvisionerStorage
--------------------------------------------------------
-template.VersionTemplate(template.VersionTestTemplate{
-	Description: util.Description,
-	TestCombination: &template.RunCmd{
-		    RunOnNode: []template.TestMap{
-			{
-				Cmd:                  "k3s --version",
-				ExpectedValue:        template.TestMapFlag.ExpectedValueNode,
-				ExpectedValueUpgrade: template.TestMapFlag.ExpectedValueUpgradedNode,
-			    },
-			},
-			RunOnHost: []template.TestMap{
-				{
-					Cmd:                  GetImageLocalPath + "," + util.GrepImage,
-					ExpectedValue:        template.TestMapFlag.ExpectedValueHost,,
-					ExpectedValueUpgrade: template.TestMapFlag.ExpectedValueUpgradedHost,,
-			    	},
-			    },
-                         },
-			InstallUpgrade: customflag.ServiceFlag.InstallUpgrade,
-			TestConfig: &template.TestConfig{
-				TestFunc:       testcase.TestLocalPathProvisionerStorage,
-				DeployWorkload: true,
-			},
-		})
-	})
-
-`*template with commands and testcase added:`
--------------------------------------------------------
-
-template.VersionTemplate(template.VersionTestTemplate{
-        Description: util.Description,
-        TestCombination: &template.RunCmd{
-                RunOnNode: []template.TestMap{
-                {
-                    Cmd:                  template.TestMapFlag.CmdNode,
-                    ExpectedValue:        template.TestMapFlag.ExpectedValueNode,
-                    ExpectedValueUpgrade: template.TestMapFlag.ExpectedValueUpgradedNode,
-                    },
-                },
-                RunOnHost: []template.TestMap{
-                {
-                    Cmd:                  template.TestMapFlag.CmdHost,
-                    ExpectedValue:        template.TestMapFlag.ExpectedValueHost,
-                    ExpectedValueUpgrade: template.TestMapFlag.ExpectedValueUpgradedHost,
-                    },
-                },
-            },
-        InstallUpgrade: customflag.ServiceFlag.InstallUpgrade,
-        TestConfig: &template.TestConfig{
-            TestFunc:        template.TestCase(customflag.ServiceFlag.TestCase.TestFunc,
-            DeployWorkload:  customflag.ServiceFlag.TestCase.DeployWorkload,
-        },
-    })
-})
-```
 
 
-
-- Command
+Example of an execution with less args:
 ````bash
- go test -v -timeout=45m -tags=localpath ./entrypoint/versionbump/... \                     
-  -cmdHost "kubectl describe pod -n kube-system local-path-provisioner-,  | grep -i Image" \
-  -expectedValueHost "v0.0.21"  \       
-  -expectedValueUpgradedHost "v0.0.24" \
-  -cmdNode "k3s --version"  \
-  -expectedValueNode "v1.25.2+k3s1" \            
-  -expectedValueUpgradedNode "v1.26.4-rc1+k3s1" \                                  
-  -installVersionOrCommit INSTALL_K3S_COMMIT=257fa2c54cda332e42b8aae248c152f4d1898218 \
-  -testCase TestLocalPathProvisionerStorage \                             
+go test -timeout=45m -v -tags=versionbump  ./entrypoint/versionbump/... \
+-cmd "/var/lib/rancher/k3s/data/current/bin/cni, kubectl get pod test-pod -o yaml ; | grep -A2 annotations, k3s -v"  \
+-expectedValue "CNI plugins plugin v1.2.0-k3s1,1M, v1.26"  \
+-expectedValueUpgrade "CNI plugins plugin v1.2.0-k3s1,1M, v1.27" \
+-installVersionOrCommit INSTALL_K3S_VERSION=v1.27.2+k3s1 \
 ````
 
 
 #### We also have this on the `makefile` to make things easier to run just adding the values, please see bellow on the makefile section
-
 
 
 -----
@@ -273,9 +192,7 @@ Test flags:
 
 Test tags:
 ```
- -tags=cniplugin
  -tags=versionbump
- -tags=localpath
  -tags=upgrademanual
  
 ```
@@ -297,14 +214,11 @@ Args:
 - ${TAGTEST}               name of the tag function from suite ( -tags=upgradesuc or -tags=upgrademanual )
 - ${TESTCASE}              name of the testcase to run
 - ${DEPLOYWORKLOAD}        true or false to deploy workload
-- ${CMDHOST}               command to run on host
-- ${VALUEHOST}             value to check on host
-- ${VALUEHOSTUPGRADED}     value to check on host after upgrade
-- ${CMDNODE}               command to run on node
-- ${VALUENODE}             value to check on node
-- ${VALUENODEUPGRADED}     value to check on node after upgrade
+- ${CMD}                   command to run
+- ${VALUE}                 value to check on host
 - ${INSTALLTYPE}           type of installation (version or commit) + desired value
-
+- &{WORKLOADNAME}          name of the workload to deploy
+- &{DESCRIPTION}           description of the test
 
 Commands: 
 $ make test-env-up                     # create the image from Dockerfile.build
@@ -315,7 +229,6 @@ $ make test-logs                       # prints logs from container the testcase
 $ make test-complete                   # clean resources + remove images + run testcase
 $ make test-create                     # runs create cluster test locally
 $ make test-upgrade                    # runs upgrade cluster test locally
-$ make test-version-local-path         # runs version bump for local path storage test locally
 $ make test-version-bump               # runs version bump test locally
 $ make test-run                        # runs create and upgrade cluster by passing the argname and argvalue
 $ make remove-tf-state                 # removes acceptance state dir and files
@@ -344,26 +257,14 @@ $ make test-run INSTALLTYPE=INSTALL_K3S_COMMIT=257fa2c54cda332e42b8aae248c152f4d
 $ make test-run IMGNAME=x \
 TAGNAME=y \
 TESTDIR=versionbump \
-CMDNODE="k3s --version" \
-VALUENODE="v1.26.2+k3s1" \
-CMDHOST="kubectl get image..."  \
-VALUEHOST="v0.0.21" \
+CMD="k3s --version, kubectl get image..." \
+VALUE="v1.26.2+k3s1, v0.0.21" " \
 INSTALLTYPE=INSTALL_K3S_COMMIT=257fa2c54cda332e42b8aae248c152f4d1898218 \ 
 TESTCASE=TestLocalPathProvisionerStorage \
-DEPLOYWORKLOAD=true
+DEPLOYWORKLOAD=true \
+WORKLOADNAME="someWorkload.yaml"
 
 
-- Run bump version local path provisioner upgrading with version
-
-$ make test-run IMGNAME=23 \
-TAGNAME=1 \
-TESTDIR=versionbump \
-TESTTAG=localpath \
-VALUENODE=v1.26.2+k3s1 \
-VALUENODEUPGRADED=v1.27.1-rc1+k3s1 \
-VALUEHOST=v0.0.21 \
-VALUEHOSTUPGRADED=v0.0.22 \
-INSTALLTYPE=INSTALL_K3S_VERSION=v1.27.1-rc1+k3s1 \
 ````
 ### Examples to run locally:
 ````
@@ -373,32 +274,21 @@ $ make test-create
 
 - Run upgrade cluster test:
 
-$ make test-upgrade-manual INSTALLTYPE=v1.26.2+k3s1
+$ make test-upgrade-manual INSTALLTYPE=INSTALL_K3S_COMMIT=257fa2c54cda332e42b8aae248c152f4d1898218
 
-- Run version bump test:
+- Run bump version with go test:
 
-$ make test-version-bump \
-CMDNODE="k3s --version" \
-VALUENODE="v1.25.2+k3s1" \
-VALUENODEUPGRADED="v1.26.4-rc1+k3s1" \
-CMDHOST="kubectl describe pod -n kube-system local-path-provisioner-, | grep -i Image" \
-VALUEHOST="v0.0.21" \
-VALUEHOSTUPGRADED="v0.0.24" \
-INSTALLTYPE=INSTALL_K3S_COMMIT=257fa2c54cda332e42b8aae248c152f4d1898218 \
-TESTCASE="TestLocalPathProvisionerStorage" \
-DEPLOYWORKLOAD=true
-
-- Run version bump test with local path provisioner:
-
-$ make test-version-local-path \
-VALUENODE="v1.25.2+k3s1" \
-VALUENODEUPGRADED="v1.26.4-rc1+k3s1" \
-VALUEHOST="v0.0.21" \
-VALUEHOSTUPGRADED="v0.0.24" \
-INSTALLTYPE=INSTALL_K3S_COMMIT=257fa2c54cda332e42b8aae248c152f4d1898218 \
+$go test -timeout=45m -v -tags=versionbump  ./entrypoint/versionbump/... \
+-cmd "/var/lib/rancher/k3s/data/current/bin/cni, kubectl get pod test-pod -o yaml ; | grep -A2 annotations, k3s -v" \
+-expectedValue "CNI plugins plugin v1.2.0-k3s1,1M, v1.26" \
+-expectedValueUpgrade "CNI plugins plugin v1.2.0-k3s1,1M, v1.27" \
+-installVersionOrCommit INSTALL_K3S_VERSION=v1.27.2+k3s1 \
+-testCase "TestServiceClusterIp, TestLocalPathProvisionerStorage" \
+-deployWorkload true \
+-workloadName "bandwidth-annotations.yaml"
 
 
-- Logs from test
+ - Logs from test
 
 $ make tf-logs IMGNAME=1
 

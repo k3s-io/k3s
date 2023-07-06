@@ -20,12 +20,11 @@ func TestNodeStatus(
 	fmt.Println("\nFetching node status")
 
 	expectedNodeCount := cluster.NumServers + cluster.NumAgents
+	nodes, err := shared.ParseNodes(false)
 	Eventually(func(g Gomega) {
-		nodes, err := shared.ParseNodes(false)
 		g.Expect(err).NotTo(HaveOccurred())
 		g.Expect(len(nodes)).To(Equal(expectedNodeCount),
 			"Number of nodes should match the spec")
-
 		for _, node := range nodes {
 			if nodeAssertReadyStatus != nil {
 				nodeAssertReadyStatus(g, node)

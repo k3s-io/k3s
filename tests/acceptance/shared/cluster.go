@@ -1,12 +1,12 @@
 package shared
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
-
-	. "github.com/onsi/gomega"
+	"time"
 )
 
 var (
@@ -125,7 +125,7 @@ func ManageWorkload(action, workload, arch string) (string, error) {
 					return "", fmt.Errorf("failed to create workload %s: %s", workload, err)
 				}
 			} else {
-				res, err = deleteWorkload(workload, filename)
+				err = deleteWorkload(workload, filename)
 				if err != nil {
 					return "", fmt.Errorf("failed to delete workload %s: %s", workload, err)
 				}
@@ -144,27 +144,34 @@ func createWorkload(workload, filename string) (string, error) {
 	return RunCommandHost(cmd)
 }
 
-func deleteWorkload(workload, filename string) (string, error) {
+// deleteWorkload deletes a workload and asserts that the workload is deleted.
+func deleteWorkload(workload, filename string) error {
 	fmt.Println("\nRemoving", workload)
 	cmd := "kubectl delete -f " + filename + " --kubeconfig=" + KubeConfigFile
 
-	Eventually(func(g Gomega) {
-		isDeleted, err := isWorkloadDeleted(workload)
-		g.Expect(err).To(BeNil())
-		g.Expect(isDeleted).To(BeTrue(),
-			"Workload should be deleted")
-	}, "120s", "5s").Should(Succeed())
-
-	return RunCommandHost(cmd)
-}
-
-func isWorkloadDeleted(workload string) (bool, error) {
-	res, err := RunCommandHost("kubectl get all -A --kubeconfig=" + KubeConfigFile)
+	_, err := RunCommandHost(cmd)
 	if err != nil {
-		return false, err
+		return fmt.Errorf("failed to run kubectl delete: %v", err)
 	}
 
-	return !strings.Contains(res, workload), nil
+	timeout := time.After(60 * time.Second)
+	tick := time.Tick(5 * time.Second)
+
+	for {
+		select {
+		case <-timeout:
+			return errors.New("workload deletion timed out")
+		case <-tick:
+			res, err := RunCommandHost("kubectl get all -A --kubeconfig=" + KubeConfigFile)
+			if err != nil {
+				return err
+			}
+			isDeleted := !strings.Contains(res, workload)
+			if isDeleted {
+				return nil
+			}
+		}
+	}
 }
 
 // FetchClusterIP returns the cluster IP of the service
@@ -224,7 +231,9 @@ func WriteDataPod(name string) (string, error) {
 		"pods",
 		"-l app="+name+" -o jsonpath={.items[0].metadata.name}",
 	)
-	Expect(err).NotTo(HaveOccurred())
+	if err != nil {
+		return "", err
+	}
 
 	cmd := "kubectl exec " + podName + " --kubeconfig=" + KubeConfigFile +
 		" -- sh -c 'echo testing local path > /data/test' "
@@ -242,19 +251,30 @@ func WriteDataPod(name string) (string, error) {
 //
 // args   = the rest of your command arguments.
 func KubectlCommand(destination, action, source string, args ...string) (string, error) {
-	var cmd string
+	kubeconfigFlag := " --kubeconfig=" + KubeConfigFile
+	shortCmd := map[string]string{
+		"get":      "kubectl get",
+		"describe": "kubectl describe",
+		"exec":     "kubectl exec",
+		"delete":   "kubectl delete",
+		"apply":    "kubectl apply",
+	}
+
+	cmdPrefix, ok := shortCmd[action]
+	if !ok {
+		cmdPrefix = action
+	}
+
+	cmd := cmdPrefix + " " + source + " " + strings.Join(args, " ") + kubeconfigFlag
+
 	var res string
 	var err error
-	kubeconfigFlag := " --kubeconfig=" + KubeConfigFile
-
 	if destination == "host" {
-		cmd = addKubectlCommand(action, source, args) + kubeconfigFlag
 		res, err = RunCommandHost(cmd)
 		if err != nil {
-			return res, err
+			return "", err
 		}
 	} else if destination == "node" {
-		cmd = addKubectlCommand(action, source, args) + kubeconfigFlag
 		ips := FetchNodeExternalIP()
 		for _, ip := range ips {
 			res, err = RunCmdOnNode(cmd, ip)
@@ -269,30 +289,14 @@ func KubectlCommand(destination, action, source string, args ...string) (string,
 	return res, nil
 }
 
-// addKubectlCommand adds the kubectl command to args passed as arguments
-func addKubectlCommand(action, source string, args []string) string {
-	shortCmd := map[string]string{
-		"get":      "kubectl get",
-		"describe": "kubectl describe",
-		"exec":     "kubectl exec",
-		"delete":   "kubectl delete",
-		"apply":    "kubectl apply",
-	}
-
-	cmdPrefix, ok := shortCmd[action]
-	if !ok {
-		cmdPrefix = action
-	}
-
-	return cmdPrefix + " " + source + " " + strings.Join(args, " ")
-}
-
 // FetchServiceNodePort returns the node port of the service
 func FetchServiceNodePort(serviceName string) (string, error) {
 	cmd := "kubectl get service " + serviceName + " --kubeconfig=" + KubeConfigFile +
 		" --output jsonpath=\"{.spec.ports[0].nodePort}\""
 	nodeport, err := RunCommandHost(cmd)
-	Expect(err).NotTo(HaveOccurred())
+	if err != nil {
+		return "", err
+	}
 
 	return nodeport, nil
 }

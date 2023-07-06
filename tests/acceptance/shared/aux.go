@@ -178,3 +178,16 @@ func publicKey(path string) ssh.AuthMethod {
 	}
 	return ssh.PublicKeys(signer)
 }
+
+// JoinCommands joins the first command with some argument
+func JoinCommands(cmd, arg string) string {
+	cmds := strings.Split(cmd, ";")
+	firstCmd := cmds[0] + arg
+
+	if len(cmds) > 1 {
+		secondCmd := strings.Join(cmds[1:], ",")
+		firstCmd += " " + secondCmd
+	}
+
+	return firstCmd
+}
