@@ -83,32 +83,38 @@ Save this output to a file called ```push.sh``` and mark it as executable by run
 ```sh
 chmod +x push.sh
 ```
-### tag.sh example output (The kubernetes versions will correspond to those of the patch release, 1.22 is shown below):
+### tag.sh example output (The kubernetes versions will correspond to those of the patch release, 1.27 is shown below):
 ```sh
-git push ${REMOTE} staging/src/k8s.io/api/v1.22.12-k3s1
-git push ${REMOTE} staging/src/k8s.io/apiextensions-apiserver/v1.22.12-k3s1
-git push ${REMOTE} staging/src/k8s.io/apimachinery/v1.22.12-k3s1
-git push ${REMOTE} staging/src/k8s.io/apiserver/v1.22.12-k3s1
-git push ${REMOTE} staging/src/k8s.io/client-go/v1.22.12-k3s1
-git push ${REMOTE} staging/src/k8s.io/cli-runtime/v1.22.12-k3s1
-git push ${REMOTE} staging/src/k8s.io/cloud-provider/v1.22.12-k3s1
-git push ${REMOTE} staging/src/k8s.io/cluster-bootstrap/v1.22.12-k3s1
-git push ${REMOTE} staging/src/k8s.io/code-generator/v1.22.12-k3s1
-git push ${REMOTE} staging/src/k8s.io/component-base/v1.22.12-k3s1
-git push ${REMOTE} staging/src/k8s.io/cri-api/v1.22.12-k3s1
-git push ${REMOTE} staging/src/k8s.io/csi-translation-lib/v1.22.12-k3s1
+git push ${REMOTE} staging/src/k8s.io/api/v1.27.3-k3s1
+git push ${REMOTE} staging/src/k8s.io/apiextensions-apiserver/v1.27.3-k3s1
+git push ${REMOTE} staging/src/k8s.io/apimachinery/v1.27.3-k3s1
+git push ${REMOTE} staging/src/k8s.io/apiserver/v1.27.3-k3s1
+git push ${REMOTE} staging/src/k8s.io/client-go/v1.27.3-k3s1
+git push ${REMOTE} staging/src/k8s.io/cli-runtime/v1.27.3-k3s1
+git push ${REMOTE} staging/src/k8s.io/cloud-provider/v1.27.3-k3s1
+git push ${REMOTE} staging/src/k8s.io/cluster-bootstrap/v1.27.3-k3s1
+git push ${REMOTE} staging/src/k8s.io/code-generator/v1.27.3-k3s1
+git push ${REMOTE} staging/src/k8s.io/component-base/v1.27.3-k3s1
+git push ${REMOTE} staging/src/k8s.io/component-helpers/v1.27.3-k3s1
+git push ${REMOTE} staging/src/k8s.io/controller-manager/v1.27.3-k3s1
+git push ${REMOTE} staging/src/k8s.io/cri-api/v1.27.3-k3s1
+git push ${REMOTE} staging/src/k8s.io/csi-translation-lib/v1.27.3-k3s1
 git push ${REMOTE} staging/src/k8s.io/kube-aggregator/v1.22.12-k3s1
-git push ${REMOTE} staging/src/k8s.io/kube-controller-manager/v1.22.12-k3s1
-git push ${REMOTE} staging/src/k8s.io/kubectl/v1.22.12-k3s1
-git push ${REMOTE} staging/src/k8s.io/kubelet/v1.22.12-k3s1
-git push ${REMOTE} staging/src/k8s.io/kube-proxy/v1.22.12-k3s1
-git push ${REMOTE} staging/src/k8s.io/kube-scheduler/v1.22.12-k3s1
-git push ${REMOTE} staging/src/k8s.io/legacy-cloud-providers/v1.22.12-k3s1
-git push ${REMOTE} staging/src/k8s.io/metrics/v1.22.12-k3s1
-git push ${REMOTE} staging/src/k8s.io/sample-apiserver/v1.22.12-k3s1
-git push ${REMOTE} staging/src/k8s.io/sample-cli-plugin/v1.22.12-k3s1
-git push ${REMOTE} staging/src/k8s.io/sample-controller/v1.22.12-k3s1
-git push ${REMOTE} v1.22.12-k3s1
+git push ${REMOTE} staging/src/k8s.io/controller-manager/v1.27.3-k3s1
+git push ${REMOTE} staging/src/k8s.io/kms/v1.27.3-k3s1
+git push ${REMOTE} staging/src/k8s.io/kube-aggregator/v1.27.3-k3s1
+git push ${REMOTE} staging/src/k8s.io/kube-controller-manager/v1.27.3-k3s1
+git push ${REMOTE} staging/src/k8s.io/kube-proxy/v1.27.3-k3s1
+git push ${REMOTE} staging/src/k8s.io/kube-scheduler/v1.27.3-k3s1
+git push ${REMOTE} staging/src/k8s.io/kubectl/v1.27.3-k3s1
+git push ${REMOTE} staging/src/k8s.io/kubelet/v1.27.3-k3s1
+git push ${REMOTE} staging/src/k8s.io/legacy-cloud-providers/v1.27.3-k3s1
+git push ${REMOTE} staging/src/k8s.io/metrics/v1.27.3-k3s1
+git push ${REMOTE} staging/src/k8s.io/mount-utils/v1.27.0-k3s1
+git push ${REMOTE} staging/src/k8s.io/sample-apiserver/v1.27.3-k3s1
+git push ${REMOTE} staging/src/k8s.io/sample-cli-plugin/v1.27-k3s1
+git push ${REMOTE} staging/src/k8s.io/sample-controller/v1.27.3-k3s1
+git push ${REMOTE} v1.27.3-k3s1
 ```
 ## Push tags to k3s-io remote
 ```
