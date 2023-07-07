@@ -7,8 +7,6 @@ import (
 
 	"github.com/k3s-io/k3s/tests/acceptance/core/testcase"
 	"github.com/k3s-io/k3s/tests/acceptance/shared"
-
-	. "github.com/onsi/ginkgo/v2"
 )
 
 // upgradeVersion upgrades the version of k3s and update the expected value
@@ -30,7 +28,7 @@ func upgradeVersion(template VersionTestTemplate, version string) error {
 func checkVersion(v VersionTestTemplate) error {
 	ips, err := getIPs()
 	if err != nil {
-		GinkgoT().Errorf("Failed to get IPs: %s", err)
+		return fmt.Errorf("failed to get IPs: %v", err)
 	}
 
 	var wg sync.WaitGroup
