@@ -6,6 +6,7 @@ import (
 
 	"github.com/k3s-io/k3s/tests/acceptance/core/service/customflag"
 	"github.com/k3s-io/k3s/tests/acceptance/shared"
+
 	. "github.com/onsi/ginkgo/v2"
 )
 
