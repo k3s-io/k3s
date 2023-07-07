@@ -155,13 +155,13 @@ var (
 	}
 	VPNAuth = &cli.StringFlag{
 		Name:        "vpn-auth",
-		Usage:       "(agent/networking) (experimental) Credentials for the VPN provider. It must include the provider name and join key in the format name=<vpn-provider>,joinKey=<key>",
+		Usage:       "(agent/networking) (experimental) Credentials for the VPN provider. It must include the provider name and join key in the format name=<vpn-provider>,joinKey=<key>[,controlServerURL=<url>]",
 		EnvVar:      version.ProgramUpper + "_VPN_AUTH",
 		Destination: &AgentConfig.VPNAuth,
 	}
 	VPNAuthFile = &cli.StringFlag{
 		Name:        "vpn-auth-file",
-		Usage:       "(agent/networking) (experimental) File containing credentials for the VPN provider. It must include the provider name and join key in the format name=<vpn-provider>,joinKey=<key>",
+		Usage:       "(agent/networking) (experimental) File containing credentials for the VPN provider. It must include the provider name and join key in the format name=<vpn-provider>,joinKey=<key>[,controlServerURL=<url>]",
 		EnvVar:      version.ProgramUpper + "_VPN_AUTH_FILE",
 		Destination: &AgentConfig.VPNAuthFile,
 	}
