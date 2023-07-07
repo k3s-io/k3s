@@ -22,7 +22,8 @@ type TailscaleOutput struct {
 
 // VPNInfo includes node information of the VPN. It is a general struct in case we want to add more vpn integrations
 type VPNInfo struct {
-	IPs          []net.IP
+	IPv4Address  net.IP
+	IPv6Address  net.IP
 	NodeID       string
 	ProviderName string
 	VPNInterface string
@@ -112,15 +113,14 @@ func getTailscaleInfo() (VPNInfo, error) {
 	logrus.Debugf("Output from tailscale status --json: %v", output)
 
 	var tailscaleOutput TailscaleOutput
-	var internalIPs []net.IP
 	err = json.Unmarshal([]byte(output), &tailscaleOutput)
 	if err != nil {
 		return VPNInfo{}, fmt.Errorf("failed to unmarshal tailscale output: %v", err)
 	}
 
-	for _, address := range tailscaleOutput.TailscaleIPs {
-		internalIPs = append(internalIPs, net.ParseIP(address))
-	}
+	// Errors are ignored because the interface might not have ipv4 or ipv6 addresses (that's the only possible error)
+	ipv4Address, _ := util.GetFirst4String(tailscaleOutput.TailscaleIPs)
+	ipv6Address, _ := util.GetFirst6String(tailscaleOutput.TailscaleIPs)
 
-	return VPNInfo{IPs: internalIPs, NodeID: "", ProviderName: "tailscale", VPNInterface: tailscaleIf}, nil
+	return VPNInfo{IPv4Address: net.ParseIP(ipv4Address), IPv6Address: net.ParseIP(ipv6Address), NodeID: "", ProviderName: "tailscale", VPNInterface: tailscaleIf}, nil
 }
