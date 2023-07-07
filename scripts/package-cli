@@ -79,7 +79,7 @@ LDFLAGS="
 "
 TAGS="urfave_cli_no_docs"
 STATIC="-extldflags '-static'"
-CGO_ENABLED=0 "${GO}" build -tags "$TAGS" -ldflags "$LDFLAGS $STATIC" -o ${CMD_NAME} ./cmd/k3s
+CGO_ENABLED=0 "${GO}" build -tags "$TAGS" -ldflags "$LDFLAGS $STATIC" -o ${CMD_NAME} ./cmd/k3s/main.go ./cmd/k3s/main_linux.go
 
 stat ${CMD_NAME}
 
