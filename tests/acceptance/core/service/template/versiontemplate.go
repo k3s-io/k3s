@@ -30,26 +30,28 @@ func VersionTemplate(test VersionTestTemplate) {
 		return
 	}
 
-	for _, version := range test.InstallUpgrade {
-		if GinkgoT().Failed() {
-			fmt.Println("checkVersion failed, not proceeding to upgrade")
-			return
-		}
+	if test.InstallUpgrade != nil {
+		for _, version := range test.InstallUpgrade {
+			if GinkgoT().Failed() {
+				fmt.Println("checkVersion failed, not proceeding to upgrade")
+				return
+			}
 
-		upgErr := upgradeVersion(test, version)
-		if upgErr != nil {
-			GinkgoT().Errorf("error upgrading: %v\n", err)
-			return
-		}
+			upgErr := upgradeVersion(test, version)
+			if upgErr != nil {
+				GinkgoT().Errorf("error upgrading: %v\n", err)
+				return
+			}
 
-		err = checkVersion(test)
-		if err != nil {
-			GinkgoT().Errorf(err.Error())
-			return
-		}
+			err = checkVersion(test)
+			if err != nil {
+				GinkgoT().Errorf(err.Error())
+				return
+			}
 
-		if test.TestConfig != nil {
-			TestCaseWrapper(test)
+			if test.TestConfig != nil {
+				TestCaseWrapper(test)
+			}
 		}
 	}
 }

@@ -2,6 +2,7 @@ package testcase
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -41,23 +42,23 @@ func TestUpgradeClusterManually(version string) error {
 // upgradeNode upgrades a node server or agent type to the specified version
 func upgradeNode(nodeType string, installType string, ips []string) error {
 	var wg sync.WaitGroup
-	var channel string
+	var installFlag string
 	errCh := make(chan error, len(ips))
 
-	switch {
-	case customflag.ServiceFlag.InstallType.Version != nil:
-		installType = fmt.Sprintf("INSTALL_K3S_VERSION=%s", customflag.ServiceFlag.InstallType.Version)
-	case customflag.ServiceFlag.InstallType.Commit != nil:
-		installType = fmt.Sprintf("INSTALL_K3S_COMMIT=%s", customflag.ServiceFlag.InstallType.Commit)
-	case customflag.ServiceFlag.InstallType.Channel != "":
+	if strings.HasPrefix(installType, "v") {
+		installFlag = fmt.Sprintf("INSTALL_K3S_VERSION=%s", installType)
+	} else {
+		installFlag = fmt.Sprintf("INSTALL_K3S_COMMIT=%s", installType)
+	}
+
+	channel := fmt.Sprintf("INSTALL_K3S_CHANNEL=%s", "stable")
+	if customflag.ServiceFlag.InstallType.Channel != "" {
 		channel = fmt.Sprintf("INSTALL_K3S_CHANNEL=%s", customflag.ServiceFlag.InstallType.Channel)
-	case customflag.ServiceFlag.InstallType.Channel == "":
-		channel = fmt.Sprintf("INSTALL_K3S_CHANNEL=%s", "stable")
 	}
 
 	installK3s := "curl -sfL https://get.k3s.io | sudo %s %s sh -s - " + nodeType
 	for _, ip := range ips {
-		upgradeCommand := fmt.Sprintf(installK3s, installType, channel)
+		upgradeCommand := fmt.Sprintf(installK3s, installFlag, channel)
 		wg.Add(1)
 		go func(ip, installFlag string) {
 			defer wg.Done()

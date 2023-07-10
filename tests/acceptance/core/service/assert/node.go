@@ -16,21 +16,19 @@ type NodeAssertFunc func(g Gomega, node shared.Node)
 
 // NodeAssertVersionTypeUpgrade custom assertion func that asserts that node version is as expected
 func NodeAssertVersionTypeUpgrade(installType customflag.FlagConfig) NodeAssertFunc {
-	fullCmd := customflag.ServiceFlag.InstallUpgrade.String()
-	version := strings.Split(fullCmd, "=")
-
 	if installType.InstallUpgrade != nil {
-		if strings.HasPrefix(fullCmd, "v") {
-			fmt.Printf("Asserting Version: %s\n", version[1])
+		if strings.HasPrefix(customflag.ServiceFlag.InstallUpgrade.String(), "v") {
+			fmt.Printf("Asserting Version: %s\n", installType.InstallUpgrade.String())
 			return func(g Gomega, node shared.Node) {
-				g.Expect(node.Version).Should(Equal(version[1]),
+				g.Expect(node.Version).Should(ContainSubstring(installType.InstallUpgrade.String()),
 					"Nodes should all be upgraded to the specified version", node.Name)
 			}
 		}
 		upgradedVersion := shared.GetK3sVersion()
-		fmt.Printf("Asserting Commit: %s\n Version: %s", version[1], upgradedVersion)
+		fmt.Printf("Asserting Commit: %s\n Version: %s",
+			installType.InstallUpgrade.String(), upgradedVersion)
 		return func(g Gomega, node shared.Node) {
-			g.Expect(upgradedVersion).Should(ContainSubstring(node.Version),
+			g.Expect(upgradedVersion).Should(ContainSubstring(installType.InstallUpgrade.String()),
 				"Nodes should all be upgraded to the specified commit", node.Name)
 		}
 	}

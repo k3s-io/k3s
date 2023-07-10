@@ -28,7 +28,7 @@ func processCmds(resultChan chan error, wg *sync.WaitGroup, ip string, cmds []st
 			defer wg.Done()
 			defer GinkgoRecover()
 
-			if strings.Contains(cmd, "kubectl") || strings.Contains(cmd, "helm") {
+			if strings.Contains(cmd, "kubectl") || strings.HasPrefix(cmd, "helm") {
 				processOnHost(resultChan, ip, cmd, expectedValue)
 			} else {
 				processOnNode(resultChan, ip, cmd, expectedValue)

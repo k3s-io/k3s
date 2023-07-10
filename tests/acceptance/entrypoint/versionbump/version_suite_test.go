@@ -29,8 +29,15 @@ func TestMain(m *testing.M) {
 	flag.StringVar(&customflag.ServiceFlag.TestConfig.Description, "description", "", "Description of the test")
 	flag.Parse()
 
-	installVersionOrCommit := strings.Split(customflag.ServiceFlag.InstallUpgrade.String(), ",")
-	customflag.ServiceFlag.InstallUpgrade = installVersionOrCommit
+	if flag.Parsed() {
+		installVersionOrCommit := strings.Split(customflag.ServiceFlag.InstallUpgrade.String(), ",")
+		if len(installVersionOrCommit) == 1 && installVersionOrCommit[0] == "" {
+			customflag.ServiceFlag.InstallUpgrade = nil
+		} else {
+			customflag.ServiceFlag.InstallUpgrade = installVersionOrCommit
+		}
+	}
+
 	customflag.ServiceFlag.TestConfig.TestFuncNames = customflag.TestCaseNameFlag
 	testFuncs, err := template.AddTestCases(customflag.ServiceFlag.TestConfig.TestFuncNames)
 	if err != nil {

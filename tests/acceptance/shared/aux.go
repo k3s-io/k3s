@@ -25,6 +25,11 @@ func RunCommandHost(cmds ...string) (string, error) {
 
 		c.Stdout = &output
 		c.Stderr = &errOut
+		if errOut.Len() > 0 {
+			fmt.Println("returning Stderr if not null, this might not be an error",
+				errOut.String())
+		}
+
 		err := c.Run()
 		if err != nil {
 			return output.String(), fmt.Errorf("executing command: %s: %w", cmd, err)
@@ -181,7 +186,7 @@ func publicKey(path string) ssh.AuthMethod {
 
 // JoinCommands joins the first command with some argument
 func JoinCommands(cmd, arg string) string {
-	cmds := strings.Split(cmd, ";")
+	cmds := strings.Split(cmd, ":")
 	firstCmd := cmds[0] + arg
 
 	if len(cmds) > 1 {

@@ -15,8 +15,10 @@ import (
 func TestMain(m *testing.M) {
 	flag.Var(&customflag.ServiceFlag.InstallUpgrade, "installVersionOrCommit", "Upgrade to run with type=value,"+
 		"INSTALL_K3S_VERSION=v1.26.2+k3s1 or INSTALL_K3S_COMMIT=1823dsad7129873192873129asd")
+	flag.StringVar(&customflag.ServiceFlag.InstallType.Channel, "channel", "", "channel to use on install or upgrade")
 	flag.Var(&customflag.ServiceFlag.ClusterConfig.Destroy, "destroy", "Destroy cluster after test")
 	flag.Var(&customflag.ServiceFlag.ClusterConfig.Arch, "arch", "Architecture type")
+
 	flag.Parse()
 
 	os.Exit(m.Run())

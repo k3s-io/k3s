@@ -108,7 +108,7 @@ Responsibility:       Totally independent of any other layer and should only pro
 
 Available arguments to create your command with examples:
 ````
-- $ -cmd "kubectl describe pod -n kube-system local-path-provisioner- ;  | grep -i Image"
+- $ -cmd "kubectl describe pod -n kube-system local-path-provisioner- : | grep -i Image"
 - $ -expectedValue "v0.0.21"
 - $ -expectedValueUpgrade "v0.0.24"
 - $ -installVersionOrCommit INSTALL_K3S_COMMIT=257fa2c54cda332e42b8aae248c152f4d1898218
@@ -119,16 +119,16 @@ Available arguments to create your command with examples:
 
 * All non-boolean arguments is comma separated in case you need to send more than 1.
 
-* If you need to separate another command to run as a single here , separate those with " ; " as this example:
-`-cmd "kubectl describe pod -n kube-system local-path-provisioner- ;  | grep -i Image"`
+* If you need to separate another command to run as a single here , separate those with " : " as this example:
+`-cmd "kubectl describe pod -n kube-system local-path-provisioner- :  | grep -i Image"`
 ````
 
 Example of an execution with multiple values:
 ```bash
 go test -timeout=45m -v -tags=versionbump  ./entrypoint/versionbump/... \
--cmd "/var/lib/rancher/k3s/data/current/bin/cni, kubectl get pod test-pod -o yaml ; | grep -A2 annotations, k3s -v" \
--expectedValue "CNI plugins plugin v1.2.0-k3s1,1M, v1.26" \
--expectedValueUpgrade "CNI plugins plugin v1.2.0-k3s1,1M, v1.27" \
+-cmd "/var/lib/rancher/k3s/data/current/bin/cni, kubectl get pod test-pod -o yaml : | grep -A2 annotations, k3s -v" \
+-expectedValue "v1.2.0-k3s1,1M, v1.26" \
+-expectedValueUpgrade "v1.2.0-k3s1,1M, v1.27" \
 -installVersionOrCommit INSTALL_K3S_VERSION=v1.27.2+k3s1 \
 -testCase "TestServiceClusterIp, TestLocalPathProvisionerStorage" \
 -deployWorkload=true \
@@ -139,9 +139,9 @@ go test -timeout=45m -v -tags=versionbump  ./entrypoint/versionbump/... \
 Example of an execution with less args:
 ````bash
 go test -timeout=45m -v -tags=versionbump  ./entrypoint/versionbump/... \
--cmd "/var/lib/rancher/k3s/data/current/bin/cni, kubectl get pod test-pod -o yaml ; | grep -A2 annotations, k3s -v"  \
--expectedValue "CNI plugins plugin v1.2.0-k3s1,1M, v1.26"  \
--expectedValueUpgrade "CNI plugins plugin v1.2.0-k3s1,1M, v1.27" \
+-cmd "/var/lib/rancher/k3s/data/current/bin/cni, kubectl get pod test-pod -o yaml : | grep -A2 annotations, k3s -v"  \
+-expectedValue "v1.2.0-k3s1,1M, v1.26"  \
+-expectedValueUpgrade "v1.2.0-k3s1,1M, v1.27" \
 -installVersionOrCommit INSTALL_K3S_VERSION=v1.27.2+k3s1 \
 ````
 
