@@ -447,6 +447,7 @@ func genServerCerts(config *config.Control) error {
 }
 
 func genETCDCerts(config *config.Control) error {
+
 	runtime := config.Runtime
 	regen, err := createSigningCertKey("etcd-server", runtime.ETCDServerCA, runtime.ETCDServerCAKey)
 	if err != nil {
@@ -455,13 +456,6 @@ func genETCDCerts(config *config.Control) error {
 
 	altNames := &certutil.AltNames{}
 	addSANs(altNames, config.SANs)
-
-	if _, err := createClientCertKey(regen, "etcd-server", nil,
-		altNames, []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
-		runtime.ETCDServerCA, runtime.ETCDServerCAKey,
-		runtime.ServerETCDCert, runtime.ServerETCDKey); err != nil {
-		return err
-	}
 
 	if _, err := createClientCertKey(regen, "etcd-client", nil,
 		nil, []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
@@ -479,6 +473,17 @@ func genETCDCerts(config *config.Control) error {
 		altNames, []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
 		runtime.ETCDPeerCA, runtime.ETCDPeerCAKey,
 		runtime.PeerServerClientETCDCert, runtime.PeerServerClientETCDKey); err != nil {
+		return err
+	}
+
+	if config.DisableETCD {
+		return nil
+	}
+
+	if _, err := createClientCertKey(regen, "etcd-server", nil,
+		altNames, []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
+		runtime.ETCDServerCA, runtime.ETCDServerCAKey,
+		runtime.ServerETCDCert, runtime.ServerETCDKey); err != nil {
 		return err
 	}
 
