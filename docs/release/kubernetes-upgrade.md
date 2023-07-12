@@ -4,6 +4,17 @@ This document details the K3S kubernetes patch release process.
 # Before You Begin
 You’ll be primarily using git and go. Git can be installed via the local package manager. Make sure Go is installed and configured correctly, utilizing a “gopath”. This can be set via an environment variable called GOPATH. eg. export GOPATH=”${HOME}/go”, typically.
 
+To ensure proper GPG Signing usage, we recommend the following:
+
+ - Disable GPG signing in the git config before running all scripts. The method for disabling GPG signing may vary depending on your specific situation. One approach is to unset the related configuration using the following command:
+
+   ```sh
+   git config --unset-all user.signingkey
+   ```
+
+If you require GPG signing for your tags, configure it based on your specific requirements. Please note that the script assumes that GPG signing is either disabled or configured correctly in the git configuration. 
+
+
 ## Clone and Setup Remotes
 Clone from upstream then add k3s-io fork and your personal fork.
 ```sh
