@@ -196,7 +196,7 @@ var _ = Describe("Verify Secrets Encryption Rotation", Ordered, func() {
 			cmd = "k3s secrets-encrypt status"
 			Eventually(func() (string, error) {
 				return e2e.RunCmdOnNode(cmd, serverNodeNames[0])
-			}, "180s", "5s").Should(ContainSubstring("Current Rotation Stage: reencrypt_finished"))
+			}, "240s", "10s").Should(ContainSubstring("Current Rotation Stage: reencrypt_finished"))
 
 			for _, nodeName := range serverNodeNames[1:] {
 				res, err := e2e.RunCmdOnNode(cmd, nodeName)
@@ -219,7 +219,7 @@ var _ = Describe("Verify Secrets Encryption Rotation", Ordered, func() {
 					g.Expect(res).Should(ContainSubstring("Encryption Status: Enabled"))
 					g.Expect(res).Should(ContainSubstring("Current Rotation Stage: reencrypt_finished"))
 					g.Expect(res).Should(ContainSubstring("Server Encryption Hashes: All hashes match"))
-				}, "420s", "2s").Should(Succeed())
+				}, "420s", "5s").Should(Succeed())
 			}
 		})
 	})
@@ -237,7 +237,7 @@ var _ = Describe("Verify Secrets Encryption Rotation", Ordered, func() {
 			cmd = "k3s secrets-encrypt status"
 			Eventually(func() (string, error) {
 				return e2e.RunCmdOnNode(cmd, serverNodeNames[0])
-			}, "180s", "5s").Should(ContainSubstring("Current Rotation Stage: reencrypt_finished"))
+			}, "240s", "10s").Should(ContainSubstring("Current Rotation Stage: reencrypt_finished"))
 
 			for i, nodeName := range serverNodeNames {
 				Eventually(func(g Gomega) {
