@@ -102,9 +102,9 @@ echo -e ${BUILD_CONTAINER} | docker build -t ${GOIMAGE}-dev -
 # Now create the tags by executing tag.sh with the given version variables.
 docker run --rm -u $(id -u) \
 --mount type=tmpfs,destination=${GOPATH}/pkg \
--v ${GOPATH}/src:/go/src \
--v ${GOPATH}/.cache:/go/.cache \
--v ${GLOBAL_GIT_CONFIG_PATH}:/go/.gitconfig \
+-v ${GOPATH}/src:/go/src:rw \
+-v ${GOPATH}/.cache:/go/.cache:rw \
+-v ${GLOBAL_GIT_CONFIG_PATH}:/go/.gitconfig:rw \
 -e GIT_TRACE=1 \
 -e HOME=/go \
 -e GOCACHE=/go/.cache \
