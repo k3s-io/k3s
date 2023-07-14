@@ -94,6 +94,11 @@ func KubeConfig(dest, url, caCert, clientCert, clientKey string) error {
 	}
 	defer output.Close()
 
+	// cis-1.24 and newer require kubeconfigs to be 0600
+	if err := output.Chmod(0600); err != nil {
+		return err
+	}
+
 	return kubeconfigTemplate.Execute(output, &data)
 }
 
