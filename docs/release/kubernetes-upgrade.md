@@ -23,17 +23,10 @@ To avoid this problem, you can add a safe directory setting in the git configura
 - Create or edit the global git configuration file by running the following command:
    
    ```shell
-   git config --global --edit
-  ```
-- In the configuration file, add the following line under the [core] section:
-  ```sh 
-  [core]
-    safelyUseIncompatibleGitCredentialHelper = true
+   git config --global core.safelyUseIncompatibleGitCredentialHelper true
   ```
 
 This setting ensures that the container user can safely access the Git repository directory without permission issues.
-
-Note: If you are using a specific git configuration file for the project, make sure to add the `safelyUseIncompatibleGitCredentialHelper = true` line in that file instead.
 
 ## Clone and Setup Remotes
 Clone from upstream then add k3s-io fork and your personal fork.
