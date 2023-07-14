@@ -16,7 +16,6 @@ import (
 	"github.com/k3s-io/k3s/pkg/server"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 	"k8s.io/utils/pointer"
 )
@@ -152,7 +151,6 @@ func Prepare(app *cli.Context) error {
 	if err = cmds.InitLogging(); err != nil {
 		return err
 	}
-	logrus.Warnln("This command will be deprecated in v1.28, will be combined with rotate")
 	info, err := commandPrep(app, &cmds.ServerConfig)
 	if err != nil {
 		return err
@@ -198,7 +196,6 @@ func Reencrypt(app *cli.Context) error {
 	if err = cmds.InitLogging(); err != nil {
 		return err
 	}
-	logrus.Warnln("This command will be deprecated in v1.28, will be combined with rotate")
 	info, err := commandPrep(app, &cmds.ServerConfig)
 	if err != nil {
 		return err

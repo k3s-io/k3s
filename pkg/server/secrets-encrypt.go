@@ -208,7 +208,6 @@ func encryptionPrepare(ctx context.Context, server *config.Control, force bool) 
 	if err := AppendNewEncryptionKey(&curKeys); err != nil {
 		return err
 	}
-	logrus.Warnln("prepare command will be deprecated in v1.28, will be combined with rotate")
 	logrus.Infoln("Adding secrets-encryption key: ", curKeys[len(curKeys)-1])
 
 	if err := secretsencrypt.WriteEncryptionConfig(server.Runtime, curKeys, true); err != nil {
@@ -276,7 +275,6 @@ func encryptionReencrypt(ctx context.Context, server *config.Control, force bool
 	if _, err = server.Runtime.Core.Core().V1().Node().Update(node); err != nil {
 		return err
 	}
-	logrus.Warnln("reencrypt command will be deprecated in v1.28, will be combined with rotate")
 	logrus.Debugf("encryption hash annotation set successfully on node: %s\n", node.ObjectMeta.Name)
 	return nil
 }
