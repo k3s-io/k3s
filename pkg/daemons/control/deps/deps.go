@@ -88,7 +88,8 @@ func KubeConfig(dest, url, caCert, clientCert, clientKey string) error {
 		ClientKey:  clientKey,
 	}
 
-	output, err := os.Create(dest)
+	// cis-1.24 and newer require kubeconfigs to be 0600
+	output, err := os.OpenFile(dest, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		return err
 	}
