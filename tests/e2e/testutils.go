@@ -346,8 +346,20 @@ func ParseNodes(kubeConfig string, print bool) ([]Node, error) {
 	nodes := make([]Node, 0, 10)
 	nodeList := ""
 
-	cmd := "kubectl get nodes --no-headers -o wide -A --kubeconfig=" + kubeConfig
+	cmd := "which kubectl"
+	if res, err := RunCommand(cmd); err != nil {
+		return nil, fmt.Errorf("unable to find kubectl: %s, %v", res, err)
+	}
+
+	cmd = "kubectl version"
 	res, err := RunCommand(cmd)
+	if err != nil {
+		return nil, fmt.Errorf("kubectl error: %s, %v", res, err)
+	}
+	fmt.Println("KUBECTL VER: ", res)
+
+	cmd = "kubectl get nodes --no-headers -o wide -A --kubeconfig=" + kubeConfig
+	res, err = RunCommand(cmd)
 
 	if err != nil {
 		return nil, fmt.Errorf("unable to get nodes: %s: %v", res, err)
