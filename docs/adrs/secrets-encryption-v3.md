@@ -32,34 +32,35 @@ This is a lot of manual restarts and downtime.
 With the introduction of [Automatic Config Reloading](https://kubernetes.io/docs/tasks/administer-cluster/encrypt-data/#configure-automatic-reloading), a component of [KMV v2](https://github.com/kubernetes/enhancements/issues/3299) currently in Beta as of v1.27, with a GA target of v1.29, we can reduce this to:
 
 For single server sqlite:
-1) `k3s secrets-encrypt rotate`
+1) `k3s secrets-encrypt rotate-keys`
 
 For HA etcd:
-1) `k3s secrets-encrypt rotate`
+1) `k3s secrets-encrypt rotate-keys`
 2) Restart all k3s servers
 
 ### CLI Changes
-The dicussion/problem is around how to go about deprecating the old method and introducing the new method. As Brad pointed out in https://github.com/k3s-io/k3s/pull/7848, we have a standard deprecation policy for CLI flags with a 2-minor release schedule, fully defined in [this ADR](./deprecating-and-removing-flags.md). However, ultimately it would be best if the new CLI was a replacement, not a new command. 
+The dicussion/problem is around how to go about deprecating the old method and introducing the new method. As Brad pointed out in https://github.com/k3s-io/k3s/pull/7848, we have a standard deprecation policy for CLI flags with a 2-minor release schedule, fully defined in [this ADR](./deprecating-and-removing-flags.md). Unfortunately, we need to ensure the smoothest transition with Rancher provising. Having multiple releases where some CLI is deprecated and others are not is not ideal.
 
-One possible solution is to a add a "transitional", expirmental, command for a single release, with explicit documentation that this is only for the transition period. As an example:
-
-v1.27 and older: 
-- Warnings that the old methods `prepare, rotate, reencrypt` will be deprecated in v1.28
+One solution is to a extend support for the old process until all K3s maintained releases support the new command. Only then would the old commands be deprecated in a single cycle.
 
 v1.28: 
-- Add `k3s secrets-encrypt new-rotate` command, with warnings that this is only for avaliable in v1.28, is expiremental, and will become `k3s secrets-encrypt rotate` in v1.29. 
-- CLI calls to `prepare, reencrypt` will print a warning that they are deprecated and will be removed in v1.29
-- CLI call to `rotate` will print a warning that it is deprecated and will be replaced with `new-rotate` in v1.29
+- Add `k3s secrets-encrypt rotate-keys` command, marked as experimental
 
 v1.29:
-- CLI calls to `prepare, reencrypt` will fatal error and point user to `rotate` with the new v3 documentation.
-- CLI calls to `rotate` will now be the new v3 method, with no warnings.
-- CLI calls to `new-rotate` will give a warning it is deprecated, that `rotate` should now be used, and will be removed in v1.30
+- `prepare, reencrypt, rotate` will be marked as deprecated and a warning, encouraging users to use the new `rotate-keys`.
+- `rotate-keys` will go GA
+- Documentation will be updated to reflect the new process, and point new installs to using the new command.
 
-v1.30:
-- CLI calls for `prepare, reencrypt, new-rotate` will be removed from the codebase.
+...
+
+v1.32 or v1.33 (depending on when 1.28 goes EOL and we drop support):
+- `prepare, reencrypt, new-rotate` will give fatal errors and point to the documentation on the `rotate-keys` command.
+- Documentation will be updated to remove the old commands.
+
+v1.34: 
+- `prepare, reencrypt, rotate` will be removed from the codebase.
 
 ## Decision
 
 ## Consequences
-This cuts short the number of releases we will handle `new-rotate` by 1 compared to the full approach. By being upfront about its expiremental and temporary nature, we can hopefully avoid any confusion or issues with users. It also places in line with when upstream KMS v2 will go GA.
+This extends the number of releases we continue to support the old commands by 3-4 more than the standard deprecation process.
