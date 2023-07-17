@@ -180,7 +180,7 @@ func CreateLocalCluster(nodeOS string, serverCount, agentCount int) ([]string, [
 		}
 		errg.Go(func() error {
 			if _, err := RunCommand(cmd); err != nil {
-				return fmt.Errorf("failed initializing nodes: %s: %v", cmd, err)
+				return newNodeError(cmd, node, err)
 			}
 			return nil
 		})
