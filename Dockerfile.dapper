@@ -17,6 +17,7 @@ RUN apk -U --no-cache add bash git gcc musl-dev docker vim less file curl wget c
     apk -U --no-cache add mingw-w64-gcc; \
     fi
 
+RUN python3 -m pip install pyyaml==5.3.1
 RUN python3 -m pip install awscli
 
 RUN TRIVY_VERSION="0.43.1" && \
