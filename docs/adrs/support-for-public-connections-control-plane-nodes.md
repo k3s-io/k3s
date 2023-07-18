@@ -34,7 +34,6 @@ For example:
 
 Good
 ====
-* Users can deploy k3s control plane clusters in seconds that seamlessly work and connect heterogeneous nodes
 * Fills the gap for use cases that need clusters without LAN connection and without VPN
 
 Bad
