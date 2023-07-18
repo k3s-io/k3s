@@ -4,7 +4,7 @@ Date: 2023-04-26
 
 ## Status
 
-Proposed
+Accepted
 
 ## Context
 
@@ -61,6 +61,8 @@ v1.34:
 - `prepare, reencrypt, rotate` will be removed from the codebase.
 
 ## Decision
+
+We will continue forward with the above plan. First release with the new command will be v1.28, and the last release with the old commands will be v1.33 or v1.32, whichever minor release comes after v1.28 goes EOL.
 
 ## Consequences
 This extends the number of releases we continue to support the old commands by 3-4 more than the standard deprecation process.
