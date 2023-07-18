@@ -19,12 +19,12 @@ My proposal is to introduce an additional flag in the CLI that indicates that et
 ### Architecture
 
 Digging deeper into the code, here is a high-level summary of the changes that will be applied to k3s and etcd:
-	* [k3s] A new flag will be added for the server, which provides a boolean value to determine whether etcd will use the `advertise-address` to advertise to other etcds in the cluster.
-	* [etcd] etcd will now accept different ips for the cluster value. 
+* [k3s] A new flag will be added for the server, which provides a boolean value to determine whether etcd will use the `advertise-address` to advertise to other etcds in the cluster.
+* [etcd] etcd will now accept different ips for the cluster value. 
 	
 For example:
-	- Server 1 value will be initialCluster = Server1Name=Server1PrivateIp,Server2Name=Server2PublicIp
-	- Server 2 value will be initialCluster = Server1Name=Server1PublicIp,Server2Name=Server2PrivateIp
+* Server 1 value will be initialCluster = Server1Name=Server1PrivateIp,Server2Name=Server2PublicIp
+* Server 2 value will be initialCluster = Server1Name=Server1PublicIp,Server2Name=Server2PrivateIp
 
 ## Decision
 
