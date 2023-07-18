@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -489,7 +490,7 @@ func verifyLocalPassword(ctx context.Context, config *Config, mu *sync.Mutex, de
 	// use same password file location that the agent creates
 	nodePasswordRoot := "/"
 	if config.ControlConfig.Rootless {
-		nodePasswordRoot = filepath.Join(config.ControlConfig.DataDir, "agent")
+		nodePasswordRoot = filepath.Join(path.Dir(config.ControlConfig.DataDir), "agent")
 	}
 	nodeConfigPath := filepath.Join(nodePasswordRoot, "etc", "rancher", "node")
 	nodePasswordFile := filepath.Join(nodeConfigPath, "password")

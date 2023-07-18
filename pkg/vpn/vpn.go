@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"net/url"
 	"strings"
 
 	"github.com/k3s-io/k3s/pkg/util"
@@ -22,7 +23,8 @@ type TailscaleOutput struct {
 
 // VPNInfo includes node information of the VPN. It is a general struct in case we want to add more vpn integrations
 type VPNInfo struct {
-	IPs          []net.IP
+	IPv4Address  net.IP
+	IPv6Address  net.IP
 	NodeID       string
 	ProviderName string
 	VPNInterface string
@@ -30,8 +32,9 @@ type VPNInfo struct {
 
 // vpnCliAuthInfo includes auth information of the VPN. It is a general struct in case we want to add more vpn integrations
 type vpnCliAuthInfo struct {
-	Name    string
-	JoinKey string
+	Name             string
+	JoinKey          string
+	ControlServerURL string
 }
 
 // StartVPN starts the VPN interface. General function in case we want to add more vpn integrations
@@ -44,7 +47,13 @@ func StartVPN(vpnAuthConfigFile string) error {
 	logrus.Infof("Starting VPN: %s", authInfo.Name)
 	switch authInfo.Name {
 	case "tailscale":
-		output, err := util.ExecCommand("tailscale", []string{"up", "--authkey", authInfo.JoinKey, "--reset"})
+		args := []string{
+			"up", "--authkey", authInfo.JoinKey, "--timeout=30s", "--reset",
+		}
+		if authInfo.ControlServerURL != "" {
+			args = append(args, "--login-server", authInfo.ControlServerURL)
+		}
+		output, err := util.ExecCommand("tailscale", args)
 		if err != nil {
 			return errors.Wrap(err, "tailscale up failed: "+output)
 		}
@@ -79,6 +88,8 @@ func getVPNAuthInfo(vpnAuth string) (vpnCliAuthInfo, error) {
 			authInfo.Name = vpnKeyValue[1]
 		case "joinKey":
 			authInfo.JoinKey = vpnKeyValue[1]
+		case "controlServerURL":
+			authInfo.ControlServerURL = vpnKeyValue[1]
 		default:
 			return vpnCliAuthInfo{}, fmt.Errorf("VPN Error. The passed VPN auth info includes an unknown parameter: %v", vpnKeyValue[0])
 		}
@@ -96,6 +107,11 @@ func isVPNConfigOK(authInfo vpnCliAuthInfo) error {
 		if authInfo.JoinKey == "" {
 			return errors.New("VPN Error. Tailscale requires a JoinKey")
 		}
+		if authInfo.ControlServerURL != "" {
+			if _, err := url.Parse(authInfo.ControlServerURL); err != nil {
+				return fmt.Errorf("VPN Error. Invalid control server URL for Tailscale: %w", err)
+			}
+		}
 		return nil
 	}
 
@@ -112,15 +128,14 @@ func getTailscaleInfo() (VPNInfo, error) {
 	logrus.Debugf("Output from tailscale status --json: %v", output)
 
 	var tailscaleOutput TailscaleOutput
-	var internalIPs []net.IP
 	err = json.Unmarshal([]byte(output), &tailscaleOutput)
 	if err != nil {
 		return VPNInfo{}, fmt.Errorf("failed to unmarshal tailscale output: %v", err)
 	}
 
-	for _, address := range tailscaleOutput.TailscaleIPs {
-		internalIPs = append(internalIPs, net.ParseIP(address))
-	}
+	// Errors are ignored because the interface might not have ipv4 or ipv6 addresses (that's the only possible error)
+	ipv4Address, _ := util.GetFirst4String(tailscaleOutput.TailscaleIPs)
+	ipv6Address, _ := util.GetFirst6String(tailscaleOutput.TailscaleIPs)
 
-	return VPNInfo{IPs: internalIPs, NodeID: "", ProviderName: "tailscale", VPNInterface: tailscaleIf}, nil
+	return VPNInfo{IPv4Address: net.ParseIP(ipv4Address), IPv6Address: net.ParseIP(ipv6Address), NodeID: "", ProviderName: "tailscale", VPNInterface: tailscaleIf}, nil
 }

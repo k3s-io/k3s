@@ -71,8 +71,7 @@ rm -rf _output
 git rebase --onto ${NEW_K8S} ${OLD_K8S} ${OLD_K3S_VER}~1
  
 # Kubernetes is specific with the Go version used per release. We use alpine and docker to specify the Go version with which we build the project.
-# This command is not backwards compatible and requires versions of yq greater than 4.0, as the query syntax has changed throughout the history of the project.
-export GOVERSION=$(yq -e '.dependencies[] | select(.name == "golang: upstream version").version' build/dependencies.yaml)
+export GOVERSION=$(grep -Po '^\s*\K\S+' .go-version)
 
 export GOIMAGE="golang:${GOVERSION}-alpine"
 
@@ -108,32 +107,38 @@ Save this output to a file called ```push.sh``` and mark it as executable by run
 ```sh
 chmod +x push.sh
 ```
-### tag.sh example output (The kubernetes versions will correspond to those of the patch release, 1.22 is shown below):
+### tag.sh example output (The kubernetes versions will correspond to those of the patch release, 1.27 is shown below):
 ```sh
-git push ${REMOTE} staging/src/k8s.io/api/v1.22.12-k3s1
-git push ${REMOTE} staging/src/k8s.io/apiextensions-apiserver/v1.22.12-k3s1
-git push ${REMOTE} staging/src/k8s.io/apimachinery/v1.22.12-k3s1
-git push ${REMOTE} staging/src/k8s.io/apiserver/v1.22.12-k3s1
-git push ${REMOTE} staging/src/k8s.io/client-go/v1.22.12-k3s1
-git push ${REMOTE} staging/src/k8s.io/cli-runtime/v1.22.12-k3s1
-git push ${REMOTE} staging/src/k8s.io/cloud-provider/v1.22.12-k3s1
-git push ${REMOTE} staging/src/k8s.io/cluster-bootstrap/v1.22.12-k3s1
-git push ${REMOTE} staging/src/k8s.io/code-generator/v1.22.12-k3s1
-git push ${REMOTE} staging/src/k8s.io/component-base/v1.22.12-k3s1
-git push ${REMOTE} staging/src/k8s.io/cri-api/v1.22.12-k3s1
-git push ${REMOTE} staging/src/k8s.io/csi-translation-lib/v1.22.12-k3s1
+git push ${REMOTE} staging/src/k8s.io/api/v1.27.3-k3s1
+git push ${REMOTE} staging/src/k8s.io/apiextensions-apiserver/v1.27.3-k3s1
+git push ${REMOTE} staging/src/k8s.io/apimachinery/v1.27.3-k3s1
+git push ${REMOTE} staging/src/k8s.io/apiserver/v1.27.3-k3s1
+git push ${REMOTE} staging/src/k8s.io/client-go/v1.27.3-k3s1
+git push ${REMOTE} staging/src/k8s.io/cli-runtime/v1.27.3-k3s1
+git push ${REMOTE} staging/src/k8s.io/cloud-provider/v1.27.3-k3s1
+git push ${REMOTE} staging/src/k8s.io/cluster-bootstrap/v1.27.3-k3s1
+git push ${REMOTE} staging/src/k8s.io/code-generator/v1.27.3-k3s1
+git push ${REMOTE} staging/src/k8s.io/component-base/v1.27.3-k3s1
+git push ${REMOTE} staging/src/k8s.io/component-helpers/v1.27.3-k3s1
+git push ${REMOTE} staging/src/k8s.io/controller-manager/v1.27.3-k3s1
+git push ${REMOTE} staging/src/k8s.io/cri-api/v1.27.3-k3s1
+git push ${REMOTE} staging/src/k8s.io/csi-translation-lib/v1.27.3-k3s1
 git push ${REMOTE} staging/src/k8s.io/kube-aggregator/v1.22.12-k3s1
-git push ${REMOTE} staging/src/k8s.io/kube-controller-manager/v1.22.12-k3s1
-git push ${REMOTE} staging/src/k8s.io/kubectl/v1.22.12-k3s1
-git push ${REMOTE} staging/src/k8s.io/kubelet/v1.22.12-k3s1
-git push ${REMOTE} staging/src/k8s.io/kube-proxy/v1.22.12-k3s1
-git push ${REMOTE} staging/src/k8s.io/kube-scheduler/v1.22.12-k3s1
-git push ${REMOTE} staging/src/k8s.io/legacy-cloud-providers/v1.22.12-k3s1
-git push ${REMOTE} staging/src/k8s.io/metrics/v1.22.12-k3s1
-git push ${REMOTE} staging/src/k8s.io/sample-apiserver/v1.22.12-k3s1
-git push ${REMOTE} staging/src/k8s.io/sample-cli-plugin/v1.22.12-k3s1
-git push ${REMOTE} staging/src/k8s.io/sample-controller/v1.22.12-k3s1
-git push ${REMOTE} v1.22.12-k3s1
+git push ${REMOTE} staging/src/k8s.io/controller-manager/v1.27.3-k3s1
+git push ${REMOTE} staging/src/k8s.io/kms/v1.27.3-k3s1
+git push ${REMOTE} staging/src/k8s.io/kube-aggregator/v1.27.3-k3s1
+git push ${REMOTE} staging/src/k8s.io/kube-controller-manager/v1.27.3-k3s1
+git push ${REMOTE} staging/src/k8s.io/kube-proxy/v1.27.3-k3s1
+git push ${REMOTE} staging/src/k8s.io/kube-scheduler/v1.27.3-k3s1
+git push ${REMOTE} staging/src/k8s.io/kubectl/v1.27.3-k3s1
+git push ${REMOTE} staging/src/k8s.io/kubelet/v1.27.3-k3s1
+git push ${REMOTE} staging/src/k8s.io/legacy-cloud-providers/v1.27.3-k3s1
+git push ${REMOTE} staging/src/k8s.io/metrics/v1.27.3-k3s1
+git push ${REMOTE} staging/src/k8s.io/mount-utils/v1.27.0-k3s1
+git push ${REMOTE} staging/src/k8s.io/sample-apiserver/v1.27.3-k3s1
+git push ${REMOTE} staging/src/k8s.io/sample-cli-plugin/v1.27-k3s1
+git push ${REMOTE} staging/src/k8s.io/sample-controller/v1.27.3-k3s1
+git push ${REMOTE} v1.27.3-k3s1
 ```
 ## Push tags to k3s-io remote
 ```
@@ -143,9 +148,10 @@ export REMOTE=k3s-io
 ## Updating k3s with the new tags
 You now have a collection of tagged kubernetes modules in your worktree. By updating go.mod in k3s to point at these modules we will then be prepared to open a PR for review.
 ```sh
-cd ${GOPATH}/src/github.com/rancher/k3s
+cd ${GOPATH}/src/github.com/k3s-io/k3s 
 git remote add upstream https://github.com/k3s-io/k3s.git
 git fetch upstream
+git branch delete ${NEW_K3S_VER}
 git checkout -B ${NEW_K3S_VER} upstream/${RELEASE_BRANCH}
 git clean -xfd
  
@@ -156,8 +162,19 @@ sed -Ei "s/${OLD_K8S_CLIENT}/${NEW_K8S_CLIENT}/g" go.mod
 # since drone perform the builds and tests for the updated tags we no longer need to run make locally.
 # We now update the go.sum by running go mod tidy:
 go mod tidy
+```
 
-# Update the depdencies that we override to match upstream using the ecm-distro-tools script
+Ensure to update the Go version in both the Dockerfile and GitHub workflows, if required.
+
+```sh
+sed -i'' “s/<OLD_GO_VERSION>/<NEW_GO_VERSION>/g” Dockerfile.* .github/workflows/integration.yaml .github/workflows/unitcoverage.yaml
+```
+
+Please note that the modsync script, k3s_modsync.sh, is only necessary when making modifications to target a specific upstream Kubernetes commit instead of a tag in cases where k3s is being updated. In a regular patch release process, the modsync script is not used.
+
+To update the dependencies that are overridden and align them with the upstream version, you can use the following command:
+
+```sh 
 curl -s https://raw.githubusercontent.com/rancher/ecm-distro-tools/master/bin/k3s_modsync.sh | sh -
 ```
 

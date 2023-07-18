@@ -25,7 +25,7 @@ if [ $# -gt 0 ]; then
   CONFIG="$1"
 fi
 
-if ! command -v zgrep >/dev/null 2>&1; then
+if ! command -v zgrep >/dev/null 2>&1 || eval "cat /sys/kernel/security/apparmor/profiles | grep -q 'zgrep (enforce)'"; then
   zgrep() {
     zcat "$2" | grep "$1"
   }

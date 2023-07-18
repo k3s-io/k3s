@@ -9,8 +9,8 @@ fi
 
 ARCH=$2
 
-# skipping image scan for s390x since trivy doesn't support s390x arch yet
-if [ "${ARCH}" == "s390x" ]; then
+# skipping image scan for 32 bits image since trivy dropped support for those https://github.com/aquasecurity/trivy/discussions/4789
+if  [[ "${ARCH}" = "arm" ]] || [ "${ARCH}" != "386" ]; then
     exit 0
 fi
 
