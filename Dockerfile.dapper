@@ -1,4 +1,4 @@
-ARG GOLANG=golang:1.19.10-alpine3.18
+ARG GOLANG=golang:1.20.6-alpine3.18
 FROM ${GOLANG}
 
 ARG http_proxy=$http_proxy
@@ -39,7 +39,7 @@ RUN TRIVY_VERSION="0.43.1" && \
     fi
 
 # this works for both go 1.17 and 1.18
-RUN GOPROXY=direct go install golang.org/x/tools/cmd/goimports@gopls/v0.8.2
+RUN GOPROXY=direct go install golang.org/x/tools/cmd/goimports@gopls/v0.11.0
 RUN rm -rf /go/src /go/pkg
 
 RUN if [ "$(go env GOARCH)" = "amd64" ]; then \
