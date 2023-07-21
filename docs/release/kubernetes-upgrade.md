@@ -143,7 +143,8 @@ go mod tidy
 Ensure to update the Go version in both the Dockerfile and GitHub workflows, if required.
 
 ```sh
-sed -i'' “s/<OLD_GO_VERSION>/<NEW_GO_VERSION>/g” Dockerfile.* .github/workflows/integration.yaml .github/workflows/unitcoverage.yaml
+export OLD_GO_VERSION=<old-go-version>
+sed -i'' "s/$OLD_GO_VERSION/$GOVERSION/g" Dockerfile.* .github/workflows/integration.yaml .github/workflows/unitcoverage.yaml
 ```
 
 Please note that the modsync script, k3s_modsync.sh, is only necessary when making modifications to target a specific upstream Kubernetes commit instead of a tag in cases where k3s is being updated. In a regular patch release process, the modsync script is not used.
