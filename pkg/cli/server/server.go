@@ -223,16 +223,36 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		serverConfig.ControlConfig.PrivateIP = util.GetFirstValidIPString(cmds.AgentConfig.NodeIP)
 	}
 
+	// Ensure that we add the localhost name/ip and node name/ip to the SAN list. This list is shared by the
+	// certs for the supervisor, kube-apiserver cert, and etcd. DNS entries for the in-cluster kubernetes
+	// service endpoint are added later when the certificates are created.
+	nodeName, nodeIPs, err := util.GetHostnameAndIPs(cmds.AgentConfig.NodeName, cmds.AgentConfig.NodeIP)
+	if err != nil {
+		return err
+	}
+	serverConfig.ControlConfig.ServerNodeName = nodeName
+	serverConfig.ControlConfig.SANs = append(serverConfig.ControlConfig.SANs, "127.0.0.1", "::1", "localhost", nodeName)
+	for _, ip := range nodeIPs {
+		serverConfig.ControlConfig.SANs = append(serverConfig.ControlConfig.SANs, ip.String())
+	}
+
 	// if not set, try setting advertise-ip from agent VPN
 	if cmds.AgentConfig.VPNAuth != "" {
 		vpnInfo, err := vpn.GetVPNInfo(cmds.AgentConfig.VPNAuth)
 		if err != nil {
 			return err
 		}
+
+		logrus.Debugf("Processing vpn node-ip based on the detected nodeIPs: %v", nodeIPs)
+		dualNode, err := utilsnet.IsDualStackIPs(nodeIPs)
+		if err != nil {
+			return errors.Wrapf(err, "failed to validate node-ip: %v", nodeIPs)
+		}
+
 		// If we are in ipv6-only mode, we should pass the ipv6 address. Otherwise, ipv4
-		if utilsnet.IsIPv6CIDRString(util.JoinIPNets(serverConfig.ControlConfig.ClusterIPRanges)) {
+		if !dualNode && utilsnet.IsIPv6(nodeIPs[0]) {
 			if vpnInfo.IPv6Address != nil {
-				logrus.Infof("Advertise-address changed to %v due to VPN", vpnInfo.IPv6Address)
+				logrus.Infof("Changed advertise-address to %v due to VPN", vpnInfo.IPv6Address)
 				if serverConfig.ControlConfig.AdvertiseIP != "" {
 					logrus.Warn("Conflict in the config detected. VPN integration overwrites advertise-address but the config is setting the advertise-address parameter")
 				}
@@ -241,8 +261,9 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 				return errors.New("tailscale does not provide an ipv6 address")
 			}
 		} else {
+			// We are in dual-stack or ipv4-only mode
 			if vpnInfo.IPv4Address != nil {
-				logrus.Infof("Advertise-address changed to %v due to VPN", vpnInfo.IPv4Address)
+				logrus.Infof("Changed advertise-address to %v due to VPN", vpnInfo.IPv4Address)
 				if serverConfig.ControlConfig.AdvertiseIP != "" {
 					logrus.Warn("Conflict in the config detected. VPN integration overwrites advertise-address but the config is setting the advertise-address parameter")
 				}
@@ -270,19 +291,6 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	/// https://github.com/kubernetes/kubeadm/issues/1612#issuecomment-772583989
 	if serverConfig.ControlConfig.AdvertiseIP != "" {
 		serverConfig.ControlConfig.SANs = append(serverConfig.ControlConfig.SANs, serverConfig.ControlConfig.AdvertiseIP)
-	}
-
-	// Ensure that we add the localhost name/ip and node name/ip to the SAN list. This list is shared by the
-	// certs for the supervisor, kube-apiserver cert, and etcd. DNS entries for the in-cluster kubernetes
-	// service endpoint are added later when the certificates are created.
-	nodeName, nodeIPs, err := util.GetHostnameAndIPs(cmds.AgentConfig.NodeName, cmds.AgentConfig.NodeIP)
-	if err != nil {
-		return err
-	}
-	serverConfig.ControlConfig.ServerNodeName = nodeName
-	serverConfig.ControlConfig.SANs = append(serverConfig.ControlConfig.SANs, "127.0.0.1", "::1", "localhost", nodeName)
-	for _, ip := range nodeIPs {
-		serverConfig.ControlConfig.SANs = append(serverConfig.ControlConfig.SANs, ip.String())
 	}
 
 	// configure ClusterIPRanges
