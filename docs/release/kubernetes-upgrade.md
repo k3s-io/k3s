@@ -206,13 +206,15 @@ Once CI passes and you receive two approvals, you may now squash-merge the PR an
 Releases are kicked off and created by tagging a new tag.
 To create a new release in Github UI perform the following:
 
-1. Set title and tag according to the release version you're working on. E.g. v1.22.5-rc1+k3s1.
+1. Set title and tag according to the release version you're working on. E.g. v1.27.4-rc1+k3s1.
 2. Leave description blank.
 3. Check the pre-release field.
 4. Publish
 
 The resulting run can be viewed here: 
 [k3s-io/k3s Drone Dashboard](https://drone-publish.k3s.io/k3s-io/k3s)
+
+It may be necessary to open a new release candidate to accommodate changes in dependencies, such as modifications in https://github.com/k3s-io/k3s-upgrade. To do this, simply repeat the previous process but open it as, for example, `v1.27.4-rc2+k3s1`.
 
 # Create GA Release Candidate
 Once QA has verified that the RC is good (or that any fixes have been added in follow up release candidates), it is time for the general release.
