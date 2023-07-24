@@ -20,3 +20,4 @@ variable "password" {}
 variable "node_os" {}
 variable "install_mode" {}
 variable "key_name" {}
+variable "k3s_channel" {}

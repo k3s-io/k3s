@@ -27,7 +27,7 @@ variable "db_password" {}
 variable "environment" {}
 variable "engine_mode" {}
 variable "install_mode" {}
-
+variable "k3s_channel" {}
 variable "create_lb" {
   description = "Create Network Load Balancer if set to true"
   type = bool

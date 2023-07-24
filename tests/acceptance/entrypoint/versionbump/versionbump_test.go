@@ -19,13 +19,13 @@ var _ = Describe("VersionTemplate Upgrade:", func() {
 		testcase.TestBuildCluster(GinkgoT())
 	})
 
-	It("Validate Node", func() {
+	It("Validate Nodes", func() {
 		testcase.TestNodeStatus(
 			assert.NodeAssertReadyStatus(),
 			nil)
 	})
 
-	It("Validate Pod", func() {
+	It("Validate Pods", func() {
 		testcase.TestPodStatus(
 			assert.PodAssertRestart(),
 			assert.PodAssertReady(),

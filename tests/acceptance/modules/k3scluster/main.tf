@@ -29,6 +29,7 @@ module "master" {
    engine_mode=var.engine_mode
    environment=var.environment
    create_lb=var.create_lb
+   k3s_channel = var.k3s_channel
 }
 module "worker" {
    source="./worker"
@@ -51,4 +52,5 @@ module "worker" {
    node_os=var.node_os
    username=var.username
    password=var.password
+   k3s_channel = var.k3s_channel
 }
