@@ -7,10 +7,9 @@ You’ll be primarily using git and go. Git can be installed via the local packa
 To ensure proper GPG Signing usage, we recommend the following:
 
  - Disable GPG signing in the git config before running all scripts. The method for disabling GPG signing may vary depending on your specific situation. One approach is to unset the related configuration using the following command:
-
-   ```sh
-   git config --unset-all user.signingkey
-   ```
+  ```sh
+  git config --unset-all user.signingkey
+  ```
 
 If you require GPG signing for your tags, configure it based on your specific requirements. Please note that the script assumes that GPG signing is either disabled or configured correctly in the git configuration. 
 
@@ -21,8 +20,7 @@ When running the script inside a Docker container, there might be a user mismatc
 To avoid this problem, you can add a safe directory setting in the git configuration by following these steps:
 
 - Create or edit the global git configuration file by running the following command:
-   
-   ```shell
+  ```sh
    git config --global core.safelyUseIncompatibleGitCredentialHelper true
   ```
 
@@ -214,7 +212,7 @@ To create a new release in Github UI perform the following:
 The resulting run can be viewed here: 
 [k3s-io/k3s Drone Dashboard](https://drone-publish.k3s.io/k3s-io/k3s)
 
-It may be necessary to open a new release candidate to accommodate changes in dependencies, such as modifications in https://github.com/k3s-io/k3s-upgrade. To do this, simply repeat the previous process but open it as, for example, `v1.27.4-rc2+k3s1`.
+It may be necessary to create a new release candidate to accommodate changes in dependencies such as modifications in https://github.com/k3s-io/k3s-upgrade. To do this, repeat the previous process for tagging and increment the rc version.
 
 # Create GA Release Candidate
 Once QA has verified that the RC is good (or that any fixes have been added in follow up release candidates), it is time for the general release.
