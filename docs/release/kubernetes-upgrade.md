@@ -7,9 +7,9 @@ You’ll be primarily using git and go. Git can be installed via the local packa
 To ensure proper GPG Signing usage, we recommend the following:
 
  - Disable GPG signing in the git config before running all scripts. The method for disabling GPG signing may vary depending on your specific situation. One approach is to unset the related configuration using the following command:
-  ```sh
-  git config --unset-all user.signingkey
-  ```
+```sh
+git config --unset-all user.signingkey
+```
 
 If you require GPG signing for your tags, configure it based on your specific requirements. Please note that the script assumes that GPG signing is either disabled or configured correctly in the git configuration. 
 
@@ -20,9 +20,9 @@ When running the script inside a Docker container, there might be a user mismatc
 To avoid this problem, you can add a safe directory setting in the git configuration by following these steps:
 
 - Create or edit the global git configuration file by running the following command:
-  ```sh
-   git config --global core.safelyUseIncompatibleGitCredentialHelper true
-  ```
+```sh
+  git config --global core.safelyUseIncompatibleGitCredentialHelper true
+```
 
 This setting ensures that the container user can safely access the Git repository directory without permission issues.
 
