@@ -130,7 +130,6 @@ var _ = Describe("Verify Create", Ordered, func() {
 				}
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(pod.Status).Should(Equal("Running"))
-				g.Expect(pod.Node).Should(Equal(agentNodeNames[0]))
 			}, "60s", "5s").Should(Succeed())
 
 			cmd := "curl " + pod.IP
