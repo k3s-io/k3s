@@ -59,9 +59,6 @@ def provision(vm, role, role_num, node_num)
 
   if vm.box.to_s.include?("microos")
     vm.provision 'k3s-reload', type: 'reload', run: 'once'
-    if !EXTERNAL_DB.empty?
-      vm.provision "shell", inline: "docker start #{EXTERNAL_DB}"
-    end
   end
 end
 
