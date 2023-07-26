@@ -157,7 +157,7 @@ func createCNIConf(dir string, nodeConfig *config.Node) error {
 
 	if nodeConfig.AgentConfig.FlannelCniConfFile != "" {
 		logrus.Debugf("Using %s as the flannel CNI conf", nodeConfig.AgentConfig.FlannelCniConfFile)
-		return util.CopyFile(nodeConfig.AgentConfig.FlannelCniConfFile, p)
+		return util.CopyFile(nodeConfig.AgentConfig.FlannelCniConfFile, p, false)
 	}
 	return util.WriteFile(p, cniConf)
 }

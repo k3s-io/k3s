@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/erikdubbelboer/gspt"
+	"github.com/k3s-io/k3s/pkg/agent/util"
 	"github.com/k3s-io/k3s/pkg/bootstrap"
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
 	"github.com/k3s-io/k3s/pkg/clientaccess"
@@ -210,20 +211,6 @@ func rotate(app *cli.Context, cfg *cmds.Server) error {
 	return nil
 }
 
-func copyFile(src, destDir string) error {
-	_, err := os.Stat(src)
-	if err == nil {
-		input, err := os.ReadFile(src)
-		if err != nil {
-			return err
-		}
-		return os.WriteFile(filepath.Join(destDir, filepath.Base(src)), input, 0644)
-	} else if errors.Is(err, os.ErrNotExist) {
-		return nil
-	}
-	return err
-}
-
 func backupCertificates(serverDataDir, agentDataDir string) (string, error) {
 	serverTLSDir := filepath.Join(serverDataDir, "tls")
 	tlsBackupDir := filepath.Join(serverDataDir, "tls-"+strconv.Itoa(int(time.Now().Unix())))
@@ -245,7 +232,7 @@ func backupCertificates(serverDataDir, agentDataDir string) (string, error) {
 		filepath.Join(agentDataDir, "client-kube-proxy.key"),
 	}
 	for _, cert := range agentCerts {
-		if err := copyFile(cert, tlsBackupDir); err != nil {
+		if err := util.CopyFile(cert, tlsBackupDir, true); err != nil {
 			return "", err
 		}
 	}
